@@ -134,6 +134,16 @@ export function alignSelected(where) {
   });
 }
 
+// Flip / reset rotation for the selection.
+export function flipSelected(axis) {
+  const bs = selectedBlocks(); if (!bs.length) return;
+  commit(() => { for (const b of bs) { if (axis === 'h') b.flipH = !b.flipH; else b.flipV = !b.flipV; } });
+}
+export function resetRotation() {
+  const bs = selectedBlocks(); if (!bs.length) return;
+  commit(() => { for (const b of bs) { b.rotation = 0; b.flipH = false; b.flipV = false; } });
+}
+
 // Group the selection so they select and move together; ungroup releases them.
 export function groupSelected() {
   const bs = selectedBlocks(); if (bs.length < 2) return;

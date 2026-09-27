@@ -180,6 +180,16 @@ export async function run(frame) {
     eq(b.x, 200, 'centro intermedio equidistante');
   });
 
+  await test('rotación y volteo en el export', async () => {
+    reset(); const b = newText(); b.rotation = 30; b.flipH = true;
+    assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');
+  });
+
+  await test('voltear y restablecer giro', async () => {
+    reset(); const b = newText(); R.blocks.flipSelected('h'); assert(b.flipH, 'flipH activado');
+    b.rotation = 45; R.blocks.resetRotation(); eq(b.rotation, 0, 'giro a 0'); assert(!b.flipH, 'flip limpiado');
+  });
+
   await test('agrupar / desagrupar: seleccionar uno selecciona el grupo', async () => {
     reset(); R.blocks.addText(); R.blocks.addText();
     const a = slide().blocks.at(-2), b = slide().blocks.at(-1);

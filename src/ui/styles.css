@@ -159,10 +159,16 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
   background:#fff;border-radius:50%;padding:0 1px}
 .block.processing::after{content:"Procesando…";position:absolute;inset:0;display:grid;place-items:center;
   background:#000a;color:#fff;font-size:14px;z-index:8}
-.handle-del{position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:22px;height:22px;
+.handle-del{position:absolute;top:-30px;right:-30px;width:22px;height:22px;
   border-radius:50%;background:var(--danger);color:#fff;border:2px solid #fff;box-shadow:0 1px 4px #0004;
   cursor:pointer;display:none;font-size:13px;line-height:1;z-index:7;place-items:center}
 .block.selected .handle-del{display:grid}
+.handle-rot{position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:16px;height:16px;
+  border-radius:50%;background:#fff;border:2px solid var(--accent);box-shadow:0 1px 4px #0004;
+  cursor:grab;display:none;z-index:7}
+.handle-rot::before{content:"";position:absolute;left:50%;top:100%;width:2px;height:14px;
+  background:var(--accent);transform:translateX(-50%)}
+.block.selected .handle-rot{display:block}
 .handle-size{position:absolute;width:11px;height:11px;background:#fff;border:1.5px solid var(--accent);
   border-radius:2px;display:none;z-index:6}
 .handle-size.nw{left:-6px;top:-6px;cursor:nwse-resize}

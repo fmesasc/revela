@@ -44,6 +44,14 @@ function startMarquee(ev) {
 
 const factor = () => state.deck.size.w / stage.getBoundingClientRect().width;
 
+// CSS transform for a block: rotation plus optional mirror flips.
+export function transformOf(b) {
+  let t = `rotate(${b.rotation || 0}deg)`;
+  if (b.flipH) t += ' scaleX(-1)';
+  if (b.flipV) t += ' scaleY(-1)';
+  return t;
+}
+
 let lastSignature = '';
 
 // The signature captures everything that requires a full rebuild (which slide,
@@ -81,7 +89,7 @@ function reconcile(b) {
   if (!el) return;
   el.style.left = b.x + 'px'; el.style.top = b.y + 'px';
   el.style.width = b.w + 'px'; el.style.height = b.h + 'px';
-  el.style.transform = `rotate(${b.rotation || 0}deg)`;
+  el.style.transform = transformOf(b);
   el.classList.toggle('selected', isSelected(b.id));
   el.classList.toggle('animated', !!b.animation);
   if (b.type === 'text') {
@@ -116,8 +124,8 @@ function blockEl(b) {
   el.className = 'block' + (isSelected(b.id) ? ' selected' : '')
     + (b.animation ? ' animated' : '');
   el.dataset.id = b.id;
-  el.style.cssText = `left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px;`
-    + `transform:rotate(${b.rotation || 0}deg)`;
+  el.style.cssText = `left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px`;
+  el.style.transform = transformOf(b);
   el.appendChild(content(b));
 
   // Selection chrome.
@@ -128,6 +136,10 @@ function blockEl(b) {
     commit(() => { currentSlide().blocks = currentSlide().blocks.filter(x => x.id !== b.id);
       state.ui.selection = null; }); });
   el.appendChild(del);
+  const rot = document.createElement('div');
+  rot.className = 'handle-rot'; rot.title = 'Girar (Mayús: 15°)';
+  rot.addEventListener('pointerdown', ev => startRotate(ev, b, el));
+  el.appendChild(rot);
   for (const c of ['nw', 'ne', 'sw', 'se']) {
     const hd = document.createElement('div');
     hd.className = 'handle-size ' + c;
@@ -263,6 +275,27 @@ function startDrag(ev, b, el) {
     commit(() => {}, { history: false });
   };
   el.addEventListener('pointermove', onMove); el.addEventListener('pointerup', onUp);
+}
+
+function startRotate(ev, b, el) {
+  ev.stopPropagation();
+  const r = el.getBoundingClientRect();
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const base = b.rotation || 0;
+  const start = Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI;
+  el.setPointerCapture?.(ev.pointerId);
+  const onMove = e => {
+    const a = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
+    let rot = base + (a - start);
+    if (e.shiftKey) rot = Math.round(rot / 15) * 15;
+    b.rotation = Math.round(((rot % 360) + 360) % 360);
+    el.style.transform = transformOf(b);
+  };
+  const onUp = () => {
+    document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp);
+    commit(() => {}, { history: false });
+  };
+  document.addEventListener('pointermove', onMove); document.addEventListener('pointerup', onUp);
 }
 
 function startResize(ev, b, el, corner) {

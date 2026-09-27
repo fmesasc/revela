@@ -105,6 +105,11 @@ function forBlock(b) {
   if (sel.some(x => x.groupId)) groupItems.push(['Desagrupar', () => blocks.ungroupSelected()]);
   if (groupItems.length) items.push(null, ...groupItems);
 
+  items.push(null,
+    ['Voltear horizontalmente', () => blocks.flipSelected('h')],
+    ['Voltear verticalmente', () => blocks.flipSelected('v')],
+    ['Restablecer giro', () => blocks.resetRotation()]);
+
   // Position + arrange, common to every object.
   items.push(
     null,
