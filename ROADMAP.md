@@ -67,6 +67,7 @@ the origin of every requirement is traceable.
 - ⬜ Emoji picker `GS`
 - ⬜ Audio tracks `PP·OO`
 - ⬜ Animated GIF playback `PP·OO`
+- ✅ Embedded web page (`<iframe>`) `—`
 - ⬜ Embedded spreadsheet / linked data `GS·OO`
 - ✅ AI image background removal `PP` *(PowerPoint "Remove Background")*
 - ⬜ Image crop, adjustments (brightness/contrast/filters), transparency `PP·GS·OO`
@@ -87,7 +88,8 @@ the origin of every requirement is traceable.
 - ⬜ Background images and gradients `PP·GS·OO`
 - ⬜ Colour palettes / theme colours & fonts `PP·GS·OO`
 - ⬜ Speaker notes `PP·GS·OO`
-- ⬜ Slide numbers, date/time, header & footer `PP·GS·OO`
+- 🚧 Slide numbers, date/time, header & footer — slide numbers (show, position, format) done `PP·GS·OO`
+- ✅ Hide slide from the presentation `PP·GS·OO`
 - ⬜ Template / theme gallery `PP·GS·OO`
 
 ## 5. Transitions & animation

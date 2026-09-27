@@ -71,6 +71,8 @@ function reconcile(b) {
     const mv = el.querySelector('model-viewer'); if (mv && mv.getAttribute('src') !== b.src) mv.setAttribute('src', b.src);
   } else if (b.type === 'video') {
     const v = el.querySelector('video'); if (v && v.getAttribute('src') !== b.src) v.src = b.src;
+  } else if (b.type === 'embed') {
+    const f = el.querySelector('iframe'); if (f && f.getAttribute('src') !== b.src) f.src = b.src;
   }
 }
 
@@ -101,6 +103,7 @@ function blockEl(b) {
   el.addEventListener('pointerdown', ev => startDrag(ev, b, el));
   if (b.type === 'text') setupText(b, el);
   else if (b.type === 'model') setupModel(el);
+  else if (b.type === 'embed') setupEmbed(el);
   return el;
 }
 
@@ -124,6 +127,15 @@ function content(b) {
   }
   if (b.type === 'image') { const i = document.createElement('img'); i.src = b.src; i.draggable = false; return i; }
   if (b.type === 'video') { const v = document.createElement('video'); v.src = b.src; v.controls = true; return v; }
+  if (b.type === 'embed') {
+    const f = document.createElement('iframe');
+    f.src = b.src || '';
+    f.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-forms allow-presentation');
+    f.setAttribute('referrerpolicy', 'no-referrer');
+    f.setAttribute('loading', 'lazy');
+    f.style.pointerEvents = 'none'; // dragging the body moves the block; double‑click to interact
+    return f;
+  }
   return document.createElement('div');
 }
 
@@ -145,6 +157,13 @@ function setupModel(el) {
   el.addEventListener('dblclick', () => { mv.style.pointerEvents = 'auto'; el.classList.add('editing'); });
   el.addEventListener('pointerleave', () => { mv.style.pointerEvents = 'none'; el.classList.remove('editing'); });
 }
+// A web page embed behaves like a model: drag the frame to move it, double‑click
+// to interact with the page, move the pointer away to release it.
+function setupEmbed(el) {
+  const f = el.querySelector('iframe');
+  el.addEventListener('dblclick', () => { f.style.pointerEvents = 'auto'; el.classList.add('editing'); });
+  el.addEventListener('pointerleave', () => { f.style.pointerEvents = 'none'; el.classList.remove('editing'); });
+}
 
 function exitEdit(el) {
   const rich = el.querySelector('.rich'); if (rich) rich.blur();
@@ -153,7 +172,7 @@ function exitEdit(el) {
 
 function startDrag(ev, b, el) {
   if (el.classList.contains('editing')) {
-    if (ev.target.closest('.rich, model-viewer')) return; // over the content: keep editing
+    if (ev.target.closest('.rich, model-viewer, iframe')) return; // over the content: keep editing
     exitEdit(el);                                          // grabbed the frame: leave edit and move
   }
   ev.stopPropagation();

@@ -31,6 +31,10 @@ function blockHTML(b) {
     return `<img${a} src="${b.src}" style="${box(b)}object-fit:${b.fit || 'contain'}">`;
   if (b.type === 'video')
     return `<video${a} src="${b.src}" controls style="${box(b)}object-fit:contain"></video>`;
+  if (b.type === 'embed')
+    return `<iframe${a} src="${b.src}" referrerpolicy="no-referrer" `
+      + `sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation" `
+      + `style="${box(b)}border:0;background:#fff"></iframe>`;
   return '';
 }
 

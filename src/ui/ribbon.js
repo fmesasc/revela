@@ -39,6 +39,12 @@ const ACTIONS = {
   'insert-image': () => readFile('image/*', blocks.addImage),
   'insert-model': () => readFile('.glb,.gltf', blocks.addModel),
   'insert-video': () => readFile('video/*', blocks.addVideo),
+  'insert-embed': () => {
+    let url = prompt('Dirección de la página web (URL):', 'https://');
+    if (!url) return;
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    blocks.addEmbed(url);
+  },
   'obj-delete': () => blocks.deleteBlock(),
   'obj-duplicate': blocks.duplicateBlock,
   'insert-link': format.link,

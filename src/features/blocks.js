@@ -24,6 +24,11 @@ export function addVideo(src) {
     rotation: 0, animation: null, src });
 }
 
+export function addEmbed(url) {
+  insert({ id: uid(), type: 'embed', x: 260, y: 120, w: 760, h: 480,
+    rotation: 0, animation: null, src: url });
+}
+
 export function deleteBlock(id = state.ui.selection) {
   if (!id) return;
   commit(() => {
