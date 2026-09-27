@@ -43,11 +43,17 @@ function sectionHead(sec) {
 
 function thumb(slide, index) {
   const el = document.createElement('div');
-  el.className = 'thumb' + (index === state.ui.slideIndex ? ' active' : '');
+  el.className = 'thumb' + (index === state.ui.slideIndex ? ' active' : '') + (slide.hidden ? ' is-hidden' : '');
   el.draggable = true;
   el.dataset.index = index;
 
   const num = document.createElement('span'); num.className = 'thumb-num'; num.textContent = index + 1;
+  if (slide.hidden) {
+    const badge = document.createElement('span');
+    badge.className = 'thumb-hidden'; badge.title = 'Diapositiva oculta en la presentación';
+    badge.innerHTML = '<i class="ms">visibility_off</i>';
+    el.appendChild(badge);
+  }
   const canvas = document.createElement('div'); canvas.className = 'thumb-canvas';
   canvas.style.background = slide.background;
   const { w, h } = state.deck.size;

@@ -88,6 +88,10 @@ main{flex:1;display:flex;min-height:0}
 .thumb-del{position:absolute;top:2px;right:2px;z-index:3;background:#0008;border:none;color:#fff;
   border-radius:4px;cursor:pointer;font-size:11px;line-height:1;padding:2px 5px;display:none}
 .thumb:hover .thumb-del{display:block}
+.thumb.is-hidden .thumb-canvas{opacity:.38}
+.thumb-hidden{position:absolute;top:2px;right:24px;z-index:3;color:#fff;background:#0008;border-radius:4px;
+  display:grid;place-items:center;padding:1px 3px}
+.thumb-hidden .ms{font-size:14px}
 .pv-block>div,.pv-block>img{width:100%;height:100%}
 
 #canvas-wrap{flex:1;display:grid;place-items:center;padding:28px;overflow:auto;background:var(--canvas-bg)}

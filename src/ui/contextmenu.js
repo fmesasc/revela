@@ -6,7 +6,7 @@ import { uid } from '../core/model.js';
 import * as blocks from '../features/blocks.js';
 import { addText } from '../features/blocks.js';
 import * as format from '../features/format.js';
-import { addSlide, duplicateSlide, deleteSlide, goToSlide,
+import { addSlide, duplicateSlide, deleteSlide, goToSlide, toggleSlideHidden,
   addSectionAt, removeSection, setSlideSection } from '../features/slides.js';
 
 let menuEl, clipboard = null;
@@ -48,6 +48,8 @@ function forThumb(i) {
     ['Nueva diapositiva', () => addSlide()],
     ['Duplicar diapositiva', () => duplicateSlide()],
     ['Eliminar diapositiva', () => deleteSlide(i)],
+    null,
+    [slide.hidden ? 'Mostrar diapositiva' : 'Ocultar diapositiva', () => toggleSlideHidden(i)],
     null,
     ['Crear sección aquí', () => addSectionAt(i)],
     slide.sectionId ? ['Quitar de la sección', () => setSlideSection(slide.id, null)] : null,

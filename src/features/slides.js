@@ -47,6 +47,11 @@ export function goToSlide(index) {
   commit(() => { state.ui.slideIndex = index; state.ui.selection = null; }, { history: false });
 }
 
+// Hidden slides stay in the editor but are skipped during the presentation.
+export function toggleSlideHidden(index = state.ui.slideIndex) {
+  commit(() => { const s = state.deck.slides[index]; if (s) s.hidden = !s.hidden; });
+}
+
 // ---- Sections -------------------------------------------------------------
 // Start a section at `index`: the slide there and the contiguous run that
 // currently shares its section join the new one (matching PowerPoint, where a

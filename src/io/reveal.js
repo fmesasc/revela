@@ -43,7 +43,7 @@ function slideHTML(s) {
 
 export function buildHTML(deck = state.deck) {
   const { w, h } = deck.size;
-  const slides = deck.slides.map(slideHTML).join('\n');
+  const slides = deck.slides.filter(s => !s.hidden).map(slideHTML).join('\n');
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
