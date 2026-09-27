@@ -89,11 +89,42 @@ ${slides}
 </script></body></html>`;
 }
 
+// Present inside a full‑screen overlay in this same page. Because the click on
+// "Presentar" is a user gesture in this document, requestFullscreen() is allowed
+// here (a freshly opened tab cannot go full screen on its own). The deck loads
+// from a blob URL so reveal.js keeps working history/hash and the speaker view.
 export function present() {
-  const win = window.open('', '_blank');
-  if (!win) { alert('Permite las ventanas emergentes para presentar.'); return; }
-  win.document.write(buildHTML());
-  win.document.close();
+  const url = URL.createObjectURL(new Blob([buildHTML()], { type: 'text/html' }));
+
+  const overlay = document.createElement('div');
+  overlay.id = 'present-overlay';
+  const frame = document.createElement('iframe');
+  frame.src = url;
+  frame.allow = 'fullscreen; autoplay; xr-spatial-tracking; clipboard-write';
+  overlay.appendChild(frame);
+
+  const close = document.createElement('button');
+  close.id = 'present-close'; close.title = 'Salir (Esc)'; close.textContent = '✕';
+  overlay.appendChild(close);
+  document.body.appendChild(overlay);
+
+  const end = () => {
+    document.removeEventListener('fullscreenchange', onFs);
+    document.removeEventListener('keydown', onKey);
+    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+    overlay.remove();
+    URL.revokeObjectURL(url);
+  };
+  const onFs = () => { if (!document.fullscreenElement) end(); };
+  const onKey = e => { if (e.key === 'Escape') end(); };
+  close.addEventListener('click', end);
+  document.addEventListener('fullscreenchange', onFs);
+  document.addEventListener('keydown', onKey);
+
+  // Try true OS full screen; if the browser blocks it, the overlay still covers
+  // the whole viewport so the presentation fills the window either way.
+  Promise.resolve(overlay.requestFullscreen?.()).catch(() => {});
+  frame.focus();
 }
 
 function download(blob, name) {
