@@ -55,6 +55,7 @@ const ACTIONS = {
   'toggle-guides': () => commit(() => (state.ui.showGuides = !state.ui.showGuides), { history: false }),
   'toggle-ruler': () => commit(() => (state.ui.showRuler = !state.ui.showRuler), { history: false }),
   'toggle-slidenum': () => commit(() => (state.deck.slideNumber.show = !state.deck.slideNumber.show)),
+  'toggle-notes': () => commit(() => (state.ui.showNotes = !state.ui.showNotes), { history: false }),
 };
 
 export function initRibbon() {
@@ -128,6 +129,12 @@ export function initRibbon() {
       if (e.key === 'Enter') { e.preventDefault(); docName.blur(); }
     });
   }
+
+  // Speaker notes for the current slide.
+  const notes = document.getElementById('notes');
+  if (notes) notes.addEventListener('input', () => {
+    const s = currentSlide(); if (s) commit(() => { s.notes = notes.value; }, { history: false });
+  });
 }
 
 const STATE_CMDS = ['bold', 'italic', 'underline', 'strikeThrough', 'superscript', 'subscript'];
@@ -167,6 +174,11 @@ export function renderRibbon() {
   document.querySelector('[data-action="toggle-slidenum"]')?.classList.toggle('on', !!sn.show);
   syncValue('[data-slidenum-pos]', sn.position || 'br');
   syncValue('[data-slidenum-fmt]', sn.format || 'c');
+  const notesBar = document.getElementById('notes-bar');
+  if (notesBar) notesBar.hidden = !state.ui.showNotes;
+  document.querySelector('[data-action="toggle-notes"]')?.classList.toggle('on', !!state.ui.showNotes);
+  const notes = document.getElementById('notes');
+  if (notes && document.activeElement !== notes) notes.value = currentSlide()?.notes || '';
 
   // Reflect the selected text box in the font and paragraph controls.
   const b = selectedBlock();

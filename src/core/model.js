@@ -71,6 +71,7 @@ function migrate(deck) {
     s.transition ??= null;
     s.background ??= '#101317';
     s.hidden ??= false;
+    s.notes ??= '';
     s.blocks ??= [];
     for (const b of s.blocks) { b.rotation ??= 0; b.animation ??= null; }
   }

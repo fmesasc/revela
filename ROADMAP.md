@@ -87,7 +87,7 @@ the origin of every requirement is traceable.
 - ⬜ Placeholders `PP·OO`
 - ⬜ Background images and gradients `PP·GS·OO`
 - ⬜ Colour palettes / theme colours & fonts `PP·GS·OO`
-- ⬜ Speaker notes `PP·GS·OO`
+- ✅ Speaker notes (editor panel + presenter view) `PP·GS·OO`
 - 🚧 Slide numbers, date/time, header & footer — slide numbers (show, position, format) done `PP·GS·OO`
 - ✅ Hide slide from the presentation `PP·GS·OO`
 - ⬜ Template / theme gallery `PP·GS·OO`

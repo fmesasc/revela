@@ -41,8 +41,9 @@ function blockHTML(b) {
 function slideHTML(s) {
   const trans = s.transition ? ` data-transition="${s.transition}"` : '';
   const inner = s.blocks.map(blockHTML).join('\n');
+  const notes = s.notes ? `<aside class="notes">${esc(s.notes)}</aside>` : '';
   return `<section${trans} data-background-color="${s.background}">`
-    + `<div class="stage">${inner}</div></section>`;
+    + `<div class="stage">${inner}</div>${notes}</section>`;
 }
 
 // Where the slide number sits, as CSS for reveal's .slide-number element.
@@ -75,10 +76,12 @@ export function buildHTML(deck = state.deck) {
 ${slides}
 </div></div>
 <script src="${REVEAL}/dist/reveal.js"></script>
+<script src="${REVEAL}/plugin/notes/notes.js"></script>
 <script>
  Reveal.initialize({ width:${w}, height:${h}, margin:0.03, controls:true,
    progress:true, hash:true, slideNumber:${sn.show ? `'${sn.format || 'c'}'` : 'false'},
-   transition:'${deck.defaultTransition}', transitionSpeed:'${deck.transitionSpeed}' });
+   transition:'${deck.defaultTransition}', transitionSpeed:'${deck.transitionSpeed}',
+   plugins:[ RevealNotes ] });
 </script></body></html>`;
 }
 
