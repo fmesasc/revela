@@ -22,19 +22,22 @@ suite, and the web alternatives are paid or closed. Revela fills that gap.
 
 ## Status
 
-**Very early MVP (v0.1).** Already working:
+**Early MVP (v0.2).** Already working, with an **OnlyOffice‑style ribbon** (tabs:
+File, Home, Insert, Design, Transitions, Animation, View):
 
-- Slides: add, delete, reorder.
-- **Text** blocks (inline editing) and **3D model** blocks (`.glb`, with
-  auto‑rotate and camera controls).
-- Place and move blocks on the slide (drag), resize with a handle.
+- Slides: add, duplicate, delete, reorder.
+- Blocks: **text** (inline editing + bold/italic/underline/color/size/align),
+  **3D model** (`.glb`, auto‑rotate + camera controls), **image** and **video**.
+- Move blocks (drag handle) and resize them.
+- **Design:** per‑slide background colour, reveal.js **themes**, 16:9 / 4:3.
+- **Transitions** between slides (fade, slide, zoom, convex, concave) + speed.
+- **Animation:** make a block appear on advance (reveal.js fragments).
 - **Present** with reveal.js (fullscreen, keyboard, progress).
 - **Export** to a standalone `presentacion.html` that opens in any browser.
-- Local autosave (kept in the browser) plus import/export of the project as
-  `.json`.
+- Local autosave plus import/export of the project as `.json`.
 
-Roadmap: images, transitions (incl. *Morph* between 3D models), themes,
-templates, a desktop build with [Tauri](https://tauri.app/), and collaboration.
+Roadmap: shapes & tables, the *Morph* transition between 3D models, templates,
+a desktop build with [Tauri](https://tauri.app/), and collaboration.
 
 ## Try it
 

@@ -22,19 +22,24 @@ y las alternativas web son de pago o cerradas. Revela llena ese hueco.
 
 ## Estado
 
-**MVP muy temprano (v0.1).** Ya funciona:
+**MVP temprano (v0.2).** Ya funciona, con una **cinta tipo OnlyOffice**
+(pestañas: Archivo, Inicio, Insertar, Diseño, Transiciones, Animación, Ver):
 
-- Diapositivas: añadir, borrar, reordenar.
-- Bloques de **texto** (edición en línea) y **modelo 3D** (`.glb`, con giro
-  automático y controles de cámara).
-- Colocar y mover los bloques sobre la diapositiva (arrastrar), redimensionar.
+- Diapositivas: añadir, duplicar, borrar, reordenar.
+- Bloques: **texto** (edición en línea + negrita/cursiva/subrayado/color/
+  tamaño/alineación), **modelo 3D** (`.glb`, giro automático + cámara),
+  **imagen** y **vídeo**.
+- Mover los bloques (tirador) y redimensionarlos.
+- **Diseño:** color de fondo por diapositiva, **temas** de reveal.js, 16:9 / 4:3.
+- **Transiciones** entre diapositivas (fundido, deslizar, zoom, convex, concave)
+  y velocidad.
+- **Animación:** que un bloque aparezca al avanzar (fragments de reveal.js).
 - **Presentar** con reveal.js (pantalla completa, teclas, progreso).
-- **Exportar** a un `presentacion.html` autónomo que se abre en cualquier
-  navegador.
-- Guardado local (en el navegador) e importar/exportar el proyecto como `.json`.
+- **Exportar** a un `presentacion.html` autónomo.
+- Guardado local e importar/exportar el proyecto como `.json`.
 
-Hoja de ruta: imágenes, transiciones (incl. *Transformación/Morph* entre
-modelos 3D), temas, plantillas, versión de escritorio con
+Hoja de ruta: formas y tablas, la transición *Transformación/Morph* entre
+modelos 3D, plantillas, versión de escritorio con
 [Tauri](https://tauri.app/), y colaboración.
 
 ## Probarlo
