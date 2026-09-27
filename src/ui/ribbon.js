@@ -97,6 +97,16 @@ export function initRibbon() {
   // Reflect the active character formatting on the toolbar as the caret moves.
   document.addEventListener('selectionchange', updateFormatState);
 
+  // Let the mouse wheel scroll the ribbon sideways when the groups overflow.
+  document.querySelectorAll('.ribbon-page').forEach(page => {
+    page.addEventListener('wheel', e => {
+      if (page.scrollWidth <= page.clientWidth) return;      // nothing to scroll
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;   // trackpad already horizontal
+      e.preventDefault();
+      page.scrollLeft += e.deltaY;
+    }, { passive: false });
+  });
+
   // Editable document title.
   const docName = $('.doc-name');
   if (docName) {

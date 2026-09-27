@@ -31,10 +31,15 @@ button{font-family:inherit}
 
 .pages{background:var(--ribbon);border-top:1px solid var(--line)}
 .ribbon-page{display:none;align-items:stretch;padding:6px 2px;min-height:80px;
-  overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
+  overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;
+  scrollbar-width:thin;scrollbar-color:transparent transparent;transition:scrollbar-color .25s}
 .ribbon-page.active{display:flex}
-.ribbon-page::-webkit-scrollbar{height:8px}
-.ribbon-page::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px}
+.ribbon-page:hover{scrollbar-color:rgba(0,0,0,.22) transparent}
+.ribbon-page::-webkit-scrollbar{height:7px}
+.ribbon-page::-webkit-scrollbar-track{background:transparent}
+.ribbon-page::-webkit-scrollbar-thumb{background:transparent;border-radius:7px;transition:background .25s}
+.ribbon-page:hover::-webkit-scrollbar-thumb{background:rgba(0,0,0,.2)}
+.ribbon-page::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.38)}
 .group{flex:0 0 auto;display:flex;flex-direction:column;justify-content:space-between;gap:4px;
   padding:2px 8px;border-right:1px solid var(--line)}
 .group>label{text-align:center;color:var(--txt2);font-size:11px}
