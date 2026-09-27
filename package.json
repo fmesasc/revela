@@ -1,0 +1,30 @@
+{
+  "name": "revela",
+  "version": "0.3.0",
+  "description": "Visual editor for interactive presentations with live 3D, built on reveal.js",
+  "license": "MIT",
+  "author": "Francisco Mesas Cervilla",
+  "homepage": "https://fmesasc.github.io/revela/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fmesasc/revela.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fmesasc/revela/issues"
+  },
+  "keywords": [
+    "presentation",
+    "slides",
+    "reveal.js",
+    "3d",
+    "model-viewer",
+    "editor",
+    "pptx",
+    "powerpoint"
+  ],
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "serve": "python3 -m http.server 8000"
+  }
+}

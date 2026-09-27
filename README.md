@@ -1,69 +1,76 @@
+<div align="center">
+
 # Revela
 
-*Read this in other languages: **English** · [Español](README.es.md)*
+**A visual editor for interactive presentations with live 3D, built on
+[reveal.js](https://revealjs.com/).**
 
-**A visual editor for presentations with live 3D, powered by
-[reveal.js](https://revealjs.com/).** Drag text, images and **3D models
-(`.glb`)** onto your slides, watch them spin in real time, then present or
-export to a self‑contained web page. No PowerPoint, no cloud, no Office
-license — free software that runs in the browser.
+[English](README.md) · [Español](README.es.md) · [Live demo](https://fmesasc.github.io/revela/) · [Roadmap](ROADMAP.md)
 
-> *Revelar* is Spanish for *to reveal* (and *to develop* a photo). A nod to
-> **reveal**.js.
+</div>
 
-🔗 **Live demo:** https://fmesasc.github.io/revela/ · **License:** MIT
+![Revela editor](docs/screenshot.png)
 
-## Why
+Revela is a browser-based presentation editor. It combines a familiar
+office-style editing experience with a feature no traditional office suite
+offers on Linux: **live 3D models** embedded directly in slides. Presentations
+are authored visually and rendered with reveal.js, so the output is a
+standard, self-contained web page.
 
-There is no free, open‑source visual editor with **live 3D models** that
-outputs reveal.js. PowerPoint's flagship feature — inserting a 3D model and
-animating it inside the slide — is missing from every native Linux office
-suite, and the web alternatives are paid or closed. Revela fills that gap.
+## Features
 
-## Status
+- **Office-style ribbon** organised into tabs: File, Home, Insert, Design,
+  Transitions, Animations and View.
+- **Block-based canvas** with direct manipulation: drag from anywhere,
+  alignment guides with snapping, corner resizing and keyboard nudging.
+- **Content blocks:** rich text, images, video and **interactive 3D models**
+  (`.glb` / `.gltf`).
+- **Right-click context menu** with per-object actions, including AI-based
+  **image background removal**.
+- **Per-slide transitions** and **per-object entrance animations**.
+- **Sections** and **drag-and-drop slide reordering** in the navigator.
+- **Templates** (built-in and user-defined).
+- **PowerPoint import** (`.pptx`): recovers text and images with their layout.
+- **Design controls:** per-slide background, reveal.js themes, 16∶9 / 4∶3.
+- **Undo / redo**, local autosave, and project import/export as JSON.
+- **Present** in fullscreen and **export** to a standalone HTML file.
 
-**Early MVP (v0.2).** Already working, with an **OnlyOffice‑style ribbon** (tabs:
-File, Home, Insert, Design, Transitions, Animation, View):
+See the [roadmap](ROADMAP.md) for what is planned next.
 
-- Slides: add, duplicate, delete, reorder.
-- Blocks: **text** (inline editing + bold/italic/underline/color/size/align),
-  **3D model** (`.glb`, auto‑rotate + camera controls), **image** and **video**.
-- Move blocks (drag handle) and resize them.
-- **Design:** per‑slide background colour, reveal.js **themes**, 16:9 / 4:3.
-- **Transitions** between slides (fade, slide, zoom, convex, concave) + speed.
-- **Animation:** make a block appear on advance (reveal.js fragments).
-- **Present** with reveal.js (fullscreen, keyboard, progress).
-- **Export** to a standalone `presentacion.html` that opens in any browser.
-- Local autosave plus import/export of the project as `.json`.
+## Getting started
 
-Roadmap: shapes & tables, the *Morph* transition between 3D models, templates,
-a desktop build with [Tauri](https://tauri.app/), and collaboration.
-
-## Try it
-
-No build step. From the project folder:
+Revela is a static application with no build step.
 
 ```bash
+git clone https://github.com/fmesasc/revela.git
+cd revela
 python3 -m http.server 8000
 # open http://localhost:8000
 ```
 
-Or just use the [live demo](https://fmesasc.github.io/revela/).
+Any static file server works; a server is preferred over opening `index.html`
+directly so the browser loads the ES modules correctly.
 
-## How it's built
+## Architecture
 
-All free, nothing to compile:
+Plain ES modules, no framework or bundler. A central store holds the document
+and UI state and notifies the views on every committed change.
 
-- **reveal.js** — the presentation engine.
-- **`<model-viewer>`** (Google) — the live 3D.
-- **Vanilla JavaScript** — the editor, lightweight and framework‑free.
-- *(later)* **Tauri** for the desktop build.
+```
+src/
+  core/      model and persistence, central store with undo/redo
+  features/  slides, blocks, formatting, transitions, templates
+  io/         reveal.js output, PowerPoint import
+  ui/         ribbon, canvas, navigator, context menu
+  main.js    bootstrap
+```
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
 
 ## Contributing
 
-It's a young project — issues and ideas help as much as code. Fork it, try it,
-and open a PR or an issue.
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-[MIT](LICENSE) © Francisco Mesas Cervilla ([fmesasc](https://github.com/fmesasc)).
+[MIT](LICENSE) © Francisco Mesas Cervilla.

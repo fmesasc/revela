@@ -3,234 +3,223 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Revela — editor de presentaciones con 3D</title>
-  <link rel="stylesheet" href="src/styles.css">
+  <title>Revela</title>
+  <link rel="stylesheet" href="src/ui/styles.css">
   <script type="module"
     src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
 </head>
 <body>
-  <!-- ============ Cinta tipo OnlyOffice ============ -->
-  <header id="cinta">
-    <div id="titulo">
-      <span id="logo">Revela</span>
-      <span id="nombre-proyecto" title="Presentación">Presentación sin título</span>
+  <header id="ribbon">
+    <div class="titlebar">
+      <span class="brand">Revela</span>
+      <span class="doc-name">Presentación sin título</span>
+      <span class="grow"></span>
+      <button data-action="undo" class="mini" title="Deshacer (Ctrl+Z)">↶</button>
+      <button data-action="redo" class="mini" title="Rehacer (Ctrl+Y)">↷</button>
     </div>
 
-    <nav id="pestanas" role="tablist">
-      <button class="pestana activa" data-tab="archivo">Archivo</button>
-      <button class="pestana" data-tab="inicio">Inicio</button>
-      <button class="pestana" data-tab="insertar">Insertar</button>
-      <button class="pestana" data-tab="diseno">Diseño</button>
-      <button class="pestana" data-tab="transiciones">Transiciones</button>
-      <button class="pestana" data-tab="animacion">Animación</button>
-      <button class="pestana" data-tab="ver">Ver</button>
+    <nav class="tabs">
+      <button data-tab="file">Archivo</button>
+      <button data-tab="home" class="active">Inicio</button>
+      <button data-tab="insert">Insertar</button>
+      <button data-tab="design">Diseño</button>
+      <button data-tab="transitions">Transiciones</button>
+      <button data-tab="animations">Animaciones</button>
+      <button data-tab="view">Ver</button>
     </nav>
 
-    <div id="ribbons">
+    <div class="pages">
       <!-- ARCHIVO -->
-      <div class="ribbon activa" data-tab="archivo">
-        <div class="grupo">
-          <div class="fila">
-            <button data-accion="nuevo-proyecto"><i>🗋</i><span>Nuevo</span></button>
-            <button data-accion="abrir"><i>📂</i><span>Abrir</span></button>
-            <button data-accion="guardar"><i>💾</i><span>Guardar</span></button>
-          </div>
-          <label>Proyecto</label>
+      <section class="ribbon-page" data-page="file">
+        <div class="group">
+          <div class="row">
+            <button data-action="new"><i>🗋</i><span>Nuevo</span></button>
+            <button data-action="open"><i>📂</i><span>Abrir</span></button>
+            <button data-action="save"><i>💾</i><span>Guardar</span></button>
+          </div><label>Proyecto</label>
         </div>
-        <div class="grupo">
-          <div class="fila">
-            <button data-accion="exportar" class="grande"><i>⭳</i><span>Exportar<br>HTML</span></button>
-            <button data-accion="exportar-pdf" disabled title="Próximamente"><i>📄</i><span>PDF</span></button>
-          </div>
-          <label>Exportar</label>
+        <div class="group">
+          <div class="row">
+            <button data-action="import-pptx" class="lg"><i>📥</i><span>Importar<br>PowerPoint</span></button>
+          </div><label>Importar</label>
         </div>
-        <div class="grupo">
-          <div class="fila">
-            <button data-accion="presentar" class="grande destacado"><i>▶</i><span>Presentar</span></button>
-          </div>
-          <label>Presentación</label>
+        <div class="group">
+          <div class="row">
+            <button data-action="export" class="lg"><i>⭳</i><span>Exportar<br>HTML</span></button>
+            <button data-action="present" class="lg go"><i>▶</i><span>Presentar</span></button>
+          </div><label>Salida</label>
         </div>
-      </div>
+      </section>
 
       <!-- INICIO -->
-      <div class="ribbon" data-tab="inicio">
-        <div class="grupo">
-          <div class="fila">
-            <button data-accion="nueva-diapo"><i>➕</i><span>Nueva</span></button>
-            <button data-accion="duplicar-diapo"><i>⧉</i><span>Duplicar</span></button>
-            <button data-accion="borrar-diapo"><i>🗑</i><span>Eliminar</span></button>
-            <button data-accion="subir-diapo" title="Mover arriba"><i>↑</i></button>
-            <button data-accion="bajar-diapo" title="Mover abajo"><i>↓</i></button>
-          </div>
-          <label>Diapositivas</label>
+      <section class="ribbon-page active" data-page="home">
+        <div class="group">
+          <div class="row">
+            <button data-action="slide-add"><i>➕</i><span>Nueva</span></button>
+            <button data-action="slide-duplicate"><i>⧉</i><span>Duplicar</span></button>
+            <button data-action="slide-delete"><i>🗑</i><span>Eliminar</span></button>
+            <button data-action="section-add"><i>≡</i><span>Sección</span></button>
+          </div><label>Diapositivas</label>
         </div>
-        <div class="grupo">
-          <div class="fila">
-            <button data-accion="add-texto"><i>🇹</i><span>Texto</span></button>
-            <button data-accion="add-imagen"><i>🖼</i><span>Imagen</span></button>
-            <button data-accion="add-modelo"><i>🧊</i><span>Modelo 3D</span></button>
-          </div>
-          <label>Insertar</label>
+        <div class="group">
+          <div class="row">
+            <button data-action="insert-text"><i>🇹</i><span>Texto</span></button>
+            <button data-action="insert-image"><i>🖼</i><span>Imagen</span></button>
+            <button data-action="insert-model"><i>🧊</i><span>3D</span></button>
+          </div><label>Insertar</label>
         </div>
-        <div class="grupo">
-          <div class="fila">
+        <div class="group">
+          <div class="row">
             <button data-fmt="bold" title="Negrita"><i><b>N</b></i></button>
             <button data-fmt="italic" title="Cursiva"><i><em>C</em></i></button>
             <button data-fmt="underline" title="Subrayado"><i><u>S</u></i></button>
             <button data-fmt="strikeThrough" title="Tachado"><i><s>T</s></i></button>
-            <label class="color"><i>A</i><input type="color" data-color value="#ffffff" title="Color de texto"></label>
-            <button data-fmt="fontMas" title="Aumentar tamaño"><i>A⁺</i></button>
-            <button data-fmt="fontMenos" title="Reducir tamaño"><i>A⁻</i></button>
-          </div>
-          <label>Fuente</label>
+            <label class="color"><i>A</i><input type="color" data-color value="#ffffff" title="Color"></label>
+            <button data-fontdelta="4" title="Aumentar"><i>A⁺</i></button>
+            <button data-fontdelta="-4" title="Reducir"><i>A⁻</i></button>
+          </div><label>Fuente</label>
         </div>
-        <div class="grupo">
-          <div class="fila">
-            <button data-fmt="justifyLeft" title="Alinear a la izquierda"><i>⯇</i></button>
+        <div class="group">
+          <div class="row">
+            <button data-fmt="justifyLeft" title="Izquierda"><i>⯇</i></button>
             <button data-fmt="justifyCenter" title="Centrar"><i>≡</i></button>
-            <button data-fmt="justifyRight" title="Alinear a la derecha"><i>⯈</i></button>
-            <button data-fmt="insertUnorderedList" title="Viñetas"><i>•≣</i></button>
-          </div>
-          <label>Párrafo</label>
+            <button data-fmt="justifyRight" title="Derecha"><i>⯈</i></button>
+            <button data-fmt="insertUnorderedList" title="Viñetas"><i>•</i></button>
+            <button data-fmt="insertOrderedList" title="Numeración"><i>1.</i></button>
+          </div><label>Párrafo</label>
         </div>
-      </div>
+        <div class="group">
+          <div class="row">
+            <button data-align="hcenter" title="Centrar horizontal"><i>↔</i></button>
+            <button data-align="vcenter" title="Centrar vertical"><i>↕</i></button>
+            <button data-action="forward" title="Traer al frente"><i>⬆</i></button>
+            <button data-action="backward" title="Enviar al fondo"><i>⬇</i></button>
+          </div><label>Organizar</label>
+        </div>
+      </section>
 
       <!-- INSERTAR -->
-      <div class="ribbon" data-tab="insertar">
-        <div class="grupo">
-          <div class="fila">
-            <button data-accion="add-texto" class="grande"><i>🇹</i><span>Cuadro<br>de texto</span></button>
-            <button data-accion="add-imagen" class="grande"><i>🖼</i><span>Imagen</span></button>
-          </div>
-          <label>Básico</label>
+      <section class="ribbon-page" data-page="insert">
+        <div class="group">
+          <div class="row">
+            <button data-action="insert-text" class="lg"><i>🇹</i><span>Cuadro<br>de texto</span></button>
+            <button data-action="insert-image" class="lg"><i>🖼</i><span>Imagen</span></button>
+          </div><label>Básico</label>
         </div>
-        <div class="grupo">
-          <div class="fila">
-            <button data-accion="add-modelo" class="grande destacado"><i>🧊</i><span>Modelo 3D<br>(.glb)</span></button>
-            <button data-accion="add-video" class="grande"><i>🎬</i><span>Vídeo</span></button>
-          </div>
-          <label>Multimedia</label>
+        <div class="group">
+          <div class="row">
+            <button data-action="insert-model" class="lg go"><i>🧊</i><span>Modelo 3D<br>(.glb)</span></button>
+            <button data-action="insert-video" class="lg"><i>🎬</i><span>Vídeo</span></button>
+          </div><label>Multimedia</label>
         </div>
-        <div class="grupo">
-          <div class="fila">
-            <button data-accion="add-forma" disabled title="Próximamente"><i>▭</i><span>Forma</span></button>
-            <button data-accion="add-tabla" disabled title="Próximamente"><i>▦</i><span>Tabla</span></button>
-            <button data-accion="add-codigo" disabled title="Próximamente"><i>{ }</i><span>Código</span></button>
-          </div>
-          <label>Más (pronto)</label>
+        <div class="group">
+          <div class="row">
+            <button data-template="title"><i>🅣</i><span>Portada</span></button>
+            <button data-template="titleContent"><i>📃</i><span>Título y<br>contenido</span></button>
+            <button data-template="showcase3D"><i>🧊</i><span>Escaparate<br>3D</span></button>
+            <button data-action="template-save"><i>⭐</i><span>Guardar<br>plantilla</span></button>
+          </div><label>Plantillas</label>
         </div>
-      </div>
+      </section>
 
       <!-- DISEÑO -->
-      <div class="ribbon" data-tab="diseno">
-        <div class="grupo">
-          <div class="fila">
-            <label class="color"><i>🎨</i><span>Fondo</span><input type="color" data-fondo value="#111111"></label>
-          </div>
-          <label>Diapositiva</label>
+      <section class="ribbon-page" data-page="design">
+        <div class="group">
+          <div class="row">
+            <label class="color"><i>🎨</i><span>Fondo</span><input type="color" data-bg value="#101317"></label>
+          </div><label>Diapositiva</label>
         </div>
-        <div class="grupo">
-          <div class="fila">
-            <select data-tema title="Tema de la presentación">
-              <option value="black">Oscuro (black)</option>
-              <option value="white">Claro (white)</option>
-              <option value="league">League</option>
-              <option value="night">Night</option>
-              <option value="serif">Serif</option>
-              <option value="solarized">Solarized</option>
-              <option value="moon">Moon</option>
+        <div class="group">
+          <div class="row">
+            <select data-theme title="Tema">
+              <option value="black">Oscuro</option><option value="white">Claro</option>
+              <option value="league">League</option><option value="night">Night</option>
+              <option value="serif">Serif</option><option value="solarized">Solarized</option>
+              <option value="moon">Moon</option><option value="dracula">Dracula</option>
             </select>
-          </div>
-          <label>Tema</label>
+          </div><label>Tema</label>
         </div>
-        <div class="grupo">
-          <div class="fila">
-            <button data-proporcion="16:9"><i>🖥</i><span>16:9</span></button>
-            <button data-proporcion="4:3"><i>🖵</i><span>4:3</span></button>
-          </div>
-          <label>Proporción</label>
+        <div class="group">
+          <div class="row">
+            <button data-ratio="1280x720"><i>🖥</i><span>16:9</span></button>
+            <button data-ratio="960x720"><i>🖵</i><span>4:3</span></button>
+          </div><label>Tamaño</label>
         </div>
-      </div>
+      </section>
 
       <!-- TRANSICIONES -->
-      <div class="ribbon" data-tab="transiciones">
-        <div class="grupo ancho">
-          <div class="fila">
-            <button data-trans="none"><i>∅</i><span>Ninguna</span></button>
-            <button data-trans="fade"><i>◐</i><span>Fundido</span></button>
-            <button data-trans="slide" class="sel"><i>⇥</i><span>Deslizar</span></button>
-            <button data-trans="convex"><i>◗</i><span>Convex</span></button>
-            <button data-trans="concave"><i>◖</i><span>Concave</span></button>
-            <button data-trans="zoom"><i>🔍</i><span>Zoom</span></button>
-          </div>
-          <label>Transición entre diapositivas</label>
+      <section class="ribbon-page" data-page="transitions">
+        <div class="group wide">
+          <div class="row">
+            <button data-slide-transition="inherit" title="Usar la de la presentación"><i>≡</i><span>Heredar</span></button>
+            <button data-slide-transition="none"><i>∅</i><span>Ninguna</span></button>
+            <button data-slide-transition="fade"><i>◐</i><span>Fundido</span></button>
+            <button data-slide-transition="slide"><i>⇥</i><span>Deslizar</span></button>
+            <button data-slide-transition="convex"><i>◗</i><span>Convex</span></button>
+            <button data-slide-transition="concave"><i>◖</i><span>Concave</span></button>
+            <button data-slide-transition="zoom"><i>🔍</i><span>Zoom</span></button>
+          </div><label>Transición de esta diapositiva</label>
         </div>
-        <div class="grupo">
-          <div class="fila">
-            <select data-vel title="Velocidad">
-              <option value="default">Normal</option>
-              <option value="fast">Rápida</option>
-              <option value="slow">Lenta</option>
+        <div class="group">
+          <div class="row">
+            <select data-deck-transition title="Transición por defecto">
+              <option value="none">Ninguna</option><option value="fade">Fundido</option>
+              <option value="slide">Deslizar</option><option value="convex">Convex</option>
+              <option value="concave">Concave</option><option value="zoom">Zoom</option>
             </select>
-          </div>
-          <label>Velocidad</label>
+            <select data-speed title="Velocidad">
+              <option value="default">Normal</option><option value="fast">Rápida</option><option value="slow">Lenta</option>
+            </select>
+          </div><label>Por defecto</label>
         </div>
-      </div>
+      </section>
 
-      <!-- ANIMACIÓN -->
-      <div class="ribbon" data-tab="animacion">
-        <div class="grupo ancho">
-          <div class="fila">
-            <button data-accion="anim-fragmento" title="El bloque seleccionado aparece al avanzar"><i>✨</i><span>Aparecer<br>al avanzar</span></button>
-            <button data-accion="anim-quitar" title="Quitar animación del bloque"><i>🚫</i><span>Sin animación</span></button>
-          </div>
-          <label>Bloque seleccionado (reveal fragments)</label>
+      <!-- ANIMACIONES -->
+      <section class="ribbon-page" data-page="animations">
+        <div class="group wide">
+          <div class="row">
+            <button data-animation="fade-in"><i>◐</i><span>Aparecer</span></button>
+            <button data-animation="fade-up"><i>⬆</i><span>Subir</span></button>
+            <button data-animation="fade-down"><i>⬇</i><span>Bajar</span></button>
+            <button data-animation="fade-left"><i>⬅</i><span>Izquierda</span></button>
+            <button data-animation="fade-right"><i>➡</i><span>Derecha</span></button>
+            <button data-animation="zoom-in"><i>🔍</i><span>Zoom</span></button>
+          </div><label>Entrada del objeto seleccionado</label>
         </div>
-        <div class="grupo">
-          <div class="fila">
-            <button disabled title="Próximamente"><i>🔀</i><span>Morph 3D</span></button>
-          </div>
-          <label>Avanzado (pronto)</label>
+        <div class="group">
+          <div class="row">
+            <button data-action="obj-anim-clear"><i>🚫</i><span>Sin<br>animación</span></button>
+          </div><label>Quitar</label>
         </div>
-      </div>
+      </section>
 
       <!-- VER -->
-      <div class="ribbon" data-tab="ver">
-        <div class="grupo">
-          <div class="fila">
-            <button data-accion="presentar" class="grande destacado"><i>▶</i><span>Presentar</span></button>
-          </div>
-          <label>Presentación</label>
+      <section class="ribbon-page" data-page="view">
+        <div class="group">
+          <div class="row">
+            <button data-action="present" class="lg go"><i>▶</i><span>Presentar</span></button>
+          </div><label>Presentación</label>
         </div>
-        <div class="grupo">
-          <div class="fila">
-            <button data-accion="toggle-guias"><i>▦</i><span>Guías</span></button>
-          </div>
-          <label>Ayudas</label>
+        <div class="group">
+          <div class="row">
+            <button data-action="toggle-guides"><i>▦</i><span>Guías</span></button>
+          </div><label>Ayudas</label>
         </div>
-      </div>
+      </section>
     </div>
   </header>
 
-  <!-- Entradas de archivo ocultas -->
-  <input type="file" id="file-modelo" accept=".glb,.gltf" hidden>
-  <input type="file" id="file-imagen" accept="image/*" hidden>
-  <input type="file" id="file-video" accept="video/*" hidden>
-  <input type="file" id="file-proyecto" accept=".json,application/json" hidden>
-
   <main>
-    <aside id="tiras"></aside>
-    <section id="escenario-wrap">
-      <div id="escenario"></div>
-    </section>
+    <aside id="navigator"></aside>
+    <section id="canvas-wrap"><div id="stage"></div></section>
   </main>
 
-  <footer id="estado">
-    <span id="pista">Clic para seleccionar · doble clic en el texto para editar · arrastra para mover · Supr borra</span>
-    <span class="crece"></span>
-    <span id="contador"></span>
+  <footer id="statusbar">
+    <span class="hint">Clic para seleccionar · doble clic para editar · arrastra para mover · clic derecho para más opciones</span>
+    <span class="grow"></span>
+    <span id="status-slide"></span>
   </footer>
 
-  <script src="src/app.js"></script>
+  <script type="module" src="src/main.js"></script>
 </body>
 </html>

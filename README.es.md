@@ -1,72 +1,79 @@
+<div align="center">
+
 # Revela
 
-*Léelo en otros idiomas: [English](README.md) · **Español***
+**Editor visual de presentaciones interactivas con 3D en vivo, construido sobre
+[reveal.js](https://revealjs.com/).**
 
-**Editor visual de presentaciones con 3D en vivo, que por debajo usa
-[reveal.js](https://revealjs.com/).** Arrastra texto, imágenes y **modelos 3D
-(`.glb`)** a tus diapositivas, míralos girar en directo, y presenta o exporta a
-una web autónoma. Sin PowerPoint, sin nube, sin licencia de Office: software
-libre y nativo del navegador.
+[English](README.md) · [Español](README.es.md) · [Demo](https://fmesasc.github.io/revela/) · [Hoja de ruta](ROADMAP.md)
 
-> *Revelar*: mostrar algo… y también como se «revelaba» una foto para darle
-> vida. Un guiño a **reveal**.js.
+</div>
 
-🔗 **Demo en vivo:** https://fmesasc.github.io/revela/ · **Licencia:** MIT
+![Editor Revela](docs/screenshot.png)
 
-## Por qué
+Revela es un editor de presentaciones que funciona en el navegador. Combina una
+experiencia de edición similar a una suite ofimática con una función que ninguna
+suite nativa de Linux ofrece: **modelos 3D en vivo** incrustados en las
+diapositivas. Las presentaciones se crean visualmente y se renderizan con
+reveal.js, de modo que el resultado es una página web estándar y autónoma.
 
-No existe una herramienta libre, con **editor visual** y **modelos 3D vivos**,
-que genere reveal.js. La función estrella de PowerPoint —insertar un modelo 3D
-y animarlo dentro de la diapositiva— no la tiene ninguna suite nativa de Linux,
-y las alternativas web son de pago o cerradas. Revela llena ese hueco.
+## Funciones
 
-## Estado
+- **Cinta tipo ofimática** organizada en pestañas: Archivo, Inicio, Insertar,
+  Diseño, Transiciones, Animaciones y Ver.
+- **Lienzo por bloques** con manipulación directa: arrastrar desde cualquier
+  punto, guías de alineación con ajuste, redimensionado por las esquinas y
+  desplazamiento con el teclado.
+- **Bloques de contenido:** texto enriquecido, imágenes, vídeo y **modelos 3D
+  interactivos** (`.glb` / `.gltf`).
+- **Menú contextual** (clic derecho) con acciones por objeto, incluida la
+  **eliminación de fondo de imágenes** por IA.
+- **Transiciones por diapositiva** y **animaciones de entrada por objeto**.
+- **Secciones** y **reordenación de diapositivas** arrastrando en el navegador.
+- **Plantillas** (integradas y propias).
+- **Importación de PowerPoint** (`.pptx`): recupera texto e imágenes con su
+  posición.
+- **Diseño:** fondo por diapositiva, temas de reveal.js, 16∶9 / 4∶3.
+- **Deshacer / rehacer**, autoguardado local e importar/exportar el proyecto
+  como JSON.
+- **Presentar** a pantalla completa y **exportar** a un HTML autónomo.
 
-**MVP temprano (v0.2).** Ya funciona, con una **cinta tipo OnlyOffice**
-(pestañas: Archivo, Inicio, Insertar, Diseño, Transiciones, Animación, Ver):
+Consulta la [hoja de ruta](ROADMAP.md) para lo que viene después.
 
-- Diapositivas: añadir, duplicar, borrar, reordenar.
-- Bloques: **texto** (edición en línea + negrita/cursiva/subrayado/color/
-  tamaño/alineación), **modelo 3D** (`.glb`, giro automático + cámara),
-  **imagen** y **vídeo**.
-- Mover los bloques (tirador) y redimensionarlos.
-- **Diseño:** color de fondo por diapositiva, **temas** de reveal.js, 16:9 / 4:3.
-- **Transiciones** entre diapositivas (fundido, deslizar, zoom, convex, concave)
-  y velocidad.
-- **Animación:** que un bloque aparezca al avanzar (fragments de reveal.js).
-- **Presentar** con reveal.js (pantalla completa, teclas, progreso).
-- **Exportar** a un `presentacion.html` autónomo.
-- Guardado local e importar/exportar el proyecto como `.json`.
+## Puesta en marcha
 
-Hoja de ruta: formas y tablas, la transición *Transformación/Morph* entre
-modelos 3D, plantillas, versión de escritorio con
-[Tauri](https://tauri.app/), y colaboración.
-
-## Probarlo
-
-No necesita compilar nada. Desde la carpeta del proyecto:
+Revela es una aplicación estática sin compilación.
 
 ```bash
+git clone https://github.com/fmesasc/revela.git
+cd revela
 python3 -m http.server 8000
 # abre http://localhost:8000
 ```
 
-O usa la [demo en vivo](https://fmesasc.github.io/revela/).
+Sirve con cualquier servidor estático; es preferible a abrir `index.html`
+directamente para que el navegador cargue bien los módulos ES.
 
-## Cómo está hecho
+## Arquitectura
 
-Todo libre y sin nada que compilar:
+Módulos ES estándar, sin framework ni empaquetador. Un store central mantiene
+el documento y el estado de la interfaz y avisa a las vistas en cada cambio.
 
-- **reveal.js** — el motor de la presentación.
-- **`<model-viewer>`** (Google) — el 3D en vivo.
-- **JavaScript puro** — el editor, ligero y sin framework.
-- *(más adelante)* **Tauri** para la versión de escritorio.
+```
+src/
+  core/      modelo y persistencia, store central con deshacer/rehacer
+  features/  diapositivas, bloques, formato, transiciones, plantillas
+  io/         salida a reveal.js, importación de PowerPoint
+  ui/         cinta, lienzo, navegador, menú contextual
+  main.js    arranque
+```
+
+Más detalles en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Contribuir
 
-Es un proyecto joven: las ideas y los *issues* ayudan tanto como el código.
-Haz un fork, pruébalo, y abre un PR o un issue.
+Las aportaciones son bienvenidas. Lee [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Licencia
 
-[MIT](LICENSE) © Francisco Mesas Cervilla ([fmesasc](https://github.com/fmesasc)).
+[MIT](LICENSE) © Francisco Mesas Cervilla.
