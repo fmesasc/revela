@@ -155,6 +155,11 @@ export async function run(frame) {
     eq(slide().blocks.length, n0 + 1, 'redo falló');
   });
 
+  await test('avance automático por diapositiva en el export', async () => {
+    reset(); slide().autoSlide = 5000;
+    assert(/<section[^>]*data-autoslide="5000"/.test(R.io.buildHTML()), 'sin data-autoslide');
+  });
+
   // ---- Mobile remote (logic without a live connection) ---------------------
   await test('mando: el estado enviado refleja diapositiva, total y notas', async () => {
     reset(); R.slides.addSlide(); slide().notes = 'nota B'; R.state.ui.slideIndex = 1; R.render();

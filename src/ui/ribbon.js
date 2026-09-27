@@ -127,6 +127,7 @@ export function initRibbon() {
   bindChange('[data-linespacing]', v => format.lineSpacing(v));
   bindChange('[data-slidenum-pos]', v => commit(() => (state.deck.slideNumber.position = v)));
   bindChange('[data-slidenum-fmt]', v => commit(() => (state.deck.slideNumber.format = v)));
+  bindChange('[data-autoslide]', v => commit(() => { currentSlide().autoSlide = Math.max(0, (parseFloat(v) || 0)) * 1000; }));
 
   // Reflect the active character formatting on the toolbar as the caret moves.
   document.addEventListener('selectionchange', updateFormatState);
@@ -235,6 +236,8 @@ export function renderRibbon() {
   document.querySelector('[data-action="toggle-notes"]')?.classList.toggle('on', !!state.ui.showNotes);
   const notes = document.getElementById('notes');
   if (notes && document.activeElement !== notes) notes.value = currentSlide()?.notes || '';
+  const asEl = $('[data-autoslide]');
+  if (asEl && document.activeElement !== asEl) asEl.value = String((slide.autoSlide || 0) / 1000);
 
   // Reflect the selected text box in the font and paragraph controls.
   const b = selectedBlock();

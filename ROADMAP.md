@@ -101,7 +101,7 @@ the origin of every requirement is traceable.
 - ⬜ Animation timeline, ordering and triggers `PP·GS·OO`
 - ⬜ Animation painter `PP`
 - ⬜ Morph / transformation transition (incl. between 3D models) `PP`
-- ⬜ Auto-advance timing per slide `PP·GS·OO`
+- ✅ Auto-advance timing per slide `PP·GS·OO`
 
 ## 6. Presenting
 - 🚧 Presenter view (notes, next slide, timer) — reveal presenter view (S) + phone companion done; timer planned `PP·GS·OO`

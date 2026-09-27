@@ -46,9 +46,10 @@ function blockHTML(b) {
 
 function slideHTML(s) {
   const trans = s.transition ? ` data-transition="${s.transition}"` : '';
+  const auto = s.autoSlide ? ` data-autoslide="${s.autoSlide}"` : '';
   const inner = s.blocks.map(blockHTML).join('\n');
   const notes = s.notes ? `<aside class="notes">${esc(s.notes)}</aside>` : '';
-  return `<section${trans} data-background-color="${s.background}">`
+  return `<section${trans}${auto} data-background-color="${s.background}">`
     + `<div class="stage">${inner}</div>${notes}</section>`;
 }
 
