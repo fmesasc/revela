@@ -58,9 +58,12 @@ function reconcile(b) {
   el.classList.toggle('animated', !!b.animation);
   if (b.type === 'text') {
     const rich = el.querySelector('.rich');
-    if (rich && !el.classList.contains('editing')) {   // never touch the caret while editing
-      if (rich.innerHTML !== (b.html || '')) rich.innerHTML = b.html || '';
+    if (rich) {
+      // Box-level styles are safe to apply even while editing (no caret impact).
       rich.style.fontSize = (b.fontSize || 40) + 'px';
+      rich.style.textAlign = b.textAlign || 'left';
+      rich.style.fontFamily = b.fontFamily || '';
+      if (!el.classList.contains('editing') && rich.innerHTML !== (b.html || '')) rich.innerHTML = b.html || '';
     }
   } else if (b.type === 'image') {
     const img = el.querySelector('img'); if (img && img.getAttribute('src') !== b.src) img.src = b.src;
@@ -104,7 +107,11 @@ function blockEl(b) {
 function content(b) {
   if (b.type === 'text') {
     const d = document.createElement('div');
-    d.className = 'rich'; d.style.fontSize = (b.fontSize || 40) + 'px'; d.innerHTML = b.html || '';
+    d.className = 'rich';
+    d.style.fontSize = (b.fontSize || 40) + 'px';
+    d.style.textAlign = b.textAlign || 'left';
+    if (b.fontFamily) d.style.fontFamily = b.fontFamily;
+    d.innerHTML = b.html || '';
     return d;
   }
   if (b.type === 'model') {
@@ -139,8 +146,16 @@ function setupModel(el) {
   el.addEventListener('pointerleave', () => { mv.style.pointerEvents = 'none'; el.classList.remove('editing'); });
 }
 
+function exitEdit(el) {
+  const rich = el.querySelector('.rich'); if (rich) rich.blur();
+  el.classList.remove('editing');
+}
+
 function startDrag(ev, b, el) {
-  if (el.classList.contains('editing')) return;      // editing text/model: don't drag
+  if (el.classList.contains('editing')) {
+    if (ev.target.closest('.rich, model-viewer')) return; // over the content: keep editing
+    exitEdit(el);                                          // grabbed the frame: leave edit and move
+  }
   ev.stopPropagation();
   commit(() => (state.ui.selection = b.id), { history: false });
   const f = factor(), sx = ev.clientX, sy = ev.clientY, ox = b.x, oy = b.y;
@@ -194,18 +209,21 @@ function applySnap(b, x, y) {
   for (const o of others) { vTargets.push(o.x, o.x + o.w, o.x + o.w / 2); hTargets.push(o.y, o.y + o.h, o.y + o.h / 2); }
 
   clearGuides();
-  const points = { left: x, center: x + b.w / 2, right: x + b.w };
-  for (const [key, val] of Object.entries(points)) {
-    for (const t of vTargets) if (Math.abs(val - t) < SNAP) {
-      x += t - val; drawGuide('v', t); break;
+  // Snap each axis to the single closest target (across box edges/centre and
+  // every candidate line). Picking the nearest — rather than the first within
+  // range — keeps centring smooth instead of jumping between guides.
+  const best = (vals, targets) => {
+    let win = null;
+    for (const val of vals) for (const t of targets) {
+      const d = Math.abs(val - t);
+      if (d < SNAP && (!win || d < win.d)) win = { d, delta: t - val, at: t };
     }
-  }
-  const pointsY = { top: y, middle: y + b.h / 2, bottom: y + b.h };
-  for (const [key, val] of Object.entries(pointsY)) {
-    for (const t of hTargets) if (Math.abs(val - t) < SNAP) {
-      y += t - val; drawGuide('h', t); break;
-    }
-  }
+    return win;
+  };
+  const bv = best([x, x + b.w / 2, x + b.w], vTargets);
+  if (bv) { x += bv.delta; drawGuide('v', bv.at); }
+  const bh = best([y, y + b.h / 2, y + b.h], hTargets);
+  if (bh) { y += bh.delta; drawGuide('h', bh.at); }
   return { x: Math.round(x), y: Math.round(y) };
 }
 function drawGuide(dir, at) {

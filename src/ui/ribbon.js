@@ -1,6 +1,6 @@
 // The ribbon: tab switching and wiring every control to a feature.
 
-import { state, commit, undo, redo, replaceDeck, currentSlide } from '../core/store.js';
+import { state, commit, undo, redo, replaceDeck, currentSlide, selectedBlock } from '../core/store.js';
 import { emptyDeck } from '../core/model.js';
 import * as slides from '../features/slides.js';
 import * as blocks from '../features/blocks.js';
@@ -47,6 +47,7 @@ const ACTIONS = {
   'obj-anim-clear': trans.clearAnimation,
   'template-save': () => { const n = prompt('Nombre de la plantilla'); if (n) templates.saveCurrentAsTemplate(n); },
   'toggle-guides': () => commit(() => (state.ui.showGuides = !state.ui.showGuides), { history: false }),
+  'toggle-ruler': () => commit(() => (state.ui.showRuler = !state.ui.showRuler), { history: false }),
 };
 
 export function initRibbon() {
@@ -70,6 +71,10 @@ export function initRibbon() {
     if (fd) { format.fontSize(+fd.dataset.fontdelta); return; }
     const cs = e.target.closest('[data-case]');
     if (cs) { format.changeCase(cs.dataset.case); return; }
+    const pa = e.target.closest('[data-para]');
+    if (pa) { format.align(pa.dataset.para); return; }
+    const li = e.target.closest('[data-list]');
+    if (li) { format.list(li.dataset.list); return; }
   });
 
   // Formatting controls must not steal focus (and thus the selection) from the
@@ -78,13 +83,30 @@ export function initRibbon() {
     btn.addEventListener('mousedown', e => e.preventDefault());
     btn.addEventListener('click', () => format.exec(btn.dataset.fmt));
   });
-  document.querySelectorAll('[data-case]').forEach(btn => btn.addEventListener('mousedown', e => e.preventDefault()));
+  document.querySelectorAll('[data-case],[data-para],[data-list]')
+    .forEach(btn => btn.addEventListener('mousedown', e => e.preventDefault()));
   bindInput('[data-color]', v => format.color(v), true);
   bindInput('[data-highlight]', v => format.highlight(v), true);
   bindInput('[data-bg]', v => commit(() => (currentSlide().background = v)));
   bindChange('[data-theme]', v => commit(() => (state.deck.theme = v)));
   bindChange('[data-speed]', v => trans.setTransitionSpeed(v));
   bindChange('[data-deck-transition]', v => trans.setDeckTransition(v));
+  bindChange('[data-font]', v => format.fontFamily(v));
+  bindChange('[data-size]', v => format.setFontSize(parseInt(v, 10) || 40));
+
+  // Reflect the active character formatting on the toolbar as the caret moves.
+  document.addEventListener('selectionchange', updateFormatState);
+}
+
+const STATE_CMDS = ['bold', 'italic', 'underline', 'strikeThrough', 'superscript', 'subscript'];
+function updateFormatState() {
+  const focused = document.activeElement?.classList?.contains('rich');
+  for (const btn of document.querySelectorAll('[data-fmt]')) {
+    if (!STATE_CMDS.includes(btn.dataset.fmt)) continue;
+    let on = false;
+    try { on = focused && document.queryCommandState(btn.dataset.fmt); } catch {}
+    btn.classList.toggle('on', on);
+  }
 }
 
 function bindInput(sel, cb, keepFocus) {
@@ -103,5 +125,16 @@ export function renderRibbon() {
   syncValue('[data-theme]', state.deck.theme);
   syncValue('[data-speed]', state.deck.transitionSpeed);
   syncValue('[data-deck-transition]', state.deck.defaultTransition);
+  document.body.classList.toggle('show-ruler', !!state.ui.showRuler);
+  document.querySelector('[data-action="toggle-guides"]')?.classList.toggle('on', !!state.ui.showGuides);
+  document.querySelector('[data-action="toggle-ruler"]')?.classList.toggle('on', !!state.ui.showRuler);
+
+  // Reflect the selected text box in the font and paragraph controls.
+  const b = selectedBlock();
+  const isText = b && b.type === 'text';
+  syncValue('[data-font]', isText ? (b.fontFamily || '') : '');
+  syncValue('[data-size]', isText ? String(b.fontSize || 40) : '');
+  document.querySelectorAll('[data-para]').forEach(x =>
+    x.classList.toggle('on', isText && (b.textAlign || 'left') === x.dataset.para));
 }
 function syncValue(sel, val) { const el = $(sel); if (el && el.value !== val) el.value = val; }

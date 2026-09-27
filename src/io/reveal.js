@@ -18,7 +18,9 @@ function animAttrs(b) {
 function blockHTML(b) {
   const a = animAttrs(b);
   if (b.type === 'text')
-    return `<div${a} style="${box(b)}font-size:${b.fontSize || 40}px">${b.html || ''}</div>`;
+    return `<div${a} style="${box(b)}font-size:${b.fontSize || 40}px;`
+      + `text-align:${b.textAlign || 'left'};${b.fontFamily ? `font-family:${b.fontFamily};` : ''}">`
+      + `${b.html || ''}</div>`;
   if (b.type === 'model')
     return `<model-viewer${a} src="${b.src}" camera-controls ${b.autoRotate !== false ? 'auto-rotate' : ''} `
       + `shadow-intensity="1" style="${box(b)}background:transparent"></model-viewer>`;

@@ -17,6 +17,8 @@ function render() {
 
 function keyboard(e) {
   const editing = document.activeElement?.isContentEditable;
+  // Esc leaves text edit mode (the block stays selected and can be moved).
+  if (e.key === 'Escape' && editing) { e.preventDefault(); document.activeElement.blur(); return; }
   if (editing) return;
   const meta = e.ctrlKey || e.metaKey;
   if (meta && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
