@@ -42,7 +42,7 @@ the origin of every requirement is traceable.
 - ⬜ Font family picker and embedding `PP·GS·OO`
 - ✅ Highlight colour `PP·OO`
 - ✅ Superscript / subscript `PP·GS·OO`
-- ⬜ Line and paragraph spacing, indents `PP·GS·OO`
+- 🚧 Line and paragraph spacing, indents — line spacing done; indents planned `PP·GS·OO`
 - ⬜ Text columns `PP·OO`
 - ✅ Change case `PP·GS·OO`
 - ⬜ Bullet/number style and level customisation `PP·GS·OO`

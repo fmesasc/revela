@@ -105,6 +105,7 @@ export function initRibbon() {
   bindChange('[data-deck-transition]', v => trans.setDeckTransition(v));
   bindChange('[data-font]', v => format.fontFamily(v));
   bindChange('[data-size]', v => format.setFontSize(parseInt(v, 10) || 40));
+  bindChange('[data-linespacing]', v => format.lineSpacing(v));
   bindChange('[data-slidenum-pos]', v => commit(() => (state.deck.slideNumber.position = v)));
   bindChange('[data-slidenum-fmt]', v => commit(() => (state.deck.slideNumber.format = v)));
 
@@ -189,6 +190,7 @@ export function renderRibbon() {
   const isText = b && b.type === 'text';
   syncValue('[data-font]', isText ? (b.fontFamily || '') : '');
   syncValue('[data-size]', isText ? String(b.fontSize || 40) : '');
+  syncValue('[data-linespacing]', isText ? String(b.lineHeight || 1) : '1');
   document.querySelectorAll('[data-para]').forEach(x =>
     x.classList.toggle('on', isText && (b.textAlign || 'left') === x.dataset.para));
 }

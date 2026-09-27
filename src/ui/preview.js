@@ -9,7 +9,8 @@ export function blockPreview(b) {
     + `height:${b.h}px;transform:rotate(${b.rotation || 0}deg)`;
   if (b.type === 'text') {
     el.innerHTML = `<div style="font-size:${b.fontSize || 40}px;color:#fff;`
-      + `text-align:${b.textAlign || 'left'};${b.fontFamily ? `font-family:${b.fontFamily};` : ''}">`
+      + `text-align:${b.textAlign || 'left'};${b.fontFamily ? `font-family:${b.fontFamily};` : ''}`
+      + `${b.lineHeight ? `line-height:${b.lineHeight};` : ''}">`
       + `${b.html || ''}</div>`;
   } else if (b.type === 'image') {
     el.innerHTML = `<img src="${b.src}" style="width:100%;height:100%;object-fit:${b.fit || 'contain'}">`;

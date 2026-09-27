@@ -81,6 +81,10 @@ export function setFontSize(px) {
   const c = ctx(); if (!c) return;
   commit(() => { c.b.fontSize = Math.max(8, px); });
 }
+export function lineSpacing(value) {
+  const c = ctx(); if (!c) return;
+  commit(() => { c.b.lineHeight = parseFloat(value) || 1.2; });
+}
 export function fontSize(delta) {
   const c = ctx(); if (!c) return;
   commit(() => { c.b.fontSize = Math.max(8, (c.b.fontSize || 40) + delta); });
