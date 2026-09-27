@@ -3,6 +3,7 @@
 // guides, resize from the corners, edit text on double‑click.
 
 import { state, commit, mutate, currentSlide, selectedBlock } from '../core/store.js';
+import { shapeSVG, shapeSig } from './shape.js';
 
 const SNAP = 7; // snapping threshold, in canvas pixels
 let stage;
@@ -73,6 +74,9 @@ function reconcile(b) {
     const v = el.querySelector('video'); if (v && v.getAttribute('src') !== b.src) v.src = b.src;
   } else if (b.type === 'embed') {
     const f = el.querySelector('iframe'); if (f && f.getAttribute('src') !== b.src) f.src = b.src;
+  } else if (b.type === 'shape') {
+    const d = el.querySelector('.shape'); const sig = shapeSig(b);
+    if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = shapeSVG(b); }
   }
 }
 
@@ -124,6 +128,10 @@ function content(b) {
     mv.setAttribute('shadow-intensity', '1'); mv.setAttribute('interaction-prompt', 'none');
     mv.style.pointerEvents = 'none'; // dragging the body moves the block…
     return mv;
+  }
+  if (b.type === 'shape') {
+    const d = document.createElement('div'); d.className = 'shape';
+    d.dataset.sig = shapeSig(b); d.innerHTML = shapeSVG(b); return d;
   }
   if (b.type === 'image') { const i = document.createElement('img'); i.src = b.src; i.draggable = false; return i; }
   if (b.type === 'video') { const v = document.createElement('video'); v.src = b.src; v.controls = true; return v; }

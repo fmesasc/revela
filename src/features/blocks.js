@@ -29,6 +29,21 @@ export function addEmbed(url) {
     rotation: 0, animation: null, src: url });
 }
 
+export function addShape(kind) {
+  const linear = kind === 'line' || kind === 'arrow';
+  insert({
+    id: uid(), type: 'shape', shape: kind,
+    x: 460, y: 250, w: linear ? 420 : 320, h: linear ? 120 : 240,
+    rotation: 0, animation: null,
+    fill: linear ? 'none' : '#3f6497', stroke: '#1e2a3a', strokeWidth: linear ? 6 : 2,
+  });
+}
+
+export function setShapeStyle(prop, value) {
+  const b = selectedBlock(); if (!b || b.type !== 'shape') return;
+  commit(() => { b[prop] = value; });
+}
+
 export function deleteBlock(id = state.ui.selection) {
   if (!id) return;
   commit(() => {

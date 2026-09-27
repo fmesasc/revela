@@ -2,6 +2,7 @@
 // present / export / save-load helpers.
 
 import { state } from '../core/store.js';
+import { shapeSVG } from '../ui/shape.js';
 
 const REVEAL = 'https://cdn.jsdelivr.net/npm/reveal.js@5.1.0';
 const MODEL_VIEWER = 'https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js';
@@ -35,6 +36,8 @@ function blockHTML(b) {
     return `<iframe${a} src="${b.src}" referrerpolicy="no-referrer" `
       + `sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation" `
       + `style="${box(b)}border:0;background:#fff"></iframe>`;
+  if (b.type === 'shape')
+    return `<div${a} style="${box(b)}">${shapeSVG(b)}</div>`;
   return '';
 }
 

@@ -1,5 +1,7 @@
 // Non‑interactive block rendering, shared by slide thumbnails.
 
+import { shapeSVG } from './shape.js';
+
 export function blockPreview(b) {
   const el = document.createElement('div');
   el.className = 'pv-block';
@@ -17,6 +19,8 @@ export function blockPreview(b) {
     el.innerHTML = `<div style="width:100%;height:100%;background:#0003;display:grid;place-items:center;font-size:80px">🧊</div>`;
   } else if (b.type === 'embed') {
     el.innerHTML = `<div style="width:100%;height:100%;background:#fff;display:grid;place-items:center;font-size:64px">🌐</div>`;
+  } else if (b.type === 'shape') {
+    el.innerHTML = shapeSVG(b);
   }
   return el;
 }

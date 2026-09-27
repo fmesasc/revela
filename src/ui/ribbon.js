@@ -83,6 +83,8 @@ export function initRibbon() {
     if (pa) { format.align(pa.dataset.para); return; }
     const li = e.target.closest('[data-list]');
     if (li) { format.list(li.dataset.list); return; }
+    const sh = e.target.closest('[data-shape]');
+    if (sh) { blocks.addShape(sh.dataset.shape); return; }
   });
 
   // Formatting controls must not steal focus (and thus the selection) from the
@@ -95,6 +97,8 @@ export function initRibbon() {
     .forEach(btn => btn.addEventListener('mousedown', e => e.preventDefault()));
   bindInput('[data-color]', v => format.color(v), true);
   bindInput('[data-highlight]', v => format.highlight(v), true);
+  bindInput('[data-shape-fill]', v => blocks.setShapeStyle('fill', v), true);
+  bindInput('[data-shape-stroke]', v => blocks.setShapeStyle('stroke', v), true);
   bindInput('[data-bg]', v => commit(() => (currentSlide().background = v)));
   bindChange('[data-theme]', v => commit(() => (state.deck.theme = v)));
   bindChange('[data-speed]', v => trans.setTransitionSpeed(v));

@@ -58,7 +58,7 @@ the origin of every requirement is traceable.
 - ✅ Images `PP·GS·OO`
 - ✅ Video `PP·GS·OO`
 - ✅ Interactive 3D models (`.glb`/`.gltf`) — *unique to Revela among natives; PowerPoint has static 3D* `PP`
-- ⬜ Shapes library (rect, ellipse, arrows, lines, connectors) with fill/stroke `PP·GS·OO`
+- 🚧 Shapes library — rectangle, ellipse, triangle, line, arrow with fill/stroke; connectors planned `PP·GS·OO`
 - ⬜ Merge / subtract / intersect shapes `PP·OO`
 - ⬜ Tables with styles `PP·GS·OO`
 - ⬜ Charts (bar, line, pie, …) with data editing `PP·GS·OO`
