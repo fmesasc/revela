@@ -74,9 +74,13 @@
             <button data-fmt="italic" title="Cursiva"><i><em>C</em></i></button>
             <button data-fmt="underline" title="Subrayado"><i><u>S</u></i></button>
             <button data-fmt="strikeThrough" title="Tachado"><i><s>T</s></i></button>
-            <label class="color"><i>A</i><input type="color" data-color value="#ffffff" title="Color"></label>
+            <button data-fmt="superscript" title="Superíndice"><i>x²</i></button>
+            <button data-fmt="subscript" title="Subíndice"><i>x₂</i></button>
+            <label class="color"><i>A</i><input type="color" data-color value="#ffffff" title="Color del texto"></label>
+            <label class="color"><i>🖊</i><input type="color" data-highlight value="#ffe600" title="Resaltado"></label>
             <button data-fontdelta="4" title="Aumentar"><i>A⁺</i></button>
             <button data-fontdelta="-4" title="Reducir"><i>A⁻</i></button>
+            <button data-fmt="removeFormat" title="Quitar formato"><i>⌫ᴬ</i></button>
           </div><label>Fuente</label>
         </div>
         <div class="group">
@@ -87,6 +91,14 @@
             <button data-fmt="insertUnorderedList" title="Viñetas"><i>•</i></button>
             <button data-fmt="insertOrderedList" title="Numeración"><i>1.</i></button>
           </div><label>Párrafo</label>
+        </div>
+        <div class="group">
+          <div class="row">
+            <button data-action="insert-link" title="Insertar enlace"><i>🔗</i></button>
+            <button data-case="upper" title="MAYÚSCULAS"><i>AA</i></button>
+            <button data-case="lower" title="minúsculas"><i>aa</i></button>
+            <button data-case="title" title="Tipo Título"><i>Aa</i></button>
+          </div><label>Texto</label>
         </div>
         <div class="group">
           <div class="row">

@@ -41,6 +41,7 @@ const ACTIONS = {
   'insert-video': () => readFile('video/*', blocks.addVideo),
   'obj-delete': () => blocks.deleteBlock(),
   'obj-duplicate': blocks.duplicateBlock,
+  'insert-link': format.link,
   'forward': blocks.bringForward, 'backward': blocks.sendBackward,
   'front': blocks.bringToFront, 'back': blocks.sendToBack,
   'obj-anim-clear': trans.clearAnimation,
@@ -67,14 +68,19 @@ export function initRibbon() {
       commit(() => { state.deck.size = { w: rw, h: rh }; }); return; }
     const fd = e.target.closest('[data-fontdelta]');
     if (fd) { format.fontSize(+fd.dataset.fontdelta); return; }
+    const cs = e.target.closest('[data-case]');
+    if (cs) { format.changeCase(cs.dataset.case); return; }
   });
 
-  // Formatting buttons must not steal focus from the editable text.
+  // Formatting controls must not steal focus (and thus the selection) from the
+  // editable text, so they preventDefault on mousedown.
   document.querySelectorAll('[data-fmt]').forEach(btn => {
     btn.addEventListener('mousedown', e => e.preventDefault());
     btn.addEventListener('click', () => format.exec(btn.dataset.fmt));
   });
+  document.querySelectorAll('[data-case]').forEach(btn => btn.addEventListener('mousedown', e => e.preventDefault()));
   bindInput('[data-color]', v => format.color(v), true);
+  bindInput('[data-highlight]', v => format.highlight(v), true);
   bindInput('[data-bg]', v => commit(() => (currentSlide().background = v)));
   bindChange('[data-theme]', v => commit(() => (state.deck.theme = v)));
   bindChange('[data-speed]', v => trans.setTransitionSpeed(v));

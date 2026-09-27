@@ -39,3 +39,10 @@ initContextMenu();
 document.addEventListener('keydown', keyboard);
 subscribe(render);
 render();
+
+
+
+
+
+
+

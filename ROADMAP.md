@@ -40,18 +40,18 @@ the origin of every requirement is traceable.
 - ✅ Bulleted and numbered lists `PP·GS·OO`
 - ✅ Paragraph alignment `PP·GS·OO`
 - ⬜ Font family picker and embedding `PP·GS·OO`
-- ⬜ Highlight colour `PP·OO`
-- ⬜ Superscript / subscript `PP·GS·OO`
+- ✅ Highlight colour `PP·OO`
+- ✅ Superscript / subscript `PP·GS·OO`
 - ⬜ Line and paragraph spacing, indents `PP·GS·OO`
 - ⬜ Text columns `PP·OO`
-- ⬜ Change case `PP·GS·OO`
+- ✅ Change case `PP·GS·OO`
 - ⬜ Bullet/number style and level customisation `PP·GS·OO`
 - ⬜ Text styles / named styles `PP·OO`
 - ⬜ WordArt / Text Art `PP·OO`
 - ⬜ Special characters and symbol picker `PP·GS·OO`
 - ⬜ Equations / math (OnlyOffice has a full equation editor) `PP·OO`
 - ⬜ Spell check, proofing and AutoCorrect `PP·GS·OO`
-- ⬜ Hyperlinks (web, slide, email) `PP·GS·OO`
+- 🚧 Hyperlinks — web links done; slide/email targets planned `PP·GS·OO`
 - ⬜ Vertical text and text direction (RTL) `PP·OO`
 
 ## 3. Objects & content
