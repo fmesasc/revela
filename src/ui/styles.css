@@ -170,6 +170,7 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 .handle-size.sw{left:-6px;bottom:-6px;cursor:nesw-resize}
 .handle-size.se{right:-6px;bottom:-6px;cursor:nwse-resize}
 .block.selected .handle-size{display:block}
+.marquee{position:absolute;z-index:8;pointer-events:none;background:#3f649722;border:1px solid var(--accent)}
 .guide{position:absolute;z-index:7;pointer-events:none;background:#ff3b8b}
 .guide.v{top:0;bottom:0;width:1px}.guide.h{left:0;right:0;height:1px}
 

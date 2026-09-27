@@ -1,7 +1,7 @@
 // Right‑click context menu. Actions adapt to what was clicked: a block, an
 // image (extra processing options) or the empty canvas.
 
-import { state, commit, currentSlide, selectedBlock } from '../core/store.js';
+import { state, commit, currentSlide, selectedBlock, isSelected, setSelection } from '../core/store.js';
 import { uid } from '../core/model.js';
 import * as blocks from '../features/blocks.js';
 import { addText } from '../features/blocks.js';
@@ -24,7 +24,7 @@ export function initContextMenu() {
     e.preventDefault();
     const blockEl = e.target.closest('.block');
     if (blockEl) {
-      commit(() => (state.ui.selection = blockEl.dataset.id), { history: false });
+      if (!isSelected(blockEl.dataset.id)) commit(() => setSelection(blockEl.dataset.id), { history: false });
       open(e.clientX, e.clientY, forBlock(selectedBlock()));
     } else {
       open(e.clientX, e.clientY, forCanvas());

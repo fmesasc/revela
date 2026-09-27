@@ -155,6 +155,31 @@ export async function run(frame) {
     eq(slide().blocks.length, n0 + 1, 'redo falló');
   });
 
+  // ---- Multi-selection -----------------------------------------------------
+  await test('selección múltiple: eliminar y duplicar en grupo', async () => {
+    reset(); const n0 = slide().blocks.length; R.blocks.addText(); R.blocks.addText();
+    const a = slide().blocks.at(-2), b = slide().blocks.at(-1);
+    R.store.setMulti([a.id, b.id]);
+    eq(R.store.selectedBlocks().length, 2, 'dos seleccionados');
+    R.blocks.duplicateSelected(); eq(slide().blocks.length, n0 + 4, 'duplicó los dos');
+    R.blocks.deleteSelected(); eq(slide().blocks.length, n0 + 2, 'eliminó los duplicados');
+  });
+
+  await test('selección múltiple: alinear a la izquierda entre objetos', async () => {
+    reset(); R.blocks.addText(); R.blocks.addText();
+    const a = slide().blocks.at(-2), b = slide().blocks.at(-1);
+    a.x = 100; b.x = 300; R.store.setMulti([a.id, b.id]); R.render();
+    R.blocks.alignSelected('left'); eq(a.x, 100, 'a'); eq(b.x, 100, 'b al menor');
+  });
+
+  await test('selección múltiple: distribuir horizontalmente (3)', async () => {
+    reset(); R.blocks.addShape('rect'); R.blocks.addShape('rect'); R.blocks.addShape('rect');
+    const [a, b, c] = slide().blocks.slice(-3);
+    a.w = b.w = c.w = 100; a.x = 0; b.x = 40; c.x = 400;
+    R.store.setMulti([a.id, b.id, c.id]); R.blocks.distributeSelected('h');
+    eq(b.x, 200, 'centro intermedio equidistante');
+  });
+
   await test('avance automático por diapositiva en el export', async () => {
     reset(); slide().autoSlide = 5000;
     assert(/<section[^>]*data-autoslide="5000"/.test(R.io.buildHTML()), 'sin data-autoslide');

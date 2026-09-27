@@ -2,7 +2,8 @@
 // direct manipulation — drag from anywhere on a block, snap to alignment
 // guides, resize from the corners, edit text on double‑click.
 
-import { state, commit, mutate, currentSlide, selectedBlock } from '../core/store.js';
+import { state, commit, mutate, currentSlide, selectedBlock,
+  selectedBlocks, selectedIds, isSelected, setSelection, toggleSelection, setMulti } from '../core/store.js';
 import { shapeSVG, shapeSig } from './shape.js';
 
 const SNAP = 7; // snapping threshold, in canvas pixels
@@ -11,8 +12,34 @@ let stage;
 export function initCanvas() {
   stage = document.getElementById('stage');
   stage.addEventListener('pointerdown', e => {
-    if (e.target === stage) { commit(() => (state.ui.selection = null), { history: false }); }
+    if (e.target === stage) startMarquee(e);
   });
+}
+
+// Rubber‑band selection: drag on the empty canvas to select every block the
+// rectangle touches (hold Shift to add to the current selection).
+function startMarquee(ev) {
+  const add = ev.shiftKey;
+  if (!add) commit(() => setSelection(null), { history: false });
+  const f = factor();
+  const rect = stage.getBoundingClientRect();
+  const ox = (ev.clientX - rect.left) * f, oy = (ev.clientY - rect.top) * f;
+  const box = document.createElement('div'); box.className = 'marquee'; stage.appendChild(box);
+  const base = new Set(selectedIds());
+  const onMove = e => {
+    const x = (e.clientX - rect.left) * f, y = (e.clientY - rect.top) * f;
+    const l = Math.min(ox, x), t = Math.min(oy, y), w = Math.abs(x - ox), h = Math.abs(y - oy);
+    box.style.cssText = `left:${l}px;top:${t}px;width:${w}px;height:${h}px`;
+    const hit = currentSlide().blocks.filter(b =>
+      b.x < l + w && b.x + b.w > l && b.y < t + h && b.y + b.h > t).map(b => b.id);
+    const ids = new Set(add ? base : []); hit.forEach(id => ids.add(id));
+    mutate(() => setMulti([...ids]));
+  };
+  const onUp = () => {
+    window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp);
+    box.remove();
+  };
+  window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp);
 }
 
 const factor = () => state.deck.size.w / stage.getBoundingClientRect().width;
@@ -55,7 +82,7 @@ function reconcile(b) {
   el.style.left = b.x + 'px'; el.style.top = b.y + 'px';
   el.style.width = b.w + 'px'; el.style.height = b.h + 'px';
   el.style.transform = `rotate(${b.rotation || 0}deg)`;
-  el.classList.toggle('selected', b.id === state.ui.selection);
+  el.classList.toggle('selected', isSelected(b.id));
   el.classList.toggle('animated', !!b.animation);
   if (b.type === 'text') {
     const rich = el.querySelector('.rich');
@@ -86,7 +113,7 @@ function reconcile(b) {
 
 function blockEl(b) {
   const el = document.createElement('div');
-  el.className = 'block' + (b.id === state.ui.selection ? ' selected' : '')
+  el.className = 'block' + (isSelected(b.id) ? ' selected' : '')
     + (b.animation ? ' animated' : '');
   el.dataset.id = b.id;
   el.style.cssText = `left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px;`
@@ -207,15 +234,27 @@ function startDrag(ev, b, el) {
     exitEdit(el);                                          // grabbed the frame: leave edit and move
   }
   ev.stopPropagation();
-  commit(() => (state.ui.selection = b.id), { history: false });
+
+  // Shift‑click toggles the block in the selection without moving it.
+  if (ev.shiftKey) { commit(() => toggleSelection(b.id), { history: false }); return; }
+  // A plain click on an unselected block selects just it; clicking one that is
+  // already part of a multi‑selection keeps the group so it can be moved together.
+  if (!isSelected(b.id)) commit(() => setSelection(b.id), { history: false });
+
+  const movers = selectedBlocks();
+  const origins = new Map(movers.map(m => [m.id, { x: m.x, y: m.y }]));
   const f = factor(), sx = ev.clientX, sy = ev.clientY, ox = b.x, oy = b.y;
   el.setPointerCapture(ev.pointerId); el.classList.add('dragging');
   const onMove = e => {
-    let nx = Math.round(ox + (e.clientX - sx) * f);
-    let ny = Math.round(oy + (e.clientY - sy) * f);
-    const snapped = applySnap(b, nx, ny);
-    b.x = snapped.x; b.y = snapped.y;
-    el.style.left = b.x + 'px'; el.style.top = b.y + 'px';
+    const rawx = Math.round(ox + (e.clientX - sx) * f);
+    const rawy = Math.round(oy + (e.clientY - sy) * f);
+    const snapped = movers.length > 1 ? { x: rawx, y: rawy } : applySnap(b, rawx, rawy);
+    const dx = snapped.x - ox, dy = snapped.y - oy;
+    for (const m of movers) {
+      const o = origins.get(m.id); m.x = o.x + dx; m.y = o.y + dy;
+      const mel = stage.querySelector(`.block[data-id="${m.id}"]`);
+      if (mel) { mel.style.left = m.x + 'px'; mel.style.top = m.y + 'px'; }
+    }
   };
   const onUp = () => {
     el.releasePointerCapture(ev.pointerId); el.classList.remove('dragging');
@@ -286,6 +325,6 @@ function clearGuides() { stage.querySelectorAll('.guide').forEach(g => g.remove(
 
 // ---- Keyboard nudging ------------------------------------------------------
 export function nudge(dx, dy) {
-  const b = selectedBlock(); if (!b) return;
-  commit(() => { b.x += dx; b.y += dy; });
+  const bs = selectedBlocks(); if (!bs.length) return;
+  commit(() => { for (const b of bs) { b.x += dx; b.y += dy; } });
 }

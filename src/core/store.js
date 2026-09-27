@@ -11,7 +11,9 @@ const HISTORY_LIMIT = 60;
 
 export const state = {
   deck: loadDeck() || emptyDeck(),
-  ui: { slideIndex: 0, selection: null, showGuides: false, activeTab: 'home' },
+  // `selection` is the primary (last‑clicked) block; `multi` is the full set of
+  // selected block ids (includes the primary). Single selection keeps both in sync.
+  ui: { slideIndex: 0, selection: null, multi: [], showGuides: false, activeTab: 'home' },
 };
 
 export function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
@@ -23,6 +25,26 @@ export const selectedBlock = () => {
   const s = currentSlide();
   return s ? s.blocks.find(b => b.id === state.ui.selection) || null : null;
 };
+// All currently selected ids / blocks (falls back to the single primary).
+export const selectedIds = () =>
+  (state.ui.multi && state.ui.multi.length) ? state.ui.multi
+    : (state.ui.selection ? [state.ui.selection] : []);
+export const selectedBlocks = () => {
+  const s = currentSlide(); if (!s) return [];
+  const ids = new Set(selectedIds());
+  return s.blocks.filter(b => ids.has(b.id));
+};
+export const isSelected = id => selectedIds().includes(id);
+
+// Selection helpers keep `selection` (primary) and `multi` (set) consistent.
+export function setSelection(id) { state.ui.selection = id; state.ui.multi = id ? [id] : []; }
+export function toggleSelection(id) {
+  const m = new Set(state.ui.multi.length ? state.ui.multi : (state.ui.selection ? [state.ui.selection] : []));
+  if (m.has(id)) m.delete(id); else m.add(id);
+  state.ui.multi = [...m];
+  state.ui.selection = state.ui.multi[state.ui.multi.length - 1] || null;
+}
+export function setMulti(ids) { state.ui.multi = [...ids]; state.ui.selection = ids[ids.length - 1] || null; }
 export const clampSlide = () => {
   state.ui.slideIndex = Math.max(0, Math.min(state.ui.slideIndex, state.deck.slides.length - 1));
 };

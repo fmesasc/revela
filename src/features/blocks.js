@@ -1,10 +1,30 @@
 // Block insertion and manipulation.
 
-import { state, commit, currentSlide, selectedBlock } from '../core/store.js';
+import { state, commit, currentSlide, selectedBlock,
+  selectedBlocks, selectedIds, setSelection, setMulti } from '../core/store.js';
 import { uid, textBlock } from '../core/model.js';
 
 function insert(block) {
-  commit(() => { currentSlide().blocks.push(block); state.ui.selection = block.id; });
+  commit(() => { currentSlide().blocks.push(block); setSelection(block.id); });
+}
+
+// Delete / duplicate the whole selection (one or many).
+export function deleteSelected() {
+  const ids = new Set(selectedIds()); if (!ids.size) return;
+  commit(() => {
+    const s = currentSlide();
+    s.blocks = s.blocks.filter(b => !ids.has(b.id));
+    setSelection(null);
+  });
+}
+export function duplicateSelected() {
+  const bs = selectedBlocks(); if (!bs.length) return;
+  commit(() => {
+    const s = currentSlide();
+    const copies = bs.map(b => { const c = structuredClone(b); c.id = uid(); c.x += 24; c.y += 24; return c; });
+    s.blocks.push(...copies);
+    setMulti(copies.map(c => c.id));
+  });
 }
 
 export function addText() { insert(textBlock({ html: 'Escribe aquí' })); }
@@ -84,15 +104,45 @@ export function duplicateBlock() {
   });
 }
 
+// Align: with several objects selected, align them to each other (as in
+// PowerPoint); with one, align it to the slide.
 export function alignSelected(where) {
-  const b = selectedBlock(); if (!b) return;
+  const bs = selectedBlocks(); if (!bs.length) return;
   const { w, h } = state.deck.size;
   commit(() => {
+    if (bs.length > 1) {
+      const minX = Math.min(...bs.map(b => b.x)), maxX = Math.max(...bs.map(b => b.x + b.w));
+      const minY = Math.min(...bs.map(b => b.y)), maxY = Math.max(...bs.map(b => b.y + b.h));
+      const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+      for (const b of bs) {
+        if (where === 'left') b.x = Math.round(minX);
+        if (where === 'right') b.x = Math.round(maxX - b.w);
+        if (where === 'hcenter') b.x = Math.round(cx - b.w / 2);
+        if (where === 'top') b.y = Math.round(minY);
+        if (where === 'bottom') b.y = Math.round(maxY - b.h);
+        if (where === 'vcenter') b.y = Math.round(cy - b.h / 2);
+      }
+      return;
+    }
+    const b = bs[0];
     if (where === 'hcenter') b.x = Math.round((w - b.w) / 2);
     if (where === 'vcenter') b.y = Math.round((h - b.h) / 2);
     if (where === 'left') b.x = 40;
     if (where === 'right') b.x = w - b.w - 40;
     if (where === 'top') b.y = 40;
     if (where === 'bottom') b.y = h - b.h - 40;
+  });
+}
+
+// Distribute the selected objects evenly (needs 3+): equal gaps between centres.
+export function distributeSelected(axis) {
+  const bs = selectedBlocks(); if (bs.length < 3) return;
+  commit(() => {
+    const key = axis === 'h' ? 'x' : 'y', size = axis === 'h' ? 'w' : 'h';
+    const sorted = [...bs].sort((a, b) => (a[key] + a[size] / 2) - (b[key] + b[size] / 2));
+    const first = sorted[0], lastB = sorted[sorted.length - 1];
+    const c0 = first[key] + first[size] / 2, cN = lastB[key] + lastB[size] / 2;
+    const step = (cN - c0) / (sorted.length - 1);
+    sorted.forEach((b, i) => { if (i && i < sorted.length - 1) b[key] = Math.round(c0 + step * i - b[size] / 2); });
   });
 }

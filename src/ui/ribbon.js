@@ -47,8 +47,8 @@ const ACTIONS = {
     if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
     blocks.addEmbed(url);
   },
-  'obj-delete': () => blocks.deleteBlock(),
-  'obj-duplicate': blocks.duplicateBlock,
+  'obj-delete': () => blocks.deleteSelected(),
+  'obj-duplicate': () => blocks.duplicateSelected(),
   'insert-link': format.link,
   'forward': blocks.bringForward, 'backward': blocks.sendBackward,
   'front': blocks.bringToFront, 'back': blocks.sendToBack,
@@ -91,6 +91,8 @@ export function initRibbon() {
     if (tpl) { templates.applyTemplate(templates.BUILTIN[tpl.dataset.template]); return; }
     const al = e.target.closest('[data-align]');
     if (al) { blocks.alignSelected(al.dataset.align); return; }
+    const dist = e.target.closest('[data-distribute]');
+    if (dist) { blocks.distributeSelected(dist.dataset.distribute); return; }
     const ratio = e.target.closest('[data-ratio]');
     if (ratio) { const [rw, rh] = ratio.dataset.ratio.split('x').map(Number);
       commit(() => { state.deck.size = { w: rw, h: rh }; }); return; }

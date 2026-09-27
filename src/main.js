@@ -5,7 +5,7 @@ import { initCanvas, renderCanvas, nudge } from './ui/canvas.js';
 import { initPanel, renderPanel } from './ui/panel.js';
 import { initRibbon, renderRibbon } from './ui/ribbon.js';
 import { initContextMenu } from './ui/contextmenu.js';
-import { deleteBlock, duplicateBlock } from './features/blocks.js';
+import { deleteSelected, duplicateSelected } from './features/blocks.js';
 // Namespaces exposed to the test harness (see tests/).
 import * as store from './core/store.js';
 import * as model from './core/model.js';
@@ -32,8 +32,8 @@ function keyboard(e) {
   const meta = e.ctrlKey || e.metaKey;
   if (meta && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
   if (meta && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
-  if (meta && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateBlock(); return; }
-  if (e.key === 'Delete' && state.ui.selection) { e.preventDefault(); deleteBlock(); return; }
+  if (meta && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSelected(); return; }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && state.ui.selection) { e.preventDefault(); deleteSelected(); return; }
   if (selectedBlock()) {
     const step = e.shiftKey ? 10 : 1;
     if (e.key === 'ArrowLeft')  { e.preventDefault(); nudge(-step, 0); }

@@ -22,9 +22,9 @@ the origin of every requirement is traceable.
 - ✅ Undo / redo `PP·GS·OO`
 - ✅ Cut / copy / paste of objects `PP·GS·OO`
 - ✅ Right-click context menu `PP·GS·OO`
-- ⬜ Multi-select (marquee + shift-click) `PP·GS·OO`
+- ✅ Multi-select (marquee + shift-click) `PP·GS·OO`
 - ⬜ Group / ungroup objects `PP·GS·OO`
-- 🚧 Align & distribute — align to slide done; distribute needs multi-select `PP·GS·OO`
+- ✅ Align & distribute — align to slide/among objects + distribute `PP·GS·OO`
 - ✅ Order: bring to front / send to back / forward / backward `PP·GS·OO`
 - ⬜ Rotation handle and flip `PP·GS·OO`
 - 🚧 Lock aspect ratio (Shift while resizing); object lock planned `PP·OO`
