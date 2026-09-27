@@ -16,6 +16,18 @@ export function initCanvas() {
 
 const factor = () => state.deck.size.w / stage.getBoundingClientRect().width;
 
+let lastSignature = '';
+
+// The signature captures everything that requires a full rebuild (which slide,
+// which blocks in which order, and the slide size). Selection, position, size,
+// text and other in‑place edits do NOT change it, so they are reconciled onto
+// the existing DOM instead of rebuilding it. Rebuilding on selection was what
+// broke double‑click‑to‑edit and mid‑drag interaction.
+function signature(slide) {
+  return slide.id + '|' + slide.blocks.map(b => b.id).join(',')
+    + '|' + state.deck.size.w + 'x' + state.deck.size.h;
+}
+
 export function renderCanvas() {
   const slide = currentSlide();
   const { w, h } = state.deck.size;
@@ -23,8 +35,40 @@ export function renderCanvas() {
   stage.style.height = h + 'px';
   stage.style.background = slide.background;
   stage.classList.toggle('guides', state.ui.showGuides);
-  stage.innerHTML = '';
-  for (const b of slide.blocks) stage.appendChild(blockEl(b));
+
+  const sig = signature(slide);
+  if (sig !== lastSignature) {
+    stage.innerHTML = '';
+    for (const b of slide.blocks) stage.appendChild(blockEl(b));
+    lastSignature = sig;
+  } else {
+    for (const b of slide.blocks) reconcile(b);
+  }
+}
+
+// Update an existing block element from the model without recreating it, so
+// interaction (editing, dragging) is never interrupted.
+function reconcile(b) {
+  const el = stage.querySelector(`.block[data-id="${b.id}"]`);
+  if (!el) return;
+  el.style.left = b.x + 'px'; el.style.top = b.y + 'px';
+  el.style.width = b.w + 'px'; el.style.height = b.h + 'px';
+  el.style.transform = `rotate(${b.rotation || 0}deg)`;
+  el.classList.toggle('selected', b.id === state.ui.selection);
+  el.classList.toggle('animated', !!b.animation);
+  if (b.type === 'text') {
+    const rich = el.querySelector('.rich');
+    if (rich && !el.classList.contains('editing')) {   // never touch the caret while editing
+      if (rich.innerHTML !== (b.html || '')) rich.innerHTML = b.html || '';
+      rich.style.fontSize = (b.fontSize || 40) + 'px';
+    }
+  } else if (b.type === 'image') {
+    const img = el.querySelector('img'); if (img && img.getAttribute('src') !== b.src) img.src = b.src;
+  } else if (b.type === 'model') {
+    const mv = el.querySelector('model-viewer'); if (mv && mv.getAttribute('src') !== b.src) mv.setAttribute('src', b.src);
+  } else if (b.type === 'video') {
+    const v = el.querySelector('video'); if (v && v.getAttribute('src') !== b.src) v.src = b.src;
+  }
 }
 
 function blockEl(b) {

@@ -6,3 +6,6 @@ dist/
 # presentaciones exportadas de prueba
 export/
 *.revela.html
+
+# archivos de prueba locales (no se suben)
+tmp/
