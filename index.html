@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Revela — editor de presentaciones con 3D</title>
+  <link rel="stylesheet" href="src/styles.css">
+  <!-- model-viewer: el 3D en vivo, tanto en el editor como en la exportacion -->
+  <script type="module"
+    src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
+</head>
+<body>
+  <header id="barra">
+    <span id="logo">Revela</span>
+    <span class="sep"></span>
+    <button data-accion="nueva-diapo" title="Nueva diapositiva">＋ Diapositiva</button>
+    <button data-accion="add-texto">＋ Texto</button>
+    <button data-accion="add-modelo">＋ Modelo 3D</button>
+    <input type="file" id="file-modelo" accept=".glb,.gltf" hidden>
+    <span class="sep"></span>
+    <button data-accion="presentar">▶ Presentar</button>
+    <button data-accion="exportar">⭳ Exportar</button>
+    <span class="sep"></span>
+    <button data-accion="guardar" title="Descargar el proyecto (.json)">Proyecto ⭳</button>
+    <button data-accion="abrir" title="Abrir un proyecto (.json)">Proyecto ⭱</button>
+    <input type="file" id="file-proyecto" accept=".json,application/json" hidden>
+    <span class="crece"></span>
+    <span id="pista">Doble clic en el texto para editarlo · arrastra para mover · Supr borra</span>
+  </header>
+
+  <main>
+    <aside id="tiras"><!-- miniaturas de diapositivas --></aside>
+    <section id="escenario-wrap">
+      <div id="escenario"><!-- la diapositiva actual, 1024x576 --></div>
+    </section>
+  </main>
+
+  <script src="src/app.js"></script>
+</body>
+</html>
