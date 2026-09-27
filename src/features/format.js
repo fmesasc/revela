@@ -8,6 +8,7 @@
 //    what people expect from PowerPoint and OnlyOffice.
 
 import { commit, selectedBlock } from '../core/store.js';
+import { ensureFont } from './fonts.js';
 
 function ctx() {
   const b = selectedBlock();
@@ -75,6 +76,7 @@ export function align(value) {
 }
 export function fontFamily(value) {
   const c = ctx(); if (!c) return;
+  ensureFont(value);
   commit(() => { c.b.fontFamily = value; });
 }
 export function setFontSize(px) {
@@ -84,6 +86,10 @@ export function setFontSize(px) {
 export function lineSpacing(value) {
   const c = ctx(); if (!c) return;
   commit(() => { c.b.lineHeight = parseFloat(value) || 1.2; });
+}
+export function letterSpacing(px) {
+  const c = ctx(); if (!c) return;
+  commit(() => { c.b.letterSpacing = parseFloat(px) || 0; });
 }
 export function fontSize(delta) {
   const c = ctx(); if (!c) return;

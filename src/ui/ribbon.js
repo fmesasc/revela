@@ -9,6 +9,7 @@ import * as trans from '../features/transitions.js';
 import * as templates from '../features/templates.js';
 import * as io from '../io/reveal.js';
 import { importPPTX } from '../io/pptx.js';
+import { FONTS, ensureDeckFonts } from '../features/fonts.js';
 
 const $ = s => document.querySelector(s);
 const readFile = (accept, cb, as = 'DataURL') => {
@@ -58,8 +59,24 @@ const ACTIONS = {
   'toggle-notes': () => commit(() => (state.ui.showNotes = !state.ui.showNotes), { history: false }),
 };
 
+// Fill the font picker from the catalogue (each option shown in its own font
+// where already available).
+function populateFonts() {
+  const sel = $('[data-font]'); if (!sel) return;
+  sel.innerHTML = '';
+  for (const f of FONTS) {
+    const o = document.createElement('option');
+    o.value = f.stack; o.textContent = f.name;
+    if (f.stack) o.style.fontFamily = f.stack;
+    sel.appendChild(o);
+  }
+}
+
 export function initRibbon() {
+  populateFonts();
   document.getElementById('ribbon').addEventListener('click', e => {
+    const more = e.target.closest('[data-more]');
+    if (more) { e.stopPropagation(); togglePopover(more, more.dataset.more); return; }
     const tab = e.target.closest('[data-tab]');
     if (tab) { commit(() => (state.ui.activeTab = tab.dataset.tab), { history: false }); return; }
     const act = e.target.closest('[data-action]');
@@ -153,6 +170,37 @@ function updateFormatState() {
   }
 }
 
+// ---- Group "more options" popovers (like Office's dialog launchers) --------
+let openPop = null;
+const POPS = {
+  paragraph: () => {
+    const b = selectedBlock(); const t = b && b.type === 'text' ? b : {};
+    return `<h4>Párrafo</h4>
+      <label>Interlineado
+        <input type="number" step="0.05" min="0.5" data-pop="linespacing" value="${t.lineHeight || 1}"></label>
+      <label>Espaciado entre letras (px)
+        <input type="number" step="0.5" data-pop="letterspacing" value="${t.letterSpacing || 0}"></label>`;
+  },
+};
+function closePopover() { if (openPop) { openPop.remove(); openPop = null; } }
+function togglePopover(launcher, type) {
+  const same = openPop && openPop.dataset.type === type;
+  closePopover();
+  if (same || !POPS[type]) return;
+  const pop = document.createElement('div');
+  pop.className = 'popover'; pop.dataset.type = type;
+  pop.innerHTML = POPS[type]();
+  document.body.appendChild(pop);
+  const r = launcher.getBoundingClientRect();
+  pop.style.left = Math.min(r.left, innerWidth - pop.offsetWidth - 10) + 'px';
+  pop.style.top = (r.bottom + 4) + 'px';
+  pop.addEventListener('click', e => e.stopPropagation());
+  pop.querySelector('[data-pop="linespacing"]')?.addEventListener('input', e => format.lineSpacing(e.target.value));
+  pop.querySelector('[data-pop="letterspacing"]')?.addEventListener('input', e => format.letterSpacing(e.target.value));
+  openPop = pop;
+}
+document.addEventListener('click', () => closePopover());
+
 function bindInput(sel, cb, keepFocus) {
   const el = $(sel); if (!el) return;
   if (keepFocus) el.addEventListener('mousedown', e => e.stopPropagation());
@@ -161,6 +209,7 @@ function bindInput(sel, cb, keepFocus) {
 function bindChange(sel, cb) { const el = $(sel); if (el) el.addEventListener('change', e => cb(e.target.value)); }
 
 export function renderRibbon() {
+  ensureDeckFonts(state.deck);   // load any Google fonts the deck uses
   document.querySelectorAll('[data-tab]').forEach(t => t.classList.toggle('active', t.dataset.tab === state.ui.activeTab));
   document.querySelectorAll('.ribbon-page').forEach(p => p.classList.toggle('active', p.dataset.page === state.ui.activeTab));
   const docName = $('.doc-name');

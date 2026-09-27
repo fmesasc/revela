@@ -3,6 +3,7 @@
 
 import { state } from '../core/store.js';
 import { shapeSVG } from '../ui/shape.js';
+import { googleFontLinks } from '../features/fonts.js';
 
 const REVEAL = 'https://cdn.jsdelivr.net/npm/reveal.js@5.1.0';
 const MODEL_VIEWER = 'https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js';
@@ -24,7 +25,8 @@ function blockHTML(b) {
   if (b.type === 'text')
     return `<div${a} style="${box(b)}font-size:${b.fontSize || 40}px;`
       + `text-align:${b.textAlign || 'left'};${b.fontFamily ? `font-family:${b.fontFamily};` : ''}`
-      + `${b.lineHeight ? `line-height:${b.lineHeight};` : ''}">`
+      + `${b.lineHeight ? `line-height:${b.lineHeight};` : ''}`
+      + `${b.letterSpacing ? `letter-spacing:${b.letterSpacing}px;` : ''}">`
       + `${b.html || ''}</div>`;
   if (b.type === 'model')
     return `<model-viewer${a} src="${b.src}" camera-controls ${b.autoRotate !== false ? 'auto-rotate' : ''} `
@@ -69,6 +71,7 @@ export function buildHTML(deck = state.deck) {
 <title>${esc(deck.name || 'Presentación')}</title>
 <link rel="stylesheet" href="${REVEAL}/dist/reveal.css">
 <link rel="stylesheet" href="${REVEAL}/dist/theme/${deck.theme}.css">
+${googleFontLinks(deck)}
 <script type="module" src="${MODEL_VIEWER}"></script>
 <style>
  .reveal .stage{position:relative;width:${w}px;height:${h}px;margin:0 auto}

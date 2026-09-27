@@ -10,7 +10,8 @@ export function blockPreview(b) {
   if (b.type === 'text') {
     el.innerHTML = `<div style="font-size:${b.fontSize || 40}px;color:#fff;`
       + `text-align:${b.textAlign || 'left'};${b.fontFamily ? `font-family:${b.fontFamily};` : ''}`
-      + `${b.lineHeight ? `line-height:${b.lineHeight};` : ''}">`
+      + `${b.lineHeight ? `line-height:${b.lineHeight};` : ''}`
+      + `${b.letterSpacing ? `letter-spacing:${b.letterSpacing}px;` : ''}">`
       + `${b.html || ''}</div>`;
   } else if (b.type === 'image') {
     el.innerHTML = `<img src="${b.src}" style="width:100%;height:100%;object-fit:${b.fit || 'contain'}">`;

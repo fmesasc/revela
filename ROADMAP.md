@@ -39,10 +39,10 @@ the origin of every requirement is traceable.
 - ✅ Font colour, font size `PP·GS·OO`
 - ✅ Bulleted and numbered lists `PP·GS·OO`
 - ✅ Paragraph alignment `PP·GS·OO`
-- ⬜ Font family picker and embedding `PP·GS·OO`
+- ✅ Font family picker and embedding — 40+ web‑safe & Google fonts, loaded on demand, embedded on export `PP·GS·OO`
 - ✅ Highlight colour `PP·OO`
 - ✅ Superscript / subscript `PP·GS·OO`
-- 🚧 Line and paragraph spacing, indents — line spacing done; indents planned `PP·GS·OO`
+- 🚧 Line and paragraph spacing, indents — line spacing (custom) and letter spacing done; indents planned `PP·GS·OO`
 - ⬜ Text columns `PP·OO`
 - ✅ Change case `PP·GS·OO`
 - ⬜ Bullet/number style and level customisation `PP·GS·OO`

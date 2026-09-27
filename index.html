@@ -79,21 +79,15 @@
         </div>
         <div class="group">
           <div class="row">
-            <select data-font title="Tipo de letra" class="font-select">
-              <option value="">Predeterminada</option>
-              <option value="Arial, sans-serif">Arial</option>
-              <option value="'Helvetica Neue', Helvetica, sans-serif">Helvetica</option>
-              <option value="Georgia, serif">Georgia</option>
-              <option value="'Times New Roman', Times, serif">Times New Roman</option>
-              <option value="'Courier New', monospace">Courier New</option>
-              <option value="Verdana, sans-serif">Verdana</option>
-              <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
-              <option value="Impact, sans-serif">Impact</option>
-            </select>
-            <select data-size title="Tamaño de letra" class="size-select">
-              <option>12</option><option>14</option><option>18</option><option>24</option>
-              <option>32</option><option>40</option><option>54</option><option>72</option><option>96</option>
-            </select>
+            <select data-font title="Tipo de letra" class="font-select"></select>
+            <input data-size type="text" inputmode="numeric" title="Tamaño de letra (personalizable)"
+              class="size-input" list="size-list" value="40">
+            <datalist id="size-list">
+              <option>8</option><option>10</option><option>12</option><option>14</option><option>16</option>
+              <option>18</option><option>20</option><option>24</option><option>28</option><option>32</option>
+              <option>40</option><option>44</option><option>54</option><option>60</option><option>72</option>
+              <option>96</option><option>120</option><option>144</option>
+            </datalist>
             <button data-fontdelta="4" title="Aumentar tamaño"><i class="ms">text_increase</i></button>
             <button data-fontdelta="-4" title="Reducir tamaño"><i class="ms">text_decrease</i></button>
           </div><label>Tipo de letra</label>
@@ -119,10 +113,13 @@
             <button data-para="justify" title="Justificar"><i class="ms">format_align_justify</i></button>
             <button data-list="insertUnorderedList" title="Viñetas"><i class="ms">format_list_bulleted</i></button>
             <button data-list="insertOrderedList" title="Lista numerada"><i class="ms">format_list_numbered</i></button>
-            <select data-linespacing title="Interlineado" class="size-select">
-              <option value="1">1,0</option><option value="1.15">1,15</option>
-              <option value="1.5">1,5</option><option value="2">2,0</option>
-            </select>
+            <input data-linespacing type="text" inputmode="decimal" title="Interlineado (personalizable)"
+              class="size-input" list="ls-list" value="1">
+            <datalist id="ls-list">
+              <option>1</option><option>1.15</option><option>1.25</option><option>1.5</option>
+              <option>1.75</option><option>2</option><option>2.5</option><option>3</option>
+            </datalist>
+            <button class="group-more" data-more="paragraph" title="Más opciones de párrafo"><i class="ms">expand_more</i></button>
           </div><label>Párrafo</label>
         </div>
         <div class="group">
