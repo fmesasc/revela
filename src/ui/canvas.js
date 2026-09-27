@@ -3,7 +3,7 @@
 // guides, resize from the corners, edit text on double‑click.
 
 import { state, commit, mutate, currentSlide, selectedBlock,
-  selectedBlocks, selectedIds, isSelected, setSelection, toggleSelection, setMulti } from '../core/store.js';
+  selectedBlocks, selectedIds, isSelected, setSelection, toggleSelection, setMulti, selectWithGroup } from '../core/store.js';
 import { shapeSVG, shapeSig } from './shape.js';
 
 const SNAP = 7; // snapping threshold, in canvas pixels
@@ -239,7 +239,7 @@ function startDrag(ev, b, el) {
   if (ev.shiftKey) { commit(() => toggleSelection(b.id), { history: false }); return; }
   // A plain click on an unselected block selects just it; clicking one that is
   // already part of a multi‑selection keeps the group so it can be moved together.
-  if (!isSelected(b.id)) commit(() => setSelection(b.id), { history: false });
+  if (!isSelected(b.id)) commit(() => selectWithGroup(b.id), { history: false });
 
   const movers = selectedBlocks();
   const origins = new Map(movers.map(m => [m.id, { x: m.x, y: m.y }]));

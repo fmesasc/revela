@@ -1,7 +1,7 @@
 // Right‑click context menu. Actions adapt to what was clicked: a block, an
 // image (extra processing options) or the empty canvas.
 
-import { state, commit, currentSlide, selectedBlock, isSelected, setSelection } from '../core/store.js';
+import { state, commit, currentSlide, selectedBlock, selectedBlocks, isSelected, setSelection } from '../core/store.js';
 import { uid } from '../core/model.js';
 import * as blocks from '../features/blocks.js';
 import { addText } from '../features/blocks.js';
@@ -98,8 +98,16 @@ function forBlock(b) {
       null);
   }
 
+  // Grouping (only when it makes sense).
+  const sel = selectedBlocks();
+  const groupItems = [];
+  if (sel.length > 1) groupItems.push(['Agrupar', () => blocks.groupSelected()]);
+  if (sel.some(x => x.groupId)) groupItems.push(['Desagrupar', () => blocks.ungroupSelected()]);
+  if (groupItems.length) items.push(null, ...groupItems);
+
   // Position + arrange, common to every object.
   items.push(
+    null,
     ['Centrar horizontalmente', () => blocks.alignSelected('hcenter')],
     ['Centrar verticalmente', () => blocks.alignSelected('vcenter')],
     null,

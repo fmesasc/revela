@@ -49,6 +49,8 @@ const ACTIONS = {
   },
   'obj-delete': () => blocks.deleteSelected(),
   'obj-duplicate': () => blocks.duplicateSelected(),
+  'group': () => blocks.groupSelected(),
+  'ungroup': () => blocks.ungroupSelected(),
   'insert-link': format.link,
   'forward': blocks.bringForward, 'backward': blocks.sendBackward,
   'front': blocks.bringToFront, 'back': blocks.sendToBack,

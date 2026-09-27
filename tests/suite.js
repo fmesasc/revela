@@ -180,6 +180,15 @@ export async function run(frame) {
     eq(b.x, 200, 'centro intermedio equidistante');
   });
 
+  await test('agrupar / desagrupar: seleccionar uno selecciona el grupo', async () => {
+    reset(); R.blocks.addText(); R.blocks.addText();
+    const a = slide().blocks.at(-2), b = slide().blocks.at(-1);
+    R.store.setMulti([a.id, b.id]); R.blocks.groupSelected();
+    assert(a.groupId && a.groupId === b.groupId, 'mismo groupId');
+    R.store.selectWithGroup(a.id); eq(R.store.selectedBlocks().length, 2, 'selecciona el grupo');
+    R.blocks.ungroupSelected(); assert(!a.groupId && !b.groupId, 'desagrupado');
+  });
+
   await test('avance automático por diapositiva en el export', async () => {
     reset(); slide().autoSlide = 5000;
     assert(/<section[^>]*data-autoslide="5000"/.test(R.io.buildHTML()), 'sin data-autoslide');

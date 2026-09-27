@@ -134,6 +134,16 @@ export function alignSelected(where) {
   });
 }
 
+// Group the selection so they select and move together; ungroup releases them.
+export function groupSelected() {
+  const bs = selectedBlocks(); if (bs.length < 2) return;
+  commit(() => { const g = uid(); for (const b of bs) b.groupId = g; });
+}
+export function ungroupSelected() {
+  const bs = selectedBlocks(); if (!bs.length) return;
+  commit(() => { for (const b of bs) delete b.groupId; });
+}
+
 // Distribute the selected objects evenly (needs 3+): equal gaps between centres.
 export function distributeSelected(axis) {
   const bs = selectedBlocks(); if (bs.length < 3) return;

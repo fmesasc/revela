@@ -45,6 +45,12 @@ export function toggleSelection(id) {
   state.ui.selection = state.ui.multi[state.ui.multi.length - 1] || null;
 }
 export function setMulti(ids) { state.ui.multi = [...ids]; state.ui.selection = ids[ids.length - 1] || null; }
+// Selecting a grouped block selects its whole group.
+export function selectWithGroup(id) {
+  const s = currentSlide(); const b = s && s.blocks.find(x => x.id === id);
+  if (b && b.groupId) setMulti(s.blocks.filter(x => x.groupId === b.groupId).map(x => x.id));
+  else setSelection(id);
+}
 export const clampSlide = () => {
   state.ui.slideIndex = Math.max(0, Math.min(state.ui.slideIndex, state.deck.slides.length - 1));
 };
