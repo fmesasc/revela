@@ -39,8 +39,9 @@ function forBlock(b) {
     null,
     ['Centrar horizontalmente', () => blocks.alignSelected('hcenter')],
     ['Centrar verticalmente', () => blocks.alignSelected('vcenter')],
-    ['Traer al frente', () => blocks.bringForward()],
-    ['Enviar al fondo', () => blocks.sendBackward()],
+    null,
+    ['Traer al frente', () => blocks.bringToFront()],
+    ['Enviar al fondo', () => blocks.sendToBack()],
   ];
   if (b.type === 'image') {
     items.push(null,

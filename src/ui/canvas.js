@@ -165,12 +165,17 @@ function startResize(ev, b, el, corner) {
   ev.stopPropagation();
   const f = factor(), sx = ev.clientX, sy = ev.clientY, o = { x: b.x, y: b.y, w: b.w, h: b.h };
   el.setPointerCapture?.(ev.pointerId);
+  const ratio = o.w / o.h;
   const onMove = e => {
     const dx = (e.clientX - sx) * f, dy = (e.clientY - sy) * f;
     if (corner.includes('e')) b.w = Math.max(30, Math.round(o.w + dx));
     if (corner.includes('s')) b.h = Math.max(20, Math.round(o.h + dy));
     if (corner.includes('w')) { b.w = Math.max(30, Math.round(o.w - dx)); b.x = Math.round(o.x + dx); }
     if (corner.includes('n')) { b.h = Math.max(20, Math.round(o.h - dy)); b.y = Math.round(o.y + dy); }
+    if (e.shiftKey) {                       // hold Shift to keep the aspect ratio
+      b.h = Math.round(b.w / ratio);
+      if (corner.includes('n')) b.y = Math.round(o.y + o.h - b.h);
+    }
     el.style.cssText = `left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px`;
   };
   const onUp = () => {

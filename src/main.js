@@ -5,7 +5,7 @@ import { initCanvas, renderCanvas, nudge } from './ui/canvas.js';
 import { initPanel, renderPanel } from './ui/panel.js';
 import { initRibbon, renderRibbon } from './ui/ribbon.js';
 import { initContextMenu } from './ui/contextmenu.js';
-import { deleteBlock } from './features/blocks.js';
+import { deleteBlock, duplicateBlock } from './features/blocks.js';
 
 function render() {
   renderRibbon();
@@ -21,6 +21,7 @@ function keyboard(e) {
   const meta = e.ctrlKey || e.metaKey;
   if (meta && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
   if (meta && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
+  if (meta && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateBlock(); return; }
   if (e.key === 'Delete' && state.ui.selection) { e.preventDefault(); deleteBlock(); return; }
   if (selectedBlock()) {
     const step = e.shiftKey ? 10 : 1;

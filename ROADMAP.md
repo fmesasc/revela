@@ -24,10 +24,10 @@ the origin of every requirement is traceable.
 - ✅ Right-click context menu `PP·GS·OO`
 - ⬜ Multi-select (marquee + shift-click) `PP·GS·OO`
 - ⬜ Group / ungroup objects `PP·GS·OO`
-- ⬜ Align & distribute across objects (to slide / to selection) `PP·GS·OO`
-- ⬜ Order: bring to front / send to back / forward / backward `PP·GS·OO` *(forward/backward done)*
+- 🚧 Align & distribute — align to slide done; distribute needs multi-select `PP·GS·OO`
+- ✅ Order: bring to front / send to back / forward / backward `PP·GS·OO`
 - ⬜ Rotation handle and flip `PP·GS·OO`
-- ⬜ Lock objects, lock aspect ratio `PP·OO`
+- 🚧 Lock aspect ratio (Shift while resizing); object lock planned `PP·OO`
 - ⬜ Grid, rulers and guides you can place `PP·GS·OO`
 - ⬜ Format painter / copy style `PP·GS·OO`
 - ⬜ Find & replace `PP·GS·OO`

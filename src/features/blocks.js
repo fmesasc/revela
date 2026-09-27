@@ -47,6 +47,22 @@ export function sendBackward() {
     if (i > 0) { arr.splice(i, 1); arr.splice(i - 1, 0, b); }
   });
 }
+export function bringToFront() {
+  const b = selectedBlock(); if (!b) return;
+  commit(() => { const arr = currentSlide().blocks; arr.splice(arr.indexOf(b), 1); arr.push(b); });
+}
+export function sendToBack() {
+  const b = selectedBlock(); if (!b) return;
+  commit(() => { const arr = currentSlide().blocks; arr.splice(arr.indexOf(b), 1); arr.unshift(b); });
+}
+
+export function duplicateBlock() {
+  const b = selectedBlock(); if (!b) return;
+  commit(() => {
+    const copy = structuredClone(b); copy.id = uid(); copy.x += 24; copy.y += 24;
+    currentSlide().blocks.push(copy); state.ui.selection = copy.id;
+  });
+}
 
 export function alignSelected(where) {
   const b = selectedBlock(); if (!b) return;
