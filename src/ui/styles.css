@@ -124,15 +124,17 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
   background:#fff;border-radius:50%;padding:0 1px}
 .block.processing::after{content:"Procesando…";position:absolute;inset:0;display:grid;place-items:center;
   background:#000a;color:#fff;font-size:14px;z-index:8}
-.handle-del{position:absolute;top:-11px;right:-11px;width:20px;height:20px;border-radius:50%;
-  background:var(--danger);color:#fff;border:none;cursor:pointer;display:none;font-size:12px;line-height:1;z-index:6}
+.handle-del{position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:22px;height:22px;
+  border-radius:50%;background:var(--danger);color:#fff;border:2px solid #fff;box-shadow:0 1px 4px #0004;
+  cursor:pointer;display:none;font-size:13px;line-height:1;z-index:7;place-items:center}
+.block.selected .handle-del{display:grid}
 .handle-size{position:absolute;width:11px;height:11px;background:#fff;border:1.5px solid var(--accent);
   border-radius:2px;display:none;z-index:6}
 .handle-size.nw{left:-6px;top:-6px;cursor:nwse-resize}
 .handle-size.ne{right:-6px;top:-6px;cursor:nesw-resize}
 .handle-size.sw{left:-6px;bottom:-6px;cursor:nesw-resize}
 .handle-size.se{right:-6px;bottom:-6px;cursor:nwse-resize}
-.block.selected .handle-del,.block.selected .handle-size{display:block}
+.block.selected .handle-size{display:block}
 .guide{position:absolute;z-index:7;pointer-events:none;background:#ff3b8b}
 .guide.v{top:0;bottom:0;width:1px}.guide.h{left:0;right:0;height:1px}
 
