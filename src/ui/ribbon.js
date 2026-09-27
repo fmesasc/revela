@@ -29,6 +29,7 @@ const ACTIONS = {
     try { replaceDeck(JSON.parse(txt)); } catch { alert('Proyecto no válido.'); } }, 'text'),
   'save': io.saveProject,
   'export': io.exportHTML,
+  'export-pdf': io.exportPDF,
   'present': io.present,
   'import-pptx': () => readFile('.pptx', async file => {
     try { replaceDeck(await importPPTX(file)); }

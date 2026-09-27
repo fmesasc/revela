@@ -128,7 +128,7 @@ the origin of every requirement is traceable.
 - ✅ Import from PowerPoint `.pptx` (text + images) `OO·GS`
 - ⬜ High-fidelity `.pptx` import (fonts, colours, shapes, layouts) `OO·GS`
 - ⬜ Export to `.pptx` `GS·OO`
-- ⬜ Export to PDF `PP·GS·OO`
+- ✅ Export to PDF (print one slide per page) `PP·GS·OO`
 - ⬜ Export slides as images (PNG/JPG/SVG) `PP·GS·OO`
 - ⬜ Export to video (MP4/GIF) `PP·GS`
 - ⬜ Publish to the web / shareable link `GS`

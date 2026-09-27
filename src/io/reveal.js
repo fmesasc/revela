@@ -158,6 +158,36 @@ function download(blob, name) {
 export function exportHTML() {
   download(new Blob([buildHTML()], { type: 'text/html' }), slug(state.deck.name) + '.html');
 }
+
+// A print‑oriented document: one slide per page, sized to the deck. The user
+// prints it and chooses "Save as PDF" (works in every browser, no plugins).
+export function buildPrintHTML(deck = state.deck) {
+  const { w, h } = deck.size;
+  const pages = deck.slides.filter(s => !s.hidden).map(s =>
+    `<div class="page" style="background:${s.background}">${s.blocks.map(blockHTML).join('')}</div>`).join('\n');
+  return `<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>${esc(deck.name || 'Presentación')}</title>
+${googleFontLinks(deck)}
+<script type="module" src="${MODEL_VIEWER}"></script>
+<style>
+ @page{size:${w}px ${h}px;margin:0}
+ *{box-sizing:border-box} html,body{margin:0}
+ .page{position:relative;width:${w}px;height:${h}px;overflow:hidden;color:#fff;page-break-after:always}
+ .page:last-child{page-break-after:auto}
+ .page>*{overflow-wrap:anywhere}
+ model-viewer,img,video,iframe{width:100%;height:100%}
+</style></head>
+<body onload="setTimeout(function(){window.print();},400)">
+${pages}
+</body></html>`;
+}
+
+export function exportPDF() {
+  const win = window.open('', '_blank');
+  if (!win) { alert('Permite las ventanas emergentes para exportar a PDF.'); return; }
+  win.document.write(buildPrintHTML());
+  win.document.close();
+}
 export function saveProject() {
   download(new Blob([JSON.stringify(state.deck, null, 2)], { type: 'application/json' }),
     slug(state.deck.name) + '.revela.json');

@@ -180,6 +180,13 @@ export async function run(frame) {
     eq(b.x, 200, 'centro intermedio equidistante');
   });
 
+  await test('exportar a PDF: una página por diapositiva visible', async () => {
+    reset(); R.slides.addSlide(); R.slides.addSlide(); R.slides.toggleSlideHidden(0);
+    const html = R.io.buildPrintHTML();
+    eq((html.match(/class="page"/g) || []).length, 2, 'páginas = diapositivas visibles');
+    assert(/@page\{size:1280px 720px/.test(html), 'tamaño de página');
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');
