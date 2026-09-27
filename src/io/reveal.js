@@ -41,9 +41,19 @@ function slideHTML(s) {
     + `<div class="stage">${inner}</div></section>`;
 }
 
+// Where the slide number sits, as CSS for reveal's .slide-number element.
+const SLIDENUM_POS = {
+  br: 'right:8px;bottom:8px;top:auto;left:auto',
+  bl: 'left:8px;bottom:8px;top:auto;right:auto',
+  tr: 'right:8px;top:8px;bottom:auto;left:auto',
+  tl: 'left:8px;top:8px;bottom:auto;right:auto',
+};
+
 export function buildHTML(deck = state.deck) {
   const { w, h } = deck.size;
   const slides = deck.slides.filter(s => !s.hidden).map(slideHTML).join('\n');
+  const sn = deck.slideNumber || { show: false };
+  const snPos = SLIDENUM_POS[sn.position] || SLIDENUM_POS.br;
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -55,6 +65,7 @@ export function buildHTML(deck = state.deck) {
  .reveal .stage{position:relative;width:${w}px;height:${h}px;margin:0 auto}
  .reveal .stage>*{overflow-wrap:anywhere}
  .reveal section{height:100%}
+ .reveal .slide-number{${snPos}}
 </style></head><body>
 <div class="reveal"><div class="slides">
 ${slides}
@@ -62,7 +73,7 @@ ${slides}
 <script src="${REVEAL}/dist/reveal.js"></script>
 <script>
  Reveal.initialize({ width:${w}, height:${h}, margin:0.03, controls:true,
-   progress:true, hash:true, slideNumber:'c/t',
+   progress:true, hash:true, slideNumber:${sn.show ? `'${sn.format || 'c'}'` : 'false'},
    transition:'${deck.defaultTransition}', transitionSpeed:'${deck.transitionSpeed}' });
 </script></body></html>`;
 }

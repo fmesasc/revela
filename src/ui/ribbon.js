@@ -48,6 +48,7 @@ const ACTIONS = {
   'template-save': () => { const n = prompt('Nombre de la plantilla'); if (n) templates.saveCurrentAsTemplate(n); },
   'toggle-guides': () => commit(() => (state.ui.showGuides = !state.ui.showGuides), { history: false }),
   'toggle-ruler': () => commit(() => (state.ui.showRuler = !state.ui.showRuler), { history: false }),
+  'toggle-slidenum': () => commit(() => (state.deck.slideNumber.show = !state.deck.slideNumber.show)),
 };
 
 export function initRibbon() {
@@ -93,6 +94,8 @@ export function initRibbon() {
   bindChange('[data-deck-transition]', v => trans.setDeckTransition(v));
   bindChange('[data-font]', v => format.fontFamily(v));
   bindChange('[data-size]', v => format.setFontSize(parseInt(v, 10) || 40));
+  bindChange('[data-slidenum-pos]', v => commit(() => (state.deck.slideNumber.position = v)));
+  bindChange('[data-slidenum-fmt]', v => commit(() => (state.deck.slideNumber.format = v)));
 
   // Reflect the active character formatting on the toolbar as the caret moves.
   document.addEventListener('selectionchange', updateFormatState);
@@ -154,6 +157,10 @@ export function renderRibbon() {
   document.body.classList.toggle('show-ruler', !!state.ui.showRuler);
   document.querySelector('[data-action="toggle-guides"]')?.classList.toggle('on', !!state.ui.showGuides);
   document.querySelector('[data-action="toggle-ruler"]')?.classList.toggle('on', !!state.ui.showRuler);
+  const sn = state.deck.slideNumber || {};
+  document.querySelector('[data-action="toggle-slidenum"]')?.classList.toggle('on', !!sn.show);
+  syncValue('[data-slidenum-pos]', sn.position || 'br');
+  syncValue('[data-slidenum-fmt]', sn.format || 'c');
 
   // Reflect the selected text box in the font and paragraph controls.
   const b = selectedBlock();
