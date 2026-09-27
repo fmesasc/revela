@@ -9,3 +9,6 @@ export/
 
 # archivos de prueba locales (no se suben)
 tmp/
+
+# Test artefacts
+/tmp/

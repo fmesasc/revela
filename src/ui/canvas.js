@@ -76,6 +76,8 @@ function reconcile(b) {
     const v = el.querySelector('video'); if (v && v.getAttribute('src') !== b.src) v.src = b.src;
   } else if (b.type === 'embed') {
     const f = el.querySelector('iframe'); if (f && f.getAttribute('src') !== b.src) f.src = b.src;
+    const u = el.querySelector('.embed-url'); if (u) u.textContent = hostOf(b.src);
+    const o = el.querySelector('.embed-open'); if (o && o.getAttribute('href') !== b.src) o.href = b.src;
   } else if (b.type === 'shape') {
     const d = el.querySelector('.shape'); const sig = shapeSig(b);
     if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = shapeSVG(b); }
@@ -139,16 +141,33 @@ function content(b) {
   }
   if (b.type === 'image') { const i = document.createElement('img'); i.src = b.src; i.draggable = false; return i; }
   if (b.type === 'video') { const v = document.createElement('video'); v.src = b.src; v.controls = true; return v; }
-  if (b.type === 'embed') {
-    const f = document.createElement('iframe');
-    f.src = b.src || '';
-    f.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-forms allow-presentation');
-    f.setAttribute('referrerpolicy', 'no-referrer');
-    f.setAttribute('loading', 'lazy');
-    f.style.pointerEvents = 'none'; // dragging the body moves the block; double‑click to interact
-    return f;
-  }
+  if (b.type === 'embed') return embedContent(b);
   return document.createElement('div');
+}
+
+const hostOf = u => { try { return new URL(u).host || u; } catch { return u; } };
+
+// A web embed: a small bar (site + open‑in‑new‑tab) over the iframe. The bar is
+// also the fallback when a site refuses to be embedded (X‑Frame‑Options / CSP) —
+// Google, most banks and many others always do, and nothing client‑side can
+// override that, so at least the link stays reachable.
+function embedContent(b) {
+  const wrap = document.createElement('div'); wrap.className = 'embed';
+  const bar = document.createElement('div'); bar.className = 'embed-bar';
+  const url = document.createElement('span'); url.className = 'embed-url'; url.textContent = hostOf(b.src);
+  const open = document.createElement('a'); open.className = 'embed-open';
+  open.href = b.src; open.target = '_blank'; open.rel = 'noopener';
+  open.textContent = 'Abrir ↗'; open.title = 'Abrir en una pestaña nueva';
+  open.addEventListener('pointerdown', e => e.stopPropagation());
+  bar.append(url, open);
+  const f = document.createElement('iframe');
+  f.src = b.src || '';
+  f.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-forms allow-presentation');
+  f.setAttribute('referrerpolicy', 'no-referrer');
+  f.setAttribute('loading', 'lazy');
+  f.style.pointerEvents = 'none'; // dragging the body moves the block; double‑click to interact
+  wrap.append(bar, f);
+  return wrap;
 }
 
 // Double‑click enters content mode: text becomes editable, a model can be

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Revela · tests</title>
+  <style>
+    body{font-family:system-ui,sans-serif;margin:0;display:flex;height:100vh}
+    #app{flex:1;border:0}
+    #panel{width:420px;overflow:auto;padding:14px 16px;border-left:1px solid #ddd;font-size:13px}
+    h1{font-size:15px}
+    .row{padding:5px 8px;border-radius:6px;margin:2px 0}
+    .ok{color:#1c7a34} .ko{background:#fdeaea;color:#b02020}
+    .err{color:#b02020;font-family:monospace;font-size:11px;white-space:pre-wrap}
+    #summary{font-weight:700;font-size:16px;margin:8px 0}
+  </style>
+</head>
+<body>
+  <iframe id="app" src="../index.html?test"></iframe>
+  <div id="panel"><h1>Revela · regresión</h1><div id="summary">Ejecutando…</div><div id="list"></div></div>
+
+  <script type="module">
+    import { run } from './suite.js';
+    const frame = document.getElementById('app');
+    frame.addEventListener('load', async () => {
+      // Give the app a moment to finish booting and exposing __revela.
+      for (let i = 0; i < 40 && !frame.contentWindow.__revela; i++) await new Promise(r => setTimeout(r, 50));
+      const list = document.getElementById('list');
+      const summary = document.getElementById('summary');
+      try {
+        const { pass, total, results } = await run(frame);
+        for (const r of results) {
+          const d = document.createElement('div');
+          d.className = 'row ' + (r.ok ? 'ok' : 'ko');
+          d.textContent = (r.ok ? '✓ ' : '✗ ') + r.name;
+          if (!r.ok) { const e = document.createElement('div'); e.className = 'err'; e.textContent = r.err; d.appendChild(e); }
+          list.appendChild(d);
+        }
+        const failed = total - pass;
+        summary.textContent = failed ? `${failed} fallo(s) · ${pass}/${total}` : `Todo correcto · ${pass}/${total}`;
+        document.title = failed ? `REVELATEST FAIL ${pass}/${total}` : `REVELATEST PASS ${pass}/${total}`;
+      } catch (e) {
+        summary.textContent = 'Error del runner: ' + (e.message || e);
+        document.title = 'REVELATEST FAIL runner: ' + (e.message || e);
+      }
+    });
+  </script>
+</body>
+</html>

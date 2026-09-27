@@ -145,6 +145,13 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 .block model-viewer{width:100%;height:100%}
 .block img,.block video{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none}
 .block iframe{width:100%;height:100%;border:0;display:block;background:#fff}
+.block .embed{width:100%;height:100%;display:flex;flex-direction:column;background:#fff}
+.embed-bar{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:3px 8px;font-size:11px;
+  color:var(--txt2);background:#f2f3f5;border-bottom:1px solid var(--line2)}
+.embed-url{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.embed-open{color:var(--accent);text-decoration:none;pointer-events:auto;white-space:nowrap}
+.embed-open:hover{text-decoration:underline}
+.block .embed iframe{flex:1}
 .block .shape{width:100%;height:100%}
 .pv-block>svg{width:100%;height:100%}
 .block.selected video{pointer-events:auto}

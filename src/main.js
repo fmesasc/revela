@@ -6,6 +6,14 @@ import { initPanel, renderPanel } from './ui/panel.js';
 import { initRibbon, renderRibbon } from './ui/ribbon.js';
 import { initContextMenu } from './ui/contextmenu.js';
 import { deleteBlock, duplicateBlock } from './features/blocks.js';
+// Namespaces exposed to the test harness (see tests/).
+import * as store from './core/store.js';
+import * as model from './core/model.js';
+import * as blocks from './features/blocks.js';
+import * as format from './features/format.js';
+import * as slides from './features/slides.js';
+import * as fonts from './features/fonts.js';
+import * as io from './io/reveal.js';
 
 function render() {
   renderRibbon();
@@ -41,6 +49,11 @@ initContextMenu();
 document.addEventListener('keydown', keyboard);
 subscribe(render);
 render();
+
+// Test hook: exposes the module graph so the headless suite (tests/) can drive
+// and inspect the real app. Only active with ?test in the URL.
+if (new URLSearchParams(location.search).has('test'))
+  window.__revela = { state, render, store, model, blocks, format, slides, fonts, io };
 
 
 
