@@ -5,6 +5,7 @@ import { state, commit, currentSlide, selectedBlock } from '../core/store.js';
 import { uid } from '../core/model.js';
 import * as blocks from '../features/blocks.js';
 import { addText } from '../features/blocks.js';
+import * as format from '../features/format.js';
 import { addSlide } from '../features/slides.js';
 
 let menuEl, clipboard = null;
@@ -31,25 +32,58 @@ export function initContextMenu() {
 }
 
 function forBlock(b) {
+  // Common object actions (like PowerPoint's right‑click on any shape).
   const items = [
     ['Cortar', () => { clipboard = structuredClone(b); blocks.deleteBlock(b.id); }],
     ['Copiar', () => { clipboard = structuredClone(b); }],
     ['Duplicar', () => duplicate(b)],
     ['Eliminar', () => blocks.deleteBlock(b.id)],
     null,
+  ];
+
+  // Type‑specific actions come first, right where the element is.
+  if (b.type === 'text') {
+    items.push(
+      ['Editar texto', () => editText(b)],
+      ['Alinear texto a la izquierda', () => format.align('left')],
+      ['Centrar texto', () => format.align('center')],
+      ['Alinear texto a la derecha', () => format.align('right')],
+      null);
+  } else if (b.type === 'image') {
+    items.push(
+      ['Ajustar: contener', () => setFit(b, 'contain')],
+      ['Ajustar: rellenar', () => setFit(b, 'cover')],
+      ['Quitar fondo (IA)', () => removeBackground(b)],
+      null);
+  } else if (b.type === 'model') {
+    items.push(
+      [b.autoRotate !== false ? 'Detener giro automático' : 'Girar automáticamente',
+        () => commit(() => (b.autoRotate = !(b.autoRotate !== false)))],
+      null);
+  } else if (b.type === 'video') {
+    items.push(
+      ['Reproducir en el editor', () => document.querySelector(`.block[data-id="${b.id}"] video`)?.play()],
+      null);
+  }
+
+  // Position + arrange, common to every object.
+  items.push(
     ['Centrar horizontalmente', () => blocks.alignSelected('hcenter')],
     ['Centrar verticalmente', () => blocks.alignSelected('vcenter')],
     null,
     ['Traer al frente', () => blocks.bringToFront()],
-    ['Enviar al fondo', () => blocks.sendToBack()],
-  ];
-  if (b.type === 'image') {
-    items.push(null,
-      ['Ajuste: contener', () => setFit(b, 'contain')],
-      ['Ajuste: rellenar', () => setFit(b, 'cover')],
-      ['Quitar fondo (IA)', () => removeBackground(b)]);
-  }
+    ['Adelantar', () => blocks.bringForward()],
+    ['Atrasar', () => blocks.sendBackward()],
+    ['Enviar al fondo', () => blocks.sendToBack()]);
   return items;
+}
+
+function editText(b) {
+  const el = document.querySelector(`.block[data-id="${b.id}"]`); if (!el) return;
+  const rich = el.querySelector('.rich'); if (!rich) return;
+  rich.contentEditable = 'true'; el.classList.add('editing'); rich.focus();
+  const r = document.createRange(); r.selectNodeContents(rich); r.collapse(false);
+  const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
 }
 
 function forCanvas() {

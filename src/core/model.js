@@ -22,6 +22,7 @@ export function emptyDeck() {
   ];
   return {
     version: 3,
+    name: 'Presentación sin título',
     size: { w: 1280, h: 720 },
     theme: 'black',
     defaultTransition: 'slide',
@@ -59,6 +60,7 @@ export function saveDeck(deck) {
 function migrate(deck) {
   if (!deck || typeof deck !== 'object') return null;
   deck.version ??= 3;
+  deck.name ??= 'Presentación sin título';
   deck.size ??= { w: 1280, h: 720 };
   deck.sections ??= [];
   deck.slides ??= [];

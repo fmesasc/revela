@@ -96,6 +96,19 @@ export function initRibbon() {
 
   // Reflect the active character formatting on the toolbar as the caret moves.
   document.addEventListener('selectionchange', updateFormatState);
+
+  // Editable document title.
+  const docName = $('.doc-name');
+  if (docName) {
+    docName.addEventListener('input', () => { state.deck.name = docName.textContent.trim(); });
+    docName.addEventListener('blur', () => {
+      const name = docName.textContent.trim() || 'Presentación sin título';
+      commit(() => { state.deck.name = name; }, { history: false });
+    });
+    docName.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); docName.blur(); }
+    });
+  }
 }
 
 const STATE_CMDS = ['bold', 'italic', 'underline', 'strikeThrough', 'superscript', 'subscript'];
@@ -119,6 +132,9 @@ function bindChange(sel, cb) { const el = $(sel); if (el) el.addEventListener('c
 export function renderRibbon() {
   document.querySelectorAll('[data-tab]').forEach(t => t.classList.toggle('active', t.dataset.tab === state.ui.activeTab));
   document.querySelectorAll('.ribbon-page').forEach(p => p.classList.toggle('active', p.dataset.page === state.ui.activeTab));
+  const docName = $('.doc-name');
+  if (docName && document.activeElement !== docName && docName.textContent !== state.deck.name)
+    docName.textContent = state.deck.name || 'Presentación sin título';
   const slide = currentSlide();
   document.querySelectorAll('[data-slide-transition]').forEach(b =>
     b.classList.toggle('on', (slide.transition || 'inherit') === b.dataset.slideTransition));

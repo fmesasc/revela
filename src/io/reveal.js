@@ -9,6 +9,9 @@ const MODEL_VIEWER = 'https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/di
 const box = b => `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;`
   + `height:${b.h}px;transform:rotate(${b.rotation || 0}deg);`;
 
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const slug = s => (String(s).trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'presentacion');
+
 function animAttrs(b) {
   if (!b.animation) return '';
   const { effect, order } = b.animation;
@@ -44,7 +47,7 @@ export function buildHTML(deck = state.deck) {
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Presentación</title>
+<title>${esc(deck.name || 'Presentación')}</title>
 <link rel="stylesheet" href="${REVEAL}/dist/reveal.css">
 <link rel="stylesheet" href="${REVEAL}/dist/theme/${deck.theme}.css">
 <script type="module" src="${MODEL_VIEWER}"></script>
@@ -79,7 +82,10 @@ function download(blob, name) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-export function exportHTML() { download(new Blob([buildHTML()], { type: 'text/html' }), 'presentacion.html'); }
+export function exportHTML() {
+  download(new Blob([buildHTML()], { type: 'text/html' }), slug(state.deck.name) + '.html');
+}
 export function saveProject() {
-  download(new Blob([JSON.stringify(state.deck, null, 2)], { type: 'application/json' }), 'presentacion.revela.json');
+  download(new Blob([JSON.stringify(state.deck, null, 2)], { type: 'application/json' }),
+    slug(state.deck.name) + '.revela.json');
 }

@@ -16,10 +16,15 @@
   <header id="ribbon">
     <div class="titlebar">
       <span class="brand">Revela</span>
-      <span class="doc-name">Presentación sin título</span>
+      <div class="qat" title="Acceso rápido">
+        <button data-action="save" class="mini" title="Guardar proyecto"><i class="ms">save</i></button>
+        <button data-action="undo" class="mini" title="Deshacer (Ctrl+Z)"><i class="ms">undo</i></button>
+        <button data-action="redo" class="mini" title="Rehacer (Ctrl+Y)"><i class="ms">redo</i></button>
+      </div>
       <span class="grow"></span>
-      <button data-action="undo" class="mini" title="Deshacer (Ctrl+Z)"><i class="ms">undo</i></button>
-      <button data-action="redo" class="mini" title="Rehacer (Ctrl+Y)"><i class="ms">redo</i></button>
+      <span class="doc-name" contenteditable="true" spellcheck="false"
+        title="Haz clic para renombrar la presentación"></span>
+      <span class="grow"></span>
     </div>
 
     <nav class="tabs">
