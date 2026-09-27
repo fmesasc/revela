@@ -33,8 +33,8 @@ const ACTIONS = {
     catch (e) { alert('No se pudo importar el PowerPoint: ' + e.message); } }, 'file'),
   'undo': undo, 'redo': redo,
   'slide-add': slides.addSlide, 'slide-duplicate': slides.duplicateSlide,
-  'slide-delete': () => slides.deleteSlide(), 'section-add': () => {
-    const name = prompt('Nombre de la sección', 'Sección'); if (name) slides.addSection(name); },
+  'slide-delete': () => slides.deleteSlide(),
+  'section-add': () => slides.addSection(),   // creates + renames inline (no prompt)
   'insert-text': blocks.addText,
   'insert-image': () => readFile('image/*', blocks.addImage),
   'insert-model': () => readFile('.glb,.gltf', blocks.addModel),

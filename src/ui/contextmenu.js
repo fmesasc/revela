@@ -6,7 +6,8 @@ import { uid } from '../core/model.js';
 import * as blocks from '../features/blocks.js';
 import { addText } from '../features/blocks.js';
 import * as format from '../features/format.js';
-import { addSlide } from '../features/slides.js';
+import { addSlide, duplicateSlide, deleteSlide, goToSlide,
+  addSectionAt, removeSection, setSlideSection } from '../features/slides.js';
 
 let menuEl, clipboard = null;
 
@@ -29,6 +30,35 @@ export function initContextMenu() {
       open(e.clientX, e.clientY, forCanvas());
     }
   });
+
+  // Right‑click in the slide navigator: sections and slides, integrated.
+  document.getElementById('navigator').addEventListener('contextmenu', e => {
+    e.preventDefault();
+    const head = e.target.closest('.section-head');
+    if (head) { open(e.clientX, e.clientY, forSection(head.dataset.sectionId)); return; }
+    const th = e.target.closest('.thumb');
+    if (th) { const i = +th.dataset.index; goToSlide(i); open(e.clientX, e.clientY, forThumb(i)); return; }
+    open(e.clientX, e.clientY, [['Nueva diapositiva', () => addSlide()]]);
+  });
+}
+
+function forThumb(i) {
+  const slide = state.deck.slides[i];
+  return [
+    ['Nueva diapositiva', () => addSlide()],
+    ['Duplicar diapositiva', () => duplicateSlide()],
+    ['Eliminar diapositiva', () => deleteSlide(i)],
+    null,
+    ['Crear sección aquí', () => addSectionAt(i)],
+    slide.sectionId ? ['Quitar de la sección', () => setSlideSection(slide.id, null)] : null,
+  ];
+}
+
+function forSection(id) {
+  return [
+    ['Renombrar sección', () => commit(() => (state.ui.editingSection = id), { history: false })],
+    ['Eliminar sección', () => removeSection(id)],
+  ];
 }
 
 function forBlock(b) {

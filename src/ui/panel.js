@@ -2,7 +2,7 @@
 // and quick delete.
 
 import { state, currentSlide } from '../core/store.js';
-import { goToSlide, moveSlide, deleteSlide } from '../features/slides.js';
+import { goToSlide, moveSlide, deleteSlide, renameSection } from '../features/slides.js';
 import { blockPreview } from './preview.js';
 
 let panel;
@@ -16,15 +16,29 @@ export function renderPanel() {
   state.deck.slides.forEach((slide, index) => {
     if (slide.sectionId && slide.sectionId !== lastSection) {
       const sec = state.deck.sections.find(s => s.id === slide.sectionId);
-      if (sec) {
-        const h = document.createElement('div');
-        h.className = 'section-head'; h.textContent = sec.name;
-        panel.appendChild(h);
-      }
+      if (sec) panel.appendChild(sectionHead(sec));
     }
     lastSection = slide.sectionId;
     panel.appendChild(thumb(slide, index));
   });
+}
+
+// A section title, editable in place (no browser prompt). Right‑clicking it
+// opens the section menu (handled by the context‑menu module).
+function sectionHead(sec) {
+  const h = document.createElement('div');
+  h.className = 'section-head'; h.dataset.sectionId = sec.id;
+  h.textContent = sec.name;
+  h.contentEditable = 'true'; h.spellcheck = false;
+  h.title = 'Clic para renombrar la sección · clic derecho para más opciones';
+  h.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); h.blur(); } });
+  h.addEventListener('blur', () => renameSection(sec.id, h.textContent.trim()));
+  if (state.ui.editingSection === sec.id) requestAnimationFrame(() => {
+    h.focus();
+    const r = document.createRange(); r.selectNodeContents(h);
+    const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+  });
+  return h;
 }
 
 function thumb(slide, index) {

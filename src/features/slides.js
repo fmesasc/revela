@@ -48,17 +48,40 @@ export function goToSlide(index) {
 }
 
 // ---- Sections -------------------------------------------------------------
-export function addSection(name = 'Sección') {
+// Start a section at `index`: the slide there and the contiguous run that
+// currently shares its section join the new one (matching PowerPoint, where a
+// section spans until the next section begins). Returns the new section id and
+// flags it for inline renaming.
+export function addSectionAt(index = state.ui.slideIndex, name = 'Sección sin título') {
+  const id = uid();
   commit(() => {
-    const id = uid();
     state.deck.sections.push({ id, name });
-    // The current slide (and the ones after it until the next section) join it.
-    currentSlide().sectionId = id;
+    const slides = state.deck.slides;
+    const from = slides[index].sectionId;
+    for (let i = index; i < slides.length; i++) {
+      if (i > index && slides[i].sectionId !== from) break;
+      slides[i].sectionId = id;
+    }
+    state.ui.editingSection = id;      // the panel focuses its title for renaming
+  });
+  return id;
+}
+
+export function addSection(name = 'Sección') { return addSectionAt(state.ui.slideIndex, name); }
+
+export function renameSection(id, name) {
+  commit(() => {
+    const sec = state.deck.sections.find(s => s.id === id);
+    if (sec) sec.name = name || 'Sección sin título';
+    state.ui.editingSection = null;
   });
 }
 
-export function renameSection(id, name) {
-  commit(() => { const sec = state.deck.sections.find(s => s.id === id); if (sec) sec.name = name; });
+export function removeSection(id) {
+  commit(() => {
+    state.deck.sections = state.deck.sections.filter(s => s.id !== id);
+    for (const s of state.deck.slides) if (s.sectionId === id) s.sectionId = null;
+  });
 }
 
 export function setSlideSection(slideId, sectionId) {
