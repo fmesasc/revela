@@ -11,6 +11,7 @@ import * as io from '../io/reveal.js';
 import { importPPTX } from '../io/pptx.js';
 import { FONTS, ensureDeckFonts } from '../features/fonts.js';
 import * as remote from '../features/remote.js';
+import * as search from '../features/search.js';
 
 const $ = s => document.querySelector(s);
 const readFile = (accept, cb, as = 'DataURL') => {
@@ -62,6 +63,7 @@ const ACTIONS = {
   'toggle-slidenum': () => commit(() => (state.deck.slideNumber.show = !state.deck.slideNumber.show)),
   'toggle-notes': () => commit(() => (state.ui.showNotes = !state.ui.showNotes), { history: false }),
   'connect-mobile': () => remote.openHostPanel(),
+  'find-replace': () => search.openFindPanel(),
 };
 
 // Fill the font picker from the catalogue (each option shown in its own font

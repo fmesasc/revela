@@ -180,6 +180,14 @@ export async function run(frame) {
     eq(b.x, 200, 'centro intermedio equidistante');
   });
 
+  await test('buscar y reemplazar respeta el formato (nodos de texto)', async () => {
+    reset(); const b = newText();
+    b.html = 'Hola <b>mundo</b> y mundo'; R.render();
+    eq(R.search.countMatches('mundo', true), 2, 'cuenta coincidencias');
+    const n = R.search.replaceAll('mundo', 'planeta', true);
+    eq(n, 2, 'reemplazos'); eq(b.html, 'Hola <b>planeta</b> y planeta', 'conserva el <b>');
+  });
+
   await test('exportar a PDF: una página por diapositiva visible', async () => {
     reset(); R.slides.addSlide(); R.slides.addSlide(); R.slides.toggleSlideHidden(0);
     const html = R.io.buildPrintHTML();

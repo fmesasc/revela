@@ -6,6 +6,7 @@ import { initPanel, renderPanel } from './ui/panel.js';
 import { initRibbon, renderRibbon } from './ui/ribbon.js';
 import { initContextMenu } from './ui/contextmenu.js';
 import { deleteSelected, duplicateSelected, groupSelected, ungroupSelected } from './features/blocks.js';
+import { openFindPanel } from './features/search.js';
 // Namespaces exposed to the test harness (see tests/).
 import * as store from './core/store.js';
 import * as model from './core/model.js';
@@ -14,6 +15,7 @@ import * as format from './features/format.js';
 import * as slides from './features/slides.js';
 import * as fonts from './features/fonts.js';
 import * as remote from './features/remote.js';
+import * as search from './features/search.js';
 import * as io from './io/reveal.js';
 
 function render() {
@@ -28,6 +30,8 @@ function keyboard(e) {
   const editing = document.activeElement?.isContentEditable;
   // Esc leaves text edit mode (the block stays selected and can be moved).
   if (e.key === 'Escape' && editing) { e.preventDefault(); document.activeElement.blur(); return; }
+  // Find & replace works anywhere, including while editing text.
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') { e.preventDefault(); openFindPanel(); return; }
   if (editing) return;
   const meta = e.ctrlKey || e.metaKey;
   if (meta && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
@@ -55,7 +59,7 @@ render();
 // Test hook: exposes the module graph so the headless suite (tests/) can drive
 // and inspect the real app. Only active with ?test in the URL.
 if (new URLSearchParams(location.search).has('test'))
-  window.__revela = { state, render, store, model, blocks, format, slides, fonts, remote, io };
+  window.__revela = { state, render, store, model, blocks, format, slides, fonts, remote, search, io };
 
 
 

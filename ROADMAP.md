@@ -30,7 +30,7 @@ the origin of every requirement is traceable.
 - 🚧 Lock aspect ratio (Shift while resizing); object lock planned `PP·OO`
 - ⬜ Grid, rulers and guides you can place `PP·GS·OO`
 - ⬜ Format painter / copy style `PP·GS·OO`
-- ⬜ Find & replace `PP·GS·OO`
+- ✅ Find & replace `PP·GS·OO`
 - ⬜ Zoom controls, fit to width / slide `PP·GS·OO`
 - ⬜ Paste special / paste without formatting `PP·GS·OO`
 
