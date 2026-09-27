@@ -104,8 +104,9 @@ the origin of every requirement is traceable.
 - ⬜ Auto-advance timing per slide `PP·GS·OO`
 
 ## 6. Presenting
-- ⬜ Presenter view (notes, next slide, timer) `PP·GS·OO`
-- ⬜ Laser pointer / pen / highlighter during show `PP·GS·OO`
+- 🚧 Presenter view (notes, next slide, timer) — reveal presenter view (S) + phone companion done; timer planned `PP·GS·OO`
+- 🚧 Laser pointer / pen / highlighter during show — laser from the phone remote done; pen/highlighter planned `PP·GS·OO`
+- ✅ Phone companion remote (pair by code, notes, navigate, laser, blackout) `—`
 - ⬜ Rehearse timings / speaker coach `PP`
 - ⬜ Record slideshow with narration and export to video `PP`
 - ⬜ Audience Q&A `GS`

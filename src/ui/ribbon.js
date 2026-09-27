@@ -10,6 +10,7 @@ import * as templates from '../features/templates.js';
 import * as io from '../io/reveal.js';
 import { importPPTX } from '../io/pptx.js';
 import { FONTS, ensureDeckFonts } from '../features/fonts.js';
+import * as remote from '../features/remote.js';
 
 const $ = s => document.querySelector(s);
 const readFile = (accept, cb, as = 'DataURL') => {
@@ -57,6 +58,7 @@ const ACTIONS = {
   'toggle-ruler': () => commit(() => (state.ui.showRuler = !state.ui.showRuler), { history: false }),
   'toggle-slidenum': () => commit(() => (state.deck.slideNumber.show = !state.deck.slideNumber.show)),
   'toggle-notes': () => commit(() => (state.ui.showNotes = !state.ui.showNotes), { history: false }),
+  'connect-mobile': () => remote.openHostPanel(),
 };
 
 // Fill the font picker from the catalogue (each option shown in its own font

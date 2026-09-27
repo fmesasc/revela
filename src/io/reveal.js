@@ -96,6 +96,9 @@ ${slides}
 // "Presentar" is a user gesture in this document, requestFullscreen() is allowed
 // here (a freshly opened tab cannot go full screen on its own). The deck loads
 // from a blob URL so reveal.js keeps working history/hash and the speaker view.
+// The presentation currently on screen (for the phone remote), or null.
+export let activePresent = null;
+
 export function present() {
   const url = URL.createObjectURL(new Blob([buildHTML()], { type: 'text/html' }));
 
@@ -111,18 +114,30 @@ export function present() {
   overlay.appendChild(close);
   document.body.appendChild(overlay);
 
+  activePresent = { frame, overlay };
+  const notifySlide = () => window.dispatchEvent(new CustomEvent('revela:present-slide'));
   const end = () => {
     document.removeEventListener('fullscreenchange', onFs);
     document.removeEventListener('keydown', onKey);
     if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
     overlay.remove();
     URL.revokeObjectURL(url);
+    activePresent = null; notifySlide();
   };
   const onFs = () => { if (!document.fullscreenElement) end(); };
   const onKey = e => { if (e.key === 'Escape') end(); };
   close.addEventListener('click', end);
   document.addEventListener('fullscreenchange', onFs);
   document.addEventListener('keydown', onKey);
+
+  // Once reveal.js has initialised inside the frame, relay its slide changes so
+  // the phone remote (if connected) can follow along.
+  let tries = 0;
+  const hook = setInterval(() => {
+    const Rv = frame.contentWindow.Reveal;
+    if (Rv && Rv.isReady?.()) { clearInterval(hook); Rv.on('slidechanged', notifySlide); notifySlide(); }
+    else if (++tries > 60) clearInterval(hook);
+  }, 100);
 
   // Try true OS full screen; if the browser blocks it, the overlay still covers
   // the whole viewport so the presentation fills the window either way.

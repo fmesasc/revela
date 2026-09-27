@@ -155,6 +155,26 @@ export async function run(frame) {
     eq(slide().blocks.length, n0 + 1, 'redo falló');
   });
 
+  // ---- Mobile remote (logic without a live connection) ---------------------
+  await test('mando: el estado enviado refleja diapositiva, total y notas', async () => {
+    reset(); R.slides.addSlide(); slide().notes = 'nota B'; R.state.ui.slideIndex = 1; R.render();
+    const st = R.remote.presentationState();
+    eq(st.kind, 'state', 'tipo'); eq(st.total, 2, 'total'); eq(st.index, 1, 'índice'); eq(st.notes, 'nota B', 'notas');
+  });
+
+  await test('mando: comandos next/prev navegan en el editor', async () => {
+    reset(); R.slides.addSlide(); R.slides.addSlide(); R.state.ui.slideIndex = 0; R.render();
+    R.remote.applyCommand({ type: 'next' }); eq(R.state.ui.slideIndex, 1, 'next');
+    R.remote.applyCommand({ type: 'next' }); eq(R.state.ui.slideIndex, 2, 'next 2');
+    R.remote.applyCommand({ type: 'prev' }); eq(R.state.ui.slideIndex, 1, 'prev');
+    R.remote.applyCommand({ type: 'goto', index: 0 }); eq(R.state.ui.slideIndex, 0, 'goto');
+  });
+
+  await test('mando: el estado omite las diapositivas ocultas', async () => {
+    reset(); R.slides.addSlide(); R.slides.toggleSlideHidden(0); R.render();
+    eq(R.remote.presentationState().total, 1, 'solo cuenta visibles');
+  });
+
   // ---- Report --------------------------------------------------------------
   const pass = results.filter(r => r.ok).length;
   const fail = results.filter(r => !r.ok);

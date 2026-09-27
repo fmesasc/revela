@@ -200,6 +200,21 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
   opacity:.2;transition:opacity .2s}
 #present-close:hover{opacity:1}
 
+/* ---------- Connect-mobile modal ---------- */
+.modal-backdrop{position:fixed;inset:0;z-index:3000;background:#0006;display:grid;place-items:center}
+.modal{background:#fff;border-radius:12px;box-shadow:0 20px 60px #0004;padding:22px 24px;max-width:340px;
+  text-align:center;position:relative}
+.modal h3{margin:0 0 8px;color:var(--accent)}
+.modal .host-help{color:var(--txt2);font-size:12px;margin:0 0 14px}
+.modal .host-url{color:var(--txt)}
+.modal .host-code{font-size:38px;font-weight:800;letter-spacing:10px;color:var(--txt);margin:6px 0 14px}
+.modal .host-qr{display:block;margin:0 auto 12px;border-radius:8px}
+.modal .host-status{font-size:13px;color:var(--txt2)}
+.modal .host-status.on{color:var(--go);font-weight:600}
+.modal .host-link{display:inline-block;margin-top:10px;color:var(--accent);font-size:13px;text-decoration:none}
+.modal .host-link:hover{text-decoration:underline}
+.modal-close{position:absolute;top:8px;right:10px;background:none;border:none;font-size:18px;cursor:pointer;color:var(--txt2)}
+
 /* ---------- Status bar ---------- */
 #statusbar{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:4px 14px;
   background:var(--panel);border-top:1px solid var(--line2);color:var(--txt2);font-size:12px}

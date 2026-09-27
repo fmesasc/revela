@@ -13,6 +13,7 @@ import * as blocks from './features/blocks.js';
 import * as format from './features/format.js';
 import * as slides from './features/slides.js';
 import * as fonts from './features/fonts.js';
+import * as remote from './features/remote.js';
 import * as io from './io/reveal.js';
 
 function render() {
@@ -53,7 +54,7 @@ render();
 // Test hook: exposes the module graph so the headless suite (tests/) can drive
 // and inspect the real app. Only active with ?test in the URL.
 if (new URLSearchParams(location.search).has('test'))
-  window.__revela = { state, render, store, model, blocks, format, slides, fonts, io };
+  window.__revela = { state, render, store, model, blocks, format, slides, fonts, remote, io };
 
 
 
