@@ -113,9 +113,11 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
   background:linear-gradient(#fff2 1px,transparent 1px) 0 0/100% 10%,linear-gradient(90deg,#fff2 1px,transparent 1px) 0 0/10% 100%}
 
 /* ---------- Blocks ---------- */
-.block{position:absolute;border:1px solid transparent;cursor:grab;z-index:1}
-.block.selected{border-color:var(--accent);z-index:3}
-.block.dragging{cursor:grabbing}
+/* Blocks keep their stacking order (DOM order). Selecting or dragging must NOT
+   lift a block above the others — a back object stays at the back while moved. */
+.block{position:absolute;border:1px solid transparent;cursor:grab}
+.block.selected{border-color:var(--accent)}
+.block.dragging{cursor:grabbing;opacity:.75}
 .block.editing{cursor:auto}
 .block .rich{width:100%;height:100%;outline:none;padding:6px;color:#fff;overflow-wrap:anywhere}
 /* A soft, translucent selection so the applied text colour stays visible
