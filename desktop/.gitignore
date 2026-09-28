@@ -1,0 +1,5 @@
+# Generated when building (see .github/workflows/desktop.yml)
+dist/
+src-tauri/target/
+src-tauri/gen/
+src-tauri/icons/

@@ -126,6 +126,24 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     delete W.SpeechRecognition;
   });
 
+  await test('presentar en una videollamada: ventana aparte para compartir en Meet o Teams', async () => {
+    reset(); R.state.deck.name = 'Charla'; const W = frame.contentWindow, real = W.open; let opened = null;
+    W.open = (url, name, feat) => { opened = { url, name, feat }; return { closed: false, focus() {} }; };
+    try {
+      D.querySelector('[data-action="present-call"]').click(); await sleep(10);
+      const m = D.getElementById('call-modal'); assert(m && /Google Meet/.test(m.textContent) && /Teams/.test(m.textContent), 'instrucciones para Meet y Teams');
+      m.querySelector('.call-open').click(); await sleep(10);
+      assert(opened && opened.name === 'revela-present' && /popup/.test(opened.feat), 'abre una ventana aparte');
+      const html = await (await fetch(opened.url)).text();
+      assert(/Reveal\.initialize/.test(html) && /<title>Charla/.test(html), 'con la presentación (y su nombre como título de la ventana)');
+      assert(!D.getElementById('call-modal'), 'el diálogo se cierra');
+      W.open = () => null; D.querySelector('[data-action="present-call"]').click(); await sleep(10);
+      D.querySelector('#call-modal .call-open').click(); await sleep(10);
+      assert(/ventanas emergentes/.test(D.querySelector('.dlg-msg')?.textContent || ''), 'si el navegador la bloquea, lo explica');
+      D.querySelector('.dlg-ok').click(); D.querySelector('#call-modal .modal-close').click();
+    } finally { W.open = real; }
+  });
+
   await test('transición: salida distinta, velocidad por diapositiva y aplicar a todas', async () => {
     reset(); R.slides.addSlide(); R.slides.goToSlide(0);
     R.trans.setSlideTransition('fade');

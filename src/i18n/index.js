@@ -2,7 +2,10 @@
 // translations in LANG order. Strings not in the table fall back to Spanish, so
 // the table can be extended language‑by‑language without breaking anything.
 
-import { ROWS, EXTRA } from './strings.js';
+import { ROWS } from './strings.js';
+
+// Languages kept in files of their own, loaded only when chosen.
+const LAZY = { gl: () => import('./langs/gl.js'), nl: () => import('./langs/nl.js'), eu: () => import('./langs/eu.js'), ar: () => import('./langs/ar.js') };
 
 export const LANGS = [
   { code: 'es', name: 'Español' },
@@ -26,12 +29,16 @@ for (const row of ROWS) {
   ORDER.forEach((code, i) => { if (row[i + 1]) DICT[code][es] = row[i + 1]; });
 }
 
-for (const code in EXTRA) DICT[code] = Object.assign({}, DICT[code], EXTRA[code]);
+async function ensureLang(code) {
+  if (!LAZY[code] || DICT[code]) return;
+  try { DICT[code] = (await LAZY[code]()).default; } catch { DICT[code] = {}; }
+}
 
 const KEY = 'revela.lang';
 let lang = 'es';
 try { lang = localStorage.getItem(KEY) || 'es'; } catch {}
 let fb = LANGS.find(l => l.code === lang)?.fallback || null;
+await ensureLang(lang);                                    // the chosen language, before anything is drawn
 
 export function currentLang() { return lang; }
 // Speech recognition language from the interface language.
@@ -48,7 +55,7 @@ export function applyI18n() {
       el.setAttribute('title', t(el.dataset.i18nt));
     });
   }
-  document.querySelectorAll('#ribbon .tabs button, #ribbon .group>label, #ribbon .row button span, #ribbon select option, #statusbar .hint, #master-banner span, #master-banner button, #master-banner option, #final-banner span, #final-banner button, #donate span')
+  document.querySelectorAll('#ribbon .tabs button, #ribbon .group>label, #ribbon .row button span, #ribbon select option, #statusbar .hint, #master-banner span, #master-banner button, #master-banner option, #final-banner span, #final-banner button, #donate span, #statusbar .legal-link, #drive-conflict span, #drive-conflict button')
     .forEach(el => {
       if (el.dataset.i18n === undefined) el.dataset.i18n = el.innerHTML.trim();
       el.innerHTML = t(el.dataset.i18n);
@@ -58,7 +65,8 @@ export function applyI18n() {
   document.documentElement.dir = LANGS.find(l => l.code === lang)?.rtl ? 'rtl' : 'ltr';
 }
 
-export function setLang(code) {
+export async function setLang(code) {
+  await ensureLang(code);
   lang = code; fb = LANGS.find(l => l.code === lang)?.fallback || null;
   try { localStorage.setItem(KEY, code); } catch {}
   const sel = document.getElementById('lang-select'); if (sel) sel.value = code;

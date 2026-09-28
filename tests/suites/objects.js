@@ -153,14 +153,14 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   });
 
   await test('descripción (caption) bajo la figura y en el export', async () => {
-    reset(); R.i18n.setLang('es'); R.blocks.addImage('data:image/png;base64,AAA'); const b = last(); select(b);
+    reset(); await R.i18n.setLang('es'); R.blocks.addImage('data:image/png;base64,AAA'); const b = last(); select(b);
     R.blocks.setCaption('Un gato'); R.render(); await sleep(20);
     assert(D.querySelector('#stage .caption-ovl'), 'descripción en el lienzo');
     assert(/Figura 1: Un gato/.test(R.io.buildHTML()), 'descripción en el export');
   });
 
   await test('índice: solo tablas', async () => {
-    reset(); R.i18n.setLang('es');
+    reset(); await R.i18n.setLang('es');
     R.blocks.addImage('data:image/png;base64,AAA'); R.blocks.setCaption('Foto');
     R.blocks.addTable(); R.blocks.setCaption('Datos');
     R.blocks.addFigIndex('tables'); const fi = slide().blocks.at(-1); await sleep(20);
@@ -182,7 +182,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   });
 
   await test('índice de figuras lista figuras y tablas', async () => {
-    reset(); R.i18n.setLang('es');
+    reset(); await R.i18n.setLang('es');
     R.blocks.addImage('data:image/png;base64,AAA'); R.blocks.setCaption('Foto');
     R.blocks.addTable(); R.blocks.setCaption('Datos');
     R.blocks.addFigIndex(); await sleep(20);

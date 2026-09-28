@@ -148,6 +148,7 @@ export function initHome() {
   gd.setThumbnailMaker(thumbnail);
   gd.startAutosave();
   gd.onDrive(paintBar);
+  window.addEventListener('revela:lang', paintBar);
   document.getElementById('account-btn')?.addEventListener('click', e => (gd.account() ? accountMenu(e.currentTarget) : signInFlow()));
   document.getElementById('drive-status')?.addEventListener('click', async () => {
     const s = gd.driveStatus();

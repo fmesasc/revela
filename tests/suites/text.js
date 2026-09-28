@@ -184,27 +184,28 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   });
 
   await test('localización: cambiar de idioma traduce la interfaz', async () => {
-    R.i18n.setLang('en');
+    await R.i18n.setLang('en');
     const tab = D.querySelector('#ribbon .tabs button[data-tab="home"]');
     eq(tab.textContent.trim(), 'Home', 'Inicio → Home');
     eq(R.i18n.t('Guardar'), 'Save', 't() traduce');
     eq(R.i18n.t('Datos del gráfico'), 'Chart data', 'cadena de modal traducida');
     eq(R.i18n.t('Buscar y reemplazar'), 'Find and replace', 'panel de búsqueda traducido');
-    R.i18n.setLang('fr');
+    await R.i18n.setLang('fr');
     eq(tab.textContent.trim(), 'Accueil', 'Inicio → Accueil');
-    R.i18n.setLang('nl');
+    await R.i18n.setLang('nl');
     eq(D.querySelector('#ribbon .tabs button[data-tab="file"]').textContent.trim(), 'Bestand', 'Archivo → Bestand');
-    eq(R.i18n.t('Diagramas'), 'Diagrammen', 'NL cubre más etiquetas');
-    R.i18n.setLang('gl');
+    eq(R.i18n.t('Diagramas'), 'Diagrammen', 'NL cubre más etiquetas'); assert(/toegankelijkheid/i.test(R.i18n.t('Comprobar accesibilidad')), 'NL completo');
+    await R.i18n.setLang('gl');
     eq(R.i18n.t('Pie de página'), 'Pé de páxina', 'GL cubre más etiquetas');
-    R.i18n.setLang('eu');
+    await R.i18n.setLang('eu');
     eq(tab.textContent.trim(), 'Hasiera', 'euskera');
-    R.i18n.setLang('ar');
+    await R.i18n.setLang('ar');
     eq(D.documentElement.dir, 'rtl', 'árabe: interfaz de derecha a izquierda');
-    eq(tab.textContent.trim(), 'الشريط الرئيسي', 'árabe traducido');
-    eq(R.i18n.t('Comprobar accesibilidad'), 'Check accessibility', 'lo que falta cae al inglés, no al español');
+    eq(tab.textContent.trim(), 'الصفحة الرئيسية', 'árabe traducido');
+    assert(/[\u0600-\u06FF]/.test(R.i18n.t('Comprobar accesibilidad')), 'el árabe ya está completo');
+    eq(R.i18n.t('Texto que no existe'), 'Texto que no existe', 'lo desconocido se queda como está');
     eq(getComputedStyle(D.getElementById('canvas-wrap')).direction, 'ltr', 'la diapositiva sigue de izquierda a derecha');
-    R.i18n.setLang('es');
+    await R.i18n.setLang('es');
     eq(D.documentElement.dir, 'ltr', 'vuelve a LTR');
     eq(tab.textContent.trim(), 'Inicio', 'vuelve a español');
   });
@@ -218,11 +219,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       for (const m of src.matchAll(/\bt\('((?:[^'\\]|\\.)+)'\)/g)) if (!tbl.includes(`['${m[1]}'`)) missing.push(m[1]);
     }
     eq(missing.length, 0, 'sin traducir: ' + missing.slice(0, 5).join(' | '));
-    R.i18n.setLang('en');
+    await R.i18n.setLang('en');
     eq(R.i18n.t('Compartir'), 'Share'); eq(R.i18n.t('Estilos de texto del patrón'), 'Master text styles');
     eq(D.querySelector('[data-action="save-picture"] span').innerHTML, 'Selection<br>as picture', 'la cinta en inglés');
     eq(D.querySelector('#master-banner .mb-ph option[value="picture"]').textContent, 'Image', 'la barra del patrón en inglés');
-    R.i18n.setLang('de'); eq(R.i18n.t('Nuevo patrón'), 'Neuer Master', 'alemán');
-    R.i18n.setLang('es'); eq(D.querySelector('[data-action="save-picture"] span').innerHTML, 'Selección<br>como imagen', 'vuelve al español');
+    await R.i18n.setLang('de'); eq(R.i18n.t('Nuevo patrón'), 'Neuer Master', 'alemán');
+    await R.i18n.setLang('es'); eq(D.querySelector('[data-action="save-picture"] span').innerHTML, 'Selección<br>como imagen', 'vuelve al español');
   });
 }

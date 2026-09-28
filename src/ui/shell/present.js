@@ -2,7 +2,7 @@ import { state, commit } from '../../core/store.js';
 import { session } from '../../core/session.js';
 import { buildHTML } from '../../io/formats/html.js';
 import { t } from '../../i18n/index.js';
-import { confirmDialog } from '../dialogs/dialog.js';
+import { confirmDialog, alertDialog } from '../dialogs/dialog.js';
 
 // Present inside a full‑screen overlay in this same page. Because the click on
 // "Presentar" is a user gesture in this document, requestFullscreen() is allowed
@@ -83,4 +83,38 @@ function offerRehearsal(times) {
   if (!total) return;
   confirmDialog(t('Tiempo total de la presentación: ') + `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}. `
     + t('¿Guardar los intervalos para que las diapositivas avancen solas?')).then(ok => { if (ok) applyRehearsal(times); });
+}
+
+// Present in a video call (Google Meet, Microsoft Teams, Zoom…): the
+// presentation in a window of its own, to choose as "a window" when sharing,
+// while this tab stays free (notes, the phone remote…).
+export function presentInWindow(deck = state.deck) {
+  const url = URL.createObjectURL(new Blob([buildHTML(deck, { inApp: true })], { type: 'text/html' }));
+  const w = window.open(url, 'revela-present', 'popup,width=1280,height=760');
+  if (!w) { URL.revokeObjectURL(url); return null; }
+  const done = setInterval(() => { if (w.closed) { clearInterval(done); URL.revokeObjectURL(url); } }, 2000);
+  w.focus();
+  return w;
+}
+export function openCallPresent() {
+  document.getElementById('call-modal')?.remove();
+  const back = document.createElement('div'); back.id = 'call-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:min(360px,94vw);max-width:min(560px,94vw)">
+    <button class="modal-close">✕</button><h3>${t('Presentar en una videollamada')}</h3>
+    <p class="host-help">${t('La presentación se abre en una ventana aparte. En la llamada, comparte esa ventana: así los demás ven solo las diapositivas y tú sigues teniendo Revela a mano.')}</p>
+    <ol class="call-steps">
+      <li><b>Google Meet:</b> ${t('Presentar ahora ▸ Una ventana ▸ elige la de tu presentación.')}</li>
+      <li><b>Microsoft Teams:</b> ${t('Compartir ▸ Ventana ▸ elige la de tu presentación.')}</li>
+      <li><b>Zoom:</b> ${t('Compartir pantalla ▸ elige la ventana de tu presentación.')}</li>
+    </ol>
+    <p class="host-help">${t('Pasa las diapositivas con las flechas en esa ventana. Pulsa S allí para abrir las notas del orador en otra ventana, que no compartes.')}</p>
+    <div class="fr-actions"><span></span><button class="fr-do call-open"><i class="ms">open_in_new</i> ${t('Abrir la ventana de presentación')}</button></div></div>`;
+  document.body.appendChild(back);
+  const close = () => back.remove();
+  back.querySelector('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  back.querySelector('.call-open').addEventListener('click', () => {
+    if (presentInWindow()) close();
+    else alertDialog(t('El navegador ha bloqueado la ventana: permite las ventanas emergentes de este sitio y vuelve a intentarlo.'));
+  });
 }

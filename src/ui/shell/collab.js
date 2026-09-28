@@ -96,6 +96,7 @@ export function initCollabUI() {
     }
   };
   subscribe(() => { paintBar(); paintSel(); });
+  window.addEventListener('revela:lang', paintBar);
   onCollab((what, m) => {
     if (what === 'chat' && m && m.id !== session?.me.id && !document.getElementById('collab-chat')?.classList.contains('open')) unread++;
     if (what === 'chat') paintChat();

@@ -11,7 +11,7 @@ import * as templates from '../../features/document/templates.js';
 import { exportHTML } from '../../io/formats/html.js';
 import { saveProject } from '../../io/formats/project.js';
 import { exportPDF } from '../../io/export/print.js';
-import { present } from '../shell/present.js';
+import { present, openCallPresent } from '../shell/present.js';
 import { startCoach } from '../shell/coach.js';
 import { openCollab } from '../shell/collab.js';
 import { openHome } from '../shell/home.js';
@@ -112,6 +112,7 @@ export const ACTIONS = {
   'save-picture': () => (selectedBlocks().length ? openSaveAsPicture() : alertDialog(t('Selecciona primero uno o varios objetos.'))),
   'export-video': () => openVideoDialog(),
   'present': () => present(),
+  'present-call': () => openCallPresent(),
   'rehearse': () => present({ rehearse: true }),
   'coach': () => startCoach(),
   'record-show': () => recorder.recordSlideshow(),
