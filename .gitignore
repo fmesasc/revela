@@ -12,3 +12,6 @@ tmp/
 
 # Test artefacts
 /tmp/
+
+# Local state of `wrangler dev` (server/cloudflare)
+.wrangler/

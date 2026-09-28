@@ -18,8 +18,14 @@
 // an account of that domain (Authorization: Bearer <id token>), checked here
 // against Google's keys; the key in the link is still needed to read it.
 //
-// Bindings (wrangler.toml): SHARES (R2 bucket). Optional vars: UPLOAD_KEY
-// (only who knows it can upload), MAX_MB (default 30), ALLOW_ORIGIN (default *).
+// Also live collaboration rooms under /c (collab.js).
+//
+// Bindings (wrangler.toml): SHARES (R2 bucket), ROOMS (Durable Object). Optional
+// vars: UPLOAD_KEY (only who knows it can upload or open rooms), MAX_MB
+// (default 30), ALLOW_ORIGIN (default *).
+
+import { handleCollab, CollabRoom } from './collab.js';
+export { CollabRoom };
 
 const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const random = n => b64url(crypto.getRandomValues(new Uint8Array(n)));
@@ -54,6 +60,7 @@ export default {
     const json = (obj, status = 200, extra = {}) => new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json', ...extra } });
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
     if (url.pathname === '/robots.txt') return new Response('User-agent: *\nDisallow: /\n', { headers: cors });
+    if (url.pathname === '/c' || url.pathname.startsWith('/c/')) return handleCollab(req, env, url, json);
 
     if (req.method === 'POST' && url.pathname === '/s') {
       if (env.UPLOAD_KEY && req.headers.get('X-Upload-Key') !== env.UPLOAD_KEY) return json({ error: 'forbidden' }, 403);

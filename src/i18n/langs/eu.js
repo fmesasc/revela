@@ -1162,4 +1162,10 @@ export default {
   "Para Google Meet, Microsoft Teams o Zoom: la presentación en una ventana que compartes": "Google Meet, Microsoft Teams edo Zoomerako: aurkezpena partekatzen duzun leiho batean",
   "Privacidad": "Pribatutasuna",
   "Condiciones": "Baldintzak",
+  "Colaborar en directo con tu servidor: quien tenga un enlace verá los cambios al momento y, según el enlace, podrá comentar o editar. La presentación se guarda en tu servidor mientras dure la sesión (aunque cierres esta pestaña) y se borra al terminarla. ¿Empezar?": "Zuzeneko lankidetza zure zerbitzariarekin: esteka duenak aldaketak berehala ikusiko ditu eta, estekaren arabera, iruzkindu edo editatu ahal izango du. Aurkezpena zure zerbitzarian gordetzen da saioak irauten duen bitartean (fitxa hau ixten baduzu ere) eta amaitzean ezabatzen da. Hasi?",
+  "El servidor no tiene activada la colaboración (falta el Durable Object ROOMS).": "Zerbitzariak ez du lankidetza aktibatuta (ROOMS Durable Object falta da).",
+  "No se pudo conectar con el servidor.": "Ezin izan da zerbitzariarekin konektatu.",
+  "La clave de subida no es correcta.": "Igoera-gakoa ez da zuzena.",
+  "La presentación es demasiado grande para el servidor.": "Aurkezpena handiegia da zerbitzariarentzat.",
+  "El servidor respondió ": "Zerbitzariak erantzun du: ",
 };

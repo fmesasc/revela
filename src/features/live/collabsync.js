@@ -72,3 +72,27 @@ export function allowed(op, role) {
   if (role === 'comment') return op.p[0] === 'slides' && op.p[2] === 'comments' && op.p.length >= 3;
   return false;
 }
+
+// Messages over a WebSocket (collaboration server): Cloudflare accepts up to
+// 1 MiB each, and a presentation with images is bigger, so long messages go
+// in parts { t: 'part', id, i, n, s } that the other side puts together.
+export const PART = 300 * 1024;                  // characters: under 1 MiB even if all were 3-byte UTF-8
+export function pack(msg, max = PART) {
+  const s = JSON.stringify(msg);
+  if (s.length <= max) return [s];
+  const id = Math.random().toString(36).slice(2), n = Math.ceil(s.length / max);
+  return Array.from({ length: n }, (_, i) => JSON.stringify({ t: 'part', id, i, n, s: s.slice(i * max, (i + 1) * max) }));
+}
+export function unpacker() {
+  const pending = new Map();
+  return text => {
+    let m; try { m = JSON.parse(text); } catch { return null; }
+    if (!m || m.t !== 'part') return m;
+    const p = pending.get(m.id) || { parts: [], got: 0 };
+    if (p.parts[m.i] === undefined) { p.parts[m.i] = m.s; p.got++; }
+    pending.set(m.id, p);
+    if (p.got < m.n) return null;
+    pending.delete(m.id);
+    try { return JSON.parse(p.parts.join('')); } catch { return null; }
+  };
+}

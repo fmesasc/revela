@@ -98,8 +98,10 @@ export function hostCollab({ name, listen, code = rand(6) }) {
   return session;
 }
 
-// ---- Guest -----------------------------------------------------------------
-export async function joinCollab({ name, token, connect }) {
+// ---- Guest (also everyone in a server room) --------------------------------
+// room: { code, tokens, server } when this person created the room on the
+// server: they own it (links, permissions, end) and keep their own document.
+export async function joinCollab({ name, token, connect, room = null }) {
   const conn = await connect();
   return new Promise((resolve, reject) => {
     let watcher = null, peers = [];
@@ -109,16 +111,21 @@ export async function joinCollab({ name, token, connect }) {
       if (!msg || typeof msg !== 'object') return;
       if (msg.t === 'denied') { conn.close?.(); reject(new Error('denied')); return; }
       if (msg.t === 'welcome') {
-        setPersist(false);                                   // this copy is the host's: don't overwrite our own
-        state.ui.lock = msg.role === 'edit' ? null : msg.role;
-        adoptDeck(msg.deck);
+        const owner = !!(room && msg.owner);
+        if (!owner) {
+          setPersist(false);                                 // this copy is someone else's: don't overwrite our own
+          state.ui.lock = msg.role === 'edit' ? null : msg.role;
+          adoptDeck(msg.deck);
+        }
         peers = msg.peers || []; chat.push(...(msg.chat || []));
         session = {
-          host: false, role: msg.role, me: { id: msg.you, name, color: msg.color }, chat,
+          host: owner, server: room?.server || null, code: room?.code, tokens: room?.tokens,
+          role: msg.role, me: { id: msg.you, name, color: msg.color }, chat,
           peers: () => peers.filter(p => p.id !== msg.you),
           sendPresence: p => conn.send({ t: 'presence', ...p }),
           sendChat: text => conn.send({ t: 'chat', text }),
-          stop: () => { conn.close?.(); done(); emit('left'); },
+          setRole: (id, role) => conn.send({ t: 'setRole', id, role }),
+          stop: () => { if (owner) conn.send({ t: 'end' }); conn.close?.(); done(); emit(owner ? 'end' : 'left'); },
         };
         watcher = watchLocal(ops => { const ok = ops.filter(op => allowed(op, session.role)); if (ok.length) conn.send({ t: 'ops', ops: ok }); });
         emit('start'); resolve(session);
@@ -156,8 +163,10 @@ export async function peerConnect(code) {
   return wrap(c);
 }
 export const newCode = () => rand(6);
-export function collabLink(code, token, base = location.href) {
+// server: a collaboration server's address (room links), none for direct sessions.
+export function collabLink(code, token, server = null, base = location.href) {
   const u = new URL(base); u.search = ''; u.hash = '';
   u.searchParams.set('collab', code); u.searchParams.set('k', token);
+  if (server) u.searchParams.set('srv', server);
   return u.toString();
 }

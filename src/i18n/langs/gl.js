@@ -1162,4 +1162,10 @@ export default {
   "Para Google Meet, Microsoft Teams o Zoom: la presentación en una ventana que compartes": "Para Google Meet, Microsoft Teams ou Zoom: a presentación nunha xanela que compartes",
   "Privacidad": "Privacidade",
   "Condiciones": "Condicións",
+  "Colaborar en directo con tu servidor: quien tenga un enlace verá los cambios al momento y, según el enlace, podrá comentar o editar. La presentación se guarda en tu servidor mientras dure la sesión (aunque cierres esta pestaña) y se borra al terminarla. ¿Empezar?": "Colaborar en directo co teu servidor: quen teña unha ligazón verá os cambios ao momento e, segundo a ligazón, poderá comentar ou editar. A presentación gárdase no teu servidor mentres dure a sesión (aínda que peches esta lapela) e bórrase ao rematala. Comezar?",
+  "El servidor no tiene activada la colaboración (falta el Durable Object ROOMS).": "O servidor non ten activada a colaboración (falta o Durable Object ROOMS).",
+  "No se pudo conectar con el servidor.": "Non se puido conectar co servidor.",
+  "La clave de subida no es correcta.": "A clave de subida non é correcta.",
+  "La presentación es demasiado grande para el servidor.": "A presentación é demasiado grande para o servidor.",
+  "El servidor respondió ": "O servidor respondeu ",
 };

@@ -7,6 +7,7 @@ import { loadDeck } from '../../core/model.js';
 import { saveProject } from '../../io/formats/project.js';
 import { session, onCollab, hostCollab, joinCollab, peerListen, peerConnect, collabLink, newCode } from '../../features/live/collab.js';
 import { ROLES } from '../../features/live/collabsync.js';
+import { collabServerReady, createRoom, roomConnect } from '../../io/cloud/collabserver.js';
 import { author, setAuthor } from '../../features/collab/comments.js';
 import * as slides from '../../features/document/slides.js';
 import { t } from '../../i18n/index.js';
@@ -27,12 +28,19 @@ async function askName() {
 export async function openCollab() {
   document.getElementById('collab-modal')?.remove();
   if (!session) {
-    if (!(await confirmDialog(t('Colaborar en directo: quien tenga un enlace verá los cambios al momento y, según el enlace, podrá comentar o editar. Los datos van directamente entre los navegadores (cifrados); esta pestaña debe seguir abierta mientras dure la sesión. ¿Empezar?')))) return;
+    const viaServer = collabServerReady();
+    if (!(await confirmDialog(viaServer
+      ? t('Colaborar en directo con tu servidor: quien tenga un enlace verá los cambios al momento y, según el enlace, podrá comentar o editar. La presentación se guarda en tu servidor mientras dure la sesión (aunque cierres esta pestaña) y se borra al terminarla. ¿Empezar?')
+      : t('Colaborar en directo: quien tenga un enlace verá los cambios al momento y, según el enlace, podrá comentar o editar. Los datos van directamente entre los navegadores (cifrados); esta pestaña debe seguir abierta mientras dure la sesión. ¿Empezar?')))) return;
     const name = await askName(); if (!name) return;
-    const code = newCode();
     try {
-      const listen = await peerListen(code);
-      hostCollab({ name, listen, code });
+      if (viaServer) {                                       // a room on the server (Compartir ▸ Servidor propio)
+        const r = await createRoom(state.deck);
+        await joinCollab({ name, token: r.owner, connect: () => roomConnect(r.server, r.room), room: { code: r.room, tokens: r.tokens, server: r.server } });
+      } else {                                               // browser to browser
+        const code = newCode();
+        hostCollab({ name, listen: await peerListen(code), code });
+      }
     } catch (e) { return alertDialog(t('No se pudo empezar la sesión: ') + (e.type || e.message || e)); }
   }
   const back = document.createElement('div'); back.id = 'collab-modal'; back.className = 'modal-backdrop';
@@ -47,11 +55,11 @@ export async function openCollab() {
     if (!session) { close(); return; }
     const host = session.host;
     body.innerHTML = (host ? `<p class="host-help">${t('Envía el enlace según lo que quieras permitir:')}</p>`
-      + ROLES.slice().reverse().map(r => `<label class="fr-l">${t(ROLE_NAME[r])}<span class="sh-row"><input readonly class="cb-link" data-role="${r}" value="${esc(collabLink(session.code, session.tokens[r]))}"><button type="button" class="mini2 cb-copy">${t('Copiar')}</button></span></label>`).join('')
+      + ROLES.slice().reverse().map(r => `<label class="fr-l">${t(ROLE_NAME[r])}<span class="sh-row"><input readonly class="cb-link" data-role="${r}" value="${esc(collabLink(session.code, session.tokens[r], session.server))}"><button type="button" class="mini2 cb-copy">${t('Copiar')}</button></span></label>`).join('')
       : `<p class="host-help">${t('Estás en la presentación de otra persona. Tu permiso:')} <b>${t(ROLE_NAME[session.role])}</b>.</p>`)
       + `<h4>${t('Personas')}</h4><div class="cb-people">${[session.me, ...session.peers()].map(p => `<div class="cb-person"><span class="cb-av" style="background:${p.color}">${esc(initials(p.name))}</span>
           <span>${esc(p.name)}${p.id === session.me.id ? ` (${t('tú')})` : ''}</span>
-          ${host && p.id !== 'host' ? `<select data-peer="${p.id}">${ROLES.map(r => `<option value="${r}"${p.role === r ? ' selected' : ''}>${t(ROLE_NAME[r])}</option>`).join('')}</select>` : `<span class="host-help">${p.id === 'host' ? t('Anfitrión') : t(ROLE_NAME[p.role] || '')}</span>`}</div>`).join('')}</div>
+          ${host && !(p.id === 'host' || p.owner) && p.id !== session.me.id ? `<select data-peer="${p.id}">${ROLES.map(r => `<option value="${r}"${p.role === r ? ' selected' : ''}>${t(ROLE_NAME[r])}</option>`).join('')}</select>` : `<span class="host-help">${p.id === 'host' || p.owner ? t('Anfitrión') : t(ROLE_NAME[p.role] || '')}</span>`}</div>`).join('')}</div>
       <div class="fr-actions"><button class="mini2 cb-stop">${host ? t('Terminar la sesión') : t('Salir de la sesión')}</button></div>`;
     body.querySelectorAll('.cb-copy').forEach(b => b.addEventListener('click', () => { const i = b.previousElementSibling; i.select(); navigator.clipboard?.writeText(i.value).catch(() => {}); b.textContent = t('Copiado'); }));
     body.querySelectorAll('[data-peer]').forEach(s => s.addEventListener('change', () => session.setRole(s.dataset.peer, s.value)));
@@ -134,13 +142,13 @@ function paintChat() {
 // ---- Joining from a link --------------------------------------------------------
 let ownDeck = null;
 async function joinFromURL() {
-  const q = new URLSearchParams(location.search), code = q.get('collab'), token = q.get('k');
+  const q = new URLSearchParams(location.search), code = q.get('collab'), token = q.get('k'), srv = q.get('srv');
   if (!code || !token) return;
   const name = await askName(); if (!name) return;
   ownDeck = state.deck;
   try {
-    await joinCollab({ name, token, connect: () => peerConnect(code) });
-    history.replaceState(null, '', location.pathname + '?collab=' + encodeURIComponent(code) + '&k=' + encodeURIComponent(token));
+    await joinCollab({ name, token, connect: () => (srv ? roomConnect(srv, code) : peerConnect(code)) });
+    history.replaceState(null, '', location.pathname + '?collab=' + encodeURIComponent(code) + '&k=' + encodeURIComponent(token) + (srv ? '&srv=' + encodeURIComponent(srv) : ''));
   } catch (e) {
     alertDialog(e.message === 'denied' ? t('Ese enlace ya no es válido.') : t('No se pudo conectar con la sesión: ¿sigue abierta en el navegador de quien la compartió?'));
   }

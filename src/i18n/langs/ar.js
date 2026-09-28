@@ -1162,4 +1162,10 @@ export default {
   "Para Google Meet, Microsoft Teams o Zoom: la presentación en una ventana que compartes": "لـ Google Meet أو Microsoft Teams أو Zoom: العرض في نافذة تشاركها",
   "Privacidad": "الخصوصية",
   "Condiciones": "الشروط",
+  "Colaborar en directo con tu servidor: quien tenga un enlace verá los cambios al momento y, según el enlace, podrá comentar o editar. La presentación se guarda en tu servidor mientras dure la sesión (aunque cierres esta pestaña) y se borra al terminarla. ¿Empezar?": "تعاون مباشر عبر خادمك: يرى كل من لديه رابط التغييرات فورًا، ويمكنه التعليق أو التحرير بحسب الرابط. يُحفظ العرض على خادمك طوال الجلسة (حتى لو أغلقت علامة التبويب هذه) ويُحذف عند انتهائها. هل تريد البدء؟",
+  "El servidor no tiene activada la colaboración (falta el Durable Object ROOMS).": "لم يتم تفعيل التعاون على الخادم (كائن ROOMS الدائم غير موجود).",
+  "No se pudo conectar con el servidor.": "تعذّر الاتصال بالخادم.",
+  "La clave de subida no es correcta.": "مفتاح الرفع غير صحيح.",
+  "La presentación es demasiado grande para el servidor.": "العرض كبير جدًا بالنسبة للخادم.",
+  "El servidor respondió ": "ردّ الخادم ",
 };
