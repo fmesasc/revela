@@ -218,6 +218,36 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     m.querySelector('.modal-close').click();
   });
 
+  // (The virtual keyboard itself is checked with real clicks by tests/run.py:
+  // inside this iframe MathLive shows it in the parent page.)
+  await test('editor de ecuaciones: doble clic lo abre y sus teclas no afectan a la diapositiva', async () => {
+    reset(); R.blocks.addMath(); const b = last(); select(b); R.blocks.setMath('x'); await sleep(20);
+    const W = frame.contentWindow, n0 = slide().blocks.length, x0 = b.x;
+    try {
+      D.querySelector(`.block[data-id="${b.id}"] .math-blk`).dispatchEvent(new W.MouseEvent('dblclick', { bubbles: true }));
+      let m = null; for (let i = 0; i < 100 && !m?.querySelector('math-field'); i++) { await sleep(50); m = D.getElementById('math-modal'); }
+      assert(m && m.querySelector('math-field'), 'doble clic en la ecuación abre el editor');
+      const tex = m.querySelector('.mt-tex'), mf = m.querySelector('math-field');
+      tex.focus();
+      for (const key of ['Backspace', 'Delete', 'ArrowLeft']) tex.dispatchEvent(new W.KeyboardEvent('keydown', { key, bubbles: true }));
+      mf.focus(); mf.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, composed: true }));
+      eq(slide().blocks.length, n0, 'Retroceso/Supr en el editor no borran la ecuación');
+      eq(slide().blocks.find(x => x.id === b.id).x, x0, 'las flechas no mueven el objeto');
+      // It edits its own equation even if the selection changes meanwhile.
+      R.state.ui.selection = null;
+      tex.value = 'a+b'; tex.dispatchEvent(new W.Event('input', { bubbles: true }));
+      eq(slide().blocks.find(x => x.id === b.id).latex, 'a+b', 'edita su ecuación aunque cambie la selección');
+      // A click that reaches the backdrop through the keyboard doesn't close it.
+      const fake = D.createElement('div'); fake.className = 'ML__keyboard'; m.appendChild(fake);
+      fake.dispatchEvent(new W.MouseEvent('click', { bubbles: true })); fake.remove();
+      assert(D.getElementById('math-modal'), 'un clic en el teclado no cierra el editor');
+    } finally { D.querySelector('#math-modal .modal-close')?.click(); }
+    await sleep(50);
+    assert(!D.getElementById('math-modal'), 'se cierra');
+    select(b); D.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    eq(slide().blocks.find(x => x.id === b.id).x, x0 + 1, 'sin diálogo, las flechas vuelven a mover el objeto');
+  });
+
   await test('ecuación (math): se inserta y exporta con KaTeX', async () => {
     reset(); R.blocks.addMath(); const b = last(); select(b); R.blocks.setMath('a^2+b^2=c^2');
     const html = R.io.buildHTML();

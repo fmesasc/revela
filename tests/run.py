@@ -59,6 +59,52 @@ def touch_checks(send, recv, port):
     return fails
 
 
+def math_keyboard_check(send, recv, port):
+    """The equation editor's virtual keyboard with real mouse clicks, in a
+    top-level page (inside the suite's iframe MathLive shows it elsewhere)."""
+    import json as _j
+    tid = recv(send('Target.createTarget', url='about:blank'))['result']['targetId']
+    sid = recv(send('Target.attachToTarget', targetId=tid, flatten=True))['result']['sessionId']
+    ev = lambda e: recv(send('Runtime.evaluate', sid, expression=e, awaitPromise=True, returnByValue=True)).get('result', {}).get('result', {}).get('value')
+    def click(x, y, n=1):
+        for c in range(1, n + 1):
+            for kind in ('mousePressed', 'mouseReleased'):
+                recv(send('Input.dispatchMouseEvent', sid, type=kind, x=x, y=y, button='left', clickCount=c))
+    def wait(expr, secs=15):
+        end = time.time() + secs
+        while time.time() < end:
+            v = ev(expr)
+            if v: return v
+            time.sleep(0.2)
+        return None
+    recv(send('Emulation.setDeviceMetricsOverride', sid, width=1280, height=800, deviceScaleFactor=1, mobile=False))
+    recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/index.html?test')); time.sleep(3)
+    ev("(()=>{const R=window.__revela;R.store.replaceDeck(R.model.emptyDeck());R.blocks.addMath();R.blocks.setMath('x');R.render();return 1})()"); time.sleep(0.5)
+    fails = []
+    def check(ok, name):
+        if not ok: fails.append('✗ ecuación: ' + name)
+    rect = lambda js: _j.loads(ev(f"(()=>{{const e={js};if(!e)return 'null';const r=e.getBoundingClientRect();return JSON.stringify({{x:r.left+r.width/2,y:r.top+r.height/2}})}})()") or 'null')
+    bid = ev("window.__revela.store.currentSlide().blocks.at(-1).id")
+    r = rect(f"document.querySelector('#stage .block[data-id=\"{bid}\"]')")
+    click(r['x'], r['y'], 2)
+    check(wait("!!document.querySelector('#math-modal math-field')"), 'doble clic abre el editor')
+    check(wait("!!window.mathVirtualKeyboard?.visible"), 'el teclado virtual se muestra')
+    key = wait("(()=>{const k=[...document.querySelectorAll('.ML__keyboard .MLK__layer.is-visible .MLK__keycap')].find(k=>/^7/.test(k.textContent.trim())&&k.getBoundingClientRect().width>0);if(!k)return null;const r=k.getBoundingClientRect();return JSON.stringify({x:r.left+r.width/2,y:r.top+r.height/2})})()")
+    check(key, 'tecla 7 visible')
+    if key:
+        k = _j.loads(key)
+        top = ev(f"(()=>{{const e=document.elementFromPoint({k['x']},{k['y']});return !!e?.closest('.ML__keyboard')}})()")
+        check(top, 'el teclado está por encima del diálogo')
+        click(k['x'], k['y']); time.sleep(0.5)
+        check(ev("!!document.getElementById('math-modal')"), 'pulsar una tecla no cierra el editor')
+        latex = ev(f"window.__revela.store.currentSlide().blocks.find(b=>b.id==='{bid}').latex") or ''
+        check('7' in latex, f'la tecla escribe en la ecuación ({latex})')
+    ev("document.querySelector('#math-modal .modal-close')?.click();1"); time.sleep(0.4)
+    check(not ev("window.mathVirtualKeyboard?.visible"), 'al cerrar el editor se oculta el teclado')
+    recv(send('Target.closeTarget', targetId=tid))
+    return fails
+
+
 def e2e_checks(send, recv, port):
     """Two real pages talking over WebRTC (PeerJS public broker): phone remote,
     live poll and audience Q&A. Needs network; run with: tests/run.sh --e2e"""
@@ -173,6 +219,10 @@ def main():
         if touch_fail:
             print('REVELATEST FAIL touch'); print('\n'.join(touch_fail)); return 1
         if out.startswith('REVELATEST PASS'): out += ' + táctil 6/6'
+        math_fail = math_keyboard_check(send, recv, port) if out.startswith('REVELATEST PASS') else []
+        if math_fail:
+            print('REVELATEST FAIL ecuación'); print('\n'.join(math_fail)); return 1
+        if out.startswith('REVELATEST PASS'): out += ' + ecuación'
         if out.startswith('REVELATEST PASS') and '--e2e' in sys.argv:
             e2e_fail = e2e_checks(send, recv, port)
             if e2e_fail: print('REVELATEST FAIL e2e'); print('\n'.join(e2e_fail)); return 1

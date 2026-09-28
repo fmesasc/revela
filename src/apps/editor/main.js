@@ -75,6 +75,14 @@ function render() {
   if (s) s.textContent = `${t('Diapositiva')} ${state.ui.slideIndex + 1} ${t('de')} ${state.deck.slides.length}`;
 }
 
+// Keys typed into a field (a dialog's input, the equation editor…) are the
+// field's: Backspace must not delete the selected object, nor arrows move it.
+// composedPath()[0] sees inside shadow DOM (MathLive's math-field).
+const TYPING = 'input, textarea, select, math-field, [contenteditable=""], [contenteditable="true"]';
+function inField(e) {
+  const t = e.composedPath?.()[0] || e.target;
+  return !!(t instanceof Element && (t.closest(TYPING) || t.isContentEditable)) || !!document.querySelector('.modal-backdrop');
+}
 function keyboard(e) {
   const editing = document.activeElement?.isContentEditable;
   // Esc leaves text edit mode (the block stays selected and can be moved).
@@ -87,7 +95,7 @@ function keyboard(e) {
     navigator.clipboard?.readText?.().then(t => document.execCommand('insertText', false, t)).catch(() => {});
     return;
   }
-  if (editing) return;
+  if (editing || inField(e)) return;
   // Tab on the slide moves the selection through the objects (reading order);
   // past the last one, focus leaves the slide as usual.
   if (e.key === 'Tab' && document.activeElement?.id === 'stage' && !e.ctrlKey && !e.altKey) {

@@ -84,11 +84,20 @@ export async function openMath(b) {
   const tex = back.querySelector('.mt-tex');
   mf.mathVirtualKeyboardPolicy = 'manual';
   mf.value = b.latex || ''; tex.value = b.latex || '';
-  mf.addEventListener('input', () => { tex.value = mf.value; blocks.setMath(mf.value); });
-  tex.addEventListener('input', () => { mf.value = tex.value; blocks.setMath(tex.value); });
-  const close = () => back.remove();
+  mf.addEventListener('input', () => { tex.value = mf.value; blocks.setMath(mf.value, b.id); });
+  tex.addEventListener('input', () => { mf.value = tex.value; blocks.setMath(tex.value, b.id); });
+  // MathLive puts its virtual keyboard at the end of <body>, under the dialog's
+  // backdrop: a tap on a key landed on the backdrop and closed the dialog. It
+  // goes inside the dialog (above it; in an iframe MathLive won't move it, so
+  // it is raised instead), a click on it never closes the dialog, and it goes
+  // away with the dialog.
+  const kbd = window.mathVirtualKeyboard;
+  try { kbd.container = back; } catch {}
+  document.body.style.setProperty('--keyboard-zindex', '3100');
+  const onKeyboard = e => e.composedPath().some(n => n.classList?.contains('ML__keyboard'));
+  const close = () => { try { kbd.hide(); kbd.container = document.body; } catch {} back.remove(); };
   back.querySelector('.modal-close').addEventListener('click', close);
-  back.addEventListener('click', e => { if (e.target === back) close(); });
+  back.addEventListener('click', e => { if (e.target === back && !onKeyboard(e)) close(); });
   back.querySelector('.mt-kbd').addEventListener('click', () => { try { window.mathVirtualKeyboard.show(); } catch {} mf.focus(); });
   back.querySelector('.mt-toggle').addEventListener('click', ev => {
     const hidden = tex.style.display === 'none';
@@ -116,7 +125,7 @@ export function openMathPalette(b) {
   document.body.appendChild(back);
   const close = () => back.remove();
   const ta = back.querySelector('.mt-in'), preview = back.querySelector('.mt-preview');
-  const update = () => { blocks.setMath(ta.value); renderLatex(preview, ta.value); };
+  const update = () => { blocks.setMath(ta.value, b.id); renderLatex(preview, ta.value); };
   const insert = snip => {
     const s = ta.selectionStart, e = ta.selectionEnd;
     ta.value = ta.value.slice(0, s) + snip + ta.value.slice(e);

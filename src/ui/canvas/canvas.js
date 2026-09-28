@@ -14,7 +14,7 @@ import { cameraRadius } from '../../features/live/media.js';
 import { pollEditorHTML } from '../../features/live/poll.js';
 import { masterBlocksFor, PH_PROMPT } from '../../features/document/master.js';
 import { stageBackground } from '../../io/formats/html.js';
-import { pollSig, renderSlideRef, figIndexHTML, connectorHTML, applyImgStyle, content, hostOf, hasInlineMath, renderInlineMath, renderMath, paintCode, setupCode, tableSig, fillTable, setupTable, setupText, setupModel, setupEmbed } from './content.js';
+import { pollSig, renderSlideRef, figIndexHTML, connectorHTML, applyImgStyle, content, hostOf, hasInlineMath, renderInlineMath, renderMath, paintCode, setupCode, tableSig, fillTable, setupTable, setupText, setupMath, setupModel, setupEmbed } from './content.js';
 import { addGuideFromRuler, drawPGuides, startMarquee, startDrag, startRotate, startResize } from './interact.js';
 
 export const findBlock = id => currentSlide().blocks.find(x => x.id === id);
@@ -321,5 +321,6 @@ function blockEl(b) {
   else if (b.type === 'embed') setupEmbed(el);
   else if (b.type === 'table') setupTable(el, b);
   else if (b.type === 'code') setupCode(el, b);
+  else if (b.type === 'math') setupMath(el, b);
   return el;
 }

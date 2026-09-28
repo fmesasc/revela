@@ -212,8 +212,8 @@ export function setCaption(text) {
   const b = selectedBlock(); if (!b) return;
   commit(() => { if (text) b.caption = text; else delete b.caption; });
 }
-export function setMath(latex) {
-  const b = selectedBlock(); if (!b || b.type !== 'math') return;
+export function setMath(latex, id = null) {
+  const b = id ? currentSlide().blocks.find(x => x.id === id) : selectedBlock(); if (!b || b.type !== 'math') return;
   commit(() => { b.latex = latex; });
 }
 // Freehand ink stroke from absolute slide points → an 'ink' block fitted to it.

@@ -13,6 +13,7 @@ import { PH_PROMPT, isEmptyPlaceholder } from '../../features/document/master.js
 import { autocorrectAtCaret } from '../../features/document/autocorrect.js';
 import { KATEX, HIGHLIGHT, loadScript, loadStyle } from '../../core/vendor.js';
 import { findBlock, readOnly, fitFontSize } from './canvas.js';
+import { openMath } from '../dialogs/object.js';
 
 export const pollSig = b => JSON.stringify([b.kind, b.display, b.question, b.options, b.fontSize, savedVotes(b.pollId)]);
 export function renderSlideRef(wrap, b) {
@@ -264,6 +265,10 @@ export function setupText(b, el) {
     rich.contentEditable = 'false'; el.classList.remove('editing');
     commit(() => { b.html = rich.innerHTML; }, { history: false });
   });
+}
+// An equation is edited in the equation editor: double-click opens it.
+export function setupMath(el, b) {
+  el.addEventListener('dblclick', e => { if (readOnly()) return; e.stopPropagation(); openMath(b); });
 }
 export function setupModel(el) {
   const mv = el.querySelector('model-viewer');
