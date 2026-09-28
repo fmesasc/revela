@@ -190,7 +190,7 @@ export function renameLayout(id, name) { commit(() => { const l = ensureLayouts(
 export function deleteLayout(id) {
   commit(() => {
     const d = state.deck; if (d.slides.some(s => s.layoutId === id) || ensureLayouts().length < 2) return;
-    d.layouts = d.layouts.filter(l => l.id !== id); state.ui.editMaster = true;
+    d.layouts = d.layouts.filter(l => l.id !== id); if (state.ui.editMaster) state.ui.editMaster = true;
   });
 }
 export const layoutInUse = id => state.deck.slides.filter(s => s.layoutId === id).length;
@@ -266,7 +266,7 @@ export function deleteMaster(id) {
     if (!d.masters?.some(m => m.id === id) || d.slides.some(s => lays.some(l => l.id === s.layoutId))) return;
     d.masters = d.masters.filter(m => m.id !== id);
     d.layouts = d.layouts.filter(l => l.masterId !== id);
-    state.ui.editMaster = true;
+    if (state.ui.editMaster) state.ui.editMaster = true;   // back to the main master, only if in the master view
   });
 }
 export const masterInUse = id => { const d = state.deck; return d.slides.filter(s => d.layouts?.some(l => l.id === s.layoutId && (l.masterId || ensureMaster(d).id) === id)).length; };

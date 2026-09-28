@@ -104,5 +104,6 @@ export function redo() {
 }
 
 export function replaceDeck(deck) {
-  commit(() => { state.deck = deck; state.ui.slideIndex = 0; state.ui.selection = null; });
+  // Another deck: leave the master view too (it would edit a master that isn't there).
+  commit(() => { state.deck = deck; state.ui.slideIndex = 0; state.ui.selection = null; state.ui.multi = []; state.ui.editMaster = false; });
 }
