@@ -6,7 +6,7 @@ import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconS
 import { googleFontLinks } from '../features/fonts.js';
 import { t, currentLang } from '../i18n.js';
 import { alertDialog, confirmDialog } from '../ui/dialog.js';
-import { collectFigures, figuresMap, captionLine, figIndexTitle, visibleIndexMap } from '../features/captions.js';
+import { collectFigures, figuresMap, captionLine, figIndexTitle, slidePaths } from '../features/captions.js';
 import { INK_CSS, inkJS } from './ink.js';
 import { deckFg, deckBodyFont, currentPalette } from '../features/palettes.js';
 import { tallyVotes, pollResultsHTML, VOTE_URL, savedVotes } from '../features/poll.js';
@@ -252,19 +252,19 @@ function blockHTMLRaw(b, slide) {
 
 function figIndexExport(b, deck) {
   const figs = collectFigures(deck, b.kind);
-  const vis = visibleIndexMap(deck);
+  const vis = slidePaths(deck);
   return `<div style="${box(b)}font-size:${b.fontSize || 28}px"><b>${esc(t(figIndexTitle(b.kind)))}</b>`
     + `<ul style="margin:.4em 0 0;padding-left:1.4em">`
-    + figs.map(f => `<li><a href="#/${vis.get(f.slide) ?? 0}" style="color:inherit;text-decoration:none">${esc(captionLine(f))}</a></li>`).join('')
+    + figs.map(f => `<li><a href="#/${vis.get(f.slide) ?? '0/0'}" style="color:inherit;text-decoration:none">${esc(captionLine(f))}</a></li>`).join('')
     + `</ul></div>`;
 }
 function slideRefExport(b, originSlide, deck) {
   const target = deck.slides.find(s => s.id === b.target) || deck.slides[0];
   if (!target) return '';
   const { w, h } = deck.size; const scale = b.w / w;
-  const vis = visibleIndexMap(deck);
-  const ti = vis.get(deck.slides.indexOf(target)) ?? 0;
-  const oi = vis.get(deck.slides.indexOf(originSlide)) ?? 0;
+  const vis = slidePaths(deck);
+  const ti = vis.get(deck.slides.indexOf(target)) ?? '0/0';
+  const oi = vis.get(deck.slides.indexOf(originSlide)) ?? '0/0';
   const inner = target.blocks.filter(x => x.type !== 'slideref').map(bl => blockHTML(bl, target)).join('');
   const ret = b.returnBack ? ` data-zoom-return="1" data-target="${ti}" data-origin="${oi}"` : '';
   return `<a class="slide-zoom" href="#/${ti}"${ret} style="${box(b)}display:block;overflow:hidden;`
@@ -308,10 +308,19 @@ const SLIDENUM_POS = {
 
 // inApp: presenting inside the editor from a blob: URL, where the address bar
 // can't be rewritten — keep hash navigation (links) but don't write history.
+export const slidePathsFor = deck => slidePaths(deck);
 export function buildHTML(deck = state.deck, { inApp = false } = {}) {
   const { w, h } = deck.size;
   const figMap = figuresMap(deck);
-  const slides = deck.slides.filter(s => !s.hidden).map(s => slideHTML(s, deck, figMap)).join('\n');
+  // Vertical stacks: a slide marked `vertical` goes below the previous visible one.
+  const groups = [];
+  for (const s of deck.slides.filter(x => !x.hidden)) {
+    if (s.vertical && groups.length) groups[groups.length - 1].push(s); else groups.push([s]);
+  }
+  const paths = slidePaths(deck), flat = [...paths.values()];
+  const slides = groups.map(g => (g.length > 1 ? `<section>\n${g.map(s => slideHTML(s, deck, figMap)).join('\n')}\n</section>` : slideHTML(g[0], deck, figMap))).join('\n')
+    // Links typed as a slide number (#/N, N = position in the deck) → reveal's h/v.
+    .replace(/href="#\/(\d+)"/g, (m, n) => `href="#/${flat[+n] || n}"`);
   const sn = deck.slideNumber || { show: false };
   const snPos = SLIDENUM_POS[sn.position] || SLIDENUM_POS.br;
   const hasCode = deck.slides.some(s => s.blocks.some(b => b.type === 'code'));
@@ -386,7 +395,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${hasLive ? liveDataJS() : ''}
  ${inkJS(w, h, { pen: t('Lápiz'), hl: t('Resaltador'), laser: t('Puntero láser'), color: t('Color de la tinta'), erase: t('Borrar la tinta de la diapositiva'),
    cc: t('Subtítulos en directo'), lang: speechLang(), ccWarn: t('Los subtítulos usan el reconocimiento de voz del navegador: en Chrome y Edge el audio se envía a su servicio de voz. ¿Activarlos?') })}
- ${hasZoomReturn ? '(function(){var p=null;document.addEventListener("click",function(e){var a=e.target.closest("a.slide-zoom[data-zoom-return]");if(a){p={t:+a.dataset.target,o:+a.dataset.origin,arrived:false};}});Reveal.on("slidechanged",function(ev){if(!p)return;if(ev.indexh===p.t){p.arrived=true;return;}if(p.arrived){var o=p.o;p=null;setTimeout(function(){Reveal.slide(o);},0);}});})();' : ''}
+ ${hasZoomReturn ? '(function(){var p=null;document.addEventListener("click",function(e){var a=e.target.closest("a.slide-zoom[data-zoom-return]");if(a){p={t:a.dataset.target,o:a.dataset.origin.split("/"),arrived:false};}});Reveal.on("slidechanged",function(ev){if(!p)return;if(ev.indexh+"/"+(ev.indexv||0)===p.t){p.arrived=true;return;}if(p.arrived){var o=p.o;p=null;setTimeout(function(){Reveal.slide(+o[0],+o[1]);},0);}});})();' : ''}
 </script></body></html>`;
 }
 
@@ -449,7 +458,7 @@ export function present({ rehearse = false, fullscreen = true, onEnd = null } = 
     const Rv = frame.contentWindow.Reveal;
     if (Rv && Rv.isReady?.()) {
       clearInterval(hook); Rv.on('slidechanged', notifySlide); notifySlide();
-      if (rehearse) Rv.on('slidechanged', ev => lap(ev.indexh));
+      if (rehearse) Rv.on('slidechanged', () => lap(Rv.getSlidePastCount()));
     }
     else if (++tries > 60) clearInterval(hook);
   }, 100);

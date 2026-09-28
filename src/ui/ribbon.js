@@ -126,6 +126,7 @@ const ACTIONS = {
   'export-handout': () => openHandoutDialog(),
   'undo': undo, 'redo': redo,
   'slide-add': slides.addSlide, 'slide-duplicate': slides.duplicateSlide,
+  'slide-vertical': () => slides.toggleVertical(),
   'slide-delete': () => slides.deleteSlide(),
   'section-add': () => slides.addSection(),   // creates + renames inline (no prompt)
   'insert-text': blocks.addText,
@@ -665,6 +666,7 @@ export function renderRibbon() {
   document.querySelector('[data-action="toggle-autoanimate"]')?.classList.toggle('on', !!slide.autoAnimate);
   syncValue('[data-theme]', state.deck.theme);
   syncValue('[data-deck-fg]', palettes.deckFg());
+  { const v = $('[data-action="slide-vertical"]'); if (v) { v.classList.toggle('on', !!currentSlide()?.vertical); v.disabled = state.ui.slideIndex === 0 || !!state.ui.editMaster; } }
   { const has = !!selectedBlock(); ['clip-copy', 'clip-cut', 'obj-duplicate'].forEach(a => { const el = $(`[data-action="${a}"]`); if (el) el.disabled = !has; });
     const p = $('[data-action="clip-paste"]'); if (p) p.disabled = !clip.hasClipboard(); }
   $('[data-action="mark-final"]')?.classList.toggle('on', protect.isFinal());

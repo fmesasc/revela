@@ -437,7 +437,7 @@ export async function run(frame) {
     R.state.ui.slideIndex = 1; R.render();
     R.blocks.addSlideRef(); const b = slide().blocks.at(-1); b.target = R.state.deck.slides[0].id;
     const html = R.io.buildHTML();
-    assert(/<a class="slide-zoom" href="#\/0"/.test(html), 'enlace a la diapositiva destino');
+    assert(/<a class="slide-zoom" href="#\/0\/0"/.test(html), 'enlace a la diapositiva destino');
     assert(/DESTINO/.test(html), 'miniatura con el contenido de la diapositiva');
     b.returnBack = true;
     const html2 = R.io.buildHTML();
@@ -1527,6 +1527,24 @@ export async function run(frame) {
     assert(new RegExp(`<pre data-id="code-${b.id}"`).test(html), 'animación de código entre diapositivas (Morph)');
     let code; for (let i = 0; i < 40 && !(code = D.querySelector(`.block[data-id="${b.id}"] code.hljs`)); i++) await sleep(100);
     assert(code, 'coloreado de sintaxis en el editor');
+  });
+
+  await test('diapositivas verticales (pilas de reveal.js)', async () => {
+    reset(); R.slides.addSlide(); R.slides.addSlide(); R.slides.addSlide();          // 4 diapositivas
+    R.slides.goToSlide(2); D.querySelector('[data-action="slide-vertical"]').click(); // la 3 bajo la 2
+    R.slides.toggleVertical(3);                                                         // la 4 también
+    await sleep(10);
+    assert(D.querySelectorAll('#navigator .thumb.is-vertical').length === 2, 'sangradas en el navegador');
+    eq([...R.io.slidePathsFor(R.state.deck).values()].join(), '0/0,1/0,1/1,1/2', 'posiciones h/v');
+    const html = R.io.buildHTML();
+    const top = html.split('<div class="slides">')[1];
+    assert(/<section>\s*<section[^>]*>[\s\S]*<\/section>\s*<section[^>]*>[\s\S]*<\/section>\s*<section[^>]*>[\s\S]*<\/section>\s*<\/section>/.test(top), 'pila de tres en una sección');
+    R.state.deck.slides[0].blocks[0].html = '<a href="#/3">ir</a>'; assert(/href="#\/1\/2"/.test(R.io.buildHTML()), 'enlace a la 4ª → #/1/2');
+    const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:640px;height:360px;opacity:0';
+    f.src = URL.createObjectURL(new Blob([R.io.buildHTML()], { type: 'text/html' })); document.body.appendChild(f);
+    let w; for (let i = 0; i < 80 && !((w = f.contentWindow).Reveal?.isReady?.()); i++) await sleep(100);
+    try { w.Reveal.slide(1, 0); w.Reveal.down(); await sleep(50); eq(w.Reveal.getIndices().v, 1, 'se baja con ↓'); eq(w.Reveal.getTotalSlides(), 4, 'total'); }
+    finally { f.remove(); }
   });
 
   await test('rotación y volteo en el export', async () => {

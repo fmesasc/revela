@@ -125,7 +125,7 @@ export function presentationState() {
   const visible = state.deck.slides.filter(s => !s.hidden);
   const ap = io.activePresent;
   let cur;
-  if (ap && ap.frame.contentWindow.Reveal) cur = visible[ap.frame.contentWindow.Reveal.getIndices().h];
+  if (ap && ap.frame.contentWindow.Reveal) cur = visible[ap.frame.contentWindow.Reveal.getSlidePastCount()];   // flat position (vertical stacks too)
   else cur = state.deck.slides[state.ui.slideIndex];
   const i = visible.indexOf(cur);
   return {
@@ -155,7 +155,8 @@ function nav(delta, absolute) {
   const ap = io.activePresent;
   if (ap && ap.frame.contentWindow.Reveal) {
     const Rv = ap.frame.contentWindow.Reveal;
-    if (absolute != null) Rv.slide(absolute); else delta > 0 ? Rv.next() : Rv.prev();
+    if (absolute != null) { const el = Rv.getSlides()[absolute]; if (el) { const ix = Rv.getIndices(el); Rv.slide(ix.h, ix.v); } }
+    else delta > 0 ? Rv.next() : Rv.prev();
   } else {
     const n = state.deck.slides.length;
     const to = absolute != null ? absolute : Math.max(0, Math.min(n - 1, state.ui.slideIndex + delta));

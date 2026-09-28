@@ -7,6 +7,7 @@ import * as blocks from '../features/blocks.js';
 import * as shapeops from '../features/shapeops.js';
 import * as master from '../features/master.js';
 import * as clip from '../features/clipboard.js';
+import * as slidesMod from '../features/slides.js';
 import { openPollEditor } from './poll-dialog.js';
 import { openCodeEditor } from './code-dialog.js';
 import { openLinkChart, refreshChart } from './data-dialog.js';
@@ -85,6 +86,7 @@ function forThumb(i) {
     ['Eliminar diapositiva', () => deleteSlide(i)],
     null,
     [slide.hidden ? 'Mostrar diapositiva' : 'Ocultar diapositiva', () => toggleSlideHidden(i)],
+    i > 0 ? [slide.vertical ? 'Sacar de la pila vertical' : 'Colocar debajo de la anterior (vertical)', () => slidesMod.toggleVertical(i)] : null,
     null,
     ['Crear sección aquí', () => addSectionAt(i)],
     slide.sectionId ? ['Quitar de la sección', () => setSlideSection(slide.id, null)] : null,

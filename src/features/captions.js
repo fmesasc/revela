@@ -19,6 +19,17 @@ export function collectFigures(deck, kind) {
   return out;
 }
 // Deck slide index → index among visible slides (for reveal.js #/n links).
+// reveal.js position of each visible slide: "h/v". A slide marked `vertical`
+// goes below the previous visible one (vertical stack).
+export function slidePaths(deck) {
+  const m = new Map(); let h = -1, v = 0;
+  (deck.slides || []).forEach((s, i) => {
+    if (s.hidden) return;
+    if (s.vertical && h >= 0) v++; else { h++; v = 0; }
+    m.set(i, `${h}/${v}`);
+  });
+  return m;
+}
 export function visibleIndexMap(deck) {
   const m = new Map(); let vi = 0;
   (deck.slides || []).forEach((s, i) => { if (!s.hidden) { m.set(i, vi); vi++; } });

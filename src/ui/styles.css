@@ -572,3 +572,7 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .cd-grid td{padding:1px 4px;text-align:center}.cd-grid td.cd-src{text-align:start;white-space:pre;width:100%}
 .cd-grid td.cd-n{color:var(--txt2);text-align:end}
 .cd-grid tr.hl td.cd-src{background:#ffe08a66}
+/* Vertical stacks (reveal.js vertical slides) in the navigator */
+.thumb.is-vertical{margin-inline-start:22px;overflow:visible}
+.thumb.is-vertical::before{content:"↳";position:absolute;left:-20px;top:40%;font-size:16px;color:var(--txt2)}
+@media (max-width:860px){ .thumb.is-vertical{margin-inline-start:0;margin-top:14px} .thumb.is-vertical::before{left:4px;top:-16px;content:"↓"} }

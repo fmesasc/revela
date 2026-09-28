@@ -60,6 +60,11 @@ export function goToSlide(index) {
 }
 
 // Hidden slides stay in the editor but are skipped during the presentation.
+// Vertical stack (reveal.js vertical slides): below the previous slide.
+export function toggleVertical(index = state.ui.slideIndex) {
+  if (index <= 0) return;
+  commit(() => { const s = state.deck.slides[index]; if (s) { if (s.vertical) delete s.vertical; else s.vertical = true; } });
+}
 export function toggleSlideHidden(index = state.ui.slideIndex) {
   commit(() => { const s = state.deck.slides[index]; if (s) s.hidden = !s.hidden; });
 }

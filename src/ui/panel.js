@@ -62,7 +62,7 @@ function sectionHead(sec) {
 
 function thumb(slide) {
   const el = document.createElement('div');
-  el.className = 'thumb' + (slide.hidden ? ' is-hidden' : '');
+  el.className = 'thumb' + (slide.hidden ? ' is-hidden' : '') + (slide.vertical ? ' is-vertical' : '');
   el.draggable = true;
   const index = () => +el.dataset.index;          // current position (the element is reused)
 
