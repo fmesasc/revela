@@ -191,6 +191,15 @@ export async function run(frame) {
     assert(/<table class="tbl"[^>]*><tr><td>Hola<\/td>/.test(R.io.buildHTML()), 'export de la tabla');
   });
 
+  await test('ajustes de imagen: filtro/opacidad en lienzo y export', async () => {
+    reset(); R.blocks.addImage('data:image/png;base64,iVBORw0KGgo='); const b = last(); select(b); await sleep(20);
+    R.blocks.setImageAdj('brightness', 150); R.blocks.setImageAdj('opacity', 60); await sleep(20);
+    const img = D.querySelector(`.block[data-id="${b.id}"] img`);
+    assert(/brightness\(150%\)/.test(img.style.filter), 'filtro en el DOM');
+    eq(img.style.opacity, '0.6', 'opacidad en el DOM');
+    assert(/brightness\(150%\)[^"]*opacity:0\.6/.test(R.io.buildHTML()), 'filtro en el export');
+  });
+
   await test('bloque de código: edición y export con highlight.js', async () => {
     reset(); R.blocks.addCode(); const b = last(); select(b); await sleep(20);
     assert(D.querySelector(`.block[data-id="${b.id}"] pre.code code`), 'no hay bloque de código');

@@ -4,7 +4,13 @@
 
 import { state, commit, mutate, currentSlide, selectedBlock,
   selectedBlocks, selectedIds, isSelected, setSelection, toggleSelection, setMulti, selectWithGroup } from '../core/store.js';
-import { shapeSVG, shapeSig } from './shape.js';
+import { shapeSVG, shapeSig, imgFilter, imgOpacity } from './shape.js';
+
+function applyImgStyle(img, b) {
+  img.style.objectFit = b.fit || 'contain';
+  img.style.filter = imgFilter(b);
+  img.style.opacity = imgOpacity(b);
+}
 
 const SNAP = 7; // snapping threshold, in canvas pixels
 let stage;
@@ -104,7 +110,7 @@ function reconcile(b) {
       if (!el.classList.contains('editing') && rich.innerHTML !== (b.html || '')) rich.innerHTML = b.html || '';
     }
   } else if (b.type === 'image') {
-    const img = el.querySelector('img'); if (img && img.getAttribute('src') !== b.src) img.src = b.src;
+    const img = el.querySelector('img'); if (img) { if (img.getAttribute('src') !== b.src) img.src = b.src; applyImgStyle(img, b); }
   } else if (b.type === 'model') {
     const mv = el.querySelector('model-viewer'); if (mv && mv.getAttribute('src') !== b.src) mv.setAttribute('src', b.src);
   } else if (b.type === 'video') {
@@ -195,7 +201,7 @@ function content(b) {
     const c = document.createElement('code'); c.textContent = b.code || ''; pre.appendChild(c);
     return pre;
   }
-  if (b.type === 'image') { const i = document.createElement('img'); i.src = b.src; i.draggable = false; return i; }
+  if (b.type === 'image') { const i = document.createElement('img'); i.src = b.src; i.draggable = false; applyImgStyle(i, b); return i; }
   if (b.type === 'video') { const v = document.createElement('video'); v.src = b.src; v.controls = true; return v; }
   if (b.type === 'embed') return embedContent(b);
   return document.createElement('div');

@@ -1,3 +1,10 @@
+// Image filter/opacity, shared by the canvas, thumbnails and export.
+export function imgFilter(b) {
+  const a = b.adj || {};
+  return `brightness(${a.brightness ?? 100}%) contrast(${a.contrast ?? 100}%) saturate(${a.saturate ?? 100}%)`;
+}
+export function imgOpacity(b) { return (b.adj?.opacity ?? 100) / 100; }
+
 // SVG for shape blocks, shared by the canvas, the thumbnails and the export.
 // The viewBox is a fixed 100×100 stretched to the block (preserveAspectRatio
 // none); a non‑scaling stroke keeps the outline an even width at any size.

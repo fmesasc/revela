@@ -85,6 +85,7 @@ function forBlock(b) {
     items.push(
       ['Ajustar: contener', () => setFit(b, 'contain')],
       ['Ajustar: rellenar', () => setFit(b, 'cover')],
+      ['Ajustes de imagen…', () => openImageAdjust(b)],
       ['Quitar fondo (IA)', () => removeBackground(b)],
       null);
   } else if (b.type === 'model') {
@@ -161,6 +162,31 @@ function paste() {
   });
 }
 function setFit(b, fit) { commit(() => (b.fit = fit)); }
+
+function openImageAdjust(b) {
+  if (document.getElementById('img-modal')) return;
+  const a = Object.assign({ brightness: 100, contrast: 100, saturate: 100, opacity: 100 }, b.adj);
+  const sl = (label, prop, max) =>
+    `<label class="fr-l">${label} <input type="range" data-adj="${prop}" min="0" max="${max}" value="${a[prop]}"></label>`;
+  const back = document.createElement('div');
+  back.id = 'img-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:left;min-width:280px">
+    <button class="modal-close">✕</button><h3>Ajustes de imagen</h3>
+    ${sl('Brillo', 'brightness', 200)}${sl('Contraste', 'contrast', 200)}
+    ${sl('Saturación', 'saturate', 200)}${sl('Opacidad', 'opacity', 100)}
+    <div class="fr-actions"><button class="fr-do" data-reset>Restablecer</button></div>
+  </div>`;
+  document.body.appendChild(back);
+  const close = () => back.remove();
+  back.querySelector('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  back.querySelectorAll('[data-adj]').forEach(r =>
+    r.addEventListener('input', () => blocks.setImageAdj(r.dataset.adj, r.value)));
+  back.querySelector('[data-reset]').addEventListener('click', () => {
+    blocks.resetImageAdj();
+    back.querySelectorAll('[data-adj]').forEach(r => (r.value = r.dataset.adj === 'opacity' ? 100 : 100));
+  });
+}
 
 async function removeBackground(b) {
   const el = document.querySelector(`.block[data-id="${b.id}"]`);

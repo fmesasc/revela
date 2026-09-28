@@ -74,6 +74,16 @@ export function setShapeStyle(prop, value) {
   commit(() => { b[prop] = value; });
 }
 
+const DEF_ADJ = { brightness: 100, contrast: 100, saturate: 100, opacity: 100 };
+export function setImageAdj(prop, value) {
+  const b = selectedBlock(); if (!b || b.type !== 'image') return;
+  commit(() => { b.adj = Object.assign({ ...DEF_ADJ }, b.adj); b.adj[prop] = +value; }, { history: false });
+}
+export function resetImageAdj() {
+  const b = selectedBlock(); if (!b || b.type !== 'image') return;
+  commit(() => { delete b.adj; });
+}
+
 export function deleteBlock(id = state.ui.selection) {
   if (!id) return;
   commit(() => {
