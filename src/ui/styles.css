@@ -402,3 +402,8 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 .fp-list{display:flex;flex-direction:column;gap:4px;min-width:220px}
 .fp-list button{text-align:left;color:var(--txt)}
 .fp-list b{font-size:17px}.fp-list span{font-size:13px}.fp-list small{color:var(--txt2)}
+@keyframes rvInOut{0%{opacity:0}30%,70%{opacity:1}100%{opacity:0}}
+@keyframes rvPath{to{translate:var(--dx,0) var(--dy,0)}}
+/* Motion path guide on the selected object */
+.motion-path{position:absolute;pointer-events:none;z-index:6;overflow:visible}
+body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}

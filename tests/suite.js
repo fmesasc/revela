@@ -647,6 +647,68 @@ export async function run(frame) {
     eq(png.type, 'image/png', 'PNG de la diapositiva');
   });
 
+  await test('animación: después de la anterior y con la anterior (línea de tiempo)', async () => {
+    reset(); const [a, b] = slide().blocks; R.blocks.addShape('rect'); const c = last();
+    for (const x of [a, b, c]) { select(x); R.trans.setAnimation('fade-in'); }
+    R.trans.setAnimPropForId(a.id, 'duration', 400);
+    R.trans.setAnimPropForId(b.id, 'start', 'afterPrev'); R.trans.setAnimPropForId(b.id, 'delay', 100);
+    R.trans.setAnimPropForId(c.id, 'start', 'withPrev');
+    eq(a.animation.order, 1); eq(b.animation.order, 1, 'misma pulsación'); eq(c.animation.order, 1);
+    const tl = R.trans.animTimeline(slide());
+    eq(tl.get(b.id).delay, 500, 'empieza al acabar la anterior + retardo');
+    eq(tl.get(c.id).delay, 400, 'con la anterior: arranca con ella (su retardo no se hereda, como en PowerPoint)');
+    const html = R.io.buildHTML();
+    eq((html.match(/data-fragment-index="1"/g) || []).length, 3, 'un solo clic');
+    assert(/transition-delay:500ms/.test(html), 'retardo efectivo en el export');
+  });
+
+  await test('animación: el giro no anula el movimiento del efecto en el export', async () => {
+    reset(); const b = slide().blocks[0]; b.rotation = 15; select(b); R.trans.setAnimation('fade-up');
+    const html = R.io.buildHTML();
+    assert(/rotate:15deg;/.test(html), 'rotate individual');
+    assert(!/transform:rotate\(15deg\)/.test(html), 'sin transform en línea que pise al efecto');
+  });
+
+  await test('trayectoria de movimiento: export y guía en el lienzo', async () => {
+    reset(); const b = slide().blocks[0]; select(b); R.trans.setAnimation('path');
+    eq(b.animation.dx, 200, 'desplazamiento por defecto');
+    R.trans.setAnimPropForId(b.id, 'dy', 50); await sleep(10);
+    const html = R.io.buildHTML();
+    assert(/class="fragment rv-path"/.test(html), 'fragmento de trayectoria');
+    assert(/--dx:200px;--dy:50px/.test(html), 'destino');
+    assert(/\.fragment\.rv-path\.visible\{translate:var\(--dx\) var\(--dy\)\}/.test(html), 'CSS de trayectoria');
+    assert(D.querySelector('#stage .motion-path line'), 'guía discontinua en el lienzo');
+  });
+
+  await test('disparador: al hacer clic en un objeto se anima otro', async () => {
+    reset(); const [a, b] = slide().blocks; select(b); R.trans.setAnimation('zoom-in');
+    R.trans.setAnimPropForId(b.id, 'trigger', a.id);
+    eq(R.trans.animTimeline(slide()).size, 0, 'fuera de la secuencia de clics');
+    const html = R.io.buildHTML();
+    assert(html.includes(`data-bid="${a.id}"`), 'origen clicable');
+    assert(new RegExp(`class="rv-trig rv-in" data-trig="${a.id}" data-kf="rvZoom"`).test(html), 'destino con disparador');
+    const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:640px;height:360px;opacity:0';
+    f.srcdoc = html; document.body.appendChild(f);
+    let w; for (let i = 0; i < 80 && !((w = f.contentWindow).Reveal?.isReady?.()); i++) await sleep(100);
+    try {
+      const tgt = f.contentDocument.querySelector('.rv-trig');
+      eq(w.getComputedStyle(tgt).opacity, '0', 'oculto al principio');
+      f.contentDocument.querySelector(`[data-bid="${a.id}"]`).dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+      assert(tgt.classList.contains('on') && /rvZoom/.test(tgt.style.animation), 'se reproduce al hacer clic');
+    } finally { f.remove(); }
+  });
+
+  await test('copiar animación (pincel)', async () => {
+    reset(); const [a, b] = slide().blocks; select(a); R.trans.setAnimation('spin');
+    R.trans.setAnimPropForId(a.id, 'duration', 900);
+    D.querySelector('[data-action="anim-paint"]').click();
+    assert(D.body.classList.contains('anim-painting'), 'modo pincel');
+    D.querySelector(`#stage .block[data-id="${b.id}"]`).click(); await sleep(10);
+    eq(b.animation?.effect, 'spin', 'efecto copiado'); eq(b.animation.duration, 900, 'duración copiada');
+    eq(b.animation.order, 2, 'nuevo paso');
+    assert(!D.body.classList.contains('anim-painting'), 'sale del modo');
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

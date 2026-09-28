@@ -34,6 +34,8 @@ const readFile = (accept, cb, as = 'DataURL') => {
   inp.click();
 };
 
+let animPaint = null;       // animation being copied with the painter
+function endAnimPaint() { animPaint = null; document.body.classList.remove('anim-painting'); $('[data-action="anim-paint"]')?.classList.remove('on'); }
 const ACTIONS = {
   'new': () => confirmDialog(t('¿Nueva presentación? Se perderá la actual si no la has guardado.'))
     .then(ok => { if (ok) replaceDeck(emptyDeck()); }),
@@ -82,6 +84,12 @@ const ACTIONS = {
   'forward': blocks.bringForward, 'backward': blocks.sendBackward,
   'front': blocks.bringToFront, 'back': blocks.sendToBack,
   'obj-anim-clear': trans.clearAnimation,
+  'anim-paint': () => {
+    const a = trans.copyAnimationFrom();
+    if (!a) { alertDialog(t('Selecciona primero un objeto con animación.')); return; }
+    animPaint = a; document.body.classList.add('anim-painting');
+    $('[data-action="anim-paint"]')?.classList.add('on');
+  },
   'template-save': () => promptDialog(t('Nombre de la plantilla')).then(n => { if (n) templates.saveCurrentAsTemplate(n); }),
   'toggle-guides': () => commit(() => (state.ui.showGuides = !state.ui.showGuides), { history: false }),
   'toggle-ruler': () => commit(() => (state.ui.showRuler = !state.ui.showRuler), { history: false }),
@@ -165,6 +173,14 @@ export function initRibbon() {
   let rt; window.addEventListener('resize', () => {
     clearTimeout(rt); rt = setTimeout(() => { if (window.innerWidth < 860) fitZoom(); }, 200);
   });
+  // Painter: the next object clicked on the slide receives the copied animation.
+  document.getElementById('stage').addEventListener('click', e => {
+    if (!animPaint) return;
+    const el = e.target.closest('.block');
+    if (el) trans.pasteAnimationTo([el.dataset.id], animPaint);
+    endAnimPaint();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && animPaint) endAnimPaint(); });
   document.getElementById('ribbon').addEventListener('click', e => {
     const more = e.target.closest('[data-more]');
     if (more) { e.stopPropagation(); togglePopover(more, more.dataset.more); return; }
@@ -301,7 +317,13 @@ function updateFormatState() {
 
 const ANIM_EFFECTS = ['fade-in', 'fade-up', 'fade-down', 'fade-left', 'fade-right', 'zoom-in',
   'spin', 'flip', 'bounce', 'grow', 'shrink', 'strike', 'fade-out', 'fade-in-then-out',
-  'highlight-red', 'highlight-green', 'highlight-blue'];
+  'highlight-red', 'highlight-green', 'highlight-blue', 'path'];
+const EFFECT_LABEL = e => e === 'path' ? t('Trayectoria') : e;
+// Short label of an object for the trigger list.
+function objLabel(b) {
+  const txt = b.type === 'text' ? (new DOMParser().parseFromString(b.html || '', 'text/html').body.textContent || '').trim().slice(0, 24) : '';
+  return t(ANIM_NAMES[b.type] || b.type) + (txt ? ` «${txt}»` : '');
+}
 const ANIM_NAMES = { text: 'Texto', image: 'Imagen', shape: 'Forma', chart: 'Gráfico', table: 'Tabla',
   icon: 'Icono', math: 'Ecuación', model: '3D', video: 'Vídeo', embed: 'Web', code: 'Código', figindex: 'Índice de figuras', slideref: 'Diapositiva' };
 function openAnimPanel() {
@@ -324,8 +346,13 @@ function openAnimPanel() {
       <div class="an-row" data-id="${b.id}">
         <div class="an-title">${i + 1}. ${t(ANIM_NAMES[b.type] || b.type)}</div>
         <div class="an-grid">
-          <label>${t('Efecto')}<select data-p="effect">${ANIM_EFFECTS.map(e => `<option value="${e}"${b.animation.effect === e ? ' selected' : ''}>${e}</option>`).join('')}</select></label>
-          <label>${t('Comienzo')}<select data-p="start"><option value="click"${b.animation.start !== 'withPrev' ? ' selected' : ''}>${t('Al hacer clic')}</option><option value="withPrev"${b.animation.start === 'withPrev' ? ' selected' : ''}>${t('Con la anterior')}</option></select></label>
+          <label>${t('Efecto')}<select data-p="effect">${ANIM_EFFECTS.map(e => `<option value="${e}"${b.animation.effect === e ? ' selected' : ''}>${EFFECT_LABEL(e)}</option>`).join('')}</select></label>
+          <label>${t('Comienzo')}<select data-p="start">${[['click', 'Al hacer clic'], ['withPrev', 'Con la anterior'], ['afterPrev', 'Después de la anterior']]
+            .map(([v, l]) => `<option value="${v}"${(b.animation.start || 'click') === v ? ' selected' : ''}>${t(l)}</option>`).join('')}</select></label>
+          <label>${t('Disparador')}<select data-p="trigger"><option value="">${t('Secuencia de clics')}</option>${currentSlide().blocks
+            .filter(x => x.id !== b.id && x.type !== 'connector').map(x => `<option value="${x.id}"${b.animation.trigger === x.id ? ' selected' : ''}>${t('Al hacer clic en')} ${objLabel(x).replace(/</g, '&lt;')}</option>`).join('')}</select></label>
+          ${b.animation.effect === 'path' ? `<label>${t('Mover X')} (px)<input type="number" data-p="dx" value="${b.animation.dx || 0}" step="10"></label>
+          <label>${t('Mover Y')} (px)<input type="number" data-p="dy" value="${b.animation.dy || 0}" step="10"></label>` : ''}
           <label>${t('Duración')} (ms)<input type="number" data-p="duration" value="${b.animation.duration ?? 500}" step="100" min="0"></label>
           <label>${t('Retardo')} (ms)<input type="number" data-p="delay" value="${b.animation.delay ?? 0}" step="100" min="0"></label>
         </div>
@@ -334,7 +361,8 @@ function openAnimPanel() {
       : `<p class="host-help">${t('Aplica una animación de entrada a un objeto primero.')}</p>`;
     body.querySelectorAll('.an-row').forEach(row => {
       const id = row.dataset.id;
-      row.querySelector('[data-p="effect"]').addEventListener('change', e => { trans.setAnimPropForId(id, 'effect', e.target.value); });
+      row.querySelector('[data-p="effect"]').addEventListener('change', e => { trans.setAnimPropForId(id, 'effect', e.target.value); render(); });
+      row.querySelector('[data-p="trigger"]').addEventListener('change', e => { trans.setAnimPropForId(id, 'trigger', e.target.value || null); render(); });
       row.querySelector('[data-p="start"]').addEventListener('change', e => { trans.setAnimPropForId(id, 'start', e.target.value); render(); });
       row.querySelectorAll('input[data-p]').forEach(inp => inp.addEventListener('change', e => trans.setAnimPropForId(id, inp.dataset.p, e.target.value)));
       row.querySelectorAll('[data-move]').forEach(btn => btn.addEventListener('click', () => { trans.moveAnimForId(id, +btn.dataset.move); render(); }));

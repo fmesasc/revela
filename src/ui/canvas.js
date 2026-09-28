@@ -9,6 +9,7 @@ import { collectFigures, figuresMap, captionLine, figIndexTitle } from '../featu
 import { blockPreview } from './preview.js';
 import { t } from '../i18n.js';
 import { deckFg, deckBodyFont } from '../features/palettes.js';
+import { animTimeline, EFFECT_KF } from '../features/transitions.js';
 
 function renderSlideRef(wrap, b) {
   wrap.innerHTML = '';
@@ -151,6 +152,23 @@ export function renderCanvas() {
   drawPGuides();
   drawLogo();
   drawCaptions();
+  drawMotionPath();
+}
+
+// Dashed guide from the selected object to where its motion path ends.
+function drawMotionPath() {
+  stage.querySelectorAll('.motion-path').forEach(n => n.remove());
+  const b = selectedBlock(); const a = b?.animation;
+  if (!a || a.effect !== 'path' || (!a.dx && !a.dy)) return;
+  const x1 = b.x + b.w / 2, y1 = b.y + b.h / 2, x2 = x1 + (a.dx || 0), y2 = y1 + (a.dy || 0);
+  const NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('class', 'motion-path'); svg.setAttribute('width', 1); svg.setAttribute('height', 1);
+  svg.style.left = '0px'; svg.style.top = '0px';
+  svg.innerHTML = `<defs><marker id="mp-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">`
+    + `<path d="M0,0 L10,5 L0,10 z" fill="#e0873b"/></marker></defs>`
+    + `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#e0873b" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#mp-arrow)"/>`
+    + `<rect x="${x2 - b.w / 2}" y="${y2 - b.h / 2}" width="${b.w}" height="${b.h}" fill="none" stroke="#e0873b" stroke-width="2" stroke-dasharray="4 4" opacity=".7"/>`;
+  stage.appendChild(svg);
 }
 
 // Captions shown under captioned blocks (figures/tables).
@@ -658,12 +676,14 @@ function drawGuide(dir, at) {
 function clearGuides() { stage.querySelectorAll('.guide').forEach(g => g.remove()); }
 
 // ---- Animation preview -----------------------------------------------------
-const KEYFRAME = {
-  'fade-in': 'rvIn', 'fade-up': 'rvUp', 'fade-down': 'rvDown', 'fade-left': 'rvLeft', 'fade-right': 'rvRight',
-  'zoom-in': 'rvZoom', 'grow': 'rvGrow', 'shrink': 'rvShrink', 'spin': 'rvSpin', 'flip': 'rvFlip', 'bounce': 'rvBounce',
-  'fade-out': 'rvOut', 'highlight-red': 'rvHi', 'highlight-green': 'rvHi', 'highlight-blue': 'rvHi', 'strike': 'rvIn',
-};
-function animateEl(el, effect, dur, delay) {
+const KEYFRAME = EFFECT_KF;
+function animateEl(el, anim, dur, delay) {
+  const effect = anim.effect;
+  if (effect === 'path') {                        // motion path: slide to (dx, dy) and back
+    el.animate([{ translate: '0 0' }, { translate: `${anim.dx || 0}px ${anim.dy || 0}px` }],
+      { duration: dur, delay, easing: 'ease-in-out', fill: 'none' });
+    return;
+  }
   const kf = KEYFRAME[effect] || 'rvIn';
   el.style.animation = 'none'; void el.offsetWidth;
   el.style.animation = `${kf} ${dur}ms ease ${delay}ms both`;
@@ -672,15 +692,16 @@ function animateEl(el, effect, dur, delay) {
 }
 // Play the slide's entrance animations in order, in the editor.
 export function playAnimations() {
-  const list = currentSlide().blocks.filter(x => x.animation).sort((a, b) => a.animation.order - b.animation.order);
-  let t = 0, groupOrder = null, groupEnd = 0;
-  for (const b of list) {
-    if (groupOrder === null) groupOrder = b.animation.order;
-    else if (b.animation.order !== groupOrder) { t = groupEnd; groupOrder = b.animation.order; }
-    const del = b.animation.delay ?? 0, dur = b.animation.duration ?? 500;
-    const el = stage.querySelector(`.block[data-id="${b.id}"]`);
-    if (el) animateEl(el, b.animation.effect, dur, t + del);
-    groupEnd = Math.max(groupEnd, t + del + dur);
+  // Clicks play one after another; inside a click, the timeline gives each start.
+  const tl = animTimeline(currentSlide());
+  const ends = new Map();                       // step → when it finishes
+  for (const { step, delay, dur } of tl.values()) ends.set(step, Math.max(ends.get(step) || 0, delay + dur));
+  const offset = new Map(); let acc = 0;
+  for (const st of [...ends.keys()].sort((a, b) => a - b)) { offset.set(st, acc); acc += ends.get(st); }
+  for (const [id, { step, delay, dur }] of tl) {
+    const b = currentSlide().blocks.find(x => x.id === id);
+    const el = stage.querySelector(`.block[data-id="${id}"]`);
+    if (el && b) animateEl(el, b.animation, dur, offset.get(step) + delay);
   }
 }
 

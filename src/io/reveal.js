@@ -9,17 +9,25 @@ import { alertDialog } from '../ui/dialog.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle, visibleIndexMap } from '../features/captions.js';
 import { INK_CSS, inkJS } from './ink.js';
 import { deckFg, deckBodyFont } from '../features/palettes.js';
+import { animTimeline, EFFECT_KF, EFFECT_KF_CSS, isEntrance } from '../features/transitions.js';
 
 const REVEAL = 'https://cdn.jsdelivr.net/npm/reveal.js@5.1.0';
 const MODEL_VIEWER = 'https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js';
 const KATEX = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist';
 
 const tf = b => `rotate(${b.rotation || 0}deg)${b.flipH ? ' scaleX(-1)' : ''}${b.flipV ? ' scaleY(-1)' : ''}`;
+// Animated blocks use the individual rotate/scale properties so that the
+// `transform` of reveal's fragment effects (fade-up, motion paths…) and of the
+// keyframes composes with the block's own rotation instead of replacing it.
+const tfCSS = b => b.animation
+  ? `${b.rotation ? `rotate:${b.rotation}deg;` : ''}${b.flipH || b.flipV ? `scale:${b.flipH ? -1 : 1} ${b.flipV ? -1 : 1};` : ''}`
+  : `transform:${tf(b)};`;
 const box = b => `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;`
-  + `height:${b.h}px;transform:${tf(b)};`
+  + `height:${b.h}px;${tfCSS(b)}`
   + (b.opacity != null && b.opacity < 100 ? `opacity:${b.opacity / 100};` : '')
   + (b.animation ? `transition-duration:${b.animation.duration ?? 500}ms;transition-delay:${b.animation.delay ?? 0}ms;`
-    + `--anim-dur:${b.animation.duration ?? 500}ms;--anim-del:${b.animation.delay ?? 0}ms;` : '');
+    + `--anim-dur:${b.animation.duration ?? 500}ms;--anim-del:${b.animation.delay ?? 0}ms;`
+    + (b.animation.effect === 'path' ? `--dx:${b.animation.dx || 0}px;--dy:${b.animation.dy || 0}px;` : '') : '');
 
 // Custom entrance effects that reveal.js doesn't provide (used only if present).
 const CUSTOM_KF = {
@@ -38,16 +46,30 @@ function customEffectCSS(deck) {
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const slug = s => (String(s).trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'presentacion');
 
-function animAttrs(b) {
-  if (!b.animation) return '';
-  const { effect, order } = b.animation;
-  return ` class="fragment ${effect}" data-fragment-index="${order}"`;
+function animAttrs(b, slide) {
+  // An object that triggers animations of others gets an id to be clicked.
+  const src = slide && slide.blocks.some(x => x.animation?.trigger === b.id) ? ` data-bid="${b.id}"` : '';
+  if (!b.animation) return src;
+  const { effect, order, trigger, duration, delay } = b.animation;
+  if (trigger && slide?.blocks.some(x => x.id === trigger))       // played on click of another object
+    return src + ` class="rv-trig${isEntrance(effect) ? ' rv-in' : ''}" data-trig="${trigger}" data-kf="${EFFECT_KF[effect] || 'rvIn'}"`
+      + ` data-dur="${duration ?? 500}" data-del="${delay ?? 0}"`;
+  const cls = effect === 'path' ? 'rv-path' : effect;
+  return src + ` class="fragment ${cls}" data-fragment-index="${order}"`;
 }
+const TRIGGER_JS = `(function(){
+ function play(el){el.style.animation='none';void el.offsetWidth;
+  el.style.animation=el.dataset.kf+' '+el.dataset.dur+'ms ease '+el.dataset.del+'ms both';el.classList.add('on');}
+ document.addEventListener('click',function(e){var s=e.target.closest('[data-bid]');if(!s)return;
+  s.closest('section').querySelectorAll('[data-trig="'+s.dataset.bid+'"]').forEach(play);});
+ Reveal.on('slidechanged',function(ev){if(ev.previousSlide)ev.previousSlide.querySelectorAll('.rv-trig').forEach(function(el){
+  el.style.animation='';el.classList.remove('on');});});
+})();`;
 
 function blockHTML(b, slide) {
   // When the slide uses Auto‑Animate, a stable data-id lets reveal.js match and
   // morph the same object between consecutive slides (PowerPoint's "Morph").
-  const a = animAttrs(b) + (slide && slide.autoAnimate ? ` data-id="${b.id}"` : '');
+  const a = animAttrs(b, slide) + (slide && slide.autoAnimate ? ` data-id="${b.id}"` : '');
   if (b.type === 'connector') {
     const { w, h } = state.deck.size;
     const from = slide && slide.blocks.find(x => x.id === b.from);
@@ -132,7 +154,10 @@ function slideHTML(s, deck, figMap) {
   const auto = s.autoSlide ? ` data-autoslide="${s.autoSlide}"` : '';
   const solid = /^(#|rgb)/.test(s.background || '');
   const bg = solid ? ` data-background-color="${s.background}"` : '';
-  const inner = s.blocks.map(b => {
+  const tl = animTimeline(s);
+  const inner = s.blocks.map(b0 => {
+    // Effective start time within the click ("with/after previous" resolved).
+    const b = b0.animation && tl.has(b0.id) ? { ...b0, animation: { ...b0.animation, delay: tl.get(b0.id).delay } } : b0;
     if (b.type === 'figindex') return figIndexExport(b, deck);
     if (b.type === 'slideref') return slideRefExport(b, s, deck);
     let html = blockHTML(b, s);
@@ -166,6 +191,7 @@ export function buildHTML(deck = state.deck) {
   const hasInlineMath = deck.slides.some(s => s.blocks.some(b => b.type === 'text' && /\$[^$]/.test(b.html || '')));
   const hasZoomReturn = deck.slides.some(s => s.blocks.some(b => b.type === 'slideref' && b.returnBack));
   const katexNeeded = hasMath || hasInlineMath;
+  const hasTrig = deck.slides.some(s => s.blocks.some(b => b.animation?.trigger));
   const ft = deck.footer || { show: false };
   const footerText = ft.show
     ? `<div class="deck-footer">${esc(ft.text || '')}${ft.date ? (ft.text ? ' · ' : '') + new Date().toLocaleDateString('es') : ''}</div>`
@@ -199,6 +225,9 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  .reveal table.tbl.has-header tr:first-child td{font-weight:700;background:rgba(127,127,127,.25)}
  .deck-footer{position:fixed;left:12px;bottom:8px;z-index:30;font-size:14px;opacity:.7;color:#fff;mix-blend-mode:difference}
  ${customEffectCSS(deck)}
+ .reveal .slides section .fragment.rv-path{opacity:1;visibility:inherit}
+ .reveal .slides section .fragment.rv-path.visible{translate:var(--dx) var(--dy)}
+ ${hasTrig ? `[data-bid]{cursor:pointer} .rv-trig.rv-in:not(.on){opacity:0} ${EFFECT_KF_CSS.replace(/\n/g, ' ')}` : ''}
  ${INK_CSS}
 </style></head><body>
 <div class="reveal"><div class="slides">
@@ -215,6 +244,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
    plugins:[ RevealNotes${hasCode ? ', RevealHighlight' : ''} ] });
  ${hasMath ? 'window.addEventListener("load",function(){window.katex&&document.querySelectorAll(".math[data-latex]").forEach(function(el){try{katex.render(el.getAttribute("data-latex"),el,{throwOnError:false,displayMode:true});}catch(e){}});});' : ''}
  ${hasInlineMath ? 'window.addEventListener("load",function(){window.renderMathInElement&&renderMathInElement(document.body,{delimiters:[{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}],throwOnError:false});});' : ''}
+ ${hasTrig ? TRIGGER_JS : ''}
  ${inkJS(w, h, { pen: t('Lápiz'), hl: t('Resaltador'), laser: t('Puntero láser'), color: t('Color de la tinta'), erase: t('Borrar la tinta de la diapositiva') })}
  ${hasZoomReturn ? '(function(){var p=null;document.addEventListener("click",function(e){var a=e.target.closest("a.slide-zoom[data-zoom-return]");if(a){p={t:+a.dataset.target,o:+a.dataset.origin,arrived:false};}});Reveal.on("slidechanged",function(ev){if(!p)return;if(ev.indexh===p.t){p.arrived=true;return;}if(p.arrived){var o=p.o;p=null;setTimeout(function(){Reveal.slide(o);},0);}});})();' : ''}
 </script></body></html>`;
