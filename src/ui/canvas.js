@@ -147,6 +147,7 @@ function reconcile(b) {
       rich.dir = b.dir || '';
       rich.style.writingMode = b.vertical ? 'vertical-rl' : '';
       rich.style.setProperty('--bullet', b.bullet || 'disc');
+      rich.style.setProperty('--num', b.numStyle || 'decimal');
       if (!el.classList.contains('editing') && rich.innerHTML !== (b.html || '')) rich.innerHTML = b.html || '';
     }
   } else if (b.type === 'image') {
@@ -231,6 +232,7 @@ function content(b) {
     if (b.dir) d.dir = b.dir;
     if (b.vertical) d.style.writingMode = 'vertical-rl';
     if (b.bullet) d.style.setProperty('--bullet', b.bullet);
+    if (b.numStyle) d.style.setProperty('--num', b.numStyle);
     d.innerHTML = b.html || '';
     return d;
   }

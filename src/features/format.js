@@ -120,6 +120,10 @@ export function setBullet(value) {
   const c = ctx(); if (!c) return;
   commit(() => { c.b.bullet = value; });
 }
+export function setNumStyle(value) {
+  const c = ctx(); if (!c) return;
+  commit(() => { c.b.numStyle = value; });
+}
 export function fontSize(delta) {
   const c = ctx(); if (!c) return;
   commit(() => { c.b.fontSize = Math.max(8, (c.b.fontSize || 40) + delta); });

@@ -276,9 +276,17 @@ export async function run(frame) {
     eq(R.format.normalizeLink('https://x.com'), 'https://x.com', 'URL intacta');
   });
 
-  await test('estilo de viñeta por cuadro en el export', async () => {
-    reset(); const b = newText(); R.format.setBullet('square');
-    assert(/--bullet:square/.test(R.io.buildHTML()), '--bullet en el export');
+  await test('estilo de viñeta y lista numerada por cuadro en el export', async () => {
+    reset(); const b = newText(); R.format.setBullet('square'); R.format.setNumStyle('lower-roman');
+    const html = R.io.buildHTML();
+    assert(/--bullet:square/.test(html), '--bullet'); assert(/--num:lower-roman/.test(html), '--num');
+  });
+
+  await test('aplicar fondo a todas las diapositivas', async () => {
+    reset(); R.slides.addSlide(); R.slides.addSlide();
+    slide().background = '#123456';
+    D.querySelector('[data-action="bg-all"]').click();
+    assert(R.state.deck.slides.every(s => s.background === '#123456'), 'todas con el mismo fondo');
   });
 
   await test('dirección RTL del texto en el export', async () => {

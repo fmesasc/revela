@@ -76,6 +76,7 @@ const ACTIONS = {
     commit(() => { currentSlide().background = `linear-gradient(135deg, ${a}, ${b})`; });
   },
   'bg-image': () => readFile('image/*', src => commit(() => { currentSlide().background = `#000 url(${src}) center/cover no-repeat`; })),
+  'bg-all': () => { const bg = currentSlide().background; commit(() => { for (const s of state.deck.slides) s.background = bg; }); },
   'zoom-in': () => setZoom((state.ui.zoom || 1) + 0.1),
   'zoom-out': () => setZoom((state.ui.zoom || 1) - 0.1),
   'zoom-reset': () => setZoom(1),
@@ -262,7 +263,10 @@ const POPS = {
         <input type="number" step="4" min="0" data-pop="indent" value="${t.indent || 0}"></label>
       <label>Viñeta <select data-pop="bullet">
         <option value="disc">• Disco</option><option value="circle">◦ Círculo</option>
-        <option value="square">▪ Cuadrado</option><option value="none">— Ninguna</option></select></label>`;
+        <option value="square">▪ Cuadrado</option><option value="none">— Ninguna</option></select></label>
+      <label>Lista numerada <select data-pop="numstyle">
+        <option value="decimal">1, 2, 3</option><option value="lower-alpha">a, b, c</option>
+        <option value="upper-alpha">A, B, C</option><option value="lower-roman">i, ii, iii</option></select></label>`;
   },
 };
 function closePopover() { if (openPop) { openPop.remove(); openPop = null; } }
@@ -283,6 +287,8 @@ function togglePopover(launcher, type) {
   pop.querySelector('[data-pop="indent"]')?.addEventListener('input', e => format.indent(e.target.value));
   const bsel = pop.querySelector('[data-pop="bullet"]');
   if (bsel) { bsel.value = selectedBlock()?.bullet || 'disc'; bsel.addEventListener('change', e => format.setBullet(e.target.value)); }
+  const nsel = pop.querySelector('[data-pop="numstyle"]');
+  if (nsel) { nsel.value = selectedBlock()?.numStyle || 'decimal'; nsel.addEventListener('change', e => format.setNumStyle(e.target.value)); }
   pop.querySelectorAll('[data-sym]').forEach(x => {
     x.addEventListener('mousedown', e => e.preventDefault());   // keep the caret in the text
     x.addEventListener('click', () => format.insertSymbol(x.textContent));
