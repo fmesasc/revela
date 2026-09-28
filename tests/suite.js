@@ -76,6 +76,14 @@ export async function run(frame) {
     assert(/<svg[^>]*><ellipse/.test(R.io.buildHTML()), 'export sin elipse');
   });
 
+  await test('icono: se inserta y exporta como SVG', async () => {
+    reset(); R.blocks.addIcon('star'); const b = last(); select(b); await sleep(20);
+    assert(b.type === 'icon' && b.icon === 'star', 'bloque de icono');
+    assert(D.querySelector(`.block[data-id="${b.id}"] .icon-blk svg path`), 'icono en el lienzo');
+    R.blocks.setIconColor('#ff0000'); await sleep(10);
+    assert(/<svg[^>]*stroke="#ff0000"/.test(R.io.buildHTML()), 'color del icono en el export');
+  });
+
   await test('más formas: estrella en lienzo y export', async () => {
     reset(); R.blocks.addShape('star'); const b = last(); select(b); await sleep(20);
     assert(D.querySelector(`.block[data-id="${b.id}"] .shape svg polygon`), 'estrella en el lienzo');

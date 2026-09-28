@@ -71,6 +71,33 @@ export function chartSVG(b) {
   return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">${bars}</svg>`;
 }
 
+// A small built‑in icon set (inline SVG paths, 24×24) — no external font/CDN.
+const ICONS = {
+  check: '<path d="M20 6L9 17l-5-5"/>',
+  close: '<path d="M6 6l12 12M18 6L6 18"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  arrow: '<path d="M4 12h14M13 6l6 6-6 6"/>',
+  circle: '<circle cx="12" cy="12" r="9"/>',
+  square: '<rect x="4" y="4" width="16" height="16" rx="2"/>',
+  triangle: '<path d="M12 4l9 16H3z"/>',
+  star: '<path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6-5.4-3-5.4 3 1.2-6L3.3 9.3l6.1-.7z"/>',
+  heart: '<path d="M12 20S4 14 4 9a4 4 0 018-1 4 4 0 018 1c0 5-8 11-8 11z"/>',
+  home: '<path d="M4 11l8-7 8 7M6 10v9h5v-5h2v5h5v-9"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M4 7l8 6 8-6"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+  location: '<path d="M12 21s7-6 7-11a7 7 0 10-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+  bolt: '<path d="M13 3L4 14h6l-1 7 9-11h-6z"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>',
+};
+export const ICON_NAMES = Object.keys(ICONS);
+export function iconSVG(b) {
+  const color = b.color || '#ffffff';
+  return `<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="${color}" `
+    + `stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="overflow:visible">${ICONS[b.icon] || ''}</svg>`;
+}
+export const iconSig = b => (b.icon || '') + '|' + (b.color || '');
+
 // SVG for shape blocks, shared by the canvas, the thumbnails and the export.
 // The viewBox is a fixed 100×100 stretched to the block (preserveAspectRatio
 // none); a non‑scaling stroke keeps the outline an even width at any size.

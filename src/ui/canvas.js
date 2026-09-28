@@ -4,7 +4,7 @@
 
 import { state, commit, mutate, currentSlide, selectedBlock,
   selectedBlocks, selectedIds, isSelected, setSelection, toggleSelection, setMulti, selectWithGroup } from '../core/store.js';
-import { shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG } from './shape.js';
+import { shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig } from './shape.js';
 
 const findBlock = id => currentSlide().blocks.find(x => x.id === id);
 const connectorHTML = b => {
@@ -189,6 +189,9 @@ function reconcile(b) {
     if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = chartSVG(b); }
   } else if (b.type === 'connector') {
     const d = el.querySelector('.connector'); if (d) d.innerHTML = connectorHTML(b);  // follows its endpoints
+  } else if (b.type === 'icon') {
+    const d = el.querySelector('.icon-blk'); const sig = iconSig(b);
+    if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = iconSVG(b); }
   }
 }
 
@@ -264,6 +267,9 @@ function content(b) {
   }
   if (b.type === 'connector') {
     const d = document.createElement('div'); d.className = 'connector'; d.innerHTML = connectorHTML(b); return d;
+  }
+  if (b.type === 'icon') {
+    const d = document.createElement('div'); d.className = 'icon-blk'; d.dataset.sig = iconSig(b); d.innerHTML = iconSVG(b); return d;
   }
   if (b.type === 'table') return tableContent(b);
   if (b.type === 'chart') {

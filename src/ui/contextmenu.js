@@ -102,6 +102,8 @@ function forBlock(b) {
     items.push(
       ['Reproducir en el editor', () => document.querySelector(`.block[data-id="${b.id}"] video`)?.play()],
       null);
+  } else if (b.type === 'icon') {
+    items.push(['Color del icono…', () => openIconColor(b)], null);
   } else if (b.type === 'chart') {
     items.push(['Editar datos…', () => openChartData(b)], null);
   } else if (b.type === 'table') {
@@ -223,6 +225,21 @@ function openChartData(b) {
     blocks.setChart({ chartType: back.querySelector('.ch-type').value, color: back.querySelector('.ch-color').value, data });
     close();
   });
+}
+
+function openIconColor(b) {
+  if (document.getElementById('icon-modal')) return;
+  const back = document.createElement('div');
+  back.id = 'icon-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="min-width:220px">
+    <button class="modal-close">✕</button><h3>Color del icono</h3>
+    <input type="color" class="ic-color" value="${b.color || '#ffffff'}" style="width:80px;height:44px;border:none;background:none;cursor:pointer">
+  </div>`;
+  document.body.appendChild(back);
+  const close = () => back.remove();
+  back.querySelector('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  back.querySelector('.ic-color').addEventListener('input', e => blocks.setIconColor(e.target.value));
 }
 
 function openBoxStyle(b) {

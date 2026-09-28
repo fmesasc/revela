@@ -1,6 +1,6 @@
 // Non‑interactive block rendering, shared by slide thumbnails.
 
-import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG } from './shape.js';
+import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, iconSVG } from './shape.js';
 
 export function blockPreview(b) {
   const el = document.createElement('div');
@@ -33,6 +33,8 @@ export function blockPreview(b) {
     el.innerHTML = shapeSVG(b);
   } else if (b.type === 'chart') {
     el.innerHTML = chartSVG(b);
+  } else if (b.type === 'icon') {
+    el.innerHTML = iconSVG(b);
   } else if (b.type === 'table') {
     el.innerHTML = `<table style="border-collapse:collapse;width:100%;height:100%;--stroke:${b.stroke || '#fff'}">`
       + b.rows.map(row => `<tr>${row.map(c => `<td style="border:1px solid ${b.stroke || '#fff'};color:#fff;padding:2px 4px">${c || ''}</td>`).join('')}</tr>`).join('')

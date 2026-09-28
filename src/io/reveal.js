@@ -2,7 +2,7 @@
 // present / export / save-load helpers.
 
 import { state } from '../core/store.js';
-import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG } from '../ui/shape.js';
+import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG } from '../ui/shape.js';
 import { googleFontLinks } from '../features/fonts.js';
 
 const REVEAL = 'https://cdn.jsdelivr.net/npm/reveal.js@5.1.0';
@@ -61,6 +61,8 @@ function blockHTML(b, slide) {
     return `<div${a} style="${box(b)}">${shapeSVG(b)}</div>`;
   if (b.type === 'chart')
     return `<div${a} style="${box(b)}">${chartSVG(b)}</div>`;
+  if (b.type === 'icon')
+    return `<div${a} style="${box(b)}">${iconSVG(b)}</div>`;
   if (b.type === 'table')
     return `<div${a} style="${box(b)}"><table class="tbl${b.header ? ' has-header' : ''}" style="--stroke:${b.stroke || '#fff'}">`
       + b.rows.map(row => `<tr>${row.map(c => `<td>${c || ''}</td>`).join('')}</tr>`).join('')

@@ -96,6 +96,13 @@ export function addDiagram(kind = 'process') {
 export function addTable() { insert(tableBlock()); }
 export function addCode() { insert(codeBlock()); }
 export function addChart() { insert(chartBlock()); }
+export function addIcon(name) {
+  insert({ id: uid(), type: 'icon', icon: name, color: '#ffffff', x: 560, y: 280, w: 160, h: 160, rotation: 0, animation: null });
+}
+export function setIconColor(color) {
+  const b = selectedBlock(); if (!b || b.type !== 'icon') return;
+  commit(() => { b.color = color; }, { history: false });
+}
 
 // Connect the two selected blocks with a line/arrow that follows them.
 export function addConnector() {
