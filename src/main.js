@@ -34,6 +34,9 @@ import * as designer from './features/designer.js';
 import * as pptxImport from './io/pptx.js';
 import * as odp from './io/odp.js';
 import { Revela, loadPlugins } from './api.js';
+import { finishOpenRouterLogin } from './features/ai.js';
+import { alertDialog } from './ui/dialog.js';
+import * as ai from './features/ai.js';
 import * as api from './api.js';
 
 function render() {
@@ -111,12 +114,15 @@ initI18n();
 // and inspect the real app. Only active with ?test in the URL.
 const testing = new URLSearchParams(location.search).has('test');
 if (testing)
-  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, designer, pptxImport, odp, api, video: () => import('./io/video.js') };
+  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, designer, pptxImport, odp, api, ai, video: () => import('./io/video.js') };
 
 // Public scripting API for plugins, macros and the console; installed plugins
 // load after the editor is ready (not in the test harness).
 window.Revela = Revela;
 if (!testing) loadPlugins();
+// Back from OpenRouter sign-in (?code=…): exchange it for the key.
+if (!testing) finishOpenRouterLogin().then(ok => { if (ok) alertDialog(t('IA conectada con OpenRouter.')); })
+  .catch(e => alertDialog(t('No se pudo conectar con OpenRouter: ') + e.message));
 
 // Offline support (PWA). Not for the test harness nor file:// pages.
 if (!testing && 'serviceWorker' in navigator && location.protocol !== 'file:')

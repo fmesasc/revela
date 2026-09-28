@@ -1125,6 +1125,40 @@ export async function run(frame) {
     } finally { f.remove(); }
   });
 
+  await test('IA con OpenRouter: inicio de sesión PKCE y funciones (respuestas simuladas)', async () => {
+    reset(); const W = frame.contentWindow, AI = R.ai, realFetch = W.fetch, calls = [];
+    eq(await AI.pkceChallenge('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'), 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', 'reto PKCE (vector del RFC 7636)');
+    let answer = '';
+    W.fetch = async (url, opts) => {
+      calls.push({ url, opts, body: JSON.parse(opts.body) });
+      if (url.endsWith('/auth/keys')) return new W.Response(JSON.stringify({ key: 'sk-or-prueba' }));
+      return new W.Response(JSON.stringify({ choices: [{ message: { content: answer } }] }));
+    };
+    try {
+      AI.disconnectAi(); W.sessionStorage.setItem('revela.ai.pkce', 'verificador');
+      const ok = await AI.finishOpenRouterLogin({ search: '?test&code=CODIGO', pathname: W.location.pathname, hash: '' });
+      assert(ok && AI.aiConnected(), 'código canjeado por la clave');
+      eq(calls[0].body.code, 'CODIGO', 'envía el código'); eq(calls[0].body.code_verifier, 'verificador', 'y el verificador');
+      assert(!/code=/.test(W.location.search), 'el código se quita de la URL');
+      answer = JSON.stringify({ slides: [{ title: 'Uno <b>', bullets: ['a', 'b'], notes: 'n1' }, { title: 'Dos', bullets: ['c'], notes: 'n2' }] });
+      const n0 = R.state.deck.slides.length;
+      eq(await AI.generateSlides('Volcanes', 2), 2, 'dos diapositivas generadas');
+      eq(R.state.deck.slides.length, n0 + 2, 'insertadas'); const g = R.state.deck.slides[1];
+      eq(g.blocks[0].html, 'Uno &lt;b&gt;', 'título escapado'); eq(g.blocks[1].html, '<ul><li>a</li><li>b</li></ul>', 'viñetas'); eq(g.notes, 'n1', 'notas');
+      const c = calls.at(-1);
+      eq(c.opts.headers.Authorization, 'Bearer sk-or-prueba', 'clave'); eq(c.opts.headers['X-Title'], 'Revela', 'atribución a Revela');
+      assert(/fmesasc\.github\.io\/revela/.test(c.opts.headers['HTTP-Referer']), 'referer de la app');
+      R.slides.goToSlide(1); select(slide().blocks[1]); answer = '- corto\n- claro';
+      await AI.rewriteSelected('shorter'); eq(slide().blocks[1].html, '<ul><li>corto</li><li>claro</li></ul>', 'reescritura');
+      answer = 'Explica esto.'; await AI.writeNotes(); eq(slide().notes, 'Explica esto.', 'notas del orador');
+      R.blocks.addImage('data:image/gif;base64,R0lGODlhAQABAAAAACw='); answer = '"Un punto"';
+      await AI.describeImage(); eq(last().alt, 'Un punto', 'texto alternativo');
+      eq(calls.at(-1).body.messages[1].content[1].type, 'image_url', 'envía la imagen');
+      W.fetch = async () => new W.Response('x', { status: 402 });
+      let err = ''; try { await AI.writeNotes(); } catch (e) { err = e.message; } eq(err, 'NO_CREDIT', 'sin saldo');
+    } finally { W.fetch = realFetch; AI.disconnectAi(); }
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

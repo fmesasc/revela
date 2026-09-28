@@ -20,6 +20,8 @@ import * as master from '../features/master.js';
 import { openGallery, openDesignIdeas } from './gallery-dialog.js';
 import { autocorrectOn, setAutocorrect } from '../features/autocorrect.js';
 import { openPlugins, openMacros } from './plugins-dialog.js';
+import { AI_ACTIONS, aiRewrite } from './ai-dialog.js';
+import { DONATE_URL } from '../config.js';
 import * as media from '../features/media.js';
 import * as palettes from '../features/palettes.js';
 import { setDrawTool, drawOpts } from './draw.js';
@@ -82,6 +84,7 @@ const ACTIONS = {
   'reuse-slides': () => pickReuseFile(),
   'a11y-check': () => openA11yCheck(),
   'reading-order': () => openReadingOrder(),
+  ...AI_ACTIONS,
   'plugins': () => openPlugins(),
   'macros': () => openMacros(),
   'autocorrect': () => { setAutocorrect(!autocorrectOn()); renderRibbon(); },
@@ -216,6 +219,8 @@ export function initRibbon() {
     endAnimPaint();
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && animPaint) endAnimPaint(); });
+  const don = document.getElementById('donate');
+  if (don && DONATE_URL) { don.href = DONATE_URL; don.hidden = false; }
   document.getElementById('master-banner')?.addEventListener('click', e => {
     if (e.target.closest('[data-action="master-close"]')) master.toggleMasterEdit(false);
   });
@@ -228,6 +233,8 @@ export function initRibbon() {
     if (ics) { e.stopPropagation(); togglePopover(ics, 'icons'); return; }
     const wa = e.target.closest('[data-wordart]');
     if (wa) { e.stopPropagation(); togglePopover(wa, 'wordart'); return; }
+    const rw = e.target.closest('[data-ai-rewrite]');
+    if (rw) { aiRewrite(rw.dataset.aiRewrite); return; }
     const dr = e.target.closest('[data-draw]');
     if (dr) { dr.dataset.draw ? setDrawTool(dr.dataset.draw) : commit(() => (state.ui.drawTool = null), { history: false }); return; }
     const po = e.target.closest('[data-palettes-open]');

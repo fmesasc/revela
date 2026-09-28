@@ -474,3 +474,10 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .pl-list button{border:1px solid var(--line2);background:none;border-radius:6px;cursor:pointer}
 .pl-add{display:flex;gap:6px}.pl-add input{flex:1;border:1px solid var(--line2);border-radius:6px;padding:6px 8px}
 .mc-out{margin:8px 0 0;font-size:12px;white-space:pre-wrap;color:var(--txt2)}
+/* AI */
+#ai-busy{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:10002;display:flex;align-items:center;gap:8px;
+  padding:8px 14px;border-radius:20px;background:#1b1d22;color:#fff;box-shadow:0 4px 18px #0006;font:14px system-ui,sans-serif}
+#ai-busy .ms{animation:recBlink 1.2s infinite}
+.titlebar .donate{display:inline-flex;align-items:center;gap:4px;margin-inline-end:10px;padding:3px 10px;border-radius:14px;
+  border:1px solid #e0587a;color:#c0305a;text-decoration:none;font-size:13px}
+.titlebar .donate:hover{background:#fdecf1}

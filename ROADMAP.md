@@ -169,8 +169,9 @@ the origin of every requirement is traceable.
 ## 11. Intelligence
 - ✅ AI image background removal `PP`
 - ✅ Design ideas — local layout suggestions for the slide's content (visual left/right/background, centred, classic) `PP·GS`
-- ⬜ AI text and image generation `PP·GS`
-- ⬜ Auto-generated speaker notes / summaries `PP·GS`
+- ✅ AI via OpenRouter (sign in or own key; user pays their usage, no Revela server): create slides from a topic, rewrite/shorten/proofread/translate text `PP·GS`
+- ⬜ AI image generation `PP·GS`
+- ✅ AI speaker notes (one slide or all) and alt text for images `PP·GS`
 
 ## 12. Platform
 - ✅ Static web app with automatic deployment (GitHub Pages) `GS`

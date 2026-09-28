@@ -29,6 +29,7 @@
       <span class="doc-name" contenteditable="true" spellcheck="false"
         title="Haz clic para renombrar la presentación"></span>
       <span class="grow"></span>
+      <a id="donate" class="donate" target="_blank" rel="noopener" hidden title="Apoya el proyecto"><i class="ms">favorite</i><span>Apoyar</span></a>
       <select id="lang-select" class="lang-select" title="Idioma / Language"></select>
     </div>
 
@@ -41,6 +42,7 @@
       <button data-tab="transitions">Transiciones</button>
       <button data-tab="animations">Animaciones</button>
       <button data-tab="view">Ver</button>
+      <button data-tab="ai">IA</button>
     </nav>
 
     <div class="pages">
@@ -270,6 +272,37 @@
             <button data-action="insert-date" class="lg"><i class="ms">event</i><span>Fecha y<br>hora</span></button>
             <button data-action="insert-figindex" class="lg"><i class="ms">format_list_numbered</i><span>Índice de<br>figuras</span></button>
           </div><label>Campos</label>
+        </div>
+      </section>
+
+      <!-- IA -->
+      <section class="ribbon-page" data-page="ai">
+        <div class="group">
+          <div class="row">
+            <button data-action="ai-generate" class="lg go"><i class="ms">auto_awesome</i><span>Crear<br>diapositivas</span></button>
+          </div><label>Generar</label>
+        </div>
+        <div class="group">
+          <div class="row">
+            <button data-ai-rewrite="shorter"><i class="ms">short_text</i><span>Más corto</span></button>
+            <button data-ai-rewrite="formal"><i class="ms">work</i><span>Más formal</span></button>
+            <button data-ai-rewrite="simple"><i class="ms">child_care</i><span>Más sencillo</span></button>
+            <button data-ai-rewrite="fix"><i class="ms">spellcheck</i><span>Corregir</span></button>
+            <button data-ai-rewrite="bullets"><i class="ms">format_list_bulleted</i><span>En viñetas</span></button>
+            <button data-action="ai-translate"><i class="ms">translate</i><span>Traducir</span></button>
+          </div><label>Texto seleccionado</label>
+        </div>
+        <div class="group">
+          <div class="row">
+            <button data-action="ai-notes" class="lg"><i class="ms">sticky_note_2</i><span>Notas de esta<br>diapositiva</span></button>
+            <button data-action="ai-notes-all" class="lg"><i class="ms">library_books</i><span>Notas de<br>todas</span></button>
+            <button data-action="ai-alt" class="lg"><i class="ms">image_search</i><span>Texto<br>alternativo</span></button>
+          </div><label>Ayuda</label>
+        </div>
+        <div class="group">
+          <div class="row">
+            <button data-action="ai-settings" class="lg"><i class="ms">key</i><span>Conectar<br>IA</span></button>
+          </div><label>Ajustes</label>
         </div>
       </section>
 
