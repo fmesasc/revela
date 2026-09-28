@@ -8,6 +8,7 @@ import { t } from '../i18n.js';
 import { alertDialog } from '../ui/dialog.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle, visibleIndexMap } from '../features/captions.js';
 import { INK_CSS, inkJS } from './ink.js';
+import { deckFg, deckBodyFont } from '../features/palettes.js';
 
 const REVEAL = 'https://cdn.jsdelivr.net/npm/reveal.js@5.1.0';
 const MODEL_VIEWER = 'https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js';
@@ -91,7 +92,7 @@ function blockHTML(b, slide) {
   if (b.type === 'icon')
     return `<div${a} style="${box(b)}">${iconSVG(b)}</div>`;
   if (b.type === 'math')
-    return `<div${a} class="math" data-latex="${esc(b.latex || '')}" style="${box(b)}display:flex;align-items:center;justify-content:center;color:#fff"></div>`;
+    return `<div${a} class="math" data-latex="${esc(b.latex || '')}" style="${box(b)}display:flex;align-items:center;justify-content:center"></div>`;
   if (b.type === 'table')
     return `<div${a} style="${box(b)}"><table class="tbl${b.header ? ' has-header' : ''}" style="--stroke:${b.stroke || '#fff'}">`
       + tableRowsHTML(b) + `</table></div>`;
@@ -108,7 +109,7 @@ function blockHTML(b, slide) {
 function figIndexExport(b, deck) {
   const figs = collectFigures(deck, b.kind);
   const vis = visibleIndexMap(deck);
-  return `<div style="${box(b)}font-size:${b.fontSize || 28}px;color:#fff"><b>${esc(t(figIndexTitle(b.kind)))}</b>`
+  return `<div style="${box(b)}font-size:${b.fontSize || 28}px"><b>${esc(t(figIndexTitle(b.kind)))}</b>`
     + `<ul style="margin:.4em 0 0;padding-left:1.4em">`
     + figs.map(f => `<li><a href="#/${vis.get(f.slide) ?? 0}" style="color:inherit;text-decoration:none">${esc(captionLine(f))}</a></li>`).join('')
     + `</ul></div>`;
@@ -137,7 +138,7 @@ function slideHTML(s, deck, figMap) {
     let html = blockHTML(b, s);
     const f = figMap.get(b.id);
     if (f) html += `<div class="caption" style="position:absolute;left:${b.x}px;top:${b.y + b.h + 4}px;width:${b.w}px;`
-      + `text-align:center;color:#fff;font-style:italic;font-size:16px;opacity:.85">${esc(captionLine(f))}</div>`;
+      + `text-align:center;font-style:italic;font-size:16px;opacity:.85">${esc(captionLine(f))}</div>`;
     return html;
   }).join('\n');
   const notes = s.notes ? `<aside class="notes">${esc(s.notes)}</aside>` : '';
@@ -187,7 +188,7 @@ ${katexNeeded ? `<link rel="stylesheet" href="${KATEX}/katex.min.css">` : ''}
 ${katexNeeded ? `<script defer src="${KATEX}/katex.min.js"></script>` : ''}
 ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></script>` : ''}
 <style>
- .reveal .stage{position:relative;width:${w}px;height:${h}px;margin:0 auto}
+ .reveal .stage{position:relative;width:${w}px;height:${h}px;margin:0 auto;color:${deckFg(deck)};${deckBodyFont(deck) ? `font-family:${deckBodyFont(deck)};` : ''}}
  .reveal .stage>*{overflow-wrap:anywhere}
  .reveal .stage ul{list-style-type:var(--bullet,disc)}
  .reveal .stage ol{list-style-type:var(--num,decimal)}
@@ -297,7 +298,7 @@ ${googleFontLinks(deck)}
 <style>
  @page{size:${w}px ${h}px;margin:0}
  *{box-sizing:border-box} html,body{margin:0}
- .page{position:relative;width:${w}px;height:${h}px;overflow:hidden;color:#fff;page-break-after:always}
+ .page{position:relative;width:${w}px;height:${h}px;overflow:hidden;color:${deckFg(deck)};${deckBodyFont(deck) ? `font-family:${deckBodyFont(deck)};` : ''}page-break-after:always}
  .page:last-child{page-break-after:auto}
  .page>*{overflow-wrap:anywhere}
  model-viewer,img,video,iframe{width:100%;height:100%}
@@ -347,7 +348,7 @@ ${googleFontLinks(deck)}
  .cell{display:flex;align-items:center;justify-content:center;position:relative;min-height:0}
  .cell .n{position:absolute;left:0;top:0;font-size:8pt;color:#999}
  .thumb{position:relative;overflow:hidden;border:1px solid #bbb}
- .page{position:absolute;left:0;top:0;width:${w}px;height:${h}px;transform-origin:0 0;color:#fff}
+ .page{position:absolute;left:0;top:0;width:${w}px;height:${h}px;transform-origin:0 0;color:${deckFg(deck)};${deckBodyFont(deck) ? `font-family:${deckBodyFont(deck)};` : ''}}
  .page>*{overflow-wrap:anywhere}
  .page img,.page video,.page iframe,.page model-viewer{width:100%;height:100%}
  .lines{background:repeating-linear-gradient(transparent 0 9mm,#bbb 9mm calc(9mm + 1px));margin:4mm 0}
@@ -389,7 +390,7 @@ export async function exportPNG() {
   const s = state.deck.slides[state.ui.slideIndex];
   const { w, h } = state.deck.size;
   const holder = document.createElement('div');
-  holder.style.cssText = `position:fixed;left:-99999px;top:0;width:${w}px;height:${h}px;overflow:hidden;color:#fff;background:${s.background}`;
+  holder.style.cssText = `position:fixed;left:-99999px;top:0;width:${w}px;height:${h}px;overflow:hidden;color:${deckFg()};font-family:${deckBodyFont() || 'inherit'};background:${s.background}`;
   holder.innerHTML = `<style>*{box-sizing:border-box}ul{list-style-type:var(--bullet,disc)}ol{list-style-type:var(--num,decimal)}`
     + `img,video,model-viewer,iframe{width:100%;height:100%}table.tbl{border-collapse:collapse;width:100%;height:100%}`
     + `table.tbl td{border:1px solid var(--stroke,#fff);padding:.15em .4em}table.tbl.has-header tr:first-child td{font-weight:700;background:rgba(127,127,127,.25)}</style>`

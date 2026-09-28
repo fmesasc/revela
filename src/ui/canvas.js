@@ -8,6 +8,7 @@ import { shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig,
 import { collectFigures, figuresMap, captionLine, figIndexTitle } from '../features/captions.js';
 import { blockPreview } from './preview.js';
 import { t } from '../i18n.js';
+import { deckFg, deckBodyFont } from '../features/palettes.js';
 
 function renderSlideRef(wrap, b) {
   wrap.innerHTML = '';
@@ -135,6 +136,8 @@ export function renderCanvas() {
   stage.style.width = w + 'px';
   stage.style.height = h + 'px';
   stage.style.background = slide.background;
+  stage.style.color = deckFg();
+  stage.style.fontFamily = deckBodyFont();
   stage.classList.toggle('guides', state.ui.showGuides);
 
   const sig = signature(slide);

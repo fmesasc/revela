@@ -604,6 +604,36 @@ export async function run(frame) {
     assert(!/googleapis\.com\/drive|accounts\.google/.test(sw), 'no toca Drive ni el inicio de sesión');
   });
 
+  await test('colores del tema: cambiar la paleta recolorea lo que venía de ella', async () => {
+    reset(); const P = R.palettes;
+    R.blocks.addShape('rect'); const sh = last(); sh.fill = '#3f6497'; sh.stroke = '#123123';   // acento 1 / color propio
+    const tx = slide().blocks[0]; tx.html = '<span style="color:#e0873b">x</span>';             // acento 2 en el texto
+    D.querySelector('[data-palettes-open]').click(); await sleep(10);
+    eq(D.querySelectorAll('.popover [data-palette]').length, Object.keys(P.PALETTES).length, 'muestras de paletas');
+    D.querySelector('.popover [data-palette="office"]').click(); await sleep(20);
+    const o = P.PALETTES.office;
+    eq(slide().background, o.bg, 'fondo de la paleta');
+    eq(sh.fill, o.accents[0], 'acento 1 → acento 1'); eq(sh.stroke, '#123123', 'color propio intacto');
+    assert(tx.html.includes(o.accents[1]), 'color de texto de la paleta');
+    eq(P.deckFg(), o.fg, 'texto del tema');
+    eq(getComputedStyle(D.getElementById('stage')).color, 'rgb(31, 31, 31)', 'el lienzo usa el color del tema');
+    assert(R.io.buildHTML().includes('color:' + o.fg), 'export con el color del tema');
+    eq(D.querySelector('#theme-swatches').options.length, 8, 'muestras en los selectores');
+    eq(D.querySelector('[data-shape-fill]').getAttribute('list'), 'theme-swatches', 'selector enlazado');
+    P.applyPalette('revela'); eq(sh.fill, '#3f6497', 'vuelta atrás'); eq(slide().background, '#101317', 'fondo original');
+    P.setDeckTextColor('#ff0000'); eq(P.deckFg(), '#ff0000', 'color de texto propio');
+  });
+
+  await test('fuentes del tema: títulos y cuerpo', async () => {
+    reset(); const s0 = slide(); s0.blocks[1].fontSize = 30;
+    R.palettes.applyFontPair('modern'); await sleep(10);
+    assert(/Montserrat/.test(s0.blocks[0].fontFamily), 'título → fuente de títulos');
+    assert(/Open Sans/.test(s0.blocks[1].fontFamily), 'subtítulo pequeño → cuerpo');
+    assert(/Open Sans/.test(D.getElementById('stage').style.fontFamily), 'cuerpo por defecto en el lienzo');
+    const html = R.io.buildHTML();
+    assert(/family=Montserrat/.test(html) && /family=Open\+Sans/.test(html), 'fuentes incrustadas');
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

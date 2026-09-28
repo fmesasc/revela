@@ -98,7 +98,7 @@ the origin of every requirement is traceable.
 - ✅ Slide zoom & summary zoom (embed a slide, link, choose return/stay) `PP`
 - 🚧 Slide master — logo/branding & backgrounds on all slides; full master & placeholders planned `PP·GS·OO`
 - ⬜ Placeholders (layout content placeholders) `PP·OO`
-- ⬜ Colour palettes / theme colours & theme fonts `PP·GS·OO`
+- ✅ Theme colours (9 palettes; switching recolours what came from the palette) & theme fonts (heading/body pairs), theme swatches in every colour picker `PP·GS·OO`
 - ⬜ Template / theme gallery & designer variants `PP·GS·OO`
 - ✅ Reuse / import slides from another deck (.json or .pptx, pick by thumbnail, scaled to size) `PP·OO`
 - ✅ Handout / notes printing layouts (notes pages; 1, 2, 3 with lines, 4, 6, 9 per page) `PP·OO`

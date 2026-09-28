@@ -77,6 +77,8 @@ export function ensureFont(stack) {
 // The distinct Google families used by any text block in the deck.
 export function googleFamiliesInDeck(deck) {
   const used = new Set();
+  const df = byStack.get(deck.bodyFont);            // theme body font (default for text)
+  if (df && df.google) used.add(df.google);
   for (const s of deck.slides)
     for (const b of s.blocks) {
       const f = byStack.get(b.fontFamily);

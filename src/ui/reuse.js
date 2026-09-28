@@ -5,6 +5,7 @@
 import { importSlides } from '../features/slides.js';
 import { importPPTX } from '../io/pptx.js';
 import { blockPreview } from './preview.js';
+import { deckFg } from '../features/palettes.js';
 import { alertDialog } from './dialog.js';
 import { t } from '../i18n.js';
 
@@ -50,7 +51,7 @@ export function openReuseDialog(deck, name = '') {
     const cv = document.createElement('div'); cv.className = 'thumb-canvas';
     cv.style.background = s.background || '#101317'; cv.style.setProperty('--ar', w / h);
     const inner = document.createElement('div'); inner.className = 'thumb-inner';
-    inner.style.cssText = `width:${w}px;height:${h}px;transform:scale(${160 / w})`;
+    inner.style.cssText = `width:${w}px;height:${h}px;transform:scale(${160 / w});color:${deckFg(deck)}`;
     for (const b of s.blocks || []) { try { inner.appendChild(blockPreview(b)); } catch {} }
     cv.appendChild(inner);
     const num = document.createElement('span'); num.className = 'reuse-num'; num.textContent = i + 1;

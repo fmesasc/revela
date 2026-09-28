@@ -14,6 +14,8 @@ import { exportPPTX } from '../io/pptx-export.js';
 import { pickReuseFile } from './reuse.js';
 import { openA11yCheck } from './a11y-panel.js';
 import { openHandoutDialog } from './print-dialog.js';
+import * as palettes from '../features/palettes.js';
+import * as fontsMod from '../features/fonts.js';
 import { FONTS, ensureDeckFonts } from '../features/fonts.js';
 import { ICON_NAMES, iconSVG, WORDART_KEYS, wordartCSS } from './shape.js';
 import { playAnimations } from './canvas.js';
@@ -172,6 +174,10 @@ export function initRibbon() {
     if (ics) { e.stopPropagation(); togglePopover(ics, 'icons'); return; }
     const wa = e.target.closest('[data-wordart]');
     if (wa) { e.stopPropagation(); togglePopover(wa, 'wordart'); return; }
+    const po = e.target.closest('[data-palettes-open]');
+    if (po) { e.stopPropagation(); togglePopover(po, 'palettes'); return; }
+    const fo = e.target.closest('[data-fontpairs-open]');
+    if (fo) { e.stopPropagation(); togglePopover(fo, 'fontpairs'); return; }
     const lo = e.target.closest('[data-layout-open]');
     if (lo) { e.stopPropagation(); togglePopover(lo, 'layout'); return; }
     const tab = e.target.closest('[data-tab]');
@@ -226,6 +232,7 @@ export function initRibbon() {
   bindInput('[data-shape-fill]', v => blocks.setShapeStyle('fill', v), true);
   bindInput('[data-shape-stroke]', v => blocks.setShapeStyle('stroke', v), true);
   bindInput('[data-bg]', v => commit(() => (currentSlide().background = v)));
+  bindInput('[data-deck-fg]', v => palettes.setDeckTextColor(v));
   addEyedroppers();
   bindChange('[data-theme]', v => commit(() => (state.deck.theme = v)));
   bindChange('[data-speed]', v => trans.setTransitionSpeed(v));
@@ -399,6 +406,15 @@ const POPS = {
     + WORDART_KEYS.map(k => `<button data-wa="${k}" type="button" style="${wordartCSS(k)}">Aa</button>`).join('') + `</div>`,
   layout: () => `<h4>${t('Diseño')}</h4><div class="layout-grid">`
     + Object.entries(templates.BUILTIN).map(([k, v]) => `<button data-layout="${k}" type="button">${t(v.name)}</button>`).join('') + `</div>`,
+  palettes: () => `<h4>${t('Colores del tema')}</h4><div class="pal-grid">`
+    + Object.entries(palettes.PALETTES).map(([k, p]) => `<button data-palette="${k}" type="button" class="${(state.deck.palette || 'revela') === k ? 'on' : ''}">`
+      + `<span class="pal-sw" style="background:${p.bg};color:${p.fg}">Aa${p.accents.map(c => `<i style="background:${c}"></i>`).join('')}</span>`
+      + `<span>${t(p.name)}</span></button>`).join('') + `</div>`,
+  fontpairs: () => `<h4>${t('Fuentes del tema')}</h4><div class="fp-list">`
+    + Object.entries(palettes.FONT_PAIRS).map(([k, p]) => { const st = palettes.pairStacks(k);
+      return `<button data-fontpair="${k}" type="button" class="${state.deck.fontPair === k ? 'on' : ''}">`
+        + `<b style="font-family:${st.heading.replace(/"/g, "'")}">${p.heading}</b><span style="font-family:${st.body.replace(/"/g, "'")}">${p.body}</span>`
+        + `<small>${t(p.name)}</small></button>`; }).join('') + `</div>`,
   paragraph: () => {
     const b = selectedBlock(); const tb = b && b.type === 'text' ? b : {};
     return `<h4>${t('Párrafo')}</h4>
@@ -448,6 +464,12 @@ function togglePopover(launcher, type) {
     x.addEventListener('click', () => { blocks.addIcon(x.dataset.icon); closePopover(); }));
   pop.querySelectorAll('[data-wa]').forEach(x =>
     x.addEventListener('click', () => { blocks.addWordArt(x.dataset.wa); closePopover(); }));
+  pop.querySelectorAll('[data-palette]').forEach(x =>
+    x.addEventListener('click', () => { palettes.applyPalette(x.dataset.palette); closePopover(); }));
+  pop.querySelectorAll('[data-fontpair]').forEach(x => {
+    const st = palettes.pairStacks(x.dataset.fontpair); fontsMod.ensureFont(st.heading); fontsMod.ensureFont(st.body);
+    x.addEventListener('click', () => { palettes.applyFontPair(x.dataset.fontpair); closePopover(); });
+  });
   pop.querySelectorAll('[data-layout]').forEach(x =>
     x.addEventListener('click', () => { templates.applyTemplate(templates.BUILTIN[x.dataset.layout]); closePopover(); }));
   openPop = pop;
@@ -485,6 +507,16 @@ function addEyedroppers() {
     lab.after(btn);
   }
 }
+// Theme colours offered as swatches in every colour picker (<datalist>).
+let swatchKey = '';
+function syncSwatches() {
+  const cols = palettes.paletteColours(), key = cols.join();
+  if (key === swatchKey) return; swatchKey = key;
+  let dl = document.getElementById('theme-swatches');
+  if (!dl) { dl = document.createElement('datalist'); dl.id = 'theme-swatches'; document.body.appendChild(dl); }
+  dl.innerHTML = cols.map(c => `<option value="${c}"></option>`).join('');
+  document.querySelectorAll('#ribbon input[type=color]').forEach(i => i.setAttribute('list', 'theme-swatches'));
+}
 function bindChange(sel, cb) { const el = $(sel); if (el) el.addEventListener('change', e => cb(e.target.value)); }
 
 export function renderRibbon() {
@@ -499,6 +531,10 @@ export function renderRibbon() {
     b.classList.toggle('on', (slide.transition || 'inherit') === b.dataset.slideTransition));
   document.querySelector('[data-action="toggle-autoanimate"]')?.classList.toggle('on', !!slide.autoAnimate);
   syncValue('[data-theme]', state.deck.theme);
+  syncValue('[data-deck-fg]', palettes.deckFg());
+  const bgHex = (currentSlide()?.background || '').match(/^#[0-9a-f]{6}$/i);
+  if (bgHex) syncValue('[data-bg]', bgHex[0].toLowerCase());
+  syncSwatches();
   syncValue('[data-speed]', state.deck.transitionSpeed);
   syncValue('[data-deck-transition]', state.deck.defaultTransition);
   document.body.classList.toggle('show-ruler', !!state.ui.showRuler);

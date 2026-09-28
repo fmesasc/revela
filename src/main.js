@@ -25,6 +25,7 @@ import * as io from './io/reveal.js';
 import * as a11y from './features/a11y.js';
 import * as reuse from './ui/reuse.js';
 import * as ribbon from './ui/ribbon.js';
+import * as palettes from './features/palettes.js';
 
 function render() {
   renderRibbon();
@@ -75,7 +76,7 @@ initI18n();
 // and inspect the real app. Only active with ?test in the URL.
 const testing = new URLSearchParams(location.search).has('test');
 if (testing)
-  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon };
+  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes };
 
 // Offline support (PWA). Not for the test harness nor file:// pages.
 if (!testing && 'serviceWorker' in navigator && location.protocol !== 'file:')

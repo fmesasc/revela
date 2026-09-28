@@ -7,6 +7,7 @@
 import { state } from '../core/store.js';
 import { alertDialog } from '../ui/dialog.js';
 import { t } from '../i18n.js';
+import { deckFg } from '../features/palettes.js';
 
 const PPTX = 'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js';
 const loadScript = src => new Promise((res, rej) => {
@@ -33,7 +34,7 @@ function addBlock(slide, b, pptx) {
     if (b.type === 'text') {
       const txt = plain(b.html) || ' ';
       const opts = { ...pos, fontSize: Math.round((b.fontSize || 40) * 0.75), align: b.textAlign || 'left',
-        valign: b.vAlign || 'top', color: hex(b.wordart && '') || 'FFFFFF' };
+        valign: b.vAlign || 'top', color: hex(deckFg()) || 'FFFFFF' };
       const fam = (b.fontFamily || '').split(',')[0].replace(/['"]/g, '').trim();
       if (fam) opts.fontFace = fam;
       slide.addText(txt, opts);
@@ -58,7 +59,7 @@ function addBlock(slide, b, pptx) {
         if (m) cell.options = { ...(m.cs > 1 && { colspan: m.cs }), ...(m.rs > 1 && { rowspan: m.rs }) };
         return cell;
       }).filter(Boolean));
-      slide.addTable(rows, { ...pos, border: { pt: 1, color: hex(b.stroke) || 'FFFFFF' }, color: 'FFFFFF', fontSize: 14, valign: 'top' });
+      slide.addTable(rows, { ...pos, border: { pt: 1, color: hex(b.stroke) || 'FFFFFF' }, color: hex(deckFg()) || 'FFFFFF', fontSize: 14, valign: 'top' });
     } else if (b.type === 'chart') {
       const type = { bar: 'bar', line: 'line', area: 'area', pie: 'pie', doughnut: 'doughnut', radar: 'radar', scatter: 'scatter' }[b.chartType || 'bar'] || 'bar';
       const rows = b.data || [];

@@ -8,7 +8,7 @@ export function blockPreview(b) {
   el.style.cssText = `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px;`
     + `transform:rotate(${b.rotation || 0}deg)${b.flipH ? ' scaleX(-1)' : ''}${b.flipV ? ' scaleY(-1)' : ''}`;
   if (b.type === 'text') {
-    el.innerHTML = `<div style="font-size:${b.fontSize || 40}px;color:#fff;`
+    el.innerHTML = `<div style="font-size:${b.fontSize || 40}px;color:inherit;`
       + `text-align:${b.textAlign || 'left'};${b.fontFamily ? `font-family:${b.fontFamily};` : ''}`
       + `${b.lineHeight ? `line-height:${b.lineHeight};` : ''}`
       + `${b.letterSpacing ? `letter-spacing:${b.letterSpacing}px;` : ''}`
@@ -39,12 +39,12 @@ export function blockPreview(b) {
   } else if (b.type === 'icon') {
     el.innerHTML = iconSVG(b);
   } else if (b.type === 'math') {
-    el.innerHTML = `<div style="width:100%;height:100%;display:grid;place-items:center;color:#fff;font-size:40px">∑</div>`;
+    el.innerHTML = `<div style="width:100%;height:100%;display:grid;place-items:center;color:inherit;font-size:40px">∑</div>`;
   } else if (b.type === 'figindex') {
     el.innerHTML = `<div style="width:100%;height:100%;display:grid;place-items:center;color:#fff;font-size:40px">📑</div>`;
   } else if (b.type === 'table') {
     el.innerHTML = `<table style="border-collapse:collapse;width:100%;height:100%;--stroke:${b.stroke || '#fff'}">`
-      + tableRowsHTML(b, `border:1px solid ${b.stroke || '#fff'};color:#fff;padding:2px 4px`)
+      + tableRowsHTML(b, `border:1px solid ${b.stroke || '#fff'};color:inherit;padding:2px 4px`)
       + `</table>`;
   } else if (b.type === 'code') {
     const pre = document.createElement('pre');

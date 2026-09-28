@@ -4,6 +4,7 @@
 import { state, currentSlide } from '../core/store.js';
 import { goToSlide, moveSlide, deleteSlide, renameSection } from '../features/slides.js';
 import { blockPreview } from './preview.js';
+import { deckFg, deckBodyFont } from '../features/palettes.js';
 
 let panel;
 let dragFrom = null;
@@ -60,7 +61,7 @@ function thumb(slide, index) {
   canvas.style.setProperty('--ar', w / h);
   const inner = document.createElement('div');
   inner.className = 'thumb-inner';
-  inner.style.cssText = `width:${w}px;height:${h}px;transform:scale(${188 / w})`;
+  inner.style.cssText = `width:${w}px;height:${h}px;transform:scale(${188 / w});color:${deckFg()};font-family:${deckBodyFont() || 'inherit'}`;
   for (const b of slide.blocks) inner.appendChild(blockPreview(b));
   canvas.appendChild(inner);
 

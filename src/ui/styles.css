@@ -160,7 +160,7 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 .block.selected{border-color:var(--accent)}
 .block.dragging{cursor:grabbing;opacity:.75}
 .block.editing{cursor:auto}
-.block .rich{width:100%;height:100%;outline:none;padding:6px;color:#fff;overflow-wrap:anywhere}
+.block .rich{width:100%;height:100%;outline:none;padding:6px;color:inherit;overflow-wrap:anywhere}
 .block .rich ul{list-style-type:var(--bullet,disc)}
 .block .rich ol{list-style-type:var(--num,decimal)}
 /* A soft, translucent selection so the applied text colour stays visible
@@ -180,12 +180,12 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 .block .shape{width:100%;height:100%}
 .block .chart{width:100%;height:100%}
 .block .icon-blk{width:100%;height:100%}
-.block .math-blk{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;overflow:auto}
+.block .math-blk{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:inherit;overflow:auto}
 .block.__conn{pointer-events:none}          /* only the line is clickable */
 .block .connector{width:100%;height:100%}
 .block.__conn.selected{border-color:transparent}
 .block.__conn .handle-del,.block.__conn .handle-size,.block.__conn .handle-rot{display:none}
-.block .tbl{border-collapse:collapse;width:100%;height:100%;color:#fff;table-layout:fixed}
+.block .tbl{border-collapse:collapse;width:100%;height:100%;color:inherit;table-layout:fixed}
 .block .tbl td{border:1px solid var(--stroke,#fff);padding:3px 6px;vertical-align:top;outline:none;overflow-wrap:anywhere}
 .block .tbl.has-header tr:first-child td{font-weight:700;background:rgba(127,127,127,.25)}
 .block .code{margin:0;width:100%;height:100%;overflow:auto;background:#0b0e14;color:#e6e6e6;padding:10px;
@@ -219,10 +219,10 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 .block.locked .handle-size,.block.locked .handle-rot{display:none}
 .marquee{position:absolute;z-index:8;pointer-events:none;background:#3f649722;border:1px solid var(--accent)}
 .deck-logo-ovl{position:absolute;z-index:6;pointer-events:none;object-fit:contain}
-.caption-ovl{position:absolute;z-index:2;color:#fff;font-size:16px;text-align:center;opacity:.85;
+.caption-ovl{position:absolute;z-index:2;color:inherit;font-size:16px;text-align:center;opacity:.85;
   font-style:italic;pointer-events:none;overflow-wrap:anywhere}
 .block .slideref{width:100%;height:100%;overflow:hidden;background:#111;border:1px solid #ffffff55;border-radius:4px}
-.block .figindex{width:100%;height:100%;color:#fff;overflow:auto}
+.block .figindex{width:100%;height:100%;color:inherit;overflow:auto}
 .block .figindex ul{margin:.4em 0 0;padding-left:1.4em}
 .block .figindex li{margin:.15em 0}
 .pguide{position:absolute;z-index:6;background:#00bcd4}
@@ -391,3 +391,14 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 .a11y-ok .ms{color:#3a9d5d}
 .row button.eyedrop{padding:2px;min-width:0;margin-left:-4px}
 .row button.eyedrop .ms{font-size:16px}
+/* Theme colours & fonts */
+.pal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.pal-grid button,.fp-list button{display:flex;flex-direction:column;gap:3px;align-items:stretch;background:none;border:1px solid var(--line2);border-radius:6px;padding:4px;cursor:pointer;font-size:11px;color:var(--txt2)}
+.pal-grid button:hover,.fp-list button:hover{background:var(--accent-bg)}
+.pal-grid button.on,.fp-list button.on{border-color:var(--accent)}
+.pal-sw{display:flex;align-items:center;gap:2px;height:30px;padding:0 5px;border-radius:4px;font-weight:700;font-size:13px}
+.pal-sw i{flex:1;height:14px;border-radius:2px}
+.pal-sw i:first-of-type{margin-left:4px}
+.fp-list{display:flex;flex-direction:column;gap:4px;min-width:220px}
+.fp-list button{text-align:left;color:var(--txt)}
+.fp-list b{font-size:17px}.fp-list span{font-size:13px}.fp-list small{color:var(--txt2)}
