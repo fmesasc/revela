@@ -467,3 +467,10 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .gal-item{display:flex;flex-direction:column;gap:6px;padding:0 0 6px;border:1px solid var(--line2);border-radius:8px;background:none;cursor:pointer;overflow:hidden;color:var(--txt);font-size:13px}
 .gal-item .thumb-canvas{width:180px;max-width:100%}
 .gal-item:hover{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-bg)}
+/* Add-ins & macros */
+.pl-list{list-style:none;margin:6px 0;padding:0;display:flex;flex-direction:column;gap:4px}
+.pl-list li{display:flex;align-items:center;gap:8px}
+.pl-list code{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+.pl-list button{border:1px solid var(--line2);background:none;border-radius:6px;cursor:pointer}
+.pl-add{display:flex;gap:6px}.pl-add input{flex:1;border:1px solid var(--line2);border-radius:6px;padding:6px 8px}
+.mc-out{margin:8px 0 0;font-size:12px;white-space:pre-wrap;color:var(--txt2)}

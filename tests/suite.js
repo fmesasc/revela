@@ -1066,6 +1066,26 @@ export async function run(frame) {
     eq(JSON.stringify(tb.merges), JSON.stringify([{ r: 0, c: 0, rs: 1, cs: 2 }]), 'celdas combinadas');
   });
 
+  await test('API pública, complementos y macros', async () => {
+    reset(); const W = frame.contentWindow, A = W.Revela;
+    assert(A && A.version === 1, 'window.Revela disponible');
+    const id = A.add.shape('ellipse', { x: 10, y: 20, w: 30, h: 40 });
+    eq(A.get(id).w, 30, 'añadir con caja'); A.update(id, { fill: '#123456' }); eq(A.get(id).fill, '#123456', 'actualizar');
+    let changes = 0; const off = A.on('change', () => changes++); A.slides.add(); off();
+    assert(changes > 0, 'evento de cambio'); eq(A.slides.count(), 2, 'diapositivas');
+    const r = await R.api.runMacro('Revela.slides.goTo(0); return Revela.deck().slides.length;');
+    eq(r, 2, 'macro con resultado');
+    const src = "export default R => R.ui.addButton({ id: 'saluda', label: 'Saluda', icon: 'waving_hand', onClick: R => R.add.text('desde complemento') });";
+    const url = W.URL.createObjectURL(new W.Blob([src], { type: 'text/javascript' }));
+    await R.api.addPlugin(url);
+    const btn = D.querySelector('#plugin-buttons [data-plugin="saluda"]');
+    assert(btn && !btn.closest('.group').hidden, 'botón del complemento en la cinta');
+    btn.click(); await sleep(10);
+    eq(last().html, 'desde complemento', 'el complemento actúa');
+    assert(R.api.pluginList().includes(url), 'complemento recordado'); R.api.removePlugin(url);
+    R.api.saveMacro('prueba', 'return 1'); assert(R.api.macroList().some(m => m.name === 'prueba'), 'macro guardada'); R.api.deleteMacro('prueba');
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

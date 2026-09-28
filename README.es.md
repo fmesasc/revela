@@ -54,6 +54,26 @@ python3 -m http.server 8000
 Sirve con cualquier servidor estático; es preferible a abrir `index.html`
 directamente para que el navegador cargue bien los módulos ES.
 
+## API, complementos y macros
+
+El editor expone `window.Revela` (ver `src/api.js`): leer la presentación,
+añadir diapositivas y objetos, modificarlos (un paso de deshacer cada vez),
+escuchar cambios, exportar y añadir botones a la cinta. **Ver › Complementos**
+carga un módulo ES por URL que exporta `default function (Revela)`;
+**Ver › Macros** ejecuta fragmentos guardados con `Revela` disponible. Ambos se
+guardan solo en tu navegador.
+
+```js
+// mi-complemento.js
+export default Revela => Revela.ui.addButton({
+  id: 'agenda', label: 'Agenda', icon: 'list',
+  onClick: R => {
+    R.slides.add();
+    R.add.text('<b>Agenda</b>', { x: 90, y: 60, w: 1100, h: 90 });
+  },
+});
+```
+
 ## Arquitectura
 
 Módulos ES estándar, sin framework ni empaquetador. Un store central mantiene

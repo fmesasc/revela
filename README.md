@@ -51,6 +51,25 @@ python3 -m http.server 8000
 Any static file server works; a server is preferred over opening `index.html`
 directly so the browser loads the ES modules correctly.
 
+## Scripting API, add-ins and macros
+
+The editor exposes `window.Revela` (see `src/api.js`): read the deck, add
+slides and objects, update them (one undo step each), listen to changes,
+export, and add buttons to the ribbon. **View › Add-ins** loads an ES module
+by URL that exports `default function (Revela)`; **View › Macros** runs saved
+snippets with `Revela` in scope. Both are stored only in your browser.
+
+```js
+// my-addin.js
+export default Revela => Revela.ui.addButton({
+  id: 'agenda', label: 'Agenda', icon: 'list',
+  onClick: R => {
+    R.slides.add();
+    R.add.text('<b>Agenda</b>', { x: 90, y: 60, w: 1100, h: 90 });
+  },
+});
+```
+
 ## Architecture
 
 Plain ES modules, no framework or bundler. A central store holds the document

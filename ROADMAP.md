@@ -162,9 +162,9 @@ the origin of every requirement is traceable.
 - ⬜ Complete GL/NL/EU/AR and more UI languages (community translations) `PP·GS·OO`
 
 ## 10. Extensibility & automation
-- ⬜ Plugin / add-on system `GS·OO`
-- ⬜ Macros / scripting `PP·GS·OO`
-- ⬜ Public document/embed API `GS`
+- ✅ Add-in system — ES modules by URL, ribbon buttons, stored locally `GS·OO`
+- ✅ Macros / scripting — JavaScript snippets with the `Revela` API, saved locally `PP·GS·OO`
+- ✅ Public scripting API (`window.Revela`: deck, slides, objects, events, export, UI) `GS`
 
 ## 11. Intelligence
 - ✅ AI image background removal `PP`

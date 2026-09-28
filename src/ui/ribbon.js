@@ -19,6 +19,7 @@ import * as recorder from './recorder.js';
 import * as master from '../features/master.js';
 import { openGallery, openDesignIdeas } from './gallery-dialog.js';
 import { autocorrectOn, setAutocorrect } from '../features/autocorrect.js';
+import { openPlugins, openMacros } from './plugins-dialog.js';
 import * as media from '../features/media.js';
 import * as palettes from '../features/palettes.js';
 import { setDrawTool, drawOpts } from './draw.js';
@@ -80,6 +81,8 @@ const ACTIONS = {
   'reuse-slides': () => pickReuseFile(),
   'a11y-check': () => openA11yCheck(),
   'reading-order': () => openReadingOrder(),
+  'plugins': () => openPlugins(),
+  'macros': () => openMacros(),
   'autocorrect': () => { setAutocorrect(!autocorrectOn()); renderRibbon(); },
   'master-edit': () => master.toggleMasterEdit(),
   'master-close': () => master.toggleMasterEdit(false),
