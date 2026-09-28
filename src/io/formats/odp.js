@@ -112,8 +112,10 @@ export async function buildODP(deck = state.deck) {
     const rx = (b.w / 2) * Math.cos(a) + (b.h / 2) * Math.sin(a), ry = -(b.w / 2) * Math.sin(a) + (b.h / 2) * Math.cos(a);
     return `svg:width="${cm(b.w)}" svg:height="${cm(b.h)}" draw:transform="rotate(${a.toFixed(6)}) translate(${cm(cx - rx)} ${cm(cy - ry)})"`;
   };
-  const gstyle = (fill, stroke, sw, extra = '') => style('graphic', 'gr', `<style:graphic-properties draw:fill="${fill && fill !== 'none' ? 'solid' : 'none'}"`
-    + `${hex(fill) ? ` draw:fill-color="${hex(fill)}"` : ''} draw:stroke="${stroke && stroke !== 'none' && sw !== 0 ? 'solid' : 'none'}"`
+  // dash: 'dash' | 'dot' | 'dashDot' → the draw:stroke-dash styles in styles.xml.
+  const gstyle = (fill, stroke, sw, extra = '', dash = null) => style('graphic', 'gr', `<style:graphic-properties draw:fill="${fill && fill !== 'none' ? 'solid' : 'none'}"`
+    + `${hex(fill) ? ` draw:fill-color="${hex(fill)}"` : ''} draw:stroke="${stroke && stroke !== 'none' && sw !== 0 ? (dash ? 'dash' : 'solid') : 'none'}"`
+    + `${dash && stroke && stroke !== 'none' && sw !== 0 ? ` draw:stroke-dash="Revela_${dash}"` : ''}`
     + `${hex(stroke) ? ` svg:stroke-color="${hex(stroke)}"` : ''}${sw ? ` svg:stroke-width="${cm(sw)}"` : ''}${extra}/>`);
 
   const svgPicture = (b, svg) => {
@@ -125,7 +127,7 @@ export async function buildODP(deck = state.deck) {
   const objXML = (b) => {
     if (b.type === 'text') {
       const va = { middle: 'middle', bottom: 'bottom' }[b.vAlign] || 'top';
-      const st = gstyle(b.bg || 'none', b.borderColor || 'none', b.borderColor ? 2 : 0, ` draw:textarea-vertical-align="${va}" fo:padding="0.1cm"`);
+      const st = gstyle(b.bg || 'none', b.borderColor || 'none', b.borderColor ? 2 : 0, ` draw:textarea-vertical-align="${va}" fo:padding="0.1cm"`, b.borderDash);
       return `<draw:frame draw:style-name="${st}" ${place(b)}><draw:text-box>${textXML(b)}</draw:text-box></draw:frame>`;
     }
     if (b.type === 'image') {
@@ -139,10 +141,10 @@ export async function buildODP(deck = state.deck) {
       const sw = b.strokeWidth ?? 2;
       if (b.shape === 'line' || b.shape === 'arrow') {
         const a = (b.rotation || 0) * Math.PI / 180, cx = b.x + b.w / 2, cy = b.y + b.h / 2, hw = b.w * 0.47;
-        const st = gstyle('none', b.stroke || '#888888', sw, b.shape === 'arrow' ? ' draw:marker-end="Arrow" draw:marker-end-width="0.4cm"' : '');
+        const st = gstyle('none', b.stroke || '#888888', sw, b.shape === 'arrow' ? ' draw:marker-end="Arrow" draw:marker-end-width="0.4cm"' : '', b.dash);
         return `<draw:line draw:style-name="${st}" svg:x1="${cm(cx - hw * Math.cos(a))}" svg:y1="${cm(cy - hw * Math.sin(a))}" svg:x2="${cm(cx + hw * Math.cos(a))}" svg:y2="${cm(cy + hw * Math.sin(a))}"/>`;
       }
-      const st = gstyle(b.fill, b.stroke, sw);
+      const st = gstyle(b.fill, b.stroke, sw, '', b.dash);
       if (b.shape === 'custom' && b.path) {
         const d = b.path.replace(/-?\d+(\.\d+)?/g, v => Math.round(+v * 100));
         return `<draw:path draw:style-name="${st}" ${place(b)} svg:viewBox="0 0 10000 10000" svg:d="${X(d)}"/>`;
@@ -169,7 +171,7 @@ export async function buildODP(deck = state.deck) {
     }
     if (b.type === 'connector') {
       const f = byId.get(b.from), to = byId.get(b.to); if (!f || !to) return '';
-      const st = gstyle('none', b.color || '#8a8a8a', 2, b.arrow !== false ? ' draw:marker-end="Arrow" draw:marker-end-width="0.3cm"' : '');
+      const st = gstyle('none', b.color || '#8a8a8a', 2, b.arrow !== false ? ' draw:marker-end="Arrow" draw:marker-end-width="0.3cm"' : '', b.dash);
       return `<draw:line draw:style-name="${st}" svg:x1="${cm(f.x + f.w / 2)}" svg:y1="${cm(f.y + f.h / 2)}" svg:x2="${cm(to.x + to.w / 2)}" svg:y2="${cm(to.y + to.h / 2)}"/>`;
     }
     if (raster.has(b.id)) {                                  // equations, polls, figure lists
@@ -200,7 +202,10 @@ export async function buildODP(deck = state.deck) {
   const content = `<?xml version="1.0" encoding="UTF-8"?><office:document-content ${NS}><office:automatic-styles>`
     + [...auto.values()].map(a => a.xml).join('') + `</office:automatic-styles><office:body><office:presentation>${pages}</office:presentation></office:body></office:document-content>`;
   const styles = `<?xml version="1.0" encoding="UTF-8"?><office:document-styles ${NS}><office:styles>`
-    + `<draw:marker draw:name="Arrow" svg:viewBox="0 0 20 30" svg:d="M10 0l-10 30h20z"/></office:styles>`
+    + `<draw:marker draw:name="Arrow" svg:viewBox="0 0 20 30" svg:d="M10 0l-10 30h20z"/>`
+    + `<draw:stroke-dash draw:name="Revela_dash" draw:style="rect" draw:dots1="1" draw:dots1-length="0.3cm" draw:distance="0.2cm"/>`
+    + `<draw:stroke-dash draw:name="Revela_dot" draw:style="round" draw:dots1="1" draw:dots1-length="0.02cm" draw:distance="0.12cm"/>`
+    + `<draw:stroke-dash draw:name="Revela_dashDot" draw:style="rect" draw:dots1="1" draw:dots1-length="0.3cm" draw:dots2="1" draw:dots2-length="0.05cm" draw:distance="0.15cm"/></office:styles>`
     + `<office:automatic-styles><style:page-layout style:name="PM1"><style:page-layout-properties fo:margin-top="0cm" fo:margin-bottom="0cm" fo:margin-left="0cm" fo:margin-right="0cm" fo:page-width="${cm(W)}" fo:page-height="${cm(H)}" style:print-orientation="landscape"/></style:page-layout></office:automatic-styles>`
     + `<office:master-styles><style:master-page style:name="Default" style:page-layout-name="PM1"/></office:master-styles></office:document-styles>`;
   const meta = `<?xml version="1.0" encoding="UTF-8"?><office:document-meta ${NS}><office:meta><meta:generator>Revela</meta:generator><dc:title>${X(deck.name || '')}</dc:title></office:meta></office:document-meta>`;
@@ -291,6 +296,9 @@ export async function importODP(file) {
   };
   const fillOf = name => (prop(name, 'style:graphic-properties', 'draw:fill') === 'solid' ? prop(name, 'style:graphic-properties', 'draw:fill-color') : 'none');
   const strokeOf = name => (prop(name, 'style:graphic-properties', 'draw:stroke') === 'none' ? 'none' : (prop(name, 'style:graphic-properties', 'svg:stroke-color') || '#000000'));
+  // Dashed outlines: the stroke-dash style's name says which (Revela's own, or a guess).
+  const dashOf = name => { if (prop(name, 'style:graphic-properties', 'draw:stroke') !== 'dash') return null;
+    const n = prop(name, 'style:graphic-properties', 'draw:stroke-dash') || ''; return /dashdot/i.test(n) ? 'dashDot' : /dot/i.test(n) ? 'dot' : 'dash'; };
 
   const slides = [];
   for (const page of all(doc, 'draw:page')) {
@@ -329,18 +337,18 @@ export async function importODP(file) {
       } else if (tag === 'draw:custom-shape' || tag === 'draw:rect' || tag === 'draw:ellipse') {
         const eg = el.getElementsByTagName('draw:enhanced-geometry')[0];
         const shape = tag === 'draw:ellipse' ? 'ellipse' : tag === 'draw:rect' ? 'rect' : (FROM_ODF[eg?.getAttribute('draw:type')] || 'rect');
-        blocks.push({ id: uid(), type: 'shape', shape, fill: fillOf(sn), stroke: strokeOf(sn), strokeWidth: 2, ...geo(el),
+        blocks.push({ id: uid(), type: 'shape', shape, fill: fillOf(sn), stroke: strokeOf(sn), strokeWidth: 2, ...(dashOf(sn) && { dash: dashOf(sn) }), ...geo(el),
           ...(eg?.getAttribute('draw:mirror-horizontal') === 'true' && { flipH: true }), ...(eg?.getAttribute('draw:mirror-vertical') === 'true' && { flipV: true }) });
         const html = textHTML(el); if (html.replace(/<[^>]*>/g, '').trim()) blocks.push({ id: uid(), type: 'text', html, fontSize: 28, textAlign: 'center', vAlign: 'middle', ...geo(el) });
       } else if (tag === 'draw:line') {
         const x1 = px(el.getAttribute('svg:x1')), y1 = px(el.getAttribute('svg:y1')), x2 = px(el.getAttribute('svg:x2')), y2 = px(el.getAttribute('svg:y2'));
         const L = Math.hypot(x2 - x1, y2 - y1) / 0.94, cx = (x1 + x2) / 2, cy = (y1 + y2) / 2;
         const arrow = !!prop(sn, 'style:graphic-properties', 'draw:marker-end');
-        blocks.push({ id: uid(), type: 'shape', shape: arrow ? 'arrow' : 'line', fill: 'none', stroke: strokeOf(sn), strokeWidth: 2,
+        blocks.push({ id: uid(), type: 'shape', shape: arrow ? 'arrow' : 'line', fill: 'none', stroke: strokeOf(sn), strokeWidth: 2, ...(dashOf(sn) && { dash: dashOf(sn) }),
           x: Math.round(cx - L / 2), y: Math.round(cy - 20), w: Math.round(L), h: 40, rotation: Math.round(Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI), animation: null });
       } else if (tag === 'draw:path') {
         blocks.push({ id: uid(), type: 'shape', shape: 'custom', path: (el.getAttribute('svg:d') || '').replace(/-?\d+(\.\d+)?/g, v => +(v / 100).toFixed(2)),
-          fill: fillOf(sn), stroke: strokeOf(sn), strokeWidth: 2, ...geo(el) });
+          fill: fillOf(sn), stroke: strokeOf(sn), strokeWidth: 2, ...(dashOf(sn) && { dash: dashOf(sn) }), ...geo(el) });
       }
     }
     const dp = page.getAttribute('draw:style-name');

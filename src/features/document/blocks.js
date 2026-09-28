@@ -395,6 +395,16 @@ export function addShape(kind) {
   });
 }
 
+// Line style of the selected objects: shapes, lines and connectors, and the
+// border of text boxes and equations.
+export function setLineDash(dash) {
+  const list = selectedBlocks(); if (!list.length) return;
+  commit(() => { for (const b of list) {
+    const key = b.type === 'shape' || b.type === 'connector' ? 'dash' : (b.type === 'text' || b.type === 'math') ? 'borderDash' : null;
+    if (!key) continue;
+    if (dash && dash !== 'solid') b[key] = dash; else delete b[key];
+  } });
+}
 export function setShapeStyle(prop, value) {
   const b = selectedBlock(); if (!b || b.type !== 'shape') return;
   commit(() => { b[prop] = value; });

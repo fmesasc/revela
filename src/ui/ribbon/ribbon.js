@@ -155,6 +155,7 @@ export function initRibbon() {
   bindChange('[data-deck-transition]', v => trans.setDeckTransition(v));
   bindChange('[data-font]', v => format.fontFamily(v));
   bindChange('[data-morphby]', v => slides.setMorphBy(v));
+  bindChange('[data-line-dash]', v => blocks.setLineDash(v));
   bindChange('[data-size]', v => format.setFontSize(parseInt(v, 10) || 40));
   bindChange('[data-linespacing]', v => format.lineSpacing(v));
   bindChange('[data-textstyle]', v => { if (v) format.applyTextStyle(v); });
@@ -322,6 +323,7 @@ export function renderRibbon() {
   // Reflect the selected text box in the font and paragraph controls.
   const b = selectedBlock();
   const isText = b && b.type === 'text';
+  syncValue('[data-line-dash]', b ? (b.dash || b.borderDash || 'solid') : 'solid');
   syncValue('[data-font]', isText ? (b.fontFamily || '') : '');
   const isMath = b && b.type === 'math';
   syncValue('[data-size]', isText ? String(styled(b, currentSlide()).fontSize || 40) : isMath ? String(b.fontSize || MATH_SIZE) : '');

@@ -115,7 +115,7 @@ export function connectorSVG(b, fromB, toB, W, H) {
   const p = `x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"`;
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" style="pointer-events:none;overflow:visible">${marker}`
     + `<line ${p} stroke="transparent" stroke-width="14" style="pointer-events:stroke"/>`
-    + `<line ${p} stroke="${color}" stroke-width="3" ${arrow ? `marker-end="url(#cm-${b.id})"` : ''}/></svg>`;
+    + `<line ${p} stroke="${color}" stroke-width="3"${dashAttr(b.dash, 3)} ${arrow ? `marker-end="url(#cm-${b.id})"` : ''}/></svg>`;
 }
 
 // Chart as inline SVG (no library, self‑contained on export). Bar or pie.
@@ -251,7 +251,7 @@ export const iconSig = b => (b.icon || '') + '|' + (b.color || '');
 // none); a non‑scaling stroke keeps the outline an even width at any size.
 
 export function shapeSig(b) {
-  return `${b.shape}|${b.fill}|${b.stroke}|${b.strokeWidth}|${b.path ? b.path.length + b.path.slice(0, 40) : ''}`;
+  return `${b.shape}|${b.fill}|${b.stroke}|${b.strokeWidth}|${b.dash || ''}|${b.radius ?? ''}|${b.shape === 'rounded' ? b.w + 'x' + b.h : ''}|${b.path ? b.path.length + b.path.slice(0, 40) : ''}`;
 }
 
 // Polygon outlines in the 100×100 box (shared by the SVG and by the shape
@@ -276,12 +276,29 @@ export function shapeOutline100(shape) {
   return [[2, 2], [98, 2], [98, 98], [2, 98]];
 }
 
+// Line styles (PowerPoint's dash types): SVG dash patterns in multiples of the
+// stroke width, and the closest CSS border style for boxes.
+export const DASHES = ['solid', 'dash', 'dot', 'dashDot'];
+export function dashArray(dash, sw = 2) {
+  const w = Math.max(1, sw);
+  return { dash: `${4 * w} ${3 * w}`, dot: `${w} ${2 * w}`, dashDot: `${4 * w} ${2 * w} ${w} ${2 * w}` }[dash] || '';
+}
+const dashAttr = (dash, sw) => (dashArray(dash, sw) ? ` stroke-dasharray="${dashArray(dash, sw)}"${dash === 'dot' ? ' stroke-linecap="round"' : ''}` : '');
+export const borderCSS = (color, dash, width = 2) => `${width}px ${{ dash: 'dashed', dashDot: 'dashed', dot: 'dotted' }[dash] || 'solid'} ${color}`;
+
 export function shapeSVG(b) {
   const fill = b.fill || 'none';
   const stroke = b.stroke || '#1e2a3a';
   const sw = b.strokeWidth ?? 2;
-  const paint = `fill="${fill}" stroke="${stroke}" stroke-width="${sw}" vector-effect="non-scaling-stroke"`;
-  const strokeOnly = `fill="none" stroke="${stroke}" stroke-width="${sw}" vector-effect="non-scaling-stroke" stroke-linecap="round"`;
+  const paint = `fill="${fill}" stroke="${stroke}" stroke-width="${sw}" vector-effect="non-scaling-stroke"${dashAttr(b.dash, sw)}`;
+  const strokeOnly = `fill="none" stroke="${stroke}" stroke-width="${sw}" vector-effect="non-scaling-stroke" stroke-linecap="round"${dashAttr(b.dash, sw)}`;
+  // Rounded rectangles in their real size, so the corners stay round when
+  // the shape isn't square (radius: px, or 12 % of the short side).
+  if (b.shape === 'rounded' && b.w && b.h) {
+    const r = Math.min(b.radius ?? Math.min(b.w, b.h) * 0.12, Math.min(b.w, b.h) / 2);
+    return `<svg viewBox="0 0 ${b.w} ${b.h}" preserveAspectRatio="none" width="100%" height="100%" style="display:block;overflow:visible">`
+      + `<rect x="1" y="1" width="${Math.max(0, b.w - 2)}" height="${Math.max(0, b.h - 2)}" rx="${r}" ry="${r}" ${paint}/></svg>`;
+  }
   let inner;
   if (SHAPE_POINTS[b.shape]) inner = `<polygon points="${SHAPE_POINTS[b.shape]}" ${paint}/>`;
   else switch (b.shape) {
@@ -311,7 +328,7 @@ export function mathTeX(b) {
 export function mathCSS(b) {
   const jc = { left: 'flex-start', right: 'flex-end' }[b.textAlign] || 'center';
   return `font-size:${b.fontSize || MATH_SIZE}px;justify-content:${jc};${b.color ? `color:${b.color};` : ''}`
-    + `${b.bg || b.highlight ? `background:${b.bg || b.highlight};` : ''}${b.borderColor ? `border:2px solid ${b.borderColor};` : ''}`
+    + `${b.bg || b.highlight ? `background:${b.bg || b.highlight};` : ''}${b.borderColor ? `border:${borderCSS(b.borderColor, b.borderDash)};` : ''}`
     + `${b.radius ? `border-radius:${b.radius}px;` : ''}`;
 }
 export const mathSig = b => JSON.stringify([mathTeX(b), mathCSS(b)]);

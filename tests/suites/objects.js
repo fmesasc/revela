@@ -525,4 +525,28 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     await sleep(20);
     eq(D.querySelector(`.block[data-id="${last().id}"] iframe`).getAttribute('referrerpolicy'), 'strict-origin-when-cross-origin', 'también en el editor');
   });
+
+  await test('estilo de línea: guiones, puntos y guion-punto en formas, conectores y bordes; en todas las exportaciones', async () => {
+    reset(); R.blocks.addShape('rect'); const sh = last(); select(sh);
+    const sel = D.querySelector('[data-line-dash]'); sel.value = 'dash'; sel.dispatchEvent(new frame.contentWindow.Event('change')); await sleep(20);
+    eq(sh.dash, 'dash', 'desde la cinta');
+    assert(/stroke-dasharray="8 6"/.test(D.querySelector(`.block[data-id="${sh.id}"]`).innerHTML), 'en el lienzo');
+    R.blocks.addText(); const tx = last(); tx.borderColor = '#ff0000'; R.store.commit(() => R.store.setSelection(tx.id), { history: false }); R.blocks.setLineDash('dot'); await sleep(20);
+    eq(tx.borderDash, 'dot', 'borde de cuadro de texto');
+    eq(frame.contentWindow.getComputedStyle(D.querySelector(`.block[data-id="${tx.id}"] .rich`)).borderTopStyle, 'dotted', 'punteado en el lienzo');
+    const html = R.io.buildHTML();
+    assert(/stroke-dasharray="8 6"/.test(html) && /border:2px dotted #ff0000/.test(html), 'en la presentación');
+    R.store.commit(() => R.store.setSelection(sh.id), { history: false }); await sleep(10);
+    eq(D.querySelector('[data-line-dash]').value, 'dash', 'la cinta refleja el estilo');
+    R.blocks.setLineDash('solid'); assert(!sh.dash, 'vuelve a continua');
+    R.blocks.setLineDash('dashDot');
+    // Round trip through OpenDocument keeps it.
+    const odp = await R.odp.buildODP(R.state.deck);
+    const back = await R.odp.importODP(new File([odp], 'x.odp'));
+    const s2 = back.slides[0].blocks.find(b => b.type === 'shape');
+    eq(s2.dash, 'dashDot', 'ODP: se exporta y se vuelve a leer');
+    // Rounded rectangles keep round corners when not square.
+    R.blocks.addShape('rounded'); const rr = last(); Object.assign(rr, { w: 600, h: 100, radius: 20 }); R.render(); await sleep(10);
+    assert(/<svg viewBox="0 0 600 100"[^>]*>.*rx="20"/.test(D.querySelector(`.block[data-id="${rr.id}"]`).innerHTML), 'radio real, sin deformar');
+  });
 }

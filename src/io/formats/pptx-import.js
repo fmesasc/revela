@@ -449,6 +449,10 @@ export async function importPPTX(file) {
       const fill = fillOf(spPr, theme);
       const ln = kid(spPr, 'a:ln');
       const stroke = ln ? (kid(ln, 'a:noFill') ? 'none' : colourOf(kid(ln, 'a:solidFill'), theme)) : null;
+      // Dashed/dotted outlines (a:prstDash) and the corner radius of rounded rectangles.
+      const pd = kid(ln, 'a:prstDash')?.getAttribute('val');
+      const dash = /dot/i.test(pd || '') && !/dash/i.test(pd) ? 'dot' : /dashdot/i.test(pd || '') ? 'dashDot' : /dash/i.test(pd || '') ? 'dash' : null;
+      const adj = +(all(kid(spPr, 'a:prstGeom'), 'a:gd').find(g => g.getAttribute('name') === 'adj')?.getAttribute('fmla') || '').replace(/^val /, '') || 16667;
       const sw = ln?.getAttribute('w') ? Math.max(1, Math.round(+ln.getAttribute('w') * scale)) : 1;   // EMU → px, like positions
       const isLine = sp.tagName === 'p:cxnSp' || prst === 'line' || prst === 'straightConnector1';
       const txBody = kid(sp, 'p:txBody');
@@ -462,10 +466,13 @@ export async function importPPTX(file) {
       const hasText = t && t.html.replace(/<[^>]*>/g, '').trim();
       // Visible geometry: a filled/outlined preset shape, or a line.
       if (isLine) {
-        blocks.push(lineBlock(geo, ln, stroke && stroke !== 'none' ? stroke : '#888888', sw));
+        blocks.push({ ...lineBlock(geo, ln, stroke && stroke !== 'none' ? stroke : '#888888', sw), ...(dash && { dash }) });
       } else if ((fill && fill !== 'none') || (stroke && stroke !== 'none')) {
+        const bx = box(geo);
         blocks.push({ id: uid(), type: 'shape', shape: PRESET[prst] || 'rect', fill: fill || 'none',
-          stroke: stroke && stroke !== 'none' ? stroke : (fill || 'none'), strokeWidth: stroke && stroke !== 'none' ? sw : 0, ...box(geo) });
+          stroke: stroke && stroke !== 'none' ? stroke : (fill || 'none'), strokeWidth: stroke && stroke !== 'none' ? sw : 0, ...bx,
+          ...(dash && stroke && stroke !== 'none' && { dash }),
+          ...(prst === 'roundRect' && { radius: Math.round(Math.min(bx.w, bx.h) * Math.min(50000, adj) / 100000) }) });
       }
       if (!hasText) return;
       const anchor = body.anchor || (ph?.type === 'ctrTitle' ? 'b' : null);

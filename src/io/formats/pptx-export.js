@@ -15,7 +15,10 @@ import { PPTXGEN, loadScript } from '../../core/vendor.js';
 
 
 
-const IN = px => +(px / 96).toFixed(3);                 // 96 dpi → inches
+const IN = px => +(px / 96).toFixed(3);
+// Revela's line styles → PowerPoint dash types.
+const DASH = { dash: 'dash', dot: 'sysDot', dashDot: 'dashDot' };
+const dashOf = d => (DASH[d] ? { dashType: DASH[d] } : {});                 // 96 dpi → inches
 const hex = c => (String(c || '').match(/^#?([0-9a-fA-F]{6})/) || [])[1] || null;
 const plain = html => { const d = document.createElement('div'); d.innerHTML = html || ''; return d.textContent || ''; };
 const slug = s => (String(s || '').trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'presentacion');
@@ -86,7 +89,7 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map()) {
         ...(fam && { fontFace: fam }), ...(b.fontWeight === '700' && { bold: true }), ...(b.fontStyle === 'italic' && { italic: true }),
         ...(b.lineHeight && { lineSpacingMultiple: +b.lineHeight }) };
       const opts = { ...pos, valign: { middle: 'middle', bottom: 'bottom' }[b.vAlign] || 'top', margin: 4,
-        ...(hex(b.bg) && { fill: { color: hex(b.bg) } }), ...(hex(b.borderColor) && { line: { color: hex(b.borderColor), width: 1.5 } }),
+        ...(hex(b.bg) && { fill: { color: hex(b.bg) } }), ...(hex(b.borderColor) && { line: { color: hex(b.borderColor), width: 1.5, ...dashOf(b.borderDash) } }),
         ...(b.radius && hex(b.bg) && { shape: pptx.ShapeType.roundRect, rectRadius: Math.min(0.5, b.radius / 100) }) };
       slide.addText(htmlToRuns(b.html, base), opts);
     } else if (b.type === 'code') {
@@ -96,7 +99,7 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map()) {
       const f = blocksById.get(b.from), to = blocksById.get(b.to); if (!f || !to) return;
       const x1 = f.x + f.w / 2, y1 = f.y + f.h / 2, x2 = to.x + to.w / 2, y2 = to.y + to.h / 2;
       slide.addShape(pptx.ShapeType.line, { x: IN(Math.min(x1, x2)), y: IN(Math.min(y1, y2)), w: IN(Math.max(1, Math.abs(x2 - x1))), h: IN(Math.max(1, Math.abs(y2 - y1))),
-        flipH: x2 < x1, flipV: y2 < y1, line: { color: hex(b.color) || '8A8A8A', width: 1.5, ...(b.arrow !== false && { endArrowType: 'triangle' }) } });
+        flipH: x2 < x1, flipV: y2 < y1, line: { color: hex(b.color) || '8A8A8A', width: 1.5, ...dashOf(b.dash), ...(b.arrow !== false && { endArrowType: 'triangle' }) } });
     } else if (raster.has(b.id)) {                            // icons, ink, equations, polls…
       slide.addImage({ ...pos, data: raster.get(b.id), ...(b.alt && { altText: b.alt }) });
     } else if (b.type === 'video' && /^data:video\//.test(b.src || '')) {
@@ -111,14 +114,14 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map()) {
         const fill = b.fill && b.fill !== 'none' ? { color: hex(b.fill) || '3F6497' } : { type: 'none' };
         const points = b.rings.flatMap(r => r.map(([u, v], i) => ({ x: IN(u / 100 * b.w), y: IN(v / 100 * b.h), ...(i === 0 && { moveTo: true }) }))
           .concat({ close: true }));
-        slide.addShape(pptx.ShapeType.custGeom, { ...pos, points, fill, line: { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth || 1 } });
+        slide.addShape(pptx.ShapeType.custGeom, { ...pos, points, fill, line: { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth || 1, ...dashOf(b.dash) } });
       } else if (b.shape === 'line' || b.shape === 'arrow') {
-        slide.addShape(pptx.ShapeType.line, { ...pos, line: { color: hex(b.stroke) || '888888', width: b.strokeWidth || 2,
+        slide.addShape(pptx.ShapeType.line, { ...pos, line: { color: hex(b.stroke) || '888888', width: b.strokeWidth || 2, ...dashOf(b.dash),
           endArrowType: b.shape === 'arrow' ? 'triangle' : 'none' } });
       } else {
         const st = pptx.ShapeType[SHAPE_MAP[b.shape] || 'rect'];
         const fill = b.fill && b.fill !== 'none' ? { color: hex(b.fill) || '3F6497' } : { type: 'none' };
-        slide.addShape(st, { ...pos, fill, line: { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth || 1 } });
+        slide.addShape(st, { ...pos, fill, line: { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth || 1, ...dashOf(b.dash) } });
       }
     } else if (b.type === 'table') {
       // Merged cells: PptxGenJS wants the covered cells omitted and colspan/rowspan on the first.

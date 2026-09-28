@@ -2,7 +2,7 @@
 // equations (KaTeX), code (highlight.js), tables, embeds, 3D models, slide links.
 
 import { state, commit, currentSlide } from '../../core/store.js';
-import { tableColsHTML, cellBg, textPadding, webCardHTML, webCardSig, mathTeX, mathCSS, mathSig, shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan, inkSVG, inkSig, tableClass, tableVars } from '../../render/svg.js';
+import { borderCSS, tableColsHTML, cellBg, textPadding, webCardHTML, webCardSig, mathTeX, mathCSS, mathSig, shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan, inkSVG, inkSig, tableClass, tableVars } from '../../render/svg.js';
 import { collectFigures, captionLine, figIndexTitle } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
 import { t } from '../../i18n/index.js';
@@ -55,7 +55,7 @@ export function styleRich(rich, b) {
   rich.style.setProperty('--bullet', b.bullet || 'disc');
   rich.style.setProperty('--num', b.numStyle || 'decimal');
   rich.style.background = b.bg || '';
-  rich.style.border = b.borderColor ? '2px solid ' + b.borderColor : '';
+  rich.style.border = b.borderColor ? borderCSS(b.borderColor, b.borderDash) : '';
   rich.style.borderRadius = (b.radius || 0) + 'px';
   const vj = { top: 'flex-start', middle: 'center', bottom: 'flex-end' }[b.vAlign];
   rich.style.display = vj ? 'flex' : ''; rich.style.flexDirection = vj ? 'column' : '';
