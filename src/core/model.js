@@ -33,6 +33,7 @@ export function emptyDeck() {
     loop: false,
     guides: { v: [], h: [] },
     sections: [],
+    master: { id: 'master', blocks: [], background: null },
     slides: [ first ],
   };
 }
@@ -118,6 +119,7 @@ function migrate(deck) {
   deck.loop ??= false;
   deck.guides ??= { v: [], h: [] };
   deck.sections ??= [];
+  deck.master ??= { id: 'master', blocks: [], background: null };
   deck.slides ??= [];
   for (const s of deck.slides) {
     s.sectionId ??= null;

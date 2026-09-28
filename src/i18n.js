@@ -382,6 +382,15 @@ const ROWS = [
   ['Forma: rectángulo', 'Shape: rectangle', 'Forme : rectangle', 'Form: Rechteck', 'Forma: rettangolo', 'Forma: retângulo', 'Forma: rectangle'],
   ['No reflejar la imagen', 'Do not mirror', 'Ne pas refléter', 'Nicht spiegeln', 'Non specchiare', 'Não espelhar', 'No reflecteixis la imatge'],
   ['Reflejar la imagen', 'Mirror the image', 'Refléter l’image', 'Bild spiegeln', 'Specchia l’immagine', 'Espelhar a imagem', 'Reflecteix la imatge'],
+  ['Patrón de<br>diapositivas', 'Slide<br>master', 'Masque des<br>diapositives', 'Folien-<br>master', 'Schema<br>diapositiva', 'Modelo<br>global', 'Patró de<br>diapositives'],
+  ['Objetos que aparecen en todas las diapositivas', 'Objects that appear on every slide', 'Objets qui apparaissent sur toutes les diapositives', 'Objekte, die auf allen Folien erscheinen', 'Oggetti che compaiono in tutte le diapositive', 'Objetos que aparecem em todos os diapositivos', 'Objectes que apareixen a totes les diapositives'],
+  ['Editando el patrón: lo que pongas aquí aparece en todas las diapositivas.', 'Editing the master: what you place here appears on every slide.', 'Modification du masque : ce que vous placez ici apparaît sur toutes les diapositives.', 'Master wird bearbeitet: Was Sie hier platzieren, erscheint auf allen Folien.', 'Modifica dello schema: ciò che metti qui compare in tutte le diapositive.', 'A editar o modelo global: o que colocar aqui aparece em todos os diapositivos.', 'S’està editant el patró: el que hi posis apareix a totes les diapositives.'],
+  ['Cerrar patrón', 'Close master', 'Fermer le masque', 'Master schließen', 'Chiudi schema', 'Fechar modelo global', 'Tanca el patró'],
+  ['Ocultar objetos del patrón', 'Hide master objects', 'Masquer les objets du masque', 'Masterobjekte ausblenden', 'Nascondi oggetti dello schema', 'Ocultar objetos do modelo', 'Amaga els objectes del patró'],
+  ['Mostrar objetos del patrón', 'Show master objects', 'Afficher les objets du masque', 'Masterobjekte einblenden', 'Mostra oggetti dello schema', 'Mostrar objetos do modelo', 'Mostra els objectes del patró'],
+  ['Haz clic para añadir un título', 'Click to add title', 'Cliquez pour ajouter un titre', 'Titel durch Klicken hinzufügen', 'Fai clic per aggiungere un titolo', 'Clique para adicionar um título', 'Fes clic per afegir un títol'],
+  ['Haz clic para añadir un subtítulo', 'Click to add subtitle', 'Cliquez pour ajouter un sous-titre', 'Untertitel durch Klicken hinzufügen', 'Fai clic per aggiungere un sottotitolo', 'Clique para adicionar um subtítulo', 'Fes clic per afegir un subtítol'],
+  ['Haz clic para añadir texto', 'Click to add text', 'Cliquez pour ajouter du texte', 'Text durch Klicken hinzufügen', 'Fai clic per aggiungere testo', 'Clique para adicionar texto', 'Fes clic per afegir text'],
   ['Separar celdas', 'Split cells', 'Fractionner les cellules', 'Zellen teilen', 'Dividi celle', 'Dividir células', 'Separa cel·les'],
   ['Color (barras)', 'Color (bars)', 'Couleur (barres)', 'Farbe (Balken)', 'Colore (barre)', 'Cor (barras)', 'Color (barres)'],
   ['Datos (una línea "etiqueta,valor")', 'Data (one line "label,value")', 'Données (une ligne "étiquette,valeur")', 'Daten (eine Zeile "Beschriftung,Wert")', 'Dati (una riga "etichetta,valore")', 'Dados (uma linha "rótulo,valor")', 'Dades (una línia "etiqueta,valor")'],
@@ -604,7 +613,7 @@ export function applyI18n() {
       el.setAttribute('title', t(el.dataset.i18nt));
     });
   }
-  document.querySelectorAll('#ribbon .tabs button, #ribbon .group>label, #ribbon .row button span, #ribbon select option, #statusbar .hint')
+  document.querySelectorAll('#ribbon .tabs button, #ribbon .group>label, #ribbon .row button span, #ribbon select option, #statusbar .hint, #master-banner span, #master-banner button')
     .forEach(el => {
       if (el.dataset.i18n === undefined) el.dataset.i18n = el.innerHTML.trim();
       el.innerHTML = t(el.dataset.i18n);

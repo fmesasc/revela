@@ -10,6 +10,7 @@ import { collectFigures, figuresMap, captionLine, figIndexTitle, visibleIndexMap
 import { INK_CSS, inkJS } from './ink.js';
 import { deckFg, deckBodyFont } from '../features/palettes.js';
 import { animTimeline, EFFECT_KF, EFFECT_KF_CSS, isEntrance } from '../features/transitions.js';
+import { masterBlocksFor, isEmptyPlaceholder } from '../features/master.js';
 
 const REVEAL = 'https://cdn.jsdelivr.net/npm/reveal.js@5.1.0';
 const MODEL_VIEWER = 'https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js';
@@ -77,6 +78,10 @@ const TRIGGER_JS = `(function(){
 
 // Accessibility of each object in the presentation: its alt text as the
 // accessible name, or hidden from screen readers when marked decorative.
+// What a slide shows: the master's objects (unless hidden) under its own, and
+// no empty placeholders.
+const blocksOf = (s, deck = state.deck) => [...masterBlocksFor(s, deck), ...s.blocks].filter(b => !isEmptyPlaceholder(b));
+
 function ariaAttrs(b) {
   if (b.decorative) return ' aria-hidden="true"';
   const alt = (b.alt || '').trim(); if (!alt) return '';
@@ -185,7 +190,7 @@ function slideHTML(s, deck, figMap) {
   const solid = /^(#|rgb)/.test(s.background || '');
   const bg = solid ? ` data-background-color="${s.background}"` : '';
   const tl = animTimeline(s);
-  const inner = s.blocks.map(b0 => {
+  const inner = blocksOf(s, deck).map(b0 => {
     // Effective start time within the click ("with/after previous" resolved).
     const b = b0.animation && tl.has(b0.id) ? { ...b0, animation: { ...b0.animation, delay: tl.get(b0.id).delay } } : b0;
     if (b.type === 'figindex') return figIndexExport(b, deck);
@@ -379,7 +384,7 @@ export function exportHTML() {
 export function buildPrintHTML(deck = state.deck) {
   const { w, h } = deck.size;
   const pages = deck.slides.filter(s => !s.hidden).map(s =>
-    `<div class="page" style="background:${s.background}">${s.blocks.map(b => blockHTML(b, s)).join('')}</div>`).join('\n');
+    `<div class="page" style="background:${s.background}">${blocksOf(s, deck).map(b => blockHTML(b, s)).join('')}</div>`).join('\n');
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><title>${esc(deck.name || 'Presentación')}</title>
 ${googleFontLinks(deck)}
@@ -411,7 +416,7 @@ export function buildHandoutHTML(deck = state.deck, layout = 6) {
   const sw = Math.min(cellW, cellH * w / h), k = (sw * MM / w).toFixed(4);
   const vis = deck.slides.filter(s => !s.hidden);
   const thumb = (s, n) => `<div class="cell"><div class="thumb" style="width:${sw.toFixed(2)}mm;height:${(sw * h / w).toFixed(2)}mm">`
-    + `<div class="page" style="background:${s.background};transform:scale(${k})">${s.blocks.map(b => blockHTML(b, s)).join('')}</div></div>`
+    + `<div class="page" style="background:${s.background};transform:scale(${k})">${blocksOf(s, deck).map(b => blockHTML(b, s)).join('')}</div></div>`
     + `${layout === 'notes' ? '' : `<span class="n">${n}</span>`}</div>`;
   const pages = [];
   for (let i = 0; i < vis.length; i += per) {
@@ -463,7 +468,7 @@ export function exportPDF() {
 }
 
 // The inline‑styled blocks of a slide (self‑contained, no external CSS).
-export function slideInnerHTML(slide) { return slide.blocks.map(b => blockHTML(b, slide)).join(''); }
+export function slideInnerHTML(slide, deck = state.deck) { return blocksOf(slide, deck).map(b => blockHTML(b, slide)).join(''); }
 
 const H2C = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
 const JSZIP = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
@@ -481,7 +486,7 @@ export async function slideImageBlob(s, type = 'png', deck = state.deck) {
   holder.style.cssText = `position:fixed;left:-99999px;top:0;width:${w}px;height:${h}px;overflow:hidden;color:${deckFg(deck)};font-family:${deckBodyFont(deck) || 'inherit'};background:${s.background}`;
   holder.innerHTML = `<style>*{box-sizing:border-box}ul{list-style-type:var(--bullet,disc)}ol{list-style-type:var(--num,decimal)}`
     + `img,video,model-viewer,iframe{width:100%;height:100%}${tableCSS()}</style>`
-    + slideInnerHTML(s);
+    + slideInnerHTML(s, deck);
   document.body.appendChild(holder);
   try {
     await loadScript(H2C, 'html2canvas');

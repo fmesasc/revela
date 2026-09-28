@@ -908,6 +908,38 @@ export async function run(frame) {
     assert(/^data:video\//.test(v.src), 'vídeo dentro del proyecto (' + (v.src || '').slice(0, 20) + ')');
   });
 
+  await test('patrón de diapositivas: objetos en todas, ocultar por diapositiva', async () => {
+    reset(); R.slides.addSlide(); R.slides.goToSlide(0);
+    D.querySelector('[data-action="master-edit"]').click(); await sleep(10);
+    assert(R.state.ui.editMaster && !D.getElementById('master-banner').hidden, 'modo patrón con aviso');
+    R.blocks.addShape('rect'); const m = last(); m.fill = '#ff00aa';
+    eq(R.state.deck.master.blocks.length, 1, 'la forma va al patrón');
+    eq(R.state.deck.slides[0].blocks.length, 2, 'la diapositiva no cambia');
+    D.querySelector('#master-banner [data-action="master-close"]').click(); await sleep(10);
+    assert(!R.state.ui.editMaster, 'cerrar patrón');
+    assert(D.querySelector('#stage .master-layer .pv-block'), 'se dibuja bajo la diapositiva');
+    eq((R.io.buildHTML().match(/fill="#ff00aa"/g) || []).length, 2, 'en las dos diapositivas del export');
+    R.master.toggleHideMaster(1);
+    eq((R.io.buildHTML().match(/fill="#ff00aa"/g) || []).length, 1, 'oculto en la segunda');
+    R.store.undo(); R.store.undo(); R.render();
+  });
+
+  await test('marcadores de posición: aviso vacío, se omiten al exportar y el diseño conserva el texto', async () => {
+    reset(); slide().blocks[0].html = 'Mi título'; slide().blocks[1].html = 'Mi texto';
+    D.querySelector('[data-template="twoContent"]').click(); await sleep(10);
+    const [ti, b1, b2] = slide().blocks;
+    eq(ti.ph, 'title', 'marcador de título'); eq(ti.html, 'Mi título', 'el título pasa al marcador');
+    eq(b1.html, 'Mi texto', 'el texto pasa al primer contenido'); eq(b2.html, '', 'segundo contenido vacío');
+    const rich = D.querySelector(`.block[data-id="${b2.id}"] .rich`);
+    eq(rich.dataset.ph, 'Haz clic para añadir texto', 'aviso del marcador');
+    assert(getComputedStyle(rich, '::before').content.includes('Haz clic'), 'se ve el aviso');
+    const html = R.io.buildHTML();
+    assert(html.includes('Mi título') && html.includes('Mi texto'), 'contenido exportado');
+    eq((html.match(/Haz clic para/g) || []).length, 0, 'los avisos no se exportan');
+    const sec = html.split('<section')[1];
+    eq((sec.match(/<div[^>]*font-size:28px/g) || []).length, 1, 'el marcador vacío no se exporta');
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

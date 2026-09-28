@@ -15,6 +15,7 @@ import { pickReuseFile } from './reuse.js';
 import { openA11yCheck, openReadingOrder } from './a11y-panel.js';
 import { openHandoutDialog, openImageDialog } from './print-dialog.js';
 import * as recorder from './recorder.js';
+import * as master from '../features/master.js';
 import * as media from '../features/media.js';
 import * as palettes from '../features/palettes.js';
 import { setDrawTool, drawOpts } from './draw.js';
@@ -66,6 +67,9 @@ const ACTIONS = {
   'reuse-slides': () => pickReuseFile(),
   'a11y-check': () => openA11yCheck(),
   'reading-order': () => openReadingOrder(),
+  'master-edit': () => master.toggleMasterEdit(),
+  'master-close': () => master.toggleMasterEdit(false),
+  'hide-master': () => master.toggleHideMaster(),
   'export-handout': () => openHandoutDialog(),
   'undo': undo, 'redo': redo,
   'slide-add': slides.addSlide, 'slide-duplicate': slides.duplicateSlide,
@@ -191,6 +195,9 @@ export function initRibbon() {
     endAnimPaint();
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && animPaint) endAnimPaint(); });
+  document.getElementById('master-banner')?.addEventListener('click', e => {
+    if (e.target.closest('[data-action="master-close"]')) master.toggleMasterEdit(false);
+  });
   document.getElementById('ribbon').addEventListener('click', e => {
     const more = e.target.closest('[data-more]');
     if (more) { e.stopPropagation(); togglePopover(more, more.dataset.more); return; }
@@ -576,6 +583,7 @@ export function renderRibbon() {
   document.querySelector('[data-action="toggle-autoanimate"]')?.classList.toggle('on', !!slide.autoAnimate);
   syncValue('[data-theme]', state.deck.theme);
   syncValue('[data-deck-fg]', palettes.deckFg());
+  $('[data-action="master-edit"]')?.classList.toggle('on', !!state.ui.editMaster);
   syncValue('[data-slide-trans-out]', currentSlide()?.transitionOut || '');
   syncValue('[data-slide-speed]', currentSlide()?.transitionSpeed || '');
   document.querySelectorAll('[data-draw]').forEach(b => b.classList.toggle('on', (state.ui.drawTool || '') === b.dataset.draw));

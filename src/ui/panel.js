@@ -5,6 +5,7 @@ import { state, currentSlide } from '../core/store.js';
 import { goToSlide, moveSlide, deleteSlide, renameSection } from '../features/slides.js';
 import { blockPreview } from './preview.js';
 import { deckFg, deckBodyFont } from '../features/palettes.js';
+import { masterBlocksFor, isEmptyPlaceholder } from '../features/master.js';
 
 let panel;
 let dragFrom = null;
@@ -62,7 +63,7 @@ function thumb(slide, index) {
   const inner = document.createElement('div');
   inner.className = 'thumb-inner';
   inner.style.cssText = `width:${w}px;height:${h}px;transform:scale(${188 / w});color:${deckFg()};font-family:${deckBodyFont() || 'inherit'}`;
-  for (const b of slide.blocks) inner.appendChild(blockPreview(b));
+  for (const b of [...masterBlocksFor(slide), ...slide.blocks]) if (!isEmptyPlaceholder(b)) inner.appendChild(blockPreview(b));
   canvas.appendChild(inner);
 
   const del = document.createElement('button'); del.className = 'thumb-del'; del.textContent = '×';

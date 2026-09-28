@@ -28,6 +28,7 @@ import * as reuse from './ui/reuse.js';
 import * as ribbon from './ui/ribbon.js';
 import * as palettes from './features/palettes.js';
 import * as shapeops from './features/shapeops.js';
+import * as master from './features/master.js';
 
 function render() {
   renderRibbon();
@@ -86,7 +87,7 @@ initI18n();
 // and inspect the real app. Only active with ?test in the URL.
 const testing = new URLSearchParams(location.search).has('test');
 if (testing)
-  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops };
+  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master };
 
 // Offline support (PWA). Not for the test harness nor file:// pages.
 if (!testing && 'serviceWorker' in navigator && location.protocol !== 'file:')

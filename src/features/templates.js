@@ -10,15 +10,15 @@ export const BUILTIN = {
   title: {
     name: 'Portada',
     blocks: [
-      { type: 'text', x: 140, y: 280, w: 1000, h: 120, fontSize: 72, html: '<b>Título</b>' },
-      { type: 'text', x: 140, y: 410, w: 1000, h: 80, fontSize: 32, html: 'Subtítulo' },
+      { type: 'text', ph: 'title', x: 140, y: 280, w: 1000, h: 120, fontSize: 72, fontWeight: '700', html: '' },
+      { type: 'text', ph: 'subtitle', x: 140, y: 410, w: 1000, h: 80, fontSize: 32, html: '' },
     ],
   },
   titleContent: {
     name: 'Título y contenido',
     blocks: [
-      { type: 'text', x: 100, y: 70, w: 1080, h: 90, fontSize: 48, html: '<b>Título</b>' },
-      { type: 'text', x: 100, y: 190, w: 1080, h: 460, fontSize: 30, html: '<ul><li>Punto uno</li><li>Punto dos</li></ul>' },
+      { type: 'text', ph: 'title', x: 100, y: 70, w: 1080, h: 90, fontSize: 48, fontWeight: '700', html: '' },
+      { type: 'text', ph: 'body', x: 100, y: 190, w: 1080, h: 460, fontSize: 30, html: '' },
     ],
   },
   showcase3D: {
@@ -31,16 +31,16 @@ export const BUILTIN = {
   twoContent: {
     name: 'Dos contenidos',
     blocks: [
-      { type: 'text', x: 100, y: 70, w: 1080, h: 90, fontSize: 48, html: '<b>Título</b>' },
-      { type: 'text', x: 100, y: 190, w: 520, h: 460, fontSize: 28, html: '<ul><li>Columna A</li></ul>' },
-      { type: 'text', x: 660, y: 190, w: 520, h: 460, fontSize: 28, html: '<ul><li>Columna B</li></ul>' },
+      { type: 'text', ph: 'title', x: 100, y: 70, w: 1080, h: 90, fontSize: 48, fontWeight: '700', html: '' },
+      { type: 'text', ph: 'body', x: 100, y: 190, w: 520, h: 460, fontSize: 28, html: '' },
+      { type: 'text', ph: 'body', x: 660, y: 190, w: 520, h: 460, fontSize: 28, html: '' },
     ],
   },
   sectionHeader: {
     name: 'Encabezado de sección',
     blocks: [
-      { type: 'text', x: 120, y: 300, w: 1040, h: 120, fontSize: 64, textAlign: 'center', html: '<b>Sección</b>' },
-      { type: 'text', x: 120, y: 430, w: 1040, h: 60, fontSize: 28, textAlign: 'center', html: 'Descripción' },
+      { type: 'text', ph: 'title', x: 120, y: 300, w: 1040, h: 120, fontSize: 64, fontWeight: '700', textAlign: 'center', html: '' },
+      { type: 'text', ph: 'subtitle', x: 120, y: 430, w: 1040, h: 60, fontSize: 28, textAlign: 'center', html: '' },
     ],
   },
   comparison: {
@@ -56,10 +56,22 @@ export const BUILTIN = {
   blank: { name: 'En blanco', blocks: [] },
 };
 
+// Apply a layout. Like PowerPoint's "Layout", what was already written moves
+// into the new placeholders (title into the title, the rest in order into the
+// other placeholders) and pictures, charts, etc. are kept.
 export function applyTemplate(tpl) {
   commit(() => {
-    currentSlide().blocks = structuredClone(tpl.blocks).map(b =>
-      Object.assign({ id: uid(), rotation: 0, animation: null }, b));
+    const s = currentSlide(), old = s.blocks;
+    const texts = old.filter(b => b.type === 'text' && b.html && b.html.replace(/<[^>]*>/g, '').trim());
+    const title = texts.find(b => b.ph === 'title') || texts[0];
+    const rest = texts.filter(b => b !== title);
+    const fresh = structuredClone(tpl.blocks).map(b => Object.assign({ id: uid(), rotation: 0, animation: null }, b));
+    for (const b of fresh) {
+      if (!b.ph) continue;
+      const src = b.ph === 'title' ? title : rest.shift();
+      if (src) b.html = src.html;
+    }
+    s.blocks = [...fresh, ...old.filter(b => b.type !== 'text' && b.type !== 'connector')];
     state.ui.selection = null;
   });
 }

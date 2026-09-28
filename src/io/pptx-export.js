@@ -9,6 +9,7 @@ import { alertDialog } from '../ui/dialog.js';
 import { t } from '../i18n.js';
 import { deckFg } from '../features/palettes.js';
 import { chartSeries } from '../ui/shape.js';
+import { masterBlocksFor, isEmptyPlaceholder } from '../features/master.js';
 
 const PPTX = 'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js';
 const loadScript = src => new Promise((res, rej) => {
@@ -113,7 +114,7 @@ export async function buildPptx(deck = state.deck) {
     if (bg) slide.background = { color: bg };
     else if (/url\((data:[^)]+)\)/.test(s.background || '')) slide.background = { data: RegExp.$1 };
     if (s.notes) slide.addNotes(s.notes);
-    for (const b of s.blocks) addBlock(slide, b, pptx);
+    for (const b of [...masterBlocksFor(s, deck), ...s.blocks]) if (!isEmptyPlaceholder(b)) addBlock(slide, b, pptx);
   }
   return pptx;
 }

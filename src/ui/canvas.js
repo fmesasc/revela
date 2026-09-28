@@ -12,6 +12,7 @@ import { deckFg, deckBodyFont } from '../features/palettes.js';
 import { animTimeline, EFFECT_KF } from '../features/transitions.js';
 import { blockLabel } from '../features/a11y.js';
 import { cameraRadius } from '../features/media.js';
+import { masterBlocksFor, PH_PROMPT, isEmptyPlaceholder } from '../features/master.js';
 
 function renderSlideRef(wrap, b) {
   wrap.innerHTML = '';
@@ -138,7 +139,8 @@ export function renderCanvas() {
   const { w, h } = state.deck.size;
   stage.style.width = w + 'px';
   stage.style.height = h + 'px';
-  stage.style.background = slide.background;
+  stage.style.background = slide.background || state.deck.slides[state.ui.slideIndex]?.background || '#101317';
+  stage.classList.toggle('editing-master', !!state.ui.editMaster);
   stage.style.color = deckFg();
   stage.style.fontFamily = deckBodyFont();
   stage.classList.toggle('guides', state.ui.showGuides);
@@ -157,11 +159,27 @@ export function renderCanvas() {
   drawLogo();
   drawCaptions();
   drawMotionPath();
+  drawMasterLayer();
+  const banner = document.getElementById('master-banner');
+  if (banner) banner.hidden = !state.ui.editMaster;
   // Screen readers: name the slide and announce the selected object.
   stage.setAttribute('aria-label', `${t('Diapositiva')} ${state.ui.slideIndex + 1} / ${state.deck.slides.length}`);
   const sel = selectedBlock(), sr = document.getElementById('sr-status');
   const msg = sel ? `${t('Seleccionado')}: ${blockLabel(sel, t)}` : '';
   if (sr && sr.textContent !== msg) sr.textContent = msg;
+}
+
+// Master objects, drawn (not editable) under the slide's own objects.
+function drawMasterLayer() {
+  const blocks = state.ui.editMaster ? [] : masterBlocksFor(currentSlide());
+  const sig = JSON.stringify(blocks);
+  let layer = stage.querySelector('.master-layer');
+  if (!blocks.length) { layer?.remove(); return; }
+  if (!layer) { layer = document.createElement('div'); layer.className = 'master-layer'; }
+  if (stage.firstChild !== layer) stage.insertBefore(layer, stage.firstChild);
+  if (layer.dataset.sig === sig) return;
+  layer.dataset.sig = sig; layer.innerHTML = '';
+  for (const b of blocks) layer.appendChild(blockPreview(b));
 }
 
 // Tab / Shift+Tab on the slide walk through its objects in reading order.
@@ -254,6 +272,7 @@ function reconcile(b) {
       rich.style.fontStyle = b.fontStyle || '';
       rich.style.columnCount = b.columns > 1 ? b.columns : '';
       rich.style.columnGap = b.columns > 1 ? '32px' : '';
+      if (b.ph) rich.dataset.ph = t(PH_PROMPT[b.ph] || PH_PROMPT.body); else delete rich.dataset.ph;
       // Not editing: show the (math‑rendered) HTML; re‑render only when it changed.
       if (!el.classList.contains('editing') && rich.dataset.msrc !== (b.html || '')) {
         rich.innerHTML = b.html || ''; rich.dataset.msrc = b.html || '';
@@ -350,6 +369,7 @@ function content(b) {
     const d = document.createElement('div');
     d.className = 'rich';
     d.spellcheck = true;
+    if (b.ph) d.dataset.ph = t(PH_PROMPT[b.ph] || PH_PROMPT.body);
     d.style.fontSize = (b.fontSize || 40) + 'px';
     d.style.textAlign = b.textAlign || 'left';
     if (b.fontFamily) d.style.fontFamily = b.fontFamily;
@@ -552,7 +572,10 @@ function setupText(b, el) {
     if (rich.dataset.msrc !== undefined) { rich.innerHTML = b.html || ''; rich.dataset.msrc = ''; }
     rich.contentEditable = 'true'; rich.focus(); el.classList.add('editing');
   });
-  rich.addEventListener('input', () => { b.html = rich.innerHTML; }); // no re-render: keep the caret
+  rich.addEventListener('input', () => {            // no re-render: keep the caret
+    b.html = rich.innerHTML;
+    if (b.ph && isEmptyPlaceholder(b)) b.html = '';   // back to the prompt when emptied
+  });
   // Tab / Shift+Tab inside a list: nest / un-nest the item (bullet levels).
   rich.addEventListener('keydown', e => {
     if (e.key !== 'Tab') return;

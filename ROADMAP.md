@@ -95,8 +95,8 @@ the origin of every requirement is traceable.
 - ✅ Speaker notes (editor panel + presenter view) `PP·GS·OO`
 - ✅ Slide numbers, date/time field, header & footer, deck logo/branding `PP·GS·OO`
 - ✅ Slide zoom & summary zoom (embed a slide, link, choose return/stay) `PP`
-- 🚧 Slide master — logo/branding & backgrounds on all slides; full master & placeholders planned `PP·GS·OO`
-- ⬜ Placeholders (layout content placeholders) `PP·OO`
+- ✅ Slide master — objects on every slide (edit mode), hide per slide, plus logo/branding & backgrounds `PP·GS·OO`
+- ✅ Placeholders — layouts with title/subtitle/body prompts, not exported while empty; changing layout keeps the text `PP·OO`
 - ✅ Theme colours (9 palettes; switching recolours what came from the palette) & theme fonts (heading/body pairs), theme swatches in every colour picker `PP·GS·OO`
 - ⬜ Template / theme gallery & designer variants `PP·GS·OO`
 - ✅ Reuse / import slides from another deck (.json or .pptx, pick by thumbnail, scaled to size) `PP·OO`

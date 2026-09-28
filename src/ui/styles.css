@@ -453,3 +453,11 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 #rec-bar button{border:0;border-radius:16px;padding:5px 12px;cursor:pointer;background:#e53935;color:#fff;font-weight:600}
 #rec-bar .rec-cancel{background:#fff2;padding:5px 9px}
 @keyframes recBlink{50%{opacity:.3}}
+/* Slide master & placeholders */
+.master-layer{position:absolute;inset:0;pointer-events:none;z-index:0}
+#stage.editing-master{box-shadow:0 0 0 3px #e0873b}
+#master-banner{display:flex;align-items:center;gap:10px;margin:0 0 8px;padding:6px 12px;border-radius:8px;background:#fff4e5;color:#7a4a12;font-size:13px}
+#master-banner[hidden]{display:none}
+#master-banner button{margin-inline-start:auto;border:1px solid #e0873b;background:#fff;color:#7a4a12;border-radius:6px;padding:4px 10px;cursor:pointer}
+.block .rich[data-ph]:empty::before{content:attr(data-ph);opacity:.45;font-style:italic;pointer-events:none}
+.block:has(.rich[data-ph]:empty){outline:1px dashed #8a8a8a88}

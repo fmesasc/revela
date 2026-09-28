@@ -5,6 +5,7 @@ import { state, commit, currentSlide, selectedBlock, selectedBlocks, isSelected,
 import { uid } from '../core/model.js';
 import * as blocks from '../features/blocks.js';
 import * as shapeops from '../features/shapeops.js';
+import * as master from '../features/master.js';
 import { addText } from '../features/blocks.js';
 import * as format from '../features/format.js';
 import { addSlide, duplicateSlide, deleteSlide, goToSlide, toggleSlideHidden,
@@ -236,6 +237,8 @@ function forCanvas() {
     ['Nuevo cuadro de texto', () => addText()],
     null,
     ['Nueva diapositiva', () => addSlide()],
+    ...(state.ui.editMaster ? [null, ['Cerrar patrón', () => master.toggleMasterEdit(false)]]
+      : state.deck.master?.blocks?.length ? [null, [currentSlide()?.hideMaster ? 'Mostrar objetos del patrón' : 'Ocultar objetos del patrón', () => master.toggleHideMaster()]] : []),
   ];
 }
 

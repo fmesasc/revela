@@ -462,6 +462,7 @@
         <div class="group">
           <div class="row">
             <button data-action="a11y-check" class="lg"><i class="ms">accessibility_new</i><span>Comprobar<br>accesibilidad</span></button>
+            <button data-action="master-edit" class="lg" title="Objetos que aparecen en todas las diapositivas"><i class="ms">dashboard_customize</i><span>Patrón de<br>diapositivas</span></button>
             <button data-action="reading-order" class="lg"><i class="ms">format_list_numbered</i><span>Orden de<br>lectura</span></button>
           </div><label>Revisar</label>
         </div>
@@ -472,6 +473,8 @@
   <main>
     <aside id="navigator"></aside>
     <section id="canvas-wrap">
+      <div id="master-banner" hidden><i class="ms">dashboard_customize</i> <span>Editando el patrón: lo que pongas aquí aparece en todas las diapositivas.</span>
+        <button data-action="master-close" type="button">Cerrar patrón</button></div>
       <div id="stage-sizer">
         <div id="stage-grid">
           <div id="ruler-corner"></div>
