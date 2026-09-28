@@ -73,7 +73,7 @@ export async function openMath(b) {
   if (!ok) return openMathPalette(b);
   const back = document.createElement('div');
   back.id = 'math-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:start;min-width:420px;max-width:94vw">
+  back.innerHTML = `<div class="modal mt-modal" style="text-align:start;min-width:min(420px,94vw);max-width:94vw;box-sizing:border-box">
     <button class="modal-close">✕</button><h3>${t('Editar ecuación')}</h3>
     <math-field class="mt-field"></math-field>
     <label class="fr-l" style="margin-top:2px"><span style="display:flex;justify-content:space-between">LaTeX
@@ -97,9 +97,16 @@ export async function openMath(b) {
   try { kbd.container = back; } catch {}
   document.body.style.setProperty('--keyboard-zindex', '3100');
   const onKeyboard = e => e.composedPath().some(n => n.classList?.contains('ML__keyboard'));
-  const close = () => { try { kbd.hide(); kbd.container = document.body; } catch {} back.remove(); };
+  // The dialog stays visible above the keyboard (in the space left over).
+  const fit = () => { const h = kbd?.visible ? Math.round(kbd.boundingRect?.height || 0) : 0; back.style.setProperty('--mt-kbd', h + 'px'); back.classList.toggle('mt-kbd-open', h > 0); };
+  try { kbd.addEventListener('geometrychange', fit); kbd.addEventListener('virtual-keyboard-toggle', fit); } catch {}
+  const close = () => { try { kbd.removeEventListener('geometrychange', fit); kbd.removeEventListener('virtual-keyboard-toggle', fit); kbd.hide(); kbd.container = document.body; } catch {} back.remove(); };
   back.querySelector('.modal-close').addEventListener('click', close);
-  back.addEventListener('click', e => { if (e.target === back && !onKeyboard(e)) close(); });
+  // Only a click that starts on the backdrop closes it: MathLive redraws the
+  // keys when a keyboard tab is pressed, so that click ends on the backdrop.
+  let downOnBack = false;
+  back.addEventListener('pointerdown', e => { downOnBack = e.target === back && !onKeyboard(e); }, true);
+  back.addEventListener('click', e => { if (e.target === back && downOnBack && !onKeyboard(e)) close(); downOnBack = false; });
   back.querySelector('.mt-kbd').addEventListener('click', () => { try { window.mathVirtualKeyboard.show(); } catch {} mf.focus(); });
   back.querySelector('.mt-toggle').addEventListener('click', ev => {
     const hidden = tex.style.display === 'none';

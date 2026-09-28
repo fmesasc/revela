@@ -99,6 +99,35 @@ def math_keyboard_check(send, recv, port):
         check(ev("!!document.getElementById('math-modal')"), 'pulsar una tecla no cierra el editor')
         latex = ev(f"window.__revela.store.currentSlide().blocks.find(b=>b.id==='{bid}').latex") or ''
         check('7' in latex, f'la tecla escribe en la ecuación ({latex})')
+    # Every keyboard (123, ∞≠∈, abc, αβγ), chosen with a real click on its tab, fits on the
+    # screen, on a laptop and on a phone, and the dialog stays visible above it.
+    fits = """(()=>{const vis=[...document.querySelectorAll('.ML__keyboard .MLK__layer')].find(l=>getComputedStyle(l).display!=='none');
+      const caps=[...vis.querySelectorAll('.MLK__keycap, .action')].filter(k=>k.getBoundingClientRect().width>0);
+      const out=caps.filter(k=>{const r=k.getBoundingClientRect();return r.left<-1||r.top<-1||r.right>innerWidth+1||r.bottom>innerHeight+1}).length;
+      const md=document.querySelector('#math-modal .modal').getBoundingClientRect(), pl=document.querySelector('.ML__keyboard .MLK__plate').getBoundingClientRect();
+      return JSON.stringify({n:caps.length,out,over:Math.round(md.bottom-pl.top),w:document.documentElement.scrollWidth-innerWidth,id:vis.id})})()"""
+    for w, h in ((1280, 800), (390, 800)):
+        recv(send('Emulation.setDeviceMetricsOverride', sid, width=w, height=h, deviceScaleFactor=1, mobile=False)); time.sleep(0.6)
+        seen = set()
+        for name in ('∞≠∈', 'abc', 'αβγ', '123'):
+            tab = ev(f"(()=>{{const t=[...[...document.querySelectorAll('.ML__keyboard .MLK__layer')].find(l=>getComputedStyle(l).display!=='none')?.querySelectorAll('.layer-switch')].find(x=>x.textContent.trim()==={_j.dumps(name)});if(!t)return null;const r=t.getBoundingClientRect();return JSON.stringify({{x:r.left+r.width/2,y:r.top+r.height/2,t:t.textContent.trim()}})}})()")
+            if not tab: check(False, f'pestaña «{name}» del teclado ({w}×{h})'); continue
+            t = _j.loads(tab)
+            top = ev(f"(()=>{{const e=document.elementFromPoint({t['x']},{t['y']});return !!e?.closest('.ML__keyboard')}})()")
+            check(top, f'la pestaña «{name}» se ve y se puede pulsar ({w}×{h})')
+            click(t['x'], t['y']); time.sleep(0.4)
+            raw = ev(fits)
+            if not raw:
+                check(False, f'pulsar la pestaña «{t["t"]}» no cierra el editor ({w}×{h})')
+                continue
+            f = _j.loads(raw)
+            seen.add(f['id'])
+            check(f['n'] > 10 and f['out'] == 0, f'teclado «{t["t"]}» entero en pantalla a {w}×{h} ({f["out"]} teclas fuera)')
+            check(f['over'] <= 0 and f['w'] <= 0, f'el diálogo se ve encima del teclado «{t["t"]}» a {w}×{h} y nada se sale por los lados')
+        check(len(seen) == 4, f'las pestañas cambian de teclado ({len(seen)} distintos a {w}×{h})')
+    # A click on the backdrop (between the dialog and the keyboard) still closes it.
+    click(195, 420); time.sleep(0.4)
+    check(not ev("!!document.getElementById('math-modal')"), 'un clic en el fondo cierra el editor')
     ev("document.querySelector('#math-modal .modal-close')?.click();1"); time.sleep(0.4)
     check(not ev("window.mathVirtualKeyboard?.visible"), 'al cerrar el editor se oculta el teclado')
     recv(send('Target.closeTarget', targetId=tid))
