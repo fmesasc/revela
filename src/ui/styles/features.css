@@ -287,3 +287,26 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .sg-item{display:flex;gap:10px;align-items:flex-start;padding:8px;border-radius:8px;background:var(--ribbon);margin-bottom:6px;font-size:13px}
 .sg-item>.ms{font-size:22px}.sg-valid>.ms,.sg-valid .sg-st{color:#1a7f37}.sg-modified>.ms,.sg-modified .sg-st{color:#b35900}.sg-invalid>.ms,.sg-invalid .sg-st{color:#c92a2a}
 .sg-item code,.sg-fp{font-size:11px;word-break:break-all}
+/* Google account, Drive status, "My presentations" */
+.account-btn{display:flex;align-items:center;gap:4px;background:none;border:1px solid var(--line2);border-radius:999px;padding:3px 10px 3px 4px;cursor:pointer;color:var(--txt);font:inherit;font-size:12px;margin-inline-end:6px}
+.account-btn.signed{padding:2px;border-color:transparent}.account-btn img,.account-menu img{width:28px;height:28px;border-radius:50%;display:block}
+.acc-init{width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:600}
+.drive-status{background:none;border:none;cursor:pointer;color:var(--txt2);padding:2px 6px}.drive-status[hidden]{display:none}
+.drive-status[data-state=saved]{color:#2f9e44}.drive-status[data-state=offline],.drive-status[data-state=error],.drive-status[data-state=conflict]{color:#e8590c}
+.account-menu{position:fixed;z-index:3200;background:var(--panel);border:1px solid var(--line2);border-radius:12px;box-shadow:0 12px 40px #0003;padding:8px;min-width:240px}
+.account-menu .am-who{display:flex;gap:10px;align-items:center;padding:6px 8px 10px;border-bottom:1px solid var(--line2);margin-bottom:6px;font-size:12px;color:var(--txt2)}.account-menu .am-who b{color:var(--txt);font-size:14px}
+.account-menu button{display:flex;gap:8px;align-items:center;width:100%;background:none;border:none;padding:8px;border-radius:8px;cursor:pointer;color:var(--txt);font:inherit;font-size:13px;text-align:start}.account-menu button:hover{background:var(--ribbon)}
+#drive-conflict{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 8px;padding:6px 12px;border-radius:8px;background:#fff3e0;color:#7a3d00;font-size:13px}#drive-conflict[hidden]{display:none}
+#drive-conflict button{border:1px solid #e8590c;background:#fff;color:#7a3d00;border-radius:6px;padding:4px 10px;cursor:pointer}
+.home-screen{place-items:stretch}.home{background:var(--panel);margin:min(4vh,32px) auto;width:min(1080px,calc(100vw - 32px));max-height:calc(100vh - 2*min(4vh,32px));overflow:auto;border-radius:14px;padding:20px 24px;position:relative;box-sizing:border-box}
+.home h2{margin:0 0 14px;color:var(--accent)}.home h3{font-size:14px;color:var(--txt2);margin:22px 0 10px}
+.home-new{display:flex;gap:14px;flex-wrap:wrap}.home-new button{background:none;border:none;cursor:pointer;display:flex;flex-direction:column;gap:6px;align-items:center;font:inherit;font-size:13px;color:var(--txt)}
+.hn-thumb{width:150px;aspect-ratio:16/9;border:1px solid var(--line2);border-radius:8px;display:grid;place-items:center;background:var(--ribbon)}.hn-thumb .ms{font-size:34px;color:var(--accent)}
+.home-new button:hover .hn-thumb,.home-file:hover .hf-thumb{border-color:var(--accent)}
+.home-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:16px}
+.home-file{position:relative;cursor:pointer;display:flex;flex-direction:column;gap:4px;border-radius:10px;padding:6px}.home-file.current .hf-thumb{outline:2px solid var(--accent)}
+.hf-thumb{aspect-ratio:16/9;border:1px solid var(--line2);border-radius:8px;overflow:hidden;display:grid;place-items:center;background:var(--ribbon)}.hf-thumb img{width:100%;height:100%;object-fit:cover}.hf-thumb .ms{font-size:36px;color:var(--txt2)}
+.hf-name{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hf-date{font-size:11px;color:var(--txt2)}
+.hf-del{position:absolute;top:10px;right:10px;opacity:0;background:var(--panel);border-radius:6px}.home-file:hover .hf-del,.home-file:focus-within .hf-del{opacity:1}
+.home-signin{grid-column:1/-1;text-align:center;padding:20px;color:var(--txt2)}.home-signin p{max-width:560px;margin:0 auto 14px}
+@media (max-width:760px){.account-btn span{display:none}.account-btn{padding:3px}}

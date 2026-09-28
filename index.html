@@ -38,12 +38,14 @@
       <span class="grow"></span>
       <span class="doc-name" contenteditable="true" spellcheck="false"
         title="Haz clic para renombrar la presentación"></span>
+      <button id="drive-status" class="drive-status" type="button" hidden></button>
       <span class="grow"></span>
       <div id="collab-bar" class="collab-bar" hidden>
         <span class="collab-role"></span><span class="collab-peers"></span>
         <button type="button" class="mini collab-chat-btn" title="Chat"><i class="ms">chat</i><span class="collab-unread" hidden></span></button>
         <button type="button" class="mini collab-open" title="Colaborar"><i class="ms">group</i></button>
       </div>
+      <button id="account-btn" class="account-btn" type="button"></button>
       <button id="ap-btn" class="ap-btn" type="button" title="Apariencia: claro, oscuro, automático o personalizado"><i class="ms">contrast</i></button>
       <a id="donate" class="donate" target="_blank" rel="noopener" hidden title="Apoya el proyecto"><i class="ms">favorite</i><span>Apoyar</span></a>
       <select id="lang-select" class="lang-select" title="Idioma / Language"></select>
@@ -78,6 +80,7 @@
         </div>
         <div class="group">
           <div class="row">
+            <button data-action="home" class="lg" title="Tus presentaciones en Google Drive"><i class="ms">folder_open</i><span>Mis<br>presentaciones</span></button>
             <button data-action="gdrive-open"><i class="ms">cloud_download</i><span>Abrir de<br>Drive</span></button>
             <button data-action="gdrive-save"><i class="ms">cloud_upload</i><span>Guardar en<br>Drive</span></button>
             <button data-action="gdrive-html"><i class="ms">cloud_sync</i><span>HTML a<br>Drive</span></button>
@@ -592,6 +595,8 @@
   <main>
     <aside id="navigator"></aside>
     <section id="canvas-wrap">
+      <div id="drive-conflict" hidden><i class="ms">sync_problem</i> <span>Esta presentación ha cambiado en Drive desde otro dispositivo.</span>
+        <button data-cf="theirs" type="button">Cargar la de Drive</button><button data-cf="mine" type="button">Quedarme con esta</button><button data-cf="copy" type="button">Guardar esta como copia</button></div>
       <div id="final-banner" hidden><i class="ms">verified</i> <span>Marcada como final: la presentación es de solo lectura.</span>
         <button data-action="mark-final" type="button">Editar de todos modos</button></div>
       <div id="master-banner" hidden><i class="ms">dashboard_customize</i> <span class="mb-text">Editando el patrón: lo que pongas aquí aparece en todas las diapositivas.</span>

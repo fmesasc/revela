@@ -22,6 +22,7 @@ import { initI18n, t } from '../../i18n/index.js';
 import { deleteSelected, duplicateSelected, groupSelected, ungroupSelected, addImage, addTableFromText, addText } from '../../features/document/blocks.js';
 import { openFindPanel } from '../../features/document/search.js';
 // Namespaces exposed to the test harness (see tests/).
+import { initHome } from '../../ui/shell/home.js';
 import { initCollabUI } from '../../ui/shell/collab.js';
 import * as store from '../../core/store.js';
 import * as model from '../../core/model.js';
@@ -181,8 +182,9 @@ if (testing)
 window.Revela = Revela;
 // A deck too big for localStorage lives in IndexedDB: load it if it's newer.
 // (Not when opening someone's shared session: that document comes from them.)
-if (!testing && !new URLSearchParams(location.search).has('collab')) loadNewerDeck(state.deck).then(d => { if (d) store.adoptDeck(d); });
+if (!testing && !new URLSearchParams(location.search).has('collab')) loadNewerDeck(state.deck).then(d => { if (d) store.adoptDeck(d, { sameDocument: true }); });
 initCollabUI();
+initHome();
 startAutoVersions();
 if (!testing) loadPlugins();
 // Charts linked to a CSV load fresh data when the editor opens.

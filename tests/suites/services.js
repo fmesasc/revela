@@ -361,4 +361,77 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.querySelector('.dlg-ok').click(); await sleep(20);
     assert(!R.state.deck.final, 'se puede editar de todos modos');
   });
+
+  await test('Google: iniciar sesión, mis presentaciones, guardado automático y cambios desde otro dispositivo', async () => {
+    reset(); const W = frame.contentWindow;
+    const GD = await W.eval("import('/src/io/cloud/gdrive.js')");
+    // A fake Google: accounts (token) and Drive (files with versions).
+    const drive = new Map(); let n = 0, requests = [];
+    const realGoogle = W.google, realFetch = W.fetch;
+    W.google = { accounts: { oauth2: { initTokenClient: o => ({ requestAccessToken() { this.callback({ access_token: 'tok', expires_in: 3600 }); } }), revoke: (_, cb) => cb?.() } } };
+    const file = (id, name, content, extra = {}) => drive.set(id, { id, name, content, version: '1', modifiedTime: new Date(Date.now() - 1000 * (++n)).toISOString(), ...extra });
+    file('old1', 'Clase 1.revela.json', JSON.stringify({ ...R.model.emptyDeck(), name: 'Clase 1' }));
+    file('old2', 'Clase 2.revela.json', JSON.stringify({ ...R.model.emptyDeck(), name: 'Clase 2' }), { thumbnailLink: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=' });
+    W.fetch = async (url, o = {}) => {
+      url = String(url); requests.push({ url, method: o.method || 'GET' });
+      const ok = b => new W.Response(typeof b === 'string' ? b : JSON.stringify(b), { status: 200 });
+      if (!url.startsWith('https://www.googleapis.com')) return realFetch(url, o);
+      if (url.includes('/oauth2/v3/userinfo')) return ok({ name: 'Ana Pérez', email: 'ana@example.org' });
+      const m = url.match(/\/files\/([^/?]+)/), id = m && decodeURIComponent(m[1]);
+      if (url.includes('/upload/drive/v3/files')) {
+        const parts = o.body.split(/--revela\w+/).filter(x => x.includes('\r\n\r\n')).map(x => x.split('\r\n\r\n').slice(1).join('\r\n\r\n').replace(/\r\n$/, ''));
+        const meta = JSON.parse(parts[0]), content = parts[1];
+        if (id) { const f = drive.get(id); f.content = content; f.version = String(+f.version + 1); f.modifiedTime = new Date().toISOString(); f.thumb = !!meta.contentHints; return ok(f); }
+        const nid = 'new' + (++n); file(nid, meta.name, content, { modifiedTime: new Date().toISOString(), thumb: !!meta.contentHints }); return ok(drive.get(nid));
+      }
+      if (url.includes('/drive/v3/files?q=')) return ok({ files: [...drive.values()].filter(f => !f.trashed).sort((a, b) => b.modifiedTime.localeCompare(a.modifiedTime)) });
+      if (id && url.includes('alt=media')) return ok(drive.get(id).content);
+      if (id && o.method === 'PATCH') { drive.get(id).trashed = true; return ok({}); }
+      if (id) return ok(drive.get(id));
+      return new W.Response('{}', { status: 404 });
+    };
+    GD.setThumbnailMaker(async () => 'AAAA'); GD.setAutosaveDelay(50);
+    try {
+      const btn = D.getElementById('account-btn');
+      assert(/Iniciar sesión/.test(btn.textContent), 'botón de iniciar sesión');
+      btn.click(); await sleep(50);
+      eq(GD.account()?.email, 'ana@example.org', 'sesión iniciada'); assert(btn.classList.contains('signed') && /A/.test(btn.textContent), 'la cuenta en la barra');
+      // My presentations: the most recent first, with thumbnails.
+      D.querySelector('[data-action="home"]').click(); await sleep(80);
+      const names = [...D.querySelectorAll('#home-screen .hf-name')].map(x => x.textContent);
+      eq(names.join(), 'Clase 1,Clase 2', 'lista de Drive, la más reciente primero');
+      assert(D.querySelector('#home-screen .home-file img'), 'con miniatura');
+      // The current one (with content, only in this browser) is kept in Drive before opening another.
+      R.state.deck.slides[0].blocks[0].html = 'Mi trabajo sin guardar'; R.store.commit(() => {});
+      D.querySelector('#home-screen .home-file[data-id="old2"]').click(); await sleep(120);
+      eq(R.state.deck.name, 'Clase 2', 'abre la de Drive');
+      const kept = [...drive.values()].find(f => f.content?.includes('Mi trabajo sin guardar'));
+      assert(kept, 'la que había se guardó antes en Drive'); assert(kept.thumb, 'con su miniatura');
+      eq(GD.linkedFile()?.id, 'old2', 'vinculada al archivo abierto');
+      // Autosave to the same file.
+      R.store.commit(() => { R.state.deck.slides[0].notes = 'nota 1'; }); await sleep(250);
+      assert(drive.get('old2').content.includes('nota 1') && drive.get('old2').version === '2', 'se guarda sola en el mismo archivo');
+      eq(D.getElementById('drive-status').dataset.state, 'saved', 'estado: guardado');
+      // Changed on another device meanwhile → asks.
+      drive.get('old2').version = '5'; drive.get('old2').content = JSON.stringify({ ...R.model.emptyDeck(), name: 'Clase 2 (tablet)' });
+      R.store.commit(() => { R.state.deck.slides[0].notes = 'nota 2'; }); await sleep(250);
+      assert(!D.getElementById('drive-conflict').hidden, 'avisa del cambio en otro dispositivo');
+      assert(!drive.get('old2').content.includes('nota 2'), 'y no lo pisa sin preguntar');
+      D.querySelector('#drive-conflict [data-cf="theirs"]').click(); await sleep(120);
+      eq(R.state.deck.name, 'Clase 2 (tablet)', 'cargar la de Drive'); assert(D.getElementById('drive-conflict').hidden, 'aviso resuelto');
+      // Back after a reload: newer in Drive and nothing changed here → brings it.
+      drive.get('old2').version = '9'; drive.get('old2').content = JSON.stringify({ ...R.model.emptyDeck(), name: 'Desde el móvil' });
+      eq(await GD.reconnect(), 'loaded', 'al volver, trae la versión nueva'); eq(R.state.deck.name, 'Desde el móvil');
+      // Another presentation replacing it (Nuevo, abrir archivo…) never writes over the Drive file.
+      const before = drive.get('old2').content;
+      R.store.replaceDeck(R.model.emptyDeck()); R.store.commit(() => { R.state.deck.name = 'Otra cosa'; }); await sleep(250);
+      eq(drive.get('old2').content, before, 'el archivo de Drive no se toca'); eq(GD.linkedFile(), null, 'ya no está vinculada');
+      // New from My presentations: a new file in Drive, saved as you go.
+      D.querySelector('[data-action="home"]').click(); await sleep(80);
+      D.querySelector('#home-screen [data-home="new"]').click(); await sleep(150);
+      const nf = GD.linkedFile(); assert(nf && drive.get(nf.id), 'nueva: se crea en Drive');
+      // Sign out.
+      await GD.signOut(); eq(GD.account(), null, 'cerrar sesión'); eq(GD.linkedFile(), null);
+    } finally { W.fetch = realFetch; W.google = realGoogle; GD.setAutosaveDelay(4000); D.getElementById('home-screen')?.remove(); }
+  });
 }

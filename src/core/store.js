@@ -150,11 +150,18 @@ export function applyRemote(fn) {
   clampSlide(); persist && saveDeck(state.deck); notify();
 }
 // A newer copy of the same document (from another tab or the disk): no undo step.
-export function adoptDeck(deck) {
+// Which document is open: it changes when another one replaces it (not with
+// edits or undo), so what is linked to a file (Drive) knows it is still the same.
+let epoch = 0;
+export const docEpoch = () => epoch;
+// sameDocument: a newer copy of this very document (not another one).
+export function adoptDeck(deck, { sameDocument = false } = {}) {
+  if (!sameDocument) epoch++;
   state.deck = deck; state.ui.slideIndex = 0; base = snapshot(deck); past.length = 0; future.length = 0;
   notify();
 }
 export function replaceDeck(deck) {
   // Another deck: leave the master view too (it would edit a master that isn't there).
+  epoch++;
   commit(() => { state.deck = deck; state.ui.slideIndex = 0; state.ui.selection = null; state.ui.multi = []; state.ui.editMaster = false; });
 }

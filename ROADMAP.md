@@ -201,7 +201,7 @@ the origin of every requirement is traceable.
 - ✅ Layered architecture (apps → ui → api → io → features → render·i18n → core) enforced by the tests (`tests/layers.py`) `—`
 - ✅ Development tools — screenshots of the editor, PowerPoint import fidelity report against LibreOffice, embeddability check of web pages (`tools/`) `—`
 - 🚧 Responsive & touch editing (mobile layout, long-press menus, fit-to-screen) `PP·GS·OO`
-- 🚧 Cloud project storage — Google Drive save/open (client-side) `PP·GS`
+- ✅ Cloud project storage — sign in with Google, “My presentations” (recent files in Drive with thumbnails), open/save/new straight in Drive (client-side, `drive.file` scope) `PP·GS`
 - ⬜ Desktop application ([Tauri](https://tauri.app/)) `PP·OO`
 - ✅ Offline mode & installable app (service worker + manifest; works offline after one online visit) `PP·GS·OO`
-- ⬜ Autosave to cloud, multi-device sync `PP·GS`
+- ✅ Autosave to Google Drive and multi-device sync: saves a few seconds after each change, brings a newer version from another device, and asks when both changed `PP·GS`

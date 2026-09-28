@@ -680,9 +680,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       eq(st.views, 7, 'visitas'); eq(calls.at(-1).o.headers.Authorization, 'Bearer tok', 'con su token');
       void r;
     } finally { W.fetch = real; R.shares.removeShare('AbCdEfGhIjKlMnOpQrStUv'); R.shareServer.setServerConfig({}); W.localStorage.removeItem('revela.gdrive'); }
-    // Without a Google client id, a domain can't be required.
-    let err = ''; await R.io.publishShare({ where: 'server', domain: 'x.example' }).catch(e => { err = e.message; });
-    assert(/ID de cliente de Google/.test(err), 'sin client id avisa: ' + err);
+    // Without a project of one's own, Revela's Google client is used (core/config.js).
+    const GD = await frame.contentWindow.eval("import('/src/io/cloud/gdrive.js')");
+    assert(/\.apps\.googleusercontent\.com$/.test(GD.gdriveConfig().clientId) && GD.gdriveReady(), 'Drive listo sin configurar nada');
     // The viewer asks to sign in when the server answers 401.
     const S = await import(new URL('../src/io/share/seal.js', D.baseURI));
     const page = S.openerPageHTML({ src: 'https://srv.test/s/AbCdEfGhIjKlMnOpQrStUv' });

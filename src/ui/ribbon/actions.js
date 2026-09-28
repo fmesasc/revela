@@ -14,6 +14,7 @@ import { exportPDF } from '../../io/export/print.js';
 import { present } from '../shell/present.js';
 import { startCoach } from '../shell/coach.js';
 import { openCollab } from '../shell/collab.js';
+import { openHome } from '../shell/home.js';
 import { openSignatures, toggleFinal } from '../dialogs/signature.js';
 import { importPPTX } from '../../io/formats/pptx-import.js';
 import * as gdrive from '../../io/cloud/gdrive.js';
@@ -94,6 +95,7 @@ export const ACTIONS = {
   'signatures': () => openSignatures(),
   'save': saveProject,
   'gallery': () => openGallery(),
+  'home': () => openHome(),
   'versions': () => openVersions(),
   'design-ideas': () => openDesignIdeas(),
   'gdrive-open': () => gdrive.openWithUI(),
