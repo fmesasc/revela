@@ -72,10 +72,12 @@ export async function chat(messages, { json = false, maxTokens = 2000 } = {}) {
   return data.choices?.[0]?.message?.content?.trim() || '';
 }
 const LANG = { es: 'español', en: 'English', fr: 'français', de: 'Deutsch', it: 'italiano', pt: 'português', ca: 'català', gl: 'galego', nl: 'Nederlands', eu: 'euskara', ar: 'العربية' };
-const lang = () => LANG[currentLang()] || 'español';
-const parseJSON = s => JSON.parse(String(s).replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, ''));
-const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const plain = html => { const d = document.createElement('div'); d.innerHTML = html || ''; return (d.innerText || d.textContent || '').trim(); };
+export const lang = () => LANG[currentLang()] || 'español';
+// JSON from a model answer (tolerates ``` fences and text around the object).
+export const parseJSON = s => { const t = String(s).replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+  try { return JSON.parse(t); } catch { const a = t.indexOf('{'), b = t.lastIndexOf('}'); if (a >= 0 && b > a) return JSON.parse(t.slice(a, b + 1)); throw new Error('EMPTY'); } };
+export const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+export const plain = html => { const d = document.createElement('div'); d.innerHTML = html || ''; return (d.innerText || d.textContent || '').trim(); };
 
 // Generate a deck outline and insert it as new slides after the current one.
 export async function generateSlides(topic, count = 6) {

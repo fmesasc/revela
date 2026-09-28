@@ -173,6 +173,7 @@ the origin of every requirement is traceable.
 - ✅ AI via OpenRouter (sign in or own key; user pays their usage, no Revela server): create slides from a topic, rewrite/shorten/proofread/translate text `PP·GS`
 - ✅ AI image generation (OpenRouter Image API, model configurable) `PP·GS`
 - ✅ AI speaker notes (one slide or all) and alt text for images `PP·GS`
+- ✅ AI authoring: whole decks from a brief or a document (txt/md/pdf) with 11 slide kinds laid out by Revela (stats, timeline, chart with data, table, quote…), optional AI images; improve slide; agenda; review quiz; assistant that edits the deck from plain-language requests (validated operations, one undo step) `PP·GS`
 
 ## 12. Platform
 - ✅ Static web app with automatic deployment (GitHub Pages) `GS`

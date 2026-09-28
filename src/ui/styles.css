@@ -521,3 +521,13 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
   .gal-grid,.ts-grid{grid-template-columns:repeat(2,1fr)}
   .pal-grid{grid-template-columns:repeat(2,1fr)}
 }
+/* AI assistant & create dialog */
+#assistant-panel{width:320px;flex-shrink:0;background:var(--panel);border-inline-start:1px solid var(--line2);padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-height:0}
+.as-log{flex:1;overflow:auto;display:flex;flex-direction:column;gap:6px;min-height:80px}
+.as-msg{padding:7px 10px;border-radius:10px;font-size:13px;white-space:pre-wrap;max-width:92%}
+.as-msg.me{align-self:flex-end;background:var(--accent);color:#fff}
+.as-msg.ai{align-self:flex-start;background:#fff;border:1px solid var(--line2)}
+.as-hints{display:flex;flex-wrap:wrap;gap:4px}
+.as-hint{border:1px solid var(--line2);background:#fff;border-radius:12px;padding:3px 9px;font-size:11px;cursor:pointer;color:var(--txt2)}
+.ad-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (max-width:860px){ #assistant-panel{width:auto;max-height:50vh;border-inline-start:none;border-top:1px solid var(--line2)} .ad-grid{grid-template-columns:1fr} }

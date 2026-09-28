@@ -1273,6 +1273,72 @@ export async function run(frame) {
     eq(deck.slides[1].transition, 'fade', 'transición'); eq(deck.slides[1].autoSlide, 3000, 'avance automático');
   });
 
+  await test('IA avanzada: presentación completa, mejorar, agenda, preguntas y asistente', async () => {
+    reset(); const W = frame.contentWindow, A = R.aiDeck, realFetch = W.fetch, calls = []; let answer = {};
+    R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    W.fetch = async (url, opts) => {
+      const body = JSON.parse(opts.body); calls.push({ url, body });
+      if (url.endsWith('/images')) return new W.Response(JSON.stringify({ data: [{ b64_json: 'R0lGODlhAQABAAAAACw=', media_type: 'image/gif' }] }));
+      return new W.Response(JSON.stringify({ choices: [{ message: { content: '```json\n' + JSON.stringify(answer) + '\n```' } }] }));
+    };
+    try {
+      const specs = [
+        { kind: 'title', title: 'Energía solar', subtitle: 'Introducción', notes: 'Hola' },
+        { kind: 'section', title: 'Parte 1' }, { kind: 'bullets', title: 'Ventajas', bullets: ['Limpia', 'Renovable'] },
+        { kind: 'two_columns', title: 'Comparación', left: { heading: 'Solar', bullets: ['a'] }, right: { heading: 'Eólica', bullets: ['b'] } },
+        { kind: 'quote', quote: 'El sol es para todos', author: 'Anónimo' },
+        { kind: 'stats', title: 'Cifras', stats: [{ value: '42%', label: 'eficiencia' }, { value: '3x', label: 'crecimiento' }] },
+        { kind: 'timeline', title: 'Historia', steps: [{ label: '1954', text: 'Primera célula' }, { label: '2000', text: 'Expansión' }, { label: '2020', text: 'Récord' }] },
+        { kind: 'chart', title: 'Producción', chart: { type: 'line', labels: ['2020', '2021'], values: [1, 2], series_name: 'TWh' }, bullets: ['Sube'] },
+        { kind: 'table', title: 'Tabla', header: ['País', 'GW'], rows: [['China', '600'], ['EE. UU.', '140']] },
+        { kind: 'image', title: 'Paneles', bullets: ['Tejados'], image_prompt: 'solar panels on roofs' },
+        { kind: 'closing', title: 'Gracias' }];
+      answer = { title: 'Energía solar', slides: specs };
+      reset(); const n0 = R.state.deck.slides.length;
+      const got = await A.createDeck({ topic: 'Energía solar', count: 11, audience: 'estudiantes', tone: 'didáctico', images: true });
+      assert(/Audience: estudiantes/.test(calls.at(-1).body.messages[1].content), 'envía el encargo');
+      await A.insertSpecs(got, { images: true });
+      eq(R.state.deck.slides.length, n0 + 11, 'once diapositivas');
+      const S = R.state.deck.slides.slice(1), types = s => s.blocks.map(b => b.type).join(',');
+      assert(/<b>42%<\/b>/.test(S[5].blocks[1].html), 'cifras destacadas');
+      eq(S[6].blocks.filter(b => b.type === 'connector').length, 2, 'línea de tiempo con conectores');
+      const ch = S[7].blocks.find(b => b.type === 'chart'); eq(ch.chartType, 'line', 'gráfico'); eq(ch.data[1].value, 2, 'datos del gráfico');
+      const tb = S[8].blocks.find(b => b.type === 'table'); eq(tb.rows.length, 3, 'tabla con cabecera'); assert(tb.header, 'cabecera');
+      assert(S[9].blocks.some(b => b.type === 'image'), 'imagen generada en la diapositiva de imagen');
+      eq(S[0].notes, 'Hola', 'notas');
+      assert(/<span style="color:/.test(S[3].blocks[1].html), 'encabezado de columna con color');
+      // Mejorar una diapositiva
+      R.slides.goToSlide(3); answer = { kind: 'bullets', title: 'Ventajas claras', bullets: ['Limpia'], notes: 'n' };
+      eq(await A.improveSlide(), 'bullets', 'mejorada'); assert(/Ventajas claras/.test(slide().blocks[0].html), 'título nuevo');
+      // Agenda y preguntas
+      answer = { kind: 'bullets', title: 'Agenda', bullets: ['Intro', 'Datos'] }; await A.addAgenda();
+      assert(/Agenda/.test(R.state.deck.slides[1].blocks[0].html), 'agenda en la segunda posición');
+      answer = { questions: [{ question: '¿Qué es?', options: ['A', 'B', 'C', 'D'], answer: 2, explanation: 'Porque C' }] };
+      const total = R.state.deck.slides.length; eq(await A.addQuiz(1), 1, 'una pregunta');
+      eq(R.state.deck.slides.length, total + 2, 'pregunta y respuesta');
+      const ans = R.state.deck.slides.at(-1).blocks; eq(ans[3].opacity, undefined, 'correcta resaltada'); eq(ans[1].opacity, 30, 'incorrectas atenuadas');
+      // Asistente con operaciones
+      reset(); R.slides.addSlide();
+      const [s1, s2] = R.state.deck.slides, tid = s1.blocks[0].id;
+      answer = { message: 'Listo', ops: [
+        { op: 'set_text', slide: 1, id: tid, text: 'Nuevo título' },
+        { op: 'add_slide', after: 1, spec: { kind: 'bullets', title: 'Añadida', bullets: ['x'] } },
+        { op: 'delete_slide', slide: 2 }, { op: 'set_notes', slide: 1, notes: 'Notas IA' },
+        { op: 'set_background', slide: 'all', color: '#223344' }, { op: 'bogus' }] };
+      const res = await A.assistant('Cambia cosas');
+      eq(res.message, 'Listo', 'mensaje'); eq(res.applied, 5, 'operaciones válidas aplicadas');
+      eq(s1.blocks[0].html, 'Nuevo título', 'texto'); eq(s1.notes, 'Notas IA', 'notas');
+      eq(R.state.deck.slides.length, 2, 'añade una y borra la original 2'); assert(!R.state.deck.slides.includes(s2), 'borrada la correcta');
+      assert(/Añadida/.test(R.state.deck.slides[1].blocks[0].html), 'insertada tras la 1');
+      assert(R.state.deck.slides.every(s => s.background === '#223344'), 'fondo en todas');
+      const ctx = calls.at(-1).body.messages.at(-1).content; assert(ctx.includes(tid), 'el asistente recibe los ids de los textos');
+      R.store.undo(); eq(R.state.deck.slides.length, 2, 'deshacer'); assert(R.state.deck.slides.some(x => x.id === s2.id), 'un solo paso de deshacer');
+      eq(await A.readDocument(new W.File(['Hola documento'], 'd.txt')), 'Hola documento', 'leer .txt');
+      D.querySelector('[data-action="ai-assistant"]').click(); await sleep(10);
+      assert(D.getElementById('assistant-panel'), 'panel del asistente'); D.querySelector('[data-action="ai-assistant"]').click();
+    } finally { W.fetch = realFetch; R.ai.disconnectAi(); }
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

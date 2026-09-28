@@ -2,7 +2,10 @@
 // and the actions. A small overlay shows while the model is working.
 
 import * as ai from '../features/ai.js';
-import { state } from '../core/store.js';
+import { state, commit, replaceDeck } from '../core/store.js';
+import { emptyDeck } from '../core/model.js';
+import * as deck from '../features/ai-deck.js';
+import * as palettes from '../features/palettes.js';
 import { alertDialog, confirmDialog, promptDialog } from './dialog.js';
 import { t } from '../i18n.js';
 
@@ -72,3 +75,93 @@ export const AI_ACTIONS = {
   'ai-translate': () => promptDialog(t('¿A qué idioma?'), 'English').then(l => l && run(() => ai.rewriteSelected(null, l))),
 };
 export const aiRewrite = kind => run(() => ai.rewriteSelected(kind));
+
+// ---- Advanced authoring --------------------------------------------------------
+const TONES = ['profesional', 'didáctico', 'persuasivo', 'cercano', 'académico', 'inspirador'];
+export function openCreateDeck() {
+  document.getElementById('aideck-modal')?.remove();
+  const back = document.createElement('div'); back.id = 'aideck-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:start;width:min(620px,94vw);max-width:94vw">
+    <button class="modal-close">✕</button><h3>${t('Crear presentación con IA')}</h3>
+    <label class="fr-l">${t('Tema o instrucciones')}<textarea class="ad-topic" rows="3" placeholder="${t('p. ej.: Introducción a la energía solar para estudiantes de secundaria')}"></textarea></label>
+    <label class="fr-l">${t('O basarla en un documento (.txt, .md, .pdf) o texto pegado')}
+      <input type="file" class="ad-file" accept=".txt,.md,.markdown,.pdf,text/plain,application/pdf">
+      <textarea class="ad-source" rows="3" placeholder="${t('Pega aquí un texto (opcional)')}"></textarea></label>
+    <div class="ad-grid">
+      <label class="fr-l">${t('Diapositivas')}<input type="number" class="ad-count" min="3" max="30" value="8"></label>
+      <label class="fr-l">${t('Público')}<input type="text" class="ad-aud" placeholder="${t('p. ej.: directivos')}"></label>
+      <label class="fr-l">${t('Tono')}<select class="ad-tone">${TONES.map(x => `<option value="${x}">${t(x)}</option>`).join('')}</select></label>
+      <label class="fr-l">${t('Diseño')}<select class="ad-pal"><option value="">${t('El actual')}</option>${Object.entries(palettes.PALETTES).map(([k, p]) => `<option value="${k}">${t(p.name)}</option>`).join('')}</select></label>
+    </div>
+    <label class="fr-chk"><input type="checkbox" class="ad-img"> ${t('Generar imágenes con IA (coste extra en OpenRouter)')}</label>
+    <label class="fr-chk"><input type="checkbox" class="ad-new" checked> ${t('Empezar una presentación nueva (si no, se añade a la actual)')}</label>
+    <progress class="ad-prog" hidden style="width:100%"></progress>
+    <div class="fr-actions"><button class="fr-do ad-go">✨ ${t('Crear')}</button></div></div>`;
+  document.body.appendChild(back);
+  const q = s => back.querySelector(s), close = () => back.remove();
+  q('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  q('.ad-go').addEventListener('click', async () => {
+    const topic = q('.ad-topic').value.trim(), file = q('.ad-file').files[0];
+    let source = q('.ad-source').value.trim();
+    if (!topic && !source && !file) { alertDialog(t('Escribe un tema o aporta un documento.')); return; }
+    if (!(await ready())) return;
+    q('.ad-go').disabled = true; q('.ad-prog').hidden = false;
+    try {
+      if (file) source = (await deck.readDocument(file)) + (source ? '\n\n' + source : '');
+      const opts = { topic, source, count: +q('.ad-count').value, audience: q('.ad-aud').value.trim(), tone: q('.ad-tone').value,
+        palette: q('.ad-pal').value, images: q('.ad-img').checked };
+      await run(async () => {
+        const specs = await deck.createDeck(opts);
+        if (q('.ad-new').checked) replaceDeck(emptyDeck());
+        if (opts.palette) palettes.applyPalette(opts.palette);
+        await deck.insertSpecs(specs, { images: opts.images, onProgress: p => (q('.ad-prog').value = p) });
+        if (q('.ad-new').checked && state.deck.slides.length > specs.length) {   // drop the empty starter slide
+          commit(() => { state.deck.slides.shift(); state.ui.slideIndex = 0; });
+        }
+      });
+      close();
+    } catch (e) { alertDialog(t('No se pudo completar: ') + (e.message || e)); }
+    finally { if (document.body.contains(back)) { q('.ad-go').disabled = false; q('.ad-prog').hidden = true; } }
+  });
+}
+
+// ---- Assistant panel -------------------------------------------------------------
+const chatLog = [];                          // [{ role, content }] for context + display
+export function toggleAssistant(on = !state.ui.showAssistant) { commit(() => { state.ui.showAssistant = on; }, { history: false }); }
+export function renderAssistant() {
+  let panel = document.getElementById('assistant-panel');
+  if (!state.ui.showAssistant) { panel?.remove(); return; }
+  if (panel) return;
+  panel = document.createElement('aside'); panel.id = 'assistant-panel';
+  panel.innerHTML = `<div class="cm-head"><b>✨ ${t('Asistente')}</b><button type="button" class="cm-close" title="${t('Cerrar')}">✕</button></div>
+    <div class="as-log"></div>
+    <div class="as-hints">${['Añade una diapositiva de conclusiones', 'Acorta todos los títulos', 'Escribe notas para todas las diapositivas', 'Convierte la diapositiva actual en una línea de tiempo']
+      .map(h => `<button type="button" class="as-hint">${t(h)}</button>`).join('')}</div>
+    <div class="cm-new"><textarea rows="3" placeholder="${t('Pide un cambio o haz una pregunta…')}"></textarea><button type="button" class="fr-do as-send">${t('Enviar')}</button></div>`;
+  document.querySelector('main').appendChild(panel);
+  const log = panel.querySelector('.as-log'), ta = panel.querySelector('textarea');
+  const add = (who, text) => { const d = document.createElement('div'); d.className = 'as-msg ' + who; d.textContent = text; log.appendChild(d); log.scrollTop = log.scrollHeight; };
+  for (const m of chatLog) add(m.role === 'user' ? 'me' : 'ai', m.shown || m.content);
+  const send = async () => {
+    const text = ta.value.trim(); if (!text) return;
+    ta.value = ''; add('me', text);
+    const res = await run(() => deck.assistant(text, chatLog.map(({ role, content }) => ({ role, content }))));
+    if (!res) return;
+    const note = res.applied ? ` (${res.applied} ${t('cambios aplicados; Ctrl+Z para deshacer')})` : '';
+    add('ai', (res.message || t('Hecho.')) + note);
+    chatLog.push({ role: 'user', content: text }, { role: 'assistant', content: JSON.stringify({ message: res.message, ops: res.ops }), shown: res.message + note });
+  };
+  panel.querySelector('.as-send').addEventListener('click', send);
+  ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
+  panel.querySelectorAll('.as-hint').forEach(h => h.addEventListener('click', () => { ta.value = h.textContent; send(); }));
+  panel.querySelector('.cm-close').addEventListener('click', () => toggleAssistant(false));
+}
+
+Object.assign(AI_ACTIONS, {
+  'ai-deck': () => openCreateDeck(),
+  'ai-improve': () => run(() => deck.improveSlide()),
+  'ai-agenda': () => run(() => deck.addAgenda()),
+  'ai-quiz': () => run(async () => { const n = await deck.addQuiz(3); alertDialog(t('Preguntas añadidas al final: ') + n); }),
+  'ai-assistant': () => toggleAssistant(),
+});
