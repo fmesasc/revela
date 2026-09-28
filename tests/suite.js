@@ -377,15 +377,16 @@ export async function run(frame) {
     assert(/renderMathInElement/.test(html), 'inicialización de math en línea');
   });
 
-  await test('editor gráfico de ecuaciones: paleta de símbolos', async () => {
+  await test('editor de ecuaciones (visual MathLive o paleta) se abre', async () => {
     reset(); R.blocks.addMath(); const b = last(); select(b); await sleep(20);
     const el = D.querySelector(`.block[data-id="${b.id}"]`);
     el.dispatchEvent(new frame.contentWindow.MouseEvent('contextmenu', { bubbles: true, clientX: 120, clientY: 120 }));
     await sleep(10);
     const item = [...D.querySelectorAll('#context-menu .ctx-item')].find(x => /ecuaci/i.test(x.textContent));
-    assert(item, 'opción de editar ecuación en el menú'); item.click(); await sleep(10);
-    const m = D.getElementById('math-modal');
-    assert(m && m.querySelectorAll('.mt-btn').length > 20, 'paleta de símbolos y plantillas');
+    assert(item, 'opción de editar ecuación en el menú'); item.click();
+    let m = null; for (let i = 0; i < 80 && !m; i++) { await sleep(50); m = D.getElementById('math-modal'); }
+    assert(m, 'se abre el editor de ecuaciones');
+    assert(m.querySelector('math-field') || m.querySelectorAll('.mt-btn').length > 20, 'campo matemático visual o paleta');
     m.querySelector('.modal-close').click();
   });
 

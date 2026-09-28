@@ -222,6 +222,7 @@ const ROWS = [
   ['Aplicar', 'Apply', 'Appliquer', 'Anwenden', 'Applica', 'Aplicar', 'Aplica'],
   ['Opciones de código', 'Code options', 'Options de code', 'Code-Optionen', 'Opzioni codice', 'Opções de código', 'Opcions de codi'],
   ['Editar ecuación', 'Edit equation', 'Modifier l’équation', 'Gleichung bearbeiten', 'Modifica equazione', 'Editar equação', 'Edita l’equació'],
+  ['Teclado', 'Keyboard', 'Clavier', 'Tastatur', 'Tastiera', 'Teclado', 'Teclat'],
   ['Ecuación', 'Equation', 'Équation', 'Gleichung', 'Equazione', 'Equação', 'Equació'],
   ['Encabezado y pie', 'Header & Footer', 'En-tête et pied', 'Kopf- und Fußzeile', 'Intestazione e piè', 'Cabeçalho e rodapé', 'Capçalera i peu'],
   ['Texto del pie', 'Footer text', 'Texte du pied', 'Fußzeilentext', 'Testo del piè', 'Texto do rodapé', 'Text del peu'],

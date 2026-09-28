@@ -231,7 +231,46 @@ const MATH_PALETTE = [
     ['∪', '\\cup '], ['∩', '\\cap '], ['∂', '\\partial '], ['∇', '\\nabla '], ['∀', '\\forall '], ['∃', '\\exists '],
   ]],
 ];
-function openMath(b) {
+const MATHLIVE = 'https://cdn.jsdelivr.net/npm/mathlive@0.100.0/dist/mathlive.min.js';
+let mathliveLoading;
+function ensureMathlive() {
+  if (window.customElements && customElements.get('math-field')) return Promise.resolve(true);
+  if (!mathliveLoading) mathliveLoading = new Promise(res => {
+    const s = document.createElement('script'); s.src = MATHLIVE;
+    s.onload = () => customElements.whenDefined('math-field').then(() => res(true), () => res(false));
+    s.onerror = () => res(false); document.head.appendChild(s);
+  });
+  return mathliveLoading;
+}
+
+// Visual, Symbolab‑style equation editor (MathLive): type and edit the formula
+// as it looks, with a math keyboard — no LaTeX needed. Falls back to the palette
+// editor if MathLive can't load.
+async function openMath(b) {
+  if (document.getElementById('math-modal')) return;
+  const ok = await ensureMathlive();
+  if (!ok) return openMathPalette(b);
+  const back = document.createElement('div');
+  back.id = 'math-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:left;min-width:420px;max-width:94vw">
+    <button class="modal-close">✕</button><h3>${t('Editar ecuación')}</h3>
+    <math-field class="mt-field"></math-field>
+    <div class="fr-actions"><button class="mini2 mt-kbd">⌨ ${t('Teclado')}</button><button class="fr-do">${t('Aplicar')}</button></div>
+  </div>`;
+  document.body.appendChild(back);
+  const mf = back.querySelector('math-field');
+  mf.mathVirtualKeyboardPolicy = 'manual';
+  mf.value = b.latex || '';
+  mf.addEventListener('input', () => blocks.setMath(mf.value));
+  const close = () => back.remove();
+  back.querySelector('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  back.querySelector('.mt-kbd').addEventListener('click', () => { try { window.mathVirtualKeyboard.show(); } catch {} mf.focus(); });
+  back.querySelector('.fr-do').addEventListener('click', close);
+  setTimeout(() => { mf.focus(); try { window.mathVirtualKeyboard.show(); } catch {} }, 50);
+}
+
+function openMathPalette(b) {
   if (document.getElementById('math-modal')) return;
   const back = document.createElement('div');
   back.id = 'math-modal'; back.className = 'modal-backdrop';
