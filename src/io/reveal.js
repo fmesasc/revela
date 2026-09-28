@@ -57,6 +57,15 @@ function animAttrs(b, slide) {
   const cls = effect === 'path' ? 'rv-path' : effect;
   return src + ` class="fragment ${cls}" data-fragment-index="${order}"`;
 }
+// Live camera for Cameo objects: asked for only when a slide that has one is
+// shown, and shared by all of them.
+const CAMERA_JS = `(function(){var st=null,asked=false;
+ function fill(slide){var vs=slide&&slide.querySelectorAll('video[data-camera]');if(!vs||!vs.length)return;
+  function put(){vs.forEach(function(v){if(v.srcObject!==st){v.srcObject=st;v.play&&v.play().catch(function(){});}});}
+  if(st)return put();if(asked)return;asked=true;
+  navigator.mediaDevices&&navigator.mediaDevices.getUserMedia({video:true,audio:false}).then(function(s){st=s;put();}).catch(function(){});}
+ Reveal.on('ready',function(e){fill(e.currentSlide);});Reveal.on('slidechanged',function(e){fill(e.currentSlide);});
+ if(Reveal.isReady())fill(Reveal.getCurrentSlide());})();`;
 const TRIGGER_JS = `(function(){
  function play(el){el.style.animation='none';void el.offsetWidth;
   el.style.animation=el.dataset.kf+' '+el.dataset.dur+'ms ease '+el.dataset.del+'ms both';el.classList.add('on');}
@@ -113,6 +122,9 @@ function blockHTML(b, slide) {
       + `filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)}">`;
   if (b.type === 'video')
     return `<video${a} src="${b.src}" controls style="${box(b)}object-fit:contain"></video>`;
+  if (b.type === 'camera')   // Cameo: filled with the presenter's camera when the slide is shown
+    return `<video${a} data-camera autoplay muted playsinline style="${box(b)}object-fit:cover;background:#223;`
+      + `border-radius:${b.shape === 'circle' ? '50%' : b.shape === 'rounded' ? '14%' : '0'}${b.mirror !== false ? ';scale:-1 1' : ''}"></video>`;
   if (b.type === 'audio')
     return `<audio${a} src="${b.src}" controls style="${box(b)}"></audio>`;
   if (b.type === 'embed')
@@ -210,6 +222,7 @@ export function buildHTML(deck = state.deck) {
   const hasZoomReturn = deck.slides.some(s => s.blocks.some(b => b.type === 'slideref' && b.returnBack));
   const katexNeeded = hasMath || hasInlineMath;
   const hasTrig = deck.slides.some(s => s.blocks.some(b => b.animation?.trigger));
+  const hasCam = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'camera'));
   const ft = deck.footer || { show: false };
   const footerText = ft.show
     ? `<div class="deck-footer">${esc(ft.text || '')}${ft.date ? (ft.text ? ' · ' : '') + new Date().toLocaleDateString('es') : ''}</div>`
@@ -261,6 +274,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${hasMath ? 'window.addEventListener("load",function(){window.katex&&document.querySelectorAll(".math[data-latex]").forEach(function(el){try{katex.render(el.getAttribute("data-latex"),el,{throwOnError:false,displayMode:true});}catch(e){}});});' : ''}
  ${hasInlineMath ? 'window.addEventListener("load",function(){window.renderMathInElement&&renderMathInElement(document.body,{delimiters:[{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}],throwOnError:false});});' : ''}
  ${hasTrig ? TRIGGER_JS : ''}
+ ${hasCam ? CAMERA_JS : ''}
  ${inkJS(w, h, { pen: t('Lápiz'), hl: t('Resaltador'), laser: t('Puntero láser'), color: t('Color de la tinta'), erase: t('Borrar la tinta de la diapositiva') })}
  ${hasZoomReturn ? '(function(){var p=null;document.addEventListener("click",function(e){var a=e.target.closest("a.slide-zoom[data-zoom-return]");if(a){p={t:+a.dataset.target,o:+a.dataset.origin,arrived:false};}});Reveal.on("slidechanged",function(ev){if(!p)return;if(ev.indexh===p.t){p.arrived=true;return;}if(p.arrived){var o=p.o;p=null;setTimeout(function(){Reveal.slide(o);},0);}});})();' : ''}
 </script></body></html>`;
@@ -276,7 +290,7 @@ export let activePresent = null;
 // rehearse: PowerPoint's "Rehearse Timings" — time each slide while presenting
 // (without the current auto-advance), then offer to save the times as each
 // slide's auto-advance.
-export function present({ rehearse = false } = {}) {
+export function present({ rehearse = false, fullscreen = true, onEnd = null } = {}) {
   const deck = rehearse ? { ...state.deck, slides: state.deck.slides.map(s => ({ ...s, autoSlide: 0 })) } : state.deck;
   const url = URL.createObjectURL(new Blob([buildHTML(deck)], { type: 'text/html' }));
 
@@ -284,7 +298,7 @@ export function present({ rehearse = false } = {}) {
   overlay.id = 'present-overlay';
   const frame = document.createElement('iframe');
   frame.src = url;
-  frame.allow = 'fullscreen; autoplay; xr-spatial-tracking; clipboard-write';
+  frame.allow = 'fullscreen; autoplay; xr-spatial-tracking; clipboard-write; camera; microphone';
   overlay.appendChild(frame);
 
   const close = document.createElement('button');
@@ -304,6 +318,7 @@ export function present({ rehearse = false } = {}) {
   const notifySlide = () => window.dispatchEvent(new CustomEvent('revela:present-slide'));
   const end = () => {
     if (rehearse) { clearInterval(tick); lap(cur); offerRehearsal(times); }
+    onEnd?.();
     document.removeEventListener('fullscreenchange', onFs);
     document.removeEventListener('keydown', onKey);
     if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
@@ -331,7 +346,7 @@ export function present({ rehearse = false } = {}) {
 
   // Try true OS full screen; if the browser blocks it, the overlay still covers
   // the whole viewport so the presentation fills the window either way.
-  Promise.resolve(overlay.requestFullscreen?.()).catch(() => {});
+  if (fullscreen) Promise.resolve(overlay.requestFullscreen?.()).catch(() => {});
   frame.focus();
 }
 

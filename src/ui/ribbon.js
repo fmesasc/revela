@@ -14,6 +14,8 @@ import { exportPPTX } from '../io/pptx-export.js';
 import { pickReuseFile } from './reuse.js';
 import { openA11yCheck, openReadingOrder } from './a11y-panel.js';
 import { openHandoutDialog, openImageDialog } from './print-dialog.js';
+import * as recorder from './recorder.js';
+import * as media from '../features/media.js';
 import * as palettes from '../features/palettes.js';
 import { setDrawTool, drawOpts } from './draw.js';
 import * as fontsMod from '../features/fonts.js';
@@ -53,6 +55,10 @@ const ACTIONS = {
   'export-png': () => openImageDialog(),
   'present': () => io.present(),
   'rehearse': () => io.present({ rehearse: true }),
+  'record-show': () => recorder.recordSlideshow(),
+  'record-screen': () => recorder.recordToSlide('screen'),
+  'record-camera': () => recorder.recordToSlide('camera'),
+  'insert-camera': () => media.addCamera('circle'),
   'trans-apply-all': () => trans.applyTransitionToAll(),
   'import-pptx': () => readFile('.pptx', async file => {
     try { replaceDeck(await importPPTX(file)); }
@@ -334,7 +340,7 @@ function objLabel(b) {
   const txt = b.type === 'text' ? (new DOMParser().parseFromString(b.html || '', 'text/html').body.textContent || '').trim().slice(0, 24) : '';
   return t(ANIM_NAMES[b.type] || b.type) + (txt ? ` «${txt}»` : '');
 }
-const ANIM_NAMES = { ink: 'Tinta', text: 'Texto', image: 'Imagen', shape: 'Forma', chart: 'Gráfico', table: 'Tabla',
+const ANIM_NAMES = { camera: 'Cámara en directo', ink: 'Tinta', text: 'Texto', image: 'Imagen', shape: 'Forma', chart: 'Gráfico', table: 'Tabla',
   icon: 'Icono', math: 'Ecuación', model: '3D', video: 'Vídeo', embed: 'Web', code: 'Código', figindex: 'Índice de figuras', slideref: 'Diapositiva' };
 function openAnimPanel() {
   if (document.getElementById('anim-modal')) return;

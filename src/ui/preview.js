@@ -47,6 +47,8 @@ export function blockPreview(b) {
     el.innerHTML = iconSVG(b);
   } else if (b.type === 'ink') {
     el.innerHTML = inkSVG(b);
+  } else if (b.type === 'camera') {
+    el.innerHTML = `<div style="width:100%;height:100%;background:#223;border-radius:${b.shape === 'circle' ? '50%' : b.shape === 'rounded' ? '14%' : '0'};display:grid;place-items:center;color:#fff;font-size:60px">●</div>`;
   } else if (b.type === 'math') {
     el.innerHTML = `<div style="width:100%;height:100%;display:grid;place-items:center;color:inherit;font-size:40px">∑</div>`;
   } else if (b.type === 'figindex') {

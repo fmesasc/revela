@@ -11,6 +11,7 @@ import { t } from '../i18n.js';
 import { deckFg, deckBodyFont } from '../features/palettes.js';
 import { animTimeline, EFFECT_KF } from '../features/transitions.js';
 import { blockLabel } from '../features/a11y.js';
+import { cameraRadius } from '../features/media.js';
 
 function renderSlideRef(wrap, b) {
   wrap.innerHTML = '';
@@ -288,6 +289,8 @@ function reconcile(b) {
     if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = chartSVG(b); }
   } else if (b.type === 'connector') {
     const d = el.querySelector('.connector'); if (d) d.innerHTML = connectorHTML(b);  // follows its endpoints
+  } else if (b.type === 'camera') {
+    const d = el.querySelector('.camera-blk'); if (d) d.style.borderRadius = cameraRadius(b);
   } else if (b.type === 'ink') {
     const d = el.querySelector('.ink-blk'); const sig = inkSig(b);
     if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = inkSVG(b); }
@@ -413,6 +416,11 @@ function content(b) {
   }
   if (b.type === 'image') { const i = document.createElement('img'); i.src = b.src; i.draggable = false; applyImgStyle(i, b); return i; }
   if (b.type === 'video') { const v = document.createElement('video'); v.src = b.src; v.controls = true; return v; }
+  if (b.type === 'camera') {
+    const d = document.createElement('div'); d.className = 'camera-blk'; d.style.borderRadius = cameraRadius(b);
+    d.innerHTML = `<i class="ms">videocam</i><span>${t('Cámara en directo')}</span>`;
+    return d;
+  }
   if (b.type === 'audio') { const a = document.createElement('audio'); a.src = b.src; a.controls = true; return a; }
   if (b.type === 'embed') return embedContent(b);
   return document.createElement('div');

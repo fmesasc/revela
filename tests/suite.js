@@ -884,6 +884,30 @@ export async function run(frame) {
     R.blocks.addIcon('star'); assert(R.a11y.checkAccessibility().some(x => x.kind === 'alt'), 'icono sin alt → aviso');
   });
 
+  await test('cámara en directo (Cameo) en el lienzo y en el export', async () => {
+    reset(); D.querySelector('[data-action="insert-camera"]').click(); await sleep(10);
+    const b = last(); eq(b.type, 'camera', 'objeto de cámara'); eq(b.shape, 'circle', 'redonda por defecto');
+    const d = D.querySelector(`.block[data-id="${b.id}"] .camera-blk`);
+    assert(d && d.style.borderRadius === '50%', 'marcador circular en el lienzo');
+    const html = R.io.buildHTML();
+    assert(/<video[^>]*data-camera autoplay muted playsinline/.test(html), 'vídeo de cámara en el export');
+    assert(/getUserMedia\(\{video:true/.test(html), 'pide la cámara al mostrar la diapositiva');
+    slide().blocks = slide().blocks.filter(x => x.id !== b.id);
+    assert(!/getUserMedia/.test(R.io.buildHTML()), 'sin cámara no se incluye el script');
+  });
+
+  await test('grabar con la cámara inserta un vídeo', async () => {
+    reset(); const n0 = slide().blocks.length;
+    D.querySelector('[data-action="record-camera"]').click();
+    let bar; for (let i = 0; i < 40 && !(bar = D.getElementById('rec-bar')); i++) await sleep(50);
+    assert(bar, 'barra de grabación (cámara falsa del navegador de pruebas)');
+    await sleep(700);
+    bar.querySelector('.rec-stop').click();
+    for (let i = 0; i < 40 && slide().blocks.length === n0; i++) await sleep(50);
+    const v = last(); eq(v.type, 'video', 'vídeo insertado');
+    assert(/^data:video\//.test(v.src), 'vídeo dentro del proyecto (' + (v.src || '').slice(0, 20) + ')');
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

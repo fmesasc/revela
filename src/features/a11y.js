@@ -50,7 +50,7 @@ const NEEDS_ALT = { image: 'Imagen sin texto alternativo', chart: 'Gráfico sin 
 // Accessible name of an object: its alt text, else its text, else its kind.
 const KIND = { text: 'Texto', image: 'Imagen', shape: 'Forma', chart: 'Gráfico', table: 'Tabla', icon: 'Icono', math: 'Ecuación',
   model: '3D', video: 'Vídeo', audio: 'Audio', embed: 'Web', code: 'Código', figindex: 'Índice de figuras', slideref: 'Diapositiva',
-  connector: 'Conector', ink: 'Tinta' };
+  connector: 'Conector', ink: 'Tinta', camera: 'Cámara en directo' };
 export function blockLabel(b, tr = x => x) {
   const txt = (b.alt || '').trim() || (b.type === 'text' ? plain(b.html).slice(0, 60) : '') || (b.type === 'code' ? (b.code || '').slice(0, 40) : '');
   return tr(KIND[b.type] || b.type) + (txt ? ': ' + txt : '');

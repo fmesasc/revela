@@ -81,7 +81,7 @@ the origin of every requirement is traceable.
 - ✅ Merge shapes — union, combine, intersect, subtract (polygon-clipping; custom geometry in .pptx) `PP·OO`
 - ⬜ Online / stock images & icons library `PP·GS`
 - ⬜ Embedded spreadsheet / linked data `GS·OO`
-- ⬜ Screen / camera recording, live camera (Cameo) `PP`
+- ✅ Screen / camera recording into a video object, live camera on the slide (Cameo: circle/rounded/rect, mirrored) `PP`
 - ✅ Freehand ink on the slide (Draw tab: pen, highlighter, stroke eraser, colour & thickness; strokes are movable objects) `PP·OO`
 
 ## 4. Slides & structure
@@ -122,7 +122,7 @@ the origin of every requirement is traceable.
 - ✅ Laser pointer / pen / highlighter / eraser during the show (Ctrl+P, Ctrl+I, Ctrl+L, E; ink kept per slide) + laser from the phone `PP·GS·OO`
 - ✅ Rehearse timings (clock while presenting, save each slide's time as auto-advance) `PP`
 - ⬜ Speaker coach (pace, filler words) `PP`
-- ⬜ Record slideshow with narration and export to video `PP`
+- ✅ Record the slideshow with microphone narration to a video file (.webm) `PP`
 - ⬜ Audience Q&A `GS`
 - ⬜ Live captions / subtitles `PP`
 - ⬜ Present to Meet / Teams `PP·GS`
@@ -145,7 +145,7 @@ the origin of every requirement is traceable.
 - ✅ Save/open to Google Drive & export HTML to Drive (client-side, `drive.file`) `PP·GS`
 - ✅ Export slides as images — PNG or JPG, current slide or all slides in a ZIP `PP·GS·OO`
 - ⬜ High-fidelity `.pptx` import (fonts, colours, shapes, layouts) `OO·GS`
-- ⬜ Export to video (MP4/GIF) `PP·GS`
+- 🚧 Export to video — .webm by recording the slideshow; direct MP4/GIF rendering planned `PP·GS`
 - ⬜ Publish to the web / shareable link `GS`
 - ⬜ Open Document (`.odp`) support `OO`
 
@@ -173,7 +173,7 @@ the origin of every requirement is traceable.
 
 ## 12. Platform
 - ✅ Static web app with automatic deployment (GitHub Pages) `GS`
-- ✅ Automated headless regression test suite (`tests/run.sh`) `—`
+- ✅ Automated headless regression test suite (`tests/run.sh`, real time, fake camera) `—`
 - 🚧 Responsive & touch editing (mobile layout, long-press menus, fit-to-screen) `PP·GS·OO`
 - 🚧 Cloud project storage — Google Drive save/open (client-side) `PP·GS`
 - ⬜ Desktop application ([Tauri](https://tauri.app/)) `PP·OO`

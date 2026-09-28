@@ -130,6 +130,13 @@ function forBlock(b, cell = null) {
     items.push(
       ['Reproducir en el editor', () => document.querySelector(`.block[data-id="${b.id}"] video`)?.play()],
       null);
+  } else if (b.type === 'camera') {
+    items.push(
+      ['Forma: círculo', () => commit(() => { b.shape = 'circle'; })],
+      ['Forma: redondeada', () => commit(() => { b.shape = 'rounded'; })],
+      ['Forma: rectángulo', () => commit(() => { b.shape = 'rect'; })],
+      [b.mirror !== false ? 'No reflejar la imagen' : 'Reflejar la imagen', () => commit(() => { b.mirror = b.mirror === false; })],
+      null);
   } else if (b.type === 'figindex') {
     items.push(
       ['Mostrar figuras y tablas', () => blocks.setFigIndexKind('all')],
@@ -167,7 +174,7 @@ function forBlock(b, cell = null) {
   }
 
   // Alt text for every non-text object (images already have it above).
-  if (['shape', 'chart', 'icon', 'model', 'video', 'audio', 'embed', 'math', 'ink'].includes(b.type))
+  if (['shape', 'chart', 'icon', 'model', 'video', 'audio', 'embed', 'math', 'ink', 'camera'].includes(b.type))
     items.push(null, ['Texto alternativo…', () => openAlt(b)]);
 
   // Caption (figures, tables and other objects — not plain text/connectors).
