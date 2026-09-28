@@ -90,6 +90,42 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(R.state.deck.slides[2].autoSlide, 13000, 'segunda visible: 13 s');
   });
 
+  await test('entrenador de oratoria: ritmo, muletillas, repeticiones y lectura de la diapositiva', async () => {
+    const W = frame.contentWindow;
+    const C = await W.eval("import('/src/features/live/coach.js')");
+    eq(JSON.stringify(C.countFillers('Bueno, eh, o sea, esto es... eh, bueno vale', 'es')), '{"eh":2,"o sea":1,"bueno":2,"vale":1}', 'muletillas en español');
+    eq(JSON.stringify(C.countFillers('Um, you know, it is like, basically done', 'en')), '{"um":1,"like":1,"you know":1,"basically":1}', 'en inglés');
+    assert(!Object.keys(C.countFillers('Estepona es preciosa', 'es')).length, 'solo palabras enteras');
+    const said = 'la energía solar es barata la energía solar es limpia y la energía solar es el futuro';
+    const r = C.analyzeRehearsal({ lang: 'es', times: [60000, 30000],
+      slideTexts: ['Energía solar', 'Los paneles convierten la luz del sol en electricidad sin ruido alguno'],
+      segments: [{ text: said, t: 5000, slide: 0 }, { text: 'eh pues los paneles convierten la luz del sol en electricidad sin ruido alguno', t: 70000, slide: 1 }] });
+    eq(r.words, 17 + 14, 'palabras'); eq(r.wpm, Math.round(31 / 1.5), 'ritmo medio'); eq(r.pace, 'slow', 'lento');
+    eq(r.perSlide[1].wpm, 28, 'ritmo por diapositiva');
+    eq(r.fillerCount, 2, 'muletillas (eh, pues)');
+    eq(r.repeated[0]?.phrase, 'la energía solar es', 'expresión repetida (la más larga)'); eq(r.repeated.length, 1, 'sin sus trozos'); eq(r.repeated[0].n, 3);
+    eq(JSON.stringify(r.read), '[1]', 'lee la diapositiva 2 palabra por palabra');
+    eq(C.recentPace([{ text: 'uno dos tres cuatro cinco seis siete ocho nueve diez', t: 20000, t0: 10000 }], 20000), 60, 'ritmo reciente');
+
+    // In the editor, with a stand-in for the browser's speech recognition.
+    reset(); R.slides.addSlide();
+    W.SpeechRecognition = function () { W.__rec = this; this.start = () => { this.started = true; }; this.stop = () => { this.started = false; }; };
+    D.querySelector('[data-action="coach"]').click(); await sleep(20);
+    const ok = D.querySelector('.dlg-ok'); assert(ok && /servicio de voz/.test(D.querySelector('.dlg-msg').textContent), 'avisa de adónde va el audio'); ok.click(); await sleep(50);
+    assert(W.__rec?.started && W.__rec.lang === 'es-ES' && W.__rec.continuous, 'escucha en español');
+    const res = (txt, fin) => { const x = [{ transcript: txt }]; x.isFinal = fin; return x; };
+    W.__rec.onresult({ resultIndex: 0, results: [res('hola a todos eh bienvenidos', true)] });
+    const live = D.getElementById('coach-live'); assert(live && /1 muletillas/.test(live.textContent) && /«eh»/.test(live.textContent), 'panel en directo: ' + live?.textContent);
+    await sleep(1100);
+    D.getElementById('present-close').click(); await sleep(30);
+    assert(!W.__rec.started, 'deja de escuchar al salir');
+    const rep = D.getElementById('coach-modal'); assert(rep && /Informe del entrenador/.test(rep.textContent), 'informe al terminar');
+    assert(/eh ×1/.test(rep.textContent), 'muletillas en el informe');
+    rep.querySelector('.coach-save').click();
+    assert(R.state.deck.slides[0].autoSlide >= 1000, 'guarda los intervalos');
+    delete W.SpeechRecognition;
+  });
+
   await test('transición: salida distinta, velocidad por diapositiva y aplicar a todas', async () => {
     reset(); R.slides.addSlide(); R.slides.goToSlide(0);
     R.trans.setSlideTransition('fade');

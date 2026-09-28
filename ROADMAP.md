@@ -134,7 +134,7 @@ the origin of every requirement is traceable.
 - ✅ Loop / kiosk / auto-play `PP·GS·OO`
 - ✅ Laser pointer / pen / highlighter / eraser during the show (Ctrl+P, Ctrl+I, Ctrl+L, E; ink kept per slide) + laser from the phone `PP·GS·OO`
 - ✅ Rehearse timings (clock while presenting, save each slide's time as auto-advance) `PP`
-- ⬜ Speaker coach (pace, filler words) `PP`
+- ✅ Speaker coach: rehearse with live pace and filler words, then a report with pace per slide, fillers, repeated expressions and slides read word for word (browser speech recognition, asked first) `PP`
 - ✅ Record the slideshow with microphone narration to a video file (.webm) `PP`
 - ✅ Live audience polls — QR on the slide, phones vote (single/multiple choice, rating, word cloud), results update live as bars, pie, figures or cloud; CSV export (WebRTC via PeerJS, no server of ours) `GS`
 - ✅ Audience Q&A — the audience sends questions from their phones and upvotes others'; the slide shows them ranked live (max 5 per person) `GS`

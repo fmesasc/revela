@@ -10,7 +10,7 @@ import { createMediaPlayer, revelaMediaRuntime } from '../runtime/media.js';
 import { needsPlayer, mediaConfig } from '../../features/live/media.js';
 import { shadowCSS, borderCSS, levelCSS, textPadding, webCardHTML, mathTeX, mathCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, tableClass, tableVars, tableCSS } from '../../render/svg.js';
 import { googleFontLinks } from '../../features/design/fonts.js';
-import { t, currentLang } from '../../i18n/index.js';
+import { t, speechLang } from '../../i18n/index.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle, slidePaths } from '../../features/document/captions.js';
 import { INK_CSS, inkJS } from '../runtime/ink.js';
 import { deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
@@ -42,8 +42,6 @@ const CUSTOM_KF = {
 // One keyframe set per object with a motion path (curves are sampled).
 const pathKeyframes = deck => deck.slides.flatMap(s => s.blocks.filter(b => b.animation?.effect === 'path'))
   .map(b => pathKeyframesCSS('rvP' + b.id, b.animation)).join('\n');
-// Speech recognition language from the interface language.
-const speechLang = () => ({ es: 'es-ES', en: 'en-US', fr: 'fr-FR', de: 'de-DE', it: 'it-IT', pt: 'pt-PT', ca: 'ca-ES', gl: 'gl-ES', nl: 'nl-NL', eu: 'eu-ES', ar: 'ar-SA' }[currentLang()] || 'es-ES');
 const ownTransition = s => s.transition && transitionName(s.transition, s.transitionDir);
 const usedTransitions = deck => new Set([deck.defaultTransition, ...deck.slides.flatMap(s => [ownTransition(s), s.transitionOut])].filter(Boolean));
 function customEffectCSS(deck) {

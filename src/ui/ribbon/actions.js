@@ -12,6 +12,7 @@ import { exportHTML } from '../../io/formats/html.js';
 import { saveProject } from '../../io/formats/project.js';
 import { exportPDF } from '../../io/export/print.js';
 import { present } from '../shell/present.js';
+import { startCoach } from '../shell/coach.js';
 import { importPPTX } from '../../io/formats/pptx-import.js';
 import * as gdrive from '../../io/cloud/gdrive.js';
 import { exportPPTX } from '../../io/formats/pptx-export.js';
@@ -106,6 +107,7 @@ export const ACTIONS = {
   'export-video': () => openVideoDialog(),
   'present': () => present(),
   'rehearse': () => present({ rehearse: true }),
+  'coach': () => startCoach(),
   'record-show': () => recorder.recordSlideshow(),
   'record-screen': () => recorder.recordToSlide('screen'),
   'record-camera': () => recorder.recordToSlide('camera'),

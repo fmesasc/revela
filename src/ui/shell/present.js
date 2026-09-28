@@ -11,7 +11,8 @@ import { confirmDialog } from '../dialogs/dialog.js';
 // rehearse: PowerPoint's "Rehearse Timings" — time each slide while presenting
 // (without the current auto-advance), then offer to save the times as each
 // slide's auto-advance.
-export function present({ rehearse = false, fullscreen = true, onEnd = null } = {}) {
+// onRehearsal(times): what to do with the times instead of offering to save them.
+export function present({ rehearse = false, fullscreen = true, onEnd = null, onRehearsal = null } = {}) {
   const deck = rehearse ? { ...state.deck, slides: state.deck.slides.map(s => ({ ...s, autoSlide: 0 })) } : state.deck;
   const url = URL.createObjectURL(new Blob([buildHTML(deck, { inApp: true })], { type: 'text/html' }));
 
@@ -35,11 +36,11 @@ export function present({ rehearse = false, fullscreen = true, onEnd = null } = 
     tick = setInterval(() => { const n = performance.now(); clock.textContent = `${fmt(n - since)} · ${t('Total')} ${fmt(n - t0)}`; }, 250);
   }
   const lap = next => { const n = performance.now(); times[cur] = (times[cur] || 0) + (n - since); since = n; cur = next; };
-  session.present = { frame, overlay, rehearse, times, lap };
+  session.present = { frame, overlay, rehearse, times, lap, current: () => cur };
   const notifySlide = () => window.dispatchEvent(new CustomEvent('revela:present-slide'));
   const end = () => {
     clearInterval(hook);
-    if (rehearse) { clearInterval(tick); lap(cur); offerRehearsal(times); }
+    if (rehearse) { clearInterval(tick); lap(cur); (onRehearsal || offerRehearsal)(times); }
     onEnd?.();
     document.removeEventListener('fullscreenchange', onFs);
     document.removeEventListener('keydown', onKey);

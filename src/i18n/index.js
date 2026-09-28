@@ -34,6 +34,8 @@ try { lang = localStorage.getItem(KEY) || 'es'; } catch {}
 let fb = LANGS.find(l => l.code === lang)?.fallback || null;
 
 export function currentLang() { return lang; }
+// Speech recognition language from the interface language.
+export const speechLang = () => ({ es: 'es-ES', en: 'en-US', fr: 'fr-FR', de: 'de-DE', it: 'it-IT', pt: 'pt-PT', ca: 'ca-ES', gl: 'gl-ES', nl: 'nl-NL', eu: 'eu-ES', ar: 'ar-SA' }[lang] || 'es-ES');
 // Missing strings fall back to the language's fallback (English for the
 // languages whose speakers are unlikely to read Spanish), then to Spanish.
 export function t(es) { return (DICT[lang] && DICT[lang][es]) || (fb && DICT[fb][es]) || es; }
