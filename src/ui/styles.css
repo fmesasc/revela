@@ -321,6 +321,21 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 #zoom-label{font-variant-numeric:tabular-nums;min-width:44px}
 [hidden]{display:none!important}
 
+/* ---------- Animation preview keyframes (editor & custom export effects) ---------- */
+@keyframes rvIn{from{opacity:0}to{opacity:1}}
+@keyframes rvUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
+@keyframes rvDown{from{opacity:0;transform:translateY(-40px)}to{opacity:1;transform:translateY(0)}}
+@keyframes rvLeft{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+@keyframes rvRight{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:translateX(0)}}
+@keyframes rvZoom{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
+@keyframes rvGrow{from{opacity:0;transform:scale(.3)}to{opacity:1;transform:scale(1)}}
+@keyframes rvShrink{from{opacity:0;transform:scale(1.7)}to{opacity:1;transform:scale(1)}}
+@keyframes rvSpin{from{opacity:0;transform:rotate(-200deg) scale(.6)}to{opacity:1;transform:rotate(0) scale(1)}}
+@keyframes rvFlip{from{opacity:0;transform:perspective(600px) rotateY(90deg)}to{opacity:1;transform:perspective(600px) rotateY(0)}}
+@keyframes rvBounce{0%{opacity:0;transform:translateY(-60px)}60%{opacity:1;transform:translateY(12px)}80%{transform:translateY(-6px)}100%{transform:translateY(0)}}
+@keyframes rvOut{from{opacity:1}to{opacity:0}}
+@keyframes rvHi{0%,100%{background:transparent}50%{background:#ff3b3b66}}
+
 /* ---------- Responsive / touch (phones & tablets) ---------- */
 @media (max-width:860px){
   body{font-size:13px}

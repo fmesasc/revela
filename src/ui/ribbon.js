@@ -13,6 +13,7 @@ import * as gdrive from '../io/gdrive.js';
 import { exportPPTX } from '../io/pptx-export.js';
 import { FONTS, ensureDeckFonts } from '../features/fonts.js';
 import { ICON_NAMES, iconSVG, WORDART_KEYS, wordartCSS } from './shape.js';
+import { playAnimations } from './canvas.js';
 import * as remote from '../features/remote.js';
 import * as search from '../features/search.js';
 import { t } from '../i18n.js';
@@ -88,9 +89,11 @@ const ACTIONS = {
   'shortcuts': () => openShortcuts(),
   'insert-hf': () => openHeaderFooter(),
   'anim-panel': () => openAnimPanel(),
+  'anim-play': () => playAnimations(),
   'insert-date': () => blocks.addDate(),
   'insert-figindex': () => blocks.addFigIndex(),
   'insert-slideref': () => blocks.addSlideRef(),
+  'insert-summary': () => blocks.addSummaryZoom(),
   'find-replace': () => search.openFindPanel(),
   'copy-style': () => format.copyStyle(),
   'paste-style': () => format.pasteStyle(),
@@ -282,7 +285,8 @@ function updateFormatState() {
 }
 
 const ANIM_EFFECTS = ['fade-in', 'fade-up', 'fade-down', 'fade-left', 'fade-right', 'zoom-in',
-  'grow', 'shrink', 'strike', 'fade-out', 'highlight-red'];
+  'spin', 'flip', 'bounce', 'grow', 'shrink', 'strike', 'fade-out', 'fade-in-then-out',
+  'highlight-red', 'highlight-green', 'highlight-blue'];
 const ANIM_NAMES = { text: 'Texto', image: 'Imagen', shape: 'Forma', chart: 'Gráfico', table: 'Tabla',
   icon: 'Icono', math: 'Ecuación', model: '3D', video: 'Vídeo', embed: 'Web', code: 'Código', figindex: 'Índice de figuras', slideref: 'Diapositiva' };
 function openAnimPanel() {
@@ -290,9 +294,12 @@ function openAnimPanel() {
   const back = document.createElement('div');
   back.id = 'anim-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:left;min-width:460px;max-width:96vw;max-height:80vh;overflow:auto">
-    <button class="modal-close">✕</button><h3>${t('Panel de animación')}</h3><div class="an-body"></div></div>`;
+    <button class="modal-close">✕</button><h3>${t('Panel de animación')}</h3>
+    <div class="fr-actions" style="justify-content:flex-start;margin-bottom:8px"><button class="fr-do an-play">▶ ${t('Reproducir')}</button></div>
+    <div class="an-body"></div></div>`;
   document.body.appendChild(back);
   const body = back.querySelector('.an-body');
+  back.querySelector('.an-play').addEventListener('click', () => playAnimations());
   const close = () => back.remove();
   back.querySelector('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });

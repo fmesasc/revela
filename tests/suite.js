@@ -620,6 +620,27 @@ export async function run(frame) {
     assert(s1.blocks.some(x => x.id === b.id), 'la copia conserva el id del bloque');
   });
 
+  await test('auto-animate (morph): ambas secciones marcadas y mismo data-id', async () => {
+    reset(); const b = newText(); b.x = 100; R.slides.duplicateForAnimate();
+    const cb = R.state.deck.slides[1].blocks.find(x => x.id === b.id); cb.x = 900;
+    const html = R.io.buildHTML();
+    assert([...html.matchAll(/<section[^>]*data-auto-animate/g)].length >= 2, 'ambas con data-auto-animate');
+    assert([...html.matchAll(new RegExp(`data-id="${b.id}"`, 'g'))].length >= 2, 'mismo data-id en ambas diapositivas');
+  });
+
+  await test('efecto personalizado (spin) se anima en el export', async () => {
+    reset(); const b = newText(); R.state.ui.selection = b.id; R.trans.setAnimation('spin');
+    const html = R.io.buildHTML();
+    assert(/class="fragment spin"/.test(html), 'clase spin'); assert(/@keyframes rvSpin/.test(html), 'keyframes en el export');
+  });
+
+  await test('zoom de resumen crea una miniatura por diapositiva', async () => {
+    reset(); R.slides.addSlide(); R.slides.addSlide();
+    const n0 = slide().blocks.length; R.blocks.addSummaryZoom();
+    const added = slide().blocks.slice(n0).filter(x => x.type === 'slideref');
+    eq(added.length, 2, 'una miniatura por cada otra diapositiva');
+  });
+
   await test('avance automático por diapositiva en el export', async () => {
     reset(); slide().autoSlide = 5000;
     assert(/<section[^>]*data-autoslide="5000"/.test(R.io.buildHTML()), 'sin data-autoslide');

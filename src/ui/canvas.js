@@ -632,6 +632,33 @@ function drawGuide(dir, at) {
 }
 function clearGuides() { stage.querySelectorAll('.guide').forEach(g => g.remove()); }
 
+// ---- Animation preview -----------------------------------------------------
+const KEYFRAME = {
+  'fade-in': 'rvIn', 'fade-up': 'rvUp', 'fade-down': 'rvDown', 'fade-left': 'rvLeft', 'fade-right': 'rvRight',
+  'zoom-in': 'rvZoom', 'grow': 'rvGrow', 'shrink': 'rvShrink', 'spin': 'rvSpin', 'flip': 'rvFlip', 'bounce': 'rvBounce',
+  'fade-out': 'rvOut', 'highlight-red': 'rvHi', 'highlight-green': 'rvHi', 'highlight-blue': 'rvHi', 'strike': 'rvIn',
+};
+function animateEl(el, effect, dur, delay) {
+  const kf = KEYFRAME[effect] || 'rvIn';
+  el.style.animation = 'none'; void el.offsetWidth;
+  el.style.animation = `${kf} ${dur}ms ease ${delay}ms both`;
+  const done = () => { el.style.animation = ''; el.removeEventListener('animationend', done); };
+  el.addEventListener('animationend', done);
+}
+// Play the slide's entrance animations in order, in the editor.
+export function playAnimations() {
+  const list = currentSlide().blocks.filter(x => x.animation).sort((a, b) => a.animation.order - b.animation.order);
+  let t = 0, groupOrder = null, groupEnd = 0;
+  for (const b of list) {
+    if (groupOrder === null) groupOrder = b.animation.order;
+    else if (b.animation.order !== groupOrder) { t = groupEnd; groupOrder = b.animation.order; }
+    const del = b.animation.delay ?? 0, dur = b.animation.duration ?? 500;
+    const el = stage.querySelector(`.block[data-id="${b.id}"]`);
+    if (el) animateEl(el, b.animation.effect, dur, t + del);
+    groupEnd = Math.max(groupEnd, t + del + dur);
+  }
+}
+
 // ---- Keyboard nudging ------------------------------------------------------
 export function nudge(dx, dy) {
   const bs = selectedBlocks().filter(b => b.type !== 'connector'); if (!bs.length) return;

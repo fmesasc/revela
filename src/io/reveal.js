@@ -16,7 +16,22 @@ const tf = b => `rotate(${b.rotation || 0}deg)${b.flipH ? ' scaleX(-1)' : ''}${b
 const box = b => `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;`
   + `height:${b.h}px;transform:${tf(b)};`
   + (b.opacity != null && b.opacity < 100 ? `opacity:${b.opacity / 100};` : '')
-  + (b.animation ? `transition-duration:${b.animation.duration ?? 500}ms;transition-delay:${b.animation.delay ?? 0}ms;` : '');
+  + (b.animation ? `transition-duration:${b.animation.duration ?? 500}ms;transition-delay:${b.animation.delay ?? 0}ms;`
+    + `--anim-dur:${b.animation.duration ?? 500}ms;--anim-del:${b.animation.delay ?? 0}ms;` : '');
+
+// Custom entrance effects that reveal.js doesn't provide (used only if present).
+const CUSTOM_KF = {
+  spin: ['rvSpin', '@keyframes rvSpin{from{opacity:0;transform:rotate(-200deg) scale(.6)}to{opacity:1;transform:none}}'],
+  flip: ['rvFlip', '@keyframes rvFlip{from{opacity:0;transform:perspective(600px) rotateY(90deg)}to{opacity:1;transform:none}}'],
+  bounce: ['rvBounce', '@keyframes rvBounce{0%{opacity:0;transform:translateY(-60px)}60%{opacity:1;transform:translateY(12px)}80%{transform:translateY(-6px)}100%{transform:none}}'],
+};
+function customEffectCSS(deck) {
+  const used = new Set();
+  deck.slides.forEach(s => s.blocks.forEach(b => { if (b.animation && CUSTOM_KF[b.animation.effect]) used.add(b.animation.effect); }));
+  if (!used.size) return '';
+  return [...used].map(e => `.reveal .fragment.${e}{opacity:0} .reveal .fragment.${e}.visible{opacity:1;animation:${CUSTOM_KF[e][0]} var(--anim-dur,600ms) ease var(--anim-del,0ms) both}`
+    + CUSTOM_KF[e][1]).join('\n');
+}
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const slug = s => (String(s).trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'presentacion');
@@ -180,6 +195,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  .reveal table.tbl td{border:1px solid var(--stroke,#fff);padding:.15em .4em;vertical-align:top}
  .reveal table.tbl.has-header tr:first-child td{font-weight:700;background:rgba(127,127,127,.25)}
  .deck-footer{position:fixed;left:12px;bottom:8px;z-index:30;font-size:14px;opacity:.7;color:#fff;mix-blend-mode:difference}
+ ${customEffectCSS(deck)}
 </style></head><body>
 <div class="reveal"><div class="slides">
 ${slides}

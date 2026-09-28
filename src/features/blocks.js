@@ -134,6 +134,27 @@ export function addSlideRef() {
   const { w, h } = state.deck.size; const bw = 420;
   insert(slideRefBlock({ target: other.id, w: bw, h: Math.round(bw * h / w) }));
 }
+// Summary zoom: a grid of slide zooms — one per section (its first slide), or
+// one per slide if there are no sections.
+export function addSummaryZoom() {
+  const { w, h } = state.deck.size; const cur = currentSlide();
+  let targets = [];
+  if (state.deck.sections.length) {
+    for (const sec of state.deck.sections) { const first = state.deck.slides.find(s => s.sectionId === sec.id); if (first) targets.push(first); }
+  }
+  if (!targets.length) targets = state.deck.slides.filter(s => s.id !== cur.id);
+  if (!targets.length) return;
+  commit(() => {
+    const cols = Math.min(3, targets.length);
+    const pad = 60, gap = 30, cw = (w - pad * 2 - gap * (cols - 1)) / cols, ch = cw * h / w;
+    targets.forEach((tg, i) => {
+      const c = i % cols, r = Math.floor(i / cols);
+      cur.blocks.push(slideRefBlock({ target: tg.id, x: Math.round(pad + c * (cw + gap)), y: Math.round(160 + r * (ch + gap)), w: Math.round(cw), h: Math.round(ch), returnBack: true }));
+    });
+    setSelection(null);
+  });
+}
+
 export function setSlideRefTarget(id) {
   const b = selectedBlock(); if (!b || b.type !== 'slideref') return;
   commit(() => { b.target = id; });
