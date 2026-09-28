@@ -28,7 +28,8 @@ function blockHTML(b) {
     return `<div${a} style="${box(b)}font-size:${b.fontSize || 40}px;`
       + `text-align:${b.textAlign || 'left'};${b.fontFamily ? `font-family:${b.fontFamily};` : ''}`
       + `${b.lineHeight ? `line-height:${b.lineHeight};` : ''}`
-      + `${b.letterSpacing ? `letter-spacing:${b.letterSpacing}px;` : ''}">`
+      + `${b.letterSpacing ? `letter-spacing:${b.letterSpacing}px;` : ''}`
+      + `${b.indent ? `padding-left:${b.indent}px;` : ''}">`
       + `${b.html || ''}</div>`;
   if (b.type === 'model')
     return `<model-viewer${a} src="${b.src}" camera-controls ${b.autoRotate !== false ? 'auto-rotate' : ''} `

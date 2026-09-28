@@ -108,6 +108,8 @@ export function initRibbon() {
   document.getElementById('ribbon').addEventListener('click', e => {
     const more = e.target.closest('[data-more]');
     if (more) { e.stopPropagation(); togglePopover(more, more.dataset.more); return; }
+    const sym = e.target.closest('[data-symbols]');
+    if (sym) { e.stopPropagation(); togglePopover(sym, 'symbols'); return; }
     const tab = e.target.closest('[data-tab]');
     if (tab) { commit(() => (state.ui.activeTab = tab.dataset.tab), { history: false }); return; }
     const act = e.target.closest('[data-action]');
@@ -213,13 +215,22 @@ function updateFormatState() {
 // ---- Group "more options" popovers (like Office's dialog launchers) --------
 let openPop = null;
 const POPS = {
+  symbols: () => {
+    const chars = ['→','←','↑','↓','↔','⇒','•','◦','▪','‣','✓','✔','✗','✘','★','☆','♦','●','■','▶',
+      '€','$','£','¥','©','®','™','°','±','×','÷','≈','≠','≤','≥','∞','∑','√','π',
+      '😀','😉','🎉','🚀','✅','⚠️','💡','📌','🔗','📈','🔥','👍','❤️','⭐','🧠','🛠️'];
+    return `<h4>Símbolos y emojis</h4><div class="sym-grid">`
+      + chars.map(c => `<button data-sym type="button">${c}</button>`).join('') + `</div>`;
+  },
   paragraph: () => {
     const b = selectedBlock(); const t = b && b.type === 'text' ? b : {};
     return `<h4>Párrafo</h4>
       <label>Interlineado
         <input type="number" step="0.05" min="0.5" data-pop="linespacing" value="${t.lineHeight || 1}"></label>
       <label>Espaciado entre letras (px)
-        <input type="number" step="0.5" data-pop="letterspacing" value="${t.letterSpacing || 0}"></label>`;
+        <input type="number" step="0.5" data-pop="letterspacing" value="${t.letterSpacing || 0}"></label>
+      <label>Sangría izquierda (px)
+        <input type="number" step="4" min="0" data-pop="indent" value="${t.indent || 0}"></label>`;
   },
 };
 function closePopover() { if (openPop) { openPop.remove(); openPop = null; } }
@@ -237,6 +248,11 @@ function togglePopover(launcher, type) {
   pop.addEventListener('click', e => e.stopPropagation());
   pop.querySelector('[data-pop="linespacing"]')?.addEventListener('input', e => format.lineSpacing(e.target.value));
   pop.querySelector('[data-pop="letterspacing"]')?.addEventListener('input', e => format.letterSpacing(e.target.value));
+  pop.querySelector('[data-pop="indent"]')?.addEventListener('input', e => format.indent(e.target.value));
+  pop.querySelectorAll('[data-sym]').forEach(x => {
+    x.addEventListener('mousedown', e => e.preventDefault());   // keep the caret in the text
+    x.addEventListener('click', () => format.insertSymbol(x.textContent));
+  });
   openPop = pop;
 }
 document.addEventListener('click', () => closePopover());

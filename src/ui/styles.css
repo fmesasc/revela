@@ -80,6 +80,10 @@ button{font-family:inherit}
 .popover input{border:1px solid var(--line2);border-radius:6px;padding:6px 8px;font-family:inherit;
   font-size:13px;color:var(--txt);outline:none}
 .popover input:focus{border-color:var(--accent)}
+.popover .sym-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;max-width:280px}
+.popover .sym-grid button{border:1px solid transparent;background:none;border-radius:6px;cursor:pointer;
+  font-size:18px;padding:4px;line-height:1}
+.popover .sym-grid button:hover{background:var(--accent-bg);border-color:var(--line2)}
 
 /* Material Symbols icon font */
 .ms{font-family:'Material Symbols Rounded';font-weight:400;font-style:normal;line-height:1;

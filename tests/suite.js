@@ -76,6 +76,24 @@ export async function run(frame) {
     assert(/<svg[^>]*><ellipse/.test(R.io.buildHTML()), 'export sin elipse');
   });
 
+  await test('más formas: estrella en lienzo y export', async () => {
+    reset(); R.blocks.addShape('star'); const b = last(); select(b); await sleep(20);
+    assert(D.querySelector(`.block[data-id="${b.id}"] .shape svg polygon`), 'estrella en el lienzo');
+    assert(/<svg[^>]*><polygon/.test(R.io.buildHTML()), 'estrella en el export');
+  });
+
+  await test('sangría de párrafo', async () => {
+    reset(); const b = newText(); R.format.indent(40); await sleep(10);
+    eq(b.indent, 40, 'indent'); assert(/padding-left:40px/.test(R.io.buildHTML()), 'export');
+  });
+
+  await test('insertar símbolo en el texto', async () => {
+    reset(); const b = newText(); b.html = ''; R.render(); await sleep(20);
+    const rich = richOf(b); rich.contentEditable = 'true'; rich.focus();
+    R.format.insertSymbol('★'); await sleep(10);
+    assert((b.html || '').includes('★'), 'símbolo insertado');
+  });
+
   await test('forma: cambiar relleno', async () => {
     reset(); R.blocks.addShape('rect'); const b = last(); select(b);
     R.blocks.setShapeStyle('fill', '#ff0000'); await sleep(20);

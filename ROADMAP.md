@@ -42,13 +42,13 @@ the origin of every requirement is traceable.
 - ✅ Font family picker and embedding — 40+ web‑safe & Google fonts, loaded on demand, embedded on export `PP·GS·OO`
 - ✅ Highlight colour `PP·OO`
 - ✅ Superscript / subscript `PP·GS·OO`
-- 🚧 Line and paragraph spacing, indents — line spacing (custom) and letter spacing done; indents planned `PP·GS·OO`
+- ✅ Line and paragraph spacing, indents — line spacing, letter spacing and left indent `PP·GS·OO`
 - ⬜ Text columns `PP·OO`
 - ✅ Change case `PP·GS·OO`
 - ⬜ Bullet/number style and level customisation `PP·GS·OO`
 - ⬜ Text styles / named styles `PP·OO`
 - ⬜ WordArt / Text Art `PP·OO`
-- ⬜ Special characters and symbol picker `PP·GS·OO`
+- ✅ Special characters and symbol/emoji picker `PP·GS·OO`
 - ⬜ Equations / math (OnlyOffice has a full equation editor) `PP·OO`
 - ⬜ Spell check, proofing and AutoCorrect `PP·GS·OO`
 - 🚧 Hyperlinks — web links done; slide/email targets planned `PP·GS·OO`
@@ -58,13 +58,13 @@ the origin of every requirement is traceable.
 - ✅ Images `PP·GS·OO`
 - ✅ Video `PP·GS·OO`
 - ✅ Interactive 3D models (`.glb`/`.gltf`) — *unique to Revela among natives; PowerPoint has static 3D* `PP`
-- 🚧 Shapes library — rectangle, ellipse, triangle, line, arrow with fill/stroke; connectors planned `PP·GS·OO`
+- 🚧 Shapes library — rectangle, rounded, ellipse, triangle, diamond, pentagon, star, block arrow, line, arrow with fill/stroke; connectors planned `PP·GS·OO`
 - ⬜ Merge / subtract / intersect shapes `PP·OO`
 - 🚧 Tables — editable cells, add/remove rows & columns, border colour; cell styles planned `PP·GS·OO`
 - ⬜ Charts (bar, line, pie, …) with data editing `PP·GS·OO`
 - ⬜ SmartArt / diagrams `PP·OO`
 - ⬜ Icons and stock images `PP·GS`
-- ⬜ Emoji picker `GS`
+- ✅ Emoji picker `GS`
 - ⬜ Audio tracks `PP·OO`
 - ⬜ Animated GIF playback `PP·OO`
 - ✅ Embedded web page (`<iframe>`) `—`

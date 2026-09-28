@@ -40,6 +40,12 @@ export function exec(cmd, value = null) {
   document.execCommand(cmd, false, value);
   commit(() => { c.b.html = c.el.innerHTML; }, { history: false });
 }
+export function insertSymbol(ch) {
+  const c = ctx(); if (!c) return;
+  enterEdit(c.el);
+  document.execCommand('insertText', false, ch);
+  commit(() => { c.b.html = c.el.innerHTML; }, { history: false });
+}
 export const color = v => exec('foreColor', v);
 export const highlight = v => exec('hiliteColor', v);
 export function link() {
@@ -90,6 +96,10 @@ export function lineSpacing(value) {
 export function letterSpacing(px) {
   const c = ctx(); if (!c) return;
   commit(() => { c.b.letterSpacing = parseFloat(px) || 0; });
+}
+export function indent(px) {
+  const c = ctx(); if (!c) return;
+  commit(() => { c.b.indent = Math.max(0, parseFloat(px) || 0); });
 }
 export function fontSize(delta) {
   const c = ctx(); if (!c) return;
