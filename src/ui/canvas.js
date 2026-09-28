@@ -4,7 +4,13 @@
 
 import { state, commit, mutate, currentSlide, selectedBlock,
   selectedBlocks, selectedIds, isSelected, setSelection, toggleSelection, setMulti, selectWithGroup } from '../core/store.js';
-import { shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig } from './shape.js';
+import { shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG } from './shape.js';
+
+const findBlock = id => currentSlide().blocks.find(x => x.id === id);
+const connectorHTML = b => {
+  const { w, h } = state.deck.size;
+  return connectorSVG(b, findBlock(b.from), findBlock(b.to), w, h);
+};
 
 function applyImgStyle(img, b) {
   img.style.objectFit = b.fit || 'contain';
@@ -178,13 +184,15 @@ function reconcile(b) {
   } else if (b.type === 'chart') {
     const d = el.querySelector('.chart'); const sig = chartSig(b);
     if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = chartSVG(b); }
+  } else if (b.type === 'connector') {
+    const d = el.querySelector('.connector'); if (d) d.innerHTML = connectorHTML(b);  // follows its endpoints
   }
 }
 
 function blockEl(b) {
   const el = document.createElement('div');
   el.className = 'block' + (isSelected(b.id) ? ' selected' : '')
-    + (b.animation ? ' animated' : '') + (b.locked ? ' locked' : '');
+    + (b.animation ? ' animated' : '') + (b.locked ? ' locked' : '') + (b.type === 'connector' ? ' __conn' : '');
   el.dataset.id = b.id;
   el.style.cssText = `left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px`;
   el.style.transform = transformOf(b);
@@ -247,6 +255,9 @@ function content(b) {
   if (b.type === 'shape') {
     const d = document.createElement('div'); d.className = 'shape';
     d.dataset.sig = shapeSig(b); d.innerHTML = shapeSVG(b); return d;
+  }
+  if (b.type === 'connector') {
+    const d = document.createElement('div'); d.className = 'connector'; d.innerHTML = connectorHTML(b); return d;
   }
   if (b.type === 'table') return tableContent(b);
   if (b.type === 'chart') {
@@ -376,9 +387,9 @@ function startDrag(ev, b, el) {
   // A plain click on an unselected block selects just it; clicking one that is
   // already part of a multi‑selection keeps the group so it can be moved together.
   if (!isSelected(b.id)) commit(() => selectWithGroup(b.id), { history: false });
-  if (b.locked) return;   // selected but not movable
+  if (b.locked || b.type === 'connector') return;   // selected but not movable
 
-  const movers = selectedBlocks();
+  const movers = selectedBlocks().filter(m => m.type !== 'connector');
   const origins = new Map(movers.map(m => [m.id, { x: m.x, y: m.y }]));
   const f = factor(), sx = ev.clientX, sy = ev.clientY, ox = b.x, oy = b.y;
   el.setPointerCapture(ev.pointerId); el.classList.add('dragging');
@@ -487,6 +498,6 @@ function clearGuides() { stage.querySelectorAll('.guide').forEach(g => g.remove(
 
 // ---- Keyboard nudging ------------------------------------------------------
 export function nudge(dx, dy) {
-  const bs = selectedBlocks(); if (!bs.length) return;
+  const bs = selectedBlocks().filter(b => b.type !== 'connector'); if (!bs.length) return;
   commit(() => { for (const b of bs) { b.x += dx; b.y += dy; } });
 }

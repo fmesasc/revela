@@ -11,6 +11,31 @@ export function imgClip(b) {
 
 const escSvg = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
+// Point on a box's border in the direction of (tx,ty), so a connector meets the
+// edge instead of the centre (leaving room for the arrowhead).
+function borderPoint(box, tx, ty) {
+  const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+  const dx = tx - cx, dy = ty - cy;
+  if (!dx && !dy) return [cx, cy];
+  const s = Math.min((box.w / 2) / Math.abs(dx || 1e-6), (box.h / 2) / Math.abs(dy || 1e-6));
+  return [cx + dx * s, cy + dy * s];
+}
+
+// A connector line/arrow between two blocks, in slide coordinates (W×H).
+export function connectorSVG(b, fromB, toB, W, H) {
+  if (!fromB || !toB) return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%"></svg>`;
+  const fc = [fromB.x + fromB.w / 2, fromB.y + fromB.h / 2];
+  const tc = [toB.x + toB.w / 2, toB.y + toB.h / 2];
+  const [x1, y1] = borderPoint(fromB, tc[0], tc[1]);
+  const [x2, y2] = borderPoint(toB, fc[0], fc[1]);
+  const color = b.color || '#8a8a8a'; const arrow = b.arrow !== false;
+  const marker = arrow ? `<defs><marker id="cm-${b.id}" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="${color}"/></marker></defs>` : '';
+  const p = `x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" style="pointer-events:none;overflow:visible">${marker}`
+    + `<line ${p} stroke="transparent" stroke-width="14" style="pointer-events:stroke"/>`
+    + `<line ${p} stroke="${color}" stroke-width="3" ${arrow ? `marker-end="url(#cm-${b.id})"` : ''}/></svg>`;
+}
+
 // Chart as inline SVG (no library, self‑contained on export). Bar or pie.
 export function chartSig(b) { return (b.chartType || 'bar') + '|' + (b.color || '') + '|' + JSON.stringify(b.data || []); }
 export function chartSVG(b) {

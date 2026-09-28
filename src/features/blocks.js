@@ -14,6 +14,9 @@ export function deleteSelected() {
   commit(() => {
     const s = currentSlide();
     s.blocks = s.blocks.filter(b => !ids.has(b.id));
+    // Drop connectors whose endpoints no longer exist.
+    const alive = new Set(s.blocks.map(b => b.id));
+    s.blocks = s.blocks.filter(b => b.type !== 'connector' || (alive.has(b.from) && alive.has(b.to)));
     setSelection(null);
   });
 }
@@ -61,6 +64,18 @@ export function setAlt(text) {
 export function addTable() { insert(tableBlock()); }
 export function addCode() { insert(codeBlock()); }
 export function addChart() { insert(chartBlock()); }
+
+// Connect the two selected blocks with a line/arrow that follows them.
+export function addConnector() {
+  const bs = selectedBlocks().filter(b => b.type !== 'connector');
+  if (bs.length !== 2) return;
+  const { w, h } = state.deck.size;
+  commit(() => {
+    const c = { id: uid(), type: 'connector', from: bs[0].id, to: bs[1].id, color: '#8a8a8a', arrow: true,
+      x: 0, y: 0, w, h, rotation: 0, animation: null };
+    currentSlide().blocks.push(c); setSelection(c.id);
+  });
+}
 export function setChart(props) {
   const b = selectedBlock(); if (!b || b.type !== 'chart') return;
   commit(() => Object.assign(b, props));
@@ -152,7 +167,7 @@ export function duplicateBlock() {
 // Align: with several objects selected, align them to each other (as in
 // PowerPoint); with one, align it to the slide.
 export function alignSelected(where) {
-  const bs = selectedBlocks(); if (!bs.length) return;
+  const bs = selectedBlocks().filter(b => b.type !== 'connector'); if (!bs.length) return;
   const { w, h } = state.deck.size;
   commit(() => {
     if (bs.length > 1) {
@@ -208,7 +223,7 @@ export function ungroupSelected() {
 
 // Distribute the selected objects evenly (needs 3+): equal gaps between centres.
 export function distributeSelected(axis) {
-  const bs = selectedBlocks(); if (bs.length < 3) return;
+  const bs = selectedBlocks().filter(b => b.type !== 'connector'); if (bs.length < 3) return;
   commit(() => {
     const key = axis === 'h' ? 'x' : 'y', size = axis === 'h' ? 'w' : 'h';
     const sorted = [...bs].sort((a, b) => (a[key] + a[size] / 2) - (b[key] + b[size] / 2));

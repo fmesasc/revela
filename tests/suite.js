@@ -119,6 +119,19 @@ export async function run(frame) {
     eq(D.querySelector(`.block[data-id="${b.id}"] .shape svg rect`).getAttribute('fill'), '#ff0000', 'fill SVG');
   });
 
+  await test('conector: une dos objetos y se exporta como línea', async () => {
+    reset(); R.blocks.addShape('rect'); R.blocks.addShape('ellipse');
+    const a = slide().blocks.at(-2), b = slide().blocks.at(-1);
+    R.store.setMulti([a.id, b.id]); R.blocks.addConnector(); await sleep(20);
+    const conn = slide().blocks.at(-1);
+    eq(conn.type, 'connector', 'creado'); eq(conn.from, a.id, 'origen'); eq(conn.to, b.id, 'destino');
+    assert(D.querySelector(`.block[data-id="${conn.id}"] .connector svg line`), 'línea en el lienzo');
+    assert(/<line [^>]*stroke="#8a8a8a"/.test(R.io.buildHTML()), 'línea en el export');
+    // Borrar un extremo elimina el conector.
+    R.state.ui.selection = a.id; R.state.ui.multi = [a.id]; R.blocks.deleteSelected();
+    assert(!slide().blocks.some(x => x.type === 'connector'), 'conector huérfano eliminado');
+  });
+
   await test('página web: iframe con sandbox + barra con enlace de salida', async () => {
     reset(); R.blocks.addEmbed('https://example.com'); const b = last(); select(b); await sleep(20);
     const f = D.querySelector(`.block[data-id="${b.id}"] .embed iframe`);

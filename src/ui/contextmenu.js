@@ -116,6 +116,7 @@ function forBlock(b) {
   // Grouping (only when it makes sense).
   const sel = selectedBlocks();
   const groupItems = [];
+  if (sel.filter(x => x.type !== 'connector').length === 2) groupItems.push(['Conectar', () => blocks.addConnector()]);
   if (sel.length > 1) groupItems.push(['Agrupar', () => blocks.groupSelected()]);
   if (sel.some(x => x.groupId)) groupItems.push(['Desagrupar', () => blocks.ungroupSelected()]);
   if (groupItems.length) items.push(null, ...groupItems);

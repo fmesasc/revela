@@ -163,6 +163,10 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 .block .embed iframe{flex:1}
 .block .shape{width:100%;height:100%}
 .block .chart{width:100%;height:100%}
+.block.__conn{pointer-events:none}          /* only the line is clickable */
+.block .connector{width:100%;height:100%}
+.block.__conn.selected{border-color:transparent}
+.block.__conn .handle-del,.block.__conn .handle-size,.block.__conn .handle-rot{display:none}
 .block .tbl{border-collapse:collapse;width:100%;height:100%;color:#fff;table-layout:fixed}
 .block .tbl td{border:1px solid var(--stroke,#fff);padding:3px 6px;vertical-align:top;outline:none;overflow-wrap:anywhere}
 .block .tbl.has-header tr:first-child td{font-weight:700;background:rgba(127,127,127,.25)}

@@ -2,7 +2,7 @@
 // present / export / save-load helpers.
 
 import { state } from '../core/store.js';
-import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG } from '../ui/shape.js';
+import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG } from '../ui/shape.js';
 import { googleFontLinks } from '../features/fonts.js';
 
 const REVEAL = 'https://cdn.jsdelivr.net/npm/reveal.js@5.1.0';
@@ -22,8 +22,14 @@ function animAttrs(b) {
   return ` class="fragment ${effect}" data-fragment-index="${order}"`;
 }
 
-function blockHTML(b) {
+function blockHTML(b, slide) {
   const a = animAttrs(b);
+  if (b.type === 'connector') {
+    const { w, h } = state.deck.size;
+    const from = slide && slide.blocks.find(x => x.id === b.from);
+    const to = slide && slide.blocks.find(x => x.id === b.to);
+    return `<div${a} style="${box(b)}pointer-events:none">${connectorSVG(b, from, to, w, h)}</div>`;
+  }
   if (b.type === 'text')
     return `<div${a} style="${box(b)}font-size:${b.fontSize || 40}px;`
       + `text-align:${b.textAlign || 'left'};${b.fontFamily ? `font-family:${b.fontFamily};` : ''}`
@@ -68,7 +74,7 @@ function slideHTML(s) {
   const auto = s.autoSlide ? ` data-autoslide="${s.autoSlide}"` : '';
   const solid = /^(#|rgb)/.test(s.background || '');
   const bg = solid ? ` data-background-color="${s.background}"` : '';
-  const inner = s.blocks.map(blockHTML).join('\n');
+  const inner = s.blocks.map(b => blockHTML(b, s)).join('\n');
   const notes = s.notes ? `<aside class="notes">${esc(s.notes)}</aside>` : '';
   return `<section${trans}${auto}${bg}>`
     + `<div class="stage" style="background:${s.background}">${inner}</div>${notes}</section>`;
@@ -199,7 +205,7 @@ export function exportHTML() {
 export function buildPrintHTML(deck = state.deck) {
   const { w, h } = deck.size;
   const pages = deck.slides.filter(s => !s.hidden).map(s =>
-    `<div class="page" style="background:${s.background}">${s.blocks.map(blockHTML).join('')}</div>`).join('\n');
+    `<div class="page" style="background:${s.background}">${s.blocks.map(b => blockHTML(b, s)).join('')}</div>`).join('\n');
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><title>${esc(deck.name || 'Presentación')}</title>
 ${googleFontLinks(deck)}

@@ -57,6 +57,7 @@ const ACTIONS = {
   'obj-duplicate': () => blocks.duplicateSelected(),
   'group': () => blocks.groupSelected(),
   'ungroup': () => blocks.ungroupSelected(),
+  'connect-blocks': () => blocks.addConnector(),
   'insert-link': format.link,
   'forward': blocks.bringForward, 'backward': blocks.sendBackward,
   'front': blocks.bringToFront, 'back': blocks.sendToBack,
