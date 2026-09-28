@@ -86,6 +86,7 @@ function forBlock(b) {
       ['Ajustar: contener', () => setFit(b, 'contain')],
       ['Ajustar: rellenar', () => setFit(b, 'cover')],
       ['Ajustes de imagen…', () => openImageAdjust(b)],
+      ['Recortar…', () => openImageCrop(b)],
       ['Quitar fondo (IA)', () => removeBackground(b)],
       null);
   } else if (b.type === 'model') {
@@ -186,6 +187,30 @@ function openImageAdjust(b) {
   back.querySelector('[data-reset]').addEventListener('click', () => {
     blocks.resetImageAdj();
     back.querySelectorAll('[data-adj]').forEach(r => (r.value = r.dataset.adj === 'opacity' ? 100 : 100));
+  });
+}
+
+function openImageCrop(b) {
+  if (document.getElementById('crop-modal')) return;
+  const c = Object.assign({ top: 0, right: 0, bottom: 0, left: 0 }, b.crop);
+  const sl = (label, side) =>
+    `<label class="fr-l">${label} <input type="range" data-crop="${side}" min="0" max="45" value="${c[side]}"></label>`;
+  const back = document.createElement('div');
+  back.id = 'crop-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:left;min-width:280px">
+    <button class="modal-close">✕</button><h3>Recortar imagen (%)</h3>
+    ${sl('Arriba', 'top')}${sl('Derecha', 'right')}${sl('Abajo', 'bottom')}${sl('Izquierda', 'left')}
+    <div class="fr-actions"><button class="fr-do" data-reset>Restablecer</button></div>
+  </div>`;
+  document.body.appendChild(back);
+  const close = () => back.remove();
+  back.querySelector('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  back.querySelectorAll('[data-crop]').forEach(r =>
+    r.addEventListener('input', () => blocks.setImageCrop(r.dataset.crop, r.value)));
+  back.querySelector('[data-reset]').addEventListener('click', () => {
+    blocks.resetImageCrop();
+    back.querySelectorAll('[data-crop]').forEach(r => (r.value = 0));
   });
 }
 

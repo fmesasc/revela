@@ -4,6 +4,10 @@ export function imgFilter(b) {
   return `brightness(${a.brightness ?? 100}%) contrast(${a.contrast ?? 100}%) saturate(${a.saturate ?? 100}%)`;
 }
 export function imgOpacity(b) { return (b.adj?.opacity ?? 100) / 100; }
+export function imgClip(b) {
+  const c = b.crop; if (!c) return 'none';
+  return `inset(${c.top || 0}% ${c.right || 0}% ${c.bottom || 0}% ${c.left || 0}%)`;
+}
 
 // SVG for shape blocks, shared by the canvas, the thumbnails and the export.
 // The viewBox is a fixed 100×100 stretched to the block (preserveAspectRatio

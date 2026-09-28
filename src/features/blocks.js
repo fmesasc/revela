@@ -88,6 +88,16 @@ export function resetImageAdj() {
   commit(() => { delete b.adj; });
 }
 
+const DEF_CROP = { top: 0, right: 0, bottom: 0, left: 0 };
+export function setImageCrop(side, value) {
+  const b = selectedBlock(); if (!b || b.type !== 'image') return;
+  commit(() => { b.crop = Object.assign({ ...DEF_CROP }, b.crop); b.crop[side] = +value; }, { history: false });
+}
+export function resetImageCrop() {
+  const b = selectedBlock(); if (!b || b.type !== 'image') return;
+  commit(() => { delete b.crop; });
+}
+
 export function deleteBlock(id = state.ui.selection) {
   if (!id) return;
   commit(() => {

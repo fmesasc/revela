@@ -230,6 +230,14 @@ export async function run(frame) {
     assert(/brightness\(150%\)[^"]*opacity:0\.6/.test(R.io.buildHTML()), 'filtro en el export');
   });
 
+  await test('recorte de imagen: clip-path en lienzo y export', async () => {
+    reset(); R.blocks.addImage('data:image/png;base64,iVBORw0KGgo='); const b = last(); select(b); await sleep(20);
+    R.blocks.setImageCrop('top', 10); R.blocks.setImageCrop('left', 20); await sleep(20);
+    const img = D.querySelector(`.block[data-id="${b.id}"] img`);
+    assert(/inset\(10% 0% 0% 20%\)/.test(img.style.clipPath), 'clip-path en el DOM');
+    assert(/clip-path:inset\(10% 0% 0% 20%\)/.test(R.io.buildHTML()), 'clip-path en el export');
+  });
+
   await test('bloque de código: edición y export con highlight.js', async () => {
     reset(); R.blocks.addCode(); const b = last(); select(b); await sleep(20);
     assert(D.querySelector(`.block[data-id="${b.id}"] pre.code code`), 'no hay bloque de código');

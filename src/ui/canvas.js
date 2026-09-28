@@ -4,12 +4,13 @@
 
 import { state, commit, mutate, currentSlide, selectedBlock,
   selectedBlocks, selectedIds, isSelected, setSelection, toggleSelection, setMulti, selectWithGroup } from '../core/store.js';
-import { shapeSVG, shapeSig, imgFilter, imgOpacity } from './shape.js';
+import { shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip } from './shape.js';
 
 function applyImgStyle(img, b) {
   img.style.objectFit = b.fit || 'contain';
   img.style.filter = imgFilter(b);
   img.style.opacity = imgOpacity(b);
+  img.style.clipPath = imgClip(b);
 }
 
 const SNAP = 7; // snapping threshold, in canvas pixels

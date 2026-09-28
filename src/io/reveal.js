@@ -2,7 +2,7 @@
 // present / export / save-load helpers.
 
 import { state } from '../core/store.js';
-import { shapeSVG, imgFilter, imgOpacity } from '../ui/shape.js';
+import { shapeSVG, imgFilter, imgOpacity, imgClip } from '../ui/shape.js';
 import { googleFontLinks } from '../features/fonts.js';
 
 const REVEAL = 'https://cdn.jsdelivr.net/npm/reveal.js@5.1.0';
@@ -36,7 +36,7 @@ function blockHTML(b) {
       + `shadow-intensity="1" style="${box(b)}background:transparent"></model-viewer>`;
   if (b.type === 'image')
     return `<img${a} src="${b.src}" style="${box(b)}object-fit:${b.fit || 'contain'};`
-      + `filter:${imgFilter(b)};opacity:${imgOpacity(b)}">`;
+      + `filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)}">`;
   if (b.type === 'video')
     return `<video${a} src="${b.src}" controls style="${box(b)}object-fit:contain"></video>`;
   if (b.type === 'audio')

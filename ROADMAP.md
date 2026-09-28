@@ -70,7 +70,7 @@ the origin of every requirement is traceable.
 - ✅ Embedded web page (`<iframe>`) `—`
 - ⬜ Embedded spreadsheet / linked data `GS·OO`
 - ✅ AI image background removal `PP` *(PowerPoint "Remove Background")*
-- 🚧 Image crop, adjustments (brightness/contrast/saturation/opacity done; crop planned) `PP·GS·OO`
+- ✅ Image crop, adjustments (brightness/contrast/saturation/opacity) and transparency `PP·GS·OO`
 - ✅ Code blocks with syntax highlighting (highlight.js on export) `—`
 - ⬜ Screen / camera recording, live camera (Cameo) `PP`
 
