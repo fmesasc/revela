@@ -154,13 +154,16 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map()) {
       const ser = ['bar', 'line', 'area', 'radar'].includes(type) ? chartSeries(b) : chartSeries({ ...b, series: [] });
       const toData = list => list.map(x => ({ name: x.name, labels, values: x.values }));
       const colors = ser.map(x => hex(x.color) || '3F6497');
+      // Gridlines, data labels and axis titles, as PowerPoint's own chart options.
+      const extra = { ...(b.dataLabels && { showValue: true }), valGridLine: { style: b.grid ? 'solid' : 'none', color: 'BFBFBF' },
+        ...(b.xTitle && { showCatAxisTitle: true, catAxisTitle: b.xTitle }), ...(b.yTitle && { showValAxisTitle: true, valAxisTitle: b.yTitle }) };
       if (type === 'bar' && b.combo && ser.length > 1) {
         slide.addChart([
           { type: pptx.ChartType.bar, data: toData(ser.filter(x => x.type === 'bar')), options: { chartColors: colors.slice(0, 1), barGrouping: 'clustered' } },
           { type: pptx.ChartType.line, data: toData(ser.filter(x => x.type !== 'bar')), options: { chartColors: colors.slice(1) } },
-        ], { ...pos, showLegend: true, legendPos: 't' });
+        ], { ...pos, showLegend: true, legendPos: 't', ...extra });
       } else {
-        slide.addChart(pptx.ChartType[type], toData(ser), { ...pos, showLegend: ser.length > 1, legendPos: 't',
+        slide.addChart(pptx.ChartType[type], toData(ser), { ...pos, showLegend: ser.length > 1, legendPos: 't', ...(['pie', 'doughnut'].includes(type) ? { ...(b.dataLabels && { showValue: true }) } : extra),
           ...(['pie', 'doughnut'].includes(type) ? {} : { chartColors: colors }) });
       }
     }

@@ -3,7 +3,7 @@
 // click-triggered animations. Functions shared with the editor (tallying
 // votes, drawing charts) are embedded with toString(), so both draw the same.
 
-import { chartSVG, escSvg, SERIES_COLOURS, chartSeries } from '../../render/svg.js';
+import { chartSVG, escSvg, SERIES_COLOURS, chartSeries, niceStep } from '../../render/svg.js';
 import { tallyVotes, pollResultsHTML, VOTE_URL } from '../../features/live/poll.js';
 import { parseChartGrid } from '../../features/document/blocks.js';
 import { QRCODE, PEERJS } from '../../core/vendor.js';
@@ -69,6 +69,7 @@ export function liveDataJS() {
  ${escSvg.toString().replace(/^/, 'var escSvg=')};
  var SERIES_COLOURS=${JSON.stringify(SERIES_COLOURS)};
  ${chartSeries.toString()}
+ ${niceStep.toString()}
  ${chartSVG.toString()}
  ${parseChartGrid.toString()}
  document.querySelectorAll('iframe[data-refresh-min]').forEach(function(f){var m=+f.dataset.refreshMin;if(m>0)setInterval(function(){f.src=f.src;},m*60000);});

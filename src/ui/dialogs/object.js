@@ -151,6 +151,10 @@ export function openChartData(b) {
       <option value="scatter">${t('Dispersión')}</option><option value="radar">${t('Radar')}</option></select></label>
     <label class="fr-l">${t('Color (barras)')} <input type="color" class="ch-color" value="${b.color || '#3f6497'}"></label>
     <label class="fr-chk"><input type="checkbox" class="ch-combo"${b.combo ? ' checked' : ''}> ${t('Combinado: series extra como líneas')}</label>
+    <label class="fr-chk"><input type="checkbox" class="ch-grid"${b.grid ? ' checked' : ''}> ${t('Líneas de cuadrícula con la escala')}</label>
+    <label class="fr-chk"><input type="checkbox" class="ch-labels"${b.dataLabels ? ' checked' : ''}> ${t('Etiquetas de datos (valores)')}</label>
+    <label class="fr-l">${t('Título del eje horizontal')} <input type="text" class="ch-xt" value="${(b.xTitle || '').replace(/"/g, '&quot;')}"></label>
+    <label class="fr-l">${t('Título del eje vertical')} <input type="text" class="ch-yt" value="${(b.yTitle || '').replace(/"/g, '&quot;')}"></label>
     <label class="fr-l">${t('Datos: etiqueta y una columna por serie; primera fila opcional con los nombres')}
       <textarea class="ch-data" rows="6" style="font-family:monospace">${lines}</textarea></label>
     <div class="fr-actions"><button class="fr-do">${t('Aplicar')}</button></div>
@@ -162,7 +166,9 @@ export function openChartData(b) {
   back.addEventListener('click', e => { if (e.target === back) close(); });
   back.querySelector('.fr-do').addEventListener('click', () => {
     blocks.setChartGrid(back.querySelector('.ch-data').value, { chartType: back.querySelector('.ch-type').value,
-      color: back.querySelector('.ch-color').value, combo: back.querySelector('.ch-combo').checked });
+      color: back.querySelector('.ch-color').value, combo: back.querySelector('.ch-combo').checked,
+      grid: back.querySelector('.ch-grid').checked, dataLabels: back.querySelector('.ch-labels').checked,
+      xTitle: back.querySelector('.ch-xt').value.trim(), yTitle: back.querySelector('.ch-yt').value.trim() });
     close();
   });
 }

@@ -549,4 +549,32 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     R.blocks.addShape('rounded'); const rr = last(); Object.assign(rr, { w: 600, h: 100, radius: 20 }); R.render(); await sleep(10);
     assert(/<svg viewBox="0 0 600 100"[^>]*>.*rx="20"/.test(D.querySelector(`.block[data-id="${rr.id}"]`).innerHTML), 'radio real, sin deformar');
   });
+
+  await test('gráficos: valores negativos, cuadrícula con escala, etiquetas de datos y títulos de ejes', async () => {
+    reset(); R.blocks.addChart(); const c = last(); select(c);
+    c.data = [{ label: 'Ene', value: 30 }, { label: 'Feb', value: -20 }, { label: 'Mar', value: 10 }];
+    const svg = R.render && frame.contentWindow.document && (await import(new URL('../src/render/svg.js', D.baseURI))).chartSVG;
+    const parse = html => new frame.contentWindow.DOMParser().parseFromString(html, 'image/svg+xml');
+    let doc = parse(svg(c)), rects = [...doc.querySelectorAll('rect')];
+    const neg = rects[1], pos = rects[0];
+    assert(+neg.getAttribute('height') > 0 && +neg.getAttribute('y') >= +pos.getAttribute('y') + +pos.getAttribute('height') - 0.2, 'la barra negativa baja desde el cero');
+    assert(doc.querySelector('line'), 'línea del cero');
+    Object.assign(c, { grid: true, dataLabels: true, xTitle: 'Mes', yTitle: 'Ventas (k€)' });
+    doc = parse(svg(c));
+    const texts = [...doc.querySelectorAll('text')].map(t => t.textContent);
+    assert(texts.includes('-20') && texts.includes('30'), 'etiquetas de datos: ' + texts.join(','));
+    assert(texts.includes('Mes') && texts.includes('Ventas (k€)'), 'títulos de ejes');
+    assert(doc.querySelectorAll('line').length >= 4 && texts.some(t => /^-?\d+$/.test(t) && t !== '30' && t !== '-20'), 'cuadrícula con la escala');
+    eq(R.render && (await import(new URL('../src/render/svg.js', D.baseURI))).niceStep(23), 25, 'escala redonda');
+    // The dialog sets them, and the editor redraws.
+    R.render(); await sleep(20);
+    D.querySelector(`.block[data-id="${c.id}"]`).dispatchEvent(new frame.contentWindow.MouseEvent('contextmenu', { bubbles: true, clientX: 300, clientY: 300 })); await sleep(10);
+    [...D.querySelectorAll('#context-menu .ctx-item')].find(x => /Editar datos/.test(x.textContent)).click(); await sleep(10);
+    const m = D.getElementById('chart-modal');
+    assert(m.querySelector('.ch-grid').checked && m.querySelector('.ch-xt').value === 'Mes', 'el diálogo muestra las opciones');
+    m.querySelector('.ch-labels').checked = false; m.querySelector('.fr-do').click(); await sleep(20);
+    assert(!c.dataLabels && c.grid, 'y las guarda');
+    assert(/Ventas \(k€\)/.test(D.querySelector(`.block[data-id="${c.id}"]`).innerHTML), 'en el lienzo');
+    assert(/Ventas \(k€\)/.test(R.io.buildHTML()), 'en la presentación');
+  });
 }

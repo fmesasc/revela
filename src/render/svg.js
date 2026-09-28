@@ -119,7 +119,7 @@ export function connectorSVG(b, fromB, toB, W, H) {
 }
 
 // Chart as inline SVG (no library, self‑contained on export). Bar or pie.
-export function chartSig(b) { return (b.chartType || 'bar') + '|' + (b.color || '') + '|' + JSON.stringify([b.data || [], b.series || [], b.combo || 0, b.seriesName || '']); }
+export function chartSig(b) { return (b.chartType || 'bar') + '|' + (b.color || '') + '|' + JSON.stringify([b.data || [], b.series || [], b.combo || 0, b.seriesName || '', b.grid, b.dataLabels, b.xTitle, b.yTitle]); }
 export function chartSVG(b) {
   const data = b.data || []; const color = b.color || '#3f6497';
   const palette = ['#3f6497', '#c0392b', '#2b7a3b', '#d68910', '#7d3c98', '#16a085', '#c0392b'];
@@ -152,40 +152,62 @@ export function chartSVG(b) {
     // x = numeric label if present, else the index; y = value.
     const xs = data.map((d, i) => (isFinite(parseFloat(d.label)) ? parseFloat(d.label) : i));
     const ys = data.map(d => +d.value || 0);
-    const minX = Math.min(...xs, 0), maxX = Math.max(...xs, 1), maxY = Math.max(...ys, 1);
-    const X = x => 4 + (x - minX) / ((maxX - minX) || 1) * 92, Y = y => 54 - (y / maxY) * 50;
+    const minX = Math.min(...xs, 0), maxX = Math.max(...xs, 1), minY = Math.min(...ys, 0), maxY = Math.max(...ys, 1);
+    const X = x => 4 + (x - minX) / ((maxX - minX) || 1) * 92, Y = y => 54 - ((y - minY) / ((maxY - minY) || 1)) * 50;
     const dots = xs.map((x, i) => `<circle cx="${X(x).toFixed(1)}" cy="${Y(ys[i]).toFixed(1)}" r="1.6" fill="${color}"/>`).join('');
     return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">`
       + `<line x1="4" y1="54" x2="98" y2="54" stroke="#8a8a8a" stroke-width="0.4" vector-effect="non-scaling-stroke"/>`
       + `<line x1="4" y1="2" x2="4" y2="54" stroke="#8a8a8a" stroke-width="0.4" vector-effect="non-scaling-stroke"/>${dots}</svg>`;
   }
   // Bars, lines and areas, with any number of series. In a bar chart with
-  // "combo" on, the extra series are drawn as lines over the bars.
-  const ser = chartSeries(b), n = data.length || 1;
-  const max = Math.max(1, ...ser.flatMap(x => x.values));
-  const top = ser.length > 1 ? 41 : 46;          // leave room for the legend
-  const Y = v => 50 - (v / max) * top;
+  // "combo" on, the extra series are drawn as lines over the bars. Values can
+  // be negative (bars grow from the zero line); optional gridlines with the
+  // scale (b.grid), data labels (b.dataLabels) and axis titles (b.xTitle/yTitle).
+  const ser = chartSeries(b), n = data.length || 1, all = ser.flatMap(x => x.values);
+  const T = ser.length > 1 ? 9 : 4;                          // room for the legend
+  const B = b.xTitle ? 46 : 50;                              // plot bottom (as before without the new options)
+  const L = (b.grid ? 8 : 0) + (b.yTitle ? 4 : 0);           // room for the scale and the y title
+  let lo = Math.min(0, ...all), hi = Math.max(0, ...all);
+  if (hi === lo) hi = lo + 1;
+  const step = niceStep((hi - lo) / 4);
+  if (b.grid) { lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step; }
+  const W = 100 - L, Y = v => B - (v - lo) / (hi - lo) * (B - T), Y0 = Y(0);
   const barSer = ser.filter(x => x.type === 'bar'), lineSer = ser.filter(x => x.type !== 'bar');
-  const gap = 100 / n, bw = gap * 0.6 / Math.max(1, barSer.length);
+  const gap = W / n, bw = gap * 0.6 / Math.max(1, barSer.length);
+  const X = i => L + gap * i + gap / 2;
+  const num = v => (Math.abs(v) >= 1000 ? v.toLocaleString('es') : String(+v.toFixed(2)));
+  const dl = (x, y, v, c) => (b.dataLabels ? `<text x="${x.toFixed(1)}" y="${(v < 0 ? y + 4 : y - 1.2).toFixed(1)}" font-size="3.2" text-anchor="middle" fill="${c}">${escSvg(num(v))}</text>` : '');
+  const grid = b.grid ? Array.from({ length: Math.round((hi - lo) / step) + 1 }, (_, k) => lo + k * step).map(v =>
+    `<line x1="${L}" y1="${Y(v).toFixed(1)}" x2="100" y2="${Y(v).toFixed(1)}" stroke="#8a8a8a" stroke-opacity="0.3" stroke-width="0.3" vector-effect="non-scaling-stroke"/>`
+    + `<text x="${(L - 1).toFixed(1)}" y="${(Y(v) + 1.2).toFixed(1)}" font-size="3" text-anchor="end" fill="#8a8a8a">${escSvg(num(v))}</text>`).join('') : '';
   const bars = barSer.map((x, k) => x.values.map((v, i) => {
-    const h = (v / max) * top, bx = gap * i + (gap - bw * barSer.length) / 2 + k * bw;
-    return `<rect x="${bx.toFixed(1)}" y="${(50 - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${x.color}"/>`;
+    const bx = L + gap * i + (gap - bw * barSer.length) / 2 + k * bw, y = Math.min(Y(v), Y0), h = Math.abs(Y(v) - Y0);
+    return `<rect x="${bx.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${x.color}"/>` + dl(bx + bw / 2, Y(v), v, x.color);
   }).join('')).join('');
   // Lines: across the full width for line/area charts, centred on the bars in a combo.
-  const lx = i => barSer.length ? gap * i + gap / 2 : (n > 1 ? i * 100 / (n - 1) : 50);
+  const lx = i => (barSer.length ? X(i) : (n > 1 ? L + i * W / (n - 1) : L + W / 2));
   const lines = lineSer.map((x, k) => {
     const pts = x.values.map((v, i) => `${lx(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
     const area = b.chartType === 'area'
-      ? `<polygon points="${+lx(0).toFixed(1)},50 ${pts} ${+lx(n - 1).toFixed(1)},50" fill="${x.color}" opacity="${k ? 0.18 : 0.25}"/>` : '';
-    const dots = x.values.map((v, i) => `<circle cx="${lx(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="1.3" fill="${x.color}"/>`).join('');
+      ? `<polygon points="${+lx(0).toFixed(1)},${Y0.toFixed(1)} ${pts} ${+lx(n - 1).toFixed(1)},${Y0.toFixed(1)}" fill="${x.color}" opacity="${k ? 0.18 : 0.25}"/>` : '';
+    const dots = x.values.map((v, i) => `<circle cx="${lx(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="1.3" fill="${x.color}"/>` + dl(lx(i), Y(v) - 1, v, x.color)).join('');
     return `${area}<polyline points="${pts}" fill="none" stroke="${x.color}" stroke-width="1.2" vector-effect="non-scaling-stroke"/>${dots}`;
   }).join('');
-  const labels = data.map((d, i) => `<text x="${(barSer.length ? gap * i + gap / 2 : lx(i)).toFixed(1)}" y="58" font-size="4" text-anchor="middle" fill="#8a8a8a">${escSvg(d.label || '')}</text>`).join('');
+  const zero = lo < 0 ? `<line x1="${L}" y1="${Y0.toFixed(1)}" x2="100" y2="${Y0.toFixed(1)}" stroke="#8a8a8a" stroke-width="0.5" vector-effect="non-scaling-stroke"/>` : '';
+  const labels = data.map((d, i) => `<text x="${(barSer.length ? X(i) : lx(i)).toFixed(1)}" y="${(B + 8).toFixed(1)}" font-size="4" text-anchor="middle" fill="#8a8a8a">${escSvg(d.label || '')}</text>`).join('');
+  const titles = (b.xTitle ? `<text x="${(L + W / 2).toFixed(1)}" y="59" font-size="3.6" text-anchor="middle" fill="#8a8a8a">${escSvg(b.xTitle)}</text>` : '')
+    + (b.yTitle ? `<text x="2.6" y="${((T + B) / 2).toFixed(1)}" font-size="3.6" text-anchor="middle" fill="#8a8a8a" transform="rotate(-90 2.6 ${((T + B) / 2).toFixed(1)})">${escSvg(b.yTitle)}</text>` : '');
   const legend = ser.length > 1 ? ser.map((x, k) => {
     const lx0 = 100 - (ser.length - k) * 22;
     return `<rect x="${lx0}" y="0" width="3" height="3" fill="${x.color}"/><text x="${lx0 + 4}" y="2.6" font-size="3.4" fill="#8a8a8a">${escSvg(x.name)}</text>`;
   }).join('') : '';
-  return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">${bars}${lines}${labels}${legend}</svg>`;
+  return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">${grid}${bars}${lines}${zero}${labels}${titles}${legend}</svg>`;
+}
+// A round step for a scale (1, 2, 2.5, 5 × 10^n).
+export function niceStep(raw) {
+  if (!(raw > 0)) return 1;
+  const p = 10 ** Math.floor(Math.log10(raw)), f = raw / p;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
 }
 
 // All series of a bar/line/area chart: the primary one (b.data, b.color) plus
