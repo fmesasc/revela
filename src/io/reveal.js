@@ -142,7 +142,7 @@ const LIGHTBOX_JS = `(function(){var box=null;
  function close(){if(box){box.remove();box=null;}}
  document.addEventListener('click',function(e){var im=e.target.closest('img[data-lightbox]');if(!im||box)return;e.preventDefault();e.stopPropagation();
   box=document.createElement('div');box.style.cssText='position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;cursor:zoom-out';
-  var big=document.createElement('img');big.src=im.src;big.alt=im.alt;big.style.cssText='max-width:94vw;max-height:94vh;object-fit:contain;box-shadow:0 10px 40px #000';
+  var big=document.createElement('img');big.src=im.src;big.alt=im.alt;big.style.cssText='width:94vw;height:94vh;object-fit:contain';
   box.appendChild(big);box.addEventListener('click',close);document.body.appendChild(box);},true);
  window.addEventListener('keydown',function(e){if(box&&e.key==='Escape'){close();e.stopImmediatePropagation();e.preventDefault();}},true);
  var st=document.createElement('style');st.textContent='img[data-lightbox]{cursor:zoom-in}';document.head.appendChild(st);})();`;
