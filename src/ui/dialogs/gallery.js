@@ -3,6 +3,8 @@
 import { state, replaceDeck, currentSlide } from '../../core/store.js';
 import { designIdeas, previewBlocks, applyIdea } from '../../features/design/designer.js';
 import { GALLERY, buildFromGallery } from '../../features/design/gallery.js';
+import { EXAMPLES, buildExample } from '../../features/content/examples.js';
+import { masterBlocksFor, styled } from '../../features/document/master.js';
 import { PALETTES, pairStacks, deckFg } from '../../features/design/palettes.js';
 import { ensureDeckFonts } from '../../features/design/fonts.js';
 import { blockPreview } from '../shell/preview.js';
@@ -15,7 +17,7 @@ export function openGallery() {
   back.id = 'gallery-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(820px,94vw);max-width:94vw">
     <button class="modal-close">✕</button><h3>${t('Nueva presentación desde plantilla')}</h3>
-    <div class="gal-grid"></div></div>`;
+    <h4>${t('Plantillas')}</h4><div class="gal-grid"></div></div>`;
   const grid = back.querySelector('.gal-grid');
   for (const [key, g] of Object.entries(GALLERY)) {
     const deck = buildFromGallery(key), cover = deck.slides[0], p = PALETTES[g.palette];
@@ -33,6 +35,25 @@ export function openGallery() {
     btn.addEventListener('click', () => confirmDialog(t('¿Nueva presentación? Se perderá la actual si no la has guardado.'))
       .then(ok => { if (ok) { replaceDeck(buildFromGallery(key)); back.remove(); } }));
     grid.appendChild(btn);
+  }
+  // Complete example presentations, with real content.
+  const ex = document.createElement('div'); ex.className = 'gal-grid gal-examples';
+  const h = document.createElement('h4'); h.textContent = t('Presentaciones de ejemplo');
+  back.querySelector('.modal').append(h, ex);
+  for (const [key, e] of Object.entries(EXAMPLES)) {
+    const deck = buildExample(key), cover = deck.slides[0];
+    ensureDeckFonts(deck);
+    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'gal-item'; btn.dataset.example = key; btn.title = t(e.summary);
+    const cv = document.createElement('div'); cv.className = 'thumb-canvas'; cv.style.background = cover.background;
+    const inner = document.createElement('div'); inner.className = 'thumb-inner';
+    inner.style.cssText = `width:1280px;height:720px;transform:scale(${180 / 1280});color:${PALETTES[deck.palette].fg};font-family:${deck.bodyFont}`;
+    for (const b of [...masterBlocksFor(cover, deck), ...cover.blocks.map(x => styled(x, cover, deck))]) inner.appendChild(blockPreview(b));
+    cv.appendChild(inner);
+    const lab = document.createElement('span'); lab.innerHTML = `<b>${t(e.name)}</b><small>${t(e.summary)}</small>`;
+    btn.append(cv, lab);
+    btn.addEventListener('click', () => confirmDialog(t('¿Abrir el ejemplo? Se perderá la presentación actual si no la has guardado.'))
+      .then(ok => { if (ok) { replaceDeck(buildExample(key)); back.remove(); } }));
+    ex.appendChild(btn);
   }
   document.body.appendChild(back);
   const close = () => back.remove();

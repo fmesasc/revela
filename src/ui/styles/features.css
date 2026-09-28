@@ -91,8 +91,13 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 /* Template gallery */
 .gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;max-height:65vh;overflow:auto;padding:2px}
 .gal-item{display:flex;flex-direction:column;gap:6px;padding:0 0 6px;border:1px solid var(--line2);border-radius:8px;background:none;cursor:pointer;overflow:hidden;color:var(--txt);font-size:13px}
-.gal-item .thumb-canvas{width:180px;max-width:100%}
+.gal-item .thumb-canvas{width:180px;max-width:100%;align-self:center;margin-top:6px}
 .gal-item:hover{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-bg)}
+#gallery-modal .modal{max-height:90vh;overflow:auto}
+#gallery-modal .gal-grid{max-height:none}
+#gallery-modal h4{margin:14px 0 8px;font-size:13px;color:var(--txt2);text-transform:uppercase;letter-spacing:.4px}
+.gal-examples .gal-item span{display:flex;flex-direction:column;gap:2px;padding:0 8px;text-align:start}
+.gal-examples .gal-item small{color:var(--txt2);font-size:11px;line-height:1.3}
 /* Add-ins & macros */
 .pl-list{list-style:none;margin:6px 0;padding:0;display:flex;flex-direction:column;gap:4px}
 .pl-list li{display:flex;align-items:center;gap:8px}

@@ -150,7 +150,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
 
   await test('galería de plantillas: presentaciones completas', async () => {
     reset(); D.querySelector('[data-action="gallery"]').click(); await sleep(20);
-    eq(D.querySelectorAll('#gallery-modal .gal-item').length, Object.keys(R.gallery.GALLERY).length, 'una miniatura por plantilla');
+    eq(D.querySelectorAll('#gallery-modal .gal-grid:not(.gal-examples) .gal-item').length, Object.keys(R.gallery.GALLERY).length, 'una miniatura por plantilla');
     D.querySelector('#gallery-modal .modal-close').click();
     const deck = R.gallery.buildFromGallery('tech');
     eq(deck.slides.length, 5, 'cinco diapositivas de arranque'); eq(deck.palette, 'midnight', 'paleta');
@@ -356,5 +356,36 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     m.querySelector('.modal-close').click();
     D.querySelector('[data-action="master-close"]').click(); await sleep(10);
     assert(!R.state.ui.editMaster && !D.querySelector('#navigator .layout-thumb'), 'al cerrar vuelven las diapositivas');
+  });
+
+  await test('10 presentaciones de ejemplo completas: se abren, usan patrón y diseños y se exportan', async () => {
+    reset(); D.querySelector('[data-action="gallery"]').click(); await sleep(50);
+    const items = D.querySelectorAll('#gallery-modal .gal-examples .gal-item');
+    eq(items.length, 10, 'diez ejemplos en la galería');
+    D.querySelector('#gallery-modal .modal-close').click();
+    const kinds = new Set();
+    for (const key of Object.keys(R.examples.EXAMPLES)) {
+      const deck = R.examples.buildExample(key);
+      assert(deck.slides.length >= 4, key + ': varias diapositivas');
+      assert(deck.master.styles?.title?.font && deck.layouts?.length, key + ': con estilos de patrón y diseños');
+      assert(deck.slides.every(s => deck.layouts.some(l => l.id === s.layoutId)), key + ': cada diapositiva con su diseño');
+      const ph = deck.slides.flatMap(s => s.blocks.filter(b => b.ph));
+      assert(ph.length && ph.every(b => b.lp && b.fontSize == null), key + ': los marcadores heredan del patrón');
+      for (const s of deck.slides) for (const b of s.blocks) kinds.add(b.type === 'poll' ? 'poll:' + b.kind : b.type), b.animation && kinds.add('anim');
+      if (deck.slides.some(s => s.autoAnimate)) kinds.add('auto-animate');
+      if (deck.slides.some(s => s.vertical)) kinds.add('vertical');
+      R.store.replaceDeck(deck); R.render(); await sleep(10);
+      const html = R.io.buildHTML();
+      eq((html.match(/<section/g) || []).length - (deck.slides.some(s => s.vertical) ? 1 : 0), deck.slides.length, key + ': todas las diapositivas en la presentación');
+      assert(!/Haz clic para/.test(html), key + ': sin avisos de marcador vacíos');
+    }
+    for (const k of ['chart', 'table', 'code', 'math', 'poll:choice', 'poll:qa', 'icon', 'shape', 'anim', 'auto-animate', 'vertical'])
+      assert(kinds.has(k), 'los ejemplos enseñan: ' + k);
+    // Opening one from the gallery.
+    reset(); D.querySelector('[data-action="gallery"]').click(); await sleep(50);
+    D.querySelector('#gallery-modal [data-example="coding"]').click(); await sleep(20);
+    D.querySelector('.modal-backdrop .dlg-ok').click(); await sleep(50);
+    eq(R.state.deck.name, 'Taller de programación', 'abre el ejemplo elegido');
+    assert(D.querySelector('#stage .block'), 'y se ve en el lienzo');
   });
 }

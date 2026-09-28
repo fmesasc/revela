@@ -39,10 +39,10 @@ export function ensureLayouts(deck = state.deck) {
   if (Array.isArray(deck.layouts) && deck.layouts.length) return deck.layouts;
   const P = (ph, x, y, w, h, extra = {}) => ({ id: uid(), type: 'text', ph, x, y, w, h, rotation: 0, animation: null, html: '', ...extra });
   deck.layouts = [
-    { id: 'title', name: 'Portada', blocks: [P('title', 140, 250, 1000, 130, { fontSize: 72 }), P('subtitle', 140, 400, 1000, 80)] },
+    { id: 'title', name: 'Portada', blocks: [P('title', 140, 150, 1000, 240, { fontSize: 72, vAlign: 'bottom' }), P('subtitle', 140, 410, 1000, 90)] },
     { id: 'titleContent', name: 'Título y contenido', blocks: [P('title', 100, 60, 1080, 100), P('body', 100, 180, 1080, 480)] },
     { id: 'twoContent', name: 'Dos contenidos', blocks: [P('title', 100, 60, 1080, 100), P('body', 100, 180, 520, 480), P('body', 660, 180, 520, 480)] },
-    { id: 'section', name: 'Encabezado de sección', blocks: [P('title', 120, 290, 1040, 130, { fontSize: 64, textAlign: 'center' }), P('subtitle', 120, 430, 1040, 70, { textAlign: 'center' })] },
+    { id: 'section', name: 'Encabezado de sección', blocks: [P('title', 120, 170, 1040, 240, { fontSize: 64, textAlign: 'center', vAlign: 'bottom' }), P('subtitle', 120, 430, 1040, 90, { textAlign: 'center' })] },
     { id: 'titleOnly', name: 'Solo el título', blocks: [P('title', 100, 60, 1080, 100)] },
     { id: 'blank', name: 'En blanco', blocks: [] },
   ].map(l => ({ background: null, ...l }));
@@ -122,7 +122,7 @@ export function setMasterStyle(kind, props, level = null) {
 
 // ---- Layouts -----------------------------------------------------------------
 const freshPlaceholders = lay => lay.blocks.filter(b => b.ph).map(p => ({ id: uid(), type: 'text', ph: p.ph, lp: p.id,
-  x: p.x, y: p.y, w: p.w, h: p.h, rotation: 0, animation: null, html: '' }));
+  x: p.x, y: p.y, w: p.w, h: p.h, rotation: 0, animation: null, html: '', ...(p.vAlign && { vAlign: p.vAlign }) }));
 // Give a slide a layout. Like PowerPoint, what was written moves into the new
 // placeholders (the title into the title, the rest in order) and nothing is
 // lost: text that doesn't fit any placeholder, pictures, charts… stay.
