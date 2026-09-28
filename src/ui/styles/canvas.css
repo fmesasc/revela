@@ -3,8 +3,10 @@
 /* ---------- Blocks ---------- */
 /* Blocks keep their stacking order (DOM order). Selecting or dragging must NOT
    lift a block above the others — a back object stays at the back while moved. */
-.block{position:absolute;border:1px solid transparent;cursor:grab;touch-action:none}
-.block.selected{border-color:var(--accent)}
+.block{position:absolute;cursor:grab;touch-action:none}
+/* The selection frame is an outline, not a border: a border takes 2 px from the
+   object's inside, so thin lines (3 px) looked faded in the editor. */
+.block.selected{outline:1px solid var(--accent)}
 .block.dragging{cursor:grabbing;opacity:.75}
 .block.editing{cursor:auto}
 .block .rich{width:100%;height:100%;outline:none;padding:6px;color:inherit;overflow-wrap:anywhere}
@@ -38,7 +40,7 @@
 .block.__conn.selected{border-color:transparent}
 .block.__conn .handle-del,.block.__conn .handle-size,.block.__conn .handle-rot{display:none}
 .block .tbl{border-collapse:collapse;width:100%;height:100%;color:inherit;table-layout:fixed}
-.block .tbl td{border:1px solid var(--stroke,#fff);padding:3px 6px;vertical-align:top;outline:none;overflow-wrap:anywhere}
+.block .tbl td{border:1px solid var(--stroke,#fff);padding:var(--cell-pad,.15em .4em);vertical-align:top;outline:none;overflow-wrap:anywhere}
 .block .tbl.lines td{border-width:0 0 1px 0}
 .block .tbl.banded:not(.has-header) tr:nth-child(odd) td,.block .tbl.banded.has-header tr:nth-child(even) td{background:var(--band,rgba(127,127,127,.18))}
 .block .tbl.first-col td:first-child{font-weight:700}

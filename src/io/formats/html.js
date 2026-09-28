@@ -6,7 +6,7 @@ import { state } from '../../core/store.js';
 import { REVEAL, KATEX, MODEL_VIEWER } from '../../core/vendor.js';
 import { download, slug } from '../files.js';
 import { TRIGGER_JS, CAMERA_JS, pollJS, liveDataJS, LIGHTBOX_JS } from '../runtime/scripts.js';
-import { webCardHTML, mathTeX, mathCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, tableClass, tableVars, tableCSS } from '../../render/svg.js';
+import { textPadding, webCardHTML, mathTeX, mathCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, tableClass, tableVars, tableCSS } from '../../render/svg.js';
 import { googleFontLinks } from '../../features/design/fonts.js';
 import { t, currentLang } from '../../i18n/index.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle, slidePaths } from '../../features/document/captions.js';
@@ -106,7 +106,7 @@ function blockHTMLRaw(b, slide) {
       + `text-align:${b.textAlign || 'left'};${b.fontFamily ? `font-family:${b.fontFamily};` : ''}`
       + `${b.lineHeight ? `line-height:${b.lineHeight};` : ''}`
       + `${b.letterSpacing ? `letter-spacing:${b.letterSpacing}px;` : ''}`
-      + `${b.indent ? `padding-left:${b.indent}px;` : ''}`
+      + `padding:${textPadding(b)};`
       + `${b.dir === 'rtl' ? 'direction:rtl;' : ''}`
       + `${b.vertical ? 'writing-mode:vertical-rl;' : ''}`
       + `${b.bullet ? `--bullet:${b.bullet};` : ''}`
@@ -300,6 +300,13 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
 <style>
  .reveal .stage{position:relative;width:${w}px;height:${h}px;margin:0 auto;color:${deckFg(deck)};${deckBodyFont(deck) ? `font-family:${deckBodyFont(deck)};` : ''}}
  .reveal .stage>*{overflow-wrap:anywhere}
+ /* What the slide shows must match the editor: reveal.js themes give images a
+    margin, border and white background, text a 1.3 line height and lists an
+    inline-block box. Not inside Revela's objects. */
+ .reveal .stage{line-height:normal}
+ .reveal .stage img,.reveal .stage video,.reveal .stage iframe{margin:0;border:0;background:none;box-shadow:none;max-width:none;max-height:none}
+ .reveal .stage ul,.reveal .stage ol{display:block;text-align:inherit;margin:1em 0;padding-left:40px}
+ .reveal .stage table.tbl{line-height:normal}
  .reveal .stage ul{list-style-type:var(--bullet,disc)}
  .reveal .stage ol{list-style-type:var(--num,decimal)}
  .reveal section{height:100%}

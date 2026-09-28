@@ -65,7 +65,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
 
   await test('sangría de párrafo', async () => {
     reset(); const b = newText(); R.format.indent(40); await sleep(10);
-    eq(b.indent, 40, 'indent'); assert(/padding-left:40px/.test(R.io.buildHTML()), 'export');
+    eq(b.indent, 40, 'indent'); assert(/padding:6px 6px 6px 46px/.test(R.io.buildHTML()), 'export: margen interno + sangría, igual que en el editor');
     R.format.adjustIndent(24); eq(b.indent, 64, 'aumentar sangría');
     R.format.adjustIndent(-100); eq(b.indent, 0, 'no baja de 0');
   });

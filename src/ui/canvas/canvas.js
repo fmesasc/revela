@@ -3,7 +3,7 @@
 // guides, resize from the corners, edit text on double‑click.
 
 import { state, commit, currentSlide, selectedBlock, isSelected, setSelection } from '../../core/store.js';
-import { shapeSVG, shapeSig, chartSVG, chartSig, iconSVG, iconSig, applyWordart, inkSVG, inkSig, tableClass, tableVars } from '../../render/svg.js';
+import { textPadding, shapeSVG, shapeSig, chartSVG, chartSig, iconSVG, iconSig, applyWordart, inkSVG, inkSig, tableClass, tableVars } from '../../render/svg.js';
 import { figuresMap, captionLine } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
 import { t } from '../../i18n/index.js';
@@ -214,7 +214,7 @@ function reconcile(b) {
       rich.style.fontFamily = b.fontFamily || '';
       rich.style.lineHeight = b.lineHeight || '';
       rich.style.letterSpacing = b.letterSpacing ? b.letterSpacing + 'px' : '';
-      rich.style.paddingLeft = (6 + (b.indent || 0)) + 'px';
+      rich.style.padding = textPadding(b);
       rich.dir = b.dir || '';
       rich.style.writingMode = b.vertical ? 'vertical-rl' : '';
       rich.style.setProperty('--bullet', b.bullet || 'disc');

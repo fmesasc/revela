@@ -82,7 +82,7 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 #master-banner[hidden]{display:none}
 #master-banner button{margin-inline-start:auto;border:1px solid #e0873b;background:#fff;color:#7a4a12;border-radius:6px;padding:4px 10px;cursor:pointer}
 .block .rich[data-ph]:empty::before{content:attr(data-ph);opacity:.45;font-style:italic;pointer-events:none}
-.block:has(.rich[data-ph]:empty){outline:1px dashed #8a8a8a88}
+.block:not(.selected):has(.rich[data-ph]:empty){outline:1px dashed #8a8a8a88}
 /* Template gallery */
 .gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;max-height:65vh;overflow:auto;padding:2px}
 .gal-item{display:flex;flex-direction:column;gap:6px;padding:0 0 6px;border:1px solid var(--line2);border-radius:8px;background:none;cursor:pointer;overflow:hidden;color:var(--txt);font-size:13px}

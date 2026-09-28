@@ -2,17 +2,21 @@
 //
 // A .pptx is an OOXML zip. For each slide this recovers, mapping EMU units onto
 // the Revela canvas:
-// - text boxes and placeholders, with the position inherited from the layout /
-//   master when the slide doesn't set it, and runs with size, bold, italic,
-//   underline, colour and font; paragraph alignment, bullets and numbering;
-//   vertical anchoring;
-// - preset shapes (rectangle, ellipse, arrows, star…) with fill, outline and
-//   rotation/flip, lines and connectors;
-// - pictures, tables (with merged cells), grouped objects (flattened);
+// - text with PowerPoint's full style inheritance (master text styles → master
+//   placeholder → layout placeholder → shape → paragraph → run): size, bold,
+//   italic, underline, strike, colour, font, caps, spacing, highlight, links;
+//   alignment, indents, line and paragraph spacing, bullets and numbering;
+//   the box's inner margins, anchoring and "shrink text on overflow" scale;
+//   runs of spaces and slide-number fields;
+// - preset shapes with fill (with transparency), outline and rotation/flip;
+//   lines and connectors along their real diagonal, with arrowheads;
+// - pictures, tables (table style, column widths, row heights, cell fills and
+//   margins, merged cells), charts, grouped objects (flattened);
+// - the template's own graphics (logos, lines): the most used set goes to
+//   Revela's master, the rest stay on their slides;
 // - the background (slide → layout → master), theme colours and fonts, speaker
-//   notes and hidden slides.
-// Effects without an equivalent (gradients, shadows, SmartArt, charts…) are
-// approximated or skipped.
+//   notes, hidden slides and transitions.
+// Effects without an equivalent (shadows, SmartArt…) are approximated or skipped.
 
 import { uid } from '../../core/model.js';
 import { JSZIP_ESM } from '../../core/vendor.js';
@@ -70,16 +74,19 @@ function themeColours(themeDoc) {
 }
 const hex2rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
 const rgb2hex = a => '#' + a.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
-function mods(hex, el) {                 // lumMod/lumOff/tint/shade, approximately
-  let [r, g, b] = hex2rgb(hex);
+function mods(hex, el) {                 // lumMod/lumOff/tint/shade, approximately; alpha
+  let [r, g, b] = hex2rgb(hex), a = 1;
   for (const m of el ? [...el.children] : []) {
     const v = +m.getAttribute('val') / 100000;
+    if (m.tagName === 'a:alpha') a = v;
     if (m.tagName === 'a:lumMod') { r *= v; g *= v; b *= v; }
     else if (m.tagName === 'a:lumOff') { r += 255 * v; g += 255 * v; b += 255 * v; }
     else if (m.tagName === 'a:shade') { r *= v; g *= v; b *= v; }
     else if (m.tagName === 'a:tint') { r += (255 - r) * (1 - v); g += (255 - g) * (1 - v); b += (255 - b) * (1 - v); }
   }
-  return rgb2hex([r, g, b]);
+  // Fully transparent → nothing; partly → #rrggbbaa.
+  if (a <= 0) return 'none';
+  return rgb2hex([r, g, b]) + (a < 1 ? Math.round(a * 255).toString(16).padStart(2, '0') : '');
 }
 // Colour of a fill-like element (a:solidFill, or the element holding a colour).
 function colourOf(el, theme) {
@@ -131,72 +138,199 @@ const PRESET = { rect: 'rect', roundRect: 'rounded', ellipse: 'ellipse', triangl
   homePlate: 'pentagon', rtTriangle: 'triangle', octagon: 'hexagon' };
 
 // ---- Text ------------------------------------------------------------------
-const ALIGN = { ctr: 'center', r: 'right', just: 'justify', dist: 'justify' };
-function paragraphsHTML(txBody, ctx, defaults) {
-  const out = []; let list = null;
+// PowerPoint text formatting is inherited, level by level (lvl1pPr…lvl9pPr):
+//   presentation defaultTextStyle (text boxes) or the master's titleStyle /
+//   bodyStyle / otherStyle → the master placeholder's list style → the layout
+//   placeholder's → the shape's own → the paragraph (a:pPr) → the run (a:rPr).
+// Templates (Google Slides exports especially) usually set sizes and colours
+// only in the master, so all of them must be walked.
+const ALIGN = { l: 'left', ctr: 'center', r: 'right', just: 'justify', dist: 'justify' };
+const AUTONUM = { arabicPeriod: 'decimal', arabicParenR: 'decimal', arabicPlain: 'decimal', alphaLcPeriod: 'lower-alpha', alphaLcParenR: 'lower-alpha',
+  alphaUcPeriod: 'upper-alpha', alphaUcParenR: 'upper-alpha', romanLcPeriod: 'lower-roman', romanUcPeriod: 'upper-roman' };
+const def = o => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null));
+const merge = (...xs) => Object.assign({}, ...xs.map(x => (x ? def(x) : null)));
+const spacing = el => {                     // a:lnSpc / a:spcBef / a:spcAft
+  if (!el) return undefined;
+  const pct = kid(el, 'a:spcPct'), pts = kid(el, 'a:spcPts');
+  return pct ? { pct: +pct.getAttribute('val') / 100000 } : pts ? { pt: +pts.getAttribute('val') / 100 } : undefined;
+};
+function readRun(rPr, theme, fonts) {
+  if (!rPr) return null;
+  const at = n => rPr.getAttribute(n);
+  const face = kid(rPr, 'a:latin')?.getAttribute('typeface');
+  return {
+    sz: at('sz') ? +at('sz') / 100 : undefined,
+    b: at('b') != null ? at('b') === '1' || at('b') === 'true' : undefined,
+    i: at('i') != null ? at('i') === '1' || at('i') === 'true' : undefined,
+    u: at('u') != null ? at('u') !== 'none' : undefined,
+    strike: at('strike') != null ? at('strike') !== 'noStrike' : undefined,
+    cap: at('cap') || undefined,
+    spc: at('spc') != null ? +at('spc') / 100 : undefined,
+    baseline: at('baseline') != null ? +at('baseline') / 1000 : undefined,
+    color: (c => (c === 'none' ? 'transparent' : c))(colourOf(kid(rPr, 'a:solidFill'), theme)) || undefined,
+    highlight: (c => (c === 'none' ? null : c))(colourOf(kid(rPr, 'a:highlight'), theme)) || undefined,
+    font: face === '+mj-lt' ? fonts.major : face === '+mn-lt' ? fonts.minor : (face || undefined),
+  };
+}
+function readPara(pPr, theme) {
+  if (!pPr) return null;
+  const at = n => pPr.getAttribute(n);
+  let bullet;
+  if (kid(pPr, 'a:buNone')) bullet = { kind: 'none' };
+  else if (kid(pPr, 'a:buChar')) bullet = { kind: 'char', char: kid(pPr, 'a:buChar').getAttribute('char') };
+  else if (kid(pPr, 'a:buAutoNum')) { const n = kid(pPr, 'a:buAutoNum'); bullet = { kind: 'num', scheme: n.getAttribute('type'), start: +(n.getAttribute('startAt') || 1) }; }
+  const buSz = kid(pPr, 'a:buSzPct');
+  return {
+    algn: at('algn') || undefined,
+    marL: at('marL') != null ? +at('marL') : undefined,
+    indent: at('indent') != null ? +at('indent') : undefined,
+    lnSpc: spacing(kid(pPr, 'a:lnSpc')), spcBef: spacing(kid(pPr, 'a:spcBef')), spcAft: spacing(kid(pPr, 'a:spcAft')),
+    bullet, buColor: colourOf(kid(pPr, 'a:buClr'), theme) || undefined,
+    buSize: buSz ? +buSz.getAttribute('val') / 100000 : undefined,
+  };
+}
+// A list style (a:lstStyle, p:titleStyle, a:defaultTextStyle…) → per level { p, r }.
+function readLevels(el, theme, fonts) {
+  if (!el) return null;
+  const out = [];
+  for (let l = 1; l <= 9; l++) {
+    const lv = kid(el, `a:lvl${l}pPr`);
+    out.push(lv ? { p: readPara(lv, theme), r: readRun(kid(lv, 'a:defRPr'), theme, fonts) } : null);
+  }
+  return out;
+}
+const mergeLevels = chain => Array.from({ length: 9 }, (_, l) => ({
+  p: merge(...chain.map(c => c?.[l]?.p)), r: merge(...chain.map(c => c?.[l]?.r)),
+}));
+// Text box properties (a:bodyPr), inherited attribute by attribute.
+function readBody(bodyPr) {
+  if (!bodyPr) return null;
+  const at = n => bodyPr.getAttribute(n);
+  const fit = kid(bodyPr, 'a:normAutofit');
+  return {
+    anchor: at('anchor') || undefined,
+    l: at('lIns') != null ? +at('lIns') : undefined, r: at('rIns') != null ? +at('rIns') : undefined,
+    t: at('tIns') != null ? +at('tIns') : undefined, b: at('bIns') != null ? +at('bIns') : undefined,
+    fontScale: fit?.getAttribute('fontScale') ? +fit.getAttribute('fontScale') / 100000 : undefined,
+    lnReduce: fit?.getAttribute('lnSpcReduction') ? +fit.getAttribute('lnSpcReduction') / 100000 : undefined,
+    vert: at('vert') && at('vert') !== 'horz' ? at('vert') : undefined,
+  };
+}
+
+const cssFont = f => `'${String(f).replace(/'/g, '')}'`;
+// Paragraphs → HTML with the resolved formatting. Sizes are in px; the box
+// gets the first paragraph's size, family and colour, and runs only say where
+// they differ.
+function paragraphsHTML(txBody, ctx, style) {
+  const { levels, body = {}, isList = false, base: boxBase = null } = style;
+  const fs = body.fontScale || 1, lnRed = body.lnReduce || 0;
+  const out = []; let list = null, first = null, align = null;
   const close = () => { if (list) { out.push(`</${list}>`); list = null; } };
-  let firstSize = null, align = null;
-  // "Shrink text on overflow": PowerPoint stores the scale it applied.
-  const fit = kid(kid(txBody, 'a:bodyPr'), 'a:normAutofit');
-  const fs = fit?.getAttribute('fontScale') ? +fit.getAttribute('fontScale') / 100000 : 1;
+  const own = readLevels(kid(txBody, 'a:lstStyle'), ctx.theme, ctx.fonts);
+  const lv = own ? mergeLevels([levels, own]) : levels;
   for (const p of kids(txBody, 'a:p')) {
     const pPr = kid(p, 'a:pPr');
-    align ??= ALIGN[pPr?.getAttribute('algn')] || null;
-    const runs = [];
+    const l = Math.min(8, +(pPr?.getAttribute('lvl') || 0));
+    const pp = merge(lv[l].p, readPara(pPr, ctx.theme));
+    const base = lv[l].r;
+    const endR = merge(base, readRun(kid(p, 'a:endParaRPr'), ctx.theme, ctx.fonts));
+    const runs = []; let paraSize = null;
     for (const r of [...p.children]) {
       if (r.tagName === 'a:br') { runs.push('<br>'); continue; }
       if (r.tagName !== 'a:r' && r.tagName !== 'a:fld') continue;
-      const txt = kid(r, 'a:t')?.textContent || ''; if (!txt) continue;
-      const rPr = kid(r, 'a:rPr'), css = [];
-      const sz = rPr?.getAttribute('sz'); if (sz) { const px = ctx.pt(+sz / 100 * fs); firstSize ??= px; css.push(`font-size:${px}px`); }
-      const col = colourOf(kid(rPr, 'a:solidFill'), ctx.theme); if (col) css.push(`color:${col}`);
-      const face = kid(rPr, 'a:latin')?.getAttribute('typeface');
-      const fam = face === '+mj-lt' ? ctx.fonts.major : face === '+mn-lt' ? ctx.fonts.minor : face;
-      if (fam) css.push(`font-family:'${fam.replace(/'/g, '')}'`);
-      let h = esc(txt);
+      let txt = kid(r, 'a:t')?.textContent || ''; if (!txt) continue;
+      if (r.tagName === 'a:fld' && /slidenum/i.test(r.getAttribute('type') || '')) txt = String(ctx.slideNo);
+      const rp = merge(base, readRun(kid(r, 'a:rPr'), ctx.theme, ctx.fonts));
+      const size = ctx.pt((rp.sz || 18) * fs);
+      paraSize ??= size;
+      if (!first) first = boxBase || { size, font: rp.font, color: rp.color };
+      const css = [];
+      if (size !== first.size) css.push(`font-size:${size}px`);
+      if (rp.color) css.push(`color:${rp.color}`);
+      if (rp.font && rp.font !== first.font) css.push(`font-family:${cssFont(rp.font)}`);
+      if (rp.cap === 'all') css.push('text-transform:uppercase'); else if (rp.cap === 'small') css.push('font-variant:small-caps');
+      if (rp.spc) css.push(`letter-spacing:${ctx.pt(rp.spc)}px`);
+      if (rp.highlight) css.push(`background:${rp.highlight}`);
+      if (rp.baseline) css.push(`vertical-align:${rp.baseline > 0 ? 'super' : 'sub'};font-size:${Math.round(size * 0.65)}px`);
+      // Consecutive spaces align text in PowerPoint; HTML would collapse them.
+      let h = esc(txt).replace(/ {2,}/g, m => ' \u00a0'.repeat(Math.ceil(m.length / 2)).slice(0, m.length)).replace(/^ /, '\u00a0');
       if (css.length) h = `<span style="${css.join(';')}">${h}</span>`;
-      if (rPr?.getAttribute('b') === '1') h = `<b>${h}</b>`;
-      if (rPr?.getAttribute('i') === '1') h = `<i>${h}</i>`;
-      if (rPr?.getAttribute('u') && rPr.getAttribute('u') !== 'none') h = `<u>${h}</u>`;
-      if (rPr?.getAttribute('strike') && rPr.getAttribute('strike') !== 'noStrike') h = `<s>${h}</s>`;
+      if (rp.b) h = `<b>${h}</b>`; else if (base.b && rp.b === false) h = `<span style="font-weight:normal">${h}</span>`;
+      if (rp.i) h = `<i>${h}</i>`;
+      if (rp.u) h = `<u>${h}</u>`;
+      if (rp.strike) h = `<s>${h}</s>`;
+      const link = all(kid(r, 'a:rPr'), 'a:hlinkClick')[0]?.getAttribute('r:id');
+      const href = link && ctx.links?.[link];
+      if (href) h = `<a href="${esc(href)}" target="_blank" rel="noopener">${h}</a>`;
       runs.push(h);
     }
     const html = runs.join('');
-    const bullet = kid(pPr, 'a:buChar') ? 'ul' : kid(pPr, 'a:buAutoNum') ? 'ol' : (kid(pPr, 'a:buNone') ? null : defaults.bullet);
-    if (bullet && html) {
-      if (list !== bullet) { close(); out.push(`<${bullet}>`); list = bullet; }
-      out.push(`<li>${html}</li>`);
-    } else { close(); out.push(html ? `<div>${html}</div>` : (out.length ? '<div><br></div>' : '')); }
+    paraSize ??= ctx.pt((endR.sz || 18) * fs);
+    align ??= ALIGN[pp.algn] || null;
+    // Paragraph box: margins, first-line indent, spacing and line height.
+    const lineH = pp.lnSpc?.pct != null ? +(1.2 * pp.lnSpc.pct * (1 - lnRed)).toFixed(3)
+      : pp.lnSpc?.pt != null ? `${ctx.pt(pp.lnSpc.pt * fs)}px` : null;
+    const gap = sp => (sp?.pt != null ? ctx.pt(sp.pt) : sp?.pct != null ? Math.round(paraSize * 1.2 * sp.pct) : 0);
+    const marL = ctx.emu(pp.marL || 0), indent = ctx.emu(pp.indent || 0);
+    const pcss = [];
+    if (lineH != null) pcss.push(`line-height:${lineH}`);
+    if (gap(pp.spcBef)) pcss.push(`margin-top:${gap(pp.spcBef)}px`);
+    if (gap(pp.spcAft)) pcss.push(`margin-bottom:${gap(pp.spcAft)}px`);
+    if (ALIGN[pp.algn] && ALIGN[pp.algn] !== align) pcss.push(`text-align:${ALIGN[pp.algn]}`);
+    // Each paragraph at its own size: with the box's size (its first run's) a
+    // big first line (an icon, a title) would make every line that tall.
+    if (paraSize !== first?.size) pcss.push(`font-size:${paraSize}px`);
+    const bu = pp.bullet?.kind ?? (isList ? 'char' : 'none');
+    if ((bu === 'char' || bu === 'num') && html) {
+      const tag = bu === 'num' ? 'ol' : 'ul';
+      if (list !== tag) { close(); out.push(`<${tag} style="margin:0;padding:0">`); list = tag; }
+      const marker = bu === 'num' ? `list-style-type:${AUTONUM[pp.bullet?.scheme] || 'decimal'}`
+        : `list-style-type:'${(pp.bullet?.char || '•').replace(/'/g, '')}  '`;
+      // The text starts at marL; the bullet hangs in the first-line indent.
+      pcss.push(marker, 'list-style-position:outside', `margin-left:${Math.max(0, marL)}px`);
+      if (pp.buColor) pcss.push(`color:${pp.buColor}`);
+      out.push(`<li style="${pcss.join(';')}">${html}</li>`);
+    } else {
+      close();
+      if (marL) pcss.push(`padding-left:${marL}px`);
+      if (indent) pcss.push(`text-indent:${indent}px`);
+      out.push(`<div${pcss.length ? ` style="${pcss.join(';')}"` : ''}>${html || '<br>'}</div>`);
+    }
   }
   close();
-  while (out.length && out[out.length - 1] === '<div><br></div>') out.pop();
-  return { html: out.join(''), firstSize, align, fontScale: fs };
+  while (out.length && /^<div[^>]*><br><\/div>$/.test(out[out.length - 1])) out.pop();
+  return { html: out.join(''), first, align };
 }
 
-// ---- Parts: layout and master (placeholders + background) -----------------
-async function partInfo(zip, file, theme) {
+// ---- Parts: layout and master (placeholders, decorations, background) ------
+async function partInfo(zip, file, theme, fonts) {
   const doc = parseXML(await zip.file(file).async('string'));
   const r = rels(await zip.file(relsPath(file))?.async('string'), dirOf(file));
   const phs = [];
   for (const sp of all(doc, 'p:sp')) {
-    const ph = phOf(sp), geo = xfrmOf(sp);
-    if (!ph) continue;
-    const lvl1 = all(sp, 'a:lvl1pPr')[0], defRPr = kid(lvl1, 'a:defRPr');
-    phs.push({ ...ph, geo, sz: defRPr?.getAttribute('sz') ? +defRPr.getAttribute('sz') / 100 : null,
-      anchor: all(sp, 'a:bodyPr')[0]?.getAttribute('anchor') || null });
+    const ph = phOf(sp); if (!ph) continue;
+    phs.push({ ...ph, geo: xfrmOf(sp), levels: readLevels(kid(kid(sp, 'p:txBody'), 'a:lstStyle'), theme, fonts),
+      body: readBody(kid(kid(sp, 'p:txBody'), 'a:bodyPr')) });
   }
-  // Master text styles (title / body size).
-  const tsz = el => { const d = all(el, 'a:defRPr')[0]; return d?.getAttribute('sz') ? +d.getAttribute('sz') / 100 : null; };
-  const styles = { title: tsz(all(doc, 'p:titleStyle')[0]), body: tsz(all(doc, 'p:bodyStyle')[0]) };
+  // Master text styles by kind of placeholder.
+  const styles = {
+    title: readLevels(all(doc, 'p:titleStyle')[0], theme, fonts),
+    body: readLevels(all(doc, 'p:bodyStyle')[0], theme, fonts),
+    other: readLevels(all(doc, 'p:otherStyle')[0], theme, fonts),
+  };
   const bgPr = all(doc, 'p:bgPr')[0];
   const bgRef = all(doc, 'p:bgRef')[0];
   const bg = gradientCSS(bgPr, theme) || fillOf(bgPr, theme) || (bgRef ? colourOf(bgRef, theme) : null);
   const parent = Object.values(r).find(x => x.type === 'slideLayout' || x.type === 'slideMaster')?.path || null;
-  return { doc, rels: r, phs, styles, bg, parent };
+  const showMasterSp = doc.documentElement.getAttribute('showMasterSp') !== '0';
+  return { file, doc, rels: r, phs, styles, bg, parent, showMasterSp };
 }
-const findPh = (list, ph) => list.find(p => ph.idx != null && p.idx === ph.idx) || list.find(p => p.type === ph.type)
+const findPh = (list, ph) => list.find(p => ph.idx != null && p.idx === ph.idx && p.type === ph.type)
+  || list.find(p => ph.idx != null && p.idx === ph.idx) || list.find(p => p.type === ph.type)
   || (['body', 'obj'].includes(ph.type) ? list.find(p => p.type === 'body' || p.type === 'obj') : null)
   || (ph.type === 'ctrTitle' ? list.find(p => p.type === 'title') : null) || (ph.type === 'subTitle' ? list.find(p => p.type === 'body') : null);
+const TITLE_PH = t => t === 'title' || t === 'ctrTitle';
+const BODY_PH = t => ['body', 'obj', 'subTitle', undefined, null].includes(t);
 
 // ---- Import ----------------------------------------------------------------
 export async function importPPTX(file) {
@@ -227,11 +361,29 @@ export async function importPPTX(file) {
     const cm = all(parseXML(await zip.file(masterPath).async('string')), 'p:clrMap')[0];
     for (const k of ['bg1', 'tx1', 'bg2', 'tx2']) { const v = cm?.getAttribute(k); if (v && theme[v]) theme[k] = theme[v]; }
   }
-  const ctx = { theme, fonts, pt: pt => Math.round(pt * 12700 * scale) };
+  const ctx = { theme, fonts, pt: pt => Math.round(pt * 12700 * scale), emu: v => Math.round(v * scale) };
+  // Text boxes that aren't placeholders start from the presentation's default text style.
+  const defaultText = readLevels(all(pres, 'p:defaultTextStyle')[0], theme, fonts);
+  // Table styles (ppt/tableStyles.xml): borders, text, header and band colours.
+  const tableStyles = {};
+  const tsFile = zip.file('ppt/tableStyles.xml');
+  if (tsFile) for (const ts of all(parseXML(await tsFile.async('string')), 'a:tblStyle')) {
+    const part = n => kid(ts, n);
+    const txt = el => { const t = kid(el, 'a:tcTxStyle'); if (!t) return null;
+      const face = all(t, 'a:latin')[0]?.getAttribute('typeface'); const col = colourOf(t, theme);
+      return { b: t.getAttribute('b') === 'on' || undefined, color: col || undefined, font: face || undefined }; };
+    const fillIn = el => { const f = fillOf(kid(kid(el, 'a:tcStyle'), 'a:fill'), theme); return f && f !== 'none' ? f : undefined; };
+    const whole = part('a:wholeTbl'), wt = txt(whole);
+    tableStyles[ts.getAttribute('styleId')] = {
+      border: colourOf(all(kid(kid(whole, 'a:tcStyle'), 'a:tcBdr'), 'a:solidFill')[0], theme) || undefined,
+      text: wt ? [{ p: null, r: wt }] : null,
+      headBg: fillIn(part('a:firstRow')), headFg: txt(part('a:firstRow'))?.color, band: fillIn(part('a:band1H')),
+    };
+  }
   const px = v => Math.round(v * scale);
 
   const cache = new Map();
-  const info = async f => { if (!cache.has(f)) cache.set(f, await partInfo(zip, f, theme)); return cache.get(f); };
+  const info = async f => { if (!cache.has(f)) cache.set(f, await partInfo(zip, f, theme, fonts)); return cache.get(f); };
 
   const order = all(pres, 'p:sldId').map(n => presRels[n.getAttribute('r:id')]?.path).filter(Boolean);
   const slides = [];
@@ -244,8 +396,12 @@ export async function importPPTX(file) {
     const master = layout?.parent && zip.file(layout.parent) ? await info(layout.parent) : null;
 
     const blocks = [];
+    const slideNo = slides.length + 1;
+    const links = Object.fromEntries(Object.entries(srels).filter(([, v]) => v.type === 'hyperlink').map(([k, v]) => [k, v.path]));
+    let partRels = srels;
+    let decorMode = false;       // walking a layout/master: only its own graphics, not its placeholders        // relationships of the part being walked (slide, layout or master)
     const media = async rid => {
-      const t = srels[rid]; if (!t || !zip.file(t.path)) return null;
+      const t = partRels[rid]; if (!t || !zip.file(t.path)) return null;
       const ext = t.path.split('.').pop().toLowerCase();
       return `data:${MIME[ext] || 'image/png'};base64,${await zip.file(t.path).async('base64')}`;
     };
@@ -271,6 +427,7 @@ export async function importPPTX(file) {
 
     const addShape = async (sp, map) => {
       const ph = phOf(sp);
+      if (decorMode && ph) return;
       const inherited = ph ? (findPh(layout?.phs || [], ph) || findPh(master?.phs || [], ph)) : null;
       const own = xfrmOf(kid(sp, 'p:spPr'));
       const geo0 = own || inherited?.geo || (ph && findPh(master?.phs || [], ph)?.geo);
@@ -281,29 +438,55 @@ export async function importPPTX(file) {
       const fill = fillOf(spPr, theme);
       const ln = kid(spPr, 'a:ln');
       const stroke = ln ? (kid(ln, 'a:noFill') ? 'none' : colourOf(kid(ln, 'a:solidFill'), theme)) : null;
-      const sw = ln?.getAttribute('w') ? Math.max(1, Math.round(+ln.getAttribute('w') / 12700 * scale * 1.33)) : 1;
+      const sw = ln?.getAttribute('w') ? Math.max(1, Math.round(+ln.getAttribute('w') * scale)) : 1;   // EMU → px, like positions
       const isLine = sp.tagName === 'p:cxnSp' || prst === 'line' || prst === 'straightConnector1';
       const txBody = kid(sp, 'p:txBody');
-      const isTitle = ph && /title/i.test(ph.type);
-      const defSize = (inherited?.sz || (isTitle ? master?.styles.title : master?.styles.body) || (isTitle ? 44 : 18));
-      const t = txBody ? paragraphsHTML(txBody, ctx, { bullet: ph && ['body', 'obj'].includes(ph.type) && !isTitle ? 'ul' : null }) : null;
+      const isTitle = ph && TITLE_PH(ph.type);
+      // The text formatting this shape inherits (see paragraphsHTML).
+      const kind = !ph ? null : isTitle ? 'title' : BODY_PH(ph.type) ? 'body' : 'other';
+      const mph = ph && findPh(master?.phs || [], ph), lph = ph && findPh(layout?.phs || [], ph);
+      const levels = mergeLevels(ph ? [master?.styles[kind], mph?.levels, lph?.levels] : [defaultText, master?.styles.other]);
+      const body = merge({ l: 91440, r: 91440, t: 45720, b: 45720 }, mph?.body, lph?.body, readBody(kid(txBody, 'a:bodyPr')));
+      const t = txBody ? paragraphsHTML(txBody, { ...ctx, slideNo, links }, { levels, body }) : null;
       const hasText = t && t.html.replace(/<[^>]*>/g, '').trim();
       // Visible geometry: a filled/outlined preset shape, or a line.
       if (isLine) {
-        blocks.push({ id: uid(), type: 'shape', shape: 'line', fill: 'none', stroke: stroke && stroke !== 'none' ? stroke : '#888888', strokeWidth: sw, ...box(geo) });
+        blocks.push(lineBlock(geo, ln, stroke && stroke !== 'none' ? stroke : '#888888', sw));
       } else if ((fill && fill !== 'none') || (stroke && stroke !== 'none')) {
         blocks.push({ id: uid(), type: 'shape', shape: PRESET[prst] || 'rect', fill: fill || 'none',
           stroke: stroke && stroke !== 'none' ? stroke : (fill || 'none'), strokeWidth: stroke && stroke !== 'none' ? sw : 0, ...box(geo) });
       }
       if (!hasText) return;
-      const bodyPr = kid(txBody, 'a:bodyPr');
-      const anchor = bodyPr?.getAttribute('anchor') || inherited?.anchor || (isTitle && ph.type === 'ctrTitle' ? 'b' : null);
-      const size = t.firstSize || ctx.pt(defSize * t.fontScale);
-      blocks.push({ id: uid(), type: 'text', ...box(geo), rotation: 0, fontSize: size, html: t.html,
+      const anchor = body.anchor || (ph?.type === 'ctrTitle' ? 'b' : null);
+      const first = t.first || {};
+      const font = first.font || fonts[isTitle ? 'major' : 'minor'];
+      blocks.push({ id: uid(), type: 'text', ...box(geo), rotation: Math.round(geo.rot || 0), fontSize: first.size || ctx.pt(levels[0].r.sz || 18),
+        html: t.html, pad: [ctx.emu(body.t), ctx.emu(body.r), ctx.emu(body.b), ctx.emu(body.l)],
         ...(t.align && { textAlign: t.align }), ...(anchor && { vAlign: { t: 'top', ctr: 'middle', b: 'bottom' }[anchor] }),
-        ...(isTitle && { ph: 'title' }), ...(fonts[isTitle ? 'major' : 'minor'] && { fontFamily: `'${fonts[isTitle ? 'major' : 'minor']}', sans-serif` }) });
+        ...(body.vert && { vertical: true }),
+        ...(isTitle && { ph: 'title' }), ...(font && { fontFamily: `${cssFont(font)}, sans-serif` }) });
+    };
+    // A line or connector goes corner to corner of its box (flips choose which
+    // corners), turned by its rotation. Revela draws a horizontal line through
+    // the middle of its box, so the box is laid along the segment instead; an
+    // arrowhead at either end makes it an arrow pointing that way.
+    const lineBlock = (geo, ln, stroke, sw) => {
+      const g = { x: px(geo.x), y: px(geo.y), w: px(geo.w), h: px(geo.h) };
+      let a = [g.x, g.y], b = [g.x + g.w, g.y + g.h];
+      if (geo.flipH) { a[0] = g.x + g.w; b[0] = g.x; }
+      if (geo.flipV) { a[1] = g.y + g.h; b[1] = g.y; }
+      const cx = g.x + g.w / 2, cy = g.y + g.h / 2, r = (geo.rot || 0) * Math.PI / 180;
+      const turn = ([x, y]) => [cx + (x - cx) * Math.cos(r) - (y - cy) * Math.sin(r), cy + (x - cx) * Math.sin(r) + (y - cy) * Math.cos(r)];
+      a = turn(a); b = turn(b);
+      const tip = e => { const t = kid(ln, e)?.getAttribute('type'); return t && t !== 'none'; };
+      if (tip('a:headEnd') && !tip('a:tailEnd')) [a, b] = [b, a];      // the arrow points at the head
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]), w = Math.max(4, len / 0.94), h = Math.max(12, sw * 4);
+      return { id: uid(), type: 'shape', shape: tip('a:headEnd') || tip('a:tailEnd') ? 'arrow' : 'line', fill: 'none', stroke, strokeWidth: sw,
+        x: Math.round((a[0] + b[0]) / 2 - w / 2), y: Math.round((a[1] + b[1]) / 2 - h / 2), w: Math.round(w), h: Math.round(h),
+        rotation: Math.round(Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI), animation: null };
     };
     const addPic = async (pic, map) => {
+      if (decorMode && phOf(pic)) return;
       const geo = xfrmOf(kid(pic, 'p:spPr')); const blip = all(pic, 'a:blip')[0];
       if (!geo || !blip) return;
       const src = await media(blip.getAttribute('r:embed')); if (!src) return;
@@ -348,25 +531,62 @@ export async function importPPTX(file) {
     const addTable = (gf, map) => {
       const tbl = all(gf, 'a:tbl')[0]; const geo = xfrmOf(gf);
       if (!tbl || !geo) return;
-      const rows = [], merges = [];
+      const tblPr = kid(tbl, 'a:tblPr');
+      const st = tableStyles[kid(tblPr, 'a:tableStyleId')?.textContent] || {};
+      const levels = mergeLevels([defaultText, master?.styles.other, st.text]);
+      // The table's size: the one its cells use most (they usually all set it).
+      const sizes = {}; for (const rp of all(tbl, 'a:rPr')) { const z = rp.getAttribute('sz'); if (z) sizes[z] = (sizes[z] || 0) + 1; }
+      const common = Object.keys(sizes).sort((a, b) => sizes[b] - sizes[a])[0];
+      const size = ctx.pt(common ? +common / 100 : (levels[0].r.sz || 18));
+      const rows = [], merges = [], cellBg = {};
+      let pad = null;
       kids(tbl, 'a:tr').forEach((tr, r) => {
         rows.push(kids(tr, 'a:tc').map((tc, c) => {
           const gs = +(tc.getAttribute('gridSpan') || 1), rs = +(tc.getAttribute('rowSpan') || 1);
           if (gs > 1 || rs > 1) merges.push({ r, c, rs, cs: gs });
           if (tc.getAttribute('hMerge') === '1' || tc.getAttribute('vMerge') === '1') return '';
-          return paragraphsHTML(kid(tc, 'a:txBody'), ctx, { bullet: null }).html.replace(/<\/?div>/g, m => (m === '</div>' ? '<br>' : '')).replace(/(<br>)+$/, '');
+          const tcPr = kid(tc, 'a:tcPr');
+          const bg = fillOf(tcPr, theme); if (bg && bg !== 'none') cellBg[`${r},${c}`] = bg;
+          pad ??= tcPr && ['marT', 'marR', 'marB', 'marL'].map((k, i) => ctx.emu(+(tcPr.getAttribute(k) ?? (i % 2 ? 91440 : 45720))));
+          // Cell text: sizes relative to the table's, paragraphs as line breaks.
+          return paragraphsHTML(kid(tc, 'a:txBody'), { ...ctx, slideNo, links }, { levels, body: {}, base: { size, font: levels[0].r.font } }).html
+            .replace(/<div[^>]*>|<\/div>/g, m => (m === '</div>' ? '<br>' : '')).replace(/(<br>)+$/, '');
         }));
       });
-      const first = tbl.firstElementChild && all(tbl, 'a:tblPr')[0];
-      const b = { id: uid(), type: 'table', rows, stroke: theme.dk1 || '#444444', header: first?.getAttribute('firstRow') === '1',
-        ...(first?.getAttribute('bandRow') === '1' && { banded: true, band: theme.accent1 }), ...box(map(geo)) };
-      if (b.header && theme.accent1) { b.headBg = theme.accent1; b.headFg = theme.lt1 || '#ffffff'; }
+      const cols = kids(kid(tbl, 'a:tblGrid'), 'a:gridCol').map(g => +g.getAttribute('w') || 1);
+      // The table's real size is its columns' and rows' (the frame's may be smaller).
+      const rowsH = kids(tbl, 'a:tr').reduce((a, tr) => a + (+tr.getAttribute('h') || 0), 0);
+      const full = { ...geo, w: Math.max(geo.w, cols.reduce((a, w) => a + w, 0)), h: Math.max(geo.h, rowsH) };
+      const b = { id: uid(), type: 'table', rows, fontSize: size, stroke: st.border || theme.dk1 || '#444444',
+        header: tblPr?.getAttribute('firstRow') === '1', ...box(map(full)) };
+      if (tblPr?.getAttribute('bandRow') === '1') Object.assign(b, { banded: true, band: st.band || theme.accent1 });
+      if (b.header) { b.headBg = st.headBg || theme.accent1; b.headFg = st.headFg || theme.lt1 || '#ffffff'; }
+      if (cols.length === (rows[0]?.length || 0)) b.colW = cols.map(w => ctx.emu(w));
+      const heights = kids(tbl, 'a:tr').map(tr => ctx.emu(+tr.getAttribute('h') || 0));
+      if (heights.some(Boolean)) b.rowH = heights;
+      if (Object.keys(cellBg).length) b.cellBg = cellBg;
+      if (pad) b.cellPad = pad;
+      if (levels[0].r.font) b.fontFamily = `${cssFont(levels[0].r.font)}, sans-serif`;
       if (merges.length) b.merges = merges;
       blocks.push(b);
     };
 
     const tree = all(doc, 'p:spTree')[0];
     if (tree) await walk(tree, g => g);
+
+    // The template's own graphics (logos, lines…): the master's, unless the
+    // layout or the slide hides them, then the layout's. Kept apart so the most
+    // used set goes once into Revela's master (see after the loop).
+    const content = blocks.splice(0);
+    const showMaster = doc.documentElement.getAttribute('showMasterSp') !== '0' && layout?.showMasterSp !== false;
+    decorMode = true;
+    for (const part of [showMaster ? master : null, layout].filter(Boolean)) {
+      partRels = part.rels;
+      const t = all(part.doc, 'p:spTree')[0]; if (t) await walk(t, g => g);
+    }
+    decorMode = false; partRels = srels;
+    const decor = { key: `${layoutPath}|${showMaster}`, blocks: blocks.splice(0) };
+    blocks.push(...content);
 
     // Background: the slide's own, else its layout's, else the master's.
     const bgPr = all(doc, 'p:bgPr')[0], bgRef = all(doc, 'p:bgRef')[0];
@@ -391,12 +611,23 @@ export async function importPPTX(file) {
       transition = kinds.map(k => TRANSITION[k]).find(Boolean) || null;
       const adv = +(tr.getAttribute('advTm') || 0); if (adv) autoSlide = adv;
     }
-    slides.push({ id: uid(), sectionId: null, background, transition, hidden, notes, autoSlide, blocks });
+    slides.push({ id: uid(), sectionId: null, background, transition, hidden, notes, autoSlide, blocks, decor });
+  }
+
+  // Template graphics: the set most slides share becomes Revela's master
+  // (stored once); slides with another layout hide it and carry their own.
+  const uses = {};
+  for (const s of slides) if (s.decor.blocks.length) uses[s.decor.key] = (uses[s.decor.key] || 0) + 1;
+  const common = Object.keys(uses).sort((a, b) => uses[b] - uses[a])[0];
+  const masterBlocks = common ? slides.find(s => s.decor.key === common).decor.blocks.map(b => ({ ...b, id: uid() })) : [];
+  for (const s of slides) {
+    if (common && s.decor.key !== common) { s.hideMaster = true; s.blocks.unshift(...s.decor.blocks); }
+    delete s.decor;
   }
 
   if (!slides.length) throw new Error('No se encontraron diapositivas en el archivo.');
   const deck = { version: 3, name: (file.name || '').replace(/\.pptx$/i, '') || 'Presentación importada', size, theme: 'white',
-    defaultTransition: 'slide', transitionSpeed: 'default', sections: [], master: { id: 'master', blocks: [], background: null },
+    defaultTransition: 'slide', transitionSpeed: 'default', sections: [], master: { id: 'master', blocks: masterBlocks, background: null },
     slideNumber: { show: false, position: 'br', format: 'c' }, footer: { show: false, text: '', date: false },
     logo: { src: '', position: 'br', size: 120 }, loop: false, guides: { v: [], h: [] }, slides };
   if (theme.tx1) deck.textColor = theme.tx1;           // default text colour = the theme's text colour

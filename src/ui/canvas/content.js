@@ -2,7 +2,7 @@
 // equations (KaTeX), code (highlight.js), tables, embeds, 3D models, slide links.
 
 import { state, commit } from '../../core/store.js';
-import { webCardHTML, webCardSig, mathTeX, mathCSS, mathSig, shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan, inkSVG, inkSig, tableClass, tableVars } from '../../render/svg.js';
+import { tableColsHTML, cellBg, textPadding, webCardHTML, webCardSig, mathTeX, mathCSS, mathSig, shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan, inkSVG, inkSig, tableClass, tableVars } from '../../render/svg.js';
 import { collectFigures, captionLine, figIndexTitle } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
 import { t } from '../../i18n/index.js';
@@ -52,7 +52,7 @@ export function content(b) {
     if (b.fontFamily) d.style.fontFamily = b.fontFamily;
     if (b.lineHeight) d.style.lineHeight = b.lineHeight;
     if (b.letterSpacing) d.style.letterSpacing = b.letterSpacing + 'px';
-    if (b.indent) d.style.paddingLeft = (6 + b.indent) + 'px';
+    d.style.padding = textPadding(b);
     if (b.dir) d.dir = b.dir;
     if (b.vertical) d.style.writingMode = 'vertical-rl';
     if (b.bullet) d.style.setProperty('--bullet', b.bullet);
@@ -227,7 +227,7 @@ export function setupCode(el, b) {
     paintCode(code, b);
   });
 }
-export const tableSig = b => b.rows.length + 'x' + (b.rows[0]?.length || 0) + '|' + JSON.stringify(b.merges || []);
+export const tableSig = b => b.rows.length + 'x' + (b.rows[0]?.length || 0) + '|' + JSON.stringify([b.merges || [], b.colW, b.rowH, b.cellBg]);
 export function tableContent(b) {
   const t = document.createElement('table'); t.className = tableClass(b);
   t.dataset.sig = tableSig(b); t.style.cssText = tableVars(b);
@@ -235,13 +235,14 @@ export function tableContent(b) {
   return t;
 }
 export function fillTable(t, b) {
-  t.innerHTML = '';
+  t.innerHTML = tableColsHTML(b);
   const span = tableSpan(b);
   b.rows.forEach((row, r) => {
-    const tr = t.insertRow();
+    const tr = t.insertRow(); if (b.rowH?.[r]) tr.style.height = b.rowH[r] + 'px';
     row.forEach((cell, c) => {
       const sp = span(r, c); if (!sp) return;              // covered by a merged cell
       const td = tr.insertCell(); td.innerHTML = cell || ''; td.dataset.r = r; td.dataset.c = c;
+      if (cellBg(b, r, c)) td.style.background = cellBg(b, r, c);
       if (sp.cs > 1) td.colSpan = sp.cs; if (sp.rs > 1) td.rowSpan = sp.rs;
     });
   });

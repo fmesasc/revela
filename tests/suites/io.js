@@ -84,9 +84,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(title.x, 128, 'posición (1 in = 128 px)'); eq(title.w, 1024, 'ancho');
     eq(title.fontSize, 71, '40 pt → 71 px en un lienzo de 1280');
     eq(title.textAlign, 'center', 'alineación');
-    assert(/<b>/.test(title.html) && /color:#ff0000/.test(title.html) && /Georgia/.test(title.html), 'negrita, color y fuente');
+    assert(/<b>/.test(title.html) && /color:#ff0000/.test(title.html) && /Georgia/.test(title.fontFamily + title.html), 'negrita, color y fuente');
     const list = a.blocks.find(x => x.type === 'text' && /Uno/.test(x.html));
-    assert(/<ul><li>.*Uno.*<\/li><li>.*Dos.*<\/li><\/ul>/.test(list.html), 'viñetas como lista');
+    assert(/<ul[^>]*><li[^>]*>.*Uno.*<\/li><li[^>]*>.*Dos.*<\/li><\/ul>/.test(list.html), 'viñetas como lista');
     const ell = a.blocks.find(x => x.type === 'shape');
     eq(ell.shape, 'ellipse', 'forma'); eq(ell.fill, '#00aa00', 'relleno'); eq(ell.stroke, '#0000ff', 'borde'); eq(ell.rotation, 30, 'giro');
     const tb = b.blocks.find(x => x.type === 'table');
@@ -325,5 +325,105 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(D.querySelector('#pic-modal .pic-format option[value="svg"]'), 'forma: ofrece SVG');
     D.querySelector('#pic-modal .modal-close').click();
     assert(D.querySelector('[data-action="save-picture"]'), 'botón en Archivo');
+  });
+
+  await test('presentación igual que el editor: sin márgenes, bordes ni fondo de reveal.js en imágenes, tablas y listas', async () => {
+    reset(); R.blocks.addImage('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
+    const im = last(); Object.assign(im, { x: 100, y: 100, w: 200, h: 100 });
+    R.blocks.addTable(); const tb = last(); Object.assign(tb, { x: 400, y: 300, w: 400, h: 200 });
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden';
+    D.body.appendChild(f);
+    try {
+      f.srcdoc = R.io.buildHTML(); let img = null;
+      for (let i = 0; i < 100 && !img; i++) { await sleep(100); img = f.contentDocument?.querySelector('.reveal .stage img'); if (img && !f.contentWindow.Reveal?.isReady?.()) img = null; }
+      assert(img, 'presentación cargada');
+      const cs = f.contentWindow.getComputedStyle(img);
+      eq(cs.marginTop + ' ' + cs.borderTopWidth + ' ' + cs.backgroundColor, '0px 0px rgba(0, 0, 0, 0)', 'imagen sin margen, borde ni fondo');
+      const r = img.getBoundingClientRect(), st = f.contentDocument.querySelector('.reveal .stage').getBoundingClientRect(), k = st.width / 1280;
+      assert(Math.abs((r.top - st.top) / k - 100) < 1.5, 'la imagen está donde en el editor: ' + (r.top - st.top) / k);
+      eq(f.contentWindow.getComputedStyle(f.contentDocument.querySelector('.reveal .stage table td')).fontSize, '16px', 'tabla con su tamaño de letra');
+    } finally { f.remove(); }
+  });
+
+  await test('importar PowerPoint: formato heredado de la plantilla (tamaños, colores, interlineado), logotipos y tablas', async () => {
+    await R.vendor.loadScript(R.vendor.JSZIP, 'JSZip');
+    const W = frame.contentWindow, zip = new W.JSZip();
+    const NS = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"';
+    const rel = (id, type, target, ext = '') => `<Relationship Id="${id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/${type}" Target="${target}"${ext}/>`;
+    const rels = (...r) => `<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${r.join('')}</Relationships>`;
+    const sp = (ph, off, body, fill = '') => `<p:sp><p:nvSpPr><p:cNvPr id="2" name="s"/><p:cNvSpPr/><p:nvPr>${ph}</p:nvPr></p:nvSpPr><p:spPr>${off}${fill}</p:spPr>${body}</p:sp>`;
+    const xf = (x, y, w, h) => `<a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${w}" cy="${h}"/></a:xfrm>`;
+    const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    zip.file('ppt/presentation.xml', `<p:presentation ${NS}><p:sldMasterIdLst><p:sldMasterId r:id="rId1"/></p:sldMasterIdLst><p:sldIdLst><p:sldId id="256" r:id="rId2"/></p:sldIdLst><p:sldSz cx="9144000" cy="5143500"/>`
+      + `<p:defaultTextStyle><a:lvl1pPr><a:defRPr sz="1400"/></a:lvl1pPr></p:defaultTextStyle></p:presentation>`);
+    zip.file('ppt/_rels/presentation.xml.rels', rels(rel('rId1', 'slideMaster', 'slideMasters/slideMaster1.xml'), rel('rId2', 'slide', 'slides/slide1.xml'), rel('rId3', 'theme', 'theme/theme1.xml')));
+    zip.file('ppt/theme/theme1.xml', `<a:theme ${NS}><a:themeElements><a:clrScheme name="c"><a:dk1><a:srgbClr val="000000"/></a:dk1><a:lt1><a:srgbClr val="FFFFFF"/></a:lt1></a:clrScheme>`
+      + `<a:fontScheme name="f"><a:majorFont><a:latin typeface="Arial"/></a:majorFont><a:minorFont><a:latin typeface="Arial"/></a:minorFont></a:fontScheme></a:themeElements></a:theme>`);
+    // Master: the sizes and colours live here (as in Google Slides exports).
+    zip.file('ppt/slideMasters/slideMaster1.xml', `<p:sldMaster ${NS}><p:cSld><p:spTree>`
+      + sp('<p:ph type="title"/>', xf(311700, 445025, 8520600, 572700), `<p:txBody><a:bodyPr/><a:lstStyle><a:lvl1pPr><a:defRPr sz="2800"><a:solidFill><a:srgbClr val="652D90"/></a:solidFill></a:defRPr></a:lvl1pPr></a:lstStyle><a:p/></p:txBody>`)
+      + sp('<p:ph type="body" idx="1"/>', xf(311700, 1152475, 8520600, 3416400), `<p:txBody><a:bodyPr/><a:lstStyle><a:lvl1pPr marL="457200" indent="-342900"><a:lnSpc><a:spcPct val="115000"/></a:lnSpc><a:buChar char="●"/><a:defRPr sz="1800"><a:solidFill><a:srgbClr val="475569"/></a:solidFill></a:defRPr></a:lvl1pPr></a:lstStyle><a:p/></p:txBody>`)
+      + `</p:spTree></p:cSld><p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2"/><p:txStyles><p:titleStyle><a:lvl1pPr><a:defRPr sz="1400"/></a:lvl1pPr></p:titleStyle><p:bodyStyle><a:lvl1pPr><a:defRPr sz="1400"/></a:lvl1pPr></p:bodyStyle><p:otherStyle><a:lvl1pPr><a:defRPr sz="1400"/></a:lvl1pPr></p:otherStyle></p:txStyles></p:sldMaster>`);
+    zip.file('ppt/slideMasters/_rels/slideMaster1.xml.rels', rels(rel('rId1', 'theme', '../theme/theme1.xml')));
+    // Layout: placeholders without size (inherit) and a logo.
+    zip.file('ppt/slideLayouts/slideLayout1.xml', `<p:sldLayout ${NS}><p:cSld><p:spTree>`
+      + sp('<p:ph type="title"/>', xf(311700, 445025, 8520600, 572700), `<p:txBody><a:bodyPr/><a:lstStyle><a:lvl1pPr><a:defRPr/></a:lvl1pPr></a:lstStyle><a:p/></p:txBody>`)
+      + `<p:pic><p:nvPicPr><p:cNvPr id="9" name="logo"/><p:cNvPicPr/><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="rId2"/></p:blipFill><p:spPr>${xf(311700, 4600000, 1500000, 400000)}</p:spPr></p:pic>`
+      + `</p:spTree></p:cSld></p:sldLayout>`);
+    zip.file('ppt/slideLayouts/_rels/slideLayout1.xml.rels', rels(rel('rId1', 'slideMaster', '../slideMasters/slideMaster1.xml'), rel('rId2', 'image', '../media/logo.png')));
+    zip.file('ppt/media/logo.png', png, { base64: true });
+    zip.file('ppt/tableStyles.xml', `<a:tblStyleLst ${NS.split(' ')[0]}><a:tblStyle styleId="{T}"><a:wholeTbl><a:tcTxStyle><a:font><a:latin typeface="Arial"/></a:font><a:srgbClr val="000000"/></a:tcTxStyle><a:tcStyle><a:tcBdr><a:left><a:ln><a:solidFill><a:srgbClr val="9E9E9E"/></a:solidFill></a:ln></a:left></a:tcBdr></a:tcStyle></a:wholeTbl></a:tblStyle></a:tblStyleLst>`);
+    const tc = (t, fill = '') => `<a:tc><a:txBody><a:bodyPr/><a:p><a:r><a:rPr sz="1300"/><a:t>${t}</a:t></a:r></a:p></a:txBody><a:tcPr marL="91440" marR="91440" marT="91440" marB="91440">${fill}</a:tcPr></a:tc>`;
+    zip.file('ppt/slides/slide1.xml', `<p:sld ${NS}><p:cSld><p:spTree>`
+      + sp('<p:ph type="title"/>', '', `<p:txBody><a:bodyPr><a:normAutofit fontScale="90000"/></a:bodyPr><a:p><a:r><a:rPr lang="ca"/><a:t>Títol</a:t></a:r></a:p></p:txBody>`, '<a:solidFill><a:srgbClr val="000000"><a:alpha val="0"/></a:srgbClr></a:solidFill>')
+      + sp('<p:ph type="body" idx="1"/>', '', `<p:txBody><a:bodyPr/><a:p><a:r><a:rPr b="1"/><a:t>Negreta</a:t></a:r><a:r><a:rPr/><a:t> i </a:t></a:r><a:r><a:rPr i="1"><a:hlinkClick r:id="rId3"/></a:rPr><a:t>enllaç</a:t></a:r></a:p>`
+        + `<a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr/><a:t>A      [ OK ]</a:t></a:r></a:p></p:txBody>`)
+      + sp('<p:ph type="sldNum" idx="12"/>', xf(8400000, 4700000, 500000, 300000), `<p:txBody><a:bodyPr/><a:p><a:fld id="{1}" type="slidenum"><a:t>‹#›</a:t></a:fld></a:p></p:txBody>`)
+      + `<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="7" name="t"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr><p:xfrm><a:off x="311700" y="3000000"/><a:ext cx="100" cy="100"/></p:xfrm>`
+        + `<a:graphic><a:graphicData><a:tbl><a:tblPr><a:tableStyleId>{T}</a:tableStyleId></a:tblPr><a:tblGrid><a:gridCol w="2000000"/><a:gridCol w="4000000"/></a:tblGrid>`
+        + `<a:tr h="381000">${tc('Cap', '<a:solidFill><a:srgbClr val="8E7CC3"/></a:solidFill>')}${tc('B')}</a:tr><a:tr h="381000">${tc('1')}${tc('2')}</a:tr></a:tbl></a:graphicData></a:graphic></p:graphicFrame>`
+      + `<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="20" name="c"/><p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr><p:spPr>${xf(1000000, 1000000, 1000000, 1000000)}<a:prstGeom prst="straightConnector1"/><a:ln w="28575"><a:solidFill><a:srgbClr val="FF0000"/></a:solidFill><a:tailEnd type="triangle"/></a:ln></p:spPr></p:cxnSp>`
+      + `<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="21" name="d"/><p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr><p:spPr><a:xfrm flipH="1" rot="10800000"><a:off x="1000000" y="3000000"/><a:ext cx="1000000" cy="0"/></a:xfrm><a:prstGeom prst="straightConnector1"/><a:ln w="12700"><a:solidFill><a:srgbClr val="0000FF"/></a:solidFill><a:headEnd type="stealth"/></a:ln></p:spPr></p:cxnSp>`
+      + `</p:spTree></p:cSld></p:sld>`);
+    zip.file('ppt/slides/_rels/slide1.xml.rels', rels(rel('rId1', 'slideLayout', '../slideLayouts/slideLayout1.xml'), rel('rId3', 'hyperlink', 'https://example.org/', ' TargetMode="External"')));
+    const deck = await R.pptxImport.importPPTX(new W.File([await zip.generateAsync({ type: 'blob' })], 'plantilla.pptx'));
+    const pt = v => Math.round(v * 12700 * 1280 / 9144000);
+    const s1 = deck.slides[0], texts = s1.blocks.filter(b => b.type === 'text');
+    const title = texts.find(b => /Títol/.test(b.html));
+    eq(title.fontSize, pt(28 * 0.9), 'título: 28 pt del patrón (no 14 pt del estilo genérico) y reducido al 90 %');
+    assert(/color:#652d90/.test(title.html), 'título con el color del patrón');
+    assert(!s1.blocks.some(b => b.type === 'shape' && /^#000000/.test(b.fill || '')), 'relleno totalmente transparente: sin forma negra');
+    const body = texts.find(b => /Negreta/.test(b.html));
+    eq(body.fontSize, pt(18), 'cuerpo: 18 pt del patrón');
+    assert(/color:#475569/.test(body.html), 'cuerpo con su color');
+    assert(/<li[^>]*line-height:1\.38/.test(body.html), 'interlineado 115 % del patrón');
+    assert(/list-style-type:'●/.test(body.html) && /margin-left:64px/.test(body.html), 'viñeta ● y sangría del patrón');
+    assert(/<b>[^<]*Negreta/.test(body.html) || /<b><span[^>]*>Negreta/.test(body.html), 'negrita');
+    assert(/<a href="https:\/\/example\.org\/"[^>]*><i>[^<]*enllaç/.test(body.html) || /<a href="https:\/\/example\.org\/"[^>]*>.*enllaç/.test(body.html), 'enlace con cursiva');
+    assert(/A      \[ OK \]/.test(body.html), 'se conservan los espacios que alinean: ' + JSON.stringify(body.html.match(/A[^\[]*\[/)?.[0]));
+    assert(Array.isArray(body.pad) && body.pad[3] === pt(0) + Math.round(91440 * 1280 / 9144000) - pt(0), 'margen interno del cuadro');
+    assert(texts.some(b => />1</.test(b.html)), 'número de diapositiva en vez de ‹#›');
+    eq(deck.master.blocks.filter(b => b.type === 'image').length, 1, 'el logotipo de la plantilla va al patrón');
+    assert(!s1.hideMaster, 'y la diapositiva lo muestra');
+    const [c1, c2] = s1.blocks.filter(b => b.type === 'shape');
+    assert(c1 && c1.shape === 'arrow' && c1.rotation === 45, 'flecha diagonal: ' + JSON.stringify(c1 && [c1.shape, c1.rotation]));
+    eq(c1.strokeWidth, Math.round(28575 * 1280 / 9144000), 'grosor de línea en px (2,25 pt no es 1 px)');
+    eq(c1.stroke, '#ff0000', 'color de la línea');
+    const mid = [c1.x + c1.w / 2, c1.y + c1.h / 2], want = Math.round(1500000 * 1280 / 9144000);
+    assert(Math.abs(mid[0] - want) <= 1 && Math.abs(mid[1] - want) <= 1, 'centrada en su segmento');
+    // Flipped and turned 180°: the start (where the tip is) ends up on the left,
+    // so it points left — like the red arrow of a real Google Slides deck.
+    assert(c2.shape === 'arrow' && Math.abs(c2.rotation) === 180, 'volteo + giro + punta al inicio: ' + c2.rotation);
+    const tb = s1.blocks.find(b => b.type === 'table');
+    eq(tb.fontSize, pt(13), 'tabla: tamaño de letra de las celdas');
+    eq(tb.w, Math.round(6000000 * 1280 / 9144000), 'tabla: ancho de sus columnas, no del marco');
+    eq(JSON.stringify(tb.colW), JSON.stringify([2000000, 4000000].map(w => Math.round(w * 1280 / 9144000))), 'anchos de columna');
+    eq(tb.cellBg['0,0'], '#8e7cc3', 'color de celda'); eq(tb.stroke, '#9e9e9e', 'bordes del estilo de tabla');
+    eq(tb.rowH.length, 2, 'alturas de fila'); eq(tb.cellPad[0], 13, 'margen de celda');
+    // In the editor and in the show the table looks the same.
+    R.store.replaceDeck(deck); R.render(); await sleep(50);
+    const td = D.querySelector(`.block[data-id="${tb.id}"] td`);
+    eq(W.getComputedStyle(td).paddingTop, '13px', 'el editor respeta el margen de celda');
+    eq(td.style.background ? 'sí' : 'no', 'sí', 'el editor pinta el color de celda');
   });
 }

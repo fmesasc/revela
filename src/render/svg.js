@@ -17,11 +17,16 @@ const rgba = (hex, a) => { const m = String(hex || '').match(/^#([0-9a-f]{6})$/i
   const n = parseInt(m[1], 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
 export const tableClass = b => 'tbl' + (b.header ? ' has-header' : '') + (b.banded ? ' banded' : '')
   + (b.firstCol ? ' first-col' : '') + (b.lines ? ' lines' : '');
-export const tableVars = b => `--stroke:${b.stroke || '#fff'};`
+// Tables keep their own text size (the editor and reveal.js would otherwise
+// give different ones), and optionally column widths, row heights, cell
+// fills and cell margins (imported from PowerPoint).
+export const tableVars = b => `--stroke:${b.stroke || '#fff'};font-size:${b.fontSize || 16}px;`
+  + (b.fontFamily ? `font-family:${b.fontFamily};` : '')
+  + (b.cellPad ? `--cell-pad:${b.cellPad.map(v => v + 'px').join(' ')};` : '') + (b.colW ? 'table-layout:fixed;' : '')
   + (b.headBg ? `--th-bg:${b.headBg};` : '') + (b.headFg ? `--th-fg:${b.headFg};` : '')
   + (b.band ? `--band:${rgba(b.band, b.bandAlpha ?? 0.18)};` : '');
 export const tableCSS = (pre = '') => `${pre}table.tbl{border-collapse:collapse;width:100%;height:100%;margin:0}`
-  + `${pre}table.tbl td{border:1px solid var(--stroke,#fff);padding:.15em .4em;vertical-align:top}`
+  + `${pre}table.tbl td{border:1px solid var(--stroke,#fff);padding:var(--cell-pad,.15em .4em);vertical-align:top}`
   + `${pre}table.tbl.lines td{border-width:0 0 1px 0}`
   + `${pre}table.tbl.banded:not(.has-header) tr:nth-child(odd) td,${pre}table.tbl.banded.has-header tr:nth-child(even) td{background:var(--band,rgba(127,127,127,.18))}`
   + `${pre}table.tbl.first-col td:first-child{font-weight:700}`
@@ -49,12 +54,15 @@ export function tableSpan(b) {
     return { cs: 1, rs: 1 };
   };
 }
+export const tableColsHTML = b => (b.colW ? `<colgroup>${b.colW.map(w => `<col style="width:${(100 * w / b.colW.reduce((a, x) => a + x, 0)).toFixed(3)}%">`).join('')}</colgroup>` : '');
+export const cellBg = (b, r, c) => b.cellBg?.[`${r},${c}`] || '';
 export function tableRowsHTML(b, cellStyle = '') {
   const span = tableSpan(b);
-  return b.rows.map((row, r) => `<tr>${row.map((cell, c) => {
+  return tableColsHTML(b) + b.rows.map((row, r) => `<tr${b.rowH?.[r] ? ` style="height:${b.rowH[r]}px"` : ''}>${row.map((cell, c) => {
     const s = span(r, c); if (!s) return '';
     const at = (s.cs > 1 ? ` colspan="${s.cs}"` : '') + (s.rs > 1 ? ` rowspan="${s.rs}"` : '');
-    return `<td${at}${cellStyle ? ` style="${cellStyle}"` : ''}>${cell || ''}</td>`;
+    const st = cellStyle + (cellBg(b, r, c) ? `background:${cellBg(b, r, c)};` : '');
+    return `<td${at}${st ? ` style="${st}"` : ''}>${cell || ''}</td>`;
   }).join('')}</tr>`).join('');
 }
 
@@ -328,3 +336,11 @@ export function webCardHTML(b, openLabel = 'Abrir la web') {
     + `<div style="display:flex;align-items:center;gap:14px;max-width:100%">${icon}${text}</div>${button}</div>`;
 }
 export const webCardSig = b => JSON.stringify([b.src, b.cardTitle, b.poster ? b.poster.length + b.poster.slice(-32) : '']);
+
+// Inner margins of a text box: its own (imported from PowerPoint, [top, right,
+// bottom, left] px) or 6 px, plus the paragraph indent. The same in the editor
+// and the show (the export had none, so text sat 6 px off).
+export function textPadding(b) {
+  const [t, r, bt, l] = Array.isArray(b.pad) ? b.pad : [6, 6, 6, 6];
+  return `${t}px ${r}px ${bt}px ${l + (b.indent || 0)}px`;
+}

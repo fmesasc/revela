@@ -55,8 +55,21 @@ export const FONTS = [
 ];
 
 const byStack = new Map(FONTS.map(f => [f.stack, f]));
-const googleUrl = family =>
-  `https://fonts.googleapis.com/css2?family=${family.replace(/ /g, '+')}:wght@400;700&display=swap`;
+// Google's icon fonts (Material Icons in Google Slides decks): words drawn as
+// icons through ligatures. They have their own stylesheet URLs.
+const ICON_FONTS = {
+  'Material Icons': 'https://fonts.googleapis.com/icon?family=Material+Icons',
+  'Material Icons Outlined': 'https://fonts.googleapis.com/icon?family=Material+Icons+Outlined',
+  'Material Icons Round': 'https://fonts.googleapis.com/icon?family=Material+Icons+Round',
+  'Material Symbols Outlined': 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined',
+  'Material Symbols Rounded': 'https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded',
+};
+const GOOGLE = new Map([...FONTS.filter(f => f.google).map(f => [f.google.toLowerCase(), f.google]),
+  ...Object.keys(ICON_FONTS).map(k => [k.toLowerCase(), k])]);
+const googleUrl = family => ICON_FONTS[family]
+  || `https://fonts.googleapis.com/css2?family=${family.replace(/ /g, '+')}:wght@400;700&display=swap`;
+// The Google family named first in a CSS font-family value, if any.
+const googleIn = value => GOOGLE.get(String(value || '').split(',')[0].replace(/["']|&quot;/g, '').trim().toLowerCase()) || null;
 
 const loaded = new Set();
 function inject(family, doc = document) {
@@ -79,11 +92,12 @@ export function googleFamiliesInDeck(deck) {
   const used = new Set();
   const df = byStack.get(deck.bodyFont);            // theme body font (default for text)
   if (df && df.google) used.add(df.google);
-  for (const s of deck.slides)
-    for (const b of s.blocks) {
-      const f = byStack.get(b.fontFamily);
-      if (f && f.google) used.add(f.google);
-    }
+  // Named by the box, or inside the text (imported decks: 'Roboto', sans-serif…).
+  for (const b of [...(deck.master?.blocks || []), ...deck.slides.flatMap(s => s.blocks)]) {
+    const f = byStack.get(b.fontFamily);
+    if (f && f.google) used.add(f.google); else if (googleIn(b.fontFamily)) used.add(googleIn(b.fontFamily));
+    for (const m of String(b.html || '').matchAll(/font-family:\s*([^;"]+)/g)) if (googleIn(m[1])) used.add(googleIn(m[1]));
+  }
   return [...used];
 }
 
