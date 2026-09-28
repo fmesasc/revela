@@ -86,6 +86,7 @@ function forThumb(i) {
     ['Eliminar diapositiva', () => deleteSlide(i)],
     null,
     [slide.hidden ? 'Mostrar diapositiva' : 'Ocultar diapositiva', () => toggleSlideHidden(i)],
+    [slide.uncounted ? 'Contar en la numeración' : 'No contar en la numeración (anexo)', () => commit(() => { if (slide.uncounted) delete slide.uncounted; else slide.uncounted = true; })],
     i > 0 ? [slide.vertical ? 'Sacar de la pila vertical' : 'Colocar debajo de la anterior (vertical)', () => slidesMod.toggleVertical(i)] : null,
     null,
     ['Crear sección aquí', () => addSectionAt(i)],

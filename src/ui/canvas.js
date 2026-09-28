@@ -15,6 +15,7 @@ import { cameraRadius } from '../features/media.js';
 import { pollEditorHTML, savedVotes } from '../features/poll.js';
 const pollSig = b => JSON.stringify([b.kind, b.display, b.question, b.options, b.fontSize, savedVotes(b.pollId)]);
 import { masterBlocksFor, PH_PROMPT, isEmptyPlaceholder } from '../features/master.js';
+import { stageBackground } from '../io/reveal.js';
 import { autocorrectAtCaret } from '../features/autocorrect.js';
 
 function renderSlideRef(wrap, b) {
@@ -144,7 +145,7 @@ export function renderCanvas() {
   const { w, h } = state.deck.size;
   stage.style.width = w + 'px';
   stage.style.height = h + 'px';
-  stage.style.background = slide.background || state.deck.slides[state.ui.slideIndex]?.background || '#101317';
+  stage.style.background = (slide.background ? stageBackground(slide) : null) || state.deck.slides[state.ui.slideIndex]?.background || '#101317';
   stage.classList.toggle('editing-master', !!state.ui.editMaster);
   stage.style.color = deckFg();
   stage.style.fontFamily = deckBodyFont();
@@ -165,6 +166,7 @@ export function renderCanvas() {
   drawCaptions();
   drawMotionPath();
   drawMasterLayer();
+  drawBgMedia(slide);
   const banner = document.getElementById('master-banner');
   if (banner) banner.hidden = !state.ui.editMaster;
   // Screen readers: name the slide and announce the selected object.
@@ -172,6 +174,21 @@ export function renderCanvas() {
   const sel = selectedBlock(), sr = document.getElementById('sr-status');
   const msg = sel ? `${t('Seleccionado')}: ${blockLabel(sel, t)}` : '';
   if (sr && sr.textContent !== msg) sr.textContent = msg;
+}
+
+// Video / web page / translucent image behind the slide (Design ▸ Advanced background).
+function drawBgMedia(slide) {
+  const want = slide.bgVideo ? 'v:' + slide.bgVideo : slide.bgIframe ? 'i:' + slide.bgIframe
+    : (slide.bgOpacity ?? 100) < 100 ? 'o:' + slide.bgOpacity + slide.background : '';
+  let el = stage.querySelector('.bg-media');
+  if (!want) { el?.remove(); return; }
+  if (!el) { el = document.createElement('div'); el.className = 'bg-media'; }
+  if (stage.firstChild !== el) stage.insertBefore(el, stage.firstChild);
+  if (el.dataset.k === want) return;
+  el.dataset.k = want; el.innerHTML = ''; el.style.cssText = '';
+  if (slide.bgVideo) { const v = document.createElement('video'); Object.assign(v, { src: slide.bgVideo, muted: true, loop: true, autoplay: true, playsInline: true }); el.appendChild(v); v.play?.().catch(() => {}); }
+  else if (slide.bgIframe) { const f = document.createElement('iframe'); f.src = slide.bgIframe; f.setAttribute('referrerpolicy', 'no-referrer'); f.setAttribute('sandbox', 'allow-scripts allow-same-origin'); el.appendChild(f); }
+  else { el.style.background = slide.background; el.style.opacity = slide.bgOpacity / 100; }
 }
 
 // Master objects, drawn (not editable) under the slide's own objects.

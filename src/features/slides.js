@@ -60,6 +60,20 @@ export function goToSlide(index) {
 }
 
 // Hidden slides stay in the editor but are skipped during the presentation.
+// Advanced background: fit of the image (cover / contain / tile), opacity,
+// video or web page behind the slide, and the background's own transition.
+export function setBackgroundOptions(props, all = false) {
+  commit(() => {
+    const apply = s => {
+      for (const [k, v] of Object.entries(props)) { if (v === '' || v == null || v === false && k !== 'bgVideoLoop' && k !== 'bgVideoMuted') delete s[k]; else s[k] = v; }
+      if (props.bgFit && /url\(/.test(s.background || '')) {
+        const u = /url\([^)]*\)/.exec(s.background)[0];
+        s.background = props.bgFit === 'tile' ? `${u} top left / auto repeat` : `${u} center / ${props.bgFit} no-repeat`;
+      }
+    };
+    (all ? state.deck.slides : [currentSlide()]).forEach(apply);
+  });
+}
 // Vertical stack (reveal.js vertical slides): below the previous slide.
 export function toggleVertical(index = state.ui.slideIndex) {
   if (index <= 0) return;

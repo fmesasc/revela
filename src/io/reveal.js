@@ -271,6 +271,11 @@ function slideRefExport(b, originSlide, deck) {
     + `border:1px solid #ffffff88;border-radius:6px;background:${target.background}">`
     + `<div style="width:${w}px;height:${h}px;transform:scale(${scale});transform-origin:top left;position:relative">${inner}</div></a>`;
 }
+// The slide's own background drawn on the stage: none under a video / web
+// background (so it shows), and a separate layer when it has an opacity.
+export const stageBackground = s => (s.bgVideo || s.bgIframe || (s.bgOpacity ?? 100) < 100 ? 'transparent' : s.background);
+export const bgLayer = s => ((s.bgOpacity ?? 100) < 100 && !s.bgVideo && !s.bgIframe
+  ? `<div style="position:absolute;inset:0;background:${s.background};opacity:${s.bgOpacity / 100};pointer-events:none"></div>` : '');
 function slideHTML(s, deck, figMap) {
   // Entry/exit can differ (reveal's "x-in y-out"); speed can be set per slide.
   const tin = s.transition || deck.defaultTransition || 'slide';
@@ -279,7 +284,12 @@ function slideHTML(s, deck, figMap) {
   const speed = s.transitionSpeed ? ` data-transition-speed="${s.transitionSpeed}"` : '';
   const auto = s.autoSlide ? ` data-autoslide="${s.autoSlide}"` : '';
   const solid = /^(#|rgb)/.test(s.background || '');
-  const bg = solid ? ` data-background-color="${s.background}"` : '';
+  // Media backgrounds (reveal.js): video, web page, plus the background's own transition.
+  const bg = (solid ? ` data-background-color="${s.background}"` : '')
+    + (s.bgVideo ? ` data-background-video="${esc(s.bgVideo)}"${s.bgVideoLoop !== false ? ' data-background-video-loop' : ''}${s.bgVideoMuted !== false ? ' data-background-video-muted' : ''}` : '')
+    + (s.bgIframe ? ` data-background-iframe="${esc(s.bgIframe)}"${s.bgInteractive ? ' data-background-interactive' : ''}` : '')
+    + (s.bgTransition ? ` data-background-transition="${s.bgTransition}"` : '')
+    + (s.uncounted ? ' data-visibility="uncounted"' : '');
   const tl = animTimeline(s);
   const inner = blocksOf(s, deck).map(b0 => {
     // Effective start time within the click ("with/after previous" resolved).
@@ -295,7 +305,7 @@ function slideHTML(s, deck, figMap) {
   const notes = s.notes ? `<aside class="notes">${esc(s.notes)}</aside>` : '';
   const aa = s.autoAnimate ? ' data-auto-animate' : '';
   return `<section${trans}${speed}${auto}${bg}${aa}>`
-    + `<div class="stage" style="background:${s.background}">${inner}</div>${notes}</section>`;
+    + `<div class="stage${s.bgIframe && s.bgInteractive ? ' pass' : ''}" style="background:${stageBackground(s)}">${bgLayer(s)}${inner}</div>${notes}</section>`;
 }
 
 // Where the slide number sits, as CSS for reveal's .slide-number element.
@@ -361,6 +371,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  .reveal section{height:100%}
  .reveal .slide-number{${snPos}}
  ${tableCSS('.reveal ')}
+ .reveal .stage.pass{pointer-events:none} .reveal .stage.pass>*{pointer-events:auto}
  .reveal .rv-code pre{box-shadow:none}
  .reveal .rv-code pre code{max-height:100%;height:100%;box-sizing:border-box;overflow:auto;scrollbar-width:thin;scrollbar-color:#6668 transparent}
  .reveal .rv-code.no-scroll pre code{overflow:hidden}

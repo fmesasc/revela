@@ -1547,6 +1547,26 @@ export async function run(frame) {
     finally { f.remove(); }
   });
 
+  await test('fondos avanzados: vídeo, web, mosaico, opacidad, transición y no contar', async () => {
+    reset(); const s = slide(); s.background = 'url(data:image/png;base64,AAAA) center/cover no-repeat';
+    D.querySelector('[data-action="bg-advanced"]').click(); await sleep(10);
+    const q = x => D.querySelector('#bg-modal ' + x);
+    q('.bg-fit').value = 'tile'; q('.bg-op').value = '40'; q('.bg-tr').value = 'zoom'; q('.bg-ok').click(); await sleep(10);
+    assert(/top left \/ auto repeat/.test(s.background), 'imagen en mosaico'); eq(s.bgOpacity, 40, 'opacidad');
+    assert(D.querySelector('#stage .bg-media') && D.querySelector('#stage .bg-media').style.opacity === '0.4', 'capa translúcida en el lienzo');
+    let html = R.io.buildHTML();
+    assert(/data-background-transition="zoom"/.test(html), 'transición del fondo'); assert(/opacity:0\.4;pointer-events:none/.test(html), 'opacidad en el export');
+    R.slides.setBackgroundOptions({ bgVideo: 'https://ejemplo.org/v.mp4', bgVideoLoop: true, bgVideoMuted: false }); await sleep(10);
+    html = R.io.buildHTML();
+    assert(/data-background-video="https:\/\/ejemplo\.org\/v\.mp4" data-background-video-loop(?! data-background-video-muted)/.test(html), 'vídeo de fondo con sonido y en bucle');
+    assert(/<div class="stage" style="background:transparent">/.test(html), 'la diapositiva deja ver el vídeo');
+    assert(D.querySelector('#stage .bg-media video'), 'vídeo de fondo en el lienzo');
+    R.slides.setBackgroundOptions({ bgVideo: '', bgIframe: 'https://ejemplo.org', bgInteractive: true }); s.uncounted = true;
+    html = R.io.buildHTML();
+    assert(/data-background-iframe="https:\/\/ejemplo\.org" data-background-interactive/.test(html) && /class="stage pass"/.test(html), 'web interactiva de fondo');
+    assert(/data-visibility="uncounted"/.test(html), 'diapositiva que no cuenta en la numeración');
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

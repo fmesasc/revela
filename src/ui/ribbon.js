@@ -30,6 +30,7 @@ import * as media from '../features/media.js';
 import * as poll from '../features/poll.js';
 import { openPollEditor } from './poll-dialog.js';
 import { openCodeEditor } from './code-dialog.js';
+import { openBackgroundDialog } from './background-dialog.js';
 import { openDashboardDialog } from './data-dialog.js';
 import { openStockImages, openOnlineIcons } from './stock-dialog.js';
 import * as palettes from '../features/palettes.js';
@@ -127,6 +128,7 @@ const ACTIONS = {
   'undo': undo, 'redo': redo,
   'slide-add': slides.addSlide, 'slide-duplicate': slides.duplicateSlide,
   'slide-vertical': () => slides.toggleVertical(),
+  'bg-advanced': () => openBackgroundDialog(),
   'slide-delete': () => slides.deleteSlide(),
   'section-add': () => slides.addSection(),   // creates + renames inline (no prompt)
   'insert-text': blocks.addText,

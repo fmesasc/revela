@@ -90,7 +90,8 @@ the origin of every requirement is traceable.
 - ✅ Drag-and-drop slide reordering `PP·GS·OO`
 - ✅ Duplicate / delete / hide slide `PP·GS·OO`
 - ✅ Templates & slide layouts (built-in + save current, change layout from Home) `PP·GS·OO`
-- ✅ Per-slide background: colour, gradient, image (apply to all) `PP·GS·OO`
+- ✅ Per-slide background: colour, gradient, image (cover/contain/tile, opacity), video, interactive web page, background transition (apply to all) `PP·GS·OO`
+- ✅ Vertical slides (reveal.js stacks) and slides not counted in the numbering `—`
 - ✅ Themes `PP·GS·OO`
 - ✅ Slide size (16∶9 / 4∶3) `PP·GS·OO`
 - ✅ Speaker notes (editor panel + presenter view) `PP·GS·OO`
