@@ -79,6 +79,7 @@ const ACTIONS = {
   'toggle-notes': () => commit(() => (state.ui.showNotes = !state.ui.showNotes), { history: false }),
   'connect-mobile': () => remote.openHostPanel(),
   'shortcuts': () => openShortcuts(),
+  'insert-hf': () => openHeaderFooter(),
   'find-replace': () => search.openFindPanel(),
   'copy-style': () => format.copyStyle(),
   'paste-style': () => format.pasteStyle(),
@@ -151,6 +152,8 @@ export function initRibbon() {
     if (ics) { e.stopPropagation(); togglePopover(ics, 'icons'); return; }
     const wa = e.target.closest('[data-wordart]');
     if (wa) { e.stopPropagation(); togglePopover(wa, 'wordart'); return; }
+    const lo = e.target.closest('[data-layout-open]');
+    if (lo) { e.stopPropagation(); togglePopover(lo, 'layout'); return; }
     const tab = e.target.closest('[data-tab]');
     if (tab) { commit(() => (state.ui.activeTab = tab.dataset.tab), { history: false }); return; }
     const act = e.target.closest('[data-action]');
@@ -267,6 +270,30 @@ function updateFormatState() {
   }
 }
 
+function openHeaderFooter() {
+  if (document.getElementById('hf-modal')) return;
+  const f = state.deck.footer, sn = state.deck.slideNumber;
+  const back = document.createElement('div');
+  back.id = 'hf-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:left;min-width:320px">
+    <button class="modal-close">✕</button><h3>${t('Encabezado y pie')}</h3>
+    <label class="fr-chk"><input type="checkbox" class="hf-foot" ${f.show ? 'checked' : ''}> ${t('Mostrar pie de página')}</label>
+    <label class="fr-l">${t('Texto del pie')}<input type="text" class="hf-text" value="${(f.text || '').replace(/"/g, '&quot;')}"></label>
+    <label class="fr-chk"><input type="checkbox" class="hf-date" ${f.date ? 'checked' : ''}> ${t('Fecha')}</label>
+    <label class="fr-chk"><input type="checkbox" class="hf-num" ${sn.show ? 'checked' : ''}> ${t('Número de diapositiva')}</label>
+    <div class="fr-actions"><button class="fr-do hf-ok">${t('Aplicar')}</button></div>
+  </div>`;
+  document.body.appendChild(back);
+  const q = s => back.querySelector(s); const close = () => back.remove();
+  q('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  q('.hf-foot').addEventListener('change', e => commit(() => { state.deck.footer.show = e.target.checked; }));
+  q('.hf-text').addEventListener('input', e => commit(() => { state.deck.footer.text = e.target.value; }, { history: false }));
+  q('.hf-date').addEventListener('change', e => commit(() => { state.deck.footer.date = e.target.checked; }));
+  q('.hf-num').addEventListener('change', e => commit(() => { state.deck.slideNumber.show = e.target.checked; }));
+  q('.hf-ok').addEventListener('click', close);
+}
+
 const SHORTCUTS = [
   ['Ctrl/⌘ + Z', 'Deshacer'], ['Ctrl/⌘ + Y', 'Rehacer'], ['Ctrl/⌘ + D', 'Duplicar'],
   ['Ctrl/⌘ + G', 'Agrupar'], ['Ctrl/⌘ + Mayús + G', 'Desagrupar'], ['Ctrl/⌘ + F', 'Buscar y reemplazar'],
@@ -303,6 +330,8 @@ const POPS = {
     + ICON_NAMES.map(n => `<button data-icon="${n}" type="button" title="${n}">${iconSVG({ icon: n, color: '#333' })}</button>`).join('') + `</div>`,
   wordart: () => `<h4>Text Art</h4><div class="wa-grid">`
     + WORDART_KEYS.map(k => `<button data-wa="${k}" type="button" style="${wordartCSS(k)}">Aa</button>`).join('') + `</div>`,
+  layout: () => `<h4>${t('Diseño')}</h4><div class="layout-grid">`
+    + Object.entries(templates.BUILTIN).map(([k, v]) => `<button data-layout="${k}" type="button">${t(v.name)}</button>`).join('') + `</div>`,
   paragraph: () => {
     const b = selectedBlock(); const tb = b && b.type === 'text' ? b : {};
     return `<h4>${t('Párrafo')}</h4>
@@ -348,6 +377,8 @@ function togglePopover(launcher, type) {
     x.addEventListener('click', () => { blocks.addIcon(x.dataset.icon); closePopover(); }));
   pop.querySelectorAll('[data-wa]').forEach(x =>
     x.addEventListener('click', () => { blocks.addWordArt(x.dataset.wa); closePopover(); }));
+  pop.querySelectorAll('[data-layout]').forEach(x =>
+    x.addEventListener('click', () => { templates.applyTemplate(templates.BUILTIN[x.dataset.layout]); closePopover(); }));
   openPop = pop;
 }
 document.addEventListener('click', () => closePopover());

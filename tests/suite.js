@@ -84,10 +84,25 @@ export async function run(frame) {
     assert(/<svg[^>]*stroke="#ff0000"/.test(R.io.buildHTML()), 'color del icono en el export');
   });
 
-  await test('más formas: estrella en lienzo y export', async () => {
+  await test('más formas: estrella y hexágono en lienzo/export', async () => {
     reset(); R.blocks.addShape('star'); const b = last(); select(b); await sleep(20);
     assert(D.querySelector(`.block[data-id="${b.id}"] .shape svg polygon`), 'estrella en el lienzo');
-    assert(/<svg[^>]*><polygon/.test(R.io.buildHTML()), 'estrella en el export');
+    reset(); R.blocks.addShape('hexagon'); const h = last();
+    assert(/<polygon points="25,4 75,4 98,50/.test(R.io.buildHTML()), 'hexágono en el export');
+  });
+
+  await test('cambiar diseño (layout) desde el popover', async () => {
+    reset(); D.querySelector('[data-layout-open]').click(); await sleep(10);
+    const btn = D.querySelector('.popover [data-layout="blank"]'); assert(btn, 'popover de diseños');
+    btn.click(); await sleep(10);
+    eq(slide().blocks.length, 0, 'diseño en blanco aplicado');
+  });
+
+  await test('encabezado y pie: el diálogo activa el número de diapositiva', async () => {
+    reset(); D.querySelector('[data-action="insert-hf"]').click(); await sleep(10);
+    const num = D.querySelector('#hf-modal .hf-num'); assert(num, 'diálogo de encabezado/pie');
+    num.checked = true; num.dispatchEvent(new Event('change'));
+    assert(R.state.deck.slideNumber.show, 'número activado');
   });
 
   await test('sangría de párrafo', async () => {

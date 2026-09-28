@@ -19,6 +19,10 @@ export const WORDART = {
   gradient: { backgroundImage: 'linear-gradient(90deg,#3f6497,#c0392b)', webkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', fontWeight: '800' },
   neon: { color: '#ffffff', textShadow: '0 0 6px #3f6497,0 0 14px #3f6497', fontWeight: '800' },
   gold: { backgroundImage: 'linear-gradient(180deg,#f9d976,#b8860b)', webkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', fontWeight: '800' },
+  fire: { backgroundImage: 'linear-gradient(180deg,#ffd200,#f7971e,#c0392b)', webkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', textShadow: '0 2px 6px rgba(192,57,43,.5)', fontWeight: '800' },
+  ice: { backgroundImage: 'linear-gradient(180deg,#e0f7ff,#7fb2d8)', webkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', webkitTextStroke: '1px #2c5a7a', fontWeight: '800' },
+  purple: { backgroundImage: 'linear-gradient(90deg,#7d3c98,#c471ed)', webkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', fontWeight: '800' },
+  retro: { color: '#ffd200', textShadow: '2px 2px 0 #c0392b, 4px 4px 0 #1e2a3a', fontWeight: '800' },
 };
 export const WORDART_KEYS = Object.keys(WORDART);
 export const WORDART_PROPS = ['color', 'fontWeight', 'webkitTextStroke', 'paintOrder', 'textShadow', 'backgroundImage', 'webkitBackgroundClip', 'backgroundClip'];
@@ -150,6 +154,12 @@ export function shapeSVG(b) {
     case 'pentagon': inner = `<polygon points="50,3 98,39 79,96 21,96 2,39" ${paint}/>`; break;
     case 'star':     inner = `<polygon points="50,3 61,38 98,38 68,60 79,96 50,73 21,96 32,60 2,38 39,38" ${paint}/>`; break;
     case 'rightarrow': inner = `<polygon points="2,32 60,32 60,12 98,50 60,88 60,68 2,68" ${paint}/>`; break;
+    case 'leftarrow': inner = `<polygon points="98,32 40,32 40,12 2,50 40,88 40,68 98,68" ${paint}/>`; break;
+    case 'hexagon': inner = `<polygon points="25,4 75,4 98,50 75,96 25,96 2,50" ${paint}/>`; break;
+    case 'parallelogram': inner = `<polygon points="22,14 98,14 78,86 2,86" ${paint}/>`; break;
+    case 'trapezoid': inner = `<polygon points="22,16 78,16 98,84 2,84" ${paint}/>`; break;
+    case 'chevron': inner = `<polygon points="2,14 68,14 98,50 68,86 2,86 32,50" ${paint}/>`; break;
+    case 'plus': inner = `<polygon points="36,3 64,3 64,36 97,36 97,64 64,64 64,97 36,97 36,64 3,64 3,36 36,36" ${paint}/>`; break;
     case 'line':     inner = `<line x1="3" y1="50" x2="97" y2="50" ${strokeOnly}/>`; break;
     case 'arrow':    inner = `<defs><marker id="ah-${b.id}" markerWidth="5" markerHeight="5" refX="4" refY="2.5" `
       + `orient="auto"><path d="M0,0 L5,2.5 L0,5 z" fill="${stroke}"/></marker></defs>`
