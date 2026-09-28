@@ -41,25 +41,31 @@ export function chartSig(b) { return (b.chartType || 'bar') + '|' + (b.color || 
 export function chartSVG(b) {
   const data = b.data || []; const color = b.color || '#3f6497';
   const palette = ['#3f6497', '#c0392b', '#2b7a3b', '#d68910', '#7d3c98', '#16a085', '#c0392b'];
-  if (b.chartType === 'pie') {
+  if (b.chartType === 'pie' || b.chartType === 'doughnut') {
+    const rI = b.chartType === 'doughnut' ? 20 : 0, rO = 40;
     const total = data.reduce((s, d) => s + (+d.value || 0), 0) || 1;
     let a0 = -Math.PI / 2; const arcs = data.map((d, i) => {
       const a1 = a0 + (d.value / total) * 2 * Math.PI;
-      const x0 = 50 + 40 * Math.cos(a0), y0 = 50 + 40 * Math.sin(a0);
-      const x1 = 50 + 40 * Math.cos(a1), y1 = 50 + 40 * Math.sin(a1);
-      const large = a1 - a0 > Math.PI ? 1 : 0; a0 = a1;
-      return `<path d="M50,50 L${x0.toFixed(1)},${y0.toFixed(1)} A40,40 0 ${large} 1 ${x1.toFixed(1)},${y1.toFixed(1)} Z" fill="${palette[i % palette.length]}"/>`;
+      const pt = (r, a) => `${(50 + r * Math.cos(a)).toFixed(1)},${(50 + r * Math.sin(a)).toFixed(1)}`;
+      const large = a1 - a0 > Math.PI ? 1 : 0; const fill = palette[i % palette.length];
+      const path = rI
+        ? `M${pt(rO, a0)} A${rO},${rO} 0 ${large} 1 ${pt(rO, a1)} L${pt(rI, a1)} A${rI},${rI} 0 ${large} 0 ${pt(rI, a0)} Z`
+        : `M50,50 L${pt(rO, a0)} A${rO},${rO} 0 ${large} 1 ${pt(rO, a1)} Z`;
+      a0 = a1;
+      return `<path d="${path}" fill="${fill}"/>`;
     }).join('');
     return `<svg viewBox="0 0 100 100" width="100%" height="100%">${arcs}</svg>`;
   }
-  if (b.chartType === 'line') {
+  if (b.chartType === 'line' || b.chartType === 'area') {
     const max = Math.max(1, ...data.map(d => +d.value || 0)); const n = data.length;
     const step = n > 1 ? 100 / (n - 1) : 100;
     const xy = i => [(i * step), 50 - (data[i].value / max) * 46];
     const pts = data.map((d, i) => xy(i).map(v => v.toFixed(1)).join(',')).join(' ');
+    const area = b.chartType === 'area'
+      ? `<polygon points="0,50 ${pts} ${((n - 1) * step).toFixed(1)},50" fill="${color}" opacity="0.25"/>` : '';
     const dots = data.map((d, i) => { const [x, y] = xy(i); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.3" fill="${color}"/>`; }).join('');
     const labels = data.map((d, i) => `<text x="${(i * step).toFixed(1)}" y="58" font-size="4" text-anchor="middle" fill="#8a8a8a">${escSvg(d.label || '')}</text>`).join('');
-    return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">`
+    return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">${area}`
       + `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.2" vector-effect="non-scaling-stroke"/>${dots}${labels}</svg>`;
   }
   const max = Math.max(1, ...data.map(d => +d.value || 0)); const n = data.length || 1; const gap = 100 / n; const bw = gap * 0.6;

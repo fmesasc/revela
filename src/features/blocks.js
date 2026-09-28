@@ -78,7 +78,16 @@ export function addDiagram(kind = 'process') {
       bg: '#3f6497', borderColor: '#1e2a3a', radius: 10,
     });
     const ids = [];
-    if (kind === 'list') {
+    if (kind === 'cycle') {
+      const bw = 220, bh = 100, R = Math.min(w, h) * 0.32, cx = w / 2, cy = h / 2;
+      for (let i = 0; i < n; i++) {
+        const ang = -Math.PI / 2 + i * 2 * Math.PI / n;
+        const b = box(cx + R * Math.cos(ang) - bw / 2, cy + R * Math.sin(ang) - bh / 2, bw, bh, i);
+        s.blocks.push(b); ids.push(b.id);
+      }
+      for (let i = 0; i < n; i++)
+        s.blocks.push({ id: uid(), type: 'connector', from: ids[i], to: ids[(i + 1) % n], color: '#8a8a8a', arrow: true, x: 0, y: 0, w, h, rotation: 0, animation: null });
+    } else if (kind === 'list') {
       const bw = 640, bh = 90, gap = 24, totalH = n * bh + (n - 1) * gap;
       let y = (h - totalH) / 2;
       for (let i = 0; i < n; i++) { const b = box((w - bw) / 2, y, bw, bh, i); s.blocks.push(b); ids.push(b.id); y += bh + gap; }

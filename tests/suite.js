@@ -114,6 +114,21 @@ export async function run(frame) {
     assert(/<polyline points="/.test(R.io.buildHTML()), 'polyline del gráfico de líneas');
   });
 
+  await test('gráficos dona y área en el export', async () => {
+    reset(); R.blocks.addChart(); const b = last(); select(b);
+    R.blocks.setChart({ chartType: 'doughnut' });
+    assert(/A20,20/.test(R.io.buildHTML()), 'anillo interior de la dona');
+    R.blocks.setChart({ chartType: 'area' });
+    assert(/<polygon points="0,50/.test(R.io.buildHTML()), 'relleno del área');
+  });
+
+  await test('diagrama en ciclo: n cajas y n conectores', async () => {
+    reset(); const n0 = slide().blocks.length; R.blocks.addDiagram('cycle');
+    const added = slide().blocks.slice(n0);
+    eq(added.filter(x => x.type === 'text').length, 3, 'tres cajas');
+    eq(added.filter(x => x.type === 'connector').length, 3, 'tres conectores (cerrado)');
+  });
+
   await test('gráfico circular: sectores en el export', async () => {
     reset(); R.blocks.addChart(); const b = last(); select(b);
     R.blocks.setChart({ chartType: 'pie' });
