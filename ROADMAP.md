@@ -119,7 +119,8 @@ the origin of every requirement is traceable.
 - ✅ Phone companion remote (pair by code, notes, navigate, laser, blackout, timer) `—`
 - ✅ Loop / kiosk / auto-play `PP·GS·OO`
 - ✅ Laser pointer / pen / highlighter / eraser during the show (Ctrl+P, Ctrl+I, Ctrl+L, E; ink kept per slide) + laser from the phone `PP·GS·OO`
-- ⬜ Rehearse timings / speaker coach `PP`
+- ✅ Rehearse timings (clock while presenting, save each slide's time as auto-advance) `PP`
+- ⬜ Speaker coach (pace, filler words) `PP`
 - ⬜ Record slideshow with narration and export to video `PP`
 - ⬜ Audience Q&A `GS`
 - ⬜ Live captions / subtitles `PP`

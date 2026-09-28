@@ -807,6 +807,22 @@ export async function run(frame) {
     const blob = await R.pptx.buildPptxBlob(); assert(blob.size > 1000, 'pptx con geometría personalizada');
   });
 
+  await test('ensayar intervalos: cronometra y guarda el avance automático', async () => {
+    reset(); R.slides.addSlide(); R.slides.addSlide(); R.slides.toggleSlideHidden(1);
+    R.state.deck.slides[0].autoSlide = 9000;
+    R.io.present({ rehearse: true }); await sleep(10);
+    const ov = D.getElementById('present-overlay'); assert(ov, 'presentación abierta');
+    assert(D.getElementById('rehearse-clock'), 'reloj de ensayo');
+    const html = await (await fetch(ov.querySelector('iframe').src)).text();
+    assert(!/data-autoslide/.test(html), 'sin avance automático mientras se ensaya');
+    D.getElementById('present-close').click(); await sleep(10);
+    D.querySelector('.modal-backdrop .modal button:not(.modal-close)')?.click?.();   // cierra el diálogo si lo hay
+    R.io.applyRehearsal([3400, 12600]);
+    eq(R.state.deck.slides[0].autoSlide, 3000, 'primera: 3 s');
+    eq(R.state.deck.slides[1].autoSlide ?? 0, 0, 'oculta: sin cambios');
+    eq(R.state.deck.slides[2].autoSlide, 13000, 'segunda visible: 13 s');
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

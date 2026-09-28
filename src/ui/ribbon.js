@@ -51,7 +51,8 @@ const ACTIONS = {
   'export-pptx': () => exportPPTX(),
   'export-pdf': io.exportPDF,
   'export-png': () => openImageDialog(),
-  'present': io.present,
+  'present': () => io.present(),
+  'rehearse': () => io.present({ rehearse: true }),
   'import-pptx': () => readFile('.pptx', async file => {
     try { replaceDeck(await importPPTX(file)); }
     catch (e) { alertDialog('No se pudo importar el PowerPoint: ' + e.message); } }, 'file'),

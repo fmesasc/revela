@@ -1,11 +1,11 @@
 // Generate a self‑contained reveal.js presentation from the deck, and the
 // present / export / save-load helpers.
 
-import { state } from '../core/store.js';
+import { state, commit } from '../core/store.js';
 import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, tableClass, tableVars, tableCSS } from '../ui/shape.js';
 import { googleFontLinks } from '../features/fonts.js';
 import { t } from '../i18n.js';
-import { alertDialog } from '../ui/dialog.js';
+import { alertDialog, confirmDialog } from '../ui/dialog.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle, visibleIndexMap } from '../features/captions.js';
 import { INK_CSS, inkJS } from './ink.js';
 import { deckFg, deckBodyFont } from '../features/palettes.js';
@@ -257,8 +257,12 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
 // The presentation currently on screen (for the phone remote), or null.
 export let activePresent = null;
 
-export function present() {
-  const url = URL.createObjectURL(new Blob([buildHTML()], { type: 'text/html' }));
+// rehearse: PowerPoint's "Rehearse Timings" — time each slide while presenting
+// (without the current auto-advance), then offer to save the times as each
+// slide's auto-advance.
+export function present({ rehearse = false } = {}) {
+  const deck = rehearse ? { ...state.deck, slides: state.deck.slides.map(s => ({ ...s, autoSlide: 0 })) } : state.deck;
+  const url = URL.createObjectURL(new Blob([buildHTML(deck)], { type: 'text/html' }));
 
   const overlay = document.createElement('div');
   overlay.id = 'present-overlay';
@@ -272,9 +276,18 @@ export function present() {
   overlay.appendChild(close);
   document.body.appendChild(overlay);
 
-  activePresent = { frame, overlay };
+  // Rehearsal clock: time on the current slide and total.
+  const times = [], t0 = performance.now(); let cur = 0, since = t0, clock = null, tick = null;
+  if (rehearse) {
+    clock = document.createElement('div'); clock.id = 'rehearse-clock'; overlay.appendChild(clock);
+    const fmt = ms => { const s = Math.round(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+    tick = setInterval(() => { const n = performance.now(); clock.textContent = `${fmt(n - since)} · ${t('Total')} ${fmt(n - t0)}`; }, 250);
+  }
+  const lap = next => { const n = performance.now(); times[cur] = (times[cur] || 0) + (n - since); since = n; cur = next; };
+  activePresent = { frame, overlay, rehearse, times, lap };
   const notifySlide = () => window.dispatchEvent(new CustomEvent('revela:present-slide'));
   const end = () => {
+    if (rehearse) { clearInterval(tick); lap(cur); offerRehearsal(times); }
     document.removeEventListener('fullscreenchange', onFs);
     document.removeEventListener('keydown', onKey);
     if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
@@ -293,7 +306,10 @@ export function present() {
   let tries = 0;
   const hook = setInterval(() => {
     const Rv = frame.contentWindow.Reveal;
-    if (Rv && Rv.isReady?.()) { clearInterval(hook); Rv.on('slidechanged', notifySlide); notifySlide(); }
+    if (Rv && Rv.isReady?.()) {
+      clearInterval(hook); Rv.on('slidechanged', notifySlide); notifySlide();
+      if (rehearse) Rv.on('slidechanged', ev => lap(ev.indexh));
+    }
     else if (++tries > 60) clearInterval(hook);
   }, 100);
 
@@ -301,6 +317,18 @@ export function present() {
   // the whole viewport so the presentation fills the window either way.
   Promise.resolve(overlay.requestFullscreen?.()).catch(() => {});
   frame.focus();
+}
+
+// Save rehearsed times (visible slides, in order) as each slide's auto-advance.
+export function applyRehearsal(times, deck = state.deck) {
+  const vis = deck.slides.filter(s => !s.hidden);
+  commit(() => vis.forEach((s, i) => { if (times[i] > 0) s.autoSlide = Math.max(1000, Math.round(times[i] / 1000) * 1000); }));
+}
+function offerRehearsal(times) {
+  const total = Math.round(times.reduce((a, b) => a + (b || 0), 0) / 1000);
+  if (!total) return;
+  confirmDialog(t('Tiempo total de la presentación: ') + `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}. `
+    + t('¿Guardar los intervalos para que las diapositivas avancen solas?')).then(ok => { if (ok) applyRehearsal(times); });
 }
 
 function download(blob, name) {
