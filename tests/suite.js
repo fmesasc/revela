@@ -823,6 +823,18 @@ export async function run(frame) {
     eq(R.state.deck.slides[2].autoSlide, 13000, 'segunda visible: 13 s');
   });
 
+  await test('transición: salida distinta, velocidad por diapositiva y aplicar a todas', async () => {
+    reset(); R.slides.addSlide(); R.slides.goToSlide(0);
+    R.trans.setSlideTransition('fade');
+    D.querySelector('[data-slide-trans-out]').value = 'zoom'; D.querySelector('[data-slide-trans-out]').dispatchEvent(new Event('change'));
+    D.querySelector('[data-slide-speed]').value = 'slow'; D.querySelector('[data-slide-speed]').dispatchEvent(new Event('change'));
+    const html = R.io.buildHTML();
+    assert(/<section data-transition="fade-in zoom-out" data-transition-speed="slow"/.test(html), 'entrada/salida y velocidad');
+    R.trans.applyTransitionToAll();
+    const s2 = R.state.deck.slides[1];
+    eq([s2.transition, s2.transitionOut, s2.transitionSpeed].join(','), 'fade,zoom,slow', 'copiada a todas');
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

@@ -53,6 +53,7 @@ const ACTIONS = {
   'export-png': () => openImageDialog(),
   'present': () => io.present(),
   'rehearse': () => io.present({ rehearse: true }),
+  'trans-apply-all': () => trans.applyTransitionToAll(),
   'import-pptx': () => readFile('.pptx', async file => {
     try { replaceDeck(await importPPTX(file)); }
     catch (e) { alertDialog('No se pudo importar el PowerPoint: ' + e.message); } }, 'file'),
@@ -254,6 +255,8 @@ export function initRibbon() {
   bindInput('[data-bg]', v => commit(() => (currentSlide().background = v)));
   bindInput('[data-deck-fg]', v => palettes.setDeckTextColor(v));
   bindInput('[data-ink-color]', v => { drawOpts.color = v; });
+  bindChange('[data-slide-trans-out]', v => trans.setSlideTransOptions({ transitionOut: v }));
+  bindChange('[data-slide-speed]', v => trans.setSlideTransOptions({ transitionSpeed: v }));
   bindChange('[data-ink-width]', v => { drawOpts.width = +v || 4; });
   addEyedroppers();
   bindChange('[data-theme]', v => commit(() => (state.deck.theme = v)));
@@ -566,6 +569,8 @@ export function renderRibbon() {
   document.querySelector('[data-action="toggle-autoanimate"]')?.classList.toggle('on', !!slide.autoAnimate);
   syncValue('[data-theme]', state.deck.theme);
   syncValue('[data-deck-fg]', palettes.deckFg());
+  syncValue('[data-slide-trans-out]', currentSlide()?.transitionOut || '');
+  syncValue('[data-slide-speed]', currentSlide()?.transitionSpeed || '');
   document.querySelectorAll('[data-draw]').forEach(b => b.classList.toggle('on', (state.ui.drawTool || '') === b.dataset.draw));
   const bgHex = (currentSlide()?.background || '').match(/^#[0-9a-f]{6}$/i);
   if (bgHex) syncValue('[data-bg]', bgHex[0].toLowerCase());

@@ -112,7 +112,8 @@ the origin of every requirement is traceable.
 - ✅ "After previous" auto-timed start & animation triggers (on click of another object) `PP·GS·OO`
 - ✅ Motion paths (straight line to a chosen offset, with guide on the canvas); curved/custom paths planned `PP`
 - ✅ Animation painter `PP`
-- ⬜ Per-transition options (direction, board split, etc.) `PP·GS·OO`
+- ✅ Per-slide transition options — different exit transition, per-slide speed, apply to all `PP·GS·OO`
+- ⬜ More transition effects (push/wipe directions, split, morph-like 3D) `PP·GS·OO`
 
 ## 6. Presenting
 - ✅ Presenter view (notes, next slide, timer) — reveal presenter view (S) + phone companion `PP·GS·OO`

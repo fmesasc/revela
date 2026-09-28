@@ -152,7 +152,11 @@ function slideRefExport(b, originSlide, deck) {
     + `<div style="width:${w}px;height:${h}px;transform:scale(${scale});transform-origin:top left;position:relative">${inner}</div></a>`;
 }
 function slideHTML(s, deck, figMap) {
-  const trans = s.transition ? ` data-transition="${s.transition}"` : '';
+  // Entry/exit can differ (reveal's "x-in y-out"); speed can be set per slide.
+  const tin = s.transition || deck.defaultTransition || 'slide';
+  const trans = s.transitionOut && s.transitionOut !== tin ? ` data-transition="${tin}-in ${s.transitionOut}-out"`
+    : s.transition ? ` data-transition="${s.transition}"` : '';
+  const speed = s.transitionSpeed ? ` data-transition-speed="${s.transitionSpeed}"` : '';
   const auto = s.autoSlide ? ` data-autoslide="${s.autoSlide}"` : '';
   const solid = /^(#|rgb)/.test(s.background || '');
   const bg = solid ? ` data-background-color="${s.background}"` : '';
@@ -170,7 +174,7 @@ function slideHTML(s, deck, figMap) {
   }).join('\n');
   const notes = s.notes ? `<aside class="notes">${esc(s.notes)}</aside>` : '';
   const aa = s.autoAnimate ? ' data-auto-animate' : '';
-  return `<section${trans}${auto}${bg}${aa}>`
+  return `<section${trans}${speed}${auto}${bg}${aa}>`
     + `<div class="stage" style="background:${s.background}">${inner}</div>${notes}</section>`;
 }
 

@@ -9,6 +9,18 @@ export const ANIMATIONS = ['fade-in', 'fade-up', 'fade-down', 'fade-left', 'fade
 export function setSlideTransition(value) {
   commit(() => { currentSlide().transition = value === 'inherit' ? null : value; });
 }
+export function setSlideTransOptions(props) {
+  commit(() => { const s = currentSlide(); for (const [k, v] of Object.entries(props)) { if (v) s[k] = v; else delete s[k]; } });
+}
+// Copy this slide's transition, exit, speed and auto-advance to every slide.
+export function applyTransitionToAll() {
+  const c = currentSlide();
+  commit(() => state.deck.slides.forEach(s => {
+    s.transition = c.transition ?? null;
+    for (const k of ['transitionOut', 'transitionSpeed']) { if (c[k]) s[k] = c[k]; else delete s[k]; }
+    s.autoSlide = c.autoSlide || 0;
+  }));
+}
 export function setDeckTransition(value) {
   commit(() => { state.deck.defaultTransition = value; });
 }

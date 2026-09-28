@@ -367,6 +367,19 @@
         </div>
         <div class="group">
           <div class="row">
+            <select data-slide-trans-out title="Salida de esta diapositiva">
+              <option value="">Salida: igual</option><option value="none">Salida: ninguna</option><option value="fade">Salida: fundido</option>
+              <option value="slide">Salida: deslizar</option><option value="convex">Salida: convex</option>
+              <option value="concave">Salida: concave</option><option value="zoom">Salida: zoom</option>
+            </select>
+            <select data-slide-speed title="Velocidad de esta diapositiva">
+              <option value="">Velocidad: heredar</option><option value="default">Normal</option><option value="fast">Rápida</option><option value="slow">Lenta</option>
+            </select>
+            <button data-action="trans-apply-all" title="Aplicar la transición de esta diapositiva a todas"><i class="ms">select_all</i><span>Aplicar a<br>todas</span></button>
+          </div><label>Opciones</label>
+        </div>
+        <div class="group">
+          <div class="row">
             <select data-deck-transition title="Transición por defecto">
               <option value="none">Ninguna</option><option value="fade">Fundido</option>
               <option value="slide">Deslizar</option><option value="convex">Convex</option>
