@@ -3,7 +3,7 @@
 // guides, resize from the corners, edit text on double‑click.
 
 import { state, commit, currentSlide, selectedBlock, isSelected, setSelection } from '../../core/store.js';
-import { levelCSS, textPadding, shapeSVG, shapeSig, chartSVG, chartSig, iconSVG, iconSig, applyWordart, inkSVG, inkSig, tableClass, tableVars } from '../../render/svg.js';
+import { shadowCSS, levelCSS, textPadding, shapeSVG, shapeSig, chartSVG, chartSig, iconSVG, iconSig, applyWordart, inkSVG, inkSig, tableClass, tableVars } from '../../render/svg.js';
 import { figuresMap, captionLine } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
 import { t } from '../../i18n/index.js';
@@ -207,6 +207,7 @@ function reconcile(b) {
   el.style.width = b.w + 'px'; el.style.height = b.h + 'px';
   el.style.transform = transformOf(b);
   el.style.opacity = (b.opacity != null && b.opacity < 100) ? b.opacity / 100 : '';
+  el.style.filter = shadowCSS(b);
   el.classList.toggle('selected', isSelected(b.id));
   el.setAttribute('aria-label', blockLabel(b, t));
   // Comment marker on objects with open comments.
@@ -286,6 +287,7 @@ function blockEl(b) {
   el.style.cssText = `left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px`;
   el.style.transform = transformOf(b);
   if (b.opacity != null && b.opacity < 100) el.style.opacity = b.opacity / 100;
+  if (b.shadow) el.style.filter = shadowCSS(b);
   el.appendChild(content(b));
 
   // Selection chrome.

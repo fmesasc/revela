@@ -108,6 +108,7 @@ function forBlock(b, cell = null) {
     ['Pegar', clip.hasClipboard() ? () => clip.paste() : null],
     ['Duplicar', () => duplicate(b)],
     ['Eliminar', () => blocks.deleteBlock(b.id)],
+    [b.shadow ? 'Quitar sombra' : 'Sombra', () => blocks.toggleShadow()],
     ['Guardar como imagen…', () => openSaveAsPicture()],
     null,
   ];

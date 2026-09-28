@@ -260,7 +260,7 @@ export async function buildPptx(deck = state.deck) {
       if (isEmptyPlaceholder(b) || m?.inMaster.has(b.id)) continue;          // drawn by its PowerPoint layout
       const ph = m && placeholderOf(s, b, m);
       if (ph) { addPlaceholderText(named(slide, 'rv-' + b.id), s, b, ph); continue; }
-      addBlock(named(slide, 'rv-' + b.id), b, pptx, raster, byId);
+      addBlock(named(slide, 'rv-' + b.id, b), b, pptx, raster, byId);
     }
   }
   return pptx;
@@ -268,18 +268,25 @@ export async function buildPptx(deck = state.deck) {
 
 // Every object gets the name rv-<block id> (PowerPoint's selection pane shows
 // it), so transitions and animations can point at it afterwards.
-const named = (slide, name) => new Proxy(slide, {
+const named = (slide, name, b = null) => new Proxy(slide, {
   get(t, k) {
     const f = t[k];
     if (typeof f !== 'function') return f;
     if (!/^add(Text|Shape|Image|Media|Table|Chart)$/.test(k)) return f.bind(t);
     return (...args) => {
       const i = args.length - 1;
-      if (args[i] && typeof args[i] === 'object' && !Array.isArray(args[i])) args[i] = { ...args[i], objectName: name };
+      if (args[i] && typeof args[i] === 'object' && !Array.isArray(args[i])) args[i] = { ...args[i], objectName: name, ...(b?.shadow && k !== 'addTable' && k !== 'addChart' && { shadow: pptShadow(b.shadow) }) };
       return f.apply(t, args);
     };
   },
 });
+
+// A Revela shadow as PptxGenJS's (points, degrees, 0-1 opacity).
+function pptShadow(s) {
+  const x = s.x ?? 4, y = s.y ?? 6, c = String(s.color || '#00000066');
+  return { type: 'outer', blur: Math.round((s.blur ?? 10) * 0.75), offset: Math.round(Math.hypot(x, y) * 0.75), angle: Math.round((Math.atan2(y, x) * 180 / Math.PI + 360) % 360),
+    color: c.slice(1, 7), opacity: c.length === 9 ? +(parseInt(c.slice(7), 16) / 255).toFixed(2) : 0.4 };
+}
 
 // ---- Transitions and animations -------------------------------------------------
 // PptxGenJS writes neither, so they are added to each slide's XML afterwards.

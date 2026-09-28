@@ -587,4 +587,49 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(back.layouts.find(l => l.id === back.slides[1].layoutId)?.name, 'Título y contenido', 'al volver a importarlo, la diapositiva usa su diseño');
     assert(back.slides[1].blocks.find(b => b.ph === 'title')?.lp, 'y su título sigue al marcador');
   });
+
+  await test('importar PowerPoint: formas con el estilo del tema, sombras y SmartArt', async () => {
+    await R.vendor.loadScript(R.vendor.JSZIP, 'JSZip');
+    const W = frame.contentWindow, zip = new W.JSZip();
+    const NS = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"';
+    const rel = (id, type, target) => `<Relationship Id="${id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/${type}" Target="${target}"/>`;
+    const rels = (...r) => `<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${r.join('')}</Relationships>`;
+    const xf = (x, y, w, h) => `<a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${w}" cy="${h}"/></a:xfrm>`;
+    zip.file('ppt/presentation.xml', `<p:presentation ${NS}><p:sldIdLst><p:sldId id="256" r:id="rId2"/></p:sldIdLst><p:sldSz cx="9144000" cy="5143500"/></p:presentation>`);
+    zip.file('ppt/_rels/presentation.xml.rels', rels(rel('rId2', 'slide', 'slides/slide1.xml'), rel('rId3', 'theme', 'theme/theme1.xml')));
+    zip.file('ppt/theme/theme1.xml', `<a:theme ${NS}><a:themeElements><a:clrScheme name="c"><a:dk1><a:srgbClr val="000000"/></a:dk1><a:lt1><a:srgbClr val="FFFFFF"/></a:lt1><a:accent1><a:srgbClr val="4472C4"/></a:accent1></a:clrScheme></a:themeElements></a:theme>`);
+    const styled = `<p:style><a:lnRef idx="2"><a:schemeClr val="accent1"><a:shade val="50000"/></a:schemeClr></a:lnRef><a:fillRef idx="1"><a:schemeClr val="accent1"/></a:fillRef><a:effectRef idx="0"><a:schemeClr val="accent1"/></a:effectRef><a:fontRef idx="minor"><a:schemeClr val="lt1"/></a:fontRef></p:style>`;
+    zip.file('ppt/slides/slide1.xml', `<p:sld ${NS} xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram"><p:cSld><p:spTree>`
+      + `<p:sp><p:nvSpPr><p:cNvPr id="2" name="a"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>${xf(500000, 500000, 2000000, 1000000)}<a:prstGeom prst="rect"/>`
+      + `<a:effectLst><a:outerShdw blurRad="63500" dist="38100" dir="5400000"><a:srgbClr val="000000"><a:alpha val="40000"/></a:srgbClr></a:outerShdw></a:effectLst></p:spPr>${styled}`
+      + `<p:txBody><a:bodyPr/><a:p><a:r><a:rPr lang="es"/><a:t>Del tema</a:t></a:r></a:p></p:txBody></p:sp>`
+      + `<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="5" name="d"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr><p:xfrm><a:off x="4000000" y="1000000"/><a:ext cx="4000000" cy="3000000"/></p:xfrm>`
+      + `<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/diagram"><dgm:relIds r:dm="rId4" r:lo="rId5" r:qs="rId6" r:cs="rId7"/></a:graphicData></a:graphic></p:graphicFrame>`
+      + `</p:spTree></p:cSld></p:sld>`);
+    zip.file('ppt/slides/_rels/slide1.xml.rels', rels(rel('rId4', 'diagramData', '../diagrams/data1.xml'), rel('rId8', 'diagramDrawing', '../diagrams/drawing1.xml')));
+    zip.file('ppt/diagrams/data1.xml', `<dgm:dataModel xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram"><dgm:extLst><a:ext xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uri="x"><dsp:dataModelExt xmlns:dsp="http://schemas.microsoft.com/office/drawing/2008/diagram" relId="rId8"/></a:ext></dgm:extLst></dgm:dataModel>`);
+    const dsp = (id, x, t) => `<dsp:sp modelId="{${id}}"><dsp:nvSpPr><dsp:cNvPr id="0" name=""/><dsp:cNvSpPr/></dsp:nvSpPr><dsp:spPr>${xf(x, 0, 1200000, 800000)}<a:prstGeom prst="roundRect"/><a:solidFill><a:srgbClr val="70AD47"/></a:solidFill></dsp:spPr>`
+      + `<dsp:txBody><a:bodyPr/><a:p><a:r><a:rPr lang="es"/><a:t>${t}</a:t></a:r></a:p></dsp:txBody></dsp:sp>`;
+    zip.file('ppt/diagrams/drawing1.xml', `<dsp:drawing xmlns:dsp="http://schemas.microsoft.com/office/drawing/2008/diagram" ${NS.split(' ')[0]}><dsp:spTree><dsp:nvGrpSpPr><dsp:cNvPr id="0" name=""/><dsp:cNvGrpSpPr/></dsp:nvGrpSpPr><dsp:grpSpPr/>`
+      + dsp(1, 0, 'Paso 1') + dsp(2, 1400000, 'Paso 2') + dsp(3, 2800000, 'Paso 3') + `</dsp:spTree></dsp:drawing>`);
+    const deck = await R.pptxImport.importPPTX(new W.File([await zip.generateAsync({ type: 'blob' })], 'tema.pptx'));
+    const bl = deck.slides[0].blocks, px = v => Math.round(v * 1280 / 9144000);
+    const sh = bl.find(b => b.type === 'shape' && b.x === px(500000));
+    assert(sh, 'la forma con el estilo del tema existe (antes salía sin relleno ni borde)');
+    eq(sh.fill, '#4472c4', 'relleno del tema (accent1)');
+    assert(sh.stroke && sh.stroke !== 'none', 'borde del tema');
+    assert(sh.shadow && sh.shadow.y > 0 && sh.shadow.x === 0 && /^#000000/.test(sh.shadow.color), 'sombra hacia abajo: ' + JSON.stringify(sh.shadow));
+    const tx = bl.find(b => b.type === 'text' && /Del tema/.test(b.html));
+    eq(R.master.styled(tx, deck.slides[0], deck).color || tx.color, '#ffffff', 'texto con el color del tema (lt1)');
+    const steps = bl.filter(b => b.type === 'text' && /Paso \d/.test(b.html));
+    eq(steps.length, 3, 'el SmartArt se convierte en formas con su texto');
+    eq(bl.filter(b => b.type === 'shape' && b.fill === '#70ad47').length, 3, 'con sus formas');
+    eq(steps[0].x, px(4000000), 'colocado dentro de su marco');
+    // Shadows reach the editor, the show and the exports.
+    R.store.replaceDeck(deck); R.render(); await sleep(30);
+    assert(/drop-shadow/.test(D.querySelector(`.block[data-id="${sh.id}"]`).style.filter), 'sombra en el lienzo');
+    assert(/filter:drop-shadow/.test(R.io.buildHTML()), 'en la presentación');
+    const out = await (await W.JSZip.loadAsync(await R.pptx.buildPptxBlob(deck))).file('ppt/slides/slide1.xml').async('string');
+    assert(/<a:outerShdw/.test(out), 'y en PowerPoint');
+  });
 }

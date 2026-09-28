@@ -120,6 +120,15 @@ const TRANSITION = { fade: 'fade', dissolve: 'fade', push: 'push', cover: 'slide
   newsflash: 'zoom', flip: 'flip', cube: 'convex', box: 'convex', rotate: 'flip', gallery: 'slide', conveyor: 'slide', switch: 'flip',
   doors: 'wipe', window: 'wipe', vortex: 'zoom', ripple: 'rise', morph: 'fade', random: 'slide', randomBar: 'wipe', wheel: 'wipe' };
 
+// Outer shadow (a:effectLst/a:outerShdw) → { x, y, blur, color }.
+function shadowOf(spPr, theme, scale) {
+  const sh = all(kid(spPr, 'a:effectLst'), 'a:outerShdw')[0]; if (!sh) return null;
+  const dist = +(sh.getAttribute('dist') || 0) * scale, dir = +(sh.getAttribute('dir') || 0) / 60000 * Math.PI / 180;
+  const color = colourOf(sh, theme);
+  if (!color || color === 'none') return null;
+  return { x: Math.round(dist * Math.cos(dir)), y: Math.round(dist * Math.sin(dir)), blur: Math.round(+(sh.getAttribute('blurRad') || 0) * scale), color: color.length === 7 ? color + '66' : color };
+}
+
 // ---- Geometry --------------------------------------------------------------
 function xfrmOf(el) {
   const x = all(el, 'a:xfrm')[0] || all(el, 'p:xfrm')[0];
@@ -468,7 +477,7 @@ export async function importPPTX(file) {
           const before = blocks.length;
           if (tag === 'p:sp' || tag === 'p:cxnSp') await addShape(el, map);
           else if (tag === 'p:pic') await addPic(el, map);
-          else if (tag === 'p:graphicFrame') { if (!(await addChart(el, map))) addTable(el, map); }
+          else if (tag === 'p:graphicFrame') { if (!(await addChart(el, map)) && !(await addDiagram(el, map))) addTable(el, map); }
           // Shape id → the block that stands for it (its text if it has one), for the animations.
           const made = blocks.slice(before), spid = all(el, 'p:cNvPr')[0]?.getAttribute('id');
           if (spid && made.length && !decorMode) spidOf.set(spid, (made.find(b => b.type === 'text') || made[made.length - 1]).id);
@@ -488,21 +497,30 @@ export async function importPPTX(file) {
       const geo = map(geo0);
       const spPr = kid(sp, 'p:spPr');
       const prst = kid(spPr, 'a:prstGeom')?.getAttribute('prst');
-      const fill = fillOf(spPr, theme);
+      // Shapes drawn with the theme's default style keep their colours in
+      // p:style (fillRef / lnRef / fontRef), not in spPr.
+      const pst = kid(sp, 'p:style');
+      // (fill/line idx 0 means none; the font's idx is 'minor'/'major'.)
+      const ref = n => { const r = kid(pst, n), idx = r?.getAttribute('idx'); return r && (n === 'a:fontRef' || +(idx || 0) > 0) ? colourOf(r, theme) : null; };
+      const fill = fillOf(spPr, theme) ?? ref('a:fillRef');
       const ln = kid(spPr, 'a:ln');
-      const stroke = ln ? (kid(ln, 'a:noFill') ? 'none' : colourOf(kid(ln, 'a:solidFill'), theme)) : null;
+      const lnFill = ln && (kid(ln, 'a:noFill') ? 'none' : colourOf(kid(ln, 'a:solidFill'), theme));
+      const stroke = lnFill || ref('a:lnRef');
       // Dashed/dotted outlines (a:prstDash) and the corner radius of rounded rectangles.
       const pd = kid(ln, 'a:prstDash')?.getAttribute('val');
       const dash = /dot/i.test(pd || '') && !/dash/i.test(pd) ? 'dot' : /dashdot/i.test(pd || '') ? 'dashDot' : /dash/i.test(pd || '') ? 'dash' : null;
       const adj = +(all(kid(spPr, 'a:prstGeom'), 'a:gd').find(g => g.getAttribute('name') === 'adj')?.getAttribute('fmla') || '').replace(/^val /, '') || 16667;
       const sw = ln?.getAttribute('w') ? Math.max(1, Math.round(+ln.getAttribute('w') * scale)) : 1;   // EMU → px, like positions
       const isLine = sp.tagName === 'p:cxnSp' || prst === 'line' || prst === 'straightConnector1';
+      const shadow = shadowOf(spPr, theme, scale);
       const txBody = kid(sp, 'p:txBody');
       const isTitle = ph && TITLE_PH(ph.type);
       // The text formatting this shape inherits (see paragraphsHTML).
       const kind = !ph ? null : isTitle ? 'title' : BODY_PH(ph.type) ? 'body' : 'other';
       const mph = ph && findPh(master?.phs || [], ph), lph = ph && findPh(layout?.phs || [], ph);
-      const levels = mergeLevels(ph ? [master?.styles[kind], mph?.levels, lph?.levels] : [defaultText, master?.styles.other]);
+      const fontRefColour = ref('a:fontRef');
+      const levels = mergeLevels(ph ? [master?.styles[kind], mph?.levels, lph?.levels] : [defaultText, master?.styles.other,
+        fontRefColour && Array(9).fill({ p: null, r: { color: fontRefColour } })]);
       const body = merge({ l: 91440, r: 91440, t: 45720, b: 45720 }, mph?.body, lph?.body, readBody(kid(txBody, 'a:bodyPr')));
       const t = txBody ? paragraphsHTML(txBody, { ...ctx, slideNo, links }, { levels, body }) : null;
       const hasText = t && t.html.replace(/<[^>]*>/g, '').trim();
@@ -513,7 +531,7 @@ export async function importPPTX(file) {
         const bx = box(geo);
         blocks.push({ id: uid(), type: 'shape', shape: PRESET[prst] || 'rect', fill: fill || 'none',
           stroke: stroke && stroke !== 'none' ? stroke : (fill || 'none'), strokeWidth: stroke && stroke !== 'none' ? sw : 0, ...bx,
-          ...(dash && stroke && stroke !== 'none' && { dash }),
+          ...(dash && stroke && stroke !== 'none' && { dash }), ...(shadow && { shadow }),
           ...(prst === 'roundRect' && { radius: Math.round(Math.min(bx.w, bx.h) * Math.min(50000, adj) / 100000) }) });
       }
       if (!hasText) return;
@@ -524,7 +542,8 @@ export async function importPPTX(file) {
         html: t.html, pad: [ctx.emu(body.t), ctx.emu(body.r), ctx.emu(body.b), ctx.emu(body.l)],
         ...(t.align && { textAlign: t.align }), ...(anchor && { vAlign: { t: 'top', ctr: 'middle', b: 'bottom' }[anchor] }),
         ...(body.vert && { vertical: true }),
-        ...(first.color && first.color !== 'transparent' && { color: first.color }), ...(body.fontScale && body.fontScale < 1 && { fit: body.fontScale }),
+        ...(first.color && first.color !== 'transparent' && { color: first.color }),
+        ...(shadow && !((fill && fill !== 'none') || (stroke && stroke !== 'none')) && { shadow }), ...(body.fontScale && body.fontScale < 1 && { fit: body.fontScale }),
         ...(REVELA_PH[ph?.type || ''] && { ph: REVELA_PH[ph.type || ''], pk: phKeyOf(ph) }), ...(font && { fontFamily: `${cssFont(font)}, sans-serif` }) });
     };
     // A line or connector goes corner to corner of its box (flips choose which
@@ -552,9 +571,33 @@ export async function importPPTX(file) {
       if (!geo || !blip) return;
       const src = await media(blip.getAttribute('r:embed')); if (!src) return;
       const descr = all(pic, 'p:cNvPr')[0]?.getAttribute('descr') || '';
-      blocks.push({ id: uid(), type: 'image', fit: 'fill', src, ...(descr && { alt: descr }), ...box(map(geo)) });
+      const shadow = shadowOf(kid(pic, 'p:spPr'), theme, scale);
+      blocks.push({ id: uid(), type: 'image', fit: 'fill', src, ...(descr && { alt: descr }), ...(shadow && { shadow }), ...box(map(geo)) });
     };
     // Charts: the chart part's cached data becomes an editable Revela chart.
+    // SmartArt: PowerPoint keeps a drawing of it (ppt/diagrams/drawingN.xml,
+    // dsp: shapes in the frame's coordinates); its shapes and text are imported
+    // as ordinary objects, like PowerPoint's "Convert to shapes".
+    const addDiagram = async (gf, map) => {
+      if (!/diagram/.test(all(gf, 'a:graphicData')[0]?.getAttribute('uri') || '')) return false;
+      const frame = xfrmOf(gf); if (!frame) return false;
+      const dm = all(gf, 'dgm:relIds')[0]?.getAttribute('r:dm');
+      const dataPath = partRels[dm]?.path;
+      let drawPath = null;
+      if (dataPath && zip.file(dataPath)) {
+        const relId = (await zip.file(dataPath).async('string')).match(/dataModelExt[^>]*relId="([^"]+)"/)?.[1];
+        drawPath = relId && partRels[relId]?.path;
+      }
+      drawPath ||= dataPath && dataPath.replace(/data(\d+)\.xml$/, 'drawing$1.xml');
+      if (!drawPath || !zip.file(drawPath)) return false;
+      const xml = (await zip.file(drawPath).async('string')).replace(/<(\/?)dsp:/g, '<$1p:').replace(/xmlns:dsp=/, 'xmlns:p=');
+      const tree = all(parseXML(xml), 'p:spTree')[0]; if (!tree) return false;
+      const saved = partRels;
+      partRels = { ...partRels, ...rels(await zip.file(relsPath(drawPath))?.async('string'), dirOf(drawPath)) };
+      await walk(tree, geo => map({ ...geo, x: frame.x + geo.x, y: frame.y + geo.y }));
+      partRels = saved;
+      return true;
+    };
     const addChart = async (gf, map) => {
       const ref = all(gf, 'c:chart')[0]; const geo = xfrmOf(gf);
       if (!ref || !geo) return false;

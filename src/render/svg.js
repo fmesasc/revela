@@ -390,3 +390,9 @@ export const levelCSS = (pre = '') => [1, 2, 3, 4, 5].map(n => {
   const lists = Array(n).fill(':is(ul,ol)').join(' ');
   return `${pre}.lv ${lists} li{font-size:var(--l${n})}${pre}.lv ${Array(n).fill('ul').join(' ')} li{list-style-type:var(--b${n})}`;
 }).join('');
+
+// Shadow of an object (PowerPoint's outer shadow): { x, y, blur } px and a
+// colour (with alpha). drop-shadow follows the real outline of any object —
+// a shape, a picture's transparency or the letters of a text without fill.
+export const DEFAULT_SHADOW = { x: 4, y: 6, blur: 10, color: '#00000066' };
+export const shadowCSS = b => (b.shadow ? `drop-shadow(${b.shadow.x ?? 4}px ${b.shadow.y ?? 6}px ${b.shadow.blur ?? 10}px ${b.shadow.color || '#00000066'})` : '');

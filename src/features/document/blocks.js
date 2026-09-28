@@ -2,6 +2,7 @@
 
 import { state, commit, currentSlide, selectedBlock,
   selectedBlocks, selectedIds, setSelection, setMulti } from '../../core/store.js';
+import { DEFAULT_SHADOW } from '../../render/svg.js';
 import { uid, textBlock, tableBlock, codeBlock, chartBlock, mathBlock, figindexBlock, slideRefBlock } from '../../core/model.js';
 import { currentLang } from '../../i18n/index.js';
 
@@ -404,6 +405,12 @@ export function setLineDash(dash) {
     if (!key) continue;
     if (dash && dash !== 'solid') b[key] = dash; else delete b[key];
   } });
+}
+// Shadow on/off for the selected objects.
+export function toggleShadow() {
+  const list = selectedBlocks(); if (!list.length) return;
+  const on = !list.every(b => b.shadow);
+  commit(() => { for (const b of list) { if (on) b.shadow = { ...DEFAULT_SHADOW }; else delete b.shadow; } });
 }
 export function setShapeStyle(prop, value) {
   const b = selectedBlock(); if (!b || b.type !== 'shape') return;

@@ -125,6 +125,9 @@ export async function buildODP(deck = state.deck) {
     return `svg:width="${cm(b.w)}" svg:height="${cm(b.h)}" draw:transform="rotate(${a.toFixed(6)}) translate(${cm(cx - rx)} ${cm(cy - ry)})"`;
   };
   // dash: 'dash' | 'dot' | 'dashDot' → the draw:stroke-dash styles in styles.xml.
+  // Shadow (draw:shadow…) for a block's graphic style.
+  const odpShadow = b => (b?.shadow ? ` draw:shadow="visible" draw:shadow-offset-x="${cm(b.shadow.x ?? 4)}" draw:shadow-offset-y="${cm(b.shadow.y ?? 6)}"`
+    + ` draw:shadow-color="${String(b.shadow.color || '#000000').slice(0, 7)}" draw:shadow-opacity="${Math.round((String(b.shadow.color || '').length === 9 ? parseInt(b.shadow.color.slice(7), 16) / 255 : 0.4) * 100)}%"` : '');
   const gstyle = (fill, stroke, sw, extra = '', dash = null) => style('graphic', 'gr', `<style:graphic-properties draw:fill="${fill && fill !== 'none' ? 'solid' : 'none'}"`
     + `${hex(fill) ? ` draw:fill-color="${hex(fill)}"` : ''} draw:stroke="${stroke && stroke !== 'none' && sw !== 0 ? (dash ? 'dash' : 'solid') : 'none'}"`
     + `${dash && stroke && stroke !== 'none' && sw !== 0 ? ` draw:stroke-dash="Revela_${dash}"` : ''}`
@@ -156,7 +159,7 @@ export async function buildODP(deck = state.deck) {
         const st = gstyle('none', b.stroke || '#888888', sw, b.shape === 'arrow' ? ' draw:marker-end="Arrow" draw:marker-end-width="0.4cm"' : '', b.dash);
         return `<draw:line draw:style-name="${st}" svg:x1="${cm(cx - hw * Math.cos(a))}" svg:y1="${cm(cy - hw * Math.sin(a))}" svg:x2="${cm(cx + hw * Math.cos(a))}" svg:y2="${cm(cy + hw * Math.sin(a))}"/>`;
       }
-      const st = gstyle(b.fill, b.stroke, sw, '', b.dash);
+      const st = gstyle(b.fill, b.stroke, sw, odpShadow(b), b.dash);
       if (b.shape === 'custom' && b.path) {
         const d = b.path.replace(/-?\d+(\.\d+)?/g, v => Math.round(+v * 100));
         return `<draw:path draw:style-name="${st}" ${place(b)} svg:viewBox="0 0 10000 10000" svg:d="${X(d)}"/>`;
