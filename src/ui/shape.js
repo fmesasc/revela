@@ -11,6 +11,34 @@ export function imgClip(b) {
 
 const escSvg = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
+// Table look: header row, banded rows, first column, horizontal lines only,
+// plus colours. The same classes/variables drive the editor and every export.
+const rgba = (hex, a) => { const m = String(hex || '').match(/^#([0-9a-f]{6})$/i); if (!m) return 'transparent';
+  const n = parseInt(m[1], 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+export const tableClass = b => 'tbl' + (b.header ? ' has-header' : '') + (b.banded ? ' banded' : '')
+  + (b.firstCol ? ' first-col' : '') + (b.lines ? ' lines' : '');
+export const tableVars = b => `--stroke:${b.stroke || '#fff'};`
+  + (b.headBg ? `--th-bg:${b.headBg};` : '') + (b.headFg ? `--th-fg:${b.headFg};` : '')
+  + (b.band ? `--band:${rgba(b.band, b.bandAlpha ?? 0.18)};` : '');
+export const tableCSS = (pre = '') => `${pre}table.tbl{border-collapse:collapse;width:100%;height:100%;margin:0}`
+  + `${pre}table.tbl td{border:1px solid var(--stroke,#fff);padding:.15em .4em;vertical-align:top}`
+  + `${pre}table.tbl.lines td{border-width:0 0 1px 0}`
+  + `${pre}table.tbl.banded:not(.has-header) tr:nth-child(odd) td,${pre}table.tbl.banded.has-header tr:nth-child(even) td{background:var(--band,rgba(127,127,127,.18))}`
+  + `${pre}table.tbl.first-col td:first-child{font-weight:700}`
+  + `${pre}table.tbl.has-header tr:first-child td{font-weight:700;background:var(--th-bg,rgba(127,127,127,.25));color:var(--th-fg,inherit)}`;
+// Presets, coloured from the deck palette when applied (PowerPoint's table styles).
+export function tablePresets(pal) {
+  const [a1, a2, a3] = pal.accents;
+  return {
+    plain:   { name: 'Sencilla', header: false, banded: false, lines: false, headBg: '', headFg: '', band: '', stroke: pal.fg },
+    grid:    { name: 'Cuadrícula', header: true, banded: false, lines: false, headBg: a1, headFg: '#ffffff', band: '', stroke: pal.fg },
+    band1:   { name: 'Bandas 1', header: true, banded: true, lines: false, headBg: a1, headFg: '#ffffff', band: a1, stroke: a1 },
+    band2:   { name: 'Bandas 2', header: true, banded: true, lines: false, headBg: a2, headFg: '#ffffff', band: a2, stroke: a2 },
+    band3:   { name: 'Bandas 3', header: true, banded: true, lines: false, headBg: a3, headFg: '#ffffff', band: a3, stroke: a3 },
+    minimal: { name: 'Mínima', header: true, banded: false, lines: true, headBg: '', headFg: '', band: '', stroke: pal.fg },
+  };
+}
+
 // Table merged cells: returns (r,c) → null if covered by a merge, else {cs, rs}.
 export function tableSpan(b) {
   const ms = b.merges || [];

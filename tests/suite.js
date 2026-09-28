@@ -740,6 +740,27 @@ export async function run(frame) {
     D.querySelector('[data-tab="home"]').click();
   });
 
+  await test('estilos de tabla: predefinidos y opciones', async () => {
+    reset(); R.blocks.addTable(); const b = last(); select(b); await sleep(10);
+    D.querySelector(`#stage .block[data-id="${b.id}"]`).dispatchEvent(new frame.contentWindow.MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }));
+    const item = [...D.querySelectorAll('.ctx-item')].find(x => /Estilo de tabla/.test(x.textContent));
+    assert(item, 'opción en el menú'); item.click(); await sleep(10);
+    eq(D.querySelectorAll('#ts-modal [data-ts]').length, 6, 'seis estilos');
+    D.querySelector('#ts-modal [data-ts="band1"]').click(); await sleep(10);
+    const acc = R.palettes.currentPalette().accents[0];
+    assert(b.header && b.banded, 'encabezado y bandas'); eq(b.headBg, acc, 'color del acento');
+    const t = D.querySelector(`#stage .block[data-id="${b.id}"] table`);
+    assert(t.classList.contains('banded') && t.classList.contains('has-header'), 'clases en el lienzo');
+    const bandBg = getComputedStyle(t.rows[1].cells[0]).backgroundColor;
+    assert(/rgba\(63, 100, 151, 0\.18\)/.test(bandBg), 'primera fila de datos con banda: ' + bandBg);
+    D.querySelector('#ts-modal [data-o="firstCol"]').click(); await sleep(10);
+    assert(b.firstCol, 'primera columna');
+    const html = R.io.buildHTML();
+    assert(/class="tbl has-header banded first-col"/.test(html), 'clases en el export');
+    assert(html.includes('--th-bg:' + acc), 'variables en el export');
+    D.querySelector('#ts-modal .modal-close').click();
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

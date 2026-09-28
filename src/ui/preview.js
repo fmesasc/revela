@@ -1,6 +1,13 @@
 // Non‑interactive block rendering, shared by slide thumbnails.
 
-import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG } from './shape.js';
+import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, tableClass, tableVars, tableCSS } from './shape.js';
+
+// Table look for thumbnails (same rules as the exports), injected once.
+function ensurePreviewCSS() {
+  if (document.getElementById('pv-css')) return;
+  const st = document.createElement('style'); st.id = 'pv-css'; st.textContent = tableCSS('.pv ');
+  document.head.appendChild(st);
+}
 
 export function blockPreview(b) {
   const el = document.createElement('div');
@@ -45,9 +52,9 @@ export function blockPreview(b) {
   } else if (b.type === 'figindex') {
     el.innerHTML = `<div style="width:100%;height:100%;display:grid;place-items:center;color:#fff;font-size:40px">📑</div>`;
   } else if (b.type === 'table') {
-    el.innerHTML = `<table style="border-collapse:collapse;width:100%;height:100%;--stroke:${b.stroke || '#fff'}">`
-      + tableRowsHTML(b, `border:1px solid ${b.stroke || '#fff'};color:inherit;padding:2px 4px`)
-      + `</table>`;
+    ensurePreviewCSS();
+    el.innerHTML = `<div class="pv" style="width:100%;height:100%"><table class="${tableClass(b)}" style="${tableVars(b)}">`
+      + tableRowsHTML(b) + `</table></div>`;
   } else if (b.type === 'code') {
     const pre = document.createElement('pre');
     pre.style.cssText = `margin:0;width:100%;height:100%;overflow:hidden;background:#0b0e14;color:#e6e6e6;`

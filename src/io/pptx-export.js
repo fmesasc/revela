@@ -55,8 +55,14 @@ function addBlock(slide, b, pptx) {
       const covered = (r, c) => ms.some(m => r >= m.r && r < m.r + m.rs && c >= m.c && c < m.c + m.cs && !(r === m.r && c === m.c));
       const rows = (b.rows || []).map((row, r) => row.map((c, j) => {
         if (covered(r, j)) return null;
-        const m = ms.find(x => x.r === r && x.c === j), cell = { text: plain(c) };
-        if (m) cell.options = { ...(m.cs > 1 && { colspan: m.cs }), ...(m.rs > 1 && { rowspan: m.rs }) };
+        const m = ms.find(x => x.r === r && x.c === j), cell = { text: plain(c) }, o = {};
+        if (m) Object.assign(o, m.cs > 1 && { colspan: m.cs }, m.rs > 1 && { rowspan: m.rs });
+        // Table style: header row, banded rows, first column.
+        const head = b.header && r === 0, data = b.header ? r - 1 : r;
+        if (head) { o.bold = true; if (hex(b.headBg)) o.fill = { color: hex(b.headBg) }; if (hex(b.headFg)) o.color = hex(b.headFg); }
+        else if (b.banded && data % 2 === 0) o.fill = { color: hex(b.band) || '7F7F7F', transparency: Math.round((1 - (b.bandAlpha ?? 0.18)) * 100) };
+        if (b.firstCol && j === 0) o.bold = true;
+        if (Object.keys(o).length) cell.options = o;
         return cell;
       }).filter(Boolean));
       slide.addTable(rows, { ...pos, border: { pt: 1, color: hex(b.stroke) || 'FFFFFF' }, color: hex(deckFg()) || 'FFFFFF', fontSize: 14, valign: 'top' });

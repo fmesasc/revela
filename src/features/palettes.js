@@ -46,7 +46,7 @@ export const deckFg = (deck = state.deck) => deck.textColor || currentPalette(de
 export const deckBodyFont = (deck = state.deck) => deck.bodyFont || '';
 export const paletteColours = (deck = state.deck) => { const p = currentPalette(deck); return [p.bg, p.fg, ...p.accents]; };
 
-const COLOUR_PROPS = ['fill', 'stroke', 'color', 'bg', 'borderColor'];
+const COLOUR_PROPS = ['fill', 'stroke', 'color', 'bg', 'borderColor', 'headBg', 'headFg', 'band'];
 const HEX = /#[0-9a-f]{6}\b/gi;
 
 export function applyPalette(key, deck = state.deck) {

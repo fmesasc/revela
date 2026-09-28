@@ -2,7 +2,7 @@
 // present / export / save-load helpers.
 
 import { state } from '../core/store.js';
-import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG } from '../ui/shape.js';
+import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, tableClass, tableVars, tableCSS } from '../ui/shape.js';
 import { googleFontLinks } from '../features/fonts.js';
 import { t } from '../i18n.js';
 import { alertDialog } from '../ui/dialog.js';
@@ -118,7 +118,7 @@ function blockHTML(b, slide) {
   if (b.type === 'math')
     return `<div${a} class="math" data-latex="${esc(b.latex || '')}" style="${box(b)}display:flex;align-items:center;justify-content:center"></div>`;
   if (b.type === 'table')
-    return `<div${a} style="${box(b)}"><table class="tbl${b.header ? ' has-header' : ''}" style="--stroke:${b.stroke || '#fff'}">`
+    return `<div${a} style="${box(b)}"><table class="${tableClass(b)}" style="${tableVars(b)}">`
       + tableRowsHTML(b) + `</table></div>`;
   if (b.type === 'code') {
     // data-line-numbers drives reveal's animated line highlighting; a value like
@@ -222,9 +222,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  .reveal .stage ol{list-style-type:var(--num,decimal)}
  .reveal section{height:100%}
  .reveal .slide-number{${snPos}}
- .reveal table.tbl{border-collapse:collapse;width:100%;height:100%;margin:0}
- .reveal table.tbl td{border:1px solid var(--stroke,#fff);padding:.15em .4em;vertical-align:top}
- .reveal table.tbl.has-header tr:first-child td{font-weight:700;background:rgba(127,127,127,.25)}
+ ${tableCSS('.reveal ')}
  .deck-footer{position:fixed;left:12px;bottom:8px;z-index:30;font-size:14px;opacity:.7;color:#fff;mix-blend-mode:difference}
  ${customEffectCSS(deck)}
  .reveal .slides section .fragment.rv-path{opacity:1;visibility:inherit}
@@ -334,8 +332,7 @@ ${googleFontLinks(deck)}
  .page:last-child{page-break-after:auto}
  .page>*{overflow-wrap:anywhere}
  model-viewer,img,video,iframe{width:100%;height:100%}
- table.tbl{border-collapse:collapse;width:100%;height:100%}
- table.tbl td{border:1px solid var(--stroke,#333);padding:.15em .4em;vertical-align:top}
+ ${tableCSS()}
 </style></head>
 <body onload="setTimeout(function(){window.print();},400)">
 ${pages}
@@ -385,8 +382,7 @@ ${googleFontLinks(deck)}
  .page img,.page video,.page iframe,.page model-viewer{width:100%;height:100%}
  .lines{background:repeating-linear-gradient(transparent 0 9mm,#bbb 9mm calc(9mm + 1px));margin:4mm 0}
  .notes{white-space:pre-wrap;font-size:12pt;line-height:1.5;margin-top:10mm;flex:1}
- table.tbl{border-collapse:collapse;width:100%;height:100%}
- table.tbl td{border:1px solid var(--stroke,#333);padding:.15em .4em;vertical-align:top}
+ ${tableCSS()}
 </style></head>
 <body onload="setTimeout(function(){window.print();},400)">
 ${pages.join('\n')}
@@ -425,8 +421,7 @@ export async function slideImageBlob(s, type = 'png', deck = state.deck) {
   const holder = document.createElement('div');
   holder.style.cssText = `position:fixed;left:-99999px;top:0;width:${w}px;height:${h}px;overflow:hidden;color:${deckFg(deck)};font-family:${deckBodyFont(deck) || 'inherit'};background:${s.background}`;
   holder.innerHTML = `<style>*{box-sizing:border-box}ul{list-style-type:var(--bullet,disc)}ol{list-style-type:var(--num,decimal)}`
-    + `img,video,model-viewer,iframe{width:100%;height:100%}table.tbl{border-collapse:collapse;width:100%;height:100%}`
-    + `table.tbl td{border:1px solid var(--stroke,#fff);padding:.15em .4em}table.tbl.has-header tr:first-child td{font-weight:700;background:rgba(127,127,127,.25)}</style>`
+    + `img,video,model-viewer,iframe{width:100%;height:100%}${tableCSS()}</style>`
     + slideInnerHTML(s);
   document.body.appendChild(holder);
   try {

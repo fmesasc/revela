@@ -11,6 +11,8 @@ import { addSlide, duplicateSlide, deleteSlide, goToSlide, toggleSlideHidden,
 import { t } from '../i18n.js';
 import { alertDialog } from './dialog.js';
 import { renderLatex } from './canvas.js';
+import { tablePresets, tableClass, tableVars, tableCSS } from './shape.js';
+import { currentPalette, deckFg } from '../features/palettes.js';
 
 let menuEl, clipboard = null;
 
@@ -151,6 +153,7 @@ function forBlock(b, cell = null) {
       ['Quitar fila', () => blocks.tableDelRow()],
       ['Quitar columna', () => blocks.tableDelCol()],
       [b.header ? 'Quitar fila de encabezado' : 'Fila de encabezado', () => blocks.tableToggleHeader()],
+      ['Estilo de tabla…', () => openTableStyle(b)],
       null);
     if (cell) {
       items.push(
@@ -585,3 +588,34 @@ function open(x, y, items) {
   if (r.bottom > innerHeight) menuEl.style.top = (y - r.height) + 'px';
 }
 function hide() { if (menuEl) menuEl.hidden = true; }
+
+// Table styles gallery + options (PowerPoint "Table Design").
+function openTableStyle(b) {
+  document.getElementById('ts-modal')?.remove();
+  const presets = tablePresets(currentPalette());
+  const sample = p => { const m = { ...p, rows: [['', '', ''], ['', '', ''], ['', '', ''], ['', '', '']] };
+    return `<table class="${tableClass(m)}" style="${tableVars(m)}">${m.rows.map(r => `<tr>${r.map(() => '<td></td>').join('')}</tr>`).join('')}</table>`; };
+  const back = document.createElement('div');
+  back.id = 'ts-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:left;min-width:320px">
+    <button class="modal-close">✕</button><h3>${t('Estilo de tabla')}</h3>
+    <style>${tableCSS('.ts-grid ')} .ts-grid table.tbl td{height:9px;padding:0}</style>
+    <div class="ts-grid">${Object.entries(presets).map(([k, p]) =>
+      `<button type="button" data-ts="${k}" title="${t(p.name)}"><div class="ts-sample" style="color:${deckFg()}">${sample(p)}</div><span>${t(p.name)}</span></button>`).join('')}</div>
+    <div class="ts-opts">
+      <label><input type="checkbox" data-o="header"> ${t('Fila de encabezado')}</label>
+      <label><input type="checkbox" data-o="banded"> ${t('Filas con bandas')}</label>
+      <label><input type="checkbox" data-o="firstCol"> ${t('Primera columna')}</label>
+      <label><input type="checkbox" data-o="lines"> ${t('Solo líneas horizontales')}</label>
+    </div></div>`;
+  document.body.appendChild(back);
+  const close = () => back.remove();
+  back.querySelector('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  const sync = () => back.querySelectorAll('[data-o]').forEach(c => (c.checked = !!b[c.dataset.o]));
+  back.querySelectorAll('[data-ts]').forEach(x => x.addEventListener('click', () => {
+    const { name, ...p } = presets[x.dataset.ts]; blocks.setTableStyle(p); sync();
+  }));
+  back.querySelectorAll('[data-o]').forEach(c => c.addEventListener('change', () => blocks.setTableStyle({ [c.dataset.o]: c.checked })));
+  sync();
+}

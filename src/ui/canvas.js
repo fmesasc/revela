@@ -4,7 +4,7 @@
 
 import { state, commit, mutate, currentSlide, selectedBlock,
   selectedBlocks, selectedIds, isSelected, setSelection, toggleSelection, setMulti, selectWithGroup } from '../core/store.js';
-import { shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan, inkSVG, inkSig } from './shape.js';
+import { shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan, inkSVG, inkSig, tableClass, tableVars } from './shape.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle } from '../features/captions.js';
 import { blockPreview } from './preview.js';
 import { t } from '../i18n.js';
@@ -260,8 +260,7 @@ function reconcile(b) {
     const t = el.querySelector('.tbl'); if (!t) return;
     const sig = tableSig(b);
     if (t.dataset.sig !== sig) { t.dataset.sig = sig; fillTable(t, b); if (el.classList.contains('editing')) t.querySelectorAll('td').forEach(td => (td.contentEditable = 'true')); }
-    t.classList.toggle('has-header', !!b.header);
-    t.style.setProperty('--stroke', b.stroke || '#fff');
+    t.className = tableClass(b); t.style.cssText = tableVars(b);
   } else if (b.type === 'code') {
     const pre = el.querySelector('.code'), c = el.querySelector('code');
     if (pre) pre.style.fontSize = (b.fontSize || 22) + 'px';
@@ -482,8 +481,8 @@ function setupCode(el, b) {
 
 const tableSig = b => b.rows.length + 'x' + (b.rows[0]?.length || 0) + '|' + JSON.stringify(b.merges || []);
 function tableContent(b) {
-  const t = document.createElement('table'); t.className = 'tbl' + (b.header ? ' has-header' : '');
-  t.dataset.sig = tableSig(b); t.style.setProperty('--stroke', b.stroke || '#fff');
+  const t = document.createElement('table'); t.className = tableClass(b);
+  t.dataset.sig = tableSig(b); t.style.cssText = tableVars(b);
   fillTable(t, b);
   return t;
 }

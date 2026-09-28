@@ -263,6 +263,10 @@ export function tableSplit(r, c) {
   withTable(b => { const m = mergeAt(b, r, c); if (!m) return; b.merges = b.merges.filter(x => x !== m); if (!b.merges.length) delete b.merges; });
 }
 export const tableToggleHeader = () => withTable(b => { b.header = !b.header; });
+// Table style: a preset (colours from the palette) and/or the option toggles.
+export const setTableStyle = props => withTable(b => {
+  for (const [k, v] of Object.entries(props)) { if (v === '' || v == null || v === false) delete b[k]; else b[k] = v; }
+});
 
 export function addShape(kind) {
   const linear = kind === 'line' || kind === 'arrow';
