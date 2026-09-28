@@ -11,7 +11,9 @@ import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
 import { chartSeries, iconSVG, inkSVG } from '../../render/svg.js';
 import { blockImage } from '../export/images.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled } from '../../features/document/master.js';
-import { PPTXGEN, loadScript } from '../../core/vendor.js';
+import { PPTXGEN, JSZIP, loadScript } from '../../core/vendor.js';
+import { animTimeline, isEntrance } from '../../features/animation/transitions.js';
+import { download } from '../files.js';
 
 
 
@@ -194,19 +196,123 @@ export async function buildPptx(deck = state.deck) {
     else if (/url\((data:[^)]+)\)/.test(s.background || '')) slide.background = { data: RegExp.$1 };
     if (s.notes) slide.addNotes(s.notes);
     const all = [...masterBlocksFor(s, deck), ...s.blocks.map(b => styled(b, s, deck))], byId = new Map(all.map(b => [b.id, b]));
-    for (const b of all) if (!isEmptyPlaceholder(b)) addBlock(slide, b, pptx, raster, byId);
+    for (const b of all) if (!isEmptyPlaceholder(b)) addBlock(named(slide, 'rv-' + b.id), b, pptx, raster, byId);
   }
   return pptx;
 }
 
+// Every object gets the name rv-<block id> (PowerPoint's selection pane shows
+// it), so transitions and animations can point at it afterwards.
+const named = (slide, name) => new Proxy(slide, {
+  get(t, k) {
+    const f = t[k];
+    if (typeof f !== 'function') return f;
+    if (!/^add(Text|Shape|Image|Media|Table|Chart)$/.test(k)) return f.bind(t);
+    return (...args) => {
+      const i = args.length - 1;
+      if (args[i] && typeof args[i] === 'object' && !Array.isArray(args[i])) args[i] = { ...args[i], objectName: name };
+      return f.apply(t, args);
+    };
+  },
+});
+
+// ---- Transitions and animations -------------------------------------------------
+// PptxGenJS writes neither, so they are added to each slide's XML afterwards.
+const TRANS = { fade: '<p:fade/>', slide: '<p:push dir="l"/>', push: '<p:push dir="l"/>', convex: '<p:cover dir="l"/>', concave: '<p:pull dir="l"/>',
+  zoom: '<p:zoom/>', wipe: '<p:wipe dir="l"/>', rise: '<p:push dir="u"/>', flip: '<p:split orient="vert" dir="out"/>' };
+const SPEED = { fast: 'fast', slow: 'slow', default: 'med' };
+function transitionXML(s, deck) {
+  const kind = s.transition || deck.defaultTransition || 'slide';
+  const spd = SPEED[s.transitionSpeed || deck.transitionSpeed] || 'med';
+  const adv = s.autoSlide ? ` advTm="${Math.round(s.autoSlide)}"` : '';
+  const plain = (inner) => `<p:transition spd="${spd}"${adv}>${inner}</p:transition>`;
+  if (s.autoAnimate) {                                    // PowerPoint's Morph, with a fade for older versions
+    const option = { words: 'byWord', chars: 'byChar' }[s.morphBy] || 'byObject';
+    return `<mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">`
+      + `<mc:Choice xmlns:p159="http://schemas.microsoft.com/office/powerpoint/2015/09/main" Requires="p159">`
+      + `${plain(`<p159:morph option="${option}"/>`)}</mc:Choice><mc:Fallback>${plain('<p:fade/>')}</mc:Fallback></mc:AlternateContent>`;
+  }
+  if (kind === 'none') return adv ? plain('') : '';
+  return plain(TRANS[kind] || TRANS.fade);
+}
+// Revela effects → PowerPoint presets: entrances and exits fade, emphasis grows
+// or shrinks, motion paths move by the same offset.
+function effectXML(b, spid, ids, deck, delay, first) {
+  const a = b.animation, dur = a.duration ?? 500, id = () => ids.n++;
+  const tgt = `<p:tgtEl><p:spTgt spid="${spid}"/></p:tgtEl>`;
+  const node = first ? 'clickEffect' : a.start === 'afterPrev' ? 'afterEffect' : 'withEffect';
+  let cls, preset, body;
+  if (a.effect === 'path') {
+    const { w, h } = deck.size, dx = ((a.dx || 0) / w).toFixed(4), dy = ((a.dy || 0) / h).toFixed(4);
+    cls = 'path'; preset = 0;
+    body = `<p:animMotion origin="layout" path="M 0 0 L ${dx} ${dy} E" pathEditMode="relative"><p:cBhvr><p:cTn id="${id()}" dur="${dur}" fill="hold"/>${tgt}<p:attrNameLst><p:attrName>ppt_x</p:attrName><p:attrName>ppt_y</p:attrName></p:attrNameLst></p:cBhvr></p:animMotion>`;
+  } else if (a.effect === 'grow' || a.effect === 'shrink') {
+    const k = a.effect === 'grow' ? 125000 : 80000;
+    cls = 'emph'; preset = 6;
+    body = `<p:animScale><p:cBhvr><p:cTn id="${id()}" dur="${dur}" fill="hold"/>${tgt}</p:cBhvr><p:by x="${k}" y="${k}"/></p:animScale>`;
+  } else if (!isEntrance(a.effect)) {
+    cls = 'exit'; preset = 10;
+    body = `<p:animEffect transition="out" filter="fade"><p:cBhvr><p:cTn id="${id()}" dur="${dur}"/>${tgt}</p:cBhvr></p:animEffect>`
+      + `<p:set><p:cBhvr><p:cTn id="${id()}" dur="1" fill="hold"><p:stCondLst><p:cond delay="${dur - 1}"/></p:stCondLst></p:cTn>${tgt}`
+      + `<p:attrNameLst><p:attrName>style.visibility</p:attrName></p:attrNameLst></p:cBhvr><p:to><p:strVal val="hidden"/></p:to></p:set>`;
+  } else {
+    cls = 'entr'; preset = 10;
+    // Fade while moving (reveal's fade-up/down/left/right) → PowerPoint's "Float in".
+    const MOVE = { 'fade-up': ['ppt_y', '+0.1'], 'fade-down': ['ppt_y', '-0.1'], 'fade-left': ['ppt_x', '+0.1'], 'fade-right': ['ppt_x', '-0.1'] }[a.effect];
+    if (MOVE) preset = 42;
+    const move = MOVE ? `<p:anim calcmode="lin" valueType="num"><p:cBhvr additive="base"><p:cTn id="${id()}" dur="${dur}" fill="hold"/>${tgt}`
+      + `<p:attrNameLst><p:attrName>${MOVE[0]}</p:attrName></p:attrNameLst></p:cBhvr><p:tavLst><p:tav tm="0"><p:val><p:strVal val="#${MOVE[0]}${MOVE[1]}"/></p:val></p:tav>`
+      + `<p:tav tm="100000"><p:val><p:strVal val="#${MOVE[0]}"/></p:val></p:tav></p:tavLst></p:anim>` : '';
+    body = move + `<p:set><p:cBhvr><p:cTn id="${id()}" dur="1" fill="hold"><p:stCondLst><p:cond delay="0"/></p:stCondLst></p:cTn>${tgt}`
+      + `<p:attrNameLst><p:attrName>style.visibility</p:attrName></p:attrNameLst></p:cBhvr><p:to><p:strVal val="visible"/></p:to></p:set>`
+      + `<p:animEffect transition="in" filter="fade"><p:cBhvr><p:cTn id="${id()}" dur="${dur}"/>${tgt}</p:cBhvr></p:animEffect>`;
+  }
+  return `<p:par><p:cTn id="${id()}" presetID="${preset}" presetClass="${cls}" presetSubtype="0" fill="hold" nodeType="${node}">`
+    + `<p:stCondLst><p:cond delay="${delay}"/></p:stCondLst><p:childTnLst>${body}</p:childTnLst></p:cTn></p:par>`;
+}
+function timingXML(s, spids, deck) {
+  const tl = animTimeline(s);
+  const list = s.blocks.filter(b => b.animation && tl.has(b.id) && spids.has(b.id)).sort((a, b) => tl.get(a.id).step - tl.get(b.id).step || tl.get(a.id).delay - tl.get(b.id).delay);
+  if (!list.length) return '';
+  const ids = { n: 3 }, steps = [...new Set(list.map(b => tl.get(b.id).step))];
+  const clicks = steps.map(st => {
+    const group = list.filter(b => tl.get(b.id).step === st);
+    const outer = ids.n++, inner = ids.n++;
+    const effects = group.map((b, i) => effectXML(b, spids.get(b.id), ids, deck, tl.get(b.id).delay, i === 0)).join('');
+    return `<p:par><p:cTn id="${outer}" fill="hold"><p:stCondLst><p:cond delay="indefinite"/></p:stCondLst><p:childTnLst>`
+      + `<p:par><p:cTn id="${inner}" fill="hold"><p:stCondLst><p:cond delay="0"/></p:stCondLst><p:childTnLst>${effects}</p:childTnLst></p:cTn></p:par>`
+      + `</p:childTnLst></p:cTn></p:par>`;
+  }).join('');
+  return `<p:timing><p:tnLst><p:par><p:cTn id="1" dur="indefinite" restart="never" nodeType="tmRoot"><p:childTnLst>`
+    + `<p:seq concurrent="1" nextAc="seek"><p:cTn id="2" dur="indefinite" nodeType="mainSeq"><p:childTnLst>${clicks}</p:childTnLst></p:cTn>`
+    + `<p:prevCondLst><p:cond evt="onPrev" delay="0"><p:tgtEl><p:sldTgt/></p:tgtEl></p:cond></p:prevCondLst>`
+    + `<p:nextCondLst><p:cond evt="onNext" delay="0"><p:tgtEl><p:sldTgt/></p:tgtEl></p:cond></p:nextCondLst></p:seq>`
+    + `</p:childTnLst></p:cTn></p:par></p:tnLst></p:timing>`;
+}
+async function addMotion(blob, deck) {
+  const JSZip = await loadScript(JSZIP, 'JSZip');
+  const zip = await JSZip.loadAsync(blob);
+  for (let i = 0; i < deck.slides.length; i++) {
+    const f = zip.file(`ppt/slides/slide${i + 1}.xml`); if (!f) continue;
+    let xml = await f.async('string');
+    const spids = new Map([...xml.matchAll(/<p:cNvPr id="(\d+)" name="rv-([^"]+)"/g)].map(m => [m[2], m[1]]));
+    const extra = transitionXML(deck.slides[i], deck) + timingXML(deck.slides[i], spids, deck);
+    if (!extra) continue;
+    // Schema order: cSld, clrMapOvr, transition, timing, extLst.
+    xml = xml.includes('</p:clrMapOvr>') ? xml.replace('</p:clrMapOvr>', '</p:clrMapOvr>' + extra)
+      : xml.replace(/(<p:extLst>[\s\S]*<\/p:extLst>)?\s*<\/p:sld>\s*$/, m => extra + m);
+    zip.file(`ppt/slides/slide${i + 1}.xml`, xml);
+  }
+  return zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
+}
+
 export async function buildPptxBlob(deck = state.deck) {
   const pptx = await buildPptx(deck);
-  return pptx.write({ outputType: 'blob' });
+  return addMotion(await pptx.write({ outputType: 'blob' }), deck);
 }
 
 export async function exportPPTX() {
   try {
-    const pptx = await buildPptx();
-    await pptx.writeFile({ fileName: slug(state.deck.name) + '.pptx' });
+    download(await buildPptxBlob(), slug(state.deck.name) + '.pptx');
   } catch (e) { alertUser(t('No se pudo exportar a PowerPoint: ') + (e.message || e)); }
 }

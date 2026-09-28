@@ -537,4 +537,37 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     m.querySelector('input[value="server"]').click(); assert(!m.querySelector('.sh-srv').hidden, 'datos del servidor al elegirlo');
     m.querySelector('.modal-close').click();
   });
+
+  await test('PowerPoint: transiciones, Transformar y animaciones se exportan y se vuelven a leer', async () => {
+    const d = R.examples.buildExample('lesson'), p = R.examples.buildExample('pitch');
+    d.slides.push(...p.slides.slice(0, 2));
+    d.slides[1].transition = 'zoom'; d.slides[1].autoSlide = 4000;
+    const cards = d.slides[4].blocks.filter(b => b.animation);
+    cards[1].animation = { ...cards[1].animation, effect: 'fade-left', start: 'withPrev' };
+    cards[2].animation = { ...cards[2].animation, effect: 'fade-out', start: 'afterPrev', delay: 200 };
+    d.slides[7].morphBy = 'words';
+    const blob = await R.pptx.buildPptxBlob(d);
+    await R.vendor.loadScript(R.vendor.JSZIP, 'JSZip');
+    const zip = await frame.contentWindow.JSZip.loadAsync(blob);
+    const x5 = await zip.file('ppt/slides/slide5.xml').async('string'), x8 = await zip.file('ppt/slides/slide8.xml').async('string');
+    assert(/<p:cNvPr id="\d+" name="rv-/.test(x5), 'cada objeto con su nombre rv-…');
+    assert(/<p:timing>.*nodeType="mainSeq"/.test(x5) && (x5.match(/presetClass="/g) || []).length === 3, 'tres animaciones en la línea de tiempo');
+    assert(/p159:morph option="byWord"/.test(x8), 'Transformar por palabras como Morph nativo');
+    assert(/<p:transition spd="[a-z]+" advTm="4000"><p:zoom\/>/.test(await zip.file('ppt/slides/slide2.xml').async('string')), 'zoom con avance automático');
+    const back = await R.pptxImport.importPPTX(new File([blob], 'x.pptx'));
+    eq(back.slides[1].transition, 'zoom'); eq(back.slides[1].autoSlide, 4000, 'avance automático');
+    assert(back.slides[7].autoAnimate && back.slides[7].morphBy === 'words', 'Transformar por palabras, de vuelta');
+    const an = back.slides[4].blocks.filter(b => b.animation).map(b => `${b.animation.effect}/${b.animation.start}`);
+    eq(an.join(' '), 'fade-up/click fade-left/withPrev fade-out/afterPrev', 'animaciones de vuelta con su efecto y su inicio');
+  });
+
+  await test('OpenDocument: transiciones y avance automático se exportan y se vuelven a leer', async () => {
+    const d = R.examples.buildExample('report'); d.slides[1].transition = 'zoom'; d.slides[2].transition = 'fade'; d.slides[2].autoSlide = 3000;
+    const blob = await R.odp.buildODP(d);
+    await R.vendor.loadScript(R.vendor.JSZIP, 'JSZip');
+    const xml = await (await frame.contentWindow.JSZip.loadAsync(blob)).file('content.xml').async('string');
+    assert(/smil:type="zoom"/.test(xml) && /presentation:duration="PT3.0S"/.test(xml), 'en el XML de ODP');
+    const back = await R.odp.importODP(new File([blob], 'x.odp'));
+    eq(back.slides[1].transition, 'zoom'); eq(back.slides[2].transition, 'fade'); eq(back.slides[2].autoSlide, 3000, 'avance automático');
+  });
 }

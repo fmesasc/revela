@@ -23,7 +23,7 @@ const NS = 'xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmln
   + 'xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" '
   + 'xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0" '
   + 'xmlns:presentation="urn:oasis:names:tc:opendocument:xmlns:presentation:1.0" xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0" '
-  + 'xmlns:dc="http://purl.org/dc/elements/1.1/" office:version="1.3"';
+  + 'xmlns:smil="urn:oasis:names:tc:opendocument:xmlns:smil-compatible:1.0" xmlns:dc="http://purl.org/dc/elements/1.1/" office:version="1.3"';
 
 const ODF_SHAPE = { rect: 'rectangle', rounded: 'round-rectangle', ellipse: 'ellipse', triangle: 'isosceles-triangle', diamond: 'diamond',
   pentagon: 'pentagon', star: 'star5', rightarrow: 'right-arrow', leftarrow: 'left-arrow', hexagon: 'hexagon',
@@ -32,6 +32,18 @@ const FROM_ODF = Object.fromEntries(Object.entries(ODF_SHAPE).map(([k, v]) => [v
 const hex = c => (String(c || '').match(/#[0-9a-f]{6}/i) || [null])[0];
 
 // ---- Export ----------------------------------------------------------------
+// Slide transitions and auto-advance (SMIL types, as LibreOffice writes them).
+const ODP_TRANS = { fade: ['fade', 'crossfade'], slide: ['pushWipe', 'fromRight'], push: ['pushWipe', 'fromRight'], convex: ['slideWipe', 'fromRight'],
+  concave: ['slideWipe', 'fromRight'], zoom: ['zoom', 'rotateIn'], wipe: ['barWipe', 'leftToRight'], rise: ['pushWipe', 'fromBottom'], flip: ['barnDoorWipe', 'vertical'] };
+function odpTransition(s, deck) {
+  const kind = s.autoAnimate ? 'fade' : (s.transition || deck.defaultTransition || 'slide');
+  const t = ODP_TRANS[kind];
+  const spd = { fast: 'fast', slow: 'slow' }[s.transitionSpeed || deck.transitionSpeed] || 'medium';
+  return (t ? ` smil:type="${t[0]}" smil:subtype="${t[1]}" presentation:transition-speed="${spd}"` : '')
+    + (s.autoSlide ? ` presentation:transition-type="automatic" presentation:duration="PT${(s.autoSlide / 1000).toFixed(1)}S"` : '');
+}
+const FROM_SMIL = { fade: 'fade', pushWipe: 'push', slideWipe: 'convex', zoom: 'zoom', barWipe: 'wipe', barnDoorWipe: 'flip' };
+
 export async function buildODP(deck = state.deck) {
   const JSZip = await loadZip();
   const { w: W, h: H } = deck.size;
@@ -190,7 +202,7 @@ export async function buildODP(deck = state.deck) {
     if (['math', 'poll', 'figindex'].includes(b.type)) { try { const img = await blockImage(b, s, deck); if (img) raster.set(b.id, img); } catch {} }
   const pages = deck.slides.map((s, i) => {
     const bg = hex(s.background) || '#101317';
-    const dp = style('drawing-page', 'dp', `<style:drawing-page-properties draw:fill="solid" draw:fill-color="${bg}" presentation:background-visible="true"/>`);
+    const dp = style('drawing-page', 'dp', `<style:drawing-page-properties draw:fill="solid" draw:fill-color="${bg}" presentation:background-visible="true"${odpTransition(s, deck)}/>`);
     const list = [...masterBlocksFor(s, deck), ...s.blocks.map(b => styled(b, s, deck))].filter(b => !isEmptyPlaceholder(b));
     byId = new Map(list.map(b => [b.id, b]));
     const objs = list.map(objXML).join('');
@@ -354,7 +366,10 @@ export async function importODP(file) {
     const dp = page.getAttribute('draw:style-name');
     const background = prop(dp, 'style:drawing-page-properties', 'draw:fill-color') || '#ffffff';
     const notes = all(page.getElementsByTagName('presentation:notes')[0], 'text:p').map(p => p.textContent).join('\n');
-    slides.push({ id: uid(), sectionId: null, background, transition: null, notes, autoSlide: 0,
+    const smil = prop(dp, 'style:drawing-page-properties', 'smil:type');
+    const dur = (prop(dp, 'style:drawing-page-properties', 'presentation:duration') || '').match(/PT([\d.]+)S/);
+    const auto = prop(dp, 'style:drawing-page-properties', 'presentation:transition-type') === 'automatic' && dur ? Math.round(+dur[1] * 1000) : 0;
+    slides.push({ id: uid(), sectionId: null, background, transition: FROM_SMIL[smil] || null, notes, autoSlide: auto,
       hidden: page.getAttribute('presentation:visibility') === 'hidden' || prop(dp, 'style:drawing-page-properties', 'presentation:visibility') === 'hidden', blocks });
   }
   if (!slides.length) throw new Error('No se encontraron diapositivas en el archivo.');

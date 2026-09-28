@@ -342,6 +342,41 @@ const LAYOUT_NAMES = { TITLE: 'Portada', TITLE_SLIDE: 'Portada', TITLE_AND_BODY:
 const phKeyOf = ph => `${ph.type || 'body'}|${ph.idx ?? ''}`;
 const BODY_PH = t => ['body', 'obj', 'subTitle', undefined, null].includes(t);
 
+// ---- Animations ------------------------------------------------------------
+// PowerPoint's main sequence (p:timing): every effect on a shape becomes the
+// Revela animation of its block — entrances (fade, fly in → fade-up…, zoom),
+// exits, grow/shrink emphasis and motion paths; "on click", "with previous"
+// and "after previous", with duration and delay.
+const FLY = { 4: 'fade-up', 1: 'fade-down', 8: 'fade-right', 2: 'fade-left' };
+function readAnimations(doc, spidOf, blocks, size) {
+  const main = all(doc, 'p:cTn').find(c => c.getAttribute('nodeType') === 'mainSeq');
+  if (!main) return;
+  let order = 0;
+  for (const c of all(main, 'p:cTn').filter(x => x.getAttribute('presetClass'))) {
+    const spid = all(c, 'p:spTgt')[0]?.getAttribute('spid');
+    const b = blocks.find(x => x.id === spidOf.get(spid)); if (!b) continue;
+    const cls = c.getAttribute('presetClass'), preset = +c.getAttribute('presetID'), sub = +(c.getAttribute('presetSubtype') || 0);
+    const inner = all(c, 'p:cTn').map(x => +x.getAttribute('dur')).filter(d => d > 1);
+    const dur = inner.length ? Math.max(...inner) : 500;
+    const delay = +(all(kid(c, 'p:stCondLst'), 'p:cond')[0]?.getAttribute('delay')) || 0;
+    const start = { withEffect: 'withPrev', afterEffect: 'afterPrev' }[c.getAttribute('nodeType')] || 'click';
+    let effect = 'fade-in', extra = {};
+    if (cls === 'exit') effect = 'fade-out';
+    else if (cls === 'emph') effect = +(all(c, 'p:by')[0]?.getAttribute('x') || 125000) >= 100000 ? 'grow' : 'shrink';
+    else if (cls === 'path') {
+      const m = (all(c, 'p:animMotion')[0]?.getAttribute('path') || '').match(/L\s*(-?[\d.]+)\s+(-?[\d.]+)/);
+      effect = 'path'; extra = { dx: Math.round((+m?.[1] || 0) * size.w), dy: Math.round((+m?.[2] || 0) * size.h) };
+    } else if (preset === 2) effect = FLY[sub] || 'fade-up';
+    else if (preset === 42 || preset === 47) {                  // float in: its start offset gives the direction
+      const v = all(c, 'p:strVal').map(x => x.getAttribute('val')).find(x => /#ppt_[xy][+-]/.test(x || '')) || '#ppt_y+';
+      effect = /ppt_y\+/.test(v) ? 'fade-up' : /ppt_y-/.test(v) ? 'fade-down' : /ppt_x\+/.test(v) ? 'fade-left' : 'fade-right';
+    }
+    else if (preset === 53 || preset === 23) effect = 'zoom-in';
+    else if (cls !== 'entr') continue;
+    b.animation = { effect, order: ++order, start, duration: dur, delay, ...extra };
+  }
+}
+
 // ---- Import ----------------------------------------------------------------
 export async function importPPTX(file) {
   const JSZip = await loadJSZip();
@@ -410,6 +445,7 @@ export async function importPPTX(file) {
     const slideNo = slides.length + 1;
     const links = Object.fromEntries(Object.entries(srels).filter(([, v]) => v.type === 'hyperlink').map(([k, v]) => [k, v.path]));
     let partRels = srels;
+    const spidOf = new Map();
     let decorMode = false;       // walking a layout/master: only its own graphics, not its placeholders        // relationships of the part being walked (slide, layout or master)
     const media = async rid => {
       const t = partRels[rid]; if (!t || !zip.file(t.path)) return null;
@@ -428,9 +464,15 @@ export async function importPPTX(file) {
           const cOff = [g('a:chOff', 'x'), g('a:chOff', 'y')], cExt = [g('a:chExt', 'cx') || ext[0], g('a:chExt', 'cy') || ext[1]];
           const sx = ext[0] / (cExt[0] || 1), sy = ext[1] / (cExt[1] || 1);
           await walk(el, geo => map({ ...geo, x: off[0] + (geo.x - cOff[0]) * sx, y: off[1] + (geo.y - cOff[1]) * sy, w: geo.w * sx, h: geo.h * sy }));
-        } else if (tag === 'p:sp' || tag === 'p:cxnSp') await addShape(el, map);
-        else if (tag === 'p:pic') await addPic(el, map);
-        else if (tag === 'p:graphicFrame') { if (!(await addChart(el, map))) addTable(el, map); }
+        } else {
+          const before = blocks.length;
+          if (tag === 'p:sp' || tag === 'p:cxnSp') await addShape(el, map);
+          else if (tag === 'p:pic') await addPic(el, map);
+          else if (tag === 'p:graphicFrame') { if (!(await addChart(el, map))) addTable(el, map); }
+          // Shape id → the block that stands for it (its text if it has one), for the animations.
+          const made = blocks.slice(before), spid = all(el, 'p:cNvPr')[0]?.getAttribute('id');
+          if (spid && made.length && !decorMode) spidOf.set(spid, (made.find(b => b.type === 'text') || made[made.length - 1]).id);
+        }
       }
     };
     const box = geo => ({ x: px(geo.x), y: px(geo.y), w: Math.max(1, px(geo.w)), h: Math.max(1, px(geo.h)),
@@ -627,12 +669,18 @@ export async function importPPTX(file) {
     // Transition (the p14/p15 variants sit inside mc:AlternateContent) and its auto-advance time.
     const tr = all(doc, 'p:transition')[0];
     let transition = null, autoSlide = 0;
+    let morph = null;
     if (tr) {
       const kinds = [...all(tr, '*')].map(e => e.tagName.replace(/^p\d*:/, ''));
       transition = kinds.map(k => TRANSITION[k]).find(Boolean) || null;
       const adv = +(tr.getAttribute('advTm') || 0); if (adv) autoSlide = adv;
+      // Morph (inside mc:AlternateContent): by objects, words or characters.
+      const m = [...all(tr, '*')].find(e => /:morph$/.test(e.tagName));
+      if (m) { morph = { byWord: 'words', byChar: 'chars' }[m.getAttribute('option')] || 'objects'; transition = null; }
     }
-    slides.push({ id: uid(), sectionId: null, background, transition, hidden, notes, autoSlide, blocks, _layout: layoutPath, ...(hideMaster && { hideMaster: true }) });
+    readAnimations(doc, spidOf, blocks, size);
+    slides.push({ id: uid(), sectionId: null, background, transition, hidden, notes, autoSlide, blocks, _layout: layoutPath, ...(hideMaster && { hideMaster: true }),
+      ...(morph && { autoAnimate: true }), ...(morph && morph !== 'objects' && { morphBy: morph }) });
   }
 
   // ---- Master styles and layouts --------------------------------------------
