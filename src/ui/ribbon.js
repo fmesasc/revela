@@ -81,6 +81,9 @@ const ACTIONS = {
   'insert-text': blocks.addText,
   'insert-image': () => readFile('image/*', blocks.addImage),
   'insert-table': blocks.addTable,
+  'insert-table-csv': () => readFile('.csv,.tsv,.txt,text/csv', async f => blocks.addTableFromText(await f.text()), 'file'),
+  'insert-table-paste': () => promptDialog(t('Pega aquí las celdas copiadas de una hoja de cálculo (o texto CSV):'), '')
+    .then(v => { if (v) blocks.addTableFromText(v); }),
   'insert-code': blocks.addCode,
   'insert-chart': blocks.addChart,
   'insert-math': blocks.addMath,

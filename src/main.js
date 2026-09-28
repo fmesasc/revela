@@ -7,7 +7,7 @@ import { initRibbon, renderRibbon } from './ui/ribbon.js';
 import { initContextMenu } from './ui/contextmenu.js';
 import { initDraw } from './ui/draw.js';
 import { initI18n, t } from './i18n.js';
-import { deleteSelected, duplicateSelected, groupSelected, ungroupSelected } from './features/blocks.js';
+import { deleteSelected, duplicateSelected, groupSelected, ungroupSelected, addImage, addTableFromText, addText } from './features/blocks.js';
 import { openFindPanel } from './features/search.js';
 // Namespaces exposed to the test harness (see tests/).
 import * as store from './core/store.js';
@@ -80,6 +80,24 @@ initRibbon();
 initContextMenu();
 initDraw();
 document.addEventListener('keydown', keyboard);
+// Paste onto the slide (not while typing): an image becomes a picture, cells
+// copied from a spreadsheet become a table, other text a text box.
+document.addEventListener('paste', e => {
+  const a = document.activeElement;
+  if (a?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a?.tagName || '') || document.querySelector('.modal-backdrop')) return;
+  const cd = e.clipboardData; if (!cd) return;
+  const img = [...cd.files].find(f => f.type.startsWith('image/'));
+  if (img) {
+    e.preventDefault();
+    const r = new FileReader(); r.onload = () => addImage(r.result); r.readAsDataURL(img);
+    return;
+  }
+  const txt = cd.getData('text/plain');
+  if (!txt || !txt.trim()) return;
+  e.preventDefault();
+  if (txt.includes('\t')) addTableFromText(txt);
+  else addText(txt.trim().split(/\n/).map(l => l.replace(/&/g, '&amp;').replace(/</g, '&lt;')).join('<br>'));
+});
 subscribe(render);
 window.addEventListener('revela:lang', render);
 render();

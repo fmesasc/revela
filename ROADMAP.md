@@ -80,7 +80,8 @@ the origin of every requirement is traceable.
 - ✅ Table styles — 6 presets coloured from the palette, header row, banded rows, first column, lines only (also in .pptx) `PP·GS·OO`
 - ✅ Merge shapes — union, combine, intersect, subtract (polygon-clipping; custom geometry in .pptx) `PP·OO`
 - ⬜ Online / stock images & icons library `PP·GS`
-- ⬜ Embedded spreadsheet / linked data `GS·OO`
+- ✅ Tables from CSV files and from cells pasted from a spreadsheet; paste images/text straight onto the slide `GS·OO`
+- ⬜ Live-linked spreadsheet data (needs a data source/back end) `GS·OO`
 - ✅ Screen / camera recording into a video object, live camera on the slide (Cameo: circle/rounded/rect, mirrored) `PP`
 - ✅ Freehand ink on the slide (Draw tab: pen, highlighter, stroke eraser, colour & thickness; strokes are movable objects) `PP·OO`
 

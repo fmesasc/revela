@@ -31,7 +31,7 @@ export function duplicateSelected() {
   });
 }
 
-export function addText() { insert(textBlock({ html: 'Escribe aquí' })); }
+export function addText(html = 'Escribe aquí') { insert(textBlock({ html })); }
 export function addWordArt(preset) {
   insert(textBlock({ html: 'Text Art', fontSize: 80, w: 620, h: 160, textAlign: 'center', wordart: preset }));
 }
@@ -127,6 +127,38 @@ export function addDiagram(kind = 'process') {
 }
 
 export function addTable() { insert(tableBlock()); }
+// CSV / TSV (a file, or a range pasted from a spreadsheet) → rows of cells.
+// Handles quoted fields with separators, doubled quotes and line breaks.
+export function parseDelimited(text) {
+  text = String(text || '').replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').replace(/\n+$/, '');
+  const first = text.split('\n')[0] || '';
+  const sep = first.includes('\t') ? '\t' : (first.split(';').length > first.split(',').length ? ';' : ',');
+  const rows = []; let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+      else if (c === '"') q = false;
+      else cell += c;
+    } else if (c === '"' && cell === '') q = true;
+    else if (c === sep) { row.push(cell); cell = ''; }
+    else if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+    else cell += c;
+  }
+  row.push(cell); rows.push(row);
+  const cols = Math.max(...rows.map(r => r.length));
+  return rows.map(r => Array.from({ length: cols }, (_, i) => (r[i] ?? '').trim()));
+}
+const escCell = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+// Insert a table from delimited text (first row as header).
+export function addTableFromText(text) {
+  const rows = parseDelimited(text).slice(0, 60).map(r => r.slice(0, 12).map(escCell));
+  if (!rows.length || !rows[0].length) return null;
+  const { w, h } = state.deck.size;
+  const tb = tableBlock({ rows, header: true, x: 80, y: 120, w: w - 160, h: Math.min(h - 180, 44 * rows.length + 10) });
+  insert(tb);
+  return tb;
+}
 export function addCode() { insert(codeBlock()); }
 export function setCode(props) {
   const b = selectedBlock(); if (!b || b.type !== 'code') return;
