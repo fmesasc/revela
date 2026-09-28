@@ -364,6 +364,28 @@ export async function run(frame) {
     assert(/Figura 1: Un gato/.test(R.io.buildHTML()), 'descripción en el export');
   });
 
+  await test('índice: solo tablas', async () => {
+    reset(); R.i18n.setLang('es');
+    R.blocks.addImage('data:image/png;base64,AAA'); R.blocks.setCaption('Foto');
+    R.blocks.addTable(); R.blocks.setCaption('Datos');
+    R.blocks.addFigIndex('tables'); const fi = slide().blocks.at(-1); await sleep(20);
+    const el = D.querySelector(`.block[data-id="${fi.id}"] .figindex`);
+    assert(el && /Tabla 1: Datos/.test(el.textContent) && !/Figura/.test(el.textContent), 'solo tablas en la lista');
+  });
+
+  await test('zoom de diapositiva: miniatura, enlace y opción de volver', async () => {
+    reset(); R.slides.addSlide();
+    R.state.deck.slides[0].blocks = [{ id: 'x1', type: 'text', x: 0, y: 0, w: 200, h: 60, html: 'DESTINO' }];
+    R.state.ui.slideIndex = 1; R.render();
+    R.blocks.addSlideRef(); const b = slide().blocks.at(-1); b.target = R.state.deck.slides[0].id;
+    const html = R.io.buildHTML();
+    assert(/<a class="slide-zoom" href="#\/0"/.test(html), 'enlace a la diapositiva destino');
+    assert(/DESTINO/.test(html), 'miniatura con el contenido de la diapositiva');
+    b.returnBack = true;
+    const html2 = R.io.buildHTML();
+    assert(/data-zoom-return="1"/.test(html2) && /slidechanged/.test(html2), 'opción de volver + script');
+  });
+
   await test('índice de figuras lista figuras y tablas', async () => {
     reset(); R.i18n.setLang('es');
     R.blocks.addImage('data:image/png;base64,AAA'); R.blocks.setCaption('Foto');

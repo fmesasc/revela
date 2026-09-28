@@ -89,6 +89,7 @@ const ACTIONS = {
   'insert-hf': () => openHeaderFooter(),
   'insert-date': () => blocks.addDate(),
   'insert-figindex': () => blocks.addFigIndex(),
+  'insert-slideref': () => blocks.addSlideRef(),
   'find-replace': () => search.openFindPanel(),
   'copy-style': () => format.copyStyle(),
   'paste-style': () => format.pasteStyle(),

@@ -5,12 +5,24 @@
 import { state, commit, mutate, currentSlide, selectedBlock,
   selectedBlocks, selectedIds, isSelected, setSelection, toggleSelection, setMulti, selectWithGroup } from '../core/store.js';
 import { shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart } from './shape.js';
-import { collectFigures, figuresMap, captionLine } from '../features/captions.js';
+import { collectFigures, figuresMap, captionLine, figIndexTitle } from '../features/captions.js';
+import { blockPreview } from './preview.js';
 import { t } from '../i18n.js';
 
-function figIndexHTML() {
-  const figs = collectFigures(state.deck);
-  return `<b>${t('Índice de figuras')}</b><ul>` + figs.map(f => `<li>${captionLine(f)}</li>`).join('') + `</ul>`;
+function renderSlideRef(wrap, b) {
+  wrap.innerHTML = '';
+  const target = state.deck.slides.find(s => s.id === b.target) || state.deck.slides[0];
+  if (!target) return;
+  const { w, h } = state.deck.size;
+  const inner = document.createElement('div'); inner.className = 'sr-inner';
+  inner.style.cssText = `width:${w}px;height:${h}px;transform:scale(${b.w / w});transform-origin:top left;position:relative;background:${target.background}`;
+  for (const bl of target.blocks) if (bl.type !== 'slideref') inner.appendChild(blockPreview(bl));
+  wrap.appendChild(inner);
+}
+
+function figIndexHTML(b) {
+  const figs = collectFigures(state.deck, b && b.kind);
+  return `<b>${t(figIndexTitle(b && b.kind))}</b><ul>` + figs.map(f => `<li>${captionLine(f)}</li>`).join('') + `</ul>`;
 }
 
 const findBlock = id => currentSlide().blocks.find(x => x.id === id);
@@ -238,7 +250,9 @@ function reconcile(b) {
   } else if (b.type === 'math') {
     const d = el.querySelector('.math-blk'); if (d && d.dataset.latex !== (b.latex || '')) renderMath(d, b.latex);
   } else if (b.type === 'figindex') {
-    const d = el.querySelector('.figindex'); if (d) { d.style.fontSize = (b.fontSize || 28) + 'px'; d.innerHTML = figIndexHTML(); }
+    const d = el.querySelector('.figindex'); if (d) { d.style.fontSize = (b.fontSize || 28) + 'px'; d.innerHTML = figIndexHTML(b); }
+  } else if (b.type === 'slideref') {
+    const d = el.querySelector('.slideref'); if (d) renderSlideRef(d, b);
   }
 }
 
@@ -328,7 +342,10 @@ function content(b) {
   }
   if (b.type === 'figindex') {
     const d = document.createElement('div'); d.className = 'figindex';
-    d.style.fontSize = (b.fontSize || 28) + 'px'; d.innerHTML = figIndexHTML(); return d;
+    d.style.fontSize = (b.fontSize || 28) + 'px'; d.innerHTML = figIndexHTML(b); return d;
+  }
+  if (b.type === 'slideref') {
+    const d = document.createElement('div'); d.className = 'slideref'; renderSlideRef(d, b); return d;
   }
   if (b.type === 'table') return tableContent(b);
   if (b.type === 'chart') {

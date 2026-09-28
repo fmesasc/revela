@@ -126,6 +126,15 @@ function forBlock(b) {
     items.push(
       ['Reproducir en el editor', () => document.querySelector(`.block[data-id="${b.id}"] video`)?.play()],
       null);
+  } else if (b.type === 'figindex') {
+    items.push(
+      ['Mostrar figuras y tablas', () => blocks.setFigIndexKind('all')],
+      ['Solo figuras', () => blocks.setFigIndexKind('figures')],
+      ['Solo tablas', () => blocks.setFigIndexKind('tables')], null);
+  } else if (b.type === 'slideref') {
+    items.push(
+      ['Elegir diapositiva…', () => openSlidePicker(b)],
+      [b.returnBack ? 'Ir a la diapositiva (sin volver)' : 'Al hacer clic vuelve aquí', () => blocks.toggleSlideRefReturn()], null);
   } else if (b.type === 'math') {
     items.push(['Editar ecuación…', () => openMath(b)], null);
   } else if (b.type === 'code') {
@@ -145,7 +154,7 @@ function forBlock(b) {
   }
 
   // Caption (figures, tables and other objects — not plain text/connectors).
-  if (!['text', 'connector', 'figindex'].includes(b.type)) {
+  if (!['text', 'connector', 'figindex', 'slideref'].includes(b.type)) {
     items.push(null, [b.caption ? 'Editar descripción…' : 'Añadir descripción…', () => openCaption(b)]);
     if (b.caption) items.push(['Quitar descripción', () => blocks.setCaption('')]);
   }
@@ -448,6 +457,28 @@ function openBoxStyle(b) {
   back.querySelector('.bx-border').addEventListener('input', e => blocks.setBoxStyle({ borderColor: e.target.value }));
   back.querySelector('.bx-radius').addEventListener('input', e => blocks.setBoxStyle({ radius: +e.target.value }));
   back.querySelector('[data-clear]').addEventListener('click', () => { blocks.setBoxStyle({ bg: '', borderColor: '', radius: 0 }); close(); });
+}
+
+function slideShortLabel(s, i) {
+  const tb = (s.blocks || []).find(x => x.type === 'text' && x.html);
+  const d = document.createElement('div'); d.innerHTML = tb ? tb.html : '';
+  const txt = (d.textContent || '').trim().slice(0, 40);
+  return `${i + 1}. ${txt || t('Diapositiva') + ' ' + (i + 1)}`;
+}
+function openSlidePicker(b) {
+  if (document.getElementById('sp-modal')) return;
+  const back = document.createElement('div');
+  back.id = 'sp-modal'; back.className = 'modal-backdrop';
+  const items = state.deck.slides.map((s, i) =>
+    `<button class="sp-item${s.id === b.target ? ' on' : ''}" data-id="${s.id}">${slideShortLabel(s, i).replace(/</g, '&lt;')}</button>`).join('');
+  back.innerHTML = `<div class="modal" style="text-align:left;min-width:320px;max-height:70vh;overflow:auto">
+    <button class="modal-close">✕</button><h3>${t('Elegir diapositiva…')}</h3>
+    <div class="sp-list">${items}</div></div>`;
+  document.body.appendChild(back);
+  const close = () => back.remove();
+  back.querySelector('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  back.querySelectorAll('.sp-item').forEach(x => x.addEventListener('click', () => { blocks.setSlideRefTarget(x.dataset.id); close(); }));
 }
 
 function openCaption(b) {

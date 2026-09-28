@@ -2,7 +2,7 @@
 
 import { state, commit, currentSlide, selectedBlock,
   selectedBlocks, selectedIds, setSelection, setMulti } from '../core/store.js';
-import { uid, textBlock, tableBlock, codeBlock, chartBlock, mathBlock, figindexBlock } from '../core/model.js';
+import { uid, textBlock, tableBlock, codeBlock, chartBlock, mathBlock, figindexBlock, slideRefBlock } from '../core/model.js';
 import { currentLang } from '../i18n.js';
 
 function insert(block) {
@@ -125,7 +125,27 @@ export function setCode(props) {
 }
 export function addChart() { insert(chartBlock()); }
 export function addMath() { insert(mathBlock()); }
-export function addFigIndex() { insert(figindexBlock()); }
+export function addFigIndex(kind = 'all') { insert(figindexBlock({ kind })); }
+
+// Slide zoom: an embedded thumbnail of another slide, clickable in the show.
+export function addSlideRef() {
+  const cur = currentSlide();
+  const other = state.deck.slides.find(s => s.id !== cur.id) || cur;
+  const { w, h } = state.deck.size; const bw = 420;
+  insert(slideRefBlock({ target: other.id, w: bw, h: Math.round(bw * h / w) }));
+}
+export function setSlideRefTarget(id) {
+  const b = selectedBlock(); if (!b || b.type !== 'slideref') return;
+  commit(() => { b.target = id; });
+}
+export function toggleSlideRefReturn() {
+  const b = selectedBlock(); if (!b || b.type !== 'slideref') return;
+  commit(() => { b.returnBack = !b.returnBack; });
+}
+export function setFigIndexKind(kind) {
+  const b = selectedBlock(); if (!b || b.type !== 'figindex') return;
+  commit(() => { b.kind = kind; });
+}
 export function setCaption(text) {
   const b = selectedBlock(); if (!b) return;
   commit(() => { if (text) b.caption = text; else delete b.caption; });

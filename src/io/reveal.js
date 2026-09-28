@@ -6,7 +6,7 @@ import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconS
 import { googleFontLinks } from '../features/fonts.js';
 import { t } from '../i18n.js';
 import { alertDialog } from '../ui/dialog.js';
-import { collectFigures, figuresMap, captionLine } from '../features/captions.js';
+import { collectFigures, figuresMap, captionLine, figIndexTitle, visibleIndexMap } from '../features/captions.js';
 
 const REVEAL = 'https://cdn.jsdelivr.net/npm/reveal.js@5.1.0';
 const MODEL_VIEWER = 'https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js';
@@ -88,9 +88,25 @@ function blockHTML(b, slide) {
 }
 
 function figIndexExport(b, deck) {
-  const figs = collectFigures(deck);
-  return `<div style="${box(b)}font-size:${b.fontSize || 28}px;color:#fff"><b>${esc(t('Índice de figuras'))}</b>`
-    + `<ul style="margin:.4em 0 0;padding-left:1.4em">` + figs.map(f => `<li>${esc(captionLine(f))}</li>`).join('') + `</ul></div>`;
+  const figs = collectFigures(deck, b.kind);
+  const vis = visibleIndexMap(deck);
+  return `<div style="${box(b)}font-size:${b.fontSize || 28}px;color:#fff"><b>${esc(t(figIndexTitle(b.kind)))}</b>`
+    + `<ul style="margin:.4em 0 0;padding-left:1.4em">`
+    + figs.map(f => `<li><a href="#/${vis.get(f.slide) ?? 0}" style="color:inherit;text-decoration:none">${esc(captionLine(f))}</a></li>`).join('')
+    + `</ul></div>`;
+}
+function slideRefExport(b, originSlide, deck) {
+  const target = deck.slides.find(s => s.id === b.target) || deck.slides[0];
+  if (!target) return '';
+  const { w, h } = deck.size; const scale = b.w / w;
+  const vis = visibleIndexMap(deck);
+  const ti = vis.get(deck.slides.indexOf(target)) ?? 0;
+  const oi = vis.get(deck.slides.indexOf(originSlide)) ?? 0;
+  const inner = target.blocks.filter(x => x.type !== 'slideref').map(bl => blockHTML(bl, target)).join('');
+  const ret = b.returnBack ? ` data-zoom-return="1" data-target="${ti}" data-origin="${oi}"` : '';
+  return `<a class="slide-zoom" href="#/${ti}"${ret} style="${box(b)}display:block;overflow:hidden;`
+    + `border:1px solid #ffffff88;border-radius:6px;background:${target.background}">`
+    + `<div style="width:${w}px;height:${h}px;transform:scale(${scale});transform-origin:top left;position:relative">${inner}</div></a>`;
 }
 function slideHTML(s, deck, figMap) {
   const trans = s.transition ? ` data-transition="${s.transition}"` : '';
@@ -99,6 +115,7 @@ function slideHTML(s, deck, figMap) {
   const bg = solid ? ` data-background-color="${s.background}"` : '';
   const inner = s.blocks.map(b => {
     if (b.type === 'figindex') return figIndexExport(b, deck);
+    if (b.type === 'slideref') return slideRefExport(b, s, deck);
     let html = blockHTML(b, s);
     const f = figMap.get(b.id);
     if (f) html += `<div class="caption" style="position:absolute;left:${b.x}px;top:${b.y + b.h + 4}px;width:${b.w}px;`
@@ -128,6 +145,7 @@ export function buildHTML(deck = state.deck) {
   const hasCode = deck.slides.some(s => s.blocks.some(b => b.type === 'code'));
   const hasMath = deck.slides.some(s => s.blocks.some(b => b.type === 'math'));
   const hasInlineMath = deck.slides.some(s => s.blocks.some(b => b.type === 'text' && /\$[^$]/.test(b.html || '')));
+  const hasZoomReturn = deck.slides.some(s => s.blocks.some(b => b.type === 'slideref' && b.returnBack));
   const katexNeeded = hasMath || hasInlineMath;
   const ft = deck.footer || { show: false };
   const footerText = ft.show
@@ -176,6 +194,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
    plugins:[ RevealNotes${hasCode ? ', RevealHighlight' : ''} ] });
  ${hasMath ? 'window.addEventListener("load",function(){window.katex&&document.querySelectorAll(".math[data-latex]").forEach(function(el){try{katex.render(el.getAttribute("data-latex"),el,{throwOnError:false,displayMode:true});}catch(e){}});});' : ''}
  ${hasInlineMath ? 'window.addEventListener("load",function(){window.renderMathInElement&&renderMathInElement(document.body,{delimiters:[{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}],throwOnError:false});});' : ''}
+ ${hasZoomReturn ? '(function(){var p=null;document.addEventListener("click",function(e){var a=e.target.closest("a.slide-zoom[data-zoom-return]");if(a){p={t:+a.dataset.target,o:+a.dataset.origin,arrived:false};}});Reveal.on("slidechanged",function(ev){if(!p)return;if(ev.indexh===p.t){p.arrived=true;return;}if(p.arrived){var o=p.o;p=null;setTimeout(function(){Reveal.slide(o);},0);}});})();' : ''}
 </script></body></html>`;
 }
 

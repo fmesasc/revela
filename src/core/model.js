@@ -50,8 +50,15 @@ export function textBlock(props = {}) {
 
 export function figindexBlock(props = {}) {
   return Object.assign({
-    id: uid(), type: 'figindex', x: 140, y: 150, w: 1000, h: 470,
+    id: uid(), type: 'figindex', kind: 'all', x: 140, y: 150, w: 1000, h: 470,
     rotation: 0, animation: null, fontSize: 28,
+  }, props);
+}
+
+export function slideRefBlock(props = {}) {
+  return Object.assign({
+    id: uid(), type: 'slideref', target: null, returnBack: false,
+    x: 360, y: 180, w: 420, h: 236, rotation: 0, animation: null,
   }, props);
 }
 
