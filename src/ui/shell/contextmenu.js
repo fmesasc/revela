@@ -18,6 +18,9 @@ import { addSlide, duplicateSlide, deleteSlide, goToSlide, toggleSlideHidden, ad
 import { t } from '../../i18n/index.js';
 import { alertDialog, promptDialog } from '../dialogs/dialog.js';
 import { openSaveAsPicture } from '../dialogs/picture.js';
+import { openMediaPlayback } from '../dialogs/media.js';
+import { playInEditor } from '../canvas/mediaview.js';
+import { isGif } from '../../features/live/media.js';
 import { openImageAdjust, openMath, openChartData, openOpacity, openIconColor, openBoxStyle, openSlidePicker, openCaption, openAlt, openImageCrop, removeBackground, openTableStyle } from '../dialogs/object.js';
 
 let menuEl, menuOpenedAt = 0;
@@ -135,6 +138,7 @@ function forBlock(b, cell = null) {
       ['Texto alternativo…', () => openAlt(b)],
       [b.zoomable ? 'No ampliar al hacer clic' : 'Ampliar al hacer clic (al presentar)', () => commit(() => { if (b.zoomable) delete b.zoomable; else b.zoomable = true; })],
       ['Quitar fondo (IA)', () => removeBackground(b)],
+      ...(isGif(b) ? [['Reproducción…', () => openMediaPlayback(b)]] : []),
       null);
   } else if (b.type === 'model') {
     items.push(
@@ -143,7 +147,8 @@ function forBlock(b, cell = null) {
       null);
   } else if (b.type === 'video') {
     items.push(
-      ['Reproducir en el editor', () => document.querySelector(`.block[data-id="${b.id}"] video`)?.play()],
+      ['Reproducir en el editor', () => playInEditor(b.id)],
+      ['Reproducción…', () => openMediaPlayback(b)],
       null);
   } else if (b.type === 'poll') {
     items.push(['Editar votación…', () => openPollEditor(b)], null);

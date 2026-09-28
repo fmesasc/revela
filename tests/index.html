@@ -29,7 +29,7 @@
       try {
         // ?only=text,io runs just those areas (tests/suites/*.js).
         const only = new URLSearchParams(location.search).get('only');
-        const { pass, total, results } = await run(frame, only ? only.split(',') : null);
+        const { pass, total, results } = await run(frame, only ? only.split(',') : null, new URLSearchParams(location.search).get('grep') || '');
         for (const r of results) {
           const d = document.createElement('div');
           d.className = 'row ' + (r.ok ? 'ok' : 'ko');

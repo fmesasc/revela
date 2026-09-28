@@ -14,7 +14,7 @@
 
 const AREAS = ['text', 'objects', 'slides', 'animation', 'present', 'io', 'editor', 'services'];
 
-export async function run(frame, only = null) {
+export async function run(frame, only = null, grep = '') {
   const R = frame.contentWindow.__revela;
   const D = frame.contentDocument;
   const results = [];
@@ -24,6 +24,7 @@ export async function run(frame, only = null) {
 
   let area = '';
   async function test(name, fn) {
+    if (grep && !name.includes(grep)) return;
     try { await fn(); results.push({ area, name, ok: true }); }
     catch (e) { results.push({ area, name, ok: false, err: e.message || String(e) }); }
   }

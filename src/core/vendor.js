@@ -19,6 +19,7 @@ export const GIFENC = NPM + 'gifenc@1.0.3/+esm';
 export const JSZIP_ESM = NPM + 'jszip@3.10.1/+esm';
 export const PDFJS = NPM + 'pdfjs-dist@4.10.38/build';
 export const BG_REMOVAL = NPM + '@imgly/background-removal@1.5.5/+esm';
+export const GIFUCT = NPM + 'gifuct-js@2.1.2/+esm';
 
 // A classic script, once: resolves at once if `global` already exists, and
 // concurrent calls for the same URL share one request.

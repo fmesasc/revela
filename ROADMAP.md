@@ -77,6 +77,7 @@ the origin of every requirement is traceable.
 - ✅ Icons — built-in inline-SVG icon set with colour `PP·GS`
 - ✅ Emoji picker `GS`
 - ✅ Animated GIF playback `PP·OO`
+- ✅ Video and GIF playback options: segments played one per click (from second X to second Y), start automatically, loop, mute; colour key (green screen) made transparent live; AI background removal for animated GIFs, frame by frame `PP`
 - ✅ Embedded web page (`<iframe>`); video links (YouTube, Vimeo) turned into their player; pages that refuse to be framed shown as a link card `—`
 - ✅ Code blocks — syntax colouring in the editor, visual editor of highlight steps (lines × steps grid with preview), auto-scroll to the highlighted lines, line numbers and first line, 35 languages, code morph between slides `—`
 - ✅ Figure/table captions with auto-numbering + list of figures/tables `OO`

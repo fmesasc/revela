@@ -15,6 +15,7 @@ import { pollEditorHTML } from '../../features/live/poll.js';
 import { masterBlocksFor, PH_PROMPT, styled, layoutInUse, masterInUse } from '../../features/document/master.js';
 import { stageBackground } from '../../io/formats/html.js';
 import { styleRich, paintWebCard, paintMath, pollSig, renderSlideRef, figIndexHTML, connectorHTML, applyImgStyle, content, hostOf, hasInlineMath, renderInlineMath, renderMath, paintCode, setupCode, tableSig, fillTable, setupTable, setupText, setupMath, setupModel, setupEmbed } from './content.js';
+import { mediaViewCurrent } from './mediaview.js';
 import { addGuideFromRuler, drawPGuides, startMarquee, startDrag, startRotate, startResize } from './interact.js';
 
 export const findBlock = id => currentSlide().blocks.find(x => x.id === id);
@@ -222,6 +223,8 @@ function reconcile(b) {
   if (badge) { if (nc) badge.textContent = nc; else badge.remove(); }
   el.classList.toggle('animated', !!b.animation);
   el.classList.toggle('locked', !!b.locked);
+  // A colour key switched on or off, or a new source for a keyed one: new view.
+  if ((b.type === 'image' || b.type === 'video') && !mediaViewCurrent(el, b)) el.firstElementChild.replaceWith(content(b));
   if (b.type === 'text') {
     const rich = el.querySelector('.rich');
     if (rich) {
@@ -234,6 +237,7 @@ function reconcile(b) {
       }
     }
   } else if (b.type === 'image') {
+    const pv = el.querySelector(':scope > .media-player'); if (pv) applyImgStyle(pv, b);
     const img = el.querySelector('img'); if (img) { if (img.getAttribute('src') !== b.src) img.src = b.src; applyImgStyle(img, b); }
   } else if (b.type === 'model') {
     const mv = el.querySelector('model-viewer'); if (mv && mv.getAttribute('src') !== b.src) mv.setAttribute('src', b.src);

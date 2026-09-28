@@ -175,7 +175,8 @@ export const ACTIONS = {
   'insert-chart': blocks.addChart,
   'insert-math': blocks.addMath,
   'insert-model': () => readFile('.glb,.gltf', blocks.addModel),
-  'insert-video': () => readFile('video/*', blocks.addVideo),
+  // A GIF is inserted as an image (it can have segments and a colour key too).
+  'insert-video': () => readFile('video/*,image/gif', src => (/^data:image\/gif/.test(src) ? blocks.addImage(src) : blocks.addVideo(src))),
   'insert-audio': () => readFile('audio/*', blocks.addAudio),
   'insert-embed': () => promptDialog(t('Dirección de la página web (URL):'), 'https://').then(url => {
     if (!url) return;

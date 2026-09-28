@@ -3,7 +3,7 @@
 # Chrome in real time (so camera/recording tests work with fake devices) and
 # prints "REVELATEST PASS n/n" or the failing tests; then real touch checks on a
 # phone-sized page and the equation keyboard with real mouse clicks. Exit 0 = all pass.
-# --only=text,io runs just those areas of tests/suites/. --e2e adds the
+# --only=text,io runs just those areas of tests/suites/, --grep=text the tests whose name has it. --e2e adds the
 # two-device checks. Checks the module layers first (tests/layers.py). Needs only python3 and Chrome/Chromium (see tests/run.py).
 cd "$(dirname "$0")/.."
 # Layer rules first: quick, and no browser needed.

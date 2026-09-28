@@ -241,3 +241,10 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .titlebar .ap-btn{border:0;background:none;color:var(--txt2);cursor:pointer;padding:4px;border-radius:6px}
 .titlebar .ap-btn:hover{background:var(--line)}
 @media (max-width:860px){.ap-cards{grid-template-columns:repeat(2,1fr)}}
+/* Playback dialog (videos and GIFs) */
+.mp-view{height:240px;border-radius:8px;overflow:hidden;background:repeating-conic-gradient(#ccc 0 25%,#fff 0 50%) 0 0/16px 16px}
+.mp-view.picking{cursor:crosshair;outline:2px solid var(--accent)}
+.mp-bar{display:flex;align-items:center;gap:8px;margin:6px 0 10px}.mp-bar .mp-time{flex:1}.mp-now{font-variant-numeric:tabular-nums;font-size:12px;min-width:48px}
+.mp-seg{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px;font-size:12px}.mp-seg input{width:64px}.mp-seg .mini2{padding:4px 6px}
+.mp-keyopts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.mp-keyopts[hidden]{display:none}
+.block .media-player canvas{pointer-events:none}

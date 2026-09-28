@@ -16,6 +16,7 @@ import { autocorrectAtCaret } from '../../features/document/autocorrect.js';
 import { KATEX, HIGHLIGHT, loadScript, loadStyle } from '../../core/vendor.js';
 import { findBlock, readOnly, fitFontSize } from './canvas.js';
 import { openMath } from '../dialogs/object.js';
+import { keyedView, mediaView } from './mediaview.js';
 
 export const pollSig = b => JSON.stringify([b.kind, b.display, b.question, b.options, b.fontSize, savedVotes(b.pollId)]);
 export function renderSlideRef(wrap, b) {
@@ -132,6 +133,7 @@ export function content(b) {
     const c = document.createElement('code'); pre.appendChild(c); paintCode(c, b);
     return pre;
   }
+  if (keyedView(b)) { const d = mediaView(b); if (b.type === 'image') applyImgStyle(d, b); return d; }
   if (b.type === 'image') { const i = document.createElement('img'); i.src = b.src; i.draggable = false; applyImgStyle(i, b); return i; }
   if (b.type === 'video') { const v = document.createElement('video'); v.src = b.src; v.controls = true; return v; }
   if (b.type === 'poll') {

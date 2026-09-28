@@ -3,9 +3,11 @@
 // the print and image exports.
 
 import { state } from '../../core/store.js';
-import { REVEAL, KATEX, MODEL_VIEWER } from '../../core/vendor.js';
+import { REVEAL, KATEX, MODEL_VIEWER, GIFUCT } from '../../core/vendor.js';
 import { download, slug } from '../files.js';
 import { TRIGGER_JS, CAMERA_JS, pollJS, liveDataJS, LIGHTBOX_JS, overviewJS } from '../runtime/scripts.js';
+import { createMediaPlayer, revelaMediaRuntime } from '../runtime/media.js';
+import { needsPlayer, mediaConfig } from '../../features/live/media.js';
 import { shadowCSS, borderCSS, levelCSS, textPadding, webCardHTML, mathTeX, mathCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, tableClass, tableVars, tableCSS } from '../../render/svg.js';
 import { googleFontLinks } from '../../features/design/fonts.js';
 import { t, currentLang } from '../../i18n/index.js';
@@ -155,6 +157,15 @@ function blockHTMLRaw(b, slide) {
   if (b.type === 'model')
     return `<model-viewer${a} src="${b.src}" camera-controls ${b.autoRotate !== false ? 'auto-rotate' : ''} `
       + `shadow-intensity="1" style="${box(b)}background:transparent"></model-viewer>`;
+  // Video / GIF with segments, autoplay, loop, mute or a colour key: the media
+  // player draws it; each segment after the first automatic one is a click.
+  if (needsPlayer(b)) {
+    const cfg = mediaConfig(b), first = cfg.autoplay ? 1 : 0;
+    // No segments and not automatic: one click plays it all (data-seg -1).
+    const segs = cfg.segments.length ? cfg.segments.slice(first).map((_, k) => k + first) : cfg.autoplay ? [] : [-1];
+    const clicks = segs.map((n, k) => `<span class="fragment rv-seg" data-seg-of="rvm-${b.id}" data-seg="${n}"${b.animation && !b.animation.trigger ? ` data-fragment-index="${b.animation.order + k + 1}"` : ''} style="display:none"></span>`).join('');
+    return `<div${a} id="rvm-${b.id}" data-media="${esc(JSON.stringify(cfg))}" style="${box(b)}${b.type === 'image' ? `filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)};` : ''}"></div>${clicks}`;
+  }
   if (b.type === 'image')
     return `<img${a} src="${b.src}"${b.zoomable ? ' data-lightbox' : ''} alt="${b.decorative ? '' : esc(b.alt || '')}" style="${box(b)}object-fit:${b.fit || 'contain'};`
       + `filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)}">`;
@@ -350,6 +361,7 @@ export function buildHTML(deck = state.deck, { inApp = false } = {}) {
   const hasCam = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'camera'));
   const hasPoll = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'poll'));
   const hasZoomable = deck.slides.some(s => s.blocks.some(b => b.type === 'image' && b.zoomable));
+  const hasMedia = deck.slides.some(s => !s.hidden && s.blocks.some(needsPlayer));
   const hasLive = deck.slides.some(s => s.blocks.some(b => (b.type === 'chart' && b.dataUrl) || (b.type === 'embed' && b.refreshMin)));
   const ft = deck.footer || { show: false };
   const footerText = ft.show
@@ -426,6 +438,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${hasPoll ? pollJS(currentPalette(deck).accents) : ''}
  ${hasLive ? liveDataJS() : ''}
  ${hasZoomable ? LIGHTBOX_JS : ''}
+ ${hasMedia ? `${createMediaPlayer.toString()}\n${revelaMediaRuntime.toString()}\nrevelaMediaRuntime(${JSON.stringify(GIFUCT)});` : ''}
  ${inkJS(w, h, { pen: t('Lápiz'), hl: t('Resaltador'), laser: t('Puntero láser'), color: t('Color de la tinta'), erase: t('Borrar la tinta de la diapositiva'),
    cc: t('Subtítulos en directo'), lang: speechLang(), ccWarn: t('Los subtítulos usan el reconocimiento de voz del navegador: en Chrome y Edge el audio se envía a su servicio de voz. ¿Activarlos?') })}
  ${overviewJS(groups.map(g => (deck.sections || []).find(x => x.id === g[0].sectionId)?.name || ''),

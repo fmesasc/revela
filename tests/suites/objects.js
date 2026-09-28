@@ -367,6 +367,90 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/^data:video\//.test(v.src), 'vídeo dentro del proyecto (' + (v.src || '').slice(0, 20) + ')');
   });
 
+  // ---- Videos and GIFs: segments per click, colour key, background removal ----------
+  await test('GIF: tramos por clic, croma y quitar el fondo fotograma a fotograma', async () => {
+    reset();
+    const W = frame.contentWindow, imp = m => W.eval(`import('${m}')`);
+    const { encodeGif, gifFrames, gifRemoveBackground } = await imp('/src/features/live/gifbg.js');
+    // 4 frames of 8×8 (0.5 s each): left half green, right half red/blue/red/blue.
+    const px = (i, x) => (x < 4 ? [0, 255, 0, 255] : i % 2 ? [0, 0, 255, 255] : [255, 0, 0, 255]);
+    const frames = [0, 1, 2, 3].map(i => ({ delay: 500, rgba: new W.Uint8ClampedArray(Array.from({ length: 64 }, (_, k) => px(i, k % 8)).flat()) }));
+    const src = await encodeGif({ width: 8, height: 8, frames });
+    assert(/^data:image\/gif;base64,/.test(src), 'GIF generado');
+    const dec = await gifFrames(src);
+    eq(dec.frames.length, 4, 'se leen los 4 fotogramas'); eq(dec.frames[1].delay, 500, 'con su duración');
+    eq([...dec.frames[1].rgba.slice(7 * 4, 7 * 4 + 3)].join(), '0,0,255', 'color del fotograma 2');
+    // Background removal with a stand-in for the AI (green → transparent): keeps the animation.
+    const clean = await gifRemoveBackground(src, { remove: c => { const x = c.getContext('2d'), d = x.getImageData(0, 0, 8, 8); for (let i = 0; i < d.data.length; i += 4) if (d.data[i + 1] > 200 && d.data[i] < 50) d.data[i + 3] = 0; x.putImageData(d, 0, 0); return c; } });
+    const out = await gifFrames(clean);
+    eq(out.frames.length, 4, 'sigue animado');
+    eq(out.frames[2].rgba[3], 0, 'la mitad verde queda transparente'); eq(out.frames[2].rgba[7 * 4 + 3], 255, 'la otra mitad no');
+
+    // In the deck: two segments (0→1 s, 1→2 s) and red made transparent.
+    R.blocks.addImage(clean); const b = last();
+    const { isGif, needsPlayer, setMediaPlayback } = await imp('/src/features/live/media.js');
+    assert(isGif(b) && !needsPlayer(b), 'un GIF sin ajustes se exporta como imagen');
+    setMediaPlayback(b.id, { segments: [{ from: 0, to: 1 }, { from: 1, to: 2 }], key: { color: '#ff0000', tol: 0.1, soft: 0 }, loop: false });
+    eq(JSON.stringify(last().segments), '[{"from":0,"to":1},{"from":1,"to":2}]', 'tramos guardados'); assert(!('loop' in last()), 'lo desactivado no se guarda');
+    await sleep(50);
+    assert(D.querySelector(`.block[data-id="${b.id}"] .media-player canvas`), 'en el editor se ve con el croma');
+    const html = R.io.buildHTML();
+    eq((html.match(/class="fragment rv-seg"/g) || []).length, 2, 'un clic por tramo');
+    assert(/data-media="\{&quot;kind&quot;:&quot;gif&quot;/.test(html) && /revelaMediaRuntime\(/.test(html), 'reproductor en el export');
+
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
+    f.srcdoc = R.io.buildHTML(R.state.deck, { inApp: true });
+    try {
+      let el; for (let i = 0; i < 100 && !((el = f.contentDocument?.getElementById('rvm-' + b.id))?._player); i++) await sleep(100);
+      const p = el._player; await p.ready;
+      f.contentWindow.Reveal.slide(R.state.ui.slideIndex); await sleep(100);
+      assert(!p.playing() && p.time() === 0, 'quieto al llegar');
+      f.contentWindow.Reveal.next(); await sleep(150);
+      assert(p.playing(), 'el clic reproduce el primer tramo');
+      for (let i = 0; i < 30 && p.playing(); i++) await sleep(100);
+      assert(!p.playing() && Math.abs(p.time() - 1) < 0.05, 'se para en el segundo 1: ' + p.time());
+      const c = el.querySelector('canvas'), count = () => { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; const n = { red: 0, blue: 0 };
+        for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 200) { if (d[i] > 200) n.red++; if (d[i + 2] > 200) n.blue++; } return n; };
+      eq(JSON.stringify(count()), '{"red":0,"blue":0}', 'en el segundo 1 (fotograma rojo) el croma quita el rojo');
+      p.seek(0.6); await sleep(30);
+      assert(count().blue > 0 && !count().red, 'en el 0,6 se ve el azul');
+      f.contentWindow.Reveal.next(); await sleep(150);
+      assert(p.playing(), 'el siguiente clic, el segundo tramo');
+      for (let i = 0; i < 30 && p.playing(); i++) await sleep(100);
+      assert(Math.abs(p.time() - 2) < 0.05, 'se para en el segundo 2: ' + p.time());
+      f.contentWindow.Reveal.prev(); await sleep(100);
+      assert(Math.abs(p.time() - 1) < 0.05, 'volver atrás deja el final del tramo anterior');
+    } finally { f.remove(); }
+  });
+
+  await test('vídeo: opciones de reproducción en el export y en el diálogo', async () => {
+    reset();
+    R.blocks.addVideo('data:video/mp4;base64,AAAA'); const v = last();
+    assert(/<video[^>]*controls/.test(R.io.buildHTML()), 'sin ajustes, el vídeo con controles de siempre');
+    const { openMediaPlayback } = await frame.contentWindow.eval("import('/src/ui/dialogs/media.js')");
+    openMediaPlayback(v); await sleep(20);
+    const q = x => D.querySelector('#mp-modal ' + x);
+    q('.mp-auto').checked = true; q('.mp-muted').checked = true;
+    q('.mp-add').click(); q('.mp-add').click();
+    const ins = D.querySelectorAll('#mp-modal .mp-seg input');
+    eq(ins.length, 4, 'dos tramos con desde/hasta');
+    const set = (i, val) => { ins[i].value = val; ins[i].dispatchEvent(new frame.contentWindow.Event('input', { bubbles: true })); };
+    set(0, '0'); set(1, '3.5'); set(2, '3.5'); set(3, '8');
+    q('.mp-key').checked = true; q('.mp-kc').value = '#00ff00'; q('.mp-key').dispatchEvent(new frame.contentWindow.Event('input'));
+    // The stand-in file is no real video: the dialog says so (and still saves the settings).
+    let ok; for (let i = 0; i < 40 && !(ok = D.querySelector('.dlg-ok')); i++) await sleep(50);
+    assert(ok && /No se pudo abrir/.test(D.querySelector('.dlg-msg').textContent), 'avisa si no puede abrir el vídeo'); ok.click();
+    q('.mp-ok').click(); await sleep(20);
+    const b = last();
+    assert(b.autoplay && b.muted && !b.loop, 'automático y sin sonido');
+    eq(JSON.stringify(b.segments), '[{"from":0,"to":3.5},{"from":3.5,"to":8}]', 'tramos');
+    eq(b.key.color, '#00ff00', 'croma verde');
+    const html = R.io.buildHTML();
+    eq((html.match(/class="fragment rv-seg"/g) || []).length, 1, 'automático: el primer tramo al llegar, el segundo con un clic');
+    assert(/&quot;muted&quot;:true/.test(html) && !/<video[^>]*controls/.test(html), 'lo dibuja el reproductor');
+    R.store.undo(); assert(!last().segments, 'se deshace de una vez');
+  });
+
   await test('tablas desde CSV y pegar en la diapositiva', async () => {
     reset();
     const rows = R.blocks.parseDelimited('Nombre;Nota\n"Pérez; Ana";9,5\n"Dice ""hola""";7\n');

@@ -69,3 +69,20 @@ export function addCamera(shape = 'circle') {
   return b;
 }
 export const cameraRadius = b => (b.shape === 'circle' ? '50%' : b.shape === 'rounded' ? '14%' : '0');
+
+// ---- Video and GIF playback ------------------------------------------------------
+// A video or an animated GIF can play in segments (each click of the
+// presentation plays the next: from second X to second Y), start by itself
+// when the slide appears, loop, be muted, and have a colour made transparent
+// (chroma key). Those need the media player (io/runtime/media.js).
+export const isGif = b => b?.type === 'image' && /^data:image\/gif|\.gif(\?|$)/i.test(b.src || '');
+export const mediaKind = b => (b?.type === 'video' ? 'video' : isGif(b) ? 'gif' : null);
+export const needsPlayer = b => !!(mediaKind(b) && (b.segments?.length || b.key?.color || b.autoplay || b.loop || b.muted));
+export const mediaConfig = b => ({ kind: mediaKind(b), src: b.src, fit: b.fit || 'contain', segments: (b.segments || []).filter(s => s.to > s.from),
+  autoplay: !!b.autoplay, loop: !!b.loop, muted: !!b.muted, ...(b.key?.color && { key: b.key }) });
+export function setMediaPlayback(id, props) {
+  commit(() => {
+    const b = currentSlide().blocks.find(x => x.id === id); if (!b) return;
+    for (const [k, v] of Object.entries(props)) { if (v === null || v === undefined || v === false || (Array.isArray(v) && !v.length)) delete b[k]; else b[k] = v; }
+  });
+}

@@ -6,7 +6,7 @@ It talks to Chrome over --remote-debugging-pipe (file descriptors 3 and 4,
 NUL-separated JSON), which needs only the Python standard library.
 Prints "REVELATEST PASS n/n" or "REVELATEST FAIL ..."; exit code 0 on pass.
 """
-import http.server, json, os, shutil, socketserver, subprocess, sys, tempfile, threading, time
+import http.server, json, os, shutil, socketserver, subprocess, sys, tempfile, threading, time, urllib.parse
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TIMEOUT = float(os.environ.get('REVELA_TEST_TIMEOUT', '180'))
@@ -204,7 +204,9 @@ def main():
             "addEventListener('error',function(e){k((e.message||'error')+' '+(e.filename||'')+':'+(e.lineno||''));});"
             "addEventListener('unhandledrejection',function(e){k('promise: '+(e.reason&&e.reason.message||e.reason));});})();"))
         only = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--only=')), '')
-        recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/tests/index.html' + (f'?only={only}' if only else '')))
+        grep = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--grep=')), '')
+        qs = '&'.join(x for x in [f'only={only}' if only else '', 'grep=' + urllib.parse.quote(grep) if grep else ''] if x)
+        recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/tests/index.html' + (f'?{qs}' if qs else '')))
         deadline = time.time() + TIMEOUT
         out = ''
         while time.time() < deadline:

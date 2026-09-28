@@ -6,6 +6,8 @@ import { state, commit } from '../../core/store.js';
 import * as blocks from '../../features/document/blocks.js';
 import { t } from '../../i18n/index.js';
 import { alertDialog } from './dialog.js';
+import { isGif } from '../../features/live/media.js';
+import { gifRemoveBackground } from '../../features/live/gifbg.js';
 import { MATHLIVE, BG_REMOVAL, loadScript } from '../../core/vendor.js';
 import { renderLatex } from '../canvas/content.js';
 import { tablePresets, tableClass, tableVars, tableCSS } from '../../render/svg.js';
@@ -306,14 +308,16 @@ export async function removeBackground(b) {
   const el = document.querySelector(`.block[data-id="${b.id}"]`);
   el?.classList.add('processing');
   try {
-    const { removeBackground } = await import(BG_REMOVAL);
-    const blob = await removeBackground(b.src);
-    const dataUrl = await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); });
+    // An animated GIF keeps its animation: every frame goes through the AI.
+    const dataUrl = isGif(b)
+      ? await gifRemoveBackground(b.src, { onProgress: (i, n) => el?.setAttribute('data-progress', `${i} / ${n}`) })
+      : await import(BG_REMOVAL).then(m => m.removeBackground(b.src))
+        .then(blob => new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); }));
     commit(() => (b.src = dataUrl));
   } catch (e) {
-    alertDialog('No se pudo quitar el fondo: ' + e.message);
+    alertDialog(t('No se pudo quitar el fondo: ') + e.message);
   } finally {
-    el?.classList.remove('processing');
+    el?.classList.remove('processing'); el?.removeAttribute('data-progress');
   }
 }
 // Table styles gallery + options (PowerPoint "Table Design").
