@@ -14,6 +14,7 @@ import { ICON_NAMES, iconSVG } from './shape.js';
 import * as remote from '../features/remote.js';
 import * as search from '../features/search.js';
 import { t } from '../i18n.js';
+import { confirmDialog, promptDialog, alertDialog } from './dialog.js';
 
 const $ = s => document.querySelector(s);
 const readFile = (accept, cb, as = 'DataURL') => {
@@ -26,10 +27,10 @@ const readFile = (accept, cb, as = 'DataURL') => {
 };
 
 const ACTIONS = {
-  'new': () => { if (confirm('¿Nueva presentación? Se perderá la actual si no la has guardado.'))
-    replaceDeck(emptyDeck()); },
+  'new': () => confirmDialog(t('¿Nueva presentación? Se perderá la actual si no la has guardado.'))
+    .then(ok => { if (ok) replaceDeck(emptyDeck()); }),
   'open': () => readFile('.json,application/json', txt => {
-    try { replaceDeck(JSON.parse(txt)); } catch { alert('Proyecto no válido.'); } }, 'text'),
+    try { replaceDeck(JSON.parse(txt)); } catch { alertDialog(t('Proyecto no válido.')); } }, 'text'),
   'save': io.saveProject,
   'export': io.exportHTML,
   'export-pdf': io.exportPDF,
@@ -37,7 +38,7 @@ const ACTIONS = {
   'present': io.present,
   'import-pptx': () => readFile('.pptx', async file => {
     try { replaceDeck(await importPPTX(file)); }
-    catch (e) { alert('No se pudo importar el PowerPoint: ' + e.message); } }, 'file'),
+    catch (e) { alertDialog('No se pudo importar el PowerPoint: ' + e.message); } }, 'file'),
   'undo': undo, 'redo': redo,
   'slide-add': slides.addSlide, 'slide-duplicate': slides.duplicateSlide,
   'slide-delete': () => slides.deleteSlide(),
@@ -50,12 +51,11 @@ const ACTIONS = {
   'insert-model': () => readFile('.glb,.gltf', blocks.addModel),
   'insert-video': () => readFile('video/*', blocks.addVideo),
   'insert-audio': () => readFile('audio/*', blocks.addAudio),
-  'insert-embed': () => {
-    let url = prompt('Dirección de la página web (URL):', 'https://');
+  'insert-embed': () => promptDialog(t('Dirección de la página web (URL):'), 'https://').then(url => {
     if (!url) return;
     if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
     blocks.addEmbed(url);
-  },
+  }),
   'obj-delete': () => blocks.deleteSelected(),
   'obj-duplicate': () => blocks.duplicateSelected(),
   'group': () => blocks.groupSelected(),
@@ -65,7 +65,7 @@ const ACTIONS = {
   'forward': blocks.bringForward, 'backward': blocks.sendBackward,
   'front': blocks.bringToFront, 'back': blocks.sendToBack,
   'obj-anim-clear': trans.clearAnimation,
-  'template-save': () => { const n = prompt('Nombre de la plantilla'); if (n) templates.saveCurrentAsTemplate(n); },
+  'template-save': () => promptDialog(t('Nombre de la plantilla')).then(n => { if (n) templates.saveCurrentAsTemplate(n); }),
   'toggle-guides': () => commit(() => (state.ui.showGuides = !state.ui.showGuides), { history: false }),
   'toggle-ruler': () => commit(() => (state.ui.showRuler = !state.ui.showRuler), { history: false }),
   'toggle-snap': () => commit(() => (state.ui.snap = state.ui.snap === false), { history: false }),

@@ -9,6 +9,7 @@ import * as format from '../features/format.js';
 import { addSlide, duplicateSlide, deleteSlide, goToSlide, toggleSlideHidden,
   addSectionAt, removeSection, setSlideSection } from '../features/slides.js';
 import { t } from '../i18n.js';
+import { alertDialog } from './dialog.js';
 
 let menuEl, clipboard = null;
 
@@ -366,7 +367,7 @@ async function removeBackground(b) {
     const dataUrl = await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); });
     commit(() => (b.src = dataUrl));
   } catch (e) {
-    alert('No se pudo quitar el fondo: ' + e.message);
+    alertDialog('No se pudo quitar el fondo: ' + e.message);
   } finally {
     el?.classList.remove('processing');
   }

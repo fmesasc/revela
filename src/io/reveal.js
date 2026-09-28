@@ -4,6 +4,8 @@
 import { state } from '../core/store.js';
 import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG } from '../ui/shape.js';
 import { googleFontLinks } from '../features/fonts.js';
+import { t } from '../i18n.js';
+import { alertDialog } from '../ui/dialog.js';
 
 const REVEAL = 'https://cdn.jsdelivr.net/npm/reveal.js@5.1.0';
 const MODEL_VIEWER = 'https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js';
@@ -242,7 +244,7 @@ ${pages}
 
 export function exportPDF() {
   const win = window.open('', '_blank');
-  if (!win) { alert('Permite las ventanas emergentes para exportar a PDF.'); return; }
+  if (!win) { alertDialog(t('Permite las ventanas emergentes para exportar a PDF.')); return; }
   win.document.write(buildPrintHTML());
   win.document.close();
 }
@@ -273,7 +275,7 @@ export async function exportPNG() {
     const canvas = await window.html2canvas(holder, { width: w, height: h, backgroundColor: null, scale: 2, useCORS: true, logging: false });
     await new Promise(res => canvas.toBlob(blob => { if (blob) download(blob, slug(state.deck.name) + '-' + (state.ui.slideIndex + 1) + '.png'); res(); }));
   } catch (e) {
-    alert('No se pudo exportar la imagen: ' + e.message);
+    alertDialog('No se pudo exportar la imagen: ' + e.message);
   } finally { holder.remove(); }
 }
 export function saveProject() {

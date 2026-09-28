@@ -236,6 +236,16 @@ const ROWS = [
   ['Símbolos y emojis', 'Symbols and emojis', 'Symboles et émojis', 'Symbole und Emojis', 'Simboli ed emoji', 'Símbolos e emojis', 'Símbols i emojis'],
   ['Iconos', 'Icons', 'Icônes', 'Symbole', 'Icone', 'Ícones', 'Icones'],
   ['Atajos de teclado', 'Keyboard shortcuts', 'Raccourcis clavier', 'Tastenkürzel', 'Scorciatoie da tastiera', 'Atalhos de teclado', 'Dreceres de teclat'],
+  // Prompt / confirm / alert dialogs
+  ['Aceptar', 'OK', 'OK', 'OK', 'OK', 'OK', 'D’acord'],
+  ['Cancelar', 'Cancel', 'Annuler', 'Abbrechen', 'Annulla', 'Cancelar', 'Cancel·la'],
+  ['¿Nueva presentación? Se perderá la actual si no la has guardado.', 'New presentation? The current one will be lost if unsaved.', 'Nouvelle présentation ? L’actuelle sera perdue si non enregistrée.', 'Neue Präsentation? Die aktuelle geht ungespeichert verloren.', 'Nuova presentazione? Quella attuale andrà persa se non salvata.', 'Nova apresentação? A atual será perdida se não for guardada.', 'Nova presentació? L’actual es perdrà si no s’ha desat.'],
+  ['Proyecto no válido.', 'Invalid project.', 'Projet non valide.', 'Ungültiges Projekt.', 'Progetto non valido.', 'Projeto inválido.', 'Projecte no vàlid.'],
+  ['Nombre de la plantilla', 'Template name', 'Nom du modèle', 'Vorlagenname', 'Nome del modello', 'Nome do modelo', 'Nom de la plantilla'],
+  ['Enlace: URL, nº de diapositiva o correo:', 'Link: URL, slide number or email:', 'Lien : URL, n° de diapositive ou e-mail :', 'Link: URL, Foliennummer oder E-Mail:', 'Link: URL, n° diapositiva o email:', 'Ligação: URL, nº de slide ou email:', 'Enllaç: URL, núm. de diapositiva o correu:'],
+  ['Dirección de la página web (URL):', 'Web page address (URL):', 'Adresse de la page web (URL) :', 'Webseiten-Adresse (URL):', 'Indirizzo della pagina web (URL):', 'Endereço da página web (URL):', 'Adreça de la pàgina web (URL):'],
+  ['Permite las ventanas emergentes para presentar.', 'Allow pop-ups to present.', 'Autorisez les fenêtres pop-up pour présenter.', 'Pop-ups zum Präsentieren zulassen.', 'Consenti i pop-up per presentare.', 'Permita os pop-ups para apresentar.', 'Permet les finestres emergents per presentar.'],
+  ['Permite las ventanas emergentes para exportar a PDF.', 'Allow pop-ups to export to PDF.', 'Autorisez les fenêtres pop-up pour exporter en PDF.', 'Pop-ups zum PDF-Export zulassen.', 'Consenti i pop-up per esportare in PDF.', 'Permita os pop-ups para exportar para PDF.', 'Permet les finestres emergents per exportar a PDF.'],
 ];
 
 const DICT = {};

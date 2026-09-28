@@ -266,6 +266,14 @@ export async function run(frame) {
     assert(!D.getElementById('present-overlay'), 'la capa no se cerró');
   });
 
+  await test('diálogos propios: "Nuevo" confirma con modal (no nativo)', async () => {
+    reset(); R.blocks.addText(); const n = slide().blocks.length;
+    D.querySelector('[data-action="new"]').click(); await sleep(20);
+    assert(D.querySelector('.modal-backdrop .dlg-msg'), 'aparece el modal de confirmación');
+    D.querySelector('.dlg-cancel').click(); await sleep(20);
+    eq(slide().blocks.length, n, 'cancelar no cambia el proyecto');
+  });
+
   await test('deshacer / rehacer', async () => {
     reset(); const n0 = slide().blocks.length; R.blocks.addText();
     eq(slide().blocks.length, n0 + 1, 'no se añadió'); R.store.undo();
