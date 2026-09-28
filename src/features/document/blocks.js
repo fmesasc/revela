@@ -59,6 +59,16 @@ export function addAudio(src) {
   insert({ id: uid(), type: 'audio', x: 320, y: 320, w: 440, h: 56, rotation: 0, animation: null, src });
 }
 
+// A web page embedded ('frame', the default) or as a card that opens it ('card').
+export function setEmbedDisplay(id, display) {
+  const b = currentSlide().blocks.find(x => x.id === id); if (!b || b.type !== 'embed') return;
+  commit(() => { if (display === 'card') b.display = 'card'; else delete b.display; });
+}
+export function setWebCard(id, props) {
+  const b = currentSlide().blocks.find(x => x.id === id); if (!b || b.type !== 'embed') return;
+  commit(() => { for (const [k, v] of Object.entries(props)) { if (v) b[k] = v; else delete b[k]; } });
+}
+
 export function addEmbed(url) {
   insert({ id: uid(), type: 'embed', x: 260, y: 120, w: 760, h: 480,
     rotation: 0, animation: null, src: url });

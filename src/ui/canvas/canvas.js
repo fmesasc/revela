@@ -14,7 +14,7 @@ import { cameraRadius } from '../../features/live/media.js';
 import { pollEditorHTML } from '../../features/live/poll.js';
 import { masterBlocksFor, PH_PROMPT } from '../../features/document/master.js';
 import { stageBackground } from '../../io/formats/html.js';
-import { paintMath, pollSig, renderSlideRef, figIndexHTML, connectorHTML, applyImgStyle, content, hostOf, hasInlineMath, renderInlineMath, renderMath, paintCode, setupCode, tableSig, fillTable, setupTable, setupText, setupMath, setupModel, setupEmbed } from './content.js';
+import { paintWebCard, paintMath, pollSig, renderSlideRef, figIndexHTML, connectorHTML, applyImgStyle, content, hostOf, hasInlineMath, renderInlineMath, renderMath, paintCode, setupCode, tableSig, fillTable, setupTable, setupText, setupMath, setupModel, setupEmbed } from './content.js';
 import { addGuideFromRuler, drawPGuides, startMarquee, startDrag, startRotate, startResize } from './interact.js';
 
 export const findBlock = id => currentSlide().blocks.find(x => x.id === id);
@@ -49,7 +49,8 @@ let lastSignature = '';
 // the existing DOM instead of rebuilding it. Rebuilding on selection was what
 // broke double‑click‑to‑edit and mid‑drag interaction.
 function signature(slide) {
-  return slide.id + '|' + slide.blocks.map(b => b.id).join(',')
+  // (A web page shown as a card instead of a frame is a different element.)
+  return slide.id + '|' + slide.blocks.map(b => b.id + (b.display === 'card' ? ':card' : '')).join(',')
     + '|' + state.deck.size.w + 'x' + state.deck.size.h;
 }
 
@@ -245,6 +246,7 @@ function reconcile(b) {
   } else if (b.type === 'audio') {
     const a2 = el.querySelector('audio'); if (a2 && a2.getAttribute('src') !== b.src) a2.src = b.src;
   } else if (b.type === 'embed') {
+    const card = el.querySelector('.webcard'); if (card) paintWebCard(card, b);
     const f = el.querySelector('iframe'); if (f && f.getAttribute('src') !== b.src) f.src = b.src;
     const u = el.querySelector('.embed-url'); if (u) u.textContent = hostOf(b.src);
     const o = el.querySelector('.embed-open'); if (o && o.getAttribute('href') !== b.src) o.href = b.src;

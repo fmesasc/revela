@@ -24,6 +24,9 @@
 .embed-open{color:var(--accent);text-decoration:none;pointer-events:auto;white-space:nowrap}
 .embed-open:hover{text-decoration:underline}
 .block .embed iframe{flex:1}
+.embed-card{border:0;background:none;color:var(--txt2);font:inherit;cursor:pointer;padding:0;white-space:nowrap;pointer-events:auto}
+.embed-card:hover{color:var(--accent);text-decoration:underline}
+.block .webcard{width:100%;height:100%}
 .block .shape{width:100%;height:100%}
 .block .chart{width:100%;height:100%}
 .block .icon-blk{width:100%;height:100%}

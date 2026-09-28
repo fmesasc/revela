@@ -307,3 +307,24 @@ export function mathCSS(b) {
     + `${b.radius ? `border-radius:${b.radius}px;` : ''}`;
 }
 export const mathSig = b => JSON.stringify([mathTeX(b), mathCSS(b)]);
+
+// A web page that can't be embedded (its X-Frame-Options / CSP forbid frames)
+// shown as a card that opens it: its icon, a title, the address and a button,
+// or an image chosen by the user. Inline styles, so the export needs no CSS.
+const escA = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+export function webCardHTML(b, openLabel = 'Abrir la web') {
+  let host = b.src || '', origin = '';
+  try { const u = new URL(b.src); host = u.host; origin = u.origin; } catch {}
+  const title = b.cardTitle || host;
+  const icon = origin ? `<img src="${escA(origin)}/favicon.ico" alt="" onerror="this.remove()" style="width:40px;height:40px;object-fit:contain;flex:0 0 auto">` : '';
+  const button = `<span style="display:inline-block;padding:10px 18px;border-radius:8px;background:#3f6497;color:#fff;font-size:18px;font-weight:600">${escA(openLabel)} ↗</span>`;
+  const text = `<div style="min-width:0;flex:1"><div style="font-size:22px;font-weight:700;color:#1e2430;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escA(title)}</div>`
+    + `<div style="font-size:15px;color:#5b6472;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escA(host)}</div></div>`;
+  if (b.poster) return `<div style="width:100%;height:100%;display:flex;flex-direction:column;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 10px #0003;font-family:system-ui,sans-serif">`
+    + `<img src="${escA(b.poster)}" alt="" style="flex:1;min-height:0;width:100%;object-fit:cover">`
+    + `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px">${icon}${text}${button}</div></div>`;
+  return `<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;box-sizing:border-box;`
+    + `background:#fff;border-radius:10px;box-shadow:0 2px 10px #0003;font-family:system-ui,sans-serif;text-align:center">`
+    + `<div style="display:flex;align-items:center;gap:14px;max-width:100%">${icon}${text}</div>${button}</div>`;
+}
+export const webCardSig = b => JSON.stringify([b.src, b.cardTitle, b.poster ? b.poster.length + b.poster.slice(-32) : '']);

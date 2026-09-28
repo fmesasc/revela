@@ -16,7 +16,7 @@ import { addText } from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
 import { addSlide, duplicateSlide, deleteSlide, goToSlide, toggleSlideHidden, addSectionAt, removeSection, setSlideSection } from '../../features/document/slides.js';
 import { t } from '../../i18n/index.js';
-import { alertDialog } from '../dialogs/dialog.js';
+import { alertDialog, promptDialog } from '../dialogs/dialog.js';
 import { openSaveAsPicture } from '../dialogs/picture.js';
 import { openImageAdjust, openMath, openChartData, openOpacity, openIconColor, openBoxStyle, openSlidePicker, openCaption, openAlt, openImageCrop, removeBackground, openTableStyle } from '../dialogs/object.js';
 
@@ -164,6 +164,16 @@ function forBlock(b, cell = null) {
       [b.returnBack ? 'Ir a la diapositiva (sin volver)' : 'Al hacer clic vuelve aquí', () => blocks.toggleSlideRefReturn()], null);
   } else if (b.type === 'math') {
     items.push(['Editar ecuación…', () => openMath(b)], ['Relleno y borde…', () => openBoxStyle(b)], null);
+  } else if (b.type === 'embed') {
+    items.push(
+      b.display === 'card' ? ['Mostrar la web incrustada', () => blocks.setEmbedDisplay(b.id, 'frame')]
+        : ['Mostrar como tarjeta con enlace', () => blocks.setEmbedDisplay(b.id, 'card')],
+      ...(b.display === 'card' ? [
+        ['Título de la tarjeta…', () => promptDialog(t('Título de la tarjeta:'), b.cardTitle || '').then(v => { if (v !== null) blocks.setWebCard(b.id, { cardTitle: v.trim() }); })],
+        ['Imagen de la tarjeta…', () => pickCardImage(b)],
+        ...(b.poster ? [['Quitar la imagen de la tarjeta', () => blocks.setWebCard(b.id, { poster: '' })]] : []),
+      ] : []),
+      null);
   } else if (b.type === 'code') {
     items.push(['Editar código y pasos…', () => openCodeEditor(b)], null);
   } else if (b.type === 'icon') {
@@ -238,6 +248,14 @@ function forBlock(b, cell = null) {
     ['Atrasar', () => blocks.sendBackward()],
     ['Enviar al fondo', () => blocks.sendToBack()]);
   return items;
+}
+
+// A picture for a web card, e.g. a screenshot of the page.
+function pickCardImage(b) {
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = () => { const f = inp.files[0]; if (!f) return;
+    const r = new FileReader(); r.onload = () => blocks.setWebCard(b.id, { poster: r.result }); r.readAsDataURL(f); };
+  inp.click();
 }
 
 function editText(b) {

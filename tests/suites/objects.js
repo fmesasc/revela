@@ -486,4 +486,28 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(b.fill, '#12ab34', 'relleno desde el cuentagotas');
     if ('EyeDropper' in frame.contentWindow) assert(D.querySelector('.eyedrop[data-eyedrop="[data-shape-fill]"]'), 'botón junto al selector');
   });
+
+  await test('web que no se deja incrustar: tarjeta con enlace en el lienzo y el export', async () => {
+    reset(); R.blocks.addEmbed('https://www.fje.edu/'); const b = last(); select(b); await sleep(20);
+    const W = frame.contentWindow, el = () => D.querySelector(`.block[data-id="${b.id}"]`);
+    const hint = el().querySelector('.embed-card'); assert(hint, 'aviso «¿No se ve? Mostrar como tarjeta» en la barra');
+    hint.click(); await sleep(30);
+    eq(b.display, 'card', 'pasa a tarjeta');
+    assert(!el().querySelector('iframe') && el().querySelector('.webcard'), 'el lienzo muestra la tarjeta, sin marco');
+    assert(/www\.fje\.edu/.test(el().textContent), 'con la dirección');
+    const opened = []; const wo = W.open; W.open = (...a) => { opened.push(a[0]); return null; };
+    try { el().querySelector('.webcard-open').click(); } finally { W.open = wo; }
+    eq(opened[0], 'https://www.fje.edu/', 'el botón abre la web');
+    R.blocks.setWebCard(b.id, { cardTitle: 'Fundació Jesuïtes', poster: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==' });
+    await sleep(20);
+    assert(/Fundació Jesuïtes/.test(el().textContent) && el().querySelector('.webcard img[src^="data:image/png"]'), 'título e imagen propios');
+    const html = R.io.buildHTML();
+    assert(/<a[^>]*class="rv-webcard"[^>]*href="https:\/\/www\.fje\.edu\/"[^>]*target="_blank"/.test(html), 'export: enlace que abre la web');
+    assert(!/<iframe[^>]*fje\.edu/.test(html), 'export: sin marco bloqueado');
+    assert(/Fundació Jesuïtes/.test(html), 'export: con el título');
+    el().dispatchEvent(new W.MouseEvent('contextmenu', { bubbles: true, clientX: 300, clientY: 300 })); await sleep(10);
+    const back = [...D.querySelectorAll('#context-menu .ctx-item')].find(x => x.textContent === 'Mostrar la web incrustada');
+    assert(back, 'menú: volver a incrustarla'); back.click(); await sleep(30);
+    assert(el().querySelector('iframe') && !b.display, 'vuelve al marco');
+  });
 }

@@ -2,10 +2,11 @@
 // equations (KaTeX), code (highlight.js), tables, embeds, 3D models, slide links.
 
 import { state, commit } from '../../core/store.js';
-import { mathTeX, mathCSS, mathSig, shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan, inkSVG, inkSig, tableClass, tableVars } from '../../render/svg.js';
+import { webCardHTML, webCardSig, mathTeX, mathCSS, mathSig, shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan, inkSVG, inkSig, tableClass, tableVars } from '../../render/svg.js';
 import { collectFigures, captionLine, figIndexTitle } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
 import { t } from '../../i18n/index.js';
+import { setEmbedDisplay } from '../../features/document/blocks.js';
 import { currentPalette } from '../../features/design/palettes.js';
 import { cameraRadius } from '../../features/live/media.js';
 import { pollEditorHTML, savedVotes } from '../../features/live/poll.js';
@@ -162,6 +163,10 @@ export function renderLatex(el, latex) { renderMath(el, latex); }
 // Google, most banks and many others always do, and nothing client‑side can
 // override that, so at least the link stays reachable.
 export function embedContent(b) {
+  if (b.display === 'card') {
+    const card = document.createElement('div'); card.className = 'webcard';
+    paintWebCard(card, b); return card;
+  }
   const wrap = document.createElement('div'); wrap.className = 'embed';
   const bar = document.createElement('div'); bar.className = 'embed-bar';
   const url = document.createElement('span'); url.className = 'embed-url'; url.textContent = hostOf(b.src);
@@ -169,7 +174,14 @@ export function embedContent(b) {
   open.href = b.src; open.target = '_blank'; open.rel = 'noopener';
   open.textContent = 'Abrir ↗'; open.title = 'Abrir en una pestaña nueva';
   open.addEventListener('pointerdown', e => e.stopPropagation());
-  bar.append(url, open);
+  // Many sites forbid being shown inside other pages (X-Frame-Options): the
+  // browser shows an error and nothing can override it. Offer the card.
+  const asCard = document.createElement('button'); asCard.className = 'embed-card';
+  asCard.textContent = t('¿No se ve? Mostrar como tarjeta');
+  asCard.title = t('Algunas webs no permiten mostrarse dentro de otras páginas: se mostrará una tarjeta que la abre');
+  asCard.addEventListener('pointerdown', e => e.stopPropagation());
+  asCard.addEventListener('click', e => { e.stopPropagation(); setEmbedDisplay(b.id, 'card'); });
+  bar.append(url, asCard, open);
   const f = document.createElement('iframe');
   f.src = b.src || '';
   f.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-forms allow-presentation');
@@ -178,6 +190,16 @@ export function embedContent(b) {
   f.style.pointerEvents = 'none'; // dragging the body moves the block; double‑click to interact
   wrap.append(bar, f);
   return wrap;
+}
+export function paintWebCard(card, b) {
+  const sig = webCardSig(b); if (card.dataset.sig === sig) return;
+  card.dataset.sig = sig; card.innerHTML = webCardHTML(b, t('Abrir la web'));
+  // In the editor the card is dragged like any object; its button opens the page.
+  const btn = [...card.querySelectorAll('span')].find(s => s.textContent.endsWith('↗'));
+  if (!btn) return;
+  btn.style.cursor = 'pointer'; btn.classList.add('webcard-open');
+  btn.addEventListener('pointerdown', e => e.stopPropagation());
+  btn.addEventListener('click', e => { e.stopPropagation(); window.open(b.src, '_blank', 'noopener'); });
 }
 // Code blocks edit as plain text on double‑click.
 // Syntax colouring in the editor (highlight.js, loaded on first use).
@@ -283,7 +305,7 @@ export function setupModel(el) {
 // A web page embed behaves like a model: drag the frame to move it, double‑click
 // to interact with the page, move the pointer away to release it.
 export function setupEmbed(el) {
-  const f = el.querySelector('iframe');
+  const f = el.querySelector('iframe'); if (!f) return;
   el.addEventListener('dblclick', () => { f.style.pointerEvents = 'auto'; el.classList.add('editing'); });
   el.addEventListener('pointerleave', () => { f.style.pointerEvents = 'none'; el.classList.remove('editing'); });
 }
