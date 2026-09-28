@@ -340,7 +340,7 @@ function openAnimPanel() {
   if (document.getElementById('anim-modal')) return;
   const back = document.createElement('div');
   back.id = 'anim-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:left;min-width:460px;max-width:96vw;max-height:80vh;overflow:auto">
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:460px;max-width:96vw;max-height:80vh;overflow:auto">
     <button class="modal-close">✕</button><h3>${t('Panel de animación')}</h3>
     <div class="fr-actions" style="justify-content:flex-start;margin-bottom:8px"><button class="fr-do an-play">▶ ${t('Reproducir')}</button></div>
     <div class="an-body"></div></div>`;
@@ -387,7 +387,7 @@ function openHeaderFooter() {
   const f = state.deck.footer, sn = state.deck.slideNumber;
   const back = document.createElement('div');
   back.id = 'hf-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:left;min-width:320px">
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:320px">
     <button class="modal-close">✕</button><h3>${t('Encabezado y pie')}</h3>
     <label class="fr-chk"><input type="checkbox" class="hf-foot" ${f.show ? 'checked' : ''}> ${t('Mostrar pie de página')}</label>
     <label class="fr-l">${t('Texto del pie')}<input type="text" class="hf-text" value="${(f.text || '').replace(/"/g, '&quot;')}"></label>
@@ -418,7 +418,7 @@ function openShortcuts() {
   if (document.getElementById('sc-modal')) return;
   const back = document.createElement('div');
   back.id = 'sc-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:left;min-width:340px">
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:340px">
     <button class="modal-close">✕</button><h3>${t('Atajos de teclado')}</h3>
     <table class="sc-table">${SHORTCUTS.map(([k, d]) => `<tr><td><kbd>${k}</kbd></td><td>${t(d)}</td></tr>`).join('')}</table>
   </div>`;

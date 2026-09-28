@@ -27,7 +27,7 @@ export function openReuseDialog(deck, name = '') {
   document.getElementById('reuse-modal')?.remove();
   const back = document.createElement('div');
   back.id = 'reuse-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:left;min-width:320px;max-width:760px">
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:320px;max-width:760px">
     <button class="modal-close">✕</button><h3>${t('Reutilizar diapositivas')}</h3>
     <p class="reuse-src"></p>
     <div class="reuse-grid"></div>

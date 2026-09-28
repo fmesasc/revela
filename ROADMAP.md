@@ -151,14 +151,14 @@ the origin of every requirement is traceable.
 
 ## 9. Accessibility & internationalisation
 - ✅ Alt text for every non-text object, "mark as decorative" (exported as ARIA) `PP·GS·OO`
-- ✅ UI localisation — 9 languages (ES/EN/FR/DE/IT/PT/CA/GL/NL): ribbon, menus, modals, dialogs & status bar `PP·GS·OO`
+- ✅ UI localisation — 11 languages (ES/EN/FR/DE/IT/PT/CA complete; GL/NL/EU/AR main interface, with English or Spanish fallback) `PP·GS·OO`
 - ✅ Content text direction (RTL) `PP·OO`
 - ✅ Accessibility checker — missing alt text, empty/untitled slides, duplicate titles, tables without header, low text contrast (WCAG) `PP·GS·OO`
 - ✅ Reading order pane; Tab / Shift+Tab walks the objects of the slide `PP·OO`
 - ✅ Screen reader support in the editor — named slide and objects, live announcement of the selection `PP·GS·OO`
-- ⬜ Right-to-left **interface** `PP·OO`
+- ✅ Right-to-left **interface** (Arabic) — mirrored ribbon and panels, slide geometry untouched `PP·OO`
 - ⬜ Built-in content translation `GS·OO`
-- ⬜ More UI languages `PP·GS·OO`
+- ⬜ Complete GL/NL/EU/AR and more UI languages (community translations) `PP·GS·OO`
 
 ## 10. Extensibility & automation
 - ⬜ Plugin / add-on system `GS·OO`

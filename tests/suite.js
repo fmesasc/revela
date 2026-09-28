@@ -1153,7 +1153,15 @@ export async function run(frame) {
     eq(R.i18n.t('Diagramas'), 'Diagrammen', 'NL cubre más etiquetas');
     R.i18n.setLang('gl');
     eq(R.i18n.t('Pie de página'), 'Pé de páxina', 'GL cubre más etiquetas');
+    R.i18n.setLang('eu');
+    eq(tab.textContent.trim(), 'Hasiera', 'euskera');
+    R.i18n.setLang('ar');
+    eq(D.documentElement.dir, 'rtl', 'árabe: interfaz de derecha a izquierda');
+    eq(tab.textContent.trim(), 'الشريط الرئيسي', 'árabe traducido');
+    eq(R.i18n.t('Comprobar accesibilidad'), 'Check accessibility', 'lo que falta cae al inglés, no al español');
+    eq(getComputedStyle(D.getElementById('canvas-wrap')).direction, 'ltr', 'la diapositiva sigue de izquierda a derecha');
     R.i18n.setLang('es');
+    eq(D.documentElement.dir, 'ltr', 'vuelve a LTR');
     eq(tab.textContent.trim(), 'Inicio', 'vuelve a español');
   });
 

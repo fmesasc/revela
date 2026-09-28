@@ -9,7 +9,7 @@ export function openHandoutDialog() {
   const back = document.createElement('div');
   back.id = 'handout-modal'; back.className = 'modal-backdrop';
   const opt = (v, l) => `<option value="${v}">${t(l)}</option>`;
-  back.innerHTML = `<div class="modal" style="text-align:left;min-width:300px">
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:300px">
     <button class="modal-close">✕</button><h3>${t('Documentos y notas')}</h3>
     <label class="fr-l">${t('Diseño de impresión')}
       <select class="ho-layout">
@@ -34,7 +34,7 @@ export function openImageDialog() {
   document.getElementById('img-modal')?.remove();
   const back = document.createElement('div');
   back.id = 'img-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:left;min-width:300px">
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:300px">
     <button class="modal-close">✕</button><h3>${t('Exportar imágenes')}</h3>
     <label class="fr-l">${t('Formato')}
       <select class="im-type"><option value="png">PNG</option><option value="jpg">JPG</option></select></label>

@@ -11,7 +11,9 @@ export const LANGS = [
   { code: 'pt', name: 'Português' },
   { code: 'ca', name: 'Català' },
   { code: 'gl', name: 'Galego' },
-  { code: 'nl', name: 'Nederlands' },
+  { code: 'nl', name: 'Nederlands', fallback: 'en' },
+  { code: 'eu', name: 'Euskara' },
+  { code: 'ar', name: 'العربية', rtl: true, fallback: 'en' },
 ];
 const ORDER = ['en', 'fr', 'de', 'it', 'pt', 'ca'];
 
@@ -510,15 +512,70 @@ const EXTRA = {
     'Insertar enlace': 'Koppeling invoegen', 'Buscar y reemplazar': 'Zoeken en vervangen', 'Campos': 'Velden',
     'Encabezado y pie': 'Kop- en voettekst', 'Diseño': 'Ontwerp', 'Tipo de letra': 'Lettertype',
   },
+  eu: {
+    'Archivo': 'Fitxategia', 'Inicio': 'Hasiera', 'Insertar': 'Txertatu', 'Diseño': 'Diseinua',
+    'Transiciones': 'Trantsizioak', 'Animaciones': 'Animazioak', 'Ver': 'Ikusi', 'Dibujar': 'Marraztu',
+    'Proyecto': 'Proiektua', 'Salida': 'Irteera', 'Diapositivas': 'Diapositibak', 'Fuente': 'Letra',
+    'Tipo de letra': 'Letra-tipoa', 'Párrafo': 'Paragrafoa', 'Texto': 'Testua', 'Organizar': 'Antolatu',
+    'Básico': 'Oinarrizkoa', 'Multimedia': 'Multimedia', 'Plantillas': 'Txantiloiak', 'Formas': 'Formak',
+    'Fondo': 'Atzeko planoa', 'Tema': 'Gaia', 'Tamaño': 'Tamaina', 'Presentación': 'Aurkezpena',
+    'Ayudas': 'Laguntzak', 'Nuevo': 'Berria', 'Abrir': 'Ireki', 'Guardar': 'Gorde', 'Presentar': 'Aurkeztu',
+    'Nueva': 'Berria', 'Duplicar': 'Bikoiztu', 'Eliminar': 'Ezabatu', 'Sección': 'Atala', 'Imagen': 'Irudia',
+    'Tabla': 'Taula', 'Gráfico': 'Grafikoa', 'Iconos': 'Ikonoak', 'Vídeo': 'Bideoa', 'Audio': 'Audioa',
+    'Código': 'Kodea', 'Notas': 'Oharrak', 'Guías': 'Sareta', 'Regla': 'Erregela', 'Ajustar': 'Doitu',
+    'Negrita': 'Lodia', 'Cursiva': 'Etzana', 'Subrayado': 'Azpimarratua', 'Color': 'Kolorea',
+    'Alinear / distribuir': 'Lerrokatu / banatu', 'Diagramas': 'Diagramak', 'Numeración': 'Zenbakiak',
+    'Pie de página': 'Orri-oina', 'Por defecto': 'Lehenetsia', 'Transformar': 'Eraldatu', 'Quitar': 'Kendu',
+    'Portada': 'Azala', 'Comparación': 'Konparazioa', 'En blanco': 'Hutsik', 'Números': 'Zenbakiak',
+    'Pie': 'Oina', 'Fecha': 'Data', 'Heredar': 'Heredatu', 'Ninguna': 'Bat ere ez', 'Fundido': 'Iraungitzea',
+    'Deslizar': 'Irristatu', 'Aparecer': 'Agertu', 'Subir': 'Gora', 'Bajar': 'Behera', 'Izquierda': 'Ezkerra',
+    'Derecha': 'Eskuina', 'Agrandar': 'Handitu', 'Encoger': 'Txikitu', 'Tachar': 'Marratu',
+    'Desaparecer': 'Desagertu', 'Resaltar': 'Nabarmendu', 'Ecuación': 'Ekuazioa', 'Atajos': 'Lasterbideak',
+    'Aceptar': 'Ados', 'Cancelar': 'Utzi', 'Aplicar': 'Aplikatu', 'Restablecer': 'Berrezarri',
+    'Buscar': 'Bilatu', 'Reemplazar todo': 'Ordeztu guztiak', 'Justificar': 'Justifikatu',
+    'Insertar enlace': 'Txertatu esteka', 'Buscar y reemplazar': 'Bilatu eta ordeztu', 'Campos': 'Eremuak',
+    'Encabezado y pie': 'Goiburua eta oina', 'Revisar': 'Berrikusi', 'Lápiz': 'Arkatza',
+    'Resaltador': 'Nabarmentzailea', 'Borrador': 'Borragoma', 'Seleccionar': 'Hautatu',
+    'Diapositiva': 'Diapositiba', 'de': '/', 'Colores': 'Koloreak', 'Fuentes': 'Letra-tipoak',
+    'Herramientas': 'Tresnak', 'Trazo': 'Trazua',
+  },
+  ar: {
+    'Archivo': 'ملف', 'Inicio': 'الشريط الرئيسي', 'Insertar': 'إدراج', 'Diseño': 'تصميم',
+    'Transiciones': 'انتقالات', 'Animaciones': 'حركات', 'Ver': 'عرض', 'Dibujar': 'رسم', 'Proyecto': 'المشروع',
+    'Salida': 'إخراج', 'Diapositivas': 'الشرائح', 'Fuente': 'الخط', 'Tipo de letra': 'نوع الخط',
+    'Párrafo': 'فقرة', 'Texto': 'نص', 'Organizar': 'ترتيب', 'Básico': 'أساسي', 'Multimedia': 'وسائط',
+    'Plantillas': 'قوالب', 'Formas': 'أشكال', 'Fondo': 'الخلفية', 'Tema': 'السمة', 'Tamaño': 'الحجم',
+    'Presentación': 'العرض التقديمي', 'Ayudas': 'أدوات مساعدة', 'Nuevo': 'جديد', 'Abrir': 'فتح',
+    'Guardar': 'حفظ', 'Presentar': 'عرض', 'Nueva': 'جديدة', 'Duplicar': 'تكرار', 'Eliminar': 'حذف',
+    'Sección': 'مقطع', 'Imagen': 'صورة', 'Tabla': 'جدول', 'Gráfico': 'مخطط', 'Iconos': 'أيقونات',
+    'Vídeo': 'فيديو', 'Audio': 'صوت', 'Código': 'تعليمات برمجية', 'Notas': 'ملاحظات', 'Guías': 'الشبكة',
+    'Regla': 'المسطرة', 'Ajustar': 'محاذاة تلقائية', 'Negrita': 'غامق', 'Cursiva': 'مائل',
+    'Subrayado': 'تسطير', 'Color': 'اللون', 'Alinear / distribuir': 'محاذاة / توزيع',
+    'Diagramas': 'رسوم تخطيطية', 'Numeración': 'الترقيم', 'Pie de página': 'تذييل الصفحة',
+    'Por defecto': 'افتراضي', 'Transformar': 'تحويل', 'Quitar': 'إزالة', 'Portada': 'شريحة العنوان',
+    'Comparación': 'مقارنة', 'En blanco': 'فارغة', 'Números': 'أرقام', 'Pie': 'تذييل', 'Fecha': 'التاريخ',
+    'Heredar': 'وراثة', 'Ninguna': 'بلا', 'Fundido': 'تلاشٍ', 'Deslizar': 'انزلاق', 'Aparecer': 'ظهور',
+    'Subir': 'لأعلى', 'Bajar': 'لأسفل', 'Izquierda': 'يسار', 'Derecha': 'يمين', 'Agrandar': 'تكبير',
+    'Encoger': 'تصغير', 'Tachar': 'يتوسطه خط', 'Desaparecer': 'اختفاء', 'Resaltar': 'تمييز',
+    'Ecuación': 'معادلة', 'Atajos': 'اختصارات', 'Aceptar': 'موافق', 'Cancelar': 'إلغاء', 'Aplicar': 'تطبيق',
+    'Restablecer': 'إعادة تعيين', 'Buscar': 'بحث', 'Reemplazar todo': 'استبدال الكل', 'Justificar': 'ضبط',
+    'Insertar enlace': 'إدراج ارتباط', 'Buscar y reemplazar': 'بحث واستبدال', 'Campos': 'حقول',
+    'Encabezado y pie': 'رأس وتذييل', 'Revisar': 'مراجعة', 'Lápiz': 'قلم', 'Resaltador': 'قلم تمييز',
+    'Borrador': 'ممحاة', 'Seleccionar': 'تحديد', 'Diapositiva': 'شريحة', 'de': 'من', 'Colores': 'الألوان',
+    'Fuentes': 'الخطوط', 'Herramientas': 'أدوات', 'Trazo': 'الخط المرسوم',
+  },
 };
 for (const code in EXTRA) DICT[code] = Object.assign({}, DICT[code], EXTRA[code]);
 
 const KEY = 'revela.lang';
 let lang = 'es';
 try { lang = localStorage.getItem(KEY) || 'es'; } catch {}
+let fb = LANGS.find(l => l.code === lang)?.fallback || null;
 
 export function currentLang() { return lang; }
-export function t(es) { return (DICT[lang] && DICT[lang][es]) || es; }
+// Missing strings fall back to the language's fallback (English for the
+// languages whose speakers are unlikely to read Spanish), then to Spanish.
+export function t(es) { return (DICT[lang] && DICT[lang][es]) || (fb && DICT[fb][es]) || es; }
 
 export function applyI18n() {
   const scope = ['#ribbon', '#statusbar', '.titlebar'];
@@ -534,13 +591,16 @@ export function applyI18n() {
       el.innerHTML = t(el.dataset.i18n);
     });
   document.documentElement.lang = lang;
+  // Right-to-left interface (the slide itself keeps its own direction).
+  document.documentElement.dir = LANGS.find(l => l.code === lang)?.rtl ? 'rtl' : 'ltr';
 }
 
 export function setLang(code) {
-  lang = code;
+  lang = code; fb = LANGS.find(l => l.code === lang)?.fallback || null;
   try { localStorage.setItem(KEY, code); } catch {}
   const sel = document.getElementById('lang-select'); if (sel) sel.value = code;
   applyI18n();
+  window.dispatchEvent(new Event('revela:lang'));   // let dynamic parts re-render
 }
 
 // Build the language picker and apply the stored language.

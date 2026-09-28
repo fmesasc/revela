@@ -13,7 +13,7 @@ export function openA11yCheck() {
   document.getElementById('a11y-modal')?.remove();
   const back = document.createElement('div');
   back.id = 'a11y-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:left;min-width:320px;max-width:560px">
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:320px;max-width:560px">
     <button class="modal-close">✕</button><h3>${t('Comprobar accesibilidad')}</h3>
     <div class="a11y-list"></div></div>`;
   const list = back.querySelector('.a11y-list');
@@ -47,7 +47,7 @@ export function openReadingOrder() {
   document.getElementById('ro-modal')?.remove();
   const back = document.createElement('div');
   back.id = 'ro-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:left;min-width:320px;max-width:520px">
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:320px;max-width:520px">
     <button class="modal-close">✕</button><h3>${t('Orden de lectura')}</h3>
     <p class="host-help">${t('Los lectores de pantalla leen los objetos de arriba abajo. El primero queda al fondo.')}</p>
     <ol class="ro-list"></ol></div>`;

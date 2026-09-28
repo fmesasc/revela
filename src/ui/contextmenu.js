@@ -254,7 +254,7 @@ function openImageAdjust(b) {
     `<label class="fr-l">${label} <input type="range" data-adj="${prop}" min="0" max="${max}" value="${a[prop]}"></label>`;
   const back = document.createElement('div');
   back.id = 'img-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:left;min-width:280px">
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:280px">
     <button class="modal-close">✕</button><h3>${t('Ajustes de imagen')}</h3>
     ${sl(t('Brillo'), 'brightness', 200)}${sl(t('Contraste'), 'contrast', 200)}
     ${sl(t('Saturación'), 'saturate', 200)}${sl(t('Opacidad'), 'opacity', 100)}
@@ -316,7 +316,7 @@ async function openMath(b) {
   if (!ok) return openMathPalette(b);
   const back = document.createElement('div');
   back.id = 'math-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:left;min-width:420px;max-width:94vw">
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:420px;max-width:94vw">
     <button class="modal-close">✕</button><h3>${t('Editar ecuación')}</h3>
     <math-field class="mt-field"></math-field>
     <label class="fr-l" style="margin-top:2px"><span style="display:flex;justify-content:space-between">LaTeX
@@ -351,7 +351,7 @@ function openMathPalette(b) {
     `<div class="mt-sec">${name}</div><div class="mt-grid">`
     + items.map(([lbl, snip]) => `<button type="button" class="mt-btn" data-snip="${snip.replace(/"/g, '&quot;')}">${lbl}</button>`).join('')
     + `</div>`).join('');
-  back.innerHTML = `<div class="modal" style="text-align:left;min-width:460px;max-width:94vw">
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:460px;max-width:94vw">
     <button class="modal-close">✕</button><h3>${t('Editar ecuación')}</h3>
     <div class="mt-preview"></div>
     ${groups}
@@ -381,7 +381,7 @@ function openChartData(b) {
   const lines = blocks.chartGridText(b).replace(/</g, '&lt;');
   const back = document.createElement('div');
   back.id = 'chart-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:left;min-width:300px">
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:300px">
     <button class="modal-close">✕</button><h3>${t('Datos del gráfico')}</h3>
     <label class="fr-l">${t('Tipo')} <select class="ch-type">
       <option value="bar">${t('Barras')}</option><option value="line">${t('Líneas')}</option><option value="area">${t('Área')}</option>
@@ -411,7 +411,7 @@ function openCodeOpts(b) {
     'rust', 'php', 'ruby', 'html', 'css', 'sql', 'bash', 'json', 'yaml'];
   const back = document.createElement('div');
   back.id = 'code-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:left;min-width:300px">
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:300px">
     <button class="modal-close">✕</button><h3>${t('Opciones de código')}</h3>
     <label class="fr-l">${t('Lenguaje')} <select class="cd-lang">${langs.map(l => `<option value="${l}">${l}</option>`).join('')}</select></label>
     <label class="fr-chk"><input type="checkbox" class="cd-lines"> ${t('Mostrar números de línea')}</label>
@@ -439,7 +439,7 @@ function openOpacity(b) {
   if (document.getElementById('op-modal')) return;
   const back = document.createElement('div');
   back.id = 'op-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:left;min-width:260px">
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:260px">
     <button class="modal-close">✕</button><h3>${t('Opacidad')}</h3>
     <label class="fr-l"><span class="op-val">${b.opacity ?? 100}%</span>
       <input type="range" class="op-range" min="0" max="100" value="${b.opacity ?? 100}"></label></div>`;
@@ -471,7 +471,7 @@ function openBoxStyle(b) {
   if (document.getElementById('box-modal')) return;
   const back = document.createElement('div');
   back.id = 'box-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:left;min-width:280px">
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:280px">
     <button class="modal-close">✕</button><h3>${t('Relleno y borde')}</h3>
     <label class="fr-l">${t('Relleno')} <input type="color" class="bx-fill" value="${b.bg || '#3f6497'}"></label>
     <label class="fr-l">${t('Borde')} <input type="color" class="bx-border" value="${b.borderColor || '#1e2a3a'}"></label>
@@ -500,7 +500,7 @@ function openSlidePicker(b) {
   back.id = 'sp-modal'; back.className = 'modal-backdrop';
   const items = state.deck.slides.map((s, i) =>
     `<button class="sp-item${s.id === b.target ? ' on' : ''}" data-id="${s.id}">${slideShortLabel(s, i).replace(/</g, '&lt;')}</button>`).join('');
-  back.innerHTML = `<div class="modal" style="text-align:left;min-width:320px;max-height:70vh;overflow:auto">
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:320px;max-height:70vh;overflow:auto">
     <button class="modal-close">✕</button><h3>${t('Elegir diapositiva…')}</h3>
     <div class="sp-list">${items}</div></div>`;
   document.body.appendChild(back);
@@ -514,7 +514,7 @@ function openCaption(b) {
   if (document.getElementById('cap-modal')) return;
   const back = document.createElement('div');
   back.id = 'cap-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:left;min-width:320px">
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:320px">
     <button class="modal-close">✕</button><h3>${t('Descripción')}</h3>
     <label class="fr-l"><input class="cap-in" type="text" value="${(b.caption || '').replace(/"/g, '&quot;')}" placeholder="${t('Descripción')}"></label>
     <div class="fr-actions"><button class="fr-do">${t('Aplicar')}</button></div>
@@ -533,7 +533,7 @@ export function openAlt(b) {
   if (document.getElementById('alt-modal')) return;
   const back = document.createElement('div');
   back.id = 'alt-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:left;min-width:300px">
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:300px">
     <button class="modal-close">✕</button><h3>${t('Texto alternativo')}</h3>
     <label class="fr-l">${t('Descripción para accesibilidad')}
       <input class="alt-in" type="text" value="${(b.alt || '').replace(/"/g, '&quot;')}"></label>
@@ -555,7 +555,7 @@ function openImageCrop(b) {
     `<label class="fr-l">${label} <input type="range" data-crop="${side}" min="0" max="45" value="${c[side]}"></label>`;
   const back = document.createElement('div');
   back.id = 'crop-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:left;min-width:280px">
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:280px">
     <button class="modal-close">✕</button><h3>${t('Recortar imagen (%)')}</h3>
     ${sl(t('Arriba'), 'top')}${sl(t('Derecha'), 'right')}${sl(t('Abajo'), 'bottom')}${sl(t('Izquierda'), 'left')}
     <div class="fr-actions"><button class="fr-do" data-reset>${t('Restablecer')}</button></div>
@@ -615,7 +615,7 @@ function openTableStyle(b) {
     return `<table class="${tableClass(m)}" style="${tableVars(m)}">${m.rows.map(r => `<tr>${r.map(() => '<td></td>').join('')}</tr>`).join('')}</table>`; };
   const back = document.createElement('div');
   back.id = 'ts-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:left;min-width:320px">
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:320px">
     <button class="modal-close">✕</button><h3>${t('Estilo de tabla')}</h3>
     <style>${tableCSS('.ts-grid ')} .ts-grid table.tbl td{height:9px;padding:0}</style>
     <div class="ts-grid">${Object.entries(presets).map(([k, p]) =>

@@ -78,6 +78,7 @@ initContextMenu();
 initDraw();
 document.addEventListener('keydown', keyboard);
 subscribe(render);
+window.addEventListener('revela:lang', render);
 render();
 initI18n();
 

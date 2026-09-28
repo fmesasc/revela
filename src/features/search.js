@@ -48,7 +48,7 @@ export function openFindPanel() {
   if (document.getElementById('find-modal')) return;
   const back = document.createElement('div');
   back.id = 'find-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:left;min-width:300px">
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:300px">
     <button class="modal-close" title="Cerrar">✕</button>
     <h3>${t('Buscar y reemplazar')}</h3>
     <label class="fr-l">${t('Buscar')}<input class="fr-find" type="text" autocomplete="off"></label>
