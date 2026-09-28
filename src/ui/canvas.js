@@ -144,6 +144,7 @@ function reconcile(b) {
       rich.style.lineHeight = b.lineHeight || '';
       rich.style.letterSpacing = b.letterSpacing ? b.letterSpacing + 'px' : '';
       rich.style.paddingLeft = (6 + (b.indent || 0)) + 'px';
+      rich.dir = b.dir || '';
       if (!el.classList.contains('editing') && rich.innerHTML !== (b.html || '')) rich.innerHTML = b.html || '';
     }
   } else if (b.type === 'image') {
@@ -221,6 +222,7 @@ function content(b) {
     if (b.lineHeight) d.style.lineHeight = b.lineHeight;
     if (b.letterSpacing) d.style.letterSpacing = b.letterSpacing + 'px';
     if (b.indent) d.style.paddingLeft = (6 + b.indent) + 'px';
+    if (b.dir) d.dir = b.dir;
     d.innerHTML = b.html || '';
     return d;
   }

@@ -48,10 +48,21 @@ export function insertSymbol(ch) {
 }
 export const color = v => exec('foreColor', v);
 export const highlight = v => exec('hiliteColor', v);
+// Turn user input into an href: a number → slide, an address → mailto, else URL.
+export function normalizeLink(input) {
+  const s = (input || '').trim(); if (!s) return null;
+  if (/^\d+$/.test(s)) return '#/' + (parseInt(s, 10) - 1);
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) return 'mailto:' + s;
+  return s;
+}
 export function link() {
   const c = ctx(); if (!c) return;
-  const url = prompt('Dirección del enlace (URL):', 'https://');
+  const url = normalizeLink(prompt('Enlace: URL, nº de diapositiva o correo:', 'https://'));
   if (url) exec('createLink', url);
+}
+export function toggleDir() {
+  const c = ctx(); if (!c) return;
+  commit(() => { c.b.dir = c.b.dir === 'rtl' ? 'ltr' : 'rtl'; });
 }
 export function changeCase(mode) {
   const c = ctx(); if (!c) return;

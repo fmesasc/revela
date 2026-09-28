@@ -12,7 +12,8 @@ export function blockPreview(b) {
       + `text-align:${b.textAlign || 'left'};${b.fontFamily ? `font-family:${b.fontFamily};` : ''}`
       + `${b.lineHeight ? `line-height:${b.lineHeight};` : ''}`
       + `${b.letterSpacing ? `letter-spacing:${b.letterSpacing}px;` : ''}`
-      + `${b.indent ? `padding-left:${b.indent}px;` : ''}">`
+      + `${b.indent ? `padding-left:${b.indent}px;` : ''}`
+      + `${b.dir === 'rtl' ? 'direction:rtl;' : ''}">`
       + `${b.html || ''}</div>`;
   } else if (b.type === 'image') {
     el.innerHTML = `<img src="${b.src}" style="width:100%;height:100%;object-fit:${b.fit || 'contain'};`

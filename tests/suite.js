@@ -252,6 +252,17 @@ export async function run(frame) {
     assert(/highlight\.min\.js/.test(html), 'highlight.js incluido');
   });
 
+  await test('enlaces: normaliza diapositiva y correo', async () => {
+    eq(R.format.normalizeLink('3'), '#/2', 'nº de diapositiva');
+    eq(R.format.normalizeLink('a@b.com'), 'mailto:a@b.com', 'correo');
+    eq(R.format.normalizeLink('https://x.com'), 'https://x.com', 'URL intacta');
+  });
+
+  await test('dirección RTL del texto en el export', async () => {
+    reset(); const b = newText(); R.format.toggleDir();
+    assert(/direction:rtl/.test(R.io.buildHTML()), 'direction:rtl en el export');
+  });
+
   await test('buscar y reemplazar respeta el formato (nodos de texto)', async () => {
     reset(); const b = newText();
     b.html = 'Hola <b>mundo</b> y mundo'; R.render();
