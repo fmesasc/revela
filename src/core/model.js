@@ -9,6 +9,8 @@
 // A slide's `transition` overrides the deck's `defaultTransition`; an object's
 // `animation` describes its entrance (effect + order).
 
+import { kvGet, kvSet } from './idb.js';
+
 export const STORAGE_KEY = 'revela.deck.v1';
 
 export const uid = () => Math.random().toString(36).slice(2, 9)
@@ -99,12 +101,40 @@ export function loadDeck() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const deck = JSON.parse(raw);
+    if (deck.tooBig) return null;          // only in IndexedDB (loaded asynchronously)
     return migrate(deck);
   } catch { return null; }
 }
 
+// Autosave: a time stamp, then localStorage (fast, synchronous, small decks)
+// and IndexedDB (any size, debounced). On start the newer copy wins.
+const LS_MAX = 4_500_000;                 // characters; beyond this localStorage would refuse it
+let idbTimer = null;
+// Rough size (characters of all strings) without serialising the whole deck.
+export function approxSize(v) {
+  if (typeof v === 'string') return v.length;
+  if (Array.isArray(v)) { let n = 0; for (const x of v) n += approxSize(x); return n; }
+  if (v && typeof v === 'object') { let n = 0; for (const k in v) n += approxSize(v[k]) + k.length; return n; }
+  return 8;
+}
 export function saveDeck(deck) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(deck)); } catch {}
+  deck.savedAt = Date.now();
+  const size = approxSize(deck);
+  try {
+    if (size < LS_MAX) localStorage.setItem(STORAGE_KEY, JSON.stringify(deck));
+    else localStorage.setItem(STORAGE_KEY, JSON.stringify({ tooBig: true, savedAt: deck.savedAt }));
+  } catch {}
+  clearTimeout(idbTimer);                                   // big decks: write less often
+  idbTimer = setTimeout(() => kvSet('deck', deck).catch(() => {}), size > 20e6 ? 3000 : 400);
+}
+export function flushSave(deck) { clearTimeout(idbTimer); return kvSet('deck', deck).catch(() => {}); }
+// The IndexedDB copy, if it's newer than what localStorage gave us at start.
+export async function loadNewerDeck(current) {
+  try {
+    const d = await kvGet('deck');
+    if (d && d.slides && (!current || (d.savedAt || 0) > (current.savedAt || 0))) return migrate(d);
+  } catch {}
+  return null;
 }
 
 // Keep older stored decks loadable as the schema evolves.

@@ -1165,6 +1165,28 @@ export async function run(frame) {
     eq(a.rel, 'noopener', 'sin acceso a la ventana de origen');
   });
 
+  await test('historial de versiones y guardado de presentaciones grandes', async () => {
+    reset(); const V = R.versions, M = R.model;
+    slide().blocks[0].html = 'Versión A'; R.render();
+    const id = await V.saveVersion('Primera', false);
+    slide().blocks[0].html = 'Versión B'; R.store.commit(() => {});
+    const list = await V.listVersions();
+    const v = list.find(x => x.id === id); assert(v && v.name === 'Primera' && !v.deck, 'listada sin cargar el contenido');
+    assert(await V.restoreVersion(id), 'restaurada'); await sleep(10);
+    eq(slide().blocks[0].html, 'Versión A', 'contenido de la versión');
+    const after = await V.listVersions(); assert(after.length >= list.length + 1, 'la anterior se guardó antes de restaurar');
+    const back = (await Promise.all(after.filter(x => x.auto).map(x => V.versionDeck(x.id)))).some(d => d.slides[0].blocks[0].html === 'Versión B');
+    assert(back, 'la versión B sigue en el historial');
+    for (const x of after) await V.deleteVersion(x.id);
+    // Autosave grande: localStorage guarda solo una marca y el contenido va a IndexedDB.
+    const big = M.emptyDeck(); big.slides[0].blocks.push({ id: 'img', type: 'image', src: 'data:image/png;base64,' + 'A'.repeat(5_000_000), x: 0, y: 0, w: 10, h: 10 });
+    M.saveDeck(big); await M.flushSave(big);
+    assert(JSON.parse(frame.contentWindow.localStorage.getItem(M.STORAGE_KEY)).tooBig, 'localStorage no se desborda');
+    eq(M.loadDeck(), null, 'la carga síncrona lo deja a IndexedDB');
+    const got = await M.loadNewerDeck({ savedAt: 0 }); eq(got?.slides[0].blocks.at(-1).src.length, big.slides[0].blocks.at(-1).src.length, 'recuperado entero de IndexedDB');
+    R.store.commit(() => {});                                  // vuelve a guardar el estado actual
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

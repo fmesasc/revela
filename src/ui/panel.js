@@ -12,17 +12,34 @@ let dragFrom = null;
 
 export function initPanel() { panel = document.getElementById('navigator'); }
 
+// Thumbnails are cached per slide and rebuilt only when that slide (or what
+// every thumbnail depends on: size, master, theme colours) changes — decks with
+// many image-heavy slides would otherwise take seconds on every edit.
+const cache = new Map();                   // slide id → { sig, el }
+const LONG = 200;
+const sigOf = v => JSON.stringify(v, (k, x) => (typeof x === 'string' && x.length > LONG ? `${x.length}:${x.slice(0, 40)}${x.slice(-40)}` : x));
+
 export function renderPanel() {
-  panel.innerHTML = '';
+  const d = state.deck;
+  const common = sigOf([d.size, d.master, deckFg(), deckBodyFont()]);
+  const nodes = [], seen = new Set();
   let lastSection;
-  state.deck.slides.forEach((slide, index) => {
+  d.slides.forEach((slide, index) => {
     if (slide.sectionId && slide.sectionId !== lastSection) {
-      const sec = state.deck.sections.find(s => s.id === slide.sectionId);
-      if (sec) panel.appendChild(sectionHead(sec));
+      const sec = d.sections.find(s => s.id === slide.sectionId);
+      if (sec) nodes.push(sectionHead(sec));
     }
     lastSection = slide.sectionId;
-    panel.appendChild(thumb(slide, index));
+    const sig = common + sigOf(slide);
+    let c = cache.get(slide.id);
+    if (!c || c.sig !== sig) { c = { sig, el: thumb(slide) }; cache.set(slide.id, c); }
+    c.el.dataset.index = index;
+    c.el.classList.toggle('active', index === state.ui.slideIndex && !state.ui.editMaster);
+    c.el.querySelector('.thumb-num').textContent = index + 1;
+    seen.add(slide.id); nodes.push(c.el);
   });
+  for (const id of cache.keys()) if (!seen.has(id)) cache.delete(id);
+  panel.replaceChildren(...nodes);
 }
 
 // A section title, editable in place (no browser prompt). Right‑clicking it
@@ -43,13 +60,13 @@ function sectionHead(sec) {
   return h;
 }
 
-function thumb(slide, index) {
+function thumb(slide) {
   const el = document.createElement('div');
-  el.className = 'thumb' + (index === state.ui.slideIndex ? ' active' : '') + (slide.hidden ? ' is-hidden' : '');
+  el.className = 'thumb' + (slide.hidden ? ' is-hidden' : '');
   el.draggable = true;
-  el.dataset.index = index;
+  const index = () => +el.dataset.index;          // current position (the element is reused)
 
-  const num = document.createElement('span'); num.className = 'thumb-num'; num.textContent = index + 1;
+  const num = document.createElement('span'); num.className = 'thumb-num';
   if (slide.hidden) {
     const badge = document.createElement('span');
     badge.className = 'thumb-hidden'; badge.title = 'Diapositiva oculta en la presentación';
@@ -68,12 +85,12 @@ function thumb(slide, index) {
 
   const del = document.createElement('button'); del.className = 'thumb-del'; del.textContent = '×';
   del.title = 'Borrar diapositiva';
-  del.addEventListener('click', e => { e.stopPropagation(); deleteSlide(index); });
+  del.addEventListener('click', e => { e.stopPropagation(); deleteSlide(index()); });
 
   el.append(num, canvas, del);
-  el.addEventListener('click', () => goToSlide(index));
+  el.addEventListener('click', () => goToSlide(index()));
 
-  el.addEventListener('dragstart', () => { dragFrom = index; el.classList.add('dragging'); });
+  el.addEventListener('dragstart', () => { dragFrom = index(); el.classList.add('dragging'); });
   el.addEventListener('dragend', () => { dragFrom = null; el.classList.remove('dragging'); clearMarks(); });
   el.addEventListener('dragover', e => { e.preventDefault(); markTarget(el); });
   el.addEventListener('drop', e => {

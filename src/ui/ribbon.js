@@ -22,6 +22,7 @@ import { autocorrectOn, setAutocorrect } from '../features/autocorrect.js';
 import { openPlugins, openMacros } from './plugins-dialog.js';
 import { AI_ACTIONS, aiRewrite } from './ai-dialog.js';
 import { DONATE_URL } from '../config.js';
+import { openVersions } from './versions-dialog.js';
 import * as media from '../features/media.js';
 import * as palettes from '../features/palettes.js';
 import { setDrawTool, drawOpts } from './draw.js';
@@ -53,6 +54,7 @@ const ACTIONS = {
     try { replaceDeck(JSON.parse(txt)); } catch { alertDialog(t('Proyecto no válido.')); } }, 'text'),
   'save': io.saveProject,
   'gallery': () => openGallery(),
+  'versions': () => openVersions(),
   'design-ideas': () => openDesignIdeas(),
   'gdrive-open': () => gdrive.openWithUI(),
   'gdrive-save': () => gdrive.saveWithUI(),

@@ -8,6 +8,14 @@ const listeners = new Set();
 const past = [];
 const future = [];
 const HISTORY_LIMIT = 60;
+// Undo snapshots copy objects and arrays but share the strings (immutable in
+// JS), so the megabytes of embedded images/video are never duplicated — a
+// JSON copy per step would exhaust memory on big decks.
+export function snapshot(v) {
+  if (Array.isArray(v)) return v.map(snapshot);
+  if (v && typeof v === 'object') { const o = {}; for (const k in v) o[k] = snapshot(v[k]); return o; }
+  return v;
+}
 
 export const state = {
   deck: loadDeck() || emptyDeck(),
@@ -64,7 +72,7 @@ export const clampSlide = () => {
 // the undo stack.
 export function commit(fn, { history = true } = {}) {
   if (history) {
-    past.push(JSON.stringify(state.deck));
+    past.push(snapshot(state.deck));
     if (past.length > HISTORY_LIMIT) past.shift();
     future.length = 0;
   }
@@ -78,14 +86,14 @@ export function mutate(fn) { commit(fn, { history: false }); }
 
 export function undo() {
   if (!past.length) return;
-  future.push(JSON.stringify(state.deck));
-  state.deck = JSON.parse(past.pop());
+  future.push(snapshot(state.deck));
+  state.deck = past.pop();
   clampSlide(); saveDeck(state.deck); notify();
 }
 export function redo() {
   if (!future.length) return;
-  past.push(JSON.stringify(state.deck));
-  state.deck = JSON.parse(future.pop());
+  past.push(snapshot(state.deck));
+  state.deck = future.pop();
   clampSlide(); saveDeck(state.deck); notify();
 }
 

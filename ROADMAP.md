@@ -132,7 +132,7 @@ the origin of every requirement is traceable.
 - ⬜ Real-time co-editing `PP·GS·OO`
 - ⬜ Comments, @mentions, assign, resolve `PP·GS·OO`
 - ⬜ Built-in chat `OO`
-- ⬜ Version history `PP·GS·OO`
+- ✅ Version history (local, in this browser: automatic snapshots + named versions, restore/download) — shared history needs the back end `PP·GS·OO`
 - ⬜ Share links and permission levels `PP·GS·OO`
 - ⬜ Protect / password, restrict editing `PP·OO`
 - ⬜ Digital signatures `OO`
