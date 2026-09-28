@@ -78,7 +78,7 @@ the origin of every requirement is traceable.
 - ✅ AI image background removal `PP`
 - ✅ Image crop, adjustments (brightness/contrast/saturation/opacity) and transparency `PP·GS·OO`
 - ✅ Table styles — 6 presets coloured from the palette, header row, banded rows, first column, lines only (also in .pptx) `PP·GS·OO`
-- ⬜ Merge / subtract / intersect shapes `PP·OO`
+- ✅ Merge shapes — union, combine, intersect, subtract (polygon-clipping; custom geometry in .pptx) `PP·OO`
 - ⬜ Online / stock images & icons library `PP·GS`
 - ⬜ Embedded spreadsheet / linked data `GS·OO`
 - ⬜ Screen / camera recording, live camera (Cameo) `PP`

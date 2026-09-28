@@ -243,7 +243,29 @@ export const iconSig = b => (b.icon || '') + '|' + (b.color || '');
 // none); a non‑scaling stroke keeps the outline an even width at any size.
 
 export function shapeSig(b) {
-  return `${b.shape}|${b.fill}|${b.stroke}|${b.strokeWidth}`;
+  return `${b.shape}|${b.fill}|${b.stroke}|${b.strokeWidth}|${b.path ? b.path.length + b.path.slice(0, 40) : ''}`;
+}
+
+// Polygon outlines in the 100×100 box (shared by the SVG and by the shape
+// boolean operations, which need real geometry).
+const SHAPE_POINTS = {
+  triangle: '50,3 97,97 3,97', diamond: '50,2 98,50 50,98 2,50', pentagon: '50,3 98,39 79,96 21,96 2,39',
+  star: '50,3 61,38 98,38 68,60 79,96 50,73 21,96 32,60 2,38 39,38',
+  rightarrow: '2,32 60,32 60,12 98,50 60,88 60,68 2,68', leftarrow: '98,32 40,32 40,12 2,50 40,88 40,68 98,68',
+  hexagon: '25,4 75,4 98,50 75,96 25,96 2,50', parallelogram: '22,14 98,14 78,86 2,86', trapezoid: '22,16 78,16 98,84 2,84',
+  chevron: '2,14 68,14 98,50 68,86 2,86 32,50', plus: '36,3 64,3 64,36 97,36 97,64 64,64 64,97 36,97 36,64 3,64 3,36 36,36',
+};
+// Outline of a closed shape as [[x,y]…] in the 100×100 box, or null (lines).
+export function shapeOutline100(shape) {
+  if (SHAPE_POINTS[shape]) return SHAPE_POINTS[shape].split(' ').map(p => p.split(',').map(Number));
+  if (shape === 'ellipse') return Array.from({ length: 72 }, (_, i) => { const a = i / 72 * 2 * Math.PI; return [50 + 48 * Math.cos(a), 50 + 48 * Math.sin(a)]; });
+  if (shape === 'rounded') {
+    const r = 12, pts = [], arc = (cx, cy, a0) => { for (let k = 0; k <= 8; k++) { const a = a0 + k / 8 * Math.PI / 2; pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); } };
+    arc(98 - r, 2 + r, -Math.PI / 2); arc(98 - r, 98 - r, 0); arc(2 + r, 98 - r, Math.PI / 2); arc(2 + r, 2 + r, Math.PI);
+    return pts;
+  }
+  if (shape === 'line' || shape === 'arrow' || shape === 'custom') return null;
+  return [[2, 2], [98, 2], [98, 98], [2, 98]];
 }
 
 export function shapeSVG(b) {
@@ -253,20 +275,11 @@ export function shapeSVG(b) {
   const paint = `fill="${fill}" stroke="${stroke}" stroke-width="${sw}" vector-effect="non-scaling-stroke"`;
   const strokeOnly = `fill="none" stroke="${stroke}" stroke-width="${sw}" vector-effect="non-scaling-stroke" stroke-linecap="round"`;
   let inner;
-  switch (b.shape) {
+  if (SHAPE_POINTS[b.shape]) inner = `<polygon points="${SHAPE_POINTS[b.shape]}" ${paint}/>`;
+  else switch (b.shape) {
     case 'ellipse':  inner = `<ellipse cx="50" cy="50" rx="48" ry="48" ${paint}/>`; break;
-    case 'triangle': inner = `<polygon points="50,3 97,97 3,97" ${paint}/>`; break;
     case 'rounded':  inner = `<rect x="2" y="2" width="96" height="96" rx="12" ry="12" ${paint}/>`; break;
-    case 'diamond':  inner = `<polygon points="50,2 98,50 50,98 2,50" ${paint}/>`; break;
-    case 'pentagon': inner = `<polygon points="50,3 98,39 79,96 21,96 2,39" ${paint}/>`; break;
-    case 'star':     inner = `<polygon points="50,3 61,38 98,38 68,60 79,96 50,73 21,96 32,60 2,38 39,38" ${paint}/>`; break;
-    case 'rightarrow': inner = `<polygon points="2,32 60,32 60,12 98,50 60,88 60,68 2,68" ${paint}/>`; break;
-    case 'leftarrow': inner = `<polygon points="98,32 40,32 40,12 2,50 40,88 40,68 98,68" ${paint}/>`; break;
-    case 'hexagon': inner = `<polygon points="25,4 75,4 98,50 75,96 25,96 2,50" ${paint}/>`; break;
-    case 'parallelogram': inner = `<polygon points="22,14 98,14 78,86 2,86" ${paint}/>`; break;
-    case 'trapezoid': inner = `<polygon points="22,16 78,16 98,84 2,84" ${paint}/>`; break;
-    case 'chevron': inner = `<polygon points="2,14 68,14 98,50 68,86 2,86 32,50" ${paint}/>`; break;
-    case 'plus': inner = `<polygon points="36,3 64,3 64,36 97,36 97,64 64,64 64,97 36,97 36,64 3,64 3,36 36,36" ${paint}/>`; break;
+    case 'custom':   inner = `<path d="${b.path || ''}" fill-rule="evenodd" ${paint}/>`; break;   // merged shapes
     case 'line':     inner = `<line x1="3" y1="50" x2="97" y2="50" ${strokeOnly}/>`; break;
     case 'arrow':    inner = `<defs><marker id="ah-${b.id}" markerWidth="5" markerHeight="5" refX="4" refY="2.5" `
       + `orient="auto"><path d="M0,0 L5,2.5 L0,5 z" fill="${stroke}"/></marker></defs>`

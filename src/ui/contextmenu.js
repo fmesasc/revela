@@ -4,6 +4,7 @@
 import { state, commit, currentSlide, selectedBlock, selectedBlocks, isSelected, setSelection } from '../core/store.js';
 import { uid } from '../core/model.js';
 import * as blocks from '../features/blocks.js';
+import * as shapeops from '../features/shapeops.js';
 import { addText } from '../features/blocks.js';
 import * as format from '../features/format.js';
 import { addSlide, duplicateSlide, deleteSlide, goToSlide, toggleSlideHidden,
@@ -178,6 +179,17 @@ function forBlock(b, cell = null) {
   if (sel.length > 1) groupItems.push(['Agrupar', () => blocks.groupSelected()]);
   if (sel.some(x => x.groupId)) groupItems.push(['Desagrupar', () => blocks.ungroupSelected()]);
   if (groupItems.length) items.push(null, ...groupItems);
+  // Merge shapes (2+ closed shapes): union, combine, intersect, subtract.
+  const ordered = shapeops.selectedShapesInOrder();
+  if (shapeops.canMerge(ordered)) {
+    const run = op => shapeops.mergeShapes(op, ordered).then(r => { if (!r) alertDialog(t('Las formas no se solapan.')); })
+      .catch(() => alertDialog(t('No se pudo cargar la librería de formas.')));
+    items.push(null,
+      ['Combinar formas: unión', () => run('union')],
+      ['Combinar formas: combinar', () => run('xor')],
+      ['Combinar formas: intersecar', () => run('intersection')],
+      ['Combinar formas: restar', () => run('difference')]);
+  }
 
   items.push(null,
     ['Voltear horizontalmente', () => blocks.flipSelected('h')],

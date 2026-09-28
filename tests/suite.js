@@ -783,6 +783,30 @@ export async function run(frame) {
     D.querySelector('#ts-modal .modal-close').click();
   });
 
+  await test('combinar formas: unión, intersección, resta', async () => {
+    reset(); const S = R.shapeops;
+    R.blocks.addShape('rect'); const a = last(); Object.assign(a, { x: 100, y: 100, w: 200, h: 200, fill: '#ff0000' });
+    R.blocks.addShape('ellipse'); const c = last(); Object.assign(c, { x: 200, y: 150, w: 200, h: 100 });
+    R.store.setMulti([a.id, c.id]);
+    const u = await S.mergeShapes('union', S.selectedShapesInOrder()); await sleep(10);
+    assert(u && u.shape === 'custom', 'forma personalizada');
+    eq([u.x, u.y, u.w, u.h].join(','), '104,104,292,192', 'caja de la unión (contornos 2..98)');
+    eq(u.fill, '#ff0000', 'toma el aspecto de la primera');
+    assert(!slide().blocks.some(b => b.id === a.id || b.id === c.id), 'originales sustituidas');
+    assert(D.querySelector(`.block[data-id="${u.id}"] svg path[fill-rule="evenodd"]`), 'dibujada en el lienzo');
+    R.store.undo(); await sleep(10);
+    const a2 = slide().blocks.find(b => b.id === a.id), c2 = slide().blocks.find(b => b.id === c.id);
+    assert(a2 && c2, 'deshacer recupera las originales');
+    const i = await S.mergeShapes('intersection', [a2, c2]);
+    eq(i.x + i.w, 296, 'intersección acotada al rectángulo');
+    R.store.undo(); await sleep(10);
+    const d = await S.mergeShapes('difference', [slide().blocks.find(b => b.id === a.id), slide().blocks.find(b => b.id === c.id)]);
+    eq(d.rings.length, 1, 'resta: un contorno con mordisco'); eq(d.w, 192, 'misma anchura que el rectángulo');
+    R.blocks.addShape('rect'); const far = last(); Object.assign(far, { x: 900, y: 500, w: 50, h: 50 });
+    eq(await S.mergeShapes('intersection', [d, far]), null, 'sin solape → nada');
+    const blob = await R.pptx.buildPptxBlob(); assert(blob.size > 1000, 'pptx con geometría personalizada');
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

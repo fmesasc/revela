@@ -42,7 +42,13 @@ function addBlock(slide, b, pptx) {
     } else if (b.type === 'image') {
       slide.addImage({ ...pos, data: b.src });
     } else if (b.type === 'shape') {
-      if (b.shape === 'line' || b.shape === 'arrow') {
+      if (b.shape === 'custom' && b.rings?.length) {
+        // Merged shape → custom geometry (points in inches inside the box).
+        const fill = b.fill && b.fill !== 'none' ? { color: hex(b.fill) || '3F6497' } : { type: 'none' };
+        const points = b.rings.flatMap(r => r.map(([u, v], i) => ({ x: IN(u / 100 * b.w), y: IN(v / 100 * b.h), ...(i === 0 && { moveTo: true }) }))
+          .concat({ close: true }));
+        slide.addShape(pptx.ShapeType.custGeom, { ...pos, points, fill, line: { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth || 1 } });
+      } else if (b.shape === 'line' || b.shape === 'arrow') {
         slide.addShape(pptx.ShapeType.line, { ...pos, line: { color: hex(b.stroke) || '888888', width: b.strokeWidth || 2,
           endArrowType: b.shape === 'arrow' ? 'triangle' : 'none' } });
       } else {
