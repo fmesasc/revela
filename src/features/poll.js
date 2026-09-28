@@ -13,7 +13,7 @@
 import { state, commit, currentSlide } from '../core/store.js';
 import { uid } from '../core/model.js';
 
-export const POLL_KINDS = ['choice', 'multi', 'rating', 'word'];
+export const POLL_KINDS = ['choice', 'multi', 'rating', 'word', 'qa'];
 export const VOTE_URL = 'https://fmesasc.github.io/revela/vote.html';
 
 export function pollBlock(props = {}) {
@@ -34,6 +34,14 @@ export function setPoll(id, props) {
 // indices (multi), a number 1-5 (rating) or a string (word). → counts.
 export function tallyVotes(poll, votes) {
   var kind = poll.kind || 'choice', n = (poll.options || []).length, counts = [], words = {}, sum = 0, voters = 0;
+  if (kind === 'qa') {                      // audience questions: { 'q:id': { t: text, up: { voter: 1 } } }
+    var qs = [], people = {};
+    for (var id in votes) { var q = votes[id]; if (!q || !q.t) continue; var ups = Object.keys(q.up || {});
+      ups.forEach(function (v) { people[v] = 1; }); if (q.by) people[q.by] = 1;
+      qs.push({ id: id, text: q.t, up: ups.length, time: q.time || 0 }); }
+    qs.sort(function (a, b) { return b.up - a.up || a.time - b.time; });
+    return { counts: [], words: {}, voters: Object.keys(people).length, average: 0, questions: qs };
+  }
   if (kind === 'rating') n = 5;
   for (var i = 0; i < n; i++) counts.push(0);
   for (var k in votes) {
@@ -57,6 +65,14 @@ export function pollResultsHTML(poll, res, accent) {
   var labels = kind === 'rating' ? ['1', '2', '3', '4', '5'] : (poll.options || []);
   var counts = res.counts || [], total = counts.reduce(function (a, b) { return a + b; }, 0), max = Math.max.apply(null, counts.concat([1]));
   var foot = '<div style="margin-top:.6em;font-size:.55em;opacity:.7">' + res.voters + ' ' + (res.voters === 1 ? 'voto' : 'votos') + '</div>';
+  if (kind === 'qa') {
+    var list = (res.questions || []).slice(0, 8);
+    return '<div style="display:flex;flex-direction:column;gap:.3em;font-size:.7em">' + (list.length ? list.map(function (q, i) {
+      return '<div style="display:flex;gap:.6em;align-items:center;padding:.3em .5em;border-radius:.3em;background:' + (i ? '#8882' : cols[0]) + (i ? '' : ';color:#fff') + '">'
+        + '<b style="flex:0 0 2.2em;text-align:center">▲ ' + q.up + '</b><span>' + esc(q.text) + '</span></div>';
+    }).join('') : '<div style="opacity:.6">Escanea el QR y envía tu pregunta…</div>') + '</div>'
+      + '<div style="margin-top:.6em;font-size:.55em;opacity:.7">' + (res.questions || []).length + ' preguntas</div>';
+  }
   if (kind === 'word') {
     var ws = Object.keys(res.words || {}).sort(function (a, b) { return res.words[b] - res.words[a]; }).slice(0, 40);
     var wmax = ws.length ? res.words[ws[0]] : 1;
@@ -104,6 +120,7 @@ export function clearVotes(pollId) { try { localStorage.removeItem('revela.poll.
 export function votesCSV(poll) {
   const res = tallyVotes(poll, savedVotes(poll.pollId));
   const q = s => `"${String(s).replace(/"/g, '""')}"`;
+  if (poll.kind === 'qa') return 'pregunta,votos\n' + res.questions.map(x => `${q(x.text)},${x.up}`).join('\n');
   if (poll.kind === 'word') return 'palabra,votos\n' + Object.entries(res.words).map(([w, c]) => `${q(w)},${c}`).join('\n');
   const labels = poll.kind === 'rating' ? ['1', '2', '3', '4', '5'] : poll.options;
   return 'opcion,votos\n' + labels.map((l, i) => `${q(l)},${res.counts[i]}`).join('\n');

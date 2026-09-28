@@ -12,7 +12,7 @@ export function openPollEditor(b) {
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(520px,94vw);max-width:94vw">
     <button class="modal-close">✕</button><h3>${t('Votación en directo')}</h3>
     <label class="fr-l">${t('Pregunta')}<input type="text" class="pl-q"></label>
-    <label class="fr-l">${t('Tipo')}<select class="pl-kind">${opt('choice', 'Una opción', b.kind)}${opt('multi', 'Varias opciones', b.kind)}${opt('rating', 'Valoración 1 a 5', b.kind)}${opt('word', 'Nube de palabras', b.kind)}</select></label>
+    <label class="fr-l">${t('Tipo')}<select class="pl-kind">${opt('choice', 'Una opción', b.kind)}${opt('multi', 'Varias opciones', b.kind)}${opt('rating', 'Valoración 1 a 5', b.kind)}${opt('word', 'Nube de palabras', b.kind)}${opt('qa', 'Preguntas del público', b.kind)}</select></label>
     <label class="fr-l pl-opts-l">${t('Opciones (una por línea)')}<textarea class="pl-opts" rows="5"></textarea></label>
     <label class="fr-l">${t('Mostrar resultados como')}<select class="pl-disp">${opt('bar', 'Barras', b.display)}${opt('pie', 'Circular', b.display)}${opt('numbers', 'Cifras', b.display)}</select></label>
     <p class="host-help">${t('Al presentar aparece un QR: el público vota desde el móvil y los resultados se actualizan al instante. Conexión directa entre navegadores (WebRTC); funciona bien con decenas de personas.')}</p>
@@ -21,7 +21,7 @@ export function openPollEditor(b) {
   document.body.appendChild(back);
   const q = s => back.querySelector(s), close = () => back.remove();
   q('.pl-q').value = b.question || ''; q('.pl-opts').value = (b.options || []).join('\n');
-  const sync = () => { q('.pl-opts-l').hidden = ['rating', 'word'].includes(q('.pl-kind').value); };
+  const sync = () => { q('.pl-opts-l').hidden = ['rating', 'word', 'qa'].includes(q('.pl-kind').value); };
   const count = () => { q('.pl-count').textContent = t('Votos guardados: ') + tallyVotes(b, savedVotes(b.pollId)).voters; };
   q('.pl-kind').addEventListener('change', sync); sync(); count();
   q('.modal-close').addEventListener('click', close);

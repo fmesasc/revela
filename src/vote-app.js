@@ -23,7 +23,20 @@ async function join(code) {
   me.on('error', e => { $('#err').textContent = e.type === 'peer-unavailable' ? 'No hay ninguna presentación con ese código.' : 'Error de conexión.'; $('#go').disabled = false; $('#status').textContent = 'Sin conectar'; });
 }
 
+const myUps = new Set();
+function renderQA(list) {
+  const box = $('#qa-list'); if (!box) return;
+  box.innerHTML = list.length ? '' : '<p>Aún no hay preguntas. ¡Sé el primero!</p>';
+  for (const q of list) {
+    const row = document.createElement('div'); row.className = 'qa-item';
+    const up = document.createElement('button'); up.className = 'opt qa-up' + (myUps.has(q.id) ? ' on' : ''); up.textContent = '▲ ' + q.up;
+    up.addEventListener('click', () => { myUps.has(q.id) ? myUps.delete(q.id) : myUps.add(q.id); conn?.send({ type: 'vote', pollId: poll.pollId, voter, answer: { up: q.id } }); });
+    const tx = document.createElement('span'); tx.textContent = q.text;
+    row.append(up, tx); box.appendChild(row);
+  }
+}
 function onData(d) {
+  if (d?.type === 'qa') { if (poll?.pollId === d.pollId) renderQA(d.list || []); return; }
   if (d?.type === 'ok') { $('#done').hidden = false; return; }
   if (d?.type !== 'poll') return;
   if (!d.poll) { poll = null; show('wait'); return; }
@@ -34,6 +47,14 @@ function onData(d) {
 
 function renderAnswers() {
   const box = $('#answers'); box.innerHTML = '';
+  $('#send').hidden = poll.kind === 'qa';
+  if (poll.kind === 'qa') {
+    const ta = document.createElement('textarea'); ta.maxLength = 200; ta.rows = 3; ta.placeholder = 'Escribe tu pregunta…';
+    const ask = document.createElement('button'); ask.textContent = 'Preguntar';
+    ask.addEventListener('click', () => { const v = ta.value.trim(); if (!v || !conn?.open) return; conn.send({ type: 'vote', pollId: poll.pollId, voter, answer: { ask: v } }); ta.value = ''; });
+    const list = document.createElement('div'); list.id = 'qa-list';
+    box.append(ta, ask, list); renderQA([]); return;
+  }
   if (poll.kind === 'word') {
     const i = document.createElement('input'); i.type = 'text'; i.maxLength = 60; i.placeholder = 'Tu respuesta (separa varias con comas)';
     i.addEventListener('input', () => { answer = i.value; }); box.appendChild(i); return;

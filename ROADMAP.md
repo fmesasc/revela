@@ -125,7 +125,7 @@ the origin of every requirement is traceable.
 - ⬜ Speaker coach (pace, filler words) `PP`
 - ✅ Record the slideshow with microphone narration to a video file (.webm) `PP`
 - ✅ Live audience polls — QR on the slide, phones vote (single/multiple choice, rating, word cloud), results update live as bars, pie, figures or cloud; CSV export (WebRTC via PeerJS, no server of ours) `GS`
-- ⬜ Audience Q&A (open questions to the presenter) `GS`
+- ✅ Audience Q&A — the audience sends questions from their phones and upvotes others'; the slide shows them ranked live (max 5 per person) `GS`
 - ✅ Live captions while presenting (browser speech recognition, CC button or C key, asks first because Chrome/Edge send audio to their speech service) `PP`
 - ⬜ Present to Meet / Teams `PP·GS`
 
