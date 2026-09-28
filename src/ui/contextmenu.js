@@ -104,6 +104,8 @@ function forBlock(b) {
     items.push(
       ['Reproducir en el editor', () => document.querySelector(`.block[data-id="${b.id}"] video`)?.play()],
       null);
+  } else if (b.type === 'math') {
+    items.push(['Editar ecuación…', () => openMath(b)], null);
   } else if (b.type === 'code') {
     items.push(['Opciones de código…', () => openCodeOpts(b)], null);
   } else if (b.type === 'icon') {
@@ -203,6 +205,26 @@ function openImageAdjust(b) {
     blocks.resetImageAdj();
     back.querySelectorAll('[data-adj]').forEach(r => (r.value = r.dataset.adj === 'opacity' ? 100 : 100));
   });
+}
+
+function openMath(b) {
+  if (document.getElementById('math-modal')) return;
+  const back = document.createElement('div');
+  back.id = 'math-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:left;min-width:340px">
+    <button class="modal-close">✕</button><h3>${t('Editar ecuación')}</h3>
+    <label class="fr-l">LaTeX
+      <textarea class="mt-in" rows="3" style="font-family:monospace">${(b.latex || '').replace(/</g, '&lt;')}</textarea></label>
+    <div class="fr-actions"><button class="fr-do">${t('Aplicar')}</button></div>
+  </div>`;
+  document.body.appendChild(back);
+  const close = () => back.remove();
+  back.querySelector('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  const ta = back.querySelector('.mt-in');
+  ta.addEventListener('input', () => blocks.setMath(ta.value));
+  back.querySelector('.fr-do').addEventListener('click', close);
+  ta.focus();
 }
 
 function openChartData(b) {

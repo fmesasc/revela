@@ -346,6 +346,13 @@ export async function run(frame) {
     assert(/clip-path:inset\(10% 0% 0% 20%\)/.test(R.io.buildHTML()), 'clip-path en el export');
   });
 
+  await test('ecuación (math): se inserta y exporta con KaTeX', async () => {
+    reset(); R.blocks.addMath(); const b = last(); select(b); R.blocks.setMath('a^2+b^2=c^2');
+    const html = R.io.buildHTML();
+    assert(/data-latex="a\^2\+b\^2=c\^2"/.test(html), 'latex en el export');
+    assert(/katex\.min\.js/.test(html), 'KaTeX incluido');
+  });
+
   await test('bloque de código: edición y export con highlight.js', async () => {
     reset(); R.blocks.addCode(); const b = last(); select(b); await sleep(20);
     assert(D.querySelector(`.block[data-id="${b.id}"] pre.code code`), 'no hay bloque de código');

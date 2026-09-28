@@ -48,6 +48,13 @@ export function textBlock(props = {}) {
   }, props);
 }
 
+export function mathBlock(props = {}) {
+  return Object.assign({
+    id: uid(), type: 'math', x: 420, y: 290, w: 440, h: 120,
+    rotation: 0, animation: null, latex: 'e^{i\\pi} + 1 = 0',
+  }, props);
+}
+
 export function chartBlock(props = {}) {
   return Object.assign({
     id: uid(), type: 'chart', chartType: 'bar', color: '#3f6497',

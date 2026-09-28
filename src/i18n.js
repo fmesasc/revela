@@ -220,6 +220,8 @@ const ROWS = [
   ['Datos (una línea "etiqueta,valor")', 'Data (one line "label,value")', 'Données (une ligne "étiquette,valeur")', 'Daten (eine Zeile "Beschriftung,Wert")', 'Dati (una riga "etichetta,valore")', 'Dados (uma linha "rótulo,valor")', 'Dades (una línia "etiqueta,valor")'],
   ['Aplicar', 'Apply', 'Appliquer', 'Anwenden', 'Applica', 'Aplicar', 'Aplica'],
   ['Opciones de código', 'Code options', 'Options de code', 'Code-Optionen', 'Opzioni codice', 'Opções de código', 'Opcions de codi'],
+  ['Editar ecuación', 'Edit equation', 'Modifier l’équation', 'Gleichung bearbeiten', 'Modifica equazione', 'Editar equação', 'Edita l’equació'],
+  ['Ecuación', 'Equation', 'Équation', 'Gleichung', 'Equazione', 'Equação', 'Equació'],
   ['Lenguaje', 'Language', 'Langage', 'Sprache', 'Linguaggio', 'Linguagem', 'Llenguatge'],
   ['Mostrar números de línea', 'Show line numbers', 'Afficher les numéros de ligne', 'Zeilennummern anzeigen', 'Mostra numeri di riga', 'Mostrar números de linha', 'Mostra números de línia'],
   ['Buscar y reemplazar', 'Find and replace', 'Rechercher et remplacer', 'Suchen und ersetzen', 'Trova e sostituisci', 'Localizar e substituir', 'Cerca i reemplaça'],

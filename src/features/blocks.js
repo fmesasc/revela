@@ -2,7 +2,7 @@
 
 import { state, commit, currentSlide, selectedBlock,
   selectedBlocks, selectedIds, setSelection, setMulti } from '../core/store.js';
-import { uid, textBlock, tableBlock, codeBlock, chartBlock } from '../core/model.js';
+import { uid, textBlock, tableBlock, codeBlock, chartBlock, mathBlock } from '../core/model.js';
 
 function insert(block) {
   commit(() => { currentSlide().blocks.push(block); setSelection(block.id); });
@@ -119,6 +119,11 @@ export function setCode(props) {
   commit(() => Object.assign(b, props));
 }
 export function addChart() { insert(chartBlock()); }
+export function addMath() { insert(mathBlock()); }
+export function setMath(latex) {
+  const b = selectedBlock(); if (!b || b.type !== 'math') return;
+  commit(() => { b.latex = latex; });
+}
 export function addIcon(name) {
   insert({ id: uid(), type: 'icon', icon: name, color: '#ffffff', x: 560, y: 280, w: 160, h: 160, rotation: 0, animation: null });
 }

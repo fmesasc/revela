@@ -211,6 +211,8 @@ function reconcile(b) {
   } else if (b.type === 'icon') {
     const d = el.querySelector('.icon-blk'); const sig = iconSig(b);
     if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = iconSVG(b); }
+  } else if (b.type === 'math') {
+    const d = el.querySelector('.math-blk'); if (d && d.dataset.latex !== (b.latex || '')) renderMath(d, b.latex);
   }
 }
 
@@ -294,6 +296,9 @@ function content(b) {
   if (b.type === 'icon') {
     const d = document.createElement('div'); d.className = 'icon-blk'; d.dataset.sig = iconSig(b); d.innerHTML = iconSVG(b); return d;
   }
+  if (b.type === 'math') {
+    const d = document.createElement('div'); d.className = 'math-blk'; renderMath(d, b.latex); return d;
+  }
   if (b.type === 'table') return tableContent(b);
   if (b.type === 'chart') {
     const d = document.createElement('div'); d.className = 'chart';
@@ -312,6 +317,26 @@ function content(b) {
 }
 
 const hostOf = u => { try { return new URL(u).host || u; } catch { return u; } };
+
+// KaTeX for equation blocks, loaded on demand.
+const KATEX_CSS = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css';
+const KATEX_JS = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js';
+let katexLoading;
+function ensureKatex() {
+  if (window.katex) return Promise.resolve();
+  if (!katexLoading) katexLoading = new Promise((res, rej) => {
+    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = KATEX_CSS; document.head.appendChild(css);
+    const s = document.createElement('script'); s.src = KATEX_JS; s.onload = res; s.onerror = rej; document.head.appendChild(s);
+  });
+  return katexLoading;
+}
+function renderMath(el, latex) {
+  el.dataset.latex = latex || '';
+  ensureKatex().then(() => {
+    try { window.katex.render(latex || '', el, { throwOnError: false, displayMode: true }); }
+    catch { el.textContent = latex || ''; }
+  }).catch(() => { el.textContent = latex || ''; });
+}
 
 // A web embed: a small bar (site + open‑in‑new‑tab) over the iframe. The bar is
 // also the fallback when a site refuses to be embedded (X‑Frame‑Options / CSP) —

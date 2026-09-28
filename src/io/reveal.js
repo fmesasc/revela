@@ -9,6 +9,7 @@ import { alertDialog } from '../ui/dialog.js';
 
 const REVEAL = 'https://cdn.jsdelivr.net/npm/reveal.js@5.1.0';
 const MODEL_VIEWER = 'https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js';
+const KATEX = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist';
 
 const tf = b => `rotate(${b.rotation || 0}deg)${b.flipH ? ' scaleX(-1)' : ''}${b.flipV ? ' scaleY(-1)' : ''}`;
 const box = b => `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;`
@@ -69,6 +70,8 @@ function blockHTML(b, slide) {
     return `<div${a} style="${box(b)}">${chartSVG(b)}</div>`;
   if (b.type === 'icon')
     return `<div${a} style="${box(b)}">${iconSVG(b)}</div>`;
+  if (b.type === 'math')
+    return `<div${a} class="math" data-latex="${esc(b.latex || '')}" style="${box(b)}display:flex;align-items:center;justify-content:center;color:#fff"></div>`;
   if (b.type === 'table')
     return `<div${a} style="${box(b)}"><table class="tbl${b.header ? ' has-header' : ''}" style="--stroke:${b.stroke || '#fff'}">`
       + b.rows.map(row => `<tr>${row.map(c => `<td>${c || ''}</td>`).join('')}</tr>`).join('')
@@ -109,6 +112,7 @@ export function buildHTML(deck = state.deck) {
   const sn = deck.slideNumber || { show: false };
   const snPos = SLIDENUM_POS[sn.position] || SLIDENUM_POS.br;
   const hasCode = deck.slides.some(s => s.blocks.some(b => b.type === 'code'));
+  const hasMath = deck.slides.some(s => s.blocks.some(b => b.type === 'math'));
   const ft = deck.footer || { show: false };
   const footerText = ft.show
     ? `<div class="deck-footer">${esc(ft.text || '')}${ft.date ? (ft.text ? ' · ' : '') + new Date().toLocaleDateString('es') : ''}</div>`
@@ -126,7 +130,9 @@ export function buildHTML(deck = state.deck) {
 <link rel="stylesheet" href="${REVEAL}/dist/theme/${deck.theme}.css">
 ${googleFontLinks(deck)}
 ${hasCode ? `<link rel="stylesheet" href="${REVEAL}/plugin/highlight/monokai.css">` : ''}
+${hasMath ? `<link rel="stylesheet" href="${KATEX}/katex.min.css">` : ''}
 <script type="module" src="${MODEL_VIEWER}"></script>
+${hasMath ? `<script defer src="${KATEX}/katex.min.js"></script>` : ''}
 <style>
  .reveal .stage{position:relative;width:${w}px;height:${h}px;margin:0 auto}
  .reveal .stage>*{overflow-wrap:anywhere}
@@ -151,6 +157,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
    slideNumber:${sn.show ? `'${sn.format || 'c'}'` : 'false'},
    transition:'${deck.defaultTransition}', transitionSpeed:'${deck.transitionSpeed}',
    plugins:[ RevealNotes${hasCode ? ', RevealHighlight' : ''} ] });
+ ${hasMath ? 'window.addEventListener("load",function(){window.katex&&document.querySelectorAll(".math[data-latex]").forEach(function(el){try{katex.render(el.getAttribute("data-latex"),el,{throwOnError:false,displayMode:true});}catch(e){}});});' : ''}
 </script></body></html>`;
 }
 

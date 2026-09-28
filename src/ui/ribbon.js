@@ -48,6 +48,7 @@ const ACTIONS = {
   'insert-table': blocks.addTable,
   'insert-code': blocks.addCode,
   'insert-chart': blocks.addChart,
+  'insert-math': blocks.addMath,
   'insert-model': () => readFile('.glb,.gltf', blocks.addModel),
   'insert-video': () => readFile('video/*', blocks.addVideo),
   'insert-audio': () => readFile('audio/*', blocks.addAudio),

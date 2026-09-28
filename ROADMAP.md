@@ -49,7 +49,7 @@ the origin of every requirement is traceable.
 - ⬜ Text styles / named styles `PP·OO`
 - ✅ WordArt / Text Art (fill, outline, shadow, gradient, neon, gold) `PP·OO`
 - ✅ Special characters and symbol/emoji picker `PP·GS·OO`
-- ⬜ Equations / math (OnlyOffice has a full equation editor) `PP·OO`
+- ✅ Equations / math (LaTeX rendered with KaTeX) `PP·OO`
 - 🚧 Spell check, proofing and AutoCorrect — native browser spellcheck while editing; proofing/AutoCorrect planned `PP·GS·OO`
 - ✅ Hyperlinks — web, slide and email targets `PP·GS·OO`
 - ✅ Vertical text and text direction (RTL) `PP·OO`
