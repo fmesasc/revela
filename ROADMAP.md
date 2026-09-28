@@ -37,6 +37,8 @@ the origin of every requirement is traceable.
 - ✅ Keyboard shortcuts panel `PP·GS·OO`
 - ✅ Eyedropper colour picker (text, highlight, shape fill/border, background; Chromium browsers) `PP·GS`
 - ✅ Snap to the visible grid and smart spacing (equal gaps to neighbours, with distance marks) `PP·GS`
+- ✅ Collapsible slides panel (thumbnails scaled to the space they get) `GS`
+- ⬜ Dashed and dotted line styles for shapes, borders and connectors `PP·GS·OO`
 
 ## 2. Text
 - ✅ Bold, italic, underline, strikethrough `PP·GS·OO`
@@ -52,7 +54,7 @@ the origin of every requirement is traceable.
 - ✅ WordArt / Text Art (fill, outline, shadow, gradient, neon, gold, fire, ice…) `PP·OO`
 - ✅ Text box fill, border and rounded corners `PP·GS·OO`
 - ✅ Special characters & symbol/emoji picker `PP·GS·OO`
-- ✅ Equations / math — visual editor (MathLive, Symbolab-style) + LaTeX, and inline `$…$` in text (KaTeX) `PP·OO`
+- ✅ Equations / math — visual editor (MathLive, Symbolab-style) with virtual keyboard + LaTeX, inline `$…$` in text (KaTeX); size, colour, bold, alignment, fill and border from the ribbon `PP·OO`
 - ✅ Hyperlinks — web, slide and email targets `PP·GS·OO`
 - ✅ Text direction (RTL) and vertical text `PP·OO`
 - ✅ Spell check (browser's own, while editing) and AutoCorrect of typographic symbols (—, →, ©, ≤, …), switchable `PP·GS·OO`
@@ -70,15 +72,17 @@ the origin of every requirement is traceable.
 - ✅ Connectors between shapes (follow the objects) `PP·GS·OO`
 - ✅ Tables — editable cells, add/remove rows & columns, header row, border colour, merge/split cells `PP·GS·OO`
 - ✅ Charts — bar, line, area, pie, doughnut, scatter, radar; multiple series with legend, combo (bars + lines), paste data from a spreadsheet, chart from a table (SVG, no library; native in .pptx) `PP·GS·OO`
+- ⬜ Charts: negative values, axis titles, gridlines and data labels `PP·GS·OO`
 - ✅ SmartArt / diagrams — process, cycle, hierarchy & list `PP·OO`
 - ✅ Icons — built-in inline-SVG icon set with colour `PP·GS`
 - ✅ Emoji picker `GS`
 - ✅ Animated GIF playback `PP·OO`
-- ✅ Embedded web page (`<iframe>`) `—`
+- ✅ Embedded web page (`<iframe>`); video links (YouTube, Vimeo) turned into their player; pages that refuse to be framed shown as a link card `—`
 - ✅ Code blocks — syntax colouring in the editor, visual editor of highlight steps (lines × steps grid with preview), auto-scroll to the highlighted lines, line numbers and first line, 35 languages, code morph between slides `—`
 - ✅ Figure/table captions with auto-numbering + list of figures/tables `OO`
 - ✅ AI image background removal `PP`
 - ✅ Image crop, adjustments (brightness/contrast/saturation/opacity) and transparency `PP·GS·OO`
+- ✅ Save objects as pictures — PNG/WebP with transparency, JPG, SVG for vector objects, 1–4× size; photos with their edits or as the original file; several objects together or one file each `PP·GS`
 - ✅ Table styles — 6 presets coloured from the palette, header row, banded rows, first column, lines only (also in .pptx) `PP·GS·OO`
 - ✅ Merge shapes — union, combine, intersect, subtract (polygon-clipping; custom geometry in .pptx) `PP·OO`
 - ✅ Online images (Openverse, openly licensed, attribution kept as caption, commercial-use filter) and 200 000+ online icons (Iconify), opt-in, embedded so they work offline `PP·GS`
@@ -91,7 +95,7 @@ the origin of every requirement is traceable.
 - ✅ Sections (create/rename/remove inline from the navigator) `PP·GS·OO`
 - ✅ Drag-and-drop slide reordering `PP·GS·OO`
 - ✅ Duplicate / delete / hide slide `PP·GS·OO`
-- ✅ Templates & slide layouts (built-in + save current, change layout from Home) `PP·GS·OO`
+- ✅ Templates & slide layouts (built-in + save current, change layout from Home; changing layout never loses text) `PP·GS·OO`
 - ✅ Per-slide background: colour, gradient, image (cover/contain/tile, opacity), video, interactive web page, background transition (apply to all) `PP·GS·OO`
 - ✅ Vertical slides (reveal.js stacks) and slides not counted in the numbering `—`
 - ✅ Themes — all 14 reveal.js themes including high contrast `PP·GS·OO`
@@ -100,10 +104,12 @@ the origin of every requirement is traceable.
 - ✅ Speaker notes (editor panel + presenter view) `PP·GS·OO`
 - ✅ Slide numbers, date/time field, header & footer, deck logo/branding `PP·GS·OO`
 - ✅ Slide zoom & summary zoom (embed a slide, link, choose return/stay) `PP`
-- ✅ Slide master — objects on every slide (edit mode), hide per slide, plus logo/branding & backgrounds `PP·GS·OO`
-- ✅ Placeholders — layouts with title/subtitle/body prompts, not exported while empty; changing layout keeps the text `PP·OO`
+- ✅ Slide master — text styles (title, subtitle, body in five levels: font, size, colour, bold, italic, alignment, bullet), objects on every slide, hide per slide `PP·GS·OO`
+- ✅ Layouts that belong to the deck — create, duplicate, rename, delete, add placeholders and objects; slides follow their layout (formatting inherited master → layout → slide, moved placeholders follow, reset slide) `PP·GS·OO`
+- ✅ Placeholders — title/subtitle/body prompts, not exported while empty `PP·OO`
+- ⬜ Several masters in one deck, and picture/table/chart placeholders `PP·OO`
 - ✅ Theme colours (9 palettes; switching recolours what came from the palette) & theme fonts (heading/body pairs), theme swatches in every colour picker `PP·GS·OO`
-- ✅ Template gallery — 8 complete starter decks (palette, fonts, master decoration, layouts with placeholders) `PP·GS·OO`
+- ✅ Template gallery — 8 starter decks (palette, fonts, master decoration, layouts with placeholders) and 10 complete example presentations with real content `PP·GS·OO`
 - ✅ Reuse / import slides from another deck (.json or .pptx, pick by thumbnail, scaled to size) `PP·OO`
 - ✅ Handout / notes printing layouts (notes pages; 1, 2, 3 with lines, 4, 6, 9 per page) `PP·OO`
 
@@ -122,6 +128,7 @@ the origin of every requirement is traceable.
 
 ## 6. Presenting
 - ✅ Presenter view (notes, next slide, timer) — reveal presenter view (S) + phone companion `PP·GS·OO`
+- ✅ Slide overview while presenting (Esc / O) — a mosaic sized to fit the screen, grouped by section, keyboard and click navigation `PP·GS·OO`
 - ✅ Phone companion remote (pair by code, notes, navigate, laser, blackout, timer) `—`
 - ✅ Loop / kiosk / auto-play `PP·GS·OO`
 - ✅ Laser pointer / pen / highlighter / eraser during the show (Ctrl+P, Ctrl+I, Ctrl+L, E; ink kept per slide) + laser from the phone `PP·GS·OO`
@@ -138,7 +145,9 @@ the origin of every requirement is traceable.
 - ✅ Comments on slides and objects — replies, resolve/reopen, @mentions, markers; saved in the project (sharing them live needs the back end) `PP·GS·OO`
 - ⬜ Built-in chat `OO`
 - ✅ Version history (local, in this browser: automatic snapshots + named versions, restore/download) — shared history needs the back end `PP·GS·OO`
-- ⬜ Share links and permission levels `PP·GS·OO`
+- ✅ Private sharing ready to embed in an `<iframe>` — encrypted in the browser (AES-GCM 256; key in the link fragment or a password, PBKDF2 600 000 rounds), stored as a self-opening HTML file, in the user's Google Drive or on an optional self-hosted server (Cloudflare Worker + R2) with expiry; `noindex`, unguessable ids, stop sharing `GS`
+- ⬜ Permission levels and access limited to signed-in accounts (e.g. an organisation's domain) `PP·GS·OO`
+- ⬜ View statistics for shared presentations (self-hosted server) `GS`
 - ✅ Protect — project encrypted with a password (AES-GCM 256, PBKDF2) and "mark as final" (read-only) `PP·OO`
 - ⬜ Digital signatures `OO`
 
@@ -146,15 +155,16 @@ the origin of every requirement is traceable.
 - ✅ Export to self-contained HTML (reveal.js) `—`
 - ✅ Export to `.pptx` (PptxGenJS: text, images, shapes, tables, charts) `GS·OO`
 - ✅ Export to PDF (one slide per page) `PP·GS·OO`
-- ✅ Import from PowerPoint `.pptx` — text with formatting (size, bold, italic, colour, font, alignment, bullets, autofit), inherited placeholder positions, preset shapes with fill/outline/rotation, lines, pictures with alt text, grouped objects, tables with merged cells, backgrounds, theme colours & fonts, notes, hidden slides `OO·GS`
+- ✅ Import from PowerPoint `.pptx` — text with PowerPoint's full style inheritance (master text styles → master and layout placeholders → shape → paragraph → run: size, bold, italic, underline, colour, font, spacing, bullets, indents, inner margins, autofit), the master's styles and the layouts become Revela's (with their logos and graphics), preset shapes with fill (incl. transparency)/outline/rotation, lines and connectors with arrowheads, pictures with alt text, grouped objects, tables with their style, column widths, cell fills and merged cells, backgrounds, theme colours & fonts, notes, hidden slides `OO·GS`
 - ✅ Import Markdown with reveal.js conventions (--- slides, -- vertical, Note: notes, code with line steps, images) `—`
 - ✅ Project import/export as JSON, local autosave `—`
 - ✅ Save/open to Google Drive & export HTML to Drive (client-side, `drive.file`) `PP·GS`
 - ✅ Export slides as images — PNG or JPG, current slide or all slides in a ZIP `PP·GS·OO`
 - ✅ `.pptx` import of charts (editable, all series, combo), gradient backgrounds, slide transitions and auto-advance timings `OO·GS`
-- ⬜ Remaining `.pptx` import: shadows, SmartArt, object animations `OO·GS`
+- ⬜ Remaining `.pptx` import: shadows, SmartArt, object animations, dashed lines, custom corner radius `OO·GS`
+- ⬜ `.pptx` / `.odp` export of transitions and animations, and of the master and layouts as real masters (today they are drawn on each slide) `GS·OO`
 - ✅ Export to video — MP4 (H.264, WebCodecs) or animated GIF rendered from the slides with cross-fades and per-slide timings; .webm by recording the live slideshow (with animations) `PP·GS`
-- ⬜ Publish to the web / shareable link `GS`
+- ✅ Publish to the web / shareable link — see private sharing (section 7) `GS`
 - ✅ OpenDocument (`.odp`) export & import — text with formatting and lists, pictures, shapes, lines/arrows, merged shapes, tables with merged cells, charts/icons/ink as SVG, backgrounds, notes, hidden slides (validated with LibreOffice) `OO`
 
 ## 9. Accessibility & internationalisation
@@ -186,6 +196,7 @@ the origin of every requirement is traceable.
 - ✅ Static web app with automatic deployment (GitHub Pages) `GS`
 - ✅ Automated headless regression test suite (`tests/run.sh`, real time, fake camera) `—`
 - ✅ Layered architecture (apps → ui → api → io → features → render·i18n → core) enforced by the tests (`tests/layers.py`) `—`
+- ✅ Development tools — screenshots of the editor, PowerPoint import fidelity report against LibreOffice, embeddability check of web pages (`tools/`) `—`
 - 🚧 Responsive & touch editing (mobile layout, long-press menus, fit-to-screen) `PP·GS·OO`
 - 🚧 Cloud project storage — Google Drive save/open (client-side) `PP·GS`
 - ⬜ Desktop application ([Tauri](https://tauri.app/)) `PP·OO`
