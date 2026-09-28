@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Architecture check: every module in src/ imports only from its own layer or
-the ones below (see docs/ARCHITECTURE.md). Exit 1 and list the offending
-imports otherwise. Run by tests/run.sh before the browser suite.
+the ones below (see docs/ARCHITECTURE.md), and every name it imports exists.
+Exit 1 and list the offending imports otherwise. Run by tests/run.sh before the browser suite.
 
     apps  →  ui  →  api  →  io  →  features  →  render · i18n  →  core
 """
@@ -20,6 +20,22 @@ APART = {('render', 'i18n')}
 SELF_CONTAINED = {'io/runtime/ink.js'}
 
 IMPORT = re.compile(r"""(?:^\s*import\s[^'"]*?from\s*|^\s*import\s*|\bimport\()\s*['"](\.[^'"]+)['"]""", re.M)
+
+
+NAMED = re.compile(r"^\s*import\s*\{([^}]*)\}\s*from\s*['\"](\.[^'\"]+)['\"]", re.M)
+EXPORT = re.compile(r"^export\s+(?:async\s+)?(?:function\*?|const|let|var|class)\s+([\w$]+)|^export\s*\{([^}]*)\}", re.M)
+
+
+def exports_of(path, cache={}):
+    if path not in cache:
+        names = set()
+        for m in EXPORT.finditer(path.read_text(encoding='utf-8')):
+            if m.group(1):
+                names.add(m.group(1))
+            else:
+                names.update(x.split(' as ')[-1].strip() for x in m.group(2).split(',') if x.strip())
+        cache[path] = names
+    return cache[path]
 
 
 def layer(path):
@@ -47,6 +63,17 @@ def main():
             a, b = layer(f), layer(target)
             if RANK[b] > RANK[a] or (a, b) in APART:
                 errors.append(f'{rel} ({a}) → {target.relative_to(SRC).as_posix()} ({b})')
+    # every name imported with { … } must be exported by its module
+    for f in sorted(SRC.rglob('*.js')):
+        rel = f.relative_to(SRC).as_posix()
+        for m in NAMED.finditer(f.read_text(encoding='utf-8')):
+            target = (f.parent / m.group(2)).resolve()
+            if not target.exists():
+                continue
+            for part in m.group(1).split(','):
+                name = part.strip().split(' as ')[0].strip()
+                if name and name not in exports_of(target):
+                    errors.append(f'{rel}: importa {name} de {m.group(2)}, que no lo exporta')
     if errors:
         print('ARQUITECTURA: importaciones no permitidas\n  ' + '\n  '.join(errors))
         return 1

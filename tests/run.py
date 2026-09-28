@@ -148,6 +148,13 @@ def main():
     try:
         tid = recv(send('Target.createTarget', url='about:blank'))['result']['targetId']
         sid = recv(send('Target.attachToTarget', targetId=tid, flatten=True))['result']['sessionId']
+        # Uncaught errors of the page and the app frame (a module that fails to
+        # load leaves the suite without the app): shown when a run fails.
+        recv(send('Page.enable', sid))
+        recv(send('Page.addScriptToEvaluateOnNewDocument', sid, source=
+            "(function(){var k=function(m){try{(top.__errs=top.__errs||[]).push(m);}catch(e){}};"
+            "addEventListener('error',function(e){k((e.message||'error')+' '+(e.filename||'')+':'+(e.lineno||''));});"
+            "addEventListener('unhandledrejection',function(e){k('promise: '+(e.reason&&e.reason.message||e.reason));});})();"))
         recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/tests/index.html'))
         deadline = time.time() + TIMEOUT
         out = ''
@@ -171,7 +178,11 @@ def main():
             r = recv(send('Runtime.evaluate', sid, returnByValue=True,
                           expression="[...document.querySelectorAll('.row.ko')].map(e=>e.innerText.replace(/\\s+/g,' ')).join('\\n')"))
             detail = r.get('result', {}).get('result', {}).get('value') or ''
-            print(out); print(detail[:4000]); return 1
+            r = recv(send('Runtime.evaluate', sid, returnByValue=True, expression="(window.__errs||[]).slice(0,10).join('\\n')"))
+            errs = r.get('result', {}).get('result', {}).get('value') or ''
+            print(out)
+            if errs: print('Errores de la página:\n' + errs)
+            print(detail[:4000]); return 1
         print(out or 'REVELATEST FAIL (sin resultado)')
         return 0 if out.startswith('REVELATEST PASS') else 1
     finally:

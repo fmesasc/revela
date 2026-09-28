@@ -1606,7 +1606,7 @@ export async function run(frame) {
     eq(sl[3].blocks[0].type, 'image', 'imagen');
     // ajustar al cuadro
     const t = slide().blocks[1]; t.html = 'Hola'; t.fontSize = 20; R.render(); await sleep(10);
-    const { fitTextToBox } = await frame.contentWindow.eval("import('/src/ui/shell/canvas.js')");
+    const { fitTextToBox } = await frame.contentWindow.eval("import('/src/ui/canvas/canvas.js')");
     fitTextToBox(t); assert(t.fontSize > 40, 'crece hasta llenar el cuadro: ' + t.fontSize);
     const big = t.fontSize; t.html = 'Hola '.repeat(40); R.render(); fitTextToBox(t); assert(t.fontSize < big, 'con más texto, más pequeño');
     // ampliar imagen
@@ -1908,6 +1908,20 @@ export async function run(frame) {
     R.i18n.setLang('es');
     eq(D.documentElement.dir, 'ltr', 'vuelve a LTR');
     eq(tab.textContent.trim(), 'Inicio', 'vuelve a español');
+  });
+
+  await test('cinta: todas las galerías se abren con su contenido', async () => {
+    reset();
+    const launchers = { symbols: '[data-symbols]', icons: '[data-icons]', wordart: '[data-wordart]', palettes: '[data-palettes-open]',
+      fontpairs: '[data-fontpairs-open]', layout: '[data-layout-open]', paragraph: '[data-more="paragraph"]' };
+    for (const [name, sel] of Object.entries(launchers)) {
+      const el = D.querySelector(sel); assert(el, 'lanzador ' + name);
+      el.click(); await sleep(10);
+      const pop = D.querySelector('.popover');
+      assert(pop && pop.querySelectorAll('button, input, select').length > 1, 'galería ' + name + ' con contenido');
+      D.body.click(); await sleep(10);
+    }
+    assert(!D.querySelector('.popover'), 'se cierran al hacer clic fuera');
   });
 
   await test('núcleo: los avisos de io/features usan los diálogos del editor', async () => {

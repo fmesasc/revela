@@ -38,6 +38,7 @@ export function present({ rehearse = false, fullscreen = true, onEnd = null } = 
   session.present = { frame, overlay, rehearse, times, lap };
   const notifySlide = () => window.dispatchEvent(new CustomEvent('revela:present-slide'));
   const end = () => {
+    clearInterval(hook);
     if (rehearse) { clearInterval(tick); lap(cur); offerRehearsal(times); }
     onEnd?.();
     document.removeEventListener('fullscreenchange', onFs);
@@ -57,7 +58,7 @@ export function present({ rehearse = false, fullscreen = true, onEnd = null } = 
   // the phone remote (if connected) can follow along.
   let tries = 0;
   const hook = setInterval(() => {
-    const Rv = frame.contentWindow.Reveal;
+    const Rv = frame.contentWindow?.Reveal;
     if (Rv && Rv.isReady?.()) {
       clearInterval(hook); Rv.on('slidechanged', notifySlide); notifySlide();
       if (rehearse) Rv.on('slidechanged', () => lap(Rv.getSlidePastCount()));

@@ -7,7 +7,7 @@ import * as blocks from '../../features/document/blocks.js';
 import { t } from '../../i18n/index.js';
 import { alertDialog } from './dialog.js';
 import { MATHLIVE, BG_REMOVAL, loadScript } from '../../core/vendor.js';
-import { renderLatex } from '../shell/canvas.js';
+import { renderLatex } from '../canvas/content.js';
 import { tablePresets, tableClass, tableVars, tableCSS } from '../../render/svg.js';
 import { currentPalette, deckFg } from '../../features/design/palettes.js';
 

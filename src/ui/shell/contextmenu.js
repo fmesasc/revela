@@ -10,7 +10,7 @@ import * as clip from '../../features/document/clipboard.js';
 import * as slidesMod from '../../features/document/slides.js';
 import { openPollEditor } from '../dialogs/poll.js';
 import { openCodeEditor } from '../dialogs/code.js';
-import { fitTextToBox } from './canvas.js';
+import { fitTextToBox } from '../canvas/canvas.js';
 import { openLinkChart, refreshChart } from '../dialogs/data.js';
 import { addText } from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';

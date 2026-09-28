@@ -2,7 +2,8 @@
 
 import { subscribe, state, undo, redo, selectedBlock, selectedBlocks } from '../../core/store.js';
 import * as clip from '../../features/document/clipboard.js';
-import { initCanvas, renderCanvas, nudge, cycleSelection } from '../../ui/shell/canvas.js';
+import { initCanvas, renderCanvas, cycleSelection } from '../../ui/canvas/canvas.js';
+import { nudge } from '../../ui/canvas/interact.js';
 import { initPanel, renderPanel } from '../../ui/shell/navigator.js';
 import { renderComments } from '../../ui/panels/comments.js';
 import { renderAssistant } from '../../ui/dialogs/ai.js';
@@ -14,7 +15,7 @@ import * as markdown from '../../io/formats/markdown.js';
 import { refreshLinkedCharts } from '../../features/live/dashboards.js';
 import * as comments from '../../features/collab/comments.js';
 import * as protect from '../../features/collab/protect.js';
-import { initRibbon, renderRibbon } from '../../ui/shell/ribbon.js';
+import { initRibbon, renderRibbon } from '../../ui/ribbon/ribbon.js';
 import { initContextMenu } from '../../ui/shell/contextmenu.js';
 import { initDraw } from '../../ui/shell/draw.js';
 import { initI18n, t } from '../../i18n/index.js';
@@ -39,7 +40,7 @@ import * as images from '../../io/export/images.js';
 import * as presenting from '../../ui/shell/present.js';
 import * as a11y from '../../features/document/a11y.js';
 import * as reuse from '../../ui/dialogs/reuse.js';
-import * as ribbon from '../../ui/shell/ribbon.js';
+import * as ribbon from '../../ui/ribbon/ribbon.js';
 import * as palettes from '../../features/design/palettes.js';
 import * as shapeops from '../../features/document/shapeops.js';
 import * as master from '../../features/document/master.js';

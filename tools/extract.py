@@ -70,17 +70,42 @@ def parse_imports(text):
     return res
 
 
-STRINGS = re.compile(r"""'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|//[^\n]*""")
-
-
 def code_only(text):
-    """Text without quoted strings and line comments (template literals stay: ${} is code)."""
-    return STRINGS.sub("''", text)
+    """The code of a module without the text of quoted strings, template
+    literal text and comments; the ${…} inside template literals is code."""
+    out, i, n = [], 0, len(text)
+    stack = []            # open template literals: brace depth of each ${
+    while i < n:
+        c = text[i]
+        if stack and stack[-1] == -1:          # inside template text
+            if c == '\\': i += 2; continue
+            if c == '`': stack.pop(); out.append('``'); i += 1; continue
+            if text.startswith('${', i): stack[-1] = 0; out.append(' '); i += 2; continue
+            i += 1; continue
+        if c in '\'"':
+            j = i + 1
+            while j < n and text[j] != c and text[j] != '\n':
+                j += 2 if text[j] == '\\' else 1
+            out.append("''"); i = j + 1; continue
+        if c == '`': stack.append(-1); i += 1; continue
+        if text.startswith('//', i):
+            j = text.find('\n', i); i = n if j < 0 else j; continue
+        if text.startswith('/*', i):
+            j = text.find('*/', i + 2); i = n if j < 0 else j + 2; continue
+        if stack:
+            if c == '{': stack[-1] += 1
+            elif c == '}':
+                if stack[-1] == 0: stack[-1] = -1; i += 1; continue
+                stack[-1] -= 1
+        out.append(c); i += 1
+    return ''.join(out)
 
 
 def uses(name, text):
     text = code_only(text)
-    return re.search(r'(?<![\w$.])' + re.escape(name) + r'(?![\w$])', text) is not None
+    # not a property (a.name), but a spread (...name) is a use
+    return any(not (m.start() and text[m.start() - 1] == '.' and text[max(0, m.start() - 3):m.start()] != '...')
+               for m in re.finditer(r'(?<![\w$])' + re.escape(name) + r'(?![\w$])', text))
 
 
 def render_import(items, path):

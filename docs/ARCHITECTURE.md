@@ -60,7 +60,7 @@ holds its own copy of the document.
 
 ## Direct manipulation
 
-`src/ui/shell/canvas.js` implements dragging, resizing and text editing with pointer
+`src/ui/canvas/canvas.js` implements dragging, resizing and text editing with pointer
 events. During a drag it updates element styles directly and only commits on
 release, to avoid re-rendering mid-interaction (which would reset the caret or
 the drag). Alignment guides are computed against the slide centre, the slide
