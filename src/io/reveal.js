@@ -108,6 +108,11 @@ export function buildHTML(deck = state.deck) {
   const footerText = ft.show
     ? `<div class="deck-footer">${esc(ft.text || '')}${ft.date ? (ft.text ? ' · ' : '') + new Date().toLocaleDateString('es') : ''}</div>`
     : '';
+  const lg = deck.logo || {};
+  const LOGO_POS = { br: 'right:16px;bottom:16px', bl: 'left:16px;bottom:16px', tr: 'right:16px;top:16px', tl: 'left:16px;top:16px' };
+  const logoHTML = lg.src
+    ? `<img class="deck-logo" src="${lg.src}" style="position:fixed;${LOGO_POS[lg.position] || LOGO_POS.br};height:${lg.size || 120}px;z-index:31;pointer-events:none">`
+    : '';
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -131,7 +136,7 @@ ${hasCode ? `<link rel="stylesheet" href="${REVEAL}/plugin/highlight/monokai.css
 </style></head><body>
 <div class="reveal"><div class="slides">
 ${slides}
-</div>${footerText}</div>
+</div>${footerText}${logoHTML}</div>
 <script src="${REVEAL}/dist/reveal.js"></script>
 <script src="${REVEAL}/plugin/notes/notes.js"></script>
 ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : ''}

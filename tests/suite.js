@@ -175,6 +175,12 @@ export async function run(frame) {
     assert(/\.slide-number\{[^}]*top:8px/.test(html), 'posición del número');
   });
 
+  await test('logo de marca en el lienzo y el export', async () => {
+    reset(); R.state.deck.logo = { src: 'data:image/png;base64,AAA', position: 'tl', size: 90 }; R.render(); await sleep(20);
+    assert(D.querySelector('#stage .deck-logo-ovl'), 'logo en el lienzo');
+    assert(/<img class="deck-logo"[^>]*height:90px/.test(R.io.buildHTML()), 'logo en el export');
+  });
+
   await test('pie de página y bucle en el export', async () => {
     reset(); R.state.deck.footer = { show: true, text: 'Mi charla', date: false }; R.state.deck.loop = true;
     const html = R.io.buildHTML();

@@ -127,6 +127,20 @@ export function renderCanvas() {
     for (const b of slide.blocks) reconcile(b);
   }
   drawPGuides();
+  drawLogo();
+}
+
+// The deck logo, shown on every slide (branding / master).
+function drawLogo() {
+  const logo = state.deck.logo;
+  let el = stage.querySelector('.deck-logo-ovl');
+  if (!logo || !logo.src) { if (el) el.remove(); return; }
+  if (!el) { el = document.createElement('img'); el.className = 'deck-logo-ovl'; stage.appendChild(el); }
+  el.src = logo.src; el.style.height = (logo.size || 120) + 'px';
+  const p = logo.position || 'br', m = '16px';
+  for (const s of ['left', 'right', 'top', 'bottom']) el.style[s] = '';
+  el.style[p.includes('r') ? 'right' : 'left'] = m;
+  el.style[p[0] === 'b' ? 'bottom' : 'top'] = m;
 }
 
 // Update an existing block element from the model without recreating it, so

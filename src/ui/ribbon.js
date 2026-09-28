@@ -83,6 +83,8 @@ const ACTIONS = {
   },
   'bg-image': () => readFile('image/*', src => commit(() => { currentSlide().background = `#000 url(${src}) center/cover no-repeat`; })),
   'bg-all': () => { const bg = currentSlide().background; commit(() => { for (const s of state.deck.slides) s.background = bg; }); },
+  'set-logo': () => readFile('image/*', src => commit(() => { state.deck.logo.src = src; })),
+  'clear-logo': () => commit(() => { state.deck.logo.src = ''; }),
   'zoom-in': () => setZoom((state.ui.zoom || 1) + 0.1),
   'zoom-out': () => setZoom((state.ui.zoom || 1) - 0.1),
   'zoom-reset': () => setZoom(1),
@@ -198,6 +200,8 @@ export function initRibbon() {
   bindChange('[data-linespacing]', v => format.lineSpacing(v));
   bindChange('[data-slidenum-pos]', v => commit(() => (state.deck.slideNumber.position = v)));
   bindChange('[data-slidenum-fmt]', v => commit(() => (state.deck.slideNumber.format = v)));
+  bindChange('[data-logo-pos]', v => commit(() => (state.deck.logo.position = v)));
+  bindChange('[data-logo-size]', v => commit(() => (state.deck.logo.size = Math.max(20, parseInt(v, 10) || 120))));
   bindChange('[data-autoslide]', v => commit(() => { currentSlide().autoSlide = Math.max(0, (parseFloat(v) || 0)) * 1000; }));
   const ft = $('[data-footer-text]');
   if (ft) ft.addEventListener('input', () => commit(() => { state.deck.footer.text = ft.value; }, { history: false }));
@@ -345,6 +349,10 @@ export function renderRibbon() {
   document.querySelector('[data-action="toggle-loop"]')?.classList.toggle('on', !!state.deck.loop);
   const ftInput = $('[data-footer-text]');
   if (ftInput && document.activeElement !== ftInput) ftInput.value = ft.text || '';
+  const lg = state.deck.logo || {};
+  syncValue('[data-logo-pos]', lg.position || 'br');
+  const lsz = $('[data-logo-size]');
+  if (lsz && document.activeElement !== lsz) lsz.value = String(lg.size || 120);
   applyZoom();   // keep the scaled footprint in sync with slide size / rulers
   const notesBar = document.getElementById('notes-bar');
   if (notesBar) notesBar.hidden = !state.ui.showNotes;

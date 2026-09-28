@@ -233,6 +233,17 @@
         </div>
         <div class="group">
           <div class="row">
+            <button data-action="set-logo" title="Elegir un logo para todas las diapositivas"><i class="ms">add_photo_alternate</i><span>Logo</span></button>
+            <select data-logo-pos title="Posición del logo">
+              <option value="br">Abajo dcha.</option><option value="bl">Abajo izq.</option>
+              <option value="tr">Arriba dcha.</option><option value="tl">Arriba izq.</option>
+            </select>
+            <input data-logo-size type="number" min="20" max="400" class="size-input" style="width:60px" value="120" title="Altura del logo (px)">
+            <button data-action="clear-logo" title="Quitar logo"><i class="ms">hide_image</i></button>
+          </div><label>Marca</label>
+        </div>
+        <div class="group">
+          <div class="row">
             <select data-theme title="Tema">
               <option value="black">Oscuro</option><option value="white">Claro</option>
               <option value="league">League</option><option value="night">Night</option>

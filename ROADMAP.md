@@ -83,7 +83,7 @@ the origin of every requirement is traceable.
 - ✅ Themes `PP·GS·OO`
 - ✅ Slide size (16∶9 / 4∶3) `PP·GS·OO`
 - ✅ Slide layouts (title, content, two-content, comparison, section, blank) `PP·GS·OO`
-- ⬜ Slide master / theme editor `PP·GS·OO`
+- 🚧 Slide master — deck logo/branding & backgrounds on all slides; full master/placeholders planned `PP·GS·OO`
 - ⬜ Placeholders `PP·OO`
 - ✅ Background images and gradients `PP·GS·OO`
 - ⬜ Colour palettes / theme colours & fonts `PP·GS·OO`
