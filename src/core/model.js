@@ -48,6 +48,13 @@ export function textBlock(props = {}) {
   }, props);
 }
 
+export function figindexBlock(props = {}) {
+  return Object.assign({
+    id: uid(), type: 'figindex', x: 140, y: 150, w: 1000, h: 470,
+    rotation: 0, animation: null, fontSize: 28,
+  }, props);
+}
+
 export function mathBlock(props = {}) {
   return Object.assign({
     id: uid(), type: 'math', x: 420, y: 290, w: 440, h: 120,

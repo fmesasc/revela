@@ -357,6 +357,24 @@ export async function run(frame) {
     assert(/brightness\(150%\)[^"]*opacity:0\.6/.test(R.io.buildHTML()), 'filtro en el export');
   });
 
+  await test('descripción (caption) bajo la figura y en el export', async () => {
+    reset(); R.i18n.setLang('es'); R.blocks.addImage('data:image/png;base64,AAA'); const b = last(); select(b);
+    R.blocks.setCaption('Un gato'); R.render(); await sleep(20);
+    assert(D.querySelector('#stage .caption-ovl'), 'descripción en el lienzo');
+    assert(/Figura 1: Un gato/.test(R.io.buildHTML()), 'descripción en el export');
+  });
+
+  await test('índice de figuras lista figuras y tablas', async () => {
+    reset(); R.i18n.setLang('es');
+    R.blocks.addImage('data:image/png;base64,AAA'); R.blocks.setCaption('Foto');
+    R.blocks.addTable(); R.blocks.setCaption('Datos');
+    R.blocks.addFigIndex(); await sleep(20);
+    const fi = slide().blocks.at(-1);
+    const el = D.querySelector(`.block[data-id="${fi.id}"] .figindex`);
+    assert(el && /Figura 1: Foto/.test(el.textContent) && /Tabla 1: Datos/.test(el.textContent), 'lista figuras y tablas');
+    assert(/List of figures|Índice de figuras/.test(el.textContent), 'título del índice');
+  });
+
   await test('texto alternativo en la imagen exportada', async () => {
     reset(); R.blocks.addImage('data:image/png;base64,iVBORw0KGgo='); const b = last(); select(b);
     R.blocks.setAlt('Un gráfico'); assert(/alt="Un gráfico"/.test(R.io.buildHTML()), 'alt en el export');

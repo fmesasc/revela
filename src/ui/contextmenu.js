@@ -23,26 +23,47 @@ export function initContextMenu() {
   document.addEventListener('scroll', () => hide(), true);
   window.addEventListener('blur', () => hide());
 
-  document.getElementById('stage').addEventListener('contextmenu', e => {
-    e.preventDefault();
-    const blockEl = e.target.closest('.block');
+  const stage = document.getElementById('stage');
+  const openStageMenu = (x, y, target) => {
+    const blockEl = target && target.closest('.block');
     if (blockEl) {
       if (!isSelected(blockEl.dataset.id)) commit(() => setSelection(blockEl.dataset.id), { history: false });
-      open(e.clientX, e.clientY, forBlock(selectedBlock()));
+      open(x, y, forBlock(selectedBlock()));
     } else {
-      open(e.clientX, e.clientY, forCanvas());
+      open(x, y, forCanvas());
     }
-  });
+  };
+  stage.addEventListener('contextmenu', e => { e.preventDefault(); openStageMenu(e.clientX, e.clientY, e.target); });
 
-  // Right‑click in the slide navigator: sections and slides, integrated.
-  document.getElementById('navigator').addEventListener('contextmenu', e => {
-    e.preventDefault();
-    const head = e.target.closest('.section-head');
-    if (head) { open(e.clientX, e.clientY, forSection(head.dataset.sectionId)); return; }
-    const th = e.target.closest('.thumb');
-    if (th) { const i = +th.dataset.index; goToSlide(i); open(e.clientX, e.clientY, forThumb(i)); return; }
-    open(e.clientX, e.clientY, [['Nueva diapositiva', () => addSlide()]]);
-  });
+  const nav = document.getElementById('navigator');
+  const openNavMenu = (x, y, target) => {
+    const head = target && target.closest('.section-head');
+    if (head) { open(x, y, forSection(head.dataset.sectionId)); return; }
+    const th = target && target.closest('.thumb');
+    if (th) { const i = +th.dataset.index; goToSlide(i); open(x, y, forThumb(i)); return; }
+    open(x, y, [['Nueva diapositiva', () => addSlide()]]);
+  };
+  nav.addEventListener('contextmenu', e => { e.preventDefault(); openNavMenu(e.clientX, e.clientY, e.target); });
+
+  // Touch: a long‑press opens the same menu (iOS doesn't fire `contextmenu`, and
+  // it also avoids the native text‑selection popup taking over).
+  longPress(stage, openStageMenu);
+  longPress(nav, openNavMenu);
+}
+
+function longPress(el, handler) {
+  let timer, sx = 0, sy = 0, tgt = null;
+  const cancel = () => clearTimeout(timer);
+  el.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0]; sx = t.clientX; sy = t.clientY; tgt = t.target;
+    timer = setTimeout(() => handler(sx, sy, document.elementFromPoint(sx, sy) || tgt), 500);
+  }, { passive: true });
+  el.addEventListener('touchmove', e => {
+    const t = e.touches[0]; if (t && (Math.abs(t.clientX - sx) > 12 || Math.abs(t.clientY - sy) > 12)) cancel();
+  }, { passive: true });
+  el.addEventListener('touchend', cancel);
+  el.addEventListener('touchcancel', cancel);
 }
 
 function forThumb(i) {
@@ -121,6 +142,12 @@ function forBlock(b) {
       ['Quitar columna', () => blocks.tableDelCol()],
       [b.header ? 'Quitar fila de encabezado' : 'Fila de encabezado', () => blocks.tableToggleHeader()],
       null);
+  }
+
+  // Caption (figures, tables and other objects — not plain text/connectors).
+  if (!['text', 'connector', 'figindex'].includes(b.type)) {
+    items.push(null, [b.caption ? 'Editar descripción…' : 'Añadir descripción…', () => openCaption(b)]);
+    if (b.caption) items.push(['Quitar descripción', () => blocks.setCaption('')]);
   }
 
   // Grouping (only when it makes sense).
@@ -255,17 +282,26 @@ async function openMath(b) {
   back.innerHTML = `<div class="modal" style="text-align:left;min-width:420px;max-width:94vw">
     <button class="modal-close">✕</button><h3>${t('Editar ecuación')}</h3>
     <math-field class="mt-field"></math-field>
+    <label class="fr-l" style="margin-top:2px"><span style="display:flex;justify-content:space-between">LaTeX
+      <button class="mt-toggle" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px">${t('Ocultar')}</button></span>
+      <textarea class="mt-tex" rows="2" style="font-family:monospace"></textarea></label>
     <div class="fr-actions"><button class="mini2 mt-kbd">⌨ ${t('Teclado')}</button><button class="fr-do">${t('Aplicar')}</button></div>
   </div>`;
   document.body.appendChild(back);
   const mf = back.querySelector('math-field');
+  const tex = back.querySelector('.mt-tex');
   mf.mathVirtualKeyboardPolicy = 'manual';
-  mf.value = b.latex || '';
-  mf.addEventListener('input', () => blocks.setMath(mf.value));
+  mf.value = b.latex || ''; tex.value = b.latex || '';
+  mf.addEventListener('input', () => { tex.value = mf.value; blocks.setMath(mf.value); });
+  tex.addEventListener('input', () => { mf.value = tex.value; blocks.setMath(tex.value); });
   const close = () => back.remove();
   back.querySelector('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
   back.querySelector('.mt-kbd').addEventListener('click', () => { try { window.mathVirtualKeyboard.show(); } catch {} mf.focus(); });
+  back.querySelector('.mt-toggle').addEventListener('click', ev => {
+    const hidden = tex.style.display === 'none';
+    tex.style.display = hidden ? '' : 'none'; ev.target.textContent = hidden ? t('Ocultar') : t('Mostrar');
+  });
   back.querySelector('.fr-do').addEventListener('click', close);
   setTimeout(() => { mf.focus(); try { window.mathVirtualKeyboard.show(); } catch {} }, 50);
 }
@@ -412,6 +448,25 @@ function openBoxStyle(b) {
   back.querySelector('.bx-border').addEventListener('input', e => blocks.setBoxStyle({ borderColor: e.target.value }));
   back.querySelector('.bx-radius').addEventListener('input', e => blocks.setBoxStyle({ radius: +e.target.value }));
   back.querySelector('[data-clear]').addEventListener('click', () => { blocks.setBoxStyle({ bg: '', borderColor: '', radius: 0 }); close(); });
+}
+
+function openCaption(b) {
+  if (document.getElementById('cap-modal')) return;
+  const back = document.createElement('div');
+  back.id = 'cap-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:left;min-width:320px">
+    <button class="modal-close">✕</button><h3>${t('Descripción')}</h3>
+    <label class="fr-l"><input class="cap-in" type="text" value="${(b.caption || '').replace(/"/g, '&quot;')}" placeholder="${t('Descripción')}"></label>
+    <div class="fr-actions"><button class="fr-do">${t('Aplicar')}</button></div>
+  </div>`;
+  document.body.appendChild(back);
+  const close = () => back.remove(); const inp = back.querySelector('.cap-in');
+  back.querySelector('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  const apply = () => { blocks.setCaption(inp.value.trim()); close(); };
+  back.querySelector('.fr-do').addEventListener('click', apply);
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') apply(); });
+  inp.focus();
 }
 
 function openAlt(b) {

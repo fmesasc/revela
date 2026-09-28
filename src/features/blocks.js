@@ -2,7 +2,7 @@
 
 import { state, commit, currentSlide, selectedBlock,
   selectedBlocks, selectedIds, setSelection, setMulti } from '../core/store.js';
-import { uid, textBlock, tableBlock, codeBlock, chartBlock, mathBlock } from '../core/model.js';
+import { uid, textBlock, tableBlock, codeBlock, chartBlock, mathBlock, figindexBlock } from '../core/model.js';
 import { currentLang } from '../i18n.js';
 
 function insert(block) {
@@ -125,6 +125,11 @@ export function setCode(props) {
 }
 export function addChart() { insert(chartBlock()); }
 export function addMath() { insert(mathBlock()); }
+export function addFigIndex() { insert(figindexBlock()); }
+export function setCaption(text) {
+  const b = selectedBlock(); if (!b) return;
+  commit(() => { if (text) b.caption = text; else delete b.caption; });
+}
 export function setMath(latex) {
   const b = selectedBlock(); if (!b || b.type !== 'math') return;
   commit(() => { b.latex = latex; });

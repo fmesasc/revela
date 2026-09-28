@@ -5,6 +5,13 @@
 import { state, commit, mutate, currentSlide, selectedBlock,
   selectedBlocks, selectedIds, isSelected, setSelection, toggleSelection, setMulti, selectWithGroup } from '../core/store.js';
 import { shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart } from './shape.js';
+import { collectFigures, figuresMap, captionLine } from '../features/captions.js';
+import { t } from '../i18n.js';
+
+function figIndexHTML() {
+  const figs = collectFigures(state.deck);
+  return `<b>${t('Índice de figuras')}</b><ul>` + figs.map(f => `<li>${captionLine(f)}</li>`).join('') + `</ul>`;
+}
 
 const findBlock = id => currentSlide().blocks.find(x => x.id === id);
 const connectorHTML = b => {
@@ -128,6 +135,19 @@ export function renderCanvas() {
   }
   drawPGuides();
   drawLogo();
+  drawCaptions();
+}
+
+// Captions shown under captioned blocks (figures/tables).
+function drawCaptions() {
+  stage.querySelectorAll('.caption-ovl').forEach(n => n.remove());
+  const map = figuresMap(state.deck); const slide = currentSlide();
+  for (const b of slide.blocks) {
+    const f = map.get(b.id); if (!f) continue;
+    const el = document.createElement('div'); el.className = 'caption-ovl';
+    el.style.left = b.x + 'px'; el.style.top = (b.y + b.h + 4) + 'px'; el.style.width = b.w + 'px';
+    el.textContent = captionLine(f); stage.appendChild(el);
+  }
 }
 
 // The deck logo, shown on every slide (branding / master).
@@ -217,6 +237,8 @@ function reconcile(b) {
     if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = iconSVG(b); }
   } else if (b.type === 'math') {
     const d = el.querySelector('.math-blk'); if (d && d.dataset.latex !== (b.latex || '')) renderMath(d, b.latex);
+  } else if (b.type === 'figindex') {
+    const d = el.querySelector('.figindex'); if (d) { d.style.fontSize = (b.fontSize || 28) + 'px'; d.innerHTML = figIndexHTML(); }
   }
 }
 
@@ -303,6 +325,10 @@ function content(b) {
   }
   if (b.type === 'math') {
     const d = document.createElement('div'); d.className = 'math-blk'; renderMath(d, b.latex); return d;
+  }
+  if (b.type === 'figindex') {
+    const d = document.createElement('div'); d.className = 'figindex';
+    d.style.fontSize = (b.fontSize || 28) + 'px'; d.innerHTML = figIndexHTML(); return d;
   }
   if (b.type === 'table') return tableContent(b);
   if (b.type === 'chart') {

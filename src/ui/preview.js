@@ -38,6 +38,8 @@ export function blockPreview(b) {
     el.innerHTML = iconSVG(b);
   } else if (b.type === 'math') {
     el.innerHTML = `<div style="width:100%;height:100%;display:grid;place-items:center;color:#fff;font-size:40px">∑</div>`;
+  } else if (b.type === 'figindex') {
+    el.innerHTML = `<div style="width:100%;height:100%;display:grid;place-items:center;color:#fff;font-size:40px">📑</div>`;
   } else if (b.type === 'table') {
     el.innerHTML = `<table style="border-collapse:collapse;width:100%;height:100%;--stroke:${b.stroke || '#fff'}">`
       + b.rows.map(row => `<tr>${row.map(c => `<td style="border:1px solid ${b.stroke || '#fff'};color:#fff;padding:2px 4px">${c || ''}</td>`).join('')}</tr>`).join('')

@@ -88,6 +88,7 @@ const ACTIONS = {
   'shortcuts': () => openShortcuts(),
   'insert-hf': () => openHeaderFooter(),
   'insert-date': () => blocks.addDate(),
+  'insert-figindex': () => blocks.addFigIndex(),
   'find-replace': () => search.openFindPanel(),
   'copy-style': () => format.copyStyle(),
   'paste-style': () => format.pasteStyle(),

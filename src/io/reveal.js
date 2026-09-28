@@ -6,6 +6,7 @@ import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconS
 import { googleFontLinks } from '../features/fonts.js';
 import { t } from '../i18n.js';
 import { alertDialog } from '../ui/dialog.js';
+import { collectFigures, figuresMap, captionLine } from '../features/captions.js';
 
 const REVEAL = 'https://cdn.jsdelivr.net/npm/reveal.js@5.1.0';
 const MODEL_VIEWER = 'https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js';
@@ -86,12 +87,24 @@ function blockHTML(b, slide) {
   return '';
 }
 
-function slideHTML(s) {
+function figIndexExport(b, deck) {
+  const figs = collectFigures(deck);
+  return `<div style="${box(b)}font-size:${b.fontSize || 28}px;color:#fff"><b>${esc(t('Índice de figuras'))}</b>`
+    + `<ul style="margin:.4em 0 0;padding-left:1.4em">` + figs.map(f => `<li>${esc(captionLine(f))}</li>`).join('') + `</ul></div>`;
+}
+function slideHTML(s, deck, figMap) {
   const trans = s.transition ? ` data-transition="${s.transition}"` : '';
   const auto = s.autoSlide ? ` data-autoslide="${s.autoSlide}"` : '';
   const solid = /^(#|rgb)/.test(s.background || '');
   const bg = solid ? ` data-background-color="${s.background}"` : '';
-  const inner = s.blocks.map(b => blockHTML(b, s)).join('\n');
+  const inner = s.blocks.map(b => {
+    if (b.type === 'figindex') return figIndexExport(b, deck);
+    let html = blockHTML(b, s);
+    const f = figMap.get(b.id);
+    if (f) html += `<div class="caption" style="position:absolute;left:${b.x}px;top:${b.y + b.h + 4}px;width:${b.w}px;`
+      + `text-align:center;color:#fff;font-style:italic;font-size:16px;opacity:.85">${esc(captionLine(f))}</div>`;
+    return html;
+  }).join('\n');
   const notes = s.notes ? `<aside class="notes">${esc(s.notes)}</aside>` : '';
   const aa = s.autoAnimate ? ' data-auto-animate' : '';
   return `<section${trans}${auto}${bg}${aa}>`
@@ -108,7 +121,8 @@ const SLIDENUM_POS = {
 
 export function buildHTML(deck = state.deck) {
   const { w, h } = deck.size;
-  const slides = deck.slides.filter(s => !s.hidden).map(slideHTML).join('\n');
+  const figMap = figuresMap(deck);
+  const slides = deck.slides.filter(s => !s.hidden).map(s => slideHTML(s, deck, figMap)).join('\n');
   const sn = deck.slideNumber || { show: false };
   const snPos = SLIDENUM_POS[sn.position] || SLIDENUM_POS.br;
   const hasCode = deck.slides.some(s => s.blocks.some(b => b.type === 'code'));

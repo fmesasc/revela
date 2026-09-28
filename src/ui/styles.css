@@ -4,6 +4,10 @@
   --accent:#3f6497; --accent-bg:#e8eef6; --go:#2b7a3b; --go-bg:#e6f4ea; --danger:#c0392b;
 }
 *{box-sizing:border-box}
+/* No native text selection / long‑press callout on the app chrome or objects,
+   so a long‑press opens our menu instead. Editable areas keep selection. */
+#ribbon,#statusbar,#navigator,.titlebar,.block{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.block .rich[contenteditable="true"],#notes,.doc-name,input,textarea,math-field{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 html,body{margin:0;height:100%;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
   font-size:13px;color:var(--txt);background:var(--bg)}
 body{display:flex;flex-direction:column;overflow:hidden}
@@ -214,6 +218,11 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 .block.locked .handle-size,.block.locked .handle-rot{display:none}
 .marquee{position:absolute;z-index:8;pointer-events:none;background:#3f649722;border:1px solid var(--accent)}
 .deck-logo-ovl{position:absolute;z-index:6;pointer-events:none;object-fit:contain}
+.caption-ovl{position:absolute;z-index:2;color:#fff;font-size:16px;text-align:center;opacity:.85;
+  font-style:italic;pointer-events:none;overflow-wrap:anywhere}
+.block .figindex{width:100%;height:100%;color:#fff;overflow:auto}
+.block .figindex ul{margin:.4em 0 0;padding-left:1.4em}
+.block .figindex li{margin:.15em 0}
 .pguide{position:absolute;z-index:6;background:#00bcd4}
 .pguide.v{top:0;bottom:0;width:1px;cursor:ew-resize}
 .pguide.h{left:0;right:0;height:1px;cursor:ns-resize}
