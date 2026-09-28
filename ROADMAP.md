@@ -176,5 +176,5 @@ the origin of every requirement is traceable.
 - 🚧 Responsive & touch editing (mobile layout, long-press menus, fit-to-screen) `PP·GS·OO`
 - 🚧 Cloud project storage — Google Drive save/open (client-side) `PP·GS`
 - ⬜ Desktop application ([Tauri](https://tauri.app/)) `PP·OO`
-- ⬜ Offline mode (service worker / PWA) `PP·GS·OO`
+- ✅ Offline mode & installable app (service worker + manifest; works offline after one online visit) `PP·GS·OO`
 - ⬜ Autosave to cloud, multi-device sync `PP·GS`

@@ -593,6 +593,17 @@ export async function run(frame) {
     D.querySelector('#handout-modal .modal-close').click();
   });
 
+  await test('PWA: manifiesto, iconos y service worker', async () => {
+    const link = D.querySelector('link[rel="manifest"]'); assert(link, 'enlace al manifiesto');
+    const m = await (await fetch(new URL(link.getAttribute('href'), D.baseURI))).json();
+    eq(m.display, 'standalone', 'se instala como app');
+    for (const ic of m.icons) assert((await fetch(new URL(ic.src, new URL(link.getAttribute('href'), D.baseURI)))).ok, 'icono ' + ic.src);
+    assert(m.icons.some(i => i.sizes === '512x512') && m.icons.some(i => i.purpose === 'maskable'), 'iconos 512 y maskable');
+    const sw = await (await fetch(new URL('sw.js', D.baseURI))).text();
+    assert(/addEventListener\('fetch'/.test(sw), 'service worker con fetch');
+    assert(!/googleapis\.com\/drive|accounts\.google/.test(sw), 'no toca Drive ni el inicio de sesión');
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');
