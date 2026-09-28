@@ -92,7 +92,8 @@ the origin of every requirement is traceable.
 - ✅ Templates & slide layouts (built-in + save current, change layout from Home) `PP·GS·OO`
 - ✅ Per-slide background: colour, gradient, image (cover/contain/tile, opacity), video, interactive web page, background transition (apply to all) `PP·GS·OO`
 - ✅ Vertical slides (reveal.js stacks) and slides not counted in the numbering `—`
-- ✅ Themes `PP·GS·OO`
+- ✅ Themes — all 14 reveal.js themes including high contrast `PP·GS·OO`
+- ✅ Presentation settings — arrows, progress bar, navigation mode, scroll view, mouse wheel, shuffle, right-to-left, cursor, jump to slide, link previews, parallax background, Morph timing (deck and slide), zoom (Alt+click) and search `—`
 - ✅ Slide size (16∶9 / 4∶3) `PP·GS·OO`
 - ✅ Speaker notes (editor panel + presenter view) `PP·GS·OO`
 - ✅ Slide numbers, date/time field, header & footer, deck logo/branding `PP·GS·OO`
@@ -106,7 +107,7 @@ the origin of every requirement is traceable.
 
 ## 5. Transitions & animation
 - ✅ Per-slide transitions & default transition/speed — none, fade, slide, convex, concave, zoom, flip, push, wipe, rise `PP·GS·OO`
-- ✅ Per-object entrance, emphasis & exit animations (many effects) `PP·GS·OO`
+- ✅ Per-object entrance, emphasis & exit animations — every reveal.js fragment style (semi-fade, fade-in-then-semi-out, current-visible, highlight-current…) plus Revela's own `PP·GS·OO`
 - ✅ Animation pane — effect, start (on click / with previous), duration, delay, reorder, remove `PP·GS·OO`
 - ✅ Animation preview (play in the editor) `PP·GS·OO`
 - ✅ Morph / transformation transition (Auto-Animate, with "duplicate to animate") `PP`

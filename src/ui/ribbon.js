@@ -31,6 +31,7 @@ import * as poll from '../features/poll.js';
 import { openPollEditor } from './poll-dialog.js';
 import { openCodeEditor } from './code-dialog.js';
 import { openBackgroundDialog } from './background-dialog.js';
+import { openSettings } from './settings-dialog.js';
 import { openDashboardDialog } from './data-dialog.js';
 import { openStockImages, openOnlineIcons } from './stock-dialog.js';
 import * as palettes from '../features/palettes.js';
@@ -129,6 +130,7 @@ const ACTIONS = {
   'slide-add': slides.addSlide, 'slide-duplicate': slides.duplicateSlide,
   'slide-vertical': () => slides.toggleVertical(),
   'bg-advanced': () => openBackgroundDialog(),
+  'deck-settings': () => openSettings(),
   'slide-delete': () => slides.deleteSlide(),
   'section-add': () => slides.addSection(),   // creates + renames inline (no prompt)
   'insert-text': blocks.addText,
@@ -412,9 +414,17 @@ function updateFormatState() {
 }
 
 const ANIM_EFFECTS = ['fade-in', 'fade-up', 'fade-down', 'fade-left', 'fade-right', 'zoom-in',
-  'spin', 'flip', 'bounce', 'grow', 'shrink', 'strike', 'fade-out', 'fade-in-then-out',
-  'highlight-red', 'highlight-green', 'highlight-blue', 'path'];
-const EFFECT_LABEL = e => e === 'path' ? t('Trayectoria') : e;
+  'spin', 'flip', 'bounce', 'grow', 'shrink', 'strike', 'fade-out', 'semi-fade-out', 'fade-in-then-out', 'fade-in-then-semi-out',
+  'current-visible', 'highlight-red', 'highlight-green', 'highlight-blue', 'highlight-current-red', 'highlight-current-green',
+  'highlight-current-blue', 'path'];
+// Readable names (reveal.js fragment styles and Revela's own effects).
+const EFFECT_NAMES = { 'fade-in': 'Aparecer', 'fade-up': 'Subir', 'fade-down': 'Bajar', 'fade-left': 'Desde la derecha',
+  'fade-right': 'Desde la izquierda', 'zoom-in': 'Zoom', spin: 'Girar', flip: 'Voltear', bounce: 'Rebotar', grow: 'Agrandar',
+  shrink: 'Encoger', strike: 'Tachar', 'fade-out': 'Desaparecer', 'semi-fade-out': 'Atenuar', 'fade-in-then-out': 'Aparecer y desaparecer',
+  'fade-in-then-semi-out': 'Aparecer y atenuar', 'current-visible': 'Visible solo en su paso', 'highlight-red': 'Resaltar en rojo',
+  'highlight-green': 'Resaltar en verde', 'highlight-blue': 'Resaltar en azul', 'highlight-current-red': 'Rojo solo en su paso',
+  'highlight-current-green': 'Verde solo en su paso', 'highlight-current-blue': 'Azul solo en su paso', path: 'Trayectoria' };
+const EFFECT_LABEL = e => t(EFFECT_NAMES[e] || e);
 // Short label of an object for the trigger list.
 function objLabel(b) {
   const txt = b.type === 'text' ? (new DOMParser().parseFromString(b.html || '', 'text/html').body.textContent || '').trim().slice(0, 24) : '';

@@ -7,7 +7,8 @@ import { state } from '../core/store.js';
 // Default text / background colour of each reveal.js theme (what the export uses
 // when a text box has no explicit colour).
 const THEME_FG = { black: '#ffffff', white: '#222222', league: '#eeeeee', night: '#eeeeee',
-  serif: '#000000', solarized: '#657b83', moon: '#93a1a1', dracula: '#f8f8f2' };
+  serif: '#000000', solarized: '#657b83', moon: '#93a1a1', dracula: '#f8f8f2', beige: '#333333', sky: '#333333',
+  simple: '#000000', blood: '#eeeeee', 'black-contrast': '#ffffff', 'white-contrast': '#000000' };
 
 function rgb(c) {
   c = String(c || '').trim();

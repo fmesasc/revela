@@ -303,7 +303,7 @@ function slideHTML(s, deck, figMap) {
     return html;
   }).join('\n');
   const notes = s.notes ? `<aside class="notes">${esc(s.notes)}</aside>` : '';
-  const aa = s.autoAnimate ? ' data-auto-animate' : '';
+  const aa = (s.autoAnimate ? ' data-auto-animate' : '') + (s.aaDuration ? ` data-auto-animate-duration="${+s.aaDuration}"` : '') + (s.aaDelay ? ` data-auto-animate-delay="${+s.aaDelay}"` : '');
   return `<section${trans}${speed}${auto}${bg}${aa}>`
     + `<div class="stage${s.bgIframe && s.bgInteractive ? ' pass' : ''}" style="background:${stageBackground(s)}">${bgLayer(s)}${inner}</div>${notes}</section>`;
 }
@@ -319,6 +319,19 @@ const SLIDENUM_POS = {
 // inApp: presenting inside the editor from a blob: URL, where the address bar
 // can't be rewritten — keep hash navigation (links) but don't write history.
 export const slidePathsFor = deck => slidePaths(deck);
+// Presentation settings (Transitions ▸ Settings): reveal.js options.
+export const rv = deck => deck.reveal || {};
+export const REVEAL_DEFAULTS = { controls: true, controlsLayout: 'bottom-right', progress: true, navigationMode: 'default', view: 'slides',
+  mouseWheel: false, shuffle: false, hideInactiveCursor: true, jumpToSlide: true, previewLinks: false, rtl: false, center: true,
+  autoAnimateDuration: 1.0, autoAnimateEasing: 'ease', autoSlideStoppable: true, fragmentInURL: true, zoom: true, search: true, parallax: '' };
+function revealOptions(deck, inApp) {
+  const o = { ...REVEAL_DEFAULTS, ...rv(deck) }, J = JSON.stringify;
+  return `controls:${!!o.controls}, controlsLayout:${J(o.controlsLayout)}, progress:${!!o.progress}, navigationMode:${J(o.navigationMode)},
+   mouseWheel:${!!o.mouseWheel}, shuffle:${!!o.shuffle}, hideInactiveCursor:${!!o.hideInactiveCursor}, jumpToSlide:${!!o.jumpToSlide},
+   previewLinks:${!!o.previewLinks}, rtl:${!!o.rtl}, autoAnimateDuration:${+o.autoAnimateDuration || 1}, autoAnimateEasing:${J(o.autoAnimateEasing)},
+   autoSlideStoppable:${!!o.autoSlideStoppable}, fragmentInURL:${!inApp && !!o.fragmentInURL},${o.view === 'scroll' ? " view:'scroll', scrollProgress:true," : ''}
+   ${o.parallax ? `parallaxBackgroundImage:${J(o.parallax)}, parallaxBackgroundSize:${J(o.parallaxSize || '')},` : ''}`;
+}
 export function buildHTML(deck = state.deck, { inApp = false } = {}) {
   const { w, h } = deck.size;
   const figMap = figuresMap(deck);
@@ -391,13 +404,15 @@ ${slides}
 </div>${footerText}${logoHTML}</div>
 <script src="${REVEAL}/dist/reveal.js"></script>
 <script src="${REVEAL}/plugin/notes/notes.js"></script>
+${rv(deck).zoom !== false ? `<script src="${REVEAL}/plugin/zoom/zoom.js"></script>` : ''}
+${rv(deck).search !== false ? `<script src="${REVEAL}/plugin/search/search.js"></script>` : ''}
 ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : ''}
 <script>
- Reveal.initialize({ width:${w}, height:${h}, margin:0.03, controls:true,
-   progress:true, hash:${inApp ? 'false' : 'true'}, respondToHashChanges:true, loop:${deck.loop ? 'true' : 'false'},
+ Reveal.initialize({ width:${w}, height:${h}, margin:0.03, hash:${inApp ? 'false' : 'true'}, respondToHashChanges:true, loop:${deck.loop ? 'true' : 'false'},
    slideNumber:${sn.show ? `'${sn.format || 'c'}'` : 'false'},
    transition:'${deck.defaultTransition}', transitionSpeed:'${deck.transitionSpeed}',
-   plugins:[ RevealNotes${hasCode ? ', RevealHighlight' : ''} ] });
+   ${revealOptions(deck, inApp)}
+   plugins:[ RevealNotes${hasCode ? ', RevealHighlight' : ''}${rv(deck).zoom !== false ? ', RevealZoom' : ''}${rv(deck).search !== false ? ', RevealSearch' : ''} ] });
  ${hasMath ? 'window.addEventListener("load",function(){window.katex&&document.querySelectorAll(".math[data-latex]").forEach(function(el){try{katex.render(el.getAttribute("data-latex"),el,{throwOnError:false,displayMode:true});}catch(e){}});});' : ''}
  ${hasInlineMath ? 'window.addEventListener("load",function(){window.renderMathInElement&&renderMathInElement(document.body,{delimiters:[{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}],throwOnError:false});});' : ''}
  ${hasTrig ? TRIGGER_JS : ''}

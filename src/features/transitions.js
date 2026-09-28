@@ -47,7 +47,8 @@ export function setTransitionSpeed(value) {
 export const EFFECT_KF = {
   'fade-in': 'rvIn', 'fade-up': 'rvUp', 'fade-down': 'rvDown', 'fade-left': 'rvLeft', 'fade-right': 'rvRight',
   'zoom-in': 'rvZoom', 'grow': 'rvGrow', 'shrink': 'rvShrink', 'spin': 'rvSpin', 'flip': 'rvFlip', 'bounce': 'rvBounce',
-  'fade-out': 'rvOut', 'fade-in-then-out': 'rvInOut', 'highlight-red': 'rvHi', 'highlight-green': 'rvHi', 'highlight-blue': 'rvHi',
+  'fade-out': 'rvOut', 'semi-fade-out': 'rvSemi', 'fade-in-then-out': 'rvInOut', 'fade-in-then-semi-out': 'rvInSemi', 'current-visible': 'rvInOut',
+  'highlight-current-red': 'rvHi', 'highlight-current-green': 'rvHi', 'highlight-current-blue': 'rvHi', 'highlight-red': 'rvHi', 'highlight-green': 'rvHi', 'highlight-blue': 'rvHi',
   'strike': 'rvIn', 'path': 'rvPath',
 };
 export const EFFECT_KF_CSS = `@keyframes rvIn{from{opacity:0}to{opacity:1}}
@@ -63,6 +64,8 @@ export const EFFECT_KF_CSS = `@keyframes rvIn{from{opacity:0}to{opacity:1}}
 @keyframes rvBounce{0%{opacity:0;transform:translateY(-60px)}60%{opacity:1;transform:translateY(12px)}80%{transform:translateY(-6px)}100%{opacity:1;transform:none}}
 @keyframes rvOut{from{opacity:1}to{opacity:0}}
 @keyframes rvInOut{0%{opacity:0}30%,70%{opacity:1}100%{opacity:0}}
+@keyframes rvSemi{from{opacity:1}to{opacity:.5}}
+@keyframes rvInSemi{0%{opacity:0}30%,70%{opacity:1}100%{opacity:.5}}
 @keyframes rvHi{0%,100%{background:transparent}50%{background:#ff3b3b66}}
 @keyframes rvPath{to{translate:var(--dx,0) var(--dy,0)}}`;
 // Motion paths: points (offsets from the start) along the chosen shape, ending
@@ -86,7 +89,7 @@ export const pathKeyframesCSS = (name, a) => `@keyframes ${name}{${motionPoints(
   `${(i / (arr.length - 1) * 100).toFixed(1)}%{translate:${x}px ${y}px}`).join('')}}`;
 
 // Effects that make an object appear (it starts hidden until it plays).
-export const isEntrance = effect => !['fade-out', 'highlight-red', 'highlight-green', 'highlight-blue', 'strike', 'path'].includes(effect);
+export const isEntrance = effect => !['fade-out', 'semi-fade-out', 'highlight-red', 'highlight-green', 'highlight-blue', 'highlight-current-red', 'highlight-current-green', 'highlight-current-blue', 'strike', 'path', 'grow', 'shrink'].includes(effect);
 
 // Per‑object animation: effect + order (fragment index) + start + timing.
 export function setAnimation(effect) {
