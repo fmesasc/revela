@@ -752,9 +752,10 @@ export async function importPPTX(file) {
   for (const [path, { layout: lay, master: mas }] of usedLayouts) {
     const id = 'pptx-' + (++n), blocksL = [];
     for (const p of lay.phs) {
-      const kind = REVELA_PH[p.type || ''];
-      if (!kind) continue;
+      const kind = REVELA_PH[p.type || ''], media = { pic: 'picture', tbl: 'table', chart: 'chart' }[p.type];
       const geo0 = p.geo || findPh(mas?.phs || [], p)?.geo; if (!geo0) continue;
+      if (media) { blocksL.push({ id: uid(), type: 'placeholder', ph: media, x: px(geo0.x), y: px(geo0.y), w: px(geo0.w), h: px(geo0.h), rotation: 0, animation: null }); continue; }
+      if (!kind) continue;
       // The layout's own formatting where it differs from the master's.
       const own = styleFrom(lvl1([mas?.styles[kind === 'title' ? 'title' : 'body'], findPh(mas?.phs || [], p)?.levels, p.levels]));
       const base = styles[kind] || {};

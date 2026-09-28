@@ -199,6 +199,10 @@ function defineMasters(pptx, deck) {
     for (const b of masterBlocksFor(lay, deck).concat(lay.blocks.filter(x => !x.ph))) {
       const o = masterObject(b); if (o) { objects.push(o); inMaster.add(b.id); }
     }
+    for (const p of lay.blocks.filter(b => b.type === 'placeholder')) {
+      objects.push({ placeholder: { options: { name: phName(p), type: { picture: 'pic', table: 'tbl', chart: 'chart' }[p.ph] || 'pic',
+        x: IN(p.x), y: IN(p.y), w: IN(p.w), h: IN(p.h) }, text: '' } });
+    }
     const phs = lay.blocks.filter(b => b.ph && styleKind(b));
     for (const p0 of phs) {
       const p = styled(p0, lay, deck);

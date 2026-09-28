@@ -10,7 +10,8 @@ import { setEmbedDisplay } from '../../features/document/blocks.js';
 import { currentPalette } from '../../features/design/palettes.js';
 import { cameraRadius } from '../../features/live/media.js';
 import { pollEditorHTML, savedVotes } from '../../features/live/poll.js';
-import { PH_PROMPT, isEmptyPlaceholder, styled, levelVars } from '../../features/document/master.js';
+import { PH_PROMPT, isEmptyPlaceholder, styled, levelVars, fillPlaceholder } from '../../features/document/master.js';
+import { tableBlock, chartBlock } from '../../core/model.js';
 import { autocorrectAtCaret } from '../../features/document/autocorrect.js';
 import { KATEX, HIGHLIGHT, loadScript, loadStyle } from '../../core/vendor.js';
 import { findBlock, readOnly, fitFontSize } from './canvas.js';
@@ -70,6 +71,14 @@ export function styleRich(rich, b) {
   rich.classList.toggle('lv', !!b.levels);
   for (let i = 1; i <= 5; i++) ['--l', '--b', '--c'].forEach(v => rich.style.removeProperty(v + i));
   if (b.levels) for (const decl of levelVars(b).split(';').filter(Boolean)) { const [k, ...v] = decl.split(':'); rich.style.setProperty(k, v.join(':')); }
+}
+function fillMediaPlaceholder(b) {
+  if (b.ph === 'table') return fillPlaceholder(b.id, tableBlock({ fontSize: 22 }));
+  if (b.ph === 'chart') return fillPlaceholder(b.id, chartBlock());
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = () => { const f = inp.files[0]; if (!f) return; const r = new FileReader();
+    r.onload = () => fillPlaceholder(b.id, { type: 'image', src: r.result, fit: 'cover', alt: '' }); r.readAsDataURL(f); };
+  inp.click();
 }
 export function content(b) {
   if (b.type === 'text') {
@@ -135,6 +144,16 @@ export function content(b) {
   }
   if (b.type === 'audio') { const a = document.createElement('audio'); a.src = b.src; a.controls = true; return a; }
   if (b.type === 'embed') return embedContent(b);
+  if (b.type === 'placeholder') {
+    // An empty picture/table/chart placeholder: click to fill it (not exported).
+    const d = document.createElement('div'); d.className = 'ph-media';
+    const [icon, label] = { picture: ['image', 'Haz clic para insertar una imagen'], table: ['table', 'Haz clic para insertar una tabla'], chart: ['bar_chart', 'Haz clic para insertar un gráfico'] }[b.ph] || ['add', ''];
+    d.innerHTML = `<button type="button" class="ph-media-btn"><i class="ms">${icon}</i><span>${t(label)}</span></button>`;
+    const btn = d.querySelector('button');
+    btn.addEventListener('pointerdown', e => e.stopPropagation());
+    btn.addEventListener('click', e => { e.stopPropagation(); if (!readOnly() && !state.ui.editMaster) fillMediaPlaceholder(b); });
+    return d;
+  }
   return document.createElement('div');
 }
 export const hostOf = u => { try { return new URL(u).host || u; } catch { return u; } };

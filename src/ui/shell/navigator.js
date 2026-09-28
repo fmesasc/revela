@@ -65,7 +65,7 @@ export function renderPanel() {
 
 // Master view (PowerPoint's Slide Master): the master and its layouts, each
 // with its placeholders as dashed frames; click one to edit it.
-const PH_LABEL = { title: 'Título', subtitle: 'Subtítulo', body: 'Texto' };
+const PH_LABEL = { title: 'Título', subtitle: 'Subtítulo', body: 'Texto', picture: '🖼 Imagen', table: '▦ Tabla', chart: '📊 Gráfico' };
 function renderMasterPanel() {
   const d = state.deck, { w, h } = d.size, sel = state.ui.editMaster;
   const card = (label, sub, active, slide, blocks, onClick, indent) => {
@@ -79,7 +79,7 @@ function renderMasterPanel() {
         const f = document.createElement('div'); const st = styled(b, slide);
         f.style.cssText = `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px;border:6px dashed currentColor;opacity:.55;`
           + `font-size:${st.fontSize || 40}px;${st.color ? `color:${st.color};` : ''}${st.fontFamily ? `font-family:${st.fontFamily};` : ''}font-weight:${st.fontWeight || 400};padding:12px;box-sizing:border-box;text-align:${st.textAlign || 'left'}`;
-        f.textContent = PH_LABEL[styleKind(b)] || b.ph; inner.appendChild(f);
+        f.textContent = PH_LABEL[styleKind(b) || b.ph] || b.ph; inner.appendChild(f);
       } else inner.appendChild(blockPreview(b));
     }
     canvas.appendChild(inner);

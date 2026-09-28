@@ -388,4 +388,23 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(R.state.deck.name, 'Taller de programación', 'abre el ejemplo elegido');
     assert(D.querySelector('#stage .block'), 'y se ve en el lienzo');
   });
+
+  await test('marcadores de imagen, tabla y gráfico en los diseños: clic para rellenar, no se exportan vacíos', async () => {
+    reset(); R.master.editLayout('titleOnly'); await sleep(10);
+    for (const k of ['picture', 'table', 'chart']) { const sel = D.querySelector('#master-banner .mb-ph'); sel.value = k; sel.dispatchEvent(new frame.contentWindow.Event('change')); }
+    const lay = R.state.deck.layouts.find(l => l.id === 'titleOnly');
+    eq(lay.blocks.filter(b => b.type === 'placeholder').map(b => b.ph).join(), 'picture,table,chart', 'marcadores en el diseño');
+    R.master.toggleMasterEdit(false); R.slides.addSlide('titleOnly'); R.render(); await sleep(20);
+    const phs = slide().blocks.filter(b => b.type === 'placeholder'); eq(phs.length, 3, 'la diapositiva los recibe');
+    assert(!/ph-media/.test(R.io.buildHTML()), 'vacíos no salen en la presentación');
+    const tb = phs.find(b => b.ph === 'table');
+    D.querySelector(`.block[data-id="${tb.id}"] .ph-media-btn`).click(); await sleep(20);
+    const t = slide().blocks.find(b => b.type === 'table');
+    assert(t && t.x === tb.x && t.w === tb.w && t.lp === tb.lp, 'la tabla ocupa el hueco del marcador');
+    const img = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const pic = slide().blocks.find(b => b.ph === 'picture');
+    R.master.fillPlaceholder(pic.id, { type: 'image', src: img, fit: 'cover' });
+    const im = slide().blocks.find(b => b.type === 'image'); assert(im && im.x === pic.x && im.fit === 'cover', 'la imagen también');
+    assert(/<img[^>]*data:image\/png/.test(R.io.buildHTML()), 'y ya se exporta');
+  });
 }

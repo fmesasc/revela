@@ -15,7 +15,7 @@
 // While editing the master (state.ui.editMaster = true) or a layout (= its
 // id), the canvas edits that instead of the current slide (store.currentSlide).
 
-import { state, commit, subscribe } from '../../core/store.js';
+import { state, commit, subscribe, currentSlide } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 
 export const MAX_LEVELS = 5;
@@ -121,8 +121,9 @@ export function setMasterStyle(kind, props, level = null) {
 }
 
 // ---- Layouts -----------------------------------------------------------------
-const freshPlaceholders = lay => lay.blocks.filter(b => b.ph).map(p => ({ id: uid(), type: 'text', ph: p.ph, lp: p.id,
-  x: p.x, y: p.y, w: p.w, h: p.h, rotation: 0, animation: null, html: '', ...(p.vAlign && { vAlign: p.vAlign }) }));
+const freshPlaceholders = lay => lay.blocks.filter(b => b.ph).map(p => (p.type === 'placeholder'
+  ? { id: uid(), type: 'placeholder', ph: p.ph, lp: p.id, x: p.x, y: p.y, w: p.w, h: p.h, rotation: 0, animation: null }
+  : { id: uid(), type: 'text', ph: p.ph, lp: p.id, x: p.x, y: p.y, w: p.w, h: p.h, rotation: 0, animation: null, html: '', ...(p.vAlign && { vAlign: p.vAlign }) }));
 // Give a slide a layout. Like PowerPoint, what was written moves into the new
 // placeholders (the title into the title, the rest in order) and nothing is
 // lost: text that doesn't fit any placeholder, pictures, charts… stay.
@@ -176,12 +177,14 @@ export function deleteLayout(id) {
   });
 }
 export const layoutInUse = id => state.deck.slides.filter(s => s.layoutId === id).length;
+export const MEDIA_PH = ['picture', 'table', 'chart'];
 export function addPlaceholder(ph) {
   commit(() => {
     const lay = state.deck.layouts?.find(l => l.id === state.ui.editMaster); if (!lay) return;
     const { w, h } = state.deck.size;
-    const b = { id: uid(), type: 'text', ph, x: Math.round(w * 0.1), y: Math.round(h * (ph === 'title' ? 0.08 : 0.3)), w: Math.round(w * 0.8),
-      h: Math.round(h * (ph === 'body' ? 0.55 : 0.15)), rotation: 0, animation: null, html: '' };
+    const box = { x: Math.round(w * 0.1), y: Math.round(h * (ph === 'title' ? 0.08 : 0.3)), w: Math.round(w * 0.8), h: Math.round(h * (ph === 'title' || ph === 'subtitle' ? 0.15 : 0.55)) };
+    const b = MEDIA_PH.includes(ph) ? { id: uid(), type: 'placeholder', ph, ...box, rotation: 0, animation: null }
+      : { id: uid(), type: 'text', ph, ...box, rotation: 0, animation: null, html: '' };
     lay.blocks.push(b); state.ui.selection = b.id;
   });
 }
@@ -211,4 +214,14 @@ export function followLayouts() {
 export const PH_PROMPT = { title: 'Haz clic para añadir un título', subtitle: 'Haz clic para añadir un subtítulo', body: 'Haz clic para añadir texto' };
 const plain = html => { const d = document.createElement('div'); d.innerHTML = html || ''; return (d.textContent || '').trim(); };
 // An empty placeholder: nothing typed yet (no text, no image/equation inside).
-export const isEmptyPlaceholder = b => !!(b.type === 'text' && b.ph && !plain(b.html) && !/<(img|svg|math)/i.test(b.html || ''));
+export const isEmptyPlaceholder = b => b.type === 'placeholder' || !!(b.type === 'text' && b.ph && !plain(b.html) && !/<(img|svg|math)/i.test(b.html || ''));
+
+// Fill a picture / table / chart placeholder: the object takes its place and size.
+export function fillPlaceholder(id, block) {
+  commit(() => {
+    const s = currentSlide(), i = s.blocks.findIndex(b => b.id === id); if (i < 0) return;
+    const p = s.blocks[i];
+    s.blocks[i] = { ...block, id: block.id || uid(), x: p.x, y: p.y, w: p.w, h: p.h, rotation: 0, animation: p.animation || null, ...(p.lp && { lp: p.lp }) };
+    state.ui.selection = s.blocks[i].id; state.ui.multi = [s.blocks[i].id];
+  });
+}
