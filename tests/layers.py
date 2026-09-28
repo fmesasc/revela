@@ -5,7 +5,7 @@ Exit 1 and list the offending imports otherwise. Run by tests/run.sh before the 
 
     apps  →  ui  →  api  →  io  →  features  →  render · i18n  →  core
 """
-import pathlib, re, sys
+import pathlib, re, subprocess, sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = ROOT / 'src'
@@ -81,6 +81,11 @@ def main():
         for ref in refs:
             if not (ROOT / ref).exists():
                 errors.append(f'{page}: {ref} no existe')
+    # every file of the app must be committable: an ignored one works locally
+    # but is missing (404) once published
+    ignored = subprocess.run(['git', 'check-ignore', '--no-index', '--stdin'], cwd=ROOT, capture_output=True, text=True,
+                             input='\n'.join(p.relative_to(ROOT).as_posix() for p in SRC.rglob('*') if p.is_file())).stdout.split()
+    errors += [f'{f}: lo ignora .gitignore (no se publicaría)' for f in ignored]
     if errors:
         print('ARQUITECTURA: problemas\n  ' + '\n  '.join(errors))
         return 1
