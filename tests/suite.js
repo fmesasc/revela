@@ -735,6 +735,65 @@ export async function run(frame) {
     eq(D.querySelectorAll(`.block[data-id="${b.id}"] td`).length, b.rows.length * b.rows[0].length, 'todas las celdas');
   });
 
+  await test('duplicar diapositiva: los conectores apuntan a las copias', async () => {
+    reset(); R.blocks.addText(); const a = last(); R.blocks.addText(); const b = last();
+    R.store.setMulti([a.id, b.id]); R.blocks.addConnector(); R.blocks.groupSelected?.();
+    R.slides.duplicateSlide(); await sleep(20);
+    const s = slide(), ids = new Set(s.blocks.map(x => x.id));
+    const c = s.blocks.find(x => x.type === 'connector');
+    assert(c && ids.has(c.from) && ids.has(c.to), 'conector remapeado a la copia');
+    assert(!ids.has(a.id), 'ids nuevos');
+  });
+
+  await test('reutilizar diapositivas de otro proyecto (con escalado 4:3)', async () => {
+    reset(); const n0 = R.state.deck.slides.length, i0 = R.state.ui.slideIndex;
+    const other = { size: { w: 960, h: 720 }, slides: [
+      { id: 'x1', background: '#123456', blocks: [{ id: 'k1', type: 'text', html: 'Uno', x: 96, y: 72, w: 480, h: 72, fontSize: 40 }] },
+      { id: 'x2', background: '#000000', blocks: [] },
+      { id: 'x3', background: '#000000', blocks: [{ id: 'k3', type: 'text', html: 'Tres', x: 0, y: 0, w: 100, h: 50 }] } ] };
+    R.reuse.openReuseDialog(other, 'otro.json'); await sleep(20);
+    const items = D.querySelectorAll('#reuse-modal .reuse-item');
+    eq(items.length, 3, 'tres miniaturas');
+    const go = D.querySelector('#reuse-modal .reuse-go');
+    assert(go.disabled, 'insertar deshabilitado sin selección');
+    items[0].click(); items[2].click();
+    assert(!go.disabled, 'habilitado'); go.click(); await sleep(20);
+    eq(R.state.deck.slides.length, n0 + 2, 'dos diapositivas insertadas');
+    const s = R.state.deck.slides[i0 + 1];
+    eq(s.background, '#123456', 'fondo conservado');
+    assert(s.id !== 'x1' && s.blocks[0].id !== 'k1', 'ids nuevos');
+    eq(s.blocks[0].x, 128, 'x escalada 960→1280'); eq(s.blocks[0].w, 640, 'ancho escalado');
+    eq(R.state.deck.slides[i0 + 2].blocks[0].html, 'Tres', 'orden conservado');
+    assert(!D.getElementById('reuse-modal'), 'diálogo cerrado');
+  });
+
+  await test('comprobador de accesibilidad', async () => {
+    reset();
+    const deck = { theme: 'black', slides: [
+      { background: '#101317', blocks: [] },
+      { background: '#101317', blocks: [{ id: 'i1', type: 'image', src: 'data:,', x: 0, y: 0, w: 10, h: 10 }] },
+      { background: '#101317', blocks: [{ id: 't1', type: 'text', html: 'Hola', fontSize: 40 }, { id: 'tb', type: 'table', rows: [['a']] }] },
+      { background: '#101317', blocks: [{ id: 't2', type: 'text', html: 'hola', fontSize: 40 }] },
+      { background: '#ffffff', blocks: [{ id: 't3', type: 'text', html: 'Claro', fontSize: 16 }] },
+      { background: '#ffffff', blocks: [{ id: 't4', type: 'text', html: '<span style="color:#000000">Negro</span>', fontSize: 16 }] } ] };
+    const iss = R.a11y.checkAccessibility(deck), has = (k, s) => iss.some(x => x.kind === k && x.slide === s);
+    assert(has('empty', 0), 'vacía'); assert(has('notitle', 1), 'sin título'); assert(has('alt', 1), 'sin alt');
+    assert(has('tablehead', 2), 'tabla sin encabezado'); assert(has('duptitle', 3), 'título duplicado');
+    assert(has('contrast', 4), 'blanco sobre blanco'); assert(!has('contrast', 5), 'color explícito con buen contraste');
+    assert(!has('contrast', 2), 'blanco sobre oscuro OK');
+    deck.theme = 'white'; assert(R.a11y.checkAccessibility(deck).some(x => x.kind === 'contrast' && x.slide === 2), 'tema claro sobre fondo oscuro');
+    D.querySelector('[data-action="a11y-check"]').click(); await sleep(20);
+    assert(D.querySelector('#a11y-modal .a11y-item, #a11y-modal .a11y-ok'), 'diálogo con resultados');
+    D.querySelector('#a11y-modal .modal-close').click();
+  });
+
+  await test('cuentagotas: aplica el color elegido al objetivo', async () => {
+    reset(); R.blocks.addShape('rect'); const b = last(); select(b); await sleep(20);
+    R.ribbon.applyPickedColour(D.querySelector('[data-shape-fill]'), '#12ab34'); await sleep(10);
+    eq(b.fill, '#12ab34', 'relleno desde el cuentagotas');
+    if ('EyeDropper' in frame.contentWindow) assert(D.querySelector('.eyedrop[data-eyedrop="[data-shape-fill]"]'), 'botón junto al selector');
+  });
+
   await test('zoom: acercar y restablecer', async () => {
     reset(); D.querySelector('[data-action="zoom-reset"]').click();
     const z0 = R.state.ui.zoom;

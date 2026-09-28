@@ -13,11 +13,23 @@ export function addSlide() {
   });
 }
 
+// Deep copy of a slide with fresh ids; connectors and groups are remapped so
+// they point at the copies, not at the blocks of the original slide.
+export function cloneSlide(src) {
+  const copy = structuredClone(src);
+  copy.id = uid(); copy.blocks = copy.blocks || [];
+  const ids = new Map(), groups = new Map();
+  copy.blocks.forEach(b => { const n = uid(); ids.set(b.id, n); b.id = n; });
+  copy.blocks.forEach(b => {
+    if (b.type === 'connector') { b.from = ids.get(b.from) || b.from; b.to = ids.get(b.to) || b.to; }
+    if (b.groupId) { if (!groups.has(b.groupId)) groups.set(b.groupId, uid()); b.groupId = groups.get(b.groupId); }
+  });
+  return copy;
+}
+
 export function duplicateSlide() {
   commit(() => {
-    const copy = structuredClone(currentSlide());
-    copy.id = uid();
-    copy.blocks.forEach(b => (b.id = uid()));
+    const copy = cloneSlide(currentSlide());
     state.deck.slides.splice(state.ui.slideIndex + 1, 0, copy);
     state.ui.slideIndex++;
     state.ui.selection = null;
@@ -50,6 +62,31 @@ export function goToSlide(index) {
 // Hidden slides stay in the editor but are skipped during the presentation.
 export function toggleSlideHidden(index = state.ui.slideIndex) {
   commit(() => { const s = state.deck.slides[index]; if (s) s.hidden = !s.hidden; });
+}
+
+// Reuse slides: insert (copies of) slides from another deck after the current one.
+// Sections of the other deck are not imported; the slides join the current section.
+export function importSlides(deck, indices = null) {
+  const src = (deck && Array.isArray(deck.slides)) ? deck.slides : [];
+  const pick = indices ? indices.map(i => src[i]).filter(Boolean) : src;
+  if (!pick.length) return 0;
+  const sec = currentSlide()?.sectionId || null;
+  commit(() => {
+    // A deck of another size (4:3 vs 16:9) is scaled to fit this one.
+    const from = deck.size || state.deck.size, to = state.deck.size;
+    const sx = to.w / from.w, sy = to.h / from.h, sf = Math.min(sx, sy);
+    const copies = pick.map(s => {
+      const c = cloneSlide(s); c.sectionId = sec;
+      if (sx !== 1 || sy !== 1) for (const b of c.blocks) {
+        b.x = Math.round(b.x * sx); b.y = Math.round(b.y * sy); b.w = Math.round(b.w * sx); b.h = Math.round(b.h * sy);
+        if (b.fontSize) b.fontSize = Math.round(b.fontSize * sf);
+      }
+      return c;
+    });
+    state.deck.slides.splice(state.ui.slideIndex + 1, 0, ...copies);
+    state.ui.slideIndex += 1; state.ui.selection = null; state.ui.multi = [];
+  });
+  return pick.length;
 }
 
 // Auto‑Animate (Morph): reveal morphs matching objects between two adjacent

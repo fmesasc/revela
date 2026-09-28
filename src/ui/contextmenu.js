@@ -509,7 +509,7 @@ function openCaption(b) {
   inp.focus();
 }
 
-function openAlt(b) {
+export function openAlt(b) {
   if (document.getElementById('alt-modal')) return;
   const back = document.createElement('div');
   back.id = 'alt-modal'; back.className = 'modal-backdrop';

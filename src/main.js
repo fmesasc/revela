@@ -22,6 +22,9 @@ import * as i18n from './i18n.js';
 import * as gdrive from './io/gdrive.js';
 import * as pptx from './io/pptx-export.js';
 import * as io from './io/reveal.js';
+import * as a11y from './features/a11y.js';
+import * as reuse from './ui/reuse.js';
+import * as ribbon from './ui/ribbon.js';
 
 function render() {
   renderRibbon();
@@ -71,7 +74,7 @@ initI18n();
 // Test hook: exposes the module graph so the headless suite (tests/) can drive
 // and inspect the real app. Only active with ?test in the URL.
 if (new URLSearchParams(location.search).has('test'))
-  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io };
+  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon };
 
 
 

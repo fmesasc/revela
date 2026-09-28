@@ -11,6 +11,8 @@ import * as io from '../io/reveal.js';
 import { importPPTX } from '../io/pptx.js';
 import * as gdrive from '../io/gdrive.js';
 import { exportPPTX } from '../io/pptx-export.js';
+import { pickReuseFile } from './reuse.js';
+import { openA11yCheck } from './a11y-panel.js';
 import { FONTS, ensureDeckFonts } from '../features/fonts.js';
 import { ICON_NAMES, iconSVG, WORDART_KEYS, wordartCSS } from './shape.js';
 import { playAnimations } from './canvas.js';
@@ -47,6 +49,8 @@ const ACTIONS = {
   'import-pptx': () => readFile('.pptx', async file => {
     try { replaceDeck(await importPPTX(file)); }
     catch (e) { alertDialog('No se pudo importar el PowerPoint: ' + e.message); } }, 'file'),
+  'reuse-slides': () => pickReuseFile(),
+  'a11y-check': () => openA11yCheck(),
   'undo': undo, 'redo': redo,
   'slide-add': slides.addSlide, 'slide-duplicate': slides.duplicateSlide,
   'slide-delete': () => slides.deleteSlide(),
@@ -220,6 +224,7 @@ export function initRibbon() {
   bindInput('[data-shape-fill]', v => blocks.setShapeStyle('fill', v), true);
   bindInput('[data-shape-stroke]', v => blocks.setShapeStyle('stroke', v), true);
   bindInput('[data-bg]', v => commit(() => (currentSlide().background = v)));
+  addEyedroppers();
   bindChange('[data-theme]', v => commit(() => (state.deck.theme = v)));
   bindChange('[data-speed]', v => trans.setTransitionSpeed(v));
   bindChange('[data-deck-transition]', v => trans.setDeckTransition(v));
@@ -451,6 +456,32 @@ function bindInput(sel, cb, keepFocus) {
   const el = $(sel); if (!el) return;
   if (keepFocus) el.addEventListener('mousedown', e => e.stopPropagation());
   el.addEventListener('input', e => cb(e.target.value));
+}
+// Eyedropper next to each colour picker (EyeDropper API: Chrome/Edge/Opera).
+// It samples any pixel on screen and feeds the colour through the same input
+// event as the picker, so undo and all targets work unchanged.
+const EYEDROP_TARGETS = ['[data-color]', '[data-highlight]', '[data-shape-fill]', '[data-shape-stroke]', '[data-bg]'];
+export function applyPickedColour(input, hex) {
+  input.value = hex; input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+function addEyedroppers() {
+  if (!('EyeDropper' in window)) return;
+  for (const sel of EYEDROP_TARGETS) {
+    const inp = $(sel); const lab = inp?.closest('label'); if (!lab) continue;
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'eyedrop'; btn.dataset.eyedrop = sel;
+    btn.title = t('Cuentagotas'); btn.innerHTML = '<i class="ms">colorize</i>';
+    btn.addEventListener('mousedown', e => e.preventDefault());       // keep the text selection
+    btn.addEventListener('click', async () => {
+      const ws = getSelection(), range = ws.rangeCount ? ws.getRangeAt(0).cloneRange() : null;
+      try {
+        const { sRGBHex } = await new window.EyeDropper().open();
+        if (range) { ws.removeAllRanges(); ws.addRange(range); }
+        applyPickedColour(inp, sRGBHex);
+      } catch {}                                                        // cancelled with Esc
+    });
+    lab.after(btn);
+  }
 }
 function bindChange(sel, cb) { const el = $(sel); if (el) el.addEventListener('change', e => cb(e.target.value)); }
 

@@ -375,3 +375,19 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
   .handle-del{width:28px;height:28px;font-size:16px}
   .handle-rot{width:20px;height:20px}
 }
+/* Reuse slides dialog */
+.reuse-src{margin:0 0 8px;opacity:.7;font-size:12px;word-break:break-all}
+.reuse-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;max-height:55vh;overflow:auto;padding:2px}
+.reuse-item{position:relative;padding:0;border:2px solid var(--line2);border-radius:6px;background:none;cursor:pointer;overflow:hidden}
+.reuse-item .thumb-canvas{width:160px;max-width:100%}
+.reuse-item.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-bg)}
+.reuse-num{position:absolute;left:4px;bottom:3px;font-size:11px;background:#0009;color:#fff;border-radius:3px;padding:0 4px}
+/* Accessibility checker */
+.a11y-list{display:flex;flex-direction:column;gap:4px;max-height:60vh;overflow:auto}
+.a11y-item{display:flex;align-items:center;gap:8px;text-align:left;background:none;border:1px solid var(--line2);border-radius:6px;padding:6px 8px;cursor:pointer;color:inherit}
+.a11y-item:hover{background:var(--accent-bg)}
+.a11y-item .a11y-s{opacity:.65;font-size:12px;white-space:nowrap}
+.a11y-ok{display:flex;align-items:center;gap:6px}
+.a11y-ok .ms{color:#3a9d5d}
+.row button.eyedrop{padding:2px;min-width:0;margin-left:-4px}
+.row button.eyedrop .ms{font-size:16px}

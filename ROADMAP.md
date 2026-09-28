@@ -35,7 +35,7 @@ the origin of every requirement is traceable.
 - ✅ Zoom controls, fit to window `PP·GS·OO`
 - ✅ Paste without formatting (Ctrl+Shift+V) `PP·GS·OO`
 - ✅ Keyboard shortcuts panel `PP·GS·OO`
-- ⬜ Eyedropper colour picker `PP·GS`
+- ✅ Eyedropper colour picker (text, highlight, shape fill/border, background; Chromium browsers) `PP·GS`
 - ⬜ Snap-to grid spacing / smart spacing hints `PP·GS`
 
 ## 2. Text
@@ -100,7 +100,7 @@ the origin of every requirement is traceable.
 - ⬜ Placeholders (layout content placeholders) `PP·OO`
 - ⬜ Colour palettes / theme colours & theme fonts `PP·GS·OO`
 - ⬜ Template / theme gallery & designer variants `PP·GS·OO`
-- ⬜ Reuse / import slides from another deck `PP·OO`
+- ✅ Reuse / import slides from another deck (.json or .pptx, pick by thumbnail, scaled to size) `PP·OO`
 - ⬜ Handout / notes printing layouts `PP·OO`
 
 ## 5. Transitions & animation
@@ -152,7 +152,7 @@ the origin of every requirement is traceable.
 - ✅ Alt text for objects `PP·GS·OO`
 - ✅ UI localisation — 9 languages (ES/EN/FR/DE/IT/PT/CA/GL/NL): ribbon, menus, modals, dialogs & status bar `PP·GS·OO`
 - ✅ Content text direction (RTL) `PP·OO`
-- ⬜ Accessibility checker `PP·GS·OO`
+- ✅ Accessibility checker — missing alt text, empty/untitled slides, duplicate titles, tables without header, low text contrast (WCAG) `PP·GS·OO`
 - ⬜ Reading / tab order `PP·OO`
 - ⬜ Screen reader support (ARIA on the canvas) `PP·GS·OO`
 - ⬜ Right-to-left **interface** `PP·OO`
