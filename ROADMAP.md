@@ -142,7 +142,7 @@ the origin of every requirement is traceable.
 - ⬜ Screen reader support `PP·GS·OO`
 - ⬜ Right-to-left interface and content `PP·OO`
 - ⬜ Built-in translation `GS·OO`
-- ⬜ UI localisation (multiple languages) `PP·GS·OO`
+- 🚧 UI localisation — 7 languages (ES/EN/FR/DE/IT/PT/CA) for ribbon, status bar & menus; modals & full coverage extending `PP·GS·OO`
 
 ## 10. Extensibility & automation
 - ⬜ Plugin / add-on system `GS·OO`

@@ -8,6 +8,7 @@ import { addText } from '../features/blocks.js';
 import * as format from '../features/format.js';
 import { addSlide, duplicateSlide, deleteSlide, goToSlide, toggleSlideHidden,
   addSectionAt, removeSection, setSlideSection } from '../features/slides.js';
+import { t } from '../i18n.js';
 
 let menuEl, clipboard = null;
 
@@ -378,7 +379,7 @@ function open(x, y, items) {
     if (!item) { const sep = document.createElement('div'); sep.className = 'ctx-sep'; menuEl.appendChild(sep); continue; }
     const [label, fn] = item;
     const row = document.createElement('button');
-    row.className = 'ctx-item'; row.textContent = label; row.disabled = !fn;
+    row.className = 'ctx-item'; row.textContent = t(label); row.disabled = !fn;
     if (fn) row.addEventListener('click', () => { hide(); fn(); });
     menuEl.appendChild(row);
   }

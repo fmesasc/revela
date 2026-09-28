@@ -19,6 +19,8 @@ button{font-family:inherit}
 .doc-name:hover{border-color:var(--line2)}
 .doc-name:focus{border-color:var(--accent);background:#fff;overflow:visible}
 .grow{flex:1}
+.lang-select{border:1px solid var(--line2);border-radius:6px;background:#fff;color:var(--txt);
+  font-family:inherit;font-size:12px;padding:4px 6px;cursor:pointer}
 .mini{background:none;border:1px solid transparent;border-radius:6px;cursor:pointer;font-size:15px;
   padding:2px 8px;color:var(--txt)}
 .mini:hover{background:var(--ribbon);border-color:var(--line2)}

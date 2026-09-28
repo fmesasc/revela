@@ -520,6 +520,17 @@ export async function run(frame) {
     eq(R.state.ui.zoom, 1, 'reset');
   });
 
+  await test('localización: cambiar de idioma traduce la interfaz', async () => {
+    R.i18n.setLang('en');
+    const tab = D.querySelector('#ribbon .tabs button[data-tab="home"]');
+    eq(tab.textContent.trim(), 'Home', 'Inicio → Home');
+    eq(R.i18n.t('Guardar'), 'Save', 't() traduce');
+    R.i18n.setLang('fr');
+    eq(tab.textContent.trim(), 'Accueil', 'Inicio → Accueil');
+    R.i18n.setLang('es');
+    eq(tab.textContent.trim(), 'Inicio', 'vuelve a español');
+  });
+
   // ---- Report --------------------------------------------------------------
   const pass = results.filter(r => r.ok).length;
   const fail = results.filter(r => !r.ok);
