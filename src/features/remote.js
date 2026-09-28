@@ -77,7 +77,7 @@ export function pushState() {
 }
 
 // ---- Host panel (code + QR + status) --------------------------------------
-const QRLIB = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js';
+const QRLIB = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js';
 function renderQR(canvas, text) {
   const draw = () => window.QRCode?.toCanvas(canvas, text, { width: 176, margin: 1 }, () => {});
   if (window.QRCode) return draw();

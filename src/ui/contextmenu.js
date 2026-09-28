@@ -6,6 +6,7 @@ import { uid } from '../core/model.js';
 import * as blocks from '../features/blocks.js';
 import * as shapeops from '../features/shapeops.js';
 import * as master from '../features/master.js';
+import { openPollEditor } from './poll-dialog.js';
 import { addText } from '../features/blocks.js';
 import * as format from '../features/format.js';
 import { addSlide, duplicateSlide, deleteSlide, goToSlide, toggleSlideHidden,
@@ -131,6 +132,8 @@ function forBlock(b, cell = null) {
     items.push(
       ['Reproducir en el editor', () => document.querySelector(`.block[data-id="${b.id}"] video`)?.play()],
       null);
+  } else if (b.type === 'poll') {
+    items.push(['Editar votación…', () => openPollEditor(b)], null);
   } else if (b.type === 'camera') {
     items.push(
       ['Forma: círculo', () => commit(() => { b.shape = 'circle'; })],

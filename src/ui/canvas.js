@@ -8,10 +8,12 @@ import { shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig,
 import { collectFigures, figuresMap, captionLine, figIndexTitle } from '../features/captions.js';
 import { blockPreview } from './preview.js';
 import { t } from '../i18n.js';
-import { deckFg, deckBodyFont } from '../features/palettes.js';
+import { deckFg, deckBodyFont, currentPalette } from '../features/palettes.js';
 import { animTimeline, EFFECT_KF, motionPoints } from '../features/transitions.js';
 import { blockLabel } from '../features/a11y.js';
 import { cameraRadius } from '../features/media.js';
+import { pollEditorHTML, savedVotes } from '../features/poll.js';
+const pollSig = b => JSON.stringify([b.kind, b.display, b.question, b.options, b.fontSize, savedVotes(b.pollId)]);
 import { masterBlocksFor, PH_PROMPT, isEmptyPlaceholder } from '../features/master.js';
 import { autocorrectAtCaret } from '../features/autocorrect.js';
 
@@ -317,6 +319,9 @@ function reconcile(b) {
     if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = chartSVG(b); }
   } else if (b.type === 'connector') {
     const d = el.querySelector('.connector'); if (d) d.innerHTML = connectorHTML(b);  // follows its endpoints
+  } else if (b.type === 'poll') {
+    const d = el.querySelector('.poll-blk'); const sig = pollSig(b);
+    if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = pollEditorHTML(b, currentPalette().accents); }
   } else if (b.type === 'camera') {
     const d = el.querySelector('.camera-blk'); if (d) d.style.borderRadius = cameraRadius(b);
   } else if (b.type === 'ink') {
@@ -445,6 +450,9 @@ function content(b) {
   }
   if (b.type === 'image') { const i = document.createElement('img'); i.src = b.src; i.draggable = false; applyImgStyle(i, b); return i; }
   if (b.type === 'video') { const v = document.createElement('video'); v.src = b.src; v.controls = true; return v; }
+  if (b.type === 'poll') {
+    const d = document.createElement('div'); d.className = 'poll-blk'; d.dataset.sig = pollSig(b); d.innerHTML = pollEditorHTML(b, currentPalette().accents); return d;
+  }
   if (b.type === 'camera') {
     const d = document.createElement('div'); d.className = 'camera-blk'; d.style.borderRadius = cameraRadius(b);
     d.innerHTML = `<i class="ms">videocam</i><span>${t('Cámara en directo')}</span>`;

@@ -1,5 +1,7 @@
 // Non‑interactive block rendering, shared by slide thumbnails.
 
+import { pollEditorHTML } from '../features/poll.js';
+import { currentPalette } from '../features/palettes.js';
 import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, tableClass, tableVars, tableCSS } from './shape.js';
 
 // Table look for thumbnails (same rules as the exports), injected once.
@@ -47,6 +49,8 @@ export function blockPreview(b) {
     el.innerHTML = iconSVG(b);
   } else if (b.type === 'ink') {
     el.innerHTML = inkSVG(b);
+  } else if (b.type === 'poll') {
+    el.innerHTML = pollEditorHTML(b, currentPalette().accents);
   } else if (b.type === 'camera') {
     el.innerHTML = `<div style="width:100%;height:100%;background:#223;border-radius:${b.shape === 'circle' ? '50%' : b.shape === 'rounded' ? '14%' : '0'};display:grid;place-items:center;color:#fff;font-size:60px">●</div>`;
   } else if (b.type === 'math') {

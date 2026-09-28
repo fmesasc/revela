@@ -124,7 +124,8 @@ the origin of every requirement is traceable.
 - ✅ Rehearse timings (clock while presenting, save each slide's time as auto-advance) `PP`
 - ⬜ Speaker coach (pace, filler words) `PP`
 - ✅ Record the slideshow with microphone narration to a video file (.webm) `PP`
-- ⬜ Audience Q&A `GS`
+- ✅ Live audience polls — QR on the slide, phones vote (single/multiple choice, rating, word cloud), results update live as bars, pie, figures or cloud; CSV export (WebRTC via PeerJS, no server of ours) `GS`
+- ⬜ Audience Q&A (open questions to the presenter) `GS`
 - ⬜ Live captions / subtitles `PP`
 - ⬜ Present to Meet / Teams `PP·GS`
 

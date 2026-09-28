@@ -8,7 +8,8 @@ import { t } from '../i18n.js';
 import { alertDialog, confirmDialog } from '../ui/dialog.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle, visibleIndexMap } from '../features/captions.js';
 import { INK_CSS, inkJS } from './ink.js';
-import { deckFg, deckBodyFont } from '../features/palettes.js';
+import { deckFg, deckBodyFont, currentPalette } from '../features/palettes.js';
+import { tallyVotes, pollResultsHTML, VOTE_URL } from '../features/poll.js';
 import { animTimeline, EFFECT_KF, EFFECT_KF_CSS, isEntrance, customTransitionCSS, pathKeyframesCSS } from '../features/transitions.js';
 import { masterBlocksFor, isEmptyPlaceholder } from '../features/master.js';
 
@@ -71,6 +72,43 @@ const CAMERA_JS = `(function(){var st=null,asked=false;
   navigator.mediaDevices&&navigator.mediaDevices.getUserMedia({video:true,audio:false}).then(function(s){st=s;put();}).catch(function(){});}
  Reveal.on('ready',function(e){fill(e.currentSlide);});Reveal.on('slidechanged',function(e){fill(e.currentSlide);});
  if(Reveal.isReady())fill(Reveal.getCurrentSlide());})();`;
+// Live polls: host a PeerJS peer, show the QR on every poll, tally votes and
+// repaint the results as they arrive; the current slide's poll is sent to the
+// phones. Loaded only when the deck has polls.
+function pollJS(accents) {
+  return `(function(){
+ var tally=${tallyVotes.toString()};
+ var render=${pollResultsHTML.toString()};
+ var VOTE=${JSON.stringify(VOTE_URL)}, ACC=${JSON.stringify(accents)}, votes={}, conns=[], peer=null, code='';
+ var AB='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+ function all(){return [].slice.call(document.querySelectorAll('.rv-poll'));}
+ function def(el){try{return JSON.parse(el.getAttribute('data-poll'));}catch(e){return null;}}
+ function load(id){try{return JSON.parse(localStorage.getItem('revela.poll.'+id))||{};}catch(e){return {};}}
+ function store(id){try{localStorage.setItem('revela.poll.'+id,JSON.stringify(votes[id]));}catch(e){}}
+ function paint(el){var p=def(el);if(!p)return;var v=votes[p.pollId]||(votes[p.pollId]=load(p.pollId));el.querySelector('.rv-poll-res').innerHTML=render(p,tally(p,v),ACC);}
+ function current(){var s=Reveal.getCurrentSlide(),el=s&&s.querySelector('.rv-poll');var p=el&&def(el);return p?{pollId:p.pollId,kind:p.kind,question:p.question,options:p.options}:null;}
+ function send(c,m){try{if(c.open)c.send(m);}catch(e){}}
+ function broadcast(){var p=current();conns.forEach(function(c){send(c,{type:'poll',poll:p});});}
+ function js(src){return new Promise(function(ok,ko){var s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=ko;document.head.appendChild(s);});}
+ function clean(p,a){if(p.kind==='word')return String(a||'').slice(0,60);if(p.kind==='multi')return (Array.isArray(a)?a:[]).map(Number).filter(function(x){return x>=0&&x<p.options.length;}).slice(0,20);
+  var n=+a;return p.kind==='rating'?(n>=1&&n<=5?Math.round(n):null):(n>=0&&n<p.options.length?n:null);}
+ function start(tries){code='';for(var i=0;i<5;i++)code+=AB[Math.floor(Math.random()*AB.length)];
+  peer=new Peer('revela-vote-'+code);
+  peer.on('open',function(){var url=VOTE+'?c='+code;all().forEach(function(el){el.querySelector('.rv-poll-code').textContent=code;
+    el.querySelector('.rv-poll-url').textContent=url.replace(/^https?:\\/\\//,'').replace(/\\?.*$/,'');
+    if(window.QRCode)QRCode.toCanvas(el.querySelector('canvas'),url,{width:220,margin:1},function(){});});});
+  peer.on('connection',function(c){conns.push(c);
+    c.on('open',function(){send(c,{type:'poll',poll:current()});});
+    c.on('data',function(d){if(!d||d.type!=='vote')return;var el=all().filter(function(e){var p=def(e);return p&&p.pollId===d.pollId;})[0];if(!el)return;
+      var p=def(el),a=clean(p,d.answer);if(a===null||a==='')return;(votes[p.pollId]||(votes[p.pollId]=load(p.pollId)))[String(d.voter).slice(0,40)]=a;
+      store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId});});
+    c.on('close',function(){conns=conns.filter(function(x){return x!==c;});});});
+  peer.on('error',function(e){if(e.type==='unavailable-id'&&tries<5){peer.destroy();start(tries+1);}});}
+ all().forEach(paint);
+ js('https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js').catch(function(){}).then(function(){return js('https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js');}).then(function(){start(0);});
+ Reveal.on('slidechanged',broadcast);
+})();`;
+}
 const TRIGGER_JS = `(function(){
  function play(el){el.style.animation='none';void el.offsetWidth;
   el.style.animation=el.dataset.kf+' '+el.dataset.dur+'ms ease '+el.dataset.del+'ms both';el.classList.add('on');}
@@ -131,6 +169,13 @@ function blockHTML(b, slide) {
       + `filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)}">`;
   if (b.type === 'video')
     return `<video${a} src="${b.src}" controls style="${box(b)}object-fit:contain"></video>`;
+  if (b.type === 'poll')     // live poll: question, live results and the QR to vote
+    return `<div${a} class="rv-poll" data-poll="${esc(JSON.stringify({ pollId: b.pollId, kind: b.kind, display: b.display, question: b.question, options: b.options }))}" `
+      + `style="${box(b)}display:grid;grid-template-columns:1fr auto;gap:1em;font-size:${b.fontSize || 32}px">`
+      + `<div style="display:flex;flex-direction:column;min-width:0"><div style="font-weight:700;margin-bottom:.5em">${esc(b.question || '')}</div>`
+      + `<div class="rv-poll-res" style="flex:1;min-height:0"></div></div>`
+      + `<div style="text-align:center;font-size:18px;align-self:center"><canvas width="220" height="220" style="background:#fff;border-radius:8px"></canvas>`
+      + `<div class="rv-poll-url" style="margin-top:6px;opacity:.8"></div><div>Código <b class="rv-poll-code" style="letter-spacing:3px">·····</b></div></div></div>`;
   if (b.type === 'camera')   // Cameo: filled with the presenter's camera when the slide is shown
     return `<video${a} data-camera autoplay muted playsinline style="${box(b)}object-fit:cover;background:#223;`
       + `border-radius:${b.shape === 'circle' ? '50%' : b.shape === 'rounded' ? '14%' : '0'}${b.mirror !== false ? ';scale:-1 1' : ''}"></video>`;
@@ -232,6 +277,7 @@ export function buildHTML(deck = state.deck) {
   const katexNeeded = hasMath || hasInlineMath;
   const hasTrig = deck.slides.some(s => s.blocks.some(b => b.animation?.trigger));
   const hasCam = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'camera'));
+  const hasPoll = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'poll'));
   const ft = deck.footer || { show: false };
   const footerText = ft.show
     ? `<div class="deck-footer">${esc(ft.text || '')}${ft.date ? (ft.text ? ' · ' : '') + new Date().toLocaleDateString('es') : ''}</div>`
@@ -288,6 +334,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${hasInlineMath ? 'window.addEventListener("load",function(){window.renderMathInElement&&renderMathInElement(document.body,{delimiters:[{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}],throwOnError:false});});' : ''}
  ${hasTrig ? TRIGGER_JS : ''}
  ${hasCam ? CAMERA_JS : ''}
+ ${hasPoll ? pollJS(currentPalette(deck).accents) : ''}
  ${inkJS(w, h, { pen: t('Lápiz'), hl: t('Resaltador'), laser: t('Puntero láser'), color: t('Color de la tinta'), erase: t('Borrar la tinta de la diapositiva') })}
  ${hasZoomReturn ? '(function(){var p=null;document.addEventListener("click",function(e){var a=e.target.closest("a.slide-zoom[data-zoom-return]");if(a){p={t:+a.dataset.target,o:+a.dataset.origin,arrived:false};}});Reveal.on("slidechanged",function(ev){if(!p)return;if(ev.indexh===p.t){p.arrived=true;return;}if(p.arrived){var o=p.o;p=null;setTimeout(function(){Reveal.slide(o);},0);}});})();' : ''}
 </script></body></html>`;
