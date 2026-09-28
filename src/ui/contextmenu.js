@@ -8,6 +8,7 @@ import * as shapeops from '../features/shapeops.js';
 import * as master from '../features/master.js';
 import * as clip from '../features/clipboard.js';
 import { openPollEditor } from './poll-dialog.js';
+import { openCodeEditor } from './code-dialog.js';
 import { openLinkChart, refreshChart } from './data-dialog.js';
 import { addText } from '../features/blocks.js';
 import * as format from '../features/format.js';
@@ -158,7 +159,7 @@ function forBlock(b, cell = null) {
   } else if (b.type === 'math') {
     items.push(['Editar ecuación…', () => openMath(b)], null);
   } else if (b.type === 'code') {
-    items.push(['Opciones de código…', () => openCodeOpts(b)], null);
+    items.push(['Editar código y pasos…', () => openCodeEditor(b)], null);
   } else if (b.type === 'icon') {
     items.push(['Color del icono…', () => openIconColor(b)], null);
   } else if (b.type === 'chart') {
@@ -414,36 +415,6 @@ function openChartData(b) {
   back.querySelector('.fr-do').addEventListener('click', () => {
     blocks.setChartGrid(back.querySelector('.ch-data').value, { chartType: back.querySelector('.ch-type').value,
       color: back.querySelector('.ch-color').value, combo: back.querySelector('.ch-combo').checked });
-    close();
-  });
-}
-
-function openCodeOpts(b) {
-  if (document.getElementById('code-modal')) return;
-  const langs = ['plaintext', 'javascript', 'typescript', 'python', 'java', 'c', 'cpp', 'csharp', 'go',
-    'rust', 'php', 'ruby', 'html', 'css', 'sql', 'bash', 'json', 'yaml'];
-  const back = document.createElement('div');
-  back.id = 'code-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:start;min-width:300px">
-    <button class="modal-close">✕</button><h3>${t('Opciones de código')}</h3>
-    <label class="fr-l">${t('Lenguaje')} <select class="cd-lang">${langs.map(l => `<option value="${l}">${l}</option>`).join('')}</select></label>
-    <label class="fr-chk"><input type="checkbox" class="cd-lines"> ${t('Mostrar números de línea')}</label>
-    <label class="fr-l">${t('Animación por líneas')} (p. ej. <code>1|2-3|4</code>)
-      <input type="text" class="cd-steps" value="${(b.lineSteps || '').replace(/"/g, '&quot;')}" placeholder="1|2-3|4"></label>
-    <div class="fr-actions"><button class="fr-do">${t('Aplicar')}</button></div>
-  </div>`;
-  document.body.appendChild(back);
-  back.querySelector('.cd-lang').value = b.lang || 'javascript';
-  back.querySelector('.cd-lines').checked = !!b.showLines;
-  const close = () => back.remove();
-  back.querySelector('.modal-close').addEventListener('click', close);
-  back.addEventListener('click', e => { if (e.target === back) close(); });
-  back.querySelector('.fr-do').addEventListener('click', () => {
-    blocks.setCode({
-      lang: back.querySelector('.cd-lang').value,
-      showLines: back.querySelector('.cd-lines').checked,
-      lineSteps: back.querySelector('.cd-steps').value.trim(),
-    });
     close();
   });
 }

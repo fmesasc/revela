@@ -500,7 +500,7 @@ export async function run(frame) {
     assert(D.querySelector(`.block[data-id="${b.id}"] pre.code code`), 'no hay bloque de código');
     b.code = 'const x = 1;'; b.lang = 'javascript'; R.render();
     const html = R.io.buildHTML();
-    assert(/<code class="language-javascript">const x = 1;<\/code>/.test(html), 'export del código');
+    assert(/<code class="language-javascript" data-trim>const x = 1;<\/code>/.test(html), 'export del código');
     assert(/plugin\/highlight\/highlight\.js/.test(html) && /RevealHighlight/.test(html), 'plugin de resaltado de reveal');
   });
 
@@ -1502,6 +1502,31 @@ export async function run(frame) {
     const cx = await oz.file('content.xml').async('string');
     assert((cx.match(/<draw:line /g) || []).length >= 1 && /Courier New/.test(cx), 'ODP: conector y código');
     assert(Object.keys(oz.files).filter(f => /^Pictures\/.*\.png$/.test(f)).length >= 1, 'ODP: ecuación como imagen');
+  });
+
+  await test('código: pasos de resaltado visuales, desplazamiento, numeración y animación', async () => {
+    reset();
+    const { parseSteps, stringifySteps } = await frame.contentWindow.eval("import('/src/ui/code-dialog.js')");
+    eq(JSON.stringify(parseSteps('1,3-4|5|')), '[[1,3,4],[5],[]]', 'leer pasos'); eq(stringifySteps([[4, 1, 2, 3], [7], [9, 11]]), '1-4|7|9,11', 'escribir pasos');
+    D.querySelector('[data-action="insert-code"]').click(); await sleep(20);
+    const b = last(); assert(D.getElementById('code-modal'), 'al insertar se abre el editor de código');
+    const q = s => D.querySelector('#code-modal ' + s);
+    q('.cd-code').value = 'a = 1\nb = 2\nc = 3\nprint(a + b + c)'; q('.cd-code').dispatchEvent(new Event('input'));
+    q('.cd-lang').value = 'python';
+    q('input[data-s="0"][data-l="1"]').click(); q('input[data-s="0"][data-l="2"]').click();
+    q('.cd-add').click(); q('input[data-s="1"][data-l="4"]').click();
+    q('.cd-all').checked = true; q('.cd-start').value = '10';
+    q('.cd-ok').click(); await sleep(10);
+    eq(b.lineSteps, '|1-2|4', 'pasos guardados'); eq(b.lang, 'python', 'lenguaje'); eq(b.lineStart, 10, 'línea inicial');
+    R.trans.setAnimation('fade-up');
+    let html = R.io.buildHTML();
+    assert(/<code class="language-python" data-trim data-line-numbers="\|1-2\|4" data-ln-start-from="10">/.test(html), 'atributos de reveal.js');
+    assert(/class="fragment fade-up rv-code"/.test(html), 'animación y clase propia en un solo class');
+    assert(/\.rv-code pre code\{max-height:100%/.test(html), 'el bloque se desplaza dentro de su caja');
+    R.slides.toggleAutoAnimate(); html = R.io.buildHTML();
+    assert(new RegExp(`<pre data-id="code-${b.id}"`).test(html), 'animación de código entre diapositivas (Morph)');
+    let code; for (let i = 0; i < 40 && !(code = D.querySelector(`.block[data-id="${b.id}"] code.hljs`)); i++) await sleep(100);
+    assert(code, 'coloreado de sintaxis en el editor');
   });
 
   await test('rotación y volteo en el export', async () => {

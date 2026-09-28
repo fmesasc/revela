@@ -162,7 +162,18 @@ function ariaAttrs(b) {
   return '';
 }
 
-function blockHTML(b, slide) {
+// An object's opening tag may get a class from its animation and another from
+// its type (code, poll, live chart): merge them into one attribute.
+function mergeClasses(html) {
+  const end = html.indexOf('>'); if (end < 0) return html;
+  const tag = html.slice(0, end), cls = [...tag.matchAll(/\sclass="([^"]*)"/g)].map(m => m[1]);
+  if (cls.length < 2) return html;
+  let first = true;
+  const merged = tag.replace(/\sclass="[^"]*"/g, () => (first ? (first = false, ` class="${cls.join(' ')}"`) : ''));
+  return merged + html.slice(end);
+}
+function blockHTML(b, slide) { return mergeClasses(blockHTMLRaw(b, slide)); }
+function blockHTMLRaw(b, slide) {
   // When the slide uses Auto‑Animate, a stable data-id lets reveal.js match and
   // morph the same object between consecutive slides (PowerPoint's "Morph").
   const a = animAttrs(b, slide) + (slide && slide.autoAnimate ? ` data-id="${b.id}"` : '') + ariaAttrs(b);
@@ -229,9 +240,12 @@ function blockHTML(b, slide) {
   if (b.type === 'code') {
     // data-line-numbers drives reveal's animated line highlighting; a value like
     // "1|2-3|4" steps through line groups, empty just numbers the lines.
-    const ln = b.lineSteps ? ` data-line-numbers="${b.lineSteps}"` : (b.showLines ? ' data-line-numbers=""' : '');
-    return `<div${a} style="${box(b)}"><pre style="margin:0;height:100%;font-size:${b.fontSize || 22}px">`
-      + `<code class="language-${b.lang || 'plaintext'}"${ln}>${esc(b.code || '')}</code></pre></div>`;
+    const ln = b.lineSteps ? ` data-line-numbers="${esc(b.lineSteps)}"` : (b.showLines ? ' data-line-numbers=""' : '');
+    const start = b.lineStart > 1 ? ` data-ln-start-from="${+b.lineStart}"` : '';
+    // Morph between slides: the <pre> needs its own data-id for reveal's code animation.
+    const morph = slide && slide.autoAnimate ? ` data-id="code-${b.id}"` : '';
+    return `<div${a} class="rv-code${b.scroll === false ? ' no-scroll' : ''}" style="${box(b)}"><pre${morph} style="margin:0;height:100%;width:100%;font-size:${b.fontSize || 22}px">`
+      + `<code class="language-${b.lang || 'plaintext'}" data-trim${ln}${start}>${esc(b.code || '')}</code></pre></div>`;
   }
   return '';
 }
@@ -338,6 +352,9 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  .reveal section{height:100%}
  .reveal .slide-number{${snPos}}
  ${tableCSS('.reveal ')}
+ .reveal .rv-code pre{box-shadow:none}
+ .reveal .rv-code pre code{max-height:100%;height:100%;box-sizing:border-box;overflow:auto;scrollbar-width:thin;scrollbar-color:#6668 transparent}
+ .reveal .rv-code.no-scroll pre code{overflow:hidden}
  .deck-footer{position:fixed;left:12px;bottom:8px;z-index:30;font-size:14px;opacity:.7;color:#fff;mix-blend-mode:difference}
  ${customEffectCSS(deck)}
  ${customTransitionCSS(usedTransitions(deck))}

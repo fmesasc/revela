@@ -313,7 +313,7 @@ function reconcile(b) {
   } else if (b.type === 'code') {
     const pre = el.querySelector('.code'), c = el.querySelector('code');
     if (pre) pre.style.fontSize = (b.fontSize || 22) + 'px';
-    if (c && !el.classList.contains('editing') && c.textContent !== (b.code || '')) c.textContent = b.code || '';
+    if (c && !el.classList.contains('editing') && (c.dataset.src !== (b.code || '') || c.dataset.lang !== (b.lang || ''))) paintCode(c, b);
   } else if (b.type === 'chart') {
     const d = el.querySelector('.chart'); const sig = chartSig(b);
     if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = chartSVG(b); }
@@ -445,7 +445,7 @@ function content(b) {
   }
   if (b.type === 'code') {
     const pre = document.createElement('pre'); pre.className = 'code'; pre.style.fontSize = (b.fontSize || 22) + 'px';
-    const c = document.createElement('code'); c.textContent = b.code || ''; pre.appendChild(c);
+    const c = document.createElement('code'); pre.appendChild(c); paintCode(c, b);
     return pre;
   }
   if (b.type === 'image') { const i = document.createElement('img'); i.src = b.src; i.draggable = false; applyImgStyle(i, b); return i; }
@@ -533,13 +533,32 @@ function embedContent(b) {
 }
 
 // Code blocks edit as plain text on double‑click.
+// Syntax colouring in the editor (highlight.js, loaded on first use).
+const HLJS = 'https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.9.0';
+let hljsP = null;
+function loadHljs() {
+  if (window.hljs) return Promise.resolve(window.hljs);
+  return (hljsP ||= new Promise((ok, ko) => {
+    const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = `${HLJS}/styles/atom-one-dark.min.css`; document.head.appendChild(l);
+    const s = document.createElement('script'); s.src = `${HLJS}/highlight.min.js`; s.onload = () => ok(window.hljs); s.onerror = ko; document.head.appendChild(s);
+  }));
+}
+function paintCode(c, b) {
+  const src = b.code || '';
+  c.dataset.src = src; c.dataset.lang = b.lang || ''; c.textContent = src;
+  loadHljs().then(h => {
+    if (c.dataset.src !== src || c.isContentEditable) return;
+    try { c.innerHTML = (b.lang && b.lang !== 'plaintext' && h.getLanguage(b.lang)) ? h.highlight(src, { language: b.lang }).value : h.highlightAuto(src).value; c.classList.add('hljs'); } catch {}
+  }).catch(() => {});
+}
 function setupCode(el, b) {
   const code = el.querySelector('code');
-  el.addEventListener('dblclick', () => { el.classList.add('editing'); code.contentEditable = 'true'; code.focus(); });
+  el.addEventListener('dblclick', () => { if (readOnly()) return; el.classList.add('editing'); code.textContent = b.code || ''; code.contentEditable = 'true'; code.focus(); });
   code.addEventListener('input', () => { b.code = code.textContent; });
   code.addEventListener('blur', () => {
     code.contentEditable = 'false'; el.classList.remove('editing');
     commit(() => { b.code = code.textContent; }, { history: false });
+    paintCode(code, b);
   });
 }
 

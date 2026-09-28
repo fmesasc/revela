@@ -73,7 +73,7 @@ the origin of every requirement is traceable.
 - ✅ Emoji picker `GS`
 - ✅ Animated GIF playback `PP·OO`
 - ✅ Embedded web page (`<iframe>`) `—`
-- ✅ Code blocks with syntax highlighting and animated line stepping `—`
+- ✅ Code blocks — syntax colouring in the editor, visual editor of highlight steps (lines × steps grid with preview), auto-scroll to the highlighted lines, line numbers and first line, 35 languages, code morph between slides `—`
 - ✅ Figure/table captions with auto-numbering + list of figures/tables `OO`
 - ✅ AI image background removal `PP`
 - ✅ Image crop, adjustments (brightness/contrast/saturation/opacity) and transparency `PP·GS·OO`

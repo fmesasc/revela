@@ -29,6 +29,7 @@ import { toggleComments } from './comments-panel.js';
 import * as media from '../features/media.js';
 import * as poll from '../features/poll.js';
 import { openPollEditor } from './poll-dialog.js';
+import { openCodeEditor } from './code-dialog.js';
 import { openDashboardDialog } from './data-dialog.js';
 import { openStockImages, openOnlineIcons } from './stock-dialog.js';
 import * as palettes from '../features/palettes.js';
@@ -133,7 +134,7 @@ const ACTIONS = {
   'insert-table-csv': () => readFile('.csv,.tsv,.txt,text/csv', async f => blocks.addTableFromText(await f.text()), 'file'),
   'insert-table-paste': () => promptDialog(t('Pega aquí las celdas copiadas de una hoja de cálculo (o texto CSV):'), '')
     .then(v => { if (v) blocks.addTableFromText(v); }),
-  'insert-code': blocks.addCode,
+  'insert-code': () => { blocks.addCode(); const b = selectedBlock(); if (b?.type === 'code') openCodeEditor(b); },
   'insert-chart': blocks.addChart,
   'insert-math': blocks.addMath,
   'insert-model': () => readFile('.glb,.gltf', blocks.addModel),
