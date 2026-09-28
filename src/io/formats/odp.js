@@ -4,8 +4,8 @@
 // Export maps each object to its ODF equivalent: text frames with formatted
 // paragraphs and lists, pictures, preset shapes (draw:custom-shape), merged
 // shapes as paths, lines with arrows, tables with merged cells; charts, icons
-// and ink go in as SVG pictures. Backgrounds, speaker notes and hidden slides
-// are kept. Import reads the same structures back.
+// and ink go in as SVG pictures. Backgrounds, speaker notes, hidden slides
+// and object animations (odp-anim.js) are kept. Import reads the same structures back.
 
 import { state } from '../../core/store.js';
 import { uid } from '../../core/model.js';
@@ -14,6 +14,7 @@ import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled } from '../../features/document/master.js';
 import { blockImage } from '../export/images.js';
 import { JSZIP, loadScript } from '../../core/vendor.js';
+import { odpTimingXML, readODPAnimations } from './odp-anim.js';
 
 const loadZip = () => loadScript(JSZIP, 'JSZip');
 
@@ -23,7 +24,8 @@ const NS = 'xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmln
   + 'xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" '
   + 'xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0" '
   + 'xmlns:presentation="urn:oasis:names:tc:opendocument:xmlns:presentation:1.0" xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0" '
-  + 'xmlns:smil="urn:oasis:names:tc:opendocument:xmlns:smil-compatible:1.0" xmlns:dc="http://purl.org/dc/elements/1.1/" office:version="1.3"';
+  + 'xmlns:smil="urn:oasis:names:tc:opendocument:xmlns:smil-compatible:1.0" xmlns:anim="urn:oasis:names:tc:opendocument:xmlns:animation:1.0" '
+  + 'xmlns:dc="http://purl.org/dc/elements/1.1/" office:version="1.3"';
 
 const ODF_SHAPE = { rect: 'rectangle', rounded: 'round-rectangle', ellipse: 'ellipse', triangle: 'isosceles-triangle', diamond: 'diamond',
   pentagon: 'pentagon', star: 'star5', rightarrow: 'right-arrow', leftarrow: 'left-arrow', hexagon: 'hexagon',
@@ -208,10 +210,19 @@ export async function buildODP(deck = state.deck) {
     const dp = style('drawing-page', 'dp', `<style:drawing-page-properties draw:fill="solid" draw:fill-color="${bg}" presentation:background-visible="true"${odpTransition(s, deck)}/>`);
     const list = [...masterBlocksFor(s, deck), ...s.blocks.map(b => styled(b, s, deck))].filter(b => !isEmptyPlaceholder(b));
     byId = new Map(list.map(b => [b.id, b]));
-    const objs = list.map(objXML).join('');
+    // Objects that are animated or start animations get an id the timing refers to.
+    const named = new Set(s.blocks.flatMap(b => (b.animation ? [b.id, b.animation.trigger] : [])).filter(Boolean));
+    const xids = new Map();
+    const objs = list.map(b => {
+      const xml = objXML(b);
+      if (!xml || !named.has(b.id)) return xml;
+      const xid = 'rv-' + String(b.id).replace(/[^\w.-]/g, '_'); xids.set(b.id, xid);
+      return xml.replace(/^<([\w:-]+)/, `<$1 xml:id="${xid}" draw:id="${xid}"`);
+    }).join('');
+    const anim = odpTimingXML(s, id => xids.get(id) || '', deck);
     const notes = s.notes ? `<presentation:notes><draw:frame presentation:class="notes" svg:x="2cm" svg:y="12cm" svg:width="17cm" svg:height="12cm"><draw:text-box>`
       + s.notes.split('\n').map(l => `<text:p>${X(l)}</text:p>`).join('') + '</draw:text-box></draw:frame></presentation:notes>' : '';
-    return `<draw:page draw:name="${X('page' + (i + 1))}" draw:style-name="${dp}" draw:master-page-name="Default"${s.hidden ? ' presentation:visibility="hidden"' : ''}>${objs}${notes}</draw:page>`;
+    return `<draw:page draw:name="${X('page' + (i + 1))}" draw:style-name="${dp}" draw:master-page-name="Default"${s.hidden ? ' presentation:visibility="hidden"' : ''}>${objs}${anim}${notes}</draw:page>`;
   }).join('');
 
   const content = `<?xml version="1.0" encoding="UTF-8"?><office:document-content ${NS}><office:automatic-styles>`
@@ -317,8 +328,14 @@ export async function importODP(file) {
 
   const slides = [];
   for (const page of all(doc, 'draw:page')) {
-    const blocks = [];
+    const blocks = [], byXid = new Map();
     for (const el of kids(page)) {
+      const n0 = blocks.length; await readObject(el);
+      const xid = el.getAttribute('xml:id') || el.getAttribute('draw:id');
+      if (xid && blocks.length > n0) byXid.set(xid, blocks[n0]);
+    }
+    readODPAnimations(page, id => byXid.get(id), size);
+    async function readObject(el) {
       const tag = el.tagName, sn = el.getAttribute('draw:style-name');
       if (tag === 'draw:frame') {
         const img = el.getElementsByTagName('draw:image')[0], tb = el.getElementsByTagName('draw:text-box')[0], tbl = el.getElementsByTagName('table:table')[0];
@@ -337,11 +354,11 @@ export async function importODP(file) {
           });
           blocks.push({ id: uid(), type: 'table', rows, stroke: '#888888', ...(merges.length && { merges }), ...geo(el) });
         } else if (img) {
-          const src = await media(img.getAttribute('xlink:href')); if (!src) continue;
+          const src = await media(img.getAttribute('xlink:href')); if (!src) return;
           const alt = el.getElementsByTagName('svg:desc')[0]?.textContent || '';
           blocks.push({ id: uid(), type: 'image', src, fit: 'fill', ...(alt && { alt }), ...geo(el) });
         } else if (tb) {
-          let html = textHTML(tb); if (!html.replace(/<[^>]*>/g, '').trim()) continue;
+          let html = textHTML(tb); if (!html.replace(/<[^>]*>/g, '').trim()) return;
           const pz = all(tb, 'text:p')[0]?.getAttribute('text:style-name');
           const z = prop(pz, 'style:text-properties', 'fo:font-size');
           const al = { center: 'center', end: 'right', right: 'right', justify: 'justify' }[prop(pz, 'style:paragraph-properties', 'fo:text-align')];

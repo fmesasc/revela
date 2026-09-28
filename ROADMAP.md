@@ -165,7 +165,7 @@ the origin of every requirement is traceable.
 - ✅ `.pptx` import of charts (editable, all series, combo), gradient backgrounds, slide transitions and auto-advance timings `OO·GS`
 - ✅ `.pptx` import of shadows, SmartArt (as shapes), object animations, Morph, dashed lines, corner radius and shapes styled by the theme `OO·GS`
 - ✅ `.pptx` export of transitions, Morph, animations and the master/layouts as real layouts with placeholders; `.odp` export of transitions and timings `GS·OO`
-- ⬜ `.odp` export of object animations `OO`
+- ✅ `.odp` export and import of object animations (entrance, emphasis, exit, motion paths, triggers), read by LibreOffice Impress `OO`
 - ✅ Export to video — MP4 (H.264, WebCodecs) or animated GIF rendered from the slides with cross-fades and per-slide timings; .webm by recording the live slideshow (with animations) `PP·GS`
 - ✅ Publish to the web / shareable link — see private sharing (section 7) `GS`
 - ✅ OpenDocument (`.odp`) export & import — text with formatting and lists, pictures, shapes, lines/arrows, merged shapes, tables with merged cells, charts/icons/ink as SVG, backgrounds, notes, hidden slides (validated with LibreOffice) `OO`

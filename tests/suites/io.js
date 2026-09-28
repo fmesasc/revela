@@ -206,6 +206,34 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(deck.slides[1].transition, 'fade', 'transición'); eq(deck.slides[1].autoSlide, 3000, 'avance automático');
   });
 
+  await test('ODP: animaciones de objetos (Impress) de ida y vuelta', async () => {
+    reset(); const s = slide();
+    s.blocks[0].html = 'Título'; s.blocks[0].animation = { effect: 'fade-up', order: 0, duration: 700 };
+    R.blocks.addShape('star'); const star = last(); star.animation = { effect: 'grow', order: 1, start: 'withPrev', delay: 200 };
+    R.blocks.addShape('rect'); const rect = last(); rect.animation = { effect: 'path', order: 2, start: 'afterPrev', dx: 256, dy: 72, pathShape: 'arc' };
+    s.blocks[1].html = 'Cuerpo'; s.blocks[1].animation = { effect: 'fade-out', order: 3 };
+    R.blocks.addShape('ellipse'); const ell = last(); ell.animation = { effect: 'zoom-in', order: 4, trigger: star.id };
+    const blob = await R.odp.buildODP(), zip = await frame.contentWindow.JSZip.loadAsync(blob);
+    const xml = await zip.file('content.xml').async('string');
+    const dom = new frame.contentWindow.DOMParser().parseFromString(xml, 'application/xml');
+    assert(!dom.getElementsByTagName('parsererror').length, 'XML bien formado');
+    for (const id of ['ooo-entrance-ascend', 'ooo-emphasis-grow-and-shrink', 'ooo-motionpath-user-defined', 'ooo-exit-fade-out', 'ooo-entrance-zoom'])
+      assert(xml.includes(`presentation:preset-id="${id}"`), 'efecto ' + id);
+    assert(/presentation:node-type="main-sequence"/.test(xml) && /presentation:node-type="interactive-sequence"/.test(xml), 'secuencia principal y de desencadenador');
+    eq((xml.match(/<anim:par smil:begin="next">/g) || []).length, 2, 'dos clics (el resto va con el anterior o después)');
+    assert(/smil:begin="0.2s"[^>]*presentation:node-type="with-previous"/.test(xml), 'con la anterior, con su retraso');
+    const d = await R.odp.importODP(new File([await R.odp.buildODP()], 'A.odp'));
+    const bs = d.slides[0].blocks, by = f => bs.find(f);
+    const t0 = by(b => b.type === 'text' && /Título/.test(b.html)), st = by(b => b.shape === 'star'), rc = by(b => b.shape === 'rect'), el = by(b => b.shape === 'ellipse');
+    eq(t0.animation?.effect, 'fade-up', 'entrada flotando'); eq(t0.animation.duration, 700, 'duración');
+    eq(st.animation?.effect, 'grow', 'énfasis'); eq(st.animation.start, 'withPrev'); eq(st.animation.delay, 200, 'retraso');
+    eq(rc.animation?.effect, 'path', 'trayectoria'); eq(rc.animation.start, 'afterPrev');
+    assert(Math.abs(rc.animation.dx - 256) < 2 && Math.abs(rc.animation.dy - 72) < 2, 'destino de la trayectoria ' + rc.animation.dx + ',' + rc.animation.dy);
+    eq(by(b => b.type === 'text' && /Cuerpo/.test(b.html)).animation?.effect, 'fade-out', 'salida');
+    eq(el.animation?.effect, 'zoom-in', 'zoom'); eq(el.animation.trigger, st.id, 'al hacer clic en la estrella');
+    assert(t0.animation.order < rc.animation.order && rc.animation.order < by(b => /Cuerpo/.test(b.html || '')).animation.order, 'orden');
+  });
+
   await test('PowerPoint y ODP: texto con formato y todos los objetos', async () => {
     reset();
     const { htmlToRuns } = await frame.contentWindow.eval("import('/src/io/formats/pptx-export.js')");
