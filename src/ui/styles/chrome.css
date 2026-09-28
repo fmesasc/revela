@@ -106,3 +106,5 @@
 @keyframes rvBounce{0%{opacity:0;transform:translateY(-60px)}60%{opacity:1;transform:translateY(12px)}80%{transform:translateY(-6px)}100%{transform:translateY(0)}}
 @keyframes rvOut{from{opacity:1}to{opacity:0}}
 @keyframes rvHi{0%,100%{background:transparent}50%{background:#ff3b3b66}}
+#statusbar .legal-link{font-size:11px;color:var(--txt2);text-decoration:none;margin-inline-end:10px}#statusbar .legal-link:hover{text-decoration:underline}
+@media (max-width:760px){#statusbar .legal-link{display:none}}

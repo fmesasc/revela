@@ -1096,6 +1096,8 @@ export const ROWS = [
   ['Guardar los intervalos', 'Save the timings', 'Enregistrer le minutage', 'Zeiten speichern', 'Salva gli intervalli', 'Guardar os intervalos', 'Desa els intervals'],
   ['Ensayar con<br>entrenador', 'Rehearse<br>with coach', 'Répéter<br>avec coach', 'Mit Coach<br>üben', 'Prova<br>con coach', 'Ensaiar com<br>treinador', 'Assaja amb<br>entrenador'],
   ['Ensayar con el entrenador: ritmo, muletillas y repeticiones', 'Rehearse with the coach: pace, fillers and repetitions', 'Répéter avec le coach : rythme, mots parasites et répétitions', 'Mit dem Coach üben: Tempo, Füllwörter und Wiederholungen', 'Prova con il coach: ritmo, intercalari e ripetizioni', 'Ensaiar com o treinador: ritmo, bengalas e repetições', 'Assaja amb l\'entrenador: ritme, crosses i repeticions'],
+  ['Privacidad', 'Privacy', 'Confidentialité', 'Datenschutz', 'Privacy', 'Privacidade', 'Privadesa'],
+  ['Condiciones', 'Terms', 'Conditions', 'Bedingungen', 'Termini', 'Termos', 'Condicions'],
 ];
 // Additional languages (partial; anything missing falls back to Spanish).
 export const EXTRA = {
