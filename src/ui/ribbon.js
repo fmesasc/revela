@@ -45,6 +45,7 @@ const ACTIONS = {
   'insert-code': blocks.addCode,
   'insert-model': () => readFile('.glb,.gltf', blocks.addModel),
   'insert-video': () => readFile('video/*', blocks.addVideo),
+  'insert-audio': () => readFile('audio/*', blocks.addAudio),
   'insert-embed': () => {
     let url = prompt('Dirección de la página web (URL):', 'https://');
     if (!url) return;

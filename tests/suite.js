@@ -261,6 +261,12 @@ export async function run(frame) {
     R.blocks.ungroupSelected(); assert(!a.groupId && !b.groupId, 'desagrupado');
   });
 
+  await test('audio: bloque en lienzo y export', async () => {
+    reset(); R.blocks.addAudio('data:audio/mp3;base64,AAA'); const b = last(); select(b); await sleep(20);
+    assert(D.querySelector(`.block[data-id="${b.id}"] audio`), 'audio en el lienzo');
+    assert(/<audio[^>]*controls/.test(R.io.buildHTML()), 'audio en el export');
+  });
+
   await test('fondo con degradado se aplica y se exporta', async () => {
     reset(); slide().background = 'linear-gradient(135deg, #3f6497, #101317)'; R.render(); await sleep(10);
     assert(/style="background:linear-gradient\(135deg, #3f6497, #101317\)"/.test(R.io.buildHTML()), 'degradado en export');

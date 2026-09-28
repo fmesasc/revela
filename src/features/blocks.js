@@ -44,6 +44,10 @@ export function addVideo(src) {
     rotation: 0, animation: null, src });
 }
 
+export function addAudio(src) {
+  insert({ id: uid(), type: 'audio', x: 320, y: 320, w: 440, h: 56, rotation: 0, animation: null, src });
+}
+
 export function addEmbed(url) {
   insert({ id: uid(), type: 'embed', x: 260, y: 120, w: 760, h: 480,
     rotation: 0, animation: null, src: url });

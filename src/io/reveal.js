@@ -39,6 +39,8 @@ function blockHTML(b) {
       + `filter:${imgFilter(b)};opacity:${imgOpacity(b)}">`;
   if (b.type === 'video')
     return `<video${a} src="${b.src}" controls style="${box(b)}object-fit:contain"></video>`;
+  if (b.type === 'audio')
+    return `<audio${a} src="${b.src}" controls style="${box(b)}"></audio>`;
   if (b.type === 'embed')
     return `<iframe${a} src="${b.src}" referrerpolicy="no-referrer" `
       + `sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation" `

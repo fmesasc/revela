@@ -65,7 +65,7 @@ the origin of every requirement is traceable.
 - ⬜ SmartArt / diagrams `PP·OO`
 - ⬜ Icons and stock images `PP·GS`
 - ✅ Emoji picker `GS`
-- ⬜ Audio tracks `PP·OO`
+- ✅ Audio tracks `PP·OO`
 - ⬜ Animated GIF playback `PP·OO`
 - ✅ Embedded web page (`<iframe>`) `—`
 - ⬜ Embedded spreadsheet / linked data `GS·OO`

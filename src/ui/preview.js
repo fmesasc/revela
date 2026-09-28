@@ -19,6 +19,8 @@ export function blockPreview(b) {
       + `filter:${imgFilter(b)};opacity:${imgOpacity(b)}">`;
   } else if (b.type === 'video') {
     el.innerHTML = `<div style="width:100%;height:100%;background:#000;display:grid;place-items:center;color:#fff;font-size:60px">▶</div>`;
+  } else if (b.type === 'audio') {
+    el.innerHTML = `<div style="width:100%;height:100%;background:#0004;display:grid;place-items:center;font-size:32px">🔊</div>`;
   } else if (b.type === 'model') {
     el.innerHTML = `<div style="width:100%;height:100%;background:#0003;display:grid;place-items:center;font-size:80px">🧊</div>`;
   } else if (b.type === 'embed') {

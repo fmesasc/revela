@@ -116,6 +116,8 @@ function reconcile(b) {
     const mv = el.querySelector('model-viewer'); if (mv && mv.getAttribute('src') !== b.src) mv.setAttribute('src', b.src);
   } else if (b.type === 'video') {
     const v = el.querySelector('video'); if (v && v.getAttribute('src') !== b.src) v.src = b.src;
+  } else if (b.type === 'audio') {
+    const a2 = el.querySelector('audio'); if (a2 && a2.getAttribute('src') !== b.src) a2.src = b.src;
   } else if (b.type === 'embed') {
     const f = el.querySelector('iframe'); if (f && f.getAttribute('src') !== b.src) f.src = b.src;
     const u = el.querySelector('.embed-url'); if (u) u.textContent = hostOf(b.src);
@@ -205,6 +207,7 @@ function content(b) {
   }
   if (b.type === 'image') { const i = document.createElement('img'); i.src = b.src; i.draggable = false; applyImgStyle(i, b); return i; }
   if (b.type === 'video') { const v = document.createElement('video'); v.src = b.src; v.controls = true; return v; }
+  if (b.type === 'audio') { const a = document.createElement('audio'); a.src = b.src; a.controls = true; return a; }
   if (b.type === 'embed') return embedContent(b);
   return document.createElement('div');
 }
