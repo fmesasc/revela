@@ -204,6 +204,22 @@ function drawMasterLayer() {
   for (const b of blocks) layer.appendChild(blockPreview(b));
 }
 
+// Font size that makes a text box's content fill it (reveal's r-fit-text):
+// binary search on the real rendering. `shrinkOnly` never grows it.
+export function fitFontSize(b, shrinkOnly = false) {
+  const el = stage.querySelector(`.block[data-id="${b.id}"] .rich`); if (!el) return b.fontSize || 40;
+  const probe = el.cloneNode(true); probe.removeAttribute('contenteditable');
+  Object.assign(probe.style, { position: 'absolute', visibility: 'hidden', left: '-99999px', top: '0', width: b.w + 'px', height: 'auto', display: 'block' });
+  stage.appendChild(probe);
+  const fits = size => { probe.style.fontSize = size + 'px'; probe.style.columnCount = ''; return probe.scrollHeight <= b.h + 1 && probe.scrollWidth <= b.w + 1; };
+  let lo = 8, hi = shrinkOnly ? (b.fontSize || 40) : 400;
+  if (shrinkOnly && fits(hi)) { probe.remove(); return hi; }
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (fits(mid)) lo = mid; else hi = mid; }
+  probe.remove();
+  return lo;
+}
+export function fitTextToBox(b) { const size = fitFontSize(b); commit(() => { b.fontSize = size; }); }
+
 // Tab / Shift+Tab on the slide walk through its objects in reading order.
 export function cycleSelection(dir) {
   const bs = currentSlide().blocks.filter(b => b.type !== 'connector');
@@ -629,6 +645,8 @@ function setupText(b, el) {
   rich.addEventListener('input', e => {             // no re-render: keep the caret
     if (e.inputType === 'insertText') autocorrectAtCaret(rich);
     b.html = rich.innerHTML;
+    // "Shrink text on overflow": reduce the size while it doesn't fit.
+    if (b.shrink && (rich.scrollHeight > rich.clientHeight + 1)) { b.fontSize = fitFontSize(b, true); rich.style.fontSize = b.fontSize + 'px'; }
     if (b.ph && isEmptyPlaceholder(b)) b.html = '';   // back to the prompt when emptied
   });
   // Tab / Shift+Tab inside a list: nest / un-nest the item (bullet levels).

@@ -10,6 +10,7 @@ import * as clip from '../features/clipboard.js';
 import * as slidesMod from '../features/slides.js';
 import { openPollEditor } from './poll-dialog.js';
 import { openCodeEditor } from './code-dialog.js';
+import { fitTextToBox } from './canvas.js';
 import { openLinkChart, refreshChart } from './data-dialog.js';
 import { addText } from '../features/blocks.js';
 import * as format from '../features/format.js';
@@ -122,6 +123,8 @@ function forBlock(b, cell = null) {
       ['Copiar formato', () => format.copyStyle()],
       format.hasStyleClip() ? ['Pegar formato', () => format.pasteStyle()] : null,
       ['Relleno y borde…', () => openBoxStyle(b)],
+      ['Ajustar el tamaño de letra al cuadro', () => fitTextToBox(b)],
+      [b.shrink ? 'No reducir el texto si no cabe' : 'Reducir el texto si no cabe', () => commit(() => { if (b.shrink) delete b.shrink; else b.shrink = true; })],
       null);
   } else if (b.type === 'image') {
     items.push(
@@ -130,6 +133,7 @@ function forBlock(b, cell = null) {
       ['Ajustes de imagen…', () => openImageAdjust(b)],
       ['Recortar…', () => openImageCrop(b)],
       ['Texto alternativo…', () => openAlt(b)],
+      [b.zoomable ? 'No ampliar al hacer clic' : 'Ampliar al hacer clic (al presentar)', () => commit(() => { if (b.zoomable) delete b.zoomable; else b.zoomable = true; })],
       ['Quitar fondo (IA)', () => removeBackground(b)],
       null);
   } else if (b.type === 'model') {

@@ -1594,6 +1594,26 @@ export async function run(frame) {
     finally { f.remove(); }
   });
 
+  await test('Markdown, ajustar texto al cuadro y ampliar imágenes', async () => {
+    reset();
+    const md = '# Mi charla\n\n---\n\n## Puntos\n\n- **Uno** y *dos*\n  - anidado\n- [enlace](https://x.org)\n\nNote: decir esto\n\n--\n\n## Código\n\n```js [1|2]\nlet a = 1;\nlet b = 2;\n```\n\n---\n\n![Logo](https://x.org/l.png)';
+    const sl = R.markdown.markdownToSlides(md);
+    eq(sl.length, 4, 'cuatro diapositivas'); eq(sl[0].blocks[0].textAlign, 'center', 'portada centrada');
+    const body = sl[1].blocks.find(b => b.ph === 'body').html;
+    assert(/<ul><li><b>Uno<\/b> y <i>dos<\/i><\/li><ul><li>anidado<\/li><\/ul><li><a href="https:\/\/x\.org">enlace<\/a><\/li><\/ul>/.test(body), 'listas anidadas, negrita, cursiva y enlaces: ' + body);
+    eq(sl[1].notes, 'decir esto', 'notas'); assert(sl[2].vertical, '-- crea una vertical');
+    const code = sl[2].blocks.find(b => b.type === 'code'); eq(code.lang, 'js', 'lenguaje'); eq(code.lineSteps, '1|2', 'pasos de líneas');
+    eq(sl[3].blocks[0].type, 'image', 'imagen');
+    // ajustar al cuadro
+    const t = slide().blocks[1]; t.html = 'Hola'; t.fontSize = 20; R.render(); await sleep(10);
+    const { fitTextToBox } = await frame.contentWindow.eval("import('/src/ui/canvas.js')");
+    fitTextToBox(t); assert(t.fontSize > 40, 'crece hasta llenar el cuadro: ' + t.fontSize);
+    const big = t.fontSize; t.html = 'Hola '.repeat(40); R.render(); fitTextToBox(t); assert(t.fontSize < big, 'con más texto, más pequeño');
+    // ampliar imagen
+    R.blocks.addImage('data:image/gif;base64,R0lGODlhAQABAAAAACw='); const im = last(); im.zoomable = true;
+    const html = R.io.buildHTML(); assert(/data-lightbox/.test(html) && /cursor:zoom-in/.test(html), 'imagen ampliable en el export');
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

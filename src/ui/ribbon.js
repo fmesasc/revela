@@ -32,6 +32,7 @@ import { openPollEditor } from './poll-dialog.js';
 import { openCodeEditor } from './code-dialog.js';
 import { openBackgroundDialog } from './background-dialog.js';
 import { openSettings } from './settings-dialog.js';
+import { markdownToSlides } from '../io/markdown.js';
 import { openDashboardDialog } from './data-dialog.js';
 import { openStockImages, openOnlineIcons } from './stock-dialog.js';
 import * as palettes from '../features/palettes.js';
@@ -115,6 +116,13 @@ const ACTIONS = {
     } catch (e) { alertDialog(t('No se pudo exportar: ') + e.message); }
   },
   'reuse-slides': () => pickReuseFile(),
+  'import-md': () => readFile('.md,.markdown,.txt,text/markdown', md => {
+    const list = markdownToSlides(md, state.deck.size);
+    if (!list.length) { alertDialog(t('El archivo no contiene diapositivas.')); return; }
+    const bg = currentSlide()?.background || '#101317';
+    list.forEach(s => { s.background = bg; });
+    slides.importSlides({ size: state.deck.size, slides: list });
+  }, 'text'),
   'a11y-check': () => openA11yCheck(),
   'reading-order': () => openReadingOrder(),
   'comments': () => toggleComments(),

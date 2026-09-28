@@ -58,6 +58,8 @@ the origin of every requirement is traceable.
 - ✅ Spell check (browser's own, while editing) and AutoCorrect of typographic symbols (—, →, ©, ≤, …), switchable `PP·GS·OO`
 - ✅ Text columns `PP·OO`
 - ✅ Named text styles (Title, Subtitle, Heading, Body, Quote, Note) `PP·OO`
+- ✅ Fit text to its box (reveal's r-fit-text) and shrink text on overflow `PP·GS·OO`
+- ✅ Enlarge images on click while presenting (lightbox) `—`
 - ✅ Multi-level lists (Tab / Shift+Tab) `PP·GS·OO`
 
 ## 3. Objects & content
@@ -145,6 +147,7 @@ the origin of every requirement is traceable.
 - ✅ Export to `.pptx` (PptxGenJS: text, images, shapes, tables, charts) `GS·OO`
 - ✅ Export to PDF (one slide per page) `PP·GS·OO`
 - ✅ Import from PowerPoint `.pptx` — text with formatting (size, bold, italic, colour, font, alignment, bullets, autofit), inherited placeholder positions, preset shapes with fill/outline/rotation, lines, pictures with alt text, grouped objects, tables with merged cells, backgrounds, theme colours & fonts, notes, hidden slides `OO·GS`
+- ✅ Import Markdown with reveal.js conventions (--- slides, -- vertical, Note: notes, code with line steps, images) `—`
 - ✅ Project import/export as JSON, local autosave `—`
 - ✅ Save/open to Google Drive & export HTML to Drive (client-side, `drive.file`) `PP·GS`
 - ✅ Export slides as images — PNG or JPG, current slide or all slides in a ZIP `PP·GS·OO`

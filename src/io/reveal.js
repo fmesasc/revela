@@ -137,6 +137,15 @@ function liveDataJS() {
   load();if(b.refreshSec>0)setInterval(load,b.refreshSec*1000);});
 })();`;
 }
+// Click-to-enlarge images: a full-screen view; click or Esc closes it.
+const LIGHTBOX_JS = `(function(){var box=null;
+ function close(){if(box){box.remove();box=null;}}
+ document.addEventListener('click',function(e){var im=e.target.closest('img[data-lightbox]');if(!im||box)return;e.preventDefault();e.stopPropagation();
+  box=document.createElement('div');box.style.cssText='position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;cursor:zoom-out';
+  var big=document.createElement('img');big.src=im.src;big.alt=im.alt;big.style.cssText='max-width:94vw;max-height:94vh;object-fit:contain;box-shadow:0 10px 40px #000';
+  box.appendChild(big);box.addEventListener('click',close);document.body.appendChild(box);},true);
+ window.addEventListener('keydown',function(e){if(box&&e.key==='Escape'){close();e.stopImmediatePropagation();e.preventDefault();}},true);
+ var st=document.createElement('style');st.textContent='img[data-lightbox]{cursor:zoom-in}';document.head.appendChild(st);})();`;
 const TRIGGER_JS = `(function(){
  function play(el){el.style.animation='none';void el.offsetWidth;
   el.style.animation=el.dataset.kf+' '+el.dataset.dur+'ms ease '+el.dataset.del+'ms both';el.classList.add('on');}
@@ -204,7 +213,7 @@ function blockHTMLRaw(b, slide) {
     return `<model-viewer${a} src="${b.src}" camera-controls ${b.autoRotate !== false ? 'auto-rotate' : ''} `
       + `shadow-intensity="1" style="${box(b)}background:transparent"></model-viewer>`;
   if (b.type === 'image')
-    return `<img${a} src="${b.src}" alt="${b.decorative ? '' : esc(b.alt || '')}" style="${box(b)}object-fit:${b.fit || 'contain'};`
+    return `<img${a} src="${b.src}"${b.zoomable ? ' data-lightbox' : ''} alt="${b.decorative ? '' : esc(b.alt || '')}" style="${box(b)}object-fit:${b.fit || 'contain'};`
       + `filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)}">`;
   if (b.type === 'video')
     return `<video${a} src="${b.src}" controls style="${box(b)}object-fit:contain"></video>`;
@@ -354,6 +363,7 @@ export function buildHTML(deck = state.deck, { inApp = false } = {}) {
   const hasTrig = deck.slides.some(s => s.blocks.some(b => b.animation?.trigger));
   const hasCam = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'camera'));
   const hasPoll = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'poll'));
+  const hasZoomable = deck.slides.some(s => s.blocks.some(b => b.type === 'image' && b.zoomable));
   const hasLive = deck.slides.some(s => s.blocks.some(b => (b.type === 'chart' && b.dataUrl) || (b.type === 'embed' && b.refreshMin)));
   const ft = deck.footer || { show: false };
   const footerText = ft.show
@@ -419,6 +429,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${hasCam ? CAMERA_JS : ''}
  ${hasPoll ? pollJS(currentPalette(deck).accents) : ''}
  ${hasLive ? liveDataJS() : ''}
+ ${hasZoomable ? LIGHTBOX_JS : ''}
  ${inkJS(w, h, { pen: t('Lápiz'), hl: t('Resaltador'), laser: t('Puntero láser'), color: t('Color de la tinta'), erase: t('Borrar la tinta de la diapositiva'),
    cc: t('Subtítulos en directo'), lang: speechLang(), ccWarn: t('Los subtítulos usan el reconocimiento de voz del navegador: en Chrome y Edge el audio se envía a su servicio de voz. ¿Activarlos?') })}
  ${hasZoomReturn ? '(function(){var p=null;document.addEventListener("click",function(e){var a=e.target.closest("a.slide-zoom[data-zoom-return]");if(a){p={t:a.dataset.target,o:a.dataset.origin.split("/"),arrived:false};}});Reveal.on("slidechanged",function(ev){if(!p)return;if(ev.indexh+"/"+(ev.indexv||0)===p.t){p.arrived=true;return;}if(p.arrived){var o=p.o;p=null;setTimeout(function(){Reveal.slide(+o[0],+o[1]);},0);}});})();' : ''}
