@@ -29,7 +29,7 @@ the origin of every requirement is traceable.
 - ✅ Rotation handle and flip `PP·GS·OO`
 - ✅ Lock aspect ratio (Shift while resizing) and object lock `PP·OO`
 - ✅ Grid, rulers and guides you can place `PP·GS·OO`
-- ⬜ Format painter / copy style `PP·GS·OO`
+- ✅ Format painter / copy style `PP·GS·OO`
 - ✅ Find & replace `PP·GS·OO`
 - ✅ Zoom controls, fit to window `PP·GS·OO`
 - ✅ Paste without formatting (Ctrl+Shift+V) `PP·GS·OO`

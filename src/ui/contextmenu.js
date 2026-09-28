@@ -80,6 +80,8 @@ function forBlock(b) {
       ['Alinear texto a la izquierda', () => format.align('left')],
       ['Centrar texto', () => format.align('center')],
       ['Alinear texto a la derecha', () => format.align('right')],
+      ['Copiar formato', () => format.copyStyle()],
+      format.hasStyleClip() ? ['Pegar formato', () => format.pasteStyle()] : null,
       null);
   } else if (b.type === 'image') {
     items.push(

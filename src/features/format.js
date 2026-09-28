@@ -7,8 +7,23 @@
 //    whole text box, so it works whether or not text is selected — matching
 //    what people expect from PowerPoint and OnlyOffice.
 
-import { commit, selectedBlock } from '../core/store.js';
+import { commit, selectedBlock, selectedBlocks } from '../core/store.js';
 import { ensureFont } from './fonts.js';
+
+// Format painter: copy a text box's paragraph/character style and apply it.
+let styleClip = null;
+const STYLE_KEYS = ['fontSize', 'fontFamily', 'textAlign', 'lineHeight', 'letterSpacing',
+  'indent', 'bullet', 'numStyle', 'dir', 'vertical'];
+export function copyStyle() {
+  const b = selectedBlock(); if (!b || b.type !== 'text') return;
+  styleClip = {}; for (const k of STYLE_KEYS) if (b[k] !== undefined) styleClip[k] = b[k];
+}
+export function pasteStyle() {
+  if (!styleClip) return;
+  const bs = selectedBlocks().filter(b => b.type === 'text'); if (!bs.length) return;
+  commit(() => { for (const b of bs) Object.assign(b, styleClip); });
+}
+export const hasStyleClip = () => !!styleClip;
 
 function ctx() {
   const b = selectedBlock();

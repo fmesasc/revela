@@ -270,6 +270,15 @@ export async function run(frame) {
     assert(/highlight\.min\.js/.test(html), 'highlight.js incluido');
   });
 
+  await test('copiar y pegar formato entre cuadros de texto', async () => {
+    reset(); R.blocks.addText(); R.blocks.addText();
+    const a = slide().blocks.at(-2), b = slide().blocks.at(-1);
+    a.fontSize = 66; a.textAlign = 'center'; a.bullet = 'square';
+    R.state.ui.selection = a.id; R.format.copyStyle();
+    R.state.ui.selection = b.id; R.state.ui.multi = [b.id]; R.format.pasteStyle();
+    eq(b.fontSize, 66, 'tamaño copiado'); eq(b.textAlign, 'center', 'alineación'); eq(b.bullet, 'square', 'viñeta');
+  });
+
   await test('enlaces: normaliza diapositiva y correo', async () => {
     eq(R.format.normalizeLink('3'), '#/2', 'nº de diapositiva');
     eq(R.format.normalizeLink('a@b.com'), 'mailto:a@b.com', 'correo');
