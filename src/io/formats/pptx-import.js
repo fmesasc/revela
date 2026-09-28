@@ -735,18 +735,28 @@ export async function importPPTX(file) {
     size: lv.r.sz ? ctx.pt(lv.r.sz) : undefined, color: lv.r.color && lv.r.color !== 'transparent' ? lv.r.color : undefined,
     font: lv.r.font ? `${cssFont(lv.r.font)}, sans-serif` : undefined, bold: lv.r.b, italic: lv.r.i, align: ALIGN[lv.p.algn],
   });
-  const mph = kind => firstMaster && findPh(firstMaster.phs, { type: kind });
-  const styles = {};
-  if (firstMaster) {
-    const titleChain = [firstMaster.styles.title, mph('title')?.levels];
-    const bodyChain = [firstMaster.styles.body, mph('body')?.levels];
-    styles.title = styleFrom(lvl1(titleChain));
-    styles.body = { ...styleFrom(lvl1(bodyChain)), levels: [0, 1, 2, 3, 4].map(i => { const l = lvl1(bodyChain, i);
+  // Each PowerPoint master used becomes a Revela master (the first one the
+  // main master, the others deck.masters) with its text styles and objects.
+  const stylesOf = mas => {
+    const mph = kind => findPh(mas.phs, { type: kind }), out = {};
+    const titleChain = [mas.styles.title, mph('title')?.levels];
+    const bodyChain = [mas.styles.body, mph('body')?.levels];
+    out.title = styleFrom(lvl1(titleChain));
+    out.body = { ...styleFrom(lvl1(bodyChain)), levels: [0, 1, 2, 3, 4].map(i => { const l = lvl1(bodyChain, i);
       return def({ size: l.r.sz ? ctx.pt(l.r.sz) : undefined, color: l.r.color, bullet: l.p.bullet?.kind === 'char' ? l.p.bullet.char : l.p.bullet?.kind === 'num' ? 'decimal' : l.p.bullet?.kind === 'none' ? 'none' : undefined }); }) };
-    const sub0 = [...usedLayouts.values()].map(u => findPh(u.layout.phs, { type: 'subTitle' })).find(Boolean);
-    styles.subtitle = styleFrom(lvl1([...bodyChain, sub0?.levels]));
-    delete styles.subtitle.bullet;
+    const sub0 = [...usedLayouts.values()].filter(u => u.master === mas).map(u => findPh(u.layout.phs, { type: 'subTitle' })).find(Boolean);
+    out.subtitle = styleFrom(lvl1([...bodyChain, sub0?.levels]));
+    delete out.subtitle.bullet;
+    return out;
+  };
+  const revMasters = new Map();                         // master file → Revela master
+  for (const { master: mas } of usedLayouts.values()) {
+    if (!mas || revMasters.has(mas.file)) continue;
+    const first = !revMasters.size, nm = mas.doc.getElementsByTagName('p:cSld')[0]?.getAttribute('name');
+    revMasters.set(mas.file, { id: first ? 'master' : 'pptx-m' + revMasters.size, ...(nm && { name: nm.replace(/-/g, ' ') }), background: null,
+      blocks: decorOf.get(mas.file) || [], styles: stylesOf(mas) });
   }
+  const styles = firstMaster ? revMasters.get(firstMaster.file).styles : {};
   const layouts = [], layoutIdOf = new Map(), phIdOf = new Map();
   let n = 0;
   for (const [path, { layout: lay, master: mas }] of usedLayouts) {
@@ -758,7 +768,7 @@ export async function importPPTX(file) {
       if (!kind) continue;
       // The layout's own formatting where it differs from the master's.
       const own = styleFrom(lvl1([mas?.styles[kind === 'title' ? 'title' : 'body'], findPh(mas?.phs || [], p)?.levels, p.levels]));
-      const base = styles[kind] || {};
+      const base = (mas && revMasters.get(mas.file)?.styles[kind]) || {};
       const bp = { id: uid(), type: 'text', ph: kind, x: px(geo0.x), y: px(geo0.y), w: px(geo0.w), h: px(geo0.h), rotation: 0, animation: null, html: '' };
       if (own.size && own.size !== base.size) bp.fontSize = own.size;
       if (own.color && own.color !== base.color) bp.color = own.color;
@@ -769,14 +779,16 @@ export async function importPPTX(file) {
     }
     const name = lay.doc.getElementsByTagName('p:cSld')[0]?.getAttribute('name') || `Diseño ${n}`;
     layouts.push({ id, name: LAYOUT_NAMES[name.replace(/\s*\([^)]*\)\s*$/, '').trim().toUpperCase().replace(/[ _]+/g, '_')] || name.replace(/\s*\([^)]*\)\s*$/, '').replace(/_/g, ' '), background: null,
-      ...(lay.showMasterSp === false && { hideMaster: true }), blocks: [...(decorOf.get(lay.file) || []), ...blocksL] });
+      ...(lay.showMasterSp === false && { hideMaster: true }), ...(mas && revMasters.get(mas.file)?.id !== 'master' && { masterId: revMasters.get(mas.file).id }),
+      blocks: [...(decorOf.get(lay.file) || []), ...blocksL] });
     layoutIdOf.set(path, id);
   }
-  const masterBlocks = firstMaster ? (decorOf.get(firstMaster.file) || []) : [];
+  const mainMaster = firstMaster ? revMasters.get(firstMaster.file) : { id: 'master', blocks: [], background: null };
+  const extraMasters = [...revMasters.values()].filter(m => m.id !== 'master');
 
   if (!slides.length) throw new Error('No se encontraron diapositivas en el archivo.');
   const deck = { version: 3, name: (file.name || '').replace(/\.pptx$/i, '') || 'Presentación importada', size, theme: 'white',
-    defaultTransition: 'slide', transitionSpeed: 'default', sections: [], master: { id: 'master', blocks: masterBlocks, background: null, ...(firstMaster && { styles }) },
+    defaultTransition: 'slide', transitionSpeed: 'default', sections: [], master: mainMaster, ...(extraMasters.length && { masters: extraMasters }),
     ...(layouts.length && { layouts }),
     slideNumber: { show: false, position: 'br', format: 'c' }, footer: { show: false, text: '', date: false },
     logo: { src: '', position: 'br', size: 120 }, loop: false, guides: { v: [], h: [] }, slides };
@@ -784,7 +796,7 @@ export async function importPPTX(file) {
   // Slides: their layout, and placeholders linked to the layout's; what they
   // only repeat from the master or layout is dropped, so editing the master's
   // styles later changes them too.
-  if (firstMaster) masterStyles(deck);
+  for (const m of [deck.master, ...(deck.masters || [])]) if (m.styles) masterStyles(deck, m);
   for (const s of slides) {
     const path = s._layout; delete s._layout;
     if (layoutIdOf.has(path)) s.layoutId = layoutIdOf.get(path);

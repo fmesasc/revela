@@ -2,7 +2,8 @@
 // and the galleries they open: symbols, icons, WordArt, palettes, fonts, layouts.
 
 import { state, selectedBlock, currentSlide } from '../../core/store.js';
-import { ensureLayouts, applyLayout, resetSlide, editLayout } from '../../features/document/master.js';
+import { ensureLayouts, applyLayout, resetSlide, editLayout, allMasters, masterOf } from '../../features/document/master.js';
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 import * as blocks from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
 import * as templates from '../../features/document/templates.js';
@@ -28,7 +29,8 @@ export const POPS = {
   wordart: () => `<h4>Text Art</h4><div class="wa-grid">`
     + WORDART_KEYS.map(k => `<button data-wa="${k}" type="button" style="${wordartCSS(k)}">Aa</button>`).join('') + `</div>`,
   layout: () => `<h4>${t('Diseño')}</h4><div class="layout-grid">`
-    + ensureLayouts().map(l => `<button data-layout="${l.id}" type="button" class="${currentSlide()?.layoutId === l.id ? 'on' : ''}">${t(l.name)}</button>`).join('')
+    + allMasters().map((m, i, ms) => (ms.length > 1 ? `<div class="layout-master">${esc(m.name || (i ? `${t('Patrón')} ${i + 1}` : t('Patrón')))}</div>` : '')
+      + ensureLayouts().filter(l => masterOf(l) === m).map(l => `<button data-layout="${l.id}" type="button" class="${currentSlide()?.layoutId === l.id ? 'on' : ''}">${t(l.name)}</button>`).join('')).join('')
     + `</div><div class="fr-actions"><button type="button" class="mini2" data-reset-slide>${t('Restablecer')}</button>`
     + `<button type="button" class="mini2" data-edit-layouts>${t('Editar diseños…')}</button></div>`,
   palettes: () => `<h4>${t('Colores del tema')}</h4><div class="pal-grid">`

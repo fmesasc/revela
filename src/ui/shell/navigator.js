@@ -5,7 +5,7 @@ import { state, currentSlide } from '../../core/store.js';
 import { goToSlide, moveSlide, deleteSlide, renameSection } from '../../features/document/slides.js';
 import { blockPreview } from './preview.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
-import { masterBlocksFor, isEmptyPlaceholder, styled, styleKind, ensureLayouts, editLayout, layoutInUse } from '../../features/document/master.js';
+import { masterBlocksFor, isEmptyPlaceholder, styled, styleKind, ensureLayouts, editLayout, layoutInUse, allMasters, masterOf } from '../../features/document/master.js';
 
 let panel;
 let dragFrom = null;
@@ -87,12 +87,15 @@ function renderMasterPanel() {
     el.append(canvas, cap); el.addEventListener('click', onClick);
     return el;
   };
-  const m = d.master || { blocks: [] };
-  const nodes = [card('Patrón', '', sel === true, m, m.blocks, () => editLayout(true), false)];
-  for (const l of ensureLayouts(d)) {
-    const n = layoutInUse(l.id);
-    nodes.push(card(l.name, n ? `${n} diap.` : '', sel === l.id, l, [...masterBlocksFor(l, d), ...l.blocks], () => editLayout(l.id), true));
-  }
+  const nodes = [], lays = ensureLayouts(d);
+  allMasters(d).forEach((m, i) => {
+    const main = i === 0;
+    nodes.push(card(m.name || (main ? 'Patrón' : `Patrón ${i + 1}`), '', main ? sel === true : sel === m.id, m, m.blocks, () => editLayout(main ? true : m.id), false));
+    for (const l of lays.filter(x => masterOf(x, d) === m)) {
+      const n = layoutInUse(l.id);
+      nodes.push(card(l.name, n ? `${n} diap.` : '', sel === l.id, l, [...masterBlocksFor(l, d), ...l.blocks], () => editLayout(l.id), true));
+    }
+  });
   panel.replaceChildren(...nodes);
   fitThumbs();
 }

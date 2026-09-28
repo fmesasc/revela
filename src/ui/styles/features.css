@@ -85,6 +85,7 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 #master-banner .mb-text{flex:1 1 220px}
 #master-banner button:disabled,#master-banner select:disabled{opacity:.45;cursor:default}
 .layout-thumb.indent .layout-name::before{content:'└ ';opacity:.6}
+.layout-grid .layout-master{grid-column:1/-1;font-size:11px;color:var(--txt2);text-transform:uppercase;margin-top:6px}
 .layout-thumb .layout-name{font-size:11px;color:var(--txt2);padding:3px 2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .block .rich[data-ph]:empty::before{content:attr(data-ph);opacity:.45;font-style:italic;pointer-events:none}
 .block:not(.selected):has(.rich[data-ph]:empty){outline:1px dashed #8a8a8a88}

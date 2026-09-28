@@ -34,7 +34,7 @@ function notify() { for (const fn of listeners) fn(); }
 export const currentSlide = () => {
   const m = state.ui.editMaster;
   if (!m) return state.deck.slides[state.ui.slideIndex];
-  return (m !== true && state.deck.layouts?.find(l => l.id === m)) || (state.deck.master ||= { id: 'master', blocks: [], background: null });
+  return (m !== true && (state.deck.layouts?.find(l => l.id === m) || state.deck.masters?.find(x => x.id === m))) || (state.deck.master ||= { id: 'master', blocks: [], background: null });
 };
 export const selectedBlock = () => {
   const s = currentSlide();

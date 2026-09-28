@@ -25,8 +25,24 @@ export const DEFAULT_STYLES = {
   body: { size: 30, levels: [{ size: 30, bullet: 'disc' }, { size: 26, bullet: 'circle' }, { size: 24, bullet: 'square' }, { size: 22, bullet: 'disc' }, { size: 20, bullet: 'circle' }] },
 };
 export const ensureMaster = (deck = state.deck) => (deck.master ||= { id: 'master', blocks: [], background: null });
-export const masterStyles = (deck = state.deck) => {
-  const m = ensureMaster(deck);
+// A deck can have several masters (PowerPoint's "Insert Slide Master"): the
+// main one in deck.master and the others in deck.masters; each layout names
+// its master (layout.masterId, the main one when absent).
+export const allMasters = (deck = state.deck) => [ensureMaster(deck), ...(deck.masters || [])];
+export const isMaster = (x, deck = state.deck) => allMasters(deck).includes(x);
+export function masterOf(x, deck = state.deck) {
+  if (isMaster(x, deck)) return x;
+  const lay = deck.layouts?.includes(x) ? x : layoutOf(x, deck);
+  return (lay?.masterId && deck.masters?.find(m => m.id === lay.masterId)) || ensureMaster(deck);
+}
+// The master being worked on: the one (or the layout's) open in the master
+// view, else the current slide's.
+export function contextMaster(deck = state.deck) {
+  const e = state.ui.editMaster;
+  if (e) { const x = e === true ? ensureMaster(deck) : deck.layouts?.find(l => l.id === e) || deck.masters?.find(mm => mm.id === e); if (x) return masterOf(x, deck); }
+  return masterOf(deck.slides[state.ui.slideIndex], deck);
+}
+export const masterStyles = (deck = state.deck, m = ensureMaster(deck)) => {
   const st = (m.styles ||= structuredClone(DEFAULT_STYLES));
   for (const k of Object.keys(DEFAULT_STYLES)) st[k] ||= structuredClone(DEFAULT_STYLES[k]);
   const lv = (st.body.levels ||= []);
@@ -65,9 +81,9 @@ export function toggleHideMaster(index = state.ui.slideIndex) {
 // slide hides them) and its layout's own objects (not its placeholders).
 export function masterBlocksFor(slide, deck = state.deck) {
   if (!slide || slide.hideMaster) return [];
-  if (slide === deck.master) return [];
+  if (isMaster(slide, deck)) return [];
   const lay = isLayout(slide, deck) ? slide : layoutOf(slide, deck);
-  const master = lay?.hideMaster ? [] : (deck.master?.blocks || []);
+  const master = lay?.hideMaster ? [] : (masterOf(lay || slide, deck).blocks || []);
   if (isLayout(slide, deck)) return master;              // editing a layout: the master under it
   return [...master, ...(lay ? lay.blocks.filter(b => !b.ph) : [])];
 }
@@ -92,8 +108,8 @@ export function layoutPlaceholder(b, slide, deck = state.deck) {
 // are returned as they are). levels: the body's per-level sizes and bullets.
 export function styled(b, slide, deck = state.deck) {
   const kind = styleKind(b); if (!kind) return b;
-  const st = masterStyles(deck)[kind];
-  const lp = !isLayout(slide, deck) && slide !== deck.master ? layoutPlaceholder(b, slide, deck) : null;
+  const st = masterStyles(deck, masterOf(slide, deck))[kind];
+  const lp = !isLayout(slide, deck) && !isMaster(slide, deck) ? layoutPlaceholder(b, slide, deck) : null;
   const out = { ...b, ...asProps(st), ...(lp ? ownOf(lp) : {}), ...ownOf(b) };
   // "Shrink text on overflow" (imported from PowerPoint): a factor on the
   // inherited size, so the text still follows the master.
@@ -112,7 +128,7 @@ export function levelVars(b) {
 
 export function setMasterStyle(kind, props, level = null) {
   commit(() => {
-    const st = masterStyles()[kind];
+    const st = masterStyles(state.deck, contextMaster())[kind];
     const target = level != null ? st.levels[level] : st;
     for (const [k, v] of Object.entries(props)) { if (v === null || v === '') delete target[k]; else target[k] = v; }
     if (kind === 'body' && level === 0 && props.size) st.size = props.size;
@@ -164,7 +180,8 @@ export function resetSlide(index = state.ui.slideIndex) {
 export function addLayout(copyOf = null) {
   commit(() => {
     const src = copyOf && ensureLayouts().find(l => l.id === copyOf);
-    const lay = src ? { ...structuredClone(src), id: uid(), name: src.name + ' (2)' } : { id: uid(), name: 'Diseño personalizado', background: null, blocks: [] };
+    const mid = contextMaster().id, owner = mid === ensureMaster().id ? {} : { masterId: mid };
+    const lay = src ? { ...structuredClone(src), id: uid(), name: src.name + ' (2)' } : { id: uid(), name: 'Diseño personalizado', background: null, blocks: [], ...owner };
     if (src) lay.blocks.forEach(b => { b.id = uid(); });
     ensureLayouts().push(lay); state.ui.editMaster = lay.id; state.ui.selection = null;
   });
@@ -225,3 +242,31 @@ export function fillPlaceholder(id, block) {
     state.ui.selection = s.blocks[i].id; state.ui.multi = [s.blocks[i].id];
   });
 }
+
+// A new master: a copy of the one being edited (styles and objects) with a
+// copy of its layouts, to change from there (PowerPoint's "Duplicate Master").
+export function addMaster() {
+  commit(() => {
+    const d = state.deck, src = contextMaster(d), id = uid();
+    const copy = { ...structuredClone(src), id, name: `${src.name || 'Patrón'} (2)` };
+    copy.blocks.forEach(b => { b.id = uid(); });
+    (d.masters ||= []).push(copy);
+    const lays = ensureLayouts(d).filter(l => masterOf(l, d) === src).map(l => {
+      const c = { ...structuredClone(l), id: uid(), masterId: id };
+      c.blocks.forEach(b => { b.id = uid(); });
+      return c;
+    });
+    d.layouts.push(...lays);
+    state.ui.editMaster = id; state.ui.selection = null;
+  });
+}
+export function deleteMaster(id) {
+  commit(() => {
+    const d = state.deck, lays = (d.layouts || []).filter(l => l.masterId === id);
+    if (!d.masters?.some(m => m.id === id) || d.slides.some(s => lays.some(l => l.id === s.layoutId))) return;
+    d.masters = d.masters.filter(m => m.id !== id);
+    d.layouts = d.layouts.filter(l => l.masterId !== id);
+    state.ui.editMaster = true;
+  });
+}
+export const masterInUse = id => { const d = state.deck; return d.slides.filter(s => d.layouts?.some(l => l.id === s.layoutId && (l.masterId || ensureMaster(d).id) === id)).length; };

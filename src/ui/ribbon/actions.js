@@ -145,8 +145,15 @@ export const ACTIONS = {
   'master-close': () => master.toggleMasterEdit(false),
   'master-styles': () => openTextStyles(),
   'layout-new': () => master.addLayout(),
+  'master-new': () => master.addMaster(),
+  'master-delete': () => confirmDialog(t('¿Eliminar este patrón y sus diseños?')).then(ok => { if (ok) master.deleteMaster(state.ui.editMaster); }),
   'layout-dup': () => master.addLayout(state.ui.editMaster),
-  'layout-rename': () => { const l = state.deck.layouts?.find(x => x.id === state.ui.editMaster); if (l) promptDialog(t('Nombre del diseño:'), l.name).then(v => { if (v && v.trim()) master.renameLayout(l.id, v.trim()); }); },
+  'layout-rename': () => {
+    const e = state.ui.editMaster, l = state.deck.layouts?.find(x => x.id === e), m = !l && master.contextMaster();
+    const cur = l ? l.name : (m.name || t('Patrón'));
+    promptDialog(l ? t('Nombre del diseño:') : t('Nombre del patrón:'), cur).then(v => { if (!v || !v.trim()) return;
+      if (l) master.renameLayout(l.id, v.trim()); else commit(() => { m.name = v.trim(); }); });
+  },
   'layout-delete': () => confirmDialog(t('¿Eliminar este diseño?')).then(ok => { if (ok) master.deleteLayout(state.ui.editMaster); }),
   'hide-master': () => master.toggleHideMaster(),
   'export-handout': () => openHandoutDialog(),

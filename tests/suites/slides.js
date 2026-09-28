@@ -407,4 +407,32 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const im = slide().blocks.find(b => b.type === 'image'); assert(im && im.x === pic.x && im.fit === 'cover', 'la imagen también');
     assert(/<img[^>]*data:image\/png/.test(R.io.buildHTML()), 'y ya se exporta');
   });
+
+  await test('varios patrones: cada uno con sus estilos, objetos y diseños', async () => {
+    reset(); R.slides.addSlide('titleContent'); const a = slide();
+    D.querySelector('[data-action="master-edit"]').click(); await sleep(10);
+    D.querySelector('[data-action="master-new"]').click(); await sleep(20);
+    const d = R.state.deck; eq(d.masters.length, 1, 'nuevo patrón');
+    const m2 = d.masters[0], lays2 = d.layouts.filter(l => l.masterId === m2.id);
+    assert(lays2.length === 6 && lays2.every(l => !d.layouts.filter(x => !x.masterId).some(x => x.id === l.id)), 'con su copia de los diseños');
+    eq(R.store.currentSlide(), m2, 'se edita el patrón nuevo');
+    eq(D.querySelectorAll('#navigator .layout-thumb').length, 2 + d.layouts.length, 'el panel muestra los dos patrones con sus diseños');
+    // Styles of the second master only affect slides that use its layouts.
+    D.querySelector('[data-action="master-styles"]').click(); await sleep(10);
+    const sz = D.querySelector('#ts2-modal tr[data-kind="title"] [data-k="size"]'); sz.value = '70'; sz.dispatchEvent(new frame.contentWindow.Event('input'));
+    D.querySelector('#ts2-modal .modal-close').click();
+    eq(R.master.masterStyles(d, m2).title.size, 70, 'estilo del patrón nuevo');
+    assert(R.master.masterStyles(d).title.size !== 70, 'el principal no cambia');
+    R.master.toggleMasterEdit(false);
+    R.slides.addSlide(lays2.find(l => l.name === 'Título y contenido').id); const b = slide();
+    eq(R.master.styled(b.blocks.find(x => x.ph === 'title'), b).fontSize, 70, 'sus diapositivas lo usan');
+    assert(R.master.styled(a.blocks.find(x => x.ph === 'title'), a).fontSize !== 70, 'las del otro patrón no');
+    D.querySelector('[data-layout-open]').click(); await sleep(10);
+    eq(D.querySelectorAll('.popover .layout-master').length, 2, 'el selector de diseños los agrupa por patrón');
+    D.body.click();
+    // Deleting: not while a slide uses it.
+    R.master.deleteMaster(m2.id); eq(R.state.deck.masters.length, 1, 'no se borra si se usa');
+    R.slides.deleteSlide(R.state.deck.slides.indexOf(b)); R.master.deleteMaster(m2.id);
+    eq(R.state.deck.masters.length, 0, 'sin uso, se borra con sus diseños'); assert(!R.state.deck.layouts.some(l => l.masterId), 'y sus diseños');
+  });
 }

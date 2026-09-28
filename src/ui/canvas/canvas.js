@@ -12,7 +12,7 @@ import { motionPoints } from '../../features/animation/transitions.js';
 import { blockLabel } from '../../features/document/a11y.js';
 import { cameraRadius } from '../../features/live/media.js';
 import { pollEditorHTML } from '../../features/live/poll.js';
-import { masterBlocksFor, PH_PROMPT, styled, layoutInUse } from '../../features/document/master.js';
+import { masterBlocksFor, PH_PROMPT, styled, layoutInUse, masterInUse } from '../../features/document/master.js';
 import { stageBackground } from '../../io/formats/html.js';
 import { styleRich, paintWebCard, paintMath, pollSig, renderSlideRef, figIndexHTML, connectorHTML, applyImgStyle, content, hostOf, hasInlineMath, renderInlineMath, renderMath, paintCode, setupCode, tableSig, fillTable, setupTable, setupText, setupMath, setupModel, setupEmbed } from './content.js';
 import { addGuideFromRuler, drawPGuides, startMarquee, startDrag, startRotate, startResize } from './interact.js';
@@ -91,6 +91,11 @@ export function renderCanvas() {
     if (txt) txt.textContent = lay ? `${t('Diseño')} «${t(lay.name)}»: ${t('sus marcadores y objetos aparecen en las diapositivas que lo usan.')}`
       : t('Editando el patrón: lo que pongas aquí aparece en todas las diapositivas.');
     banner.querySelectorAll('.mb-lay').forEach(x => { x.disabled = !lay; });
+    // Rename works for masters too; an extra master can be deleted when no slide uses it.
+    const ren = banner.querySelector('[data-action="layout-rename"]'); if (ren) ren.disabled = false;
+    const extra = !lay && state.ui.editMaster !== true ? state.ui.editMaster : null;
+    const md = banner.querySelector('[data-action="master-delete"]');
+    if (md) { md.hidden = !extra; md.disabled = !!(extra && masterInUse(extra)); }
     const del = banner.querySelector('[data-action="layout-delete"]');
     if (del && lay) { const n = layoutInUse(lay.id); del.disabled = n > 0; del.title = n ? t('Lo usan diapositivas: cámbialas de diseño antes.') : ''; }
   }

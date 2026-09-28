@@ -3,7 +3,7 @@
 // italic, alignment and bullet. Changes apply at once to every placeholder that
 // didn't override them.
 
-import { masterStyles, setMasterStyle, MAX_LEVELS } from '../../features/document/master.js';
+import { masterStyles, setMasterStyle, MAX_LEVELS, contextMaster } from '../../features/document/master.js';
 import { FONTS, ensureFont } from '../../features/design/fonts.js';
 import { t } from '../../i18n/index.js';
 
@@ -18,7 +18,7 @@ export function openTextStyles() {
     ...Array.from({ length: MAX_LEVELS }, (_, i) => ['body', i, `${t('Texto')} · ${t('nivel')} ${i + 1}`])];
   const fontSel = v => `<select data-k="font">${FONTS.map(f => `<option value="${esc(f.stack)}"${f.stack === (v || '') ? ' selected' : ''}>${esc(f.name)}</option>`).join('')}</select>`;
   const row = ([kind, lv, label]) => {
-    const st = masterStyles()[kind], s = lv != null ? { ...st, ...st.levels[lv] } : st;
+    const st = masterStyles(undefined, contextMaster())[kind], s = lv != null ? { ...st, ...st.levels[lv] } : st;
     return `<tr data-kind="${kind}"${lv != null ? ` data-lv="${lv}"` : ''}>
       <th>${esc(label)}</th>
       <td>${lv == null || lv === 0 ? fontSel(s.font) : ''}</td>
@@ -30,7 +30,7 @@ export function openTextStyles() {
     </tr>`;
   };
   back.innerHTML = `<div class="modal" style="text-align:start;max-width:min(760px,96vw)">
-    <button class="modal-close">✕</button><h3>${t('Estilos de texto del patrón')}</h3>
+    <button class="modal-close">✕</button><h3>${t('Estilos de texto del patrón')}${contextMaster().name ? ` · ${esc(contextMaster().name)}` : ''}</h3>
     <p class="host-help">${t('Se aplican a los marcadores de todas las diapositivas, salvo lo que se haya cambiado a mano en ellas. Los niveles son los de las listas (Tab para bajar de nivel).')}</p>
     <div class="ts2-wrap"><table class="ts2"><thead><tr><th></th><th>${t('Fuente')}</th><th>${t('Tamaño')}</th><th>${t('Color')}</th><th></th><th>${t('Alineación')}</th><th>${t('Viñeta')}</th></tr></thead>
       <tbody>${rows.map(row).join('')}</tbody></table></div></div>`;
