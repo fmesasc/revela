@@ -507,3 +507,17 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 #final-banner button{margin-inline-start:auto;border:1px solid #3a9d5d;background:#fff;color:#1f5e3a;border-radius:6px;padding:4px 10px;cursor:pointer}
 #final-banner.flash{animation:finalFlash .6s 2}
 @keyframes finalFlash{50%{background:#ffe0a6}}
+/* Phones: later rules for panels added after the main mobile block. */
+@media (max-width:860px){
+  .titlebar{flex-wrap:nowrap;overflow:hidden}
+  .titlebar .doc-name{min-width:60px;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .titlebar .grow{flex:0 0 0}
+  .titlebar .donate{padding:3px 7px;margin-inline-end:4px}
+  .titlebar .donate span{display:none}             /* heart only */
+  .lang-select{max-width:92px;flex-shrink:0}
+  .qat [data-action="save"]{display:none}       /* also in File; frees room on phones */
+  #comments-panel{width:auto;max-height:45vh;border-inline-start:none;border-top:1px solid var(--line2)}
+  #final-banner,#master-banner{font-size:12px;flex-wrap:wrap}
+  .gal-grid,.ts-grid{grid-template-columns:repeat(2,1fr)}
+  .pal-grid{grid-template-columns:repeat(2,1fr)}
+}
