@@ -1392,6 +1392,35 @@ export async function run(frame) {
     eq(rects, 8, 'la presentación recarga el CSV y redibuja (4 meses × 2 series)');
   });
 
+  await test('imágenes libres (Openverse) e iconos en línea (Iconify)', async () => {
+    reset(); const W = frame.contentWindow, S = R.stock, real = W.fetch, calls = [];
+    const gif = Uint8Array.from(atob('R0lGODlhAQABAAAAACw='), c => c.charCodeAt(0));
+    W.fetch = async (url) => {
+      url = String(url); calls.push(url);
+      if (url.startsWith('https://api.openverse.org/v1/images/?')) return new W.Response(JSON.stringify({ results: [{ id: 'x1', title: 'Volcán', url: 'https://cdn.bloqueado/v.jpg',
+        thumbnail: 'https://api.openverse.org/v1/images/x1/thumb/', creator: 'NASA', license: 'by', license_version: '2.0', attribution: '"Volcán" by NASA is licensed under CC BY 2.0.', width: 1600, height: 900 }] }));
+      if (url.startsWith('https://cdn.bloqueado')) throw new TypeError('CORS');
+      if (url.includes('/thumb/')) return new W.Response(new W.Blob([gif], { type: 'image/gif' }));
+      if (url.startsWith('https://api.iconify.design/search')) return new W.Response(JSON.stringify({ icons: ['mdi:rocket'], collections: { mdi: { name: 'MDI', license: { title: 'Apache 2.0', spdx: 'Apache-2.0' } } } }));
+      if (url.startsWith('https://api.iconify.design/mdi/rocket.svg')) return new W.Response('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#ff0000" d="M0 0h24v24H0z"/></svg>');
+      return real(url);
+    };
+    try {
+      const res = await S.searchImages('volcán', 1, { commercial: true });
+      assert(/license_type=commercial/.test(calls[0]) && /q=volc/.test(calls[0]), 'búsqueda con filtro comercial');
+      eq(res[0].license, 'BY 2.0', 'licencia');
+      const b = await S.insertStockImage(res[0]);
+      assert(calls.some(u => u.includes('/thumb/')), 'si el original no deja descargar, usa la miniatura');
+      assert(/^data:image\/gif/.test(b.src), 'imagen incrustada (funciona sin conexión)');
+      eq(b.caption, '«Volcán» — NASA (BY 2.0)', 'atribución como pie'); eq(Math.round(b.w / b.h * 9), 16, 'proporción');
+      const ic = await S.searchIcons('rocket'); eq(ic.icons[0], 'mdi:rocket', 'iconos');
+      const i = await S.insertOnlineIcon('mdi:rocket', '#ff0000', ic.collections.mdi.license);
+      assert(/^data:image\/svg\+xml;base64,/.test(i.src) && atob(i.src.split(',')[1]).includes('#ff0000'), 'icono SVG con color');
+      eq(i.alt, 'rocket', 'texto alternativo');
+      assert(calls.some(u => /color=%23ff0000/.test(u)), 'color en la petición');
+    } finally { W.fetch = real; }
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');
