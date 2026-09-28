@@ -557,6 +557,18 @@ export async function run(frame) {
     R.blocks.ungroupSelected(); assert(!a.groupId && !b.groupId, 'desagrupado');
   });
 
+  await test('panel de animación: efecto, con la anterior y duración', async () => {
+    reset(); R.blocks.addText(); const a = slide().blocks.at(-1); R.state.ui.selection = a.id; R.trans.setAnimation('fade-up');
+    R.blocks.addText(); const b2 = slide().blocks.at(-1); R.state.ui.selection = b2.id; R.trans.setAnimation('zoom-in');
+    R.trans.setAnimPropForId(b2.id, 'start', 'withPrev');
+    R.trans.setAnimPropForId(a.id, 'duration', 800);
+    const html = R.io.buildHTML();
+    assert(/class="fragment fade-up"/.test(html) && /class="fragment zoom-in"/.test(html), 'efectos aplicados');
+    assert(/transition-duration:800ms/.test(html), 'duración en el export');
+    const idxs = [...html.matchAll(/data-fragment-index="(\d+)"/g)].map(m => m[1]);
+    assert(idxs.length >= 2 && idxs[0] === idxs[1], '"con la anterior" comparte índice de fragmento');
+  });
+
   await test('animación de énfasis en el export', async () => {
     reset(); const b = newText(); R.state.ui.selection = b.id;
     b.animation = { effect: 'grow', order: 1 };

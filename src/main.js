@@ -14,6 +14,7 @@ import * as model from './core/model.js';
 import * as blocks from './features/blocks.js';
 import * as format from './features/format.js';
 import * as slides from './features/slides.js';
+import * as trans from './features/transitions.js';
 import * as fonts from './features/fonts.js';
 import * as remote from './features/remote.js';
 import * as search from './features/search.js';
@@ -70,7 +71,7 @@ initI18n();
 // Test hook: exposes the module graph so the headless suite (tests/) can drive
 // and inspect the real app. Only active with ?test in the URL.
 if (new URLSearchParams(location.search).has('test'))
-  window.__revela = { state, render, store, model, blocks, format, slides, fonts, remote, search, i18n, gdrive, pptx, io };
+  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io };
 
 
 

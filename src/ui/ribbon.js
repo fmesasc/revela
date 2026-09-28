@@ -87,6 +87,7 @@ const ACTIONS = {
   'connect-mobile': () => remote.openHostPanel(),
   'shortcuts': () => openShortcuts(),
   'insert-hf': () => openHeaderFooter(),
+  'anim-panel': () => openAnimPanel(),
   'insert-date': () => blocks.addDate(),
   'insert-figindex': () => blocks.addFigIndex(),
   'insert-slideref': () => blocks.addSlideRef(),
@@ -278,6 +279,47 @@ function updateFormatState() {
     try { on = focused && document.queryCommandState(btn.dataset.fmt); } catch {}
     btn.classList.toggle('on', on);
   }
+}
+
+const ANIM_EFFECTS = ['fade-in', 'fade-up', 'fade-down', 'fade-left', 'fade-right', 'zoom-in',
+  'grow', 'shrink', 'strike', 'fade-out', 'highlight-red'];
+const ANIM_NAMES = { text: 'Texto', image: 'Imagen', shape: 'Forma', chart: 'Gráfico', table: 'Tabla',
+  icon: 'Icono', math: 'Ecuación', model: '3D', video: 'Vídeo', embed: 'Web', code: 'Código', figindex: 'Índice de figuras', slideref: 'Diapositiva' };
+function openAnimPanel() {
+  if (document.getElementById('anim-modal')) return;
+  const back = document.createElement('div');
+  back.id = 'anim-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:left;min-width:460px;max-width:96vw;max-height:80vh;overflow:auto">
+    <button class="modal-close">✕</button><h3>${t('Panel de animación')}</h3><div class="an-body"></div></div>`;
+  document.body.appendChild(back);
+  const body = back.querySelector('.an-body');
+  const close = () => back.remove();
+  back.querySelector('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  const render = () => {
+    const list = trans.animatedBlocks();
+    body.innerHTML = list.length ? list.map((b, i) => `
+      <div class="an-row" data-id="${b.id}">
+        <div class="an-title">${i + 1}. ${t(ANIM_NAMES[b.type] || b.type)}</div>
+        <div class="an-grid">
+          <label>${t('Efecto')}<select data-p="effect">${ANIM_EFFECTS.map(e => `<option value="${e}"${b.animation.effect === e ? ' selected' : ''}>${e}</option>`).join('')}</select></label>
+          <label>${t('Comienzo')}<select data-p="start"><option value="click"${b.animation.start !== 'withPrev' ? ' selected' : ''}>${t('Al hacer clic')}</option><option value="withPrev"${b.animation.start === 'withPrev' ? ' selected' : ''}>${t('Con la anterior')}</option></select></label>
+          <label>${t('Duración')} (ms)<input type="number" data-p="duration" value="${b.animation.duration ?? 500}" step="100" min="0"></label>
+          <label>${t('Retardo')} (ms)<input type="number" data-p="delay" value="${b.animation.delay ?? 0}" step="100" min="0"></label>
+        </div>
+        <div class="an-actions"><button data-move="-1"${i === 0 ? ' disabled' : ''}>↑</button><button data-move="1"${i === list.length - 1 ? ' disabled' : ''}>↓</button><button data-remove title="${t('Quitar')}">✕</button></div>
+      </div>`).join('')
+      : `<p class="host-help">${t('Aplica una animación de entrada a un objeto primero.')}</p>`;
+    body.querySelectorAll('.an-row').forEach(row => {
+      const id = row.dataset.id;
+      row.querySelector('[data-p="effect"]').addEventListener('change', e => { trans.setAnimPropForId(id, 'effect', e.target.value); });
+      row.querySelector('[data-p="start"]').addEventListener('change', e => { trans.setAnimPropForId(id, 'start', e.target.value); render(); });
+      row.querySelectorAll('input[data-p]').forEach(inp => inp.addEventListener('change', e => trans.setAnimPropForId(id, inp.dataset.p, e.target.value)));
+      row.querySelectorAll('[data-move]').forEach(btn => btn.addEventListener('click', () => { trans.moveAnimForId(id, +btn.dataset.move); render(); }));
+      row.querySelector('[data-remove]').addEventListener('click', () => { trans.clearAnimationForId(id); render(); });
+    });
+  };
+  render();
 }
 
 function openHeaderFooter() {
