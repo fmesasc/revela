@@ -19,26 +19,39 @@ reveal.js, de modo que el resultado es una página web estándar y autónoma.
 
 ## Funciones
 
-- **Cinta tipo ofimática** organizada en pestañas: Archivo, Inicio, Insertar,
-  Diseño, Transiciones, Animaciones y Ver.
-- **Lienzo por bloques** con manipulación directa: arrastrar desde cualquier
-  punto, guías de alineación con ajuste, redimensionado por las esquinas y
-  desplazamiento con el teclado.
-- **Bloques de contenido:** texto enriquecido, imágenes, vídeo y **modelos 3D
-  interactivos** (`.glb` / `.gltf`).
-- **Menú contextual** (clic derecho) con acciones por objeto, incluida la
-  **eliminación de fondo de imágenes** por IA.
-- **Transiciones por diapositiva** y **animaciones de entrada por objeto**.
-- **Secciones** y **reordenación de diapositivas** arrastrando en el navegador.
-- **Plantillas** (integradas y propias).
-- **Importación de PowerPoint** (`.pptx`): recupera texto e imágenes con su
-  posición.
-- **Diseño:** fondo por diapositiva, temas de reveal.js, 16∶9 / 4∶3.
-- **Deshacer / rehacer**, autoguardado local e importar/exportar el proyecto
-  como JSON.
-- **Presentar** a pantalla completa y **exportar** a un HTML autónomo.
+- **Editor completo tipo ofimática** (Archivo, Inicio, Insertar, Dibujar,
+  Diseño, Transiciones, Animaciones, Ver, IA): texto con formato, listas
+  anidadas, estilos, columnas, WordArt, formas y combinar formas, tablas con
+  celdas combinadas y estilos, gráficos (varias series, combinados, desde
+  tabla o CSV en vivo), iconos, ecuaciones, código, **modelos 3D** y vídeo.
+- **Copiar, cortar y pegar** (Ctrl+C/X/V, cinta y menú contextual; también
+  con pulsación larga en el móvil), deshacer/rehacer, alineación con guías y
+  espaciado inteligente, agrupar, bloquear, orden de lectura.
+- **Diseño:** paletas y fuentes del tema, patrón de diapositivas, marcadores
+  de posición, galería de plantillas e ideas de diseño.
+- **Animaciones y transiciones:** entrada, énfasis, salida, trayectorias,
+  disparadores, «después de la anterior», Morph y 10 transiciones.
+- **Presentar:** vista del orador, mando desde el móvil (QR), lápiz y
+  resaltador, láser, subtítulos en directo, ensayar intervalos y grabar.
+- **Votaciones en directo con QR** y **preguntas del público**: el público
+  vota desde el móvil y los resultados se actualizan al instante.
+- **Datos en vivo:** paneles de Power BI, Looker Studio, Tableau, Google
+  Sheets, Grafana… y gráficos enlazados a un CSV.
+- **IA con OpenRouter** (tu cuenta): crear presentaciones completas desde un
+  tema o un documento, asistente que edita la presentación, mejorar
+  diapositivas, notas, traducir, texto alternativo e imágenes.
+- **Importar y exportar:** PowerPoint (.pptx) y OpenDocument (.odp) en ambos
+  sentidos, HTML autónomo, PDF, documentos y notas, imágenes, vídeo MP4/GIF y
+  Google Drive.
+- **Imágenes libres e iconos en línea** (Openverse, Iconify).
+- **Colaboración local:** comentarios, historial de versiones, proteger con
+  contraseña y marcar como final.
+- **Accesibilidad e idiomas:** comprobador, texto alternativo, lector de
+  pantalla; 11 idiomas, incluida interfaz de derecha a izquierda.
+- **Funciona sin conexión** (aplicación instalable), en móvil y con
+  complementos y macros mediante una API.
 
-Consulta la [hoja de ruta](ROADMAP.md) para lo que viene después.
+Consulta la [hoja de ruta](ROADMAP.md) para el detalle y lo que viene después.
 
 ## Puesta en marcha
 

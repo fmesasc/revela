@@ -19,23 +19,39 @@ standard, self-contained web page.
 
 ## Features
 
-- **Office-style ribbon** organised into tabs: File, Home, Insert, Design,
-  Transitions, Animations and View.
-- **Block-based canvas** with direct manipulation: drag from anywhere,
-  alignment guides with snapping, corner resizing and keyboard nudging.
-- **Content blocks:** rich text, images, video and **interactive 3D models**
-  (`.glb` / `.gltf`).
-- **Right-click context menu** with per-object actions, including AI-based
-  **image background removal**.
-- **Per-slide transitions** and **per-object entrance animations**.
-- **Sections** and **drag-and-drop slide reordering** in the navigator.
-- **Templates** (built-in and user-defined).
-- **PowerPoint import** (`.pptx`): recovers text and images with their layout.
-- **Design controls:** per-slide background, reveal.js themes, 16∶9 / 4∶3.
-- **Undo / redo**, local autosave, and project import/export as JSON.
-- **Present** in fullscreen and **export** to a standalone HTML file.
+- **Full office-style editor** (File, Home, Insert, Draw, Design, Transitions,
+  Animations, View, AI): rich text, nested lists, styles, columns, WordArt,
+  shapes and shape merging, tables with merged cells and styles, charts
+  (multi-series, combo, from a table or a live CSV), icons, equations, code,
+  **3D models** and video.
+- **Copy, cut and paste** (Ctrl+C/X/V, ribbon and context menu; long-press on
+  phones), undo/redo, alignment guides and smart spacing, grouping, locking,
+  reading order.
+- **Design:** theme colours and fonts, slide master, placeholders, template
+  gallery and design ideas.
+- **Animations & transitions:** entrance, emphasis, exit, motion paths,
+  triggers, "after previous", Morph and 10 transitions.
+- **Presenting:** speaker view, phone remote (QR), pen and highlighter, laser,
+  live captions, rehearse timings and recording.
+- **Live polls with QR** and **audience Q&A**: people vote from their phones
+  and results update instantly.
+- **Live data:** Power BI, Looker Studio, Tableau, Google Sheets, Grafana…
+  dashboards, and charts linked to a CSV.
+- **AI via OpenRouter** (your own account): whole decks from a topic or a
+  document, an assistant that edits the deck, improve slides, notes,
+  translation, alt text and images.
+- **Import & export:** PowerPoint (.pptx) and OpenDocument (.odp) both ways,
+  self-contained HTML, PDF, handouts and notes, images, MP4/GIF video and
+  Google Drive.
+- **Online free images and icons** (Openverse, Iconify).
+- **Local collaboration:** comments, version history, password protection and
+  mark as final.
+- **Accessibility & languages:** checker, alt text, screen reader support;
+  11 languages including a right-to-left interface.
+- **Works offline** (installable app), on phones, and with add-ins and macros
+  through an API.
 
-See the [roadmap](ROADMAP.md) for what is planned next.
+See the [roadmap](ROADMAP.md) for details and what comes next.
 
 ## Getting started
 
