@@ -74,8 +74,15 @@ def main():
                 name = part.strip().split(' as ')[0].strip()
                 if name and name not in exports_of(target):
                     errors.append(f'{rel}: importa {name} de {m.group(2)}, que no lo exporta')
+    # files the pages and the service worker point to must exist
+    for page in ['index.html', 'vote.html', 'remote.html', 'sw.js']:
+        text = (ROOT / page).read_text(encoding='utf-8')
+        refs = re.findall(r'(?:src|href)="((?:src|icons)/[^"]+)"', text) + re.findall(r"'((?:src|icons)/[^']+)'", text)
+        for ref in refs:
+            if not (ROOT / ref).exists():
+                errors.append(f'{page}: {ref} no existe')
     if errors:
-        print('ARQUITECTURA: importaciones no permitidas\n  ' + '\n  '.join(errors))
+        print('ARQUITECTURA: problemas\n  ' + '\n  '.join(errors))
         return 1
     print('ARQUITECTURA OK')
     return 0

@@ -1,0 +1,85 @@
+/* Objects on the canvas: selection, handles, editing states. */
+
+/* ---------- Blocks ---------- */
+/* Blocks keep their stacking order (DOM order). Selecting or dragging must NOT
+   lift a block above the others — a back object stays at the back while moved. */
+.block{position:absolute;border:1px solid transparent;cursor:grab;touch-action:none}
+.block.selected{border-color:var(--accent)}
+.block.dragging{cursor:grabbing;opacity:.75}
+.block.editing{cursor:auto}
+.block .rich{width:100%;height:100%;outline:none;padding:6px;color:inherit;overflow-wrap:anywhere}
+.block .rich ul{list-style-type:var(--bullet,disc)}
+.block .rich ol{list-style-type:var(--num,decimal)}
+/* A soft, translucent selection so the applied text colour stays visible
+   (the default solid blue hid it). No `color` override → text keeps its own. */
+.block .rich::selection,.block .rich *::selection{background:rgba(63,100,151,.30)}
+.block model-viewer{width:100%;height:100%}
+.block img,.block video{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none}
+.block audio{width:100%;pointer-events:none}
+.block iframe{width:100%;height:100%;border:0;display:block;background:#fff}
+.block .embed{width:100%;height:100%;display:flex;flex-direction:column;background:#fff}
+.embed-bar{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:3px 8px;font-size:11px;
+  color:var(--txt2);background:#f2f3f5;border-bottom:1px solid var(--line2)}
+.embed-url{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.embed-open{color:var(--accent);text-decoration:none;pointer-events:auto;white-space:nowrap}
+.embed-open:hover{text-decoration:underline}
+.block .embed iframe{flex:1}
+.block .shape{width:100%;height:100%}
+.block .chart{width:100%;height:100%}
+.block .icon-blk{width:100%;height:100%}
+.block .math-blk{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:inherit;overflow:auto}
+.block.__conn{pointer-events:none}          /* only the line is clickable */
+.block .connector{width:100%;height:100%}
+.block.__conn.selected{border-color:transparent}
+.block.__conn .handle-del,.block.__conn .handle-size,.block.__conn .handle-rot{display:none}
+.block .tbl{border-collapse:collapse;width:100%;height:100%;color:inherit;table-layout:fixed}
+.block .tbl td{border:1px solid var(--stroke,#fff);padding:3px 6px;vertical-align:top;outline:none;overflow-wrap:anywhere}
+.block .tbl.lines td{border-width:0 0 1px 0}
+.block .tbl.banded:not(.has-header) tr:nth-child(odd) td,.block .tbl.banded.has-header tr:nth-child(even) td{background:var(--band,rgba(127,127,127,.18))}
+.block .tbl.first-col td:first-child{font-weight:700}
+.block .tbl.has-header tr:first-child td{font-weight:700;background:var(--th-bg,rgba(127,127,127,.25));color:var(--th-fg,inherit)}
+.block .code{margin:0;width:100%;height:100%;overflow:auto;background:#0b0e14;color:#e6e6e6;padding:10px;
+  border-radius:4px;font-family:'Fira Code','Courier New',monospace;white-space:pre-wrap}
+.block .code code{font-family:inherit;outline:none;display:block;min-height:100%}
+.pv-block>svg{width:100%;height:100%}
+.block.selected video,.block.selected audio{pointer-events:auto}
+.block.animated::before{content:"✨";position:absolute;top:-9px;left:-7px;font-size:11px;z-index:5;
+  background:#fff;border-radius:50%;padding:0 1px}
+.block.processing::after{content:"Procesando…";position:absolute;inset:0;display:grid;place-items:center;
+  background:#000a;color:#fff;font-size:14px;z-index:8}
+.handle-del{position:absolute;top:-30px;right:-30px;width:22px;height:22px;
+  border-radius:50%;background:var(--danger);color:#fff;border:2px solid #fff;box-shadow:0 1px 4px #0004;
+  cursor:pointer;display:none;font-size:13px;line-height:1;z-index:7;place-items:center}
+.block.selected .handle-del{display:grid}
+.handle-rot{position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:16px;height:16px;
+  border-radius:50%;background:#fff;border:2px solid var(--accent);box-shadow:0 1px 4px #0004;
+  cursor:grab;display:none;z-index:7}
+.handle-rot::before{content:"";position:absolute;left:50%;top:100%;width:2px;height:14px;
+  background:var(--accent);transform:translateX(-50%)}
+.block.selected .handle-rot{display:block}
+.handle-size{position:absolute;width:11px;height:11px;background:#fff;border:1.5px solid var(--accent);
+  border-radius:2px;display:none;z-index:6}
+.handle-size.nw{left:-6px;top:-6px;cursor:nwse-resize}
+.handle-size.ne{right:-6px;top:-6px;cursor:nesw-resize}
+.handle-size.sw{left:-6px;bottom:-6px;cursor:nesw-resize}
+.handle-size.se{right:-6px;bottom:-6px;cursor:nwse-resize}
+.block.selected .handle-size{display:block}
+.block.locked{cursor:default}
+.block.locked.selected{border-style:dashed}
+.block.locked .handle-size,.block.locked .handle-rot{display:none}
+.marquee{position:absolute;z-index:8;pointer-events:none;background:#3f649722;border:1px solid var(--accent)}
+.deck-logo-ovl{position:absolute;z-index:6;pointer-events:none;object-fit:contain}
+.caption-ovl{position:absolute;z-index:2;color:inherit;font-size:16px;text-align:center;opacity:.85;
+  font-style:italic;pointer-events:none;overflow-wrap:anywhere}
+.block .slideref{width:100%;height:100%;overflow:hidden;background:#111;border:1px solid #ffffff55;border-radius:4px}
+.block .figindex{width:100%;height:100%;color:inherit;overflow:auto}
+.block .figindex ul{margin:.4em 0 0;padding-left:1.4em}
+.block .figindex li{margin:.15em 0}
+.pguide{position:absolute;z-index:6;background:#00bcd4}
+.pguide.v{top:0;bottom:0;width:1px;cursor:ew-resize}
+.pguide.h{left:0;right:0;height:1px;cursor:ns-resize}
+.pguide::before{content:"";position:absolute;inset:-4px}  /* easier to grab */
+.pguide.v::before{left:-4px;right:-4px;top:0;bottom:0}
+.pguide.h::before{top:-4px;bottom:-4px;left:0;right:0}
+.guide{position:absolute;z-index:7;pointer-events:none;background:#ff3b8b}
+.guide.v{top:0;bottom:0;width:1px}.guide.h{left:0;right:0;height:1px}

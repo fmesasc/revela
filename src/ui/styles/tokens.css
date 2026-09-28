@@ -1,0 +1,33 @@
+/* Colour tokens of the editor (light, dark, automatic; custom is set from JS) and base rules. */
+
+:root{
+  --bg:#eef0f3; --canvas-bg:#c7cad1; --panel:#fff; --ribbon:#f7f8fa;
+  --line:#e2e4e9; --line2:#d2d5dc; --txt:#2f333a; --txt2:#797f89;
+  --accent:#3f6497; --accent-bg:#e8eef6; --go:#2b7a3b; --go-bg:#e6f4ea; --danger:#c0392b;
+  color-scheme:light;
+}
+/* Editor appearance (the slides keep their own colours): dark, or following
+   the system when "automatic"; "custom" sets these variables from JS. */
+:root[data-ui="dark"]{
+  --bg:#15181d; --canvas-bg:#0b0d10; --panel:#1f2329; --ribbon:#1a1d22;
+  --line:#2b3038; --line2:#3a414c; --txt:#e3e6eb; --txt2:#9aa3ae;
+  --accent:#86a9e8; --accent-bg:#26324a; --go:#6fd18c; --go-bg:#1f3527; --danger:#f07167;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root[data-ui="auto"]{
+    --bg:#15181d; --canvas-bg:#0b0d10; --panel:#1f2329; --ribbon:#1a1d22;
+    --line:#2b3038; --line2:#3a414c; --txt:#e3e6eb; --txt2:#9aa3ae;
+    --accent:#86a9e8; --accent-bg:#26324a; --go:#6fd18c; --go-bg:#1f3527; --danger:#f07167;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+/* No native text selection / long‑press callout on the app chrome or objects,
+   so a long‑press opens our menu instead. Editable areas keep selection. */
+#ribbon,#statusbar,#navigator,.titlebar,.block{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.block .rich[contenteditable="true"],#notes,.doc-name,input,textarea,math-field{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+html,body{margin:0;height:100%;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  font-size:13px;color:var(--txt);background:var(--bg)}
+body{display:flex;flex-direction:column;overflow:hidden}
+button{font-family:inherit}

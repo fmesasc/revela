@@ -26,6 +26,8 @@ def touch_checks(send, recv, port):
     recv(send('Emulation.setDeviceMetricsOverride', sid, width=390, height=844, deviceScaleFactor=2, mobile=True))
     recv(send('Emulation.setTouchEmulationEnabled', sid, enabled=True, maxTouchPoints=5))
     recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/index.html?test')); time.sleep(3)
+    # A known deck (title + subtitle), not whatever the suite left autosaved.
+    ev("(()=>{const R=window.__revela;R.store.replaceDeck(R.model.emptyDeck());R.render();return 1})()"); time.sleep(0.3)
     fails = []
     def check(ok, name):
         if not ok: fails.append('✗ táctil: ' + name)
@@ -155,7 +157,8 @@ def main():
             "(function(){var k=function(m){try{(top.__errs=top.__errs||[]).push(m);}catch(e){}};"
             "addEventListener('error',function(e){k((e.message||'error')+' '+(e.filename||'')+':'+(e.lineno||''));});"
             "addEventListener('unhandledrejection',function(e){k('promise: '+(e.reason&&e.reason.message||e.reason));});})();"))
-        recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/tests/index.html'))
+        only = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--only=')), '')
+        recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/tests/index.html' + (f'?only={only}' if only else '')))
         deadline = time.time() + TIMEOUT
         out = ''
         while time.time() < deadline:

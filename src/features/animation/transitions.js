@@ -43,7 +43,7 @@ export function setTransitionSpeed(value) {
 }
 
 // Keyframe used by each effect when it is played outside reveal's fragments
-// (editor preview and trigger animations). Same names as in styles.css.
+// (editor preview and trigger animations). Same names as in ui/styles/chrome.css.
 export const EFFECT_KF = {
   'fade-in': 'rvIn', 'fade-up': 'rvUp', 'fade-down': 'rvDown', 'fade-left': 'rvLeft', 'fade-right': 'rvRight',
   'zoom-in': 'rvZoom', 'grow': 'rvGrow', 'shrink': 'rvShrink', 'spin': 'rvSpin', 'flip': 'rvFlip', 'bounce': 'rvBounce',
