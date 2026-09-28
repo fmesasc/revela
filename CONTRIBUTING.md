@@ -20,13 +20,29 @@ changes.
 - `src/core/` — data model, persistence and the central store (with undo/redo).
 - `src/features/` — document operations (slides, blocks, formatting,
   transitions, templates). These mutate the store through `commit`.
-- `src/io/` — reveal.js output and PowerPoint import.
+- `src/io/` — import/export: reveal.js HTML, PDF, PowerPoint, OpenDocument, video, images.
 - `src/ui/` — presentation layer (ribbon, canvas, navigator, context menu).
   UI modules read the store and render; they never persist state directly.
 - `src/main.js` — wires everything and subscribes the render.
+- `src/api.js` — the public `window.Revela` API for add-ins and macros.
+- `vote.html`, `remote.html` — the audience voting page and the phone remote.
 
 The golden rule: **all document changes go through `commit`/`mutate` in the
 store**, so undo/redo, autosave and re-render stay consistent.
+
+## Tests
+
+Everything runs in headless Chrome and needs only `python3` and Chrome/Chromium:
+
+```bash
+./tests/run.sh          # the whole suite (tests/suite.js) + real touch checks on a phone-sized page
+./tests/run.sh --e2e    # also two real pages over WebRTC: phone remote, live poll, audience Q&A (needs network)
+```
+
+Add a test to `tests/suite.js` for every feature and every bug fixed; the
+suite drives the real app through `window.__revela` (loaded with `?test`).
+Services that need an account (OpenRouter, Google Drive) are tested with
+simulated responses.
 
 ## Coding style
 
