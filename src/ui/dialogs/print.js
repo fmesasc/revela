@@ -1,7 +1,8 @@
 // "Print handouts / notes pages" dialog: pick the layout, then the browser's
 // print window opens (choose "Save as PDF" there).
 
-import { exportHandout, exportImages } from '../../io/formats/html.js';
+import { exportHandout } from '../../io/export/print.js';
+import { exportImages } from '../../io/export/images.js';
 import { t } from '../../i18n/index.js';
 import { state } from '../../core/store.js';
 import { alertDialog } from './dialog.js';

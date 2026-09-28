@@ -17,6 +17,7 @@ const pollSig = b => JSON.stringify([b.kind, b.display, b.question, b.options, b
 import { masterBlocksFor, PH_PROMPT, isEmptyPlaceholder } from '../../features/document/master.js';
 import { stageBackground } from '../../io/formats/html.js';
 import { autocorrectAtCaret } from '../../features/document/autocorrect.js';
+import { KATEX, HIGHLIGHT, loadScript, loadStyle } from '../../core/vendor.js';
 
 function renderSlideRef(wrap, b) {
   wrap.innerHTML = '';
@@ -499,27 +500,11 @@ function content(b) {
 const hostOf = u => { try { return new URL(u).host || u; } catch { return u; } };
 
 // KaTeX for equation blocks, loaded on demand.
-const KATEX_CSS = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css';
-const KATEX_JS = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js';
-const KATEX_AUTO = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js';
-let katexLoading, katexAutoLoading;
 function ensureKatex() {
-  if (window.katex) return Promise.resolve();
-  if (!katexLoading) katexLoading = new Promise((res, rej) => {
-    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = KATEX_CSS; document.head.appendChild(css);
-    const s = document.createElement('script'); s.src = KATEX_JS; s.onload = res; s.onerror = rej; document.head.appendChild(s);
-  });
-  return katexLoading;
+  loadStyle(`${KATEX}/katex.min.css`);
+  return loadScript(`${KATEX}/katex.min.js`, 'katex');
 }
-function ensureKatexAuto() {
-  return ensureKatex().then(() => {
-    if (window.renderMathInElement) return;
-    if (!katexAutoLoading) katexAutoLoading = new Promise((res, rej) => {
-      const s = document.createElement('script'); s.src = KATEX_AUTO; s.onload = res; s.onerror = rej; document.head.appendChild(s);
-    });
-    return katexAutoLoading;
-  });
-}
+const ensureKatexAuto = () => ensureKatex().then(() => loadScript(`${KATEX}/contrib/auto-render.min.js`, 'renderMathInElement'));
 // Render inline $...$ / $$...$$ inside a text element (only when not editing).
 export const hasInlineMath = html => /\$[^$]/.test(html || '');
 function renderInlineMath(el) {
@@ -567,14 +552,9 @@ function embedContent(b) {
 
 // Code blocks edit as plain text on double‑click.
 // Syntax colouring in the editor (highlight.js, loaded on first use).
-const HLJS = 'https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.9.0';
-let hljsP = null;
 function loadHljs() {
-  if (window.hljs) return Promise.resolve(window.hljs);
-  return (hljsP ||= new Promise((ok, ko) => {
-    const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = `${HLJS}/styles/atom-one-dark.min.css`; document.head.appendChild(l);
-    const s = document.createElement('script'); s.src = `${HLJS}/highlight.min.js`; s.onload = () => ok(window.hljs); s.onerror = ko; document.head.appendChild(s);
-  }));
+  loadStyle(`${HIGHLIGHT}/styles/atom-one-dark.min.css`);
+  return loadScript(`${HIGHLIGHT}/highlight.min.js`, 'hljs');
 }
 function paintCode(c, b) {
   const src = b.code || '';

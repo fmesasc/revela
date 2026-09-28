@@ -12,14 +12,10 @@ import { uid } from '../../core/model.js';
 import { chartSVG, iconSVG, inkSVG, tableSpan } from '../../render/svg.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
 import { masterBlocksFor, isEmptyPlaceholder } from '../../features/document/master.js';
-import { blockImage } from './html.js';
+import { blockImage } from '../export/images.js';
+import { JSZIP, loadScript } from '../../core/vendor.js';
 
-const JSZIP = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
-const loadZip = () => new Promise((res, rej) => {
-  if (window.JSZip) return res(window.JSZip);
-  const s = document.createElement('script'); s.src = JSZIP; s.onload = () => res(window.JSZip); s.onerror = () => rej(new Error('JSZip'));
-  document.head.appendChild(s);
-});
+const loadZip = () => loadScript(JSZIP, 'JSZip');
 
 const X = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const NS = 'xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" '

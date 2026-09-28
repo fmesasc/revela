@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+"""Architecture check: every module in src/ imports only from its own layer or
+the ones below (see docs/ARCHITECTURE.md). Exit 1 and list the offending
+imports otherwise. Run by tests/run.sh before the browser suite.
+
+    apps  →  ui  →  api  →  io  →  features  →  render · i18n  →  core
+"""
+import pathlib, re, sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+SRC = ROOT / 'src'
+
+# Layer of each top-level folder of src/; a module may import a lower or
+# equal rank. The API (window.Revela) opens no dialogs; the UI uses it for the
+# plugin and macro manager.
+RANK = {'core': 0, 'i18n': 1, 'render': 1, 'features': 2, 'io': 3, 'api': 4, 'ui': 5, 'apps': 6}
+# Pairs of the same rank that must not know each other.
+APART = {('render', 'i18n')}
+# Code that runs inside the exported presentation cannot import at all.
+SELF_CONTAINED = {'io/runtime/ink.js'}
+
+IMPORT = re.compile(r"""(?:^\s*import\s[^'"]*?from\s*|^\s*import\s*|\bimport\()\s*['"](\.[^'"]+)['"]""", re.M)
+
+
+def layer(path):
+    return path.relative_to(SRC).parts[0]
+
+
+def main():
+    errors = []
+    for f in sorted(SRC.rglob('*.js')):
+        rel = f.relative_to(SRC).as_posix()
+        if layer(f) not in RANK:
+            errors.append(f'{rel}: carpeta fuera de las capas {sorted(RANK)}')
+            continue
+        for m in IMPORT.finditer(f.read_text(encoding='utf-8')):
+            target = (f.parent / m.group(1)).resolve()
+            if not target.exists():
+                errors.append(f'{rel}: importa {m.group(1)}, que no existe')
+                continue
+            if rel in SELF_CONTAINED:
+                errors.append(f'{rel}: se incrusta en la presentación y no puede importar ({m.group(1)})')
+                continue
+            if SRC not in target.parents:
+                errors.append(f'{rel}: importa fuera de src/ ({m.group(1)})')
+                continue
+            a, b = layer(f), layer(target)
+            if RANK[b] > RANK[a] or (a, b) in APART:
+                errors.append(f'{rel} ({a}) → {target.relative_to(SRC).as_posix()} ({b})')
+    if errors:
+        print('ARQUITECTURA: importaciones no permitidas\n  ' + '\n  '.join(errors))
+        return 1
+    print('ARQUITECTURA OK')
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

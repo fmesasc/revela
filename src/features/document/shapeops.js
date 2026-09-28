@@ -7,14 +7,9 @@
 import { state, commit, currentSlide, setSelection } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 import { shapeOutline100 } from '../../render/svg.js';
+import { POLYGON_CLIPPING, loadScript } from '../../core/vendor.js';
 
-const LIB = 'https://cdn.jsdelivr.net/npm/polygon-clipping@0.15.7/dist/polygon-clipping.umd.min.js';
-const loadLib = () => new Promise((res, rej) => {
-  if (window.polygonClipping) return res(window.polygonClipping);
-  const sc = document.createElement('script'); sc.src = LIB;
-  sc.onload = () => res(window.polygonClipping); sc.onerror = () => rej(new Error('polygon-clipping'));
-  document.head.appendChild(sc);
-});
+const loadLib = () => loadScript(POLYGON_CLIPPING, 'polygonClipping');
 
 // Polygon rings of a shape block, in slide pixels. A 'custom' shape keeps its
 // rings (b.rings, in the 100 box) so it can be merged again.

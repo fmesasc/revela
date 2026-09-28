@@ -33,7 +33,10 @@ import * as search from '../../features/document/search.js';
 import * as i18n from '../../i18n/index.js';
 import * as gdrive from '../../io/cloud/gdrive.js';
 import * as pptx from '../../io/formats/pptx-export.js';
-import * as io from '../../io/formats/html.js';
+import * as html from '../../io/formats/html.js';
+import * as printing from '../../io/export/print.js';
+import * as images from '../../io/export/images.js';
+import * as presenting from '../../ui/shell/present.js';
 import * as a11y from '../../features/document/a11y.js';
 import * as reuse from '../../ui/dialogs/reuse.js';
 import * as ribbon from '../../ui/shell/ribbon.js';
@@ -49,9 +52,17 @@ import { loadNewerDeck } from '../../core/model.js';
 import { startAutoVersions } from '../../features/collab/versions.js';
 import * as versions from '../../features/collab/versions.js';
 import { finishOpenRouterLogin } from '../../features/ai/openrouter.js';
-import { alertDialog } from '../../ui/dialogs/dialog.js';
+import { alertDialog, confirmDialog, promptDialog } from '../../ui/dialogs/dialog.js';
+import * as notify from '../../core/notify.js';
+import * as vendor from '../../core/vendor.js';
+import { session } from '../../core/session.js';
 import * as ai from '../../features/ai/openrouter.js';
 import * as api from '../../api/index.js';
+
+// io and features ask the user through core/notify: here, with our dialogs.
+notify.setNotifier({ alert: alertDialog, confirm: confirmDialog, prompt: promptDialog });
+// Output of the document (HTML, print, images) and presenting, together for the tests.
+const io = { ...html, ...printing, ...images, ...presenting };
 
 function render() {
   renderRibbon();
@@ -136,7 +147,7 @@ initI18n();
 // and inspect the real app. Only active with ?test in the URL.
 const testing = new URLSearchParams(location.search).has('test');
 if (testing)
-  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, designer, pptxImport, odp, api, ai, versions, comments, protect, aiDeck, poll, dashboards, stock, clipboard: clip, markdown, video: () => import('../../io/export/video.js') };
+  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, designer, pptxImport, odp, api, ai, versions, comments, protect, aiDeck, poll, dashboards, stock, clipboard: clip, markdown, notify, vendor, session, video: () => import('../../io/export/video.js') };
 
 // Public scripting API for plugins, macros and the console; installed plugins
 // load after the editor is ready (not in the test harness).

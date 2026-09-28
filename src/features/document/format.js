@@ -10,7 +10,7 @@
 import { commit, selectedBlock, selectedBlocks } from '../../core/store.js';
 import { ensureFont } from '../design/fonts.js';
 import { t } from '../../i18n/index.js';
-import { promptDialog } from '../../ui/dialogs/dialog.js';
+import { promptUser } from '../../core/notify.js';
 
 // Format painter: copy a text box's paragraph/character style and apply it.
 let styleClip = null;
@@ -95,7 +95,7 @@ export function normalizeLink(input) {
 }
 export function link() {
   const c = ctx(); if (!c) return;
-  promptDialog(t('Enlace: URL, nº de diapositiva o correo:'), 'https://').then(v => {
+  promptUser(t('Enlace: URL, nº de diapositiva o correo:'), 'https://').then(v => {
     const url = normalizeLink(v);
     if (url) exec('createLink', url);
   });

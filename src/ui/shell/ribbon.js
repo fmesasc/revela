@@ -7,7 +7,10 @@ import * as blocks from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
 import * as trans from '../../features/animation/transitions.js';
 import * as templates from '../../features/document/templates.js';
-import * as io from '../../io/formats/html.js';
+import { exportHTML } from '../../io/formats/html.js';
+import { saveProject } from '../../io/formats/project.js';
+import { exportPDF } from '../../io/export/print.js';
+import { present } from './present.js';
 import { importPPTX } from '../../io/formats/pptx-import.js';
 import * as gdrive from '../../io/cloud/gdrive.js';
 import { exportPPTX } from '../../io/formats/pptx-export.js';
@@ -42,7 +45,7 @@ import * as fontsMod from '../../features/design/fonts.js';
 import { FONTS, ensureDeckFonts } from '../../features/design/fonts.js';
 import { ICON_NAMES, iconSVG, WORDART_KEYS, wordartCSS } from '../../render/svg.js';
 import { playAnimations } from './canvas.js';
-import * as remote from '../../features/live/remote.js';
+import { openHostPanel } from '../dialogs/remote.js';
 import * as search from '../../features/document/search.js';
 import { t } from '../../i18n/index.js';
 import { confirmDialog, promptDialog, alertDialog } from '../dialogs/dialog.js';
@@ -81,7 +84,7 @@ const ACTIONS = {
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   },
   'mark-final': () => protect.setFinal(!protect.isFinal()),
-  'save': io.saveProject,
+  'save': saveProject,
   'gallery': () => openGallery(),
   'versions': () => openVersions(),
   'design-ideas': () => openDesignIdeas(),
@@ -89,13 +92,13 @@ const ACTIONS = {
   'gdrive-save': () => gdrive.saveWithUI(),
   'gdrive-html': () => gdrive.saveHtmlWithUI(),
   'gdrive-config': () => gdrive.openGdriveSetup(),
-  'export': io.exportHTML,
+  'export': exportHTML,
   'export-pptx': () => exportPPTX(),
-  'export-pdf': io.exportPDF,
+  'export-pdf': exportPDF,
   'export-png': () => openImageDialog(),
   'export-video': () => openVideoDialog(),
-  'present': () => io.present(),
-  'rehearse': () => io.present({ rehearse: true }),
+  'present': () => present(),
+  'rehearse': () => present({ rehearse: true }),
   'record-show': () => recorder.recordSlideshow(),
   'record-screen': () => recorder.recordToSlide('screen'),
   'record-camera': () => recorder.recordToSlide('camera'),
@@ -189,7 +192,7 @@ const ACTIONS = {
   'toggle-autoanimate': () => slides.toggleAutoAnimate(),
   'dup-animate': () => slides.duplicateForAnimate(),
   'toggle-notes': () => commit(() => (state.ui.showNotes = !state.ui.showNotes), { history: false }),
-  'connect-mobile': () => remote.openHostPanel(),
+  'connect-mobile': () => openHostPanel(),
   'shortcuts': () => openShortcuts(),
   'insert-hf': () => openHeaderFooter(),
   'anim-panel': () => openAnimPanel(),

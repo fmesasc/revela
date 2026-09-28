@@ -19,7 +19,8 @@
 import { state, commit, subscribe, currentSlide, setSelection } from '../core/store.js';
 import * as blocks from '../features/document/blocks.js';
 import * as slides from '../features/document/slides.js';
-import * as io from '../io/formats/html.js';
+import { buildHTML } from '../io/formats/html.js';
+import { exportPDF } from '../io/export/print.js';
 import { buildPptxBlob } from '../io/formats/pptx-export.js';
 import { buildODP } from '../io/formats/odp.js';
 
@@ -61,7 +62,7 @@ export const Revela = Object.freeze({
   update: (id, props) => { const b = find(id); if (b) commit(() => Object.assign(b, props)); return !!b; },
   remove: id => { const s = currentSlide(); commit(() => { s.blocks = s.blocks.filter(b => b.id !== id); }); },
   on: (ev, fn) => (ev === 'change' ? subscribe(() => fn(Revela)) : () => {}),
-  export: Object.freeze({ html: () => io.buildHTML(), pptx: () => buildPptxBlob(), odp: () => buildODP(), pdf: () => io.exportPDF() }),
+  export: Object.freeze({ html: () => buildHTML(), pptx: () => buildPptxBlob(), odp: () => buildODP(), pdf: () => exportPDF() }),
   ui: Object.freeze({
     addButton: b => { if (!b?.id || typeof b.onClick !== 'function') throw new Error('addButton({ id, label, onClick })'); buttons.set(b.id, b); renderButtons(); },
     removeButton: id => { buttons.delete(id); renderButtons(); },

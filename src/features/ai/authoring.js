@@ -11,6 +11,7 @@ import { state, commit, currentSlide } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 import { chat, lang, parseJSON, esc, plain, generateImage } from './openrouter.js';
 import { currentPalette, applyPalette, PALETTES } from '../design/palettes.js';
+import { PDFJS } from '../../core/vendor.js';
 
 // ---- Slide kinds → objects ------------------------------------------------------
 export const KINDS = ['title', 'section', 'bullets', 'two_columns', 'quote', 'stats', 'timeline', 'chart', 'table', 'image', 'closing'];
@@ -171,8 +172,8 @@ export async function generateDeck(opts) {
 // Text of a document the user gives (txt/md, or PDF through pdf.js).
 export async function readDocument(file) {
   if (/\.pdf$/i.test(file.name) || file.type === 'application/pdf') {
-    const pdfjs = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs');
-    pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+    const pdfjs = await import(`${PDFJS}/pdf.min.mjs`);
+    pdfjs.GlobalWorkerOptions.workerSrc = `${PDFJS}/pdf.worker.min.mjs`;
     const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
     const pages = [];
     for (let i = 1; i <= Math.min(pdf.numPages, 80); i++) {

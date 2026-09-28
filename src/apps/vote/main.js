@@ -1,13 +1,14 @@
 // Audience voting page: connects to the presentation's peer
 // ("revela-vote-CODE") and answers the poll on the current slide.
 
-const PEERJS = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';
+import { PEERJS, loadScript } from '../../core/vendor.js';
+
 const $ = s => document.querySelector(s);
 const show = id => ['join', 'poll', 'wait'].forEach(x => { $('#' + x).hidden = x !== id; });
 const voter = (() => { try { let v = localStorage.getItem('revela.voter'); if (!v) { v = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('revela.voter', v); } return v; } catch { return Math.random().toString(36).slice(2); } })();
 let conn = null, poll = null, answer = null;
 
-const loadPeer = () => new Promise((ok, ko) => { if (window.Peer) return ok(); const s = document.createElement('script'); s.src = PEERJS; s.onload = ok; s.onerror = ko; document.head.appendChild(s); });
+const loadPeer = () => loadScript(PEERJS, 'Peer');
 
 async function join(code) {
   code = code.trim().toUpperCase(); if (code.length !== 5) { $('#err').textContent = 'El código tiene 5 caracteres.'; return; }

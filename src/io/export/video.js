@@ -4,10 +4,9 @@
 // Object animations and 3D/video content are not rendered (still frames).
 
 import { state } from '../../core/store.js';
-import { slideImageBlob } from '../formats/html.js';
+import { slideImageBlob } from './images.js';
+import { MP4_MUXER, GIFENC } from '../../core/vendor.js';
 
-const MP4 = 'https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/+esm';
-const GIF = 'https://cdn.jsdelivr.net/npm/gifenc@1.0.3/+esm';
 
 export const canEncodeMP4 = () => typeof window.VideoEncoder === 'function';
 
@@ -42,7 +41,7 @@ function timeline(fr, { holdMs, fadeMs, fps }) {
 
 export async function buildMP4(deck = state.deck, { width = 1280, holdMs = 5000, fadeMs = 500, fps = 30, onProgress } = {}) {
   if (!canEncodeMP4()) throw new Error('WebCodecs');
-  const { Muxer, ArrayBufferTarget } = await import(MP4);
+  const { Muxer, ArrayBufferTarget } = await import(MP4_MUXER);
   const fr = await frames(deck, width, onProgress);
   const seq = timeline(fr, { holdMs, fadeMs, fps });
   const W = fr[0].canvas.width, H = fr[0].canvas.height;
@@ -66,7 +65,7 @@ export async function buildMP4(deck = state.deck, { width = 1280, holdMs = 5000,
 }
 
 export async function buildGIF(deck = state.deck, { width = 640, holdMs = 3000, fadeMs = 400, fps = 10, onProgress } = {}) {
-  const { GIFEncoder, quantize, applyPalette } = await import(GIF);
+  const { GIFEncoder, quantize, applyPalette } = await import(GIFENC);
   const fr = await frames(deck, width, onProgress);
   const seq = timeline(fr, { holdMs, fadeMs, fps });
   const gif = GIFEncoder();

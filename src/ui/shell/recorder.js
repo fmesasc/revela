@@ -3,7 +3,7 @@
 
 import { startRecording, blobToDataURL, canRecord } from '../../features/live/media.js';
 import { addVideo } from '../../features/document/blocks.js';
-import { present } from '../../io/formats/html.js';
+import { present } from './present.js';
 import { state } from '../../core/store.js';
 import { alertDialog } from '../dialogs/dialog.js';
 import { t } from '../../i18n/index.js';

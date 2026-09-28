@@ -10,25 +10,16 @@
 
 import { state, subscribe } from '../../core/store.js';
 import * as slides from '../document/slides.js';
-import * as io from '../../io/formats/html.js';
+import { session } from '../../core/session.js';
+import { PEERJS, loadScript } from '../../core/vendor.js';
 import { t } from '../../i18n/index.js';
 
-const PEERJS = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous 0/O/1/I
 
 let peer = null, conn = null, code = null, statusCb = null, unsub = null;
 
 const genCode = () => Array.from({ length: 5 }, () =>
   CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]).join('');
-
-function loadScript(src) {
-  return new Promise((res, rej) => {
-    if (window.Peer) return res();
-    const s = document.createElement('script');
-    s.src = src; s.onload = res; s.onerror = () => rej(new Error('no se pudo cargar PeerJS'));
-    document.head.appendChild(s);
-  });
-}
 
 export function remoteCode() { return code; }
 export function remoteLink() {
@@ -39,7 +30,7 @@ export function remoteLink() {
 export async function startHost(onStatus) {
   statusCb = onStatus;
   onStatus?.({ state: 'loading' });
-  await loadScript(PEERJS);
+  await loadScript(PEERJS, 'Peer');
   hostWithFreshCode(0);
   return code;
 }
@@ -76,54 +67,10 @@ export function pushState() {
   if (conn && conn.open) { try { conn.send(presentationState()); } catch {} }
 }
 
-// ---- Host panel (code + QR + status) --------------------------------------
-const QRLIB = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js';
-function renderQR(canvas, text) {
-  const draw = () => window.QRCode?.toCanvas(canvas, text, { width: 176, margin: 1 }, () => {});
-  if (window.QRCode) return draw();
-  const s = document.createElement('script');
-  s.src = QRLIB; s.onload = draw; s.onerror = () => { canvas.style.display = 'none'; };
-  document.head.appendChild(s);
-}
-
-export function openHostPanel() {
-  if (document.getElementById('host-modal')) return;
-  const back = document.createElement('div');
-  back.id = 'host-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal">
-    <button class="modal-close" title="Cerrar">✕</button>
-    <h3>${t('Conectar móvil')}</h3>
-    <p class="host-help">En el móvil, abre <b class="host-url">remote.html</b> e introduce el código
-      (o escanea el QR). Podrás ver las notas, pasar diapositivas y usar el puntero.</p>
-    <div class="host-code">·····</div>
-    <canvas class="host-qr" width="176" height="176"></canvas>
-    <div class="host-status">Iniciando…</div>
-    <a class="host-link" target="_blank" rel="noopener">Abrir el mando ↗</a>
-  </div>`;
-  document.body.appendChild(back);
-  const q = sel => back.querySelector(sel);
-  const close = () => { stopHost(); back.remove(); };
-  q('.modal-close').addEventListener('click', close);
-  back.addEventListener('click', e => { if (e.target === back) close(); });
-
-  startHost(s => {
-    if (s.state === 'loading') q('.host-status').textContent = 'Cargando conexión…';
-    if (s.code) q('.host-code').textContent = s.code;
-    if (s.link) {
-      q('.host-link').href = s.link;
-      q('.host-url').textContent = s.link.replace(/^https?:\/\//, '');
-      renderQR(q('.host-qr'), s.link);
-    }
-    if (s.state === 'waiting') q('.host-status').textContent = 'Esperando al móvil…';
-    if (s.state === 'connected') { const el = q('.host-status'); el.textContent = '📱 Móvil conectado'; el.classList.add('on'); }
-    if (s.state === 'error') q('.host-status').textContent = 'Error: ' + s.error;
-  });
-}
-
 // ---- Pure logic (testable) -------------------------------------------------
 export function presentationState() {
   const visible = state.deck.slides.filter(s => !s.hidden);
-  const ap = io.activePresent;
+  const ap = session.present;
   let cur;
   if (ap && ap.frame.contentWindow.Reveal) cur = visible[ap.frame.contentWindow.Reveal.getSlidePastCount()];   // flat position (vertical stacks too)
   else cur = state.deck.slides[state.ui.slideIndex];
@@ -152,7 +99,7 @@ export function applyCommand(cmd) {
 function handleCommand(cmd) { applyCommand(cmd); pushState(); }
 
 function nav(delta, absolute) {
-  const ap = io.activePresent;
+  const ap = session.present;
   if (ap && ap.frame.contentWindow.Reveal) {
     const Rv = ap.frame.contentWindow.Reveal;
     if (absolute != null) { const el = Rv.getSlides()[absolute]; if (el) { const ix = Rv.getIndices(el); Rv.slide(ix.h, ix.v); } }
@@ -165,7 +112,7 @@ function nav(delta, absolute) {
 }
 
 // Laser pointer and blackout drawn inside the presentation overlay (same origin).
-function presentDoc() { return io.activePresent?.frame.contentDocument || null; }
+function presentDoc() { return session.present?.frame.contentDocument || null; }
 function laser(x, y) {
   const doc = presentDoc(); if (!doc) return;
   let dot = doc.getElementById('__laser');

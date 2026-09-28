@@ -18,6 +18,7 @@ import { addSlide, duplicateSlide, deleteSlide, goToSlide, toggleSlideHidden,
   addSectionAt, removeSection, setSlideSection } from '../../features/document/slides.js';
 import { t } from '../../i18n/index.js';
 import { alertDialog } from '../dialogs/dialog.js';
+import { MATHLIVE, BG_REMOVAL, loadScript } from '../../core/vendor.js';
 import { renderLatex } from './canvas.js';
 import { tablePresets, tableClass, tableVars, tableCSS } from '../../render/svg.js';
 import { currentPalette, deckFg } from '../../features/design/palettes.js';
@@ -316,16 +317,9 @@ const MATH_PALETTE = [
     ['∪', '\\cup '], ['∩', '\\cap '], ['∂', '\\partial '], ['∇', '\\nabla '], ['∀', '\\forall '], ['∃', '\\exists '],
   ]],
 ];
-const MATHLIVE = 'https://cdn.jsdelivr.net/npm/mathlive@0.100.0/dist/mathlive.min.js';
-let mathliveLoading;
 function ensureMathlive() {
   if (window.customElements && customElements.get('math-field')) return Promise.resolve(true);
-  if (!mathliveLoading) mathliveLoading = new Promise(res => {
-    const s = document.createElement('script'); s.src = MATHLIVE;
-    s.onload = () => customElements.whenDefined('math-field').then(() => res(true), () => res(false));
-    s.onerror = () => res(false); document.head.appendChild(s);
-  });
-  return mathliveLoading;
+  return loadScript(MATHLIVE).then(() => customElements.whenDefined('math-field')).then(() => true, () => false);
 }
 
 // Visual, Symbolab‑style equation editor (MathLive): type and edit the formula
@@ -567,7 +561,7 @@ async function removeBackground(b) {
   const el = document.querySelector(`.block[data-id="${b.id}"]`);
   el?.classList.add('processing');
   try {
-    const { removeBackground } = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/+esm');
+    const { removeBackground } = await import(BG_REMOVAL);
     const blob = await removeBackground(b.src);
     const dataUrl = await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); });
     commit(() => (b.src = dataUrl));

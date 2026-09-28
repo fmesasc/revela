@@ -5,9 +5,10 @@
 // only in this browser, and restricted by origin in the Google Cloud project.
 
 import { state, replaceDeck } from '../../core/store.js';
-import { alertDialog } from '../../ui/dialogs/dialog.js';
+import { alertUser } from '../../core/notify.js';
 import { t } from '../../i18n/index.js';
 import { buildHTML } from '../formats/html.js';
+import { loadScript } from '../../core/vendor.js';
 
 const GIS = 'https://accounts.google.com/gsi/client';
 const GAPI = 'https://apis.google.com/js/api.js';
@@ -18,14 +19,6 @@ export function gdriveConfig() { try { return JSON.parse(localStorage.getItem(LS
 function setGdriveConfig(c) { try { localStorage.setItem(LS, JSON.stringify(c)); } catch {} }
 export const gdriveReady = () => !!(gdriveConfig().clientId && gdriveConfig().apiKey);
 
-function loadScript(src) {
-  return new Promise((res, rej) => {
-    if ([...document.scripts].some(s => s.src === src)) return res();
-    const s = document.createElement('script'); s.src = src; s.async = true;
-    s.onload = res; s.onerror = () => rej(new Error('No se pudo cargar ' + src));
-    document.head.appendChild(s);
-  });
-}
 
 let tokenClient, accessToken = null, tokenExp = 0;
 async function ensureToken(interactive) {
@@ -135,6 +128,6 @@ export function openGdriveSetup() {
 }
 
 // Wrappers that surface errors as friendly dialogs.
-export const openWithUI = () => driveOpen().catch(e => alertDialog(e.message));
-export const saveWithUI = () => driveSave().then(ok => { if (ok) alertDialog(t('Guardado en Google Drive.')); }).catch(e => alertDialog(e.message));
-export const saveHtmlWithUI = () => driveSaveHtml().then(ok => { if (ok) alertDialog(t('Guardado en Google Drive.')); }).catch(e => alertDialog(e.message));
+export const openWithUI = () => driveOpen().catch(e => alertUser(e.message));
+export const saveWithUI = () => driveSave().then(ok => { if (ok) alertUser(t('Guardado en Google Drive.')); }).catch(e => alertUser(e.message));
+export const saveHtmlWithUI = () => driveSaveHtml().then(ok => { if (ok) alertUser(t('Guardado en Google Drive.')); }).catch(e => alertUser(e.message));

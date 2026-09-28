@@ -5,19 +5,15 @@
 // and equations can't be represented natively and are skipped.
 
 import { state } from '../../core/store.js';
-import { alertDialog } from '../../ui/dialogs/dialog.js';
+import { alertUser } from '../../core/notify.js';
 import { t } from '../../i18n/index.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
 import { chartSeries, iconSVG, inkSVG } from '../../render/svg.js';
-import { blockImage } from './html.js';
+import { blockImage } from '../export/images.js';
 import { masterBlocksFor, isEmptyPlaceholder } from '../../features/document/master.js';
+import { PPTXGEN, loadScript } from '../../core/vendor.js';
 
-const PPTX = 'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js';
-const loadScript = src => new Promise((res, rej) => {
-  if (window.PptxGenJS) return res();
-  const s = document.createElement('script'); s.src = src; s.async = true;
-  s.onload = res; s.onerror = () => rej(new Error('No se pudo cargar PptxGenJS')); document.head.appendChild(s);
-});
+
 
 const IN = px => +(px / 96).toFixed(3);                 // 96 dpi → inches
 const hex = c => (String(c || '').match(/^#?([0-9a-fA-F]{6})/) || [])[1] || null;
@@ -170,7 +166,7 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map()) {
 }
 
 export async function buildPptx(deck = state.deck) {
-  await loadScript(PPTX);
+  await loadScript(PPTXGEN, 'PptxGenJS');
   const pptx = new window.PptxGenJS();
   const { w, h } = deck.size;
   pptx.defineLayout({ name: 'REVELA', width: IN(w), height: IN(h) });
@@ -206,5 +202,5 @@ export async function exportPPTX() {
   try {
     const pptx = await buildPptx();
     await pptx.writeFile({ fileName: slug(state.deck.name) + '.pptx' });
-  } catch (e) { alertDialog(t('No se pudo exportar a PowerPoint: ') + (e.message || e)); }
+  } catch (e) { alertUser(t('No se pudo exportar a PowerPoint: ') + (e.message || e)); }
 }

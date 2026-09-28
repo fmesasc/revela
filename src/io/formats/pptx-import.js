@@ -15,6 +15,7 @@
 // approximated or skipped.
 
 import { uid } from '../../core/model.js';
+import { JSZIP_ESM } from '../../core/vendor.js';
 
 const CANVAS_W = 1280;            // slide width maps to this many px
 const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp', svg: 'image/svg+xml' };
@@ -28,7 +29,7 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
 
 async function loadJSZip() {
   if (window.JSZip) return window.JSZip;
-  const mod = await import('https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm');
+  const mod = await import(JSZIP_ESM);
   return mod.default || mod;
 }
 

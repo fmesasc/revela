@@ -2,7 +2,8 @@
 // Connects to the presenter's peer id (revela-<CODE>) over WebRTC and shows the
 // current slide's notes while sending navigation / pointer / blackout commands.
 
-const PEERJS = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';
+import { PEERJS, loadScript } from '../../core/vendor.js';
+
 const $ = id => document.getElementById(id);
 
 let conn = null, blackOn = false, startAt = null, timerInt = null;
@@ -17,14 +18,7 @@ function startTimer() {
   tick(); timerInt = setInterval(tick, 500);
 }
 
-function loadPeerJS() {
-  return new Promise((res, rej) => {
-    if (window.Peer) return res();
-    const s = document.createElement('script');
-    s.src = PEERJS; s.onload = res; s.onerror = () => rej(new Error('No se pudo cargar la librería de conexión.'));
-    document.head.appendChild(s);
-  });
-}
+const loadPeerJS = () => loadScript(PEERJS, 'Peer').catch(() => { throw new Error('No se pudo cargar la librería de conexión.'); });
 
 function setStatus(text, on) { const s = $('status'); s.textContent = text; s.classList.toggle('on', !!on); }
 function show(screen) { document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === screen)); }

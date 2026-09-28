@@ -1910,6 +1910,41 @@ export async function run(frame) {
     eq(tab.textContent.trim(), 'Inicio', 'vuelve a español');
   });
 
+  await test('núcleo: los avisos de io/features usan los diálogos del editor', async () => {
+    const p = R.notify.confirmUser('¿Seguro?');
+    const modal = D.querySelector('.modal-backdrop .dlg-msg');
+    assert(modal && modal.textContent === '¿Seguro?', 'confirmUser abre el diálogo propio, no el del navegador');
+    D.querySelector('.modal-backdrop .dlg-cancel').click();
+    eq(await p, false, 'Cancelar → false');
+    const q = R.notify.promptUser('Nombre:', 'x');
+    D.querySelector('.modal-backdrop .dlg-ok').click();
+    eq(await q, 'x', 'promptUser devuelve el valor');
+  });
+
+  await test('núcleo: librerías externas en un solo sitio y cargadas una vez', async () => {
+    for (const [k, v] of Object.entries(R.vendor))
+      if (typeof v === 'string') assert(/^https:\/\/cdn\.jsdelivr\.net\/npm\/(@[^/]+\/)?[^/@]+@\d/.test(v), k + ' con versión fijada');
+    const W = frame.contentWindow, url = 'data:text/javascript,window.__vendorHits=(window.__vendorHits||0)+1;window.__vendorLib={ok:1}';
+    const [a, b] = await Promise.all([R.vendor.loadScript(url, '__vendorLib'), R.vendor.loadScript(url, '__vendorLib')]);
+    eq(W.__vendorHits, 1, 'dos peticiones simultáneas → una sola carga');
+    assert(a === b && a.ok === 1, 'devuelve el global');
+    await R.vendor.loadScript(url, '__vendorLib');
+    eq(W.__vendorHits, 1, 'ya cargada: no se repite');
+    let failed = false;
+    await R.vendor.loadScript('/no-existe-' + Date.now() + '.js').catch(() => { failed = true; });
+    assert(failed, 'un error de carga rechaza la promesa');
+  });
+
+  await test('núcleo: la sesión sabe si se está presentando (para el mando)', async () => {
+    eq(R.session.present, null, 'sin presentar');
+    R.io.present({ fullscreen: false });
+    assert(R.session.present && R.session.present.frame, 'presentando: la sesión tiene el marco');
+    eq(R.remote.presentationState().presenting, true, 'el mando lo ve');
+    D.getElementById('present-close').click();
+    eq(R.session.present, null, 'al salir se limpia');
+    eq(R.remote.presentationState().presenting, false, 'el mando también');
+  });
+
   // ---- Report --------------------------------------------------------------
   const pass = results.filter(r => r.ok).length;
   const fail = results.filter(r => !r.ok);
