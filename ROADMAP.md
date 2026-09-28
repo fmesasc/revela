@@ -17,104 +17,116 @@ the origin of every requirement is traceable.
 
 ## 1. Core editing
 - ✅ Block canvas with direct manipulation `PP·GS·OO`
-- ✅ Drag from anywhere, alignment guides + snapping `PP·GS·OO`
+- ✅ Drag from anywhere, alignment guides + snapping (toggleable) `PP·GS·OO`
 - ✅ Corner resizing, keyboard nudging `PP·GS·OO`
 - ✅ Undo / redo `PP·GS·OO`
-- ✅ Cut / copy / paste of objects `PP·GS·OO`
-- ✅ Right-click context menu `PP·GS·OO`
+- ✅ Cut / copy / paste / duplicate of objects `PP·GS·OO`
+- ✅ Right-click context menu (contextual per object) `PP·GS·OO`
 - ✅ Multi-select (marquee + shift-click) `PP·GS·OO`
 - ✅ Group / ungroup objects `PP·GS·OO`
-- ✅ Align & distribute — align to slide/among objects + distribute `PP·GS·OO`
+- ✅ Align & distribute — to slide, among objects, distribute `PP·GS·OO`
 - ✅ Order: bring to front / send to back / forward / backward `PP·GS·OO`
 - ✅ Rotation handle and flip `PP·GS·OO`
 - ✅ Lock aspect ratio (Shift while resizing) and object lock `PP·OO`
+- ✅ Object opacity `PP·GS·OO`
 - ✅ Grid, rulers and guides you can place `PP·GS·OO`
 - ✅ Format painter / copy style `PP·GS·OO`
 - ✅ Find & replace `PP·GS·OO`
 - ✅ Zoom controls, fit to window `PP·GS·OO`
 - ✅ Paste without formatting (Ctrl+Shift+V) `PP·GS·OO`
+- ✅ Keyboard shortcuts panel `PP·GS·OO`
+- ⬜ Eyedropper colour picker `PP·GS`
+- ⬜ Snap-to grid spacing / smart spacing hints `PP·GS`
 
 ## 2. Text
 - ✅ Bold, italic, underline, strikethrough `PP·GS·OO`
-- ✅ Font colour, font size `PP·GS·OO`
+- ✅ Font colour, font size (custom values) `PP·GS·OO`
 - ✅ Bulleted and numbered lists `PP·GS·OO`
-- ✅ Paragraph alignment `PP·GS·OO`
-- ✅ Font family picker and embedding — 40+ web‑safe & Google fonts, loaded on demand, embedded on export `PP·GS·OO`
+- ✅ Paragraph alignment (horizontal) and vertical alignment in the box `PP·GS·OO`
+- ✅ Font family picker and embedding — 40+ web-safe & Google fonts, on demand, embedded on export `PP·GS·OO`
 - ✅ Highlight colour `PP·OO`
 - ✅ Superscript / subscript `PP·GS·OO`
-- ✅ Line and paragraph spacing, indents — line spacing, letter spacing and left indent `PP·GS·OO`
-- ⬜ Text columns `PP·OO`
+- ✅ Line & letter spacing, left indent, increase/decrease indent `PP·GS·OO`
 - ✅ Change case `PP·GS·OO`
-- ✅ Bullet/number style — bullet (disc/circle/square/none) and numbered styles (1/a/A/i) per box `PP·GS·OO`
-- ⬜ Text styles / named styles `PP·OO`
-- ✅ WordArt / Text Art (fill, outline, shadow, gradient, neon, gold) `PP·OO`
-- ✅ Special characters and symbol/emoji picker `PP·GS·OO`
-- ✅ Equations / math (LaTeX rendered with KaTeX) `PP·OO`
-- 🚧 Spell check, proofing and AutoCorrect — native browser spellcheck while editing; proofing/AutoCorrect planned `PP·GS·OO`
+- ✅ Bullet/number style per box (disc/circle/square/none, 1/a/A/i) `PP·GS·OO`
+- ✅ WordArt / Text Art (fill, outline, shadow, gradient, neon, gold, fire, ice…) `PP·OO`
+- ✅ Text box fill, border and rounded corners `PP·GS·OO`
+- ✅ Special characters & symbol/emoji picker `PP·GS·OO`
+- ✅ Equations / math — visual editor (MathLive, Symbolab-style) + LaTeX, and inline `$…$` in text (KaTeX) `PP·OO`
 - ✅ Hyperlinks — web, slide and email targets `PP·GS·OO`
-- ✅ Vertical text and text direction (RTL) `PP·OO`
+- ✅ Text direction (RTL) and vertical text `PP·OO`
+- 🚧 Spell check — native browser spellcheck while editing; proofing/AutoCorrect planned `PP·GS·OO`
+- ⬜ Text columns `PP·OO`
+- ⬜ Text styles / named paragraph styles `PP·OO`
+- ⬜ Bullet/number level customisation (multi-level indenting) `PP·GS·OO`
 
 ## 3. Objects & content
 - ✅ Images `PP·GS·OO`
-- ✅ Video `PP·GS·OO`
-- ✅ Interactive 3D models (`.glb`/`.gltf`) — *unique to Revela among natives; PowerPoint has static 3D* `PP`
-- ✅ Shapes library — rectangle, rounded, ellipse, triangle, diamond, pentagon, star, block arrow, line, arrow, and connectors between shapes `PP·GS·OO`
-- ⬜ Merge / subtract / intersect shapes `PP·OO`
+- ✅ Video, Audio `PP·GS·OO`
+- ✅ Interactive 3D models (`.glb`/`.gltf`) — *unique to Revela among natives* `PP`
+- ✅ Shapes library — rectangle, rounded, ellipse, triangle, diamond, pentagon, star, block/left arrow, hexagon, parallelogram, trapezoid, chevron, cross, line, arrow `PP·GS·OO`
+- ✅ Connectors between shapes (follow the objects) `PP·GS·OO`
 - ✅ Tables — editable cells, add/remove rows & columns, header row, border colour `PP·GS·OO`
-- ✅ Charts — bar, line, area, pie and doughnut with data editing (SVG, no library) `PP·GS·OO`
-- ✅ SmartArt / diagrams — process, cycle, hierarchy & list (boxes + connectors) `PP·OO`
-- 🚧 Icons — built‑in inline‑SVG icon set with colour; stock images planned `PP·GS`
+- ✅ Charts — bar, line, area, pie, doughnut with data editing (SVG, no library) `PP·GS·OO`
+- ✅ SmartArt / diagrams — process, cycle, hierarchy & list `PP·OO`
+- ✅ Icons — built-in inline-SVG icon set with colour `PP·GS`
 - ✅ Emoji picker `GS`
-- ✅ Audio tracks `PP·OO`
-- ✅ Animated GIF playback (GIFs play as image blocks) `PP·OO`
+- ✅ Animated GIF playback `PP·OO`
 - ✅ Embedded web page (`<iframe>`) `—`
-- ⬜ Embedded spreadsheet / linked data `GS·OO`
-- ✅ AI image background removal `PP` *(PowerPoint "Remove Background")*
+- ✅ Code blocks with syntax highlighting and animated line stepping `—`
+- ✅ Figure/table captions with auto-numbering + list of figures/tables `OO`
+- ✅ AI image background removal `PP`
 - ✅ Image crop, adjustments (brightness/contrast/saturation/opacity) and transparency `PP·GS·OO`
-- ✅ Code blocks with syntax highlighting and animated line stepping (reveal Highlight) `—`
+- ⬜ More chart types (scatter, radar, combo) & chart from a table `PP·GS·OO`
+- ⬜ Table cell merge/split and table styles `PP·GS·OO`
+- ⬜ Merge / subtract / intersect shapes `PP·OO`
+- ⬜ Online / stock images & icons library `PP·GS`
+- ⬜ Embedded spreadsheet / linked data `GS·OO`
 - ⬜ Screen / camera recording, live camera (Cameo) `PP`
+- ⬜ Freehand ink / pen drawing on the slide (Draw tab) `PP·OO`
 
 ## 4. Slides & structure
-- ✅ Sections `PP·GS·OO`
+- ✅ Sections (create/rename/remove inline from the navigator) `PP·GS·OO`
 - ✅ Drag-and-drop slide reordering `PP·GS·OO`
-- ✅ Duplicate / delete slide `PP·GS·OO`
-- ✅ Templates (built-in + save current) `PP·GS·OO`
-- ✅ Per-slide background colour `PP·GS·OO`
+- ✅ Duplicate / delete / hide slide `PP·GS·OO`
+- ✅ Templates & slide layouts (built-in + save current, change layout from Home) `PP·GS·OO`
+- ✅ Per-slide background: colour, gradient, image (apply to all) `PP·GS·OO`
 - ✅ Themes `PP·GS·OO`
 - ✅ Slide size (16∶9 / 4∶3) `PP·GS·OO`
-- ✅ Slide layouts + change layout from Home `PP·GS·OO`
-- 🚧 Slide master — deck logo/branding & backgrounds on all slides; full master/placeholders planned `PP·GS·OO`
-- ⬜ Placeholders `PP·OO`
-- ✅ Background images and gradients `PP·GS·OO`
-- ⬜ Colour palettes / theme colours & fonts `PP·GS·OO`
 - ✅ Speaker notes (editor panel + presenter view) `PP·GS·OO`
-- ✅ Slide numbers, date/time, header & footer `PP·GS·OO`
-- ✅ Hide slide from the presentation `PP·GS·OO`
-- ⬜ Template / theme gallery `PP·GS·OO`
+- ✅ Slide numbers, date/time field, header & footer, deck logo/branding `PP·GS·OO`
+- ✅ Slide zoom & summary zoom (embed a slide, link, choose return/stay) `PP`
+- 🚧 Slide master — logo/branding & backgrounds on all slides; full master & placeholders planned `PP·GS·OO`
+- ⬜ Placeholders (layout content placeholders) `PP·OO`
+- ⬜ Colour palettes / theme colours & theme fonts `PP·GS·OO`
+- ⬜ Template / theme gallery & designer variants `PP·GS·OO`
+- ⬜ Reuse / import slides from another deck `PP·OO`
+- ⬜ Handout / notes printing layouts `PP·OO`
 
 ## 5. Transitions & animation
-- ✅ Per-slide transitions `PP·GS·OO`
-- ✅ Per-object entrance animations `PP·GS·OO`
-- ⬜ Transition duration and per-transition options `PP·GS·OO`
-- ✅ Emphasis and exit animations (grow, shrink, strike, fade-out, highlight) `PP·GS·OO`
+- ✅ Per-slide transitions & default transition/speed `PP·GS·OO`
+- ✅ Per-object entrance, emphasis & exit animations (many effects) `PP·GS·OO`
+- ✅ Animation pane — effect, start (on click / with previous), duration, delay, reorder, remove `PP·GS·OO`
+- ✅ Animation preview (play in the editor) `PP·GS·OO`
+- ✅ Morph / transformation transition (Auto-Animate, with "duplicate to animate") `PP`
+- ✅ Auto-advance timing per slide, loop / kiosk `PP·GS·OO`
+- ⬜ "After previous" auto-timed start & animation triggers (on click of another object) `PP·GS·OO`
 - ⬜ Motion paths `PP`
-- ⬜ Animation timeline, ordering and triggers `PP·GS·OO`
 - ⬜ Animation painter `PP`
-- ✅ Morph / transformation transition (reveal Auto‑Animate) `PP`
-- ✅ Auto-advance timing per slide `PP·GS·OO`
+- ⬜ Per-transition options (direction, board split, etc.) `PP·GS·OO`
 
 ## 6. Presenting
-- ✅ Presenter view (notes, next slide, timer) — reveal presenter view (S) + phone companion with timer `PP·GS·OO`
-- 🚧 Laser pointer / pen / highlighter during show — laser from the phone remote done; pen/highlighter planned `PP·GS·OO`
-- ✅ Phone companion remote (pair by code, notes, navigate, laser, blackout) `—`
+- ✅ Presenter view (notes, next slide, timer) — reveal presenter view (S) + phone companion `PP·GS·OO`
+- ✅ Phone companion remote (pair by code, notes, navigate, laser, blackout, timer) `—`
+- ✅ Loop / kiosk / auto-play `PP·GS·OO`
+- 🚧 Laser pointer / pen / highlighter during show — laser from the phone; pen/highlighter planned `PP·GS·OO`
 - ⬜ Rehearse timings / speaker coach `PP`
 - ⬜ Record slideshow with narration and export to video `PP`
 - ⬜ Audience Q&A `GS`
 - ⬜ Live captions / subtitles `PP`
-- ✅ Loop / kiosk / auto-play `PP·GS·OO`
 - ⬜ Present to Meet / Teams `PP·GS`
 
-## 7. Collaboration
+## 7. Collaboration *(needs a backend — not possible on static hosting alone)*
 - ⬜ Real-time co-editing `PP·GS·OO`
 - ⬜ Comments, @mentions, assign, resolve `PP·GS·OO`
 - ⬜ Built-in chat `OO`
@@ -125,24 +137,27 @@ the origin of every requirement is traceable.
 
 ## 8. Import & export
 - ✅ Export to self-contained HTML (reveal.js) `—`
-- ✅ Import from PowerPoint `.pptx` (text + images) `OO·GS`
-- ⬜ High-fidelity `.pptx` import (fonts, colours, shapes, layouts) `OO·GS`
 - ✅ Export to `.pptx` (PptxGenJS: text, images, shapes, tables, charts) `GS·OO`
-- ✅ Export to PDF (print one slide per page) `PP·GS·OO`
+- ✅ Export to PDF (one slide per page) `PP·GS·OO`
+- ✅ Import from PowerPoint `.pptx` (text + images) `OO·GS`
+- ✅ Project import/export as JSON, local autosave `—`
+- ✅ Save/open to Google Drive & export HTML to Drive (client-side, `drive.file`) `PP·GS`
 - 🚧 Export slide as image (PNG via html2canvas); JPG/SVG & batch planned `PP·GS·OO`
+- ⬜ High-fidelity `.pptx` import (fonts, colours, shapes, layouts) `OO·GS`
 - ⬜ Export to video (MP4/GIF) `PP·GS`
 - ⬜ Publish to the web / shareable link `GS`
 - ⬜ Open Document (`.odp`) support `OO`
-- ✅ Project import/export as JSON, local autosave `—`
 
 ## 9. Accessibility & internationalisation
-- ⬜ Accessibility checker `PP·GS·OO`
 - ✅ Alt text for objects `PP·GS·OO`
+- ✅ UI localisation — 9 languages (ES/EN/FR/DE/IT/PT/CA/GL/NL): ribbon, menus, modals, dialogs & status bar `PP·GS·OO`
+- ✅ Content text direction (RTL) `PP·OO`
+- ⬜ Accessibility checker `PP·GS·OO`
 - ⬜ Reading / tab order `PP·OO`
-- ⬜ Screen reader support `PP·GS·OO`
-- ⬜ Right-to-left interface and content `PP·OO`
-- ⬜ Built-in translation `GS·OO`
-- ✅ UI localisation — 9 languages (ES/EN/FR/DE/IT/PT/CA/GL/NL): ribbon, menus, modals & status bar `PP·GS·OO`
+- ⬜ Screen reader support (ARIA on the canvas) `PP·GS·OO`
+- ⬜ Right-to-left **interface** `PP·OO`
+- ⬜ Built-in content translation `GS·OO`
+- ⬜ More UI languages `PP·GS·OO`
 
 ## 10. Extensibility & automation
 - ⬜ Plugin / add-on system `GS·OO`
@@ -150,15 +165,16 @@ the origin of every requirement is traceable.
 - ⬜ Public document/embed API `GS`
 
 ## 11. Intelligence
-- ✅ AI background removal `PP`
+- ✅ AI image background removal `PP`
 - ⬜ Design ideas / Designer / Explore (auto layouts) `PP·GS`
 - ⬜ AI text and image generation `PP·GS`
 - ⬜ Auto-generated speaker notes / summaries `PP·GS`
 
 ## 12. Platform
-- ✅ Static web app with automatic deployment `GS`
+- ✅ Static web app with automatic deployment (GitHub Pages) `GS`
+- ✅ Automated headless regression test suite (`tests/run.sh`) `—`
+- 🚧 Responsive & touch editing (mobile layout, long-press menus, fit-to-screen) `PP·GS·OO`
+- 🚧 Cloud project storage — Google Drive save/open (client-side) `PP·GS`
 - ⬜ Desktop application ([Tauri](https://tauri.app/)) `PP·OO`
-- ⬜ Offline mode `PP·GS·OO`
-- 🚧 Cloud project storage — save/open to Google Drive (client‑side, drive.file) `PP·GS`
-- ⬜ Mobile / touch editing `PP·GS·OO`
+- ⬜ Offline mode (service worker / PWA) `PP·GS·OO`
 - ⬜ Autosave to cloud, multi-device sync `PP·GS`
