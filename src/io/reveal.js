@@ -7,6 +7,7 @@ import { googleFontLinks } from '../features/fonts.js';
 
 const REVEAL = 'https://cdn.jsdelivr.net/npm/reveal.js@5.1.0';
 const MODEL_VIEWER = 'https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js';
+const HLJS = 'https://cdn.jsdelivr.net/npm/highlight.js@11.9.0';
 
 const tf = b => `rotate(${b.rotation || 0}deg)${b.flipH ? ' scaleX(-1)' : ''}${b.flipV ? ' scaleY(-1)' : ''}`;
 const box = b => `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;`
@@ -46,6 +47,9 @@ function blockHTML(b) {
     return `<div${a} style="${box(b)}"><table class="tbl" style="--stroke:${b.stroke || '#fff'}">`
       + b.rows.map(row => `<tr>${row.map(c => `<td>${c || ''}</td>`).join('')}</tr>`).join('')
       + `</table></div>`;
+  if (b.type === 'code')
+    return `<div${a} style="${box(b)}"><pre style="margin:0;height:100%;font-size:${b.fontSize || 22}px">`
+      + `<code class="language-${b.lang || 'plaintext'}">${esc(b.code || '')}</code></pre></div>`;
   return '';
 }
 
@@ -71,6 +75,7 @@ export function buildHTML(deck = state.deck) {
   const slides = deck.slides.filter(s => !s.hidden).map(slideHTML).join('\n');
   const sn = deck.slideNumber || { show: false };
   const snPos = SLIDENUM_POS[sn.position] || SLIDENUM_POS.br;
+  const hasCode = deck.slides.some(s => s.blocks.some(b => b.type === 'code'));
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -78,7 +83,9 @@ export function buildHTML(deck = state.deck) {
 <link rel="stylesheet" href="${REVEAL}/dist/reveal.css">
 <link rel="stylesheet" href="${REVEAL}/dist/theme/${deck.theme}.css">
 ${googleFontLinks(deck)}
+${hasCode ? `<link rel="stylesheet" href="${HLJS}/styles/github-dark.min.css">` : ''}
 <script type="module" src="${MODEL_VIEWER}"></script>
+${hasCode ? `<script src="${HLJS}/highlight.min.js"></script>` : ''}
 <style>
  .reveal .stage{position:relative;width:${w}px;height:${h}px;margin:0 auto}
  .reveal .stage>*{overflow-wrap:anywhere}
@@ -97,6 +104,7 @@ ${slides}
    progress:true, hash:true, slideNumber:${sn.show ? `'${sn.format || 'c'}'` : 'false'},
    transition:'${deck.defaultTransition}', transitionSpeed:'${deck.transitionSpeed}',
    plugins:[ RevealNotes ] });
+ ${hasCode ? 'window.hljs && document.querySelectorAll("pre code").forEach(el=>hljs.highlightElement(el));' : ''}
 </script></body></html>`;
 }
 

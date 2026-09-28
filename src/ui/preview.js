@@ -27,6 +27,11 @@ export function blockPreview(b) {
     el.innerHTML = `<table style="border-collapse:collapse;width:100%;height:100%;--stroke:${b.stroke || '#fff'}">`
       + b.rows.map(row => `<tr>${row.map(c => `<td style="border:1px solid ${b.stroke || '#fff'};color:#fff;padding:2px 4px">${c || ''}</td>`).join('')}</tr>`).join('')
       + `</table>`;
+  } else if (b.type === 'code') {
+    const pre = document.createElement('pre');
+    pre.style.cssText = `margin:0;width:100%;height:100%;overflow:hidden;background:#0b0e14;color:#e6e6e6;`
+      + `padding:8px;font-size:${b.fontSize || 22}px;font-family:monospace;white-space:pre-wrap`;
+    pre.textContent = b.code || ''; el.appendChild(pre);
   }
   return el;
 }

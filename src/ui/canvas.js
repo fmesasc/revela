@@ -121,6 +121,10 @@ function reconcile(b) {
     const sig = tableSig(b);
     if (t.dataset.sig !== sig) { t.dataset.sig = sig; fillTable(t, b); if (el.classList.contains('editing')) t.querySelectorAll('td').forEach(td => (td.contentEditable = 'true')); }
     t.style.setProperty('--stroke', b.stroke || '#fff');
+  } else if (b.type === 'code') {
+    const pre = el.querySelector('.code'), c = el.querySelector('code');
+    if (pre) pre.style.fontSize = (b.fontSize || 22) + 'px';
+    if (c && !el.classList.contains('editing') && c.textContent !== (b.code || '')) c.textContent = b.code || '';
   }
 }
 
@@ -157,6 +161,7 @@ function blockEl(b) {
   else if (b.type === 'model') setupModel(el);
   else if (b.type === 'embed') setupEmbed(el);
   else if (b.type === 'table') setupTable(el, b);
+  else if (b.type === 'code') setupCode(el, b);
   return el;
 }
 
@@ -185,6 +190,11 @@ function content(b) {
     d.dataset.sig = shapeSig(b); d.innerHTML = shapeSVG(b); return d;
   }
   if (b.type === 'table') return tableContent(b);
+  if (b.type === 'code') {
+    const pre = document.createElement('pre'); pre.className = 'code'; pre.style.fontSize = (b.fontSize || 22) + 'px';
+    const c = document.createElement('code'); c.textContent = b.code || ''; pre.appendChild(c);
+    return pre;
+  }
   if (b.type === 'image') { const i = document.createElement('img'); i.src = b.src; i.draggable = false; return i; }
   if (b.type === 'video') { const v = document.createElement('video'); v.src = b.src; v.controls = true; return v; }
   if (b.type === 'embed') return embedContent(b);
@@ -214,6 +224,17 @@ function embedContent(b) {
   f.style.pointerEvents = 'none'; // dragging the body moves the block; double‑click to interact
   wrap.append(bar, f);
   return wrap;
+}
+
+// Code blocks edit as plain text on double‑click.
+function setupCode(el, b) {
+  const code = el.querySelector('code');
+  el.addEventListener('dblclick', () => { el.classList.add('editing'); code.contentEditable = 'true'; code.focus(); });
+  code.addEventListener('input', () => { b.code = code.textContent; });
+  code.addEventListener('blur', () => {
+    code.contentEditable = 'false'; el.classList.remove('editing');
+    commit(() => { b.code = code.textContent; }, { history: false });
+  });
 }
 
 const tableSig = b => b.rows.length + 'x' + (b.rows[0]?.length || 0);
@@ -281,7 +302,7 @@ function exitEdit(el) {
 
 function startDrag(ev, b, el) {
   if (el.classList.contains('editing')) {
-    if (ev.target.closest('.rich, model-viewer, iframe, .tbl')) return; // over the content: keep editing
+    if (ev.target.closest('.rich, model-viewer, iframe, .tbl, .code')) return; // over the content: keep editing
     exitEdit(el);                                          // grabbed the frame: leave edit and move
   }
   ev.stopPropagation();

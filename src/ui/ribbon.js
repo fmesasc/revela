@@ -42,6 +42,7 @@ const ACTIONS = {
   'insert-text': blocks.addText,
   'insert-image': () => readFile('image/*', blocks.addImage),
   'insert-table': blocks.addTable,
+  'insert-code': blocks.addCode,
   'insert-model': () => readFile('.glb,.gltf', blocks.addModel),
   'insert-video': () => readFile('video/*', blocks.addVideo),
   'insert-embed': () => {

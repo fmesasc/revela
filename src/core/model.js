@@ -44,6 +44,14 @@ export function textBlock(props = {}) {
   }, props);
 }
 
+export function codeBlock(props = {}) {
+  return Object.assign({
+    id: uid(), type: 'code', x: 220, y: 200, w: 840, h: 300,
+    rotation: 0, animation: null, lang: 'javascript', fontSize: 22,
+    code: '// tu código aquí\nfunction hola() {\n  return "Revela";\n}',
+  }, props);
+}
+
 export function tableBlock(props = {}) {
   return Object.assign({
     id: uid(), type: 'table', x: 260, y: 220, w: 700, h: 220,

@@ -191,6 +191,15 @@ export async function run(frame) {
     assert(/<table class="tbl"[^>]*><tr><td>Hola<\/td>/.test(R.io.buildHTML()), 'export de la tabla');
   });
 
+  await test('bloque de código: edición y export con highlight.js', async () => {
+    reset(); R.blocks.addCode(); const b = last(); select(b); await sleep(20);
+    assert(D.querySelector(`.block[data-id="${b.id}"] pre.code code`), 'no hay bloque de código');
+    b.code = 'const x = 1;'; b.lang = 'javascript'; R.render();
+    const html = R.io.buildHTML();
+    assert(/<code class="language-javascript">const x = 1;<\/code>/.test(html), 'export del código');
+    assert(/highlight\.min\.js/.test(html), 'highlight.js incluido');
+  });
+
   await test('buscar y reemplazar respeta el formato (nodos de texto)', async () => {
     reset(); const b = newText();
     b.html = 'Hola <b>mundo</b> y mundo'; R.render();

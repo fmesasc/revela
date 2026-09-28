@@ -71,7 +71,7 @@ the origin of every requirement is traceable.
 - ⬜ Embedded spreadsheet / linked data `GS·OO`
 - ✅ AI image background removal `PP` *(PowerPoint "Remove Background")*
 - ⬜ Image crop, adjustments (brightness/contrast/filters), transparency `PP·GS·OO`
-- ⬜ Code blocks with syntax highlighting `—`
+- ✅ Code blocks with syntax highlighting (highlight.js on export) `—`
 - ⬜ Screen / camera recording, live camera (Cameo) `PP`
 
 ## 4. Slides & structure

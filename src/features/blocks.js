@@ -2,7 +2,7 @@
 
 import { state, commit, currentSlide, selectedBlock,
   selectedBlocks, selectedIds, setSelection, setMulti } from '../core/store.js';
-import { uid, textBlock, tableBlock } from '../core/model.js';
+import { uid, textBlock, tableBlock, codeBlock } from '../core/model.js';
 
 function insert(block) {
   commit(() => { currentSlide().blocks.push(block); setSelection(block.id); });
@@ -50,6 +50,7 @@ export function addEmbed(url) {
 }
 
 export function addTable() { insert(tableBlock()); }
+export function addCode() { insert(codeBlock()); }
 
 // Table row/column edits act on the selected table.
 function withTable(fn) { const b = selectedBlock(); if (b && b.type === 'table') commit(() => fn(b)); }
