@@ -71,7 +71,7 @@ the origin of every requirement is traceable.
 - ⬜ Embedded spreadsheet / linked data `GS·OO`
 - ✅ AI image background removal `PP` *(PowerPoint "Remove Background")*
 - ✅ Image crop, adjustments (brightness/contrast/saturation/opacity) and transparency `PP·GS·OO`
-- ✅ Code blocks with syntax highlighting (highlight.js on export) `—`
+- ✅ Code blocks with syntax highlighting and animated line stepping (reveal Highlight) `—`
 - ⬜ Screen / camera recording, live camera (Cameo) `PP`
 
 ## 4. Slides & structure
@@ -100,7 +100,7 @@ the origin of every requirement is traceable.
 - ⬜ Motion paths `PP`
 - ⬜ Animation timeline, ordering and triggers `PP·GS·OO`
 - ⬜ Animation painter `PP`
-- ⬜ Morph / transformation transition (incl. between 3D models) `PP`
+- ✅ Morph / transformation transition (reveal Auto‑Animate) `PP`
 - ✅ Auto-advance timing per slide `PP·GS·OO`
 
 ## 6. Presenting

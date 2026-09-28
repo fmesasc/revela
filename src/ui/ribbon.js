@@ -70,6 +70,8 @@ const ACTIONS = {
   'toggle-footer': () => commit(() => (state.deck.footer.show = !state.deck.footer.show)),
   'toggle-footerdate': () => commit(() => (state.deck.footer.date = !state.deck.footer.date)),
   'toggle-loop': () => commit(() => (state.deck.loop = !state.deck.loop)),
+  'toggle-autoanimate': () => slides.toggleAutoAnimate(),
+  'dup-animate': () => slides.duplicateForAnimate(),
   'toggle-notes': () => commit(() => (state.ui.showNotes = !state.ui.showNotes), { history: false }),
   'connect-mobile': () => remote.openHostPanel(),
   'find-replace': () => search.openFindPanel(),
@@ -326,6 +328,7 @@ export function renderRibbon() {
   const slide = currentSlide();
   document.querySelectorAll('[data-slide-transition]').forEach(b =>
     b.classList.toggle('on', (slide.transition || 'inherit') === b.dataset.slideTransition));
+  document.querySelector('[data-action="toggle-autoanimate"]')?.classList.toggle('on', !!slide.autoAnimate);
   syncValue('[data-theme]', state.deck.theme);
   syncValue('[data-speed]', state.deck.transitionSpeed);
   syncValue('[data-deck-transition]', state.deck.defaultTransition);

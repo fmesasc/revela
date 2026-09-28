@@ -7,7 +7,6 @@ import { googleFontLinks } from '../features/fonts.js';
 
 const REVEAL = 'https://cdn.jsdelivr.net/npm/reveal.js@5.1.0';
 const MODEL_VIEWER = 'https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js';
-const HLJS = 'https://cdn.jsdelivr.net/npm/highlight.js@11.9.0';
 
 const tf = b => `rotate(${b.rotation || 0}deg)${b.flipH ? ' scaleX(-1)' : ''}${b.flipV ? ' scaleY(-1)' : ''}`;
 const box = b => `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;`
@@ -23,7 +22,9 @@ function animAttrs(b) {
 }
 
 function blockHTML(b, slide) {
-  const a = animAttrs(b);
+  // When the slide uses Auto‑Animate, a stable data-id lets reveal.js match and
+  // morph the same object between consecutive slides (PowerPoint's "Morph").
+  const a = animAttrs(b) + (slide && slide.autoAnimate ? ` data-id="${b.id}"` : '');
   if (b.type === 'connector') {
     const { w, h } = state.deck.size;
     const from = slide && slide.blocks.find(x => x.id === b.from);
@@ -67,9 +68,13 @@ function blockHTML(b, slide) {
     return `<div${a} style="${box(b)}"><table class="tbl${b.header ? ' has-header' : ''}" style="--stroke:${b.stroke || '#fff'}">`
       + b.rows.map(row => `<tr>${row.map(c => `<td>${c || ''}</td>`).join('')}</tr>`).join('')
       + `</table></div>`;
-  if (b.type === 'code')
+  if (b.type === 'code') {
+    // data-line-numbers drives reveal's animated line highlighting; a value like
+    // "1|2-3|4" steps through line groups, empty just numbers the lines.
+    const ln = b.lineSteps ? ` data-line-numbers="${b.lineSteps}"` : (b.showLines ? ' data-line-numbers=""' : '');
     return `<div${a} style="${box(b)}"><pre style="margin:0;height:100%;font-size:${b.fontSize || 22}px">`
-      + `<code class="language-${b.lang || 'plaintext'}">${esc(b.code || '')}</code></pre></div>`;
+      + `<code class="language-${b.lang || 'plaintext'}"${ln}>${esc(b.code || '')}</code></pre></div>`;
+  }
   return '';
 }
 
@@ -80,7 +85,8 @@ function slideHTML(s) {
   const bg = solid ? ` data-background-color="${s.background}"` : '';
   const inner = s.blocks.map(b => blockHTML(b, s)).join('\n');
   const notes = s.notes ? `<aside class="notes">${esc(s.notes)}</aside>` : '';
-  return `<section${trans}${auto}${bg}>`
+  const aa = s.autoAnimate ? ' data-auto-animate' : '';
+  return `<section${trans}${auto}${bg}${aa}>`
     + `<div class="stage" style="background:${s.background}">${inner}</div>${notes}</section>`;
 }
 
@@ -109,9 +115,8 @@ export function buildHTML(deck = state.deck) {
 <link rel="stylesheet" href="${REVEAL}/dist/reveal.css">
 <link rel="stylesheet" href="${REVEAL}/dist/theme/${deck.theme}.css">
 ${googleFontLinks(deck)}
-${hasCode ? `<link rel="stylesheet" href="${HLJS}/styles/github-dark.min.css">` : ''}
+${hasCode ? `<link rel="stylesheet" href="${REVEAL}/plugin/highlight/monokai.css">` : ''}
 <script type="module" src="${MODEL_VIEWER}"></script>
-${hasCode ? `<script src="${HLJS}/highlight.min.js"></script>` : ''}
 <style>
  .reveal .stage{position:relative;width:${w}px;height:${h}px;margin:0 auto}
  .reveal .stage>*{overflow-wrap:anywhere}
@@ -129,13 +134,13 @@ ${slides}
 </div>${footerText}</div>
 <script src="${REVEAL}/dist/reveal.js"></script>
 <script src="${REVEAL}/plugin/notes/notes.js"></script>
+${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : ''}
 <script>
  Reveal.initialize({ width:${w}, height:${h}, margin:0.03, controls:true,
    progress:true, hash:true, loop:${deck.loop ? 'true' : 'false'},
    slideNumber:${sn.show ? `'${sn.format || 'c'}'` : 'false'},
    transition:'${deck.defaultTransition}', transitionSpeed:'${deck.transitionSpeed}',
-   plugins:[ RevealNotes ] });
- ${hasCode ? 'window.hljs && document.querySelectorAll("pre code").forEach(el=>hljs.highlightElement(el));' : ''}
+   plugins:[ RevealNotes${hasCode ? ', RevealHighlight' : ''} ] });
 </script></body></html>`;
 }
 

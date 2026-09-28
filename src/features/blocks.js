@@ -95,6 +95,10 @@ export function addDiagram(kind = 'process') {
 
 export function addTable() { insert(tableBlock()); }
 export function addCode() { insert(codeBlock()); }
+export function setCode(props) {
+  const b = selectedBlock(); if (!b || b.type !== 'code') return;
+  commit(() => Object.assign(b, props));
+}
 export function addChart() { insert(chartBlock()); }
 export function addIcon(name) {
   insert({ id: uid(), type: 'icon', icon: name, color: '#ffffff', x: 560, y: 280, w: 160, h: 160, rotation: 0, animation: null });

@@ -102,6 +102,8 @@ function forBlock(b) {
     items.push(
       ['Reproducir en el editor', () => document.querySelector(`.block[data-id="${b.id}"] video`)?.play()],
       null);
+  } else if (b.type === 'code') {
+    items.push(['Opciones de código…', () => openCodeOpts(b)], null);
   } else if (b.type === 'icon') {
     items.push(['Color del icono…', () => openIconColor(b)], null);
   } else if (b.type === 'chart') {
@@ -223,6 +225,36 @@ function openChartData(b) {
     const data = back.querySelector('.ch-data').value.split('\n').map(l => l.split(',')).filter(p => p[0])
       .map(p => ({ label: (p[0] || '').trim(), value: parseFloat(p[1]) || 0 }));
     blocks.setChart({ chartType: back.querySelector('.ch-type').value, color: back.querySelector('.ch-color').value, data });
+    close();
+  });
+}
+
+function openCodeOpts(b) {
+  if (document.getElementById('code-modal')) return;
+  const langs = ['plaintext', 'javascript', 'typescript', 'python', 'java', 'c', 'cpp', 'csharp', 'go',
+    'rust', 'php', 'ruby', 'html', 'css', 'sql', 'bash', 'json', 'yaml'];
+  const back = document.createElement('div');
+  back.id = 'code-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:left;min-width:300px">
+    <button class="modal-close">✕</button><h3>Opciones de código</h3>
+    <label class="fr-l">Lenguaje <select class="cd-lang">${langs.map(l => `<option value="${l}">${l}</option>`).join('')}</select></label>
+    <label class="fr-chk"><input type="checkbox" class="cd-lines"> Mostrar números de línea</label>
+    <label class="fr-l">Animación por líneas (p. ej. <code>1|2-3|4</code>)
+      <input type="text" class="cd-steps" value="${(b.lineSteps || '').replace(/"/g, '&quot;')}" placeholder="1|2-3|4"></label>
+    <div class="fr-actions"><button class="fr-do">Aplicar</button></div>
+  </div>`;
+  document.body.appendChild(back);
+  back.querySelector('.cd-lang').value = b.lang || 'javascript';
+  back.querySelector('.cd-lines').checked = !!b.showLines;
+  const close = () => back.remove();
+  back.querySelector('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  back.querySelector('.fr-do').addEventListener('click', () => {
+    blocks.setCode({
+      lang: back.querySelector('.cd-lang').value,
+      showLines: back.querySelector('.cd-lines').checked,
+      lineSteps: back.querySelector('.cd-steps').value.trim(),
+    });
     close();
   });
 }

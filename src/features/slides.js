@@ -52,6 +52,22 @@ export function toggleSlideHidden(index = state.ui.slideIndex) {
   commit(() => { const s = state.deck.slides[index]; if (s) s.hidden = !s.hidden; });
 }
 
+// Auto‑Animate (Morph): reveal morphs matching objects between two adjacent
+// slides that both have it on. `toggle` flips the flag on the current slide.
+export function toggleAutoAnimate(index = state.ui.slideIndex) {
+  commit(() => { const s = state.deck.slides[index]; if (s) s.autoAnimate = !s.autoAnimate; });
+}
+// Duplicate the slide KEEPING block ids so the copy morphs from the original,
+// and turn Auto‑Animate on for both. Then the user tweaks the copy.
+export function duplicateForAnimate() {
+  commit(() => {
+    const cur = currentSlide(); cur.autoAnimate = true;
+    const copy = structuredClone(cur); copy.id = uid(); copy.autoAnimate = true; // block ids kept → they match
+    state.deck.slides.splice(state.ui.slideIndex + 1, 0, copy);
+    state.ui.slideIndex++; state.ui.selection = null;
+  });
+}
+
 // ---- Sections -------------------------------------------------------------
 // Start a section at `index`: the slide there and the contiguous run that
 // currently shares its section join the new one (matching PowerPoint, where a

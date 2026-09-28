@@ -308,7 +308,13 @@ export async function run(frame) {
     b.code = 'const x = 1;'; b.lang = 'javascript'; R.render();
     const html = R.io.buildHTML();
     assert(/<code class="language-javascript">const x = 1;<\/code>/.test(html), 'export del código');
-    assert(/highlight\.min\.js/.test(html), 'highlight.js incluido');
+    assert(/plugin\/highlight\/highlight\.js/.test(html) && /RevealHighlight/.test(html), 'plugin de resaltado de reveal');
+  });
+
+  await test('código: animación por líneas (data-line-numbers) en el export', async () => {
+    reset(); R.blocks.addCode(); const b = last(); select(b);
+    R.blocks.setCode({ lineSteps: '1|2-3', lang: 'javascript' });
+    assert(/data-line-numbers="1\|2-3"/.test(R.io.buildHTML()), 'data-line-numbers con pasos');
   });
 
   await test('copiar y pegar formato entre cuadros de texto', async () => {
@@ -410,6 +416,20 @@ export async function run(frame) {
   await test('fondo con degradado se aplica y se exporta', async () => {
     reset(); slide().background = 'linear-gradient(135deg, #3f6497, #101317)'; R.render(); await sleep(10);
     assert(/style="background:linear-gradient\(135deg, #3f6497, #101317\)"/.test(R.io.buildHTML()), 'degradado en export');
+  });
+
+  await test('auto-animate: data-auto-animate y data-id en el export', async () => {
+    reset(); const b = newText(); slide().autoAnimate = true;
+    const html = R.io.buildHTML();
+    assert(/<section[^>]*data-auto-animate/.test(html), 'sección con data-auto-animate');
+    assert(new RegExp(`data-id="${b.id}"`).test(html), 'bloque con data-id');
+  });
+
+  await test('duplicar animando conserva los ids de los bloques', async () => {
+    reset(); const b = newText(); R.slides.duplicateForAnimate();
+    const s0 = R.state.deck.slides[0], s1 = R.state.deck.slides[1];
+    assert(s0.autoAnimate && s1.autoAnimate, 'ambas con auto-animate');
+    assert(s1.blocks.some(x => x.id === b.id), 'la copia conserva el id del bloque');
   });
 
   await test('avance automático por diapositiva en el export', async () => {
