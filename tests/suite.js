@@ -1102,6 +1102,24 @@ export async function run(frame) {
     }
   });
 
+  await test('transiciones nuevas: voltear, empujar, barrido, elevar', async () => {
+    reset(); R.slides.addSlide(); R.slides.goToSlide(0); R.trans.setSlideTransition('flip');
+    R.slides.goToSlide(1); R.trans.setSlideTransition('wipe');
+    const html = R.io.buildHTML();
+    assert(/section\[data-transition=flip\]\.past/.test(html), 'CSS de voltear');
+    assert(/clip-path:inset\(0 0 0 100%\)/.test(html), 'CSS de barrido');
+    assert(!/data-transition=rise\]/.test(html), 'solo las usadas');
+    const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:640px;height:360px;opacity:0';
+    f.src = URL.createObjectURL(new Blob([html], { type: 'text/html' })); document.body.appendChild(f);
+    let w; for (let i = 0; i < 80 && !((w = f.contentWindow).Reveal?.isReady?.()); i++) await sleep(100);
+    try {
+      const secs = f.contentDocument.querySelectorAll('.slides>section');
+      assert(/clip-path|inset/.test(w.getComputedStyle(secs[1]).clipPath), 'la siguiente espera recortada (barrido)');
+      w.Reveal.next(); await sleep(50);
+      assert(w.getComputedStyle(secs[0]).transform !== 'none', 'la anterior sale volteada');
+    } finally { f.remove(); }
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

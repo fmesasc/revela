@@ -104,7 +104,7 @@ the origin of every requirement is traceable.
 - ✅ Handout / notes printing layouts (notes pages; 1, 2, 3 with lines, 4, 6, 9 per page) `PP·OO`
 
 ## 5. Transitions & animation
-- ✅ Per-slide transitions & default transition/speed `PP·GS·OO`
+- ✅ Per-slide transitions & default transition/speed — none, fade, slide, convex, concave, zoom, flip, push, wipe, rise `PP·GS·OO`
 - ✅ Per-object entrance, emphasis & exit animations (many effects) `PP·GS·OO`
 - ✅ Animation pane — effect, start (on click / with previous), duration, delay, reorder, remove `PP·GS·OO`
 - ✅ Animation preview (play in the editor) `PP·GS·OO`
@@ -114,7 +114,7 @@ the origin of every requirement is traceable.
 - ✅ Motion paths (straight line to a chosen offset, with guide on the canvas); curved/custom paths planned `PP`
 - ✅ Animation painter `PP`
 - ✅ Per-slide transition options — different exit transition, per-slide speed, apply to all `PP·GS·OO`
-- ⬜ More transition effects (push/wipe directions, split, morph-like 3D) `PP·GS·OO`
+- ⬜ Even more transition effects (directions, split, shape reveals) `PP·GS·OO`
 
 ## 6. Presenting
 - ✅ Presenter view (notes, next slide, timer) — reveal presenter view (S) + phone companion `PP·GS·OO`

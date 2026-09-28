@@ -2,7 +2,21 @@
 
 import { state, commit, currentSlide, selectedBlock } from '../core/store.js';
 
-export const SLIDE_TRANSITIONS = ['none', 'fade', 'slide', 'convex', 'concave', 'zoom'];
+export const SLIDE_TRANSITIONS = ['none', 'fade', 'slide', 'convex', 'concave', 'zoom', 'flip', 'push', 'wipe', 'rise'];
+// Transitions reveal.js doesn't have, defined in CSS in the export: the old
+// slide leaves with PAST and the new one comes from FUTURE (both animate).
+export const CUSTOM_TRANSITIONS = {
+  flip: ['transform:perspective(1600px) rotateY(-90deg);opacity:0', 'transform:perspective(1600px) rotateY(90deg);opacity:0'],
+  push: ['transform:translate3d(0,-100%,0)', 'transform:translate3d(0,100%,0)'],
+  wipe: ['clip-path:inset(0 100% 0 0)', 'clip-path:inset(0 0 0 100%)'],
+  rise: ['transform:scale(1.25);opacity:0', 'transform:scale(.8) translate3d(0,8%,0);opacity:0'],
+};
+export function customTransitionCSS(names) {
+  const sel = (n, st) => `.reveal .slides>section[data-transition=${n}].${st},.reveal .slides>section[data-transition~=${n}-${st === 'past' ? 'out' : 'in'}].${st},`
+    + `.reveal.${n} .slides>section:not([data-transition]).${st}`;
+  return [...names].filter(n => CUSTOM_TRANSITIONS[n]).map(n => `${sel(n, 'past')}{${CUSTOM_TRANSITIONS[n][0]}}${sel(n, 'future')}{${CUSTOM_TRANSITIONS[n][1]}}`).join('\n')
+    + (names.has('wipe') ? '\n.reveal .slides>section{transition-property:transform-origin,transform,visibility,opacity,clip-path}' : '');
+}
 export const ANIMATIONS = ['fade-in', 'fade-up', 'fade-down', 'fade-left', 'fade-right', 'zoom-in'];
 
 // A slide's own transition overrides the deck default. `null` = inherit.

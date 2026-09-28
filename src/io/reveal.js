@@ -9,7 +9,7 @@ import { alertDialog, confirmDialog } from '../ui/dialog.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle, visibleIndexMap } from '../features/captions.js';
 import { INK_CSS, inkJS } from './ink.js';
 import { deckFg, deckBodyFont } from '../features/palettes.js';
-import { animTimeline, EFFECT_KF, EFFECT_KF_CSS, isEntrance } from '../features/transitions.js';
+import { animTimeline, EFFECT_KF, EFFECT_KF_CSS, isEntrance, customTransitionCSS } from '../features/transitions.js';
 import { masterBlocksFor, isEmptyPlaceholder } from '../features/master.js';
 
 const REVEAL = 'https://cdn.jsdelivr.net/npm/reveal.js@5.1.0';
@@ -36,6 +36,7 @@ const CUSTOM_KF = {
   flip: ['rvFlip', '@keyframes rvFlip{from{opacity:0;transform:perspective(600px) rotateY(90deg)}to{opacity:1;transform:none}}'],
   bounce: ['rvBounce', '@keyframes rvBounce{0%{opacity:0;transform:translateY(-60px)}60%{opacity:1;transform:translateY(12px)}80%{transform:translateY(-6px)}100%{transform:none}}'],
 };
+const usedTransitions = deck => new Set([deck.defaultTransition, ...deck.slides.flatMap(s => [s.transition, s.transitionOut])].filter(Boolean));
 function customEffectCSS(deck) {
   const used = new Set();
   deck.slides.forEach(s => s.blocks.forEach(b => { if (b.animation && CUSTOM_KF[b.animation.effect]) used.add(b.animation.effect); }));
@@ -259,6 +260,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  ${tableCSS('.reveal ')}
  .deck-footer{position:fixed;left:12px;bottom:8px;z-index:30;font-size:14px;opacity:.7;color:#fff;mix-blend-mode:difference}
  ${customEffectCSS(deck)}
+ ${customTransitionCSS(usedTransitions(deck))}
  .reveal .slides section .fragment.rv-path{opacity:1;visibility:inherit}
  .reveal .slides section .fragment.rv-path.visible{translate:var(--dx) var(--dy)}
  ${hasTrig ? `[data-bid]{cursor:pointer} .rv-trig.rv-in:not(.on){opacity:0} ${EFFECT_KF_CSS.replace(/\n/g, ' ')}` : ''}
