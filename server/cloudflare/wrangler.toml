@@ -5,14 +5,23 @@ compatibility_date = "2026-09-01"
 workers_dev = true
 preview_urls = false
 
-[[r2_buckets]]
-binding = "SHARES"
-bucket_name = "revela-shares"
+# Everything is stored in Durable Objects (store.js), not R2: on the Workers Free
+# plan they have hard limits (it stops for the day, it never bills).
+[[durable_objects.bindings]]
+name = "SHAREBOX"
+class_name = "ShareBox"
+
+[[durable_objects.bindings]]
+name = "LIMITS"
+class_name = "Limits"
 
 [vars]
 # Only who knows this key (set it in Revela ▸ Compartir ▸ Servidor) can upload.
 # Better as a secret: `npx wrangler secret put UPLOAD_KEY` and remove it here.
 MAX_MB = "30"
+# Per Google account (or address) and in total, per day: shares + rooms created.
+DAILY_PER_USER = "30"
+DAILY_TOTAL = "3000"
 # Revela's Google client (public, as in src/core/config.js): people signed in to
 # Revela with Google can share and open collaboration rooms. To limit it to
 # some accounts: `npx wrangler secret put ALLOWED` with e.g. "ana@x.org, @school.example".
@@ -26,3 +35,7 @@ class_name = "CollabRoom"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["CollabRoom"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["ShareBox", "Limits"]

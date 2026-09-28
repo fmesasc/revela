@@ -1174,4 +1174,5 @@ export default {
   "Inicia sesión con Google para compartir o colaborar a través del servidor.": "سجّل الدخول باستخدام Google للمشاركة أو التعاون عبر الخادم.",
   "No se pudo usar el servidor: ": "تعذّر استخدام الخادم: ",
   "¿Colaborar directamente entre navegadores? (Esta pestaña tendrá que seguir abierta.)": "هل تريد التعاون مباشرة بين المتصفحات؟ (يجب أن تبقى علامة التبويب هذه مفتوحة.)",
+  "El servidor gratuito ha llegado a su límite de hoy. Vuelve a intentarlo mañana.": "وصل الخادم المجاني إلى حدّه اليومي. حاول مرة أخرى غدًا.",
 };

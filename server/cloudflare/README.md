@@ -12,26 +12,36 @@ One Worker does two things, both optional:
   the tab, and work on networks where browsers can't connect directly. Without
   this server Revela collaborates browser to browser.
 
-It all fits the free plans: Workers 100 000 requests/day, Durable Objects
-(SQLite backend) 100 000 requests and 13 000 GB-s a day, R2 10 GB. The rooms
-are designed for it: WebSocket hibernation (no cost while nobody types; 20
-incoming messages count as 1 request), the document is written to R2 at most
-every 5 s instead of on every change, and big messages travel in parts
-(Cloudflare's limit is 1 MiB). If a limit is reached, requests fail until
-00:00 UTC; nothing is charged on the free plan.
+## Free, and never billed
+
+Everything is stored in **Durable Objects** (`store.js`), not R2. On the
+**Workers Free** plan, Workers and Durable Objects have hard daily limits
+(100 000 requests; Durable Objects: 13 000 GB-s, 100 000 rows written and
+5 M read, 5 GB stored): when one is reached, requests fail until 00:00 UTC —
+nothing is charged. (R2, instead, bills what goes past its free tier to the
+account's card, so it isn't used.) Keep the account on the Free plan
+(Workers & Pages ▸ Plans) and it can't cost anything.
+
+To stay well within those limits:
+
+- rooms use WebSocket hibernation (no cost while nobody types; 20 incoming
+  messages count as 1 request), save at most every 5 s and only the slides
+  that changed; big messages travel in parts (Cloudflare's limit is 1 MiB);
+- per day, each Google account (or address) can create `DAILY_PER_USER`
+  shares + rooms (30) and everyone together `DAILY_TOTAL` (3000), so nobody
+  can use up the quota for everyone (`wrangler.toml`);
+- rooms nobody enters for 7 days are deleted; shares are deleted when they
+  expire, when unshared, or after a year without views.
 
 ## Deploy
 
 Needs [Node.js](https://nodejs.org/) (LTS) on your computer.
 
-1. Create a Cloudflare account (free plan) and, in the dashboard, open **R2**
-   once and accept its terms (it asks for a card only to prevent abuse; the
-   free tier isn't charged).
+1. Create a Cloudflare account (free plan; no card needed).
 2. From this folder (`server/cloudflare`):
    ```bash
    npx wrangler login                      # opens the browser to authorise
-   npx wrangler r2 bucket create revela-shares
-   npx wrangler secret put UPLOAD_KEY      # a long random value; only who knows it can upload or open rooms
+   npx wrangler secret put UPLOAD_KEY      # optional: a long random value, to upload without Google
    npx wrangler deploy
    ```
 3. Wrangler prints the address (`https://revela-share.<you>.workers.dev`).
@@ -68,11 +78,10 @@ The Worker's own secrets (`UPLOAD_KEY`, `ALLOWED`) stay in Cloudflare.
   the last view — nothing about who viewed (no IP address, no browser).
   Whoever shared it sees the count in Revela ▸ Compartir.
 - Collaboration rooms: to merge everyone's changes the room needs the
-  presentation itself, so it is stored (in your R2 bucket, `rooms/…`) while
-  the session lasts and deleted when the person who started it ends it; plus
-  the names people type and the chat of that session. Sessions that are never
-  ended stay in the bucket until you delete them (Cloudflare dashboard ▸ R2 ▸
-  revela-shares ▸ `rooms/`).
+  presentation itself, so it is stored (in that room's Durable Object) while
+  the session lasts and deleted when the person who started it ends it, or 7
+  days after the last visit; plus the names people type and the chat of that
+  session.
 
 ## Limiting a share to an organisation's accounts
 

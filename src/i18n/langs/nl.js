@@ -1174,4 +1174,5 @@ export default {
   "Inicia sesión con Google para compartir o colaborar a través del servidor.": "Log in met Google om via de server te delen of samen te werken.",
   "No se pudo usar el servidor: ": "Kan de server niet gebruiken: ",
   "¿Colaborar directamente entre navegadores? (Esta pestaña tendrá que seguir abierta.)": "Direct tussen browsers samenwerken? (Dit tabblad moet open blijven.)",
+  "El servidor gratuito ha llegado a su límite de hoy. Vuelve a intentarlo mañana.": "De gratis server heeft de limiet van vandaag bereikt. Probeer het morgen opnieuw.",
 };

@@ -2,7 +2,7 @@
 // the same Worker as sharing, configured in Compartir ▸ Servidor propio).
 // With it, a live session doesn't depend on the tab of whoever shared it.
 
-import { serverConfig, uploadAuth, forbiddenMessage } from './shareserver.js';
+import { serverConfig, uploadAuth, forbiddenMessage, limitMessage } from './shareserver.js';
 import { pack, unpacker } from '../../features/live/collabsync.js';
 import { t } from '../../i18n/index.js';
 
@@ -13,7 +13,7 @@ export const collabServerReady = () => /^https:\/\/|^http:\/\/(localhost|127\.0\
 export async function createRoom(deck) {
   const r = await fetch(base() + '/c', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(await uploadAuth()) }, body: JSON.stringify({ deck }) });
   if (r.status === 501) throw new Error(t('El servidor no tiene activada la colaboración (falta el Durable Object ROOMS).'));
-  if (!r.ok) throw new Error(r.status === 403 ? forbiddenMessage() : r.status === 413 ? t('La presentación es demasiado grande para el servidor.') : t('El servidor respondió ') + r.status);
+  if (!r.ok) throw new Error(r.status === 403 ? forbiddenMessage() : r.status === 429 ? limitMessage() : r.status === 413 ? t('La presentación es demasiado grande para el servidor.') : t('El servidor respondió ') + r.status);
   return { ...(await r.json()), server: base() };
 }
 

@@ -1174,4 +1174,5 @@ export default {
   "Inicia sesión con Google para compartir o colaborar a través del servidor.": "Inicia sesión con Google para compartir ou colaborar a través do servidor.",
   "No se pudo usar el servidor: ": "Non se puido usar o servidor: ",
   "¿Colaborar directamente entre navegadores? (Esta pestaña tendrá que seguir abierta.)": "Colaborar directamente entre navegadores? (Esta lapela terá que seguir aberta.)",
+  "El servidor gratuito ha llegado a su límite de hoy. Vuelve a intentarlo mañana.": "O servidor gratuíto chegou ao seu límite de hoxe. Téntao de novo mañá.",
 };

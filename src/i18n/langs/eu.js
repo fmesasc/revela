@@ -1174,4 +1174,5 @@ export default {
   "Inicia sesión con Google para compartir o colaborar a través del servidor.": "Hasi saioa Googlerekin zerbitzariaren bidez partekatzeko edo lankidetzan aritzeko.",
   "No se pudo usar el servidor: ": "Ezin izan da zerbitzaria erabili: ",
   "¿Colaborar directamente entre navegadores? (Esta pestaña tendrá que seguir abierta.)": "Nabigatzaileen artean zuzenean lankidetzan aritu? (Fitxa honek irekita jarraitu beharko du.)",
+  "El servidor gratuito ha llegado a su límite de hoy. Vuelve a intentarlo mañana.": "Doako zerbitzariak gaurko muga gainditu du. Saiatu berriro bihar.",
 };

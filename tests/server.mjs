@@ -1,16 +1,23 @@
-// Tests of the share server (server/cloudflare/worker.js) with an in-memory R2.
+// Tests of Revela's server (server/cloudflare) with in-memory Durable Objects.
 // Run by tests/run.sh when Node.js is available.
-import worker, { resetCerts, CollabRoom } from '../server/cloudflare/worker.js';
+import worker, { resetCerts, CollabRoom, ShareBox, Limits } from '../server/cloudflare/worker.js';
 import { pack, unpacker } from '../src/features/live/collabsync.js';
 
-const bucket = new Map();
-const R2 = {
-  async put(k, body, o = {}) { bucket.set(k, { body, customMetadata: o.customMetadata || {} }); },
-  async get(k) { const v = bucket.get(k); return v && { body: v.body, customMetadata: v.customMetadata, json: async () => JSON.parse(v.body), text: async () => v.body }; },
-  async head(k) { const v = bucket.get(k); return v && { customMetadata: v.customMetadata }; },
-  async delete(k) { bucket.delete(k); },
-};
-const env = { SHARES: R2, UPLOAD_KEY: 'k3y' };
+// Durable Object storage (as Cloudflare's API) and namespaces, in memory.
+export function fakeStorage() {
+  const m = new Map(); let alarm = null;
+  return { m, get alarmAt() { return alarm; },
+    async get(k) { if (Array.isArray(k)) return new Map(k.filter(x => m.has(x)).map(x => [x, structuredClone(m.get(x))])); return structuredClone(m.get(k)); },
+    async put(k, v) { if (typeof k === 'object') { for (const [a, b] of Object.entries(k)) m.set(a, structuredClone(b)); } else m.set(k, structuredClone(v)); },
+    async delete(k) { for (const x of [].concat(k)) m.delete(x); }, async deleteAll() { m.clear(); },
+    async setAlarm(t) { alarm = t; }, async getAlarm() { return alarm; }, async deleteAlarm() { alarm = null; } };
+}
+const namespace = (Cls, env) => { const inst = new Map();
+  return { inst, idFromName: n => n, get: id => { if (!inst.has(id)) inst.set(id, new Cls({ storage: fakeStorage(), getWebSockets: () => [], acceptWebSocket() {} }, env));
+    const o = inst.get(id); return { fetch: (u, init) => o.fetch(u instanceof Request ? u : new Request(u, init)) }; } }; };
+const env = { UPLOAD_KEY: 'k3y' };
+env.SHAREBOX = namespace(ShareBox, env); env.LIMITS = namespace(Limits, env);
+const boxOf = id => env.SHAREBOX.inst.get(id)?.ctx.storage;
 const call = (method, path, { body, headers = {} } = {}) => worker.fetch(new Request('https://w.test' + path, { method, body, headers }), env);
 let fails = 0, n = 0;
 const ok = (c, m) => { n++; if (!c) { fails++; console.log('✗ servidor: ' + m); } };
@@ -30,8 +37,8 @@ ok((await call('DELETE', '/s/' + id, { headers: { Authorization: 'Bearer malo' }
 ok((await call('DELETE', '/s/' + id, { headers: { Authorization: 'Bearer ' + token } })).status === 200, 'se borra con su token');
 ok((await call('GET', '/s/' + id)).status === 404, 'ya no se comparte');
 const e = await (await call('POST', '/s?days=1', { body: sealed, headers: { 'X-Upload-Key': 'k3y' } })).json();
-bucket.get(e.id).customMetadata.expires = String(Date.now() - 1);
-ok((await call('GET', '/s/' + e.id)).status === 404 && !bucket.has(e.id), 'caduca y se borra');
+boxOf(e.id).m.get('meta').expires = Date.now() - 1;
+ok((await call('GET', '/s/' + e.id)).status === 404 && !boxOf(e.id).m.size, 'caduca y se borra');
 ok((await call('POST', '/s', { body: 'x'.repeat(31 * 1024 * 1024), headers: { 'X-Upload-Key': 'k3y' } })).status === 413, 'límite de tamaño');
 // Statistics: a counter and a date, only for the owner.
 const s1 = await (await call('POST', '/s', { body: sealed, headers: { 'X-Upload-Key': 'k3y' } })).json();
@@ -66,12 +73,11 @@ ok((await call('GET', '/s/' + d1.id, { headers: { Authorization: 'Bearer ' + (g 
 // ---- Collaboration rooms (Durable Object) ------------------------------------------
 {
   const deck = { name: 'Clase', slides: [{ id: 's1', blocks: [{ id: 'a', x: 1, src: 'data:image/png;base64,' + 'A'.repeat(900 * 1024) }] }] };
-  ok((await call('POST', '/c', { body: JSON.stringify({ deck }) })).status === 501, 'sin Durable Objects configurados, lo dice');
-  const alarms = []; let alarm = null;
-  const sockets = [];
-  const ctx = { acceptWebSocket: ws => sockets.push(ws), getWebSockets: () => sockets.filter(s => !s.closed),
-    storage: { getAlarm: async () => alarm, setAlarm: async t => { alarm = t; alarms.push(t); } } };
-  const envC = { ...env, ROOMS: { idFromName: x => x, get: () => room } };
+  ok((await call('POST', '/c', { body: JSON.stringify({ deck }) })).status === 501, 'sin salas configuradas, lo dice');
+  const sockets = [], storage = fakeStorage();
+  const ctx = { acceptWebSocket: ws => sockets.push(ws), getWebSockets: () => sockets.filter(s => !s.closed), storage };
+  let writes = 0; const put0 = storage.put; storage.put = async (k, v) => { writes += typeof k === 'object' ? Object.keys(k).length : 1; return put0(k, v); };
+  const envC = { ...env, ROOMS: { idFromName: x => x, get: () => ({ fetch: (u, init) => room.fetch(u instanceof Request ? u : new Request(u, init)) }) } };
   const room = new CollabRoom(ctx, envC);
   ok((await worker.fetch(new Request('https://w.test/c', { method: 'POST', body: JSON.stringify({ deck }) }), envC)).status === 403, 'crear sala necesita la clave de subida');
   const cr = await worker.fetch(new Request('https://w.test/c', { method: 'POST', body: JSON.stringify({ deck }), headers: { 'X-Upload-Key': 'k3y' } }), envC);
@@ -94,9 +100,11 @@ ok((await call('GET', '/s/' + d1.id, { headers: { Authorization: 'Bearer ' + (g 
   ok(own.last('ops')?.ops[0].v === 99 && vi.last('ops')?.ops[0].v === 99 && !ed.last('ops'), 'el cambio llega a los demás (no vuelve a quien lo hizo)');
   await vi.say({ t: 'ops', ops: [{ p: ['name'], v: 'Hack' }] });
   ok(own.got.filter(m => m.t === 'ops').length === 1, 'quien solo ve no cambia nada');
-  ok(alarms.length === 1, 'guardado programado, no uno por cambio');
-  await room.alarm();
-  ok(JSON.parse(bucket.get(`rooms/${rid}.json`).body).deck.slides[0].blocks[0].x === 99, 'se guarda en R2');
+  ok(storage.alarmAt && storage.alarmAt - Date.now() <= 5000, 'guardado programado en unos segundos, no uno por cambio');
+  writes = 0; await room.alarm();
+  const { readDeck } = await import('../server/cloudflare/store.js');
+  ok((await readDeck(storage)).deck.slides[0].blocks[0].x === 99, 'se guarda en el almacenamiento de la sala (no R2)');
+  ok(writes <= 4, 'solo se reescribe la diapositiva que cambió: ' + writes + ' escrituras');
   await ed.say({ t: 'chat', text: 'Hola' });
   ok(vi.last('chat')?.name === 'Luis' && vi.last('chat')?.text === 'Hola', 'chat');
   await ed.say({ t: 'setRole', id: vi.att.id, role: 'edit' });
@@ -105,9 +113,9 @@ ok((await call('GET', '/s/' + d1.id, { headers: { Authorization: 'Bearer ' + (g 
   ok(vi.last('role')?.role === 'comment' && vi.att.role === 'comment', 'la dueña cambia el permiso de alguien');
   // A new room object (after the Durable Object slept) reads it back from R2.
   const room2 = new CollabRoom(ctx, envC);
-  ok((await room2.load(rid)).deck.slides[0].blocks[0].x === 99, 'al despertar, la sala recupera el documento');
+  ok((await room2.load()).deck.slides[0].blocks[0].x === 99, 'al despertar, la sala recupera el documento');
   await own.say({ t: 'end' });
-  ok(ed.last('end') && ed.closed && !bucket.has(`rooms/${rid}.json`), 'al terminar, todos fuera y se borra');
+  ok(ed.last('end') && ed.closed && !storage.m.size, 'al terminar, todos fuera y se borra');
 }
 
 // ---- Who may upload / open rooms: upload key or Google sign-in (+ ALLOWED) ------------
@@ -129,6 +137,21 @@ ok((await call('GET', '/s/' + d1.id, { headers: { Authorization: 'Bearer ' + (g 
   ok((await authorize(req({ Authorization: 'Bearer good' }), { ...e1, ALLOWED: '@escuela.example' }, gfetch)) !== null, 'ALLOWED por dominio');
   ok((await authorize(req({ Authorization: 'Bearer good' }), { ...e1, ALLOWED: 'luis@escuela.example, @otra.org' }, gfetch)) === null, 'ALLOWED: fuera de la lista, no');
   ok((await authorize(req({}), {}, gfetch))?.open, 'sin configurar nada, abierto (para pruebas locales)');
+}
+
+// ---- Daily limits: per account and in total (so nobody uses up the free quota) --------
+{
+  const e2 = { UPLOAD_KEY: 'k3y', DAILY_PER_USER: '2', DAILY_TOTAL: '3' };
+  e2.SHAREBOX = namespace(ShareBox, e2); e2.LIMITS = namespace(Limits, e2);
+  const up = (ip) => worker.fetch(new Request('https://w.test/s', { method: 'POST', body: sealed, headers: { 'X-Upload-Key': 'k3y', 'CF-Connecting-IP': ip } }), e2);
+  const codes = [];
+  for (let i = 0; i < 3; i++) codes.push((await up('1.1.1.1')).status);
+  ok(codes.join() === '200,200,429', 'dos al día por persona, la tercera no: ' + codes);
+  const e3 = { DAILY_PER_USER: '5', DAILY_TOTAL: '3' };
+  e3.SHAREBOX = namespace(ShareBox, e3); e3.LIMITS = namespace(Limits, e3);
+  const t = [];
+  for (const ip of ['1', '2', '3', '4']) t.push((await worker.fetch(new Request('https://w.test/s', { method: 'POST', body: sealed, headers: { 'CF-Connecting-IP': ip } }), e3)).status);
+  ok(t.join() === '200,200,200,429', 'y un total diario para todos: ' + t);
 }
 
 console.log(fails ? `SERVIDOR FAIL ${n - fails}/${n}` : `SERVIDOR OK ${n}/${n}`);

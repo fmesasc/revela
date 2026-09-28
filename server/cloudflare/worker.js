@@ -1,4 +1,6 @@
-// Revela share server (Cloudflare Worker + R2): stores sealed presentations.
+// Revela's server (Cloudflare Worker + Durable Objects): sealed shared
+// presentations and live collaboration rooms. No R2: see store.js (free plan,
+// hard limits, never billed).
 //
 // It only ever receives encrypted data: presentations are sealed in the
 // browser and the key stays in the link after "#", which never reaches this
@@ -20,12 +22,17 @@
 //
 // Also live collaboration rooms under /c (collab.js).
 //
-// Bindings (wrangler.toml): SHARES (R2 bucket), ROOMS (Durable Object). Optional
+// Bindings (wrangler.toml): SHAREBOX, ROOMS, LIMITS (Durable Objects). Optional
 // vars: UPLOAD_KEY and/or GOOGLE_CLIENT_ID + ALLOWED (who can upload or open
 // rooms, see authorize()), MAX_MB (default 30), ALLOW_ORIGIN (default *).
 
 import { handleCollab, CollabRoom } from './collab.js';
-export { CollabRoom };
+import { ShareBox, Limits, takeQuota } from './store.js';
+export { CollabRoom, ShareBox, Limits };
+
+const box = (env, id) => env.SHAREBOX.get(env.SHAREBOX.idFromName(id));
+// Who counts for the daily limits: the Google account, else the key, else the address.
+export const whoKey = (who, req) => who.email || (who.key ? 'key' : 'ip:' + (req.headers.get('CF-Connecting-IP') || '?'));
 
 const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const random = n => b64url(crypto.getRandomValues(new Uint8Array(n)));
@@ -91,7 +98,8 @@ export default {
     if (url.pathname === '/c' || url.pathname.startsWith('/c/')) return handleCollab(req, env, url, json);
 
     if (req.method === 'POST' && url.pathname === '/s') {
-      if (!(await authorize(req, env, env.FETCH || fetch))) return json({ error: 'forbidden' }, 403);
+      const who = await authorize(req, env, env.FETCH || fetch);
+      if (!who) return json({ error: 'forbidden' }, 403);
       const max = (+env.MAX_MB || 30) * 1024 * 1024;
       if (+(req.headers.get('Content-Length') || 0) > max) return json({ error: 'too large' }, 413);
       const body = await req.text();
@@ -101,45 +109,31 @@ export default {
       const days = Math.min(3650, Math.max(0, +url.searchParams.get('days') || 0));
       const domain = (url.searchParams.get('domain') || '').toLowerCase().replace(/^@/, ''), clientId = url.searchParams.get('clientId') || '';
       if (domain && (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain) || !clientId)) return json({ error: 'domain needs a Google client id' }, 400);
+      if (!(await takeQuota(env, whoKey(who, req)))) return json({ error: 'daily limit' }, 429);
       const id = random(16), token = random(24);
-      await env.SHARES.put(id, body, { httpMetadata: { contentType: 'application/json' },
-        customMetadata: { token: await sha256(token), ...(days && { expires: String(Date.now() + days * 864e5) }), ...(domain && { domain, clientId }) } });
+      await box(env, id).fetch('https://box/init', { method: 'POST', body: JSON.stringify({ body,
+        meta: { token: await sha256(token), ...(days && { expires: Date.now() + days * 864e5 }), ...(domain && { domain, clientId }) } }) });
       return json({ id, token });
     }
 
-    const st = url.pathname.match(/^\/s\/([\w-]{16,40})\/stats$/);
-    if (st && req.method === 'GET') {
-      const obj = await env.SHARES.head(st[1]);
-      const token = (req.headers.get('Authorization') || '').replace(/^Bearer /, '');
-      if (!obj || !token || (await sha256(token)) !== obj.customMetadata?.token) return json({ error: 'forbidden' }, 403);
-      const s = await env.SHARES.get('stats/' + st[1]);
-      return json(s ? await s.json() : { views: 0, last: null });
-    }
-
-    const m = url.pathname.match(/^\/s\/([\w-]{16,40})$/);
-    if (m && req.method === 'GET') {
-      const obj = await env.SHARES.get(m[1]);
-      if (!obj) return json({ error: 'not found' }, 404);
-      const meta = obj.customMetadata || {};
-      if (meta.expires && Date.now() > +meta.expires) { await env.SHARES.delete(m[1]); await env.SHARES.delete('stats/' + m[1]); return json({ error: 'not found' }, 404); }
-      if (meta.domain) {
-        const idt = (req.headers.get('Authorization') || '').replace(/^Bearer /, '');
-        const who = idt && await verifyGoogleToken(idt, meta.clientId, env.FETCH || fetch).catch(() => null);
-        const inDomain = who && who.email_verified && (who.hd === meta.domain || String(who.email).toLowerCase().endsWith('@' + meta.domain));
-        if (!inDomain) return json({ signIn: true, domain: meta.domain, clientId: meta.clientId }, 401, { 'Cache-Control': 'no-store' });
+    const m = url.pathname.match(/^\/s\/([\w-]{16,40})(\/stats)?$/);
+    if (m) {
+      const owner = async () => { const tk = (req.headers.get('Authorization') || '').replace(/^Bearer /, ''); return tk ? sha256(tk) : ''; };
+      const pass = async (op, headers = {}) => box(env, m[1]).fetch('https://box/' + op, { method: 'POST', headers });
+      if (m[2] && req.method === 'GET') { const r = await pass('stats', { 'X-Owner-Token': await owner() }); return json(await r.json(), r.status); }
+      if (!m[2] && req.method === 'DELETE') { const r = await pass('delete', { 'X-Owner-Token': await owner() }); return json(await r.json(), r.status === 404 ? 200 : r.status); }
+      if (!m[2] && req.method === 'GET') {
+        let r = await pass('read');
+        if (r.status === 401) {                                  // limited to a domain: needs a Google ID token of that domain
+          const need = await r.json(), idt = (req.headers.get('Authorization') || '').replace(/^Bearer /, '');
+          const who = idt && await verifyGoogleToken(idt, need.clientId, env.FETCH || fetch).catch(() => null);
+          const inDomain = who && who.email_verified && (who.hd === need.domain || String(who.email).toLowerCase().endsWith('@' + need.domain));
+          if (!inDomain) return json(need, 401, { 'Cache-Control': 'no-store' });
+          r = await pass('read', { 'X-Domain-Ok': '1' });
+        }
+        if (!r.ok) return json(await r.json(), r.status);
+        return new Response(r.body, { headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': r.headers.get('X-Domain') ? 'no-store' : 'private, max-age=60' } });
       }
-      // A counter and the last date, nothing about the viewer.
-      const s = await env.SHARES.get('stats/' + m[1]), prev = s ? await s.json() : { views: 0 };
-      await env.SHARES.put('stats/' + m[1], JSON.stringify({ views: (prev.views || 0) + 1, last: new Date().toISOString() }));
-      return new Response(obj.body, { headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': meta.domain ? 'no-store' : 'private, max-age=60' } });
-    }
-    if (m && req.method === 'DELETE') {
-      const obj = await env.SHARES.head(m[1]);
-      if (!obj) return json({ ok: true });
-      const token = (req.headers.get('Authorization') || '').replace(/^Bearer /, '');
-      if (!token || (await sha256(token)) !== obj.customMetadata?.token) return json({ error: 'forbidden' }, 403);
-      await env.SHARES.delete(m[1]); await env.SHARES.delete('stats/' + m[1]);
-      return json({ ok: true });
     }
     return new Response('Revela share server', { headers: { ...cors, 'Content-Type': 'text/plain' } });
   },

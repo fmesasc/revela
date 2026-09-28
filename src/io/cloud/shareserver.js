@@ -19,6 +19,7 @@ export async function uploadAuth() {
   if (!account()) await signIn();                         // signs in (name and picture in the title bar)
   return { Authorization: 'Bearer ' + await ensureToken(true) };
 }
+export const limitMessage = () => t('El servidor gratuito ha llegado a su límite de hoy. Vuelve a intentarlo mañana.');
 export const forbiddenMessage = () => (serverConfig().uploadKey ? t('La clave de subida no es correcta.')
   : account() ? t('Tu cuenta de Google no tiene permiso en este servidor.') : t('Inicia sesión con Google para compartir o colaborar a través del servidor.'));
 export const serverReady = () => /^https:\/\//.test(serverConfig().url || '');
@@ -28,7 +29,7 @@ export async function serverShare(env, { days = 0, domain = '', clientId = '' } 
   const q = new URLSearchParams({ ...(days && { days }), ...(domain && { domain, clientId }) }).toString();
   const r = await fetch(`${base()}/s${q ? '?' + q : ''}`, { method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(await uploadAuth()) }, body: JSON.stringify(env) });
-  if (!r.ok) throw new Error(r.status === 403 ? forbiddenMessage() : r.status === 413 ? t('La presentación es demasiado grande para el servidor.') : t('El servidor respondió ') + r.status);
+  if (!r.ok) throw new Error(r.status === 403 ? forbiddenMessage() : r.status === 429 ? limitMessage() : r.status === 413 ? t('La presentación es demasiado grande para el servidor.') : t('El servidor respondió ') + r.status);
   return r.json();                                  // { id, token }
 }
 export const serverSealedURL = id => `${base()}/s/${encodeURIComponent(id)}`;
