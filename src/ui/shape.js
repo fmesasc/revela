@@ -9,7 +9,7 @@ export function imgClip(b) {
   return `inset(${c.top || 0}% ${c.right || 0}% ${c.bottom || 0}% ${c.left || 0}%)`;
 }
 
-const escSvg = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+export const escSvg = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
 // Table look: header row, banded rows, first column, horizontal lines only,
 // plus colours. The same classes/variables drive the editor and every export.
@@ -182,7 +182,7 @@ export function chartSVG(b) {
 
 // All series of a bar/line/area chart: the primary one (b.data, b.color) plus
 // any extra ones in b.series, aligned with the primary labels.
-const SERIES_COLOURS = ['#e0873b', '#4caf7d', '#c94f4f', '#8e6cc9', '#3bb3c3', '#d4a017'];
+export const SERIES_COLOURS = ['#e0873b', '#4caf7d', '#c94f4f', '#8e6cc9', '#3bb3c3', '#d4a017'];
 export function chartSeries(b) {
   const data = b.data || [], bar = (b.chartType || 'bar') === 'bar';
   return [{ name: b.seriesName || 'Serie 1', color: b.color || '#3f6497', values: data.map(d => +d.value || 0), type: bar ? 'bar' : 'line' }]

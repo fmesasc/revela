@@ -2,7 +2,7 @@
 // present / export / save-load helpers.
 
 import { state, commit } from '../core/store.js';
-import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, tableClass, tableVars, tableCSS } from '../ui/shape.js';
+import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, tableClass, tableVars, tableCSS, escSvg, SERIES_COLOURS, chartSeries } from '../ui/shape.js';
 import { googleFontLinks } from '../features/fonts.js';
 import { t } from '../i18n.js';
 import { alertDialog, confirmDialog } from '../ui/dialog.js';
@@ -10,6 +10,7 @@ import { collectFigures, figuresMap, captionLine, figIndexTitle, visibleIndexMap
 import { INK_CSS, inkJS } from './ink.js';
 import { deckFg, deckBodyFont, currentPalette } from '../features/palettes.js';
 import { tallyVotes, pollResultsHTML, VOTE_URL } from '../features/poll.js';
+import { parseChartGrid } from '../features/blocks.js';
 import { animTimeline, EFFECT_KF, EFFECT_KF_CSS, isEntrance, customTransitionCSS, pathKeyframesCSS } from '../features/transitions.js';
 import { masterBlocksFor, isEmptyPlaceholder } from '../features/master.js';
 
@@ -109,6 +110,23 @@ function pollJS(accents) {
  Reveal.on('slidechanged',broadcast);
 })();`;
 }
+// Live data while presenting: dashboards reload every N minutes; charts linked
+// to a CSV re-fetch it every N seconds and redraw with the editor's own code.
+function liveDataJS() {
+  return `(function(){
+ ${escSvg.toString().replace(/^/, 'var escSvg=')};
+ var SERIES_COLOURS=${JSON.stringify(SERIES_COLOURS)};
+ ${chartSeries.toString()}
+ ${chartSVG.toString()}
+ ${parseChartGrid.toString()}
+ document.querySelectorAll('iframe[data-refresh-min]').forEach(function(f){var m=+f.dataset.refreshMin;if(m>0)setInterval(function(){f.src=f.src;},m*60000);});
+ document.querySelectorAll('.rv-live-chart').forEach(function(el){var b;try{b=JSON.parse(el.getAttribute('data-chart'));}catch(e){return;}
+  function load(){fetch(b.dataUrl,{cache:'no-store'}).then(function(r){return r.ok?r.text():Promise.reject();}).then(function(t){
+    var g=parseChartGrid(t);if(!g.data.length)return;b.data=g.data;b.series=g.series.length?g.series:undefined;if(g.names[0])b.seriesName=g.names[0];
+    el.innerHTML=chartSVG(b);}).catch(function(){});}
+  load();if(b.refreshSec>0)setInterval(load,b.refreshSec*1000);});
+})();`;
+}
 const TRIGGER_JS = `(function(){
  function play(el){el.style.animation='none';void el.offsetWidth;
   el.style.animation=el.dataset.kf+' '+el.dataset.dur+'ms ease '+el.dataset.del+'ms both';el.classList.add('on');}
@@ -182,13 +200,13 @@ function blockHTML(b, slide) {
   if (b.type === 'audio')
     return `<audio${a} src="${b.src}" controls style="${box(b)}"></audio>`;
   if (b.type === 'embed')
-    return `<iframe${a} src="${b.src}" referrerpolicy="no-referrer" `
+    return `<iframe${a} src="${b.src}" referrerpolicy="no-referrer"${b.refreshMin ? ` data-refresh-min="${+b.refreshMin}"` : ''} `
       + `sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation" `
       + `style="${box(b)}border:0;background:#fff"></iframe>`;
   if (b.type === 'shape')
     return `<div${a} style="${box(b)}">${shapeSVG(b)}</div>`;
   if (b.type === 'chart')
-    return `<div${a} style="${box(b)}">${chartSVG(b)}</div>`;
+    return `<div${a}${b.dataUrl ? ` class="rv-live-chart" data-chart="${esc(JSON.stringify({ ...b, data: undefined, series: undefined }))}"` : ''} style="${box(b)}">${chartSVG(b)}</div>`;
   if (b.type === 'icon')
     return `<div${a} style="${box(b)}">${iconSVG(b)}</div>`;
   if (b.type === 'ink')
@@ -278,6 +296,7 @@ export function buildHTML(deck = state.deck) {
   const hasTrig = deck.slides.some(s => s.blocks.some(b => b.animation?.trigger));
   const hasCam = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'camera'));
   const hasPoll = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'poll'));
+  const hasLive = deck.slides.some(s => s.blocks.some(b => (b.type === 'chart' && b.dataUrl) || (b.type === 'embed' && b.refreshMin)));
   const ft = deck.footer || { show: false };
   const footerText = ft.show
     ? `<div class="deck-footer">${esc(ft.text || '')}${ft.date ? (ft.text ? ' · ' : '') + new Date().toLocaleDateString('es') : ''}</div>`
@@ -335,6 +354,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${hasTrig ? TRIGGER_JS : ''}
  ${hasCam ? CAMERA_JS : ''}
  ${hasPoll ? pollJS(currentPalette(deck).accents) : ''}
+ ${hasLive ? liveDataJS() : ''}
  ${inkJS(w, h, { pen: t('Lápiz'), hl: t('Resaltador'), laser: t('Puntero láser'), color: t('Color de la tinta'), erase: t('Borrar la tinta de la diapositiva') })}
  ${hasZoomReturn ? '(function(){var p=null;document.addEventListener("click",function(e){var a=e.target.closest("a.slide-zoom[data-zoom-return]");if(a){p={t:+a.dataset.target,o:+a.dataset.origin,arrived:false};}});Reveal.on("slidechanged",function(ev){if(!p)return;if(ev.indexh===p.t){p.arrived=true;return;}if(p.arrived){var o=p.o;p=null;setTimeout(function(){Reveal.slide(o);},0);}});})();' : ''}
 </script></body></html>`;

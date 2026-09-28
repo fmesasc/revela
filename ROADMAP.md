@@ -81,7 +81,7 @@ the origin of every requirement is traceable.
 - ✅ Merge shapes — union, combine, intersect, subtract (polygon-clipping; custom geometry in .pptx) `PP·OO`
 - ⬜ Online / stock images & icons library `PP·GS`
 - ✅ Tables from CSV files and from cells pasted from a spreadsheet; paste images/text straight onto the slide `GS·OO`
-- ⬜ Live-linked spreadsheet data (needs a data source/back end) `GS·OO`
+- ✅ Live data — dashboards (Power BI, Looker Studio, Tableau, Google Sheets, Grafana, Datawrapper, Flourish, Metabase) from their share link, with periodic reload; charts linked to a published CSV, refreshed in the editor and while presenting `GS·OO`
 - ✅ Screen / camera recording into a video object, live camera on the slide (Cameo: circle/rounded/rect, mirrored) `PP`
 - ✅ Freehand ink on the slide (Draw tab: pen, highlighter, stroke eraser, colour & thickness; strokes are movable objects) `PP·OO`
 

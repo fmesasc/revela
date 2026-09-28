@@ -7,6 +7,8 @@ import { renderComments } from './ui/comments-panel.js';
 import { renderAssistant } from './ui/ai-dialog.js';
 import * as aiDeck from './features/ai-deck.js';
 import * as poll from './features/poll.js';
+import * as dashboards from './features/dashboards.js';
+import { refreshLinkedCharts } from './features/dashboards.js';
 import * as comments from './features/comments.js';
 import * as protect from './features/protect.js';
 import { initRibbon, renderRibbon } from './ui/ribbon.js';
@@ -125,7 +127,7 @@ initI18n();
 // and inspect the real app. Only active with ?test in the URL.
 const testing = new URLSearchParams(location.search).has('test');
 if (testing)
-  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, designer, pptxImport, odp, api, ai, versions, comments, protect, aiDeck, poll, video: () => import('./io/video.js') };
+  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, designer, pptxImport, odp, api, ai, versions, comments, protect, aiDeck, poll, dashboards, video: () => import('./io/video.js') };
 
 // Public scripting API for plugins, macros and the console; installed plugins
 // load after the editor is ready (not in the test harness).
@@ -134,6 +136,8 @@ window.Revela = Revela;
 if (!testing) loadNewerDeck(state.deck).then(d => { if (d) { state.deck = d; state.ui.slideIndex = 0; render(); } });
 startAutoVersions();
 if (!testing) loadPlugins();
+// Charts linked to a CSV load fresh data when the editor opens.
+if (!testing) refreshLinkedCharts().catch(() => {});
 // Back from OpenRouter sign-in (?code=…): exchange it for the key.
 if (!testing) finishOpenRouterLogin().then(ok => { if (ok) alertDialog(t('IA conectada con OpenRouter.')); })
   .catch(e => alertDialog(t('No se pudo conectar con OpenRouter: ') + e.message));

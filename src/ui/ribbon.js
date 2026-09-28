@@ -28,6 +28,7 @@ import { toggleComments } from './comments-panel.js';
 import * as media from '../features/media.js';
 import * as poll from '../features/poll.js';
 import { openPollEditor } from './poll-dialog.js';
+import { openDashboardDialog } from './data-dialog.js';
 import * as palettes from '../features/palettes.js';
 import { setDrawTool, drawOpts } from './draw.js';
 import * as fontsMod from '../features/fonts.js';
@@ -93,6 +94,7 @@ const ACTIONS = {
   'record-camera': () => recorder.recordToSlide('camera'),
   'insert-camera': () => media.addCamera('circle'),
   'insert-poll': () => openPollEditor(poll.addPoll()),
+  'insert-dashboard': () => openDashboardDialog(),
   'trans-apply-all': () => trans.applyTransitionToAll(),
   'import-pptx': () => readFile('.pptx,.odp', async file => {
     try { replaceDeck(/\.odp$/i.test(file.name) ? await odp.importODP(file) : await importPPTX(file)); }

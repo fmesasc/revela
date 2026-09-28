@@ -7,6 +7,7 @@ import * as blocks from '../features/blocks.js';
 import * as shapeops from '../features/shapeops.js';
 import * as master from '../features/master.js';
 import { openPollEditor } from './poll-dialog.js';
+import { openLinkChart, refreshChart } from './data-dialog.js';
 import { addText } from '../features/blocks.js';
 import * as format from '../features/format.js';
 import { addSlide, duplicateSlide, deleteSlide, goToSlide, toggleSlideHidden,
@@ -157,7 +158,9 @@ function forBlock(b, cell = null) {
   } else if (b.type === 'icon') {
     items.push(['Color del icono…', () => openIconColor(b)], null);
   } else if (b.type === 'chart') {
-    items.push(['Editar datos…', () => openChartData(b)], null);
+    items.push(['Editar datos…', () => openChartData(b)],
+      [b.dataUrl ? 'Datos vinculados (CSV)…' : 'Vincular a datos (CSV)…', () => openLinkChart(b)],
+      ...(b.dataUrl ? [['Actualizar datos ahora', () => refreshChart(b)]] : []), null);
   } else if (b.type === 'table') {
     items.push(
       ['Añadir fila', () => blocks.tableAddRow()],
