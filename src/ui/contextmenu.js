@@ -154,6 +154,7 @@ function forBlock(b, cell = null) {
       ['Quitar columna', () => blocks.tableDelCol()],
       [b.header ? 'Quitar fila de encabezado' : 'Fila de encabezado', () => blocks.tableToggleHeader()],
       ['Estilo de tabla…', () => openTableStyle(b)],
+      ['Crear gráfico con estos datos', () => blocks.chartFromTable()],
       null);
     if (cell) {
       items.push(
@@ -361,7 +362,7 @@ function openMathPalette(b) {
 
 function openChartData(b) {
   if (document.getElementById('chart-modal')) return;
-  const lines = (b.data || []).map(d => `${d.label},${d.value}`).join('\n');
+  const lines = blocks.chartGridText(b).replace(/</g, '&lt;');
   const back = document.createElement('div');
   back.id = 'chart-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:left;min-width:300px">
@@ -371,8 +372,9 @@ function openChartData(b) {
       <option value="pie">${t('Circular')}</option><option value="doughnut">${t('Dona')}</option>
       <option value="scatter">${t('Dispersión')}</option><option value="radar">${t('Radar')}</option></select></label>
     <label class="fr-l">${t('Color (barras)')} <input type="color" class="ch-color" value="${b.color || '#3f6497'}"></label>
-    <label class="fr-l">${t('Datos (una línea "etiqueta,valor")')}
-      <textarea class="ch-data" rows="5" style="font-family:monospace">${lines}</textarea></label>
+    <label class="fr-chk"><input type="checkbox" class="ch-combo"${b.combo ? ' checked' : ''}> ${t('Combinado: series extra como líneas')}</label>
+    <label class="fr-l">${t('Datos: etiqueta y una columna por serie; primera fila opcional con los nombres')}
+      <textarea class="ch-data" rows="6" style="font-family:monospace">${lines}</textarea></label>
     <div class="fr-actions"><button class="fr-do">${t('Aplicar')}</button></div>
   </div>`;
   document.body.appendChild(back);
@@ -381,9 +383,8 @@ function openChartData(b) {
   back.querySelector('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
   back.querySelector('.fr-do').addEventListener('click', () => {
-    const data = back.querySelector('.ch-data').value.split('\n').map(l => l.split(',')).filter(p => p[0])
-      .map(p => ({ label: (p[0] || '').trim(), value: parseFloat(p[1]) || 0 }));
-    blocks.setChart({ chartType: back.querySelector('.ch-type').value, color: back.querySelector('.ch-color').value, data });
+    blocks.setChartGrid(back.querySelector('.ch-data').value, { chartType: back.querySelector('.ch-type').value,
+      color: back.querySelector('.ch-color').value, combo: back.querySelector('.ch-combo').checked });
     close();
   });
 }

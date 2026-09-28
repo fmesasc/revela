@@ -67,7 +67,7 @@ the origin of every requirement is traceable.
 - ✅ Shapes library — rectangle, rounded, ellipse, triangle, diamond, pentagon, star, block/left arrow, hexagon, parallelogram, trapezoid, chevron, cross, line, arrow `PP·GS·OO`
 - ✅ Connectors between shapes (follow the objects) `PP·GS·OO`
 - ✅ Tables — editable cells, add/remove rows & columns, header row, border colour, merge/split cells `PP·GS·OO`
-- ✅ Charts — bar, line, area, pie, doughnut, scatter, radar with data editing (SVG, no library) `PP·GS·OO`
+- ✅ Charts — bar, line, area, pie, doughnut, scatter, radar; multiple series with legend, combo (bars + lines), paste data from a spreadsheet, chart from a table (SVG, no library; native in .pptx) `PP·GS·OO`
 - ✅ SmartArt / diagrams — process, cycle, hierarchy & list `PP·OO`
 - ✅ Icons — built-in inline-SVG icon set with colour `PP·GS`
 - ✅ Emoji picker `GS`
@@ -77,7 +77,6 @@ the origin of every requirement is traceable.
 - ✅ Figure/table captions with auto-numbering + list of figures/tables `OO`
 - ✅ AI image background removal `PP`
 - ✅ Image crop, adjustments (brightness/contrast/saturation/opacity) and transparency `PP·GS·OO`
-- ⬜ Combo charts, multi-series & chart from a table `PP·GS·OO`
 - ✅ Table styles — 6 presets coloured from the palette, header row, banded rows, first column, lines only (also in .pptx) `PP·GS·OO`
 - ⬜ Merge / subtract / intersect shapes `PP·OO`
 - ⬜ Online / stock images & icons library `PP·GS`

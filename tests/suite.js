@@ -180,6 +180,28 @@ export async function run(frame) {
     eq((html.match(/<polygon points="[^"]*" fill="none"/g) || []).length, 4, 'cuatro anillos');
   });
 
+  await test('gráficos con varias series, combinado y desde tabla', async () => {
+    reset(); R.blocks.addChart(); const b = last(); select(b);
+    const g = R.blocks.parseChartGrid('\tVentas\tCostes\nEne\t10\t6\nFeb\t12,5\t7');
+    eq(g.names.join('|'), 'Ventas|Costes', 'cabecera con tabuladores (pegado de hoja)');
+    eq(g.data[1].value, 12.5, 'coma decimal'); eq(g.series[0].values.join(','), '6,7', 'segunda serie');
+    R.blocks.setChartGrid(',A,B,C\nx,1,2,3\ny,4,5,6', { chartType: 'bar', combo: false }); await sleep(20);
+    eq(b.series.length, 2, 'dos series extra'); eq(b.seriesName, 'A', 'nombre de la primera');
+    const svg = D.querySelector(`.block[data-id="${b.id}"] .chart svg`);
+    eq(svg.querySelectorAll('rect[height]:not([height="3"])').length, 6, 'barras agrupadas: 3 series × 2');
+    assert(/>C<\/text>/.test(svg.innerHTML), 'leyenda');
+    R.blocks.setChartGrid(R.blocks.chartGridText(b), { chartType: 'bar', combo: true }); await sleep(20);
+    const svg2 = D.querySelector(`.block[data-id="${b.id}"] .chart svg`);
+    eq(svg2.querySelectorAll('polyline').length, 2, 'combinado: series extra como líneas');
+    const blob = await R.pptx.buildPptxBlob(); assert(blob.size > 1000, 'pptx con gráfico combinado');
+    R.blocks.addTable(); const tb = last(); select(tb);
+    tb.rows = [['', 'Q1', 'Q2'], ['Norte', '5', '7'], ['Sur', '3', '<b>9</b>']]; tb.header = true;
+    R.blocks.chartFromTable(); await sleep(10);
+    const c = last(); eq(c.type, 'chart', 'gráfico insertado');
+    eq(c.data.map(d => d.label + d.value).join(','), 'Norte5,Sur3', 'etiquetas y primera serie');
+    eq(c.series[0].values.join(','), '7,9', 'segunda serie (sin HTML)'); eq(c.seriesName, 'Q1', 'nombres de la cabecera');
+  });
+
   await test('diagrama en ciclo: n cajas y n conectores', async () => {
     reset(); const n0 = slide().blocks.length; R.blocks.addDiagram('cycle');
     const added = slide().blocks.slice(n0);

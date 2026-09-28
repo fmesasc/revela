@@ -8,6 +8,7 @@ import { state } from '../core/store.js';
 import { alertDialog } from '../ui/dialog.js';
 import { t } from '../i18n.js';
 import { deckFg } from '../features/palettes.js';
+import { chartSeries } from '../ui/shape.js';
 
 const PPTX = 'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js';
 const loadScript = src => new Promise((res, rej) => {
@@ -72,8 +73,23 @@ function addBlock(slide, b, pptx) {
       const data = type === 'scatter'
         ? [{ name: 'X', values: rows.map((d, i) => (isFinite(parseFloat(d.label)) ? parseFloat(d.label) : i)) },
            { name: 'Y', values: rows.map(d => +d.value || 0) }]
-        : [{ name: 'Serie 1', labels: rows.map(d => d.label), values: rows.map(d => +d.value || 0) }];
-      slide.addChart(pptx.ChartType[type], data, { ...pos, showLegend: false });
+        : null;
+      if (data) { slide.addChart(pptx.ChartType[type], data, { ...pos, showLegend: false }); return; }
+      // Bar/line/area (and pie, radar) with every series; a combo chart becomes
+      // PowerPoint's multi-type chart: bars + lines.
+      const labels = rows.map(d => d.label);
+      const ser = ['bar', 'line', 'area', 'radar'].includes(type) ? chartSeries(b) : chartSeries({ ...b, series: [] });
+      const toData = list => list.map(x => ({ name: x.name, labels, values: x.values }));
+      const colors = ser.map(x => hex(x.color) || '3F6497');
+      if (type === 'bar' && b.combo && ser.length > 1) {
+        slide.addChart([
+          { type: pptx.ChartType.bar, data: toData(ser.filter(x => x.type === 'bar')), options: { chartColors: colors.slice(0, 1), barGrouping: 'clustered' } },
+          { type: pptx.ChartType.line, data: toData(ser.filter(x => x.type !== 'bar')), options: { chartColors: colors.slice(1) } },
+        ], { ...pos, showLegend: true, legendPos: 't' });
+      } else {
+        slide.addChart(pptx.ChartType[type], toData(ser), { ...pos, showLegend: ser.length > 1, legendPos: 't',
+          ...(['pie', 'doughnut'].includes(type) ? {} : { chartColors: colors }) });
+      }
     }
     // model / video / embed / icon / math / connector / audio: skipped.
   } catch {}

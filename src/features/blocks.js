@@ -207,6 +207,53 @@ export function addConnector() {
     currentSlide().blocks.push(c); setSelection(c.id);
   });
 }
+// Chart data as a grid of text: first column labels, one column per series,
+// optional header row with the series names. Accepts commas, semicolons or tabs
+// (so a range copied from a spreadsheet can be pasted as is).
+export function parseChartGrid(text) {
+  const rows = String(text || '').split(/\r?\n/).filter(l => l.trim())
+    .map(l => (l.includes('\t') ? l.split('\t') : l.includes(';') ? l.split(';') : l.split(',')).map(c => c.trim()));
+  if (!rows.length) return { data: [], series: [], names: [] };
+  const num = c => c !== '' && isFinite(parseFloat(c.replace(',', '.')));
+  const hasHead = rows[0].slice(1).some(c => c && !num(c));
+  const names = hasHead ? rows.shift().slice(1) : [];
+  const cols = Math.max(2, ...rows.map(r => r.length));
+  const val = c => parseFloat(String(c || '').replace(',', '.')) || 0;
+  return {
+    names,
+    data: rows.map(r => ({ label: r[0] || '', value: val(r[1]) })),
+    series: Array.from({ length: cols - 2 }, (_, k) => ({ name: names[k + 1] || '', values: rows.map(r => val(r[k + 2])) })),
+  };
+}
+export function chartGridText(b) {
+  const extra = b.series || [];
+  const head = extra.length || b.seriesName ? [['', b.seriesName || 'Serie 1', ...extra.map((x, i) => x.name || `Serie ${i + 2}`)].join(',')] : [];
+  return head.concat((b.data || []).map((d, i) => [d.label, d.value, ...extra.map(x => (x.values || [])[i] ?? 0)].join(','))).join('\n');
+}
+export function setChartGrid(text, props = {}) {
+  const { data, series, names } = parseChartGrid(text);
+  const b = selectedBlock(); if (!b || b.type !== 'chart') return;
+  const old = b.series || [];
+  commit(() => {
+    Object.assign(b, props, { data });
+    if (names[0]) b.seriesName = names[0]; else delete b.seriesName;
+    if (series.length) b.series = series.map((x, i) => ({ ...x, color: old[i]?.color })).map(x => (x.color ? x : { name: x.name, values: x.values }));
+    else delete b.series;
+  });
+}
+// Insert a chart built from the selected table: first column = labels, other
+// columns = series, header row (if any) = series names.
+export function chartFromTable() {
+  const tb = selectedBlock(); if (!tb || tb.type !== 'table') return;
+  const txt = h => { const d = document.createElement('div'); d.innerHTML = h || ''; return (d.textContent || '').trim().replace(/[,;\t]/g, ' '); };
+  const grid = tb.rows.map(r => r.map(txt).join('\t')).join('\n');
+  const { data, series, names } = parseChartGrid(grid);
+  const c = chartBlock({ data, x: Math.min(tb.x + 40, state.deck.size.w - 640), y: Math.min(tb.y + 40, state.deck.size.h - 360) });
+  if (names[0]) c.seriesName = names[0];
+  if (series.length) c.series = series;
+  insert(c);
+}
+
 export function setChart(props) {
   const b = selectedBlock(); if (!b || b.type !== 'chart') return;
   commit(() => Object.assign(b, props));

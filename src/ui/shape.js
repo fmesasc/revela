@@ -111,7 +111,7 @@ export function connectorSVG(b, fromB, toB, W, H) {
 }
 
 // Chart as inline SVG (no library, self‑contained on export). Bar or pie.
-export function chartSig(b) { return (b.chartType || 'bar') + '|' + (b.color || '') + '|' + JSON.stringify(b.data || []); }
+export function chartSig(b) { return (b.chartType || 'bar') + '|' + (b.color || '') + '|' + JSON.stringify([b.data || [], b.series || [], b.combo || 0, b.seriesName || '']); }
 export function chartSVG(b) {
   const data = b.data || []; const color = b.color || '#3f6497';
   const palette = ['#3f6497', '#c0392b', '#2b7a3b', '#d68910', '#7d3c98', '#16a085', '#c0392b'];
@@ -151,25 +151,45 @@ export function chartSVG(b) {
       + `<line x1="4" y1="54" x2="98" y2="54" stroke="#8a8a8a" stroke-width="0.4" vector-effect="non-scaling-stroke"/>`
       + `<line x1="4" y1="2" x2="4" y2="54" stroke="#8a8a8a" stroke-width="0.4" vector-effect="non-scaling-stroke"/>${dots}</svg>`;
   }
-  if (b.chartType === 'line' || b.chartType === 'area') {
-    const max = Math.max(1, ...data.map(d => +d.value || 0)); const n = data.length;
-    const step = n > 1 ? 100 / (n - 1) : 100;
-    const xy = i => [(i * step), 50 - (data[i].value / max) * 46];
-    const pts = data.map((d, i) => xy(i).map(v => v.toFixed(1)).join(',')).join(' ');
+  // Bars, lines and areas, with any number of series. In a bar chart with
+  // "combo" on, the extra series are drawn as lines over the bars.
+  const ser = chartSeries(b), n = data.length || 1;
+  const max = Math.max(1, ...ser.flatMap(x => x.values));
+  const top = ser.length > 1 ? 41 : 46;          // leave room for the legend
+  const Y = v => 50 - (v / max) * top;
+  const barSer = ser.filter(x => x.type === 'bar'), lineSer = ser.filter(x => x.type !== 'bar');
+  const gap = 100 / n, bw = gap * 0.6 / Math.max(1, barSer.length);
+  const bars = barSer.map((x, k) => x.values.map((v, i) => {
+    const h = (v / max) * top, bx = gap * i + (gap - bw * barSer.length) / 2 + k * bw;
+    return `<rect x="${bx.toFixed(1)}" y="${(50 - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${x.color}"/>`;
+  }).join('')).join('');
+  // Lines: across the full width for line/area charts, centred on the bars in a combo.
+  const lx = i => barSer.length ? gap * i + gap / 2 : (n > 1 ? i * 100 / (n - 1) : 50);
+  const lines = lineSer.map((x, k) => {
+    const pts = x.values.map((v, i) => `${lx(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
     const area = b.chartType === 'area'
-      ? `<polygon points="0,50 ${pts} ${((n - 1) * step).toFixed(1)},50" fill="${color}" opacity="0.25"/>` : '';
-    const dots = data.map((d, i) => { const [x, y] = xy(i); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.3" fill="${color}"/>`; }).join('');
-    const labels = data.map((d, i) => `<text x="${(i * step).toFixed(1)}" y="58" font-size="4" text-anchor="middle" fill="#8a8a8a">${escSvg(d.label || '')}</text>`).join('');
-    return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">${area}`
-      + `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.2" vector-effect="non-scaling-stroke"/>${dots}${labels}</svg>`;
-  }
-  const max = Math.max(1, ...data.map(d => +d.value || 0)); const n = data.length || 1; const gap = 100 / n; const bw = gap * 0.6;
-  const bars = data.map((d, i) => {
-    const h = (d.value / max) * 46; const x = gap * i + (gap - bw) / 2; const y = 50 - h;
-    return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${color}"/>`
-      + `<text x="${(gap * i + gap / 2).toFixed(1)}" y="58" font-size="4" text-anchor="middle" fill="#8a8a8a">${escSvg(d.label || '')}</text>`;
+      ? `<polygon points="${+lx(0).toFixed(1)},50 ${pts} ${+lx(n - 1).toFixed(1)},50" fill="${x.color}" opacity="${k ? 0.18 : 0.25}"/>` : '';
+    const dots = x.values.map((v, i) => `<circle cx="${lx(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="1.3" fill="${x.color}"/>`).join('');
+    return `${area}<polyline points="${pts}" fill="none" stroke="${x.color}" stroke-width="1.2" vector-effect="non-scaling-stroke"/>${dots}`;
   }).join('');
-  return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">${bars}</svg>`;
+  const labels = data.map((d, i) => `<text x="${(barSer.length ? gap * i + gap / 2 : lx(i)).toFixed(1)}" y="58" font-size="4" text-anchor="middle" fill="#8a8a8a">${escSvg(d.label || '')}</text>`).join('');
+  const legend = ser.length > 1 ? ser.map((x, k) => {
+    const lx0 = 100 - (ser.length - k) * 22;
+    return `<rect x="${lx0}" y="0" width="3" height="3" fill="${x.color}"/><text x="${lx0 + 4}" y="2.6" font-size="3.4" fill="#8a8a8a">${escSvg(x.name)}</text>`;
+  }).join('') : '';
+  return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">${bars}${lines}${labels}${legend}</svg>`;
+}
+
+// All series of a bar/line/area chart: the primary one (b.data, b.color) plus
+// any extra ones in b.series, aligned with the primary labels.
+const SERIES_COLOURS = ['#e0873b', '#4caf7d', '#c94f4f', '#8e6cc9', '#3bb3c3', '#d4a017'];
+export function chartSeries(b) {
+  const data = b.data || [], bar = (b.chartType || 'bar') === 'bar';
+  return [{ name: b.seriesName || 'Serie 1', color: b.color || '#3f6497', values: data.map(d => +d.value || 0), type: bar ? 'bar' : 'line' }]
+    .concat((b.series || []).map((x, i) => ({
+      name: x.name || `Serie ${i + 2}`, color: x.color || SERIES_COLOURS[i % SERIES_COLOURS.length],
+      values: data.map((_, k) => +(x.values || [])[k] || 0), type: bar && !b.combo ? 'bar' : 'line',
+    })));
 }
 
 // A small built‑in icon set (inline SVG paths, 24×24) — no external font/CDN.
