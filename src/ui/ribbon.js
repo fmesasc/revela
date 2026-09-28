@@ -10,6 +10,7 @@ import * as templates from '../features/templates.js';
 import * as io from '../io/reveal.js';
 import { importPPTX } from '../io/pptx.js';
 import * as gdrive from '../io/gdrive.js';
+import { exportPPTX } from '../io/pptx-export.js';
 import { FONTS, ensureDeckFonts } from '../features/fonts.js';
 import { ICON_NAMES, iconSVG, WORDART_KEYS, wordartCSS } from './shape.js';
 import * as remote from '../features/remote.js';
@@ -38,6 +39,7 @@ const ACTIONS = {
   'gdrive-html': () => gdrive.saveHtmlWithUI(),
   'gdrive-config': () => gdrive.openGdriveSetup(),
   'export': io.exportHTML,
+  'export-pptx': () => exportPPTX(),
   'export-pdf': io.exportPDF,
   'export-png': io.exportPNG,
   'present': io.present,

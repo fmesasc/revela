@@ -63,6 +63,7 @@ const ROWS = [
   ['Importar<br>PowerPoint', 'Import<br>PowerPoint', 'Importer<br>PowerPoint', 'PowerPoint<br>importieren', 'Importa<br>PowerPoint', 'Importar<br>PowerPoint', 'Importa<br>PowerPoint'],
   ['Exportar<br>HTML', 'Export<br>HTML', 'Exporter<br>HTML', 'HTML<br>exportieren', 'Esporta<br>HTML', 'Exportar<br>HTML', 'Exporta<br>HTML'],
   ['Exportar<br>PDF', 'Export<br>PDF', 'Exporter<br>PDF', 'PDF<br>exportieren', 'Esporta<br>PDF', 'Exportar<br>PDF', 'Exporta<br>PDF'],
+  ['Exportar<br>PowerPoint', 'Export<br>PowerPoint', 'Exporter<br>PowerPoint', 'PowerPoint<br>exportieren', 'Esporta<br>PowerPoint', 'Exportar<br>PowerPoint', 'Exporta<br>PowerPoint'],
   ['Imagen<br>(PNG)', 'Image<br>(PNG)', 'Image<br>(PNG)', 'Bild<br>(PNG)', 'Immagine<br>(PNG)', 'Imagem<br>(PNG)', 'Imatge<br>(PNG)'],
   ['Presentar', 'Present', 'Présenter', 'Präsentieren', 'Presenta', 'Apresentar', 'Presenta'],
   ['Conectar<br>móvil', 'Connect<br>phone', 'Connecter<br>mobile', 'Handy<br>verbinden', 'Collega<br>telefono', 'Ligar<br>telemóvel', 'Connecta<br>mòbil'],

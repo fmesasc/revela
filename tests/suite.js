@@ -482,6 +482,14 @@ export async function run(frame) {
     assert(/Hola/.test(html) && /font-size:50px/.test(html), 'bloque con estilo en línea');
   });
 
+  await test('exportar a PowerPoint genera un .pptx (zip) válido', async () => {
+    reset(); newText(); R.blocks.addShape('rect');
+    const blob = await R.pptx.buildPptxBlob();
+    assert(blob && blob.size > 1000, 'archivo no vacío');
+    const buf = new Uint8Array(await blob.arrayBuffer());
+    assert(buf[0] === 0x50 && buf[1] === 0x4b, 'firma ZIP (PK) del .pptx');
+  });
+
   await test('exportar a PDF: una página por diapositiva visible', async () => {
     reset(); R.slides.addSlide(); R.slides.addSlide(); R.slides.toggleSlideHidden(0);
     const html = R.io.buildPrintHTML();

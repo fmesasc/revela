@@ -127,7 +127,7 @@ the origin of every requirement is traceable.
 - ✅ Export to self-contained HTML (reveal.js) `—`
 - ✅ Import from PowerPoint `.pptx` (text + images) `OO·GS`
 - ⬜ High-fidelity `.pptx` import (fonts, colours, shapes, layouts) `OO·GS`
-- ⬜ Export to `.pptx` `GS·OO`
+- ✅ Export to `.pptx` (PptxGenJS: text, images, shapes, tables, charts) `GS·OO`
 - ✅ Export to PDF (print one slide per page) `PP·GS·OO`
 - 🚧 Export slide as image (PNG via html2canvas); JPG/SVG & batch planned `PP·GS·OO`
 - ⬜ Export to video (MP4/GIF) `PP·GS`
