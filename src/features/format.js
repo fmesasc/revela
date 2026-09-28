@@ -135,6 +135,14 @@ export function indent(px) {
   const c = ctx(); if (!c) return;
   commit(() => { c.b.indent = Math.max(0, parseFloat(px) || 0); });
 }
+export function adjustIndent(delta) {
+  const c = ctx(); if (!c) return;
+  commit(() => { c.b.indent = Math.max(0, (c.b.indent || 0) + delta); });
+}
+export function setVAlign(v) {
+  const c = ctx(); if (!c) return;
+  commit(() => { c.b.vAlign = v; });
+}
 export function setBullet(value) {
   const c = ctx(); if (!c) return;
   commit(() => { c.b.bullet = value; });

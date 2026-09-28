@@ -172,6 +172,9 @@ function reconcile(b) {
       rich.style.background = b.bg || '';
       rich.style.border = b.borderColor ? '2px solid ' + b.borderColor : '';
       rich.style.borderRadius = (b.radius || 0) + 'px';
+      const vj = { top: 'flex-start', middle: 'center', bottom: 'flex-end' }[b.vAlign];
+      rich.style.display = vj ? 'flex' : ''; rich.style.flexDirection = vj ? 'column' : '';
+      rich.style.justifyContent = vj || '';
       if (!el.classList.contains('editing') && rich.innerHTML !== (b.html || '')) rich.innerHTML = b.html || '';
     }
   } else if (b.type === 'image') {
@@ -266,6 +269,8 @@ function content(b) {
     if (b.bg) d.style.background = b.bg;
     if (b.borderColor) d.style.border = '2px solid ' + b.borderColor;
     if (b.radius) d.style.borderRadius = b.radius + 'px';
+    const vj0 = { top: 'flex-start', middle: 'center', bottom: 'flex-end' }[b.vAlign];
+    if (vj0) { d.style.display = 'flex'; d.style.flexDirection = 'column'; d.style.justifyContent = vj0; }
     d.innerHTML = b.html || '';
     return d;
   }

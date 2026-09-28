@@ -93,6 +93,13 @@ export async function run(frame) {
   await test('sangría de párrafo', async () => {
     reset(); const b = newText(); R.format.indent(40); await sleep(10);
     eq(b.indent, 40, 'indent'); assert(/padding-left:40px/.test(R.io.buildHTML()), 'export');
+    R.format.adjustIndent(24); eq(b.indent, 64, 'aumentar sangría');
+    R.format.adjustIndent(-100); eq(b.indent, 0, 'no baja de 0');
+  });
+
+  await test('alineación vertical del cuadro de texto en el export', async () => {
+    reset(); const b = newText(); R.format.setVAlign('middle');
+    assert(/justify-content:center/.test(R.io.buildHTML()), 'centrado vertical');
   });
 
   await test('insertar símbolo en el texto', async () => {

@@ -171,6 +171,10 @@ export function initRibbon() {
     if (cs) { format.changeCase(cs.dataset.case); return; }
     const pa = e.target.closest('[data-para]');
     if (pa) { format.align(pa.dataset.para); return; }
+    const va = e.target.closest('[data-valign]');
+    if (va) { format.setVAlign(va.dataset.valign); return; }
+    const ind = e.target.closest('[data-indentdelta]');
+    if (ind) { format.adjustIndent(+ind.dataset.indentdelta); return; }
     const li = e.target.closest('[data-list]');
     if (li) { format.list(li.dataset.list); return; }
     const sh = e.target.closest('[data-shape]');
@@ -189,7 +193,7 @@ export function initRibbon() {
     btn.addEventListener('mousedown', e => e.preventDefault());
     btn.addEventListener('click', () => format.exec(btn.dataset.fmt));
   });
-  document.querySelectorAll('[data-case],[data-para],[data-list],[data-dir],[data-vertical]')
+  document.querySelectorAll('[data-case],[data-para],[data-list],[data-dir],[data-vertical],[data-valign],[data-indentdelta]')
     .forEach(btn => btn.addEventListener('mousedown', e => e.preventDefault()));
   bindInput('[data-color]', v => format.color(v), true);
   bindInput('[data-highlight]', v => format.highlight(v), true);
