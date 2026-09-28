@@ -10,6 +10,7 @@ import { addSlide, duplicateSlide, deleteSlide, goToSlide, toggleSlideHidden,
   addSectionAt, removeSection, setSlideSection } from '../features/slides.js';
 import { t } from '../i18n.js';
 import { alertDialog } from './dialog.js';
+import { renderLatex } from './canvas.js';
 
 let menuEl, clipboard = null;
 
@@ -207,24 +208,60 @@ function openImageAdjust(b) {
   });
 }
 
+// Visual equation editor: a palette of templates and symbols inserts LaTeX for
+// the user, with a live preview — no need to know LaTeX.
+const MATH_PALETTE = [
+  ['Estructuras', [
+    ['a/b', '\\frac{ }{ }'], ['√', '\\sqrt{ }'], ['ⁿ√', '\\sqrt[n]{ }'],
+    ['xⁿ', '^{ }'], ['xₙ', '_{ }'], ['∑', '\\sum_{i=1}^{n} '], ['∏', '\\prod_{i=1}^{n} '],
+    ['∫', '\\int_{a}^{b} '], ['lim', '\\lim_{x\\to 0} '], ['( )', '\\left( \\right)'],
+    ['[ ]', '\\left[ \\right]'], ['{ }', '\\left\\{ \\right\\}'], ['|x|', '\\left| \\right|'],
+    ['matriz', '\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}'], ['vec', '\\vec{ }'], ['x̄', '\\bar{ }'], ['x̂', '\\hat{ }'],
+  ]],
+  ['Griegas', [
+    ['α', '\\alpha '], ['β', '\\beta '], ['γ', '\\gamma '], ['δ', '\\delta '], ['ε', '\\epsilon '],
+    ['θ', '\\theta '], ['λ', '\\lambda '], ['μ', '\\mu '], ['π', '\\pi '], ['ρ', '\\rho '],
+    ['σ', '\\sigma '], ['τ', '\\tau '], ['φ', '\\phi '], ['ω', '\\omega '],
+    ['Δ', '\\Delta '], ['Σ', '\\Sigma '], ['Π', '\\Pi '], ['Ω', '\\Omega '], ['Φ', '\\Phi '],
+  ]],
+  ['Operadores', [
+    ['×', '\\times '], ['÷', '\\div '], ['±', '\\pm '], ['∓', '\\mp '], ['·', '\\cdot '],
+    ['≠', '\\neq '], ['≤', '\\leq '], ['≥', '\\geq '], ['≈', '\\approx '], ['∞', '\\infty '],
+    ['→', '\\to '], ['⇒', '\\Rightarrow '], ['∈', '\\in '], ['∉', '\\notin '], ['⊂', '\\subset '],
+    ['∪', '\\cup '], ['∩', '\\cap '], ['∂', '\\partial '], ['∇', '\\nabla '], ['∀', '\\forall '], ['∃', '\\exists '],
+  ]],
+];
 function openMath(b) {
   if (document.getElementById('math-modal')) return;
   const back = document.createElement('div');
   back.id = 'math-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:left;min-width:340px">
+  const groups = MATH_PALETTE.map(([name, items]) =>
+    `<div class="mt-sec">${name}</div><div class="mt-grid">`
+    + items.map(([lbl, snip]) => `<button type="button" class="mt-btn" data-snip="${snip.replace(/"/g, '&quot;')}">${lbl}</button>`).join('')
+    + `</div>`).join('');
+  back.innerHTML = `<div class="modal" style="text-align:left;min-width:460px;max-width:94vw">
     <button class="modal-close">✕</button><h3>${t('Editar ecuación')}</h3>
-    <label class="fr-l">LaTeX
-      <textarea class="mt-in" rows="3" style="font-family:monospace">${(b.latex || '').replace(/</g, '&lt;')}</textarea></label>
+    <div class="mt-preview"></div>
+    ${groups}
+    <label class="fr-l" style="margin-top:8px">LaTeX
+      <textarea class="mt-in" rows="2" style="font-family:monospace">${(b.latex || '').replace(/</g, '&lt;')}</textarea></label>
     <div class="fr-actions"><button class="fr-do">${t('Aplicar')}</button></div>
   </div>`;
   document.body.appendChild(back);
   const close = () => back.remove();
+  const ta = back.querySelector('.mt-in'), preview = back.querySelector('.mt-preview');
+  const update = () => { blocks.setMath(ta.value); renderLatex(preview, ta.value); };
+  const insert = snip => {
+    const s = ta.selectionStart, e = ta.selectionEnd;
+    ta.value = ta.value.slice(0, s) + snip + ta.value.slice(e);
+    ta.selectionStart = ta.selectionEnd = s + snip.length; ta.focus(); update();
+  };
   back.querySelector('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
-  const ta = back.querySelector('.mt-in');
-  ta.addEventListener('input', () => blocks.setMath(ta.value));
+  back.querySelectorAll('.mt-btn').forEach(x => x.addEventListener('click', () => insert(x.dataset.snip)));
+  ta.addEventListener('input', update);
   back.querySelector('.fr-do').addEventListener('click', close);
-  ta.focus();
+  renderLatex(preview, ta.value); ta.focus();
 }
 
 function openChartData(b) {

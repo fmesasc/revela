@@ -377,6 +377,18 @@ export async function run(frame) {
     assert(/renderMathInElement/.test(html), 'inicialización de math en línea');
   });
 
+  await test('editor gráfico de ecuaciones: paleta de símbolos', async () => {
+    reset(); R.blocks.addMath(); const b = last(); select(b); await sleep(20);
+    const el = D.querySelector(`.block[data-id="${b.id}"]`);
+    el.dispatchEvent(new frame.contentWindow.MouseEvent('contextmenu', { bubbles: true, clientX: 120, clientY: 120 }));
+    await sleep(10);
+    const item = [...D.querySelectorAll('#context-menu .ctx-item')].find(x => /ecuaci/i.test(x.textContent));
+    assert(item, 'opción de editar ecuación en el menú'); item.click(); await sleep(10);
+    const m = D.getElementById('math-modal');
+    assert(m && m.querySelectorAll('.mt-btn').length > 20, 'paleta de símbolos y plantillas');
+    m.querySelector('.modal-close').click();
+  });
+
   await test('ecuación (math): se inserta y exporta con KaTeX', async () => {
     reset(); R.blocks.addMath(); const b = last(); select(b); R.blocks.setMath('a^2+b^2=c^2');
     const html = R.io.buildHTML();

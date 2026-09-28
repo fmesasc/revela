@@ -364,6 +364,8 @@ function renderMath(el, latex) {
     catch { el.textContent = latex || ''; }
   }).catch(() => { el.textContent = latex || ''; });
 }
+// Public helper used by the visual equation editor's live preview.
+export function renderLatex(el, latex) { renderMath(el, latex); }
 
 // A web embed: a small bar (site + open‑in‑new‑tab) over the iframe. The bar is
 // also the fallback when a site refuses to be embedded (X‑Frame‑Options / CSP) —

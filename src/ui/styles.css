@@ -268,6 +268,12 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 .modal .sc-table td{padding:4px 6px;vertical-align:top}
 .modal .sc-table td:last-child{color:var(--txt2)}
 .modal kbd{background:var(--ribbon);border:1px solid var(--line2);border-radius:5px;padding:1px 6px;font-family:inherit;font-size:12px;white-space:nowrap}
+.modal .mt-preview{min-height:52px;display:flex;align-items:center;justify-content:center;background:#0b0e14;
+  color:#fff;border-radius:8px;padding:10px;margin-bottom:10px;overflow:auto}
+.modal .mt-sec{font-size:11px;text-transform:uppercase;color:var(--txt2);margin:8px 0 4px;letter-spacing:.4px}
+.modal .mt-grid{display:grid;grid-template-columns:repeat(11,1fr);gap:3px}
+.modal .mt-btn{border:1px solid var(--line2);background:#fff;border-radius:6px;cursor:pointer;font-size:15px;padding:6px 0;line-height:1;color:var(--txt)}
+.modal .mt-btn:hover{background:var(--accent-bg);border-color:#b9cbe0}
 .modal .dlg-msg{margin:0 0 12px;font-size:14px;color:var(--txt)}
 .modal .dlg-in{width:100%;border:1px solid var(--line2);border-radius:6px;padding:8px;font-family:inherit;font-size:14px;margin-bottom:12px}
 .mini2{background:var(--ribbon);border:1px solid var(--line2);border-radius:8px;padding:9px 14px;cursor:pointer;font-family:inherit;font-size:13px;color:var(--txt)}
