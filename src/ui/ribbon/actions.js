@@ -13,6 +13,7 @@ import { saveProject } from '../../io/formats/project.js';
 import { exportPDF } from '../../io/export/print.js';
 import { present } from '../shell/present.js';
 import { startCoach } from '../shell/coach.js';
+import { openCollab } from '../shell/collab.js';
 import { importPPTX } from '../../io/formats/pptx-import.js';
 import * as gdrive from '../../io/cloud/gdrive.js';
 import { exportPPTX } from '../../io/formats/pptx-export.js';
@@ -102,6 +103,7 @@ export const ACTIONS = {
   'export-pdf': exportPDF,
   'export-png': () => openImageDialog(),
   'share': () => openShare(),
+  'collab': () => openCollab(),
   'toggle-nav': () => { setNavHidden(!document.body.classList.contains('nav-hidden')); requestAnimationFrame(fitZoom); },
   'save-picture': () => (selectedBlocks().length ? openSaveAsPicture() : alertDialog(t('Selecciona primero uno o varios objetos.'))),
   'export-video': () => openVideoDialog(),

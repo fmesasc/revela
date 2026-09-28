@@ -177,6 +177,22 @@ def e2e_checks(send, recv, port):
     wait(V, "!!document.querySelector('#answers textarea')", 10)
     ev(V, "document.querySelector('#answers textarea').value='¿Hola?';document.querySelector('#answers button').click();1")
     check(wait(A, "[...document.querySelectorAll('.rv-poll-res')].some(e=>/¿Hola\\?/.test(e.innerText))", 10), 'pregunta del público en pantalla')
+    # Co-editing: A shares with an edit link, B opens it; changes and chat both ways.
+    C = tab(base + '/index.html?test'); time.sleep(3)
+    ev(C, "(()=>{localStorage.setItem('revela.author','Ana');const R=window.__revela;R.store.replaceDeck(R.model.emptyDeck());R.store.commit(()=>{R.state.deck.name='Coedición'});document.querySelector('[data-action=collab]').click();return 1})()")
+    wait(C, "!!document.querySelector('.dlg-ok')", 5); ev(C, "document.querySelector('.dlg-ok').click();1")
+    link = wait(C, "document.querySelector('#collab-modal .cb-link[data-role=edit]')?.value||''")
+    check(link, 'colaborar da un enlace de edición')
+    if link:
+        G = tab(link + '&test')
+        check(wait(G, "window.__revela?.state.deck.name==='Coedición'"), 'el invitado ve la presentación')
+        check(wait(C, "document.querySelectorAll('#collab-bar .cb-av').length===1"), 'el anfitrión ve al invitado en la barra')
+        ev(G, "(()=>{const R=window.__revela;R.store.commit(()=>{R.state.deck.slides[0].blocks[0].x=777});return 1})()")
+        check(wait(C, "window.__revela.state.deck.slides[0].blocks[0].x===777", 10), 'el cambio del invitado llega al anfitrión')
+        ev(C, "(()=>{const R=window.__revela;R.store.commit(()=>{R.state.deck.slides[0].notes='nota de Ana'});return 1})()")
+        check(wait(G, "window.__revela.state.deck.slides[0].notes==='nota de Ana'", 10), 'el cambio del anfitrión llega al invitado')
+        ev(G, "(()=>{document.querySelector('#collab-bar .collab-chat-btn').click();const i=document.querySelector('#collab-chat .cc-in');i.value='¡Hola!';i.form.requestSubmit();return 1})()")
+        check(wait(C, "[...document.querySelectorAll('#collab-bar .collab-unread')].some(e=>e.textContent==='1')", 10), 'el chat avisa de un mensaje nuevo')
     return fails
 
 
@@ -257,7 +273,7 @@ def main():
         if out.startswith('REVELATEST PASS') and '--e2e' in sys.argv:
             e2e_fail = e2e_checks(send, recv, port)
             if e2e_fail: print('REVELATEST FAIL e2e'); print('\n'.join(e2e_fail)); return 1
-            out += ' + e2e 8/8'
+            out += ' + e2e 14/14'
         if out.startswith('REVELATEST FAIL'):
             r = recv(send('Runtime.evaluate', sid, returnByValue=True,
                           expression="[...document.querySelectorAll('.row.ko')].map(e=>e.innerText.replace(/\\s+/g,' ')).join('\\n')"))

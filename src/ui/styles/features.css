@@ -270,3 +270,16 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 /* MathLive shifts the keys 5px down inside a backdrop of their same height:
    the bottom row went off a phone's screen. */
 #math-modal .ML__keyboard .MLK__plate{top:0}
+/* Co-editing: people in the title bar, their selections, chat */
+.collab-bar{display:flex;align-items:center;gap:4px;margin-inline-end:8px}.collab-bar[hidden]{display:none}
+.collab-peers{display:flex}.cb-av{width:26px;height:26px;border-radius:50%;border:2px solid var(--panel);color:#fff;font:600 11px/22px system-ui,sans-serif;text-align:center;padding:0;cursor:pointer;margin-inline-start:-6px;display:inline-block}
+.collab-role{font-size:11px;color:var(--txt2);margin-inline-end:6px}
+.collab-chat-btn{position:relative}.collab-unread{position:absolute;top:-4px;right:-4px;background:#e03131;color:#fff;border-radius:999px;font-size:10px;min-width:16px;height:16px;line-height:16px;text-align:center}
+.collab-sel{position:absolute;pointer-events:none;outline:2px solid var(--c);outline-offset:3px;z-index:40}
+.collab-sel::after{content:attr(data-name);position:absolute;left:-3px;top:-24px;background:var(--c);color:#fff;font:600 11px/1 system-ui,sans-serif;padding:3px 6px;border-radius:4px 4px 4px 0;white-space:nowrap}
+.cb-people{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}.cb-person{display:flex;align-items:center;gap:8px}.cb-person .cb-av{margin:0;cursor:default}.cb-person>span:nth-child(2){flex:1}
+#collab-chat{position:fixed;right:16px;bottom:16px;width:min(320px,calc(100vw - 32px));height:min(420px,70vh);background:var(--panel);border:1px solid var(--line2);border-radius:12px;box-shadow:0 12px 40px #0003;display:none;flex-direction:column;z-index:2500}
+#collab-chat.open{display:flex}.cc-head{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line2)}
+.cc-msgs{flex:1;overflow:auto;padding:8px 12px;display:flex;flex-direction:column;gap:8px;font-size:13px}.cc-msg.mine{align-self:flex-end;text-align:end}
+.cc-name{font-weight:600;font-size:12px}.cc-time{font-size:10px;color:var(--txt2);margin-inline-start:6px}
+.cc-form{display:flex;gap:6px;padding:8px;border-top:1px solid var(--line2)}.cc-in{flex:1;min-width:0;border:1px solid var(--line2);border-radius:6px;padding:6px 8px}

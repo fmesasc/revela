@@ -39,6 +39,11 @@
       <span class="doc-name" contenteditable="true" spellcheck="false"
         title="Haz clic para renombrar la presentación"></span>
       <span class="grow"></span>
+      <div id="collab-bar" class="collab-bar" hidden>
+        <span class="collab-role"></span><span class="collab-peers"></span>
+        <button type="button" class="mini collab-chat-btn" title="Chat"><i class="ms">chat</i><span class="collab-unread" hidden></span></button>
+        <button type="button" class="mini collab-open" title="Colaborar"><i class="ms">group</i></button>
+      </div>
       <button id="ap-btn" class="ap-btn" type="button" title="Apariencia: claro, oscuro, automático o personalizado"><i class="ms">contrast</i></button>
       <a id="donate" class="donate" target="_blank" rel="noopener" hidden title="Apoya el proyecto"><i class="ms">favorite</i><span>Apoyar</span></a>
       <select id="lang-select" class="lang-select" title="Idioma / Language"></select>
@@ -87,6 +92,7 @@
         </div>
         <div class="group">
           <div class="row">
+            <button data-action="collab" class="lg" title="Editar a la vez con otras personas: enlaces para ver, comentar o editar, y chat"><i class="ms">group_add</i><span>Colaborar</span></button>
             <button data-action="share" class="lg" title="Enlace privado o archivo con contraseña, para compartir o insertar en un iframe"><i class="ms">share</i><span>Compartir</span></button>
             <button data-action="export" class="lg"><i class="ms">download</i><span>Exportar<br>HTML</span></button>
             <button data-action="export-pptx" class="lg"><i class="ms">slideshow</i><span>Exportar<br>PowerPoint</span></button>

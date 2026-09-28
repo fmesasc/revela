@@ -96,15 +96,17 @@ export function checkpoint() {
   base = snapshot(state.deck);
   return true;
 }
-export function commit(fn, { history = true, force = false } = {}) {
+export function commit(fn, { history = true, force = false, comment = false } = {}) {
   // A deck marked as final is read-only: edits are refused (selection and
-  // other UI changes, which don't record history, still work).
-  if (state.deck.final && history && !force) { window.dispatchEvent(new Event('revela:readonly')); return; }
+  // other UI changes, which don't record history, still work). So is a shared
+  // one opened to view (or only to comment: then comments are allowed).
+  const lock = state.ui.lock;
+  if ((state.deck.final || (lock && !(lock === 'comment' && comment))) && history && !force) { window.dispatchEvent(new Event('revela:readonly')); return; }
   if (history) checkpoint();          // changes made in place before are a step of their own
   if (fn) fn();
   clampSlide();
   if (history) checkpoint();
-  saveDeck(state.deck);
+  persist && saveDeck(state.deck);
   notify();
   // What drawing it filled in (default styles created on first use…) belongs to this step.
   if (history) base = snapshot(state.deck);
@@ -117,7 +119,7 @@ export function mutate(fn) { commit(fn, { history: false }); }
 export function amend(fn) {
   if (fn) fn();
   clampSlide(); base = snapshot(state.deck);
-  saveDeck(state.deck); notify();
+  persist && saveDeck(state.deck); notify();
 }
 export const canUndo = () => past.length > 0 || !same(base, state.deck);
 export const canRedo = () => future.length > 0;
@@ -126,17 +128,27 @@ export function undo() {
   if (!past.length) return;
   future.push(snapshot(state.deck));
   state.deck = past.pop();
-  clampSlide(); saveDeck(state.deck); notify();
+  clampSlide(); persist && saveDeck(state.deck); notify();
   base = snapshot(state.deck);
 }
 export function redo() {
   if (!future.length) return;
   past.push(snapshot(state.deck));
   state.deck = future.pop();
-  clampSlide(); saveDeck(state.deck); notify();
+  clampSlide(); persist && saveDeck(state.deck); notify();
   base = snapshot(state.deck);
 }
 
+// Whether changes are kept in this browser (not while editing someone else's
+// shared document: that copy is theirs).
+let persist = true;
+export const setPersist = on => { persist = !!on; };
+// Changes made by someone else (co-editing): applied to the document and to
+// the undo history, so undoing only undoes one's own changes. No undo step.
+export function applyRemote(fn) {
+  fn(state.deck); fn(base); past.forEach(fn); future.forEach(fn);
+  clampSlide(); persist && saveDeck(state.deck); notify();
+}
 // A newer copy of the same document (from another tab or the disk): no undo step.
 export function adoptDeck(deck) {
   state.deck = deck; state.ui.slideIndex = 0; base = snapshot(deck); past.length = 0; future.length = 0;

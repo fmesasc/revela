@@ -236,4 +236,99 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(R.session.present, null, 'al salir se limpia');
     eq(R.remote.presentationState().presenting, false, 'el mando también');
   });
+
+  // ---- Co-editing -------------------------------------------------------------------
+  await test('coedición: los cambios viajan por objeto (añadir, mover, borrar, reordenar) y se mezclan', async () => {
+    const W = frame.contentWindow, S = await W.eval("import('/src/features/live/collabsync.js')");
+    const base = { name: 'P', slides: [{ id: 's1', blocks: [{ id: 'a', x: 1, html: 'A' }, { id: 'b', x: 2 }] }, { id: 's2', blocks: [] }] };
+    const c = o => JSON.parse(JSON.stringify(o));
+    const mine = c(base), theirs = c(base);
+    mine.slides[0].blocks[0].x = 50; mine.slides[0].blocks.push({ id: 'n', x: 9 }); mine.slides.reverse();
+    theirs.slides[0].blocks[1].x = 70; theirs.slides[0].blocks[0].html = 'Hola'; theirs.slides[1].blocks.push({ id: 'z' }); theirs.name = 'Q';
+    const opsMine = S.diff(base, mine), opsTheirs = S.diff(base, theirs);
+    assert(opsMine.some(o => o.p.join('/') === 'slides/s1/blocks/a/x' && o.v === 50), 'cambio direccionado por id: ' + JSON.stringify(opsMine));
+    assert(opsMine.some(o => o.p.join('/') === 'slides/#'), 'nuevo orden de diapositivas');
+    const a = c(base); S.applyOps(a, opsMine); S.applyOps(a, opsTheirs);
+    const b = c(base); S.applyOps(b, opsTheirs); S.applyOps(b, opsMine);
+    eq(JSON.stringify(a), JSON.stringify(b), 'en cualquier orden, el mismo resultado');
+    const s1 = a.slides.find(x => x.id === 's1');
+    eq(a.slides[0].id, 's2', 'reordenado'); eq(s1.blocks.find(x => x.id === 'a').x, 50, 'mi movimiento');
+    eq(s1.blocks.find(x => x.id === 'a').html, 'Hola', 'su texto en el mismo objeto'); eq(s1.blocks.find(x => x.id === 'b').x, 70, 'su movimiento');
+    assert(s1.blocks.some(x => x.id === 'n') && a.slides[0].blocks.some(x => x.id === 'z'), 'lo añadido por los dos');
+    const del = c(base); del.slides[0].blocks.splice(1, 1); const t2 = c(base); S.applyOps(t2, S.diff(base, del)); eq(t2.slides[0].blocks.length, 1, 'borrar');
+    assert(!S.diff(base, { ...c(base), savedAt: 5 }).length, 'la hora de guardado no se envía');
+    assert(S.allowed({ p: ['slides', 's1', 'comments', 'c1', 'resolved'] }, 'comment'), 'quien comenta puede comentar');
+    assert(!S.allowed({ p: ['slides', 's1', 'blocks', 'a', 'x'] }, 'comment') && !S.allowed({ p: ['name'] }, 'view'), 'pero no editar; quien ve, nada');
+  });
+
+  // A fake connection pair, as PeerJS would give.
+  const pipe = () => { const a = { q: [], h: [], c: [] }, b = { q: [], h: [], c: [] };
+    const end = (me, other) => ({ send: m => other.h.forEach(f => f(JSON.parse(JSON.stringify(m)))), onData: f => me.h.push(f), onClose: f => me.c.push(f), close: () => { other.c.forEach(f => f()); } });
+    return [end(a, b), end(b, a)]; };
+
+  await test('coedición: el anfitrión reparte los cambios según el permiso de cada enlace, con chat y presencia', async () => {
+    reset(); R.slides.addSlide(); const W = frame.contentWindow;
+    const C = await W.eval("import('/src/features/live/collab.js')");
+    let onConn; const host = C.hostCollab({ name: 'Ana', listen: f => { onConn = f; return () => {}; } });
+    const guest = (token, name) => { const [h, g] = pipe(); const got = []; g.onData(m => got.push(m)); onConn(h); g.send({ t: 'hello', token, name }); return { g, got, last: t => got.filter(m => m.t === t).at(-1) }; };
+    try {
+      const bad = guest('xxx', 'Intruso'); eq(bad.got[0]?.t, 'denied', 'un enlace falso no entra');
+      const ed = guest(host.tokens.edit, 'Luis'), co = guest(host.tokens.comment, 'Eva'), vi = guest(host.tokens.view, 'Pau');
+      const w = ed.last('welcome'); eq(w.role, 'edit', 'rol del enlace'); eq(w.deck.slides.length, 2, 'recibe la presentación');
+      eq(host.peers().length, 3, 'tres personas conectadas');
+      const s = R.state.deck.slides[0], blk = s.blocks[0];
+      // An editor moves an object: the host applies it and passes it on.
+      ed.g.send({ t: 'ops', ops: [{ p: ['slides', s.id, 'blocks', blk.id, 'x'], v: 333 }] }); await sleep(10);
+      eq(R.state.deck.slides[0].blocks[0].x, 333, 'el anfitrión aplica el cambio del editor');
+      assert(co.last('ops')?.ops[0].v === 333 && vi.last('ops')?.ops[0].v === 333, 'y lo reciben los demás');
+      // A commenter can't move it, but can comment.
+      co.g.send({ t: 'ops', ops: [{ p: ['slides', s.id, 'blocks', blk.id, 'x'], v: 1 }] }); await sleep(10);
+      eq(R.state.deck.slides[0].blocks[0].x, 333, 'quien comenta no puede mover');
+      co.g.send({ t: 'ops', ops: [{ p: ['slides', s.id, 'comments'], v: [{ id: 'c1', text: 'Revisar', replies: [] }] }] }); await sleep(10);
+      eq(R.state.deck.slides[0].comments?.[0]?.text, 'Revisar', 'pero sí comentar');
+      vi.g.send({ t: 'ops', ops: [{ p: ['name'], v: 'Hackeado' }] }); await sleep(10);
+      assert(R.state.deck.name !== 'Hackeado', 'quien solo ve no cambia nada');
+      // The host's own changes go to everyone.
+      R.store.commit(() => { R.state.deck.slides[1].notes = 'Del anfitrión'; }); await sleep(10);
+      assert(ed.last('ops')?.ops.some(o => o.v === 'Del anfitrión'), 'los cambios del anfitrión llegan');
+      // Undo on the host undoes its own change, not the editor's.
+      R.store.undo(); await sleep(10);
+      eq(R.state.deck.slides[0].blocks[0].x, 333, 'deshacer respeta el cambio del otro');
+      assert(R.state.deck.slides[1].notes !== 'Del anfitrión', 'y deshace el propio');
+      // Chat and presence.
+      ed.g.send({ t: 'chat', text: 'Hola' }); await sleep(10);
+      eq(host.chat.at(-1).text, 'Hola', 'chat'); eq(vi.last('chat')?.name, 'Luis', 'con el nombre de quien escribe');
+      ed.g.send({ t: 'presence', slide: s.id, sel: blk.id }); await sleep(10);
+      eq(host.peers().find(p => p.name === 'Luis').sel, blk.id, 'se sabe qué tiene seleccionado');
+      R.slides.goToSlide(0); await sleep(10);
+      assert(D.querySelector('#stage .collab-sel')?.dataset.name === 'Luis', 'y se ve en la diapositiva');
+      assert(!D.getElementById('collab-bar').hidden && D.querySelectorAll('#collab-bar .cb-av').length === 3, 'personas en la barra');
+      // Changing someone's permission.
+      const eva = host.peers().find(p => p.name === 'Eva'); host.setRole(eva.id, 'edit'); await sleep(10);
+      eq(co.last('role')?.role, 'edit', 'se le cambia el permiso');
+    } finally { host.stop(); }
+    eq(C.session, null, 'sesión terminada');
+  });
+
+  await test('coedición: el invitado recibe la presentación sin tocar la suya, y el permiso se respeta', async () => {
+    reset(); const own = R.state.deck; own.name = 'Mi proyecto'; R.store.commit(() => {}); const W = frame.contentWindow;
+    const stored = () => JSON.parse(W.localStorage.getItem('revela.deck.v1') || '{}').name;
+    eq(stored(), 'Mi proyecto', 'el suyo guardado');
+    const C = await W.eval("import('/src/features/live/collab.js')");
+    const [h, g] = pipe(); const sent = []; h.onData(m => sent.push(m));
+    const shared = R.model.emptyDeck(); shared.name = 'La de Ana';
+    h.onData(m => { if (m.t === 'hello') h.send({ t: 'welcome', you: 'g1', role: 'view', color: '#123456', deck: shared, peers: [{ id: 'host', name: 'Ana', color: '#e8590c' }], chat: [] }); });
+    const sess = await C.joinCollab({ name: 'Luis', token: 'tok', connect: async () => g });
+    try {
+      eq(sent[0].t, 'hello'); eq(sent[0].token, 'tok', 'se presenta con su enlace');
+      eq(R.state.deck.name, 'La de Ana', 've la presentación compartida'); eq(sess.role, 'view');
+      R.blocks.addText(); eq(R.state.deck.slides[0].blocks.length, shared.slides[0].blocks.length, 'solo ver: no se puede editar');
+      h.send({ t: 'ops', ops: [{ p: ['name'], v: 'Cambiada por Ana' }] }); await sleep(10);
+      eq(R.state.deck.name, 'Cambiada por Ana', 'recibe los cambios');
+      eq(stored(), 'Mi proyecto', 'y su propio proyecto sigue guardado intacto');
+      h.send({ t: 'role', role: 'edit' }); await sleep(10);
+      R.blocks.addText(); await sleep(900);
+      assert(sent.some(m => m.t === 'ops' && m.ops.some(o => o.p[2] === 'blocks')), 'con permiso de edición, sus cambios se envían');
+    } finally { sess.stop(); R.store.setPersist(true); R.state.ui.lock = null; }
+  });
 }

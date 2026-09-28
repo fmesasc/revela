@@ -21,7 +21,7 @@ import { addGuideFromRuler, drawPGuides, startMarquee, startDrag, startRotate, s
 export const findBlock = id => currentSlide().blocks.find(x => x.id === id);
 
 // "Marked as final": no direct manipulation (the banner flashes to say why).
-export const readOnly = () => { if (!state.deck.final) return false; window.dispatchEvent(new Event('revela:readonly')); return true; };
+export const readOnly = () => { if (!state.deck.final && !state.ui.lock) return false; window.dispatchEvent(new Event('revela:readonly')); return true; };
 export let stage;
 
 export function initCanvas() {

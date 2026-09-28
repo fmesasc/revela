@@ -142,13 +142,13 @@ the origin of every requirement is traceable.
 - ⬜ Present to Meet / Teams `PP·GS`
 
 ## 7. Collaboration *(needs a backend — not possible on static hosting alone)*
-- ⬜ Real-time co-editing `PP·GS·OO`
+- ✅ Real-time co-editing: share links, everyone sees changes at once (per-object merging, so people can work on different objects together), others' selections on the slide, undo only undoes your own changes. Browser-to-browser (WebRTC), no server needed; the person sharing keeps the tab open `PP·GS·OO`
 - ✅ Comments on slides and objects — replies, resolve/reopen, @mentions, markers; saved in the project (sharing them live needs the back end) `PP·GS·OO`
-- ⬜ Built-in chat `OO`
+- ✅ Built-in chat in live sessions `OO`
 - ✅ Version history (local, in this browser: automatic snapshots + named versions, restore/download) — shared history needs the back end `PP·GS·OO`
 - ✅ Private sharing ready to embed in an `<iframe>` — encrypted in the browser (AES-GCM 256; key in the link fragment or a password, PBKDF2 600 000 rounds), stored as a self-opening HTML file, in the user's Google Drive or on an optional self-hosted server (Cloudflare Worker + R2) with expiry; `noindex`, unguessable ids, stop sharing `GS`
 - ✅ Share limited to the Google accounts of one domain (self-hosted server; the server checks Google's signature) `PP·GS·OO`
-- ⬜ Permission levels (view / comment / edit) — needs real-time collaboration `PP·GS·OO`
+- ✅ Permission levels (view / comment / edit): one link per level, changeable per person during the session and enforced by the person sharing `PP·GS·OO`
 - ✅ View statistics for shared presentations — a counter and the last date, nothing about the viewer (self-hosted server) `GS`
 - ✅ Protect — project encrypted with a password (AES-GCM 256, PBKDF2) and "mark as final" (read-only) `PP·OO`
 - ⬜ Digital signatures `OO`
