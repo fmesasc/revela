@@ -136,6 +136,13 @@ export async function run(frame) {
     assert(/\.slide-number\{[^}]*top:8px/.test(html), 'posición del número');
   });
 
+  await test('pie de página y bucle en el export', async () => {
+    reset(); R.state.deck.footer = { show: true, text: 'Mi charla', date: false }; R.state.deck.loop = true;
+    const html = R.io.buildHTML();
+    assert(/<div class="deck-footer">Mi charla<\/div>/.test(html), 'pie de página');
+    assert(/loop:true/.test(html), 'bucle activado');
+  });
+
   await test('notas del orador: panel y export con vista del orador', async () => {
     reset(); R.state.ui.showNotes = true; R.render(); await sleep(20);
     assert(!D.getElementById('notes-bar').hidden, 'el panel de notas no se muestra');

@@ -64,6 +64,9 @@ const ACTIONS = {
   'toggle-guides': () => commit(() => (state.ui.showGuides = !state.ui.showGuides), { history: false }),
   'toggle-ruler': () => commit(() => (state.ui.showRuler = !state.ui.showRuler), { history: false }),
   'toggle-slidenum': () => commit(() => (state.deck.slideNumber.show = !state.deck.slideNumber.show)),
+  'toggle-footer': () => commit(() => (state.deck.footer.show = !state.deck.footer.show)),
+  'toggle-footerdate': () => commit(() => (state.deck.footer.date = !state.deck.footer.date)),
+  'toggle-loop': () => commit(() => (state.deck.loop = !state.deck.loop)),
   'toggle-notes': () => commit(() => (state.ui.showNotes = !state.ui.showNotes), { history: false }),
   'connect-mobile': () => remote.openHostPanel(),
   'find-replace': () => search.openFindPanel(),
@@ -167,6 +170,8 @@ export function initRibbon() {
   bindChange('[data-slidenum-pos]', v => commit(() => (state.deck.slideNumber.position = v)));
   bindChange('[data-slidenum-fmt]', v => commit(() => (state.deck.slideNumber.format = v)));
   bindChange('[data-autoslide]', v => commit(() => { currentSlide().autoSlide = Math.max(0, (parseFloat(v) || 0)) * 1000; }));
+  const ft = $('[data-footer-text]');
+  if (ft) ft.addEventListener('input', () => commit(() => { state.deck.footer.text = ft.value; }, { history: false }));
 
   // Reflect the active character formatting on the toolbar as the caret moves.
   document.addEventListener('selectionchange', updateFormatState);
@@ -290,6 +295,12 @@ export function renderRibbon() {
   document.querySelector('[data-action="toggle-slidenum"]')?.classList.toggle('on', !!sn.show);
   syncValue('[data-slidenum-pos]', sn.position || 'br');
   syncValue('[data-slidenum-fmt]', sn.format || 'c');
+  const ft = state.deck.footer || {};
+  document.querySelector('[data-action="toggle-footer"]')?.classList.toggle('on', !!ft.show);
+  document.querySelector('[data-action="toggle-footerdate"]')?.classList.toggle('on', !!ft.date);
+  document.querySelector('[data-action="toggle-loop"]')?.classList.toggle('on', !!state.deck.loop);
+  const ftInput = $('[data-footer-text]');
+  if (ftInput && document.activeElement !== ftInput) ftInput.value = ft.text || '';
   const notesBar = document.getElementById('notes-bar');
   if (notesBar) notesBar.hidden = !state.ui.showNotes;
   document.querySelector('[data-action="toggle-notes"]')?.classList.toggle('on', !!state.ui.showNotes);

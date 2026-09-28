@@ -82,6 +82,10 @@ export function buildHTML(deck = state.deck) {
   const sn = deck.slideNumber || { show: false };
   const snPos = SLIDENUM_POS[sn.position] || SLIDENUM_POS.br;
   const hasCode = deck.slides.some(s => s.blocks.some(b => b.type === 'code'));
+  const ft = deck.footer || { show: false };
+  const footerText = ft.show
+    ? `<div class="deck-footer">${esc(ft.text || '')}${ft.date ? (ft.text ? ' · ' : '') + new Date().toLocaleDateString('es') : ''}</div>`
+    : '';
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -99,15 +103,17 @@ ${hasCode ? `<script src="${HLJS}/highlight.min.js"></script>` : ''}
  .reveal .slide-number{${snPos}}
  .reveal table.tbl{border-collapse:collapse;width:100%;height:100%;margin:0}
  .reveal table.tbl td{border:1px solid var(--stroke,#fff);padding:.15em .4em;vertical-align:top}
+ .deck-footer{position:fixed;left:12px;bottom:8px;z-index:30;font-size:14px;opacity:.7;color:#fff;mix-blend-mode:difference}
 </style></head><body>
 <div class="reveal"><div class="slides">
 ${slides}
-</div></div>
+</div>${footerText}</div>
 <script src="${REVEAL}/dist/reveal.js"></script>
 <script src="${REVEAL}/plugin/notes/notes.js"></script>
 <script>
  Reveal.initialize({ width:${w}, height:${h}, margin:0.03, controls:true,
-   progress:true, hash:true, slideNumber:${sn.show ? `'${sn.format || 'c'}'` : 'false'},
+   progress:true, hash:true, loop:${deck.loop ? 'true' : 'false'},
+   slideNumber:${sn.show ? `'${sn.format || 'c'}'` : 'false'},
    transition:'${deck.defaultTransition}', transitionSpeed:'${deck.transitionSpeed}',
    plugins:[ RevealNotes ] });
  ${hasCode ? 'window.hljs && document.querySelectorAll("pre code").forEach(el=>hljs.highlightElement(el));' : ''}
