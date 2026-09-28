@@ -4,7 +4,7 @@
 
 import { state, commit, mutate, currentSlide, selectedBlock,
   selectedBlocks, selectedIds, isSelected, setSelection, toggleSelection, setMulti, selectWithGroup } from '../core/store.js';
-import { shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig } from './shape.js';
+import { shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart } from './shape.js';
 
 const findBlock = id => currentSlide().blocks.find(x => x.id === id);
 const connectorHTML = b => {
@@ -175,6 +175,7 @@ function reconcile(b) {
       const vj = { top: 'flex-start', middle: 'center', bottom: 'flex-end' }[b.vAlign];
       rich.style.display = vj ? 'flex' : ''; rich.style.flexDirection = vj ? 'column' : '';
       rich.style.justifyContent = vj || '';
+      applyWordart(rich, b.wordart);
       if (!el.classList.contains('editing') && rich.innerHTML !== (b.html || '')) rich.innerHTML = b.html || '';
     }
   } else if (b.type === 'image') {
@@ -271,6 +272,7 @@ function content(b) {
     if (b.radius) d.style.borderRadius = b.radius + 'px';
     const vj0 = { top: 'flex-start', middle: 'center', bottom: 'flex-end' }[b.vAlign];
     if (vj0) { d.style.display = 'flex'; d.style.flexDirection = 'column'; d.style.justifyContent = vj0; }
+    if (b.wordart) applyWordart(d, b.wordart);
     d.innerHTML = b.html || '';
     return d;
   }

@@ -2,7 +2,7 @@
 // present / export / save-load helpers.
 
 import { state } from '../core/store.js';
-import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG } from '../ui/shape.js';
+import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS } from '../ui/shape.js';
 import { googleFontLinks } from '../features/fonts.js';
 import { t } from '../i18n.js';
 import { alertDialog } from '../ui/dialog.js';
@@ -46,7 +46,8 @@ function blockHTML(b, slide) {
       + `${b.numStyle ? `--num:${b.numStyle};` : ''}`
       + `${b.bg ? `background:${b.bg};` : ''}${b.borderColor ? `border:2px solid ${b.borderColor};` : ''}`
       + `${b.radius ? `border-radius:${b.radius}px;` : ''}box-sizing:border-box;`
-      + `${b.vAlign ? `display:flex;flex-direction:column;justify-content:${{ top: 'flex-start', middle: 'center', bottom: 'flex-end' }[b.vAlign]};` : ''}">`
+      + `${b.vAlign ? `display:flex;flex-direction:column;justify-content:${{ top: 'flex-start', middle: 'center', bottom: 'flex-end' }[b.vAlign]};` : ''}`
+      + `${b.wordart ? wordartCSS(b.wordart) : ''}">`
       + `${b.html || ''}</div>`;
   if (b.type === 'model')
     return `<model-viewer${a} src="${b.src}" camera-controls ${b.autoRotate !== false ? 'auto-rotate' : ''} `

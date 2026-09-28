@@ -11,6 +11,29 @@ export function imgClip(b) {
 
 const escSvg = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
+// Text Art / WordArt presets, as style property maps (camelCase for the DOM).
+export const WORDART = {
+  fill: { color: '#3f6497', fontWeight: '800' },
+  outline: { color: '#ffffff', webkitTextStroke: '2px #1e2a3a', paintOrder: 'stroke fill', fontWeight: '800' },
+  shadow: { color: '#ffffff', textShadow: '3px 3px 0 rgba(0,0,0,.35)', fontWeight: '800' },
+  gradient: { backgroundImage: 'linear-gradient(90deg,#3f6497,#c0392b)', webkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', fontWeight: '800' },
+  neon: { color: '#ffffff', textShadow: '0 0 6px #3f6497,0 0 14px #3f6497', fontWeight: '800' },
+  gold: { backgroundImage: 'linear-gradient(180deg,#f9d976,#b8860b)', webkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', fontWeight: '800' },
+};
+export const WORDART_KEYS = Object.keys(WORDART);
+export const WORDART_PROPS = ['color', 'fontWeight', 'webkitTextStroke', 'paintOrder', 'textShadow', 'backgroundImage', 'webkitBackgroundClip', 'backgroundClip'];
+const kebab = p => { const k = p.replace(/[A-Z]/g, m => '-' + m.toLowerCase()); return k.startsWith('webkit') ? '-' + k : k; };
+// Inline CSS string for export/preview.
+export function wordartCSS(key) {
+  const w = WORDART[key]; if (!w) return '';
+  return Object.entries(w).map(([p, v]) => `${kebab(p)}:${v}`).join(';') + ';';
+}
+// Apply/clear the managed props on a live element (editor).
+export function applyWordart(el, key) {
+  const w = WORDART[key] || {};
+  for (const p of WORDART_PROPS) el.style[p] = w[p] || '';
+}
+
 // Point on a box's border in the direction of (tx,ty), so a connector meets the
 // edge instead of the centre (leaving room for the arrowhead).
 function borderPoint(box, tx, ty) {

@@ -47,7 +47,7 @@ the origin of every requirement is traceable.
 - ✅ Change case `PP·GS·OO`
 - ✅ Bullet/number style — bullet (disc/circle/square/none) and numbered styles (1/a/A/i) per box `PP·GS·OO`
 - ⬜ Text styles / named styles `PP·OO`
-- ⬜ WordArt / Text Art `PP·OO`
+- ✅ WordArt / Text Art (fill, outline, shadow, gradient, neon, gold) `PP·OO`
 - ✅ Special characters and symbol/emoji picker `PP·GS·OO`
 - ⬜ Equations / math (OnlyOffice has a full equation editor) `PP·OO`
 - 🚧 Spell check, proofing and AutoCorrect — native browser spellcheck while editing; proofing/AutoCorrect planned `PP·GS·OO`

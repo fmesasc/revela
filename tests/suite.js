@@ -370,6 +370,14 @@ export async function run(frame) {
     eq(b.fontSize, 66, 'tamaño copiado'); eq(b.textAlign, 'center', 'alineación'); eq(b.bullet, 'square', 'viñeta');
   });
 
+  await test('Text Art (WordArt) aplica estilo en lienzo y export', async () => {
+    reset(); R.blocks.addWordArt('gradient'); const b = last(); select(b); await sleep(20);
+    eq(b.wordart, 'gradient', 'preset guardado');
+    const rich = richOf(b);
+    assert(/text/.test(rich.style.webkitBackgroundClip || rich.style.backgroundClip || ''), 'clip de texto en el lienzo');
+    assert(/-webkit-background-clip:text|background-clip:text/.test(R.io.buildHTML()), 'wordart en el export');
+  });
+
   await test('enlaces: normaliza diapositiva y correo', async () => {
     eq(R.format.normalizeLink('3'), '#/2', 'nº de diapositiva');
     eq(R.format.normalizeLink('a@b.com'), 'mailto:a@b.com', 'correo');

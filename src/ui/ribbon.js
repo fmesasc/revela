@@ -10,7 +10,7 @@ import * as templates from '../features/templates.js';
 import * as io from '../io/reveal.js';
 import { importPPTX } from '../io/pptx.js';
 import { FONTS, ensureDeckFonts } from '../features/fonts.js';
-import { ICON_NAMES, iconSVG } from './shape.js';
+import { ICON_NAMES, iconSVG, WORDART_KEYS, wordartCSS } from './shape.js';
 import * as remote from '../features/remote.js';
 import * as search from '../features/search.js';
 import { t } from '../i18n.js';
@@ -148,6 +148,8 @@ export function initRibbon() {
     if (sym) { e.stopPropagation(); togglePopover(sym, 'symbols'); return; }
     const ics = e.target.closest('[data-icons]');
     if (ics) { e.stopPropagation(); togglePopover(ics, 'icons'); return; }
+    const wa = e.target.closest('[data-wordart]');
+    if (wa) { e.stopPropagation(); togglePopover(wa, 'wordart'); return; }
     const tab = e.target.closest('[data-tab]');
     if (tab) { commit(() => (state.ui.activeTab = tab.dataset.tab), { history: false }); return; }
     const act = e.target.closest('[data-action]');
@@ -298,6 +300,8 @@ const POPS = {
   },
   icons: () => `<h4>${t('Iconos')}</h4><div class="sym-grid icons">`
     + ICON_NAMES.map(n => `<button data-icon="${n}" type="button" title="${n}">${iconSVG({ icon: n, color: '#333' })}</button>`).join('') + `</div>`,
+  wordart: () => `<h4>Text Art</h4><div class="wa-grid">`
+    + WORDART_KEYS.map(k => `<button data-wa="${k}" type="button" style="${wordartCSS(k)}">Aa</button>`).join('') + `</div>`,
   paragraph: () => {
     const b = selectedBlock(); const tb = b && b.type === 'text' ? b : {};
     return `<h4>${t('Párrafo')}</h4>
@@ -341,6 +345,8 @@ function togglePopover(launcher, type) {
   });
   pop.querySelectorAll('[data-icon]').forEach(x =>
     x.addEventListener('click', () => { blocks.addIcon(x.dataset.icon); closePopover(); }));
+  pop.querySelectorAll('[data-wa]').forEach(x =>
+    x.addEventListener('click', () => { blocks.addWordArt(x.dataset.wa); closePopover(); }));
   openPop = pop;
 }
 document.addEventListener('click', () => closePopover());

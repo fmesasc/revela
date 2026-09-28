@@ -31,6 +31,9 @@ export function duplicateSelected() {
 }
 
 export function addText() { insert(textBlock({ html: 'Escribe aquí' })); }
+export function addWordArt(preset) {
+  insert(textBlock({ html: 'Text Art', fontSize: 80, w: 620, h: 160, textAlign: 'center', wordart: preset }));
+}
 
 export function addModel(src) {
   insert({ id: uid(), type: 'model', x: 440, y: 130, w: 400, h: 400,

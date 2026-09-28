@@ -1,6 +1,6 @@
 // Non‑interactive block rendering, shared by slide thumbnails.
 
-import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, iconSVG } from './shape.js';
+import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, iconSVG, wordartCSS } from './shape.js';
 
 export function blockPreview(b) {
   const el = document.createElement('div');
@@ -16,7 +16,8 @@ export function blockPreview(b) {
       + `${b.dir === 'rtl' ? 'direction:rtl;' : ''}`
       + `${b.vertical ? 'writing-mode:vertical-rl;' : ''}`
       + `${b.bg ? `background:${b.bg};` : ''}${b.borderColor ? `border:2px solid ${b.borderColor};` : ''}`
-      + `${b.radius ? `border-radius:${b.radius}px;` : ''}box-sizing:border-box;">`
+      + `${b.radius ? `border-radius:${b.radius}px;` : ''}box-sizing:border-box;`
+      + `${b.wordart ? wordartCSS(b.wordart) : ''}">`
       + `${b.html || ''}</div>`;
   } else if (b.type === 'image') {
     el.innerHTML = `<img src="${b.src}" style="width:100%;height:100%;object-fit:${b.fit || 'contain'};`
