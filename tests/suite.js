@@ -1251,6 +1251,28 @@ export async function run(frame) {
     } finally { W.fetch = realFetch; AI.disconnectAi(); }
   });
 
+  await test('importar PowerPoint: gráficos, fondo degradado y transiciones', async () => {
+    reset(); await R.pptx.buildPptx();
+    const W = frame.contentWindow, P = new W.PptxGenJS(); P.layout = 'LAYOUT_16x9';
+    const s1 = P.addSlide();
+    s1.addChart(P.ChartType.bar, [{ name: 'Ventas', labels: ['Ene', 'Feb', 'Mar'], values: [3, 5, 4] }, { name: 'Costes', labels: ['Ene', 'Feb', 'Mar'], values: [1, 2, 2] }],
+      { x: 1, y: 1, w: 6, h: 3, chartColors: ['112233', 'AA5500'] });
+    P.addSlide().addText('Dos', { x: 1, y: 1, w: 4, h: 1 });
+    const zip = await W.JSZip.loadAsync(await P.write({ outputType: 'blob' }));
+    // Añade a mano lo que PptxGenJS no escribe: fondo degradado y transición con avance automático.
+    let x = await zip.file('ppt/slides/slide2.xml').async('string');
+    x = x.replace(/<p:cSld([^>]*)>/, '<p:cSld$1><p:bg><p:bgPr><a:gradFill><a:gsLst><a:gs pos="0"><a:srgbClr val="FF0000"/></a:gs><a:gs pos="100000"><a:srgbClr val="0000FF"/></a:gs></a:gsLst><a:lin ang="5400000"/></a:gradFill></p:bgPr></p:bg>');
+    x = x.replace('</p:sld>', '<p:transition advTm="3000"><p:fade/></p:transition></p:sld>');
+    zip.file('ppt/slides/slide2.xml', x);
+    const deck = await R.pptxImport.importPPTX(new File([await zip.generateAsync({ type: 'blob' })], 'g.pptx'));
+    const ch = deck.slides[0].blocks.find(b => b.type === 'chart');
+    assert(ch, 'gráfico convertido'); eq(ch.chartType, 'bar', 'tipo');
+    eq(ch.data.map(d => d.label + d.value).join(','), 'Ene3,Feb5,Mar4', 'datos'); eq(ch.seriesName, 'Ventas', 'serie');
+    eq(ch.series[0].values.join(','), '1,2,2', 'segunda serie'); eq(ch.x, 128, 'posición');
+    eq(deck.slides[1].background, 'linear-gradient(180deg, #ff0000 0%, #0000ff 100%)', 'fondo degradado');
+    eq(deck.slides[1].transition, 'fade', 'transición'); eq(deck.slides[1].autoSlide, 3000, 'avance automático');
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

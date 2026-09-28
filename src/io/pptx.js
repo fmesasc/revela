@@ -98,6 +98,19 @@ function fillOf(spPr, theme) {           // → colour, 'none' or null (not set)
   return null;
 }
 
+// A gradient fill as CSS (for slide backgrounds; shapes use the first stop).
+function gradientCSS(el, theme) {
+  const gf = el && kid(el, 'a:gradFill'); if (!gf) return null;
+  const stops = all(gf, 'a:gs').map(gs => ({ pos: +(gs.getAttribute('pos') || 0) / 1000, c: colourOf(gs, theme) })).filter(x => x.c);
+  if (stops.length < 2) return null;
+  const ang = kid(gf, 'a:lin')?.getAttribute('ang');
+  const deg = ang != null ? Math.round(+ang / 60000 + 90) % 360 : 180;     // OOXML 0° = left→right; CSS 90deg
+  return `linear-gradient(${deg}deg, ${stops.map(x => `${x.c} ${Math.round(x.pos)}%`).join(', ')})`;
+}
+const TRANSITION = { fade: 'fade', dissolve: 'fade', push: 'push', cover: 'slide', pull: 'slide', wipe: 'wipe', split: 'wipe', zoom: 'zoom',
+  newsflash: 'zoom', flip: 'flip', cube: 'convex', box: 'convex', rotate: 'flip', gallery: 'slide', conveyor: 'slide', switch: 'flip',
+  doors: 'wipe', window: 'wipe', vortex: 'zoom', ripple: 'rise', morph: 'fade', random: 'slide', randomBar: 'wipe', wheel: 'wipe' };
+
 // ---- Geometry --------------------------------------------------------------
 function xfrmOf(el) {
   const x = all(el, 'a:xfrm')[0] || all(el, 'p:xfrm')[0];
@@ -176,7 +189,7 @@ async function partInfo(zip, file, theme) {
   const styles = { title: tsz(all(doc, 'p:titleStyle')[0]), body: tsz(all(doc, 'p:bodyStyle')[0]) };
   const bgPr = all(doc, 'p:bgPr')[0];
   const bgRef = all(doc, 'p:bgRef')[0];
-  const bg = fillOf(bgPr, theme) || (bgRef ? colourOf(bgRef, theme) : null);
+  const bg = gradientCSS(bgPr, theme) || fillOf(bgPr, theme) || (bgRef ? colourOf(bgRef, theme) : null);
   const parent = Object.values(r).find(x => x.type === 'slideLayout' || x.type === 'slideMaster')?.path || null;
   return { doc, rels: r, phs, styles, bg, parent };
 }
@@ -249,7 +262,7 @@ export async function importPPTX(file) {
           await walk(el, geo => map({ ...geo, x: off[0] + (geo.x - cOff[0]) * sx, y: off[1] + (geo.y - cOff[1]) * sy, w: geo.w * sx, h: geo.h * sy }));
         } else if (tag === 'p:sp' || tag === 'p:cxnSp') await addShape(el, map);
         else if (tag === 'p:pic') await addPic(el, map);
-        else if (tag === 'p:graphicFrame') addTable(el, map);
+        else if (tag === 'p:graphicFrame') { if (!(await addChart(el, map))) addTable(el, map); }
       }
     };
     const box = geo => ({ x: px(geo.x), y: px(geo.y), w: Math.max(1, px(geo.w)), h: Math.max(1, px(geo.h)),
@@ -296,6 +309,41 @@ export async function importPPTX(file) {
       const descr = all(pic, 'p:cNvPr')[0]?.getAttribute('descr') || '';
       blocks.push({ id: uid(), type: 'image', fit: 'fill', src, ...(descr && { alt: descr }), ...box(map(geo)) });
     };
+    // Charts: the chart part's cached data becomes an editable Revela chart.
+    const addChart = async (gf, map) => {
+      const ref = all(gf, 'c:chart')[0]; const geo = xfrmOf(gf);
+      if (!ref || !geo) return false;
+      const part = srels[ref.getAttribute('r:id')]?.path; if (!part || !zip.file(part)) return false;
+      const cd = parseXML(await zip.file(part).async('string'));
+      const plot = all(cd, 'c:plotArea')[0]; if (!plot) return false;
+      const KIND = { 'c:barChart': 'bar', 'c:bar3DChart': 'bar', 'c:lineChart': 'line', 'c:line3DChart': 'line', 'c:areaChart': 'area',
+        'c:pieChart': 'pie', 'c:pie3DChart': 'pie', 'c:doughnutChart': 'doughnut', 'c:radarChart': 'radar', 'c:scatterChart': 'scatter' };
+      const groups = [...plot.children].filter(c => KIND[c.tagName]);
+      if (!groups.length) return false;
+      const pts = el => { const out = []; for (const p of all(el, 'c:pt')) out[+p.getAttribute('idx')] = kid(p, 'c:v')?.textContent ?? ''; return out; };
+      const series = groups.flatMap(g => kids(g, 'c:ser').map(ser => ({
+        kind: KIND[g.tagName],
+        name: all(kid(ser, 'c:tx'), 'c:v')[0]?.textContent || '',
+        cats: pts(kid(ser, 'c:cat') || kid(ser, 'c:xVal')),
+        vals: pts(kid(ser, 'c:val') || kid(ser, 'c:yVal')).map(v => +v || 0),
+        color: fillOf(kid(ser, 'c:spPr'), theme),
+      })));
+      if (!series.length) return false;
+      const first = series[0], labels = first.cats.length ? first.cats : first.vals.map((_, i) => String(i + 1));
+      const b = { id: uid(), type: 'chart', chartType: first.kind, color: first.color && first.color !== 'none' ? first.color : (theme.accent1 || '#3f6497'),
+        data: labels.map((l, i) => ({ label: String(l ?? ''), value: first.vals[i] ?? 0 })), ...box(map(geo)) };
+      if (first.name) b.seriesName = first.name;
+      const rest = series.slice(1);
+      if (rest.length) {
+        b.series = rest.map((x, i) => ({ name: x.name, values: labels.map((_, k) => x.vals[k] ?? 0),
+          ...(x.color && x.color !== 'none' ? { color: x.color } : theme['accent' + (i + 2)] ? { color: theme['accent' + (i + 2)] } : {}) }));
+        if (first.kind === 'bar' && rest.some(x => x.kind === 'line')) b.combo = true;
+      }
+      const title = all(all(cd, 'c:title')[0], 'a:t').map(t => t.textContent).join('');
+      if (title) b.alt = title;
+      blocks.push(b);
+      return true;
+    };
     const addTable = (gf, map) => {
       const tbl = all(gf, 'a:tbl')[0]; const geo = xfrmOf(gf);
       if (!tbl || !geo) return;
@@ -321,7 +369,7 @@ export async function importPPTX(file) {
 
     // Background: the slide's own, else its layout's, else the master's.
     const bgPr = all(doc, 'p:bgPr')[0], bgRef = all(doc, 'p:bgRef')[0];
-    let background = fillOf(bgPr, theme) || (bgRef ? colourOf(bgRef, theme) : null) || layout?.bg || master?.bg || theme.bg1 || '#ffffff';
+    let background = gradientCSS(bgPr, theme) || fillOf(bgPr, theme) || (bgRef ? colourOf(bgRef, theme) : null) || layout?.bg || master?.bg || theme.bg1 || '#ffffff';
     const bgBlip = all(bgPr, 'a:blip')[0];
     if (bgBlip) { const src = await media(bgBlip.getAttribute('r:embed')); if (src) background = `url(${src}) center/cover no-repeat`; }
 
@@ -334,7 +382,15 @@ export async function importPPTX(file) {
       notes = kids(kid(body, 'p:txBody'), 'a:p').map(p => all(p, 'a:t').map(t => t.textContent).join('')).join('\n').trim();
     }
     const hidden = doc.documentElement.getAttribute('show') === '0';
-    slides.push({ id: uid(), sectionId: null, background, transition: null, hidden, notes, autoSlide: 0, blocks });
+    // Transition (the p14/p15 variants sit inside mc:AlternateContent) and its auto-advance time.
+    const tr = all(doc, 'p:transition')[0];
+    let transition = null, autoSlide = 0;
+    if (tr) {
+      const kinds = [...all(tr, '*')].map(e => e.tagName.replace(/^p\d*:/, ''));
+      transition = kinds.map(k => TRANSITION[k]).find(Boolean) || null;
+      const adv = +(tr.getAttribute('advTm') || 0); if (adv) autoSlide = adv;
+    }
+    slides.push({ id: uid(), sectionId: null, background, transition, hidden, notes, autoSlide, blocks });
   }
 
   if (!slides.length) throw new Error('No se encontraron diapositivas en el archivo.');
