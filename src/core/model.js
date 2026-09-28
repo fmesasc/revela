@@ -28,6 +28,7 @@ export function emptyDeck() {
     defaultTransition: 'slide',
     transitionSpeed: 'default',
     slideNumber: { show: false, position: 'br', format: 'c' },
+    guides: { v: [], h: [] },
     sections: [],
     slides: [ first ],
   };
@@ -80,6 +81,7 @@ function migrate(deck) {
   deck.name ??= 'Presentación sin título';
   deck.size ??= { w: 1280, h: 720 };
   deck.slideNumber ??= { show: false, position: 'br', format: 'c' };
+  deck.guides ??= { v: [], h: [] };
   deck.sections ??= [];
   deck.slides ??= [];
   for (const s of deck.slides) {

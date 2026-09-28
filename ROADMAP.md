@@ -28,7 +28,7 @@ the origin of every requirement is traceable.
 - ✅ Order: bring to front / send to back / forward / backward `PP·GS·OO`
 - ✅ Rotation handle and flip `PP·GS·OO`
 - ✅ Lock aspect ratio (Shift while resizing) and object lock `PP·OO`
-- ⬜ Grid, rulers and guides you can place `PP·GS·OO`
+- ✅ Grid, rulers and guides you can place `PP·GS·OO`
 - ⬜ Format painter / copy style `PP·GS·OO`
 - ✅ Find & replace `PP·GS·OO`
 - ✅ Zoom controls, fit to window `PP·GS·OO`

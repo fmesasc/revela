@@ -310,6 +310,11 @@ export async function run(frame) {
     eq(R.remote.presentationState().total, 1, 'solo cuenta visibles');
   });
 
+  await test('guías colocables: se dibujan sobre la diapositiva', async () => {
+    reset(); R.state.deck.guides = { v: [640], h: [360] }; R.render(); await sleep(20);
+    eq(D.querySelectorAll('.pguide').length, 2, 'dos guías dibujadas');
+  });
+
   await test('zoom: acercar y restablecer', async () => {
     reset(); const g = D.getElementById('stage-grid');
     const z0 = parseFloat(g.style.getPropertyValue('--zoom') || '1');

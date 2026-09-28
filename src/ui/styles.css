@@ -191,6 +191,12 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 .block.locked.selected{border-style:dashed}
 .block.locked .handle-size,.block.locked .handle-rot{display:none}
 .marquee{position:absolute;z-index:8;pointer-events:none;background:#3f649722;border:1px solid var(--accent)}
+.pguide{position:absolute;z-index:6;background:#00bcd4}
+.pguide.v{top:0;bottom:0;width:1px;cursor:ew-resize}
+.pguide.h{left:0;right:0;height:1px;cursor:ns-resize}
+.pguide::before{content:"";position:absolute;inset:-4px}  /* easier to grab */
+.pguide.v::before{left:-4px;right:-4px;top:0;bottom:0}
+.pguide.h::before{top:-4px;bottom:-4px;left:0;right:0}
 .guide{position:absolute;z-index:7;pointer-events:none;background:#ff3b8b}
 .guide.v{top:0;bottom:0;width:1px}.guide.h{left:0;right:0;height:1px}
 

@@ -20,6 +20,39 @@ export function initCanvas() {
   stage.addEventListener('pointerdown', e => {
     if (e.target === stage) startMarquee(e);
   });
+  // Click a ruler to drop a placeable guide.
+  document.getElementById('ruler-h')?.addEventListener('pointerdown', e => addGuideFromRuler(e, 'v'));
+  document.getElementById('ruler-v')?.addEventListener('pointerdown', e => addGuideFromRuler(e, 'h'));
+}
+
+function addGuideFromRuler(e, axis) {
+  const rect = stage.getBoundingClientRect(); const f = factor();
+  const pos = Math.round(axis === 'v' ? (e.clientX - rect.left) * f : (e.clientY - rect.top) * f);
+  commit(() => { (state.deck.guides ||= { v: [], h: [] })[axis].push(pos); });
+}
+
+// Persistent guides (deck‑level), drawn over the slide; drag to move, double‑click to remove.
+function drawPGuides() {
+  stage.querySelectorAll('.pguide').forEach(g => g.remove());
+  const g = state.deck.guides || { v: [], h: [] };
+  ['v', 'h'].forEach(axis => (g[axis] || []).forEach((pos, i) => {
+    const el = document.createElement('div');
+    el.className = 'pguide ' + axis;
+    if (axis === 'v') el.style.left = pos + 'px'; else el.style.top = pos + 'px';
+    el.addEventListener('pointerdown', ev => startGuideDrag(ev, axis, i));
+    el.addEventListener('dblclick', ev => { ev.stopPropagation(); commit(() => state.deck.guides[axis].splice(i, 1)); });
+    stage.appendChild(el);
+  }));
+}
+function startGuideDrag(ev, axis, i) {
+  ev.stopPropagation();
+  const rect = stage.getBoundingClientRect(); const f = factor();
+  const onMove = e => {
+    const pos = Math.round(axis === 'v' ? (e.clientX - rect.left) * f : (e.clientY - rect.top) * f);
+    state.deck.guides[axis][i] = pos; mutate(() => {});
+  };
+  const onUp = () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); commit(() => {}, { history: false }); };
+  window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp);
 }
 
 // Rubber‑band selection: drag on the empty canvas to select every block the
@@ -86,6 +119,7 @@ export function renderCanvas() {
   } else {
     for (const b of slide.blocks) reconcile(b);
   }
+  drawPGuides();
 }
 
 // Update an existing block element from the model without recreating it, so
@@ -404,6 +438,8 @@ function applySnap(b, x, y) {
   const vTargets = [w / 2, 0, w];                    // slide centre + edges (x)
   const hTargets = [h / 2, 0, h];                    // slide centre + edges (y)
   for (const o of others) { vTargets.push(o.x, o.x + o.w, o.x + o.w / 2); hTargets.push(o.y, o.y + o.h, o.y + o.h / 2); }
+  (state.deck.guides?.v || []).forEach(x => vTargets.push(x));   // snap to placed guides
+  (state.deck.guides?.h || []).forEach(y => hTargets.push(y));
 
   clearGuides();
   // Snap each axis to the single closest target (across box edges/centre and
