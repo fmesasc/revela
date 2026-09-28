@@ -150,12 +150,12 @@ the origin of every requirement is traceable.
 - ⬜ Open Document (`.odp`) support `OO`
 
 ## 9. Accessibility & internationalisation
-- ✅ Alt text for objects `PP·GS·OO`
+- ✅ Alt text for every non-text object, "mark as decorative" (exported as ARIA) `PP·GS·OO`
 - ✅ UI localisation — 9 languages (ES/EN/FR/DE/IT/PT/CA/GL/NL): ribbon, menus, modals, dialogs & status bar `PP·GS·OO`
 - ✅ Content text direction (RTL) `PP·OO`
 - ✅ Accessibility checker — missing alt text, empty/untitled slides, duplicate titles, tables without header, low text contrast (WCAG) `PP·GS·OO`
-- ⬜ Reading / tab order `PP·OO`
-- ⬜ Screen reader support (ARIA on the canvas) `PP·GS·OO`
+- ✅ Reading order pane; Tab / Shift+Tab walks the objects of the slide `PP·OO`
+- ✅ Screen reader support in the editor — named slide and objects, live announcement of the selection `PP·GS·OO`
 - ⬜ Right-to-left **interface** `PP·OO`
 - ⬜ Built-in content translation `GS·OO`
 - ⬜ More UI languages `PP·GS·OO`

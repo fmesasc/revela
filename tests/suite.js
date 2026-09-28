@@ -858,6 +858,32 @@ export async function run(frame) {
     R.state.ui.showGuides = false; R.render();
   });
 
+  await test('accesibilidad del editor: nombres, anuncio, Tab y orden de lectura', async () => {
+    reset(); const [a, b] = slide().blocks; const st = D.getElementById('stage');
+    eq(st.getAttribute('aria-label'), 'Diapositiva 1 / 1', 'la diapositiva tiene nombre');
+    assert(/^Texto: Título/.test(D.querySelector(`.block[data-id="${a.id}"]`).getAttribute('aria-label')), 'objeto con nombre accesible');
+    st.focus(); D.dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    eq(R.state.ui.selection, a.id, 'Tab selecciona el primer objeto');
+    D.dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    eq(R.state.ui.selection, b.id, 'Tab pasa al siguiente'); await sleep(10);
+    assert(/^Seleccionado: Texto: Subtítulo/.test(D.getElementById('sr-status').textContent), 'anuncio para lectores de pantalla');
+    D.querySelector('[data-action="reading-order"]').click(); await sleep(10);
+    eq(D.querySelectorAll('#ro-modal .ro-item').length, 2, 'lista del orden de lectura');
+    D.querySelectorAll('#ro-modal .ro-item')[1].querySelector('[data-d="-1"]').click(); await sleep(10);
+    eq(slide().blocks[0].id, b.id, 'subir cambia el orden');
+    D.querySelector('#ro-modal .modal-close').click();
+  });
+
+  await test('texto alternativo y decorativo en el export', async () => {
+    reset(); R.blocks.addChart(); const c = last(); select(c); R.blocks.setAlt('Ventas por trimestre');
+    R.blocks.addShape('star'); const sh = last(); select(sh); R.blocks.setAlt('', true);
+    const html = R.io.buildHTML();
+    assert(/role="img" aria-label="Ventas por trimestre"/.test(html), 'gráfico con nombre');
+    assert(/aria-hidden="true"/.test(html), 'forma decorativa oculta a lectores');
+    assert(!R.a11y.checkAccessibility().some(x => x.kind === 'alt'), 'sin avisos de texto alternativo');
+    R.blocks.addIcon('star'); assert(R.a11y.checkAccessibility().some(x => x.kind === 'alt'), 'icono sin alt → aviso');
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

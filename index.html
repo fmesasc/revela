@@ -458,6 +458,7 @@
         <div class="group">
           <div class="row">
             <button data-action="a11y-check" class="lg"><i class="ms">accessibility_new</i><span>Comprobar<br>accesibilidad</span></button>
+            <button data-action="reading-order" class="lg"><i class="ms">format_list_numbered</i><span>Orden de<br>lectura</span></button>
           </div><label>Revisar</label>
         </div>
       </section>
@@ -472,7 +473,8 @@
           <div id="ruler-corner"></div>
           <div id="ruler-h"></div>
           <div id="ruler-v"></div>
-          <div id="stage"></div>
+          <div id="stage" tabindex="0" role="region" aria-roledescription="diapositiva"></div>
+          <div id="sr-status" class="sr-only" aria-live="polite"></div>
         </div>
       </div>
     </section>

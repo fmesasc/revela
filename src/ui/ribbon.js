@@ -12,7 +12,7 @@ import { importPPTX } from '../io/pptx.js';
 import * as gdrive from '../io/gdrive.js';
 import { exportPPTX } from '../io/pptx-export.js';
 import { pickReuseFile } from './reuse.js';
-import { openA11yCheck } from './a11y-panel.js';
+import { openA11yCheck, openReadingOrder } from './a11y-panel.js';
 import { openHandoutDialog, openImageDialog } from './print-dialog.js';
 import * as palettes from '../features/palettes.js';
 import { setDrawTool, drawOpts } from './draw.js';
@@ -59,6 +59,7 @@ const ACTIONS = {
     catch (e) { alertDialog('No se pudo importar el PowerPoint: ' + e.message); } }, 'file'),
   'reuse-slides': () => pickReuseFile(),
   'a11y-check': () => openA11yCheck(),
+  'reading-order': () => openReadingOrder(),
   'export-handout': () => openHandoutDialog(),
   'undo': undo, 'redo': redo,
   'slide-add': slides.addSlide, 'slide-duplicate': slides.duplicateSlide,

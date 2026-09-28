@@ -64,9 +64,18 @@ export function addEmbed(url) {
     rotation: 0, animation: null, src: url });
 }
 
-export function setAlt(text) {
+export function setAlt(text, decorative = false) {
   const b = selectedBlock(); if (!b) return;
-  commit(() => { b.alt = text; });
+  commit(() => { b.alt = decorative ? '' : text; if (decorative) b.decorative = true; else delete b.decorative; });
+}
+// Reading order (= stacking order, as in PowerPoint's Selection pane): move one
+// object earlier (-1) or later (+1) in the slide.
+export function moveInOrder(id, dir) {
+  commit(() => {
+    const arr = currentSlide().blocks, i = arr.findIndex(b => b.id === id), j = i + dir;
+    if (i < 0 || j < 0 || j >= arr.length) return;
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  });
 }
 
 // Fill / border for a text box (also used by diagrams).

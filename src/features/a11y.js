@@ -43,6 +43,19 @@ function textColours(html, themeFg) {
   return cols;
 }
 
+// Objects that need a text alternative (unless marked decorative).
+const NEEDS_ALT = { image: 'Imagen sin texto alternativo', chart: 'Gráfico sin texto alternativo',
+  model: 'Modelo 3D sin texto alternativo', video: 'Vídeo sin texto alternativo', icon: 'Icono sin texto alternativo' };
+
+// Accessible name of an object: its alt text, else its text, else its kind.
+const KIND = { text: 'Texto', image: 'Imagen', shape: 'Forma', chart: 'Gráfico', table: 'Tabla', icon: 'Icono', math: 'Ecuación',
+  model: '3D', video: 'Vídeo', audio: 'Audio', embed: 'Web', code: 'Código', figindex: 'Índice de figuras', slideref: 'Diapositiva',
+  connector: 'Conector', ink: 'Tinta' };
+export function blockLabel(b, tr = x => x) {
+  const txt = (b.alt || '').trim() || (b.type === 'text' ? plain(b.html).slice(0, 60) : '') || (b.type === 'code' ? (b.code || '').slice(0, 40) : '');
+  return tr(KIND[b.type] || b.type) + (txt ? ': ' + txt : '');
+}
+
 // Title of a slide = its first text box (reading order = block order).
 export const slideTitle = s => plain((s.blocks || []).find(b => b.type === 'text' && plain(b.html))?.html);
 
@@ -62,7 +75,7 @@ export function checkAccessibility(deck = state.deck) {
     }
     const bg = rgb(s.background) ? s.background : null;       // gradients/images: can't judge
     for (const b of bs) {
-      if (b.type === 'image' && !(b.alt || '').trim()) add('alt', i, 'Imagen sin texto alternativo', b.id);
+      if (NEEDS_ALT[b.type] && !b.decorative && !(b.alt || '').trim()) add('alt', i, NEEDS_ALT[b.type], b.id);
       if (b.type === 'table' && !b.header) add('tablehead', i, 'Tabla sin fila de encabezado', b.id);
       if (b.type === 'text' && bg && plain(b.html) && !b.wordart) {
         const back = b.bg && rgb(b.bg) ? b.bg : bg;

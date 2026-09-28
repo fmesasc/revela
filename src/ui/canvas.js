@@ -10,6 +10,7 @@ import { blockPreview } from './preview.js';
 import { t } from '../i18n.js';
 import { deckFg, deckBodyFont } from '../features/palettes.js';
 import { animTimeline, EFFECT_KF } from '../features/transitions.js';
+import { blockLabel } from '../features/a11y.js';
 
 function renderSlideRef(wrap, b) {
   wrap.innerHTML = '';
@@ -155,6 +156,22 @@ export function renderCanvas() {
   drawLogo();
   drawCaptions();
   drawMotionPath();
+  // Screen readers: name the slide and announce the selected object.
+  stage.setAttribute('aria-label', `${t('Diapositiva')} ${state.ui.slideIndex + 1} / ${state.deck.slides.length}`);
+  const sel = selectedBlock(), sr = document.getElementById('sr-status');
+  const msg = sel ? `${t('Seleccionado')}: ${blockLabel(sel, t)}` : '';
+  if (sr && sr.textContent !== msg) sr.textContent = msg;
+}
+
+// Tab / Shift+Tab on the slide walk through its objects in reading order.
+export function cycleSelection(dir) {
+  const bs = currentSlide().blocks.filter(b => b.type !== 'connector');
+  if (!bs.length) return false;
+  const i = bs.findIndex(b => b.id === state.ui.selection);
+  const j = i < 0 ? (dir > 0 ? 0 : bs.length - 1) : i + dir;
+  if (j < 0 || j >= bs.length) { commit(() => setSelection(null), { history: false }); return false; }
+  commit(() => setSelection(bs[j].id), { history: false });
+  return true;
 }
 
 // Dashed guide from the selected object to where its motion path ends.
@@ -208,6 +225,7 @@ function reconcile(b) {
   el.style.transform = transformOf(b);
   el.style.opacity = (b.opacity != null && b.opacity < 100) ? b.opacity / 100 : '';
   el.classList.toggle('selected', isSelected(b.id));
+  el.setAttribute('aria-label', blockLabel(b, t));
   el.classList.toggle('animated', !!b.animation);
   el.classList.toggle('locked', !!b.locked);
   if (b.type === 'text') {
@@ -290,6 +308,7 @@ function blockEl(b) {
   el.className = 'block' + (isSelected(b.id) ? ' selected' : '')
     + (b.animation ? ' animated' : '') + (b.locked ? ' locked' : '') + (b.type === 'connector' ? ' __conn' : '');
   el.dataset.id = b.id;
+  el.setAttribute('role', 'group'); el.setAttribute('aria-label', blockLabel(b, t));
   el.style.cssText = `left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px`;
   el.style.transform = transformOf(b);
   if (b.opacity != null && b.opacity < 100) el.style.opacity = b.opacity / 100;

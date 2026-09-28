@@ -1,12 +1,12 @@
 // Application bootstrap: wire the modules together and subscribe the render.
 
 import { subscribe, state, undo, redo, selectedBlock } from './core/store.js';
-import { initCanvas, renderCanvas, nudge } from './ui/canvas.js';
+import { initCanvas, renderCanvas, nudge, cycleSelection } from './ui/canvas.js';
 import { initPanel, renderPanel } from './ui/panel.js';
 import { initRibbon, renderRibbon } from './ui/ribbon.js';
 import { initContextMenu } from './ui/contextmenu.js';
 import { initDraw } from './ui/draw.js';
-import { initI18n } from './i18n.js';
+import { initI18n, t } from './i18n.js';
 import { deleteSelected, duplicateSelected, groupSelected, ungroupSelected } from './features/blocks.js';
 import { openFindPanel } from './features/search.js';
 // Namespaces exposed to the test harness (see tests/).
@@ -34,7 +34,7 @@ function render() {
   renderCanvas();
   renderPanel();
   const s = document.getElementById('status-slide');
-  if (s) s.textContent = `Diapositiva ${state.ui.slideIndex + 1} de ${state.deck.slides.length}`;
+  if (s) s.textContent = `${t('Diapositiva')} ${state.ui.slideIndex + 1} ${t('de')} ${state.deck.slides.length}`;
 }
 
 function keyboard(e) {
@@ -50,6 +50,12 @@ function keyboard(e) {
     return;
   }
   if (editing) return;
+  // Tab on the slide moves the selection through the objects (reading order);
+  // past the last one, focus leaves the slide as usual.
+  if (e.key === 'Tab' && document.activeElement?.id === 'stage' && !e.ctrlKey && !e.altKey) {
+    if (cycleSelection(e.shiftKey ? -1 : 1)) e.preventDefault();
+    return;
+  }
   const meta = e.ctrlKey || e.metaKey;
   if (meta && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
   if (meta && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }

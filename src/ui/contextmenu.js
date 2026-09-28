@@ -166,6 +166,10 @@ function forBlock(b, cell = null) {
     }
   }
 
+  // Alt text for every non-text object (images already have it above).
+  if (['shape', 'chart', 'icon', 'model', 'video', 'audio', 'embed', 'math', 'ink'].includes(b.type))
+    items.push(null, ['Texto alternativo…', () => openAlt(b)]);
+
   // Caption (figures, tables and other objects — not plain text/connectors).
   if (!['text', 'connector', 'figindex', 'slideref'].includes(b.type)) {
     items.push(null, [b.caption ? 'Editar descripción…' : 'Añadir descripción…', () => openCaption(b)]);
@@ -533,13 +537,14 @@ export function openAlt(b) {
     <button class="modal-close">✕</button><h3>${t('Texto alternativo')}</h3>
     <label class="fr-l">${t('Descripción para accesibilidad')}
       <input class="alt-in" type="text" value="${(b.alt || '').replace(/"/g, '&quot;')}"></label>
+    <label class="fr-chk"><input type="checkbox" class="alt-deco"${b.decorative ? ' checked' : ''}> ${t('Marcar como decorativo')}</label>
     <div class="fr-actions"><button class="fr-do">${t('Guardar')}</button></div>
   </div>`;
   document.body.appendChild(back);
   const close = () => back.remove();
   back.querySelector('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
-  back.querySelector('.fr-do').addEventListener('click', () => { blocks.setAlt(back.querySelector('.alt-in').value); close(); });
+  back.querySelector('.fr-do').addEventListener('click', () => { blocks.setAlt(back.querySelector('.alt-in').value, back.querySelector('.alt-deco').checked); close(); });
   back.querySelector('.alt-in').focus();
 }
 

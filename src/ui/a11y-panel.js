@@ -1,7 +1,8 @@
 // Accessibility checker dialog: lists the issues found and jumps to each one.
 
-import { state, commit, setSelection } from '../core/store.js';
-import { checkAccessibility } from '../features/a11y.js';
+import { state, commit, setSelection, currentSlide } from '../core/store.js';
+import { checkAccessibility, blockLabel } from '../features/a11y.js';
+import { moveInOrder } from '../features/blocks.js';
 import { openAlt } from './contextmenu.js';
 import { t } from '../i18n.js';
 
@@ -32,6 +33,37 @@ export function openA11yCheck() {
       });
       list.appendChild(row);
     }
+  };
+  document.body.appendChild(back);
+  const close = () => back.remove();
+  back.querySelector('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  fill();
+}
+
+// Reading order of the current slide (PowerPoint "Reading Order" / Selection
+// pane): the order screen readers follow, which is also the stacking order.
+export function openReadingOrder() {
+  document.getElementById('ro-modal')?.remove();
+  const back = document.createElement('div');
+  back.id = 'ro-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:left;min-width:320px;max-width:520px">
+    <button class="modal-close">✕</button><h3>${t('Orden de lectura')}</h3>
+    <p class="host-help">${t('Los lectores de pantalla leen los objetos de arriba abajo. El primero queda al fondo.')}</p>
+    <ol class="ro-list"></ol></div>`;
+  const list = back.querySelector('.ro-list');
+  const fill = () => {
+    const bs = currentSlide().blocks;
+    list.innerHTML = '';
+    bs.forEach((b, i) => {
+      const li = document.createElement('li'); li.className = 'ro-item' + (state.ui.selection === b.id ? ' on' : '');
+      li.innerHTML = `<button type="button" class="ro-name"></button><button type="button" data-d="-1" title="${t('Subir')}"${i ? '' : ' disabled'}>↑</button>`
+        + `<button type="button" data-d="1" title="${t('Bajar')}"${i < bs.length - 1 ? '' : ' disabled'}>↓</button>`;
+      li.querySelector('.ro-name').textContent = blockLabel(b, t) + (b.decorative ? ` (${t('decorativo')})` : '');
+      li.querySelector('.ro-name').addEventListener('click', () => { commit(() => setSelection(b.id), { history: false }); fill(); });
+      li.querySelectorAll('[data-d]').forEach(x => x.addEventListener('click', () => { moveInOrder(b.id, +x.dataset.d); fill(); }));
+      list.appendChild(li);
+    });
   };
   document.body.appendChild(back);
   const close = () => back.remove();

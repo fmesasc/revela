@@ -66,10 +66,22 @@ const TRIGGER_JS = `(function(){
   el.style.animation='';el.classList.remove('on');});});
 })();`;
 
+// Accessibility of each object in the presentation: its alt text as the
+// accessible name, or hidden from screen readers when marked decorative.
+function ariaAttrs(b) {
+  if (b.decorative) return ' aria-hidden="true"';
+  const alt = (b.alt || '').trim(); if (!alt) return '';
+  if (b.type === 'model') return ` alt="${esc(alt)}"`;
+  if (b.type === 'embed') return ` title="${esc(alt)}"`;
+  if (b.type === 'video' || b.type === 'audio') return ` aria-label="${esc(alt)}"`;
+  if (['shape', 'chart', 'icon', 'ink', 'math'].includes(b.type)) return ` role="img" aria-label="${esc(alt)}"`;
+  return '';
+}
+
 function blockHTML(b, slide) {
   // When the slide uses Auto‑Animate, a stable data-id lets reveal.js match and
   // morph the same object between consecutive slides (PowerPoint's "Morph").
-  const a = animAttrs(b, slide) + (slide && slide.autoAnimate ? ` data-id="${b.id}"` : '');
+  const a = animAttrs(b, slide) + (slide && slide.autoAnimate ? ` data-id="${b.id}"` : '') + ariaAttrs(b);
   if (b.type === 'connector') {
     const { w, h } = state.deck.size;
     const from = slide && slide.blocks.find(x => x.id === b.from);
@@ -97,7 +109,7 @@ function blockHTML(b, slide) {
     return `<model-viewer${a} src="${b.src}" camera-controls ${b.autoRotate !== false ? 'auto-rotate' : ''} `
       + `shadow-intensity="1" style="${box(b)}background:transparent"></model-viewer>`;
   if (b.type === 'image')
-    return `<img${a} src="${b.src}" alt="${esc(b.alt || '')}" style="${box(b)}object-fit:${b.fit || 'contain'};`
+    return `<img${a} src="${b.src}" alt="${b.decorative ? '' : esc(b.alt || '')}" style="${box(b)}object-fit:${b.fit || 'contain'};`
       + `filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)}">`;
   if (b.type === 'video')
     return `<video${a} src="${b.src}" controls style="${box(b)}object-fit:contain"></video>`;
