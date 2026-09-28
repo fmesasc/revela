@@ -40,6 +40,9 @@ import * as images from '../../io/export/images.js';
 import * as objects from '../../io/export/objects.js';
 import * as picture from '../../ui/dialogs/picture.js';
 import * as presenting from '../../ui/shell/present.js';
+import { publish as publishShare } from '../../io/share/publish.js';
+import * as shares from '../../io/share/shares.js';
+import * as shareServer from '../../io/cloud/shareserver.js';
 import * as a11y from '../../features/document/a11y.js';
 import * as reuse from '../../ui/dialogs/reuse.js';
 import * as ribbon from '../../ui/ribbon/ribbon.js';
@@ -65,7 +68,7 @@ import * as api from '../../api/index.js';
 // io and features ask the user through core/notify: here, with our dialogs.
 notify.setNotifier({ alert: alertDialog, confirm: confirmDialog, prompt: promptDialog });
 // Output of the document (HTML, print, images) and presenting, together for the tests.
-const io = { ...html, ...printing, ...images, ...presenting };
+const io = { ...html, ...printing, ...images, ...presenting, publishShare };
 
 function render() {
   renderRibbon();
@@ -158,7 +161,7 @@ initI18n();
 // and inspect the real app. Only active with ?test in the URL.
 const testing = new URLSearchParams(location.search).has('test');
 if (testing)
-  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, designer, pptxImport, odp, api, ai, versions, comments, protect, aiDeck, poll, dashboards, stock, clipboard: clip, markdown, notify, vendor, session, objects, picture, video: () => import('../../io/export/video.js') };
+  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, designer, pptxImport, odp, api, ai, versions, comments, protect, aiDeck, poll, dashboards, stock, clipboard: clip, markdown, notify, vendor, session, objects, picture, shares, shareServer, video: () => import('../../io/export/video.js') };
 
 // Public scripting API for plugins, macros and the console; installed plugins
 // load after the editor is ready (not in the test harness).

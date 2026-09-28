@@ -104,6 +104,27 @@ export async function driveSaveHtml() {
   return true;
 }
 
+// Share a sealed presentation (io/share/seal.js): a new file in your Drive that
+// anyone with the link may read. Its content is encrypted and the key is not in
+// Drive, so the file alone shows nothing. The viewer page downloads it with the
+// API key (public by design; restrict it to this site in Google Cloud).
+export async function driveShareSealed(env, name) {
+  if (!gdriveReady()) { openGdriveSetup(); throw new Error(t('Configura primero Google Drive.')); }
+  const token = await ensureToken(true);
+  const id = await uploadNew(name, 'application/json', JSON.stringify(env), token);
+  const r = await fetch(`https://www.googleapis.com/drive/v3/files/${id}/permissions`, { method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'reader', type: 'anyone' }) });
+  if (!r.ok) throw new Error(t('No se pudo compartir el archivo de Drive.'));
+  return { id, apiKey: gdriveConfig().apiKey };
+}
+export const driveSealedURL = (id, apiKey) => `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media&key=${encodeURIComponent(apiKey)}`;
+// Stop sharing: the file is deleted from your Drive.
+export async function driveUnshare(id) {
+  const token = await ensureToken(true);
+  const r = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } });
+  if (!r.ok && r.status !== 404) throw new Error(t('No se pudo borrar el archivo de Drive.'));
+}
+
 // One‑time setup: the user pastes their own Client ID and API key.
 export function openGdriveSetup() {
   if (document.getElementById('gd-modal')) return;

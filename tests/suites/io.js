@@ -426,4 +426,104 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(W.getComputedStyle(td).paddingTop, '13px', 'el editor respeta el margen de celda');
     eq(td.style.background ? 'sí' : 'no', 'sí', 'el editor pinta el color de celda');
   });
+
+  // ---- Sharing: sealed (encrypted) presentations -----------------------------
+  const W_share = () => frame.contentWindow;
+  const loadPage = async (url, until, ms = 20000) => {
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:960px;height:540px;visibility:hidden'; D.body.appendChild(f);
+    f.src = url; const t0 = Date.now(); let ok = false;
+    while (Date.now() - t0 < ms) { await sleep(100); try { if (until(f)) { ok = true; break; } } catch {} }
+    return { f, ok };
+  };
+
+  await test('compartir: el sellado cifra de verdad (clave o contraseña) y solo se abre con ella', async () => {
+    const S = await import(new URL('../src/io/share/seal.js', D.baseURI));
+    const html = '<!doctype html><title>x</title><p>Secret text ÀÉ</p>';
+    const k = await S.seal(html);
+    eq(k.env.mode, 'key'); assert(k.key && k.key.length >= 43, 'clave aleatoria de 256 bits');
+    assert(!JSON.stringify(k.env).includes('Secret'), 'la copia sellada no contiene el texto');
+    eq(await S.unseal(k.env, k.key), html, 'se abre con la clave');
+    let bad = false; await S.unseal(k.env, (await S.seal(html)).key).catch(() => { bad = true; }); assert(bad, 'otra clave no la abre');
+    const p = await S.seal(html, { password: 'una frase larga' });
+    eq(p.env.mode, 'password'); eq(p.env.rounds, 600000, 'PBKDF2 600 000 rondas'); eq(p.key, null, 'sin clave en el enlace');
+    eq(await S.unseal(p.env, 'una frase larga'), html, 'se abre con la contraseña');
+    bad = false; await S.unseal(p.env, 'otra').catch(() => { bad = true; }); assert(bad, 'contraseña incorrecta');
+    assert(S.shareId().length === 22 && S.shareId() !== S.shareId(), 'identificadores aleatorios de 128 bits');
+  });
+
+  await test('compartir: archivo HTML con contraseña o enlace secreto, que se abre en un iframe', async () => {
+    reset(); slide().blocks[0].html = '<b>Hola compartida</b>';
+    const saved = []; const W = W_share(), urls = W.URL.createObjectURL;
+    const click = W.HTMLAnchorElement.prototype.click;
+    W.HTMLAnchorElement.prototype.click = function () { saved.push({ name: this.download, href: this.href }); };
+    W.URL.revokeObjectURL = () => {};
+    let r1, r2;
+    try {
+      r1 = await R.io.publishShare({ where: 'file', password: 'frase de prueba larga' });
+      r2 = await R.io.publishShare({ where: 'file' });
+    } finally { W.HTMLAnchorElement.prototype.click = click; }
+    void urls;
+    assert(/-protegida\.html$/.test(r1.file) && !r1.key, 'archivo con contraseña, sin clave en el enlace');
+    const page = await (await W.fetch(saved[0].href)).text();
+    assert(/name="robots" content="noindex/.test(page), 'noindex');
+    assert(!/Hola compartida/.test(page), 'el archivo no contiene el texto sin cifrar');
+    // Password: wrong, then right → the presentation.
+    const a = await loadPage(saved[0].href, f => f.contentDocument.getElementById('pw'));
+    try {
+      assert(a.ok, 'pide la contraseña');
+      const d = a.f.contentDocument; d.getElementById('pw').value = 'mal'; d.getElementById('f').requestSubmit();
+      let err = ''; for (let i = 0; i < 80 && !err; i++) { await sleep(100); err = d.getElementById('e')?.textContent; }
+      eq(err, 'Contraseña incorrecta.', 'contraseña incorrecta');
+      d.getElementById('pw').value = 'frase de prueba larga'; d.getElementById('f').requestSubmit();
+      let ok = false; for (let i = 0; i < 150 && !ok; i++) { await sleep(100); ok = /Hola compartida/.test(a.f.contentDocument.querySelector('.reveal .slides')?.textContent || ''); }
+      assert(ok, 'con la contraseña se ve la presentación');
+    } finally { a.f.remove(); }
+    // Secret link: the key after # opens it straight away; without it, a message.
+    assert(/^#k=[\w-]{43}$/.test(r2.suffix), 'clave para añadir a la dirección');
+    const b = await loadPage(saved[1].href + r2.suffix, f => /Hola compartida/.test(f.contentDocument.querySelector('.reveal .slides')?.textContent || ''));
+    b.f.remove(); assert(b.ok, 'con #k= se abre sola');
+    const c = await loadPage(saved[1].href, f => /Falta la clave/.test(f.contentDocument.getElementById('m')?.textContent || ''), 8000);
+    c.f.remove(); assert(c.ok, 'sin la clave no se abre y lo explica');
+  });
+
+  await test('compartir: servidor propio y visor (view.html) con enlace secreto', async () => {
+    reset(); slide().blocks[0].html = '<b>Por servidor</b>';
+    const W = W_share(), real = W.fetch, calls = [], store = {};
+    W.fetch = async (url, o = {}) => {
+      url = String(url);
+      if (url.startsWith('https://srv.test/s')) {
+        calls.push({ url, method: o.method || 'GET', headers: o.headers || {}, body: o.body });
+        if (o.method === 'POST') { store.body = o.body; return new W.Response(JSON.stringify({ id: 'AbCdEfGhIjKlMnOpQrStUv', token: 'tok' })); }
+        if (o.method === 'DELETE') return new W.Response('{"ok":true}');
+      }
+      return real(url, o);
+    };
+    let r;
+    try {
+      R.shareServer.setServerConfig({ url: 'https://srv.test/', uploadKey: 'secreta' });
+      r = await R.io.publishShare({ where: 'server', days: 7 });
+    } finally { W.fetch = real; }
+    const post = calls.find(c => c.method === 'POST');
+    assert(post && post.url === 'https://srv.test/s?days=7' && post.headers['X-Upload-Key'] === 'secreta', 'sube con la clave de subida y caducidad');
+    assert(!/Por servidor/.test(store.body) && JSON.parse(store.body).revelaSealed === 1, 'al servidor solo llega la copia cifrada');
+    const u = new URL(r.link);
+    assert(/view\.html$/.test(u.pathname) && u.searchParams.get('u') === 'https://srv.test/s/AbCdEfGhIjKlMnOpQrStUv' && /^#k=[\w-]{43}$/.test(u.hash), 'enlace: visor + copia + clave tras #');
+    assert(/<iframe src="[^"]*view\.html\?u=/.test(r.iframe) && /allowfullscreen/.test(r.iframe), 'código iframe');
+    const listed = R.shares.sharesList()[0]; eq(listed.id, 'AbCdEfGhIjKlMnOpQrStUv', 'se recuerda para dejar de compartirla');
+    // The viewer opens a sealed copy (a same-site blob here instead of the server).
+    const blob = W.URL.createObjectURL(new W.Blob([store.body], { type: 'application/json' }));
+    const v = await loadPage(`${new URL('view.html', D.baseURI)}?u=${encodeURIComponent(blob)}${u.hash}`, f => /Por servidor/.test(f.contentDocument.querySelector('.reveal .slides')?.textContent || ''));
+    v.f.remove(); assert(v.ok, 'el visor abre la presentación con la clave del enlace');
+    // Stop sharing.
+    W.fetch = async (url, o = {}) => { calls.push({ url: String(url), method: o.method, headers: o.headers || {} }); return new W.Response('{"ok":true}'); };
+    try { await R.shareServer.serverUnshare(listed.url, listed.token); } finally { W.fetch = real; }
+    const del = calls.at(-1); assert(del.method === 'DELETE' && del.headers.Authorization === 'Bearer tok', 'dejar de compartir con su token');
+    R.shares.removeShare(listed.id); R.shareServer.setServerConfig({});
+    // The dialog.
+    R.ribbon && D.querySelector('[data-action="share"]').click(); await sleep(20);
+    const m = D.getElementById('share-modal'); assert(m, 'botón Compartir abre el diálogo');
+    m.querySelector('input[value="password"]').click(); assert(!m.querySelector('.sh-pw').hidden, 'pide contraseña al elegirla');
+    m.querySelector('input[value="server"]').click(); assert(!m.querySelector('.sh-srv').hidden, 'datos del servidor al elegirlo');
+    m.querySelector('.modal-close').click();
+  });
 }

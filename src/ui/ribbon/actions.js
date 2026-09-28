@@ -20,6 +20,7 @@ import { pickReuseFile } from '../dialogs/reuse.js';
 import { openA11yCheck, openReadingOrder } from '../panels/a11y.js';
 import { openHandoutDialog, openImageDialog, openVideoDialog } from '../dialogs/print.js';
 import { openSaveAsPicture } from '../dialogs/picture.js';
+import { openShare } from '../dialogs/share.js';
 import * as recorder from '../shell/recorder.js';
 import * as master from '../../features/document/master.js';
 import * as clip from '../../features/document/clipboard.js';
@@ -97,6 +98,7 @@ export const ACTIONS = {
   'export-pptx': () => exportPPTX(),
   'export-pdf': exportPDF,
   'export-png': () => openImageDialog(),
+  'share': () => openShare(),
   'save-picture': () => (selectedBlocks().length ? openSaveAsPicture() : alertDialog(t('Selecciona primero uno o varios objetos.'))),
   'export-video': () => openVideoDialog(),
   'present': () => present(),

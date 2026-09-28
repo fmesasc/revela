@@ -1,0 +1,12 @@
+name = "revela-share"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+
+[[r2_buckets]]
+binding = "SHARES"
+bucket_name = "revela-shares"
+
+[vars]
+# Only who knows this key (set it in Revela ▸ Compartir ▸ Servidor) can upload.
+# Better as a secret: `npx wrangler secret put UPLOAD_KEY` and remove it here.
+MAX_MB = "30"

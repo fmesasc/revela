@@ -8,4 +8,6 @@
 cd "$(dirname "$0")/.."
 # Layer rules first: quick, and no browser needed.
 python3 tests/layers.py || exit 1
+# The share server (server/cloudflare), when Node.js is installed.
+if command -v node >/dev/null; then node tests/server.mjs || exit 1; fi
 exec python3 tests/run.py "$@"

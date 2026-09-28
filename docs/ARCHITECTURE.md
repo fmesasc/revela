@@ -16,6 +16,7 @@ and links already printed point to them.
 | `index.html`  | `src/apps/editor/main.js`   | The editor (installable PWA, works offline)  |
 | `remote.html` | `src/apps/remote/main.js`   | Phone remote: notes, next/previous, pointer  |
 | `vote.html`   | `src/apps/vote/main.js`     | Audience page for live polls and Q&A         |
+| `view.html`   | `src/apps/view/main.js`     | Viewer of shared (sealed) presentations      |
 
 The exported presentation is a fourth, standalone "application": a single HTML
 file with reveal.js plus the scripts in `src/io/runtime/`.
@@ -84,7 +85,8 @@ src/
                                pptx-export, odp, markdown
     export/                    print (PDF, handouts), images (PNG/JPG/zip), video (MP4/GIF)
     runtime/                   scripts and ink: code embedded in the exported presentation
-    cloud/gdrive.js            Google Drive
+    share/                     seal (encrypt), publish (file, Drive, server), shares list
+    cloud/                     gdrive.js (Google Drive), shareserver.js (own share server)
     files.js                   download(), file names
   ui/
     shell/                     navigator, context menu, present, draw, preview,
@@ -101,6 +103,8 @@ tests/
   run.sh  run.py               headless Chrome runner (+ touch and two-device checks)
   layers.py                    architecture check
   suite.js  suites/*.js        the browser test suite, one file per area
+server/
+  cloudflare/                  optional share server (Worker + R2), tested by tests/server.mjs
 tools/
   move.py  extract.py          move files / declarations and rewrite imports
 ```
@@ -162,6 +166,18 @@ over WebRTC (PeerJS; its public broker only introduces the peers). The
 presenter hosts a peer `revela-CODE` (remote) or `revela-vote-CODE` (polls);
 the phone pages connect to it. Nothing is stored on a server: votes are kept in
 the presenter's browser.
+
+## Sharing privately
+
+A shared presentation is **sealed** in the browser before it leaves it
+(`io/share/seal.js`): gzip, then AES-GCM-256 with either a random key that
+travels in the link after `#` (never sent to any server) or a key derived from
+a password (PBKDF2-SHA-256, 600 000 rounds). The sealed copy can then be a
+single self-opening HTML file, a file in the user's Google Drive readable by
+link, or an object on the optional share server; none of them can read it.
+`view.html` fetches a sealed copy and opens it; `io/runtime/unseal.js` is the
+only decryption code, embedded as source in the self-opening file. Pages and
+the server say `noindex`, identifiers are 128-bit random values.
 
 ## Adding a feature
 
