@@ -497,6 +497,14 @@ export async function run(frame) {
     eq(R.remote.presentationState().total, 1, 'solo cuenta visibles');
   });
 
+  await test('activar/desactivar el ajuste (snap)', async () => {
+    reset(); assert(R.state.ui.snap !== false, 'activo por defecto');
+    D.querySelector('[data-action="toggle-snap"]').click();
+    assert(R.state.ui.snap === false, 'desactivado');
+    D.querySelector('[data-action="toggle-snap"]').click();
+    assert(R.state.ui.snap === true, 'reactivado');
+  });
+
   await test('guías colocables: se dibujan sobre la diapositiva', async () => {
     reset(); R.state.deck.guides = { v: [640], h: [360] }; R.render(); await sleep(20);
     eq(D.querySelectorAll('.pguide').length, 2, 'dos guías dibujadas');

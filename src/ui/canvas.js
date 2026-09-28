@@ -490,6 +490,8 @@ function startResize(ev, b, el, corner) {
 
 // ---- Alignment guides + snapping -----------------------------------------
 function applySnap(b, x, y) {
+  clearGuides();
+  if (state.ui.snap === false) return { x: Math.round(x), y: Math.round(y) };  // snapping off
   const { w, h } = state.deck.size;
   const others = currentSlide().blocks.filter(o => o.id !== b.id);
   const vTargets = [w / 2, 0, w];                    // slide centre + edges (x)

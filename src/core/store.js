@@ -13,7 +13,7 @@ export const state = {
   deck: loadDeck() || emptyDeck(),
   // `selection` is the primary (last‑clicked) block; `multi` is the full set of
   // selected block ids (includes the primary). Single selection keeps both in sync.
-  ui: { slideIndex: 0, selection: null, multi: [], showGuides: false, activeTab: 'home', zoom: 1 },
+  ui: { slideIndex: 0, selection: null, multi: [], showGuides: false, activeTab: 'home', zoom: 1, snap: true },
 };
 
 export function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }

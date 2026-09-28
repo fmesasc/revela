@@ -67,6 +67,7 @@ const ACTIONS = {
   'template-save': () => { const n = prompt('Nombre de la plantilla'); if (n) templates.saveCurrentAsTemplate(n); },
   'toggle-guides': () => commit(() => (state.ui.showGuides = !state.ui.showGuides), { history: false }),
   'toggle-ruler': () => commit(() => (state.ui.showRuler = !state.ui.showRuler), { history: false }),
+  'toggle-snap': () => commit(() => (state.ui.snap = state.ui.snap === false), { history: false }),
   'toggle-slidenum': () => commit(() => (state.deck.slideNumber.show = !state.deck.slideNumber.show)),
   'toggle-footer': () => commit(() => (state.deck.footer.show = !state.deck.footer.show)),
   'toggle-footerdate': () => commit(() => (state.deck.footer.date = !state.deck.footer.date)),
@@ -340,6 +341,7 @@ export function renderRibbon() {
   document.body.classList.toggle('show-ruler', !!state.ui.showRuler);
   document.querySelector('[data-action="toggle-guides"]')?.classList.toggle('on', !!state.ui.showGuides);
   document.querySelector('[data-action="toggle-ruler"]')?.classList.toggle('on', !!state.ui.showRuler);
+  document.querySelector('[data-action="toggle-snap"]')?.classList.toggle('on', state.ui.snap !== false);
   const sn = state.deck.slideNumber || {};
   document.querySelector('[data-action="toggle-slidenum"]')?.classList.toggle('on', !!sn.show);
   syncValue('[data-slidenum-pos]', sn.position || 'br');
