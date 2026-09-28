@@ -119,7 +119,7 @@ the origin of every requirement is traceable.
 - ✅ Presenter view (notes, next slide, timer) — reveal presenter view (S) + phone companion `PP·GS·OO`
 - ✅ Phone companion remote (pair by code, notes, navigate, laser, blackout, timer) `—`
 - ✅ Loop / kiosk / auto-play `PP·GS·OO`
-- 🚧 Laser pointer / pen / highlighter during show — laser from the phone; pen/highlighter planned `PP·GS·OO`
+- ✅ Laser pointer / pen / highlighter / eraser during the show (Ctrl+P, Ctrl+I, Ctrl+L, E; ink kept per slide) + laser from the phone `PP·GS·OO`
 - ⬜ Rehearse timings / speaker coach `PP`
 - ⬜ Record slideshow with narration and export to video `PP`
 - ⬜ Audience Q&A `GS`

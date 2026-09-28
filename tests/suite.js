@@ -794,6 +794,31 @@ export async function run(frame) {
     if ('EyeDropper' in frame.contentWindow) assert(D.querySelector('.eyedrop[data-eyedrop="[data-shape-fill]"]'), 'botón junto al selector');
   });
 
+  await test('presentación: lápiz, resaltador y borrar tinta', async () => {
+    reset(); R.blocks.addText();
+    const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:640px;height:360px;opacity:0';
+    f.srcdoc = R.io.buildHTML(); document.body.appendChild(f);
+    let w; for (let i = 0; i < 80 && !((w = f.contentWindow).__ink && w.Reveal?.isReady?.()); i++) await sleep(100);
+    try {
+      assert(w.__ink, 'tinta inicializada en la presentación');
+      const cd = f.contentDocument, cv = cd.getElementById('ink-canvas');
+      w.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'p', ctrlKey: true, bubbles: true }));
+      eq(w.__ink.tool, 'pen', 'Ctrl+P activa el lápiz');
+      assert(cv.classList.contains('on'), 'lienzo captura el puntero');
+      const P = (type, x, y) => cv.dispatchEvent(new w.PointerEvent(type, { clientX: x, clientY: y, pointerId: 1, bubbles: true }));
+      P('pointerdown', 100, 100); P('pointermove', 200, 150); P('pointerup', 200, 150);
+      eq(w.__ink.strokes().length, 1, 'un trazo'); eq(w.__ink.strokes()[0].p.length, 2, 'dos puntos');
+      w.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'i', ctrlKey: true, bubbles: true }));
+      P('pointerdown', 50, 50); P('pointerup', 50, 50);
+      assert(w.__ink.strokes()[1].hl, 'trazo de resaltador');
+      w.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'e', bubbles: true }));
+      eq(w.__ink.strokes().length, 0, 'E borra la tinta');
+      w.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      eq(w.__ink.tool, null, 'Esc vuelve al puntero');
+      assert(!w.Reveal.isOverview(), 'Esc no abre la vista general');
+    } finally { f.remove(); }
+  });
+
   await test('zoom: acercar y restablecer', async () => {
     reset(); D.querySelector('[data-action="zoom-reset"]').click();
     const z0 = R.state.ui.zoom;
