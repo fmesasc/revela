@@ -80,6 +80,7 @@ const ACTIONS = {
   'connect-mobile': () => remote.openHostPanel(),
   'shortcuts': () => openShortcuts(),
   'insert-hf': () => openHeaderFooter(),
+  'insert-date': () => blocks.addDate(),
   'find-replace': () => search.openFindPanel(),
   'copy-style': () => format.copyStyle(),
   'paste-style': () => format.pasteStyle(),

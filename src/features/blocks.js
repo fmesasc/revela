@@ -3,6 +3,7 @@
 import { state, commit, currentSlide, selectedBlock,
   selectedBlocks, selectedIds, setSelection, setMulti } from '../core/store.js';
 import { uid, textBlock, tableBlock, codeBlock, chartBlock, mathBlock } from '../core/model.js';
+import { currentLang } from '../i18n.js';
 
 function insert(block) {
   commit(() => { currentSlide().blocks.push(block); setSelection(block.id); });
@@ -33,6 +34,10 @@ export function duplicateSelected() {
 export function addText() { insert(textBlock({ html: 'Escribe aquí' })); }
 export function addWordArt(preset) {
   insert(textBlock({ html: 'Text Art', fontSize: 80, w: 620, h: 160, textAlign: 'center', wordart: preset }));
+}
+export function addDate() {
+  const d = new Date().toLocaleDateString(currentLang());
+  insert(textBlock({ html: d, fontSize: 28, w: 320, h: 60, x: 900, y: 650, textAlign: 'right' }));
 }
 
 export function addModel(src) {

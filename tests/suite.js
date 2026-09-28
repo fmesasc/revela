@@ -392,6 +392,12 @@ export async function run(frame) {
     eq(b.fontSize, 66, 'tamaño copiado'); eq(b.textAlign, 'center', 'alineación'); eq(b.bullet, 'square', 'viñeta');
   });
 
+  await test('insertar campo de fecha', async () => {
+    reset(); const n0 = slide().blocks.length; D.querySelector('[data-action="insert-date"]').click(); await sleep(10);
+    eq(slide().blocks.length, n0 + 1, 'se añadió un bloque de fecha');
+    assert(/\d/.test(slide().blocks.at(-1).html || ''), 'contiene la fecha');
+  });
+
   await test('Text Art (WordArt) aplica estilo en lienzo y export', async () => {
     reset(); R.blocks.addWordArt('gradient'); const b = last(); select(b); await sleep(20);
     eq(b.wordart, 'gradient', 'preset guardado');
@@ -584,6 +590,9 @@ export async function run(frame) {
     eq(tab.textContent.trim(), 'Accueil', 'Inicio → Accueil');
     R.i18n.setLang('nl');
     eq(D.querySelector('#ribbon .tabs button[data-tab="file"]').textContent.trim(), 'Bestand', 'Archivo → Bestand');
+    eq(R.i18n.t('Diagramas'), 'Diagrammen', 'NL cubre más etiquetas');
+    R.i18n.setLang('gl');
+    eq(R.i18n.t('Pie de página'), 'Pé de páxina', 'GL cubre más etiquetas');
     R.i18n.setLang('es');
     eq(tab.textContent.trim(), 'Inicio', 'vuelve a español');
   });
