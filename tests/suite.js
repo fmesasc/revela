@@ -527,6 +527,8 @@ export async function run(frame) {
     eq(R.i18n.t('Guardar'), 'Save', 't() traduce');
     R.i18n.setLang('fr');
     eq(tab.textContent.trim(), 'Accueil', 'Inicio → Accueil');
+    R.i18n.setLang('nl');
+    eq(D.querySelector('#ribbon .tabs button[data-tab="file"]').textContent.trim(), 'Bestand', 'Archivo → Bestand');
     R.i18n.setLang('es');
     eq(tab.textContent.trim(), 'Inicio', 'vuelve a español');
   });

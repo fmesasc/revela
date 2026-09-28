@@ -10,6 +10,8 @@ export const LANGS = [
   { code: 'it', name: 'Italiano' },
   { code: 'pt', name: 'Português' },
   { code: 'ca', name: 'Català' },
+  { code: 'gl', name: 'Galego' },
+  { code: 'nl', name: 'Nederlands' },
 ];
 const ORDER = ['en', 'fr', 'de', 'it', 'pt', 'ca'];
 
@@ -162,6 +164,32 @@ const ROWS = [
   ['Ocultar diapositiva', 'Hide slide', 'Masquer la diapositive', 'Folie ausblenden', 'Nascondi diapositiva', 'Ocultar slide', 'Amaga la diapositiva'],
   ['Mostrar diapositiva', 'Show slide', 'Afficher la diapositive', 'Folie einblenden', 'Mostra diapositiva', 'Mostrar slide', 'Mostra la diapositiva'],
   ['Crear sección aquí', 'Create section here', 'Créer une section ici', 'Abschnitt hier erstellen', 'Crea sezione qui', 'Criar seção aqui', 'Crea una secció aquí'],
+  // Tooltips
+  ['Negrita', 'Bold', 'Gras', 'Fett', 'Grassetto', 'Negrito', 'Negreta'],
+  ['Cursiva', 'Italic', 'Italique', 'Kursiv', 'Corsivo', 'Itálico', 'Cursiva'],
+  ['Subrayado', 'Underline', 'Souligné', 'Unterstrichen', 'Sottolineato', 'Sublinhado', 'Subratllat'],
+  ['Superíndice', 'Superscript', 'Exposant', 'Hochgestellt', 'Apice', 'Sobrescrito', 'Superíndex'],
+  ['Subíndice', 'Subscript', 'Indice', 'Tiefgestellt', 'Pedice', 'Subscrito', 'Subíndex'],
+  ['Color del texto', 'Text color', 'Couleur du texte', 'Textfarbe', 'Colore testo', 'Cor do texto', 'Color del text'],
+  ['Resaltado', 'Highlight', 'Surlignage', 'Hervorhebung', 'Evidenziazione', 'Realce', 'Ressaltat'],
+  ['Quitar formato', 'Clear formatting', 'Effacer la mise en forme', 'Formatierung entfernen', 'Cancella formattazione', 'Limpar formatação', 'Neteja el format'],
+  ['Justificar', 'Justify', 'Justifier', 'Blocksatz', 'Giustifica', 'Justificar', 'Justifica'],
+  ['Viñetas', 'Bullets', 'Puces', 'Aufzählung', 'Elenco puntato', 'Marcadores', 'Pics'],
+  ['Lista numerada', 'Numbered list', 'Liste numérotée', 'Nummerierte Liste', 'Elenco numerato', 'Lista numerada', 'Llista numerada'],
+  ['Aumentar tamaño', 'Increase size', 'Augmenter la taille', 'Größer', 'Aumenta dimensione', 'Aumentar tamanho', 'Augmenta la mida'],
+  ['Reducir tamaño', 'Decrease size', 'Réduire la taille', 'Kleiner', 'Riduci dimensione', 'Diminuir tamanho', 'Redueix la mida'],
+  ['Insertar enlace', 'Insert link', 'Insérer un lien', 'Link einfügen', 'Inserisci link', 'Inserir link', 'Insereix un enllaç'],
+  ['Deshacer (Ctrl+Z)', 'Undo (Ctrl+Z)', 'Annuler (Ctrl+Z)', 'Rückgängig (Strg+Z)', 'Annulla (Ctrl+Z)', 'Desfazer (Ctrl+Z)', 'Desfés (Ctrl+Z)'],
+  ['Rehacer (Ctrl+Y)', 'Redo (Ctrl+Y)', 'Rétablir (Ctrl+Y)', 'Wiederholen (Strg+Y)', 'Ripeti (Ctrl+Y)', 'Refazer (Ctrl+Y)', 'Refés (Ctrl+Y)'],
+  ['Guardar proyecto', 'Save project', 'Enregistrer le projet', 'Projekt speichern', 'Salva progetto', 'Guardar projeto', 'Desa el projecte'],
+  ['Buscar y reemplazar (Ctrl+F)', 'Find and replace (Ctrl+F)', 'Rechercher et remplacer (Ctrl+F)', 'Suchen und ersetzen (Strg+F)', 'Trova e sostituisci (Ctrl+F)', 'Localizar e substituir (Ctrl+F)', 'Cerca i reemplaça (Ctrl+F)'],
+  ['Símbolos y emojis', 'Symbols and emojis', 'Symboles et émojis', 'Symbole und Emojis', 'Simboli ed emoji', 'Símbolos e emojis', 'Símbols i emojis'],
+  ['MAYÚSCULAS', 'UPPERCASE', 'MAJUSCULES', 'GROSSBUCHSTABEN', 'MAIUSCOLE', 'MAIÚSCULAS', 'MAJÚSCULES'],
+  ['minúsculas', 'lowercase', 'minuscules', 'kleinbuchstaben', 'minuscole', 'minúsculas', 'minúscules'],
+  ['Tipo Título', 'Title Case', 'Casse Titre', 'Erster Buchstabe groß', 'Iniziali Maiuscole', 'Maiúsculas Iniciais', 'Tipus Títol'],
+  ['Texto vertical', 'Vertical text', 'Texte vertical', 'Vertikaler Text', 'Testo verticale', 'Texto vertical', 'Text vertical'],
+  ['Dirección del texto (derecha a izquierda)', 'Text direction (right to left)', 'Direction du texte (droite à gauche)', 'Textrichtung (rechts nach links)', 'Direzione testo (destra-sinistra)', 'Direção do texto (direita para esquerda)', 'Direcció del text (dreta a esquerra)'],
+  ['Presentar la diapositiva actual', 'Present the current slide', 'Présenter la diapositive actuelle', 'Aktuelle Folie präsentieren', 'Presenta la diapositiva attuale', 'Apresentar o slide atual', 'Presenta la diapositiva actual'],
 ];
 
 const DICT = {};
@@ -170,6 +198,37 @@ for (const row of ROWS) {
   const es = row[0];
   ORDER.forEach((code, i) => { if (row[i + 1]) DICT[code][es] = row[i + 1]; });
 }
+
+// Additional languages (partial; anything missing falls back to Spanish).
+const EXTRA = {
+  gl: {
+    'Archivo': 'Ficheiro', 'Inicio': 'Inicio', 'Insertar': 'Inserir', 'Diseño': 'Deseño',
+    'Transiciones': 'Transicións', 'Animaciones': 'Animacións', 'Ver': 'Ver',
+    'Proyecto': 'Proxecto', 'Salida': 'Saída', 'Diapositivas': 'Diapositivas', 'Fuente': 'Fonte',
+    'Tipo de letra': 'Tipo de letra', 'Párrafo': 'Parágrafo', 'Texto': 'Texto', 'Organizar': 'Organizar',
+    'Básico': 'Básico', 'Multimedia': 'Multimedia', 'Plantillas': 'Modelos', 'Formas': 'Formas',
+    'Fondo': 'Fondo', 'Tema': 'Tema', 'Tamaño': 'Tamaño', 'Presentación': 'Presentación', 'Ayudas': 'Axudas',
+    'Nuevo': 'Novo', 'Abrir': 'Abrir', 'Guardar': 'Gardar', 'Presentar': 'Presentar', 'Nueva': 'Nova',
+    'Duplicar': 'Duplicar', 'Eliminar': 'Eliminar', 'Sección': 'Sección', 'Imagen': 'Imaxe',
+    'Tabla': 'Táboa', 'Gráfico': 'Gráfico', 'Iconos': 'Iconas', 'Vídeo': 'Vídeo', 'Audio': 'Audio',
+    'Código': 'Código', 'Notas': 'Notas', 'Guías': 'Grade', 'Regla': 'Regra', 'Ajustar': 'Axustar',
+    'Negrita': 'Grosa', 'Cursiva': 'Cursiva', 'Subrayado': 'Subliñado', 'Color': 'Cor',
+  },
+  nl: {
+    'Archivo': 'Bestand', 'Inicio': 'Start', 'Insertar': 'Invoegen', 'Diseño': 'Ontwerp',
+    'Transiciones': 'Overgangen', 'Animaciones': 'Animaties', 'Ver': 'Beeld',
+    'Proyecto': 'Project', 'Salida': 'Uitvoer', 'Diapositivas': "Dia's", 'Fuente': 'Lettertype',
+    'Tipo de letra': 'Lettertype', 'Párrafo': 'Alinea', 'Texto': 'Tekst', 'Organizar': 'Schikken',
+    'Básico': 'Basis', 'Multimedia': 'Media', 'Plantillas': 'Sjablonen', 'Formas': 'Vormen',
+    'Fondo': 'Achtergrond', 'Tema': 'Thema', 'Tamaño': 'Grootte', 'Presentación': 'Presentatie', 'Ayudas': 'Hulpmiddelen',
+    'Nuevo': 'Nieuw', 'Abrir': 'Openen', 'Guardar': 'Opslaan', 'Presentar': 'Presenteren', 'Nueva': 'Nieuw',
+    'Duplicar': 'Dupliceren', 'Eliminar': 'Verwijderen', 'Sección': 'Sectie', 'Imagen': 'Afbeelding',
+    'Tabla': 'Tabel', 'Gráfico': 'Grafiek', 'Iconos': 'Pictogrammen', 'Vídeo': 'Video', 'Audio': 'Audio',
+    'Código': 'Code', 'Notas': 'Notities', 'Guías': 'Raster', 'Regla': 'Liniaal', 'Ajustar': 'Uitlijnen',
+    'Negrita': 'Vet', 'Cursiva': 'Cursief', 'Subrayado': 'Onderstrepen', 'Color': 'Kleur',
+  },
+};
+for (const code in EXTRA) DICT[code] = Object.assign({}, DICT[code], EXTRA[code]);
 
 const KEY = 'revela.lang';
 let lang = 'es';
