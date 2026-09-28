@@ -139,7 +139,7 @@ the origin of every requirement is traceable.
 - ✅ Live audience polls — QR on the slide, phones vote (single/multiple choice, rating, word cloud), results update live as bars, pie, figures or cloud; CSV export (WebRTC via PeerJS, no server of ours) `GS`
 - ✅ Audience Q&A — the audience sends questions from their phones and upvotes others'; the slide shows them ranked live (max 5 per person) `GS`
 - ✅ Live captions while presenting (browser speech recognition, CC button or C key, asks first because Chrome/Edge send audio to their speech service) `PP`
-- ⬜ Present to Meet / Teams `PP·GS`
+- ✅ Present in a video call (Google Meet, Microsoft Teams, Zoom): the presentation in its own window to share, speaker notes in another `PP·GS`
 
 ## 7. Collaboration *(needs a backend — not possible on static hosting alone)*
 - ✅ Real-time co-editing: share links, everyone sees changes at once (per-object merging, so people can work on different objects together), others' selections on the slide, undo only undoes your own changes. Browser-to-browser (WebRTC), no server needed; the person sharing keeps the tab open `PP·GS·OO`
@@ -180,7 +180,7 @@ the origin of every requirement is traceable.
 - ✅ Editor appearance — light, dark, automatic (system) or custom accent and background `PP·GS·OO`
 - ✅ Right-to-left **interface** (Arabic) — mirrored ribbon and panels, slide geometry untouched `PP·OO`
 - ✅ Translate the whole presentation with AI (text keeping formatting, tables, notes; one undo step) `GS·OO`
-- ⬜ Complete GL/NL/EU/AR and more UI languages (community translations) `PP·GS·OO`
+- ✅ Complete Galician, Dutch, Basque and Arabic interface (machine-assisted; corrections from native speakers welcome), each loaded only when chosen `PP·GS·OO`
 
 ## 10. Extensibility & automation
 - ✅ Add-in system — ES modules by URL, ribbon buttons, stored locally `GS·OO`
