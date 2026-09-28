@@ -14,6 +14,7 @@ import { exportPDF } from '../../io/export/print.js';
 import { present } from '../shell/present.js';
 import { startCoach } from '../shell/coach.js';
 import { openCollab } from '../shell/collab.js';
+import { openSignatures, toggleFinal } from '../dialogs/signature.js';
 import { importPPTX } from '../../io/formats/pptx-import.js';
 import * as gdrive from '../../io/cloud/gdrive.js';
 import { exportPPTX } from '../../io/formats/pptx-export.js';
@@ -89,7 +90,8 @@ export const ACTIONS = {
     a.download = (state.deck.name || 'presentacion').replace(/[^\p{L}\p{N}]+/gu, '-') + '.revela.json'; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   },
-  'mark-final': () => protect.setFinal(!protect.isFinal()),
+  'mark-final': () => toggleFinal(),
+  'signatures': () => openSignatures(),
   'save': saveProject,
   'gallery': () => openGallery(),
   'versions': () => openVersions(),

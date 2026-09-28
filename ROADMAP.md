@@ -151,7 +151,7 @@ the origin of every requirement is traceable.
 - ✅ Permission levels (view / comment / edit): one link per level, changeable per person during the session and enforced by the person sharing `PP·GS·OO`
 - ✅ View statistics for shared presentations — a counter and the last date, nothing about the viewer (self-hosted server) `GS`
 - ✅ Protect — project encrypted with a password (AES-GCM 256, PBKDF2) and "mark as final" (read-only) `PP·OO`
-- ⬜ Digital signatures `OO`
+- ✅ Digital signatures: sign in the browser (ECDSA P-256, key kept in the browser), several signers, check validity and changes after signing, key fingerprint to confirm the signer (no certificate authority) `OO`
 
 ## 8. Import & export
 - ✅ Export to self-contained HTML (reveal.js) `—`

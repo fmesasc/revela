@@ -283,3 +283,7 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .cc-msgs{flex:1;overflow:auto;padding:8px 12px;display:flex;flex-direction:column;gap:8px;font-size:13px}.cc-msg.mine{align-self:flex-end;text-align:end}
 .cc-name{font-weight:600;font-size:12px}.cc-time{font-size:10px;color:var(--txt2);margin-inline-start:6px}
 .cc-form{display:flex;gap:6px;padding:8px;border-top:1px solid var(--line2)}.cc-in{flex:1;min-width:0;border:1px solid var(--line2);border-radius:6px;padding:6px 8px}
+/* Digital signatures */
+.sg-item{display:flex;gap:10px;align-items:flex-start;padding:8px;border-radius:8px;background:var(--ribbon);margin-bottom:6px;font-size:13px}
+.sg-item>.ms{font-size:22px}.sg-valid>.ms,.sg-valid .sg-st{color:#1a7f37}.sg-modified>.ms,.sg-modified .sg-st{color:#b35900}.sg-invalid>.ms,.sg-invalid .sg-st{color:#c92a2a}
+.sg-item code,.sg-fp{font-size:11px;word-break:break-all}

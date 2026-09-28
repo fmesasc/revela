@@ -13,6 +13,7 @@ import * as clip from '../../features/document/clipboard.js';
 import { autocorrectOn } from '../../features/document/autocorrect.js';
 import { aiRewrite } from '../dialogs/ai.js';
 import { DONATE_URL } from '../../core/config.js';
+import { editAnyway } from '../dialogs/signature.js';
 import * as protect from '../../features/collab/protect.js';
 import { openAppearance, applyAppearance } from '../shell/appearance.js';
 import * as palettes from '../../features/design/palettes.js';
@@ -63,7 +64,7 @@ export function initRibbon() {
   const don = document.getElementById('donate');
   if (don && DONATE_URL) { don.href = DONATE_URL; don.hidden = false; }
   document.getElementById('final-banner')?.addEventListener('click', e => {
-    if (e.target.closest('[data-action="mark-final"]')) protect.setFinal(false);
+    if (e.target.closest('[data-action="mark-final"]')) editAnyway();
   });
   window.addEventListener('revela:readonly', () => {
     const fb = document.getElementById('final-banner'); if (!fb) return;
@@ -283,6 +284,8 @@ export function renderRibbon() {
     const p = $('[data-action="clip-paste"]'); if (p) p.disabled = !clip.hasClipboard(); }
   $('[data-action="mark-final"]')?.classList.toggle('on', protect.isFinal());
   const fb = document.getElementById('final-banner'); if (fb) fb.hidden = !protect.isFinal();
+  { const sigs = state.deck.signatures || [], sp = fb?.querySelector('span');
+    if (sp) sp.textContent = sigs.length ? `${t('Firmada por')} ${sigs.map(s => s.name).join(', ')}: ${t('la presentación es de solo lectura.')}` : t('Marcada como final: la presentación es de solo lectura.'); }
   $('[data-action="comments"]')?.classList.toggle('on', !!state.ui.showComments);
   $('[data-action="autocorrect"]')?.classList.toggle('on', autocorrectOn());
   $('[data-action="master-edit"]')?.classList.toggle('on', !!state.ui.editMaster);

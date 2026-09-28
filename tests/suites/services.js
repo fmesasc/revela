@@ -331,4 +331,34 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(sent.some(m => m.t === 'ops' && m.ops.some(o => o.p[2] === 'blocks')), 'con permiso de edición, sus cambios se envían');
     } finally { sess.stop(); R.store.setPersist(true); R.state.ui.lock = null; }
   });
+
+  await test('firmas digitales: firmar, comprobar, detectar cambios y firmas falsas', async () => {
+    reset(); const W = frame.contentWindow, SG = await W.eval("import('/src/features/collab/signature.js')");
+    R.state.deck.slides[0].blocks[0].html = 'Contrato'; R.store.commit(() => {});
+    const k1 = await SG.myKey(), k2 = await SG.myKey();
+    eq(k1.fp, k2.fp, 'la misma clave en este navegador'); assert(/^([0-9A-F]{4} ){7}[0-9A-F]{4}$/.test(k1.fp), 'huella legible: ' + k1.fp);
+    const s = await SG.signDeck({ name: 'Ana', reason: 'Aprobada' });
+    assert(R.state.deck.final, 'firmar la marca como final');
+    eq(await SG.verifySignature(R.state.deck.signatures[0]), 'valid', 'firma válida');
+    await SG.signDeck({ name: 'Luis' });
+    eq((await SG.verifyAll()).map(x => x.status).join(), 'valid,valid', 'dos firmas sobre el mismo contenido');
+    // Saving (savedAt) or the final mark don't break it; a change does.
+    R.store.commit(() => {}, { force: true }); eq(await SG.verifySignature(s), 'valid', 'guardar no la invalida');
+    const copy = JSON.parse(JSON.stringify(R.state.deck)); copy.slides[0].blocks[0].html = 'Contrato cambiado';
+    eq(await SG.verifySignature(copy.signatures[0], copy), 'modified', 'un cambio posterior se detecta');
+    const fake = { ...copy.signatures[0], name: 'Otra persona' };
+    eq(await SG.verifySignature(fake), 'invalid', 'cambiar el nombre del firmante invalida la firma');
+    const forged = { ...s, hash: await SG.digest(copy) };
+    eq(await SG.verifySignature(forged, copy), 'invalid', 'no se puede reutilizar para otro contenido');
+    // In the interface.
+    D.querySelector('[data-action="signatures"]').click(); await sleep(300);
+    const m = D.getElementById('sig-modal'); assert(m && m.querySelectorAll('.sg-item.sg-valid').length === 2, 'el diálogo muestra las dos firmas válidas');
+    eq(m.querySelector('.sg-fp').textContent, k1.fp, 'y la huella de este navegador');
+    m.querySelector('.modal-close').click();
+    assert(/Firmada por Ana, Luis/.test(D.querySelector('#final-banner span').textContent), 'aviso de firmada');
+    D.querySelector('#final-banner [data-action="mark-final"]').click(); await sleep(20);
+    assert(/firmas dejarán de ser válidas/.test(D.querySelector('.dlg-msg')?.textContent || ''), 'avisa antes de editar una presentación firmada');
+    D.querySelector('.dlg-ok').click(); await sleep(20);
+    assert(!R.state.deck.final, 'se puede editar de todos modos');
+  });
 }
