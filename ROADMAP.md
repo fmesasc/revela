@@ -83,7 +83,7 @@ the origin of every requirement is traceable.
 - ⬜ Online / stock images & icons library `PP·GS`
 - ⬜ Embedded spreadsheet / linked data `GS·OO`
 - ⬜ Screen / camera recording, live camera (Cameo) `PP`
-- ⬜ Freehand ink / pen drawing on the slide (Draw tab) `PP·OO`
+- ✅ Freehand ink on the slide (Draw tab: pen, highlighter, stroke eraser, colour & thickness; strokes are movable objects) `PP·OO`
 
 ## 4. Slides & structure
 - ✅ Sections (create/rename/remove inline from the navigator) `PP·GS·OO`

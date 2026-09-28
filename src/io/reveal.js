@@ -2,7 +2,7 @@
 // present / export / save-load helpers.
 
 import { state } from '../core/store.js';
-import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML } from '../ui/shape.js';
+import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG } from '../ui/shape.js';
 import { googleFontLinks } from '../features/fonts.js';
 import { t } from '../i18n.js';
 import { alertDialog } from '../ui/dialog.js';
@@ -113,6 +113,8 @@ function blockHTML(b, slide) {
     return `<div${a} style="${box(b)}">${chartSVG(b)}</div>`;
   if (b.type === 'icon')
     return `<div${a} style="${box(b)}">${iconSVG(b)}</div>`;
+  if (b.type === 'ink')
+    return `<div${a} style="${box(b)}">${inkSVG(b)}</div>`;
   if (b.type === 'math')
     return `<div${a} class="math" data-latex="${esc(b.latex || '')}" style="${box(b)}display:flex;align-items:center;justify-content:center"></div>`;
   if (b.type === 'table')

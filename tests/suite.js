@@ -709,6 +709,37 @@ export async function run(frame) {
     assert(!D.body.classList.contains('anim-painting'), 'sale del modo');
   });
 
+  await test('dibujar: lápiz, resaltador y borrador sobre la diapositiva', async () => {
+    reset(); const W = frame.contentWindow, st = D.getElementById('stage');
+    D.querySelector('[data-tab="draw"]').click();
+    D.querySelector('[data-draw="pen"]').click(); await sleep(10);
+    eq(R.state.ui.drawTool, 'pen', 'lápiz activo'); assert(st.classList.contains('drawing'), 'cursor de dibujo');
+    const r = st.getBoundingClientRect(), f = r.width / R.state.deck.size.w;
+    const at = (x, y) => ({ clientX: r.left + x * f, clientY: r.top + y * f, bubbles: true, pointerId: 1 });
+    const n0 = slide().blocks.length;
+    st.dispatchEvent(new W.PointerEvent('pointerdown', at(100, 600)));
+    W.dispatchEvent(new W.PointerEvent('pointermove', at(200, 650)));
+    W.dispatchEvent(new W.PointerEvent('pointermove', at(300, 600)));
+    W.dispatchEvent(new W.PointerEvent('pointerup', at(300, 600))); await sleep(20);
+    eq(slide().blocks.length, n0 + 1, 'trazo creado');
+    const ink = last(); eq(ink.type, 'ink', 'objeto de tinta'); eq(ink.points.length, 3, 'tres puntos');
+    assert(Math.abs(ink.x - 100 + 4) <= 1 && ink.w >= 200, 'caja ajustada al trazo');
+    assert(D.querySelector(`.block[data-id="${ink.id}"] .ink-blk path`), 'en el lienzo');
+    assert(/stroke-linecap="round"/.test(R.io.buildHTML()), 'en el export');
+    D.querySelector('[data-draw="hl"]').click();
+    st.dispatchEvent(new W.PointerEvent('pointerdown', at(500, 100)));
+    W.dispatchEvent(new W.PointerEvent('pointermove', at(700, 100)));
+    W.dispatchEvent(new W.PointerEvent('pointerup', at(700, 100))); await sleep(20);
+    assert(last().hl && last().width >= 14, 'resaltador ancho y translúcido');
+    D.querySelector('[data-draw="eraser"]').click(); await sleep(10);
+    st.dispatchEvent(new W.PointerEvent('pointerdown', at(200, 580))); W.dispatchEvent(new W.PointerEvent('pointerup', at(200, 580))); await sleep(20);
+    assert(slide().blocks.some(b => b.id === ink.id), 'lejos del trazo (aunque dentro de su caja) no borra');
+    st.dispatchEvent(new W.PointerEvent('pointerdown', at(100, 600))); W.dispatchEvent(new W.PointerEvent('pointerup', at(100, 600))); await sleep(20);
+    assert(!slide().blocks.some(b => b.id === ink.id), 'borrador elimina el trazo');
+    D.querySelector('[data-draw=""]').click(); eq(R.state.ui.drawTool, null, 'volver a seleccionar');
+    D.querySelector('[data-tab="home"]').click();
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

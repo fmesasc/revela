@@ -36,6 +36,7 @@
       <button data-tab="file">Archivo</button>
       <button data-tab="home" class="active">Inicio</button>
       <button data-tab="insert">Insertar</button>
+      <button data-tab="draw">Dibujar</button>
       <button data-tab="design">Diseño</button>
       <button data-tab="transitions">Transiciones</button>
       <button data-tab="animations">Animaciones</button>
@@ -262,6 +263,26 @@
             <button data-action="insert-date" class="lg"><i class="ms">event</i><span>Fecha y<br>hora</span></button>
             <button data-action="insert-figindex" class="lg"><i class="ms">format_list_numbered</i><span>Índice de<br>figuras</span></button>
           </div><label>Campos</label>
+        </div>
+      </section>
+
+      <!-- DIBUJAR -->
+      <section class="ribbon-page" data-page="draw">
+        <div class="group">
+          <div class="row">
+            <button data-draw="pen" class="lg"><i class="ms">edit</i><span>Lápiz</span></button>
+            <button data-draw="hl" class="lg"><i class="ms">ink_highlighter</i><span>Resaltador</span></button>
+            <button data-draw="eraser" class="lg"><i class="ms">ink_eraser</i><span>Borrador</span></button>
+            <button data-draw="" class="lg" title="Volver a seleccionar objetos (Esc)"><i class="ms">arrow_selector_tool</i><span>Seleccionar</span></button>
+          </div><label>Herramientas</label>
+        </div>
+        <div class="group">
+          <div class="row">
+            <label class="color" title="Color de la tinta"><i class="ms">palette</i><input type="color" data-ink-color value="#ff2d2d"></label>
+            <select data-ink-width title="Grosor">
+              <option value="2">Fino</option><option value="4" selected>Medio</option><option value="8">Grueso</option><option value="14">Muy grueso</option>
+            </select>
+          </div><label>Trazo</label>
         </div>
       </section>
 

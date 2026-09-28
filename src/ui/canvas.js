@@ -4,7 +4,7 @@
 
 import { state, commit, mutate, currentSlide, selectedBlock,
   selectedBlocks, selectedIds, isSelected, setSelection, toggleSelection, setMulti, selectWithGroup } from '../core/store.js';
-import { shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan } from './shape.js';
+import { shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan, inkSVG, inkSig } from './shape.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle } from '../features/captions.js';
 import { blockPreview } from './preview.js';
 import { t } from '../i18n.js';
@@ -140,6 +140,8 @@ export function renderCanvas() {
   stage.style.color = deckFg();
   stage.style.fontFamily = deckBodyFont();
   stage.classList.toggle('guides', state.ui.showGuides);
+  stage.classList.toggle('drawing', !!state.ui.drawTool);
+  stage.classList.toggle('eraser', state.ui.drawTool === 'eraser');
 
   const sig = signature(slide);
   if (sig !== lastSignature) {
@@ -269,6 +271,9 @@ function reconcile(b) {
     if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = chartSVG(b); }
   } else if (b.type === 'connector') {
     const d = el.querySelector('.connector'); if (d) d.innerHTML = connectorHTML(b);  // follows its endpoints
+  } else if (b.type === 'ink') {
+    const d = el.querySelector('.ink-blk'); const sig = inkSig(b);
+    if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = inkSVG(b); }
   } else if (b.type === 'icon') {
     const d = el.querySelector('.icon-blk'); const sig = iconSig(b);
     if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = iconSVG(b); }
@@ -361,6 +366,9 @@ function content(b) {
   }
   if (b.type === 'connector') {
     const d = document.createElement('div'); d.className = 'connector'; d.innerHTML = connectorHTML(b); return d;
+  }
+  if (b.type === 'ink') {
+    const d = document.createElement('div'); d.className = 'ink-blk'; d.dataset.sig = inkSig(b); d.innerHTML = inkSVG(b); return d;
   }
   if (b.type === 'icon') {
     const d = document.createElement('div'); d.className = 'icon-blk'; d.dataset.sig = iconSig(b); d.innerHTML = iconSVG(b); return d;

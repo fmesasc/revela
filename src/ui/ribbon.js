@@ -15,6 +15,7 @@ import { pickReuseFile } from './reuse.js';
 import { openA11yCheck } from './a11y-panel.js';
 import { openHandoutDialog, openImageDialog } from './print-dialog.js';
 import * as palettes from '../features/palettes.js';
+import { setDrawTool, drawOpts } from './draw.js';
 import * as fontsMod from '../features/fonts.js';
 import { FONTS, ensureDeckFonts } from '../features/fonts.js';
 import { ICON_NAMES, iconSVG, WORDART_KEYS, wordartCSS } from './shape.js';
@@ -190,6 +191,8 @@ export function initRibbon() {
     if (ics) { e.stopPropagation(); togglePopover(ics, 'icons'); return; }
     const wa = e.target.closest('[data-wordart]');
     if (wa) { e.stopPropagation(); togglePopover(wa, 'wordart'); return; }
+    const dr = e.target.closest('[data-draw]');
+    if (dr) { dr.dataset.draw ? setDrawTool(dr.dataset.draw) : commit(() => (state.ui.drawTool = null), { history: false }); return; }
     const po = e.target.closest('[data-palettes-open]');
     if (po) { e.stopPropagation(); togglePopover(po, 'palettes'); return; }
     const fo = e.target.closest('[data-fontpairs-open]');
@@ -249,6 +252,8 @@ export function initRibbon() {
   bindInput('[data-shape-stroke]', v => blocks.setShapeStyle('stroke', v), true);
   bindInput('[data-bg]', v => commit(() => (currentSlide().background = v)));
   bindInput('[data-deck-fg]', v => palettes.setDeckTextColor(v));
+  bindInput('[data-ink-color]', v => { drawOpts.color = v; });
+  bindChange('[data-ink-width]', v => { drawOpts.width = +v || 4; });
   addEyedroppers();
   bindChange('[data-theme]', v => commit(() => (state.deck.theme = v)));
   bindChange('[data-speed]', v => trans.setTransitionSpeed(v));
@@ -324,7 +329,7 @@ function objLabel(b) {
   const txt = b.type === 'text' ? (new DOMParser().parseFromString(b.html || '', 'text/html').body.textContent || '').trim().slice(0, 24) : '';
   return t(ANIM_NAMES[b.type] || b.type) + (txt ? ` «${txt}»` : '');
 }
-const ANIM_NAMES = { text: 'Texto', image: 'Imagen', shape: 'Forma', chart: 'Gráfico', table: 'Tabla',
+const ANIM_NAMES = { ink: 'Tinta', text: 'Texto', image: 'Imagen', shape: 'Forma', chart: 'Gráfico', table: 'Tabla',
   icon: 'Icono', math: 'Ecuación', model: '3D', video: 'Vídeo', embed: 'Web', code: 'Código', figindex: 'Índice de figuras', slideref: 'Diapositiva' };
 function openAnimPanel() {
   if (document.getElementById('anim-modal')) return;
@@ -560,6 +565,7 @@ export function renderRibbon() {
   document.querySelector('[data-action="toggle-autoanimate"]')?.classList.toggle('on', !!slide.autoAnimate);
   syncValue('[data-theme]', state.deck.theme);
   syncValue('[data-deck-fg]', palettes.deckFg());
+  document.querySelectorAll('[data-draw]').forEach(b => b.classList.toggle('on', (state.ui.drawTool || '') === b.dataset.draw));
   const bgHex = (currentSlide()?.background || '').match(/^#[0-9a-f]{6}$/i);
   if (bgHex) syncValue('[data-bg]', bgHex[0].toLowerCase());
   syncSwatches();

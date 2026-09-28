@@ -175,6 +175,19 @@ export function setMath(latex) {
   const b = selectedBlock(); if (!b || b.type !== 'math') return;
   commit(() => { b.latex = latex; });
 }
+// Freehand ink stroke from absolute slide points → an 'ink' block fitted to it.
+// It isn't selected, so the user can keep drawing.
+export function addInk(points, { color = '#ff2d2d', width = 4, hl = false } = {}) {
+  if (!points || !points.length) return null;
+  const pad = width / 2 + 2;
+  const xs = points.map(p => p[0]), ys = points.map(p => p[1]);
+  const x = Math.floor(Math.min(...xs) - pad), y = Math.floor(Math.min(...ys) - pad);
+  const w = Math.max(4, Math.ceil(Math.max(...xs) + pad) - x), h = Math.max(4, Math.ceil(Math.max(...ys) + pad) - y);
+  const rel = points.map(([px, py]) => [+(px - x).toFixed(1), +(py - y).toFixed(1)]);
+  const b = { id: uid(), type: 'ink', points: rel, vw: w, vh: h, color, width, hl, x, y, w, h, rotation: 0, animation: null };
+  commit(() => { currentSlide().blocks.push(b); });
+  return b;
+}
 export function addIcon(name) {
   insert({ id: uid(), type: 'icon', icon: name, color: '#ffffff', x: 560, y: 280, w: 160, h: 160, rotation: 0, animation: null });
 }

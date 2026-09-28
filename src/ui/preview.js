@@ -1,6 +1,6 @@
 // Non‑interactive block rendering, shared by slide thumbnails.
 
-import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, iconSVG, wordartCSS, tableRowsHTML } from './shape.js';
+import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG } from './shape.js';
 
 export function blockPreview(b) {
   const el = document.createElement('div');
@@ -38,6 +38,8 @@ export function blockPreview(b) {
     el.innerHTML = chartSVG(b);
   } else if (b.type === 'icon') {
     el.innerHTML = iconSVG(b);
+  } else if (b.type === 'ink') {
+    el.innerHTML = inkSVG(b);
   } else if (b.type === 'math') {
     el.innerHTML = `<div style="width:100%;height:100%;display:grid;place-items:center;color:inherit;font-size:40px">∑</div>`;
   } else if (b.type === 'figindex') {

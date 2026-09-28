@@ -407,3 +407,8 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 /* Motion path guide on the selected object */
 .motion-path{position:absolute;pointer-events:none;z-index:6;overflow:visible}
 body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
+/* Draw tab */
+.ink-blk{width:100%;height:100%}
+.ink-live{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:50;overflow:visible}
+#stage.drawing,#stage.drawing .block{cursor:crosshair}
+#stage.drawing.eraser,#stage.drawing.eraser .block{cursor:cell}

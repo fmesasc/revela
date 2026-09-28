@@ -169,6 +169,25 @@ export function iconSVG(b) {
   return `<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="${color}" `
     + `stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="overflow:visible">${ICONS[b.icon] || ''}</svg>`;
 }
+// Freehand ink (Draw tab): points in the stroke's original box (vw × vh), drawn
+// as a smoothed path that stretches with the block and keeps its line width.
+export function inkPath(pts) {
+  if (!pts || !pts.length) return '';
+  if (pts.length < 3) return `M${pts[0][0]},${pts[0][1]} L${(pts[1] || pts[0])[0] + 0.1},${(pts[1] || pts[0])[1]}`;
+  let d = `M${pts[0][0]},${pts[0][1]}`;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const mx = ((pts[i][0] + pts[i + 1][0]) / 2).toFixed(1), my = ((pts[i][1] + pts[i + 1][1]) / 2).toFixed(1);
+    d += ` Q${pts[i][0]},${pts[i][1]} ${mx},${my}`;
+  }
+  const l = pts[pts.length - 1];
+  return d + ` L${l[0]},${l[1]}`;
+}
+export function inkSVG(b) {
+  return `<svg viewBox="0 0 ${b.vw || b.w} ${b.vh || b.h}" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">`
+    + `<path d="${inkPath(b.points)}" fill="none" stroke="${b.color || '#ff2d2d'}" stroke-width="${b.width || 4}" `
+    + `stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"${b.hl ? ' stroke-opacity="0.4"' : ''}/></svg>`;
+}
+export const inkSig = b => (b.points?.length || 0) + '|' + (b.color || '') + '|' + (b.width || '') + '|' + (b.hl ? 1 : 0);
 export const iconSig = b => (b.icon || '') + '|' + (b.color || '');
 
 // SVG for shape blocks, shared by the canvas, the thumbnails and the export.
