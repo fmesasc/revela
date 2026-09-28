@@ -15,7 +15,7 @@
 // While editing the master (state.ui.editMaster = true) or a layout (= its
 // id), the canvas edits that instead of the current slide (store.currentSlide).
 
-import { state, commit, subscribe, currentSlide } from '../../core/store.js';
+import { state, commit, amend, subscribe, currentSlide } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 
 export const MAX_LEVELS = 5;
@@ -224,7 +224,7 @@ export function followLayouts() {
       const m = moved.find(([old, lp]) => x.lp === lp.id && key(x) === old);
       if (m) { Object.assign(x, { x: m[1].x, y: m[1].y, w: m[1].w, h: m[1].h }); n++; }
     }
-    if (n) commit(() => {}, { history: false });
+    if (n) amend();
   });
 }
 

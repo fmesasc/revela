@@ -209,6 +209,9 @@ function drawLogo() {
 function reconcile(b) {
   const el = stage.querySelector(`.block[data-id="${b.id}"]`);
   if (!el) return;
+  // After undo/redo the objects are other copies: the element's handlers
+  // (drag, resize, typing) hold the old one, so it is made again.
+  if (el._b !== b) { el.replaceWith(blockEl(b)); return; }
   el.style.left = b.x + 'px'; el.style.top = b.y + 'px';
   el.style.width = b.w + 'px'; el.style.height = b.h + 'px';
   el.style.transform = transformOf(b);
@@ -291,7 +294,7 @@ function blockEl(b) {
   const el = document.createElement('div');
   el.className = 'block' + (isSelected(b.id) ? ' selected' : '')
     + (b.animation ? ' animated' : '') + (b.locked ? ' locked' : '') + (b.type === 'connector' ? ' __conn' : '');
-  el.dataset.id = b.id;
+  el.dataset.id = b.id; el._b = b;
   el.setAttribute('role', 'group'); el.setAttribute('aria-label', blockLabel(b, t));
   el.style.cssText = `left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px`;
   el.style.transform = transformOf(b);

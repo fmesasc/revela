@@ -256,7 +256,7 @@ export function setupCode(el, b) {
   code.addEventListener('input', () => { b.code = code.textContent; });
   code.addEventListener('blur', () => {
     code.contentEditable = 'false'; el.classList.remove('editing');
-    commit(() => { b.code = code.textContent; }, { history: false });
+    commit(() => { b.code = code.textContent; });
     paintCode(code, b);
   });
 }
@@ -293,7 +293,7 @@ export function setupTable(el, b) {
     if (!el.contains(document.activeElement)) {
       el.classList.remove('editing');
       el.querySelectorAll('.tbl td').forEach(td => (td.contentEditable = 'false'));
-      commit(() => {}, { history: false });
+      commit(() => {});
     }
   }, 0));
 }
@@ -326,7 +326,7 @@ export function setupText(b, el) {
   });
   rich.addEventListener('blur', () => {
     rich.contentEditable = 'false'; el.classList.remove('editing');
-    commit(() => { b.html = rich.innerHTML; }, { history: false });
+    commit(() => { b.html = rich.innerHTML; });   // what was typed is one undo step
   });
 }
 // An equation is edited in the equation editor: double-click opens it.

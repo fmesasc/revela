@@ -73,36 +73,75 @@ export const clampSlide = () => {
 // `commit` records history, persists, and re-renders. `mutate` is for tiny,
 // high-frequency changes (dragging) that should persist and render but not spam
 // the undo stack.
+//
+// Undo steps are taken against `base`, a copy of the deck at the last step:
+// changes made in place (dragging, typing, sliders) without recording become
+// a step of their own at the next recorded change or when undoing. A commit
+// that changes nothing adds no step.
+let base = snapshot(state.deck);
+// Same content? Strings are shared between copies, so this is cheap.
+function same(a, b) {
+  if (a === b) return true;
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object' || Array.isArray(a) !== Array.isArray(b)) return false;
+  const keep = k => k !== 'savedAt';          // the save time is not a change
+  const ka = Object.keys(a).filter(k => a[k] !== undefined && keep(k)), kb = Object.keys(b).filter(k => b[k] !== undefined && keep(k));
+  return ka.length === kb.length && ka.every(k => same(a[k], b[k]));
+}
+// Record what changed since the last step as a step of its own.
+export function checkpoint() {
+  if (same(base, state.deck)) return false;
+  past.push(base);
+  if (past.length > HISTORY_LIMIT) past.shift();
+  future.length = 0;
+  base = snapshot(state.deck);
+  return true;
+}
 export function commit(fn, { history = true, force = false } = {}) {
   // A deck marked as final is read-only: edits are refused (selection and
   // other UI changes, which don't record history, still work).
   if (state.deck.final && history && !force) { window.dispatchEvent(new Event('revela:readonly')); return; }
-  if (history) {
-    past.push(snapshot(state.deck));
-    if (past.length > HISTORY_LIMIT) past.shift();
-    future.length = 0;
-  }
+  if (history) checkpoint();          // changes made in place before are a step of their own
   if (fn) fn();
   clampSlide();
+  if (history) checkpoint();
   saveDeck(state.deck);
   notify();
+  // What drawing it filled in (default styles created on first use…) belongs to this step.
+  if (history) base = snapshot(state.deck);
 }
 
 export function mutate(fn) { commit(fn, { history: false }); }
 
+// Changes that follow from the last one (made by a listener after it, like
+// slides following their layout): part of the same undo step.
+export function amend(fn) {
+  if (fn) fn();
+  clampSlide(); base = snapshot(state.deck);
+  saveDeck(state.deck); notify();
+}
+export const canUndo = () => past.length > 0 || !same(base, state.deck);
+export const canRedo = () => future.length > 0;
 export function undo() {
+  checkpoint();                       // changes not recorded yet are undone first
   if (!past.length) return;
   future.push(snapshot(state.deck));
   state.deck = past.pop();
   clampSlide(); saveDeck(state.deck); notify();
+  base = snapshot(state.deck);
 }
 export function redo() {
   if (!future.length) return;
   past.push(snapshot(state.deck));
   state.deck = future.pop();
   clampSlide(); saveDeck(state.deck); notify();
+  base = snapshot(state.deck);
 }
 
+// A newer copy of the same document (from another tab or the disk): no undo step.
+export function adoptDeck(deck) {
+  state.deck = deck; state.ui.slideIndex = 0; base = snapshot(deck); past.length = 0; future.length = 0;
+  notify();
+}
 export function replaceDeck(deck) {
   // Another deck: leave the master view too (it would edit a master that isn't there).
   commit(() => { state.deck = deck; state.ui.slideIndex = 0; state.ui.selection = null; state.ui.multi = []; state.ui.editMaster = false; });

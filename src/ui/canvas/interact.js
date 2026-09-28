@@ -32,7 +32,7 @@ export function startGuideDrag(ev, axis, i) {
     const pos = Math.round(axis === 'v' ? (e.clientX - rect.left) * f : (e.clientY - rect.top) * f);
     state.deck.guides[axis][i] = pos; mutate(() => {});
   };
-  const onUp = () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); commit(() => {}, { history: false }); };
+  const onUp = () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); commit(() => {}); };
   window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp);
 }
 // Rubber‑band selection: drag on the empty canvas to select every block the
@@ -94,7 +94,7 @@ export function startDrag(ev, b, el) {
     try { el.releasePointerCapture(ev.pointerId); } catch {} el.classList.remove('dragging');
     el.removeEventListener('pointermove', onMove); el.removeEventListener('pointerup', onUp);
     clearGuides();
-    commit(() => {}, { history: false });
+    commit(() => {});                       // one undo step per drag (none if it didn't move)
   };
   el.addEventListener('pointermove', onMove); el.addEventListener('pointerup', onUp);
 }
@@ -105,7 +105,7 @@ export function startRotate(ev, b, el) {
   const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
   const base = b.rotation || 0;
   const start = Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI;
-  el.setPointerCapture?.(ev.pointerId);
+  try { el.setPointerCapture?.(ev.pointerId); } catch {}
   const onMove = e => {
     const a = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
     let rot = base + (a - start);
@@ -115,7 +115,7 @@ export function startRotate(ev, b, el) {
   };
   const onUp = () => {
     document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp);
-    commit(() => {}, { history: false });
+    commit(() => {});
   };
   document.addEventListener('pointermove', onMove); document.addEventListener('pointerup', onUp);
 }
@@ -123,23 +123,29 @@ export function startResize(ev, b, el, corner) {
   ev.stopPropagation();
   if (b.locked || readOnly()) return;
   const f = factor(), sx = ev.clientX, sy = ev.clientY, o = { x: b.x, y: b.y, w: b.w, h: b.h };
-  el.setPointerCapture?.(ev.pointerId);
+  try { el.setPointerCapture?.(ev.pointerId); } catch {}
   const ratio = o.w / o.h;
+  // A rotated object is resized along its own sides, and the opposite corner
+  // stays where it is on screen (the rotation is about the centre).
+  const a = (b.rotation || 0) * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
+  // Which side the handle is on (a flipped object shows its handles mirrored).
+  const sxg = (corner.includes('e') ? 1 : corner.includes('w') ? -1 : 0) * (b.flipH ? -1 : 1);
+  const syg = (corner.includes('s') ? 1 : corner.includes('n') ? -1 : 0) * (b.flipV ? -1 : 1);
+  const ocx = o.x + o.w / 2, ocy = o.y + o.h / 2;
+  const ax = ocx + (-sxg * o.w / 2) * cos - (-syg * o.h / 2) * sin, ay = ocy + (-sxg * o.w / 2) * sin + (-syg * o.h / 2) * cos;
   const onMove = e => {
     const dx = (e.clientX - sx) * f, dy = (e.clientY - sy) * f;
-    if (corner.includes('e')) b.w = Math.max(30, Math.round(o.w + dx));
-    if (corner.includes('s')) b.h = Math.max(20, Math.round(o.h + dy));
-    if (corner.includes('w')) { b.w = Math.max(30, Math.round(o.w - dx)); b.x = Math.round(o.x + dx); }
-    if (corner.includes('n')) { b.h = Math.max(20, Math.round(o.h - dy)); b.y = Math.round(o.y + dy); }
-    if (e.shiftKey) {                       // hold Shift to keep the aspect ratio
-      b.h = Math.round(b.w / ratio);
-      if (corner.includes('n')) b.y = Math.round(o.y + o.h - b.h);
-    }
+    const lx = dx * cos + dy * sin, ly = -dx * sin + dy * cos;       // the drag along the object's sides
+    let w = sxg ? Math.max(30, o.w + sxg * lx) : o.w, h = syg ? Math.max(20, o.h + syg * ly) : o.h;
+    if (e.shiftKey) h = Math.max(20, w / ratio);                         // hold Shift to keep the aspect ratio
+    w = Math.round(w); h = Math.round(h);
+    const cx = ax + (sxg * w / 2) * cos - (syg * h / 2) * sin, cy = ay + (sxg * w / 2) * sin + (syg * h / 2) * cos;
+    Object.assign(b, { w, h, x: Math.round(cx - w / 2), y: Math.round(cy - h / 2) });
     Object.assign(el.style, { left: b.x + 'px', top: b.y + 'px', width: b.w + 'px', height: b.h + 'px' });   // keep rotation/opacity
   };
   const onUp = () => {
     document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp);
-    commit(() => {}, { history: false });
+    commit(() => {});
   };
   document.addEventListener('pointermove', onMove); document.addEventListener('pointerup', onUp);
 }

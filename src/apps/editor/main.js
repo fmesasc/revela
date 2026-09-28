@@ -103,6 +103,13 @@ function keyboard(e) {
     navigator.clipboard?.readText?.().then(t => document.execCommand('insertText', false, t)).catch(() => {});
     return;
   }
+  // Ctrl+Z while typing undoes the typing (the browser's own undo); once the
+  // text is back as it was, it leaves the text and undoes the previous step.
+  if (editing && (e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+    const ed = document.activeElement;
+    if (ed.dataset.start !== undefined && ed.innerHTML === ed.dataset.start) { e.preventDefault(); ed.blur(); undo(); }
+    return;
+  }
   if (editing || inField(e)) return;
   // Tab on the slide moves the selection through the objects (reading order);
   // past the last one, focus leaves the slide as usual.
@@ -156,6 +163,8 @@ document.addEventListener('paste', e => {
   else addText(txt.trim().split(/\n/).map(l => l.replace(/&/g, '&amp;').replace(/</g, '&lt;')).join('<br>'));
 });
 subscribe(render);
+// What an object's text was when editing began (for Ctrl+Z while typing).
+document.addEventListener('focusin', e => { const el = e.target; if (el.isContentEditable && el.closest?.('.block')) el.dataset.start = el.innerHTML; });
 window.addEventListener('revela:lang', render);
 render();
 initI18n();
@@ -170,7 +179,7 @@ if (testing)
 // load after the editor is ready (not in the test harness).
 window.Revela = Revela;
 // A deck too big for localStorage lives in IndexedDB: load it if it's newer.
-if (!testing) loadNewerDeck(state.deck).then(d => { if (d) { state.deck = d; state.ui.slideIndex = 0; render(); } });
+if (!testing) loadNewerDeck(state.deck).then(d => { if (d) store.adoptDeck(d); });
 startAutoVersions();
 if (!testing) loadPlugins();
 // Charts linked to a CSV load fresh data when the editor opens.

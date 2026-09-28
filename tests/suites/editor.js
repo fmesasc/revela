@@ -31,6 +31,59 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(slide().blocks.length, n0 + 1, 'redo falló');
   });
 
+  await test('Ctrl+Z deshace lo que se mueve, se redimensiona o se escribe (un paso por gesto)', async () => {
+    reset(); const W = frame.contentWindow;
+    const key = (k, o = {}) => D.dispatchEvent(new W.KeyboardEvent('keydown', { key: k, ctrlKey: true, bubbles: true, ...o }));
+    R.blocks.addShape('rect'); const b = last(); Object.assign(b, { x: 100, y: 100, w: 200, h: 100 }); R.render();
+    const el = () => D.querySelector(`.block[data-id="${b.id}"]`);
+    const ptr = (target, type, x, y) => target.dispatchEvent(new W.PointerEvent(type, { clientX: x, clientY: y, bubbles: true, pointerId: 1, button: 0, isPrimary: true }));
+    // Selecting and deselecting are not steps.
+    ptr(el(), 'pointerdown', 300, 300); ptr(el(), 'pointerup', 300, 300); await sleep(10);
+    R.store.commit(() => R.store.setSelection(null)); await sleep(10);
+    // Drag twice: two steps.
+    const drag = async (dx, dy) => { const e = el(); ptr(e, 'pointerdown', 300, 300); ptr(e, 'pointermove', 300 + dx, 300 + dy); ptr(e, 'pointerup', 300 + dx, 300 + dy); await sleep(10); };
+    await drag(100, 0); const x1 = b.x; assert(x1 > 100, 'se ha movido: ' + x1);
+    await drag(0, 100); const y2 = slide().blocks.at(-1).y; assert(y2 > 100, 'se ha movido otra vez');
+    key('z'); await sleep(10); eq(slide().blocks.at(-1).y, 100, 'deshace el segundo arrastre');
+    key('z'); await sleep(10); eq(slide().blocks.at(-1).x, 100, 'deshace el primero');
+    key('z', { shiftKey: true }); await sleep(10); eq(slide().blocks.at(-1).x, x1, 'Ctrl+Mayús+Z rehace');
+    key('y'); await sleep(10); eq(slide().blocks.at(-1).y, y2, 'Ctrl+Y rehace');
+    // Resize from a corner.
+    R.store.setSelection(slide().blocks.at(-1).id); R.render(); await sleep(10);
+    const h = el().querySelector('.handle-size.se');
+    assert(h, 'tirador de esquina');
+    ptr(h, 'pointerdown', 500, 500); D.dispatchEvent(new W.PointerEvent('pointermove', { clientX: 560, clientY: 540, bubbles: true })); D.dispatchEvent(new W.PointerEvent('pointerup', { clientX: 560, clientY: 540, bubbles: true })); await sleep(10);
+    assert(slide().blocks.at(-1).w > 200, 'redimensionado');
+    key('z'); await sleep(10); eq(slide().blocks.at(-1).w, 200, 'deshace el tamaño');
+    // Rotated 90°: dragging the bottom-right handle down widens it and the opposite corner stays put on screen.
+    R.store.commit(() => Object.assign(slide().blocks.at(-1), { x: 300, y: 200, w: 200, h: 100, rotation: 90 })); await sleep(10);
+    const corner = () => { const r = el().querySelector('.handle-size.nw').getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top)]; };
+    const before = corner(), hs = el().querySelector('.handle-size.se'), hr = hs.getBoundingClientRect();
+    ptr(hs, 'pointerdown', hr.left, hr.top); D.dispatchEvent(new W.PointerEvent('pointermove', { clientX: hr.left, clientY: hr.top + 40, bubbles: true }));
+    D.dispatchEvent(new W.PointerEvent('pointerup', { clientX: hr.left, clientY: hr.top + 40, bubbles: true })); await sleep(10);
+    const rr = slide().blocks.at(-1); assert(rr.w > 200 && rr.h === 100, 'girado: al bajar crece su ancho (' + rr.w + '×' + rr.h + ')');
+    const after = corner(); assert(Math.abs(after[0] - before[0]) <= 1 && Math.abs(after[1] - before[1]) <= 1, `la esquina opuesta no se mueve (${before} → ${after})`);
+    key('z'); await sleep(10); eq(slide().blocks.at(-1).rotation, 90, 'deshace solo el tamaño'); eq(slide().blocks.at(-1).w, 200);
+    // A slider-like change without its own step is undone too.
+    R.store.mutate(() => { slide().blocks.at(-1).opacity = 40; });
+    key('z'); await sleep(10); assert(slide().blocks.at(-1).opacity == null, 'deshace un cambio en vivo (deslizador)');
+
+    // Typing: after leaving the text, Ctrl+Z brings the old text back.
+    reset(); R.blocks.addText(); const t = last(); t.html = 'Hola'; R.store.commit(() => {}); R.render(); await sleep(10);
+    const rich = () => D.querySelector(`.block[data-id="${t.id}"] .rich`);
+    rich().dispatchEvent(new W.MouseEvent('dblclick', { bubbles: true })); await sleep(10);
+    const r = D.createRange(); r.selectNodeContents(rich()); r.collapse(false); W.getSelection().removeAllRanges(); W.getSelection().addRange(r);
+    D.execCommand('insertText', false, ' mundo'); rich().blur(); await sleep(10);
+    eq(slide().blocks.at(-1).html, 'Hola mundo', 'escrito');
+    key('z'); await sleep(10); eq(slide().blocks.at(-1).html, 'Hola', 'Ctrl+Z quita lo escrito');
+    key('y'); await sleep(10); eq(slide().blocks.at(-1).html, 'Hola mundo', 'y se rehace');
+    // Ctrl+Z inside the text with nothing typed: leaves the text and undoes the step before.
+    rich().dispatchEvent(new W.MouseEvent('dblclick', { bubbles: true })); await sleep(10);
+    assert(D.activeElement === rich(), 'editando');
+    key('z'); await sleep(10);
+    assert(D.activeElement !== rich(), 'sale del texto'); eq(slide().blocks.at(-1).html, 'Hola', 'y deshace lo anterior');
+  });
+
   await test('selección múltiple: eliminar y duplicar en grupo', async () => {
     reset(); const n0 = slide().blocks.length; R.blocks.addText(); R.blocks.addText();
     const a = slide().blocks.at(-2), b = slide().blocks.at(-1);
