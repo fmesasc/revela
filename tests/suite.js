@@ -940,6 +940,35 @@ export async function run(frame) {
     eq((sec.match(/<div[^>]*font-size:28px/g) || []).length, 1, 'el marcador vacío no se exporta');
   });
 
+  await test('galería de plantillas: presentaciones completas', async () => {
+    reset(); D.querySelector('[data-action="gallery"]').click(); await sleep(20);
+    eq(D.querySelectorAll('#gallery-modal .gal-item').length, Object.keys(R.gallery.GALLERY).length, 'una miniatura por plantilla');
+    D.querySelector('#gallery-modal .modal-close').click();
+    const deck = R.gallery.buildFromGallery('tech');
+    eq(deck.slides.length, 5, 'cinco diapositivas de arranque'); eq(deck.palette, 'midnight', 'paleta');
+    assert(deck.master.blocks.length && deck.master.blocks.every(b => b.decorative), 'decoración en el patrón, decorativa');
+    assert(deck.slides.every(s => s.blocks.some(b => b.ph === 'title')), 'cada diapositiva con marcador de título');
+    R.store.replaceDeck(deck); await sleep(10);
+    const html = R.io.buildHTML();
+    assert(/family=Space\+Grotesk/.test(html), 'fuentes del tema incrustadas');
+    eq((html.match(/<section/g) || []).length, 5, 'cinco diapositivas exportadas');
+    assert(!/Haz clic para/.test(html), 'sin avisos de marcador');
+  });
+
+  await test('ideas de diseño: composiciones con el contenido de la diapositiva', async () => {
+    reset(); slide().blocks[0].html = 'Título'; slide().blocks[1].html = 'Texto';
+    R.blocks.addImage('data:image/gif;base64,R0lGODlhAQABAAAAACw='); const img = last();
+    const ideas = R.designer.designIdeas();
+    eq(ideas.map(i => i.name).join('|'), 'Clásica|Visual a la derecha|Visual a la izquierda|Visual de fondo|Centrada', 'cinco ideas');
+    D.querySelector('[data-action="design-ideas"]').click(); await sleep(20);
+    eq(D.querySelectorAll('#ideas-modal .gal-item').length, 5, 'miniaturas de las ideas');
+    D.querySelectorAll('#ideas-modal .gal-item')[1].click(); await sleep(10);
+    assert(img.x >= 640 || slide().blocks.find(b => b.id === img.id).x >= 640, 'imagen a la derecha');
+    R.designer.applyIdea(R.designer.designIdeas()[3]); await sleep(10);
+    eq(slide().blocks[0].id, img.id, 'imagen de fondo al fondo');
+    eq(slide().blocks[0].w, 1280, 'a sangre');
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

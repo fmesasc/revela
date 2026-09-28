@@ -98,7 +98,7 @@ the origin of every requirement is traceable.
 - ✅ Slide master — objects on every slide (edit mode), hide per slide, plus logo/branding & backgrounds `PP·GS·OO`
 - ✅ Placeholders — layouts with title/subtitle/body prompts, not exported while empty; changing layout keeps the text `PP·OO`
 - ✅ Theme colours (9 palettes; switching recolours what came from the palette) & theme fonts (heading/body pairs), theme swatches in every colour picker `PP·GS·OO`
-- ⬜ Template / theme gallery & designer variants `PP·GS·OO`
+- ✅ Template gallery — 8 complete starter decks (palette, fonts, master decoration, layouts with placeholders) `PP·GS·OO`
 - ✅ Reuse / import slides from another deck (.json or .pptx, pick by thumbnail, scaled to size) `PP·OO`
 - ✅ Handout / notes printing layouts (notes pages; 1, 2, 3 with lines, 4, 6, 9 per page) `PP·OO`
 
@@ -167,7 +167,7 @@ the origin of every requirement is traceable.
 
 ## 11. Intelligence
 - ✅ AI image background removal `PP`
-- ⬜ Design ideas / Designer / Explore (auto layouts) `PP·GS`
+- ✅ Design ideas — local layout suggestions for the slide's content (visual left/right/background, centred, classic) `PP·GS`
 - ⬜ AI text and image generation `PP·GS`
 - ⬜ Auto-generated speaker notes / summaries `PP·GS`
 

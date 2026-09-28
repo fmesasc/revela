@@ -16,6 +16,7 @@ import { openA11yCheck, openReadingOrder } from './a11y-panel.js';
 import { openHandoutDialog, openImageDialog } from './print-dialog.js';
 import * as recorder from './recorder.js';
 import * as master from '../features/master.js';
+import { openGallery, openDesignIdeas } from './gallery-dialog.js';
 import * as media from '../features/media.js';
 import * as palettes from '../features/palettes.js';
 import { setDrawTool, drawOpts } from './draw.js';
@@ -46,6 +47,8 @@ const ACTIONS = {
   'open': () => readFile('.json,application/json', txt => {
     try { replaceDeck(JSON.parse(txt)); } catch { alertDialog(t('Proyecto no válido.')); } }, 'text'),
   'save': io.saveProject,
+  'gallery': () => openGallery(),
+  'design-ideas': () => openDesignIdeas(),
   'gdrive-open': () => gdrive.openWithUI(),
   'gdrive-save': () => gdrive.saveWithUI(),
   'gdrive-html': () => gdrive.saveHtmlWithUI(),
