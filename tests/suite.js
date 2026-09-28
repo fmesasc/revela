@@ -250,6 +250,15 @@ export async function run(frame) {
     eq(R.remote.presentationState().total, 1, 'solo cuenta visibles');
   });
 
+  await test('zoom: acercar y restablecer', async () => {
+    reset(); const g = D.getElementById('stage-grid');
+    const z0 = parseFloat(g.style.getPropertyValue('--zoom') || '1');
+    D.querySelector('[data-action="zoom-in"]').click();
+    assert(parseFloat(g.style.getPropertyValue('--zoom')) > z0, 'aumenta');
+    D.querySelector('[data-action="zoom-reset"]').click();
+    eq(parseFloat(g.style.getPropertyValue('--zoom')), 1, 'reset');
+  });
+
   // ---- Report --------------------------------------------------------------
   const pass = results.filter(r => r.ok).length;
   const fail = results.filter(r => !r.ok);

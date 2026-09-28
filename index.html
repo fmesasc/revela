@@ -323,9 +323,15 @@
   </section>
 
   <footer id="statusbar">
-    <span class="hint">Clic para seleccionar · doble clic para editar · arrastra el borde para mover · Esc para salir de edición · clic derecho para más opciones</span>
+    <span class="hint">Clic para seleccionar · doble clic para editar · arrastra para mover · clic derecho para más opciones</span>
     <span class="grow"></span>
     <span id="status-slide"></span>
+    <span class="zoom">
+      <button data-action="zoom-out" title="Alejar"><i class="ms">remove</i></button>
+      <button data-action="zoom-reset" id="zoom-label" title="Restablecer al 100%">100%</button>
+      <button data-action="zoom-in" title="Acercar"><i class="ms">add</i></button>
+      <button data-action="zoom-fit" title="Ajustar a la ventana"><i class="ms">fit_screen</i></button>
+    </span>
   </footer>
 
   <script type="module" src="src/main.js"></script>

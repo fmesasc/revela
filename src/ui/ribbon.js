@@ -65,7 +65,28 @@ const ACTIONS = {
   'toggle-notes': () => commit(() => (state.ui.showNotes = !state.ui.showNotes), { history: false }),
   'connect-mobile': () => remote.openHostPanel(),
   'find-replace': () => search.openFindPanel(),
+  'zoom-in': () => setZoom((state.ui.zoom || 1) + 0.1),
+  'zoom-out': () => setZoom((state.ui.zoom || 1) - 0.1),
+  'zoom-reset': () => setZoom(1),
+  'zoom-fit': () => fitZoom(),
 };
+
+function applyZoom() {
+  const g = document.getElementById('stage-grid');
+  if (g) g.style.setProperty('--zoom', state.ui.zoom || 1);
+  const lbl = document.getElementById('zoom-label');
+  if (lbl) lbl.textContent = Math.round((state.ui.zoom || 1) * 100) + '%';
+}
+function setZoom(z) {
+  state.ui.zoom = Math.max(0.2, Math.min(3, Math.round(z * 100) / 100));
+  applyZoom();
+}
+function fitZoom() {
+  const wrap = document.getElementById('canvas-wrap');
+  const { w, h } = state.deck.size;
+  const z = Math.min((wrap.clientWidth - 56) / w, (wrap.clientHeight - 56) / h);
+  setZoom(z);
+}
 
 // Fill the font picker from the catalogue (each option shown in its own font
 // where already available).
@@ -82,6 +103,7 @@ function populateFonts() {
 
 export function initRibbon() {
   populateFonts();
+  applyZoom();
   document.getElementById('ribbon').addEventListener('click', e => {
     const more = e.target.closest('[data-more]');
     if (more) { e.stopPropagation(); togglePopover(more, more.dataset.more); return; }
@@ -139,6 +161,12 @@ export function initRibbon() {
 
   // Reflect the active character formatting on the toolbar as the caret moves.
   document.addEventListener('selectionchange', updateFormatState);
+
+  // Status-bar actions (zoom) live outside the ribbon.
+  document.getElementById('statusbar').addEventListener('click', e => {
+    const act = e.target.closest('[data-action]');
+    if (act) ACTIONS[act.dataset.action]?.();
+  });
 
   // Let the mouse wheel scroll the ribbon sideways when the groups overflow.
   document.querySelectorAll('.ribbon-page').forEach(page => {

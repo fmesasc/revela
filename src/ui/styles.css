@@ -114,7 +114,8 @@ main{flex:1;display:flex;min-height:0}
 .pv-block>div,.pv-block>img{width:100%;height:100%}
 
 #canvas-wrap{flex:1;display:grid;place-items:center;padding:28px;overflow:auto;background:var(--canvas-bg)}
-#stage-grid{display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto}
+#stage-grid{display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;
+  transform:scale(var(--zoom,1));transform-origin:top center}
 #stage{position:relative;background:#111;border-radius:4px;overflow:hidden;flex:0 0 auto;
   box-shadow:0 10px 34px #0003}
 
@@ -233,4 +234,10 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 /* ---------- Status bar ---------- */
 #statusbar{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:4px 14px;
   background:var(--panel);border-top:1px solid var(--line2);color:var(--txt2);font-size:12px}
+.zoom{display:flex;align-items:center;gap:2px}
+.zoom button{background:none;border:1px solid transparent;border-radius:6px;cursor:pointer;color:var(--txt2);
+  display:grid;place-items:center;padding:2px 6px;font-size:12px;min-width:30px}
+.zoom button:hover{background:var(--ribbon);border-color:var(--line2);color:var(--txt)}
+.zoom .ms{font-size:16px}
+#zoom-label{font-variant-numeric:tabular-nums;min-width:44px}
 [hidden]{display:none!important}

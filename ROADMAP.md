@@ -31,7 +31,7 @@ the origin of every requirement is traceable.
 - ⬜ Grid, rulers and guides you can place `PP·GS·OO`
 - ⬜ Format painter / copy style `PP·GS·OO`
 - ✅ Find & replace `PP·GS·OO`
-- ⬜ Zoom controls, fit to width / slide `PP·GS·OO`
+- ✅ Zoom controls, fit to window `PP·GS·OO`
 - ⬜ Paste special / paste without formatting `PP·GS·OO`
 
 ## 2. Text
