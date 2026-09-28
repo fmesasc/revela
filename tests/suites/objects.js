@@ -510,4 +510,19 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(back, 'menú: volver a incrustarla'); back.click(); await sleep(30);
     assert(el().querySelector('iframe') && !b.display, 'vuelve al marco');
   });
+
+  await test('web incrustada: vídeos de YouTube y Vimeo con su dirección de reproductor', async () => {
+    const E = R.blocks.embedUrl;
+    eq(E('https://www.youtube.com/watch?v=jNQXAC9IVRw'), 'https://www.youtube.com/embed/jNQXAC9IVRw', 'watch');
+    eq(E('https://youtu.be/jNQXAC9IVRw?t=12'), 'https://www.youtube.com/embed/jNQXAC9IVRw?start=12', 'youtu.be con minuto');
+    eq(E('https://m.youtube.com/watch?v=jNQXAC9IVRw&t=30s'), 'https://www.youtube.com/embed/jNQXAC9IVRw?start=30', 'móvil con segundos');
+    eq(E('https://www.youtube.com/shorts/abcdefghijk'), 'https://www.youtube.com/embed/abcdefghijk', 'shorts');
+    eq(E('https://vimeo.com/76979871'), 'https://player.vimeo.com/video/76979871', 'Vimeo');
+    eq(E('https://es.wikipedia.org/wiki/Reveal.js'), 'https://es.wikipedia.org/wiki/Reveal.js', 'otras webs sin cambios');
+    reset(); R.blocks.addEmbed('https://youtu.be/jNQXAC9IVRw'); eq(last().src, 'https://www.youtube.com/embed/jNQXAC9IVRw', 'al insertar');
+    const html = R.io.buildHTML();
+    assert(/<iframe[^>]*referrerpolicy="strict-origin-when-cross-origin"/.test(html), 'envía el origen (sin él YouTube da «Error 153»)');
+    await sleep(20);
+    eq(D.querySelector(`.block[data-id="${last().id}"] iframe`).getAttribute('referrerpolicy'), 'strict-origin-when-cross-origin', 'también en el editor');
+  });
 }

@@ -101,7 +101,7 @@ function drawBgMedia(slide) {
   if (el.dataset.k === want) return;
   el.dataset.k = want; el.innerHTML = ''; el.style.cssText = '';
   if (slide.bgVideo) { const v = document.createElement('video'); Object.assign(v, { src: slide.bgVideo, muted: true, loop: true, autoplay: true, playsInline: true }); el.appendChild(v); v.play?.().catch(() => {}); }
-  else if (slide.bgIframe) { const f = document.createElement('iframe'); f.src = slide.bgIframe; f.setAttribute('referrerpolicy', 'no-referrer'); f.setAttribute('sandbox', 'allow-scripts allow-same-origin'); el.appendChild(f); }
+  else if (slide.bgIframe) { const f = document.createElement('iframe'); f.src = slide.bgIframe; f.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin'); f.setAttribute('sandbox', 'allow-scripts allow-same-origin'); el.appendChild(f); }
   else { el.style.background = slide.background; el.style.opacity = slide.bgOpacity / 100; }
 }
 

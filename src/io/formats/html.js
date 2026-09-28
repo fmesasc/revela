@@ -141,7 +141,7 @@ function blockHTMLRaw(b, slide) {
   if (b.type === 'embed' && b.display === 'card')
     return `<a${a} class="rv-webcard" href="${esc(b.src || '')}" target="_blank" rel="noopener" style="${box(b)}display:block;text-decoration:none">${webCardHTML(b, t('Abrir la web'))}</a>`;
   if (b.type === 'embed')
-    return `<iframe${a} src="${b.src}" referrerpolicy="no-referrer"${b.refreshMin ? ` data-refresh-min="${+b.refreshMin}"` : ''} `
+    return `<iframe${a} src="${b.src}" referrerpolicy="strict-origin-when-cross-origin"${b.refreshMin ? ` data-refresh-min="${+b.refreshMin}"` : ''} `
       + `sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation" `
       + `style="${box(b)}border:0;background:#fff"></iframe>`;
   if (b.type === 'shape')

@@ -185,7 +185,9 @@ export function embedContent(b) {
   const f = document.createElement('iframe');
   f.src = b.src || '';
   f.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-forms allow-presentation');
-  f.setAttribute('referrerpolicy', 'no-referrer');
+  // Only our origin, not the page: YouTube and other players refuse to play
+  // without it ("Error 153").
+  f.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
   f.setAttribute('loading', 'lazy');
   f.style.pointerEvents = 'none'; // dragging the body moves the block; double‑click to interact
   wrap.append(bar, f);

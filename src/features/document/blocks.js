@@ -69,9 +69,28 @@ export function setWebCard(id, props) {
   commit(() => { for (const [k, v] of Object.entries(props)) { if (v) b[k] = v; else delete b[k]; } });
 }
 
+// The address a site allows inside other pages: a video's normal page refuses
+// to be framed, its player doesn't. Other addresses are left as they are.
+export function embedUrl(input) {
+  const url = String(input || '').trim();
+  let u; try { u = new URL(url); } catch { return url; }
+  const host = u.hostname.replace(/^(www\.|m\.)/, '');
+  const t = u.searchParams.get('t') || u.searchParams.get('start');
+  const start = t && /^\d+s?$/.test(t) ? `?start=${parseInt(t, 10)}` : '';
+  let id = null;
+  if (host === 'youtu.be') id = u.pathname.slice(1);
+  else if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
+    if (u.pathname === '/watch') id = u.searchParams.get('v');
+    else { const m = u.pathname.match(/^\/(?:shorts|live|embed)\/([\w-]+)/); if (m) id = m[1]; }
+  }
+  if (id && /^[\w-]{6,}$/.test(id)) return `https://www.youtube.com/embed/${id}${start}`;
+  if (host === 'vimeo.com') { const m = u.pathname.match(/^\/(\d+)/); if (m) return `https://player.vimeo.com/video/${m[1]}`; }
+  return url;
+}
+
 export function addEmbed(url) {
   insert({ id: uid(), type: 'embed', x: 260, y: 120, w: 760, h: 480,
-    rotation: 0, animation: null, src: url });
+    rotation: 0, animation: null, src: embedUrl(url) });
 }
 
 export function setAlt(text, decorative = false) {
