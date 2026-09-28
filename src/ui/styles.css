@@ -554,3 +554,4 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
   .handle-del{width:30px;height:30px;top:calc(-38px * var(--hz,1));right:calc(-38px * var(--hz,1))}
   .handle-rot{width:24px;height:24px;top:calc(-40px * var(--hz,1))}
 }
+.sc-table th{text-align:start;padding:10px 0 4px;font-size:12px;color:var(--accent);text-transform:uppercase;letter-spacing:.4px}
