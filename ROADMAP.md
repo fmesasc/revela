@@ -85,7 +85,7 @@ the origin of every requirement is traceable.
 - ⬜ Slide layouts (title, title+content, …) `PP·GS·OO`
 - ⬜ Slide master / theme editor `PP·GS·OO`
 - ⬜ Placeholders `PP·OO`
-- ⬜ Background images and gradients `PP·GS·OO`
+- ✅ Background images and gradients `PP·GS·OO`
 - ⬜ Colour palettes / theme colours & fonts `PP·GS·OO`
 - ✅ Speaker notes (editor panel + presenter view) `PP·GS·OO`
 - 🚧 Slide numbers, date/time, header & footer — slide numbers (show, position, format) done `PP·GS·OO`

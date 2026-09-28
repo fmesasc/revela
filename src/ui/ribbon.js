@@ -66,6 +66,11 @@ const ACTIONS = {
   'toggle-notes': () => commit(() => (state.ui.showNotes = !state.ui.showNotes), { history: false }),
   'connect-mobile': () => remote.openHostPanel(),
   'find-replace': () => search.openFindPanel(),
+  'bg-gradient': () => {
+    const a = $('[data-grad1]')?.value || '#3f6497', b = $('[data-grad2]')?.value || '#101317';
+    commit(() => { currentSlide().background = `linear-gradient(135deg, ${a}, ${b})`; });
+  },
+  'bg-image': () => readFile('image/*', src => commit(() => { currentSlide().background = `#000 url(${src}) center/cover no-repeat`; })),
   'zoom-in': () => setZoom((state.ui.zoom || 1) + 0.1),
   'zoom-out': () => setZoom((state.ui.zoom || 1) - 0.1),
   'zoom-reset': () => setZoom(1),

@@ -261,6 +261,11 @@ export async function run(frame) {
     R.blocks.ungroupSelected(); assert(!a.groupId && !b.groupId, 'desagrupado');
   });
 
+  await test('fondo con degradado se aplica y se exporta', async () => {
+    reset(); slide().background = 'linear-gradient(135deg, #3f6497, #101317)'; R.render(); await sleep(10);
+    assert(/style="background:linear-gradient\(135deg, #3f6497, #101317\)"/.test(R.io.buildHTML()), 'degradado en export');
+  });
+
   await test('avance automático por diapositiva en el export', async () => {
     reset(); slide().autoSlide = 5000;
     assert(/<section[^>]*data-autoslide="5000"/.test(R.io.buildHTML()), 'sin data-autoslide');
