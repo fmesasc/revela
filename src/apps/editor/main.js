@@ -67,6 +67,8 @@ import * as api from '../../api/index.js';
 
 // io and features ask the user through core/notify: here, with our dialogs.
 notify.setNotifier({ alert: alertDialog, confirm: confirmDialog, prompt: promptDialog });
+// Slides' placeholders follow their layout's when it is moved in the master view.
+master.followLayouts();
 // Output of the document (HTML, print, images) and presenting, together for the tests.
 const io = { ...html, ...printing, ...images, ...presenting, publishShare };
 

@@ -6,14 +6,14 @@ import { state } from '../../core/store.js';
 import { REVEAL, KATEX, MODEL_VIEWER } from '../../core/vendor.js';
 import { download, slug } from '../files.js';
 import { TRIGGER_JS, CAMERA_JS, pollJS, liveDataJS, LIGHTBOX_JS } from '../runtime/scripts.js';
-import { textPadding, webCardHTML, mathTeX, mathCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, tableClass, tableVars, tableCSS } from '../../render/svg.js';
+import { levelCSS, textPadding, webCardHTML, mathTeX, mathCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, tableClass, tableVars, tableCSS } from '../../render/svg.js';
 import { googleFontLinks } from '../../features/design/fonts.js';
 import { t, currentLang } from '../../i18n/index.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle, slidePaths } from '../../features/document/captions.js';
 import { INK_CSS, inkJS } from '../runtime/ink.js';
 import { deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
 import { animTimeline, EFFECT_KF, EFFECT_KF_CSS, isEntrance, customTransitionCSS, pathKeyframesCSS } from '../../features/animation/transitions.js';
-import { masterBlocksFor, isEmptyPlaceholder } from '../../features/document/master.js';
+import { masterBlocksFor, isEmptyPlaceholder, styled, levelVars } from '../../features/document/master.js';
 
 
 const tf = b => `rotate(${b.rotation || 0}deg)${b.flipH ? ' scaleX(-1)' : ''}${b.flipV ? ' scaleY(-1)' : ''}`;
@@ -68,7 +68,7 @@ function animAttrs(b, slide) {
 // accessible name, or hidden from screen readers when marked decorative.
 // What a slide shows: the master's objects (unless hidden) under its own, and
 // no empty placeholders.
-export const blocksOf = (s, deck = state.deck) => [...masterBlocksFor(s, deck), ...s.blocks].filter(b => !isEmptyPlaceholder(b));
+export const blocksOf = (s, deck = state.deck) => [...masterBlocksFor(s, deck), ...s.blocks.map(b => styled(b, s, deck))].filter(b => !isEmptyPlaceholder(b));
 
 function ariaAttrs(b) {
   if (b.decorative) return ' aria-hidden="true"';
@@ -102,7 +102,7 @@ function blockHTMLRaw(b, slide) {
     return `<div${a} style="${box(b)}pointer-events:none">${connectorSVG(b, from, to, w, h)}</div>`;
   }
   if (b.type === 'text')
-    return `<div${a} style="${box(b)}font-size:${b.fontSize || 40}px;`
+    return `<div${a}${b.levels ? ' class="lv"' : ''} style="${box(b)}font-size:${b.fontSize || 40}px;${b.color ? `color:${b.color};` : ''}${b.levels ? levelVars(b) : ''}`
       + `text-align:${b.textAlign || 'left'};${b.fontFamily ? `font-family:${b.fontFamily};` : ''}`
       + `${b.lineHeight ? `line-height:${b.lineHeight};` : ''}`
       + `${b.letterSpacing ? `letter-spacing:${b.letterSpacing}px;` : ''}`
@@ -307,6 +307,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  .reveal .stage img,.reveal .stage video,.reveal .stage iframe{margin:0;border:0;background:none;box-shadow:none;max-width:none;max-height:none}
  .reveal .stage ul,.reveal .stage ol{display:block;text-align:inherit;margin:1em 0;padding-left:40px}
  .reveal .stage table.tbl{line-height:normal}
+ ${levelCSS('.reveal ')}
  .reveal .stage ul{list-style-type:var(--bullet,disc)}
  .reveal .stage ol{list-style-type:var(--num,decimal)}
  .reveal section{height:100%}

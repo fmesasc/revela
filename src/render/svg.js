@@ -344,3 +344,10 @@ export function textPadding(b) {
   const [t, r, bt, l] = Array.isArray(b.pad) ? b.pad : [6, 6, 6, 6];
   return `${t}px ${r}px ${bt}px ${l + (b.indent || 0)}px`;
 }
+
+// Body text levels (master styles): list items take the size and bullet of
+// their nesting level from --l1…--l5 / --b1…--b5 (see master.levelVars).
+export const levelCSS = (pre = '') => [1, 2, 3, 4, 5].map(n => {
+  const lists = Array(n).fill(':is(ul,ol)').join(' ');
+  return `${pre}.lv ${lists} li{font-size:var(--l${n})}${pre}.lv ${Array(n).fill('ul').join(' ')} li{list-style-type:var(--b${n})}`;
+}).join('');

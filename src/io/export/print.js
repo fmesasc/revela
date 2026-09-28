@@ -3,7 +3,7 @@
 import { state } from '../../core/store.js';
 import { MODEL_VIEWER } from '../../core/vendor.js';
 import { alertUser } from '../../core/notify.js';
-import { tableCSS } from '../../render/svg.js';
+import { tableCSS, levelCSS } from '../../render/svg.js';
 import { googleFontLinks } from '../../features/design/fonts.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
 import { t } from '../../i18n/index.js';
@@ -26,7 +26,7 @@ ${googleFontLinks(deck)}
  .page:last-child{page-break-after:auto}
  .page>*{overflow-wrap:anywhere}
  model-viewer,img,video,iframe{width:100%;height:100%}
- ${tableCSS()}
+ ${tableCSS()}${levelCSS()}
 </style></head>
 <body onload="setTimeout(function(){window.print();},400)">
 ${pages}
@@ -76,7 +76,7 @@ ${googleFontLinks(deck)}
  .page img,.page video,.page iframe,.page model-viewer{width:100%;height:100%}
  .lines{background:repeating-linear-gradient(transparent 0 9mm,#bbb 9mm calc(9mm + 1px));margin:4mm 0}
  .notes{white-space:pre-wrap;font-size:12pt;line-height:1.5;margin-top:10mm;flex:1}
- ${tableCSS()}
+ ${tableCSS()}${levelCSS()}
 </style></head>
 <body onload="setTimeout(function(){window.print();},400)">
 ${pages.join('\n')}

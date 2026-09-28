@@ -4,7 +4,7 @@
 import { state } from '../../core/store.js';
 import { KATEX, HTML2CANVAS, JSZIP, loadScript } from '../../core/vendor.js';
 import { alertUser } from '../../core/notify.js';
-import { tableCSS } from '../../render/svg.js';
+import { tableCSS, levelCSS } from '../../render/svg.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
 import { tallyVotes, pollResultsHTML, savedVotes } from '../../features/live/poll.js';
 import { t } from '../../i18n/index.js';
@@ -36,7 +36,7 @@ export async function hydrateStatic(root, deck) {
 export async function blockImage(b, slide, deck = state.deck) {
   const holder = document.createElement('div');
   holder.style.cssText = `position:fixed;left:-99999px;top:0;width:${b.w}px;height:${b.h}px;overflow:hidden;color:${deckFg(deck)};font-family:${deckBodyFont(deck) || 'inherit'}`;
-  holder.innerHTML = `<style>*{box-sizing:border-box}${tableCSS()}</style>` + blockHTML({ ...b, x: 0, y: 0, rotation: 0, animation: null }, { ...slide, blocks: [b] });
+  holder.innerHTML = `<style>*{box-sizing:border-box}${tableCSS()}${levelCSS()}</style>` + blockHTML({ ...b, x: 0, y: 0, rotation: 0, animation: null }, { ...slide, blocks: [b] });
   document.body.appendChild(holder);
   try {
     await hydrateStatic(holder, deck);
@@ -53,7 +53,7 @@ export async function slideImageBlob(s, type = 'png', deck = state.deck) {
   const holder = document.createElement('div');
   holder.style.cssText = `position:fixed;left:-99999px;top:0;width:${w}px;height:${h}px;overflow:hidden;color:${deckFg(deck)};font-family:${deckBodyFont(deck) || 'inherit'};background:${s.background}`;
   holder.innerHTML = `<style>*{box-sizing:border-box}ul{list-style-type:var(--bullet,disc)}ol{list-style-type:var(--num,decimal)}`
-    + `img,video,model-viewer,iframe{width:100%;height:100%}${tableCSS()}</style>`
+    + `img,video,model-viewer,iframe{width:100%;height:100%}${tableCSS()}${levelCSS()}</style>`
     + slideInnerHTML(s, deck);
   document.body.appendChild(holder);
   try {

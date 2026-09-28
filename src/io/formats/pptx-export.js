@@ -10,7 +10,7 @@ import { t } from '../../i18n/index.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
 import { chartSeries, iconSVG, inkSVG } from '../../render/svg.js';
 import { blockImage } from '../export/images.js';
-import { masterBlocksFor, isEmptyPlaceholder } from '../../features/document/master.js';
+import { masterBlocksFor, isEmptyPlaceholder, styled } from '../../features/document/master.js';
 import { PPTXGEN, loadScript } from '../../core/vendor.js';
 
 
@@ -82,7 +82,7 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map()) {
   try {
     if (b.type === 'text') {
       const fam = (b.fontFamily || deckBodyFont() || '').split(',')[0].replace(/['"]/g, '').trim();
-      const base = { fontSize: Math.round((b.fontSize || 40) * 0.75), color: hex(deckFg()) || 'FFFFFF', align: b.textAlign || 'left',
+      const base = { fontSize: Math.round((b.fontSize || 40) * 0.75), color: hex(b.color || deckFg()) || 'FFFFFF', align: b.textAlign || 'left',
         ...(fam && { fontFace: fam }), ...(b.fontWeight === '700' && { bold: true }), ...(b.fontStyle === 'italic' && { italic: true }),
         ...(b.lineHeight && { lineSpacingMultiple: +b.lineHeight }) };
       const opts = { ...pos, valign: { middle: 'middle', bottom: 'bottom' }[b.vAlign] || 'top', margin: 4,
@@ -187,7 +187,7 @@ export async function buildPptx(deck = state.deck) {
     if (bg) slide.background = { color: bg };
     else if (/url\((data:[^)]+)\)/.test(s.background || '')) slide.background = { data: RegExp.$1 };
     if (s.notes) slide.addNotes(s.notes);
-    const all = [...masterBlocksFor(s, deck), ...s.blocks], byId = new Map(all.map(b => [b.id, b]));
+    const all = [...masterBlocksFor(s, deck), ...s.blocks.map(b => styled(b, s, deck))], byId = new Map(all.map(b => [b.id, b]));
     for (const b of all) if (!isEmptyPlaceholder(b)) addBlock(slide, b, pptx, raster, byId);
   }
   return pptx;

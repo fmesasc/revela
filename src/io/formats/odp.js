@@ -11,7 +11,7 @@ import { state } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 import { chartSVG, iconSVG, inkSVG, tableSpan } from '../../render/svg.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
-import { masterBlocksFor, isEmptyPlaceholder } from '../../features/document/master.js';
+import { masterBlocksFor, isEmptyPlaceholder, styled } from '../../features/document/master.js';
 import { blockImage } from '../export/images.js';
 import { JSZIP, loadScript } from '../../core/vendor.js';
 
@@ -189,7 +189,7 @@ export async function buildODP(deck = state.deck) {
   const pages = deck.slides.map((s, i) => {
     const bg = hex(s.background) || '#101317';
     const dp = style('drawing-page', 'dp', `<style:drawing-page-properties draw:fill="solid" draw:fill-color="${bg}" presentation:background-visible="true"/>`);
-    const list = [...masterBlocksFor(s, deck), ...s.blocks].filter(b => !isEmptyPlaceholder(b));
+    const list = [...masterBlocksFor(s, deck), ...s.blocks.map(b => styled(b, s, deck))].filter(b => !isEmptyPlaceholder(b));
     byId = new Map(list.map(b => [b.id, b]));
     const objs = list.map(objXML).join('');
     const notes = s.notes ? `<presentation:notes><draw:frame presentation:class="notes" svg:x="2cm" svg:y="12cm" svg:width="17cm" svg:height="12cm"><draw:text-box>`

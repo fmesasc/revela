@@ -84,7 +84,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(title.x, 128, 'posición (1 in = 128 px)'); eq(title.w, 1024, 'ancho');
     eq(title.fontSize, 71, '40 pt → 71 px en un lienzo de 1280');
     eq(title.textAlign, 'center', 'alineación');
-    assert(/<b>/.test(title.html) && /color:#ff0000/.test(title.html) && /Georgia/.test(title.fontFamily + title.html), 'negrita, color y fuente');
+    const eff = R.master.styled(title, a, deck);
+    assert(/<b>/.test(title.html) && (/color:#ff0000/.test(title.html) || eff.color === '#ff0000') && /Georgia/.test(eff.fontFamily + title.html), 'negrita, color y fuente');
     const list = a.blocks.find(x => x.type === 'text' && /Uno/.test(x.html));
     assert(/<ul[^>]*><li[^>]*>.*Uno.*<\/li><li[^>]*>.*Dos.*<\/li><\/ul>/.test(list.html), 'viñetas como lista');
     const ell = a.blocks.find(x => x.type === 'shape');
@@ -390,12 +391,13 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const pt = v => Math.round(v * 12700 * 1280 / 9144000);
     const s1 = deck.slides[0], texts = s1.blocks.filter(b => b.type === 'text');
     const title = texts.find(b => /Títol/.test(b.html));
-    eq(title.fontSize, pt(28 * 0.9), 'título: 28 pt del patrón (no 14 pt del estilo genérico) y reducido al 90 %');
-    assert(/color:#652d90/.test(title.html), 'título con el color del patrón');
+    eq(R.master.styled(title, s1, deck).fontSize, pt(28 * 0.9), 'título: 28 pt del patrón (no 14 pt del estilo genérico) y reducido al 90 %');
+    const eff = b => R.master.styled(b, s1, deck);
+    eq(eff(title).color, '#652d90', 'título con el color del patrón');
     assert(!s1.blocks.some(b => b.type === 'shape' && /^#000000/.test(b.fill || '')), 'relleno totalmente transparente: sin forma negra');
     const body = texts.find(b => /Negreta/.test(b.html));
-    eq(body.fontSize, pt(18), 'cuerpo: 18 pt del patrón');
-    assert(/color:#475569/.test(body.html), 'cuerpo con su color');
+    eq(R.master.styled(body, s1, deck).fontSize, pt(18), 'cuerpo: 18 pt del patrón');
+    eq(eff(body).color, '#475569', 'cuerpo con su color');
     assert(/<li[^>]*line-height:1\.38/.test(body.html), 'interlineado 115 % del patrón');
     assert(/list-style-type:'●/.test(body.html) && /margin-left:64px/.test(body.html), 'viñeta ● y sangría del patrón');
     assert(/<b>[^<]*Negreta/.test(body.html) || /<b><span[^>]*>Negreta/.test(body.html), 'negrita');
@@ -403,8 +405,17 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/A      \[ OK \]/.test(body.html), 'se conservan los espacios que alinean: ' + JSON.stringify(body.html.match(/A[^\[]*\[/)?.[0]));
     assert(Array.isArray(body.pad) && body.pad[3] === pt(0) + Math.round(91440 * 1280 / 9144000) - pt(0), 'margen interno del cuadro');
     assert(texts.some(b => />1</.test(b.html)), 'número de diapositiva en vez de ‹#›');
-    eq(deck.master.blocks.filter(b => b.type === 'image').length, 1, 'el logotipo de la plantilla va al patrón');
-    assert(!s1.hideMaster, 'y la diapositiva lo muestra');
+    // The template becomes Revela's master and layouts.
+    eq(deck.master.styles.title.size, pt(28), 'estilo de título del patrón: 28 pt');
+    eq(deck.master.styles.title.color, '#652d90', 'y su color');
+    eq(deck.master.styles.body.levels[0].size, pt(18), 'texto nivel 1: 18 pt'); eq(deck.master.styles.body.levels[0].bullet, '●', 'con su viñeta');
+    const lay = deck.layouts.find(l => l.id === s1.layoutId); assert(lay, 'la diapositiva usa su diseño importado');
+    eq(lay.blocks.filter(b => b.type === 'image').length, 1, 'el logotipo va a su diseño');
+    assert(R.master.masterBlocksFor(s1, deck).some(b => b.type === 'image'), 'y se ve debajo de la diapositiva');
+    const lt = lay.blocks.find(b => b.ph === 'title'); eq(title.lp, lt.id, 'el título enlazado al marcador del diseño');
+    assert(body.fontSize == null && body.color == null, 'lo que solo repite el patrón no se guarda en la diapositiva (hereda)');
+    eq(title.fit, 0.9, 'la reducción automática se guarda como factor, así el título sigue al patrón');
+    assert(title.fontSize == null, 'sin tamaño fijo');
     const [c1, c2] = s1.blocks.filter(b => b.type === 'shape');
     assert(c1 && c1.shape === 'arrow' && c1.rotation === 45, 'flecha diagonal: ' + JSON.stringify(c1 && [c1.shape, c1.rotation]));
     eq(c1.strokeWidth, Math.round(28575 * 1280 / 9144000), 'grosor de línea en px (2,25 pt no es 1 px)');

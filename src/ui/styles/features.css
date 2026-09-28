@@ -80,7 +80,12 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 #stage.editing-master{box-shadow:0 0 0 3px #e0873b}
 #master-banner{display:flex;align-items:center;gap:10px;margin:0 0 8px;padding:6px 12px;border-radius:8px;background:#fff4e5;color:#7a4a12;font-size:13px}
 #master-banner[hidden]{display:none}
-#master-banner button{margin-inline-start:auto;border:1px solid #e0873b;background:#fff;color:#7a4a12;border-radius:6px;padding:4px 10px;cursor:pointer}
+#master-banner{flex-wrap:wrap}
+#master-banner button,#master-banner select{border:1px solid #e0873b;background:#fff;color:#7a4a12;border-radius:6px;padding:4px 10px;cursor:pointer;font:inherit}
+#master-banner .mb-text{flex:1 1 220px}
+#master-banner button:disabled,#master-banner select:disabled{opacity:.45;cursor:default}
+.layout-thumb.indent .layout-name::before{content:'└ ';opacity:.6}
+.layout-thumb .layout-name{font-size:11px;color:var(--txt2);padding:3px 2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .block .rich[data-ph]:empty::before{content:attr(data-ph);opacity:.45;font-style:italic;pointer-events:none}
 .block:not(.selected):has(.rich[data-ph]:empty){outline:1px dashed #8a8a8a88}
 /* Template gallery */
@@ -205,6 +210,14 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 @keyframes rvSemi{from{opacity:1}to{opacity:.5}}
 @keyframes rvInSemi{0%{opacity:0}30%,70%{opacity:1}100%{opacity:.5}}
 .set-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.set-grid fieldset:last-child{grid-column:1/-1}@media (max-width:860px){.set-grid{grid-template-columns:1fr}}
+/* Master text styles */
+.ts2-wrap{overflow-x:auto}
+.ts2{border-collapse:collapse;font-size:13px}
+.ts2 th,.ts2 td{padding:4px 6px;text-align:start;white-space:nowrap;border-bottom:1px solid var(--line)}
+.ts2 input[type=number]{width:62px}
+.ts2 input[type=color]{width:34px;height:26px;padding:0;vertical-align:middle}
+.ts2 .ts2-auto{font-size:11px;color:var(--txt2);margin-inline-start:4px}
+.ts2 .mini2.on{background:var(--accent-bg);border-color:var(--accent)}
 /* Share dialog */
 .modal.share fieldset{border:1px solid var(--line);border-radius:8px;margin:10px 0;padding:6px 12px 10px}
 .modal.share legend{font-size:12px;color:var(--txt2);padding:0 4px}

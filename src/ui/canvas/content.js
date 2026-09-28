@@ -1,7 +1,7 @@
 // What each object shows on the canvas and how it is edited in place: text,
 // equations (KaTeX), code (highlight.js), tables, embeds, 3D models, slide links.
 
-import { state, commit } from '../../core/store.js';
+import { state, commit, currentSlide } from '../../core/store.js';
 import { tableColsHTML, cellBg, textPadding, webCardHTML, webCardSig, mathTeX, mathCSS, mathSig, shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan, inkSVG, inkSig, tableClass, tableVars } from '../../render/svg.js';
 import { collectFigures, captionLine, figIndexTitle } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
@@ -10,7 +10,7 @@ import { setEmbedDisplay } from '../../features/document/blocks.js';
 import { currentPalette } from '../../features/design/palettes.js';
 import { cameraRadius } from '../../features/live/media.js';
 import { pollEditorHTML, savedVotes } from '../../features/live/poll.js';
-import { PH_PROMPT, isEmptyPlaceholder } from '../../features/document/master.js';
+import { PH_PROMPT, isEmptyPlaceholder, styled, levelVars } from '../../features/document/master.js';
 import { autocorrectAtCaret } from '../../features/document/autocorrect.js';
 import { KATEX, HIGHLIGHT, loadScript, loadStyle } from '../../core/vendor.js';
 import { findBlock, readOnly, fitFontSize } from './canvas.js';
@@ -41,31 +41,43 @@ export function applyImgStyle(img, b) {
   img.style.opacity = imgOpacity(b);
   img.style.clipPath = imgClip(b);
 }
+// Box-level look of a text object (safe while editing: no caret impact). `b`
+// has its inherited formatting filled in (master.styled).
+export function styleRich(rich, b) {
+  rich.style.fontSize = (b.fontSize || 40) + 'px';
+  rich.style.textAlign = b.textAlign || 'left';
+  rich.style.fontFamily = b.fontFamily || '';
+  rich.style.lineHeight = b.lineHeight || '';
+  rich.style.letterSpacing = b.letterSpacing ? b.letterSpacing + 'px' : '';
+  rich.style.padding = textPadding(b);
+  rich.dir = b.dir || '';
+  rich.style.writingMode = b.vertical ? 'vertical-rl' : '';
+  rich.style.setProperty('--bullet', b.bullet || 'disc');
+  rich.style.setProperty('--num', b.numStyle || 'decimal');
+  rich.style.background = b.bg || '';
+  rich.style.border = b.borderColor ? '2px solid ' + b.borderColor : '';
+  rich.style.borderRadius = (b.radius || 0) + 'px';
+  const vj = { top: 'flex-start', middle: 'center', bottom: 'flex-end' }[b.vAlign];
+  rich.style.display = vj ? 'flex' : ''; rich.style.flexDirection = vj ? 'column' : '';
+  rich.style.justifyContent = vj || '';
+  applyWordart(rich, b.wordart);
+  if (!b.wordart) rich.style.color = b.color || '';        // after WordArt, which resets it
+  if (!b.wordart) rich.style.fontWeight = b.fontWeight || '';
+  rich.style.fontStyle = b.fontStyle || '';
+  rich.style.columnCount = b.columns > 1 ? b.columns : '';
+  rich.style.columnGap = b.columns > 1 ? '32px' : '';
+  // Body levels from the master (sizes and bullets per nesting level).
+  rich.classList.toggle('lv', !!b.levels);
+  for (let i = 1; i <= 5; i++) ['--l', '--b', '--c'].forEach(v => rich.style.removeProperty(v + i));
+  if (b.levels) for (const decl of levelVars(b).split(';').filter(Boolean)) { const [k, ...v] = decl.split(':'); rich.style.setProperty(k, v.join(':')); }
+}
 export function content(b) {
   if (b.type === 'text') {
     const d = document.createElement('div');
     d.className = 'rich';
     d.spellcheck = true;
     if (b.ph) d.dataset.ph = t(PH_PROMPT[b.ph] || PH_PROMPT.body);
-    d.style.fontSize = (b.fontSize || 40) + 'px';
-    d.style.textAlign = b.textAlign || 'left';
-    if (b.fontFamily) d.style.fontFamily = b.fontFamily;
-    if (b.lineHeight) d.style.lineHeight = b.lineHeight;
-    if (b.letterSpacing) d.style.letterSpacing = b.letterSpacing + 'px';
-    d.style.padding = textPadding(b);
-    if (b.dir) d.dir = b.dir;
-    if (b.vertical) d.style.writingMode = 'vertical-rl';
-    if (b.bullet) d.style.setProperty('--bullet', b.bullet);
-    if (b.numStyle) d.style.setProperty('--num', b.numStyle);
-    if (b.bg) d.style.background = b.bg;
-    if (b.borderColor) d.style.border = '2px solid ' + b.borderColor;
-    if (b.radius) d.style.borderRadius = b.radius + 'px';
-    const vj0 = { top: 'flex-start', middle: 'center', bottom: 'flex-end' }[b.vAlign];
-    if (vj0) { d.style.display = 'flex'; d.style.flexDirection = 'column'; d.style.justifyContent = vj0; }
-    if (b.wordart) applyWordart(d, b.wordart);
-    else if (b.fontWeight) d.style.fontWeight = b.fontWeight;
-    if (b.fontStyle) d.style.fontStyle = b.fontStyle;
-    if (b.columns > 1) { d.style.columnCount = b.columns; d.style.columnGap = '32px'; }
+    styleRich(d, styled(b, currentSlide()));
     d.innerHTML = b.html || ''; d.dataset.msrc = b.html || '';
     if (hasInlineMath(b.html)) renderInlineMath(d);
     return d;

@@ -2,6 +2,7 @@
 
 import { state, commit, currentSlide, selectedBlock } from '../../core/store.js';
 import { MATH_SIZE } from '../../render/svg.js';
+import { styled, addPlaceholder } from '../../features/document/master.js';
 import * as blocks from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
 import * as trans from '../../features/animation/transitions.js';
@@ -37,6 +38,10 @@ function populateFonts() {
 }
 
 export function initRibbon() {
+  // Master view: insert a placeholder into the layout being edited.
+  document.querySelector('#master-banner .mb-ph')?.addEventListener('change', e => {
+    if (e.target.value) addPlaceholder(e.target.value); e.target.value = '';
+  });
   populateFonts();
   applyZoom();
   // On phones/tablets, start zoomed to fit and refit on rotation/resize.
@@ -64,7 +69,8 @@ export function initRibbon() {
     fb.classList.remove('flash'); void fb.offsetWidth; fb.classList.add('flash');
   });
   document.getElementById('master-banner')?.addEventListener('click', e => {
-    if (e.target.closest('[data-action="master-close"]')) master.toggleMasterEdit(false);
+    const act = e.target.closest('[data-action]');
+    if (act) ACTIONS[act.dataset.action]?.();
   });
   document.getElementById('ribbon').addEventListener('click', e => {
     const more = e.target.closest('[data-more]');
@@ -315,7 +321,7 @@ export function renderRibbon() {
   const isText = b && b.type === 'text';
   syncValue('[data-font]', isText ? (b.fontFamily || '') : '');
   const isMath = b && b.type === 'math';
-  syncValue('[data-size]', isText ? String(b.fontSize || 40) : isMath ? String(b.fontSize || MATH_SIZE) : '');
+  syncValue('[data-size]', isText ? String(styled(b, currentSlide()).fontSize || 40) : isMath ? String(b.fontSize || MATH_SIZE) : '');
   syncValue('[data-linespacing]', isText ? String(b.lineHeight || 1) : '1');
   syncValue('[data-textstyle]', isText ? (b.textStyle || '') : '');
   document.querySelectorAll('[data-para]').forEach(x =>

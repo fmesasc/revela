@@ -116,9 +116,11 @@ A presentation is one serialisable object:
 ```
 deck  = { version, name, size:{w,h}, theme, defaultTransition, transitionSpeed,
           slideNumber, footer, logo, loop, guides, palette, reveal:{…options},
-          sections:[{id,name}], master:{blocks,background}, slides:[slide] }
+          sections:[{id,name}], master:{blocks,background,styles}, layouts:[layout], slides:[slide] }
 
-slide = { id, sectionId, background, transition, transitionOut, hidden,
+layout = { id, name, background, hideMaster, blocks:[placeholders (ph) and objects] }
+
+slide = { id, layoutId, sectionId, background, transition, transitionOut, hidden,
           vertical, autoSlide, notes, bgVideo, bgIframe, … , blocks:[block] }
 
 block = { id, type, x, y, w, h, rotation, opacity, animation, alt, … }
@@ -127,7 +129,16 @@ block = { id, type, x, y, w, h, rotation, opacity, animation, alt, … }
 ```
 
 Coordinates are in the deck's own pixel space (`size`), which maps 1∶1 to the
-reveal.js output. Master objects appear on every slide unless it hides them.
+reveal.js output. Master objects appear on every slide unless it hides them;
+a layout's objects appear on the slides that use it.
+
+Text placeholders (`ph`: title, subtitle, body; `lp` = the layout placeholder
+they follow) take their formatting from the master's styles, then the layout
+placeholder, then their own properties (`features/document/master.js`
+`styled()`); body text has five list levels with their own size and bullet.
+Every renderer (canvas, thumbnails, reveal.js export, print, images, PPTX,
+ODP) draws the `styled()` copy, never the stored block, so a change in the
+master reaches every slide that didn't override it.
 A vertical slide goes below the previous one (reveal.js stacks).
 
 ## Store and rendering

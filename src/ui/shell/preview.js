@@ -2,22 +2,24 @@
 
 import { pollEditorHTML } from '../../features/live/poll.js';
 import { currentPalette } from '../../features/design/palettes.js';
-import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, tableClass, tableVars, tableCSS } from '../../render/svg.js';
+import { levelVars } from '../../features/document/master.js';
+import { levelCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, tableClass, tableVars, tableCSS } from '../../render/svg.js';
 
 // Table look for thumbnails (same rules as the exports), injected once.
 function ensurePreviewCSS() {
   if (document.getElementById('pv-css')) return;
-  const st = document.createElement('style'); st.id = 'pv-css'; st.textContent = tableCSS('.pv ');
+  const st = document.createElement('style'); st.id = 'pv-css'; st.textContent = tableCSS('.pv ') + levelCSS('.pv-block ');
   document.head.appendChild(st);
 }
 
 export function blockPreview(b) {
+  ensurePreviewCSS();
   const el = document.createElement('div');
   el.className = 'pv-block';
   el.style.cssText = `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px;`
     + `transform:rotate(${b.rotation || 0}deg)${b.flipH ? ' scaleX(-1)' : ''}${b.flipV ? ' scaleY(-1)' : ''}`;
   if (b.type === 'text') {
-    el.innerHTML = `<div style="font-size:${b.fontSize || 40}px;color:inherit;`
+    el.innerHTML = `<div${b.levels ? ' class="lv"' : ''} style="font-size:${b.fontSize || 40}px;color:${b.color || 'inherit'};${b.levels ? levelVars(b) : ''}`
       + `text-align:${b.textAlign || 'left'};${b.fontFamily ? `font-family:${b.fontFamily};` : ''}`
       + `${b.lineHeight ? `line-height:${b.lineHeight};` : ''}`
       + `${b.letterSpacing ? `letter-spacing:${b.letterSpacing}px;` : ''}`

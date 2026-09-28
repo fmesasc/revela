@@ -572,7 +572,13 @@
     <section id="canvas-wrap">
       <div id="final-banner" hidden><i class="ms">verified</i> <span>Marcada como final: la presentación es de solo lectura.</span>
         <button data-action="mark-final" type="button">Editar de todos modos</button></div>
-      <div id="master-banner" hidden><i class="ms">dashboard_customize</i> <span>Editando el patrón: lo que pongas aquí aparece en todas las diapositivas.</span>
+      <div id="master-banner" hidden><i class="ms">dashboard_customize</i> <span class="mb-text">Editando el patrón: lo que pongas aquí aparece en todas las diapositivas.</span>
+        <button data-action="master-styles" type="button" title="Tipo de letra, tamaño, color y viñetas de títulos y texto (5 niveles)">Estilos de texto</button>
+        <button data-action="layout-new" type="button">Nuevo diseño</button>
+        <button data-action="layout-dup" type="button" class="mb-lay">Duplicar diseño</button>
+        <button data-action="layout-rename" type="button" class="mb-lay">Cambiar nombre</button>
+        <button data-action="layout-delete" type="button" class="mb-lay">Eliminar diseño</button>
+        <select class="mb-lay mb-ph" title="Insertar un marcador en el diseño"><option value="">Insertar marcador…</option><option value="title">Título</option><option value="subtitle">Subtítulo</option><option value="body">Texto</option></select>
         <button data-action="master-close" type="button">Cerrar patrón</button></div>
       <div id="stage-sizer">
         <div id="stage-grid">

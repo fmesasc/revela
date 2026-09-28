@@ -8,11 +8,12 @@
 
 import { state, currentSlide } from '../../core/store.js';
 import { HTML2CANVAS, JSZIP, loadScript } from '../../core/vendor.js';
-import { tableCSS, shapeSVG, iconSVG, chartSVG, inkSVG } from '../../render/svg.js';
+import { tableCSS, levelCSS, shapeSVG, iconSVG, chartSVG, inkSVG } from '../../render/svg.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
 import { t } from '../../i18n/index.js';
 import { blockHTML } from '../formats/html.js';
 import { hydrateStatic } from './images.js';
+import { styled } from '../../features/document/master.js';
 import { download, slug } from '../files.js';
 
 export const OBJECT_FORMATS = ['png', 'jpg', 'webp', 'svg'];
@@ -111,9 +112,9 @@ export async function selectionCanvas(blocks, { scale = 2, background = null, sl
   holder.style.cssText = `position:fixed;left:-99999px;top:0;width:${box.w}px;height:${box.h}px;overflow:hidden;`
     + `color:${deckFg(deck)};font-family:${deckBodyFont(deck) || 'inherit'};${bg ? `background:${bg};` : ''}`;
   holder.innerHTML = `<style>*{box-sizing:border-box}ul{list-style-type:var(--bullet,disc)}ol{list-style-type:var(--num,decimal)}`
-    + `img,video,model-viewer,iframe{width:100%;height:100%}${tableCSS()}</style>`
+    + `img,video,model-viewer,iframe{width:100%;height:100%}${tableCSS()}${levelCSS()}</style>`
     + `<div style="position:absolute;left:${-box.x}px;top:${-box.y}px;width:${deck.size.w}px;height:${deck.size.h}px">`
-    + baked.map(b => blockHTML({ ...b, animation: null }, { ...slide, blocks: baked })).join('') + '</div>';
+    + baked.map(b => blockHTML({ ...styled(b, slide, deck), animation: null }, { ...slide, blocks: baked })).join('') + '</div>';
   document.body.appendChild(holder);
   try {
     await hydrateStatic(holder, deck);

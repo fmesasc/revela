@@ -5,7 +5,7 @@ import { state, currentSlide } from '../../core/store.js';
 import { goToSlide, moveSlide, deleteSlide, renameSection } from '../../features/document/slides.js';
 import { blockPreview } from './preview.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
-import { masterBlocksFor, isEmptyPlaceholder } from '../../features/document/master.js';
+import { masterBlocksFor, isEmptyPlaceholder, styled, styleKind, ensureLayouts, editLayout, layoutInUse } from '../../features/document/master.js';
 
 let panel;
 let dragFrom = null;
@@ -20,8 +20,9 @@ const LONG = 200;
 const sigOf = v => JSON.stringify(v, (k, x) => (typeof x === 'string' && x.length > LONG ? `${x.length}:${x.slice(0, 40)}${x.slice(-40)}` : x));
 
 export function renderPanel() {
+  if (state.ui.editMaster) return renderMasterPanel();
   const d = state.deck;
-  const common = sigOf([d.size, d.master, deckFg(), deckBodyFont()]);
+  const common = sigOf([d.size, d.master, d.layouts, deckFg(), deckBodyFont()]);
   const nodes = [], seen = new Set();
   let lastSection;
   d.slides.forEach((slide, index) => {
@@ -39,6 +40,39 @@ export function renderPanel() {
     seen.add(slide.id); nodes.push(c.el);
   });
   for (const id of cache.keys()) if (!seen.has(id)) cache.delete(id);
+  panel.replaceChildren(...nodes);
+}
+
+// Master view (PowerPoint's Slide Master): the master and its layouts, each
+// with its placeholders as dashed frames; click one to edit it.
+const PH_LABEL = { title: 'Título', subtitle: 'Subtítulo', body: 'Texto' };
+function renderMasterPanel() {
+  const d = state.deck, { w, h } = d.size, sel = state.ui.editMaster;
+  const card = (label, sub, active, slide, blocks, onClick, indent) => {
+    const el = document.createElement('div'); el.className = 'thumb layout-thumb' + (active ? ' active' : '') + (indent ? ' indent' : '');
+    const canvas = document.createElement('div'); canvas.className = 'thumb-canvas';
+    canvas.style.background = slide.background || d.slides[0]?.background || '#101317'; canvas.style.setProperty('--ar', w / h);
+    const inner = document.createElement('div'); inner.className = 'thumb-inner';
+    inner.style.cssText = `width:${w}px;height:${h}px;transform:scale(${188 / w});color:${deckFg()};font-family:${deckBodyFont() || 'inherit'}`;
+    for (const b of blocks) {
+      if (b.ph) {
+        const f = document.createElement('div'); const st = styled(b, slide);
+        f.style.cssText = `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px;border:6px dashed currentColor;opacity:.55;`
+          + `font-size:${st.fontSize || 40}px;${st.color ? `color:${st.color};` : ''}${st.fontFamily ? `font-family:${st.fontFamily};` : ''}font-weight:${st.fontWeight || 400};padding:12px;box-sizing:border-box;text-align:${st.textAlign || 'left'}`;
+        f.textContent = PH_LABEL[styleKind(b)] || b.ph; inner.appendChild(f);
+      } else inner.appendChild(blockPreview(b));
+    }
+    canvas.appendChild(inner);
+    const cap = document.createElement('div'); cap.className = 'layout-name'; cap.textContent = label + (sub ? ' · ' + sub : '');
+    el.append(canvas, cap); el.addEventListener('click', onClick);
+    return el;
+  };
+  const m = d.master || { blocks: [] };
+  const nodes = [card('Patrón', '', sel === true, m, m.blocks, () => editLayout(true), false)];
+  for (const l of ensureLayouts(d)) {
+    const n = layoutInUse(l.id);
+    nodes.push(card(l.name, n ? `${n} diap.` : '', sel === l.id, l, [...masterBlocksFor(l, d), ...l.blocks], () => editLayout(l.id), true));
+  }
   panel.replaceChildren(...nodes);
 }
 
@@ -80,7 +114,7 @@ function thumb(slide) {
   const inner = document.createElement('div');
   inner.className = 'thumb-inner';
   inner.style.cssText = `width:${w}px;height:${h}px;transform:scale(${188 / w});color:${deckFg()};font-family:${deckBodyFont() || 'inherit'}`;
-  for (const b of [...masterBlocksFor(slide), ...slide.blocks]) if (!isEmptyPlaceholder(b)) inner.appendChild(blockPreview(b));
+  for (const b of [...masterBlocksFor(slide), ...slide.blocks.map(x => styled(x, slide))]) if (!isEmptyPlaceholder(b)) inner.appendChild(blockPreview(b));
   canvas.appendChild(inner);
 
   const del = document.createElement('button'); del.className = 'thumb-del'; del.textContent = '×';

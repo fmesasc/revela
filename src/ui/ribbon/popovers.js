@@ -1,7 +1,8 @@
 // Ribbon group launchers (the small arrow in a group's corner, as in Office)
 // and the galleries they open: symbols, icons, WordArt, palettes, fonts, layouts.
 
-import { state, selectedBlock } from '../../core/store.js';
+import { state, selectedBlock, currentSlide } from '../../core/store.js';
+import { ensureLayouts, applyLayout, resetSlide, editLayout } from '../../features/document/master.js';
 import * as blocks from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
 import * as templates from '../../features/document/templates.js';
@@ -27,7 +28,9 @@ export const POPS = {
   wordart: () => `<h4>Text Art</h4><div class="wa-grid">`
     + WORDART_KEYS.map(k => `<button data-wa="${k}" type="button" style="${wordartCSS(k)}">Aa</button>`).join('') + `</div>`,
   layout: () => `<h4>${t('Diseño')}</h4><div class="layout-grid">`
-    + Object.entries(templates.BUILTIN).map(([k, v]) => `<button data-layout="${k}" type="button">${t(v.name)}</button>`).join('') + `</div>`,
+    + ensureLayouts().map(l => `<button data-layout="${l.id}" type="button" class="${currentSlide()?.layoutId === l.id ? 'on' : ''}">${t(l.name)}</button>`).join('')
+    + `</div><div class="fr-actions"><button type="button" class="mini2" data-reset-slide>${t('Restablecer')}</button>`
+    + `<button type="button" class="mini2" data-edit-layouts>${t('Editar diseños…')}</button></div>`,
   palettes: () => `<h4>${t('Colores del tema')}</h4><div class="pal-grid">`
     + Object.entries(palettes.PALETTES).map(([k, p]) => `<button data-palette="${k}" type="button" class="${(state.deck.palette || 'revela') === k ? 'on' : ''}">`
       + `<span class="pal-sw" style="background:${p.bg};color:${p.fg}">Aa${p.accents.map(c => `<i style="background:${c}"></i>`).join('')}</span>`
@@ -93,6 +96,8 @@ export function togglePopover(launcher, type) {
     x.addEventListener('click', () => { palettes.applyFontPair(x.dataset.fontpair); closePopover(); });
   });
   pop.querySelectorAll('[data-layout]').forEach(x =>
-    x.addEventListener('click', () => { templates.applyTemplate(templates.BUILTIN[x.dataset.layout]); closePopover(); }));
+    x.addEventListener('click', () => { applyLayout(x.dataset.layout); closePopover(); }));
+  pop.querySelector('[data-reset-slide]')?.addEventListener('click', () => { resetSlide(); closePopover(); });
+  pop.querySelector('[data-edit-layouts]')?.addEventListener('click', () => { editLayout(currentSlide()?.layoutId || true); closePopover(); });
   openPop = pop;
 }

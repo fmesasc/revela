@@ -28,11 +28,14 @@ export function subscribe(fn) { listeners.add(fn); return () => listeners.delete
 function notify() { for (const fn of listeners) fn(); }
 
 // Read helpers.
-// While editing the slide master, "the current slide" is the master itself, so
-// every editing operation works on it unchanged.
-export const currentSlide = () => state.ui.editMaster
-  ? (state.deck.master ||= { id: 'master', blocks: [], background: null })
-  : state.deck.slides[state.ui.slideIndex];
+// While editing the slide master (editMaster === true) or one of its layouts
+// (editMaster === its id), "the current slide" is that, so every editing
+// operation works on it unchanged.
+export const currentSlide = () => {
+  const m = state.ui.editMaster;
+  if (!m) return state.deck.slides[state.ui.slideIndex];
+  return (m !== true && state.deck.layouts?.find(l => l.id === m)) || (state.deck.master ||= { id: 'master', blocks: [], background: null });
+};
 export const selectedBlock = () => {
   const s = currentSlide();
   return s ? s.blocks.find(b => b.id === state.ui.selection) || null : null;

@@ -7,7 +7,8 @@
 //    whole text box, so it works whether or not text is selected — matching
 //    what people expect from PowerPoint and OnlyOffice.
 
-import { commit, selectedBlock, selectedBlocks } from '../../core/store.js';
+import { commit, selectedBlock, selectedBlocks, currentSlide } from '../../core/store.js';
+import { styled } from './master.js';
 import { ensureFont } from '../design/fonts.js';
 import { t } from '../../i18n/index.js';
 import { promptUser } from '../../core/notify.js';
@@ -194,5 +195,5 @@ export function setNumStyle(value) {
 export function fontSize(delta) {
   const m = mathSel(); if (m) return commit(() => { m.fontSize = Math.max(8, (m.fontSize || MATH_SIZE) + delta); });
   const c = ctx(); if (!c) return;
-  commit(() => { c.b.fontSize = Math.max(8, (c.b.fontSize || 40) + delta); });
+  commit(() => { c.b.fontSize = Math.max(8, (styled(c.b, currentSlide()).fontSize || 40) + delta); });
 }

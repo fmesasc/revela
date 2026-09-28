@@ -21,6 +21,7 @@ import { openA11yCheck, openReadingOrder } from '../panels/a11y.js';
 import { openHandoutDialog, openImageDialog, openVideoDialog } from '../dialogs/print.js';
 import { openSaveAsPicture } from '../dialogs/picture.js';
 import { openShare } from '../dialogs/share.js';
+import { openTextStyles } from '../dialogs/textstyles.js';
 import * as recorder from '../shell/recorder.js';
 import * as master from '../../features/document/master.js';
 import * as clip from '../../features/document/clipboard.js';
@@ -140,6 +141,11 @@ export const ACTIONS = {
   'autocorrect': () => { setAutocorrect(!autocorrectOn()); renderRibbon(); },
   'master-edit': () => master.toggleMasterEdit(),
   'master-close': () => master.toggleMasterEdit(false),
+  'master-styles': () => openTextStyles(),
+  'layout-new': () => master.addLayout(),
+  'layout-dup': () => master.addLayout(state.ui.editMaster),
+  'layout-rename': () => { const l = state.deck.layouts?.find(x => x.id === state.ui.editMaster); if (l) promptDialog(t('Nombre del diseño:'), l.name).then(v => { if (v && v.trim()) master.renameLayout(l.id, v.trim()); }); },
+  'layout-delete': () => confirmDialog(t('¿Eliminar este diseño?')).then(ok => { if (ok) master.deleteLayout(state.ui.editMaster); }),
   'hide-master': () => master.toggleHideMaster(),
   'export-handout': () => openHandoutDialog(),
   'undo': undo, 'redo': redo,

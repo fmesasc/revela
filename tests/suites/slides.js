@@ -4,8 +4,15 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   await test('cambiar diseño (layout) desde el popover', async () => {
     reset(); D.querySelector('[data-layout-open]').click(); await sleep(10);
     const btn = D.querySelector('.popover [data-layout="blank"]'); assert(btn, 'popover de diseños');
-    btn.click(); await sleep(10);
-    eq(slide().blocks.length, 0, 'diseño en blanco aplicado');
+    const n = slide().blocks.length; btn.click(); await sleep(10);
+    eq(slide().layoutId, 'blank', 'diseño en blanco aplicado');
+    eq(slide().blocks.length, n, 'sin marcadores donde moverlo, el texto se conserva (como en PowerPoint)');
+    D.querySelector('[data-layout-open]').click(); await sleep(10);
+    D.querySelector('.popover [data-layout="titleContent"]').click(); await sleep(10);
+    const ph = slide().blocks.filter(b => b.ph);
+    eq(ph.map(b => b.ph).join(), 'title,body', 'marcadores del diseño');
+    assert(/Título/.test(ph[0].html) && /Subtítulo/.test(ph[1].html), 'el texto pasa a los marcadores');
+    eq(slide().blocks.length, 2, 'sin duplicados');
   });
 
   await test('encabezado y pie: el diálogo activa el número de diapositiva', async () => {
@@ -250,5 +257,104 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(s.blocks[0].x, 128, 'x escalada 960→1280'); eq(s.blocks[0].w, 640, 'ancho escalado');
     eq(R.state.deck.slides[i0 + 2].blocks[0].html, 'Tres', 'orden conservado');
     assert(!D.getElementById('reuse-modal'), 'diálogo cerrado');
+  });
+
+  // ---- Master and layouts -----------------------------------------------------
+  const M = () => R.master;
+  const newLayoutSlide = (id = 'titleContent') => { R.slides.addSlide(id); return slide(); };
+
+  await test('patrón: los marcadores toman el estilo del patrón y cambiarlo cambia todas las diapositivas', async () => {
+    reset(); const s1 = newLayoutSlide(), s2 = newLayoutSlide();
+    const t1 = s1.blocks.find(b => b.ph === 'title'), t2 = s2.blocks.find(b => b.ph === 'title');
+    t1.html = 'Uno'; t2.html = 'Dos'; R.render(); await sleep(20);
+    assert(t1.lp && !t1.fontSize, 'enlazado a su diseño y sin tamaño propio');
+    M().setMasterStyle('title', { size: 60, color: '#ff0000', font: 'Georgia, serif' }); await sleep(20);
+    eq(M().styled(t1, s1).fontSize, 60, 'hereda el tamaño del patrón');
+    const W = frame.contentWindow, rich = () => D.querySelector(`.block[data-id="${t2.id}"] .rich`);
+    eq(W.getComputedStyle(rich()).fontSize, '60px', 'en el lienzo');
+    eq(W.getComputedStyle(rich()).color, 'rgb(255, 0, 0)', 'color del patrón en el lienzo');
+    const html = R.io.buildHTML();
+    assert(new RegExp(`font-size:60px;color:#ff0000`).test(html) && /Georgia/.test(html), 'en la presentación');
+    // Override on one slide: it keeps it when the master changes again.
+    R.state.ui.slideIndex = R.state.deck.slides.indexOf(s1); R.state.ui.selection = t1.id; R.render(); await sleep(10);
+    R.format.setFontSize(80); R.render();
+    M().setMasterStyle('title', { size: 50 });
+    eq(M().styled(t1, s1).fontSize, 80, 'lo cambiado a mano se respeta');
+    eq(M().styled(t2, s2).fontSize, 50, 'lo demás sigue al patrón');
+    eq(D.querySelector('[data-size]').value, '80', 'la cinta muestra el tamaño efectivo');
+    // The layout's own size sits between the master and the slide.
+    const cover = R.state.deck.layouts.find(l => l.id === 'title');
+    R.slides.addSlide('title'); const c = slide(), ct = c.blocks.find(b => b.ph === 'title');
+    eq(M().styled(ct, c).fontSize, cover.blocks.find(b => b.ph === 'title').fontSize, 'la portada con su tamaño de diseño');
+  });
+
+  await test('patrón: niveles del texto (tamaños y viñetas por nivel) en el lienzo y la presentación', async () => {
+    reset(); const s1 = newLayoutSlide(); const body = s1.blocks.find(b => b.ph === 'body');
+    body.html = '<ul><li>Uno<ul><li>Dos</li></ul></li></ul>'; R.render(); await sleep(20);
+    M().setMasterStyle('body', { size: 36 }, 0); M().setMasterStyle('body', { size: 20, bullet: '–' }, 1); await sleep(20);
+    const W = frame.contentWindow, lis = D.querySelectorAll(`.block[data-id="${body.id}"] li`);
+    eq(W.getComputedStyle(lis[0]).fontSize, '36px', 'nivel 1');
+    eq(W.getComputedStyle(lis[1]).fontSize, '20px', 'nivel 2');
+    assert(/–/.test(W.getComputedStyle(lis[1]).listStyleType), 'viñeta del nivel 2: ' + W.getComputedStyle(lis[1]).listStyleType);
+    const html = R.io.buildHTML();
+    assert(/class="lv"/.test(html) && /--l2:20px/.test(html) && /\.reveal \.lv :is\(ul,ol\) :is\(ul,ol\) li\{font-size:var\(--l2\)\}/.test(html), 'niveles en la presentación');
+  });
+
+  await test('diseños: nueva diapositiva con el diseño, mover un marcador del diseño mueve el de las diapositivas, deshacer', async () => {
+    reset(); R.slides.addSlide('title'); R.slides.addSlide();
+    eq(slide().layoutId, 'titleContent', 'tras la portada, «Título y contenido»');
+    const s1 = slide(), b1 = s1.blocks.find(b => b.ph === 'title');
+    R.slides.addSlide(); const s2 = slide(), b2 = s2.blocks.find(b => b.ph === 'title');
+    b2.x += 50;                                     // moved by hand on this slide
+    M().editLayout('titleContent'); await sleep(10);
+    const lay = R.state.deck.layouts.find(l => l.id === 'titleContent'), lp = lay.blocks.find(b => b.ph === 'title');
+    eq(R.store.currentSlide(), lay, 'el lienzo edita el diseño');
+    R.store.commit(() => { lp.y += 40; }); await sleep(10);
+    eq(b1.y, lp.y, 'la diapositiva sigue al diseño');
+    eq(b2.y, lp.y - 40, 'la movida a mano se queda');
+    R.store.undo(); await sleep(10);
+    // Undo restores a copy of the deck: look everything up again.
+    const D2 = R.state.deck, lay2 = D2.layouts.find(l => l.id === 'titleContent'), lp2 = lay2.blocks.find(b => b.ph === 'title');
+    const s1b = D2.slides.find(x => x.id === s1.id), b1b = s1b.blocks.find(b => b.id === b1.id);
+    eq(lp2.y, b1b.y, 'deshacer devuelve el diseño y la diapositiva');
+    // Layout objects appear under its slides.
+    R.store.commit(() => { lay2.blocks.push({ id: 'logo1', type: 'shape', shape: 'rect', x: 10, y: 10, w: 50, h: 50, fill: '#00ff00', rotation: 0, animation: null }); });
+    M().toggleMasterEdit(false);
+    const D3 = R.state.deck, s1c = D3.slides.find(x => x.id === s1.id);
+    R.state.ui.slideIndex = D3.slides.indexOf(s1c); R.render(); await sleep(20);
+    assert(M().masterBlocksFor(s1c).some(b => b.id === 'logo1'), 'los objetos del diseño van debajo de sus diapositivas');
+    assert(!M().masterBlocksFor(D3.slides[0]).some(b => b.id === 'logo1'), 'no en las de otro diseño');
+    assert(/fill="#00ff00"/.test(R.io.buildHTML()), 'y en la presentación');
+    // Reset: back to the layout's place and style.
+    const s2c = D3.slides.find(x => x.id === s2.id);
+    R.state.ui.slideIndex = D3.slides.indexOf(s2c); M().resetSlide();
+    const s2d = R.state.deck.slides.find(x => x.id === s2.id), lp3 = R.state.deck.layouts.find(l => l.id === 'titleContent').blocks.find(b => b.ph === 'title');
+    eq(s2d.blocks.find(b => b.id === b2.id).x, lp3.x, 'restablecer vuelve al diseño');
+  });
+
+  await test('vista de patrón: panel con patrón y diseños, barra, marcadores y estilos de texto', async () => {
+    reset(); R.slides.addSlide('titleContent');
+    D.querySelector('[data-action="master-edit"]').click(); await sleep(20);
+    const thumbs = D.querySelectorAll('#navigator .layout-thumb');
+    eq(thumbs.length, 1 + R.state.deck.layouts.length, 'patrón + diseños en el panel');
+    assert(!D.getElementById('master-banner').hidden, 'barra del patrón');
+    thumbs[2].click(); await sleep(20);
+    eq(R.state.ui.editMaster, R.state.deck.layouts[1].id, 'clic en un diseño lo edita');
+    assert(/Título y contenido/.test(D.querySelector('#master-banner .mb-text').textContent), 'la barra dice qué diseño');
+    assert(D.querySelector('[data-action="layout-delete"]').disabled, 'no se borra un diseño en uso');
+    const sel = D.querySelector('#master-banner .mb-ph'); sel.value = 'subtitle'; sel.dispatchEvent(new frame.contentWindow.Event('change'));
+    assert(R.store.currentSlide().blocks.some(b => b.ph === 'subtitle'), 'insertar marcador en el diseño');
+    D.querySelector('[data-action="layout-new"]').click(); await sleep(10);
+    eq(R.state.deck.layouts.at(-1).name, 'Diseño personalizado', 'nuevo diseño');
+    D.querySelector('[data-action="master-styles"]').click(); await sleep(10);
+    const m = D.getElementById('ts2-modal'); assert(m, 'diálogo de estilos de texto');
+    eq(m.querySelectorAll('tbody tr').length, 7, 'título, subtítulo y 5 niveles');
+    const size = m.querySelector('tr[data-kind="title"] [data-k="size"]'); size.value = '66'; size.dispatchEvent(new frame.contentWindow.Event('input'));
+    eq(M().masterStyles().title.size, 66, 'cambia el estilo del patrón');
+    const b3 = m.querySelector('tr[data-kind="body"][data-lv="2"] [data-k="bullet"]'); b3.value = '✓'; b3.dispatchEvent(new frame.contentWindow.Event('change'));
+    eq(M().masterStyles().body.levels[2].bullet, '✓', 'viñeta del nivel 3');
+    m.querySelector('.modal-close').click();
+    D.querySelector('[data-action="master-close"]').click(); await sleep(10);
+    assert(!R.state.ui.editMaster && !D.querySelector('#navigator .layout-thumb'), 'al cerrar vuelven las diapositivas');
   });
 }

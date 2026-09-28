@@ -19,6 +19,7 @@
 // Effects without an equivalent (shadows, SmartArt…) are approximated or skipped.
 
 import { uid } from '../../core/model.js';
+import { styled, masterStyles } from '../../features/document/master.js';
 import { JSZIP_ESM } from '../../core/vendor.js';
 
 const CANVAS_W = 1280;            // slide width maps to this many px
@@ -246,7 +247,7 @@ function paragraphsHTML(txBody, ctx, style) {
       if (!first) first = boxBase || { size, font: rp.font, color: rp.color };
       const css = [];
       if (size !== first.size) css.push(`font-size:${size}px`);
-      if (rp.color) css.push(`color:${rp.color}`);
+      if (rp.color && rp.color !== first.color) css.push(`color:${rp.color}`);   // the box carries the first colour
       if (rp.font && rp.font !== first.font) css.push(`font-family:${cssFont(rp.font)}`);
       if (rp.cap === 'all') css.push('text-transform:uppercase'); else if (rp.cap === 'small') css.push('font-variant:small-caps');
       if (rp.spc) css.push(`letter-spacing:${ctx.pt(rp.spc)}px`);
@@ -330,6 +331,15 @@ const findPh = (list, ph) => list.find(p => ph.idx != null && p.idx === ph.idx &
   || (['body', 'obj'].includes(ph.type) ? list.find(p => p.type === 'body' || p.type === 'obj') : null)
   || (ph.type === 'ctrTitle' ? list.find(p => p.type === 'title') : null) || (ph.type === 'subTitle' ? list.find(p => p.type === 'body') : null);
 const TITLE_PH = t => t === 'title' || t === 'ctrTitle';
+// PowerPoint placeholder types that map to Revela's styled placeholders.
+const REVELA_PH = { title: 'title', ctrTitle: 'title', subTitle: 'subtitle', body: 'body', obj: 'body' };
+// Layout names from Google Slides (internal) and PowerPoint (English), in the
+// names Revela uses.
+const LAYOUT_NAMES = { TITLE: 'Portada', TITLE_SLIDE: 'Portada', TITLE_AND_BODY: 'Título y cuerpo', TITLE_AND_CONTENT: 'Título y contenido',
+  SECTION_HEADER: 'Encabezado de sección', TITLE_ONLY: 'Solo el título', TITLE_AND_TWO_COLUMNS: 'Dos columnas', TWO_CONTENT: 'Dos contenidos',
+  COMPARISON: 'Comparación', ONE_COLUMN_TEXT: 'Una columna de texto', MAIN_POINT: 'Idea principal', SECTION_TITLE_AND_DESCRIPTION: 'Título de sección y descripción',
+  CAPTION_ONLY: 'Solo el pie', BIG_NUMBER: 'Número grande', BLANK: 'En blanco', CONTENT_WITH_CAPTION: 'Contenido con título', PICTURE_WITH_CAPTION: 'Imagen con título' };
+const phKeyOf = ph => `${ph.type || 'body'}|${ph.idx ?? ''}`;
 const BODY_PH = t => ['body', 'obj', 'subTitle', undefined, null].includes(t);
 
 // ---- Import ----------------------------------------------------------------
@@ -383,6 +393,7 @@ export async function importPPTX(file) {
   const px = v => Math.round(v * scale);
 
   const cache = new Map();
+  const decorOf = new Map(), usedLayouts = new Map();   // part file → its objects; layout path → { layout, master }
   const info = async f => { if (!cache.has(f)) cache.set(f, await partInfo(zip, f, theme, fonts)); return cache.get(f); };
 
   const order = all(pres, 'p:sldId').map(n => presRels[n.getAttribute('r:id')]?.path).filter(Boolean);
@@ -464,7 +475,8 @@ export async function importPPTX(file) {
         html: t.html, pad: [ctx.emu(body.t), ctx.emu(body.r), ctx.emu(body.b), ctx.emu(body.l)],
         ...(t.align && { textAlign: t.align }), ...(anchor && { vAlign: { t: 'top', ctr: 'middle', b: 'bottom' }[anchor] }),
         ...(body.vert && { vertical: true }),
-        ...(isTitle && { ph: 'title' }), ...(font && { fontFamily: `${cssFont(font)}, sans-serif` }) });
+        ...(first.color && first.color !== 'transparent' && { color: first.color }), ...(body.fontScale && body.fontScale < 1 && { fit: body.fontScale }),
+        ...(REVELA_PH[ph?.type || ''] && { ph: REVELA_PH[ph.type || ''], pk: phKeyOf(ph) }), ...(font && { fontFamily: `${cssFont(font)}, sans-serif` }) });
     };
     // A line or connector goes corner to corner of its box (flips choose which
     // corners), turned by its rotation. Revela draws a horizontal line through
@@ -574,19 +586,21 @@ export async function importPPTX(file) {
     const tree = all(doc, 'p:spTree')[0];
     if (tree) await walk(tree, g => g);
 
-    // The template's own graphics (logos, lines…): the master's, unless the
-    // layout or the slide hides them, then the layout's. Kept apart so the most
-    // used set goes once into Revela's master (see after the loop).
+    // The template's own graphics (logos, lines…), once per master and layout:
+    // they become the objects of Revela's master and layouts (see below).
     const content = blocks.splice(0);
-    const showMaster = doc.documentElement.getAttribute('showMasterSp') !== '0' && layout?.showMasterSp !== false;
     decorMode = true;
-    for (const part of [showMaster ? master : null, layout].filter(Boolean)) {
+    for (const part of [master, layout].filter(Boolean)) {
+      if (decorOf.has(part.file)) continue;
       partRels = part.rels;
       const t = all(part.doc, 'p:spTree')[0]; if (t) await walk(t, g => g);
+      decorOf.set(part.file, blocks.splice(0));
     }
     decorMode = false; partRels = srels;
-    const decor = { key: `${layoutPath}|${showMaster}`, blocks: blocks.splice(0) };
     blocks.push(...content);
+    const layoutInfo = layout && { layout, master };
+    if (layoutInfo) usedLayouts.set(layoutPath, layoutInfo);
+    const hideMaster = doc.documentElement.getAttribute('showMasterSp') === '0';
 
     // Background: the slide's own, else its layout's, else the master's.
     const bgPr = all(doc, 'p:bgPr')[0], bgRef = all(doc, 'p:bgRef')[0];
@@ -611,25 +625,81 @@ export async function importPPTX(file) {
       transition = kinds.map(k => TRANSITION[k]).find(Boolean) || null;
       const adv = +(tr.getAttribute('advTm') || 0); if (adv) autoSlide = adv;
     }
-    slides.push({ id: uid(), sectionId: null, background, transition, hidden, notes, autoSlide, blocks, decor });
+    slides.push({ id: uid(), sectionId: null, background, transition, hidden, notes, autoSlide, blocks, _layout: layoutPath, ...(hideMaster && { hideMaster: true }) });
   }
 
-  // Template graphics: the set most slides share becomes Revela's master
-  // (stored once); slides with another layout hide it and carry their own.
-  const uses = {};
-  for (const s of slides) if (s.decor.blocks.length) uses[s.decor.key] = (uses[s.decor.key] || 0) + 1;
-  const common = Object.keys(uses).sort((a, b) => uses[b] - uses[a])[0];
-  const masterBlocks = common ? slides.find(s => s.decor.key === common).decor.blocks.map(b => ({ ...b, id: uid() })) : [];
-  for (const s of slides) {
-    if (common && s.decor.key !== common) { s.hideMaster = true; s.blocks.unshift(...s.decor.blocks); }
-    delete s.decor;
+  // ---- Master styles and layouts --------------------------------------------
+  // The master's text styles (title, body levels) become Revela's; each layout
+  // used becomes a Revela layout with its placeholders and its own objects.
+  const firstMaster = [...usedLayouts.values()][0]?.master;
+  const lvl1 = (chain, i = 0) => mergeLevels(chain)[i];
+  const styleFrom = lv => def({
+    size: lv.r.sz ? ctx.pt(lv.r.sz) : undefined, color: lv.r.color && lv.r.color !== 'transparent' ? lv.r.color : undefined,
+    font: lv.r.font ? `${cssFont(lv.r.font)}, sans-serif` : undefined, bold: lv.r.b, italic: lv.r.i, align: ALIGN[lv.p.algn],
+  });
+  const mph = kind => firstMaster && findPh(firstMaster.phs, { type: kind });
+  const styles = {};
+  if (firstMaster) {
+    const titleChain = [firstMaster.styles.title, mph('title')?.levels];
+    const bodyChain = [firstMaster.styles.body, mph('body')?.levels];
+    styles.title = styleFrom(lvl1(titleChain));
+    styles.body = { ...styleFrom(lvl1(bodyChain)), levels: [0, 1, 2, 3, 4].map(i => { const l = lvl1(bodyChain, i);
+      return def({ size: l.r.sz ? ctx.pt(l.r.sz) : undefined, color: l.r.color, bullet: l.p.bullet?.kind === 'char' ? l.p.bullet.char : l.p.bullet?.kind === 'num' ? 'decimal' : l.p.bullet?.kind === 'none' ? 'none' : undefined }); }) };
+    const sub0 = [...usedLayouts.values()].map(u => findPh(u.layout.phs, { type: 'subTitle' })).find(Boolean);
+    styles.subtitle = styleFrom(lvl1([...bodyChain, sub0?.levels]));
+    delete styles.subtitle.bullet;
   }
+  const layouts = [], layoutIdOf = new Map(), phIdOf = new Map();
+  let n = 0;
+  for (const [path, { layout: lay, master: mas }] of usedLayouts) {
+    const id = 'pptx-' + (++n), blocksL = [];
+    for (const p of lay.phs) {
+      const kind = REVELA_PH[p.type || ''];
+      if (!kind) continue;
+      const geo0 = p.geo || findPh(mas?.phs || [], p)?.geo; if (!geo0) continue;
+      // The layout's own formatting where it differs from the master's.
+      const own = styleFrom(lvl1([mas?.styles[kind === 'title' ? 'title' : 'body'], findPh(mas?.phs || [], p)?.levels, p.levels]));
+      const base = styles[kind] || {};
+      const bp = { id: uid(), type: 'text', ph: kind, x: px(geo0.x), y: px(geo0.y), w: px(geo0.w), h: px(geo0.h), rotation: 0, animation: null, html: '' };
+      if (own.size && own.size !== base.size) bp.fontSize = own.size;
+      if (own.color && own.color !== base.color) bp.color = own.color;
+      if (own.align && own.align !== base.align) bp.textAlign = own.align;
+      if (p.body?.anchor) bp.vAlign = { t: 'top', ctr: 'middle', b: 'bottom' }[p.body.anchor];
+      phIdOf.set(`${path}#${phKeyOf(p)}`, bp.id); phIdOf.set(`${path}#${p.type || 'body'}`, phIdOf.get(`${path}#${p.type || 'body'}`) || bp.id);
+      blocksL.push(bp);
+    }
+    const name = lay.doc.getElementsByTagName('p:cSld')[0]?.getAttribute('name') || `Diseño ${n}`;
+    layouts.push({ id, name: LAYOUT_NAMES[name.replace(/\s*\([^)]*\)\s*$/, '').trim().toUpperCase().replace(/[ _]+/g, '_')] || name.replace(/\s*\([^)]*\)\s*$/, '').replace(/_/g, ' '), background: null,
+      ...(lay.showMasterSp === false && { hideMaster: true }), blocks: [...(decorOf.get(lay.file) || []), ...blocksL] });
+    layoutIdOf.set(path, id);
+  }
+  const masterBlocks = firstMaster ? (decorOf.get(firstMaster.file) || []) : [];
 
   if (!slides.length) throw new Error('No se encontraron diapositivas en el archivo.');
   const deck = { version: 3, name: (file.name || '').replace(/\.pptx$/i, '') || 'Presentación importada', size, theme: 'white',
-    defaultTransition: 'slide', transitionSpeed: 'default', sections: [], master: { id: 'master', blocks: masterBlocks, background: null },
+    defaultTransition: 'slide', transitionSpeed: 'default', sections: [], master: { id: 'master', blocks: masterBlocks, background: null, ...(firstMaster && { styles }) },
+    ...(layouts.length && { layouts }),
     slideNumber: { show: false, position: 'br', format: 'c' }, footer: { show: false, text: '', date: false },
     logo: { src: '', position: 'br', size: 120 }, loop: false, guides: { v: [], h: [] }, slides };
   if (theme.tx1) deck.textColor = theme.tx1;           // default text colour = the theme's text colour
+  // Slides: their layout, and placeholders linked to the layout's; what they
+  // only repeat from the master or layout is dropped, so editing the master's
+  // styles later changes them too.
+  if (firstMaster) masterStyles(deck);
+  for (const s of slides) {
+    const path = s._layout; delete s._layout;
+    if (layoutIdOf.has(path)) s.layoutId = layoutIdOf.get(path);
+    for (const b of s.blocks) {
+      if (!b.pk) continue;
+      const lp = phIdOf.get(`${path}#${b.pk}`) || phIdOf.get(`${path}#${b.pk.split('|')[0]}`);
+      delete b.pk;
+      if (!s.layoutId) continue;
+      if (lp) b.lp = lp;                         // without one in its layout, it follows the master directly
+      const inherited = styled({ ...b, fontSize: undefined, fontFamily: undefined, color: undefined, textAlign: undefined, fontWeight: undefined, fontStyle: undefined }, s, deck);
+      for (const k of ['fontFamily', 'color', 'textAlign']) if (b[k] != null && b[k] === inherited[k]) delete b[k];
+      if (b.fontSize != null && Math.abs(b.fontSize - inherited.fontSize) <= 1) delete b.fontSize;   // rounding of the shrink factor
+      else if (b.fontSize != null) delete b.fit;          // its own size already includes it
+    }
+  }
   return deck;
 }

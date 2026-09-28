@@ -3,7 +3,7 @@
 // guides, resize from the corners, edit text on double‑click.
 
 import { state, commit, currentSlide, selectedBlock, isSelected, setSelection } from '../../core/store.js';
-import { textPadding, shapeSVG, shapeSig, chartSVG, chartSig, iconSVG, iconSig, applyWordart, inkSVG, inkSig, tableClass, tableVars } from '../../render/svg.js';
+import { levelCSS, textPadding, shapeSVG, shapeSig, chartSVG, chartSig, iconSVG, iconSig, applyWordart, inkSVG, inkSig, tableClass, tableVars } from '../../render/svg.js';
 import { figuresMap, captionLine } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
 import { t } from '../../i18n/index.js';
@@ -12,9 +12,9 @@ import { motionPoints } from '../../features/animation/transitions.js';
 import { blockLabel } from '../../features/document/a11y.js';
 import { cameraRadius } from '../../features/live/media.js';
 import { pollEditorHTML } from '../../features/live/poll.js';
-import { masterBlocksFor, PH_PROMPT } from '../../features/document/master.js';
+import { masterBlocksFor, PH_PROMPT, styled, layoutInUse } from '../../features/document/master.js';
 import { stageBackground } from '../../io/formats/html.js';
-import { paintWebCard, paintMath, pollSig, renderSlideRef, figIndexHTML, connectorHTML, applyImgStyle, content, hostOf, hasInlineMath, renderInlineMath, renderMath, paintCode, setupCode, tableSig, fillTable, setupTable, setupText, setupMath, setupModel, setupEmbed } from './content.js';
+import { styleRich, paintWebCard, paintMath, pollSig, renderSlideRef, figIndexHTML, connectorHTML, applyImgStyle, content, hostOf, hasInlineMath, renderInlineMath, renderMath, paintCode, setupCode, tableSig, fillTable, setupTable, setupText, setupMath, setupModel, setupEmbed } from './content.js';
 import { addGuideFromRuler, drawPGuides, startMarquee, startDrag, startRotate, startResize } from './interact.js';
 
 export const findBlock = id => currentSlide().blocks.find(x => x.id === id);
@@ -25,6 +25,8 @@ export let stage;
 
 export function initCanvas() {
   stage = document.getElementById('stage');
+  // Master text levels (sizes and bullets per list level) on the canvas.
+  const lv = document.createElement('style'); lv.textContent = levelCSS('#stage '); document.head.appendChild(lv);
   stage.addEventListener('pointerdown', e => {
     if (e.target === stage) startMarquee(e);
   });
@@ -82,7 +84,16 @@ export function renderCanvas() {
   drawMasterLayer();
   drawBgMedia(slide);
   const banner = document.getElementById('master-banner');
-  if (banner) banner.hidden = !state.ui.editMaster;
+  if (banner) {
+    banner.hidden = !state.ui.editMaster;
+    const lay = state.ui.editMaster && state.ui.editMaster !== true ? state.deck.layouts?.find(l => l.id === state.ui.editMaster) : null;
+    const txt = banner.querySelector('.mb-text');
+    if (txt) txt.textContent = lay ? `${t('Diseño')} «${t(lay.name)}»: ${t('sus marcadores y objetos aparecen en las diapositivas que lo usan.')}`
+      : t('Editando el patrón: lo que pongas aquí aparece en todas las diapositivas.');
+    banner.querySelectorAll('.mb-lay').forEach(x => { x.disabled = !lay; });
+    const del = banner.querySelector('[data-action="layout-delete"]');
+    if (del && lay) { const n = layoutInUse(lay.id); del.disabled = n > 0; del.title = n ? t('Lo usan diapositivas: cámbialas de diseño antes.') : ''; }
+  }
   // Screen readers: name the slide and announce the selected object.
   stage.setAttribute('aria-label', `${t('Diapositiva')} ${state.ui.slideIndex + 1} / ${state.deck.slides.length}`);
   const sel = selectedBlock(), sr = document.getElementById('sr-status');
@@ -208,28 +219,7 @@ function reconcile(b) {
   if (b.type === 'text') {
     const rich = el.querySelector('.rich');
     if (rich) {
-      // Box-level styles are safe to apply even while editing (no caret impact).
-      rich.style.fontSize = (b.fontSize || 40) + 'px';
-      rich.style.textAlign = b.textAlign || 'left';
-      rich.style.fontFamily = b.fontFamily || '';
-      rich.style.lineHeight = b.lineHeight || '';
-      rich.style.letterSpacing = b.letterSpacing ? b.letterSpacing + 'px' : '';
-      rich.style.padding = textPadding(b);
-      rich.dir = b.dir || '';
-      rich.style.writingMode = b.vertical ? 'vertical-rl' : '';
-      rich.style.setProperty('--bullet', b.bullet || 'disc');
-      rich.style.setProperty('--num', b.numStyle || 'decimal');
-      rich.style.background = b.bg || '';
-      rich.style.border = b.borderColor ? '2px solid ' + b.borderColor : '';
-      rich.style.borderRadius = (b.radius || 0) + 'px';
-      const vj = { top: 'flex-start', middle: 'center', bottom: 'flex-end' }[b.vAlign];
-      rich.style.display = vj ? 'flex' : ''; rich.style.flexDirection = vj ? 'column' : '';
-      rich.style.justifyContent = vj || '';
-      applyWordart(rich, b.wordart);
-      if (!b.wordart) rich.style.fontWeight = b.fontWeight || '';
-      rich.style.fontStyle = b.fontStyle || '';
-      rich.style.columnCount = b.columns > 1 ? b.columns : '';
-      rich.style.columnGap = b.columns > 1 ? '32px' : '';
+      styleRich(rich, styled(b, currentSlide()));
       if (b.ph) rich.dataset.ph = t(PH_PROMPT[b.ph] || PH_PROMPT.body); else delete rich.dataset.ph;
       // Not editing: show the (math‑rendered) HTML; re‑render only when it changed.
       if (!el.classList.contains('editing') && rich.dataset.msrc !== (b.html || '')) {
