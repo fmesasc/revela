@@ -5,6 +5,7 @@ import { initCanvas, renderCanvas, nudge, cycleSelection } from './ui/canvas.js'
 import { initPanel, renderPanel } from './ui/panel.js';
 import { renderComments } from './ui/comments-panel.js';
 import * as comments from './features/comments.js';
+import * as protect from './features/protect.js';
 import { initRibbon, renderRibbon } from './ui/ribbon.js';
 import { initContextMenu } from './ui/contextmenu.js';
 import { initDraw } from './ui/draw.js';
@@ -120,7 +121,7 @@ initI18n();
 // and inspect the real app. Only active with ?test in the URL.
 const testing = new URLSearchParams(location.search).has('test');
 if (testing)
-  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, designer, pptxImport, odp, api, ai, versions, comments, video: () => import('./io/video.js') };
+  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, designer, pptxImport, odp, api, ai, versions, comments, protect, video: () => import('./io/video.js') };
 
 // Public scripting API for plugins, macros and the console; installed plugins
 // load after the editor is ready (not in the test harness).

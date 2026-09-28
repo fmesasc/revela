@@ -501,3 +501,9 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .cm-actions{display:flex;gap:4px;justify-content:flex-end}.cm-at{color:var(--accent);font-weight:600}
 .thumb-cm{position:absolute;bottom:3px;right:4px;z-index:2;background:#e0873b;color:#fff;border-radius:9px;font-size:10px;padding:0 5px;line-height:16px}
 .block .cm-badge{position:absolute;top:-10px;left:-10px;z-index:9;width:20px;height:20px;border-radius:50% 50% 50% 0;background:#e0873b;color:#fff;font-size:11px;display:grid;place-items:center;pointer-events:none}
+/* Mark as final */
+#final-banner{display:flex;align-items:center;gap:10px;margin:0 0 8px;padding:6px 12px;border-radius:8px;background:#e8f3ec;color:#1f5e3a;font-size:13px}
+#final-banner[hidden]{display:none}
+#final-banner button{margin-inline-start:auto;border:1px solid #3a9d5d;background:#fff;color:#1f5e3a;border-radius:6px;padding:4px 10px;cursor:pointer}
+#final-banner.flash{animation:finalFlash .6s 2}
+@keyframes finalFlash{50%{background:#ffe0a6}}

@@ -70,7 +70,10 @@ export const clampSlide = () => {
 // `commit` records history, persists, and re-renders. `mutate` is for tiny,
 // high-frequency changes (dragging) that should persist and render but not spam
 // the undo stack.
-export function commit(fn, { history = true } = {}) {
+export function commit(fn, { history = true, force = false } = {}) {
+  // A deck marked as final is read-only: edits are refused (selection and
+  // other UI changes, which don't record history, still work).
+  if (state.deck.final && history && !force) { window.dispatchEvent(new Event('revela:readonly')); return; }
   if (history) {
     past.push(snapshot(state.deck));
     if (past.length > HISTORY_LIMIT) past.shift();

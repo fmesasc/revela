@@ -23,6 +23,7 @@ import { openPlugins, openMacros } from './plugins-dialog.js';
 import { AI_ACTIONS, aiRewrite } from './ai-dialog.js';
 import { DONATE_URL } from '../config.js';
 import { openVersions } from './versions-dialog.js';
+import * as protect from '../features/protect.js';
 import { toggleComments } from './comments-panel.js';
 import * as media from '../features/media.js';
 import * as palettes from '../features/palettes.js';
@@ -42,7 +43,8 @@ const readFile = (accept, cb, as = 'DataURL') => {
   inp.type = 'file'; inp.accept = accept;
   inp.onchange = () => { const f = inp.files[0]; if (!f) return;
     if (as === 'file') { cb(f); return; }
-    const r = new FileReader(); r.onload = () => cb(r.result); r.readAsDataURL(f); };
+    const r = new FileReader(); r.onload = () => cb(r.result);
+    if (as === 'text') r.readAsText(f); else r.readAsDataURL(f); };
   inp.click();
 };
 
@@ -51,8 +53,24 @@ function endAnimPaint() { animPaint = null; document.body.classList.remove('anim
 const ACTIONS = {
   'new': () => confirmDialog(t('¿Nueva presentación? Se perderá la actual si no la has guardado.'))
     .then(ok => { if (ok) replaceDeck(emptyDeck()); }),
-  'open': () => readFile('.json,application/json', txt => {
-    try { replaceDeck(JSON.parse(txt)); } catch { alertDialog(t('Proyecto no válido.')); } }, 'text'),
+  'open': () => readFile('.json,application/json', async txt => {
+    let obj; try { obj = JSON.parse(txt); } catch { alertDialog(t('Proyecto no válido.')); return; }
+    if (protect.isEncrypted(obj)) {
+      const pw = await promptDialog(t('Este proyecto está protegido. Contraseña:'), ''); if (!pw) return;
+      try { obj = await protect.decryptDeck(obj, pw); } catch { alertDialog(t('Contraseña incorrecta.')); return; }
+    }
+    if (!obj || !Array.isArray(obj.slides)) { alertDialog(t('Proyecto no válido.')); return; }
+    replaceDeck(obj);
+  }, 'text'),
+  'save-protected': async () => {
+    const pw = await promptDialog(t('Contraseña para cifrar el proyecto (no se puede recuperar si la olvidas):'), ''); if (!pw) return;
+    const pw2 = await promptDialog(t('Repite la contraseña:'), ''); if (pw2 !== pw) { alertDialog(t('Las contraseñas no coinciden.')); return; }
+    const env = await protect.encryptDeck(state.deck, pw);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(env)], { type: 'application/json' }));
+    a.download = (state.deck.name || 'presentacion').replace(/[^\p{L}\p{N}]+/gu, '-') + '.revela.json'; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  },
+  'mark-final': () => protect.setFinal(!protect.isFinal()),
   'save': io.saveProject,
   'gallery': () => openGallery(),
   'versions': () => openVersions(),
@@ -225,6 +243,13 @@ export function initRibbon() {
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && animPaint) endAnimPaint(); });
   const don = document.getElementById('donate');
   if (don && DONATE_URL) { don.href = DONATE_URL; don.hidden = false; }
+  document.getElementById('final-banner')?.addEventListener('click', e => {
+    if (e.target.closest('[data-action="mark-final"]')) protect.setFinal(false);
+  });
+  window.addEventListener('revela:readonly', () => {
+    const fb = document.getElementById('final-banner'); if (!fb) return;
+    fb.classList.remove('flash'); void fb.offsetWidth; fb.classList.add('flash');
+  });
   document.getElementById('master-banner')?.addEventListener('click', e => {
     if (e.target.closest('[data-action="master-close"]')) master.toggleMasterEdit(false);
   });
@@ -618,6 +643,8 @@ export function renderRibbon() {
   document.querySelector('[data-action="toggle-autoanimate"]')?.classList.toggle('on', !!slide.autoAnimate);
   syncValue('[data-theme]', state.deck.theme);
   syncValue('[data-deck-fg]', palettes.deckFg());
+  $('[data-action="mark-final"]')?.classList.toggle('on', protect.isFinal());
+  const fb = document.getElementById('final-banner'); if (fb) fb.hidden = !protect.isFinal();
   $('[data-action="comments"]')?.classList.toggle('on', !!state.ui.showComments);
   $('[data-action="autocorrect"]')?.classList.toggle('on', autocorrectOn());
   $('[data-action="master-edit"]')?.classList.toggle('on', !!state.ui.editMaster);

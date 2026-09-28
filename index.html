@@ -55,6 +55,8 @@
             <button data-action="versions" title="Historial de versiones"><i class="ms">history</i><span>Versiones</span></button>
             <button data-action="open"><i class="ms">folder_open</i><span>Abrir</span></button>
             <button data-action="save"><i class="ms">save</i><span>Guardar</span></button>
+            <button data-action="save-protected" title="Guardar el proyecto cifrado con contraseña"><i class="ms">lock</i><span>Proteger</span></button>
+            <button data-action="mark-final" title="Marcar como final: solo lectura"><i class="ms">verified</i><span>Final</span></button>
           </div><label>Proyecto</label>
         </div>
         <div class="group">
@@ -529,6 +531,8 @@
   <main>
     <aside id="navigator"></aside>
     <section id="canvas-wrap">
+      <div id="final-banner" hidden><i class="ms">verified</i> <span>Marcada como final: la presentación es de solo lectura.</span>
+        <button data-action="mark-final" type="button">Editar de todos modos</button></div>
       <div id="master-banner" hidden><i class="ms">dashboard_customize</i> <span>Editando el patrón: lo que pongas aquí aparece en todas las diapositivas.</span>
         <button data-action="master-close" type="button">Cerrar patrón</button></div>
       <div id="stage-sizer">

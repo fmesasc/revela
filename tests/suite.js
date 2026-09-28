@@ -1207,6 +1207,26 @@ export async function run(frame) {
     D.querySelector('[data-action="comments"]').click();
   });
 
+  await test('abrir proyecto, cifrado con contraseña y marcar como final', async () => {
+    reset(); const P = R.protect;
+    slide().blocks[0].html = 'Secreto';
+    const env = await P.encryptDeck(R.state.deck, 'clave-1');
+    assert(P.isEncrypted(env) && !JSON.stringify(env).includes('Secreto'), 'contenido cifrado');
+    let err = ''; try { await P.decryptDeck(env, 'otra'); } catch (e) { err = e.message; } eq(err, 'BAD_PASSWORD', 'contraseña incorrecta');
+    eq((await P.decryptDeck(env, 'clave-1')).slides[0].blocks[0].html, 'Secreto', 'descifrado');
+    // Abrir: el lector de archivos lee texto (antes leía una data: URL y fallaba).
+    const W = frame.contentWindow, input = { files: [new W.File([JSON.stringify(R.state.deck)], 'p.revela.json')] };
+    const orig = W.document.createElement.bind(W.document);
+    W.document.createElement = tag => { const el = orig(tag); if (tag === 'input') { el.click = () => { Object.defineProperty(el, 'files', { value: input.files }); el.onchange(); }; } return el; };
+    slide().blocks[0].html = 'Cambiado'; R.render();
+    try { D.querySelector('[data-action="open"]').click(); await sleep(50); } finally { W.document.createElement = orig; }
+    eq(slide().blocks[0].html, 'Secreto', 'abrir proyecto .revela.json funciona');
+    P.setFinal(true); await sleep(10);
+    assert(!D.getElementById('final-banner').hidden, 'aviso de final');
+    const n = slide().blocks.length; R.blocks.addText(); eq(slide().blocks.length, n, 'no se puede editar');
+    P.setFinal(false); R.blocks.addText(); eq(slide().blocks.length, n + 1, 'editable de nuevo');
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

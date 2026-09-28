@@ -42,6 +42,7 @@ export function initDraw() {
   // Capture phase: while a tool is on, the stage belongs to the pen.
   stage.addEventListener('pointerdown', e => {
     const tool = state.ui.drawTool; if (!tool) return;
+    if (state.deck.final) { e.preventDefault(); e.stopPropagation(); window.dispatchEvent(new Event('revela:readonly')); return; }
     e.preventDefault(); e.stopPropagation();
     if (tool === 'eraser') {
       eraseAt(e);

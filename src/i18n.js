@@ -518,6 +518,17 @@ const ROWS = [
   ['Resolver', 'Resolve', 'Résoudre', 'Erledigen', 'Risolvi', 'Resolver', 'Resol'],
   ['Respuesta', 'Reply', 'Réponse', 'Antwort', 'Risposta', 'Resposta', 'Resposta'],
   ['¿Con qué nombre quieres firmar los comentarios?', 'What name should sign your comments?', 'Sous quel nom signer vos commentaires ?', 'Mit welchem Namen möchten Sie Kommentare unterschreiben?', 'Con quale nome vuoi firmare i commenti?', 'Com que nome quer assinar os comentários?', 'Amb quin nom vols signar els comentaris?'],
+  ['Proteger', 'Protect', 'Protéger', 'Schützen', 'Proteggi', 'Proteger', 'Protegeix'],
+  ['Final', 'Final', 'Final', 'Final', 'Finale', 'Final', 'Final'],
+  ['Guardar el proyecto cifrado con contraseña', 'Save the project encrypted with a password', 'Enregistrer le projet chiffré avec un mot de passe', 'Projekt mit Passwort verschlüsselt speichern', 'Salva il progetto cifrato con password', 'Guardar o projeto cifrado com palavra-passe', 'Desa el projecte xifrat amb contrasenya'],
+  ['Marcar como final: solo lectura', 'Mark as final: read-only', 'Marquer comme final : lecture seule', 'Als abgeschlossen kennzeichnen: schreibgeschützt', 'Segna come finale: sola lettura', 'Marcar como final: só de leitura', 'Marca com a final: només lectura'],
+  ['Marcada como final: la presentación es de solo lectura.', 'Marked as final: the presentation is read-only.', 'Marquée comme finale : la présentation est en lecture seule.', 'Als abgeschlossen gekennzeichnet: die Präsentation ist schreibgeschützt.', 'Segnata come finale: la presentazione è di sola lettura.', 'Marcada como final: a apresentação é só de leitura.', 'Marcada com a final: la presentació és de només lectura.'],
+  ['Editar de todos modos', 'Edit anyway', 'Modifier quand même', 'Trotzdem bearbeiten', 'Modifica comunque', 'Editar mesmo assim', 'Edita igualment'],
+  ['Este proyecto está protegido. Contraseña:', 'This project is protected. Password:', 'Ce projet est protégé. Mot de passe :', 'Dieses Projekt ist geschützt. Passwort:', 'Questo progetto è protetto. Password:', 'Este projeto está protegido. Palavra-passe:', 'Aquest projecte està protegit. Contrasenya:'],
+  ['Contraseña incorrecta.', 'Wrong password.', 'Mot de passe incorrect.', 'Falsches Passwort.', 'Password errata.', 'Palavra-passe incorreta.', 'Contrasenya incorrecta.'],
+  ['Contraseña para cifrar el proyecto (no se puede recuperar si la olvidas):', 'Password to encrypt the project (it cannot be recovered if you forget it):', 'Mot de passe pour chiffrer le projet (irrécupérable en cas d’oubli) :', 'Passwort zum Verschlüsseln (kann bei Verlust nicht wiederhergestellt werden):', 'Password per cifrare il progetto (non recuperabile se la dimentichi):', 'Palavra-passe para cifrar o projeto (não pode ser recuperada se a esquecer):', 'Contrasenya per xifrar el projecte (no es pot recuperar si l’oblides):'],
+  ['Repite la contraseña:', 'Repeat the password:', 'Répétez le mot de passe :', 'Passwort wiederholen:', 'Ripeti la password:', 'Repita a palavra-passe:', 'Repeteix la contrasenya:'],
+  ['Las contraseñas no coinciden.', 'The passwords do not match.', 'Les mots de passe ne correspondent pas.', 'Die Passwörter stimmen nicht überein.', 'Le password non coincidono.', 'As palavras-passe não coincidem.', 'Les contrasenyes no coincideixen.'],
   ['Separar celdas', 'Split cells', 'Fractionner les cellules', 'Zellen teilen', 'Dividi celle', 'Dividir células', 'Separa cel·les'],
   ['Color (barras)', 'Color (bars)', 'Couleur (barres)', 'Farbe (Balken)', 'Colore (barre)', 'Cor (barras)', 'Color (barres)'],
   ['Datos (una línea "etiqueta,valor")', 'Data (one line "label,value")', 'Données (une ligne "étiquette,valeur")', 'Daten (eine Zeile "Beschriftung,Wert")', 'Dati (una riga "etichetta,valore")', 'Dados (uma linha "rótulo,valor")', 'Dades (una línia "etiqueta,valor")'],
@@ -740,7 +751,7 @@ export function applyI18n() {
       el.setAttribute('title', t(el.dataset.i18nt));
     });
   }
-  document.querySelectorAll('#ribbon .tabs button, #ribbon .group>label, #ribbon .row button span, #ribbon select option, #statusbar .hint, #master-banner span, #master-banner button, #donate span')
+  document.querySelectorAll('#ribbon .tabs button, #ribbon .group>label, #ribbon .row button span, #ribbon select option, #statusbar .hint, #master-banner span, #master-banner button, #final-banner span, #final-banner button, #donate span')
     .forEach(el => {
       if (el.dataset.i18n === undefined) el.dataset.i18n = el.innerHTML.trim();
       el.innerHTML = t(el.dataset.i18n);

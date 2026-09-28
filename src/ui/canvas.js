@@ -45,6 +45,8 @@ function applyImgStyle(img, b) {
 }
 
 const SNAP = 7; // snapping threshold, in canvas pixels
+// "Marked as final": no direct manipulation (the banner flashes to say why).
+const readOnly = () => { if (!state.deck.final) return false; window.dispatchEvent(new Event('revela:readonly')); return true; };
 let stage;
 
 export function initCanvas() {
@@ -575,6 +577,7 @@ function setupTable(el, b) {
 function setupText(b, el) {
   const rich = el.querySelector('.rich');
   el.addEventListener('dblclick', () => {
+    if (readOnly()) return;
     // Show the raw source (with $…$) while editing, not the rendered math.
     if (rich.dataset.msrc !== undefined) { rich.innerHTML = b.html || ''; rich.dataset.msrc = ''; }
     rich.contentEditable = 'true'; rich.focus(); el.classList.add('editing');
@@ -629,7 +632,7 @@ function startDrag(ev, b, el) {
   // A plain click on an unselected block selects just it; clicking one that is
   // already part of a multi‑selection keeps the group so it can be moved together.
   if (!isSelected(b.id)) commit(() => selectWithGroup(b.id), { history: false });
-  if (b.locked || b.type === 'connector') return;   // selected but not movable
+  if (b.locked || b.type === 'connector' || readOnly()) return;   // selected but not movable
 
   const movers = selectedBlocks().filter(m => m.type !== 'connector');
   const origins = new Map(movers.map(m => [m.id, { x: m.x, y: m.y }]));
@@ -657,7 +660,7 @@ function startDrag(ev, b, el) {
 
 function startRotate(ev, b, el) {
   ev.stopPropagation();
-  if (b.locked) return;
+  if (b.locked || readOnly()) return;
   const r = el.getBoundingClientRect();
   const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
   const base = b.rotation || 0;
@@ -679,7 +682,7 @@ function startRotate(ev, b, el) {
 
 function startResize(ev, b, el, corner) {
   ev.stopPropagation();
-  if (b.locked) return;
+  if (b.locked || readOnly()) return;
   const f = factor(), sx = ev.clientX, sy = ev.clientY, o = { x: b.x, y: b.y, w: b.w, h: b.h };
   el.setPointerCapture?.(ev.pointerId);
   const ratio = o.w / o.h;

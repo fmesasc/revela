@@ -134,7 +134,7 @@ the origin of every requirement is traceable.
 - ⬜ Built-in chat `OO`
 - ✅ Version history (local, in this browser: automatic snapshots + named versions, restore/download) — shared history needs the back end `PP·GS·OO`
 - ⬜ Share links and permission levels `PP·GS·OO`
-- ⬜ Protect / password, restrict editing `PP·OO`
+- ✅ Protect — project encrypted with a password (AES-GCM 256, PBKDF2) and "mark as final" (read-only) `PP·OO`
 - ⬜ Digital signatures `OO`
 
 ## 8. Import & export
