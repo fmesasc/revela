@@ -634,6 +634,19 @@ export async function run(frame) {
     assert(/family=Montserrat/.test(html) && /family=Open\+Sans/.test(html), 'fuentes incrustadas');
   });
 
+  await test('exportar todas las diapositivas como imágenes (ZIP)', async () => {
+    reset(); R.slides.addSlide(); R.slides.addSlide(); R.slides.toggleSlideHidden(2);
+    const zipBlob = await R.io.buildImagesZip(R.state.deck, 'jpg');
+    const zip = await frame.contentWindow.JSZip.loadAsync(zipBlob);
+    const names = Object.keys(zip.files).sort();
+    eq(names.length, 2, 'una imagen por diapositiva visible');
+    assert(/-1\.jpg$/.test(names[0]), 'nombre numerado ' + names[0]);
+    const head = new Uint8Array(await zip.file(names[0]).async('arraybuffer')).slice(0, 3);
+    eq([...head].join(','), '255,216,255', 'cabecera JPEG');
+    const png = await R.io.slideImageBlob(slide(), 'png');
+    eq(png.type, 'image/png', 'PNG de la diapositiva');
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

@@ -379,31 +379,60 @@ export function exportPDF() {
 export function slideInnerHTML(slide) { return slide.blocks.map(b => blockHTML(b, slide)).join(''); }
 
 const H2C = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
-const loadScript = src => new Promise((res, rej) => {
+const JSZIP = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
+const loadScript = (src, global) => new Promise((res, rej) => {
+  if (window[global]) return res();
   const sc = document.createElement('script'); sc.src = src; sc.onload = res;
-  sc.onerror = () => rej(new Error('no se pudo cargar html2canvas')); document.head.appendChild(sc);
+  sc.onerror = () => rej(new Error(t('No se pudo cargar ') + src.split('/npm/')[1])); document.head.appendChild(sc);
 });
 
-// Rasterise the current slide to a PNG. 3D models and web embeds can't be
+// Rasterise one slide with html2canvas. 3D models and web embeds can't be
 // rasterised (they come out blank); everything else does.
-export async function exportPNG() {
-  const s = state.deck.slides[state.ui.slideIndex];
-  const { w, h } = state.deck.size;
+export async function slideImageBlob(s, type = 'png', deck = state.deck) {
+  const { w, h } = deck.size;
   const holder = document.createElement('div');
-  holder.style.cssText = `position:fixed;left:-99999px;top:0;width:${w}px;height:${h}px;overflow:hidden;color:${deckFg()};font-family:${deckBodyFont() || 'inherit'};background:${s.background}`;
+  holder.style.cssText = `position:fixed;left:-99999px;top:0;width:${w}px;height:${h}px;overflow:hidden;color:${deckFg(deck)};font-family:${deckBodyFont(deck) || 'inherit'};background:${s.background}`;
   holder.innerHTML = `<style>*{box-sizing:border-box}ul{list-style-type:var(--bullet,disc)}ol{list-style-type:var(--num,decimal)}`
     + `img,video,model-viewer,iframe{width:100%;height:100%}table.tbl{border-collapse:collapse;width:100%;height:100%}`
     + `table.tbl td{border:1px solid var(--stroke,#fff);padding:.15em .4em}table.tbl.has-header tr:first-child td{font-weight:700;background:rgba(127,127,127,.25)}</style>`
     + slideInnerHTML(s);
   document.body.appendChild(holder);
   try {
-    await loadScript(H2C);
-    const canvas = await window.html2canvas(holder, { width: w, height: h, backgroundColor: null, scale: 2, useCORS: true, logging: false });
-    await new Promise(res => canvas.toBlob(blob => { if (blob) download(blob, slug(state.deck.name) + '-' + (state.ui.slideIndex + 1) + '.png'); res(); }));
-  } catch (e) {
-    alertDialog('No se pudo exportar la imagen: ' + e.message);
+    await loadScript(H2C, 'html2canvas');
+    // JPG has no transparency: paint the page colour underneath.
+    const canvas = await window.html2canvas(holder, { width: w, height: h, scale: 2, useCORS: true, logging: false,
+      backgroundColor: type === 'jpg' ? '#ffffff' : null });
+    return await new Promise(res => canvas.toBlob(res, type === 'jpg' ? 'image/jpeg' : 'image/png', 0.92));
   } finally { holder.remove(); }
 }
+
+// Current slide, or every visible slide in a .zip (PowerPoint "Export > all slides").
+export async function exportImages({ type = 'png', all = false } = {}) {
+  const name = slug(state.deck.name);
+  try {
+    if (!all) {
+      const blob = await slideImageBlob(state.deck.slides[state.ui.slideIndex], type);
+      if (blob) download(blob, `${name}-${state.ui.slideIndex + 1}.${type}`);
+      return;
+    }
+    const blob = await buildImagesZip(state.deck, type);
+    download(blob, `${name}-${type}.zip`);
+  } catch (e) {
+    alertDialog(t('No se pudo exportar la imagen: ') + e.message);
+  }
+}
+export async function buildImagesZip(deck = state.deck, type = 'png') {
+  await loadScript(JSZIP, 'JSZip');
+  const zip = new window.JSZip();
+  const vis = deck.slides.filter(s => !s.hidden);
+  const pad = String(vis.length).length;
+  for (let i = 0; i < vis.length; i++) {
+    const b = await slideImageBlob(vis[i], type, deck);
+    if (b) zip.file(`${t('Diapositiva')}-${String(i + 1).padStart(pad, '0')}.${type}`, b);
+  }
+  return zip.generateAsync({ type: 'blob' });
+}
+export const exportPNG = () => exportImages({ type: 'png' });
 export function saveProject() {
   download(new Blob([JSON.stringify(state.deck, null, 2)], { type: 'application/json' }),
     slug(state.deck.name) + '.revela.json');

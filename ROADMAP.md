@@ -142,7 +142,7 @@ the origin of every requirement is traceable.
 - ✅ Import from PowerPoint `.pptx` (text + images) `OO·GS`
 - ✅ Project import/export as JSON, local autosave `—`
 - ✅ Save/open to Google Drive & export HTML to Drive (client-side, `drive.file`) `PP·GS`
-- 🚧 Export slide as image (PNG via html2canvas); JPG/SVG & batch planned `PP·GS·OO`
+- ✅ Export slides as images — PNG or JPG, current slide or all slides in a ZIP `PP·GS·OO`
 - ⬜ High-fidelity `.pptx` import (fonts, colours, shapes, layouts) `OO·GS`
 - ⬜ Export to video (MP4/GIF) `PP·GS`
 - ⬜ Publish to the web / shareable link `GS`

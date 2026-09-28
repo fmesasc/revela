@@ -13,7 +13,7 @@ import * as gdrive from '../io/gdrive.js';
 import { exportPPTX } from '../io/pptx-export.js';
 import { pickReuseFile } from './reuse.js';
 import { openA11yCheck } from './a11y-panel.js';
-import { openHandoutDialog } from './print-dialog.js';
+import { openHandoutDialog, openImageDialog } from './print-dialog.js';
 import * as palettes from '../features/palettes.js';
 import * as fontsMod from '../features/fonts.js';
 import { FONTS, ensureDeckFonts } from '../features/fonts.js';
@@ -47,7 +47,7 @@ const ACTIONS = {
   'export': io.exportHTML,
   'export-pptx': () => exportPPTX(),
   'export-pdf': io.exportPDF,
-  'export-png': io.exportPNG,
+  'export-png': () => openImageDialog(),
   'present': io.present,
   'import-pptx': () => readFile('.pptx', async file => {
     try { replaceDeck(await importPPTX(file)); }
