@@ -98,6 +98,7 @@ function reconcile(b) {
   el.style.transform = transformOf(b);
   el.classList.toggle('selected', isSelected(b.id));
   el.classList.toggle('animated', !!b.animation);
+  el.classList.toggle('locked', !!b.locked);
   if (b.type === 'text') {
     const rich = el.querySelector('.rich');
     if (rich) {
@@ -140,7 +141,7 @@ function reconcile(b) {
 function blockEl(b) {
   const el = document.createElement('div');
   el.className = 'block' + (isSelected(b.id) ? ' selected' : '')
-    + (b.animation ? ' animated' : '');
+    + (b.animation ? ' animated' : '') + (b.locked ? ' locked' : '');
   el.dataset.id = b.id;
   el.style.cssText = `left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px`;
   el.style.transform = transformOf(b);
@@ -323,6 +324,7 @@ function startDrag(ev, b, el) {
   // A plain click on an unselected block selects just it; clicking one that is
   // already part of a multi‑selection keeps the group so it can be moved together.
   if (!isSelected(b.id)) commit(() => selectWithGroup(b.id), { history: false });
+  if (b.locked) return;   // selected but not movable
 
   const movers = selectedBlocks();
   const origins = new Map(movers.map(m => [m.id, { x: m.x, y: m.y }]));
@@ -350,6 +352,7 @@ function startDrag(ev, b, el) {
 
 function startRotate(ev, b, el) {
   ev.stopPropagation();
+  if (b.locked) return;
   const r = el.getBoundingClientRect();
   const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
   const base = b.rotation || 0;
@@ -371,6 +374,7 @@ function startRotate(ev, b, el) {
 
 function startResize(ev, b, el, corner) {
   ev.stopPropagation();
+  if (b.locked) return;
   const f = factor(), sx = ev.clientX, sy = ev.clientY, o = { x: b.x, y: b.y, w: b.w, h: b.h };
   el.setPointerCapture?.(ev.pointerId);
   const ratio = o.w / o.h;

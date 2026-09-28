@@ -27,7 +27,7 @@ the origin of every requirement is traceable.
 - ✅ Align & distribute — align to slide/among objects + distribute `PP·GS·OO`
 - ✅ Order: bring to front / send to back / forward / backward `PP·GS·OO`
 - ✅ Rotation handle and flip `PP·GS·OO`
-- 🚧 Lock aspect ratio (Shift while resizing); object lock planned `PP·OO`
+- ✅ Lock aspect ratio (Shift while resizing) and object lock `PP·OO`
 - ⬜ Grid, rulers and guides you can place `PP·GS·OO`
 - ⬜ Format painter / copy style `PP·GS·OO`
 - ✅ Find & replace `PP·GS·OO`
@@ -96,7 +96,7 @@ the origin of every requirement is traceable.
 - ✅ Per-slide transitions `PP·GS·OO`
 - ✅ Per-object entrance animations `PP·GS·OO`
 - ⬜ Transition duration and per-transition options `PP·GS·OO`
-- ⬜ Emphasis and exit animations `PP·GS·OO`
+- ✅ Emphasis and exit animations (grow, shrink, strike, fade-out, highlight) `PP·GS·OO`
 - ⬜ Motion paths `PP`
 - ⬜ Animation timeline, ordering and triggers `PP·GS·OO`
 - ⬜ Animation painter `PP`

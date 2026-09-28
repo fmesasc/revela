@@ -158,6 +158,13 @@ export function alignSelected(where) {
   });
 }
 
+// Lock prevents moving/resizing/rotating (still selectable).
+export function toggleLock() {
+  const bs = selectedBlocks(); if (!bs.length) return;
+  const lock = !bs.every(b => b.locked);
+  commit(() => { for (const b of bs) b.locked = lock; });
+}
+
 // Flip / reset rotation for the selection.
 export function flipSelected(axis) {
   const bs = selectedBlocks(); if (!bs.length) return;

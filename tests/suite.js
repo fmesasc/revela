@@ -261,6 +261,19 @@ export async function run(frame) {
     R.blocks.ungroupSelected(); assert(!a.groupId && !b.groupId, 'desagrupado');
   });
 
+  await test('animación de énfasis en el export', async () => {
+    reset(); const b = newText(); R.state.ui.selection = b.id;
+    b.animation = { effect: 'grow', order: 1 };
+    assert(/class="fragment grow"/.test(R.io.buildHTML()), 'clase de fragmento grow');
+  });
+
+  await test('bloquear objeto marca la bandera y la clase', async () => {
+    reset(); const b = newText(); R.blocks.toggleLock(); await sleep(20);
+    assert(b.locked, 'bandera locked');
+    assert(D.querySelector(`.block[data-id="${b.id}"].locked`), 'clase locked en el DOM');
+    R.blocks.toggleLock(); assert(!b.locked, 'desbloqueado');
+  });
+
   await test('audio: bloque en lienzo y export', async () => {
     reset(); R.blocks.addAudio('data:audio/mp3;base64,AAA'); const b = last(); select(b); await sleep(20);
     assert(D.querySelector(`.block[data-id="${b.id}"] audio`), 'audio en el lienzo');

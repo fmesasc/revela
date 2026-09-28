@@ -116,7 +116,8 @@ function forBlock(b) {
   items.push(null,
     ['Voltear horizontalmente', () => blocks.flipSelected('h')],
     ['Voltear verticalmente', () => blocks.flipSelected('v')],
-    ['Restablecer giro', () => blocks.resetRotation()]);
+    ['Restablecer giro', () => blocks.resetRotation()],
+    [b.locked ? 'Desbloquear' : 'Bloquear', () => blocks.toggleLock()]);
 
   // Position + arrange, common to every object.
   items.push(
