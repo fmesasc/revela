@@ -155,4 +155,37 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(!w.Reveal.isOverview(), 'Esc no abre la vista general');
     } finally { f.remove(); }
   });
+
+  await test('vista general al presentar (Esc): mosaico por secciones que cabe en pantalla y navegable', async () => {
+    const d = R.examples.buildExample('coding');
+    d.sections = [{ id: 's1', name: 'Fundamentos' }, { id: 's2', name: 'Asincronía' }];
+    d.slides.forEach((s, i) => { s.sectionId = i < 4 ? 's1' : 's2'; });
+    R.store.replaceDeck(d);
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:800px;visibility:hidden'; D.body.appendChild(f);
+    try {
+      f.srcdoc = R.io.buildHTML(d, { inApp: true });
+      for (let i = 0; i < 100 && !f.contentWindow.Reveal?.isReady?.(); i++) await sleep(100);
+      const W = f.contentWindow, key = k => W.dispatchEvent(new W.KeyboardEvent('keydown', { key: k, bubbles: true }));
+      W.Reveal.slide(2); await sleep(100);
+      key('Escape'); await sleep(200);
+      const ov = f.contentDocument.querySelector('.rv-ov'); assert(ov, 'Esc abre la vista general propia');
+      assert(!W.Reveal.isOverview(), 'no la fila de reveal.js');
+      const items = ov.querySelectorAll('.rv-ov-it');
+      eq(items.length, W.Reveal.getSlides().filter(s => !s.querySelector('section')).length, 'una miniatura por diapositiva (también las verticales)');
+      eq([...ov.querySelectorAll('h2')].map(h => h.textContent).join(','), 'Fundamentos,Asincronía', 'agrupadas por sección');
+      assert(items[2].classList.contains('cur'), 'la actual, marcada');
+      const last = items[items.length - 1].getBoundingClientRect();
+      assert(last.bottom <= 800, 'caben todas en la pantalla (aprovecha el alto): ' + last.bottom);
+      assert(items[0].getBoundingClientRect().width > 250, 'a buen tamaño');
+      assert(/Funciones/.test(items[1].textContent), 'con su contenido');
+      key('ArrowRight'); key('Enter'); await sleep(300);
+      assert(!f.contentDocument.querySelector('.rv-ov'), 'Intro cierra y va');
+      eq(W.Reveal.getSlidePastCount(), 3, 'a la diapositiva elegida');
+      key('o'); await sleep(100); assert(f.contentDocument.querySelector('.rv-ov'), 'O también la abre');
+      f.contentDocument.querySelectorAll('.rv-ov-it')[0].click(); await sleep(300);
+      eq(W.Reveal.getSlidePastCount(), 0, 'clic en una miniatura va a ella');
+      key('Escape'); await sleep(100); key('Escape'); await sleep(100);
+      assert(!f.contentDocument.querySelector('.rv-ov'), 'Esc la cierra');
+    } finally { f.remove(); }
+  });
 }

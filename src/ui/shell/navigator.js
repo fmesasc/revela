@@ -10,7 +10,26 @@ import { masterBlocksFor, isEmptyPlaceholder, styled, styleKind, ensureLayouts, 
 let panel;
 let dragFrom = null;
 
-export function initPanel() { panel = document.getElementById('navigator'); }
+// The slides panel can be hidden (Google Slides' filmstrip); remembered here.
+const HIDE = 'revela.hideNav';
+export function setNavHidden(on) {
+  document.body.classList.toggle('nav-hidden', on);
+  document.querySelectorAll('[data-action="toggle-nav"]').forEach(b => b.classList.toggle('on', !on));
+  try { localStorage.setItem(HIDE, on ? '1' : '0'); } catch {}
+}
+export function initPanel() {
+  let hidden = false; try { hidden = localStorage.getItem(HIDE) === '1'; } catch {}
+  setNavHidden(hidden);
+  panel = document.getElementById('navigator');
+  // Thumbnails scale to the width they really get (it depends on the panel and
+  // the screen): a fixed scale cut off their right and bottom edges.
+  new ResizeObserver(fitThumbs).observe(panel);
+}
+function fitThumbs() {
+  const c = panel.querySelector('.thumb-canvas'); if (!c || !c.clientWidth) return;
+  const k = c.clientWidth / state.deck.size.w;
+  if (panel.style.getPropertyValue('--tk') !== String(k)) panel.style.setProperty('--tk', k);
+}
 
 // Thumbnails are cached per slide and rebuilt only when that slide (or what
 // every thumbnail depends on: size, master, theme colours) changes — decks with
@@ -41,6 +60,7 @@ export function renderPanel() {
   });
   for (const id of cache.keys()) if (!seen.has(id)) cache.delete(id);
   panel.replaceChildren(...nodes);
+  fitThumbs();
 }
 
 // Master view (PowerPoint's Slide Master): the master and its layouts, each
@@ -53,7 +73,7 @@ function renderMasterPanel() {
     const canvas = document.createElement('div'); canvas.className = 'thumb-canvas';
     canvas.style.background = slide.background || d.slides[0]?.background || '#101317'; canvas.style.setProperty('--ar', w / h);
     const inner = document.createElement('div'); inner.className = 'thumb-inner';
-    inner.style.cssText = `width:${w}px;height:${h}px;transform:scale(${188 / w});color:${deckFg()};font-family:${deckBodyFont() || 'inherit'}`;
+    inner.style.cssText = `width:${w}px;height:${h}px;transform:scale(var(--tk,${188 / w}));color:${deckFg()};font-family:${deckBodyFont() || 'inherit'}`;
     for (const b of blocks) {
       if (b.ph) {
         const f = document.createElement('div'); const st = styled(b, slide);
@@ -74,6 +94,7 @@ function renderMasterPanel() {
     nodes.push(card(l.name, n ? `${n} diap.` : '', sel === l.id, l, [...masterBlocksFor(l, d), ...l.blocks], () => editLayout(l.id), true));
   }
   panel.replaceChildren(...nodes);
+  fitThumbs();
 }
 
 // A section title, editable in place (no browser prompt). Right‑clicking it
@@ -113,7 +134,7 @@ function thumb(slide) {
   canvas.style.setProperty('--ar', w / h);
   const inner = document.createElement('div');
   inner.className = 'thumb-inner';
-  inner.style.cssText = `width:${w}px;height:${h}px;transform:scale(${188 / w});color:${deckFg()};font-family:${deckBodyFont() || 'inherit'}`;
+  inner.style.cssText = `width:${w}px;height:${h}px;transform:scale(var(--tk,${188 / w}));color:${deckFg()};font-family:${deckBodyFont() || 'inherit'}`;
   for (const b of [...masterBlocksFor(slide), ...slide.blocks.map(x => styled(x, slide))]) if (!isEmptyPlaceholder(b)) inner.appendChild(blockPreview(b));
   canvas.appendChild(inner);
 

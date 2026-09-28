@@ -96,3 +96,86 @@ export const TRIGGER_JS = `(function(){
  Reveal.on('slidechanged',function(ev){if(ev.previousSlide)ev.previousSlide.querySelectorAll('.rv-trig').forEach(function(el){
   el.style.animation='';el.classList.remove('on');});});
 })();`;
+
+// Overview (Esc or O while presenting): every slide as a mosaic that fills the
+// screen — sized so they all fit when possible, grouped by section, the
+// current one marked; arrows + Enter or a click go to a slide, Esc closes.
+// It replaces reveal.js's own overview, a single row that wastes the height.
+// sections[h] = the section name of horizontal slide h ('' when none).
+export function overviewJS(sections, texts) {
+  return `(function(){
+ var SEC=${JSON.stringify(sections)}, T=${JSON.stringify(texts)}, box=null, items=[], sel=0;
+ var st=document.createElement('style');
+ st.textContent='.rv-ov{position:fixed;inset:0;z-index:1000;text-align:start;line-height:normal;background:rgba(10,12,16,.97);overflow:auto;padding:18px 22px 28px;box-sizing:border-box;font-family:system-ui,sans-serif;color:#e6e9ef}'
+  +'.rv-ov-top{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#9aa3ae;margin:0 0 10px}'
+  +'.rv-ov h2{font-family:system-ui,sans-serif;font-size:15px;font-weight:600;margin:16px 0 8px;color:#e6e9ef;letter-spacing:.3px;text-transform:none}'
+  +'.rv-ov-grid{display:grid;gap:14px}'
+  +'.rv-ov-it{position:relative;cursor:pointer;border-radius:6px;overflow:hidden;outline:2px solid transparent;outline-offset:2px;background:#222;box-shadow:0 2px 8px #0008}'
+  +'.rv-ov-it:hover,.rv-ov-it.sel{outline-color:#86a9e8}.rv-ov-it.cur{outline-color:#f5a623}'
+  +'.rv-ov-it .rv-ov-in{position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:none}'
+  +'.rv-ov-it .rv-ov-n{position:absolute;left:6px;bottom:4px;font-size:12px;background:#000a;color:#fff;border-radius:4px;padding:1px 6px}'
+  +'.rv-ov .fragment{opacity:1!important;visibility:visible!important;transform:none!important}'
+  +'.rv-ov .rv-ov-ph{background:#0004;width:100%;height:100%}';
+ document.head.appendChild(st);
+ function leaves(){return Reveal.getSlides().filter(function(s){return !s.querySelector('section');});}
+ function thumb(sec,W,H,tw,n){
+  var it=document.createElement('div');it.className='rv-ov-it';it.style.aspectRatio=W+'/'+H;
+  it.style.background=sec.getAttribute('data-background-color')||'#fff';
+  var inner=document.createElement('div');inner.className='rv-ov-in';inner.style.width=W+'px';inner.style.height=H+'px';
+  [].forEach.call(sec.children,function(c){if(c.tagName==='ASIDE')return;inner.appendChild(c.cloneNode(true));});
+  // No live media in thumbnails (pages, videos and 3D would load again).
+  inner.querySelectorAll('iframe,video,audio,model-viewer').forEach(function(m){var d=document.createElement('div');d.className='rv-ov-ph';d.style.cssText=m.style.cssText;m.replaceWith(d);});
+  inner.querySelectorAll('[id]').forEach(function(e){e.removeAttribute('id');});
+  it.appendChild(inner);var num=document.createElement('span');num.className='rv-ov-n';num.textContent=n;it.appendChild(num);
+  return {el:it,inner:inner};
+ }
+ // Columns so that every slide fits on screen when possible (bigger is better).
+ // groups: how many slides each section has (each section starts a new row).
+ function layout(groups,W,H){
+  var count=groups.reduce(function(a,b){return a+b.n;},0), aw=box.clientWidth-44, ah=window.innerHeight-70;
+  for(var c=1;c<=count;c++){var tw=(aw-14*(c-1))/c, th=tw*H/W, need=0;
+   groups.forEach(function(g){var r=Math.ceil(g.n/c);need+=r*th+14*(r-1)+(g.name?40:12);});
+   if(need<=ah)return c;}
+  return Math.max(1,Math.floor((aw+14)/(220+14)));
+ }
+ function open(){
+  if(box)return;
+  var slides=leaves(), W=Reveal.getConfig().width, H=Reveal.getConfig().height, cur=Reveal.getCurrentSlide();
+  box=document.createElement('div');box.className='rv-ov';box.setAttribute('role','dialog');box.setAttribute('aria-label',T.title);
+  box.innerHTML='<div class="rv-ov-top"><span>'+T.title+'</span><span>'+T.help+'</span></div>';
+  // Inside .reveal, so the thumbnails get the presentation's own styles.
+  (document.querySelector('.reveal')||document.body).appendChild(box);
+  var groups=[];slides.forEach(function(s){var n=SEC[Reveal.getIndices(s).h]||'';var g=groups[groups.length-1];if(g&&g.name===n)g.n++;else groups.push({name:n,n:1});});
+  var cols=layout(groups,W,H), grid=null, last=null; items=[];
+  slides.forEach(function(s,i){
+   var ix=Reveal.getIndices(s), name=SEC[ix.h]||'';
+   if(!grid||name!==last){
+    if(name){var h=document.createElement('h2');h.textContent=name;box.appendChild(h);}
+    grid=document.createElement('div');grid.className='rv-ov-grid';grid.style.gridTemplateColumns='repeat('+cols+',minmax(0,1fr))';box.appendChild(grid);last=name;
+   }
+   var t=thumb(s,W,H,0,i+1);if(s===cur){t.el.classList.add('cur');sel=i;}
+   t.el.addEventListener('click',function(){go(i);});
+   grid.appendChild(t.el);items.push({el:t.el,inner:t.inner,h:ix.h,v:ix.v||0});
+  });
+  requestAnimationFrame(function(){items.forEach(function(x){x.inner.style.transform='scale('+(x.el.clientWidth/W)+')';});mark();});
+ }
+ function close(){if(box){box.remove();box=null;}}
+ function go(i){var x=items[i];close();Reveal.slide(x.h,x.v);}
+ function mark(){items.forEach(function(x,i){x.el.classList.toggle('sel',i===sel);});var e=items[sel]&&items[sel].el;if(e)e.scrollIntoView({block:'nearest'});}
+ function cols(){var g=items[0]&&items[0].el.parentNode;return g?getComputedStyle(g).gridTemplateColumns.split(' ').length:1;}
+ window.addEventListener('keydown',function(e){
+  var k=e.key;
+  if(!box){ if(k==='Escape'||((k==='o'||k==='O')&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!/INPUT|TEXTAREA/.test(e.target.tagName))){e.preventDefault();e.stopImmediatePropagation();open();} return; }
+  e.preventDefault();e.stopImmediatePropagation();
+  if(k==='Escape'||k==='o'||k==='O')close();
+  else if(k==='Enter'||k===' ')go(sel);
+  else if(k==='ArrowRight'){sel=Math.min(items.length-1,sel+1);mark();}
+  else if(k==='ArrowLeft'){sel=Math.max(0,sel-1);mark();}
+  else if(k==='ArrowDown'){sel=Math.min(items.length-1,sel+cols());mark();}
+  else if(k==='ArrowUp'){sel=Math.max(0,sel-cols());mark();}
+  else if(k==='Home'){sel=0;mark();}else if(k==='End'){sel=items.length-1;mark();}
+ },true);
+ window.addEventListener('resize',function(){if(box){close();open();}});
+ window.RevelaOverview={open:open,close:close,isOpen:function(){return !!box;}};
+})();`;
+}

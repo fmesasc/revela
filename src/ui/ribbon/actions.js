@@ -51,6 +51,7 @@ import { openShortcuts } from '../dialogs/shortcuts.js';
 import { openHeaderFooter } from '../dialogs/headerfooter.js';
 import { openAnimPanel } from '../panels/animation.js';
 import { setZoom, fitZoom } from './zoom.js';
+import { setNavHidden } from '../shell/navigator.js';
 import { AI_ACTIONS } from '../dialogs/ai.js';
 
 const $ = s => document.querySelector(s);
@@ -100,6 +101,7 @@ export const ACTIONS = {
   'export-pdf': exportPDF,
   'export-png': () => openImageDialog(),
   'share': () => openShare(),
+  'toggle-nav': () => { setNavHidden(!document.body.classList.contains('nav-hidden')); requestAnimationFrame(fitZoom); },
   'save-picture': () => (selectedBlocks().length ? openSaveAsPicture() : alertDialog(t('Selecciona primero uno o varios objetos.'))),
   'export-video': () => openVideoDialog(),
   'present': () => present(),

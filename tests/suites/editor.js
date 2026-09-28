@@ -236,4 +236,16 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     }
     eq(W.getComputedStyle(del).paddingLeft, '0px', 'sin relleno que lo desplace');
   });
+
+  await test('panel de diapositivas: miniaturas enteras y se puede ocultar y mostrar', async () => {
+    R.store.replaceDeck(R.examples.buildExample('report')); R.render(); await sleep(60);
+    const c = D.querySelector('#navigator .thumb-canvas'), inner = c.querySelector('.thumb-inner');
+    assert(Math.abs(inner.getBoundingClientRect().width - c.clientWidth) < 1.5, `la miniatura ocupa su hueco, sin cortar la derecha (${inner.getBoundingClientRect().width} vs ${c.clientWidth})`);
+    const btn = D.getElementById('nav-toggle'); btn.click(); await sleep(60);
+    assert(D.body.classList.contains('nav-hidden') && D.getElementById('navigator').offsetWidth === 0, 'se oculta');
+    eq(frame.contentWindow.localStorage.getItem('revela.hideNav'), '1', 'y se recuerda');
+    D.querySelector('#ribbon [data-action="toggle-nav"]') && D.querySelector('#ribbon [data-action="toggle-nav"]').click(); await sleep(60);
+    assert(!D.body.classList.contains('nav-hidden') && D.getElementById('navigator').offsetWidth > 100, 'desde Ver se vuelve a mostrar');
+    reset();
+  });
 }
