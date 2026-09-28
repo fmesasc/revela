@@ -88,6 +88,8 @@ function thumb(slide) {
   del.addEventListener('click', e => { e.stopPropagation(); deleteSlide(index()); });
 
   el.append(num, canvas, del);
+  const nc = (slide.comments || []).filter(c => !c.resolved).length;
+  if (nc) { const c = document.createElement('span'); c.className = 'thumb-cm'; c.textContent = '💬 ' + nc; el.appendChild(c); }
   el.addEventListener('click', () => goToSlide(index()));
 
   el.addEventListener('dragstart', () => { dragFrom = index(); el.classList.add('dragging'); });

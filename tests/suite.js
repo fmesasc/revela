@@ -1187,6 +1187,26 @@ export async function run(frame) {
     R.store.commit(() => {});                                  // vuelve a guardar el estado actual
   });
 
+  await test('comentarios: añadir, responder, resolver, marcas y menciones', async () => {
+    reset(); const C = R.comments; C.setAuthor('Ana');
+    D.querySelector('[data-action="comments"]').click(); await sleep(10);
+    assert(D.getElementById('comments-panel'), 'panel abierto');
+    const b = slide().blocks[0]; select(b);
+    const id = C.addComment('Revisa esto @Luis'); await sleep(10);
+    const c = C.commentsOf()[0]; eq(c.author, 'Ana', 'autor'); eq(c.blockId, b.id, 'anclado al objeto');
+    eq(C.mentions(c.text).join(), 'Luis', 'mención');
+    assert(D.querySelector('#comments-panel .cm-at'), 'mención resaltada');
+    eq(D.querySelector(`.block[data-id="${b.id}"] .cm-badge`)?.textContent, '1', 'marca en el objeto');
+    assert(/💬 1/.test(D.querySelector('#navigator .thumb .thumb-cm')?.textContent || ''), 'contador en la miniatura');
+    C.reply(id, 'Hecho'); eq(C.commentsOf()[0].replies[0].text, 'Hecho', 'respuesta');
+    C.setResolved(id); await sleep(10);
+    assert(!D.querySelector(`.block[data-id="${b.id}"] .cm-badge`), 'resuelto: sin marca');
+    assert(!D.querySelector('#comments-panel .cm-item'), 'oculto si no se muestran los resueltos');
+    assert(/"comments"/.test(JSON.stringify(R.state.deck)), 'viaja con el proyecto');
+    C.deleteComment(id); eq(C.commentsOf().length, 0, 'eliminado');
+    D.querySelector('[data-action="comments"]').click();
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

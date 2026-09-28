@@ -23,6 +23,7 @@ import { openPlugins, openMacros } from './plugins-dialog.js';
 import { AI_ACTIONS, aiRewrite } from './ai-dialog.js';
 import { DONATE_URL } from '../config.js';
 import { openVersions } from './versions-dialog.js';
+import { toggleComments } from './comments-panel.js';
 import * as media from '../features/media.js';
 import * as palettes from '../features/palettes.js';
 import { setDrawTool, drawOpts } from './draw.js';
@@ -86,6 +87,7 @@ const ACTIONS = {
   'reuse-slides': () => pickReuseFile(),
   'a11y-check': () => openA11yCheck(),
   'reading-order': () => openReadingOrder(),
+  'comments': () => toggleComments(),
   ...AI_ACTIONS,
   'plugins': () => openPlugins(),
   'macros': () => openMacros(),
@@ -616,6 +618,7 @@ export function renderRibbon() {
   document.querySelector('[data-action="toggle-autoanimate"]')?.classList.toggle('on', !!slide.autoAnimate);
   syncValue('[data-theme]', state.deck.theme);
   syncValue('[data-deck-fg]', palettes.deckFg());
+  $('[data-action="comments"]')?.classList.toggle('on', !!state.ui.showComments);
   $('[data-action="autocorrect"]')?.classList.toggle('on', autocorrectOn());
   $('[data-action="master-edit"]')?.classList.toggle('on', !!state.ui.editMaster);
   syncValue('[data-slide-trans-out]', currentSlide()?.transitionOut || '');

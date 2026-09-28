@@ -130,7 +130,7 @@ the origin of every requirement is traceable.
 
 ## 7. Collaboration *(needs a backend — not possible on static hosting alone)*
 - ⬜ Real-time co-editing `PP·GS·OO`
-- ⬜ Comments, @mentions, assign, resolve `PP·GS·OO`
+- ✅ Comments on slides and objects — replies, resolve/reopen, @mentions, markers; saved in the project (sharing them live needs the back end) `PP·GS·OO`
 - ⬜ Built-in chat `OO`
 - ✅ Version history (local, in this browser: automatic snapshots + named versions, restore/download) — shared history needs the back end `PP·GS·OO`
 - ⬜ Share links and permission levels `PP·GS·OO`

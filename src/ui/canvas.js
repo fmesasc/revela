@@ -247,6 +247,11 @@ function reconcile(b) {
   el.style.opacity = (b.opacity != null && b.opacity < 100) ? b.opacity / 100 : '';
   el.classList.toggle('selected', isSelected(b.id));
   el.setAttribute('aria-label', blockLabel(b, t));
+  // Comment marker on objects with open comments.
+  const nc = (currentSlide().comments || []).filter(c => c.blockId === b.id && !c.resolved).length;
+  let badge = el.querySelector(':scope > .cm-badge');
+  if (nc && !badge) { badge = document.createElement('span'); badge.className = 'cm-badge'; el.appendChild(badge); }
+  if (badge) { if (nc) badge.textContent = nc; else badge.remove(); }
   el.classList.toggle('animated', !!b.animation);
   el.classList.toggle('locked', !!b.locked);
   if (b.type === 'text') {
