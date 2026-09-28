@@ -2,7 +2,7 @@
 // present / export / save-load helpers.
 
 import { state } from '../core/store.js';
-import { shapeSVG, imgFilter, imgOpacity, imgClip } from '../ui/shape.js';
+import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG } from '../ui/shape.js';
 import { googleFontLinks } from '../features/fonts.js';
 
 const REVEAL = 'https://cdn.jsdelivr.net/npm/reveal.js@5.1.0';
@@ -49,6 +49,8 @@ function blockHTML(b) {
       + `style="${box(b)}border:0;background:#fff"></iframe>`;
   if (b.type === 'shape')
     return `<div${a} style="${box(b)}">${shapeSVG(b)}</div>`;
+  if (b.type === 'chart')
+    return `<div${a} style="${box(b)}">${chartSVG(b)}</div>`;
   if (b.type === 'table')
     return `<div${a} style="${box(b)}"><table class="tbl" style="--stroke:${b.stroke || '#fff'}">`
       + b.rows.map(row => `<tr>${row.map(c => `<td>${c || ''}</td>`).join('')}</tr>`).join('')

@@ -2,7 +2,7 @@
 
 import { state, commit, currentSlide, selectedBlock,
   selectedBlocks, selectedIds, setSelection, setMulti } from '../core/store.js';
-import { uid, textBlock, tableBlock, codeBlock } from '../core/model.js';
+import { uid, textBlock, tableBlock, codeBlock, chartBlock } from '../core/model.js';
 
 function insert(block) {
   commit(() => { currentSlide().blocks.push(block); setSelection(block.id); });
@@ -60,6 +60,11 @@ export function setAlt(text) {
 
 export function addTable() { insert(tableBlock()); }
 export function addCode() { insert(codeBlock()); }
+export function addChart() { insert(chartBlock()); }
+export function setChart(props) {
+  const b = selectedBlock(); if (!b || b.type !== 'chart') return;
+  commit(() => Object.assign(b, props));
+}
 
 // Table row/column edits act on the selected table.
 function withTable(fn) { const b = selectedBlock(); if (b && b.type === 'table') commit(() => fn(b)); }

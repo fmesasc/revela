@@ -160,6 +160,7 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 .embed-open:hover{text-decoration:underline}
 .block .embed iframe{flex:1}
 .block .shape{width:100%;height:100%}
+.block .chart{width:100%;height:100%}
 .block .tbl{border-collapse:collapse;width:100%;height:100%;color:#fff;table-layout:fixed}
 .block .tbl td{border:1px solid var(--stroke,#fff);padding:3px 6px;vertical-align:top;outline:none;overflow-wrap:anywhere}
 .block .code{margin:0;width:100%;height:100%;overflow:auto;background:#0b0e14;color:#e6e6e6;padding:10px;
@@ -243,7 +244,7 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 .modal .host-link:hover{text-decoration:underline}
 .modal-close{position:absolute;top:8px;right:10px;background:none;border:none;font-size:18px;cursor:pointer;color:var(--txt2)}
 .modal .fr-l{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--txt2);margin-bottom:10px}
-.modal .fr-l input{border:1px solid var(--line2);border-radius:6px;padding:8px;font-family:inherit;font-size:14px;color:var(--txt)}
+.modal .fr-l input,.modal .fr-l select,.modal .fr-l textarea{border:1px solid var(--line2);border-radius:6px;padding:8px;font-family:inherit;font-size:14px;color:var(--txt)}
 .modal .fr-chk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2);margin-bottom:12px}
 .modal .fr-actions{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .modal .fr-count{font-size:12px;color:var(--txt2)}

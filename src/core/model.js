@@ -47,6 +47,14 @@ export function textBlock(props = {}) {
   }, props);
 }
 
+export function chartBlock(props = {}) {
+  return Object.assign({
+    id: uid(), type: 'chart', chartType: 'bar', color: '#3f6497',
+    x: 300, y: 200, w: 620, h: 340, rotation: 0, animation: null,
+    data: [{ label: 'A', value: 30 }, { label: 'B', value: 60 }, { label: 'C', value: 45 }],
+  }, props);
+}
+
 export function codeBlock(props = {}) {
   return Object.assign({
     id: uid(), type: 'code', x: 220, y: 200, w: 840, h: 300,

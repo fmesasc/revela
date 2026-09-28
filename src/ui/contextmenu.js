@@ -99,6 +99,8 @@ function forBlock(b) {
     items.push(
       ['Reproducir en el editor', () => document.querySelector(`.block[data-id="${b.id}"] video`)?.play()],
       null);
+  } else if (b.type === 'chart') {
+    items.push(['Editar datos…', () => openChartData(b)], null);
   } else if (b.type === 'table') {
     items.push(
       ['Añadir fila', () => blocks.tableAddRow()],
@@ -188,6 +190,33 @@ function openImageAdjust(b) {
   back.querySelector('[data-reset]').addEventListener('click', () => {
     blocks.resetImageAdj();
     back.querySelectorAll('[data-adj]').forEach(r => (r.value = r.dataset.adj === 'opacity' ? 100 : 100));
+  });
+}
+
+function openChartData(b) {
+  if (document.getElementById('chart-modal')) return;
+  const lines = (b.data || []).map(d => `${d.label},${d.value}`).join('\n');
+  const back = document.createElement('div');
+  back.id = 'chart-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:left;min-width:300px">
+    <button class="modal-close">✕</button><h3>Datos del gráfico</h3>
+    <label class="fr-l">Tipo <select class="ch-type">
+      <option value="bar">Barras</option><option value="pie">Circular</option></select></label>
+    <label class="fr-l">Color (barras) <input type="color" class="ch-color" value="${b.color || '#3f6497'}"></label>
+    <label class="fr-l">Datos (una línea "etiqueta,valor")
+      <textarea class="ch-data" rows="5" style="font-family:monospace">${lines}</textarea></label>
+    <div class="fr-actions"><button class="fr-do">Aplicar</button></div>
+  </div>`;
+  document.body.appendChild(back);
+  back.querySelector('.ch-type').value = b.chartType || 'bar';
+  const close = () => back.remove();
+  back.querySelector('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  back.querySelector('.fr-do').addEventListener('click', () => {
+    const data = back.querySelector('.ch-data').value.split('\n').map(l => l.split(',')).filter(p => p[0])
+      .map(p => ({ label: (p[0] || '').trim(), value: parseFloat(p[1]) || 0 }));
+    blocks.setChart({ chartType: back.querySelector('.ch-type').value, color: back.querySelector('.ch-color').value, data });
+    close();
   });
 }
 

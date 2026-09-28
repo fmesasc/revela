@@ -61,7 +61,7 @@ the origin of every requirement is traceable.
 - 🚧 Shapes library — rectangle, rounded, ellipse, triangle, diamond, pentagon, star, block arrow, line, arrow with fill/stroke; connectors planned `PP·GS·OO`
 - ⬜ Merge / subtract / intersect shapes `PP·OO`
 - 🚧 Tables — editable cells, add/remove rows & columns, border colour; cell styles planned `PP·GS·OO`
-- ⬜ Charts (bar, line, pie, …) with data editing `PP·GS·OO`
+- 🚧 Charts — bar and pie with data editing (SVG, no library); line & more planned `PP·GS·OO`
 - ⬜ SmartArt / diagrams `PP·OO`
 - ⬜ Icons and stock images `PP·GS`
 - ✅ Emoji picker `GS`

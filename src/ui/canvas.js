@@ -4,7 +4,7 @@
 
 import { state, commit, mutate, currentSlide, selectedBlock,
   selectedBlocks, selectedIds, isSelected, setSelection, toggleSelection, setMulti, selectWithGroup } from '../core/store.js';
-import { shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip } from './shape.js';
+import { shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig } from './shape.js';
 
 function applyImgStyle(img, b) {
   img.style.objectFit = b.fit || 'contain';
@@ -172,6 +172,9 @@ function reconcile(b) {
     const pre = el.querySelector('.code'), c = el.querySelector('code');
     if (pre) pre.style.fontSize = (b.fontSize || 22) + 'px';
     if (c && !el.classList.contains('editing') && c.textContent !== (b.code || '')) c.textContent = b.code || '';
+  } else if (b.type === 'chart') {
+    const d = el.querySelector('.chart'); const sig = chartSig(b);
+    if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = chartSVG(b); }
   }
 }
 
@@ -241,6 +244,10 @@ function content(b) {
     d.dataset.sig = shapeSig(b); d.innerHTML = shapeSVG(b); return d;
   }
   if (b.type === 'table') return tableContent(b);
+  if (b.type === 'chart') {
+    const d = document.createElement('div'); d.className = 'chart';
+    d.dataset.sig = chartSig(b); d.innerHTML = chartSVG(b); return d;
+  }
   if (b.type === 'code') {
     const pre = document.createElement('pre'); pre.className = 'code'; pre.style.fontSize = (b.fontSize || 22) + 'px';
     const c = document.createElement('code'); c.textContent = b.code || ''; pre.appendChild(c);

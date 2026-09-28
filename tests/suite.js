@@ -94,6 +94,19 @@ export async function run(frame) {
     assert((b.html || '').includes('★'), 'símbolo insertado');
   });
 
+  await test('gráfico de barras: render y export SVG', async () => {
+    reset(); R.blocks.addChart(); const b = last(); select(b); await sleep(20);
+    assert(D.querySelector(`.block[data-id="${b.id}"] .chart svg rect`), 'barras en el lienzo');
+    R.blocks.setChart({ data: [{ label: 'X', value: 10 }] }); await sleep(10);
+    assert(/<div[^>]*><svg[^>]*><rect/.test(R.io.buildHTML()), 'gráfico en el export');
+  });
+
+  await test('gráfico circular: sectores en el export', async () => {
+    reset(); R.blocks.addChart(); const b = last(); select(b);
+    R.blocks.setChart({ chartType: 'pie' });
+    assert(/<path d="M50,50/.test(R.io.buildHTML()), 'sectores del pie');
+  });
+
   await test('forma: cambiar relleno', async () => {
     reset(); R.blocks.addShape('rect'); const b = last(); select(b);
     R.blocks.setShapeStyle('fill', '#ff0000'); await sleep(20);
