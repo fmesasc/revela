@@ -92,16 +92,20 @@ export default Revela => Revela.ui.addButton({
 
 ## Architecture
 
-Plain ES modules, no framework or bundler. A central store holds the document
-and UI state and notifies the views on every committed change.
+Plain ES modules, no framework or bundler, no server of its own. A central
+store holds the document and UI state and notifies the views on every committed
+change. The code is organised in layers, each importing only from the ones
+below (checked by the tests):
 
 ```
 src/
-  core/      model and persistence, central store with undo/redo
-  features/  slides, blocks, formatting, transitions, templates
-  io/         reveal.js output, PowerPoint import
-  ui/         ribbon, canvas, navigator, context menu
-  main.js    bootstrap
+  apps/      entry points: editor, phone remote, voting page
+  ui/        shell, canvas, ribbon, dialogs, panels, styles
+  api/       window.Revela for plugins and macros
+  io/        formats (reveal.js, PowerPoint, OpenDocument, Markdown), exports, cloud
+  features/  document operations by domain: document, design, animation, ai, collab, live
+  render/    drawing to SVG · i18n/  interface languages
+  core/      model, store with undo/redo, persistence, CDN libraries
 ```
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.

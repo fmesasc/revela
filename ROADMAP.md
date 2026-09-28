@@ -185,6 +185,7 @@ the origin of every requirement is traceable.
 ## 12. Platform
 - ✅ Static web app with automatic deployment (GitHub Pages) `GS`
 - ✅ Automated headless regression test suite (`tests/run.sh`, real time, fake camera) `—`
+- ✅ Layered architecture (apps → ui → api → io → features → render·i18n → core) enforced by the tests (`tests/layers.py`) `—`
 - 🚧 Responsive & touch editing (mobile layout, long-press menus, fit-to-screen) `PP·GS·OO`
 - 🚧 Cloud project storage — Google Drive save/open (client-side) `PP·GS`
 - ⬜ Desktop application ([Tauri](https://tauri.app/)) `PP·OO`

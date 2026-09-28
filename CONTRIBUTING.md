@@ -17,32 +17,41 @@ changes.
 
 ## Project layout
 
-- `src/core/` — data model, persistence and the central store (with undo/redo).
-- `src/features/` — document operations (slides, blocks, formatting,
-  transitions, templates). These mutate the store through `commit`.
-- `src/io/` — import/export: reveal.js HTML, PDF, PowerPoint, OpenDocument, video, images.
-- `src/ui/` — presentation layer (ribbon, canvas, navigator, context menu).
-  UI modules read the store and render; they never persist state directly.
-- `src/apps/editor/main.js` — wires everything and subscribes the render.
-- `src/api/index.js` — the public `window.Revela` API for add-ins and macros.
-- `vote.html`, `remote.html` — the audience voting page and the phone remote.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full map. In short:
 
-The golden rule: **all document changes go through `commit`/`mutate` in the
-store**, so undo/redo, autosave and re-render stay consistent.
+- `src/apps/` — the entry points of the three pages: editor, phone remote, voting.
+- `src/core/` — data model, store (undo/redo), persistence and the ports
+  (`notify`, `session`, `vendor`) that let lower layers reach the interface.
+- `src/features/<domain>/` — what can be done to a document, as store changes.
+- `src/io/` — formats, exports, cloud and the code embedded in presentations.
+- `src/ui/` — everything on screen: shell, canvas, ribbon, dialogs, panels, styles.
+- `src/api/` — the public `window.Revela` API for add-ins and macros.
+
+Each layer imports only from itself or the layers below
+(apps → ui → api → io → features → render · i18n → core); the tests fail
+otherwise. The golden rule: **all document changes go through
+`commit`/`mutate` in the store**, so undo/redo, autosave and re-render stay
+consistent.
 
 ## Tests
 
 Everything runs in headless Chrome and needs only `python3` and Chrome/Chromium:
 
 ```bash
-./tests/run.sh          # the whole suite (tests/suite.js) + real touch checks on a phone-sized page
-./tests/run.sh --e2e    # also two real pages over WebRTC: phone remote, live poll, audience Q&A (needs network)
+./tests/run.sh              # architecture check + the whole suite + real touch checks on a phone-sized page
+./tests/run.sh --only=io    # just some areas (text, objects, slides, animation, present, io, editor, services)
+./tests/run.sh --e2e        # also two real pages over WebRTC: phone remote, live poll, audience Q&A (needs network)
 ```
 
-Add a test to `tests/suite.js` for every feature and every bug fixed; the
-suite drives the real app through `window.__revela` (loaded with `?test`).
+Add a test to the matching `tests/suites/<area>.js` for every feature and every
+bug fixed; the suite drives the real app through `window.__revela` (loaded with
+`?test`). Each test starts from `reset()` and must not depend on the others.
 Services that need an account (OpenRouter, Google Drive) are tested with
-simulated responses.
+simulated responses. `tests/index.html` also runs in a normal browser
+(`?only=io` works there too).
+
+To move a file or split a module without breaking imports, use
+`tools/move.py old=new` and `tools/extract.py SRC DEST "comment" names…`.
 
 ## Coding style
 

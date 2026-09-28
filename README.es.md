@@ -94,16 +94,20 @@ export default Revela => Revela.ui.addButton({
 
 ## Arquitectura
 
-Módulos ES estándar, sin framework ni empaquetador. Un store central mantiene
-el documento y el estado de la interfaz y avisa a las vistas en cada cambio.
+Módulos ES estándar, sin framework ni empaquetador, sin servidor propio. Un
+store central mantiene el documento y el estado de la interfaz y avisa a las
+vistas en cada cambio. El código está organizado en capas, y cada una importa
+solo de las inferiores (lo comprueban los tests):
 
 ```
 src/
-  core/      modelo y persistencia, store central con deshacer/rehacer
-  features/  diapositivas, bloques, formato, transiciones, plantillas
-  io/         salida a reveal.js, importación de PowerPoint
-  ui/         cinta, lienzo, navegador, menú contextual
-  main.js    arranque
+  apps/      puntos de entrada: editor, mando del móvil, página de votación
+  ui/        estructura, lienzo, cinta, diálogos, paneles, estilos
+  api/       window.Revela para complementos y macros
+  io/        formatos (reveal.js, PowerPoint, OpenDocument, Markdown), exportación, nube
+  features/  operaciones sobre el documento por dominio: documento, diseño, animación, IA, colaboración, en directo
+  render/    dibujo a SVG · i18n/  idiomas de la interfaz
+  core/      modelo, store con deshacer/rehacer, persistencia, librerías del CDN
 ```
 
 Más detalles en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
