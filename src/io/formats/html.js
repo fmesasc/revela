@@ -14,7 +14,7 @@ import { t, currentLang } from '../../i18n/index.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle, slidePaths } from '../../features/document/captions.js';
 import { INK_CSS, inkJS } from '../runtime/ink.js';
 import { deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
-import { animTimeline, EFFECT_KF, EFFECT_KF_CSS, isEntrance, customTransitionCSS, pathKeyframesCSS } from '../../features/animation/transitions.js';
+import { animTimeline, EFFECT_KF, EFFECT_KF_CSS, isEntrance, customTransitionCSS, transitionName, isShapeTransition, pathKeyframesCSS } from '../../features/animation/transitions.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, levelVars } from '../../features/document/master.js';
 
 
@@ -44,7 +44,8 @@ const pathKeyframes = deck => deck.slides.flatMap(s => s.blocks.filter(b => b.an
   .map(b => pathKeyframesCSS('rvP' + b.id, b.animation)).join('\n');
 // Speech recognition language from the interface language.
 const speechLang = () => ({ es: 'es-ES', en: 'en-US', fr: 'fr-FR', de: 'de-DE', it: 'it-IT', pt: 'pt-PT', ca: 'ca-ES', gl: 'gl-ES', nl: 'nl-NL', eu: 'eu-ES', ar: 'ar-SA' }[currentLang()] || 'es-ES');
-const usedTransitions = deck => new Set([deck.defaultTransition, ...deck.slides.flatMap(s => [s.transition, s.transitionOut])].filter(Boolean));
+const ownTransition = s => s.transition && transitionName(s.transition, s.transitionDir);
+const usedTransitions = deck => new Set([deck.defaultTransition, ...deck.slides.flatMap(s => [ownTransition(s), s.transitionOut])].filter(Boolean));
 function customEffectCSS(deck) {
   const used = new Set();
   deck.slides.forEach(s => s.blocks.forEach(b => { if (b.animation && CUSTOM_KF[b.animation.effect]) used.add(b.animation.effect); }));
@@ -278,9 +279,14 @@ export function morphPlan(deck) {
 
 function slideHTML(s, deck, figMap, plan = morphPlan(deck)) {
   // Entry/exit can differ (reveal's "x-in y-out"); speed can be set per slide.
-  const tin = s.transition || deck.defaultTransition || 'slide';
-  const trans = s.transitionOut && s.transitionOut !== tin ? ` data-transition="${tin}-in ${s.transitionOut}-out"`
-    : s.transition ? ` data-transition="${s.transition}"` : '';
+  const tin = ownTransition(s) || deck.defaultTransition || 'slide';
+  // As in PowerPoint, a shape reveal (wipe, circle…) belongs to the slide that
+  // comes in: the one before leaves with it too, keeping the rest of the screen.
+  const vis = deck.slides.filter(x => !x.hidden), next = vis[vis.indexOf(s) + 1];
+  const nextIn = next && (ownTransition(next) || deck.defaultTransition);
+  const tout = s.transitionOut || (isShapeTransition(nextIn) ? nextIn : null);
+  const trans = tout && tout !== tin ? ` data-transition="${tin}-in ${tout}-out"`
+    : s.transition || tout ? ` data-transition="${tin}"` : '';
   const speed = s.transitionSpeed ? ` data-transition-speed="${s.transitionSpeed}"` : '';
   const auto = s.autoSlide ? ` data-autoslide="${s.autoSlide}"` : '';
   const solid = /^(#|rgb)/.test(s.background || '');
@@ -408,7 +414,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  .reveal .rv-code.no-scroll pre code{overflow:hidden}
  .deck-footer{position:fixed;left:12px;bottom:8px;z-index:30;font-size:14px;opacity:.7;color:#fff;mix-blend-mode:difference}
  ${customEffectCSS(deck)}
- ${customTransitionCSS(usedTransitions(deck))}
+ ${customTransitionCSS(usedTransitions(deck), deck.size)}
  .reveal .slides section .fragment.rv-path{opacity:1;visibility:inherit}
  .reveal .slides section .fragment.rv-path.visible{translate:var(--dx) var(--dy)}
  .reveal .slides section .fragment.rv-pathc{opacity:1;visibility:inherit}

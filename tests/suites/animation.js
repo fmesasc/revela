@@ -107,17 +107,58 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     R.slides.goToSlide(1); R.trans.setSlideTransition('wipe');
     const html = R.io.buildHTML();
     assert(/section\[data-transition=flip\]\.past/.test(html), 'CSS de voltear');
-    assert(/clip-path:inset\(0 0 0 100%\)/.test(html), 'CSS de barrido');
+    assert(/@property --rvt/.test(html) && /section\[data-transition=wipe\]\.future[^{]*\{--rvt:0;opacity:1;clip-path:polygon\(/.test(html), 'CSS de barrido');
     assert(!/data-transition=rise\]/.test(html), 'solo las usadas');
     const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:640px;height:360px;opacity:0';
     f.src = URL.createObjectURL(new Blob([html], { type: 'text/html' })); document.body.appendChild(f);
     let w; for (let i = 0; i < 80 && !((w = f.contentWindow).Reveal?.isReady?.()); i++) await sleep(100);
     try {
       const secs = f.contentDocument.querySelectorAll('.slides>section');
-      assert(/clip-path|inset/.test(w.getComputedStyle(secs[1]).clipPath), 'la siguiente espera recortada (barrido)');
+      assert(/polygon/.test(w.getComputedStyle(secs[1]).clipPath), 'la siguiente espera recortada (barrido)');
       w.Reveal.next(); await sleep(50);
-      assert(w.getComputedStyle(secs[0]).transform !== 'none', 'la anterior sale volteada');
+      assert(/polygon\(evenodd/.test(w.getComputedStyle(secs[0]).clipPath), 'la anterior sale con el barrido de la siguiente (como PowerPoint)');
     } finally { f.remove(); }
+  });
+
+  await test('transiciones con opciones de efecto: dirección, dividir, círculo y rombo', async () => {
+    reset(); for (let i = 0; i < 4; i++) R.slides.addSlide();
+    const sel = D.querySelector('[data-slide-trans-dir]'), shown = () => [...sel.options].filter(o => !o.hidden).map(o => o.value).join();
+    R.slides.goToSlide(1); R.trans.setSlideTransition('wipe'); await sleep(10);
+    assert(!sel.disabled, 'opciones activas para el barrido'); eq(shown(), 'right,left,bottom,top', 'cuatro direcciones'); eq(sel.value, 'right', 'por defecto desde la derecha');
+    sel.value = 'top'; sel.dispatchEvent(new frame.contentWindow.Event('change', { bubbles: true })); await sleep(10);
+    eq(slide().transitionDir, 'top', 'guardada');
+    R.slides.goToSlide(2); R.trans.setSlideTransition('split'); R.trans.setSlideTransOptions({ transitionDir: 'horizontal' }); await sleep(10);
+    eq(shown(), 'vertical,horizontal', 'dividir: vertical u horizontal');
+    R.slides.goToSlide(3); R.trans.setSlideTransition('circle'); await sleep(10);
+    assert(sel.disabled, 'el círculo no tiene opciones');
+    R.slides.goToSlide(4); R.trans.setSlideTransition('push'); R.trans.setSlideTransOptions({ transitionDir: 'left' });
+    const html = R.io.buildHTML();
+    for (const n of ['wipe-top', 'split-horizontal', 'circle', 'push-left']) assert(new RegExp(`data-transition="${n}(-in [a-z-]+-out)?"`).test(html), 'diapositiva con ' + n);
+    assert(html.includes('data-transition="wipe-top-in split-horizontal-out"'), 'la anterior sale con la forma de la siguiente');
+    assert(/section\[data-transition=circle\]\.past[^{]*\{--rvt:0;opacity:1;clip-path:polygon\(evenodd/.test(html), 'la anterior guarda el resto (hueco con la misma forma)');
+    assert(/section\[data-transition=push-left\]\.future[^{]*\{transform:translate3d\(-100%,0,0\)/.test(html), 'empujar desde la izquierda');
+    // At the presentation: halfway through, the new slide is partly shown.
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:640px;height:360px;visibility:hidden'; D.body.appendChild(f);
+    f.srcdoc = R.io.buildHTML(R.state.deck, { inApp: true });
+    try {
+      let w; for (let i = 0; i < 100 && !((w = f.contentWindow).Reveal?.isReady?.()); i++) await sleep(100);
+      w.Reveal.slide(2); await sleep(1200);
+      const secs = f.contentDocument.querySelectorAll('.slides>section');
+      w.Reveal.next(); await sleep(250);
+      const v = +w.getComputedStyle(secs[3]).getPropertyValue('--rvt');
+      assert(v > 0.05 && v < 0.99, 'el círculo va creciendo: ' + v);
+      await sleep(1200);
+      eq(+w.getComputedStyle(secs[3]).getPropertyValue('--rvt'), 1, 'al final se ve entera');
+    } finally { f.remove(); }
+    // PowerPoint (dir = hacia dónde se mueve, como lo escribe LibreOffice) y ODP, de ida y vuelta.
+    const blob = await R.pptx.buildPptxBlob(), zip = await frame.contentWindow.JSZip.loadAsync(blob);
+    const x = async i => zip.file(`ppt/slides/slide${i}.xml`).async('string');
+    assert((await x(2)).includes('<p:wipe dir="d"/>') && (await x(3)).includes('<p:split orient="horz" dir="out"/>'), 'barrido desde arriba y dividir horizontal');
+    assert((await x(4)).includes('<p:circle/>') && (await x(5)).includes('<p:push dir="r"/>'), 'círculo y empujar desde la izquierda');
+    const back = await R.pptxImport.importPPTX(new File([blob], 't.pptx'));
+    eq(back.slides.slice(1).map(s => s.transition + ':' + (s.transitionDir || '')).join(' '), 'wipe:top split:horizontal circle: push:left', 'PowerPoint de vuelta');
+    const od = await R.odp.importODP(new File([await R.odp.buildODP()], 't.odp'));
+    eq(od.slides.slice(1).map(s => s.transition + ':' + (s.transitionDir || '')).join(' '), 'wipe:top split:horizontal circle: push:left', 'ODP de vuelta');
   });
 
   await test('código: pasos de resaltado visuales, desplazamiento, numeración y animación', async () => {

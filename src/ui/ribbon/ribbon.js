@@ -147,6 +147,7 @@ export function initRibbon() {
   bindInput('[data-deck-fg]', v => palettes.setDeckTextColor(v));
   bindInput('[data-ink-color]', v => { drawOpts.color = v; });
   bindChange('[data-slide-trans-out]', v => trans.setSlideTransOptions({ transitionOut: v }));
+  bindChange('[data-slide-trans-dir]', v => trans.setSlideTransOptions({ transitionDir: v }));
   bindChange('[data-slide-speed]', v => trans.setSlideTransOptions({ transitionSpeed: v }));
   bindChange('[data-ink-width]', v => { drawOpts.width = +v || 4; });
   addEyedroppers();
@@ -286,6 +287,10 @@ export function renderRibbon() {
   $('[data-action="autocorrect"]')?.classList.toggle('on', autocorrectOn());
   $('[data-action="master-edit"]')?.classList.toggle('on', !!state.ui.editMaster);
   syncValue('[data-slide-trans-out]', currentSlide()?.transitionOut || '');
+  // Effect options: only those of this slide's transition (wipe, push, split).
+  { const sel = $('[data-slide-trans-dir]'), dirs = trans.TRANSITION_DIRS[currentSlide()?.transition] || [];
+    if (sel) { sel.disabled = !dirs.length; [...sel.options].forEach(o => (o.hidden = !dirs.includes(o.value)));
+      syncValue('[data-slide-trans-dir]', dirs.includes(currentSlide()?.transitionDir) ? currentSlide().transitionDir : dirs[0] || ''); } }
   syncValue('[data-slide-speed]', currentSlide()?.transitionSpeed || '');
   document.querySelectorAll('[data-draw]').forEach(b => b.classList.toggle('on', (state.ui.drawTool || '') === b.dataset.draw));
   const bgHex = (currentSlide()?.background || '').match(/^#[0-9a-f]{6}$/i);

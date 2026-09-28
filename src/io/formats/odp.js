@@ -15,6 +15,7 @@ import { masterBlocksFor, isEmptyPlaceholder, styled } from '../../features/docu
 import { blockImage } from '../export/images.js';
 import { JSZIP, loadScript } from '../../core/vendor.js';
 import { odpTimingXML, readODPAnimations } from './odp-anim.js';
+import { transitionName } from '../../features/animation/transitions.js';
 
 const loadZip = () => loadScript(JSZIP, 'JSZip');
 
@@ -35,16 +36,28 @@ const hex = c => (String(c || '').match(/#[0-9a-f]{6}/i) || [null])[0];
 
 // ---- Export ----------------------------------------------------------------
 // Slide transitions and auto-advance (SMIL types, as LibreOffice writes them).
-const ODP_TRANS = { fade: ['fade', 'crossfade'], slide: ['pushWipe', 'fromRight'], push: ['pushWipe', 'fromRight'], convex: ['slideWipe', 'fromRight'],
-  concave: ['slideWipe', 'fromRight'], zoom: ['zoom', 'rotateIn'], wipe: ['barWipe', 'leftToRight'], rise: ['pushWipe', 'fromBottom'], flip: ['barnDoorWipe', 'vertical'] };
+// [type, subtype, reverse?]; with effect options (transitionDir) for wipe, push and split.
+const ODP_TRANS = { fade: ['fade', 'crossfade'], slide: ['pushWipe', 'fromRight'], push: ['pushWipe', 'fromBottom'], convex: ['slideWipe', 'fromRight'],
+  concave: ['slideWipe', 'fromRight'], zoom: ['zoom', 'rotateIn'], wipe: ['barWipe', 'leftToRight', true], rise: ['pushWipe', 'fromBottom'], flip: ['barnDoorWipe', 'vertical'],
+  'wipe-left': ['barWipe', 'leftToRight'], 'wipe-top': ['barWipe', 'topToBottom'], 'wipe-bottom': ['barWipe', 'topToBottom', true],
+  'push-top': ['pushWipe', 'fromTop'], 'push-right': ['pushWipe', 'fromRight'], 'push-left': ['pushWipe', 'fromLeft'],
+  split: ['barnDoorWipe', 'vertical'], 'split-horizontal': ['barnDoorWipe', 'horizontal'], circle: ['ellipseWipe', 'circle'], diamond: ['irisWipe', 'diamond'] };
 function odpTransition(s, deck) {
-  const kind = s.autoAnimate ? 'fade' : (s.transition || deck.defaultTransition || 'slide');
+  const kind = s.autoAnimate ? 'fade' : (s.transition ? transitionName(s.transition, s.transitionDir) : deck.defaultTransition || 'slide');
   const t = ODP_TRANS[kind];
   const spd = { fast: 'fast', slow: 'slow' }[s.transitionSpeed || deck.transitionSpeed] || 'medium';
-  return (t ? ` smil:type="${t[0]}" smil:subtype="${t[1]}" presentation:transition-speed="${spd}"` : '')
+  return (t ? ` smil:type="${t[0]}" smil:subtype="${t[1]}"${t[2] ? ' smil:direction="reverse"' : ''} presentation:transition-speed="${spd}"` : '')
     + (s.autoSlide ? ` presentation:transition-type="automatic" presentation:duration="PT${(s.autoSlide / 1000).toFixed(1)}S"` : '');
 }
-const FROM_SMIL = { fade: 'fade', pushWipe: 'push', slideWipe: 'convex', zoom: 'zoom', barWipe: 'wipe', barnDoorWipe: 'flip' };
+const FROM_SMIL = { fade: 'fade', pushWipe: 'push', slideWipe: 'convex', zoom: 'zoom', barWipe: 'wipe', barnDoorWipe: 'split', ellipseWipe: 'circle', irisWipe: 'diamond' };
+// Back from type + subtype + direction to [transition, effect option].
+function fromSmil(type, sub, reverse) {
+  const kind = FROM_SMIL[type]; if (!kind) return [null, null];
+  if (kind === 'wipe') return ['wipe', sub === 'topToBottom' ? (reverse ? 'bottom' : 'top') : reverse ? null : 'left'];
+  if (kind === 'push') return ['push', { fromTop: 'top', fromRight: 'right', fromLeft: 'left' }[sub] || null];
+  if (kind === 'split') return ['split', sub === 'horizontal' ? 'horizontal' : null];
+  return [kind, null];
+}
 
 export async function buildODP(deck = state.deck) {
   const JSZip = await loadZip();
@@ -389,7 +402,8 @@ export async function importODP(file) {
     const smil = prop(dp, 'style:drawing-page-properties', 'smil:type');
     const dur = (prop(dp, 'style:drawing-page-properties', 'presentation:duration') || '').match(/PT([\d.]+)S/);
     const auto = prop(dp, 'style:drawing-page-properties', 'presentation:transition-type') === 'automatic' && dur ? Math.round(+dur[1] * 1000) : 0;
-    slides.push({ id: uid(), sectionId: null, background, transition: FROM_SMIL[smil] || null, notes, autoSlide: auto,
+    const [transition, transitionDir] = fromSmil(smil, prop(dp, 'style:drawing-page-properties', 'smil:subtype'), prop(dp, 'style:drawing-page-properties', 'smil:direction') === 'reverse');
+    slides.push({ id: uid(), sectionId: null, background, transition, ...(transitionDir && { transitionDir }), notes, autoSlide: auto,
       hidden: page.getAttribute('presentation:visibility') === 'hidden' || prop(dp, 'style:drawing-page-properties', 'presentation:visibility') === 'hidden', blocks });
   }
   if (!slides.length) throw new Error('No se encontraron diapositivas en el archivo.');

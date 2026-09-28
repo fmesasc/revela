@@ -1062,6 +1062,15 @@ export const ROWS = [
   ['Probar', 'Try', 'Essayer', 'Testen', 'Prova', 'Experimentar', 'Prova'],
   ['Se descarga el modelo de IA (unos 40 MB, solo la primera vez) y se procesa cada fotograma en este navegador. ¿Continuar?', 'The AI model is downloaded (about 40 MB, only the first time) and each frame is processed in this browser. Continue?', 'Le modèle d\'IA est téléchargé (environ 40 Mo, la première fois seulement) et chaque image est traitée dans ce navigateur. Continuer ?', 'Das KI-Modell wird heruntergeladen (etwa 40 MB, nur beim ersten Mal) und jedes Bild in diesem Browser verarbeitet. Fortfahren?', 'Il modello di IA viene scaricato (circa 40 MB, solo la prima volta) e ogni fotogramma viene elaborato in questo browser. Continuare?', 'O modelo de IA é descarregado (cerca de 40 MB, só da primeira vez) e cada fotograma é processado neste navegador. Continuar?', 'Es baixa el model d\'IA (uns 40 MB, només la primera vegada) i es processa cada fotograma en aquest navegador. Vols continuar?'],
   ['No se pudo quitar el fondo: ', 'Couldn\'t remove the background: ', 'Impossible de supprimer l\'arrière-plan : ', 'Hintergrund konnte nicht entfernt werden: ', 'Impossibile rimuovere lo sfondo: ', 'Não foi possível remover o fundo: ', 'No s\'ha pogut treure el fons: '],
+  ['Dividir', 'Split', 'Diviser', 'Teilen', 'Dividi', 'Dividir', 'Divideix'],
+  ['Círculo', 'Circle', 'Cercle', 'Kreis', 'Cerchio', 'Círculo', 'Cercle'],
+  ['Salida: dividir', 'Exit: split', 'Sortie : diviser', 'Ausgang: teilen', 'Uscita: dividi', 'Saída: dividir', 'Sortida: divideix'],
+  ['Salida: círculo', 'Exit: circle', 'Sortie : cercle', 'Ausgang: Kreis', 'Uscita: cerchio', 'Saída: círculo', 'Sortida: cercle'],
+  ['Salida: rombo', 'Exit: diamond', 'Sortie : losange', 'Ausgang: Raute', 'Uscita: rombo', 'Saída: losango', 'Sortida: rombe'],
+  ['Desde abajo', 'From the bottom', 'Depuis le bas', 'Von unten', 'Dal basso', 'De baixo', 'Des de baix'],
+  ['Desde arriba', 'From the top', 'Depuis le haut', 'Von oben', 'Dall\'alto', 'De cima', 'Des de dalt'],
+  ['Horizontal', 'Horizontal', 'Horizontale', 'Horizontal', 'Orizzontale', 'Horizontal', 'Horitzontal'],
+  ['Opciones de efecto', 'Effect options', 'Options d\'effet', 'Effektoptionen', 'Opzioni effetto', 'Opções de efeito', 'Opcions d\'efecte'],
 ];
 // Additional languages (partial; anything missing falls back to Spanish).
 export const EXTRA = {

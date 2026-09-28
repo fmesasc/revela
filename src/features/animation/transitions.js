@@ -2,20 +2,60 @@
 
 import { state, commit, currentSlide, selectedBlock } from '../../core/store.js';
 
-export const SLIDE_TRANSITIONS = ['none', 'fade', 'slide', 'convex', 'concave', 'zoom', 'flip', 'push', 'wipe', 'rise'];
+export const SLIDE_TRANSITIONS = ['none', 'fade', 'slide', 'convex', 'concave', 'zoom', 'flip', 'push', 'wipe', 'rise', 'split', 'circle', 'diamond'];
+// Effect options (as in PowerPoint): where the new slide comes from, or how
+// it opens. The first one is the default.
+export const TRANSITION_DIRS = { wipe: ['right', 'left', 'bottom', 'top'], push: ['bottom', 'top', 'right', 'left'], split: ['vertical', 'horizontal'] };
+// A slide's transition with its option, as a single name ("wipe-top").
+export const transitionName = (kind, dir) => (dir && TRANSITION_DIRS[kind]?.includes(dir) && dir !== TRANSITION_DIRS[kind][0] ? `${kind}-${dir}` : kind);
+export const splitTransition = name => { const [k, d] = String(name || '').split('-'); return [k, d || TRANSITION_DIRS[k]?.[0] || null]; };
+
 // Transitions reveal.js doesn't have, defined in CSS in the export: the old
 // slide leaves with PAST and the new one comes from FUTURE (both animate).
+const PUSH = { bottom: ['0,-100%', '0,100%'], top: ['0,100%', '0,-100%'], right: ['-100%,0', '100%,0'], left: ['100%,0', '-100%,0'] };
 export const CUSTOM_TRANSITIONS = {
   flip: ['transform:perspective(1600px) rotateY(-90deg);opacity:0', 'transform:perspective(1600px) rotateY(90deg);opacity:0'],
-  push: ['transform:translate3d(0,-100%,0)', 'transform:translate3d(0,100%,0)'],
-  wipe: ['clip-path:inset(0 100% 0 0)', 'clip-path:inset(0 0 0 100%)'],
   rise: ['transform:scale(1.25);opacity:0', 'transform:scale(.8) translate3d(0,8%,0);opacity:0'],
+  ...Object.fromEntries(Object.entries(PUSH).map(([d, [past, fut]]) => [transitionName('push', d), [`transform:translate3d(${past},0)`, `transform:translate3d(${fut},0)`]])),
 };
-export function customTransitionCSS(names) {
+// Shape reveals: the new slide shows through a growing shape and the old one
+// keeps exactly the rest (a hole of the same shape), so they never overlap.
+// The shape's size is --rvt (0 → 1), a registered property reveal animates.
+// Every shape starts at its right-hand point at mid height: the old slide's
+// hole is joined to the frame by a horizontal seam of no width there.
+const rect = (x0, y0, x1, y1) => [`${x1} 50%`, `${x1} ${y0}`, `${x0} ${y0}`, `${x0} ${y1}`, `${x1} ${y1}`];
+const SHAPES = {
+  'wipe': v => rect(`calc(100% - ${v} * 100%)`, '0%', '100%', '100%'),
+  'wipe-left': v => rect('0%', '0%', `calc(${v} * 100%)`, '100%'),
+  'wipe-top': v => rect('0%', '0%', '100%', `calc(${v} * 100%)`),
+  'wipe-bottom': v => rect('0%', `calc(100% - ${v} * 100%)`, '100%', '100%'),
+  'split': v => rect(`calc(50% - ${v} * 50%)`, '0%', `calc(50% + ${v} * 50%)`, '100%'),
+  'split-horizontal': v => rect('0%', `calc(50% - ${v} * 50%)`, '100%', `calc(50% + ${v} * 50%)`),
+  'diamond': v => [`calc(50% + ${v} * 100%) 50%`, `50% calc(50% - ${v} * 100%)`, `calc(50% - ${v} * 100%) 50%`, `50% calc(50% + ${v} * 100%)`],
+  // A circle (32-sided polygon) that ends just beyond the corners; % of each side.
+  'circle': (v, { w, h }) => { const R = Math.hypot(w, h) / 2 / Math.cos(Math.PI / 32);
+    return Array.from({ length: 32 }, (_, i) => { const a = i / 32 * 2 * Math.PI;
+      return `calc(50% + ${v} * ${(R * Math.cos(a) / w * 100).toFixed(2)}%) calc(50% + ${v} * ${(R * Math.sin(a) / h * 100).toFixed(2)}%)`; }); },
+};
+export const isShapeTransition = name => !!SHAPES[name];
+export function customTransitionCSS(names, size = { w: 1280, h: 720 }) {
   const sel = (n, st) => `.reveal .slides>section[data-transition=${n}].${st},.reveal .slides>section[data-transition~=${n}-${st === 'past' ? 'out' : 'in'}].${st},`
     + `.reveal.${n} .slides>section:not([data-transition]).${st}`;
-  return [...names].filter(n => CUSTOM_TRANSITIONS[n]).map(n => `${sel(n, 'past')}{${CUSTOM_TRANSITIONS[n][0]}}${sel(n, 'future')}{${CUSTOM_TRANSITIONS[n][1]}}`).join('\n')
-    + (names.has('wipe') ? '\n.reveal .slides>section{transition-property:transform-origin,transform,visibility,opacity,clip-path}' : '');
+  const present = n => `.reveal .slides>section[data-transition=${n}].present,.reveal .slides>section[data-transition~=${n}-in].present,`
+    + `.reveal .slides>section[data-transition~=${n}-out].present,.reveal.${n} .slides>section:not([data-transition]).present`;
+  const used = [...names];
+  const css = used.filter(n => CUSTOM_TRANSITIONS[n]).map(n => `${sel(n, 'past')}{${CUSTOM_TRANSITIONS[n][0]}}${sel(n, 'future')}{${CUSTOM_TRANSITIONS[n][1]}}`);
+  const shaped = used.filter(n => SHAPES[n]);
+  for (const n of shaped) {
+    const grow = v => `polygon(${SHAPES[n](v, size).join(',')})`;
+    const hole = SHAPES[n]('(1 - var(--rvt))', size);
+    css.push(`${present(n)}{--rvt:1;clip-path:${grow('var(--rvt)')}}`
+      + `${sel(n, 'future')}{--rvt:0;opacity:1;clip-path:${grow('var(--rvt)')}}`
+      + `${sel(n, 'past')}{--rvt:0;opacity:1;clip-path:polygon(evenodd,100% 50%,100% 0%,0% 0%,0% 100%,100% 100%,100% 50%,${[...hole, hole[0]].join(',')})}`);
+  }
+  if (shaped.length) css.push('@property --rvt{syntax:"<number>";inherits:false;initial-value:1}',
+    '.reveal .slides>section{transition-property:transform-origin,transform,visibility,opacity,--rvt}');
+  return css.join('\n');
 }
 export const ANIMATIONS = ['fade-in', 'fade-up', 'fade-down', 'fade-left', 'fade-right', 'zoom-in'];
 
@@ -31,7 +71,7 @@ export function applyTransitionToAll() {
   const c = currentSlide();
   commit(() => state.deck.slides.forEach(s => {
     s.transition = c.transition ?? null;
-    for (const k of ['transitionOut', 'transitionSpeed']) { if (c[k]) s[k] = c[k]; else delete s[k]; }
+    for (const k of ['transitionOut', 'transitionSpeed', 'transitionDir']) { if (c[k]) s[k] = c[k]; else delete s[k]; }
     s.autoSlide = c.autoSlide || 0;
   }));
 }

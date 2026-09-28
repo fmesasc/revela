@@ -21,6 +21,7 @@
 import { uid } from '../../core/model.js';
 import { styled, masterStyles } from '../../features/document/master.js';
 import { JSZIP_ESM } from '../../core/vendor.js';
+import { TRANSITION_DIRS } from '../../features/animation/transitions.js';
 
 const CANVAS_W = 1280;            // slide width maps to this many px
 const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp', svg: 'image/svg+xml' };
@@ -116,7 +117,7 @@ function gradientCSS(el, theme) {
   const deg = ang != null ? Math.round(+ang / 60000 + 90) % 360 : 180;     // OOXML 0° = left→right; CSS 90deg
   return `linear-gradient(${deg}deg, ${stops.map(x => `${x.c} ${Math.round(x.pos)}%`).join(', ')})`;
 }
-const TRANSITION = { fade: 'fade', dissolve: 'fade', push: 'push', cover: 'slide', pull: 'slide', wipe: 'wipe', split: 'wipe', zoom: 'zoom',
+const TRANSITION = { fade: 'fade', dissolve: 'fade', push: 'push', cover: 'slide', pull: 'slide', wipe: 'wipe', split: 'split', zoom: 'zoom', circle: 'circle', diamond: 'diamond', plus: 'diamond',
   newsflash: 'zoom', flip: 'flip', cube: 'convex', box: 'convex', rotate: 'flip', gallery: 'slide', conveyor: 'slide', switch: 'flip',
   doors: 'wipe', window: 'wipe', vortex: 'zoom', ripple: 'rise', morph: 'fade', random: 'slide', randomBar: 'wipe', wheel: 'wipe' };
 
@@ -711,18 +712,24 @@ export async function importPPTX(file) {
     const hidden = doc.documentElement.getAttribute('show') === '0';
     // Transition (the p14/p15 variants sit inside mc:AlternateContent) and its auto-advance time.
     const tr = all(doc, 'p:transition')[0];
-    let transition = null, autoSlide = 0;
+    let transition = null, autoSlide = 0, transitionDir = null;
     let morph = null;
     if (tr) {
       const kinds = [...all(tr, '*')].map(e => e.tagName.replace(/^p\d*:/, ''));
       transition = kinds.map(k => TRANSITION[k]).find(Boolean) || null;
+      // Effect options: direction of wipe and push, orientation of split.
+      const el = [...all(tr, '*')].find(e => TRANSITION[e.tagName.replace(/^p\d*:/, '')] === transition);
+      if (el && (transition === 'wipe' || transition === 'push')) {
+        const d = { l: 'right', r: 'left', u: 'bottom', d: 'top' }[el.getAttribute('dir') || (transition === 'wipe' ? 'l' : 'u')];
+        if (d && d !== TRANSITION_DIRS[transition][0]) transitionDir = d;
+      } else if (el && transition === 'split' && el.getAttribute('orient') === 'horz') transitionDir = 'horizontal';
       const adv = +(tr.getAttribute('advTm') || 0); if (adv) autoSlide = adv;
       // Morph (inside mc:AlternateContent): by objects, words or characters.
       const m = [...all(tr, '*')].find(e => /:morph$/.test(e.tagName));
       if (m) { morph = { byWord: 'words', byChar: 'chars' }[m.getAttribute('option')] || 'objects'; transition = null; }
     }
     readAnimations(doc, spidOf, blocks, size);
-    slides.push({ id: uid(), sectionId: null, background, transition, hidden, notes, autoSlide, blocks, _layout: layoutPath, ...(hideMaster && { hideMaster: true }),
+    slides.push({ id: uid(), sectionId: null, background, transition, ...(transitionDir && { transitionDir }), hidden, notes, autoSlide, blocks, _layout: layoutPath, ...(hideMaster && { hideMaster: true }),
       ...(morph && { autoAnimate: true }), ...(morph && morph !== 'objects' && { morphBy: morph }) });
   }
 

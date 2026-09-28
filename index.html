@@ -450,15 +450,23 @@
             <button data-slide-transition="push"><i class="ms">vertical_align_top</i><span>Empujar</span></button>
             <button data-slide-transition="wipe"><i class="ms">format_textdirection_l_to_r</i><span>Barrido</span></button>
             <button data-slide-transition="rise"><i class="ms">open_in_full</i><span>Elevar</span></button>
+            <button data-slide-transition="split"><i class="ms">vertical_split</i><span>Dividir</span></button>
+            <button data-slide-transition="circle"><i class="ms">radio_button_unchecked</i><span>Círculo</span></button>
+            <button data-slide-transition="diamond"><i class="ms">diamond</i><span>Rombo</span></button>
           </div><label>Transición de esta diapositiva</label>
         </div>
         <div class="group">
           <div class="row">
+            <select data-slide-trans-dir title="Opciones de efecto">
+              <option value="right">Desde la derecha</option><option value="left">Desde la izquierda</option><option value="bottom">Desde abajo</option><option value="top">Desde arriba</option>
+              <option value="vertical">Vertical</option><option value="horizontal">Horizontal</option>
+            </select>
             <select data-slide-trans-out title="Salida de esta diapositiva">
               <option value="">Salida: igual</option><option value="none">Salida: ninguna</option><option value="fade">Salida: fundido</option>
               <option value="slide">Salida: deslizar</option><option value="convex">Salida: convex</option>
               <option value="concave">Salida: concave</option><option value="zoom">Salida: zoom</option>
               <option value="flip">Salida: voltear</option><option value="push">Salida: empujar</option><option value="wipe">Salida: barrido</option><option value="rise">Salida: elevar</option>
+              <option value="split">Salida: dividir</option><option value="circle">Salida: círculo</option><option value="diamond">Salida: rombo</option>
             </select>
             <select data-slide-speed title="Velocidad de esta diapositiva">
               <option value="">Velocidad: heredar</option><option value="default">Normal</option><option value="fast">Rápida</option><option value="slow">Lenta</option>
@@ -473,6 +481,7 @@
               <option value="slide">Deslizar</option><option value="convex">Convex</option>
               <option value="concave">Concave</option><option value="zoom">Zoom</option>
               <option value="flip">Voltear</option><option value="push">Empujar</option><option value="wipe">Barrido</option><option value="rise">Elevar</option>
+              <option value="split">Dividir</option><option value="circle">Círculo</option><option value="diamond">Rombo</option>
             </select>
             <select data-speed title="Velocidad">
               <option value="default">Normal</option><option value="fast">Rápida</option><option value="slow">Lenta</option>

@@ -297,6 +297,16 @@ function pptShadow(s) {
 const TRANS = { fade: '<p:fade/>', slide: '<p:push dir="l"/>', push: '<p:push dir="l"/>', convex: '<p:cover dir="l"/>', concave: '<p:pull dir="l"/>',
   zoom: '<p:zoom/>', wipe: '<p:wipe dir="l"/>', rise: '<p:push dir="u"/>', flip: '<p:split orient="vert" dir="out"/>' };
 const SPEED = { fast: 'fast', slow: 'slow', default: 'med' };
+// Effect options: PowerPoint's dir is where the slide moves to.
+const PPT_DIR = { right: 'l', left: 'r', bottom: 'u', top: 'd' };
+function transKindXML(kind, dir) {
+  if (kind === 'wipe') return `<p:wipe dir="${PPT_DIR[dir || 'right']}"/>`;
+  if (kind === 'push') return `<p:push dir="${PPT_DIR[dir || 'bottom']}"/>`;
+  if (kind === 'split') return `<p:split orient="${dir === 'horizontal' ? 'horz' : 'vert'}" dir="out"/>`;
+  if (kind === 'circle') return '<p:circle/>';
+  if (kind === 'diamond') return '<p:diamond/>';
+  return TRANS[kind] || TRANS.fade;
+}
 function transitionXML(s, deck) {
   const kind = s.transition || deck.defaultTransition || 'slide';
   const spd = SPEED[s.transitionSpeed || deck.transitionSpeed] || 'med';
@@ -309,7 +319,7 @@ function transitionXML(s, deck) {
       + `${plain(`<p159:morph option="${option}"/>`)}</mc:Choice><mc:Fallback>${plain('<p:fade/>')}</mc:Fallback></mc:AlternateContent>`;
   }
   if (kind === 'none') return adv ? plain('') : '';
-  return plain(TRANS[kind] || TRANS.fade);
+  return plain(transKindXML(kind, s.transition ? s.transitionDir : null));
 }
 // Revela effects → PowerPoint presets: entrances and exits fade, emphasis grows
 // or shrinks, motion paths move by the same offset.
