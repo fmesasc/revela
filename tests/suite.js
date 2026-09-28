@@ -574,6 +574,25 @@ export async function run(frame) {
     assert(/@page\{size:1280px 720px/.test(html), 'tamaño de página');
   });
 
+  await test('documentos y páginas de notas para imprimir', async () => {
+    reset(); for (let i = 0; i < 6; i++) R.slides.addSlide();          // 7 diapositivas
+    R.slides.toggleSlideHidden(0);                                        // 6 visibles
+    R.state.deck.slides[1].notes = 'Nota <uno>';
+    const h6 = R.io.buildHandoutHTML(R.state.deck, 6);
+    eq((h6.match(/class="sheet"/g) || []).length, 1, '6 por página → 1 hoja');
+    eq((h6.match(/class="thumb"/g) || []).length, 6, 'seis miniaturas');
+    assert(/@page\{size:A4 portrait/.test(h6), 'A4 vertical');
+    const h3 = R.io.buildHandoutHTML(R.state.deck, 3);
+    eq((h3.match(/class="sheet"/g) || []).length, 2, '3 por página → 2 hojas');
+    eq((h3.match(/class="lines"/g) || []).length, 6, 'líneas para notas');
+    const hn = R.io.buildHandoutHTML(R.state.deck, 'notes');
+    eq((hn.match(/class="sheet"/g) || []).length, 6, 'una hoja por diapositiva');
+    assert(/<div class="notes">Nota &lt;uno&gt;<\/div>/.test(hn), 'notas escapadas');
+    D.querySelector('[data-action="export-handout"]').click(); await sleep(10);
+    eq(D.querySelectorAll('#handout-modal option').length, 7, 'siete diseños');
+    D.querySelector('#handout-modal .modal-close').click();
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

@@ -101,7 +101,7 @@ the origin of every requirement is traceable.
 - ⬜ Colour palettes / theme colours & theme fonts `PP·GS·OO`
 - ⬜ Template / theme gallery & designer variants `PP·GS·OO`
 - ✅ Reuse / import slides from another deck (.json or .pptx, pick by thumbnail, scaled to size) `PP·OO`
-- ⬜ Handout / notes printing layouts `PP·OO`
+- ✅ Handout / notes printing layouts (notes pages; 1, 2, 3 with lines, 4, 6, 9 per page) `PP·OO`
 
 ## 5. Transitions & animation
 - ✅ Per-slide transitions & default transition/speed `PP·GS·OO`
