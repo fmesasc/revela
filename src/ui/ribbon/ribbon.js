@@ -1,6 +1,7 @@
 // The ribbon: tab switching and wiring every control to a feature.
 
 import { state, commit, currentSlide, selectedBlock } from '../../core/store.js';
+import { MATH_SIZE } from '../../render/svg.js';
 import * as blocks from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
 import * as trans from '../../features/animation/transitions.js';
@@ -203,6 +204,7 @@ function updateFormatState() {
     if (!STATE_CMDS.includes(btn.dataset.fmt)) continue;
     let on = false;
     try { on = focused && document.queryCommandState(btn.dataset.fmt); } catch {}
+    const m = selectedBlock(); if (m?.type === 'math') on = !!m[btn.dataset.fmt];
     btn.classList.toggle('on', on);
   }
 }
@@ -312,10 +314,12 @@ export function renderRibbon() {
   const b = selectedBlock();
   const isText = b && b.type === 'text';
   syncValue('[data-font]', isText ? (b.fontFamily || '') : '');
-  syncValue('[data-size]', isText ? String(b.fontSize || 40) : '');
+  const isMath = b && b.type === 'math';
+  syncValue('[data-size]', isText ? String(b.fontSize || 40) : isMath ? String(b.fontSize || MATH_SIZE) : '');
   syncValue('[data-linespacing]', isText ? String(b.lineHeight || 1) : '1');
   syncValue('[data-textstyle]', isText ? (b.textStyle || '') : '');
   document.querySelectorAll('[data-para]').forEach(x =>
-    x.classList.toggle('on', isText && (b.textAlign || 'left') === x.dataset.para));
+    x.classList.toggle('on', (isText && (b.textAlign || 'left') === x.dataset.para) || (isMath && (b.textAlign || 'center') === x.dataset.para)));
+  updateFormatState();
 }
 function syncValue(sel, val) { const el = $(sel); if (el && el.value !== val) el.value = val; }

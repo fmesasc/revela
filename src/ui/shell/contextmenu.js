@@ -163,7 +163,7 @@ function forBlock(b, cell = null) {
       ['Elegir diapositiva…', () => openSlidePicker(b)],
       [b.returnBack ? 'Ir a la diapositiva (sin volver)' : 'Al hacer clic vuelve aquí', () => blocks.toggleSlideRefReturn()], null);
   } else if (b.type === 'math') {
-    items.push(['Editar ecuación…', () => openMath(b)], null);
+    items.push(['Editar ecuación…', () => openMath(b)], ['Relleno y borde…', () => openBoxStyle(b)], null);
   } else if (b.type === 'code') {
     items.push(['Editar código y pasos…', () => openCodeEditor(b)], null);
   } else if (b.type === 'icon') {

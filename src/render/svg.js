@@ -289,3 +289,21 @@ export function shapeSVG(b) {
   return `<svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" `
     + `style="display:block;overflow:visible">${inner}</svg>`;
 }
+
+// Equations take the ribbon's formatting like text: size, colour, highlight,
+// bold, underline, alignment, fill and border. The same for the canvas and
+// every export. 42 px is reveal.js's text size, so the editor and the show agree.
+export const MATH_SIZE = 42;
+export function mathTeX(b) {
+  let s = b.latex || '';
+  if (b.bold) s = `\\boldsymbol{${s}}`;
+  if (b.underline) s = `\\underline{${s}}`;
+  return s;
+}
+export function mathCSS(b) {
+  const jc = { left: 'flex-start', right: 'flex-end' }[b.textAlign] || 'center';
+  return `font-size:${b.fontSize || MATH_SIZE}px;justify-content:${jc};${b.color ? `color:${b.color};` : ''}`
+    + `${b.bg || b.highlight ? `background:${b.bg || b.highlight};` : ''}${b.borderColor ? `border:2px solid ${b.borderColor};` : ''}`
+    + `${b.radius ? `border-radius:${b.radius}px;` : ''}`;
+}
+export const mathSig = b => JSON.stringify([mathTeX(b), mathCSS(b)]);

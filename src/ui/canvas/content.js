@@ -2,7 +2,7 @@
 // equations (KaTeX), code (highlight.js), tables, embeds, 3D models, slide links.
 
 import { state, commit } from '../../core/store.js';
-import { shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan, inkSVG, inkSig, tableClass, tableVars } from '../../render/svg.js';
+import { mathTeX, mathCSS, mathSig, shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan, inkSVG, inkSig, tableClass, tableVars } from '../../render/svg.js';
 import { collectFigures, captionLine, figIndexTitle } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
 import { t } from '../../i18n/index.js';
@@ -91,7 +91,7 @@ export function content(b) {
     const d = document.createElement('div'); d.className = 'icon-blk'; d.dataset.sig = iconSig(b); d.innerHTML = iconSVG(b); return d;
   }
   if (b.type === 'math') {
-    const d = document.createElement('div'); d.className = 'math-blk'; renderMath(d, b.latex); return d;
+    const d = document.createElement('div'); d.className = 'math-blk'; paintMath(d, b); return d;
   }
   if (b.type === 'figindex') {
     const d = document.createElement('div'); d.className = 'figindex';
@@ -149,6 +149,11 @@ export function renderMath(el, latex) {
     try { window.katex.render(latex || '', el, { throwOnError: false, displayMode: true }); }
     catch { el.textContent = latex || ''; }
   }).catch(() => { el.textContent = latex || ''; });
+}
+// An equation block with its formatting; repainted only when something changed.
+export function paintMath(d, b) {
+  const sig = mathSig(b); if (d.dataset.sig === sig) return;
+  d.dataset.sig = sig; d.style.cssText = mathCSS(b); renderMath(d, mathTeX(b));
 }
 // Public helper used by the visual equation editor's live preview.
 export function renderLatex(el, latex) { renderMath(el, latex); }

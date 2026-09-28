@@ -248,6 +248,35 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(slide().blocks.find(x => x.id === b.id).x, x0 + 1, 'sin diálogo, las flechas vuelven a mover el objeto');
   });
 
+  await test('ecuación: tamaño, color, negrita, subrayado, alineación, relleno y borde desde la cinta', async () => {
+    reset(); R.blocks.addMath(); const b = last(); select(b); R.blocks.setMath('x^2'); await sleep(20);
+    const W = frame.contentWindow, box = () => D.querySelector(`.block[data-id="${b.id}"] .math-blk`);
+    eq(W.getComputedStyle(box()).fontSize, '42px', 'mismo tamaño que al presentar (42 px de reveal.js)');
+    const size = D.querySelector('[data-size]'); eq(size.value, '42', 'la cinta muestra su tamaño');
+    size.value = '60'; size.dispatchEvent(new W.Event('change', { bubbles: true })); await sleep(20);
+    eq(b.fontSize, 60, 'tamaño desde la cinta'); eq(W.getComputedStyle(box()).fontSize, '60px', 'en el lienzo');
+    D.querySelector('[data-fontdelta="2"], [data-fontdelta]')?.click(); await sleep(10);
+    assert(b.fontSize !== 60, 'aumentar/reducir tamaño');
+    R.format.color('#ff0000'); R.format.highlight('#ffff00'); await sleep(20);
+    eq(b.color, '#ff0000', 'color'); eq(W.getComputedStyle(box()).color, 'rgb(255, 0, 0)', 'color en el lienzo');
+    eq(W.getComputedStyle(box()).backgroundColor, 'rgb(255, 255, 0)', 'resaltado en el lienzo');
+    D.querySelector('[data-fmt="bold"]').click(); D.querySelector('[data-fmt="underline"]').click(); await sleep(20);
+    assert(b.bold && b.underline, 'negrita y subrayado');
+    assert(D.querySelector('[data-fmt="bold"]').classList.contains('on'), 'el botón de negrita se ve activo');
+    D.querySelector('[data-para="right"]').click(); await sleep(20);
+    eq(b.textAlign, 'right', 'alineación'); eq(W.getComputedStyle(box()).justifyContent, 'flex-end', 'alineada en el lienzo');
+    assert(D.querySelector('[data-para="right"]').classList.contains('on'), 'el botón de alineación se ve activo');
+    R.blocks.setBoxStyle({ bg: '#00ff00', borderColor: '#0000ff', radius: 8 });
+    eq(b.bg + b.borderColor, '#00ff00#0000ff', 'relleno y borde');
+    const html = R.io.buildHTML(), tag = html.match(/<div[^>]*class="math"[^>]*>/)[0];
+    assert(/font-size:\d+px/.test(tag) && /color:#ff0000/.test(tag) && /justify-content:flex-end/.test(tag), 'formato en el export: ' + tag);
+    assert(/background:#00ff00/.test(tag) && /border:2px solid #0000ff/.test(tag) && /border-radius:8px/.test(tag), 'relleno y borde en el export');
+    assert(tag.includes('data-latex="\\underline{\\boldsymbol{x^2}}"'), 'negrita y subrayado en el LaTeX exportado');
+    eq(b.latex, 'x^2', 'la ecuación original no se toca');
+    D.querySelector('[data-fmt="removeFormat"]').click(); await sleep(10);
+    assert(!b.bold && !b.underline && !b.color, 'borrar formato');
+  });
+
   await test('ecuación (math): se inserta y exporta con KaTeX', async () => {
     reset(); R.blocks.addMath(); const b = last(); select(b); R.blocks.setMath('a^2+b^2=c^2');
     const html = R.io.buildHTML();

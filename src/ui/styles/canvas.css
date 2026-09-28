@@ -27,7 +27,9 @@
 .block .shape{width:100%;height:100%}
 .block .chart{width:100%;height:100%}
 .block .icon-blk{width:100%;height:100%}
-.block .math-blk{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:inherit;overflow:auto}
+.block .math-blk{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:inherit;overflow:visible}
+/* KaTeX's display margin would push the equation off-centre and add a scrollbar. */
+.block .math-blk .katex-display{margin:0}
 .block.__conn{pointer-events:none}          /* only the line is clickable */
 .block .connector{width:100%;height:100%}
 .block.__conn.selected{border-color:transparent}

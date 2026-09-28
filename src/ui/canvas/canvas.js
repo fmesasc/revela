@@ -14,7 +14,7 @@ import { cameraRadius } from '../../features/live/media.js';
 import { pollEditorHTML } from '../../features/live/poll.js';
 import { masterBlocksFor, PH_PROMPT } from '../../features/document/master.js';
 import { stageBackground } from '../../io/formats/html.js';
-import { pollSig, renderSlideRef, figIndexHTML, connectorHTML, applyImgStyle, content, hostOf, hasInlineMath, renderInlineMath, renderMath, paintCode, setupCode, tableSig, fillTable, setupTable, setupText, setupMath, setupModel, setupEmbed } from './content.js';
+import { paintMath, pollSig, renderSlideRef, figIndexHTML, connectorHTML, applyImgStyle, content, hostOf, hasInlineMath, renderInlineMath, renderMath, paintCode, setupCode, tableSig, fillTable, setupTable, setupText, setupMath, setupModel, setupEmbed } from './content.js';
 import { addGuideFromRuler, drawPGuides, startMarquee, startDrag, startRotate, startResize } from './interact.js';
 
 export const findBlock = id => currentSlide().blocks.find(x => x.id === id);
@@ -277,7 +277,7 @@ function reconcile(b) {
     const d = el.querySelector('.icon-blk'); const sig = iconSig(b);
     if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = iconSVG(b); }
   } else if (b.type === 'math') {
-    const d = el.querySelector('.math-blk'); if (d && d.dataset.latex !== (b.latex || '')) renderMath(d, b.latex);
+    const d = el.querySelector('.math-blk'); if (d) paintMath(d, b);
   } else if (b.type === 'figindex') {
     const d = el.querySelector('.figindex'); if (d) { d.style.fontSize = (b.fontSize || 28) + 'px'; d.innerHTML = figIndexHTML(b); }
   } else if (b.type === 'slideref') {

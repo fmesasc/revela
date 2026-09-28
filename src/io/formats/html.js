@@ -6,7 +6,7 @@ import { state } from '../../core/store.js';
 import { REVEAL, KATEX, MODEL_VIEWER } from '../../core/vendor.js';
 import { download, slug } from '../files.js';
 import { TRIGGER_JS, CAMERA_JS, pollJS, liveDataJS, LIGHTBOX_JS } from '../runtime/scripts.js';
-import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, tableClass, tableVars, tableCSS } from '../../render/svg.js';
+import { mathTeX, mathCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, tableClass, tableVars, tableCSS } from '../../render/svg.js';
 import { googleFontLinks } from '../../features/design/fonts.js';
 import { t, currentLang } from '../../i18n/index.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle, slidePaths } from '../../features/document/captions.js';
@@ -151,7 +151,7 @@ function blockHTMLRaw(b, slide) {
   if (b.type === 'ink')
     return `<div${a} style="${box(b)}">${inkSVG(b)}</div>`;
   if (b.type === 'math')
-    return `<div${a} class="math" data-latex="${esc(b.latex || '')}" style="${box(b)}display:flex;align-items:center;justify-content:center"></div>`;
+    return `<div${a} class="math" data-latex="${esc(mathTeX(b))}" style="${box(b)}display:flex;align-items:center;${mathCSS(b)}"></div>`;
   if (b.type === 'table')
     return `<div${a} style="${box(b)}"><table class="${tableClass(b)}" style="${tableVars(b)}">`
       + tableRowsHTML(b) + `</table></div>`;
@@ -304,6 +304,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  .reveal .slide-number{${snPos}}
  ${tableCSS('.reveal ')}
  .reveal .stage.pass{pointer-events:none} .reveal .stage.pass>*{pointer-events:auto}
+ .reveal .math .katex-display{margin:0}
  .reveal .rv-code pre{box-shadow:none}
  .reveal .rv-code pre code{max-height:100%;height:100%;box-sizing:border-box;overflow:auto;scrollbar-width:thin;scrollbar-color:#6668 transparent}
  .reveal .rv-code.no-scroll pre code{overflow:hidden}

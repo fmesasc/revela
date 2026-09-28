@@ -11,6 +11,7 @@ import { commit, selectedBlock, selectedBlocks } from '../../core/store.js';
 import { ensureFont } from '../design/fonts.js';
 import { t } from '../../i18n/index.js';
 import { promptUser } from '../../core/notify.js';
+import { MATH_SIZE } from '../../render/svg.js';
 
 // Format painter: copy a text box's paragraph/character style and apply it.
 let styleClip = null;
@@ -53,6 +54,21 @@ function ctx() {
   return el ? { b, el } : null;
 }
 
+// An equation has no text selection inside: the ribbon's formatting applies to
+// the whole equation (see mathTeX / mathCSS in render/svg.js).
+function mathSel() { const b = selectedBlock(); return b && b.type === 'math' ? b : null; }
+const MATH_TOGGLES = { bold: 'bold', underline: 'underline' };
+function mathFormat(cmd, value) {
+  const m = mathSel(); if (!m) return false;
+  commit(() => {
+    if (MATH_TOGGLES[cmd]) m[MATH_TOGGLES[cmd]] = !m[MATH_TOGGLES[cmd]];
+    else if (cmd === 'foreColor') m.color = value;
+    else if (cmd === 'hiliteColor') m.highlight = value;
+    else if (cmd === 'removeFormat') ['bold', 'underline', 'color', 'highlight'].forEach(k => delete m[k]);
+  });
+  return true;
+}
+
 function enterEdit(el) {
   // Restore the raw source (with $…$) if inline math was rendered.
   if (el.dataset && el.dataset.msrc) { el.innerHTML = el.dataset.msrc; el.dataset.msrc = ''; }
@@ -73,6 +89,7 @@ function selectAllIfCollapsed(el) {
 
 // ---- Character formatting (needs a selection) -----------------------------
 export function exec(cmd, value = null) {
+  if (mathFormat(cmd, value)) return;
   const c = ctx(); if (!c) return;
   enterEdit(c.el);
   document.execCommand(cmd, false, value);
@@ -132,6 +149,7 @@ export function list(cmd) {
 
 // ---- Box-level formatting (works with the box selected) -------------------
 export function align(value) {
+  const m = mathSel(); if (m) return commit(() => { m.textAlign = value === 'justify' ? 'center' : value; });
   const c = ctx(); if (!c) return;
   commit(() => { c.b.textAlign = value; });
 }
@@ -141,6 +159,7 @@ export function fontFamily(value) {
   commit(() => { c.b.fontFamily = value; });
 }
 export function setFontSize(px) {
+  const m = mathSel(); if (m) return commit(() => { m.fontSize = Math.max(8, px); });
   const c = ctx(); if (!c) return;
   commit(() => { c.b.fontSize = Math.max(8, px); });
 }
@@ -173,6 +192,7 @@ export function setNumStyle(value) {
   commit(() => { c.b.numStyle = value; });
 }
 export function fontSize(delta) {
+  const m = mathSel(); if (m) return commit(() => { m.fontSize = Math.max(8, (m.fontSize || MATH_SIZE) + delta); });
   const c = ctx(); if (!c) return;
   commit(() => { c.b.fontSize = Math.max(8, (c.b.fontSize || 40) + delta); });
 }

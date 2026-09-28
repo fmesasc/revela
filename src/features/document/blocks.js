@@ -80,7 +80,7 @@ export function moveInOrder(id, dir) {
 
 // Fill / border for a text box (also used by diagrams).
 export function setBoxStyle(props) {
-  const b = selectedBlock(); if (!b || b.type !== 'text') return;
+  const b = selectedBlock(); if (!b || (b.type !== 'text' && b.type !== 'math')) return;
   commit(() => Object.assign(b, props));
 }
 
