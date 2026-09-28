@@ -39,7 +39,9 @@ function blockHTML(b, slide) {
       + `${b.dir === 'rtl' ? 'direction:rtl;' : ''}`
       + `${b.vertical ? 'writing-mode:vertical-rl;' : ''}`
       + `${b.bullet ? `--bullet:${b.bullet};` : ''}`
-      + `${b.numStyle ? `--num:${b.numStyle};` : ''}">`
+      + `${b.numStyle ? `--num:${b.numStyle};` : ''}`
+      + `${b.bg ? `background:${b.bg};` : ''}${b.borderColor ? `border:2px solid ${b.borderColor};` : ''}`
+      + `${b.radius ? `border-radius:${b.radius}px;` : ''}box-sizing:border-box;">`
       + `${b.html || ''}</div>`;
   if (b.type === 'model')
     return `<model-viewer${a} src="${b.src}" camera-controls ${b.autoRotate !== false ? 'auto-rotate' : ''} `

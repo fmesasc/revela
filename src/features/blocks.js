@@ -61,6 +61,38 @@ export function setAlt(text) {
   commit(() => { b.alt = text; });
 }
 
+// Fill / border for a text box (also used by diagrams).
+export function setBoxStyle(props) {
+  const b = selectedBlock(); if (!b || b.type !== 'text') return;
+  commit(() => Object.assign(b, props));
+}
+
+// SmartArt‑lite: a row of boxes (process, with arrows) or a column (list).
+export function addDiagram(kind = 'process') {
+  const { w, h } = state.deck.size;
+  commit(() => {
+    const s = currentSlide();
+    const n = 3, box = (x, y, bw, bh, i) => ({
+      id: uid(), type: 'text', x, y, w: bw, h: bh, rotation: 0, animation: null,
+      fontSize: 26, textAlign: 'center', html: `Paso ${i + 1}`,
+      bg: '#3f6497', borderColor: '#1e2a3a', radius: 10,
+    });
+    const ids = [];
+    if (kind === 'list') {
+      const bw = 640, bh = 90, gap = 24, totalH = n * bh + (n - 1) * gap;
+      let y = (h - totalH) / 2;
+      for (let i = 0; i < n; i++) { const b = box((w - bw) / 2, y, bw, bh, i); s.blocks.push(b); ids.push(b.id); y += bh + gap; }
+    } else {
+      const bw = 280, bh = 130, gap = 70, totalW = n * bw + (n - 1) * gap;
+      const x0 = (w - totalW) / 2, y = (h - bh) / 2;
+      for (let i = 0; i < n; i++) { const b = box(x0 + i * (bw + gap), y, bw, bh, i); s.blocks.push(b); ids.push(b.id); }
+      for (let i = 0; i < n - 1; i++)
+        s.blocks.push({ id: uid(), type: 'connector', from: ids[i], to: ids[i + 1], color: '#8a8a8a', arrow: true, x: 0, y: 0, w, h, rotation: 0, animation: null });
+    }
+    setSelection(null);
+  });
+}
+
 export function addTable() { insert(tableBlock()); }
 export function addCode() { insert(codeBlock()); }
 export function addChart() { insert(chartBlock()); }

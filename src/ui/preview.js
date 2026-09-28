@@ -14,7 +14,9 @@ export function blockPreview(b) {
       + `${b.letterSpacing ? `letter-spacing:${b.letterSpacing}px;` : ''}`
       + `${b.indent ? `padding-left:${b.indent}px;` : ''}`
       + `${b.dir === 'rtl' ? 'direction:rtl;' : ''}`
-      + `${b.vertical ? 'writing-mode:vertical-rl;' : ''}">`
+      + `${b.vertical ? 'writing-mode:vertical-rl;' : ''}`
+      + `${b.bg ? `background:${b.bg};` : ''}${b.borderColor ? `border:2px solid ${b.borderColor};` : ''}`
+      + `${b.radius ? `border-radius:${b.radius}px;` : ''}box-sizing:border-box;">`
       + `${b.html || ''}</div>`;
   } else if (b.type === 'image') {
     el.innerHTML = `<img src="${b.src}" style="width:100%;height:100%;object-fit:${b.fit || 'contain'};`

@@ -82,6 +82,7 @@ function forBlock(b) {
       ['Alinear texto a la derecha', () => format.align('right')],
       ['Copiar formato', () => format.copyStyle()],
       format.hasStyleClip() ? ['Pegar formato', () => format.pasteStyle()] : null,
+      ['Relleno y borde…', () => openBoxStyle(b)],
       null);
   } else if (b.type === 'image') {
     items.push(
@@ -222,6 +223,27 @@ function openChartData(b) {
     blocks.setChart({ chartType: back.querySelector('.ch-type').value, color: back.querySelector('.ch-color').value, data });
     close();
   });
+}
+
+function openBoxStyle(b) {
+  if (document.getElementById('box-modal')) return;
+  const back = document.createElement('div');
+  back.id = 'box-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:left;min-width:280px">
+    <button class="modal-close">✕</button><h3>Relleno y borde</h3>
+    <label class="fr-l">Relleno <input type="color" class="bx-fill" value="${b.bg || '#3f6497'}"></label>
+    <label class="fr-l">Borde <input type="color" class="bx-border" value="${b.borderColor || '#1e2a3a'}"></label>
+    <label class="fr-l">Redondeo (px) <input type="range" class="bx-radius" min="0" max="40" value="${b.radius || 0}"></label>
+    <div class="fr-actions"><button class="fr-do" data-clear>Sin relleno/borde</button></div>
+  </div>`;
+  document.body.appendChild(back);
+  const close = () => back.remove();
+  back.querySelector('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  back.querySelector('.bx-fill').addEventListener('input', e => blocks.setBoxStyle({ bg: e.target.value }));
+  back.querySelector('.bx-border').addEventListener('input', e => blocks.setBoxStyle({ borderColor: e.target.value }));
+  back.querySelector('.bx-radius').addEventListener('input', e => blocks.setBoxStyle({ radius: +e.target.value }));
+  back.querySelector('[data-clear]').addEventListener('click', () => { blocks.setBoxStyle({ bg: '', borderColor: '', radius: 0 }); close(); });
 }
 
 function openAlt(b) {

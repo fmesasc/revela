@@ -168,6 +168,8 @@ export function initRibbon() {
     if (dir) { format.toggleDir(); return; }
     const vert = e.target.closest('[data-vertical]');
     if (vert) { format.toggleVertical(); return; }
+    const diag = e.target.closest('[data-diagram]');
+    if (diag) { blocks.addDiagram(diag.dataset.diagram); return; }
   });
 
   // Formatting controls must not steal focus (and thus the selection) from the

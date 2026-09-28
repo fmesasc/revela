@@ -62,7 +62,7 @@ the origin of every requirement is traceable.
 - ⬜ Merge / subtract / intersect shapes `PP·OO`
 - ✅ Tables — editable cells, add/remove rows & columns, header row, border colour `PP·GS·OO`
 - ✅ Charts — bar, line and pie with data editing (SVG, no library) `PP·GS·OO`
-- ⬜ SmartArt / diagrams `PP·OO`
+- 🚧 SmartArt / diagrams — process & list diagrams (boxes + connectors); more layouts planned `PP·OO`
 - ⬜ Icons and stock images `PP·GS`
 - ✅ Emoji picker `GS`
 - ✅ Audio tracks `PP·OO`

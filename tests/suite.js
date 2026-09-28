@@ -183,6 +183,26 @@ export async function run(frame) {
     assert(/RevealNotes/.test(html), 'sin plugin de notas');
   });
 
+  await test('cuadro de texto con relleno y borde en el export', async () => {
+    reset(); const b = newText(); R.blocks.setBoxStyle({ bg: '#3f6497', borderColor: '#1e2a3a', radius: 12 });
+    const html = R.io.buildHTML();
+    assert(/background:#3f6497;border:2px solid #1e2a3a;border-radius:12px/.test(html), 'relleno/borde en export');
+  });
+
+  await test('diagrama de proceso: cajas + conectores', async () => {
+    reset(); const n0 = slide().blocks.length; R.blocks.addDiagram('process'); await sleep(20);
+    const added = slide().blocks.slice(n0);
+    eq(added.filter(x => x.type === 'text').length, 3, 'tres cajas');
+    eq(added.filter(x => x.type === 'connector').length, 2, 'dos conectores');
+  });
+
+  await test('diagrama de lista: cajas apiladas sin conectores', async () => {
+    reset(); const n0 = slide().blocks.length; R.blocks.addDiagram('list'); await sleep(10);
+    const added = slide().blocks.slice(n0);
+    eq(added.filter(x => x.type === 'text').length, 3, 'tres cajas');
+    eq(added.filter(x => x.type === 'connector').length, 0, 'sin conectores');
+  });
+
   await test('diseño "dos contenidos" reemplaza los bloques de la diapositiva', async () => {
     reset(); D.querySelector('[data-template="twoContent"]').click(); await sleep(10);
     eq(slide().blocks.length, 3, 'tres bloques del diseño');
