@@ -2,6 +2,7 @@
 // it never corrupts the inline formatting (bold, colour, links…) in the HTML.
 
 import { state, commit, currentSlide } from '../core/store.js';
+import { t } from '../i18n.js';
 
 const escapeRegExp = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -49,13 +50,13 @@ export function openFindPanel() {
   back.id = 'find-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:left;min-width:300px">
     <button class="modal-close" title="Cerrar">✕</button>
-    <h3>Buscar y reemplazar</h3>
-    <label class="fr-l">Buscar<input class="fr-find" type="text" autocomplete="off"></label>
-    <label class="fr-l">Reemplazar por<input class="fr-repl" type="text" autocomplete="off"></label>
-    <label class="fr-chk"><input type="checkbox" class="fr-all" checked> En todas las diapositivas</label>
+    <h3>${t('Buscar y reemplazar')}</h3>
+    <label class="fr-l">${t('Buscar')}<input class="fr-find" type="text" autocomplete="off"></label>
+    <label class="fr-l">${t('Reemplazar por')}<input class="fr-repl" type="text" autocomplete="off"></label>
+    <label class="fr-chk"><input type="checkbox" class="fr-all" checked> ${t('En todas las diapositivas')}</label>
     <div class="fr-actions">
       <span class="fr-count"></span>
-      <button class="fr-do">Reemplazar todo</button>
+      <button class="fr-do">${t('Reemplazar todo')}</button>
     </div>
   </div>`;
   document.body.appendChild(back);

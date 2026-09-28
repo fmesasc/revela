@@ -533,6 +533,8 @@ export async function run(frame) {
     const tab = D.querySelector('#ribbon .tabs button[data-tab="home"]');
     eq(tab.textContent.trim(), 'Home', 'Inicio → Home');
     eq(R.i18n.t('Guardar'), 'Save', 't() traduce');
+    eq(R.i18n.t('Datos del gráfico'), 'Chart data', 'cadena de modal traducida');
+    eq(R.i18n.t('Buscar y reemplazar'), 'Find and replace', 'panel de búsqueda traducido');
     R.i18n.setLang('fr');
     eq(tab.textContent.trim(), 'Accueil', 'Inicio → Accueil');
     R.i18n.setLang('nl');

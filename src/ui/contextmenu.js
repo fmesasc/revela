@@ -187,10 +187,10 @@ function openImageAdjust(b) {
   const back = document.createElement('div');
   back.id = 'img-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:left;min-width:280px">
-    <button class="modal-close">✕</button><h3>Ajustes de imagen</h3>
-    ${sl('Brillo', 'brightness', 200)}${sl('Contraste', 'contrast', 200)}
-    ${sl('Saturación', 'saturate', 200)}${sl('Opacidad', 'opacity', 100)}
-    <div class="fr-actions"><button class="fr-do" data-reset>Restablecer</button></div>
+    <button class="modal-close">✕</button><h3>${t('Ajustes de imagen')}</h3>
+    ${sl(t('Brillo'), 'brightness', 200)}${sl(t('Contraste'), 'contrast', 200)}
+    ${sl(t('Saturación'), 'saturate', 200)}${sl(t('Opacidad'), 'opacity', 100)}
+    <div class="fr-actions"><button class="fr-do" data-reset>${t('Restablecer')}</button></div>
   </div>`;
   document.body.appendChild(back);
   const close = () => back.remove();
@@ -210,14 +210,14 @@ function openChartData(b) {
   const back = document.createElement('div');
   back.id = 'chart-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:left;min-width:300px">
-    <button class="modal-close">✕</button><h3>Datos del gráfico</h3>
-    <label class="fr-l">Tipo <select class="ch-type">
-      <option value="bar">Barras</option><option value="line">Líneas</option><option value="area">Área</option>
-      <option value="pie">Circular</option><option value="doughnut">Dona</option></select></label>
-    <label class="fr-l">Color (barras) <input type="color" class="ch-color" value="${b.color || '#3f6497'}"></label>
-    <label class="fr-l">Datos (una línea "etiqueta,valor")
+    <button class="modal-close">✕</button><h3>${t('Datos del gráfico')}</h3>
+    <label class="fr-l">${t('Tipo')} <select class="ch-type">
+      <option value="bar">${t('Barras')}</option><option value="line">${t('Líneas')}</option><option value="area">${t('Área')}</option>
+      <option value="pie">${t('Circular')}</option><option value="doughnut">${t('Dona')}</option></select></label>
+    <label class="fr-l">${t('Color (barras)')} <input type="color" class="ch-color" value="${b.color || '#3f6497'}"></label>
+    <label class="fr-l">${t('Datos (una línea "etiqueta,valor")')}
       <textarea class="ch-data" rows="5" style="font-family:monospace">${lines}</textarea></label>
-    <div class="fr-actions"><button class="fr-do">Aplicar</button></div>
+    <div class="fr-actions"><button class="fr-do">${t('Aplicar')}</button></div>
   </div>`;
   document.body.appendChild(back);
   back.querySelector('.ch-type').value = b.chartType || 'bar';
@@ -239,12 +239,12 @@ function openCodeOpts(b) {
   const back = document.createElement('div');
   back.id = 'code-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:left;min-width:300px">
-    <button class="modal-close">✕</button><h3>Opciones de código</h3>
-    <label class="fr-l">Lenguaje <select class="cd-lang">${langs.map(l => `<option value="${l}">${l}</option>`).join('')}</select></label>
-    <label class="fr-chk"><input type="checkbox" class="cd-lines"> Mostrar números de línea</label>
-    <label class="fr-l">Animación por líneas (p. ej. <code>1|2-3|4</code>)
+    <button class="modal-close">✕</button><h3>${t('Opciones de código')}</h3>
+    <label class="fr-l">${t('Lenguaje')} <select class="cd-lang">${langs.map(l => `<option value="${l}">${l}</option>`).join('')}</select></label>
+    <label class="fr-chk"><input type="checkbox" class="cd-lines"> ${t('Mostrar números de línea')}</label>
+    <label class="fr-l">${t('Animación por líneas')} (p. ej. <code>1|2-3|4</code>)
       <input type="text" class="cd-steps" value="${(b.lineSteps || '').replace(/"/g, '&quot;')}" placeholder="1|2-3|4"></label>
-    <div class="fr-actions"><button class="fr-do">Aplicar</button></div>
+    <div class="fr-actions"><button class="fr-do">${t('Aplicar')}</button></div>
   </div>`;
   document.body.appendChild(back);
   back.querySelector('.cd-lang').value = b.lang || 'javascript';
@@ -267,7 +267,7 @@ function openOpacity(b) {
   const back = document.createElement('div');
   back.id = 'op-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:left;min-width:260px">
-    <button class="modal-close">✕</button><h3>Opacidad</h3>
+    <button class="modal-close">✕</button><h3>${t('Opacidad')}</h3>
     <label class="fr-l"><span class="op-val">${b.opacity ?? 100}%</span>
       <input type="range" class="op-range" min="0" max="100" value="${b.opacity ?? 100}"></label></div>`;
   document.body.appendChild(back);
@@ -284,7 +284,7 @@ function openIconColor(b) {
   const back = document.createElement('div');
   back.id = 'icon-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="min-width:220px">
-    <button class="modal-close">✕</button><h3>Color del icono</h3>
+    <button class="modal-close">✕</button><h3>${t('Color del icono')}</h3>
     <input type="color" class="ic-color" value="${b.color || '#ffffff'}" style="width:80px;height:44px;border:none;background:none;cursor:pointer">
   </div>`;
   document.body.appendChild(back);
@@ -299,11 +299,11 @@ function openBoxStyle(b) {
   const back = document.createElement('div');
   back.id = 'box-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:left;min-width:280px">
-    <button class="modal-close">✕</button><h3>Relleno y borde</h3>
-    <label class="fr-l">Relleno <input type="color" class="bx-fill" value="${b.bg || '#3f6497'}"></label>
-    <label class="fr-l">Borde <input type="color" class="bx-border" value="${b.borderColor || '#1e2a3a'}"></label>
-    <label class="fr-l">Redondeo (px) <input type="range" class="bx-radius" min="0" max="40" value="${b.radius || 0}"></label>
-    <div class="fr-actions"><button class="fr-do" data-clear>Sin relleno/borde</button></div>
+    <button class="modal-close">✕</button><h3>${t('Relleno y borde')}</h3>
+    <label class="fr-l">${t('Relleno')} <input type="color" class="bx-fill" value="${b.bg || '#3f6497'}"></label>
+    <label class="fr-l">${t('Borde')} <input type="color" class="bx-border" value="${b.borderColor || '#1e2a3a'}"></label>
+    <label class="fr-l">${t('Redondeo (px)')} <input type="range" class="bx-radius" min="0" max="40" value="${b.radius || 0}"></label>
+    <div class="fr-actions"><button class="fr-do" data-clear>${t('Sin relleno/borde')}</button></div>
   </div>`;
   document.body.appendChild(back);
   const close = () => back.remove();
@@ -320,10 +320,10 @@ function openAlt(b) {
   const back = document.createElement('div');
   back.id = 'alt-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:left;min-width:300px">
-    <button class="modal-close">✕</button><h3>Texto alternativo</h3>
-    <label class="fr-l">Descripción para accesibilidad
+    <button class="modal-close">✕</button><h3>${t('Texto alternativo')}</h3>
+    <label class="fr-l">${t('Descripción para accesibilidad')}
       <input class="alt-in" type="text" value="${(b.alt || '').replace(/"/g, '&quot;')}"></label>
-    <div class="fr-actions"><button class="fr-do">Guardar</button></div>
+    <div class="fr-actions"><button class="fr-do">${t('Guardar')}</button></div>
   </div>`;
   document.body.appendChild(back);
   const close = () => back.remove();
@@ -341,9 +341,9 @@ function openImageCrop(b) {
   const back = document.createElement('div');
   back.id = 'crop-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:left;min-width:280px">
-    <button class="modal-close">✕</button><h3>Recortar imagen (%)</h3>
-    ${sl('Arriba', 'top')}${sl('Derecha', 'right')}${sl('Abajo', 'bottom')}${sl('Izquierda', 'left')}
-    <div class="fr-actions"><button class="fr-do" data-reset>Restablecer</button></div>
+    <button class="modal-close">✕</button><h3>${t('Recortar imagen (%)')}</h3>
+    ${sl(t('Arriba'), 'top')}${sl(t('Derecha'), 'right')}${sl(t('Abajo'), 'bottom')}${sl(t('Izquierda'), 'left')}
+    <div class="fr-actions"><button class="fr-do" data-reset>${t('Restablecer')}</button></div>
   </div>`;
   document.body.appendChild(back);
   const close = () => back.remove();

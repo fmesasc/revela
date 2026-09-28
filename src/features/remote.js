@@ -11,6 +11,7 @@
 import { state, subscribe } from '../core/store.js';
 import * as slides from './slides.js';
 import * as io from '../io/reveal.js';
+import { t } from '../i18n.js';
 
 const PEERJS = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous 0/O/1/I
@@ -91,7 +92,7 @@ export function openHostPanel() {
   back.id = 'host-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal">
     <button class="modal-close" title="Cerrar">✕</button>
-    <h3>Conectar móvil</h3>
+    <h3>${t('Conectar móvil')}</h3>
     <p class="host-help">En el móvil, abre <b class="host-url">remote.html</b> e introduce el código
       (o escanea el QR). Podrás ver las notas, pasar diapositivas y usar el puntero.</p>
     <div class="host-code">·····</div>

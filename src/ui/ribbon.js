@@ -13,6 +13,7 @@ import { FONTS, ensureDeckFonts } from '../features/fonts.js';
 import { ICON_NAMES, iconSVG } from './shape.js';
 import * as remote from '../features/remote.js';
 import * as search from '../features/search.js';
+import { t } from '../i18n.js';
 
 const $ = s => document.querySelector(s);
 const readFile = (accept, cb, as = 'DataURL') => {
@@ -272,8 +273,8 @@ function openShortcuts() {
   const back = document.createElement('div');
   back.id = 'sc-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:left;min-width:340px">
-    <button class="modal-close">✕</button><h3>Atajos de teclado</h3>
-    <table class="sc-table">${SHORTCUTS.map(([k, d]) => `<tr><td><kbd>${k}</kbd></td><td>${d}</td></tr>`).join('')}</table>
+    <button class="modal-close">✕</button><h3>${t('Atajos de teclado')}</h3>
+    <table class="sc-table">${SHORTCUTS.map(([k, d]) => `<tr><td><kbd>${k}</kbd></td><td>${t(d)}</td></tr>`).join('')}</table>
   </div>`;
   document.body.appendChild(back);
   const close = () => back.remove();
@@ -288,24 +289,24 @@ const POPS = {
     const chars = ['→','←','↑','↓','↔','⇒','•','◦','▪','‣','✓','✔','✗','✘','★','☆','♦','●','■','▶',
       '€','$','£','¥','©','®','™','°','±','×','÷','≈','≠','≤','≥','∞','∑','√','π',
       '😀','😉','🎉','🚀','✅','⚠️','💡','📌','🔗','📈','🔥','👍','❤️','⭐','🧠','🛠️'];
-    return `<h4>Símbolos y emojis</h4><div class="sym-grid">`
+    return `<h4>${t('Símbolos y emojis')}</h4><div class="sym-grid">`
       + chars.map(c => `<button data-sym type="button">${c}</button>`).join('') + `</div>`;
   },
-  icons: () => `<h4>Iconos</h4><div class="sym-grid icons">`
+  icons: () => `<h4>${t('Iconos')}</h4><div class="sym-grid icons">`
     + ICON_NAMES.map(n => `<button data-icon="${n}" type="button" title="${n}">${iconSVG({ icon: n, color: '#333' })}</button>`).join('') + `</div>`,
   paragraph: () => {
-    const b = selectedBlock(); const t = b && b.type === 'text' ? b : {};
-    return `<h4>Párrafo</h4>
-      <label>Interlineado
-        <input type="number" step="0.05" min="0.5" data-pop="linespacing" value="${t.lineHeight || 1}"></label>
-      <label>Espaciado entre letras (px)
-        <input type="number" step="0.5" data-pop="letterspacing" value="${t.letterSpacing || 0}"></label>
-      <label>Sangría izquierda (px)
-        <input type="number" step="4" min="0" data-pop="indent" value="${t.indent || 0}"></label>
-      <label>Viñeta <select data-pop="bullet">
+    const b = selectedBlock(); const tb = b && b.type === 'text' ? b : {};
+    return `<h4>${t('Párrafo')}</h4>
+      <label>${t('Interlineado')}
+        <input type="number" step="0.05" min="0.5" data-pop="linespacing" value="${tb.lineHeight || 1}"></label>
+      <label>${t('Espaciado entre letras (px)')}
+        <input type="number" step="0.5" data-pop="letterspacing" value="${tb.letterSpacing || 0}"></label>
+      <label>${t('Sangría izquierda (px)')}
+        <input type="number" step="4" min="0" data-pop="indent" value="${tb.indent || 0}"></label>
+      <label>${t('Viñeta')} <select data-pop="bullet">
         <option value="disc">• Disco</option><option value="circle">◦ Círculo</option>
         <option value="square">▪ Cuadrado</option><option value="none">— Ninguna</option></select></label>
-      <label>Lista numerada <select data-pop="numstyle">
+      <label>${t('Lista numerada')} <select data-pop="numstyle">
         <option value="decimal">1, 2, 3</option><option value="lower-alpha">a, b, c</option>
         <option value="upper-alpha">A, B, C</option><option value="lower-roman">i, ii, iii</option></select></label>`;
   },
