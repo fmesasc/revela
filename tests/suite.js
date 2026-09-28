@@ -105,6 +105,30 @@ export async function run(frame) {
     assert(R.state.deck.slideNumber.show, 'número activado');
   });
 
+  await test('estilos de texto con nombre (Título, Cita…)', async () => {
+    reset(); const b = newText(); R.format.applyTextStyle('quote'); await sleep(10);
+    eq(b.fontStyle, 'italic', 'cursiva de cita'); eq(b.indent, 40, 'sangría de cita'); eq(b.textStyle, 'quote', 'estilo guardado');
+    R.format.applyTextStyle('title'); eq(b.fontSize, 64, 'tamaño de título');
+    assert(/font-weight:700/.test(R.io.buildHTML()), 'peso en el export');
+  });
+
+  await test('columnas de texto en lienzo y export', async () => {
+    reset(); const b = newText(); R.format.setColumns(2); await sleep(10);
+    eq(richOf(b).style.columnCount, '2', 'dos columnas en el lienzo');
+    assert(/column-count:2/.test(R.io.buildHTML()), 'columnas en el export');
+  });
+
+  await test('Tab en una lista anida el elemento (niveles de viñeta)', async () => {
+    reset(); const b = newText(); b.html = '<ul><li>uno</li><li>dos</li></ul>'; R.render(); await sleep(10);
+    const rich = richOf(b); rich.dispatchEvent(new frame.contentWindow.MouseEvent('dblclick', { bubbles: true })); await sleep(10);
+    const li = rich.querySelectorAll('li')[1]; const r = D.createRange(); r.selectNodeContents(li); r.collapse(false);
+    const sel = frame.contentWindow.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    rich.dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
+    await sleep(10);
+    assert(rich.querySelector('li ul, ul ul, li ol'), 'el segundo elemento queda anidado');
+    rich.blur();
+  });
+
   await test('sangría de párrafo', async () => {
     reset(); const b = newText(); R.format.indent(40); await sleep(10);
     eq(b.indent, 40, 'indent'); assert(/padding-left:40px/.test(R.io.buildHTML()), 'export');

@@ -56,9 +56,9 @@ the origin of every requirement is traceable.
 - ✅ Hyperlinks — web, slide and email targets `PP·GS·OO`
 - ✅ Text direction (RTL) and vertical text `PP·OO`
 - 🚧 Spell check — native browser spellcheck while editing; proofing/AutoCorrect planned `PP·GS·OO`
-- ⬜ Text columns `PP·OO`
-- ⬜ Text styles / named paragraph styles `PP·OO`
-- ⬜ Bullet/number level customisation (multi-level indenting) `PP·GS·OO`
+- ✅ Text columns `PP·OO`
+- ✅ Named text styles (Title, Subtitle, Heading, Body, Quote, Note) `PP·OO`
+- ✅ Multi-level lists (Tab / Shift+Tab) `PP·GS·OO`
 
 ## 3. Objects & content
 - ✅ Images `PP·GS·OO`

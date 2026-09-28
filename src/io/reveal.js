@@ -65,6 +65,8 @@ function blockHTML(b, slide) {
       + `${b.bg ? `background:${b.bg};` : ''}${b.borderColor ? `border:2px solid ${b.borderColor};` : ''}`
       + `${b.radius ? `border-radius:${b.radius}px;` : ''}box-sizing:border-box;`
       + `${b.vAlign ? `display:flex;flex-direction:column;justify-content:${{ top: 'flex-start', middle: 'center', bottom: 'flex-end' }[b.vAlign]};` : ''}`
+      + `${b.fontWeight ? `font-weight:${b.fontWeight};` : ''}${b.fontStyle ? `font-style:${b.fontStyle};` : ''}`
+      + `${b.columns > 1 ? `column-count:${b.columns};column-gap:32px;` : ''}`
       + `${b.wordart ? wordartCSS(b.wordart) : ''}">`
       + `${b.html || ''}</div>`;
   if (b.type === 'model')

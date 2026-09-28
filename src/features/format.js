@@ -15,7 +15,26 @@ import { promptDialog } from '../ui/dialog.js';
 // Format painter: copy a text box's paragraph/character style and apply it.
 let styleClip = null;
 const STYLE_KEYS = ['fontSize', 'fontFamily', 'textAlign', 'lineHeight', 'letterSpacing',
-  'indent', 'bullet', 'numStyle', 'dir', 'vertical'];
+  'indent', 'bullet', 'numStyle', 'dir', 'vertical', 'fontWeight', 'fontStyle', 'columns'];
+
+// Named text styles (like Word/PowerPoint "Title", "Heading", "Quote"…).
+export const TEXT_STYLES = {
+  title: { fontSize: 64, fontWeight: '700', fontStyle: '', lineHeight: 1.1, letterSpacing: 0, indent: 0 },
+  subtitle: { fontSize: 36, fontWeight: '400', fontStyle: '', lineHeight: 1.2, letterSpacing: 0.5, indent: 0 },
+  heading: { fontSize: 44, fontWeight: '700', fontStyle: '', lineHeight: 1.15, letterSpacing: 0, indent: 0 },
+  body: { fontSize: 28, fontWeight: '400', fontStyle: '', lineHeight: 1.4, letterSpacing: 0, indent: 0 },
+  quote: { fontSize: 30, fontWeight: '400', fontStyle: 'italic', lineHeight: 1.4, letterSpacing: 0, indent: 40 },
+  caption: { fontSize: 18, fontWeight: '400', fontStyle: '', lineHeight: 1.3, letterSpacing: 0.3, indent: 0 },
+};
+export function applyTextStyle(name) {
+  const st = TEXT_STYLES[name];
+  const bs = selectedBlocks().filter(b => b.type === 'text'); if (!st || !bs.length) return;
+  commit(() => { for (const b of bs) { Object.assign(b, st); b.textStyle = name; } });
+}
+export function setColumns(n) {
+  const c = ctx(); if (!c) return;
+  commit(() => { c.b.columns = Math.max(1, Math.min(4, parseInt(n, 10) || 1)); });
+}
 export function copyStyle() {
   const b = selectedBlock(); if (!b || b.type !== 'text') return;
   styleClip = {}; for (const k of STYLE_KEYS) if (b[k] !== undefined) styleClip[k] = b[k];

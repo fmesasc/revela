@@ -67,6 +67,7 @@ button{font-family:inherit}
 .row select{flex-direction:row;padding:6px 8px;min-width:120px;border:1px solid var(--line2);background:#fff;font-size:12px}
 .row select.font-select{min-width:132px}
 .row select.size-select{min-width:60px}
+.row select.style-select{min-width:108px}
 .row input.size-input{width:54px;text-align:center;border:1px solid var(--line2);border-radius:6px;
   padding:6px 4px;font-family:inherit;font-size:12px;background:#fff;color:var(--txt)}
 .row input.size-input:focus{outline:none;border-color:var(--accent)}

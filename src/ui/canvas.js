@@ -208,6 +208,10 @@ function reconcile(b) {
       rich.style.display = vj ? 'flex' : ''; rich.style.flexDirection = vj ? 'column' : '';
       rich.style.justifyContent = vj || '';
       applyWordart(rich, b.wordart);
+      if (!b.wordart) rich.style.fontWeight = b.fontWeight || '';
+      rich.style.fontStyle = b.fontStyle || '';
+      rich.style.columnCount = b.columns > 1 ? b.columns : '';
+      rich.style.columnGap = b.columns > 1 ? '32px' : '';
       // Not editing: show the (math‑rendered) HTML; re‑render only when it changed.
       if (!el.classList.contains('editing') && rich.dataset.msrc !== (b.html || '')) {
         rich.innerHTML = b.html || ''; rich.dataset.msrc = b.html || '';
@@ -315,6 +319,9 @@ function content(b) {
     const vj0 = { top: 'flex-start', middle: 'center', bottom: 'flex-end' }[b.vAlign];
     if (vj0) { d.style.display = 'flex'; d.style.flexDirection = 'column'; d.style.justifyContent = vj0; }
     if (b.wordart) applyWordart(d, b.wordart);
+    else if (b.fontWeight) d.style.fontWeight = b.fontWeight;
+    if (b.fontStyle) d.style.fontStyle = b.fontStyle;
+    if (b.columns > 1) { d.style.columnCount = b.columns; d.style.columnGap = '32px'; }
     d.innerHTML = b.html || ''; d.dataset.msrc = b.html || '';
     if (hasInlineMath(b.html)) renderInlineMath(d);
     return d;
@@ -486,6 +493,16 @@ function setupText(b, el) {
     rich.contentEditable = 'true'; rich.focus(); el.classList.add('editing');
   });
   rich.addEventListener('input', () => { b.html = rich.innerHTML; }); // no re-render: keep the caret
+  // Tab / Shift+Tab inside a list: nest / un-nest the item (bullet levels).
+  rich.addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return;
+    const sel = window.getSelection();
+    const li = sel && sel.anchorNode && (sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement)?.closest('li');
+    if (!li || !rich.contains(li)) return;
+    e.preventDefault();
+    document.execCommand(e.shiftKey ? 'outdent' : 'indent');
+    b.html = rich.innerHTML;
+  });
   rich.addEventListener('blur', () => {
     rich.contentEditable = 'false'; el.classList.remove('editing');
     commit(() => { b.html = rich.innerHTML; }, { history: false });

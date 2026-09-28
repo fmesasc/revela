@@ -226,6 +226,7 @@ export function initRibbon() {
   bindChange('[data-font]', v => format.fontFamily(v));
   bindChange('[data-size]', v => format.setFontSize(parseInt(v, 10) || 40));
   bindChange('[data-linespacing]', v => format.lineSpacing(v));
+  bindChange('[data-textstyle]', v => { if (v) format.applyTextStyle(v); });
   bindChange('[data-slidenum-pos]', v => commit(() => (state.deck.slideNumber.position = v)));
   bindChange('[data-slidenum-fmt]', v => commit(() => (state.deck.slideNumber.format = v)));
   bindChange('[data-logo-pos]', v => commit(() => (state.deck.logo.position = v)));
@@ -403,6 +404,8 @@ const POPS = {
       <label>${t('Viñeta')} <select data-pop="bullet">
         <option value="disc">• Disco</option><option value="circle">◦ Círculo</option>
         <option value="square">▪ Cuadrado</option><option value="none">— Ninguna</option></select></label>
+      <label>${t('Columnas')} <select data-pop="columns">
+        <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
       <label>${t('Lista numerada')} <select data-pop="numstyle">
         <option value="decimal">1, 2, 3</option><option value="lower-alpha">a, b, c</option>
         <option value="upper-alpha">A, B, C</option><option value="lower-roman">i, ii, iii</option></select></label>`;
@@ -426,6 +429,8 @@ function togglePopover(launcher, type) {
   pop.querySelector('[data-pop="indent"]')?.addEventListener('input', e => format.indent(e.target.value));
   const bsel = pop.querySelector('[data-pop="bullet"]');
   if (bsel) { bsel.value = selectedBlock()?.bullet || 'disc'; bsel.addEventListener('change', e => format.setBullet(e.target.value)); }
+  const csel = pop.querySelector('[data-pop="columns"]');
+  if (csel) { csel.value = String(selectedBlock()?.columns || 1); csel.addEventListener('change', e => format.setColumns(e.target.value)); }
   const nsel = pop.querySelector('[data-pop="numstyle"]');
   if (nsel) { nsel.value = selectedBlock()?.numStyle || 'decimal'; nsel.addEventListener('change', e => format.setNumStyle(e.target.value)); }
   pop.querySelectorAll('[data-sym]').forEach(x => {
@@ -496,6 +501,7 @@ export function renderRibbon() {
   syncValue('[data-font]', isText ? (b.fontFamily || '') : '');
   syncValue('[data-size]', isText ? String(b.fontSize || 40) : '');
   syncValue('[data-linespacing]', isText ? String(b.lineHeight || 1) : '1');
+  syncValue('[data-textstyle]', isText ? (b.textStyle || '') : '');
   document.querySelectorAll('[data-para]').forEach(x =>
     x.classList.toggle('on', isText && (b.textAlign || 'left') === x.dataset.para));
 }
