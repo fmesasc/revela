@@ -83,10 +83,18 @@ const ACTIONS = {
 };
 
 function applyZoom() {
+  const z = state.ui.zoom || 1;
   const g = document.getElementById('stage-grid');
-  if (g) g.style.setProperty('--zoom', state.ui.zoom || 1);
+  const sizer = document.getElementById('stage-sizer');
+  if (g) g.style.transform = `scale(${z})`;
+  if (sizer) {
+    // Footprint from the deck size (deterministic; offsetWidth can be 0 mid‑render).
+    const rw = state.ui.showRuler ? 20 : 0;
+    sizer.style.width = ((state.deck.size.w + rw) * z) + 'px';
+    sizer.style.height = ((state.deck.size.h + rw) * z) + 'px';
+  }
   const lbl = document.getElementById('zoom-label');
-  if (lbl) lbl.textContent = Math.round((state.ui.zoom || 1) * 100) + '%';
+  if (lbl) lbl.textContent = Math.round(z * 100) + '%';
 }
 function setZoom(z) {
   state.ui.zoom = Math.max(0.2, Math.min(3, Math.round(z * 100) / 100));
@@ -115,6 +123,11 @@ function populateFonts() {
 export function initRibbon() {
   populateFonts();
   applyZoom();
+  // On phones/tablets, start zoomed to fit and refit on rotation/resize.
+  if (window.innerWidth < 860) requestAnimationFrame(fitZoom);
+  let rt; window.addEventListener('resize', () => {
+    clearTimeout(rt); rt = setTimeout(() => { if (window.innerWidth < 860) fitZoom(); }, 200);
+  });
   document.getElementById('ribbon').addEventListener('click', e => {
     const more = e.target.closest('[data-more]');
     if (more) { e.stopPropagation(); togglePopover(more, more.dataset.more); return; }
@@ -309,6 +322,7 @@ export function renderRibbon() {
   document.querySelector('[data-action="toggle-loop"]')?.classList.toggle('on', !!state.deck.loop);
   const ftInput = $('[data-footer-text]');
   if (ftInput && document.activeElement !== ftInput) ftInput.value = ft.text || '';
+  applyZoom();   // keep the scaled footprint in sync with slide size / rulers
   const notesBar = document.getElementById('notes-bar');
   if (notesBar) notesBar.hidden = !state.ui.showNotes;
   document.querySelector('[data-action="toggle-notes"]')?.classList.toggle('on', !!state.ui.showNotes);

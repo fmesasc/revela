@@ -370,12 +370,13 @@ export async function run(frame) {
   });
 
   await test('zoom: acercar y restablecer', async () => {
-    reset(); const g = D.getElementById('stage-grid');
-    const z0 = parseFloat(g.style.getPropertyValue('--zoom') || '1');
+    reset(); D.querySelector('[data-action="zoom-reset"]').click();
+    const z0 = R.state.ui.zoom;
     D.querySelector('[data-action="zoom-in"]').click();
-    assert(parseFloat(g.style.getPropertyValue('--zoom')) > z0, 'aumenta');
+    assert(R.state.ui.zoom > z0, 'aumenta');
+    assert(/scale\(/.test(D.getElementById('stage-grid').style.transform), 'transform aplicado');
     D.querySelector('[data-action="zoom-reset"]').click();
-    eq(parseFloat(g.style.getPropertyValue('--zoom')), 1, 'reset');
+    eq(R.state.ui.zoom, 1, 'reset');
   });
 
   // ---- Report --------------------------------------------------------------

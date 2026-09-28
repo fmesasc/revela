@@ -118,8 +118,9 @@ main{flex:1;display:flex;min-height:0}
 .pv-block>div,.pv-block>img{width:100%;height:100%}
 
 #canvas-wrap{flex:1;display:grid;place-items:center;padding:28px;overflow:auto;background:var(--canvas-bg)}
+#stage-sizer{position:relative;overflow:hidden}
 #stage-grid{display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;
-  transform:scale(var(--zoom,1));transform-origin:top center}
+  transform-origin:top left}
 #stage{position:relative;background:#111;border-radius:4px;overflow:hidden;flex:0 0 auto;
   box-shadow:0 10px 34px #0003}
 
@@ -139,7 +140,7 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 /* ---------- Blocks ---------- */
 /* Blocks keep their stacking order (DOM order). Selecting or dragging must NOT
    lift a block above the others — a back object stays at the back while moved. */
-.block{position:absolute;border:1px solid transparent;cursor:grab}
+.block{position:absolute;border:1px solid transparent;cursor:grab;touch-action:none}
 .block.selected{border-color:var(--accent)}
 .block.dragging{cursor:grabbing;opacity:.75}
 .block.editing{cursor:auto}
@@ -260,3 +261,42 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 .zoom .ms{font-size:16px}
 #zoom-label{font-variant-numeric:tabular-nums;min-width:44px}
 [hidden]{display:none!important}
+
+/* ---------- Responsive / touch (phones & tablets) ---------- */
+@media (max-width:860px){
+  body{font-size:13px}
+  .titlebar{gap:6px;padding:5px 8px}
+  .titlebar .brand{font-size:15px}
+  .doc-name{max-width:38vw}
+  .tabs{overflow-x:auto;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs button{padding:9px 12px;white-space:nowrap}
+
+  /* Bigger touch targets on the ribbon */
+  .ribbon-page{min-height:0;padding:4px 2px}
+  .row button,.row label.color,.row select{min-height:38px}
+  .group{padding:2px 6px}
+
+  /* Stack the layout: thumbnails become a horizontal strip on top */
+  main{flex-direction:column}
+  #navigator{width:auto;flex-direction:row;align-items:center;height:92px;gap:8px;
+    padding:8px 10px;border-right:none;border-bottom:1px solid var(--line2);overflow-x:auto;overflow-y:hidden}
+  #navigator .section-head{display:none}
+  .thumb{flex:0 0 128px}
+  #canvas-wrap{padding:10px}
+
+  /* Compact panels */
+  #notes-bar{height:96px;padding:6px 10px}
+  #statusbar .hint{display:none}
+  .modal{max-width:92vw}
+  .popover{max-width:92vw}
+}
+
+/* Coarse pointers (touch): make handles easier to grab. */
+@media (pointer:coarse){
+  .handle-size{width:16px;height:16px}
+  .handle-size.nw{left:-9px;top:-9px}.handle-size.ne{right:-9px;top:-9px}
+  .handle-size.sw{left:-9px;bottom:-9px}.handle-size.se{right:-9px;bottom:-9px}
+  .handle-del{width:28px;height:28px;font-size:16px}
+  .handle-rot{width:20px;height:20px}
+}
