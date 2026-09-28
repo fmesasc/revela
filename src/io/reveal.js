@@ -113,6 +113,8 @@ export function buildHTML(deck = state.deck) {
   const snPos = SLIDENUM_POS[sn.position] || SLIDENUM_POS.br;
   const hasCode = deck.slides.some(s => s.blocks.some(b => b.type === 'code'));
   const hasMath = deck.slides.some(s => s.blocks.some(b => b.type === 'math'));
+  const hasInlineMath = deck.slides.some(s => s.blocks.some(b => b.type === 'text' && /\$[^$]/.test(b.html || '')));
+  const katexNeeded = hasMath || hasInlineMath;
   const ft = deck.footer || { show: false };
   const footerText = ft.show
     ? `<div class="deck-footer">${esc(ft.text || '')}${ft.date ? (ft.text ? ' · ' : '') + new Date().toLocaleDateString('es') : ''}</div>`
@@ -130,9 +132,10 @@ export function buildHTML(deck = state.deck) {
 <link rel="stylesheet" href="${REVEAL}/dist/theme/${deck.theme}.css">
 ${googleFontLinks(deck)}
 ${hasCode ? `<link rel="stylesheet" href="${REVEAL}/plugin/highlight/monokai.css">` : ''}
-${hasMath ? `<link rel="stylesheet" href="${KATEX}/katex.min.css">` : ''}
+${katexNeeded ? `<link rel="stylesheet" href="${KATEX}/katex.min.css">` : ''}
 <script type="module" src="${MODEL_VIEWER}"></script>
-${hasMath ? `<script defer src="${KATEX}/katex.min.js"></script>` : ''}
+${katexNeeded ? `<script defer src="${KATEX}/katex.min.js"></script>` : ''}
+${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></script>` : ''}
 <style>
  .reveal .stage{position:relative;width:${w}px;height:${h}px;margin:0 auto}
  .reveal .stage>*{overflow-wrap:anywhere}
@@ -158,6 +161,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
    transition:'${deck.defaultTransition}', transitionSpeed:'${deck.transitionSpeed}',
    plugins:[ RevealNotes${hasCode ? ', RevealHighlight' : ''} ] });
  ${hasMath ? 'window.addEventListener("load",function(){window.katex&&document.querySelectorAll(".math[data-latex]").forEach(function(el){try{katex.render(el.getAttribute("data-latex"),el,{throwOnError:false,displayMode:true});}catch(e){}});});' : ''}
+ ${hasInlineMath ? 'window.addEventListener("load",function(){window.renderMathInElement&&renderMathInElement(document.body,{delimiters:[{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}],throwOnError:false});});' : ''}
 </script></body></html>`;
 }
 

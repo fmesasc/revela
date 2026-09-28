@@ -231,6 +231,7 @@ const ROWS = [
   ['Google Drive', 'Google Drive', 'Google Drive', 'Google Drive', 'Google Drive', 'Google Drive', 'Google Drive'],
   ['Abrir de<br>Drive', 'Open from<br>Drive', 'Ouvrir de<br>Drive', 'Aus Drive<br>öffnen', 'Apri da<br>Drive', 'Abrir do<br>Drive', 'Obre de<br>Drive'],
   ['Guardar en<br>Drive', 'Save to<br>Drive', 'Enregistrer<br>sur Drive', 'In Drive<br>speichern', 'Salva su<br>Drive', 'Guardar no<br>Drive', 'Desa a<br>Drive'],
+  ['HTML a<br>Drive', 'HTML to<br>Drive', 'HTML sur<br>Drive', 'HTML in<br>Drive', 'HTML su<br>Drive', 'HTML no<br>Drive', 'HTML a<br>Drive'],
   ['Conectar con Google Drive', 'Connect to Google Drive', 'Se connecter à Google Drive', 'Mit Google Drive verbinden', 'Connetti a Google Drive', 'Ligar ao Google Drive', 'Connecta amb Google Drive'],
   ['Guardado en Google Drive.', 'Saved to Google Drive.', 'Enregistré sur Google Drive.', 'In Google Drive gespeichert.', 'Salvato su Google Drive.', 'Guardado no Google Drive.', 'Desat a Google Drive.'],
   ['Fecha y<br>hora', 'Date &<br>time', 'Date et<br>heure', 'Datum &<br>Uhrzeit', 'Data e<br>ora', 'Data e<br>hora', 'Data i<br>hora'],

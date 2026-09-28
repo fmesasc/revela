@@ -35,6 +35,8 @@ function ctx() {
 }
 
 function enterEdit(el) {
+  // Restore the raw source (with $…$) if inline math was rendered.
+  if (el.dataset && el.dataset.msrc) { el.innerHTML = el.dataset.msrc; el.dataset.msrc = ''; }
   if (el.getAttribute('contenteditable') !== 'true') {
     el.contentEditable = 'true';
     el.closest('.block')?.classList.add('editing');

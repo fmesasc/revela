@@ -370,6 +370,13 @@ export async function run(frame) {
     assert(/clip-path:inset\(10% 0% 0% 20%\)/.test(R.io.buildHTML()), 'clip-path en el export');
   });
 
+  await test('LaTeX en línea ($…$) en el texto se renderiza en el export', async () => {
+    reset(); const b = newText(); b.html = 'Energía: $E=mc^2$'; R.render();
+    const html = R.io.buildHTML();
+    assert(/auto-render\.min\.js/.test(html), 'auto-render de KaTeX incluido');
+    assert(/renderMathInElement/.test(html), 'inicialización de math en línea');
+  });
+
   await test('ecuación (math): se inserta y exporta con KaTeX', async () => {
     reset(); R.blocks.addMath(); const b = last(); select(b); R.blocks.setMath('a^2+b^2=c^2');
     const html = R.io.buildHTML();

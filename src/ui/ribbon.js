@@ -35,6 +35,7 @@ const ACTIONS = {
   'save': io.saveProject,
   'gdrive-open': () => gdrive.openWithUI(),
   'gdrive-save': () => gdrive.saveWithUI(),
+  'gdrive-html': () => gdrive.saveHtmlWithUI(),
   'gdrive-config': () => gdrive.openGdriveSetup(),
   'export': io.exportHTML,
   'export-pdf': io.exportPDF,

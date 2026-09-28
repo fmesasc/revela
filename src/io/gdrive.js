@@ -7,6 +7,7 @@
 import { state, replaceDeck } from '../core/store.js';
 import { alertDialog } from '../ui/dialog.js';
 import { t } from '../i18n.js';
+import { buildHTML } from './reveal.js';
 
 const GIS = 'https://accounts.google.com/gsi/client';
 const GAPI = 'https://apis.google.com/js/api.js';
@@ -61,6 +62,18 @@ async function pickFile() {
   });
 }
 
+async function uploadNew(name, mimeType, body, token) {
+  const boundary = 'revela' + Math.random().toString(36).slice(2);
+  const meta = { name, mimeType };
+  const multipart = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n`
+    + `--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n${body}\r\n--${boundary}--`;
+  const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+    { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary }, body: multipart });
+  if (!r.ok) throw new Error(t('No se pudo guardar.'));
+  return (await r.json()).id;
+}
+const safeName = () => (state.deck.name || 'presentacion').replace(/[^\p{L}\p{N} _-]/gu, '').trim() || 'presentacion';
+
 let currentFileId = null;
 
 // Open a project from Drive into the editor.
@@ -79,22 +92,22 @@ export async function driveOpen() {
 export async function driveSave() {
   if (!gdriveReady()) return openGdriveSetup();
   const token = await ensureToken(true);
-  const name = (state.deck.name || 'presentacion').replace(/[^\p{L}\p{N} _-]/gu, '').trim() + '.revela.json';
   const body = JSON.stringify(state.deck, null, 2);
   if (currentFileId) {
     const r = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${currentFileId}?uploadType=media`,
       { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body });
     if (!r.ok) throw new Error(t('No se pudo guardar.'));
   } else {
-    const boundary = 'revela' + Math.random().toString(36).slice(2);
-    const meta = { name, mimeType: 'application/json' };
-    const multipart = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n`
-      + `--${boundary}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${boundary}--`;
-    const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
-      { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary }, body: multipart });
-    if (!r.ok) throw new Error(t('No se pudo guardar.'));
-    currentFileId = (await r.json()).id;
+    currentFileId = await uploadNew(safeName() + '.revela.json', 'application/json', body, token);
   }
+  return true;
+}
+
+// Export the reveal.js HTML presentation to Drive (a new file each time).
+export async function driveSaveHtml() {
+  if (!gdriveReady()) return openGdriveSetup();
+  const token = await ensureToken(true);
+  await uploadNew(safeName() + '.html', 'text/html', buildHTML(), token);
   return true;
 }
 
@@ -124,3 +137,4 @@ export function openGdriveSetup() {
 // Wrappers that surface errors as friendly dialogs.
 export const openWithUI = () => driveOpen().catch(e => alertDialog(e.message));
 export const saveWithUI = () => driveSave().then(ok => { if (ok) alertDialog(t('Guardado en Google Drive.')); }).catch(e => alertDialog(e.message));
+export const saveHtmlWithUI = () => driveSaveHtml().then(ok => { if (ok) alertDialog(t('Guardado en Google Drive.')); }).catch(e => alertDialog(e.message));

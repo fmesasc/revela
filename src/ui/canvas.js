@@ -176,7 +176,11 @@ function reconcile(b) {
       rich.style.display = vj ? 'flex' : ''; rich.style.flexDirection = vj ? 'column' : '';
       rich.style.justifyContent = vj || '';
       applyWordart(rich, b.wordart);
-      if (!el.classList.contains('editing') && rich.innerHTML !== (b.html || '')) rich.innerHTML = b.html || '';
+      // Not editing: show the (math‑rendered) HTML; re‑render only when it changed.
+      if (!el.classList.contains('editing') && rich.dataset.msrc !== (b.html || '')) {
+        rich.innerHTML = b.html || ''; rich.dataset.msrc = b.html || '';
+        if (hasInlineMath(b.html)) renderInlineMath(rich);
+      }
     }
   } else if (b.type === 'image') {
     const img = el.querySelector('img'); if (img) { if (img.getAttribute('src') !== b.src) img.src = b.src; applyImgStyle(img, b); }
@@ -275,7 +279,8 @@ function content(b) {
     const vj0 = { top: 'flex-start', middle: 'center', bottom: 'flex-end' }[b.vAlign];
     if (vj0) { d.style.display = 'flex'; d.style.flexDirection = 'column'; d.style.justifyContent = vj0; }
     if (b.wordart) applyWordart(d, b.wordart);
-    d.innerHTML = b.html || '';
+    d.innerHTML = b.html || ''; d.dataset.msrc = b.html || '';
+    if (hasInlineMath(b.html)) renderInlineMath(d);
     return d;
   }
   if (b.type === 'model') {
@@ -321,7 +326,8 @@ const hostOf = u => { try { return new URL(u).host || u; } catch { return u; } }
 // KaTeX for equation blocks, loaded on demand.
 const KATEX_CSS = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css';
 const KATEX_JS = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js';
-let katexLoading;
+const KATEX_AUTO = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js';
+let katexLoading, katexAutoLoading;
 function ensureKatex() {
   if (window.katex) return Promise.resolve();
   if (!katexLoading) katexLoading = new Promise((res, rej) => {
@@ -329,6 +335,27 @@ function ensureKatex() {
     const s = document.createElement('script'); s.src = KATEX_JS; s.onload = res; s.onerror = rej; document.head.appendChild(s);
   });
   return katexLoading;
+}
+function ensureKatexAuto() {
+  return ensureKatex().then(() => {
+    if (window.renderMathInElement) return;
+    if (!katexAutoLoading) katexAutoLoading = new Promise((res, rej) => {
+      const s = document.createElement('script'); s.src = KATEX_AUTO; s.onload = res; s.onerror = rej; document.head.appendChild(s);
+    });
+    return katexAutoLoading;
+  });
+}
+// Render inline $...$ / $$...$$ inside a text element (only when not editing).
+export const hasInlineMath = html => /\$[^$]/.test(html || '');
+function renderInlineMath(el) {
+  ensureKatexAuto().then(() => {
+    try {
+      window.renderMathInElement(el, {
+        delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }],
+        throwOnError: false,
+      });
+    } catch {}
+  }).catch(() => {});
 }
 function renderMath(el, latex) {
   el.dataset.latex = latex || '';
@@ -409,6 +436,8 @@ function setupTable(el, b) {
 function setupText(b, el) {
   const rich = el.querySelector('.rich');
   el.addEventListener('dblclick', () => {
+    // Show the raw source (with $…$) while editing, not the rendered math.
+    if (rich.dataset.msrc !== undefined) { rich.innerHTML = b.html || ''; rich.dataset.msrc = ''; }
     rich.contentEditable = 'true'; rich.focus(); el.classList.add('editing');
   });
   rich.addEventListener('input', () => { b.html = rich.innerHTML; }); // no re-render: keep the caret
