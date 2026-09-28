@@ -374,6 +374,12 @@ export async function run(frame) {
     eq(n, 2, 'reemplazos'); eq(b.html, 'Hola <b>planeta</b> y planeta', 'conserva el <b>');
   });
 
+  await test('PNG: el HTML de la diapositiva incluye sus bloques con estilo en línea', async () => {
+    reset(); const b = newText(); b.html = 'Hola'; b.fontSize = 50; R.render();
+    const html = R.io.slideInnerHTML(slide());
+    assert(/Hola/.test(html) && /font-size:50px/.test(html), 'bloque con estilo en línea');
+  });
+
   await test('exportar a PDF: una página por diapositiva visible', async () => {
     reset(); R.slides.addSlide(); R.slides.addSlide(); R.slides.toggleSlideHidden(0);
     const html = R.io.buildPrintHTML();

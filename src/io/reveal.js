@@ -245,6 +245,36 @@ export function exportPDF() {
   win.document.write(buildPrintHTML());
   win.document.close();
 }
+
+// The inline‑styled blocks of a slide (self‑contained, no external CSS).
+export function slideInnerHTML(slide) { return slide.blocks.map(b => blockHTML(b, slide)).join(''); }
+
+const H2C = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+const loadScript = src => new Promise((res, rej) => {
+  const sc = document.createElement('script'); sc.src = src; sc.onload = res;
+  sc.onerror = () => rej(new Error('no se pudo cargar html2canvas')); document.head.appendChild(sc);
+});
+
+// Rasterise the current slide to a PNG. 3D models and web embeds can't be
+// rasterised (they come out blank); everything else does.
+export async function exportPNG() {
+  const s = state.deck.slides[state.ui.slideIndex];
+  const { w, h } = state.deck.size;
+  const holder = document.createElement('div');
+  holder.style.cssText = `position:fixed;left:-99999px;top:0;width:${w}px;height:${h}px;overflow:hidden;color:#fff;background:${s.background}`;
+  holder.innerHTML = `<style>*{box-sizing:border-box}ul{list-style-type:var(--bullet,disc)}ol{list-style-type:var(--num,decimal)}`
+    + `img,video,model-viewer,iframe{width:100%;height:100%}table.tbl{border-collapse:collapse;width:100%;height:100%}`
+    + `table.tbl td{border:1px solid var(--stroke,#fff);padding:.15em .4em}table.tbl.has-header tr:first-child td{font-weight:700;background:rgba(127,127,127,.25)}</style>`
+    + slideInnerHTML(s);
+  document.body.appendChild(holder);
+  try {
+    await loadScript(H2C);
+    const canvas = await window.html2canvas(holder, { width: w, height: h, backgroundColor: null, scale: 2, useCORS: true, logging: false });
+    await new Promise(res => canvas.toBlob(blob => { if (blob) download(blob, slug(state.deck.name) + '-' + (state.ui.slideIndex + 1) + '.png'); res(); }));
+  } catch (e) {
+    alert('No se pudo exportar la imagen: ' + e.message);
+  } finally { holder.remove(); }
+}
 export function saveProject() {
   download(new Blob([JSON.stringify(state.deck, null, 2)], { type: 'application/json' }),
     slug(state.deck.name) + '.revela.json');

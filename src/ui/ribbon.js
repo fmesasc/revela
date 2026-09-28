@@ -32,6 +32,7 @@ const ACTIONS = {
   'save': io.saveProject,
   'export': io.exportHTML,
   'export-pdf': io.exportPDF,
+  'export-png': io.exportPNG,
   'present': io.present,
   'import-pptx': () => readFile('.pptx', async file => {
     try { replaceDeck(await importPPTX(file)); }
