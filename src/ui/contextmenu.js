@@ -19,14 +19,14 @@ import { renderLatex } from './canvas.js';
 import { tablePresets, tableClass, tableVars, tableCSS } from './shape.js';
 import { currentPalette, deckFg } from '../features/palettes.js';
 
-let menuEl;
+let menuEl, menuOpenedAt = 0;
 
 export function initContextMenu() {
   menuEl = document.createElement('div');
   menuEl.id = 'context-menu';
   menuEl.hidden = true;
   document.body.appendChild(menuEl);
-  document.addEventListener('click', () => hide());
+  document.addEventListener('click', () => { if (Date.now() - menuOpenedAt > 400) hide(); });   // not the click that ends a long press
   document.addEventListener('scroll', () => hide(), true);
   window.addEventListener('blur', () => hide());
 
@@ -60,17 +60,19 @@ export function initContextMenu() {
 }
 
 function longPress(el, handler) {
-  let timer, sx = 0, sy = 0, tgt = null;
+  let timer, sx = 0, sy = 0, tgt = null, fired = false;
   const cancel = () => clearTimeout(timer);
   el.addEventListener('touchstart', e => {
     if (e.touches.length !== 1) return;
-    const t = e.touches[0]; sx = t.clientX; sy = t.clientY; tgt = t.target;
-    timer = setTimeout(() => handler(sx, sy, document.elementFromPoint(sx, sy) || tgt), 500);
+    const t = e.touches[0]; sx = t.clientX; sy = t.clientY; tgt = t.target; fired = false;
+    timer = setTimeout(() => { fired = true; menuOpenedAt = Date.now(); handler(sx, sy, document.elementFromPoint(sx, sy) || tgt); }, 500);
   }, { passive: true });
   el.addEventListener('touchmove', e => {
     const t = e.touches[0]; if (t && (Math.abs(t.clientX - sx) > 12 || Math.abs(t.clientY - sy) > 12)) cancel();
   }, { passive: true });
-  el.addEventListener('touchend', cancel);
+  // Lifting the finger after a long press must not "click" (that would close
+  // the menu it just opened, or act on what's under it).
+  el.addEventListener('touchend', e => { cancel(); if (fired) { e.preventDefault(); fired = false; } });
   el.addEventListener('touchcancel', cancel);
 }
 

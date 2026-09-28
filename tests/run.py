@@ -17,6 +17,46 @@ class Quiet(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *a): pass
 
 
+def touch_checks(send, recv, port):
+    import json as _j
+    tid = recv(send('Target.createTarget', url='about:blank'))['result']['targetId']
+    sid = recv(send('Target.attachToTarget', targetId=tid, flatten=True))['result']['sessionId']
+    ev = lambda e: recv(send('Runtime.evaluate', sid, expression=e, awaitPromise=True, returnByValue=True)).get('result', {}).get('result', {}).get('value')
+    def touch(kind, x=0, y=0): recv(send('Input.dispatchTouchEvent', sid, type=kind, touchPoints=([] if kind == 'touchEnd' else [{'x': x, 'y': y}])))
+    recv(send('Emulation.setDeviceMetricsOverride', sid, width=390, height=844, deviceScaleFactor=2, mobile=True))
+    recv(send('Emulation.setTouchEmulationEnabled', sid, enabled=True, maxTouchPoints=5))
+    recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/index.html?test')); time.sleep(3)
+    fails = []
+    def check(ok, name):
+        if not ok: fails.append('✗ táctil: ' + name)
+    rect = lambda sel: _j.loads(ev(f"(()=>{{const r=document.querySelector({_j.dumps(sel)}).getBoundingClientRect();return JSON.stringify({{x:r.left+r.width/2,y:r.top+r.height/2,l:r.left,t:r.top}})}})()"))
+    bid = ev("window.__revela.store.currentSlide().blocks[1].id"); sel = f'#stage .block[data-id="{bid}"]'
+    r = rect(sel); touch('touchStart', r['x'], r['y']); touch('touchEnd'); time.sleep(0.3)
+    check(ev("window.__revela.state.ui.selection") == bid, 'tocar selecciona')
+    x0 = ev("window.__revela.store.currentSlide().blocks[1].x")
+    touch('touchStart', r['x'], r['y'])
+    for i in range(1, 9): touch('touchMove', r['x'] + i * 4, r['y']); time.sleep(0.02)
+    touch('touchEnd'); time.sleep(0.3)
+    check(ev("window.__revela.store.currentSlide().blocks[1].x") > x0, 'arrastrar mueve')
+    ev("(()=>{const b=window.__revela.store.currentSlide().blocks[1];b.x=140;b.w=600;window.__revela.render();return 1})()"); time.sleep(0.2)
+    h = rect(sel + ' .handle-size.se'); w0 = ev("window.__revela.store.currentSlide().blocks[1].w")
+    touch('touchStart', h['x'], h['y'])
+    for i in range(1, 9): touch('touchMove', h['x'] + i * 4, h['y']); time.sleep(0.02)
+    touch('touchEnd'); time.sleep(0.3)
+    check(ev("window.__revela.store.currentSlide().blocks[1].w") > w0, 'redimensionar con el tirador')
+    r = rect(sel); touch('touchStart', r['l'] + 10, r['t'] + 10); time.sleep(0.8); touch('touchEnd'); time.sleep(0.3)
+    items = ev("document.querySelector('.ctx-item')?.closest('[hidden]') ? '' : [...document.querySelectorAll('.ctx-item')].map(x=>x.textContent).join('|')") or ''
+    check(items.startswith('Copiar|Cortar|Pegar'), 'pulsación larga abre el menú con Copiar/Cortar/Pegar (' + items[:40] + ')')
+    ev("[...document.querySelectorAll('.ctx-item')].find(x=>x.textContent==='Copiar')?.click();1"); time.sleep(0.2)
+    n0 = ev("window.__revela.store.currentSlide().blocks.length"); p = rect('[data-action="clip-paste"]')
+    touch('touchStart', p['x'], p['y']); touch('touchEnd'); time.sleep(0.4)
+    check(ev("window.__revela.store.currentSlide().blocks.length") == n0 + 1, 'pegar desde la cinta')
+    t0 = rect(f'#stage .block[data-id="{ev("window.__revela.store.currentSlide().blocks[0].id")}"]')
+    for _ in range(2): touch('touchStart', t0['x'], t0['y']); touch('touchEnd'); time.sleep(0.12)
+    time.sleep(0.3); check(ev("!!document.querySelector('#stage .block.editing')"), 'doble toque para escribir')
+    return fails
+
+
 def main():
     chrome = next((shutil.which(c) for c in ('google-chrome', 'chromium', 'chromium-browser') if shutil.which(c)), None)
     if not chrome:
@@ -71,6 +111,12 @@ def main():
                           expression="/^REVELATEST (PASS|FAIL)/.test(document.title)?document.title:''"))
             out = r.get('result', {}).get('result', {}).get('value') or ''
             if out: break
+        # Touch checks with real touch events on a phone-sized page (the suite
+        # itself runs with mouse events).
+        touch_fail = touch_checks(send, recv, port) if out.startswith('REVELATEST PASS') else []
+        if touch_fail:
+            print('REVELATEST FAIL touch'); print('\n'.join(touch_fail)); return 1
+        if out.startswith('REVELATEST PASS'): out += ' + táctil 6/6'
         if out.startswith('REVELATEST FAIL'):
             r = recv(send('Runtime.evaluate', sid, returnByValue=True,
                           expression="[...document.querySelectorAll('.row.ko')].map(e=>e.innerText.replace(/\\s+/g,' ')).join('\\n')"))

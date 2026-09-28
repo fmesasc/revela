@@ -540,3 +540,17 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .sk-item img{width:100%;height:100%;object-fit:cover;display:block}.icons .sk-item img{object-fit:contain}
 .sk-item span{position:absolute;left:4px;bottom:4px;font-size:10px;background:#000a;color:#fff;border-radius:3px;padding:0 4px}
 .sk-item:hover{outline:2px solid var(--accent)}
+/* Selection handles keep their on-screen size at any zoom (--hz = 1 / zoom),
+   so they stay grabbable with a finger when the slide is shown small. */
+.handle-size{transform:scale(var(--hz,1))}
+.handle-rot{top:calc(-30px * var(--hz,1));transform:translateX(-50%) scale(var(--hz,1))}
+.handle-rot::before{height:calc(14px * var(--hz,1) / var(--hz,1))}
+.handle-del{top:calc(-30px * var(--hz,1));right:calc(-30px * var(--hz,1));transform:scale(var(--hz,1))}
+.block .cm-badge{transform:scale(var(--hz,1));transform-origin:top left}
+@media (pointer:coarse){
+  .handle-size{width:22px;height:22px}
+  .handle-size.nw{left:-12px;top:-12px}.handle-size.ne{right:-12px;top:-12px}
+  .handle-size.sw{left:-12px;bottom:-12px}.handle-size.se{right:-12px;bottom:-12px}
+  .handle-del{width:30px;height:30px;top:calc(-38px * var(--hz,1));right:calc(-38px * var(--hz,1))}
+  .handle-rot{width:24px;height:24px;top:calc(-40px * var(--hz,1))}
+}

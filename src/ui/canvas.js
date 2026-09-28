@@ -704,7 +704,7 @@ function startResize(ev, b, el, corner) {
       b.h = Math.round(b.w / ratio);
       if (corner.includes('n')) b.y = Math.round(o.y + o.h - b.h);
     }
-    el.style.cssText = `left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px`;
+    Object.assign(el.style, { left: b.x + 'px', top: b.y + 'px', width: b.w + 'px', height: b.h + 'px' });   // keep rotation/opacity
   };
   const onUp = () => {
     document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp);

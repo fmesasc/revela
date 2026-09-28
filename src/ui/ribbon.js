@@ -203,7 +203,7 @@ function applyZoom() {
   const z = state.ui.zoom || 1;
   const g = document.getElementById('stage-grid');
   const sizer = document.getElementById('stage-sizer');
-  if (g) g.style.transform = `scale(${z})`;
+  if (g) { g.style.transform = `scale(${z})`; g.style.setProperty('--hz', (1 / z).toFixed(4)); }  // handles keep their on-screen size
   if (sizer) {
     // Footprint from the deck size (deterministic; offsetWidth can be 0 mid‑render).
     const rw = state.ui.showRuler ? 20 : 0;
