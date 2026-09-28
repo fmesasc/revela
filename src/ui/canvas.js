@@ -151,6 +151,7 @@ function reconcile(b) {
   el.style.left = b.x + 'px'; el.style.top = b.y + 'px';
   el.style.width = b.w + 'px'; el.style.height = b.h + 'px';
   el.style.transform = transformOf(b);
+  el.style.opacity = (b.opacity != null && b.opacity < 100) ? b.opacity / 100 : '';
   el.classList.toggle('selected', isSelected(b.id));
   el.classList.toggle('animated', !!b.animation);
   el.classList.toggle('locked', !!b.locked);
@@ -216,6 +217,7 @@ function blockEl(b) {
   el.dataset.id = b.id;
   el.style.cssText = `left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px`;
   el.style.transform = transformOf(b);
+  if (b.opacity != null && b.opacity < 100) el.style.opacity = b.opacity / 100;
   el.appendChild(content(b));
 
   // Selection chrome.

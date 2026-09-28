@@ -78,7 +78,14 @@ export function addDiagram(kind = 'process') {
       bg: '#3f6497', borderColor: '#1e2a3a', radius: 10,
     });
     const ids = [];
-    if (kind === 'cycle') {
+    if (kind === 'hierarchy') {
+      const top = box((w - 240) / 2, h * 0.14, 240, 100, 0); top.html = 'Principal'; s.blocks.push(top);
+      const cn = 3, cw = 200, ch = 90, gap = 40, totalW = cn * cw + (cn - 1) * gap, x0 = (w - totalW) / 2, y = h * 0.56;
+      for (let i = 0; i < cn; i++) {
+        const c = box(x0 + i * (cw + gap), y, cw, ch, i); c.html = `Sub ${i + 1}`; s.blocks.push(c);
+        s.blocks.push({ id: uid(), type: 'connector', from: top.id, to: c.id, color: '#8a8a8a', arrow: true, x: 0, y: 0, w, h, rotation: 0, animation: null });
+      }
+    } else if (kind === 'cycle') {
       const bw = 220, bh = 100, R = Math.min(w, h) * 0.32, cx = w / 2, cy = h / 2;
       for (let i = 0; i < n; i++) {
         const ang = -Math.PI / 2 + i * 2 * Math.PI / n;
@@ -244,6 +251,12 @@ export function alignSelected(where) {
     if (where === 'top') b.y = 40;
     if (where === 'bottom') b.y = h - b.h - 40;
   });
+}
+
+export function setOpacity(v) {
+  const bs = selectedBlocks(); if (!bs.length) return;
+  const o = Math.max(0, Math.min(100, +v));
+  commit(() => { for (const b of bs) b.opacity = o; }, { history: false });
 }
 
 // Lock prevents moving/resizing/rotating (still selectable).

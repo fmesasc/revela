@@ -10,7 +10,8 @@ const MODEL_VIEWER = 'https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/di
 
 const tf = b => `rotate(${b.rotation || 0}deg)${b.flipH ? ' scaleX(-1)' : ''}${b.flipV ? ' scaleY(-1)' : ''}`;
 const box = b => `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;`
-  + `height:${b.h}px;transform:${tf(b)};`;
+  + `height:${b.h}px;transform:${tf(b)};`
+  + (b.opacity != null && b.opacity < 100 ? `opacity:${b.opacity / 100};` : '');
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const slug = s => (String(s).trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'presentacion');

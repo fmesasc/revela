@@ -130,6 +130,7 @@ function forBlock(b) {
     ['Voltear horizontalmente', () => blocks.flipSelected('h')],
     ['Voltear verticalmente', () => blocks.flipSelected('v')],
     ['Restablecer giro', () => blocks.resetRotation()],
+    ['Opacidad…', () => openOpacity(b)],
     [b.locked ? 'Desbloquear' : 'Bloquear', () => blocks.toggleLock()]);
 
   // Position + arrange, common to every object.
@@ -257,6 +258,23 @@ function openCodeOpts(b) {
       lineSteps: back.querySelector('.cd-steps').value.trim(),
     });
     close();
+  });
+}
+
+function openOpacity(b) {
+  if (document.getElementById('op-modal')) return;
+  const back = document.createElement('div');
+  back.id = 'op-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:left;min-width:260px">
+    <button class="modal-close">✕</button><h3>Opacidad</h3>
+    <label class="fr-l"><span class="op-val">${b.opacity ?? 100}%</span>
+      <input type="range" class="op-range" min="0" max="100" value="${b.opacity ?? 100}"></label></div>`;
+  document.body.appendChild(back);
+  const close = () => back.remove();
+  back.querySelector('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  back.querySelector('.op-range').addEventListener('input', e => {
+    back.querySelector('.op-val').textContent = e.target.value + '%'; blocks.setOpacity(e.target.value);
   });
 }
 

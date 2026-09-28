@@ -427,6 +427,19 @@ export async function run(frame) {
     assert(/class="fragment grow"/.test(R.io.buildHTML()), 'clase de fragmento grow');
   });
 
+  await test('opacidad de objeto en lienzo y export', async () => {
+    reset(); const b = newText(); R.blocks.setOpacity(50); R.render(); await sleep(10);
+    eq(b.opacity, 50, 'opacidad en el modelo');
+    assert(/opacity:0\.5/.test(R.io.buildHTML()), 'opacidad en el export');
+  });
+
+  await test('diagrama de jerarquía: raíz + 3 hijos con conectores', async () => {
+    reset(); const n0 = slide().blocks.length; R.blocks.addDiagram('hierarchy');
+    const added = slide().blocks.slice(n0);
+    eq(added.filter(x => x.type === 'text').length, 4, 'raíz + 3 hijos');
+    eq(added.filter(x => x.type === 'connector').length, 3, 'tres conectores');
+  });
+
   await test('bloquear objeto marca la bandera y la clase', async () => {
     reset(); const b = newText(); R.blocks.toggleLock(); await sleep(20);
     assert(b.locked, 'bandera locked');
