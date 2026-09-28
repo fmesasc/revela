@@ -94,6 +94,12 @@ Más detalles en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 Las aportaciones son bienvenidas. Lee [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Contribuciones
+
+Si este proyecto te ha sido útil y te gustaría ver más proyectos similares, considera invitarme a un café :) para ayudarme a continuar desarrollando y mejorando el código. ¡Tu apoyo es muy apreciado y ayuda a mantener vivo este proyecto!
+
+[![PayPal](https://www.paypalobjects.com/webstatic/mktg/logo/AM_SbyPP_mc_vs_dc_ae.jpg)](https://paypal.me/fmesasc)
+
 ## Licencia
 
 [MIT](LICENSE) © Francisco Mesas Cervilla.

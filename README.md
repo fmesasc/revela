@@ -90,6 +90,12 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
 
 Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Support
+
+If this project is useful to you and you'd like to see more like it, consider buying me a coffee :) — it helps me keep developing and improving Revela. Thank you!
+
+[![PayPal](https://www.paypalobjects.com/webstatic/mktg/logo/AM_SbyPP_mc_vs_dc_ae.jpg)](https://paypal.me/fmesasc)
+
 ## License
 
 [MIT](LICENSE) © Francisco Mesas Cervilla.

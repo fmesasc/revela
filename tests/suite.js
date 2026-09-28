@@ -1159,6 +1159,12 @@ export async function run(frame) {
     } finally { W.fetch = realFetch; AI.disconnectAi(); }
   });
 
+  await test('botón de apoyo con el enlace de PayPal', async () => {
+    const a = D.getElementById('donate');
+    assert(a && !a.hidden, 'visible'); eq(a.href, 'https://paypal.me/fmesasc', 'enlace'); eq(a.target, '_blank', 'nueva pestaña');
+    eq(a.rel, 'noopener', 'sin acceso a la ventana de origen');
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');
