@@ -4,8 +4,10 @@
 #   «latest» (Revela · última versión), que se sustituye en cada subida.
 # - Una etiqueta vX.Y.Z: además, una release fija con ese número.
 # - También a mano: Actions ▸ Desktop app ▸ Run workflow.
-# Los instaladores no están firmados: Windows y macOS avisan al abrirlos la
-# primera vez.
+# Los instaladores no están firmados con certificado (Windows y macOS avisan
+# al abrirlos la primera vez), pero las actualizaciones sí van firmadas con la
+# clave de Revela (secretos TAURI_SIGNING_PRIVATE_KEY[_PASSWORD]): la app
+# instalada comprueba latest.json al abrirse y solo acepta paquetes firmados.
 name: Desktop app
 
 on:
@@ -35,6 +37,7 @@ jobs:
             name: windows
           - os: macos-latest
             name: macos
+            target: universal-apple-darwin      # Apple silicon and Intel in one
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -42,6 +45,8 @@ jobs:
         with:
           node-version: 22
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: desktop/src-tauri
@@ -68,17 +73,23 @@ jobs:
         run: npx --yes @tauri-apps/cli@2 icon ../../icons/icon-512.png
       - name: Build
         working-directory: desktop/src-tauri
-        run: npx --yes @tauri-apps/cli@2 build
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npx --yes @tauri-apps/cli@2 build ${{ matrix.target && format('--target {0}', matrix.target) || '' }}
       - uses: actions/upload-artifact@v4
         with:
           name: revela-${{ matrix.name }}
           path: |
-            desktop/src-tauri/target/release/bundle/**/*.msi
-            desktop/src-tauri/target/release/bundle/**/*.exe
-            desktop/src-tauri/target/release/bundle/**/*.dmg
-            desktop/src-tauri/target/release/bundle/**/*.deb
-            desktop/src-tauri/target/release/bundle/**/*.rpm
-            desktop/src-tauri/target/release/bundle/**/*.AppImage
+            desktop/src-tauri/target/**/release/bundle/**/*.msi
+            desktop/src-tauri/target/**/release/bundle/**/*.exe
+            desktop/src-tauri/target/**/release/bundle/**/*.dmg
+            desktop/src-tauri/target/**/release/bundle/**/*.deb
+            desktop/src-tauri/target/**/release/bundle/**/*.rpm
+            desktop/src-tauri/target/**/release/bundle/**/*.AppImage
+            desktop/src-tauri/target/**/release/bundle/**/*.app.tar.gz
+            desktop/src-tauri/target/**/release/bundle/**/*.sig
           if-no-files-found: error
 
   release:
@@ -90,6 +101,23 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: out
+      # latest.json: what the installed apps read to update themselves.
+      - name: Update manifest
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then V="${GITHUB_REF_NAME#v}"; TAG="$GITHUB_REF_NAME"; else V="0.1.${GITHUB_RUN_NUMBER}"; TAG=latest; fi
+          node - "$V" "$TAG" "$GITHUB_REPOSITORY" <<'JS'
+          const fs = require('fs'), path = require('path');
+          const [version, tag, repo] = process.argv.slice(2);
+          const all = []; (function walk(d) { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); e.isDirectory() ? walk(p) : all.push(p); } })('out');
+          const entry = re => { const f = all.find(x => re.test(x) && !x.endsWith('.sig')); if (!f || !fs.existsSync(f + '.sig')) throw new Error('missing ' + re);
+            return { signature: fs.readFileSync(f + '.sig', 'utf8').trim(), url: `https://github.com/${repo}/releases/download/${tag}/${encodeURIComponent(path.basename(f))}` }; };
+          const mac = entry(/\.app\.tar\.gz$/);
+          const manifest = { version, notes: 'Nueva versión de Revela.', pub_date: new Date().toISOString(),
+            platforms: { 'windows-x86_64': entry(/-setup\.exe$/), 'linux-x86_64': entry(/\.AppImage$/), 'darwin-aarch64': mac, 'darwin-x86_64': mac } };
+          fs.writeFileSync('out/latest.json', JSON.stringify(manifest, null, 2));
+          console.log(JSON.stringify(manifest, null, 2));
+          JS
       - name: Publish
         shell: bash
         run: |

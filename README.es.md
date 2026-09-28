@@ -60,7 +60,7 @@ Consulta la [hoja de ruta](ROADMAP.md) para el detalle y lo que viene después.
 
 ## Puesta en marcha
 
-**App de escritorio** (Windows, macOS, Linux): instaladores en la [última versión](https://github.com/fmesasc/revela/releases/latest), que se genera sola con cada cambio (aún sin firmar: Windows y macOS avisan la primera vez).
+**App de escritorio** (Windows, macOS, Linux): instaladores en la [última versión](https://github.com/fmesasc/revela/releases/latest), que se genera sola con cada cambio (aún sin firmar: Windows y macOS avisan la primera vez). Una vez instalada se actualiza sola: al abrirla ofrece la versión nueva, comprobada con la clave de actualizaciones de Revela.
 
 Revela es una aplicación estática sin compilación.
 
