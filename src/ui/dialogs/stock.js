@@ -73,7 +73,7 @@ export async function openOnlineIcons() {
         const b = document.createElement('button'); b.type = 'button'; b.className = 'sk-item'; b.title = `${name}${col ? ' — ' + col.name + ' (' + col.license?.title + ')' : ''}`;
         b.innerHTML = `<img loading="lazy" src="${esc(iconPreview(name))}" alt="${esc(name)}">`;
         b.addEventListener('click', async () => {
-          try { await insertOnlineIcon(name, q('.sk-col').value, col?.license); back.remove(); } catch (e) { alertDialog(t('No se pudo buscar: ') + e.message); }
+          try { await insertOnlineIcon(name, q('.sk-col').value, col?.license); back.remove(); } catch (e) { alertDialog(t('No se pudo insertar el icono: ') + e.message); }
         });
         q('.sk-grid').appendChild(b);
       }

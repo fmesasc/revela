@@ -192,6 +192,14 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       eq(i.alt, 'rocket', 'texto alternativo');
       assert(calls.some(u => /color=%23ff0000/.test(u)), 'color en la petición');
     } finally { W.fetch = real; }
+    // An extension blocks fetch() but not images: the icon is still inserted.
+    W.fetch = async url => { if (String(url).includes('iconify')) throw new TypeError('Failed to fetch'); return real(url); };
+    const RealImage = W.Image;
+    W.Image = function () { const i = new RealImage(); setTimeout(() => { i.onerror?.(); }, 0); return i; };   // and images too
+    try {
+      const i2 = await R.stock.insertOnlineIcon('mdi:rocket', '#00ff00');
+      eq(i2.src, 'https://api.iconify.design/mdi/rocket.svg?color=%2300ff00&width=512&height=512', 'si todo falla, lo enlaza en vez de dar error');
+    } finally { W.fetch = real; W.Image = RealImage; }
   });
 
   await test('núcleo: los avisos de io/features usan los diálogos del editor', async () => {

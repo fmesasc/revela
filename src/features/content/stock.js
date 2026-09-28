@@ -47,11 +47,26 @@ export async function searchIcons(q) {
   return { icons: d.icons || [], collections: d.collections || {} };
 }
 export const iconPreview = (name, color = '#333333') => `https://api.iconify.design/${name.replace(':', '/')}.svg?color=${encodeURIComponent(color)}`;
+// The icon as a picture stored in the deck. Some browser extensions block
+// fetch() to third parties while letting images load (the previews show but
+// the download fails): then the image itself is drawn to a PNG, and if even
+// that is refused, the icon is linked (it needs a connection to show).
+export async function iconSource(name, color = '#ffffff') {
+  const url = `https://api.iconify.design/${name.replace(':', '/')}.svg?color=${encodeURIComponent(color)}&width=512&height=512`;
+  try {
+    const r = await fetch(url);
+    if (r.ok) return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(await r.text())));
+  } catch {}
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const c = document.createElement('canvas'); c.width = c.height = 512;
+    c.getContext('2d').drawImage(img, 0, 0, 512, 512);
+    return c.toDataURL('image/png');
+  } catch {}
+  return url;
+}
 export async function insertOnlineIcon(name, color = '#ffffff', license = null) {
-  const r = await fetch(`https://api.iconify.design/${name.replace(':', '/')}.svg?color=${encodeURIComponent(color)}&width=512&height=512`);
-  if (!r.ok) throw new Error('Iconify ' + r.status);
-  const svg = await r.text();
-  const src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+  const src = await iconSource(name, color);
   const b = { id: uid(), type: 'image', src, fit: 'contain', alt: name.split(':')[1].replace(/-/g, ' '), decorative: false,
     ...(license && /CC-BY/i.test(license.spdx || '') && { credit: `${name} — ${license.title}` }),
     x: 560, y: 280, w: 160, h: 160, rotation: 0, animation: null };
