@@ -84,7 +84,7 @@ export async function signIn() {
 }
 export async function signOut() {
   try { if (accessToken) (await gis()).revoke(accessToken, () => {}); } catch {}
-  accessToken = null; tokenExp = 0; writeLS(LS_ACCOUNT, null); writeLS(LS_FILE, null); currentFile = null;
+  accessToken = null; tokenExp = 0; tokenClient = null; writeLS(LS_ACCOUNT, null); writeLS(LS_FILE, null); currentFile = null;
   setStatus('idle');
 }
 

@@ -1168,4 +1168,10 @@ export default {
   "La clave de subida no es correcta.": "De uploadsleutel is niet juist.",
   "La presentación es demasiado grande para el servidor.": "De presentatie is te groot voor de server.",
   "El servidor respondió ": "De server antwoordde ",
+  "Servidor de Revela (con tu cuenta de Google)": "Revela-server (met je Google-account)",
+  "Usar otro servidor": "Een andere server gebruiken",
+  "Tu cuenta de Google no tiene permiso en este servidor.": "Je Google-account heeft geen toegang tot deze server.",
+  "Inicia sesión con Google para compartir o colaborar a través del servidor.": "Log in met Google om via de server te delen of samen te werken.",
+  "No se pudo usar el servidor: ": "Kan de server niet gebruiken: ",
+  "¿Colaborar directamente entre navegadores? (Esta pestaña tendrá que seguir abierta.)": "Direct tussen browsers samenwerken? (Dit tabblad moet open blijven.)",
 };

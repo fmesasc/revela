@@ -5,6 +5,7 @@ import { publish } from '../../io/share/publish.js';
 import { sharesList, removeShare } from '../../io/share/shares.js';
 import { gdriveReady, openGdriveSetup, driveUnshare } from '../../io/cloud/gdrive.js';
 import { serverConfig, setServerConfig, serverReady, serverUnshare, serverStats } from '../../io/cloud/shareserver.js';
+import { SERVER_URL } from '../../core/config.js';
 import { t } from '../../i18n/index.js';
 import { alertDialog, confirmDialog } from './dialog.js';
 
@@ -31,10 +32,12 @@ export function openShare() {
     <fieldset><legend>${t('Dónde')}</legend>
       <label class="fr-chk"><input type="radio" name="sh-w" value="file" checked> ${t('Archivo HTML: lo subes donde quieras (la web del centro, Moodle…)')}</label>
       <label class="fr-chk"><input type="radio" name="sh-w" value="drive"> ${t('Mi Google Drive')} ${gdriveReady() ? '' : `<button type="button" class="mini2 sh-gd">${t('Configurar')}</button>`}</label>
-      <label class="fr-chk"><input type="radio" name="sh-w" value="server"> ${t('Servidor propio')}</label>
+      <label class="fr-chk"><input type="radio" name="sh-w" value="server"> ${t('Servidor de Revela (con tu cuenta de Google)')}</label>
       <div class="sh-srv" hidden>
-        <input type="url" class="sh-url" placeholder="https://revela-share.….workers.dev" value="${esc(sc.url)}">
-        <input type="password" class="sh-up" placeholder="${t('Clave de subida')}" value="${esc(sc.uploadKey)}">
+        <details class="sh-other"${sc.builtIn ? '' : ' open'}><summary>${t('Usar otro servidor')}</summary>
+          <input type="url" class="sh-url" placeholder="${esc(SERVER_URL)}" value="${esc(sc.builtIn ? '' : sc.url)}">
+          <input type="password" class="sh-up" placeholder="${t('Clave de subida')}" value="${esc(sc.uploadKey)}">
+        </details>
         <label class="fr-l">${t('Solo cuentas de Google de este dominio (opcional)')} <input type="text" class="sh-domain" placeholder="escuela.example"></label>
         <label class="fr-l">${t('Caduca')} <select class="sh-days"><option value="0">${t('Nunca')}</option><option value="7">7 ${t('días')}</option>
           <option value="30">30 ${t('días')}</option><option value="90">90 ${t('días')}</option></select></label>
@@ -67,7 +70,7 @@ export function openShare() {
     }
     const where = val('sh-w');
     if (where === 'server') {
-      setServerConfig({ url: q('.sh-url').value.trim(), uploadKey: q('.sh-up').value });
+      setServerConfig({ url: q('.sh-url').value.trim(), uploadKey: q('.sh-up').value });   // empty: Revela's
       if (!serverReady()) return alertDialog(t('Escribe la dirección https del servidor.'));
     }
     if (where === 'drive' && !gdriveReady()) return openGdriveSetup();

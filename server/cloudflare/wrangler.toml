@@ -13,6 +13,10 @@ bucket_name = "revela-shares"
 # Only who knows this key (set it in Revela ▸ Compartir ▸ Servidor) can upload.
 # Better as a secret: `npx wrangler secret put UPLOAD_KEY` and remove it here.
 MAX_MB = "30"
+# Revela's Google client (public, as in src/core/config.js): people signed in to
+# Revela with Google can share and open collaboration rooms. To limit it to
+# some accounts: `npx wrangler secret put ALLOWED` with e.g. "ana@x.org, @school.example".
+GOOGLE_CLIENT_ID = "960102070599-jahg4mdj304k5ftb9b6p2ck9hp5gtbc9.apps.googleusercontent.com"
 
 # Live collaboration rooms (collab.js): one Durable Object per shared session.
 [[durable_objects.bindings]]

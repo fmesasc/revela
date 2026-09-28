@@ -1168,4 +1168,10 @@ export default {
   "La clave de subida no es correcta.": "A clave de subida non é correcta.",
   "La presentación es demasiado grande para el servidor.": "A presentación é demasiado grande para o servidor.",
   "El servidor respondió ": "O servidor respondeu ",
+  "Servidor de Revela (con tu cuenta de Google)": "Servidor de Revela (coa túa conta de Google)",
+  "Usar otro servidor": "Usar outro servidor",
+  "Tu cuenta de Google no tiene permiso en este servidor.": "A túa conta de Google non ten permiso neste servidor.",
+  "Inicia sesión con Google para compartir o colaborar a través del servidor.": "Inicia sesión con Google para compartir ou colaborar a través do servidor.",
+  "No se pudo usar el servidor: ": "Non se puido usar o servidor: ",
+  "¿Colaborar directamente entre navegadores? (Esta pestaña tendrá que seguir abierta.)": "Colaborar directamente entre navegadores? (Esta lapela terá que seguir aberta.)",
 };

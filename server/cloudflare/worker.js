@@ -5,7 +5,7 @@
 // server. So it holds noise it cannot read. Identifiers are 128-bit random
 // values, nothing is listed, and every response says noindex.
 //
-//   POST   /s         body: sealed JSON  → { id, token }   (X-Upload-Key if UPLOAD_KEY is set)
+//   POST   /s         body: sealed JSON  → { id, token }   (see authorize())
 //                      ?days=N expires it; ?domain=example.org&clientId=… only lets
 //                      Google accounts of that domain read it (see below)
 //   GET    /s/:id     → the sealed JSON (404 when missing or expired; 401 asking
@@ -21,8 +21,8 @@
 // Also live collaboration rooms under /c (collab.js).
 //
 // Bindings (wrangler.toml): SHARES (R2 bucket), ROOMS (Durable Object). Optional
-// vars: UPLOAD_KEY (only who knows it can upload or open rooms), MAX_MB
-// (default 30), ALLOW_ORIGIN (default *).
+// vars: UPLOAD_KEY and/or GOOGLE_CLIENT_ID + ALLOWED (who can upload or open
+// rooms, see authorize()), MAX_MB (default 30), ALLOW_ORIGIN (default *).
 
 import { handleCollab, CollabRoom } from './collab.js';
 export { CollabRoom };
@@ -47,6 +47,34 @@ export async function verifyGoogleToken(jwt, clientId, fetchImpl = fetch) {
 }
 export const resetCerts = () => { certs = null; };
 
+// Who may upload a share or open a collaboration room:
+// - whoever sends the upload key (X-Upload-Key), if UPLOAD_KEY is set;
+// - someone signed in to Revela with Google (Authorization: Bearer <access
+//   token>), if GOOGLE_CLIENT_ID is set: Google confirms the token was issued
+//   to that app, and ALLOWED (optional: "ana@x.org, @school.example") limits
+//   which accounts.
+// With neither variable set the server is open.
+const seen = new Map();                                     // token → { email, until }, a few minutes
+export async function authorize(req, env, fetchImpl = fetch) {
+  if (!env.UPLOAD_KEY && !env.GOOGLE_CLIENT_ID) return { open: true };
+  if (env.UPLOAD_KEY && req.headers.get('X-Upload-Key') === env.UPLOAD_KEY) return { key: true };
+  const tok = (req.headers.get('Authorization') || '').replace(/^Bearer /, '');
+  if (!env.GOOGLE_CLIENT_ID || !tok) return null;
+  let who = seen.get(tok);
+  if (!who || who.until < Date.now()) {
+    const r = await fetchImpl('https://oauth2.googleapis.com/tokeninfo?access_token=' + encodeURIComponent(tok)).catch(() => null);
+    if (!r || !r.ok) return null;
+    const i = await r.json();
+    if (i.aud !== env.GOOGLE_CLIENT_ID && i.azp !== env.GOOGLE_CLIENT_ID) return null;
+    if (!i.email || String(i.email_verified) !== 'true') return null;
+    who = { email: String(i.email).toLowerCase(), until: Date.now() + Math.min(300, +i.expires_in || 300) * 1000 };
+    seen.set(tok, who); if (seen.size > 1000) seen.clear();
+  }
+  const allowed = String(env.ALLOWED || '').toLowerCase().split(/[\s,;]+/).filter(Boolean);
+  if (allowed.length && !allowed.some(a => (a.startsWith('@') ? who.email.endsWith(a) : who.email === a))) return null;
+  return { email: who.email };
+}
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
@@ -63,7 +91,7 @@ export default {
     if (url.pathname === '/c' || url.pathname.startsWith('/c/')) return handleCollab(req, env, url, json);
 
     if (req.method === 'POST' && url.pathname === '/s') {
-      if (env.UPLOAD_KEY && req.headers.get('X-Upload-Key') !== env.UPLOAD_KEY) return json({ error: 'forbidden' }, 403);
+      if (!(await authorize(req, env, env.FETCH || fetch))) return json({ error: 'forbidden' }, 403);
       const max = (+env.MAX_MB || 30) * 1024 * 1024;
       if (+(req.headers.get('Content-Length') || 0) > max) return json({ error: 'too large' }, 413);
       const body = await req.text();

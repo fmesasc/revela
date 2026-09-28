@@ -1168,4 +1168,10 @@ export default {
   "La clave de subida no es correcta.": "مفتاح الرفع غير صحيح.",
   "La presentación es demasiado grande para el servidor.": "العرض كبير جدًا بالنسبة للخادم.",
   "El servidor respondió ": "ردّ الخادم ",
+  "Servidor de Revela (con tu cuenta de Google)": "خادم Revela (بحسابك في Google)",
+  "Usar otro servidor": "استخدام خادم آخر",
+  "Tu cuenta de Google no tiene permiso en este servidor.": "حسابك في Google غير مسموح له على هذا الخادم.",
+  "Inicia sesión con Google para compartir o colaborar a través del servidor.": "سجّل الدخول باستخدام Google للمشاركة أو التعاون عبر الخادم.",
+  "No se pudo usar el servidor: ": "تعذّر استخدام الخادم: ",
+  "¿Colaborar directamente entre navegadores? (Esta pestaña tendrá que seguir abierta.)": "هل تريد التعاون مباشرة بين المتصفحات؟ (يجب أن تبقى علامة التبويب هذه مفتوحة.)",
 };

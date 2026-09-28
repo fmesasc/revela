@@ -20,3 +20,9 @@ export const GOOGLE = {
   apiKey: 'AIzaSyAWDjnxLpwMf0xtkQ8SwYHdl59QDfTDs_4',
   appId: '960102070599',                   // project number: the Picker grants access to the chosen file
 };
+
+// Revela's server (server/cloudflare): sharing by link and live collaboration
+// rooms. Creating a share or a room needs a Google sign-in in Revela (or the
+// server's upload key); opening a link needs nothing. Anyone can use their own
+// server instead (Compartir ▸ Servidor).
+export const SERVER_URL = 'https://revela-share.fmesasc.workers.dev';

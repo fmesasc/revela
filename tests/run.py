@@ -179,7 +179,7 @@ def e2e_checks(send, recv, port):
     check(wait(A, "[...document.querySelectorAll('.rv-poll-res')].some(e=>/¿Hola\\?/.test(e.innerText))", 10), 'pregunta del público en pantalla')
     # Co-editing: A shares with an edit link, B opens it; changes and chat both ways.
     C = tab(base + '/index.html?test'); time.sleep(3)
-    ev(C, "(()=>{localStorage.setItem('revela.author','Ana');const R=window.__revela;R.store.replaceDeck(R.model.emptyDeck());R.store.commit(()=>{R.state.deck.name='Coedición'});document.querySelector('[data-action=collab]').click();return 1})()")
+    ev(C, "(()=>{localStorage.setItem('revela.author','Ana');localStorage.setItem('revela.shareServer',JSON.stringify({url:'off'}));const R=window.__revela;R.store.replaceDeck(R.model.emptyDeck());R.store.commit(()=>{R.state.deck.name='Coedición'});document.querySelector('[data-action=collab]').click();return 1})()")
     wait(C, "!!document.querySelector('.dlg-ok')", 5); ev(C, "document.querySelector('.dlg-ok').click();1")
     link = wait(C, "document.querySelector('#collab-modal .cb-link[data-role=edit]')?.value||''")
     check(link, 'colaborar da un enlace de edición')

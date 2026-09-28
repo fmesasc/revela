@@ -434,4 +434,28 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       await GD.signOut(); eq(GD.account(), null, 'cerrar sesión'); eq(GD.linkedFile(), null);
     } finally { W.fetch = realFetch; W.google = realGoogle; GD.setAutosaveDelay(4000); D.getElementById('home-screen')?.remove(); }
   });
+
+  await test('colaborar con el servidor de Revela: pide la sesión de Google y, si falla, ofrece hacerlo directo', async () => {
+    reset(); const W = frame.contentWindow, realFetch = W.fetch, realGoogle = W.google;
+    W.localStorage.removeItem('revela.shareServer'); W.localStorage.setItem('revela.author', 'Ana');
+    const SS = await W.eval("import('/src/io/cloud/shareserver.js')"), GD = await W.eval("import('/src/io/cloud/gdrive.js')");
+    eq(SS.serverConfig().url, 'https://revela-share.fmesasc.workers.dev', 'el servidor de Revela viene de serie');
+    W.google = { accounts: { oauth2: { initTokenClient: () => ({ requestAccessToken() { this.callback({ access_token: 'tokG', expires_in: 3600 }); } }), revoke: () => {} } } };
+    const sent = [];
+    W.fetch = async (url, o = {}) => { url = String(url); sent.push({ url, o });
+      if (url.includes('/oauth2/v3/userinfo')) return new W.Response(JSON.stringify({ name: 'Ana', email: 'ana@example.org' }));
+      if (url.endsWith('/c')) return new W.Response('{"error":"forbidden"}', { status: 403 });
+      return realFetch(url, o); };
+    try {
+      await GD.signOut();
+      D.querySelector('[data-action="collab"]').click(); await sleep(20);
+      assert(/tu servidor/.test(D.querySelector('.dlg-msg').textContent), 'avisa de que va por el servidor'); D.querySelector('.dlg-ok').click(); await sleep(150);
+      const c = sent.find(x => x.url === 'https://revela-share.fmesasc.workers.dev/c');
+      assert(c && c.o.headers.Authorization === 'Bearer tokG', 'crea la sala con la sesión de Google');
+      eq(GD.account()?.email, 'ana@example.org', 'e inicia sesión si no la había');
+      const msg = D.querySelector('.dlg-msg')?.textContent || '';
+      assert(/no tiene permiso/.test(msg) && /directamente entre navegadores/.test(msg), 'si el servidor no deja, ofrece hacerlo directo: ' + msg);
+      D.querySelector('.dlg-cancel').click();
+    } finally { W.fetch = realFetch; W.google = realGoogle; await GD.signOut(); }
+  });
 }

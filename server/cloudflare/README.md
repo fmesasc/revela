@@ -42,6 +42,26 @@ To update it after a change in this folder: `npx wrangler deploy` again.
 To try it locally: `npx wrangler dev --var UPLOAD_KEY:test` (then use
 `http://127.0.0.1:8787` as the address in Revela).
 
+## Who can use it
+
+Opening a shared link or joining a session needs nothing. Creating a share or
+a collaboration room needs one of:
+
+- being **signed in to Revela with Google**: `GOOGLE_CLIENT_ID` (in
+  `wrangler.toml`, public) is Revela's Google client; the server asks Google
+  whether the token was issued to it. To limit it to some accounts:
+  `npx wrangler secret put ALLOWED` with e.g. `ana@example.org, @school.example`.
+- the **upload key** (`UPLOAD_KEY` secret), for a server of your own used
+  without Google (Compartir ▸ Servidor ▸ Usar otro servidor).
+
+## Automatic deploys from GitHub
+
+`.github/workflows/server.yml` runs the tests and deploys this folder when it
+changes. It needs two repository secrets (Settings ▸ Secrets and variables ▸
+Actions): `CLOUDFLARE_API_TOKEN` (Cloudflare ▸ My Profile ▸ API Tokens ▸
+Create Token ▸ template "Edit Cloudflare Workers") and `CLOUDFLARE_ACCOUNT_ID`.
+The Worker's own secrets (`UPLOAD_KEY`, `ALLOWED`) stay in Cloudflare.
+
 ## What it knows
 
 - Shares: only encrypted data and, per share, a view counter with the date of

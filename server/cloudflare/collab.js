@@ -7,7 +7,7 @@
 // survives the owner closing their tab, and works where browsers can't talk
 // to each other directly.
 //
-//   POST /c            body { deck } (X-Upload-Key if UPLOAD_KEY is set)
+//   POST /c            body { deck } (upload key or Google sign-in: worker.js authorize())
 //                      → { room, tokens: { view, comment, edit }, owner }
 //   GET  /c/:room      WebSocket; first message { t: 'hello', token, name }
 //
@@ -16,6 +16,7 @@
 // and long messages travel in parts (Cloudflare's limit is 1 MiB).
 
 import { applyOps, allowed, ROLES, pack, unpacker } from '../../src/features/live/collabsync.js';
+import { authorize } from './worker.js';
 
 const COLORS = ['#e8590c', '#1c7ed6', '#2f9e44', '#ae3ec9', '#f08c00', '#0c8599', '#e03131', '#5c7cfa'];
 const SAVE_DELAY = 5000;
@@ -27,7 +28,7 @@ const key = room => `rooms/${room}.json`;
 export async function handleCollab(req, env, url, json) {
   if (!env.ROOMS) return json({ error: 'collaboration not configured' }, 501);
   if (req.method === 'POST' && url.pathname === '/c') {
-    if (env.UPLOAD_KEY && req.headers.get('X-Upload-Key') !== env.UPLOAD_KEY) return json({ error: 'forbidden' }, 403);
+    if (!(await authorize(req, env, env.FETCH || fetch))) return json({ error: 'forbidden' }, 403);
     const max = (+env.MAX_MB || 30) * 1024 * 1024;
     const body = await req.text();
     if (body.length > max) return json({ error: 'too large' }, 413);

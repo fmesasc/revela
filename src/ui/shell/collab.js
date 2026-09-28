@@ -33,14 +33,18 @@ export async function openCollab() {
       ? t('Colaborar en directo con tu servidor: quien tenga un enlace verá los cambios al momento y, según el enlace, podrá comentar o editar. La presentación se guarda en tu servidor mientras dure la sesión (aunque cierres esta pestaña) y se borra al terminarla. ¿Empezar?')
       : t('Colaborar en directo: quien tenga un enlace verá los cambios al momento y, según el enlace, podrá comentar o editar. Los datos van directamente entre los navegadores (cifrados); esta pestaña debe seguir abierta mientras dure la sesión. ¿Empezar?')))) return;
     const name = await askName(); if (!name) return;
+    const direct = async () => { const code = newCode(); hostCollab({ name, listen: await peerListen(code), code }); };
     try {
-      if (viaServer) {                                       // a room on the server (Compartir ▸ Servidor propio)
-        const r = await createRoom(state.deck);
-        await joinCollab({ name, token: r.owner, connect: () => roomConnect(r.server, r.room), room: { code: r.room, tokens: r.tokens, server: r.server } });
-      } else {                                               // browser to browser
-        const code = newCode();
-        hostCollab({ name, listen: await peerListen(code), code });
-      }
+      if (viaServer) {                                       // a room on Revela's server (or the one set in Compartir)
+        try {
+          const r = await createRoom(state.deck);
+          await joinCollab({ name, token: r.owner, connect: () => roomConnect(r.server, r.room), room: { code: r.room, tokens: r.tokens, server: r.server } });
+        } catch (e) {                                        // offline, daily limit, account not allowed…: browser to browser
+          if (/cancel|cerrado|closed/i.test(e.message || '')) return;
+          if (!(await confirmDialog(t('No se pudo usar el servidor: ') + (e.message || e) + ' ' + t('¿Colaborar directamente entre navegadores? (Esta pestaña tendrá que seguir abierta.)')))) return;
+          await direct();
+        }
+      } else await direct();                                 // browser to browser
     } catch (e) { return alertDialog(t('No se pudo empezar la sesión: ') + (e.type || e.message || e)); }
   }
   const back = document.createElement('div'); back.id = 'collab-modal'; back.className = 'modal-backdrop';

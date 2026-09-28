@@ -1168,4 +1168,10 @@ export default {
   "La clave de subida no es correcta.": "Igoera-gakoa ez da zuzena.",
   "La presentación es demasiado grande para el servidor.": "Aurkezpena handiegia da zerbitzariarentzat.",
   "El servidor respondió ": "Zerbitzariak erantzun du: ",
+  "Servidor de Revela (con tu cuenta de Google)": "Revelaren zerbitzaria (zure Google kontuarekin)",
+  "Usar otro servidor": "Erabili beste zerbitzari bat",
+  "Tu cuenta de Google no tiene permiso en este servidor.": "Zure Google kontuak ez du baimenik zerbitzari honetan.",
+  "Inicia sesión con Google para compartir o colaborar a través del servidor.": "Hasi saioa Googlerekin zerbitzariaren bidez partekatzeko edo lankidetzan aritzeko.",
+  "No se pudo usar el servidor: ": "Ezin izan da zerbitzaria erabili: ",
+  "¿Colaborar directamente entre navegadores? (Esta pestaña tendrá que seguir abierta.)": "Nabigatzaileen artean zuzenean lankidetzan aritu? (Fitxa honek irekita jarraitu beharko du.)",
 };

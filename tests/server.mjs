@@ -110,5 +110,26 @@ ok((await call('GET', '/s/' + d1.id, { headers: { Authorization: 'Bearer ' + (g 
   ok(ed.last('end') && ed.closed && !bucket.has(`rooms/${rid}.json`), 'al terminar, todos fuera y se borra');
 }
 
+// ---- Who may upload / open rooms: upload key or Google sign-in (+ ALLOWED) ------------
+{
+  const { authorize } = await import('../server/cloudflare/worker.js');
+  const infos = { good: { aud: 'cid', email: 'Ana@Escuela.example', email_verified: 'true', expires_in: '3599' }, other: { aud: 'otra', email: 'x@y.z', email_verified: 'true' }, unverified: { aud: 'cid', email: 'a@b.c', email_verified: 'false' } };
+  let calls = 0;
+  const gfetch = async url => { calls++; const t = new URL(url).searchParams.get('access_token'); return infos[t] ? new Response(JSON.stringify(infos[t])) : new Response('{"error":"invalid_token"}', { status: 400 }); };
+  const req = h => new Request('https://w.test/c', { method: 'POST', headers: h });
+  const e1 = { GOOGLE_CLIENT_ID: 'cid', UPLOAD_KEY: 'k3y' };
+  ok((await authorize(req({}), e1, gfetch)) === null, 'sin clave ni sesión: no');
+  ok((await authorize(req({ 'X-Upload-Key': 'k3y' }), e1, gfetch))?.key, 'con la clave de subida: sí');
+  ok((await authorize(req({ Authorization: 'Bearer good' }), e1, gfetch))?.email === 'ana@escuela.example', 'con sesión de Google de Revela: sí');
+  const c0 = calls; await authorize(req({ Authorization: 'Bearer good' }), e1, gfetch);
+  ok(calls === c0, 'no pregunta a Google cada vez');
+  ok((await authorize(req({ Authorization: 'Bearer other' }), e1, gfetch)) === null, 'token de otra app: no');
+  ok((await authorize(req({ Authorization: 'Bearer unverified' }), e1, gfetch)) === null, 'correo sin verificar: no');
+  ok((await authorize(req({ Authorization: 'Bearer falso' }), e1, gfetch)) === null, 'token falso: no');
+  ok((await authorize(req({ Authorization: 'Bearer good' }), { ...e1, ALLOWED: '@escuela.example' }, gfetch)) !== null, 'ALLOWED por dominio');
+  ok((await authorize(req({ Authorization: 'Bearer good' }), { ...e1, ALLOWED: 'luis@escuela.example, @otra.org' }, gfetch)) === null, 'ALLOWED: fuera de la lista, no');
+  ok((await authorize(req({}), {}, gfetch))?.open, 'sin configurar nada, abierto (para pruebas locales)');
+}
+
 console.log(fails ? `SERVIDOR FAIL ${n - fails}/${n}` : `SERVIDOR OK ${n}/${n}`);
 process.exit(fails ? 1 : 0);
