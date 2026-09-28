@@ -28,6 +28,31 @@ export const BUILTIN = {
       { type: 'text', x: 700, y: 600, w: 480, h: 60, fontSize: 22, html: 'Arrastra aquí un modelo 3D' },
     ],
   },
+  twoContent: {
+    name: 'Dos contenidos',
+    blocks: [
+      { type: 'text', x: 100, y: 70, w: 1080, h: 90, fontSize: 48, html: '<b>Título</b>' },
+      { type: 'text', x: 100, y: 190, w: 520, h: 460, fontSize: 28, html: '<ul><li>Columna A</li></ul>' },
+      { type: 'text', x: 660, y: 190, w: 520, h: 460, fontSize: 28, html: '<ul><li>Columna B</li></ul>' },
+    ],
+  },
+  sectionHeader: {
+    name: 'Encabezado de sección',
+    blocks: [
+      { type: 'text', x: 120, y: 300, w: 1040, h: 120, fontSize: 64, textAlign: 'center', html: '<b>Sección</b>' },
+      { type: 'text', x: 120, y: 430, w: 1040, h: 60, fontSize: 28, textAlign: 'center', html: 'Descripción' },
+    ],
+  },
+  comparison: {
+    name: 'Comparación',
+    blocks: [
+      { type: 'text', x: 100, y: 70, w: 1080, h: 80, fontSize: 44, html: '<b>Comparación</b>' },
+      { type: 'text', x: 100, y: 180, w: 520, h: 60, fontSize: 30, html: '<b>Opción A</b>' },
+      { type: 'text', x: 660, y: 180, w: 520, h: 60, fontSize: 30, html: '<b>Opción B</b>' },
+      { type: 'text', x: 100, y: 250, w: 520, h: 400, fontSize: 26, html: '<ul><li>…</li></ul>' },
+      { type: 'text', x: 660, y: 250, w: 520, h: 400, fontSize: 26, html: '<ul><li>…</li></ul>' },
+    ],
+  },
   blank: { name: 'En blanco', blocks: [] },
 };
 

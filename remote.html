@@ -32,7 +32,9 @@
     /* control */
     .meta{display:flex;align-items:baseline;gap:10px}
     .meta .pos{font-size:15px;color:var(--txt2)}
-    .meta .title{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .meta .title{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+    .meta{display:flex;align-items:baseline;gap:10px}
+    .meta .timer{margin-left:auto;font-variant-numeric:tabular-nums;color:#7fa6d8;font-weight:700}
     .notes{flex:1;min-height:0;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;font-size:18px;line-height:1.5}
     .notes .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--txt2);margin-bottom:6px}
     .next{color:var(--txt2);font-size:14px;border-top:1px dashed var(--line);margin-top:12px;padding-top:10px}
@@ -63,7 +65,8 @@
     </section>
 
     <section class="screen" id="control">
-      <div class="meta"><span class="pos" id="pos">–/–</span><span class="title" id="title"></span></div>
+      <div class="meta"><span class="pos" id="pos">–/–</span><span class="title" id="title"></span>
+        <span class="timer" id="timer">00:00</span></div>
       <div class="notes"><div class="lbl">Notas de esta diapositiva</div><div id="notes"></div>
         <div class="next"><span class="lbl">Siguiente</span> <span id="nextnotes"></span></div></div>
       <div class="nav">
@@ -73,6 +76,7 @@
       <div class="tools">
         <button class="ghost" id="pointer">Puntero láser</button>
         <button class="ghost" id="black">Pantalla negra</button>
+        <button class="ghost" id="reset-timer">⏱ Reiniciar</button>
       </div>
     </section>
   </main>

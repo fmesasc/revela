@@ -32,6 +32,12 @@ function keyboard(e) {
   if (e.key === 'Escape' && editing) { e.preventDefault(); document.activeElement.blur(); return; }
   // Find & replace works anywhere, including while editing text.
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') { e.preventDefault(); openFindPanel(); return; }
+  // Paste without formatting while editing text.
+  if (editing && (e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'v') {
+    e.preventDefault();
+    navigator.clipboard?.readText?.().then(t => document.execCommand('insertText', false, t)).catch(() => {});
+    return;
+  }
   if (editing) return;
   const meta = e.ctrlKey || e.metaKey;
   if (meta && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }

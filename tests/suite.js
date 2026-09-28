@@ -145,6 +145,11 @@ export async function run(frame) {
     assert(/RevealNotes/.test(html), 'sin plugin de notas');
   });
 
+  await test('diseño "dos contenidos" reemplaza los bloques de la diapositiva', async () => {
+    reset(); D.querySelector('[data-template="twoContent"]').click(); await sleep(10);
+    eq(slide().blocks.length, 3, 'tres bloques del diseño');
+  });
+
   await test('título del documento: editable y usado en el export', async () => {
     reset(); R.state.deck.name = 'Mi charla'; R.render();
     assert(/<title>Mi charla<\/title>/.test(R.io.buildHTML()), 'título no aplicado al export');

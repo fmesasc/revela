@@ -5,7 +5,17 @@
 const PEERJS = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';
 const $ = id => document.getElementById(id);
 
-let conn = null, blackOn = false;
+let conn = null, blackOn = false, startAt = null, timerInt = null;
+
+function startTimer() {
+  startAt = Date.now();
+  clearInterval(timerInt);
+  const tick = () => {
+    const s = Math.floor((Date.now() - startAt) / 1000);
+    $('timer').textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  };
+  tick(); timerInt = setInterval(tick, 500);
+}
 
 function loadPeerJS() {
   return new Promise((res, rej) => {
@@ -32,7 +42,7 @@ async function connect(code) {
   });
   peer.on('open', () => {
     conn = peer.connect('revela-' + code, { reliable: true });
-    conn.on('open', () => { setStatus('Conectado', true); show('control'); });
+    conn.on('open', () => { setStatus('Conectado', true); show('control'); startTimer(); });
     conn.on('data', renderState);
     conn.on('close', () => { setStatus('Desconectado'); show('connect'); $('go').disabled = false; });
   });
@@ -82,6 +92,7 @@ $('code').addEventListener('keydown', e => { if (e.key === 'Enter') $('go').clic
 $('prev').addEventListener('click', () => send({ type: 'prev' }));
 $('next').addEventListener('click', () => send({ type: 'next' }));
 $('pointer').addEventListener('click', openPad);
+$('reset-timer').addEventListener('click', startTimer);
 $('padclose').addEventListener('click', closePad);
 $('black').addEventListener('click', () => {
   blackOn = !blackOn; send({ type: 'black', on: blackOn });

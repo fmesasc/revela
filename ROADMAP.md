@@ -32,7 +32,7 @@ the origin of every requirement is traceable.
 - ⬜ Format painter / copy style `PP·GS·OO`
 - ✅ Find & replace `PP·GS·OO`
 - ✅ Zoom controls, fit to window `PP·GS·OO`
-- ⬜ Paste special / paste without formatting `PP·GS·OO`
+- ✅ Paste without formatting (Ctrl+Shift+V) `PP·GS·OO`
 
 ## 2. Text
 - ✅ Bold, italic, underline, strikethrough `PP·GS·OO`
@@ -82,7 +82,7 @@ the origin of every requirement is traceable.
 - ✅ Per-slide background colour `PP·GS·OO`
 - ✅ Themes `PP·GS·OO`
 - ✅ Slide size (16∶9 / 4∶3) `PP·GS·OO`
-- ⬜ Slide layouts (title, title+content, …) `PP·GS·OO`
+- ✅ Slide layouts (title, content, two-content, comparison, section, blank) `PP·GS·OO`
 - ⬜ Slide master / theme editor `PP·GS·OO`
 - ⬜ Placeholders `PP·OO`
 - ✅ Background images and gradients `PP·GS·OO`
@@ -104,7 +104,7 @@ the origin of every requirement is traceable.
 - ✅ Auto-advance timing per slide `PP·GS·OO`
 
 ## 6. Presenting
-- 🚧 Presenter view (notes, next slide, timer) — reveal presenter view (S) + phone companion done; timer planned `PP·GS·OO`
+- ✅ Presenter view (notes, next slide, timer) — reveal presenter view (S) + phone companion with timer `PP·GS·OO`
 - 🚧 Laser pointer / pen / highlighter during show — laser from the phone remote done; pen/highlighter planned `PP·GS·OO`
 - ✅ Phone companion remote (pair by code, notes, navigate, laser, blackout) `—`
 - ⬜ Rehearse timings / speaker coach `PP`
