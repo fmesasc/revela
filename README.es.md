@@ -74,7 +74,7 @@ directamente para que el navegador cargue bien los módulos ES.
 
 ## API, complementos y macros
 
-El editor expone `window.Revela` (ver `src/api.js`): leer la presentación,
+El editor expone `window.Revela` (ver `src/api/index.js`): leer la presentación,
 añadir diapositivas y objetos, modificarlos (un paso de deshacer cada vez),
 escuchar cambios, exportar y añadir botones a la cinta. **Ver › Complementos**
 carga un módulo ES por URL que exporta `default function (Revela)`;

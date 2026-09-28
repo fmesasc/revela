@@ -23,8 +23,8 @@ changes.
 - `src/io/` — import/export: reveal.js HTML, PDF, PowerPoint, OpenDocument, video, images.
 - `src/ui/` — presentation layer (ribbon, canvas, navigator, context menu).
   UI modules read the store and render; they never persist state directly.
-- `src/main.js` — wires everything and subscribes the render.
-- `src/api.js` — the public `window.Revela` API for add-ins and macros.
+- `src/apps/editor/main.js` — wires everything and subscribes the render.
+- `src/api/index.js` — the public `window.Revela` API for add-ins and macros.
 - `vote.html`, `remote.html` — the audience voting page and the phone remote.
 
 The golden rule: **all document changes go through `commit`/`mutate` in the

@@ -46,7 +46,7 @@ All changes go through:
 - `mutate(fn)` — same, but without pushing to the undo stack (used for
   high-frequency changes such as dragging).
 
-`src/main.js` subscribes a single `render()` that repaints the ribbon, canvas
+`src/apps/editor/main.js` subscribes a single `render()` that repaints the ribbon, canvas
 and navigator. Because rendering is a pure function of the store, the UI never
 holds its own copy of the document.
 
@@ -60,7 +60,7 @@ holds its own copy of the document.
 
 ## Direct manipulation
 
-`src/ui/canvas.js` implements dragging, resizing and text editing with pointer
+`src/ui/shell/canvas.js` implements dragging, resizing and text editing with pointer
 events. During a drag it updates element styles directly and only commits on
 release, to avoid re-rendering mid-interaction (which would reset the caret or
 the drag). Alignment guides are computed against the slide centre, the slide
@@ -69,7 +69,7 @@ threshold.
 
 ## Output
 
-`src/io/reveal.js` serialises the deck into a single self-contained HTML file:
+`src/io/formats/html.js` serialises the deck into a single self-contained HTML file:
 each slide becomes a `<section>` containing an absolutely-positioned stage, and
 each block becomes the corresponding element. The same function powers both the
 in-app *Present* action and *Export*.

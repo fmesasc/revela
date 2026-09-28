@@ -1481,7 +1481,7 @@ export async function run(frame) {
 
   await test('PowerPoint y ODP: texto con formato y todos los objetos', async () => {
     reset();
-    const { htmlToRuns } = await frame.contentWindow.eval("import('/src/io/pptx-export.js')");
+    const { htmlToRuns } = await frame.contentWindow.eval("import('/src/io/formats/pptx-export.js')");
     const runs = htmlToRuns('<b>Hola</b> <span style="color:rgb(255, 0, 0);font-size:40px">rojo</span><ul><li>uno</li><ul><li>dos</li></ul></ul><ol><li>tres</li></ol>', { fontSize: 20 });
     const b1 = runs.find(r => r.text === 'Hola'), red = runs.find(r => r.text === 'rojo');
     assert(b1.options.bold, 'negrita'); eq(red.options.color, 'FF0000', 'color'); eq(red.options.fontSize, 30, 'tamaño en puntos');
@@ -1506,7 +1506,7 @@ export async function run(frame) {
 
   await test('código: pasos de resaltado visuales, desplazamiento, numeración y animación', async () => {
     reset();
-    const { parseSteps, stringifySteps } = await frame.contentWindow.eval("import('/src/ui/code-dialog.js')");
+    const { parseSteps, stringifySteps } = await frame.contentWindow.eval("import('/src/ui/dialogs/code.js')");
     eq(JSON.stringify(parseSteps('1,3-4|5|')), '[[1,3,4],[5],[]]', 'leer pasos'); eq(stringifySteps([[4, 1, 2, 3], [7], [9, 11]]), '1-4|7|9,11', 'escribir pasos');
     D.querySelector('[data-action="insert-code"]').click(); await sleep(20);
     const b = last(); assert(D.getElementById('code-modal'), 'al insertar se abre el editor de código');
@@ -1606,7 +1606,7 @@ export async function run(frame) {
     eq(sl[3].blocks[0].type, 'image', 'imagen');
     // ajustar al cuadro
     const t = slide().blocks[1]; t.html = 'Hola'; t.fontSize = 20; R.render(); await sleep(10);
-    const { fitTextToBox } = await frame.contentWindow.eval("import('/src/ui/canvas.js')");
+    const { fitTextToBox } = await frame.contentWindow.eval("import('/src/ui/shell/canvas.js')");
     fitTextToBox(t); assert(t.fontSize > 40, 'crece hasta llenar el cuadro: ' + t.fontSize);
     const big = t.fontSize; t.html = 'Hola '.repeat(40); R.render(); fitTextToBox(t); assert(t.fontSize < big, 'con más texto, más pequeño');
     // ampliar imagen
@@ -1615,7 +1615,7 @@ export async function run(frame) {
   });
 
   await test('apariencia del editor: claro, oscuro, automático y personalizado', async () => {
-    const A = await frame.contentWindow.eval("import('/src/ui/appearance.js')"), root = D.documentElement;
+    const A = await frame.contentWindow.eval("import('/src/ui/shell/appearance.js')"), root = D.documentElement;
     const panel = () => getComputedStyle(root).getPropertyValue('--panel').trim();
     A.setAppearance({ mode: 'dark' }); eq(root.dataset.ui, 'dark', 'oscuro'); eq(panel(), '#1f2329', 'paleta oscura');
     eq(getComputedStyle(root).colorScheme, 'dark', 'controles nativos oscuros');

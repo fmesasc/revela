@@ -73,7 +73,7 @@ directly so the browser loads the ES modules correctly.
 
 ## Scripting API, add-ins and macros
 
-The editor exposes `window.Revela` (see `src/api.js`): read the deck, add
+The editor exposes `window.Revela` (see `src/api/index.js`): read the deck, add
 slides and objects, update them (one undo step each), listen to changes,
 export, and add buttons to the ribbon. **View › Add-ins** loads an ES module
 by URL that exports `default function (Revela)`; **View › Macros** runs saved

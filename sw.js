@@ -8,7 +8,7 @@
 //   is not touched: it goes straight to the network.
 
 const CACHE = 'revela-v1';
-const SHELL = ['./', 'index.html', 'src/ui/styles.css', 'src/main.js', 'manifest.webmanifest', 'icons/icon.svg'];
+const SHELL = ['./', 'index.html', 'src/ui/styles.css', 'src/apps/editor/main.js', 'manifest.webmanifest', 'icons/icon.svg'];
 const CDN = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 
 self.addEventListener('install', e => {
