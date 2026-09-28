@@ -117,7 +117,8 @@ main{flex:1;display:flex;min-height:0}
 .section-head{font-size:11px;font-weight:700;color:var(--txt2);text-transform:uppercase;
   letter-spacing:.4px;padding:6px 2px 0}
 .thumb{position:relative;cursor:pointer;border:2px solid var(--line2);border-radius:6px;
-  overflow:hidden;background:#111;box-shadow:0 1px 3px #0001}
+  overflow:hidden;background:#111;box-shadow:0 1px 3px #0001;flex-shrink:0}  /* never squash: scroll instead */
+.section-head{flex-shrink:0}
 .thumb.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-bg)}
 .thumb.dragging{opacity:.4}
 .thumb.drop-target{border-color:var(--go);box-shadow:0 -3px 0 var(--go)}

@@ -141,11 +141,11 @@ the origin of every requirement is traceable.
 - ✅ Export to self-contained HTML (reveal.js) `—`
 - ✅ Export to `.pptx` (PptxGenJS: text, images, shapes, tables, charts) `GS·OO`
 - ✅ Export to PDF (one slide per page) `PP·GS·OO`
-- ✅ Import from PowerPoint `.pptx` (text + images) `OO·GS`
+- ✅ Import from PowerPoint `.pptx` — text with formatting (size, bold, italic, colour, font, alignment, bullets, autofit), inherited placeholder positions, preset shapes with fill/outline/rotation, lines, pictures with alt text, grouped objects, tables with merged cells, backgrounds, theme colours & fonts, notes, hidden slides `OO·GS`
 - ✅ Project import/export as JSON, local autosave `—`
 - ✅ Save/open to Google Drive & export HTML to Drive (client-side, `drive.file`) `PP·GS`
 - ✅ Export slides as images — PNG or JPG, current slide or all slides in a ZIP `PP·GS·OO`
-- ⬜ High-fidelity `.pptx` import (fonts, colours, shapes, layouts) `OO·GS`
+- ⬜ Remaining `.pptx` import: gradients/shadows, SmartArt, charts, animations & transitions `OO·GS`
 - 🚧 Export to video — .webm by recording the slideshow; direct MP4/GIF rendering planned `PP·GS`
 - ⬜ Publish to the web / shareable link `GS`
 - ⬜ Open Document (`.odp`) support `OO`

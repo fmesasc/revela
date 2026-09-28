@@ -982,6 +982,46 @@ export async function run(frame) {
     eq(last().type, 'text', 'pegar texto crea un cuadro'); eq(last().html, 'Hola<br>mundo', 'saltos de línea');
   });
 
+  await test('importar PowerPoint con formato: formas, colores, tamaños, tablas, notas', async () => {
+    reset();
+    await R.pptx.buildPptx();                            // carga PptxGenJS
+    const P = new frame.contentWindow.PptxGenJS(); P.layout = 'LAYOUT_16x9';   // 10 × 5.625 in
+    const s1 = P.addSlide(); s1.background = { color: '112233' };
+    s1.addText('Hola mundo', { x: 1, y: 0.5, w: 8, h: 1, fontSize: 40, bold: true, color: 'FF0000', align: 'center', fontFace: 'Georgia' });
+    s1.addText([{ text: 'Uno', options: { bullet: true } }, { text: 'Dos', options: { bullet: true } }], { x: 1, y: 2, w: 4, h: 2, fontSize: 20 });
+    s1.addShape(P.ShapeType.ellipse, { x: 6, y: 2, w: 2, h: 2, fill: { color: '00AA00' }, line: { color: '0000FF', width: 2 }, rotate: 30 });
+    s1.addNotes('Notas del ponente');
+    const s2 = P.addSlide(); s2.hidden = true;
+    s2.addTable([[{ text: 'A', options: { colspan: 2 } }], [{ text: 'b' }, { text: 'c' }]], { x: 1, y: 1, w: 6, h: 2 });
+    const blob = await P.write({ outputType: 'blob' });
+    const deck = await R.pptxImport.importPPTX(new File([blob], 'Prueba.pptx'));
+    eq(deck.name, 'Prueba', 'nombre del archivo'); eq(deck.slides.length, 2, 'dos diapositivas');
+    const [a, b] = deck.slides;
+    eq(a.background, '#112233', 'fondo'); eq(a.notes, 'Notas del ponente', 'notas'); assert(b.hidden, 'oculta');
+    const title = a.blocks.find(x => x.type === 'text' && /Hola mundo/.test(x.html));
+    assert(title, 'texto');
+    eq(title.x, 128, 'posición (1 in = 128 px)'); eq(title.w, 1024, 'ancho');
+    eq(title.fontSize, 71, '40 pt → 71 px en un lienzo de 1280');
+    eq(title.textAlign, 'center', 'alineación');
+    assert(/<b>/.test(title.html) && /color:#ff0000/.test(title.html) && /Georgia/.test(title.html), 'negrita, color y fuente');
+    const list = a.blocks.find(x => x.type === 'text' && /Uno/.test(x.html));
+    assert(/<ul><li>.*Uno.*<\/li><li>.*Dos.*<\/li><\/ul>/.test(list.html), 'viñetas como lista');
+    const ell = a.blocks.find(x => x.type === 'shape');
+    eq(ell.shape, 'ellipse', 'forma'); eq(ell.fill, '#00aa00', 'relleno'); eq(ell.stroke, '#0000ff', 'borde'); eq(ell.rotation, 30, 'giro');
+    const tb = b.blocks.find(x => x.type === 'table');
+    assert(tb, 'tabla'); eq(tb.rows.length, 2, 'filas');
+    eq(JSON.stringify(tb.merges), JSON.stringify([{ r: 0, c: 0, rs: 1, cs: 2 }]), 'celda combinada');
+    R.store.replaceDeck(deck); await sleep(20);
+    assert(/Hola mundo/.test(R.io.buildHTML()), 'se exporta de nuevo');
+  });
+
+  await test('navegador: las miniaturas no se aplastan con muchas diapositivas', async () => {
+    reset(); for (let i = 0; i < 40; i++) R.slides.addSlide(); await sleep(20);
+    const th = [...D.querySelectorAll('#navigator .thumb')];
+    eq(th.length, 41, 'cuarenta y una miniaturas');
+    assert(th.every(x => x.getBoundingClientRect().height > 40), 'altura normal: ' + th[20].getBoundingClientRect().height.toFixed(0));
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');
