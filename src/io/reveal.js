@@ -35,7 +35,7 @@ function blockHTML(b) {
     return `<model-viewer${a} src="${b.src}" camera-controls ${b.autoRotate !== false ? 'auto-rotate' : ''} `
       + `shadow-intensity="1" style="${box(b)}background:transparent"></model-viewer>`;
   if (b.type === 'image')
-    return `<img${a} src="${b.src}" style="${box(b)}object-fit:${b.fit || 'contain'};`
+    return `<img${a} src="${b.src}" alt="${esc(b.alt || '')}" style="${box(b)}object-fit:${b.fit || 'contain'};`
       + `filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)}">`;
   if (b.type === 'video')
     return `<video${a} src="${b.src}" controls style="${box(b)}object-fit:contain"></video>`;

@@ -53,6 +53,11 @@ export function addEmbed(url) {
     rotation: 0, animation: null, src: url });
 }
 
+export function setAlt(text) {
+  const b = selectedBlock(); if (!b) return;
+  commit(() => { b.alt = text; });
+}
+
 export function addTable() { insert(tableBlock()); }
 export function addCode() { insert(codeBlock()); }
 

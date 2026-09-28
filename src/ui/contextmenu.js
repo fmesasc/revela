@@ -87,6 +87,7 @@ function forBlock(b) {
       ['Ajustar: rellenar', () => setFit(b, 'cover')],
       ['Ajustes de imagen…', () => openImageAdjust(b)],
       ['Recortar…', () => openImageCrop(b)],
+      ['Texto alternativo…', () => openAlt(b)],
       ['Quitar fondo (IA)', () => removeBackground(b)],
       null);
   } else if (b.type === 'model') {
@@ -188,6 +189,24 @@ function openImageAdjust(b) {
     blocks.resetImageAdj();
     back.querySelectorAll('[data-adj]').forEach(r => (r.value = r.dataset.adj === 'opacity' ? 100 : 100));
   });
+}
+
+function openAlt(b) {
+  if (document.getElementById('alt-modal')) return;
+  const back = document.createElement('div');
+  back.id = 'alt-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:left;min-width:300px">
+    <button class="modal-close">✕</button><h3>Texto alternativo</h3>
+    <label class="fr-l">Descripción para accesibilidad
+      <input class="alt-in" type="text" value="${(b.alt || '').replace(/"/g, '&quot;')}"></label>
+    <div class="fr-actions"><button class="fr-do">Guardar</button></div>
+  </div>`;
+  document.body.appendChild(back);
+  const close = () => back.remove();
+  back.querySelector('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  back.querySelector('.fr-do').addEventListener('click', () => { blocks.setAlt(back.querySelector('.alt-in').value); close(); });
+  back.querySelector('.alt-in').focus();
 }
 
 function openImageCrop(b) {

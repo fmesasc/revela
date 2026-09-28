@@ -214,6 +214,7 @@ function content(b) {
   if (b.type === 'text') {
     const d = document.createElement('div');
     d.className = 'rich';
+    d.spellcheck = true;
     d.style.fontSize = (b.fontSize || 40) + 'px';
     d.style.textAlign = b.textAlign || 'left';
     if (b.fontFamily) d.style.fontFamily = b.fontFamily;

@@ -50,7 +50,7 @@ the origin of every requirement is traceable.
 - ⬜ WordArt / Text Art `PP·OO`
 - ✅ Special characters and symbol/emoji picker `PP·GS·OO`
 - ⬜ Equations / math (OnlyOffice has a full equation editor) `PP·OO`
-- ⬜ Spell check, proofing and AutoCorrect `PP·GS·OO`
+- 🚧 Spell check, proofing and AutoCorrect — native browser spellcheck while editing; proofing/AutoCorrect planned `PP·GS·OO`
 - 🚧 Hyperlinks — web links done; slide/email targets planned `PP·GS·OO`
 - ⬜ Vertical text and text direction (RTL) `PP·OO`
 
@@ -66,7 +66,7 @@ the origin of every requirement is traceable.
 - ⬜ Icons and stock images `PP·GS`
 - ✅ Emoji picker `GS`
 - ✅ Audio tracks `PP·OO`
-- ⬜ Animated GIF playback `PP·OO`
+- ✅ Animated GIF playback (GIFs play as image blocks) `PP·OO`
 - ✅ Embedded web page (`<iframe>`) `—`
 - ⬜ Embedded spreadsheet / linked data `GS·OO`
 - ✅ AI image background removal `PP` *(PowerPoint "Remove Background")*
@@ -137,7 +137,7 @@ the origin of every requirement is traceable.
 
 ## 9. Accessibility & internationalisation
 - ⬜ Accessibility checker `PP·GS·OO`
-- ⬜ Alt text for objects `PP·GS·OO`
+- ✅ Alt text for objects `PP·GS·OO`
 - ⬜ Reading / tab order `PP·OO`
 - ⬜ Screen reader support `PP·GS·OO`
 - ⬜ Right-to-left interface and content `PP·OO`

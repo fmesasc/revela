@@ -230,6 +230,11 @@ export async function run(frame) {
     assert(/brightness\(150%\)[^"]*opacity:0\.6/.test(R.io.buildHTML()), 'filtro en el export');
   });
 
+  await test('texto alternativo en la imagen exportada', async () => {
+    reset(); R.blocks.addImage('data:image/png;base64,iVBORw0KGgo='); const b = last(); select(b);
+    R.blocks.setAlt('Un gráfico'); assert(/alt="Un gráfico"/.test(R.io.buildHTML()), 'alt en el export');
+  });
+
   await test('recorte de imagen: clip-path en lienzo y export', async () => {
     reset(); R.blocks.addImage('data:image/png;base64,iVBORw0KGgo='); const b = last(); select(b); await sleep(20);
     R.blocks.setImageCrop('top', 10); R.blocks.setImageCrop('left', 20); await sleep(20);
