@@ -65,6 +65,26 @@ export const EFFECT_KF_CSS = `@keyframes rvIn{from{opacity:0}to{opacity:1}}
 @keyframes rvInOut{0%{opacity:0}30%,70%{opacity:1}100%{opacity:0}}
 @keyframes rvHi{0%,100%{background:transparent}50%{background:#ff3b3b66}}
 @keyframes rvPath{to{translate:var(--dx,0) var(--dy,0)}}`;
+// Motion paths: points (offsets from the start) along the chosen shape, ending
+// at (dx, dy). 'line' is straight; 'arc' bulges to one side; 'wave' snakes;
+// 'loop' makes a full turn half way.
+export const PATH_SHAPES = ['line', 'arc', 'wave', 'loop'];
+export function motionPoints(a, n = 24) {
+  const dx = a.dx || 0, dy = a.dy || 0, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;   // normal
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n; let x = dx * t, y = dy * t;
+    if (a.pathShape === 'arc') { const o = -0.35 * L * 4 * t * (1 - t); x += nx * o; y += ny * o; }
+    else if (a.pathShape === 'wave') { const o = 0.15 * L * Math.sin(t * Math.PI * 4); x += nx * o; y += ny * o; }
+    else if (a.pathShape === 'loop') { const r = 0.18 * L, k = Math.sin(Math.PI * t) ** 2, ang = 2 * Math.PI * t;
+      x += k * (Math.sin(ang) * r * dx / L + (1 - Math.cos(ang)) * r * nx); y += k * (Math.sin(ang) * r * dy / L + (1 - Math.cos(ang)) * r * ny); }
+    pts.push([+x.toFixed(1), +y.toFixed(1)]);
+  }
+  return pts;
+}
+export const pathKeyframesCSS = (name, a) => `@keyframes ${name}{${motionPoints(a).map(([x, y], i, arr) =>
+  `${(i / (arr.length - 1) * 100).toFixed(1)}%{translate:${x}px ${y}px}`).join('')}}`;
+
 // Effects that make an object appear (it starts hidden until it plays).
 export const isEntrance = effect => !['fade-out', 'highlight-red', 'highlight-green', 'highlight-blue', 'strike', 'path'].includes(effect);
 

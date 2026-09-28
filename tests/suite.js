@@ -699,7 +699,12 @@ export async function run(frame) {
     assert(/class="fragment rv-path"/.test(html), 'fragmento de trayectoria');
     assert(/--dx:200px;--dy:50px/.test(html), 'destino');
     assert(/\.fragment\.rv-path\.visible\{translate:var\(--dx\) var\(--dy\)\}/.test(html), 'CSS de trayectoria');
-    assert(D.querySelector('#stage .motion-path line'), 'guía discontinua en el lienzo');
+    assert(D.querySelector('#stage .motion-path polyline'), 'guía discontinua en el lienzo');
+    R.trans.setAnimPropForId(b.id, 'pathShape', 'arc'); await sleep(10);
+    const pts = R.trans.motionPoints(b.animation); eq(pts.at(-1).join(','), '200,50', 'termina en el destino');
+    assert(pts.some(([x, y]) => Math.abs(y - x / 4) > 20), 'el arco se separa de la recta');
+    const html2 = R.io.buildHTML();
+    assert(/class="fragment rv-pathc"/.test(html2) && new RegExp('@keyframes rvP' + b.id).test(html2), 'fotogramas clave del recorrido curvo');
   });
 
   await test('disparador: al hacer clic en un objeto se anima otro', async () => {

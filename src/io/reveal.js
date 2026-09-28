@@ -9,7 +9,7 @@ import { alertDialog, confirmDialog } from '../ui/dialog.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle, visibleIndexMap } from '../features/captions.js';
 import { INK_CSS, inkJS } from './ink.js';
 import { deckFg, deckBodyFont } from '../features/palettes.js';
-import { animTimeline, EFFECT_KF, EFFECT_KF_CSS, isEntrance, customTransitionCSS } from '../features/transitions.js';
+import { animTimeline, EFFECT_KF, EFFECT_KF_CSS, isEntrance, customTransitionCSS, pathKeyframesCSS } from '../features/transitions.js';
 import { masterBlocksFor, isEmptyPlaceholder } from '../features/master.js';
 
 const REVEAL = 'https://cdn.jsdelivr.net/npm/reveal.js@5.1.0';
@@ -28,7 +28,7 @@ const box = b => `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;`
   + (b.opacity != null && b.opacity < 100 ? `opacity:${b.opacity / 100};` : '')
   + (b.animation ? `transition-duration:${b.animation.duration ?? 500}ms;transition-delay:${b.animation.delay ?? 0}ms;`
     + `--anim-dur:${b.animation.duration ?? 500}ms;--anim-del:${b.animation.delay ?? 0}ms;`
-    + (b.animation.effect === 'path' ? `--dx:${b.animation.dx || 0}px;--dy:${b.animation.dy || 0}px;` : '') : '');
+    + (b.animation.effect === 'path' ? `--dx:${b.animation.dx || 0}px;--dy:${b.animation.dy || 0}px;--pk:rvP${b.id};` : '') : '');
 
 // Custom entrance effects that reveal.js doesn't provide (used only if present).
 const CUSTOM_KF = {
@@ -36,6 +36,9 @@ const CUSTOM_KF = {
   flip: ['rvFlip', '@keyframes rvFlip{from{opacity:0;transform:perspective(600px) rotateY(90deg)}to{opacity:1;transform:none}}'],
   bounce: ['rvBounce', '@keyframes rvBounce{0%{opacity:0;transform:translateY(-60px)}60%{opacity:1;transform:translateY(12px)}80%{transform:translateY(-6px)}100%{transform:none}}'],
 };
+// One keyframe set per object with a motion path (curves are sampled).
+const pathKeyframes = deck => deck.slides.flatMap(s => s.blocks.filter(b => b.animation?.effect === 'path'))
+  .map(b => pathKeyframesCSS('rvP' + b.id, b.animation)).join('\n');
 const usedTransitions = deck => new Set([deck.defaultTransition, ...deck.slides.flatMap(s => [s.transition, s.transitionOut])].filter(Boolean));
 function customEffectCSS(deck) {
   const used = new Set();
@@ -54,9 +57,9 @@ function animAttrs(b, slide) {
   if (!b.animation) return src;
   const { effect, order, trigger, duration, delay } = b.animation;
   if (trigger && slide?.blocks.some(x => x.id === trigger))       // played on click of another object
-    return src + ` class="rv-trig${isEntrance(effect) ? ' rv-in' : ''}" data-trig="${trigger}" data-kf="${EFFECT_KF[effect] || 'rvIn'}"`
+    return src + ` class="rv-trig${isEntrance(effect) ? ' rv-in' : ''}" data-trig="${trigger}" data-kf="${effect === 'path' ? 'rvP' + b.id : EFFECT_KF[effect] || 'rvIn'}"`
       + ` data-dur="${duration ?? 500}" data-del="${delay ?? 0}"`;
-  const cls = effect === 'path' ? 'rv-path' : effect;
+  const cls = effect === 'path' ? (b.animation.pathShape && b.animation.pathShape !== 'line' ? 'rv-pathc' : 'rv-path') : effect;
   return src + ` class="fragment ${cls}" data-fragment-index="${order}"`;
 }
 // Live camera for Cameo objects: asked for only when a slide that has one is
@@ -263,6 +266,9 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  ${customTransitionCSS(usedTransitions(deck))}
  .reveal .slides section .fragment.rv-path{opacity:1;visibility:inherit}
  .reveal .slides section .fragment.rv-path.visible{translate:var(--dx) var(--dy)}
+ .reveal .slides section .fragment.rv-pathc{opacity:1;visibility:inherit}
+ .reveal .slides section .fragment.rv-pathc.visible{animation:var(--pk) var(--anim-dur,600ms) ease-in-out var(--anim-del,0ms) both}
+ ${pathKeyframes(deck)}
  ${hasTrig ? `[data-bid]{cursor:pointer} .rv-trig.rv-in:not(.on){opacity:0} ${EFFECT_KF_CSS.replace(/\n/g, ' ')}` : ''}
  ${INK_CSS}
 </style></head><body>

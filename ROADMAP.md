@@ -111,7 +111,7 @@ the origin of every requirement is traceable.
 - ✅ Morph / transformation transition (Auto-Animate, with "duplicate to animate") `PP`
 - ✅ Auto-advance timing per slide, loop / kiosk `PP·GS·OO`
 - ✅ "After previous" auto-timed start & animation triggers (on click of another object) `PP·GS·OO`
-- ✅ Motion paths (straight line to a chosen offset, with guide on the canvas); curved/custom paths planned `PP`
+- ✅ Motion paths — straight, arc, wave and loop to a chosen end point, with guide on the canvas; freehand-drawn paths planned `PP`
 - ✅ Animation painter `PP`
 - ✅ Per-slide transition options — different exit transition, per-slide speed, apply to all `PP·GS·OO`
 - ⬜ Even more transition effects (directions, split, shape reveals) `PP·GS·OO`
