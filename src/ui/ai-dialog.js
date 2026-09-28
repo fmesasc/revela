@@ -20,6 +20,7 @@ export function openAiSettings() {
       <div class="fr-actions" style="justify-content:flex-start"><button class="ai-save">${t('Guardar clave')}</button></div></details>
     <label class="fr-l">${t('Modelo')} <input type="text" class="ai-model" list="ai-models" value="${s.model}">
       <datalist id="ai-models"><option value="openrouter/auto"></option></datalist></label>
+    <label class="fr-l">${t('Modelo de imágenes')} <input type="text" class="ai-imodel" value="${ai.imageModel()}"></label>
     <p class="host-help">${t('«openrouter/auto» elige un modelo adecuado. Otros modelos:')} <a href="https://openrouter.ai/models" target="_blank" rel="noopener">openrouter.ai/models</a></p>
     <p class="host-help ai-privacy">${t('Al usar la IA, el texto de tus diapositivas (y la imagen, para el texto alternativo) se envía a OpenRouter y al proveedor del modelo elegido.')}</p></div>`;
   document.body.appendChild(back);
@@ -34,6 +35,7 @@ export function openAiSettings() {
   back.querySelector('.ai-out').addEventListener('click', () => { ai.disconnectAi(); sync(); });
   back.querySelector('.ai-save').addEventListener('click', () => { const k = back.querySelector('.ai-key').value; if (k) { ai.setAiKey(k); back.querySelector('.ai-key').value = ''; sync(); } });
   back.querySelector('.ai-model').addEventListener('change', e => ai.setAiModel(e.target.value));
+  back.querySelector('.ai-imodel').addEventListener('change', e => ai.setImageModel(e.target.value));
   sync();
 }
 
@@ -63,6 +65,10 @@ export const AI_ACTIONS = {
   'ai-notes': () => run(() => ai.writeNotes()),
   'ai-notes-all': () => run(() => ai.writeNotes({ all: true })),
   'ai-alt': () => run(() => ai.describeImage()),
+  'ai-image': () => promptDialog(t('Describe la imagen que quieres (se cobra en tu cuenta de OpenRouter):'), '').then(p => p && run(() => ai.generateImage(p))),
+  'ai-translate-deck': () => promptDialog(t('¿A qué idioma traducir toda la presentación?'), 'English').then(l => l && run(async () => {
+    const n = await ai.translateDeck(l); alertDialog(t('Textos traducidos: ') + n + '. ' + t('Puedes deshacerlo con Ctrl+Z.'));
+  })),
   'ai-translate': () => promptDialog(t('¿A qué idioma?'), 'English').then(l => l && run(() => ai.rewriteSelected(null, l))),
 };
 export const aiRewrite = kind => run(() => ai.rewriteSelected(kind));

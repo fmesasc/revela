@@ -149,3 +149,62 @@ export async function describeImage() {
   commit(() => { b.alt = alt.replace(/^["']|["']$/g, ''); delete b.decorative; });
   return b.alt;
 }
+
+// ---- Images ------------------------------------------------------------------
+export const DEFAULT_IMAGE_MODEL = 'bytedance-seed/seedream-4.5';
+export const imageModel = () => read().imageModel || DEFAULT_IMAGE_MODEL;
+export const setImageModel = m => write({ ...read(), imageModel: (m || '').trim() || undefined });
+
+// Generate an image (OpenRouter Image API) and place it on the current slide.
+export async function generateImage(prompt, aspect = '16:9') {
+  const { key } = aiSettings(); if (!key) throw new Error('NO_KEY');
+  const r = await fetch(`${API}/images`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, 'HTTP-Referer': APP_URL, 'X-Title': 'Revela' },
+    body: JSON.stringify({ model: imageModel(), prompt, aspect_ratio: aspect, n: 1 }),
+  });
+  if (r.status === 401) throw new Error('BAD_KEY');
+  if (r.status === 402) throw new Error('NO_CREDIT');
+  if (!r.ok) throw new Error('OpenRouter ' + r.status + ' ' + ((await r.text().catch(() => '')).slice(0, 200)));
+  const img = (await r.json()).data?.[0];
+  if (!img?.b64_json) throw new Error('EMPTY');
+  const src = `data:${img.media_type || 'image/png'};base64,${img.b64_json}`;
+  const [aw, ah] = aspect.split(':').map(Number), { w: W, h: H } = state.deck.size;
+  const h = Math.round(Math.min(H * 0.8, (W * 0.7) * ah / aw)), w = Math.round(h * aw / ah);
+  const b = { id: uid(), type: 'image', src, fit: 'contain', alt: prompt.slice(0, 125), x: Math.round((W - w) / 2), y: Math.round((H - h) / 2), w, h, rotation: 0, animation: null };
+  commit(() => { currentSlide().blocks.push(b); state.ui.selection = b.id; state.ui.multi = [b.id]; });
+  return b.id;
+}
+
+// ---- Translate the whole deck ---------------------------------------------------
+// Text boxes (keeping their HTML formatting), table cells and speaker notes,
+// one request per slide; applied at the end as a single undo step.
+export async function translateDeck(targetLang, onProgress) {
+  const out = new Map(), slides = state.deck.slides;
+  for (let i = 0; i < slides.length; i++) {
+    const s = slides[i], items = {};
+    for (const b of s.blocks) {
+      if (b.type === 'text' && plain(b.html)) items[b.id] = b.html;
+      if (b.type === 'table') b.rows.forEach((row, r) => row.forEach((c, k) => { if (plain(c)) items[`${b.id}|${r}|${k}`] = c; }));
+    }
+    if (s.notes?.trim()) items[`notes|${s.id}`] = s.notes;
+    if (!Object.keys(items).length) { onProgress?.((i + 1) / slides.length); continue; }
+    const res = await chat([
+      { role: 'system', content: `Translate every value of this JSON object into ${targetLang}. Keep the keys, keep all HTML tags and attributes exactly, translate only the human text. Answer only the JSON object.` },
+      { role: 'user', content: JSON.stringify(items) },
+    ], { json: true, maxTokens: 4000 });
+    const tr = parseJSON(res);
+    for (const [k, v] of Object.entries(tr)) if (typeof v === 'string' && k in items) out.set(k, v);
+    onProgress?.((i + 1) / slides.length);
+  }
+  commit(() => {
+    for (const s of state.deck.slides) {
+      if (out.has(`notes|${s.id}`)) s.notes = out.get(`notes|${s.id}`);
+      for (const b of s.blocks) {
+        if (b.type === 'text' && out.has(b.id)) b.html = out.get(b.id);
+        if (b.type === 'table') b.rows.forEach((row, r) => row.forEach((_, k) => { const key = `${b.id}|${r}|${k}`; if (out.has(key)) row[k] = out.get(key); }));
+      }
+    }
+  });
+  return out.size;
+}

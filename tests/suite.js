@@ -1227,6 +1227,30 @@ export async function run(frame) {
     P.setFinal(false); R.blocks.addText(); eq(slide().blocks.length, n + 1, 'editable de nuevo');
   });
 
+  await test('IA: generar imagen y traducir la presentación (respuestas simuladas)', async () => {
+    reset(); const W = frame.contentWindow, AI = R.ai, realFetch = W.fetch, calls = [];
+    AI.setAiKey('sk-or-prueba');
+    W.fetch = async (url, opts) => {
+      const body = JSON.parse(opts.body); calls.push({ url, body });
+      if (url.endsWith('/images')) return new W.Response(JSON.stringify({ data: [{ b64_json: 'R0lGODlhAQABAAAAACw=', media_type: 'image/gif' }] }));
+      const items = JSON.parse(body.messages[1].content);
+      const tr = Object.fromEntries(Object.entries(items).map(([k, v]) => [k, v.replace('Título', 'Title').replace('Nota', 'Note').replace('celda', 'cell')]));
+      return new W.Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(tr) } }] }));
+    };
+    try {
+      await AI.generateImage('Un volcán al amanecer', '16:9');
+      const img = last(); eq(img.type, 'image', 'imagen insertada'); eq(img.src, 'data:image/gif;base64,R0lGODlhAQABAAAAACw=', 'datos');
+      eq(Math.round(img.w / img.h * 9), 16, 'proporción 16:9'); eq(img.alt, 'Un volcán al amanecer', 'alt con la descripción');
+      eq(calls[0].body.aspect_ratio, '16:9', 'pide la proporción');
+      slide().blocks[0].html = '<b>Título</b>'; slide().notes = 'Nota';
+      R.blocks.addTable(); last().rows[0][0] = 'celda';
+      const n = await AI.translateDeck('English');
+      eq(slide().blocks[0].html, '<b>Title</b>', 'traduce conservando el formato'); eq(slide().notes, 'Note', 'notas');
+      eq(last().rows[0][0], 'cell', 'celdas de tabla'); assert(n >= 3, 'recuento');
+      R.store.undo(); eq(slide().blocks[0].html, '<b>Título</b>', 'un solo paso de deshacer');
+    } finally { W.fetch = realFetch; AI.disconnectAi(); }
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

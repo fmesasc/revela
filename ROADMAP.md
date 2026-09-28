@@ -158,7 +158,7 @@ the origin of every requirement is traceable.
 - ✅ Reading order pane; Tab / Shift+Tab walks the objects of the slide `PP·OO`
 - ✅ Screen reader support in the editor — named slide and objects, live announcement of the selection `PP·GS·OO`
 - ✅ Right-to-left **interface** (Arabic) — mirrored ribbon and panels, slide geometry untouched `PP·OO`
-- ⬜ Built-in content translation `GS·OO`
+- ✅ Translate the whole presentation with AI (text keeping formatting, tables, notes; one undo step) `GS·OO`
 - ⬜ Complete GL/NL/EU/AR and more UI languages (community translations) `PP·GS·OO`
 
 ## 10. Extensibility & automation
@@ -170,7 +170,7 @@ the origin of every requirement is traceable.
 - ✅ AI image background removal `PP`
 - ✅ Design ideas — local layout suggestions for the slide's content (visual left/right/background, centred, classic) `PP·GS`
 - ✅ AI via OpenRouter (sign in or own key; user pays their usage, no Revela server): create slides from a topic, rewrite/shorten/proofread/translate text `PP·GS`
-- ⬜ AI image generation `PP·GS`
+- ✅ AI image generation (OpenRouter Image API, model configurable) `PP·GS`
 - ✅ AI speaker notes (one slide or all) and alt text for images `PP·GS`
 
 ## 12. Platform
