@@ -208,4 +208,21 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(D.documentElement.dir, 'ltr', 'vuelve a LTR');
     eq(tab.textContent.trim(), 'Inicio', 'vuelve a español');
   });
+
+  await test('localización: todos los textos de la interfaz tienen traducción (también los nuevos)', async () => {
+    const tbl = await (await fetch(new URL('../src/i18n/strings.js', D.baseURI))).text();
+    const files = ['src/ui/dialogs/share.js', 'src/ui/dialogs/picture.js', 'src/ui/dialogs/textstyles.js', 'src/io/share/publish.js', 'src/ui/canvas/content.js', 'src/ui/dialogs/object.js', 'src/io/export/objects.js'];
+    const missing = [];
+    for (const f of files) {
+      const src = await (await fetch(new URL('../' + f, D.baseURI))).text();
+      for (const m of src.matchAll(/\bt\('((?:[^'\\]|\\.)+)'\)/g)) if (!tbl.includes(`['${m[1]}'`)) missing.push(m[1]);
+    }
+    eq(missing.length, 0, 'sin traducir: ' + missing.slice(0, 5).join(' | '));
+    R.i18n.setLang('en');
+    eq(R.i18n.t('Compartir'), 'Share'); eq(R.i18n.t('Estilos de texto del patrón'), 'Master text styles');
+    eq(D.querySelector('[data-action="save-picture"] span').innerHTML, 'Selection<br>as picture', 'la cinta en inglés');
+    eq(D.querySelector('#master-banner .mb-ph option[value="picture"]').textContent, 'Image', 'la barra del patrón en inglés');
+    R.i18n.setLang('de'); eq(R.i18n.t('Nuevo patrón'), 'Neuer Master', 'alemán');
+    R.i18n.setLang('es'); eq(D.querySelector('[data-action="save-picture"] span').innerHTML, 'Selección<br>como imagen', 'vuelve al español');
+  });
 }
