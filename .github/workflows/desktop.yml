@@ -1,17 +1,27 @@
 # Aplicación de escritorio (Tauri 2) para Windows, macOS y Linux.
-# Se lanza a mano (Actions ▸ Desktop app ▸ Run workflow) o al publicar una
-# etiqueta vX.Y.Z; los instaladores quedan como artefactos de la ejecución
-# (y, con etiqueta, en una Release). No están firmados: Windows y macOS
-# avisarán la primera vez que se abran.
+#
+# - Cada push a main: compila y publica los instaladores en la release
+#   «latest» (Revela · última versión), que se sustituye en cada subida.
+# - Una etiqueta vX.Y.Z: además, una release fija con ese número.
+# - También a mano: Actions ▸ Desktop app ▸ Run workflow.
+# Los instaladores no están firmados: Windows y macOS avisan al abrirlos la
+# primera vez.
 name: Desktop app
 
 on:
-  workflow_dispatch:
   push:
+    branches: [main]
     tags: ['v*']
+    paths-ignore: ['**.md', 'docs/**', 'tests/**', 'tools/**', 'examples/**']
+  workflow_dispatch:
 
 permissions:
   contents: write
+
+# Si se sube otra vez mientras compila, la compilación anterior se cancela.
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -30,7 +40,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - uses: dtolnay/rust-toolchain@stable
       - uses: swatinem/rust-cache@v2
         with:
@@ -40,6 +50,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      # Version: the tag's (v1.2.3 → 1.2.3), else 0.1.<run number> so each
+      # build is newer than the last (Windows installers need that to update).
+      - name: Version
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then V="${GITHUB_REF_NAME#v}"; else V="0.1.${GITHUB_RUN_NUMBER}"; fi
+          node -e "const f='desktop/src-tauri/tauri.conf.json',fs=require('fs'),c=JSON.parse(fs.readFileSync(f));c.version=process.argv[1];fs.writeFileSync(f,JSON.stringify(c,null,2))" "$V"
+          echo "Versión $V"
       - name: Web app into the bundle
         shell: bash
         run: |
@@ -62,14 +80,34 @@ jobs:
             desktop/src-tauri/target/release/bundle/**/*.rpm
             desktop/src-tauri/target/release/bundle/**/*.AppImage
           if-no-files-found: error
-      - name: Release (tags only)
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v4
         with:
-          files: |
-            desktop/src-tauri/target/release/bundle/**/*.msi
-            desktop/src-tauri/target/release/bundle/**/*.exe
-            desktop/src-tauri/target/release/bundle/**/*.dmg
-            desktop/src-tauri/target/release/bundle/**/*.deb
-            desktop/src-tauri/target/release/bundle/**/*.rpm
-            desktop/src-tauri/target/release/bundle/**/*.AppImage
+          path: out
+      - name: Publish
+        shell: bash
+        run: |
+          mapfile -t FILES < <(find out -type f)
+          printf '%s\n' "${FILES[@]}"
+          NOTES="Instaladores de Revela para escritorio.
+
+          - **Windows:** \`.msi\` o \`…-setup.exe\` (Windows puede avisar de que no está firmado: «Más información ▸ Ejecutar de todos modos»).
+          - **macOS:** \`.dmg\` (la primera vez: clic derecho ▸ Abrir).
+          - **Linux:** \`.AppImage\` (dale permiso de ejecución), \`.deb\` o \`.rpm\`.
+
+          La versión web siempre está en https://fmesasc.github.io/revela/"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            gh release create "$GITHUB_REF_NAME" "${FILES[@]}" -R "$GITHUB_REPOSITORY" --title "Revela $GITHUB_REF_NAME" --notes "$NOTES" --latest
+          else
+            gh release delete latest -R "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+            gh release create latest "${FILES[@]}" -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "Revela · última versión" --notes "$NOTES
+
+          Compilada desde ${GITHUB_SHA::7}." --latest
+          fi

@@ -5,7 +5,7 @@
 **Editor visual de presentaciones interactivas con 3D en vivo, construido sobre
 [reveal.js](https://revealjs.com/).**
 
-[English](README.md) · [Español](README.es.md) · [Demo](https://fmesasc.github.io/revela/) · [Hoja de ruta](ROADMAP.md)
+[English](README.md) · [Español](README.es.md) · [Demo](https://fmesasc.github.io/revela/) · [App de escritorio](https://github.com/fmesasc/revela/releases/latest) · [Hoja de ruta](ROADMAP.md)
 
 </div>
 
@@ -59,6 +59,8 @@ reveal.js, de modo que el resultado es una página web estándar y autónoma.
 Consulta la [hoja de ruta](ROADMAP.md) para el detalle y lo que viene después.
 
 ## Puesta en marcha
+
+**App de escritorio** (Windows, macOS, Linux): instaladores en la [última versión](https://github.com/fmesasc/revela/releases/latest), que se genera sola con cada cambio (aún sin firmar: Windows y macOS avisan la primera vez).
 
 Revela es una aplicación estática sin compilación.
 
