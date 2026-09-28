@@ -60,7 +60,7 @@ the origin of every requirement is traceable.
 - ✅ Interactive 3D models (`.glb`/`.gltf`) — *unique to Revela among natives; PowerPoint has static 3D* `PP`
 - 🚧 Shapes library — rectangle, ellipse, triangle, line, arrow with fill/stroke; connectors planned `PP·GS·OO`
 - ⬜ Merge / subtract / intersect shapes `PP·OO`
-- ⬜ Tables with styles `PP·GS·OO`
+- 🚧 Tables — editable cells, add/remove rows & columns, border colour; cell styles planned `PP·GS·OO`
 - ⬜ Charts (bar, line, pie, …) with data editing `PP·GS·OO`
 - ⬜ SmartArt / diagrams `PP·OO`
 - ⬜ Icons and stock images `PP·GS`

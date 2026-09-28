@@ -42,6 +42,10 @@ function blockHTML(b) {
       + `style="${box(b)}border:0;background:#fff"></iframe>`;
   if (b.type === 'shape')
     return `<div${a} style="${box(b)}">${shapeSVG(b)}</div>`;
+  if (b.type === 'table')
+    return `<div${a} style="${box(b)}"><table class="tbl" style="--stroke:${b.stroke || '#fff'}">`
+      + b.rows.map(row => `<tr>${row.map(c => `<td>${c || ''}</td>`).join('')}</tr>`).join('')
+      + `</table></div>`;
   return '';
 }
 
@@ -80,6 +84,8 @@ ${googleFontLinks(deck)}
  .reveal .stage>*{overflow-wrap:anywhere}
  .reveal section{height:100%}
  .reveal .slide-number{${snPos}}
+ .reveal table.tbl{border-collapse:collapse;width:100%;height:100%;margin:0}
+ .reveal table.tbl td{border:1px solid var(--stroke,#fff);padding:.15em .4em;vertical-align:top}
 </style></head><body>
 <div class="reveal"><div class="slides">
 ${slides}
@@ -176,6 +182,8 @@ ${googleFontLinks(deck)}
  .page:last-child{page-break-after:auto}
  .page>*{overflow-wrap:anywhere}
  model-viewer,img,video,iframe{width:100%;height:100%}
+ table.tbl{border-collapse:collapse;width:100%;height:100%}
+ table.tbl td{border:1px solid var(--stroke,#333);padding:.15em .4em;vertical-align:top}
 </style></head>
 <body onload="setTimeout(function(){window.print();},400)">
 ${pages}

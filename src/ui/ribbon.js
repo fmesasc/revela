@@ -41,6 +41,7 @@ const ACTIONS = {
   'section-add': () => slides.addSection(),   // creates + renames inline (no prompt)
   'insert-text': blocks.addText,
   'insert-image': () => readFile('image/*', blocks.addImage),
+  'insert-table': blocks.addTable,
   'insert-model': () => readFile('.glb,.gltf', blocks.addModel),
   'insert-video': () => readFile('video/*', blocks.addVideo),
   'insert-embed': () => {

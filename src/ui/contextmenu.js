@@ -96,6 +96,13 @@ function forBlock(b) {
     items.push(
       ['Reproducir en el editor', () => document.querySelector(`.block[data-id="${b.id}"] video`)?.play()],
       null);
+  } else if (b.type === 'table') {
+    items.push(
+      ['Añadir fila', () => blocks.tableAddRow()],
+      ['Añadir columna', () => blocks.tableAddCol()],
+      ['Quitar fila', () => blocks.tableDelRow()],
+      ['Quitar columna', () => blocks.tableDelCol()],
+      null);
   }
 
   // Grouping (only when it makes sense).

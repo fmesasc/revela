@@ -116,6 +116,11 @@ function reconcile(b) {
   } else if (b.type === 'shape') {
     const d = el.querySelector('.shape'); const sig = shapeSig(b);
     if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = shapeSVG(b); }
+  } else if (b.type === 'table') {
+    const t = el.querySelector('.tbl'); if (!t) return;
+    const sig = tableSig(b);
+    if (t.dataset.sig !== sig) { t.dataset.sig = sig; fillTable(t, b); if (el.classList.contains('editing')) t.querySelectorAll('td').forEach(td => (td.contentEditable = 'true')); }
+    t.style.setProperty('--stroke', b.stroke || '#fff');
   }
 }
 
@@ -151,6 +156,7 @@ function blockEl(b) {
   if (b.type === 'text') setupText(b, el);
   else if (b.type === 'model') setupModel(el);
   else if (b.type === 'embed') setupEmbed(el);
+  else if (b.type === 'table') setupTable(el, b);
   return el;
 }
 
@@ -178,6 +184,7 @@ function content(b) {
     const d = document.createElement('div'); d.className = 'shape';
     d.dataset.sig = shapeSig(b); d.innerHTML = shapeSVG(b); return d;
   }
+  if (b.type === 'table') return tableContent(b);
   if (b.type === 'image') { const i = document.createElement('img'); i.src = b.src; i.draggable = false; return i; }
   if (b.type === 'video') { const v = document.createElement('video'); v.src = b.src; v.controls = true; return v; }
   if (b.type === 'embed') return embedContent(b);
@@ -207,6 +214,38 @@ function embedContent(b) {
   f.style.pointerEvents = 'none'; // dragging the body moves the block; double‑click to interact
   wrap.append(bar, f);
   return wrap;
+}
+
+const tableSig = b => b.rows.length + 'x' + (b.rows[0]?.length || 0);
+function tableContent(b) {
+  const t = document.createElement('table'); t.className = 'tbl';
+  t.dataset.sig = tableSig(b); t.style.setProperty('--stroke', b.stroke || '#fff');
+  fillTable(t, b);
+  return t;
+}
+function fillTable(t, b) {
+  t.innerHTML = '';
+  b.rows.forEach((row, r) => {
+    const tr = t.insertRow();
+    row.forEach((cell, c) => { const td = tr.insertCell(); td.innerHTML = cell || ''; td.dataset.r = r; td.dataset.c = c; });
+  });
+}
+// Cells edit on double‑click (like text boxes); Esc / clicking away saves.
+function setupTable(el, b) {
+  el.addEventListener('dblclick', e => {
+    if (!e.target.closest('td')) return;
+    el.classList.add('editing');
+    el.querySelectorAll('.tbl td').forEach(td => (td.contentEditable = 'true'));
+    e.target.closest('td').focus();
+  });
+  el.addEventListener('input', e => { const td = e.target.closest('td'); if (td) b.rows[+td.dataset.r][+td.dataset.c] = td.innerHTML; });
+  el.addEventListener('focusout', () => setTimeout(() => {
+    if (!el.contains(document.activeElement)) {
+      el.classList.remove('editing');
+      el.querySelectorAll('.tbl td').forEach(td => (td.contentEditable = 'false'));
+      commit(() => {}, { history: false });
+    }
+  }, 0));
 }
 
 // Double‑click enters content mode: text becomes editable, a model can be
@@ -242,7 +281,7 @@ function exitEdit(el) {
 
 function startDrag(ev, b, el) {
   if (el.classList.contains('editing')) {
-    if (ev.target.closest('.rich, model-viewer, iframe')) return; // over the content: keep editing
+    if (ev.target.closest('.rich, model-viewer, iframe, .tbl')) return; // over the content: keep editing
     exitEdit(el);                                          // grabbed the frame: leave edit and move
   }
   ev.stopPropagation();

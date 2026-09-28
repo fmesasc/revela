@@ -180,6 +180,17 @@ export async function run(frame) {
     eq(b.x, 200, 'centro intermedio equidistante');
   });
 
+  await test('tablas: render, edición de fila/columna y export', async () => {
+    reset(); R.blocks.addTable(); const b = last(); select(b); await sleep(20);
+    const t = D.querySelector(`.block[data-id="${b.id}"] .tbl`);
+    assert(t, 'no hay tabla'); eq(t.querySelectorAll('tr').length, 2, 'filas iniciales');
+    eq(t.querySelectorAll('tr')[0].children.length, 3, 'columnas iniciales');
+    R.blocks.tableAddRow(); R.blocks.tableAddCol(); await sleep(20);
+    eq(b.rows.length, 3, 'fila añadida'); eq(b.rows[0].length, 4, 'columna añadida');
+    b.rows[0][0] = 'Hola'; R.render(); await sleep(10);
+    assert(/<table class="tbl"[^>]*><tr><td>Hola<\/td>/.test(R.io.buildHTML()), 'export de la tabla');
+  });
+
   await test('buscar y reemplazar respeta el formato (nodos de texto)', async () => {
     reset(); const b = newText();
     b.html = 'Hola <b>mundo</b> y mundo'; R.render();

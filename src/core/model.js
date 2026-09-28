@@ -44,6 +44,14 @@ export function textBlock(props = {}) {
   }, props);
 }
 
+export function tableBlock(props = {}) {
+  return Object.assign({
+    id: uid(), type: 'table', x: 260, y: 220, w: 700, h: 220,
+    rotation: 0, animation: null, stroke: '#ffffff',
+    rows: [['', '', ''], ['', '', '']],
+  }, props);
+}
+
 export function loadDeck() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
