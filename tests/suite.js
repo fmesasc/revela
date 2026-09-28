@@ -1614,6 +1614,21 @@ export async function run(frame) {
     const html = R.io.buildHTML(); assert(/data-lightbox/.test(html) && /cursor:zoom-in/.test(html), 'imagen ampliable en el export');
   });
 
+  await test('apariencia del editor: claro, oscuro, automático y personalizado', async () => {
+    const A = await frame.contentWindow.eval("import('/src/ui/appearance.js')"), root = D.documentElement;
+    const panel = () => getComputedStyle(root).getPropertyValue('--panel').trim();
+    A.setAppearance({ mode: 'dark' }); eq(root.dataset.ui, 'dark', 'oscuro'); eq(panel(), '#1f2329', 'paleta oscura');
+    eq(getComputedStyle(root).colorScheme, 'dark', 'controles nativos oscuros');
+    A.setAppearance({ mode: 'custom', accent: '#c0392b', base: '#1b2330' });
+    eq(panel(), '#1b2330', 'fondo elegido'); eq(getComputedStyle(root).getPropertyValue('--accent').trim(), '#c0392b', 'acento elegido');
+    assert(getComputedStyle(root).getPropertyValue('--txt').trim() === '#e8eaed', 'texto claro sobre fondo oscuro elegido');
+    A.setAppearance({ mode: 'custom', accent: '#2b7a78', base: '#ffffff' }); eq(getComputedStyle(root).getPropertyValue('--txt').trim(), '#2f333a', 'texto oscuro sobre fondo claro');
+    eq(JSON.parse(frame.contentWindow.localStorage.getItem('revela.appearance')).mode, 'custom', 'se recuerda');
+    D.getElementById('ap-btn').click(); await sleep(10); assert(D.getElementById('ap-modal'), 'botón de la barra de título');
+    D.querySelector('#ap-modal .ap-card[data-m="light"]').click(); eq(root.dataset.ui, 'light', 'vuelve a claro'); eq(panel(), '#fff', 'paleta clara');
+    D.querySelector('#ap-modal .modal-close').click();
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

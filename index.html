@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Revela</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%233f6497'/%3E%3Ctext x='16' y='23' font-size='20' font-family='sans-serif' fill='white' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
+  <script>/* editor appearance before the first paint (see src/ui/appearance.js) */
+    try { var a = JSON.parse(localStorage.getItem('revela.appearance')); if (a) { document.documentElement.dataset.ui = a.mode;
+      if (a.mode === 'custom' && a.vars) for (var k in a.vars) document.documentElement.style.setProperty(k, a.vars[k]); } } catch (e) {}</script>
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#3f6497">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -29,6 +32,7 @@
       <span class="doc-name" contenteditable="true" spellcheck="false"
         title="Haz clic para renombrar la presentación"></span>
       <span class="grow"></span>
+      <button id="ap-btn" class="ap-btn" type="button" title="Apariencia: claro, oscuro, automático o personalizado"><i class="ms">contrast</i></button>
       <a id="donate" class="donate" target="_blank" rel="noopener" hidden title="Apoya el proyecto"><i class="ms">favorite</i><span>Apoyar</span></a>
       <select id="lang-select" class="lang-select" title="Idioma / Language"></select>
     </div>
@@ -529,6 +533,7 @@
             <button data-action="toggle-snap"><i class="ms">grid_goldenratio</i><span>Ajustar</span></button>
             <button data-action="toggle-notes"><i class="ms">sticky_note_2</i><span>Notas</span></button>
             <button data-action="shortcuts"><i class="ms">keyboard</i><span>Atajos</span></button>
+            <button data-action="appearance"><i class="ms">contrast</i><span>Apariencia</span></button>
           </div><label>Ayudas</label>
         </div>
         <div class="group">

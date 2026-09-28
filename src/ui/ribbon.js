@@ -33,6 +33,7 @@ import { openCodeEditor } from './code-dialog.js';
 import { openBackgroundDialog } from './background-dialog.js';
 import { openSettings } from './settings-dialog.js';
 import { markdownToSlides } from '../io/markdown.js';
+import { openAppearance, applyAppearance } from './appearance.js';
 import { openDashboardDialog } from './data-dialog.js';
 import { openStockImages, openOnlineIcons } from './stock-dialog.js';
 import * as palettes from '../features/palettes.js';
@@ -139,6 +140,7 @@ const ACTIONS = {
   'slide-vertical': () => slides.toggleVertical(),
   'bg-advanced': () => openBackgroundDialog(),
   'deck-settings': () => openSettings(),
+  'appearance': () => openAppearance(),
   'slide-delete': () => slides.deleteSlide(),
   'section-add': () => slides.addSection(),   // creates + renames inline (no prompt)
   'insert-text': blocks.addText,
@@ -267,6 +269,8 @@ export function initRibbon() {
     endAnimPaint();
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && animPaint) endAnimPaint(); });
+  applyAppearance();
+  document.getElementById('ap-btn')?.addEventListener('click', () => openAppearance());
   const don = document.getElementById('donate');
   if (don && DONATE_URL) { don.href = DONATE_URL; don.hidden = false; }
   document.getElementById('final-banner')?.addEventListener('click', e => {

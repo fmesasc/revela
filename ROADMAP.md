@@ -164,6 +164,7 @@ the origin of every requirement is traceable.
 - ✅ Accessibility checker — missing alt text, empty/untitled slides, duplicate titles, tables without header, low text contrast (WCAG) `PP·GS·OO`
 - ✅ Reading order pane; Tab / Shift+Tab walks the objects of the slide `PP·OO`
 - ✅ Screen reader support in the editor — named slide and objects, live announcement of the selection `PP·GS·OO`
+- ✅ Editor appearance — light, dark, automatic (system) or custom accent and background `PP·GS·OO`
 - ✅ Right-to-left **interface** (Arabic) — mirrored ribbon and panels, slide geometry untouched `PP·OO`
 - ✅ Translate the whole presentation with AI (text keeping formatting, tables, notes; one undo step) `GS·OO`
 - ⬜ Complete GL/NL/EU/AR and more UI languages (community translations) `PP·GS·OO`

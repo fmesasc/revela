@@ -2,6 +2,23 @@
   --bg:#eef0f3; --canvas-bg:#c7cad1; --panel:#fff; --ribbon:#f7f8fa;
   --line:#e2e4e9; --line2:#d2d5dc; --txt:#2f333a; --txt2:#797f89;
   --accent:#3f6497; --accent-bg:#e8eef6; --go:#2b7a3b; --go-bg:#e6f4ea; --danger:#c0392b;
+  color-scheme:light;
+}
+/* Editor appearance (the slides keep their own colours): dark, or following
+   the system when "automatic"; "custom" sets these variables from JS. */
+:root[data-ui="dark"]{
+  --bg:#15181d; --canvas-bg:#0b0d10; --panel:#1f2329; --ribbon:#1a1d22;
+  --line:#2b3038; --line2:#3a414c; --txt:#e3e6eb; --txt2:#9aa3ae;
+  --accent:#86a9e8; --accent-bg:#26324a; --go:#6fd18c; --go-bg:#1f3527; --danger:#f07167;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root[data-ui="auto"]{
+    --bg:#15181d; --canvas-bg:#0b0d10; --panel:#1f2329; --ribbon:#1a1d22;
+    --line:#2b3038; --line2:#3a414c; --txt:#e3e6eb; --txt2:#9aa3ae;
+    --accent:#86a9e8; --accent-bg:#26324a; --go:#6fd18c; --go-bg:#1f3527; --danger:#f07167;
+    color-scheme:dark;
+  }
 }
 *{box-sizing:border-box}
 /* No native text selection / long‑press callout on the app chrome or objects,
@@ -21,9 +38,9 @@ button{font-family:inherit}
 .doc-name{color:var(--txt);padding:2px 10px;border-radius:6px;border:1px solid transparent;
   max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;outline:none}
 .doc-name:hover{border-color:var(--line2)}
-.doc-name:focus{border-color:var(--accent);background:#fff;overflow:visible}
+.doc-name:focus{border-color:var(--accent);background:var(--panel);overflow:visible}
 .grow{flex:1}
-.lang-select{border:1px solid var(--line2);border-radius:6px;background:#fff;color:var(--txt);
+.lang-select{border:1px solid var(--line2);border-radius:6px;background:var(--panel);color:var(--txt);
   font-family:inherit;font-size:12px;padding:4px 6px;cursor:pointer}
 .mini{background:none;border:1px solid transparent;border-radius:6px;cursor:pointer;font-size:15px;
   padding:2px 8px;color:var(--txt)}
@@ -58,18 +75,18 @@ button{font-family:inherit}
 .row button i{font-style:normal;font-size:16px}
 .row button span{white-space:nowrap;text-align:center}
 .row button.lg{min-width:58px}.row button.lg i{font-size:22px}
-.row button:hover,.row label.color:hover{background:#fff;border-color:var(--line2)}
+.row button:hover,.row label.color:hover{background:var(--panel);border-color:var(--line2)}
 .row button.go{color:var(--go)}.row button.go:hover{background:var(--go-bg);border-color:#bfe0c8}
 .row button.on{background:var(--accent-bg);border-color:#b9cbe0;color:var(--accent)}
 .row button:disabled{opacity:.4;cursor:default}
 .row label.color{flex-direction:row;gap:5px}
 .row label.color input{width:20px;height:20px;border:none;background:none;padding:0;cursor:pointer}
-.row select{flex-direction:row;padding:6px 8px;min-width:120px;border:1px solid var(--line2);background:#fff;font-size:12px}
+.row select{flex-direction:row;padding:6px 8px;min-width:120px;border:1px solid var(--line2);background:var(--panel);font-size:12px}
 .row select.font-select{min-width:132px}
 .row select.size-select{min-width:60px}
 .row select.style-select{min-width:108px}
 .row input.size-input{width:54px;text-align:center;border:1px solid var(--line2);border-radius:6px;
-  padding:6px 4px;font-family:inherit;font-size:12px;background:#fff;color:var(--txt)}
+  padding:6px 4px;font-family:inherit;font-size:12px;background:var(--panel);color:var(--txt)}
 .row input.size-input:focus{outline:none;border-color:var(--accent)}
 
 /* Group dialog launcher (bottom‑right "more options", like Office) */
@@ -80,7 +97,7 @@ button{font-family:inherit}
 .row button.group-more .ms{font-size:16px}
 
 /* Popover for the "more options" launchers */
-.popover{position:fixed;z-index:2000;background:#fff;border:1px solid var(--line2);border-radius:8px;
+.popover{position:fixed;z-index:2000;background:var(--panel);border:1px solid var(--line2);border-radius:8px;
   box-shadow:0 8px 30px #0003;padding:10px 12px;display:flex;flex-direction:column;gap:9px;min-width:220px}
 .popover h4{margin:0 0 2px;font-size:12px;color:var(--txt2);text-transform:uppercase;letter-spacing:.4px}
 .popover label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--txt2)}
@@ -142,7 +159,7 @@ main{flex:1;display:flex;min-height:0}
   box-shadow:0 10px 34px #0003}
 
 /* Rulers (View ▸ Regla). Major mark every 100 px, minor every 20 px. */
-#ruler-corner,#ruler-h,#ruler-v{display:none;background:#fff}
+#ruler-corner,#ruler-h,#ruler-v{display:none;background:var(--panel)}
 body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{display:block}
 #ruler-corner{width:20px;height:20px;border-right:1px solid var(--line2);border-bottom:1px solid var(--line2)}
 #ruler-h{height:20px;border-bottom:1px solid var(--line2);
@@ -239,7 +256,7 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 .guide.v{top:0;bottom:0;width:1px}.guide.h{left:0;right:0;height:1px}
 
 /* ---------- Context menu ---------- */
-#context-menu{position:fixed;z-index:1000;background:#fff;border:1px solid var(--line2);
+#context-menu{position:fixed;z-index:1000;background:var(--panel);border:1px solid var(--line2);
   border-radius:8px;box-shadow:0 8px 30px #0003;padding:5px;min-width:210px}
 .ctx-item{display:block;width:100%;text-align:left;background:none;border:none;padding:7px 12px;
   border-radius:5px;cursor:pointer;color:var(--txt);font-size:13px}
@@ -267,7 +284,7 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 
 /* ---------- Connect-mobile modal ---------- */
 .modal-backdrop{position:fixed;inset:0;z-index:3000;background:#0006;display:grid;place-items:center}
-.modal{background:#fff;border-radius:12px;box-shadow:0 20px 60px #0004;padding:22px 24px;max-width:340px;
+.modal{background:var(--panel);border-radius:12px;box-shadow:0 20px 60px #0004;padding:22px 24px;max-width:340px;
   text-align:center;position:relative}
 .modal h3{margin:0 0 8px;color:var(--accent)}
 .modal .host-help{color:var(--txt2);font-size:12px;margin:0 0 14px}
@@ -283,12 +300,12 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 .modal .sc-table td{padding:4px 6px;vertical-align:top}
 .modal .sc-table td:last-child{color:var(--txt2)}
 .modal kbd{background:var(--ribbon);border:1px solid var(--line2);border-radius:5px;padding:1px 6px;font-family:inherit;font-size:12px;white-space:nowrap}
-.modal .mt-field{width:100%;font-size:28px;padding:10px;border:1px solid var(--line2);border-radius:8px;margin-bottom:12px;background:#fff}
+.modal .mt-field{width:100%;font-size:28px;padding:10px;border:1px solid var(--line2);border-radius:8px;margin-bottom:12px;background:var(--panel)}
 .modal .mt-preview{min-height:52px;display:flex;align-items:center;justify-content:center;background:#0b0e14;
   color:#fff;border-radius:8px;padding:10px;margin-bottom:10px;overflow:auto}
 .modal .mt-sec{font-size:11px;text-transform:uppercase;color:var(--txt2);margin:8px 0 4px;letter-spacing:.4px}
 .modal .mt-grid{display:grid;grid-template-columns:repeat(11,1fr);gap:3px}
-.modal .mt-btn{border:1px solid var(--line2);background:#fff;border-radius:6px;cursor:pointer;font-size:15px;padding:6px 0;line-height:1;color:var(--txt)}
+.modal .mt-btn{border:1px solid var(--line2);background:var(--panel);border-radius:6px;cursor:pointer;font-size:15px;padding:6px 0;line-height:1;color:var(--txt)}
 .modal .mt-btn:hover{background:var(--accent-bg);border-color:#b9cbe0}
 .modal .an-row{border:1px solid var(--line2);border-radius:8px;padding:8px 10px;margin-bottom:8px}
 .modal .an-title{font-weight:600;margin-bottom:6px;color:var(--txt)}
@@ -296,7 +313,7 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 .modal .an-grid label{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--txt2)}
 .modal .an-grid select,.modal .an-grid input{border:1px solid var(--line2);border-radius:6px;padding:5px;font-family:inherit;font-size:13px;color:var(--txt)}
 .modal .an-actions{display:flex;gap:6px;margin-top:6px;justify-content:flex-end}
-.modal .an-actions button{border:1px solid var(--line2);background:#fff;border-radius:6px;cursor:pointer;padding:4px 10px;color:var(--txt)}
+.modal .an-actions button{border:1px solid var(--line2);background:var(--panel);border-radius:6px;cursor:pointer;padding:4px 10px;color:var(--txt)}
 .modal .an-actions button:hover:not(:disabled){background:var(--accent-bg)}
 .modal .an-actions button:disabled{opacity:.4;cursor:default}
 .modal .sp-list{display:flex;flex-direction:column;gap:3px}
@@ -307,7 +324,7 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 .modal .dlg-msg{margin:0 0 12px;font-size:14px;color:var(--txt)}
 .modal .dlg-in{width:100%;border:1px solid var(--line2);border-radius:6px;padding:8px;font-family:inherit;font-size:14px;margin-bottom:12px}
 .mini2{background:var(--ribbon);border:1px solid var(--line2);border-radius:8px;padding:9px 14px;cursor:pointer;font-family:inherit;font-size:13px;color:var(--txt)}
-.mini2:hover{background:#fff}
+.mini2:hover{background:var(--panel)}
 .modal .fr-l{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--txt2);margin-bottom:10px}
 .modal .fr-l input,.modal .fr-l select,.modal .fr-l textarea{border:1px solid var(--line2);border-radius:6px;padding:8px;font-family:inherit;font-size:14px;color:var(--txt)}
 .modal .fr-chk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2);margin-bottom:12px}
@@ -494,7 +511,7 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .cm-head button,.cm-actions button{border:1px solid var(--line2);background:none;border-radius:6px;cursor:pointer;padding:3px 8px;color:inherit;font-size:12px}
 .cm-new{display:flex;flex-direction:column;gap:6px}.cm-new textarea{border:1px solid var(--line2);border-radius:6px;padding:6px;font:inherit;resize:vertical}
 .cm-toggle{font-size:12px;color:var(--txt2);display:flex;gap:6px;align-items:center}
-.cm-item{border:1px solid var(--line2);border-radius:8px;padding:8px;background:#fff;display:flex;flex-direction:column;gap:4px}
+.cm-item{border:1px solid var(--line2);border-radius:8px;padding:8px;background:var(--panel);display:flex;flex-direction:column;gap:4px}
 .cm-item.on{border-color:var(--accent)}.cm-item.resolved{opacity:.6}
 .cm-meta{font-size:11px;color:var(--txt2)}.cm-text{font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
 .cm-reply{margin-inline-start:10px;padding-inline-start:8px;border-inline-start:2px solid var(--line2)}
@@ -526,16 +543,16 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .as-log{flex:1;overflow:auto;display:flex;flex-direction:column;gap:6px;min-height:80px}
 .as-msg{padding:7px 10px;border-radius:10px;font-size:13px;white-space:pre-wrap;max-width:92%}
 .as-msg.me{align-self:flex-end;background:var(--accent);color:#fff}
-.as-msg.ai{align-self:flex-start;background:#fff;border:1px solid var(--line2)}
+.as-msg.ai{align-self:flex-start;background:var(--panel);border:1px solid var(--line2)}
 .as-hints{display:flex;flex-wrap:wrap;gap:4px}
-.as-hint{border:1px solid var(--line2);background:#fff;border-radius:12px;padding:3px 9px;font-size:11px;cursor:pointer;color:var(--txt2)}
+.as-hint{border:1px solid var(--line2);background:var(--panel);border-radius:12px;padding:3px 9px;font-size:11px;cursor:pointer;color:var(--txt2)}
 .ad-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 @media (max-width:860px){ #assistant-panel{width:auto;max-height:50vh;border-inline-start:none;border-top:1px solid var(--line2)} .ad-grid{grid-template-columns:1fr} }
 /* Online images & icons */
 .sk-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.sk-bar input[type=search]{flex:1;min-width:180px;border:1px solid var(--line2);border-radius:6px;padding:7px 9px}
 .sk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;max-height:55vh;overflow:auto;margin-top:8px}
 .sk-grid.icons{grid-template-columns:repeat(auto-fill,minmax(56px,1fr))}
-.sk-item{position:relative;border:1px solid var(--line2);border-radius:6px;background:#f4f5f7;padding:0;cursor:pointer;overflow:hidden;aspect-ratio:4/3}
+.sk-item{position:relative;border:1px solid var(--line2);border-radius:6px;background:var(--bg);padding:0;cursor:pointer;overflow:hidden;aspect-ratio:4/3}
 .icons .sk-item{aspect-ratio:1;padding:8px}
 .sk-item img{width:100%;height:100%;object-fit:cover;display:block}.icons .sk-item img{object-fit:contain}
 .sk-item span{position:absolute;left:4px;bottom:4px;font-size:10px;background:#000a;color:#fff;border-radius:3px;padding:0 4px}
@@ -559,7 +576,7 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 /* Objects may stick out of the slide (like PowerPoint): they stay visible and
    grabbable, and what lies outside the slide is dimmed by this mask. */
 #stage::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:40;border-radius:inherit;
-  box-shadow:0 0 0 100vmax color-mix(in srgb,var(--canvas-bg) 62%,transparent)}
+  box-shadow:0 0 0 1px var(--line2),0 0 0 100vmax color-mix(in srgb,var(--canvas-bg) 62%,transparent)}
 #stage{isolation:isolate}
 #ruler-corner,#ruler-h,#ruler-v{position:relative;z-index:60}   /* above the mask */
 /* Code editor dialog */
@@ -584,3 +601,12 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 @keyframes rvSemi{from{opacity:1}to{opacity:.5}}
 @keyframes rvInSemi{0%{opacity:0}30%,70%{opacity:1}100%{opacity:.5}}
 .set-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.set-grid fieldset:last-child{grid-column:1/-1}@media (max-width:860px){.set-grid{grid-template-columns:1fr}}
+/* Appearance dialog */
+.ap-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.ap-card{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border:1px solid var(--line2);border-radius:10px;background:var(--panel);color:var(--txt);cursor:pointer}
+.ap-card.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-bg)}
+.ap-sw{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.ap-sw button{width:24px;height:24px;border-radius:50%;border:1px solid var(--line2);cursor:pointer;padding:0}
+.titlebar .ap-btn{border:0;background:none;color:var(--txt2);cursor:pointer;padding:4px;border-radius:6px}
+.titlebar .ap-btn:hover{background:var(--line)}
+@media (max-width:860px){.ap-cards{grid-template-columns:repeat(2,1fr)}}
