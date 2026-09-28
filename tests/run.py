@@ -57,6 +57,52 @@ def touch_checks(send, recv, port):
     return fails
 
 
+def e2e_checks(send, recv, port):
+    """Two real pages talking over WebRTC (PeerJS public broker): phone remote,
+    live poll and audience Q&A. Needs network; run with: tests/run.sh --e2e"""
+    import json as _j
+    def tab(url):
+        tid = recv(send('Target.createTarget', url='about:blank'))['result']['targetId']
+        sid = recv(send('Target.attachToTarget', targetId=tid, flatten=True))['result']['sessionId']
+        recv(send('Page.navigate', sid, url=url)); return sid
+    def ev(sid, e): return recv(send('Runtime.evaluate', sid, expression=e, awaitPromise=True, returnByValue=True)).get('result', {}).get('result', {}).get('value')
+    def wait(sid, e, secs=20):
+        for _ in range(int(secs * 4)):
+            v = ev(sid, e)
+            if v: return v
+            time.sleep(0.25)
+        return None
+    fails = []
+    def check(ok, name):
+        if not ok: fails.append('✗ e2e: ' + name)
+    base = f'http://127.0.0.1:{port}'
+    # Phone remote
+    A = tab(base + '/index.html?test'); time.sleep(3)
+    ev(A, "(()=>{const R=window.__revela;R.slides.addSlide();R.slides.goToSlide(0);document.querySelector('[data-action=connect-mobile]').click();return 1})()")
+    code = wait(A, "(()=>{const c=document.querySelector('#host-modal .host-code')?.textContent||'';return /^[A-Z0-9]{5}$/.test(c)?c:''})()")
+    check(code, 'el mando obtiene un código')
+    check(ev(A, "(()=>{const c=document.querySelector('#host-modal canvas');const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let k=0;for(let i=0;i<d.length;i+=4)if(d[i]<100&&d[i+3])k++;return k>100})()"), 'QR del mando dibujado')
+    B = tab(f'{base}/remote.html?code={code}')
+    check(wait(A, "document.querySelector('#host-modal .host-status')?.classList.contains('on')"), 'el móvil se conecta solo desde el QR')
+    wait(B, "document.getElementById('control')?.classList.contains('active')", 10)
+    ev(B, "document.getElementById('next').click();1")
+    check(wait(A, "window.__revela.state.ui.slideIndex===1", 8), 'Siguiente desde el móvil')
+    # Live poll + Q&A inside the exported presentation
+    ev(A, "(async()=>{const R=window.__revela;R.store.replaceDeck(R.model.emptyDeck());R.poll.addPoll({question:'P',options:['A','B']});R.slides.addSlide();R.poll.addPoll({question:'Q',kind:'qa'});R.slides.goToSlide(0);"
+          "const html=R.io.buildHTML().replace(/https:\\/\\/fmesasc\\.github\\.io\\/revela\\/vote\\.html/g,location.origin+'/vote.html');document.open();document.write(html);document.close();return 1})()")
+    vcode = wait(A, "(()=>{const c=document.querySelector('.rv-poll-code')?.textContent||'';return /^[A-Z0-9]{5}$/.test(c)?c:''})()")
+    check(vcode, 'la votación obtiene un código')
+    V = tab(f'{base}/vote.html?c={vcode}')
+    check(wait(V, "!document.getElementById('poll').hidden"), 'el móvil recibe la pregunta')
+    ev(V, "document.querySelectorAll('#answers .opt')[1].click();document.getElementById('send').click();1")
+    check(wait(A, "/B\\s*1/.test(document.querySelector('.rv-poll-res').innerText)", 10), 'el voto actualiza el gráfico')
+    ev(A, "Reveal.next();1")
+    wait(V, "!!document.querySelector('#answers textarea')", 10)
+    ev(V, "document.querySelector('#answers textarea').value='¿Hola?';document.querySelector('#answers button').click();1")
+    check(wait(A, "[...document.querySelectorAll('.rv-poll-res')].some(e=>/¿Hola\\?/.test(e.innerText))", 10), 'pregunta del público en pantalla')
+    return fails
+
+
 def main():
     chrome = next((shutil.which(c) for c in ('google-chrome', 'chromium', 'chromium-browser') if shutil.which(c)), None)
     if not chrome:
@@ -117,6 +163,10 @@ def main():
         if touch_fail:
             print('REVELATEST FAIL touch'); print('\n'.join(touch_fail)); return 1
         if out.startswith('REVELATEST PASS'): out += ' + táctil 6/6'
+        if out.startswith('REVELATEST PASS') and '--e2e' in sys.argv:
+            e2e_fail = e2e_checks(send, recv, port)
+            if e2e_fail: print('REVELATEST FAIL e2e'); print('\n'.join(e2e_fail)); return 1
+            out += ' + e2e 8/8'
         if out.startswith('REVELATEST FAIL'):
             r = recv(send('Runtime.evaluate', sid, returnByValue=True,
                           expression="[...document.querySelectorAll('.row.ko')].map(e=>e.innerText.replace(/\\s+/g,' ')).join('\\n')"))

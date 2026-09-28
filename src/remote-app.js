@@ -94,6 +94,8 @@ $('next').addEventListener('click', () => send({ type: 'next' }));
 $('pointer').addEventListener('click', openPad);
 $('reset-timer').addEventListener('click', startTimer);
 $('padclose').addEventListener('click', closePad);
+// Opened from the QR code / link: connect straight away.
+if (preset && preset.length >= 4) connect(preset.toUpperCase());
 $('black').addEventListener('click', () => {
   blackOn = !blackOn; send({ type: 'black', on: blackOn });
   $('black').classList.toggle('armed', blackOn);

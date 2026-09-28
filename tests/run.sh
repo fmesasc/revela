@@ -4,4 +4,4 @@
 # prints "REVELATEST PASS n/n" or the failing tests. Exit 0 = all pass.
 # Needs only python3 and Chrome/Chromium (see tests/run.py).
 cd "$(dirname "$0")/.."
-exec python3 tests/run.py
+exec python3 tests/run.py "$@"
