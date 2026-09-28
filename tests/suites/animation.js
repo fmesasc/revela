@@ -202,4 +202,47 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     reset(); slide().autoSlide = 5000;
     assert(/<section[^>]*data-autoslide="5000"/.test(R.io.buildHTML()), 'sin data-autoslide');
   });
+
+  // ---- Morph (auto-animate) like PowerPoint's -------------------------------------
+  const presentDeck = async (deck, from) => {
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
+    f.srcdoc = R.io.buildHTML(deck, { inApp: true });
+    for (let i = 0; i < 100 && !f.contentWindow.Reveal?.isReady?.(); i++) await sleep(100);
+    f.contentWindow.Reveal.slide(from); await sleep(150);
+    let fired = 0; f.contentWindow.Reveal.on('autoanimate', () => { fired++; });
+    f.contentWindow.Reveal.next(); await sleep(150);
+    const targets = [...f.contentDocument.querySelectorAll('[data-auto-animate-target]')].map(e => e.textContent.trim());
+    f.remove(); return { fired, targets };
+  };
+
+  await test('transformar: basta con activarlo en la diapositiva de destino y empareja objetos creados por separado', async () => {
+    reset(); R.slides.addSlide('titleContent'); const a = slide(); a.blocks[0].html = 'Mi título'; a.blocks[1].html = 'Uno';
+    R.slides.addSlide('titleContent'); const b = slide(); b.blocks[0].html = 'Mi título'; b.blocks[0].x = 400; b.blocks[0].y = 500; b.blocks[1].html = 'Otra cosa';
+    R.slides.toggleAutoAnimate();
+    const plan = R.io.morphPlan(R.state.deck);
+    assert(plan.marked.has(a.id) && plan.marked.has(b.id), 'la anterior se marca sola');
+    eq(plan.key(b, b.blocks[0]), plan.key(a, a.blocks[0]), 'mismo texto → mismo objeto');
+    eq(plan.key(b, b.blocks[1]), plan.key(a, a.blocks[1]), 'mismo marcador (cuerpo con cuerpo) aunque cambie el texto');
+    const r = await presentDeck(R.state.deck, 1);
+    assert(r.fired === 1 && r.targets.includes('Mi título'), 'al presentar se transforma: ' + JSON.stringify(r));
+  });
+
+  await test('transformar por palabras y por caracteres', async () => {
+    reset(); R.slides.addSlide('blank'); const a = slide(); a.blocks.push({ id: 'ta', type: 'text', x: 100, y: 100, w: 1000, h: 100, rotation: 0, animation: null, fontSize: 40, html: 'Revela hace presentaciones <b>bonitas</b>' });
+    R.slides.addSlide('blank'); const b = slide(); b.blocks.push({ id: 'tb', type: 'text', x: 100, y: 400, w: 1000, h: 100, rotation: 0, animation: null, fontSize: 60, html: 'presentaciones bonitas hace Revela' });
+    R.slides.setMorphBy('words');
+    eq(slide().morphBy, 'words'); assert(slide().autoAnimate, 'activa la transformación');
+    const html = R.io.buildHTML();
+    assert(/<span class="rv-m" data-id="w:Revela:1">Revela<\/span>/.test(html), 'cada palabra con su identificador');
+    assert(/<b><span class="rv-m" data-id="w:bonitas:1">bonitas<\/span><\/b>/.test(html), 'sin perder el formato: ' + (html.match(/.{60}bonitas.{40}/) || [''])[0]);
+    const r = await presentDeck(R.state.deck, 1);
+    for (const w of ['Revela', 'hace', 'presentaciones', 'bonitas']) assert(r.targets.includes(w), 'la palabra se desplaza: ' + w + ' ' + JSON.stringify(r.targets));
+    R.slides.setMorphBy('chars');
+    const h2 = R.io.buildHTML();
+    assert(/<span style="white-space: nowrap;"><span class="rv-m" data-id="c:R:1">R<\/span>/.test(h2), 'por caracteres, sin partir palabras');
+    const r2 = await presentDeck(R.state.deck, 1);
+    assert(r2.targets.filter(x => x.length === 1).length >= 20, 'las letras se desplazan: ' + r2.targets.length);
+    D.querySelector('[data-morphby]').value = 'objects'; D.querySelector('[data-morphby]').dispatchEvent(new frame.contentWindow.Event('change'));
+    assert(!slide().morphBy, 'volver a objetos desde la cinta');
+  });
 }

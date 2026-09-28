@@ -4,6 +4,7 @@ import { state, commit, currentSlide, selectedBlock } from '../../core/store.js'
 import { MATH_SIZE } from '../../render/svg.js';
 import { styled, addPlaceholder } from '../../features/document/master.js';
 import * as blocks from '../../features/document/blocks.js';
+import * as slides from '../../features/document/slides.js';
 import * as format from '../../features/document/format.js';
 import * as trans from '../../features/animation/transitions.js';
 import * as templates from '../../features/document/templates.js';
@@ -153,6 +154,7 @@ export function initRibbon() {
   bindChange('[data-speed]', v => trans.setTransitionSpeed(v));
   bindChange('[data-deck-transition]', v => trans.setDeckTransition(v));
   bindChange('[data-font]', v => format.fontFamily(v));
+  bindChange('[data-morphby]', v => slides.setMorphBy(v));
   bindChange('[data-size]', v => format.setFontSize(parseInt(v, 10) || 40));
   bindChange('[data-linespacing]', v => format.lineSpacing(v));
   bindChange('[data-textstyle]', v => { if (v) format.applyTextStyle(v); });
@@ -271,6 +273,7 @@ export function renderRibbon() {
   document.querySelectorAll('[data-slide-transition]').forEach(b =>
     b.classList.toggle('on', (slide.transition || 'inherit') === b.dataset.slideTransition));
   document.querySelector('[data-action="toggle-autoanimate"]')?.classList.toggle('on', !!slide.autoAnimate);
+  syncValue('[data-morphby]', slide.morphBy || 'objects');
   syncValue('[data-theme]', state.deck.theme);
   syncValue('[data-deck-fg]', palettes.deckFg());
   { const v = $('[data-action="slide-vertical"]'); if (v) { v.classList.toggle('on', !!currentSlide()?.vertical); v.disabled = state.ui.slideIndex === 0 || !!state.ui.editMaster; } }

@@ -91,10 +91,43 @@ function mergeClasses(html) {
   return merged + html.slice(end);
 }
 export function blockHTML(b, slide) { return mergeClasses(blockHTMLRaw(b, slide)); }
+
+// Morph by words or characters: every word (or letter) becomes an inline box
+// whose data-id is the word itself and its occurrence on the slide ("de" #1,
+// "de" #2…), so reveal.js moves each one to where the same word is on the next
+// slide; unmatched ones fade. Letters keep their word together when wrapping.
+// counts: per slide, shared by all its text boxes.
+export function morphText(html, by, counts) {
+  if (!html || /\$/.test(html)) return html;           // inline math is typeset from the raw text
+  const tpl = document.createElement('template'); tpl.innerHTML = html;
+  const id = key => { const n = (counts[key] = (counts[key] || 0) + 1); return `${by === 'chars' ? 'c' : 'w'}:${encodeURIComponent(key)}:${n}`; };
+  const walk = node => {
+    for (const child of [...node.childNodes]) {
+      if (child.nodeType === 1) { if (!/^(CODE|PRE|SCRIPT|STYLE)$/.test(child.tagName)) walk(child); continue; }
+      if (child.nodeType !== 3 || !child.textContent.trim()) continue;
+      const frag = document.createDocumentFragment();
+      for (const part of child.textContent.split(/(\s+)/)) {
+        if (!part) continue;
+        if (/^\s+$/.test(part)) { frag.appendChild(document.createTextNode(part)); continue; }
+        if (by === 'chars') {
+          const word = document.createElement('span'); word.style.whiteSpace = 'nowrap';
+          for (const ch of part) { const s = document.createElement('span'); s.className = 'rv-m'; s.dataset.id = id(ch.toLowerCase() === ch ? ch : ch); s.textContent = ch; word.appendChild(s); }
+          frag.appendChild(word);
+        } else { const s = document.createElement('span'); s.className = 'rv-m'; s.dataset.id = id(part); s.textContent = part; frag.appendChild(s); }
+      }
+      child.replaceWith(frag);
+    }
+  };
+  walk(tpl.content);
+  return tpl.innerHTML;
+}
 function blockHTMLRaw(b, slide) {
   // When the slide uses Auto‑Animate, a stable data-id lets reveal.js match and
   // morph the same object between consecutive slides (PowerPoint's "Morph").
-  const a = animAttrs(b, slide) + (slide && slide.autoAnimate ? ` data-id="${b.id}"` : '') + ariaAttrs(b);
+  // Morph: the object matches its twin on the next slide by id — except text
+  // morphing by words/characters, where the words themselves match (morphText).
+  const byText = !!b.byText;
+  const a = animAttrs(b, slide) + (b.morphId && !byText ? ` data-id="${esc(b.morphId)}"` : '') + ariaAttrs(b);
   if (b.type === 'connector') {
     const { w, h } = state.deck.size;
     const from = slide && slide.blocks.find(x => x.id === b.from);
@@ -163,7 +196,7 @@ function blockHTMLRaw(b, slide) {
     const ln = b.lineSteps ? ` data-line-numbers="${esc(b.lineSteps)}"` : (b.showLines ? ' data-line-numbers=""' : '');
     const start = b.lineStart > 1 ? ` data-ln-start-from="${+b.lineStart}"` : '';
     // Morph between slides: the <pre> needs its own data-id for reveal's code animation.
-    const morph = slide && slide.autoAnimate ? ` data-id="code-${b.id}"` : '';
+    const morph = b.morphId ? ` data-id="code-${esc(b.morphId)}"` : '';
     return `<div${a} class="rv-code${b.scroll === false ? ' no-scroll' : ''}" style="${box(b)}"><pre${morph} style="margin:0;height:100%;width:100%;font-size:${b.fontSize || 22}px">`
       + `<code class="language-${b.lang || 'plaintext'}" data-trim${ln}${start}>${esc(b.code || '')}</code></pre></div>`;
   }
@@ -196,7 +229,42 @@ function slideRefExport(b, originSlide, deck) {
 export const stageBackground = s => (s.bgVideo || s.bgIframe || (s.bgOpacity ?? 100) < 100 ? 'transparent' : s.background);
 export const bgLayer = s => ((s.bgOpacity ?? 100) < 100 && !s.bgVideo && !s.bgIframe
   ? `<div style="position:absolute;inset:0;background:${s.background};opacity:${s.bgOpacity / 100};pointer-events:none"></div>` : '');
-function slideHTML(s, deck, figMap) {
+// Morph (PowerPoint's "Morph", reveal.js auto-animate). Like PowerPoint, it is
+// set on the slide it goes INTO; the previous one is marked too (reveal needs
+// both). Objects pair up: the same object (duplicated slide), else the same
+// kind with the same content (text, picture, shape and colour…), else the same
+// placeholder, else the only one of its kind on both slides. Paired objects
+// share a morph id; the chain carries on to the next slide.
+const plainOf = h => String(h || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+const morphSig = b => b.type + '|' + ({ text: plainOf(b.html), image: b.src, shape: `${b.shape}|${b.fill}`, icon: b.icon, math: b.latex, code: b.code,
+  chart: b.chartType, table: JSON.stringify(b.rows), video: b.src }[b.type] ?? '');
+export function morphPlan(deck) {
+  const vis = deck.slides.filter(s => !s.hidden), marked = new Set(), keys = new Map(), textMode = new Map();
+  const k = (s, b) => `${s.id}:${b.id}`;
+  vis.forEach((s, i) => {
+    if (!s.autoAnimate) return;
+    marked.add(s.id); if (vis[i - 1]) marked.add(vis[i - 1].id);
+    // Morphing by words/characters splits the text of both slides the same way.
+    if (s.morphBy) { textMode.set(s.id, s.morphBy); if (vis[i - 1] && !textMode.has(vis[i - 1].id)) textMode.set(vis[i - 1].id, s.morphBy); }
+  });
+  vis.forEach((s, i) => {
+    if (!marked.has(s.id)) return;
+    for (const b of s.blocks) keys.set(k(s, b), b.id);
+    const prev = vis[i - 1];
+    if (!s.autoAnimate || !prev) return;
+    const free = new Set(prev.blocks), take = (b, p) => { keys.set(k(s, b), keys.get(k(prev, p)) || p.id); free.delete(p); };
+    const pending = [];
+    for (const b of s.blocks) { const p = prev.blocks.find(x => x.id === b.id); if (p) take(b, p); else pending.push(b); }
+    const rules = [(b, p) => morphSig(b) === morphSig(p), (b, p) => b.type === p.type && b.ph && b.ph === p.ph,
+      (b, p) => b.type === p.type && s.blocks.filter(x => x.type === b.type).length === 1 && prev.blocks.filter(x => x.type === b.type).length === 1];
+    for (const rule of rules) for (const b of [...pending]) {
+      const p = [...free].find(x => rule(b, x)); if (p) { take(b, p); pending.splice(pending.indexOf(b), 1); }
+    }
+  });
+  return { marked, key: (s, b) => keys.get(k(s, b)), textMode: s => textMode.get(s.id) || null };
+}
+
+function slideHTML(s, deck, figMap, plan = morphPlan(deck)) {
   // Entry/exit can differ (reveal's "x-in y-out"); speed can be set per slide.
   const tin = s.transition || deck.defaultTransition || 'slide';
   const trans = s.transitionOut && s.transitionOut !== tin ? ` data-transition="${tin}-in ${s.transitionOut}-out"`
@@ -211,7 +279,12 @@ function slideHTML(s, deck, figMap) {
     + (s.bgTransition ? ` data-background-transition="${s.bgTransition}"` : '')
     + (s.uncounted ? ' data-visibility="uncounted"' : '');
   const tl = animTimeline(s);
-  const inner = blocksOf(s, deck).map(b0 => {
+  const morphCounts = {};
+  const inner = blocksOf(s, deck).map(b00 => {
+    const mid = plan.marked.has(s.id) ? plan.key(s, b00) : null;
+    const b01 = mid ? { ...b00, morphId: mid } : b00;
+    const tm = plan.textMode(s);
+    const b0 = tm && b00.type === 'text' ? { ...b01, byText: true, html: morphText(b00.html, tm, morphCounts) } : b01;
     // Effective start time within the click ("with/after previous" resolved).
     const b = b0.animation && tl.has(b0.id) ? { ...b0, animation: { ...b0.animation, delay: tl.get(b0.id).delay } } : b0;
     if (b.type === 'figindex') return figIndexExport(b, deck);
@@ -223,7 +296,7 @@ function slideHTML(s, deck, figMap) {
     return html;
   }).join('\n');
   const notes = s.notes ? `<aside class="notes">${esc(s.notes)}</aside>` : '';
-  const aa = (s.autoAnimate ? ' data-auto-animate' : '') + (s.aaDuration ? ` data-auto-animate-duration="${+s.aaDuration}"` : '') + (s.aaDelay ? ` data-auto-animate-delay="${+s.aaDelay}"` : '');
+  const aa = (plan.marked.has(s.id) ? ' data-auto-animate' : '') + (s.aaDuration ? ` data-auto-animate-duration="${+s.aaDuration}"` : '') + (s.aaDelay ? ` data-auto-animate-delay="${+s.aaDelay}"` : '');
   return `<section${trans}${speed}${auto}${bg}${aa}>`
     + `<div class="stage${s.bgIframe && s.bgInteractive ? ' pass' : ''}" style="background:${stageBackground(s)}">${bgLayer(s)}${inner}</div>${notes}</section>`;
 }
@@ -261,7 +334,8 @@ export function buildHTML(deck = state.deck, { inApp = false } = {}) {
     if (s.vertical && groups.length) groups[groups.length - 1].push(s); else groups.push([s]);
   }
   const paths = slidePaths(deck), flat = [...paths.values()];
-  const slides = groups.map(g => (g.length > 1 ? `<section>\n${g.map(s => slideHTML(s, deck, figMap)).join('\n')}\n</section>` : slideHTML(g[0], deck, figMap))).join('\n')
+  const plan = morphPlan(deck);
+  const slides = groups.map(g => (g.length > 1 ? `<section>\n${g.map(s => slideHTML(s, deck, figMap, plan)).join('\n')}\n</section>` : slideHTML(g[0], deck, figMap, plan))).join('\n')
     // Links typed as a slide number (#/N, N = position in the deck) → reveal's h/v.
     .replace(/href="#\/(\d+)"/g, (m, n) => `href="#/${flat[+n] || n}"`);
   const sn = deck.slideNumber || { show: false };
@@ -307,6 +381,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  .reveal .stage img,.reveal .stage video,.reveal .stage iframe{margin:0;border:0;background:none;box-shadow:none;max-width:none;max-height:none}
  .reveal .stage ul,.reveal .stage ol{display:block;text-align:inherit;margin:1em 0;padding-left:40px}
  .reveal .stage table.tbl{line-height:normal}
+ .reveal .stage .rv-m{display:inline-block}
  ${levelCSS('.reveal ')}
  .reveal .stage ul{list-style-type:var(--bullet,disc)}
  .reveal .stage ol{list-style-type:var(--num,decimal)}

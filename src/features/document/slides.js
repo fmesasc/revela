@@ -119,6 +119,13 @@ export function importSlides(deck, indices = null) {
 export function toggleAutoAnimate(index = state.ui.slideIndex) {
   commit(() => { const s = state.deck.slides[index]; if (s) s.autoAnimate = !s.autoAnimate; });
 }
+// Morph by objects (default), words or characters (PowerPoint's Morph options):
+// with words/characters, the same word or letter moves from its place on the
+// previous slide to its place on this one.
+export function setMorphBy(by, index = state.ui.slideIndex) {
+  commit(() => { const s = state.deck.slides[index]; if (!s) return;
+    if (by === 'words' || by === 'chars') { s.morphBy = by; s.autoAnimate = true; } else delete s.morphBy; });
+}
 // Duplicate the slide KEEPING block ids so the copy morphs from the original,
 // and turn Auto‑Animate on for both. Then the user tweaks the copy.
 export function duplicateForAnimate() {
