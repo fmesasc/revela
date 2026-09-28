@@ -28,7 +28,7 @@ the origin of every requirement is traceable.
 - ✅ Order: bring to front / send to back / forward / backward `PP·GS·OO`
 - ✅ Rotation handle and flip `PP·GS·OO`
 - ✅ Lock aspect ratio (Shift while resizing) and object lock `PP·OO`
-- ✅ Object opacity `PP·GS·OO`
+- ✅ Object opacity and shadow `PP·GS·OO`
 - ✅ Grid, rulers and guides you can place `PP·GS·OO`
 - ✅ Format painter / copy style `PP·GS·OO`
 - ✅ Find & replace `PP·GS·OO`
@@ -38,7 +38,7 @@ the origin of every requirement is traceable.
 - ✅ Eyedropper colour picker (text, highlight, shape fill/border, background; Chromium browsers) `PP·GS`
 - ✅ Snap to the visible grid and smart spacing (equal gaps to neighbours, with distance marks) `PP·GS`
 - ✅ Collapsible slides panel (thumbnails scaled to the space they get) `GS`
-- ⬜ Dashed and dotted line styles for shapes, borders and connectors `PP·GS·OO`
+- ✅ Dashed and dotted line styles for shapes, borders and connectors (also in .pptx/.odp) `PP·GS·OO`
 
 ## 2. Text
 - ✅ Bold, italic, underline, strikethrough `PP·GS·OO`
@@ -72,7 +72,7 @@ the origin of every requirement is traceable.
 - ✅ Connectors between shapes (follow the objects) `PP·GS·OO`
 - ✅ Tables — editable cells, add/remove rows & columns, header row, border colour, merge/split cells `PP·GS·OO`
 - ✅ Charts — bar, line, area, pie, doughnut, scatter, radar; multiple series with legend, combo (bars + lines), paste data from a spreadsheet, chart from a table (SVG, no library; native in .pptx) `PP·GS·OO`
-- ⬜ Charts: negative values, axis titles, gridlines and data labels `PP·GS·OO`
+- ✅ Charts: negative values, gridlines with a scale, data labels and axis titles (native options in .pptx) `PP·GS·OO`
 - ✅ SmartArt / diagrams — process, cycle, hierarchy & list `PP·OO`
 - ✅ Icons — built-in inline-SVG icon set with colour `PP·GS`
 - ✅ Emoji picker `GS`
@@ -107,7 +107,7 @@ the origin of every requirement is traceable.
 - ✅ Slide master — text styles (title, subtitle, body in five levels: font, size, colour, bold, italic, alignment, bullet), objects on every slide, hide per slide `PP·GS·OO`
 - ✅ Layouts that belong to the deck — create, duplicate, rename, delete, add placeholders and objects; slides follow their layout (formatting inherited master → layout → slide, moved placeholders follow, reset slide) `PP·GS·OO`
 - ✅ Placeholders — title/subtitle/body prompts, not exported while empty `PP·OO`
-- ⬜ Several masters in one deck, and picture/table/chart placeholders `PP·OO`
+- ✅ Several masters in one deck, each with its styles, objects and layouts; picture, table and chart placeholders `PP·OO`
 - ✅ Theme colours (9 palettes; switching recolours what came from the palette) & theme fonts (heading/body pairs), theme swatches in every colour picker `PP·GS·OO`
 - ✅ Template gallery — 8 starter decks (palette, fonts, master decoration, layouts with placeholders) and 10 complete example presentations with real content `PP·GS·OO`
 - ✅ Reuse / import slides from another deck (.json or .pptx, pick by thumbnail, scaled to size) `PP·OO`
@@ -118,7 +118,7 @@ the origin of every requirement is traceable.
 - ✅ Per-object entrance, emphasis & exit animations — every reveal.js fragment style (semi-fade, fade-in-then-semi-out, current-visible, highlight-current…) plus Revela's own `PP·GS·OO`
 - ✅ Animation pane — effect, start (on click / with previous), duration, delay, reorder, remove `PP·GS·OO`
 - ✅ Animation preview (play in the editor) `PP·GS·OO`
-- ✅ Morph / transformation transition (Auto-Animate, with "duplicate to animate") `PP`
+- ✅ Morph / transformation transition by objects, words or characters — set on the destination slide, objects paired by content like PowerPoint (reveal.js Auto-Animate) `PP`
 - ✅ Auto-advance timing per slide, loop / kiosk `PP·GS·OO`
 - ✅ "After previous" auto-timed start & animation triggers (on click of another object) `PP·GS·OO`
 - ✅ Motion paths — straight, arc, wave and loop to a chosen end point, with guide on the canvas; freehand-drawn paths planned `PP`
@@ -146,8 +146,9 @@ the origin of every requirement is traceable.
 - ⬜ Built-in chat `OO`
 - ✅ Version history (local, in this browser: automatic snapshots + named versions, restore/download) — shared history needs the back end `PP·GS·OO`
 - ✅ Private sharing ready to embed in an `<iframe>` — encrypted in the browser (AES-GCM 256; key in the link fragment or a password, PBKDF2 600 000 rounds), stored as a self-opening HTML file, in the user's Google Drive or on an optional self-hosted server (Cloudflare Worker + R2) with expiry; `noindex`, unguessable ids, stop sharing `GS`
-- ⬜ Permission levels and access limited to signed-in accounts (e.g. an organisation's domain) `PP·GS·OO`
-- ⬜ View statistics for shared presentations (self-hosted server) `GS`
+- ✅ Share limited to the Google accounts of one domain (self-hosted server; the server checks Google's signature) `PP·GS·OO`
+- ⬜ Permission levels (view / comment / edit) — needs real-time collaboration `PP·GS·OO`
+- ✅ View statistics for shared presentations — a counter and the last date, nothing about the viewer (self-hosted server) `GS`
 - ✅ Protect — project encrypted with a password (AES-GCM 256, PBKDF2) and "mark as final" (read-only) `PP·OO`
 - ⬜ Digital signatures `OO`
 
@@ -161,8 +162,9 @@ the origin of every requirement is traceable.
 - ✅ Save/open to Google Drive & export HTML to Drive (client-side, `drive.file`) `PP·GS`
 - ✅ Export slides as images — PNG or JPG, current slide or all slides in a ZIP `PP·GS·OO`
 - ✅ `.pptx` import of charts (editable, all series, combo), gradient backgrounds, slide transitions and auto-advance timings `OO·GS`
-- ⬜ Remaining `.pptx` import: shadows, SmartArt, object animations, dashed lines, custom corner radius `OO·GS`
-- ⬜ `.pptx` / `.odp` export of transitions and animations, and of the master and layouts as real masters (today they are drawn on each slide) `GS·OO`
+- ✅ `.pptx` import of shadows, SmartArt (as shapes), object animations, Morph, dashed lines, corner radius and shapes styled by the theme `OO·GS`
+- ✅ `.pptx` export of transitions, Morph, animations and the master/layouts as real layouts with placeholders; `.odp` export of transitions and timings `GS·OO`
+- ⬜ `.odp` export of object animations `OO`
 - ✅ Export to video — MP4 (H.264, WebCodecs) or animated GIF rendered from the slides with cross-fades and per-slide timings; .webm by recording the live slideshow (with animations) `PP·GS`
 - ✅ Publish to the web / shareable link — see private sharing (section 7) `GS`
 - ✅ OpenDocument (`.odp`) export & import — text with formatting and lists, pictures, shapes, lines/arrows, merged shapes, tables with merged cells, charts/icons/ink as SVG, backgrounds, notes, hidden slides (validated with LibreOffice) `OO`

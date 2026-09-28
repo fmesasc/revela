@@ -4,7 +4,7 @@
 import { publish } from '../../io/share/publish.js';
 import { sharesList, removeShare } from '../../io/share/shares.js';
 import { gdriveReady, openGdriveSetup, driveUnshare } from '../../io/cloud/gdrive.js';
-import { serverConfig, setServerConfig, serverReady, serverUnshare } from '../../io/cloud/shareserver.js';
+import { serverConfig, setServerConfig, serverReady, serverUnshare, serverStats } from '../../io/cloud/shareserver.js';
 import { t } from '../../i18n/index.js';
 import { alertDialog, confirmDialog } from './dialog.js';
 
@@ -35,6 +35,7 @@ export function openShare() {
       <div class="sh-srv" hidden>
         <input type="url" class="sh-url" placeholder="https://revela-share.….workers.dev" value="${esc(sc.url)}">
         <input type="password" class="sh-up" placeholder="${t('Clave de subida')}" value="${esc(sc.uploadKey)}">
+        <label class="fr-l">${t('Solo cuentas de Google de este dominio (opcional)')} <input type="text" class="sh-domain" placeholder="escuela.example"></label>
         <label class="fr-l">${t('Caduca')} <select class="sh-days"><option value="0">${t('Nunca')}</option><option value="7">7 ${t('días')}</option>
           <option value="30">30 ${t('días')}</option><option value="90">90 ${t('días')}</option></select></label>
         <p class="host-help">${t('Cómo montarlo gratis en Cloudflare: server/cloudflare/README.md del repositorio.')}</p>
@@ -72,7 +73,7 @@ export function openShare() {
     if (where === 'drive' && !gdriveReady()) return openGdriveSetup();
     const go = q('.sh-go'); go.disabled = true; go.textContent = t('Cifrando…');
     try {
-      const r = await publish({ where, password, days: +q('.sh-days').value });
+      const r = await publish({ where, password, days: +q('.sh-days').value, domain: where === 'server' ? q('.sh-domain').value.trim().replace(/^@/, '') : '' });
       q('.sh-out').innerHTML = r.where === 'file'
         ? `<p class="host-help">${t('Se ha descargado')} <b>${esc(r.file)}</b>. ${t('Súbelo a tu web y usa su dirección en un iframe.')}</p>`
           + (r.key ? `<p class="host-help">${t('Añade esto al final de su dirección (es la clave; sin ella no se abre):')}</p>
@@ -88,11 +89,16 @@ export function openShare() {
   function renderList() {
     const list = sharesList();
     q('.sh-list').innerHTML = !list.length ? '' : `<h4>${t('Compartidas desde este navegador')}</h4>` + list.map(s => `<div class="sh-item" data-id="${esc(s.id)}">
-      <span>${esc(s.name)} · ${s.where === 'drive' ? 'Drive' : t('Servidor')}${s.password ? ' · 🔒' : ''} · ${new Date(s.at).toLocaleDateString()}</span>
+      <span>${esc(s.name)} · ${s.where === 'drive' ? 'Drive' : t('Servidor')}${s.password ? ' · 🔒' : ''}${s.domain ? ' · @' + esc(s.domain) : ''} · ${new Date(s.at).toLocaleDateString()}</span>
+      ${s.where === 'server' ? `<button type="button" class="mini2 sh-st">${t('Visitas')}</button>` : ''}
       <button type="button" class="mini2 sh-cp">${t('Copiar enlace')}</button><button type="button" class="mini2 sh-rm">${t('Dejar de compartir')}</button></div>`).join('');
     q('.sh-list').querySelectorAll('.sh-item').forEach(row => {
       const s = list.find(x => x.id === row.dataset.id);
       row.querySelector('.sh-cp').addEventListener('click', e => { navigator.clipboard?.writeText(s.link); e.target.textContent = t('Copiado'); });
+      row.querySelector('.sh-st')?.addEventListener('click', async e => {
+        try { const st = await serverStats(s.url, s.token); e.target.textContent = `${st.views} ${t('visitas')}${st.last ? ' · ' + new Date(st.last).toLocaleDateString() : ''}`; }
+        catch (err) { alertDialog(t('No se pudieron leer las visitas: ') + (err.message || err)); }
+      });
       row.querySelector('.sh-rm').addEventListener('click', async () => {
         if (!(await confirmDialog(t('¿Dejar de compartir? El enlace dejará de funcionar.')))) return;
         try { s.where === 'drive' ? await driveUnshare(s.id) : await serverUnshare(s.url, s.token); removeShare(s.id); renderList(); }

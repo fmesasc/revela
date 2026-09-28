@@ -7,16 +7,17 @@ import { buildHTML } from '../formats/html.js';
 import { download, slug } from '../files.js';
 import { seal, openerPageHTML } from './seal.js';
 import { addShare, viewLink, iframeCode } from './shares.js';
-import { driveShareSealed } from '../cloud/gdrive.js';
+import { driveShareSealed, gdriveConfig } from '../cloud/gdrive.js';
 import { serverShare, serverSealedURL } from '../cloud/shareserver.js';
 import { t, currentLang } from '../../i18n/index.js';
 
 const OPENER_TEXTS = () => ({ locked: t('Presentación protegida'), ask: t('Escribe la contraseña para verla.'), open: t('Abrir'),
   wrong: t('Contraseña incorrecta.'), nokey: t('Falta la clave del enlace: cópialo entero, con lo que va detrás de «#».'),
-  loading: t('Abriendo…'), failed: t('No se pudo abrir la presentación: puede que ya no se comparta.') });
+  loading: t('Abriendo…'), failed: t('No se pudo abrir la presentación: puede que ya no se comparta.'),
+  signin: t('Esta presentación es solo para cuentas de {d}. Inicia sesión con Google para verla.') });
 
 // where: 'file' | 'drive' | 'server'. password: null → secret link.
-export async function publish({ where = 'file', password = null, days = 0, deck = state.deck } = {}) {
+export async function publish({ where = 'file', password = null, days = 0, domain = '', deck = state.deck } = {}) {
   const { env, key } = await seal(buildHTML(deck), { password });
   const name = deck.name || t('Presentación');
   if (where === 'file') {
@@ -32,8 +33,9 @@ export async function publish({ where = 'file', password = null, days = 0, deck 
     addShare({ where, id, name, link, password: !!password });
     return { where, id, link, iframe: iframeCode(link) };
   }
-  const { id, token } = await serverShare(env, { days });
+  if (domain && !gdriveConfig().clientId) throw new Error(t('Para limitar a un dominio hace falta el ID de cliente de Google (Archivo ▸ Google Drive ▸ Configurar).'));
+  const { id, token } = await serverShare(env, { days, domain, clientId: domain ? gdriveConfig().clientId : '' });
   const link = viewLink({ u: serverSealedURL(id) }, key);
-  addShare({ where, id, name, link, token, url: serverSealedURL(id), password: !!password, ...(days && { expires: Date.now() + days * 864e5 }) });
+  addShare({ where, id, name, link, token, url: serverSealedURL(id), password: !!password, ...(domain && { domain }), ...(days && { expires: Date.now() + days * 864e5 }) });
   return { where, id, link, iframe: iframeCode(link) };
 }

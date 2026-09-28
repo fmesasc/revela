@@ -7,9 +7,10 @@ export function setServerConfig(c) { try { localStorage.setItem(LS, JSON.stringi
 export const serverReady = () => /^https:\/\//.test(serverConfig().url || '');
 const base = () => serverConfig().url.replace(/\/+$/, '');
 
-export async function serverShare(env, { days = 0 } = {}) {
+export async function serverShare(env, { days = 0, domain = '', clientId = '' } = {}) {
   const c = serverConfig();
-  const r = await fetch(`${base()}/s${days ? `?days=${days}` : ''}`, { method: 'POST',
+  const q = new URLSearchParams({ ...(days && { days }), ...(domain && { domain, clientId }) }).toString();
+  const r = await fetch(`${base()}/s${q ? '?' + q : ''}`, { method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(c.uploadKey && { 'X-Upload-Key': c.uploadKey }) }, body: JSON.stringify(env) });
   if (!r.ok) throw new Error(r.status === 403 ? 'La clave de subida no es correcta.' : r.status === 413 ? 'La presentación es demasiado grande para el servidor.' : 'El servidor respondió ' + r.status);
   return r.json();                                  // { id, token }
@@ -18,4 +19,10 @@ export const serverSealedURL = id => `${base()}/s/${encodeURIComponent(id)}`;
 export async function serverUnshare(url, token) {
   const r = await fetch(url, { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } });
   if (!r.ok) throw new Error('El servidor respondió ' + r.status);
+}
+// Views of a share (a counter and the last date), for whoever shared it.
+export async function serverStats(url, token) {
+  const r = await fetch(url + '/stats', { headers: { Authorization: 'Bearer ' + token } });
+  if (!r.ok) throw new Error('El servidor respondió ' + r.status);
+  return r.json();
 }

@@ -19,5 +19,20 @@ Workers 100 000 requests a day.
    In Revela: **Archivo ▸ Compartir ▸ Servidor propio ▸ Configurar**, paste
    that address and the upload key.
 
+## What it knows
+
+Only encrypted data and, per share, a view counter with the date of the last
+view — nothing about who viewed (no IP address, no browser). Whoever shared
+it sees the count in Revela ▸ Compartir.
+
+## Limiting a share to an organisation's accounts
+
+In Compartir ▸ Servidor propio, type a domain (e.g. `school.example`): the
+presentation is then only delivered to people signed in with a Google account
+of that domain (the server checks Google's signature on the ID token). It uses
+the Google OAuth client ID configured for Google Drive in Revela; add Revela's
+address to its authorised JavaScript origins. The key or password is still
+needed to open it.
+
 Optional: `ALLOW_ORIGIN = "https://fmesasc.github.io"` in `[vars]` so only
 Revela's pages can read shares from a browser (the data is encrypted anyway).

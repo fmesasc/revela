@@ -43,7 +43,8 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 // Works on its own (a file you upload anywhere) and inside an iframe.
 export function openerPageHTML({ env = null, src = null, title = 'Presentación', lang = 'es', texts = {} } = {}) {
   const T = { locked: 'Presentación protegida', ask: 'Escribe la contraseña para verla.', open: 'Abrir', wrong: 'Contraseña incorrecta.',
-    nokey: 'Falta la clave del enlace: cópialo entero, con lo que va detrás de «#».', loading: 'Abriendo…', failed: 'No se pudo abrir la presentación.', ...texts };
+    nokey: 'Falta la clave del enlace: cópialo entero, con lo que va detrás de «#».', loading: 'Abriendo…', failed: 'No se pudo abrir la presentación.',
+    signin: 'Esta presentación es solo para cuentas de {d}. Inicia sesión con Google para verla.', ...texts };
   return `<!doctype html>
 <html lang="${esc(lang)}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -52,7 +53,7 @@ export function openerPageHTML({ env = null, src = null, title = 'Presentación'
 <title>${esc(title)}</title>
 <style>
  html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#15181d;color:#e3e6eb}
- main{height:100%;display:grid;place-items:center;padding:16px;box-sizing:border-box}
+ main{height:100%;display:grid;place-items:center;align-content:center;gap:12px;padding:16px;box-sizing:border-box;text-align:center}
  form{background:#1f2329;border:1px solid #2b3038;border-radius:12px;padding:24px;width:min(360px,100%);box-sizing:border-box;box-shadow:0 10px 34px #0006}
  h1{font-size:18px;margin:0 0 6px} p{margin:0 0 14px;color:#9aa3ae;font-size:14px}
  input{width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;border:1px solid #3a414c;background:#15181d;color:inherit;font-size:16px}
@@ -65,7 +66,7 @@ export function openerPageHTML({ env = null, src = null, title = 'Presentación'
 <script>
 ${unseal.toString()}
 (function(){
- var T=${JSON.stringify({ wrong: T.wrong, nokey: T.nokey, failed: T.failed })};
+ var T=${JSON.stringify({ wrong: T.wrong, nokey: T.nokey, failed: T.failed, signin: T.signin, loading: T.loading })};
  var SRC=${JSON.stringify(src)}, ENV=${JSON.stringify(env)};
  var k=(location.hash.match(/[#&]k=([\\w-]+)/)||[])[1];
  function show(html){document.open();document.write(html);document.close();}
@@ -77,8 +78,17 @@ ${unseal.toString()}
   f.onsubmit=function(ev){ev.preventDefault();var b=f.querySelector('button');b.disabled=true;
    unseal(env,document.getElementById('pw').value).then(show,function(){b.disabled=false;document.getElementById('e').textContent=T.wrong;});};
  }
+ // A share limited to a domain answers 401 {signIn, domain, clientId}: sign in
+ // with Google (only accounts of that domain) and ask again with the ID token.
+ function load(tok){return fetch(SRC,tok?{headers:{Authorization:'Bearer '+tok}}:undefined).then(function(r){
+  if(r.status===401)return r.json().then(function(j){if(j&&j.signIn&&!tok)signIn(j);else throw 0;});
+  if(!r.ok)throw 0;return r.json().then(ready);});}
+ function signIn(j){msg(T.signin.replace('{d}',j.domain));var s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';
+  s.onload=function(){google.accounts.id.initialize({client_id:j.clientId,hd:j.domain,callback:function(r){msg(T.loading||'');load(r.credential).catch(function(){msg(T.failed);});}});
+   var b=document.createElement('div');b.id='g';document.querySelector('main').appendChild(b);google.accounts.id.renderButton(b,{theme:'filled_blue',size:'large'});};
+  document.head.appendChild(s);}
  if(ENV) ready(ENV);
- else fetch(SRC).then(function(r){if(!r.ok)throw 0;return r.json();}).then(ready,function(){msg(T.failed);});
+ else load().catch(function(){msg(T.failed);});
 })();
 </script></body></html>`;
 }

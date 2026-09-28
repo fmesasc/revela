@@ -632,4 +632,39 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const out = await (await W.JSZip.loadAsync(await R.pptx.buildPptxBlob(deck))).file('ppt/slides/slide1.xml').async('string');
     assert(/<a:outerShdw/.test(out), 'y en PowerPoint');
   });
+
+  await test('compartir: limitar a cuentas de un dominio (inicio de sesión con Google) y visitas', async () => {
+    const W = frame.contentWindow, real = W.fetch, calls = [];
+    W.localStorage.setItem('revela.gdrive', JSON.stringify({ clientId: 'cid.apps.googleusercontent.com', apiKey: 'k' }));
+    R.shareServer.setServerConfig({ url: 'https://srv.test', uploadKey: 'u' });
+    W.fetch = async (url, o = {}) => {
+      url = String(url); calls.push({ url, o });
+      if (url.startsWith('https://srv.test/s?')) return new W.Response(JSON.stringify({ id: 'AbCdEfGhIjKlMnOpQrStUv', token: 'tok' }));
+      if (url.endsWith('/stats')) return new W.Response(JSON.stringify({ views: 7, last: '2026-09-28T10:00:00Z' }));
+      return real(url, o);
+    };
+    try {
+      reset(); const r = await R.io.publishShare({ where: 'server', domain: 'escuela.example' });
+      const up = new URL(calls.find(c => c.url.startsWith('https://srv.test/s?')).url);
+      eq(up.searchParams.get('domain') + '|' + up.searchParams.get('clientId'), 'escuela.example|cid.apps.googleusercontent.com', 'sube con el dominio y el cliente de Google');
+      eq(R.shares.sharesList()[0].domain, 'escuela.example', 'se recuerda');
+      const st = await R.shareServer.serverStats(R.shares.sharesList()[0].url, 'tok');
+      eq(st.views, 7, 'visitas'); eq(calls.at(-1).o.headers.Authorization, 'Bearer tok', 'con su token');
+      void r;
+    } finally { W.fetch = real; R.shares.removeShare('AbCdEfGhIjKlMnOpQrStUv'); R.shareServer.setServerConfig({}); W.localStorage.removeItem('revela.gdrive'); }
+    // Without a Google client id, a domain can't be required.
+    let err = ''; await R.io.publishShare({ where: 'server', domain: 'x.example' }).catch(e => { err = e.message; });
+    assert(/ID de cliente de Google/.test(err), 'sin client id avisa: ' + err);
+    // The viewer asks to sign in when the server answers 401.
+    const S = await import(new URL('../src/io/share/seal.js', D.baseURI));
+    const page = S.openerPageHTML({ src: 'https://srv.test/s/AbCdEfGhIjKlMnOpQrStUv' });
+    const stub = `<script>window.fetch=function(){return Promise.resolve(new Response(JSON.stringify({signIn:true,domain:'escuela.example',clientId:'cid'}),{status:401}));};</script>`;
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:600px;height:400px;visibility:hidden'; D.body.appendChild(f);
+    try {
+      f.srcdoc = page.replace('<script>', stub + '<script>');
+      let ok = false; for (let i = 0; i < 50 && !ok; i++) { await sleep(100); ok = /escuela\.example/.test(f.contentDocument?.getElementById('m')?.textContent || ''); }
+      assert(ok, 'pide iniciar sesión con una cuenta del dominio');
+      assert([...f.contentDocument.scripts].some(x => x.src === 'https://accounts.google.com/gsi/client'), 'con el botón de Google');
+    } finally { f.remove(); }
+  });
 }
