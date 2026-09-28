@@ -835,6 +835,29 @@ export async function run(frame) {
     eq([s2.transition, s2.transitionOut, s2.transitionSpeed].join(','), 'fade,zoom,slow', 'copiada a todas');
   });
 
+  await test('espaciado inteligente: iguala la separación con los vecinos', async () => {
+    reset(); R.state.ui.snap = true; slide().blocks = [];
+    const mk = x => { R.blocks.addShape('rect'); const b = last(); Object.assign(b, { x, y: 300, w: 100, h: 100 }); return b; };
+    mk(100); mk(300); const c = mk(560); R.state.ui.selection = null; R.render(); await sleep(10);
+    const W = frame.contentWindow, el = D.querySelector(`.block[data-id="${c.id}"]`);
+    const f = el.getBoundingClientRect().width / 100;
+    const r = el.getBoundingClientRect(), x0 = r.left + 10, y0 = r.top + 10;
+    el.dispatchEvent(new W.PointerEvent('pointerdown', { clientX: x0, clientY: y0, bubbles: true, pointerId: 1 }));
+    el.dispatchEvent(new W.PointerEvent('pointermove', { clientX: x0 - 63 * f, clientY: y0, bubbles: true, pointerId: 1 }));
+    eq(c.x, 500, 'hueco igual (100 px) tras el segundo');
+    eq(D.querySelectorAll('#stage .guide.spacing.x').length, 2, 'dos marcas de distancia');
+    eq([...D.querySelectorAll('#stage .guide.spacing')].map(g => g.dataset.gap).join(','), '100,100', 'mismas distancias');
+    el.dispatchEvent(new W.PointerEvent('pointerup', { clientX: x0 - 63 * f, clientY: y0, bubbles: true, pointerId: 1 }));
+    assert(!D.querySelector('#stage .guide'), 'marcas retiradas al soltar');
+    R.state.ui.showGuides = true; slide().blocks = [c]; c.x = 250; R.render(); await sleep(10);
+    const el2 = D.querySelector(`.block[data-id="${c.id}"]`), r2 = el2.getBoundingClientRect();
+    el2.dispatchEvent(new W.PointerEvent('pointerdown', { clientX: r2.left + 5, clientY: r2.top + 5, bubbles: true, pointerId: 1 }));
+    el2.dispatchEvent(new W.PointerEvent('pointermove', { clientX: r2.left + 5 + 3 * f, clientY: r2.top + 5, bubbles: true, pointerId: 1 }));
+    eq(c.x, 256, 'se ajusta a la cuadrícula (1280/10 × 2)');
+    el2.dispatchEvent(new W.PointerEvent('pointerup', { bubbles: true, pointerId: 1 }));
+    R.state.ui.showGuides = false; R.render();
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

@@ -36,7 +36,7 @@ the origin of every requirement is traceable.
 - ✅ Paste without formatting (Ctrl+Shift+V) `PP·GS·OO`
 - ✅ Keyboard shortcuts panel `PP·GS·OO`
 - ✅ Eyedropper colour picker (text, highlight, shape fill/border, background; Chromium browsers) `PP·GS`
-- ⬜ Snap-to grid spacing / smart spacing hints `PP·GS`
+- ✅ Snap to the visible grid and smart spacing (equal gaps to neighbours, with distance marks) `PP·GS`
 
 ## 2. Text
 - ✅ Bold, italic, underline, strikethrough `PP·GS·OO`

@@ -576,7 +576,7 @@ function startDrag(ev, b, el) {
   const movers = selectedBlocks().filter(m => m.type !== 'connector');
   const origins = new Map(movers.map(m => [m.id, { x: m.x, y: m.y }]));
   const f = factor(), sx = ev.clientX, sy = ev.clientY, ox = b.x, oy = b.y;
-  el.setPointerCapture(ev.pointerId); el.classList.add('dragging');
+  try { el.setPointerCapture(ev.pointerId); } catch {} el.classList.add('dragging');
   const onMove = e => {
     const rawx = Math.round(ox + (e.clientX - sx) * f);
     const rawy = Math.round(oy + (e.clientY - sy) * f);
@@ -589,7 +589,7 @@ function startDrag(ev, b, el) {
     }
   };
   const onUp = () => {
-    el.releasePointerCapture(ev.pointerId); el.classList.remove('dragging');
+    try { el.releasePointerCapture(ev.pointerId); } catch {} el.classList.remove('dragging');
     el.removeEventListener('pointermove', onMove); el.removeEventListener('pointerup', onUp);
     clearGuides();
     commit(() => {}, { history: false });
@@ -655,6 +655,8 @@ function applySnap(b, x, y) {
   for (const o of others) { vTargets.push(o.x, o.x + o.w, o.x + o.w / 2); hTargets.push(o.y, o.y + o.h, o.y + o.h / 2); }
   (state.deck.guides?.v || []).forEach(x => vTargets.push(x));   // snap to placed guides
   (state.deck.guides?.h || []).forEach(y => hTargets.push(y));
+  if (state.ui.showGuides)                                          // visible grid: 10 × 10 cells
+    for (let i = 1; i < 10; i++) { vTargets.push(w * i / 10); hTargets.push(h * i / 10); }
 
   clearGuides();
   // Snap each axis to the single closest target (across box edges/centre and
@@ -668,11 +670,52 @@ function applySnap(b, x, y) {
     }
     return win;
   };
+  // Smart spacing: equal gaps to the neighbours in the same row / column
+  // (PowerPoint's distance arrows). Wins over alignment only when closer.
+  const sx = spacingSnap(b, x, y, others, 'x'), sy = spacingSnap(b, x, y, others, 'y');
   const bv = best([x, x + b.w / 2, x + b.w], vTargets);
-  if (bv) { x += bv.delta; drawGuide('v', bv.at); }
+  if (sx && (!bv || sx.d < bv.d)) { x = sx.val; drawSpacing('x', sx.marks, y + b.h / 2); }
+  else if (bv) { x += bv.delta; drawGuide('v', bv.at); }
   const bh = best([y, y + b.h / 2, y + b.h], hTargets);
-  if (bh) { y += bh.delta; drawGuide('h', bh.at); }
+  if (sy && (!bh || sy.d < bh.d)) { y = sy.val; drawSpacing('y', sy.marks, x + b.w / 2); }
+  else if (bh) { y += bh.delta; drawGuide('h', bh.at); }
   return { x: Math.round(x), y: Math.round(y) };
+}
+// Candidate positions (left/top edge) that repeat a gap already present between
+// two neighbours, or centre the object between two of them.
+function spacingSnap(b, x, y, others, axis) {
+  const X = axis === 'x', pos = X ? x : y, size = X ? b.w : b.h;
+  const lo = o => (X ? o.x : o.y), len = o => (X ? o.w : o.h);
+  const cross = o => (X ? o.y < y + b.h && o.y + o.h > y : o.x < x + b.w && o.x + o.w > x);
+  const row = others.filter(o => o.type !== 'connector' && cross(o)).sort((a, c) => lo(a) - lo(c));
+  const gaps = [];
+  for (let i = 0; i < row.length - 1; i++) {
+    const g = lo(row[i + 1]) - (lo(row[i]) + len(row[i]));
+    if (g > 0) gaps.push({ g, seg: [lo(row[i]) + len(row[i]), lo(row[i + 1])] });
+  }
+  const cands = [];
+  for (const { g, seg } of gaps) for (const o of row) {
+    const r = lo(o) + len(o);
+    cands.push({ val: r + g, marks: [seg, [r, r + g]] });                  // after o, same gap
+    cands.push({ val: lo(o) - g - size, marks: [seg, [lo(o) - g, lo(o)]] }); // before o, same gap
+  }
+  for (let i = 0; i < row.length - 1; i++) {                               // centred between two
+    const a = lo(row[i]) + len(row[i]), c = lo(row[i + 1]), g = (c - a - size) / 2;
+    if (g > 0) cands.push({ val: a + g, marks: [[a, a + g], [c - g, c]] });
+  }
+  let win = null;
+  for (const c of cands) { const d = Math.abs(c.val - pos); if (d < SNAP && (!win || d < win.d)) win = { ...c, d }; }
+  return win;
+}
+function drawSpacing(axis, marks, at) {
+  for (const [a, c] of marks) {
+    const g = document.createElement('div');
+    g.className = 'guide spacing ' + axis;
+    if (axis === 'x') g.style.cssText = `left:${a}px;width:${c - a}px;top:${at}px`;
+    else g.style.cssText = `top:${a}px;height:${c - a}px;left:${at}px`;
+    g.dataset.gap = Math.round(c - a);
+    stage.appendChild(g);
+  }
 }
 function drawGuide(dir, at) {
   const g = document.createElement('div');

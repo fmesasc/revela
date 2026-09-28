@@ -423,3 +423,12 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .ts-opts{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px}
 .ts-opts label{display:flex;align-items:center;gap:6px}
 #rehearse-clock{position:fixed;top:12px;left:14px;z-index:10000;padding:6px 12px;border-radius:8px;background:#000b;color:#fff;font:600 16px/1.2 system-ui,sans-serif;font-variant-numeric:tabular-nums}
+/* Smart spacing marks (equal gaps) */
+.guide.spacing{background:none}
+.guide.spacing.x{height:0;border-top:1px solid #ff3b8b;right:auto;bottom:auto}
+.guide.spacing.y{width:0;border-left:1px solid #ff3b8b;right:auto;bottom:auto}
+.guide.spacing::before,.guide.spacing::after{content:"";position:absolute;background:#ff3b8b}
+.guide.spacing.x::before,.guide.spacing.x::after{top:-5px;width:1px;height:9px}
+.guide.spacing.x::before{left:0}.guide.spacing.x::after{right:0}
+.guide.spacing.y::before,.guide.spacing.y::after{left:-5px;height:1px;width:9px}
+.guide.spacing.y::before{top:0}.guide.spacing.y::after{bottom:0}
