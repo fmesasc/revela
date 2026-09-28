@@ -12,6 +12,7 @@ import { uid } from '../core/model.js';
 import { chartSVG, iconSVG, inkSVG, tableSpan } from '../ui/shape.js';
 import { deckFg, deckBodyFont } from '../features/palettes.js';
 import { masterBlocksFor, isEmptyPlaceholder } from '../features/master.js';
+import { blockImage } from './reveal.js';
 
 const JSZIP = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
 const loadZip = () => new Promise((res, rej) => {
@@ -165,16 +166,36 @@ export async function buildODP(deck = state.deck) {
       }).join('')}</table:table-row>`).join('');
       return `<draw:frame ${place(b)}><table:table>${'<table:table-column/>'.repeat(cols)}${rows}</table:table></draw:frame>`;
     }
+    if (b.type === 'code') {
+      const st = gstyle('#1e1e1e', 'none', 0, ' draw:textarea-vertical-align="top" fo:padding="0.2cm"');
+      const ps = style('paragraph', 'P', `<style:text-properties fo:font-size="${pt(b.fontSize || 22)}" fo:color="#e6e6e6" style:font-name="Courier New"/>`);
+      return `<draw:frame draw:style-name="${st}" ${place(b)}><draw:text-box>${String(b.code || '').split('\n').map(l => `<text:p text:style-name="${ps}">${X(l).replace(/ {2,}/g, m => ' ' + `<text:s text:c="${m.length - 1}"/>`)}</text:p>`).join('')}</draw:text-box></draw:frame>`;
+    }
+    if (b.type === 'connector') {
+      const f = byId.get(b.from), to = byId.get(b.to); if (!f || !to) return '';
+      const st = gstyle('none', b.color || '#8a8a8a', 2, b.arrow !== false ? ' draw:marker-end="Arrow" draw:marker-end-width="0.3cm"' : '');
+      return `<draw:line draw:style-name="${st}" svg:x1="${cm(f.x + f.w / 2)}" svg:y1="${cm(f.y + f.h / 2)}" svg:x2="${cm(to.x + to.w / 2)}" svg:y2="${cm(to.y + to.h / 2)}"/>`;
+    }
+    if (raster.has(b.id)) {                                  // equations, polls, figure lists
+      const n = pic(raster.get(b.id).split(',')[1], 'png');
+      return `<draw:frame draw:style-name="${gstyle('none', 'none', 0)}" ${place(b)}><draw:image xlink:href="${n}" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad" draw:mime-type="image/png"/></draw:frame>`;
+    }
     if (b.type === 'chart') return svgPicture(b, chartSVG(b));
     if (b.type === 'icon') return svgPicture(b, iconSVG(b));
     if (b.type === 'ink') return svgPicture(b, inkSVG(b));
     return '';                                             // 3D, video, web, code, equations: no ODF equivalent here
   };
 
+  let byId = new Map();
+  const raster = new Map();
+  for (const s of [deck.master || { blocks: [] }, ...deck.slides]) for (const b of s.blocks)
+    if (['math', 'poll', 'figindex'].includes(b.type)) { try { const img = await blockImage(b, s, deck); if (img) raster.set(b.id, img); } catch {} }
   const pages = deck.slides.map((s, i) => {
     const bg = hex(s.background) || '#101317';
     const dp = style('drawing-page', 'dp', `<style:drawing-page-properties draw:fill="solid" draw:fill-color="${bg}" presentation:background-visible="true"/>`);
-    const objs = [...masterBlocksFor(s, deck), ...s.blocks].filter(b => !isEmptyPlaceholder(b)).map(objXML).join('');
+    const list = [...masterBlocksFor(s, deck), ...s.blocks].filter(b => !isEmptyPlaceholder(b));
+    byId = new Map(list.map(b => [b.id, b]));
+    const objs = list.map(objXML).join('');
     const notes = s.notes ? `<presentation:notes><draw:frame presentation:class="notes" svg:x="2cm" svg:y="12cm" svg:width="17cm" svg:height="12cm"><draw:text-box>`
       + s.notes.split('\n').map(l => `<text:p>${X(l)}</text:p>`).join('') + '</draw:text-box></draw:frame></presentation:notes>' : '';
     return `<draw:page draw:name="${X('page' + (i + 1))}" draw:style-name="${dp}" draw:master-page-name="Default"${s.hidden ? ' presentation:visibility="hidden"' : ''}>${objs}${notes}</draw:page>`;

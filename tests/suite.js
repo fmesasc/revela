@@ -1479,6 +1479,31 @@ export async function run(frame) {
     D.body.click();
   });
 
+  await test('PowerPoint y ODP: texto con formato y todos los objetos', async () => {
+    reset();
+    const { htmlToRuns } = await frame.contentWindow.eval("import('/src/io/pptx-export.js')");
+    const runs = htmlToRuns('<b>Hola</b> <span style="color:rgb(255, 0, 0);font-size:40px">rojo</span><ul><li>uno</li><ul><li>dos</li></ul></ul><ol><li>tres</li></ol>', { fontSize: 20 });
+    const b1 = runs.find(r => r.text === 'Hola'), red = runs.find(r => r.text === 'rojo');
+    assert(b1.options.bold, 'negrita'); eq(red.options.color, 'FF0000', 'color'); eq(red.options.fontSize, 30, 'tamaño en puntos');
+    const uno = runs.find(r => r.text === 'uno'), dos = runs.find(r => r.text === 'dos'), tres = runs.find(r => r.text === 'tres');
+    eq(uno.options.bullet, true, 'viñeta'); eq(dos.options.indentLevel, 1, 'nivel anidado'); eq(tres.options.bullet.type, 'number', 'numeración');
+    assert(uno.options.breakLine, 'párrafos separados');
+    // Todos los tipos en .pptx y .odp
+    const B = R.blocks, s = slide(); R.blocks.addShape('rect'); const a = last(); R.blocks.addShape('ellipse'); const c = last(); c.x = 800;
+    R.store.setMulti([a.id, c.id]); B.addConnector(); B.addIcon('star'); B.addCode(); B.addMath(); B.addInk([[0, 0], [40, 30]]);
+    R.slides.addSlide(); R.slides.toggleSlideHidden(1);
+    const zip = await frame.contentWindow.JSZip.loadAsync(await R.pptx.buildPptxBlob());
+    const x1 = await zip.file('ppt/slides/slide1.xml').async('string');
+    assert(/<a:b\b|b="1"/.test(x1), 'negrita en el pptx'); assert(/prst="line"/.test(x1), 'conector como línea');
+    assert(/Courier New/.test(x1), 'código en monoespaciada');
+    eq((x1.match(/<p:pic>/g) || []).length, 3, 'icono, ecuación y tinta como imágenes');
+    assert(/show="0"/.test(await zip.file('ppt/slides/slide2.xml').async('string')), 'diapositiva oculta conservada como oculta');
+    const oz = await frame.contentWindow.JSZip.loadAsync(await R.odp.buildODP());
+    const cx = await oz.file('content.xml').async('string');
+    assert((cx.match(/<draw:line /g) || []).length >= 1 && /Courier New/.test(cx), 'ODP: conector y código');
+    assert(Object.keys(oz.files).filter(f => /^Pictures\/.*\.png$/.test(f)).length >= 1, 'ODP: ecuación como imagen');
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

@@ -9,7 +9,7 @@ import { alertDialog, confirmDialog } from '../ui/dialog.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle, visibleIndexMap } from '../features/captions.js';
 import { INK_CSS, inkJS } from './ink.js';
 import { deckFg, deckBodyFont, currentPalette } from '../features/palettes.js';
-import { tallyVotes, pollResultsHTML, VOTE_URL } from '../features/poll.js';
+import { tallyVotes, pollResultsHTML, VOTE_URL, savedVotes } from '../features/poll.js';
 import { parseChartGrid } from '../features/blocks.js';
 import { animTimeline, EFFECT_KF, EFFECT_KF_CSS, isEntrance, customTransitionCSS, pathKeyframesCSS } from '../features/transitions.js';
 import { masterBlocksFor, isEmptyPlaceholder } from '../features/master.js';
@@ -566,6 +566,40 @@ const loadScript = (src, global) => new Promise((res, rej) => {
   sc.onerror = () => rej(new Error(t('No se pudo cargar ') + src.split('/npm/')[1])); document.head.appendChild(sc);
 });
 
+// Fill in what the exported page draws with scripts, for rasterising: KaTeX
+// equations (block and inline) and poll results.
+async function hydrateStatic(root, deck) {
+  if (root.querySelector('.math[data-latex]') || /\$[^$]/.test(root.textContent)) {
+    if (!document.querySelector('link[data-katex]')) {
+      const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = `${KATEX}/katex.min.css`; l.dataset.katex = '1'; document.head.appendChild(l);
+    }
+    await loadScript(`${KATEX}/katex.min.js`, 'katex');
+    root.querySelectorAll('.math[data-latex]').forEach(el => { try { window.katex.render(el.dataset.latex, el, { throwOnError: false, displayMode: true }); } catch {} });
+    if (/\$[^$]/.test(root.textContent)) {
+      await loadScript(`${KATEX}/contrib/auto-render.min.js`, 'renderMathInElement');
+      try { window.renderMathInElement(root, { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }], throwOnError: false }); } catch {}
+    }
+    await document.fonts?.ready;
+  }
+  root.querySelectorAll('.rv-poll').forEach(el => {
+    try { const p = JSON.parse(el.getAttribute('data-poll')); el.querySelector('.rv-poll-res').innerHTML = pollResultsHTML(p, tallyVotes(p, savedVotes(p.pollId)), currentPalette(deck).accents); } catch {}
+  });
+}
+
+// One object as a PNG data URL (for formats that can't draw it natively).
+export async function blockImage(b, slide, deck = state.deck) {
+  const holder = document.createElement('div');
+  holder.style.cssText = `position:fixed;left:-99999px;top:0;width:${b.w}px;height:${b.h}px;overflow:hidden;color:${deckFg(deck)};font-family:${deckBodyFont(deck) || 'inherit'}`;
+  holder.innerHTML = `<style>*{box-sizing:border-box}${tableCSS()}</style>` + blockHTML({ ...b, x: 0, y: 0, rotation: 0, animation: null }, { ...slide, blocks: [b] });
+  document.body.appendChild(holder);
+  try {
+    await hydrateStatic(holder, deck);
+    await loadScript(H2C, 'html2canvas');
+    const c = await window.html2canvas(holder, { width: b.w, height: b.h, scale: 2, useCORS: true, logging: false, backgroundColor: null });
+    return c.toDataURL('image/png');
+  } finally { holder.remove(); }
+}
+
 // Rasterise one slide with html2canvas. 3D models and web embeds can't be
 // rasterised (they come out blank); everything else does.
 export async function slideImageBlob(s, type = 'png', deck = state.deck) {
@@ -577,6 +611,7 @@ export async function slideImageBlob(s, type = 'png', deck = state.deck) {
     + slideInnerHTML(s, deck);
   document.body.appendChild(holder);
   try {
+    await hydrateStatic(holder, deck);
     await loadScript(H2C, 'html2canvas');
     // JPG has no transparency: paint the page colour underneath.
     const canvas = await window.html2canvas(holder, { width: w, height: h, scale: 2, useCORS: true, logging: false,
