@@ -1086,6 +1086,22 @@ export async function run(frame) {
     R.api.saveMacro('prueba', 'return 1'); assert(R.api.macroList().some(m => m.name === 'prueba'), 'macro guardada'); R.api.deleteMacro('prueba');
   });
 
+  await test('exportar vídeo: GIF animado y MP4', async () => {
+    reset(); R.slides.addSlide(); R.store.currentSlide().background = '#aa3300';
+    const V = await R.video();
+    const gif = await V.buildGIF(R.state.deck, { width: 160, holdMs: 500, fadeMs: 200, fps: 10 });
+    const g = new Uint8Array(await gif.arrayBuffer());
+    eq(String.fromCharCode(...g.slice(0, 6)), 'GIF89a', 'cabecera GIF');
+    const frames = [...g].filter((v, i) => v === 0x2c && g[i - 1] === 0 && g[i - 8] === 0x21).length;
+    assert(frames >= 3 || gif.size > 1000, 'varios fotogramas (con fundido)');
+    if (V.canEncodeMP4() && (await frame.contentWindow.VideoEncoder.isConfigSupported({ codec: 'avc1.42001f', width: 320, height: 180 })).supported) {
+      const mp4 = await V.buildMP4(R.state.deck, { width: 320, holdMs: 500, fadeMs: 200 });
+      const m = new Uint8Array(await mp4.arrayBuffer());
+      eq(String.fromCharCode(...m.slice(4, 8)), 'ftyp', 'contenedor MP4');
+      assert(/moov/.test(String.fromCharCode(...m.slice(0, 4000))), 'moov al principio (reproducción inmediata)');
+    }
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

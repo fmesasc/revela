@@ -14,7 +14,7 @@ import { exportPPTX } from '../io/pptx-export.js';
 import * as odp from '../io/odp.js';
 import { pickReuseFile } from './reuse.js';
 import { openA11yCheck, openReadingOrder } from './a11y-panel.js';
-import { openHandoutDialog, openImageDialog } from './print-dialog.js';
+import { openHandoutDialog, openImageDialog, openVideoDialog } from './print-dialog.js';
 import * as recorder from './recorder.js';
 import * as master from '../features/master.js';
 import { openGallery, openDesignIdeas } from './gallery-dialog.js';
@@ -60,6 +60,7 @@ const ACTIONS = {
   'export-pptx': () => exportPPTX(),
   'export-pdf': io.exportPDF,
   'export-png': () => openImageDialog(),
+  'export-video': () => openVideoDialog(),
   'present': () => io.present(),
   'rehearse': () => io.present({ rehearse: true }),
   'record-show': () => recorder.recordSlideshow(),

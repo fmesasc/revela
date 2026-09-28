@@ -3,6 +3,8 @@
 
 import { exportHandout, exportImages } from '../io/reveal.js';
 import { t } from '../i18n.js';
+import { state } from '../core/store.js';
+import { alertDialog } from './dialog.js';
 
 export function openHandoutDialog() {
   document.getElementById('handout-modal')?.remove();
@@ -49,5 +51,41 @@ export function openImageDialog() {
   back.querySelector('.im-go').addEventListener('click', () => {
     exportImages({ type: back.querySelector('.im-type').value, all: back.querySelector('.im-scope').value === 'all' });
     close();
+  });
+}
+
+// Export video: MP4 or animated GIF, with a progress bar.
+export function openVideoDialog() {
+  document.getElementById('video-modal')?.remove();
+  const back = document.createElement('div');
+  back.id = 'video-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:300px">
+    <button class="modal-close">✕</button><h3>${t('Exportar vídeo')}</h3>
+    <label class="fr-l">${t('Formato')}
+      <select class="vd-type"><option value="mp4">MP4 (H.264)</option><option value="gif">GIF ${t('animado')}</option></select></label>
+    <label class="fr-l">${t('Segundos por diapositiva (si no tiene avance automático)')}
+      <input type="number" class="vd-hold" min="1" max="60" step="1" value="5"></label>
+    <progress class="vd-prog" max="1" value="0" hidden style="width:100%"></progress>
+    <div class="fr-actions"><button class="fr-do vd-go">${t('Exportar')}</button></div></div>`;
+  document.body.appendChild(back);
+  const close = () => back.remove();
+  back.querySelector('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  back.querySelector('.vd-go').addEventListener('click', async () => {
+    const type = back.querySelector('.vd-type').value, holdMs = Math.max(1, +back.querySelector('.vd-hold').value || 5) * 1000;
+    const prog = back.querySelector('.vd-prog'), go = back.querySelector('.vd-go');
+    prog.hidden = false; go.disabled = true;
+    try {
+      const v = await import('../io/video.js');
+      const blob = type === 'gif' ? await v.buildGIF(undefined, { holdMs, onProgress: p => (prog.value = p) })
+        : await v.buildMP4(undefined, { holdMs, onProgress: p => (prog.value = p) });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = (state.deck.name || 'presentacion').replace(/[^\p{L}\p{N}]+/gu, '-') + '.' + type; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      close();
+    } catch (e) {
+      go.disabled = false; prog.hidden = true;
+      alertDialog(t('No se pudo exportar: ') + (e.message === 'WebCodecs' || e.message === 'H.264' ? t('este navegador no puede codificar MP4; prueba GIF o Chrome/Edge.') : (e.message || e)));
+    }
   });
 }

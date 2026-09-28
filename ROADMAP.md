@@ -146,7 +146,7 @@ the origin of every requirement is traceable.
 - ✅ Save/open to Google Drive & export HTML to Drive (client-side, `drive.file`) `PP·GS`
 - ✅ Export slides as images — PNG or JPG, current slide or all slides in a ZIP `PP·GS·OO`
 - ⬜ Remaining `.pptx` import: gradients/shadows, SmartArt, charts, animations & transitions `OO·GS`
-- 🚧 Export to video — .webm by recording the slideshow; direct MP4/GIF rendering planned `PP·GS`
+- ✅ Export to video — MP4 (H.264, WebCodecs) or animated GIF rendered from the slides with cross-fades and per-slide timings; .webm by recording the live slideshow (with animations) `PP·GS`
 - ⬜ Publish to the web / shareable link `GS`
 - ✅ OpenDocument (`.odp`) export & import — text with formatting and lists, pictures, shapes, lines/arrows, merged shapes, tables with merged cells, charts/icons/ink as SVG, backgrounds, notes, hidden slides (validated with LibreOffice) `OO`
 
