@@ -29,6 +29,9 @@ standard, self-contained web page.
   reading order.
 - **Design:** theme colours and fonts, slide master, placeholders, template
   gallery and design ideas.
+- **Everything reveal.js offers:** vertical slides, video, web page, tiled
+  and parallax backgrounds, every fragment style and theme, scroll view, zoom
+  and search, step-by-step code with auto-scroll, fit text and Markdown import.
 - **Animations & transitions:** entrance, emphasis, exit, motion paths,
   triggers, "after previous", Morph and 10 transitions.
 - **Presenting:** speaker view, phone remote (QR), pen and highlighter, laser,
@@ -48,6 +51,7 @@ standard, self-contained web page.
   mark as final.
 - **Accessibility & languages:** checker, alt text, screen reader support;
   11 languages including a right-to-left interface.
+- **Editor appearance:** light, dark, automatic or your own colours.
 - **Works offline** (installable app), on phones, and with add-ins and macros
   through an API.
 

@@ -29,6 +29,10 @@ reveal.js, de modo que el resultado es una página web estándar y autónoma.
   espaciado inteligente, agrupar, bloquear, orden de lectura.
 - **Diseño:** paletas y fuentes del tema, patrón de diapositivas, marcadores
   de posición, galería de plantillas e ideas de diseño.
+- **Todo lo de reveal.js:** diapositivas verticales, fondos de vídeo, web,
+  mosaico y parallax, todos los efectos de fragmento y temas, vista de
+  desplazamiento, zoom y búsqueda, código paso a paso con desplazamiento
+  automático, ajustar texto al cuadro e importar Markdown.
 - **Animaciones y transiciones:** entrada, énfasis, salida, trayectorias,
   disparadores, «después de la anterior», Morph y 10 transiciones.
 - **Presentar:** vista del orador, mando desde el móvil (QR), lápiz y
@@ -48,6 +52,7 @@ reveal.js, de modo que el resultado es una página web estándar y autónoma.
   contraseña y marcar como final.
 - **Accesibilidad e idiomas:** comprobador, texto alternativo, lector de
   pantalla; 11 idiomas, incluida interfaz de derecha a izquierda.
+- **Apariencia del editor:** clara, oscura, automática o con tus colores.
 - **Funciona sin conexión** (aplicación instalable), en móvil y con
   complementos y macros mediante una API.
 
