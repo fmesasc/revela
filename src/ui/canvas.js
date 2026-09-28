@@ -13,6 +13,7 @@ import { animTimeline, EFFECT_KF } from '../features/transitions.js';
 import { blockLabel } from '../features/a11y.js';
 import { cameraRadius } from '../features/media.js';
 import { masterBlocksFor, PH_PROMPT, isEmptyPlaceholder } from '../features/master.js';
+import { autocorrectAtCaret } from '../features/autocorrect.js';
 
 function renderSlideRef(wrap, b) {
   wrap.innerHTML = '';
@@ -572,7 +573,8 @@ function setupText(b, el) {
     if (rich.dataset.msrc !== undefined) { rich.innerHTML = b.html || ''; rich.dataset.msrc = ''; }
     rich.contentEditable = 'true'; rich.focus(); el.classList.add('editing');
   });
-  rich.addEventListener('input', () => {            // no re-render: keep the caret
+  rich.addEventListener('input', e => {             // no re-render: keep the caret
+    if (e.inputType === 'insertText') autocorrectAtCaret(rich);
     b.html = rich.innerHTML;
     if (b.ph && isEmptyPlaceholder(b)) b.html = '';   // back to the prompt when emptied
   });

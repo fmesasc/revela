@@ -1022,6 +1022,21 @@ export async function run(frame) {
     assert(th.every(x => x.getBoundingClientRect().height > 40), 'altura normal: ' + th[20].getBoundingClientRect().height.toFixed(0));
   });
 
+  await test('autocorrección al escribir (y se puede desactivar)', async () => {
+    reset(); const b = slide().blocks[1]; const el = D.querySelector(`.block[data-id="${b.id}"]`);
+    el.dispatchEvent(new frame.contentWindow.MouseEvent('dblclick', { bubbles: true })); await sleep(10);
+    const rich = el.querySelector('.rich'); rich.textContent = 'a -';
+    const put = () => { const r = D.createRange(); r.selectNodeContents(rich); r.collapse(false); const s = D.getSelection(); s.removeAllRanges(); s.addRange(r); };
+    put(); D.execCommand('insertText', false, '>');
+    eq(rich.textContent, 'a →', '-> se convierte en flecha'); eq(b.html, 'a →', 'guardado en el modelo');
+    D.execCommand('insertText', false, ' (c)'); eq(rich.textContent, 'a → ©', '(c) → ©');
+    D.execCommand('insertText', false, ' 11/2'); assert(rich.textContent.endsWith('11/2'), 'no toca 11/2');
+    D.querySelector('[data-action="autocorrect"]').click();
+    D.execCommand('insertText', false, ' --'); assert(rich.textContent.endsWith('--'), 'desactivada no sustituye');
+    D.querySelector('[data-action="autocorrect"]').click();
+    rich.blur();
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

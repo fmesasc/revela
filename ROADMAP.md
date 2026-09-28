@@ -55,7 +55,7 @@ the origin of every requirement is traceable.
 - ✅ Equations / math — visual editor (MathLive, Symbolab-style) + LaTeX, and inline `$…$` in text (KaTeX) `PP·OO`
 - ✅ Hyperlinks — web, slide and email targets `PP·GS·OO`
 - ✅ Text direction (RTL) and vertical text `PP·OO`
-- 🚧 Spell check — native browser spellcheck while editing; proofing/AutoCorrect planned `PP·GS·OO`
+- ✅ Spell check (browser's own, while editing) and AutoCorrect of typographic symbols (—, →, ©, ≤, …), switchable `PP·GS·OO`
 - ✅ Text columns `PP·OO`
 - ✅ Named text styles (Title, Subtitle, Heading, Body, Quote, Note) `PP·OO`
 - ✅ Multi-level lists (Tab / Shift+Tab) `PP·GS·OO`

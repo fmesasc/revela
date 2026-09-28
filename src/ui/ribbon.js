@@ -17,6 +17,7 @@ import { openHandoutDialog, openImageDialog } from './print-dialog.js';
 import * as recorder from './recorder.js';
 import * as master from '../features/master.js';
 import { openGallery, openDesignIdeas } from './gallery-dialog.js';
+import { autocorrectOn, setAutocorrect } from '../features/autocorrect.js';
 import * as media from '../features/media.js';
 import * as palettes from '../features/palettes.js';
 import { setDrawTool, drawOpts } from './draw.js';
@@ -70,6 +71,7 @@ const ACTIONS = {
   'reuse-slides': () => pickReuseFile(),
   'a11y-check': () => openA11yCheck(),
   'reading-order': () => openReadingOrder(),
+  'autocorrect': () => { setAutocorrect(!autocorrectOn()); renderRibbon(); },
   'master-edit': () => master.toggleMasterEdit(),
   'master-close': () => master.toggleMasterEdit(false),
   'hide-master': () => master.toggleHideMaster(),
@@ -589,6 +591,7 @@ export function renderRibbon() {
   document.querySelector('[data-action="toggle-autoanimate"]')?.classList.toggle('on', !!slide.autoAnimate);
   syncValue('[data-theme]', state.deck.theme);
   syncValue('[data-deck-fg]', palettes.deckFg());
+  $('[data-action="autocorrect"]')?.classList.toggle('on', autocorrectOn());
   $('[data-action="master-edit"]')?.classList.toggle('on', !!state.ui.editMaster);
   syncValue('[data-slide-trans-out]', currentSlide()?.transitionOut || '');
   syncValue('[data-slide-speed]', currentSlide()?.transitionSpeed || '');
