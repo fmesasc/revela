@@ -3,7 +3,7 @@
 import { state, commit, setSelection, currentSlide } from '../../core/store.js';
 import { checkAccessibility, blockLabel } from '../../features/document/a11y.js';
 import { moveInOrder } from '../../features/document/blocks.js';
-import { openAlt } from '../shell/contextmenu.js';
+import { openAlt } from '../dialogs/object.js';
 import { t } from '../../i18n/index.js';
 
 const ICON = { empty: 'crop_square', notitle: 'title', duptitle: 'content_copy', alt: 'image_not_supported',
