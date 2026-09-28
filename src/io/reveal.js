@@ -2,7 +2,7 @@
 // present / export / save-load helpers.
 
 import { state } from '../core/store.js';
-import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS } from '../ui/shape.js';
+import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML } from '../ui/shape.js';
 import { googleFontLinks } from '../features/fonts.js';
 import { t } from '../i18n.js';
 import { alertDialog } from '../ui/dialog.js';
@@ -93,8 +93,7 @@ function blockHTML(b, slide) {
     return `<div${a} class="math" data-latex="${esc(b.latex || '')}" style="${box(b)}display:flex;align-items:center;justify-content:center;color:#fff"></div>`;
   if (b.type === 'table')
     return `<div${a} style="${box(b)}"><table class="tbl${b.header ? ' has-header' : ''}" style="--stroke:${b.stroke || '#fff'}">`
-      + b.rows.map(row => `<tr>${row.map(c => `<td>${c || ''}</td>`).join('')}</tr>`).join('')
-      + `</table></div>`;
+      + tableRowsHTML(b) + `</table></div>`;
   if (b.type === 'code') {
     // data-line-numbers drives reveal's animated line highlighting; a value like
     // "1|2-3|4" steps through line groups, empty just numbers the lines.

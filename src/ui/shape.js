@@ -11,6 +11,25 @@ export function imgClip(b) {
 
 const escSvg = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
+// Table merged cells: returns (r,c) → null if covered by a merge, else {cs, rs}.
+export function tableSpan(b) {
+  const ms = b.merges || [];
+  return (r, c) => {
+    for (const m of ms) {
+      if (r >= m.r && r < m.r + m.rs && c >= m.c && c < m.c + m.cs) return (r === m.r && c === m.c) ? { cs: m.cs, rs: m.rs } : null;
+    }
+    return { cs: 1, rs: 1 };
+  };
+}
+export function tableRowsHTML(b, cellStyle = '') {
+  const span = tableSpan(b);
+  return b.rows.map((row, r) => `<tr>${row.map((cell, c) => {
+    const s = span(r, c); if (!s) return '';
+    const at = (s.cs > 1 ? ` colspan="${s.cs}"` : '') + (s.rs > 1 ? ` rowspan="${s.rs}"` : '');
+    return `<td${at}${cellStyle ? ` style="${cellStyle}"` : ''}>${cell || ''}</td>`;
+  }).join('')}</tr>`).join('');
+}
+
 // Text Art / WordArt presets, as style property maps (camelCase for the DOM).
 export const WORDART = {
   fill: { color: '#3f6497', fontWeight: '800' },
@@ -82,6 +101,27 @@ export function chartSVG(b) {
       return `<path d="${path}" fill="${fill}"/>`;
     }).join('');
     return `<svg viewBox="0 0 100 100" width="100%" height="100%">${arcs}</svg>`;
+  }
+  if (b.chartType === 'radar') {
+    const n = Math.max(3, data.length), max = Math.max(1, ...data.map(d => +d.value || 0));
+    const pt = (i, r) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n; return [50 + r * Math.cos(a), 50 + r * Math.sin(a)]; };
+    const rings = [0.25, 0.5, 0.75, 1].map(f => `<polygon points="${Array.from({ length: n }, (_, i) => pt(i, 40 * f).map(v => v.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="#8a8a8a55" stroke-width="0.4"/>`).join('');
+    const axes = Array.from({ length: n }, (_, i) => { const [x, y] = pt(i, 40); return `<line x1="50" y1="50" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#8a8a8a55" stroke-width="0.4"/>`; }).join('');
+    const poly = data.map((d, i) => pt(i, 40 * ((+d.value || 0) / max)).map(v => v.toFixed(1)).join(',')).join(' ');
+    const labels = data.map((d, i) => { const [x, y] = pt(i, 47); return `<text x="${x.toFixed(1)}" y="${(y + 1.5).toFixed(1)}" font-size="4" text-anchor="middle" fill="#8a8a8a">${escSvg(d.label || '')}</text>`; }).join('');
+    return `<svg viewBox="0 0 100 100" width="100%" height="100%">${rings}${axes}`
+      + `<polygon points="${poly}" fill="${color}" fill-opacity="0.35" stroke="${color}" stroke-width="1"/>${labels}</svg>`;
+  }
+  if (b.chartType === 'scatter') {
+    // x = numeric label if present, else the index; y = value.
+    const xs = data.map((d, i) => (isFinite(parseFloat(d.label)) ? parseFloat(d.label) : i));
+    const ys = data.map(d => +d.value || 0);
+    const minX = Math.min(...xs, 0), maxX = Math.max(...xs, 1), maxY = Math.max(...ys, 1);
+    const X = x => 4 + (x - minX) / ((maxX - minX) || 1) * 92, Y = y => 54 - (y / maxY) * 50;
+    const dots = xs.map((x, i) => `<circle cx="${X(x).toFixed(1)}" cy="${Y(ys[i]).toFixed(1)}" r="1.6" fill="${color}"/>`).join('');
+    return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">`
+      + `<line x1="4" y1="54" x2="98" y2="54" stroke="#8a8a8a" stroke-width="0.4" vector-effect="non-scaling-stroke"/>`
+      + `<line x1="4" y1="2" x2="4" y2="54" stroke="#8a8a8a" stroke-width="0.4" vector-effect="non-scaling-stroke"/>${dots}</svg>`;
   }
   if (b.chartType === 'line' || b.chartType === 'area') {
     const max = Math.max(1, ...data.map(d => +d.value || 0)); const n = data.length;

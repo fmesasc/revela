@@ -4,7 +4,7 @@
 
 import { state, commit, mutate, currentSlide, selectedBlock,
   selectedBlocks, selectedIds, isSelected, setSelection, toggleSelection, setMulti, selectWithGroup } from '../core/store.js';
-import { shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart } from './shape.js';
+import { shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan } from './shape.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle } from '../features/captions.js';
 import { blockPreview } from './preview.js';
 import { t } from '../i18n.js';
@@ -451,7 +451,7 @@ function setupCode(el, b) {
   });
 }
 
-const tableSig = b => b.rows.length + 'x' + (b.rows[0]?.length || 0);
+const tableSig = b => b.rows.length + 'x' + (b.rows[0]?.length || 0) + '|' + JSON.stringify(b.merges || []);
 function tableContent(b) {
   const t = document.createElement('table'); t.className = 'tbl' + (b.header ? ' has-header' : '');
   t.dataset.sig = tableSig(b); t.style.setProperty('--stroke', b.stroke || '#fff');
@@ -460,9 +460,14 @@ function tableContent(b) {
 }
 function fillTable(t, b) {
   t.innerHTML = '';
+  const span = tableSpan(b);
   b.rows.forEach((row, r) => {
     const tr = t.insertRow();
-    row.forEach((cell, c) => { const td = tr.insertCell(); td.innerHTML = cell || ''; td.dataset.r = r; td.dataset.c = c; });
+    row.forEach((cell, c) => {
+      const sp = span(r, c); if (!sp) return;              // covered by a merged cell
+      const td = tr.insertCell(); td.innerHTML = cell || ''; td.dataset.r = r; td.dataset.c = c;
+      if (sp.cs > 1) td.colSpan = sp.cs; if (sp.rs > 1) td.rowSpan = sp.rs;
+    });
   });
 }
 // Cells edit on double‑click (like text boxes); Esc / clicking away saves.

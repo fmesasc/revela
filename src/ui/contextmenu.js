@@ -28,7 +28,8 @@ export function initContextMenu() {
     const blockEl = target && target.closest('.block');
     if (blockEl) {
       if (!isSelected(blockEl.dataset.id)) commit(() => setSelection(blockEl.dataset.id), { history: false });
-      open(x, y, forBlock(selectedBlock()));
+      const td = target.closest('td[data-r]');
+      open(x, y, forBlock(selectedBlock(), td ? { r: +td.dataset.r, c: +td.dataset.c } : null));
     } else {
       open(x, y, forCanvas());
     }
@@ -87,7 +88,7 @@ function forSection(id) {
   ];
 }
 
-function forBlock(b) {
+function forBlock(b, cell = null) {
   // Common object actions (like PowerPoint's right‑click on any shape).
   const items = [
     ['Cortar', () => { clipboard = structuredClone(b); blocks.deleteBlock(b.id); }],
@@ -151,6 +152,13 @@ function forBlock(b) {
       ['Quitar columna', () => blocks.tableDelCol()],
       [b.header ? 'Quitar fila de encabezado' : 'Fila de encabezado', () => blocks.tableToggleHeader()],
       null);
+    if (cell) {
+      items.push(
+        ['Combinar con la celda derecha', () => blocks.tableMerge(cell.r, cell.c, 'right')],
+        ['Combinar con la celda inferior', () => blocks.tableMerge(cell.r, cell.c, 'down')]);
+      if (blocks.mergeAt(b, cell.r, cell.c)) items.push(['Separar celdas', () => blocks.tableSplit(cell.r, cell.c)]);
+      items.push(null);
+    }
   }
 
   // Caption (figures, tables and other objects — not plain text/connectors).
@@ -357,7 +365,8 @@ function openChartData(b) {
     <button class="modal-close">✕</button><h3>${t('Datos del gráfico')}</h3>
     <label class="fr-l">${t('Tipo')} <select class="ch-type">
       <option value="bar">${t('Barras')}</option><option value="line">${t('Líneas')}</option><option value="area">${t('Área')}</option>
-      <option value="pie">${t('Circular')}</option><option value="doughnut">${t('Dona')}</option></select></label>
+      <option value="pie">${t('Circular')}</option><option value="doughnut">${t('Dona')}</option>
+      <option value="scatter">${t('Dispersión')}</option><option value="radar">${t('Radar')}</option></select></label>
     <label class="fr-l">${t('Color (barras)')} <input type="color" class="ch-color" value="${b.color || '#3f6497'}"></label>
     <label class="fr-l">${t('Datos (una línea "etiqueta,valor")')}
       <textarea class="ch-data" rows="5" style="font-family:monospace">${lines}</textarea></label>

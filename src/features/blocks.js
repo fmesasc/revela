@@ -203,8 +203,52 @@ export function setChart(props) {
 function withTable(fn) { const b = selectedBlock(); if (b && b.type === 'table') commit(() => fn(b)); }
 export const tableAddRow = () => withTable(b => b.rows.push(Array(b.rows[0]?.length || 1).fill('')));
 export const tableAddCol = () => withTable(b => b.rows.forEach(r => r.push('')));
-export const tableDelRow = () => withTable(b => { if (b.rows.length > 1) b.rows.pop(); });
-export const tableDelCol = () => withTable(b => { if ((b.rows[0]?.length || 0) > 1) b.rows.forEach(r => r.pop()); });
+export const tableDelRow = () => withTable(b => { if (b.rows.length > 1) { b.rows.pop(); clampMerges(b); } });
+export const tableDelCol = () => withTable(b => { if ((b.rows[0]?.length || 0) > 1) { b.rows.forEach(r => r.pop()); clampMerges(b); } });
+// Merged cells live in b.merges = [{r, c, rs, cs}] (top-left cell + span).
+function clampMerges(b) {
+  const R = b.rows.length, C = b.rows[0]?.length || 0;
+  b.merges = (b.merges || []).map(m => ({ ...m, rs: Math.min(m.rs, R - m.r), cs: Math.min(m.cs, C - m.c) }))
+    .filter(m => m.r < R && m.c < C && (m.rs > 1 || m.cs > 1));
+  if (!b.merges.length) delete b.merges;
+}
+export const mergeAt = (b, r, c) => (b.merges || []).find(m => r >= m.r && r < m.r + m.rs && c >= m.c && c < m.c + m.cs);
+// Merge the cell at (r,c) (or the merge containing it) with its right / lower neighbour.
+export function tableMerge(r, c, dir) {
+  withTable(b => {
+    const R = b.rows.length, C = b.rows[0]?.length || 0;
+    const cur = mergeAt(b, r, c) || { r, c, rs: 1, cs: 1 };
+    const next = dir === 'down'
+      ? { r: cur.r, c: cur.c, rs: cur.rs + 1, cs: cur.cs }
+      : { r: cur.r, c: cur.c, rs: cur.rs, cs: cur.cs + 1 };
+    if (next.r + next.rs > R || next.c + next.cs > C) return;
+    // Absorb any merges that overlap the new area; grow the area to cover them fully.
+    let ms = b.merges || [], grew = true;
+    while (grew) {
+      grew = false;
+      for (const m of ms) {
+        const hit = m.r < next.r + next.rs && m.r + m.rs > next.r && m.c < next.c + next.cs && m.c + m.cs > next.c;
+        if (!hit) continue;
+        const r2 = Math.max(next.r + next.rs, m.r + m.rs), c2 = Math.max(next.c + next.cs, m.c + m.cs);
+        const r1 = Math.min(next.r, m.r), c1 = Math.min(next.c, m.c);
+        if (r1 !== next.r || c1 !== next.c || r2 - r1 !== next.rs || c2 - c1 !== next.cs) { Object.assign(next, { r: r1, c: c1, rs: r2 - r1, cs: c2 - c1 }); grew = true; }
+      }
+    }
+    if (next.r + next.rs > R || next.c + next.cs > C) return;
+    const inside = m => m.r >= next.r && m.c >= next.c && m.r + m.rs <= next.r + next.rs && m.c + m.cs <= next.c + next.cs;
+    // Join the text of the absorbed cells into the top-left one, like the office suites do.
+    const texts = [];
+    for (let i = next.r; i < next.r + next.rs; i++) for (let j = next.c; j < next.c + next.cs; j++) {
+      const v = b.rows[i][j]; if (v && String(v).trim()) texts.push(v);
+      if (i !== next.r || j !== next.c) b.rows[i][j] = '';
+    }
+    b.rows[next.r][next.c] = texts.join(' ');
+    b.merges = ms.filter(m => !inside(m)).concat(next);
+  });
+}
+export function tableSplit(r, c) {
+  withTable(b => { const m = mergeAt(b, r, c); if (!m) return; b.merges = b.merges.filter(x => x !== m); if (!b.merges.length) delete b.merges; });
+}
 export const tableToggleHeader = () => withTable(b => { b.header = !b.header; });
 
 export function addShape(kind) {

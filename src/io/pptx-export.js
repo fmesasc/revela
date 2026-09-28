@@ -49,11 +49,23 @@ function addBlock(slide, b, pptx) {
         slide.addShape(st, { ...pos, fill, line: { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth || 1 } });
       }
     } else if (b.type === 'table') {
-      const rows = (b.rows || []).map(r => r.map(c => ({ text: plain(c) })));
+      // Merged cells: PptxGenJS wants the covered cells omitted and colspan/rowspan on the first.
+      const ms = b.merges || [];
+      const covered = (r, c) => ms.some(m => r >= m.r && r < m.r + m.rs && c >= m.c && c < m.c + m.cs && !(r === m.r && c === m.c));
+      const rows = (b.rows || []).map((row, r) => row.map((c, j) => {
+        if (covered(r, j)) return null;
+        const m = ms.find(x => x.r === r && x.c === j), cell = { text: plain(c) };
+        if (m) cell.options = { ...(m.cs > 1 && { colspan: m.cs }), ...(m.rs > 1 && { rowspan: m.rs }) };
+        return cell;
+      }).filter(Boolean));
       slide.addTable(rows, { ...pos, border: { pt: 1, color: hex(b.stroke) || 'FFFFFF' }, color: 'FFFFFF', fontSize: 14, valign: 'top' });
     } else if (b.type === 'chart') {
-      const type = { bar: 'bar', line: 'line', area: 'area', pie: 'pie', doughnut: 'doughnut' }[b.chartType || 'bar'] || 'bar';
-      const data = [{ name: 'Serie 1', labels: (b.data || []).map(d => d.label), values: (b.data || []).map(d => +d.value || 0) }];
+      const type = { bar: 'bar', line: 'line', area: 'area', pie: 'pie', doughnut: 'doughnut', radar: 'radar', scatter: 'scatter' }[b.chartType || 'bar'] || 'bar';
+      const rows = b.data || [];
+      const data = type === 'scatter'
+        ? [{ name: 'X', values: rows.map((d, i) => (isFinite(parseFloat(d.label)) ? parseFloat(d.label) : i)) },
+           { name: 'Y', values: rows.map(d => +d.value || 0) }]
+        : [{ name: 'Serie 1', labels: rows.map(d => d.label), values: rows.map(d => +d.value || 0) }];
       slide.addChart(pptx.ChartType[type], data, { ...pos, showLegend: false });
     }
     // model / video / embed / icon / math / connector / audio: skipped.

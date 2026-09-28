@@ -168,6 +168,18 @@ export async function run(frame) {
     assert(/<polygon points="0,50/.test(R.io.buildHTML()), 'relleno del área');
   });
 
+  await test('gráficos de dispersión y radar en el export', async () => {
+    reset(); R.blocks.addChart(); const b = last(); select(b);
+    R.blocks.setChart({ chartType: 'scatter', data: [{ label: '1', value: 2 }, { label: '3', value: 4 }, { label: '5', value: 1 }] });
+    await sleep(20);
+    eq(D.querySelectorAll(`.block[data-id="${b.id}"] .chart svg circle`).length, 3, 'tres puntos en el lienzo');
+    eq((R.io.buildHTML().match(/<circle cx=/g) || []).length, 3, 'tres puntos en el export');
+    R.blocks.setChart({ chartType: 'radar' }); await sleep(20);
+    const html = R.io.buildHTML();
+    assert(/fill-opacity="0\.35"/.test(html), 'polígono de datos del radar');
+    eq((html.match(/<polygon points="[^"]*" fill="none"/g) || []).length, 4, 'cuatro anillos');
+  });
+
   await test('diagrama en ciclo: n cajas y n conectores', async () => {
     reset(); const n0 = slide().blocks.length; R.blocks.addDiagram('cycle');
     const added = slide().blocks.slice(n0);
@@ -701,6 +713,26 @@ export async function run(frame) {
   await test('guías colocables: se dibujan sobre la diapositiva', async () => {
     reset(); R.state.deck.guides = { v: [640], h: [360] }; R.render(); await sleep(20);
     eq(D.querySelectorAll('.pguide').length, 2, 'dos guías dibujadas');
+  });
+
+  await test('tabla: combinar y separar celdas', async () => {
+    reset(); R.blocks.addTable(); const b = last(); select(b); await sleep(20);
+    b.rows[0][0] = 'A'; b.rows[0][1] = 'B';
+    R.blocks.tableMerge(0, 0, 'right'); await sleep(20);
+    eq(JSON.stringify(b.merges), JSON.stringify([{ r: 0, c: 0, rs: 1, cs: 2 }]), 'merge registrado');
+    eq(b.rows[0][0], 'A B', 'textos unidos');
+    const td = D.querySelector(`.block[data-id="${b.id}"] td[data-r="0"][data-c="0"]`);
+    eq(td.colSpan, 2, 'colspan en el lienzo');
+    assert(!D.querySelector(`.block[data-id="${b.id}"] td[data-r="0"][data-c="1"]`), 'celda cubierta omitida');
+    assert(/<td colspan="2">A B<\/td>/.test(R.io.buildHTML()), 'colspan en el export');
+    R.blocks.tableMerge(0, 1, 'down'); await sleep(20);                // desde una celda cubierta: crece el grupo
+    eq(JSON.stringify(b.merges), JSON.stringify([{ r: 0, c: 0, rs: 2, cs: 2 }]), 'crece hacia abajo');
+    assert(/<td colspan="2" rowspan="2">/.test(R.io.buildHTML()), 'rowspan en el export');
+    while (b.rows[0].length > 1) R.blocks.tableDelCol(); await sleep(20); // recorta el merge al quitar columnas
+    eq(JSON.stringify(b.merges), JSON.stringify([{ r: 0, c: 0, rs: 2, cs: 1 }]), 'merge recortado');
+    R.blocks.tableSplit(1, 0); await sleep(20);
+    assert(!b.merges, 'separado');
+    eq(D.querySelectorAll(`.block[data-id="${b.id}"] td`).length, b.rows.length * b.rows[0].length, 'todas las celdas');
   });
 
   await test('zoom: acercar y restablecer', async () => {
