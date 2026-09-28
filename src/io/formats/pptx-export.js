@@ -10,7 +10,7 @@ import { t } from '../../i18n/index.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
 import { chartSeries, iconSVG, inkSVG } from '../../render/svg.js';
 import { blockImage } from '../export/images.js';
-import { masterBlocksFor, isEmptyPlaceholder, styled } from '../../features/document/master.js';
+import { masterBlocksFor, isEmptyPlaceholder, styled, styleKind } from '../../features/document/master.js';
 import { PPTXGEN, JSZIP, loadScript } from '../../core/vendor.js';
 import { animTimeline, isEntrance } from '../../features/animation/transitions.js';
 import { download } from '../files.js';
@@ -173,6 +173,64 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map()) {
   } catch {}
 }
 
+// ---- Master and layouts ------------------------------------------------------------
+// Each Revela layout becomes a PowerPoint layout (PptxGenJS "slide master"):
+// the master's and layout's own objects that a PowerPoint layout can hold
+// (rectangles, pictures, lines, plain text) and its placeholders with the
+// inherited formatting. Slides use it, and their titles and text go into the
+// placeholders, so editing the master in PowerPoint changes them too. Objects
+// a layout can't hold are still drawn on each slide.
+const phName = p => 'rv-ph-' + p.id;
+function masterObject(b) {
+  const pos = { x: IN(b.x), y: IN(b.y), w: IN(b.w), h: IN(b.h) };
+  if (b.rotation || b.flipH || b.flipV) return null;
+  if (b.type === 'shape' && b.shape === 'rect') return { rect: { ...pos, fill: { color: hex(b.fill) || 'FFFFFF', ...(b.fill === 'none' && { transparency: 100 }) },
+    ...(b.strokeWidth && hex(b.stroke) && { line: { color: hex(b.stroke), width: b.strokeWidth * 0.75, ...dashOf(b.dash) } }) } };
+  if (b.type === 'shape' && b.shape === 'line') return { line: { ...pos, line: { color: hex(b.stroke) || '888888', width: (b.strokeWidth || 2) * 0.75, ...dashOf(b.dash) } } };
+  if (b.type === 'image' && /^data:image\/(png|jpe?g|gif)/.test(b.src || '') && !b.crop && !b.adj) return { image: { ...pos, data: b.src } };
+  return null;
+}
+function defineMasters(pptx, deck) {
+  const out = new Map(), used = new Set(deck.slides.map(s => s.layoutId).filter(Boolean)), names = new Set();
+  for (const lay of deck.layouts || []) {
+    if (!used.has(lay.id)) continue;
+    let name = lay.name || 'Diseño'; while (names.has(name)) name += ' ·'; names.add(name);
+    const inMaster = new Set(), objects = [];
+    for (const b of masterBlocksFor(lay, deck).concat(lay.blocks.filter(x => !x.ph))) {
+      const o = masterObject(b); if (o) { objects.push(o); inMaster.add(b.id); }
+    }
+    const phs = lay.blocks.filter(b => b.ph && styleKind(b));
+    for (const p0 of phs) {
+      const p = styled(p0, lay, deck);
+      const fam = (p.fontFamily || '').split(',')[0].replace(/['"]/g, '').trim();
+      objects.push({ placeholder: { options: { name: phName(p0), type: styleKind(p0) === 'title' ? 'title' : 'body',
+        x: IN(p.x), y: IN(p.y), w: IN(p.w), h: IN(p.h), fontSize: Math.round((p.fontSize || 40) * 0.75),
+        color: hex(p.color || deckFg(deck)) || 'FFFFFF', ...(fam && { fontFace: fam }), ...(p.fontWeight === '700' && { bold: true }),
+        ...(p.fontStyle === 'italic' && { italic: true }), align: p.textAlign || 'left', valign: { middle: 'middle', bottom: 'bottom' }[p.vAlign] || 'top' }, text: '' } });
+    }
+    const bg = hex(lay.background || deck.slides.find(s => s.layoutId === lay.id)?.background);
+    pptx.defineSlideMaster({ title: name, ...(bg && { background: { color: bg } }), objects });
+    out.set(lay.id, { name, inMaster, phs });
+  }
+  return out;
+}
+// A slide placeholder that still sits where its layout's is goes into it.
+function placeholderOf(s, b, m) {
+  if (!styleKind(b)) return null;
+  const p = m.phs.find(x => x.id === b.lp) || m.phs.find(x => styleKind(x) === styleKind(b));
+  return p && p.x === b.x && p.y === b.y && p.w === b.w && p.h === b.h ? p : null;
+}
+// Text into a layout placeholder: only what the slide set itself (the rest
+// comes from the layout, as in PowerPoint).
+function addPlaceholderText(slide, s, b, p) {
+  const raw = s.blocks.find(x => x.id === b.id) || {};
+  const fam = (raw.fontFamily || '').split(',')[0].replace(/['"]/g, '').trim();
+  const own = { ...(raw.fontSize && { fontSize: Math.round(raw.fontSize * 0.75) }), ...(raw.fit && !raw.fontSize && { fontSize: Math.round(b.fontSize * 0.75) }),
+    ...(raw.color && { color: hex(raw.color) }), ...(fam && { fontFace: fam }), ...(raw.textAlign && { align: raw.textAlign }),
+    ...(raw.fontWeight === '700' && { bold: true }), ...(raw.fontStyle === 'italic' && { italic: true }) };
+  slide.addText(htmlToRuns(b.html, own), { placeholder: phName(p) });
+}
+
 export async function buildPptx(deck = state.deck) {
   await loadScript(PPTXGEN, 'PptxGenJS');
   const pptx = new window.PptxGenJS();
@@ -188,15 +246,22 @@ export async function buildPptx(deck = state.deck) {
       else if (b.type === 'math' || b.type === 'poll' || b.type === 'figindex') { const img = await blockImage(b, s, deck); if (img) raster.set(b.id, img); }
     } catch {}
   }
+  const masters = defineMasters(pptx, deck);
   for (const s of deck.slides) {
-    const slide = pptx.addSlide();
+    const m = s.layoutId && masters.get(s.layoutId);
+    const slide = m ? pptx.addSlide({ masterName: m.name }) : pptx.addSlide();
     if (s.hidden) slide.hidden = true;                     // kept, hidden (like PowerPoint)
     const bg = hex(s.background);
     if (bg) slide.background = { color: bg };
     else if (/url\((data:[^)]+)\)/.test(s.background || '')) slide.background = { data: RegExp.$1 };
     if (s.notes) slide.addNotes(s.notes);
     const all = [...masterBlocksFor(s, deck), ...s.blocks.map(b => styled(b, s, deck))], byId = new Map(all.map(b => [b.id, b]));
-    for (const b of all) if (!isEmptyPlaceholder(b)) addBlock(named(slide, 'rv-' + b.id), b, pptx, raster, byId);
+    for (const b of all) {
+      if (isEmptyPlaceholder(b) || m?.inMaster.has(b.id)) continue;          // drawn by its PowerPoint layout
+      const ph = m && placeholderOf(s, b, m);
+      if (ph) { addPlaceholderText(named(slide, 'rv-' + b.id), s, b, ph); continue; }
+      addBlock(named(slide, 'rv-' + b.id), b, pptx, raster, byId);
+    }
   }
   return pptx;
 }

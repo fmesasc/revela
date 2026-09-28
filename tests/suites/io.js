@@ -570,4 +570,21 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const back = await R.odp.importODP(new File([blob], 'x.odp'));
     eq(back.slides[1].transition, 'zoom'); eq(back.slides[2].transition, 'fade'); eq(back.slides[2].autoSlide, 3000, 'avance automático');
   });
+
+  await test('PowerPoint: el patrón y los diseños se exportan como diseños reales con marcadores', async () => {
+    const d = R.examples.buildExample('lesson');
+    const blob = await R.pptx.buildPptxBlob(d);
+    await R.vendor.loadScript(R.vendor.JSZIP, 'JSZip');
+    const zip = await frame.contentWindow.JSZip.loadAsync(blob);
+    const layouts = await Promise.all(Object.keys(zip.files).filter(f => /slideLayouts\/slideLayout\d+\.xml$/.test(f)).map(f => zip.file(f).async('string')));
+    const names = layouts.map(x => (x.match(/<p:cSld name="([^"]*)"/) || [])[1]);
+    assert(names.includes('Portada') && names.includes('Título y contenido'), 'un diseño de PowerPoint por diseño: ' + names);
+    const tc = layouts[names.indexOf('Título y contenido')];
+    assert(/<p:ph\s[^>]*type="title"/.test(tc) && /<p:ph\s[^>]*type="body"/.test(tc), 'con sus marcadores de título y cuerpo');
+    const s2 = await zip.file('ppt/slides/slide2.xml').async('string');
+    assert(/<p:ph\s[^>]*type="title"/.test(s2) && /Qué vamos a aprender/.test(s2), 'el título de la diapositiva va en el marcador');
+    const back = await R.pptxImport.importPPTX(new File([blob], 'x.pptx'));
+    eq(back.layouts.find(l => l.id === back.slides[1].layoutId)?.name, 'Título y contenido', 'al volver a importarlo, la diapositiva usa su diseño');
+    assert(back.slides[1].blocks.find(b => b.ph === 'title')?.lp, 'y su título sigue al marcador');
+  });
 }
