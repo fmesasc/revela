@@ -45,7 +45,7 @@ the origin of every requirement is traceable.
 - ✅ Line and paragraph spacing, indents — line spacing, letter spacing and left indent `PP·GS·OO`
 - ⬜ Text columns `PP·OO`
 - ✅ Change case `PP·GS·OO`
-- ⬜ Bullet/number style and level customisation `PP·GS·OO`
+- 🚧 Bullet/number style — bullet style per box (disc/circle/square/none); numbered styles & levels planned `PP·GS·OO`
 - ⬜ Text styles / named styles `PP·OO`
 - ⬜ WordArt / Text Art `PP·OO`
 - ✅ Special characters and symbol/emoji picker `PP·GS·OO`

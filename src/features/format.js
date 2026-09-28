@@ -112,6 +112,10 @@ export function indent(px) {
   const c = ctx(); if (!c) return;
   commit(() => { c.b.indent = Math.max(0, parseFloat(px) || 0); });
 }
+export function setBullet(value) {
+  const c = ctx(); if (!c) return;
+  commit(() => { c.b.bullet = value; });
+}
 export function fontSize(delta) {
   const c = ctx(); if (!c) return;
   commit(() => { c.b.fontSize = Math.max(8, (c.b.fontSize || 40) + delta); });

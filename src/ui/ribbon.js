@@ -243,7 +243,10 @@ const POPS = {
       <label>Espaciado entre letras (px)
         <input type="number" step="0.5" data-pop="letterspacing" value="${t.letterSpacing || 0}"></label>
       <label>Sangría izquierda (px)
-        <input type="number" step="4" min="0" data-pop="indent" value="${t.indent || 0}"></label>`;
+        <input type="number" step="4" min="0" data-pop="indent" value="${t.indent || 0}"></label>
+      <label>Viñeta <select data-pop="bullet">
+        <option value="disc">• Disco</option><option value="circle">◦ Círculo</option>
+        <option value="square">▪ Cuadrado</option><option value="none">— Ninguna</option></select></label>`;
   },
 };
 function closePopover() { if (openPop) { openPop.remove(); openPop = null; } }
@@ -262,6 +265,8 @@ function togglePopover(launcher, type) {
   pop.querySelector('[data-pop="linespacing"]')?.addEventListener('input', e => format.lineSpacing(e.target.value));
   pop.querySelector('[data-pop="letterspacing"]')?.addEventListener('input', e => format.letterSpacing(e.target.value));
   pop.querySelector('[data-pop="indent"]')?.addEventListener('input', e => format.indent(e.target.value));
+  const bsel = pop.querySelector('[data-pop="bullet"]');
+  if (bsel) { bsel.value = selectedBlock()?.bullet || 'disc'; bsel.addEventListener('change', e => format.setBullet(e.target.value)); }
   pop.querySelectorAll('[data-sym]').forEach(x => {
     x.addEventListener('mousedown', e => e.preventDefault());   // keep the caret in the text
     x.addEventListener('click', () => format.insertSymbol(x.textContent));

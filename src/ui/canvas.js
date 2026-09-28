@@ -145,6 +145,7 @@ function reconcile(b) {
       rich.style.letterSpacing = b.letterSpacing ? b.letterSpacing + 'px' : '';
       rich.style.paddingLeft = (6 + (b.indent || 0)) + 'px';
       rich.dir = b.dir || '';
+      rich.style.setProperty('--bullet', b.bullet || 'disc');
       if (!el.classList.contains('editing') && rich.innerHTML !== (b.html || '')) rich.innerHTML = b.html || '';
     }
   } else if (b.type === 'image') {
@@ -223,6 +224,7 @@ function content(b) {
     if (b.letterSpacing) d.style.letterSpacing = b.letterSpacing + 'px';
     if (b.indent) d.style.paddingLeft = (6 + b.indent) + 'px';
     if (b.dir) d.dir = b.dir;
+    if (b.bullet) d.style.setProperty('--bullet', b.bullet);
     d.innerHTML = b.html || '';
     return d;
   }

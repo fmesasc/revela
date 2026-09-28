@@ -30,7 +30,8 @@ function blockHTML(b) {
       + `${b.lineHeight ? `line-height:${b.lineHeight};` : ''}`
       + `${b.letterSpacing ? `letter-spacing:${b.letterSpacing}px;` : ''}`
       + `${b.indent ? `padding-left:${b.indent}px;` : ''}`
-      + `${b.dir === 'rtl' ? 'direction:rtl;' : ''}">`
+      + `${b.dir === 'rtl' ? 'direction:rtl;' : ''}`
+      + `${b.bullet ? `--bullet:${b.bullet};` : ''}">`
       + `${b.html || ''}</div>`;
   if (b.type === 'model')
     return `<model-viewer${a} src="${b.src}" camera-controls ${b.autoRotate !== false ? 'auto-rotate' : ''} `
@@ -100,6 +101,7 @@ ${hasCode ? `<script src="${HLJS}/highlight.min.js"></script>` : ''}
 <style>
  .reveal .stage{position:relative;width:${w}px;height:${h}px;margin:0 auto}
  .reveal .stage>*{overflow-wrap:anywhere}
+ .reveal .stage ul{list-style-type:var(--bullet,disc)}
  .reveal section{height:100%}
  .reveal .slide-number{${snPos}}
  .reveal table.tbl{border-collapse:collapse;width:100%;height:100%;margin:0}

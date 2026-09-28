@@ -258,6 +258,11 @@ export async function run(frame) {
     eq(R.format.normalizeLink('https://x.com'), 'https://x.com', 'URL intacta');
   });
 
+  await test('estilo de viñeta por cuadro en el export', async () => {
+    reset(); const b = newText(); R.format.setBullet('square');
+    assert(/--bullet:square/.test(R.io.buildHTML()), '--bullet en el export');
+  });
+
   await test('dirección RTL del texto en el export', async () => {
     reset(); const b = newText(); R.format.toggleDir();
     assert(/direction:rtl/.test(R.io.buildHTML()), 'direction:rtl en el export');

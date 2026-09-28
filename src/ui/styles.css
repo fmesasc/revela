@@ -144,6 +144,7 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
 .block.dragging{cursor:grabbing;opacity:.75}
 .block.editing{cursor:auto}
 .block .rich{width:100%;height:100%;outline:none;padding:6px;color:#fff;overflow-wrap:anywhere}
+.block .rich ul{list-style-type:var(--bullet,disc)}
 /* A soft, translucent selection so the applied text colour stays visible
    (the default solid blue hid it). No `color` override → text keeps its own. */
 .block .rich::selection,.block .rich *::selection{background:rgba(63,100,151,.30)}
