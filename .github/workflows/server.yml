@@ -43,4 +43,4 @@ jobs:
           command: deploy
       - name: No token yet
         if: env.HAS_TOKEN != 'true'
-        run: echo "::notice::Falta el secreto CLOUDFLARE_API_TOKEN: pruebas pasadas, sin desplegar."
+        run: echo '::notice::Falta el secreto CLOUDFLARE_API_TOKEN (pruebas pasadas, sin desplegar).'
