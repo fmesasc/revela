@@ -64,6 +64,10 @@ export function toggleDir() {
   const c = ctx(); if (!c) return;
   commit(() => { c.b.dir = c.b.dir === 'rtl' ? 'ltr' : 'rtl'; });
 }
+export function toggleVertical() {
+  const c = ctx(); if (!c) return;
+  commit(() => { c.b.vertical = !c.b.vertical; });
+}
 export function changeCase(mode) {
   const c = ctx(); if (!c) return;
   enterEdit(c.el);

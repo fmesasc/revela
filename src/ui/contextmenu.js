@@ -107,6 +107,7 @@ function forBlock(b) {
       ['Añadir columna', () => blocks.tableAddCol()],
       ['Quitar fila', () => blocks.tableDelRow()],
       ['Quitar columna', () => blocks.tableDelCol()],
+      [b.header ? 'Quitar fila de encabezado' : 'Fila de encabezado', () => blocks.tableToggleHeader()],
       null);
   }
 
@@ -201,7 +202,7 @@ function openChartData(b) {
   back.innerHTML = `<div class="modal" style="text-align:left;min-width:300px">
     <button class="modal-close">✕</button><h3>Datos del gráfico</h3>
     <label class="fr-l">Tipo <select class="ch-type">
-      <option value="bar">Barras</option><option value="pie">Circular</option></select></label>
+      <option value="bar">Barras</option><option value="line">Líneas</option><option value="pie">Circular</option></select></label>
     <label class="fr-l">Color (barras) <input type="color" class="ch-color" value="${b.color || '#3f6497'}"></label>
     <label class="fr-l">Datos (una línea "etiqueta,valor")
       <textarea class="ch-data" rows="5" style="font-family:monospace">${lines}</textarea></label>

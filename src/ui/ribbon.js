@@ -162,6 +162,8 @@ export function initRibbon() {
     if (sh) { blocks.addShape(sh.dataset.shape); return; }
     const dir = e.target.closest('[data-dir]');
     if (dir) { format.toggleDir(); return; }
+    const vert = e.target.closest('[data-vertical]');
+    if (vert) { format.toggleVertical(); return; }
   });
 
   // Formatting controls must not steal focus (and thus the selection) from the
@@ -170,7 +172,7 @@ export function initRibbon() {
     btn.addEventListener('mousedown', e => e.preventDefault());
     btn.addEventListener('click', () => format.exec(btn.dataset.fmt));
   });
-  document.querySelectorAll('[data-case],[data-para],[data-list],[data-dir]')
+  document.querySelectorAll('[data-case],[data-para],[data-list],[data-dir],[data-vertical]')
     .forEach(btn => btn.addEventListener('mousedown', e => e.preventDefault()));
   bindInput('[data-color]', v => format.color(v), true);
   bindInput('[data-highlight]', v => format.highlight(v), true);

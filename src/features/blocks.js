@@ -72,6 +72,7 @@ export const tableAddRow = () => withTable(b => b.rows.push(Array(b.rows[0]?.len
 export const tableAddCol = () => withTable(b => b.rows.forEach(r => r.push('')));
 export const tableDelRow = () => withTable(b => { if (b.rows.length > 1) b.rows.pop(); });
 export const tableDelCol = () => withTable(b => { if ((b.rows[0]?.length || 0) > 1) b.rows.forEach(r => r.pop()); });
+export const tableToggleHeader = () => withTable(b => { b.header = !b.header; });
 
 export function addShape(kind) {
   const linear = kind === 'line' || kind === 'arrow';

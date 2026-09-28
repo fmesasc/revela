@@ -145,6 +145,7 @@ function reconcile(b) {
       rich.style.letterSpacing = b.letterSpacing ? b.letterSpacing + 'px' : '';
       rich.style.paddingLeft = (6 + (b.indent || 0)) + 'px';
       rich.dir = b.dir || '';
+      rich.style.writingMode = b.vertical ? 'vertical-rl' : '';
       rich.style.setProperty('--bullet', b.bullet || 'disc');
       if (!el.classList.contains('editing') && rich.innerHTML !== (b.html || '')) rich.innerHTML = b.html || '';
     }
@@ -167,6 +168,7 @@ function reconcile(b) {
     const t = el.querySelector('.tbl'); if (!t) return;
     const sig = tableSig(b);
     if (t.dataset.sig !== sig) { t.dataset.sig = sig; fillTable(t, b); if (el.classList.contains('editing')) t.querySelectorAll('td').forEach(td => (td.contentEditable = 'true')); }
+    t.classList.toggle('has-header', !!b.header);
     t.style.setProperty('--stroke', b.stroke || '#fff');
   } else if (b.type === 'code') {
     const pre = el.querySelector('.code'), c = el.querySelector('code');
@@ -227,6 +229,7 @@ function content(b) {
     if (b.letterSpacing) d.style.letterSpacing = b.letterSpacing + 'px';
     if (b.indent) d.style.paddingLeft = (6 + b.indent) + 'px';
     if (b.dir) d.dir = b.dir;
+    if (b.vertical) d.style.writingMode = 'vertical-rl';
     if (b.bullet) d.style.setProperty('--bullet', b.bullet);
     d.innerHTML = b.html || '';
     return d;
@@ -298,7 +301,7 @@ function setupCode(el, b) {
 
 const tableSig = b => b.rows.length + 'x' + (b.rows[0]?.length || 0);
 function tableContent(b) {
-  const t = document.createElement('table'); t.className = 'tbl';
+  const t = document.createElement('table'); t.className = 'tbl' + (b.header ? ' has-header' : '');
   t.dataset.sig = tableSig(b); t.style.setProperty('--stroke', b.stroke || '#fff');
   fillTable(t, b);
   return t;

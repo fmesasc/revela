@@ -27,6 +27,16 @@ export function chartSVG(b) {
     }).join('');
     return `<svg viewBox="0 0 100 100" width="100%" height="100%">${arcs}</svg>`;
   }
+  if (b.chartType === 'line') {
+    const max = Math.max(1, ...data.map(d => +d.value || 0)); const n = data.length;
+    const step = n > 1 ? 100 / (n - 1) : 100;
+    const xy = i => [(i * step), 50 - (data[i].value / max) * 46];
+    const pts = data.map((d, i) => xy(i).map(v => v.toFixed(1)).join(',')).join(' ');
+    const dots = data.map((d, i) => { const [x, y] = xy(i); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.3" fill="${color}"/>`; }).join('');
+    const labels = data.map((d, i) => `<text x="${(i * step).toFixed(1)}" y="58" font-size="4" text-anchor="middle" fill="#8a8a8a">${escSvg(d.label || '')}</text>`).join('');
+    return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">`
+      + `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.2" vector-effect="non-scaling-stroke"/>${dots}${labels}</svg>`;
+  }
   const max = Math.max(1, ...data.map(d => +d.value || 0)); const n = data.length || 1; const gap = 100 / n; const bw = gap * 0.6;
   const bars = data.map((d, i) => {
     const h = (d.value / max) * 46; const x = gap * i + (gap - bw) / 2; const y = 50 - h;

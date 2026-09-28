@@ -13,7 +13,8 @@ export function blockPreview(b) {
       + `${b.lineHeight ? `line-height:${b.lineHeight};` : ''}`
       + `${b.letterSpacing ? `letter-spacing:${b.letterSpacing}px;` : ''}`
       + `${b.indent ? `padding-left:${b.indent}px;` : ''}`
-      + `${b.dir === 'rtl' ? 'direction:rtl;' : ''}">`
+      + `${b.dir === 'rtl' ? 'direction:rtl;' : ''}`
+      + `${b.vertical ? 'writing-mode:vertical-rl;' : ''}">`
       + `${b.html || ''}</div>`;
   } else if (b.type === 'image') {
     el.innerHTML = `<img src="${b.src}" style="width:100%;height:100%;object-fit:${b.fit || 'contain'};`

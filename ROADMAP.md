@@ -52,7 +52,7 @@ the origin of every requirement is traceable.
 - ⬜ Equations / math (OnlyOffice has a full equation editor) `PP·OO`
 - 🚧 Spell check, proofing and AutoCorrect — native browser spellcheck while editing; proofing/AutoCorrect planned `PP·GS·OO`
 - ✅ Hyperlinks — web, slide and email targets `PP·GS·OO`
-- 🚧 Text direction (RTL) done; vertical text planned `PP·OO`
+- ✅ Vertical text and text direction (RTL) `PP·OO`
 
 ## 3. Objects & content
 - ✅ Images `PP·GS·OO`
@@ -60,8 +60,8 @@ the origin of every requirement is traceable.
 - ✅ Interactive 3D models (`.glb`/`.gltf`) — *unique to Revela among natives; PowerPoint has static 3D* `PP`
 - 🚧 Shapes library — rectangle, rounded, ellipse, triangle, diamond, pentagon, star, block arrow, line, arrow with fill/stroke; connectors planned `PP·GS·OO`
 - ⬜ Merge / subtract / intersect shapes `PP·OO`
-- 🚧 Tables — editable cells, add/remove rows & columns, border colour; cell styles planned `PP·GS·OO`
-- 🚧 Charts — bar and pie with data editing (SVG, no library); line & more planned `PP·GS·OO`
+- ✅ Tables — editable cells, add/remove rows & columns, header row, border colour `PP·GS·OO`
+- ✅ Charts — bar, line and pie with data editing (SVG, no library) `PP·GS·OO`
 - ⬜ SmartArt / diagrams `PP·OO`
 - ⬜ Icons and stock images `PP·GS`
 - ✅ Emoji picker `GS`

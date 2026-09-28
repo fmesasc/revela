@@ -31,6 +31,7 @@ function blockHTML(b) {
       + `${b.letterSpacing ? `letter-spacing:${b.letterSpacing}px;` : ''}`
       + `${b.indent ? `padding-left:${b.indent}px;` : ''}`
       + `${b.dir === 'rtl' ? 'direction:rtl;' : ''}`
+      + `${b.vertical ? 'writing-mode:vertical-rl;' : ''}`
       + `${b.bullet ? `--bullet:${b.bullet};` : ''}">`
       + `${b.html || ''}</div>`;
   if (b.type === 'model')
@@ -52,7 +53,7 @@ function blockHTML(b) {
   if (b.type === 'chart')
     return `<div${a} style="${box(b)}">${chartSVG(b)}</div>`;
   if (b.type === 'table')
-    return `<div${a} style="${box(b)}"><table class="tbl" style="--stroke:${b.stroke || '#fff'}">`
+    return `<div${a} style="${box(b)}"><table class="tbl${b.header ? ' has-header' : ''}" style="--stroke:${b.stroke || '#fff'}">`
       + b.rows.map(row => `<tr>${row.map(c => `<td>${c || ''}</td>`).join('')}</tr>`).join('')
       + `</table></div>`;
   if (b.type === 'code')
@@ -108,6 +109,7 @@ ${hasCode ? `<script src="${HLJS}/highlight.min.js"></script>` : ''}
  .reveal .slide-number{${snPos}}
  .reveal table.tbl{border-collapse:collapse;width:100%;height:100%;margin:0}
  .reveal table.tbl td{border:1px solid var(--stroke,#fff);padding:.15em .4em;vertical-align:top}
+ .reveal table.tbl.has-header tr:first-child td{font-weight:700;background:rgba(127,127,127,.25)}
  .deck-footer{position:fixed;left:12px;bottom:8px;z-index:30;font-size:14px;opacity:.7;color:#fff;mix-blend-mode:difference}
 </style></head><body>
 <div class="reveal"><div class="slides">

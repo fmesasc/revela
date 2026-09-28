@@ -101,6 +101,11 @@ export async function run(frame) {
     assert(/<div[^>]*><svg[^>]*><rect/.test(R.io.buildHTML()), 'gráfico en el export');
   });
 
+  await test('gráfico de líneas: polyline en el export', async () => {
+    reset(); R.blocks.addChart(); const b = last(); select(b); R.blocks.setChart({ chartType: 'line' });
+    assert(/<polyline points="/.test(R.io.buildHTML()), 'polyline del gráfico de líneas');
+  });
+
   await test('gráfico circular: sectores en el export', async () => {
     reset(); R.blocks.addChart(); const b = last(); select(b);
     R.blocks.setChart({ chartType: 'pie' });
@@ -279,6 +284,16 @@ export async function run(frame) {
   await test('dirección RTL del texto en el export', async () => {
     reset(); const b = newText(); R.format.toggleDir();
     assert(/direction:rtl/.test(R.io.buildHTML()), 'direction:rtl en el export');
+  });
+
+  await test('texto vertical en el export', async () => {
+    reset(); const b = newText(); R.format.toggleVertical();
+    assert(/writing-mode:vertical-rl/.test(R.io.buildHTML()), 'writing-mode vertical');
+  });
+
+  await test('tabla con fila de encabezado', async () => {
+    reset(); R.blocks.addTable(); const b = last(); select(b); R.blocks.tableToggleHeader();
+    assert(b.header, 'bandera header'); assert(/class="tbl has-header"/.test(R.io.buildHTML()), 'clase has-header');
   });
 
   await test('buscar y reemplazar respeta el formato (nodos de texto)', async () => {
