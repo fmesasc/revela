@@ -4,7 +4,7 @@
 import { state, commit } from '../core/store.js';
 import { shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, tableClass, tableVars, tableCSS, escSvg, SERIES_COLOURS, chartSeries } from '../ui/shape.js';
 import { googleFontLinks } from '../features/fonts.js';
-import { t } from '../i18n.js';
+import { t, currentLang } from '../i18n.js';
 import { alertDialog, confirmDialog } from '../ui/dialog.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle, visibleIndexMap } from '../features/captions.js';
 import { INK_CSS, inkJS } from './ink.js';
@@ -41,6 +41,8 @@ const CUSTOM_KF = {
 // One keyframe set per object with a motion path (curves are sampled).
 const pathKeyframes = deck => deck.slides.flatMap(s => s.blocks.filter(b => b.animation?.effect === 'path'))
   .map(b => pathKeyframesCSS('rvP' + b.id, b.animation)).join('\n');
+// Speech recognition language from the interface language.
+const speechLang = () => ({ es: 'es-ES', en: 'en-US', fr: 'fr-FR', de: 'de-DE', it: 'it-IT', pt: 'pt-PT', ca: 'ca-ES', gl: 'gl-ES', nl: 'nl-NL', eu: 'eu-ES', ar: 'ar-SA' }[currentLang()] || 'es-ES');
 const usedTransitions = deck => new Set([deck.defaultTransition, ...deck.slides.flatMap(s => [s.transition, s.transitionOut])].filter(Boolean));
 function customEffectCSS(deck) {
   const used = new Set();
@@ -355,7 +357,8 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${hasCam ? CAMERA_JS : ''}
  ${hasPoll ? pollJS(currentPalette(deck).accents) : ''}
  ${hasLive ? liveDataJS() : ''}
- ${inkJS(w, h, { pen: t('Lápiz'), hl: t('Resaltador'), laser: t('Puntero láser'), color: t('Color de la tinta'), erase: t('Borrar la tinta de la diapositiva') })}
+ ${inkJS(w, h, { pen: t('Lápiz'), hl: t('Resaltador'), laser: t('Puntero láser'), color: t('Color de la tinta'), erase: t('Borrar la tinta de la diapositiva'),
+   cc: t('Subtítulos en directo'), lang: speechLang(), ccWarn: t('Los subtítulos usan el reconocimiento de voz del navegador: en Chrome y Edge el audio se envía a su servicio de voz. ¿Activarlos?') })}
  ${hasZoomReturn ? '(function(){var p=null;document.addEventListener("click",function(e){var a=e.target.closest("a.slide-zoom[data-zoom-return]");if(a){p={t:+a.dataset.target,o:+a.dataset.origin,arrived:false};}});Reveal.on("slidechanged",function(ev){if(!p)return;if(ev.indexh===p.t){p.arrived=true;return;}if(p.arrived){var o=p.o;p=null;setTimeout(function(){Reveal.slide(o);},0);}});})();' : ''}
 </script></body></html>`;
 }

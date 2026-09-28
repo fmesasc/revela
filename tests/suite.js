@@ -1421,6 +1421,26 @@ export async function run(frame) {
     } finally { W.fetch = real; }
   });
 
+  await test('subtítulos en directo al presentar (reconocimiento de voz simulado)', async () => {
+    reset();
+    const fake = `<script>window.confirm=function(){return true};window.SpeechRecognition=function(){var s=this;window.__rec=s;s.start=function(){s.started=true};s.stop=function(){s.started=false}};<\/script>`;
+    const html = R.io.buildHTML().replace('<head>', '<head>' + fake);
+    const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:640px;height:360px;opacity:0';
+    f.src = URL.createObjectURL(new Blob([html], { type: 'text/html' })); document.body.appendChild(f);
+    let w; for (let i = 0; i < 80 && !((w = f.contentWindow).__ink && w.Reveal?.isReady?.()); i++) await sleep(100);
+    try {
+      w.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'c', bubbles: true }));
+      assert(w.__ink.captionsOn && w.__rec.started, 'C activa los subtítulos');
+      eq(w.__rec.lang, 'es-ES', 'idioma del reconocimiento');
+      const res = (txt, fin) => { const r = [{ transcript: txt }]; r.isFinal = fin; return r; };
+      w.__rec.onresult({ resultIndex: 0, results: [res('hola a todos', true)] });
+      w.__rec.onresult({ resultIndex: 1, results: [res('hola a todos', true), res('bienvenidos', false)] });
+      eq(f.contentDocument.getElementById('captions').textContent, 'hola a todos bienvenidos', 'texto en pantalla (final + provisional)');
+      w.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'c', bubbles: true }));
+      assert(!w.__ink.captionsOn && !w.__rec.started, 'C los apaga');
+    } finally { f.remove(); }
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

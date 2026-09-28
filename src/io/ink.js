@@ -17,7 +17,8 @@ export const INK_CSS = `
  #ink-bar button{width:32px;height:32px;border:0;border-radius:6px;background:none;color:#fff;font:16px/1 sans-serif;cursor:pointer}
  #ink-bar button:hover{background:rgba(255,255,255,.15)}
  #ink-bar button.on{background:rgba(255,255,255,.28)}
- #ink-bar input{width:28px;height:28px;margin:2px;border:0;padding:0;background:none;cursor:pointer}`;
+ #ink-bar input{width:28px;height:28px;margin:2px;border:0;padding:0;background:none;cursor:pointer}
+ #captions{position:fixed;left:50%;bottom:6%;transform:translateX(-50%);z-index:42;max-width:80vw;padding:.3em .7em;border-radius:.3em;background:rgba(0,0,0,.72);color:#fff;font:600 clamp(18px,2.6vw,38px)/1.3 system-ui,sans-serif;text-align:center;display:none}`;
 
 export function inkJS(W, H, labels) {
   return `(function(){
@@ -29,7 +30,8 @@ export function inkJS(W, H, labels) {
   +'<button data-t="hl" title="'+L.hl+' (Ctrl+I)">\\u2592</button>'
   +'<button data-t="laser" title="'+L.laser+' (Ctrl+L)">\\u25CF</button>'
   +'<input type="color" value="#ff2d2d" title="'+L.color+'">'
-  +'<button data-t="erase" title="'+L.erase+' (E)">\\u232B</button>';
+  +'<button data-t="erase" title="'+L.erase+' (E)">\\u232B</button>'
+  +'<button data-t="cc" title="'+L.cc+' (C)" style="font-weight:700;font-size:12px">CC</button>';
  document.body.appendChild(bar);
  function key(){var i=Reveal.getIndices();return i.h+'/'+(i.v||0);}
  function rect(){return document.querySelector('.reveal .slides').getBoundingClientRect();}
@@ -47,7 +49,7 @@ export function inkJS(W, H, labels) {
   bar.querySelectorAll('button[data-t]').forEach(function(b){b.classList.toggle('on',b.dataset.t===tool);});draw();}
  function erase(){delete ink[key()];draw();}
  bar.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;
-  if(b.dataset.t==='erase')erase();else setTool(b.dataset.t);});
+  if(b.dataset.t==='erase')erase();else if(b.dataset.t==='cc')captions();else setTool(b.dataset.t);});
  bar.querySelector('input').addEventListener('input',function(e){color=e.target.value;});
  cv.addEventListener('pointerdown',function(e){if(!tool||tool==='laser')return;try{cv.setPointerCapture(e.pointerId);}catch(_){}
   cur={c:color,hl:tool==='hl',p:[toDeck(e)]};(ink[key()]=ink[key()]||[]).push(cur);draw();});
@@ -59,12 +61,29 @@ export function inkJS(W, H, labels) {
   if(c&&k==='p')t='pen';else if(c&&k==='i')t='hl';else if(c&&k==='l')t='laser';
   else if(c&&k==='a'&&tool){setTool(tool);}
   else if(k==='e'&&!c&&!e.altKey){erase();}
+  else if(k==='c'&&!c&&!e.altKey){captions();}
   else if(k==='escape'&&tool){setTool(tool);}
   else return;
   if(t)setTool(t);e.preventDefault();e.stopImmediatePropagation();},true);
  var hide;document.addEventListener('mousemove',function(){bar.classList.add('show');clearTimeout(hide);
   hide=setTimeout(function(){bar.classList.remove('show');},2000);});
  window.addEventListener('resize',size);Reveal.on('slidechanged',draw);Reveal.on('resize',draw);Reveal.on('ready',size);size();
- window.__ink={get tool(){return tool;},strokes:function(){return ink[key()]||[];},erase:erase,setTool:setTool};
+ // Live captions with the browser's speech recognition (Chrome/Edge send the
+ // audio to their speech service, so the presenter is asked first).
+ var SR=window.SpeechRecognition||window.webkitSpeechRecognition,rec=null,capOn=false,capEl=null,finalTxt='';
+ if(!SR){var ccb=bar.querySelector('[data-t="cc"]');if(ccb)ccb.hidden=true;}
+ function captions(){if(!SR)return;
+  if(capOn){capOn=false;try{rec.stop();}catch(_){}if(capEl)capEl.style.display='none';bar.querySelector('[data-t="cc"]').classList.remove('on');return;}
+  if(!sessionStorage.getItem('revela-cc-ok')){if(!confirm(L.ccWarn))return;sessionStorage.setItem('revela-cc-ok','1');}
+  if(!capEl){capEl=document.createElement('div');capEl.id='captions';document.body.appendChild(capEl);}
+  capEl.style.display='block';capEl.textContent='…';capOn=true;bar.querySelector('[data-t="cc"]').classList.add('on');
+  rec=new SR();rec.lang=L.lang;rec.continuous=true;rec.interimResults=true;
+  rec.onresult=function(ev){var interim='';for(var i=ev.resultIndex;i<ev.results.length;i++){var r=ev.results[i];
+    if(r.isFinal)finalTxt=(finalTxt+' '+r[0].transcript).trim().slice(-220);else interim+=r[0].transcript;}
+   capEl.textContent=(finalTxt+' '+interim).trim().slice(-160);};
+  rec.onend=function(){if(capOn){try{rec.start();}catch(_){}}};
+  rec.onerror=function(e){if(e.error==='not-allowed'){capOn=false;capEl.style.display='none';}};
+  try{rec.start();}catch(_){}}
+ window.__ink={captions:captions,get captionsOn(){return capOn;},get tool(){return tool;},strokes:function(){return ink[key()]||[];},erase:erase,setTool:setTool};
 })();`;
 }
