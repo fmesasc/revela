@@ -14,7 +14,7 @@ import { download, slug } from '../files.js';
 
 // Fill in what the exported page draws with scripts, for rasterising: KaTeX
 // equations (block and inline) and poll results.
-async function hydrateStatic(root, deck) {
+export async function hydrateStatic(root, deck) {
   if (root.querySelector('.math[data-latex]') || /\$[^$]/.test(root.textContent)) {
     if (!document.querySelector('link[data-katex]')) {
       const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = `${KATEX}/katex.min.css`; l.dataset.katex = '1'; document.head.appendChild(l);

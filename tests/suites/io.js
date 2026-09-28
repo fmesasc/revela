@@ -229,4 +229,101 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert((cx.match(/<draw:line /g) || []).length >= 1 && /Courier New/.test(cx), 'ODP: conector y código');
     assert(Object.keys(oz.files).filter(f => /^Pictures\/.*\.png$/.test(f)).length >= 1, 'ODP: ecuación como imagen');
   });
+
+  // A 20×10 test picture: left half red, right half blue.
+  const W_ = () => frame.contentWindow;
+  const pic = () => { const c = D.createElement('canvas'); c.width = 20; c.height = 10; const x = c.getContext('2d');
+    x.fillStyle = '#ff0000'; x.fillRect(0, 0, 10, 10); x.fillStyle = '#0000ff'; x.fillRect(10, 0, 10, 10); return c.toDataURL('image/png'); };
+  const px = (canvas, x, y) => [...canvas.getContext('2d').getImageData(x, y, 1, 1).data];
+  const blobCanvas = async blob => { const bmp = await W_().createImageBitmap(blob); const c = D.createElement('canvas');
+    c.width = bmp.width; c.height = bmp.height; c.getContext('2d').drawImage(bmp, 0, 0); return c; };
+
+  await test('objetos como imagen: ajustes de foto con la misma fórmula que CSS', async () => {
+    const O = R.objects, img = n => ({ data: new Uint8ClampedArray([n, n, n, 255, 255, 0, 0, 255]) });
+    eq(O.applyAdjustments(img(64), { brightness: 200 }).data[0], 128, 'brillo 200 % duplica');
+    eq(O.applyAdjustments(img(64), { contrast: 0 }).data[0], 128, 'contraste 0 → gris medio');
+    const g = O.applyAdjustments(img(0), { saturate: 0 }).data; assert(g[4] === g[5] && g[5] === g[6], 'saturación 0 → gris');
+    eq(Math.round(O.applyAdjustments(img(10), { opacity: 50 }).data[3]), 128, 'transparencia 50 %');
+    const r = O.fitRect('contain', 200, 100, 100, 100); eq(JSON.stringify(r), '[0,25,100,50]', 'contener centra');
+    eq(JSON.stringify(O.fitRect('cover', 200, 100, 100, 100)), '[-50,0,200,100]', 'rellenar recorta');
+    const bb = O.boundsOf([{ x: 100, y: 100, w: 200, h: 100, rotation: 90 }]);
+    eq(JSON.stringify(bb), JSON.stringify({ x: 150, y: 50, w: 100, h: 200 }), 'caja con giro');
+  });
+
+  await test('objetos como imagen: la foto con recorte, ajustes y fondo transparente', async () => {
+    reset(); R.blocks.addImage(pic()); const b = last(); Object.assign(b, { x: 100, y: 100, w: 200, h: 100, fit: 'fill' });
+    b.crop = { left: 50 }; b.adj = { brightness: 50 };
+    const baked = await R.objects.bakeImage(b, 1);
+    eq(px(baked, 20, 50)[3], 0, 'la parte recortada queda transparente');
+    const blue = px(baked, 180, 50); assert(blue[2] > 110 && blue[2] < 140 && blue[3] === 255, 'la parte visible con el brillo al 50 %: ' + blue);
+    const png = await R.objects.objectsFile([b], { format: 'png', scale: 1 });
+    eq(png.blob.type, 'image/png', 'PNG'); eq(png.ext, 'png', 'extensión');
+    const c = await blobCanvas(png.blob);
+    eq(c.width + 'x' + c.height, '200x100', 'tamaño del objeto a 1×');
+    eq(px(c, 20, 50)[3], 0, 'PNG transparente donde no hay foto');
+    assert(px(c, 180, 50)[2] > 100, 'PNG con la parte azul editada');
+    const c2 = await blobCanvas((await R.objects.objectsFile([b], { format: 'png', scale: 2 })).blob);
+    eq(c2.width, 400, 'escala 2×');
+    const jpg = await R.objects.objectsFile([b], { format: 'jpg', scale: 1 });
+    eq(jpg.blob.type, 'image/jpeg', 'JPG');
+    eq(px(await blobCanvas(jpg.blob), 20, 50).slice(0, 3).every(v => v > 240), true, 'JPG: blanco donde era transparente');
+    const webp = await R.objects.objectsFile([b], { format: 'webp', scale: 1 });
+    eq(webp.ext, 'webp', 'WebP'); eq(px(await blobCanvas(webp.blob), 20, 50)[3], 0, 'WebP transparente');
+    const bg = await blobCanvas((await R.objects.objectsFile([b], { format: 'png', scale: 1, background: '#00ff00' })).blob);
+    eq(px(bg, 20, 50).join(), '0,255,0,255', 'con fondo elegido');
+    b.crop = null; b.adj = null; b.flipH = true;
+    const fl = await blobCanvas((await R.objects.objectsFile([b], { format: 'png', scale: 1 })).blob);
+    assert(px(fl, 20, 50)[2] > 200 && px(fl, 180, 50)[0] > 200, 'volteo horizontal respetado');
+    b.flipH = false; b.rotation = 90;
+    const ro = await blobCanvas((await R.objects.objectsFile([b], { format: 'png', scale: 1 })).blob);
+    eq(ro.width + 'x' + ro.height, '100x200', 'girada 90°: caja vertical');
+    assert(px(ro, 50, 20)[0] > 200 && px(ro, 50, 180)[2] > 200, 'girada 90°: rojo arriba, azul abajo');
+    b.rotation = 0;
+    const orig = await R.objects.originalImage(b);
+    eq(orig.ext, 'png', 'original: su propio formato');
+    const oc = await blobCanvas(orig.blob); eq(oc.width + 'x' + oc.height, '20x10', 'original sin ediciones ni escalado');
+  });
+
+  await test('objetos como imagen: varios juntos, uno por archivo y SVG vectorial', async () => {
+    reset(); R.blocks.addShape('ellipse'); const e = last(); Object.assign(e, { x: 0, y: 0, w: 100, h: 100, fill: '#ff0000', stroke: '#ff0000' });
+    R.blocks.addShape('rect'); const r = last(); Object.assign(r, { x: 200, y: 100, w: 100, h: 50, fill: '#0000ff' });
+    const both = await blobCanvas((await R.objects.objectsFile([e, r], { format: 'png', scale: 1 })).blob);
+    eq(both.width + 'x' + both.height, '300x150', 'la caja que abarca a los dos');
+    eq(px(both, 2, 2)[3], 0, 'esquina de la elipse transparente');
+    assert(px(both, 50, 50)[0] > 200, 'elipse dibujada'); assert(px(both, 250, 125)[2] > 200, 'rectángulo dibujado');
+    eq(px(both, 150, 20)[3], 0, 'hueco entre ambos transparente');
+    const svg = await R.objects.objectsFile([e], { format: 'svg' });
+    eq(svg.blob.type, 'image/svg+xml', 'SVG');
+    const doc = new (W_().DOMParser)().parseFromString(await svg.blob.text(), 'image/svg+xml');
+    assert(!doc.querySelector('parsererror') && doc.documentElement.getAttribute('width') === '100', 'SVG válido con su tamaño');
+    assert(doc.querySelector('ellipse, path, circle'), 'SVG vectorial con la forma');
+    let err = ''; R.blocks.addText(); await R.objects.objectsFile([last()], { format: 'svg' }).catch(x => { err = x.message; });
+    assert(/SVG/.test(err), 'un texto no se ofrece como SVG');
+    // One file per object → a zip with two PNGs.
+    const saved = []; const orig = W_().HTMLAnchorElement.prototype.click;
+    W_().HTMLAnchorElement.prototype.click = function () { saved.push(this.download); };
+    try { await R.objects.exportObjects([e, r], { mode: 'each', format: 'png', scale: 1 }); }
+    finally { W_().HTMLAnchorElement.prototype.click = orig; }
+    assert(saved.length === 1 && /\.zip$/.test(saved[0]), 'un ZIP: ' + saved);
+  });
+
+  await test('objetos como imagen: menú contextual, cinta y opciones del diálogo', async () => {
+    reset(); R.blocks.addImage(pic()); const b = last(); select(b); await sleep(20);
+    const el = D.querySelector(`.block[data-id="${b.id}"]`);
+    el.dispatchEvent(new (W_().MouseEvent)('contextmenu', { bubbles: true, clientX: 150, clientY: 150 })); await sleep(10);
+    const item = [...D.querySelectorAll('#context-menu .ctx-item')].find(x => x.textContent === 'Guardar como imagen…');
+    assert(item, 'opción en el menú contextual'); item.click(); await sleep(10);
+    const m = D.getElementById('pic-modal'); assert(m, 'se abre el diálogo');
+    assert(m.querySelector('.pic-mode option[value="original"]'), 'foto: con ediciones u original');
+    assert(!m.querySelector('.pic-format option[value="svg"]'), 'foto: sin SVG');
+    const f = m.querySelector('.pic-format'); f.value = 'jpg'; f.dispatchEvent(new (W_().Event)('change'));
+    assert(m.querySelector('.pic-bg option[value=""]').disabled && m.querySelector('.pic-bg').value === '#ffffff', 'JPG: sin transparencia');
+    const mode = m.querySelector('.pic-mode'); mode.value = 'original'; mode.dispatchEvent(new (W_().Event)('change'));
+    assert(m.querySelector('.pic-f').hidden, 'original: sin formato ni tamaño');
+    m.querySelector('.modal-close').click();
+    R.blocks.addShape('rect'); select(last()); R.picture.openSaveAsPicture();
+    assert(D.querySelector('#pic-modal .pic-format option[value="svg"]'), 'forma: ofrece SVG');
+    D.querySelector('#pic-modal .modal-close').click();
+    assert(D.querySelector('[data-action="save-picture"]'), 'botón en Archivo');
+  });
 }

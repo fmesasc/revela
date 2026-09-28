@@ -223,4 +223,17 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     }
     assert(!D.querySelector('.popover'), 'se cierran al hacer clic fuera');
   });
+
+  await test('botón de borrar: cruz dibujada y centrada en el círculo', async () => {
+    reset(); R.blocks.addShape('rect'); select(last()); await sleep(20);
+    const del = D.querySelector('.block.selected .handle-del'); assert(del, 'botón visible');
+    eq(del.textContent, '', 'sin carácter ×, que se descentra según la fuente');
+    eq(del.getAttribute('aria-label'), 'Borrar', 'nombre accesible');
+    const W = frame.contentWindow;
+    for (const p of ['::before', '::after']) {
+      const cs = W.getComputedStyle(del, p);
+      assert(cs.content !== 'none' && cs.left === cs.top && parseFloat(cs.width) > 0, 'trazo ' + p + ' centrado');
+    }
+    eq(W.getComputedStyle(del).paddingLeft, '0px', 'sin relleno que lo desplace');
+  });
 }

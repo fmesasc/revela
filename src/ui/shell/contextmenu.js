@@ -17,6 +17,7 @@ import * as format from '../../features/document/format.js';
 import { addSlide, duplicateSlide, deleteSlide, goToSlide, toggleSlideHidden, addSectionAt, removeSection, setSlideSection } from '../../features/document/slides.js';
 import { t } from '../../i18n/index.js';
 import { alertDialog } from '../dialogs/dialog.js';
+import { openSaveAsPicture } from '../dialogs/picture.js';
 import { openImageAdjust, openMath, openChartData, openOpacity, openIconColor, openBoxStyle, openSlidePicker, openCaption, openAlt, openImageCrop, removeBackground, openTableStyle } from '../dialogs/object.js';
 
 let menuEl, menuOpenedAt = 0;
@@ -107,6 +108,7 @@ function forBlock(b, cell = null) {
     ['Pegar', clip.hasClipboard() ? () => clip.paste() : null],
     ['Duplicar', () => duplicate(b)],
     ['Eliminar', () => blocks.deleteBlock(b.id)],
+    ['Guardar como imagen…', () => openSaveAsPicture()],
     null,
   ];
 

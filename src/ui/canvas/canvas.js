@@ -298,7 +298,7 @@ function blockEl(b) {
 
   // Selection chrome.
   const del = document.createElement('button');
-  del.className = 'handle-del'; del.textContent = '×'; del.title = 'Borrar';
+  del.className = 'handle-del'; del.title = t('Borrar'); del.setAttribute('aria-label', t('Borrar'));
   del.addEventListener('pointerdown', e => e.stopPropagation());
   del.addEventListener('click', e => { e.stopPropagation();
     commit(() => { currentSlide().blocks = currentSlide().blocks.filter(x => x.id !== b.id);

@@ -1,7 +1,7 @@
 // What every ribbon button does, by its data-action (also used by keyboard
 // shortcuts, the context menu and the tests).
 
-import { state, commit, undo, redo, replaceDeck, currentSlide, selectedBlock } from '../../core/store.js';
+import { state, commit, undo, redo, replaceDeck, currentSlide, selectedBlock, selectedBlocks } from '../../core/store.js';
 import { emptyDeck } from '../../core/model.js';
 import * as slides from '../../features/document/slides.js';
 import * as blocks from '../../features/document/blocks.js';
@@ -19,6 +19,7 @@ import * as odp from '../../io/formats/odp.js';
 import { pickReuseFile } from '../dialogs/reuse.js';
 import { openA11yCheck, openReadingOrder } from '../panels/a11y.js';
 import { openHandoutDialog, openImageDialog, openVideoDialog } from '../dialogs/print.js';
+import { openSaveAsPicture } from '../dialogs/picture.js';
 import * as recorder from '../shell/recorder.js';
 import * as master from '../../features/document/master.js';
 import * as clip from '../../features/document/clipboard.js';
@@ -96,6 +97,7 @@ export const ACTIONS = {
   'export-pptx': () => exportPPTX(),
   'export-pdf': exportPDF,
   'export-png': () => openImageDialog(),
+  'save-picture': () => (selectedBlocks().length ? openSaveAsPicture() : alertDialog(t('Selecciona primero uno o varios objetos.'))),
   'export-video': () => openVideoDialog(),
   'present': () => present(),
   'rehearse': () => present({ rehearse: true }),
