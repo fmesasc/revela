@@ -9,6 +9,7 @@ import * as trans from '../features/transitions.js';
 import * as templates from '../features/templates.js';
 import * as io from '../io/reveal.js';
 import { importPPTX } from '../io/pptx.js';
+import * as gdrive from '../io/gdrive.js';
 import { FONTS, ensureDeckFonts } from '../features/fonts.js';
 import { ICON_NAMES, iconSVG, WORDART_KEYS, wordartCSS } from './shape.js';
 import * as remote from '../features/remote.js';
@@ -32,6 +33,9 @@ const ACTIONS = {
   'open': () => readFile('.json,application/json', txt => {
     try { replaceDeck(JSON.parse(txt)); } catch { alertDialog(t('Proyecto no válido.')); } }, 'text'),
   'save': io.saveProject,
+  'gdrive-open': () => gdrive.openWithUI(),
+  'gdrive-save': () => gdrive.saveWithUI(),
+  'gdrive-config': () => gdrive.openGdriveSetup(),
   'export': io.exportHTML,
   'export-pdf': io.exportPDF,
   'export-png': io.exportPNG,

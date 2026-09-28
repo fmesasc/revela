@@ -159,6 +159,6 @@ the origin of every requirement is traceable.
 - ✅ Static web app with automatic deployment `GS`
 - ⬜ Desktop application ([Tauri](https://tauri.app/)) `PP·OO`
 - ⬜ Offline mode `PP·GS·OO`
-- ⬜ Cloud project storage `PP·GS`
+- 🚧 Cloud project storage — save/open to Google Drive (client‑side, drive.file) `PP·GS`
 - ⬜ Mobile / touch editing `PP·GS·OO`
 - ⬜ Autosave to cloud, multi-device sync `PP·GS`

@@ -272,6 +272,15 @@ export async function run(frame) {
     assert(z === 'auto' || z === '0', `z-index no debe elevarse al seleccionar (era ${z})`);
   });
 
+  await test('Google Drive: el diálogo de configuración guarda las credenciales', async () => {
+    reset(); D.querySelector('[data-action="gdrive-config"]').click(); await sleep(10);
+    const m = D.getElementById('gd-modal'); assert(m, 'diálogo de configuración');
+    m.querySelector('.gd-cid').value = 'test.apps.googleusercontent.com';
+    m.querySelector('.gd-key').value = 'AIzaTEST';
+    m.querySelector('.gd-ok').click(); await sleep(10);
+    assert(R.gdrive.gdriveReady(), 'credenciales guardadas en el navegador');
+  });
+
   await test('panel de atajos de teclado se abre y cierra', async () => {
     reset(); D.querySelector('[data-action="shortcuts"]').click(); await sleep(10);
     const m = D.getElementById('sc-modal');
