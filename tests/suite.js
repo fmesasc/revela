@@ -250,6 +250,14 @@ export async function run(frame) {
     assert(z === 'auto' || z === '0', `z-index no debe elevarse al seleccionar (era ${z})`);
   });
 
+  await test('panel de atajos de teclado se abre y cierra', async () => {
+    reset(); D.querySelector('[data-action="shortcuts"]').click(); await sleep(10);
+    const m = D.getElementById('sc-modal');
+    assert(m && m.querySelectorAll('.sc-table tr').length >= 10, 'lista de atajos');
+    m.querySelector('.modal-close').click(); await sleep(10);
+    assert(!D.getElementById('sc-modal'), 'se cierra');
+  });
+
   await test('presentar: crea una capa a pantalla completa y se cierra', async () => {
     reset(); R.io.present(); await sleep(40);
     const ov = D.getElementById('present-overlay');

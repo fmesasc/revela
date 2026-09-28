@@ -117,6 +117,7 @@ const ROWS = [
   ['Regla', 'Ruler', 'Règle', 'Lineal', 'Righello', 'Régua', 'Regle'],
   ['Ajustar', 'Snap', 'Aligner', 'Einrasten', 'Aggancia', 'Ajustar', 'Ajusta'],
   ['Notas', 'Notes', 'Notes', 'Notizen', 'Note', 'Notas', 'Notes'],
+  ['Atajos', 'Shortcuts', 'Raccourcis', 'Tastenkürzel', 'Scorciatoie', 'Atalhos', 'Dreceres'],
   // Select options
   ['Predeterminada', 'Default', 'Par défaut', 'Standard', 'Predefinito', 'Padrão', 'Predeterminada'],
   ['Oscuro', 'Dark', 'Sombre', 'Dunkel', 'Scuro', 'Escuro', 'Fosc'],

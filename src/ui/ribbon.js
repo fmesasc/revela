@@ -76,6 +76,7 @@ const ACTIONS = {
   'dup-animate': () => slides.duplicateForAnimate(),
   'toggle-notes': () => commit(() => (state.ui.showNotes = !state.ui.showNotes), { history: false }),
   'connect-mobile': () => remote.openHostPanel(),
+  'shortcuts': () => openShortcuts(),
   'find-replace': () => search.openFindPanel(),
   'copy-style': () => format.copyStyle(),
   'paste-style': () => format.pasteStyle(),
@@ -256,6 +257,28 @@ function updateFormatState() {
     try { on = focused && document.queryCommandState(btn.dataset.fmt); } catch {}
     btn.classList.toggle('on', on);
   }
+}
+
+const SHORTCUTS = [
+  ['Ctrl/⌘ + Z', 'Deshacer'], ['Ctrl/⌘ + Y', 'Rehacer'], ['Ctrl/⌘ + D', 'Duplicar'],
+  ['Ctrl/⌘ + G', 'Agrupar'], ['Ctrl/⌘ + Mayús + G', 'Desagrupar'], ['Ctrl/⌘ + F', 'Buscar y reemplazar'],
+  ['Ctrl/⌘ + Mayús + V', 'Pegar sin formato'], ['Supr / Retroceso', 'Eliminar'],
+  ['Flechas', 'Mover 1 px'], ['Mayús + Flechas', 'Mover 10 px'], ['Esc', 'Salir de edición'],
+  ['Doble clic', 'Editar objeto'], ['Mayús al redimensionar', 'Mantener proporción'],
+  ['Arrastrar en vacío', 'Selección múltiple'], ['Mayús + clic', 'Añadir a la selección'],
+];
+function openShortcuts() {
+  if (document.getElementById('sc-modal')) return;
+  const back = document.createElement('div');
+  back.id = 'sc-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:left;min-width:340px">
+    <button class="modal-close">✕</button><h3>Atajos de teclado</h3>
+    <table class="sc-table">${SHORTCUTS.map(([k, d]) => `<tr><td><kbd>${k}</kbd></td><td>${d}</td></tr>`).join('')}</table>
+  </div>`;
+  document.body.appendChild(back);
+  const close = () => back.remove();
+  back.querySelector('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
 }
 
 // ---- Group "more options" popovers (like Office's dialog launchers) --------
