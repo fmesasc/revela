@@ -6,6 +6,7 @@ import { uid } from '../core/model.js';
 import * as blocks from '../features/blocks.js';
 import * as shapeops from '../features/shapeops.js';
 import * as master from '../features/master.js';
+import * as clip from '../features/clipboard.js';
 import { openPollEditor } from './poll-dialog.js';
 import { openLinkChart, refreshChart } from './data-dialog.js';
 import { addText } from '../features/blocks.js';
@@ -18,7 +19,7 @@ import { renderLatex } from './canvas.js';
 import { tablePresets, tableClass, tableVars, tableCSS } from './shape.js';
 import { currentPalette, deckFg } from '../features/palettes.js';
 
-let menuEl, clipboard = null;
+let menuEl;
 
 export function initContextMenu() {
   menuEl = document.createElement('div');
@@ -97,8 +98,9 @@ function forSection(id) {
 function forBlock(b, cell = null) {
   // Common object actions (like PowerPoint's right‑click on any shape).
   const items = [
-    ['Cortar', () => { clipboard = structuredClone(b); blocks.deleteBlock(b.id); }],
-    ['Copiar', () => { clipboard = structuredClone(b); }],
+    ['Copiar', () => clip.copySelected()],
+    ['Cortar', () => clip.cutSelected()],
+    ['Pegar', clip.hasClipboard() ? () => clip.paste() : null],
     ['Duplicar', () => duplicate(b)],
     ['Eliminar', () => blocks.deleteBlock(b.id)],
     null,
@@ -239,7 +241,7 @@ function editText(b) {
 
 function forCanvas() {
   return [
-    ['Pegar', clipboard ? () => paste() : null],
+    ['Pegar', clip.hasClipboard() ? () => clip.paste() : null],
     ['Nuevo cuadro de texto', () => addText()],
     null,
     ['Nueva diapositiva', () => addSlide()],
@@ -251,13 +253,6 @@ function forCanvas() {
 function duplicate(b) {
   commit(() => {
     const copy = structuredClone(b); copy.id = uid(); copy.x += 24; copy.y += 24;
-    currentSlide().blocks.push(copy); state.ui.selection = copy.id;
-  });
-}
-function paste() {
-  if (!clipboard) return;
-  commit(() => {
-    const copy = structuredClone(clipboard); copy.id = uid(); copy.x += 24; copy.y += 24;
     currentSlide().blocks.push(copy); state.ui.selection = copy.id;
   });
 }
@@ -606,6 +601,8 @@ async function removeBackground(b) {
 // ---- menu plumbing ---------------------------------------------------------
 function open(x, y, items) {
   menuEl.innerHTML = '';
+  // No separators at the ends or twice in a row.
+  items = items.filter((it, i, a) => it || (i > 0 && a[i - 1] && a.slice(i + 1).some(Boolean)));
   for (const item of items) {
     if (!item) { const sep = document.createElement('div'); sep.className = 'ctx-sep'; menuEl.appendChild(sep); continue; }
     const [label, fn] = item;
@@ -614,12 +611,16 @@ function open(x, y, items) {
     if (fn) row.addEventListener('click', () => { hide(); fn(); });
     menuEl.appendChild(row);
   }
+  // Keep it fully on screen; if it is taller than the window (long menus on
+  // phones), it scrolls instead of being cut off at the top.
+  menuEl.style.maxHeight = (innerHeight - 16) + 'px'; menuEl.style.overflowY = 'auto';
   menuEl.style.left = x + 'px'; menuEl.style.top = y + 'px';
-  menuEl.hidden = false;
-  // keep on screen
+  menuEl.hidden = false; menuEl.scrollTop = 0;
   const r = menuEl.getBoundingClientRect();
-  if (r.right > innerWidth) menuEl.style.left = (x - r.width) + 'px';
-  if (r.bottom > innerHeight) menuEl.style.top = (y - r.height) + 'px';
+  let left = r.right > innerWidth - 8 ? x - r.width : x, top = r.bottom > innerHeight - 8 ? y - r.height : y;
+  left = Math.max(8, Math.min(left, innerWidth - r.width - 8));
+  top = Math.max(8, Math.min(top, innerHeight - r.height - 8));
+  menuEl.style.left = left + 'px'; menuEl.style.top = top + 'px';
 }
 function hide() { if (menuEl) menuEl.hidden = true; }
 

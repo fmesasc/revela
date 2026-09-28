@@ -1444,6 +1444,41 @@ export async function run(frame) {
     } finally { f.remove(); }
   });
 
+  await test('copiar, cortar y pegar objetos (teclado, cinta, menú y entre pestañas)', async () => {
+    reset(); const W = frame.contentWindow, C = R.clipboard;
+    const [a, b] = slide().blocks; R.store.setMulti([a.id, b.id]); R.blocks.addConnector();
+    R.store.setMulti([a.id, b.id]); R.render(); await sleep(10);
+    assert(!D.querySelector('[data-action="clip-copy"]').disabled, 'Copiar activo con selección');
+    D.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'c', ctrlKey: true, bubbles: true }));
+    assert(C.hasClipboard(), 'Ctrl+C copia'); eq(C.clipboardData().blocks.length, 3, 'dos objetos y su conector');
+    D.querySelector('[data-action="clip-paste"]').click(); await sleep(10);
+    const s = slide(); eq(s.blocks.length, 6, 'pegado en la misma diapositiva');
+    const pa = s.blocks[3]; eq(pa.x, a.x + 24, 'desplazado para no tapar el original');
+    const pc = s.blocks.find((x, i) => i >= 3 && x.type === 'connector');
+    assert(pc.from === s.blocks[3].id && pc.to === s.blocks[4].id, 'el conector une las copias');
+    D.querySelector('[data-action="clip-paste"]').click(); await sleep(10);
+    eq(slide().blocks[6].x, a.x + 48, 'segundo pegado, más desplazado');
+    R.slides.addSlide(); await sleep(10);
+    const dt = new W.DataTransfer(); dt.setData('text/plain', 'revela-objects:' + JSON.stringify(C.clipboardData()));
+    D.activeElement?.blur?.(); D.dispatchEvent(new W.ClipboardEvent('paste', { clipboardData: dt, bubbles: true })); await sleep(10);
+    eq(slide().blocks.length, 3, 'Ctrl+V en otra diapositiva'); eq(slide().blocks[0].x, a.x, 'misma posición en otra diapositiva');
+    // Otra pestaña: el portapapeles del sistema trae los objetos marcados.
+    const other = JSON.stringify({ from: 'otra', blocks: [{ id: 'z', type: 'shape', shape: 'star', x: 10, y: 10, w: 50, h: 50 }] });
+    const dt2 = new W.DataTransfer(); dt2.setData('text/plain', 'revela-objects:' + other);
+    D.dispatchEvent(new W.ClipboardEvent('paste', { clipboardData: dt2, bubbles: true })); await sleep(10);
+    eq(last().shape, 'star', 'pegado desde otra pestaña'); assert(last().id !== 'z', 'con id nuevo');
+    select(last()); D.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'x', ctrlKey: true, bubbles: true })); await sleep(10);
+    assert(!slide().blocks.some(x => x.shape === 'star'), 'Ctrl+X corta');
+    // Menú contextual (también el de pulsación larga en móvil)
+    const el = D.querySelector(`#stage .block[data-id="${slide().blocks[0].id}"]`);
+    el.dispatchEvent(new W.MouseEvent('contextmenu', { bubbles: true, clientX: 20, clientY: 20 }));
+    const items = [...D.querySelectorAll('.ctx-item')].map(x => x.textContent + (x.disabled ? '(off)' : ''));
+    assert(items.includes('Copiar') && items.includes('Cortar') && items.includes('Pegar'), 'Copiar/Cortar/Pegar en el menú: ' + items.slice(0, 5));
+    const mr = D.querySelector('.ctx-item').parentElement.getBoundingClientRect();
+    assert(mr.top >= 0 && mr.bottom <= frame.contentWindow.innerHeight + 1, 'el menú cabe en la ventana (si no, se desplaza)');
+    D.body.click();
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

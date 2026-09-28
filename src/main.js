@@ -1,6 +1,7 @@
 // Application bootstrap: wire the modules together and subscribe the render.
 
-import { subscribe, state, undo, redo, selectedBlock } from './core/store.js';
+import { subscribe, state, undo, redo, selectedBlock, selectedBlocks } from './core/store.js';
+import * as clip from './features/clipboard.js';
 import { initCanvas, renderCanvas, nudge, cycleSelection } from './ui/canvas.js';
 import { initPanel, renderPanel } from './ui/panel.js';
 import { renderComments } from './ui/comments-panel.js';
@@ -84,6 +85,9 @@ function keyboard(e) {
   if (meta && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
   if (meta && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
   if (meta && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSelected(); return; }
+  // Ctrl+C / Ctrl+X on selected objects (Ctrl+V arrives as a paste event below).
+  if (meta && !e.shiftKey && e.key.toLowerCase() === 'c' && selectedBlocks().length) { e.preventDefault(); clip.copySelected(); return; }
+  if (meta && !e.shiftKey && e.key.toLowerCase() === 'x' && selectedBlocks().length) { e.preventDefault(); clip.cutSelected(); return; }
   if (meta && e.key.toLowerCase() === 'g') { e.preventDefault(); e.shiftKey ? ungroupSelected() : groupSelected(); return; }
   if ((e.key === 'Delete' || e.key === 'Backspace') && state.ui.selection) { e.preventDefault(); deleteSelected(); return; }
   if (selectedBlock()) {
@@ -107,6 +111,9 @@ document.addEventListener('paste', e => {
   const a = document.activeElement;
   if (a?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a?.tagName || '') || document.querySelector('.modal-backdrop')) return;
   const cd = e.clipboardData; if (!cd) return;
+  // Objects copied in Revela (this tab or another one).
+  const own = clip.fromSystemText(cd.getData('text/plain'));
+  if (own || (!cd.getData('text/plain') && ![...cd.files].length && clip.hasClipboard())) { e.preventDefault(); clip.paste(own && !clip.isCurrent(own) ? own : undefined); return; }
   const img = [...cd.files].find(f => f.type.startsWith('image/'));
   if (img) {
     e.preventDefault();
@@ -128,7 +135,7 @@ initI18n();
 // and inspect the real app. Only active with ?test in the URL.
 const testing = new URLSearchParams(location.search).has('test');
 if (testing)
-  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, designer, pptxImport, odp, api, ai, versions, comments, protect, aiDeck, poll, dashboards, stock, video: () => import('./io/video.js') };
+  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, designer, pptxImport, odp, api, ai, versions, comments, protect, aiDeck, poll, dashboards, stock, clipboard: clip, video: () => import('./io/video.js') };
 
 // Public scripting API for plugins, macros and the console; installed plugins
 // load after the editor is ready (not in the test harness).

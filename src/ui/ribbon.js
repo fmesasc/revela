@@ -17,6 +17,7 @@ import { openA11yCheck, openReadingOrder } from './a11y-panel.js';
 import { openHandoutDialog, openImageDialog, openVideoDialog } from './print-dialog.js';
 import * as recorder from './recorder.js';
 import * as master from '../features/master.js';
+import * as clip from '../features/clipboard.js';
 import { openGallery, openDesignIdeas } from './gallery-dialog.js';
 import { autocorrectOn, setAutocorrect } from '../features/autocorrect.js';
 import { openPlugins, openMacros } from './plugins-dialog.js';
@@ -144,6 +145,9 @@ const ACTIONS = {
     blocks.addEmbed(url);
   }),
   'obj-delete': () => blocks.deleteSelected(),
+  'clip-copy': () => clip.copySelected(),
+  'clip-cut': () => clip.cutSelected(),
+  'clip-paste': () => clip.paste(),
   'obj-duplicate': () => blocks.duplicateSelected(),
   'group': () => blocks.groupSelected(),
   'ungroup': () => blocks.ungroupSelected(),
@@ -651,6 +655,8 @@ export function renderRibbon() {
   document.querySelector('[data-action="toggle-autoanimate"]')?.classList.toggle('on', !!slide.autoAnimate);
   syncValue('[data-theme]', state.deck.theme);
   syncValue('[data-deck-fg]', palettes.deckFg());
+  { const has = !!selectedBlock(); ['clip-copy', 'clip-cut', 'obj-duplicate'].forEach(a => { const el = $(`[data-action="${a}"]`); if (el) el.disabled = !has; });
+    const p = $('[data-action="clip-paste"]'); if (p) p.disabled = !clip.hasClipboard(); }
   $('[data-action="mark-final"]')?.classList.toggle('on', protect.isFinal());
   const fb = document.getElementById('final-banner'); if (fb) fb.hidden = !protect.isFinal();
   $('[data-action="comments"]')?.classList.toggle('on', !!state.ui.showComments);

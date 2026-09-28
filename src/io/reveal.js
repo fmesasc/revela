@@ -292,7 +292,9 @@ const SLIDENUM_POS = {
   tl: 'left:8px;top:8px;bottom:auto;right:auto',
 };
 
-export function buildHTML(deck = state.deck) {
+// inApp: presenting inside the editor from a blob: URL, where the address bar
+// can't be rewritten — keep hash navigation (links) but don't write history.
+export function buildHTML(deck = state.deck, { inApp = false } = {}) {
   const { w, h } = deck.size;
   const figMap = figuresMap(deck);
   const slides = deck.slides.filter(s => !s.hidden).map(s => slideHTML(s, deck, figMap)).join('\n');
@@ -355,7 +357,7 @@ ${slides}
 ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : ''}
 <script>
  Reveal.initialize({ width:${w}, height:${h}, margin:0.03, controls:true,
-   progress:true, hash:true, loop:${deck.loop ? 'true' : 'false'},
+   progress:true, hash:${inApp ? 'false' : 'true'}, respondToHashChanges:true, loop:${deck.loop ? 'true' : 'false'},
    slideNumber:${sn.show ? `'${sn.format || 'c'}'` : 'false'},
    transition:'${deck.defaultTransition}', transitionSpeed:'${deck.transitionSpeed}',
    plugins:[ RevealNotes${hasCode ? ', RevealHighlight' : ''} ] });
@@ -383,7 +385,7 @@ export let activePresent = null;
 // slide's auto-advance.
 export function present({ rehearse = false, fullscreen = true, onEnd = null } = {}) {
   const deck = rehearse ? { ...state.deck, slides: state.deck.slides.map(s => ({ ...s, autoSlide: 0 })) } : state.deck;
-  const url = URL.createObjectURL(new Blob([buildHTML(deck)], { type: 'text/html' }));
+  const url = URL.createObjectURL(new Blob([buildHTML(deck, { inApp: true })], { type: 'text/html' }));
 
   const overlay = document.createElement('div');
   overlay.id = 'present-overlay';
