@@ -11,6 +11,7 @@ import * as io from '../io/reveal.js';
 import { importPPTX } from '../io/pptx.js';
 import * as gdrive from '../io/gdrive.js';
 import { exportPPTX } from '../io/pptx-export.js';
+import * as odp from '../io/odp.js';
 import { pickReuseFile } from './reuse.js';
 import { openA11yCheck, openReadingOrder } from './a11y-panel.js';
 import { openHandoutDialog, openImageDialog } from './print-dialog.js';
@@ -65,9 +66,17 @@ const ACTIONS = {
   'record-camera': () => recorder.recordToSlide('camera'),
   'insert-camera': () => media.addCamera('circle'),
   'trans-apply-all': () => trans.applyTransitionToAll(),
-  'import-pptx': () => readFile('.pptx', async file => {
-    try { replaceDeck(await importPPTX(file)); }
-    catch (e) { alertDialog('No se pudo importar el PowerPoint: ' + e.message); } }, 'file'),
+  'import-pptx': () => readFile('.pptx,.odp', async file => {
+    try { replaceDeck(/\.odp$/i.test(file.name) ? await odp.importODP(file) : await importPPTX(file)); }
+    catch (e) { alertDialog(t('No se pudo importar la presentación: ') + e.message); } }, 'file'),
+  'export-odp': async () => {
+    try {
+      const blob = await odp.buildODP();
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = (state.deck.name || 'presentacion').replace(/[^\p{L}\p{N}]+/gu, '-') + '.odp'; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    } catch (e) { alertDialog(t('No se pudo exportar: ') + e.message); }
+  },
   'reuse-slides': () => pickReuseFile(),
   'a11y-check': () => openA11yCheck(),
   'reading-order': () => openReadingOrder(),

@@ -1037,6 +1037,35 @@ export async function run(frame) {
     rich.blur();
   });
 
+  await test('OpenDocument (.odp): exportar e importar de vuelta', async () => {
+    reset(); const s = slide(); s.background = '#1b2a41'; s.notes = 'Nota 1\nlínea 2';
+    s.blocks[0].html = '<b>Título</b> con <span style="color:#ff8800">color</span>'; s.blocks[0].fontSize = 64;
+    s.blocks[1].html = '<ul><li>Uno</li><li>Dos</li></ul>';
+    R.blocks.addShape('star'); Object.assign(last(), { x: 900, y: 80, w: 200, h: 200, fill: '#ffcc00', rotation: 20 });
+    R.blocks.addShape('arrow'); Object.assign(last(), { x: 100, y: 560, w: 400, h: 40 });
+    R.blocks.addChart();
+    R.slides.addSlide(); R.slides.toggleSlideHidden(1); R.blocks.addTable();
+    Object.assign(last(), { rows: [['A', '', ''], ['b', 'c', 'd']], merges: [{ r: 0, c: 0, rs: 1, cs: 2 }] });
+    const blob = await R.odp.buildODP();
+    const zip = await frame.contentWindow.JSZip.loadAsync(blob);
+    eq(Object.keys(zip.files)[0], 'mimetype', 'mimetype primero (requisito ODF)');
+    eq(await zip.file('mimetype').async('string'), 'application/vnd.oasis.opendocument.presentation', 'tipo');
+    assert(Object.keys(zip.files).some(f => /^Pictures\/.*\.svg$/.test(f)), 'el gráfico va como SVG');
+    const d = await R.odp.importODP(new File([blob], 'Prueba.odp'));
+    eq(d.slides.length, 2, 'dos diapositivas'); eq(d.slides[0].background, '#1b2a41', 'fondo');
+    eq(d.slides[0].notes, 'Nota 1\nlínea 2', 'notas'); assert(d.slides[1].hidden, 'oculta');
+    const tt = d.slides[0].blocks.find(b => b.type === 'text' && /Título/.test(b.html));
+    assert(/<b>Título<\/b>/.test(tt.html) && /color:#ff8800/.test(tt.html), 'negrita y color');
+    eq(tt.fontSize, 64, 'tamaño');
+    assert(d.slides[0].blocks.some(b => b.type === 'text' && /<ul><li>Uno<\/li><li>Dos<\/li><\/ul>/.test(b.html)), 'lista');
+    const st = d.slides[0].blocks.find(b => b.shape === 'star');
+    eq(st.fill, '#ffcc00', 'relleno'); eq(st.rotation, 20, 'giro'); eq([st.x, st.y, st.w, st.h].join(','), '900,80,200,200', 'posición con giro');
+    const ar = d.slides[0].blocks.find(b => b.shape === 'arrow'); assert(ar && Math.abs(ar.w - 400) < 3, 'flecha');
+    assert(d.slides[0].blocks.some(b => b.type === 'image' && /svg/.test(b.src)), 'gráfico como imagen');
+    const tb = d.slides[1].blocks.find(b => b.type === 'table');
+    eq(JSON.stringify(tb.merges), JSON.stringify([{ r: 0, c: 0, rs: 1, cs: 2 }]), 'celdas combinadas');
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

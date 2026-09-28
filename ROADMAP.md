@@ -148,7 +148,7 @@ the origin of every requirement is traceable.
 - ⬜ Remaining `.pptx` import: gradients/shadows, SmartArt, charts, animations & transitions `OO·GS`
 - 🚧 Export to video — .webm by recording the slideshow; direct MP4/GIF rendering planned `PP·GS`
 - ⬜ Publish to the web / shareable link `GS`
-- ⬜ Open Document (`.odp`) support `OO`
+- ✅ OpenDocument (`.odp`) export & import — text with formatting and lists, pictures, shapes, lines/arrows, merged shapes, tables with merged cells, charts/icons/ink as SVG, backgrounds, notes, hidden slides (validated with LibreOffice) `OO`
 
 ## 9. Accessibility & internationalisation
 - ✅ Alt text for every non-text object, "mark as decorative" (exported as ARIA) `PP·GS·OO`

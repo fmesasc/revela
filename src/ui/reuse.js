@@ -4,6 +4,7 @@
 
 import { importSlides } from '../features/slides.js';
 import { importPPTX } from '../io/pptx.js';
+import { importODP } from '../io/odp.js';
 import { blockPreview } from './preview.js';
 import { deckFg } from '../features/palettes.js';
 import { alertDialog } from './dialog.js';
@@ -11,11 +12,11 @@ import { t } from '../i18n.js';
 
 export function pickReuseFile() {
   const inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = '.json,application/json,.pptx';
+  inp.type = 'file'; inp.accept = '.json,application/json,.pptx,.odp';
   inp.onchange = async () => {
     const f = inp.files[0]; if (!f) return;
     try {
-      const deck = /\.pptx$/i.test(f.name) ? await importPPTX(f) : JSON.parse(await f.text());
+      const deck = /\.pptx$/i.test(f.name) ? await importPPTX(f) : /\.odp$/i.test(f.name) ? await importODP(f) : JSON.parse(await f.text());
       if (!deck || !Array.isArray(deck.slides) || !deck.slides.length) throw new Error('sin diapositivas');
       openReuseDialog(deck, f.name);
     } catch (e) { alertDialog(t('No se pudo leer el archivo.') + ' ' + (e.message || '')); }
