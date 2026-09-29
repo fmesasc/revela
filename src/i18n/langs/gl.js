@@ -1422,4 +1422,6 @@ export default {
   "Desde el principio (F5)": "Desde o principio (F5)",
   "Desde la diapositiva actual (Mayús + F5)": "Desde a diapositiva actual (Maiús + F5)",
   "Desde esta<br>diapositiva": "Desde esta<br>diapositiva",
+  "Se guarda solo en este navegador, con cada cambio. Para llevártelo: Archivo ▸ Guardar, o Google Drive.": "Gárdase só neste navegador, con cada cambio. Para levalo: Ficheiro ▸ Gardar, ou Google Drive.",
+  "Guardado": "Gardado",
 };

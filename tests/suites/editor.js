@@ -365,4 +365,13 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.getElementById('present-close').click(); await sleep(50);
   });
 
+
+  await test('deshacer/rehacer se desactivan si no hay nada, y se ve que está guardado', async () => {
+    reset(); const u = () => D.querySelector('.qat [data-action="undo"]'), r = () => D.querySelector('.qat [data-action="redo"]');
+    R.store.commit(() => { slide().blocks[0].x += 5; }); await sleep(10);
+    assert(!u().disabled && r().disabled, 'tras un cambio: se puede deshacer, no rehacer');
+    assert(!D.getElementById('save-state').hidden, '«Guardado» a la vista');
+    R.store.undo(); await sleep(10); assert(!r().disabled, 'tras deshacer, se puede rehacer');
+  });
+
 }

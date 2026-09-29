@@ -121,6 +121,9 @@ export function amend(fn) {
   clampSlide(); base = snapshot(state.deck);
   save(); notify();
 }
+// Whether there is something to undo / redo (the buttons are off otherwise).
+export const canUndo = () => past.length > 0 || !same(base, state.deck);
+export const canRedo = () => future.length > 0;
 export function undo() {
   checkpoint();                       // changes not recorded yet are undone first
   if (!past.length) return;

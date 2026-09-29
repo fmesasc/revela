@@ -1422,4 +1422,6 @@ export default {
   "Desde el principio (F5)": "Hasieratik (F5)",
   "Desde la diapositiva actual (Mayús + F5)": "Uneko diapositibatik (Maius + F5)",
   "Desde esta<br>diapositiva": "Diapositiba<br>honetatik",
+  "Se guarda solo en este navegador, con cada cambio. Para llevártelo: Archivo ▸ Guardar, o Google Drive.": "Nabigatzaile honetan bakarrik gordetzen da, aldaketa bakoitzean. Eramateko: Fitxategia ▸ Gorde, edo Google Drive.",
+  "Guardado": "Gordeta",
 };

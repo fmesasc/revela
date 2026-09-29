@@ -109,3 +109,5 @@
 @keyframes rvHi{0%,100%{background:transparent}50%{background:#ff3b3b66}}
 #statusbar .legal-link{font-size:11px;color:var(--txt2);text-decoration:none;margin-inline-end:10px}#statusbar .legal-link:hover{text-decoration:underline}
 @media (max-width:760px){#statusbar .legal-link{display:none}}
+.save-state{display:inline-flex;align-items:center;gap:3px;font-size:12px;color:var(--txt2);margin-inline-start:8px;white-space:nowrap}.save-state .ms{font-size:16px;color:#2f9e44}
+@media (max-width:860px){.save-state span{display:none}}

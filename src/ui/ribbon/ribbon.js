@@ -2,7 +2,7 @@
 
 import { renderMorphHint } from '../shell/morphhint.js';
 import { renderContextual } from './contextual.js';
-import { state, commit, currentSlide, selectedBlock, selectedBlocks } from '../../core/store.js';
+import { state, commit, currentSlide, selectedBlock, selectedBlocks, canUndo, canRedo, docVersion } from '../../core/store.js';
 import { MATH_SIZE } from '../../render/svg.js';
 import { styled, addPlaceholder } from '../../features/document/master.js';
 import * as blocks from '../../features/document/blocks.js';
@@ -298,6 +298,10 @@ export function renderRibbon() {
   { const has = !!selectedBlock(); ['clip-copy', 'clip-cut', 'obj-duplicate'].forEach(a => { const el = $(`[data-action="${a}"]`); if (el) el.disabled = !has; });
     const p = $('[data-action="clip-paste"]'); if (p) p.disabled = !clip.hasClipboard(); }
   $('[data-action="mark-final"]')?.classList.toggle('on', protect.isFinal());
+  document.querySelectorAll('[data-action="undo"]').forEach(b => { b.disabled = !canUndo(); });
+  document.querySelectorAll('[data-action="redo"]').forEach(b => { b.disabled = !canRedo(); });
+  // Saved here after a change (unless Drive shows its own state).
+  { const ss = $('#save-state'); if (ss) ss.hidden = !docVersion() || !$('#drive-status')?.hidden || !!state.ui.lock; }
   document.querySelector('[data-action="canvas-mode"]')?.classList.toggle('on', canvasOn());
   document.querySelectorAll('[data-action="canvas-view"]').forEach(b => b.classList.toggle('on', canvasViewOpen()));
   const fb = document.getElementById('final-banner'); if (fb) fb.hidden = !protect.isFinal();

@@ -1422,4 +1422,6 @@ export default {
   "Desde el principio (F5)": "Vanaf het begin (F5)",
   "Desde la diapositiva actual (Mayús + F5)": "Vanaf de huidige dia (Shift + F5)",
   "Desde esta<br>diapositiva": "Vanaf deze<br>dia",
+  "Se guarda solo en este navegador, con cada cambio. Para llevártelo: Archivo ▸ Guardar, o Google Drive.": "Wordt bij elke wijziging alleen in deze browser opgeslagen. Om het mee te nemen: Bestand ▸ Opslaan, of Google Drive.",
+  "Guardado": "Opgeslagen",
 };

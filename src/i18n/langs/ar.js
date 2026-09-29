@@ -1422,4 +1422,6 @@ export default {
   "Desde el principio (F5)": "من البداية (F5)",
   "Desde la diapositiva actual (Mayús + F5)": "من الشريحة الحالية (Shift + F5)",
   "Desde esta<br>diapositiva": "من هذه<br>الشريحة",
+  "Se guarda solo en este navegador, con cada cambio. Para llevártelo: Archivo ▸ Guardar, o Google Drive.": "يُحفظ في هذا المتصفح فقط مع كل تغيير. لأخذه معك: ملف ▸ حفظ، أو Google Drive.",
+  "Guardado": "تم الحفظ",
 };
