@@ -186,15 +186,17 @@ export function initRibbon() {
     if (act) ACTIONS[act.dataset.action]?.();
   });
 
-  // Let the mouse wheel scroll the ribbon sideways when the groups overflow.
-  document.querySelectorAll('.ribbon-page').forEach(page => {
-    page.addEventListener('wheel', e => {
-      if (page.scrollWidth <= page.clientWidth) return;      // nothing to scroll
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;   // trackpad already horizontal
-      e.preventDefault();
-      page.scrollLeft += e.deltaY;
-    }, { passive: false });
-  });
+  // Let the mouse wheel scroll the ribbon sideways when the groups overflow
+  // (every page, also the selected object's, added later), and fade the edge
+  // that has more buttons beyond it.
+  const pages = $('#ribbon .pages');
+  pages?.addEventListener('wheel', e => {
+    const page = e.target.closest('.ribbon-page'); if (!page || page.scrollWidth <= page.clientWidth) return;
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;     // trackpad already horizontal
+    e.preventDefault(); page.scrollLeft += e.deltaY;
+  }, { passive: false });
+  pages?.addEventListener('scroll', e => markOverflow(e.target), true);
+  window.addEventListener('resize', () => document.querySelectorAll('#ribbon .ribbon-page.active').forEach(markOverflow));
 
   // Editable document title.
   const docName = $('.doc-name');
@@ -274,6 +276,13 @@ function syncSwatches() {
 function bindChange(sel, cb) { const el = $(sel); if (el) el.addEventListener('change', e => cb(e.target.value)); }
 
 let lastActiveTab = null;
+// More buttons to the right or left of what shows: the edge fades.
+export function markOverflow(page) {
+  if (!page?.classList?.contains('ribbon-page')) return;
+  const more = page.scrollWidth - page.clientWidth > 2;
+  page.classList.toggle('more-right', more && page.scrollLeft + page.clientWidth < page.scrollWidth - 2);
+  page.classList.toggle('more-left', more && page.scrollLeft > 2);
+}
 export function renderRibbon() {
   ensureDeckFonts(state.deck);   // load any Google fonts the deck uses
   document.querySelectorAll('[data-tab]').forEach(t => t.classList.toggle('active', t.dataset.tab === state.ui.activeTab));
@@ -366,5 +375,6 @@ export function renderRibbon() {
   updateFormatState();
   renderContextual();
   renderMorphHint();
+  document.querySelectorAll('#ribbon .ribbon-page.active').forEach(markOverflow);
 }
 function syncValue(sel, val) { const el = $(sel); if (el && el.value !== val) el.value = val; }

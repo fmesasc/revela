@@ -101,3 +101,6 @@
 .ribbon-page[data-page=ctx] .ctx-field{display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--txt2);margin:0 4px}
 .ribbon-page[data-page=ctx] .ctx-field select,.ribbon-page[data-page=ctx] .ctx-field input{font-size:12px;max-width:170px}
 .ribbon-page[data-page=ctx] .ctx-field input[type=number]{width:64px}
+.ribbon-page.more-right{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 56px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 56px),transparent)}
+.ribbon-page.more-left{-webkit-mask-image:linear-gradient(to left,#000 calc(100% - 56px),transparent);mask-image:linear-gradient(to left,#000 calc(100% - 56px),transparent)}
+.ribbon-page.more-left.more-right{-webkit-mask-image:linear-gradient(to right,transparent,#000 56px,#000 calc(100% - 56px),transparent);mask-image:linear-gradient(to right,transparent,#000 56px,#000 calc(100% - 56px),transparent)}
