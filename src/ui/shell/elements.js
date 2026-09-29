@@ -37,6 +37,15 @@ const HELP = {
   commons3d: 'Miles de modelos 3D de Wikimedia Commons (fósiles, piezas de museo, anatomía, edificios…) con licencias libres; se añade la atribución como pie. Busca en inglés para más resultados.',
   sketchfab: 'Millones de modelos 3D de Sketchfab, muchos animados. Se muestran con el visor de Sketchfab (necesita internet al presentar).',
 };
+// Ideas to start with (shown in the interface's language, searched in English: more results).
+// Nothing is searched until one is chosen.
+const IDEAS = {
+  images: [['Naturaleza', 'nature'], ['Ciudad', 'city'], ['Espacio', 'space'], ['Ciencia', 'science'], ['Tecnología', 'technology'], ['Escuela', 'school'], ['Oficina', 'office'], ['Mapas', 'map']],
+  icons: [['Casa', 'home'], ['Persona', 'person'], ['Flecha', 'arrow'], ['Estrella', 'star'], ['Correo', 'mail'], ['Idea', 'lightbulb'], ['Gráfico', 'chart'], ['Ajustes', 'settings']],
+  gif: [['Aplausos', 'applause'], ['Hola', 'hello'], ['Gracias', 'thank you'], ['Fuegos artificiales', 'fireworks'], ['Gatos', 'cat'], ['Baile', 'dance']],
+  commons3d: [['Cráneo', 'skull'], ['Fósil', 'fossil'], ['Estatua', 'statue'], ['Corazón', 'heart'], ['Dinosaurio', 'dinosaur'], ['Edificio', 'building']],
+  sketchfab: [['Robot', 'robot'], ['Coche', 'car'], ['Avión', 'airplane'], ['Animales', 'animal'], ['Casa', 'house'], ['Planeta', 'planet']],
+};
 const TYPING = new Set(['images', 'icons', 'gif', 'sketchfab', 'commons3d']);          // need words to search
 const DRAG = 'application/x-revela-element';
 const mb = n => (n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + ' MB' : Math.max(1, Math.round(n / 1e3)) + ' KB');
@@ -114,7 +123,11 @@ function show(tab) {
   q('.el-grid').innerHTML = ''; q('.sk-more').hidden = true; q('.sk-go').disabled = false; picks = [];
   const svc = TABS.find(x => x[0] === tab);
   if (q('.sk-q').value.trim() || !TYPING.has(tab) && (!svc[3] || consented(svc[3]))) run();          // browsable without typing
-  else if (TYPING.has(tab)) q('.el-grid').innerHTML = `<p class="host-help">${t('Escribe qué buscas (en inglés hay más resultados).')}</p>`;
+  else if (TYPING.has(tab)) {
+    q('.el-grid').innerHTML = `<p class="host-help">${t('Escribe qué buscas (en inglés hay más resultados).')}</p>`
+      + `<div class="el-ideas">${(IDEAS[tab] || []).map(([l, w]) => `<button type="button" class="mini2" data-idea="${esc(w)}">${esc(t(l))}</button>`).join('')}</div>`;
+    q('.el-grid').querySelectorAll('[data-idea]').forEach(b => b.addEventListener('click', () => { q('.sk-q').value = b.dataset.idea; run(); }));
+  }
   q('.sk-q').focus();
 }
 

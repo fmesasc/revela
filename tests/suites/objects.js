@@ -708,6 +708,14 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       eq(slide().blocks.length, n0 + 3, 'arrastrar: se añade');
       assert(Math.abs(dropped.x + dropped.w / 2 - 300) < Math.max(3, k * 1.5) && Math.abs(dropped.y + dropped.h / 2 - 200) < Math.max(3, k * 1.5), 'donde se suelta (a menos de un píxel de pantalla)');
       R.store.undo(); await sleep(20); eq(slide().blocks.length, n0 + 2, 'un solo paso de deshacer');
+      // Tabs that need words: ideas to start with; nothing leaves until one is chosen.
+      const S = await W.eval("import('/src/features/content/stock.js')"); S.giveConsent('sketchfab');
+      const before = calls.length; P().querySelector('[data-et="sketchfab"]').click(); await sleep(20);
+      const idea = P().querySelector('.el-ideas [data-idea="robot"]');
+      assert(idea && idea.textContent === 'Robot' && calls.length === before, 'sugerencias, sin buscar todavía');
+      idea.click(); await sleep(80);
+      assert(calls.slice(before).some(u => u.includes('api.sketchfab.com') && /q=robot/.test(u)), 'la sugerencia busca en inglés');
+      eq(P().querySelector('.sk-q').value, 'robot', 'y queda escrita en la caja'); assert(P().querySelector('.sk-item'), 'con resultados');
       // Other side, remembered; the same button again closes it.
       P().querySelector('.el-side').click(); await sleep(20);
       assert(P().classList.contains('right') && !P().nextElementSibling?.id?.includes('canvas'), 'se pasa a la derecha');
@@ -715,7 +723,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       res().click(); res().click(); await sleep(20); assert(!P(), 'el mismo botón otra vez lo cierra');
       res().click(); await sleep(20); assert(P()?.classList.contains('right'), 'recuerda el lado');
       P()?.querySelector('.cm-close').click(); assert(!P(), 'se cierra');
-      W.localStorage.removeItem('revela.elements.side');
+      W.localStorage.removeItem('revela.elements.side'); W.localStorage.removeItem('revela.consent.sketchfab');
     } finally { W.fetch = realFetch; D.getElementById('elements-panel')?.querySelector('.cm-close')?.click(); }
   });
 
