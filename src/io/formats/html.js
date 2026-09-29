@@ -16,7 +16,7 @@ import { t, speechLang } from '../../i18n/index.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle, slidePaths } from '../../features/document/captions.js';
 import { INK_CSS, inkJS } from '../runtime/ink.js';
 import { deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
-import { animTimeline, EFFECT_KF, EFFECT_KF_CSS, isEntrance, customTransitionCSS, transitionName, isShapeTransition, pathKeyframesCSS, pathTurns } from '../../features/animation/transitions.js';
+import { animTimeline, EFFECT_KF, EFFECT_KF_CSS, isEntrance, customTransitionCSS, transitionName, isShapeTransition, pathKeyframesCSS, pathTurns, animsOf, animKey, offsetBefore } from '../../features/animation/transitions.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, levelVars } from '../../features/document/master.js';
 
 
@@ -32,10 +32,12 @@ const box = b => `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;`
   + (b.opacity != null && b.opacity < 100 ? `opacity:${b.opacity / 100};` : '')
   + (b.shadow ? `filter:${shadowCSS(b)};` : '')
   + animVars(b);
-// Timing (and motion path) of an object's animation, also for its caption.
-const animVars = b => (b.animation ? `transition-duration:${b.animation.duration ?? 500}ms;transition-delay:${b.animation.delay ?? 0}ms;`
-    + `--anim-dur:${b.animation.duration ?? 500}ms;--anim-del:${b.animation.delay ?? 0}ms;`
-    + (b.animation.effect === 'path' ? `--dx:${b.animation.dx || 0}px;--dy:${b.animation.dy || 0}px;--pk:rvP${b.id};` : '') : '');
+// Timing (and motion path) of one of an object's animations (its first by
+// default), also for its caption and for the layers of the next ones.
+const cssKey = key => String(key).replace(/[^\w-]/g, '_');
+const animVars = (b, a = b.animation, key = b.id) => (a ? `transition-duration:${a.duration ?? 500}ms;transition-delay:${a.delay ?? 0}ms;`
+    + `--anim-dur:${a.duration ?? 500}ms;--anim-del:${a.delay ?? 0}ms;`
+    + (a.effect === 'path' ? `--dx:${a.dx || 0}px;--dy:${a.dy || 0}px;--pk:rvP${cssKey(key)};` : '') : '');
 
 // Custom entrance effects that reveal.js doesn't provide (used only if present).
 const CUSTOM_KF = {
@@ -44,13 +46,14 @@ const CUSTOM_KF = {
   bounce: ['rvBounce', '@keyframes rvBounce{0%{opacity:0;transform:translateY(-60px)}60%{opacity:1;transform:translateY(12px)}80%{transform:translateY(-6px)}100%{transform:none}}'],
 };
 // One keyframe set per object with a motion path (curves are sampled).
-const pathKeyframes = deck => deck.slides.flatMap(s => s.blocks.filter(b => b.animation?.effect === 'path'))
-  .map(b => pathKeyframesCSS('rvP' + b.id, b.animation, b.rotation || 0, b.type !== 'model')).join('\n');   // (a 3D model turns to face its way instead)
+// (a 3D model turns to face its way instead; the next animations turn their layer, not the object).
+const pathKeyframes = deck => deck.slides.flatMap(s => s.blocks.flatMap(b => animsOf(b).map((a, i) => [b, a, i]))).filter(([, a]) => a.effect === 'path')
+  .map(([b, a, i]) => pathKeyframesCSS('rvP' + cssKey(animKey(b, i)), a, i ? 0 : b.rotation || 0, b.type !== 'model')).join('\n');
 const ownTransition = s => s.transition && transitionName(s.transition, s.transitionDir);
 const usedTransitions = deck => new Set([deck.defaultTransition, ...deck.slides.flatMap(s => [ownTransition(s), s.transitionOut])].filter(Boolean));
 function customEffectCSS(deck) {
   const used = new Set();
-  deck.slides.forEach(s => s.blocks.forEach(b => { if (b.animation && CUSTOM_KF[b.animation.effect]) used.add(b.animation.effect); }));
+  deck.slides.forEach(s => s.blocks.forEach(b => animsOf(b).forEach(a => { if (CUSTOM_KF[a.effect]) used.add(a.effect); })));
   if (!used.size) return '';
   return [...used].map(e => `.reveal .fragment.${e}{opacity:0} .reveal .fragment.${e}.visible{opacity:1;animation:${CUSTOM_KF[e][0]} var(--anim-dur,600ms) ease var(--anim-del,0ms) both}`
     + CUSTOM_KF[e][1]).join('\n');
@@ -58,16 +61,29 @@ function customEffectCSS(deck) {
 
 export const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-function animAttrs(b, slide) {
+function animAttrs(b, slide, a = b.animation, key = b.id) {
   // An object that triggers animations of others gets an id to be clicked.
-  const src = slide && slide.blocks.some(x => x.animation?.trigger === b.id) ? ` data-bid="${b.id}"` : '';
-  if (!b.animation) return src;
-  const { effect, order, trigger, duration, delay } = b.animation;
+  const src = slide && slide.blocks.some(x => animsOf(x).some(y => y.trigger === b.id)) ? ` data-bid="${b.id}"` : '';
+  if (!a) return src;
+  const { effect, order, trigger, duration, delay } = a;
+  const clip = effect === 'clip3d' ? ` data-clip="${esc(a.clip || '*')}"${a.once ? ' data-clip-once' : ''}` : '';
   if (trigger && slide?.blocks.some(x => x.id === trigger))       // played on click of another object
-    return src + ` class="rv-trig${isEntrance(effect) ? ' rv-in' : ''}" data-trig="${trigger}" data-kf="${effect === 'path' ? 'rvP' + b.id : EFFECT_KF[effect] || 'rvIn'}"`
-      + ` data-dur="${duration ?? 500}" data-del="${delay ?? 0}"`;
-  const cls = effect === 'path' ? ((b.animation.pathShape && b.animation.pathShape !== 'line') || (pathTurns(b.animation) && b.type !== 'model') ? 'rv-pathc' : 'rv-path') : effect;
-  return src + ` class="fragment ${cls}" data-fragment-index="${order}"`;
+    return src + ` class="rv-trig${isEntrance(effect) ? ' rv-in' : ''}" data-trig="${trigger}" data-kf="${effect === 'path' ? 'rvP' + cssKey(key) : EFFECT_KF[effect] || 'rvIn'}"`
+      + ` data-dur="${duration ?? 500}" data-del="${delay ?? 0}"` + clip;
+  const cls = effect === 'path' ? ((a.pathShape && a.pathShape !== 'line') || (pathTurns(a) && b.type !== 'model') ? 'rv-pathc' : 'rv-path') : effect;
+  return src + ` class="fragment ${cls}" data-fragment-index="${order}"` + clip;
+}
+// An object's next animations: each one a layer around it (the last one
+// outermost), so they add up — it goes somewhere, then from there somewhere
+// else, turns about where it is by then, plays a 3D clip…
+function stepLayers(html, b, slide, tl) {
+  const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+  (b.anims || []).forEach((a0, n) => {
+    const i = n + 1, key = animKey(b, i), at = tl.get(key), a = at ? { ...a0, delay: at.delay } : a0, [ox, oy] = offsetBefore(b, i);
+    const attrs = animAttrs(b, slide, a, key).replace(/ data-bid="[^"]*"/, '').replace('class="', 'class="rv-step ');
+    html = `<div${attrs} style="position:absolute;left:0;top:0;width:0;height:0;overflow:visible;transform-origin:${Math.round(cx + ox)}px ${Math.round(cy + oy)}px;${animVars(b, a, key)}">${html}</div>`;
+  });
+  return html;
 }
 
 // Accessibility of each object in the presentation: its alt text as the
@@ -251,7 +267,7 @@ export const bgLayer = s => ((s.bgOpacity ?? 100) < 100 && !s.bgVideo && !s.bgIf
 // placeholder, else the only one of its kind on both slides. Paired objects
 // share a morph id; the chain carries on to the next slide.
 const plainOf = h => String(h || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
-const morphSig = b => b.type + '|' + ({ text: plainOf(b.html), image: b.src, shape: `${b.shape}|${b.fill}`, icon: b.icon, math: b.latex, code: b.code,
+export const morphSig = b => b.type + '|' + ({ text: plainOf(b.html), image: b.src, shape: `${b.shape}|${b.fill}`, icon: b.icon, math: b.latex, code: b.code,
   chart: b.chartType, table: JSON.stringify(b.rows), video: b.src }[b.type] ?? '');
 export function morphPlan(deck) {
   const vis = deck.slides.filter(s => !s.hidden), marked = new Set(), keys = new Map(), textMode = new Map();
@@ -314,7 +330,7 @@ function slideHTML(s, deck, figMap, plan = morphPlan(deck)) {
     // (The caption goes with its object: it appears, leaves or moves along with it.)
     if (f) html += `<div${animAttrs(b, s).replace(/ data-bid="[^"]*"/, '')} style="position:absolute;left:${b.x}px;top:${b.y + b.h + 4}px;width:${b.w}px;`
       + `text-align:center;font-style:italic;font-size:16px;${animVars(b)}"><span class="caption" style="opacity:.85">${esc(captionLine(f))}</span></div>`;
-    return html;
+    return b0.anims?.length ? stepLayers(html, b0, s, tl) : html;
   }).join('\n');
   const notes = s.notes ? `<aside class="notes">${esc(s.notes)}</aside>` : '';
   const aa = (plan.marked.has(s.id) ? ' data-auto-animate' : '') + (s.aaDuration ? ` data-auto-animate-duration="${+s.aaDuration}"` : '') + (s.aaDelay ? ` data-auto-animate-delay="${+s.aaDelay}"` : '');
@@ -367,12 +383,12 @@ export function buildHTML(deck = state.deck, { inApp = false } = {}) {
   const hasInlineMath = deck.slides.some(s => s.blocks.some(b => b.type === 'text' && /\$[^$]/.test(b.html || '')));
   const hasZoomReturn = deck.slides.some(s => s.blocks.some(b => b.type === 'slideref' && b.returnBack));
   const katexNeeded = hasMath || hasInlineMath;
-  const hasTrig = deck.slides.some(s => s.blocks.some(b => b.animation?.trigger));
+  const hasTrig = deck.slides.some(s => s.blocks.some(b => animsOf(b).some(a => a.trigger)));
   const hasCam = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'camera'));
   const hasPoll = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'poll'));
   const hasZoomable = deck.slides.some(s => s.blocks.some(b => b.type === 'image' && b.zoomable));
   const hasMedia = deck.slides.some(s => !s.hidden && s.blocks.some(needsPlayer));
-  const hasModel3d = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'model' && (b.motion || b.clip)));
+  const hasModel3d = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'model' && (b.motion || b.clip || b.walk || animsOf(b).some(a => a.effect === 'clip3d'))));
   const hasLive = deck.slides.some(s => s.blocks.some(b => (b.type === 'chart' && b.dataUrl) || (b.type === 'embed' && b.refreshMin)));
   const ft = deck.footer || { show: false };
   const footerText = ft.show
@@ -422,6 +438,10 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  ${customTransitionCSS(usedTransitions(deck), deck.size)}
  .reveal .slides section .fragment.rv-path{opacity:1;visibility:inherit}
  .reveal .slides section .fragment.rv-path.visible{translate:var(--dx) var(--dy)}
+ .reveal .slides section .fragment.spin360,.reveal .slides section .fragment.clip3d{opacity:1;visibility:inherit}
+ .reveal .slides section .fragment.spin360.visible{animation:rvTurn var(--anim-dur,600ms) ease-in-out var(--anim-del,0ms) both}
+ @keyframes rvTurn{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+ .reveal .slides section .rv-step{pointer-events:none}.reveal .slides section .rv-step>*{pointer-events:auto}
  .reveal .slides section .fragment.rv-pathc{opacity:1;visibility:inherit}
  .reveal .slides section .fragment.rv-pathc.visible{animation:var(--pk) var(--anim-dur,600ms) ease-in-out var(--anim-del,0ms) both}
  ${pathKeyframes(deck)}

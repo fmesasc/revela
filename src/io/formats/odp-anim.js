@@ -6,15 +6,15 @@
 // the previous one or after it (with their delay). Animations started by
 // clicking another object go in an "interactive sequence" of that object.
 
-import { animTimeline, isEntrance, motionPoints, pathFromSVG } from '../../features/animation/transitions.js';
+import { animTimeline, animEntries, isEntrance, motionPoints, pathFromSVG } from '../../features/animation/transitions.js';
 
 const sec = ms => `${+(Math.max(0, ms) / 1000).toFixed(3)}s`;
 const MOVE = { 'fade-up': ['y', '+0.1'], 'fade-down': ['y', '-0.1'], 'fade-left': ['x', '+0.1'], 'fade-right': ['x', '-0.1'] };
 const HIGHLIGHT = { red: '#ff2c2d', green: '#17ff2e', blue: '#1b91ff' };
 
 // The effect of one object: [preset class, preset id, SMIL nodes] or null.
-function effectNodes(b, xid, deck) {
-  const a = b.animation, d = sec(a.duration ?? 500), T = `smil:targetElement="${xid}"`;
+function effectNodes(a, xid, deck) {
+  const d = sec(a.duration ?? 500), T = `smil:targetElement="${xid}"`;
   const show = v => `<anim:set smil:begin="0s" smil:dur="0.001s" smil:fill="hold" ${T} smil:attributeName="visibility" smil:to="${v}"/>`;
   if (a.effect === 'path') {
     const { w, h } = deck.size;
@@ -29,7 +29,8 @@ function effectNodes(b, xid, deck) {
     return ['emphasis', 'ooo-emphasis-transparency', `<anim:set smil:dur="${d}" smil:fill="hold" ${T} smil:attributeName="opacity" smil:to="0.5"/>`];
   const hl = /^highlight-(?:current-)?(red|green|blue)$/.exec(a.effect);
   if (hl) return ['emphasis', 'ooo-emphasis-font-color', `<anim:animateColor smil:dur="${d}" smil:fill="hold" ${T} smil:attributeName="color" smil:to="${HIGHLIGHT[hl[1]]}" anim:color-interpolation="rgb" anim:color-interpolation-direction="clockwise"/>`];
-  if (a.effect === 'strike') return null;                   // no ODF equivalent
+  if (a.effect === 'spin360') return ['emphasis', 'ooo-emphasis-spin', `<anim:animateTransform smil:dur="${d}" smil:fill="hold" ${T} smil:by="360" svg:type="rotate"/>`];
+  if (a.effect === 'strike' || a.effect === 'clip3d') return null;   // no ODF equivalent
   if (!isEntrance(a.effect))
     return ['exit', 'ooo-exit-fade-out', `<anim:transitionFilter smil:dur="${d}" ${T} smil:type="fade" smil:subtype="crossfade" smil:mode="out"/>`
       + `<anim:set smil:begin="${d}" smil:dur="0.001s" smil:fill="hold" ${T} smil:attributeName="visibility" smil:to="hidden"/>`];
@@ -46,27 +47,28 @@ function effectNodes(b, xid, deck) {
   return ['entrance', 'ooo-entrance-fade-in', show('visible') + `<anim:transitionFilter smil:dur="${d}" ${T} smil:type="fade" smil:subtype="crossfade"/>`];
 }
 
-const effectPar = (b, xid, deck, delay, node) => {
-  const e = effectNodes(b, xid, deck); if (!e) return '';
+const effectPar = (a, xid, deck, delay, node) => {
+  const e = effectNodes(a, xid, deck); if (!e) return '';
   return `<anim:par smil:begin="${sec(delay)}" smil:fill="hold" presentation:node-type="${node}" presentation:preset-class="${e[0]}" presentation:preset-id="${e[1]}">${e[2]}</anim:par>`;
 };
-const nodeOf = (b, first) => (first ? 'on-click' : b.animation.start === 'afterPrev' ? 'after-previous' : 'with-previous');
+const nodeOf = (a, first) => (first ? 'on-click' : a.start === 'afterPrev' ? 'after-previous' : 'with-previous');
 
 // xidOf: block id → the xml:id its shape got in the page ('' if not exported).
 export function odpTimingXML(s, xidOf, deck) {
-  const tl = animTimeline(s);
-  const main = s.blocks.filter(b => b.animation && tl.has(b.id) && xidOf(b.id))
-    .sort((a, b) => tl.get(a.id).step - tl.get(b.id).step || tl.get(a.id).delay - tl.get(b.id).delay);
-  const clicks = [...new Set(main.map(b => tl.get(b.id).step))].map(st => {
-    const group = main.filter(b => tl.get(b.id).step === st);
-    const fx = group.map((b, i) => effectPar(b, xidOf(b.id), deck, tl.get(b.id).delay, nodeOf(b, i === 0))).join('');
+  // Every animation of every object (an object's next ones too), in order.
+  const tl = animTimeline(s), all = animEntries(s);
+  const main = all.filter(e => tl.has(e.key) && xidOf(e.b.id))
+    .sort((x, y) => tl.get(x.key).step - tl.get(y.key).step || tl.get(x.key).delay - tl.get(y.key).delay);
+  const clicks = [...new Set(main.map(e => tl.get(e.key).step))].map(st => {
+    const group = main.filter(e => tl.get(e.key).step === st);
+    const fx = group.map((e, i) => effectPar(e.a, xidOf(e.b.id), deck, tl.get(e.key).delay, nodeOf(e.a, i === 0))).join('');
     return fx ? `<anim:par smil:begin="next"><anim:par smil:begin="0s">${fx}</anim:par></anim:par>` : '';
   }).join('');
   // Triggers: each clicked object plays its own animations, in order.
-  const trig = s.blocks.filter(b => b.animation?.trigger && xidOf(b.id) && xidOf(b.animation.trigger));
-  const inter = [...new Set(trig.map(b => b.animation.trigger))].map(src => {
-    const fx = trig.filter(b => b.animation.trigger === src).sort((a, b) => (a.animation.order ?? 0) - (b.animation.order ?? 0))
-      .map((b, i) => effectPar(b, xidOf(b.id), deck, b.animation.delay ?? 0, nodeOf(b, i === 0))).join('');
+  const trig = all.filter(e => e.a.trigger && xidOf(e.b.id) && xidOf(e.a.trigger));
+  const inter = [...new Set(trig.map(e => e.a.trigger))].map(src => {
+    const fx = trig.filter(e => e.a.trigger === src)
+      .map((e, i) => effectPar(e.a, xidOf(e.b.id), deck, e.a.delay ?? 0, nodeOf(e.a, i === 0))).join('');
     return fx ? `<anim:seq smil:begin="${xidOf(src)}.click" presentation:node-type="interactive-sequence"><anim:par smil:begin="0s"><anim:par smil:begin="0s">${fx}</anim:par></anim:par></anim:seq>` : '';
   }).join('');
   if (!clicks && !inter) return '';
@@ -92,7 +94,8 @@ function effectOf(par) {
   } else if (cls === 'exit') effect = 'fade-out';
   else if (cls === 'emphasis') {
     const tr = nodes.find(n => n.localName === 'animateTransform'), col = nodes.find(n => n.localName === 'animateColor');
-    if (tr) effect = parseFloat(tr.getAttribute('smil:by') || '1') >= 0 ? 'grow' : 'shrink';
+    if (tr && tr.getAttribute('svg:type') === 'rotate') effect = 'spin360';
+    else if (tr) effect = parseFloat(tr.getAttribute('smil:by') || '1') >= 0 ? 'grow' : 'shrink';
     else if (col) { const c = (col.getAttribute('smil:to') || '').toLowerCase(); effect = 'highlight-' + (c === HIGHLIGHT.green ? 'green' : c === HIGHLIGHT.blue ? 'blue' : 'red'); }
     else if (/transparency/.test(id)) effect = 'semi-fade-out';
     else effect = 'grow';
@@ -108,15 +111,16 @@ function effectOf(par) {
 export function readODPAnimations(page, blockOf, size) {
   const root = [...page.children].find(n => n.localName === 'par' && n.getAttribute('presentation:node-type') === 'timing-root');
   if (!root) return;
-  let order = 0;
+  let order = 0, seq = 0;
   const apply = (par, extra) => {
     const tgt = [...par.children].find(n => n.getAttribute('smil:targetElement'))?.getAttribute('smil:targetElement');
     const b = tgt && blockOf(tgt), e = b && effectOf(par); if (!e) return;
     const node = par.getAttribute('presentation:node-type');
-    b.animation = { effect: e.effect, order, duration: e.duration, ...extra,
+    const a = { effect: e.effect, order, seq: ++seq, duration: e.duration, ...extra,
       ...(node === 'with-previous' && { start: 'withPrev' }), ...(node === 'after-previous' && { start: 'afterPrev' }),
       ...(secs(par.getAttribute('smil:begin')) && { delay: secs(par.getAttribute('smil:begin')) }),
       ...(e.effect === 'path' && pathFromSVG(e.d, size)) };
+    if (b.animation) (b.anims ||= []).push(a); else b.animation = a;      // (an object's next animations)
   };
   const effects = el => [...el.getElementsByTagName('*')].filter(n => n.localName === 'par' && n.getAttribute('presentation:preset-class'));
   for (const seq of [...root.children]) {

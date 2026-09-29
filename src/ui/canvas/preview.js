@@ -2,7 +2,7 @@
 // entrance, emphasis and exit effects in order on the canvas.
 
 import { currentSlide } from '../../core/store.js';
-import { animTimeline, EFFECT_KF, motionFrames } from '../../features/animation/transitions.js';
+import { animTimeline, animEntries, EFFECT_KF, motionFrames } from '../../features/animation/transitions.js';
 import { stage } from './canvas.js';
 import { model3dRuntime } from '../../features/content/model3d.js';
 
@@ -31,17 +31,41 @@ export function animateEl(el, anim, dur, delay) {
   const done = () => { el.style.animation = ''; el.removeEventListener('animationend', done); };
   el.addEventListener('animationend', done);
 }
-// Play the slide's entrance animations in order, in the editor.
+// A named CSS animation's keyframes (to play several on one object, added up).
+const kfCache = new Map();
+function keyframesOf(name) {
+  if (kfCache.has(name)) return kfCache.get(name);
+  const d = document.createElement('div'); d.style.cssText = `position:absolute;visibility:hidden;animation:${name} 1s`; stage.appendChild(d);
+  const kf = d.getAnimations()[0]?.effect?.getKeyframes().map(({ offset, computedOffset, easing, composite, ...k }) => ({ offset, ...k })) || [];
+  d.remove(); kfCache.set(name, kf); return kf;
+}
+// Play the slide's animations in order, in the editor. An object with several
+// plays them one after another, each adding to where the previous left it.
 export function playAnimations() {
   // Clicks play one after another; inside a click, the timeline gives each start.
-  const tl = animTimeline(currentSlide());
+  const slide = currentSlide(), tl = animTimeline(slide);
   const ends = new Map();                       // step → when it finishes
   for (const { step, delay, dur } of tl.values()) ends.set(step, Math.max(ends.get(step) || 0, delay + dur));
   const offset = new Map(); let acc = 0;
   for (const st of [...ends.keys()].sort((a, b) => a - b)) { offset.set(st, acc); acc += ends.get(st); }
-  for (const [id, { step, delay, dur }] of tl) {
-    const b = currentSlide().blocks.find(x => x.id === id);
-    const el = stage.querySelector(`.block[data-id="${id}"]`);
-    if (el && b) animateEl(el, b.animation, dur, offset.get(step) + delay);
+  const played = [];
+  for (const { b, a, i, key } of animEntries(slide)) {
+    const at = tl.get(key); if (!at) continue;
+    const el = stage.querySelector(`.block[data-id="${b.id}"]`); if (!el) continue;
+    const when = offset.get(at.step) + at.delay;
+    if (!b.anims?.length) { animateEl(el, a, at.dur, when); continue; }
+    // A sequence: every step kept (added up) until the end, then all undone.
+    const opts = { duration: at.dur, delay: when, easing: 'ease-in-out', fill: 'forwards', composite: i ? 'add' : 'replace' };
+    if (a.effect === 'clip3d') {
+      const mv = el.querySelector('model-viewer'); models3d ||= model3dRuntime();
+      if (mv) setTimeout(() => models3d.clip(mv, a.clip || '*', !!a.once), when);
+      continue;
+    }
+    const model = !!el.querySelector('model-viewer');
+    const frames = a.effect === 'path' ? motionFrames(a).map(([x, y, r]) => ({ translate: `${x}px ${y}px`, rotate: model ? '0deg' : `${r}deg` }))
+      : keyframesOf(KEYFRAME[a.effect] || 'rvIn');
+    played.push(el.animate(frames, opts));
+    walkIn(el, at.dur, when);
   }
+  if (played.length) setTimeout(() => played.forEach(p => p.cancel()), acc + 1200);
 }

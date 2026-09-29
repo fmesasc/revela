@@ -7,6 +7,7 @@
 // and ink go in as SVG pictures. Backgrounds, speaker notes, hidden slides
 // and object animations (odp-anim.js) are kept. Import reads the same structures back.
 
+import { animsOf } from '../../features/animation/transitions.js';
 import { state } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 import { chartSVG, iconSVG, inkSVG, tableSpan } from '../../render/svg.js';
@@ -224,7 +225,7 @@ export async function buildODP(deck = state.deck) {
     const list = [...masterBlocksFor(s, deck), ...s.blocks.map(b => styled(b, s, deck))].filter(b => !isEmptyPlaceholder(b));
     byId = new Map(list.map(b => [b.id, b]));
     // Objects that are animated or start animations get an id the timing refers to.
-    const named = new Set(s.blocks.flatMap(b => (b.animation ? [b.id, b.animation.trigger] : [])).filter(Boolean));
+    const named = new Set(s.blocks.flatMap(b => animsOf(b).flatMap(a => [b.id, a.trigger])).filter(Boolean));
     const xids = new Map();
     const objs = list.map(b => {
       const xml = objXML(b);

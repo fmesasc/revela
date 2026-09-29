@@ -134,6 +134,8 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .thumb-cm{position:absolute;bottom:3px;right:4px;z-index:2;background:#e0873b;color:#fff;border-radius:9px;font-size:10px;padding:0 5px;line-height:16px}
 .block .cm-badge{position:absolute;top:-10px;left:-10px;z-index:9;width:20px;height:20px;border-radius:50% 50% 50% 0;background:#e0873b;color:#fff;font-size:11px;display:grid;place-items:center;pointer-events:none}
 /* Mark as final */
+#morph-hint{display:flex;align-items:center;gap:10px;margin:0 0 8px;padding:6px 12px;border-radius:8px;background:color-mix(in srgb,var(--accent) 12%,var(--panel));color:var(--txt);font-size:13px}
+#morph-hint[hidden]{display:none}#morph-hint button{border:1px solid var(--line2);background:var(--panel);border-radius:6px;padding:3px 10px;cursor:pointer;font:inherit}#morph-hint button[data-mh=on]{background:var(--accent);color:#fff;border-color:var(--accent)}
 #final-banner{display:flex;align-items:center;gap:10px;margin:0 0 8px;padding:6px 12px;border-radius:8px;background:#e8f3ec;color:#1f5e3a;font-size:13px}
 #final-banner[hidden]{display:none}
 #final-banner button{margin-inline-start:auto;border:1px solid #3a9d5d;background:#fff;color:#1f5e3a;border-radius:6px;padding:4px 10px;cursor:pointer}
@@ -381,3 +383,7 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .rig-mv{width:100%;flex:1;min-height:320px;border-radius:10px;background:radial-gradient(circle at 50% 40%,#f4f6fa,#cfd5e0)}
 .rig-clips{display:flex;gap:4px;flex-wrap:wrap}.rig-clips [aria-pressed=true]{background:var(--accent);color:#fff;border-color:var(--accent)}
 @media (max-width:760px){.rig-main{grid-template-columns:1fr}}
+.anim-add{width:330px;padding:8px;max-height:80vh;overflow:auto}.anim-add .host-help{margin:0 4px 6px;font-size:12px}
+.aa-sec{margin:4px 0}.aa-sec>b{display:block;font-size:11px;color:var(--txt2);margin:4px 6px}
+.aa-items{display:grid;grid-template-columns:1fr 1fr;gap:2px}.anim-add .aa-items button{display:flex;gap:6px;align-items:center;font-size:13px;padding:5px 8px;text-align:start}
+.an-step{font-weight:400;font-size:11px;color:var(--txt2);background:var(--bg);border-radius:8px;padding:1px 6px;margin-inline-start:4px}.an-grid .an-chk{flex-direction:row;align-items:center;gap:4px}

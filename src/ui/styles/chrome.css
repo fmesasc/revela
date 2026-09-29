@@ -94,6 +94,7 @@
 
 /* ---------- Animation preview keyframes (editor & custom export effects) ---------- */
 @keyframes rvIn{from{opacity:0}to{opacity:1}}
+@keyframes rvTurn{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 @keyframes rvUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
 @keyframes rvDown{from{opacity:0;transform:translateY(-40px)}to{opacity:1;transform:translateY(0)}}
 @keyframes rvLeft{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}

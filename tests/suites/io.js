@@ -589,6 +589,26 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(an.join(' '), 'fade-up/click fade-left/withPrev fade-out/afterPrev', 'animaciones de vuelta con su efecto y su inicio');
   });
 
+  await test('varias animaciones de un objeto: PowerPoint y LibreOffice las conservan', async () => {
+    const d = R.examples.buildExample('report'); d.slides[1].blocks.forEach(x => { delete x.animation; });
+    const b = d.slides[1].blocks.find(x => x.type === 'text' && !x.ph) || d.slides[1].blocks.at(-1);
+    b.animation = { effect: 'fade-in', order: 1, seq: 1, start: 'click', duration: 500 };
+    b.anims = [{ effect: 'path', order: 1, seq: 2, start: 'afterPrev', duration: 1000, dx: 200, dy: 0 },
+      { effect: 'path', pathShape: 'custom', points: [[0, 0], [60, -80], [0, -160]], order: 1, seq: 3, start: 'afterPrev', duration: 1000, dx: 0, dy: -160 },
+      { effect: 'spin360', order: 2, seq: 4, start: 'click', duration: 800 }];
+    const sum = x => [x.animation, ...(x.anims || [])].map(a => `${a.effect}/${a.start || 'click'}`).join(' ');
+    const blob = await R.pptx.buildPptxBlob(d);
+    await R.vendor.loadScript(R.vendor.JSZIP, 'JSZip');
+    const x2 = await (await frame.contentWindow.JSZip.loadAsync(blob)).file('ppt/slides/slide2.xml').async('string');
+    eq((x2.match(/presetClass="/g) || []).length, 4, 'cuatro animaciones en la línea de tiempo de PowerPoint');
+    const back = await R.pptxImport.importPPTX(new File([blob], 'x.pptx'));
+    const bp = back.slides[1].blocks.find(x => x.anims?.length);
+    eq(bp && sum(bp), 'fade-in/click path/afterPrev path/afterPrev spin360/click', 'PowerPoint: las cuatro, en orden');
+    assert(bp.anims[1].pathShape === 'custom' && Math.abs(bp.anims[1].dy + 160) <= 2, 'el recorrido dibujado vuelve como dibujado');
+    const bo = (await R.odp.importODP(new File([await R.odp.buildODP(d)], 'x.odp'))).slides[1].blocks.find(x => x.anims?.length);
+    eq(bo && sum(bo), 'fade-in/click path/afterPrev path/afterPrev spin360/click', 'LibreOffice: también');
+  });
+
   await test('OpenDocument: transiciones y avance automático se exportan y se vuelven a leer', async () => {
     const d = R.examples.buildExample('report'); d.slides[1].transition = 'zoom'; d.slides[2].transition = 'fade'; d.slides[2].autoSlide = 3000;
     const blob = await R.odp.buildODP(d);

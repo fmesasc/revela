@@ -8,7 +8,7 @@ import { figuresMap, captionLine } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
 import { t } from '../../i18n/index.js';
 import { deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
-import { motionPoints, motionFrames, pathTurns } from '../../features/animation/transitions.js';
+import { motionPoints, motionFrames, pathTurns, animsOf, offsetBefore } from '../../features/animation/transitions.js';
 import { drawPathHandles } from './pathdraw.js';
 import { blockLabel } from '../../features/document/a11y.js';
 import { cameraRadius } from '../../features/live/media.js';
@@ -163,24 +163,30 @@ export function cycleSelection(dir) {
   return true;
 }
 
-// Dashed guide from the selected object to where its motion path ends.
+// Dashed guides of the selected object's motion paths (one after another, each
+// from where the previous one leaves it), numbered when there are several.
 function drawMotionPath() {
   stage.querySelectorAll('.motion-path, .mp-h').forEach(n => n.remove());
-  const b = selectedBlock(); const a = b?.animation;
-  if (!a || a.effect !== 'path' || (!a.dx && !a.dy)) return;
-  const x1 = b.x + b.w / 2, y1 = b.y + b.h / 2, x2 = x1 + (a.dx || 0), y2 = y1 + (a.dy || 0);
-  const pts = motionPoints(a).map(([x, y]) => `${(x1 + x).toFixed(1)},${(y1 + y).toFixed(1)}`).join(' ');
+  const b = selectedBlock(); if (!b) return;
+  const all = animsOf(b), paths = all.map((a, i) => [a, i]).filter(([a]) => a.effect === 'path' && (a.dx || a.dy || a.points));
+  if (!paths.length) return;
   const NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg');
   svg.setAttribute('class', 'motion-path'); svg.setAttribute('width', 1); svg.setAttribute('height', 1);
   svg.style.left = '0px'; svg.style.top = '0px';
-  svg.innerHTML = `<defs><marker id="mp-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">`
-    + `<path d="M0,0 L10,5 L0,10 z" fill="#e0873b"/></marker></defs>`
-    + `<polyline points="${pts}" fill="none" stroke="#e0873b" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#mp-arrow)"/>`
-    // Where it ends (turned as it will be, if it turns on the way).
-    + `<rect x="${x2 - b.w / 2}" y="${y2 - b.h / 2}" width="${b.w}" height="${b.h}" fill="none" stroke="#e0873b" stroke-width="2" stroke-dasharray="4 4" opacity=".7"`
-    + `${pathTurns(a) && b.type !== 'model' ? ` transform="rotate(${(b.rotation || 0) + motionFrames(a).at(-1)[2]} ${x2} ${y2})"` : ''}/>`;
+  let body = `<defs><marker id="mp-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">`
+    + `<path d="M0,0 L10,5 L0,10 z" fill="#e0873b"/></marker></defs>`;
+  for (const [a, i] of paths) {
+    const [ox, oy] = offsetBefore(b, i), x1 = b.x + b.w / 2 + ox, y1 = b.y + b.h / 2 + oy, x2 = x1 + (a.dx || 0), y2 = y1 + (a.dy || 0);
+    const pts = motionPoints(a).map(([x, y]) => `${(x1 + x).toFixed(1)},${(y1 + y).toFixed(1)}`).join(' ');
+    body += `<polyline points="${pts}" fill="none" stroke="#e0873b" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#mp-arrow)"/>`
+      // Where it ends (turned as it will be, if it turns on the way).
+      + `<rect x="${x2 - b.w / 2}" y="${y2 - b.h / 2}" width="${b.w}" height="${b.h}" fill="none" stroke="#e0873b" stroke-width="2" stroke-dasharray="4 4" opacity=".7"`
+      + `${pathTurns(a) && b.type !== 'model' ? ` transform="rotate(${(i ? 0 : b.rotation || 0) + motionFrames(a).at(-1)[2]} ${x2} ${y2})"` : ''}/>`
+      + (paths.length > 1 ? `<circle cx="${x1 + 16}" cy="${y1 - 16}" r="12" fill="#e0873b"/><text x="${x1 + 16}" y="${y1 - 11}" text-anchor="middle" font-size="15" font-weight="700" fill="#fff" font-family="system-ui">${paths.findIndex(p => p[1] === i) + 1}</text>` : '');
+  }
+  svg.innerHTML = body;
   stage.appendChild(svg);
-  drawPathHandles(b);
+  for (const [, i] of paths) drawPathHandles(b, i);
 }
 
 // Captions shown under captioned blocks (figures/tables).
@@ -228,7 +234,7 @@ function reconcile(b) {
   let badge = el.querySelector(':scope > .cm-badge');
   if (nc && !badge) { badge = document.createElement('span'); badge.className = 'cm-badge'; el.appendChild(badge); }
   if (badge) { if (nc) badge.textContent = nc; else badge.remove(); }
-  el.classList.toggle('animated', !!b.animation);
+  el.classList.toggle('animated', !!b.animation || !!b.anims?.length);
   el.classList.toggle('locked', !!b.locked);
   // A colour key switched on or off, or a new source for a keyed one: new view.
   if ((b.type === 'image' || b.type === 'video') && !mediaViewCurrent(el, b)) el.firstElementChild.replaceWith(content(b));

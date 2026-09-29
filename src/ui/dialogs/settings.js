@@ -37,7 +37,7 @@ export function openSettings() {
         <label class="fr-l">${t('Fondo parallax (imagen que se desplaza)')}<input type="url" data-k="parallax" placeholder="https://…/fondo.jpg" value="${(o.parallax || '').replace(/"/g, '&quot;')}"></label>
         <label class="fr-l">${t('Tamaño del fondo parallax')}<input type="text" data-k="parallaxSize" placeholder="2100px 900px" value="${(o.parallaxSize || '').replace(/"/g, '&quot;')}"></label>
       </fieldset>
-      <fieldset class="bgf"><legend>${t('Morph (Auto-Animate)')}</legend>
+      <fieldset class="bgf"><legend>${t('Transformar (Morph)')}</legend>
         <label class="fr-l">${t('Duración (s)')}<input type="number" data-k="autoAnimateDuration" min="0.1" max="10" step="0.1" value="${o.autoAnimateDuration}"></label>
         ${sel('autoAnimateEasing', 'Curva', [['ease', 'Suave'], ['linear', 'Lineal'], ['ease-in', 'Acelerar'], ['ease-out', 'Frenar'], ['ease-in-out', 'Acelerar y frenar'], ['cubic-bezier(0.68,-0.55,0.27,1.55)', 'Con rebote']])}
         <p class="host-help">${t('Esta diapositiva (vacío = como la presentación):')}</p>

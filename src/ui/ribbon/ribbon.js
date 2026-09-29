@@ -1,5 +1,6 @@
 // The ribbon: tab switching and wiring every control to a feature.
 
+import { renderMorphHint } from '../shell/morphhint.js';
 import { renderContextual } from './contextual.js';
 import { state, commit, currentSlide, selectedBlock, selectedBlocks } from '../../core/store.js';
 import { MATH_SIZE } from '../../render/svg.js';
@@ -354,5 +355,6 @@ export function renderRibbon() {
     x.classList.toggle('on', (isText && (b.textAlign || 'left') === x.dataset.para) || (isMath && (b.textAlign || 'center') === x.dataset.para)));
   updateFormatState();
   renderContextual();
+  renderMorphHint();
 }
 function syncValue(sel, val) { const el = $(sel); if (el && el.value !== val) el.value = val; }

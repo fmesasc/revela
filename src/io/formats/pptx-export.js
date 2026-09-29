@@ -12,7 +12,7 @@ import { chartSeries, iconSVG, inkSVG } from '../../render/svg.js';
 import { blockImage } from '../export/images.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, styleKind } from '../../features/document/master.js';
 import { PPTXGEN, JSZIP, loadScript } from '../../core/vendor.js';
-import { animTimeline, isEntrance, motionPoints } from '../../features/animation/transitions.js';
+import { animTimeline, animEntries, isEntrance, motionPoints } from '../../features/animation/transitions.js';
 import { download } from '../files.js';
 
 
@@ -323,8 +323,8 @@ function transitionXML(s, deck) {
 }
 // Revela effects → PowerPoint presets: entrances and exits fade, emphasis grows
 // or shrinks, motion paths move by the same offset.
-function effectXML(b, spid, ids, deck, delay, first) {
-  const a = b.animation, dur = a.duration ?? 500, id = () => ids.n++;
+function effectXML(a, spid, ids, deck, delay, first) {
+  const dur = a.duration ?? 500, id = () => ids.n++;
   const tgt = `<p:tgtEl><p:spTgt spid="${spid}"/></p:tgtEl>`;
   const node = first ? 'clickEffect' : a.start === 'afterPrev' ? 'afterEffect' : 'withEffect';
   let cls, preset, body;
@@ -333,6 +333,9 @@ function effectXML(b, spid, ids, deck, delay, first) {
     const { w, h } = deck.size, pts = motionPoints(a).slice(1).map(([x, y]) => `${+(x / w).toFixed(4)} ${+(y / h).toFixed(4)}`);
     cls = 'path'; preset = 0;
     body = `<p:animMotion origin="layout" path="M 0 0 L ${pts.join(' L ')} E" pathEditMode="relative"><p:cBhvr><p:cTn id="${id()}" dur="${dur}" fill="hold"/>${tgt}<p:attrNameLst><p:attrName>ppt_x</p:attrName><p:attrName>ppt_y</p:attrName></p:attrNameLst></p:cBhvr></p:animMotion>`;
+  } else if (a.effect === 'spin360') {                   // PowerPoint's "Spin" emphasis: one full turn
+    cls = 'emph'; preset = 8;
+    body = `<p:animRot by="21600000"><p:cBhvr><p:cTn id="${id()}" dur="${dur}" fill="hold"/>${tgt}<p:attrNameLst><p:attrName>r</p:attrName></p:attrNameLst></p:cBhvr></p:animRot>`;
   } else if (a.effect === 'grow' || a.effect === 'shrink') {
     const k = a.effect === 'grow' ? 125000 : 80000;
     cls = 'emph'; preset = 6;
@@ -358,14 +361,17 @@ function effectXML(b, spid, ids, deck, delay, first) {
     + `<p:stCondLst><p:cond delay="${delay}"/></p:stCondLst><p:childTnLst>${body}</p:childTnLst></p:cTn></p:par>`;
 }
 function timingXML(s, spids, deck) {
+  // Every animation of every object, in order (an object's next ones too; a 3D
+  // model's own clips have no PowerPoint equivalent and are left out).
   const tl = animTimeline(s);
-  const list = s.blocks.filter(b => b.animation && tl.has(b.id) && spids.has(b.id)).sort((a, b) => tl.get(a.id).step - tl.get(b.id).step || tl.get(a.id).delay - tl.get(b.id).delay);
+  const list = animEntries(s).filter(e => tl.has(e.key) && spids.has(e.b.id) && e.a.effect !== 'clip3d')
+    .sort((x, y) => tl.get(x.key).step - tl.get(y.key).step || tl.get(x.key).delay - tl.get(y.key).delay);
   if (!list.length) return '';
-  const ids = { n: 3 }, steps = [...new Set(list.map(b => tl.get(b.id).step))];
+  const ids = { n: 3 }, steps = [...new Set(list.map(e => tl.get(e.key).step))];
   const clicks = steps.map(st => {
-    const group = list.filter(b => tl.get(b.id).step === st);
+    const group = list.filter(e => tl.get(e.key).step === st);
     const outer = ids.n++, inner = ids.n++;
-    const effects = group.map((b, i) => effectXML(b, spids.get(b.id), ids, deck, tl.get(b.id).delay, i === 0)).join('');
+    const effects = group.map((e, i) => effectXML(e.a, spids.get(e.b.id), ids, deck, tl.get(e.key).delay, i === 0)).join('');
     return `<p:par><p:cTn id="${outer}" fill="hold"><p:stCondLst><p:cond delay="indefinite"/></p:stCondLst><p:childTnLst>`
       + `<p:par><p:cTn id="${inner}" fill="hold"><p:stCondLst><p:cond delay="0"/></p:stCondLst><p:childTnLst>${effects}</p:childTnLst></p:cTn></p:par>`
       + `</p:childTnLst></p:cTn></p:par>`;

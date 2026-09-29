@@ -49,6 +49,7 @@ import { openAppearance } from '../shell/appearance.js';
 import { openDashboardDialog } from '../dialogs/data.js';
 import { playAnimations } from '../canvas/preview.js';
 import { startPathDraw } from '../canvas/pathdraw.js';
+import { openAddAnimation } from './animadd.js';
 import { openHostPanel } from '../dialogs/remote.js';
 import * as search from '../../features/document/search.js';
 import { t } from '../../i18n/index.js';
@@ -235,6 +236,7 @@ export const ACTIONS = {
   'anim-panel': () => openAnimPanel(),
   'anim-play': () => playAnimations(),
   'draw-path': () => startPathDraw(),
+  'anim-add': () => openAddAnimation(document.querySelector('[data-action="anim-add"]')),
   'insert-date': () => blocks.addDate(),
   'insert-figindex': () => blocks.addFigIndex(),
   'insert-slideref': () => blocks.addSlideRef(),

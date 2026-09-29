@@ -4,7 +4,7 @@
 // curved paths have one point, their end.
 
 import { commit, selectedBlock, currentSlide } from '../../core/store.js';
-import { setMotionPath, simplifyStroke } from '../../features/animation/transitions.js';
+import { setMotionPath, simplifyStroke, animsOf, offsetBefore } from '../../features/animation/transitions.js';
 import { stage, readOnly } from './canvas.js';
 import { factor } from './interact.js';
 import { alertDialog } from '../dialogs/dialog.js';
@@ -16,12 +16,15 @@ const toStage = e => { const r = stage.getBoundingClientRect(), k = factor(); re
 const centre = b => [b.x + b.w / 2, b.y + b.h / 2];
 
 export function cancelPathDraw() { drawing?.end(); }
-export function startPathDraw() {
+// append: one more path after the object's animations, from where they leave it;
+// index: redraw that one of its animations (from where the ones before leave it).
+export function startPathDraw({ append = false, index = 0 } = {}) {
   const b = selectedBlock();
   if (!b || b.type === 'connector') { alertDialog(t('Selecciona primero el objeto que se moverá.')); return; }
   if (readOnly()) return;
   cancelPathDraw();
-  const id = b.id, c = centre(b), hadPath = b.animation?.effect === 'path';
+  const more = append && !!b.animation, at = more ? -1 : index, o = offsetBefore(b, more ? animsOf(b).length : index);
+  const id = b.id, c = [centre(b)[0] + o[0], centre(b)[1] + o[1]], hadPath = !more && animsOf(b)[index]?.effect === 'path';
   const over = document.createElement('div'); over.className = 'path-draw';
   over.innerHTML = `<svg class="pd-svg" width="1" height="1"><polyline class="pd-line" points=""/><circle class="pd-start" cx="${c[0]}" cy="${c[1]}" r="9"/></svg>`
     + `<div class="pd-hint"><i class="ms">gesture</i> ${t('Dibuja el camino arrastrando desde el objeto. Suelta para terminar · Esc: cancelar')}</div>`;
@@ -52,23 +55,23 @@ export function startPathDraw() {
     let len = 0; for (let i = 1; i < rel.length; i++) len += Math.hypot(rel[i][0] - rel[i - 1][0], rel[i][1] - rel[i - 1][1]);
     if (len < 15) return;                                   // (a click, not a path)
     const dur = Math.round(Math.min(8000, Math.max(1200, len * 4)) / 100) * 100;     // about 250 px per second
-    setMotionPath(id, simplifyStroke(rel, 14), hadPath ? null : dur);          // (few points: easy to adjust)
+    setMotionPath(id, simplifyStroke(rel, 14), hadPath ? null : dur, at);          // (few points: easy to adjust)
   });
 }
 
-// The points of the selected object's path, to drag (called when the path is drawn).
-export function drawPathHandles(b) {
-  const a = b.animation, [cx, cy] = centre(b), custom = a.pathShape === 'custom' && a.points?.length > 1;
+// The points of one of the selected object's paths (its i-th animation), to drag.
+export function drawPathHandles(b, n = 0) {
+  const a = animsOf(b)[n], o = offsetBefore(b, n), cx = centre(b)[0] + o[0], cy = centre(b)[1] + o[1], custom = a.pathShape === 'custom' && a.points?.length > 1;
   const pts = custom ? a.points : [[0, 0], [a.dx || 0, a.dy || 0]];
   const add = (cls, [x, y], title, onDrag, onDbl) => {
     const h = document.createElement('div'); h.className = 'mp-h ' + cls; h.title = title;
     h.style.left = (cx + x) + 'px'; h.style.top = (cy + y) + 'px';
-    h.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); if (!readOnly()) dragPoint(e, onDrag); });
+    h.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); if (!readOnly()) dragPoint(e, onDrag, [cx, cy]); });
     if (onDbl) h.addEventListener('dblclick', e => { e.stopPropagation(); onDbl(); });
     stage.appendChild(h);
   };
   const set = (fn, history = false) => commit(() => {
-    const x = currentSlide().blocks.find(y => y.id === b.id)?.animation; if (!x) return;
+    const bb = currentSlide().blocks.find(y => y.id === b.id), x = bb && animsOf(bb)[n]; if (!x) return;
     fn(x); if (x.points) [x.dx, x.dy] = x.points.at(-1);
   }, { history });
   for (let i = 1; i < pts.length; i++) {
@@ -86,10 +89,10 @@ export function drawPathHandles(b) {
     }
   }
 }
-function dragPoint(e, onDrag) {
+function dragPoint(e, onDrag, origin) {
   const h = e.target, k = factor(), x0 = e.clientX, y0 = e.clientY;
   const p0 = [parseFloat(h.style.left), parseFloat(h.style.top)];
-  const b = selectedBlock(), c = centre(b), start = [p0[0] - c[0], p0[1] - c[1]];
+  const start = [p0[0] - origin[0], p0[1] - origin[1]];
   let moved = false;
   const move = ev => { moved = true; onDrag((ev.clientX - x0) * k, (ev.clientY - y0) * k, start); };
   const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); if (moved) commit(() => {}); };

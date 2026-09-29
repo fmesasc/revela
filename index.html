@@ -518,11 +518,11 @@
         </div>
         <div class="group">
           <div class="row">
-            <button data-action="toggle-autoanimate" title="Transformar objetos entre esta diapositiva y la anterior (Morph)"><i class="ms">auto_awesome_motion</i><span>Auto‑Animate</span></button>
+            <button data-action="toggle-autoanimate" title="Al pasar a esta diapositiva, los objetos que también estaban en la anterior se desplazan y cambian suavemente (Morph)"><i class="ms">auto_awesome_motion</i><span>Transformar</span></button>
             <button data-action="dup-animate" title="Duplicar esta diapositiva para transformar"><i class="ms">motion_photos_on</i><span>Duplicar<br>animando</span></button>
             <select data-morphby title="Qué se transforma entre diapositivas (como «Transformar» de PowerPoint)">
               <option value="objects">Objetos</option><option value="words">Palabras</option><option value="chars">Caracteres</option></select>
-          </div><label>Transformar</label>
+          </div><label>Entre diapositivas</label>
         </div>
       </section>
 
@@ -551,6 +551,7 @@
         </div>
         <div class="group">
           <div class="row">
+            <button data-action="anim-add" class="go" title="Añadir otra animación al objeto, después de las que tiene (moverse a un sitio, luego a otro, girar…)"><i class="ms">add_circle</i><span>Añadir<br>animación</span></button>
             <button data-action="anim-play"><i class="ms">play_circle</i><span>Reproducir</span></button>
             <button data-action="anim-panel"><i class="ms">tune</i><span>Panel</span></button>
             <button data-action="anim-paint" title="Copiar la animación: haz clic y luego en otro objeto"><i class="ms">format_paint</i><span>Copiar<br>animación</span></button>
@@ -610,6 +611,8 @@
     <section id="canvas-wrap">
       <div id="drive-conflict" hidden><i class="ms">sync_problem</i> <span>Esta presentación ha cambiado en Drive desde otro dispositivo.</span>
         <button data-cf="theirs" type="button">Cargar la de Drive</button><button data-cf="mine" type="button">Quedarme con esta</button><button data-cf="copy" type="button">Guardar esta como copia</button></div>
+      <div id="morph-hint" hidden><i class="ms">auto_awesome_motion</i> <span>Esta diapositiva comparte objetos con la anterior: ¿se desplazan suavemente al pasar?</span>
+        <button data-mh="on" type="button">Transformar</button><button data-mh="no" type="button">No, gracias</button></div>
       <div id="final-banner" hidden><i class="ms">verified</i> <span>Marcada como final: la presentación es de solo lectura.</span>
         <button data-action="mark-final" type="button">Editar de todos modos</button></div>
       <div id="master-banner" hidden><i class="ms">dashboard_customize</i> <span class="mb-text">Editando el patrón: lo que pongas aquí aparece en todas las diapositivas.</span>

@@ -97,15 +97,28 @@ export function model3dRuntime() {
   function secs(v) { v = String(v || '').split(',')[0].trim(); return v.slice(-2) === 'ms' ? parseFloat(v) : parseFloat(v) * 1000 || 0; }
   // In the presentation it moves by CSS (a transition of its position, or the
   // keyframes of a curved path): it walks from when that starts, for as long.
+  // (Or a layer around it, for its next animations.)
+  function walker(el) { if (el.tagName === 'MODEL-VIEWER') return el.hasAttribute('data-move-clip') ? el : null;
+    return el.classList && el.classList.contains('rv-step') && !el.hasAttribute('data-clip') ? el.querySelector('model-viewer[data-move-clip]') : null; }
   document.addEventListener('transitionstart', function (e) {
-    var mv = e.target; if (mv.tagName !== 'MODEL-VIEWER' || !mv.hasAttribute('data-move-clip')) return;
+    var mv = walker(e.target); if (!mv) return;
     if (['translate', 'opacity', 'transform'].indexOf(e.propertyName) < 0) return;
-    move(mv, secs(getComputedStyle(mv).transitionDuration));
+    move(mv, secs(getComputedStyle(e.target).transitionDuration), e.target);
   }, true);
   document.addEventListener('animationstart', function (e) {
-    var mv = e.target; if (mv.tagName !== 'MODEL-VIEWER' || !mv.hasAttribute('data-move-clip')) return;
-    move(mv, secs(getComputedStyle(mv).animationDuration));
+    var mv = walker(e.target); if (!mv || !/^rvP/.test(e.animationName)) return;
+    move(mv, secs(getComputedStyle(e.target).animationDuration), e.target);
   }, true);
+  // A step that plays one of the model's own animations (once, then back to rest, or on).
+  function clipStep(f, show) {
+    var name = f.getAttribute('data-clip'); if (!name) return;
+    var mv = f.tagName === 'MODEL-VIEWER' ? f : f.querySelector('model-viewer'); if (!mv) return;
+    if (!show) { rest(mv); return; }
+    setTimeout(function () {
+      var once = f.hasAttribute('data-clip-once'); playClip(mv, name, once);
+      if (once) mv.addEventListener('finished', function () { rest(mv); }, { once: true });
+    }, secs(getComputedStyle(f).getPropertyValue('--anim-del')));
+  }
   function stop(mv) { var t = timers.get(mv); if (t) { cancelAnimationFrame(t.raf); clearInterval(t.iv); } timers.delete(mv); mv.style.transform = ''; }
   function start(mv) {
     stop(mv);
@@ -128,8 +141,10 @@ export function model3dRuntime() {
       if (slide && slide.contains(mv)) start(mv); else stop(mv);
     });
   }
-  if (window.Reveal) { Reveal.on('ready', function (e) { enter(e.currentSlide); }); Reveal.on('slidechanged', function (e) { enter(e.currentSlide); }); if (Reveal.isReady()) enter(Reveal.getCurrentSlide()); }
-  return { start: start, stop: stop, move: move };
+  if (window.Reveal) { Reveal.on('ready', function (e) { enter(e.currentSlide); }); Reveal.on('slidechanged', function (e) { enter(e.currentSlide); }); if (Reveal.isReady()) enter(Reveal.getCurrentSlide());
+    Reveal.on('fragmentshown', function (e) { (e.fragments || [e.fragment]).forEach(function (f) { clipStep(f, true); }); });
+    Reveal.on('fragmenthidden', function (e) { (e.fragments || [e.fragment]).forEach(function (f) { clipStep(f, false); }); }); }
+  return { start: start, stop: stop, move: move, clip: function (mv, name, once) { playClip(mv, name, once); if (once) mv.addEventListener('finished', function () { rest(mv); }, { once: true }); } };
 }
 
 // The model as a file to keep: one .glb with everything in it (meshes,

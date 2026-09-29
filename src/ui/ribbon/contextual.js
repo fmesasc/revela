@@ -9,6 +9,7 @@ import * as format from '../../features/document/format.js';
 import * as shapeops from '../../features/document/shapeops.js';
 import { MOTIONS_3D, VIEWS_3D, modelFile } from '../../features/content/model3d.js';
 import { isGif } from '../../features/live/media.js';
+import { styled } from '../../features/document/master.js';
 import { download } from '../../io/files.js';
 import { openModel3D } from '../dialogs/model3d.js';
 import { openAutoRig } from '../dialogs/autorig.js';
@@ -20,6 +21,9 @@ import { openLinkChart, refreshChart } from '../dialogs/data.js';
 import { openImageAdjust, openMath, openChartData, openOpacity, openIconColor, openBoxStyle, openSlidePicker, openCaption, openAlt, openImageCrop, removeBackground, openTableStyle } from '../dialogs/object.js';
 import { alertDialog } from '../dialogs/dialog.js';
 import { startPathDraw } from '../canvas/pathdraw.js';
+import { openAddAnimation } from './animadd.js';
+import { openAnimPanel } from '../panels/animation.js';
+import { animsOf } from '../../features/animation/transitions.js';
 import { playAnimations } from '../canvas/preview.js';
 import { playInEditor } from '../canvas/mediaview.js';
 import { fitTextToBox } from '../canvas/canvas.js';
@@ -71,7 +75,7 @@ function groupsFor(b) {
         btn('autorenew', 'Girar solo', () => set(b, x => { x.autoRotate = !(x.autoRotate !== false); }), b.autoRotate !== false && !b.walk?.clip)]],
       ['Al moverse', [['select', 'Mientras se mueve', [['', 'Nada'], ...names.map(n => [n, n])], b.walk?.clip || '', v => set(b, x => {
         if (v) x.walk = { end: '', endOnce: true, face: true, look: true, ...x.walk, clip: v }; else delete x.walk; })],
-        btn('gesture', 'Dibujar recorrido', () => startPathDraw()), btn('play_circle', 'Probar', () => playAnimations())]],
+        btn('play_circle', 'Probar', () => playAnimations())]],
       ['Vista', [['select', 'Cámara', VIEWS_3D, b.view || '', v => set(b, x => { if (v) x.view = v; else delete x.view; })],
         ['select', 'Al llegar a la diapositiva', MOTIONS_3D, b.motion || 'none', v => set(b, x => { if (v !== 'none') x.motion = v; else delete x.motion; })]]],
       ['Esqueleto', [btn('accessibility_new', 'Esqueleto automático', () => openAutoRig(b))]],
@@ -80,6 +84,20 @@ function groupsFor(b) {
     ['Reproducción', [btn('play_arrow', 'Reproducir', () => playInEditor(b.id)), btn('tune', 'Opciones', () => openMediaPlayback(b))]],
     ['Archivo', [btn('download', 'Descargar', () => saveFile(b))]]);
   else if (b.type === 'text') G.push(
+    ['Fuente', [['select', 'Tipo de letra', fontOptions(), b.fontFamily || '', v => format.fontFamily(v)],
+      ['num', 'Tamaño', Math.round(styled(b, currentSlide()).fontSize || 40), v => format.setFontSize(parseInt(v, 10) || 40), 6, 400, 2],
+      ['ibtn', 'format_bold', 'Negrita', () => format.exec('bold')], ['ibtn', 'format_italic', 'Cursiva', () => format.exec('italic')],
+      ['ibtn', 'format_underlined', 'Subrayado', () => format.exec('underline')],
+      ['color', 'format_color_text', 'Color del texto', /^#[0-9a-f]{6}$/i.test(b.color || '') ? b.color : '#ffffff', v => format.color(v)]]],
+    ['Párrafo', [['ibtn', 'format_align_left', 'Alinear texto a la izquierda', () => format.align('left'), (b.textAlign || 'left') === 'left'],
+      ['ibtn', 'format_align_center', 'Centrar texto', () => format.align('center'), b.textAlign === 'center'],
+      ['ibtn', 'format_align_right', 'Alinear texto a la derecha', () => format.align('right'), b.textAlign === 'right'],
+      ['ibtn', 'format_align_justify', 'Justificar', () => format.align('justify'), b.textAlign === 'justify'],
+      ['ibtn', 'format_list_bulleted', 'Viñetas', () => format.list('insertUnorderedList')], ['ibtn', 'format_list_numbered', 'Lista numerada', () => format.list('insertOrderedList')],
+      ['ibtn', 'vertical_align_top', 'Alinear el texto arriba del cuadro', () => format.setVAlign('top'), (b.vAlign || 'top') === 'top'],
+      ['ibtn', 'vertical_align_center', 'Centrar el texto en el cuadro', () => format.setVAlign('middle'), b.vAlign === 'middle'],
+      ['ibtn', 'vertical_align_bottom', 'Alinear el texto abajo del cuadro', () => format.setVAlign('bottom'), b.vAlign === 'bottom'],
+      ['select', 'Columnas', [['1', '1'], ['2', '2'], ['3', '3']], String(b.columns || 1), v => format.setColumns(+v)]]],
     ['Cuadro', [btn('format_color_fill', 'Relleno y borde', () => openBoxStyle(b)), btn('format_size', 'Ajustar letra al cuadro', () => fitTextToBox(b)),
       btn('compress', 'Reducir si no cabe', () => set(b, x => { if (x.shrink) delete x.shrink; else x.shrink = true; }), !!b.shrink),
       btn('format_paint', 'Copiar formato', () => format.copyStyle())]]);
@@ -97,7 +115,10 @@ function groupsFor(b) {
   else if (b.type === 'slideref') G.push(['Zoom', [btn('slideshow', 'Elegir diapositiva', () => openSlidePicker(b)), btn('undo', 'Volver aquí', () => blocks.toggleSlideRefReturn(), !!b.returnBack)]]);
   else if (b.type === 'camera') G.push(['Cámara', [btn('circle', 'Círculo', () => set(b, x => { x.shape = 'circle'; }), b.shape === 'circle'), btn('crop_square', 'Redondeada', () => set(b, x => { x.shape = 'rounded'; }), b.shape === 'rounded'),
     btn('rectangle', 'Rectángulo', () => set(b, x => { x.shape = 'rect'; }), b.shape === 'rect'), btn('flip', 'Reflejar', () => set(b, x => { x.mirror = x.mirror === false; }), b.mirror !== false)]]);
-  // Every object: description, accessibility and arrangement.
+  // Every object: its animations (several, one after another), description, accessibility and arrangement.
+  const n = animsOf(b).length;
+  G.push(['Animaciones', [btn('add_circle', n ? `${t('Añadir animación')} (${n})` : 'Añadir animación', () => openAddAnimation(document.querySelector('#ribbon [data-page="ctx"] [data-ctx-add]'))),
+    btn('gesture', n ? 'Añadir movimiento' : 'Dibujar recorrido', () => startPathDraw({ append: true })), btn('tune', 'Panel', () => openAnimPanel())]]);
   G.push(['Accesibilidad', [btn('accessibility', 'Texto alternativo', () => openAlt(b)), ...(!['text', 'connector', 'figindex', 'slideref'].includes(b.type) ? [btn('short_text', b.caption ? 'Editar descripción' : 'Descripción', () => openCaption(b))] : [])]]);
   G.push(arrange(b));
   return G;
@@ -145,9 +166,9 @@ export function renderContextual() {
     }
     return;
   }
-  // Just inserted (an id not seen before): its tab opens by itself, as in PowerPoint (not for text boxes).
+  // Just inserted (an id not seen before): its tab opens by itself, as in PowerPoint.
   const ids = new Set(state.deck.slides.flatMap(s => s.blocks.map(x => x.id)));
-  if (known && b && !known.has(b.id) && b.type !== 'text' && state.ui.activeTab !== 'ctx') {
+  if (known && b && !known.has(b.id) && state.ui.activeTab !== 'ctx') {
     state.ui.activeTab = 'ctx';
     document.querySelectorAll('#ribbon [data-tab]').forEach(x => x.classList.toggle('active', x.dataset.tab === 'ctx'));
     document.querySelectorAll('#ribbon .ribbon-page').forEach(p => p.classList.toggle('active', p.dataset.page === 'ctx'));
@@ -173,10 +194,20 @@ export function renderContextual() {
     if (mv && waiting !== mv) { waiting = mv; mv.addEventListener('load', () => { waiting = null; lastSig = ''; renderContextual(); }, { once: true }); }
   }
 }
+// The deck's fonts, as in Home's font list.
+const fontOptions = () => [['', 'Del tema'], ...[...(document.querySelector('#ribbon [data-font]')?.options || [])].filter(o => o.value).map(o => [o.value, o.textContent])];
 function control(c) {
+  if (c[0] === 'ibtn') {                                     // icon only; keeps the text selection while editing
+    const [, icon, label, fn, on] = c, el = document.createElement('button'); el.type = 'button'; el.title = t(label);
+    el.innerHTML = `<i class="ms">${icon}</i>`; el.classList.toggle('on', !!on);
+    el.addEventListener('mousedown', e => e.preventDefault());
+    el.addEventListener('click', e => { e.stopPropagation(); fn(); });
+    return el;
+  }
   if (c[0] === 'btn') {
     const [, icon, label, fn, on] = c, el = document.createElement('button'); el.type = 'button';
     el.innerHTML = `<i class="ms">${icon}</i><span>${t(label)}</span>`; el.classList.toggle('on', !!on);
+    if (icon === 'add_circle') el.dataset.ctxAdd = '';
     el.addEventListener('click', e => { e.stopPropagation(); fn(); });
     return el;
   }

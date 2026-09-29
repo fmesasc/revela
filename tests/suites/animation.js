@@ -107,6 +107,96 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!D.querySelector('.path-draw'), 'Esc cancela');
   });
 
+  await test('varias animaciones por objeto: una tras otra, encadenadas (moverse, moverse otra vez, girar, clip 3D)', async () => {
+    reset(); const W = frame.contentWindow; const b = slide().blocks[0]; select(b);
+    const T = R.trans;
+    eq(T.addAnimation('fade-in'), 0, 'la primera, como siempre');
+    eq(T.addAnimation('path', { dx: 300, dy: 0 }), 1, 'otra más: se añade detrás');
+    eq(T.addAnimation('path', { dx: 0, dy: -200 }), 2, 'y otra');
+    T.addAnimation('spin360');
+    const x = () => slide().blocks[0];
+    eq(x().animation.effect, 'fade-in', 'la primera sigue en su sitio');
+    eq(x().anims.map(a => a.effect + ':' + a.start).join(), 'path:afterPrev,path:afterPrev,spin360:afterPrev', 'las siguientes, después de la anterior');
+    eq(T.animEntries().length, 4, 'cuatro animaciones en la lista');
+    // The timeline: one after another in the same click.
+    const tl = T.animTimeline();
+    eq([b.id, b.id + '#1', b.id + '#2', b.id + '#3'].map(k => tl.get(k).step).join(), '1,1,1,1', 'todo con un clic');
+    assert(tl.get(b.id + '#2').delay >= tl.get(b.id + '#1').delay + tl.get(b.id + '#1').dur, 'la segunda trayectoria empieza al acabar la primera');
+    eq(T.offsetBefore(x(), 2).join(), '300,0', 'y desde donde la dejó la primera');
+    // In the presentation: layers around the object, each its own step.
+    const html = R.io.buildHTML();
+    const steps = [...html.matchAll(/<div class="rv-step fragment ([\w-]+)"[^>]*transform-origin:(-?\d+)px (-?\d+)px/g)].map(m => m[1]);
+    eq(steps.join(), 'spin360,rv-path,rv-path', 'una capa por cada animación siguiente (la última, la de fuera)');
+    assert(new RegExp(`--dx:0px;--dy:-200px;--pk:rvP${b.id}_2`).test(html), 'cada una con su recorrido');
+    const cx = Math.round(b.x + b.w / 2 + 300), cy = Math.round(b.y + b.h / 2 - 200);
+    assert(html.includes(`transform-origin:${cx}px ${cy}px`), 'el giro, sobre donde está el objeto en ese momento');
+    // Play it for real: the object ends where the paths add up.
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
+    R.store.commit(() => { x().animation.duration = 100; x().anims.forEach(a => { a.duration = 150; }); });
+    f.srcdoc = R.io.buildHTML(R.state.deck, { inApp: true });
+    try {
+      for (let i = 0; i < 100 && !f.contentWindow.Reveal?.isReady?.(); i++) await sleep(100);
+      const el = f.contentDocument.querySelector(`[data-id="${b.id}"], .fragment.fade-in`), r0 = el.getBoundingClientRect();
+      f.contentWindow.Reveal.next(); await sleep(1200);
+      const r1 = el.getBoundingClientRect(), k = r0.width / b.w;
+      assert(Math.abs((r1.left - r0.left) / k - 300) < 6 && Math.abs((r1.top - r0.top) / k + 200) < 6, `acaba 300 a la derecha y 200 arriba (${((r1.left - r0.left) / k).toFixed(0)}, ${((r1.top - r0.top) / k).toFixed(0)})`);
+    } finally { f.remove(); }
+    // The panel: one row per animation; moving and removing one.
+    D.querySelector('[data-action="anim-panel"]').click(); await sleep(20);
+    const rows = () => [...D.querySelectorAll('#anim-modal .an-row')];
+    eq(rows().length, 4, 'una fila por animación');
+    assert(/animación 2\/4/.test(rows()[1].textContent), 'se ve cuál es de cada objeto');
+    rows()[3].querySelector('[data-move="-1"]').click(); await sleep(10);
+    eq(x().anims.map(a => a.effect).join(), 'path,spin360,path', 'se reordenan');
+    rows()[2].querySelector('[data-remove]').click(); await sleep(10);
+    eq(x().anims.map(a => a.effect).join(), 'path,path', 'se quita una sola');
+    D.querySelector('#anim-modal .modal-close').click();
+    // The palette: a 3D model's own clips as steps.
+    D.querySelector('[data-action="anim-add"]').click(); await sleep(10);
+    const menu = D.getElementById('anim-add-menu');
+    assert(menu && menu.querySelector('[data-add="spin360"]') && menu.querySelector('[data-add="draw"]'), 'paleta con entradas, énfasis, salidas y movimientos');
+    menu.querySelector('[data-add="grow"]').click(); await sleep(10);
+    eq(x().anims.at(-1).effect, 'grow', 'se añade la elegida');
+    const m3 = { id: 'm3d', type: 'model', src: 'data:model/gltf-binary;base64,AAAA', x: 0, y: 0, w: 100, h: 100, rotation: 0, animation: null };
+    R.store.commit(() => { slide().blocks.push(m3); R.state.ui.selection = 'm3d'; R.state.ui.multi = ['m3d']; });
+    T.addAnimation('path', { dx: 100 }); T.addAnimation('clip3d', { clip: 'Wave', once: true });
+    const h3 = R.io.buildHTML();
+    assert(/class="rv-step fragment clip3d"[^>]*data-clip="Wave" data-clip-once/.test(h3), 'clip 3D como paso');
+    // Copying animations copies all of them; clearing clears all.
+    select(x()); const cp = T.copyAnimationFrom(x());
+    eq(cp.more.length, 3, 'el pincel copia todas');
+    T.clearAnimation(); assert(!x().animation && !x().anims, 'sin animación: quita todas');
+  });
+
+  await test('transformar: botón con su nombre y sugerencia al compartir objetos con la anterior', async () => {
+    reset();
+    eq(D.querySelector('[data-action="toggle-autoanimate"] span').textContent, 'Transformar', 'el botón se llama Transformar');
+    const b = newText(); b.x = 100; R.slides.duplicateSlideCopy?.();
+    R.store.commit(() => { const s0 = R.state.deck.slides[0], c = structuredClone(s0); c.id = 'sx'; c.blocks.find(x => x.id === b.id).x = 700; R.state.deck.slides.splice(1, 0, c); R.state.ui.slideIndex = 1; });
+    await sleep(20);
+    const hint = D.getElementById('morph-hint');
+    assert(!hint.hidden, 'si un objeto de la anterior ha cambiado, lo sugiere');
+    hint.querySelector('[data-mh="on"]').click(); await sleep(10);
+    assert(R.state.deck.slides[1].autoAnimate && hint.hidden, 'un clic lo activa');
+    R.store.undo(); await sleep(10); assert(!hint.hidden, 'deshecho, vuelve a sugerirlo');
+    hint.querySelector('[data-mh="no"]').click(); await sleep(10);
+    assert(hint.hidden && R.state.deck.slides[1].morphHint === false, '«No, gracias» se recuerda');
+  });
+
+  await test('pestaña del cuadro de texto: fuente, párrafo y se abre al insertarlo', async () => {
+    reset(); const W = frame.contentWindow;
+    R.store.commit(() => { R.state.ui.selection = null; R.state.ui.multi = []; }, { history: false }); await sleep(10);
+    R.blocks.addText(); await sleep(20);
+    const tab = D.querySelector('#ribbon [data-tab="ctx"]'), page = D.querySelector('#ribbon [data-page="ctx"]');
+    assert(tab.textContent === 'Cuadro de texto' && R.state.ui.activeTab === 'ctx', 'se abre sola');
+    const labels = [...page.querySelectorAll('.group > label')].map(l => l.textContent);
+    assert(labels.includes('Fuente') && labels.includes('Párrafo') && labels.includes('Animaciones'), 'con fuente, párrafo y animaciones: ' + labels.join(', '));
+    page.querySelector('button[title="Centrar texto"]').click(); await sleep(10);
+    eq(last().textAlign, 'center', 'centrar desde la pestaña');
+    const cols = [...page.querySelectorAll('select')].find(x => [...x.options].map(o => o.value).join() === '1,2,3');
+    cols.value = '2'; cols.dispatchEvent(new W.Event('change')); await sleep(10); eq(last().columns, 2, 'columnas');
+  });
+
   await test('disparador: al hacer clic en un objeto se anima otro', async () => {
     reset(); const [a, b] = slide().blocks; select(b); R.trans.setAnimation('zoom-in');
     R.trans.setAnimPropForId(b.id, 'trigger', a.id);

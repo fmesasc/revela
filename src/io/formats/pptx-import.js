@@ -372,6 +372,7 @@ function readAnimations(doc, spidOf, blocks, size) {
     const start = { withEffect: 'withPrev', afterEffect: 'afterPrev' }[c.getAttribute('nodeType')] || 'click';
     let effect = 'fade-in', extra = {};
     if (cls === 'exit') effect = 'fade-out';
+    else if (cls === 'emph' && (preset === 8 || all(c, 'p:animRot').length)) effect = 'spin360';
     else if (cls === 'emph') effect = +(all(c, 'p:by')[0]?.getAttribute('x') || 125000) >= 100000 ? 'grow' : 'shrink';
     else if (cls === 'path') {
       effect = 'path'; extra = pathFromSVG(all(c, 'p:animMotion')[0]?.getAttribute('path') || '', size);
@@ -382,7 +383,8 @@ function readAnimations(doc, spidOf, blocks, size) {
     }
     else if (preset === 53 || preset === 23) effect = 'zoom-in';
     else if (cls !== 'entr') continue;
-    b.animation = { effect, order: ++order, start, duration: dur, delay, ...extra };
+    const a = { effect, order: ++order, seq: order, start, duration: dur, delay, ...extra };
+    if (b.animation) (b.anims ||= []).push(a); else b.animation = a;         // (an object's next animations)
   }
 }
 

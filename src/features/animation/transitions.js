@@ -89,7 +89,7 @@ export const EFFECT_KF = {
   'zoom-in': 'rvZoom', 'grow': 'rvGrow', 'shrink': 'rvShrink', 'spin': 'rvSpin', 'flip': 'rvFlip', 'bounce': 'rvBounce',
   'fade-out': 'rvOut', 'semi-fade-out': 'rvSemi', 'fade-in-then-out': 'rvInOut', 'fade-in-then-semi-out': 'rvInSemi', 'current-visible': 'rvInOut',
   'highlight-current-red': 'rvHi', 'highlight-current-green': 'rvHi', 'highlight-current-blue': 'rvHi', 'highlight-red': 'rvHi', 'highlight-green': 'rvHi', 'highlight-blue': 'rvHi',
-  'strike': 'rvIn', 'path': 'rvPath',
+  'strike': 'rvIn', 'path': 'rvPath', 'spin360': 'rvTurn',
 };
 export const EFFECT_KF_CSS = `@keyframes rvIn{from{opacity:0}to{opacity:1}}
 @keyframes rvUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:none}}
@@ -107,7 +107,8 @@ export const EFFECT_KF_CSS = `@keyframes rvIn{from{opacity:0}to{opacity:1}}
 @keyframes rvSemi{from{opacity:1}to{opacity:.5}}
 @keyframes rvInSemi{0%{opacity:0}30%,70%{opacity:1}100%{opacity:.5}}
 @keyframes rvHi{0%,100%{background:transparent}50%{background:#ff3b3b66}}
-@keyframes rvPath{to{translate:var(--dx,0) var(--dy,0)}}`;
+@keyframes rvPath{to{translate:var(--dx,0) var(--dy,0)}}
+@keyframes rvTurn{from{transform:rotate(0)}to{transform:rotate(360deg)}}`;
 // Motion paths: points (offsets from the start) along the chosen shape, ending
 // at (dx, dy). 'line' is straight; 'arc' bulges to one side; 'wave' snakes;
 // 'loop' makes a full turn half way; 'custom' is drawn by hand (a.points, the
@@ -165,15 +166,24 @@ export function motionFrames(a, n = 24) {
 export const pathKeyframesCSS = (name, a, base = 0, turns = true) => `@keyframes ${name}{${motionFrames(a).map(([x, y, r], i, arr) =>
   `${(i / (arr.length - 1) * 100).toFixed(1)}%{translate:${x}px ${y}px${turns && pathTurns(a) ? `;rotate:${+(base + r).toFixed(1)}deg` : ''}}`).join('')}}`;
 // Drawn path: the points (offsets from the object's centre) — it starts where the object is.
-export function setMotionPath(id, points, duration = null) {
+// i: which of the object's animations (-1: a new one after the others, starting where the previous ones leave it).
+export function setMotionPath(id, points, duration = null, i = 0) {
   const b = currentSlide().blocks.find(x => x.id === id); if (!b || points.length < 2) return;
   commit(() => {
-    b.animation ||= { effect: 'path', order: animatedBlocks().length + 1, start: 'click', duration: 2000, delay: 0 };
-    Object.assign(b.animation, { effect: 'path', pathShape: 'custom', points: points.map(([x, y]) => [Math.round(x), Math.round(y)]) });
-    [b.animation.dx, b.animation.dy] = b.animation.points.at(-1);
-    if (duration) b.animation.duration = duration;
+    let a;
+    if (i === -1 && b.animation) { a = fresh('path', { start: 'afterPrev' }); (b.anims ||= []).push(a); }
+    else a = animsOf(b)[i] || (b.animation = fresh('path'));
+    Object.assign(a, { effect: 'path', pathShape: 'custom', points: points.map(([x, y]) => [Math.round(x), Math.round(y)]) });
+    [a.dx, a.dy] = a.points.at(-1);
+    if (duration) a.duration = duration;
     normalizeAnim();
   });
+}
+// Where the object is after its animations before the i-th: the sum of the paths (from its place).
+export function offsetBefore(b, i) {
+  let x = 0, y = 0;
+  animsOf(b).slice(0, i).forEach(a => { if (a.effect === 'path') { x += a.dx || 0; y += a.dy || 0; } });
+  return [x, y];
 }
 // A motion path from PowerPoint or LibreOffice ("M 0 0 L x y L … E", relative
 // to the slide size; curves C are taken by their points): its points; more than
@@ -200,56 +210,89 @@ export function simplifyStroke(pts, tol = 6) {
 }
 
 // Effects that make an object appear (it starts hidden until it plays).
-export const isEntrance = effect => !['fade-out', 'semi-fade-out', 'highlight-red', 'highlight-green', 'highlight-blue', 'highlight-current-red', 'highlight-current-green', 'highlight-current-blue', 'strike', 'path', 'grow', 'shrink'].includes(effect);
+export const isEntrance = effect => !['fade-out', 'semi-fade-out', 'highlight-red', 'highlight-green', 'highlight-blue', 'highlight-current-red', 'highlight-current-green', 'highlight-current-blue', 'strike', 'path', 'grow', 'shrink', 'clip3d', 'spin360'].includes(effect);
 
-// Per‑object animation: effect + order (fragment index) + start + timing.
+// Per‑object animations: effect + order (fragment index, the click) + start + timing.
+// An object can have several, one after another (like PowerPoint's "Add
+// animation"): the first is b.animation, the others b.anims — go somewhere,
+// then somewhere else, then play a 3D model's clip… seq keeps them in order.
+export const animsOf = b => [b.animation, ...(b.anims || [])].filter(Boolean);
+export const animKey = (b, i) => (i ? `${b.id}#${i}` : b.id);
+// Every animation of a slide, in play order: { b, a, i, key }.
+export function animEntries(slide = currentSlide()) {
+  const out = [];
+  (slide?.blocks || []).forEach((b, bi) => animsOf(b).forEach((a, i) => out.push({ b, a, i, key: animKey(b, i), k: a.seq ?? ((a.order || 0) * 1000 + bi + i * 0.001) })));
+  return out.sort((x, y) => x.k - y.k);
+}
+const nextSeq = () => animEntries().reduce((m, e) => Math.max(m, e.a.seq ?? e.k), 0) + 1;
+const fresh = (effect, props = {}) => ({ effect, order: animEntries().length + 1, seq: nextSeq(), start: 'click', duration: effect === 'path' ? 2000 : 500, delay: 0,
+  ...(effect === 'path' && { dx: 200, dy: 0 }), ...props });
+
 export function setAnimation(effect) {
   const b = selectedBlock(); if (!b) return;
   commit(() => {
     if (b.animation) b.animation.effect = effect;
-    else b.animation = { effect, order: animatedBlocks().length + 1, start: 'click', duration: 500, delay: 0 };
+    else b.animation = { ...fresh(effect), duration: 500 };
     if (effect === 'path' && !b.animation.dx && !b.animation.dy) b.animation.dx = 200;
     normalizeAnim();
   });
 }
-// Animation painter: copy the selected object's animation onto other objects.
+// One more animation for the selected object, after the ones it has (by default
+// right after the previous one). Returns its index.
+export function addAnimation(effect, props = {}) {
+  const b = selectedBlock(); if (!b) return -1;
+  let idx = 0;
+  commit(() => {
+    if (!b.animation) { b.animation = fresh(effect, props); idx = 0; }
+    else { (b.anims ||= []).push(fresh(effect, { start: 'afterPrev', ...props })); idx = b.anims.length; }
+    normalizeAnim();
+  });
+  return idx;
+}
+// Animation painter: copy the selected object's animations onto other objects.
 export function copyAnimationFrom(b = selectedBlock()) {
   if (!b || !b.animation) return null;
-  const { order, trigger, ...rest } = b.animation;
-  return structuredClone(rest);
+  const clean = ({ order, trigger, seq, ...rest }) => structuredClone(rest);
+  const out = clean(b.animation);
+  if (b.anims?.length) out.more = b.anims.map(clean);
+  return out;
 }
 export function pasteAnimationTo(ids, anim) {
   if (!anim) return;
+  const { more, ...main } = anim;
   commit(() => {
     for (const id of ids) {
       const b = byId(id); if (!b || b.type === 'connector') continue;
-      b.animation = { ...structuredClone(anim), order: animatedBlocks().length + 1 };
+      b.animation = { ...structuredClone(main), order: animEntries().length + 1, seq: nextSeq() };
+      if (more?.length) b.anims = more.map((a, n) => ({ ...structuredClone(a), seq: b.animation.seq + (n + 1) * 0.01 })); else delete b.anims;
     }
     normalizeAnim();
   });
 }
 export function clearAnimation() {
   const b = selectedBlock(); if (!b) return;
-  commit(() => { b.animation = null; normalizeAnim(); });
+  commit(() => { b.animation = null; delete b.anims; normalizeAnim(); });
 }
 
-// The slide's animated blocks, in play order.
+// The slide's animated blocks, in the order of their first animation.
 export function animatedBlocks() {
-  return currentSlide().blocks.filter(x => x.animation).sort((a, b) => a.animation.order - b.animation.order);
+  const seen = new Set();
+  return animEntries().map(e => e.b).filter(b => !seen.has(b.id) && seen.add(b.id));
 }
 const byId = id => currentSlide().blocks.find(x => x.id === id);
 
-export function setAnimPropForId(id, prop, value) {
-  const b = byId(id); if (!b || !b.animation) return;
+export function setAnimPropForId(id, prop, value, i = 0) {
+  const b = byId(id), a = b && animsOf(b)[i]; if (!a) return;
   commit(() => {
-    if (prop === 'duration' || prop === 'delay') b.animation[prop] = Math.max(0, +value || 0);
-    else if (prop === 'dx' || prop === 'dy') { b.animation[prop] = Math.round(+value || 0); if (b.animation.pathShape === 'custom') scalePoints(b.animation); }
-    else if (prop === 'spin') { if (+value) b.animation.spin = Math.round(+value); else delete b.animation.spin; }
-    else if (prop === 'turn' && !value) delete b.animation.turn;
-    else if (prop === 'points') { b.animation.points = value; [b.animation.dx, b.animation.dy] = value.at(-1); }
-    else if (prop === 'trigger' && !value) delete b.animation.trigger;
-    else b.animation[prop] = value;
-    if (prop === 'effect' && value === 'path' && !b.animation.dx && !b.animation.dy) b.animation.dx = 200;
+    if (prop === 'duration' || prop === 'delay') a[prop] = Math.max(0, +value || 0);
+    else if (prop === 'dx' || prop === 'dy') { a[prop] = Math.round(+value || 0); if (a.pathShape === 'custom') scalePoints(a); }
+    else if (prop === 'spin') { if (+value) a.spin = Math.round(+value); else delete a.spin; }
+    else if (prop === 'turn' && !value) delete a.turn;
+    else if (prop === 'points') { a.points = value; [a.dx, a.dy] = value.at(-1); }
+    else if (prop === 'trigger' && !value) delete a.trigger;
+    else if (prop === 'once') { if (value) a.once = true; else delete a.once; }
+    else a[prop] = value;
+    if (prop === 'effect' && value === 'path' && !a.dx && !a.dy) a.dx = 200;
     normalizeAnim();
   });
 }
@@ -259,45 +302,56 @@ function scalePoints(a) {
   const ang = Math.atan2(ny, nx) - Math.atan2(ey, ex), k = Math.hypot(nx, ny) / (Math.hypot(ex, ey) || 1), c = Math.cos(ang) * k, s = Math.sin(ang) * k;
   a.points = P.map(([x, y]) => [Math.round(x * c - y * s), Math.round(x * s + y * c)]); a.points[a.points.length - 1] = [nx, ny];
 }
-export function moveAnimForId(id, dir) {
+export function moveAnimForId(id, dir, i = 0) {
   commit(() => {
-    const list = animatedBlocks(); const i = list.findIndex(x => x.id === id); const j = i + dir;
-    if (i < 0 || j < 0 || j >= list.length) return;
-    const a = list[i].animation.order, b2 = list[j].animation.order;
-    list[i].animation.order = b2; list[j].animation.order = a; normalizeAnim();
+    const list = animEntries(), at = list.findIndex(e => e.b.id === id && e.i === i), to = at + dir;
+    if (at < 0 || to < 0 || to >= list.length) return;
+    list.forEach((e, n) => { e.a.seq = n + 1; });
+    [list[at].a.seq, list[to].a.seq] = [list[to].a.seq, list[at].a.seq];
+    normalizeAnim();
   });
 }
-export function clearAnimationForId(id) {
+export function clearAnimationForId(id, i = 0) {
   const b = byId(id); if (!b) return;
-  commit(() => { b.animation = null; normalizeAnim(); });
+  commit(() => {
+    if (i === 0) b.animation = b.anims?.shift() || null; else b.anims?.splice(i - 1, 1);
+    if (!b.anims?.length) delete b.anims;
+    normalizeAnim();
+  });
 }
 
 // Reassign fragment indices 1..k: "with previous" and "after previous" share
-// the step (click) of the animation before them.
+// the step (click) of the animation before them; seq becomes 1..n.
 function normalizeAnim() {
-  const list = animatedBlocks(); let idx = 0;
-  list.forEach((b, i) => {
-    if (i === 0 || !['withPrev', 'afterPrev'].includes(b.animation.start)) idx++;
-    b.animation.order = idx;
+  const list = animEntries(); let idx = 0;
+  list.forEach((e, n) => {
+    if (n === 0 || !['withPrev', 'afterPrev'].includes(e.a.start)) idx++;
+    e.a.order = idx; e.a.seq = n + 1;
   });
+  // Each object's animations in their play order too (its paths add up in that order).
+  for (const b of currentSlide().blocks) {
+    if (!b.anims?.length) continue;
+    const all = animsOf(b).sort((x, y) => x.seq - y.seq);
+    b.animation = all[0]; b.anims = all.slice(1);
+  }
 }
 
 // When each animation actually starts within its click (PowerPoint's timeline):
 // "with previous" starts together with the previous one, "after previous" when
-// it ends; the own delay is added on top. Returns Map id → { step, delay, dur }.
+// it ends; the own delay is added on top. Returns Map key → { step, delay, dur }
+// (key: the object's id for its first animation, "id#n" for the others).
 // Animations fired by a trigger object are outside the click sequence.
 export function animTimeline(slide = currentSlide()) {
-  const list = slide.blocks.filter(x => x.animation && !x.animation.trigger)
-    .sort((a, b) => a.animation.order - b.animation.order);
+  const list = animEntries(slide).filter(e => !e.a.trigger);
   const out = new Map();
   let base = 0, prevBase = 0, prevEnd = 0, step = 0;
-  list.forEach((b, i) => {
-    const a = b.animation, dur = a.duration ?? 500, own = a.delay ?? 0;
-    if (i === 0 || a.start === 'click' || !a.start) { step++; base = 0; }
+  list.forEach((e, n) => {
+    const a = e.a, dur = a.duration ?? 500, own = a.delay ?? 0;
+    if (n === 0 || a.start === 'click' || !a.start) { step++; base = 0; }
     else if (a.start === 'withPrev') base = prevBase;
     else if (a.start === 'afterPrev') base = prevEnd;
     const delay = base + own;
-    out.set(b.id, { step, delay, dur });
+    out.set(e.key, { step, delay, dur });
     prevBase = base; prevEnd = delay + dur;
   });
   return out;
