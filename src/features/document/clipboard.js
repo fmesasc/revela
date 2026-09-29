@@ -5,6 +5,7 @@
 // Copying also puts a marked JSON on the system clipboard so a paste in
 // another Revela tab works too.
 
+import { cleanValue } from './sanitize.js';
 import { state, commit, currentSlide, selectedBlocks, setMulti } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 
@@ -47,6 +48,7 @@ export function fromSystemText(text) {
 
 export function paste(data = clipboardData()) {
   if (!data?.blocks?.length) return 0;
+  cleanValue(data.blocks);                                    // (it may come from any site, through the system clipboard)
   const s = currentSlide(), idMap = new Map(), groups = new Map();
   const copies = structuredClone(data.blocks);
   copies.forEach(b => { const n = uid(); idMap.set(b.id, n); b.id = n; });

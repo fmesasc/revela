@@ -213,6 +213,51 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.fetch = real; W.Image = RealImage; }
   });
 
+  await test('seguridad: lo que llega de fuera no ejecuta código', async () => {
+    reset(); const W = frame.contentWindow;
+    const Sz = await W.eval("import('/src/features/document/sanitize.js')"), T = await W.eval("import('/src/core/text.js')");
+    // HTML of a deck: no scripts, handlers, frames or javascript: links; the rest intact.
+    const dirty = '<b>Hola</b><img src=x onerror="alert(1)"><script>alert(2)</script><a href="javascript:alert(3)">x</a><iframe src="https://e"></iframe><a href="https://ok.es">ok</a>';
+    const clean = Sz.cleanHTML(dirty);
+    assert(!/onerror|<script|javascript:|<iframe/i.test(clean) && /<b>Hola<\/b>/.test(clean) && /href="https:\/\/ok\.es"/.test(clean), 'HTML limpio: ' + clean);
+    eq(Sz.cleanHTML('<p style="color:red">Texto normal</p>'), '<p style="color:red">Texto normal</p>', 'lo normal no se toca');
+    // A whole deck opened from a file: fields that go into styles, sources and scripts.
+    const deck = R.model.emptyDeck();
+    deck.defaultTransition = "slide'};alert(1);//";
+    deck.slides[0].blocks.push({ id: 'z', type: 'text', html: '<img src=x onerror=alert(1)>', fontFamily: 'A"><img src=x onerror=alert(1)>', color: 'red;background:url(javascript:x)', x: 0, y: 0, w: 10, h: 10 },
+      { id: 'e', type: 'embed', src: 'javascript:alert(1)', x: 0, y: 0, w: 10, h: 10 }, { id: 't', type: 'table', rows: [['<svg onload=alert(1)>', 'ok']], x: 0, y: 0, w: 10, h: 10 });
+    R.store.replaceDeck(deck); await sleep(10);
+    const bs = R.state.deck.slides[0].blocks, by = id => bs.find(b => b.id === id);
+    assert(!/onerror/.test(by('z').html) && by('z').fontFamily === '' && by('z').color === '', 'abrir un archivo lo limpia');
+    eq(by('e').src, '', 'sin enlaces javascript:');
+    assert(!/onload/.test(by('t').rows[0][0]) && by('t').rows[0][1] === 'ok', 'celdas de tabla limpias');
+    eq(R.state.deck.defaultTransition, '', 'nada que se salga del script de la presentación');
+    assert(!/alert\(1\)/.test(R.io.buildHTML()), 'la presentación exportada no lo lleva');
+    // Pasting from another site through the system clipboard.
+    const n0 = slide().blocks.length;
+    R.clipboard.paste({ blocks: [{ id: 'p1', type: 'text', html: '<b onmouseover=alert(1)>x</b>', x: 0, y: 0, w: 10, h: 10 }] });
+    assert(slide().blocks.length === n0 + 1 && !/onmouseover/.test(slide().blocks.at(-1).html), 'pegar de fuera, limpio');
+    // A co-editor: no __proto__ paths; a commenter only comments.
+    const C = await W.eval("import('/src/features/live/collabsync.js')");
+    const root = { slides: [{ id: 's', comments: [] }] };
+    assert(!C.applyOp(root, { p: ['slides', 's', 'comments', '__proto__', 'lineHeight'], v: 'x' }) && ({}).lineHeight === undefined && W.Object.prototype.lineHeight === undefined, 'sin contaminar prototipos');
+    assert(!C.allowed({ p: ['slides', 's', 'comments', '__proto__', 'x'], v: 1 }, 'comment') && !C.allowed({ p: ['slides', 's', 'comments'], v: {} }, 'comment'), 'quien comenta no puede más');
+    assert(C.allowed({ p: ['slides', 's', 'comments', 'c1'], v: { id: 'c1', text: 'hola' } }, 'comment'), 'pero sí comentar');
+    const up = C.unpacker({ maxParts: 3 });
+    eq(up(JSON.stringify({ t: 'part', id: 'a', i: 0, n: 99999, s: 'x' })), null, 'mensajes por partes con límite');
+    // Data inside the presentation's scripts can't close them.
+    eq(T.jsData('</script><x>'), '"\\u003c/script>\\u003cx>"', 'datos seguros dentro de <script>');
+    // Viewer links: only https (or this site's blobs).
+    const vf = D.createElement('iframe'); vf.style.cssText = 'position:fixed;left:0;top:0;width:300px;height:200px;visibility:hidden'; D.body.appendChild(vf);
+    vf.src = `${new URL('view.html', D.baseURI)}?u=${encodeURIComponent('https://x/</script><script>parent.__pwned=1</script>')}`;
+    let msg = ''; for (let i = 0; i < 60 && !msg; i++) { await sleep(100); try { msg = vf.contentDocument.querySelector('#m')?.textContent || ''; } catch {} }
+    await sleep(300); vf.remove();
+    assert(!W.__pwned && !window.__pwned, 'el visor no ejecuta lo que venga en la dirección');
+    // Markdown: no javascript: links.
+    const md = await W.eval("import('/src/io/formats/markdown.js')");
+    assert(!/javascript:/.test(JSON.stringify(md.markdownToSlides('# T\n\n[x](javascript:alert(1)) y [w](https://w.es)'))), 'Markdown sin enlaces javascript:');
+  });
+
   await test('núcleo: los avisos de io/features usan los diálogos del editor', async () => {
     const p = R.notify.confirmUser('¿Seguro?');
     const modal = D.querySelector('.modal-backdrop .dlg-msg');

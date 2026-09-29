@@ -2,6 +2,7 @@
 // direct manipulation — drag from anywhere on a block, snap to alignment
 // guides, resize from the corners, edit text on double‑click.
 
+import { embedSandbox } from '../../features/document/sanitize.js';
 import { state, commit, currentSlide, selectedBlock, isSelected, setSelection } from '../../core/store.js';
 import { shadowCSS, levelCSS, textPadding, shapeSVG, shapeSig, chartSVG, chartSig, iconSVG, iconSig, applyWordart, inkSVG, inkSig, tableClass, tableVars } from '../../render/svg.js';
 import { figuresMap, captionLine } from '../../features/document/captions.js';
@@ -119,7 +120,7 @@ function drawBgMedia(slide) {
   if (el.dataset.k === want) return;
   el.dataset.k = want; el.innerHTML = ''; el.style.cssText = '';
   if (slide.bgVideo) { const v = document.createElement('video'); Object.assign(v, { src: slide.bgVideo, muted: true, loop: true, autoplay: true, playsInline: true }); el.appendChild(v); v.play?.().catch(() => {}); }
-  else if (slide.bgIframe) { const f = document.createElement('iframe'); f.src = slide.bgIframe; f.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin'); f.setAttribute('sandbox', 'allow-scripts allow-same-origin'); el.appendChild(f); }
+  else if (slide.bgIframe) { const f = document.createElement('iframe'); f.src = slide.bgIframe; f.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin'); f.setAttribute('sandbox', embedSandbox(slide.bgIframe, 'allow-scripts')); el.appendChild(f); }
   else { el.style.background = slide.background; el.style.opacity = slide.bgOpacity / 100; }
 }
 

@@ -2,6 +2,8 @@
 // document shown when presenting), and each object's inline HTML, reused by
 // the print and image exports.
 
+import { embedSandbox } from '../../features/document/sanitize.js';
+import { jsData } from '../../core/text.js';
 import { state } from '../../core/store.js';
 import { REVEAL, KATEX, MODEL_VIEWER, GIFUCT } from '../../core/vendor.js';
 import { download, slug } from '../files.js';
@@ -186,10 +188,10 @@ function blockHTMLRaw(b, slide) {
     return `<div${a} id="rvm-${b.id}" data-media="${esc(JSON.stringify(cfg))}" style="${box(b)}${b.type === 'image' ? `filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)};` : ''}"></div>${clicks}`;
   }
   if (b.type === 'image')
-    return `<img${a} src="${b.src}"${b.zoomable ? ' data-lightbox' : ''} alt="${b.decorative ? '' : esc(b.alt || '')}" style="${box(b)}object-fit:${b.fit || 'contain'};`
+    return `<img${a} src="${esc(b.src || '')}"${b.zoomable ? ' data-lightbox' : ''} alt="${b.decorative ? '' : esc(b.alt || '')}" style="${box(b)}object-fit:${b.fit || 'contain'};`
       + `filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)}">`;
   if (b.type === 'video')
-    return `<video${a} src="${b.src}" controls style="${box(b)}object-fit:contain"></video>`;
+    return `<video${a} src="${esc(b.src || '')}" controls style="${box(b)}object-fit:contain"></video>`;
   if (b.type === 'poll')     // live poll: question, live results and the QR to vote
     return `<div${a} class="rv-poll" data-poll="${esc(JSON.stringify({ pollId: b.pollId, kind: b.kind, display: b.display, question: b.question, options: b.options }))}" `
       + `style="${box(b)}display:grid;grid-template-columns:1fr auto;gap:1em;font-size:${b.fontSize || 32}px">`
@@ -201,12 +203,12 @@ function blockHTMLRaw(b, slide) {
     return `<video${a} data-camera autoplay muted playsinline style="${box(b)}object-fit:cover;background:#223;`
       + `border-radius:${b.shape === 'circle' ? '50%' : b.shape === 'rounded' ? '14%' : '0'}${b.mirror !== false ? ';scale:-1 1' : ''}"></video>`;
   if (b.type === 'audio')
-    return `<audio${a} src="${b.src}" controls style="${box(b)}"></audio>`;
+    return `<audio${a} src="${esc(b.src || '')}" controls style="${box(b)}"></audio>`;
   if (b.type === 'embed' && b.display === 'card')
     return `<a${a} class="rv-webcard" href="${esc(b.src || '')}" target="_blank" rel="noopener" style="${box(b)}display:block;text-decoration:none">${webCardHTML(b, t('Abrir la web'))}</a>`;
   if (b.type === 'embed')
-    return `<iframe${a} src="${b.src}" referrerpolicy="strict-origin-when-cross-origin"${b.refreshMin ? ` data-refresh-min="${+b.refreshMin}"` : ''} `
-      + `sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation" `
+    return `<iframe${a} src="${esc(b.src || '')}" referrerpolicy="strict-origin-when-cross-origin"${b.refreshMin ? ` data-refresh-min="${+b.refreshMin}"` : ''} `
+      + `sandbox="${embedSandbox(b.src)}" `
       + `style="${box(b)}border:0;background:#fff"></iframe>`;
   if (b.type === 'shape')
     return `<div${a} style="${box(b)}">${shapeSVG(b)}</div>`;
@@ -355,7 +357,7 @@ export const REVEAL_DEFAULTS = { controls: true, controlsLayout: 'bottom-right',
   mouseWheel: false, shuffle: false, hideInactiveCursor: true, jumpToSlide: true, previewLinks: false, rtl: false, center: true,
   autoAnimateDuration: 1.0, autoAnimateEasing: 'ease', autoSlideStoppable: true, fragmentInURL: true, zoom: true, search: true, parallax: '' };
 function revealOptions(deck, inApp) {
-  const o = { ...REVEAL_DEFAULTS, ...rv(deck) }, J = JSON.stringify;
+  const o = { ...REVEAL_DEFAULTS, ...rv(deck) }, J = jsData;
   return `controls:${!!o.controls}, controlsLayout:${J(o.controlsLayout)}, progress:${!!o.progress}, navigationMode:${J(o.navigationMode)},
    mouseWheel:${!!o.mouseWheel}, shuffle:${!!o.shuffle}, hideInactiveCursor:${!!o.hideInactiveCursor}, jumpToSlide:${!!o.jumpToSlide},
    previewLinks:${!!o.previewLinks}, rtl:${!!o.rtl}, autoAnimateDuration:${+o.autoAnimateDuration || 1}, autoAnimateEasing:${J(o.autoAnimateEasing)},
@@ -397,7 +399,7 @@ export function buildHTML(deck = state.deck, { inApp = false } = {}) {
   const lg = deck.logo || {};
   const LOGO_POS = { br: 'right:16px;bottom:16px', bl: 'left:16px;bottom:16px', tr: 'right:16px;top:16px', tl: 'left:16px;top:16px' };
   const logoHTML = lg.src
-    ? `<img class="deck-logo" src="${lg.src}" style="position:fixed;${LOGO_POS[lg.position] || LOGO_POS.br};height:${lg.size || 120}px;z-index:31;pointer-events:none">`
+    ? `<img class="deck-logo" src="${esc(lg.src)}" style="position:fixed;${LOGO_POS[lg.position] || LOGO_POS.br};height:${lg.size || 120}px;z-index:31;pointer-events:none">`
     : '';
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
@@ -454,7 +456,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  html.rv-canvas-overview .reveal.rv-canvas .slides>section{pointer-events:auto;cursor:zoom-in}
  .reveal.rv-canvas .rv-world{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0;z-index:1;pointer-events:none;transition:transform var(--rv-fly,1.4s) cubic-bezier(.65,0,.35,1)}` : ''}
 </style></head><body>
-<div class="reveal${canvas ? ' rv-canvas' : ''}"><div class="slides">${canvas && deck.canvas.image?.src ? `<div class="rv-world"><img alt="" src="${deck.canvas.image.src}" style="max-width:none;max-height:none;margin:0;position:absolute;left:${deck.canvas.image.x}px;top:${deck.canvas.image.y}px;width:${deck.canvas.image.w}px;height:${deck.canvas.image.h}px"></div>` : ''}
+<div class="reveal${canvas ? ' rv-canvas' : ''}"><div class="slides">${canvas && deck.canvas.image?.src ? `<div class="rv-world"><img alt="" src="${esc(deck.canvas.image.src)}" style="max-width:none;max-height:none;margin:0;position:absolute;left:${deck.canvas.image.x}px;top:${deck.canvas.image.y}px;width:${deck.canvas.image.w}px;height:${deck.canvas.image.h}px"></div>` : ''}
 ${slides}
 </div>${footerText}${logoHTML}</div>
 <script src="${REVEAL}/dist/reveal.js"></script>
@@ -464,8 +466,8 @@ ${rv(deck).search !== false ? `<script src="${REVEAL}/plugin/search/search.js"><
 ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : ''}
 <script>
  Reveal.initialize({ width:${w}, height:${h}, margin:0.03, hash:${inApp ? 'false' : 'true'}, respondToHashChanges:true, loop:${deck.loop ? 'true' : 'false'},
-   slideNumber:${sn.show ? `'${sn.format || 'c'}'` : 'false'},
-   transition:'${deck.defaultTransition}', transitionSpeed:'${deck.transitionSpeed}',
+   slideNumber:${sn.show ? jsData(sn.format || 'c') : 'false'},
+   transition:${jsData(deck.defaultTransition)}, transitionSpeed:${jsData(deck.transitionSpeed)},
    ${revealOptions(deck, inApp)}${canvas ? " center:false, viewDistance:1000, mobileViewDistance:1000, backgroundTransition:'none'," : ''}
    plugins:[ RevealNotes${hasCode ? ', RevealHighlight' : ''}${rv(deck).zoom !== false ? ', RevealZoom' : ''}${rv(deck).search !== false ? ', RevealSearch' : ''} ] });
  ${hasMath ? 'window.addEventListener("load",function(){window.katex&&document.querySelectorAll(".math[data-latex]").forEach(function(el){try{katex.render(el.getAttribute("data-latex"),el,{throwOnError:false,displayMode:true});}catch(e){}});});' : ''}

@@ -1,6 +1,8 @@
 // What each object shows on the canvas and how it is edited in place: text,
 // equations (KaTeX), code (highlight.js), tables, embeds, 3D models, slide links.
 
+import { esc } from '../../core/text.js';
+import { embedSandbox } from '../../features/document/sanitize.js';
 import { state, commit, currentSlide } from '../../core/store.js';
 import { borderCSS, tableColsHTML, cellBg, textPadding, webCardHTML, webCardSig, mathTeX, mathCSS, mathSig, shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan, inkSVG, inkSig, tableClass, tableVars } from '../../render/svg.js';
 import { collectFigures, captionLine, figIndexTitle } from '../../features/document/captions.js';
@@ -32,7 +34,7 @@ export function renderSlideRef(wrap, b) {
 }
 export function figIndexHTML(b) {
   const figs = collectFigures(state.deck, b && b.kind);
-  return `<b>${t(figIndexTitle(b && b.kind))}</b><ul>` + figs.map(f => `<li>${captionLine(f)}</li>`).join('') + `</ul>`;
+  return `<b>${t(figIndexTitle(b && b.kind))}</b><ul>` + figs.map(f => `<li>${esc(captionLine(f))}</li>`).join('') + `</ul>`;
 }
 export const connectorHTML = b => {
   const { w, h } = state.deck.size;
@@ -216,7 +218,7 @@ export function embedContent(b) {
   bar.append(url, asCard, open);
   const f = document.createElement('iframe');
   f.src = b.src || '';
-  f.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-forms allow-presentation');
+  f.setAttribute('sandbox', embedSandbox(b.src));
   // Only our origin, not the page: YouTube and other players refuse to play
   // without it ("Error 153").
   f.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');

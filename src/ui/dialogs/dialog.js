@@ -11,8 +11,9 @@ function dialog({ msg, kind, value = '' }) {
       ? `<input class="dlg-in" type="text" value="${(value || '').replace(/"/g, '&quot;')}">` : '';
     const cancel = kind !== 'alert' ? `<button class="dlg-cancel mini2">${t('Cancelar')}</button>` : '';
     back.innerHTML = `<div class="modal" style="min-width:300px;text-align:left">
-      <p class="dlg-msg">${msg}</p>${input}
+      <p class="dlg-msg" style="white-space:pre-line"></p>${input}
       <div class="fr-actions" style="justify-content:flex-end;gap:8px">${cancel}<button class="fr-do dlg-ok">${t('Aceptar')}</button></div></div>`;
+    back.querySelector('.dlg-msg').textContent = msg ?? '';          // (text: file names and error messages can't become HTML)
     document.body.appendChild(back);
     const done = v => { back.remove(); resolve(v); };
     const inp = back.querySelector('.dlg-in');

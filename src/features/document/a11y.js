@@ -2,6 +2,7 @@
 // equivalents). Pure analysis of the deck model; returns a list of issues that the
 // UI shows and lets the user jump to.
 
+import { plainText } from '../../core/text.js';
 import { state } from '../../core/store.js';
 
 // Default text / background colour of each reveal.js theme (what the export uses
@@ -28,12 +29,12 @@ export function contrast(a, b) {
   const [l1, l2] = [lum(A), lum(B)].sort((x, y) => y - x);
   return (l1 + 0.05) / (l2 + 0.05);
 }
-const plain = html => { const d = document.createElement('div'); d.innerHTML = html || ''; return (d.textContent || '').trim(); };
+const plain = html => plainText(html);
 
 // Colours actually used by the text: explicit colour runs, plus the theme colour
 // if some text is left without one.
 function textColours(html, themeFg) {
-  const d = document.createElement('div'); d.innerHTML = html || '';
+  const d = new DOMParser().parseFromString(html || '', 'text/html').body;       // (inert: nothing in it loads or runs)
   const cols = [];
   d.querySelectorAll('[style*="color"], font[color]').forEach(el => {
     const c = el.getAttribute('color') || el.style.color;

@@ -2,6 +2,7 @@
 
 import { subscribe, state, undo, redo, selectedBlock, selectedBlocks } from '../../core/store.js';
 import * as clip from '../../features/document/clipboard.js';
+import { sanitizeDeck } from '../../features/document/sanitize.js';
 import { initCanvas, renderCanvas, cycleSelection } from '../../ui/canvas/canvas.js';
 import { nudge } from '../../ui/canvas/interact.js';
 import { initPanel, renderPanel } from '../../ui/shell/navigator.js';
@@ -67,6 +68,10 @@ import * as vendor from '../../core/vendor.js';
 import { session } from '../../core/session.js';
 import * as ai from '../../features/ai/openrouter.js';
 import * as api from '../../api/index.js';
+
+// Every deck from outside (files, Drive, imports, co-editors) is cleaned before use; so is the one saved here.
+store.setDeckFilter(sanitizeDeck);
+sanitizeDeck(state.deck);
 
 // io and features ask the user through core/notify: here, with our dialogs.
 notify.setNotifier({ alert: alertDialog, confirm: confirmDialog, prompt: promptDialog });
@@ -185,6 +190,8 @@ window.Revela = Revela;
 if (!testing && !new URLSearchParams(location.search).has('collab')) loadNewerDeck(state.deck).then(d => { if (d) store.adoptDeck(d, { sameDocument: true }); });
 initCollabUI();
 initHome();
+// Leaving the page: what is still waiting to be written is written now.
+window.addEventListener('pagehide', () => model.flushSave());
 startAutoVersions();
 if (!testing) loadPlugins();
 // Charts linked to a CSV load fresh data when the editor opens.

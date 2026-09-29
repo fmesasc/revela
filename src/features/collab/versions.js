@@ -3,7 +3,7 @@
 // named versions you save yourself. Restoring first saves the current state,
 // so nothing is lost.
 
-import { state, subscribe, replaceDeck, snapshot } from '../../core/store.js';
+import { state, subscribe, replaceDeck, snapshot, docVersion } from '../../core/store.js';
 import { approxSize } from '../../core/model.js';
 import { verPut, verGet, verDel, verAll } from '../../core/idb.js';
 
@@ -11,7 +11,7 @@ const AUTO_EVERY = 5 * 60 * 1000;     // at most one automatic snapshot every 5 
 const AUTO_KEEP = 30;                 // automatic snapshots kept (named ones are never pruned)
 let lastAuto = 0, lastSig = '';
 
-const sig = d => `${d.slides.length}|${d.savedAt || ''}`;
+const sig = () => docVersion();                    // (the content's version: not the save time, which changes with every click)
 export async function saveVersion(name = '', auto = false) {
   const deck = snapshot(state.deck);
   const v = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, time: Date.now(), name, auto,
@@ -41,10 +41,10 @@ export const deleteVersion = id => verDel(id);
 // Automatic snapshots: after edits, at most every AUTO_EVERY.
 export function startAutoVersions() {
   subscribe(() => {
-    const now = Date.now(), s = sig(state.deck);
+    const now = Date.now(), s = sig();
     if (s === lastSig || now - lastAuto < AUTO_EVERY) return;
     lastSig = s; lastAuto = now;
     saveVersion('', true).catch(() => {});
   });
-  lastAuto = Date.now();                                     // first snapshot after 5 minutes of work
+  lastAuto = Date.now(); lastSig = sig();                   // first snapshot after 5 minutes of work (with changes)
 }

@@ -41,6 +41,8 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 // A page that opens a sealed presentation: from `env` (embedded) or fetched
 // from `src`; the secret is the link's #k=… or a password typed by the viewer.
 // Works on its own (a file you upload anywhere) and inside an iframe.
+// A value inside a <script>: JSON that can't close the script (<\/script>) or break lines.
+const js = v => JSON.stringify(v).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
 export function openerPageHTML({ env = null, src = null, title = 'Presentación', lang = 'es', texts = {} } = {}) {
   const T = { locked: 'Presentación protegida', ask: 'Escribe la contraseña para verla.', open: 'Abrir', wrong: 'Contraseña incorrecta.',
     nokey: 'Falta la clave del enlace: cópialo entero, con lo que va detrás de «#».', loading: 'Abriendo…', failed: 'No se pudo abrir la presentación.',
@@ -66,10 +68,16 @@ export function openerPageHTML({ env = null, src = null, title = 'Presentación'
 <script>
 ${unseal.toString()}
 (function(){
- var T=${JSON.stringify({ wrong: T.wrong, nokey: T.nokey, failed: T.failed, signin: T.signin, loading: T.loading })};
- var SRC=${JSON.stringify(src)}, ENV=${JSON.stringify(env)};
+ var T=${js({ wrong: T.wrong, nokey: T.nokey, failed: T.failed, signin: T.signin, loading: T.loading })};
+ var SRC=${js(src)}, ENV=${js(env)};
  var k=(location.hash.match(/[#&]k=([\\w-]+)/)||[])[1];
- function show(html){document.open();document.write(html);document.close();}
+ // The presentation runs in a sandboxed frame without this site's origin: whatever
+ // it contains can't reach Revela's data (keys, documents) on this domain.
+ function show(html){var f=document.createElement('iframe');
+  f.setAttribute('sandbox','allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms allow-modals allow-presentation');
+  f.setAttribute('allow','fullscreen; autoplay; clipboard-write');f.setAttribute('allowfullscreen','');
+  f.style.cssText='position:fixed;inset:0;width:100%;height:100%;border:0;background:#000';f.srcdoc=html;
+  document.body.replaceChildren(f);f.focus();}
  function msg(t){document.getElementById('m').textContent=t;}
  function ready(env){
   if(env.mode==='key'){ if(!k) return msg(T.nokey);

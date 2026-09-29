@@ -74,7 +74,8 @@ export function inkJS(W, H, labels) {
  if(!SR){var ccb=bar.querySelector('[data-t="cc"]');if(ccb)ccb.hidden=true;}
  function captions(){if(!SR)return;
   if(capOn){capOn=false;try{rec.stop();}catch(_){}if(capEl)capEl.style.display='none';bar.querySelector('[data-t="cc"]').classList.remove('on');return;}
-  if(!sessionStorage.getItem('revela-cc-ok')){if(!confirm(L.ccWarn))return;sessionStorage.setItem('revela-cc-ok','1');}
+  var ok;try{ok=sessionStorage.getItem('revela-cc-ok');}catch(e){}
+  if(!ok){if(!confirm(L.ccWarn))return;try{sessionStorage.setItem('revela-cc-ok','1');}catch(e){}}
   if(!capEl){capEl=document.createElement('div');capEl.id='captions';document.body.appendChild(capEl);}
   capEl.style.display='block';capEl.textContent='…';capOn=true;bar.querySelector('[data-t="cc"]').classList.add('on');
   rec=new SR();rec.lang=L.lang;rec.continuous=true;rec.interimResults=true;

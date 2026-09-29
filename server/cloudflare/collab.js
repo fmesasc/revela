@@ -33,6 +33,7 @@ export async function handleCollab(req, env, url, json) {
     const who = await authorize(req, env, env.FETCH || fetch);
     if (!who) return json({ error: 'forbidden' }, 403);
     const max = (+env.MAX_MB || 30) * 1024 * 1024;
+    if (+(req.headers.get('Content-Length') || 0) > max) return json({ error: 'too large' }, 413);
     const body = await req.text();
     if (body.length > max) return json({ error: 'too large' }, 413);
     let deck; try { deck = JSON.parse(body).deck; } catch { return json({ error: 'bad json' }, 400); }
@@ -103,7 +104,8 @@ export class CollabRoom {
   async webSocketMessage(ws, data) {
     const a = ws.deserializeAttachment() || {};
     if (!this.unpack) this.unpack = new Map();
-    let up = this.unpack.get(ws); if (!up) { up = unpacker(); this.unpack.set(ws, up); }
+    // Until it says who it is (a small hello), a socket may send no long messages.
+    let up = this.unpack.get(ws); if (!up) { up = a.id ? unpacker() : unpacker({ maxParts: 1, maxPending: 1 }); this.unpack.set(ws, up); }
     const msg = up(typeof data === 'string' ? data : new TextDecoder().decode(data)); if (!msg) return;
     const doc = await this.load(); if (!doc) { ws.close(1011, 'gone'); return; }
     if (!a.id) {                                             // first message: who, with which link
@@ -111,7 +113,7 @@ export class CollabRoom {
       if (!role) { this.send(ws, { t: 'denied' }); ws.close(1008, 'denied'); return; }
       const n = this.peers().length;
       Object.assign(a, { id: 'p' + random(4), name: String(msg.name || '').slice(0, 40) || 'Invitado', color: COLORS[n % COLORS.length], role, owner: msg.token === doc.meta.owner, slide: null, sel: null });
-      ws.serializeAttachment(a);
+      ws.serializeAttachment(a); this.unpack.delete(ws);          // (now it may)
       this.send(ws, { t: 'welcome', you: a.id, role, owner: a.owner, color: a.color, deck: doc.deck, peers: this.peerList(), chat: doc.chat.slice(-100) });
       this.toAll({ t: 'peers', peers: this.peerList() }, a.id);
       return;

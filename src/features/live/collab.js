@@ -12,6 +12,7 @@
 
 import { state, subscribe, snapshot, applyRemote, adoptDeck, setPersist, currentSlide } from '../../core/store.js';
 import { diff, applyOps, allowed, ROLES } from './collabsync.js';
+import { cleanValue } from '../document/sanitize.js';
 import { PEERJS, loadScript } from '../../core/vendor.js';
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -42,6 +43,7 @@ function watchLocal(sendOps) {
 const presenceOf = () => ({ slide: currentSlide()?.id || null, sel: state.ui.selection || null });
 function applyIncoming(ops, watcher) {
   watcher.applyToLast(ops);
+  for (const op of ops) if (op && 'v' in op) op.v = cleanValue(op.v, String(op.p?.at(-1) ?? ''));   // (a co-editor's changes can't run code)
   applyRemote(root => applyOps(root, ops));
 }
 

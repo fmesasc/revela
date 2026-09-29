@@ -228,7 +228,7 @@ function readBody(bodyPr) {
   };
 }
 
-const cssFont = f => `'${String(f).replace(/'/g, '')}'`;
+const cssFont = f => `'${String(f).replace(/['"<>;\\{}]/g, '')}'`;           // (a font name can't break out of the style)
 // Paragraphs → HTML with the resolved formatting. Sizes are in px; the box
 // gets the first paragraph's size, family and colour, and runs only say where
 // they differ.
@@ -296,7 +296,7 @@ function paragraphsHTML(txBody, ctx, style) {
       const tag = bu === 'num' ? 'ol' : 'ul';
       if (list !== tag) { close(); out.push(`<${tag} style="margin:0;padding:0">`); list = tag; }
       const marker = bu === 'num' ? `list-style-type:${AUTONUM[pp.bullet?.scheme] || 'decimal'}`
-        : `list-style-type:'${(pp.bullet?.char || '•').replace(/'/g, '')}  '`;
+        : `list-style-type:'${(pp.bullet?.char || '•').replace(/['"<>;\\{}]/g, '')}  '`;
       // The text starts at marL; the bullet hangs in the first-line indent.
       pcss.push(marker, 'list-style-position:outside', `margin-left:${Math.max(0, marL)}px`);
       if (pp.buColor) pcss.push(`color:${pp.buColor}`);

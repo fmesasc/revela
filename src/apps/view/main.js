@@ -7,8 +7,11 @@ import { driveSealedURL } from '../../io/cloud/gdrive.js';
 import { t, currentLang } from '../../i18n/index.js';
 
 const p = new URLSearchParams(location.search);
-const src = p.get('d') ? driveSealedURL(p.get('d'), p.get('a') || '')
-  : /^(https:\/\/|blob:)/.test(p.get('u') || '') ? p.get('u') : null;   // blob: only ever from this same site
+// Only an https address, or a blob made by this same site.
+function safeSource(u) {
+  try { const x = new URL(u); return x.protocol === 'https:' || (x.protocol === 'blob:' && x.origin === location.origin) ? x.href : null; } catch { return null; }
+}
+const src = p.get('d') ? driveSealedURL(p.get('d'), p.get('a') || '') : safeSource(p.get('u') || '');
 const texts = { locked: t('Presentación protegida'), ask: t('Escribe la contraseña para verla.'), open: t('Abrir'),
   wrong: t('Contraseña incorrecta.'), nokey: t('Falta la clave del enlace: cópialo entero, con lo que va detrás de «#».'),
   loading: t('Abriendo…'), failed: t('No se pudo abrir la presentación: puede que ya no se comparta.'),

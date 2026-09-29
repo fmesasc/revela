@@ -33,8 +33,10 @@ export function blockPreview(b) {
       + `${b.wordart ? wordartCSS(b.wordart) : ''}">`
       + `${b.html || ''}</div>`;
   } else if (b.type === 'image') {
-    el.innerHTML = `<img src="${b.src}" style="width:100%;height:100%;object-fit:${b.fit || 'contain'};`
-      + `filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)}">`;
+    // (An element with its src set: the picture's megabytes aren't parsed as HTML.)
+    const img = document.createElement('img'); img.src = b.src || ''; img.alt = '';
+    img.style.cssText = `width:100%;height:100%;object-fit:${b.fit || 'contain'};filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)}`;
+    el.replaceChildren(img);
   } else if (b.type === 'video') {
     el.innerHTML = `<div style="width:100%;height:100%;background:#000;display:grid;place-items:center;color:#fff;font-size:60px">▶</div>`;
   } else if (b.type === 'audio') {

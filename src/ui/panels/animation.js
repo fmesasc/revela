@@ -1,6 +1,7 @@
 // Animation pane: the slide's effects in order, with timing, triggers and
 // reordering (PowerPoint's Animation Pane).
 
+import { esc } from '../../core/text.js';
 import { currentSlide, commit, setSelection, subscribe } from '../../core/store.js';
 import * as trans from '../../features/animation/transitions.js';
 import * as poll from '../../features/live/poll.js';
@@ -57,7 +58,7 @@ export function openAnimPanel() {
             .map(([v, l]) => `<option value="${v}"${(a.start || 'click') === v ? ' selected' : ''}>${t(l)}</option>`).join('')}</select></label>
           <label>${t('Disparador')}<select data-p="trigger"><option value="">${t('Secuencia de clics')}</option>${currentSlide().blocks
             .filter(x => x.id !== b.id && x.type !== 'connector').map(x => `<option value="${x.id}"${a.trigger === x.id ? ' selected' : ''}>${t('Al hacer clic en')} ${objLabel(x).replace(/</g, '&lt;')}</option>`).join('')}</select></label>
-          ${a.effect === 'clip3d' ? `<label>${t('Animación')}<select data-p="clip">${[...new Set([a.clip || '*', ...clipsOf(b)])].map(c => `<option value="${c}"${(a.clip || '*') === c ? ' selected' : ''}>${c === '*' ? t('La primera') : c}</option>`).join('')}</select></label>
+          ${a.effect === 'clip3d' ? `<label>${t('Animación')}<select data-p="clip">${[...new Set([a.clip || '*', ...clipsOf(b)])].map(c => `<option value="${esc(c)}"${(a.clip || '*') === c ? ' selected' : ''}>${c === '*' ? t('La primera') : esc(c)}</option>`).join('')}</select></label>
           <label class="an-chk"><input type="checkbox" data-p="once"${a.once ? ' checked' : ''}> ${t('Una vez y volver al reposo')}</label>` : ''}
           ${a.effect === 'path' ? `<label>${t('Recorrido')}<select data-p="pathShape">${[['line', 'Recto'], ['arc', 'Arco'], ['wave', 'Onda'], ['loop', 'Bucle'], ...(a.points ? [['custom', 'Dibujado']] : [])]
             .map(([v, l]) => `<option value="${v}"${(a.pathShape || 'line') === v ? ' selected' : ''}>${t(l)}</option>`).join('')}</select></label>

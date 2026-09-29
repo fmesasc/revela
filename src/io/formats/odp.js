@@ -60,6 +60,9 @@ function fromSmil(type, sub, reverse) {
   return [kind, null];
 }
 
+// A colour from the file, only if it is one (it goes into a style attribute).
+const colour = c => (/^#[0-9a-f]{3,8}$/i.test(c || '') ? c : null);
+
 export async function buildODP(deck = state.deck) {
   const JSZip = await loadZip();
   const { w: W, h: H } = deck.size;
@@ -303,7 +306,7 @@ export async function importODP(file) {
         const inner = [...n.childNodes].map(run).join('');
         if (n.tagName !== 'text:span') return inner;
         const sn = n.getAttribute('text:style-name'); let h = inner;
-        const c = prop(sn, 'style:text-properties', 'fo:color'), z = prop(sn, 'style:text-properties', 'fo:font-size');
+        const c = colour(prop(sn, 'style:text-properties', 'fo:color')), z = prop(sn, 'style:text-properties', 'fo:font-size');
         if (c || z) h = `<span style="${c ? `color:${c};` : ''}${z ? `font-size:${Math.round(len(z) * S)}px` : ''}">${h}</span>`;
         if (prop(sn, 'style:text-properties', 'fo:font-weight') === 'bold') h = `<b>${h}</b>`;
         if (prop(sn, 'style:text-properties', 'fo:font-style') === 'italic') h = `<i>${h}</i>`;
@@ -377,7 +380,7 @@ export async function importODP(file) {
           const z = prop(pz, 'style:text-properties', 'fo:font-size');
           const al = { center: 'center', end: 'right', right: 'right', justify: 'justify' }[prop(pz, 'style:paragraph-properties', 'fo:text-align')];
           const va = { middle: 'middle', bottom: 'bottom' }[prop(sn, 'style:graphic-properties', 'draw:textarea-vertical-align')];
-          const pc = prop(pz, 'style:text-properties', 'fo:color'); if (pc) html = `<div style="color:${pc}">${html}</div>`;
+          const pc = colour(prop(pz, 'style:text-properties', 'fo:color')); if (pc) html = `<div style="color:${pc}">${html}</div>`;
           blocks.push({ id: uid(), type: 'text', html, fontSize: z ? Math.round(len(z) * S) : 28, ...(al && { textAlign: al }), ...(va && { vAlign: va }), ...geo(el) });
         }
       } else if (tag === 'draw:custom-shape' || tag === 'draw:rect' || tag === 'draw:ellipse') {

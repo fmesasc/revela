@@ -44,7 +44,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   await test('números de diapositiva configurables en el export', async () => {
     reset(); R.state.deck.slideNumber = { show: true, position: 'tl', format: 'c/t' };
     const html = R.io.buildHTML();
-    assert(/slideNumber:'c\/t'/.test(html), 'formato del número');
+    assert(/slideNumber:["']c\/t["']/.test(html), 'formato del número');
     assert(/\.slide-number\{[^}]*top:8px/.test(html), 'posición del número');
   });
 

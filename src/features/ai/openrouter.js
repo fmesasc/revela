@@ -7,6 +7,7 @@
 // challenge; they come back with ?code=…, which we exchange for a key that is
 // stored only in this browser.
 
+import { plainText } from '../../core/text.js';
 import { state, commit, currentSlide, selectedBlock } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 import { currentLang } from '../../i18n/index.js';
@@ -77,7 +78,7 @@ export const lang = () => LANG[currentLang()] || 'español';
 export const parseJSON = s => { const t = String(s).replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
   try { return JSON.parse(t); } catch { const a = t.indexOf('{'), b = t.lastIndexOf('}'); if (a >= 0 && b > a) return JSON.parse(t.slice(a, b + 1)); throw new Error('EMPTY'); } };
 export const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-export const plain = html => { const d = document.createElement('div'); d.innerHTML = html || ''; return (d.innerText || d.textContent || '').trim(); };
+export const plain = html => plainText(html);
 
 // Generate a deck outline and insert it as new slides after the current one.
 export async function generateSlides(topic, count = 6) {

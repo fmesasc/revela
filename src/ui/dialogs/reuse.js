@@ -3,6 +3,7 @@
 // insert copies after the current slide.
 
 import { importSlides } from '../../features/document/slides.js';
+import { sanitizeDeck } from '../../features/document/sanitize.js';
 import { importPPTX } from '../../io/formats/pptx-import.js';
 import { importODP } from '../../io/formats/odp.js';
 import { blockPreview } from '../shell/preview.js';
@@ -16,7 +17,7 @@ export function pickReuseFile() {
   inp.onchange = async () => {
     const f = inp.files[0]; if (!f) return;
     try {
-      const deck = /\.pptx$/i.test(f.name) ? await importPPTX(f) : /\.odp$/i.test(f.name) ? await importODP(f) : JSON.parse(await f.text());
+      const deck = sanitizeDeck(/\.pptx$/i.test(f.name) ? await importPPTX(f) : /\.odp$/i.test(f.name) ? await importODP(f) : JSON.parse(await f.text()));
       if (!deck || !Array.isArray(deck.slides) || !deck.slides.length) throw new Error('sin diapositivas');
       openReuseDialog(deck, f.name);
     } catch (e) { alertDialog(t('No se pudo leer el archivo.') + ' ' + (e.message || '')); }

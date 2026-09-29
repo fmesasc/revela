@@ -2,6 +2,7 @@
 // adds one more animation to the selected object, after the ones it has — so
 // it can appear, go somewhere, then somewhere else, turn, play a 3D clip…
 
+import { esc } from '../../core/text.js';
 import { selectedBlock } from '../../core/store.js';
 import { addAnimation, animsOf } from '../../features/animation/transitions.js';
 import { startPathDraw } from '../canvas/pathdraw.js';
@@ -24,7 +25,7 @@ export function openAddAnimation(anchor) {
   const clips = b.type === 'model' ? clipsOf(b) : [];
   const sections = [...PALETTE, ...(clips.length ? [['Animación del modelo 3D', clips.map(c => [`clip:${c}`, c, 'play_circle'])]] : [])];
   m.innerHTML = `<p class="host-help">${animsOf(b).length ? t('Se añade después de sus animaciones ({n}).').replace('{n}', animsOf(b).length) : t('Su primera animación.')}</p>`
-    + sections.map(([title, items]) => `<div class="aa-sec"><b>${t(title)}</b><div class="aa-items">${items.map(([k, l, i]) => `<button type="button" data-add="${k.replace(/"/g, '&quot;')}"><i class="ms">${i}</i>${t(l)}</button>`).join('')}</div></div>`).join('');
+    + sections.map(([title, items]) => `<div class="aa-sec"><b>${t(title)}</b><div class="aa-items">${items.map(([k, l, i]) => `<button type="button" data-add="${esc(k)}"><i class="ms">${i}</i>${esc(t(l))}</button>`).join('')}</div></div>`).join('');
   document.body.appendChild(m);
   const r = anchor.getBoundingClientRect(); m.style.left = Math.min(r.left, innerWidth - 340) + 'px'; m.style.top = r.bottom + 6 + 'px';
   const off = e => { if (!m.contains(e.target)) { m.remove(); document.removeEventListener('pointerdown', off, true); } };

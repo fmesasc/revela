@@ -13,7 +13,7 @@ function inline(s) {
     .replace(/\*\*([^*]+)\*\*|__([^_]+)__/g, (m, a, b) => `<b>${a || b}</b>`)
     .replace(/(^|[^*])\*([^*]+)\*|(^|[^_])_([^_]+)_/g, (m, p1, a, p2, b) => `${p1 ?? p2 ?? ''}<i>${a || b}</i>`)
     .replace(/~~([^~]+)~~/g, '<s>$1</s>')
-    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, txt, url) => `<a href="${url.replace(/"/g, '&quot;')}">${txt}</a>`);
+    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, txt, url) => (/^(https?:|mailto:|#|\/|\.)/i.test(url) || !/^[a-z][\w+.-]*:/i.test(url) ? `<a href="${url.replace(/"/g, '&quot;')}">${txt}</a>` : txt));   // (no javascript: links)
 }
 
 // Markdown body lines → HTML (paragraphs, bullet and numbered lists, nesting by indent).

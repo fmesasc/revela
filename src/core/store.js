@@ -106,7 +106,7 @@ export function commit(fn, { history = true, force = false, comment = false } = 
   if (fn) fn();
   clampSlide();
   if (history) checkpoint();
-  persist && saveDeck(state.deck);
+  save();
   notify();
   // What drawing it filled in (default styles created on first use…) belongs to this step.
   if (history) base = snapshot(state.deck);
@@ -119,7 +119,7 @@ export function mutate(fn) { commit(fn, { history: false }); }
 export function amend(fn) {
   if (fn) fn();
   clampSlide(); base = snapshot(state.deck);
-  persist && saveDeck(state.deck); notify();
+  save(); notify();
 }
 export const canUndo = () => past.length > 0 || !same(base, state.deck);
 export const canRedo = () => future.length > 0;
@@ -128,14 +128,14 @@ export function undo() {
   if (!past.length) return;
   future.push(snapshot(state.deck));
   state.deck = past.pop();
-  clampSlide(); persist && saveDeck(state.deck); notify();
+  clampSlide(); save(); notify();
   base = snapshot(state.deck);
 }
 export function redo() {
   if (!future.length) return;
   past.push(snapshot(state.deck));
   state.deck = future.pop();
-  clampSlide(); persist && saveDeck(state.deck); notify();
+  clampSlide(); save(); notify();
   base = snapshot(state.deck);
 }
 
@@ -143,26 +143,43 @@ export function redo() {
 // shared document: that copy is theirs).
 let persist = true;
 export const setPersist = on => { persist = !!on; };
+// The document's version: it goes up only when its content changes (not with
+// selection, tabs or zoom), so saving — here, to Drive, as a version — happens
+// only then, instead of serialising the whole deck at every click.
+let version = 0, persisted = snapshot(state.deck);
+export const docVersion = () => version;
+function save() {
+  if (same(persisted, state.deck)) return;
+  version++; persisted = snapshot(state.deck);
+  persist && saveDeck(state.deck);
+}
 // Changes made by someone else (co-editing): applied to the document and to
 // the undo history, so undoing only undoes one's own changes. No undo step.
 export function applyRemote(fn) {
   fn(state.deck); fn(base); past.forEach(fn); future.forEach(fn);
-  clampSlide(); persist && saveDeck(state.deck); notify();
+  clampSlide(); save(); notify();
 }
 // A newer copy of the same document (from another tab or the disk): no undo step.
 // Which document is open: it changes when another one replaces it (not with
 // edits or undo), so what is linked to a file (Drive) knows it is still the same.
 let epoch = 0;
 export const docEpoch = () => epoch;
+// What every deck from outside goes through before it is used (the editor
+// sets its sanitizer: nothing in a document may run code).
+let deckFilter = d => d;
+export const setDeckFilter = fn => { deckFilter = fn; };
 // sameDocument: a newer copy of this very document (not another one).
 export function adoptDeck(deck, { sameDocument = false } = {}) {
   if (!sameDocument) epoch++;
+  deck = deckFilter(deck);
   state.deck = deck; state.ui.slideIndex = 0; base = snapshot(deck); past.length = 0; future.length = 0;
+  version++; persisted = snapshot(deck);                 // (already saved where it came from)
   notify();
 }
 export function replaceDeck(deck) {
   // Another deck: leave the master view too (it would edit a master that isn't there).
   epoch++;
   // (Also from a presentation marked as final: that protects it, not the app.)
+  deck = deckFilter(deck);
   commit(() => { state.deck = deck; state.ui.slideIndex = 0; state.ui.selection = null; state.ui.multi = []; state.ui.editMaster = false; }, { force: true });
 }

@@ -11,7 +11,7 @@
 // The project's public identifiers are in core/config.js; a browser can use
 // its own Google Cloud project instead (setup dialog below).
 
-import { state, replaceDeck, subscribe, docEpoch } from '../../core/store.js';
+import { state, replaceDeck, subscribe, docEpoch, docVersion } from '../../core/store.js';
 import { alertUser } from '../../core/notify.js';
 import { GOOGLE } from '../../core/config.js';
 import { t } from '../../i18n/index.js';
@@ -126,7 +126,7 @@ export async function openPresentation(id) {
   let deck; try { deck = JSON.parse(await r.text()); } catch { throw new Error(t('El archivo no es un proyecto de Revela.')); }
   if (!deck || !Array.isArray(deck.slides)) throw new Error(t('El archivo no es un proyecto de Revela.'));
   replaceDeck(deck); setLinked({ id: meta.id, name: meta.name, version: meta.version });
-  lastSaved = JSON.stringify(state.deck); setStatus('saved');
+  lastSaved = docVersion(); setStatus('saved');
 }
 export async function deletePresentation(id) {
   const r = await api(`/drive/v3/files/${encodeURIComponent(id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true }) });
@@ -143,6 +143,7 @@ export const setThumbnailMaker = fn => { makeThumbnail = fn; };
 export async function savePresentation({ interactive = true, force = false, asNew = false } = {}) {
   if (!gdriveReady()) { openGdriveSetup(); return false; }
   const body = JSON.stringify(state.deck);
+  const savedVersion = docVersion();                     // (what this upload contains)
   let thumbnail = null; try { thumbnail = await makeThumbnail(); } catch {}
   setStatus('saving');
   try {
@@ -159,7 +160,7 @@ export async function savePresentation({ interactive = true, force = false, asNe
       const f = await upload({ name: safeName() + '.revela.json', mimeType: PROJECT_MIME, body, thumbnail });
       setLinked({ id: f.id, name: f.name, version: f.version });
     }
-    lastSaved = body; setStatus('saved');
+    lastSaved = savedVersion; setStatus('saved');
     return true;
   } catch (e) {
     setStatus(e.message === 'NO_TOKEN' ? 'offline' : 'error');
@@ -176,8 +177,7 @@ export function startAutosave() {
     // Another document replaced the linked one: forget the link (also for next time).
     if (currentFile && linkedEpoch !== docEpoch()) { currentFile = null; writeLS(LS_FILE, null); setStatus('idle'); return; }
     if (!linkedFile() || !account()) return;
-    const now = JSON.stringify(state.deck);
-    if (now === lastSaved) return;
+    if (docVersion() === lastSaved) return;                    // (only the document's content counts)
     if (!currentFile.dirty) setLinked({ ...currentFile, dirty: true });   // remembered across reloads
     if (status === 'saved' || status === 'idle') setStatus('pending');
     clearTimeout(timer);
@@ -195,7 +195,7 @@ export async function reconnect() {
   if (newer && !cur.dirty) { await openPresentation(cur.id); return 'loaded'; }
   if (newer) { setStatus('conflict'); return 'conflict'; }
   if (cur.dirty) return savePresentation();
-  lastSaved = JSON.stringify(state.deck); setStatus('saved'); return 'saved';
+  lastSaved = docVersion(); setStatus('saved'); return 'saved';
 }
 export const markOffline = () => setStatus('offline');
 export const needsReconnect = () => !!(linkedFile() && account() && !hasToken());

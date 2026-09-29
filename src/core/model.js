@@ -117,17 +117,29 @@ export function approxSize(v) {
   if (v && typeof v === 'object') { let n = 0; for (const k in v) n += approxSize(v[k]) + k.length; return n; }
   return 8;
 }
-export function saveDeck(deck) {
-  deck.savedAt = Date.now();
-  const size = approxSize(deck);
+// Called only when the content changed (see store.save): localStorage at once,
+// IndexedDB a moment later (big decks: later still).
+let pending = null;
+function writeLocal(deck, size = approxSize(deck)) {
   try {
     if (size < LS_MAX) localStorage.setItem(STORAGE_KEY, JSON.stringify(deck));
     else localStorage.setItem(STORAGE_KEY, JSON.stringify({ tooBig: true, savedAt: deck.savedAt }));
   } catch {}
-  clearTimeout(idbTimer);                                   // big decks: write less often
-  idbTimer = setTimeout(() => kvSet('deck', deck).catch(() => {}), size > 20e6 ? 3000 : 400);
 }
-export function flushSave(deck) { clearTimeout(idbTimer); return kvSet('deck', deck).catch(() => {}); }
+export function saveDeck(deck) {
+  deck.savedAt = Date.now(); pending = deck;
+  const size = approxSize(deck);
+  writeLocal(deck, size);
+  clearTimeout(idbTimer);
+  idbTimer = setTimeout(() => { pending = null; kvSet('deck', deck).catch(() => {}); }, size > 20e6 ? 3000 : 400);
+}
+// Everything now (leaving the page, or before reading it back).
+export function flushSave(deck = pending) {
+  clearTimeout(idbTimer); pending = null;
+  if (!deck) return Promise.resolve();
+  writeLocal(deck);
+  return kvSet('deck', deck).catch(() => {});
+}
 // The IndexedDB copy, if it's newer than what localStorage gave us at start.
 export async function loadNewerDeck(current) {
   try {

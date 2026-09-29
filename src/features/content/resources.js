@@ -4,6 +4,7 @@
 // works offline); Sketchfab ones are shown by Sketchfab's own viewer.
 // Only the search words reach each service (with consent, see stock.js).
 
+import { plainText } from '../../core/text.js';
 import { state, commit, amend, currentSlide } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 import { searchImages, insertStockImage } from './stock.js';
@@ -97,7 +98,6 @@ export async function insertNASA3D(m) {
 
 // ---- 3D: Wikimedia Commons (thousands of 3D prints and scans: fossils, museum pieces, anatomy…) ----
 // STL files, turned into glTF here. Only the search words reach Wikimedia (with consent).
-const text = html => { const d = document.createElement('div'); d.innerHTML = html || ''; return d.textContent.trim(); };
 export async function searchCommons3D(q, offset = 0) {
   const u = new URL('https://commons.wikimedia.org/w/api.php');
   for (const [k, v] of Object.entries({ action: 'query', format: 'json', origin: '*', generator: 'search', gsrnamespace: '6', gsrsearch: `filemime:application/sla ${q}`,
@@ -106,7 +106,7 @@ export async function searchCommons3D(q, offset = 0) {
   const d = await r.json(), pages = Object.values(d.query?.pages || {}).sort((a, b) => (a.index || 0) - (b.index || 0));
   return { next: d.continue?.gsroffset ?? null, results: pages.map(p => { const ii = p.imageinfo?.[0] || {}, m = ii.extmetadata || {};
     return { title: p.title.replace(/^File:|\.stl$/gi, ''), url: ii.url, size: ii.size || 0, thumb: ii.thumburl || '', page: ii.descriptionurl,
-      license: text(m.LicenseShortName?.value), artist: text(m.Artist?.value).slice(0, 80) }; }).filter(x => x.url) };
+      license: plainText(m.LicenseShortName?.value), artist: plainText(m.Artist?.value).slice(0, 80) }; }).filter(x => x.url) };
 }
 export async function insertCommons3D(m) {
   const src = stlToGLB(await (await download(m.url)).arrayBuffer());

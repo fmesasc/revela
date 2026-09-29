@@ -3,6 +3,7 @@
 // click-triggered animations. Functions shared with the editor (tallying
 // votes, drawing charts) are embedded with toString(), so both draw the same.
 
+import { jsData } from '../../core/text.js';
 import { chartSVG, escSvg, SERIES_COLOURS, chartSeries, niceStep } from '../../render/svg.js';
 import { tallyVotes, pollResultsHTML, VOTE_URL } from '../../features/live/poll.js';
 import { parseChartGrid } from '../../features/document/blocks.js';
@@ -105,7 +106,7 @@ export const TRIGGER_JS = `(function(){
 // sections[h] = the section name of horizontal slide h ('' when none).
 export function overviewJS(sections, texts) {
   return `(function(){
- var SEC=${JSON.stringify(sections)}, T=${JSON.stringify(texts)}, box=null, items=[], sel=0;
+ var SEC=${jsData(sections)}, T=${jsData(texts)}, box=null, items=[], sel=0;
  var st=document.createElement('style');
  st.textContent='.rv-ov{position:fixed;inset:0;z-index:1000;text-align:start;line-height:normal;background:rgba(10,12,16,.97);overflow:auto;padding:18px 22px 28px;box-sizing:border-box;font-family:system-ui,sans-serif;color:#e6e9ef}'
   +'.rv-ov-top{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#9aa3ae;margin:0 0 10px}'

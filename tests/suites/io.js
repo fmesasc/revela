@@ -514,12 +514,15 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       let err = ''; for (let i = 0; i < 80 && !err; i++) { await sleep(100); err = d.getElementById('e')?.textContent; }
       eq(err, 'Contraseña incorrecta.', 'contraseña incorrecta');
       d.getElementById('pw').value = 'frase de prueba larga'; d.getElementById('f').requestSubmit();
-      let ok = false; for (let i = 0; i < 150 && !ok; i++) { await sleep(100); ok = /Hola compartida/.test(a.f.contentDocument.querySelector('.reveal .slides')?.textContent || ''); }
+      // (It opens in a sandboxed frame without this site's origin: its content can't reach Revela's data.)
+      const inner = () => a.f.contentDocument.querySelector('iframe[sandbox]');
+      let ok = false; for (let i = 0; i < 150 && !ok; i++) { await sleep(100); ok = /Hola compartida/.test(inner()?.srcdoc || ''); }
       assert(ok, 'con la contraseña se ve la presentación');
+      assert(!/allow-same-origin/.test(inner().getAttribute('sandbox')), 'aislada del sitio de Revela');
     } finally { a.f.remove(); }
     // Secret link: the key after # opens it straight away; without it, a message.
     assert(/^#k=[\w-]{43}$/.test(r2.suffix), 'clave para añadir a la dirección');
-    const b = await loadPage(saved[1].href + r2.suffix, f => /Hola compartida/.test(f.contentDocument.querySelector('.reveal .slides')?.textContent || ''));
+    const b = await loadPage(saved[1].href + r2.suffix, f => /Hola compartida/.test(f.contentDocument.querySelector('iframe[sandbox]')?.srcdoc || ''));
     b.f.remove(); assert(b.ok, 'con #k= se abre sola');
     const c = await loadPage(saved[1].href, f => /Falta la clave/.test(f.contentDocument.getElementById('m')?.textContent || ''), 8000);
     c.f.remove(); assert(c.ok, 'sin la clave no se abre y lo explica');
@@ -551,7 +554,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const listed = R.shares.sharesList()[0]; eq(listed.id, 'AbCdEfGhIjKlMnOpQrStUv', 'se recuerda para dejar de compartirla');
     // The viewer opens a sealed copy (a same-site blob here instead of the server).
     const blob = W.URL.createObjectURL(new W.Blob([store.body], { type: 'application/json' }));
-    const v = await loadPage(`${new URL('view.html', D.baseURI)}?u=${encodeURIComponent(blob)}${u.hash}`, f => /Por servidor/.test(f.contentDocument.querySelector('.reveal .slides')?.textContent || ''));
+    const v = await loadPage(`${new URL('view.html', D.baseURI)}?u=${encodeURIComponent(blob)}${u.hash}`, f => /Por servidor/.test(f.contentDocument.querySelector('iframe[sandbox]')?.srcdoc || ''));
     v.f.remove(); assert(v.ok, 'el visor abre la presentación con la clave del enlace');
     // Stop sharing.
     W.fetch = async (url, o = {}) => { calls.push({ url: String(url), method: o.method, headers: o.headers || {} }); return new W.Response('{"ok":true}'); };
