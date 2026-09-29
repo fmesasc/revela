@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AppStream metadata: what software centres (GNOME Software, Discover…) show. -->
+<component type="desktop-application">
+  <id>io.github.fmesasc.revela</id>
+  <name>Revela</name>
+  <summary>Presentation editor, like PowerPoint, presented with reveal.js</summary>
+  <summary xml:lang="es">Editor de presentaciones como PowerPoint, que presenta con reveal.js</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <developer id="io.github.fmesasc">
+    <name>fmesasc</name>
+  </developer>
+  <description>
+    <p>Revela is a free, open-source presentation editor: slides, text, images, charts, animations and transitions, live collaboration, and export to PowerPoint, OpenDocument, PDF and HTML.</p>
+    <p xml:lang="es">Revela es un editor de presentaciones libre y de código abierto: diapositivas, texto, imágenes, gráficos, animaciones y transiciones, colaboración en directo y exportación a PowerPoint, OpenDocument, PDF y HTML.</p>
+  </description>
+  <launchable type="desktop-id">Revela.desktop</launchable>
+  <url type="homepage">https://fmesasc.github.io/revela/</url>
+  <url type="vcs-browser">https://github.com/fmesasc/revela</url>
+  <url type="bugtracker">https://github.com/fmesasc/revela/issues</url>
+  <categories>
+    <category>Office</category>
+  </categories>
+  <content_rating type="oars-1.1"/>
+</component>
