@@ -778,7 +778,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(pc.from === s.blocks[3].id && pc.to === s.blocks[4].id, 'el conector une las copias');
     D.querySelector('[data-action="clip-paste"]').click(); await sleep(10);
     eq(slide().blocks[6].x, a.x + 48, 'segundo pegado, más desplazado');
-    R.slides.addSlide(); await sleep(10);
+    R.slides.addSlide('blank'); await sleep(10);
     const dt = new W.DataTransfer(); dt.setData('text/plain', 'revela-objects:' + JSON.stringify(C.clipboardData()));
     D.activeElement?.blur?.(); D.dispatchEvent(new W.ClipboardEvent('paste', { clipboardData: dt, bubbles: true })); await sleep(10);
     eq(slide().blocks.length, 3, 'Ctrl+V en otra diapositiva'); eq(slide().blocks[0].x, a.x, 'misma posición en otra diapositiva');

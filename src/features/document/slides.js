@@ -10,7 +10,7 @@ export function addSlide(layoutId = null) {
     const s = blankSlide(base ? base.background : '#101317', base ? base.sectionId : null);
     // Same layout as the current slide (after a cover or section header, "Title and content").
     const lays = ensureLayouts();
-    const want = layoutId || (base?.layoutId && !['title', 'section'].includes(base.layoutId) ? base.layoutId : base?.layoutId ? 'titleContent' : null);
+    const want = layoutId || (base?.layoutId && !['title', 'section'].includes(base.layoutId) ? base.layoutId : 'titleContent');
     const lay = want && lays.find(l => l.id === want);
     if (lay) { s.layoutId = lay.id; s.blocks = newSlideBlocks(lay); }
     state.deck.slides.splice(state.ui.slideIndex + 1, 0, s);

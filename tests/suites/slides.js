@@ -16,7 +16,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   });
 
   await test('nueva diapositiva ▾: con el diseño que se elija', async () => {
-    reset(); const n = R.state.deck.slides.length;
+    reset();
+    D.querySelector('[data-action="slide-add"]').click(); await sleep(10);
+    eq(slide().blocks.map(b => b.ph).join(), 'title,body', 'tras la primera (sin diseño), «Título y contenido», no una en blanco');
+    R.store.undo(); await sleep(10);
+    const n = R.state.deck.slides.length;
     D.querySelector('[data-newslide-open]').click(); await sleep(10);
     const btn = D.querySelector('.popover [data-newslide="titleOnly"]'); assert(btn, 'lista de diseños');
     btn.click(); await sleep(10);
@@ -473,6 +477,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.querySelector('[data-action="canvas-mode"]').click(); await sleep(50);
     assert(C.canvasOn() && R.state.deck.slides.every(s => s.frame), 'al activarlo, cada diapositiva es un marco');
     assert(D.getElementById('canvas-view'), 'y se abre la vista de lienzo');
+    { const v = D.getElementById('canvas-view'), bar = v.querySelector('.cv-bar').getBoundingClientRect(), help = v.querySelector('.cv-help').getBoundingClientRect();
+      const fr = [...v.querySelectorAll('.cv-frame')].map(f => f.getBoundingClientRect());
+      assert(fr.every(r => r.top >= bar.bottom && r.bottom <= help.top), 'todos los marcos a la vista, sin quedar bajo los botones'); }
     const S = R.state.deck.slides;
     C.setFrame(S[1].id, { x: 1500, y: 300, s: 0.6, r: 0 }); C.setFrame(S[2].id, { x: 1650, y: 380, s: 0.15, r: 25 });
     // Geometry: the camera on a frame shows it exactly.

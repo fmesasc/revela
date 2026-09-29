@@ -75,7 +75,11 @@ function frameNode(s) {
 function paint() {
   if (!el) return;
   const { w, h } = size(), { W, H } = box(), fs = frames();
-  if (!view) view = fitView(bounds(fs, w, h), W, H, 0.85);
+  if (!view) {                          // all the frames, in the space between the buttons and the help
+    const bar = el.querySelector('.cv-bar'), help = el.querySelector('.cv-help');
+    const top = bar ? bar.offsetTop + bar.offsetHeight + 8 : 0, bottom = help ? help.offsetHeight + 12 : 0;
+    view = fitView(bounds(fs, w, h), W, Math.max(80, H - top - bottom), 0.9); view[5] += top;
+  }
   el.style.background = state.deck.canvas?.bg || '#0d1117';
   el.querySelector('[data-cv="bg"]').value = state.deck.canvas?.bg || '#0d1117';
   const world = el.querySelector('.cv-world');
