@@ -36,6 +36,38 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!D.body.classList.contains('sorter'), 'Esc vuelve a la diapositiva');
   });
 
+  await test('kit de marca: colores, fuentes y logotipo guardados, aplicados con un clic y compartidos como archivo', async () => {
+    reset(); const W = frame.contentWindow, K = await W.eval("import('/src/features/design/brandkit.js')"), P = await W.eval("import('/src/features/design/palettes.js')");
+    W.localStorage.removeItem('revela.brandKits');
+    const logo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    // Only what is safe to keep: valid colours, catalogue fonts, pictures as data.
+    const bad = K.cleanKit({ name: 'x', colors: ['#ff0000', 'red;background:url(x)', '#12345'], fonts: { heading: 'Montserrat', body: '<script>' }, logos: ['javascript:alert(1)', logo] });
+    assert(bad.colors.join() === '#ff0000' && bad.fonts.body === '' && bad.logos.length === 1, 'solo colores válidos, fuentes del catálogo y logotipos como imagen');
+    const kit = { name: 'Colegio', colors: ['#ffffff', '#1d2b53', '#c1121f', '#003049'], fonts: { heading: 'Montserrat', body: 'Open Sans' }, logos: [logo] };
+    const saved = K.saveKit(kit); assert(saved && K.listKits().length === 1, 'se guarda en este navegador');
+    assert(K.kitColours().includes('#c1121f'), 'sus colores, en los selectores de color');
+    // Applying it: the theme's colours by role, the fonts, the logo.
+    R.blocks.addShape('rect'); const sh = last(); await sleep(10);
+    const accent = P.currentPalette().accents[0]; eq(sh.fill.toLowerCase(), accent.toLowerCase(), '(la forma usa el acento 1 del tema)');
+    K.applyKit(saved); await sleep(20);
+    eq(R.state.deck.palette, 'custom', 'paleta propia');
+    eq(JSON.stringify([P.currentPalette().bg, P.currentPalette().fg, P.currentPalette().accents[0]]), '["#ffffff","#1d2b53","#c1121f"]', 'fondo, texto y acentos del kit');
+    eq(slide().blocks.find(b => b.id === sh.id).fill.toLowerCase(), '#c1121f', 'lo que usaba el tema toma los colores de la marca');
+    assert(/Montserrat/.test(slide().blocks[0].fontFamily) && /Open Sans/.test(R.state.deck.bodyFont), 'sus fuentes');
+    eq(R.state.deck.logo.src, logo, 'y su logotipo');
+    assert(/#1d2b53/i.test(R.io.buildHTML()), 'la presentación sale con sus colores');
+    // Shared as a file and read back.
+    const txt = await K.kitFile(saved).text(), again = K.kitFromFile(txt);
+    assert(again && again.name === 'Colegio' && again.colors.length === 4 && again.id !== saved.id, 'como archivo, y de vuelta');
+    eq(K.kitFromFile('{"hola":1}'), null, 'otro archivo no es un kit');
+    // The dialog: apply from the list.
+    reset(); D.querySelector('[data-action="brand-kit"]').click(); await sleep(20);
+    const m = D.getElementById('bk-modal'); assert(m.querySelector('.bk-kit b').textContent === 'Colegio', 'el diálogo lista los kits');
+    m.querySelector('[data-a="apply"]').click(); await sleep(20);
+    assert(R.state.deck.palette === 'custom' && !D.getElementById('bk-modal'), 'aplicar desde el diálogo');
+    W.localStorage.removeItem('revela.brandKits');
+  });
+
   await test('nueva diapositiva ▾: con el diseño que se elija', async () => {
     reset();
     D.querySelector('[data-action="slide-add"]').click(); await sleep(10);

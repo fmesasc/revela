@@ -419,3 +419,13 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .el-grid .sk-sound .sk-listen{grid-row:span 2;font-size:22px;width:34px;height:34px;display:grid;place-items:center;border-radius:50%;background:var(--accent);color:#fff}
 .el-akind[hidden]{display:none}
 .el-grid:has(.sk-sound){grid-auto-rows:auto}
+/* Brand kit dialog */
+.bk-list{display:flex;flex-direction:column;gap:8px;margin:8px 0}
+.bk-kit{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;border:1px solid var(--line2);border-radius:10px;padding:10px}
+.bk-kit .bk-sw{grid-column:1/-1;display:flex;gap:4px;align-items:center}.bk-kit .bk-sw i{width:22px;height:22px;border-radius:50%;border:1px solid #0002}
+.bk-kit .bk-sw img{height:26px;max-width:80px;object-fit:contain;margin-inline-start:6px}
+.bk-kit small{grid-column:1;color:var(--txt2)}.bk-kit .bk-acts{grid-row:2/span 2;grid-column:2;display:flex;gap:4px}
+.bk-cols{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-size:11px;color:var(--txt2);margin:6px 0}.bk-cols label{display:flex;flex-direction:column;gap:2px}
+.bk-cols input{width:100%;height:30px}
+.bk-logos{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}.bk-logos span{position:relative}.bk-logos img{height:40px;max-width:120px;object-fit:contain;border:1px solid var(--line2);border-radius:6px;padding:2px}
+.bk-logos button{position:absolute;top:-6px;right:-6px;border:0;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer}

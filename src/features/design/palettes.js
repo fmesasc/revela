@@ -40,7 +40,16 @@ export const pairStacks = key => {
   return { heading: stackOf(p.heading), body: stackOf(p.body) };
 };
 
-export const currentPalette = (deck = state.deck) => PALETTES[deck.palette] || PALETTES.revela;
+// A palette of one's own (a brand kit's colours): deck.palette 'custom' and its
+// colours in deck.customPalette (only #rrggbb values count: they go into styles).
+const HEX6 = /^#[0-9a-f]{6}$/i;
+export function customPalette(p, base = PALETTES.revela) {
+  if (!p) return null;
+  const ok = c => (HEX6.test(c || '') ? c : null);
+  return { name: String(p.name || 'Personalizada').slice(0, 60), bg: ok(p.bg) || base.bg, fg: ok(p.fg) || base.fg,
+    accents: base.accents.map((c, i) => ok(p.accents?.[i]) || c) };
+}
+export const currentPalette = (deck = state.deck) => (deck.palette === 'custom' && customPalette(deck.customPalette)) || PALETTES[deck.palette] || PALETTES.revela;
 // The deck's default text colour (editor, thumbnails and every export use it).
 export const deckFg = (deck = state.deck) => deck.textColor || currentPalette(deck).fg;
 export const deckBodyFont = (deck = state.deck) => deck.bodyFont || '';
@@ -49,8 +58,8 @@ export const paletteColours = (deck = state.deck) => { const p = currentPalette(
 const COLOUR_PROPS = ['fill', 'stroke', 'color', 'bg', 'borderColor', 'headBg', 'headFg', 'band'];
 const HEX = /#[0-9a-f]{6}\b/gi;
 
-export function applyPalette(key, deck = state.deck) {
-  const to = PALETTES[key]; if (!to) return;
+export function applyPalette(key, deck = state.deck, custom = null) {
+  const to = key === 'custom' ? customPalette(custom) : PALETTES[key]; if (!to) return;
   const from = currentPalette(deck);
   const map = new Map([[from.bg, to.bg], [from.fg, to.fg], ...from.accents.map((c, i) => [c, to.accents[i]])]
     .map(([a, b]) => [a.toLowerCase(), b]));
@@ -65,6 +74,7 @@ export function applyPalette(key, deck = state.deck) {
     }
     if (deck.textColor) deck.textColor = swap(deck.textColor);
     deck.palette = key;
+    if (key === 'custom') deck.customPalette = to; else delete deck.customPalette;
     if (!deck.textColor || deck.textColor.toLowerCase() === to.fg.toLowerCase()) delete deck.textColor;
   });
 }
@@ -75,6 +85,17 @@ export function setDeckTextColor(c, deck = state.deck) {
 
 // Heading = title/subtitle/heading styles, or big text; body = everything else.
 const isHeading = b => ['title', 'subtitle', 'heading'].includes(b.textStyle) || (!b.textStyle && (b.fontSize || 40) >= 44);
+// Two fonts of the catalogue by name (a brand kit's): headings and body text.
+export function applyFonts(heading, body, deck = state.deck) {
+  const h = stackOf(heading), b0 = stackOf(body); if (!h && !b0) return;
+  const st = { heading: h || stackOf(body), body: b0 || h };
+  ensureFont(st.heading); ensureFont(st.body);
+  commit(() => {
+    for (const s of deck.slides) for (const b of s.blocks)
+      if (b.type === 'text' && !b.wordart) b.fontFamily = isHeading(b) ? st.heading : st.body;
+    delete deck.fontPair; deck.bodyFont = st.body;
+  });
+}
 export function applyFontPair(key, deck = state.deck) {
   const st = pairStacks(key); if (!st) return;
   ensureFont(st.heading); ensureFont(st.body);

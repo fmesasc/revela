@@ -47,6 +47,7 @@ import * as poll from '../../features/live/poll.js';
 import { openPollEditor } from '../dialogs/poll.js';
 import { openCodeEditor } from '../dialogs/code.js';
 import { openBackgroundDialog } from '../dialogs/background.js';
+import { openBrandKit } from '../dialogs/brandkit.js';
 import { openSettings } from '../dialogs/settings.js';
 import { openAppearance } from '../shell/appearance.js';
 import { openDashboardDialog } from '../dialogs/data.js';
@@ -154,6 +155,7 @@ export const ACTIONS = {
   'slide-add': slides.addSlide, 'slide-duplicate': slides.duplicateSlide,
   'slide-vertical': () => slides.toggleVertical(),
   'bg-advanced': () => openBackgroundDialog(),
+  'brand-kit': () => openBrandKit(),
   'deck-settings': () => openSettings(),
   'appearance': () => openAppearance(),
   'slide-delete': () => slides.deleteSlide(),

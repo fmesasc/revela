@@ -21,6 +21,7 @@ import { editAnyway } from '../dialogs/signature.js';
 import * as protect from '../../features/collab/protect.js';
 import { openAppearance, applyAppearance } from '../shell/appearance.js';
 import * as palettes from '../../features/design/palettes.js';
+import { kitColours } from '../../features/design/brandkit.js';
 import { setDrawTool, drawOpts } from '../shell/draw.js';
 import { FONTS, ensureDeckFonts } from '../../features/design/fonts.js';
 import { t } from '../../i18n/index.js';
@@ -265,16 +266,19 @@ function addEyedroppers() {
     lab.after(btn);
   }
 }
-// Theme colours offered as swatches in every colour picker (<datalist>).
+// Theme colours and the brand kits' offered as swatches in every colour picker (<datalist>).
 let swatchKey = '';
 function syncSwatches() {
-  const cols = palettes.paletteColours(), key = cols.join();
+  const cols = [...new Set([...palettes.paletteColours(), ...kitColours()].map(c => c.toLowerCase()))], key = cols.join();
   if (key === swatchKey) return; swatchKey = key;
   let dl = document.getElementById('theme-swatches');
   if (!dl) { dl = document.createElement('datalist'); dl.id = 'theme-swatches'; document.body.appendChild(dl); }
   dl.innerHTML = cols.map(c => `<option value="${c}"></option>`).join('');
   document.querySelectorAll('#ribbon input[type=color]').forEach(i => i.setAttribute('list', 'theme-swatches'));
 }
+// (Those in dialogs and panels too, when they are about to be used.)
+document.addEventListener('focusin', e => { if (e.target.matches?.('input[type=color]:not([list])')) e.target.setAttribute('list', 'theme-swatches'); });
+document.addEventListener('pointerdown', e => { if (e.target.matches?.('input[type=color]:not([list])')) e.target.setAttribute('list', 'theme-swatches'); }, true);
 function bindChange(sel, cb) { const el = $(sel); if (el) el.addEventListener('change', e => cb(e.target.value)); }
 
 let lastActiveTab = null;
