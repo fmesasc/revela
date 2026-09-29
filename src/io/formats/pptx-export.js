@@ -9,7 +9,7 @@ import { alertUser } from '../../core/notify.js';
 import { t } from '../../i18n/index.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
 import { plainText } from '../../core/text.js';
-import { chartSeries, iconSVG, inkSVG, timerSVG, shapeTextStyle } from '../../render/svg.js';
+import { chartSeries, histogramBins, iconSVG, inkSVG, timerSVG, shapeTextStyle } from '../../render/svg.js';
 import { blockImage } from '../export/images.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, styleKind } from '../../features/document/master.js';
 import { PPTXGEN, JSZIP, loadScript } from '../../core/vendor.js';
@@ -162,8 +162,13 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
       }).filter(Boolean));
       slide.addTable(rows, { ...pos, border: { pt: 1, color: hex(b.stroke) || 'FFFFFF' }, color: hex(deckFg()) || 'FFFFFF', fontSize: 14, valign: 'top' });
     } else if (b.type === 'chart') {
-      const type = { bar: 'bar', line: 'line', area: 'area', pie: 'pie', doughnut: 'doughnut', radar: 'radar', scatter: 'scatter' }[b.chartType || 'bar'] || 'bar';
-      const rows = b.data || [];
+      // Stacked (and 100 %) and horizontal bars are PowerPoint bar charts with their grouping and
+      // direction; a histogram, bars of its ranges already counted.
+      const kind = b.chartType || 'bar', barish = ['stacked', 'stacked100', 'hbar', 'histogram'].includes(kind);
+      const type = barish ? 'bar' : { bar: 'bar', line: 'line', area: 'area', pie: 'pie', doughnut: 'doughnut', radar: 'radar', scatter: 'scatter' }[kind] || 'bar';
+      const barOpts = { ...(kind === 'stacked' && { barGrouping: 'stacked' }), ...(kind === 'stacked100' && { barGrouping: 'percentStacked' }),
+        ...(kind === 'hbar' && { barDir: 'bar' }), ...(kind === 'histogram' && { barGapWidthPct: 5 }) };
+      const rows = kind === 'histogram' ? histogramBins((b.data || []).map(d => +d.value)) : b.data || [];
       const data = type === 'scatter'
         ? [{ name: 'X', values: rows.map((d, i) => (isFinite(parseFloat(d.label)) ? parseFloat(d.label) : i)) },
            { name: 'Y', values: rows.map(d => +d.value || 0) }]
@@ -172,7 +177,7 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
       // Bar/line/area (and pie, radar) with every series; a combo chart becomes
       // PowerPoint's multi-type chart: bars + lines.
       const labels = rows.map(d => d.label);
-      const ser = ['bar', 'line', 'area', 'radar'].includes(type) ? chartSeries(b) : chartSeries({ ...b, series: [] });
+      const ser = kind === 'histogram' ? chartSeries({ ...b, data: rows, series: [] }) : ['bar', 'line', 'area', 'radar'].includes(type) ? chartSeries(b) : chartSeries({ ...b, series: [] });
       const toData = list => list.map(x => ({ name: x.name, labels, values: x.values }));
       const colors = ser.map(x => hex(x.color) || '3F6497');
       // Gridlines, data labels and axis titles, as PowerPoint's own chart options.
@@ -184,7 +189,7 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
           { type: pptx.ChartType.line, data: toData(ser.filter(x => x.type !== 'bar')), options: { chartColors: colors.slice(1) } },
         ], { ...pos, showLegend: true, legendPos: 't', ...extra });
       } else {
-        slide.addChart(pptx.ChartType[type], toData(ser), { ...pos, showLegend: ser.length > 1, legendPos: 't', ...(['pie', 'doughnut'].includes(type) ? { ...(b.dataLabels && { showValue: true }) } : extra),
+        slide.addChart(pptx.ChartType[type], toData(ser), { ...pos, ...barOpts, showLegend: ser.length > 1, legendPos: 't', ...(['pie', 'doughnut'].includes(type) ? { ...(b.dataLabels && { showValue: true }) } : extra),
           ...(['pie', 'doughnut'].includes(type) ? {} : { chartColors: colors }) });
       }
     }

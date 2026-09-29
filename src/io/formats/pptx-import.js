@@ -648,6 +648,12 @@ export async function importPPTX(file) {
           ...(x.color && x.color !== 'none' ? { color: x.color } : theme['accent' + (i + 2)] ? { color: theme['accent' + (i + 2)] } : {}) }));
         if (first.kind === 'bar' && rest.some(x => x.kind === 'line')) b.combo = true;
       }
+      // Bars stacked (or to 100 %) or horizontal: their grouping and direction.
+      const bg = groups.find(g => g.tagName === 'c:barChart' || g.tagName === 'c:bar3DChart');
+      if (bg && first.kind === 'bar' && !b.combo) {
+        const grouping = kid(bg, 'c:grouping')?.getAttribute('val'), dir = kid(bg, 'c:barDir')?.getAttribute('val');
+        if (grouping === 'stacked') b.chartType = 'stacked'; else if (grouping === 'percentStacked') b.chartType = 'stacked100'; else if (dir === 'bar') b.chartType = 'hbar';
+      }
       const title = all(all(cd, 'c:title')[0], 'a:t').map(t => t.textContent).join('');
       if (title) b.alt = title;
       blocks.push(b);

@@ -38,7 +38,7 @@ const TITLES = { shape: 'Forma', image: 'Imagen', model: 'Modelo 3D', video: 'V�
   math: 'Ecuación', code: 'Código', poll: 'Votación', embed: 'Web', icon: 'Icono', camera: 'Cámara', slideref: 'Zoom', figindex: 'Índice', ink: 'Dibujo', connector: 'Conector', timer: 'Cuenta atrás' };
 // Every shape once (the catalogue's first name for each).
 const SHAPES = Object.entries(SHAPE_NAMES).filter(([k]) => !isLineShape(k) && k !== 'freeform');
-const CHARTS = [['bar', 'Barras'], ['line', 'Líneas'], ['area', 'Área'], ['pie', 'Circular'], ['doughnut', 'Dona'], ['scatter', 'Dispersión'], ['radar', 'Radar']];
+const CHARTS = [['bar', 'Barras'], ['stacked', 'Barras apiladas'], ['stacked100', 'Barras apiladas al 100 %'], ['hbar', 'Barras horizontales'], ['histogram', 'Histograma'], ['line', 'Líneas'], ['area', 'Área'], ['pie', 'Circular'], ['doughnut', 'Dona'], ['scatter', 'Dispersión'], ['radar', 'Radar']];
 
 // A control: ['btn', icon, label, fn, on?] · ['color', icon, label, value, fn] · ['select', label, [[v, l]], value, fn] · ['num', label, value, fn, min, max, step]
 const btn = (icon, label, fn, on = false, key = '') => ['btn', icon, label, fn, on, key];

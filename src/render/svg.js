@@ -143,7 +143,20 @@ export function connectorSVG(b, fromB, toB, W, H) {
 
 // Chart as inline SVG (no library, self‑contained on export). Bar or pie.
 export function chartSig(b) { return (b.chartType || 'bar') + '|' + (b.color || '') + '|' + JSON.stringify([b.data || [], b.series || [], b.combo || 0, b.seriesName || '', b.grid, b.dataLabels, b.xTitle, b.yTitle]); }
+// A histogram: the values (labels don't matter) grouped into ranges (Sturges' rule), counted.
+export function histogramBins(values, k = 0) {
+  const v = values.filter(Number.isFinite); if (!v.length) return [];
+  // (Round widths — 1, 2, 2.5, 5 × 10^n — starting at a multiple of the width: 0–5, 5–10…)
+  const min = Math.min(...v), max = Math.max(...v), want = k || Math.max(1, Math.ceil(Math.log2(v.length) + 1));
+  const w = niceStep((max - min) / want || 1), lo = Math.floor(min / w) * w, n = Math.max(1, Math.ceil((max - lo) / w + 1e-9)), hi = lo + n * w;
+  const fmt = x => String(+x.toFixed(Math.abs(w) < 1 ? 2 : Math.abs(w) < 10 ? 1 : 0)).replace('.', ',');
+  const bins = Array.from({ length: n }, (_, i) => ({ label: `${fmt(lo + i * w)}–${fmt(lo + (i + 1) * w)}`, value: 0 }));
+  for (const x of v) bins[Math.min(n - 1, Math.floor((x - lo) / w))].value++;
+  return bins;
+}
 export function chartSVG(b) {
+  if (b.chartType === 'histogram') return chartSVG({ ...b, chartType: 'bar', data: histogramBins((b.data || []).map(d => +d.value)), series: [], combo: false, _adjacent: true });
+  if (b.chartType === 'hbar') return hbarSVG(b);
   const data = b.data || []; const color = b.color || '#3f6497';
   const palette = ['#3f6497', '#c0392b', '#2b7a3b', '#d68910', '#7d3c98', '#16a085', '#c0392b'];
   if (b.chartType === 'pie' || b.chartType === 'doughnut') {
@@ -186,7 +199,12 @@ export function chartSVG(b) {
   // "combo" on, the extra series are drawn as lines over the bars. Values can
   // be negative (bars grow from the zero line); optional gridlines with the
   // scale (b.grid), data labels (b.dataLabels) and axis titles (b.xTitle/yTitle).
-  const ser = chartSeries(b), n = data.length || 1, all = ser.flatMap(x => x.values);
+  // Stacked bars: each category one column, the series one on another (100 %: as shares of the column).
+  const stacked = b.chartType === 'stacked' || b.chartType === 'stacked100', pct = b.chartType === 'stacked100';
+  let ser = chartSeries(b);
+  if (pct) { const tot = data.map((_, i) => ser.reduce((a, x) => a + Math.abs(x.values[i] || 0), 0) || 1); ser = ser.map(x => ({ ...x, values: x.values.map((v, i) => v / tot[i] * 100) })); }
+  const n = data.length || 1, sums = stacked ? data.map((_, i) => [ser.reduce((a, x) => a + Math.max(0, x.values[i]), 0), ser.reduce((a, x) => a + Math.min(0, x.values[i]), 0)]) : [];
+  const all = stacked ? sums.flat() : ser.flatMap(x => x.values);
   const T = ser.length > 1 ? 9 : 4;                          // room for the legend
   const B = b.xTitle ? 46 : 50;                              // plot bottom (as before without the new options)
   const L = (b.grid ? 8 : 0) + (b.yTitle ? 4 : 0);           // room for the scale and the y title
@@ -196,14 +214,20 @@ export function chartSVG(b) {
   if (b.grid) { lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step; }
   const W = 100 - L, Y = v => B - (v - lo) / (hi - lo) * (B - T), Y0 = Y(0);
   const barSer = ser.filter(x => x.type === 'bar'), lineSer = ser.filter(x => x.type !== 'bar');
-  const gap = W / n, bw = gap * 0.6 / Math.max(1, barSer.length);
+  const gap = W / n, bw = gap * (b._adjacent ? 0.96 : 0.6) / (stacked ? 1 : Math.max(1, barSer.length));
   const X = i => L + gap * i + gap / 2;
-  const num = v => (Math.abs(v) >= 1000 ? v.toLocaleString('es') : String(+v.toFixed(2)));
+  const num = v => (pct ? Math.round(v) + ' %' : Math.abs(v) >= 1000 ? v.toLocaleString('es') : String(+v.toFixed(2)));
   const dl = (x, y, v, c) => (b.dataLabels ? `<text x="${x.toFixed(1)}" y="${(v < 0 ? y + 4 : y - 1.2).toFixed(1)}" font-size="3.2" text-anchor="middle" fill="${c}">${escSvg(num(v))}</text>` : '');
   const grid = b.grid ? Array.from({ length: Math.round((hi - lo) / step) + 1 }, (_, k) => lo + k * step).map(v =>
     `<line x1="${L}" y1="${Y(v).toFixed(1)}" x2="100" y2="${Y(v).toFixed(1)}" stroke="#8a8a8a" stroke-opacity="0.3" stroke-width="0.3" vector-effect="non-scaling-stroke"/>`
     + `<text x="${(L - 1).toFixed(1)}" y="${(Y(v) + 1.2).toFixed(1)}" font-size="3" text-anchor="end" fill="#8a8a8a">${escSvg(num(v))}</text>`).join('') : '';
-  const bars = barSer.map((x, k) => x.values.map((v, i) => {
+  const up = data.map(() => 0), down = data.map(() => 0);
+  const bars = stacked ? barSer.map(x => x.values.map((v, i) => {
+    const base = v >= 0 ? up[i] : down[i], top = base + v; if (v >= 0) up[i] = top; else down[i] = top;
+    const bx = L + gap * i + (gap - bw) / 2, y = Math.min(Y(top), Y(base)), h = Math.abs(Y(top) - Y(base));
+    return `<rect x="${bx.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${x.color}"/>`
+      + (b.dataLabels && h > 4 ? `<text x="${(bx + bw / 2).toFixed(1)}" y="${(y + h / 2 + 1.1).toFixed(1)}" font-size="3" text-anchor="middle" fill="#fff">${escSvg(num(v))}</text>` : '');
+  }).join('')).join('') : barSer.map((x, k) => x.values.map((v, i) => {
     const bx = L + gap * i + (gap - bw * barSer.length) / 2 + k * bw, y = Math.min(Y(v), Y0), h = Math.abs(Y(v) - Y0);
     return `<rect x="${bx.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${x.color}"/>` + dl(bx + bw / 2, Y(v), v, x.color);
   }).join('')).join('');
@@ -226,6 +250,22 @@ export function chartSVG(b) {
   }).join('') : '';
   return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">${grid}${bars}${lines}${zero}${labels}${titles}${legend}</svg>`;
 }
+// Horizontal bars: the categories down the side, the bars across (several series side by side).
+function hbarSVG(b) {
+  const data = b.data || [], ser = chartSeries(b), n = data.length || 1, all = ser.flatMap(x => x.values);
+  const lo = Math.min(0, ...all), hi = Math.max(0, ...all) || 1, L = 22, R = 96, T = ser.length > 1 ? 8 : 3, B = 58;
+  const X = v => L + (v - lo) / ((hi - lo) || 1) * (R - L), gap = (B - T) / n, bh = gap * 0.62 / ser.length;
+  const num = v => (Math.abs(v) >= 1000 ? v.toLocaleString('es') : String(+v.toFixed(2)));
+  const bars = ser.map((x, k) => x.values.map((v, i) => {
+    const y = T + gap * i + (gap - bh * ser.length) / 2 + k * bh, x0 = Math.min(X(v), X(0)), w = Math.abs(X(v) - X(0));
+    return `<rect x="${x0.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${bh.toFixed(1)}" fill="${x.color}"/>`
+      + (b.dataLabels ? `<text x="${(X(v) + (v < 0 ? -1 : 1)).toFixed(1)}" y="${(y + bh / 2 + 1.1).toFixed(1)}" font-size="3" text-anchor="${v < 0 ? 'end' : 'start'}" fill="${x.color}">${escSvg(num(v))}</text>` : '');
+  }).join('')).join('');
+  const labels = data.map((d, i) => `<text x="${L - 1.5}" y="${(T + gap * i + gap / 2 + 1.3).toFixed(1)}" font-size="3.6" text-anchor="end" fill="#8a8a8a">${escSvg(d.label || '')}</text>`).join('');
+  const axis = `<line x1="${X(0).toFixed(1)}" y1="${T}" x2="${X(0).toFixed(1)}" y2="${B}" stroke="#8a8a8a" stroke-width="0.4" vector-effect="non-scaling-stroke"/>`;
+  const legend = ser.length > 1 ? ser.map((x, k) => { const lx0 = 100 - (ser.length - k) * 22; return `<rect x="${lx0}" y="0" width="3" height="3" fill="${x.color}"/><text x="${lx0 + 4}" y="2.6" font-size="3.4" fill="#8a8a8a">${escSvg(x.name)}</text>`; }).join('') : '';
+  return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">${bars}${axis}${labels}${legend}</svg>`;
+}
 // A round step for a scale (1, 2, 2.5, 5 × 10^n).
 export function niceStep(raw) {
   if (!(raw > 0)) return 1;
@@ -237,7 +277,7 @@ export function niceStep(raw) {
 // any extra ones in b.series, aligned with the primary labels.
 export const SERIES_COLOURS = ['#e0873b', '#4caf7d', '#c94f4f', '#8e6cc9', '#3bb3c3', '#d4a017'];
 export function chartSeries(b) {
-  const data = b.data || [], bar = (b.chartType || 'bar') === 'bar';
+  const data = b.data || [], bar = ['bar', 'stacked', 'stacked100', 'hbar', 'histogram'].includes(b.chartType || 'bar');
   return [{ name: b.seriesName || 'Serie 1', color: b.color || '#3f6497', values: data.map(d => +d.value || 0), type: bar ? 'bar' : 'line' }]
     .concat((b.series || []).map((x, i) => ({
       name: x.name || `Serie ${i + 2}`, color: x.color || SERIES_COLOURS[i % SERIES_COLOURS.length],

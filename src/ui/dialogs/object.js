@@ -155,7 +155,8 @@ export function openChartData(b) {
   back.innerHTML = `<div class="modal" style="text-align:start;min-width:300px">
     <button class="modal-close">✕</button><h3>${t('Datos del gráfico')}</h3>
     <label class="fr-l">${t('Tipo')} <select class="ch-type">
-      <option value="bar">${t('Barras')}</option><option value="line">${t('Líneas')}</option><option value="area">${t('Área')}</option>
+      <option value="bar">${t('Barras')}</option><option value="stacked">${t('Barras apiladas')}</option><option value="stacked100">${t('Barras apiladas al 100 %')}</option>
+      <option value="hbar">${t('Barras horizontales')}</option><option value="histogram">${t('Histograma')}</option><option value="line">${t('Líneas')}</option><option value="area">${t('Área')}</option>
       <option value="pie">${t('Circular')}</option><option value="doughnut">${t('Dona')}</option>
       <option value="scatter">${t('Dispersión')}</option><option value="radar">${t('Radar')}</option></select></label>
     <label class="fr-l">${t('Color (barras)')} <input type="color" class="ch-color" value="${b.color || '#3f6497'}"></label>

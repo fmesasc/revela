@@ -666,6 +666,24 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/<a:headEnd type="triangle"/.test(xml) && /<a:tailEnd type="triangle"/.test(xml), 'la línea con dos flechas, con las dos');
   });
 
+  await test('gráficos: barras apiladas, al 100 %, horizontales e histograma (también en PowerPoint)', async () => {
+    reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
+    const d = [{ label: 'A', value: 30 }, { label: 'B', value: 10 }], ser = [{ name: 'X', values: [10, 30] }];
+    const st = S.chartSVG({ chartType: 'stacked', data: d, series: ser, dataLabels: true });
+    eq((st.match(/<rect (?![^>]*width="3")/g) || []).length, 4, 'apiladas: una columna por categoría, un trozo por serie (sin contar la leyenda)');
+    assert(/>75 %</.test(S.chartSVG({ chartType: 'stacked100', data: d, series: ser, dataLabels: true })), 'al 100 %: en porcentajes (30 de 40 = 75 %)');
+    assert(/<text x="20\.5"[^>]*text-anchor="end"[^>]*>A</.test(S.chartSVG({ chartType: 'hbar', data: d })), 'horizontales: las categorías a un lado');
+    eq(JSON.stringify(S.histogramBins([1, 2, 2, 3, 7, 8, 9])), '[{"label":"0–2","value":1},{"label":"2–4","value":3},{"label":"4–6","value":0},{"label":"6–8","value":1},{"label":"8–10","value":2}]', 'histograma: intervalos redondos, contados');
+    // From its tab, and PowerPoint both ways.
+    R.blocks.addChart(); await sleep(20);
+    const kind = [...D.querySelectorAll('#ribbon [data-page="ctx"] select')].find(x => [...x.options].some(o => o.value === 'stacked100'));
+    assert(kind && ['stacked', 'hbar', 'histogram'].every(v => [...kind.options].some(o => o.value === v)), 'en la pestaña Gráfico');
+    const types = ['stacked', 'stacked100', 'hbar'];
+    R.store.commit(() => { slide().blocks = types.map((t, i) => ({ id: 'g' + i, type: 'chart', chartType: t, data: d, series: ser, x: i * 400, y: 100, w: 380, h: 300, rotation: 0, animation: null })); }); await sleep(10);
+    const blob = await R.pptx.buildPptxBlob(), back = await R.pptxImport.importPPTX(new W.File([blob], 'g.pptx'));
+    eq(back.slides[0].blocks.filter(b => b.type === 'chart').map(b => b.chartType).join(), types.join(), 'vuelven de PowerPoint como eran');
+  });
+
   await test('formas: galería compacta, «Más formas» por categorías, colores del tema e ida y vuelta a PowerPoint', async () => {
     reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
     const all = Object.keys(S.SHAPE_NAMES);
