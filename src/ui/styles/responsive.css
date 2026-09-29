@@ -38,3 +38,26 @@
   .handle-del{width:28px;height:28px;font-size:16px}
   .handle-rot{width:20px;height:20px}
 }
+
+/* Narrow phones (portrait): the title bar keeps the name readable. */
+@media (max-width:480px){
+  .titlebar .brand,#ap-btn{display:none}
+  .lang-select{max-width:74px}
+  .doc-name{max-width:34vw}
+}
+
+/* Little height (a phone on its side): the slide gets the room. The ribbon
+   loses its group titles, thumbnails and bars shrink, notes are hidden. */
+@media (max-height:520px){
+  .titlebar{padding:2px 8px}
+  .tabs button{padding:5px 10px}
+  .group>label{display:none}
+  .ribbon-page{padding:2px}
+  .row button span{font-size:10px}
+  .row button,.row label.color,.row select{min-height:32px}
+  #navigator{height:62px;padding:4px 8px}
+  .thumb{flex:0 0 88px}
+  #notes-bar{display:none}
+  #statusbar{min-height:0;padding-block:0}
+  #canvas-wrap{padding:6px}
+}

@@ -47,9 +47,10 @@ export function initRibbon() {
   populateFonts();
   applyZoom();
   // On phones/tablets, start zoomed to fit and refit on rotation/resize.
-  if (window.innerWidth < 860) requestAnimationFrame(fitZoom);
+  const small = () => window.innerWidth < 860 || window.innerHeight < 520;
+  if (small()) requestAnimationFrame(fitZoom);
   let rt; window.addEventListener('resize', () => {
-    clearTimeout(rt); rt = setTimeout(() => { if (window.innerWidth < 860) fitZoom(); }, 200);
+    clearTimeout(rt); rt = setTimeout(() => { if (small()) fitZoom(); }, 200);
   });
   // Painter: the next object clicked on the slide receives the copied animation.
   document.getElementById('stage').addEventListener('click', e => {

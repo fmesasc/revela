@@ -19,12 +19,14 @@ export function applyZoom() {
   if (lbl) lbl.textContent = Math.round(z * 100) + '%';
 }
 export function setZoom(z) {
-  state.ui.zoom = Math.max(0.2, Math.min(3, Math.round(z * 100) / 100));
+  state.ui.zoom = Math.max(0.1, Math.min(3, Math.round(z * 100) / 100));
   applyZoom();
 }
 export function fitZoom() {
   const wrap = document.getElementById('canvas-wrap');
   const { w, h } = state.deck.size;
-  const z = Math.min((wrap.clientWidth - 56) / w, (wrap.clientHeight - 56) / h);
+  // Less margin on small screens (a phone on its side has little height).
+  const m = Math.min(wrap.clientWidth, wrap.clientHeight) < 400 ? 20 : 56;
+  const z = Math.min((wrap.clientWidth - m) / w, (wrap.clientHeight - m) / h);
   setZoom(z);
 }

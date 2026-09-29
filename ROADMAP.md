@@ -200,7 +200,7 @@ the origin of every requirement is traceable.
 - ✅ Automated headless regression test suite (`tests/run.sh`, real time, fake camera) `—`
 - ✅ Layered architecture (apps → ui → api → io → features → render·i18n → core) enforced by the tests (`tests/layers.py`) `—`
 - ✅ Development tools — screenshots of the editor, PowerPoint import fidelity report against LibreOffice, embeddability check of web pages (`tools/`) `—`
-- 🚧 Responsive & touch editing (mobile layout, long-press menus, fit-to-screen) `PP·GS·OO`
+- ✅ Responsive & touch editing: phone and tablet layout (portrait and on its side), touch select/drag/resize, long-press menus, double tap to type, fit-to-screen on rotation `PP·GS·OO`
 - ✅ Cloud project storage — sign in with Google, “My presentations” (recent files in Drive with thumbnails), open/save/new straight in Drive (client-side, `drive.file` scope) `PP·GS`
 - ✅ Desktop application ([Tauri](https://tauri.app/)): Windows, macOS and Linux installers built on every change and published in the releases `PP·OO`
 - ✅ Offline mode & installable app (service worker + manifest; works offline after one online visit) `PP·GS·OO`

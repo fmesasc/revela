@@ -56,6 +56,13 @@ def touch_checks(send, recv, port):
     t0 = rect(f'#stage .block[data-id="{ev("window.__revela.store.currentSlide().blocks[0].id")}"]')
     for _ in range(2): touch('touchStart', t0['x'], t0['y']); touch('touchEnd'); time.sleep(0.12)
     time.sleep(0.3); check(ev("!!document.querySelector('#stage .block.editing')"), 'doble toque para escribir')
+    # Turned on its side: the slide is fitted and seen whole; the title bar fits upright too.
+    ev("document.activeElement?.blur?.();1")
+    fits = "(()=>{const w=document.getElementById('canvas-wrap').getBoundingClientRect(),s=document.getElementById('stage').getBoundingClientRect();return s.width>100&&s.left>=w.left-1&&s.right<=w.right+1&&s.top>=w.top-1&&s.bottom<=w.bottom+1})()"
+    check(ev(fits), 'en vertical la diapositiva se ve entera')
+    check(ev("document.querySelector('.titlebar').scrollWidth<=innerWidth+1"), 'la barra de título cabe en vertical')
+    recv(send('Emulation.setDeviceMetricsOverride', sid, width=844, height=390, deviceScaleFactor=2, mobile=True)); time.sleep(0.8)
+    check(ev(fits), 'en horizontal (móvil tumbado) la diapositiva se ve entera')
     return fails
 
 
@@ -265,7 +272,7 @@ def main():
         touch_fail = touch_checks(send, recv, port) if out.startswith('REVELATEST PASS') else []
         if touch_fail:
             print('REVELATEST FAIL touch'); print('\n'.join(touch_fail)); return 1
-        if out.startswith('REVELATEST PASS'): out += ' + táctil 6/6'
+        if out.startswith('REVELATEST PASS'): out += ' + táctil 9/9'
         math_fail = math_keyboard_check(send, recv, port) if out.startswith('REVELATEST PASS') else []
         if math_fail:
             print('REVELATEST FAIL ecuación'); print('\n'.join(math_fail)); return 1
