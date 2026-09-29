@@ -504,9 +504,10 @@ export function deviceStyle(b) {
       background: '#1b1b1b', boxShadow: '0 0 0 2px #3a3a3a, 0 12px 26px #0005', boxSizing: 'border-box' };
     case 'monitor': return { border: `${Math.round(k * 0.6)}px solid #111`, borderBottom: `${Math.round(k * 1.3)}px solid #111`, borderRadius: '6px', background: '#111', boxShadow: '0 0 0 2px #3a3a3a, 0 12px 26px #0005', boxSizing: 'border-box' };
     case 'browser': { const t = Math.max(18, Math.round(Math.min(+b.w || 300, +b.h || 300) * 0.1)), d = Math.max(3, Math.round(t * 0.17)), y = Math.round(t / 2);
-      return { border: '1px solid #cfd3d8', borderTop: `${t}px solid transparent`, borderRadius: '8px', boxSizing: 'border-box', boxShadow: '0 12px 26px #0004', backgroundOrigin: 'border-box',
+      // (background-origin after the background shorthand, which would reset it)
+      return { border: '1px solid #cfd3d8', borderTop: `${t}px solid transparent`, borderRadius: '8px', boxSizing: 'border-box', boxShadow: '0 12px 26px #0004',
         background: `radial-gradient(circle at ${t * 0.5}px ${y}px,#ff5f57 ${d}px,transparent ${d + 1}px),radial-gradient(circle at ${t * 0.95}px ${y}px,#febc2e ${d}px,transparent ${d + 1}px),`
-          + `radial-gradient(circle at ${t * 1.4}px ${y}px,#28c840 ${d}px,transparent ${d + 1}px),#e8eaed` }; }
+          + `radial-gradient(circle at ${t * 1.4}px ${y}px,#28c840 ${d}px,transparent ${d + 1}px),#e8eaed`, backgroundOrigin: 'border-box' }; }
     default: return null;
   }
 }

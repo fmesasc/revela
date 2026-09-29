@@ -303,6 +303,48 @@ const EXAMPLES_DEF = {
     ]);
   } },
 
+  // A lively class: a curved title, a countdown for group work, a drawing that
+  // draws itself, sketched and gradient shapes, an app inside a phone and a
+  // browser window, and text round a shape.
+  classroom: { name: 'Clase interactiva', summary: 'Título curvo, cuenta atrás para el trabajo en grupo, dibujo que se traza solo, formas a mano alzada y con degradado, maquetas de móvil y navegador, texto alrededor', make: () => {
+    const app = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="360" height="720" viewBox="0 0 360 720"><rect width="360" height="720" fill="#f4f6fb"/>'
+      + '<rect width="360" height="110" fill="#2e7d32"/><text x="24" y="72" font-family="sans-serif" font-size="30" font-weight="700" fill="#fff">EcoClase</text>'
+      + [0, 1, 2, 3].map(i => `<rect x="20" y="${140 + i * 140}" width="320" height="120" rx="16" fill="#fff" stroke="#dde3ec"/><circle cx="72" cy="${200 + i * 140}" r="30" fill="${['#66bb6a', '#fbc02d', '#0277bd', '#ad1457'][i]}"/>`
+        + `<rect x="120" y="${180 + i * 140}" width="180" height="14" rx="7" fill="#c9d1dc"/><rect x="120" y="${206 + i * 140}" width="120" height="12" rx="6" fill="#e3e8ef"/>`).join('') + '</svg>');
+    const web = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720"><rect width="1280" height="720" fill="#f4f6fb"/>'
+      + '<rect width="1280" height="90" fill="#2e7d32"/><text x="40" y="60" font-family="sans-serif" font-size="38" font-weight="700" fill="#fff">EcoClase · Panel del grupo</text>'
+      + [0, 1, 2].map(i => `<rect x="${40 + i * 410}" y="130" width="380" height="220" rx="18" fill="#fff" stroke="#dde3ec"/><text x="${70 + i * 410}" y="200" font-family="sans-serif" font-size="30" fill="#5b6675">${['Papel', 'Plástico', 'Vidrio'][i]}</text>`
+        + `<text x="${70 + i * 410}" y="300" font-family="sans-serif" font-size="80" font-weight="700" fill="${['#0277bd', '#fbc02d', '#2e7d32'][i]}">${[42, 27, 15][i]} kg</text>`).join('')
+      + '<rect x="40" y="390" width="1200" height="290" rx="18" fill="#fff" stroke="#dde3ec"/>'
+      + [180, 120, 220, 160, 250, 200, 270].map((h, i) => `<rect x="${110 + i * 160}" y="${650 - h}" width="90" height="${h}" rx="8" fill="#66bb6a"/>`).join('') + '</svg>');
+    const heart = Array.from({ length: 60 }, (_, i) => { const a = i / 59 * 2 * Math.PI; return [Math.round(200 + 160 * Math.pow(Math.sin(a), 3)), Math.round(170 - (130 * Math.cos(a) - 50 * Math.cos(2 * a) - 20 * Math.cos(3 * a) - 10 * Math.cos(4 * a)))]; });
+    return numbered(build({ name: 'Clase interactiva', palette: 'forest', fonts: 'friendly', decor: p => [shape('ellipse', 1150, -60, 200, 200, p.accents[3], { sketch: true, stroke: p.fg, strokeWidth: 2 })] }, [
+      { layout: 'blank', extra: [
+        text('<b>¡Bienvenidos a clase!</b>', 190, 90, 900, 330, { fontSize: 78, curve: 30, color: '#2e7d32' }),
+        text('Hoy: el reciclaje, en equipo', 190, 450, 900, 60, { fontSize: 34, textAlign: 'center' }),
+        shape('rounded', 520, 540, 240, 90, '#66bb6a', { fill2: '#fbc02d', gradAngle: 0, sketch: true, stroke: '#1e3320', strokeWidth: 2 })],
+        notes: 'El título es texto curvo (Cuadro de texto ▸ Curvar texto). La forma de abajo tiene degradado y estilo a mano alzada (pestaña Forma).' },
+      { title: 'Trabajo en grupo', layout: 'titleOnly', extra: [
+        text(ul('Formad equipos de cuatro', 'Anotad tres cosas que tiráis cada día', 'Pensad dónde va cada una'), 90, 190, 620, 380, { fontSize: 32 }),
+        { ...base(800, 170, 380, 380), type: 'timer', seconds: 300, style: 'ring', color: '#2e7d32', auto: true, sound: true, endText: '¡Tiempo!' }],
+        notes: 'La cuenta atrás empieza sola al llegar a la diapositiva y suena al acabar; un clic la pausa (Insertar ▸ Cuenta atrás).' },
+      { title: 'Mira cómo se dibuja', layout: 'titleOnly', extra: [
+        { ...base(140, 170, 400, 360), type: 'ink', points: heart, vw: 400, vh: 360, color: '#c62828', width: 10, animation: A('draw', { duration: 2500 }) },
+        withAnims(shape('star', 700, 190, 320, 320, '#fbc02d', { stroke: '#1e3320', strokeWidth: 3, sketch: true }), A('draw', { duration: 2000, start: 'afterPrev' })),
+        text('Clic: el corazón se traza como si lo dibujaras, y luego la estrella.', 140, 590, 1000, 50, { fontSize: 26 })],
+        notes: 'Efecto «Dibujar» (Animaciones ▸ Dibujar, o en la pestaña Dibujo: Trazar al presentar).' },
+      { title: 'Nuestra app de reciclaje', layout: 'titleOnly', extra: [
+        { ...base(120, 150, 250, 500), type: 'image', src: app, alt: 'Pantalla de la app EcoClase', fit: 'cover', device: 'phone' },
+        { ...base(470, 190, 700, 420), type: 'image', src: web, alt: 'El panel de EcoClase en el navegador', fit: 'cover', device: 'browser' }],
+        notes: 'Imagen ▸ Dispositivo: dentro de un móvil, una tableta, un portátil, un monitor o una ventana de navegador.' },
+      { title: 'Texto alrededor', layout: 'titleOnly', extra: [
+        shape('ellipse', 110, 200, 220, 220, '#66bb6a', { wrap: true, fill2: '#2e7d32', gradType: 'radial' }),
+        text('Reciclar no es solo separar la basura: es pensar antes de comprar, reutilizar lo que ya tenemos y reparar lo que se rompe. '.repeat(3), 90, 180, 1100, 470, { fontSize: 28 })],
+        notes: 'Forma o Imagen ▸ Texto alrededor: los cuadros de texto que la tocan le dejan hueco.' },
+      { layout: 'section', title: '¡Buen trabajo!', subtitle: 'Diseño ▸ Cambiar tamaño: esta clase en A4 o en vertical para el móvil' },
+    ]));
+  } },
+
   // Canvas mode (like Prezi): a mountain drawn on the canvas; each slide is a
   // stop on the path to the top and takes its part of the picture as background.
   canvas: { name: 'Viaje por el lienzo (tipo Prezi)', summary: 'Modo lienzo: un diseño grande de fondo y la cámara vuela y acerca de una parada a otra', make: () => {

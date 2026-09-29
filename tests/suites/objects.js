@@ -672,7 +672,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
     const base = { id: 'i1', type: 'image', src: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=', x: 100, y: 100, w: 300, h: 500 };
     for (const [d] of S.DEVICES.slice(1)) assert(/border/.test(S.deviceCSS({ ...base, device: d })), 'marco de ' + d);
-    assert(/radial-gradient/.test(S.deviceCSS({ ...base, device: 'browser' })) && /background-origin:border-box/.test(S.deviceCSS({ ...base, device: 'browser' })), 'el navegador, con sus tres puntos en la barra');
+    const bcss = S.deviceCSS({ ...base, device: 'browser' });
+    assert(/radial-gradient/.test(bcss) && bcss.indexOf('background-origin:border-box') > bcss.indexOf('background:'), 'el navegador, con sus tres puntos en la barra (el origen después del fondo: si no, se pierde)');
     eq(S.deviceCSS(base), '', 'sin dispositivo, nada');
     R.blocks.addImage(base.src); await sleep(30);
     const sel = [...D.querySelectorAll('#ribbon [data-page="ctx"] select')].find(x => [...x.options].some(o => o.value === 'phone'));

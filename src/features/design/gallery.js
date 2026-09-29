@@ -8,6 +8,7 @@ import { PALETTES, pairStacks } from './palettes.js';
 
 const T = (ph, x, y, w, h, fontSize, extra = {}) => ({ id: uid(), type: 'text', ph, html: '', x, y, w, h, fontSize, rotation: 0, animation: null, ...extra });
 const R = (x, y, w, h, fill, extra = {}) => ({ id: uid(), type: 'shape', shape: 'rect', fill, stroke: fill, strokeWidth: 0, x, y, w, h, rotation: 0, animation: null, ...extra });
+const E = (x, y, w, h, fill, extra = {}) => R(x, y, w, h, fill, { shape: 'ellipse', ...extra });
 
 // Slide skeletons shared by the templates (placeholders only, no sample text).
 const layouts = (hs, bs) => [
@@ -34,6 +35,23 @@ export const GALLERY = {
     master: p => [R(40, 40, 1200, 640, 'none', { stroke: p.accents[1], strokeWidth: 2 })] },
   ocean: { name: 'Océano', palette: 'ocean', fonts: 'modern',
     master: p => [R(0, 0, 1280, 120, p.accents[0], { opacity: 35 })] },
+  // More looks: gradients, sketched shapes, circles and bands.
+  sunset: { name: 'Atardecer', palette: 'warm', fonts: 'friendly',
+    master: p => [R(0, 600, 1280, 120, p.accents[0], { fill2: p.accents[1], gradAngle: 0 })] },
+  neon: { name: 'Neón', palette: 'violet', fonts: 'tech',
+    master: p => [E(-120, -120, 360, 360, p.accents[0], { opacity: 55, fill2: p.accents[1], gradType: 'radial' }), E(1080, 560, 280, 280, p.accents[4], { opacity: 40 })] },
+  notebook: { name: 'Cuaderno', palette: 'paper', fonts: 'friendly',
+    master: p => [R(90, 0, 3, 720, p.accents[3]), ...Array.from({ length: 11 }, (_, i) => R(0, 90 + i * 58, 1280, 1, p.accents[2], { opacity: 30 }))] },
+  sketch: { name: 'Boceto', palette: 'office', fonts: 'friendly',
+    master: p => [R(40, 40, 1200, 640, 'none', { stroke: p.fg, strokeWidth: 2, sketch: true }), E(1120, 60, 90, 90, p.accents[1], { sketch: true, stroke: p.fg, strokeWidth: 2 })] },
+  nature: { name: 'Naturaleza', palette: 'forest', fonts: 'classic',
+    master: p => [E(-160, 520, 420, 420, p.accents[1], { opacity: 45 }), E(1060, -140, 360, 360, p.accents[0], { opacity: 35 })] },
+  night: { name: 'Noche', palette: 'midnight', fonts: 'clean',
+    master: p => [R(0, 0, 1280, 720, 'none', { fill: p.bg, fill2: '#1b2440', gradAngle: 90, strokeWidth: 0 }), R(90, 668, 180, 6, p.accents[0])] },
+  bold: { name: 'Contraste', palette: 'grayscale', fonts: 'bold',
+    master: p => [R(0, 0, 56, 720, p.accents[3]), R(56, 0, 8, 720, p.accents[1])] },
+  mono: { name: 'Revista', palette: 'office', fonts: 'editorial',
+    master: p => [R(60, 60, 1160, 2, p.fg), R(60, 658, 1160, 2, p.fg), R(60, 60, 12, 12, p.accents[1])] },
 };
 
 // Build a complete deck from a gallery entry.

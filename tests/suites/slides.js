@@ -470,7 +470,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   await test('presentaciones de ejemplo completas: se abren, usan patrón y diseños y se exportan', async () => {
     reset(); D.querySelector('[data-action="gallery"]').click(); await sleep(50);
     const items = D.querySelectorAll('#gallery-modal .gal-examples .gal-item');
-    eq(items.length, Object.keys(R.examples.EXAMPLES).length, 'todos los ejemplos en la galería'); assert(items.length >= 14, 'al menos catorce');
+    eq(items.length, Object.keys(R.examples.EXAMPLES).length, 'todos los ejemplos en la galería'); assert(items.length >= 15, 'al menos quince');
     D.querySelector('#gallery-modal .modal-close').click();
     const kinds = new Set();
     for (const key of Object.keys(R.examples.EXAMPLES)) {
@@ -484,6 +484,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
         kinds.add(b.type === 'poll' ? 'poll:' + b.kind : b.type); if (b.animation) kinds.add('anim');
         for (const a of [b.animation, ...(b.anims || [])].filter(Boolean)) kinds.add('fx:' + a.effect), a.turn && kinds.add('turn');
         if (b.anims?.length) kinds.add('several'); if (b.walk) kinds.add('walk'); if (b.motion) kinds.add('motion3d'); if (b.wordart) kinds.add('wordart');
+        for (const k of ['curve', 'device', 'wrap', 'sketch', 'fill2']) if (b[k]) kinds.add(k);
       }
       if (deck.slides.some(s => s.autoAnimate)) kinds.add('auto-animate');
       if (deck.slides.some(s => s.vertical)) kinds.add('vertical');
@@ -493,7 +494,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(!/Haz clic para/.test(html), key + ': sin avisos de marcador vacíos');
     }
     for (const k of ['chart', 'table', 'code', 'math', 'poll:choice', 'poll:qa', 'icon', 'shape', 'anim', 'auto-animate', 'vertical',
-      'model', 'walk', 'motion3d', 'fx:clip3d', 'fx:path', 'turn', 'several', 'connector', 'wordart'])
+      'model', 'walk', 'motion3d', 'fx:clip3d', 'fx:path', 'turn', 'several', 'connector', 'wordart',
+      'timer', 'ink', 'fx:draw', 'curve', 'device', 'wrap', 'sketch', 'fill2'])
       assert(kinds.has(k), 'los ejemplos enseñan: ' + k);
     // Opening one from the gallery.
     reset(); D.querySelector('[data-action="gallery"]').click(); await sleep(50);
