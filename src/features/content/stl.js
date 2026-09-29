@@ -2,7 +2,7 @@
 // binary, so it shows like any other 3D model. STL is usually Z-up: it is
 // turned to glTF's Y-up. One plain material, normals per face.
 
-import { writeGLB } from './autorig.js';
+import { writeGLB } from './gltf.js';
 
 export function parseSTL(buf) {
   const u8 = new Uint8Array(buf), dv = new DataView(buf);

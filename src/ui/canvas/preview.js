@@ -4,7 +4,7 @@
 import { currentSlide } from '../../core/store.js';
 import { animTimeline, animEntries, EFFECT_KF, motionFrames } from '../../features/animation/transitions.js';
 import { stage } from './canvas.js';
-import { model3dRuntime } from '../../features/content/model3d.js';
+import { model3dRuntime } from '../../io/runtime/model3d.js';
 
 let models3d = null;                              // walking 3D models (their clip while they move)
 function walkIn(el, dur, delay) {

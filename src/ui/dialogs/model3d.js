@@ -7,7 +7,8 @@ import { commit, currentSlide, setSelection } from '../../core/store.js';
 import { startPathDraw } from '../canvas/pathdraw.js';
 import { openAutoRig } from './autorig.js';
 import { animatedBlocks } from '../../features/animation/transitions.js';
-import { MOTIONS_3D, modelAttrs, model3dRuntime } from '../../features/content/model3d.js';
+import { MOTIONS_3D, modelAttrs } from '../../features/content/model3d.js';
+import { model3dRuntime } from '../../io/runtime/model3d.js';
 import { MODEL_VIEWER, loadScript } from '../../core/vendor.js';
 import { t } from '../../i18n/index.js';
 

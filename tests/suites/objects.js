@@ -462,7 +462,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const still = Object.fromEntries(M.modelAttrs({ ...b, clip: null }));
     assert(!('autoplay' in still) && still['animation-name'] === 'Walk', 'sin reposo: quieto hasta moverse');
     // The runtime with a stand-in viewer: it moves right by CSS, as in the presentation.
-    const rt = M.model3dRuntime(), mv = D.createElement('model-viewer'), log = [];
+    const RT = await W.eval("import('/src/io/runtime/model3d.js')");
+    const rt = RT.model3dRuntime(), mv = D.createElement('model-viewer'), log = [];
     for (const [k, v] of M.modelAttrs(b)) mv.setAttribute(k, v);
     let orbit = '', name = '';
     Object.defineProperties(mv, { availableAnimations: { value: ['Survey', 'Walk', 'Wave'] }, animationName: { get: () => name, set: v => { name = v; } },
