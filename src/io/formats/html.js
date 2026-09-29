@@ -68,6 +68,18 @@ function customEffectCSS(deck) {
 
 export { esc };
 
+// Background sound over several slides: it plays while the current slide is in
+// its range and stops (back to the start) outside it; its button pauses and resumes it.
+const BGM_JS = `(function(){var list=[].slice.call(document.querySelectorAll('audio[data-bgm]'));
+function au(id){return document.querySelector('audio[data-bgm="'+id+'"]');}
+function btns(){document.querySelectorAll('[data-bgm-btn]').forEach(function(b){var a=au(b.getAttribute('data-bgm-btn'));b.textContent=a&&!a.paused?'\u{1F50A}':'\u{1F508}';});}
+function upd(){var i=Reveal.getSlides().indexOf(Reveal.getCurrentSlide());list.forEach(function(a){var on=i>=+a.getAttribute('data-from')&&i<=+a.getAttribute('data-to');
+if(on){if(a.paused&&!a.ended&&!a.hasAttribute('data-off'))a.play().catch(function(){});}else{a.pause();a.currentTime=0;a.removeAttribute('data-off');}});btns();}
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-bgm-btn]');if(!b)return;e.stopPropagation();var a=au(b.getAttribute('data-bgm-btn'));if(!a)return;
+if(a.paused){a.removeAttribute('data-off');a.play().catch(function(){});}else{a.pause();a.setAttribute('data-off','');}},true);
+list.forEach(function(a){a.addEventListener('play',btns);a.addEventListener('pause',btns);});
+Reveal.on('ready',upd);Reveal.on('slidechanged',upd);if(Reveal.isReady())upd();})();`;
+
 function animAttrs(b, slide, a = b.animation, key = b.id) {
   // An object that triggers animations of others gets an id to be clicked.
   const src = slide && slide.blocks.some(x => animsOf(x).some(y => y.trigger === b.id)) ? ` data-bid="${b.id}"` : '';
@@ -207,8 +219,13 @@ function blockHTMLRaw(b, slide) {
   if (b.type === 'camera')   // Cameo: filled with the presenter's camera when the slide is shown
     return `<video${a} data-camera autoplay muted playsinline style="${box(b)}object-fit:cover;background:#223;`
       + `border-radius:${b.shape === 'circle' ? '50%' : b.shape === 'rounded' ? '14%' : '0'}${b.mirror !== false ? ';scale:-1 1' : ''}"></video>`;
-  if (b.type === 'audio')
-    return `<audio${a} src="${esc(b.src || '')}" controls style="${box(b)}"></audio>`;
+  // Sound: on its slide (reveal.js plays it on arrival with data-autoplay) or, if
+  // it keeps playing over the next slides, a speaker button here and the sound
+  // itself outside the slides (below: bgmHTML), so changing slide doesn't stop it.
+  if (b.type === 'audio') {
+    if (b.until) return b.hideIcon ? '' : `<button${a} type="button" data-bgm-btn="${esc(b.id)}" style="${box(b)}background:none;border:0;cursor:pointer;font-size:${Math.round(Math.min(b.w, b.h) * 0.6)}px;line-height:1;padding:0">🔊</button>`;
+    return `<audio${a} src="${esc(b.src || '')}" controls${b.autoplay ? ' data-autoplay' : ''}${b.loop ? ' loop' : ''} style="${box(b)}${b.hideIcon ? 'visibility:hidden;' : ''}"></audio>`;
+  }
   if (b.type === 'embed' && b.display === 'card')
     return `<a${a} class="rv-webcard" href="${esc(b.src || '')}" target="_blank" rel="noopener" style="${box(b)}display:block;text-decoration:none">${webCardHTML(b, t('Abrir la web'))}</a>`;
   if (b.type === 'embed')
@@ -352,6 +369,12 @@ function buildHTMLRaw(deck, { inApp = false } = {}) {
   }
   const paths = slidePaths(deck), flat = [...paths.values()];
   const plan = morphPlan(deck);
+  // Background sound: from its slide up to another (or the end), in reveal's order of slides.
+  const vis = deck.slides.filter(x => !x.hidden);
+  const bgmHTML = vis.flatMap((s, i) => s.blocks.filter(b => b.type === 'audio' && b.until && b.src).map(b => {
+    const j = b.until === 'end' ? vis.length - 1 : vis.findIndex(x => x.id === b.until);
+    return `<audio data-bgm="${esc(b.id)}" data-from="${i}" data-to="${Math.max(i, j < 0 ? i : j)}" src="${esc(b.src)}"${b.loop ? ' loop' : ''} preload="auto"></audio>`;
+  })).join('');
   const slides = groups.map(g => (g.length > 1 ? `<section>\n${g.map(s => slideHTML(s, deck, figMap, plan)).join('\n')}\n</section>` : slideHTML(g[0], deck, figMap, plan))).join('\n')
     // Links typed as a slide number (#/N, N = position in the deck) → reveal's h/v.
     .replace(/href="#\/(\d+)"/g, (m, n) => `href="#/${flat[+n] || n}"`);
@@ -441,7 +464,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
 </style></head><body>
 <div class="reveal${canvas ? ' rv-canvas' : ''}"><div class="slides">${canvas && deck.canvas.image?.src ? `<div class="rv-world"><img alt="" src="${esc(deck.canvas.image.src)}" style="max-width:none;max-height:none;margin:0;position:absolute;left:${deck.canvas.image.x}px;top:${deck.canvas.image.y}px;width:${deck.canvas.image.w}px;height:${deck.canvas.image.h}px"></div>` : ''}
 ${slides}
-</div>${footerText}${logoHTML}</div>
+</div>${footerText}${logoHTML}</div>${bgmHTML}
 <script src="${REVEAL}/dist/reveal.js"></script>
 <script src="${REVEAL}/plugin/notes/notes.js"></script>
 ${rv(deck).zoom !== false ? `<script src="${REVEAL}/plugin/zoom/zoom.js"></script>` : ''}
@@ -463,6 +486,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${canvas ? `${canvasRuntimeDeps()}\ncanvasRuntime(${JSON.stringify(groups.map(g => frameOf(g[0], deck.slides.indexOf(g[0]), deck.size)))}, ${w}, ${h});` : ''}
  ${hasModel3d ? `(${model3dRuntime.toString()})();` : ''}
  ${hasTimer ? `(${timerRuntime.toString()})();` : ''}
+ ${bgmHTML ? BGM_JS : ''}
  ${hasMedia ? `${createMediaPlayer.toString()}\n${revelaMediaRuntime.toString()}\nrevelaMediaRuntime(${JSON.stringify(GIFUCT)});` : ''}
  ${inkJS(w, h, { pen: t('Lápiz'), hl: t('Resaltador'), laser: t('Puntero láser'), color: t('Color de la tinta'), erase: t('Borrar la tinta de la diapositiva'),
    cc: t('Subtítulos en directo'), lang: speechLang(), ccWarn: t('Los subtítulos usan el reconocimiento de voz del navegador: en Chrome y Edge el audio se envía a su servicio de voz. ¿Activarlos?') })}

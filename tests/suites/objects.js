@@ -622,6 +622,30 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(Object.keys(zip.files).some(n => /^ppt\/media\//.test(n)), 'en PowerPoint, como imagen');
   });
 
+  await test('sonido: empezar solo, repetir, seguir sonando en las diapositivas siguientes y ocultarlo', async () => {
+    reset(); const W = frame.contentWindow;
+    R.slides.addSlide('blank'); R.slides.addSlide('blank'); R.slides.goToSlide(0); await sleep(10);
+    const S = R.state.deck.slides;
+    R.store.commit(() => { S[0].blocks.push({ id: 'au', type: 'audio', src: 'data:audio/wav;base64,UklGRiQAAABXQVZF', x: 1100, y: 600, w: 60, h: 60, rotation: 0, animation: null });
+      R.state.ui.selection = 'au'; R.state.ui.multi = ['au']; R.state.ui.activeTab = 'ctx'; }); await sleep(30);
+    const page = () => D.querySelector('#ribbon [data-page="ctx"]'), bt = l => [...page().querySelectorAll('button')].find(x => x.querySelector('span')?.textContent === l);
+    const au = () => slide().blocks.find(x => x.id === 'au');
+    bt('Empezar solo').click(); await sleep(10); bt('Repetir').click(); await sleep(10);
+    assert(au().autoplay && au().loop, 'empezar solo y repetir desde su pestaña');
+    let html = R.io.buildHTML();
+    assert(/<audio[^>]*controls data-autoplay loop/.test(html), 'en su diapositiva: reveal.js lo pone en marcha al llegar');
+    const sel = [...page().querySelectorAll('select')].find(x => [...x.options].some(o => o.value === 'end'));
+    eq([...sel.options].map(o => o.value).join(), ',' + S[1].id + ',' + S[2].id + ',end', 'hasta una diapositiva siguiente o el final');
+    sel.value = S[1].id; sel.dispatchEvent(new W.Event('change')); await sleep(20);
+    html = R.io.buildHTML();
+    assert(/<audio data-bgm="au" data-from="0" data-to="1"[^>]*loop/.test(html), 'fuera de las diapositivas, de la 1 a la 2: no se corta al pasar');
+    assert(/data-bgm-btn="au"/.test(html) && /querySelectorAll\('audio\[data-bgm\]'\)/.test(html), 'con su botón y lo que lo controla');
+    bt('Ocultar al presentar').click(); await sleep(10);
+    assert(!/<button[^>]*data-bgm-btn/.test(R.io.buildHTML()), 'oculto: sin botón (sigue sonando)');
+    sel.value = 'end'; sel.dispatchEvent(new W.Event('change')); await sleep(10);
+    assert(/data-from="0" data-to="2"/.test(R.io.buildHTML()), 'hasta el final');
+  });
+
   await test('modelos 3D: margen para moverse (la mano que saluda no se corta en el borde)', async () => {
     reset(); const W = frame.contentWindow, M = await W.eval("import('/src/features/content/model3d.js')");
     const base = { id: 'm1', type: 'model', src: 'data:model/gltf-binary;base64,AAAA', x: 100, y: 100, w: 200, h: 100, rotation: 0, animation: null };

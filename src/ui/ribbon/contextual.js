@@ -83,9 +83,21 @@ function groupsFor(b) {
         ['select', 'Margen para moverse', BLEEDS_3D, String(modelBleed(b)), v => set(b, x => { x.bleed = +v; })]]],
       ['Esqueleto', [btn('accessibility_new', 'Esqueleto automático', () => openAutoRig(b))]],
       ['Archivo', [btn('download', 'Descargar (.glb)', () => saveFile(b)), btn('swap_horiz', 'Reemplazar', () => replaceModel(b))]]);
-  } else if (b.type === 'video' || b.type === 'audio') G.push(
+  } else if (b.type === 'video') G.push(
     ['Reproducción', [btn('play_arrow', 'Reproducir', () => playInEditor(b.id)), btn('tune', 'Opciones', () => openMediaPlayback(b))]],
     ['Archivo', [btn('download', 'Descargar', () => saveFile(b))]]);
+  else if (b.type === 'audio') {
+    // PowerPoint's "Play in background": it starts by itself, keeps playing over
+    // the next slides (up to one, or to the end), loops, and hides its icon.
+    const slides = state.deck.slides, here = slides.findIndex(s => s.blocks.includes(b));
+    const until = [['', 'Solo en esta diapositiva'], ...slides.slice(here + 1).map((s, k) => [s.id, `${t('Hasta la diapositiva')} ${here + k + 2}`]), ['end', 'Hasta el final']];
+    G.push(['Reproducción', [btn('play_arrow', 'Reproducir', () => playInEditor(b.id)),
+      btn('play_circle', 'Empezar solo', () => set(b, x => { if (x.autoplay) delete x.autoplay; else x.autoplay = true; }), !!b.autoplay),
+      btn('repeat', 'Repetir', () => set(b, x => { if (x.loop) delete x.loop; else x.loop = true; }), !!b.loop),
+      ['select', 'Sigue sonando', until, b.until && (b.until === 'end' || slides.some(s => s.id === b.until)) ? b.until : '', v => set(b, x => { if (v) { x.until = v; x.autoplay = true; } else delete x.until; })],
+      btn('visibility_off', 'Ocultar al presentar', () => set(b, x => { if (x.hideIcon) delete x.hideIcon; else x.hideIcon = true; }), !!b.hideIcon)]],
+      ['Archivo', [btn('download', 'Descargar', () => saveFile(b))]]);
+  }
   else if (b.type === 'text') G.push(
     ['Fuente', [['select', 'Tipo de letra', fontOptions(), b.fontFamily || '', v => format.fontFamily(v)],
       ['num', 'Tamaño', Math.round(styled(b, currentSlide()).fontSize || 40), v => format.setFontSize(parseInt(v, 10) || 40), 6, 400, 2],
