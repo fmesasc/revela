@@ -325,7 +325,7 @@ export function renderRibbon() {
   syncValue('[data-slide-trans-out]', currentSlide()?.transitionOut || '');
   // Effect options: only those of this slide's transition (wipe, push, split).
   { const sel = $('[data-slide-trans-dir]'), dirs = trans.TRANSITION_DIRS[currentSlide()?.transition] || [];
-    if (sel) { sel.disabled = !dirs.length; [...sel.options].forEach(o => (o.hidden = !dirs.includes(o.value)));
+    if (sel) { sel.disabled = !dirs.length; [...sel.options].forEach(o => (o.hidden = o.value ? !dirs.includes(o.value) : dirs.length > 0));
       syncValue('[data-slide-trans-dir]', dirs.includes(currentSlide()?.transitionDir) ? currentSlide().transitionDir : dirs[0] || ''); } }
   syncValue('[data-slide-speed]', currentSlide()?.transitionSpeed || '');
   document.querySelectorAll('[data-draw]').forEach(b => b.classList.toggle('on', (state.ui.drawTool || '') === b.dataset.draw));

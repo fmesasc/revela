@@ -7,7 +7,15 @@ import { uid, textBlock, tableBlock, codeBlock, chartBlock, mathBlock, figindexB
 import { currentLang } from '../../i18n/index.js';
 
 function insert(block) {
-  commit(() => { currentSlide().blocks.push(block); setSelection(block.id); });
+  commit(() => {
+    // Not exactly on top of another one inserted there before: a little lower and to the right.
+    const s = currentSlide(), { w, h } = state.deck.size;
+    for (let k = 0; k < 20 && s.blocks.some(b => Math.abs(b.x - block.x) < 2 && Math.abs(b.y - block.y) < 2); k++) {
+      if (block.x + block.w + 24 > w || block.y + block.h + 24 > h) break;
+      block.x += 24; block.y += 24;
+    }
+    s.blocks.push(block); setSelection(block.id);
+  });
 }
 
 // Delete / duplicate the whole selection (one or many).

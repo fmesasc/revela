@@ -509,6 +509,24 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(last().fill, '#ff0000', 'el relleno se cambia desde la pestaña');
     const shapeSel = [...page().querySelectorAll('select')].find(x => [...x.options].some(o => o.value === 'star'));
     shapeSel.value = 'star'; shapeSel.dispatchEvent(new W.Event('change')); await sleep(10); eq(last().shape, 'star', 'cambiar de forma'); const shapeId = last().id;
+    const h0 = page().offsetHeight;
+    // Another one inserted where the first is goes a little lower and to the right.
+    R.blocks.addShape('ellipse'); await sleep(20);
+    const [s1, s2] = slide().blocks.filter(x => x.type === 'shape').slice(-2);
+    assert(s2.x === s1.x + 24 && s2.y === s1.y + 24, 'no queda justo encima de la anterior');
+    // A chart: its type, colour, grid and data labels, without opening the data.
+    R.blocks.addChart(); await sleep(20);
+    eq(tab().textContent, 'Gráfico', 'gráfico');
+    const kind = [...page().querySelectorAll('select')].find(x => [...x.options].some(o => o.value === 'doughnut'));
+    kind.value = 'pie'; kind.dispatchEvent(new W.Event('change')); await sleep(10); eq(last().chartType, 'pie', 'tipo de gráfico desde la pestaña');
+    [...page().querySelectorAll('button')].find(x => x.querySelector('span')?.textContent === 'Etiquetas de datos').click(); await sleep(10);
+    assert(last().dataLabels, 'etiquetas de datos');
+    eq(page().offsetHeight, h0, 'la cinta no cambia de alto entre objetos (el lienzo no salta)');
+    for (const tb of D.querySelectorAll('#ribbon .tabs [data-tab]:not([hidden])')) {
+      tb.click(); await sleep(5); eq(D.querySelector('#ribbon .ribbon-page.active').offsetHeight, h0, 'ni entre pestañas: ' + tb.dataset.tab);
+    }
+    const dir = D.querySelector('[data-slide-trans-dir]');
+    assert(dir.disabled && dir.selectedOptions[0]?.textContent === 'Opciones de efecto', 'sin opciones de efecto, lo dice (no un desplegable vacío)');
     // A 3D model: its options, the camera view.
     const m = { id: 'm3', type: 'model', src: 'data:model/gltf-binary;base64,AAAA', x: 10, y: 10, w: 200, h: 200, rotation: 0, animation: null };
     R.store.commit(() => { slide().blocks.push(m); R.state.ui.selection = 'm3'; R.state.ui.multi = ['m3']; }); await sleep(20);

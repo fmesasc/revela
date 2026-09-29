@@ -35,6 +35,7 @@ const TITLES = { shape: 'Forma', image: 'Imagen', model: 'Modelo 3D', video: 'V�
   math: 'Ecuación', code: 'Código', poll: 'Votación', embed: 'Web', icon: 'Icono', camera: 'Cámara', slideref: 'Zoom', figindex: 'Índice', ink: 'Dibujo', connector: 'Conector' };
 const SHAPES = [['rect', 'Rectángulo'], ['rounded', 'Rectángulo redondeado'], ['ellipse', 'Elipse'], ['triangle', 'Triángulo'], ['diamond', 'Rombo'], ['star', 'Estrella'],
   ['hexagon', 'Hexágono'], ['parallelogram', 'Paralelogramo'], ['trapezoid', 'Trapecio'], ['chevron', 'Galón (chevron)'], ['plus', 'Cruz'], ['line', 'Línea'], ['arrow', 'Flecha']];
+const CHARTS = [['bar', 'Barras'], ['line', 'Líneas'], ['area', 'Área'], ['pie', 'Circular'], ['doughnut', 'Dona'], ['scatter', 'Dispersión'], ['radar', 'Radar']];
 
 // A control: ['btn', icon, label, fn, on?] · ['color', icon, label, value, fn] · ['select', label, [[v, l]], value, fn] · ['num', label, value, fn, min, max, step]
 const btn = (icon, label, fn, on = false, key = '') => ['btn', icon, label, fn, on, key];
@@ -100,7 +101,11 @@ function groupsFor(b) {
       btn('remove', 'Quitar fila', () => blocks.tableDelRow()), btn('remove', 'Quitar columna', () => blocks.tableDelCol())]],
     ['Estilo', [btn('title', 'Encabezado', () => blocks.tableToggleHeader(), !!b.header), btn('palette', 'Estilo de tabla', () => openTableStyle(b)), btn('bar_chart', 'Crear gráfico', () => blocks.chartFromTable())]]);
   else if (b.type === 'chart') G.push(['Datos', [btn('edit', 'Editar datos', () => openChartData(b)), btn('link', b.dataUrl ? 'Datos vinculados' : 'Vincular CSV', () => openLinkChart(b)),
-    ...(b.dataUrl ? [btn('refresh', 'Actualizar', () => refreshChart(b))] : [])]]);
+    ...(b.dataUrl ? [btn('refresh', 'Actualizar', () => refreshChart(b))] : [])]],
+    ['Diseño', [['select', 'Tipo de gráfico', CHARTS, b.chartType || 'bar', v => set(b, x => { x.chartType = v; })],
+      ['color', 'format_color_fill', 'Color', b.color || '#3f6497', v => set(b, x => { x.color = v; })],
+      btn('grid_4x4', 'Cuadrícula', () => set(b, x => { x.grid = !x.grid; }), !!b.grid),
+      btn('pin', 'Etiquetas de datos', () => set(b, x => { x.dataLabels = !x.dataLabels; }), !!b.dataLabels)]]);
   else if (b.type === 'math') G.push(['Ecuación', [btn('functions', 'Editar ecuación', () => openMath(b)), btn('format_color_fill', 'Relleno y borde', () => openBoxStyle(b))]]);
   else if (b.type === 'code') G.push(['Código', [btn('code', 'Editar código y pasos', () => openCodeEditor(b))]]);
   else if (b.type === 'poll') G.push(['Votación', [btn('how_to_vote', 'Editar votación', () => openPollEditor(b))]]);

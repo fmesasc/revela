@@ -23,7 +23,7 @@
 .tabs button.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
 
 .pages{background:var(--ribbon);border-top:1px solid var(--line)}
-.ribbon-page{display:none;align-items:stretch;padding:6px 2px;min-height:80px;
+.ribbon-page{display:none;align-items:stretch;padding:6px 2px;min-height:105px;box-sizing:border-box;
   overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;
   scrollbar-width:thin;scrollbar-color:transparent transparent;transition:scrollbar-color .25s}
 .ribbon-page.active{display:flex}
@@ -37,7 +37,7 @@
   padding:2px 8px;border-right:1px solid var(--line)}
 .group>label{text-align:center;color:var(--txt2);font-size:11px}
 .group .row{display:flex;align-items:center;gap:3px;flex:1}
-.group.wide .row{flex-wrap:wrap;max-width:340px}
+.group.wide .row{flex-wrap:nowrap}
 
 .row button,.row label.color,.row select{background:none;border:1px solid transparent;border-radius:6px;
   cursor:pointer;color:var(--txt);display:flex;flex-direction:column;align-items:center;justify-content:center;
