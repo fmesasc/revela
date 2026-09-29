@@ -273,9 +273,12 @@ function syncSwatches() {
 }
 function bindChange(sel, cb) { const el = $(sel); if (el) el.addEventListener('change', e => cb(e.target.value)); }
 
+let lastActiveTab = null;
 export function renderRibbon() {
   ensureDeckFonts(state.deck);   // load any Google fonts the deck uses
   document.querySelectorAll('[data-tab]').forEach(t => t.classList.toggle('active', t.dataset.tab === state.ui.activeTab));
+  // (On a narrow screen the tabs scroll: keep the active one in view.)
+  { const at = document.querySelector('#ribbon .tabs .active'); if (at && at !== lastActiveTab) { lastActiveTab = at; at.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); } }
   document.querySelectorAll('.ribbon-page').forEach(p => p.classList.toggle('active', p.dataset.page === state.ui.activeTab));
   const docName = $('.doc-name');
   if (docName && document.activeElement !== docName && docName.textContent !== state.deck.name)

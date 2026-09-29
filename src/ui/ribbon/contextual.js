@@ -164,6 +164,7 @@ export function renderContextual() {
   if (known && b && !known.has(b.id) && state.ui.activeTab !== 'ctx') {
     state.ui.activeTab = 'ctx';
     document.querySelectorAll('#ribbon [data-tab]').forEach(x => x.classList.toggle('active', x.dataset.tab === 'ctx'));
+    tab.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
     document.querySelectorAll('#ribbon .ribbon-page').forEach(p => p.classList.toggle('active', p.dataset.page === 'ctx'));
   }
   known = ids;
