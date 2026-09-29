@@ -25,7 +25,7 @@ import { setDrawTool, drawOpts } from '../shell/draw.js';
 import { FONTS, ensureDeckFonts } from '../../features/design/fonts.js';
 import { t } from '../../i18n/index.js';
 import { animPaint, endAnimPaint, ACTIONS } from './actions.js';
-import { applyZoom, fitZoom } from './zoom.js';
+import { applyZoom, fitZoom, zoomFitting } from './zoom.js';
 import { closePopover, togglePopover } from './popovers.js';
 
 const $ = s => document.querySelector(s);
@@ -52,10 +52,13 @@ export function initRibbon() {
   applyZoom();
   // On phones/tablets, start zoomed to fit and refit on rotation/resize.
   const small = () => window.innerWidth < 860 || window.innerHeight < 520;
-  if (small()) requestAnimationFrame(fitZoom);
-  let rt; window.addEventListener('resize', () => {
-    clearTimeout(rt); rt = setTimeout(() => { if (small()) fitZoom(); }, 200);
-  });
+  // The slide fits the space it has — at start, when the window or the panels
+  // around it change — until the user chooses a zoom of their own.
+  requestAnimationFrame(fitZoom);
+  let rt; const refit = () => { clearTimeout(rt); rt = setTimeout(() => { if (zoomFitting() || small()) fitZoom(); }, 120); };
+  window.addEventListener('resize', refit);
+  const wrap = document.getElementById('canvas-wrap');
+  if (wrap && window.ResizeObserver) new ResizeObserver(refit).observe(wrap);
   // Painter: the next object clicked on the slide receives the copied animation.
   document.getElementById('stage').addEventListener('click', e => {
     if (!animPaint) return;

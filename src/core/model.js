@@ -16,6 +16,12 @@ export const STORAGE_KEY = 'revela.deck.v1';
 export const uid = () => Math.random().toString(36).slice(2, 9)
   + Date.now().toString(36).slice(-3);
 
+// A new, untouched presentation (the one Revela starts with): replacing it loses nothing.
+export function isBlankDeck(d) {
+  const s = d?.slides; if (!s || s.length !== 1) return false;
+  const want = emptyDeck().slides[0].blocks.map(b => b.html).join('|');
+  return s[0].blocks.map(b => b.html).join('|') === want || !s[0].blocks.length;
+}
 export function emptyDeck() {
   const first = blankSlide('#101317');
   first.blocks = [

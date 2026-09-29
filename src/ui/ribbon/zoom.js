@@ -18,7 +18,11 @@ export function applyZoom() {
   const lbl = document.getElementById('zoom-label');
   if (lbl) lbl.textContent = Math.round(z * 100) + '%';
 }
-export function setZoom(z) {
+// Fit to the window (as PowerPoint does) until the user picks a zoom; then theirs is kept.
+let fitting = true;
+export const zoomFitting = () => fitting;
+export function setZoom(z, { manual = true } = {}) {
+  if (manual) fitting = false;
   state.ui.zoom = Math.max(0.1, Math.min(3, Math.round(z * 100) / 100));
   applyZoom();
 }
@@ -26,7 +30,8 @@ export function fitZoom() {
   const wrap = document.getElementById('canvas-wrap');
   const { w, h } = state.deck.size;
   // Less margin on small screens (a phone on its side has little height).
-  const m = Math.min(wrap.clientWidth, wrap.clientHeight) < 400 ? 20 : 56;
+  const m = Math.min(wrap.clientWidth, wrap.clientHeight) < 400 ? 30 : 56;
   const z = Math.min((wrap.clientWidth - m) / w, (wrap.clientHeight - m) / h);
-  setZoom(z);
+  fitting = true;
+  setZoom(z, { manual: false });
 }

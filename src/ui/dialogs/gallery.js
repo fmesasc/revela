@@ -1,5 +1,6 @@
 // "New from template" dialog: thumbnails of each gallery deck's cover.
 
+import { isBlankDeck, emptyDeck } from '../../core/model.js';
 import { state, replaceDeck, currentSlide } from '../../core/store.js';
 import { designIdeas, previewBlocks, applyIdea } from '../../features/design/designer.js';
 import { GALLERY, buildFromGallery } from '../../features/design/gallery.js';
@@ -19,6 +20,14 @@ export function openGallery() {
     <button class="modal-close">✕</button><h3>${t('Nueva presentación desde plantilla')}</h3>
     <h4>${t('Plantillas')}</h4><div class="gal-grid"></div></div>`;
   const grid = back.querySelector('.gal-grid');
+  // Asked only when there is something to lose.
+  const replaceWith = (deck, question) => (isBlankDeck(state.deck) ? Promise.resolve(true) : confirmDialog(question))
+    .then(ok => { if (ok) { replaceDeck(deck); back.remove(); } });
+  // First, a blank presentation.
+  const blank = document.createElement('button'); blank.type = 'button'; blank.className = 'gal-item gal-blank'; blank.dataset.gallery = 'blank';
+  blank.innerHTML = `<div class="thumb-canvas"><i class="ms">add</i></div><span>${t('En blanco')}</span>`;
+  blank.addEventListener('click', () => replaceWith(emptyDeck(), t('¿Nueva presentación? Se perderá la actual si no la has guardado.')));
+  grid.appendChild(blank);
   for (const [key, g] of Object.entries(GALLERY)) {
     const deck = buildFromGallery(key), cover = deck.slides[0], p = PALETTES[g.palette];
     ensureDeckFonts(deck);
@@ -32,8 +41,7 @@ export function openGallery() {
     cv.appendChild(inner);
     const lab = document.createElement('span'); lab.textContent = t(g.name);
     btn.append(cv, lab);
-    btn.addEventListener('click', () => confirmDialog(t('¿Nueva presentación? Se perderá la actual si no la has guardado.'))
-      .then(ok => { if (ok) { replaceDeck(buildFromGallery(key)); back.remove(); } }));
+    btn.addEventListener('click', () => replaceWith(buildFromGallery(key), t('¿Nueva presentación? Se perderá la actual si no la has guardado.')));
     grid.appendChild(btn);
   }
   // Complete example presentations, with real content.
@@ -51,8 +59,7 @@ export function openGallery() {
     cv.appendChild(inner);
     const lab = document.createElement('span'); lab.innerHTML = `<b>${t(e.name)}</b><small>${t(e.summary)}</small>`;
     btn.append(cv, lab);
-    btn.addEventListener('click', () => confirmDialog(t('¿Abrir el ejemplo? Se perderá la presentación actual si no la has guardado.'))
-      .then(ok => { if (ok) { replaceDeck(buildExample(key)); back.remove(); } }));
+    btn.addEventListener('click', () => replaceWith(buildExample(key), t('¿Abrir el ejemplo? Se perderá la presentación actual si no la has guardado.')));
     ex.appendChild(btn);
   }
   document.body.appendChild(back);

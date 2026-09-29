@@ -387,3 +387,4 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .aa-sec{margin:4px 0}.aa-sec>b{display:block;font-size:11px;color:var(--txt2);margin:4px 6px}
 .aa-items{display:grid;grid-template-columns:1fr 1fr;gap:2px}.anim-add .aa-items button{display:flex;gap:6px;align-items:center;font-size:13px;padding:5px 8px;text-align:start}
 .an-step{font-weight:400;font-size:11px;color:var(--txt2);background:var(--bg);border-radius:8px;padding:1px 6px;margin-inline-start:4px}.an-grid .an-chk{flex-direction:row;align-items:center;gap:4px}
+.gal-blank .thumb-canvas{display:grid;place-items:center;background:var(--bg);border:2px dashed var(--line2)}.gal-blank .thumb-canvas .ms{font-size:44px;color:var(--accent)}

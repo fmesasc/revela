@@ -190,6 +190,13 @@ window.Revela = Revela;
 if (!testing && !new URLSearchParams(location.search).has('collab')) loadNewerDeck(state.deck).then(d => { if (d) store.adoptDeck(d, { sameDocument: true }); });
 initCollabUI();
 initHome();
+// First visit (nothing saved in this browser, no shared link): start from the
+// templates, as PowerPoint and Canva do; closing it leaves the blank slide.
+{ const q = new URLSearchParams(location.search), fresh = (() => { try { return !localStorage.getItem(model.STORAGE_KEY) && !localStorage.getItem('revela.welcomed'); } catch { return false; } })();
+  if (!testing && fresh && !['collab', 'open', 'u', 'd'].some(k => q.has(k))) {
+    try { localStorage.setItem('revela.welcomed', '1'); } catch {}
+    import('../../ui/dialogs/gallery.js').then(g => g.openGallery());
+  } }
 // Leaving the page: what is still waiting to be written is written now.
 window.addEventListener('pagehide', () => model.flushSave());
 startAutoVersions();

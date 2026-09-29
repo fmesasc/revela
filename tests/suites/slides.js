@@ -151,8 +151,19 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
 
   await test('galería de plantillas: presentaciones completas', async () => {
     reset(); D.querySelector('[data-action="gallery"]').click(); await sleep(20);
-    eq(D.querySelectorAll('#gallery-modal .gal-grid:not(.gal-examples) .gal-item').length, Object.keys(R.gallery.GALLERY).length, 'una miniatura por plantilla');
-    D.querySelector('#gallery-modal .modal-close').click();
+    eq(D.querySelectorAll('#gallery-modal .gal-grid:not(.gal-examples) .gal-item').length, Object.keys(R.gallery.GALLERY).length + 1, 'una miniatura por plantilla, y «En blanco»');
+    // With changes, choosing asks first; «En blanco» starts an empty one.
+    R.store.commit(() => { slide().blocks[0].html = 'Algo mío'; }); await sleep(10);
+    D.querySelector('#gallery-modal [data-gallery="blank"]').click(); await sleep(20);
+    assert(D.querySelector('.modal-backdrop .dlg-ok'), 'con cambios, pregunta antes');
+    D.querySelector('.modal-backdrop .dlg-ok').click(); await sleep(20);
+    assert(R.model.isBlankDeck(R.state.deck), '«En blanco»: una presentación vacía');
+    D.querySelector('#gallery-modal .modal-close')?.click();
+    // The slide fits the window until one chooses a zoom.
+    const Z = await frame.contentWindow.eval("import('/src/ui/ribbon/zoom.js')");
+    Z.fitZoom(); assert(Z.zoomFitting(), 'ajustada a la ventana');
+    D.querySelector('[data-action="zoom-in"]').click(); assert(!Z.zoomFitting(), 'un zoom elegido a mano se respeta');
+    D.querySelector('[data-action="zoom-fit"]').click(); assert(Z.zoomFitting(), 'y «Ajustar» vuelve a ajustarla');
     const deck = R.gallery.buildFromGallery('tech');
     eq(deck.slides.length, 5, 'cinco diapositivas de arranque'); eq(deck.palette, 'midnight', 'paleta');
     assert(deck.master.blocks.length && deck.master.blocks.every(b => b.decorative), 'decoración en el patrón, decorativa');
@@ -384,8 +395,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(kinds.has(k), 'los ejemplos enseñan: ' + k);
     // Opening one from the gallery.
     reset(); D.querySelector('[data-action="gallery"]').click(); await sleep(50);
-    D.querySelector('#gallery-modal [data-example="coding"]').click(); await sleep(20);
-    D.querySelector('.modal-backdrop .dlg-ok').click(); await sleep(50);
+    // (With an untouched presentation nothing is lost: no question.)
+    D.querySelector('#gallery-modal [data-example="coding"]').click(); await sleep(50);
+    assert(!D.querySelector('.modal-backdrop .dlg-ok'), 'sin preguntar si no hay nada que perder');
     eq(R.state.deck.name, 'Taller de programación', 'abre el ejemplo elegido');
     assert(D.querySelector('#stage .block'), 'y se ve en el lienzo');
   });
