@@ -5,7 +5,7 @@
 import { shortSig } from '../../core/text.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
 import { state, commit, currentSlide, selectedBlock, isSelected, setSelection } from '../../core/store.js';
-import { shadowCSS, levelCSS, shapeSVG, shapeSig, chartSVG, chartSig, iconSVG, iconSig, inkSVG, inkSig, tableClass, tableVars } from '../../render/svg.js';
+import { shadowCSS, levelCSS, shapeSVG, shapeSig, chartSVG, chartSig, iconSVG, iconSig, inkSVG, timerSVG, timerSig, inkSig, tableClass, tableVars } from '../../render/svg.js';
 import { figuresMap, captionLine } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
 import { t } from '../../i18n/index.js';
@@ -296,6 +296,9 @@ function reconcile(b) {
     if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = iconSVG(b); }
   } else if (b.type === 'math') {
     const d = el.querySelector('.math-blk'); if (d) paintMath(d, b);
+  } else if (b.type === 'timer') {
+    const d = el.querySelector('.timer-blk'); const sig = timerSig(b);
+    if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = timerSVG(b); }
   } else if (b.type === 'figindex') {
     const d = el.querySelector('.figindex'); if (d) { d.style.fontSize = (b.fontSize || 28) + 'px'; d.innerHTML = figIndexHTML(b); }
   } else if (b.type === 'slideref') {

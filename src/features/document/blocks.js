@@ -5,6 +5,7 @@ import { state, commit, currentSlide, selectedBlock,
 import { DEFAULT_SHADOW } from '../../render/svg.js';
 import { uid, textBlock, tableBlock, codeBlock, chartBlock, mathBlock, figindexBlock, slideRefBlock } from '../../core/model.js';
 import { currentLang } from '../../i18n/index.js';
+import { deckFg } from '../design/palettes.js';
 
 function insert(block) {
   commit(() => {
@@ -204,6 +205,12 @@ export function setCode(props) {
 }
 export function addChart() { insert(chartBlock()); }
 export function addMath() { insert(mathBlock()); }
+// A countdown (5 minutes, a ring; starts when its slide is shown, beeps at the end).
+export function addTimer(seconds = 300) {
+  const { w, h } = state.deck.size, s = 300;
+  insert({ id: uid(), type: 'timer', seconds, style: 'ring', color: deckFg(), auto: true, sound: true,
+    x: Math.round((w - s) / 2), y: Math.round((h - s) / 2), w: s, h: s, rotation: 0, animation: null });
+}
 export function addFigIndex(kind = 'all') { insert(figindexBlock({ kind })); }
 
 // Slide zoom: an embedded thumbnail of another slide, clickable in the show.

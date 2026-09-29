@@ -4,7 +4,7 @@ import { pollEditorHTML } from '../../features/live/poll.js';
 import { safeURL } from '../../features/document/sanitize.js';
 import { currentPalette } from '../../features/design/palettes.js';
 import { levelVars } from '../../features/document/master.js';
-import { shadowCSS, borderCSS, levelCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, tableClass, tableVars, tableCSS } from '../../render/svg.js';
+import { shadowCSS, borderCSS, levelCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, tableClass, tableVars, tableCSS } from '../../render/svg.js';
 
 // Table look for thumbnails (same rules as the exports), injected once.
 function ensurePreviewCSS() {
@@ -62,6 +62,8 @@ export function blockPreview(b) {
     el.innerHTML = `<div style="width:100%;height:100%;background:#223;border-radius:${b.shape === 'circle' ? '50%' : b.shape === 'rounded' ? '14%' : '0'};display:grid;place-items:center;color:#fff;font-size:60px">●</div>`;
   } else if (b.type === 'math') {
     el.innerHTML = `<div style="width:100%;height:100%;display:grid;place-items:center;color:inherit;font-size:40px">∑</div>`;
+  } else if (b.type === 'timer') {
+    el.innerHTML = timerSVG(b);
   } else if (b.type === 'figindex') {
     el.innerHTML = `<div style="width:100%;height:100%;display:grid;place-items:center;color:#fff;font-size:40px">📑</div>`;
   } else if (b.type === 'table') {

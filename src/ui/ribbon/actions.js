@@ -167,6 +167,7 @@ export const ACTIONS = {
   'insert-code': () => { blocks.addCode(); const b = selectedBlock(); if (b?.type === 'code') openCodeEditor(b); },
   'insert-chart': blocks.addChart,
   'insert-math': blocks.addMath,
+  'insert-timer': () => blocks.addTimer(),
   'insert-model': () => readFile('.glb,.gltf', blocks.addModel),
   'resources': () => openElements('gif'),
   // Canvas mode (Prezi-like), off by default; turning it on opens the canvas view.

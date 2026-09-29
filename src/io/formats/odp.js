@@ -10,7 +10,7 @@
 import { animsOf } from '../../features/animation/transitions.js';
 import { state } from '../../core/store.js';
 import { uid } from '../../core/model.js';
-import { chartSVG, iconSVG, inkSVG, tableSpan } from '../../render/svg.js';
+import { chartSVG, iconSVG, inkSVG, timerSVG, tableSpan } from '../../render/svg.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled } from '../../features/document/master.js';
 import { blockImage } from '../export/images.js';
@@ -215,6 +215,7 @@ export async function buildODP(deck = state.deck) {
     if (b.type === 'chart') return svgPicture(b, chartSVG(b));
     if (b.type === 'icon') return svgPicture(b, iconSVG(b));
     if (b.type === 'ink') return svgPicture(b, inkSVG(b));
+    if (b.type === 'timer') return svgPicture(b, timerSVG(b));
     return '';                                             // 3D, video, web, code, equations: no ODF equivalent here
   };
 

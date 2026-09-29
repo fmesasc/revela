@@ -589,6 +589,39 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(D.querySelector('#ribbon [data-animation="draw"]'), 'también en Animaciones');
   });
 
+  await test('cuenta atrás: anillo, números o barra; cuenta al presentar, se pausa con un clic y avisa al acabar', async () => {
+    reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')"), T = await W.eval("import('/src/io/runtime/timer.js')");
+    eq([S.fmtTime(300), S.fmtTime(59.2), S.fmtTime(3725)].join(' '), '05:00 01:00 1:02:05', 'formato del tiempo');
+    D.querySelector('[data-action="insert-timer"]').click(); await sleep(30);
+    const b = () => last();
+    assert(b().type === 'timer' && b().seconds === 300 && b().auto && b().sound, 'se inserta: 5 minutos, empieza solo y suena');
+    eq(D.querySelector('#ribbon [data-tab="ctx"]').textContent, 'Cuenta atrás', 'con su pestaña');
+    const page = () => D.querySelector('#ribbon [data-page="ctx"]'), num = label => [...page().querySelectorAll('.ctx-field')].find(f => f.textContent.trim().startsWith(label))?.querySelector('input');
+    num('Minutos').value = '2'; num('Minutos').dispatchEvent(new W.Event('change')); await sleep(20);
+    num('Segundos').value = '30'; num('Segundos').dispatchEvent(new W.Event('change')); await sleep(20);
+    eq(b().seconds, 150, 'minutos y segundos desde la pestaña');
+    assert(/02:30/.test(D.querySelector(`#stage .block[data-id="${b().id}"]`).textContent), 'el lienzo lo enseña');
+    const style = [...page().querySelectorAll('select')].find(x => [...x.options].some(o => o.value === 'bar'));
+    for (const st of ['digital', 'bar', 'ring']) { style.value = st; style.dispatchEvent(new W.Event('change')); await sleep(10); eq(b().style, st, 'estilo ' + st); }
+    assert(/rv-t-arc/.test(S.timerSVG(b())) && /rv-t-bar/.test(S.timerSVG({ ...b(), style: 'bar' })), 'anillo que se vacía y barra');
+    // In the presentation: its settings and the counting.
+    const html = R.io.buildHTML(), tag = html.match(/<div[^>]*data-timer[^>]*>/)[0];
+    assert(/data-secs="150"/.test(tag) && /data-auto/.test(tag) && /data-sound/.test(tag) && /role="timer"/.test(tag) && /data-end="¡Tiempo!"/.test(tag), 'exportado con su tiempo, arranque, sonido y texto final');
+    assert(/function timerRuntime/.test(html), 'con el contador');
+    const host = D.createElement('div'); host.innerHTML = `<div data-timer data-secs="1" data-end="¡Ya!">${S.timerSVG({ seconds: 1, w: 100, h: 100 })}</div>`; D.body.appendChild(host);
+    const el = host.firstChild, rt = W.eval(`(${T.timerRuntime.toString()})()`);
+    rt.start(el); await sleep(400);
+    const p = +el.querySelector('svg').style.getPropertyValue('--p'); assert(p > 0 && p < 1, 'cuenta: el anillo se vacía');
+    el.click(); await sleep(300); const paused = el.querySelector('svg').style.getPropertyValue('--p'); await sleep(300);
+    eq(el.querySelector('svg').style.getPropertyValue('--p'), paused, 'un clic lo pausa');
+    el.click(); await sleep(1100);
+    assert(el.classList.contains('rv-t-done') && el.querySelector('.rv-t-txt').textContent === '¡Ya!', 'al acabar, su texto final');
+    host.remove();
+    // PowerPoint: as a picture.
+    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob);          // (JSZip comes with the export)
+    assert(Object.keys(zip.files).some(n => /^ppt\/media\//.test(n)), 'en PowerPoint, como imagen');
+  });
+
   await test('modelos 3D: margen para moverse (la mano que saluda no se corta en el borde)', async () => {
     reset(); const W = frame.contentWindow, M = await W.eval("import('/src/features/content/model3d.js')");
     const base = { id: 'm1', type: 'model', src: 'data:model/gltf-binary;base64,AAAA', x: 100, y: 100, w: 200, h: 100, rotation: 0, animation: null };

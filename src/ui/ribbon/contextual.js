@@ -21,7 +21,7 @@ import { openPollEditor } from '../dialogs/poll.js';
 import { openCodeEditor } from '../dialogs/code.js';
 import { openLinkChart, refreshChart } from '../dialogs/data.js';
 import { openImageAdjust, openMath, openChartData, openOpacity, openIconColor, openBoxStyle, openSlidePicker, openCaption, openAlt, openImageCrop, removeBackground, openTableStyle } from '../dialogs/object.js';
-import { alertDialog } from '../dialogs/dialog.js';
+import { alertDialog, promptDialog } from '../dialogs/dialog.js';
 import { startPathDraw } from '../canvas/pathdraw.js';
 import { openAddAnimation } from './animadd.js';
 import { openAnimPanel } from '../panels/animation.js';
@@ -32,7 +32,7 @@ import { fitTextToBox } from '../canvas/canvas.js';
 import { t } from '../../i18n/index.js';
 
 const TITLES = { shape: 'Forma', image: 'Imagen', model: 'Modelo 3D', video: 'Vídeo', audio: 'Audio', text: 'Cuadro de texto', table: 'Tabla', chart: 'Gráfico',
-  math: 'Ecuación', code: 'Código', poll: 'Votación', embed: 'Web', icon: 'Icono', camera: 'Cámara', slideref: 'Zoom', figindex: 'Índice', ink: 'Dibujo', connector: 'Conector' };
+  math: 'Ecuación', code: 'Código', poll: 'Votación', embed: 'Web', icon: 'Icono', camera: 'Cámara', slideref: 'Zoom', figindex: 'Índice', ink: 'Dibujo', connector: 'Conector', timer: 'Cuenta atrás' };
 const SHAPES = [['rect', 'Rectángulo'], ['rounded', 'Rectángulo redondeado'], ['ellipse', 'Elipse'], ['triangle', 'Triángulo'], ['diamond', 'Rombo'], ['star', 'Estrella'],
   ['hexagon', 'Hexágono'], ['parallelogram', 'Paralelogramo'], ['trapezoid', 'Trapecio'], ['chevron', 'Galón (chevron)'], ['plus', 'Cruz'], ['line', 'Línea'], ['arrow', 'Flecha']];
 const CHARTS = [['bar', 'Barras'], ['line', 'Líneas'], ['area', 'Área'], ['pie', 'Circular'], ['doughnut', 'Dona'], ['scatter', 'Dispersión'], ['radar', 'Radar']];
@@ -118,6 +118,14 @@ function groupsFor(b) {
   else if (b.type === 'code') G.push(['Código', [btn('code', 'Editar código y pasos', () => openCodeEditor(b))]]);
   else if (b.type === 'poll') G.push(['Votación', [btn('how_to_vote', 'Editar votación', () => openPollEditor(b))]]);
   // Ink replay: when presenting, the drawing traces itself (the "Draw" effect).
+  else if (b.type === 'timer') G.push(
+    ['Tiempo', [['num', 'Minutos', Math.floor((b.seconds ?? 300) / 60), v => set(b, x => { x.seconds = Math.max(1, Math.round(+v || 0) * 60 + (x.seconds ?? 300) % 60); }), 0, 600, 1],
+      ['num', 'Segundos', (b.seconds ?? 300) % 60, v => set(b, x => { x.seconds = Math.max(1, Math.floor((x.seconds ?? 300) / 60) * 60 + Math.min(59, Math.max(0, Math.round(+v || 0)))); }), 0, 59, 5]]],
+    ['Aspecto', [['select', 'Estilo', [['ring', 'Anillo'], ['digital', 'Números'], ['bar', 'Barra']], b.style || 'ring', v => set(b, x => { x.style = v; })],
+      ['color', 'palette', 'Color', b.color || '#ffffff', v => set(b, x => { x.color = v; })]]],
+    ['Al presentar', [btn('play_circle', 'Empieza solo', () => set(b, x => { x.auto = x.auto === false; }), b.auto !== false),
+      btn('volume_up', 'Sonido al acabar', () => set(b, x => { x.sound = x.sound === false; }), b.sound !== false),
+      btn('edit_note', 'Texto final', async () => { const v = await promptDialog(t('Texto al acabar el tiempo:'), b.endText ?? t('¡Tiempo!')); if (v != null) set(b, x => { x.endText = v.slice(0, 40); }); })]]);
   else if (b.type === 'ink') G.push(['Dibujo', [btn('gesture', 'Trazar al presentar', () => (b.animation?.effect === 'draw' ? clearAnimation() : setAnimation('draw')), b.animation?.effect === 'draw')]]);
   else if (b.type === 'icon') G.push(['Icono', [btn('palette', 'Color del icono', () => openIconColor(b))]]);
   else if (b.type === 'embed') G.push(['Web', [btn(b.display === 'card' ? 'web' : 'link', b.display === 'card' ? 'Mostrar la web' : 'Mostrar como tarjeta', () => blocks.setEmbedDisplay(b.id, b.display === 'card' ? 'frame' : 'card'))]]);

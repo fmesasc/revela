@@ -5,7 +5,7 @@ import { shortSig } from '../../core/text.js';
 import { esc } from '../../core/text.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
 import { state, commit, currentSlide } from '../../core/store.js';
-import { borderCSS, tableColsHTML, cellBg, textPadding, webCardHTML, webCardSig, mathTeX, mathCSS, mathSig, shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan, inkSVG, inkSig, tableClass, tableVars } from '../../render/svg.js';
+import { borderCSS, tableColsHTML, cellBg, textPadding, webCardHTML, webCardSig, mathTeX, mathCSS, mathSig, shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan, inkSVG, timerSVG, timerSig, inkSig, tableClass, tableVars } from '../../render/svg.js';
 import { collectFigures, captionLine, figIndexTitle } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
 import { t } from '../../i18n/index.js';
@@ -121,6 +121,9 @@ export function content(b) {
   }
   if (b.type === 'math') {
     const d = document.createElement('div'); d.className = 'math-blk'; paintMath(d, b); return d;
+  }
+  if (b.type === 'timer') {
+    const d = document.createElement('div'); d.className = 'timer-blk'; d.dataset.sig = timerSig(b); d.innerHTML = timerSVG(b); return d;
   }
   if (b.type === 'figindex') {
     const d = document.createElement('div'); d.className = 'figindex';

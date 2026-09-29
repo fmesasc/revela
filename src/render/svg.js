@@ -445,3 +445,25 @@ export const levelCSS = (pre = '') => [1, 2, 3, 4, 5].map(n => {
 // a shape, a picture's transparency or the letters of a text without fill.
 export const DEFAULT_SHADOW = { x: 4, y: 6, blur: 10, color: '#00000066' };
 export const shadowCSS = b => (b.shadow ? `drop-shadow(${b.shadow.x ?? 4}px ${b.shadow.y ?? 6}px ${b.shadow.blur ?? 10}px ${b.shadow.color || '#00000066'})` : '');
+
+// Countdown timer (Insert ▸ Countdown): a ring that empties, big numbers or a
+// bar, with the time left. The presentation's runtime (io/runtime/timer.js)
+// counts down by setting --p (what is left, 1 → 0) and the text.
+export const fmtTime = s => { s = Math.max(0, Math.ceil(s)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = String(s % 60).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${x}` : `${String(m).padStart(2, '0')}:${x}`; };
+export function timerSVG(b, left = b.seconds ?? 300) {
+  const W = Math.max(1, +b.w || 300), H = Math.max(1, +b.h || 300), col = escA(b.color || '#ffffff'), txt = fmtTime(left);
+  const svg = inner => `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" style="display:block;overflow:visible;--p:1" role="img" aria-label="${escA(txt)}">${inner}</svg>`;
+  const text = (x, y, size) => `<text class="rv-t-txt" x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="${size.toFixed(1)}" font-weight="700" fill="${col}" style="font-variant-numeric:tabular-nums">${txt}</text>`;
+  if (b.style === 'digital') return svg(text(W / 2, H / 2, Math.min(H * 0.62, W / (txt.length * 0.62))));
+  if (b.style === 'bar') {
+    const bh = Math.max(6, H * 0.18), y = H - bh;
+    return svg(`${text(W / 2, y / 2, Math.min(y * 0.7, W / (txt.length * 0.62)))}<rect x="0" y="${y}" width="${W}" height="${bh}" rx="${bh / 2}" fill="${col}" opacity=".2"/>`
+      + `<rect class="rv-t-bar" x="0" y="${y}" width="${W}" height="${bh}" rx="${bh / 2}" fill="${col}" style="transform-box:fill-box;transform-origin:left;transform:scaleX(var(--p,1))"/>`);
+  }
+  const s = Math.min(W, H), sw = s * 0.07, r = s / 2 - sw, cx = W / 2, cy = H / 2;
+  return svg(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${col}" stroke-width="${sw}" opacity=".2"/>`
+    + `<circle class="rv-t-arc" cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${col}" stroke-width="${sw}" stroke-linecap="round" pathLength="1" stroke-dasharray="1"`
+    + ` transform="rotate(-90 ${cx} ${cy})" style="stroke-dashoffset:calc(1 - var(--p,1))"/>${text(cx, cy, r * 0.5 / Math.max(1, (txt.length - 5) * 0.35 + 1))}`);
+}
+export const timerSig = b => [b.seconds, b.style, b.color, b.w, b.h].join('|');
