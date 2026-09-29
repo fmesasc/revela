@@ -231,7 +231,7 @@ export const ACTIONS = {
   'insert-slideref': () => blocks.addSlideRef(),
   'insert-summary': () => blocks.addSummaryZoom(),
   'find-replace': () => search.openFindPanel(),
-  'copy-style': () => format.copyStyle(),
+  'copy-style': () => { format.copyStyle(); commit(() => {}, { history: false }); },   // refresh: Pegar formato becomes available
   'paste-style': () => format.pasteStyle(),
   'bg-gradient': () => {
     const a = $('[data-grad1]')?.value || '#3f6497', b = $('[data-grad2]')?.value || '#101317';

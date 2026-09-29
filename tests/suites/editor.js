@@ -84,6 +84,14 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(D.activeElement !== rich(), 'sale del texto'); eq(slide().blocks.at(-1).html, 'Hola', 'y deshace lo anterior');
   });
 
+  await test('una presentación marcada como final no impide abrir o crear otra', async () => {
+    reset(); R.blocks.addText(); R.store.commit(() => { R.state.deck.final = true; }, { force: true });
+    const n = slide().blocks.length; R.blocks.addText(); eq(slide().blocks.length, n, 'la final no se edita');
+    const other = R.model.emptyDeck(); other.name = 'Otra';
+    R.store.replaceDeck(other);
+    eq(R.state.deck.name, 'Otra', 'se abre otra'); assert(!R.state.deck.final, 'y se puede editar');
+  });
+
   await test('selección múltiple: eliminar y duplicar en grupo', async () => {
     reset(); const n0 = slide().blocks.length; R.blocks.addText(); R.blocks.addText();
     const a = slide().blocks.at(-2), b = slide().blocks.at(-1);

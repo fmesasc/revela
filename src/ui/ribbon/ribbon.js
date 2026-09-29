@@ -1,6 +1,6 @@
 // The ribbon: tab switching and wiring every control to a feature.
 
-import { state, commit, currentSlide, selectedBlock } from '../../core/store.js';
+import { state, commit, currentSlide, selectedBlock, selectedBlocks } from '../../core/store.js';
 import { MATH_SIZE } from '../../render/svg.js';
 import { styled, addPlaceholder } from '../../features/document/master.js';
 import * as blocks from '../../features/document/blocks.js';
@@ -281,6 +281,13 @@ export function renderRibbon() {
   syncValue('[data-theme]', state.deck.theme);
   syncValue('[data-deck-fg]', palettes.deckFg());
   { const v = $('[data-action="slide-vertical"]'); if (v) { v.classList.toggle('on', !!currentSlide()?.vertical); v.disabled = state.ui.slideIndex === 0 || !!state.ui.editMaster; } }
+  // Buttons that need a (suitable) selection are disabled without one, instead of doing nothing.
+  { const sel = selectedBlocks(), texts = sel.filter(b => b.type === 'text'), objs = sel.filter(b => b.type !== 'connector');
+    const need = { front: sel.length, back: sel.length, forward: sel.length, backward: sel.length,
+      group: objs.length >= 2, ungroup: sel.some(b => b.groupId), 'connect-blocks': objs.length === 2,
+      'copy-style': texts.length === 1, 'paste-style': texts.length && format.hasStyleClip(),
+      'obj-anim-clear': sel.some(b => b.animation), 'anim-play': (currentSlide()?.blocks || []).some(b => b.animation) };
+    for (const [a, ok] of Object.entries(need)) document.querySelectorAll(`[data-action="${a}"]`).forEach(el => { el.disabled = !ok; }); }
   { const has = !!selectedBlock(); ['clip-copy', 'clip-cut', 'obj-duplicate'].forEach(a => { const el = $(`[data-action="${a}"]`); if (el) el.disabled = !has; });
     const p = $('[data-action="clip-paste"]'); if (p) p.disabled = !clip.hasClipboard(); }
   $('[data-action="mark-final"]')?.classList.toggle('on', protect.isFinal());

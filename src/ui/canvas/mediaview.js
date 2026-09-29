@@ -30,5 +30,5 @@ export function playInEditor(id) {
   const p = playerOf(id);
   if (p) return p.ready.then(() => (p.playing() ? p.pause() : p.play(0, null)));
   const v = document.querySelector(`.block[data-id="${id}"] video`);
-  if (v) v.paused ? v.play() : v.pause();
+  if (v) v.paused ? v.play().catch(() => {}) : v.pause();   // the browser may refuse to play (no sound allowed yet)
 }

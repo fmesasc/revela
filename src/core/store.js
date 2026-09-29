@@ -163,5 +163,6 @@ export function adoptDeck(deck, { sameDocument = false } = {}) {
 export function replaceDeck(deck) {
   // Another deck: leave the master view too (it would edit a master that isn't there).
   epoch++;
-  commit(() => { state.deck = deck; state.ui.slideIndex = 0; state.ui.selection = null; state.ui.multi = []; state.ui.editMaster = false; });
+  // (Also from a presentation marked as final: that protects it, not the app.)
+  commit(() => { state.deck = deck; state.ui.slideIndex = 0; state.ui.selection = null; state.ui.multi = []; state.ui.editMaster = false; }, { force: true });
 }
