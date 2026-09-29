@@ -16,6 +16,8 @@ import { startCoach } from '../shell/coach.js';
 import { openCollab } from '../shell/collab.js';
 import { openHome } from '../shell/home.js';
 import { openResources } from '../dialogs/resources.js';
+import { canvasOn, setCanvasMode } from '../../features/design/canvasmode.js';
+import { toggleCanvasView, canvasViewOpen } from '../shell/canvasview.js';
 import { openSignatures, toggleFinal } from '../dialogs/signature.js';
 import { importPPTX } from '../../io/formats/pptx-import.js';
 import * as gdrive from '../../io/cloud/gdrive.js';
@@ -186,6 +188,9 @@ export const ACTIONS = {
   'insert-math': blocks.addMath,
   'insert-model': () => readFile('.glb,.gltf', blocks.addModel),
   'resources': () => openResources('gif'),
+  // Canvas mode (Prezi-like), off by default; turning it on opens the canvas view.
+  'canvas-mode': () => { const on = !canvasOn(); setCanvasMode(on); toggleCanvasView(on); },
+  'canvas-view': () => { if (!canvasOn()) setCanvasMode(true); toggleCanvasView(); },
   'resources-3d': () => openResources('anim3d'),
   // A GIF is inserted as an image (it can have segments and a colour key too).
   'insert-video': () => readFile('video/*,image/gif', src => (/^data:image\/gif/.test(src) ? blocks.addImage(src) : blocks.addVideo(src))),

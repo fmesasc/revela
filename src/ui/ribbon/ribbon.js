@@ -13,6 +13,8 @@ import * as clip from '../../features/document/clipboard.js';
 import { autocorrectOn } from '../../features/document/autocorrect.js';
 import { aiRewrite } from '../dialogs/ai.js';
 import { DONATE_URL } from '../../core/config.js';
+import { canvasOn } from '../../features/design/canvasmode.js';
+import { canvasViewOpen } from '../shell/canvasview.js';
 import { editAnyway } from '../dialogs/signature.js';
 import * as protect from '../../features/collab/protect.js';
 import { openAppearance, applyAppearance } from '../shell/appearance.js';
@@ -291,6 +293,8 @@ export function renderRibbon() {
   { const has = !!selectedBlock(); ['clip-copy', 'clip-cut', 'obj-duplicate'].forEach(a => { const el = $(`[data-action="${a}"]`); if (el) el.disabled = !has; });
     const p = $('[data-action="clip-paste"]'); if (p) p.disabled = !clip.hasClipboard(); }
   $('[data-action="mark-final"]')?.classList.toggle('on', protect.isFinal());
+  document.querySelector('[data-action="canvas-mode"]')?.classList.toggle('on', canvasOn());
+  document.querySelectorAll('[data-action="canvas-view"]').forEach(b => b.classList.toggle('on', canvasViewOpen()));
   const fb = document.getElementById('final-banner'); if (fb) fb.hidden = !protect.isFinal();
   { const sigs = state.deck.signatures || [], sp = fb?.querySelector('span');
     if (sp) sp.textContent = sigs.length ? `${t('Firmada por')} ${sigs.map(s => s.name).join(', ')}: ${t('la presentación es de solo lectura.')}` : t('Marcada como final: la presentación es de solo lectura.'); }

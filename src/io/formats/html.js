@@ -9,6 +9,7 @@ import { TRIGGER_JS, CAMERA_JS, pollJS, liveDataJS, LIGHTBOX_JS, overviewJS } fr
 import { createMediaPlayer, revelaMediaRuntime } from '../runtime/media.js';
 import { needsPlayer, mediaConfig } from '../../features/live/media.js';
 import { modelAttrsHTML, model3dRuntime } from '../../features/content/model3d.js';
+import { canvasOn, frameOf, canvasRuntimeDeps } from '../../features/design/canvasmode.js';
 import { shadowCSS, borderCSS, levelCSS, textPadding, webCardHTML, mathTeX, mathCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, tableClass, tableVars, tableCSS } from '../../render/svg.js';
 import { googleFontLinks } from '../../features/design/fonts.js';
 import { t, speechLang } from '../../i18n/index.js';
@@ -346,8 +347,9 @@ export function buildHTML(deck = state.deck, { inApp = false } = {}) {
   const figMap = figuresMap(deck);
   // Vertical stacks: a slide marked `vertical` goes below the previous visible one.
   const groups = [];
+  const canvas = canvasOn(deck);                        // canvas mode: frames on one canvas, no stacks
   for (const s of deck.slides.filter(x => !x.hidden)) {
-    if (s.vertical && groups.length) groups[groups.length - 1].push(s); else groups.push([s]);
+    if (s.vertical && groups.length && !canvas) groups[groups.length - 1].push(s); else groups.push([s]);
   }
   const paths = slidePaths(deck), flat = [...paths.values()];
   const plan = morphPlan(deck);
@@ -421,8 +423,13 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  ${pathKeyframes(deck)}
  ${hasTrig ? `[data-bid]{cursor:pointer} .rv-trig.rv-in:not(.on){opacity:0} ${EFFECT_KF_CSS.replace(/\n/g, ' ')}` : ''}
  ${INK_CSS}
+ ${canvas ? `.reveal.rv-canvas{background:${deck.canvas.bg || '#0d1117'}} .reveal.rv-canvas .backgrounds{display:none}
+ .reveal.rv-canvas .slides>section{display:block!important;visibility:visible!important;opacity:1!important;top:0!important;left:0!important;clip-path:none!important;transform-origin:0 0!important;
+   transition:transform var(--rv-fly,1.4s) cubic-bezier(.65,0,.35,1)!important;pointer-events:none}
+ .reveal.rv-canvas .slides>section.present{pointer-events:auto}
+ html.rv-canvas-overview .reveal.rv-canvas .slides>section{pointer-events:auto;cursor:zoom-in}` : ''}
 </style></head><body>
-<div class="reveal"><div class="slides">
+<div class="reveal${canvas ? ' rv-canvas' : ''}"><div class="slides">
 ${slides}
 </div>${footerText}${logoHTML}</div>
 <script src="${REVEAL}/dist/reveal.js"></script>
@@ -434,7 +441,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  Reveal.initialize({ width:${w}, height:${h}, margin:0.03, hash:${inApp ? 'false' : 'true'}, respondToHashChanges:true, loop:${deck.loop ? 'true' : 'false'},
    slideNumber:${sn.show ? `'${sn.format || 'c'}'` : 'false'},
    transition:'${deck.defaultTransition}', transitionSpeed:'${deck.transitionSpeed}',
-   ${revealOptions(deck, inApp)}
+   ${revealOptions(deck, inApp)}${canvas ? " center:false, viewDistance:1000, mobileViewDistance:1000, backgroundTransition:'none'," : ''}
    plugins:[ RevealNotes${hasCode ? ', RevealHighlight' : ''}${rv(deck).zoom !== false ? ', RevealZoom' : ''}${rv(deck).search !== false ? ', RevealSearch' : ''} ] });
  ${hasMath ? 'window.addEventListener("load",function(){window.katex&&document.querySelectorAll(".math[data-latex]").forEach(function(el){try{katex.render(el.getAttribute("data-latex"),el,{throwOnError:false,displayMode:true});}catch(e){}});});' : ''}
  ${hasInlineMath ? 'window.addEventListener("load",function(){window.renderMathInElement&&renderMathInElement(document.body,{delimiters:[{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}],throwOnError:false});});' : ''}
@@ -443,6 +450,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${hasPoll ? pollJS(currentPalette(deck).accents) : ''}
  ${hasLive ? liveDataJS() : ''}
  ${hasZoomable ? LIGHTBOX_JS : ''}
+ ${canvas ? `${canvasRuntimeDeps()}\ncanvasRuntime(${JSON.stringify(groups.map(g => frameOf(g[0], deck.slides.indexOf(g[0]), deck.size)))}, ${w}, ${h});` : ''}
  ${hasModel3d ? `(${model3dRuntime.toString()})();` : ''}
  ${hasMedia ? `${createMediaPlayer.toString()}\n${revelaMediaRuntime.toString()}\nrevelaMediaRuntime(${JSON.stringify(GIFUCT)});` : ''}
  ${inkJS(w, h, { pen: t('Lápiz'), hl: t('Resaltador'), laser: t('Puntero láser'), color: t('Color de la tinta'), erase: t('Borrar la tinta de la diapositiva'),

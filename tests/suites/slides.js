@@ -20,6 +20,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const num = D.querySelector('#hf-modal .hf-num'); assert(num, 'diálogo de encabezado/pie');
     num.checked = true; num.dispatchEvent(new Event('change'));
     assert(R.state.deck.slideNumber.show, 'número activado');
+    D.querySelector('#hf-modal .modal-close')?.click();
   });
 
   await test('ocultar diapositiva: se atenúa y se excluye del export', async () => {
@@ -361,7 +362,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   await test('10 presentaciones de ejemplo completas: se abren, usan patrón y diseños y se exportan', async () => {
     reset(); D.querySelector('[data-action="gallery"]').click(); await sleep(50);
     const items = D.querySelectorAll('#gallery-modal .gal-examples .gal-item');
-    eq(items.length, 10, 'diez ejemplos en la galería');
+    eq(items.length, 11, 'once ejemplos en la galería');
     D.querySelector('#gallery-modal .modal-close').click();
     const kinds = new Set();
     for (const key of Object.keys(R.examples.EXAMPLES)) {
@@ -434,5 +435,53 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     R.master.deleteMaster(m2.id); eq(R.state.deck.masters.length, 1, 'no se borra si se usa');
     R.slides.deleteSlide(R.state.deck.slides.indexOf(b)); R.master.deleteMaster(m2.id);
     eq(R.state.deck.masters.length, 0, 'sin uso, se borra con sus diseños'); assert(!R.state.deck.layouts.some(l => l.masterId), 'y sus diseños');
+  });
+
+  await test('modo lienzo (tipo Prezi): marcos, vuelo de cámara, vista de lienzo y plantilla', async () => {
+    reset(); R.slides.addSlide(); R.slides.addSlide(); const W = frame.contentWindow;
+    const C = await W.eval("import('/src/features/design/canvasmode.js')");
+    assert(!C.canvasOn(), 'no está activado por defecto');
+    assert(!/rv-canvas/.test(R.io.buildHTML()), 'sin él, la presentación de siempre');
+    D.querySelector('[data-action="canvas-mode"]').click(); await sleep(50);
+    assert(C.canvasOn() && R.state.deck.slides.every(s => s.frame), 'al activarlo, cada diapositiva es un marco');
+    assert(D.getElementById('canvas-view'), 'y se abre la vista de lienzo');
+    const S = R.state.deck.slides;
+    C.setFrame(S[1].id, { x: 1500, y: 300, s: 0.6, r: 0 }); C.setFrame(S[2].id, { x: 1650, y: 380, s: 0.15, r: 25 });
+    // Geometry: the camera on a frame shows it exactly.
+    const M = C.frameMatrix(S[2].frame, 1280, 720), c = C.apply(M, 640, 360);
+    eq(c.map(Math.round).join(), '1650,380', 'el centro del marco'); eq(C.mul(C.inv(M), M).map(v => Math.round(v * 1e6) / 1e6).join(), '1,0,0,1,0,0', 'la cámara es la inversa');
+    // Canvas view: drag a frame (one undo step), zoom with the wheel, double-click to edit.
+    const cv = D.getElementById('canvas-view'), fr = () => cv.querySelector('.cv-frame[data-i="1"]');
+    assert(cv.querySelectorAll('.cv-frame').length === 3 && cv.querySelector('.cv-path'), 'marcos y recorrido');
+    const r = fr().getBoundingClientRect(), x0 = S[1].frame.x;
+    const ev = (el, type, x, y) => el.dispatchEvent(new W.PointerEvent(type, { clientX: x, clientY: y, bubbles: true, button: 0, pointerId: 1 }));
+    ev(fr(), 'pointerdown', r.left + 20, r.top + 20); ev(cv, 'pointermove', r.left + 80, r.top + 20); ev(cv, 'pointerup', r.left + 80, r.top + 20); await sleep(20);
+    assert(R.state.deck.slides[1].frame.x > x0, 'arrastrar mueve el marco');
+    R.store.undo(); await sleep(20); eq(R.state.deck.slides[1].frame.x, x0, 'un paso de deshacer');
+    const t0 = cv.querySelector('.cv-world').style.transform;
+    cv.dispatchEvent(new W.WheelEvent('wheel', { deltaY: -200, clientX: 300, clientY: 300, bubbles: true, cancelable: true })); await sleep(10);
+    assert(cv.querySelector('.cv-world').style.transform !== t0, 'la rueda acerca');
+    fr().dispatchEvent(new W.MouseEvent('dblclick', { bubbles: true })); await sleep(20);
+    assert(!D.getElementById('canvas-view') && R.state.ui.slideIndex === 1, 'doble clic: a editar esa diapositiva');
+    // The presentation flies between frames; smaller frames on top.
+    const html = R.io.buildHTML(R.state.deck, { inApp: true });
+    assert(/class="reveal rv-canvas"/.test(html) && /canvasRuntime\(\[/.test(html), 'presentación en modo lienzo');
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:960px;height:540px;visibility:hidden'; D.body.appendChild(f);
+    f.srcdoc = html;
+    try {
+      for (let i = 0; i < 100 && !f.contentWindow.Reveal?.isReady?.(); i++) await sleep(100);
+      const secs = () => [...f.contentDocument.querySelectorAll('.slides>section')];
+      f.contentWindow.Reveal.slide(1); await sleep(100);
+      eq(secs()[1].style.transform.replace(/\s/g, ''), 'matrix(1,0,0,1,0,0)', 'el marco actual ocupa la pantalla');
+      assert(secs()[0].style.transform && secs()[0].style.transform !== secs()[2].style.transform, 'los demás, en su sitio del lienzo');
+      assert(+secs()[2].style.zIndex > +secs()[1].style.zIndex, 'el detalle pequeño queda encima');
+      f.contentWindow.dispatchEvent(new f.contentWindow.KeyboardEvent('keydown', { key: 'o', bubbles: true })); await sleep(50);
+      assert(f.contentDocument.documentElement.classList.contains('rv-canvas-overview'), 'O: todo el lienzo');
+    } finally { f.remove(); }
+    // The template.
+    const ex = R.examples.buildExample('canvas');
+    assert(ex.canvas?.on && ex.slides.every(s => s.frame) && ex.slides[3].frame.s < 0.1, 'plantilla en modo lienzo, con un detalle dentro de otro');
+    D.querySelector('[data-action="canvas-mode"]').click(); await sleep(20);
+    assert(!C.canvasOn(), 'se puede desactivar'); D.getElementById('canvas-view')?.remove();
   });
 }

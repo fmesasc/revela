@@ -30,7 +30,8 @@ export async function run(frame, only = null, grep = '') {
   }
 
   // Helpers that mirror what the UI does.
-  const reset = () => { R.store.replaceDeck(R.model.emptyDeck()); R.render(); };
+  // Each test starts clean: no dialog left open by the previous one (the editor ignores keys while one is open).
+  const reset = () => { D.querySelectorAll('.modal-backdrop, #canvas-view').forEach(m => m.remove()); R.store.replaceDeck(R.model.emptyDeck()); R.render(); };
   const slide = () => R.store.currentSlide();
   const last = () => slide().blocks.at(-1);
   const select = b => { R.state.ui.selection = b.id; R.render(); };

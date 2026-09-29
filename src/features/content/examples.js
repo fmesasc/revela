@@ -203,6 +203,33 @@ const EXAMPLES_DEF = {
     { title: 'Proyecto destacado', layout: 'twoContent', body: '<b>El reto</b>' + ul('Una app bancaria que la gente abandonaba', 'Solo el 40 % terminaba el alta'), body2: '<b>El resultado</b>' + ul('Alta en 3 pasos en lugar de 9', '<b>78 %</b> de altas completadas') },
     { layout: 'section', title: 'Hablemos', subtitle: 'laura@ejemplo.example · linkedin.com/in/laura', extra: [icon('mail', 610, 520, 60, '#f3a712')] },
   ]) },
+
+  // Canvas mode (like Prezi): an overview with four "islands"; each stop is a
+  // frame inside its island and one detail is a tiny frame inside a stop.
+  canvas: { name: 'Viaje por el lienzo (tipo Prezi)', summary: 'Modo lienzo: la cámara vuela y acerca entre marcos; un detalle dentro de otro', make: () => {
+    const isl = [['#1c7ed6', -1150, -180], ['#2f9e44', -250, 540], ['#e8590c', 800, -200], ['#ae3ec9', 1550, 580]];
+    const S = 3.2, toLocal = (x, y) => [(x + 2048) / S, (y + 1152) / S];
+    const circles = isl.map(([c, x, y]) => { const [lx, ly] = toLocal(x, y); return shape('ellipse', Math.round(lx - 150), Math.round(ly - 150), 300, 300, c, { opacity: 90 }); });
+    const labels = ['Idea', 'Plan', 'Prueba', 'Resultado'].map((t, i) => { const [lx, ly] = toLocal(isl[i][1], isl[i][2]); return text(`<b>${t}</b>`, Math.round(lx - 150), Math.round(ly + 120), 300, 40, { fontSize: 24, textAlign: 'center', color: '#ffffff' }); });
+    const deck = build({ name: 'Viaje por el lienzo', palette: 'ocean', fonts: 'modern', title: { color: '#ffffff' }, body: { color: '#ffffff' } }, [
+      { layout: 'blank', bg: 'transparent', extra: [
+        text('<b>Viaje por el lienzo</b>', 290, 30, 700, 70, { fontSize: 52, textAlign: 'center', color: '#ffffff' }),
+        text('Pulsa → para volar de una parada a otra · O: ver todo el lienzo', 290, 100, 700, 36, { fontSize: 20, textAlign: 'center', color: '#c5d3e8' }),
+        ...circles, ...labels],
+        notes: 'Modo lienzo: todas las diapositivas son marcos en un mismo lienzo. Diseño ▸ Vista de lienzo para moverlos, cambiar su tamaño o girarlos.' },
+      { layout: 'titleContent', bg: 'transparent', title: '1 · La idea', body: ul('Todo empieza con una pregunta', 'Anota qué quieres cambiar', 'Hazla pequeña y concreta') },
+      { layout: 'titleContent', bg: 'transparent', title: '2 · El plan', body: ul('Tres pasos, no diez', 'Quién hace qué', 'Cuándo sabremos si funciona'), notes: 'Esta diapositiva tiene un detalle dentro: la siguiente se acerca a él.' },
+      { layout: 'blank', bg: '#ffffff', extra: [text('<b>🔍 El detalle</b><br>Un marco pequeño dentro de otro: al llegar, la cámara se acerca como una lupa.', 120, 180, 1040, 360, { fontSize: 44, textAlign: 'center', color: '#1f2937' })] },
+      { layout: 'titleContent', bg: 'transparent', title: '3 · La prueba', body: ul('Pruébalo con poca gente', 'Mide lo mínimo', 'Aprende rápido') },
+      { layout: 'titleContent', bg: 'transparent', title: '4 · El resultado', body: ul('Qué ha funcionado', 'Qué cambiarías', 'Siguiente paso') },
+      { layout: 'section', bg: 'transparent', title: '¡Gracias!', subtitle: 'Hecho con el modo lienzo de Revela' },
+    ]);
+    const fr = [{ x: 0, y: 0, s: S, r: 0 }, { x: isl[0][1], y: isl[0][2], s: 0.55, r: -6 }, { x: isl[1][1], y: isl[1][2], s: 0.55, r: 4 },
+      { x: isl[1][1] + 120, y: isl[1][2] + 60, s: 0.07, r: -12 }, { x: isl[2][1], y: isl[2][2], s: 0.55, r: 8 }, { x: isl[3][1], y: isl[3][2], s: 0.55, r: -4 }, { x: 3400, y: 0, s: 1.6, r: 0 }];
+    deck.slides.forEach((sl, i) => { sl.frame = fr[i]; });
+    deck.canvas = { on: true, bg: '#10213a' };
+    return deck;
+  } },
 };
 
 export const EXAMPLES = Object.fromEntries(Object.entries(EXAMPLES_DEF).map(([k, v]) => [k, { name: v.name, summary: v.summary }]));
