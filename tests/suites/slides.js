@@ -92,6 +92,35 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(JSON.stringify(R.state.deck.size), '{"w":905,"h":1280}', 'desde el diálogo: A4 vertical'); assert(inside(), 'dentro');
   });
 
+  await test('arrastrar una miniatura a la diapositiva: queda un zoom a esa diapositiva donde se suelta', async () => {
+    reset(); const W = frame.contentWindow;
+    R.slides.addSlide('blank'); R.slides.addSlide('blank'); R.slides.goToSlide(0); await sleep(20);
+    const S = R.state.deck.slides, stage = D.getElementById('stage'), sr = stage.getBoundingClientRect(), k = R.state.deck.size.w / sr.width;
+    const drag = async (thumbIndex, x, y) => {
+      const th = D.querySelectorAll('#navigator .thumb')[thumbIndex], dt = new W.DataTransfer();
+      th.dispatchEvent(new W.DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+      const o = { bubbles: true, cancelable: true, dataTransfer: dt, clientX: sr.left + x / k, clientY: sr.top + y / k };
+      const over = new W.DragEvent('dragover', o); stage.dispatchEvent(over);
+      stage.dispatchEvent(new W.DragEvent('drop', o)); th.dispatchEvent(new W.DragEvent('dragend', { bubbles: true, dataTransfer: dt })); await sleep(30);
+      return over.defaultPrevented;
+    };
+    const n = slide().blocks.length;
+    assert(await drag(2, 640, 400), 'la diapositiva acepta la miniatura');
+    const z = last();
+    assert(slide().blocks.length === n + 1 && z.type === 'slideref' && z.target === S[2].id, 'un zoom a la diapositiva 3');
+    assert(Math.abs(z.x + z.w / 2 - 640) < 3 && Math.abs(z.y + z.h / 2 - 400) < 3, 'donde se suelta');
+    eq(R.state.ui.slideIndex, 0, 'sigue en la diapositiva que se edita');
+    await drag(1, 1270, 710); assert(last().x + last().w <= 1280 && last().y + last().h <= 720, 'junto al borde, dentro de la diapositiva');
+    const m = slide().blocks.length; await drag(0, 300, 300); eq(slide().blocks.length, m, 'la misma diapositiva no se añade a sí misma');
+    R.store.undo(); await sleep(10); eq(slide().blocks.length, m - 1, 'se deshace en un paso');
+    // Reordering in the panel still works.
+    const first = S[0].id, th = D.querySelectorAll('#navigator .thumb'), dt = new W.DataTransfer();
+    th[0].dispatchEvent(new W.DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+    th[2].dispatchEvent(new W.DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt }));
+    th[2].dispatchEvent(new W.DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt })); await sleep(20);
+    eq(R.state.deck.slides[2].id, first, 'y arrastrar en el panel sigue reordenando');
+  });
+
   await test('nueva diapositiva ▾: con el diseño que se elija', async () => {
     reset();
     D.querySelector('[data-action="slide-add"]').click(); await sleep(10);

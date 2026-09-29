@@ -418,6 +418,7 @@ export default {
   "Dona": "Rosca",
   "Dispersión": "Dispersión",
   "Radar": "Radar",
+  "Arrástrala para cambiar el orden, o suéltala en la diapositiva para incrustarla como zoom": "Arrástraa para cambiar a orde, ou sóltaa na diapositiva para incrustala como zoom",
   "Atardecer": "Solpor",
   "Neón": "Neon",
   "Cuaderno": "Caderno",

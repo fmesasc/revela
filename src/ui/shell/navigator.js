@@ -6,11 +6,15 @@ import { state } from '../../core/store.js';
 import { goToSlide, moveSlide, deleteSlide, renameSection } from '../../features/document/slides.js';
 import { blockPreview } from './preview.js';
 import { sorterOn, setSorter } from './sorter.js';
+import { addSlideRef } from '../../features/document/blocks.js';
+import { factor } from '../canvas/interact.js';
+import { t } from '../../i18n/index.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, styleKind, ensureLayouts, editLayout, layoutInUse, allMasters, masterOf } from '../../features/document/master.js';
 
 let panel;
 let dragFrom = null;
+const SLIDE_DRAG = 'application/x-revela-slide';
 
 // The slides panel can be hidden (Google Slides' filmstrip); remembered here.
 const HIDE = 'revela.hideNav';
@@ -26,6 +30,18 @@ export function initPanel() {
   // Thumbnails scale to the width they really get (it depends on the panel and
   // the screen): a fixed scale cut off their right and bottom edges.
   new ResizeObserver(fitThumbs).observe(panel);
+  // A thumbnail dropped on the slide: a slide zoom to it (PowerPoint: drag a slide in), where it is dropped.
+  const stage = document.getElementById('stage'), ours = e => [...(e.dataTransfer?.types || [])].includes(SLIDE_DRAG);
+  stage?.addEventListener('dragover', e => { if (!ours(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; stage.classList.add('el-drop'); });
+  stage?.addEventListener('dragleave', () => stage.classList.remove('el-drop'));
+  stage?.addEventListener('drop', e => {
+    if (!ours(e)) return;
+    e.preventDefault(); stage.classList.remove('el-drop');
+    const id = e.dataTransfer.getData(SLIDE_DRAG), cur = state.deck.slides[state.ui.slideIndex];
+    if (!id || id === cur?.id || state.ui.editMaster) return;              // (a zoom to itself goes nowhere)
+    const r = stage.getBoundingClientRect(), k = factor();
+    addSlideRef(id, [(e.clientX - r.left) * k, (e.clientY - r.top) * k]);
+  });
 }
 function fitThumbs() {
   const c = panel.querySelector('.thumb-canvas'); if (!c || !c.clientWidth) return;
@@ -122,7 +138,7 @@ function sectionHead(sec) {
 function thumb(slide) {
   const el = document.createElement('div');
   el.className = 'thumb' + (slide.hidden ? ' is-hidden' : '') + (slide.vertical ? ' is-vertical' : '');
-  el.draggable = true;
+  el.draggable = true; el.title = t('Arrástrala para cambiar el orden, o suéltala en la diapositiva para incrustarla como zoom');
   const index = () => +el.dataset.index;          // current position (the element is reused)
 
   const num = document.createElement('span'); num.className = 'thumb-num';
@@ -152,7 +168,11 @@ function thumb(slide) {
   el.addEventListener('click', () => goToSlide(index()));
   el.addEventListener('dblclick', () => { if (sorterOn()) { goToSlide(index()); setSorter(false); } });   // (in the sorter: edit it)
 
-  el.addEventListener('dragstart', () => { dragFrom = index(); el.classList.add('dragging'); });
+  el.addEventListener('dragstart', e => {
+    dragFrom = index(); el.classList.add('dragging');
+    // (Dropped on the slide being edited, it becomes a zoom to this slide.)
+    e.dataTransfer?.setData(SLIDE_DRAG, slide.id); if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copyMove';
+  });
   el.addEventListener('dragend', () => { dragFrom = null; el.classList.remove('dragging'); clearMarks(); });
   el.addEventListener('dragover', e => { e.preventDefault(); markTarget(el); });
   el.addEventListener('drop', e => {

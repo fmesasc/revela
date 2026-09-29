@@ -430,6 +430,7 @@ export default {
   "Dona": "دائري مجوف",
   "Dispersión": "مبعثر",
   "Radar": "رادار",
+  "Arrástrala para cambiar el orden, o suéltala en la diapositiva para incrustarla como zoom": "اسحبها لتغيير الترتيب، أو أفلتها على الشريحة لتضمينها كتكبير",
   "Atardecer": "غروب",
   "Neón": "نيون",
   "Cuaderno": "دفتر",

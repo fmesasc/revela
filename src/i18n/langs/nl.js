@@ -418,6 +418,7 @@ export default {
   "Dona": "Ring",
   "Dispersión": "Spreiding",
   "Radar": "Radar",
+  "Arrástrala para cambiar el orden, o suéltala en la diapositiva para incrustarla como zoom": "Sleep om de volgorde te wijzigen, of zet op de dia neer om als zoom in te sluiten",
   "Atardecer": "Zonsondergang",
   "Neón": "Neon",
   "Cuaderno": "Schrift",

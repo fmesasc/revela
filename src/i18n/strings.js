@@ -429,6 +429,7 @@ export const ROWS = [
   ['Dona', 'Doughnut', 'Anneau', 'Ring', 'Ciambella', 'Rosca', 'Rosco'],
   ['Dispersión', 'Scatter', 'Nuage de points', 'Punktdiagramm', 'Dispersione', 'Dispersão', 'Dispersió'],
   ['Radar', 'Radar', 'Radar', 'Netz', 'Radar', 'Radar', 'Radar'],
+  ['Arrástrala para cambiar el orden, o suéltala en la diapositiva para incrustarla como zoom', 'Drag it to reorder, or drop it on the slide to embed it as a zoom', 'Faites-la glisser pour changer l\'ordre, ou déposez-la sur la diapositive pour l\'intégrer comme zoom', 'Ziehen, um die Reihenfolge zu ändern, oder auf der Folie ablegen, um sie als Zoom einzubetten', 'Trascinala per cambiare l\'ordine, o rilasciala sulla diapositiva per incorporarla come zoom', 'Arraste para mudar a ordem, ou largue-o no diapositivo para o incorporar como zoom', 'Arrossega-la per canviar l\'ordre, o deixa-la anar a la diapositiva per incrustar-la com a zoom'],
   ['Atardecer', 'Sunset', 'Coucher de soleil', 'Sonnenuntergang', 'Tramonto', 'Pôr do sol', 'Posta de sol'],
   ['Neón', 'Neon', 'Néon', 'Neon', 'Neon', 'Néon', 'Neó'],
   ['Cuaderno', 'Notebook', 'Cahier', 'Heft', 'Quaderno', 'Caderno', 'Quadern'],

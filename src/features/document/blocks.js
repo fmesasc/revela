@@ -214,11 +214,14 @@ export function addTimer(seconds = 300) {
 export function addFigIndex(kind = 'all') { insert(figindexBlock({ kind })); }
 
 // Slide zoom: an embedded thumbnail of another slide, clickable in the show.
-export function addSlideRef() {
+// A slide zoom: to another slide (the first other one if not said), centred on
+// a point of the slide if given (a thumbnail dropped there), inside the slide.
+export function addSlideRef(target = null, at = null) {
   const cur = currentSlide();
-  const other = state.deck.slides.find(s => s.id !== cur.id) || cur;
-  const { w, h } = state.deck.size; const bw = 420;
-  insert(slideRefBlock({ target: other.id, w: bw, h: Math.round(bw * h / w) }));
+  const other = (target && state.deck.slides.find(s => s.id === target)) || state.deck.slides.find(s => s.id !== cur.id) || cur;
+  const { w, h } = state.deck.size; const bw = 420, bh = Math.round(bw * h / w);
+  const pos = at ? { x: Math.round(Math.min(Math.max(0, at[0] - bw / 2), w - bw)), y: Math.round(Math.min(Math.max(0, at[1] - bh / 2), h - bh)) } : {};
+  insert(slideRefBlock({ target: other.id, w: bw, h: bh, ...pos }));
 }
 // Summary zoom: a grid of slide zooms — one per section (its first slide), or
 // one per slide if there are no sections.

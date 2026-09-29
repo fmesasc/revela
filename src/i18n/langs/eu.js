@@ -430,6 +430,7 @@ export default {
   "Dona": "Erroskila",
   "Dispersión": "Sakabanaketa",
   "Radar": "Radarra",
+  "Arrástrala para cambiar el orden, o suéltala en la diapositiva para incrustarla como zoom": "Arrastatu ordena aldatzeko, edo askatu diapositiban zoom gisa txertatzeko",
   "Atardecer": "Ilunabarra",
   "Neón": "Neoia",
   "Cuaderno": "Koadernoa",
