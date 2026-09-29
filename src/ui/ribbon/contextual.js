@@ -31,6 +31,7 @@ import { playAnimations } from '../canvas/preview.js';
 import { playInEditor } from '../canvas/mediaview.js';
 import { fitTextToBox } from '../canvas/canvas.js';
 import { editText } from '../canvas/content.js';
+import { MAP_SCOPES } from '../../features/content/maps.js';
 import { openObjectLink } from '../dialogs/objlink.js';
 import { t } from '../../i18n/index.js';
 
@@ -38,7 +39,9 @@ const TITLES = { shape: 'Forma', image: 'Imagen', model: 'Modelo 3D', video: 'V�
   math: 'Ecuación', code: 'Código', poll: 'Votación', embed: 'Web', icon: 'Icono', camera: 'Cámara', slideref: 'Zoom', figindex: 'Índice', ink: 'Dibujo', connector: 'Conector', timer: 'Cuenta atrás' };
 // Every shape once (the catalogue's first name for each).
 const SHAPES = Object.entries(SHAPE_NAMES).filter(([k]) => !isLineShape(k) && k !== 'freeform');
-const CHARTS = [['bar', 'Barras'], ['stacked', 'Barras apiladas'], ['stacked100', 'Barras apiladas al 100 %'], ['hbar', 'Barras horizontales'], ['histogram', 'Histograma'], ['line', 'Líneas'], ['area', 'Área'], ['pie', 'Circular'], ['doughnut', 'Dona'], ['scatter', 'Dispersión'], ['radar', 'Radar']];
+const CHARTS = [['bar', 'Barras'], ['stacked', 'Barras apiladas'], ['stacked100', 'Barras apiladas al 100 %'], ['hbar', 'Barras horizontales'], ['histogram', 'Histograma'], ['line', 'Líneas'], ['area', 'Área'], ['pie', 'Circular'], ['doughnut', 'Dona'], ['scatter', 'Dispersión'], ['radar', 'Radar'], ['map', 'Mapa']];
+// A map chart: its outlines come from the internet the first time.
+const chartMap = (b, scope) => blocks.setChartMap(b.id, scope).catch(e => alertDialog(t('No se pudo cargar el mapa:') + ' ' + (e.message || e)));
 
 // A control: ['btn', icon, label, fn, on?] · ['color', icon, label, value, fn] · ['select', label, [[v, l]], value, fn] · ['num', label, value, fn, min, max, step]
 const btn = (icon, label, fn, on = false, key = '') => ['btn', icon, label, fn, on, key];
@@ -132,7 +135,8 @@ function groupsFor(b) {
     ['Estilo', [btn('title', 'Encabezado', () => blocks.tableToggleHeader(), !!b.header), btn('palette', 'Estilo de tabla', () => openTableStyle(b)), btn('bar_chart', 'Crear gráfico', () => blocks.chartFromTable())]]);
   else if (b.type === 'chart') G.push(['Datos', [btn('edit', 'Editar datos', () => openChartData(b)), btn('link', b.dataUrl ? 'Datos vinculados' : 'Vincular CSV', () => openLinkChart(b)),
     ...(b.dataUrl ? [btn('refresh', 'Actualizar', () => refreshChart(b))] : [])]],
-    ['Diseño', [['select', 'Tipo de gráfico', CHARTS, b.chartType || 'bar', v => set(b, x => { x.chartType = v; })],
+    ['Diseño', [['select', 'Tipo de gráfico', CHARTS, b.chartType || 'bar', v => (v === 'map' ? chartMap(b, b.mapScope || 'world') : set(b, x => { x.chartType = v; }))],
+      ...(b.chartType === 'map' ? [['select', 'Mapa de', MAP_SCOPES, b.mapScope || 'world', v => chartMap(b, v)]] : []),
       ['color', 'format_color_fill', 'Color', b.color || '#3f6497', v => set(b, x => { x.color = v; })],
       btn('grid_4x4', 'Cuadrícula', () => set(b, x => { x.grid = !x.grid; }), !!b.grid),
       btn('pin', 'Etiquetas de datos', () => set(b, x => { x.dataLabels = !x.dataLabels; }), !!b.dataLabels)]]);

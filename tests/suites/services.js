@@ -330,6 +330,37 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.fetch = real; W.localStorage.removeItem('revela.consent.openverse'); D.getElementById('elements-panel')?.querySelector('.cm-close')?.click(); }
   });
 
+  await test('gráfico de mapa: países o comunidades coloreados por su valor, sin conexión una vez cargado', async () => {
+    reset(); const W = frame.contentWindow, real = W.fetch, S = await W.eval("import('/src/render/svg.js')"), calls = [];
+    // Two squares as TopoJSON: Spain (724) and France (250), and Antarctica (10), which is left out.
+    const topo = { type: 'Topology', transform: { scale: [1, 1], translate: [0, 0] },
+      arcs: [[[-5, 40], [5, 0], [0, 4], [-5, 0], [0, -4]], [[0, 44], [6, 0], [0, 5], [-6, 0], [0, -5]], [[0, -70], [10, 0], [0, 5], [-10, 0], [0, -5]]],
+      objects: { countries: { type: 'GeometryCollection', geometries: [{ type: 'Polygon', id: '724', properties: { name: 'Spain' }, arcs: [[0]] },
+        { type: 'Polygon', id: '250', properties: { name: 'France' }, arcs: [[1]] }, { type: 'Polygon', id: '010', properties: { name: 'Antarctica' }, arcs: [[2]] }] } } };
+    W.fetch = async url => { url = String(url); calls.push(url); if (/world-atlas/.test(url)) return new W.Response(JSON.stringify(topo)); return real(url); };
+    try {
+      R.blocks.addChart(); await sleep(10); const id = last().id;
+      await R.blocks.setChartMap(id, 'world'); await sleep(20);
+      const b = last();
+      assert(/cdn\.jsdelivr\.net\/npm\/world-atlas@2\.0\.2\//.test(calls[0]), 'los contornos, de world-atlas (versión fija)');
+      eq(b.map.regions.map(r => r.k).join(), 'ES,FR', 'países con su código (sin la Antártida)');
+      assert(b.map.regions[0].n.includes('España') && b.map.regions[0].n.includes('Spain'), 'con sus nombres en español e inglés');
+      assert(b.data.some(d => d.label === 'Francia'), 'datos de ejemplo del mapa');
+      // Names written any way: with or without accents, in another language, or the code.
+      eq([...S.mapMatch(b.map, [{ label: 'espana', value: 1 }, { label: 'FR', value: 2 }]).entries()].join(';'), 'ES,1;FR,2', 'sin tildes o con el código');
+      const svg = S.chartSVG({ ...b, data: [{ label: 'España', value: 10 }, { label: 'Francia', value: 20 }] });
+      const fills = [...svg.matchAll(/<path d="[^"]+" fill="(#[0-9a-f]+)"/g)].map(m => m[1]);
+      assert(fills.length === 2 && fills[0] !== fills[1], 'cada país con su tono según su valor');
+      assert(/<title>España: 10<\/title>/.test(svg), 'con su nombre y valor al pasar el ratón');
+      // Kept inside: the presentation doesn't need the internet.
+      const n = calls.length; assert(/<path d="M/.test(R.io.buildHTML()) && calls.length === n, 'en la presentación, sin volver a descargarlo');
+      R.store.commit(() => { R.state.ui.selection = id; R.state.ui.multi = [id]; R.state.ui.activeTab = 'ctx'; }, { history: false }); await sleep(20);
+      assert([...D.querySelectorAll('#ribbon [data-page="ctx"] select')].some(x => [...x.options].some(o => o.value === 'provinces')), 'elegir el mapa en su pestaña');
+      const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob);
+      assert(Object.keys(zip.files).some(f => /^ppt\/media\//.test(f)), 'en PowerPoint, como imagen');
+    } finally { W.fetch = real; }
+  });
+
   await test('seguridad: lo que llega de fuera no ejecuta código', async () => {
     reset(); const W = frame.contentWindow;
     const Sz = await W.eval("import('/src/features/document/sanitize.js')"), T = await W.eval("import('/src/core/text.js')");

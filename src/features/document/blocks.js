@@ -6,7 +6,8 @@ import { DEFAULT_SHADOW } from '../../render/svg.js';
 import { uid, textBlock, tableBlock, codeBlock, chartBlock, mathBlock, figindexBlock, slideRefBlock } from '../../core/model.js';
 import { currentLang, t } from '../../i18n/index.js';
 import { deckFg, currentPalette } from '../design/palettes.js';
-import { ACTION_GOTO, SHAPE_NAMES, isLineShape } from '../../render/svg.js';
+import { ACTION_GOTO, SHAPE_NAMES, isLineShape, mapMatch } from '../../render/svg.js';
+import { loadMap, MAP_SAMPLES } from '../content/maps.js';
 
 function insert(block) {
   commit(() => {
@@ -222,6 +223,16 @@ export function setObjectLink(id, { href = '', goto = '' } = {}) {
     const b = currentSlide().blocks.find(x => x.id === id); if (!b) return;
     if (href) b.href = href; else delete b.href;
     if (goto) b.goto = goto; else delete b.goto;
+  });
+}
+// A chart becomes a map (or another map): its outlines are loaded once and kept in
+// the chart; if its data don't name any region of the map, the map's sample data.
+export async function setChartMap(id, scope = 'world') {
+  const map = await loadMap(scope);
+  commit(() => {
+    const b = state.deck.slides.flatMap(s => s.blocks).find(x => x.id === id); if (!b) return;
+    b.chartType = 'map'; b.mapScope = scope; b.map = map;
+    if (!mapMatch(map, b.data || []).size) { b.data = MAP_SAMPLES[scope].map(([label, value]) => ({ label, value })); delete b.series; }
   });
 }
 // A freeform shape drawn by hand: its outline (slide points) as a closed shape

@@ -9,7 +9,7 @@ import { alertUser } from '../../core/notify.js';
 import { t } from '../../i18n/index.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
 import { plainText } from '../../core/text.js';
-import { chartSeries, histogramBins, iconSVG, inkSVG, timerSVG, shapeTextStyle } from '../../render/svg.js';
+import { chartSVG, chartSeries, histogramBins, iconSVG, inkSVG, timerSVG, shapeTextStyle } from '../../render/svg.js';
 import { blockImage } from '../export/images.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, styleKind } from '../../features/document/master.js';
 import { PPTXGEN, JSZIP, loadScript } from '../../core/vendor.js';
@@ -274,6 +274,7 @@ export async function buildPptx(deck = state.deck) {
       if (b.type === 'icon') raster.set(b.id, await svgToPNG(iconSVG(b), b.w, b.h));
       else if (b.type === 'ink') raster.set(b.id, await svgToPNG(inkSVG(b), b.w, b.h));
       else if (b.type === 'timer') raster.set(b.id, await svgToPNG(timerSVG(b), b.w, b.h));
+      else if (b.type === 'chart' && b.chartType === 'map') raster.set(b.id, await svgToPNG(chartSVG(b), b.w, b.h));      // (PowerPoint's own maps can't be written here)
       else if (b.type === 'math' || b.type === 'poll' || b.type === 'figindex') { const img = await blockImage(b, s, deck); if (img) raster.set(b.id, img); }
     } catch {}
   }

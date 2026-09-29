@@ -158,7 +158,7 @@ export function openChartData(b) {
       <option value="bar">${t('Barras')}</option><option value="stacked">${t('Barras apiladas')}</option><option value="stacked100">${t('Barras apiladas al 100 %')}</option>
       <option value="hbar">${t('Barras horizontales')}</option><option value="histogram">${t('Histograma')}</option><option value="line">${t('Líneas')}</option><option value="area">${t('Área')}</option>
       <option value="pie">${t('Circular')}</option><option value="doughnut">${t('Dona')}</option>
-      <option value="scatter">${t('Dispersión')}</option><option value="radar">${t('Radar')}</option></select></label>
+      <option value="scatter">${t('Dispersión')}</option><option value="radar">${t('Radar')}</option><option value="map">${t('Mapa')}</option></select></label>
     <label class="fr-l">${t('Color (barras)')} <input type="color" class="ch-color" value="${b.color || '#3f6497'}"></label>
     <label class="fr-chk"><input type="checkbox" class="ch-combo"${b.combo ? ' checked' : ''}> ${t('Combinado: series extra como líneas')}</label>
     <label class="fr-chk"><input type="checkbox" class="ch-grid"${b.grid ? ' checked' : ''}> ${t('Líneas de cuadrícula con la escala')}</label>
@@ -179,6 +179,8 @@ export function openChartData(b) {
       color: back.querySelector('.ch-color').value, combo: back.querySelector('.ch-combo').checked,
       grid: back.querySelector('.ch-grid').checked, dataLabels: back.querySelector('.ch-labels').checked,
       xTitle: back.querySelector('.ch-xt').value.trim(), yTitle: back.querySelector('.ch-yt').value.trim() });
+    // (A map needs its outlines: loaded once, from the internet.)
+    if (back.querySelector('.ch-type').value === 'map' && !b.map) blocks.setChartMap(b.id, b.mapScope || 'world').catch(e => alertDialog(t('No se pudo cargar el mapa:') + ' ' + (e.message || e)));
     close();
   });
 }

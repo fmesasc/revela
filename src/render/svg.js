@@ -142,7 +142,7 @@ export function connectorSVG(b, fromB, toB, W, H) {
 }
 
 // Chart as inline SVG (no library, self‑contained on export). Bar or pie.
-export function chartSig(b) { return (b.chartType || 'bar') + '|' + (b.color || '') + '|' + JSON.stringify([b.data || [], b.series || [], b.combo || 0, b.seriesName || '', b.grid, b.dataLabels, b.xTitle, b.yTitle]); }
+export function chartSig(b) { return (b.chartType || 'bar') + '|' + (b.color || '') + '|' + (b.map ? b.map.scope + b.map.regions.length : '') + '|' + JSON.stringify([b.data || [], b.series || [], b.combo || 0, b.seriesName || '', b.grid, b.dataLabels, b.xTitle, b.yTitle]); }
 // A histogram: the values (labels don't matter) grouped into ranges (Sturges' rule), counted.
 export function histogramBins(values, k = 0) {
   const v = values.filter(Number.isFinite); if (!v.length) return [];
@@ -157,6 +157,7 @@ export function histogramBins(values, k = 0) {
 export function chartSVG(b) {
   if (b.chartType === 'histogram') return chartSVG({ ...b, chartType: 'bar', data: histogramBins((b.data || []).map(d => +d.value)), series: [], combo: false, _adjacent: true });
   if (b.chartType === 'hbar') return hbarSVG(b);
+  if (b.chartType === 'map') return mapSVG(b);
   const data = b.data || []; const color = b.color || '#3f6497';
   const palette = ['#3f6497', '#c0392b', '#2b7a3b', '#d68910', '#7d3c98', '#16a085', '#c0392b'];
   if (b.chartType === 'pie' || b.chartType === 'doughnut') {
@@ -249,6 +250,38 @@ export function chartSVG(b) {
     return `<rect x="${lx0}" y="0" width="3" height="3" fill="${x.color}"/><text x="${lx0 + 4}" y="2.6" font-size="3.4" fill="#8a8a8a">${escSvg(x.name)}</text>`;
   }).join('') : '';
   return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">${grid}${bars}${lines}${zero}${labels}${titles}${legend}</svg>`;
+}
+// Filled map: each region in a shade between light and the chart's colour by its
+// value (see features/content/maps.js for the outlines, kept in b.map). The data's
+// labels are matched with any of a region's names or codes, without accents.
+const plain = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+export function mapMatch(map, data) {
+  const out = new Map(), idx = new Map();
+  for (const r of map.regions) for (const n of r.n) idx.set(plain(n), r.k);
+  for (const d of data) {
+    const q = plain(d.label); if (!q) continue;
+    let k = idx.get(q);
+    if (!k) for (const [n, key] of idx) if (n.length > 3 && (n.includes(q) || q.includes(n)) && Math.min(n.length, q.length) >= 4) { k = key; break; }
+    if (k) out.set(k, +d.value || 0);
+  }
+  return out;
+}
+function mapSVG(b) {
+  const m = b.map, c = /^#[0-9a-f]{6}$/i.test(b.color || '') ? b.color : '#3f6497';
+  if (!m?.regions?.length) return `<svg viewBox="0 0 100 60" width="100%" height="100%"><text x="50" y="32" font-size="5" text-anchor="middle" fill="#8a8a8a">🗺</text></svg>`;
+  const vals = mapMatch(m, b.data || []), list = [...vals.values()], lo = Math.min(...list, 0), hi = Math.max(...list, 1);
+  const mix = f => '#' + [1, 3, 5].map(i => { const a = parseInt(c.slice(i, i + 2), 16), l = 232; return Math.round(l + (a - l) * f).toString(16).padStart(2, '0'); }).join('');
+  const [W, H] = m.vb, sw = (W / 700).toFixed(2);
+  const paths = m.regions.map(r => `<path d="${r.d}" fill="${vals.has(r.k) ? mix(0.15 + 0.85 * (vals.get(r.k) - lo) / ((hi - lo) || 1)) : '#8a8a8a40'}" stroke="#ffffffaa" stroke-width="${sw}">`
+    + `<title>${escSvg(r.n[0])}${vals.has(r.k) ? ': ' + escSvg(String(vals.get(r.k)).replace('.', ',')) : ''}</title></path>`).join('');
+  const inset = m.inset ? `<rect x="${m.inset[0]}" y="${m.inset[1]}" width="${m.inset[2]}" height="${m.inset[3] - m.inset[1]}" fill="none" stroke="#8a8a8a" stroke-width="${sw}"/>` : '';
+  const fmt = v => String(+(+v).toFixed(2)).replace('.', ','), lw = W * 0.22, lx = W - lw - W * 0.02, ly = H - H * 0.07;
+  const legend = list.length ? `<defs><linearGradient id="mg-${escA(b.id || 'x')}"><stop offset="0" stop-color="${mix(0.15)}"/><stop offset="1" stop-color="${mix(1)}"/></linearGradient></defs>`
+    + `<rect x="${lx.toFixed(0)}" y="${ly.toFixed(0)}" width="${lw.toFixed(0)}" height="${(H * 0.025).toFixed(0)}" fill="url(#mg-${escA(b.id || 'x')})"/>`
+    + `<text x="${lx.toFixed(0)}" y="${(ly - H * 0.015).toFixed(0)}" font-size="${(W / 45).toFixed(0)}" fill="#8a8a8a">${fmt(lo)}</text>`
+    + `<text x="${(lx + lw).toFixed(0)}" y="${(ly - H * 0.015).toFixed(0)}" font-size="${(W / 45).toFixed(0)}" fill="#8a8a8a" text-anchor="end">${fmt(hi)}</text>` : '';
+  const credit = m.credit ? `<text x="${(W * 0.01).toFixed(0)}" y="${(H * 0.99).toFixed(0)}" font-size="${(W / 70).toFixed(0)}" fill="#8a8a8a">${escSvg(m.credit)}</text>` : '';
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">${paths}${inset}${legend}${credit}</svg>`;
 }
 // Horizontal bars: the categories down the side, the bars across (several series side by side).
 function hbarSVG(b) {
