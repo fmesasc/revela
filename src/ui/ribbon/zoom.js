@@ -28,10 +28,12 @@ export function setZoom(z, { manual = true } = {}) {
 }
 export function fitZoom() {
   const wrap = document.getElementById('canvas-wrap');
-  const { w, h } = state.deck.size;
-  // Less margin on small screens (a phone on its side has little height).
-  const m = Math.min(wrap.clientWidth, wrap.clientHeight) < 400 ? 30 : 56;
-  const z = Math.min((wrap.clientWidth - m) / w, (wrap.clientHeight - m) / h);
+  const rw = state.ui.showRuler ? 20 : 0, w = state.deck.size.w + rw, h = state.deck.size.h + rw;
+  // Inside the area's padding (less on small screens), rounded down so that
+  // no scroll bar appears for a pixel.
+  const cs = getComputedStyle(wrap);
+  const pw = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + 2, ph = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + 2;
+  const z = Math.min((wrap.clientWidth - pw) / w, (wrap.clientHeight - ph) / h);
   fitting = true;
-  setZoom(z, { manual: false });
+  setZoom(Math.floor(z * 100) / 100, { manual: false });
 }

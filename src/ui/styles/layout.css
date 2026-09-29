@@ -27,7 +27,7 @@ body.nav-hidden #navigator{display:none}
 
 #canvas-wrap{flex:1;display:grid;place-items:center;padding:28px;overflow:auto;background:var(--canvas-bg)}
 #stage-sizer{position:relative;overflow:visible}
-#stage-grid{display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;
+#stage-grid{display:grid;width:max-content;grid-template-columns:auto auto;grid-template-rows:auto auto;
   transform-origin:top left}
 #stage{position:relative;background:#111;border-radius:4px;overflow:visible;flex:0 0 auto;
   box-shadow:0 10px 34px #0003}

@@ -162,6 +162,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     // The slide fits the window until one chooses a zoom.
     const Z = await frame.contentWindow.eval("import('/src/ui/ribbon/zoom.js')");
     Z.fitZoom(); assert(Z.zoomFitting(), 'ajustada a la ventana');
+    const wrap = D.getElementById('canvas-wrap');
+    for (const ruler of [false, true]) {                     // no scroll bars when it fits, also with the ruler
+      R.store.state.ui.showRuler = ruler; R.render(); Z.fitZoom(); await sleep(30);
+      assert(wrap.scrollWidth <= wrap.clientWidth && wrap.scrollHeight <= wrap.clientHeight, 'ajustada sin desbordar' + (ruler ? ' (con regla)' : ''));
+    }
+    R.store.state.ui.showRuler = false; R.render();
     D.querySelector('[data-action="zoom-in"]').click(); assert(!Z.zoomFitting(), 'un zoom elegido a mano se respeta');
     D.querySelector('[data-action="zoom-fit"]').click(); assert(Z.zoomFitting(), 'y «Ajustar» vuelve a ajustarla');
     const deck = R.gallery.buildFromGallery('tech');
