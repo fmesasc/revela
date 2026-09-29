@@ -9,7 +9,7 @@ import { state, commit, currentSlide, selectedBlock, selectedBlocks } from '../.
 import * as blocks from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
 import * as shapeops from '../../features/document/shapeops.js';
-import { MOTIONS_3D, VIEWS_3D } from '../../features/content/model3d.js';
+import { MOTIONS_3D, VIEWS_3D, BLEEDS_3D, modelBleed } from '../../features/content/model3d.js';
 import { isGif } from '../../features/live/media.js';
 import { styled } from '../../features/document/master.js';
 import { saveBlockFile as saveFile } from '../shell/files.js';
@@ -72,7 +72,9 @@ function groupsFor(b) {
         if (v) x.walk = { end: '', endOnce: true, face: true, look: true, ...x.walk, clip: v }; else delete x.walk; })],
         btn('play_circle', 'Probar', () => playAnimations())]],
       ['Vista', [['select', 'Cámara', VIEWS_3D, b.view || '', v => set(b, x => { if (v) x.view = v; else delete x.view; })],
-        ['select', 'Al llegar a la diapositiva', MOTIONS_3D, b.motion || 'none', v => set(b, x => { if (v !== 'none') x.motion = v; else delete x.motion; })]]],
+        ['select', 'Al llegar a la diapositiva', MOTIONS_3D, b.motion || 'none', v => set(b, x => { if (v !== 'none') x.motion = v; else delete x.motion; })],
+        // (So that a hand waving or a jump is not cut by the frame.)
+        ['select', 'Margen para moverse', BLEEDS_3D, String(modelBleed(b)), v => set(b, x => { x.bleed = +v; })]]],
       ['Esqueleto', [btn('accessibility_new', 'Esqueleto automático', () => openAutoRig(b))]],
       ['Archivo', [btn('download', 'Descargar (.glb)', () => saveFile(b)), btn('swap_horiz', 'Reemplazar', () => replaceModel(b))]]);
   } else if (b.type === 'video' || b.type === 'audio') G.push(

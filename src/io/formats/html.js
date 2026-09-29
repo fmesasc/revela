@@ -12,7 +12,7 @@ import { download, slug } from '../files.js';
 import { TRIGGER_JS, CAMERA_JS, pollJS, liveDataJS, LIGHTBOX_JS, overviewJS } from '../runtime/scripts.js';
 import { createMediaPlayer, revelaMediaRuntime } from '../runtime/media.js';
 import { needsPlayer, mediaConfig } from '../../features/live/media.js';
-import { modelAttrsHTML } from '../../features/content/model3d.js';
+import { modelAttrsHTML, bleedBox } from '../../features/content/model3d.js';
 import { model3dRuntime } from '../runtime/model3d.js';
 import { canvasRuntimeDeps } from '../runtime/canvas.js';
 import { canvasOn, frameOf } from '../../features/design/canvasmode.js';
@@ -181,7 +181,7 @@ function blockHTMLRaw(b, slide) {
       + `${b.wordart ? wordartCSS(b.wordart) : ''}">`
       + `${b.html || ''}</div>`;
   if (b.type === 'model')
-    return `<model-viewer${a}${modelAttrsHTML(b)} style="${box(b)}background:transparent"></model-viewer>`;
+    return `<model-viewer${a}${modelAttrsHTML(b)} style="${box(bleedBox(b))}background:transparent${bleedBox(b) !== b ? ';pointer-events:none' : ''}"></model-viewer>`;
   // Video / GIF with segments, autoplay, loop, mute or a colour key: the media
   // player draws it; each segment after the first automatic one is a click.
   if (needsPlayer(b)) {

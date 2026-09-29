@@ -18,7 +18,9 @@ export function model3dRuntime() {
   function clipName(mv, n) { var list = mv.availableAnimations || []; return n === '*' ? list[0] : (list.indexOf(n) >= 0 ? n : null); }
   function playClip(mv, n, once) { n = clipName(mv, n); if (!n) { mv.pause(); return; } mv.animationName = n; mv.play(once ? { repetitions: 1 } : undefined); }
   function rest(mv) { var idle = mv.hasAttribute('autoplay') ? (mv.getAttribute('animation-name') || '*') : null; if (idle) playClip(mv, idle); else mv.pause(); }
-  function turn(mv, yaw) { var o = (mv.getAttribute('camera-orbit') || '0deg 75deg auto').split(' '); mv.cameraOrbit = (parseFloat(o[0]) - yaw).toFixed(1) + 'deg ' + (o[1] || '75deg') + ' auto'; }
+  // The camera's distance: further away when the view has room around the model (data-bleed).
+  function R(mv, pct) { var k = parseFloat(mv.getAttribute('data-bleed')) || 1; return pct ? Math.round(pct * k) + '%' : (k === 1 ? 'auto' : Math.round(105 * k) + '%'); }
+  function turn(mv, yaw) { var o = (mv.getAttribute('camera-orbit') || '0deg 75deg auto').split(' '); mv.cameraOrbit = (parseFloat(o[0]) - yaw).toFixed(1) + 'deg ' + (o[1] || '75deg') + ' ' + R(mv); }
   function offset(el) { var v = getComputedStyle(el).translate; if (!v || v === 'none') return [0, 0]; var p = v.split(' '); return [parseFloat(p[0]) || 0, parseFloat(p[1]) || 0]; }
   function move(mv, dur, el) {
     var clip = mv.getAttribute('data-move-clip'); if (!clip) return;
@@ -75,12 +77,12 @@ export function model3dRuntime() {
     stop(mv);
     var m = mv.getAttribute('data-motion'), t = {}, t0 = performance.now();
     timers.set(mv, t);
-    if (m === 'swing') { var side = 1; mv.cameraOrbit = '-35deg 75deg auto'; t.iv = setInterval(function () { side = -side; mv.cameraOrbit = (35 * side) + 'deg 75deg auto'; }, 2200); }
-    else if (m === 'zoom') { mv.interpolationDecay = 200; mv.cameraOrbit = '0deg 75deg 300%'; mv.jumpCameraToGoal && mv.jumpCameraToGoal(); requestAnimationFrame(function () { mv.cameraOrbit = '0deg 75deg auto'; }); }
-    else if (m === 'top') { mv.interpolationDecay = 300; mv.cameraOrbit = '0deg 5deg auto'; mv.jumpCameraToGoal && mv.jumpCameraToGoal(); requestAnimationFrame(function () { mv.cameraOrbit = '30deg 75deg auto'; }); }
+    if (m === 'swing') { var side = 1; mv.cameraOrbit = '-35deg 75deg ' + R(mv); t.iv = setInterval(function () { side = -side; mv.cameraOrbit = (35 * side) + 'deg 75deg ' + R(mv); }, 2200); }
+    else if (m === 'zoom') { mv.interpolationDecay = 200; mv.cameraOrbit = '0deg 75deg ' + R(mv, 300); mv.jumpCameraToGoal && mv.jumpCameraToGoal(); requestAnimationFrame(function () { mv.cameraOrbit = '0deg 75deg ' + R(mv); }); }
+    else if (m === 'top') { mv.interpolationDecay = 300; mv.cameraOrbit = '0deg 5deg ' + R(mv); mv.jumpCameraToGoal && mv.jumpCameraToGoal(); requestAnimationFrame(function () { mv.cameraOrbit = '30deg 75deg ' + R(mv); }); }
     else if (m === 'orbit') {
       (function step(now) { var k = Math.min(1, (now - t0) / 4000), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
-        mv.cameraOrbit = (e * 360) + 'deg 75deg auto'; mv.jumpCameraToGoal && mv.jumpCameraToGoal(); if (k < 1) t.raf = requestAnimationFrame(step); })(t0);
+        mv.cameraOrbit = (e * 360) + 'deg 75deg ' + R(mv); mv.jumpCameraToGoal && mv.jumpCameraToGoal(); if (k < 1) t.raf = requestAnimationFrame(step); })(t0);
     } else if (m === 'float') {
       (function step(now) { mv.style.transform = 'translateY(' + (Math.sin((now - t0) / 700) * 14).toFixed(1) + 'px)'; t.raf = requestAnimationFrame(step); })(t0);
     }
@@ -92,6 +94,15 @@ export function model3dRuntime() {
       if (slide && slide.contains(mv)) start(mv); else stop(mv);
     });
   }
+  // With room around it, only the model's own box (the middle of the view) takes the
+  // pointer to turn it; around, clicks reach what is under (a link, a button).
+  if (window.Reveal) document.addEventListener('pointermove', function (e) {
+    document.querySelectorAll('model-viewer[data-bleed]').forEach(function (mv) {
+      var k = parseFloat(mv.getAttribute('data-bleed')) || 1, r = mv.getBoundingClientRect(), mx = r.width * (1 - 1 / k) / 2, my = r.height * (1 - 1 / k) / 2;
+      var inside = e.clientX > r.left + mx && e.clientX < r.right - mx && e.clientY > r.top + my && e.clientY < r.bottom - my;
+      mv.style.pointerEvents = inside ? 'auto' : 'none';
+    });
+  }, { passive: true });
   if (window.Reveal) { Reveal.on('ready', function (e) { enter(e.currentSlide); }); Reveal.on('slidechanged', function (e) { enter(e.currentSlide); }); if (Reveal.isReady()) enter(Reveal.getCurrentSlide());
     Reveal.on('fragmentshown', function (e) { (e.fragments || [e.fragment]).forEach(function (f) { clipStep(f, true); }); });
     Reveal.on('fragmenthidden', function (e) { (e.fragments || [e.fragment]).forEach(function (f) { clipStep(f, false); }); }); }

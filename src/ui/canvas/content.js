@@ -20,7 +20,7 @@ import { KATEX, HIGHLIGHT, loadScript, loadStyle } from '../../core/vendor.js';
 import { findBlock, readOnly, fitFontSize } from './canvas.js';
 import { openMath } from '../dialogs/object.js';
 import { keyedView, mediaView } from './mediaview.js';
-import { modelAttrs } from '../../features/content/model3d.js';
+import { modelAttrs, modelBleed } from '../../features/content/model3d.js';
 
 export const pollSig = b => JSON.stringify([b.kind, b.display, b.question, b.options, b.fontSize, savedVotes(b.pollId)]);
 export function renderSlideRef(wrap, b) {
@@ -351,10 +351,14 @@ export function setupMath(el, b) {
 // what changed is touched, so the view doesn't reload.
 export function applyModelAttrs(mv, b) {
   const want = new Map(modelAttrs(b));
-  for (const name of ['auto-rotate', 'auto-rotate-delay', 'rotation-per-second', 'autoplay', 'animation-name', 'data-once', 'data-speed', 'data-motion'])
+  for (const name of ['auto-rotate', 'auto-rotate-delay', 'rotation-per-second', 'autoplay', 'animation-name', 'data-once', 'data-speed', 'data-motion', 'camera-orbit', 'data-bleed'])
     if (!want.has(name) && mv.hasAttribute(name)) mv.removeAttribute(name);   // only ours: model-viewer adds its own
   for (const [k, v] of want) if (mv.getAttribute(k) !== v) mv.setAttribute(k, v);
   const sp = b.clipSpeed || 1; if (mv.timeScale !== sp) mv.timeScale = sp;
+  // Room around it: the view overflows the box by as much on every side.
+  const k = modelBleed(b), m = `${-(k - 1) * 50}%`;
+  mv.style.position = k > 1 ? 'absolute' : ''; mv.style.inset = k > 1 ? `${m} ${m}` : '';
+  mv.style.width = mv.style.height = k > 1 ? `${k * 100}%` : '';
 }
 export function setupModel(el) {
   const mv = el.querySelector('model-viewer');

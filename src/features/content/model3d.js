@@ -22,10 +22,29 @@ export const MOTIONS_3D = [
 export const VIEWS_3D = [['', 'Libre'], ['front', 'De frente'], ['three', 'Tres cuartos'], ['side', 'De lado'], ['back', 'Por detrás'], ['top', 'Desde arriba'], ['low', 'Desde abajo']];
 const ORBITS = { front: '0deg 75deg auto', three: '35deg 70deg auto', side: '90deg 75deg auto', back: '180deg 75deg auto', top: '0deg 8deg auto', low: '20deg 115deg auto' };
 
+// Room around the model (bleed): model-viewer frames it standing still, so a
+// robot waving or a dancer would put a hand outside its box and lose it. The 3D
+// view is drawn this many times bigger than the box, around the same centre,
+// with the camera as much further away: the model looks the same size, and
+// what goes out of the box still shows. By default, for models that move.
+export const BLEEDS_3D = [['1', 'Ninguno'], ['1.3', 'Poco'], ['1.5', 'Normal'], ['2', 'Mucho']];
+export const modelBleed = b => (b.bleed != null ? Math.max(1, Math.min(3, +b.bleed || 1)) : (b.clip || b.walk?.clip) ? 1.5 : 1);
+// The camera's distance for a bleed (model-viewer's own is 105 % of the fitting one).
+export const bleedRadius = k => (k === 1 ? 'auto' : `${Math.round(105 * k)}%`);
+// The box the 3D view takes on the slide.
+export function bleedBox(b) {
+  const k = modelBleed(b); if (k === 1) return b;
+  return { ...b, x: Math.round(b.x - (k - 1) * b.w / 2), y: Math.round(b.y - (k - 1) * b.h / 2), w: Math.round(b.w * k), h: Math.round(b.h * k) };
+}
+
 // model-viewer attributes for a block, as [name, value] pairs ('' = boolean).
 export function modelAttrs(b) {
   const a = [['src', b.src || ''], ['camera-controls', ''], ['shadow-intensity', '1'], ['interaction-prompt', 'none']];
-  if (ORBITS[b.view]) a.push(['camera-orbit', ORBITS[b.view]]);
+  const k = modelBleed(b), r = bleedRadius(k);
+  // (Without a limit of its own, model-viewer never takes the camera further than its fitting distance.)
+  a.push(['max-camera-orbit', `auto auto ${Math.round(320 * k)}%`]);
+  if (ORBITS[b.view] || k > 1) a.push(['camera-orbit', (ORBITS[b.view] || '0deg 75deg auto').replace(/auto$/, r)]);
+  if (k > 1) a.push(['data-bleed', String(k)]);
   const walk = b.walk?.clip ? b.walk : null;
   if (b.autoRotate !== false && (b.motion || 'none') === 'none' && !walk) {
     a.push(['auto-rotate', ''], ['auto-rotate-delay', '0']);

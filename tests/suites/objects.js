@@ -547,6 +547,35 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(tab().hidden && R.state.ui.activeTab === 'home', 'al quitar la selección se va y vuelve a Inicio');
   });
 
+  await test('modelos 3D: margen para moverse (la mano que saluda no se corta en el borde)', async () => {
+    reset(); const W = frame.contentWindow, M = await W.eval("import('/src/features/content/model3d.js')");
+    const base = { id: 'm1', type: 'model', src: 'data:model/gltf-binary;base64,AAAA', x: 100, y: 100, w: 200, h: 100, rotation: 0, animation: null };
+    const attrs = b => Object.fromEntries(M.modelAttrs(b));
+    eq(M.modelBleed(base), 1, 'quieto: sin margen');
+    eq(M.modelBleed({ ...base, clip: 'Wave' }), 1.5, 'con animación propia: margen por defecto');
+    eq(M.modelBleed({ ...base, walk: { clip: 'Walk' } }), 1.5, 'y si anda');
+    eq(M.modelBleed({ ...base, clip: 'Wave', bleed: 1 }), 1, 'se puede quitar');
+    const a = attrs({ ...base, clip: 'Wave' });
+    eq(a['camera-orbit'], '0deg 75deg 158%', 'la cámara, tanto más lejos (el modelo se ve igual de grande)');
+    eq(a['data-bleed'], '1.5', 'marcado para la presentación');
+    eq(attrs({ ...base, clip: 'Wave', view: 'side' })['camera-orbit'], '90deg 75deg 158%', 'también con una vista elegida');
+    assert(/%$/.test(attrs(base)['max-camera-orbit']), 'con límite propio de distancia (si no, model-viewer no aleja la cámara: tampoco «Acercar al entrar»)');
+    eq(JSON.stringify(M.bleedBox({ ...base, clip: 'Wave' })).match(/"x":-?\d+,"y":-?\d+,"w":\d+,"h":\d+/)[0], '"x":50,"y":75,"w":300,"h":150', 'la vista, más grande alrededor del mismo centro');
+    // In the editor: the block keeps its box (handles), the view overflows it.
+    R.store.commit(() => { slide().blocks.push({ ...base, clip: 'Wave' }); }); await sleep(30);
+    const mv = D.querySelector('#stage .block[data-id="m1"] model-viewer');
+    eq([mv.style.width, mv.style.left || mv.style.inset.split(' ')[0]].join(), '150%,-25%', 'en el editor, la vista sobresale del bloque');
+    eq(D.querySelector('#stage .block[data-id="m1"]').offsetWidth, 200, 'y el bloque no cambia');
+    // In the presentation: the bigger box; only the model's own box takes the pointer.
+    const html = R.io.buildHTML(), tag = html.match(/<model-viewer[^>]*data-bleed[^>]*>/)[0];
+    assert(/left:50px;top:75px;width:300px;height:150px/.test(tag) && /pointer-events:none/.test(tag), 'exportado con la caja ampliada');
+    // Room chosen from the object's tab.
+    R.store.commit(() => { R.state.ui.selection = 'm1'; R.state.ui.multi = ['m1']; R.state.ui.activeTab = 'ctx'; }, { history: false }); await sleep(30);
+    const sel = [...D.querySelectorAll('#ribbon [data-page="ctx"] select')].find(x => [...x.options].some(o => o.value === '2'));
+    eq(sel.value, '1.5', 'en su pestaña, el margen que tiene'); sel.value = '2'; sel.dispatchEvent(new W.Event('change')); await sleep(20);
+    eq(slide().blocks.find(x => x.id === 'm1').bleed, 2, 'se cambia desde la pestaña');
+  });
+
   await test('modelos 3D: más fuentes (NASA, Wikimedia Commons en STL) y descargar el modelo con todo', async () => {
     reset(); const W = frame.contentWindow, realFetch = W.fetch;
     const Rz = await W.eval("import('/src/features/content/resources.js')"), S = await W.eval("import('/src/features/content/stl.js')");
