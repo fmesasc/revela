@@ -339,7 +339,7 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 #elements-panel.right{border-inline-end:none;border-inline-start:1px solid var(--line2)}
 #elements-panel .cm-head span{display:flex;gap:4px;align-items:center}
 #elements-panel .cm-head b{display:flex;gap:6px;align-items:center}
-.el-tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:3px}
+.el-tabs{display:grid;grid-template-columns:repeat(6,1fr);gap:2px}
 .el-tabs button{display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:1px solid transparent;border-radius:8px;padding:5px 1px;cursor:pointer;font:inherit;font-size:10.5px;color:var(--txt2);line-height:1.15;text-align:center}
 .el-tabs button .ms{font-size:22px}
 .el-tabs button:hover{background:var(--bg)}
@@ -412,3 +412,10 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .el-ftoggle{position:relative;display:grid;place-items:center;padding:5px 7px}
 .el-ftoggle[aria-expanded="true"]{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
 .el-fcount{position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;border-radius:8px;background:var(--accent);color:#fff;font-size:10px;line-height:16px;text-align:center;padding:0 3px}
+/* Sounds in the resources panel: a row each, with a button to listen first. */
+.el-grid .sk-sound{grid-column:1/-1;aspect-ratio:auto;height:auto;min-height:54px;display:grid;grid-template-columns:auto 1fr;gap:0 8px;align-items:center;text-align:start;padding:8px 10px;cursor:pointer}
+.el-grid .sk-sound b{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.el-grid .sk-sound span{position:static;grid-column:2;background:none;color:var(--txt2);padding:0}
+.el-grid .sk-sound .sk-listen{grid-row:span 2;font-size:22px;width:34px;height:34px;display:grid;place-items:center;border-radius:50%;background:var(--accent);color:#fff}
+.el-akind[hidden]{display:none}
+.el-grid:has(.sk-sound){grid-auto-rows:auto}

@@ -288,6 +288,48 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.fetch = real; ['revela.consent.openverse', 'revela.elements.imageFilters', 'revela.elements.recentImages'].forEach(k => W.localStorage.removeItem(k)); D.getElementById('elements-panel')?.querySelector('.cm-close')?.click(); }
   });
 
+  await test('vídeos (Wikimedia Commons) y sonidos (Openverse) libres en Recursos', async () => {
+    reset(); const W = frame.contentWindow, real = W.fetch, calls = [], Rz = await W.eval("import('/src/features/content/resources.js')");
+    const webm = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3]), mp3 = new Uint8Array([0x49, 0x44, 0x33]);
+    W.fetch = async url => { url = String(url); calls.push(url);
+      if (url.startsWith('https://commons.wikimedia.org/w/api.php')) return new W.Response(JSON.stringify({ query: { pages: { 1: { index: 1, title: 'File:Olas.webm', videoinfo: [{ url: 'https://upload.test/Olas.webm', size: 9e7, duration: 15.4, width: 1920, height: 1080,
+        thumburl: 'https://thumb.test/olas.jpg', descriptionurl: 'https://commons/olas', extmetadata: { LicenseShortName: { value: 'CC0' }, Artist: { value: '<b>Ana</b>' } },
+        derivatives: [{ transcodekey: '240p.vp9.webm', src: 'https://upload.test/240.webm', width: 426, height: 240 }, { transcodekey: '480p.vp9.webm', src: 'https://upload.test/480.webm', width: 854, height: 480 }] }] } } } }));
+      if (url.startsWith('https://upload.test/')) return new W.Response(new W.Blob([webm], { type: 'video/webm' }));
+      if (url.startsWith('https://api.openverse.org/v1/audio/')) return new W.Response(JSON.stringify({ results: [
+        { id: 'a1', title: 'Aplausos', url: 'https://cdn.freesound.test/a1.mp3', duration: 6320, source: 'freesound', creator: 'Luis', license: 'cc0', license_version: '1.0', attribution: '"Aplausos" by Luis' },
+        { id: 'a2', title: 'Canción', url: 'https://jamendo.test/a2.mp3', duration: 180000, source: 'jamendo', creator: 'Eva', license: 'by-sa', license_version: '3.0' }] }));
+      if (url.startsWith('https://cdn.freesound.test/')) return new W.Response(new W.Blob([mp3], { type: 'audio/mpeg' }));
+      if (url.startsWith('https://jamendo.test/')) throw new TypeError('CORS');
+      return real(url); };
+    try {
+      const v = (await Rz.searchCommonsVideo('olas')).results[0];
+      assert(/filetype%3Avideo|filetype:video/.test(decodeURIComponent(calls[0])), 'busca vídeos en Commons');
+      assert(v.src === 'https://upload.test/480.webm' && v.small && v.license === 'CC0' && v.artist === 'Ana' && v.duration === 15.4, 'la copia de 480p, con licencia, autor y duración');
+      const vb = await Rz.insertCommonsVideo(v);
+      assert(vb.type === 'video' && /^data:video\/webm/.test(vb.src) && /Ana, Wikimedia Commons \(CC0\)/.test(vb.caption), 'un corto va dentro, con su atribución');
+      eq(Math.round(vb.w / vb.h * 9), 16, 'con su proporción');
+      eq((await Rz.insertCommonsVideo(v, { maxEmbed: 2 })).src, 'https://upload.test/480.webm', 'uno grande se enlaza');
+      const au = await Rz.searchAudio('aplausos', 1, { kind: 'effects' });
+      assert(/source=freesound/.test(calls.at(-1)) && au[0].duration === 6.32 && au[0].license === 'CC0 1.0', 'efectos de sonido (Freesound), con su duración y licencia');
+      await Rz.searchAudio('piano', 1, { kind: 'music' }); assert(/category=music/.test(calls.at(-1)), 'o música');
+      const ab = await Rz.insertAudio(au[0]); assert(ab.type === 'audio' && /^data:audio\/mpeg/.test(ab.src) && /Luis/.test(ab.caption), 'el sonido va dentro');
+      eq((await Rz.insertAudio(au[1])).src, 'https://jamendo.test/a2.mp3', 'si su web no deja descargarlo, se enlaza');
+      // The panel: listen first, a click adds it.
+      W.localStorage.setItem('revela.consent.openverse', '1');
+      D.querySelector('[data-action="resources"]').click(); await sleep(30);
+      const P = D.getElementById('elements-panel');
+      P.querySelector('[data-et="audio"]').click(); await sleep(10);
+      assert(!P.querySelector('.el-akind').hidden, 'música, efectos o ambos');
+      P.querySelector('.sk-q').value = 'aplausos'; P.querySelector('.sk-go').click();
+      for (let i = 0; i < 50 && !P.querySelector('.sk-sound'); i++) await sleep(20);
+      const row = P.querySelector('.sk-sound'); assert(row && /0:06 · freesound · CC0 1\.0/.test(row.textContent) && row.querySelector('.sk-listen'), 'cada sonido con su duración, origen, licencia y botón para escucharlo');
+      const n = slide().blocks.length; row.click();
+      for (let i = 0; i < 50 && slide().blocks.length === n; i++) await sleep(20);
+      eq(last().type, 'audio', 'un clic lo añade');
+    } finally { W.fetch = real; W.localStorage.removeItem('revela.consent.openverse'); D.getElementById('elements-panel')?.querySelector('.cm-close')?.click(); }
+  });
+
   await test('seguridad: lo que llega de fuera no ejecuta código', async () => {
     reset(); const W = frame.contentWindow;
     const Sz = await W.eval("import('/src/features/document/sanitize.js')"), T = await W.eval("import('/src/core/text.js')");

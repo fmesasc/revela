@@ -20,6 +20,8 @@ const TABS = [
   ['images', 'Imágenes', 'image', 'openverse', 'Openverse (openverse.org)'],
   ['icons', 'Iconos', 'interests', 'iconify', 'Iconify (iconify.design)'],
   ['gif', 'GIF', 'gif_box', 'gif', 'Openverse (openverse.org)'],
+  ['videos', 'Vídeos', 'movie', 'commonsvideo', 'Wikimedia Commons (commons.wikimedia.org)'],
+  ['audio', 'Sonidos', 'music_note', 'openverse', 'Openverse (openverse.org)'],
   ['stickers', 'Stickers', 'add_reaction', null, null],
   ['anim3d', '3D con movimiento', 'view_in_ar', null, null],
   ['poly', 'Modelos 3D', 'deployed_code', 'poly', 'Poly Haven (polyhaven.com)'],
@@ -31,6 +33,8 @@ const HELP = {
   images: 'Imágenes con licencias libres de Openverse. Se añade la atribución como pie de foto: mantenla si la licencia lo pide.',
   icons: 'Más de 200 000 iconos de colecciones libres (Material, Tabler, Font Awesome…) vía Iconify.',
   gif: 'GIF animados con licencias libres (Wikimedia y otros). Se añade la atribución como pie: mantenla si la licencia lo pide.',
+  videos: 'Vídeos con licencias libres de Wikimedia Commons (naturaleza, ciencia, historia…). Los cortos se guardan dentro de la presentación; se añade la atribución como pie.',
+  audio: 'Efectos de sonido (Freesound) y música (Jamendo) con licencias libres, vía Openverse. Escúchalos antes de añadirlos; se añade la atribución como pie.',
   stickers: 'Emojis animados de Google (Noto, CC BY 4.0). Se pueden animar por tramos y quitar el fondo como cualquier GIF.',
   anim3d: 'Modelos 3D con licencia libre, varios con animaciones propias (andar, bailar…). Se guardan dentro de la presentación. Muévelos con clic derecho ▸ Movimiento 3D.',
   poly: 'Más de 500 modelos 3D de Poly Haven, de dominio público (CC0). Se guardan dentro de la presentación.',
@@ -43,11 +47,13 @@ const HELP = {
 const IDEAS = {
   images: [['Naturaleza', 'nature'], ['Ciudad', 'city'], ['Espacio', 'space'], ['Ciencia', 'science'], ['Tecnología', 'technology'], ['Escuela', 'school'], ['Oficina', 'office'], ['Mapas', 'map']],
   icons: [['Casa', 'home'], ['Persona', 'person'], ['Flecha', 'arrow'], ['Estrella', 'star'], ['Correo', 'mail'], ['Idea', 'lightbulb'], ['Gráfico', 'chart'], ['Ajustes', 'settings']],
+  videos: [['Naturaleza', 'nature'], ['Mar', 'ocean'], ['Espacio', 'space'], ['Animales', 'animals'], ['Ciudad', 'city'], ['Ciencia', 'science']],
+  audio: [['Aplausos', 'applause'], ['Campana', 'bell'], ['Risas', 'laughter'], ['Lluvia', 'rain'], ['Piano', 'piano'], ['Tambores', 'drums']],
   gif: [['Aplausos', 'applause'], ['Hola', 'hello'], ['Gracias', 'thank you'], ['Fuegos artificiales', 'fireworks'], ['Gatos', 'cat'], ['Baile', 'dance']],
   commons3d: [['Cráneo', 'skull'], ['Fósil', 'fossil'], ['Estatua', 'statue'], ['Corazón', 'heart'], ['Dinosaurio', 'dinosaur'], ['Edificio', 'building']],
   sketchfab: [['Robot', 'robot'], ['Coche', 'car'], ['Avión', 'airplane'], ['Animales', 'animal'], ['Casa', 'house'], ['Planeta', 'planet']],
 };
-const TYPING = new Set(['images', 'icons', 'gif', 'sketchfab', 'commons3d']);          // need words to search
+const TYPING = new Set(['images', 'icons', 'gif', 'videos', 'audio', 'sketchfab', 'commons3d']);          // need words to search
 const DRAG = 'application/x-revela-element';
 const sel = (cls, opts) => `<select class="${cls}">${opts.map(([v, l]) => `<option value="${v}">${esc(t(l))}</option>`).join('')}</select>`;
 // The picture search's filters, as the service takes them.
@@ -109,7 +115,7 @@ export function setElementsSide(side) {
   if (panel) dock(side);
 }
 
-export function closeElements() { if (!panel) return; panel.remove(); panel = null; fitZoom(); }
+export function closeElements() { if (!panel) return; stopListening(); panel.remove(); panel = null; fitZoom(); }
 // Open the panel (on a tab); the same tab again closes it, like a toggle.
 export function openElements(tab = cur) {
   if (panel && tab === cur) { closeElements(); return; }
@@ -136,6 +142,7 @@ function build() {
     </div>
     <div class="el-opts">
       <label class="fr-chk el-anim"><input type="checkbox" class="el-onlyanim"> ${t('Solo animados')}</label>
+      <label class="el-akind">${sel('el-audiokind', [['', 'Música y efectos'], ['effects', 'Efectos de sonido'], ['music', 'Música']])}</label>
       <label class="el-col" title="${t('Color')}">${t('Color')} <input type="color" class="el-color" value="${/^#[0-9a-f]{6}$/i.test(deckFg()) ? deckFg() : '#ffffff'}"></label></div>
     <p class="host-help el-help"></p>
     <div class="el-grid" aria-live="polite"></div>
@@ -147,6 +154,7 @@ function build() {
   q('.sk-go').addEventListener('click', () => run());
   q('.sk-q').addEventListener('keydown', e => { if (e.key === 'Enter') run(); if (e.key === 'Escape') closeElements(); });
   q('.el-onlyanim').addEventListener('change', () => run());
+  q('.el-audiokind').addEventListener('change', () => q('.sk-q').value.trim() && run());
   q('.el-filters').addEventListener('change', e => { saveFilters(); if (!e.target.classList.contains('el-f-cut') && q('.sk-q').value.trim()) run(); });
   q('.el-ftoggle').addEventListener('click', () => { const open = q('.el-filters').hidden; q('.el-filters').hidden = !open; q('.el-ftoggle').setAttribute('aria-expanded', String(open)); });
   // Near the end of the results, the next ones come by themselves (the button stays, for the keyboard).
@@ -169,8 +177,9 @@ function show(tab) {
   if (tab !== 'images') { q('.el-filters').hidden = true; q('.el-ftoggle').setAttribute('aria-expanded', 'false'); }
   q('.el-help').hidden = false;
   q('.el-anim').hidden = !(tab === 'anim3d' || tab === 'sketchfab');
+  q('.el-akind').hidden = tab !== 'audio'; stopListening();
   q('.el-col').hidden = tab !== 'icons';
-  q('.el-grid').className = 'el-grid' + (tab === 'icons' || tab === 'stickers' ? ' small' : '') + (tab === 'images' ? ' checker justify' : tab === 'gif' ? ' justify' : '');
+  q('.el-grid').className = 'el-grid' + (tab === 'icons' || tab === 'stickers' ? ' small' : '') + (tab === 'images' ? ' checker justify' : tab === 'gif' || tab === 'videos' ? ' justify' : '');
   q('.sk-q').value = terms[tab] || '';
   q('.el-grid').innerHTML = ''; q('.sk-more').hidden = true; q('.sk-go').disabled = false; picks = [];
   const svc = TABS.find(x => x[0] === tab);
@@ -239,6 +248,27 @@ function initDrop() {
   });
 }
 
+// A sound found: its name, length and licence, a button to listen to it first,
+// and a click (or dragging it onto the slide) adds it.
+const clock = s => (s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}` : '');
+let listening = null;
+function stopListening() { if (listening) { listening.audio.pause(); listening.btn.textContent = 'play_arrow'; listening = null; } }
+function soundItem(a) {
+  const pick = () => R.insertAudio(a), i = picks.push(pick) - 1;
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'sk-item sk-sound'; b.draggable = true; b.dataset.i = i;
+  b.title = `${a.title} — ${a.creator} (${a.license})`;
+  b.innerHTML = `<i class="ms sk-listen" role="button" tabindex="0" title="${esc(t('Escuchar'))}">play_arrow</i><b>${esc(a.title)}</b><span>${esc([clock(a.duration), a.source, a.license].filter(Boolean).join(' · '))}</span>`;
+  const listen = b.querySelector('.sk-listen');
+  listen.addEventListener('click', e => {
+    e.stopPropagation();
+    if (listening?.btn === listen) { stopListening(); return; }
+    stopListening(); const audio = new Audio(a.url); audio.play().catch(() => {}); listening = { audio, btn: listen }; listen.textContent = 'stop';
+    audio.addEventListener('ended', stopListening);
+  });
+  b.addEventListener('click', () => { stopListening(); add(b, pick); });
+  b.addEventListener('dragstart', e => { e.dataTransfer.setData(DRAG, String(i)); e.dataTransfer.effectAllowed = 'copy'; });
+  q('.el-grid').appendChild(b);
+}
 // A picture found (or used before): its preview, description, format and licence, and how to add it.
 function imageResult(img) {
   return [img.previews || img.thumb, `${img.title} — ${img.creator} (${img.license})${img.transparent ? ' · ' + t('Fondo transparente') : ''}`,
@@ -284,6 +314,19 @@ async function run(more = false) {
     } else if (tab === 'gif') {
       const res = await R.searchGifs(term, page); full = res.length >= 20;
       list = res.map(g => [g.previews || g.thumb, `${g.title} — ${g.creator} (${g.license})`, g.license, () => R.insertGif(g), g.width && g.height ? g.width / g.height : 0]);
+    } else if (tab === 'videos') {
+      const r = await R.searchCommonsVideo(term, more ? cursor || 0 : 0);
+      cursor = r.next; full = r.next != null;
+      list = r.results.map(v => [v.thumb || 'icons/icon.svg', `${v.title} — ${v.artist} (${v.license})`, [clock(v.duration), v.license].filter(Boolean).join(' · '), async () => {
+        if (!v.small && v.size > 60e6 && !(await confirmDialog(t('Este vídeo pesa {n}: se enlazará y necesitará conexión al presentar. ¿Añadirlo?').replace('{n}', mb(v.size))))) return null;
+        return R.insertCommonsVideo(v);
+      }, v.width && v.height ? v.width / v.height : 16 / 9]);
+    } else if (tab === 'audio') {
+      const res = await R.searchAudio(term, page, { kind: q('.el-audiokind').value }); full = res.length >= 20;
+      if (!more) { q('.el-grid').innerHTML = ''; picks = []; }
+      q('.el-grid').querySelectorAll('.el-loading').forEach(x => x.remove());
+      res.forEach(a => soundItem(a));
+      list = [];
     } else if (tab === 'stickers') {
       list = R.searchStickers(term).map(s => [s.thumb, s.words, '', () => R.insertSticker(s.code, s.words)]);
     } else if (tab === 'anim3d') {
@@ -311,7 +354,7 @@ async function run(more = false) {
   if (!panel || id !== runs || cur !== tab) return;                 // a newer search (or another tab) wins
   q('.sk-go').disabled = false;
   q('.el-grid').querySelectorAll('.el-loading').forEach(x => x.remove());
-  if (!more) { q('.el-grid').innerHTML = ''; picks = []; }
+  if (!more && tab !== 'audio') { q('.el-grid').innerHTML = ''; picks = []; }
   // Light icons on a dark tile (and dark ones on a light tile), so they can be seen.
   const c = q('.el-color').value, lum = (parseInt(c.slice(1, 3), 16) * 299 + parseInt(c.slice(3, 5), 16) * 587 + parseInt(c.slice(5, 7), 16) * 114) / 255000;
   q('.el-grid').classList.toggle('dark', tab === 'icons' && lum > 0.6);

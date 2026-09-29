@@ -113,6 +113,51 @@ export async function insertCommons3D(m) {
   return addModelBlock({ src, caption: `${m.title} — ${m.artist ? m.artist + ', ' : ''}Wikimedia Commons (${m.license || 'licencia libre'})`, credit: `${m.artist || ''} (${m.license || ''}) ${m.page || ''}`.trim() });
 }
 
+// ---- Videos: Wikimedia Commons (free licences) ---------------------------------------------
+// Each one comes in a smaller copy Commons makes (480p WebM, or less) when there is
+// one: a short clip is a few MB and goes inside the presentation.
+export async function searchCommonsVideo(q, offset = 0) {
+  const u = new URL('https://commons.wikimedia.org/w/api.php');
+  for (const [k, v] of Object.entries({ action: 'query', format: 'json', origin: '*', generator: 'search', gsrnamespace: '6', gsrsearch: `filetype:video ${q}`,
+    gsrlimit: '24', gsroffset: String(offset), prop: 'videoinfo', viprop: 'url|size|mime|extmetadata|derivatives', viurlwidth: '320' })) u.searchParams.set(k, v);
+  const r = await fetch(u); if (!r.ok) throw new Error('Wikimedia ' + r.status);
+  const d = await r.json(), pages = Object.values(d.query?.pages || {}).sort((a, b) => (a.index || 0) - (b.index || 0));
+  const pick = ders => ['480p.vp9.webm', '360p.vp9.webm', '360p.webm', '240p.vp9.webm'].map(k => ders.find(x => x.transcodekey === k)).find(Boolean);
+  return { next: d.continue?.gsroffset ?? null, results: pages.map(p => { const v = p.videoinfo?.[0] || {}, m = v.extmetadata || {}, small = pick(v.derivatives || []);
+    return { title: p.title.replace(/^File:|\.(webm|ogv|mpg|mpeg|mp4)$/gi, ''), url: v.url, src: small?.src || v.url, size: v.size || 0, small: !!small,
+      thumb: v.thumburl || '', duration: v.duration || 0, width: small?.width || v.width, height: small?.height || v.height, page: v.descriptionurl,
+      license: plainText(m.LicenseShortName?.value), artist: plainText(m.Artist?.value).slice(0, 80) }; }).filter(x => x.src) };
+}
+// Inside the presentation if it isn't too big (else linked: it plays with a connection).
+export async function insertCommonsVideo(v, { maxEmbed = 40e6 } = {}) {
+  let src = v.src;
+  try { const blob = await download(v.src); if (blob.size <= maxEmbed) src = await toDataURL(blob); } catch {}
+  const ar = v.width && v.height ? v.width / v.height : 16 / 9, w = 680, h = Math.round(w / ar);
+  return place({ id: uid(), type: 'video', src, ...centred(w, Math.min(h, 520)), rotation: 0, animation: null, alt: v.title,
+    caption: `${v.title} — ${v.artist ? v.artist + ', ' : ''}Wikimedia Commons (${v.license || 'licencia libre'})`, credit: `${v.artist || ''} (${v.license || ''}) ${v.page || ''}`.trim() });
+}
+
+// ---- Sounds: Openverse (sound effects from Freesound, music from Jamendo…) ---------------
+// kind: '' all, 'music', or 'effects' (Freesound's sounds).
+export async function searchAudio(q, page = 1, { kind = '', commercial = false } = {}) {
+  const u = new URL('https://api.openverse.org/v1/audio/');
+  u.searchParams.set('q', q); u.searchParams.set('page', page); u.searchParams.set('page_size', 20);
+  if (kind === 'music') u.searchParams.set('category', 'music');
+  if (kind === 'effects') u.searchParams.set('source', 'freesound');
+  if (commercial) u.searchParams.set('license_type', 'commercial');
+  const r = await fetch(u); if (!r.ok) throw new Error('Openverse ' + r.status);
+  const d = await r.json();
+  return (d.results || []).map(x => ({ id: x.id, title: x.title || '', url: x.url, duration: (x.duration || 0) / 1000, source: x.source || '',
+    creator: x.creator || '', license: `${(x.license || '').toUpperCase()} ${x.license_version || ''}`.trim(), page: x.foreign_landing_url, attribution: x.attribution || '' }));
+}
+// Inside the presentation when its host allows it (Freesound does); if not, linked.
+export async function insertAudio(a) {
+  let src = a.url;
+  try { src = await toDataURL(await download(a.url)); } catch {}
+  return place({ id: uid(), type: 'audio', src, ...centred(440, 56), rotation: 0, animation: null, alt: a.title,
+    caption: `«${a.title}» — ${a.creator ? a.creator + ' ' : ''}(${a.license})`, credit: a.attribution });
+}
+
 // ---- 3D: Sketchfab (search; shown with Sketchfab's viewer) -------------------------------
 export async function searchSketchfab(q, { animated = false, cursor = null } = {}) {
   const u = new URL('https://api.sketchfab.com/v3/search');
