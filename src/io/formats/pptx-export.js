@@ -169,7 +169,9 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map()) {
           ...(['pie', 'doughnut'].includes(type) ? {} : { chartColors: colors }) });
       }
     }
-    // 3D models, audio: no equivalent (skipped).
+    // 3D models: their picture, if they have one (PowerPoint's own 3D can't be written here); audio: skipped.
+    else if (b.type === 'model' && /^data:image\/(png|jpeg|webp|gif);base64,/.test(b.poster || ''))
+      slide.addImage({ ...pos, data: b.poster, sizing: { type: 'contain', w: pos.w, h: pos.h }, ...(b.alt && { altText: b.alt }) });
   } catch {}
 }
 

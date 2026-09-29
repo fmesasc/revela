@@ -1,6 +1,7 @@
 // Non‑interactive block rendering, shared by slide thumbnails.
 
 import { pollEditorHTML } from '../../features/live/poll.js';
+import { safeURL } from '../../features/document/sanitize.js';
 import { currentPalette } from '../../features/design/palettes.js';
 import { levelVars } from '../../features/document/master.js';
 import { shadowCSS, borderCSS, levelCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, tableClass, tableVars, tableCSS } from '../../render/svg.js';
@@ -42,7 +43,9 @@ export function blockPreview(b) {
   } else if (b.type === 'audio') {
     el.innerHTML = `<div style="width:100%;height:100%;background:#0004;display:grid;place-items:center;font-size:32px">🔊</div>`;
   } else if (b.type === 'model') {
-    el.innerHTML = `<div style="width:100%;height:100%;background:#0003;display:grid;place-items:center;font-size:80px">🧊</div>`;
+    // Its picture if it has one (taken once it loaded in the editor), or a cube.
+    if (b.poster && safeURL(b.poster)) { const im = document.createElement('img'); im.src = b.poster; im.alt = ''; im.style.cssText = 'width:100%;height:100%;object-fit:contain'; el.replaceChildren(im); }
+    else el.innerHTML = `<div style="width:100%;height:100%;background:#0003;display:grid;place-items:center;font-size:80px">🧊</div>`;
   } else if (b.type === 'embed') {
     el.innerHTML = `<div style="width:100%;height:100%;background:#fff;display:grid;place-items:center;font-size:64px">🌐</div>`;
   } else if (b.type === 'shape') {

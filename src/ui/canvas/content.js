@@ -102,6 +102,7 @@ export function content(b) {
   if (b.type === 'model') {
     const mv = document.createElement('model-viewer');
     applyModelAttrs(mv, b);
+    if (!b.poster) mv.addEventListener('load', () => capturePoster(mv, b.id), { once: true });
     mv.style.pointerEvents = 'none'; // dragging the body moves the block…
     return mv;
   }
@@ -359,6 +360,21 @@ export function applyModelAttrs(mv, b) {
   const k = modelBleed(b), m = `${-(k - 1) * 50}%`;
   mv.style.position = k > 1 ? 'absolute' : ''; mv.style.inset = k > 1 ? `${m} ${m}` : '';
   mv.style.width = mv.style.height = k > 1 ? `${k * 100}%` : '';
+}
+// A picture of the model once it has loaded (its "poster"): the thumbnails, the
+// gallery and PowerPoint (which has no 3D) show it instead of a placeholder.
+// Only the model's own box, not the room around it; small.
+async function capturePoster(mv, id) {
+  await new Promise(r => setTimeout(r, 700));                      // (the first frames drawn)
+  const b = currentSlide()?.blocks.find(x => x.id === id); if (!b || b.poster || !mv.isConnected || !mv.toDataURL) return;
+  try {
+    const img = new Image(); img.src = mv.toDataURL('image/png'); await img.decode();
+    const k = modelBleed(b), sw = img.width / k, sh = img.height / k, s = Math.min(1, 240 / Math.max(sw, sh));
+    const c = document.createElement('canvas'); c.width = Math.round(sw * s); c.height = Math.round(sh * s);
+    c.getContext('2d').drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, 0, 0, c.width, c.height);
+    const poster = c.toDataURL('image/png');                       // (PNG: transparent, and PowerPoint reads it)
+    if (poster.length > 200) commit(() => { const x = currentSlide()?.blocks.find(y => y.id === id); if (x && !x.poster) x.poster = poster; }, { history: false });
+  } catch {}
 }
 export function setupModel(el) {
   const mv = el.querySelector('model-viewer');

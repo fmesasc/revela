@@ -150,7 +150,8 @@ function build() {
   q('.el-filters').addEventListener('change', e => { saveFilters(); if (!e.target.classList.contains('el-f-cut') && q('.sk-q').value.trim()) run(); });
   q('.el-ftoggle').addEventListener('click', () => { const open = q('.el-filters').hidden; q('.el-filters').hidden = !open; q('.el-ftoggle').setAttribute('aria-expanded', String(open)); });
   // Near the end of the results, the next ones come by themselves (the button stays, for the keyboard).
-  q('.el-grid').addEventListener('scroll', () => { const g = q('.el-grid');
+  q('.el-grid').addEventListener('scroll', () => { if (!panel) return;            // (it arrives a frame later: the panel may be gone)
+    const g = q('.el-grid');
     if (!q('.sk-more').hidden && !busy && g.scrollTop + g.clientHeight > g.scrollHeight - 160) run(true); }, { passive: true });
   loadFilters();
   q('.el-color').addEventListener('change', () => cur === 'icons' && q('.sk-q').value.trim() && run());

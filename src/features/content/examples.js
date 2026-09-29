@@ -1,9 +1,10 @@
-// Example presentations (File ▸ Examples): ten complete decks with real
-// content that show what Revela does — master styles and layouts, charts,
-// tables, code with line steps, equations, live polls, animations,
-// transitions, vertical stacks, auto-animate and speaker notes. Generated
-// here, so no files or network are needed; each one is an ordinary deck that
-// can be edited from its master.
+// Example presentations (File ▸ Examples): complete decks with real content
+// that show what Revela does — master styles and layouts, charts, tables, code
+// with line steps, equations, live polls, animations (several per object,
+// drawn paths), Transform, transitions, vertical stacks, diagrams, canvas
+// mode, 3D characters that walk and wave, and speaker notes. Generated here,
+// so no files are needed (the 3D models load from their address); each one is
+// an ordinary deck that can be edited from its master.
 
 import { emptyDeck, uid, chartBlock, tableBlock, codeBlock, mathBlock } from '../../core/model.js';
 import { PALETTES, pairStacks } from '../design/palettes.js';
@@ -11,6 +12,8 @@ import { ensureLayouts, masterStyles, newSlideBlocks } from '../document/master.
 import { pollBlock } from '../live/poll.js';
 import { placeOnDesign } from '../design/canvasmode.js';
 import { canvasDesign } from '../design/canvasdesigns.js';
+import { LIBRARY_3D } from './library3d.js';
+import { normalizeAnim } from '../animation/transitions.js';
 
 // ---- Small builders ------------------------------------------------------------
 // ul('a', ['a1', 'a2'], 'b'): an array right after an item nests under it.
@@ -52,6 +55,19 @@ function slide(deck, p, { layout = 'titleContent', title, subtitle, body, body2,
   return { id: uid(), layoutId: lay.id, background: bg || p.bg, sectionId: null, transition, hidden: false, notes, autoSlide: 0,
     blocks: [...blocks.filter(b => b.html), ...extra], ...rest };
 }
+// A 3D model from the library (loaded from its address: needs a connection), with its credit.
+const lib3d = id => LIBRARY_3D.find(m => m.id === id);
+const model = (id, x, y, w, h, props = {}) => { const m = lib3d(id);
+  // (Its credit as a caption only when the licence asks for it: CC0 doesn't.)
+  const credit = m.licenses.every(l => l === 'CC0-1.0') ? {} : { caption: m.credit };
+  return { ...base(x, y, w, h), type: 'model', src: m.src, poster: m.thumb, alt: m.label, ...credit, autoRotate: false, view: 'front', ...(m.rest && { clip: m.rest }), ...props }; };
+// Animations: { effect, start: 'click' | 'withPrev' | 'afterPrev', … } in play order (seq); the click numbers come after.
+let seq = 0;
+const A = (effect, props = {}) => ({ effect, order: 1, seq: ++seq, start: 'click', duration: effect === 'path' ? 2000 : 600, delay: 0, ...props });
+const withAnims = (b, first, ...more) => ({ ...b, animation: first, ...(more.length && { anims: more }) });
+// A path through points (relative to where the object is), smooth and at even speed.
+const path = (points, props = {}) => A('path', { pathShape: 'custom', points, dx: points.at(-1)[0], dy: points.at(-1)[1], ...props });
+const numbered = deck => { deck.slides.forEach(sl => normalizeAnim(sl)); return deck; };
 const bar = (p, i = 0) => [shape('rect', 0, 0, 1280, 12, p.accents[i]), shape('rect', 0, 708, 1280, 12, p.accents[i])];
 
 // ---- The ten examples --------------------------------------------------------------
@@ -205,6 +221,87 @@ const EXAMPLES_DEF = {
     { title: 'Proyecto destacado', layout: 'twoContent', body: '<b>El reto</b>' + ul('Una app bancaria que la gente abandonaba', 'Solo el 40 % terminaba el alta'), body2: '<b>El resultado</b>' + ul('Alta en 3 pasos en lugar de 9', '<b>78 %</b> de altas completadas') },
     { layout: 'section', title: 'Hablemos', subtitle: 'laura@ejemplo.example · linkedin.com/in/laura', extra: [icon('mail', 610, 520, 60, '#f3a712')] },
   ]) },
+
+  // 3D characters that move: their own animations, walking along a drawn path,
+  // several animations one after another, and camera movements.
+  moving3d: { name: 'Personajes 3D en movimiento', summary: 'Modelos 3D animados: saludan, andan por un recorrido y celebran, varias animaciones seguidas y movimientos de cámara (necesita conexión)', make: () => {
+    const knight = lib3d('kk-Knight'), robot = lib3d('three-RobotExpressive');
+    return numbered(build({ name: 'Personajes 3D en movimiento', palette: 'midnight', fonts: 'bold', decor: p => [shape('rect', 0, 700, 1280, 20, p.accents[0])] }, [
+      { layout: 'blank', extra: [
+        text('<b>Personajes 3D<br>que se mueven</b>', 90, 170, 620, 260, { fontSize: 72, color: '#f2f5fa' }),
+        text('Cada uno con sus propias animaciones: saludar, andar, bailar…', 90, 450, 600, 100, { fontSize: 30, color: '#b9c4d6' }),
+        model('three-RobotExpressive', 760, 120, 400, 480, { clip: 'Wave' })],
+        notes: 'El robot saluda sin cortarse: la vista 3D tiene margen alrededor del marco (Modelo 3D ▸ Margen para moverse). Los modelos se cargan de internet; al insertarlos desde Recursos se guardan dentro.' },
+      { title: 'Anda por donde le digas', layout: 'titleOnly', extra: [
+        withAnims(model('kk-Knight', 60, 250, 290, 390, { walk: { clip: knight.walk, end: knight.arrive, endOnce: true, face: true, look: true } }),
+          path([[180, -120], [460, -40], [640, -150], [860, -60]], { duration: 4200 })),
+        text('Clic: el caballero sigue el recorrido, gira hacia donde va y al llegar lo celebra.<br><small>Animaciones ▸ Dibujar recorrido: dibújalo con el ratón o el dedo.</small>', 330, 560, 880, 110, { fontSize: 26, color: '#b9c4d6' })],
+        notes: 'Recorrido dibujado a mano (Animaciones ▸ Dibujar recorrido). En Modelo 3D ▸ Al moverse: la animación mientras anda y la de llegada.' },
+      { title: 'Varias animaciones seguidas', layout: 'titleOnly', extra: [
+        withAnims(model('three-RobotExpressive', 100, 250, 260, 330, { walk: { clip: robot.walk, face: true, look: true } }),
+          path([[300, 0], [560, 40]], { duration: 2400 }),
+          A('clip3d', { clip: 'Wave', once: true, start: 'afterPrev', duration: 2000 }),
+          A('clip3d', { clip: 'Dance', start: 'click', duration: 3000 }),
+          path([[-200, -30], [-420, 0]], { duration: 2200, start: 'click' })),
+        text('1 · anda hasta el centro y saluda<br>2 · baila<br>3 · vuelve andando', 820, 250, 400, 220, { fontSize: 30, color: '#f2f5fa' })],
+        notes: 'Un mismo objeto con cuatro animaciones (Animaciones ▸ Añadir animación). El orden y el «después de la anterior» se cambian en el Panel.' },
+      { title: 'Movimientos de cámara', layout: 'titleOnly', extra: [
+        model('kh-Fox', 90, 200, 520, 380, { view: 'three', motion: 'orbit' }),
+        model('kn-character', 720, 210, 400, 380, { motion: 'float' }),
+        text('Vuelta completa al entrar', 90, 600, 520, 50, { fontSize: 26, textAlign: 'center', color: '#b9c4d6' }),
+        text('Flotar', 720, 600, 400, 50, { fontSize: 26, textAlign: 'center', color: '#b9c4d6' })],
+        notes: 'Modelo 3D ▸ Al llegar a la diapositiva: balanceo, acercar, vuelta completa, flotar o desde arriba.' },
+      { layout: 'section', title: 'Ahora tú', subtitle: 'Insertar ▸ Recursos ▸ 3D con movimiento · ¿Un modelo sin esqueleto? Modelo 3D ▸ Esqueleto automático' },
+    ]));
+  } },
+
+  // PowerPoint's animations and more: entrance, emphasis and exit; a curved path
+  // with the object turning as it goes; several at once; and Transform (morph).
+  effects: { name: 'Animaciones y efectos', summary: 'Entrada, énfasis y salida, trayectoria curva que gira con el objeto, «Transformar» entre diapositivas y Text Art', make: () => {
+    const sun = uid(), cardA = uid(), cardB = uid();
+    return numbered(build({ name: 'Animaciones y efectos', palette: 'ocean', fonts: 'modern' }, [
+      { layout: 'blank', extra: [
+        { ...text('Animaciones', 140, 220, 1000, 170, { fontSize: 120, textAlign: 'center', wordart: 'gold' }), animation: A('zoom-in', { duration: 900 }) },
+        { ...text('Pulsa → para ver cada efecto', 140, 420, 1000, 60, { fontSize: 32, textAlign: 'center' }), animation: A('fade-up', { start: 'afterPrev' }) }],
+        notes: 'El título es Text Art (Insertar ▸ Text Art). Las dos animaciones van una tras otra sin clic («después de la anterior»).' },
+      { title: 'Entrada, énfasis y salida', layout: 'titleOnly', extra: [
+        withAnims(shape('ellipse', 140, 260, 260, 260, '#f3a712'), A('fade-up'), A('grow', { start: 'afterPrev' })),
+        withAnims(shape('star', 510, 260, 260, 260, '#e76f51'), A('zoom-in'), A('highlight-red', { start: 'withPrev' })),
+        withAnims(shape('rounded', 880, 280, 260, 220, '#2a9d8f'), A('fade-in'), A('fade-out', { start: 'click' })),
+        text('Aparece y crece · entra y se resalta · aparece y se va', 140, 570, 1000, 50, { fontSize: 26, textAlign: 'center' })],
+        notes: 'Varias animaciones por objeto: Animaciones ▸ Añadir animación. «Con la anterior» y «después de la anterior» en el Panel.' },
+      { title: 'Una trayectoria que gira con el objeto', layout: 'titleOnly', extra: [
+        withAnims(shape('chevron', 90, 520, 130, 90, '#f3a712'),
+          path([[160, -180], [420, -260], [640, -80], [880, -200], [980, -330]], { duration: 3500, turn: 'follow' })),
+        text('La punta de flecha sigue una curva y apunta siempre hacia donde va.', 300, 600, 900, 50, { fontSize: 26 })],
+        notes: 'Animaciones ▸ Dibujar recorrido, y en el Panel: Giro en el camino ▸ «Seguir el camino».' },
+      { layout: 'blank', autoAnimate: true, extra: [
+        { ...shape('ellipse', 120, 140, 180, 180, '#f3a712'), id: sun },
+        { ...card('<b>Transformar</b><br>Los objetos que están en las dos diapositivas se mueven, crecen y cambian de color solos.', 360, 180, 800, 300, '#ffffff22', { fontSize: 30 }), id: cardA }],
+        notes: 'Transiciones ▸ Transformar (como el Morph de PowerPoint): pasa a la siguiente.' },
+      { layout: 'blank', autoAnimate: true, extra: [
+        { ...shape('ellipse', 900, 60, 320, 320, '#e76f51'), id: sun },
+        { ...card('<b>Transformar</b><br>Mismo objeto, otra posición, tamaño y color.', 120, 380, 700, 240, '#ffffff33', { fontSize: 30 }), id: cardA }] },
+      { layout: 'section', title: 'Tu turno', subtitle: 'Animaciones ▸ Añadir animación · Panel · Dibujar recorrido', extra: [{ ...shape('star', 590, 520, 100, 100, '#f3a712'), id: cardB, animation: A('spin', { duration: 1200 }) }] },
+    ]));
+  } },
+
+  // Diagrams with connectors that follow their boxes, WordArt and icons.
+  diagrams: { name: 'Diagramas y diseño', summary: 'Diagramas de proceso y ciclo con conectores que siguen a las cajas, iconos y Text Art', make: () => {
+    const boxes = (labels, pos, color) => labels.map((l, i) => text(`<b>${l}</b>`, ...pos(i), { fontSize: 28, textAlign: 'center', bg: color, radius: 16, color: '#ffffff', vAlign: 'middle' }));
+    const links = list => list.slice(0, -1).map((b, i) => ({ ...base(0, 0, 1280, 720), type: 'connector', from: b.id, to: list[i + 1].id, color: '#9aa7b8', arrow: true }));
+    const proc = boxes(['Idea', 'Prototipo', 'Prueba', 'Lanzamiento'], i => [70 + i * 300, 300, 240, 130], '#3f6497').map((b, i) => anim(b, i + 1, 'fade-right'));
+    const cyc = boxes(['Planificar', 'Hacer', 'Comprobar', 'Actuar'], i => { const a = -Math.PI / 2 + i * Math.PI / 2; return [640 + 250 * Math.cos(a) - 110, 390 + 200 * Math.sin(a) - 50, 220, 100]; }, '#2a9d8f');
+    return build({ name: 'Diagramas y diseño', palette: 'office', fonts: 'clean', decor: p => bar(p, 1) }, [
+      { layout: 'blank', extra: [text('Diagramas', 140, 240, 1000, 160, { fontSize: 110, textAlign: 'center', wordart: 'gradient' }),
+        text('Cajas unidas con conectores: mueve una y la flecha la sigue', 140, 420, 1000, 60, { fontSize: 30, textAlign: 'center' })] },
+      { title: 'Proceso', layout: 'titleOnly', extra: [...proc, ...links(proc)],
+        notes: 'Insertar ▸ Proceso. Cada caja aparece con un clic; los conectores siguen a las cajas al moverlas.' },
+      { title: 'Ciclo (PDCA)', layout: 'titleOnly', extra: [...cyc, ...links([...cyc, cyc[0]])], notes: 'Insertar ▸ Ciclo.' },
+      { title: 'Iconos', layout: 'titleOnly', extra: ['home', 'user', 'gear', 'bolt', 'heart', 'star'].map((n, i) => ({ ...icon(n, 110 + i * 180, 300, 110, ['#3f6497', '#2a9d8f', '#e76f51', '#f3a712', '#c0392b', '#7d3c98'][i]), decorative: false, alt: n })),
+        notes: 'Insertar ▸ Iconos, o más de 200 000 en Insertar ▸ Recursos ▸ Iconos.' },
+    ]);
+  } },
 
   // Canvas mode (like Prezi): a mountain drawn on the canvas; each slide is a
   // stop on the path to the top and takes its part of the picture as background.

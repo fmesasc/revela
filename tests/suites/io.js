@@ -24,6 +24,19 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(buf[0] === 0x50 && buf[1] === 0x4b, 'firma ZIP (PK) del .pptx');
   });
 
+  await test('modelo 3D con su imagen (portada): en las miniaturas y en PowerPoint', async () => {
+    reset(); const W = frame.contentWindow;
+    const c = D.createElement('canvas'); c.width = c.height = 8; c.getContext('2d').fillRect(2, 2, 4, 4); const poster = c.toDataURL('image/png');
+    R.store.commit(() => slide().blocks.push({ id: 'm1', type: 'model', src: 'data:model/gltf-binary;base64,AAAA', poster, x: 100, y: 100, w: 300, h: 300, rotation: 0, animation: null, alt: 'Robot' }));
+    await sleep(30);
+    const th = D.querySelector('#navigator .thumb.active img');
+    assert(th && th.getAttribute('src') === poster, 'la miniatura enseña el modelo, no un cubo');
+    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob);          // (JSZip comes with the export)
+    const media = Object.keys(zip.files).filter(n => /^ppt\/media\//.test(n));
+    const xml = await zip.file('ppt/slides/slide1.xml').async('string');
+    assert(media.length >= 1 && /descr="Robot"/.test(xml), 'en PowerPoint, como imagen con su texto alternativo');
+  });
+
   await test('exportar a PDF: una página por diapositiva visible', async () => {
     reset(); R.slides.addSlide(); R.slides.addSlide(); R.slides.toggleSlideHidden(0);
     const html = R.io.buildPrintHTML();

@@ -411,10 +411,10 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!R.state.ui.editMaster && !D.querySelector('#navigator .layout-thumb'), 'al cerrar vuelven las diapositivas');
   });
 
-  await test('10 presentaciones de ejemplo completas: se abren, usan patrón y diseños y se exportan', async () => {
+  await test('presentaciones de ejemplo completas: se abren, usan patrón y diseños y se exportan', async () => {
     reset(); D.querySelector('[data-action="gallery"]').click(); await sleep(50);
     const items = D.querySelectorAll('#gallery-modal .gal-examples .gal-item');
-    eq(items.length, 11, 'once ejemplos en la galería');
+    eq(items.length, Object.keys(R.examples.EXAMPLES).length, 'todos los ejemplos en la galería'); assert(items.length >= 14, 'al menos catorce');
     D.querySelector('#gallery-modal .modal-close').click();
     const kinds = new Set();
     for (const key of Object.keys(R.examples.EXAMPLES)) {
@@ -424,7 +424,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(deck.slides.every(s => deck.layouts.some(l => l.id === s.layoutId)), key + ': cada diapositiva con su diseño');
       const ph = deck.slides.flatMap(s => s.blocks.filter(b => b.ph));
       assert(ph.length && ph.every(b => b.lp && b.fontSize == null), key + ': los marcadores heredan del patrón');
-      for (const s of deck.slides) for (const b of s.blocks) kinds.add(b.type === 'poll' ? 'poll:' + b.kind : b.type), b.animation && kinds.add('anim');
+      for (const s of deck.slides) for (const b of s.blocks) {
+        kinds.add(b.type === 'poll' ? 'poll:' + b.kind : b.type); if (b.animation) kinds.add('anim');
+        for (const a of [b.animation, ...(b.anims || [])].filter(Boolean)) kinds.add('fx:' + a.effect), a.turn && kinds.add('turn');
+        if (b.anims?.length) kinds.add('several'); if (b.walk) kinds.add('walk'); if (b.motion) kinds.add('motion3d'); if (b.wordart) kinds.add('wordart');
+      }
       if (deck.slides.some(s => s.autoAnimate)) kinds.add('auto-animate');
       if (deck.slides.some(s => s.vertical)) kinds.add('vertical');
       R.store.replaceDeck(deck); R.render(); await sleep(10);
@@ -432,12 +436,16 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       eq((html.match(/<section/g) || []).length - (deck.slides.some(s => s.vertical) ? 1 : 0), deck.slides.length, key + ': todas las diapositivas en la presentación');
       assert(!/Haz clic para/.test(html), key + ': sin avisos de marcador vacíos');
     }
-    for (const k of ['chart', 'table', 'code', 'math', 'poll:choice', 'poll:qa', 'icon', 'shape', 'anim', 'auto-animate', 'vertical'])
+    for (const k of ['chart', 'table', 'code', 'math', 'poll:choice', 'poll:qa', 'icon', 'shape', 'anim', 'auto-animate', 'vertical',
+      'model', 'walk', 'motion3d', 'fx:clip3d', 'fx:path', 'turn', 'several', 'connector', 'wordart'])
       assert(kinds.has(k), 'los ejemplos enseñan: ' + k);
     // Opening one from the gallery.
     reset(); D.querySelector('[data-action="gallery"]').click(); await sleep(50);
     // (With an untouched presentation nothing is lost: no question.)
     D.querySelector('#gallery-modal [data-example="coding"]').click(); await sleep(50);
+    // (Click numbers worked out: the 3D example's robot walks and waves on one click, dances on the next.)
+    const m3 = R.examples.buildExample('moving3d').slides[2].blocks.find(b => b.type === 'model');
+    eq([m3.animation, ...m3.anims].map(a => `${a.effect}${a.order}`).join(), 'path1,clip3d1,clip3d2,path3', 'ejemplo 3D: clics en orden');
     assert(!D.querySelector('.modal-backdrop .dlg-ok'), 'sin preguntar si no hay nada que perder');
     eq(R.state.deck.name, 'Taller de programación', 'abre el ejemplo elegido');
     assert(D.querySelector('#stage .block'), 'y se ve en el lienzo');

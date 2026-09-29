@@ -320,14 +320,15 @@ export function clearAnimationForId(id, i = 0) {
 
 // Reassign fragment indices 1..k: "with previous" and "after previous" share
 // the step (click) of the animation before them; seq becomes 1..n.
-function normalizeAnim() {
-  const list = animEntries(); let idx = 0;
+// Click numbers and play order from the objects' animations (of a slide; the current one by default).
+export function normalizeAnim(slide = currentSlide()) {
+  const list = animEntries(slide); let idx = 0;
   list.forEach((e, n) => {
     if (n === 0 || !['withPrev', 'afterPrev'].includes(e.a.start)) idx++;
     e.a.order = idx; e.a.seq = n + 1;
   });
   // Each object's animations in their play order too (its paths add up in that order).
-  for (const b of currentSlide().blocks) {
+  for (const b of slide.blocks) {
     if (!b.anims?.length) continue;
     const all = animsOf(b).sort((x, y) => x.seq - y.seq);
     b.animation = all[0]; b.anims = all.slice(1);
