@@ -271,6 +271,25 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(R.state.ui.zoom, 1, 'reset');
   });
 
+  await test('clic derecho en el lienzo y en la miniatura: seleccionar todo, fondo, guías, presentar desde aquí', async () => {
+    reset(); const W = frame.contentWindow;
+    const menu = (el, x = 5, y = 5) => { const r = el.getBoundingClientRect(); el.dispatchEvent(new W.MouseEvent('contextmenu', { bubbles: true, clientX: r.left + x, clientY: r.top + y }));
+      return [...D.querySelectorAll('#context-menu .ctx-item')]; };
+    const pick = (items, text) => { const it = items.find(x => x.textContent === text); assert(it, 'opción: ' + text); it.click(); };
+    pick(menu(D.getElementById('stage')), 'Seleccionar todo'); await sleep(10);
+    eq(R.state.ui.multi.length, slide().blocks.filter(b => !b.locked).length, 'selecciona todos los objetos');
+    const g = !!R.state.ui.showGuides; pick(menu(D.getElementById('stage')), g ? 'Ocultar guías' : 'Mostrar guías'); await sleep(10);
+    eq(!!R.state.ui.showGuides, !g, 'guías');
+    pick(menu(D.getElementById('stage')), 'No ajustar a otros objetos'); await sleep(10); eq(R.state.ui.snap, false, 'sin ajuste');
+    pick(menu(D.getElementById('stage')), 'Ajustar a otros objetos'); await sleep(10); assert(R.state.ui.snap !== false, 'con ajuste');
+    const items = menu(D.querySelector('#navigator .thumb'), 20, 20);
+    assert(items.some(x => x.textContent === 'Presentar desde aquí'), 'presentar desde esta diapositiva');
+    pick(items, 'Formato del fondo…'); await sleep(20);
+    const bg = D.querySelector('.modal-backdrop:last-of-type'); assert(bg, 'abre el fondo'); bg.querySelector('.modal-close')?.click();
+    D.querySelectorAll('.modal-backdrop').forEach(m => m.remove());
+    if (g !== !!R.state.ui.showGuides) R.store.commit(() => (R.state.ui.showGuides = g), { history: false });
+  });
+
   await test('cinta: todas las galerías se abren con su contenido', async () => {
     reset();
     const launchers = { symbols: '[data-symbols]', icons: '[data-icons]', wordart: '[data-wordart]', palettes: '[data-palettes-open]',

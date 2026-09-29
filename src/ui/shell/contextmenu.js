@@ -1,7 +1,7 @@
 // Right‑click context menu. Actions adapt to what was clicked: a block, an
 // image (extra processing options) or the empty canvas.
 
-import { state, commit, currentSlide, selectedBlock, selectedBlocks, isSelected, setSelection } from '../../core/store.js';
+import { state, commit, currentSlide, selectedBlock, selectedBlocks, isSelected, setSelection, setMulti } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 import * as blocks from '../../features/document/blocks.js';
 import * as shapeops from '../../features/document/shapeops.js';
@@ -21,6 +21,8 @@ import { openSaveAsPicture } from '../dialogs/picture.js';
 import { openMediaPlayback } from '../dialogs/media.js';
 import { openModel3D } from '../dialogs/model3d.js';
 import { saveBlockFile as saveFile } from './files.js';
+import { present } from './present.js';
+import { openBackgroundDialog } from '../dialogs/background.js';
 import { playInEditor } from '../canvas/mediaview.js';
 import { isGif } from '../../features/live/media.js';
 import { openImageAdjust, openMath, openChartData, openOpacity, openIconColor, openBoxStyle, openSlidePicker, openCaption, openAlt, openImageCrop, removeBackground, openTableStyle } from '../dialogs/object.js';
@@ -88,6 +90,9 @@ function forThumb(i) {
     ['Nueva diapositiva', () => addSlide()],
     ['Duplicar diapositiva', () => duplicateSlide()],
     ['Eliminar diapositiva', () => deleteSlide(i)],
+    null,
+    ['Presentar desde aquí', () => present({ fromCurrent: true })],
+    ['Formato del fondo…', () => openBackgroundDialog()],
     null,
     [slide.hidden ? 'Mostrar diapositiva' : 'Ocultar diapositiva', () => toggleSlideHidden(i)],
     [slide.uncounted ? 'Contar en la numeración' : 'No contar en la numeración (anexo)', () => commit(() => { if (slide.uncounted) delete slide.uncounted; else slide.uncounted = true; })],
@@ -282,8 +287,14 @@ function forCanvas() {
   return [
     ['Pegar', clip.hasClipboard() ? () => clip.paste() : null],
     ['Nuevo cuadro de texto', () => addText()],
+    ['Seleccionar todo', currentSlide()?.blocks.some(b => !b.locked)
+      ? () => commit(() => setMulti(currentSlide().blocks.filter(b => !b.locked).map(b => b.id)), { history: false }) : null],
     null,
     ['Nueva diapositiva', () => addSlide()],
+    ['Formato del fondo…', () => openBackgroundDialog()],
+    null,
+    [state.ui.showGuides ? 'Ocultar guías' : 'Mostrar guías', () => commit(() => (state.ui.showGuides = !state.ui.showGuides), { history: false })],
+    [state.ui.snap === false ? 'Ajustar a otros objetos' : 'No ajustar a otros objetos', () => commit(() => (state.ui.snap = state.ui.snap === false), { history: false })],
     ...(state.ui.editMaster ? [null, ['Cerrar patrón', () => master.toggleMasterEdit(false)]]
       : state.deck.master?.blocks?.length ? [null, [currentSlide()?.hideMaster ? 'Mostrar objetos del patrón' : 'Ocultar objetos del patrón', () => master.toggleHideMaster()]] : []),
   ];
