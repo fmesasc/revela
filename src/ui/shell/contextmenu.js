@@ -20,6 +20,7 @@ import { alertDialog, promptDialog } from '../dialogs/dialog.js';
 import { openSaveAsPicture } from '../dialogs/picture.js';
 import { openMediaPlayback } from '../dialogs/media.js';
 import { openModel3D } from '../dialogs/model3d.js';
+import { saveFile } from '../ribbon/contextual.js';
 import { playInEditor } from '../canvas/mediaview.js';
 import { isGif } from '../../features/live/media.js';
 import { openImageAdjust, openMath, openChartData, openOpacity, openIconColor, openBoxStyle, openSlidePicker, openCaption, openAlt, openImageCrop, removeBackground, openTableStyle } from '../dialogs/object.js';
@@ -139,11 +140,13 @@ function forBlock(b, cell = null) {
       ['Texto alternativo…', () => openAlt(b)],
       [b.zoomable ? 'No ampliar al hacer clic' : 'Ampliar al hacer clic (al presentar)', () => commit(() => { if (b.zoomable) delete b.zoomable; else b.zoomable = true; })],
       ['Quitar fondo (IA)', () => removeBackground(b)],
+      ['Descargar la imagen', () => saveFile(b)],
       ...(isGif(b) ? [['Reproducción…', () => openMediaPlayback(b)]] : []),
       null);
   } else if (b.type === 'model') {
     items.push(
       ['Movimiento 3D…', () => openModel3D(b)],
+      ['Descargar el modelo 3D (.glb)', () => saveFile(b)],
       [b.autoRotate !== false ? 'Detener giro automático' : 'Girar automáticamente',
         () => commit(() => (b.autoRotate = !(b.autoRotate !== false)))],
       null);
@@ -151,6 +154,7 @@ function forBlock(b, cell = null) {
     items.push(
       ['Reproducir en el editor', () => playInEditor(b.id)],
       ['Reproducción…', () => openMediaPlayback(b)],
+      ['Descargar el vídeo', () => saveFile(b)],
       null);
   } else if (b.type === 'poll') {
     items.push(['Editar votación…', () => openPollEditor(b)], null);

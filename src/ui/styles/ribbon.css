@@ -96,3 +96,9 @@
 .row button.lg .ms{font-size:26px}
 .mini .ms{font-size:18px;vertical-align:middle}
 .row button b{font-size:14px;font-weight:700}
+/* Contextual tab (the selected object's options) */
+.tabs .ctx-tab{color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);border-radius:6px 6px 0 0;font-weight:600;margin-inline-start:6px}
+.tabs .ctx-tab[hidden]{display:none}
+.ribbon-page[data-page=ctx] .ctx-field{display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--txt2);margin:0 4px}
+.ribbon-page[data-page=ctx] .ctx-field select,.ribbon-page[data-page=ctx] .ctx-field input{font-size:12px;max-width:170px}
+.ribbon-page[data-page=ctx] .ctx-field input[type=number]{width:64px}

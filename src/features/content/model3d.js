@@ -16,9 +16,16 @@ export const MOTIONS_3D = [
   ['float', 'Flotar'], ['top', 'Desde arriba al entrar'],
 ];
 
+// Where the camera looks from (PowerPoint's "3D model views").
+import { readModel, writeGLB } from './autorig.js';
+
+export const VIEWS_3D = [['', 'Libre'], ['front', 'De frente'], ['three', 'Tres cuartos'], ['side', 'De lado'], ['back', 'Por detrás'], ['top', 'Desde arriba'], ['low', 'Desde abajo']];
+const ORBITS = { front: '0deg 75deg auto', three: '35deg 70deg auto', side: '90deg 75deg auto', back: '180deg 75deg auto', top: '0deg 8deg auto', low: '20deg 115deg auto' };
+
 // model-viewer attributes for a block, as [name, value] pairs ('' = boolean).
 export function modelAttrs(b) {
   const a = [['src', b.src || ''], ['camera-controls', ''], ['shadow-intensity', '1'], ['interaction-prompt', 'none']];
+  if (ORBITS[b.view]) a.push(['camera-orbit', ORBITS[b.view]]);
   const walk = b.walk?.clip ? b.walk : null;
   if (b.autoRotate !== false && (b.motion || 'none') === 'none' && !walk) {
     a.push(['auto-rotate', ''], ['auto-rotate-delay', '0']);
@@ -60,7 +67,7 @@ export function model3dRuntime() {
   function clipName(mv, n) { var list = mv.availableAnimations || []; return n === '*' ? list[0] : (list.indexOf(n) >= 0 ? n : null); }
   function playClip(mv, n, once) { n = clipName(mv, n); if (!n) { mv.pause(); return; } mv.animationName = n; mv.play(once ? { repetitions: 1 } : undefined); }
   function rest(mv) { var idle = mv.hasAttribute('autoplay') ? (mv.getAttribute('animation-name') || '*') : null; if (idle) playClip(mv, idle); else mv.pause(); }
-  function turn(mv, yaw) { mv.cameraOrbit = (-yaw).toFixed(1) + 'deg 75deg auto'; }
+  function turn(mv, yaw) { var o = (mv.getAttribute('camera-orbit') || '0deg 75deg auto').split(' '); mv.cameraOrbit = (parseFloat(o[0]) - yaw).toFixed(1) + 'deg ' + (o[1] || '75deg') + ' auto'; }
   function offset(el) { var v = getComputedStyle(el).translate; if (!v || v === 'none') return [0, 0]; var p = v.split(' '); return [parseFloat(p[0]) || 0, parseFloat(p[1]) || 0]; }
   function move(mv, dur, el) {
     var clip = mv.getAttribute('data-move-clip'); if (!clip) return;
@@ -123,4 +130,15 @@ export function model3dRuntime() {
   }
   if (window.Reveal) { Reveal.on('ready', function (e) { enter(e.currentSlide); }); Reveal.on('slidechanged', function (e) { enter(e.currentSlide); }); if (Reveal.isReady()) enter(Reveal.getCurrentSlide()); }
   return { start: start, stop: stop, move: move };
+}
+
+// The model as a file to keep: one .glb with everything in it (meshes,
+// textures, animations). A .gltf with its data inside becomes a .glb too.
+export async function modelFile(b) {
+  const name = (String(b.alt || b.caption || 'modelo').split(' — ')[0].replace(/[\\/:*?"<>|]+/g, '').trim().slice(0, 60) || 'modelo') + '.glb';
+  let src = b.src || '';
+  if (!/^data:model\/gltf-binary/.test(src)) src = writeGLB(await readModel(src));
+  const bin = atob(src.slice(src.indexOf(',') + 1)), u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return { blob: new Blob([u8], { type: 'model/gltf-binary' }), name };
 }

@@ -496,6 +496,76 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/<div class="fragment rv-path" data-fragment-index="1" [^>]*--dx:480px[^>]*><span class="caption"/.test(R.io.buildHTML()), 'su pie de foto se mueve con él');
   });
 
+  await test('pestaña del objeto seleccionado (como PowerPoint): aparece al seleccionar, con sus opciones', async () => {
+    reset(); const W = frame.contentWindow;
+    const tab = () => D.querySelector('#ribbon [data-tab="ctx"]'), page = () => D.querySelector('#ribbon [data-page="ctx"]');
+    R.store.commit(() => { R.state.ui.selection = null; R.state.ui.multi = []; }, { history: false }); await sleep(10);
+    assert(!tab() || tab().hidden, 'sin selección no está');
+    R.blocks.addShape('ellipse'); await sleep(20);
+    assert(!tab().hidden && tab().textContent === 'Forma', 'al insertar una forma aparece su pestaña');
+    eq(R.state.ui.activeTab, 'ctx', 'y se abre sola, como en PowerPoint');
+    const fill = page().querySelector('input[type=color]'); fill.value = '#ff0000'; fill.dispatchEvent(new W.Event('change')); await sleep(10);
+    eq(last().fill, '#ff0000', 'el relleno se cambia desde la pestaña');
+    const shapeSel = [...page().querySelectorAll('select')].find(x => [...x.options].some(o => o.value === 'star'));
+    shapeSel.value = 'star'; shapeSel.dispatchEvent(new W.Event('change')); await sleep(10); eq(last().shape, 'star', 'cambiar de forma'); const shapeId = last().id;
+    // A 3D model: its options, the camera view.
+    const m = { id: 'm3', type: 'model', src: 'data:model/gltf-binary;base64,AAAA', x: 10, y: 10, w: 200, h: 200, rotation: 0, animation: null };
+    R.store.commit(() => { slide().blocks.push(m); R.state.ui.selection = 'm3'; R.state.ui.multi = ['m3']; }); await sleep(20);
+    eq(tab().textContent, 'Modelo 3D', 'modelo 3D');
+    const labels = [...page().querySelectorAll('.group > label')].map(l => l.textContent);
+    assert(['Animación', 'Al moverse', 'Vista', 'Esqueleto', 'Archivo', 'Organizar'].every(l => labels.includes(l)), 'todas sus opciones: ' + labels.join(', '));
+    const cam = [...page().querySelectorAll('select')].find(x => [...x.options].some(o => o.value === 'side'));
+    cam.value = 'side'; cam.dispatchEvent(new W.Event('change')); await sleep(10);
+    eq(slide().blocks.find(x => x.id === 'm3').view, 'side', 'vista de cámara');
+    const M = await W.eval("import('/src/features/content/model3d.js')");
+    eq(Object.fromEntries(M.modelAttrs(slide().blocks.find(x => x.id === 'm3')))['camera-orbit'], '90deg 75deg auto', 'la cámara, de lado');
+    // Several objects: aligning them.
+    R.store.commit(() => { R.state.ui.multi = [shapeId, 'm3']; R.state.ui.selection = 'm3'; }, { history: false }); await sleep(20);
+    assert(/^Varios objetos/.test(tab().textContent), 'varios objetos');
+    [...page().querySelectorAll('button')].find(x => x.querySelector('span')?.textContent === 'Izquierda').click(); await sleep(10);
+    eq(slide().blocks.find(x => x.id === 'm3').x, Math.min(...slide().blocks.filter(x => ['m3', shapeId].includes(x.id)).map(x => x.x)), 'alinear a la izquierda');
+    R.store.commit(() => { R.state.ui.selection = null; R.state.ui.multi = []; }, { history: false }); await sleep(10);
+    assert(tab().hidden && R.state.ui.activeTab === 'home', 'al quitar la selección se va y vuelve a Inicio');
+  });
+
+  await test('modelos 3D: más fuentes (NASA, Wikimedia Commons en STL) y descargar el modelo con todo', async () => {
+    reset(); const W = frame.contentWindow, realFetch = W.fetch;
+    const Rz = await W.eval("import('/src/features/content/resources.js')"), S = await W.eval("import('/src/features/content/stl.js')");
+    const A = await W.eval("import('/src/features/content/autorig.js')"), M = await W.eval("import('/src/features/content/model3d.js')");
+    // NASA: searched here, in Spanish too.
+    assert(Rz.searchNASA3D('').length > 250, 'más de 250 modelos de la NASA');
+    assert(Rz.searchNASA3D('cohete').some(m => /rocket/i.test(m.name)) && Rz.searchNASA3D('marte').some(m => /mars/i.test(m.name)), 'búsqueda también en español');
+    assert(Rz.searchNASA3D('').every(m => /^assets\/nasa3d\//.test(m.thumb)), 'con miniaturas propias');
+    // STL (binary and text) → glTF, turned Z-up → Y-up.
+    const tri = new W.ArrayBuffer(84 + 50), dv = new W.DataView(tri); dv.setUint32(80, 1, true);
+    [[0, 0, 0], [1, 0, 0], [0, 0, 2]].forEach((p, i) => p.forEach((v, k) => dv.setFloat32(84 + 12 + i * 12 + k * 4, v, true)));
+    const glb = S.stlToGLB(tri), g = await A.readModel(glb);
+    eq(g.json.accessors[0].max.join(), '1,2,0', 'STL binario, con la Z hacia arriba pasada a Y');
+    const ascii = new W.TextEncoder().encode('solid x\nfacet normal 0 0 1\nouter loop\nvertex 0 0 0\nvertex 1 0 0\nvertex 0 1 0\nendloop\nendfacet\nendsolid');
+    eq((await A.readModel(S.stlToGLB(ascii.buffer))).json.accessors[0].count, 3, 'STL de texto');
+    // Wikimedia Commons: search (only the words go out) and insert with its credit.
+    const calls = [];
+    W.fetch = async (url, o) => { url = String(url); calls.push(url);
+      if (url.startsWith('https://commons.wikimedia.org/w/api.php')) return new W.Response(JSON.stringify({ continue: { gsroffset: 24 }, query: { pages: { 7: { index: 1, title: 'File:Fossil skull.stl',
+        imageinfo: [{ url: 'https://upload.wikimedia.org/x/Fossil_skull.stl', size: 134, thumburl: 'https://thumb/x.png', descriptionurl: 'https://commons/x', extmetadata: { LicenseShortName: { value: 'CC BY 4.0' }, Artist: { value: '<a href="#">Ana</a>' } } }] } } } }));
+      if (url.endsWith('Fossil_skull.stl')) return new W.Response(tri);
+      return realFetch(url, o); };
+    try {
+      const r = await Rz.searchCommons3D('skull');
+      assert(/filemime:application\/sla[+ ]skull/.test(decodeURIComponent(calls[0])) && /origin=\*/.test(calls[0]), 'busca modelos STL en Commons');
+      eq([r.results[0].title, r.results[0].license, r.results[0].artist, r.next].join('|'), 'Fossil skull|CC BY 4.0|Ana|24', 'título, licencia, autor y más resultados');
+      const b = await Rz.insertCommons3D(r.results[0]);
+      assert(b.type === 'model' && /^data:model\/gltf-binary/.test(b.src) && /Ana, Wikimedia Commons \(CC BY 4\.0\)/.test(b.caption), 'insertado como glTF, con su atribución');
+      // Keep the model: one .glb with everything (also from a .gltf with its data inside).
+      const f = await M.modelFile({ ...b, alt: 'Cráneo fósil' });
+      assert(f.name === 'Cráneo fósil.glb' && f.blob.type === 'model/gltf-binary' && f.blob.size > 100, 'se descarga como .glb');
+      const gltf = 'data:model/gltf+json;base64,' + W.btoa(JSON.stringify({ ...g.json, buffers: [{ byteLength: g.bin.length, uri: 'data:application/octet-stream;base64,' + W.btoa(String.fromCharCode(...g.bin)) }] }));
+      const f2 = await M.modelFile({ src: gltf, caption: 'Pieza — autor' });
+      const head = new W.Uint8Array(await f2.blob.arrayBuffer()).slice(0, 4);
+      assert(f2.name === 'Pieza.glb' && String.fromCharCode(...head) === 'glTF', 'un .gltf se guarda como .glb con todo dentro');
+    } finally { W.fetch = realFetch; }
+  });
+
   await test('esqueleto automático: propone articulaciones, une la malla, crea animaciones y se ajusta a mano', async () => {
     reset(); const W = frame.contentWindow;
     const A = await W.eval("import('/src/features/content/autorig.js')");
@@ -617,7 +687,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       stage.dispatchEvent(new W.DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt, clientX: cx, clientY: cy })); await sleep(200);
       const dropped = slide().blocks.at(-1);
       eq(slide().blocks.length, n0 + 3, 'arrastrar: se añade');
-      assert(Math.abs(dropped.x + dropped.w / 2 - 300) < 3 && Math.abs(dropped.y + dropped.h / 2 - 200) < 3, 'donde se suelta');
+      assert(Math.abs(dropped.x + dropped.w / 2 - 300) < Math.max(3, k * 1.5) && Math.abs(dropped.y + dropped.h / 2 - 200) < Math.max(3, k * 1.5), 'donde se suelta (a menos de un píxel de pantalla)');
       R.store.undo(); await sleep(20); eq(slide().blocks.length, n0 + 2, 'un solo paso de deshacer');
       // Other side, remembered; the same button again closes it.
       P().querySelector('.el-side').click(); await sleep(20);

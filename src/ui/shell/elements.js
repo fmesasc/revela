@@ -22,6 +22,8 @@ const TABS = [
   ['stickers', 'Stickers', 'add_reaction', null, null],
   ['anim3d', '3D con movimiento', 'view_in_ar', null, null],
   ['poly', 'Modelos 3D', 'deployed_code', 'poly', 'Poly Haven (polyhaven.com)'],
+  ['nasa', 'NASA', 'rocket_launch', null, null],
+  ['commons3d', 'Museos y ciencia', 'museum', 'commons3d', 'Wikimedia Commons (commons.wikimedia.org)'],
   ['sketchfab', 'Sketchfab', 'travel_explore', 'sketchfab', 'Sketchfab (sketchfab.com)'],
 ];
 const HELP = {
@@ -31,10 +33,13 @@ const HELP = {
   stickers: 'Emojis animados de Google (Noto, CC BY 4.0). Se pueden animar por tramos y quitar el fondo como cualquier GIF.',
   anim3d: 'Modelos 3D con licencia libre, varios con animaciones propias (andar, bailar…). Se guardan dentro de la presentación. Muévelos con clic derecho ▸ Movimiento 3D.',
   poly: 'Más de 500 modelos 3D de Poly Haven, de dominio público (CC0). Se guardan dentro de la presentación.',
+  nasa: 'Más de 250 modelos de la NASA: naves, satélites, cohetes, róveres, asteroides… Libres y sin copyright (sin usar sus logotipos como aval). Se guardan dentro de la presentación.',
+  commons3d: 'Miles de modelos 3D de Wikimedia Commons (fósiles, piezas de museo, anatomía, edificios…) con licencias libres; se añade la atribución como pie. Busca en inglés para más resultados.',
   sketchfab: 'Millones de modelos 3D de Sketchfab, muchos animados. Se muestran con el visor de Sketchfab (necesita internet al presentar).',
 };
-const TYPING = new Set(['images', 'icons', 'gif', 'sketchfab']);          // need words to search
+const TYPING = new Set(['images', 'icons', 'gif', 'sketchfab', 'commons3d']);          // need words to search
 const DRAG = 'application/x-revela-element';
+const mb = n => (n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + ' MB' : Math.max(1, Math.round(n / 1e3)) + ' KB');
 
 const SIDE = 'revela.elements.side';
 export const elementsSide = () => { try { return localStorage.getItem(SIDE) === 'right' ? 'right' : 'left'; } catch { return 'left'; } };
@@ -190,6 +195,15 @@ async function run(more = false) {
       list = R.searchLibrary3D(term, { animated: q('.el-onlyanim').checked }).map(m => [m.thumb, `${m.label} — ${m.credit}`, `${m.animated ? '▶ ' : ''}${m.label}`, () => R.insertLibraryModel(m)]);
     } else if (tab === 'poly') {
       list = (await R.searchPolyHaven(term)).slice(0, 120).map(a => [a.thumb, `${a.name} (CC0)`, a.name, () => R.insertPolyHaven(a)]);
+    } else if (tab === 'nasa') {
+      list = R.searchNASA3D(term).map(m => [m.thumb || 'icons/icon.svg', `${m.name} — NASA`, m.name, () => R.insertNASA3D(m)]);
+    } else if (tab === 'commons3d') {
+      const r = await R.searchCommons3D(term, more ? cursor || 0 : 0);
+      cursor = r.next; full = r.next != null;
+      list = r.results.map(m => [m.thumb, `${m.title} — ${m.artist} (${m.license}) · ${mb(m.size)}`, mb(m.size), async () => {
+        if (m.size > 15e6 && !(await confirmDialog(t('Este modelo pesa {n}: la presentación crecerá mucho. ¿Añadirlo?').replace('{n}', mb(m.size))))) return null;
+        return R.insertCommons3D(m);
+      }]);
     } else if (tab === 'sketchfab') {
       const r = await R.searchSketchfab(term, { animated: q('.el-onlyanim').checked, cursor: more ? cursor : null });
       cursor = r.next; full = !!cursor;

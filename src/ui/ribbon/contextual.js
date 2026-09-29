@@ -1,0 +1,200 @@
+// Contextual tab (like PowerPoint's "Shape Format", "Picture Format", "3D Model"):
+// while an object is selected, a tab named after it appears at the end of the
+// ribbon with all of its options, so nothing needs a right click. It goes
+// away when nothing is selected. Several objects: arranging them.
+
+import { state, commit, currentSlide, selectedBlock, selectedBlocks } from '../../core/store.js';
+import * as blocks from '../../features/document/blocks.js';
+import * as format from '../../features/document/format.js';
+import * as shapeops from '../../features/document/shapeops.js';
+import { MOTIONS_3D, VIEWS_3D, modelFile } from '../../features/content/model3d.js';
+import { isGif } from '../../features/live/media.js';
+import { download } from '../../io/files.js';
+import { openModel3D } from '../dialogs/model3d.js';
+import { openAutoRig } from '../dialogs/autorig.js';
+import { openMediaPlayback } from '../dialogs/media.js';
+import { openSaveAsPicture } from '../dialogs/picture.js';
+import { openPollEditor } from '../dialogs/poll.js';
+import { openCodeEditor } from '../dialogs/code.js';
+import { openLinkChart, refreshChart } from '../dialogs/data.js';
+import { openImageAdjust, openMath, openChartData, openOpacity, openIconColor, openBoxStyle, openSlidePicker, openCaption, openAlt, openImageCrop, removeBackground, openTableStyle } from '../dialogs/object.js';
+import { alertDialog } from '../dialogs/dialog.js';
+import { startPathDraw } from '../canvas/pathdraw.js';
+import { playAnimations } from '../canvas/preview.js';
+import { playInEditor } from '../canvas/mediaview.js';
+import { fitTextToBox } from '../canvas/canvas.js';
+import { t } from '../../i18n/index.js';
+
+const TITLES = { shape: 'Forma', image: 'Imagen', model: 'Modelo 3D', video: 'Vídeo', audio: 'Audio', text: 'Cuadro de texto', table: 'Tabla', chart: 'Gráfico',
+  math: 'Ecuación', code: 'Código', poll: 'Votación', embed: 'Web', icon: 'Icono', camera: 'Cámara', slideref: 'Zoom', figindex: 'Índice', ink: 'Dibujo', connector: 'Conector' };
+const SHAPES = [['rect', 'Rectángulo'], ['rounded', 'Rectángulo redondeado'], ['ellipse', 'Elipse'], ['triangle', 'Triángulo'], ['diamond', 'Rombo'], ['star', 'Estrella'],
+  ['hexagon', 'Hexágono'], ['parallelogram', 'Paralelogramo'], ['trapezoid', 'Trapecio'], ['chevron', 'Galón (chevron)'], ['plus', 'Cruz'], ['line', 'Línea'], ['arrow', 'Flecha']];
+
+// A control: ['btn', icon, label, fn, on?] · ['color', icon, label, value, fn] · ['select', label, [[v, l]], value, fn] · ['num', label, value, fn, min, max, step]
+const btn = (icon, label, fn, on = false) => ['btn', icon, label, fn, on];
+const set = (b, fn) => commit(() => { const x = currentSlide().blocks.find(y => y.id === b.id); if (x) fn(x); });
+export async function saveFile(b) {
+  try {
+    if (b.type === 'model') { const { blob, name } = await modelFile(b); download(blob, name); return; }
+    const src = b.src || ''; if (!src) return;
+    const blob = await (await fetch(src)).blob(), ext = (blob.type.split('/')[1] || 'bin').replace('jpeg', 'jpg').replace(/\+.*/, '');
+    download(blob, (String(b.alt || b.caption || b.type).split(' — ')[0].replace(/[\\/:*?"<>|]+/g, '').trim().slice(0, 60) || b.type) + '.' + ext);
+  } catch (e) { alertDialog(t('No se pudo guardar el archivo: ') + (e.message || e)); }
+}
+function replaceModel(b) {
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.glb,.gltf,model/gltf-binary';
+  inp.onchange = () => { const f = inp.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => set(b, x => { x.src = r.result.replace(/^data:[^;]*/, 'data:model/gltf-binary'); delete x.clip; delete x.walk; }); r.readAsDataURL(f); };
+  inp.click();
+}
+const clipsOf = b => [...(document.querySelector(`#stage .block[data-id="${b.id}"] model-viewer`)?.availableAnimations || [])];
+
+function groupsFor(b) {
+  const G = [];
+  if (b.type === 'shape') G.push(
+    ['Estilo de forma', [['color', 'format_color_fill', 'Relleno', b.fill && b.fill !== 'none' ? b.fill : '#3f6497', v => blocks.setShapeStyle('fill', v)],
+      ['color', 'border_color', 'Borde', b.stroke || '#1e2a3a', v => blocks.setShapeStyle('stroke', v)],
+      ['num', 'Grosor', b.strokeWidth ?? 2, v => blocks.setShapeStyle('strokeWidth', Math.max(0, +v || 0)), 0, 40, 1],
+      ['select', 'Línea', [['solid', '━ Continua'], ['dash', '╍ Guiones'], ['dot', '┈ Puntos'], ['dashDot', '─·─ Guion y punto']], b.dash || 'solid', v => blocks.setLineDash(v)],
+      btn('format_color_reset', 'Sin relleno', () => blocks.setShapeStyle('fill', 'none'), b.fill === 'none')]],
+    ['Forma', [['select', 'Cambiar forma', SHAPES, b.shape, v => set(b, x => { x.shape = v; })]]]);
+  else if (b.type === 'image') G.push(
+    ['Ajustar', [btn('tune', 'Ajustes', () => openImageAdjust(b)), btn('crop', 'Recortar', () => openImageCrop(b)), btn('auto_fix_high', 'Quitar fondo', () => removeBackground(b)),
+      btn('fit_screen', 'Contener', () => set(b, x => { x.fit = 'contain'; }), (b.fit || 'contain') === 'contain'), btn('crop_free', 'Rellenar', () => set(b, x => { x.fit = 'cover'; }), b.fit === 'cover')]],
+    ['Al presentar', [btn('zoom_in', 'Ampliar al clic', () => set(b, x => { if (x.zoomable) delete x.zoomable; else x.zoomable = true; }), !!b.zoomable),
+      ...(isGif(b) ? [btn('slow_motion_video', 'Reproducción', () => openMediaPlayback(b))] : [])]],
+    ['Archivo', [btn('download', 'Descargar', () => saveFile(b)), btn('photo_camera', 'Guardar como imagen', () => openSaveAsPicture())]]);
+  else if (b.type === 'model') {
+    const names = clipsOf(b), opts = [['', 'Ninguna'], ...(names.length ? names : ['*']).map(n => [n, n === '*' ? 'La primera' : n])];
+    G.push(
+      ['Animación', [['select', 'En reposo', opts, b.clip || '', v => set(b, x => { if (v) x.clip = v; else delete x.clip; })],
+        btn('motion_photos_on', 'Movimiento 3D', () => openModel3D(b)),
+        btn('autorenew', 'Girar solo', () => set(b, x => { x.autoRotate = !(x.autoRotate !== false); }), b.autoRotate !== false && !b.walk?.clip)]],
+      ['Al moverse', [['select', 'Mientras se mueve', [['', 'Nada'], ...names.map(n => [n, n])], b.walk?.clip || '', v => set(b, x => {
+        if (v) x.walk = { end: '', endOnce: true, face: true, look: true, ...x.walk, clip: v }; else delete x.walk; })],
+        btn('gesture', 'Dibujar recorrido', () => startPathDraw()), btn('play_circle', 'Probar', () => playAnimations())]],
+      ['Vista', [['select', 'Cámara', VIEWS_3D, b.view || '', v => set(b, x => { if (v) x.view = v; else delete x.view; })],
+        ['select', 'Al llegar a la diapositiva', MOTIONS_3D, b.motion || 'none', v => set(b, x => { if (v !== 'none') x.motion = v; else delete x.motion; })]]],
+      ['Esqueleto', [btn('accessibility_new', 'Esqueleto automático', () => openAutoRig(b))]],
+      ['Archivo', [btn('download', 'Descargar (.glb)', () => saveFile(b)), btn('swap_horiz', 'Reemplazar', () => replaceModel(b))]]);
+  } else if (b.type === 'video' || b.type === 'audio') G.push(
+    ['Reproducción', [btn('play_arrow', 'Reproducir', () => playInEditor(b.id)), btn('tune', 'Opciones', () => openMediaPlayback(b))]],
+    ['Archivo', [btn('download', 'Descargar', () => saveFile(b))]]);
+  else if (b.type === 'text') G.push(
+    ['Cuadro', [btn('format_color_fill', 'Relleno y borde', () => openBoxStyle(b)), btn('format_size', 'Ajustar letra al cuadro', () => fitTextToBox(b)),
+      btn('compress', 'Reducir si no cabe', () => set(b, x => { if (x.shrink) delete x.shrink; else x.shrink = true; }), !!b.shrink),
+      btn('format_paint', 'Copiar formato', () => format.copyStyle())]]);
+  else if (b.type === 'table') G.push(
+    ['Filas y columnas', [btn('table_rows', 'Añadir fila', () => blocks.tableAddRow()), btn('view_column', 'Añadir columna', () => blocks.tableAddCol()),
+      btn('remove', 'Quitar fila', () => blocks.tableDelRow()), btn('remove', 'Quitar columna', () => blocks.tableDelCol())]],
+    ['Estilo', [btn('title', 'Encabezado', () => blocks.tableToggleHeader(), !!b.header), btn('palette', 'Estilo de tabla', () => openTableStyle(b)), btn('bar_chart', 'Crear gráfico', () => blocks.chartFromTable())]]);
+  else if (b.type === 'chart') G.push(['Datos', [btn('edit', 'Editar datos', () => openChartData(b)), btn('link', b.dataUrl ? 'Datos vinculados' : 'Vincular CSV', () => openLinkChart(b)),
+    ...(b.dataUrl ? [btn('refresh', 'Actualizar', () => refreshChart(b))] : [])]]);
+  else if (b.type === 'math') G.push(['Ecuación', [btn('functions', 'Editar ecuación', () => openMath(b)), btn('format_color_fill', 'Relleno y borde', () => openBoxStyle(b))]]);
+  else if (b.type === 'code') G.push(['Código', [btn('code', 'Editar código y pasos', () => openCodeEditor(b))]]);
+  else if (b.type === 'poll') G.push(['Votación', [btn('how_to_vote', 'Editar votación', () => openPollEditor(b))]]);
+  else if (b.type === 'icon') G.push(['Icono', [btn('palette', 'Color del icono', () => openIconColor(b))]]);
+  else if (b.type === 'embed') G.push(['Web', [btn(b.display === 'card' ? 'web' : 'link', b.display === 'card' ? 'Mostrar la web' : 'Mostrar como tarjeta', () => blocks.setEmbedDisplay(b.id, b.display === 'card' ? 'frame' : 'card'))]]);
+  else if (b.type === 'slideref') G.push(['Zoom', [btn('slideshow', 'Elegir diapositiva', () => openSlidePicker(b)), btn('undo', 'Volver aquí', () => blocks.toggleSlideRefReturn(), !!b.returnBack)]]);
+  else if (b.type === 'camera') G.push(['Cámara', [btn('circle', 'Círculo', () => set(b, x => { x.shape = 'circle'; }), b.shape === 'circle'), btn('crop_square', 'Redondeada', () => set(b, x => { x.shape = 'rounded'; }), b.shape === 'rounded'),
+    btn('rectangle', 'Rectángulo', () => set(b, x => { x.shape = 'rect'; }), b.shape === 'rect'), btn('flip', 'Reflejar', () => set(b, x => { x.mirror = x.mirror === false; }), b.mirror !== false)]]);
+  // Every object: description, accessibility and arrangement.
+  G.push(['Accesibilidad', [btn('accessibility', 'Texto alternativo', () => openAlt(b)), ...(!['text', 'connector', 'figindex', 'slideref'].includes(b.type) ? [btn('short_text', b.caption ? 'Editar descripción' : 'Descripción', () => openCaption(b))] : [])]]);
+  G.push(arrange(b));
+  return G;
+}
+function arrange(b) {
+  return ['Organizar', [btn('flip_to_front', 'Traer al frente', () => blocks.bringToFront()), btn('flip_to_back', 'Enviar al fondo', () => blocks.sendToBack()),
+    btn('align_horizontal_center', 'Centrar', () => { blocks.alignSelected('hcenter'); blocks.alignSelected('vcenter'); }),
+    btn('flip', 'Voltear', () => blocks.flipSelected('h')), btn('rotate_left', 'Sin giro', () => blocks.resetRotation()),
+    btn('opacity', 'Opacidad', () => openOpacity(b)), btn('shadow', 'Sombra', () => blocks.toggleShadow(), !!b.shadow),
+    btn(b.locked ? 'lock' : 'lock_open', 'Bloquear', () => blocks.toggleLock(), !!b.locked)]];
+}
+function groupsForMany(list) {
+  const G = [['Alinear', [btn('align_horizontal_left', 'Izquierda', () => blocks.alignSelected('left')), btn('align_horizontal_center', 'Centro', () => blocks.alignSelected('hcenter')),
+    btn('align_horizontal_right', 'Derecha', () => blocks.alignSelected('right')), btn('align_vertical_top', 'Arriba', () => blocks.alignSelected('top')),
+    btn('align_vertical_center', 'Medio', () => blocks.alignSelected('vcenter')), btn('align_vertical_bottom', 'Abajo', () => blocks.alignSelected('bottom'))]],
+  ['Distribuir', [btn('horizontal_distribute', 'Horizontal', () => blocks.distributeSelected('h')), btn('vertical_distribute', 'Vertical', () => blocks.distributeSelected('v'))]],
+  ['Agrupar', [btn('group_work', 'Agrupar', () => blocks.groupSelected()), ...(list.some(x => x.groupId) ? [btn('workspaces', 'Desagrupar', () => blocks.ungroupSelected())] : []),
+    ...(list.filter(x => x.type !== 'connector').length === 2 ? [btn('conversion_path', 'Conectar', () => blocks.addConnector())] : [])]]];
+  const ordered = shapeops.selectedShapesInOrder();
+  if (shapeops.canMerge(ordered)) {
+    const run = op => shapeops.mergeShapes(op, ordered).then(r => { if (!r) alertDialog(t('Las formas no se solapan.')); }).catch(() => alertDialog(t('No se pudo cargar la librería de formas.')));
+    G.push(['Combinar formas', [btn('join_full', 'Unión', () => run('union')), btn('join_inner', 'Intersecar', () => run('intersection')), btn('join_left', 'Restar', () => run('difference')), btn('join', 'Combinar', () => run('xor'))]]);
+  }
+  G.push(['Organizar', [btn('flip_to_front', 'Traer al frente', () => blocks.bringToFront()), btn('flip_to_back', 'Enviar al fondo', () => blocks.sendToBack()), btn('shadow', 'Sombra', () => blocks.toggleShadow())]]);
+  return G;
+}
+
+// Long strings (pictures, models) shortened, so the signature stays cheap.
+const sigOf = v => JSON.stringify(v, (k, x) => (typeof x === 'string' && x.length > 120 ? x.length + x.slice(-24) : x));
+let lastSig = '', waiting = null, known = null;
+export function renderContextual() {
+  const tabs = document.querySelector('#ribbon .tabs'), pages = document.querySelector('#ribbon .pages'); if (!tabs || !pages) return;
+  let tab = tabs.querySelector('[data-tab="ctx"]'), page = pages.querySelector('[data-page="ctx"]');
+  if (!tab) { tab = document.createElement('button'); tab.dataset.tab = 'ctx'; tab.className = 'ctx-tab'; tabs.appendChild(tab); }
+  if (!page) { page = document.createElement('section'); page.className = 'ribbon-page'; page.dataset.page = 'ctx'; pages.appendChild(page); }
+  const list = state.ui.editMaster ? [] : selectedBlocks(), b = list.length === 1 ? selectedBlock() : null;
+  const show = list.length > 0;
+  tab.hidden = !show;
+  if (!show) {
+    lastSig = ''; known = new Set(state.deck.slides.flatMap(s => s.blocks.map(x => x.id)));
+    if (state.ui.activeTab === 'ctx') {                       // nothing selected: back to Home
+      state.ui.activeTab = 'home';
+      document.querySelectorAll('#ribbon [data-tab]').forEach(x => x.classList.toggle('active', x.dataset.tab === 'home'));
+      document.querySelectorAll('#ribbon .ribbon-page').forEach(p => p.classList.toggle('active', p.dataset.page === 'home'));
+    }
+    return;
+  }
+  // Just inserted (an id not seen before): its tab opens by itself, as in PowerPoint (not for text boxes).
+  const ids = new Set(state.deck.slides.flatMap(s => s.blocks.map(x => x.id)));
+  if (known && b && !known.has(b.id) && b.type !== 'text' && state.ui.activeTab !== 'ctx') {
+    state.ui.activeTab = 'ctx';
+    document.querySelectorAll('#ribbon [data-tab]').forEach(x => x.classList.toggle('active', x.dataset.tab === 'ctx'));
+    document.querySelectorAll('#ribbon .ribbon-page').forEach(p => p.classList.toggle('active', p.dataset.page === 'ctx'));
+  }
+  known = ids;
+  const title = b ? t(TITLES[b.type] || 'Objeto') : t('Varios objetos') + ` (${list.length})`;
+  if (tab.textContent !== title) tab.textContent = title;
+  const names = b?.type === 'model' ? clipsOf(b) : [];
+  const sig = sigOf([list.map(x => x.id), b, names]);
+  if (sig === lastSig) return;
+  lastSig = sig;
+  const groups = b ? groupsFor(b) : groupsForMany(list);
+  page.replaceChildren(...groups.map(([label, controls]) => {
+    const g = document.createElement('div'); g.className = 'group';
+    const row = document.createElement('div'); row.className = 'row';
+    for (const c of controls) row.appendChild(control(c));
+    const l = document.createElement('label'); l.textContent = t(label);
+    g.append(row, l); return g;
+  }));
+  // A model's animations are known once it has loaded: then refresh.
+  if (b?.type === 'model' && !names.length) {
+    const mv = document.querySelector(`#stage .block[data-id="${b.id}"] model-viewer`);
+    if (mv && waiting !== mv) { waiting = mv; mv.addEventListener('load', () => { waiting = null; lastSig = ''; renderContextual(); }, { once: true }); }
+  }
+}
+function control(c) {
+  if (c[0] === 'btn') {
+    const [, icon, label, fn, on] = c, el = document.createElement('button'); el.type = 'button';
+    el.innerHTML = `<i class="ms">${icon}</i><span>${t(label)}</span>`; el.classList.toggle('on', !!on);
+    el.addEventListener('click', e => { e.stopPropagation(); fn(); });
+    return el;
+  }
+  if (c[0] === 'color') {
+    const [, icon, label, value, fn] = c, el = document.createElement('label'); el.className = 'color'; el.title = t(label);
+    el.innerHTML = `<i class="ms">${icon}</i><input type="color">`; const inp = el.querySelector('input'); inp.value = /^#[0-9a-f]{6}$/i.test(value) ? value : '#000000';
+    inp.addEventListener('change', () => fn(inp.value)); return el;
+  }
+  const el = document.createElement('label'); el.className = 'ctx-field';
+  if (c[0] === 'select') {
+    const [, label, opts, value, fn] = c;
+    el.innerHTML = `<span>${t(label)}</span><select></select>`; const s = el.querySelector('select');
+    for (const [v, l] of opts) { const o = document.createElement('option'); o.value = v; o.textContent = t(l); s.appendChild(o); }
+    s.value = value; s.addEventListener('change', () => fn(s.value));
+  } else {
+    const [, label, value, fn, min, max, step] = c;
+    el.innerHTML = `<span>${t(label)}</span><input type="number" min="${min}" max="${max}" step="${step}">`; const i = el.querySelector('input');
+    i.value = value; i.addEventListener('change', () => fn(i.value));
+  }
+  return el;
+}

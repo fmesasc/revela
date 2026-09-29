@@ -1,6 +1,6 @@
 // Free resources, like Canva's "Elements": animated GIFs, animated stickers
-// and 3D models (a curated animated library, Poly Haven's CC0 models and a
-// Sketchfab search). Downloaded models are embedded in the presentation (it
+// and 3D models (a curated animated library, Poly Haven's CC0 models, NASA's
+// models, Wikimedia Commons' 3D prints and a Sketchfab search). Downloaded models are embedded in the presentation (it
 // works offline); Sketchfab ones are shown by Sketchfab's own viewer.
 // Only the search words reach each service (with consent, see stock.js).
 
@@ -9,6 +9,8 @@ import { uid } from '../../core/model.js';
 import { searchImages, insertStockImage } from './stock.js';
 import { STICKERS, stickerURL, stickerThumb, STICKER_CREDIT } from './stickers.js';
 import { LIBRARY_3D } from './library3d.js';
+import { NASA_3D } from './nasa3d.js';
+import { stlToGLB } from './stl.js';
 
 const toDataURL = blob => new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = ko; r.readAsDataURL(blob); });
 async function download(url) { const r = await fetch(url); if (!r.ok) throw new Error(r.status + ' ' + url); return r.blob(); }
@@ -77,6 +79,38 @@ export async function insertPolyHaven(a, resolution = '1k') {
   const where = Object.fromEntries(Object.entries(gl.include || {}).map(([k, v]) => [k, v.url]));
   const src = await packGltf(gl.url, where);
   return addModelBlock({ src, caption: `${a.name} — Poly Haven${a.authors ? ', ' + a.authors : ''} (CC0)`, credit: 'Poly Haven (CC0)' });
+}
+
+// ---- 3D: NASA (257 models: spacecraft, rovers, rockets, planets…; free, without copyright) ----
+// Searched here (the list comes with Revela); only the chosen model is downloaded.
+const NASA_WORDS = { cohete: 'rocket saturn atlas ares booster launch', satelite: 'satellite', telescopio: 'telescope', asteroide: 'asteroid', cometa: 'comet', luna: 'moon lunar apollo', marte: 'mars',
+  planeta: 'planet', estacion: 'station iss', traje: 'suit', astronauta: 'suit astronaut', transbordador: 'shuttle', lanzadera: 'shuttle', nave: 'shuttle capsule module gemini apollo orion', sonda: 'probe', antena: 'dish antenna', helicoptero: 'helicopter', roca: 'rock', tierra: 'earth', robot: 'rover robot', vehiculo: 'rover' };
+export function searchNASA3D(q) {
+  const words = norm(q).split(/\s+/).filter(Boolean).map(w => NASA_WORDS[w] || w);
+  return NASA_3D.filter(m => !words.length || words.every(w => w.split(' ').some(x => norm(m.name).includes(x))))
+    .map(m => ({ ...m, thumb: m.thumb || '' }));
+}
+export async function insertNASA3D(m) {
+  const src = await toDataURL(new Blob([await download(m.src)], { type: 'model/gltf-binary' }));
+  return addModelBlock({ src, caption: `${m.name} — NASA`, credit: 'NASA (NASA 3D Resources)' });
+}
+
+// ---- 3D: Wikimedia Commons (thousands of 3D prints and scans: fossils, museum pieces, anatomy…) ----
+// STL files, turned into glTF here. Only the search words reach Wikimedia (with consent).
+const text = html => { const d = document.createElement('div'); d.innerHTML = html || ''; return d.textContent.trim(); };
+export async function searchCommons3D(q, offset = 0) {
+  const u = new URL('https://commons.wikimedia.org/w/api.php');
+  for (const [k, v] of Object.entries({ action: 'query', format: 'json', origin: '*', generator: 'search', gsrnamespace: '6', gsrsearch: `filemime:application/sla ${q}`,
+    gsrlimit: '24', gsroffset: String(offset), prop: 'imageinfo', iiprop: 'url|size|extmetadata', iiurlwidth: '240' })) u.searchParams.set(k, v);
+  const r = await fetch(u); if (!r.ok) throw new Error('Wikimedia ' + r.status);
+  const d = await r.json(), pages = Object.values(d.query?.pages || {}).sort((a, b) => (a.index || 0) - (b.index || 0));
+  return { next: d.continue?.gsroffset ?? null, results: pages.map(p => { const ii = p.imageinfo?.[0] || {}, m = ii.extmetadata || {};
+    return { title: p.title.replace(/^File:|\.stl$/gi, ''), url: ii.url, size: ii.size || 0, thumb: ii.thumburl || '', page: ii.descriptionurl,
+      license: text(m.LicenseShortName?.value), artist: text(m.Artist?.value).slice(0, 80) }; }).filter(x => x.url) };
+}
+export async function insertCommons3D(m) {
+  const src = stlToGLB(await (await download(m.url)).arrayBuffer());
+  return addModelBlock({ src, caption: `${m.title} — ${m.artist ? m.artist + ', ' : ''}Wikimedia Commons (${m.license || 'licencia libre'})`, credit: `${m.artist || ''} (${m.license || ''}) ${m.page || ''}`.trim() });
 }
 
 // ---- 3D: Sketchfab (search; shown with Sketchfab's viewer) -------------------------------

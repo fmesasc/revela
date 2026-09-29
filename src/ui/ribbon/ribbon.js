@@ -1,5 +1,6 @@
 // The ribbon: tab switching and wiring every control to a feature.
 
+import { renderContextual } from './contextual.js';
 import { state, commit, currentSlide, selectedBlock, selectedBlocks } from '../../core/store.js';
 import { MATH_SIZE } from '../../render/svg.js';
 import { styled, addPlaceholder } from '../../features/document/master.js';
@@ -352,5 +353,6 @@ export function renderRibbon() {
   document.querySelectorAll('[data-para]').forEach(x =>
     x.classList.toggle('on', (isText && (b.textAlign || 'left') === x.dataset.para) || (isMath && (b.textAlign || 'center') === x.dataset.para)));
   updateFormatState();
+  renderContextual();
 }
 function syncValue(sel, val) { const el = $(sel); if (el && el.value !== val) el.value = val; }

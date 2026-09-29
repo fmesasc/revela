@@ -337,8 +337,8 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 #elements-panel.right{border-inline-end:none;border-inline-start:1px solid var(--line2)}
 #elements-panel .cm-head span{display:flex;gap:4px;align-items:center}
 #elements-panel .cm-head b{display:flex;gap:6px;align-items:center}
-.el-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
-.el-tabs button{display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:1px solid transparent;border-radius:8px;padding:6px 2px;cursor:pointer;font:inherit;font-size:11px;color:var(--txt2);line-height:1.15;text-align:center}
+.el-tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:3px}
+.el-tabs button{display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:1px solid transparent;border-radius:8px;padding:5px 1px;cursor:pointer;font:inherit;font-size:10.5px;color:var(--txt2);line-height:1.15;text-align:center}
 .el-tabs button .ms{font-size:22px}
 .el-tabs button:hover{background:var(--bg)}
 .el-tabs button[aria-selected=true]{color:var(--accent);border-color:var(--accent);background:var(--bg);font-weight:600}
