@@ -7,7 +7,8 @@
 import { esc } from '../../core/text.js';
 import { state, currentSlide, amend } from '../../core/store.js';
 import * as R from '../../features/content/resources.js';
-import { searchImages, insertStockImage, searchIcons, iconPreview, insertOnlineIcon, consented, giveConsent } from '../../features/content/stock.js';
+import { searchImages, insertStockImage, hasTransparentBackground, searchIcons, iconPreview, insertOnlineIcon, consented, giveConsent } from '../../features/content/stock.js';
+import { removeBackground } from '../dialogs/object.js';
 import { deckFg } from '../../features/design/palettes.js';
 import { factor } from '../canvas/interact.js';
 import { fitZoom } from '../ribbon/zoom.js';
@@ -48,6 +49,13 @@ const IDEAS = {
 };
 const TYPING = new Set(['images', 'icons', 'gif', 'sketchfab', 'commons3d']);          // need words to search
 const DRAG = 'application/x-revela-element';
+const sel = (cls, opts) => `<select class="${cls}">${opts.map(([v, l]) => `<option value="${v}">${esc(t(l))}</option>`).join('')}</select>`;
+// The picture search's filters, as the service takes them.
+function imageFilters() {
+  const ext = q('.el-f-ext').value, transparent = q('.el-f-transp').checked;
+  return { commercial: q('.el-comm').checked, category: q('.el-f-type').value, aspect: q('.el-f-shape').value, size: q('.el-f-size').value,
+    extension: transparent ? (['png', 'svg'].includes(ext) ? ext : 'png,svg') : ext, transparent };
+}
 const mb = n => (n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + ' MB' : Math.max(1, Math.round(n / 1e3)) + ' KB');
 
 const SIDE = 'revela.elements.side';
@@ -89,8 +97,16 @@ function build() {
       <button type="button" class="cm-close" title="${t('Cerrar')}">✕</button></span></div>
     <div class="el-tabs" role="tablist">${TABS.map(([k, l, i]) => `<button type="button" role="tab" data-et="${k}" title="${t(l)}"><i class="ms">${i}</i><span>${t(l)}</span></button>`).join('')}</div>
     <div class="sk-bar"><input type="search" class="sk-q" placeholder="${t('Buscar…')}"><button type="button" class="fr-do sk-go" title="${t('Buscar')}"><i class="ms">search</i></button></div>
+    <div class="el-filters" hidden>
+      ${sel('el-f-type', [['', 'Todo tipo'], ['photograph', 'Fotos'], ['illustration', 'Ilustraciones'], ['digitized_artwork', 'Arte digitalizado']])}
+      ${sel('el-f-ext', [['', 'Cualquier formato'], ['png', 'PNG'], ['svg', 'SVG (vectorial)'], ['jpg', 'JPG'], ['gif', 'GIF']])}
+      ${sel('el-f-shape', [['', 'Cualquier forma'], ['wide', 'Horizontal'], ['tall', 'Vertical'], ['square', 'Cuadrada']])}
+      ${sel('el-f-size', [['', 'Cualquier tamaño'], ['large', 'Grande'], ['medium', 'Mediano'], ['small', 'Pequeño']])}
+      <label class="fr-chk" title="${t('Solo PNG y SVG cuyo fondo se ve a través (recortes, logotipos, dibujos): se comprueba cada una')}"><input type="checkbox" class="el-f-transp"> ${t('Fondo transparente')}</label>
+      <label class="fr-chk" title="${t('Al añadir una foto, se le quita el fondo aquí mismo, en tu equipo')}"><input type="checkbox" class="el-f-cut"> ${t('Quitar el fondo al añadir')}</label>
+      <label class="fr-chk"><input type="checkbox" class="el-comm"> ${t('Uso comercial')}</label>
+    </div>
     <div class="el-opts">
-      <label class="fr-chk el-com"><input type="checkbox" class="el-comm"> ${t('Uso comercial')}</label>
       <label class="fr-chk el-anim"><input type="checkbox" class="el-onlyanim"> ${t('Solo animados')}</label>
       <label class="el-col" title="${t('Color')}">${t('Color')} <input type="color" class="el-color" value="${/^#[0-9a-f]{6}$/i.test(deckFg()) ? deckFg() : '#ffffff'}"></label></div>
     <p class="host-help el-help"></p>
@@ -103,7 +119,7 @@ function build() {
   q('.sk-go').addEventListener('click', () => run());
   q('.sk-q').addEventListener('keydown', e => { if (e.key === 'Enter') run(); if (e.key === 'Escape') closeElements(); });
   q('.el-onlyanim').addEventListener('change', () => run());
-  q('.el-comm').addEventListener('change', () => q('.sk-q').value.trim() && run());
+  q('.el-filters').addEventListener('change', e => { if (!e.target.classList.contains('el-f-cut') && q('.sk-q').value.trim()) run(); });
   q('.el-color').addEventListener('change', () => cur === 'icons' && q('.sk-q').value.trim() && run());
   q('.sk-more').addEventListener('click', () => run(true));
   initDrop();
@@ -115,10 +131,10 @@ function show(tab) {
   cur = tab;
   panel.querySelectorAll('.el-tabs [data-et]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.et === tab)));
   q('.el-help').textContent = t(HELP[tab]);
-  q('.el-com').hidden = tab !== 'images';
+  q('.el-filters').hidden = tab !== 'images';
   q('.el-anim').hidden = !(tab === 'anim3d' || tab === 'sketchfab');
   q('.el-col').hidden = tab !== 'icons';
-  q('.el-grid').className = 'el-grid' + (tab === 'icons' || tab === 'stickers' ? ' small' : '');
+  q('.el-grid').className = 'el-grid' + (tab === 'icons' || tab === 'stickers' ? ' small' : '') + (tab === 'images' ? ' checker' : '');
   q('.sk-q').value = terms[tab] || '';
   q('.el-grid').innerHTML = ''; q('.sk-more').hidden = true; q('.sk-go').disabled = false; picks = [];
   const svc = TABS.find(x => x[0] === tab);
@@ -192,8 +208,24 @@ async function run(more = false) {
   let list = [], full = false;                     // [thumb, title, badge, pick]; full: there may be more
   try {
     if (tab === 'images') {
-      const res = await searchImages(term, page, { commercial: q('.el-comm').checked }); full = res.length >= 20;
-      list = res.map(img => [img.previews || img.thumb, `${img.title} — ${img.creator} (${img.license})`, img.license, () => insertStockImage(img)]);
+      const f = imageFilters(), found = [];
+      // A see-through background: PNG and SVG only, each one checked on its preview;
+      // a few pages if needed, so that there is something to choose from.
+      if (f.transparent) q('.el-grid').innerHTML = more ? q('.el-grid').innerHTML : `<p class="host-help">${t('Buscando imágenes con fondo transparente…')}</p>`;
+      for (let tries = 0; ; tries++) {
+        const res = await searchImages(term, page, f); full = res.length >= 20;
+        if (!f.transparent) { found.push(...res); break; }
+        const ok = await Promise.all(res.map(img => hasTransparentBackground(img.previews[0])));
+        res.forEach((img, i) => { if (ok[i]) found.push({ ...img, transparent: true }); });
+        if (found.length >= 8 || !full || tries >= 2 || id !== runs) break;
+        page++;
+      }
+      list = found.map(img => [img.previews || img.thumb, `${img.title} — ${img.creator} (${img.license})${img.transparent ? ' · ' + t('Fondo transparente') : ''}`,
+        [img.filetype.toUpperCase(), img.license].filter(Boolean).join(' · '), async () => {
+          const b = await insertStockImage(img);
+          if (panel && q('.el-f-cut').checked && !img.transparent && !/svg|gif/.test(img.filetype)) await removeBackground(currentSlide().blocks.find(x => x.id === b.id) || b);
+          return b;
+        }]);
     } else if (tab === 'icons') {
       const { icons, collections } = await searchIcons(term), col = q('.el-color').value;
       list = icons.map(name => { const c = collections[name.split(':')[0]];

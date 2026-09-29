@@ -14,24 +14,50 @@ export const giveConsent = svc => { try { localStorage.setItem(OK + svc, '1'); }
 
 // ---- Openverse ---------------------------------------------------------------
 // extension: 'gif' for animated GIFs only (also jpg, png, svg).
-export async function searchImages(q, page = 1, { commercial = false, extension = '' } = {}) {
+// Filters (Openverse's): extension 'png' | 'svg' | 'jpg' | 'gif' | 'png,svg';
+// category 'photograph' | 'illustration' | 'digitized_artwork';
+// aspect 'wide' | 'tall' | 'square'; size 'small' | 'medium' | 'large'.
+export async function searchImages(q, page = 1, { commercial = false, extension = '', category = '', aspect = '', size = '' } = {}) {
   const u = new URL('https://api.openverse.org/v1/images/');
   u.searchParams.set('q', q); u.searchParams.set('page', page); u.searchParams.set('page_size', 20);            // anonymous requests allow at most 20
   if (commercial) u.searchParams.set('license_type', 'commercial');
   if (extension) u.searchParams.set('extension', extension);
+  if (category) u.searchParams.set('category', category);
+  if (aspect) u.searchParams.set('aspect_ratio', aspect);
+  if (size) u.searchParams.set('size', size);
   const r = await fetch(u); if (!r.ok) throw new Error('Openverse ' + r.status);
   const d = await r.json();
   return (d.results || []).map(x => ({ id: x.id, title: x.title || '', url: x.url, thumb: x.thumbnail, previews: previewsOf(x), width: x.width, height: x.height,
+    filetype: (x.filetype || (x.url || '').match(/\.(\w+)$/)?.[1] || '').toLowerCase(),
     creator: x.creator || '', license: `${(x.license || '').toUpperCase()} ${x.license_version || ''}`.trim(), licenseUrl: x.license_url,
     source: x.foreign_landing_url, attribution: x.attribution || '' }));
 }
-// Previews to try in turn. Openverse can't make thumbnails of GIFs (it answers
-// 424), so for Wikimedia's GIFs its own small animated thumbnail comes first
-// (120 px is one of the sizes Wikimedia serves); the original is the last resort.
+// Previews to try in turn. Wikimedia's own thumbnails come first: they keep the
+// transparency of PNG and SVG files and can be read here to check it (Openverse
+// can't make them for GIFs, and at times for others: it answers 424); a GIF's
+// small one stays animated (120 px); an SVG's is a PNG. Openverse's thumbnail
+// and then the original are the fallbacks.
 const WIKIMEDIA = /^https:\/\/upload\.wikimedia\.org\/wikipedia\/([\w-]+)\/(\w)\/(\w\w)\/([^/?#]+)$/;
+export function wikimediaThumb(url, width) {
+  const m = WIKIMEDIA.exec(url || ''); if (!m) return null;
+  return `https://upload.wikimedia.org/wikipedia/${m[1]}/thumb/${m[2]}/${m[3]}/${m[4]}/${width}px-${m[4]}${/\.svg$/i.test(m[4]) ? '.png' : ''}`;
+}
 export function previewsOf(x) {
-  const m = WIKIMEDIA.exec(x.url || ''), gif = /\.gif$/i.test(x.url || '');
-  return [...new Set([m && gif && `https://upload.wikimedia.org/wikipedia/${m[1]}/thumb/${m[2]}/${m[3]}/${m[4]}/120px-${m[4]}`, x.thumbnail, x.url].filter(Boolean))];
+  const gif = /\.gif$/i.test(x.url || '');
+  return [...new Set([wikimediaThumb(x.url, gif ? 120 : 250), x.thumbnail, x.url].filter(Boolean))];
+}
+// Whether a picture has a see-through background: enough clear pixels along its
+// edges (a cut-out object, a logo, a drawing). null if it can't be read.
+export async function hasTransparentBackground(src) {
+  try {
+    const img = new Image(); img.crossOrigin = 'anonymous'; img.referrerPolicy = 'no-referrer'; img.src = src;
+    await img.decode();
+    const n = 48, c = document.createElement('canvas'); c.width = c.height = n;
+    const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0, n, n);
+    const px = g.getImageData(0, 0, n, n).data; let clear = 0, all = 0;
+    for (let i = 0; i < n; i++) for (const [x, y] of [[i, 0], [i, n - 1], [0, i], [n - 1, i]]) { all++; if (px[(y * n + x) * 4 + 3] < 200) clear++; }
+    return clear / all > 0.3;
+  } catch { return null; }
 }
 const toDataURL = blob => new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = ko; r.readAsDataURL(blob); });
 async function fetchImage(url) { const r = await fetch(url, { mode: 'cors' }); if (!r.ok) throw new Error(r.status); return toDataURL(await r.blob()); }
@@ -39,7 +65,9 @@ async function fetchImage(url) { const r = await fetch(url, { mode: 'cors' }); i
 // Insert (embedded, so it works offline): the original if its host allows it,
 // otherwise Openverse's CORS-enabled thumbnail.
 export async function insertStockImage(img) {
-  let src; try { src = await fetchImage(img.url); } catch { src = await fetchImage(img.thumb); }
+  // (A very big Wikimedia original comes as its 1280 px copy, which keeps the transparency: a lighter presentation.)
+  const big = img.width > 1600 && wikimediaThumb(img.url, 1280);
+  let src; try { src = await fetchImage(big || img.url); } catch { try { src = await fetchImage(img.url); } catch { src = await fetchImage(img.thumb); } }
   const { w: W, h: H } = state.deck.size, ar = (img.width && img.height) ? img.width / img.height : 4 / 3;
   let w = W * 0.6, h = w / ar; if (h > H * 0.7) { h = H * 0.7; w = h * ar; }
   const credit = `${img.title ? '«' + img.title + '» ' : ''}${img.creator ? '— ' + img.creator + ' ' : ''}(${img.license})`.trim();

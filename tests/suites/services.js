@@ -213,6 +213,51 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.fetch = real; W.Image = RealImage; }
   });
 
+  await test('buscador de imágenes: filtros (tipo, formato, forma, tamaño) y fondo transparente', async () => {
+    reset(); const W = frame.contentWindow, S = R.stock, real = W.fetch, calls = [];
+    // Two pictures made here: a cut-out (clear around a dot) and a photo (opaque).
+    const png = see => { const c = D.createElement('canvas'); c.width = c.height = 40; const g = c.getContext('2d');
+      if (!see) { g.fillStyle = '#3366aa'; g.fillRect(0, 0, 40, 40); } g.fillStyle = '#c00'; g.beginPath(); g.arc(20, 20, 10, 0, 7); g.fill(); return c.toDataURL('image/png'); };
+    const clear = png(true), solid = png(false);
+    eq(await S.hasTransparentBackground(clear), true, 'un recorte: fondo transparente');
+    eq(await S.hasTransparentBackground(solid), false, 'una foto: no');
+    eq(await S.hasTransparentBackground('data:image/png;base64,xx'), null, 'si no se puede leer, no se sabe');
+    // Wikimedia's own thumbnails first (they keep the transparency); an SVG's is a PNG.
+    eq(S.previewsOf({ url: 'https://upload.wikimedia.org/wikipedia/commons/4/42/Manzana.svg', thumbnail: 'https://api.openverse.org/v1/images/x/thumb/' })[0],
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Manzana.svg/250px-Manzana.svg.png', 'SVG: miniatura PNG de Wikimedia');
+    const item = (id, thumb, filetype) => ({ id, title: id, url: 'https://ejemplo.test/' + id + '.' + filetype, thumbnail: thumb, filetype, creator: 'Ana', license: 'cc0', license_version: '1.0', width: 400, height: 400 });
+    W.fetch = async url => { url = String(url); calls.push(url);
+      if (url.startsWith('https://api.openverse.org/v1/images/?')) return new W.Response(JSON.stringify({ results: [item('recorte', clear, 'png'), item('foto', solid, 'png')] }));
+      if (url.startsWith('https://ejemplo.test/')) return new W.Response(await (await real(url.includes('recorte') ? clear : solid)).blob());
+      return real(url); };
+    W.localStorage.setItem('revela.consent.openverse', '1');
+    try {
+      await S.searchImages('manzana', 1, { extension: 'svg', category: 'illustration', aspect: 'square', size: 'large' });
+      const u = new URL(calls.at(-1));
+      eq(['extension', 'category', 'aspect_ratio', 'size'].map(k => u.searchParams.get(k)).join(), 'svg,illustration,square,large', 'los filtros llegan al buscador');
+      // In the panel: the filters only for pictures; «Fondo transparente» asks for PNG/SVG and keeps the see-through ones.
+      D.querySelector('[data-action="resources"]').click(); await sleep(30);
+      const P = D.getElementById('elements-panel'), f = s => P.querySelector(s);
+      f('[data-et="icons"]').click(); await sleep(10); assert(f('.el-filters').hidden, 'sin filtros de imagen en iconos');
+      f('[data-et="images"]').click(); await sleep(10); assert(!f('.el-filters').hidden, 'con filtros en imágenes');
+      f('.el-f-transp').checked = true; f('.sk-q').value = 'manzana'; f('.sk-go').click();
+      for (let i = 0; i < 50 && !P.querySelector('.sk-item'); i++) await sleep(20);
+      eq(new URL(calls.at(-1)).searchParams.get('extension'), 'png,svg', 'fondo transparente: solo PNG y SVG');
+      eq([...P.querySelectorAll('.sk-item')].map(x => x.title.split(' — ')[0]).join(), 'recorte', 'y solo las que lo tienen de verdad');
+      assert(/PNG · CC0 1\.0/.test(P.querySelector('.sk-item span').textContent), 'con su formato y licencia a la vista');
+      assert(f('.el-grid').classList.contains('checker'), 'sobre cuadros, para ver la transparencia');
+      // Changing a filter searches again.
+      const n = calls.length; f('.el-f-transp').checked = false; f('.el-f-shape').value = 'tall'; f('.el-f-shape').dispatchEvent(new W.Event('change', { bubbles: true }));
+      for (let i = 0; i < 50 && P.querySelectorAll('.sk-item').length < 2; i++) await sleep(20);
+      assert(calls.length > n && new URL(calls.at(-1)).searchParams.get('aspect_ratio') === 'tall', 'cambiar un filtro busca otra vez');
+      eq(P.querySelectorAll('.sk-item').length, 2, 'sin el filtro, todas');
+      // A very big Wikimedia original comes as its 1280 px copy (lighter, still transparent).
+      W.fetch = async url => { url = String(url); calls.push(url); return new W.Response(await (await real(clear)).blob()); };
+      await S.insertStockImage({ title: 'Grande', url: 'https://upload.wikimedia.org/wikipedia/commons/3/31/Grande.png', thumb: '', width: 4000, height: 3000, license: 'CC0', creator: '' });
+      eq(calls.at(-1), 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Grande.png/1280px-Grande.png', 'original enorme: su copia de 1280 px');
+    } finally { W.fetch = real; W.localStorage.removeItem('revela.consent.openverse'); D.getElementById('elements-panel')?.querySelector('.cm-close')?.click(); }
+  });
+
   await test('seguridad: lo que llega de fuera no ejecuta código', async () => {
     reset(); const W = frame.contentWindow;
     const Sz = await W.eval("import('/src/features/document/sanitize.js')"), T = await W.eval("import('/src/core/text.js')");
