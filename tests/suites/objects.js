@@ -640,11 +640,37 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(slide().blocks.filter(x => x.type === 'connector').every(x => x.route === 'elbow'), 'la jerarquía, con conectores de codo');
   });
 
+  await test('líneas con dos flechas, curvas y formas libres dibujadas a mano', async () => {
+    reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
+    const da = S.shapeSVG({ id: 'd', shape: 'doublearrow', stroke: '#000', strokeWidth: 3 });
+    assert(/marker-start=/.test(da) && /marker-end=/.test(da), 'línea con dos flechas');
+    assert(/<path d="M3 82C28/.test(S.shapeSVG({ id: 'c', shape: 'curve', stroke: '#000', strokeWidth: 3 })), 'curva');
+    // Freeform: drag an outline on the slide.
+    D.querySelector('[data-shape-gallery] [data-shape="freeform"]').click(); await sleep(20);
+    const ov = D.querySelector('.freeform-draw'); assert(ov, 'forma libre: a dibujar');
+    const st = D.getElementById('stage').getBoundingClientRect(), k = 1280 / st.width, P = (x, y) => ({ clientX: st.left + x / k, clientY: st.top + y / k, bubbles: true, pointerId: 1 });
+    const pts = Array.from({ length: 30 }, (_, i) => { const a = i / 29 * 2 * Math.PI; return [640 + 150 * Math.cos(a), 360 + 100 * Math.sin(a)]; });
+    ov.dispatchEvent(new W.PointerEvent('pointerdown', P(...pts[0])));
+    for (const p of pts.slice(1)) ov.dispatchEvent(new W.PointerEvent('pointermove', P(...p)));
+    ov.dispatchEvent(new W.PointerEvent('pointerup', P(...pts.at(-1)))); await sleep(20);
+    const f = last();
+    assert(f.shape === 'custom' && f.rings?.[0]?.length >= 8 && Math.abs(f.w - 300) < 6 && Math.abs(f.h - 200) < 6, 'se convierte en una forma con su contorno: ' + f.w + '×' + f.h);
+    assert(!D.querySelector('.freeform-draw'), 'y se deja de dibujar');
+    D.querySelector('[data-shape-gallery] [data-shape="freeform"]').click(); await sleep(10);
+    D.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); W.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape' })); await sleep(10);
+    assert(!D.querySelector('.freeform-draw'), 'Esc la cancela');
+    // PowerPoint: the freeform, the curve and the double arrow.
+    R.blocks.addShape('curve'); R.blocks.addShape('doublearrow'); await sleep(10);
+    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob), xml = await zip.file('ppt/slides/slide1.xml').async('string');
+    assert((xml.match(/<a:custGeom>/g) || []).length >= 2 && /<a:cubicBezTo>/.test(xml), 'forma libre y curva como formas libres de PowerPoint');
+    assert(/<a:headEnd type="triangle"/.test(xml) && /<a:tailEnd type="triangle"/.test(xml), 'la línea con dos flechas, con las dos');
+  });
+
   await test('formas: galería compacta, «Más formas» por categorías, colores del tema e ida y vuelta a PowerPoint', async () => {
     reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
     const all = Object.keys(S.SHAPE_NAMES);
     assert(all.length >= 50, 'más de 50 formas: ' + all.length);
-    for (const k of all) assert(/<(polygon|path|rect|ellipse|line)[ >]/.test(S.shapeSVG({ id: 'x', shape: k, fill: '#f00', stroke: '#000', strokeWidth: 2 })), 'se dibuja: ' + k);
+    for (const k of all.filter(k => k !== 'freeform')) assert(/<(polygon|path|rect|ellipse|line)[ >]/.test(S.shapeSVG({ id: 'x', shape: k, fill: '#f00', stroke: '#000', strokeWidth: 2 })), 'se dibuja: ' + k);
     assert(/<path d="M50 92C22/.test(S.shapeSVG({ id: 'h', shape: 'heart', sketch: true, fill: '#f00' })), 'una forma curva a mano alzada se dibuja tal cual');
     // The ribbon: pictures of the shapes, in three rows; the rest in «Más formas».
     const gal = D.querySelectorAll('[data-shape-gallery] [data-shape]');
@@ -660,7 +686,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const sel = [...D.querySelectorAll('#ribbon [data-page="ctx"] select')].find(x => [...x.options].some(o => o.value === 'heart'));
     assert(sel && sel.options.length >= 48 && sel.options[0].value === 'rect', 'cambiar de forma: todas, en orden');
     // PowerPoint, both ways: every shape comes back as itself.
-    const kinds = all.filter(k => !['line', 'arrow'].includes(k));
+    const kinds = all.filter(k => !S.isLineShape(k) && k !== 'freeform');
     R.store.commit(() => { slide().blocks = kinds.map((k, i) => ({ id: 's' + i, type: 'shape', shape: k, fill: '#3f6497', stroke: '#1e2a3a', strokeWidth: 2,
       x: (i % 10) * 120, y: Math.floor(i / 10) * 120, w: 100, h: 100, rotation: 0, animation: null })); }); await sleep(20);
     const blob = await R.pptx.buildPptxBlob();

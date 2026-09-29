@@ -363,12 +363,16 @@ export const SHAPE_CATALOG = [
     ['manualinput', 'Entrada manual'], ['offpage', 'Conector fuera de página'], ['merge', 'Combinar'], ['delay', 'Retraso'], ['cylinder', 'Base de datos']]],
   ['Botones de acción', [['actprev', 'Anterior'], ['actnext', 'Siguiente'], ['actfirst', 'Primera diapositiva'], ['actlast', 'Última diapositiva'], ['acthome', 'Inicio']]],
   ['Matemáticas', [['plus', 'Más'], ['minus', 'Menos'], ['multiply', 'Por'], ['divide', 'Entre'], ['equal', 'Igual']]],
-  ['Líneas', [['line', 'Línea'], ['arrow', 'Flecha']]],
+  ['Líneas', [['line', 'Línea'], ['arrow', 'Flecha'], ['doublearrow', 'Línea con dos flechas'], ['curve', 'Curva'], ['freeform', 'Forma libre']]],
 ];
 export const SHAPE_NAMES = {};                                  // each shape once, with the first name it has, in order
 for (const [k, l] of SHAPE_CATALOG.flatMap(([, list]) => list)) if (!(k in SHAPE_NAMES)) SHAPE_NAMES[k] = l;
 // A small picture of a shape, for the galleries.
-export const shapeThumb = (kind, fill = 'currentColor') => shapeSVG({ id: 'thumb-' + kind, shape: kind, fill: kind === 'line' || kind === 'arrow' ? 'none' : fill, stroke: fill, strokeWidth: kind === 'line' || kind === 'arrow' ? 3 : 0 });
+const LINES = ['line', 'arrow', 'doublearrow', 'curve'];
+export const isLineShape = kind => LINES.includes(kind);
+export const shapeThumb = (kind, fill = 'currentColor') => kind === 'freeform'
+  ? `<svg viewBox="0 0 100 100" width="100%" height="100%"><path d="M14 70C4 40 30 8 52 22S92 18 86 52 58 96 36 84 22 90 14 70Z" fill="none" stroke="${fill}" stroke-width="9" stroke-linejoin="round"/></svg>`
+  : isLineShape(kind) ? shapeSVG({ id: 'thumb-' + kind, shape: kind, fill: 'none', stroke: fill, strokeWidth: 3 }) : shapeSVG({ id: 'thumb-' + kind, shape: kind, fill: kind === 'line' || kind === 'arrow' ? 'none' : fill, stroke: fill, strokeWidth: kind === 'line' || kind === 'arrow' ? 3 : 0 });
 // Outline of a closed shape as [[x,y]…] in the 100×100 box, or null (lines).
 export function shapeOutline100(shape) {
   if (SHAPE_POINTS[shape]) return SHAPE_POINTS[shape].split(' ').map(p => p.split(',').map(Number));
@@ -378,7 +382,7 @@ export function shapeOutline100(shape) {
     arc(98 - r, 2 + r, -Math.PI / 2); arc(98 - r, 98 - r, 0); arc(2 + r, 98 - r, Math.PI / 2); arc(2 + r, 2 + r, Math.PI);
     return pts;
   }
-  if (shape === 'line' || shape === 'arrow' || shape === 'custom' || SHAPE_PATHS[shape]) return null;
+  if (['line', 'arrow', 'doublearrow', 'curve', 'custom'].includes(shape) || SHAPE_PATHS[shape]) return null;
   return [[2, 2], [98, 2], [98, 98], [2, 98]];
 }
 
@@ -415,7 +419,7 @@ function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>>
 function outlineOf(b) {
   if (SHAPE_POINTS[b.shape]) return SHAPE_POINTS[b.shape].trim().split(/\s+/).map(p => p.split(',').map(Number));
   if (b.shape === 'ellipse') return Array.from({ length: 28 }, (_, i) => [50 + 48 * Math.cos(i * Math.PI / 14), 50 + 48 * Math.sin(i * Math.PI / 14)]);
-  if (['line', 'arrow', 'custom'].includes(b.shape) || SHAPE_PATHS[b.shape]) return null;       // (curves: drawn as they are)
+  if (['line', 'arrow', 'doublearrow', 'curve', 'custom'].includes(b.shape) || SHAPE_PATHS[b.shape]) return null;       // (curves: drawn as they are)
   return [[2, 2], [98, 2], [98, 98], [2, 98]];
 }
 function sketchPath(pts, rnd, amp, closed = true) {
@@ -461,6 +465,9 @@ export function shapeSVG(b) {
     case 'rounded':  inner = `<rect x="2" y="2" width="96" height="96" rx="12" ry="12" ${paint}/>`; break;
     case 'custom':   inner = `<path d="${b.path || ''}" fill-rule="evenodd" ${paint}/>`; break;   // merged shapes
     case 'line':     inner = `<line x1="3" y1="50" x2="97" y2="50" ${strokeOnly}/>`; break;
+    case 'curve':    inner = `<path d="M3 82C28 -8 72 -8 97 82" ${strokeOnly}/>`; break;
+    case 'doublearrow': inner = `<defs><marker id="ah-${b.id}" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto-start-reverse"><path d="M0,0 L5,2.5 L0,5 z" fill="${stroke}"/></marker></defs>`
+      + `<line x1="12" y1="50" x2="88" y2="50" ${strokeOnly} marker-start="url(#ah-${b.id})" marker-end="url(#ah-${b.id})"/>`; break;
     case 'arrow':    inner = `<defs><marker id="ah-${b.id}" markerWidth="5" markerHeight="5" refX="4" refY="2.5" `
       + `orient="auto"><path d="M0,0 L5,2.5 L0,5 z" fill="${stroke}"/></marker></defs>`
       + `<line x1="3" y1="50" x2="88" y2="50" ${strokeOnly} marker-end="url(#ah-${b.id})"/>`; break;
@@ -628,7 +635,7 @@ const TEXT_INSET = { ellipse: [0.15, 0.15], triangle: [0.45, 0.22, 0.06], rtrian
   donut: [0.3, 0.3], moon: [0.3, 0.2, 0.3, 0.45], cylinder: [0.3, 0.1, 0.12], parallelogram: [0.1, 0.22], trapezoid: [0.18, 0.22], plus: [0.36, 0.36] };
 const luma = hex => { const m = /^#([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return null; const n = parseInt(m[1], 16);
   return ((n >> 16) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 255000; };
-export const hasShapeText = b => b.type === 'shape' && !['line', 'arrow'].includes(b.shape) && !/^act/.test(b.shape || '');
+export const hasShapeText = b => b.type === 'shape' && !isLineShape(b.shape) && !/^act/.test(b.shape || '');
 // Where an action button goes when it is inserted.
 export const ACTION_GOTO = { actnext: 'next', actprev: 'prev', actfirst: 'first', actlast: 'last', acthome: 'first' };
 export function shapeTextStyle(b) {

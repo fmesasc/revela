@@ -6,7 +6,7 @@ import { DEFAULT_SHADOW } from '../../render/svg.js';
 import { uid, textBlock, tableBlock, codeBlock, chartBlock, mathBlock, figindexBlock, slideRefBlock } from '../../core/model.js';
 import { currentLang, t } from '../../i18n/index.js';
 import { deckFg, currentPalette } from '../design/palettes.js';
-import { ACTION_GOTO, SHAPE_NAMES } from '../../render/svg.js';
+import { ACTION_GOTO, SHAPE_NAMES, isLineShape } from '../../render/svg.js';
 
 function insert(block) {
   commit(() => {
@@ -224,6 +224,18 @@ export function setObjectLink(id, { href = '', goto = '' } = {}) {
     if (goto) b.goto = goto; else delete b.goto;
   });
 }
+// A freeform shape drawn by hand: its outline (slide points) as a closed shape
+// in its own box (points 0…100, kept as a ring so it merges and exports to PowerPoint).
+export function addFreeform(points) {
+  if (points.length < 3) return null;
+  const xs = points.map(p => p[0]), ys = points.map(p => p[1]), x = Math.min(...xs), y = Math.min(...ys);
+  const w = Math.max(8, Math.max(...xs) - x), h = Math.max(8, Math.max(...ys) - y), accent = currentPalette().accents[0];
+  const ring = points.map(([px, py]) => [+((px - x) / w * 100).toFixed(1), +((py - y) / h * 100).toFixed(1)]);
+  const block = { id: uid(), type: 'shape', shape: 'custom', rings: [ring], path: 'M' + ring.map(p => p.join(' ')).join('L') + 'Z',
+    x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h), rotation: 0, animation: null, fill: accent, stroke: darker(accent), strokeWidth: 2 };
+  insert(block);
+  return block;
+}
 // A slide zoom: to another slide (the first other one if not said), centred on
 // a point of the slide if given (a thumbnail dropped there), inside the slide.
 export function addSlideRef(target = null, at = null) {
@@ -417,7 +429,7 @@ export const setTableStyle = props => withTable(b => {
 // A new shape takes the theme's first accent, with an outline a shade darker (as PowerPoint does).
 const darker = (hex, k = 0.72) => '#' + [1, 3, 5].map(i => Math.round(parseInt(hex.slice(i, i + 2), 16) * k).toString(16).padStart(2, '0')).join('');
 export function addShape(kind) {
-  const linear = kind === 'line' || kind === 'arrow', accent = currentPalette().accents[0];
+  const linear = isLineShape(kind), accent = currentPalette().accents[0];
   if (ACTION_GOTO[kind]) {                                          // an action button: small, square, and it already goes somewhere
     const { w, h } = state.deck.size;
     insert({ id: uid(), type: 'shape', shape: kind, x: w - 150, y: h - 150, w: 96, h: 96, rotation: 0, animation: null, fill: accent, stroke: darker(accent), strokeWidth: 2,

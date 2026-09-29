@@ -5,6 +5,7 @@ import { esc } from '../../core/text.js';
 import { state, selectedBlock, currentSlide } from '../../core/store.js';
 import { ensureLayouts, applyLayout, resetSlide, editLayout, allMasters, masterOf } from '../../features/document/master.js';
 import * as slides from '../../features/document/slides.js';
+import { startFreeform } from '../canvas/freeform.js';
 import * as blocks from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
 import * as palettes from '../../features/design/palettes.js';
@@ -107,7 +108,7 @@ export function togglePopover(launcher, type) {
   pop.querySelectorAll('[data-layout]').forEach(x =>
     x.addEventListener('click', () => { applyLayout(x.dataset.layout); closePopover(); }));
   pop.querySelectorAll('[data-shape-pick]').forEach(x =>
-    x.addEventListener('click', () => { blocks.addShape(x.dataset.shapePick); closePopover(); }));
+    x.addEventListener('click', () => { closePopover(); if (x.dataset.shapePick === 'freeform') startFreeform(); else blocks.addShape(x.dataset.shapePick); }));
   pop.querySelectorAll('[data-newslide]').forEach(x =>
     x.addEventListener('click', () => { slides.addSlide(x.dataset.newslide); closePopover(); }));
   pop.querySelector('[data-reset-slide]')?.addEventListener('click', () => { resetSlide(); closePopover(); });

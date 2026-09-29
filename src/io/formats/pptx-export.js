@@ -126,9 +126,13 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
         const points = b.rings.flatMap(r => r.map(([u, v], i) => ({ x: IN(u / 100 * b.w), y: IN(v / 100 * b.h), ...(i === 0 && { moveTo: true }) }))
           .concat({ close: true }));
         slide.addShape(pptx.ShapeType.custGeom, { ...pos, ...hl, points, fill, line: { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth || 1, ...dashOf(b.dash) } });
-      } else if (b.shape === 'line' || b.shape === 'arrow') {
+      } else if (b.shape === 'line' || b.shape === 'arrow' || b.shape === 'doublearrow') {
         slide.addShape(pptx.ShapeType.line, { ...pos, line: { color: hex(b.stroke) || '888888', width: b.strokeWidth || 2, ...dashOf(b.dash),
-          endArrowType: b.shape === 'arrow' ? 'triangle' : 'none' } });
+          endArrowType: b.shape === 'line' ? 'none' : 'triangle', ...(b.shape === 'doublearrow' && { beginArrowType: 'triangle' }) } });
+      } else if (b.shape === 'curve') {                    // the same curve, as a PowerPoint freeform (no fill)
+        const P = (u, v) => ({ x: IN(u / 100 * b.w), y: IN(v / 100 * b.h) });
+        slide.addShape(pptx.ShapeType.custGeom, { ...pos, fill: { type: 'none' }, line: { color: hex(b.stroke) || '888888', width: b.strokeWidth || 2, ...dashOf(b.dash) },
+          points: [{ ...P(3, 82), moveTo: true }, { ...P(97, 82), curve: { type: 'cubic', x1: P(28, -8).x, y1: P(28, -8).y, x2: P(72, -8).x, y2: P(72, -8).y } }] });
       } else {
         const st = pptx.ShapeType[SHAPE_MAP[b.shape]] || pptx.ShapeType.rect;
         const fill = b.fill && b.fill !== 'none' ? { color: hex(b.fill) || '3F6497' } : { type: 'none' };

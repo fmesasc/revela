@@ -23,6 +23,7 @@ import { openAppearance, applyAppearance } from '../shell/appearance.js';
 import * as palettes from '../../features/design/palettes.js';
 import { kitColours } from '../../features/design/brandkit.js';
 import { SHAPE_NAMES, shapeThumb } from '../../render/svg.js';
+import { startFreeform } from '../canvas/freeform.js';
 import { resizeDeck } from '../../features/design/resize.js';
 import { setDrawTool, drawOpts } from '../shell/draw.js';
 import { FONTS, ensureDeckFonts } from '../../features/design/fonts.js';
@@ -48,7 +49,7 @@ function populateFonts() {
 
 // Insert ▸ Shapes: the most used, drawn as they are, in three rows (the rest in «Más formas»).
 const QUICK_SHAPES = ['rect', 'rounded', 'ellipse', 'triangle', 'rtriangle', 'diamond', 'pentagon', 'hexagon', 'star', 'star6', 'burst', 'heart',
-  'rightarrow', 'leftarrow', 'uparrow', 'leftrightarrow', 'chevron', 'speech', 'speechround', 'cloud', 'plus', 'cylinder', 'line', 'arrow'];
+  'rightarrow', 'leftarrow', 'uparrow', 'leftrightarrow', 'chevron', 'speech', 'speechround', 'cloud', 'plus', 'line', 'arrow', 'freeform'];
 function fillShapeGallery() {
   const g = document.querySelector('[data-shape-gallery]'); if (!g) return;
   g.innerHTML = QUICK_SHAPES.map(k => `<button data-shape="${k}" title="${t(SHAPE_NAMES[k] || k)}">${shapeThumb(k)}</button>`).join('');
@@ -145,7 +146,7 @@ export function initRibbon() {
     const so = e.target.closest('[data-shapes-open]');
     if (so) { e.stopPropagation(); togglePopover(so, 'shapes'); return; }
     const sh = e.target.closest('[data-shape]');
-    if (sh) { blocks.addShape(sh.dataset.shape); return; }
+    if (sh) { if (sh.dataset.shape === 'freeform') startFreeform(); else blocks.addShape(sh.dataset.shape); return; }
     const dir = e.target.closest('[data-dir]');
     if (dir) { format.toggleDir(); return; }
     const vert = e.target.closest('[data-vertical]');
