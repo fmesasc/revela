@@ -4,6 +4,7 @@
 // frame to edit that slide. The dashed line is the path the presentation
 // follows (the slide order).
 
+import { popupMenu } from './menu.js';
 import { shortSig } from '../../core/text.js';
 import { state, subscribe, commit } from '../../core/store.js';
 import * as slides from '../../features/document/slides.js';
@@ -169,17 +170,11 @@ function wheel(e) {
 // The canvas's picture: a ready-made design (optionally placing the slides
 // along its route), a picture of one's own, or none.
 function imageMenu(anchor) {
-  document.getElementById('cv-menu')?.remove();
-  const m = document.createElement('div'); m.id = 'cv-menu'; m.className = 'account-menu';
-  m.innerHTML = Object.entries(CANVAS_DESIGNS).map(([k, [l]]) => `<button data-d="${k}"><i class="ms">image</i>${t(l)}</button>`).join('')
-    + `<button data-d="upload"><i class="ms">upload</i>${t('Subir una imagen…')}</button>`
-    + (state.deck.canvas?.image ? `<button data-d="none"><i class="ms">hide_image</i>${t('Quitar la imagen')}</button>` : '');
-  document.body.appendChild(m);
-  const r = anchor.getBoundingClientRect(); m.style.left = r.left + 'px'; m.style.top = r.bottom + 6 + 'px';
-  const off = e => { if (!m.contains(e.target)) { m.remove(); document.removeEventListener('pointerdown', off, true); } };
-  setTimeout(() => document.addEventListener('pointerdown', off, true));
-  m.addEventListener('click', async e => {
-    const k = e.target.closest('[data-d]')?.dataset.d; if (!k) return; m.remove();
+  popupMenu(anchor, { id: 'cv-menu', attr: 'd',
+    html: Object.entries(CANVAS_DESIGNS).map(([k, [l]]) => `<button data-d="${k}"><i class="ms">image</i>${t(l)}</button>`).join('')
+      + `<button data-d="upload"><i class="ms">upload</i>${t('Subir una imagen…')}</button>`
+      + (state.deck.canvas?.image ? `<button data-d="none"><i class="ms">hide_image</i>${t('Quitar la imagen')}</button>` : ''),
+    onPick: async k => {
     if (k === 'none') { setCanvasImage(null); return; }
     if (k === 'upload') {
       const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
@@ -190,5 +185,5 @@ function imageMenu(anchor) {
     const d = canvasDesign(k);
     const place = await confirmDialog(t('¿Colocar también las diapositivas a lo largo del recorrido del diseño? (La primera mostrará todo el lienzo.)'));
     applyCanvasDesign(d, { placeFrames: place }); view = null; paint();
-  });
+    } });
 }

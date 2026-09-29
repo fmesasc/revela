@@ -4,6 +4,7 @@
 // dragging a result onto the slide drops it there.
 // Searches that reach a service ask once for consent (stock.js).
 
+import { esc } from '../../core/text.js';
 import { state, currentSlide, amend } from '../../core/store.js';
 import * as R from '../../features/content/resources.js';
 import { searchImages, insertStockImage, searchIcons, iconPreview, insertOnlineIcon, consented, giveConsent } from '../../features/content/stock.js';
@@ -13,7 +14,6 @@ import { fitZoom } from '../ribbon/zoom.js';
 import { alertDialog, confirmDialog } from '../dialogs/dialog.js';
 import { t } from '../../i18n/index.js';
 
-const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 // key, label, icon, service (for consent: its key and name; null = nothing leaves the browser)
 const TABS = [
   ['images', 'Imágenes', 'image', 'openverse', 'Openverse (openverse.org)'],

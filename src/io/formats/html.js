@@ -3,7 +3,7 @@
 // the print and image exports.
 
 import { embedSandbox } from '../../features/document/sanitize.js';
-import { jsData } from '../../core/text.js';
+import { esc, jsData } from '../../core/text.js';
 import { morphPlan, morphSig } from '../../features/animation/morph.js';
 export { morphPlan, morphSig };                // (for tests and older callers)
 import { state } from '../../core/store.js';
@@ -65,7 +65,7 @@ function customEffectCSS(deck) {
     + CUSTOM_KF[e][1]).join('\n');
 }
 
-export const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+export { esc };
 
 function animAttrs(b, slide, a = b.animation, key = b.id) {
   // An object that triggers animations of others gets an id to be clicked.

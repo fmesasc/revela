@@ -32,3 +32,6 @@ export function playInEditor(id) {
   const v = document.querySelector(`.block[data-id="${id}"] video`);
   if (v) v.paused ? v.play().catch(() => {}) : v.pause();   // the browser may refuse to play (no sound allowed yet)
 }
+
+// A 3D model's own animations (its clips), once the model on the slide has loaded.
+export const modelClips = id => [...(document.querySelector(`#stage .block[data-id="${id}"] model-viewer`)?.availableAnimations || [])];

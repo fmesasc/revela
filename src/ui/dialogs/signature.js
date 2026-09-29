@@ -1,6 +1,7 @@
 // "Signatures" dialog: sign the presentation, see who signed it and whether it
 // changed afterwards, and this browser's key fingerprint (to tell others).
 
+import { esc } from '../../core/text.js';
 import { state } from '../../core/store.js';
 import { signDeck, verifyAll, myKey, removeSignatures } from '../../features/collab/signature.js';
 import * as protect from '../../features/collab/protect.js';
@@ -8,7 +9,6 @@ import { author, setAuthor } from '../../features/collab/comments.js';
 import { t } from '../../i18n/index.js';
 import { alertDialog, confirmDialog } from './dialog.js';
 
-const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const STATUS = { valid: ['verified', 'Válida'], modified: ['warning', 'La presentación ha cambiado después de firmarla'], invalid: ['error', 'Firma no válida'] };
 
 export async function openSignatures() {

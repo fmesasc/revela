@@ -10,6 +10,7 @@
 // tallyVotes() and pollResultsHTML() are self-contained (no imports, no outer
 // variables) because their source is also embedded in the exported HTML.
 
+import { esc } from '../../core/text.js';
 import { state, commit, currentSlide } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 
@@ -104,7 +105,6 @@ export function pollResultsHTML(poll, res, accent) {
 // Markup of a poll in the editor and thumbnails: question, current results
 // (last saved votes) and a QR placeholder (the real code exists only while presenting).
 export function pollEditorHTML(b, accents) {
-  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
   const res = tallyVotes(b, savedVotes(b.pollId));
   return `<div style="width:100%;height:100%;display:grid;grid-template-columns:1fr auto;gap:1em;font-size:${b.fontSize || 32}px">`
     + `<div style="display:flex;flex-direction:column;min-width:0"><div style="font-weight:700;margin-bottom:.5em">${esc(b.question || '')}</div>`

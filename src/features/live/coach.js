@@ -17,13 +17,13 @@ export const PACE = { slow: 100, fast: 165 };
 
 const norm = s => String(s || '').toLowerCase().normalize('NFC');
 export const words = s => norm(s).match(/[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu) || [];
-const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');   // (for a RegExp)
 
 // { filler: count } for one text.
 export function countFillers(text, lang = 'es') {
   const list = FILLERS[lang] || FILLERS.es, out = {}, txt = ` ${words(text).join(' ')} `;
   for (const f of list) {
-    const n = (txt.match(new RegExp(` ${esc(f)}(?= )`, 'g')) || []).length;
+    const n = (txt.match(new RegExp(` ${escRe(f)}(?= )`, 'g')) || []).length;
     if (n) out[f] = n;
   }
   return out;

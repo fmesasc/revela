@@ -4,9 +4,9 @@
 // the body; ``` fenced code becomes a code block (```js [1|2-3] steps the
 // highlighted lines, like reveal); ![alt](url) becomes a picture.
 
+import { esc } from '../../core/text.js';
 import { uid } from '../../core/model.js';
 
-const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 function inline(s) {
   return esc(s)
     .replace(/`([^`]+)`/g, '<code>$1</code>')

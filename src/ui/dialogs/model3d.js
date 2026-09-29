@@ -3,6 +3,7 @@
 // and another on arrival) and a camera movement when its slide appears — with
 // a live preview.
 
+import { esc } from '../../core/text.js';
 import { commit, currentSlide, setSelection } from '../../core/store.js';
 import { startPathDraw } from '../canvas/pathdraw.js';
 import { openAutoRig } from './autorig.js';
@@ -12,7 +13,6 @@ import { model3dRuntime } from '../../io/runtime/model3d.js';
 import { MODEL_VIEWER, loadScript } from '../../core/vendor.js';
 import { t } from '../../i18n/index.js';
 
-const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 
 export async function openModel3D(b) {
   document.getElementById('m3d-modal')?.remove();

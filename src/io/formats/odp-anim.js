@@ -6,7 +6,7 @@
 // the previous one or after it (with their delay). Animations started by
 // clicking another object go in an "interactive sequence" of that object.
 
-import { animTimeline, animEntries, isEntrance, motionPoints, pathFromSVG } from '../../features/animation/transitions.js';
+import { animTimeline, animEntries, isEntrance, motionPoints, pathFromSVG, pushAnim } from '../../features/animation/transitions.js';
 
 const sec = ms => `${+(Math.max(0, ms) / 1000).toFixed(3)}s`;
 const MOVE = { 'fade-up': ['y', '+0.1'], 'fade-down': ['y', '-0.1'], 'fade-left': ['x', '+0.1'], 'fade-right': ['x', '-0.1'] };
@@ -120,7 +120,7 @@ export function readODPAnimations(page, blockOf, size) {
       ...(node === 'with-previous' && { start: 'withPrev' }), ...(node === 'after-previous' && { start: 'afterPrev' }),
       ...(secs(par.getAttribute('smil:begin')) && { delay: secs(par.getAttribute('smil:begin')) }),
       ...(e.effect === 'path' && pathFromSVG(e.d, size)) };
-    if (b.animation) (b.anims ||= []).push(a); else b.animation = a;      // (an object's next animations)
+    pushAnim(b, a);
   };
   const effects = el => [...el.getElementsByTagName('*')].filter(n => n.localName === 'par' && n.getAttribute('presentation:preset-class'));
   for (const seq of [...root.children]) {

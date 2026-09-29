@@ -3,15 +3,16 @@
 // ribbon with all of its options, so nothing needs a right click. It goes
 // away when nothing is selected. Several objects: arranging them.
 
+import { modelClips } from '../canvas/mediaview.js';
 import { shortSig } from '../../core/text.js';
 import { state, commit, currentSlide, selectedBlock, selectedBlocks } from '../../core/store.js';
 import * as blocks from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
 import * as shapeops from '../../features/document/shapeops.js';
-import { MOTIONS_3D, VIEWS_3D, modelFile } from '../../features/content/model3d.js';
+import { MOTIONS_3D, VIEWS_3D } from '../../features/content/model3d.js';
 import { isGif } from '../../features/live/media.js';
 import { styled } from '../../features/document/master.js';
-import { download } from '../../io/files.js';
+import { saveBlockFile as saveFile } from '../shell/files.js';
 import { openModel3D } from '../dialogs/model3d.js';
 import { openAutoRig } from '../dialogs/autorig.js';
 import { openMediaPlayback } from '../dialogs/media.js';
@@ -36,22 +37,14 @@ const SHAPES = [['rect', 'Rectángulo'], ['rounded', 'Rectángulo redondeado'], 
   ['hexagon', 'Hexágono'], ['parallelogram', 'Paralelogramo'], ['trapezoid', 'Trapecio'], ['chevron', 'Galón (chevron)'], ['plus', 'Cruz'], ['line', 'Línea'], ['arrow', 'Flecha']];
 
 // A control: ['btn', icon, label, fn, on?] · ['color', icon, label, value, fn] · ['select', label, [[v, l]], value, fn] · ['num', label, value, fn, min, max, step]
-const btn = (icon, label, fn, on = false) => ['btn', icon, label, fn, on];
+const btn = (icon, label, fn, on = false, key = '') => ['btn', icon, label, fn, on, key];
 const set = (b, fn) => commit(() => { const x = currentSlide().blocks.find(y => y.id === b.id); if (x) fn(x); });
-export async function saveFile(b) {
-  try {
-    if (b.type === 'model') { const { blob, name } = await modelFile(b); download(blob, name); return; }
-    const src = b.src || ''; if (!src) return;
-    const blob = await (await fetch(src)).blob(), ext = (blob.type.split('/')[1] || 'bin').replace('jpeg', 'jpg').replace(/\+.*/, '');
-    download(blob, (String(b.alt || b.caption || b.type).split(' — ')[0].replace(/[\\/:*?"<>|]+/g, '').trim().slice(0, 60) || b.type) + '.' + ext);
-  } catch (e) { alertDialog(t('No se pudo guardar el archivo: ') + (e.message || e)); }
-}
 function replaceModel(b) {
   const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.glb,.gltf,model/gltf-binary';
   inp.onchange = () => { const f = inp.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => set(b, x => { x.src = r.result.replace(/^data:[^;]*/, 'data:model/gltf-binary'); delete x.clip; delete x.walk; }); r.readAsDataURL(f); };
   inp.click();
 }
-const clipsOf = b => [...(document.querySelector(`#stage .block[data-id="${b.id}"] model-viewer`)?.availableAnimations || [])];
+const clipsOf = b => modelClips(b.id);
 
 function groupsFor(b) {
   const G = [];
@@ -118,7 +111,7 @@ function groupsFor(b) {
     btn('rectangle', 'Rectángulo', () => set(b, x => { x.shape = 'rect'; }), b.shape === 'rect'), btn('flip', 'Reflejar', () => set(b, x => { x.mirror = x.mirror === false; }), b.mirror !== false)]]);
   // Every object: its animations (several, one after another), description, accessibility and arrangement.
   const n = animsOf(b).length;
-  G.push(['Animaciones', [btn('add_circle', n ? `${t('Añadir animación')} (${n})` : 'Añadir animación', () => openAddAnimation(document.querySelector('#ribbon [data-page="ctx"] [data-ctx-add]'))),
+  G.push(['Animaciones', [btn('add_circle', n ? `${t('Añadir animación')} (${n})` : 'Añadir animación', () => openAddAnimation(document.querySelector('#ribbon [data-page="ctx"] [data-ctx="add"]')), false, 'add'),
     btn('gesture', n ? 'Añadir movimiento' : 'Dibujar recorrido', () => startPathDraw({ append: true })), btn('tune', 'Panel', () => openAnimPanel())]]);
   G.push(['Accesibilidad', [btn('accessibility', 'Texto alternativo', () => openAlt(b)), ...(!['text', 'connector', 'figindex', 'slideref'].includes(b.type) ? [btn('short_text', b.caption ? 'Editar descripción' : 'Descripción', () => openCaption(b))] : [])]]);
   G.push(arrange(b));
@@ -206,9 +199,9 @@ function control(c) {
     return el;
   }
   if (c[0] === 'btn') {
-    const [, icon, label, fn, on] = c, el = document.createElement('button'); el.type = 'button';
+    const [, icon, label, fn, on, key] = c, el = document.createElement('button'); el.type = 'button';
     el.innerHTML = `<i class="ms">${icon}</i><span>${t(label)}</span>`; el.classList.toggle('on', !!on);
-    if (icon === 'add_circle') el.dataset.ctxAdd = '';
+    if (key) el.dataset.ctx = key;
     el.addEventListener('click', e => { e.stopPropagation(); fn(); });
     return el;
   }

@@ -1,9 +1,9 @@
 // Ribbon group launchers (the small arrow in a group's corner, as in Office)
 // and the galleries they open: symbols, icons, WordArt, palettes, fonts, layouts.
 
+import { esc } from '../../core/text.js';
 import { state, selectedBlock, currentSlide } from '../../core/store.js';
 import { ensureLayouts, applyLayout, resetSlide, editLayout, allMasters, masterOf } from '../../features/document/master.js';
-const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 import * as blocks from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
 import * as palettes from '../../features/design/palettes.js';

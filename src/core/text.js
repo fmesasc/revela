@@ -1,8 +1,8 @@
 // Text helpers shared by every layer: escaping for HTML, plain text out of
 // HTML, and data written inside a <script>.
 
-// For HTML text and attribute values (quotes too).
-export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// For HTML text and attribute values (in double quotes, as everywhere in Revela).
+export const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // The text of some HTML, without running or loading anything (no <img onerror>).
 export function plainText(html) {
   const s = String(html ?? '');

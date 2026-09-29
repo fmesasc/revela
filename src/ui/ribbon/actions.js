@@ -1,6 +1,8 @@
 // What every ribbon button does, by its data-action (also used by keyboard
 // shortcuts, the context menu and the tests).
 
+import { openFindPanel } from '../dialogs/find.js';
+import { openGdriveSetup } from '../dialogs/gdrive.js';
 import { state, commit, undo, redo, replaceDeck, currentSlide, selectedBlock, selectedBlocks } from '../../core/store.js';
 import { emptyDeck } from '../../core/model.js';
 import * as slides from '../../features/document/slides.js';
@@ -51,7 +53,6 @@ import { playAnimations } from '../canvas/preview.js';
 import { startPathDraw } from '../canvas/pathdraw.js';
 import { openAddAnimation } from './animadd.js';
 import { openHostPanel } from '../dialogs/remote.js';
-import * as search from '../../features/document/search.js';
 import { t } from '../../i18n/index.js';
 import { confirmDialog, promptDialog, alertDialog } from '../dialogs/dialog.js';
 import { renderRibbon } from './ribbon.js';
@@ -105,7 +106,7 @@ export const ACTIONS = {
   'gdrive-open': () => gdrive.openWithUI(),
   'gdrive-save': () => gdrive.saveWithUI(),
   'gdrive-html': () => gdrive.saveHtmlWithUI(),
-  'gdrive-config': () => gdrive.openGdriveSetup(),
+  'gdrive-config': () => openGdriveSetup(),
   'export': exportHTML,
   'export-pptx': () => exportPPTX(),
   'export-pdf': exportPDF,
@@ -241,7 +242,7 @@ export const ACTIONS = {
   'insert-figindex': () => blocks.addFigIndex(),
   'insert-slideref': () => blocks.addSlideRef(),
   'insert-summary': () => blocks.addSummaryZoom(),
-  'find-replace': () => search.openFindPanel(),
+  'find-replace': () => openFindPanel(),
   'copy-style': () => { format.copyStyle(); commit(() => {}, { history: false }); },   // refresh: Pegar formato becomes available
   'paste-style': () => format.pasteStyle(),
   'bg-gradient': () => {

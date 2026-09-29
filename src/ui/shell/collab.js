@@ -2,6 +2,7 @@
 // commenting or editing, and who is in), the people in the title bar, their
 // selections on the slide, the chat, and joining from a shared link.
 
+import { esc } from '../../core/text.js';
 import { state, subscribe, adoptDeck, setPersist, applyRemote } from '../../core/store.js';
 import { loadDeck } from '../../core/model.js';
 import { saveProject } from '../../io/formats/project.js';
@@ -13,7 +14,6 @@ import * as slides from '../../features/document/slides.js';
 import { t } from '../../i18n/index.js';
 import { alertDialog, confirmDialog, promptDialog } from '../dialogs/dialog.js';
 
-const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const ROLE_NAME = { view: 'Ver', comment: 'Comentar', edit: 'Editar' };
 const initials = n => (String(n || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2) || '?').toUpperCase();
 let unread = 0;

@@ -2,6 +2,8 @@
 // with the Revela presentations in Drive, most recent first), the Drive save
 // status next to the name, and what to do if it changed on another device.
 
+import { esc } from '../../core/text.js';
+import { popupMenu } from './menu.js';
 import { state, replaceDeck } from '../../core/store.js';
 import { emptyDeck } from '../../core/model.js';
 import * as gd from '../../io/cloud/gdrive.js';
@@ -10,7 +12,6 @@ import { isEmptyPlaceholder } from '../../features/document/master.js';
 import { t } from '../../i18n/index.js';
 import { alertDialog, confirmDialog } from '../dialogs/dialog.js';
 
-const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const friendly = e => alertDialog(e.message === 'NO_TOKEN' ? t('Vuelve a iniciar sesión con Google.') : (e.message || String(e)));
 const initial = a => esc((a?.name || a?.email || '?').trim()[0].toUpperCase());
 
@@ -59,21 +60,15 @@ function paintBar() {
 }
 
 function accountMenu(btn) {
-  document.getElementById('account-menu')?.remove();
   const a = gd.account();
-  const m = document.createElement('div'); m.id = 'account-menu'; m.className = 'account-menu';
-  m.innerHTML = `<div class="am-who">${a.picture ? `<img src="${esc(a.picture)}" alt="" referrerpolicy="no-referrer">` : `<span class="acc-init">${initial(a)}</span>`}<div><b>${esc(a.name)}</b><div>${esc(a.email)}</div></div></div>
+  popupMenu(btn, { id: 'account-menu', className: 'account-menu', attr: 'am', align: 'right',
+    html: `<div class="am-who">${a.picture ? `<img src="${esc(a.picture)}" alt="" referrerpolicy="no-referrer">` : `<span class="acc-init">${initial(a)}</span>`}<div><b>${esc(a.name)}</b><div>${esc(a.email)}</div></div></div>
     <button data-am="home"><i class="ms">folder_open</i>${t('Mis presentaciones')}</button>
-    <button data-am="out"><i class="ms">logout</i>${t('Cerrar sesión')}</button>`;
-  document.body.appendChild(m);
-  const r = btn.getBoundingClientRect(); m.style.top = r.bottom + 6 + 'px'; m.style.right = Math.max(8, innerWidth - r.right) + 'px';
-  const off = e => { if (!m.contains(e.target)) { m.remove(); document.removeEventListener('pointerdown', off, true); } };
-  setTimeout(() => document.addEventListener('pointerdown', off, true));
-  m.addEventListener('click', async e => {
-    const b = e.target.closest('[data-am]'); if (!b) return; m.remove();
-    if (b.dataset.am === 'home') openHome();
-    else if (await confirmDialog(t('¿Cerrar la sesión de Google en Revela? Tus presentaciones siguen en tu Drive.'))) { await gd.signOut(); paintBar(); }
-  });
+    <button data-am="out"><i class="ms">logout</i>${t('Cerrar sesión')}</button>`,
+    onPick: async k => {
+      if (k === 'home') openHome();
+      else if (await confirmDialog(t('¿Cerrar la sesión de Google en Revela? Tus presentaciones siguen en tu Drive.'))) { await gd.signOut(); paintBar(); }
+    } });
 }
 
 export async function signInFlow() {

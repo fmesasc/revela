@@ -1,15 +1,16 @@
 // "Share": a private link or a password-protected file, ready to embed in an
 // iframe. The presentation is encrypted in this browser before it leaves it.
 
+import { esc } from '../../core/text.js';
 import { publish } from '../../io/share/publish.js';
 import { sharesList, removeShare } from '../../io/share/shares.js';
-import { gdriveReady, openGdriveSetup, driveUnshare } from '../../io/cloud/gdrive.js';
+import { gdriveReady, driveUnshare } from '../../io/cloud/gdrive.js';
+import { openGdriveSetup } from './gdrive.js';
 import { serverConfig, setServerConfig, serverReady, serverUnshare, serverStats } from '../../io/cloud/shareserver.js';
 import { SERVER_URL } from '../../core/config.js';
 import { t } from '../../i18n/index.js';
 import { alertDialog, confirmDialog } from './dialog.js';
 
-const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const copyBtn = sel => `<button type="button" class="mini2 sh-copy" data-copy="${sel}">${t('Copiar')}</button>`;
 
 export function openShare() {

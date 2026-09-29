@@ -20,7 +20,7 @@ import { alertDialog, promptDialog } from '../dialogs/dialog.js';
 import { openSaveAsPicture } from '../dialogs/picture.js';
 import { openMediaPlayback } from '../dialogs/media.js';
 import { openModel3D } from '../dialogs/model3d.js';
-import { saveFile } from '../ribbon/contextual.js';
+import { saveBlockFile as saveFile } from './files.js';
 import { playInEditor } from '../canvas/mediaview.js';
 import { isGif } from '../../features/live/media.js';
 import { openImageAdjust, openMath, openChartData, openOpacity, openIconColor, openBoxStyle, openSlidePicker, openCaption, openAlt, openImageCrop, removeBackground, openTableStyle } from '../dialogs/object.js';

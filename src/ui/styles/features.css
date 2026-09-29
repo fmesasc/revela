@@ -292,7 +292,7 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .acc-init{width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:600}
 .drive-status{background:none;border:none;cursor:pointer;color:var(--txt2);padding:2px 6px}.drive-status[hidden]{display:none}
 .drive-status[data-state=saved]{color:#2f9e44}.drive-status[data-state=offline],.drive-status[data-state=error],.drive-status[data-state=conflict]{color:#e8590c}
-.account-menu{position:fixed;z-index:3200;background:var(--panel);border:1px solid var(--line2);border-radius:12px;box-shadow:0 12px 40px #0003;padding:8px;min-width:240px}
+.account-menu,.popup-menu{position:fixed;z-index:3200;background:var(--panel);border:1px solid var(--line2);border-radius:12px;box-shadow:0 12px 40px #0003;padding:8px;min-width:240px}
 .account-menu .am-who{display:flex;gap:10px;align-items:center;padding:6px 8px 10px;border-bottom:1px solid var(--line2);margin-bottom:6px;font-size:12px;color:var(--txt2)}.account-menu .am-who b{color:var(--txt);font-size:14px}
 .account-menu button{display:flex;gap:8px;align-items:center;width:100%;background:none;border:none;padding:8px;border-radius:8px;cursor:pointer;color:var(--txt);font:inherit;font-size:13px;text-align:start}.account-menu button:hover{background:var(--ribbon)}
 #drive-conflict{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 8px;padding:6px 12px;border-radius:8px;background:#fff3e0;color:#7a3d00;font-size:13px}#drive-conflict[hidden]{display:none}

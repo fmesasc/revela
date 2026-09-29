@@ -3,6 +3,7 @@
 // a report (pace per slide, fillers, repeated expressions, slides read word
 // for word) with the option to keep the timings.
 
+import { esc } from '../../core/text.js';
 import { state } from '../../core/store.js';
 import { session } from '../../core/session.js';
 import { present, applyRehearsal } from './present.js';
@@ -10,7 +11,6 @@ import { analyzeRehearsal, countFillers, recentPace, PACE } from '../../features
 import { t, currentLang, speechLang } from '../../i18n/index.js';
 import { alertDialog, confirmDialog } from '../dialogs/dialog.js';
 
-const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmt = ms => { const s = Math.round(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 const plain = html => String(html || '').replace(/<(br|\/div|\/p|\/li)[^>]*>/gi, ' ').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&');
 

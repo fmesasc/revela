@@ -21,7 +21,7 @@ import { initContextMenu } from '../../ui/shell/contextmenu.js';
 import { initDraw } from '../../ui/shell/draw.js';
 import { initI18n, t } from '../../i18n/index.js';
 import { deleteSelected, duplicateSelected, groupSelected, ungroupSelected, addImage, addTableFromText, addText } from '../../features/document/blocks.js';
-import { openFindPanel } from '../../features/document/search.js';
+import { openFindPanel } from '../../ui/dialogs/find.js';
 // Namespaces exposed to the test harness (see tests/).
 import { initHome } from '../../ui/shell/home.js';
 import { initCollabUI } from '../../ui/shell/collab.js';

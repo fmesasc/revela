@@ -5,6 +5,7 @@
 // the sealed copy is stored (a file you upload, your Google Drive, a server),
 // whoever holds it without the key only has noise. Pages are marked noindex.
 
+import { esc } from '../../core/text.js';
 import { unseal } from '../runtime/unseal.js';
 
 export const ROUNDS = 600000;
@@ -36,7 +37,6 @@ export { unseal };
 // A random identifier nobody can guess (128 bits), for stored copies.
 export const shareId = () => b64url(crypto.getRandomValues(new Uint8Array(16)));
 
-const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // A page that opens a sealed presentation: from `env` (embedded) or fetched
 // from `src`; the secret is the link's #k=… or a password typed by the viewer.

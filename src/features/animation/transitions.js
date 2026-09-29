@@ -228,7 +228,7 @@ export function setAnimation(effect) {
   const b = selectedBlock(); if (!b) return;
   commit(() => {
     if (b.animation) b.animation.effect = effect;
-    else b.animation = { ...fresh(effect), duration: 500 };
+    else b.animation = fresh(effect);                      // (a path takes longer than a fade)
     if (effect === 'path' && !b.animation.dx && !b.animation.dy) b.animation.dx = 200;
     normalizeAnim();
   });
@@ -245,6 +245,8 @@ export function addAnimation(effect, props = {}) {
   });
   return idx;
 }
+// An imported object's animation: its first, or one more after those it has.
+export function pushAnim(b, a) { if (b.animation) (b.anims ||= []).push(a); else b.animation = a; }
 // Animation painter: copy the selected object's animations onto other objects.
 export function copyAnimationFrom(b = selectedBlock()) {
   if (!b || !b.animation) return null;

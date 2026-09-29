@@ -18,10 +18,11 @@
 //   notes, hidden slides and transitions.
 // Effects without an equivalent (shadows, SmartArt…) are approximated or skipped.
 
+import { esc } from '../../core/text.js';
 import { uid } from '../../core/model.js';
 import { styled, masterStyles } from '../../features/document/master.js';
 import { JSZIP_ESM } from '../../core/vendor.js';
-import { TRANSITION_DIRS, pathFromSVG } from '../../features/animation/transitions.js';
+import { TRANSITION_DIRS, pathFromSVG, pushAnim } from '../../features/animation/transitions.js';
 
 const CANVAS_W = 1280;            // slide width maps to this many px
 const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp', svg: 'image/svg+xml' };
@@ -31,7 +32,6 @@ const all = (el, name) => (el ? [...el.getElementsByTagName(name)] : []);
 const kids = (el, name) => (el ? [...el.children].filter(c => c.tagName === name) : []);
 const kid = (el, name) => kids(el, name)[0] || null;
 const path = (el, ...names) => names.reduce((e, n) => kid(e, n), el);
-const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 async function loadJSZip() {
   if (window.JSZip) return window.JSZip;
@@ -384,7 +384,7 @@ function readAnimations(doc, spidOf, blocks, size) {
     else if (preset === 53 || preset === 23) effect = 'zoom-in';
     else if (cls !== 'entr') continue;
     const a = { effect, order: ++order, seq: order, start, duration: dur, delay, ...extra };
-    if (b.animation) (b.anims ||= []).push(a); else b.animation = a;         // (an object's next animations)
+    pushAnim(b, a);
   }
 }
 

@@ -3,12 +3,12 @@
 // italic, alignment and bullet. Changes apply at once to every placeholder that
 // didn't override them.
 
+import { esc } from '../../core/text.js';
 import { masterStyles, setMasterStyle, MAX_LEVELS, contextMaster } from '../../features/document/master.js';
 import { FONTS, ensureFont } from '../../features/design/fonts.js';
 import { t } from '../../i18n/index.js';
 
 const BULLETS = [['disc', '●'], ['circle', '○'], ['square', '■'], ['–', '–'], ['›', '›'], ['✓', '✓'], ['★', '★'], ['decimal', '1.'], ['none', t('Ninguna')]];
-const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 export function openTextStyles() {
   document.getElementById('ts2-modal')?.remove();

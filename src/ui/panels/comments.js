@@ -1,11 +1,11 @@
 // Comments side panel for the current slide.
 
+import { esc } from '../../core/text.js';
 import { state, commit, setSelection } from '../../core/store.js';
 import * as cm from '../../features/collab/comments.js';
 import { promptDialog } from '../dialogs/dialog.js';
 import { t, currentLang } from '../../i18n/index.js';
 
-const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const withMentions = s => esc(s).replace(/@([\p{L}\p{N}_.-]+)/gu, '<span class="cm-at">@$1</span>');
 const when = ts => new Date(ts).toLocaleString(currentLang(), { dateStyle: 'short', timeStyle: 'short' });
 
