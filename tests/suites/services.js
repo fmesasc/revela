@@ -337,6 +337,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const dirty = '<b>Hola</b><img src=x onerror="alert(1)"><script>alert(2)</script><a href="javascript:alert(3)">x</a><iframe src="https://e"></iframe><a href="https://ok.es">ok</a>';
     const clean = Sz.cleanHTML(dirty);
     assert(!/onerror|<script|javascript:|<iframe/i.test(clean) && /<b>Hola<\/b>/.test(clean) && /href="https:\/\/ok\.es"/.test(clean), 'HTML limpio: ' + clean);
+    // The newer fields too: a gradient's second colour goes into SVG, device / until into attributes.
+    const nb = Sz.sanitizeDeck({ slides: [{ blocks: [{ type: 'shape', fill: '#fff', fill2: '"/><script>alert(1)</script>', gradType: 'radial"x', device: 'phone" onload="x', until: 'end' }] }] }).slides[0].blocks[0];
+    assert(nb.fill2 === '' && nb.gradType === '' && nb.device === '' && nb.until === 'end', 'degradado, dispositivo y «hasta» limpios');
+    const S = await W.eval("import('/src/render/svg.js')");
+    assert(!/<script|onload/.test(S.timerSVG({ type: 'timer', seconds: 60, color: '"/><script>x</script>', w: 100, h: 100 })), 'la cuenta atrás escapa su color');
+    assert(!/<script/.test(S.curvedTextSVG({ html: '<script>x</script>hola', curve: 40, w: 300, h: 200 })), 'el texto curvo, sin etiquetas');
     eq(Sz.cleanHTML('<p style="color:red">Texto normal</p>'), '<p style="color:red">Texto normal</p>', 'lo normal no se toca');
     // A whole deck opened from a file: fields that go into styles, sources and scripts.
     const deck = R.model.emptyDeck();

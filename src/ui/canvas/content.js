@@ -4,7 +4,7 @@
 import { shortSig } from '../../core/text.js';
 import { esc } from '../../core/text.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
-import { state, commit, currentSlide } from '../../core/store.js';
+import { state, commit, amend, currentSlide } from '../../core/store.js';
 import { borderCSS, tableColsHTML, cellBg, textPadding, webCardHTML, webCardSig, mathTeX, mathCSS, mathSig, shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan, inkSVG, timerSVG, deviceStyle, timerSig, inkSig, tableClass, tableVars } from '../../render/svg.js';
 import { collectFigures, captionLine, figIndexTitle } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
@@ -380,7 +380,8 @@ async function capturePoster(mv, id) {
     const c = document.createElement('canvas'); c.width = Math.round(sw * s); c.height = Math.round(sh * s);
     c.getContext('2d').drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, 0, 0, c.width, c.height);
     const poster = c.toDataURL('image/png');                       // (PNG: transparent, and PowerPoint reads it)
-    if (poster.length > 200) commit(() => { const x = currentSlide()?.blocks.find(y => y.id === id); if (x && !x.poster) x.poster = poster; }, { history: false });
+    // (Part of the step that is already there: not a step of its own that an undo would take first.)
+    if (poster.length > 200) amend(() => { const x = currentSlide()?.blocks.find(y => y.id === id); if (x && !x.poster) x.poster = poster; });
   } catch {}
 }
 export function setupModel(el) {
