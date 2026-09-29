@@ -1235,4 +1235,5 @@ export default {
   "Stickers": "Pegatinak",
   "Pasar al otro lado": "Eraman beste aldera",
   "Clic: añadir a la diapositiva · Arrastrar: soltar donde quieras": "Klik: gehitu diapositibara · Arrastatu: jaregin nahi duzun lekuan",
+  "El servicio está recibiendo demasiadas búsquedas desde tu conexión. Espera un minuto y vuelve a probar.": "Zerbitzuak bilaketa gehiegi jasotzen ari da zure konexiotik. Itxaron minutu bat eta saiatu berriro.",
 };

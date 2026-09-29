@@ -117,8 +117,17 @@ function show(tab) {
 // One result: click adds it; dragging it onto the slide drops it there.
 function item(thumb, title, badge, pick) {
   const i = picks.push(pick) - 1;
-  const b = document.createElement('button'); b.type = 'button'; b.className = 'sk-item'; b.title = title; b.draggable = true;
-  b.innerHTML = `<img loading="lazy" src="${esc(thumb)}" alt="${esc(title)}" referrerpolicy="no-referrer" draggable="false">${badge ? `<span>${esc(badge)}</span>` : ''}`;
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'sk-item'; b.title = title; b.draggable = true; b.dataset.i = i;
+  b.innerHTML = `<img loading="lazy" src="${esc([].concat(thumb)[0])}" alt="${esc(title)}" referrerpolicy="no-referrer" draggable="false">${badge ? `<span>${esc(badge)}</span>` : ''}`;
+  // A preview that can't load (no connection, the service busy): a clear placeholder, not a broken image.
+  // (thumb can be a list of addresses, tried in turn.)
+  // If even the original is gone, the result can't be added either: it goes.
+  const alts = [].concat(thumb).slice(1), withOriginal = alts.length > 0, im = b.querySelector('img');
+  im.addEventListener('error', () => {
+    if (alts.length) { im.src = alts.shift(); return; }
+    if (withOriginal) { b.remove(); return; }
+    im.replaceWith(Object.assign(document.createElement('i'), { className: 'ms el-noimg', textContent: 'image_not_supported', title }));
+  });
   b.addEventListener('click', () => add(b, pick));
   b.addEventListener('dragstart', e => { e.dataTransfer.setData(DRAG, String(i)); e.dataTransfer.effectAllowed = 'copy'; });
   q('.el-grid').appendChild(b);
@@ -148,7 +157,7 @@ function initDrop() {
     stage.classList.remove('el-drop');
     if (!ours(e)) return;
     e.preventDefault();
-    const i = +e.dataTransfer.getData(DRAG), pick = picks[i], b = q('.el-grid').children[i]; if (!pick) return;
+    const i = +e.dataTransfer.getData(DRAG), pick = picks[i], b = q(`.el-grid [data-i="${i}"]`); if (!pick) return;
     const r = stage.getBoundingClientRect(), k = factor();
     add(b || document.createElement('button'), pick, [(e.clientX - r.left) * k, (e.clientY - r.top) * k]);
   });
@@ -167,14 +176,14 @@ async function run(more = false) {
   try {
     if (tab === 'images') {
       const res = await searchImages(term, page, { commercial: q('.el-comm').checked }); full = res.length >= 20;
-      list = res.map(img => [img.thumb, `${img.title} — ${img.creator} (${img.license})`, img.license, () => insertStockImage(img)]);
+      list = res.map(img => [img.previews || img.thumb, `${img.title} — ${img.creator} (${img.license})`, img.license, () => insertStockImage(img)]);
     } else if (tab === 'icons') {
       const { icons, collections } = await searchIcons(term), col = q('.el-color').value;
       list = icons.map(name => { const c = collections[name.split(':')[0]];
         return [iconPreview(name, col), `${name}${c ? ' — ' + c.name + ' (' + c.license?.title + ')' : ''}`, '', () => insertOnlineIcon(name, panel ? q('.el-color').value : col, c?.license)]; });
     } else if (tab === 'gif') {
       const res = await R.searchGifs(term, page); full = res.length >= 20;
-      list = res.map(g => [g.thumb, `${g.title} — ${g.creator} (${g.license})`, g.license, () => R.insertGif(g)]);
+      list = res.map(g => [g.previews || g.thumb, `${g.title} — ${g.creator} (${g.license})`, g.license, () => R.insertGif(g)]);
     } else if (tab === 'stickers') {
       list = R.searchStickers(term).map(s => [s.thumb, s.words, '', () => R.insertSticker(s.code, s.words)]);
     } else if (tab === 'anim3d') {
@@ -186,7 +195,9 @@ async function run(more = false) {
       cursor = r.next; full = !!cursor;
       list = r.results.map(m => [m.thumb, `${m.name} — ${m.user} (${m.license})`, `${m.animated ? '▶ ' : ''}${m.name}`, () => R.insertSketchfab(m)]);
     }
-  } catch (e) { if (id === runs) alertDialog(t('No se pudo buscar: ') + (e.message || e)); }
+  } catch (e) {
+    if (id === runs) alertDialog(/\b429\b/.test(e.message) ? t('El servicio está recibiendo demasiadas búsquedas desde tu conexión. Espera un minuto y vuelve a probar.') : t('No se pudo buscar: ') + (e.message || e));
+  }
   if (!panel || id !== runs || cur !== tab) return;                 // a newer search (or another tab) wins
   q('.sk-go').disabled = false;
   if (!more) { q('.el-grid').innerHTML = ''; picks = []; }

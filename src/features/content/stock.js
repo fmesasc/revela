@@ -21,9 +21,17 @@ export async function searchImages(q, page = 1, { commercial = false, extension 
   if (extension) u.searchParams.set('extension', extension);
   const r = await fetch(u); if (!r.ok) throw new Error('Openverse ' + r.status);
   const d = await r.json();
-  return (d.results || []).map(x => ({ id: x.id, title: x.title || '', url: x.url, thumb: x.thumbnail, width: x.width, height: x.height,
+  return (d.results || []).map(x => ({ id: x.id, title: x.title || '', url: x.url, thumb: x.thumbnail, previews: previewsOf(x), width: x.width, height: x.height,
     creator: x.creator || '', license: `${(x.license || '').toUpperCase()} ${x.license_version || ''}`.trim(), licenseUrl: x.license_url,
     source: x.foreign_landing_url, attribution: x.attribution || '' }));
+}
+// Previews to try in turn. Openverse can't make thumbnails of GIFs (it answers
+// 424), so for Wikimedia's GIFs its own small animated thumbnail comes first
+// (120 px is one of the sizes Wikimedia serves); the original is the last resort.
+const WIKIMEDIA = /^https:\/\/upload\.wikimedia\.org\/wikipedia\/([\w-]+)\/(\w)\/(\w\w)\/([^/?#]+)$/;
+export function previewsOf(x) {
+  const m = WIKIMEDIA.exec(x.url || ''), gif = /\.gif$/i.test(x.url || '');
+  return [...new Set([m && gif && `https://upload.wikimedia.org/wikipedia/${m[1]}/thumb/${m[2]}/${m[3]}/${m[4]}/120px-${m[4]}`, x.thumbnail, x.url].filter(Boolean))];
 }
 const toDataURL = blob => new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = ko; r.readAsDataURL(blob); });
 async function fetchImage(url) { const r = await fetch(url, { mode: 'cors' }); if (!r.ok) throw new Error(r.status); return toDataURL(await r.blob()); }
@@ -45,15 +53,55 @@ export async function insertStockImage(img) {
 export async function searchIcons(q) {
   const r = await fetch(`https://api.iconify.design/search?query=${encodeURIComponent(q)}&limit=96`);
   if (!r.ok) throw new Error('Iconify ' + r.status);
-  const d = await r.json();
-  return { icons: d.icons || [], collections: d.collections || {} };
+  const d = await r.json(), icons = d.icons || [];
+  try { await loadIcons(icons); } catch {}                // (if that fails, the previews are Iconify's images)
+  return { icons, collections: d.collections || {} };
 }
-export const iconPreview = (name, color = '#333333') => `https://api.iconify.design/${name.replace(':', '/')}.svg?color=${encodeURIComponent(color)}`;
+// The icons' drawings, fetched in bulk (one request per icon set, not one per
+// icon: Iconify limits how many requests one address can make) and drawn here.
+const iconData = new Map();                               // 'prefix:name' → { body, width, height, … }
+function resolveIcon(d, name, depth = 0) {
+  const base = { width: d.width || 16, height: d.height || 16, left: d.left || 0, top: d.top || 0 };   // (set defaults)
+  if (d.icons?.[name]) return { ...base, ...d.icons[name] };
+  const al = d.aliases?.[name];
+  if (!al || depth > 5) return null;
+  const parent = resolveIcon(d, al.parent, depth + 1); if (!parent) return null;
+  const { parent: _, ...own } = al;
+  return { ...parent, ...own, rotate: ((parent.rotate || 0) + (own.rotate || 0)) % 4, hFlip: !!parent.hFlip !== !!own.hFlip, vFlip: !!parent.vFlip !== !!own.vFlip };
+}
+export async function loadIcons(names) {
+  const by = {};
+  for (const n of names) { if (iconData.has(n)) continue; const [p, i] = n.split(':'); if (p && i) (by[p] ||= []).push(i); }
+  await Promise.all(Object.entries(by).map(async ([p, list]) => {
+    for (let k = 0; k < list.length; k += 100) {         // (keeps the address short)
+      const part = list.slice(k, k + 100);
+      const r = await fetch(`https://api.iconify.design/${p}.json?icons=${part.join(',')}`);
+      if (!r.ok) throw new Error('Iconify ' + r.status);
+      const d = await r.json();
+      for (const i of part) { const ic = resolveIcon(d, i); if (ic) iconData.set(`${p}:${i}`, ic); }
+    }
+  }));
+  return names.filter(n => iconData.has(n)).length;
+}
+export function iconSVG(name, color = '#333333', size = 0) {
+  const ic = iconData.get(name); if (!ic) return null;
+  const { width: w, height: h } = ic, l = ic.left || 0, tp = ic.top || 0, tf = [];
+  if (ic.hFlip) tf.push(`translate(${2 * l + w} 0) scale(-1 1)`);
+  if (ic.vFlip) tf.push(`translate(0 ${2 * tp + h}) scale(1 -1)`);
+  if (ic.rotate) tf.push(`rotate(${ic.rotate * 90} ${l + w / 2} ${tp + h / 2})`);
+  const body = tf.length ? `<g transform="${tf.join(' ')}">${ic.body}</g>` : ic.body;
+  const dims = size ? ` width="${size}" height="${size}"` : ` width="${w}" height="${h}"`;   // (a square, centred, like Iconify's)
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${l} ${tp} ${w} ${h}"${dims} style="color:${color}" color="${color}">${body.replace(/currentColor/g, color)}</svg>`;
+  return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+}
+// Preview: drawn here when its drawing is loaded, otherwise Iconify's own image.
+export const iconPreview = (name, color = '#333333') => iconSVG(name, color) || `https://api.iconify.design/${name.replace(':', '/')}.svg?color=${encodeURIComponent(color)}`;
 // The icon as a picture stored in the deck. Some browser extensions block
 // fetch() to third parties while letting images load (the previews show but
 // the download fails): then the image itself is drawn to a PNG, and if even
 // that is refused, the icon is linked (it needs a connection to show).
 export async function iconSource(name, color = '#ffffff') {
+  const local = iconSVG(name, color, 512); if (local) return local;
   const url = `https://api.iconify.design/${name.replace(':', '/')}.svg?color=${encodeURIComponent(color)}&width=512&height=512`;
   try {
     const r = await fetch(url);

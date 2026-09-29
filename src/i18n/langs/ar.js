@@ -1235,4 +1235,5 @@ export default {
   "Stickers": "ملصقات",
   "Pasar al otro lado": "النقل إلى الجانب الآخر",
   "Clic: añadir a la diapositiva · Arrastrar: soltar donde quieras": "انقر: أضف إلى الشريحة · اسحب: أفلته حيث تشاء",
+  "El servicio está recibiendo demasiadas búsquedas desde tu conexión. Espera un minuto y vuelve a probar.": "تتلقى الخدمة عمليات بحث كثيرة جدًا من اتصالك. انتظر دقيقة ثم حاول مجددًا.",
 };

@@ -1235,4 +1235,5 @@ export default {
   "Stickers": "Stickers",
   "Pasar al otro lado": "Naar de andere kant",
   "Clic: añadir a la diapositiva · Arrastrar: soltar donde quieras": "Klik: aan de dia toevoegen · Slepen: neerzetten waar je wilt",
+  "El servicio está recibiendo demasiadas búsquedas desde tu conexión. Espera un minuto y vuelve a probar.": "De dienst krijgt te veel zoekopdrachten van je verbinding. Wacht een minuut en probeer het opnieuw.",
 };

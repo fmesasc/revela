@@ -1235,4 +1235,5 @@ export default {
   "Stickers": "Adhesivos",
   "Pasar al otro lado": "Pasar ao outro lado",
   "Clic: añadir a la diapositiva · Arrastrar: soltar donde quieras": "Clic: engadir á diapositiva · Arrastrar: soltar onde queiras",
+  "El servicio está recibiendo demasiadas búsquedas desde tu conexión. Espera un minuto y vuelve a probar.": "O servizo está a recibir demasiadas buscas desde a túa conexión. Agarda un minuto e volve probar.",
 };

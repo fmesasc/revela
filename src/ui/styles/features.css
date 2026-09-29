@@ -347,6 +347,7 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .el-grid{flex:1;min-height:120px;overflow:auto;display:grid;grid-template-columns:repeat(2,1fr);grid-auto-rows:112px;gap:6px;align-content:start}
 .el-grid.small{grid-template-columns:repeat(4,1fr);grid-auto-rows:68px}
 .el-grid.dark .sk-item{background:#2b3038;border-color:#2b3038}
+.el-noimg{display:grid;place-items:center;width:100%;height:100%;color:var(--txt2);font-size:24px}
 .el-grid .host-help{grid-column:1/-1;grid-row:span 2}.el-grid .sk-item{aspect-ratio:auto;height:100%}
 .el-grid .sk-item{cursor:grab}.el-grid.small .sk-item{aspect-ratio:1;padding:6px}.el-grid.small .sk-item img{object-fit:contain}
 .el-foot{display:flex;gap:6px;align-items:center;justify-content:space-between;font-size:11px;color:var(--txt2)}

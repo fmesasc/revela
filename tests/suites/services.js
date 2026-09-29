@@ -175,6 +175,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       if (url.startsWith('https://cdn.bloqueado')) throw new TypeError('CORS');
       if (url.includes('/thumb/')) return new W.Response(new W.Blob([gif], { type: 'image/gif' }));
       if (url.startsWith('https://api.iconify.design/search')) return new W.Response(JSON.stringify({ icons: ['mdi:rocket'], collections: { mdi: { name: 'MDI', license: { title: 'Apache 2.0', spdx: 'Apache-2.0' } } } }));
+      if (url.startsWith('https://api.iconify.design/mdi.json?icons=')) return new W.Response(JSON.stringify({ prefix: 'mdi', width: 24, height: 24, left: -1,
+        icons: { rocket: { body: '<path fill="currentColor" d="M0 0h24v24H0z"/>' } }, aliases: { 'rocket-left': { parent: 'rocket', hFlip: true } } }));
       if (url.startsWith('https://api.iconify.design/mdi/rocket.svg')) return new W.Response('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#ff0000" d="M0 0h24v24H0z"/></svg>');
       return real(url);
     };
@@ -182,23 +184,32 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       const res = await S.searchImages('volcán', 1, { commercial: true });
       assert(/license_type=commercial/.test(calls[0]) && /q=volc/.test(calls[0]), 'búsqueda con filtro comercial');
       eq(res[0].license, 'BY 2.0', 'licencia');
+      eq(S.previewsOf({ url: 'https://upload.wikimedia.org/wikipedia/commons/7/78/Gato.gif', thumbnail: 'https://api.openverse.org/v1/images/x/thumb/' }).join(' '),
+        'https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Gato.gif/120px-Gato.gif https://api.openverse.org/v1/images/x/thumb/ https://upload.wikimedia.org/wikipedia/commons/7/78/Gato.gif',
+        'GIF: miniatura animada de Wikimedia (Openverse no las hace), luego la suya y el original');
       const b = await S.insertStockImage(res[0]);
       assert(calls.some(u => u.includes('/thumb/')), 'si el original no deja descargar, usa la miniatura');
       assert(/^data:image\/gif/.test(b.src), 'imagen incrustada (funciona sin conexión)');
       eq(b.caption, '«Volcán» — NASA (BY 2.0)', 'atribución como pie'); eq(Math.round(b.w / b.h * 9), 16, 'proporción');
       const ic = await S.searchIcons('rocket'); eq(ic.icons[0], 'mdi:rocket', 'iconos');
+      // The drawings come in one request per icon set (Iconify limits one request per icon) and are drawn here.
+      eq(calls.filter(u => u.includes('mdi.json')).length, 1, 'una sola petición para los dibujos');
+      assert(/^data:image\/svg\+xml/.test(S.iconPreview('mdi:rocket', '#ff0000')), 'la vista previa se dibuja aquí, sin pedir cada icono');
+      await S.loadIcons(['mdi:rocket-left']);
+      const flip = atob(S.iconSVG('mdi:rocket-left', '#000', 64).split(',')[1]);
+      assert(/viewBox="-1 0 24 24"/.test(flip) && /scale\(-1 1\)/.test(flip), 'alias volteado, con el desplazamiento de su colección');
       const i = await S.insertOnlineIcon('mdi:rocket', '#ff0000', ic.collections.mdi.license);
       assert(/^data:image\/svg\+xml;base64,/.test(i.src) && atob(i.src.split(',')[1]).includes('#ff0000'), 'icono SVG con color');
       eq(i.alt, 'rocket', 'texto alternativo');
-      assert(calls.some(u => /color=%23ff0000/.test(u)), 'color en la petición');
+      assert(!calls.some(u => u.includes('/mdi/rocket.svg')), 'al insertar tampoco hace falta pedirlo');
     } finally { W.fetch = real; }
     // An extension blocks fetch() but not images: the icon is still inserted.
     W.fetch = async url => { if (String(url).includes('iconify')) throw new TypeError('Failed to fetch'); return real(url); };
     const RealImage = W.Image;
     W.Image = function () { const i = new RealImage(); setTimeout(() => { i.onerror?.(); }, 0); return i; };   // and images too
     try {
-      const i2 = await R.stock.insertOnlineIcon('mdi:rocket', '#00ff00');
-      eq(i2.src, 'https://api.iconify.design/mdi/rocket.svg?color=%2300ff00&width=512&height=512', 'si todo falla, lo enlaza en vez de dar error');
+      const i2 = await R.stock.insertOnlineIcon('mdi:rocket-launch', '#00ff00');
+      eq(i2.src, 'https://api.iconify.design/mdi/rocket-launch.svg?color=%2300ff00&width=512&height=512', 'si todo falla, lo enlaza en vez de dar error');
     } finally { W.fetch = real; W.Image = RealImage; }
   });
 

@@ -491,6 +491,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(P().nextElementSibling === D.getElementById('canvas-wrap'), 'a la izquierda de la diapositiva, por defecto');
       P().querySelector('[data-et="stickers"]').click(); await sleep(50);
       assert(P().querySelectorAll('.sk-item').length > 80, 'la pestaña de stickers se ve sin buscar');
+      const bad = P().querySelectorAll('.sk-item img')[5]; bad.dispatchEvent(new W.Event('error'));
+      assert(!bad.isConnected && P().querySelectorAll('.sk-item')[5].querySelector('.el-noimg'), 'una vista previa que no carga no sale como imagen rota');
       const n0 = slide().blocks.length; P().querySelector('.sk-item').click(); await sleep(150);
       eq(slide().blocks.length, n0 + 1, 'clic: se añade'); assert(P(), 'y el panel sigue abierto para seguir buscando');
       P().querySelectorAll('.sk-item')[1].click(); await sleep(150); eq(slide().blocks.length, n0 + 2, 'otro más');
