@@ -430,6 +430,8 @@ export default {
   "Dona": "Erroskila",
   "Dispersión": "Sakabanaketa",
   "Radar": "Radarra",
+  "Fuentes de la presentación": "Aurkezpeneko letra-tipoak",
+  "Subir una fuente (.ttf, .otf, .woff)…": "Igo letra-tipo bat (.ttf, .otf, .woff)…",
   "Cuestionario (con respuesta correcta y puntos)": "Galdetegia (erantzun zuzenarekin eta puntuekin)",
   "Clasificación de los cuestionarios": "Galdetegien sailkapena",
   "Cuestionario: pon un asterisco (*) delante de la respuesta correcta. Acertar da de 500 a 1000 puntos, más cuanto antes; al acabar el tiempo (o con un clic) se ve la respuesta y quién va ganando.": "Galdetegia: jarri izartxo bat (*) erantzun zuzenaren aurrean. Asmatzeak 500 eta 1000 puntu artean ematen ditu, azkarrago orduan eta gehiago; denbora amaitzean (edo klik batez) erantzuna eta nor doan irabazten ikusten dira.",

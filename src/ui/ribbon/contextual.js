@@ -250,7 +250,7 @@ export function renderContextual() {
   }
 }
 // The deck's fonts, as in Home's font list.
-const fontOptions = () => [['', 'Del tema'], ...[...(document.querySelector('#ribbon [data-font]')?.options || [])].filter(o => o.value).map(o => [o.value, o.textContent])];
+const fontOptions = () => [['', 'Del tema'], ...[...(document.querySelector('#ribbon [data-font]')?.options || [])].filter(o => o.value && o.value !== '__upload').map(o => [o.value, o.textContent])];
 function control(c) {
   if (c[0] === 'ibtn') {                                     // icon only; keeps the text selection while editing
     const [, icon, label, fn, on] = c, el = document.createElement('button'); el.type = 'button'; el.title = t(label);

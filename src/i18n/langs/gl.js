@@ -418,6 +418,8 @@ export default {
   "Dona": "Rosca",
   "Dispersión": "Dispersión",
   "Radar": "Radar",
+  "Fuentes de la presentación": "Fontes da presentación",
+  "Subir una fuente (.ttf, .otf, .woff)…": "Subir unha fonte (.ttf, .otf, .woff)…",
   "Cuestionario (con respuesta correcta y puntos)": "Cuestionario (con resposta correcta e puntos)",
   "Clasificación de los cuestionarios": "Clasificación dos cuestionarios",
   "Cuestionario: pon un asterisco (*) delante de la respuesta correcta. Acertar da de 500 a 1000 puntos, más cuanto antes; al acabar el tiempo (o con un clic) se ve la respuesta y quién va ganando.": "Cuestionario: pon un asterisco (*) diante da resposta correcta. Acertar dá de 500 a 1000 puntos, máis canto antes; ao acabar o tempo (ou cun clic) vese a resposta e quen vai gañando.",

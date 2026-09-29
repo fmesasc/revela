@@ -26,8 +26,9 @@ import { SHAPE_NAMES, shapeThumb } from '../../render/svg.js';
 import { startFreeform } from '../canvas/freeform.js';
 import { resizeDeck } from '../../features/design/resize.js';
 import { setDrawTool, drawOpts } from '../shell/draw.js';
-import { FONTS, ensureDeckFonts } from '../../features/design/fonts.js';
+import { FONTS, ensureDeckFonts, customFonts, customStack, syncCustomFonts, fontDataURL } from '../../features/design/fonts.js';
 import { t } from '../../i18n/index.js';
+import { readFile } from '../shell/openfile.js';
 import { animPaint, endAnimPaint, ACTIONS } from './actions.js';
 import { applyZoom, fitZoom, zoomFitting } from './zoom.js';
 import { closePopover, togglePopover } from './popovers.js';
@@ -36,15 +37,17 @@ const $ = s => document.querySelector(s);
 
 // Fill the font picker from the catalogue (each option shown in its own font
 // where already available).
+// Then the presentation's own fonts, and «Subir una fuente…» to add one.
+let fontsKey = null;
 function populateFonts() {
   const sel = $('[data-font]'); if (!sel) return;
-  sel.innerHTML = '';
-  for (const f of FONTS) {
-    const o = document.createElement('option');
-    o.value = f.stack; o.textContent = f.name;
-    if (f.stack) o.style.fontFamily = f.stack;
-    sel.appendChild(o);
-  }
+  const own = customFonts(state.deck), key = own.map(f => f.name).join('|'); if (key === fontsKey) return; fontsKey = key;
+  const cur = sel.value; sel.innerHTML = '';
+  const add = (parent, value, name, family) => { const o = document.createElement('option'); o.value = value; o.textContent = name; if (family) o.style.fontFamily = family; parent.appendChild(o); };
+  for (const f of FONTS) add(sel, f.stack, f.name, f.stack);
+  if (own.length) { const g = document.createElement('optgroup'); g.label = t('Fuentes de la presentación'); own.forEach(f => add(g, customStack(f.name), f.name, customStack(f.name))); sel.appendChild(g); }
+  add(sel, '__upload', t('Subir una fuente (.ttf, .otf, .woff)…'));
+  sel.value = cur;
 }
 
 // Insert ▸ Shapes: the most used, drawn as they are, in three rows (the rest in «Más formas»).
@@ -178,7 +181,15 @@ export function initRibbon() {
   bindChange('[data-theme]', v => commit(() => (state.deck.theme = v)));
   bindChange('[data-speed]', v => trans.setTransitionSpeed(v));
   bindChange('[data-deck-transition]', v => trans.setDeckTransition(v));
-  bindChange('[data-font]', v => format.fontFamily(v));
+  bindChange('[data-font]', v => {
+    if (v !== '__upload') { format.fontFamily(v); return; }
+    $('[data-font]').value = '';
+    readFile('.ttf,.otf,.woff,.woff2', f => {                  // (the file itself: its name is the font's)
+      const r = new FileReader();
+      r.onload = () => { const stack = blocks.addCustomFont(f.name.replace(/\.[^.]+$/, ''), fontDataURL(r.result, f.name)); syncCustomFonts(state.deck); format.fontFamily(stack); };
+      r.readAsDataURL(f);
+    }, 'file');
+  });
   bindChange('[data-morphby]', v => slides.setMorphBy(v));
   bindChange('[data-line-dash]', v => blocks.setLineDash(v));
   bindChange('[data-size]', v => format.setFontSize(parseInt(v, 10) || 40));
@@ -302,6 +313,7 @@ export function markOverflow(page) {
   page.classList.toggle('more-left', more && page.scrollLeft > 2);
 }
 export function renderRibbon() {
+  populateFonts(); syncCustomFonts(state.deck);
   ensureDeckFonts(state.deck);   // load any Google fonts the deck uses
   document.querySelectorAll('[data-tab]').forEach(t => t.classList.toggle('active', t.dataset.tab === state.ui.activeTab));
   // (On a narrow screen the tabs scroll: keep the active one in view.)

@@ -1,6 +1,22 @@
 // Text and formatting: fonts, paragraphs, lists, styles, WordArt, links, find & replace, languages.
 
 export default async function ({ R, D, frame, test, sleep, assert, eq, reset, slide, last, select, richOf, newText }) {
+  await test('fuentes propias: se suben, van dentro de la presentación y se usan como las demás', async () => {
+    reset(); const W = frame.contentWindow, F = await W.eval("import('/src/features/design/fonts.js')");
+    const data = F.fontDataURL('data:application/octet-stream;base64,AAEAAAALAIAAAwAwT1MvMg==', 'MiMarca-Bold.ttf');
+    eq(data.slice(0, 20), 'data:font/ttf;base64', 'con su tipo de fuente');
+    const stack = R.blocks.addCustomFont('Mi Marca', data); await sleep(20);
+    eq(stack, '"Mi Marca", sans-serif', 'su nombre, para usarla');
+    const sel = D.querySelector('#ribbon [data-font]');
+    assert([...sel.querySelectorAll('optgroup option')].some(o => o.value === stack), 'en el selector, entre las fuentes de la presentación');
+    assert([...sel.options].some(o => o.value === '__upload'), 'y la opción para subir otra');
+    assert(/@font-face\{font-family:"Mi Marca";src:url\(data:font\/ttf;base64,/.test(D.getElementById('rv-custom-fonts')?.textContent || ''), 'el editor la conoce');
+    const b = newText(); R.store.commit(() => { slide().blocks.find(x => x.id === b.id).fontFamily = stack; }); await sleep(10);
+    assert(/@font-face\{font-family:"Mi Marca"/.test(R.io.buildHTML()), 'la presentación la lleva dentro');
+    // Nothing that could break out of the style sheet.
+    eq(F.customFonts({ fonts: [{ name: 'x";}body{display:none', src: data }, { name: 'Ok', src: 'data:font/ttf;base64,AA)};' }] }).length, 0, 'nombres y datos raros, fuera');
+  });
+
   await test('el cuadro de texto se renderiza con .rich editable-capable', async () => {
     reset(); const b = newText(); await sleep(20);
     assert(richOf(b), 'no hay .rich en el DOM');

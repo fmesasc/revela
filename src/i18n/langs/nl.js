@@ -418,6 +418,8 @@ export default {
   "Dona": "Ring",
   "Dispersión": "Spreiding",
   "Radar": "Radar",
+  "Fuentes de la presentación": "Lettertypen van de presentatie",
+  "Subir una fuente (.ttf, .otf, .woff)…": "Lettertype uploaden (.ttf, .otf, .woff)…",
   "Cuestionario (con respuesta correcta y puntos)": "Quiz (met goed antwoord en punten)",
   "Clasificación de los cuestionarios": "Ranglijst van de quizzen",
   "Cuestionario: pon un asterisco (*) delante de la respuesta correcta. Acertar da de 500 a 1000 puntos, más cuanto antes; al acabar el tiempo (o con un clic) se ve la respuesta y quién va ganando.": "Quiz: zet een sterretje (*) voor het goede antwoord. Goed geeft 500 tot 1000 punten, meer naarmate je sneller bent; als de tijd om is (of met een klik) zie je het antwoord en wie er wint.",

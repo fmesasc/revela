@@ -235,6 +235,12 @@ export async function setChartMap(id, scope = 'world') {
     if (!mapMatch(map, b.data || []).size) { b.data = MAP_SAMPLES[scope].map(([label, value]) => ({ label, value })); delete b.series; }
   });
 }
+// One of the presentation's own fonts (a .ttf, .otf or .woff file): kept inside it; returns its CSS stack.
+export function addCustomFont(name, dataURL) {
+  name = String(name || '').replace(/[^\p{L}\p{N} ._-]+/gu, ' ').trim().slice(0, 40) || 'Fuente propia';
+  commit(() => { state.deck.fonts = [...(state.deck.fonts || []).filter(f => f.name !== name), { name, src: dataURL }]; });
+  return `"${name}", sans-serif`;
+}
 // A freeform shape drawn by hand: its outline (slide points) as a closed shape
 // in its own box (points 0…100, kept as a ring so it merges and exports to PowerPoint).
 export function addFreeform(points) {

@@ -112,9 +112,30 @@ export function ensureDeckFonts(deck) {
   for (const f of googleFamiliesInDeck(deck)) inject(f);
 }
 
-// <link> tags to embed those families in the exported presentation.
+// <link> tags to embed those families in the exported presentation (and the
+// presentation's own fonts, below, inside it).
 export function googleFontLinks(deck) {
   const fams = googleFamiliesInDeck(deck);
-  if (!fams.length) return '';
-  return fams.map(f => `<link rel="stylesheet" href="${googleUrl(f)}">`).join('\n');
+  return fams.map(f => `<link rel="stylesheet" href="${googleUrl(f)}">`).join('\n') + (customFonts(deck).length ? `\n<style>${customFontCSS(deck)}</style>` : '');
+}
+
+// The presentation's own fonts (a school's or a brand's .ttf, .otf, .woff):
+// kept inside it, like its pictures, so they travel with it. Only names made
+// of letters, numbers, spaces, dots and dashes, and fonts as data.
+const FONT_DATA = /^data:font\/(ttf|otf|woff2?|sfnt);base64,[A-Za-z0-9+/=]+$/;
+const FONT_NAME = /^[\p{L}\p{N} ._-]{1,40}$/u;
+export const customFonts = deck => (deck?.fonts || []).filter(f => f && FONT_NAME.test(f.name || '') && FONT_DATA.test(f.src || ''));
+export const customStack = name => `"${name}", sans-serif`;
+export const customFontCSS = deck => customFonts(deck).map(f => `@font-face{font-family:"${f.name}";src:url(${f.src});font-display:swap}`).join('');
+// In the editor: the page knows the presentation's fonts (a style element kept up to date).
+let fontKey = '';
+export function syncCustomFonts(deck, doc = document) {
+  const list = customFonts(deck), key = list.map(f => f.name + f.src.length).join('|'); if (key === fontKey) return; fontKey = key;
+  let st = doc.getElementById('rv-custom-fonts'); if (!st) { st = doc.createElement('style'); st.id = 'rv-custom-fonts'; doc.head.appendChild(st); }
+  st.textContent = customFontCSS(deck);
+}
+// A font file as a data URL with the right type (browsers don't always say it).
+export function fontDataURL(dataURL, fileName) {
+  const ext = (/\.(ttf|otf|woff2?)$/i.exec(fileName || '')?.[1] || 'ttf').toLowerCase();
+  return dataURL.replace(/^data:[^;,]*/, 'data:font/' + ext);
 }

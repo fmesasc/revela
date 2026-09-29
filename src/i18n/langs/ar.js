@@ -430,6 +430,8 @@ export default {
   "Dona": "دائري مجوف",
   "Dispersión": "مبعثر",
   "Radar": "رادار",
+  "Fuentes de la presentación": "خطوط العرض",
+  "Subir una fuente (.ttf, .otf, .woff)…": "رفع خط (.ttf، .otf، .woff)…",
   "Cuestionario (con respuesta correcta y puntos)": "اختبار (بإجابة صحيحة ونقاط)",
   "Clasificación de los cuestionarios": "ترتيب الاختبارات",
   "Cuestionario: pon un asterisco (*) delante de la respuesta correcta. Acertar da de 500 a 1000 puntos, más cuanto antes; al acabar el tiempo (o con un clic) se ve la respuesta y quién va ganando.": "اختبار: ضع نجمة (*) قبل الإجابة الصحيحة. الإجابة الصحيحة تمنح من 500 إلى 1000 نقطة، أكثر كلما كانت أسرع؛ عند انتهاء الوقت (أو بنقرة) تظهر الإجابة ومن يتصدر.",
