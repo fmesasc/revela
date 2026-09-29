@@ -25,7 +25,7 @@ import { alertDialog } from '../dialogs/dialog.js';
 import { startPathDraw } from '../canvas/pathdraw.js';
 import { openAddAnimation } from './animadd.js';
 import { openAnimPanel } from '../panels/animation.js';
-import { animsOf } from '../../features/animation/transitions.js';
+import { animsOf, setAnimation, clearAnimation } from '../../features/animation/transitions.js';
 import { playAnimations } from '../canvas/preview.js';
 import { playInEditor } from '../canvas/mediaview.js';
 import { fitTextToBox } from '../canvas/canvas.js';
@@ -117,6 +117,8 @@ function groupsFor(b) {
   else if (b.type === 'math') G.push(['Ecuación', [btn('functions', 'Editar ecuación', () => openMath(b)), btn('format_color_fill', 'Relleno y borde', () => openBoxStyle(b))]]);
   else if (b.type === 'code') G.push(['Código', [btn('code', 'Editar código y pasos', () => openCodeEditor(b))]]);
   else if (b.type === 'poll') G.push(['Votación', [btn('how_to_vote', 'Editar votación', () => openPollEditor(b))]]);
+  // Ink replay: when presenting, the drawing traces itself (the "Draw" effect).
+  else if (b.type === 'ink') G.push(['Dibujo', [btn('gesture', 'Trazar al presentar', () => (b.animation?.effect === 'draw' ? clearAnimation() : setAnimation('draw')), b.animation?.effect === 'draw')]]);
   else if (b.type === 'icon') G.push(['Icono', [btn('palette', 'Color del icono', () => openIconColor(b))]]);
   else if (b.type === 'embed') G.push(['Web', [btn(b.display === 'card' ? 'web' : 'link', b.display === 'card' ? 'Mostrar la web' : 'Mostrar como tarjeta', () => blocks.setEmbedDisplay(b.id, b.display === 'card' ? 'frame' : 'card'))]]);
   else if (b.type === 'slideref') G.push(['Zoom', [btn('slideshow', 'Elegir diapositiva', () => openSlidePicker(b)), btn('undo', 'Volver aquí', () => blocks.toggleSlideRefReturn(), !!b.returnBack)]]);

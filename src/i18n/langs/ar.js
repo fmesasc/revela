@@ -430,6 +430,8 @@ export default {
   "Dona": "دائري مجوف",
   "Dispersión": "مبعثر",
   "Radar": "رادار",
+  "Trazar al presentar": "الرسم عند العرض",
+  "Traza el dibujo, la forma o la tinta como si se estuviera dibujando": "يرسم الرسم أو الشكل أو الحبر كأنه يُرسم الآن",
   "Tipo de relleno": "نوع التعبئة",
   "Sólido": "صلب",
   "Degradado lineal": "تدرج خطي",

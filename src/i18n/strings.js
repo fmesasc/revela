@@ -429,6 +429,8 @@ export const ROWS = [
   ['Dona', 'Doughnut', 'Anneau', 'Ring', 'Ciambella', 'Rosca', 'Rosco'],
   ['Dispersión', 'Scatter', 'Nuage de points', 'Punktdiagramm', 'Dispersione', 'Dispersão', 'Dispersió'],
   ['Radar', 'Radar', 'Radar', 'Netz', 'Radar', 'Radar', 'Radar'],
+  ['Trazar al presentar', 'Draw when presenting', 'Tracer pendant la présentation', 'Beim Präsentieren zeichnen', 'Tracciare durante la presentazione', 'Traçar ao apresentar', 'Traçar en presentar'],
+  ['Traza el dibujo, la forma o la tinta como si se estuviera dibujando', 'Traces the drawing, shape or ink as if it were being drawn', 'Trace le dessin, la forme ou l\'encre comme si on le dessinait', 'Zeichnet die Zeichnung, Form oder Freihandlinie, als würde sie gerade entstehen', 'Traccia il disegno, la forma o l\'inchiostro come se venisse disegnato', 'Traça o desenho, a forma ou a tinta como se estivesse a ser desenhado', 'Traça el dibuix, la forma o la tinta com si s\'estigués dibuixant'],
   ['Tipo de relleno', 'Fill type', 'Type de remplissage', 'Füllungsart', 'Tipo di riempimento', 'Tipo de preenchimento', 'Tipus d\'emplenament'],
   ['Sólido', 'Solid', 'Uni', 'Einfarbig', 'Tinta unita', 'Sólido', 'Sòlid'],
   ['Degradado lineal', 'Linear gradient', 'Dégradé linéaire', 'Linearer Verlauf', 'Sfumatura lineare', 'Gradiente linear', 'Degradat lineal'],

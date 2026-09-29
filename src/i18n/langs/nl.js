@@ -418,6 +418,8 @@ export default {
   "Dona": "Ring",
   "Dispersión": "Spreiding",
   "Radar": "Radar",
+  "Trazar al presentar": "Tekenen tijdens presenteren",
+  "Traza el dibujo, la forma o la tinta como si se estuviera dibujando": "Tekent de tekening, vorm of inkt alsof hij net getekend wordt",
   "Tipo de relleno": "Soort opvulling",
   "Sólido": "Effen",
   "Degradado lineal": "Lineair verloop",

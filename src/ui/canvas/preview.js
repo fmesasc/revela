@@ -15,8 +15,17 @@ function walkIn(el, dur, delay) {
 
 // ---- Animation preview -----------------------------------------------------
 export const KEYFRAME = EFFECT_KF;
+// "Draw": the outlines trace themselves (PowerPoint's ink replay), the fill comes at the end.
+const DRAW = [{ strokeDasharray: '1', strokeDashoffset: '1', fillOpacity: 0 }, { fillOpacity: 0, offset: 0.7 }, { strokeDasharray: '1', strokeDashoffset: '0', fillOpacity: 1 }];
+function drawIn(el, dur, delay) {
+  const parts = el.querySelectorAll('svg .rvd');
+  if (!parts.length) return false;
+  const out = [...parts].map(p => p.animate(DRAW, { duration: dur, delay, easing: 'ease-in-out', fill: 'backwards' }));
+  return out;
+}
 export function animateEl(el, anim, dur, delay) {
   const effect = anim.effect;
+  if (effect === 'draw' && drawIn(el, dur, delay)) return;
   if (effect === 'path') {                        // motion path: along it (turning, if so) and back
     const model = !!el.querySelector('model-viewer');
     el.animate(motionFrames(anim).map(([x, y, r]) => ({ translate: `${x}px ${y}px`, rotate: model ? '0deg' : `${r}deg` })),
@@ -56,6 +65,7 @@ export function playAnimations() {
     if (!b.anims?.length) { animateEl(el, a, at.dur, when); continue; }
     // A sequence: every step kept (added up) until the end, then all undone.
     const opts = { duration: at.dur, delay: when, easing: 'ease-in-out', fill: 'forwards', composite: i ? 'add' : 'replace' };
+    if (a.effect === 'draw' && drawIn(el, at.dur, when)) continue;
     if (a.effect === 'clip3d') {
       const mv = el.querySelector('model-viewer'); models3d ||= model3dRuntime();
       if (mv) setTimeout(() => models3d.clip(mv, a.clip || '*', !!a.once), when);

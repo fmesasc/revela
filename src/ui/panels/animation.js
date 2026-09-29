@@ -15,7 +15,7 @@ const $ = s => document.querySelector(s);
 export const ANIM_EFFECTS = ['fade-in', 'fade-up', 'fade-down', 'fade-left', 'fade-right', 'zoom-in',
   'spin', 'flip', 'bounce', 'grow', 'shrink', 'strike', 'fade-out', 'semi-fade-out', 'fade-in-then-out', 'fade-in-then-semi-out',
   'current-visible', 'highlight-red', 'highlight-green', 'highlight-blue', 'highlight-current-red', 'highlight-current-green',
-  'highlight-current-blue', 'spin360', 'path'];
+  'highlight-current-blue', 'spin360', 'path', 'draw'];
 // Readable names (reveal.js fragment styles and Revela's own effects).
 export const EFFECT_NAMES = { 'fade-in': 'Aparecer', 'fade-up': 'Subir', 'fade-down': 'Bajar', 'fade-left': 'Desde la derecha',
   'fade-right': 'Desde la izquierda', 'zoom-in': 'Zoom', spin: 'Girar', flip: 'Voltear', bounce: 'Rebotar', grow: 'Agrandar',
@@ -23,7 +23,7 @@ export const EFFECT_NAMES = { 'fade-in': 'Aparecer', 'fade-up': 'Subir', 'fade-d
   'fade-in-then-semi-out': 'Aparecer y atenuar', 'current-visible': 'Visible solo en su paso', 'highlight-red': 'Resaltar en rojo',
   'highlight-green': 'Resaltar en verde', 'highlight-blue': 'Resaltar en azul', 'highlight-current-red': 'Rojo solo en su paso',
   'highlight-current-green': 'Verde solo en su paso', 'highlight-current-blue': 'Azul solo en su paso', path: 'Trayectoria',
-  spin360: 'Dar una vuelta', clip3d: 'Animación del modelo 3D' };
+  spin360: 'Dar una vuelta', clip3d: 'Animación del modelo 3D', draw: 'Dibujar' };
 export const EFFECT_LABEL = e => t(EFFECT_NAMES[e] || e);
 // Short label of an object for the trigger list.
 export function objLabel(b) {

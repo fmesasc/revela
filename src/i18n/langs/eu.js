@@ -430,6 +430,8 @@ export default {
   "Dona": "Erroskila",
   "Dispersión": "Sakabanaketa",
   "Radar": "Radarra",
+  "Trazar al presentar": "Aurkeztean marraztu",
+  "Traza el dibujo, la forma o la tinta como si se estuviera dibujando": "Marrazkia, forma edo tinta marrazten ari balitz bezala trazatzen du",
   "Tipo de relleno": "Betegarri mota",
   "Sólido": "Solidoa",
   "Degradado lineal": "Gradiente lineala",

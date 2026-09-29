@@ -418,6 +418,8 @@ export default {
   "Dona": "Rosca",
   "Dispersión": "Dispersión",
   "Radar": "Radar",
+  "Trazar al presentar": "Trazar ao presentar",
+  "Traza el dibujo, la forma o la tinta como si se estuviera dibujando": "Traza o debuxo, a forma ou a tinta coma se se estivese debuxando",
   "Tipo de relleno": "Tipo de recheo",
   "Sólido": "Sólido",
   "Degradado lineal": "Degradado lineal",

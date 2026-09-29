@@ -262,7 +262,7 @@ export function inkPath(pts) {
 }
 export function inkSVG(b) {
   return `<svg viewBox="0 0 ${b.vw || b.w} ${b.vh || b.h}" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">`
-    + `<path d="${inkPath(b.points)}" fill="none" stroke="${b.color || '#ff2d2d'}" stroke-width="${b.width || 4}" `
+    + `<path d="${inkPath(b.points)}" pathLength="1" class="rvd" fill="none" stroke="${b.color || '#ff2d2d'}" stroke-width="${b.width || 4}" `
     + `stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"${b.hl ? ' stroke-opacity="0.4"' : ''}/></svg>`;
 }
 export const inkSig = b => (b.points?.length || 0) + '|' + (b.color || '') + '|' + (b.width || '') + '|' + (b.hl ? 1 : 0);
@@ -352,13 +352,15 @@ export function shapeSVG(b) {
   const fill = d.fill;
   const stroke = b.stroke || '#1e2a3a';
   const sw = b.strokeWidth ?? 2;
-  const paint = `fill="${fill}" stroke="${stroke}" stroke-width="${sw}" vector-effect="non-scaling-stroke"${dashAttr(b.dash, sw)}`;
-  const strokeOnly = `fill="none" stroke="${stroke}" stroke-width="${sw}" vector-effect="non-scaling-stroke" stroke-linecap="round"${dashAttr(b.dash, sw)}`;
+  // (pathLength 1: the "Draw" effect traces any outline with a dash of its whole length; not on dashed lines, whose dashes are in px.)
+  const pl = b.dash && b.dash !== 'solid' ? '' : ' pathLength="1" class="rvd"';
+  const paint = `fill="${fill}" stroke="${stroke}" stroke-width="${sw}" vector-effect="non-scaling-stroke"${pl}${dashAttr(b.dash, sw)}`;
+  const strokeOnly = `fill="none" stroke="${stroke}" stroke-width="${sw}" vector-effect="non-scaling-stroke" stroke-linecap="round"${pl}${dashAttr(b.dash, sw)}`;
   const outline = b.sketch && outlineOf(b);
   if (outline) {
-    const rnd = rng(Math.abs(hash(b.id || 'x'))), line = `fill="none" stroke="${stroke}" stroke-width="${Math.max(1, sw)}" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"`;
+    const rnd = rng(Math.abs(hash(b.id || 'x'))), line = `fill="none" stroke="${stroke}" stroke-width="${Math.max(1, sw)}" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" pathLength="1" class="rvd"`;
     return `<svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" style="display:block;overflow:visible">${d.defs}`
-      + `<path d="${sketchFill(outline, rnd)}" fill="${fill}" stroke="none"/>`
+      + `<path d="${sketchFill(outline, rnd)}" fill="${fill}" stroke="none" pathLength="1" class="rvd"/>`
       + (sw > 0 ? `<path d="${sketchPath(outline, rnd, 1.5)}" ${line}/><path d="${sketchPath(outline, rnd, 1.5)}" ${line} opacity=".7"/>` : '') + `</svg>`;
   }
   // Rounded rectangles in their real size, so the corners stay round when

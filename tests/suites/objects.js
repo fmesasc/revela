@@ -571,6 +571,24 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     sel().value = 'solid'; sel().dispatchEvent(new W.Event('change')); await sleep(20); assert(!last().fill2, 'vuelta a sólido');
   });
 
+  await test('efecto «Dibujar»: la tinta y las formas se trazan al presentar (reproducir la tinta)', async () => {
+    reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
+    const ink = { id: 'k1', type: 'ink', points: [[0, 0], [50, 40], [100, 10]], color: '#ff0000', width: 6, x: 100, y: 100, w: 100, h: 40, vw: 100, vh: 40, rotation: 0, animation: null };
+    assert(/pathLength="1" class="rvd"/.test(S.inkSVG(ink)), 'el trazo de la tinta, listo para dibujarse');
+    const sh = { id: 's1', type: 'shape', shape: 'rect', fill: '#00f', stroke: '#000', strokeWidth: 2, x: 0, y: 0, w: 100, h: 100 };
+    assert(/class="rvd"/.test(S.shapeSVG(sh)) && !/class="rvd"/.test(S.shapeSVG({ ...sh, dash: 'dash' })), 'las formas también (las de guiones no: sus guiones son en píxeles)');
+    // From the drawing's own tab.
+    R.store.commit(() => { slide().blocks.push(ink); R.state.ui.selection = 'k1'; R.state.ui.multi = ['k1']; R.state.ui.activeTab = 'ctx'; }); await sleep(30);
+    const bt = () => [...D.querySelectorAll('#ribbon [data-page="ctx"] button')].find(x => x.querySelector('span')?.textContent === 'Trazar al presentar');
+    bt().click(); await sleep(20);
+    const k = () => slide().blocks.find(x => x.id === 'k1');
+    assert(k().animation?.effect === 'draw' && k().animation.duration >= 1000, 'la pestaña Dibujo lo pone, con tiempo para trazarse');
+    const html = R.io.buildHTML();
+    assert(/class="fragment draw"/.test(html) && /\.fragment\.draw\.visible \.rvd\{animation:rvDraw/.test(html) && /@keyframes rvDraw/.test(html), 'al presentar se traza');
+    bt().click(); await sleep(20); assert(!k().animation, 'y se quita con el mismo botón');
+    assert(D.querySelector('#ribbon [data-animation="draw"]'), 'también en Animaciones');
+  });
+
   await test('modelos 3D: margen para moverse (la mano que saluda no se corta en el borde)', async () => {
     reset(); const W = frame.contentWindow, M = await W.eval("import('/src/features/content/model3d.js')");
     const base = { id: 'm1', type: 'model', src: 'data:model/gltf-binary;base64,AAAA', x: 100, y: 100, w: 200, h: 100, rotation: 0, animation: null };

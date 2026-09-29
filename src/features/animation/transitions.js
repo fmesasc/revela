@@ -86,7 +86,7 @@ export const EFFECT_KF = {
   'zoom-in': 'rvZoom', 'grow': 'rvGrow', 'shrink': 'rvShrink', 'spin': 'rvSpin', 'flip': 'rvFlip', 'bounce': 'rvBounce',
   'fade-out': 'rvOut', 'semi-fade-out': 'rvSemi', 'fade-in-then-out': 'rvInOut', 'fade-in-then-semi-out': 'rvInSemi', 'current-visible': 'rvInOut',
   'highlight-current-red': 'rvHi', 'highlight-current-green': 'rvHi', 'highlight-current-blue': 'rvHi', 'highlight-red': 'rvHi', 'highlight-green': 'rvHi', 'highlight-blue': 'rvHi',
-  'strike': 'rvIn', 'path': 'rvPath', 'spin360': 'rvTurn',
+  'strike': 'rvIn', 'path': 'rvPath', 'spin360': 'rvTurn', 'draw': 'rvIn',
 };
 export const EFFECT_KF_CSS = `@keyframes rvIn{from{opacity:0}to{opacity:1}}
 @keyframes rvUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:none}}
@@ -221,7 +221,7 @@ export function animEntries(slide = currentSlide()) {
   return out.sort((x, y) => x.k - y.k);
 }
 const nextSeq = () => animEntries().reduce((m, e) => Math.max(m, e.a.seq ?? e.k), 0) + 1;
-const fresh = (effect, props = {}) => ({ effect, order: animEntries().length + 1, seq: nextSeq(), start: 'click', duration: effect === 'path' ? 2000 : 500, delay: 0,
+const fresh = (effect, props = {}) => ({ effect, order: animEntries().length + 1, seq: nextSeq(), start: 'click', duration: effect === 'path' ? 2000 : effect === 'draw' ? 1500 : 500, delay: 0,
   ...(effect === 'path' && { dx: 200, dy: 0 }), ...props });
 
 export function setAnimation(effect) {
@@ -230,6 +230,7 @@ export function setAnimation(effect) {
     if (b.animation) b.animation.effect = effect;
     else b.animation = fresh(effect);                      // (a path takes longer than a fade)
     if (effect === 'path' && !b.animation.dx && !b.animation.dy) b.animation.dx = 200;
+    if (effect === 'draw' && (b.animation.duration || 0) < 1000) b.animation.duration = 1500;   // (tracing takes a while)
     normalizeAnim();
   });
 }
