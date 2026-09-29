@@ -1230,4 +1230,9 @@ export default {
   "Espacio": "Espazioa",
   "Mapa mental": "Buru-mapa",
   "¿Colocar también las diapositivas a lo largo del recorrido del diseño? (La primera mostrará todo el lienzo.)": "Diapositibak ere diseinuaren ibilbidean jarri? (Lehenengoak oihal osoa erakutsiko du.)",
+  "Imágenes": "Irudiak",
+  "GIF": "GIFak",
+  "Stickers": "Pegatinak",
+  "Pasar al otro lado": "Eraman beste aldera",
+  "Clic: añadir a la diapositiva · Arrastrar: soltar donde quieras": "Klik: gehitu diapositibara · Arrastatu: jaregin nahi duzun lekuan",
 };

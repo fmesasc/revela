@@ -100,5 +100,7 @@ export const STICKERS = [
   ['1f393', "graduación graduation"],
   ['1f4f8', "foto cámara camera"],
 ];
-export const stickerURL = (code, size = 512) => `https://fonts.gstatic.com/s/e/notoemoji/latest/${code}/${size}.gif`;
+export const stickerURL = code => `https://fonts.gstatic.com/s/e/notoemoji/latest/${code}/512.gif`;
+// Light still preview for the search grid (there is no smaller GIF).
+export const stickerThumb = code => `https://fonts.gstatic.com/s/e/notoemoji/latest/${code}/emoji.svg`;
 export const STICKER_CREDIT = 'Noto Emoji animado — Google (CC BY 4.0)';

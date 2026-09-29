@@ -1230,4 +1230,9 @@ export default {
   "Espacio": "Espazo",
   "Mapa mental": "Mapa mental",
   "¿Colocar también las diapositivas a lo largo del recorrido del diseño? (La primera mostrará todo el lienzo.)": "Colocar tamén as diapositivas ao longo do percorrido do deseño? (A primeira amosará todo o lenzo.)",
+  "Imágenes": "Imaxes",
+  "GIF": "GIF",
+  "Stickers": "Adhesivos",
+  "Pasar al otro lado": "Pasar ao outro lado",
+  "Clic: añadir a la diapositiva · Arrastrar: soltar donde quieras": "Clic: engadir á diapositiva · Arrastrar: soltar onde queiras",
 };

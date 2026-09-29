@@ -484,13 +484,37 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(calls.some(u => u.includes('animated=true')), 'filtra animados'); eq(sf.next, 'n2', 'más resultados');
       const e = Rz.insertSketchfab(sf.results[0]);
       assert(e.type === 'embed' && /sketchfab\.com\/models\/abc123\/embed/.test(e.src) && /Eva/.test(e.caption), 'Sketchfab como visor con su autor');
-      // The dialog: stickers without typing, click inserts.
+      // The side panel (like Canva): stickers without typing; a click adds and it stays open.
       D.querySelector('[data-action="resources"]').click(); await sleep(50);
-      D.querySelector('#res-modal [data-tab="stickers"]').click(); await sleep(50);
-      assert(D.querySelectorAll('#res-modal .sk-item').length > 80, 'la pestaña de stickers se ve sin buscar');
-      const n0 = slide().blocks.length; D.querySelector('#res-modal .sk-item').click(); await sleep(150);
-      eq(slide().blocks.length, n0 + 1, 'clic: se añade'); assert(!D.getElementById('res-modal'), 'y se cierra');
-    } finally { W.fetch = realFetch; D.getElementById('res-modal')?.remove(); }
+      const P = () => D.getElementById('elements-panel');
+      assert(P() && !D.querySelector('.modal-backdrop'), 'es un panel al lado, no una ventana encima');
+      assert(P().nextElementSibling === D.getElementById('canvas-wrap'), 'a la izquierda de la diapositiva, por defecto');
+      P().querySelector('[data-et="stickers"]').click(); await sleep(50);
+      assert(P().querySelectorAll('.sk-item').length > 80, 'la pestaña de stickers se ve sin buscar');
+      const n0 = slide().blocks.length; P().querySelector('.sk-item').click(); await sleep(150);
+      eq(slide().blocks.length, n0 + 1, 'clic: se añade'); assert(P(), 'y el panel sigue abierto para seguir buscando');
+      P().querySelectorAll('.sk-item')[1].click(); await sleep(150); eq(slide().blocks.length, n0 + 2, 'otro más');
+      // Drag a result onto the slide: it lands there, in one undo step.
+      const it = P().querySelectorAll('.sk-item')[2], stage = D.getElementById('stage'), sr = stage.getBoundingClientRect();
+      const dt = new W.DataTransfer();
+      it.dispatchEvent(new W.DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+      const k = 1280 / sr.width, cx = sr.left + 300 / k, cy = sr.top + 200 / k;
+      const over = new W.DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt, clientX: cx, clientY: cy }); stage.dispatchEvent(over);
+      assert(over.defaultPrevented, 'la diapositiva acepta soltarlo');
+      stage.dispatchEvent(new W.DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt, clientX: cx, clientY: cy })); await sleep(200);
+      const dropped = slide().blocks.at(-1);
+      eq(slide().blocks.length, n0 + 3, 'arrastrar: se añade');
+      assert(Math.abs(dropped.x + dropped.w / 2 - 300) < 3 && Math.abs(dropped.y + dropped.h / 2 - 200) < 3, 'donde se suelta');
+      R.store.undo(); await sleep(20); eq(slide().blocks.length, n0 + 2, 'un solo paso de deshacer');
+      // Other side, remembered; the same button again closes it.
+      P().querySelector('.el-side').click(); await sleep(20);
+      assert(P().classList.contains('right') && !P().nextElementSibling?.id?.includes('canvas'), 'se pasa a la derecha');
+      const res = () => D.querySelector('[data-action="resources"]');
+      res().click(); res().click(); await sleep(20); assert(!P(), 'el mismo botón otra vez lo cierra');
+      res().click(); await sleep(20); assert(P()?.classList.contains('right'), 'recuerda el lado');
+      P()?.querySelector('.cm-close').click(); assert(!P(), 'se cierra');
+      W.localStorage.removeItem('revela.elements.side');
+    } finally { W.fetch = realFetch; D.getElementById('elements-panel')?.querySelector('.cm-close')?.click(); }
   });
 
   await test('3D: animación propia, giro y movimiento al entrar (editor y presentación)', async () => {

@@ -1230,4 +1230,9 @@ export default {
   "Espacio": "الفضاء",
   "Mapa mental": "خريطة ذهنية",
   "¿Colocar también las diapositivas a lo largo del recorrido del diseño? (La primera mostrará todo el lienzo.)": "هل تريد أيضًا وضع الشرائح على طول مسار التصميم؟ (ستعرض الأولى اللوحة كاملة.)",
+  "Imágenes": "صور",
+  "GIF": "صور GIF",
+  "Stickers": "ملصقات",
+  "Pasar al otro lado": "النقل إلى الجانب الآخر",
+  "Clic: añadir a la diapositiva · Arrastrar: soltar donde quieras": "انقر: أضف إلى الشريحة · اسحب: أفلته حيث تشاء",
 };

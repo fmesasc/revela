@@ -15,7 +15,7 @@ import { present, openCallPresent } from '../shell/present.js';
 import { startCoach } from '../shell/coach.js';
 import { openCollab } from '../shell/collab.js';
 import { openHome } from '../shell/home.js';
-import { openResources } from '../dialogs/resources.js';
+import { openElements } from '../shell/elements.js';
 import { canvasOn, setCanvasMode } from '../../features/design/canvasmode.js';
 import { toggleCanvasView, canvasViewOpen } from '../shell/canvasview.js';
 import { openSignatures, toggleFinal } from '../dialogs/signature.js';
@@ -47,7 +47,6 @@ import { openSettings } from '../dialogs/settings.js';
 import { markdownToSlides } from '../../io/formats/markdown.js';
 import { openAppearance } from '../shell/appearance.js';
 import { openDashboardDialog } from '../dialogs/data.js';
-import { openStockImages, openOnlineIcons } from '../dialogs/stock.js';
 import { playAnimations } from '../canvas/preview.js';
 import { openHostPanel } from '../dialogs/remote.js';
 import * as search from '../../features/document/search.js';
@@ -124,8 +123,8 @@ export const ACTIONS = {
   'insert-camera': () => media.addCamera('circle'),
   'insert-poll': () => openPollEditor(poll.addPoll()),
   'insert-dashboard': () => openDashboardDialog(),
-  'insert-stock': () => openStockImages(),
-  'insert-online-icon': () => openOnlineIcons(),
+  'insert-stock': () => openElements('images'),
+  'insert-online-icon': () => openElements('icons'),
   'trans-apply-all': () => trans.applyTransitionToAll(),
   'import-pptx': () => readFile('.pptx,.odp', async file => {
     try { replaceDeck(/\.odp$/i.test(file.name) ? await odp.importODP(file) : await importPPTX(file)); }
@@ -187,11 +186,11 @@ export const ACTIONS = {
   'insert-chart': blocks.addChart,
   'insert-math': blocks.addMath,
   'insert-model': () => readFile('.glb,.gltf', blocks.addModel),
-  'resources': () => openResources('gif'),
+  'resources': () => openElements('gif'),
   // Canvas mode (Prezi-like), off by default; turning it on opens the canvas view.
   'canvas-mode': () => { const on = !canvasOn(); setCanvasMode(on); toggleCanvasView(on); },
   'canvas-view': () => { if (!canvasOn()) setCanvasMode(true); toggleCanvasView(); },
-  'resources-3d': () => openResources('anim3d'),
+  'resources-3d': () => openElements('anim3d'),
   // A GIF is inserted as an image (it can have segments and a colour key too).
   'insert-video': () => readFile('video/*,image/gif', src => (/^data:image\/gif/.test(src) ? blocks.addImage(src) : blocks.addVideo(src))),
   'insert-audio': () => readFile('audio/*', blocks.addAudio),

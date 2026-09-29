@@ -1230,4 +1230,9 @@ export default {
   "Espacio": "Ruimte",
   "Mapa mental": "Mindmap",
   "¿Colocar también las diapositivas a lo largo del recorrido del diseño? (La primera mostrará todo el lienzo.)": "Ook de dia's langs de route van het ontwerp plaatsen? (De eerste toont het hele canvas.)",
+  "Imágenes": "Afbeeldingen",
+  "GIF": "GIFs",
+  "Stickers": "Stickers",
+  "Pasar al otro lado": "Naar de andere kant",
+  "Clic: añadir a la diapositiva · Arrastrar: soltar donde quieras": "Klik: aan de dia toevoegen · Slepen: neerzetten waar je wilt",
 };

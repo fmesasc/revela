@@ -90,7 +90,7 @@ src/
     files.js                   download(), file names
   ui/
     shell/                     navigator, context menu, present, draw, preview,
-                               recorder, appearance
+                               recorder, appearance, elements (resources side panel)
     canvas/                    canvas (render/reconcile), content (per object type),
                                interact (drag/resize/guides/snap), preview (animations)
     ribbon/                    ribbon (build/sync), actions (what each button does),

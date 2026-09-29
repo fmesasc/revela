@@ -7,7 +7,7 @@
 import { state, commit, currentSlide } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 import { searchImages, insertStockImage } from './stock.js';
-import { STICKERS, stickerURL, STICKER_CREDIT } from './stickers.js';
+import { STICKERS, stickerURL, stickerThumb, STICKER_CREDIT } from './stickers.js';
 import { LIBRARY_3D } from './library3d.js';
 
 const toDataURL = blob => new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = ko; r.readAsDataURL(blob); });
@@ -25,7 +25,7 @@ export const searchGifs = (q, page = 1) => searchImages(q, page, { extension: 'g
 export const insertGif = insertStockImage;
 
 // ---- Animated stickers (Noto) ------------------------------------------------------------
-export const searchStickers = q => (q ? STICKERS.filter(([, words]) => matches(words, q)) : STICKERS).map(([code, words]) => ({ code, words, thumb: stickerURL(code, 128) }));
+export const searchStickers = q => (q ? STICKERS.filter(([, words]) => matches(words, q)) : STICKERS).map(([code, words]) => ({ code, words, thumb: stickerThumb(code) }));
 export async function insertSticker(code, words = '') {
   const src = await toDataURL(new Blob([await download(stickerURL(code))], { type: 'image/gif' }));
   return place({ id: uid(), type: 'image', src, fit: 'contain', alt: words.split(' ')[0] || '', credit: STICKER_CREDIT,

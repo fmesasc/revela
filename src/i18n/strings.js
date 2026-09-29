@@ -1255,5 +1255,10 @@ export const ROWS = [
   ['Espacio', 'Space', 'Espace', 'Weltraum', 'Spazio', 'Espaço', 'Espai'],
   ['Mapa mental', 'Mind map', 'Carte mentale', 'Mindmap', 'Mappa mentale', 'Mapa mental', 'Mapa mental'],
   ['¿Colocar también las diapositivas a lo largo del recorrido del diseño? (La primera mostrará todo el lienzo.)', 'Also place the slides along the design\'s route? (The first one will show the whole canvas.)', 'Placer aussi les diapositives le long du parcours du design ? (La première montrera tout le canevas.)', 'Auch die Folien entlang der Route des Designs anordnen? (Die erste zeigt die ganze Leinwand.)', 'Posizionare anche le diapositive lungo il percorso del design? (La prima mostrerà tutta la tela.)', 'Colocar também os diapositivos ao longo do percurso do design? (O primeiro mostrará toda a tela.)', 'Col·locar també les diapositives al llarg del recorregut del disseny? (La primera mostrarà tot el llenç.)'],
+  ['Imágenes', 'Images', 'Images', 'Bilder', 'Immagini', 'Imagens', 'Imatges'],
+  ['GIF', 'GIFs', 'GIF', 'GIFs', 'GIF', 'GIFs', 'GIF'],
+  ['Stickers', 'Stickers', 'Stickers', 'Sticker', 'Sticker', 'Adesivos', 'Adhesius'],
+  ['Pasar al otro lado', 'Move to the other side', 'Passer de l\'autre côté', 'Auf die andere Seite', 'Sposta dall\'altro lato', 'Passar para o outro lado', 'Passa a l\'altre costat'],
+  ['Clic: añadir a la diapositiva · Arrastrar: soltar donde quieras', 'Click: add to the slide · Drag: drop it anywhere', 'Clic : ajouter à la diapositive · Glisser : déposer où vous voulez', 'Klick: zur Folie hinzufügen · Ziehen: beliebig ablegen', 'Clic: aggiungi alla diapositiva · Trascina: rilascia dove vuoi', 'Clique: adicionar ao diapositivo · Arrastar: largar onde quiser', 'Clic: afegeix a la diapositiva · Arrossega: deixa-ho on vulguis'],
 ];
 // Additional languages (partial; anything missing falls back to Spanish).
