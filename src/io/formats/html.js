@@ -228,7 +228,7 @@ function blockHTMLRaw(b, slide) {
   if (b.type === 'video')
     return `<video${a} src="${esc(b.src || '')}" controls style="${box(b)}object-fit:contain"></video>`;
   if (b.type === 'poll')     // live poll: question, live results and the QR to vote
-    return `<div${a} class="rv-poll" data-poll="${esc(JSON.stringify({ pollId: b.pollId, kind: b.kind, display: b.display, question: b.question, options: b.options }))}" `
+    return `<div${a} class="rv-poll" data-poll="${esc(JSON.stringify({ pollId: b.pollId, kind: b.kind, display: b.display, question: b.question, options: b.options, ...(b.kind === 'quiz' && { correct: b.correct || [0], time: b.time || 20 }) }))}" `
       + `style="${box(b)}display:grid;grid-template-columns:1fr auto;gap:1em;font-size:${b.fontSize || 32}px">`
       + `<div style="display:flex;flex-direction:column;min-width:0"><div style="font-weight:700;margin-bottom:.5em">${esc(b.question || '')}</div>`
       + `<div class="rv-poll-res" style="flex:1;min-height:0"></div></div>`

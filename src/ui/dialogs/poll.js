@@ -11,23 +11,30 @@ export function openPollEditor(b) {
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(520px,94vw);max-width:94vw">
     <button class="modal-close">✕</button><h3>${t('Votación en directo')}</h3>
     <label class="fr-l">${t('Pregunta')}<input type="text" class="pl-q"></label>
-    <label class="fr-l">${t('Tipo')}<select class="pl-kind">${opt('choice', 'Una opción', b.kind)}${opt('multi', 'Varias opciones', b.kind)}${opt('rating', 'Valoración 1 a 5', b.kind)}${opt('word', 'Nube de palabras', b.kind)}${opt('qa', 'Preguntas del público', b.kind)}</select></label>
+    <label class="fr-l">${t('Tipo')}<select class="pl-kind">${opt('choice', 'Una opción', b.kind)}${opt('multi', 'Varias opciones', b.kind)}${opt('rating', 'Valoración 1 a 5', b.kind)}${opt('word', 'Nube de palabras', b.kind)}${opt('qa', 'Preguntas del público', b.kind)}${opt('quiz', 'Cuestionario (con respuesta correcta y puntos)', b.kind)}${opt('board', 'Clasificación de los cuestionarios', b.kind)}</select></label>
     <label class="fr-l pl-opts-l">${t('Opciones (una por línea)')}<textarea class="pl-opts" rows="5"></textarea></label>
+    <p class="host-help pl-quiz">${t('Cuestionario: pon un asterisco (*) delante de la respuesta correcta. Acertar da de 500 a 1000 puntos, más cuanto antes; al acabar el tiempo (o con un clic) se ve la respuesta y quién va ganando.')}</p>
+    <label class="fr-l pl-quiz">${t('Tiempo para responder')}<select class="pl-time">${[10, 20, 30, 45, 60, 90].map(n => `<option value="${n}"${(b.time || 20) === n ? ' selected' : ''}>${n} s</option>`).join('')}</select></label>
     <label class="fr-l">${t('Mostrar resultados como')}<select class="pl-disp">${opt('bar', 'Barras', b.display)}${opt('pie', 'Circular', b.display)}${opt('numbers', 'Cifras', b.display)}</select></label>
     <p class="host-help">${t('Al presentar aparece un QR: el público vota desde el móvil y los resultados se actualizan al instante. Conexión directa entre navegadores (WebRTC); funciona bien con decenas de personas.')}</p>
     <p class="host-help pl-count"></p>
     <div class="fr-actions"><button class="pl-clear">${t('Borrar resultados')}</button><button class="pl-csv">${t('Descargar resultados (CSV)')}</button><button class="fr-do pl-ok">${t('Aplicar')}</button></div></div>`;
   document.body.appendChild(back);
   const q = s => back.querySelector(s), close = () => back.remove();
-  q('.pl-q').value = b.question || ''; q('.pl-opts').value = (b.options || []).join('\n');
-  const sync = () => { q('.pl-opts-l').hidden = ['rating', 'word', 'qa'].includes(q('.pl-kind').value); };
+  q('.pl-q').value = b.question || ''; q('.pl-opts').value = (b.options || []).map((o, i) => (b.kind === 'quiz' && (b.correct || []).includes(i) ? '*' : '') + o).join('\n');
+  const sync = () => { const k = q('.pl-kind').value; q('.pl-opts-l').hidden = ['rating', 'word', 'qa', 'board'].includes(k);
+    back.querySelectorAll('.pl-quiz').forEach(x => { x.hidden = k !== 'quiz'; }); };
   const count = () => { q('.pl-count').textContent = t('Votos guardados: ') + tallyVotes(b, savedVotes(b.pollId)).voters; };
   q('.pl-kind').addEventListener('change', sync); sync(); count();
   q('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
   q('.pl-ok').addEventListener('click', () => {
-    const options = q('.pl-opts').value.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 10);
-    setPoll(b.id, { question: q('.pl-q').value.trim(), kind: q('.pl-kind').value, display: q('.pl-disp').value, options: options.length ? options : b.options });
+    const lines = q('.pl-opts').value.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 10);
+    // (Quiz: "*" marks the right answers.)
+    const correct = lines.map((l, i) => (l.startsWith('*') ? i : -1)).filter(i => i >= 0), options = lines.map(l => l.replace(/^\*\s*/, ''));
+    const kind = q('.pl-kind').value;
+    setPoll(b.id, { question: q('.pl-q').value.trim(), kind, display: q('.pl-disp').value, options: options.length ? options : b.options,
+      ...(kind === 'quiz' && { correct: correct.length ? correct : [0], time: +q('.pl-time').value }) });
     close();
   });
   q('.pl-clear').addEventListener('click', async () => {

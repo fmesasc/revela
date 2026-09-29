@@ -9,6 +9,35 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!D.getElementById('present-overlay'), 'la capa no se cerró');
   });
 
+  await test('cuestionario tipo Kahoot: respuesta correcta, puntos por rapidez, resultados y clasificación', async () => {
+    reset(); const W = frame.contentWindow, P = await W.eval("import('/src/features/live/poll.js')");
+    const quiz = { kind: 'quiz', pollId: 'q1', question: '¿Capital de Francia?', options: ['Madrid', 'París', 'Roma'], correct: [1], time: 20 };
+    const votes = { ana: { a: 1, t: 0, n: 'Ana' }, luis: { a: 1, t: 20000, n: 'Luis' }, eva: { a: 0, t: 1000, n: 'Eva' } };
+    const r = P.tallyVotes(quiz, votes);
+    eq(r.counts.join(), '1,2,0', 'respuestas por opción');
+    eq(r.board.map(x => `${x.n}:${x.pts}`).join(), 'Ana:1000,Luis:500,Eva:0', 'acertar al momento 1000, al final 500, fallar 0');
+    const t2 = P.quizTotals([{ poll: quiz, votes }, { poll: { ...quiz, pollId: 'q2' }, votes: { eva: { a: 1, t: 0, n: 'Eva' } } }]);
+    eq(t2.map(x => `${x.n}:${x.pts}`).join(), 'Ana:1000,Eva:1000,Luis:500', 'la clasificación suma todos los cuestionarios');
+    const playing = P.pollResultsHTML(quiz, { ...r, revealed: false, left: 12.2 });
+    assert(/13 s/.test(playing) && !/✓/.test(playing), 'mientras se juega: el tiempo, sin desvelar la respuesta');
+    const done = P.pollResultsHTML(quiz, { ...r, revealed: true });
+    assert(/✓ París/.test(done) && /🥇 <\/b>Ana — <b>1000/.test(done), 'al acabar: la correcta y el podio');
+    assert(/🥈 <\/b>Luis/.test(P.pollResultsHTML({ kind: 'board' }, { board: r.board })), 'la diapositiva de clasificación');
+    // The editor: "*" marks the right answer; time.
+    const b = P.addPoll(); await sleep(20);
+    D.querySelector(`#stage .block[data-id="${b.id}"]`); R.store.commit(() => { R.state.ui.selection = b.id; }, { history: false });
+    const E = await W.eval("import('/src/ui/dialogs/poll.js')"); E.openPollEditor(slide().blocks.find(x => x.id === b.id)); await sleep(10);
+    const m = D.getElementById('poll-modal'); m.querySelector('.pl-kind').value = 'quiz'; m.querySelector('.pl-kind').dispatchEvent(new W.Event('change'));
+    assert(!m.querySelector('.pl-time').closest('label').hidden, 'con tiempo para responder');
+    m.querySelector('.pl-opts').value = 'Madrid\n*París\nRoma'; m.querySelector('.pl-time').value = '30'; m.querySelector('.pl-ok').click(); await sleep(20);
+    const q = slide().blocks.find(x => x.id === b.id);
+    eq(JSON.stringify([q.kind, q.options, q.correct, q.time]), '["quiz",["Madrid","París","Roma"],[1],30]', 'la correcta, marcada con *');
+    const html = R.io.buildHTML();
+    assert(/function quizTotals/.test(html) && /type:'quizresult'/.test(html), 'la presentación juega el cuestionario y avisa a cada móvil de cómo le fue');
+    assert(!/correct:p\.correct/.test(html), 'sin enviar la respuesta correcta a los móviles');
+    assert(/data-poll="[^"]*&quot;correct&quot;:\[1\],&quot;time&quot;:30/.test(html), 'la presentación sabe cuál es la correcta y el tiempo');
+  });
+
   await test('votación en directo: recuento, resultados, export y QR', async () => {
     reset(); const P = R.poll;
     const c = P.tallyVotes({ kind: 'choice', options: ['a', 'b', 'c'] }, { v1: 0, v2: 2, v3: 2, v4: 9 });

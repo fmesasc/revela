@@ -5,7 +5,7 @@
 
 import { jsData } from '../../core/text.js';
 import { chartSVG, escSvg, SERIES_COLOURS, chartSeries, niceStep } from '../../render/svg.js';
-import { tallyVotes, pollResultsHTML, VOTE_URL } from '../../features/live/poll.js';
+import { tallyVotes, pollResultsHTML, quizTotals, VOTE_URL } from '../../features/live/poll.js';
 import { parseChartGrid } from '../../features/document/blocks.js';
 import { QRCODE, PEERJS } from '../../core/vendor.js';
 
@@ -25,18 +25,35 @@ export function pollJS(accents) {
   return `(function(){
  var tally=${tallyVotes.toString()};
  var render=${pollResultsHTML.toString()};
+ var tallyVotes=tally, totals=${quizTotals.toString()};         // (quizTotals counts with tallyVotes)
+ var started={},revealed={},timer=null;
  var VOTE=${JSON.stringify(VOTE_URL)}, ACC=${JSON.stringify(accents)}, votes={}, conns=[], peer=null, code='';
  var AB='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
  function all(){return [].slice.call(document.querySelectorAll('.rv-poll'));}
  function def(el){try{return JSON.parse(el.getAttribute('data-poll'));}catch(e){return null;}}
  function load(id){try{return JSON.parse(localStorage.getItem('revela.poll.'+id))||{};}catch(e){return {};}}
  function store(id){try{localStorage.setItem('revela.poll.'+id,JSON.stringify(votes[id]));}catch(e){}}
- function paint(el){var p=def(el);if(!p)return;var v=votes[p.pollId]||(votes[p.pollId]=load(p.pollId));el.querySelector('.rv-poll-res').innerHTML=render(p,tally(p,v),ACC);}
- function current(){var s=Reveal.getCurrentSlide(),el=s&&s.querySelector('.rv-poll');var p=el&&def(el);return p?{pollId:p.pollId,kind:p.kind,question:p.question,options:p.options}:null;}
+ function V(id){return votes[id]||(votes[id]=load(id));}
+ // Quizzes: the time left, the answer shown when it runs out (or on a click), and every quiz added up.
+ function left(p){return started[p.pollId]?(+p.time||20)-(Date.now()-started[p.pollId])/1000:(+p.time||20);}
+ function quizzes(){return all().map(def).filter(function(p){return p&&p.kind==='quiz';}).map(function(p){return {poll:p,votes:V(p.pollId)};});}
+ function paint(el){var p=def(el);if(!p)return;var r=p.kind==='board'?{board:totals(quizzes())}:tally(p,V(p.pollId));
+  if(p.kind==='quiz'){r.revealed=!!revealed[p.pollId];r.left=left(p);if(r.revealed)r.board=totals(quizzes());}
+  el.querySelector('.rv-poll-res').innerHTML=render(p,r,ACC);}
+ function reveal(p){if(revealed[p.pollId])return;revealed[p.pollId]=true;all().forEach(paint);
+  var board=totals(quizzes()),mine=tally(p,V(p.pollId)).board;
+  conns.forEach(function(c){if(!c.voter)return;var m=mine.filter(function(x){return x.id===c.voter;})[0],k=board.map(function(x){return x.id;}).indexOf(c.voter);
+   send(c,{type:'quizresult',pollId:p.pollId,answered:!!m,ok:!!(m&&m.ok),pts:m?m.pts:0,total:k>=0?board[k].pts:0,rank:k>=0?k+1:0,of:board.length});});}
+ function tick(){var p=current();if(!p||p.kind!=='quiz'||revealed[p.pollId]){clearInterval(timer);timer=null;return;}
+  var el=all().filter(function(e){var q=def(e);return q&&q.pollId===p.pollId;})[0];if(el)paint(el);if(left(p)<=0)reveal(p);}
+ function current(){var s=Reveal.getCurrentSlide(),el=s&&s.querySelector('.rv-poll');var p=el&&def(el);return p?{pollId:p.pollId,kind:p.kind,question:p.question,options:p.options,time:p.time,left:p.kind==='quiz'?left(p):null,revealed:!!revealed[p.pollId]}:null;}
  function send(c,m){try{if(c.open)c.send(m);}catch(e){}}
  function qaList(p){var r=tally(p,votes[p.pollId]||(votes[p.pollId]=load(p.pollId)));return (r.questions||[]).map(function(q){return {id:q.id,text:q.text,up:q.up};});}
  function broadcastQA(p){var cur=current();if(!cur||cur.pollId!==p.pollId)return;conns.forEach(function(c){send(c,{type:'qa',pollId:p.pollId,list:qaList(p)});});}
- function broadcast(){var p=current();conns.forEach(function(c){send(c,{type:'poll',poll:p});if(p&&p.kind==='qa')send(c,{type:'qa',pollId:p.pollId,list:qaList(p)});});}
+ function broadcast(){var p=current();
+  // A quiz starts the first time its slide is shown (one already played, with answers saved, is shown solved).
+  if(p&&p.kind==='quiz'&&!started[p.pollId]){if(Object.keys(V(p.pollId)).length)revealed[p.pollId]=true;else{started[p.pollId]=Date.now();p.left=left(p);if(!timer)timer=setInterval(tick,250);}}
+  conns.forEach(function(c){send(c,{type:'poll',poll:p});if(p&&p.kind==='qa')send(c,{type:'qa',pollId:p.pollId,list:qaList(p)});});}
  function js(src){return new Promise(function(ok,ko){var s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=ko;document.head.appendChild(s);});}
  function clean(p,a){if(p.kind==='word')return String(a||'').slice(0,60);if(p.kind==='multi')return (Array.isArray(a)?a:[]).map(Number).filter(function(x){return x>=0&&x<p.options.length;}).slice(0,20);
   var n=+a;return p.kind==='rating'?(n>=1&&n<=5?Math.round(n):null):(n>=0&&n<p.options.length?n:null);}
@@ -54,13 +71,20 @@ export function pollJS(accents) {
           var id='q:'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);V[id]={t:txt,by:who,time:Date.now(),up:{}};}
         else if(a.up&&V[a.up]){if(V[a.up].up[who])delete V[a.up].up[who];else V[a.up].up[who]=1;}else return;
         store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId});broadcastQA(p);return;}
+      c.voter=who;
+      if(p.kind==='quiz'){if(revealed[p.pollId]||!started[p.pollId]||V[who])return;var q=clean(p,d.answer);if(q===null)return;
+        V[who]={a:q,t:Date.now()-started[p.pollId],n:String(d.name||'').slice(0,24)};store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId});return;}
       var a2=clean(p,d.answer);if(a2===null||a2==='')return;V[who]=a2;
       store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId});});
     c.on('close',function(){conns=conns.filter(function(x){return x!==c;});});});
   peer.on('error',function(e){if(e.type==='unavailable-id'&&tries<5){peer.destroy();start(tries+1);}});}
  all().forEach(paint);
+ // A click on a quiz shows its answer at once.
+ document.addEventListener('click',function(e){var el=e.target.closest&&e.target.closest('.rv-poll');var p=el&&def(el);if(p&&p.kind==='quiz'&&started[p.pollId]){e.stopPropagation();reveal(p);}},true);
  js(${JSON.stringify(QRCODE)}).catch(function(){}).then(function(){return js(${JSON.stringify(PEERJS)});}).then(function(){start(0);});
  Reveal.on('slidechanged',broadcast);
+ // (A quiz on the first slide starts with the presentation.)
+ if(Reveal.isReady())broadcast();else Reveal.on('ready',broadcast);
 })();`;
 }
 // Live data while presenting: dashboards reload every N minutes; charts linked

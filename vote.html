@@ -21,6 +21,13 @@
     button:disabled{opacity:.5}
     .opt{background:var(--panel);border:2px solid var(--line);text-align:left;color:var(--txt)}
     .opt.on{border-color:#7fa6d8;background:#233148}
+    /* Quiz: big coloured answers, the time left, and how it went */
+    .quiz-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .quiz-opt{min-height:88px;border:0;border-radius:10px;color:#fff;font-weight:700;font-size:17px;padding:10px}
+    .quiz-opt:disabled{opacity:.45}.quiz-opt.on{outline:4px solid #fff;opacity:1}
+    .quiz-top{display:flex;gap:8px;align-items:center;margin-bottom:10px}.quiz-top input{flex:1}
+    .quiz-left{font-size:22px;font-weight:800;min-width:3ch;text-align:right}
+    .quiz-res{text-align:center;padding:18px;border-radius:12px;font-size:20px;margin-top:12px}.quiz-res b{display:block;font-size:34px}
     .stars{display:flex;gap:8px;justify-content:center}.stars button{flex:1;font-size:24px;padding:14px 0}
     .ok{color:#4ec06a;font-weight:600}.err{color:#ff8080;min-height:18px;font-size:14px}
     textarea{font:17px system-ui,sans-serif;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--txt);width:100%;resize:vertical}

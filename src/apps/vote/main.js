@@ -36,9 +36,44 @@ function renderQA(list) {
     row.append(up, tx); box.appendChild(row);
   }
 }
+// Quiz: a nickname (kept on this phone), a tap answers at once, the time left, then how it went.
+const TILES = ['#e21b3c', '#1368ce', '#d89e00', '#26890c', '#864cbf', '#0aa3a3'];
+let quizTimer = null;
+const nick = () => { try { return localStorage.getItem('revela.nick') || ''; } catch { return ''; } };
+function renderQuiz(box) {
+  $('#send').hidden = true;
+  const top = document.createElement('div'); top.className = 'quiz-top';
+  const name = document.createElement('input'); name.type = 'text'; name.maxLength = 24; name.placeholder = 'Tu apodo'; name.value = nick();
+  name.addEventListener('input', () => { try { localStorage.setItem('revela.nick', name.value.trim()); } catch {} });
+  const clock = document.createElement('span'); clock.className = 'quiz-left'; top.append(name, clock);
+  const grid = document.createElement('div'); grid.className = 'quiz-grid';
+  poll.options.forEach((o, i) => {
+    const b = document.createElement('button'); b.className = 'quiz-opt'; b.style.background = TILES[i % TILES.length]; b.textContent = o;
+    b.addEventListener('click', () => {
+      if (!conn?.open || answer != null) return;
+      answer = i; conn.send({ type: 'vote', pollId: poll.pollId, voter, answer: i, name: name.value.trim() });
+      grid.querySelectorAll('button').forEach(x => { x.disabled = x !== b; x.classList.toggle('on', x === b); });
+    });
+    grid.appendChild(b);
+  });
+  const res = document.createElement('div'); res.id = 'quiz-res';
+  box.append(top, grid, res);
+  const end = Date.now() + (poll.left ?? poll.time ?? 20) * 1000;
+  clearInterval(quizTimer);
+  quizTimer = setInterval(() => { const s = Math.max(0, Math.ceil((end - Date.now()) / 1000)); clock.textContent = s + ' s'; if (!s) clearInterval(quizTimer); }, 250);
+  if (poll.revealed) grid.querySelectorAll('button').forEach(x => { x.disabled = true; });
+}
+function quizResult(d) {
+  const box = $('#quiz-res'); if (!box || poll?.pollId !== d.pollId) return;
+  clearInterval(quizTimer); $('#answers').querySelectorAll('button').forEach(x => { x.disabled = true; });
+  box.className = 'quiz-res'; box.style.background = !d.answered ? '#555' : d.ok ? '#26890c' : '#b3261e';
+  box.innerHTML = `<b>${!d.answered ? 'Sin respuesta' : d.ok ? '¡Correcto!' : 'Fallaste'}</b>+${d.pts} puntos · ${d.total} en total`
+    + (d.rank ? `<br>Vas ${d.rank}.º de ${d.of}` : '');
+}
 function onData(d) {
+  if (d?.type === 'quizresult') { quizResult(d); return; }
   if (d?.type === 'qa') { if (poll?.pollId === d.pollId) renderQA(d.list || []); return; }
-  if (d?.type === 'ok') { $('#done').hidden = false; return; }
+  if (d?.type === 'ok') { if (poll?.kind === 'quiz') { const r = $('#quiz-res'); if (r && !r.textContent) r.textContent = '✔ Respuesta enviada. Espera al resultado…'; return; } $('#done').hidden = false; return; }
   if (d?.type !== 'poll') return;
   if (!d.poll) { poll = null; show('wait'); return; }
   if (poll?.pollId === d.poll.pollId) return;               // same question: keep the choice
@@ -49,6 +84,7 @@ function onData(d) {
 function renderAnswers() {
   const box = $('#answers'); box.innerHTML = '';
   $('#send').hidden = poll.kind === 'qa';
+  if (poll.kind === 'quiz') { renderQuiz(box); return; }
   if (poll.kind === 'qa') {
     const ta = document.createElement('textarea'); ta.maxLength = 200; ta.rows = 3; ta.placeholder = 'Escribe tu pregunta…';
     const ask = document.createElement('button'); ask.textContent = 'Preguntar';

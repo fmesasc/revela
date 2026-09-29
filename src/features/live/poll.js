@@ -32,8 +32,19 @@ export function setPoll(id, props) {
 
 // votes: { voterId: answer } where answer is an option index, an array of
 // indices (multi), a number 1-5 (rating) or a string (word). → counts.
+// A quiz (Kahoot style): votes { voter: { a: option, t: ms after it started, n: nickname } };
+// right answers score 500 to 1000 points, more the faster; wrong ones 0.
 export function tallyVotes(poll, votes) {
   var kind = poll.kind || 'choice', n = (poll.options || []).length, counts = [], words = {}, sum = 0, voters = 0;
+  if (kind === 'quiz') {
+    var right = poll.correct || [], lim = (+poll.time || 20) * 1000, board = [];
+    for (var i0 = 0; i0 < n; i0++) counts.push(0);
+    for (var who in votes) { var v = votes[who]; if (!v || !(v.a >= 0 && v.a < n)) continue; voters++; counts[v.a]++;
+      var ok = right.indexOf(v.a) >= 0, pts = ok ? Math.round(500 + 500 * Math.max(0, 1 - (+v.t || 0) / lim)) : 0;
+      board.push({ id: who, n: v.n || '', pts: pts, ok: ok }); }
+    board.sort(function (a, b) { return b.pts - a.pts; });
+    return { counts: counts, words: {}, voters: voters, average: 0, board: board };
+  }
   if (kind === 'qa') {                      // audience questions: { 'q:id': { t: text, up: { voter: 1 } } }
     var qs = [], people = {};
     for (var id in votes) { var q = votes[id]; if (!q || !q.t) continue; var ups = Object.keys(q.up || {});
@@ -57,6 +68,14 @@ export function tallyVotes(poll, votes) {
   return { counts: counts, words: words, voters: voters, average: kind === 'rating' && voters ? sum / voters : 0 };
 }
 
+// Every quiz of the presentation added up, per person (a leaderboard): [{ id, n, pts }] best first.
+export function quizTotals(list) {
+  var tot = {};
+  list.forEach(function (x) { (tallyVotes(x.poll, x.votes).board || []).forEach(function (r) {
+    var t = tot[r.id] || (tot[r.id] = { id: r.id, n: '', pts: 0 }); t.pts += r.pts; if (r.n) t.n = r.n; }); });
+  return Object.keys(tot).map(function (k) { return tot[k]; }).sort(function (a, b) { return b.pts - a.pts; });
+}
+
 // HTML (inline styles) for the results area. accent: colours to use.
 export function pollResultsHTML(poll, res, accent) {
   var esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
@@ -65,6 +84,24 @@ export function pollResultsHTML(poll, res, accent) {
   var labels = kind === 'rating' ? ['1', '2', '3', '4', '5'] : (poll.options || []);
   var counts = res.counts || [], total = counts.reduce(function (a, b) { return a + b; }, 0), max = Math.max.apply(null, counts.concat([1]));
   var foot = '<div style="margin-top:.6em;font-size:.55em;opacity:.7">' + res.voters + ' ' + (res.voters === 1 ? 'voto' : 'votos') + '</div>';
+  var nick = function (r, i) { return esc(r.n || ('Jugador ' + (i + 1))); };
+  var ranking = function (list, top) { return '<ol style="margin:.4em 0 0;padding:0;list-style:none;text-align:left;font-size:.6em">' + list.slice(0, top).map(function (r, i) {
+    return '<li style="margin:.15em 0"><b>' + (['🥇 ', '🥈 ', '🥉 '][i] || (i + 1) + '. ') + '</b>' + nick(r, i) + ' — <b>' + r.pts + '</b></li>'; }).join('') + '</ol>'; };
+  if (kind === 'board') {
+    var bl = res.board || [];
+    return bl.length ? ranking(bl, 10).replace('font-size:.6em', 'font-size:.8em') : '<div style="opacity:.6">Aún no hay puntos: juega los cuestionarios.</div>';
+  }
+  if (kind === 'quiz') {
+    var right = poll.correct || [], tiles = ['#e21b3c', '#1368ce', '#d89e00', '#26890c', '#864cbf', '#0aa3a3'];
+    if (!res.revealed) return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.4em;font-size:.7em">' + labels.map(function (l, i) {
+      return '<div style="padding:.5em .6em;border-radius:.3em;background:' + tiles[i % tiles.length] + ';color:#fff;font-weight:700">' + esc(l) + (res.showRight && right.indexOf(i) >= 0 ? ' ✓' : '') + '</div>'; }).join('') + '</div>'
+      + '<div style="display:flex;justify-content:space-between;margin-top:.6em;font-size:.6em;opacity:.85"><span>' + res.voters + ' ' + (res.voters === 1 ? 'respuesta' : 'respuestas') + '</span>'
+      + (res.left != null ? '<b style="font-size:1.6em">' + Math.max(0, Math.ceil(res.left)) + ' s</b>' : '') + '</div>';
+    return '<div style="display:flex;flex-direction:column;gap:.3em">' + labels.map(function (l, i) { var ok = right.indexOf(i) >= 0;
+      return '<div style="display:flex;align-items:center;gap:.5em;font-size:.65em;opacity:' + (ok ? 1 : .55) + '"><div style="flex:0 0 32%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (ok ? '✓ ' : '') + esc(l) + '</div>'
+        + '<div style="flex:1;background:#8882;border-radius:.2em;height:1.3em"><div style="height:100%;width:' + (counts[i] * 100 / max) + '%;background:' + (ok ? '#26890c' : tiles[i % tiles.length]) + ';border-radius:.2em"></div></div>'
+        + '<div style="flex:0 0 2em;font-weight:700">' + counts[i] + '</div></div>'; }).join('') + '</div>' + ((res.board || []).length ? ranking(res.board, 5) : '');
+  }
   if (kind === 'qa') {
     var list = (res.questions || []).slice(0, 8);
     return '<div style="display:flex;flex-direction:column;gap:.3em;font-size:.7em">' + (list.length ? list.map(function (q, i) {
@@ -105,7 +142,8 @@ export function pollResultsHTML(poll, res, accent) {
 // Markup of a poll in the editor and thumbnails: question, current results
 // (last saved votes) and a QR placeholder (the real code exists only while presenting).
 export function pollEditorHTML(b, accents) {
-  const res = tallyVotes(b, savedVotes(b.pollId));
+  const res = b.kind === 'board' ? { board: quizTotals(state.deck.slides.flatMap(s => s.blocks).filter(x => x.type === 'poll' && x.kind === 'quiz').map(p => ({ poll: p, votes: savedVotes(p.pollId) }))) }
+    : (r => ({ ...r, showRight: true, revealed: b.kind === 'quiz' && r.voters > 0 }))(tallyVotes(b, savedVotes(b.pollId)));
   return `<div style="width:100%;height:100%;display:grid;grid-template-columns:1fr auto;gap:1em;font-size:${b.fontSize || 32}px">`
     + `<div style="display:flex;flex-direction:column;min-width:0"><div style="font-weight:700;margin-bottom:.5em">${esc(b.question || '')}</div>`
     + `<div style="flex:1;min-height:0">${pollResultsHTML(b, res, accents)}</div></div>`
