@@ -41,7 +41,7 @@ const sigOf = v => JSON.stringify(v, (k, x) => (typeof x === 'string' && x.lengt
 export function renderPanel() {
   if (state.ui.editMaster) return renderMasterPanel();
   const d = state.deck;
-  const common = sigOf([d.size, d.master, d.layouts, deckFg(), deckBodyFont()]);
+  const common = sigOf([d.size, d.master, d.layouts, d.canvas, deckFg(), deckBodyFont()]);
   const nodes = [], seen = new Set();
   let lastSection;
   d.slides.forEach((slide, index) => {

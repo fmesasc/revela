@@ -506,6 +506,17 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(Math.hypot(c[0] - (img.x + img.w / 2), c[1] - (img.y + img.h / 2)) < 2, 'su centro, en el centro de la imagen');
     assert(Math.abs(bd.w * 0.5 - img.w) < 1, 'a la escala del marco'); eq(bd.rotation, -30, 'contra el giro del marco');
     assert(R.master.masterBlocksFor(S[1]).some(x => x.backdrop), 'se pinta detrás, como el patrón');
+    // Moving a frame: the slide shows the picture's part at its new place (in the
+    // canvas view the frame lets the real picture through, also while dragging).
+    const cv0 = D.getElementById('canvas-view'), fr1 = () => cv0.querySelector('.cv-frame[data-i="1"]');
+    assert(!fr1().querySelector('img[src^="data:image/png"]'), 'en la vista, el marco deja ver la imagen de debajo');
+    const thumbSrc = () => D.querySelectorAll('#navigator .thumb')[1]?.innerHTML;
+    const th0 = thumbSrc(), bx0 = C.canvasBackdrop(R.state.deck.slides[1]).x, q = fr1().getBoundingClientRect();
+    const pe = (el, type, x, y) => el.dispatchEvent(new W.PointerEvent(type, { clientX: x, clientY: y, bubbles: true, button: 0, pointerId: 1 }));
+    pe(fr1(), 'pointerdown', q.left + 20, q.top + 20); pe(cv0, 'pointermove', q.left + 90, q.top + 50); pe(cv0, 'pointerup', q.left + 90, q.top + 50); await sleep(30);
+    assert(C.canvasBackdrop(R.state.deck.slides[1]).x !== bx0, 'movido el marco, su fondo es la parte de su nuevo sitio');
+    assert(thumbSrc() !== th0, 'y la miniatura se actualiza');
+    R.store.undo(); await sleep(20);
     // Presenting: the picture is one layer that moves with the camera (not per slide).
     const html = R.io.buildHTML(R.state.deck, { inApp: true });
     assert(/class="rv-world"/.test(html) && !/canvas-backdrop/.test(html), 'una sola capa en la presentación');
@@ -516,7 +527,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const r = cv.getBoundingClientRect(), x0 = R.state.deck.canvas.image.x;
     const ev = (el, type, x, y) => el.dispatchEvent(new W.PointerEvent(type, { clientX: x, clientY: y, bubbles: true, button: 0, pointerId: 1 }));
     ev(cv, 'pointerdown', r.left + 400, r.top + 300); ev(cv, 'pointermove', r.left + 460, r.top + 300); ev(cv, 'pointerup', r.left + 460, r.top + 300); await sleep(20);
-    assert(R.state.deck.canvas.image.x > x0 && S[1].frame.x === 1600, 'arrastrar mueve la imagen, no los marcos');
+    assert(R.state.deck.canvas.image.x > x0 && R.state.deck.slides[1].frame.x === 1600, 'arrastrar mueve la imagen, no los marcos');
     R.store.undo(); await sleep(20); eq(R.state.deck.canvas.image.x, x0, 'un paso de deshacer');
     cv.querySelector('.cv-move').click();
     cv.querySelector('[data-cv="image"]').click(); await sleep(10);

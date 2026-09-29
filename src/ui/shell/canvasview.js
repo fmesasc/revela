@@ -62,7 +62,8 @@ function frameNode(s) {
     const { w, h } = size(), node = document.createElement('div');
     node.className = 'cv-frame';
     node.style.cssText = `width:${w}px;height:${h}px;background:${s.background || 'transparent'};color:${deckFg()};font-family:${deckBodyFont() || 'inherit'}`;
-    for (const b of [...masterBlocksFor(s), ...s.blocks.map(x => styled(x, s))]) if (!isEmptyPlaceholder(b)) node.appendChild(blockPreview(b));
+    // (Not the canvas picture's piece: the frame shows the real picture under it, wherever it is dragged.)
+    for (const b of [...masterBlocksFor(s), ...s.blocks.map(x => styled(x, s))]) if (!isEmptyPlaceholder(b) && !b.backdrop) node.appendChild(blockPreview(b));
     const num = document.createElement('span'); num.className = 'cv-num'; node.appendChild(num);
     c = { sig, node }; cache.set(s.id, c);
   }
