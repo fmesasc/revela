@@ -4,8 +4,12 @@
 // - turning by itself (autoRotate) at a speed and direction (spin, °/s);
 // - a camera movement when its slide appears (motion): swing, zoom in, a full
 //   turn, float up and down, or look from above.
+// - walking (walk): while the object moves on the slide (its motion path, or
+//   any animation of it) one clip plays — "Walk" — and it turns towards where
+//   it goes; on arrival another clip (once, then back to rest, or for good)
+//   and, if wanted, it turns to face the audience.
 // The same attributes are used in the editor and in the exported presentation;
-// the camera movements run with model3dRuntime (embedded as source).
+// the camera movements and walking run with model3dRuntime (embedded as source).
 
 export const MOTIONS_3D = [
   ['none', 'Ninguno'], ['swing', 'Balanceo'], ['zoom', 'Acercar al entrar'], ['orbit', 'Vuelta completa al entrar'],
@@ -15,7 +19,8 @@ export const MOTIONS_3D = [
 // model-viewer attributes for a block, as [name, value] pairs ('' = boolean).
 export function modelAttrs(b) {
   const a = [['src', b.src || ''], ['camera-controls', ''], ['shadow-intensity', '1'], ['interaction-prompt', 'none']];
-  if (b.autoRotate !== false && (b.motion || 'none') === 'none') {
+  const walk = b.walk?.clip ? b.walk : null;
+  if (b.autoRotate !== false && (b.motion || 'none') === 'none' && !walk) {
     a.push(['auto-rotate', ''], ['auto-rotate-delay', '0']);
     if (b.spin) a.push(['rotation-per-second', `${b.spin}deg`]);
   }
@@ -24,6 +29,14 @@ export function modelAttrs(b) {
     if (b.clip !== '*') a.push(['animation-name', b.clip]);
     if (b.clipOnce) a.push(['data-once', '']);
     if (b.clipSpeed && b.clipSpeed !== 1) a.push(['data-speed', String(b.clipSpeed)]);
+  }
+  if (walk) {
+    if (!b.clip && walk.clip !== '*') a.push(['animation-name', walk.clip]);          // still, on its first frame, until it moves
+    a.push(['data-move-clip', walk.clip], ['animation-crossfade-duration', '350']);
+    if (walk.end) a.push(['data-end-clip', walk.end]);
+    if (walk.end && walk.endOnce) a.push(['data-end-once', '']);
+    if (walk.face !== false) a.push(['data-face', '']);
+    if (walk.look !== false) a.push(['data-look', '']);
   }
   if (b.motion && b.motion !== 'none') a.push(['data-motion', b.motion]);
   return a;
@@ -41,6 +54,51 @@ export function model3dRuntime() {
       if (mv.hasAttribute('data-once') && mv.hasAttribute('autoplay')) { mv.pause(); mv.play({ repetitions: 1 }); }
     });
   }
+  // Walking: the clip while it moves, turning towards where it goes (by
+  // turning the camera round it: model-viewer eases that), then the arrival.
+  var walks = new WeakMap();
+  function clipName(mv, n) { var list = mv.availableAnimations || []; return n === '*' ? list[0] : (list.indexOf(n) >= 0 ? n : null); }
+  function playClip(mv, n, once) { n = clipName(mv, n); if (!n) { mv.pause(); return; } mv.animationName = n; mv.play(once ? { repetitions: 1 } : undefined); }
+  function rest(mv) { var idle = mv.hasAttribute('autoplay') ? (mv.getAttribute('animation-name') || '*') : null; if (idle) playClip(mv, idle); else mv.pause(); }
+  function turn(mv, yaw) { mv.cameraOrbit = (-yaw).toFixed(1) + 'deg 75deg auto'; }
+  function offset(el) { var v = getComputedStyle(el).translate; if (!v || v === 'none') return [0, 0]; var p = v.split(' '); return [parseFloat(p[0]) || 0, parseFloat(p[1]) || 0]; }
+  function move(mv, dur, el) {
+    var clip = mv.getAttribute('data-move-clip'); if (!clip) return;
+    var w = walks.get(mv), now0 = performance.now();
+    if (w && now0 - w.t0 < 80) return;                   // (several properties start together)
+    if (w) cancelAnimationFrame(w.raf);
+    w = { t0: now0 }; walks.set(mv, w); el = el || mv;
+    playClip(mv, clip);
+    var last = null, face = mv.hasAttribute('data-face'), yaw = null;
+    (function step(now) {
+      var p = offset(el);
+      if (face && last) { var dx = p[0] - last[0], dy = p[1] - last[1];
+        if (Math.hypot(dx, dy) > 0.4) { var y = Math.atan2(dx, dy) * 180 / Math.PI; if (yaw === null || Math.abs(((y - yaw + 540) % 360) - 180) > 2) { yaw = y; turn(mv, y); } } }
+      last = p;
+      if (now - w.t0 < dur) w.raf = requestAnimationFrame(step); else arrive(mv);
+    })(now0);
+  }
+  function arrive(mv) {
+    walks.delete(mv);
+    if (mv.hasAttribute('data-look')) turn(mv, 0);
+    var end = mv.getAttribute('data-end-clip');
+    if (!end) { rest(mv); return; }
+    var once = mv.hasAttribute('data-end-once');
+    playClip(mv, end, once);
+    if (once) mv.addEventListener('finished', function () { rest(mv); }, { once: true });
+  }
+  function secs(v) { v = String(v || '').split(',')[0].trim(); return v.slice(-2) === 'ms' ? parseFloat(v) : parseFloat(v) * 1000 || 0; }
+  // In the presentation it moves by CSS (a transition of its position, or the
+  // keyframes of a curved path): it walks from when that starts, for as long.
+  document.addEventListener('transitionstart', function (e) {
+    var mv = e.target; if (mv.tagName !== 'MODEL-VIEWER' || !mv.hasAttribute('data-move-clip')) return;
+    if (['translate', 'opacity', 'transform'].indexOf(e.propertyName) < 0) return;
+    move(mv, secs(getComputedStyle(mv).transitionDuration));
+  }, true);
+  document.addEventListener('animationstart', function (e) {
+    var mv = e.target; if (mv.tagName !== 'MODEL-VIEWER' || !mv.hasAttribute('data-move-clip')) return;
+    move(mv, secs(getComputedStyle(mv).animationDuration));
+  }, true);
   function stop(mv) { var t = timers.get(mv); if (t) { cancelAnimationFrame(t.raf); clearInterval(t.iv); } timers.delete(mv); mv.style.transform = ''; }
   function start(mv) {
     stop(mv);
@@ -64,5 +122,5 @@ export function model3dRuntime() {
     });
   }
   if (window.Reveal) { Reveal.on('ready', function (e) { enter(e.currentSlide); }); Reveal.on('slidechanged', function (e) { enter(e.currentSlide); }); if (Reveal.isReady()) enter(Reveal.getCurrentSlide()); }
-  return { start: start, stop: stop };
+  return { start: start, stop: stop, move: move };
 }

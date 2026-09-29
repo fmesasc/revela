@@ -310,7 +310,9 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .call-steps{font-size:13px;padding-inline-start:20px}.call-steps li{margin:4px 0}
 /* Recursos (GIF, stickers, 3D) and Movimiento 3D */
 .sk-item.busy{opacity:.5;cursor:progress}
-.m3d-view{height:260px;border-radius:10px;background:radial-gradient(circle at 50% 40%,#f4f6fa,#cfd5e0);margin-bottom:10px}
+.modal.m3d{max-height:92vh;overflow:auto}.m3d-view{position:sticky;top:-22px;z-index:1}
+.m3d-walk label.off{opacity:.45}
+.m3d-view{overflow:hidden;height:260px;border-radius:10px;background:radial-gradient(circle at 50% 40%,#f4f6fa,#cfd5e0);margin-bottom:10px}
 /* Canvas view (canvas mode, like Prezi) */
 #canvas-view{position:absolute;inset:0;z-index:60;overflow:hidden;cursor:grab;touch-action:none}
 #canvas-view:active{cursor:grabbing}

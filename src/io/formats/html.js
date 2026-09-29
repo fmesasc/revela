@@ -31,7 +31,9 @@ const box = b => `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;`
   + `height:${b.h}px;${tfCSS(b)}`
   + (b.opacity != null && b.opacity < 100 ? `opacity:${b.opacity / 100};` : '')
   + (b.shadow ? `filter:${shadowCSS(b)};` : '')
-  + (b.animation ? `transition-duration:${b.animation.duration ?? 500}ms;transition-delay:${b.animation.delay ?? 0}ms;`
+  + animVars(b);
+// Timing (and motion path) of an object's animation, also for its caption.
+const animVars = b => (b.animation ? `transition-duration:${b.animation.duration ?? 500}ms;transition-delay:${b.animation.delay ?? 0}ms;`
     + `--anim-dur:${b.animation.duration ?? 500}ms;--anim-del:${b.animation.delay ?? 0}ms;`
     + (b.animation.effect === 'path' ? `--dx:${b.animation.dx || 0}px;--dy:${b.animation.dy || 0}px;--pk:rvP${b.id};` : '') : '');
 
@@ -309,8 +311,9 @@ function slideHTML(s, deck, figMap, plan = morphPlan(deck)) {
     if (b.type === 'slideref') return slideRefExport(b, s, deck);
     let html = blockHTML(b, s);
     const f = figMap.get(b.id);
-    if (f) html += `<div class="caption" style="position:absolute;left:${b.x}px;top:${b.y + b.h + 4}px;width:${b.w}px;`
-      + `text-align:center;font-style:italic;font-size:16px;opacity:.85">${esc(captionLine(f))}</div>`;
+    // (The caption goes with its object: it appears, leaves or moves along with it.)
+    if (f) html += `<div${animAttrs(b, s).replace(/ data-bid="[^"]*"/, '')} style="position:absolute;left:${b.x}px;top:${b.y + b.h + 4}px;width:${b.w}px;`
+      + `text-align:center;font-style:italic;font-size:16px;${animVars(b)}"><span class="caption" style="opacity:.85">${esc(captionLine(f))}</span></div>`;
     return html;
   }).join('\n');
   const notes = s.notes ? `<aside class="notes">${esc(s.notes)}</aside>` : '';

@@ -4,6 +4,14 @@
 import { currentSlide } from '../../core/store.js';
 import { animTimeline, EFFECT_KF, motionPoints } from '../../features/animation/transitions.js';
 import { stage } from './canvas.js';
+import { model3dRuntime } from '../../features/content/model3d.js';
+
+let models3d = null;                              // walking 3D models (their clip while they move)
+function walkIn(el, dur, delay) {
+  const mv = el.querySelector('model-viewer[data-move-clip]'); if (!mv) return;
+  models3d ||= model3dRuntime();
+  setTimeout(() => models3d.move(mv, dur, el), delay);
+}
 
 // ---- Animation preview -----------------------------------------------------
 export const KEYFRAME = EFFECT_KF;
@@ -12,11 +20,13 @@ export function animateEl(el, anim, dur, delay) {
   if (effect === 'path') {                        // motion path: slide to (dx, dy) and back
     el.animate(motionPoints(anim).map(([x, y]) => ({ translate: `${x}px ${y}px` })),
       { duration: dur, delay, easing: 'ease-in-out', fill: 'none' });
+    walkIn(el, dur, delay);
     return;
   }
   const kf = KEYFRAME[effect] || 'rvIn';
   el.style.animation = 'none'; void el.offsetWidth;
   el.style.animation = `${kf} ${dur}ms ease ${delay}ms both`;
+  walkIn(el, dur, delay);
   const done = () => { el.style.animation = ''; el.removeEventListener('animationend', done); };
   el.addEventListener('animationend', done);
 }

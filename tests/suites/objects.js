@@ -451,6 +451,51 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     R.store.undo(); assert(!last().segments, 'se deshace de una vez');
   });
 
+  await test('3D que anda: una animación mientras se mueve, mirando hacia donde va, y otra al llegar', async () => {
+    reset(); const W = frame.contentWindow;
+    const M = await W.eval("import('/src/features/content/model3d.js')");
+    const b = { id: 'm1', type: 'model', src: 'x.glb', clip: 'Survey', walk: { clip: 'Walk', end: 'Wave', endOnce: true, face: true, look: true } };
+    const attrs = Object.fromEntries(M.modelAttrs(b));
+    assert(attrs['data-move-clip'] === 'Walk' && attrs['data-end-clip'] === 'Wave' && 'data-end-once' in attrs && 'data-face' in attrs, 'atributos de andar');
+    assert(!('auto-rotate' in attrs), 'andando no gira solo (miraría a cualquier lado)');
+    // Without a rest clip it waits still, on the first frame of walking.
+    const still = Object.fromEntries(M.modelAttrs({ ...b, clip: null }));
+    assert(!('autoplay' in still) && still['animation-name'] === 'Walk', 'sin reposo: quieto hasta moverse');
+    // The runtime with a stand-in viewer: it moves right by CSS, as in the presentation.
+    const rt = M.model3dRuntime(), mv = D.createElement('model-viewer'), log = [];
+    for (const [k, v] of M.modelAttrs(b)) mv.setAttribute(k, v);
+    let orbit = '', name = '';
+    Object.defineProperties(mv, { availableAnimations: { value: ['Survey', 'Walk', 'Wave'] }, animationName: { get: () => name, set: v => { name = v; } },
+      cameraOrbit: { get: () => orbit, set: v => { orbit = v; } },
+      play: { value: o => { const e = name + (o ? ' una vez' : ''); if (log.at(-1) !== e) log.push(e); } }, pause: { value: () => log.push('pausa') } });
+    mv.style.cssText = 'position:fixed;left:0;top:0;width:10px;height:10px;transition-duration:400ms';
+    D.body.appendChild(mv);
+    try {
+      mv.animate([{ translate: '0px 0px' }, { translate: '300px 0px' }], { duration: 400 });
+      mv.dispatchEvent(new W.TransitionEvent('transitionstart', { propertyName: 'translate', bubbles: true }));
+      mv.dispatchEvent(new W.TransitionEvent('transitionstart', { propertyName: 'opacity', bubbles: true }));
+      await sleep(150);
+      eq(log.join(), 'Walk', 'anda mientras se mueve (una vez, aunque empiecen varias propiedades)');
+      assert(/^-90(\.0)?deg/.test(mv.cameraOrbit), 'hacia la derecha: se ve de perfil mirando a la derecha');
+      await sleep(450);
+      eq(log.join(), 'Walk,Wave una vez', 'al llegar, la otra animación');
+      assert(/^0(\.0)?deg/.test(mv.cameraOrbit), 'y mira al público');
+      mv.dispatchEvent(new W.Event('finished')); eq(log.at(-1), 'Survey', 'y vuelve al reposo');
+      // Moving up the slide it shows its back; with a curved path (keyframes) too.
+      log.length = 0; mv.style.animationDuration = '300ms';
+      mv.animate([{ translate: '0px 0px' }, { translate: '0px -200px' }], { duration: 300 });
+      mv.dispatchEvent(new W.AnimationEvent('animationstart', { animationName: 'rvPm1', bubbles: true })); await sleep(120);
+      assert(/^-?180(\.0)?deg/.test(mv.cameraOrbit) && log[0] === 'Walk', 'hacia arriba: de espaldas');
+      await sleep(300);
+    } finally { mv.remove(); }
+    // In the presentation: the attributes and the runtime go with it.
+    R.state.deck.slides[0].blocks.push({ ...b, x: 100, y: 100, w: 300, h: 300, rotation: 0, animation: { effect: 'path', order: 1, start: 'click', duration: 3000, delay: 0, dx: 480, dy: 0 } });
+    const html = R.io.buildHTML();
+    assert(/<model-viewer[^>]*data-move-clip="Walk"/.test(html) && /function move\(mv, dur, el\)/.test(html), 'la presentación lo lleva');
+    R.state.deck.slides[0].blocks.at(-1).caption = 'Zorro';
+    assert(/<div class="fragment rv-path" data-fragment-index="1" [^>]*--dx:480px[^>]*><span class="caption"/.test(R.io.buildHTML()), 'su pie de foto se mueve con él');
+  });
+
   await test('recursos: stickers animados, GIF, 3D (biblioteca, Poly Haven empaquetado, Sketchfab)', async () => {
     reset(); const W = frame.contentWindow, realFetch = W.fetch;
     const Rz = await W.eval("import('/src/features/content/resources.js')");
