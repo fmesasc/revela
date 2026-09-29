@@ -1,5 +1,6 @@
 // Application bootstrap: wire the modules together and subscribe the render.
 
+import { ACTIONS } from '../../ui/ribbon/actions.js';
 import { initFileDrop } from '../../ui/shell/openfile.js';
 import { subscribe, state, undo, redo, selectedBlock, selectedBlocks } from '../../core/store.js';
 import * as clip from '../../features/document/clipboard.js';
@@ -126,6 +127,21 @@ function keyboard(e) {
     return;
   }
   const meta = e.ctrlKey || e.metaKey;
+  // As in PowerPoint: F5 presents from the start, Shift+F5 from this slide.
+  if (e.key === 'F5') { e.preventDefault(); ACTIONS[e.shiftKey ? 'present-current' : 'present'](); return; }
+  if (meta && e.key.toLowerCase() === 'm') { e.preventDefault(); slides.addSlide(); return; }
+  if (meta && e.key.toLowerCase() === 's') { e.preventDefault(); ACTIONS.save(); return; }
+  if (meta && e.key.toLowerCase() === 'a') {                     // every object of the slide
+    e.preventDefault(); const ids = (store.currentSlide()?.blocks || []).filter(b => !b.locked).map(b => b.id);
+    store.commit(() => { store.setMulti(ids); }, { history: false }); return;
+  }
+  if (e.key === 'Escape' && state.ui.selection) { store.commit(() => store.setSelection(null), { history: false }); return; }
+  // Moving between slides: Page Up/Down, Home/End, and the arrows when nothing is selected.
+  const go = i => { if (i >= 0 && i < state.deck.slides.length && i !== state.ui.slideIndex) slides.goToSlide(i); };
+  if (e.key === 'PageDown' || (!state.ui.selection && (e.key === 'ArrowDown' || e.key === 'ArrowRight'))) { e.preventDefault(); go(state.ui.slideIndex + 1); return; }
+  if (e.key === 'PageUp' || (!state.ui.selection && (e.key === 'ArrowUp' || e.key === 'ArrowLeft'))) { e.preventDefault(); go(state.ui.slideIndex - 1); return; }
+  if (e.key === 'Home' && !state.ui.selection) { e.preventDefault(); go(0); return; }
+  if (e.key === 'End' && !state.ui.selection) { e.preventDefault(); go(state.deck.slides.length - 1); return; }
   if (meta && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
   if (meta && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
   if (meta && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSelected(); return; }

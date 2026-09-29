@@ -100,6 +100,7 @@ export const ACTIONS = {
   'save-picture': () => (selectedBlocks().length ? openSaveAsPicture() : alertDialog(t('Selecciona primero uno o varios objetos.'))),
   'export-video': () => openVideoDialog(),
   'present': () => present(),
+  'present-current': () => present({ fromCurrent: true }),
   'present-call': () => openCallPresent(),
   'rehearse': () => present({ rehearse: true }),
   'coach': () => startCoach(),

@@ -1,4 +1,5 @@
 import { state, commit } from '../../core/store.js';
+import { slidePaths } from '../../features/document/captions.js';
 import { session } from '../../core/session.js';
 import { buildHTML } from '../../io/formats/html.js';
 import { t } from '../../i18n/index.js';
@@ -12,7 +13,9 @@ import { confirmDialog, alertDialog } from '../dialogs/dialog.js';
 // (without the current auto-advance), then offer to save the times as each
 // slide's auto-advance.
 // onRehearsal(times): what to do with the times instead of offering to save them.
-export function present({ rehearse = false, fullscreen = true, onEnd = null, onRehearsal = null } = {}) {
+// fromCurrent: start at the slide being edited (PowerPoint's "From current slide").
+export function present({ rehearse = false, fullscreen = true, onEnd = null, onRehearsal = null, fromCurrent = false } = {}) {
+  const startAt = fromCurrent ? slidePaths(state.deck).get(state.ui.slideIndex) : null;
   const deck = rehearse ? { ...state.deck, slides: state.deck.slides.map(s => ({ ...s, autoSlide: 0 })) } : state.deck;
   const url = URL.createObjectURL(new Blob([buildHTML(deck, { inApp: true })], { type: 'text/html' }));
 
@@ -61,7 +64,9 @@ export function present({ rehearse = false, fullscreen = true, onEnd = null, onR
   const hook = setInterval(() => {
     const Rv = frame.contentWindow?.Reveal;
     if (Rv && Rv.isReady?.()) {
-      clearInterval(hook); Rv.on('slidechanged', notifySlide); notifySlide();
+      clearInterval(hook); Rv.on('slidechanged', notifySlide);
+      if (startAt) { const [h, v] = startAt.split('/').map(Number); Rv.slide(h, v); }
+      notifySlide();
       if (rehearse) Rv.on('slidechanged', () => lap(Rv.getSlidePastCount()));
     }
     else if (++tries > 60) clearInterval(hook);

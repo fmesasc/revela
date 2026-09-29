@@ -339,4 +339,30 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.querySelector('.modal-backdrop .dlg-ok').click();
   });
 
+
+  await test('atajos como en PowerPoint: F5, Mayús+F5, Ctrl+M, Ctrl+A, Esc, Re Pág/Av Pág, Inicio/Fin', async () => {
+    reset(); const W = frame.contentWindow;
+    const key = (k, o = {}) => D.dispatchEvent(new W.KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true, ...o }));
+    R.store.commit(() => { R.state.ui.selection = null; R.state.ui.multi = []; }, { history: false });
+    const n = R.state.deck.slides.length; key('m', { ctrlKey: true }); await sleep(10);
+    eq(R.state.deck.slides.length, n + 1, 'Ctrl+M: nueva diapositiva');
+    R.store.commit(() => { R.state.ui.selection = null; R.state.ui.multi = []; }, { history: false });
+    key('Home'); await sleep(10); eq(R.state.ui.slideIndex, 0, 'Inicio: la primera');
+    key('PageDown'); await sleep(10); eq(R.state.ui.slideIndex, 1, 'Av Pág: la siguiente');
+    key('ArrowLeft'); await sleep(10); eq(R.state.ui.slideIndex, 0, 'flecha sin nada seleccionado: cambia de diapositiva');
+    key('End'); await sleep(10); eq(R.state.ui.slideIndex, R.state.deck.slides.length - 1, 'Fin: la última');
+    key('Home'); await sleep(10);
+    key('a', { ctrlKey: true }); await sleep(10);
+    eq(R.state.ui.multi.length, slide().blocks.filter(b => !b.locked).length, 'Ctrl+A: todos los objetos');
+    key('Escape'); await sleep(10); assert(!R.state.ui.selection && !R.state.ui.multi.length, 'Esc: sin selección');
+    // Shift+F5: from this slide.
+    R.store.commit(() => { R.state.ui.slideIndex = 1; }, { history: false });
+    key('F5', { shiftKey: true });
+    const f = () => D.querySelector('#present-overlay iframe');
+    for (let i = 0; i < 100 && !f()?.contentWindow?.Reveal?.isReady?.(); i++) await sleep(100);
+    await sleep(200);
+    eq(f().contentWindow.Reveal.getIndices().h, 1, 'Mayús+F5: empieza en esta diapositiva');
+    D.getElementById('present-close').click(); await sleep(50);
+  });
+
 }
