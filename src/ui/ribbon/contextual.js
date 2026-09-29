@@ -55,6 +55,12 @@ function groupsFor(b) {
       ['num', 'Grosor', b.strokeWidth ?? 2, v => blocks.setShapeStyle('strokeWidth', Math.max(0, +v || 0)), 0, 40, 1],
       ['select', 'Línea', [['solid', '━ Continua'], ['dash', '╍ Guiones'], ['dot', '┈ Puntos'], ['dashDot', '─·─ Guion y punto']], b.dash || 'solid', v => blocks.setLineDash(v)],
       btn('format_color_reset', 'Sin relleno', () => blocks.setShapeStyle('fill', 'none'), b.fill === 'none')]],
+    // Gradient (PowerPoint's "Gradient fill") and a hand-drawn look (its "Sketched" outline).
+    ['Relleno', [['select', 'Tipo de relleno', [['solid', 'Sólido'], ['linear', 'Degradado lineal'], ['radial', 'Degradado radial']], b.fill2 ? b.gradType || 'linear' : 'solid',
+        v => set(b, x => { if (v === 'solid') { delete x.fill2; delete x.gradType; } else { x.fill2 ||= '#ffffff'; x.gradType = v; } })],
+      ...(b.fill2 ? [['color', 'gradient', 'Segundo color', b.fill2, v => set(b, x => { x.fill2 = v; })]] : []),
+      ...(b.fill2 && b.gradType !== 'radial' ? [['num', 'Ángulo', b.gradAngle ?? 0, v => set(b, x => { x.gradAngle = ((+v || 0) % 360 + 360) % 360; }), 0, 359, 15]] : []),
+      btn('draw', 'A mano alzada', () => set(b, x => { if (x.sketch) delete x.sketch; else x.sketch = true; }), !!b.sketch)]],
     ['Forma', [['select', 'Cambiar forma', SHAPES, b.shape, v => set(b, x => { x.shape = v; })]]]);
   else if (b.type === 'image') G.push(
     ['Ajustar', [btn('tune', 'Ajustes', () => openImageAdjust(b)), btn('crop', 'Recortar', () => openImageCrop(b)), btn('auto_fix_high', 'Quitar fondo', () => removeBackground(b)),

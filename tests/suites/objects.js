@@ -547,6 +547,30 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(tab().hidden && R.state.ui.activeTab === 'home', 'al quitar la selección se va y vuelve a Inicio');
   });
 
+  await test('formas: degradado (lineal y radial) y estilo a mano alzada', async () => {
+    reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
+    const base = { id: 'f1', type: 'shape', shape: 'rect', fill: '#ff0000', stroke: '#000000', strokeWidth: 2, x: 0, y: 0, w: 100, h: 100 };
+    const lin = S.shapeSVG({ ...base, fill2: '#0000ff', gradAngle: 90 });
+    assert(/<linearGradient[^>]*x1="0\.500" y1="0\.000" x2="0\.500" y2="1\.000"/.test(lin) && /stop-color="#ff0000"/.test(lin) && /stop-color="#0000ff"/.test(lin), 'degradado lineal (90°: de arriba abajo)');
+    const id = lin.match(/linearGradient id="([^"]+)"/)[1]; assert(lin.includes(`fill="url(#${id})"`), 'la forma usa su degradado');
+    assert(S.shapeSVG({ ...base, fill2: '#0000ff' }).match(/Gradient id="([^"]+)"/)[1] !== id, 'cada dibujo con su propio id (miniatura y lienzo)');
+    assert(/<radialGradient/.test(S.shapeSVG({ ...base, fill2: '#0000ff', gradType: 'radial' })), 'degradado radial');
+    const sk = S.shapeSVG({ ...base, shape: 'star', sketch: true });
+    eq((sk.match(/<path /g) || []).length, 3, 'a mano: relleno y dos trazos de lápiz');
+    eq(sk, S.shapeSVG({ ...base, shape: 'star', sketch: true }), 'siempre igual para la misma forma');
+    assert(sk !== S.shapeSVG({ ...base, id: 'otra', shape: 'star', sketch: true }), 'y distinto en otra');
+    assert(S.shapeSig({ ...base, sketch: true }) !== S.shapeSig(base) && S.shapeSig({ ...base, fill2: '#0000ff' }) !== S.shapeSig(base), 'se redibuja al cambiarlo');
+    // From the shape's tab.
+    R.blocks.addShape('ellipse'); await sleep(30);
+    const page = () => D.querySelector('#ribbon [data-page="ctx"]'), sel = () => [...page().querySelectorAll('select')].find(x => [...x.options].some(o => o.value === 'radial'));
+    sel().value = 'linear'; sel().dispatchEvent(new W.Event('change')); await sleep(20);
+    assert(last().fill2 && last().gradType === 'linear', 'degradado desde la pestaña');
+    assert([...page().querySelectorAll('label, .ctx-field')].some(l => /Ángulo/.test(l.textContent)), 'con su ángulo');
+    [...page().querySelectorAll('button')].find(x => x.querySelector('span')?.textContent === 'A mano alzada').click(); await sleep(20);
+    assert(last().sketch, 'a mano alzada desde la pestaña');
+    sel().value = 'solid'; sel().dispatchEvent(new W.Event('change')); await sleep(20); assert(!last().fill2, 'vuelta a sólido');
+  });
+
   await test('modelos 3D: margen para moverse (la mano que saluda no se corta en el borde)', async () => {
     reset(); const W = frame.contentWindow, M = await W.eval("import('/src/features/content/model3d.js')");
     const base = { id: 'm1', type: 'model', src: 'data:model/gltf-binary;base64,AAAA', x: 100, y: 100, w: 200, h: 100, rotation: 0, animation: null };

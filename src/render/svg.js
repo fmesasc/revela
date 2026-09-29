@@ -273,7 +273,8 @@ export const iconSig = b => (b.icon || '') + '|' + (b.color || '');
 // none); a non‑scaling stroke keeps the outline an even width at any size.
 
 export function shapeSig(b) {
-  return `${b.shape}|${b.fill}|${b.stroke}|${b.strokeWidth}|${b.dash || ''}|${b.radius ?? ''}|${b.shape === 'rounded' ? b.w + 'x' + b.h : ''}|${b.path ? b.path.length + b.path.slice(0, 40) : ''}`;
+  return `${b.shape}|${b.fill}|${b.stroke}|${b.strokeWidth}|${b.dash || ''}|${b.radius ?? ''}|${b.shape === 'rounded' ? b.w + 'x' + b.h : ''}|${b.path ? b.path.length + b.path.slice(0, 40) : ''}`
+    + `|${b.fill2 || ''}|${b.gradType || ''}|${b.gradAngle ?? ''}|${b.sketch ? 1 : ''}`;
 }
 
 // Polygon outlines in the 100×100 box (shared by the SVG and by the shape
@@ -307,18 +308,65 @@ export function dashArray(dash, sw = 2) {
 const dashAttr = (dash, sw) => (dashArray(dash, sw) ? ` stroke-dasharray="${dashArray(dash, sw)}"${dash === 'dot' ? ' stroke-linecap="round"' : ''}` : '');
 export const borderCSS = (color, dash, width = 2) => `${width}px ${{ dash: 'dashed', dashDot: 'dashed', dot: 'dotted' }[dash] || 'solid'} ${color}`;
 
+// A shape's gradient (fill → fill2, linear at an angle or radial). Its id is
+// new each time: the same shape is drawn in the slide, its thumbnail and
+// elsewhere, and a hidden copy's gradient would not paint the others.
+let defN = 0;
+const hash = s => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7);
+export function shapeDefs(b) {
+  const n = ++defN, out = { defs: '', fill: b.fill || 'none' };
+  if (b.fill2 && b.fill && b.fill !== 'none') {
+    const id = `sg${n}`;
+    if (b.gradType === 'radial') out.defs += `<radialGradient id="${id}" cx=".5" cy=".5" r=".6"><stop offset="0" stop-color="${b.fill}"/><stop offset="1" stop-color="${b.fill2}"/></radialGradient>`;
+    else { const a = (b.gradAngle ?? 0) * Math.PI / 180, c = Math.cos(a) / 2, s = Math.sin(a) / 2, f = v => (0.5 + v).toFixed(3);
+      out.defs += `<linearGradient id="${id}" x1="${f(-c)}" y1="${f(-s)}" x2="${f(c)}" y2="${f(s)}"><stop offset="0" stop-color="${b.fill}"/><stop offset="1" stop-color="${b.fill2}"/></linearGradient>`; }
+    out.fill = `url(#${id})`;
+  }
+  if (out.defs) out.defs = `<defs>${out.defs}</defs>`;
+  return out;
+}
+// Hand-drawn look (PowerPoint's "Sketched"): the outline through slightly
+// wandering points, drawn twice like a pencil going over it (as rough.js does).
+// Always the same for the same shape (seeded by its id).
+function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t ^= t + Math.imul(t ^ (t >>> 7), 61 | t); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function outlineOf(b) {
+  if (SHAPE_POINTS[b.shape]) return SHAPE_POINTS[b.shape].trim().split(/\s+/).map(p => p.split(',').map(Number));
+  if (b.shape === 'ellipse') return Array.from({ length: 28 }, (_, i) => [50 + 48 * Math.cos(i * Math.PI / 14), 50 + 48 * Math.sin(i * Math.PI / 14)]);
+  if (['line', 'arrow', 'custom'].includes(b.shape)) return null;
+  return [[2, 2], [98, 2], [98, 98], [2, 98]];
+}
+function sketchPath(pts, rnd, amp, closed = true) {
+  // Each side a slightly bowed stroke from near one corner to near the next: the
+  // corners stay sharp and the strokes overlap a little, as a pencil does.
+  const j = () => (rnd() - 0.5) * 2 * amp, f = v => v.toFixed(1);
+  return pts.map((p, i) => {
+    const q = pts[(i + 1) % pts.length], L = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1, bow = j() * Math.min(1.6, L / 40);
+    const mx = (p[0] + q[0]) / 2 - (q[1] - p[1]) / L * bow, my = (p[1] + q[1]) / 2 + (q[0] - p[0]) / L * bow;
+    return `M${f(p[0] + j())},${f(p[1] + j())} Q${f(mx)},${f(my)} ${f(q[0] + j())},${f(q[1] + j())}`;
+  }).join(' ');
+}
+// The fill: the same outline, barely moved, as one closed shape.
+const sketchFill = (pts, rnd) => 'M' + pts.map(p => `${(p[0] + (rnd() - 0.5)).toFixed(1)},${(p[1] + (rnd() - 0.5)).toFixed(1)}`).join(' L') + ' Z';
 export function shapeSVG(b) {
-  const fill = b.fill || 'none';
+  const d = shapeDefs(b);
+  const fill = d.fill;
   const stroke = b.stroke || '#1e2a3a';
   const sw = b.strokeWidth ?? 2;
   const paint = `fill="${fill}" stroke="${stroke}" stroke-width="${sw}" vector-effect="non-scaling-stroke"${dashAttr(b.dash, sw)}`;
   const strokeOnly = `fill="none" stroke="${stroke}" stroke-width="${sw}" vector-effect="non-scaling-stroke" stroke-linecap="round"${dashAttr(b.dash, sw)}`;
+  const outline = b.sketch && outlineOf(b);
+  if (outline) {
+    const rnd = rng(Math.abs(hash(b.id || 'x'))), line = `fill="none" stroke="${stroke}" stroke-width="${Math.max(1, sw)}" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"`;
+    return `<svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" style="display:block;overflow:visible">${d.defs}`
+      + `<path d="${sketchFill(outline, rnd)}" fill="${fill}" stroke="none"/>`
+      + (sw > 0 ? `<path d="${sketchPath(outline, rnd, 1.5)}" ${line}/><path d="${sketchPath(outline, rnd, 1.5)}" ${line} opacity=".7"/>` : '') + `</svg>`;
+  }
   // Rounded rectangles in their real size, so the corners stay round when
   // the shape isn't square (radius: px, or 12 % of the short side).
   if (b.shape === 'rounded' && b.w && b.h) {
     const r = Math.min(b.radius ?? Math.min(b.w, b.h) * 0.12, Math.min(b.w, b.h) / 2);
     return `<svg viewBox="0 0 ${b.w} ${b.h}" preserveAspectRatio="none" width="100%" height="100%" style="display:block;overflow:visible">`
-      + `<rect x="1" y="1" width="${Math.max(0, b.w - 2)}" height="${Math.max(0, b.h - 2)}" rx="${r}" ry="${r}" ${paint}/></svg>`;
+      + `${d.defs}<rect x="1" y="1" width="${Math.max(0, b.w - 2)}" height="${Math.max(0, b.h - 2)}" rx="${r}" ry="${r}" ${paint}/></svg>`;
   }
   let inner;
   if (SHAPE_POINTS[b.shape]) inner = `<polygon points="${SHAPE_POINTS[b.shape]}" ${paint}/>`;
@@ -333,7 +381,7 @@ export function shapeSVG(b) {
     default:         inner = `<rect x="2" y="2" width="96" height="96" ${paint}/>`;  // rectangle
   }
   return `<svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" `
-    + `style="display:block;overflow:visible">${inner}</svg>`;
+    + `style="display:block;overflow:visible">${d.defs}${inner}</svg>`;
 }
 
 // Equations take the ribbon's formatting like text: size, colour, highlight,
