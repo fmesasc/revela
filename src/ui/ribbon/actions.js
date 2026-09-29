@@ -1,6 +1,7 @@
 // What every ribbon button does, by its data-action (also used by keyboard
 // shortcuts, the context menu and the tests).
 
+import { editText } from '../canvas/content.js';
 import { readFile, openProject, openPresentation, insertMarkdown } from '../shell/openfile.js';
 import { openFindPanel } from '../dialogs/find.js';
 import { openGdriveSetup } from '../dialogs/gdrive.js';
@@ -155,7 +156,7 @@ export const ACTIONS = {
   'appearance': () => openAppearance(),
   'slide-delete': () => slides.deleteSlide(),
   'section-add': () => slides.addSection(),   // creates + renames inline (no prompt)
-  'insert-text': blocks.addText,
+  'insert-text': () => { blocks.addText(); requestAnimationFrame(() => editText(state.ui.selection)); },   // (ready to type, as in PowerPoint)
   'insert-image': () => readFile('image/*', blocks.addImage),
   'insert-table': blocks.addTable,
   'insert-table-csv': () => readFile('.csv,.tsv,.txt,text/csv', async f => blocks.addTableFromText(await f.text()), 'file'),

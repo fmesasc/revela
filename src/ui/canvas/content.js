@@ -302,6 +302,15 @@ export function setupTable(el, b) {
     }
   }, 0));
 }
+// Start editing a text box without the mouse (just inserted, Enter, F2, or
+// typing over it): all its text selected, or the caret at the end.
+export function editText(id, { selectAll = true } = {}) {
+  const el = document.querySelector(`#stage .block[data-id="${id}"]`), rich = el?.querySelector('.rich'); if (!rich) return false;
+  el.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+  const r = document.createRange(); r.selectNodeContents(rich); if (!selectAll) r.collapse(false);
+  const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+  return true;
+}
 // Double‑click enters content mode: text becomes editable, a model can be
 // orbited. Clicking elsewhere leaves it.
 export function setupText(b, el) {

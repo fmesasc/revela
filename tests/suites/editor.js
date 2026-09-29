@@ -374,4 +374,19 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     R.store.undo(); await sleep(10); assert(!r().disabled, 'tras deshacer, se puede rehacer');
   });
 
+
+  await test('texto sin ratón: al insertar queda listo para escribir; Intro o F2 lo editan', async () => {
+    reset(); const W = frame.contentWindow;
+    D.querySelector('[data-action="insert-text"]').click(); await sleep(60);
+    const rich = () => D.activeElement;
+    assert(rich()?.isContentEditable && W.getSelection().toString().length > 0, 'nuevo cuadro: en edición y su texto seleccionado');
+    rich().blur(); await sleep(20);
+    const b = last(); R.store.commit(() => { R.state.ui.selection = b.id; R.state.ui.multi = [b.id]; }, { history: false }); await sleep(10);
+    D.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'F2', bubbles: true, cancelable: true })); await sleep(20);
+    assert(rich()?.isContentEditable && rich().closest('.block')?.dataset.id === b.id, 'F2: a editarlo');
+    rich().blur(); await sleep(20);
+    D.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); await sleep(20);
+    assert(rich()?.isContentEditable, 'Intro: también'); rich().blur();
+  });
+
 }

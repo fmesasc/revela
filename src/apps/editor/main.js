@@ -1,5 +1,6 @@
 // Application bootstrap: wire the modules together and subscribe the render.
 
+import { editText } from '../../ui/canvas/content.js';
 import { ACTIONS } from '../../ui/ribbon/actions.js';
 import { initFileDrop } from '../../ui/shell/openfile.js';
 import { subscribe, state, undo, redo, selectedBlock, selectedBlocks } from '../../core/store.js';
@@ -149,6 +150,12 @@ function keyboard(e) {
   if (meta && !e.shiftKey && e.key.toLowerCase() === 'c' && selectedBlocks().length) { e.preventDefault(); clip.copySelected(); return; }
   if (meta && !e.shiftKey && e.key.toLowerCase() === 'x' && selectedBlocks().length) { e.preventDefault(); clip.cutSelected(); return; }
   if (meta && e.key.toLowerCase() === 'g') { e.preventDefault(); e.shiftKey ? ungroupSelected() : groupSelected(); return; }
+  // A text box selected: Enter or F2 edits it; typing replaces its text (PowerPoint, Google Slides).
+  const one = selectedBlocks().length === 1 ? selectedBlock() : null;
+  if (one?.type === 'text' && !one.locked && !meta && !e.altKey) {
+    if (e.key === 'Enter' || e.key === 'F2') { e.preventDefault(); editText(one.id, { selectAll: false }); return; }
+    if (e.key.length === 1 && e.key !== ' ') { editText(one.id); return; }   // (the key then types over it)
+  }
   if ((e.key === 'Delete' || e.key === 'Backspace') && state.ui.selection) { e.preventDefault(); deleteSelected(); return; }
   if (selectedBlock()) {
     const step = e.shiftKey ? 10 : 1;
