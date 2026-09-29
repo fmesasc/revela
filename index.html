@@ -233,6 +233,14 @@
             <button data-action="connect-blocks" title="Conectar los dos objetos seleccionados"><i class="ms">timeline</i></button>
           </div><label>Organizar</label>
         </div>
+        <div class="group">
+          <div class="row">
+            <label class="color"><i class="ms">format_color_fill</i><input type="color" data-shape-fill value="#3f6497" title="Relleno de la forma"></label>
+            <label class="color"><i class="ms">border_color</i><input type="color" data-shape-stroke value="#1e2a3a" title="Borde de la forma"></label>
+            <select data-line-dash title="Estilo de línea: formas, líneas, conectores y bordes">
+              <option value="solid">━ Continua</option><option value="dash">╍ Guiones</option><option value="dot">┈ Puntos</option><option value="dashDot">─·─ Guion y punto</option></select>
+          </div><label>Dibujo</label>
+        </div>
       </section>
 
       <!-- INSERTAR -->
@@ -280,26 +288,8 @@
         </div>
         <div class="group">
           <div class="row">
-            <button data-shape="rect" title="Rectángulo"><i class="ms">rectangle</i></button>
-            <button data-shape="rounded" title="Rectángulo redondeado"><i class="ms">crop_square</i></button>
-            <button data-shape="ellipse" title="Elipse"><i class="ms">circle</i></button>
-            <button data-shape="triangle" title="Triángulo"><i class="ms">change_history</i></button>
-            <button data-shape="diamond" title="Rombo"><i class="ms">diamond</i></button>
-            <button data-shape="pentagon" title="Pentágono"><i class="ms">pentagon</i></button>
-            <button data-shape="star" title="Estrella"><i class="ms">star</i></button>
-            <button data-shape="rightarrow" title="Flecha de bloque"><i class="ms">double_arrow</i></button>
-            <button data-shape="leftarrow" title="Flecha izquierda"><i class="ms">west</i></button>
-            <button data-shape="hexagon" title="Hexágono"><i class="ms">hexagon</i></button>
-            <button data-shape="parallelogram" title="Paralelogramo"><i class="ms">crop_16_9</i></button>
-            <button data-shape="trapezoid" title="Trapecio"><i class="ms">signal_cellular_alt</i></button>
-            <button data-shape="chevron" title="Galón (chevron)"><i class="ms">chevron_right</i></button>
-            <button data-shape="plus" title="Cruz"><i class="ms">add</i></button>
-            <button data-shape="line" title="Línea"><i class="ms">horizontal_rule</i></button>
-            <button data-shape="arrow" title="Flecha"><i class="ms">arrow_right_alt</i></button>
-            <label class="color"><i class="ms">format_color_fill</i><input type="color" data-shape-fill value="#3f6497" title="Relleno de la forma"></label>
-            <label class="color"><i class="ms">border_color</i><input type="color" data-shape-stroke value="#1e2a3a" title="Borde de la forma"></label>
-            <select data-line-dash title="Estilo de línea: formas, líneas, conectores y bordes">
-              <option value="solid">━ Continua</option><option value="dash">╍ Guiones</option><option value="dot">┈ Puntos</option><option value="dashDot">─·─ Guion y punto</option></select>
+            <div class="shape-gallery" data-shape-gallery></div>
+            <button data-shapes-open class="shape-more" title="Todas las formas: básicas, flechas, estrellas, bocadillos, diagrama de flujo y matemáticas"><i class="ms">category</i><span>Más<br>formas</span></button>
           </div><label>Formas</label>
         </div>
         <div class="group">

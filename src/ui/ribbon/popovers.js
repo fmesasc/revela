@@ -9,7 +9,7 @@ import * as blocks from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
 import * as palettes from '../../features/design/palettes.js';
 import * as fontsMod from '../../features/design/fonts.js';
-import { ICON_NAMES, iconSVG, WORDART_KEYS, wordartCSS } from '../../render/svg.js';
+import { ICON_NAMES, iconSVG, WORDART_KEYS, wordartCSS, SHAPE_CATALOG, shapeThumb } from '../../render/svg.js';
 import { t } from '../../i18n/index.js';
 
 const $ = s => document.querySelector(s);
@@ -33,6 +33,9 @@ export const POPS = {
       + ensureLayouts().filter(l => masterOf(l) === m).map(l => `<button data-layout="${l.id}" type="button" class="${currentSlide()?.layoutId === l.id ? 'on' : ''}">${t(l.name)}</button>`).join('')).join('')
     + `</div><div class="fr-actions"><button type="button" class="mini2" data-reset-slide>${t('Restablecer')}</button>`
     + `<button type="button" class="mini2" data-edit-layouts>${t('Editar diseños…')}</button></div>`,
+  // Insert ▸ More shapes: every shape, by kind.
+  shapes: () => SHAPE_CATALOG.map(([cat, list]) => `<h4>${t(cat)}</h4><div class="shape-pop">`
+    + list.map(([k, l]) => `<button data-shape-pick="${k}" type="button" title="${esc(t(l))}">${shapeThumb(k)}</button>`).join('') + '</div>').join(''),
   // "New slide ▾": the layouts, as in PowerPoint.
   newslide: () => `<h4>${t('Nueva diapositiva')}</h4><div class="layout-grid">`
     + allMasters().map((m, i, ms) => (ms.length > 1 ? `<div class="layout-master">${esc(m.name || (i ? `${t('Patrón')} ${i + 1}` : t('Patrón')))}</div>` : '')
@@ -103,6 +106,8 @@ export function togglePopover(launcher, type) {
   });
   pop.querySelectorAll('[data-layout]').forEach(x =>
     x.addEventListener('click', () => { applyLayout(x.dataset.layout); closePopover(); }));
+  pop.querySelectorAll('[data-shape-pick]').forEach(x =>
+    x.addEventListener('click', () => { blocks.addShape(x.dataset.shapePick); closePopover(); }));
   pop.querySelectorAll('[data-newslide]').forEach(x =>
     x.addEventListener('click', () => { slides.addSlide(x.dataset.newslide); closePopover(); }));
   pop.querySelector('[data-reset-slide]')?.addEventListener('click', () => { resetSlide(); closePopover(); });

@@ -287,7 +287,62 @@ const SHAPE_POINTS = {
   rightarrow: '2,32 60,32 60,12 98,50 60,88 60,68 2,68', leftarrow: '98,32 40,32 40,12 2,50 40,88 40,68 98,68',
   hexagon: '25,4 75,4 98,50 75,96 25,96 2,50', parallelogram: '22,14 98,14 78,86 2,86', trapezoid: '22,16 78,16 98,84 2,84',
   chevron: '2,14 68,14 98,50 68,86 2,86 32,50', plus: '36,3 64,3 64,36 97,36 97,64 64,64 64,97 36,97 36,64 3,64 3,36 36,36',
+  // Basic
+  rtriangle: '3,3 97,97 3,97', snip: '2,2 78,2 98,22 98,98 2,98', lightning: '40,2 74,2 56,38 82,38 26,98 42,54 18,54',
+  // Arrows
+  uparrow: '32,98 32,40 12,40 50,2 88,40 68,40 68,98', downarrow: '32,2 68,2 68,60 88,60 50,98 12,60 32,60',
+  leftrightarrow: '2,50 24,14 24,34 76,34 76,14 98,50 76,86 76,66 24,66 24,86', updownarrow: '50,2 86,24 66,24 66,76 86,76 50,98 14,76 34,76 34,24 14,24',
+  quadarrow: '50,2 66,18 57,18 57,43 82,43 82,34 98,50 82,66 82,57 57,57 57,82 66,82 50,98 34,82 43,82 43,57 18,57 18,66 2,50 18,34 18,43 43,43 43,18 34,18',
+  notchedarrow: '2,32 60,32 60,12 98,50 60,88 60,68 2,68 16,50', homeplate: '2,14 72,14 98,50 72,86 2,86',
+  // Stars and bursts
+  star4: '50,2 60,40 98,50 60,60 50,98 40,60 2,50 40,40',
+  burst: '50,2 58,24 80,8 74,32 98,34 78,50 96,70 70,66 72,94 54,74 38,98 36,72 10,84 22,60 2,48 24,38 12,14 36,24',
+  // Callouts, flowchart, maths
+  speech: '4,6 96,6 96,70 46,70 26,94 30,70 4,70', manualinput: '2,24 98,4 98,96 2,96', offpage: '4,4 96,4 96,66 50,96 4,66', merge: '2,4 98,4 50,96',
+  minus: '6,40 94,40 94,60 6,60', multiply: '20,6 50,36 80,6 94,20 64,50 94,80 80,94 50,64 20,94 6,80 36,50 6,20',
 };
+// Regular polygons and stars, worked out (n corners; a star alternates two radii).
+const ring = (n, r1, r2 = r1, turn = -90) => Array.from({ length: n * (r2 === r1 ? 1 : 2) }, (_, i) => {
+  const a = (turn + i * 360 / (n * (r2 === r1 ? 1 : 2))) * Math.PI / 180, r = i % 2 && r2 !== r1 ? r2 : r1;
+  return `${(50 + r * Math.cos(a)).toFixed(1)},${(50 + r * Math.sin(a)).toFixed(1)}`; }).join(' ');
+Object.assign(SHAPE_POINTS, { heptagon: ring(7, 48), octagon: ring(8, 48, 48, -112.5), decagon: ring(10, 48),
+  star6: ring(6, 48, 27), star8: ring(8, 48, 34), seal: ring(12, 48, 38) });
+// Curved shapes (SVG paths in the 100×100 box; even-odd, so rings have their hole).
+const SHAPE_PATHS = {
+  heart: 'M50 92C22 72 4 56 4 34C4 18 16 7 30 7C40 7 46 12 50 20C54 12 60 7 70 7C84 7 96 18 96 34C96 56 78 72 50 92Z',
+  cloud: 'M25 82C11 82 3 72 4 61C5 50 14 44 23 45C22 31 33 20 47 22C55 12 70 12 78 22C88 22 96 32 94 44C99 49 99 60 95 67C92 76 84 82 74 82Z',
+  moon: 'M70 6A46 46 0 1 0 70 94A36 36 0 1 1 70 6Z',
+  teardrop: 'M50 4C50 4 88 48 88 64A38 34 0 0 1 12 64C12 48 50 4 50 4Z',
+  donut: 'M50 3A47 47 0 1 1 49.9 3ZM50 27A23 23 0 1 0 50.1 27Z',
+  frame: 'M2 2H98V98H2ZM16 16V84H84V16Z',
+  cylinder: 'M4 16A46 12 0 0 1 96 16L96 84A46 12 0 0 1 4 84ZM4 16A46 12 0 0 0 96 16',
+  speechround: 'M50 6C75 6 96 20 96 40C96 60 75 74 50 74C44 74 38 73 33 72L14 94L20 68C10 62 4 52 4 40C4 20 25 6 50 6Z',
+  terminator: 'M22 14H78A20 36 0 0 1 78 86H22A20 36 0 0 1 22 14Z',
+  document: 'M3 4H97V80C74 66 56 96 30 88C18 84 10 82 3 86Z',
+  delay: 'M4 6H55A41 44 0 0 1 55 94H4Z',
+  equal: 'M6 26H94V44H6ZM6 56H94V74H6Z',
+  divide: 'M6 42H94V58H6ZM41 20A9 9 0 1 0 59 20A9 9 0 1 0 41 20ZM41 80A9 9 0 1 0 59 80A9 9 0 1 0 41 80Z',
+};
+// The shapes offered (Insert ▸ Shapes and the shape's own tab), by kind.
+export const SHAPE_CATALOG = [
+  ['Básicas', [['rect', 'Rectángulo'], ['rounded', 'Rectángulo redondeado'], ['snip', 'Rectángulo recortado'], ['ellipse', 'Elipse'], ['triangle', 'Triángulo'],
+    ['rtriangle', 'Triángulo rectángulo'], ['diamond', 'Rombo'], ['parallelogram', 'Paralelogramo'], ['trapezoid', 'Trapecio'], ['pentagon', 'Pentágono'],
+    ['hexagon', 'Hexágono'], ['heptagon', 'Heptágono'], ['octagon', 'Octógono'], ['decagon', 'Decágono'], ['plus', 'Cruz'], ['frame', 'Marco'], ['donut', 'Anillo'],
+    ['heart', 'Corazón'], ['cloud', 'Nube'], ['moon', 'Luna'], ['lightning', 'Rayo'], ['teardrop', 'Gota'], ['cylinder', 'Cilindro']]],
+  ['Flechas', [['rightarrow', 'Flecha derecha'], ['leftarrow', 'Flecha izquierda'], ['uparrow', 'Flecha arriba'], ['downarrow', 'Flecha abajo'],
+    ['leftrightarrow', 'Flecha doble'], ['updownarrow', 'Flecha arriba y abajo'], ['quadarrow', 'Flecha en cuatro direcciones'], ['notchedarrow', 'Flecha con muesca'],
+    ['homeplate', 'Pentágono (flecha)'], ['chevron', 'Galón (chevron)']]],
+  ['Estrellas', [['star4', 'Estrella de 4 puntas'], ['star', 'Estrella'], ['star6', 'Estrella de 6 puntas'], ['star8', 'Estrella de 8 puntas'], ['seal', 'Sello'], ['burst', 'Explosión']]],
+  ['Bocadillos', [['speech', 'Bocadillo rectangular'], ['speechround', 'Bocadillo redondo'], ['cloud', 'Nube']]],
+  ['Diagrama de flujo', [['rect', 'Proceso'], ['diamond', 'Decisión'], ['terminator', 'Inicio o fin'], ['parallelogram', 'Datos'], ['document', 'Documento'],
+    ['manualinput', 'Entrada manual'], ['offpage', 'Conector fuera de página'], ['merge', 'Combinar'], ['delay', 'Retraso'], ['cylinder', 'Base de datos']]],
+  ['Matemáticas', [['plus', 'Más'], ['minus', 'Menos'], ['multiply', 'Por'], ['divide', 'Entre'], ['equal', 'Igual']]],
+  ['Líneas', [['line', 'Línea'], ['arrow', 'Flecha']]],
+];
+export const SHAPE_NAMES = {};                                  // each shape once, with the first name it has, in order
+for (const [k, l] of SHAPE_CATALOG.flatMap(([, list]) => list)) if (!(k in SHAPE_NAMES)) SHAPE_NAMES[k] = l;
+// A small picture of a shape, for the galleries.
+export const shapeThumb = (kind, fill = 'currentColor') => shapeSVG({ id: 'thumb-' + kind, shape: kind, fill: kind === 'line' || kind === 'arrow' ? 'none' : fill, stroke: fill, strokeWidth: kind === 'line' || kind === 'arrow' ? 3 : 0 });
 // Outline of a closed shape as [[x,y]…] in the 100×100 box, or null (lines).
 export function shapeOutline100(shape) {
   if (SHAPE_POINTS[shape]) return SHAPE_POINTS[shape].split(' ').map(p => p.split(',').map(Number));
@@ -297,7 +352,7 @@ export function shapeOutline100(shape) {
     arc(98 - r, 2 + r, -Math.PI / 2); arc(98 - r, 98 - r, 0); arc(2 + r, 98 - r, Math.PI / 2); arc(2 + r, 2 + r, Math.PI);
     return pts;
   }
-  if (shape === 'line' || shape === 'arrow' || shape === 'custom') return null;
+  if (shape === 'line' || shape === 'arrow' || shape === 'custom' || SHAPE_PATHS[shape]) return null;
   return [[2, 2], [98, 2], [98, 98], [2, 98]];
 }
 
@@ -334,7 +389,7 @@ function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>>
 function outlineOf(b) {
   if (SHAPE_POINTS[b.shape]) return SHAPE_POINTS[b.shape].trim().split(/\s+/).map(p => p.split(',').map(Number));
   if (b.shape === 'ellipse') return Array.from({ length: 28 }, (_, i) => [50 + 48 * Math.cos(i * Math.PI / 14), 50 + 48 * Math.sin(i * Math.PI / 14)]);
-  if (['line', 'arrow', 'custom'].includes(b.shape)) return null;
+  if (['line', 'arrow', 'custom'].includes(b.shape) || SHAPE_PATHS[b.shape]) return null;       // (curves: drawn as they are)
   return [[2, 2], [98, 2], [98, 98], [2, 98]];
 }
 function sketchPath(pts, rnd, amp, closed = true) {
@@ -374,6 +429,7 @@ export function shapeSVG(b) {
   }
   let inner;
   if (SHAPE_POINTS[b.shape]) inner = `<polygon points="${SHAPE_POINTS[b.shape]}" ${paint}/>`;
+  else if (SHAPE_PATHS[b.shape]) inner = `<path d="${SHAPE_PATHS[b.shape]}" fill-rule="evenodd" ${paint}/>`;
   else switch (b.shape) {
     case 'ellipse':  inner = `<ellipse cx="50" cy="50" rx="48" ry="48" ${paint}/>`; break;
     case 'rounded':  inner = `<rect x="2" y="2" width="96" height="96" rx="12" ry="12" ${paint}/>`; break;

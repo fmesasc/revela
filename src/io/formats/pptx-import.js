@@ -144,9 +144,16 @@ const phOf = sp => { const ph = all(sp, 'p:ph')[0]; return ph ? { type: ph.getAt
 
 const PRESET = { rect: 'rect', roundRect: 'rounded', ellipse: 'ellipse', triangle: 'triangle', diamond: 'diamond', pentagon: 'pentagon',
   star5: 'star', rightArrow: 'rightarrow', leftArrow: 'leftarrow', hexagon: 'hexagon', parallelogram: 'parallelogram',
-  trapezoid: 'trapezoid', chevron: 'chevron', plus: 'plus', line: 'line', straightConnector1: 'line', snip1Rect: 'rect',
+  trapezoid: 'trapezoid', chevron: 'chevron', plus: 'plus', line: 'line', straightConnector1: 'line',
   round2SameRect: 'rounded', flowChartProcess: 'rect', flowChartAlternateProcess: 'rounded', flowChartDecision: 'diamond',
-  homePlate: 'pentagon', rtTriangle: 'triangle', octagon: 'hexagon' };
+  homePlate: 'homeplate', rtTriangle: 'rtriangle', octagon: 'octagon', heptagon: 'heptagon', decagon: 'decagon', frame: 'frame', donut: 'donut',
+  heart: 'heart', cloud: 'cloud', moon: 'moon', lightningBolt: 'lightning', teardrop: 'teardrop', can: 'cylinder', flowChartMagneticDisk: 'cylinder',
+  upArrow: 'uparrow', downArrow: 'downarrow', leftRightArrow: 'leftrightarrow', upDownArrow: 'updownarrow', quadArrow: 'quadarrow',
+  notchedRightArrow: 'notchedarrow', star4: 'star4', star6: 'star6', star8: 'star8', star12: 'seal', irregularSeal1: 'burst', irregularSeal2: 'burst',
+  wedgeRectCallout: 'speech', wedgeRoundRectCallout: 'speech', wedgeEllipseCallout: 'speechround', cloudCallout: 'cloud',
+  flowChartTerminator: 'terminator', flowChartDocument: 'document', flowChartManualInput: 'manualinput', flowChartOffpageConnector: 'offpage',
+  flowChartMerge: 'merge', flowChartDelay: 'delay', flowChartInputOutput: 'parallelogram', mathPlus: 'plus', mathMinus: 'minus',
+  mathMultiply: 'multiply', mathDivide: 'divide', mathEqual: 'equal', snip1Rect: 'snip' };
 
 // ---- Text ------------------------------------------------------------------
 // PowerPoint text formatting is inherited, level by level (lvl1pPr…lvl9pPr):

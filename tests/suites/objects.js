@@ -547,6 +547,35 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(tab().hidden && R.state.ui.activeTab === 'home', 'al quitar la selección se va y vuelve a Inicio');
   });
 
+  await test('formas: galería compacta, «Más formas» por categorías, colores del tema e ida y vuelta a PowerPoint', async () => {
+    reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
+    const all = Object.keys(S.SHAPE_NAMES);
+    assert(all.length >= 50, 'más de 50 formas: ' + all.length);
+    for (const k of all) assert(/<(polygon|path|rect|ellipse|line)[ >]/.test(S.shapeSVG({ id: 'x', shape: k, fill: '#f00', stroke: '#000', strokeWidth: 2 })), 'se dibuja: ' + k);
+    assert(/<path d="M50 92C22/.test(S.shapeSVG({ id: 'h', shape: 'heart', sketch: true, fill: '#f00' })), 'una forma curva a mano alzada se dibuja tal cual');
+    // The ribbon: pictures of the shapes, in three rows; the rest in «Más formas».
+    const gal = D.querySelectorAll('[data-shape-gallery] [data-shape]');
+    assert(gal.length === 24 && [...gal].every(b => b.querySelector('svg') && b.title), 'galería con 24 formas dibujadas y su nombre');
+    D.querySelector('[data-shapes-open]').click(); await sleep(20);
+    const pop = D.querySelector('.popover[data-type="shapes"]');
+    eq([...pop.querySelectorAll('h4')].map(h => h.textContent).join(), 'Básicas,Flechas,Estrellas,Bocadillos,Diagrama de flujo,Matemáticas,Líneas', 'por categorías');
+    pop.querySelector('[data-shape-pick="heart"]').click(); await sleep(20);
+    assert(last().shape === 'heart' && !D.querySelector('.popover'), 'se inserta desde «Más formas»');
+    const P = await W.eval("import('/src/features/design/palettes.js')");
+    eq(last().fill.toLowerCase(), P.currentPalette().accents[0].toLowerCase(), 'con el color del tema');
+    eq(last().w, last().h, 'las formas redondas, sin deformar');
+    const sel = [...D.querySelectorAll('#ribbon [data-page="ctx"] select')].find(x => [...x.options].some(o => o.value === 'heart'));
+    assert(sel && sel.options.length >= 48 && sel.options[0].value === 'rect', 'cambiar de forma: todas, en orden');
+    // PowerPoint, both ways: every shape comes back as itself.
+    const kinds = all.filter(k => !['line', 'arrow'].includes(k));
+    R.store.commit(() => { slide().blocks = kinds.map((k, i) => ({ id: 's' + i, type: 'shape', shape: k, fill: '#3f6497', stroke: '#1e2a3a', strokeWidth: 2,
+      x: (i % 10) * 120, y: Math.floor(i / 10) * 120, w: 100, h: 100, rotation: 0, animation: null })); }); await sleep(20);
+    const blob = await R.pptx.buildPptxBlob();
+    const back = (await R.pptxImport.importPPTX(new W.File([blob], 'formas.pptx'))).slides[0].blocks.filter(b => b.type === 'shape').map(b => b.shape);
+    const lost = kinds.filter((k, i) => back[i] !== k);
+    eq(lost.join(), '', 'todas vuelven de PowerPoint como eran');
+  });
+
   await test('formas: degradado (lineal y radial) y estilo a mano alzada', async () => {
     reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
     const base = { id: 'f1', type: 'shape', shape: 'rect', fill: '#ff0000', stroke: '#000000', strokeWidth: 2, x: 0, y: 0, w: 100, h: 100 };

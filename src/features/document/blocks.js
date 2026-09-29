@@ -5,7 +5,7 @@ import { state, commit, currentSlide, selectedBlock,
 import { DEFAULT_SHADOW } from '../../render/svg.js';
 import { uid, textBlock, tableBlock, codeBlock, chartBlock, mathBlock, figindexBlock, slideRefBlock } from '../../core/model.js';
 import { currentLang } from '../../i18n/index.js';
-import { deckFg } from '../design/palettes.js';
+import { deckFg, currentPalette } from '../design/palettes.js';
 
 function insert(block) {
   commit(() => {
@@ -404,13 +404,17 @@ export const setTableStyle = props => withTable(b => {
   for (const [k, v] of Object.entries(props)) { if (v === '' || v == null || v === false) delete b[k]; else b[k] = v; }
 });
 
+// A new shape takes the theme's first accent, with an outline a shade darker (as PowerPoint does).
+const darker = (hex, k = 0.72) => '#' + [1, 3, 5].map(i => Math.round(parseInt(hex.slice(i, i + 2), 16) * k).toString(16).padStart(2, '0')).join('');
 export function addShape(kind) {
-  const linear = kind === 'line' || kind === 'arrow';
+  const linear = kind === 'line' || kind === 'arrow', accent = currentPalette().accents[0];
+  const square = ['ellipse', 'star', 'star4', 'star6', 'star8', 'seal', 'burst', 'heart', 'donut', 'plus', 'minus', 'multiply', 'divide', 'equal', 'octagon',
+    'heptagon', 'decagon', 'hexagon', 'pentagon', 'quadarrow', 'moon', 'teardrop', 'cloud', 'lightning'].includes(kind);
   insert({
     id: uid(), type: 'shape', shape: kind,
-    x: 460, y: 250, w: linear ? 420 : 320, h: linear ? 120 : 240,
+    x: square ? 510 : 460, y: 230, w: linear ? 420 : square ? 260 : 320, h: linear ? 120 : 260 - (square ? 0 : 20),
     rotation: 0, animation: null,
-    fill: linear ? 'none' : '#3f6497', stroke: '#1e2a3a', strokeWidth: linear ? 6 : 2,
+    fill: linear ? 'none' : accent, stroke: linear ? accent : darker(accent), strokeWidth: linear ? 6 : 2,
   });
 }
 

@@ -11,7 +11,7 @@ import * as format from '../../features/document/format.js';
 import * as shapeops from '../../features/document/shapeops.js';
 import { MOTIONS_3D, VIEWS_3D, BLEEDS_3D, modelBleed } from '../../features/content/model3d.js';
 import { isGif } from '../../features/live/media.js';
-import { CURVES, DEVICES } from '../../render/svg.js';
+import { CURVES, DEVICES, SHAPE_NAMES } from '../../render/svg.js';
 import { styled } from '../../features/document/master.js';
 import { saveBlockFile as saveFile } from '../shell/files.js';
 import { openModel3D } from '../dialogs/model3d.js';
@@ -34,8 +34,8 @@ import { t } from '../../i18n/index.js';
 
 const TITLES = { shape: 'Forma', image: 'Imagen', model: 'Modelo 3D', video: 'Vídeo', audio: 'Audio', text: 'Cuadro de texto', table: 'Tabla', chart: 'Gráfico',
   math: 'Ecuación', code: 'Código', poll: 'Votación', embed: 'Web', icon: 'Icono', camera: 'Cámara', slideref: 'Zoom', figindex: 'Índice', ink: 'Dibujo', connector: 'Conector', timer: 'Cuenta atrás' };
-const SHAPES = [['rect', 'Rectángulo'], ['rounded', 'Rectángulo redondeado'], ['ellipse', 'Elipse'], ['triangle', 'Triángulo'], ['diamond', 'Rombo'], ['star', 'Estrella'],
-  ['hexagon', 'Hexágono'], ['parallelogram', 'Paralelogramo'], ['trapezoid', 'Trapecio'], ['chevron', 'Galón (chevron)'], ['plus', 'Cruz'], ['line', 'Línea'], ['arrow', 'Flecha']];
+// Every shape once (the catalogue's first name for each).
+const SHAPES = Object.entries(SHAPE_NAMES).filter(([k]) => k !== 'line' && k !== 'arrow');
 const CHARTS = [['bar', 'Barras'], ['line', 'Líneas'], ['area', 'Área'], ['pie', 'Circular'], ['doughnut', 'Dona'], ['scatter', 'Dispersión'], ['radar', 'Radar']];
 
 // A control: ['btn', icon, label, fn, on?] · ['color', icon, label, value, fn] · ['select', label, [[v, l]], value, fn] · ['num', label, value, fn, min, max, step]

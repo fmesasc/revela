@@ -29,6 +29,13 @@ const SHAPE_MAP = {
   rect: 'rect', rounded: 'roundRect', ellipse: 'ellipse', triangle: 'triangle', diamond: 'diamond',
   pentagon: 'pentagon', star: 'star5', rightarrow: 'rightArrow', leftarrow: 'leftArrow',
   hexagon: 'hexagon', parallelogram: 'parallelogram', trapezoid: 'trapezoid', chevron: 'chevron', plus: 'plus',
+  rtriangle: 'rtTriangle', snip: 'snip1Rect', heptagon: 'heptagon', octagon: 'octagon', decagon: 'decagon', frame: 'frame', donut: 'donut',
+  heart: 'heart', cloud: 'cloud', moon: 'moon', lightning: 'lightningBolt', teardrop: 'teardrop', cylinder: 'can',
+  uparrow: 'upArrow', downarrow: 'downArrow', leftrightarrow: 'leftRightArrow', updownarrow: 'upDownArrow', quadarrow: 'quadArrow',
+  notchedarrow: 'notchedRightArrow', homeplate: 'homePlate', star4: 'star4', star6: 'star6', star8: 'star8', seal: 'star12', burst: 'irregularSeal1',
+  speech: 'wedgeRectCallout', speechround: 'wedgeEllipseCallout', terminator: 'flowChartTerminator', document: 'flowChartDocument',
+  manualinput: 'flowChartManualInput', offpage: 'flowChartOffpageConnector', merge: 'flowChartMerge', delay: 'flowChartDelay',
+  minus: 'mathMinus', multiply: 'mathMultiply', divide: 'mathDivide', equal: 'mathEqual',
 };
 
 // HTML of a text box → PptxGenJS text runs: bold/italic/underline/strike,
@@ -121,7 +128,7 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map()) {
         slide.addShape(pptx.ShapeType.line, { ...pos, line: { color: hex(b.stroke) || '888888', width: b.strokeWidth || 2, ...dashOf(b.dash),
           endArrowType: b.shape === 'arrow' ? 'triangle' : 'none' } });
       } else {
-        const st = pptx.ShapeType[SHAPE_MAP[b.shape] || 'rect'];
+        const st = pptx.ShapeType[SHAPE_MAP[b.shape]] || pptx.ShapeType.rect;
         const fill = b.fill && b.fill !== 'none' ? { color: hex(b.fill) || '3F6497' } : { type: 'none' };
         slide.addShape(st, { ...pos, fill, line: { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth || 1, ...dashOf(b.dash) } });
       }

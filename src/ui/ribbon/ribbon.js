@@ -22,6 +22,7 @@ import * as protect from '../../features/collab/protect.js';
 import { openAppearance, applyAppearance } from '../shell/appearance.js';
 import * as palettes from '../../features/design/palettes.js';
 import { kitColours } from '../../features/design/brandkit.js';
+import { SHAPE_NAMES, shapeThumb } from '../../render/svg.js';
 import { resizeDeck } from '../../features/design/resize.js';
 import { setDrawTool, drawOpts } from '../shell/draw.js';
 import { FONTS, ensureDeckFonts } from '../../features/design/fonts.js';
@@ -45,7 +46,15 @@ function populateFonts() {
   }
 }
 
+// Insert ▸ Shapes: the most used, drawn as they are, in three rows (the rest in «Más formas»).
+const QUICK_SHAPES = ['rect', 'rounded', 'ellipse', 'triangle', 'rtriangle', 'diamond', 'pentagon', 'hexagon', 'star', 'star6', 'burst', 'heart',
+  'rightarrow', 'leftarrow', 'uparrow', 'leftrightarrow', 'chevron', 'speech', 'speechround', 'cloud', 'plus', 'cylinder', 'line', 'arrow'];
+function fillShapeGallery() {
+  const g = document.querySelector('[data-shape-gallery]'); if (!g) return;
+  g.innerHTML = QUICK_SHAPES.map(k => `<button data-shape="${k}" title="${t(SHAPE_NAMES[k] || k)}">${shapeThumb(k)}</button>`).join('');
+}
 export function initRibbon() {
+  fillShapeGallery();
   // Master view: insert a placeholder into the layout being edited.
   document.querySelector('#master-banner .mb-ph')?.addEventListener('change', e => {
     if (e.target.value) addPlaceholder(e.target.value); e.target.value = '';
@@ -133,6 +142,8 @@ export function initRibbon() {
     if (ind) { format.adjustIndent(+ind.dataset.indentdelta); return; }
     const li = e.target.closest('[data-list]');
     if (li) { format.list(li.dataset.list); return; }
+    const so = e.target.closest('[data-shapes-open]');
+    if (so) { e.stopPropagation(); togglePopover(so, 'shapes'); return; }
     const sh = e.target.closest('[data-shape]');
     if (sh) { blocks.addShape(sh.dataset.shape); return; }
     const dir = e.target.closest('[data-dir]');
