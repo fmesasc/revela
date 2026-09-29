@@ -311,3 +311,9 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .home-signin{grid-column:1/-1;text-align:center;padding:20px;color:var(--txt2)}.home-signin p{max-width:560px;margin:0 auto 14px}
 @media (max-width:760px){.account-btn span{display:none}.account-btn{padding:3px}}
 .call-steps{font-size:13px;padding-inline-start:20px}.call-steps li{margin:4px 0}
+/* Recursos (GIF, stickers, 3D) and Movimiento 3D */
+.res-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;border-bottom:1px solid var(--line2)}
+.res-tabs button{background:none;border:none;border-bottom:2px solid transparent;padding:8px 12px;cursor:pointer;font:inherit;font-size:13px;color:var(--txt2)}
+.res-tabs button[aria-selected=true]{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.res-grid{max-height:min(52vh,520px);overflow:auto}.sk-item.busy{opacity:.5;cursor:progress}
+.m3d-view{height:260px;border-radius:10px;background:radial-gradient(circle at 50% 40%,#f4f6fa,#cfd5e0);margin-bottom:10px}

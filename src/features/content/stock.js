@@ -13,10 +13,12 @@ export const consented = svc => { try { return localStorage.getItem(OK + svc) ==
 export const giveConsent = svc => { try { localStorage.setItem(OK + svc, '1'); } catch {} };
 
 // ---- Openverse ---------------------------------------------------------------
-export async function searchImages(q, page = 1, { commercial = false } = {}) {
+// extension: 'gif' for animated GIFs only (also jpg, png, svg).
+export async function searchImages(q, page = 1, { commercial = false, extension = '' } = {}) {
   const u = new URL('https://api.openverse.org/v1/images/');
   u.searchParams.set('q', q); u.searchParams.set('page', page); u.searchParams.set('page_size', 20);            // anonymous requests allow at most 20
   if (commercial) u.searchParams.set('license_type', 'commercial');
+  if (extension) u.searchParams.set('extension', extension);
   const r = await fetch(u); if (!r.ok) throw new Error('Openverse ' + r.status);
   const d = await r.json();
   return (d.results || []).map(x => ({ id: x.id, title: x.title || '', url: x.url, thumb: x.thumbnail, width: x.width, height: x.height,

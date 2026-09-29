@@ -17,6 +17,7 @@ import { KATEX, HIGHLIGHT, loadScript, loadStyle } from '../../core/vendor.js';
 import { findBlock, readOnly, fitFontSize } from './canvas.js';
 import { openMath } from '../dialogs/object.js';
 import { keyedView, mediaView } from './mediaview.js';
+import { modelAttrs } from '../../features/content/model3d.js';
 
 export const pollSig = b => JSON.stringify([b.kind, b.display, b.question, b.options, b.fontSize, savedVotes(b.pollId)]);
 export function renderSlideRef(wrap, b) {
@@ -94,9 +95,7 @@ export function content(b) {
   }
   if (b.type === 'model') {
     const mv = document.createElement('model-viewer');
-    mv.setAttribute('src', b.src || ''); mv.setAttribute('camera-controls', '');
-    if (b.autoRotate !== false) mv.setAttribute('auto-rotate', '');
-    mv.setAttribute('shadow-intensity', '1'); mv.setAttribute('interaction-prompt', 'none');
+    applyModelAttrs(mv, b);
     mv.style.pointerEvents = 'none'; // dragging the body moves the block…
     return mv;
   }
@@ -332,6 +331,15 @@ export function setupText(b, el) {
 // An equation is edited in the equation editor: double-click opens it.
 export function setupMath(el, b) {
   el.addEventListener('dblclick', e => { if (readOnly()) return; e.stopPropagation(); openMath(b); });
+}
+// The model's attributes (source, turning, animation) from the block; only
+// what changed is touched, so the view doesn't reload.
+export function applyModelAttrs(mv, b) {
+  const want = new Map(modelAttrs(b));
+  for (const name of ['auto-rotate', 'auto-rotate-delay', 'rotation-per-second', 'autoplay', 'animation-name', 'data-once', 'data-speed', 'data-motion'])
+    if (!want.has(name) && mv.hasAttribute(name)) mv.removeAttribute(name);   // only ours: model-viewer adds its own
+  for (const [k, v] of want) if (mv.getAttribute(k) !== v) mv.setAttribute(k, v);
+  const sp = b.clipSpeed || 1; if (mv.timeScale !== sp) mv.timeScale = sp;
 }
 export function setupModel(el) {
   const mv = el.querySelector('model-viewer');

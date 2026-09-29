@@ -8,6 +8,7 @@ import { download, slug } from '../files.js';
 import { TRIGGER_JS, CAMERA_JS, pollJS, liveDataJS, LIGHTBOX_JS, overviewJS } from '../runtime/scripts.js';
 import { createMediaPlayer, revelaMediaRuntime } from '../runtime/media.js';
 import { needsPlayer, mediaConfig } from '../../features/live/media.js';
+import { modelAttrsHTML, model3dRuntime } from '../../features/content/model3d.js';
 import { shadowCSS, borderCSS, levelCSS, textPadding, webCardHTML, mathTeX, mathCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, tableClass, tableVars, tableCSS } from '../../render/svg.js';
 import { googleFontLinks } from '../../features/design/fonts.js';
 import { t, speechLang } from '../../i18n/index.js';
@@ -154,8 +155,7 @@ function blockHTMLRaw(b, slide) {
       + `${b.wordart ? wordartCSS(b.wordart) : ''}">`
       + `${b.html || ''}</div>`;
   if (b.type === 'model')
-    return `<model-viewer${a} src="${b.src}" camera-controls ${b.autoRotate !== false ? 'auto-rotate' : ''} `
-      + `shadow-intensity="1" style="${box(b)}background:transparent"></model-viewer>`;
+    return `<model-viewer${a}${modelAttrsHTML(b)} style="${box(b)}background:transparent"></model-viewer>`;
   // Video / GIF with segments, autoplay, loop, mute or a colour key: the media
   // player draws it; each segment after the first automatic one is a click.
   if (needsPlayer(b)) {
@@ -366,6 +366,7 @@ export function buildHTML(deck = state.deck, { inApp = false } = {}) {
   const hasPoll = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'poll'));
   const hasZoomable = deck.slides.some(s => s.blocks.some(b => b.type === 'image' && b.zoomable));
   const hasMedia = deck.slides.some(s => !s.hidden && s.blocks.some(needsPlayer));
+  const hasModel3d = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'model' && (b.motion || b.clip)));
   const hasLive = deck.slides.some(s => s.blocks.some(b => (b.type === 'chart' && b.dataUrl) || (b.type === 'embed' && b.refreshMin)));
   const ft = deck.footer || { show: false };
   const footerText = ft.show
@@ -442,6 +443,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${hasPoll ? pollJS(currentPalette(deck).accents) : ''}
  ${hasLive ? liveDataJS() : ''}
  ${hasZoomable ? LIGHTBOX_JS : ''}
+ ${hasModel3d ? `(${model3dRuntime.toString()})();` : ''}
  ${hasMedia ? `${createMediaPlayer.toString()}\n${revelaMediaRuntime.toString()}\nrevelaMediaRuntime(${JSON.stringify(GIFUCT)});` : ''}
  ${inkJS(w, h, { pen: t('Lápiz'), hl: t('Resaltador'), laser: t('Puntero láser'), color: t('Color de la tinta'), erase: t('Borrar la tinta de la diapositiva'),
    cc: t('Subtítulos en directo'), lang: speechLang(), ccWarn: t('Los subtítulos usan el reconocimiento de voz del navegador: en Chrome y Edge el audio se envía a su servicio de voz. ¿Activarlos?') })}

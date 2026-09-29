@@ -19,6 +19,7 @@ import { t } from '../../i18n/index.js';
 import { alertDialog, promptDialog } from '../dialogs/dialog.js';
 import { openSaveAsPicture } from '../dialogs/picture.js';
 import { openMediaPlayback } from '../dialogs/media.js';
+import { openModel3D } from '../dialogs/model3d.js';
 import { playInEditor } from '../canvas/mediaview.js';
 import { isGif } from '../../features/live/media.js';
 import { openImageAdjust, openMath, openChartData, openOpacity, openIconColor, openBoxStyle, openSlidePicker, openCaption, openAlt, openImageCrop, removeBackground, openTableStyle } from '../dialogs/object.js';
@@ -142,6 +143,7 @@ function forBlock(b, cell = null) {
       null);
   } else if (b.type === 'model') {
     items.push(
+      ['Movimiento 3D…', () => openModel3D(b)],
       [b.autoRotate !== false ? 'Detener giro automático' : 'Girar automáticamente',
         () => commit(() => (b.autoRotate = !(b.autoRotate !== false)))],
       null);

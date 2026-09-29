@@ -451,6 +451,72 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     R.store.undo(); assert(!last().segments, 'se deshace de una vez');
   });
 
+  await test('recursos: stickers animados, GIF, 3D (biblioteca, Poly Haven empaquetado, Sketchfab)', async () => {
+    reset(); const W = frame.contentWindow, realFetch = W.fetch;
+    const Rz = await W.eval("import('/src/features/content/resources.js')");
+    const gif = 'R0lGODlhAQABAAAAACw='; const bin = u8 => new W.Response(new W.Blob([u8]));
+    const calls = [];
+    W.fetch = async (url, o) => { url = String(url); calls.push(url);
+      if (url.includes('notoemoji')) return bin(Uint8Array.from(atob(gif), c => c.charCodeAt(0)));
+      if (url.endsWith('.glb')) return bin(new Uint8Array([0x67, 0x6c, 0x54, 0x46, 2, 0, 0, 0]));
+      if (url.includes('api.polyhaven.com/assets')) return new W.Response(JSON.stringify({ Chair_1: { name: 'Silla 1', categories: ['furniture'], tags: ['chair', 'wood'], authors: { Ana: 'All' } } }));
+      if (url.includes('api.polyhaven.com/files')) return new W.Response(JSON.stringify({ gltf: { '1k': { gltf: { url: 'https://dl.test/m/chair.gltf', include: { 'textures/t.jpg': { url: 'https://dl.test/real/t.jpg' }, 'chair.bin': { url: 'https://dl.test/real/chair.bin' } } } } } }));
+      if (url === 'https://dl.test/m/chair.gltf') return new W.Response(JSON.stringify({ asset: { version: '2.0' }, buffers: [{ uri: 'chair.bin', byteLength: 3 }], images: [{ uri: 'textures/t.jpg' }] }));
+      if (url.startsWith('https://dl.test/real/')) return bin(new Uint8Array([1, 2, 3]));
+      if (url.includes('api.sketchfab.com')) return new W.Response(JSON.stringify({ cursors: { next: 'n2' }, results: [{ uid: 'abc123', name: 'Robot', user: { displayName: 'Eva' }, animationCount: 2, license: { label: 'CC Attribution' }, thumbnails: { images: [{ width: 256, url: 'https://t/1.jpg' }] } }] }));
+      return realFetch(url, o); };
+    try {
+      assert(Rz.searchStickers('').length > 80, 'catálogo de stickers'); assert(Rz.searchStickers('corazon').some(x => x.code === '2764_fe0f'), 'buscar sin tildes');
+      const st = await Rz.insertSticker('1f389', 'fiesta confeti party');
+      assert(st.type === 'image' && /^data:image\/gif/.test(st.src) && /CC BY 4\.0/.test(st.credit), 'el sticker es un GIF con su crédito');
+      const { isGif, needsPlayer } = await W.eval("import('/src/features/live/media.js')");
+      assert(isGif(st), 'se puede animar por tramos como cualquier GIF');
+      const fox = Rz.searchLibrary3D('zorro')[0]; assert(fox?.animated, 'biblioteca 3D con modelos animados');
+      assert(Rz.searchLibrary3D('', { animated: true }).every(m => m.animated) && !Rz.searchLibrary3D('').some(m => /NC|EULA|SCEA|Stanford/.test(m.licenses.join())), 'sin licencias restrictivas');
+      const m = await Rz.insertLibraryModel(fox);
+      assert(m.type === 'model' && /^data:model\/gltf-binary/.test(m.src) && m.clip === '*' && /CC/.test(m.caption), 'modelo animado guardado dentro, con su animación y licencia');
+      const ph = await Rz.searchPolyHaven('wood chair'); eq(ph.length, 1, 'Poly Haven por etiquetas');
+      const p = await Rz.insertPolyHaven(ph[0]);
+      const g = JSON.parse(atob(p.src.split(',')[1]));
+      assert(/^data:/.test(g.buffers[0].uri) && /^data:/.test(g.images[0].uri), 'glTF empaquetado en un solo archivo (buffers y texturas dentro)');
+      assert(calls.includes('https://dl.test/real/t.jpg'), 'descarga las texturas de su dirección real'); assert(/CC0/.test(p.caption), 'CC0');
+      const sf = await Rz.searchSketchfab('robot', { animated: true });
+      assert(calls.some(u => u.includes('animated=true')), 'filtra animados'); eq(sf.next, 'n2', 'más resultados');
+      const e = Rz.insertSketchfab(sf.results[0]);
+      assert(e.type === 'embed' && /sketchfab\.com\/models\/abc123\/embed/.test(e.src) && /Eva/.test(e.caption), 'Sketchfab como visor con su autor');
+      // The dialog: stickers without typing, click inserts.
+      D.querySelector('[data-action="resources"]').click(); await sleep(50);
+      D.querySelector('#res-modal [data-tab="stickers"]').click(); await sleep(50);
+      assert(D.querySelectorAll('#res-modal .sk-item').length > 80, 'la pestaña de stickers se ve sin buscar');
+      const n0 = slide().blocks.length; D.querySelector('#res-modal .sk-item').click(); await sleep(150);
+      eq(slide().blocks.length, n0 + 1, 'clic: se añade'); assert(!D.getElementById('res-modal'), 'y se cierra');
+    } finally { W.fetch = realFetch; D.getElementById('res-modal')?.remove(); }
+  });
+
+  await test('3D: animación propia, giro y movimiento al entrar (editor y presentación)', async () => {
+    reset(); const W = frame.contentWindow;
+    const M = await W.eval("import('/src/features/content/model3d.js')");
+    R.blocks.addModel('data:model/gltf-binary;base64,Z2xURg=='); const b = last();
+    const attrs = x => Object.fromEntries(M.modelAttrs(x));
+    assert('auto-rotate' in attrs(b) && !('autoplay' in attrs(b)), 'por defecto gira solo');
+    R.store.commit(() => Object.assign(last(), { clip: 'Run', clipSpeed: 2, clipOnce: true, spin: -60, motion: 'swing' })); await sleep(30);
+    const a = attrs(last());
+    assert(a.autoplay === '' && a['animation-name'] === 'Run' && a['data-speed'] === '2' && 'data-once' in a, 'animación elegida, velocidad y una vez');
+    assert(!('auto-rotate' in a) && a['data-motion'] === 'swing', 'con movimiento de cámara no gira solo');
+    const mv = D.querySelector(`#stage .block[data-id="${b.id}"] model-viewer`);
+    assert(mv.getAttribute('animation-name') === 'Run' && mv.getAttribute('data-motion') === 'swing' && !mv.hasAttribute('auto-rotate'), 'el editor lo aplica sin recrear el visor');
+    const html = R.io.buildHTML();
+    assert(/<model-viewer[^>]*animation-name="Run"[^>]*data-motion="swing"/.test(html) && /function model3dRuntime/.test(html), 'la presentación lleva la animación y el movimiento');
+    R.store.commit(() => { delete last().motion; delete last().clip; last().spin = 45; }); await sleep(30);
+    assert(/rotation-per-second="45deg"/.test(R.io.buildHTML()) && !/model3dRuntime/.test(R.io.buildHTML()), 'giro a su velocidad; sin movimiento no hace falta el script');
+    // The dialog.
+    const { openModel3D } = await W.eval("import('/src/ui/dialogs/model3d.js')");
+    await openModel3D(last()); await sleep(50);
+    const q = s => D.querySelector('#m3d-modal ' + s);
+    q('.m3d-motion').value = 'orbit'; q('.m3d-rot').checked = false; q('.m3d-ok').click(); await sleep(30);
+    eq(last().motion, 'orbit', 'el diálogo guarda el movimiento'); eq(last().autoRotate, false, 'y el giro');
+  });
+
   await test('tablas desde CSV y pegar en la diapositiva', async () => {
     reset();
     const rows = R.blocks.parseDelimited('Nombre;Nota\n"Pérez; Ana";9,5\n"Dice ""hola""";7\n');

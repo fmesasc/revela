@@ -15,6 +15,7 @@ import { present, openCallPresent } from '../shell/present.js';
 import { startCoach } from '../shell/coach.js';
 import { openCollab } from '../shell/collab.js';
 import { openHome } from '../shell/home.js';
+import { openResources } from '../dialogs/resources.js';
 import { openSignatures, toggleFinal } from '../dialogs/signature.js';
 import { importPPTX } from '../../io/formats/pptx-import.js';
 import * as gdrive from '../../io/cloud/gdrive.js';
@@ -184,6 +185,8 @@ export const ACTIONS = {
   'insert-chart': blocks.addChart,
   'insert-math': blocks.addMath,
   'insert-model': () => readFile('.glb,.gltf', blocks.addModel),
+  'resources': () => openResources('gif'),
+  'resources-3d': () => openResources('anim3d'),
   // A GIF is inserted as an image (it can have segments and a colour key too).
   'insert-video': () => readFile('video/*,image/gif', src => (/^data:image\/gif/.test(src) ? blocks.addImage(src) : blocks.addVideo(src))),
   'insert-audio': () => readFile('audio/*', blocks.addAudio),
