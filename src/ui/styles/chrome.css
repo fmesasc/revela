@@ -87,10 +87,11 @@
 .zoom button:hover{background:var(--ribbon);border-color:var(--line2);color:var(--txt)}
 .zoom .ms{font-size:16px}
 #zoom-label{font-variant-numeric:tabular-nums;min-width:44px}
-#nav-toggle{background:none;border:1px solid transparent;border-radius:6px;cursor:pointer;color:var(--txt2);display:grid;place-items:center;padding:2px 6px;margin-inline-start:-8px}
-#nav-toggle:hover{background:var(--ribbon);border-color:var(--line2);color:var(--txt)}
-#nav-toggle .ms{font-size:18px}
-#nav-toggle.on{color:var(--accent)}
+#nav-toggle,#sorter-toggle{background:none;border:1px solid transparent;border-radius:6px;cursor:pointer;color:var(--txt2);display:grid;place-items:center;padding:2px 6px;}
+#nav-toggle{margin-inline-start:-8px}
+#nav-toggle:hover,#sorter-toggle:hover{background:var(--ribbon);border-color:var(--line2);color:var(--txt)}
+#nav-toggle .ms,#sorter-toggle .ms{font-size:18px}
+#nav-toggle.on,#sorter-toggle.on{color:var(--accent)}
 [hidden]{display:none!important}
 
 /* ---------- Animation preview keyframes (editor & custom export effects) ---------- */
