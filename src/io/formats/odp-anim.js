@@ -6,7 +6,7 @@
 // the previous one or after it (with their delay). Animations started by
 // clicking another object go in an "interactive sequence" of that object.
 
-import { animTimeline, isEntrance, motionPoints } from '../../features/animation/transitions.js';
+import { animTimeline, isEntrance, motionPoints, pathFromSVG } from '../../features/animation/transitions.js';
 
 const sec = ms => `${+(Math.max(0, ms) / 1000).toFixed(3)}s`;
 const MOVE = { 'fade-up': ['y', '+0.1'], 'fade-down': ['y', '-0.1'], 'fade-left': ['x', '+0.1'], 'fade-right': ['x', '-0.1'] };
@@ -98,8 +98,8 @@ function effectOf(par) {
     else effect = 'grow';
   } else if (cls === 'motion-path') {
     const mo = nodes.find(n => n.localName === 'animateMotion');
-    const nums = (mo?.getAttribute('svg:path') || '').match(/-?[\d.]+(e-?\d+)?/g)?.map(Number) || [];
-    if (nums.length >= 4) return { effect: 'path', duration, dxr: nums[nums.length - 2] - nums[0], dyr: nums[nums.length - 1] - nums[1] };
+    const d = mo?.getAttribute('svg:path') || '';
+    if ((d.match(/-?[\d.]+(e-?\d+)?/g) || []).length >= 4) return { effect: 'path', duration, d };
   }
   return effect && { effect, duration };
 }
@@ -116,7 +116,7 @@ export function readODPAnimations(page, blockOf, size) {
     b.animation = { effect: e.effect, order, duration: e.duration, ...extra,
       ...(node === 'with-previous' && { start: 'withPrev' }), ...(node === 'after-previous' && { start: 'afterPrev' }),
       ...(secs(par.getAttribute('smil:begin')) && { delay: secs(par.getAttribute('smil:begin')) }),
-      ...(e.effect === 'path' && { dx: Math.round(e.dxr * size.w), dy: Math.round(e.dyr * size.h) }) };
+      ...(e.effect === 'path' && pathFromSVG(e.d, size)) };
   };
   const effects = el => [...el.getElementsByTagName('*')].filter(n => n.localName === 'par' && n.getAttribute('presentation:preset-class'));
   for (const seq of [...root.children]) {

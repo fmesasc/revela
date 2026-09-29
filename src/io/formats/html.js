@@ -16,7 +16,7 @@ import { t, speechLang } from '../../i18n/index.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle, slidePaths } from '../../features/document/captions.js';
 import { INK_CSS, inkJS } from '../runtime/ink.js';
 import { deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
-import { animTimeline, EFFECT_KF, EFFECT_KF_CSS, isEntrance, customTransitionCSS, transitionName, isShapeTransition, pathKeyframesCSS } from '../../features/animation/transitions.js';
+import { animTimeline, EFFECT_KF, EFFECT_KF_CSS, isEntrance, customTransitionCSS, transitionName, isShapeTransition, pathKeyframesCSS, pathTurns } from '../../features/animation/transitions.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, levelVars } from '../../features/document/master.js';
 
 
@@ -45,7 +45,7 @@ const CUSTOM_KF = {
 };
 // One keyframe set per object with a motion path (curves are sampled).
 const pathKeyframes = deck => deck.slides.flatMap(s => s.blocks.filter(b => b.animation?.effect === 'path'))
-  .map(b => pathKeyframesCSS('rvP' + b.id, b.animation)).join('\n');
+  .map(b => pathKeyframesCSS('rvP' + b.id, b.animation, b.rotation || 0, b.type !== 'model')).join('\n');   // (a 3D model turns to face its way instead)
 const ownTransition = s => s.transition && transitionName(s.transition, s.transitionDir);
 const usedTransitions = deck => new Set([deck.defaultTransition, ...deck.slides.flatMap(s => [ownTransition(s), s.transitionOut])].filter(Boolean));
 function customEffectCSS(deck) {
@@ -66,7 +66,7 @@ function animAttrs(b, slide) {
   if (trigger && slide?.blocks.some(x => x.id === trigger))       // played on click of another object
     return src + ` class="rv-trig${isEntrance(effect) ? ' rv-in' : ''}" data-trig="${trigger}" data-kf="${effect === 'path' ? 'rvP' + b.id : EFFECT_KF[effect] || 'rvIn'}"`
       + ` data-dur="${duration ?? 500}" data-del="${delay ?? 0}"`;
-  const cls = effect === 'path' ? (b.animation.pathShape && b.animation.pathShape !== 'line' ? 'rv-pathc' : 'rv-path') : effect;
+  const cls = effect === 'path' ? ((b.animation.pathShape && b.animation.pathShape !== 'line') || (pathTurns(b.animation) && b.type !== 'model') ? 'rv-pathc' : 'rv-path') : effect;
   return src + ` class="fragment ${cls}" data-fragment-index="${order}"`;
 }
 

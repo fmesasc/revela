@@ -45,6 +45,68 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/class="fragment rv-pathc"/.test(html2) && new RegExp('@keyframes rvP' + b.id).test(html2), 'fotogramas clave del recorrido curvo');
   });
 
+  await test('recorrido dibujado a mano: puntos que se arrastran, añadir y quitar, y giro en el camino', async () => {
+    reset(); const W = frame.contentWindow; const b = slide().blocks[0]; select(b);
+    const c = [b.x + b.w / 2, b.y + b.h / 2];
+    // Draw an S on the slide, starting on the object.
+    D.querySelector('[data-action="draw-path"]').click(); await sleep(20);
+    const ov = D.querySelector('#stage .path-draw'); assert(ov && /Dibuja el camino/.test(ov.textContent), 'modo dibujo con instrucciones');
+    const st = D.getElementById('stage').getBoundingClientRect(), k = st.width / 1280;
+    const pe = (el, type, x, y) => el.dispatchEvent(new W.PointerEvent(type, { clientX: st.left + x * k, clientY: st.top + y * k, bubbles: true, pointerId: 1, button: 0 }));
+    pe(ov, 'pointerdown', c[0], c[1]);
+    for (let i = 1; i <= 50; i++) { const t = i / 50; pe(ov, 'pointermove', c[0] + 600 * t, c[1] + 120 * Math.sin(t * Math.PI * 2)); }
+    pe(ov, 'pointerup', c[0] + 600, c[1]); await sleep(30);
+    const a = () => slide().blocks[0].animation;
+    assert(!D.querySelector('.path-draw') && a()?.effect === 'path' && a().pathShape === 'custom', 'queda como trayectoria dibujada');
+    const P = a().points; eq(P[0].join(), '0,0', 'empieza donde está el objeto');
+    assert(P.length >= 3 && P.length <= 12, 'pocos puntos, fáciles de ajustar (' + P.length + ')');
+    eq([a().dx, a().dy].join(), P.at(-1).join(), 'el destino es el último punto');
+    assert(a().duration >= 1200, 'una duración acorde a la distancia');
+    const pts = R.trans.motionPoints(a());
+    assert(pts.some(([, y]) => y > 80) && pts.some(([, y]) => y < -80), 'la curva pasa por la S dibujada');
+    const step = pts.slice(1).map((p, i) => Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]));
+    assert(Math.max(...step) / Math.min(...step) < 1.3, 'velocidad uniforme por el camino');
+    R.store.undo(); await sleep(10); assert(!slide().blocks[0].animation, 'un paso de deshacer'); R.store.redo(); await sleep(10);
+    // Drag a point: the path changes (one undo step).
+    select(slide().blocks[0]); await sleep(10);
+    const hs = () => [...D.querySelectorAll('#stage .mp-h:not(.mid)')];
+    eq(hs().length, a().points.length - 1, 'un punto por cada uno (menos el inicio)');
+    const h = hs()[0], hr = h.getBoundingClientRect(), p1 = [...a().points[1]];
+    const pc = (el, type, x, y) => el.dispatchEvent(new W.PointerEvent(type, { clientX: x, clientY: y, bubbles: true, pointerId: 1, button: 0 }));
+    pc(h, 'pointerdown', hr.left + 5, hr.top + 5); pc(W, 'pointermove', hr.left + 5, hr.top + 5 + 40 * k); pc(W, 'pointerup', hr.left + 5, hr.top + 5 + 40 * k); await sleep(20);
+    eq(a().points[1].join(), [p1[0], p1[1] + 40].join(), 'arrastrar un punto lo mueve');
+    R.store.undo(); await sleep(10); eq(a().points[1].join(), p1.join(), 'se deshace de una vez');
+    // "+" adds a point; a double click removes it.
+    select(slide().blocks[0]); await sleep(10);
+    const n = a().points.length, mid = D.querySelector('#stage .mp-h.mid'), mr = mid.getBoundingClientRect();
+    pc(mid, 'pointerdown', mr.left + 5, mr.top + 5); pc(W, 'pointermove', mr.left + 5, mr.top + 25); pc(W, 'pointerup', mr.left + 5, mr.top + 25); await sleep(20);
+    eq(a().points.length, n + 1, '«+» añade un punto');
+    hs()[0].dispatchEvent(new W.MouseEvent('dblclick', { bubbles: true })); await sleep(20);
+    eq(a().points.length, n, 'doble clic lo quita');
+    // Changing the end by number stretches the drawing to it.
+    R.trans.setAnimPropForId(b.id, 'dx', a().dx * 2); await sleep(10);
+    eq(a().points.at(-1)[0], a().dx, 'el dibujo llega al nuevo destino');
+    // Turning on the way: following the path, and whole turns.
+    R.trans.setAnimPropForId(b.id, 'turn', 'follow'); R.trans.setAnimPropForId(b.id, 'spin', 360); await sleep(10);
+    const fr = R.trans.motionFrames(a());
+    eq(fr[0][2], 0, 'empieza con su giro de siempre');
+    assert(fr.some(f => Math.abs(f[2] - 360 * fr.indexOf(f) / (fr.length - 1)) > 15), 'sigue las curvas del camino');
+    const html = R.io.buildHTML();
+    assert(/class="fragment rv-pathc"/.test(html) && new RegExp(`@keyframes rvP${b.id}\\{[^}]*rotate:`).test(html), 'en la presentación gira por el camino');
+    R.trans.setAnimPropForId(b.id, 'turn', ''); R.trans.setAnimPropForId(b.id, 'spin', 0); await sleep(10);
+    assert(!a().turn && !a().spin, 'sin girar');
+    // A 3D object doesn't turn flat: it faces its way (Movimiento 3D).
+    const kf = R.trans.pathKeyframesCSS('x', { ...a(), turn: 'follow' }, 0, false); assert(!/rotate/.test(kf), 'un 3D no gira en plano');
+    // PowerPoint / LibreOffice keep the drawn shape (and read it back).
+    const pp = R.trans.pathFromSVG(`M 0 0 L ${R.trans.motionPoints(a()).slice(1).map(([x, y]) => `${x / 1280} ${y / 720}`).join(' L ')} E`, { w: 1280, h: 720 });
+    assert(pp.pathShape === 'custom' && pp.points.length > 2 && Math.abs(pp.dx - a().dx) <= 1, 'importar un recorrido de varios tramos lo conserva');
+    eq(JSON.stringify(R.trans.pathFromSVG('M 0 0 L 0.1 0.2 E', { w: 1000, h: 500 })), '{"dx":100,"dy":100}', 'uno de un tramo, recto');
+    // Esc cancels drawing.
+    D.querySelector('[data-action="draw-path"]').click(); await sleep(10);
+    W.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(10);
+    assert(!D.querySelector('.path-draw'), 'Esc cancela');
+  });
+
   await test('disparador: al hacer clic en un objeto se anima otro', async () => {
     reset(); const [a, b] = slide().blocks; select(b); R.trans.setAnimation('zoom-in');
     R.trans.setAnimPropForId(b.id, 'trigger', a.id);

@@ -12,7 +12,7 @@ import { chartSeries, iconSVG, inkSVG } from '../../render/svg.js';
 import { blockImage } from '../export/images.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, styleKind } from '../../features/document/master.js';
 import { PPTXGEN, JSZIP, loadScript } from '../../core/vendor.js';
-import { animTimeline, isEntrance } from '../../features/animation/transitions.js';
+import { animTimeline, isEntrance, motionPoints } from '../../features/animation/transitions.js';
 import { download } from '../files.js';
 
 
@@ -329,9 +329,10 @@ function effectXML(b, spid, ids, deck, delay, first) {
   const node = first ? 'clickEffect' : a.start === 'afterPrev' ? 'afterEffect' : 'withEffect';
   let cls, preset, body;
   if (a.effect === 'path') {
-    const { w, h } = deck.size, dx = ((a.dx || 0) / w).toFixed(4), dy = ((a.dy || 0) / h).toFixed(4);
+    // The whole shape (curves and drawn paths as lines through their points), relative to the slide size.
+    const { w, h } = deck.size, pts = motionPoints(a).slice(1).map(([x, y]) => `${+(x / w).toFixed(4)} ${+(y / h).toFixed(4)}`);
     cls = 'path'; preset = 0;
-    body = `<p:animMotion origin="layout" path="M 0 0 L ${dx} ${dy} E" pathEditMode="relative"><p:cBhvr><p:cTn id="${id()}" dur="${dur}" fill="hold"/>${tgt}<p:attrNameLst><p:attrName>ppt_x</p:attrName><p:attrName>ppt_y</p:attrName></p:attrNameLst></p:cBhvr></p:animMotion>`;
+    body = `<p:animMotion origin="layout" path="M 0 0 L ${pts.join(' L ')} E" pathEditMode="relative"><p:cBhvr><p:cTn id="${id()}" dur="${dur}" fill="hold"/>${tgt}<p:attrNameLst><p:attrName>ppt_x</p:attrName><p:attrName>ppt_y</p:attrName></p:attrNameLst></p:cBhvr></p:animMotion>`;
   } else if (a.effect === 'grow' || a.effect === 'shrink') {
     const k = a.effect === 'grow' ? 125000 : 80000;
     cls = 'emph'; preset = 6;

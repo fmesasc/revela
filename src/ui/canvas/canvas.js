@@ -8,7 +8,8 @@ import { figuresMap, captionLine } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
 import { t } from '../../i18n/index.js';
 import { deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
-import { motionPoints } from '../../features/animation/transitions.js';
+import { motionPoints, motionFrames, pathTurns } from '../../features/animation/transitions.js';
+import { drawPathHandles } from './pathdraw.js';
 import { blockLabel } from '../../features/document/a11y.js';
 import { cameraRadius } from '../../features/live/media.js';
 import { pollEditorHTML } from '../../features/live/poll.js';
@@ -164,7 +165,7 @@ export function cycleSelection(dir) {
 
 // Dashed guide from the selected object to where its motion path ends.
 function drawMotionPath() {
-  stage.querySelectorAll('.motion-path').forEach(n => n.remove());
+  stage.querySelectorAll('.motion-path, .mp-h').forEach(n => n.remove());
   const b = selectedBlock(); const a = b?.animation;
   if (!a || a.effect !== 'path' || (!a.dx && !a.dy)) return;
   const x1 = b.x + b.w / 2, y1 = b.y + b.h / 2, x2 = x1 + (a.dx || 0), y2 = y1 + (a.dy || 0);
@@ -175,8 +176,11 @@ function drawMotionPath() {
   svg.innerHTML = `<defs><marker id="mp-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">`
     + `<path d="M0,0 L10,5 L0,10 z" fill="#e0873b"/></marker></defs>`
     + `<polyline points="${pts}" fill="none" stroke="#e0873b" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#mp-arrow)"/>`
-    + `<rect x="${x2 - b.w / 2}" y="${y2 - b.h / 2}" width="${b.w}" height="${b.h}" fill="none" stroke="#e0873b" stroke-width="2" stroke-dasharray="4 4" opacity=".7"/>`;
+    // Where it ends (turned as it will be, if it turns on the way).
+    + `<rect x="${x2 - b.w / 2}" y="${y2 - b.h / 2}" width="${b.w}" height="${b.h}" fill="none" stroke="#e0873b" stroke-width="2" stroke-dasharray="4 4" opacity=".7"`
+    + `${pathTurns(a) && b.type !== 'model' ? ` transform="rotate(${(b.rotation || 0) + motionFrames(a).at(-1)[2]} ${x2} ${y2})"` : ''}/>`;
   stage.appendChild(svg);
+  drawPathHandles(b);
 }
 
 // Captions shown under captioned blocks (figures/tables).

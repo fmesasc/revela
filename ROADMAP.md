@@ -82,6 +82,7 @@ the origin of every requirement is traceable.
 - ✅ Free resources like Canva: animated GIFs, animated stickers, 3D models (animated library, Poly Haven CC0, Sketchfab search) and 3D motion (model animations, turning, camera movements) `—`
 - ✅ Resources side panel like Canva's Elements: images, icons, GIFs, stickers and 3D in one panel docked left or right, that stays open while you keep adding; click adds, drag drops it where you want `—`
 - ✅ Walking 3D characters: while a model moves on the slide (motion path or any animation) it plays one of its clips (walk, run…) facing where it goes, then another on arrival (once and back to rest, or for good) and turns to the audience; its caption moves with it `—`
+- ✅ Motion paths drawn by hand on the slide (mouse or finger), smoothed and at an even speed; points to drag, "+" to add one, double click to remove; turning on the way (follow the path and/or whole turns); kept in PowerPoint and LibreOffice files `PP·OO`
 - ⬜ More rigged characters in the 3D library (free licences, several clips each: idle, walk, run, wave…) `—`
 - ⬜ Automatic rigging for models without a skeleton (simple humanoids and quadrupeds), with joints the user can adjust `—`
 - ✅ Video and GIF playback options: segments played one per click (from second X to second Y), start automatically, loop, mute; colour key (green screen) made transparent live; AI background removal for animated GIFs, frame by frame `PP`

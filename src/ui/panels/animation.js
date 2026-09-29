@@ -1,10 +1,11 @@
 // Animation pane: the slide's effects in order, with timing, triggers and
 // reordering (PowerPoint's Animation Pane).
 
-import { currentSlide } from '../../core/store.js';
+import { currentSlide, commit, setSelection } from '../../core/store.js';
 import * as trans from '../../features/animation/transitions.js';
 import * as poll from '../../features/live/poll.js';
 import { playAnimations } from '../canvas/preview.js';
+import { startPathDraw } from '../canvas/pathdraw.js';
 import { t } from '../../i18n/index.js';
 
 const $ = s => document.querySelector(s);
@@ -53,8 +54,12 @@ export function openAnimPanel() {
             .map(([v, l]) => `<option value="${v}"${(b.animation.start || 'click') === v ? ' selected' : ''}>${t(l)}</option>`).join('')}</select></label>
           <label>${t('Disparador')}<select data-p="trigger"><option value="">${t('Secuencia de clics')}</option>${currentSlide().blocks
             .filter(x => x.id !== b.id && x.type !== 'connector').map(x => `<option value="${x.id}"${b.animation.trigger === x.id ? ' selected' : ''}>${t('Al hacer clic en')} ${objLabel(x).replace(/</g, '&lt;')}</option>`).join('')}</select></label>
-          ${b.animation.effect === 'path' ? `<label>${t('Recorrido')}<select data-p="pathShape">${[['line', 'Recto'], ['arc', 'Arco'], ['wave', 'Onda'], ['loop', 'Bucle']]
+          ${b.animation.effect === 'path' ? `<label>${t('Recorrido')}<select data-p="pathShape">${[['line', 'Recto'], ['arc', 'Arco'], ['wave', 'Onda'], ['loop', 'Bucle'], ...(b.animation.points ? [['custom', 'Dibujado']] : [])]
             .map(([v, l]) => `<option value="${v}"${(b.animation.pathShape || 'line') === v ? ' selected' : ''}>${t(l)}</option>`).join('')}</select></label>
+          <label>&nbsp;<button type="button" class="mini2 an-draw"><i class="ms">gesture</i> ${t('Dibujar')}</button></label>
+          ${b.type === 'model' ? `<p class="host-help an-wide">${t('Un objeto 3D gira hacia donde va: se elige en Movimiento 3D.')}</p>`
+            : `<label>${t('Giro en el camino')}<select data-p="turn"><option value="">${t('Sin girar')}</option><option value="follow"${b.animation.turn === 'follow' ? ' selected' : ''}>${t('Seguir el camino')}</option></select></label>
+          <label>${t('Vueltas (grados)')}<input type="number" data-p="spin" value="${b.animation.spin || 0}" step="90" title="${t('360 = una vuelta entera; negativo: al revés')}"></label>`}
           <label>${t('Mover X')} (px)<input type="number" data-p="dx" value="${b.animation.dx || 0}" step="10"></label>
           <label>${t('Mover Y')} (px)<input type="number" data-p="dy" value="${b.animation.dy || 0}" step="10"></label>` : ''}
           <label>${t('Duración')} (ms)<input type="number" data-p="duration" value="${b.animation.duration ?? 500}" step="100" min="0"></label>
@@ -67,6 +72,9 @@ export function openAnimPanel() {
       const id = row.dataset.id;
       row.querySelector('[data-p="effect"]').addEventListener('change', e => { trans.setAnimPropForId(id, 'effect', e.target.value); render(); });
       row.querySelector('[data-p="pathShape"]')?.addEventListener('change', e => { trans.setAnimPropForId(id, 'pathShape', e.target.value); });
+      row.querySelector('[data-p="turn"]')?.addEventListener('change', e => { trans.setAnimPropForId(id, 'turn', e.target.value); });
+      // Draw it on the slide: the panel steps aside while drawing.
+      row.querySelector('.an-draw')?.addEventListener('click', () => { commit(() => setSelection(id), { history: false }); close(); startPathDraw(); });
       row.querySelector('[data-p="trigger"]').addEventListener('change', e => { trans.setAnimPropForId(id, 'trigger', e.target.value || null); render(); });
       row.querySelector('[data-p="start"]').addEventListener('change', e => { trans.setAnimPropForId(id, 'start', e.target.value); render(); });
       row.querySelectorAll('input[data-p]').forEach(inp => inp.addEventListener('change', e => trans.setAnimPropForId(id, inp.dataset.p, e.target.value)));

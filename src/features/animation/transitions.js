@@ -110,9 +110,11 @@ export const EFFECT_KF_CSS = `@keyframes rvIn{from{opacity:0}to{opacity:1}}
 @keyframes rvPath{to{translate:var(--dx,0) var(--dy,0)}}`;
 // Motion paths: points (offsets from the start) along the chosen shape, ending
 // at (dx, dy). 'line' is straight; 'arc' bulges to one side; 'wave' snakes;
-// 'loop' makes a full turn half way.
-export const PATH_SHAPES = ['line', 'arc', 'wave', 'loop'];
+// 'loop' makes a full turn half way; 'custom' is drawn by hand (a.points, the
+// user's points: the curve goes smoothly through them).
+export const PATH_SHAPES = ['line', 'arc', 'wave', 'loop', 'custom'];
 export function motionPoints(a, n = 24) {
+  if (a.pathShape === 'custom' && a.points?.length > 1) return samplePath(a.points, Math.min(160, Math.max(n, a.points.length * 8)));
   const dx = a.dx || 0, dy = a.dy || 0, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;   // normal
   const pts = [];
   for (let i = 0; i <= n; i++) {
@@ -125,8 +127,77 @@ export function motionPoints(a, n = 24) {
   }
   return pts;
 }
-export const pathKeyframesCSS = (name, a) => `@keyframes ${name}{${motionPoints(a).map(([x, y], i, arr) =>
-  `${(i / (arr.length - 1) * 100).toFixed(1)}%{translate:${x}px ${y}px}`).join('')}}`;
+// A smooth curve through the points (Catmull-Rom), then n+1 points evenly spaced
+// along it, so the object moves at an even speed however the path was drawn.
+function samplePath(P, n) {
+  const dense = [P[0]];
+  for (let i = 0; i < P.length - 1; i++) {
+    const p0 = P[i - 1] || P[i], p1 = P[i], p2 = P[i + 1], p3 = P[i + 2] || p2;
+    for (let k = 1; k <= 10; k++) {
+      const t = k / 10, t2 = t * t, t3 = t2 * t;
+      dense.push([0, 1].map(c => 0.5 * (2 * p1[c] + (-p0[c] + p2[c]) * t + (2 * p0[c] - 5 * p1[c] + 4 * p2[c] - p3[c]) * t2 + (-p0[c] + 3 * p1[c] - 3 * p2[c] + p3[c]) * t3)));
+    }
+  }
+  const len = [0]; for (let i = 1; i < dense.length; i++) len.push(len[i - 1] + Math.hypot(dense[i][0] - dense[i - 1][0], dense[i][1] - dense[i - 1][1]));
+  const total = len.at(-1) || 1, out = []; let j = 0;
+  for (let i = 0; i <= n; i++) {
+    const d = total * i / n; while (j < dense.length - 2 && len[j + 1] < d) j++;
+    const k = (d - len[j]) / ((len[j + 1] - len[j]) || 1);
+    out.push([+(dense[j][0] + (dense[j + 1][0] - dense[j][0]) * k).toFixed(1), +(dense[j][1] + (dense[j + 1][1] - dense[j][1]) * k).toFixed(1)]);
+  }
+  return out;
+}
+// Turning while it moves: 'follow' turns it with the path (as it bends); spin
+// adds that many degrees over the way (360 = one full turn). [x, y, degrees].
+export const pathTurns = a => a.effect === 'path' && (a.turn === 'follow' || +a.spin);
+export function motionFrames(a, n = 24) {
+  const pts = motionPoints(a, n), last = pts.length - 1;
+  const dir = i => { const p = pts[Math.max(0, i - 1)], q = pts[Math.min(last, i + 1)]; return Math.atan2(q[1] - p[1], q[0] - p[0]) * 180 / Math.PI; };
+  let prev = dir(0), acc = 0;
+  return pts.map(([x, y], i) => {
+    let r = 0;
+    if (a.turn === 'follow') { const d = dir(i); acc += ((d - prev + 540) % 360) - 180; prev = d; r = acc; }
+    r += (+a.spin || 0) * i / last;
+    return [x, y, +r.toFixed(1)];
+  });
+}
+// Keyframes of a motion path; base: the object's own turn (it keeps it).
+export const pathKeyframesCSS = (name, a, base = 0, turns = true) => `@keyframes ${name}{${motionFrames(a).map(([x, y, r], i, arr) =>
+  `${(i / (arr.length - 1) * 100).toFixed(1)}%{translate:${x}px ${y}px${turns && pathTurns(a) ? `;rotate:${+(base + r).toFixed(1)}deg` : ''}}`).join('')}}`;
+// Drawn path: the points (offsets from the object's centre) — it starts where the object is.
+export function setMotionPath(id, points, duration = null) {
+  const b = currentSlide().blocks.find(x => x.id === id); if (!b || points.length < 2) return;
+  commit(() => {
+    b.animation ||= { effect: 'path', order: animatedBlocks().length + 1, start: 'click', duration: 2000, delay: 0 };
+    Object.assign(b.animation, { effect: 'path', pathShape: 'custom', points: points.map(([x, y]) => [Math.round(x), Math.round(y)]) });
+    [b.animation.dx, b.animation.dy] = b.animation.points.at(-1);
+    if (duration) b.animation.duration = duration;
+    normalizeAnim();
+  });
+}
+// A motion path from PowerPoint or LibreOffice ("M 0 0 L x y L … E", relative
+// to the slide size; curves C are taken by their points): its points; more than
+// one segment becomes a drawn path through them (simplified), one is a line.
+export function pathFromSVG(d, size) {
+  const n = (d.match(/-?[\d.]+(?:e-?\d+)?/g) || []).map(Number), pts = [];
+  for (let i = 0; i + 1 < n.length; i += 2) pts.push([n[i] * size.w, n[i + 1] * size.h]);
+  if (pts.length < 2) return { dx: 0, dy: 0 };
+  const rel = pts.map(([x, y]) => [x - pts[0][0], y - pts[0][1]]), end = rel.at(-1).map(Math.round);
+  const simple = simplifyStroke(rel, 3);
+  return simple.length > 2 ? { pathShape: 'custom', points: simple.map(p => p.map(Math.round)), dx: end[0], dy: end[1] } : { dx: end[0], dy: end[1] };
+}
+// Simplify a hand-drawn stroke (Ramer–Douglas–Peucker): few points, same shape, easy to adjust.
+export function simplifyStroke(pts, tol = 6) {
+  if (pts.length < 3) return pts.slice();
+  const [a, b] = [pts[0], pts.at(-1)], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  let far = 0, at = 0;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const p = pts[i], d = L ? Math.abs((b[0] - a[0]) * (a[1] - p[1]) - (a[0] - p[0]) * (b[1] - a[1])) / L : Math.hypot(p[0] - a[0], p[1] - a[1]);
+    if (d > far) { far = d; at = i; }
+  }
+  if (far <= tol) return [a, b];
+  return [...simplifyStroke(pts.slice(0, at + 1), tol).slice(0, -1), ...simplifyStroke(pts.slice(at), tol)];
+}
 
 // Effects that make an object appear (it starts hidden until it plays).
 export const isEntrance = effect => !['fade-out', 'semi-fade-out', 'highlight-red', 'highlight-green', 'highlight-blue', 'highlight-current-red', 'highlight-current-green', 'highlight-current-blue', 'strike', 'path', 'grow', 'shrink'].includes(effect);
@@ -172,12 +243,21 @@ export function setAnimPropForId(id, prop, value) {
   const b = byId(id); if (!b || !b.animation) return;
   commit(() => {
     if (prop === 'duration' || prop === 'delay') b.animation[prop] = Math.max(0, +value || 0);
-    else if (prop === 'dx' || prop === 'dy') b.animation[prop] = Math.round(+value || 0);
+    else if (prop === 'dx' || prop === 'dy') { b.animation[prop] = Math.round(+value || 0); if (b.animation.pathShape === 'custom') scalePoints(b.animation); }
+    else if (prop === 'spin') { if (+value) b.animation.spin = Math.round(+value); else delete b.animation.spin; }
+    else if (prop === 'turn' && !value) delete b.animation.turn;
+    else if (prop === 'points') { b.animation.points = value; [b.animation.dx, b.animation.dy] = value.at(-1); }
     else if (prop === 'trigger' && !value) delete b.animation.trigger;
     else b.animation[prop] = value;
     if (prop === 'effect' && value === 'path' && !b.animation.dx && !b.animation.dy) b.animation.dx = 200;
     normalizeAnim();
   });
+}
+// A drawn path whose end is moved by number: the whole drawing stretches to the new end.
+function scalePoints(a) {
+  const P = a.points, [ex, ey] = P.at(-1), [nx, ny] = [a.dx || 0, a.dy || 0];
+  const ang = Math.atan2(ny, nx) - Math.atan2(ey, ex), k = Math.hypot(nx, ny) / (Math.hypot(ex, ey) || 1), c = Math.cos(ang) * k, s = Math.sin(ang) * k;
+  a.points = P.map(([x, y]) => [Math.round(x * c - y * s), Math.round(x * s + y * c)]); a.points[a.points.length - 1] = [nx, ny];
 }
 export function moveAnimForId(id, dir) {
   commit(() => {

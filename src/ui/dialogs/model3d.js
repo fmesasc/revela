@@ -3,7 +3,8 @@
 // and another on arrival) and a camera movement when its slide appears — with
 // a live preview.
 
-import { commit, currentSlide } from '../../core/store.js';
+import { commit, currentSlide, setSelection } from '../../core/store.js';
+import { startPathDraw } from '../canvas/pathdraw.js';
 import { animatedBlocks } from '../../features/animation/transitions.js';
 import { MOTIONS_3D, modelAttrs, model3dRuntime } from '../../features/content/model3d.js';
 import { MODEL_VIEWER, loadScript } from '../../core/vendor.js';
@@ -35,6 +36,7 @@ export async function openModel3D(b) {
       <label class="fr-chk"><input type="checkbox" class="m3d-wlook"${w.look ? ' checked' : ''}> ${t('Al llegar, mirar al público')}</label>
       <label class="fr-chk m3d-wpath"${hasMove ? ' hidden' : ''}><input type="checkbox" class="m3d-waddpath" checked> ${t('Darle un recorrido de izquierda a derecha (se cambia en Animaciones ▸ Trayectoria)')}</label>
       <button type="button" class="mini2 m3d-wtry">${t('Probar andando')}</button>
+      <button type="button" class="mini2 m3d-wdraw" title="${t('Aplica lo elegido y dibuja en la diapositiva por dónde irá')}"><i class="ms">gesture</i> ${t('Dibujar su recorrido')}</button>
     </fieldset>
     <fieldset><legend>${t('Giro')}</legend>
       <label class="fr-chk"><input type="checkbox" class="m3d-rot"${o.autoRotate ? ' checked' : ''}> ${t('Girar solo')}</label>
@@ -94,7 +96,13 @@ export async function openModel3D(b) {
     mv.animate([{ translate: `${-x}px 0` }, { translate: `${x}px 0` }, { translate: `${-x}px 0` }], { duration: dur, easing: 'ease-in-out' });
     runtime.move(mv, dur, mv);
   });
-  q('.m3d-ok').addEventListener('click', () => {
+  q('.m3d-wdraw').addEventListener('click', () => {
+    if (!q('.m3d-wclip').value) q('.m3d-wclip').value = q('.m3d-wclip').dataset.guess || [...q('.m3d-wclip').options][1]?.value || '';
+    q('.m3d-waddpath').checked = false;                        // (the drawing will be its path)
+    apply(); commit(() => setSelection(b.id), { history: false }); startPathDraw();
+  });
+  q('.m3d-ok').addEventListener('click', () => apply());
+  function apply() {
     const c = current();
     commit(() => {
       const x = currentSlide().blocks.find(y => y.id === b.id); if (!x) return;
@@ -108,5 +116,5 @@ export async function openModel3D(b) {
       } else delete x.walk;
     });
     close();
-  });
+  }
 }

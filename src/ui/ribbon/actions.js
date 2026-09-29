@@ -48,6 +48,7 @@ import { markdownToSlides } from '../../io/formats/markdown.js';
 import { openAppearance } from '../shell/appearance.js';
 import { openDashboardDialog } from '../dialogs/data.js';
 import { playAnimations } from '../canvas/preview.js';
+import { startPathDraw } from '../canvas/pathdraw.js';
 import { openHostPanel } from '../dialogs/remote.js';
 import * as search from '../../features/document/search.js';
 import { t } from '../../i18n/index.js';
@@ -233,6 +234,7 @@ export const ACTIONS = {
   'insert-hf': () => openHeaderFooter(),
   'anim-panel': () => openAnimPanel(),
   'anim-play': () => playAnimations(),
+  'draw-path': () => startPathDraw(),
   'insert-date': () => blocks.addDate(),
   'insert-figindex': () => blocks.addFigIndex(),
   'insert-slideref': () => blocks.addSlideRef(),

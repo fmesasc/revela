@@ -2,7 +2,7 @@
 // entrance, emphasis and exit effects in order on the canvas.
 
 import { currentSlide } from '../../core/store.js';
-import { animTimeline, EFFECT_KF, motionPoints } from '../../features/animation/transitions.js';
+import { animTimeline, EFFECT_KF, motionFrames } from '../../features/animation/transitions.js';
 import { stage } from './canvas.js';
 import { model3dRuntime } from '../../features/content/model3d.js';
 
@@ -17,8 +17,9 @@ function walkIn(el, dur, delay) {
 export const KEYFRAME = EFFECT_KF;
 export function animateEl(el, anim, dur, delay) {
   const effect = anim.effect;
-  if (effect === 'path') {                        // motion path: slide to (dx, dy) and back
-    el.animate(motionPoints(anim).map(([x, y]) => ({ translate: `${x}px ${y}px` })),
+  if (effect === 'path') {                        // motion path: along it (turning, if so) and back
+    const model = !!el.querySelector('model-viewer');
+    el.animate(motionFrames(anim).map(([x, y, r]) => ({ translate: `${x}px ${y}px`, rotate: model ? '0deg' : `${r}deg` })),
       { duration: dur, delay, easing: 'ease-in-out', fill: 'none' });
     walkIn(el, dur, delay);
     return;

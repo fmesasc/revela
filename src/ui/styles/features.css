@@ -355,3 +355,15 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .el-foot{display:flex;gap:6px;align-items:center;justify-content:space-between;font-size:11px;color:var(--txt2)}
 #stage.el-drop{outline:3px dashed var(--accent);outline-offset:4px}
 @media (max-width:860px){ #elements-panel{width:auto;max-height:46vh;border-inline:none;border-top:1px solid var(--line2);order:3} }
+/* Motion paths: drawing one by hand, and its points to drag */
+.path-draw{position:absolute;inset:0;z-index:40;cursor:crosshair;touch-action:none;background:#e0873b0d}
+.pd-svg{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
+.pd-line{fill:none;stroke:#e0873b;stroke-width:calc(4px * var(--hz,1));stroke-linecap:round;stroke-linejoin:round}
+.pd-start{fill:#e0873b;opacity:.8}
+.pd-hint{position:absolute;left:50%;top:10px;transform:translateX(-50%) scale(var(--hz,1));transform-origin:50% 0;background:#1f2328e6;color:#fff;border-radius:18px;padding:6px 14px;font:13px system-ui,sans-serif;white-space:nowrap;display:flex;gap:6px;align-items:center;pointer-events:none}
+.mp-h{position:absolute;z-index:8;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:#fff;border:3px solid #e0873b;box-sizing:border-box;cursor:move;transform:scale(var(--hz,1));touch-action:none}
+.mp-h.end{background:#e0873b}
+.mp-h.mid{width:12px;height:12px;margin:-6px 0 0 -6px;border-width:2px;opacity:.55;cursor:copy}
+.mp-h.mid::after{content:'+';position:absolute;inset:-3px 0 0;text-align:center;font:bold 10px/12px system-ui;color:#e0873b}
+.mp-h:hover{opacity:1;box-shadow:0 0 0 3px #e0873b55}
+.an-grid .an-wide{grid-column:1/-1;margin:0}

@@ -21,7 +21,7 @@
 import { uid } from '../../core/model.js';
 import { styled, masterStyles } from '../../features/document/master.js';
 import { JSZIP_ESM } from '../../core/vendor.js';
-import { TRANSITION_DIRS } from '../../features/animation/transitions.js';
+import { TRANSITION_DIRS, pathFromSVG } from '../../features/animation/transitions.js';
 
 const CANVAS_W = 1280;            // slide width maps to this many px
 const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp', svg: 'image/svg+xml' };
@@ -374,8 +374,7 @@ function readAnimations(doc, spidOf, blocks, size) {
     if (cls === 'exit') effect = 'fade-out';
     else if (cls === 'emph') effect = +(all(c, 'p:by')[0]?.getAttribute('x') || 125000) >= 100000 ? 'grow' : 'shrink';
     else if (cls === 'path') {
-      const m = (all(c, 'p:animMotion')[0]?.getAttribute('path') || '').match(/L\s*(-?[\d.]+)\s+(-?[\d.]+)/);
-      effect = 'path'; extra = { dx: Math.round((+m?.[1] || 0) * size.w), dy: Math.round((+m?.[2] || 0) * size.h) };
+      effect = 'path'; extra = pathFromSVG(all(c, 'p:animMotion')[0]?.getAttribute('path') || '', size);
     } else if (preset === 2) effect = FLY[sub] || 'fade-up';
     else if (preset === 42 || preset === 47) {                  // float in: its start offset gives the direction
       const v = all(c, 'p:strVal').map(x => x.getAttribute('val')).find(x => /#ppt_[xy][+-]/.test(x || '')) || '#ppt_y+';
