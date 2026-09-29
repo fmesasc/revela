@@ -61,6 +61,10 @@ def touch_checks(send, recv, port):
     fits = "(()=>{const w=document.getElementById('canvas-wrap').getBoundingClientRect(),s=document.getElementById('stage').getBoundingClientRect();return s.width>100&&s.left>=w.left-1&&s.right<=w.right+1&&s.top>=w.top-1&&s.bottom<=w.bottom+1})()"
     check(ev(fits), 'en vertical la diapositiva se ve entera')
     check(ev("document.querySelector('.titlebar').scrollWidth<=innerWidth+1"), 'la barra de título cabe en vertical')
+    # A new object's tab opens and shows whole, though the tabs scroll.
+    tabin = ev("(async()=>{const R=window.__revela;R.store.commit(()=>R.store.setSelection(null),{history:false});await new Promise(r=>setTimeout(r,100));document.querySelector('#ribbon [data-tab=ctx]').textContent='';document.querySelector('#ribbon .tabs').scrollLeft=0;R.blocks.addShape('rect');await new Promise(r=>setTimeout(r,300));const t=document.querySelector('#ribbon [data-tab=ctx]').getBoundingClientRect(),b=document.querySelector('#ribbon .tabs').getBoundingClientRect();return t.width>20&&t.left>=b.left-1&&t.right<=b.right+1})()")
+    check(tabin, 'la pestaña del objeto nuevo se ve entera')
+    ev("(()=>{const R=window.__revela;R.store.commit(()=>R.store.setSelection(null),{history:false});return 1})()"); time.sleep(0.2)
     recv(send('Emulation.setDeviceMetricsOverride', sid, width=844, height=390, deviceScaleFactor=2, mobile=True)); time.sleep(0.8)
     check(ev(fits), 'en horizontal (móvil tumbado) la diapositiva se ve entera')
     return fails
@@ -272,7 +276,7 @@ def main():
         touch_fail = touch_checks(send, recv, port) if out.startswith('REVELATEST PASS') else []
         if touch_fail:
             print('REVELATEST FAIL touch'); print('\n'.join(touch_fail)); return 1
-        if out.startswith('REVELATEST PASS'): out += ' + táctil 9/9'
+        if out.startswith('REVELATEST PASS'): out += ' + táctil 10/10'
         math_fail = math_keyboard_check(send, recv, port) if out.startswith('REVELATEST PASS') else []
         if math_fail:
             print('REVELATEST FAIL ecuación'); print('\n'.join(math_fail)); return 1

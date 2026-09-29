@@ -166,15 +166,16 @@ export function renderContextual() {
   }
   // Just inserted (an id not seen before): its tab opens by itself, as in PowerPoint.
   const ids = new Set(state.deck.slides.flatMap(s => s.blocks.map(x => x.id)));
-  if (known && b && !known.has(b.id) && state.ui.activeTab !== 'ctx') {
+  const opened = known && b && !known.has(b.id) && state.ui.activeTab !== 'ctx';
+  if (opened) {
     state.ui.activeTab = 'ctx';
     document.querySelectorAll('#ribbon [data-tab]').forEach(x => x.classList.toggle('active', x.dataset.tab === 'ctx'));
-    tab.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
     document.querySelectorAll('#ribbon .ribbon-page').forEach(p => p.classList.toggle('active', p.dataset.page === 'ctx'));
   }
   known = ids;
   const title = b ? t(TITLES[b.type] || 'Objeto') : t('Varios objetos') + ` (${list.length})`;
   if (tab.textContent !== title) tab.textContent = title;
+  if (opened) tab.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });   // (with its name, so all of it shows)
   const names = b?.type === 'model' ? clipsOf(b) : [];
   // (Moving or resizing it doesn't change its options: no rebuild while nudging.)
   const sig = shortSig([list.map(x => x.id), b && { ...b, x: 0, y: 0, w: 0, h: 0 }, names, b && styled(b, currentSlide()).fontSize]);
