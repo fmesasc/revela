@@ -1,6 +1,18 @@
 // Animations and transitions: timeline, triggers, motion paths, auto-animate, code steps, rehearsal.
 
 export default async function ({ R, D, frame, test, sleep, assert, eq, reset, slide, last, select, richOf, newText }) {
+  await test('transiciones nuevas: cubo, cubrir, página, galería, caer, desde arriba, remolino, encoger, desenfocar y destello', async () => {
+    reset(); const T = await frame.contentWindow.eval("import('/src/features/animation/transitions.js')");
+    const names = ['cube', 'cover', 'page', 'gallery', 'fall', 'drop', 'swirl', 'shrink', 'blur', 'flash'];
+    assert(names.every(n => T.CUSTOM_TRANSITIONS[n]), 'cada una definida');
+    assert(names.every(n => D.querySelector(`[data-slide-transition="${n}"]`)), 'en la cinta');
+    R.slides.addSlide('blank'); await sleep(10); R.trans.setSlideTransition('blur'); await sleep(10);
+    const html = R.io.buildHTML();
+    assert(/data-transition="blur"/.test(html) && /filter:blur\(18px\)/.test(html) && /transition-property:[^}]*filter/.test(html), 'desenfocar: con su filtro animado');
+    const blob = await R.pptx.buildPptxBlob(), zip = await frame.contentWindow.JSZip.loadAsync(blob), xml = await zip.file('ppt/slides/slide2.xml').async('string');
+    assert(/<p:dissolve\/>/.test(xml), 'en PowerPoint, su equivalente (disolver)');
+  });
+
   await test('código: animación por líneas (data-line-numbers) en el export', async () => {
     reset(); R.blocks.addCode(); const b = last(); select(b);
     R.blocks.setCode({ lineSteps: '1|2-3', lang: 'javascript' });

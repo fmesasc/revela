@@ -329,7 +329,9 @@ function pptShadow(s) {
 // ---- Transitions and animations -------------------------------------------------
 // PptxGenJS writes neither, so they are added to each slide's XML afterwards.
 const TRANS = { fade: '<p:fade/>', slide: '<p:push dir="l"/>', push: '<p:push dir="l"/>', convex: '<p:cover dir="l"/>', concave: '<p:pull dir="l"/>',
-  zoom: '<p:zoom/>', wipe: '<p:wipe dir="l"/>', rise: '<p:push dir="u"/>', flip: '<p:split orient="vert" dir="out"/>' };
+  zoom: '<p:zoom/>', wipe: '<p:wipe dir="l"/>', rise: '<p:push dir="u"/>', flip: '<p:split orient="vert" dir="out"/>',
+  cube: '<p:cover dir="l"/>', cover: '<p:cover dir="l"/>', page: '<p:pull dir="r"/>', gallery: '<p:push dir="l"/>', fall: '<p:pull dir="d"/>', drop: '<p:cover dir="d"/>',
+  swirl: '<p:newsflash/>', shrink: '<p:zoom dir="out"/>', blur: '<p:dissolve/>', flash: '<p:fade thruBlk="1"/>' };
 const SPEED = { fast: 'fast', slow: 'slow', default: 'med' };
 // Effect options: PowerPoint's dir is where the slide moves to.
 const PPT_DIR = { right: 'l', left: 'r', bottom: 'u', top: 'd' };

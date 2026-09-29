@@ -117,8 +117,8 @@ function gradientCSS(el, theme) {
   const deg = ang != null ? Math.round(+ang / 60000 + 90) % 360 : 180;     // OOXML 0° = left→right; CSS 90deg
   return `linear-gradient(${deg}deg, ${stops.map(x => `${x.c} ${Math.round(x.pos)}%`).join(', ')})`;
 }
-const TRANSITION = { fade: 'fade', dissolve: 'fade', push: 'push', cover: 'slide', pull: 'slide', wipe: 'wipe', split: 'split', zoom: 'zoom', circle: 'circle', diamond: 'diamond', plus: 'diamond',
-  newsflash: 'zoom', flip: 'flip', cube: 'convex', box: 'convex', rotate: 'flip', gallery: 'slide', conveyor: 'slide', switch: 'flip',
+const TRANSITION = { fade: 'fade', dissolve: 'blur', push: 'push', cover: 'cover', pull: 'page', wipe: 'wipe', split: 'split', zoom: 'zoom', circle: 'circle', diamond: 'diamond', plus: 'diamond',
+  newsflash: 'swirl', flip: 'flip', cube: 'cube', box: 'cube', rotate: 'flip', gallery: 'gallery', conveyor: 'slide', switch: 'flip',
   doors: 'wipe', window: 'wipe', vortex: 'zoom', ripple: 'rise', morph: 'fade', random: 'slide', randomBar: 'wipe', wheel: 'wipe' };
 
 // Outer shadow (a:effectLst/a:outerShdw) → { x, y, blur, color }.

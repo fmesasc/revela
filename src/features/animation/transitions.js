@@ -14,6 +14,18 @@ const PUSH = { bottom: ['0,-100%', '0,100%'], top: ['0,100%', '0,-100%'], right:
 export const CUSTOM_TRANSITIONS = {
   flip: ['transform:perspective(1600px) rotateY(-90deg);opacity:0', 'transform:perspective(1600px) rotateY(90deg);opacity:0'],
   rise: ['transform:scale(1.25);opacity:0', 'transform:scale(.8) translate3d(0,8%,0);opacity:0'],
+  // More, as PowerPoint's: a cube turning, the new one covering the old, the old falling,
+  // blur, swirl, shrink, dropping from above, a flash, a page turning and a gallery.
+  cube: ['transform:perspective(1400px) translate3d(-50%,0,0) rotateY(-90deg) translate3d(-50%,0,0);opacity:.4', 'transform:perspective(1400px) translate3d(50%,0,0) rotateY(90deg) translate3d(50%,0,0);opacity:.4'],
+  cover: ['transform:none;opacity:1', 'transform:translate3d(100%,0,0)'],
+  fall: ['transform:perspective(1200px) translate3d(0,30%,0) rotateX(-35deg) rotateZ(-6deg);opacity:0', 'opacity:0'],
+  blur: ['filter:blur(18px);opacity:0', 'filter:blur(18px);opacity:0'],
+  swirl: ['transform:rotate(-180deg) scale(.2);opacity:0', 'transform:rotate(180deg) scale(.2);opacity:0'],
+  shrink: ['transform:scale(.55);opacity:0', 'transform:scale(1.6);opacity:0'],
+  drop: ['transform:translate3d(0,12%,0);opacity:0', 'transform:translate3d(0,-110%,0)'],
+  flash: ['filter:brightness(4);opacity:0', 'filter:brightness(4);opacity:0'],
+  page: ['transform:perspective(1600px) rotateY(-100deg);transform-origin:0 50%;opacity:0', 'transform:perspective(1600px) rotateY(0);opacity:0'],
+  gallery: ['transform:translate3d(-110%,0,0) scale(.8)', 'transform:translate3d(110%,0,0) scale(.8)'],
   ...Object.fromEntries(Object.entries(PUSH).map(([d, [past, fut]]) => [transitionName('push', d), [`transform:translate3d(${past},0)`, `transform:translate3d(${fut},0)`]])),
 };
 // Shape reveals: the new slide shows through a growing shape and the old one
@@ -43,6 +55,8 @@ export function customTransitionCSS(names, size = { w: 1280, h: 720 }) {
     + `.reveal .slides>section[data-transition~=${n}-out].present,.reveal.${n} .slides>section:not([data-transition]).present`;
   const used = [...names];
   const css = used.filter(n => CUSTOM_TRANSITIONS[n]).map(n => `${sel(n, 'past')}{${CUSTOM_TRANSITIONS[n][0]}}${sel(n, 'future')}{${CUSTOM_TRANSITIONS[n][1]}}`);
+  // (blur and flash animate a filter too; a gallery and a cube, the new one over the old)
+  if (used.some(n => n === 'blur' || n === 'flash')) css.push('.reveal .slides>section{transition-property:transform-origin,transform,visibility,opacity,filter}');
   const shaped = used.filter(n => SHAPES[n]);
   for (const n of shaped) {
     const grow = v => `polygon(${SHAPES[n](v, size).join(',')})`;
