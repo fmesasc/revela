@@ -51,6 +51,33 @@ const TYPING = new Set(['images', 'icons', 'gif', 'sketchfab', 'commons3d']);   
 const DRAG = 'application/x-revela-element';
 const sel = (cls, opts) => `<select class="${cls}">${opts.map(([v, l]) => `<option value="${v}">${esc(t(l))}</option>`).join('')}</select>`;
 // The picture search's filters, as the service takes them.
+const FILTERS = 'revela.elements.imageFilters', RECENT = 'revela.elements.recentImages';
+const FIELDS = ['el-f-type', 'el-f-ext', 'el-f-shape', 'el-f-size', 'el-f-transp', 'el-f-cut', 'el-comm'];
+// (Remembered in this browser, like the side of the panel: a convenience only.)
+function saveFilters() {
+  const v = Object.fromEntries(FIELDS.map(c => { const el = q('.' + c); return [c, el.type === 'checkbox' ? el.checked : el.value]; }));
+  try { localStorage.setItem(FILTERS, JSON.stringify(v)); } catch {}
+  countFilters();
+}
+function loadFilters() {
+  let v = {}; try { v = JSON.parse(localStorage.getItem(FILTERS)) || {}; } catch {}
+  for (const c of FIELDS) { const el = q('.' + c); if (!(c in v)) continue;
+    if (el.type === 'checkbox') el.checked = !!v[c]; else if ([...el.options].some(o => o.value === v[c])) el.value = v[c]; }
+  countFilters();
+}
+// How many are on, next to the button that shows them (they stay out of the way).
+const countOn = () => FIELDS.filter(c => c !== 'el-f-cut' && (q('.' + c).type === 'checkbox' ? q('.' + c).checked : q('.' + c).value)).length;
+function countFilters() {
+  const n = FIELDS.filter(c => { const el = q('.' + c); return el.type === 'checkbox' ? el.checked : el.value; }).length, b = q('.el-fcount');
+  b.textContent = n; b.hidden = !n;
+}
+// Recently added pictures, to use again without searching.
+function recentImages() { try { return JSON.parse(localStorage.getItem(RECENT)) || []; } catch { return []; } }
+function rememberImage(img) {
+  const keep = ['id', 'title', 'url', 'thumb', 'previews', 'width', 'height', 'filetype', 'creator', 'license', 'licenseUrl', 'source', 'attribution', 'transparent'];
+  const one = Object.fromEntries(keep.filter(k => img[k] !== undefined).map(k => [k, img[k]]));
+  try { localStorage.setItem(RECENT, JSON.stringify([one, ...recentImages().filter(x => x.id !== img.id)].slice(0, 24))); } catch {}
+}
 function imageFilters() {
   const ext = q('.el-f-ext').value, transparent = q('.el-f-transp').checked;
   return { commercial: q('.el-comm').checked, category: q('.el-f-type').value, aspect: q('.el-f-shape').value, size: q('.el-f-size').value,
@@ -96,7 +123,8 @@ function build() {
       <button type="button" class="el-side mini2" title="${t('Pasar al otro lado')}"><i class="ms">swap_horiz</i></button>
       <button type="button" class="cm-close" title="${t('Cerrar')}">✕</button></span></div>
     <div class="el-tabs" role="tablist">${TABS.map(([k, l, i]) => `<button type="button" role="tab" data-et="${k}" title="${t(l)}"><i class="ms">${i}</i><span>${t(l)}</span></button>`).join('')}</div>
-    <div class="sk-bar"><input type="search" class="sk-q" placeholder="${t('Buscar…')}"><button type="button" class="fr-do sk-go" title="${t('Buscar')}"><i class="ms">search</i></button></div>
+    <div class="sk-bar"><input type="search" class="sk-q" placeholder="${t('Buscar…')}"><button type="button" class="fr-do sk-go" title="${t('Buscar')}"><i class="ms">search</i></button>
+      <button type="button" class="mini2 el-ftoggle" title="${t('Filtros')}" aria-expanded="false" hidden><i class="ms">tune</i><b class="el-fcount" hidden></b></button></div>
     <div class="el-filters" hidden>
       ${sel('el-f-type', [['', 'Todo tipo'], ['photograph', 'Fotos'], ['illustration', 'Ilustraciones'], ['digitized_artwork', 'Arte digitalizado']])}
       ${sel('el-f-ext', [['', 'Cualquier formato'], ['png', 'PNG'], ['svg', 'SVG (vectorial)'], ['jpg', 'JPG'], ['gif', 'GIF']])}
@@ -119,7 +147,12 @@ function build() {
   q('.sk-go').addEventListener('click', () => run());
   q('.sk-q').addEventListener('keydown', e => { if (e.key === 'Enter') run(); if (e.key === 'Escape') closeElements(); });
   q('.el-onlyanim').addEventListener('change', () => run());
-  q('.el-filters').addEventListener('change', e => { if (!e.target.classList.contains('el-f-cut') && q('.sk-q').value.trim()) run(); });
+  q('.el-filters').addEventListener('change', e => { saveFilters(); if (!e.target.classList.contains('el-f-cut') && q('.sk-q').value.trim()) run(); });
+  q('.el-ftoggle').addEventListener('click', () => { const open = q('.el-filters').hidden; q('.el-filters').hidden = !open; q('.el-ftoggle').setAttribute('aria-expanded', String(open)); });
+  // Near the end of the results, the next ones come by themselves (the button stays, for the keyboard).
+  q('.el-grid').addEventListener('scroll', () => { const g = q('.el-grid');
+    if (!q('.sk-more').hidden && !busy && g.scrollTop + g.clientHeight > g.scrollHeight - 160) run(true); }, { passive: true });
+  loadFilters();
   q('.el-color').addEventListener('change', () => cur === 'icons' && q('.sk-q').value.trim() && run());
   q('.sk-more').addEventListener('click', () => run(true));
   initDrop();
@@ -131,10 +164,12 @@ function show(tab) {
   cur = tab;
   panel.querySelectorAll('.el-tabs [data-et]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.et === tab)));
   q('.el-help').textContent = t(HELP[tab]);
-  q('.el-filters').hidden = tab !== 'images';
+  q('.el-ftoggle').hidden = tab !== 'images';
+  if (tab !== 'images') { q('.el-filters').hidden = true; q('.el-ftoggle').setAttribute('aria-expanded', 'false'); }
+  q('.el-help').hidden = false;
   q('.el-anim').hidden = !(tab === 'anim3d' || tab === 'sketchfab');
   q('.el-col').hidden = tab !== 'icons';
-  q('.el-grid').className = 'el-grid' + (tab === 'icons' || tab === 'stickers' ? ' small' : '') + (tab === 'images' ? ' checker' : '');
+  q('.el-grid').className = 'el-grid' + (tab === 'icons' || tab === 'stickers' ? ' small' : '') + (tab === 'images' ? ' checker justify' : tab === 'gif' ? ' justify' : '');
   q('.sk-q').value = terms[tab] || '';
   q('.el-grid').innerHTML = ''; q('.sk-more').hidden = true; q('.sk-go').disabled = false; picks = [];
   const svc = TABS.find(x => x[0] === tab);
@@ -143,14 +178,21 @@ function show(tab) {
     q('.el-grid').innerHTML = `<p class="host-help">${t('Escribe qué buscas (en inglés hay más resultados).')}</p>`
       + `<div class="el-ideas">${(IDEAS[tab] || []).map(([l, w]) => `<button type="button" class="mini2" data-idea="${esc(w)}">${esc(t(l))}</button>`).join('')}</div>`;
     q('.el-grid').querySelectorAll('[data-idea]').forEach(b => b.addEventListener('click', () => { q('.sk-q').value = b.dataset.idea; run(); }));
+    const recent = tab === 'images' ? recentImages() : [];
+    if (recent.length) {
+      q('.el-grid').insertAdjacentHTML('beforeend', `<h4 class="el-sub">${t('Usadas recientemente')}</h4>`);
+      recent.forEach(img => item(...imageResult(img)));
+    }
   }
   q('.sk-q').focus();
 }
 
 // One result: click adds it; dragging it onto the slide drops it there.
-function item(thumb, title, badge, pick) {
+// ar: its proportions (width / height), for rows of pictures as they are, not cropped.
+function item(thumb, title, badge, pick, ar = 0) {
   const i = picks.push(pick) - 1;
   const b = document.createElement('button'); b.type = 'button'; b.className = 'sk-item'; b.title = title; b.draggable = true; b.dataset.i = i;
+  if (ar > 0) b.style.setProperty('--ar', Math.min(3, Math.max(0.4, ar)).toFixed(3));
   b.innerHTML = `<img loading="lazy" src="${esc([].concat(thumb)[0])}" alt="${esc(title)}" referrerpolicy="no-referrer" draggable="false">${badge ? `<span>${esc(badge)}</span>` : ''}`;
   // A preview that can't load (no connection, the service busy): a clear placeholder, not a broken image.
   // (thumb can be a list of addresses, tried in turn.)
@@ -196,7 +238,18 @@ function initDrop() {
   });
 }
 
-let runs = 0;
+// A picture found (or used before): its preview, description, format and licence, and how to add it.
+function imageResult(img) {
+  return [img.previews || img.thumb, `${img.title} — ${img.creator} (${img.license})${img.transparent ? ' · ' + t('Fondo transparente') : ''}`,
+    [(img.filetype || '').toUpperCase(), img.license].filter(Boolean).join(' · '), async () => {
+      const b = await insertStockImage(img);
+      rememberImage(img);
+      if (panel && q('.el-f-cut').checked && !img.transparent && !/svg|gif/.test(img.filetype || '')) await removeBackground(currentSlide().blocks.find(x => x.id === b.id) || b);
+      return b;
+    }, img.width && img.height ? img.width / img.height : 0];
+}
+
+let runs = 0, busy = false;
 async function run(more = false) {
   if (!panel) return;
   const tab = cur, term = q('.sk-q').value.trim(), svc = TABS.find(x => x[0] === tab);
@@ -204,7 +257,9 @@ async function run(more = false) {
   if (!(await consent(svc[3], svc[4]))) return;
   const id = ++runs;
   if (!more) { page = 1; cursor = null; } else page++;
-  q('.sk-go').disabled = true; q('.sk-more').hidden = true;
+  q('.sk-go').disabled = true; q('.sk-more').hidden = true; busy = true;
+  if (!more) { q('.el-grid').innerHTML = `<p class="host-help el-loading">${t('Buscando…')}</p>`; q('.el-grid').scrollTop = 0; }
+  else q('.el-grid').insertAdjacentHTML('beforeend', `<p class="host-help el-loading">${t('Buscando…')}</p>`);
   let list = [], full = false;                     // [thumb, title, badge, pick]; full: there may be more
   try {
     if (tab === 'images') {
@@ -220,19 +275,14 @@ async function run(more = false) {
         if (found.length >= 8 || !full || tries >= 2 || id !== runs) break;
         page++;
       }
-      list = found.map(img => [img.previews || img.thumb, `${img.title} — ${img.creator} (${img.license})${img.transparent ? ' · ' + t('Fondo transparente') : ''}`,
-        [img.filetype.toUpperCase(), img.license].filter(Boolean).join(' · '), async () => {
-          const b = await insertStockImage(img);
-          if (panel && q('.el-f-cut').checked && !img.transparent && !/svg|gif/.test(img.filetype)) await removeBackground(currentSlide().blocks.find(x => x.id === b.id) || b);
-          return b;
-        }]);
+      list = found.map(imageResult);
     } else if (tab === 'icons') {
       const { icons, collections } = await searchIcons(term), col = q('.el-color').value;
       list = icons.map(name => { const c = collections[name.split(':')[0]];
         return [iconPreview(name, col), `${name}${c ? ' — ' + c.name + ' (' + c.license?.title + ')' : ''}`, '', () => insertOnlineIcon(name, panel ? q('.el-color').value : col, c?.license)]; });
     } else if (tab === 'gif') {
       const res = await R.searchGifs(term, page); full = res.length >= 20;
-      list = res.map(g => [g.previews || g.thumb, `${g.title} — ${g.creator} (${g.license})`, g.license, () => R.insertGif(g)]);
+      list = res.map(g => [g.previews || g.thumb, `${g.title} — ${g.creator} (${g.license})`, g.license, () => R.insertGif(g), g.width && g.height ? g.width / g.height : 0]);
     } else if (tab === 'stickers') {
       list = R.searchStickers(term).map(s => [s.thumb, s.words, '', () => R.insertSticker(s.code, s.words)]);
     } else if (tab === 'anim3d') {
@@ -256,13 +306,17 @@ async function run(more = false) {
   } catch (e) {
     if (id === runs) alertDialog(/\b429\b/.test(e.message) ? t('El servicio está recibiendo demasiadas búsquedas desde tu conexión. Espera un minuto y vuelve a probar.') : t('No se pudo buscar: ') + (e.message || e));
   }
+  if (id === runs) busy = false;
   if (!panel || id !== runs || cur !== tab) return;                 // a newer search (or another tab) wins
   q('.sk-go').disabled = false;
+  q('.el-grid').querySelectorAll('.el-loading').forEach(x => x.remove());
   if (!more) { q('.el-grid').innerHTML = ''; picks = []; }
   // Light icons on a dark tile (and dark ones on a light tile), so they can be seen.
   const c = q('.el-color').value, lum = (parseInt(c.slice(1, 3), 16) * 299 + parseInt(c.slice(3, 5), 16) * 587 + parseInt(c.slice(5, 7), 16) * 114) / 255000;
   q('.el-grid').classList.toggle('dark', tab === 'icons' && lum > 0.6);
   list.forEach(x => item(...x));
   q('.sk-more').hidden = !full;
-  if (!q('.el-grid').children.length) q('.el-grid').innerHTML = `<p class="host-help">${t('Sin resultados.')}</p>`;
+  const none = !q('.el-grid').children.length;
+  if (none) q('.el-grid').innerHTML = `<p class="host-help">${t('Sin resultados.')} ${tab === 'images' && countOn() ? t('Prueba a quitar algún filtro.') : t('Prueba con otras palabras (en inglés hay más).')}</p>`;
+  q('.el-help').hidden = !none;                                     // (the explanation makes room for the results)
 }

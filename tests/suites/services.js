@@ -227,7 +227,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       'https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Manzana.svg/250px-Manzana.svg.png', 'SVG: miniatura PNG de Wikimedia');
     const item = (id, thumb, filetype) => ({ id, title: id, url: 'https://ejemplo.test/' + id + '.' + filetype, thumbnail: thumb, filetype, creator: 'Ana', license: 'cc0', license_version: '1.0', width: 400, height: 400 });
     W.fetch = async url => { url = String(url); calls.push(url);
-      if (url.startsWith('https://api.openverse.org/v1/images/?')) return new W.Response(JSON.stringify({ results: [item('recorte', clear, 'png'), item('foto', solid, 'png')] }));
+      if (url.startsWith('https://api.openverse.org/v1/images/?')) {
+        const u = new URL(url), pg = +u.searchParams.get('page');
+        if (u.searchParams.get('q') === 'muchas') return new W.Response(JSON.stringify({ results: Array.from({ length: pg < 3 ? 20 : 3 }, (_, k) => ({ ...item(`p${pg}-${k}`, solid, 'jpg'), width: k % 2 ? 300 : 900, height: 600 })) }));
+        return new W.Response(JSON.stringify({ results: [item('recorte', clear, 'png'), item('foto', solid, 'png')] }));
+      }
       if (url.startsWith('https://ejemplo.test/')) return new W.Response(await (await real(url.includes('recorte') ? clear : solid)).blob());
       return real(url); };
     W.localStorage.setItem('revela.consent.openverse', '1');
@@ -239,7 +243,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       D.querySelector('[data-action="resources"]').click(); await sleep(30);
       const P = D.getElementById('elements-panel'), f = s => P.querySelector(s);
       f('[data-et="icons"]').click(); await sleep(10); assert(f('.el-filters').hidden, 'sin filtros de imagen en iconos');
-      f('[data-et="images"]').click(); await sleep(10); assert(!f('.el-filters').hidden, 'con filtros en imágenes');
+      f('[data-et="images"]').click(); await sleep(10);
+      assert(f('.el-filters').hidden && !f('.el-ftoggle').hidden, 'en imágenes, los filtros tras su botón (sin quitar sitio a los resultados)');
+      f('.el-ftoggle').click(); assert(!f('.el-filters').hidden, 'el botón los muestra');
       f('.el-f-transp').checked = true; f('.sk-q').value = 'manzana'; f('.sk-go').click();
       for (let i = 0; i < 50 && !P.querySelector('.sk-item'); i++) await sleep(20);
       eq(new URL(calls.at(-1)).searchParams.get('extension'), 'png,svg', 'fondo transparente: solo PNG y SVG');
@@ -251,11 +257,35 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       for (let i = 0; i < 50 && P.querySelectorAll('.sk-item').length < 2; i++) await sleep(20);
       assert(calls.length > n && new URL(calls.at(-1)).searchParams.get('aspect_ratio') === 'tall', 'cambiar un filtro busca otra vez');
       eq(P.querySelectorAll('.sk-item').length, 2, 'sin el filtro, todas');
+      eq(f('.el-fcount').textContent, '1', 'el botón cuenta los filtros puestos');
+      assert(f('.el-help').hidden, 'con resultados, la explicación deja sitio');
+      // Remembered: closing and opening again keeps them.
+      f('.cm-close').click(); D.querySelector('[data-action="resources"]').click(); await sleep(30);
+      const P2 = D.getElementById('elements-panel'), g = s => P2.querySelector(s);
+      g('[data-et="images"]').click(); await sleep(10);
+      eq(g('.el-f-shape').value, 'tall', 'los filtros se recuerdan');
+      // Rows with each picture's proportions; the next page comes when the end is reached.
+      g('.el-f-shape').value = ''; g('.el-f-shape').dispatchEvent(new W.Event('change', { bubbles: true }));
+      g('.sk-q').value = 'muchas'; g('.sk-go').click();
+      for (let i = 0; i < 50 && P2.querySelectorAll('.sk-item').length < 20; i++) await sleep(20);
+      const it = [...P2.querySelectorAll('.sk-item')];
+      assert(g('.el-grid').classList.contains('justify') && it[0].style.getPropertyValue('--ar') === '1.500' && it[1].style.getPropertyValue('--ar') === '0.500', 'cada una con su proporción');
+      assert(it[0].offsetWidth > it[1].offsetWidth * 2, 'la horizontal, más ancha que la vertical');
+      const grid = g('.el-grid'); grid.scrollTop = grid.scrollHeight; grid.dispatchEvent(new W.Event('scroll'));
+      for (let i = 0; i < 50 && P2.querySelectorAll('.sk-item').length < 40; i++) await sleep(20);
+      eq(P2.querySelectorAll('.sk-item').length, 40, 'al llegar al final, llegan más solas');
+      eq(new URL(calls.filter(c => c.includes('q=muchas')).at(-1)).searchParams.get('page'), '2', 'la página siguiente');
+      // Used recently: in the empty search, to add again without searching.
+      const nb = slide().blocks.length; it[0].click();
+      for (let i = 0; i < 50 && slide().blocks.length === nb; i++) await sleep(20);
+      eq(slide().blocks.length, nb + 1, 'añadida');
+      g('.sk-q').value = ''; g('[data-et="gif"]').click(); await sleep(10); g('[data-et="images"]').click(); await sleep(10);
+      assert(/Usadas recientemente/.test(g('.el-grid').textContent) && g('.el-grid .sk-item')?.title.startsWith('p1-0'), 'aparece en «Usadas recientemente»');
       // A very big Wikimedia original comes as its 1280 px copy (lighter, still transparent).
       W.fetch = async url => { url = String(url); calls.push(url); return new W.Response(await (await real(clear)).blob()); };
       await S.insertStockImage({ title: 'Grande', url: 'https://upload.wikimedia.org/wikipedia/commons/3/31/Grande.png', thumb: '', width: 4000, height: 3000, license: 'CC0', creator: '' });
       eq(calls.at(-1), 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Grande.png/1280px-Grande.png', 'original enorme: su copia de 1280 px');
-    } finally { W.fetch = real; W.localStorage.removeItem('revela.consent.openverse'); D.getElementById('elements-panel')?.querySelector('.cm-close')?.click(); }
+    } finally { W.fetch = real; ['revela.consent.openverse', 'revela.elements.imageFilters', 'revela.elements.recentImages'].forEach(k => W.localStorage.removeItem(k)); D.getElementById('elements-panel')?.querySelector('.cm-close')?.click(); }
   });
 
   await test('seguridad: lo que llega de fuera no ejecuta código', async () => {

@@ -169,7 +169,7 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .sk-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.sk-bar input[type=search]{flex:1;min-width:180px;border:1px solid var(--line2);border-radius:6px;padding:7px 9px}
 .sk-item{position:relative;border:1px solid var(--line2);border-radius:6px;background:var(--bg);padding:0;cursor:pointer;overflow:hidden;aspect-ratio:4/3}
 .sk-item img{width:100%;height:100%;object-fit:cover;display:block}
-.sk-item span{position:absolute;left:4px;bottom:4px;font-size:10px;background:#000a;color:#fff;border-radius:3px;padding:0 4px}
+.sk-item span{position:absolute;left:4px;bottom:4px;font-size:10px;background:#000a;color:#fff;border-radius:3px;padding:0 4px;white-space:nowrap;max-width:calc(100% - 8px);overflow:hidden;text-overflow:ellipsis;box-sizing:border-box}
 .sk-item:hover{outline:2px solid var(--accent)}
 /* Selection handles keep their on-screen size at any zoom (--hz = 1 / zoom),
    so they stay grabbable with a finger when the slide is shown small. */
@@ -359,7 +359,11 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .el-grid .sk-item{cursor:grab}.el-grid.small .sk-item{aspect-ratio:1;padding:6px}.el-grid.small .sk-item img{object-fit:contain}
 .el-foot{display:flex;gap:6px;align-items:center;justify-content:space-between;font-size:11px;color:var(--txt2)}
 #stage.el-drop{outline:3px dashed var(--accent);outline-offset:4px}
-@media (max-width:860px){ #elements-panel{width:auto;max-height:46vh;border-inline:none;border-top:1px solid var(--line2);order:3} }
+@media (max-width:860px){ #elements-panel{width:auto;max-height:52vh;border-inline:none;border-top:1px solid var(--line2);order:3;gap:6px;padding:8px 10px}
+  /* (On a phone: the kinds in one row that scrolls, and no tip in the foot: more room for results.) */
+  .el-tabs{display:flex;overflow-x:auto;scrollbar-width:none}.el-tabs button{flex:0 0 68px}
+  .el-tip{display:none}.el-foot{justify-content:flex-end}.el-foot .sk-more:not([hidden]){padding:3px 10px}
+  .el-grid.justify .sk-item{height:88px} }
 /* Motion paths: drawing one by hand, and its points to drag */
 .path-draw{position:absolute;inset:0;z-index:40;cursor:crosshair;touch-action:none;background:#e0873b0d}
 .pd-svg{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
@@ -398,3 +402,13 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .el-filters select{font-size:12px;min-width:0;width:100%}
 .el-filters .fr-chk{grid-column:1/-1;margin:0}
 .el-grid.checker .sk-item img{background:repeating-conic-gradient(#d9dce1 0 25%,#fff 0 50%) 0 0/14px 14px}
+/* Pictures and GIFs in rows, each with its own proportions (as in Canva), not cropped to a tile. */
+.el-grid.justify{display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start}
+.el-grid.justify::after{content:"";flex-grow:1e4}
+.el-grid.justify .sk-item{height:104px;flex:var(--ar,1.33) 1 calc(var(--ar,1.33) * 92px);min-width:60px;max-width:100%}
+.el-grid.justify > :not(.sk-item){flex-basis:100%}
+.el-sub{margin:14px 0 2px;font-size:12px;color:var(--txt2);font-weight:600}
+.el-loading{opacity:.8}
+.el-ftoggle{position:relative;display:grid;place-items:center;padding:5px 7px}
+.el-ftoggle[aria-expanded="true"]{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+.el-fcount{position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;border-radius:8px;background:var(--accent);color:#fff;font-size:10px;line-height:16px;text-align:center;padding:0 3px}
