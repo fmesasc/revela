@@ -5,7 +5,7 @@ import { shortSig } from '../../core/text.js';
 import { esc } from '../../core/text.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
 import { state, commit, currentSlide } from '../../core/store.js';
-import { borderCSS, tableColsHTML, cellBg, textPadding, webCardHTML, webCardSig, mathTeX, mathCSS, mathSig, shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan, inkSVG, timerSVG, timerSig, inkSig, tableClass, tableVars } from '../../render/svg.js';
+import { borderCSS, tableColsHTML, cellBg, textPadding, webCardHTML, webCardSig, mathTeX, mathCSS, mathSig, shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan, inkSVG, timerSVG, deviceStyle, timerSig, inkSig, tableClass, tableVars } from '../../render/svg.js';
 import { collectFigures, captionLine, figIndexTitle } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
 import { t } from '../../i18n/index.js';
@@ -49,6 +49,10 @@ export function applyImgStyle(img, b) {
   img.style.filter = imgFilter(b);
   img.style.opacity = imgOpacity(b);
   img.style.clipPath = imgClip(b);
+  // Inside a device (phone, laptop…): its frame; none → back as it was.
+  const dev = deviceStyle(b) || {};
+  for (const k of ['border', 'borderTop', 'borderBottom', 'borderRadius', 'background', 'backgroundOrigin', 'boxShadow', 'boxSizing']) img.style[k] = '';
+  Object.assign(img.style, dev);                       // (cleared first: a side left empty would undo the whole border)
 }
 // Box-level look of a text object (safe while editing: no caret impact). `b`
 // has its inherited formatting filled in (master.styled).

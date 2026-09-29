@@ -11,7 +11,7 @@ import * as format from '../../features/document/format.js';
 import * as shapeops from '../../features/document/shapeops.js';
 import { MOTIONS_3D, VIEWS_3D, BLEEDS_3D, modelBleed } from '../../features/content/model3d.js';
 import { isGif } from '../../features/live/media.js';
-import { CURVES } from '../../render/svg.js';
+import { CURVES, DEVICES } from '../../render/svg.js';
 import { styled } from '../../features/document/master.js';
 import { saveBlockFile as saveFile } from '../shell/files.js';
 import { openModel3D } from '../dialogs/model3d.js';
@@ -66,6 +66,8 @@ function groupsFor(b) {
   else if (b.type === 'image') G.push(
     ['Ajustar', [btn('tune', 'Ajustes', () => openImageAdjust(b)), btn('crop', 'Recortar', () => openImageCrop(b)), btn('auto_fix_high', 'Quitar fondo', () => removeBackground(b)),
       btn('fit_screen', 'Contener', () => set(b, x => { x.fit = 'contain'; }), (b.fit || 'contain') === 'contain'), btn('crop_free', 'Rellenar', () => set(b, x => { x.fit = 'cover'; }), b.fit === 'cover')]],
+    // A mockup: the picture inside a phone, a laptop… (filling its screen).
+    ['Dispositivo', [['select', 'Dentro de un dispositivo', DEVICES, b.device || '', v => set(b, x => { if (v) { x.device = v; x.fit = 'cover'; } else delete x.device; })]]],
     ['Al presentar', [btn('zoom_in', 'Ampliar al clic', () => set(b, x => { if (x.zoomable) delete x.zoomable; else x.zoomable = true; }), !!b.zoomable),
       ...(isGif(b) ? [btn('slow_motion_video', 'Reproducción', () => openMediaPlayback(b))] : [])]],
     ['Archivo', [btn('download', 'Descargar', () => saveFile(b)), btn('photo_camera', 'Guardar como imagen', () => openSaveAsPicture())]]);

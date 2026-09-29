@@ -4,7 +4,7 @@ import { pollEditorHTML } from '../../features/live/poll.js';
 import { safeURL } from '../../features/document/sanitize.js';
 import { currentPalette } from '../../features/design/palettes.js';
 import { levelVars } from '../../features/document/master.js';
-import { shadowCSS, borderCSS, levelCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, curvedTextSVG, tableClass, tableVars, tableCSS } from '../../render/svg.js';
+import { shadowCSS, borderCSS, levelCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, curvedTextSVG, deviceCSS, tableClass, tableVars, tableCSS } from '../../render/svg.js';
 
 // Table look for thumbnails (same rules as the exports), injected once.
 function ensurePreviewCSS() {
@@ -36,7 +36,7 @@ export function blockPreview(b) {
   } else if (b.type === 'image') {
     // (An element with its src set: the picture's megabytes aren't parsed as HTML.)
     const img = document.createElement('img'); img.src = b.src || ''; img.alt = '';
-    img.style.cssText = `width:100%;height:100%;object-fit:${b.fit || 'contain'};filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)}`;
+    img.style.cssText = `width:100%;height:100%;object-fit:${b.fit || 'contain'};filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)};${deviceCSS(b)}`;
     el.replaceChildren(img);
   } else if (b.type === 'video') {
     el.innerHTML = `<div style="width:100%;height:100%;background:#000;display:grid;place-items:center;color:#fff;font-size:60px">▶</div>`;

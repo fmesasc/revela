@@ -490,3 +490,24 @@ export function curvedTextSVG(b) {
     + `<textPath href="#${id}" startOffset="50%"${fit ? ` textLength="${f(len * 0.98)}" lengthAdjust="${long ? 'spacingAndGlyphs' : 'spacing'}"` : ''}>${txt}</textPath></text></svg>`;
 }
 export const CURVES = [['0', 'Recto'], ['20', 'Arco suave'], ['45', 'Arco'], ['75', 'Arco cerrado'], ['-20', 'Hacia abajo suave'], ['-45', 'Hacia abajo'], ['100', 'Círculo']];
+
+// A picture inside a device (Canva's mockups): its frame drawn with borders and
+// a background under them, on the picture itself — a phone, a tablet, a laptop
+// (screen and base), a monitor or a browser window (bar with its three dots).
+export const DEVICES = [['', 'Ninguno'], ['phone', 'Móvil'], ['tablet', 'Tableta'], ['laptop', 'Portátil'], ['monitor', 'Monitor'], ['browser', 'Navegador']];
+export function deviceStyle(b) {
+  const k = Math.max(4, Math.round(Math.min(+b.w || 300, +b.h || 300) * 0.045));
+  switch (b.device) {
+    case 'phone': return { border: `${k}px solid #111`, borderRadius: `${k * 3.2}px`, background: '#111', boxShadow: '0 0 0 2px #3a3a3a, 0 14px 30px #0006', boxSizing: 'border-box' };
+    case 'tablet': return { border: `${k}px solid #151515`, borderRadius: `${k * 1.8}px`, background: '#151515', boxShadow: '0 0 0 2px #3a3a3a, 0 14px 30px #0006', boxSizing: 'border-box' };
+    case 'laptop': return { border: `${Math.round(k * 0.6)}px solid #1b1b1b`, borderBottom: `${Math.round(k * 1.6)}px solid #c9ccd1`, borderRadius: `${k}px ${k}px 4px 4px`,
+      background: '#1b1b1b', boxShadow: '0 0 0 2px #3a3a3a, 0 12px 26px #0005', boxSizing: 'border-box' };
+    case 'monitor': return { border: `${Math.round(k * 0.6)}px solid #111`, borderBottom: `${Math.round(k * 1.3)}px solid #111`, borderRadius: '6px', background: '#111', boxShadow: '0 0 0 2px #3a3a3a, 0 12px 26px #0005', boxSizing: 'border-box' };
+    case 'browser': { const t = Math.max(18, Math.round(Math.min(+b.w || 300, +b.h || 300) * 0.1)), d = Math.max(3, Math.round(t * 0.17)), y = Math.round(t / 2);
+      return { border: '1px solid #cfd3d8', borderTop: `${t}px solid transparent`, borderRadius: '8px', boxSizing: 'border-box', boxShadow: '0 12px 26px #0004', backgroundOrigin: 'border-box',
+        background: `radial-gradient(circle at ${t * 0.5}px ${y}px,#ff5f57 ${d}px,transparent ${d + 1}px),radial-gradient(circle at ${t * 0.95}px ${y}px,#febc2e ${d}px,transparent ${d + 1}px),`
+          + `radial-gradient(circle at ${t * 1.4}px ${y}px,#28c840 ${d}px,transparent ${d + 1}px),#e8eaed` }; }
+    default: return null;
+  }
+}
+export const deviceCSS = b => { const s = deviceStyle(b); return s ? Object.entries(s).map(([k, v]) => `${kebab(k)}:${v};`).join('') : ''; };

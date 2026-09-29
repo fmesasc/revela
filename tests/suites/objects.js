@@ -668,6 +668,23 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!slide().blocks.find(x => x.id === b.id).curve && !el.isConnected || !D.querySelector(`#stage .block[data-id="${b.id}"] .curve-arc`), 'recto otra vez');
   });
 
+  await test('imagen dentro de un dispositivo (móvil, tableta, portátil, monitor, navegador)', async () => {
+    reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
+    const base = { id: 'i1', type: 'image', src: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=', x: 100, y: 100, w: 300, h: 500 };
+    for (const [d] of S.DEVICES.slice(1)) assert(/border/.test(S.deviceCSS({ ...base, device: d })), 'marco de ' + d);
+    assert(/radial-gradient/.test(S.deviceCSS({ ...base, device: 'browser' })) && /background-origin:border-box/.test(S.deviceCSS({ ...base, device: 'browser' })), 'el navegador, con sus tres puntos en la barra');
+    eq(S.deviceCSS(base), '', 'sin dispositivo, nada');
+    R.blocks.addImage(base.src); await sleep(30);
+    const sel = [...D.querySelectorAll('#ribbon [data-page="ctx"] select')].find(x => [...x.options].some(o => o.value === 'phone'));
+    sel.value = 'phone'; sel.dispatchEvent(new W.Event('change')); await sleep(30);
+    assert(last().device === 'phone' && last().fit === 'cover', 'desde la pestaña Imagen: dentro de un móvil, llenando su pantalla');
+    const img = D.querySelector(`#stage .block[data-id="${last().id}"] img`);
+    assert(/solid/.test(img.style.border) && parseFloat(img.style.borderRadius) > 10, 'en el lienzo, con su marco');
+    assert(/<img[^>]*style="[^"]*border:[^"]*border-radius/.test(R.io.buildHTML()), 'y en la presentación');
+    sel.value = ''; sel.dispatchEvent(new W.Event('change')); await sleep(30);
+    assert(!last().device && !D.querySelector(`#stage .block[data-id="${last().id}"] img`).style.border, 'se quita');
+  });
+
   await test('modelos 3D: margen para moverse (la mano que saluda no se corta en el borde)', async () => {
     reset(); const W = frame.contentWindow, M = await W.eval("import('/src/features/content/model3d.js')");
     const base = { id: 'm1', type: 'model', src: 'data:model/gltf-binary;base64,AAAA', x: 100, y: 100, w: 200, h: 100, rotation: 0, animation: null };
