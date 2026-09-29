@@ -65,7 +65,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const m = D.getElementById('bk-modal'); assert(m.querySelector('.bk-kit b').textContent === 'Colegio', 'el diálogo lista los kits');
     m.querySelector('[data-a="apply"]').click(); await sleep(20);
     assert(R.state.deck.palette === 'custom' && !D.getElementById('bk-modal'), 'aplicar desde el diálogo');
-    W.localStorage.removeItem('revela.brandKits');
+    K.listKits().forEach(k => K.deleteKit(k.id)); eq(K.kitColours().length, 0, 'borrados, ya no se ofrecen sus colores');
   });
 
   await test('nueva diapositiva ▾: con el diseño que se elija', async () => {
