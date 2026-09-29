@@ -1410,4 +1410,6 @@ export default {
   "Énfasis": "Nadruk",
   "Del tema": "Van het thema",
   "Animación del modelo 3D": "Animatie van het 3D-model",
+  "¿Abrir otra presentación? Se perderá la actual si no la has guardado.": "Een andere presentatie openen? De huidige gaat verloren als je die niet hebt opgeslagen.",
+  "Ese tipo de archivo no se puede añadir. Prueba con imágenes, vídeos, sonidos, modelos 3D (GLB, glTF, STL) o presentaciones (PPTX, ODP).": "Dit soort bestand kan niet worden toegevoegd. Probeer afbeeldingen, video's, geluiden, 3D-modellen (GLB, glTF, STL) of presentaties (PPTX, ODP).",
 };

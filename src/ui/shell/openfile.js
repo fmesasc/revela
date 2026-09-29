@@ -1,0 +1,125 @@
+// Opening and inserting files — from the buttons or dragged from the computer
+// onto the slide, as in PowerPoint, Canva or Google Slides: pictures, GIFs,
+// videos, sounds and 3D models (glTF, GLB, STL) are inserted where they are
+// dropped; a presentation (.json, .pptx, .odp) is opened; Markdown adds slides.
+
+import { state, replaceDeck, currentSlide, amend } from '../../core/store.js';
+import { isBlankDeck } from '../../core/model.js';
+import * as blocks from '../../features/document/blocks.js';
+import * as slides from '../../features/document/slides.js';
+import * as protect from '../../features/collab/protect.js';
+import { stlToGLB } from '../../features/content/stl.js';
+import { importPPTX } from '../../io/formats/pptx-import.js';
+import { importODP } from '../../io/formats/odp.js';
+import { markdownToSlides } from '../../io/formats/markdown.js';
+import { factor } from '../canvas/interact.js';
+import { confirmDialog, promptDialog, alertDialog } from '../dialogs/dialog.js';
+import { t } from '../../i18n/index.js';
+
+// A file chosen with the system dialog: its data URL, text or the File itself.
+export const readFile = (accept, cb, as = 'DataURL') => {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = accept;
+  inp.onchange = () => { const f = inp.files[0]; if (!f) return;
+    if (as === 'file') { cb(f); return; }
+    const r = new FileReader(); r.onload = () => cb(r.result);
+    if (as === 'text') r.readAsText(f); else r.readAsDataURL(f); };
+  inp.click();
+};
+const dataURL = f => new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = ko; r.readAsDataURL(f); });
+// Replacing the open presentation asks first, unless there is nothing to lose.
+const mayReplace = () => (isBlankDeck(state.deck) ? Promise.resolve(true) : confirmDialog(t('¿Abrir otra presentación? Se perderá la actual si no la has guardado.')));
+
+// A Revela project (.json), possibly protected with a password.
+export async function openProject(txt) {
+  let obj; try { obj = JSON.parse(txt); } catch { alertDialog(t('Proyecto no válido.')); return false; }
+  if (protect.isEncrypted(obj)) {
+    const pw = await promptDialog(t('Este proyecto está protegido. Contraseña:'), ''); if (!pw) return false;
+    try { obj = await protect.decryptDeck(obj, pw); } catch { alertDialog(t('Contraseña incorrecta.')); return false; }
+  }
+  if (!obj || !Array.isArray(obj.slides)) { alertDialog(t('Proyecto no válido.')); return false; }
+  replaceDeck(obj); return true;
+}
+// A PowerPoint or LibreOffice presentation.
+export async function openPresentation(file) {
+  try { replaceDeck(/\.odp$/i.test(file.name) ? await importODP(file) : await importPPTX(file)); return true; }
+  catch (e) { alertDialog(t('No se pudo importar la presentación: ') + e.message); return false; }
+}
+// Markdown: its slides after the current one.
+export function insertMarkdown(md) {
+  const list = markdownToSlides(md, state.deck.size);
+  if (!list.length) { alertDialog(t('El archivo no contiene diapositivas.')); return false; }
+  const bg = currentSlide()?.background || '#101317';
+  list.forEach(s => { s.background = bg; });
+  slides.importSlides({ size: state.deck.size, slides: list });
+  return true;
+}
+
+// What a file is, by its type or name.
+function kindOf(f) {
+  const n = f.name.toLowerCase(), ty = f.type;
+  if (/\.(pptx|odp)$/.test(n)) return 'presentation';
+  if (/\.json$/.test(n)) return 'project';
+  if (/\.(md|markdown)$/.test(n)) return 'markdown';
+  if (/\.(glb|gltf)$/.test(n)) return 'model';
+  if (/\.stl$/.test(n)) return 'stl';
+  if (ty.startsWith('image/')) return 'image';
+  if (ty.startsWith('video/')) return 'video';
+  if (ty.startsWith('audio/')) return 'audio';
+  return null;
+}
+// Insert pictures, videos, sounds and 3D models; at (x, y) on the slide if given
+// (each next one a little lower and to the right). Returns how many went in.
+export async function insertFiles(files, at = null) {
+  let n = 0;
+  for (const f of files) {
+    const k = kindOf(f);
+    try {
+      if (k === 'image') blocks.addImage(await dataURL(f));
+      else if (k === 'video') blocks.addVideo(await dataURL(f));
+      else if (k === 'audio') blocks.addAudio(await dataURL(f));
+      else if (k === 'model') blocks.addModel((await dataURL(f)).replace(/^data:[^;,]*/, /\.gltf$/i.test(f.name) ? 'data:model/gltf+json' : 'data:model/gltf-binary'));
+      else if (k === 'stl') blocks.addModel(stlToGLB(await f.arrayBuffer()));
+      else continue;
+    } catch (e) { alertDialog(t('No se pudo añadir: ') + (e.message || e)); continue; }
+    if (at) amend(() => {                                  // (same undo step as adding it)
+      const b = currentSlide().blocks.find(x => x.id === state.ui.selection); if (!b) return;
+      const { w, h } = state.deck.size, dx = n * 30;
+      b.x = Math.round(Math.min(Math.max(at[0] + dx - b.w / 2, -b.w / 2), w - b.w / 2));
+      b.y = Math.round(Math.min(Math.max(at[1] + dx - b.h / 2, -b.h / 2), h - b.h / 2));
+    });
+    n++;
+  }
+  return n;
+}
+// Any dropped file: a presentation opens (one at a time), the rest are inserted.
+export async function dropFiles(files, at = null) {
+  const list = [...files], doc = list.find(f => ['presentation', 'project'].includes(kindOf(f)));
+  if (doc) {
+    if (!(await mayReplace())) return 0;
+    return (kindOf(doc) === 'project' ? await openProject(await doc.text()) : await openPresentation(doc)) ? 1 : 0;
+  }
+  let n = 0;
+  for (const f of list.filter(x => kindOf(x) === 'markdown')) if (insertMarkdown(await f.text())) n++;
+  n += await insertFiles(list, at);
+  if (!n && list.length) alertDialog(t('Ese tipo de archivo no se puede añadir. Prueba con imágenes, vídeos, sonidos, modelos 3D (GLB, glTF, STL) o presentaciones (PPTX, ODP).'));
+  return n;
+}
+
+// Files dragged from the computer onto the editing area.
+export function initFileDrop() {
+  const area = document.getElementById('canvas-wrap'), stage = document.getElementById('stage');
+  if (!area) return;
+  const hasFiles = e => [...(e.dataTransfer?.types || [])].includes('Files');
+  let depth = 0;
+  area.addEventListener('dragenter', e => { if (hasFiles(e)) { depth++; area.classList.add('file-drop'); } });
+  area.addEventListener('dragleave', e => { if (hasFiles(e) && --depth <= 0) { depth = 0; area.classList.remove('file-drop'); } });
+  area.addEventListener('dragover', e => { if (hasFiles(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });
+  area.addEventListener('drop', e => {
+    if (!hasFiles(e)) return;
+    e.preventDefault(); depth = 0; area.classList.remove('file-drop');
+    // Where on the slide (if dropped on it).
+    const r = stage.getBoundingClientRect(), k = factor(), inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    dropFiles(e.dataTransfer.files, inside ? [(e.clientX - r.left) * k, (e.clientY - r.top) * k] : null);
+  });
+}

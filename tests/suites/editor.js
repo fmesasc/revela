@@ -309,4 +309,34 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!D.body.classList.contains('nav-hidden') && D.getElementById('navigator').offsetWidth > 100, 'desde Ver se vuelve a mostrar');
     reset();
   });
+
+  await test('arrastrar archivos del ordenador a la diapositiva: se insertan donde se sueltan, y una presentación se abre', async () => {
+    reset(); const W = frame.contentWindow;
+    const wrap = D.getElementById('canvas-wrap'), stage = D.getElementById('stage'), r = stage.getBoundingClientRect(), k = R.state.deck.size.w / r.width;
+    const png = W.Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='), c => c.charCodeAt(0));
+    const stl = 'solid x\nfacet normal 0 0 1\nouter loop\nvertex 0 0 0\nvertex 1 0 0\nvertex 0 1 0\nendloop\nendfacet\nendsolid';
+    const drop = async (files, x, y) => {
+      const dt = new W.DataTransfer(); for (const f of files) dt.items.add(f);
+      const o = { bubbles: true, cancelable: true, dataTransfer: dt, clientX: x, clientY: y };
+      wrap.dispatchEvent(new W.DragEvent('dragenter', o)); const over = new W.DragEvent('dragover', o); wrap.dispatchEvent(over);
+      assert(over.defaultPrevented, 'acepta archivos'); wrap.dispatchEvent(new W.DragEvent('drop', o)); await sleep(400);
+    };
+    const n0 = slide().blocks.length;
+    await drop([new W.File([png], 'foto.png', { type: 'image/png' }), new W.File([stl], 'pieza.stl', { type: '' })], r.left + 300 / k, r.top + 200 / k);
+    const [img, mdl] = slide().blocks.slice(n0);
+    assert(img?.type === 'image' && /^data:image\/png/.test(img.src), 'la imagen entra');
+    assert(Math.abs(img.x + img.w / 2 - 300) < 3 && Math.abs(img.y + img.h / 2 - 200) < 3, 'donde se suelta');
+    assert(mdl?.type === 'model' && /^data:model\/gltf-binary/.test(mdl.src), 'un STL entra como modelo 3D');
+    R.store.undo(); await sleep(20); eq(slide().blocks.length, n0 + 1, 'cada archivo, un paso de deshacer');
+    // A presentation file opens (asking first, since there is work to lose).
+    const proj = R.model.emptyDeck(); proj.name = 'Arrastrada';
+    await drop([new W.File([JSON.stringify(proj)], 'otra.json', { type: 'application/json' })], r.left + 10, r.top + 10);
+    assert(D.querySelector('.modal-backdrop .dlg-ok'), 'pregunta antes de sustituir la actual');
+    D.querySelector('.modal-backdrop .dlg-ok').click(); await sleep(100);
+    eq(R.state.deck.name, 'Arrastrada', 'y la abre');
+    await drop([new W.File(['x'], 'nota.xyz', { type: 'application/x-nada' })], r.left + 10, r.top + 10);
+    assert(/no se puede añadir/.test(D.querySelector('.modal-backdrop .dlg-msg')?.textContent || ''), 'un tipo desconocido se explica');
+    D.querySelector('.modal-backdrop .dlg-ok').click();
+  });
+
 }

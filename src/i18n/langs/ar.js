@@ -1410,4 +1410,6 @@ export default {
   "Énfasis": "تأكيد",
   "Del tema": "من السمة",
   "Animación del modelo 3D": "حركة النموذج ثلاثي الأبعاد",
+  "¿Abrir otra presentación? Se perderá la actual si no la has guardado.": "فتح عرض آخر؟ سيُفقد العرض الحالي إن لم تحفظه.",
+  "Ese tipo de archivo no se puede añadir. Prueba con imágenes, vídeos, sonidos, modelos 3D (GLB, glTF, STL) o presentaciones (PPTX, ODP).": "لا يمكن إضافة هذا النوع من الملفات. جرّب الصور أو مقاطع الفيديو أو الأصوات أو النماذج ثلاثية الأبعاد (GLB وglTF وSTL) أو العروض (PPTX وODP).",
 };

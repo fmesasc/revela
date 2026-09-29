@@ -1,5 +1,6 @@
 // Application bootstrap: wire the modules together and subscribe the render.
 
+import { initFileDrop } from '../../ui/shell/openfile.js';
 import { subscribe, state, undo, redo, selectedBlock, selectedBlocks } from '../../core/store.js';
 import * as clip from '../../features/document/clipboard.js';
 import { sanitizeDeck } from '../../features/document/sanitize.js';
@@ -190,6 +191,7 @@ window.Revela = Revela;
 if (!testing && !new URLSearchParams(location.search).has('collab')) loadNewerDeck(state.deck).then(d => { if (d) store.adoptDeck(d, { sameDocument: true }); });
 initCollabUI();
 initHome();
+initFileDrop();
 // First visit (nothing saved in this browser, no shared link): start from the
 // templates, as PowerPoint and Canva do; closing it leaves the blank slide.
 { const q = new URLSearchParams(location.search), fresh = (() => { try { return !localStorage.getItem(model.STORAGE_KEY) && !localStorage.getItem('revela.welcomed'); } catch { return false; } })();

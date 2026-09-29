@@ -1410,4 +1410,6 @@ export default {
   "Énfasis": "Nabarmentzea",
   "Del tema": "Gaiarena",
   "Animación del modelo 3D": "3D ereduaren animazioa",
+  "¿Abrir otra presentación? Se perderá la actual si no la has guardado.": "Beste aurkezpen bat ireki? Oraingoa galduko da gorde ez baduzu.",
+  "Ese tipo de archivo no se puede añadir. Prueba con imágenes, vídeos, sonidos, modelos 3D (GLB, glTF, STL) o presentaciones (PPTX, ODP).": "Fitxategi mota hori ezin da gehitu. Probatu irudiak, bideoak, soinuak, 3D ereduak (GLB, glTF, STL) edo aurkezpenak (PPTX, ODP).",
 };

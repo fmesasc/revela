@@ -1410,4 +1410,6 @@ export default {
   "Énfasis": "Énfase",
   "Del tema": "Do tema",
   "Animación del modelo 3D": "Animación do modelo 3D",
+  "¿Abrir otra presentación? Se perderá la actual si no la has guardado.": "Abrir outra presentación? Perderase a actual se non a gardaches.",
+  "Ese tipo de archivo no se puede añadir. Prueba con imágenes, vídeos, sonidos, modelos 3D (GLB, glTF, STL) o presentaciones (PPTX, ODP).": "Ese tipo de ficheiro non se pode engadir. Proba con imaxes, vídeos, sons, modelos 3D (GLB, glTF, STL) ou presentacións (PPTX, ODP).",
 };

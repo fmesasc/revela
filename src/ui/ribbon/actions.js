@@ -1,10 +1,11 @@
 // What every ribbon button does, by its data-action (also used by keyboard
 // shortcuts, the context menu and the tests).
 
+import { readFile, openProject, openPresentation, insertMarkdown } from '../shell/openfile.js';
 import { openFindPanel } from '../dialogs/find.js';
 import { openGdriveSetup } from '../dialogs/gdrive.js';
 import { state, commit, undo, redo, replaceDeck, currentSlide, selectedBlock, selectedBlocks } from '../../core/store.js';
-import { emptyDeck } from '../../core/model.js';
+import { isBlankDeck, emptyDeck } from '../../core/model.js';
 import * as slides from '../../features/document/slides.js';
 import * as blocks from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
@@ -21,7 +22,6 @@ import { openElements } from '../shell/elements.js';
 import { canvasOn, setCanvasMode } from '../../features/design/canvasmode.js';
 import { toggleCanvasView } from '../shell/canvasview.js';
 import { openSignatures, toggleFinal } from '../dialogs/signature.js';
-import { importPPTX } from '../../io/formats/pptx-import.js';
 import * as gdrive from '../../io/cloud/gdrive.js';
 import { exportPPTX } from '../../io/formats/pptx-export.js';
 import * as odp from '../../io/formats/odp.js';
@@ -46,7 +46,6 @@ import { openPollEditor } from '../dialogs/poll.js';
 import { openCodeEditor } from '../dialogs/code.js';
 import { openBackgroundDialog } from '../dialogs/background.js';
 import { openSettings } from '../dialogs/settings.js';
-import { markdownToSlides } from '../../io/formats/markdown.js';
 import { openAppearance } from '../shell/appearance.js';
 import { openDashboardDialog } from '../dialogs/data.js';
 import { playAnimations } from '../canvas/preview.js';
@@ -65,29 +64,13 @@ import { AI_ACTIONS } from '../dialogs/ai.js';
 
 const $ = s => document.querySelector(s);
 
-export const readFile = (accept, cb, as = 'DataURL') => {
-  const inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = accept;
-  inp.onchange = () => { const f = inp.files[0]; if (!f) return;
-    if (as === 'file') { cb(f); return; }
-    const r = new FileReader(); r.onload = () => cb(r.result);
-    if (as === 'text') r.readAsText(f); else r.readAsDataURL(f); };
-  inp.click();
-};
+export { readFile };                                        // (it lives in ui/shell/openfile.js)
 export let animPaint = null;       // animation being copied with the painter
 export function endAnimPaint() { animPaint = null; document.body.classList.remove('anim-painting'); $('[data-action="anim-paint"]')?.classList.remove('on'); }
 export const ACTIONS = {
-  'new': () => confirmDialog(t('¿Nueva presentación? Se perderá la actual si no la has guardado.'))
+  'new': () => (isBlankDeck(state.deck) ? Promise.resolve(true) : confirmDialog(t('¿Nueva presentación? Se perderá la actual si no la has guardado.')))
     .then(ok => { if (ok) replaceDeck(emptyDeck()); }),
-  'open': () => readFile('.json,application/json', async txt => {
-    let obj; try { obj = JSON.parse(txt); } catch { alertDialog(t('Proyecto no válido.')); return; }
-    if (protect.isEncrypted(obj)) {
-      const pw = await promptDialog(t('Este proyecto está protegido. Contraseña:'), ''); if (!pw) return;
-      try { obj = await protect.decryptDeck(obj, pw); } catch { alertDialog(t('Contraseña incorrecta.')); return; }
-    }
-    if (!obj || !Array.isArray(obj.slides)) { alertDialog(t('Proyecto no válido.')); return; }
-    replaceDeck(obj);
-  }, 'text'),
+  'open': () => readFile('.json,application/json', openProject, 'text'),
   'save-protected': async () => {
     const pw = await promptDialog(t('Contraseña para cifrar el proyecto (no se puede recuperar si la olvidas):'), ''); if (!pw) return;
     const pw2 = await promptDialog(t('Repite la contraseña:'), ''); if (pw2 !== pw) { alertDialog(t('Las contraseñas no coinciden.')); return; }
@@ -129,9 +112,7 @@ export const ACTIONS = {
   'insert-stock': () => openElements('images'),
   'insert-online-icon': () => openElements('icons'),
   'trans-apply-all': () => trans.applyTransitionToAll(),
-  'import-pptx': () => readFile('.pptx,.odp', async file => {
-    try { replaceDeck(/\.odp$/i.test(file.name) ? await odp.importODP(file) : await importPPTX(file)); }
-    catch (e) { alertDialog(t('No se pudo importar la presentación: ') + e.message); } }, 'file'),
+  'import-pptx': () => readFile('.pptx,.odp', openPresentation, 'file'),
   'export-odp': async () => {
     try {
       const blob = await odp.buildODP();
@@ -141,13 +122,7 @@ export const ACTIONS = {
     } catch (e) { alertDialog(t('No se pudo exportar: ') + e.message); }
   },
   'reuse-slides': () => pickReuseFile(),
-  'import-md': () => readFile('.md,.markdown,.txt,text/markdown', md => {
-    const list = markdownToSlides(md, state.deck.size);
-    if (!list.length) { alertDialog(t('El archivo no contiene diapositivas.')); return; }
-    const bg = currentSlide()?.background || '#101317';
-    list.forEach(s => { s.background = bg; });
-    slides.importSlides({ size: state.deck.size, slides: list });
-  }, 'text'),
+  'import-md': () => readFile('.md,.markdown,.txt,text/markdown', insertMarkdown, 'text'),
   'a11y-check': () => openA11yCheck(),
   'reading-order': () => openReadingOrder(),
   'comments': () => toggleComments(),
