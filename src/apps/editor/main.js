@@ -9,6 +9,7 @@ import { sanitizeDeck } from '../../features/document/sanitize.js';
 import { initCanvas, renderCanvas, cycleSelection } from '../../ui/canvas/canvas.js';
 import { nudge } from '../../ui/canvas/interact.js';
 import { initPanel, renderPanel } from '../../ui/shell/navigator.js';
+import { sorterOn, setSorter, sorterColumns } from '../../ui/shell/sorter.js';
 import { renderComments } from '../../ui/panels/comments.js';
 import { renderAssistant } from '../../ui/dialogs/ai.js';
 import * as aiDeck from '../../features/ai/authoring.js';
@@ -135,6 +136,15 @@ function keyboard(e) {
   if (meta && e.key.toLowerCase() === 'a') {                     // every object of the slide
     e.preventDefault(); const ids = (store.currentSlide()?.blocks || []).filter(b => !b.locked).map(b => b.id);
     store.commit(() => { store.setMulti(ids); }, { history: false }); return;
+  }
+  // The slide sorter: arrows through the grid, Enter/Esc to edit the slide, Delete, Ctrl+D.
+  if (sorterOn()) {
+    const n = state.deck.slides.length, i = state.ui.slideIndex, cols = sorterColumns();
+    const to = { ArrowRight: i + 1, ArrowLeft: i - 1, ArrowDown: i + cols, ArrowUp: i - cols, Home: 0, End: n - 1 }[e.key];
+    if (to !== undefined) { e.preventDefault(); slides.goToSlide(Math.max(0, Math.min(n - 1, to))); document.querySelector('#navigator .thumb.active')?.scrollIntoView?.({ block: 'nearest' }); return; }
+    if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); setSorter(false); return; }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && n > 1) { e.preventDefault(); slides.deleteSlide(i); return; }
+    if (meta && e.key.toLowerCase() === 'd') { e.preventDefault(); slides.duplicateSlide(); return; }
   }
   if (e.key === 'Escape' && state.ui.selection) { store.commit(() => store.setSelection(null), { history: false }); return; }
   // Moving between slides: Page Up/Down, Home/End, and the arrows when nothing is selected.

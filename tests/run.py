@@ -68,6 +68,7 @@ def touch_checks(send, recv, port):
     wide = ev("(async()=>{const out=[];for(const a of ['deck-settings','anim-panel','shortcuts']){document.querySelector(`[data-action=${a}]`).click();await new Promise(r=>setTimeout(r,200));const m=document.querySelector('.modal-backdrop:last-of-type .modal');const r=m?.getBoundingClientRect();if(!m||r.left<0||r.right>innerWidth+1||m.scrollWidth>m.clientWidth+1)out.push(a);document.querySelectorAll('.modal-backdrop').forEach(x=>x.remove())}return out.join(',')})()")
     check(wide == '', 'los diálogos caben a lo ancho en el móvil (' + str(wide) + ')')
     ev("(()=>{const R=window.__revela;R.store.commit(()=>R.store.setSelection(null),{history:false});return 1})()"); time.sleep(0.2)
+    check(ev("(()=>{const t=document.querySelector('#ribbon [data-tab=home]').getBoundingClientRect(),b=document.querySelector('#ribbon .tabs').getBoundingClientRect();return t.left>=b.left-1&&t.right<=b.right+1})()"), 'al quitar la selección, la pestaña Inicio se ve')
     recv(send('Emulation.setDeviceMetricsOverride', sid, width=844, height=390, deviceScaleFactor=2, mobile=True)); time.sleep(0.8)
     check(ev(fits), 'en horizontal (móvil tumbado) la diapositiva se ve entera')
     return fails
@@ -279,7 +280,7 @@ def main():
         touch_fail = touch_checks(send, recv, port) if out.startswith('REVELATEST PASS') else []
         if touch_fail:
             print('REVELATEST FAIL touch'); print('\n'.join(touch_fail)); return 1
-        if out.startswith('REVELATEST PASS'): out += ' + táctil 11/11'
+        if out.startswith('REVELATEST PASS'): out += ' + táctil 12/12'
         math_fail = math_keyboard_check(send, recv, port) if out.startswith('REVELATEST PASS') else []
         if math_fail:
             print('REVELATEST FAIL ecuación'); print('\n'.join(math_fail)); return 1

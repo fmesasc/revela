@@ -106,7 +106,8 @@ src/
     shell/                     navigator, context menu, present, draw, preview (thumbnails),
                                recorder, appearance, elements (resources side panel), home,
                                canvasview (canvas mode), coach, collab, morphhint,
-                               menu (popup menus), files (saving an object's file)
+                               menu (popup menus), files (saving an object's file),
+                               sorter (slide sorter: the navigator as a grid), openfile
     canvas/                    canvas (render/reconcile), content (per object type),
                                interact (drag/resize/guides/snap), preview (animations),
                                pathdraw (drawn motion paths), mediaview (video/GIF/3D)

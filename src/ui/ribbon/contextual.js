@@ -161,6 +161,7 @@ export function renderContextual() {
       state.ui.activeTab = 'home';
       document.querySelectorAll('#ribbon [data-tab]').forEach(x => x.classList.toggle('active', x.dataset.tab === 'home'));
       document.querySelectorAll('#ribbon .ribbon-page').forEach(p => p.classList.toggle('active', p.dataset.page === 'home'));
+      tabs.querySelector('[data-tab="home"]')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });   // (on a phone the tabs scroll)
     }
     return;
   }

@@ -5,6 +5,7 @@ import { shortSig } from '../../core/text.js';
 import { state } from '../../core/store.js';
 import { goToSlide, moveSlide, deleteSlide, renameSection } from '../../features/document/slides.js';
 import { blockPreview } from './preview.js';
+import { sorterOn, setSorter } from './sorter.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, styleKind, ensureLayouts, editLayout, layoutInUse, allMasters, masterOf } from '../../features/document/master.js';
 
@@ -149,6 +150,7 @@ function thumb(slide) {
   const nc = (slide.comments || []).filter(c => !c.resolved).length;
   if (nc) { const c = document.createElement('span'); c.className = 'thumb-cm'; c.textContent = '💬 ' + nc; el.appendChild(c); }
   el.addEventListener('click', () => goToSlide(index()));
+  el.addEventListener('dblclick', () => { if (sorterOn()) { goToSlide(index()); setSorter(false); } });   // (in the sorter: edit it)
 
   el.addEventListener('dragstart', () => { dragFrom = index(); el.classList.add('dragging'); });
   el.addEventListener('dragend', () => { dragFrom = null; el.classList.remove('dragging'); clearMarks(); });

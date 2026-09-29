@@ -28,6 +28,7 @@ export function setZoom(z, { manual = true } = {}) {
 }
 export function fitZoom() {
   const wrap = document.getElementById('canvas-wrap');
+  if (!wrap?.clientWidth) return;                       // hidden (the slide sorter): nothing to fit
   const rw = state.ui.showRuler ? 20 : 0, w = state.deck.size.w + rw, h = state.deck.size.h + rw;
   // Inside the area's padding (less on small screens), rounded down so that
   // no scroll bar appears for a pixel.

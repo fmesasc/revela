@@ -44,3 +44,13 @@ body.show-ruler #ruler-corner,body.show-ruler #ruler-h,body.show-ruler #ruler-v{
                    repeating-linear-gradient(180deg,transparent 0 19px,var(--line) 19px 20px)}
 #stage.guides::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
   background:linear-gradient(#fff2 1px,transparent 1px) 0 0/100% 10%,linear-gradient(90deg,#fff2 1px,transparent 1px) 0 0/10% 100%}
+
+/* Slide sorter (View ▸ Clasificador): the slides panel, big, over the editing area. */
+body.sorter #canvas-wrap,body.sorter #notes-bar,body.sorter #elements-panel{display:none!important}
+body.sorter #navigator,body.sorter.nav-hidden #navigator{display:grid;flex:1;width:auto;height:auto;border-right:none;
+  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));align-content:start;gap:22px 18px;padding:24px;overflow-y:auto;background:var(--canvas-bg)}
+body.sorter #navigator .section-head{display:block;grid-column:1/-1;font-size:12px;padding:4px 2px 0}
+body.sorter .thumb{flex:none}
+body.sorter .thumb.is-vertical{margin-inline-start:0}
+@media (max-width:860px){ body.sorter #navigator{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;padding:12px} }
+body.sorter #statusbar .zoom{visibility:hidden}

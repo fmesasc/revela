@@ -16,6 +16,7 @@ import { exportHTML } from '../../io/formats/html.js';
 import { saveProject } from '../../io/formats/project.js';
 import { exportPDF } from '../../io/export/print.js';
 import { present, openCallPresent } from '../shell/present.js';
+import { sorterOn, setSorter } from '../shell/sorter.js';
 import { startCoach } from '../shell/coach.js';
 import { openCollab } from '../shell/collab.js';
 import { openHome } from '../shell/home.js';
@@ -97,6 +98,7 @@ export const ACTIONS = {
   'export-png': () => openImageDialog(),
   'share': () => openShare(),
   'collab': () => openCollab(),
+  'slide-sorter': () => setSorter(!sorterOn()),
   'toggle-nav': () => { setNavHidden(!document.body.classList.contains('nav-hidden')); requestAnimationFrame(fitZoom); },
   'save-picture': () => (selectedBlocks().length ? openSaveAsPicture() : alertDialog(t('Selecciona primero uno o varios objetos.'))),
   'export-video': () => openVideoDialog(),

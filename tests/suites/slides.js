@@ -15,6 +15,27 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(slide().blocks.length, 2, 'sin duplicados');
   });
 
+  await test('clasificador de diapositivas: cuadrícula, flechas, suprimir, doble clic para editar', async () => {
+    reset(); const W = frame.contentWindow, key = (k, o = {}) => D.dispatchEvent(new W.KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true, ...o }));
+    for (let i = 0; i < 5; i++) R.slides.addSlide('blank');
+    R.slides.goToSlide(0); await sleep(20); const z = R.state.ui.zoom;
+    D.querySelector('#statusbar [data-action="slide-sorter"]').click(); await sleep(60);
+    const nav = D.getElementById('navigator');
+    assert(D.body.classList.contains('sorter') && W.getComputedStyle(nav).display === 'grid' && !D.getElementById('canvas-wrap').offsetWidth, 'todas en cuadrícula, en lugar de la diapositiva');
+    assert(D.querySelectorAll('[data-action="slide-sorter"].on').length === 2, 'el botón queda marcado');
+    const cols = [...nav.querySelectorAll('.thumb')].filter(t => t.offsetTop === nav.querySelector('.thumb').offsetTop).length;
+    assert(cols > 1, 'varias por fila');
+    key('ArrowRight'); await sleep(10); eq(R.state.ui.slideIndex, 1, 'flecha derecha: la siguiente');
+    key('ArrowDown'); await sleep(10); eq(R.state.ui.slideIndex, Math.min(5, 1 + cols), 'flecha abajo: la de debajo');
+    const n = R.state.deck.slides.length; key('Delete'); await sleep(10); eq(R.state.deck.slides.length, n - 1, 'Supr borra la diapositiva');
+    key('d', { ctrlKey: true }); await sleep(10); eq(R.state.deck.slides.length, n, 'Ctrl+D la duplica');
+    eq(R.state.ui.zoom, z, 'el zoom del lienzo no cambia al ocultarse');
+    nav.querySelectorAll('.thumb')[2].dispatchEvent(new W.MouseEvent('dblclick', { bubbles: true })); await sleep(60);
+    assert(!D.body.classList.contains('sorter') && R.state.ui.slideIndex === 2, 'doble clic: a editar esa diapositiva');
+    D.querySelector('[data-action="slide-sorter"]').click(); await sleep(20); key('Escape'); await sleep(20);
+    assert(!D.body.classList.contains('sorter'), 'Esc vuelve a la diapositiva');
+  });
+
   await test('nueva diapositiva ▾: con el diseño que se elija', async () => {
     reset();
     D.querySelector('[data-action="slide-add"]').click(); await sleep(10);
