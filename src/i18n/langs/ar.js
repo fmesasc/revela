@@ -430,6 +430,7 @@ export default {
   "Dona": "دائري مجوف",
   "Dispersión": "مبعثر",
   "Radar": "رادار",
+  "Nueva diapositiva con otro diseño": "شريحة جديدة بتخطيط آخر",
   "Presentar desde aquí": "اعرض من هنا",
   "Formato del fondo…": "تنسيق الخلفية…",
   "Ocultar guías": "إخفاء الأدلة",

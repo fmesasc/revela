@@ -418,6 +418,7 @@ export default {
   "Dona": "Ring",
   "Dispersión": "Spreiding",
   "Radar": "Radar",
+  "Nueva diapositiva con otro diseño": "Nieuwe dia met een andere indeling",
   "Presentar desde aquí": "Vanaf hier presenteren",
   "Formato del fondo…": "Achtergrond opmaken…",
   "Ocultar guías": "Hulplijnen verbergen",

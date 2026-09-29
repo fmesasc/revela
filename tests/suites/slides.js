@@ -15,6 +15,16 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(slide().blocks.length, 2, 'sin duplicados');
   });
 
+  await test('nueva diapositiva ▾: con el diseño que se elija', async () => {
+    reset(); const n = R.state.deck.slides.length;
+    D.querySelector('[data-newslide-open]').click(); await sleep(10);
+    const btn = D.querySelector('.popover [data-newslide="titleOnly"]'); assert(btn, 'lista de diseños');
+    btn.click(); await sleep(10);
+    eq(R.state.deck.slides.length, n + 1, 'una diapositiva más'); eq(R.state.ui.slideIndex, n, 'y se va a ella');
+    eq(slide().layoutId, 'titleOnly', 'con ese diseño'); eq(slide().blocks.map(b => b.ph).join(), 'title', 'y sus marcadores');
+    assert(!D.querySelector('.popover'), 'la lista se cierra');
+  });
+
   await test('encabezado y pie: el diálogo activa el número de diapositiva', async () => {
     reset(); D.querySelector('[data-action="insert-hf"]').click(); await sleep(10);
     const num = D.querySelector('#hf-modal .hf-num'); assert(num, 'diálogo de encabezado/pie');

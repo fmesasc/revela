@@ -430,6 +430,7 @@ export default {
   "Dona": "Erroskila",
   "Dispersión": "Sakabanaketa",
   "Radar": "Radarra",
+  "Nueva diapositiva con otro diseño": "Diapositiba berria beste diseinu batekin",
   "Presentar desde aquí": "Aurkeztu hemendik",
   "Formato del fondo…": "Atzeko planoaren formatua…",
   "Ocultar guías": "Ezkutatu gidak",

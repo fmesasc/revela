@@ -418,6 +418,7 @@ export default {
   "Dona": "Rosca",
   "Dispersión": "Dispersión",
   "Radar": "Radar",
+  "Nueva diapositiva con otro diseño": "Nova diapositiva con outro deseño",
   "Presentar desde aquí": "Presentar desde aquí",
   "Formato del fondo…": "Formato do fondo…",
   "Ocultar guías": "Ocultar guías",

@@ -4,6 +4,7 @@
 import { esc } from '../../core/text.js';
 import { state, selectedBlock, currentSlide } from '../../core/store.js';
 import { ensureLayouts, applyLayout, resetSlide, editLayout, allMasters, masterOf } from '../../features/document/master.js';
+import * as slides from '../../features/document/slides.js';
 import * as blocks from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
 import * as palettes from '../../features/design/palettes.js';
@@ -32,6 +33,10 @@ export const POPS = {
       + ensureLayouts().filter(l => masterOf(l) === m).map(l => `<button data-layout="${l.id}" type="button" class="${currentSlide()?.layoutId === l.id ? 'on' : ''}">${t(l.name)}</button>`).join('')).join('')
     + `</div><div class="fr-actions"><button type="button" class="mini2" data-reset-slide>${t('Restablecer')}</button>`
     + `<button type="button" class="mini2" data-edit-layouts>${t('Editar diseños…')}</button></div>`,
+  // "New slide ▾": the layouts, as in PowerPoint.
+  newslide: () => `<h4>${t('Nueva diapositiva')}</h4><div class="layout-grid">`
+    + allMasters().map((m, i, ms) => (ms.length > 1 ? `<div class="layout-master">${esc(m.name || (i ? `${t('Patrón')} ${i + 1}` : t('Patrón')))}</div>` : '')
+      + ensureLayouts().filter(l => masterOf(l) === m).map(l => `<button data-newslide="${l.id}" type="button">${t(l.name)}</button>`).join('')).join('') + `</div>`,
   palettes: () => `<h4>${t('Colores del tema')}</h4><div class="pal-grid">`
     + Object.entries(palettes.PALETTES).map(([k, p]) => `<button data-palette="${k}" type="button" class="${(state.deck.palette || 'revela') === k ? 'on' : ''}">`
       + `<span class="pal-sw" style="background:${p.bg};color:${p.fg}">Aa${p.accents.map(c => `<i style="background:${c}"></i>`).join('')}</span>`
@@ -98,6 +103,8 @@ export function togglePopover(launcher, type) {
   });
   pop.querySelectorAll('[data-layout]').forEach(x =>
     x.addEventListener('click', () => { applyLayout(x.dataset.layout); closePopover(); }));
+  pop.querySelectorAll('[data-newslide]').forEach(x =>
+    x.addEventListener('click', () => { slides.addSlide(x.dataset.newslide); closePopover(); }));
   pop.querySelector('[data-reset-slide]')?.addEventListener('click', () => { resetSlide(); closePopover(); });
   pop.querySelector('[data-edit-layouts]')?.addEventListener('click', () => { editLayout(currentSlide()?.layoutId || true); closePopover(); });
   openPop = pop;

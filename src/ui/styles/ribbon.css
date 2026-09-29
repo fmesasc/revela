@@ -45,6 +45,7 @@
 .row button i{font-style:normal;font-size:16px}
 .row button span{white-space:nowrap;text-align:center}
 .row button.lg{min-width:58px}.row button.lg i{font-size:22px}
+.row button.caret{min-width:0;width:18px;padding-left:0;padding-right:0;margin-left:-3px;align-self:stretch}
 .row button:hover,.row label.color:hover{background:var(--panel);border-color:var(--line2)}
 .row button.go{color:var(--go)}.row button.go:hover{background:var(--go-bg);border-color:#bfe0c8}
 .row button.on{background:var(--accent-bg);border-color:#b9cbe0;color:var(--accent)}

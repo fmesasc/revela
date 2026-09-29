@@ -429,6 +429,7 @@ export const ROWS = [
   ['Dona', 'Doughnut', 'Anneau', 'Ring', 'Ciambella', 'Rosca', 'Rosco'],
   ['Dispersión', 'Scatter', 'Nuage de points', 'Punktdiagramm', 'Dispersione', 'Dispersão', 'Dispersió'],
   ['Radar', 'Radar', 'Radar', 'Netz', 'Radar', 'Radar', 'Radar'],
+  ['Nueva diapositiva con otro diseño', 'New slide with another layout', 'Nouvelle diapositive avec une autre disposition', 'Neue Folie mit anderem Layout', 'Nuova diapositiva con un altro layout', 'Novo diapositivo com outro esquema', 'Diapositiva nova amb un altre disseny'],
   ['Presentar desde aquí', 'Present from here', 'Présenter à partir d\'ici', 'Ab hier präsentieren', 'Presenta da qui', 'Apresentar a partir daqui', 'Presenta des d\'aquí'],
   ['Formato del fondo…', 'Format background…', 'Format de l\'arrière-plan…', 'Hintergrund formatieren…', 'Formato sfondo…', 'Formatar fundo…', 'Format del fons…'],
   ['Ocultar guías', 'Hide guides', 'Masquer les repères', 'Führungslinien ausblenden', 'Nascondi guide', 'Ocultar guias', 'Amaga les guies'],

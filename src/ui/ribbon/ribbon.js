@@ -99,6 +99,8 @@ export function initRibbon() {
     if (po) { e.stopPropagation(); togglePopover(po, 'palettes'); return; }
     const fo = e.target.closest('[data-fontpairs-open]');
     if (fo) { e.stopPropagation(); togglePopover(fo, 'fontpairs'); return; }
+    const ns = e.target.closest('[data-newslide-open]');
+    if (ns) { e.stopPropagation(); togglePopover(ns, 'newslide'); return; }
     const lo = e.target.closest('[data-layout-open]');
     if (lo) { e.stopPropagation(); togglePopover(lo, 'layout'); return; }
     const tab = e.target.closest('[data-tab]');
