@@ -30,7 +30,7 @@
 /* ---------- Connect-mobile modal ---------- */
 .modal-backdrop{position:fixed;inset:0;z-index:3000;background:#0006;display:grid;place-items:center}
 .modal{background:var(--panel);border-radius:12px;box-shadow:0 20px 60px #0004;padding:22px 24px;max-width:340px;
-  text-align:center;position:relative}
+  text-align:center;position:relative;max-height:calc(100dvh - 68px);overflow:auto}
 .modal h3{margin:0 0 8px;color:var(--accent)}
 .modal .host-help{color:var(--txt2);font-size:12px;margin:0 0 14px}
 .modal .host-url{color:var(--txt)}

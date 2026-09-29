@@ -12,6 +12,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     reset(); D.querySelector('[data-action="shortcuts"]').click(); await sleep(10);
     const m = D.getElementById('sc-modal');
     assert(m && m.querySelectorAll('.sc-table tr').length >= 10, 'lista de atajos');
+    const box = m.querySelector('.modal'), r = box.getBoundingClientRect();
+    assert(r.top >= 0 && r.bottom <= frame.contentWindow.innerHeight + 1, 'cabe en la ventana (se desplaza por dentro)');
+    assert(box.scrollWidth <= box.clientWidth + 1, 'sin desbordar a lo ancho');
     m.querySelector('.modal-close').click(); await sleep(10);
     assert(!D.getElementById('sc-modal'), 'se cierra');
   });

@@ -27,6 +27,7 @@
   #notes-bar{height:96px;padding:6px 10px}
   #statusbar .hint{display:none}
   .modal{max-width:92vw}
+  .modal kbd{white-space:normal}
   .popover{max-width:92vw}
 }
 
