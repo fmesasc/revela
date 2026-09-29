@@ -93,12 +93,17 @@ export function googleFamiliesInDeck(deck) {
   const df = byStack.get(deck.bodyFont);            // theme body font (default for text)
   if (df && df.google) used.add(df.google);
   // Named by the box, or inside the text (imported decks: 'Roboto', sans-serif…).
-  for (const b of [...(deck.master?.blocks || []), ...deck.slides.flatMap(s => s.blocks)]) {
-    const f = byStack.get(b.fontFamily);
-    if (f && f.google) used.add(f.google); else if (googleIn(b.fontFamily)) used.add(googleIn(b.fontFamily));
-    for (const m of String(b.html || '').matchAll(/font-family:\s*([^;"]+)/g)) if (googleIn(m[1])) used.add(googleIn(m[1]));
-  }
+  for (const b of [...(deck.master?.blocks || []), ...deck.slides.flatMap(s => s.blocks)]) for (const g of familiesOf(b)) used.add(g);
   return [...used];
+}
+// A block's families, remembered while its font and text stay the same (this runs at every redraw).
+const seen = new WeakMap();
+function familiesOf(b) {
+  const c = seen.get(b); if (c && c.font === b.fontFamily && c.html === b.html) return c.list;
+  const out = new Set(), f = byStack.get(b.fontFamily);
+  if (f && f.google) out.add(f.google); else if (googleIn(b.fontFamily)) out.add(googleIn(b.fontFamily));
+  for (const m of String(b.html || '').matchAll(/font-family:\s*([^;"]+)/g)) if (googleIn(m[1])) out.add(googleIn(m[1]));
+  const list = [...out]; seen.set(b, { font: b.fontFamily, html: b.html, list }); return list;
 }
 
 // Load every Google family the deck uses (idempotent), e.g. after opening a

@@ -16,7 +16,6 @@ import { hydrateStatic } from './images.js';
 import { styled } from '../../features/document/master.js';
 import { download, slug } from '../files.js';
 
-export const OBJECT_FORMATS = ['png', 'jpg', 'webp', 'svg'];
 const MIME = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp' };
 const EXT = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/svg+xml': 'svg', 'image/avif': 'avif' };
 

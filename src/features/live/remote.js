@@ -12,7 +12,6 @@ import { state, subscribe } from '../../core/store.js';
 import * as slides from '../document/slides.js';
 import { session } from '../../core/session.js';
 import { PEERJS, loadScript } from '../../core/vendor.js';
-import { t } from '../../i18n/index.js';
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous 0/O/1/I
 
@@ -21,7 +20,6 @@ let peer = null, conn = null, code = null, statusCb = null, unsub = null;
 const genCode = () => Array.from({ length: 5 }, () =>
   CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]).join('');
 
-export function remoteCode() { return code; }
 export function remoteLink() {
   const base = location.href.replace(/[^/]*(\?.*)?$/, '');
   return `${base}remote.html?code=${code || ''}`;

@@ -1,7 +1,8 @@
 // The slide navigator: thumbnails grouped by section, drag‑and‑drop reordering,
 // and quick delete.
 
-import { state, currentSlide } from '../../core/store.js';
+import { shortSig } from '../../core/text.js';
+import { state } from '../../core/store.js';
 import { goToSlide, moveSlide, deleteSlide, renameSection } from '../../features/document/slides.js';
 import { blockPreview } from './preview.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
@@ -35,8 +36,7 @@ function fitThumbs() {
 // every thumbnail depends on: size, master, theme colours) changes — decks with
 // many image-heavy slides would otherwise take seconds on every edit.
 const cache = new Map();                   // slide id → { sig, el }
-const LONG = 200;
-const sigOf = v => JSON.stringify(v, (k, x) => (typeof x === 'string' && x.length > LONG ? `${x.length}:${x.slice(0, 40)}${x.slice(-40)}` : x));
+const sigOf = shortSig;
 
 export function renderPanel() {
   if (state.ui.editMaster) return renderMasterPanel();

@@ -33,10 +33,14 @@ export function cutSelected() {
   });
   return n;
 }
+// (What another tab copied is read once, not at every redraw; a copy made there tells us.)
+let stored;
 export function clipboardData() {
   if (mem) return mem;
-  try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch { return null; }
+  if (stored === undefined) { try { stored = JSON.parse(localStorage.getItem(KEY)) || null; } catch { stored = null; } }
+  return stored;
 }
+if (typeof window !== 'undefined') window.addEventListener('storage', e => { if (e.key === KEY) stored = undefined; });
 // Whether system-clipboard data is the same copy we hold (keep its paste offset).
 export const isCurrent = d => !!(mem && d?.blocks?.[0]?.id === mem.blocks[0]?.id);
 export const hasClipboard = () => !!clipboardData()?.blocks?.length;

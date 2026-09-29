@@ -2,13 +2,11 @@
 
 import { state, commit, currentSlide, selectedBlock } from '../../core/store.js';
 
-export const SLIDE_TRANSITIONS = ['none', 'fade', 'slide', 'convex', 'concave', 'zoom', 'flip', 'push', 'wipe', 'rise', 'split', 'circle', 'diamond'];
 // Effect options (as in PowerPoint): where the new slide comes from, or how
 // it opens. The first one is the default.
 export const TRANSITION_DIRS = { wipe: ['right', 'left', 'bottom', 'top'], push: ['bottom', 'top', 'right', 'left'], split: ['vertical', 'horizontal'] };
 // A slide's transition with its option, as a single name ("wipe-top").
 export const transitionName = (kind, dir) => (dir && TRANSITION_DIRS[kind]?.includes(dir) && dir !== TRANSITION_DIRS[kind][0] ? `${kind}-${dir}` : kind);
-export const splitTransition = name => { const [k, d] = String(name || '').split('-'); return [k, d || TRANSITION_DIRS[k]?.[0] || null]; };
 
 // Transitions reveal.js doesn't have, defined in CSS in the export: the old
 // slide leaves with PAST and the new one comes from FUTURE (both animate).
@@ -57,7 +55,6 @@ export function customTransitionCSS(names, size = { w: 1280, h: 720 }) {
     '.reveal .slides>section{transition-property:transform-origin,transform,visibility,opacity,--rvt}');
   return css.join('\n');
 }
-export const ANIMATIONS = ['fade-in', 'fade-up', 'fade-down', 'fade-left', 'fade-right', 'zoom-in'];
 
 // A slide's own transition overrides the deck default. `null` = inherit.
 export function setSlideTransition(value) {
@@ -113,7 +110,6 @@ export const EFFECT_KF_CSS = `@keyframes rvIn{from{opacity:0}to{opacity:1}}
 // at (dx, dy). 'line' is straight; 'arc' bulges to one side; 'wave' snakes;
 // 'loop' makes a full turn half way; 'custom' is drawn by hand (a.points, the
 // user's points: the curve goes smoothly through them).
-export const PATH_SHAPES = ['line', 'arc', 'wave', 'loop', 'custom'];
 export function motionPoints(a, n = 24) {
   if (a.pathShape === 'custom' && a.points?.length > 1) return samplePath(a.points, Math.min(160, Math.max(n, a.points.length * 8)));
   const dx = a.dx || 0, dy = a.dy || 0, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;   // normal

@@ -4,7 +4,6 @@
 import { esc } from '../../core/text.js';
 import { currentSlide, commit, setSelection, subscribe } from '../../core/store.js';
 import * as trans from '../../features/animation/transitions.js';
-import * as poll from '../../features/live/poll.js';
 import { playAnimations } from '../canvas/preview.js';
 import { startPathDraw } from '../canvas/pathdraw.js';
 import { openAddAnimation, clipsOf } from '../ribbon/animadd.js';
@@ -43,7 +42,8 @@ export function openAnimPanel() {
   document.body.appendChild(back);
   const body = back.querySelector('.an-body');
   back.querySelector('.an-play').addEventListener('click', () => playAnimations());
-  const close = () => back.remove();
+  let unsub = () => {};
+  const close = () => { unsub(); back.remove(); };
   back.querySelector('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
   const render = () => {
@@ -93,6 +93,6 @@ export function openAnimPanel() {
     });
   };
   // (Adding from the palette re-renders the list.)
-  const unsub = subscribe(() => { if (document.body.contains(back)) { if (!back.contains(document.activeElement)) render(); } else unsub(); });
+  unsub = subscribe(() => { if (!document.body.contains(back)) unsub(); else if (!back.contains(document.activeElement)) render(); });
   render();
 }

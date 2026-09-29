@@ -364,7 +364,10 @@ function revealOptions(deck, inApp) {
    autoSlideStoppable:${!!o.autoSlideStoppable}, fragmentInURL:${!inApp && !!o.fragmentInURL},${o.view === 'scroll' ? " view:'scroll', scrollProgress:true," : ''}
    ${o.parallax ? `parallaxBackgroundImage:${J(o.parallax)}, parallaxBackgroundSize:${J(o.parallaxSize || '')},` : ''}`;
 }
-export function buildHTML(deck = state.deck, { inApp = false } = {}) {
+export function buildHTML(deck = state.deck, opts = {}) {
+  return dedupeMedia(buildHTMLRaw(deck, opts));
+}
+function buildHTMLRaw(deck, { inApp = false } = {}) {
   const { w, h } = deck.size;
   const figMap = figuresMap(deck);
   // Vertical stacks: a slide marked `vertical` goes below the previous visible one.
@@ -486,6 +489,20 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
    { title: t('Vista general'), help: t('Flechas e Intro, o clic, para ir · Esc para cerrar') })}
  ${hasZoomReturn ? '(function(){var p=null;document.addEventListener("click",function(e){var a=e.target.closest("a.slide-zoom[data-zoom-return]");if(a){p={t:a.dataset.target,o:a.dataset.origin.split("/"),arrived:false};}});Reveal.on("slidechanged",function(ev){if(!p)return;if(ev.indexh+"/"+(ev.indexv||0)===p.t){p.arrived=true;return;}if(p.arrived){var o=p.o;p=null;setTimeout(function(){Reveal.slide(+o[0],+o[1]);},0);}});})();' : ''}
 </script></body></html>`;
+}
+
+// The same embedded picture or model used several times (a logo on the master,
+// a slide and its Morph twin) is written once: a table read before the slides
+// start gives each element its source. The file stays self-contained.
+function dedupeMedia(html) {
+  const RE = / src="(data:[^"]{2000,})"/g, count = new Map();
+  for (const m of html.matchAll(RE)) count.set(m[1], (count.get(m[1]) || 0) + 1);
+  const ids = new Map([...count].filter(([, n]) => n > 1).map(([u], i) => [u, 'm' + i]));
+  if (!ids.size) return html;
+  const out = html.replace(RE, (m, u) => (ids.has(u) ? ` data-rv-src="${ids.get(u)}"` : m));
+  const table = `<script>(function(){var M=${jsData(Object.fromEntries([...ids].map(([u, k]) => [k, u])))};`
+    + `document.querySelectorAll('[data-rv-src]').forEach(function(el){el.setAttribute('src',M[el.getAttribute('data-rv-src')]);});})();</script>\n`;
+  return out.replace(/<script src="[^"]*\/dist\/reveal\.js"><\/script>/, x => table + x);
 }
 
 export function exportHTML() {

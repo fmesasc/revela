@@ -92,4 +92,3 @@ export async function buildImagesZip(deck = state.deck, type = 'png') {
   }
   return zip.generateAsync({ type: 'blob' });
 }
-export const exportPNG = () => exportImages({ type: 'png' });

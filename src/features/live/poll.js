@@ -13,7 +13,6 @@
 import { state, commit, currentSlide } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 
-export const POLL_KINDS = ['choice', 'multi', 'rating', 'word', 'qa'];
 export const VOTE_URL = 'https://fmesasc.github.io/revela/vote.html';
 
 export function pollBlock(props = {}) {

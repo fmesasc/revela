@@ -6,7 +6,6 @@ import { ensureLayouts, applyLayout, resetSlide, editLayout, allMasters, masterO
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 import * as blocks from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
-import * as templates from '../../features/document/templates.js';
 import * as palettes from '../../features/design/palettes.js';
 import * as fontsMod from '../../features/design/fonts.js';
 import { ICON_NAMES, iconSVG, WORDART_KEYS, wordartCSS } from '../../render/svg.js';

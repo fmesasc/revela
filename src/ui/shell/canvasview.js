@@ -4,6 +4,7 @@
 // frame to edit that slide. The dashed line is the path the presentation
 // follows (the slide order).
 
+import { shortSig } from '../../core/text.js';
 import { state, subscribe, commit } from '../../core/store.js';
 import * as slides from '../../features/document/slides.js';
 import { frameOf, setFrame, frameMatrix, mul, inv, apply, css, bounds, fitView, setCanvasBg, frameForNew, setCanvasImage, moveCanvasImage, applyCanvasDesign } from '../../features/design/canvasmode.js';
@@ -56,7 +57,7 @@ const box = () => ({ W: el.clientWidth, H: el.clientHeight });
 const scaleOf = m => Math.hypot(m[0], m[1]);
 
 function frameNode(s) {
-  const sig = JSON.stringify([s.blocks, s.background, s.layoutId, state.deck.master, deckFg()]);
+  const sig = shortSig([s.blocks, s.background, s.layoutId, state.deck.master, deckFg()]);
   let c = cache.get(s.id);
   if (!c || c.sig !== sig) {
     const { w, h } = size(), node = document.createElement('div');

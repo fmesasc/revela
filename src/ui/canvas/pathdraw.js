@@ -11,7 +11,6 @@ import { alertDialog } from '../dialogs/dialog.js';
 import { t } from '../../i18n/index.js';
 
 let drawing = null;
-export const drawingPath = () => !!drawing;
 const toStage = e => { const r = stage.getBoundingClientRect(), k = factor(); return [(e.clientX - r.left) * k, (e.clientY - r.top) * k]; };
 const centre = b => [b.x + b.w / 2, b.y + b.h / 2];
 

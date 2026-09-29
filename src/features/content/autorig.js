@@ -353,18 +353,27 @@ function bones(kind, J) {
     return { name, a: J[name], b: end };
   });
 }
-function segDist(p, a, b) {
-  const ab = sub(b, a), t = Math.max(0, Math.min(1, ((p[0] - a[0]) * ab[0] + (p[1] - a[1]) * ab[1] + (p[2] - a[2]) * ab[2]) / ((ab[0] ** 2 + ab[1] ** 2 + ab[2] ** 2) || 1)));
-  return Math.hypot(p[0] - a[0] - ab[0] * t, p[1] - a[1] - ab[1] * t, p[2] - a[2] - ab[2] * t);
-}
-// Up to four bones per vertex, the nearest ones weighing most (smooth bends at the joints).
+// Up to four bones per vertex, the nearest ones weighing most (smooth bends at
+// the joints). Plain loops over typed arrays: models can have 100 000+ vertices.
 export function bindWeights(pos, B, H) {
-  const n = pos.length / 3, joints = new Uint8Array(n * 4), weights = new Float32Array(n * 4), eps = H * 0.004;
+  const n = pos.length / 3, nb = B.length, joints = new Uint8Array(n * 4), weights = new Float32Array(n * 4), eps = H * 0.004;
+  const A = new Float64Array(nb * 3), D = new Float64Array(nb * 3), L2 = new Float64Array(nb);
+  B.forEach((bn, j) => { for (let c = 0; c < 3; c++) { A[j * 3 + c] = bn.a[c]; D[j * 3 + c] = bn.b[c] - bn.a[c]; } L2[j] = D[j * 3] ** 2 + D[j * 3 + 1] ** 2 + D[j * 3 + 2] ** 2 || 1; });
+  const bd = new Float64Array(4), bj = new Int32Array(4);
   for (let k = 0; k < n; k++) {
-    const p = [pos[k * 3], pos[k * 3 + 1], pos[k * 3 + 2]], d = B.map((bn, j) => [segDist(p, bn.a, bn.b), j]).sort((x, y) => x[0] - y[0]).slice(0, 4);
-    const near = d[0][0], w = d.map(([dist]) => (dist > near * 1.6 + H * 0.02 ? 0 : 1 / Math.pow(dist + eps, 4)));
-    const sum = w.reduce((s, x) => s + x, 0) || 1;
-    d.forEach(([, j], c) => { joints[k * 4 + c] = j; weights[k * 4 + c] = w[c] / sum; });
+    const px = pos[k * 3], py = pos[k * 3 + 1], pz = pos[k * 3 + 2];
+    bd.fill(Infinity); bj.fill(0);
+    for (let j = 0; j < nb; j++) {                           // distance to the bone (a segment)
+      const ax = px - A[j * 3], ay = py - A[j * 3 + 1], az = pz - A[j * 3 + 2], dx = D[j * 3], dy = D[j * 3 + 1], dz = D[j * 3 + 2];
+      const t = Math.max(0, Math.min(1, (ax * dx + ay * dy + az * dz) / L2[j]));
+      const d = Math.hypot(ax - dx * t, ay - dy * t, az - dz * t);
+      if (d >= bd[3]) continue;
+      let at = 3; while (at > 0 && bd[at - 1] > d) { bd[at] = bd[at - 1]; bj[at] = bj[at - 1]; at--; }
+      bd[at] = d; bj[at] = j;
+    }
+    const cut = bd[0] * 1.6 + H * 0.02; let sum = 0;
+    for (let c = 0; c < 4; c++) { const w = bd[c] > cut || !isFinite(bd[c]) ? 0 : 1 / Math.pow(bd[c] + eps, 4); weights[k * 4 + c] = w; joints[k * 4 + c] = bj[c]; sum += w; }
+    for (let c = 0; c < 4; c++) weights[k * 4 + c] /= sum || 1;
   }
   return { joints, weights };
 }

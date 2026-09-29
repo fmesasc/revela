@@ -163,11 +163,6 @@ export async function insertSpecs(specs, { images = false, onProgress } = {}) {
   }
   return made.length;
 }
-export async function generateDeck(opts) {
-  const specs = await createDeck(opts);
-  if (opts.palette && PALETTES[opts.palette]) applyPalette(opts.palette);
-  return insertSpecs(specs, opts);
-}
 
 // Text of a document the user gives (txt/md, or PDF through pdf.js).
 export async function readDocument(file) {

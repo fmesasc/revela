@@ -11,7 +11,6 @@ export const author = () => { try { return localStorage.getItem(AUTHOR) || ''; }
 export const setAuthor = n => { try { localStorage.setItem(AUTHOR, n); } catch {} };
 
 export const commentsOf = (slide = currentSlide()) => slide?.comments || [];
-export const openCount = slide => commentsOf(slide).filter(c => !c.resolved).length;
 
 export function addComment(text, blockId = state.ui.selection) {
   text = String(text || '').trim(); if (!text) return null;

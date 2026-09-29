@@ -11,3 +11,7 @@ export function plainText(html) {
 }
 // A value inside a <script>: JSON that can't end the script (</script>) or break its lines.
 export const jsData = v => JSON.stringify(v ?? null).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+// A cheap signature of some data, to know whether to redraw: long strings
+// (embedded pictures, models…) count by their length and ends, not all their megabytes.
+const LONG = 200;
+export const shortSig = v => JSON.stringify(v, (k, x) => (typeof x === 'string' && x.length > LONG ? `${x.length}:${x.slice(0, 40)}${x.slice(-40)}` : x));

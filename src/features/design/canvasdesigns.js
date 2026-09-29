@@ -54,4 +54,3 @@ function mindmap() {
 
 export const CANVAS_DESIGNS = { mountain: ['Montaña', mountain], treasure: ['Mapa del tesoro', treasure], space: ['Espacio', space], mindmap: ['Mapa mental', mindmap] };
 export const canvasDesign = key => CANVAS_DESIGNS[key]?.[1]() || null;
-export const DESIGN_SIZE = { w: W, h: H };

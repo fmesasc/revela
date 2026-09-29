@@ -121,8 +121,6 @@ export function amend(fn) {
   clampSlide(); base = snapshot(state.deck);
   save(); notify();
 }
-export const canUndo = () => past.length > 0 || !same(base, state.deck);
-export const canRedo = () => future.length > 0;
 export function undo() {
   checkpoint();                       // changes not recorded yet are undone first
   if (!past.length) return;

@@ -2,9 +2,10 @@
 // direct manipulation — drag from anywhere on a block, snap to alignment
 // guides, resize from the corners, edit text on double‑click.
 
+import { shortSig } from '../../core/text.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
 import { state, commit, currentSlide, selectedBlock, isSelected, setSelection } from '../../core/store.js';
-import { shadowCSS, levelCSS, textPadding, shapeSVG, shapeSig, chartSVG, chartSig, iconSVG, iconSig, applyWordart, inkSVG, inkSig, tableClass, tableVars } from '../../render/svg.js';
+import { shadowCSS, levelCSS, shapeSVG, shapeSig, chartSVG, chartSig, iconSVG, iconSig, inkSVG, inkSig, tableClass, tableVars } from '../../render/svg.js';
 import { figuresMap, captionLine } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
 import { t } from '../../i18n/index.js';
@@ -16,7 +17,7 @@ import { cameraRadius } from '../../features/live/media.js';
 import { pollEditorHTML } from '../../features/live/poll.js';
 import { masterBlocksFor, PH_PROMPT, styled, layoutInUse, masterInUse } from '../../features/document/master.js';
 import { stageBackground } from '../../io/formats/html.js';
-import { styleRich, paintWebCard, paintMath, pollSig, renderSlideRef, figIndexHTML, connectorHTML, applyImgStyle, applyModelAttrs, content, hostOf, hasInlineMath, renderInlineMath, renderMath, paintCode, setupCode, tableSig, fillTable, setupTable, setupText, setupMath, setupModel, setupEmbed } from './content.js';
+import { styleRich, paintWebCard, paintMath, pollSig, renderSlideRef, figIndexHTML, connectorHTML, applyImgStyle, applyModelAttrs, content, hostOf, hasInlineMath, renderInlineMath, paintCode, setupCode, tableSig, fillTable, setupTable, setupText, setupMath, setupModel, setupEmbed } from './content.js';
 import { mediaViewCurrent } from './mediaview.js';
 import { addGuideFromRuler, drawPGuides, startMarquee, startDrag, startRotate, startResize } from './interact.js';
 
@@ -127,7 +128,7 @@ function drawBgMedia(slide) {
 // Master objects, drawn (not editable) under the slide's own objects.
 function drawMasterLayer() {
   const blocks = state.ui.editMaster ? [] : masterBlocksFor(currentSlide());
-  const sig = JSON.stringify(blocks);
+  const sig = shortSig(blocks);
   let layer = stage.querySelector('.master-layer');
   if (!blocks.length) { layer?.remove(); return; }
   if (!layer) { layer = document.createElement('div'); layer.className = 'master-layer'; }
@@ -208,7 +209,8 @@ function drawLogo() {
   let el = stage.querySelector('.deck-logo-ovl');
   if (!logo || !logo.src) { if (el) el.remove(); return; }
   if (!el) { el = document.createElement('img'); el.className = 'deck-logo-ovl'; stage.appendChild(el); }
-  el.src = logo.src; el.style.height = (logo.size || 120) + 'px';
+  if (el._src !== logo.src) { el.src = logo.src; el._src = logo.src; }
+  el.style.height = (logo.size || 120) + 'px';
   const p = logo.position || 'br', m = '16px';
   for (const s of ['left', 'right', 'top', 'bottom']) el.style[s] = '';
   el.style[p.includes('r') ? 'right' : 'left'] = m;

@@ -8,7 +8,7 @@
 //   x, y: centre of the frame on the canvas (in slide pixels); s: scale
 //   (1 = the slide's size); r: turn in degrees.
 
-import { state, commit, currentSlide } from '../../core/store.js';
+import { state, commit } from '../../core/store.js';
 
 export const canvasOn = (deck = state.deck) => !!deck.canvas?.on;
 
@@ -95,7 +95,6 @@ export function canvasRuntime(frames, w, h) {
 // What the runtime needs besides itself (as source, no imports in the page).
 export const canvasRuntimeDeps = () => `var mul=${mul};var inv=${inv};var apply=${apply};var css=${css};\n${frameMatrix}\n${bounds}\n${fitView}\n${canvasRuntime}`;
 
-export const currentFrame = () => { const s = currentSlide(); return s ? frameOf(s, state.deck.slides.indexOf(s)) : null; };
 
 // ---- The canvas's own picture (a big image or design under the frames) ----------------
 // deck.canvas.image = { src, x, y, w, h } on the canvas. Each slide shows the

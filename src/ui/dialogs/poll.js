@@ -1,6 +1,5 @@
 // Poll editor dialog (question, type, options, display) and results tools.
 
-import { state, currentSlide } from '../../core/store.js';
 import { setPoll, clearVotes, votesCSV, savedVotes, tallyVotes } from '../../features/live/poll.js';
 import { confirmDialog } from './dialog.js';
 import { t } from '../../i18n/index.js';

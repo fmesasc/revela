@@ -3,6 +3,7 @@
 // ribbon with all of its options, so nothing needs a right click. It goes
 // away when nothing is selected. Several objects: arranging them.
 
+import { shortSig } from '../../core/text.js';
 import { state, commit, currentSlide, selectedBlock, selectedBlocks } from '../../core/store.js';
 import * as blocks from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
@@ -146,8 +147,7 @@ function groupsForMany(list) {
   return G;
 }
 
-// Long strings (pictures, models) shortened, so the signature stays cheap.
-const sigOf = v => JSON.stringify(v, (k, x) => (typeof x === 'string' && x.length > 120 ? x.length + x.slice(-24) : x));
+
 let lastSig = '', waiting = null, known = null;
 export function renderContextual() {
   const tabs = document.querySelector('#ribbon .tabs'), pages = document.querySelector('#ribbon .pages'); if (!tabs || !pages) return;
@@ -177,7 +177,8 @@ export function renderContextual() {
   const title = b ? t(TITLES[b.type] || 'Objeto') : t('Varios objetos') + ` (${list.length})`;
   if (tab.textContent !== title) tab.textContent = title;
   const names = b?.type === 'model' ? clipsOf(b) : [];
-  const sig = sigOf([list.map(x => x.id), b, names]);
+  // (Moving or resizing it doesn't change its options: no rebuild while nudging.)
+  const sig = shortSig([list.map(x => x.id), b && { ...b, x: 0, y: 0, w: 0, h: 0 }, names, b && styled(b, currentSlide()).fontSize]);
   if (sig === lastSig) return;
   lastSig = sig;
   const groups = b ? groupsFor(b) : groupsForMany(list);

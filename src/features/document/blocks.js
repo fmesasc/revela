@@ -469,13 +469,6 @@ export function sendToBack() {
   commit(() => { const arr = currentSlide().blocks; arr.splice(arr.indexOf(b), 1); arr.unshift(b); });
 }
 
-export function duplicateBlock() {
-  const b = selectedBlock(); if (!b) return;
-  commit(() => {
-    const copy = structuredClone(b); copy.id = uid(); copy.x += 24; copy.y += 24;
-    currentSlide().blocks.push(copy); state.ui.selection = copy.id;
-  });
-}
 
 // Align: with several objects selected, align them to each other (as in
 // PowerPoint); with one, align it to the slide.

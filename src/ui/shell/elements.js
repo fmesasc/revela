@@ -43,7 +43,6 @@ const mb = n => (n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + ' MB' : Math.m
 
 const SIDE = 'revela.elements.side';
 export const elementsSide = () => { try { return localStorage.getItem(SIDE) === 'right' ? 'right' : 'left'; } catch { return 'left'; } };
-export const elementsOpen = () => !!document.getElementById('elements-panel');
 
 async function consent(svc, name) {
   if (!svc || consented(svc)) return true;

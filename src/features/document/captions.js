@@ -30,11 +30,6 @@ export function slidePaths(deck) {
   });
   return m;
 }
-export function visibleIndexMap(deck) {
-  const m = new Map(); let vi = 0;
-  (deck.slides || []).forEach((s, i) => { if (!s.hidden) { m.set(i, vi); vi++; } });
-  return m;
-}
 export const figIndexTitle = kind => (kind === 'tables' ? 'Índice de tablas' : 'Índice de figuras');
 export const figuresMap = deck => new Map(collectFigures(deck).map(f => [f.id, f]));
 export const captionLine = f => `${t(f.label)} ${f.num}: ${f.caption}`;

@@ -226,7 +226,6 @@ export async function driveOpen() {
   const doc = await pickFile(); if (!doc) return;
   await openPresentation(doc.id);
 }
-export const driveSave = () => savePresentation({ interactive: true });
 
 // Export the reveal.js HTML presentation to Drive (a new file each time).
 export async function driveSaveHtml() {

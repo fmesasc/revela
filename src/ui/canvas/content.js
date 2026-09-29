@@ -1,6 +1,7 @@
 // What each object shows on the canvas and how it is edited in place: text,
 // equations (KaTeX), code (highlight.js), tables, embeds, 3D models, slide links.
 
+import { shortSig } from '../../core/text.js';
 import { esc } from '../../core/text.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
 import { state, commit, currentSlide } from '../../core/store.js';
@@ -23,8 +24,11 @@ import { modelAttrs } from '../../features/content/model3d.js';
 
 export const pollSig = b => JSON.stringify([b.kind, b.display, b.question, b.options, b.fontSize, savedVotes(b.pollId)]);
 export function renderSlideRef(wrap, b) {
-  wrap.innerHTML = '';
   const target = state.deck.slides.find(s => s.id === b.target) || state.deck.slides[0];
+  // Redrawn only when the target slide (or this zoom's size) changed.
+  const sig = shortSig([target?.id, target?.blocks, target?.background, b.w, state.deck.size]);
+  if (wrap.dataset.sig === sig) return;
+  wrap.dataset.sig = sig; wrap.innerHTML = '';
   if (!target) return;
   const { w, h } = state.deck.size;
   const inner = document.createElement('div'); inner.className = 'sr-inner';

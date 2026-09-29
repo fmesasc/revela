@@ -298,9 +298,8 @@ export function shapeOutline100(shape) {
   return [[2, 2], [98, 2], [98, 98], [2, 98]];
 }
 
-// Line styles (PowerPoint's dash types): SVG dash patterns in multiples of the
-// stroke width, and the closest CSS border style for boxes.
-export const DASHES = ['solid', 'dash', 'dot', 'dashDot'];
+// Line styles (PowerPoint's dash types: solid, dash, dot, dashDot): SVG dash patterns
+// in multiples of the stroke width, and the closest CSS border style for boxes.
 export function dashArray(dash, sw = 2) {
   const w = Math.max(1, sw);
   return { dash: `${4 * w} ${3 * w}`, dot: `${w} ${2 * w}`, dashDot: `${4 * w} ${2 * w} ${w} ${2 * w}` }[dash] || '';
