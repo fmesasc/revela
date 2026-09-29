@@ -140,7 +140,7 @@ export function addDiagram(kind = 'process') {
       const cn = 3, cw = 200, ch = 90, gap = 40, totalW = cn * cw + (cn - 1) * gap, x0 = (w - totalW) / 2, y = h * 0.56;
       for (let i = 0; i < cn; i++) {
         const c = box(x0 + i * (cw + gap), y, cw, ch, i); c.html = `Sub ${i + 1}`; s.blocks.push(c);
-        s.blocks.push({ id: uid(), type: 'connector', from: top.id, to: c.id, color: '#8a8a8a', arrow: true, x: 0, y: 0, w, h, rotation: 0, animation: null });
+        s.blocks.push({ id: uid(), type: 'connector', from: top.id, to: c.id, color: '#8a8a8a', arrow: true, route: 'elbow', x: 0, y: 0, w, h, rotation: 0, animation: null });
       }
     } else if (kind === 'cycle') {
       const bw = 220, bh = 100, R = Math.min(w, h) * 0.32, cx = w / 2, cy = h / 2;

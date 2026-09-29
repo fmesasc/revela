@@ -105,19 +105,40 @@ function borderPoint(box, tx, ty) {
   return [cx + dx * s, cy + dy * s];
 }
 
-// A connector line/arrow between two blocks, in slide coordinates (W×H).
+// A connector line/arrow between two blocks, in slide coordinates (W×H):
+// straight (between the edges facing each other), elbow (out of the facing
+// sides, square turns half way) or curved (a smooth S between them); an arrow
+// at the end, at the start, at both or none (arrow false).
+export const CONNECTOR_ROUTES = [['straight', 'Recto'], ['elbow', 'De codo'], ['curve', 'Curvo']];
 export function connectorSVG(b, fromB, toB, W, H) {
   if (!fromB || !toB) return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%"></svg>`;
   const fc = [fromB.x + fromB.w / 2, fromB.y + fromB.h / 2];
   const tc = [toB.x + toB.w / 2, toB.y + toB.h / 2];
-  const [x1, y1] = borderPoint(fromB, tc[0], tc[1]);
-  const [x2, y2] = borderPoint(toB, fc[0], fc[1]);
-  const color = b.color || '#8a8a8a'; const arrow = b.arrow !== false;
-  const marker = arrow ? `<defs><marker id="cm-${b.id}" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="${color}"/></marker></defs>` : '';
-  const p = `x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"`;
+  const color = b.color || '#8a8a8a', end = b.arrow !== false, start = !!b.arrowStart, f = v => v.toFixed(1);
+  let d;
+  if (b.route === 'elbow' || b.route === 'curve') {
+    // Out of the sides that face each other (left/right if they are more apart across, else top/bottom).
+    const across = Math.abs(tc[0] - fc[0]) >= Math.abs(tc[1] - fc[1]);
+    const side = (bx, c, other) => (across ? [c[0] + Math.sign(other[0] - c[0] || 1) * bx.w / 2, c[1]] : [c[0], c[1] + Math.sign(other[1] - c[1] || 1) * bx.h / 2]);
+    const [x1, y1] = side(fromB, fc, tc), [x2, y2] = side(toB, tc, fc);
+    if (b.route === 'elbow') {
+      if (across) { const xm = (x1 + x2) / 2; d = `M${f(x1)},${f(y1)} H${f(xm)} V${f(y2)} H${f(x2)}`; }
+      else { const ym = (y1 + y2) / 2; d = `M${f(x1)},${f(y1)} V${f(ym)} H${f(x2)} V${f(y2)}`; }
+    } else {
+      const k = across ? Math.abs(x2 - x1) / 2 : Math.abs(y2 - y1) / 2;
+      const c1 = across ? [x1 + Math.sign(x2 - x1) * k, y1] : [x1, y1 + Math.sign(y2 - y1) * k];
+      const c2 = across ? [x2 - Math.sign(x2 - x1) * k, y2] : [x2, y2 - Math.sign(y2 - y1) * k];
+      d = `M${f(x1)},${f(y1)} C${f(c1[0])},${f(c1[1])} ${f(c2[0])},${f(c2[1])} ${f(x2)},${f(y2)}`;
+    }
+  } else {
+    const [x1, y1] = borderPoint(fromB, tc[0], tc[1]), [x2, y2] = borderPoint(toB, fc[0], fc[1]);
+    d = `M${f(x1)},${f(y1)} L${f(x2)},${f(y2)}`;
+  }
+  const mk = (id, back) => `<marker id="${id}" markerWidth="8" markerHeight="8" refX="${back ? 1 : 6}" refY="3" orient="auto"><path d="${back ? 'M7,0 L0,3 L7,6 z' : 'M0,0 L7,3 L0,6 z'}" fill="${color}"/></marker>`;
+  const marker = end || start ? `<defs>${end ? mk(`cm-${b.id}`) : ''}${start ? mk(`cs-${b.id}`, true) : ''}</defs>` : '';
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" style="pointer-events:none;overflow:visible">${marker}`
-    + `<line ${p} stroke="transparent" stroke-width="14" style="pointer-events:stroke"/>`
-    + `<line ${p} stroke="${color}" stroke-width="3"${dashAttr(b.dash, 3)} ${arrow ? `marker-end="url(#cm-${b.id})"` : ''}/></svg>`;
+    + `<path d="${d}" fill="none" stroke="transparent" stroke-width="14" style="pointer-events:stroke"/>`
+    + `<path d="${d}" fill="none" stroke="${color}" stroke-width="${b.width || 3}" stroke-linejoin="round"${dashAttr(b.dash, b.width || 3)}${end ? ` marker-end="url(#cm-${b.id})"` : ''}${start ? ` marker-start="url(#cs-${b.id})"` : ''}/></svg>`;
 }
 
 // Chart as inline SVG (no library, self‑contained on export). Bar or pie.

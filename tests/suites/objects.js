@@ -102,8 +102,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     R.store.setMulti([a.id, b.id]); R.blocks.addConnector(); await sleep(20);
     const conn = slide().blocks.at(-1);
     eq(conn.type, 'connector', 'creado'); eq(conn.from, a.id, 'origen'); eq(conn.to, b.id, 'destino');
-    assert(D.querySelector(`.block[data-id="${conn.id}"] .connector svg line`), 'línea en el lienzo');
-    assert(/<line [^>]*stroke="#8a8a8a"/.test(R.io.buildHTML()), 'línea en el export');
+    assert(D.querySelector(`.block[data-id="${conn.id}"] .connector svg path[marker-end]`), 'línea en el lienzo');
+    assert(/<path d="M[^"]*" fill="none" stroke="#8a8a8a"/.test(R.io.buildHTML()), 'línea en el export');
     // Borrar un extremo elimina el conector.
     R.state.ui.selection = a.id; R.state.ui.multi = [a.id]; R.blocks.deleteSelected();
     assert(!slide().blocks.some(x => x.type === 'connector'), 'conector huérfano eliminado');
@@ -611,6 +611,33 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(bs.some(b => b.goto === 'next' || b.goto === back.slides[1].id), 'el botón sigue yendo a la siguiente');
     assert(bs.some(b => b.goto === back.slides[2].id), 'la estrella, a la tercera');
     assert(bs.some(b => b.href === 'https://ejemplo.org/clase'), 'la imagen, a la web');
+  });
+
+  await test('conectores: rectos, de codo o curvos, con flecha en uno o los dos extremos', async () => {
+    reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
+    const a = { x: 0, y: 0, w: 100, h: 100 }, b = { x: 400, y: 300, w: 100, h: 100 }, c = { id: 'k', type: 'connector' };
+    assert(/d="M[\d.]+,[\d.]+ L/.test(S.connectorSVG(c, a, b, 1280, 720)), 'recto');
+    const el = S.connectorSVG({ ...c, route: 'elbow' }, a, b, 1280, 720);
+    assert(/d="M100\.0,50\.0 H250\.0 V350\.0 H400\.0"/.test(el), 'de codo: sale por el lado que mira al otro y gira en ángulo recto: ' + el.match(/d="[^"]*"/)[0]);
+    assert(/d="M100\.0,50\.0 C/.test(S.connectorSVG({ ...c, route: 'curve' }, a, b, 1280, 720)), 'curvo');
+    const both = S.connectorSVG({ ...c, arrowStart: true }, a, b, 1280, 720);
+    assert(/marker-start=/.test(both) && /marker-end=/.test(both), 'flecha en los dos extremos');
+    assert(!/marker-end=/.test(S.connectorSVG({ ...c, arrow: false }, a, b, 1280, 720)), 'o en ninguno');
+    // Its tab.
+    R.blocks.addShape('rect'); R.blocks.addShape('ellipse'); await sleep(10);
+    const [s1, s2] = slide().blocks.filter(x => x.type === 'shape').slice(-2);
+    R.store.commit(() => { R.state.ui.multi = [s1.id, s2.id]; R.state.ui.selection = s2.id; }, { history: false }); R.blocks.addConnector(); await sleep(20);
+    const cn = slide().blocks.find(x => x.type === 'connector');
+    R.store.commit(() => { R.state.ui.selection = cn.id; R.state.ui.multi = [cn.id]; R.state.ui.activeTab = 'ctx'; }, { history: false }); await sleep(20);
+    eq(D.querySelector('#ribbon [data-tab="ctx"]').textContent, 'Conector', 'con su pestaña');
+    const route = [...D.querySelectorAll('#ribbon [data-page="ctx"] select')].find(x => [...x.options].some(o => o.value === 'elbow'));
+    route.value = 'elbow'; route.dispatchEvent(new W.Event('change')); await sleep(20);
+    eq(slide().blocks.find(x => x.id === cn.id).route, 'elbow', 'de codo desde la pestaña');
+    [...D.querySelectorAll('#ribbon [data-page="ctx"] button')].find(x => x.querySelector('span')?.textContent === 'Flecha al inicio').click(); await sleep(20);
+    assert(slide().blocks.find(x => x.id === cn.id).arrowStart, 'flecha al inicio');
+    assert(/marker-start/.test(R.io.buildHTML()), 'y así se presenta');
+    reset(); R.blocks.addDiagram('hierarchy'); await sleep(10);
+    assert(slide().blocks.filter(x => x.type === 'connector').every(x => x.route === 'elbow'), 'la jerarquía, con conectores de codo');
   });
 
   await test('formas: galería compacta, «Más formas» por categorías, colores del tema e ida y vuelta a PowerPoint', async () => {

@@ -11,7 +11,7 @@ import * as format from '../../features/document/format.js';
 import * as shapeops from '../../features/document/shapeops.js';
 import { MOTIONS_3D, VIEWS_3D, BLEEDS_3D, modelBleed } from '../../features/content/model3d.js';
 import { isGif } from '../../features/live/media.js';
-import { CURVES, DEVICES, SHAPE_NAMES, hasShapeText } from '../../render/svg.js';
+import { CURVES, DEVICES, SHAPE_NAMES, hasShapeText, CONNECTOR_ROUTES } from '../../render/svg.js';
 import { styled } from '../../features/document/master.js';
 import { saveBlockFile as saveFile } from '../shell/files.js';
 import { openModel3D } from '../dialogs/model3d.js';
@@ -140,6 +140,14 @@ function groupsFor(b) {
   else if (b.type === 'code') G.push(['Código', [btn('code', 'Editar código y pasos', () => openCodeEditor(b))]]);
   else if (b.type === 'poll') G.push(['Votación', [btn('how_to_vote', 'Editar votación', () => openPollEditor(b))]]);
   // Ink replay: when presenting, the drawing traces itself (the "Draw" effect).
+  // A connector: straight, elbow or curved; arrows at either end; its line.
+  else if (b.type === 'connector') G.push(
+    ['Conector', [['select', 'Trazado', CONNECTOR_ROUTES, b.route || 'straight', v => set(b, x => { if (v === 'straight') delete x.route; else x.route = v; })],
+      btn('arrow_back', 'Flecha al inicio', () => set(b, x => { if (x.arrowStart) delete x.arrowStart; else x.arrowStart = true; }), !!b.arrowStart),
+      btn('arrow_forward', 'Flecha al final', () => set(b, x => { x.arrow = x.arrow === false; }), b.arrow !== false)]],
+    ['Línea', [['color', 'border_color', 'Color', b.color || '#8a8a8a', v => set(b, x => { x.color = v; })],
+      ['num', 'Grosor', b.width || 3, v => set(b, x => { x.width = Math.max(1, Math.min(20, +v || 3)); }), 1, 20, 1],
+      ['select', 'Línea', [['solid', '━ Continua'], ['dash', '╍ Guiones'], ['dot', '┈ Puntos'], ['dashDot', '─·─ Guion y punto']], b.dash || 'solid', v => set(b, x => { if (v === 'solid') delete x.dash; else x.dash = v; })]]]);
   else if (b.type === 'timer') G.push(
     ['Tiempo', [['num', 'Minutos', Math.floor((b.seconds ?? 300) / 60), v => set(b, x => { x.seconds = Math.max(1, Math.round(+v || 0) * 60 + (x.seconds ?? 300) % 60); }), 0, 600, 1],
       ['num', 'Segundos', (b.seconds ?? 300) % 60, v => set(b, x => { x.seconds = Math.max(1, Math.floor((x.seconds ?? 300) / 60) * 60 + Math.min(59, Math.max(0, Math.round(+v || 0)))); }), 0, 59, 5]]],
