@@ -9,6 +9,8 @@ import { emptyDeck, uid, chartBlock, tableBlock, codeBlock, mathBlock } from '..
 import { PALETTES, pairStacks } from '../design/palettes.js';
 import { ensureLayouts, masterStyles, newSlideBlocks } from '../document/master.js';
 import { pollBlock } from '../live/poll.js';
+import { placeOnDesign } from '../design/canvasmode.js';
+import { canvasDesign } from '../design/canvasdesigns.js';
 
 // ---- Small builders ------------------------------------------------------------
 // ul('a', ['a1', 'a2'], 'b'): an array right after an item nests under it.
@@ -204,30 +206,28 @@ const EXAMPLES_DEF = {
     { layout: 'section', title: 'Hablemos', subtitle: 'laura@ejemplo.example · linkedin.com/in/laura', extra: [icon('mail', 610, 520, 60, '#f3a712')] },
   ]) },
 
-  // Canvas mode (like Prezi): an overview with four "islands"; each stop is a
-  // frame inside its island and one detail is a tiny frame inside a stop.
-  canvas: { name: 'Viaje por el lienzo (tipo Prezi)', summary: 'Modo lienzo: la cámara vuela y acerca entre marcos; un detalle dentro de otro', make: () => {
-    const isl = [['#1c7ed6', -1150, -180], ['#2f9e44', -250, 540], ['#e8590c', 800, -200], ['#ae3ec9', 1550, 580]];
-    const S = 3.2, toLocal = (x, y) => [(x + 2048) / S, (y + 1152) / S];
-    const circles = isl.map(([c, x, y]) => { const [lx, ly] = toLocal(x, y); return shape('ellipse', Math.round(lx - 150), Math.round(ly - 150), 300, 300, c, { opacity: 90 }); });
-    const labels = ['Idea', 'Plan', 'Prueba', 'Resultado'].map((t, i) => { const [lx, ly] = toLocal(isl[i][1], isl[i][2]); return text(`<b>${t}</b>`, Math.round(lx - 150), Math.round(ly + 120), 300, 40, { fontSize: 24, textAlign: 'center', color: '#ffffff' }); });
-    const deck = build({ name: 'Viaje por el lienzo', palette: 'ocean', fonts: 'modern', title: { color: '#ffffff' }, body: { color: '#ffffff' } }, [
-      { layout: 'blank', bg: 'transparent', extra: [
-        text('<b>Viaje por el lienzo</b>', 290, 30, 700, 70, { fontSize: 52, textAlign: 'center', color: '#ffffff' }),
-        text('Pulsa → para volar de una parada a otra · O: ver todo el lienzo', 290, 100, 700, 36, { fontSize: 20, textAlign: 'center', color: '#c5d3e8' }),
-        ...circles, ...labels],
-        notes: 'Modo lienzo: todas las diapositivas son marcos en un mismo lienzo. Diseño ▸ Vista de lienzo para moverlos, cambiar su tamaño o girarlos.' },
-      { layout: 'titleContent', bg: 'transparent', title: '1 · La idea', body: ul('Todo empieza con una pregunta', 'Anota qué quieres cambiar', 'Hazla pequeña y concreta') },
-      { layout: 'titleContent', bg: 'transparent', title: '2 · El plan', body: ul('Tres pasos, no diez', 'Quién hace qué', 'Cuándo sabremos si funciona'), notes: 'Esta diapositiva tiene un detalle dentro: la siguiente se acerca a él.' },
-      { layout: 'blank', bg: '#ffffff', extra: [text('<b>🔍 El detalle</b><br>Un marco pequeño dentro de otro: al llegar, la cámara se acerca como una lupa.', 120, 180, 1040, 360, { fontSize: 44, textAlign: 'center', color: '#1f2937' })] },
-      { layout: 'titleContent', bg: 'transparent', title: '3 · La prueba', body: ul('Pruébalo con poca gente', 'Mide lo mínimo', 'Aprende rápido') },
-      { layout: 'titleContent', bg: 'transparent', title: '4 · El resultado', body: ul('Qué ha funcionado', 'Qué cambiarías', 'Siguiente paso') },
-      { layout: 'section', bg: 'transparent', title: '¡Gracias!', subtitle: 'Hecho con el modo lienzo de Revela' },
+  // Canvas mode (like Prezi): a mountain drawn on the canvas; each slide is a
+  // stop on the path to the top and takes its part of the picture as background.
+  canvas: { name: 'Viaje por el lienzo (tipo Prezi)', summary: 'Modo lienzo: un diseño grande de fondo y la cámara vuela y acerca de una parada a otra', make: () => {
+    const deck = build({ name: 'Viaje por el lienzo', palette: 'office', fonts: 'modern' }, [
+      { layout: 'blank', extra: [
+        text('<b>Camino a la cima</b>', 240, 40, 800, 90, { fontSize: 64, textAlign: 'center', color: '#1b2a41' }),
+        text('Pulsa → para subir parada a parada · O: ver todo el lienzo', 240, 128, 800, 40, { fontSize: 24, textAlign: 'center', color: '#1b2a41' })],
+        notes: 'Modo lienzo: todas las diapositivas son marcos sobre un mismo dibujo. Diseño ▸ Vista de lienzo para moverlos, cambiar su tamaño o girarlos, o cambiar la imagen del lienzo.' },
+      { title: '1 · La idea', body: ul('Todo empieza con una pregunta', 'Anota qué quieres cambiar') },
+      { title: '2 · El plan', body: ul('Tres pasos, no diez', 'Quién hace qué'), notes: 'La siguiente diapositiva está dentro de esta: la cámara se acerca como una lupa.' },
+      { layout: 'blank', extra: [card('<b>🔍 El detalle</b><br>Un marco pequeño dentro de otro: al llegar, la cámara se acerca como una lupa.', 140, 170, 1000, 380, '#ffffffee', { fontSize: 46, textAlign: 'center', color: '#1b2a41' })] },
+      { title: '3 · La prueba', body: ul('Pruébalo con poca gente', 'Aprende rápido') },
+      { title: '4 · El resultado', body: ul('Qué ha funcionado', 'Siguiente paso') },
+      { layout: 'section', title: '¡Cima! 🏁', subtitle: 'Gracias · hecho con el modo lienzo de Revela' },
     ]);
-    const fr = [{ x: 0, y: 0, s: S, r: 0 }, { x: isl[0][1], y: isl[0][2], s: 0.55, r: -6 }, { x: isl[1][1], y: isl[1][2], s: 0.55, r: 4 },
-      { x: isl[1][1] + 120, y: isl[1][2] + 60, s: 0.07, r: -12 }, { x: isl[2][1], y: isl[2][2], s: 0.55, r: 8 }, { x: isl[3][1], y: isl[3][2], s: 0.55, r: -4 }, { x: 3400, y: 0, s: 1.6, r: 0 }];
-    deck.slides.forEach((sl, i) => { sl.frame = fr[i]; });
-    deck.canvas = { on: true, bg: '#10213a' };
+    placeOnDesign(deck, canvasDesign('mountain'));
+    // Stops: idea, plan (with the detail inside), test, result, and the top.
+    const f = deck.slides.map(s => ({ ...s.frame }));
+    deck.slides[3].frame = { x: f[2].x + 150, y: f[2].y + 70, s: 0.08, r: -10 };
+    deck.slides[4].frame = f[3]; deck.slides[5].frame = f[4]; deck.slides[6].frame = { ...f[5], s: 0.6 };
+    // Text on the picture: light cards behind titles and lists.
+    for (const s of deck.slides.slice(1)) for (const b of s.blocks) if (b.ph) Object.assign(b, { bg: '#ffffffe6', radius: 18 });
     return deck;
   } },
 };

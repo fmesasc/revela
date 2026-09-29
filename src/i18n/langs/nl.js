@@ -1221,4 +1221,13 @@ export default {
   "Opcional: las diapositivas como marcos en un lienzo grande; al presentar, la cámara vuela de uno a otro (como Prezi)": "Optioneel: dia’s als kaders op een groot canvas; tijdens het presenteren vliegt de camera van de een naar de ander (zoals Prezi)",
   "Ver y colocar los marcos en el lienzo": "Kaders op het canvas bekijken en plaatsen",
   "Ver y colocar los marcos en el lienzo (modo lienzo)": "Kaders op het canvas bekijken en plaatsen (canvasmodus)",
+  "Imagen del lienzo": "Canvasafbeelding",
+  "Mover la imagen": "Afbeelding verplaatsen",
+  "Subir una imagen…": "Afbeelding uploaden…",
+  "Quitar la imagen": "Afbeelding verwijderen",
+  "Montaña": "Berg",
+  "Mapa del tesoro": "Schatkaart",
+  "Espacio": "Ruimte",
+  "Mapa mental": "Mindmap",
+  "¿Colocar también las diapositivas a lo largo del recorrido del diseño? (La primera mostrará todo el lienzo.)": "Ook de dia's langs de route van het ontwerp plaatsen? (De eerste toont het hele canvas.)",
 };

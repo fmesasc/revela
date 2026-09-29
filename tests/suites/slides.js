@@ -484,4 +484,54 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.querySelector('[data-action="canvas-mode"]').click(); await sleep(20);
     assert(!C.canvasOn(), 'se puede desactivar'); D.getElementById('canvas-view')?.remove();
   });
+
+  await test('modo lienzo: imagen o diseño del lienzo, de fondo en cada diapositiva', async () => {
+    reset(); R.slides.addSlide(); R.slides.addSlide(); const W = frame.contentWindow;
+    const C = await W.eval("import('/src/features/design/canvasmode.js')");
+    const G = await W.eval("import('/src/features/design/canvasdesigns.js')");
+    D.querySelector('[data-action="canvas-mode"]').click(); await sleep(50);
+    const S = R.state.deck.slides;
+    assert(!C.canvasBackdrop(S[0]), 'sin imagen, sin fondo del lienzo');
+    // The designs: all built, same every time, with a route.
+    for (const k of Object.keys(G.CANVAS_DESIGNS)) { const d = G.canvasDesign(k); assert(/^data:image\/svg\+xml/.test(d.src) && d.stops.length >= 4, `diseño ${k}`); eq(G.canvasDesign(k).src, d.src, `${k}: siempre igual`); }
+    // A picture: covers every frame; each slide shows its part (backdrop maths).
+    C.setFrame(S[1].id, { x: 1600, y: 200, s: 0.5, r: 30 });
+    C.setCanvasImage('data:image/png;base64,AAAA', { w: 2000, h: 1000 });
+    const img = R.state.deck.canvas.image, b = C.bounds(S.map((s, i) => C.frameOf(s, i)), 1280, 720);
+    assert(img.x <= b.x0 && img.y <= b.y0 && img.x + img.w >= b.x1 && img.y + img.h >= b.y1, 'la imagen cubre todos los marcos');
+    assert(Math.abs(img.w / img.h - 2) < 0.01, 'sin deformarla');
+    assert(S.every(s => s.background === 'transparent'), 'las diapositivas, transparentes');
+    const bd = C.canvasBackdrop(S[1]), M = C.frameMatrix(S[1].frame, 1280, 720);
+    const c = C.apply(M, bd.x + bd.w / 2, bd.y + bd.h / 2);
+    assert(Math.hypot(c[0] - (img.x + img.w / 2), c[1] - (img.y + img.h / 2)) < 2, 'su centro, en el centro de la imagen');
+    assert(Math.abs(bd.w * 0.5 - img.w) < 1, 'a la escala del marco'); eq(bd.rotation, -30, 'contra el giro del marco');
+    assert(R.master.masterBlocksFor(S[1]).some(x => x.backdrop), 'se pinta detrás, como el patrón');
+    // Presenting: the picture is one layer that moves with the camera (not per slide).
+    const html = R.io.buildHTML(R.state.deck, { inApp: true });
+    assert(/class="rv-world"/.test(html) && !/canvas-backdrop/.test(html), 'una sola capa en la presentación');
+    // The canvas view: picture menu, move mode (one undo step).
+    const cv = D.getElementById('canvas-view');
+    assert(cv.querySelector('.cv-pic') && !cv.querySelector('.cv-move').hidden, 'la vista muestra la imagen');
+    cv.querySelector('.cv-move').click(); await sleep(10);
+    const r = cv.getBoundingClientRect(), x0 = R.state.deck.canvas.image.x;
+    const ev = (el, type, x, y) => el.dispatchEvent(new W.PointerEvent(type, { clientX: x, clientY: y, bubbles: true, button: 0, pointerId: 1 }));
+    ev(cv, 'pointerdown', r.left + 400, r.top + 300); ev(cv, 'pointermove', r.left + 460, r.top + 300); ev(cv, 'pointerup', r.left + 460, r.top + 300); await sleep(20);
+    assert(R.state.deck.canvas.image.x > x0 && S[1].frame.x === 1600, 'arrastrar mueve la imagen, no los marcos');
+    R.store.undo(); await sleep(20); eq(R.state.deck.canvas.image.x, x0, 'un paso de deshacer');
+    cv.querySelector('.cv-move').click();
+    cv.querySelector('[data-cv="image"]').click(); await sleep(10);
+    const menu = D.getElementById('cv-menu');
+    assert(menu && menu.querySelectorAll('[data-d]').length === Object.keys(G.CANVAS_DESIGNS).length + 2, 'menú: diseños, subir y quitar');
+    menu.querySelector('[data-d="none"]').click(); await sleep(20);
+    assert(!R.state.deck.canvas.image && !cv.querySelector('.cv-pic'), 'quitar la imagen');
+    // A design along its route: the first frame shows it whole, the rest on the stops.
+    C.applyCanvasDesign(G.canvasDesign('mountain'), { placeFrames: true }); await sleep(20);
+    const T = R.state.deck.slides, im = R.state.deck.canvas.image, f0 = T[0].frame;       // (undo gave a new deck)
+    assert(f0.x === im.x + im.w / 2 && f0.s * 1280 <= im.w && f0.s * 1280 > im.w * 0.9, 'la primera, todo el diseño');
+    assert(T[1].frame.s < 1 && T[1].frame.x !== T[2].frame.x, 'las demás, por el recorrido');
+    const ex = R.examples.buildExample('canvas');
+    assert(ex.canvas.image?.src && ex.slides.every(s => s.background === 'transparent'), 'la plantilla lleva su diseño');
+    D.querySelector('[data-action="canvas-mode"]').click(); await sleep(20);
+    assert(!C.canvasBackdrop(T[1]), 'desactivado, sin fondo del lienzo'); D.getElementById('canvas-view')?.remove();
+  });
 }

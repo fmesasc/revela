@@ -72,7 +72,8 @@ function animAttrs(b, slide) {
 // accessible name, or hidden from screen readers when marked decorative.
 // What a slide shows: the master's objects (unless hidden) under its own, and
 // no empty placeholders.
-export const blocksOf = (s, deck = state.deck) => [...masterBlocksFor(s, deck), ...s.blocks.map(b => styled(b, s, deck))].filter(b => !isEmptyPlaceholder(b));
+// (In canvas mode the canvas's picture is one layer that moves with the camera, not a copy per slide.)
+export const blocksOf = (s, deck = state.deck) => [...masterBlocksFor(s, deck), ...s.blocks.map(b => styled(b, s, deck))].filter(b => !isEmptyPlaceholder(b) && !(b.backdrop && canvasOn(deck)));
 
 function ariaAttrs(b) {
   if (b.decorative) return ' aria-hidden="true"';
@@ -427,9 +428,10 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  .reveal.rv-canvas .slides>section{display:block!important;visibility:visible!important;opacity:1!important;top:0!important;left:0!important;clip-path:none!important;transform-origin:0 0!important;
    transition:transform var(--rv-fly,1.4s) cubic-bezier(.65,0,.35,1)!important;pointer-events:none}
  .reveal.rv-canvas .slides>section.present{pointer-events:auto}
- html.rv-canvas-overview .reveal.rv-canvas .slides>section{pointer-events:auto;cursor:zoom-in}` : ''}
+ html.rv-canvas-overview .reveal.rv-canvas .slides>section{pointer-events:auto;cursor:zoom-in}
+ .reveal.rv-canvas .rv-world{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0;z-index:1;pointer-events:none;transition:transform var(--rv-fly,1.4s) cubic-bezier(.65,0,.35,1)}` : ''}
 </style></head><body>
-<div class="reveal${canvas ? ' rv-canvas' : ''}"><div class="slides">
+<div class="reveal${canvas ? ' rv-canvas' : ''}"><div class="slides">${canvas && deck.canvas.image?.src ? `<div class="rv-world"><img alt="" src="${deck.canvas.image.src}" style="max-width:none;max-height:none;margin:0;position:absolute;left:${deck.canvas.image.x}px;top:${deck.canvas.image.y}px;width:${deck.canvas.image.w}px;height:${deck.canvas.image.h}px"></div>` : ''}
 ${slides}
 </div>${footerText}${logoHTML}</div>
 <script src="${REVEAL}/dist/reveal.js"></script>

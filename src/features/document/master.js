@@ -17,6 +17,7 @@
 
 import { state, commit, amend, subscribe, currentSlide } from '../../core/store.js';
 import { uid } from '../../core/model.js';
+import { canvasBackdrop } from '../design/canvasmode.js';
 
 export const MAX_LEVELS = 5;
 export const DEFAULT_STYLES = {
@@ -80,6 +81,11 @@ export function toggleHideMaster(index = state.ui.slideIndex) {
 // What is drawn under a slide: the master's objects (unless the layout or the
 // slide hides them) and its layout's own objects (not its placeholders).
 export function masterBlocksFor(slide, deck = state.deck) {
+  // Canvas mode with a picture: the slide's part of it, under everything.
+  const bd = canvasBackdrop(slide, deck);
+  return bd ? [bd, ...masterOnly(slide, deck)] : masterOnly(slide, deck);
+}
+function masterOnly(slide, deck) {
   if (!slide || slide.hideMaster) return [];
   if (isMaster(slide, deck)) return [];
   const lay = isLayout(slide, deck) ? slide : layoutOf(slide, deck);

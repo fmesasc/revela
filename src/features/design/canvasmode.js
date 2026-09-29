@@ -77,7 +77,8 @@ export function canvasRuntime(frames, w, h) {
   // Smaller frames on top of bigger ones (a detail inside its frame stays visible).
   frames.map(function (f, i) { return [f.s || 1, i]; }).sort(function (a, b) { return b[0] - a[0] || a[1] - b[1]; })
     .forEach(function (p, k) { if (sections[p[1]]) sections[p[1]].style.setProperty('z-index', String(20 + k), 'important'); });
-  function place(view) { sections.forEach(function (s, i) { if (M[i]) s.style.transform = css(mul(view, M[i])); }); }
+  var world = document.querySelector('.reveal .rv-world');
+  function place(view) { sections.forEach(function (s, i) { if (M[i]) s.style.transform = css(mul(view, M[i])); }); if (world) world.style.transform = css(view); }
   function go(i) { overview = false; document.documentElement.classList.remove('rv-canvas-overview'); if (M[i]) place(inv(M[i])); }
   function all() { overview = true; document.documentElement.classList.add('rv-canvas-overview'); place(fitView(bounds(frames, w, h), w, h)); }
   Reveal.on('ready', function () { go(Reveal.getIndices().h); });
@@ -95,3 +96,52 @@ export function canvasRuntime(frames, w, h) {
 export const canvasRuntimeDeps = () => `var mul=${mul};var inv=${inv};var apply=${apply};var css=${css};\n${frameMatrix}\n${bounds}\n${fitView}\n${canvasRuntime}`;
 
 export const currentFrame = () => { const s = currentSlide(); return s ? frameOf(s, state.deck.slides.indexOf(s)) : null; };
+
+// ---- The canvas's own picture (a big image or design under the frames) ----------------
+// deck.canvas.image = { src, x, y, w, h } on the canvas. Each slide shows the
+// part under its frame (a backdrop object, behind everything, not editable);
+// presenting, the whole picture moves with the camera.
+export function canvasBackdrop(slide, deck = state.deck) {
+  const img = deck.canvas?.on && deck.canvas.image; if (!img?.src) return null;
+  const i = deck.slides.indexOf(slide); if (i < 0) return null;
+  const { w, h } = deck.size, f = frameOf(slide, i, deck.size), s = f.s || 1;
+  const [cx, cy] = apply(inv(frameMatrix(f, w, h)), img.x + img.w / 2, img.y + img.h / 2);
+  const bw = img.w / s, bh = img.h / s;
+  return { id: 'canvas-backdrop', type: 'image', src: img.src, fit: 'fill', x: Math.round((cx - bw / 2) * 10) / 10, y: Math.round((cy - bh / 2) * 10) / 10,
+    w: Math.round(bw * 10) / 10, h: Math.round(bh * 10) / 10, rotation: -(f.r || 0), decorative: true, animation: null, backdrop: true };
+}
+// Put a picture on the canvas, covering all the frames (with some margin).
+export function setCanvasImage(src, natural = null, { transparentSlides = true } = {}) {
+  commit(() => {
+    const d = state.deck; d.canvas ||= { on: true, bg: '#0d1117' };
+    if (!src) { delete d.canvas.image; return; }
+    const { w, h } = d.size, b = bounds(d.slides.map((s, i) => frameOf(s, i, d.size)), w, h);
+    const bw = (b.x1 - b.x0) * 1.15, bh = (b.y1 - b.y0) * 1.15, ar = natural ? natural.w / natural.h : bw / bh;
+    let iw = bw, ih = bw / ar; if (ih < bh) { ih = bh; iw = bh * ar; }             // cover
+    const cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
+    d.canvas.image = { src, x: Math.round(cx - iw / 2), y: Math.round(cy - ih / 2), w: Math.round(iw), h: Math.round(ih) };
+    if (transparentSlides) d.slides.forEach(s => { s.background = 'transparent'; });
+  });
+}
+export function moveCanvasImage(props, history = true) {
+  const img = state.deck.canvas?.image; if (!img) return;
+  commit(() => Object.assign(state.deck.canvas.image, props), { history });
+}
+
+// A ready-made design as the canvas's picture. With placeFrames, the first
+// slide shows the whole picture and the others go along its route of stops.
+export function placeOnDesign(d, design) {
+  const { w, h } = d.size, IW = design.w || 4800, IH = design.h || 2700;
+  d.canvas = { bg: '#0d1117', ...d.canvas, on: true, image: { src: design.src, x: -IW / 2, y: -IH / 2, w: IW, h: IH } };
+  const stops = design.stops.map(([x, y]) => [x - IW / 2, y - IH / 2]);
+  d.slides.forEach((s, i) => {
+    if (i === 0) s.frame = { x: 0, y: 0, s: +(Math.min(IW / w, IH / h) * 0.98).toFixed(3), r: 0 };
+    else { const [x, y] = stops[(i - 1) % stops.length], lap = Math.floor((i - 1) / stops.length); s.frame = { x: Math.round(x + lap * 140), y: Math.round(y - 260 + lap * 90), s: 0.55, r: 0 }; }
+    s.background = 'transparent';
+  });
+  return d;
+}
+export function applyCanvasDesign(design, { placeFrames = false } = {}) {
+  if (!placeFrames) { setCanvasImage(design.src, { w: design.w || 4800, h: design.h || 2700 }); return; }
+  commit(() => placeOnDesign(state.deck, design));
+}

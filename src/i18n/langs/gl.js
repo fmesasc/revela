@@ -1221,4 +1221,13 @@ export default {
   "Opcional: las diapositivas como marcos en un lienzo grande; al presentar, la cámara vuela de uno a otro (como Prezi)": "Opcional: as diapositivas como marcos nun lenzo grande; ao presentar, a cámara voa dun a outro (como Prezi)",
   "Ver y colocar los marcos en el lienzo": "Ver e colocar os marcos no lenzo",
   "Ver y colocar los marcos en el lienzo (modo lienzo)": "Ver e colocar os marcos no lenzo (modo lenzo)",
+  "Imagen del lienzo": "Imaxe do lenzo",
+  "Mover la imagen": "Mover a imaxe",
+  "Subir una imagen…": "Subir unha imaxe…",
+  "Quitar la imagen": "Quitar a imaxe",
+  "Montaña": "Montaña",
+  "Mapa del tesoro": "Mapa do tesouro",
+  "Espacio": "Espazo",
+  "Mapa mental": "Mapa mental",
+  "¿Colocar también las diapositivas a lo largo del recorrido del diseño? (La primera mostrará todo el lienzo.)": "Colocar tamén as diapositivas ao longo do percorrido do deseño? (A primeira amosará todo o lenzo.)",
 };

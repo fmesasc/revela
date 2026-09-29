@@ -1221,4 +1221,13 @@ export default {
   "Opcional: las diapositivas como marcos en un lienzo grande; al presentar, la cámara vuela de uno a otro (como Prezi)": "Aukerakoa: diapositibak marko gisa oihal handi batean; aurkeztean, kamerak batetik bestera hegan egiten du (Prezi bezala)",
   "Ver y colocar los marcos en el lienzo": "Ikusi eta kokatu markoak oihalean",
   "Ver y colocar los marcos en el lienzo (modo lienzo)": "Ikusi eta kokatu markoak oihalean (oihal modua)",
+  "Imagen del lienzo": "Oihalaren irudia",
+  "Mover la imagen": "Mugitu irudia",
+  "Subir una imagen…": "Igo irudi bat…",
+  "Quitar la imagen": "Kendu irudia",
+  "Montaña": "Mendia",
+  "Mapa del tesoro": "Altxor-mapa",
+  "Espacio": "Espazioa",
+  "Mapa mental": "Buru-mapa",
+  "¿Colocar también las diapositivas a lo largo del recorrido del diseño? (La primera mostrará todo el lienzo.)": "Diapositibak ere diseinuaren ibilbidean jarri? (Lehenengoak oihal osoa erakutsiko du.)",
 };

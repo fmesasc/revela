@@ -78,6 +78,7 @@ the origin of every requirement is traceable.
 - ✅ Emoji picker `GS`
 - ✅ Animated GIF playback `PP·OO`
 - ✅ Canvas mode (like Prezi), optional: slides as frames on one large canvas (position, size, turn); presenting flies the camera between them, a small frame inside a big one zooms in; canvas view to arrange frames; O shows the whole canvas; template included `—`
+- ✅ Canvas picture: a big image or a ready-made design (mountain, treasure map, space, mind map) under the whole canvas; each slide shows its part of it as background, and the slides can be laid along the design's route `—`
 - ✅ Free resources like Canva: animated GIFs, animated stickers, 3D models (animated library, Poly Haven CC0, Sketchfab search) and 3D motion (model animations, turning, camera movements) `—`
 - ✅ Video and GIF playback options: segments played one per click (from second X to second Y), start automatically, loop, mute; colour key (green screen) made transparent live; AI background removal for animated GIFs, frame by frame `PP`
 - ✅ Embedded web page (`<iframe>`); video links (YouTube, Vimeo) turned into their player; pages that refuse to be framed shown as a link card `—`

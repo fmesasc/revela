@@ -1221,4 +1221,13 @@ export default {
   "Opcional: las diapositivas como marcos en un lienzo grande; al presentar, la cámara vuela de uno a otro (como Prezi)": "اختياري: الشرائح كإطارات على لوحة كبيرة؛ عند العرض تنتقل الكاميرا من إطار إلى آخر (مثل Prezi)",
   "Ver y colocar los marcos en el lienzo": "عرض الإطارات ووضعها على اللوحة",
   "Ver y colocar los marcos en el lienzo (modo lienzo)": "عرض الإطارات ووضعها على اللوحة (وضع اللوحة)",
+  "Imagen del lienzo": "صورة اللوحة",
+  "Mover la imagen": "تحريك الصورة",
+  "Subir una imagen…": "رفع صورة…",
+  "Quitar la imagen": "إزالة الصورة",
+  "Montaña": "جبل",
+  "Mapa del tesoro": "خريطة الكنز",
+  "Espacio": "الفضاء",
+  "Mapa mental": "خريطة ذهنية",
+  "¿Colocar también las diapositivas a lo largo del recorrido del diseño? (La primera mostrará todo el lienzo.)": "هل تريد أيضًا وضع الشرائح على طول مسار التصميم؟ (ستعرض الأولى اللوحة كاملة.)",
 };
