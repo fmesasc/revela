@@ -27,13 +27,19 @@ standard, self-contained web page.
 - **Copy, cut and paste** (Ctrl+C/X/V, ribbon and context menu; long-press on
   phones), undo/redo, alignment guides and smart spacing, grouping, locking,
   reading order.
-- **Design:** theme colours and fonts, slide master, placeholders, template
-  gallery and design ideas.
+- **Design:** theme colours and fonts, brand kit (colours, fonts and logos),
+  resize with the content rearranged (A4, square, 9:16…), slide master,
+  placeholders, template gallery and design ideas.
+- **Objects:** gradient or sketched shapes, curved text, text wrapped round a
+  picture, pictures inside a phone, laptop or browser, countdown timer,
+  background sound that keeps playing across slides, and 3D characters that
+  walk along a path and wave without being cut off.
 - **Everything reveal.js offers:** vertical slides, video, web page, tiled
   and parallax backgrounds, every fragment style and theme, scroll view, zoom
   and search, step-by-step code with auto-scroll, fit text and Markdown import.
-- **Animations & transitions:** entrance, emphasis, exit, motion paths,
-  triggers, "after previous", Morph and 10 transitions.
+- **Animations & transitions:** entrance, emphasis, exit, hand-drawn motion
+  paths, several per object, "Draw" (ink traces itself), triggers, "after
+  previous", Morph and 10 transitions.
 - **Presenting:** speaker view, phone remote (QR), pen and highlighter, laser,
   live captions, rehearse timings and recording.
 - **Live polls with QR** and **audience Q&A**: people vote from their phones
@@ -46,7 +52,9 @@ standard, self-contained web page.
 - **Import & export:** PowerPoint (.pptx) and OpenDocument (.odp) both ways,
   self-contained HTML, PDF, handouts and notes, images, MP4/GIF video and
   Google Drive.
-- **Online free images and icons** (Openverse, Iconify).
+- **Free resources** in a side panel: pictures (with filters and transparent
+  background), icons, GIFs, videos, sounds and music, stickers and 3D models
+  (Openverse, Iconify, Wikimedia Commons, Poly Haven, NASA, Sketchfab).
 - **Local collaboration:** comments, version history, password protection and
   mark as final.
 - **Accessibility & languages:** checker, alt text, screen reader support;

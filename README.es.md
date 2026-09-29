@@ -27,13 +27,20 @@ reveal.js, de modo que el resultado es una página web estándar y autónoma.
 - **Copiar, cortar y pegar** (Ctrl+C/X/V, cinta y menú contextual; también
   con pulsación larga en el móvil), deshacer/rehacer, alineación con guías y
   espaciado inteligente, agrupar, bloquear, orden de lectura.
-- **Diseño:** paletas y fuentes del tema, patrón de diapositivas, marcadores
-  de posición, galería de plantillas e ideas de diseño.
+- **Diseño:** paletas y fuentes del tema, kit de marca (colores, fuentes y
+  logotipos), cambiar tamaño recolocando el contenido (A4, cuadrado, 9:16…),
+  patrón de diapositivas, marcadores de posición, galería de plantillas e
+  ideas de diseño.
+- **Objetos:** formas con degradado o a mano alzada, texto curvo, texto
+  alrededor de una imagen, imágenes dentro de un móvil, portátil o navegador,
+  cuenta atrás, sonido de fondo que sigue al cambiar de diapositiva, y
+  personajes 3D que andan por un recorrido y saludan sin cortarse.
 - **Todo lo de reveal.js:** diapositivas verticales, fondos de vídeo, web,
   mosaico y parallax, todos los efectos de fragmento y temas, vista de
   desplazamiento, zoom y búsqueda, código paso a paso con desplazamiento
   automático, ajustar texto al cuadro e importar Markdown.
-- **Animaciones y transiciones:** entrada, énfasis, salida, trayectorias,
+- **Animaciones y transiciones:** entrada, énfasis, salida, trayectorias
+  dibujadas a mano, varias por objeto, «Dibujar» (la tinta se traza sola),
   disparadores, «después de la anterior», Morph y 10 transiciones.
 - **Presentar:** vista del orador, mando desde el móvil (QR), lápiz y
   resaltador, láser, subtítulos en directo, ensayar intervalos y grabar.
@@ -47,7 +54,9 @@ reveal.js, de modo que el resultado es una página web estándar y autónoma.
 - **Importar y exportar:** PowerPoint (.pptx) y OpenDocument (.odp) en ambos
   sentidos, HTML autónomo, PDF, documentos y notas, imágenes, vídeo MP4/GIF y
   Google Drive.
-- **Imágenes libres e iconos en línea** (Openverse, Iconify).
+- **Recursos libres** en un panel lateral: imágenes (con filtros y fondo
+  transparente), iconos, GIF, vídeos, sonidos y música, stickers y modelos 3D
+  (Openverse, Iconify, Wikimedia Commons, Poly Haven, NASA, Sketchfab).
 - **Colaboración local:** comentarios, historial de versiones, proteger con
   contraseña y marcar como final.
 - **Accesibilidad e idiomas:** comprobador, texto alternativo, lector de
