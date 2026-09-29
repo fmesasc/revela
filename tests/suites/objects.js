@@ -496,6 +496,70 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/<div class="fragment rv-path" data-fragment-index="1" [^>]*--dx:480px[^>]*><span class="caption"/.test(R.io.buildHTML()), 'su pie de foto se mueve con él');
   });
 
+  await test('esqueleto automático: propone articulaciones, une la malla, crea animaciones y se ajusta a mano', async () => {
+    reset(); const W = frame.contentWindow;
+    const A = await W.eval("import('/src/features/content/autorig.js')");
+    // A model made of boxes (no skeleton): [x0, y0, z0, x1, y1, z1] each.
+    const model = boxes => {
+      const pos = [], idx = [];
+      for (const [a, b, c, d, e, f] of boxes) {
+        const o = pos.length / 3;
+        for (const [x, y, z] of [[a, b, c], [d, b, c], [d, e, c], [a, e, c], [a, b, f], [d, b, f], [d, e, f], [a, e, f]]) pos.push(x, y, z);
+        for (const t of [0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6, 0, 4, 5, 0, 5, 1, 1, 5, 6, 1, 6, 2, 2, 6, 7, 2, 7, 3, 3, 7, 4, 3, 4, 0]) idx.push(o + t);
+      }
+      const P = new W.Float32Array(pos), I = new W.Uint16Array(idx), bin = new W.Uint8Array(P.byteLength + I.byteLength);
+      bin.set(new W.Uint8Array(P.buffer)); bin.set(new W.Uint8Array(I.buffer), P.byteLength);
+      const json = { asset: { version: '2.0' }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{ mesh: 0 }], meshes: [{ primitives: [{ attributes: { POSITION: 0 }, indices: 1 }] }],
+        bufferViews: [{ buffer: 0, byteOffset: 0, byteLength: P.byteLength }, { buffer: 0, byteOffset: P.byteLength, byteLength: I.byteLength }],
+        accessors: [{ bufferView: 0, componentType: 5126, count: pos.length / 3, type: 'VEC3', min: [-9, -9, -9], max: [9, 9, 9] }, { bufferView: 1, componentType: 5123, count: idx.length, type: 'SCALAR' }] };
+      return A.writeGLB({ json, bin });
+    };
+    // A person 1.8 high: legs, body, arms hanging apart from it, neck and a bigger head.
+    const person = model([[0.05, 0, -0.08, 0.2, 0.85, 0.08], [-0.2, 0, -0.08, -0.05, 0.85, 0.08], [-0.22, 0.85, -0.1, 0.22, 1.45, 0.1],
+      [0.27, 0.8, -0.05, 0.37, 1.42, 0.05], [-0.37, 0.8, -0.05, -0.27, 1.42, 0.05], [-0.05, 1.45, -0.05, 0.05, 1.52, 0.05], [-0.14, 1.52, -0.12, 0.14, 1.8, 0.12]]);
+    const g = await A.readModel(person), shape = A.modelShape(g), J = A.proposeJoints(shape, 'person');
+    assert(Math.abs(J.hips[1] - 0.88) < 0.1, 'la cadera donde se separan las piernas (' + J.hips[1].toFixed(2) + ')');
+    assert(J.footL[1] < 0.12 && J.footL[0] > 0.05 && J.footR[0] < -0.05, 'los pies abajo, cada uno en su pierna');
+    assert(J.handL[0] > 0.25 && J.handR[0] < -0.25 && J.handL[1] < 1.0, 'las manos al final de los brazos');
+    assert(J.neck[1] > 1.4 && J.neck[1] < 1.56 && J.head[1] > J.neck[1], 'el cuello en lo estrecho, bajo la cabeza (' + J.neck[1].toFixed(2) + ')');
+    // Rigged: a skin, weights, and the animations; the legs move when walking.
+    const out = A.buildRig(g, shape, 'person', J), g2 = await A.readModel(out);
+    eq(g2.json.skins[0].joints.length, A.SKELETONS.person.length, 'un hueso por articulación');
+    eq(g2.json.animations.map(a => a.name).join(), A.CLIPS.person.map(([c]) => c).join(), 'animaciones creadas');
+    const prim = g2.json.meshes[g2.json.nodes.find(n => n.skin === 0).mesh].primitives[0];
+    assert(prim.attributes.JOINTS_0 != null && prim.attributes.WEIGHTS_0 != null, 'la malla unida a los huesos');
+    const w = A.bindWeights(shape.parts[0].pos, [{ a: J.thighL, b: J.shinL }, { a: J.chest, b: J.neck }], 1.8);
+    assert(Math.abs(w.weights[0] + w.weights[1] + w.weights[2] + w.weights[3] - 1) < 1e-4, 'los pesos suman 1');
+    const st = A.posedJoints('person', J, 'Walk', 0.25, 1.8), st2 = A.posedJoints('person', J, 'Walk', 0.75, 1.8);
+    assert(st.footL[2] > J.footL[2] + 0.1 && st.footR[2] < J.footR[2] - 0.05, 'andando: un pie adelante y el otro atrás');
+    assert(st2.footR[2] > J.footR[2] + 0.1, 'y luego al revés');
+    const wave = A.posedJoints('person', J, 'Wave', 0.3, 1.8); assert(wave.handR[1] > J.head[1], 'saludar: la mano derecha arriba');
+    // An animal: body, head ahead, tail behind, four legs.
+    const animal = model([[-0.15, 0.4, -0.5, 0.15, 0.7, 0.5], [-0.12, 0.55, 0.5, 0.12, 0.8, 0.8], [-0.03, 0.55, -0.9, 0.03, 0.62, -0.5],
+      ...[[0.08, 0.35], [-0.12, 0.35], [0.08, -0.4], [-0.12, -0.4]].map(([x, z]) => [x, 0, z, x + 0.05, 0.4, z + 0.08])]);
+    const ga = await A.readModel(animal), sa = A.modelShape(ga), Ja = A.proposeJoints(sa, 'animal');
+    assert(Math.abs(Ja.legFL[2] - 0.39) < 0.1 && Math.abs(Ja.legBL[2] + 0.36) < 0.1, 'patas delanteras y traseras donde tocan el suelo');
+    assert(Ja.head[2] > 0.5 && Ja.tail[2] < -0.3, 'la cabeza delante y la cola detrás');
+    const aw = A.posedJoints('animal', Ja, 'Walk', 0.25, 0.8);
+    assert((aw.pawFL[2] - Ja.pawFL[2]) * (aw.pawFR[2] - Ja.pawFR[2]) < 0, 'andando: las patas de un par van alternas');
+    // The dialog: drag a joint (the other side follows), apply, undo.
+    const blk = { id: 'rig1', type: 'model', src: person, x: 100, y: 100, w: 300, h: 300, rotation: 0, animation: null };
+    R.store.commit(() => { slide().blocks.push(blk); });
+    const Dl = await W.eval("import('/src/ui/dialogs/autorig.js')"), dlg = await Dl.openAutoRig(slide().blocks.at(-1));
+    const cv = D.querySelector('#rig-modal .rig-cv'), r = cv.getBoundingClientRect(), k = r.width / cv.width;
+    const J0 = structuredClone(dlg.joints), toS = p => { const s = cv.width, mn = shape.box.min, mx = shape.box.max, kk = Math.min((s - 60) / (mx[0] - mn[0]), (s - 60) / (mx[1] - mn[1]));
+      return [r.left + (s / 2 + kk * (p[0] - (mn[0] + mx[0]) / 2)) * k, r.top + (s / 2 - kk * (p[1] - (mn[1] + mx[1]) / 2)) * k]; };
+    const [hx, hy] = toS(J0.handL), pe = (type, x, y) => cv.dispatchEvent(new W.PointerEvent(type, { clientX: x, clientY: y, bubbles: true, pointerId: 1, button: 0 }));
+    pe('pointermove', hx, hy); pe('pointerdown', hx, hy); pe('pointermove', hx + 20, hy - 30); pe('pointerup', hx + 20, hy - 30);
+    assert(dlg.joints.handL[1] > J0.handL[1] + 0.05, 'arrastrar mueve la articulación');
+    assert(Math.abs(dlg.joints.handR[1] - dlg.joints.handL[1]) < 1e-6 && Math.abs(dlg.joints.handR[0] + dlg.joints.handL[0]) < 0.02, 'y la del otro lado, a la vez');
+    for (let i = 0; i < 40 && !dlg.built; i++) await sleep(50);
+    D.querySelector('#rig-modal .rig-ok').click(); await sleep(20);
+    const x = slide().blocks.at(-1);
+    assert(x.src !== person && x.clip === 'Idle' && x.walk?.clip === 'Walk', 'aplicado: con esqueleto, en reposo, y anda al moverse');
+    R.store.undo(); eq(slide().blocks.at(-1).src, person, 'se deshace');
+  });
+
   await test('recursos: stickers animados, GIF, 3D (biblioteca, Poly Haven empaquetado, Sketchfab)', async () => {
     reset(); const W = frame.contentWindow, realFetch = W.fetch;
     const Rz = await W.eval("import('/src/features/content/resources.js')");
@@ -519,7 +583,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       const fox = Rz.searchLibrary3D('zorro')[0]; assert(fox?.animated, 'biblioteca 3D con modelos animados');
       assert(Rz.searchLibrary3D('', { animated: true }).every(m => m.animated) && !Rz.searchLibrary3D('').some(m => /NC|EULA|SCEA|Stanford/.test(m.licenses.join())), 'sin licencias restrictivas');
       const m = await Rz.insertLibraryModel(fox);
-      assert(m.type === 'model' && /^data:model\/gltf-binary/.test(m.src) && m.clip === '*' && /CC/.test(m.caption), 'modelo animado guardado dentro, con su animación y licencia');
+      assert(m.type === 'model' && /^data:model\/gltf-binary/.test(m.src) && m.clip === 'Survey' && /CC/.test(m.caption), 'modelo animado guardado dentro, en reposo y con su licencia');
+      eq(JSON.stringify(slide().blocks.find(x => x.id === m.id).walk), '{"clip":"Walk","end":"","endOnce":true,"face":true,"look":true}', 'y anda cuando se mueve');
+      const knights = Rz.searchLibrary3D('caballero'); assert(knights[0]?.walk && knights[0].licenses.join() === 'CC0-1.0' && /^assets\//.test(knights[0].thumb), 'personajes nuevos (CC0, miniatura propia)');
       const ph = await Rz.searchPolyHaven('wood chair'); eq(ph.length, 1, 'Poly Haven por etiquetas');
       const p = await Rz.insertPolyHaven(ph[0]);
       const g = JSON.parse(atob(p.src.split(',')[1]));

@@ -4,7 +4,7 @@
 // works offline); Sketchfab ones are shown by Sketchfab's own viewer.
 // Only the search words reach each service (with consent, see stock.js).
 
-import { state, commit, currentSlide } from '../../core/store.js';
+import { state, commit, amend, currentSlide } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 import { searchImages, insertStockImage } from './stock.js';
 import { STICKERS, stickerURL, stickerThumb, STICKER_CREDIT } from './stickers.js';
@@ -38,7 +38,11 @@ export const searchLibrary3D = (q, { animated = false } = {}) =>
 export async function insertLibraryModel(m) {
   const blob = await download(m.src);
   const src = await toDataURL(new Blob([blob], { type: 'model/gltf-binary' }));
-  return addModelBlock({ src, caption: `${m.label} — ${m.credit}`, animated: m.animated, credit: m.credit });
+  const b = addModelBlock({ src, caption: `${m.label.replace(/ \(.*\)$/, '')} — ${m.credit}`, animated: m.animated, credit: m.credit, clip: m.rest });
+  // A character rests, and walks when it moves (give it a path, and it walks there).
+  if (m.walk) amend(() => { const x = currentSlide().blocks.find(y => y.id === b.id);
+    if (x) x.walk = { clip: m.walk, end: m.arrive || '', endOnce: true, face: true, look: true }; });
+  return b;
 }
 
 // ---- 3D: Poly Haven (CC0, 500+ models) -------------------------------------------------
@@ -94,6 +98,6 @@ export function insertSketchfab(m) {
 }
 
 // A 3D model object, ready to move (see model3d.js).
-function addModelBlock({ src, caption, credit, animated = false }) {
-  return place({ id: uid(), type: 'model', src, caption, credit, autoRotate: !animated, ...(animated && { clip: '*' }), ...centred(440, 440), rotation: 0, animation: null });
+function addModelBlock({ src, caption, credit, animated = false, clip = null }) {
+  return place({ id: uid(), type: 'model', src, caption, credit, autoRotate: !animated, ...(animated && { clip: clip || '*' }), ...centred(440, 440), rotation: 0, animation: null });
 }

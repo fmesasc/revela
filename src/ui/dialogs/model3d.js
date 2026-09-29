@@ -5,6 +5,7 @@
 
 import { commit, currentSlide, setSelection } from '../../core/store.js';
 import { startPathDraw } from '../canvas/pathdraw.js';
+import { openAutoRig } from './autorig.js';
 import { animatedBlocks } from '../../features/animation/transitions.js';
 import { MOTIONS_3D, modelAttrs, model3dRuntime } from '../../features/content/model3d.js';
 import { MODEL_VIEWER, loadScript } from '../../core/vendor.js';
@@ -25,7 +26,8 @@ export async function openModel3D(b) {
       <label class="fr-l">${t('Animación')} <select class="m3d-clip"><option value="">${t('Ninguna')}</option><option value="*">${t('La primera')}</option></select></label>
       <label class="fr-chk"><input type="checkbox" class="m3d-once"${o.clipOnce ? ' checked' : ''}> ${t('Solo una vez (no repetir)')}</label>
       <label class="fr-l">${t('Velocidad')} <input type="range" class="m3d-speed" min="0.25" max="3" step="0.25" value="${o.clipSpeed}"></label>
-      <p class="host-help m3d-noclips" hidden>${t('Este modelo no trae animaciones propias.')}</p>
+      <p class="host-help m3d-noclips" hidden>${t('Este modelo no trae animaciones propias. Si es una persona o un animal, Revela puede ponerle un esqueleto y animaciones (andar, correr, saludar…).')}</p>
+      <button type="button" class="mini2 m3d-rig"><i class="ms">accessibility_new</i> ${t('Esqueleto automático…')}</button>
     </fieldset>
     <fieldset class="m3d-walk"><legend>${t('Al moverse por la diapositiva')}</legend>
       <p class="host-help">${t('Mientras se mueve (su trayectoria u otra animación) hace una animación, por ejemplo andar, y al llegar otra.')}</p>
@@ -102,6 +104,8 @@ export async function openModel3D(b) {
     apply(); commit(() => setSelection(b.id), { history: false }); startPathDraw();
   });
   q('.m3d-ok').addEventListener('click', () => apply());
+  // A skeleton made here; then back to this dialog, with its new animations.
+  q('.m3d-rig').addEventListener('click', () => { close(); openAutoRig(b, { onDone: () => { const x = currentSlide().blocks.find(y => y.id === b.id); if (x) openModel3D(x); } }); });
   function apply() {
     const c = current();
     commit(() => {
