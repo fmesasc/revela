@@ -11,6 +11,7 @@ import * as format from '../../features/document/format.js';
 import * as shapeops from '../../features/document/shapeops.js';
 import { MOTIONS_3D, VIEWS_3D, BLEEDS_3D, modelBleed } from '../../features/content/model3d.js';
 import { isGif } from '../../features/live/media.js';
+import { CURVES } from '../../render/svg.js';
 import { styled } from '../../features/document/master.js';
 import { saveBlockFile as saveFile } from '../shell/files.js';
 import { openModel3D } from '../dialogs/model3d.js';
@@ -115,7 +116,8 @@ function groupsFor(b) {
       ['select', 'Columnas', [['1', '1'], ['2', '2'], ['3', '3']], String(b.columns || 1), v => format.setColumns(+v)]]],
     ['Cuadro', [btn('format_color_fill', 'Relleno y borde', () => openBoxStyle(b)), btn('format_size', 'Ajustar letra al cuadro', () => fitTextToBox(b)),
       btn('compress', 'Reducir si no cabe', () => set(b, x => { if (x.shrink) delete x.shrink; else x.shrink = true; }), !!b.shrink),
-      btn('format_paint', 'Copiar formato', () => format.copyStyle())]]);
+      btn('format_paint', 'Copiar formato', () => format.copyStyle())]],
+    ['Efectos de texto', [['select', 'Curvar texto', CURVES, String(b.curve || 0), v => set(b, x => { if (+v) x.curve = +v; else delete x.curve; })]]]);
   else if (b.type === 'table') G.push(
     ['Filas y columnas', [btn('table_rows', 'Añadir fila', () => blocks.tableAddRow()), btn('view_column', 'Añadir columna', () => blocks.tableAddCol()),
       btn('remove', 'Quitar fila', () => blocks.tableDelRow()), btn('remove', 'Quitar columna', () => blocks.tableDelCol())]],

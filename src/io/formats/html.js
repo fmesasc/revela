@@ -17,7 +17,7 @@ import { model3dRuntime } from '../runtime/model3d.js';
 import { timerRuntime } from '../runtime/timer.js';
 import { canvasRuntimeDeps } from '../runtime/canvas.js';
 import { canvasOn, frameOf } from '../../features/design/canvasmode.js';
-import { shadowCSS, borderCSS, levelCSS, textPadding, webCardHTML, mathTeX, mathCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, tableClass, tableVars, tableCSS } from '../../render/svg.js';
+import { shadowCSS, borderCSS, levelCSS, textPadding, webCardHTML, mathTeX, mathCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, curvedTextSVG, tableClass, tableVars, tableCSS } from '../../render/svg.js';
 import { googleFontLinks } from '../../features/design/fonts.js';
 import { t, speechLang } from '../../i18n/index.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle, slidePaths } from '../../features/document/captions.js';
@@ -192,7 +192,7 @@ function blockHTMLRaw(b, slide) {
       + `${b.fontWeight ? `font-weight:${b.fontWeight};` : ''}${b.fontStyle ? `font-style:${b.fontStyle};` : ''}`
       + `${b.columns > 1 ? `column-count:${b.columns};column-gap:32px;` : ''}`
       + `${b.wordart ? wordartCSS(b.wordart) : ''}">`
-      + `${b.html || ''}</div>`;
+      + `${b.curve ? curvedTextSVG(b) : b.html || ''}</div>`;
   if (b.type === 'model')
     return `<model-viewer${a}${modelAttrsHTML(b)} style="${box(bleedBox(b))}background:transparent${bleedBox(b) !== b ? ';pointer-events:none' : ''}"></model-viewer>`;
   // Video / GIF with segments, autoplay, loop, mute or a colour key: the media

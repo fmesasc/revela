@@ -646,6 +646,28 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/data-from="0" data-to="2"/.test(R.io.buildHTML()), 'hasta el final');
   });
 
+  await test('texto curvo: en arco, hacia abajo o en círculo; se edita como texto normal', async () => {
+    reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
+    const base = { id: 't1', type: 'text', html: '<b>Hola</b> <i>mundo</i> & <script>x</script>', fontSize: 40, x: 0, y: 0, w: 400, h: 200 };
+    const up = S.curvedTextSVG({ ...base, curve: 45 }), down = S.curvedTextSVG({ ...base, curve: -45 });
+    assert(/<textPath[^>]*>Hola mundo &amp; x<\/textPath>/.test(up), 'el texto, sin formato ni etiquetas, sobre el arco');
+    assert(/ A[\d.]+,[\d.]+ 0 0 1 /.test(up) && / A[\d.]+,[\d.]+ 0 0 0 /.test(down), 'arriba como un arco iris, abajo como una sonrisa');
+    assert(/font-weight="700"/.test(up), 'en negrita si lo está');
+    const circle = S.curvedTextSVG({ ...base, curve: 100 });
+    assert(/ A[\d.]+,[\d.]+ 0 1 1 /.test(circle) && /textLength=/.test(circle), 'en círculo: una vuelta completa, repartido');
+    // In the editor, from its tab: the arc shows, the text under it is what is edited.
+    const b = newText(); await sleep(20);
+    R.store.commit(() => { R.state.ui.selection = b.id; R.state.ui.multi = [b.id]; R.state.ui.activeTab = 'ctx'; }, { history: false }); await sleep(20);
+    const sel = [...D.querySelectorAll('#ribbon [data-page="ctx"] select')].find(x => [...x.options].some(o => o.value === '100'));
+    sel.value = '45'; sel.dispatchEvent(new W.Event('change')); await sleep(30);
+    eq(slide().blocks.find(x => x.id === b.id).curve, 45, 'curvar desde la pestaña del cuadro de texto');
+    const el = D.querySelector(`#stage .block[data-id="${b.id}"]`);
+    assert(el.classList.contains('curved') && el.querySelector('.curve-arc textPath') && W.getComputedStyle(el.querySelector('.rich')).visibility === 'hidden', 'se ve en arco');
+    assert(/<textPath/.test(R.io.buildHTML()), 'y así se presenta');
+    sel.value = '0'; sel.dispatchEvent(new W.Event('change')); await sleep(30);
+    assert(!slide().blocks.find(x => x.id === b.id).curve && !el.isConnected || !D.querySelector(`#stage .block[data-id="${b.id}"] .curve-arc`), 'recto otra vez');
+  });
+
   await test('modelos 3D: margen para moverse (la mano que saluda no se corta en el borde)', async () => {
     reset(); const W = frame.contentWindow, M = await W.eval("import('/src/features/content/model3d.js')");
     const base = { id: 'm1', type: 'model', src: 'data:model/gltf-binary;base64,AAAA', x: 100, y: 100, w: 200, h: 100, rotation: 0, animation: null };

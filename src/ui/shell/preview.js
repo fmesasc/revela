@@ -4,7 +4,7 @@ import { pollEditorHTML } from '../../features/live/poll.js';
 import { safeURL } from '../../features/document/sanitize.js';
 import { currentPalette } from '../../features/design/palettes.js';
 import { levelVars } from '../../features/document/master.js';
-import { shadowCSS, borderCSS, levelCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, tableClass, tableVars, tableCSS } from '../../render/svg.js';
+import { shadowCSS, borderCSS, levelCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, curvedTextSVG, tableClass, tableVars, tableCSS } from '../../render/svg.js';
 
 // Table look for thumbnails (same rules as the exports), injected once.
 function ensurePreviewCSS() {
@@ -32,7 +32,7 @@ export function blockPreview(b) {
       + `${b.fontWeight ? `font-weight:${b.fontWeight};` : ''}${b.fontStyle ? `font-style:${b.fontStyle};` : ''}`
       + `${b.columns > 1 ? `column-count:${b.columns};column-gap:32px;` : ''}`
       + `${b.wordart ? wordartCSS(b.wordart) : ''}">`
-      + `${b.html || ''}</div>`;
+      + `${b.curve ? curvedTextSVG(b) : b.html || ''}</div>`;
   } else if (b.type === 'image') {
     // (An element with its src set: the picture's megabytes aren't parsed as HTML.)
     const img = document.createElement('img'); img.src = b.src || ''; img.alt = '';

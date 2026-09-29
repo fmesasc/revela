@@ -1,3 +1,5 @@
+import { plainText } from '../core/text.js';
+
 // Image filter/opacity, shared by the canvas, thumbnails and export.
 export function imgFilter(b) {
   const a = b.adj || {};
@@ -467,3 +469,24 @@ export function timerSVG(b, left = b.seconds ?? 300) {
     + ` transform="rotate(-90 ${cx} ${cy})" style="stroke-dashoffset:calc(1 - var(--p,1))"/>${text(cx, cy, r * 0.5 / Math.max(1, (txt.length - 5) * 0.35 + 1))}`);
 }
 export const timerSig = b => [b.seconds, b.style, b.color, b.w, b.h].join('|');
+
+// Curved text (PowerPoint's "Transform", Canva's "Curve"): the words along an
+// arc. curve −100…100: up like a rainbow (>0) or down like a smile (<0); 100 a
+// whole circle. The arc is as long as the box is wide. Plain text (the
+// formatting of the box: its font, size, colour, weight).
+let curveN = 0;
+export function curvedTextSVG(b) {
+  const W = Math.max(1, +b.w || 400), H = Math.max(1, +b.h || 200), c = Math.max(-100, Math.min(100, +b.curve || 0)), fs = +b.fontSize || 40;
+  const txt = escA(plainText(b.html || '').replace(/\s+/g, ' ').trim());
+  const bold = /<(b|strong)\b/i.test(b.html || '') || +b.fontWeight >= 600 || b.fontWeight === 'bold';
+  const th = Math.min(1.98 * Math.PI, Math.max(0.05, Math.abs(c) / 100 * 2 * Math.PI)), up = c >= 0;
+  // (More than half a turn: the circle takes the box; the text squeezes in if it is longer than the arc.)
+  const R = th > Math.PI ? Math.max(0.92 * W / th, Math.min(W, H) / 2 - fs * 0.9) : 0.92 * W / th, len = R * th, long = txt.length * fs * 0.55 > len, fit = long || th > 1.9 * Math.PI;
+  const cy = up ? fs + R : H - fs * 0.3 - R, y = up ? cy - R * Math.cos(th / 2) : cy + R * Math.cos(th / 2), f = v => v.toFixed(1);
+  const d = `M${f(W / 2 - R * Math.sin(th / 2))},${f(y)} A${f(R)},${f(R)} 0 ${th > Math.PI ? 1 : 0} ${up ? 1 : 0} ${f(W / 2 + R * Math.sin(th / 2))},${f(y)}`;
+  const id = `ct${++curveN}`;
+  return `<svg class="curve-txt" viewBox="0 0 ${W} ${H}" width="100%" height="100%" style="display:block;overflow:visible" role="img" aria-label="${txt}">`
+    + `<defs><path id="${id}" d="${d}"/></defs><text font-size="${fs}" fill="currentColor"${bold ? ' font-weight="700"' : ''} text-anchor="middle">`
+    + `<textPath href="#${id}" startOffset="50%"${fit ? ` textLength="${f(len * 0.98)}" lengthAdjust="${long ? 'spacingAndGlyphs' : 'spacing'}"` : ''}>${txt}</textPath></text></svg>`;
+}
+export const CURVES = [['0', 'Recto'], ['20', 'Arco suave'], ['45', 'Arco'], ['75', 'Arco cerrado'], ['-20', 'Hacia abajo suave'], ['-45', 'Hacia abajo'], ['100', 'Círculo']];

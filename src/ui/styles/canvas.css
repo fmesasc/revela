@@ -100,3 +100,7 @@
 .pguide.h::before{top:-4px;bottom:-4px;left:0;right:0}
 .guide{position:absolute;z-index:7;pointer-events:none;background:#ff3b8b}
 .guide.v{top:0;bottom:0;width:1px}.guide.h{left:0;right:0;height:1px}
+/* Curved text: the arc shows; the text under it is what gets edited (double-click). */
+.block > .curve-arc{position:absolute;inset:0;pointer-events:none}
+.block.curved:not(.editing) > .rich{visibility:hidden}
+.block.curved.editing > .curve-arc{display:none}
