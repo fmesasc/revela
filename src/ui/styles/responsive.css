@@ -26,7 +26,8 @@
   /* Compact panels */
   #notes-bar{height:96px;padding:6px 10px}
   #statusbar .hint{display:none}
-  .modal{max-width:92vw}
+  /* (Some dialogs ask for a minimum width in their own style: never wider than the screen.) */
+  .modal{max-width:calc(100vw - 16px) !important;min-width:0 !important;box-sizing:border-box}
   .modal kbd{white-space:normal}
   .popover{max-width:92vw}
 }
