@@ -430,6 +430,8 @@ export default {
   "Dona": "Erroskila",
   "Dispersión": "Sakabanaketa",
   "Radar": "Radarra",
+  "Degradado": "Gradientea",
+  "Colores del degradado": "Gradientearen koloreak",
   "Animación avanzada": "Animazio aurreratua",
   "Tipo de gráfico": "Grafiko mota",
   "Etiquetas de datos": "Datu-etiketak",

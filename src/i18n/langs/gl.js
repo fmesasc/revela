@@ -418,6 +418,8 @@ export default {
   "Dona": "Rosca",
   "Dispersión": "Dispersión",
   "Radar": "Radar",
+  "Degradado": "Degradado",
+  "Colores del degradado": "Cores do degradado",
   "Animación avanzada": "Animación avanzada",
   "Tipo de gráfico": "Tipo de gráfico",
   "Etiquetas de datos": "Etiquetas de datos",

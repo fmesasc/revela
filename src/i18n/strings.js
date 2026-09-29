@@ -122,6 +122,8 @@ export const ROWS = [
   ['Alinear texto a la izquierda', 'Align text left', 'Aligner le texte à gauche', 'Text links ausrichten', 'Allinea il testo a sinistra', 'Alinhar texto à esquerda', 'Alinea el text a l\'esquerra'],
   ['Altura del logo (px)', 'Logo height (px)', 'Hauteur du logo (px)', 'Logohöhe (px)', 'Altezza del logo (px)', 'Altura do logótipo (px)', 'Alçada del logotip (px)'],
   ['Aplicar degradado', 'Apply gradient', 'Appliquer un dégradé', 'Farbverlauf anwenden', 'Applica sfumatura', 'Aplicar gradiente', 'Aplica un degradat'],
+  ['Degradado', 'Gradient', 'Dégradé', 'Farbverlauf', 'Sfumatura', 'Gradiente', 'Degradat'],
+  ['Colores del degradado', 'Gradient colours', 'Couleurs du dégradé', 'Verlaufsfarben', 'Colori della sfumatura', 'Cores do gradiente', 'Colors del degradat'],
   ['Aplicar este fondo a todas', 'Apply this background to all', 'Appliquer cet arrière-plan à toutes', 'Diesen Hintergrund auf alle anwenden', 'Applica questo sfondo a tutte', 'Aplicar este fundo a todos', 'Aplica aquest fons a totes'],
   ['Aumentar sangría', 'Increase indent', 'Augmenter le retrait', 'Einzug vergrößern', 'Aumenta rientro', 'Aumentar avanço', 'Augmenta el sagnat'],
   ['Borde de la forma', 'Shape outline', 'Contour de la forme', 'Formkontur', 'Contorno della forma', 'Contorno da forma', 'Contorn de la forma'],

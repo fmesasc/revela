@@ -430,6 +430,8 @@ export default {
   "Dona": "دائري مجوف",
   "Dispersión": "مبعثر",
   "Radar": "رادار",
+  "Degradado": "تدرّج",
+  "Colores del degradado": "ألوان التدرّج",
   "Animación avanzada": "حركة متقدمة",
   "Tipo de gráfico": "نوع المخطط",
   "Etiquetas de datos": "تسميات البيانات",

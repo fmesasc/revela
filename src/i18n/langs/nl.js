@@ -418,6 +418,8 @@ export default {
   "Dona": "Ring",
   "Dispersión": "Spreiding",
   "Radar": "Radar",
+  "Degradado": "Kleurverloop",
+  "Colores del degradado": "Kleuren van het verloop",
   "Animación avanzada": "Geavanceerde animatie",
   "Tipo de gráfico": "Grafiektype",
   "Etiquetas de datos": "Gegevenslabels",
