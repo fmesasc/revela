@@ -429,6 +429,8 @@ export const ROWS = [
   ['Dona', 'Doughnut', 'Anneau', 'Ring', 'Ciambella', 'Rosca', 'Rosco'],
   ['Dispersión', 'Scatter', 'Nuage de points', 'Punktdiagramm', 'Dispersione', 'Dispersão', 'Dispersió'],
   ['Radar', 'Radar', 'Radar', 'Netz', 'Radar', 'Radar', 'Radar'],
+  ['Texto alrededor', 'Wrap text', 'Habillage du texte', 'Text umbrechen', 'Testo intorno', 'Texto à volta', 'Text al voltant'],
+  ['Organizar texto', 'Text layout', 'Disposition du texte', 'Textanordnung', 'Disposizione testo', 'Disposição do texto', 'Disposició del text'],
   ['Dispositivo', 'Device', 'Appareil', 'Gerät', 'Dispositivo', 'Dispositivo', 'Dispositiu'],
   ['Dentro de un dispositivo', 'Inside a device', 'Dans un appareil', 'In einem Gerät', 'Dentro un dispositivo', 'Dentro de um dispositivo', 'Dins d\'un dispositiu'],
   ['Móvil', 'Phone', 'Téléphone', 'Handy', 'Telefono', 'Telemóvel', 'Mòbil'],

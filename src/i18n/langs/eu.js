@@ -430,6 +430,8 @@ export default {
   "Dona": "Erroskila",
   "Dispersión": "Sakabanaketa",
   "Radar": "Radarra",
+  "Texto alrededor": "Testua inguruan",
+  "Organizar texto": "Testuaren antolaketa",
   "Dispositivo": "Gailua",
   "Dentro de un dispositivo": "Gailu baten barruan",
   "Móvil": "Mugikorra",

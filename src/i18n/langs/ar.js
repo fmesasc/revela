@@ -430,6 +430,8 @@ export default {
   "Dona": "دائري مجوف",
   "Dispersión": "مبعثر",
   "Radar": "رادار",
+  "Texto alrededor": "التفاف النص",
+  "Organizar texto": "تنسيق النص",
   "Dispositivo": "الجهاز",
   "Dentro de un dispositivo": "داخل جهاز",
   "Móvil": "هاتف",

@@ -47,6 +47,8 @@ function replaceModel(b) {
   inp.click();
 }
 const clipsOf = b => modelClips(b.id);
+// Text round it (PowerPoint's "Wrap text: Square"): the text boxes it overlaps leave it a gap.
+const wrapBtn = b => btn('wrap_text', 'Texto alrededor', () => set(b, x => { if (x.wrap) delete x.wrap; else x.wrap = true; }), !!b.wrap);
 
 function groupsFor(b) {
   const G = [];
@@ -62,12 +64,13 @@ function groupsFor(b) {
       ...(b.fill2 ? [['color', 'gradient', 'Segundo color', b.fill2, v => set(b, x => { x.fill2 = v; })]] : []),
       ...(b.fill2 && b.gradType !== 'radial' ? [['num', 'Ángulo', b.gradAngle ?? 0, v => set(b, x => { x.gradAngle = ((+v || 0) % 360 + 360) % 360; }), 0, 359, 15]] : []),
       btn('draw', 'A mano alzada', () => set(b, x => { if (x.sketch) delete x.sketch; else x.sketch = true; }), !!b.sketch)]],
-    ['Forma', [['select', 'Cambiar forma', SHAPES, b.shape, v => set(b, x => { x.shape = v; })]]]);
+    ['Forma', [['select', 'Cambiar forma', SHAPES, b.shape, v => set(b, x => { x.shape = v; })], wrapBtn(b)]]);
   else if (b.type === 'image') G.push(
     ['Ajustar', [btn('tune', 'Ajustes', () => openImageAdjust(b)), btn('crop', 'Recortar', () => openImageCrop(b)), btn('auto_fix_high', 'Quitar fondo', () => removeBackground(b)),
       btn('fit_screen', 'Contener', () => set(b, x => { x.fit = 'contain'; }), (b.fit || 'contain') === 'contain'), btn('crop_free', 'Rellenar', () => set(b, x => { x.fit = 'cover'; }), b.fit === 'cover')]],
     // A mockup: the picture inside a phone, a laptop… (filling its screen).
     ['Dispositivo', [['select', 'Dentro de un dispositivo', DEVICES, b.device || '', v => set(b, x => { if (v) { x.device = v; x.fit = 'cover'; } else delete x.device; })]]],
+    ['Organizar texto', [wrapBtn(b)]],
     ['Al presentar', [btn('zoom_in', 'Ampliar al clic', () => set(b, x => { if (x.zoomable) delete x.zoomable; else x.zoomable = true; }), !!b.zoomable),
       ...(isGif(b) ? [btn('slow_motion_video', 'Reproducción', () => openMediaPlayback(b))] : [])]],
     ['Archivo', [btn('download', 'Descargar', () => saveFile(b)), btn('photo_camera', 'Guardar como imagen', () => openSaveAsPicture())]]);

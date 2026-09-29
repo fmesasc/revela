@@ -685,6 +685,29 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!last().device && !D.querySelector(`#stage .block[data-id="${last().id}"] img`).style.border, 'se quita');
   });
 
+  await test('texto alrededor de una imagen o forma (ajuste cuadrado)', async () => {
+    reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
+    const t = { id: 't', type: 'text', html: 'x', x: 100, y: 100, w: 600, h: 400, pad: [6, 6, 6, 6] };
+    const img = { id: 'i', type: 'image', wrap: true, x: 120, y: 200, w: 200, h: 100 };
+    const w = S.wrapFor(t, { blocks: [t, img] });
+    eq(JSON.stringify(w), '{"side":"l","w":228,"h":201,"top":87}', 'hueco a la izquierda, a su altura');
+    eq(S.wrapFor(t, { blocks: [t, { ...img, x: 520 }] }).side, 'r', 'a la derecha si está a la derecha');
+    eq(S.wrapFor(t, { blocks: [t, { ...img, wrap: false }] }), null, 'sin «texto alrededor», nada');
+    eq(S.wrapFor(t, { blocks: [t, { ...img, x: 800 }] }), null, 'si no se tocan, nada');
+    eq(S.wrapFor({ ...t, vAlign: 'middle' }, { blocks: [t, img] }), null, 'solo con el texto arriba');
+    // The image's tab, the canvas and the presentation.
+    R.store.commit(() => { slide().blocks = [{ ...t, html: 'Texto largo '.repeat(40), fontSize: 24, rotation: 0, animation: null }, { ...img, wrap: false, src: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=', rotation: 0, animation: null }];
+      R.state.ui.selection = 'i'; R.state.ui.multi = ['i']; R.state.ui.activeTab = 'ctx'; }); await sleep(30);
+    [...D.querySelectorAll('#ribbon [data-page="ctx"] button')].find(x => x.querySelector('span')?.textContent === 'Texto alrededor').click(); await sleep(30);
+    assert(slide().blocks.find(x => x.id === 'i').wrap, 'desde la pestaña Imagen');
+    const rich = D.querySelector('#stage .block[data-id="t"] .rich');
+    assert(rich.dataset.wrap === 'l' && rich.style.getPropertyValue('--ww') === '228px', 'el texto del lienzo le deja hueco');
+    const html = R.io.buildHTML();
+    assert(/data-wrap="l" style="[^"]*--ww:228px;--wh:201px;--wt:87px;/.test(html) && /\[data-wrap\]::before\{content:""/.test(html), 'y en la presentación');
+    R.store.commit(() => { slide().blocks.find(x => x.id === 'i').x = 900; }); await sleep(30);
+    assert(!D.querySelector('#stage .block[data-id="t"] .rich').dataset.wrap, 'al apartarla, el texto vuelve a ocupar todo');
+  });
+
   await test('modelos 3D: margen para moverse (la mano que saluda no se corta en el borde)', async () => {
     reset(); const W = frame.contentWindow, M = await W.eval("import('/src/features/content/model3d.js')");
     const base = { id: 'm1', type: 'model', src: 'data:model/gltf-binary;base64,AAAA', x: 100, y: 100, w: 200, h: 100, rotation: 0, animation: null };

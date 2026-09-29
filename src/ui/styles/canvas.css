@@ -104,3 +104,6 @@
 .block > .curve-arc{position:absolute;inset:0;pointer-events:none}
 .block.curved:not(.editing) > .rich{visibility:hidden}
 .block.curved.editing > .curve-arc{display:none}
+/* Text round a picture marked "Texto alrededor" (the same rule as the presentation's WRAP_CSS). */
+.rich[data-wrap]::before{content:"";height:var(--wh);width:var(--ww);shape-outside:inset(var(--wt) 0 0 0)}
+.rich[data-wrap=l]::before{float:left}.rich[data-wrap=r]::before{float:right}

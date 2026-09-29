@@ -418,6 +418,8 @@ export default {
   "Dona": "Ring",
   "Dispersión": "Spreiding",
   "Radar": "Radar",
+  "Texto alrededor": "Tekst eromheen",
+  "Organizar texto": "Tekstindeling",
   "Dispositivo": "Apparaat",
   "Dentro de un dispositivo": "In een apparaat",
   "Móvil": "Telefoon",

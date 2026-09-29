@@ -5,7 +5,7 @@
 import { shortSig } from '../../core/text.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
 import { state, commit, currentSlide, selectedBlock, isSelected, setSelection } from '../../core/store.js';
-import { shadowCSS, levelCSS, shapeSVG, shapeSig, chartSVG, chartSig, iconSVG, iconSig, inkSVG, timerSVG, curvedTextSVG, timerSig, inkSig, tableClass, tableVars } from '../../render/svg.js';
+import { shadowCSS, levelCSS, shapeSVG, shapeSig, chartSVG, chartSig, iconSVG, iconSig, inkSVG, timerSVG, curvedTextSVG, wrapFor, timerSig, inkSig, tableClass, tableVars } from '../../render/svg.js';
 import { figuresMap, captionLine } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
 import { t } from '../../i18n/index.js';
@@ -219,6 +219,13 @@ function drawLogo() {
 
 // Update an existing block element from the model without recreating it, so
 // interaction (editing, dragging) is never interrupted.
+// Text wrapping round a picture marked "text around": a gap in its lines (see wrapFor).
+function paintWrap(el, b) {
+  const rich = el.querySelector(':scope > .rich'); if (!rich) return;
+  const w = wrapFor(b, currentSlide());
+  if (w) { rich.dataset.wrap = w.side; rich.style.setProperty('--ww', w.w + 'px'); rich.style.setProperty('--wh', w.h + 'px'); rich.style.setProperty('--wt', w.top + 'px'); }
+  else if (rich.dataset.wrap) delete rich.dataset.wrap;
+}
 // Curved text: the words along an arc over the box (the text itself, hidden, is what is edited).
 function paintCurve(el, b) {
   let arc = el.querySelector(':scope > .curve-arc');
@@ -263,7 +270,7 @@ function reconcile(b) {
         if (hasInlineMath(b.html)) renderInlineMath(rich);
       }
     }
-    paintCurve(el, b);
+    paintCurve(el, b); paintWrap(el, b);
   } else if (b.type === 'image') {
     const pv = el.querySelector(':scope > .media-player'); if (pv) applyImgStyle(pv, b);
     const img = el.querySelector('img'); if (img) { if (img.getAttribute('src') !== b.src) img.src = b.src; applyImgStyle(img, b); }
@@ -350,7 +357,7 @@ function blockEl(b) {
   }
 
   el.addEventListener('pointerdown', ev => startDrag(ev, b, el));
-  if (b.type === 'text') { setupText(b, el); paintCurve(el, b); }
+  if (b.type === 'text') { setupText(b, el); paintCurve(el, b); paintWrap(el, b); }
   else if (b.type === 'model') setupModel(el);
   else if (b.type === 'embed') setupEmbed(el);
   else if (b.type === 'table') setupTable(el, b);

@@ -511,3 +511,26 @@ export function deviceStyle(b) {
   }
 }
 export const deviceCSS = b => { const s = deviceStyle(b); return s ? Object.entries(s).map(([k, v]) => `${kebab(k)}:${v};`).join('') : ''; };
+
+// Text wrapping round a picture (PowerPoint/Word's "Square" wrap): the first
+// picture or shape marked `wrap` that overlaps a text box leaves a gap in its
+// lines — an empty float (::before) as tall as the picture's bottom, with
+// shape-outside starting at its top, on the picture's side. Offsets are in the
+// text's own box, inside its padding. Only when the text starts at the top.
+export function wrapFor(t, slide) {
+  if (t.type !== 'text' || (t.vAlign && t.vAlign !== 'top') || t.rotation || t.curve) return null;
+  const [pt, , , pl] = Array.isArray(t.pad) ? t.pad : [6, 6, 6, 6], m = 14;
+  for (const o of slide?.blocks || []) {
+    if (!o.wrap || o === t || o.id === t.id) continue;
+    if (o.x >= t.x + t.w || o.x + o.w <= t.x || o.y >= t.y + t.h || o.y + o.h <= t.y) continue;
+    const ox = o.x - t.x - pl, oy = o.y - t.y - pt, left = o.x + o.w / 2 < t.x + t.w / 2;
+    const w = left ? ox + o.w + m : t.w - pl - ox + m, h = oy + o.h + m / 2;
+    if (w <= 0 || h <= 0) continue;
+    return { side: left ? 'l' : 'r', w: Math.round(Math.min(w, t.w)), h: Math.round(h), top: Math.max(0, Math.round(oy - m / 2)) };
+  }
+  return null;
+}
+export const WRAP_CSS = '[data-wrap]::before{content:"";height:var(--wh);width:var(--ww);shape-outside:inset(var(--wt) 0 0 0)}'
+  + '[data-wrap=l]::before{float:left}[data-wrap=r]::before{float:right}';
+export const wrapAttrs = w => (w ? ` data-wrap="${w.side}"` : '');
+export const wrapVars = w => (w ? `--ww:${w.w}px;--wh:${w.h}px;--wt:${w.top}px;` : '');

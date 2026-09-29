@@ -418,6 +418,8 @@ export default {
   "Dona": "Rosca",
   "Dispersión": "Dispersión",
   "Radar": "Radar",
+  "Texto alrededor": "Texto arredor",
+  "Organizar texto": "Disposición do texto",
   "Dispositivo": "Dispositivo",
   "Dentro de un dispositivo": "Dentro dun dispositivo",
   "Móvil": "Móbil",
