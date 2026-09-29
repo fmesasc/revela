@@ -429,3 +429,8 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .bk-cols input{width:100%;height:30px}
 .bk-logos{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}.bk-logos span{position:relative}.bk-logos img{height:40px;max-width:120px;object-fit:contain;border:1px solid var(--line2);border-radius:6px;padding:2px}
 .bk-logos button{position:absolute;top:-6px;right:-6px;border:0;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer}
+/* Resize dialog: each size with a little outline of its shape. */
+.rs-list{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}
+.rs-opt{display:flex;align-items:center;gap:8px;border:1px solid var(--line2);border-radius:8px;padding:8px;cursor:pointer;font-size:13px}
+.rs-opt:has(input:checked){border-color:var(--accent);background:var(--accent-bg)}.rs-opt input{position:absolute;opacity:0;pointer-events:none}
+.rs-shape{display:block;border:2px solid var(--accent);border-radius:3px;flex:0 0 auto}.rs-opt span{display:flex;flex-direction:column}.rs-opt small{color:var(--txt2)}

@@ -48,6 +48,7 @@ import { openPollEditor } from '../dialogs/poll.js';
 import { openCodeEditor } from '../dialogs/code.js';
 import { openBackgroundDialog } from '../dialogs/background.js';
 import { openBrandKit } from '../dialogs/brandkit.js';
+import { openResize } from '../dialogs/resize.js';
 import { openSettings } from '../dialogs/settings.js';
 import { openAppearance } from '../shell/appearance.js';
 import { openDashboardDialog } from '../dialogs/data.js';
@@ -156,6 +157,7 @@ export const ACTIONS = {
   'slide-vertical': () => slides.toggleVertical(),
   'bg-advanced': () => openBackgroundDialog(),
   'brand-kit': () => openBrandKit(),
+  'resize-deck': () => openResize(),
   'deck-settings': () => openSettings(),
   'appearance': () => openAppearance(),
   'slide-delete': () => slides.deleteSlide(),

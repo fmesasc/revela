@@ -68,6 +68,30 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     K.listKits().forEach(k => K.deleteKit(k.id)); eq(K.kitColours().length, 0, 'borrados, ya no se ofrecen sus colores');
   });
 
+  await test('cambiar tamaño: A4, cuadrado, vertical… recolocando y escalando el contenido', async () => {
+    reset(); const Z = await frame.contentWindow.eval("import('/src/features/design/resize.js')");
+    const deck = R.examples.buildExample('report'); R.store.replaceDeck(deck); await sleep(20);
+    const inside = () => R.state.deck.slides.every(s => s.blocks.filter(b => b.type !== 'connector').every(b => b.x >= -1 && b.y >= -1 && b.x + b.w <= R.state.deck.size.w + 1 && b.y + b.h <= R.state.deck.size.h + 1));
+    const cifras = () => R.state.deck.slides[1].blocks.filter(b => /font-size:\d+px/.test(b.html || ''));
+    const before = cifras().map(b => b.y);
+    assert(new Set(before).size === 1, '(las cifras van en fila)');
+    Z.resizeDeck(720, 1280); await sleep(20);
+    eq(JSON.stringify(R.state.deck.size), '{"w":720,"h":1280}', 'tamaño vertical 9:16');
+    assert(inside(), 'todo sigue dentro de la diapositiva');
+    const after = cifras(); assert(after[0].y < after[1].y && after[1].y < after[2].y && after.every(b => Math.abs(b.x + b.w / 2 - 360) < 2), 'lo que iba en fila, apilado y centrado');
+    R.store.undo(); await sleep(20);
+    assert(R.state.deck.size.w === 1280 && cifras().map(b => b.y).join() === before.join(), 'un solo paso de deshacer');
+    Z.resizeDeck(1080, 1080); await sleep(20); assert(inside(), 'cuadrada: dentro');
+    const t = R.state.deck.slides[0].blocks.find(b => b.ph === 'title'); assert(t && t.w > 700, 'el título, al ancho nuevo');
+    R.store.undo(); await sleep(20);
+    const x0 = R.state.deck.slides[1].blocks[0].x; Z.resizeDeck(960, 720, { fit: false }); await sleep(20);
+    eq(R.state.deck.slides[1].blocks[0].x, x0, 'sin recolocar: solo el tamaño');
+    // The dialog.
+    R.store.undo(); await sleep(10); D.querySelector('[data-action="resize-deck"]').click(); await sleep(20);
+    const m = D.getElementById('rs-modal'); m.querySelector('input[value="905x1280"]').checked = true; m.querySelector('.rs-ok').click(); await sleep(20);
+    eq(JSON.stringify(R.state.deck.size), '{"w":905,"h":1280}', 'desde el diálogo: A4 vertical'); assert(inside(), 'dentro');
+  });
+
   await test('nueva diapositiva ▾: con el diseño que se elija', async () => {
     reset();
     D.querySelector('[data-action="slide-add"]').click(); await sleep(10);

@@ -22,6 +22,7 @@ import * as protect from '../../features/collab/protect.js';
 import { openAppearance, applyAppearance } from '../shell/appearance.js';
 import * as palettes from '../../features/design/palettes.js';
 import { kitColours } from '../../features/design/brandkit.js';
+import { resizeDeck } from '../../features/design/resize.js';
 import { setDrawTool, drawOpts } from '../shell/draw.js';
 import { FONTS, ensureDeckFonts } from '../../features/design/fonts.js';
 import { t } from '../../i18n/index.js';
@@ -119,8 +120,7 @@ export function initRibbon() {
     const dist = e.target.closest('[data-distribute]');
     if (dist) { blocks.distributeSelected(dist.dataset.distribute); return; }
     const ratio = e.target.closest('[data-ratio]');
-    if (ratio) { const [rw, rh] = ratio.dataset.ratio.split('x').map(Number);
-      commit(() => { state.deck.size = { w: rw, h: rh }; }); return; }
+    if (ratio) { const [rw, rh] = ratio.dataset.ratio.split('x').map(Number); resizeDeck(rw, rh); requestAnimationFrame(fitZoom); return; }
     const fd = e.target.closest('[data-fontdelta]');
     if (fd) { format.fontSize(+fd.dataset.fontdelta); return; }
     const cs = e.target.closest('[data-case]');
