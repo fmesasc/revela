@@ -430,6 +430,7 @@ export default {
   "Dona": "دائري مجوف",
   "Dispersión": "مبعثر",
   "Radar": "رادار",
+  "Los archivos de Keynote (.key) usan un formato propio de Apple que no se puede leer aquí. En Keynote: Archivo ▸ Exportar a ▸ PowerPoint, y abre aquí el .pptx (conserva textos, imágenes, formas y diapositivas).": "تستخدم ملفات Keynote ‏(.key) تنسيقًا خاصًا بشركة Apple لا يمكن قراءته هنا. في Keynote: ملف ▸ تصدير إلى ▸ PowerPoint، ثم افتح ملف .pptx هنا (يحتفظ بالنصوص والصور والأشكال والشرائح).",
   "Texto alrededor": "التفاف النص",
   "Organizar texto": "تنسيق النص",
   "Dispositivo": "الجهاز",

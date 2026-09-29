@@ -418,6 +418,7 @@ export default {
   "Dona": "Rosca",
   "Dispersión": "Dispersión",
   "Radar": "Radar",
+  "Los archivos de Keynote (.key) usan un formato propio de Apple que no se puede leer aquí. En Keynote: Archivo ▸ Exportar a ▸ PowerPoint, y abre aquí el .pptx (conserva textos, imágenes, formas y diapositivas).": "Os ficheiros de Keynote (.key) usan un formato propio de Apple que non se pode ler aquí. En Keynote: Ficheiro ▸ Exportar a ▸ PowerPoint, e abre aquí o .pptx (conserva textos, imaxes, formas e diapositivas).",
   "Texto alrededor": "Texto arredor",
   "Organizar texto": "Disposición do texto",
   "Dispositivo": "Dispositivo",

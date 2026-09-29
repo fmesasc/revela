@@ -430,6 +430,7 @@ export default {
   "Dona": "Erroskila",
   "Dispersión": "Sakabanaketa",
   "Radar": "Radarra",
+  "Los archivos de Keynote (.key) usan un formato propio de Apple que no se puede leer aquí. En Keynote: Archivo ▸ Exportar a ▸ PowerPoint, y abre aquí el .pptx (conserva textos, imágenes, formas y diapositivas).": "Keynote fitxategiek (.key) Appleren formatu propioa erabiltzen dute, eta hemen ezin da irakurri. Keynote-n: Fitxategia ▸ Esportatu ▸ PowerPoint, eta ireki hemen .pptx fitxategia (testuak, irudiak, formak eta diapositibak gordetzen ditu).",
   "Texto alrededor": "Testua inguruan",
   "Organizar texto": "Testuaren antolaketa",
   "Dispositivo": "Gailua",

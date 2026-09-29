@@ -116,7 +116,7 @@ export const ACTIONS = {
   'insert-stock': () => openElements('images'),
   'insert-online-icon': () => openElements('icons'),
   'trans-apply-all': () => trans.applyTransitionToAll(),
-  'import-pptx': () => readFile('.pptx,.odp', openPresentation, 'file'),
+  'import-pptx': () => readFile('.pptx,.odp,.key', openPresentation, 'file'),
   'export-odp': async () => {
     try {
       const blob = await odp.buildODP();

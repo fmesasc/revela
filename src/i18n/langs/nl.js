@@ -418,6 +418,7 @@ export default {
   "Dona": "Ring",
   "Dispersión": "Spreiding",
   "Radar": "Radar",
+  "Los archivos de Keynote (.key) usan un formato propio de Apple que no se puede leer aquí. En Keynote: Archivo ▸ Exportar a ▸ PowerPoint, y abre aquí el .pptx (conserva textos, imágenes, formas y diapositivas).": "Keynote-bestanden (.key) gebruiken een eigen Apple-formaat dat hier niet te lezen is. In Keynote: Archief ▸ Exporteer naar ▸ PowerPoint, en open hier de .pptx (tekst, afbeeldingen, vormen en dia's blijven behouden).",
   "Texto alrededor": "Tekst eromheen",
   "Organizar texto": "Tekstindeling",
   "Dispositivo": "Apparaat",

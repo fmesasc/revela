@@ -40,8 +40,15 @@ export async function openProject(txt) {
   if (!obj || !Array.isArray(obj.slides)) { alertDialog(t('Proyecto no válido.')); return false; }
   replaceDeck(obj); return true;
 }
+// Keynote's own format (.key) is Apple's, undocumented (compressed protobuf):
+// it can't be read here. Keynote itself exports it to PowerPoint.
+const isKeynote = f => /\.key$/i.test(f.name);
+function keynoteHelp() {
+  alertDialog(t('Los archivos de Keynote (.key) usan un formato propio de Apple que no se puede leer aquí. En Keynote: Archivo ▸ Exportar a ▸ PowerPoint, y abre aquí el .pptx (conserva textos, imágenes, formas y diapositivas).'));
+}
 // A PowerPoint or LibreOffice presentation.
 export async function openPresentation(file) {
+  if (isKeynote(file)) { keynoteHelp(); return false; }
   try { replaceDeck(/\.odp$/i.test(file.name) ? await importODP(file) : await importPPTX(file)); return true; }
   catch (e) { alertDialog(t('No se pudo importar la presentación: ') + e.message); return false; }
 }
@@ -58,7 +65,7 @@ export function insertMarkdown(md) {
 // What a file is, by its type or name.
 function kindOf(f) {
   const n = f.name.toLowerCase(), ty = f.type;
-  if (/\.(pptx|odp)$/.test(n)) return 'presentation';
+  if (/\.(pptx|odp|key)$/.test(n)) return 'presentation';
   if (/\.json$/.test(n)) return 'project';
   if (/\.(md|markdown)$/.test(n)) return 'markdown';
   if (/\.(glb|gltf)$/.test(n)) return 'model';
@@ -96,6 +103,7 @@ export async function insertFiles(files, at = null) {
 export async function dropFiles(files, at = null) {
   const list = [...files], doc = list.find(f => ['presentation', 'project'].includes(kindOf(f)));
   if (doc) {
+    if (isKeynote(doc)) { keynoteHelp(); return 0; }
     if (!(await mayReplace())) return 0;
     return (kindOf(doc) === 'project' ? await openProject(await doc.text()) : await openPresentation(doc)) ? 1 : 0;
   }
