@@ -17,7 +17,7 @@ import { model3dRuntime } from '../runtime/model3d.js';
 import { timerRuntime } from '../runtime/timer.js';
 import { canvasRuntimeDeps } from '../runtime/canvas.js';
 import { canvasOn, frameOf } from '../../features/design/canvasmode.js';
-import { shadowCSS, borderCSS, levelCSS, textPadding, webCardHTML, mathTeX, mathCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, curvedTextSVG, deviceCSS, wrapFor, wrapAttrs, wrapVars, WRAP_CSS, tableClass, tableVars, tableCSS } from '../../render/svg.js';
+import { shadowCSS, borderCSS, levelCSS, textPadding, webCardHTML, mathTeX, mathCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, curvedTextSVG, deviceCSS, shapeTextHTML, hasShapeText, wrapFor, wrapAttrs, wrapVars, WRAP_CSS, tableClass, tableVars, tableCSS } from '../../render/svg.js';
 import { googleFontLinks } from '../../features/design/fonts.js';
 import { t, speechLang } from '../../i18n/index.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle, slidePaths } from '../../features/document/captions.js';
@@ -235,7 +235,7 @@ function blockHTMLRaw(b, slide) {
       + `sandbox="${embedSandbox(b.src)}" `
       + `style="${box(b)}border:0;background:#fff"></iframe>`;
   if (b.type === 'shape')
-    return `<div${a} style="${box(b)}">${shapeSVG(b)}</div>`;
+    return `<div${a} style="${box(b)}">${shapeSVG(b)}${hasShapeText(b) && b.html ? shapeTextHTML(b) : ''}</div>`;
   if (b.type === 'chart')
     return `<div${a}${b.dataUrl ? ` class="rv-live-chart" data-chart="${esc(JSON.stringify({ ...b, data: undefined, series: undefined }))}"` : ''} style="${box(b)}">${chartSVG(b)}</div>`;
   if (b.type === 'icon')

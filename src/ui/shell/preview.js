@@ -4,7 +4,7 @@ import { pollEditorHTML } from '../../features/live/poll.js';
 import { safeURL } from '../../features/document/sanitize.js';
 import { currentPalette } from '../../features/design/palettes.js';
 import { levelVars } from '../../features/document/master.js';
-import { shadowCSS, borderCSS, levelCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, curvedTextSVG, deviceCSS, tableClass, tableVars, tableCSS } from '../../render/svg.js';
+import { shadowCSS, borderCSS, levelCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, curvedTextSVG, shapeTextHTML, hasShapeText, deviceCSS, tableClass, tableVars, tableCSS } from '../../render/svg.js';
 
 // Table look for thumbnails (same rules as the exports), injected once.
 function ensurePreviewCSS() {
@@ -49,7 +49,7 @@ export function blockPreview(b) {
   } else if (b.type === 'embed') {
     el.innerHTML = `<div style="width:100%;height:100%;background:#fff;display:grid;place-items:center;font-size:64px">🌐</div>`;
   } else if (b.type === 'shape') {
-    el.innerHTML = shapeSVG(b);
+    el.innerHTML = shapeSVG(b) + (hasShapeText(b) && b.html ? shapeTextHTML(b) : '');
   } else if (b.type === 'chart') {
     el.innerHTML = chartSVG(b);
   } else if (b.type === 'icon') {

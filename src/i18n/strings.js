@@ -429,6 +429,7 @@ export const ROWS = [
   ['Dona', 'Doughnut', 'Anneau', 'Ring', 'Ciambella', 'Rosca', 'Rosco'],
   ['Dispersión', 'Scatter', 'Nuage de points', 'Punktdiagramm', 'Dispersione', 'Dispersão', 'Dispersió'],
   ['Radar', 'Radar', 'Radar', 'Netz', 'Radar', 'Radar', 'Radar'],
+  ['Escribir texto', 'Add text', 'Ajouter du texte', 'Text eingeben', 'Scrivi testo', 'Escrever texto', 'Escriu text'],
   ['Más<br>formas', 'More<br>shapes', 'Plus de<br>formes', 'Weitere<br>Formen', 'Altre<br>forme', 'Mais<br>formas', 'Més<br>formes'],
   ['Todas las formas: básicas, flechas, estrellas, bocadillos, diagrama de flujo y matemáticas', 'All shapes: basic, arrows, stars, callouts, flowchart and maths', 'Toutes les formes : de base, flèches, étoiles, bulles, organigramme et maths', 'Alle Formen: Standard, Pfeile, Sterne, Legenden, Flussdiagramm und Mathematik', 'Tutte le forme: base, frecce, stelle, fumetti, diagramma di flusso e matematica', 'Todas as formas: básicas, setas, estrelas, balões, fluxograma e matemática', 'Totes les formes: bàsiques, fletxes, estrelles, bafarades, diagrama de flux i matemàtiques'],
   ['Básicas', 'Basic', 'De base', 'Standard', 'Base', 'Básicas', 'Bàsiques'],

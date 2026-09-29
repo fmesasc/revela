@@ -107,3 +107,5 @@
 /* Text round a picture marked "Texto alrededor" (the same rule as the presentation's WRAP_CSS). */
 .rich[data-wrap]::before{content:"";height:var(--wh);width:var(--ww);shape-outside:inset(var(--wt) 0 0 0)}
 .rich[data-wrap=l]::before{float:left}.rich[data-wrap=r]::before{float:right}
+/* Text inside a shape: a text layer over it (see paintShapeText). */
+.block > .shape-text{position:absolute;inset:0;overflow:hidden;box-sizing:border-box}

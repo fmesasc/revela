@@ -547,6 +547,33 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(tab().hidden && R.state.ui.activeTab === 'home', 'al quitar la selección se va y vuelve a Inicio');
   });
 
+  await test('texto dentro de las formas: escribir, formato de la cinta, presentación y PowerPoint', async () => {
+    reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
+    assert(S.hasShapeText({ type: 'shape', shape: 'star' }) && !S.hasShapeText({ type: 'shape', shape: 'line' }), 'las formas cerradas llevan texto; las líneas no');
+    eq(S.shapeTextStyle({ shape: 'rect', fill: '#1d2b53', w: 100, h: 100 }).color, '#ffffff', 'sobre relleno oscuro, texto blanco');
+    eq(S.shapeTextStyle({ shape: 'rect', fill: '#fbc02d', w: 100, h: 100 }).color, '#1f1f1f', 'sobre relleno claro, texto oscuro');
+    assert(S.shapeTextStyle({ shape: 'triangle', w: 100, h: 100 }).pad[0] > 40, 'en un triángulo, más abajo');
+    R.blocks.addShape('rounded'); await sleep(20); const b = last();
+    const el = D.querySelector(`#stage .block[data-id="${b.id}"]`), rich = el.querySelector('.shape-text');
+    assert(rich, 'la forma tiene su capa de texto');
+    // Double-click and type, as in a text box.
+    el.dispatchEvent(new W.MouseEvent('dblclick', { bubbles: true })); await sleep(10);
+    assert(rich.isContentEditable && el.classList.contains('editing'), 'doble clic: a escribir');
+    rich.innerHTML = 'Paso <b>1</b>'; rich.dispatchEvent(new W.InputEvent('input', { bubbles: true })); rich.blur(); await sleep(20);
+    eq(last().html, 'Paso <b>1</b>', 'lo escrito queda en la forma');
+    // The ribbon's formatting works on it.
+    R.store.commit(() => { R.state.ui.selection = b.id; R.state.ui.multi = [b.id]; }, { history: false }); await sleep(10);
+    R.format.fontSize(4); await sleep(10); eq(last().fontSize, 32, 'tamaño desde la cinta');
+    R.format.align('left'); await sleep(10); eq(last().textAlign, 'left', 'alineación desde la cinta');
+    assert([...D.querySelectorAll('#ribbon [data-page="ctx"] button')].some(x => x.querySelector('span')?.textContent === 'Escribir texto'), 'y un botón para escribir en su pestaña');
+    // Presentation and thumbnails.
+    assert(/<div class="rv-shape-text"[^>]*>Paso <b>1<\/b><\/div>/.test(R.io.buildHTML()), 'en la presentación, sobre la forma');
+    assert(/Paso/.test(D.querySelector('#navigator .thumb.active').textContent), 'en la miniatura');
+    // PowerPoint: one shape with its text (it comes back as the shape and the text on it).
+    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob), xml = await zip.file('ppt/slides/slide1.xml').async('string');
+    assert(/prst="roundRect"[\s\S]*?<a:t>Paso <\/a:t>/.test(xml), 'en PowerPoint, una forma con su texto');
+  });
+
   await test('formas: galería compacta, «Más formas» por categorías, colores del tema e ida y vuelta a PowerPoint', async () => {
     reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
     const all = Object.keys(S.SHAPE_NAMES);

@@ -418,6 +418,7 @@ export default {
   "Dona": "Rosca",
   "Dispersión": "Dispersión",
   "Radar": "Radar",
+  "Escribir texto": "Escribir texto",
   "Más<br>formas": "Máis<br>formas",
   "Todas las formas: básicas, flechas, estrellas, bocadillos, diagrama de flujo y matemáticas": "Todas as formas: básicas, frechas, estrelas, bocadillos, diagrama de fluxo e matemáticas",
   "Básicas": "Básicas",

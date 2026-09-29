@@ -430,6 +430,7 @@ export default {
   "Dona": "Erroskila",
   "Dispersión": "Sakabanaketa",
   "Radar": "Radarra",
+  "Escribir texto": "Idatzi testua",
   "Más<br>formas": "Forma<br>gehiago",
   "Todas las formas: básicas, flechas, estrellas, bocadillos, diagrama de flujo y matemáticas": "Forma guztiak: oinarrizkoak, geziak, izarrak, bunbuiloak, fluxu-diagrama eta matematika",
   "Básicas": "Oinarrizkoak",

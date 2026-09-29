@@ -418,6 +418,7 @@ export default {
   "Dona": "Ring",
   "Dispersión": "Spreiding",
   "Radar": "Radar",
+  "Escribir texto": "Tekst typen",
   "Más<br>formas": "Meer<br>vormen",
   "Todas las formas: básicas, flechas, estrellas, bocadillos, diagrama de flujo y matemáticas": "Alle vormen: basis, pijlen, sterren, tekstballonnen, stroomdiagram en wiskunde",
   "Básicas": "Basis",

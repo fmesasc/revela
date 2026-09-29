@@ -162,7 +162,7 @@ function keyboard(e) {
   if (meta && e.key.toLowerCase() === 'g') { e.preventDefault(); e.shiftKey ? ungroupSelected() : groupSelected(); return; }
   // A text box selected: Enter or F2 edits it; typing replaces its text (PowerPoint, Google Slides).
   const one = selectedBlocks().length === 1 ? selectedBlock() : null;
-  if (one?.type === 'text' && !one.locked && !meta && !e.altKey) {
+  if ((one?.type === 'text' || (one?.type === 'shape' && !['line', 'arrow'].includes(one.shape))) && !one.locked && !meta && !e.altKey) {
     if (e.key === 'Enter' || e.key === 'F2') { e.preventDefault(); editText(one.id, { selectAll: false }); return; }
     if (e.key.length === 1 && e.key !== ' ') { editText(one.id); return; }   // (the key then types over it)
   }

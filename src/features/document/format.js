@@ -12,7 +12,7 @@ import { styled } from './master.js';
 import { ensureFont } from '../design/fonts.js';
 import { t } from '../../i18n/index.js';
 import { promptUser } from '../../core/notify.js';
-import { MATH_SIZE } from '../../render/svg.js';
+import { hasShapeText, MATH_SIZE } from '../../render/svg.js';
 
 // Format painter: copy a text box's paragraph/character style and apply it.
 let styleClip = null;
@@ -48,9 +48,10 @@ export function pasteStyle() {
 }
 export const hasStyleClip = () => !!styleClip;
 
+// The text being formatted: a text box's, or a shape's (text inside a shape).
 function ctx() {
   const b = selectedBlock();
-  if (!b || b.type !== 'text') return null;
+  if (!b || !(b.type === 'text' || hasShapeText(b))) return null;
   const el = document.querySelector(`.block[data-id="${b.id}"] .rich`);
   return el ? { b, el } : null;
 }
@@ -195,5 +196,5 @@ export function setNumStyle(value) {
 export function fontSize(delta) {
   const m = mathSel(); if (m) return commit(() => { m.fontSize = Math.max(8, (m.fontSize || MATH_SIZE) + delta); });
   const c = ctx(); if (!c) return;
-  commit(() => { c.b.fontSize = Math.max(8, (styled(c.b, currentSlide()).fontSize || 40) + delta); });
+  commit(() => { c.b.fontSize = Math.max(8, (c.b.type === 'shape' ? c.b.fontSize || 28 : styled(c.b, currentSlide()).fontSize || 40) + delta); });
 }

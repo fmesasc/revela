@@ -11,7 +11,7 @@ import * as format from '../../features/document/format.js';
 import * as shapeops from '../../features/document/shapeops.js';
 import { MOTIONS_3D, VIEWS_3D, BLEEDS_3D, modelBleed } from '../../features/content/model3d.js';
 import { isGif } from '../../features/live/media.js';
-import { CURVES, DEVICES, SHAPE_NAMES } from '../../render/svg.js';
+import { CURVES, DEVICES, SHAPE_NAMES, hasShapeText } from '../../render/svg.js';
 import { styled } from '../../features/document/master.js';
 import { saveBlockFile as saveFile } from '../shell/files.js';
 import { openModel3D } from '../dialogs/model3d.js';
@@ -30,6 +30,7 @@ import { animsOf, setAnimation, clearAnimation } from '../../features/animation/
 import { playAnimations } from '../canvas/preview.js';
 import { playInEditor } from '../canvas/mediaview.js';
 import { fitTextToBox } from '../canvas/canvas.js';
+import { editText } from '../canvas/content.js';
 import { t } from '../../i18n/index.js';
 
 const TITLES = { shape: 'Forma', image: 'Imagen', model: 'Modelo 3D', video: 'Vídeo', audio: 'Audio', text: 'Cuadro de texto', table: 'Tabla', chart: 'Gráfico',
@@ -64,7 +65,8 @@ function groupsFor(b) {
       ...(b.fill2 ? [['color', 'gradient', 'Segundo color', b.fill2, v => set(b, x => { x.fill2 = v; })]] : []),
       ...(b.fill2 && b.gradType !== 'radial' ? [['num', 'Ángulo', b.gradAngle ?? 0, v => set(b, x => { x.gradAngle = ((+v || 0) % 360 + 360) % 360; }), 0, 359, 15]] : []),
       btn('draw', 'A mano alzada', () => set(b, x => { if (x.sketch) delete x.sketch; else x.sketch = true; }), !!b.sketch)]],
-    ['Forma', [['select', 'Cambiar forma', SHAPES, b.shape, v => set(b, x => { x.shape = v; })], wrapBtn(b)]]);
+    ['Forma', [['select', 'Cambiar forma', SHAPES, b.shape, v => set(b, x => { x.shape = v; })], wrapBtn(b),
+      ...(hasShapeText(b) ? [btn('edit_note', 'Escribir texto', () => editText(b.id, { selectAll: false }))] : [])]]);
   else if (b.type === 'image') G.push(
     ['Ajustar', [btn('tune', 'Ajustes', () => openImageAdjust(b)), btn('crop', 'Recortar', () => openImageCrop(b)), btn('auto_fix_high', 'Quitar fondo', () => removeBackground(b)),
       btn('fit_screen', 'Contener', () => set(b, x => { x.fit = 'contain'; }), (b.fit || 'contain') === 'contain'), btn('crop_free', 'Rellenar', () => set(b, x => { x.fit = 'cover'; }), b.fit === 'cover')]],

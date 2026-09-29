@@ -591,3 +591,29 @@ export const WRAP_CSS = '[data-wrap]::before{content:"";height:var(--wh);width:v
   + '[data-wrap=l]::before{float:left}[data-wrap=r]::before{float:right}';
 export const wrapAttrs = w => (w ? ` data-wrap="${w.side}"` : '');
 export const wrapVars = w => (w ? `--ww:${w.w}px;--wh:${w.h}px;--wt:${w.top}px;` : '');
+
+// Text inside a shape (as in PowerPoint): centred by default, inside the shape's
+// middle (lower in a triangle, further in from a star's or a diamond's edge), in
+// white or black depending on how dark the fill is. The same box styles as a
+// text box, so the canvas, the thumbnails and every export agree.
+const TEXT_INSET = { ellipse: [0.15, 0.15], triangle: [0.45, 0.22, 0.06], rtriangle: [0.45, 0.4, 0.06, 0.06], diamond: [0.25, 0.25], star: [0.35, 0.3],
+  star4: [0.32, 0.32], star6: [0.28, 0.24], star8: [0.24, 0.24], seal: [0.2, 0.2], burst: [0.28, 0.28], pentagon: [0.25, 0.18], hexagon: [0.12, 0.2],
+  heart: [0.2, 0.22, 0.3], cloud: [0.28, 0.18, 0.2], speech: [0.08, 0.08, 0.34], speechround: [0.12, 0.14, 0.34], thought: [0.15, 0.16, 0.36],
+  donut: [0.3, 0.3], moon: [0.3, 0.2, 0.3, 0.45], cylinder: [0.3, 0.1, 0.12], parallelogram: [0.1, 0.22], trapezoid: [0.18, 0.22], plus: [0.36, 0.36] };
+const luma = hex => { const m = /^#([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return null; const n = parseInt(m[1], 16);
+  return ((n >> 16) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 255000; };
+export const hasShapeText = b => b.type === 'shape' && !['line', 'arrow'].includes(b.shape);
+export function shapeTextStyle(b) {
+  const [t, x, bt = t, l = x] = TEXT_INSET[b.shape] || [0.08, 0.08], w = +b.w || 100, h = +b.h || 100, L = luma(b.fill);
+  return { fontSize: b.fontSize || 28, textAlign: b.textAlign || 'center', vAlign: b.vAlign || 'middle', fontFamily: b.fontFamily, fontWeight: b.fontWeight,
+    fontStyle: b.fontStyle, lineHeight: b.lineHeight, color: b.color || (L == null ? '' : L > 0.6 ? '#1f1f1f' : '#ffffff'),
+    pad: [Math.round(h * t), Math.round(w * x), Math.round(h * bt), Math.round(w * l)] };
+}
+
+// The text inside a shape, over it (same box styles as a text box's).
+export function shapeTextHTML(b) {
+  const st = shapeTextStyle(b), j = { top: 'flex-start', middle: 'center', bottom: 'flex-end' }[st.vAlign];
+  return `<div class="rv-shape-text" style="position:absolute;inset:0;box-sizing:border-box;padding:${textPadding(st)};font-size:${st.fontSize}px;text-align:${st.textAlign};`
+    + `${st.color ? `color:${st.color};` : ''}${st.fontFamily ? `font-family:${st.fontFamily};` : ''}${st.fontWeight ? `font-weight:${st.fontWeight};` : ''}${st.fontStyle ? `font-style:${st.fontStyle};` : ''}`
+    + `${st.lineHeight ? `line-height:${st.lineHeight};` : ''}display:flex;flex-direction:column;justify-content:${j};overflow:hidden">${b.html}</div>`;
+}

@@ -5,7 +5,7 @@
 import { shortSig } from '../../core/text.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
 import { state, commit, currentSlide, selectedBlock, isSelected, setSelection } from '../../core/store.js';
-import { shadowCSS, levelCSS, shapeSVG, shapeSig, chartSVG, chartSig, iconSVG, iconSig, inkSVG, timerSVG, curvedTextSVG, wrapFor, timerSig, inkSig, tableClass, tableVars } from '../../render/svg.js';
+import { shadowCSS, levelCSS, shapeSVG, shapeSig, chartSVG, chartSig, iconSVG, iconSig, inkSVG, timerSVG, curvedTextSVG, hasShapeText, shapeTextStyle, wrapFor, timerSig, inkSig, tableClass, tableVars } from '../../render/svg.js';
 import { figuresMap, captionLine } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
 import { t } from '../../i18n/index.js';
@@ -219,6 +219,14 @@ function drawLogo() {
 
 // Update an existing block element from the model without recreating it, so
 // interaction (editing, dragging) is never interrupted.
+// Text inside a shape: a text layer over it, edited like a text box (double-click, or type).
+function paintShapeText(el, b) {
+  if (!hasShapeText(b)) { el.querySelector(':scope > .shape-text')?.remove(); return; }
+  let rich = el.querySelector(':scope > .shape-text');
+  if (!rich) { rich = document.createElement('div'); rich.className = 'rich shape-text'; rich.spellcheck = true; el.insertBefore(rich, el.firstElementChild?.nextSibling || null); }
+  styleRich(rich, shapeTextStyle(b));
+  if (!el.classList.contains('editing') && rich.dataset.msrc !== (b.html || '')) { rich.innerHTML = b.html || ''; rich.dataset.msrc = b.html || ''; }
+}
 // Text wrapping round a picture marked "text around": a gap in its lines (see wrapFor).
 function paintWrap(el, b) {
   const rich = el.querySelector(':scope > .rich'); if (!rich) return;
@@ -288,6 +296,7 @@ function reconcile(b) {
   } else if (b.type === 'shape') {
     const d = el.querySelector('.shape'); const sig = shapeSig(b);
     if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = shapeSVG(b); }
+    paintShapeText(el, b);
   } else if (b.type === 'table') {
     const t = el.querySelector('.tbl'); if (!t) return;
     const sig = tableSig(b);
@@ -358,6 +367,7 @@ function blockEl(b) {
 
   el.addEventListener('pointerdown', ev => startDrag(ev, b, el));
   if (b.type === 'text') { setupText(b, el); paintCurve(el, b); paintWrap(el, b); }
+  else if (hasShapeText(b)) { paintShapeText(el, b); setupText(b, el); }
   else if (b.type === 'model') setupModel(el);
   else if (b.type === 'embed') setupEmbed(el);
   else if (b.type === 'table') setupTable(el, b);

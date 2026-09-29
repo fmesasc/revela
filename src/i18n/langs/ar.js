@@ -430,6 +430,7 @@ export default {
   "Dona": "دائري مجوف",
   "Dispersión": "مبعثر",
   "Radar": "رادار",
+  "Escribir texto": "كتابة نص",
   "Más<br>formas": "أشكال<br>أخرى",
   "Todas las formas: básicas, flechas, estrellas, bocadillos, diagrama de flujo y matemáticas": "كل الأشكال: أساسية، أسهم، نجوم، فقاعات، مخطط انسيابي ورياضيات",
   "Básicas": "أساسية",

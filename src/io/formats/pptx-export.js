@@ -8,7 +8,8 @@ import { state } from '../../core/store.js';
 import { alertUser } from '../../core/notify.js';
 import { t } from '../../i18n/index.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
-import { chartSeries, iconSVG, inkSVG, timerSVG } from '../../render/svg.js';
+import { plainText } from '../../core/text.js';
+import { chartSeries, iconSVG, inkSVG, timerSVG, shapeTextStyle } from '../../render/svg.js';
 import { blockImage } from '../export/images.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, styleKind } from '../../features/document/master.js';
 import { PPTXGEN, JSZIP, loadScript } from '../../core/vendor.js';
@@ -130,7 +131,13 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map()) {
       } else {
         const st = pptx.ShapeType[SHAPE_MAP[b.shape]] || pptx.ShapeType.rect;
         const fill = b.fill && b.fill !== 'none' ? { color: hex(b.fill) || '3F6497' } : { type: 'none' };
-        slide.addShape(st, { ...pos, fill, line: { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth || 1, ...dashOf(b.dash) } });
+        const line = { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth || 1, ...dashOf(b.dash) };
+        if (b.html && plainText(b.html).trim()) {          // text inside: one PowerPoint shape with its text
+          const s2 = shapeTextStyle(b), fam = (s2.fontFamily || deckBodyFont() || '').split(',')[0].replace(/['"]/g, '').trim();
+          const base = { fontSize: Math.round(s2.fontSize * 0.75), color: hex(s2.color) || hex(deckFg()) || 'FFFFFF', align: s2.textAlign,
+            ...(fam && { fontFace: fam }), ...(s2.fontWeight === '700' && { bold: true }), ...(s2.fontStyle === 'italic' && { italic: true }) };
+          slide.addText(htmlToRuns(b.html, base), { ...pos, shape: st, fill, line, valign: { top: 'top', bottom: 'bottom' }[s2.vAlign] || 'middle', margin: 4 });
+        } else slide.addShape(st, { ...pos, fill, line });
       }
     } else if (b.type === 'table') {
       // Merged cells: PptxGenJS wants the covered cells omitted and colspan/rowspan on the first.
