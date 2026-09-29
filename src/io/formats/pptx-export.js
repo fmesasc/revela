@@ -37,6 +37,7 @@ const SHAPE_MAP = {
   speech: 'wedgeRectCallout', speechround: 'wedgeEllipseCallout', terminator: 'flowChartTerminator', document: 'flowChartDocument',
   manualinput: 'flowChartManualInput', offpage: 'flowChartOffpageConnector', merge: 'flowChartMerge', delay: 'flowChartDelay',
   minus: 'mathMinus', multiply: 'mathMultiply', divide: 'mathDivide', equal: 'mathEqual',
+  actnext: 'actionButtonForwardNext', actprev: 'actionButtonBackPrevious', actfirst: 'actionButtonBeginning', actlast: 'actionButtonEnd', acthome: 'actionButtonHome',
 };
 
 // HTML of a text box → PptxGenJS text runs: bold/italic/underline/strike,
@@ -89,8 +90,8 @@ async function svgToPNG(svg, w, h) {
   return c.toDataURL('image/png');
 }
 
-function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map()) {
-  const pos = { x: IN(b.x), y: IN(b.y), w: IN(b.w), h: IN(b.h) };
+function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), link = null) {
+  const pos = { x: IN(b.x), y: IN(b.y), w: IN(b.w), h: IN(b.h) }, hl = link ? { hyperlink: link } : {};   // (an object that is a link)
   if (b.rotation) pos.rotate = b.rotation;
   try {
     if (b.type === 'text') {
@@ -111,20 +112,20 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map()) {
       slide.addShape(pptx.ShapeType.line, { x: IN(Math.min(x1, x2)), y: IN(Math.min(y1, y2)), w: IN(Math.max(1, Math.abs(x2 - x1))), h: IN(Math.max(1, Math.abs(y2 - y1))),
         flipH: x2 < x1, flipV: y2 < y1, line: { color: hex(b.color) || '8A8A8A', width: 1.5, ...dashOf(b.dash), ...(b.arrow !== false && { endArrowType: 'triangle' }) } });
     } else if (raster.has(b.id)) {                            // icons, ink, equations, polls…
-      slide.addImage({ ...pos, data: raster.get(b.id), ...(b.alt && { altText: b.alt }) });
+      slide.addImage({ ...pos, ...hl, data: raster.get(b.id), ...(b.alt && { altText: b.alt }) });
     } else if (b.type === 'video' && /^data:video\//.test(b.src || '')) {
       slide.addMedia({ ...pos, type: 'video', data: b.src.replace(/^data:/, '') });
     } else if (b.type === 'embed') {
       slide.addText([{ text: '🔗 ' + (b.alt || b.src), options: { hyperlink: { url: b.src } } }], { ...pos, fontSize: 18, color: hex(deckFg()) || 'FFFFFF', valign: 'middle', align: 'center' });
     } else if (b.type === 'image') {
-      slide.addImage({ ...pos, data: b.src, ...(b.alt && !b.decorative && { altText: b.alt }), ...(b.flipH && { flipH: true }), ...(b.flipV && { flipV: true }) });
+      slide.addImage({ ...pos, ...hl, data: b.src, ...(b.alt && !b.decorative && { altText: b.alt }), ...(b.flipH && { flipH: true }), ...(b.flipV && { flipV: true }) });
     } else if (b.type === 'shape') {
       if (b.shape === 'custom' && b.rings?.length) {
         // Merged shape → custom geometry (points in inches inside the box).
         const fill = b.fill && b.fill !== 'none' ? { color: hex(b.fill) || '3F6497' } : { type: 'none' };
         const points = b.rings.flatMap(r => r.map(([u, v], i) => ({ x: IN(u / 100 * b.w), y: IN(v / 100 * b.h), ...(i === 0 && { moveTo: true }) }))
           .concat({ close: true }));
-        slide.addShape(pptx.ShapeType.custGeom, { ...pos, points, fill, line: { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth || 1, ...dashOf(b.dash) } });
+        slide.addShape(pptx.ShapeType.custGeom, { ...pos, ...hl, points, fill, line: { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth || 1, ...dashOf(b.dash) } });
       } else if (b.shape === 'line' || b.shape === 'arrow') {
         slide.addShape(pptx.ShapeType.line, { ...pos, line: { color: hex(b.stroke) || '888888', width: b.strokeWidth || 2, ...dashOf(b.dash),
           endArrowType: b.shape === 'arrow' ? 'triangle' : 'none' } });
@@ -136,8 +137,8 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map()) {
           const s2 = shapeTextStyle(b), fam = (s2.fontFamily || deckBodyFont() || '').split(',')[0].replace(/['"]/g, '').trim();
           const base = { fontSize: Math.round(s2.fontSize * 0.75), color: hex(s2.color) || hex(deckFg()) || 'FFFFFF', align: s2.textAlign,
             ...(fam && { fontFace: fam }), ...(s2.fontWeight === '700' && { bold: true }), ...(s2.fontStyle === 'italic' && { italic: true }) };
-          slide.addText(htmlToRuns(b.html, base), { ...pos, shape: st, fill, line, valign: { top: 'top', bottom: 'bottom' }[s2.vAlign] || 'middle', margin: 4 });
-        } else slide.addShape(st, { ...pos, fill, line });
+          slide.addText(htmlToRuns(b.html, base), { ...pos, ...hl, shape: st, fill, line, valign: { top: 'top', bottom: 'bottom' }[s2.vAlign] || 'middle', margin: 4 });
+        } else slide.addShape(st, { ...pos, ...hl, fill, line });
       }
     } else if (b.type === 'table') {
       // Merged cells: PptxGenJS wants the covered cells omitted and colspan/rowspan on the first.
@@ -185,7 +186,7 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map()) {
     }
     // 3D models: their picture, if they have one (PowerPoint's own 3D can't be written here); audio: skipped.
     else if (b.type === 'model' && /^data:image\/(png|jpeg|webp|gif);base64,/.test(b.poster || ''))
-      slide.addImage({ ...pos, data: b.poster, sizing: { type: 'contain', w: pos.w, h: pos.h }, ...(b.alt && { altText: b.alt }) });
+      slide.addImage({ ...pos, ...hl, data: b.poster, sizing: { type: 'contain', w: pos.w, h: pos.h }, ...(b.alt && { altText: b.alt }) });
   } catch {}
 }
 
@@ -281,12 +282,18 @@ export async function buildPptx(deck = state.deck) {
       if (isEmptyPlaceholder(b) || m?.inMaster.has(b.id)) continue;          // drawn by its PowerPoint layout
       const ph = m && placeholderOf(s, b, m);
       if (ph) { addPlaceholderText(named(slide, 'rv-' + b.id), s, b, ph); continue; }
-      addBlock(named(slide, 'rv-' + b.id, b), b, pptx, raster, byId);
+      addBlock(named(slide, 'rv-' + b.id, b), b, pptx, raster, byId, linkFor(b, deck.slides.indexOf(s), deck));
     }
   }
   return pptx;
 }
 
+// An object's link, as PowerPoint takes it: a web address, or a slide number (1…).
+function linkFor(b, i, deck) {
+  if (b.href && /^(https?|mailto):/i.test(b.href)) return { url: b.href };
+  const n = deck.slides.length, to = { next: i + 2, prev: i, first: 1, last: n }[b.goto] ?? (b.goto ? deck.slides.findIndex(s => s.id === b.goto) + 1 : 0);
+  return to >= 1 && to <= n ? { slide: to } : null;
+}
 // Every object gets the name rv-<block id> (PowerPoint's selection pane shows
 // it), so transitions and animations can point at it afterwards.
 const named = (slide, name, b = null) => new Proxy(slide, {

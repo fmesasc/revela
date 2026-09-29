@@ -307,6 +307,7 @@ const ring = (n, r1, r2 = r1, turn = -90) => Array.from({ length: n * (r2 === r1
   return `${(50 + r * Math.cos(a)).toFixed(1)},${(50 + r * Math.sin(a)).toFixed(1)}`; }).join(' ');
 Object.assign(SHAPE_POINTS, { heptagon: ring(7, 48), octagon: ring(8, 48, 48, -112.5), decagon: ring(10, 48),
   star6: ring(6, 48, 27), star8: ring(8, 48, 34), seal: ring(12, 48, 38) });
+const BTN = 'M12 4H88A8 8 0 0 1 96 12V88A8 8 0 0 1 88 96H12A8 8 0 0 1 4 88V12A8 8 0 0 1 12 4Z';
 // Curved shapes (SVG paths in the 100×100 box; even-odd, so rings have their hole).
 const SHAPE_PATHS = {
   heart: 'M50 92C22 72 4 56 4 34C4 18 16 7 30 7C40 7 46 12 50 20C54 12 60 7 70 7C84 7 96 18 96 34C96 56 78 72 50 92Z',
@@ -322,6 +323,9 @@ const SHAPE_PATHS = {
   delay: 'M4 6H55A41 44 0 0 1 55 94H4Z',
   equal: 'M6 26H94V44H6ZM6 56H94V74H6Z',
   divide: 'M6 42H94V58H6ZM41 20A9 9 0 1 0 59 20A9 9 0 1 0 41 20ZM41 80A9 9 0 1 0 59 80A9 9 0 1 0 41 80Z',
+  // Action buttons: a rounded button with its sign cut out (they go where they say when presenting).
+  actnext: BTN + 'M38 28L70 50L38 72Z', actprev: BTN + 'M62 28L30 50L62 72Z', actfirst: BTN + 'M28 28H36V72H28ZM70 28L40 50L70 72Z',
+  actlast: BTN + 'M30 28L60 50L30 72ZM64 28H72V72H64Z', acthome: BTN + 'M50 22L78 48H69V76H57V60H43V76H31V48H22Z',
 };
 // The shapes offered (Insert ▸ Shapes and the shape's own tab), by kind.
 export const SHAPE_CATALOG = [
@@ -336,6 +340,7 @@ export const SHAPE_CATALOG = [
   ['Bocadillos', [['speech', 'Bocadillo rectangular'], ['speechround', 'Bocadillo redondo'], ['cloud', 'Nube']]],
   ['Diagrama de flujo', [['rect', 'Proceso'], ['diamond', 'Decisión'], ['terminator', 'Inicio o fin'], ['parallelogram', 'Datos'], ['document', 'Documento'],
     ['manualinput', 'Entrada manual'], ['offpage', 'Conector fuera de página'], ['merge', 'Combinar'], ['delay', 'Retraso'], ['cylinder', 'Base de datos']]],
+  ['Botones de acción', [['actprev', 'Anterior'], ['actnext', 'Siguiente'], ['actfirst', 'Primera diapositiva'], ['actlast', 'Última diapositiva'], ['acthome', 'Inicio']]],
   ['Matemáticas', [['plus', 'Más'], ['minus', 'Menos'], ['multiply', 'Por'], ['divide', 'Entre'], ['equal', 'Igual']]],
   ['Líneas', [['line', 'Línea'], ['arrow', 'Flecha']]],
 ];
@@ -602,7 +607,9 @@ const TEXT_INSET = { ellipse: [0.15, 0.15], triangle: [0.45, 0.22, 0.06], rtrian
   donut: [0.3, 0.3], moon: [0.3, 0.2, 0.3, 0.45], cylinder: [0.3, 0.1, 0.12], parallelogram: [0.1, 0.22], trapezoid: [0.18, 0.22], plus: [0.36, 0.36] };
 const luma = hex => { const m = /^#([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return null; const n = parseInt(m[1], 16);
   return ((n >> 16) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 255000; };
-export const hasShapeText = b => b.type === 'shape' && !['line', 'arrow'].includes(b.shape);
+export const hasShapeText = b => b.type === 'shape' && !['line', 'arrow'].includes(b.shape) && !/^act/.test(b.shape || '');
+// Where an action button goes when it is inserted.
+export const ACTION_GOTO = { actnext: 'next', actprev: 'prev', actfirst: 'first', actlast: 'last', acthome: 'first' };
 export function shapeTextStyle(b) {
   const [t, x, bt = t, l = x] = TEXT_INSET[b.shape] || [0.08, 0.08], w = +b.w || 100, h = +b.h || 100, L = luma(b.fill);
   return { fontSize: b.fontSize || 28, textAlign: b.textAlign || 'center', vAlign: b.vAlign || 'middle', fontFamily: b.fontFamily, fontWeight: b.fontWeight,

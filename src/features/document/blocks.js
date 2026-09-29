@@ -4,8 +4,9 @@ import { state, commit, currentSlide, selectedBlock,
   selectedBlocks, selectedIds, setSelection, setMulti } from '../../core/store.js';
 import { DEFAULT_SHADOW } from '../../render/svg.js';
 import { uid, textBlock, tableBlock, codeBlock, chartBlock, mathBlock, figindexBlock, slideRefBlock } from '../../core/model.js';
-import { currentLang } from '../../i18n/index.js';
+import { currentLang, t } from '../../i18n/index.js';
 import { deckFg, currentPalette } from '../design/palettes.js';
+import { ACTION_GOTO, SHAPE_NAMES } from '../../render/svg.js';
 
 function insert(block) {
   commit(() => {
@@ -214,6 +215,15 @@ export function addTimer(seconds = 300) {
 export function addFigIndex(kind = 'all') { insert(figindexBlock({ kind })); }
 
 // Slide zoom: an embedded thumbnail of another slide, clickable in the show.
+// An object as a link (PowerPoint's "Link"): to a web page (href) or to a slide (goto: next,
+// prev, first, last or a slide's id). Neither: no link.
+export function setObjectLink(id, { href = '', goto = '' } = {}) {
+  commit(() => {
+    const b = currentSlide().blocks.find(x => x.id === id); if (!b) return;
+    if (href) b.href = href; else delete b.href;
+    if (goto) b.goto = goto; else delete b.goto;
+  });
+}
 // A slide zoom: to another slide (the first other one if not said), centred on
 // a point of the slide if given (a thumbnail dropped there), inside the slide.
 export function addSlideRef(target = null, at = null) {
@@ -408,6 +418,12 @@ export const setTableStyle = props => withTable(b => {
 const darker = (hex, k = 0.72) => '#' + [1, 3, 5].map(i => Math.round(parseInt(hex.slice(i, i + 2), 16) * k).toString(16).padStart(2, '0')).join('');
 export function addShape(kind) {
   const linear = kind === 'line' || kind === 'arrow', accent = currentPalette().accents[0];
+  if (ACTION_GOTO[kind]) {                                          // an action button: small, square, and it already goes somewhere
+    const { w, h } = state.deck.size;
+    insert({ id: uid(), type: 'shape', shape: kind, x: w - 150, y: h - 150, w: 96, h: 96, rotation: 0, animation: null, fill: accent, stroke: darker(accent), strokeWidth: 2,
+      goto: ACTION_GOTO[kind], alt: t(SHAPE_NAMES[kind]) });
+    return;
+  }
   const square = ['ellipse', 'star', 'star4', 'star6', 'star8', 'seal', 'burst', 'heart', 'donut', 'plus', 'minus', 'multiply', 'divide', 'equal', 'octagon',
     'heptagon', 'decagon', 'hexagon', 'pentagon', 'quadarrow', 'moon', 'teardrop', 'cloud', 'lightning'].includes(kind);
   insert({

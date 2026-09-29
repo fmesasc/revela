@@ -31,6 +31,7 @@ import { playAnimations } from '../canvas/preview.js';
 import { playInEditor } from '../canvas/mediaview.js';
 import { fitTextToBox } from '../canvas/canvas.js';
 import { editText } from '../canvas/content.js';
+import { openObjectLink } from '../dialogs/objlink.js';
 import { t } from '../../i18n/index.js';
 
 const TITLES = { shape: 'Forma', image: 'Imagen', model: 'Modelo 3D', video: 'Vídeo', audio: 'Audio', text: 'Cuadro de texto', table: 'Tabla', chart: 'Gráfico',
@@ -157,6 +158,7 @@ function groupsFor(b) {
   const n = animsOf(b).length;
   G.push(['Animaciones', [btn('add_circle', n ? `${t('Añadir animación')} (${n})` : 'Añadir animación', () => openAddAnimation(document.querySelector('#ribbon [data-page="ctx"] [data-ctx="add"]')), false, 'add'),
     btn('gesture', n ? 'Añadir movimiento' : 'Dibujar recorrido', () => startPathDraw({ append: true })), btn('tune', 'Panel', () => openAnimPanel())]]);
+  if (!['text', 'connector'].includes(b.type)) G.push(['Vínculo', [btn('link', b.href || b.goto ? 'Cambiar vínculo' : 'Vínculo', () => openObjectLink(b), !!(b.href || b.goto))]]);
   G.push(['Accesibilidad', [btn('accessibility', 'Texto alternativo', () => openAlt(b)), ...(!['text', 'connector', 'figindex', 'slideref'].includes(b.type) ? [btn('short_text', b.caption ? 'Editar descripción' : 'Descripción', () => openCaption(b))] : [])]]);
   G.push(arrange(b));
   return G;

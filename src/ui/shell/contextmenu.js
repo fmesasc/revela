@@ -20,6 +20,7 @@ import { alertDialog, promptDialog } from '../dialogs/dialog.js';
 import { openSaveAsPicture } from '../dialogs/picture.js';
 import { openMediaPlayback } from '../dialogs/media.js';
 import { openModel3D } from '../dialogs/model3d.js';
+import { openObjectLink } from '../dialogs/objlink.js';
 import { saveBlockFile as saveFile } from './files.js';
 import { present } from './present.js';
 import { openBackgroundDialog } from '../dialogs/background.js';
@@ -120,6 +121,7 @@ function forBlock(b, cell = null) {
     ['Eliminar', () => blocks.deleteBlock(b.id)],
     [b.shadow ? 'Quitar sombra' : 'Sombra', () => blocks.toggleShadow()],
     ['Guardar como imagen…', () => openSaveAsPicture()],
+    ...(!['text', 'connector'].includes(b.type) ? [['Vínculo…', () => openObjectLink(b)]] : []),
     null,
   ];
 

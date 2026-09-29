@@ -574,6 +574,45 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/prst="roundRect"[\s\S]*?<a:t>Paso <\/a:t>/.test(xml), 'en PowerPoint, una forma con su texto');
   });
 
+  await test('vínculos en objetos y botones de acción: a una web o a una diapositiva, al presentar y en PowerPoint', async () => {
+    reset(); const W = frame.contentWindow;
+    R.slides.addSlide('blank'); R.slides.addSlide('blank'); R.slides.goToSlide(0); await sleep(10);
+    const S = R.state.deck.slides;
+    // An action button already goes where it says.
+    D.querySelector('[data-shapes-open]').click(); await sleep(20);
+    D.querySelector('.popover [data-shape-pick="actnext"]').click(); await sleep(20);
+    assert(last().shape === 'actnext' && last().goto === 'next' && last().alt === 'Siguiente', 'botón «Siguiente»: va a la siguiente, con su nombre para los lectores de pantalla');
+    assert(!D.querySelector(`#stage .block[data-id="${last().id}"] .shape-text`), 'un botón no lleva texto');
+    // Any object: the Link dialog.
+    R.blocks.addShape('star'); await sleep(20); const star = last();
+    [...D.querySelectorAll('#ribbon [data-page="ctx"] button')].find(x => x.querySelector('span')?.textContent === 'Vínculo').click(); await sleep(20);
+    let m = D.getElementById('ol-modal'); m.querySelector('input[value="slide"]').checked = true; m.querySelector('input[value="slide"]').dispatchEvent(new W.Event('change'));
+    m.querySelector('.ol-to').value = S[2].id; m.querySelector('.ol-ok').click(); await sleep(20);
+    eq(slide().blocks.find(b => b.id === star.id).goto, S[2].id, 'a una diapositiva elegida');
+    assert(D.querySelector(`#stage .block[data-id="${star.id}"]`).classList.contains('linked'), 'se ve que es un vínculo');
+    R.blocks.addImage('data:image/gif;base64,R0lGODlhAQABAAAAACw='); await sleep(20); const img = last();
+    const item = () => { const el = D.querySelector(`#stage .block[data-id="${img.id}"]`); el.dispatchEvent(new W.MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }));
+      return [...D.querySelectorAll('#context-menu .ctx-item')].find(x => x.textContent === 'Vínculo…'); };
+    item().click(); await sleep(20);
+    m = D.getElementById('ol-modal'); m.querySelector('input[value="web"]').checked = true; m.querySelector('input[value="web"]').dispatchEvent(new W.Event('change'));
+    m.querySelector('.ol-url').value = 'ejemplo.org/clase'; m.querySelector('.ol-ok').click(); await sleep(20);
+    eq(slide().blocks.find(b => b.id === img.id).href, 'https://ejemplo.org/clase', 'a una web (con https:// si no lo lleva)');
+    // The presentation: where each goes, and what makes it go.
+    const html = R.io.buildHTML();
+    assert(/data-goto="next" role="link" tabindex="0"/.test(html) && new RegExp(`data-goto="slide:${S[2].id}"`).test(html) && /data-href="https:\/\/ejemplo\.org\/clase"/.test(html), 'cada objeto con su destino');
+    assert(new RegExp(`<section[^>]* data-rv-id="${S[2].id}"`).test(html) && /closest\('\.slides \[data-goto\]/.test(html), 'y lo que los hace ir');
+    // Nothing unsafe from a deck made elsewhere.
+    const Sz = await W.eval("import('/src/features/document/sanitize.js')");
+    const bad = Sz.sanitizeDeck({ slides: [{ blocks: [{ type: 'shape', href: 'javascript:alert(1)', goto: 'x" onclick="y' }] }] }).slides[0].blocks[0];
+    assert(!bad.href && !bad.goto, 'vínculos limpios al abrir presentaciones ajenas');
+    // PowerPoint, both ways.
+    const blob = await R.pptx.buildPptxBlob(), back = await R.pptxImport.importPPTX(new W.File([blob], 'v.pptx'));
+    const bs = back.slides[0].blocks;
+    assert(bs.some(b => b.goto === 'next' || b.goto === back.slides[1].id), 'el botón sigue yendo a la siguiente');
+    assert(bs.some(b => b.goto === back.slides[2].id), 'la estrella, a la tercera');
+    assert(bs.some(b => b.href === 'https://ejemplo.org/clase'), 'la imagen, a la web');
+  });
+
   await test('formas: galería compacta, «Más formas» por categorías, colores del tema e ida y vuelta a PowerPoint', async () => {
     reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
     const all = Object.keys(S.SHAPE_NAMES);
@@ -585,7 +624,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(gal.length === 24 && [...gal].every(b => b.querySelector('svg') && b.title), 'galería con 24 formas dibujadas y su nombre');
     D.querySelector('[data-shapes-open]').click(); await sleep(20);
     const pop = D.querySelector('.popover[data-type="shapes"]');
-    eq([...pop.querySelectorAll('h4')].map(h => h.textContent).join(), 'Básicas,Flechas,Estrellas,Bocadillos,Diagrama de flujo,Matemáticas,Líneas', 'por categorías');
+    eq([...pop.querySelectorAll('h4')].map(h => h.textContent).join(), 'Básicas,Flechas,Estrellas,Bocadillos,Diagrama de flujo,Botones de acción,Matemáticas,Líneas', 'por categorías');
     pop.querySelector('[data-shape-pick="heart"]').click(); await sleep(20);
     assert(last().shape === 'heart' && !D.querySelector('.popover'), 'se inserta desde «Más formas»');
     const P = await W.eval("import('/src/features/design/palettes.js')");

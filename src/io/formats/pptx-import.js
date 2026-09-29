@@ -153,7 +153,8 @@ const PRESET = { rect: 'rect', roundRect: 'rounded', ellipse: 'ellipse', triangl
   wedgeRectCallout: 'speech', wedgeRoundRectCallout: 'speech', wedgeEllipseCallout: 'speechround', cloudCallout: 'cloud',
   flowChartTerminator: 'terminator', flowChartDocument: 'document', flowChartManualInput: 'manualinput', flowChartOffpageConnector: 'offpage',
   flowChartMerge: 'merge', flowChartDelay: 'delay', flowChartInputOutput: 'parallelogram', mathPlus: 'plus', mathMinus: 'minus',
-  mathMultiply: 'multiply', mathDivide: 'divide', mathEqual: 'equal', snip1Rect: 'snip' };
+  mathMultiply: 'multiply', mathDivide: 'divide', mathEqual: 'equal', snip1Rect: 'snip',
+  actionButtonForwardNext: 'actnext', actionButtonBackPrevious: 'actprev', actionButtonBeginning: 'actfirst', actionButtonEnd: 'actlast', actionButtonHome: 'acthome' };
 
 // ---- Text ------------------------------------------------------------------
 // PowerPoint text formatting is inherited, level by level (lvl1pPr…lvl9pPr):
@@ -496,6 +497,17 @@ export async function importPPTX(file) {
     const box = geo => ({ x: px(geo.x), y: px(geo.y), w: Math.max(1, px(geo.w)), h: Math.max(1, px(geo.h)),
       rotation: Math.round(geo.rot || 0), ...(geo.flipH && { flipH: true }), ...(geo.flipV && { flipV: true }), animation: null });
 
+    // An object that is a link (a:hlinkClick on its non-visual properties): a web page, a jump
+    // (next / previous / first / last slide) or a slide (resolved to its id once all are read).
+    const objLink = el => {
+      const h = all(el, 'p:cNvPr')[0] && kid(all(el, 'p:cNvPr')[0], 'a:hlinkClick'); if (!h) return {};
+      const act = h.getAttribute('action') || '', jump = /jump=(\w+)/.exec(act)?.[1];
+      const go = { nextslide: 'next', previousslide: 'prev', firstslide: 'first', lastslide: 'last' }[jump]; if (go) return { goto: go };
+      const r = srels[h.getAttribute('r:id')]; if (!r) return {};
+      if (r.type === 'hyperlink' && /^(https?|mailto):/i.test(r.path)) return { href: r.path };
+      if (r.type === 'slide') return { _gotoPath: r.path };
+      return {};
+    };
     const addShape = async (sp, map) => {
       const ph = phOf(sp);
       if (decorMode && ph) return;
@@ -538,7 +550,7 @@ export async function importPPTX(file) {
         blocks.push({ ...lineBlock(geo, ln, stroke && stroke !== 'none' ? stroke : '#888888', sw), ...(dash && { dash }) });
       } else if ((fill && fill !== 'none') || (stroke && stroke !== 'none')) {
         const bx = box(geo);
-        blocks.push({ id: uid(), type: 'shape', shape: PRESET[prst] || 'rect', fill: fill || 'none',
+        blocks.push({ id: uid(), ...objLink(sp), type: 'shape', shape: PRESET[prst] || 'rect', fill: fill || 'none',
           stroke: stroke && stroke !== 'none' ? stroke : (fill || 'none'), strokeWidth: stroke && stroke !== 'none' ? sw : 0, ...bx,
           ...(dash && stroke && stroke !== 'none' && { dash }), ...(shadow && { shadow }),
           ...(prst === 'roundRect' && { radius: Math.round(Math.min(bx.w, bx.h) * Math.min(50000, adj) / 100000) }) });
@@ -581,7 +593,7 @@ export async function importPPTX(file) {
       const src = await media(blip.getAttribute('r:embed')); if (!src) return;
       const descr = all(pic, 'p:cNvPr')[0]?.getAttribute('descr') || '';
       const shadow = shadowOf(kid(pic, 'p:spPr'), theme, scale);
-      blocks.push({ id: uid(), type: 'image', fit: 'fill', src, ...(descr && { alt: descr }), ...(shadow && { shadow }), ...box(map(geo)) });
+      blocks.push({ id: uid(), ...objLink(pic), type: 'image', fit: 'fill', src, ...(descr && { alt: descr }), ...(shadow && { shadow }), ...box(map(geo)) });
     };
     // Charts: the chart part's cached data becomes an editable Revela chart.
     // SmartArt: PowerPoint keeps a drawing of it (ppt/diagrams/drawingN.xml,
@@ -737,9 +749,13 @@ export async function importPPTX(file) {
       if (m) { morph = { byWord: 'words', byChar: 'chars' }[m.getAttribute('option')] || 'objects'; transition = null; }
     }
     readAnimations(doc, spidOf, blocks, size);
-    slides.push({ id: uid(), sectionId: null, background, transition, ...(transitionDir && { transitionDir }), hidden, notes, autoSlide, blocks, _layout: layoutPath, ...(hideMaster && { hideMaster: true }),
+    slides.push({ _path: slidePath, id: uid(), sectionId: null, background, transition, ...(transitionDir && { transitionDir }), hidden, notes, autoSlide, blocks, _layout: layoutPath, ...(hideMaster && { hideMaster: true }),
       ...(morph && { autoAnimate: true }), ...(morph && morph !== 'objects' && { morphBy: morph }) });
   }
+
+  // Links to a slide: from the slide's file to its id.
+  const idOfPath = new Map(slides.map(sl => [sl._path, sl.id]));
+  for (const sl of slides) { for (const b of sl.blocks) if (b._gotoPath) { const id = idOfPath.get(b._gotoPath); if (id) b.goto = id; delete b._gotoPath; } delete sl._path; }
 
   // ---- Master styles and layouts --------------------------------------------
   // The master's text styles (title, body levels) become Revela's; each layout

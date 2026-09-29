@@ -15,6 +15,7 @@ import { needsPlayer, mediaConfig } from '../../features/live/media.js';
 import { modelAttrsHTML, bleedBox } from '../../features/content/model3d.js';
 import { model3dRuntime } from '../runtime/model3d.js';
 import { timerRuntime } from '../runtime/timer.js';
+import { safeURL } from '../../features/document/sanitize.js';
 import { canvasRuntimeDeps } from '../runtime/canvas.js';
 import { canvasOn, frameOf } from '../../features/design/canvasmode.js';
 import { shadowCSS, borderCSS, levelCSS, textPadding, webCardHTML, mathTeX, mathCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, curvedTextSVG, deviceCSS, shapeTextHTML, hasShapeText, wrapFor, wrapAttrs, wrapVars, WRAP_CSS, tableClass, tableVars, tableCSS } from '../../render/svg.js';
@@ -67,6 +68,16 @@ function customEffectCSS(deck) {
 }
 
 export { esc };
+
+// Objects that are links: a click (or Enter) goes to the slide or opens the page.
+const LINK_JS = `(function(){function go(el){var g=el.getAttribute('data-goto'),h=el.getAttribute('data-href');
+if(h){window.open(h,'_blank','noopener');return;}
+var s=Reveal.getSlides(),i=s.indexOf(Reveal.getCurrentSlide()),t=null;
+if(g==='next')t=s[i+1];else if(g==='prev')t=s[i-1];else if(g==='first')t=s[0];else if(g==='last')t=s[s.length-1];
+else if(g&&g.indexOf('slide:')===0){var id=g.slice(6);for(var k=0;k<s.length;k++)if(s[k].getAttribute('data-rv-id')===id)t=s[k];}
+if(t){var x=Reveal.getIndices(t);Reveal.slide(x.h,x.v,0);}}
+document.addEventListener('click',function(e){var el=e.target.closest&&e.target.closest('.slides [data-goto],.slides [data-href]');if(el){e.preventDefault();e.stopPropagation();go(el);}},true);
+document.addEventListener('keydown',function(e){if(e.key==='Enter'&&document.activeElement&&document.activeElement.matches&&document.activeElement.matches('[data-goto],[data-href]')){e.preventDefault();go(document.activeElement);}},true);})();`;
 
 // Background sound over several slides: it plays while the current slide is in
 // its range and stops (back to the start) outside it; its button pauses and resumes it.
@@ -163,13 +174,18 @@ export function morphText(html, by, counts) {
   walk(tpl.content);
   return tpl.innerHTML;
 }
+// An object that is a link (PowerPoint's "Link" / action settings): to a web
+// page, or to a slide — next, previous, first, last or one of them (by its id).
+const GOTO = new Set(['next', 'prev', 'first', 'last']);
+const linkAttrs = b => (b.type === 'text' || b.type === 'connector' ? '' : (b.href && safeURL(b.href) && /^(https?|mailto):/i.test(b.href) ? ` data-href="${esc(b.href)}"` : '')
+  + (b.goto ? ` data-goto="${esc(GOTO.has(b.goto) ? b.goto : 'slide:' + b.goto)}"` : '') + (b.href || b.goto ? ' role="link" tabindex="0"' : ''));
 function blockHTMLRaw(b, slide) {
   // When the slide uses Auto‑Animate, a stable data-id lets reveal.js match and
   // morph the same object between consecutive slides (PowerPoint's "Morph").
   // Morph: the object matches its twin on the next slide by id — except text
   // morphing by words/characters, where the words themselves match (morphText).
   const byText = !!b.byText;
-  const a = animAttrs(b, slide) + (b.morphId && !byText ? ` data-id="${esc(b.morphId)}"` : '') + ariaAttrs(b);
+  const a = animAttrs(b, slide) + (b.morphId && !byText ? ` data-id="${esc(b.morphId)}"` : '') + ariaAttrs(b) + linkAttrs(b);
   if (b.type === 'connector') {
     const { w, h } = state.deck.size;
     const from = slide && slide.blocks.find(x => x.id === b.from);
@@ -329,7 +345,7 @@ function slideHTML(s, deck, figMap, plan = morphPlan(deck)) {
   }).join('\n');
   const notes = s.notes ? `<aside class="notes">${esc(s.notes)}</aside>` : '';
   const aa = (plan.marked.has(s.id) ? ' data-auto-animate' : '') + (s.aaDuration ? ` data-auto-animate-duration="${+s.aaDuration}"` : '') + (s.aaDelay ? ` data-auto-animate-delay="${+s.aaDelay}"` : '');
-  return `<section${trans}${speed}${auto}${bg}${aa}>`
+  return `<section${trans}${speed}${auto}${bg}${aa} data-rv-id="${esc(s.id)}">`
     + `<div class="stage${s.bgIframe && s.bgInteractive ? ' pass' : ''}" style="background:${stageBackground(s)}">${bgLayer(s)}${inner}</div>${notes}</section>`;
 }
 
@@ -447,6 +463,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  .reveal .fragment.draw .rvd{stroke-dasharray:1;stroke-dashoffset:1;fill-opacity:0}
  .reveal .fragment.draw.visible .rvd{animation:rvDraw var(--anim-dur,1500ms) ease-in-out var(--anim-del,0ms) forwards}
  @keyframes rvDraw{70%{fill-opacity:0}to{stroke-dashoffset:0;fill-opacity:1}}
+ [data-goto],[data-href]{cursor:pointer}
  [data-timer].rv-t-low .rv-t-txt,[data-timer].rv-t-low .rv-t-bar{fill:#ff5252} [data-timer].rv-t-low .rv-t-arc{stroke:#ff5252}
  [data-timer].rv-t-done svg{animation:rvBlink 1s ease-in-out 3} @keyframes rvBlink{50%{opacity:.25}}
  ${WRAP_CSS}
@@ -490,6 +507,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${hasModel3d ? `(${model3dRuntime.toString()})();` : ''}
  ${hasTimer ? `(${timerRuntime.toString()})();` : ''}
  ${bgmHTML ? BGM_JS : ''}
+ ${/ data-(goto|href)="/.test(slides) ? LINK_JS : ''}
  ${hasMedia ? `${createMediaPlayer.toString()}\n${revelaMediaRuntime.toString()}\nrevelaMediaRuntime(${JSON.stringify(GIFUCT)});` : ''}
  ${inkJS(w, h, { pen: t('Lápiz'), hl: t('Resaltador'), laser: t('Puntero láser'), color: t('Color de la tinta'), erase: t('Borrar la tinta de la diapositiva'),
    cc: t('Subtítulos en directo'), lang: speechLang(), ccWarn: t('Los subtítulos usan el reconocimiento de voz del navegador: en Chrome y Edge el audio se envía a su servicio de voz. ¿Activarlos?') })}

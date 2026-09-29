@@ -109,3 +109,5 @@
 .rich[data-wrap=l]::before{float:left}.rich[data-wrap=r]::before{float:right}
 /* Text inside a shape: a text layer over it (see paintShapeText). */
 .block > .shape-text{position:absolute;inset:0;overflow:hidden;box-sizing:border-box}
+/* An object that is a link: a small mark while it is selected (when presenting, a click follows it). */
+.block.linked.selected:not(.processing)::after{content:"link";font-family:'Material Symbols Rounded';position:absolute;left:-2px;top:-26px;z-index:5;font-size:18px;line-height:22px;width:22px;text-align:center;border-radius:50%;background:var(--accent);color:#fff;pointer-events:none}
