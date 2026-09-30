@@ -116,3 +116,8 @@
 .popover .shape-pop button:hover{border-color:var(--line2);background:var(--bg)}
 .popover[data-type="shapes"]{max-height:min(70vh,520px);overflow:auto}
 .row .shape-gallery button,.popover .shape-pop button{color:var(--accent)}
+
+/* Transition preview (hovering an effect) */
+#trans-preview{position:fixed;z-index:2100;width:320px;padding:6px;border-radius:10px;background:var(--panel);border:1px solid var(--line2);box-shadow:0 12px 32px #0004;pointer-events:none}
+#trans-preview iframe{display:block;width:100%;aspect-ratio:16/9;border:0;border-radius:6px;background:#000}
+#trans-preview span{display:block;text-align:center;font-size:12px;color:var(--txt2);margin-top:4px}

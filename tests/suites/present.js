@@ -200,6 +200,23 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.querySelector('[data-action="zoom-fit"]').click();
   });
 
+  await test('transiciones: al pasar el ratón por un efecto, se ve en pequeño con la propia diapositiva', async () => {
+    reset(); R.slides.addSlide(); await sleep(20);
+    D.querySelector('[data-tab="transitions"]').click(); await sleep(30);
+    const b = D.querySelector('[data-slide-transition="circle"]');
+    b.dispatchEvent(new frame.contentWindow.PointerEvent('pointerover', { bubbles: true, pointerType: 'mouse' }));
+    await sleep(500);
+    const pop = D.getElementById('trans-preview'); assert(pop && pop.querySelector('iframe'), 'aparece la vista previa');
+    let w; for (let i = 0; i < 80 && !((w = pop.querySelector('iframe').contentWindow).Reveal?.isReady?.()); i++) await sleep(100);
+    let went = false; for (let i = 0; i < 40 && !went; i++) { await sleep(100); went = w.Reveal.getIndices(w.Reveal.getCurrentSlide()).h === 1; }
+    assert(went, 'y reproduce el paso de la anterior a esta');
+    eq(w.Reveal.getCurrentSlide().getAttribute('data-transition'), 'circle', 'con el efecto que se señala');
+    assert(!w.document.querySelector('.scroll-page-content'), 'como en una presentación (no la vista de móvil de reveal.js)');
+    eq(R.state.deck.slides[1].transition ?? null, null, 'mirar no cambia nada');
+    b.dispatchEvent(new frame.contentWindow.PointerEvent('pointerout', { bubbles: true, pointerType: 'mouse', relatedTarget: D.body }));
+    assert(!D.getElementById('trans-preview'), 'al salir, se va');
+  });
+
   await test('votación en directo: recuento, resultados, export y QR', async () => {
     reset(); const P = R.poll;
     const c = P.tallyVotes({ kind: 'choice', options: ['a', 'b', 'c'] }, { v1: 0, v2: 2, v3: 2, v4: 9 });

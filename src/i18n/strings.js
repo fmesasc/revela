@@ -2162,5 +2162,6 @@ export const ROWS = [
   ['Puntero normal', 'Normal pointer', 'Pointeur normal', 'Normaler Zeiger', 'Puntatore normale', 'Ponteiro normal', 'Punter normal'],
   ['Pantalla en blanco', 'White screen', 'Écran blanc', 'Weißer Bildschirm', 'Schermo bianco', 'Ecrã branco', 'Pantalla en blanc'],
   ['Terminar la presentación', 'End the show', 'Terminer la présentation', 'Präsentation beenden', 'Termina la presentazione', 'Terminar a apresentação', 'Acaba la presentació'],
+  ['Vista previa de la transición', 'Transition preview', 'Aperçu de la transition', 'Vorschau des Übergangs', 'Anteprima della transizione', 'Pré-visualização da transição', 'Previsualització de la transició'],
 ];
 // Additional languages (partial; anything missing falls back to Spanish).

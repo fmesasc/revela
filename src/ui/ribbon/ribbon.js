@@ -33,6 +33,7 @@ import { readFile } from '../shell/openfile.js';
 import { animPaint, endAnimPaint, ACTIONS } from './actions.js';
 import { applyZoom, fitZoom, zoomFitting, wireZoom } from './zoom.js';
 import { compactGroups } from './compact.js';
+import { wireTransitionPreview } from './transpreview.js';
 import { closePopover, togglePopover } from './popovers.js';
 
 const $ = s => document.querySelector(s);
@@ -66,7 +67,7 @@ export function initRibbon() {
     if (e.target.value) addPlaceholder(e.target.value); e.target.value = '';
   });
   populateFonts();
-  applyZoom(); wireZoom();
+  applyZoom(); wireZoom(); wireTransitionPreview(document.getElementById('ribbon') || document);
   // On phones/tablets, start zoomed to fit and refit on rotation/resize.
   const small = () => window.innerWidth < 860 || window.innerHeight < 520;
   // The slide fits the space it has — at start, when the window or the panels

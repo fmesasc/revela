@@ -2143,4 +2143,5 @@ export default {
   "Puntero normal": "Normale aanwijzer",
   "Pantalla en blanco": "Wit scherm",
   "Terminar la presentación": "Presentatie beëindigen",
+  "Vista previa de la transición": "Voorbeeld van de overgang",
 };

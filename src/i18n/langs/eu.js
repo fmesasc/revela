@@ -2143,4 +2143,5 @@ export default {
   "Puntero normal": "Erakusle arrunta",
   "Pantalla en blanco": "Pantaila zuria",
   "Terminar la presentación": "Amaitu aurkezpena",
+  "Vista previa de la transición": "Trantsizioaren aurrebista",
 };

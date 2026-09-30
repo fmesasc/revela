@@ -2143,4 +2143,5 @@ export default {
   "Puntero normal": "Punteiro normal",
   "Pantalla en blanco": "Pantalla en branco",
   "Terminar la presentación": "Rematar a presentación",
+  "Vista previa de la transición": "Vista previa da transición",
 };

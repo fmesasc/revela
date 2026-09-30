@@ -2143,4 +2143,5 @@ export default {
   "Puntero normal": "المؤشر العادي",
   "Pantalla en blanco": "شاشة بيضاء",
   "Terminar la presentación": "إنهاء العرض",
+  "Vista previa de la transición": "معاينة الانتقال",
 };
