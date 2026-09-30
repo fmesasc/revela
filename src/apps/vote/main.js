@@ -173,3 +173,5 @@ $('#go').addEventListener('click', () => join($('#code').value));
 $('#code').addEventListener('keydown', e => { if (e.key === 'Enter') join($('#code').value); });
 const pre = new URLSearchParams(location.search).get('c');
 if (pre) { $('#code').value = pre; join(pre); }
+// (For the tests: feed it messages as if from the presentation.)
+if (new URLSearchParams(location.search).has('test')) window.__vote = { onData: d => { conn = conn || { open: true, send: m => (window.__sent = window.__sent || []).push(m) }; onData(d); } };
