@@ -3,7 +3,7 @@
 :root{
   --bg:#eef0f3; --canvas-bg:#c7cad1; --panel:#fff; --ribbon:#f7f8fa;
   --line:#e2e4e9; --line2:#d2d5dc; --txt:#2f333a; --txt2:#797f89;
-  --accent:#3f6497; --accent-bg:#e8eef6; --go:#2b7a3b; --go-bg:#e6f4ea; --danger:#c0392b;
+  --accent:#3f6497; --accent-bg:#e8eef6; --go:#2b7a3b; --go-bg:#e6f4ea; --danger:#c0392b; --on-accent:#fff;
   color-scheme:light;
 }
 /* Editor appearance (the slides keep their own colours): dark, or following
@@ -11,14 +11,14 @@
 :root[data-ui="dark"]{
   --bg:#15181d; --canvas-bg:#0b0d10; --panel:#1f2329; --ribbon:#1a1d22;
   --line:#2b3038; --line2:#3a414c; --txt:#e3e6eb; --txt2:#9aa3ae;
-  --accent:#86a9e8; --accent-bg:#26324a; --go:#6fd18c; --go-bg:#1f3527; --danger:#f07167;
+  --accent:#86a9e8; --accent-bg:#26324a; --go:#6fd18c; --go-bg:#1f3527; --danger:#f07167; --on-accent:#0f1624;
   color-scheme:dark;
 }
 @media (prefers-color-scheme:dark){
   :root[data-ui="auto"]{
     --bg:#15181d; --canvas-bg:#0b0d10; --panel:#1f2329; --ribbon:#1a1d22;
     --line:#2b3038; --line2:#3a414c; --txt:#e3e6eb; --txt2:#9aa3ae;
-    --accent:#86a9e8; --accent-bg:#26324a; --go:#6fd18c; --go-bg:#1f3527; --danger:#f07167;
+    --accent:#86a9e8; --accent-bg:#26324a; --go:#6fd18c; --go-bg:#1f3527; --danger:#f07167; --on-accent:#0f1624;
     color-scheme:dark;
   }
 }

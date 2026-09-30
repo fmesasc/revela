@@ -6,7 +6,7 @@
 import { t } from '../../i18n/index.js';
 
 const KEY = 'revela.appearance';
-const VARS = ['--bg', '--canvas-bg', '--panel', '--ribbon', '--line', '--line2', '--txt', '--txt2', '--accent', '--accent-bg', '--go', '--go-bg', '--danger'];
+const VARS = ['--bg', '--canvas-bg', '--panel', '--ribbon', '--line', '--line2', '--txt', '--txt2', '--accent', '--accent-bg', '--go', '--go-bg', '--danger', '--on-accent'];
 export const ACCENTS = ['#3f6497', '#2b7a78', '#7a3f97', '#c0392b', '#d35400', '#2e7d32', '#455a64', '#b8860b'];
 
 const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
@@ -18,15 +18,16 @@ const lum = h => { const [r, g, b] = rgb(h).map(v => { v /= 255; return v <= .03
 export function derive(base, accent) {
   const dark = lum(base) < 0.2;
   const k = dark ? '#000000' : '#000000', w = '#ffffff';
+  const acc = dark && lum(accent) < .12 ? mix(accent, w, .35) : accent, on = lum(acc) > .3 ? '#0f1624' : '#ffffff';  // text on the accent
   return dark ? {
     '--panel': base, '--ribbon': mix(base, k, .12), '--bg': mix(base, k, .25), '--canvas-bg': mix(base, k, .55),
     '--line': mix(base, w, .10), '--line2': mix(base, w, .18), '--txt': '#e8eaed', '--txt2': '#a0a7b1',
-    '--accent': lum(accent) < .12 ? mix(accent, w, .35) : accent, '--accent-bg': mix(accent, base, .8),
+    '--accent': acc, '--accent-bg': mix(accent, base, .8), '--on-accent': on,
     '--go': '#6fd18c', '--go-bg': mix('#2b7a3b', base, .7), '--danger': '#f07167', 'color-scheme': 'dark',
   } : {
     '--panel': base, '--ribbon': mix(base, k, .03), '--bg': mix(base, k, .06), '--canvas-bg': mix(base, k, .22),
     '--line': mix(base, k, .10), '--line2': mix(base, k, .17), '--txt': '#2f333a', '--txt2': '#6f7680',
-    '--accent': accent, '--accent-bg': mix(accent, base, .88), '--go': '#2b7a3b', '--go-bg': '#e6f4ea', '--danger': '#c0392b', 'color-scheme': 'light',
+    '--accent': acc, '--accent-bg': mix(accent, base, .88), '--on-accent': on, '--go': '#2b7a3b', '--go-bg': '#e6f4ea', '--danger': '#c0392b', 'color-scheme': 'light',
   };
 }
 

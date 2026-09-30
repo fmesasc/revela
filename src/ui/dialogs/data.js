@@ -45,7 +45,7 @@ export function openLinkChart(b) {
     <p class="host-help">${t('Un CSV publicado en internet, p. ej. Google Sheets › Archivo › Compartir › Publicar en la web › CSV. Primera columna: etiquetas; una columna por serie; primera fila con los nombres.')}</p>
     <label class="fr-l">${t('Dirección del CSV')}<input type="url" class="lk-url" value="${(b.dataUrl || '').replace(/"/g, '&quot;')}" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?output=csv"></label>
     <label class="fr-l">${t('Actualizar al presentar cada (segundos, 0 = solo al abrir)')}<input type="number" class="lk-sec" min="0" max="3600" value="${b.refreshSec ?? 60}"></label>
-    <div class="fr-actions">${b.dataUrl ? `<button class="lk-off">${t('Desvincular')}</button>` : ''}<button class="fr-do lk-go">${t('Vincular y cargar')}</button></div>`);
+    <div class="fr-actions">${b.dataUrl ? `<button class="lk-off mini2">${t('Desvincular')}</button>` : ''}<button class="fr-do lk-go">${t('Vincular y cargar')}</button></div>`);
   const q = s => back.querySelector(s);
   q('.lk-go').addEventListener('click', async () => {
     try { await linkChart(b, q('.lk-url').value, q('.lk-sec').value); back.remove(); }

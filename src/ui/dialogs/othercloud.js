@@ -18,7 +18,7 @@ export function openCloud(id) {
   document.getElementById('oc-modal')?.remove();
   const back = document.createElement('div');
   back.id = 'oc-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:start;min-width:min(420px,94vw);max-width:94vw"><button class="modal-close">✕</button>
+  back.innerHTML = `<div class="modal" style="text-align:start;width:min(520px,94vw);max-width:none"><button class="modal-close">✕</button>
     <h3>${esc(p.name)}</h3><div class="oc-body"></div></div>`;
   document.body.appendChild(back);
   const body = back.querySelector('.oc-body'), close = () => back.remove();

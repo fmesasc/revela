@@ -19,10 +19,10 @@ export function openAiSettings() {
     <button class="modal-close">✕</button><h3>${t('Inteligencia artificial')}</h3>
     <p class="host-help">${t('Revela usa OpenRouter, que da acceso a muchos modelos (Claude, GPT, Gemini, Llama…). Pagas tu uso directamente en OpenRouter; Revela no tiene servidor y no ve tus datos.')}</p>
     <p class="ai-status"></p>
-    <div class="fr-actions" style="justify-content:flex-start"><button class="fr-do ai-login">${t('Entrar con OpenRouter')}</button><button class="ai-out">${t('Desconectar')}</button></div>
+    <div class="fr-actions" style="justify-content:flex-start"><button class="fr-do ai-login">${t('Entrar con OpenRouter')}</button><button class="ai-out mini2">${t('Desconectar')}</button></div>
     <details class="ai-adv"><summary>${t('Usar mi propia clave de OpenRouter')}</summary>
       <label class="fr-l"><input type="password" class="ai-key" placeholder="sk-or-…" autocomplete="off"></label>
-      <div class="fr-actions" style="justify-content:flex-start"><button class="ai-save">${t('Guardar clave')}</button></div></details>
+      <div class="fr-actions" style="justify-content:flex-start"><button class="ai-save mini2">${t('Guardar clave')}</button></div></details>
     <label class="fr-l">${t('Modelo')} <input type="text" class="ai-model" list="ai-models" value="${s.model}">
       <datalist id="ai-models"><option value="openrouter/auto"></option></datalist></label>
     <label class="fr-l">${t('Modelo de imágenes')} <input type="text" class="ai-imodel" value="${ai.imageModel()}"></label>

@@ -18,7 +18,7 @@ export function openPollEditor(b) {
     <label class="fr-l">${t('Mostrar resultados como')}<select class="pl-disp">${opt('bar', 'Barras', b.display)}${opt('pie', 'Circular', b.display)}${opt('numbers', 'Cifras', b.display)}</select></label>
     <p class="host-help">${t('Al presentar aparece un QR: el público vota desde el móvil y los resultados se actualizan al instante. Conexión directa entre navegadores (WebRTC); funciona bien con decenas de personas.')}</p>
     <p class="host-help pl-count"></p>
-    <div class="fr-actions"><button class="pl-clear">${t('Borrar resultados')}</button><button class="pl-csv">${t('Descargar resultados (CSV)')}</button><button class="fr-do pl-ok">${t('Aplicar')}</button></div></div>`;
+    <div class="fr-actions"><button class="pl-clear mini2">${t('Borrar resultados')}</button><button class="pl-csv mini2">${t('Descargar resultados (CSV)')}</button><button class="fr-do pl-ok">${t('Aplicar')}</button></div></div>`;
   document.body.appendChild(back);
   const q = s => back.querySelector(s), close = () => back.remove();
   q('.pl-q').value = b.question || ''; q('.pl-opts').value = (b.options || []).map((o, i) => (b.kind === 'quiz' && (b.correct || []).includes(i) ? '*' : '') + o).join('\n');

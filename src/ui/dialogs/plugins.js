@@ -43,7 +43,7 @@ export function openMacros() {
     <p class="host-help">${t('Código JavaScript con el objeto Revela, p. ej.:')} <code>for (let i = 0; i &lt; Revela.slides.count(); i++) { … }</code></p>
     <label class="fr-l">${t('Macro guardada')} <select class="mc-list"><option value="">—</option></select></label>
     <textarea class="mc-code" rows="10" spellcheck="false" style="font-family:monospace;width:100%"></textarea>
-    <div class="fr-actions"><button class="mc-del">${t('Eliminar')}</button><button class="mc-save">${t('Guardar')}</button><button class="fr-do mc-run">▶ ${t('Ejecutar')}</button></div>
+    <div class="fr-actions"><button class="mc-del mini2">${t('Eliminar')}</button><button class="mc-save mini2">${t('Guardar')}</button><button class="fr-do mc-run">▶ ${t('Ejecutar')}</button></div>
     <pre class="mc-out"></pre>`);
   const sel = back.querySelector('.mc-list'), code = back.querySelector('.mc-code'), out = back.querySelector('.mc-out');
   const fill = (pick = sel.value) => {

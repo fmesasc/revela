@@ -110,7 +110,7 @@
 /* Text inside a shape: a text layer over it (see paintShapeText). */
 .block > .shape-text{position:absolute;inset:0;overflow:hidden;box-sizing:border-box}
 /* An object that is a link: a small mark while it is selected (when presenting, a click follows it). */
-.block.linked.selected:not(.processing)::after{content:"link";font-family:'Material Symbols Rounded';position:absolute;left:-2px;top:-26px;z-index:5;font-size:18px;line-height:22px;width:22px;text-align:center;border-radius:50%;background:var(--accent);color:#fff;pointer-events:none}
+.block.linked.selected:not(.processing)::after{content:"link";font-family:'Material Symbols Rounded';position:absolute;left:-2px;top:-26px;z-index:5;font-size:18px;line-height:22px;width:22px;text-align:center;border-radius:50%;background:var(--accent);color:var(--on-accent);pointer-events:none}
 .freeform-draw .ff-shape{fill:color-mix(in srgb,var(--accent) 35%,transparent);stroke:var(--accent);stroke-width:3;stroke-linejoin:round}
 /* Attached files: a PDF's page with a badge, or the file's icon. */
 .block .file-blk{width:100%;height:100%;position:relative}

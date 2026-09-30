@@ -47,7 +47,7 @@ export function openCodeEditor(b) {
     <label class="fr-chk"><input type="checkbox" class="cd-all"> ${t('Empezar mostrando todo el código sin resaltar')}</label>
     <div class="cd-grid-wrap"><table class="cd-grid"></table></div>
     <div class="fr-actions" style="justify-content:space-between">
-      <span><button class="cd-add">＋ ${t('Paso')}</button> <button class="cd-del">－ ${t('Paso')}</button> <button class="cd-play">▶ ${t('Vista previa')}</button></span>
+      <span><button class="cd-add mini2">＋ ${t('Paso')}</button> <button class="cd-del mini2">－ ${t('Paso')}</button> <button class="cd-play mini2">▶ ${t('Vista previa')}</button></span>
       <button class="fr-do cd-ok">${t('Aplicar')}</button></div></div>`;
   document.body.appendChild(back);
   const q = s => back.querySelector(s), close = () => { clearInterval(timer); back.remove(); };

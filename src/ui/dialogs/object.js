@@ -204,9 +204,9 @@ export function openIconColor(b) {
   if (document.getElementById('icon-modal')) return;
   const back = document.createElement('div');
   back.id = 'icon-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="min-width:220px">
+  back.innerHTML = `<div class="modal" style="min-width:220px;text-align:start">
     <button class="modal-close">✕</button><h3>${t('Color del icono')}</h3>
-    <input type="color" class="ic-color" value="${b.color || '#ffffff'}" style="width:80px;height:44px;border:none;background:none;cursor:pointer">
+    <input type="color" class="ic-color" value="${b.color || '#ffffff'}" style="width:80px;height:44px">
   </div>`;
   document.body.appendChild(back);
   const close = () => back.remove();

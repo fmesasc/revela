@@ -32,6 +32,23 @@
 .modal{background:var(--panel);border-radius:12px;box-shadow:0 20px 60px #0004;padding:22px 24px;max-width:340px;
   text-align:center;position:relative;max-height:calc(100dvh - 68px);overflow:auto}
 .modal h3{margin:0 0 8px;color:var(--accent)}
+.modal,.popover{accent-color:var(--accent)}
+.modal a:not([class]){color:var(--accent)}
+/* Base look of form controls in dialogs and popovers (zero specificity, so each
+   dialog's own rules still win): theme colours instead of the browser's grey ones. */
+:where(.modal,.popover) :where(input:not([type=checkbox],[type=radio],[type=range],[type=color],[type=file]),select,textarea){
+  background:var(--ribbon);color:var(--txt);border:1px solid var(--line2);border-radius:6px;font-family:inherit}
+:where(.modal,.popover) :where(input,select,textarea):focus{outline:none;border-color:var(--accent)}
+:where(.modal) :where(button:not([class])),:where(.modal,.popover) input[type=file]::file-selector-button{
+  background:var(--ribbon);color:var(--txt);border:1px solid var(--line2);border-radius:8px;padding:6px 12px;cursor:pointer;font:inherit;font-size:13px}
+:where(.modal) :where(button:not([class])):hover:not(:disabled),:where(.modal,.popover) input[type=file]::file-selector-button:hover{background:var(--accent-bg)}
+:where(.modal) :where(button:not([class])):disabled{opacity:.45;cursor:default}
+:where(.modal,.popover) input[type=file]{font-size:12px;color:var(--txt2)}
+:where(.modal,.popover) input[type=file]::file-selector-button{margin-inline-end:8px}
+.modal .fr-l input[type=color],.modal input[type=color]{width:56px;height:32px;padding:3px;border:1px solid var(--line2);border-radius:6px;background:var(--ribbon);cursor:pointer}
+.modal input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+.modal input[type=color]::-webkit-color-swatch{border:none;border-radius:4px}
+.modal input[type=color]::-moz-color-swatch{border:none;border-radius:4px}
 .modal fieldset{min-width:0}
 .modal .host-help{color:var(--txt2);font-size:12px;margin:0 0 14px}
 .modal .host-url{color:var(--txt)}
@@ -70,13 +87,15 @@
 .modal .dlg-msg{margin:0 0 12px;font-size:14px;color:var(--txt)}
 .modal .dlg-in{width:100%;border:1px solid var(--line2);border-radius:6px;padding:8px;font-family:inherit;font-size:14px;margin-bottom:12px}
 .mini2{background:var(--ribbon);border:1px solid var(--line2);border-radius:8px;padding:9px 14px;cursor:pointer;font-family:inherit;font-size:13px;color:var(--txt)}
-.mini2:hover{background:var(--panel)}
+.mini2:hover:not(:disabled){background:var(--panel)}
+.mini2:disabled{opacity:.45;cursor:default}
+.popover .host-help{color:var(--txt2);font-size:12px;margin:0 0 6px}
 .modal .fr-l{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--txt2);margin-bottom:10px}
 .modal .fr-l input,.modal .fr-l select,.modal .fr-l textarea{border:1px solid var(--line2);border-radius:6px;padding:8px;font-family:inherit;font-size:14px;color:var(--txt)}
 .modal .fr-chk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2);margin-bottom:12px}
 .modal .fr-actions{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .modal .fr-count{font-size:12px;color:var(--txt2)}
-.modal .fr-do{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px}
+.modal .fr-do{background:var(--accent);color:var(--on-accent);border:none;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px}
 
 /* ---------- Status bar ---------- */
 #statusbar{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:4px 14px;

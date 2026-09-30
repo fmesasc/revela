@@ -34,7 +34,7 @@ export function openReuseDialog(deck, name = '') {
     <p class="reuse-src"></p>
     <div class="reuse-grid"></div>
     <div class="fr-actions">
-      <button class="reuse-all">${t('Seleccionar todas')}</button>
+      <button class="reuse-all mini2">${t('Seleccionar todas')}</button>
       <button class="fr-do reuse-go" disabled>${t('Insertar')}</button>
     </div></div>`;
   back.querySelector('.reuse-src').textContent = name;
