@@ -45,6 +45,7 @@ import { openPlugins, openMacros } from '../dialogs/plugins.js';
 import { openVersions } from '../dialogs/versions.js';
 import { openClassResults, shareToClassroom } from '../dialogs/classroom.js';
 import { openCloudDocs, openCloudShare } from '../dialogs/cloud.js';
+import { toggleCall } from '../panels/call.js';
 import * as protect from '../../features/collab/protect.js';
 import { toggleComments } from '../panels/comments.js';
 import { toggleReview } from '../panels/review.js';
@@ -98,6 +99,7 @@ export const ACTIONS = {
   'review-panel': () => toggleReview(),
   'cloud-docs': () => openCloudDocs(),
   'cloud-share': () => openCloudShare(),
+  'cloud-call': () => toggleCall(),
   'design-ideas': () => openDesignIdeas(),
   'gdrive-open': () => gdrive.openWithUI(),
   'gslides-import': () => gdrive.pickSlidesFile().then(f => f && openPresentation(f)).catch(e => alertDialog(e.message === 'NO_TOKEN' ? t('Vuelve a iniciar sesión con Google.') : e.message)),

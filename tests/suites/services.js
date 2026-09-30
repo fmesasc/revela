@@ -922,4 +922,40 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(Math.round(b.w / b.h), 2, 'con su proporción'); eq(b.alt, 'Un faro', 'texto alternativo');
     assert(!D.querySelector('#elements-panel [data-et="photos"]'), 'en la edición abierta (sin cuenta) no aparece');
   });
+
+  await test('videollamada: dos personas se ven a través del SFU (simulado con conexiones WebRTC reales)', async () => {
+    const W = frame.contentWindow, CALL = await W.eval("import('/src/io/cloud/call.js')");
+    assert(W.navigator.mediaDevices?.getUserMedia, 'el navegador de pruebas tiene cámara y micrófono simulados');
+    // A tiny SFU: one connection per session; it forwards what one publishes to whoever pulls it.
+    const sfu = new Map(), room = new Map(); let n = 0;
+    const request = async (path, b) => {
+      if (path === 'call/session') { const id = 's' + (++n); sfu.set(id, { pc: new W.RTCPeerConnection(), published: new Map(), pending: null }); return { sessionId: id }; }
+      if (path === 'call/room') { if (b.leave) room.delete(b.pid); else room.set(b.pid, { pid: b.pid, name: b.name, sessionId: b.sessionId, tracks: b.tracks }); return { people: [...room.values()] }; }
+      const S = sfu.get(b.sessionId);
+      if (path === 'call/tracks' && b.tracks[0].location === 'local') {
+        const got = new Promise(ok => { const seen = []; S.pc.ontrack = e => { seen.push(e); if (seen.length === b.tracks.length) ok(seen); }; });
+        await S.pc.setRemoteDescription(b.sessionDescription); const ans = await S.pc.createAnswer(); await S.pc.setLocalDescription(ans);
+        got.then(evs => evs.forEach(e => S.published.set(e.track.kind, e.track)));
+        return { sessionDescription: { type: 'answer', sdp: ans.sdp }, tracks: b.tracks };
+      }
+      if (path === 'call/tracks') {                                   // pull: offer the publisher's tracks
+        for (let k = 0; k < 50 && b.tracks.some(t => !sfu.get(t.sessionId).published.get(t.trackName)); k++) await sleep(50);
+        const ts = b.tracks.map(t => S.pc.addTransceiver(sfu.get(t.sessionId).published.get(t.trackName), { direction: 'sendonly' }));
+        const offer = await S.pc.createOffer(); await S.pc.setLocalDescription(offer);
+        return { requiresImmediateRenegotiation: true, sessionDescription: { type: 'offer', sdp: offer.sdp }, tracks: b.tracks.map((t, k) => ({ ...t, mid: ts[k].mid })) };
+      }
+      if (path === 'call/renegotiate') { await S.pc.setRemoteDescription(b.sessionDescription); return {}; }
+    };
+    const seenByB = [], seenByA = [];
+    const a = await CALL.startCall({ doc: 'd'.repeat(20), name: 'Ana', request, pollMs: 300, onStream: (pid, st) => seenByA.push(st) });
+    const b = await CALL.startCall({ doc: 'd'.repeat(20), name: 'Luis', request, pollMs: 300, onStream: (pid, st) => seenByB.push(st) });
+    try {
+      for (let k = 0; k < 60 && !(seenByB.some(st => st.getVideoTracks().length) && seenByA.some(st => st.getVideoTracks().length)); k++) await sleep(100);
+      assert(seenByB.some(st => st.getVideoTracks().length && st.getAudioTracks().length >= 0), 'Luis recibe el vídeo de Ana');
+      assert(seenByA.some(st => st.getVideoTracks().length), 'y Ana el de Luis');
+      eq(b.people().map(p => p.name).join(), 'Ana', 'cada uno ve quién está');
+      a.setMic(false); eq(a.stream.getAudioTracks()[0].enabled, false, 'silenciar el micrófono');
+    } finally { await a.stop(); await b.stop(); }
+    eq(room.size, 0, 'al colgar, salen de la sala');
+  });
 }

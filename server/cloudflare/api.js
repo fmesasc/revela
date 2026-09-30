@@ -26,6 +26,7 @@
 //   POST /api/desktop/approve  { nonce, code }          (the signed-in browser, after asking the user)
 //   POST /api/desktop/claim    { nonce, verifier }      (the desktop app: its session, once)
 //   …/api/lti/…                Moodle and other platforms (LTI 1.3: activities marked here, grades sent back; lti.js)
+//   …/api/call/…               video calls in the editor (Pro; Cloudflare Realtime; calls.js)
 //   …/api/team/…               teams: seats, members, brand kit, templates (teams.js)
 //   GET  /api/account/export   → everything the account holds (JSON)
 //   POST /api/account/delete   { confirm: email }       (deletes it all; from the website)
@@ -38,6 +39,7 @@ import { verifyGoogleToken } from './auth.js';
 import { handleDocs } from './docs.js';
 import { handleTeams, teamStatus } from './teams.js';
 import { handleLti } from './lti.js';
+import { handleCalls } from './calls.js';
 
 const enc = new TextEncoder();
 const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -128,6 +130,8 @@ export class Account {
         return this.json({ email: prof.email, plan, until: own === 'pro' ? p.until : null, credits: await this.get('credits', 0), features: FEATURES[plan] || FEATURES.free,
           ...(team?.member && { team: { name: team.name, role: team.role, active: team.active } }) });
       }
+      case 'call-sessions': return this.json({ ids: await this.get('callSessions', []) });
+      case 'call-session-add': await this.put({ callSessions: [a.id, ...(await this.get('callSessions', []))].slice(0, 20) }); return this.json({ ok: true });
       case 'team-id': return this.json({ id: await this.get('team', null) });
       case 'team-set': { if (a.only && (await this.get('team', null)) !== a.only) return this.json({ ok: true }); await this.put({ team: a.id || null }); return this.json({ ok: true }); }
       case 'invites-list': return this.json({ invites: await this.get('invites', []) });
@@ -318,6 +322,7 @@ export async function handleApi(req, env, url) {
   }
   if (!me) return json({ error: 'no session' }, 401);
   const A = acct(env, me.sub);
+  if (path.startsWith('/call/') && req.method === 'POST') { const prof = await call(A, 'me'); return handleCalls(path, body, env, { sub: me.sub, email: prof.email, features: prof.features }, A, call, json); }
   if (path === '/team' || path.startsWith('/team/')) { const prof = await call(A, 'me'); return handleTeams(path, req, body, url, env, { sub: me.sub, email: prof.email }, A, acct, call, json); }
   switch (path) {
     case '/me': {

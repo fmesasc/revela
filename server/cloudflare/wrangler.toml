@@ -72,6 +72,7 @@ new_sqlite_classes = ["ShareBox", "Limits"]
 #   STRIPE_WEBHOOK_SECRET   the signing secret of the webhook (…/api/billing/webhook)
 #   UNSPLASH_ACCESS_KEY     Unsplash's access key (photos; optional)
 #   PEXELS_API_KEY          Pexels' API key (photos; optional)
+#   CALLS_APP_ID, CALLS_APP_SECRET   Cloudflare Realtime SFU app (video calls; optional)
 [[durable_objects.bindings]]
 name = "ACCOUNTS"
 class_name = "Account"
@@ -115,3 +116,12 @@ class_name = "LtiStore"
 [[migrations]]
 tag = "v6"
 new_sqlite_classes = ["LtiStore"]
+
+# Video calls (calls.js): who is in each presentation's call.
+[[durable_objects.bindings]]
+name = "CALLS"
+class_name = "CallRoom"
+
+[[migrations]]
+tag = "v7"
+new_sqlite_classes = ["CallRoom"]

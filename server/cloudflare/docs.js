@@ -66,6 +66,7 @@ export class CloudDoc {
     }
     const doc = await this.load(); if (!doc) return this.json({ error: 'not found' }, 404);
     const { meta } = doc, role = this.roleOf(meta, a.who);
+    if (op === 'role') return this.json({ role });                 // (for the video calls: only who may open it)
     if (!role) return this.json({ error: a.who?.sub ? 'forbidden' : 'sign in' }, a.who?.sub ? 403 : 401);
     const at = r => ROLE_RANK[role] >= ROLE_RANK[r];
     const sharing = () => ({ link: meta.link, people: meta.people });

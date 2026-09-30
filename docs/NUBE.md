@@ -88,6 +88,13 @@ navegador; un intento por actividad) y manda la nota al libro de calificaciones.
 Todo va firmado: los tokens de la plataforma se comprueban con sus claves y los
 nuestros se firman con `LTI_PRIVATE_JWK` (secreto de Cloudflare).
 
+**Videollamadas (Pro).** Quienes pueden abrir una presentación de la nube se
+ven y se oyen desde el editor (Archivo ▸ Llamada), a través del SFU de Cloudflare
+Realtime. El servidor guarda el secreto de la app de Realtime, solo deja usar a
+cada cuenta sus propias sesiones y solo deja recibir pistas de personas que
+están en esa misma llamada. Coste: 0,05 $ por GB de salida, los primeros
+1000 GB al mes gratis.
+
 **Pagos.** `/api/billing/checkout` crea una página de pago de Stripe con el
 **precio de Stripe** (el navegador solo elige el producto). Los planes y
 créditos solo cambian cuando llega el aviso **firmado** de Stripe
@@ -135,5 +142,4 @@ que el servidor los rechaza.
 
 ## Pendiente
 
-- Videollamadas en el editor (Cloudflare Realtime), con límites por plan.
 - Textos legales de la edición oficial.
