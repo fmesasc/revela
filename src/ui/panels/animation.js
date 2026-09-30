@@ -1,6 +1,8 @@
 // Animation pane: the slide's effects in order, with timing, triggers and
 // reordering (PowerPoint's Animation Pane).
 
+import { isPdf } from '../../features/content/files.js';
+import { openPdfZone } from '../dialogs/pdfzone.js';
 import { esc } from '../../core/text.js';
 import { currentSlide, commit, setSelection, subscribe } from '../../core/store.js';
 import * as trans from '../../features/animation/transitions.js';
@@ -29,7 +31,7 @@ export const EFFECT_NAMES = { 'fade-in': 'Aparecer', 'fade-up': 'Subir', 'fade-d
   'fade-in-then-semi-out': 'Aparecer y atenuar', 'current-visible': 'Visible solo en su paso', 'highlight-red': 'Resaltar en rojo',
   'highlight-green': 'Resaltar en verde', 'highlight-blue': 'Resaltar en azul', 'highlight-current-red': 'Rojo solo en su paso',
   'highlight-current-green': 'Verde solo en su paso', 'highlight-current-blue': 'Azul solo en su paso', path: 'Trayectoria',
-  spin360: 'Dar una vuelta', clip3d: 'Animación del modelo 3D', draw: 'Dibujar' };
+  spin360: 'Dar una vuelta', clip3d: 'Animación del modelo 3D', draw: 'Dibujar', pdfview: 'Página y zoom del PDF' };
 export const EFFECT_LABEL = e => t(EFFECT_NAMES[e] || e);
 // Short label of an object for the trigger list.
 export function objLabel(b) {
@@ -60,13 +62,16 @@ export function openAnimPanel() {
       <div class="an-row" data-id="${b.id}" data-i="${i}">
         <div class="an-title">${n + 1}. ${t(ANIM_NAMES[b.type] || b.type)}${count.get(b.id) > 1 ? ` <span class="an-step">${t('animación')} ${i + 1}/${count.get(b.id)}</span>` : ''}</div>
         <div class="an-grid">
-          <label>${t('Efecto')}<select data-p="effect">${[...ANIM_EFFECTS, ...(b.type === 'model' ? ['clip3d'] : [])].map(e => `<option value="${e}"${a.effect === e ? ' selected' : ''}>${EFFECT_LABEL(e)}</option>`).join('')}</select></label>
+          <label>${t('Efecto')}<select data-p="effect">${[...ANIM_EFFECTS, ...(b.type === 'model' ? ['clip3d'] : []), ...(isPdf(b) ? ['pdfview'] : [])].map(e => `<option value="${e}"${a.effect === e ? ' selected' : ''}>${EFFECT_LABEL(e)}</option>`).join('')}</select></label>
           <label>${t('Comienzo')}<select data-p="start">${[['click', 'Al hacer clic'], ['withPrev', 'Con la anterior'], ['afterPrev', 'Después de la anterior']]
             .map(([v, l]) => `<option value="${v}"${(a.start || 'click') === v ? ' selected' : ''}>${t(l)}</option>`).join('')}</select></label>
           <label>${t('Disparador')}<select data-p="trigger"><option value="">${t('Secuencia de clics')}</option>${currentSlide().blocks
             .filter(x => x.id !== b.id && x.type !== 'connector').map(x => `<option value="${x.id}"${a.trigger === x.id ? ' selected' : ''}>${t('Al hacer clic en')} ${objLabel(x).replace(/</g, '&lt;')}</option>`).join('')}</select></label>
           ${a.effect === 'clip3d' ? `<label>${t('Animación')}<select data-p="clip">${[...new Set([a.clip || '*', ...modelClips(b.id)])].map(c => `<option value="${esc(c)}"${(a.clip || '*') === c ? ' selected' : ''}>${c === '*' ? t('La primera') : esc(c)}</option>`).join('')}</select></label>
           <label class="an-chk"><input type="checkbox" data-p="once"${a.once ? ' checked' : ''}> ${t('Una vez y volver al reposo')}</label>` : ''}
+          ${a.effect === 'pdfview' ? `<label>${t('Página')}<input type="number" data-pdf-p="page" min="1"${b.pages ? ` max="${b.pages}"` : ''} value="${Math.max(1, +a.page || 1)}"></label>
+          <label>${t('Zoom')}<select data-pdf-p="zs">${[...new Set([1, 1.5, 2, 3, 4, +(+a.zs || 1).toFixed(2)])].sort((x, y) => x - y).map(z => `<option value="${z}"${Math.abs((+a.zs || 1) - z) < 0.005 ? ' selected' : ''}>${Math.round(z * 100)} %</option>`).join('')}</select></label>
+          <label>&nbsp;<button type="button" class="mini2 an-zone"><i class="ms">crop_free</i> ${t('Elegir la zona…')}</button></label>` : ''}
           ${a.effect === 'path' ? `<label>${t('Recorrido')}<select data-p="pathShape">${[['line', 'Recto'], ['arc', 'Arco'], ['wave', 'Onda'], ['loop', 'Bucle'], ...(a.points ? [['custom', 'Dibujado']] : [])]
             .map(([v, l]) => `<option value="${v}"${(a.pathShape || 'line') === v ? ' selected' : ''}>${t(l)}</option>`).join('')}</select></label>
           <label>&nbsp;<button type="button" class="mini2 an-draw"><i class="ms">gesture</i> ${t('Dibujar')}</button></label>
@@ -91,6 +96,13 @@ export function openAnimPanel() {
       row.querySelector('[data-p="turn"]')?.addEventListener('change', e => set('turn', e.target.value));
       row.querySelector('[data-p="clip"]')?.addEventListener('change', e => set('clip', e.target.value));
       row.querySelector('[data-p="once"]')?.addEventListener('change', e => set('once', e.target.checked));
+      // A PDF step: its page and zoom, typed or chosen on the page itself.
+      row.querySelectorAll('[data-pdf-p]').forEach(x => x.addEventListener('change', () => set(x.dataset.pdfP, +x.value)));
+      row.querySelector('.an-zone')?.addEventListener('click', async () => {
+        const b = byIdAnim(id), a = trans.animsOf(b)[i]; const z = await openPdfZone(b, a); if (!z) return;
+        for (const [k, v] of Object.entries(z)) set(k, v);
+        render();
+      });
       // A sound as it appears: made here, or one's own (a file, kept inside the presentation).
       row.querySelector('[data-p="sound"]').addEventListener('change', e => {
         const v = e.target.value;

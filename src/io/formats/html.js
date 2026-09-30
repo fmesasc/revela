@@ -2,13 +2,14 @@
 // document shown when presenting), and each object's inline HTML, reused by
 // the print and image exports.
 
+import { pdfRuntime } from '../runtime/pdf.js';
 import { tabRuntime } from '../runtime/tabs.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
 import { esc, jsData } from '../../core/text.js';
 import { morphPlan, morphSig } from '../../features/animation/morph.js';
 export { morphPlan, morphSig };                // (for tests and older callers)
 import { state } from '../../core/store.js';
-import { REVEAL, KATEX, MODEL_VIEWER, GIFUCT } from '../../core/vendor.js';
+import { REVEAL, KATEX, MODEL_VIEWER, GIFUCT, PDFJS } from '../../core/vendor.js';
 import { download, slug } from '../files.js';
 import { TRIGGER_JS, CAMERA_JS, pollJS, liveDataJS, LIGHTBOX_JS, overviewJS } from '../runtime/scripts.js';
 import { createMediaPlayer, revelaMediaRuntime } from '../runtime/media.js';
@@ -73,6 +74,12 @@ function customEffectCSS(deck) {
 export { esc };
 
 // Objects that are links: a click (or Enter) goes to the slide or opens the page.
+// The bar of a PDF when presenting: shown while the pointer is over it (always on touch screens).
+const PDF_CSS = `.rv-pdf-bar{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:flex;gap:2px;align-items:center;padding:3px 6px;border-radius:20px;`
+  + `background:rgba(20,24,30,.8);color:#fff;font:16px/1 system-ui,sans-serif;opacity:0;transition:opacity .2s;z-index:3;white-space:nowrap}`
+  + `[data-pdf]:hover .rv-pdf-bar,[data-pdf]:focus-within .rv-pdf-bar{opacity:1} @media (hover:none){.rv-pdf-bar{opacity:.85}}`
+  + `.rv-pdf-bar button{background:none;border:0;color:#fff;font:inherit;padding:6px 9px;cursor:pointer;border-radius:14px;margin:0}.rv-pdf-bar button:hover{background:rgba(255,255,255,.2)}`
+  + `.rv-pdf-bar span{min-width:52px;text-align:center;font-size:14px}`;
 // Attached files: a click downloads the file (a PDF's page opens it in a new
 // tab); the PDF viewer loads it in its frame. From their data, as blobs.
 const FILE_JS = `(function(){function blob(el){var s=el.getAttribute('data-src'),i=s.indexOf(','),m=s.slice(5,i).split(';')[0],b=atob(s.slice(i+1)),a=new Uint8Array(b.length);
@@ -102,15 +109,18 @@ if(a.paused){a.removeAttribute('data-off');a.play().catch(function(){});}else{a.
 list.forEach(function(a){a.addEventListener('play',btns);a.addEventListener('pause',btns);});
 Reveal.on('ready',upd);Reveal.on('slidechanged',upd);if(Reveal.isReady())upd();})();`;
 
+// A PDF's "page and zoom" step: the page, the point of it in the middle (0-1) and how much it is enlarged.
+const pdfStep = a => ({ page: Math.max(1, Math.round(+a.page || 1)), x: +(+(a.zx ?? 0.5)).toFixed(4), y: +(+(a.zy ?? 0.5)).toFixed(4), s: Math.min(8, Math.max(1, +a.zs || 1)) });
 function animAttrs(b, slide, a = b.animation, key = b.id) {
   // An object that triggers animations of others gets an id to be clicked.
   const src = slide && slide.blocks.some(x => animsOf(x).some(y => y.trigger === b.id)) ? ` data-bid="${b.id}"` : '';
   if (!a) return src;
   const { effect, order, trigger, duration, delay } = a;
   const clip = (effect === 'clip3d' ? ` data-clip="${esc(a.clip || '*')}"${a.once ? ' data-clip-once' : ''}` : '')
+    + (effect === 'pdfview' ? ` data-pdfgo="${esc(JSON.stringify(pdfStep(a)))}"` : '')
     + (a.sound ? ` data-sound="${esc(a.sound)}"${a.sound === 'custom' && a.soundSrc && /^data:audio\//.test(a.soundSrc) ? ` data-sound-src="${esc(a.soundSrc)}"` : ''}` : '');
   if (trigger && slide?.blocks.some(x => x.id === trigger))       // played on click of another object
-    return src + ` class="rv-trig${isEntrance(effect) ? ' rv-in' : ''}" data-trig="${trigger}" data-kf="${effect === 'path' ? 'rvP' + cssKey(key) : EFFECT_KF[effect] || 'rvIn'}"`
+    return src + ` class="rv-trig${isEntrance(effect) ? ' rv-in' : ''}" data-trig="${trigger}" data-kf="${effect === 'path' ? 'rvP' + cssKey(key) : effect === 'pdfview' ? 'none' : EFFECT_KF[effect] || 'rvIn'}"`
       + ` data-dur="${duration ?? 500}" data-del="${delay ?? 0}"` + clip;
   const cls = effect === 'path' ? ((a.pathShape && a.pathShape !== 'line') || (pathTurns(a) && b.type !== 'model') ? 'rv-pathc' : 'rv-path') : effect;
   return src + ` class="fragment ${cls}" data-fragment-index="${order}"` + clip;
@@ -279,6 +289,9 @@ function blockHTMLRaw(b, slide) {
   if (b.type === 'file' && safeURL(b.src || '')) {                 // opened or downloaded by FILE_JS
     const src = ` data-src="${esc(b.src)}" data-name="${esc(b.name || 'archivo')}"`;
     if (b.display === 'viewer' && b.poster) return `<div${a} data-file-view${src} style="${box(b)}background:#fff url('${esc(b.poster)}') center/contain no-repeat"><iframe title="${esc(b.name || '')}" style="width:100%;height:100%;border:0;display:block"></iframe></div>`;
+    // A PDF's page: leafed through and zoomed when presenting, and by its "page and zoom" steps (pdfRuntime).
+    if (b.display === 'page' && b.poster && /^data:application\/pdf/.test(b.src))
+      return `<div${a} data-pdf${src} data-page="${Math.max(1, +b.page || 1)}" role="document" aria-label="${esc(b.name || 'PDF')}" style="${box(b)}overflow:hidden;background:#fff url('${esc(b.poster)}') center/contain no-repeat"></div>`;
     const pdf = b.display === 'page' && b.poster, label = `${t(pdf ? 'Abrir' : 'Descargar')} ${b.name || ''}`;
     return `<div${a} data-file${pdf ? ' data-open' : ''}${src} role="button" tabindex="0" aria-label="${esc(label)}" title="${esc(label)}" style="${box(b)}cursor:pointer">`
       + (pdf ? `<img src="${esc(b.poster)}" alt="" style="width:100%;height:100%;object-fit:contain;display:block">` : fileIconHTML(b, sizeText(b.bytes || 0, currentLang()))) + `</div>`;
@@ -479,7 +492,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  ${customTransitionCSS(usedTransitions(deck), deck.size)}
  .reveal .slides section .fragment.rv-path{opacity:1;visibility:inherit}
  .reveal .slides section .fragment.rv-path.visible{translate:var(--dx) var(--dy)}
- .reveal .slides section .fragment.spin360,.reveal .slides section .fragment.clip3d,.reveal .slides section .fragment.draw{opacity:1;visibility:inherit}
+ .reveal .slides section .fragment.spin360,.reveal .slides section .fragment.clip3d,.reveal .slides section .fragment.pdfview,.reveal .slides section .fragment.draw{opacity:1;visibility:inherit}
  .reveal .fragment.draw .rvd{stroke-dasharray:1;stroke-dashoffset:1;fill-opacity:0}
  .reveal .fragment.draw.visible .rvd{animation:rvDraw var(--anim-dur,1500ms) ease-in-out var(--anim-del,0ms) forwards}
  @keyframes rvDraw{70%{fill-opacity:0}to{stroke-dashoffset:0;fill-opacity:1}}
@@ -493,6 +506,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  .reveal .slides section .fragment.rv-pathc{opacity:1;visibility:inherit}
  .reveal .slides section .fragment.rv-pathc.visible{animation:var(--pk) var(--anim-dur,600ms) ease-in-out var(--anim-del,0ms) both}
  ${pathKeyframes(deck)}
+ ${/ data-pdf[ >]/.test(slides) ? PDF_CSS : ''}
  ${hasTrig ? `[data-bid]{cursor:pointer} .rv-trig.rv-in:not(.on){opacity:0} ${EFFECT_KF_CSS.replace(/\n/g, ' ')}` : ''}
  ${INK_CSS}
  ${canvas ? `.reveal.rv-canvas{background:${deck.canvas.bg || '#0d1117'}} .reveal.rv-canvas .backgrounds{display:none}
@@ -528,6 +542,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${hasTimer ? `(${timerRuntime.toString()})();` : ''}
  ${/ data-sound="/.test(slides) ? `(${soundRuntime.toString()})();` : ''}
  ${/ data-tabs="/.test(slides) ? `(${tabRuntime.toString()})();` : ''}
+ ${/ data-pdf[ >]/.test(slides) ? `(${pdfRuntime.toString()})(${JSON.stringify(PDFJS)});` : ''}
  ${bgmHTML ? BGM_JS : ''}
  ${/ data-(goto|href)="/.test(slides) ? LINK_JS : ''}
  ${/ data-file(-view)?[ >]/.test(slides) ? FILE_JS : ''}

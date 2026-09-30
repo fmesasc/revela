@@ -453,7 +453,7 @@ function timingXML(s, spids, deck) {
   // Every animation of every object, in order (an object's next ones too; a 3D
   // model's own clips have no PowerPoint equivalent and are left out).
   const tl = animTimeline(s);
-  const list = animEntries(s).filter(e => tl.has(e.key) && spids.has(e.b.id) && e.a.effect !== 'clip3d')
+  const list = animEntries(s).filter(e => tl.has(e.key) && spids.has(e.b.id) && !['clip3d', 'pdfview'].includes(e.a.effect))
     .sort((x, y) => tl.get(x.key).step - tl.get(y.key).step || tl.get(x.key).delay - tl.get(y.key).delay);
   if (!list.length) return '';
   const ids = { n: 3 }, steps = [...new Set(list.map(e => tl.get(e.key).step))];

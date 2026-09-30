@@ -97,3 +97,24 @@ export function downloadFile(b) {
   const u = fileURL(b), a = document.createElement('a'); a.href = u; a.download = b.name || 'archivo'; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(u), 60000);
 }
+
+// A PDF's page shown in a box W×H (contained), with the point (x, y) of the page
+// (0-1) in the middle, enlarged s times — as the presentation shows it (see
+// io/runtime/pdf.js, which has its own copy): the move and scale to apply.
+export function pdfTransform(W, H, ratio, { x = 0.5, y = 0.5, s = 1 } = {}) {
+  const k = Math.min(W / ratio, H), pw = k * ratio, ph = k, ox = (W - pw) / 2, oy = (H - ph) / 2;
+  let tx = W / 2 - (ox + x * pw) * s, ty = H / 2 - (oy + y * ph) * s;
+  tx = pw * s > W ? Math.min(-ox * s, Math.max(W - (ox + pw) * s, tx)) : (W - pw * s) / 2 - ox * s;
+  ty = ph * s > H ? Math.min(-oy * s, Math.max(H - (oy + ph) * s, ty)) : (H - ph * s) / 2 - oy * s;
+  return { tx, ty, s, pw, ph, ox, oy };
+}
+// The zoom that shows a part of the page (rect in fractions of it) as big as fits the box, and back.
+export function zoomForRect(W, H, ratio, r) {
+  const { pw, ph } = pdfTransform(W, H, ratio);
+  const s = Math.min(8, Math.max(1, Math.min(W / (pw * Math.max(0.01, r.w)), H / (ph * Math.max(0.01, r.h)))));
+  return { zx: +(r.x + r.w / 2).toFixed(4), zy: +(r.y + r.h / 2).toFixed(4), zs: +s.toFixed(2) };
+}
+export function rectForZoom(W, H, ratio, { zx = 0.5, zy = 0.5, zs = 1 } = {}) {
+  const { pw, ph } = pdfTransform(W, H, ratio), w = Math.min(1, W / (pw * zs)), h = Math.min(1, H / (ph * zs));
+  return { x: Math.min(1 - w, Math.max(0, zx - w / 2)), y: Math.min(1 - h, Math.max(0, zy - h / 2)), w, h };
+}

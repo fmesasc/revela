@@ -1,6 +1,7 @@
 // Animation preview in the editor (Animations ▸ Preview): plays the slide's
 // entrance, emphasis and exit effects in order on the canvas.
 
+import { openPdf, pageImage, pdfTransform } from '../../features/content/files.js';
 import { currentSlide } from '../../core/store.js';
 import { animTimeline, animEntries, EFFECT_KF, motionFrames } from '../../features/animation/transitions.js';
 import { stage } from './canvas.js';
@@ -23,6 +24,24 @@ function drawIn(el, dur, delay) {
   if (!parts.length) return false;
   const out = [...parts].map(p => p.animate(DRAW, { duration: dur, delay, easing: 'ease-in-out', fill: 'backwards' }));
   return out;
+}
+// A PDF's "page and zoom" step, previewed: its page drawn, then moved and enlarged
+// as in the presentation (and put back as it was at the end).
+let pdfState = new WeakMap();
+function pdfStepPreview(el, b, a, when, dur, restore) {
+  const img = el.querySelector('.file-blk img'); if (!img) return;
+  if (!pdfState.has(img)) {
+    pdfState.set(img, { src: img.src, t: '' }); img.style.transformOrigin = '0 0';
+    restore.push(() => { img.src = pdfState.get(img).src; img.style.transition = ''; img.style.transform = ''; pdfState.delete(img); });
+  }
+  const page = openPdf(b.src).then(pdf => pageImage(pdf, +a.page || 1, 1400));
+  setTimeout(async () => {
+    const im = await page; if (!pdfState.has(img)) return;
+    if (img.src !== im.src) { img.style.transition = 'none'; img.src = im.src; }
+    const tr = pdfTransform(b.w, b.h, im.w / im.h, { x: +(a.zx ?? 0.5), y: +(a.zy ?? 0.5), s: +a.zs || 1 });
+    // (The picture covers the box, the page contained in it: the same move and scale as the presentation's layer.)
+    requestAnimationFrame(() => { img.style.transition = `transform ${dur}ms ease-in-out`; img.style.transform = `translate(${tr.tx}px, ${tr.ty}px) scale(${tr.s})`; });
+  }, when);
 }
 // The animation's sound, as it starts (the same sounds as in the presentation).
 let snd = null;
@@ -62,11 +81,12 @@ export function playAnimations() {
   for (const { step, delay, dur } of tl.values()) ends.set(step, Math.max(ends.get(step) || 0, delay + dur));
   const offset = new Map(); let acc = 0;
   for (const st of [...ends.keys()].sort((a, b) => a - b)) { offset.set(st, acc); acc += ends.get(st); }
-  const played = [];
+  const played = [], restore = [];
   for (const { b, a, i, key } of animEntries(slide)) {
     const at = tl.get(key); if (!at) continue;
     const el = stage.querySelector(`.block[data-id="${b.id}"]`); if (!el) continue;
     const when = offset.get(at.step) + at.delay;
+    if (a.effect === 'pdfview') { soundOf(a, when); pdfStepPreview(el, b, a, when, at.dur, restore); continue; }
     if (!b.anims?.length) { animateEl(el, a, at.dur, when); continue; }
     // A sequence: every step kept (added up) until the end, then all undone.
     const opts = { duration: at.dur, delay: when, easing: 'ease-in-out', fill: 'forwards', composite: i ? 'add' : 'replace' };
@@ -83,5 +103,5 @@ export function playAnimations() {
     played.push(el.animate(frames, opts));
     walkIn(el, at.dur, when);
   }
-  if (played.length) setTimeout(() => played.forEach(p => p.cancel()), acc + 1200);
+  if (played.length || restore.length) setTimeout(() => { played.forEach(p => p.cancel()); restore.forEach(f => f()); }, acc + 1200);
 }

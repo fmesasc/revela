@@ -30,7 +30,7 @@ function effectNodes(a, xid, deck) {
   const hl = /^highlight-(?:current-)?(red|green|blue)$/.exec(a.effect);
   if (hl) return ['emphasis', 'ooo-emphasis-font-color', `<anim:animateColor smil:dur="${d}" smil:fill="hold" ${T} smil:attributeName="color" smil:to="${HIGHLIGHT[hl[1]]}" anim:color-interpolation="rgb" anim:color-interpolation-direction="clockwise"/>`];
   if (a.effect === 'spin360') return ['emphasis', 'ooo-emphasis-spin', `<anim:animateTransform smil:dur="${d}" smil:fill="hold" ${T} smil:by="360" svg:type="rotate"/>`];
-  if (a.effect === 'strike' || a.effect === 'clip3d') return null;   // no ODF equivalent
+  if (['strike', 'clip3d', 'pdfview'].includes(a.effect)) return null;   // no ODF equivalent
   if (!isEntrance(a.effect))
     return ['exit', 'ooo-exit-fade-out', `<anim:transitionFilter smil:dur="${d}" ${T} smil:type="fade" smil:subtype="crossfade" smil:mode="out"/>`
       + `<anim:set smil:begin="${d}" smil:dur="0.001s" smil:fill="hold" ${T} smil:attributeName="visibility" smil:to="hidden"/>`];

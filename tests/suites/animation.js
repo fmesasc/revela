@@ -522,4 +522,60 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const a = S.cleanValue({ effect: 'fade-in', sound: 'x" onload="y', soundSrc: 'javascript:alert(1)' });
     assert(!/"/.test(a.sound || '') && !a.soundSrc, 'saneado: ' + JSON.stringify(a));
   });
+
+  await test('PDF con pasos: cada «siguiente» cambia de página y hace zoom, atrás lo deshace; barra para hojear y ampliar', async () => {
+    reset(); const W = frame.contentWindow;
+    const pdfText = (() => {           // a 3-page PDF (red, green, blue pages), 400×300 pt
+      const cols = ['1 0 0', '0 0.6 0', '0 0 1'], objs = ['<< /Type /Catalog /Pages 2 0 R >>', `<< /Type /Pages /Kids [${cols.map((_, k) => `${3 + 2 * k} 0 R`).join(' ')}] /Count 3 >>`];
+      cols.forEach((c, k) => { const st = `${c} rg 20 20 360 260 re f`; objs.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 400 300] /Contents ${4 + 2 * k} 0 R >>`, `<< /Length ${st.length} >>\nstream\n${st}\nendstream`); });
+      let out = '%PDF-1.4\n'; const offs = [];
+      objs.forEach((o, k) => { offs.push(out.length); out += `${k + 1} 0 obj\n${o}\nendobj\n`; });
+      const x = out.length;
+      return out + `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + offs.map(o => String(o).padStart(10, '0') + ' 00000 n \n').join('') + `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${x}\n%%EOF`;
+    })();
+    R.slides.addSlide('blank'); await sleep(10);
+    const b = await R.files.fileBlock(new W.File([pdfText], 'guia.pdf', { type: 'application/pdf' }), 'data:application/pdf;base64,' + W.btoa(pdfText), 'page');
+    Object.assign(b, { x: 240, y: 110, w: 800, h: 500 }); R.blocks.addFileBlock(b); const pb = last(); select(pb); await sleep(20);
+    // From "Add animation": next page; then a page and part of it.
+    const { openAddAnimation } = await W.eval("import('/src/ui/ribbon/animadd.js')");
+    openAddAnimation(D.body); await sleep(20);
+    D.querySelector('#anim-add-menu [data-add="pdf:next"]').click(); await sleep(20);
+    eq(pb.animation.effect, 'pdfview'); eq(pb.animation.page, 2, 'la página siguiente');
+    R.trans.addAnimation('pdfview', { page: 2, zx: 0.25, zy: 0.25, zs: 2, duration: 300, start: 'click' });
+    // In the animation panel: page, zoom and "choose the part".
+    D.querySelector('[data-action="anim-panel"]').click(); await sleep(20);
+    const row = D.querySelector('#anim-modal .an-row[data-i="1"]');
+    assert(row.querySelector('[data-pdf-p="page"]').value === '2' && row.querySelector('[data-pdf-p="zs"]').value === '2' && row.querySelector('.an-zone'), 'en el panel');
+    D.querySelector('#anim-modal .modal-close').click();
+    const F = await W.eval("import('/src/features/content/files.js')");
+    const z = F.zoomForRect(800, 500, 4 / 3, { x: 0, y: 0, w: 0.5, h: 0.5 }); eq([z.zx, z.zy, z.zs].join(), '0.25,0.25,2', 'la zona marcada, como zoom');
+    const html = R.io.buildHTML();
+    assert(/data-pdf data-src="data:application\/pdf/.test(html) && /class="fragment pdfview"/.test(html) && /data-pdfgo="\{&quot;page&quot;:2,&quot;x&quot;:0.25,&quot;y&quot;:0.25,&quot;s&quot;:2\}"/.test(html), 'pasos en la presentación');
+    // Presenting: pdf.js draws it; next, next, back, back.
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
+    try {
+      f.srcdoc = R.io.buildHTML(R.state.deck, { inApp: true });
+      for (let k = 0; k < 100 && !f.contentWindow.Reveal?.isReady?.(); k++) await sleep(100);
+      const RV = f.contentWindow.Reveal; RV.slide(1); await sleep(100);
+      const el = f.contentDocument.querySelector('[data-pdf]');
+      for (let k = 0; k < 100 && !el._pdf?.canvas; k++) await sleep(100);
+      assert(el._pdf?.canvas, 'dibujado con pdf.js');
+      const st = () => el._pdf.cur, px = () => [...el._pdf.canvas.getContext('2d').getImageData(el._pdf.canvas.width / 2, el._pdf.canvas.height / 2, 1, 1).data].slice(0, 3).join();
+      eq(st().page, 1); eq(px(), '255,0,0', 'página 1 (roja)');
+      RV.next(); for (let k = 0; k < 50 && el._pdf.drawn !== 2; k++) await sleep(100);
+      eq(st().page, 2, 'siguiente: página 2'); eq(px(), '0,153,0', 'la verde');
+      RV.next(); await sleep(500);
+      eq([st().s, st().x, st().y].join(), '2,0.25,0.25', 'siguiente: zoom a la zona');
+      assert(/scale\(2(\.0+)?\)/.test(el._pdf.layer.style.transform), 'ampliada: ' + el._pdf.layer.style.transform);
+      RV.prev(); await sleep(300); eq([st().page, st().s].join(), '2,1', 'atrás: sin zoom');
+      RV.prev(); await sleep(600); eq(st().page, 1, 'atrás: página 1');
+      // The bar: next page, zoom in, fit.
+      el._pdf.bar.querySelector('[data-a="next"]').click(); await sleep(600); eq(st().page, 2, 'la barra pasa de página');
+      el._pdf.bar.querySelector('[data-a="in"]').click(); await sleep(100); eq(st().s, 1.5, 'y amplía');
+      el._pdf.bar.querySelector('[data-a="fit"]').click(); await sleep(100); eq(st().s, 1, 'y encaja');
+      eq(el._pdf.bar.querySelector('span').textContent, '2 / 3', 'con su número de página');
+    } finally { f.remove(); }
+    // PowerPoint: the steps have no equivalent (the page stays as a picture).
+    const blob = await R.pptx.buildPptxBlob(); assert(blob.size > 0, 'se exporta igual');
+  });
 }

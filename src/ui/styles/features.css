@@ -480,3 +480,9 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .pdf-mode:hover,.pdf-mode:focus-visible{border-color:var(--accent);background:var(--accent-bg)}
 .pdf-mode .ms{font-size:28px;color:var(--accent)}.pdf-mode span{display:flex;flex-direction:column;gap:2px}.pdf-mode small{color:var(--txt2)}
 .crop-ratios{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}.crop-ratios .on{background:var(--accent-bg);border-color:var(--accent)}
+/* Choosing a PDF's page and zoom. */
+.pz-nav{display:flex;gap:6px;align-items:center;margin-bottom:8px}.pz-n{min-width:60px;text-align:center}
+.pz-stage{position:relative;max-height:62vh;max-width:100%;margin:0 auto;background:#fff;cursor:crosshair;touch-action:none;box-shadow:0 1px 6px #0003}
+.pz-img{width:100%;height:100%;display:block;pointer-events:none}
+.pz-rect{position:absolute;border:2px solid var(--accent);background:color-mix(in srgb,var(--accent) 18%,transparent);box-shadow:0 0 0 9999px #0005;pointer-events:none}
+.pz-stage{overflow:hidden}

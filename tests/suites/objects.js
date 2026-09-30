@@ -1431,7 +1431,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const poster1 = b.poster;
     await R.files.setPdfPage(b, 2); eq(b.page, 2); assert(b.poster !== poster1, 'otra página');
     let html = R.io.buildHTML();
-    assert(/data-file data-open data-src="data:application\/pdf/.test(html) && /data-name="informe.pdf"/.test(html), 'al presentar, un clic abre el PDF');
+    assert(/data-pdf data-src="data:application\/pdf/.test(html) && /data-name="informe.pdf"/.test(html) && /data-page="2"/.test(html), 'al presentar, se puede hojear y ampliar');
     // As a viewer, and as an icon.
     await R.files.setFileDisplay(b, 'viewer'); html = R.io.buildHTML();
     assert(/data-file-view data-src="data:application\/pdf/.test(html) && /<iframe title="informe.pdf"/.test(html), 'visor de PDF');
