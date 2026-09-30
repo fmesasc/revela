@@ -149,6 +149,18 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(Math.abs(cur2.firstChild.st.spin) < 0.01 && /^0\.0deg 75deg/.test(cur2.firstChild.st.orbit) && !cur2.firstChild.hasAttribute('auto-rotate'), 'o gira hasta quedar de frente (y se queda)');
     const cur3 = mk('m1', 'data-arrive="reset"'); api.handoff(prev, cur3); eq(cur3.firstChild.st.spin, 0, 'o empieza de cero');
     const cur4 = mk('otro'); cur4.firstChild.setAttribute('src', 'b.glb'); api.handoff(prev, cur4); eq(cur4.firstChild.st.spin, 0, 'otro modelo distinto: nada que continuar');
+    // With Morph and "zoom in on arrival": it goes back while travelling, and zooms in once there (not at once)
+    const cur5 = mk('m1', 'data-motion="zoom"'); cur5.setAttribute('data-auto-animate', '');
+    D.body.appendChild(cur5); prev.firstChild.st.spin = 0.5;
+    api.enter(cur5, api.handoff(prev, cur5)); await sleep(200);
+    assert(/ 300%$/.test(cur5.firstChild.st.orbit), 'mientras viaja, la cámara se aleja (se hace pequeño): ' + cur5.firstChild.st.orbit);
+    await sleep(1100);
+    assert(/deg auto$/.test(cur5.firstChild.st.orbit), 'y al llegar, se acerca: ' + cur5.firstChild.st.orbit);
+    const cur6 = mk('m1', 'data-motion="orbit" data-arrive="front"'); cur6.setAttribute('data-auto-animate', ''); D.body.appendChild(cur6);
+    api.enter(cur6, api.handoff(prev, cur6)); await sleep(700);
+    assert(/^0\.0deg 75deg/.test(cur6.firstChild.st.orbit) || /^[0-4]\d?\.\ddeg/.test(cur6.firstChild.st.orbit), 'la vuelta espera: primero llega de frente');
+    await sleep(1400); const th = parseFloat(cur6.firstChild.st.orbit); assert(th > 1, 'y después da la vuelta: ' + cur6.firstChild.st.orbit);
+    api.stop(cur5.firstChild); api.stop(cur6.firstChild); cur5.remove(); cur6.remove();
     // Edges, and the runtime in every presentation with 3D
     R.store.commit(() => { slide().blocks.push({ id: 'md', type: 'model', src: 'data:model/gltf-binary;base64,Z2xURg==', x: 100, y: 100, w: 300, h: 200, edge: 'fade', arrive: 'turn', rotation: 0, animation: null }); });
     let html = R.io.buildHTML();
