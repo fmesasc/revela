@@ -90,10 +90,16 @@ export function ensureFont(stack) {
 // The distinct Google families used by any text block in the deck.
 export function googleFamiliesInDeck(deck) {
   const used = new Set();
-  const df = byStack.get(deck.bodyFont);            // theme body font (default for text)
-  if (df && df.google) used.add(df.google);
-  // Named by the box, or inside the text (imported decks: 'Roboto', sans-serif…).
-  for (const b of [...(deck.master?.blocks || []), ...deck.slides.flatMap(s => s.blocks)]) for (const g of familiesOf(b)) used.add(g);
+  const add = stack => { const f = byStack.get(stack); if (f && f.google) used.add(f.google); else if (googleIn(stack)) used.add(googleIn(stack)); };
+  add(deck.bodyFont);                                // theme body font (default for text)
+  // The masters' text styles: the headings' font (and any other the styles name).
+  const masters = [deck.master, ...(deck.masters || [])].filter(Boolean);
+  for (const m of masters) for (const st of Object.values(m.styles || {})) {
+    if (st?.font) add(st.font);
+    for (const lv of st?.levels || []) if (lv?.font) add(lv.font);
+  }
+  // Named by the box, or inside the text (imported decks: 'Roboto', sans-serif…); layouts' boxes too.
+  for (const b of [...masters.flatMap(m => m.blocks || []), ...(deck.layouts || []).flatMap(l => l.blocks || []), ...deck.slides.flatMap(s => s.blocks)]) for (const g of familiesOf(b)) used.add(g);
   return [...used];
 }
 // A block's families, remembered while its font and text stay the same (this runs at every redraw).

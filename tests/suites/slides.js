@@ -499,7 +499,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   await test('presentaciones de ejemplo completas: se abren, usan patrón y diseños y se exportan', async () => {
     reset(); D.querySelector('[data-action="gallery"]').click(); await sleep(50);
     const items = D.querySelectorAll('#gallery-modal .gal-examples .gal-item');
-    eq(items.length, Object.keys(R.examples.EXAMPLES).length, 'todos los ejemplos en la galería'); assert(items.length >= 15, 'al menos quince');
+    eq(items.length, Object.keys(R.examples.EXAMPLES).length, 'todos los ejemplos en la galería'); assert(items.length >= 20, 'al menos veinte');
     D.querySelector('#gallery-modal .modal-close').click();
     const kinds = new Set();
     for (const key of Object.keys(R.examples.EXAMPLES)) {
@@ -695,5 +695,31 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(ex.canvas.image?.src && ex.slides.every(s => s.background === 'transparent'), 'la plantilla lleva su diseño');
     D.querySelector('[data-action="canvas-mode"]').click(); await sleep(20);
     assert(!C.canvasBackdrop(T[1]), 'desactivado, sin fondo del lienzo'); D.getElementById('canvas-view')?.remove();
+  });
+
+  await test('plantillas nuevas: lanzamiento, viaje, concurso, panel de resultados y portafolio, con lo que prometen', async () => {
+    const W = frame.contentWindow, F = await W.eval("import('/src/features/design/fonts.js')");
+    const all = (d, f) => d.slides.flatMap(s => s.blocks).filter(f);
+    const L = R.examples.buildExample('launch');
+    assert(all(L, b => b.type === 'model' && b.autoRotate).length >= 1, 'lanzamiento: producto 3D girando');
+    assert(L.slides.some(s => s.autoAnimate) && all(L, b => b.type === 'diagram' && b.layout === 'chevrons' && b.oneByOne).length === 1, 'Transformar y galones uno a uno');
+    assert(all(L, b => b.type === 'chart' && b.chartType === 'funnel').length && all(L, b => b.type === 'timer').length, 'embudo y cuenta atrás');
+    assert(!all(L, b => b.type === 'model').some(b => b.caption) && /Khronos|CC/.test(JSON.stringify(L.slides.at(-1))), 'el crédito del 3D, una vez al final');
+    const T = R.examples.buildExample('travel');
+    assert(all(T, b => b.curve === 100).length && all(T, b => b.type === 'diagram' && b.layout === 'timeline').length, 'viaje: texto en círculo y cronología');
+    assert(all(T, b => b.type === 'table' && b.rows.at(-1).includes('=SUMA(ARRIBA)')).length, 'presupuesto con fórmula');
+    const Q = R.examples.buildExample('quiz'), polls = all(Q, b => b.type === 'poll');
+    eq(polls.filter(p => p.kind === 'quiz' && p.correct?.length === 1).length, 3, 'tres preguntas con respuesta correcta'); eq(polls.filter(p => p.kind === 'board').length, 1, 'y la clasificación');
+    assert(all(Q, b => b.animation?.sound === 'applause').length === 1, 'celebración con aplausos');
+    const D2 = R.examples.buildExample('dashboard'), kinds = new Set(all(D2, b => b.type === 'chart').map(b => b.chartType));
+    assert(['waterfall', 'funnel', 'treemap', 'bubble'].every(k => kinds.has(k)), 'panel: cascada, embudo, rectángulos y burbujas');
+    const P = R.examples.buildExample('folio');
+    assert(all(P, b => b.device === 'phone').length && all(P, b => b.device === 'laptop').length, 'portafolio: móvil y portátil');
+    // Their fonts: the headings' too (the masters' styles), in the editor and in the presentation.
+    for (const [key, fam] of [['folio', 'Bebas Neue'], ['launch', 'Bebas Neue'], ['travel', 'Playfair Display'], ['dashboard', 'Space Grotesk']]) {
+      const d = R.examples.buildExample(key);
+      assert(F.googleFamiliesInDeck(d).some(f => f.startsWith(fam)), `${key}: carga ${fam}`);
+      assert(new RegExp(fam.replace(' ', '\\+')).test(R.io.buildHTML(d)), `${key}: ${fam} en la presentación`);
+    }
   });
 }

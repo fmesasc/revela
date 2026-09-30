@@ -114,8 +114,8 @@ export function diagramLayout(b, { accents = ['#3f6497', '#e0873b', '#4caf7d', '
         const x = (i % cols) * (cw + gap), y = Math.floor(i / cols) * (ch + gap), c = P(i), band = Math.min(ch * 0.34, 90), sub = subText(it);
         out.push({ type: 'rect', x, y, w: cw, h: ch, r: 12, fill: scheme === 'outline' ? 'none' : mix(c.fill === 'none' ? accents[i % accents.length] : c.fill, '#ffffff', 0.88), stroke: c.stroke === 'none' ? mix(c.fill, '#ffffff', 0.4) : c.stroke, i });
         out.push({ type: 'rect', x, y, w: cw, h: sub ? band : ch, r: 12, fill: c.fill === 'none' ? 'none' : c.fill, stroke: c.stroke, i });
-        out.push(textBox(x, y, cw, sub ? band : ch, it.text, '', c.fill === 'none' ? fg : c.text, { max: 28, item: i }));
-        if (sub) out.push(textBox(x, y + band, cw, ch - band, sub, '', scheme === 'outline' ? fg : '#1e2a3a', { bold: false, max: 20, valign: 'top', item: i }));
+        out.push(textBox(x, y, cw, sub ? band : ch, it.text, '', c.fill === 'none' ? fg : c.text, { max: 34, item: i }));
+        if (sub) out.push(textBox(x, y + band, cw, ch - band, sub, '', scheme === 'outline' ? fg : '#1e2a3a', { bold: false, max: 30, valign: 'middle', item: i }));
       });
       break;
     }
@@ -136,7 +136,8 @@ export function diagramLayout(b, { accents = ['#3f6497', '#e0873b', '#4caf7d', '
         const pts = i === 0 ? [[x, y], [x + cw - tip, y], [x + cw, y + ch / 2], [x + cw - tip, y + ch], [x, y + ch]]
           : [[x, y], [x + cw - tip, y], [x + cw, y + ch / 2], [x + cw - tip, y + ch], [x, y + ch], [x + tip, y + ch / 2]];
         out.push({ type: 'poly', closed: true, pts, fill: c.fill, stroke: c.stroke === 'none' && c.fill === 'none' ? accents[0] : c.stroke, i });
-        out.push(textBox(x + (i ? tip : 0), y, cw - tip - (i ? tip : 0), ch, it.text, '', c.fill === 'none' ? fg : c.text, { max: 26, item: i }));
+        // (The words sit round the middle, where the notch and the point leave more room than at the edges.)
+        out.push(textBox(x + (i ? tip * 0.6 : 0), y, cw - tip * 0.7 - (i ? tip * 0.6 : 0), ch, it.text, '', c.fill === 'none' ? fg : c.text, { max: 34, item: i }));
         if (hasSub) out.push(textBox(x + tip * 0.5, y + ch + gap, cw - ov - tip * 0.5, H - ch - gap, subText(it), '', fg, { bold: false, valign: 'top', align: 'left', max: 20, item: i }));
       });
       break;
@@ -159,7 +160,7 @@ export function diagramLayout(b, { accents = ['#3f6497', '#e0873b', '#4caf7d', '
         const cx = step * (i + 0.5), up = i % 2 === 0, c = P(i), lh = H * 0.42 - d;
         out.push({ type: 'ellipse', x: cx - d / 2, y: y - d / 2, w: d, h: d, fill: c.fill === 'none' ? accents[i % accents.length] : c.fill, stroke: '#ffffff', i });
         line([[cx, up ? y - d / 2 : y + d / 2], [cx, up ? y - d * 1.4 : y + d * 1.4]], lineColor, 2, { item: i });
-        out.push(textBox(cx - step * 0.55, up ? 0 : y + d * 1.5, step * 1.1, lh, it.text, subText(it), fg, { valign: up ? 'bottom' : 'top', max: 26, item: i }));
+        out.push(textBox(cx - step * 0.55, up ? 0 : y + d * 1.5, step * 1.1, lh, it.text, subText(it), fg, { valign: up ? 'bottom' : 'top', max: 36, item: i }));
       });
       break;
     }

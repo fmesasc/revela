@@ -309,7 +309,11 @@ function waterfallSVG(b) {
     const link = i < steps.length - 1 ? `<line x1="${(x + bw).toFixed(1)}" y1="${Y(s.to).toFixed(1)}" x2="${(x + gap).toFixed(1)}" y2="${Y(s.to).toFixed(1)}" stroke="#8a8a8a" stroke-width="0.3" stroke-dasharray="1 1" vector-effect="non-scaling-stroke"/>` : '';
     return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${fill}"/>${link}`
       + (b.dataLabels !== false ? `<text x="${(x + bw / 2).toFixed(1)}" y="${(y - 1).toFixed(1)}" font-size="3" text-anchor="middle" fill="#8a8a8a">${escSvg((s.v > 0 && !s.total ? '+' : '') + num(s.v))}</text>` : '')
-      + `<text x="${(x + bw / 2).toFixed(1)}" y="${B + 4}" font-size="3.4" text-anchor="middle" fill="#8a8a8a">${escSvg(data[i].label || '')}</text>`;
+      + (() => { // (a long label: in two lines, and smaller if it still doesn't fit its column)
+        const words = String(data[i].label || '').split(/\s+/), lines = words.length > 1 && words.join(' ').length * 1.9 > gap ? [words.slice(0, Math.ceil(words.length / 2)).join(' '), words.slice(Math.ceil(words.length / 2)).join(' ')] : [words.join(' ')];
+        const fs = Math.min(3.4, gap * 0.95 / (Math.max(...lines.map(l => l.length)) * 0.62));
+        return lines.map((l, k) => `<text x="${(x + bw / 2).toFixed(1)}" y="${(B + 4 + k * fs * 1.1).toFixed(1)}" font-size="${fs.toFixed(2)}" text-anchor="middle" fill="#8a8a8a">${escSvg(l)}</text>`).join('');
+      })();
   }).join('');
   const axis = `<line x1="${L}" y1="${Y(0).toFixed(1)}" x2="${R}" y2="${Y(0).toFixed(1)}" stroke="#8a8a8a" stroke-width="0.4" vector-effect="non-scaling-stroke"/>`;
   return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">${axis}${bars}</svg>`;
@@ -376,7 +380,10 @@ function funnelSVG(b) {
     const w = Math.max(1, (+d.value || 0) / max * 70), x = 50 - w / 2, y = T + i * H, op = (1 - i / (n + 1) * 0.55).toFixed(2);
     return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${bh.toFixed(1)}" fill="${color}" fill-opacity="${op}"/>`
       + `<text x="${(x - 1.5).toFixed(1)}" y="${(y + bh / 2 + 1.2).toFixed(1)}" font-size="3.4" text-anchor="end" fill="#8a8a8a">${escSvg(d.label || '')}</text>`
-      + `<text x="50" y="${(y + bh / 2 + 1.2).toFixed(1)}" font-size="3.4" text-anchor="middle" fill="#fff" font-weight="600">${escSvg(num(d.value || 0))}</text>`;
+      // (The value inside the bar if it fits, else just after it.)
+      + (w > String(num(d.value || 0)).length * 2.4 + 2
+        ? `<text x="50" y="${(y + bh / 2 + 1.2).toFixed(1)}" font-size="3.4" text-anchor="middle" fill="#fff" font-weight="600">${escSvg(num(d.value || 0))}</text>`
+        : `<text x="${(x + w + 1.5).toFixed(1)}" y="${(y + bh / 2 + 1.2).toFixed(1)}" font-size="3.4" text-anchor="start" fill="#8a8a8a" font-weight="600">${escSvg(num(d.value || 0))}</text>`);
   }).join('');
   return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">${bars}</svg>`;
 }

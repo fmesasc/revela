@@ -69,6 +69,20 @@ const withAnims = (b, first, ...more) => ({ ...b, animation: first, ...(more.len
 const path = (points, props = {}) => A('path', { pathShape: 'custom', points, dx: points.at(-1)[0], dy: points.at(-1)[1], ...props });
 const numbered = deck => { deck.slides.forEach(sl => normalizeAnim(sl)); return deck; };
 const bar = (p, i = 0) => [shape('rect', 0, 0, 1280, 12, p.accents[i]), shape('rect', 0, 708, 1280, 12, p.accents[i])];
+// A soft light behind things: a round gradient from a colour into the background.
+const glow = (x, y, d, color, bg, opacity = 70) => shape('ellipse', x, y, d, d, color, { fill2: bg, gradType: 'radial', opacity });
+// A diagram (SmartArt-style), written as an outline.
+const dg = (layout, outline, x, y, w, h, props = {}) => ({ ...base(x, y, w, h), type: 'diagram', layout, colors: 'colorful', text: outline, ...props });
+const timer = (seconds, x, y, size, props = {}) => ({ ...base(x, y, size, size), type: 'timer', seconds, style: 'ring', auto: true, sound: true, ...props });
+// A made-up app screen (SVG), to show inside a phone or a laptop.
+const appScreen = (w, h, color, title, rows = 4) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="#f5f6fa"/>`
+  + `<rect width="${w}" height="${h * 0.16}" fill="${color}"/><text x="${w * 0.07}" y="${h * 0.105}" font-family="sans-serif" font-size="${h * 0.045}" font-weight="700" fill="#fff">${title}</text>`
+  + Array.from({ length: rows }, (_, i) => { const y = h * 0.2 + i * h * 0.19;
+    return `<rect x="${w * 0.06}" y="${y}" width="${w * 0.88}" height="${h * 0.16}" rx="${h * 0.02}" fill="#fff" stroke="#e1e4ec"/>`
+      + `<circle cx="${w * 0.17}" cy="${y + h * 0.08}" r="${h * 0.045}" fill="${color}" opacity="${1 - i * 0.18}"/>`
+      + `<rect x="${w * 0.3}" y="${y + h * 0.05}" width="${w * 0.5}" height="${h * 0.025}" rx="${h * 0.012}" fill="#cfd4df"/>`
+      + `<rect x="${w * 0.3}" y="${y + h * 0.095}" width="${w * 0.33}" height="${h * 0.02}" rx="${h * 0.01}" fill="#e3e6ee"/>`; }).join('') + '</svg>');
 
 // ---- The ten examples --------------------------------------------------------------
 const EXAMPLES_DEF = {
@@ -348,6 +362,170 @@ const EXAMPLES_DEF = {
         text('Reciclar no es solo separar la basura: es pensar antes de comprar, reutilizar lo que ya tenemos y reparar lo que se rompe. '.repeat(3), 90, 180, 1100, 470, { fontSize: 28 })],
         notes: 'Forma o Imagen ▸ Texto alrededor: los cuadros de texto que la tocan le dejan hueco.' },
       { layout: 'section', title: '¡Buen trabajo!', subtitle: 'Diseño ▸ Cambiar tamaño: esta clase en A4 o en vertical para el móvil' },
+    ]));
+  } },
+
+  // A product launch with a neon look: a 3D product turning, Transform between
+  // slides, chevrons one by one, the market as a funnel, prices and a countdown.
+  launch: { name: 'Lanzamiento de producto', summary: 'Estilo neón: producto 3D girando, Transformar, galones uno a uno, embudo de mercado, precios y cuenta atrás', make: () => {
+    const nova = uid(), prod = uid(), BG = '#0d0719';
+    // (Its CC BY credit once, on the last slide, instead of under it on every slide.)
+    const glasses = (x, y, w, h) => ({ ...model('kh-SunglassesKhronos', x, y, w, h, { autoRotate: true, view: 'front', caption: '' }), id: prod });
+    return numbered(build({ name: 'NOVA · lanzamiento', palette: 'violet', fonts: 'bold', title: { size: 70, color: '#f3eefe' },
+      decor: p => [shape('rect', 0, 712, 1280, 8, p.accents[0], { fill2: p.accents[1], gradAngle: 0 })] }, [
+      { layout: 'blank', bg: BG, transition: 'zoom', extra: [
+        glow(-260, -300, 900, '#9b5de5', BG, 55), glow(760, 260, 800, '#f15bb5', BG, 45),
+        text('PRESENTACIÓN DE PRODUCTO · 2026', 90, 150, 700, 40, { fontSize: 22, color: '#00f5d4', letterSpacing: 6 }),
+        { ...text('NOVA', 80, 190, 700, 250, { fontFamily: pairStacks('bold').heading, fontSize: 210, wordart: 'neon' }), id: nova },
+        text('Gafas que ven contigo', 90, 450, 640, 70, { fontSize: 44, color: '#f3eefe' }),
+        glasses(700, 150, 520, 420)],
+        notes: 'Plantilla «neón»: brillos con degradado radial, Text Art «Neón» y un modelo 3D que gira solo.' },
+      { title: 'El problema', layout: 'titleOnly', bg: BG, extra: [
+        ...[['bolt', 'Pantallas por todas partes', 'Miramos el móvil 150 veces al día.'], ['clock', 'Tiempo perdido', 'Buscar, desbloquear, volver a guardar.'], ['user', 'Nadie te mira', 'Hablamos mirando abajo, no a los ojos.']]
+          .map(([ic, h, d], i) => withAnims(card(`<div style="font-size:34px;font-weight:700;color:#fee440;margin-top:70px">${h}</div><div style="opacity:.85">${d}</div>`, 90 + i * 380, 210, 340, 360, '#ffffff12', { color: '#f3eefe', fontSize: 26 }),
+            A('fade-up', { start: i ? 'afterPrev' : 'click', duration: 500 }))),
+        ...[0, 1, 2].map(i => icon(['bolt', 'clock', 'user'][i], 122 + i * 380, 240, 56, ['#f15bb5', '#00bbf9', '#00f5d4'][i]))] },
+      { layout: 'blank', bg: BG, autoAnimate: true, extra: [glow(390, 60, 600, '#9b5de5', BG, 50),
+        { ...text('NOVA', 440, 40, 400, 140, { fontFamily: pairStacks('bold').heading, fontSize: 110, wordart: 'neon', textAlign: 'center' }), id: nova }, glasses(340, 180, 600, 470)],
+        notes: 'Transformar (Morph): el nombre y las gafas viajan a su sitio en la diapositiva siguiente.' },
+      { layout: 'blank', bg: BG, autoAnimate: true, extra: [
+        { ...text('NOVA', 70, 40, 400, 110, { fontFamily: pairStacks('bold').heading, fontSize: 80, wordart: 'neon' }), id: nova }, glasses(40, 170, 440, 380),
+        dg('chevrons', 'Ver\n  Realidad aumentada ligera\nOír\n  Audio abierto, sin tapar\nHablar\n  Asistente por voz\nDurar\n  18 horas de batería', 500, 170, 740, 460, { oneByOne: true })] },
+      { title: 'Un mercado enorme', layout: 'titleOnly', bg: BG, extra: [
+        chartBlock({ x: 90, y: 170, w: 620, h: 470, chartType: 'funnel', color: '#9b5de5', data: [{ label: 'Gafas vendidas', value: 1500 }, { label: 'Con graduación', value: 900 }, { label: 'Interesados en «smart»', value: 240 }, { label: 'Nuestro objetivo', value: 60 }] }),
+        text('<b style="color:#fee440;font-size:64px">60 M</b><br>de gafas inteligentes al año en 2030 (millones de unidades, estimación)', 770, 260, 420, 300, { fontSize: 28, color: '#f3eefe' })] },
+      { title: 'Elige tu NOVA', layout: 'titleOnly', bg: BG, extra: [
+        shape('rounded', 470, 170, 340, 470, '#9b5de5', { fill2: '#f15bb5', gradAngle: 45, radius: 26 }),
+        ...[['Lite', '199 €', 'Audio y asistente'], ['Pro', '349 €', 'Todo, con realidad aumentada'], ['Graduadas', '449 €', 'Pro con tus lentes']].map(([n, pr, d], i) =>
+          anim(card(`<div style="font-size:30px;opacity:.9">${n}</div><div style="font-size:78px;font-weight:800;line-height:1.1">${pr}</div><div style="font-size:24px">${d}</div>`,
+            90 + i * 380, 190, 340, 430, i === 1 ? '#00000000' : '#ffffff12', { color: '#ffffff', textAlign: 'center', vAlign: 'middle' }), i + 1, 'zoom-in')),
+        text('LA MÁS ELEGIDA', 470, 190, 340, 36, { fontSize: 20, textAlign: 'center', color: '#fee440', letterSpacing: 4 })] },
+      { layout: 'blank', bg: BG, transition: 'convex', extra: [glow(340, -200, 620, '#f15bb5', BG, 45),
+        text('Reserva la tuya', 90, 180, 760, 150, { fontFamily: pairStacks('bold').heading, fontSize: 110, wordart: 'neon' }),
+        text('Precio de lanzamiento durante la presentación', 90, 330, 700, 60, { fontSize: 32, color: '#f3eefe' }),
+        timer(600, 860, 170, 330, { color: '#00f5d4' }), text('nova.example · @novagafas', 90, 560, 700, 50, { fontSize: 28, color: '#00bbf9' }),
+        text(`Modelo 3D: ${lib3d('kh-SunglassesKhronos').credit}`, 90, 650, 1100, 40, { fontSize: 13, color: '#8a7fa8' })],
+        notes: 'La cuenta atrás empieza al llegar a la diapositiva y suena al acabar (Insertar ▸ Cuenta atrás).' },
+    ]));
+  } },
+
+  // A travel guide with a paper look: a rising sun with curved text, the
+  // itinerary as a timeline, highlights as cards and a budget that adds itself up.
+  travel: { name: 'Guía de viaje: Japón', summary: 'Estilo papel: sol con texto curvo, itinerario en cronología, tarjetas, presupuesto con fórmulas y gráfico, frases útiles', make: () => build({
+    name: 'Guía de viaje: Japón', palette: 'paper', fonts: 'classic', title: { size: 56, color: '#bc002d' },
+    decor: p => [shape('rect', 60, 686, 1160, 2, p.accents[0])],
+  }, [
+    { layout: 'blank', transition: 'fade', extra: [
+      shape('ellipse', 760, 120, 420, 420, '#bc002d', { fill2: '#e0485f', gradType: 'radial' }),
+      text('東京 · 京都 · 大阪 · 奈良 · 東京 · 京都 · 大阪 · 奈良 · ', 730, 90, 480, 480, { fontSize: 30, curve: 100, color: '#3b3228', textAlign: 'center' }),
+      text('Japón', 90, 200, 640, 200, { fontSize: 150, fontFamily: pairStacks('classic').heading, color: '#3b3228' }),
+      text('Guía de 7 días en primavera', 96, 410, 620, 60, { fontSize: 36, fontStyle: 'italic', color: '#8b3a62' }),
+      shape('line', 96, 490, 300, 20, 'none', { stroke: '#bc002d', strokeWidth: 3 })],
+      notes: 'Texto curvo en círculo alrededor del sol (Formato ▸ Curvar texto ▸ Círculo).' },
+    { title: 'El itinerario', layout: 'titleOnly', extra: [dg('timeline', 'Día 1\n  Tokio: Shibuya y Asakusa\nDía 3\n  Nikko, entre templos\nDía 4\n  Kioto: Fushimi Inari\nDía 6\n  Nara y sus ciervos\nDía 7\n  Osaka: Dotonbori', 90, 170, 1100, 470, { oneByOne: true, colors: 'colorful' })],
+      notes: 'Diagrama «Cronología» uno a uno: cada parada aparece con un clic.' },
+    { title: 'Lo que no te puedes perder', layout: 'titleOnly', extra: [dg('cards', '🍣 Comer\n  Sushi del mercado de Tsukiji\n⛩️ Ver\n  Los mil toriis de Fushimi Inari\n🌸 Pasear\n  El camino de la filosofía\n♨️ Descansar\n  Un onsen en Hakone', 90, 170, 1100, 470, { colors: 'light' })] },
+    { title: 'Presupuesto por persona', layout: 'titleOnly', extra: [
+      tableBlock({ x: 90, y: 180, w: 560, h: 420, fontSize: 26, header: true, headBg: '#bc002d', headFg: '#ffffff', stroke: '#c9bfae', banded: true, band: '#b5651d',
+        rows: [['Concepto', 'Euros'], ['Vuelo', '850 €'], ['Alojamiento (7 noches)', '700 €'], ['JR Pass', '330 €'], ['Comida', '350 €'], ['Extras', '200 €'], ['<b>Total</b>', '=SUMA(ARRIBA)']], colW: [3, 2] }),
+      chartBlock({ x: 690, y: 180, w: 500, h: 420, chartType: 'doughnut', color: '#bc002d',
+        data: [{ label: 'Vuelo', value: 850 }, { label: 'Alojamiento', value: 700 }, { label: 'JR Pass', value: 330 }, { label: 'Comida', value: 350 }, { label: 'Extras', value: 200 }] })],
+      notes: 'La fila Total es una fórmula (=SUMA(ARRIBA)): cambia un importe y se recalcula.' },
+    { title: 'Frases útiles', layout: 'titleOnly', extra: [
+      ...[['こんにちは', 'Konnichiwa', 'Hola'], ['ありがとう', 'Arigatō', 'Gracias'], ['すみません', 'Sumimasen', 'Perdone'], ['いくらですか', 'Ikura desu ka', '¿Cuánto cuesta?']].map(([j, r, e], i) =>
+        anim(card(`<div style="font-size:44px">${j}</div><div style="font-size:24px;color:#8b3a62"><i>${r}</i></div><div style="font-size:28px">${e}</div>`, 90 + (i % 2) * 560, 170 + Math.floor(i / 2) * 250, 530, 220, '#fffaf0', { color: '#3b3228', borderColor: '#e2d6c0' }), i + 1, 'fade-in'))] },
+    { layout: 'section', title: 'いってらっしゃい', subtitle: '¡Buen viaje!', transition: 'zoom' },
+  ]) },
+
+  // A class quiz, Kahoot-style: questions answered from phones with points for
+  // speed, a countdown to join, the leaderboard, and a celebration.
+  quiz: { name: 'Gran concurso de clase', summary: 'Estilo concurso: preguntas con puntos desde el móvil, cuenta atrás, clasificación y celebración con aplausos', make: () => {
+    const BG = '#46178f', q = (question, options, correct) => pollBlock({ kind: 'quiz', question, options, correct: [correct], time: 20, fontSize: 44, x: 60, y: 40, w: 1160, h: 640 });
+    return numbered(build({ name: 'Gran concurso', palette: 'violet', fonts: 'friendly', title: { size: 60, color: '#ffffff' } }, [
+      { layout: 'blank', bg: BG, extra: [
+        shape('burst', 60, 60, 220, 220, '#fee440', { sketch: true, stroke: '#1b1030', strokeWidth: 4, rotation: -12 }), shape('star', 1010, 430, 200, 200, '#00f5d4', { sketch: true, stroke: '#1b1030', strokeWidth: 4, rotation: 14 }),
+        shape('ellipse', 1040, 70, 120, 120, '#f15bb5', { sketch: true, stroke: '#1b1030', strokeWidth: 4 }), shape('triangle', 150, 470, 150, 150, '#00bbf9', { sketch: true, stroke: '#1b1030', strokeWidth: 4, rotation: 20 }),
+        text('¡Gran concurso!', 240, 160, 800, 160, { fontFamily: pairStacks('friendly').heading, fontSize: 110, wordart: 'fire', textAlign: 'center' }),
+        text('Saca el móvil y escanea el código de la primera pregunta', 290, 340, 700, 90, { fontSize: 32, textAlign: 'center', color: '#ffffff' }),
+        timer(60, 545, 440, 190, { color: '#fee440' })],
+        notes: 'Un minuto para que todo el mundo entre. Las preguntas dan puntos por acertar y por rapidez.' },
+      { layout: 'blank', bg: BG, extra: [q('¿Cuál es el planeta más grande del sistema solar?', ['Marte', 'Júpiter', 'Saturno', 'La Tierra'], 1)] },
+      { layout: 'blank', bg: BG, extra: [q('¿Cuántos lados tiene un hexágono?', ['5', '6', '7', '8'], 1)] },
+      { layout: 'blank', bg: BG, extra: [q('¿Quién pintó el Guernica?', ['Dalí', 'Velázquez', 'Picasso', 'Goya'], 2)] },
+      { title: '🏆 Clasificación', layout: 'titleOnly', bg: BG, extra: [pollBlock({ kind: 'board', question: '', fontSize: 40, x: 60, y: 160, w: 1160, h: 520 })],
+        notes: 'La clasificación suma los puntos de todas las preguntas de la presentación.' },
+      { layout: 'blank', bg: BG, extra: [
+        ...[[120, 90, '#fee440'], [980, 110, '#00f5d4'], [200, 470, '#f15bb5'], [960, 460, '#00bbf9']].map(([x, y, c], i) =>
+          withAnims(shape('star', x, y, 150, 150, c, { sketch: true, stroke: '#1b1030', strokeWidth: 4 }), A('bounce', { start: i ? 'withPrev' : 'afterPrev', delay: i * 150, ...(i === 0 && { sound: 'applause' }) }))),
+        text('¡Enhorabuena!', 240, 250, 800, 160, { fontFamily: pairStacks('friendly').heading, fontSize: 110, wordart: 'gold', textAlign: 'center' }),
+        text('Gracias por jugar', 340, 420, 600, 70, { fontSize: 40, textAlign: 'center', color: '#ffffff' })],
+        notes: 'Las estrellas rebotan solas al llegar, con aplausos (Animaciones ▸ Sonido).' },
+    ]));
+  } },
+
+  // A results dashboard: KPIs on gradients, and the charts that tell the story —
+  // waterfall, funnel, treemap, bubbles — with a table that totals itself.
+  dashboard: { name: 'Panel de resultados', summary: 'Estilo dashboard: indicadores con degradado, gráficos de cascada, embudo, rectángulos y burbujas, tabla con totales automáticos', make: () => {
+    const BG = '#0b0f19', kpi = (n, label, x, i) => anim(text(`<div style="font-size:56px;font-weight:800;line-height:1.1">${n}</div><div style="font-size:24px;opacity:.9">${label}</div>`,
+      x, 190, 255, 190, { color: '#ffffff', textAlign: 'center', vAlign: 'middle' }), i + 1, 'fade-up');
+    return numbered(build({ name: 'Panel de resultados 2026', palette: 'midnight', fonts: 'tech', title: { size: 44, color: '#e6e9ef' },
+      decor: () => Array.from({ length: 9 }, (_, i) => shape('rect', 0, 80 * i + 40, 1280, 1, '#ffffff0d')) }, [
+      { layout: 'blank', bg: BG, extra: [glow(700, -250, 800, '#7aa2f7', BG, 40),
+        text('RESULTADOS 2026', 90, 230, 900, 60, { fontSize: 26, letterSpacing: 8, color: '#7aa2f7' }),
+        text('Un año en datos', 90, 280, 1000, 160, { fontFamily: pairStacks('tech').heading, fontSize: 110, wordart: 'ice' }),
+        text('Ventas, clientes y márgenes · Comité de dirección', 94, 440, 900, 60, { fontSize: 30, color: '#a9b1d6' })] },
+      { title: 'Lo más importante', layout: 'titleOnly', bg: BG, extra: [
+        shape('rounded', 90, 190, 255, 190, '#7aa2f7', { fill2: '#bb9af7', gradAngle: 45, radius: 18 }), shape('rounded', 370, 190, 255, 190, '#9ece6a', { fill2: '#2ac3de', gradAngle: 45, radius: 18 }),
+        shape('rounded', 650, 190, 255, 190, '#e0af68', { fill2: '#f7768e', gradAngle: 45, radius: 18 }), shape('rounded', 930, 190, 255, 190, '#bb9af7', { fill2: '#f7768e', gradAngle: 45, radius: 18 }),
+        kpi('4,2 M€', 'ingresos', 90, 0), kpi('+23 %', 'crecimiento', 370, 1), kpi('38 %', 'margen bruto', 650, 2), kpi('1.240', 'clientes nuevos', 930, 3),
+        text('Todos los indicadores por encima del objetivo, salvo la retención en el segundo trimestre.', 90, 440, 1100, 90, { fontSize: 28, color: '#a9b1d6' })] },
+      { title: 'De los ingresos al beneficio', layout: 'titleOnly', bg: BG, extra: [chartBlock({ x: 90, y: 170, w: 1100, h: 480, chartType: 'waterfall', color: '#9ece6a',
+        data: [{ label: 'Ingresos', value: 4200 }, { label: 'Coste de ventas', value: -2600 }, { label: 'Personal', value: -700 }, { label: 'Marketing', value: -350 }, { label: 'Otros', value: -150 }, { label: 'Total', value: 0 }] })] },
+      { title: 'Del visitante al cliente', layout: 'twoContent', bg: BG, body: '', body2: '', extra: [
+        chartBlock({ x: 90, y: 170, w: 620, h: 480, chartType: 'funnel', color: '#7aa2f7', data: [{ label: 'Visitas', value: 120000 }, { label: 'Registros', value: 18000 }, { label: 'Pruebas', value: 5200 }, { label: 'Clientes', value: 1240 }] }),
+        text('<b style="color:#e0af68;font-size:54px">1 %</b><br>de las visitas acaba siendo cliente. El mayor salto está entre registro y prueba: ahí está la oportunidad.', 760, 250, 430, 330, { fontSize: 28, color: '#e6e9ef' })] },
+      { title: 'Ventas por región', layout: 'titleOnly', bg: BG, extra: [chartBlock({ x: 90, y: 170, w: 1100, h: 480, chartType: 'treemap',
+        data: [{ label: 'Madrid', value: 1300 }, { label: 'Cataluña', value: 1050 }, { label: 'Andalucía', value: 700 }, { label: 'Valencia', value: 520 }, { label: 'País Vasco', value: 330 }, { label: 'Galicia', value: 180 }, { label: 'Resto', value: 120 }] })] },
+      { title: 'Productos: precio, ventas y margen', layout: 'titleOnly', bg: BG, extra: [chartBlock({ x: 90, y: 170, w: 1100, h: 480, chartType: 'bubble', color: '#bb9af7',
+        data: [{ label: 'Básico', value: 1800 }, { label: 'Estándar', value: 1300 }, { label: 'Pro', value: 900 }, { label: 'Empresa', value: 300 }], series: [{ name: 'Margen', values: [18, 30, 42, 55] }] }),
+        text('Tamaño de la burbuja: margen', 90, 650, 1100, 40, { fontSize: 20, color: '#a9b1d6' })] },
+      { title: 'Resumen por trimestre', layout: 'titleOnly', bg: BG, extra: [tableBlock({ x: 90, y: 180, w: 1100, h: 420, fontSize: 26, header: true, headBg: '#7aa2f7', headFg: '#0b0f19', stroke: '#2a2f45', banded: true, band: '#7aa2f7',
+        rows: [['Trimestre', 'Ingresos', 'Clientes nuevos'], ['T1', '850.000 €', '210'], ['T2', '960.000 €', '260'], ['T3', '1.090.000 €', '330'], ['T4', '1.300.000 €', '440'], ['<b>Total</b>', '=SUMA(ARRIBA)', '=SUMA(ARRIBA)']], colW: [2, 3, 3] })],
+      notes: 'Los totales son fórmulas: si cambias un trimestre, se recalculan solos.' },
+    ]));
+  } },
+
+  // A design portfolio: giant type, turned shapes, text round a circle, screens
+  // inside a phone and a laptop, the process one step at a time and a quote.
+  folio: { name: 'Portafolio de diseño', summary: 'Estilo editorial: tipografía gigante, formas giradas, texto en círculo, pantallas en móvil y portátil, proceso uno a uno y testimonio', make: () => {
+    const ACC = '#ff4d2e', INK = '#111111';
+    return numbered(build({ name: 'Laura Vega · Portafolio', palette: 'grayscale', fonts: 'bold', title: { size: 90, color: INK },
+      decor: () => [shape('rect', 1240, 0, 40, 720, ACC)] }, [
+      { layout: 'blank', transition: 'slide', extra: [
+        shape('rect', 700, 90, 420, 520, ACC, { rotation: 8 }), shape('rect', 740, 130, 420, 520, INK, { rotation: -4, opacity: 90 }),
+        text('LAURA<br>VEGA', 80, 110, 700, 420, { fontFamily: pairStacks('bold').heading, fontSize: 210, lineHeight: 0.95, color: INK }),
+        text('Diseño de producto · Portafolio 2026', 88, 540, 700, 60, { fontSize: 32, color: '#555555' }),
+        text('✦', 870, 290, 120, 120, { fontSize: 110, color: '#ffffff', textAlign: 'center' })] },
+      { layout: 'blank', extra: [
+        shape('ellipse', 120, 150, 380, 380, ACC), text('LV', 120, 250, 380, 180, { fontFamily: pairStacks('bold').heading, fontSize: 150, textAlign: 'center', color: '#ffffff' }),
+        text('diseño · ilustración · experiencia de usuario · ', 70, 100, 480, 480, { fontSize: 26, curve: 100, color: INK, textAlign: 'center' }),
+        text('SOBRE MÍ', 620, 160, 540, 60, { fontSize: 28, color: ACC, letterSpacing: 6 }),
+        text('Diseño productos digitales que la gente entiende a la primera. Diez años entre estudios, startups y organizaciones públicas.', 620, 220, 560, 260, { fontSize: 34, color: INK }),
+        text('Madrid · disponible para proyectos', 620, 500, 560, 50, { fontSize: 24, color: '#555555' })] },
+      { title: 'Ruta', layout: 'titleOnly', extra: [
+        { ...base(90, 170, 250, 500), type: 'image', src: appScreen(360, 720, ACC, 'Ruta'), alt: 'App Ruta en el móvil', fit: 'cover', device: 'phone' },
+        { ...base(400, 200, 560, 360), type: 'image', src: appScreen(1280, 800, '#111111', 'Ruta · Panel', 3), alt: 'Panel web de Ruta en un portátil', fit: 'cover', device: 'laptop' },
+        text('App de transporte público para 2 millones de personas. <b>−40 %</b> de consultas al servicio de atención.', 990, 230, 230, 330, { fontSize: 24, color: INK })],
+        notes: 'Imagen ▸ Dispositivo: la misma captura dentro de un móvil, una tableta, un portátil o un navegador.' },
+      { title: 'Cómo trabajo', layout: 'titleOnly', extra: [dg('process', 'Investigar\n  Hablar con quien lo usará\nIdear\n  Muchas ideas, rápido\nPrototipar\n  Algo que se pueda tocar\nProbar\n  Aprender y repetir', 90, 190, 1100, 420, { colors: 'accent', oneByOne: true })] },
+      { layout: 'blank', extra: [
+        text('“', 80, 20, 300, 300, { fontFamily: pairStacks('bold').heading, fontSize: 320, color: ACC, lineHeight: 1 }),
+        text('Laura convirtió un proceso de veinte pasos en tres pantallas. Nuestros usuarios lo notaron el primer día.', 180, 190, 950, 300, { fontSize: 48, color: INK, fontStyle: 'italic' }),
+        text('— Marta Gil, directora de producto', 180, 500, 900, 60, { fontSize: 28, color: '#555555' })] },
+      { layout: 'blank', transition: 'zoom', extra: [
+        text('HABLEMOS', 80, 160, 1100, 220, { fontFamily: pairStacks('bold').heading, fontSize: 230, color: INK }),
+        icon('mail', 90, 430, 56, ACC), text('hola@lauravega.example', 170, 430, 700, 60, { fontSize: 36, color: INK }),
+        icon('location', 90, 510, 56, ACC), text('Madrid, España', 170, 510, 700, 60, { fontSize: 36, color: INK })] },
     ]));
   } },
 
