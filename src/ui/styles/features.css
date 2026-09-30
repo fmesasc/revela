@@ -441,3 +441,13 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 @keyframes rvPulse{50%{opacity:.35}}
 @media (prefers-reduced-motion:reduce){#dictate-bar .ms{animation:none}}
 [data-action="dictate"].on{background:var(--accent-bg);color:var(--danger)}
+/* Tasks in comments: who it is for and by when (late ones in red). */
+.cm-view{border:1px solid var(--line2);border-radius:6px;padding:4px;background:var(--panel);color:inherit;font:inherit;font-size:12px}
+.cm-task-in{display:flex;gap:6px}.cm-task-in input{min-width:0;flex:1;border:1px solid var(--line2);border-radius:6px;padding:4px 6px;font:inherit;font-size:12px;background:var(--panel);color:inherit}
+.cm-task-in input[type=date]{flex:0 0 auto}
+.cm-task{display:flex;gap:6px;align-items:center;font-size:12px;padding:3px 8px;border-radius:6px;background:var(--accent-bg);align-self:flex-start}
+.cm-task .ms{font-size:16px}.cm-task.late{background:color-mix(in srgb,var(--danger) 16%,transparent);color:var(--danger)}
+.cm-sys .cm-text{font-style:italic;color:var(--txt2)}
+.cm-actions{flex-wrap:wrap}
+[data-action="comments"] .tk-count{position:absolute;top:2px;right:2px;min-width:15px;height:15px;padding:0 3px;border-radius:8px;background:var(--danger);color:#fff;font-size:10px;line-height:15px;text-align:center;pointer-events:none}
+[data-action="comments"]{position:relative}

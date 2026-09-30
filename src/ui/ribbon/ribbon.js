@@ -1,5 +1,6 @@
 // The ribbon: tab switching and wiring every control to a feature.
 
+import { author, tasksOf } from '../../features/collab/comments.js';
 import { renderMorphHint } from '../shell/morphhint.js';
 import { renderContextual } from './contextual.js';
 import { state, commit, currentSlide, selectedBlock, selectedBlocks, canUndo, canRedo, docVersion } from '../../core/store.js';
@@ -340,6 +341,12 @@ export function renderRibbon() {
   { const has = !!selectedBlock(); ['clip-copy', 'clip-cut', 'obj-duplicate'].forEach(a => { const el = $(`[data-action="${a}"]`); if (el) el.disabled = !has; });
     const p = $('[data-action="clip-paste"]'); if (p) p.disabled = !clip.hasClipboard(); }
   $('[data-action="mark-final"]')?.classList.toggle('on', protect.isFinal());
+  // My open tasks (comments assigned to me), counted on the Comments button.
+  { const n = author() ? tasksOf({ who: author() }).length : 0;
+    document.querySelectorAll('[data-action="comments"]').forEach(b => {
+      let c = b.querySelector('.tk-count'); if (!n) { c?.remove(); return; }
+      if (!c) { c = document.createElement('span'); c.className = 'tk-count'; b.appendChild(c); }
+      c.textContent = n; c.title = t('Tareas pendientes para ti'); }); }
   document.querySelectorAll('[data-action="undo"]').forEach(b => { b.disabled = !canUndo(); });
   document.querySelectorAll('[data-action="redo"]').forEach(b => { b.disabled = !canRedo(); });
   // Saved here after a change (unless Drive shows its own state).

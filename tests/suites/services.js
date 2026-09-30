@@ -75,6 +75,39 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.querySelector('[data-action="comments"]').click();
   });
 
+  await test('comentarios: asignar tareas (+nombre o en su campo), con fecha, reasignar, marcar como hecha y «Mis tareas»', async () => {
+    reset(); const C = R.comments, W = frame.contentWindow; C.setAuthor('Ana');
+    D.querySelector('[data-action="comments"]').click(); await sleep(10);
+    const p = () => D.getElementById('comments-panel');
+    // In the panel: a comment for Luis, with a date.
+    p().querySelector('.cm-new textarea').value = 'Revisa las cifras';
+    p().querySelector('.cm-assign').value = 'Luis'; p().querySelector('.cm-due').value = '2000-01-15';
+    p().querySelector('.cm-add').click(); await sleep(20);
+    const c = C.commentsOf()[0]; eq(c.assignee, 'Luis'); eq(c.due, '2000-01-15');
+    const task = p().querySelector('.cm-task'); assert(task && /Tarea para/.test(task.textContent) && /Luis/.test(task.textContent), 'se ve como tarea');
+    assert(task.classList.contains('late'), 'fuera de plazo, en rojo');
+    // Written "+Ana" in another slide: a task for me, counted on the button.
+    R.slides.addSlide('blank'); await sleep(10);
+    const id2 = C.addComment('Cambia el título +Ana', null); await sleep(20);
+    eq(C.commentsOf()[0].assignee, 'Ana', '«+nombre» la asigna');
+    eq(D.querySelector('[data-action="comments"] .tk-count')?.textContent, '1', 'mis tareas, contadas en el botón');
+    eq(C.tasksOf().length, 2, 'todas las tareas de la presentación'); eq(C.tasksOf({ who: 'ana' }).length, 1, 'las mías');
+    assert(C.people().includes('Luis') && C.people().includes('Ana'), 'nombres para asignar');
+    const v = p().querySelector('.cm-view'); v.value = 'tasks'; v.dispatchEvent(new W.Event('change')); await sleep(20);
+    eq(p().querySelectorAll('.cm-item').length, 2, 'lista de tareas de todas las diapositivas');
+    const first = p().querySelector('.cm-item .cm-slide'); eq(first.textContent, 'Diapositiva 1', 'con su diapositiva (la más urgente primero)');
+    first.click(); await sleep(10); eq(R.state.ui.slideIndex, 0, 'lleva a ella');
+    // Reassign and mark as done (from the list, though it is in another slide).
+    C.assign(id2, 'Marta'); await sleep(10);
+    const t2 = C.tasksOf({ who: 'Marta' })[0]; assert(t2 && /Marta/.test(t2.replies.at(-1).text), 'reasignada, y queda anotado');
+    C.setResolved(id2); await sleep(10);
+    eq(C.tasksOf().length, 1, 'hecha: fuera de las pendientes'); assert(!D.querySelector('[data-action="comments"] .tk-count'), 'sin tareas mías');
+    v.value = 'mine'; v.dispatchEvent(new W.Event('change')); await sleep(20);
+    assert(/No tienes tareas pendientes/.test(p().textContent), 'mis tareas: ninguna');
+    R.store.commit(() => { R.state.ui.commentView = 'slide'; }, { history: false });
+    D.querySelector('[data-action="comments"]').click();
+  });
+
   await test('IA: generar imagen y traducir la presentación (respuestas simuladas)', async () => {
     reset(); const W = frame.contentWindow, AI = R.ai, realFetch = W.fetch, calls = [];
     AI.setAiKey('sk-or-prueba');
