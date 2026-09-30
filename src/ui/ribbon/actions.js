@@ -4,6 +4,7 @@
 import { editText } from '../canvas/content.js';
 import { readFile, openProject, openPresentation, insertMarkdown } from '../shell/openfile.js';
 import { openFindPanel } from '../dialogs/find.js';
+import { toggleDictation } from '../shell/dictate.js';
 import { openGdriveSetup } from '../dialogs/gdrive.js';
 import { state, commit, undo, redo, replaceDeck, currentSlide, selectedBlock, selectedBlocks } from '../../core/store.js';
 import { isBlankDeck, emptyDeck } from '../../core/model.js';
@@ -227,6 +228,7 @@ export const ACTIONS = {
   'insert-slideref': () => blocks.addSlideRef(),
   'insert-summary': () => blocks.addSummaryZoom(),
   'find-replace': () => openFindPanel(),
+  dictate: () => toggleDictation(),
   'copy-style': () => { format.copyStyle(); commit(() => {}, { history: false }); },   // refresh: Pegar formato becomes available
   'paste-style': () => format.pasteStyle(),
   'bg-gradient': () => {

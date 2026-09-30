@@ -242,4 +242,26 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     await R.i18n.setLang('de'); eq(R.i18n.t('Nuevo patrón'), 'Neuer Master', 'alemán');
     await R.i18n.setLang('es'); eq(D.querySelector('[data-action="save-picture"] span').innerHTML, 'Selección<br>como imagen', 'vuelve al español');
   });
+
+  await test('dictar: la voz se escribe donde está el cursor, con la puntuación dicha', async () => {
+    reset(); const W = frame.contentWindow, M = await W.eval("import('/src/ui/shell/dictate.js')");
+    eq(M.spokenText('hola mundo punto nueva línea segunda frase coma sin más', 'es'), 'hola mundo.\nsegunda frase, sin más');
+    eq(M.spokenText('abrir interrogación qué tal cerrar interrogación', 'es'), '¿qué tal?');
+    let inst = null;
+    W.SpeechRecognition = class { constructor() { inst = this; } start() { this.started = true; } stop() { this.stopped = true; } };
+    W.localStorage.setItem('revela.consent.dictation', '1');
+    R.slides.addSlide('blank'); await sleep(10);
+    D.querySelector('[data-action="dictate"]').click(); await sleep(30);
+    assert(inst?.started && inst.continuous && D.getElementById('dictate-bar'), 'escuchando, con su barra');
+    const b = last(); eq(b.type, 'text', 'sin texto seleccionado, en un cuadro nuevo');
+    const say = (text, isFinal = true) => inst.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: text }], { isFinal })] });
+    say('esto es', false); assert(/esto es/.test(D.querySelector('#dictate-bar .dt-heard').textContent), 'lo que va oyendo');
+    say('hola a todos punto nueva línea bienvenidos'); await sleep(20);
+    const txt = D.querySelector(`#stage .block[data-id="${b.id}"] .rich`).innerText;
+    assert(/^Hola a todos\.\n+Bienvenidos$/.test(txt.trim()), 'escrito, con mayúsculas y punto: ' + JSON.stringify(txt));
+    assert(/Hola a todos\./.test(b.html) && /Bienvenidos/.test(b.html), 'guardado en el cuadro');
+    D.querySelector('[data-action="dictate"]').click(); await sleep(10);
+    assert(inst.stopped && !D.getElementById('dictate-bar'), 'se detiene');
+    delete W.SpeechRecognition; W.localStorage.removeItem('revela.consent.dictation');
+  });
 }
