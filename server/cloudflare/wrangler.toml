@@ -70,6 +70,8 @@ new_sqlite_classes = ["ShareBox", "Limits"]
 #   OPENROUTER_KEY          the AI key (set a credit limit on it at openrouter.ai)
 #   STRIPE_SECRET_KEY       Stripe's secret key (billing; optional until you sell)
 #   STRIPE_WEBHOOK_SECRET   the signing secret of the webhook (…/api/billing/webhook)
+#   UNSPLASH_ACCESS_KEY     Unsplash's access key (photos; optional)
+#   PEXELS_API_KEY          Pexels' API key (photos; optional)
 [[durable_objects.bindings]]
 name = "ACCOUNTS"
 class_name = "Account"

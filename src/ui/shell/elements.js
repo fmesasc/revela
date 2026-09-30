@@ -7,17 +7,22 @@
 import { esc } from '../../core/text.js';
 import { state, currentSlide, amend } from '../../core/store.js';
 import * as R from '../../features/content/resources.js';
-import { searchImages, insertStockImage, hasTransparentBackground, searchIcons, iconPreview, insertOnlineIcon, consented, giveConsent } from '../../features/content/stock.js';
+import { insertPhoto, searchImages, insertStockImage, hasTransparentBackground, searchIcons, iconPreview, insertOnlineIcon, consented, giveConsent } from '../../features/content/stock.js';
 import { removeBackground } from '../dialogs/object.js';
 import { deckFg } from '../../features/design/palettes.js';
 import { factor } from '../canvas/interact.js';
 import { fitZoom } from '../ribbon/zoom.js';
 import { alertDialog, confirmDialog } from '../dialogs/dialog.js';
 import { t } from '../../i18n/index.js';
+import { api, account, hasAccounts } from '../../io/cloud/account.js';
+
+// Photo services the Revela server offers (official edition and desktop app, signed in).
+const photoServices = () => (hasAccounts() && account()?.photos) || [];
 
 // key, label, icon, service (for consent: its key and name; null = nothing leaves the browser)
 const TABS = [
   ['images', 'Imágenes', 'image', 'openverse', 'Openverse (openverse.org)'],
+  ['photos', 'Fotos', 'photo_camera', 'revelaphotos', 'Unsplash y Pexels (a través del servidor de Revela)'],
   ['icons', 'Iconos', 'interests', 'iconify', 'Iconify (iconify.design)'],
   ['gif', 'GIF', 'gif_box', 'gif', 'Openverse (openverse.org)'],
   ['videos', 'Vídeos', 'movie', 'commonsvideo', 'Wikimedia Commons (commons.wikimedia.org)'],
@@ -31,6 +36,7 @@ const TABS = [
 ];
 const HELP = {
   images: 'Imágenes con licencias libres de Openverse. Se añade la atribución como pie de foto: mantenla si la licencia lo pide.',
+  photos: 'Fotos profesionales de Unsplash y Pexels, gratis. Se usan desde sus servidores (hace falta internet al presentar) y llevan el nombre de quien las hizo.',
   icons: 'Más de 200 000 iconos de colecciones libres (Material, Tabler, Font Awesome…) vía Iconify.',
   gif: 'GIF animados con licencias libres (Wikimedia y otros). Se añade la atribución como pie: mantenla si la licencia lo pide.',
   videos: 'Vídeos con licencias libres de Wikimedia Commons (naturaleza, ciencia, historia…). Los cortos se guardan dentro de la presentación; se añade la atribución como pie.',
@@ -46,6 +52,7 @@ const HELP = {
 // Nothing is searched until one is chosen.
 const IDEAS = {
   images: [['Naturaleza', 'nature'], ['Ciudad', 'city'], ['Espacio', 'space'], ['Ciencia', 'science'], ['Tecnología', 'technology'], ['Escuela', 'school'], ['Oficina', 'office'], ['Mapas', 'map']],
+  photos: [['Naturaleza', 'nature'], ['Ciudad', 'city'], ['Personas', 'people'], ['Oficina', 'office'], ['Comida', 'food'], ['Viajes', 'travel'], ['Tecnología', 'technology'], ['Deporte', 'sport']],
   icons: [['Casa', 'home'], ['Persona', 'person'], ['Flecha', 'arrow'], ['Estrella', 'star'], ['Correo', 'mail'], ['Idea', 'lightbulb'], ['Gráfico', 'chart'], ['Ajustes', 'settings']],
   videos: [['Naturaleza', 'nature'], ['Mar', 'ocean'], ['Espacio', 'space'], ['Animales', 'animals'], ['Ciudad', 'city'], ['Ciencia', 'science']],
   audio: [['Aplausos', 'applause'], ['Campana', 'bell'], ['Risas', 'laughter'], ['Lluvia', 'rain'], ['Piano', 'piano'], ['Tambores', 'drums']],
@@ -53,7 +60,7 @@ const IDEAS = {
   commons3d: [['Cráneo', 'skull'], ['Fósil', 'fossil'], ['Estatua', 'statue'], ['Corazón', 'heart'], ['Dinosaurio', 'dinosaur'], ['Edificio', 'building']],
   sketchfab: [['Robot', 'robot'], ['Coche', 'car'], ['Avión', 'airplane'], ['Animales', 'animal'], ['Casa', 'house'], ['Planeta', 'planet']],
 };
-const TYPING = new Set(['images', 'icons', 'gif', 'videos', 'audio', 'sketchfab', 'commons3d']);          // need words to search
+const TYPING = new Set(['photos', 'images', 'icons', 'gif', 'videos', 'audio', 'sketchfab', 'commons3d']);          // need words to search
 const DRAG = 'application/x-revela-element';
 const sel = (cls, opts) => `<select class="${cls}">${opts.map(([v, l]) => `<option value="${v}">${esc(t(l))}</option>`).join('')}</select>`;
 // The picture search's filters, as the service takes them.
@@ -128,7 +135,7 @@ function build() {
   panel.innerHTML = `<div class="cm-head"><b><i class="ms">interests</i> ${t('Recursos')}</b><span>
       <button type="button" class="el-side mini2" title="${t('Pasar al otro lado')}"><i class="ms">swap_horiz</i></button>
       <button type="button" class="cm-close" title="${t('Cerrar')}">✕</button></span></div>
-    <div class="el-tabs" role="tablist">${TABS.map(([k, l, i]) => `<button type="button" role="tab" data-et="${k}" title="${t(l)}"><i class="ms">${i}</i><span>${t(l)}</span></button>`).join('')}</div>
+    <div class="el-tabs" role="tablist">${TABS.filter(([k]) => k !== 'photos' || photoServices().length).map(([k, l, i]) => `<button type="button" role="tab" data-et="${k}" title="${t(l)}"><i class="ms">${i}</i><span>${t(l)}</span></button>`).join('')}</div>
     <div class="sk-bar"><input type="search" class="sk-q" placeholder="${t('Buscar…')}"><button type="button" class="fr-do sk-go" title="${t('Buscar')}"><i class="ms">search</i></button>
       <button type="button" class="mini2 el-ftoggle" title="${t('Filtros')}" aria-expanded="false" hidden><i class="ms">tune</i><b class="el-fcount" hidden></b></button></div>
     <div class="el-filters" hidden>
@@ -179,7 +186,7 @@ function show(tab) {
   q('.el-anim').hidden = !(tab === 'anim3d' || tab === 'sketchfab');
   q('.el-akind').hidden = tab !== 'audio'; stopListening();
   q('.el-col').hidden = tab !== 'icons';
-  q('.el-grid').className = 'el-grid' + (tab === 'icons' || tab === 'stickers' ? ' small' : '') + (tab === 'images' ? ' checker justify' : tab === 'gif' || tab === 'videos' ? ' justify' : '');
+  q('.el-grid').className = 'el-grid' + (tab === 'icons' || tab === 'stickers' ? ' small' : '') + (tab === 'images' ? ' checker justify' : tab === 'gif' || tab === 'videos' || tab === 'photos' ? ' justify' : '');
   q('.sk-q').value = terms[tab] || '';
   q('.el-grid').innerHTML = ''; q('.sk-more').hidden = true; q('.sk-go').disabled = false; picks = [];
   const svc = TABS.find(x => x[0] === tab);
@@ -293,7 +300,13 @@ async function run(more = false) {
   else q('.el-grid').insertAdjacentHTML('beforeend', `<p class="host-help el-loading">${t('Buscando…')}</p>`);
   let list = [], full = false;                     // [thumb, title, badge, pick]; full: there may be more
   try {
-    if (tab === 'images') {
+    if (tab === 'photos') {
+      // Both services at once (whichever the server has), one result from each in turn.
+      const got = await Promise.all(photoServices().map(p => api(`stock/search?provider=${p}&q=${encodeURIComponent(term)}&page=${page}`).then(d => d.results.map(x => ({ ...x, provider: p })), () => [])));
+      const mixed = []; for (let i = 0; i < 20; i++) got.forEach(l => l[i] && mixed.push(l[i]));
+      full = got.some(l => l.length >= 20);
+      list = mixed.map(ph => [ph.thumb, `${ph.alt ? ph.alt + ' — ' : ''}${ph.author} (${ph.source})`, ph.source, () => { api('stock/used', { provider: ph.provider, id: ph.id }).catch(() => {}); return insertPhoto(ph); }, ph.width && ph.height ? ph.width / ph.height : 0]);
+    } else if (tab === 'images') {
       const f = imageFilters(), found = [];
       // A see-through background: PNG and SVG only, each one checked on its preview;
       // a few pages if needed, so that there is something to choose from.

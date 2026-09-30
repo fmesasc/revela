@@ -913,4 +913,13 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       eq(slide().blocks.find(x => x.id === 'img1').x, 700, 'se aplica');
     } finally { W.fetch = realFetch; R.ai.disconnectAi(); }
   });
+
+  await test('fotos de Unsplash y Pexels: se usan desde su servidor, con el nombre de quien las hizo', async () => {
+    reset();
+    const b = R.stock.insertPhoto({ id: 'abc', src: 'https://images.unsplash.com/r.jpg', thumb: 'https://images.unsplash.com/s.jpg', width: 4000, height: 2000, alt: 'Un faro',
+      author: 'Ana Foto', authorUrl: 'https://unsplash.com/@ana?utm_source=revela&utm_medium=referral', source: 'Unsplash', sourceUrl: 'https://unsplash.com/?utm_source=revela&utm_medium=referral' });
+    eq(b.src, 'https://images.unsplash.com/r.jpg', 'enlazada a su servidor (lo pide Unsplash)'); eq(b.caption, 'Ana Foto / Unsplash', 'con su autor como pie');
+    eq(Math.round(b.w / b.h), 2, 'con su proporción'); eq(b.alt, 'Un faro', 'texto alternativo');
+    assert(!D.querySelector('#elements-panel [data-et="photos"]'), 'en la edición abierta (sin cuenta) no aparece');
+  });
 }

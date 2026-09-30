@@ -2050,4 +2050,9 @@ export default {
   "Quitar la voz": "Quitar a voz",
   "Crear la voz": "Crear a voz",
   "Voz creada en {n} diapositivas.": "Voz creada en {n} diapositivas.",
+  "Unsplash y Pexels (a través del servidor de Revela)": "Unsplash e Pexels (a través do servidor de Revela)",
+  "Fotos profesionales de Unsplash y Pexels, gratis. Se usan desde sus servidores (hace falta internet al presentar) y llevan el nombre de quien las hizo.": "Fotos profesionais de balde de Unsplash e Pexels. Úsanse desde os seus servidores (fai falta internet ao presentar) e levan o nome de quen as fixo.",
+  "Comida": "Comida",
+  "Viajes": "Viaxes",
+  "Deporte": "Deporte",
 };

@@ -17,6 +17,8 @@
 //   POST /api/ai/chat          { messages, max_tokens?, json? } → OpenRouter's answer (credits charged)
 //   POST /api/ai/image         { prompt, aspect_ratio? } → { data: [{ b64_json, media_type }] }
 //   POST /api/ai/speech        { input, voice?, speed? } → { audio (base64 mp3) }  (credits per character)
+//   GET  /api/stock/search     ?provider=unsplash|pexels&q=&page= → { results }   (Revela's keys; per-minute limit)
+//   POST /api/stock/used       { provider, id }        (Unsplash asks to be told when a photo is used)
 //   POST /api/billing/checkout { product } → { url }   (Stripe Checkout)
 //   POST /api/billing/portal   → { url }                (Stripe customer portal)
 //   POST /api/billing/webhook  Stripe's events (signed)
@@ -114,6 +116,11 @@ export class Account {
       case 'me': {
         const prof = await this.get('profile', {}), plan = await this.plan(), p = await this.get('plan', null);
         return this.json({ email: prof.email, plan, until: plan === 'pro' ? p.until : null, credits: await this.get('credits', 0), features: FEATURES[plan] || FEATURES.free });
+      }
+      case 'ratek': {                                      // { key, per }: one more of these this minute? (searches…)
+        const now = Date.now(), k = 'rate:' + String(a.key || 'x').slice(0, 20), w = (await this.get(k, [])).filter(t => t > now - 60e3);
+        if (w.length >= (+a.per || 30)) return this.json({ ok: false });
+        w.push(now); await this.put({ [k]: w }); return this.json({ ok: true });
       }
       case 'rate': {                                       // one more AI request this minute?
         const now = Date.now(), w = (await this.get('rate', [])).filter(t => t > now - 60e3);
@@ -289,7 +296,7 @@ export async function handleApi(req, env, url) {
   switch (path) {
     case '/me': {
       const r = await call(A, 'me');
-      return json({ ...r, billing: !!(env.STRIPE_SECRET_KEY && env.STRIPE_WEBHOOK_SECRET) });
+      return json({ ...r, billing: !!(env.STRIPE_SECRET_KEY && env.STRIPE_WEBHOOK_SECRET), photos: photoProviders(env) });
     }
     case '/logout': {
       await call(A, 'logout', { secret: me.secret });
@@ -305,6 +312,8 @@ export async function handleApi(req, env, url) {
     case '/ai/chat': return aiChat(env, s, A, body, json);
     case '/ai/image': return aiImage(env, s, A, body, json);
     case '/ai/speech': return aiSpeech(env, s, A, body, json);
+    case '/stock/search': return stockSearch(env, A, url, json);
+    case '/stock/used': return stockUsed(env, body, json);
     case '/billing/checkout': return checkout(env, s, me, A, body, json);
     case '/billing/portal': return portal(env, s, A, json);
   }
@@ -395,6 +404,37 @@ async function aiSpeech(env, s, A, body, json) {
   let bin = ''; const bytes = new Uint8Array(buf); for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return json({ audio: btoa(bin), media_type: 'audio/mpeg', charged: st.used });
 }
+
+// ---- Photos (Unsplash, Pexels): searched with Revela's keys, which stay here ----
+// The pictures are used from their own servers, with the photographer's credit
+// (as both services ask); Unsplash is also told when one is used.
+const PHOTO_PROVIDERS = {
+  unsplash: { key: env => env.UNSPLASH_ACCESS_KEY, search: (env, q, page) => ['https://api.unsplash.com/search/photos?' + new URLSearchParams({ query: q, page, per_page: 20, content_filter: 'high' }), { Authorization: 'Client-ID ' + env.UNSPLASH_ACCESS_KEY, 'Accept-Version': 'v1' }],
+    list: d => (d.results || []).map(x => ({ id: String(x.id), width: x.width, height: x.height, alt: x.alt_description || x.description || '', thumb: x.urls?.small, src: x.urls?.regular,
+      author: x.user?.name || '', authorUrl: (x.user?.links?.html || '') + '?utm_source=revela&utm_medium=referral', source: 'Unsplash', sourceUrl: 'https://unsplash.com/?utm_source=revela&utm_medium=referral' })) },
+  pexels: { key: env => env.PEXELS_API_KEY, search: (env, q, page) => ['https://api.pexels.com/v1/search?' + new URLSearchParams({ query: q, page, per_page: 20 }), { Authorization: env.PEXELS_API_KEY }],
+    list: d => (d.photos || []).map(x => ({ id: String(x.id), width: x.width, height: x.height, alt: x.alt || '', thumb: x.src?.medium, src: x.src?.large2x || x.src?.large,
+      author: x.photographer || '', authorUrl: x.photographer_url || '', source: 'Pexels', sourceUrl: x.url || 'https://www.pexels.com' })) },
+};
+const httpsOnly = u => (/^https:\/\//.test(u || '') ? u : '');
+async function stockSearch(env, A, url, json) {
+  const provider = url.searchParams.get('provider'), q = String(url.searchParams.get('q') || '').trim().slice(0, 100), page = Math.min(50, Math.max(1, +url.searchParams.get('page') || 1));
+  const P = PHOTO_PROVIDERS[provider]; if (!P || !q) return json({ error: 'bad request' }, 400);
+  if (!P.key(env)) return json({ error: 'not configured' }, 503);
+  if (!(await call(A, 'ratek', { key: 'stock', per: 30 })).ok) return json({ error: 'too many requests' }, 429);
+  const [u, headers] = P.search(env, q, page);
+  const r = await (env.FETCH || fetch)(u, { headers }).catch(() => null);
+  if (!r || !r.ok) return json({ error: 'provider failed' }, 502);
+  const list = P.list(await r.json().catch(() => ({}))).map(x => ({ ...x, thumb: httpsOnly(x.thumb), src: httpsOnly(x.src), authorUrl: httpsOnly(x.authorUrl), sourceUrl: httpsOnly(x.sourceUrl) })).filter(x => x.thumb && x.src);
+  return json({ results: list });
+}
+async function stockUsed(env, body, json) {
+  if (body.provider === 'unsplash' && env.UNSPLASH_ACCESS_KEY && /^[\w-]{4,40}$/.test(body.id || ''))
+    await (env.FETCH || fetch)(`https://api.unsplash.com/photos/${body.id}/download`, { headers: { Authorization: 'Client-ID ' + env.UNSPLASH_ACCESS_KEY } }).catch(() => null);
+  return json({ ok: true });
+}
+// Which photo services are set up (for the app to show them).
+export const photoProviders = env => Object.keys(PHOTO_PROVIDERS).filter(k => PHOTO_PROVIDERS[k].key(env));
 
 // ---- Payments (Stripe) ------------------------------------------------------------------------------------
 const stripe = (env, path, params) => (env.FETCH || fetch)('https://api.stripe.com/v1/' + path, { method: 'POST',

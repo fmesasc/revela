@@ -2050,4 +2050,9 @@ export default {
   "Quitar la voz": "إزالة الصوت",
   "Crear la voz": "إنشاء الصوت",
   "Voz creada en {n} diapositivas.": "تم إنشاء الصوت في {n} شرائح.",
+  "Unsplash y Pexels (a través del servidor de Revela)": "Unsplash وPexels (عبر خادم Revela)",
+  "Fotos profesionales de Unsplash y Pexels, gratis. Se usan desde sus servidores (hace falta internet al presentar) y llevan el nombre de quien las hizo.": "صور احترافية مجانية من Unsplash وPexels. تُستخدم من خوادمها (تحتاج إلى الإنترنت أثناء العرض) وتحمل اسم المصوّر.",
+  "Comida": "طعام",
+  "Viajes": "سفر",
+  "Deporte": "رياضة",
 };

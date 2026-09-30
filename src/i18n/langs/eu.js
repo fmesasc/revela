@@ -2050,4 +2050,9 @@ export default {
   "Quitar la voz": "Kendu ahotsa",
   "Crear la voz": "Sortu ahotsa",
   "Voz creada en {n} diapositivas.": "Ahotsa {n} diapositibatan sortu da.",
+  "Unsplash y Pexels (a través del servidor de Revela)": "Unsplash eta Pexels (Revelaren zerbitzariaren bidez)",
+  "Fotos profesionales de Unsplash y Pexels, gratis. Se usan desde sus servidores (hace falta internet al presentar) y llevan el nombre de quien las hizo.": "Unsplash eta Pexels-eko argazki profesionalak, doan. Beren zerbitzarietatik erabiltzen dira (aurkeztean internet behar da) eta egilearen izena daramate.",
+  "Comida": "Janaria",
+  "Viajes": "Bidaiak",
+  "Deporte": "Kirola",
 };

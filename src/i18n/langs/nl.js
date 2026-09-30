@@ -2050,4 +2050,9 @@ export default {
   "Quitar la voz": "Stem verwijderen",
   "Crear la voz": "Stem maken",
   "Voz creada en {n} diapositivas.": "Stem gemaakt op {n} dia's.",
+  "Unsplash y Pexels (a través del servidor de Revela)": "Unsplash en Pexels (via de server van Revela)",
+  "Fotos profesionales de Unsplash y Pexels, gratis. Se usan desde sus servidores (hace falta internet al presentar) y llevan el nombre de quien las hizo.": "Gratis professionele foto's van Unsplash en Pexels. Ze komen van hun servers (je hebt internet nodig bij het presenteren) en dragen de naam van de fotograaf.",
+  "Comida": "Eten",
+  "Viajes": "Reizen",
+  "Deporte": "Sport",
 };

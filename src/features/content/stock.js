@@ -77,6 +77,20 @@ export async function insertStockImage(img) {
   return b;
 }
 
+// ---- Photos from Unsplash and Pexels (through Revela's server) ----------------------
+// Used from their own servers, as Unsplash asks (so they need the internet when
+// presenting), with the photographer's credit as the caption.
+export function insertPhoto(ph) {
+  const { w: W, h: H } = state.deck.size, ar = ph.width && ph.height ? ph.width / ph.height : 3 / 2;
+  let w = W * 0.6, h = w / ar; if (h > H * 0.7) { h = H * 0.7; w = h * ar; }
+  const credit = `${ph.author} / ${ph.source}`;
+  const b = { id: uid(), type: 'image', src: ph.src, fit: 'cover', alt: String(ph.alt || '').slice(0, 125), caption: credit,
+    credit: `${ph.author} (${ph.authorUrl}) · ${ph.source} (${ph.sourceUrl})`,
+    x: Math.round((W - w) / 2), y: Math.round((H - h) / 2) - 20, w: Math.round(w), h: Math.round(h), rotation: 0, animation: null };
+  commit(() => { currentSlide().blocks.push(b); state.ui.selection = b.id; state.ui.multi = [b.id]; });
+  return b;
+}
+
 // ---- Iconify -------------------------------------------------------------------
 export async function searchIcons(q) {
   const r = await fetch(`https://api.iconify.design/search?query=${encodeURIComponent(q)}&limit=96`);
