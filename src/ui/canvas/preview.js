@@ -5,6 +5,7 @@ import { currentSlide } from '../../core/store.js';
 import { animTimeline, animEntries, EFFECT_KF, motionFrames } from '../../features/animation/transitions.js';
 import { stage } from './canvas.js';
 import { model3dRuntime } from '../../io/runtime/model3d.js';
+import { soundRuntime } from '../../io/runtime/sounds.js';
 
 let models3d = null;                              // walking 3D models (their clip while they move)
 function walkIn(el, dur, delay) {
@@ -23,8 +24,12 @@ function drawIn(el, dur, delay) {
   const out = [...parts].map(p => p.animate(DRAW, { duration: dur, delay, easing: 'ease-in-out', fill: 'backwards' }));
   return out;
 }
+// The animation's sound, as it starts (the same sounds as in the presentation).
+let snd = null;
+function soundOf(anim, delay) { if (anim.sound) setTimeout(() => (snd ||= soundRuntime()).play(anim.sound, anim.soundSrc), delay); }
 export function animateEl(el, anim, dur, delay) {
   const effect = anim.effect;
+  soundOf(anim, delay);
   if (effect === 'draw' && drawIn(el, dur, delay)) return;
   if (effect === 'path') {                        // motion path: along it (turning, if so) and back
     const model = !!el.querySelector('model-viewer');
@@ -65,6 +70,7 @@ export function playAnimations() {
     if (!b.anims?.length) { animateEl(el, a, at.dur, when); continue; }
     // A sequence: every step kept (added up) until the end, then all undone.
     const opts = { duration: at.dur, delay: when, easing: 'ease-in-out', fill: 'forwards', composite: i ? 'add' : 'replace' };
+    soundOf(a, when);
     if (a.effect === 'draw' && drawIn(el, at.dur, when)) continue;
     if (a.effect === 'clip3d') {
       const mv = el.querySelector('model-viewer'); models3d ||= model3dRuntime();

@@ -504,4 +504,22 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.querySelector('[data-morphby]').value = 'objects'; D.querySelector('[data-morphby]').dispatchEvent(new frame.contentWindow.Event('change'));
     assert(!slide().morphBy, 'volver a objetos desde la cinta');
   });
+
+  await test('sonido en las animaciones: elegido en el panel, suena al presentar', async () => {
+    reset(); const b = slide().blocks[0]; select(b); R.trans.setAnimation('fade-in');
+    D.querySelector('[data-action="anim-panel"]').click(); await sleep(20);
+    const sel = D.querySelector('#anim-modal [data-p="sound"]');
+    assert(sel && [...sel.options].some(o => o.value === 'applause'), 'selector con sonidos');
+    sel.value = 'chime'; sel.dispatchEvent(new frame.contentWindow.Event('change')); await sleep(20);
+    eq(b.animation.sound, 'chime');
+    assert(!D.querySelector('#anim-modal .an-hear').disabled, 'se puede escuchar');
+    D.querySelector('#anim-modal .modal-close').click();
+    const html = R.io.buildHTML();
+    assert(/data-sound="chime"/.test(html) && /AudioContext/.test(html), 'en el export, con su sintetizador');
+    R.trans.setAnimPropForId(b.id, 'sound', '');
+    assert(!b.animation.sound && !/data-sound=/.test(R.io.buildHTML()), 'sin sonido, nada');
+    const S = await frame.contentWindow.eval("import('/src/features/document/sanitize.js')");
+    const a = S.cleanValue({ effect: 'fade-in', sound: 'x" onload="y', soundSrc: 'javascript:alert(1)' });
+    assert(!/"/.test(a.sound || '') && !a.soundSrc, 'saneado: ' + JSON.stringify(a));
+  });
 }

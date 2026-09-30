@@ -39,9 +39,9 @@ export const safeCSS = v => typeof v !== 'string' || !/[<>"{};\\]|javascript:|ex
 const safeToken = v => typeof v !== 'string' || /^[\w .\/:%#-]*$/.test(v);
 
 const HTML_KEYS = new Set(['html']);                 // (other texts are escaped wherever they are shown)
-const URL_KEYS = new Set(['src', 'href', 'poster', 'url', 'dataUrl', 'link', 'bgVideo', 'bgIframe', 'image', 'logo']);
+const URL_KEYS = new Set(['src', 'href', 'poster', 'url', 'dataUrl', 'link', 'bgVideo', 'bgIframe', 'image', 'logo', 'soundSrc']);
 const CSS_KEYS = new Set(['fontFamily', 'color', 'fill', 'fill2', 'stroke', 'bg', 'background', 'borderColor', 'bullet', 'numStyle', 'highlight', 'textColor', 'lineColor', 'shadowColor', 'accent', 'fg']);
-const TOKEN_KEYS = new Set(['defaultTransition', 'transition', 'transitionOut', 'transitionSpeed', 'transitionDir', 'format', 'position', 'theme', 'effect', 'pathShape', 'start', 'dash', 'borderDash', 'fit', 'view', 'motion', 'gradType', 'device', 'until', 'goto']);
+const TOKEN_KEYS = new Set(['defaultTransition', 'transition', 'transitionOut', 'transitionSpeed', 'transitionDir', 'format', 'position', 'theme', 'effect', 'pathShape', 'start', 'dash', 'borderDash', 'fit', 'view', 'motion', 'gradType', 'device', 'until', 'goto', 'sound']);
 const BAD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 // Clean a value in place (a whole deck, some blocks, or one field of them); returns it.

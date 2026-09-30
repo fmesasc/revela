@@ -9,6 +9,12 @@ import { startPathDraw } from '../canvas/pathdraw.js';
 import { openAddAnimation } from '../ribbon/animadd.js';
 import { modelClips } from '../canvas/mediaview.js';
 import { t } from '../../i18n/index.js';
+import { ANIM_SOUNDS, soundRuntime } from '../../io/runtime/sounds.js';
+import { readFile } from '../shell/openfile.js';
+
+let snd = null;
+const sounds = () => (snd ||= soundRuntime());
+const byIdAnim = id => currentSlide().blocks.find(x => x.id === id);
 
 const $ = s => document.querySelector(s);
 
@@ -71,6 +77,8 @@ export function openAnimPanel() {
           <label>${t('Mover Y')} (px)<input type="number" data-p="dy" value="${a.dy || 0}" step="10"></label>` : ''}
           <label>${t('Duración')} (ms)<input type="number" data-p="duration" value="${a.duration ?? 500}" step="100" min="0"></label>
           <label>${t('Retardo')} (ms)<input type="number" data-p="delay" value="${a.delay ?? 0}" step="100" min="0"></label>
+          <label>${t('Sonido')}<span class="an-snd"><select data-p="sound">${ANIM_SOUNDS.map(([v, l]) => `<option value="${v}"${(a.sound || '') === v ? ' selected' : ''}>${t(l)}</option>`).join('')}</select>
+            <button type="button" class="mini2 an-hear" title="${t('Escuchar')}"${a.sound ? '' : ' disabled'}><i class="ms">volume_up</i></button></span></label>
         </div>
         <div class="an-actions"><button data-move="-1"${n === 0 ? ' disabled' : ''}>↑</button><button data-move="1"${n === list.length - 1 ? ' disabled' : ''}>↓</button>
           <button data-add title="${t('Añadir otra animación a este objeto')}">+</button><button data-remove title="${t('Quitar')}">✕</button></div>
@@ -83,6 +91,14 @@ export function openAnimPanel() {
       row.querySelector('[data-p="turn"]')?.addEventListener('change', e => set('turn', e.target.value));
       row.querySelector('[data-p="clip"]')?.addEventListener('change', e => set('clip', e.target.value));
       row.querySelector('[data-p="once"]')?.addEventListener('change', e => set('once', e.target.checked));
+      // A sound as it appears: made here, or one's own (a file, kept inside the presentation).
+      row.querySelector('[data-p="sound"]').addEventListener('change', e => {
+        const v = e.target.value;
+        if (v !== 'custom') { set('sound', v); sounds().play(v); render(); return; }
+        readFile('audio/*', src => { if (!/^data:audio\//.test(src)) return; set('soundSrc', src); set('sound', 'custom'); sounds().play('custom', src); render(); });
+        e.target.value = trans.animsOf(byIdAnim(id))[i]?.sound || '';
+      });
+      row.querySelector('.an-hear').addEventListener('click', () => { const a = trans.animsOf(byIdAnim(id))[i]; if (a?.sound) sounds().play(a.sound, a.soundSrc); });
       // Draw it on the slide: the panel steps aside while drawing.
       row.querySelector('.an-draw')?.addEventListener('click', () => { commit(() => setSelection(id), { history: false }); close(); startPathDraw({ index: i }); });
       row.querySelector('[data-p="trigger"]').addEventListener('change', e => { set('trigger', e.target.value || null); render(); });

@@ -304,6 +304,7 @@ export function setAnimPropForId(id, prop, value, i = 0) {
     else if (prop === 'points') { a.points = value; [a.dx, a.dy] = value.at(-1); }
     else if (prop === 'trigger' && !value) delete a.trigger;
     else if (prop === 'once') { if (value) a.once = true; else delete a.once; }
+    else if (prop === 'sound') { if (value) a.sound = value; else { delete a.sound; delete a.soundSrc; } }
     else a[prop] = value;
     if (prop === 'effect' && value === 'path' && !a.dx && !a.dy) a.dx = 200;
     normalizeAnim();
