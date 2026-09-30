@@ -1,5 +1,5 @@
-# Despliega el servidor de Revela (server/cloudflare: compartir y salas de
-# colaboración) en Cloudflare cuando cambia, después de pasar sus pruebas.
+# Despliega el servidor de Revela (server/cloudflare: compartir, salas de
+# colaboración y cuentas) en Cloudflare cuando cambia, después de pasar sus pruebas.
 #
 # Secretos del repositorio (Settings ▸ Secrets and variables ▸ Actions):
 #   CLOUDFLARE_API_TOKEN   token con la plantilla «Edit Cloudflare Workers»
@@ -11,7 +11,7 @@ name: Server
 on:
   push:
     branches: [main]
-    paths: ['server/cloudflare/**', 'src/features/live/collabsync.js', 'tests/server.mjs', '.github/workflows/server.yml']
+    paths: ['server/cloudflare/**', 'src/features/live/collabsync.js', 'tests/server.mjs', 'tests/server-api.mjs', '.github/workflows/server.yml']
   workflow_dispatch:
 
 permissions:
@@ -32,7 +32,7 @@ jobs:
         with:
           node-version: 22
       - name: Tests
-        run: node tests/server.mjs
+        run: node tests/server.mjs && node tests/server-api.mjs
       - name: Deploy to Cloudflare
         if: env.HAS_TOKEN == 'true'
         uses: cloudflare/wrangler-action@v3
