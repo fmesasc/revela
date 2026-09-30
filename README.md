@@ -23,11 +23,12 @@ standard, self-contained web page.
   Animations, View, AI): rich text, nested lists, styles, columns, WordArt,
   70+ shapes (with text inside, action buttons, freeform) and shape merging,
   tables with merged cells, styles and formulas (=SUM(ABOVE)…), charts
-  (multi-series, combo, stacked, 100 %, histogram, maps; from a table or a
+  (multi-series, combo, stacked, 100 %, histogram, waterfall, funnel, maps; from a table or a
   live CSV), icons, equations, code, **3D models**, video, custom fonts and
   voice dictation.
 - **Copy, cut and paste** (Ctrl+C/X/V, ribbon and context menu; long-press on
   phones), undo/redo, alignment guides and smart spacing, grouping, locking,
+  selection pane (hide, rename, reorder), format painter for any object,
   reading order.
 - **Design:** theme colours and fonts, brand kit (colours, fonts and logos),
   resize with the content rearranged (A4, square, 9:16…), slide master,
@@ -59,7 +60,8 @@ standard, self-contained web page.
 - **Free resources** in a side panel: pictures (with filters and transparent
   background), icons, GIFs, videos, sounds and music, stickers and 3D models
   (Openverse, Iconify, Wikimedia Commons, Poly Haven, NASA, Sketchfab).
-- **Local collaboration:** comments with tasks assigned to people (with due
+- **Local collaboration:** comments (also to and from PowerPoint and
+  LibreOffice) with tasks assigned to people (with due
   dates), version history, password protection and mark as final.
 - **Accessibility & languages:** checker, alt text, screen reader support;
   11 languages including a right-to-left interface.

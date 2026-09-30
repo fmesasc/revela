@@ -39,6 +39,8 @@ the origin of every requirement is traceable.
 - ✅ Snap to the visible grid and smart spacing (equal gaps to neighbours, with distance marks) `PP·GS`
 - ✅ Collapsible slides panel (thumbnails scaled to the space they get) `GS`
 - ✅ Dashed and dotted line styles for shapes, borders and connectors (also in .pptx/.odp) `PP·GS·OO`
+- ✅ Format painter for any object — shapes, pictures, connectors, charts, tables, icons, equations; between kinds, what they have in common `PP·GS·OO`
+- ✅ Selection pane — hide, lock, rename and reorder objects (drag); hidden objects stay hidden when presenting and in PowerPoint `PP·OO`
 
 ## 2. Text
 - ✅ Bold, italic, underline, strikethrough `PP·GS·OO`
@@ -106,6 +108,7 @@ the origin of every requirement is traceable.
 - ✅ Freehand ink on the slide (Draw tab: pen, highlighter, stroke eraser, colour & thickness; strokes are movable objects) `PP·OO`
 - ✅ More than 70 shapes — pie, chord, block arc, cube, folded corner, smiley, sun, "no" sign, banners, thought bubble, arc, brackets and braces; action buttons; freeform `PP·GS·OO`
 - ✅ Formulas in table cells — `=SUM(ABOVE)`, cell references and ranges, SUM/AVERAGE/MIN/MAX/COUNT/PRODUCT/ROUND/ABS in Spanish or English, units kept, total row; results in the export, PowerPoint and ODP `PP·OO`
+- ✅ Waterfall (with totals) and funnel charts `PP`
 
 ## 4. Slides & structure
 - ✅ Sections (create/rename/remove inline from the navigator) `PP·GS·OO`
@@ -187,6 +190,7 @@ the origin of every requirement is traceable.
 - ✅ Publish to the web / shareable link — see private sharing (section 7) `GS`
 - ✅ OpenDocument (`.odp`) export & import — text with formatting and lists, pictures, shapes, lines/arrows, merged shapes, tables with merged cells, charts/icons/ink as SVG, backgrounds, notes, hidden slides (validated with LibreOffice) `OO`
 - ✅ Dropbox and OneDrive — save and open presentations in Revela's folder there, PKCE sign-in with no secret, configurable app identifiers `PP·GS`
+- ✅ Comments to and from PowerPoint (classic and Microsoft 365 formats) and OpenDocument, keeping threads, tasks and resolved state `PP·OO`
 
 ## 9. Accessibility & internationalisation
 - ✅ Alt text for every non-text object, "mark as decorative" (exported as ARIA) `PP·GS·OO`

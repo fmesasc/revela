@@ -24,12 +24,13 @@ reveal.js, de modo que el resultado es una página web estándar y autónoma.
   anidadas, estilos, columnas, WordArt, más de 70 formas (con texto dentro,
   botones de acción, forma libre) y combinar formas, tablas con celdas
   combinadas, estilos y fórmulas (=SUMA(ARRIBA)…), gráficos (varias series,
-  combinados, apilados, 100 %, histograma, mapas; desde tabla o CSV en vivo),
+  combinados, apilados, 100 %, histograma, cascada, embudo, mapas; desde tabla o CSV en vivo),
   iconos, ecuaciones, código, **modelos 3D**, vídeo, fuentes propias y dictado
   por voz.
 - **Copiar, cortar y pegar** (Ctrl+C/X/V, cinta y menú contextual; también
   con pulsación larga en el móvil), deshacer/rehacer, alineación con guías y
-  espaciado inteligente, agrupar, bloquear, orden de lectura.
+  espaciado inteligente, agrupar, bloquear, panel de selección (ocultar,
+  renombrar, reordenar), copiar formato de cualquier objeto y orden de lectura.
 - **Diseño:** paletas y fuentes del tema, kit de marca (colores, fuentes y
   logotipos), cambiar tamaño recolocando el contenido (A4, cuadrado, 9:16…),
   patrón de diapositivas, marcadores de posición, galería de plantillas e
@@ -62,7 +63,8 @@ reveal.js, de modo que el resultado es una página web estándar y autónoma.
 - **Recursos libres** en un panel lateral: imágenes (con filtros y fondo
   transparente), iconos, GIF, vídeos, sonidos y música, stickers y modelos 3D
   (Openverse, Iconify, Wikimedia Commons, Poly Haven, NASA, Sketchfab).
-- **Colaboración local:** comentarios con tareas asignadas a personas (con
+- **Colaboración local:** comentarios (también con PowerPoint y LibreOffice)
+  con tareas asignadas a personas (con
   fecha límite), historial de versiones, proteger con contraseña y marcar
   como final.
 - **Accesibilidad e idiomas:** comprobador, texto alternativo, lector de
