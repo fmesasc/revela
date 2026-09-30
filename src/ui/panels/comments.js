@@ -40,7 +40,7 @@ export function renderComments() {
   panel.innerHTML = `<div class="cm-head"><b>${t('Comentarios')}</b><button type="button" class="cm-close" title="${t('Cerrar')}">✕</button></div>
     <select class="cm-view" aria-label="${t('Mostrar')}">${VIEWS.map(([v, l]) => `<option value="${v}"${v === view ? ' selected' : ''}>${t(l)}</option>`).join('')}</select>
     <div class="cm-new"><textarea rows="3" placeholder="${t(sel ? 'Comentar el objeto seleccionado… (@nombre para mencionar)' : 'Comentar esta diapositiva… (@nombre para mencionar)')}"></textarea>
-      <div class="cm-task-in"><input class="cm-assign" list="cm-people" placeholder="${t('Asignar a… (opcional)')}" aria-label="${t('Asignar a')}">
+      <div class="cm-task-in"><input class="cm-assign" list="cm-people" placeholder="${t('Asignar a')}…" aria-label="${t('Asignar a')}">
         <input type="date" class="cm-due" aria-label="${t('Fecha límite')}" title="${t('Fecha límite')}"></div>
       <datalist id="cm-people">${people.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
       <button type="button" class="fr-do cm-add">${t('Comentar')}</button></div>

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Revela</title>
+<style>body{font:15px system-ui,sans-serif;display:grid;place-items:center;min-height:90vh;margin:0;background:#f4f5f7;color:#1e2a3a}</style>
+</head>
+<body>
+<p>Revela…</p>
+<script>
+  // End of a sign-in with Dropbox or OneDrive (src/io/cloud/oauth.js): the
+  // one-time code goes back to the Revela window that asked for it, and this
+  // window closes. Nothing is sent anywhere else.
+  (function () {
+    var query = location.search;
+    try { localStorage.setItem('revela.auth', JSON.stringify({ query: query, t: Date.now() })); } catch (e) {}
+    try { if (window.opener) window.opener.postMessage({ type: 'revela-auth', query: query }, location.origin); } catch (e) {}
+    history.replaceState(null, '', location.pathname);
+    setTimeout(function () { window.close(); }, 300);
+  })();
+</script>
+</body>
+</html>

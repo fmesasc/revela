@@ -6,6 +6,7 @@ import { readFile, openProject, openPresentation, insertMarkdown } from '../shel
 import { openFindPanel } from '../dialogs/find.js';
 import { toggleDictation } from '../shell/dictate.js';
 import { openGdriveSetup } from '../dialogs/gdrive.js';
+import { openCloud } from '../dialogs/othercloud.js';
 import { state, commit, undo, redo, replaceDeck, currentSlide, selectedBlock, selectedBlocks } from '../../core/store.js';
 import { isBlankDeck, emptyDeck } from '../../core/model.js';
 import * as slides from '../../features/document/slides.js';
@@ -95,6 +96,8 @@ export const ACTIONS = {
   'gdrive-save': () => gdrive.saveWithUI(),
   'gdrive-html': () => gdrive.saveHtmlWithUI(),
   'gdrive-config': () => openGdriveSetup(),
+  'cloud-onedrive': () => openCloud('onedrive'),
+  'cloud-dropbox': () => openCloud('dropbox'),
   'export': exportHTML,
   'export-pptx': () => exportPPTX(),
   'export-pdf': exportPDF,

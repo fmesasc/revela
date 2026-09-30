@@ -21,9 +21,12 @@ reveal.js, de modo que el resultado es una página web estándar y autónoma.
 
 - **Editor completo tipo ofimática** (Archivo, Inicio, Insertar, Dibujar,
   Diseño, Transiciones, Animaciones, Ver, IA): texto con formato, listas
-  anidadas, estilos, columnas, WordArt, formas y combinar formas, tablas con
-  celdas combinadas y estilos, gráficos (varias series, combinados, desde
-  tabla o CSV en vivo), iconos, ecuaciones, código, **modelos 3D** y vídeo.
+  anidadas, estilos, columnas, WordArt, más de 70 formas (con texto dentro,
+  botones de acción, forma libre) y combinar formas, tablas con celdas
+  combinadas, estilos y fórmulas (=SUMA(ARRIBA)…), gráficos (varias series,
+  combinados, apilados, 100 %, histograma, mapas; desde tabla o CSV en vivo),
+  iconos, ecuaciones, código, **modelos 3D**, vídeo, fuentes propias y dictado
+  por voz.
 - **Copiar, cortar y pegar** (Ctrl+C/X/V, cinta y menú contextual; también
   con pulsación larga en el móvil), deshacer/rehacer, alineación con guías y
   espaciado inteligente, agrupar, bloquear, orden de lectura.
@@ -31,7 +34,8 @@ reveal.js, de modo que el resultado es una página web estándar y autónoma.
   logotipos), cambiar tamaño recolocando el contenido (A4, cuadrado, 9:16…),
   patrón de diapositivas, marcadores de posición, galería de plantillas e
   ideas de diseño.
-- **Objetos:** formas con degradado o a mano alzada, texto curvo, texto
+- **Objetos:** formas con degradado o a mano alzada, vínculos en cualquier
+  objeto, conectores rectos, en ángulo o curvos, texto curvo, texto
   alrededor de una imagen, imágenes dentro de un móvil, portátil o navegador,
   cuenta atrás, sonido de fondo que sigue al cambiar de diapositiva, y
   personajes 3D que andan por un recorrido y saludan sin cortarse.
@@ -41,24 +45,26 @@ reveal.js, de modo que el resultado es una página web estándar y autónoma.
   automático, ajustar texto al cuadro e importar Markdown.
 - **Animaciones y transiciones:** entrada, énfasis, salida, trayectorias
   dibujadas a mano, varias por objeto, «Dibujar» (la tinta se traza sola),
-  disparadores, «después de la anterior», Morph y 10 transiciones.
+  disparadores, «después de la anterior», sonidos, Morph y 22 transiciones.
 - **Presentar:** vista del orador, mando desde el móvil (QR), lápiz y
   resaltador, láser, subtítulos en directo, ensayar intervalos y grabar.
-- **Votaciones en directo con QR** y **preguntas del público**: el público
-  vota desde el móvil y los resultados se actualizan al instante.
+- **Votaciones en directo con QR**, **concursos con puntos y clasificación**
+  y **preguntas del público**: el público responde desde el móvil y los
+  resultados se actualizan al instante.
 - **Datos en vivo:** paneles de Power BI, Looker Studio, Tableau, Google
   Sheets, Grafana… y gráficos enlazados a un CSV.
 - **IA con OpenRouter** (tu cuenta): crear presentaciones completas desde un
   tema o un documento, asistente que edita la presentación, mejorar
   diapositivas, notas, traducir, texto alternativo e imágenes.
 - **Importar y exportar:** PowerPoint (.pptx) y OpenDocument (.odp) en ambos
-  sentidos, HTML autónomo, PDF, documentos y notas, imágenes, vídeo MP4/GIF y
-  Google Drive.
+  sentidos, HTML autónomo, PDF, documentos y notas, imágenes, vídeo MP4/GIF, y
+  Google Drive, OneDrive y Dropbox.
 - **Recursos libres** en un panel lateral: imágenes (con filtros y fondo
   transparente), iconos, GIF, vídeos, sonidos y música, stickers y modelos 3D
   (Openverse, Iconify, Wikimedia Commons, Poly Haven, NASA, Sketchfab).
-- **Colaboración local:** comentarios, historial de versiones, proteger con
-  contraseña y marcar como final.
+- **Colaboración local:** comentarios con tareas asignadas a personas (con
+  fecha límite), historial de versiones, proteger con contraseña y marcar
+  como final.
 - **Accesibilidad e idiomas:** comprobador, texto alternativo, lector de
   pantalla; 11 idiomas, incluida interfaz de derecha a izquierda.
 - **Apariencia del editor:** clara, oscura, automática o con tus colores.

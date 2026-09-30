@@ -108,6 +108,81 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.querySelector('[data-action="comments"]').click();
   });
 
+  await test('Dropbox y OneDrive: configurar la app, iniciar sesión (PKCE), guardar, listar y abrir (servicios simulados)', async () => {
+    reset(); const W = frame.contentWindow, OC = await W.eval("import('/src/io/cloud/othercloud.js')"), realFetch = W.fetch, realOpen = W.open, calls = [];
+    W.localStorage.removeItem('revela.cloudKeys');
+    try {
+      // Without an app: how to register one, and where to write its identifier.
+      D.querySelector('[data-action="cloud-dropbox"]').click(); await sleep(20);
+      const m = () => D.getElementById('oc-modal');
+      assert(/\/auth\.html$/.test(m().querySelector('.oc-redirect').value), 'la dirección de redirección, para registrarla');
+      m().querySelector('.oc-key').value = 'dbkey123'; m().querySelector('.oc-save-key').click(); await sleep(10);
+      eq(OC.cloudKey('dropbox'), 'dbkey123', 'guardada en este navegador');
+      // Sign-in: the service's page in a window; auth.html answers with the code.
+      const popup = { location: { href: '' }, closed: false };
+      W.open = () => popup;
+      const saved = { '/lecciones.revela.json': JSON.stringify({ slides: [{ id: 's1', blocks: [] }, { id: 's2', blocks: [] }], size: { w: 1280, h: 720 } }) };
+      W.fetch = async (url, o = {}) => {
+        const u = String(url), h = o.headers || {}; calls.push({ u, o });
+        const json = (v, st = 200) => new W.Response(JSON.stringify(v), { status: st, headers: { 'Content-Type': 'application/json' } });
+        if (u === 'https://api.dropboxapi.com/oauth2/token') return json({ access_token: 'tokDB', expires_in: 14400 });
+        if (h.Authorization !== 'Bearer tokDB') return json({}, 401);
+        if (u.endsWith('/files/list_folder')) return json({ entries: [{ '.tag': 'file', name: 'lecciones.revela.json', path_lower: '/lecciones.revela.json', server_modified: '2026-09-01T10:00:00Z' }, { '.tag': 'file', name: 'foto.jpg', path_lower: '/foto.jpg' }] });
+        if (u.endsWith('/files/upload')) { const a = JSON.parse(h['Dropbox-API-Arg']); saved[a.path.toLowerCase()] = await new W.Response(o.body).text(); return json({ path_lower: a.path.toLowerCase(), name: a.path.slice(1) }); }
+        if (u.endsWith('/files/download')) return new W.Response(saved[JSON.parse(h['Dropbox-API-Arg']).path]);
+        return json({}, 404);
+      };
+      m().querySelector('.oc-connect').click();
+      for (let i = 0; i < 50 && !popup.location.href; i++) await sleep(10);
+      const q = new URL(popup.location.href);
+      eq(q.origin + q.pathname, 'https://www.dropbox.com/oauth2/authorize', 'la página de Dropbox');
+      eq(q.searchParams.get('code_challenge_method'), 'S256'); eq(q.searchParams.get('client_id'), 'dbkey123');
+      assert(!q.searchParams.get('client_secret'), 'sin secreto');
+      W.postMessage({ type: 'revela-auth', query: '?code=CODE1&state=' + q.searchParams.get('state') }, W.location.origin);
+      for (let i = 0; i < 80 && !m().querySelector('.oc-files'); i++) await sleep(20);
+      const tok = calls.find(c => c.u.endsWith('/oauth2/token')), form = new URLSearchParams(String(tok.o.body));
+      eq(form.get('code'), 'CODE1'); assert(form.get('code_verifier')?.length > 40, 'con su verificador PKCE');
+      const OA = await W.eval("import('/src/io/cloud/oauth.js')");
+      eq(await OA.challengeOf(form.get('code_verifier')), q.searchParams.get('code_challenge'), 'el reto es el SHA-256 del verificador');
+      eq(m().querySelectorAll('.oc-files li').length, 1, 'solo las presentaciones de Revela');
+      // Save: an upload with a header-safe name.
+      R.store.commit(() => { R.state.deck.name = 'Química básica'; });
+      m().querySelector('.oc-save').click(); await sleep(60);
+      const up = calls.find(c => c.u.endsWith('/files/upload'));
+      assert(up && /\\u00ed/.test(up.o.headers['Dropbox-API-Arg']) && /"mode":"overwrite"/.test(up.o.headers['Dropbox-API-Arg']), 'nombre con tildes escapadas: ' + up?.o.headers['Dropbox-API-Arg']);
+      assert(JSON.parse(saved['/química básica.revela.json']).slides, 'la presentación guardada');
+      // Open one.
+      m().querySelector('.oc-files [data-i]').click(); await sleep(20);
+      D.querySelector('.dlg-ok')?.click(); await sleep(60);
+      eq(R.state.deck.slides.length, 2, 'abierta desde Dropbox'); assert(!m(), 'y el cuadro cerrado');
+      // OneDrive: no folder yet = nothing saved; a big presentation goes up in pieces.
+      OC.setOwnKey('onedrive', 'ms-app-id');
+      popup.location.href = ''; calls.length = 0;
+      const pieces = [];
+      W.fetch = async (url, o = {}) => {
+        const u = String(url), h = o.headers || {}; calls.push({ u, o });
+        const json = (v, st = 200) => new W.Response(JSON.stringify(v), { status: st, headers: { 'Content-Type': 'application/json' } });
+        if (u.endsWith('/oauth2/v2.0/token')) return json({ access_token: 'tokMS', expires_in: 3600 });
+        if (u.startsWith('https://upload.example/')) { pieces.push(h['Content-Range']); return json({ id: 'F1', name: 'x.revela.json' }); }
+        if (h.Authorization !== 'Bearer tokMS') return json({}, 401);
+        if (u.includes('/root:/Revela:/children')) return json({ error: {} }, 404);
+        if (u.endsWith(':/createUploadSession')) return json({ uploadUrl: 'https://upload.example/s1' });
+        return json({}, 404);
+      };
+      const p = OC.connect('onedrive');
+      for (let i = 0; i < 50 && !popup.location.href; i++) await sleep(10);
+      const q2 = new URL(popup.location.href);
+      eq(q2.origin + q2.pathname, 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize', 'la página de Microsoft'); eq(q2.searchParams.get('scope'), 'Files.ReadWrite');
+      W.localStorage.setItem('revela.auth', JSON.stringify({ query: '?code=C2&state=' + q2.searchParams.get('state') }));   // (as auth.html leaves it when it cannot message)
+      await p; assert(OC.signedIn('onedrive'), 'sesión iniciada');
+      eq((await OC.listCloud('onedrive')).length, 0, 'sin carpeta todavía: nada');
+      R.store.commit(() => { R.state.deck.notesBig = 'x'.repeat(4.2e6); });
+      await OC.saveToCloud('onedrive');
+      eq(pieces.length, 2, 'grande: en dos trozos'); assert(/^bytes 0-3276799\//.test(pieces[0]), 'trozos de 320 KiB × 10: ' + pieces[0]);
+      assert(!calls.find(c => c.u.startsWith('https://upload.example/')).o.headers.Authorization, 'sin el token en la dirección de subida');
+    } finally { W.fetch = realFetch; W.open = realOpen; W.localStorage.removeItem('revela.cloudKeys'); OC.signOutCloud('dropbox'); OC.signOutCloud('onedrive'); D.getElementById('oc-modal')?.remove(); }
+  });
+
   await test('IA: generar imagen y traducir la presentación (respuestas simuladas)', async () => {
     reset(); const W = frame.contentWindow, AI = R.ai, realFetch = W.fetch, calls = [];
     AI.setAiKey('sk-or-prueba');

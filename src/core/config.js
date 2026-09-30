@@ -26,3 +26,10 @@ export const GOOGLE = {
 // server's upload key); opening a link needs nothing. Anyone can use their own
 // server instead (Compartir ▸ Servidor).
 export const SERVER_URL = 'https://revela-share.fmesasc.workers.dev';
+
+// Dropbox and OneDrive (Archivo ▸ Otras nubes): the public identifiers of
+// Revela's apps registered there — the Dropbox app key and the Microsoft
+// (Entra) application ID. Like Google's, they are not secrets (PKCE sign-in, no
+// client secret). Empty until the apps are registered; meanwhile anyone can
+// write their own in the dialog (kept only in that browser).
+export const CLOUD_KEYS = { dropbox: '', onedrive: '' };

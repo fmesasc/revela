@@ -21,16 +21,19 @@ standard, self-contained web page.
 
 - **Full office-style editor** (File, Home, Insert, Draw, Design, Transitions,
   Animations, View, AI): rich text, nested lists, styles, columns, WordArt,
-  shapes and shape merging, tables with merged cells and styles, charts
-  (multi-series, combo, from a table or a live CSV), icons, equations, code,
-  **3D models** and video.
+  70+ shapes (with text inside, action buttons, freeform) and shape merging,
+  tables with merged cells, styles and formulas (=SUM(ABOVE)…), charts
+  (multi-series, combo, stacked, 100 %, histogram, maps; from a table or a
+  live CSV), icons, equations, code, **3D models**, video, custom fonts and
+  voice dictation.
 - **Copy, cut and paste** (Ctrl+C/X/V, ribbon and context menu; long-press on
   phones), undo/redo, alignment guides and smart spacing, grouping, locking,
   reading order.
 - **Design:** theme colours and fonts, brand kit (colours, fonts and logos),
   resize with the content rearranged (A4, square, 9:16…), slide master,
   placeholders, template gallery and design ideas.
-- **Objects:** gradient or sketched shapes, curved text, text wrapped round a
+- **Objects:** gradient or sketched shapes, links on any object, straight,
+  elbow or curved connectors, curved text, text wrapped round a
   picture, pictures inside a phone, laptop or browser, countdown timer,
   background sound that keeps playing across slides, and 3D characters that
   walk along a path and wave without being cut off.
@@ -39,24 +42,25 @@ standard, self-contained web page.
   and search, step-by-step code with auto-scroll, fit text and Markdown import.
 - **Animations & transitions:** entrance, emphasis, exit, hand-drawn motion
   paths, several per object, "Draw" (ink traces itself), triggers, "after
-  previous", Morph and 10 transitions.
+  previous", sounds, Morph and 22 transitions.
 - **Presenting:** speaker view, phone remote (QR), pen and highlighter, laser,
   live captions, rehearse timings and recording.
-- **Live polls with QR** and **audience Q&A**: people vote from their phones
-  and results update instantly.
+- **Live polls with QR**, **quizzes with points and a leaderboard** and
+  **audience Q&A**: people answer from their phones and results update
+  instantly.
 - **Live data:** Power BI, Looker Studio, Tableau, Google Sheets, Grafana…
   dashboards, and charts linked to a CSV.
 - **AI via OpenRouter** (your own account): whole decks from a topic or a
   document, an assistant that edits the deck, improve slides, notes,
   translation, alt text and images.
 - **Import & export:** PowerPoint (.pptx) and OpenDocument (.odp) both ways,
-  self-contained HTML, PDF, handouts and notes, images, MP4/GIF video and
-  Google Drive.
+  self-contained HTML, PDF, handouts and notes, images, MP4/GIF video, and
+  Google Drive, OneDrive and Dropbox.
 - **Free resources** in a side panel: pictures (with filters and transparent
   background), icons, GIFs, videos, sounds and music, stickers and 3D models
   (Openverse, Iconify, Wikimedia Commons, Poly Haven, NASA, Sketchfab).
-- **Local collaboration:** comments, version history, password protection and
-  mark as final.
+- **Local collaboration:** comments with tasks assigned to people (with due
+  dates), version history, password protection and mark as final.
 - **Accessibility & languages:** checker, alt text, screen reader support;
   11 languages including a right-to-left interface.
 - **Editor appearance:** light, dark, automatic or your own colours.
