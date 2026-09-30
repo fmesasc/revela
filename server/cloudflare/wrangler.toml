@@ -43,6 +43,9 @@ MONTHLY_BUDGET_USD = "50"
 # tokens [input, output] in dollars, for the estimate made before each request
 # (check them at openrouter.ai/models; the real cost is charged afterwards).
 AI_MODELS = "openai/gpt-4o-mini,google/gemini-2.5-flash,anthropic/claude-haiku-4.5"
+# Voice-over (text to speech): model, voices, and a cautious price per character (check the model page).
+AI_TTS_MODEL = "openai/gpt-4o-mini-tts-2025-12-15"
+AI_TTS_USD_PER_CHAR = "0.00002"
 AI_PRICES = '{"openai/gpt-4o-mini":[0.15,0.6],"google/gemini-2.5-flash":[0.3,2.5],"anthropic/claude-haiku-4.5":[1,5]}'
 # Revela's Google client (public, as in src/core/config.js): people signed in to
 # Revela with Google can share and open collaboration rooms. To limit it to

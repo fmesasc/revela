@@ -101,6 +101,7 @@ export const cloudAi = {
   active: () => !!me,
   chat: body => api('ai/chat', body),
   image: body => api('ai/image', body),
+  speech: body => api('ai/speech', body),
 };
 
 // ---- Payments: the server makes the Stripe page; prices are Stripe's ----

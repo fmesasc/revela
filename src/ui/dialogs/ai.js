@@ -7,6 +7,7 @@ import * as ai from '../../features/ai/openrouter.js';
 import { state, commit, replaceDeck } from '../../core/store.js';
 import { emptyDeck } from '../../core/model.js';
 import * as deck from '../../features/ai/authoring.js';
+import * as vo from '../../features/ai/voiceover.js';
 import * as palettes from '../../features/design/palettes.js';
 import { alertDialog, confirmDialog, promptDialog } from './dialog.js';
 import { t } from '../../i18n/index.js';
@@ -58,6 +59,31 @@ async function ready() {
 const MSG = { NO_KEY: 'Conecta primero la IA.', BAD_KEY: 'La clave de OpenRouter no es válida.', NO_CREDIT: 'No te queda saldo en OpenRouter.',
   TOO_MANY: 'Demasiadas peticiones seguidas: espera un minuto.', AI_PAUSED: 'La IA está en pausa ahora mismo. Inténtalo más tarde.',
   NO_TEXT: 'Selecciona primero un cuadro de texto.', NO_IMAGE: 'Selecciona primero una imagen.', EMPTY: 'La IA no devolvió contenido.' };
+// Voice-over: choose a voice, make it from the notes (the out-of-date slides), or remove it.
+async function openVoiceover() {
+  if (!(await ready())) return;
+  document.getElementById('vo-modal')?.remove();
+  const all = vo.narratable(), fresh = all.filter(vo.narrationFresh).length, chars = all.reduce((t, s) => t + vo.notesText(s).length, 0);
+  const back = document.createElement('div'); back.id = 'vo-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:start;width:min(460px,94vw);max-width:none"><button class="modal-close">✕</button><h3>${t('Voz en off')}</h3>
+    <p class="host-help">${t('Una voz de IA lee las notas del orador de cada diapositiva. Suena al presentar y va en el vídeo exportado.')}</p>
+    ${all.length ? `<p class="host-help"><b>${all.length}</b> ${t('diapositivas con notas')} · ${fresh} ${t('ya con voz')} · ${chars} ${t('caracteres')}</p>` : `<p class="host-help">${t('Escribe notas del orador en las diapositivas: es lo que leerá la voz.')}</p>`}
+    <label class="fr-l">${t('Voz')}<select class="vo-voice">${ai.VOICES.map(v => `<option value="${v}"${v === 'nova' ? ' selected' : ''}>${v[0].toUpperCase() + v.slice(1)}</option>`).join('')}</select></label>
+    <label class="fr-l">${t('Velocidad')}<select class="vo-speed"><option value="0.9">0,9×</option><option value="1" selected>1×</option><option value="1.1">1,1×</option><option value="1.25">1,25×</option></select></label>
+    <label class="fr-chk"><input type="checkbox" class="vo-adv"> ${t('Pasar de diapositiva al acabar la voz')}</label>
+    <label class="fr-chk"><input type="checkbox" class="vo-all"> ${t('Rehacer también las que ya tienen voz')}</label>
+    <div class="fr-actions"><button type="button" class="mini2 vo-rm"${state.deck.slides.some(s => s.narration) ? '' : ' disabled'}>${t('Quitar la voz')}</button><button type="button" class="fr-do vo-go"${all.length ? '' : ' disabled'}>${t('Crear la voz')}</button></div></div>`;
+  document.body.appendChild(back);
+  const q = s => back.querySelector(s), close = () => back.remove();
+  q('.modal-close').addEventListener('click', close); back.addEventListener('click', e => { if (e.target === back) close(); });
+  q('.vo-rm').addEventListener('click', () => { vo.removeNarration(); close(); });
+  q('.vo-go').addEventListener('click', async () => {
+    close();
+    const n = await run(() => vo.narrate({ voice: q('.vo-voice').value, speed: +q('.vo-speed').value, all: q('.vo-all').checked, advance: q('.vo-adv').checked }));
+    if (n != null) alertDialog(t('Voz creada en {n} diapositivas.').replace('{n}', n));
+  });
+}
+
 export async function run(fn) {
   if (!(await ready())) return;
   const busy = document.createElement('div'); busy.id = 'ai-busy'; busy.innerHTML = `<i class="ms">auto_awesome</i> ${t('La IA está trabajando…')}`;
@@ -172,4 +198,5 @@ Object.assign(AI_ACTIONS, {
   'ai-agenda': () => run(() => deck.addAgenda()),
   'ai-quiz': () => run(async () => { const n = await deck.addQuiz(3); alertDialog(t('Preguntas añadidas al final: ') + n); }),
   'ai-assistant': () => toggleAssistant(),
+  'ai-voiceover': () => openVoiceover(),
 });

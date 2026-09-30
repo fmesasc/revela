@@ -155,6 +155,39 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     }
   });
 
+  await test('voz en off: las notas leídas por la IA, al presentar y en el vídeo', async () => {
+    reset(); const W = frame.contentWindow, VO = await W.eval("import('/src/features/ai/voiceover.js')"), AI = R.ai;
+    // A 1.5 s tone as WAV (what a voice would return).
+    const wav = (secs = 1.5, rate = 8000) => { const n = Math.round(secs * rate), b = new ArrayBuffer(44 + n * 2), v = new DataView(b), w = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+      w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true);
+      v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true); for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.sin(i / 8) * 8000, true); return new W.Blob([b], { type: 'audio/wav' }); };
+    R.slides.addSlide(); R.store.commit(() => { R.state.deck.slides[0].notes = 'Bienvenidos a la clase.'; R.state.deck.slides[1].notes = ''; });
+    const asked = []; const say = async (text, o) => { asked.push([text, o.voice]); return wav(); };
+    eq(await VO.narrate({ voice: 'coral', say, advance: true }), 1, 'solo las diapositivas con notas');
+    eq(JSON.stringify(asked), '[["Bienvenidos a la clase.","coral"]]', 'lee sus notas con la voz elegida');
+    const n = R.state.deck.slides[0].narration;
+    assert(/^data:audio\/wav;base64,/.test(n.src) && Math.abs(n.ms - 1500) < 100, 'el audio en la diapositiva, con su duración: ' + n.ms);
+    eq(R.state.deck.slides[0].autoSlide, n.ms + 800, 'y pasa sola al acabar');
+    assert(VO.narrationFresh(R.state.deck.slides[0]), 'al día');
+    eq(await VO.narrate({ voice: 'coral', say }), 0, 'lo que ya tiene voz no se vuelve a pagar');
+    R.store.commit(() => { R.state.deck.slides[0].notes = 'Otras notas.'; }); assert(!VO.narrationFresh(R.state.deck.slides[0]), 'si cambian las notas, se nota');
+    const html = R.io.buildHTML();
+    assert(/<audio class="rv-narration" data-autoplay src="data:audio\/wav;base64,/.test(html), 'suena al presentar la diapositiva');
+    const V = await R.video();
+    const can = async c => W.AudioEncoder && (await W.AudioEncoder.isConfigSupported({ codec: c, sampleRate: 48000, numberOfChannels: 2, bitrate: 128000 })).supported;
+    if (V.canEncodeMP4() && (await can('mp4a.40.2') || await can('opus')) && (await W.VideoEncoder.isConfigSupported({ codec: 'avc1.42001f', width: 320, height: 180 })).supported) {
+      const m = new Uint8Array(await (await V.buildMP4(R.state.deck, { width: 320, holdMs: 400, fadeMs: 0 })).arrayBuffer()), txt = String.fromCharCode(...m);
+      assert(/mp4a|Opus/.test(txt) && /avc1/.test(txt), 'el vídeo lleva la voz (AAC u Opus) además de la imagen');
+    } else console.warn('voz en off: este navegador no codifica audio; no se comprueba la pista del vídeo');
+    VO.removeNarration(); assert(!R.state.deck.slides[0].narration && !R.state.deck.slides[0].autoSlide, 'se quita (y su avance automático)');
+    // The request (own OpenRouter key)
+    const realFetch = W.fetch; let sent; AI.setAiKey('sk-or-prueba'); AI.acceptPrivacy();
+    W.fetch = async (url, o) => { sent = { url, body: JSON.parse(o.body) }; return new W.Response(new Uint8Array([73, 68, 51]), { headers: { 'Content-Type': 'audio/mpeg' } }); };
+    try { const b = await AI.speech('Hola', { voice: 'sage' }); eq(b.type, 'audio/mpeg', 'mp3');
+      assert(/\/audio\/speech$/.test(sent.url) && sent.body.voice === 'sage' && sent.body.response_format === 'mp3', 'al servicio de voz de OpenRouter'); }
+    finally { W.fetch = realFetch; AI.disconnectAi(); }
+  });
+
   await test('historial de versiones y guardado de presentaciones grandes', async () => {
     reset(); const V = R.versions, M = R.model;
     slide().blocks[0].html = 'Versión A'; R.render();

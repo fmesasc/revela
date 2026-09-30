@@ -387,7 +387,9 @@ function slideHTML(s, deck, figMap, plan = morphPlan(deck)) {
       + `text-align:center;font-style:italic;font-size:16px;${animVars(b)}"><span class="caption" style="opacity:.85">${esc(captionLine(f))}</span></div>`;
     return b0.anims?.length ? stepLayers(html, b0, s, tl) : html;
   }).join('\n');
-  const notes = s.notes ? `<aside class="notes">${esc(s.notes)}</aside>` : '';
+  const notes = (s.notes ? `<aside class="notes">${esc(s.notes)}</aside>` : '')
+    // Voice-over: plays when the slide is shown (reveal.js's data-autoplay).
+    + (s.narration?.src && /^data:audio\/|^https:\/\//.test(s.narration.src) ? `<audio class="rv-narration" data-autoplay src="${esc(s.narration.src)}" preload="auto"></audio>` : '');
   const aa = (plan.marked.has(s.id) ? ' data-auto-animate' : '') + (s.aaDuration ? ` data-auto-animate-duration="${+s.aaDuration}"` : '') + (s.aaDelay ? ` data-auto-animate-delay="${+s.aaDelay}"` : '');
   return `<section${trans}${speed}${auto}${bg}${aa} data-rv-id="${esc(s.id)}">`
     + `<div class="stage${s.bgIframe && s.bgInteractive ? ' pass' : ''}" style="background:${stageBackground(s)}">${bgLayer(s)}${inner}</div>${notes}</section>`;

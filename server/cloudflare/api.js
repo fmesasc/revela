@@ -16,6 +16,7 @@
 //   GET  /api/me               → { email, plan, credits, features, billing }
 //   POST /api/ai/chat          { messages, max_tokens?, json? } → OpenRouter's answer (credits charged)
 //   POST /api/ai/image         { prompt, aspect_ratio? } → { data: [{ b64_json, media_type }] }
+//   POST /api/ai/speech        { input, voice?, speed? } → { audio (base64 mp3) }  (credits per character)
 //   POST /api/billing/checkout { product } → { url }   (Stripe Checkout)
 //   POST /api/billing/portal   → { url }                (Stripe customer portal)
 //   POST /api/billing/webhook  Stripe's events (signed)
@@ -55,6 +56,9 @@ export function settings(env) {
     maxTokens: num(env.AI_MAX_TOKENS, 4000),
     models: String(env.AI_MODELS || 'openai/gpt-4o-mini,anthropic/claude-haiku-4.5,google/gemini-2.5-flash').split(/[\s,]+/).filter(Boolean),
     imageModel: env.AI_IMAGE_MODEL || 'bytedance-seed/seedream-4.5',
+    ttsModel: env.AI_TTS_MODEL || 'openai/gpt-4o-mini-tts-2025-12-15',
+    ttsVoices: String(env.AI_TTS_VOICES || 'alloy,ash,ballad,coral,echo,fable,nova,onyx,sage,shimmer').split(/[\s,]+/).filter(Boolean),
+    ttsUsdPerChar: num(env.AI_TTS_USD_PER_CHAR, 0.00002),      // (priced per character; the provider doesn't report it back: a cautious figure)
     // Price per million tokens [input, output] in dollars, for the estimate before a request.
     prices: (() => { try { return JSON.parse(env.AI_PRICES || '{}'); } catch { return {}; } })(),
     products: {                                          // Stripe prices (ids) and what each gives
@@ -300,6 +304,7 @@ export async function handleApi(req, env, url) {
     }
     case '/ai/chat': return aiChat(env, s, A, body, json);
     case '/ai/image': return aiImage(env, s, A, body, json);
+    case '/ai/speech': return aiSpeech(env, s, A, body, json);
     case '/billing/checkout': return checkout(env, s, me, A, body, json);
     case '/billing/portal': return portal(env, s, A, json);
   }
@@ -369,6 +374,26 @@ async function aiImage(env, s, A, body, json) {
   await call(g.budget, 'spend', { usd: +data.usage?.cost || s.imageCredits * s.creditUsd });
   const st = await call(A, 'settle', { id: g.hold, credits: s.imageCredits, reason: 'image' });
   return json({ data: [{ b64_json: data.data[0].b64_json, media_type: data.data[0].media_type || 'image/png' }], charged: st.used });
+}
+
+// Speech (voice-over from the speaker notes): mp3, charged per character.
+async function aiSpeech(env, s, A, body, json) {
+  const text = String(body.input || '').trim(); if (!text || text.length > 4000) return json({ error: 'bad request' }, 400);
+  const voice = s.ttsVoices.includes(body.voice) ? body.voice : s.ttsVoices[0], speed = Math.min(2, Math.max(0.5, +body.speed || 1));
+  const usd = text.length * s.ttsUsdPerChar, cr = credits(usd, s);
+  const g = await guard(env, s, A, cr, usd, json); if (g.stop) return g.stop;
+  let r, buf;
+  try {
+    r = await (env.FETCH || fetch)('https://openrouter.ai/api/v1/audio/speech', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.OPENROUTER_KEY}`, 'HTTP-Referer': s.site, 'X-Title': 'Revela' },
+      body: JSON.stringify({ model: s.ttsModel, input: text, voice, speed, response_format: 'mp3' }) });
+    buf = r.ok ? await r.arrayBuffer() : null;
+  } catch { r = null; }
+  if (!r || !r.ok || !buf || !buf.byteLength) { await call(A, 'settle', { id: g.hold, credits: 0 }); return json({ error: 'ai failed' }, 502); }
+  await call(g.budget, 'spend', { usd });
+  const st = await call(A, 'settle', { id: g.hold, credits: cr, reason: 'speech' });
+  let bin = ''; const bytes = new Uint8Array(buf); for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return json({ audio: btoa(bin), media_type: 'audio/mpeg', charged: st.used });
 }
 
 // ---- Payments (Stripe) ------------------------------------------------------------------------------------

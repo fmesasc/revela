@@ -85,6 +85,25 @@ export async function chat(messages, { json = false, maxTokens = 2000 } = {}) {
   const data = await r.json();
   return data.choices?.[0]?.message?.content?.trim() || '';
 }
+// ---- Speech (voice-over): mp3 of a text, through the account or the user's key ----
+export const VOICES = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'nova', 'onyx', 'sage', 'shimmer'];
+export const TTS_MODEL = 'openai/gpt-4o-mini-tts-2025-12-15';
+export async function speech(text, { voice = 'nova', speed = 1 } = {}) {
+  const { key } = aiSettings();
+  if (!key && usingCloudAi()) {
+    if (!cloud.speech) throw new Error('NO_KEY');
+    const d = await cloud.speech({ input: text, voice, speed }).catch(e => { throw cloudError(e); });
+    return new Blob([Uint8Array.from(atob(d.audio), c => c.charCodeAt(0))], { type: d.media_type || 'audio/mpeg' });
+  }
+  if (!key) throw new Error('NO_KEY');
+  const r = await fetch(`${API}/audio/speech`, { method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, 'HTTP-Referer': APP_URL, 'X-Title': 'Revela' },
+    body: JSON.stringify({ model: TTS_MODEL, input: text, voice, speed, response_format: 'mp3' }) });
+  if (r.status === 401) throw new Error('BAD_KEY');
+  if (r.status === 402) throw new Error('NO_CREDIT');
+  if (!r.ok) throw new Error('OpenRouter ' + r.status + ' ' + ((await r.text().catch(() => '')).slice(0, 200)));
+  return new Blob([await r.arrayBuffer()], { type: 'audio/mpeg' });
+}
 const LANG = { es: 'español', en: 'English', fr: 'français', de: 'Deutsch', it: 'italiano', pt: 'português', ca: 'català', gl: 'galego', nl: 'Nederlands', eu: 'euskara', ar: 'العربية' };
 export const lang = () => LANG[currentLang()] || 'español';
 // JSON from a model answer (tolerates ``` fences and text around the object).
