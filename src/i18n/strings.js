@@ -2172,5 +2172,7 @@ export const ROWS = [
   ['Vínculo y accesibilidad', 'Link and accessibility', 'Lien et accessibilité', 'Link und Barrierefreiheit', 'Collegamento e accessibilità', 'Ligação e acessibilidade', 'Enllaç i accessibilitat'],
   ['Trazo a mano', 'Hand-drawn', 'Tracé à main levée', 'Handgezeichnet', 'Tratto a mano', 'Traço à mão', 'Traç a mà'],
   ['Cambiar icono', 'Change icon', 'Changer d\'icône', 'Symbol ändern', 'Cambia icona', 'Mudar ícone', 'Canvia la icona'],
+  ['Centrar en la diapositiva', 'Centre on the slide', 'Centrer sur la diapositive', 'Auf der Folie zentrieren', 'Centra nella diapositiva', 'Centrar no diapositivo', 'Centra a la diapositiva'],
+  ['Quitar el giro', 'Remove rotation', 'Supprimer la rotation', 'Drehung entfernen', 'Rimuovi rotazione', 'Remover a rotação', 'Treu el gir'],
 ];
 // Additional languages (partial; anything missing falls back to Spanish).

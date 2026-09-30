@@ -2153,4 +2153,6 @@ export default {
   "Vínculo y accesibilidad": "Esteka eta irisgarritasuna",
   "Trazo a mano": "Eskuz marraztua",
   "Cambiar icono": "Aldatu ikonoa",
+  "Centrar en la diapositiva": "Diapositiban erdiratu",
+  "Quitar el giro": "Kendu biraketa",
 };

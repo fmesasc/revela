@@ -2153,4 +2153,6 @@ export default {
   "Vínculo y accesibilidad": "الرابط وإمكانية الوصول",
   "Trazo a mano": "رسم يدوي",
   "Cambiar icono": "تغيير الأيقونة",
+  "Centrar en la diapositiva": "توسيط في الشريحة",
+  "Quitar el giro": "إزالة الدوران",
 };

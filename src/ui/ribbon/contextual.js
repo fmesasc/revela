@@ -53,6 +53,8 @@ const chartMap = (b, scope) => blocks.setChartMap(b.id, scope).catch(e => alertD
 
 // A control: ['btn', icon, label, fn, on?] · ['color', icon, label, value, fn] · ['select', label, [[v, l]], value, fn] · ['num', label, value, fn, min, max, step]
 const btn = (icon, label, fn, on = false, key = '') => ['btn', icon, label, fn, on, key];
+// Icon only (the name as a tooltip): the blocks every object tab ends with.
+const ico = (icon, label, fn, on = false, key = '') => ['ibtn', icon, label, fn, on, key];
 const set = (b, fn) => commit(() => { const x = currentSlide().blocks.find(y => y.id === b.id); if (x) fn(x); });
 function replaceModel(b) {
   const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.glb,.gltf,model/gltf-binary';
@@ -197,20 +199,20 @@ function groupsFor(b) {
   // Every object: its animations (several, one after another), description, accessibility and arrangement.
   const n = animsOf(b).length;
   G.push(['Animaciones', [btn('add_circle', n ? `${t('Añadir animación')} (${n})` : 'Añadir animación', () => openAddAnimation(document.querySelector('#ribbon [data-page="ctx"] [data-ctx="add"]')), false, 'add'),
-    btn('gesture', n ? 'Añadir movimiento' : 'Dibujar recorrido', () => startPathDraw({ append: true })), btn('tune', 'Panel', () => openAnimPanel())]]);
+    ico('gesture', n ? 'Añadir movimiento' : 'Dibujar recorrido', () => startPathDraw({ append: true })), ico('tune', 'Panel de animación', () => openAnimPanel())]]);
   // (The link with the alt text and description: one group, not a column for a single button.)
   const linkable = !['text', 'connector'].includes(b.type), described = !['text', 'connector', 'figindex', 'slideref'].includes(b.type);
-  G.push([linkable ? 'Vínculo y accesibilidad' : 'Accesibilidad', [...(linkable ? [btn('link', b.href || b.goto ? 'Cambiar vínculo' : 'Vínculo', () => openObjectLink(b), !!(b.href || b.goto))] : []),
-    btn('accessibility', 'Texto alternativo', () => openAlt(b)), ...(described ? [btn('short_text', b.caption ? 'Editar descripción' : 'Descripción', () => openCaption(b))] : [])]]);
+  G.push([linkable ? 'Vínculo y accesibilidad' : 'Accesibilidad', [...(linkable ? [ico('link', b.href || b.goto ? 'Cambiar vínculo' : 'Vínculo', () => openObjectLink(b), !!(b.href || b.goto), 'link')] : []),
+    ico('accessibility', 'Texto alternativo', () => openAlt(b)), ...(described ? [ico('short_text', b.caption ? 'Editar descripción' : 'Descripción', () => openCaption(b), !!b.caption)] : [])]]);
   G.push(arrange(b));
   return G;
 }
 function arrange(b) {
-  return ['Organizar', [btn('flip_to_front', 'Traer al frente', () => blocks.bringToFront()), btn('flip_to_back', 'Enviar al fondo', () => blocks.sendToBack()),
-    btn('align_horizontal_center', 'Centrar', () => { blocks.alignSelected('hcenter'); blocks.alignSelected('vcenter'); }),
-    btn('flip', 'Voltear', () => blocks.flipSelected('h')), btn('rotate_left', 'Sin giro', () => blocks.resetRotation()),
-    btn('opacity', 'Opacidad', () => openOpacity(b)), btn('shadow', 'Sombra', () => blocks.toggleShadow(), !!b.shadow),
-    btn(b.locked ? 'lock' : 'lock_open', 'Bloquear', () => blocks.toggleLock(), !!b.locked)]];
+  return ['Organizar', [ico('flip_to_front', 'Traer al frente', () => blocks.bringToFront()), ico('flip_to_back', 'Enviar al fondo', () => blocks.sendToBack()),
+    ico('align_horizontal_center', 'Centrar en la diapositiva', () => { blocks.alignSelected('hcenter'); blocks.alignSelected('vcenter'); }),
+    ico('flip', 'Voltear', () => blocks.flipSelected('h')), ico('rotate_left', 'Quitar el giro', () => blocks.resetRotation()),
+    ico('opacity', 'Opacidad', () => openOpacity(b)), ico('shadow', 'Sombra', () => blocks.toggleShadow(), !!b.shadow),
+    ico(b.locked ? 'lock' : 'lock_open', b.locked ? 'Desbloquear' : 'Bloquear', () => blocks.toggleLock(), !!b.locked)]];
 }
 function groupsForMany(list) {
   const G = [['Alinear', [btn('align_horizontal_left', 'Izquierda', () => blocks.alignSelected('left')), btn('align_horizontal_center', 'Centro', () => blocks.alignSelected('hcenter')),
@@ -224,7 +226,7 @@ function groupsForMany(list) {
     const run = op => shapeops.mergeShapes(op, ordered).then(r => { if (!r) alertDialog(t('Las formas no se solapan.')); }).catch(() => alertDialog(t('No se pudo cargar la librería de formas.')));
     G.push(['Combinar formas', [btn('join_full', 'Unión', () => run('union')), btn('join_inner', 'Intersecar', () => run('intersection')), btn('join_left', 'Restar', () => run('difference')), btn('join', 'Combinar', () => run('xor'))]]);
   }
-  G.push(['Organizar', [btn('flip_to_front', 'Traer al frente', () => blocks.bringToFront()), btn('flip_to_back', 'Enviar al fondo', () => blocks.sendToBack()), btn('shadow', 'Sombra', () => blocks.toggleShadow())]]);
+  G.push(['Organizar', [ico('flip_to_front', 'Traer al frente', () => blocks.bringToFront()), ico('flip_to_back', 'Enviar al fondo', () => blocks.sendToBack()), ico('shadow', 'Sombra', () => blocks.toggleShadow())]]);
   return G;
 }
 
@@ -283,8 +285,8 @@ export function renderContextual() {
 const fontOptions = () => [['', 'Del tema'], ...[...(document.querySelector('#ribbon [data-font]')?.options || [])].filter(o => o.value && o.value !== '__upload').map(o => [o.value, o.textContent])];
 function control(c) {
   if (c[0] === 'ibtn') {                                     // icon only; keeps the text selection while editing
-    const [, icon, label, fn, on] = c, el = document.createElement('button'); el.type = 'button'; el.title = t(label);
-    el.innerHTML = `<i class="ms">${icon}</i>`; el.classList.toggle('on', !!on);
+    const [, icon, label, fn, on, key] = c, el = document.createElement('button'); el.type = 'button'; el.title = t(label); el.setAttribute('aria-label', t(label));
+    el.innerHTML = `<i class="ms">${icon}</i>`; el.classList.toggle('on', !!on); if (key) el.dataset.ctx = key;
     el.addEventListener('mousedown', e => e.preventDefault());
     el.addEventListener('click', e => { e.stopPropagation(); fn(); });
     return el;

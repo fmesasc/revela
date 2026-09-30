@@ -564,7 +564,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!D.querySelector(`#stage .block[data-id="${last().id}"] .shape-text`), 'un botón no lleva texto');
     // Any object: the Link dialog.
     R.blocks.addShape('star'); await sleep(20); const star = last();
-    [...D.querySelectorAll('#ribbon [data-page="ctx"] button')].find(x => x.querySelector('span')?.textContent === 'Vínculo').click(); await sleep(20);
+    D.querySelector('#ribbon [data-page="ctx"] [data-ctx="link"]').click(); await sleep(20);
     let m = D.getElementById('ol-modal'); m.querySelector('input[value="slide"]').checked = true; m.querySelector('input[value="slide"]').dispatchEvent(new W.Event('change'));
     m.querySelector('.ol-to').value = S[2].id; m.querySelector('.ol-ok').click(); await sleep(20);
     eq(slide().blocks.find(b => b.id === star.id).goto, S[2].id, 'a una diapositiva elegida');

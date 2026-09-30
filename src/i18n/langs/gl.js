@@ -2153,4 +2153,6 @@ export default {
   "Vínculo y accesibilidad": "Ligazón e accesibilidade",
   "Trazo a mano": "Trazo a man",
   "Cambiar icono": "Cambiar icona",
+  "Centrar en la diapositiva": "Centrar na diapositiva",
+  "Quitar el giro": "Quitar o xiro",
 };
