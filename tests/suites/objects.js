@@ -690,12 +690,17 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(all.length >= 50, 'más de 50 formas: ' + all.length);
     for (const k of all.filter(k => k !== 'freeform')) assert(/<(polygon|path|rect|ellipse|line)[ >]/.test(S.shapeSVG({ id: 'x', shape: k, fill: '#f00', stroke: '#000', strokeWidth: 2 })), 'se dibuja: ' + k);
     assert(/<path d="M50 92C22/.test(S.shapeSVG({ id: 'h', shape: 'heart', sketch: true, fill: '#f00' })), 'una forma curva a mano alzada se dibuja tal cual');
+    assert(all.length >= 70 && ['pie', 'chord', 'blockarc', 'cube', 'foldedcorner', 'smiley', 'sun', 'nosymbol', 'ribbon', 'wave', 'thought', 'arc', 'leftbrace', 'rightbracket'].every(k => all.includes(k)), 'formas nuevas: sector, cubo, llaves, cintas…');
+    assert(/<path d="M74 4C56[^>]*fill="none"/.test(S.shapeSVG({ id: 'b', shape: 'leftbrace', fill: '#f00', stroke: '#000' })), 'las llaves y corchetes, como una línea');
+    eq((S.shapeSVG({ id: 'c', shape: 'cube', fill: '#f00', stroke: '#000' }).match(/fill-opacity/g) || []).length, 2, 'el cubo, con sus caras sombreadas');
+    assert(!S.hasShapeText({ type: 'shape', shape: 'arc' }) && S.hasShapeText({ type: 'shape', shape: 'cube' }), 'texto en las cerradas, no en las abiertas');
+    R.blocks.addShape('leftbrace'); assert(last().fill === 'none' && last().h > last().w, 'la llave se inserta sin relleno y alta');
     // The ribbon: pictures of the shapes, in three rows; the rest in «Más formas».
     const gal = D.querySelectorAll('[data-shape-gallery] [data-shape]');
     assert(gal.length === 24 && [...gal].every(b => b.querySelector('svg') && b.title), 'galería con 24 formas dibujadas y su nombre');
     D.querySelector('[data-shapes-open]').click(); await sleep(20);
     const pop = D.querySelector('.popover[data-type="shapes"]');
-    eq([...pop.querySelectorAll('h4')].map(h => h.textContent).join(), 'Básicas,Flechas,Estrellas,Bocadillos,Diagrama de flujo,Botones de acción,Matemáticas,Líneas', 'por categorías');
+    eq([...pop.querySelectorAll('h4')].map(h => h.textContent).join(), 'Básicas,Cintas,Flechas,Estrellas,Bocadillos,Diagrama de flujo,Botones de acción,Matemáticas,Líneas', 'por categorías');
     pop.querySelector('[data-shape-pick="heart"]').click(); await sleep(20);
     assert(last().shape === 'heart' && !D.querySelector('.popover'), 'se inserta desde «Más formas»');
     const P = await W.eval("import('/src/features/design/palettes.js')");

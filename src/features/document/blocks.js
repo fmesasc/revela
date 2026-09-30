@@ -6,7 +6,7 @@ import { DEFAULT_SHADOW } from '../../render/svg.js';
 import { uid, textBlock, tableBlock, codeBlock, chartBlock, mathBlock, figindexBlock, slideRefBlock } from '../../core/model.js';
 import { currentLang, t } from '../../i18n/index.js';
 import { deckFg, currentPalette } from '../design/palettes.js';
-import { ACTION_GOTO, SHAPE_NAMES, isLineShape, mapMatch } from '../../render/svg.js';
+import { ACTION_GOTO, SHAPE_NAMES, isLineShape, isOpenShape, mapMatch } from '../../render/svg.js';
 import { loadMap, MAP_SAMPLES } from '../content/maps.js';
 
 function insert(block) {
@@ -453,8 +453,15 @@ export function addShape(kind) {
       goto: ACTION_GOTO[kind], alt: t(SHAPE_NAMES[kind]) });
     return;
   }
+  if (isOpenShape(kind)) {                                          // arcs, brackets and braces: a line, not a filled shape
+    const narrow = kind !== 'arc';
+    insert({ id: uid(), type: 'shape', shape: kind, x: narrow ? 560 : 510, y: 230, w: narrow ? 120 : 260, h: narrow ? 260 : 200, rotation: 0, animation: null,
+      fill: 'none', stroke: accent, strokeWidth: 4 });
+    return;
+  }
   const square = ['ellipse', 'star', 'star4', 'star6', 'star8', 'seal', 'burst', 'heart', 'donut', 'plus', 'minus', 'multiply', 'divide', 'equal', 'octagon',
-    'heptagon', 'decagon', 'hexagon', 'pentagon', 'quadarrow', 'moon', 'teardrop', 'cloud', 'lightning'].includes(kind);
+    'heptagon', 'decagon', 'hexagon', 'pentagon', 'quadarrow', 'moon', 'teardrop', 'cloud', 'lightning',
+    'pie', 'chord', 'cube', 'smiley', 'sun', 'nosymbol', 'thought', 'foldedcorner'].includes(kind);
   insert({
     id: uid(), type: 'shape', shape: kind,
     x: square ? 510 : 460, y: 230, w: linear ? 420 : square ? 260 : 320, h: linear ? 120 : 260 - (square ? 0 : 20),

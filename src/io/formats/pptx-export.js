@@ -37,6 +37,8 @@ const SHAPE_MAP = {
   speech: 'wedgeRectCallout', speechround: 'wedgeEllipseCallout', terminator: 'flowChartTerminator', document: 'flowChartDocument',
   manualinput: 'flowChartManualInput', offpage: 'flowChartOffpageConnector', merge: 'flowChartMerge', delay: 'flowChartDelay',
   minus: 'mathMinus', multiply: 'mathMultiply', divide: 'mathDivide', equal: 'mathEqual',
+  pie: 'pie', chord: 'chord', blockarc: 'blockArc', cube: 'cube', foldedcorner: 'foldedCorner', smiley: 'smileyFace', sun: 'sun', nosymbol: 'noSmoking',
+  ribbon: 'ribbon2', wave: 'wave', thought: 'cloudCallout', arc: 'arc', leftbracket: 'leftBracket', rightbracket: 'rightBracket', leftbrace: 'leftBrace', rightbrace: 'rightBrace',
   actnext: 'actionButtonForwardNext', actprev: 'actionButtonBackPrevious', actfirst: 'actionButtonBeginning', actlast: 'actionButtonEnd', acthome: 'actionButtonHome',
 };
 
@@ -134,7 +136,8 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
         slide.addShape(pptx.ShapeType.custGeom, { ...pos, fill: { type: 'none' }, line: { color: hex(b.stroke) || '888888', width: b.strokeWidth || 2, ...dashOf(b.dash) },
           points: [{ ...P(3, 82), moveTo: true }, { ...P(97, 82), curve: { type: 'cubic', x1: P(28, -8).x, y1: P(28, -8).y, x2: P(72, -8).x, y2: P(72, -8).y } }] });
       } else {
-        const st = pptx.ShapeType[SHAPE_MAP[b.shape]] || pptx.ShapeType.rect;
+        // (PptxGenJS knows the folded corner only misspelt, «folderCorner»: given by its real name, it writes it as it is.)
+        const st = pptx.ShapeType[SHAPE_MAP[b.shape]] || (SHAPE_MAP[b.shape] === 'foldedCorner' ? 'foldedCorner' : pptx.ShapeType.rect);
         const fill = b.fill && b.fill !== 'none' ? { color: hex(b.fill) || '3F6497' } : { type: 'none' };
         const line = { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth || 1, ...dashOf(b.dash) };
         if (b.html && plainText(b.html).trim()) {          // text inside: one PowerPoint shape with its text

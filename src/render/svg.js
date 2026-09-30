@@ -420,18 +420,40 @@ const SHAPE_PATHS = {
   // Action buttons: a rounded button with its sign cut out (they go where they say when presenting).
   actnext: BTN + 'M38 28L70 50L38 72Z', actprev: BTN + 'M62 28L30 50L62 72Z', actfirst: BTN + 'M28 28H36V72H28ZM70 28L40 50L70 72Z',
   actlast: BTN + 'M30 28L60 50L30 72ZM64 28H72V72H64Z', acthome: BTN + 'M50 22L78 48H69V76H57V60H43V76H31V48H22Z',
+  // More basic shapes (PowerPoint's): pie, chord, block arc, cube, folded corner, smiley, sun, "no" sign, banners, thought bubble.
+  pie: 'M50 50L98 50A48 48 0 1 1 50 2Z', chord: 'M95.1 33.6A48 48 0 1 0 33.6 95.1Z', blockarc: 'M4 50A46 46 0 0 1 96 50H74A24 24 0 0 0 26 50Z',
+  cube: 'M2 26H74V98H2ZM2 26L26 2H98L74 26ZM74 26L98 2V74L74 98Z', foldedcorner: 'M2 2H98V74L74 98H2Z',
+  smiley: 'M50 3A47 47 0 1 1 49.9 3ZM36 32A6 6 0 1 0 36.1 32ZM64 32A6 6 0 1 0 64.1 32ZM28 60Q50 84 72 60Q50 72 28 60Z',
+  sun: 'M30 50A20 20 0 1 0 70 50A20 20 0 1 0 30 50ZM45.6 22.3L50.0 2.0L54.4 22.3ZM66.5 27.3L83.9 16.1L72.7 33.5ZM77.7 45.6L98.0 50.0L77.7 54.4ZM72.7 66.5L83.9 83.9L66.5 72.7ZM54.4 77.7L50.0 98.0L45.6 77.7ZM33.5 72.7L16.1 83.9L27.3 66.5ZM22.3 54.4L2.0 50.0L22.3 45.6ZM27.3 33.5L16.1 16.1L33.5 27.3Z',
+  nosymbol: 'M50 3A47 47 0 1 1 49.9 3ZM50 20A30 30 0 1 0 50.1 20ZM76.1 64.8A30 30 0 0 1 64.8 76.1L23.9 35.2A30 30 0 0 1 35.2 23.9Z',
+  ribbon: 'M2 28H16V8H84V28H98L88 56L98 84H72V64H28V84H2L12 56Z', wave: 'M2 20C25 2 40 38 50 20S75 2 98 20V80C75 62 60 98 50 80S25 62 2 80Z',
+  thought: 'M22 66C8 66 2 56 6 46C0 36 8 22 22 24C26 10 44 6 54 14C64 4 84 8 86 22C98 26 100 42 92 50C98 60 88 70 76 66C68 74 50 74 44 66C36 72 26 72 22 66Z'
+    + 'M18 82A6 6 0 1 0 30 82A6 6 0 1 0 18 82ZM6 94A3.5 3.5 0 1 0 13 94A3.5 3.5 0 1 0 6 94Z',
+  // Open ones, drawn as a line (their fill left empty): arc, brackets and braces.
+  arc: 'M6 50A44 44 0 0 1 94 50', leftbracket: 'M70 4H40V96H70', rightbracket: 'M30 4H60V96H30',
+  leftbrace: 'M74 4C56 4 52 10 52 22V38C52 46 46 50 30 50C46 50 52 54 52 62V78C52 90 56 96 74 96',
+  rightbrace: 'M26 4C44 4 48 10 48 22V38C48 46 54 50 70 50C54 50 48 54 48 62V78C48 90 44 96 26 96',
 };
+const OPEN = ['arc', 'leftbracket', 'rightbracket', 'leftbrace', 'rightbrace'];
+export const isOpenShape = kind => OPEN.includes(kind);
+// Shading over some faces, as PowerPoint draws them (the cube's top and side, the folded corner, the banner's folds).
+const SHAPE_SHADES = { cube: [['M2 26L26 2H98L74 26Z', '#fff', 0.3], ['M74 26L98 2V74L74 98Z', '#000', 0.25]],
+  foldedcorner: [['M98 74L74 98L78 78Z', '#000', 0.25]], ribbon: [['M16 64H28V84Z', '#000', 0.35], ['M84 64H72V84Z', '#000', 0.35]] };
 // The shapes offered (Insert ▸ Shapes and the shape's own tab), by kind.
 export const SHAPE_CATALOG = [
   ['Básicas', [['rect', 'Rectángulo'], ['rounded', 'Rectángulo redondeado'], ['snip', 'Rectángulo recortado'], ['ellipse', 'Elipse'], ['triangle', 'Triángulo'],
     ['rtriangle', 'Triángulo rectángulo'], ['diamond', 'Rombo'], ['parallelogram', 'Paralelogramo'], ['trapezoid', 'Trapecio'], ['pentagon', 'Pentágono'],
     ['hexagon', 'Hexágono'], ['heptagon', 'Heptágono'], ['octagon', 'Octógono'], ['decagon', 'Decágono'], ['plus', 'Cruz'], ['frame', 'Marco'], ['donut', 'Anillo'],
-    ['heart', 'Corazón'], ['cloud', 'Nube'], ['moon', 'Luna'], ['lightning', 'Rayo'], ['teardrop', 'Gota'], ['cylinder', 'Cilindro']]],
+    ['pie', 'Sector circular'], ['chord', 'Cuerda'], ['blockarc', 'Arco de bloque'], ['cube', 'Cubo'], ['foldedcorner', 'Esquina doblada'], ['cylinder', 'Cilindro'],
+    ['heart', 'Corazón'], ['cloud', 'Nube'], ['moon', 'Luna'], ['sun', 'Sol'], ['lightning', 'Rayo'], ['teardrop', 'Gota'], ['smiley', 'Cara sonriente'],
+    ['nosymbol', 'Símbolo «No»'], ['arc', 'Arco'], ['leftbracket', 'Corchete de apertura'], ['rightbracket', 'Corchete de cierre'],
+    ['leftbrace', 'Llave de apertura'], ['rightbrace', 'Llave de cierre']]],
+  ['Cintas', [['ribbon', 'Cinta'], ['wave', 'Onda']]],
   ['Flechas', [['rightarrow', 'Flecha derecha'], ['leftarrow', 'Flecha izquierda'], ['uparrow', 'Flecha arriba'], ['downarrow', 'Flecha abajo'],
     ['leftrightarrow', 'Flecha doble'], ['updownarrow', 'Flecha arriba y abajo'], ['quadarrow', 'Flecha en cuatro direcciones'], ['notchedarrow', 'Flecha con muesca'],
     ['homeplate', 'Pentágono (flecha)'], ['chevron', 'Galón (chevron)']]],
   ['Estrellas', [['star4', 'Estrella de 4 puntas'], ['star', 'Estrella'], ['star6', 'Estrella de 6 puntas'], ['star8', 'Estrella de 8 puntas'], ['seal', 'Sello'], ['burst', 'Explosión']]],
-  ['Bocadillos', [['speech', 'Bocadillo rectangular'], ['speechround', 'Bocadillo redondo'], ['cloud', 'Nube']]],
+  ['Bocadillos', [['speech', 'Bocadillo rectangular'], ['speechround', 'Bocadillo redondo'], ['thought', 'Bocadillo de pensamiento'], ['cloud', 'Nube']]],
   ['Diagrama de flujo', [['rect', 'Proceso'], ['diamond', 'Decisión'], ['terminator', 'Inicio o fin'], ['parallelogram', 'Datos'], ['document', 'Documento'],
     ['manualinput', 'Entrada manual'], ['offpage', 'Conector fuera de página'], ['merge', 'Combinar'], ['delay', 'Retraso'], ['cylinder', 'Base de datos']]],
   ['Botones de acción', [['actprev', 'Anterior'], ['actnext', 'Siguiente'], ['actfirst', 'Primera diapositiva'], ['actlast', 'Última diapositiva'], ['acthome', 'Inicio']]],
@@ -445,7 +467,7 @@ const LINES = ['line', 'arrow', 'doublearrow', 'curve'];
 export const isLineShape = kind => LINES.includes(kind);
 export const shapeThumb = (kind, fill = 'currentColor') => kind === 'freeform'
   ? `<svg viewBox="0 0 100 100" width="100%" height="100%"><path d="M14 70C4 40 30 8 52 22S92 18 86 52 58 96 36 84 22 90 14 70Z" fill="none" stroke="${fill}" stroke-width="9" stroke-linejoin="round"/></svg>`
-  : isLineShape(kind) ? shapeSVG({ id: 'thumb-' + kind, shape: kind, fill: 'none', stroke: fill, strokeWidth: 3 }) : shapeSVG({ id: 'thumb-' + kind, shape: kind, fill: kind === 'line' || kind === 'arrow' ? 'none' : fill, stroke: fill, strokeWidth: kind === 'line' || kind === 'arrow' ? 3 : 0 });
+  : isLineShape(kind) || isOpenShape(kind) ? shapeSVG({ id: 'thumb-' + kind, shape: kind, fill: 'none', stroke: fill, strokeWidth: 3 }) : shapeSVG({ id: 'thumb-' + kind, shape: kind, fill: kind === 'line' || kind === 'arrow' ? 'none' : fill, stroke: fill, strokeWidth: kind === 'line' || kind === 'arrow' ? 3 : 0 });
 // Outline of a closed shape as [[x,y]…] in the 100×100 box, or null (lines).
 export function shapeOutline100(shape) {
   if (SHAPE_POINTS[shape]) return SHAPE_POINTS[shape].split(' ').map(p => p.split(',').map(Number));
@@ -532,7 +554,9 @@ export function shapeSVG(b) {
   }
   let inner;
   if (SHAPE_POINTS[b.shape]) inner = `<polygon points="${SHAPE_POINTS[b.shape]}" ${paint}/>`;
-  else if (SHAPE_PATHS[b.shape]) inner = `<path d="${SHAPE_PATHS[b.shape]}" fill-rule="evenodd" ${paint}/>`;
+  else if (isOpenShape(b.shape)) inner = `<path d="${SHAPE_PATHS[b.shape]}" stroke-linejoin="round" ${strokeOnly}/>`;
+  else if (SHAPE_PATHS[b.shape]) inner = `<path d="${SHAPE_PATHS[b.shape]}" fill-rule="evenodd" ${paint}/>`
+    + (SHAPE_SHADES[b.shape] || []).map(([dd, c, o]) => `<path d="${dd}" fill="${c}" fill-opacity="${o}" stroke="${stroke}" stroke-width="${sw}" vector-effect="non-scaling-stroke"/>`).join('');
   else switch (b.shape) {
     case 'ellipse':  inner = `<ellipse cx="50" cy="50" rx="48" ry="48" ${paint}/>`; break;
     case 'rounded':  inner = `<rect x="2" y="2" width="96" height="96" rx="12" ry="12" ${paint}/>`; break;
@@ -708,7 +732,7 @@ const TEXT_INSET = { ellipse: [0.15, 0.15], triangle: [0.45, 0.22, 0.06], rtrian
   donut: [0.3, 0.3], moon: [0.3, 0.2, 0.3, 0.45], cylinder: [0.3, 0.1, 0.12], parallelogram: [0.1, 0.22], trapezoid: [0.18, 0.22], plus: [0.36, 0.36] };
 const luma = hex => { const m = /^#([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return null; const n = parseInt(m[1], 16);
   return ((n >> 16) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 255000; };
-export const hasShapeText = b => b.type === 'shape' && !isLineShape(b.shape) && !/^act/.test(b.shape || '');
+export const hasShapeText = b => b.type === 'shape' && !isLineShape(b.shape) && !isOpenShape(b.shape) && !/^act/.test(b.shape || '');
 // Where an action button goes when it is inserted.
 export const ACTION_GOTO = { actnext: 'next', actprev: 'prev', actfirst: 'first', actlast: 'last', acthome: 'first' };
 export function shapeTextStyle(b) {
