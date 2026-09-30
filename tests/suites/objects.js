@@ -643,6 +643,18 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/<a:headEnd type="triangle"/.test(xml) && /<a:tailEnd type="triangle"/.test(xml), 'la línea con dos flechas, con las dos');
   });
 
+  await test('gráficos: la letra no se estira con la forma del cuadro', async () => {
+    const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
+    const d = [{ label: 'A', value: 30 }, { label: 'B', value: 10 }];
+    const wide = S.chartSVG({ chartType: 'bar', data: d, w: 800, h: 300, yTitle: 'Y' }), tall = S.chartSVG({ chartType: 'bar', data: d, w: 300, h: 400 });
+    assert(/<text x="(\d+\.?\d*)"[^>]*transform="matrix\(0\.625 0 0 1 /.test(wide), 'ancho: se estrecha en horizontal (300/60 ÷ 800/100)');
+    assert(/transform="matrix\(0\.625 0 0 1 [\d.]+ 0\) rotate\(-90/.test(wide), 'también el título girado');
+    assert(/<text [^>]*transform="matrix\(1 0 0 0\.45 0 /.test(tall), 'alto: se aplana en vertical (3/(400/60))');
+    eq(S.chartSVG({ chartType: 'bar', data: d, w: 500, h: 300 }).includes('matrix('), false, 'con la proporción del dibujo no hace falta');
+    const run = new W.Function(S.chartRuntimeJS() + '\nreturn chartSVG;')();
+    for (const t of ['bar', 'hbar', 'waterfall', 'funnel', 'treemap', 'bubble', 'histogram', 'pie']) eq(run({ chartType: t, data: d, w: 800, h: 300 }), S.chartSVG({ chartType: t, data: d, w: 800, h: 300 }), 'datos en vivo: el mismo dibujo (' + t + ')');
+  });
+
   await test('gráficos: barras apiladas, al 100 %, horizontales e histograma (también en PowerPoint)', async () => {
     reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
     const d = [{ label: 'A', value: 30 }, { label: 'B', value: 10 }], ser = [{ name: 'X', values: [10, 30] }];

@@ -4,7 +4,7 @@
 // votes, drawing charts) are embedded with toString(), so both draw the same.
 
 import { jsData } from '../../core/text.js';
-import { chartSVG, escSvg, SERIES_COLOURS, chartSeries, niceStep } from '../../render/svg.js';
+import { chartRuntimeJS } from '../../render/svg.js';
 import { tallyVotes, pollResultsHTML, quizTotals, VOTE_URL } from '../../features/live/poll.js';
 import { parseChartGrid } from '../../features/document/blocks.js';
 import { QRCODE, PEERJS } from '../../core/vendor.js';
@@ -91,11 +91,7 @@ export function pollJS(accents) {
 // to a CSV re-fetch it every N seconds and redraw with the editor's own code.
 export function liveDataJS() {
   return `(function(){
- ${escSvg.toString().replace(/^/, 'var escSvg=')};
- var SERIES_COLOURS=${JSON.stringify(SERIES_COLOURS)};
- ${chartSeries.toString()}
- ${niceStep.toString()}
- ${chartSVG.toString()}
+ ${chartRuntimeJS()}
  ${parseChartGrid.toString()}
  document.querySelectorAll('iframe[data-refresh-min]').forEach(function(f){var m=+f.dataset.refreshMin;if(m>0)setInterval(function(){f.src=f.src;},m*60000);});
  document.querySelectorAll('.rv-live-chart').forEach(function(el){var b;try{b=JSON.parse(el.getAttribute('data-chart'));}catch(e){return;}

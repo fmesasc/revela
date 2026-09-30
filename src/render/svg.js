@@ -145,7 +145,7 @@ export function connectorSVG(b, fromB, toB, W, H) {
 }
 
 // Chart as inline SVG (no library, self‑contained on export). Bar or pie.
-export function chartSig(b) { return (b.chartType || 'bar') + '|' + (b.chartType === 'bubble' ? b.w + 'x' + b.h : '') + '|' + (b.color || '') + '|' + (b.map ? b.map.scope + b.map.regions.length : '') + '|' + JSON.stringify([b.data || [], b.series || [], b.combo || 0, b.seriesName || '', b.grid, b.dataLabels, b.xTitle, b.yTitle]); }
+export function chartSig(b) { return (b.chartType || 'bar') + '|' + (b.chartType === 'bubble' ? b.w + 'x' + b.h : (b.w / b.h).toFixed(2)) + '|' + (b.color || '') + '|' + (b.map ? b.map.scope + b.map.regions.length : '') + '|' + JSON.stringify([b.data || [], b.series || [], b.combo || 0, b.seriesName || '', b.grid, b.dataLabels, b.xTitle, b.yTitle]); }
 // A histogram: the values (labels don't matter) grouped into ranges (Sturges' rule), counted.
 export function histogramBins(values, k = 0) {
   const v = values.filter(Number.isFinite); if (!v.length) return [];
@@ -157,8 +157,26 @@ export function histogramBins(values, k = 0) {
   for (const x of v) bins[Math.min(n - 1, Math.floor((x - lo) / w))].value++;
   return bins;
 }
-export function chartSVG(b) {
-  if (b.chartType === 'histogram') return chartSVG({ ...b, chartType: 'bar', data: histogramBins((b.data || []).map(d => +d.value)), series: [], combo: false, _adjacent: true });
+// The charts are drawn on a 100×60 canvas stretched to the box (so bars and
+// lines fill it whatever its shape); the texts and dots are squeezed back so
+// they keep their proportions instead of looking stretched.
+export function chartSVG(b) { return unstretchChart(drawChart(b), b); }
+export function unstretchChart(svg, b) {
+  const w = +b.w, h = +b.h;
+  if (!(w > 0 && h > 0) || !/^<svg viewBox="0 0 100 60" preserveAspectRatio="none"/.test(svg)) return svg;
+  const k = (h / 60) / (w / 100);                    // vertical scale ÷ horizontal scale
+  if (Math.abs(k - 1) < 0.01) return svg;
+  // (Squeezed along the axis stretched more, so the texts keep the smaller of the two scales.)
+  const wide = k < 1, f = wide ? k : 1 / k;
+  const fix = (tag, ax) => (m, attrs) => {
+    const c = +(attrs.match(new RegExp(`\\b${ax}="(-?[\\d.]+)"`)) || [])[1] || 0, own = (attrs.match(/\btransform="([^"]*)"/) || [])[1], e = +(c * (1 - f)).toFixed(3);
+    const t = `matrix(${wide ? +f.toFixed(4) : 1} 0 0 ${wide ? 1 : +f.toFixed(4)} ${wide ? e : 0} ${wide ? 0 : e})${own ? ' ' + own : ''}`;
+    return `<${tag}${attrs.replace(/\s?\btransform="[^"]*"/, '')} transform="${t}"`;
+  };
+  return svg.replace(/<text((?:\s+[\w-]+="[^"]*")*)/g, fix('text', wide ? 'x' : 'y')).replace(/<circle((?:\s+[\w-]+="[^"]*")*)/g, fix('circle', wide ? 'cx' : 'cy'));
+}
+function drawChart(b) {
+  if (b.chartType === 'histogram') return drawChart({ ...b, chartType: 'bar', data: histogramBins((b.data || []).map(d => +d.value)), series: [], combo: false, _adjacent: true });
   if (b.chartType === 'hbar') return hbarSVG(b);
   if (b.chartType === 'waterfall') return waterfallSVG(b);
   if (b.chartType === 'funnel') return funnelSVG(b);
@@ -867,4 +885,12 @@ export function fileIconHTML(b, sizeLabel = '') {
   return `<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4%;font-family:system-ui,sans-serif;text-align:center;overflow:hidden">${icon}`
     + `<div style="font-size:15px;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word">${escSvg(b.name || '')}</div>`
     + (sizeLabel ? `<div style="font-size:12px;opacity:.65">${escSvg(sizeLabel)}</div>` : '') + `</div>`;
+}
+
+// The chart drawing code as a script, for charts that reload their data while presenting.
+export function chartRuntimeJS() {
+  const fns = [chartSVG, unstretchChart, drawChart, histogramBins, hbarSVG, waterfallSVG, funnelSVG, treemapSVG, squarify, bubblePoints, bubbleSVG, mapMatch, mapSVG, chartSeries, niceStep];
+  const arrows = { escSvg, escA, plain, isTotalLabel };
+  return `var SERIES_COLOURS=${JSON.stringify(SERIES_COLOURS)},TREE_COLOURS=${JSON.stringify(TREE_COLOURS)},TOTAL_WORDS=${TOTAL_WORDS};\n`
+    + Object.entries(arrows).map(([k, f]) => `var ${k}=${f};`).join('\n') + '\n' + fns.map(f => String(f)).join('\n');
 }
