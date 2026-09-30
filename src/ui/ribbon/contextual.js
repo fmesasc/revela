@@ -3,6 +3,7 @@
 // ribbon with all of its options, so nothing needs a right click. It goes
 // away when nothing is selected. Several objects: arranging them.
 
+import * as files from '../../features/content/files.js';
 import { modelClips } from '../canvas/mediaview.js';
 import { shortSig } from '../../core/text.js';
 import { state, commit, currentSlide, selectedBlock, selectedBlocks } from '../../core/store.js';
@@ -35,7 +36,7 @@ import { MAP_SCOPES } from '../../features/content/maps.js';
 import { openObjectLink } from '../dialogs/objlink.js';
 import { t } from '../../i18n/index.js';
 
-const TITLES = { shape: 'Forma', image: 'Imagen', model: 'Modelo 3D', video: 'Vídeo', audio: 'Audio', text: 'Cuadro de texto', table: 'Tabla', chart: 'Gráfico',
+const TITLES = { file: 'Archivo', shape: 'Forma', image: 'Imagen', model: 'Modelo 3D', video: 'Vídeo', audio: 'Audio', text: 'Cuadro de texto', table: 'Tabla', chart: 'Gráfico',
   math: 'Ecuación', code: 'Código', poll: 'Votación', embed: 'Web', icon: 'Icono', camera: 'Cámara', slideref: 'Zoom', figindex: 'Índice', ink: 'Dibujo', connector: 'Conector', timer: 'Cuenta atrás' };
 // Every shape once (the catalogue's first name for each).
 const SHAPES = Object.entries(SHAPE_NAMES).filter(([k]) => !isLineShape(k) && k !== 'freeform');
@@ -138,6 +139,13 @@ function groupsFor(b) {
       btn('remove', 'Quitar fila', () => blocks.tableDelRow()), btn('remove', 'Quitar columna', () => blocks.tableDelCol())]],
     ['Estilo', [btn('title', 'Encabezado', () => blocks.tableToggleHeader(), !!b.header), btn('palette', 'Estilo de tabla', () => openTableStyle(b)), btn('bar_chart', 'Crear gráfico', () => blocks.chartFromTable())]],
     ['Cálculos', [btn('functions', 'Fila de totales', () => blocks.tableAddTotal()), btn('help', 'Fórmulas', () => formulaHelp())]]);
+  else if (b.type === 'file') {
+    const pdf = files.isPdf(b), busy = p => p.catch(e => alertDialog(t('No se pudo leer el PDF:') + ' ' + (e.message || e)));
+    G.push(['Archivo', [btn(pdf ? 'open_in_new' : 'download', pdf ? 'Abrir' : 'Descargar', () => files.openFile(b)), ...(pdf ? [btn('download', 'Descargar', () => files.downloadFile(b))] : [])]]);
+    if (pdf) G.push(['PDF', [['select', 'Mostrar como', [['page', 'Una página'], ['viewer', 'Visor de PDF'], ['icon', 'Icono']], b.display || 'page', v => busy(files.setFileDisplay(b, v))],
+      ...(b.display !== 'icon' && b.pages > 1 ? [['num', 'Página', b.page || 1, v => busy(files.setPdfPage(b, +v)), 1, b.pages, 1]] : []),
+      btn('library_add', 'Una diapositiva por página', () => busy(files.pdfToSlides(b.src)))]]);
+  }
   else if (b.type === 'chart') G.push(['Datos', [btn('edit', 'Editar datos', () => openChartData(b)), btn('link', b.dataUrl ? 'Datos vinculados' : 'Vincular CSV', () => openLinkChart(b)),
     ...(b.dataUrl ? [btn('refresh', 'Actualizar', () => refreshChart(b))] : [])]],
     ['Diseño', [['select', 'Tipo de gráfico', CHARTS, b.chartType || 'bar', v => (v === 'map' ? chartMap(b, b.mapScope || 'world') : set(b, x => { x.chartType = v; }))],

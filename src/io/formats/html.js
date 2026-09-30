@@ -19,9 +19,10 @@ import { soundRuntime } from '../runtime/sounds.js';
 import { safeURL } from '../../features/document/sanitize.js';
 import { canvasRuntimeDeps } from '../runtime/canvas.js';
 import { canvasOn, frameOf } from '../../features/design/canvasmode.js';
-import { shadowCSS, borderCSS, levelCSS, textPadding, webCardHTML, mathTeX, mathCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, curvedTextSVG, deviceCSS, shapeTextHTML, hasShapeText, wrapFor, wrapAttrs, wrapVars, WRAP_CSS, tableClass, tableVars, tableCSS } from '../../render/svg.js';
+import { shadowCSS, borderCSS, levelCSS, textPadding, webCardHTML, mathTeX, mathCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, curvedTextSVG, deviceCSS, shapeTextHTML, hasShapeText, wrapFor, wrapAttrs, wrapVars, WRAP_CSS, tableClass, tableVars, tableCSS, fileIconHTML } from '../../render/svg.js';
 import { googleFontLinks } from '../../features/design/fonts.js';
-import { t, speechLang } from '../../i18n/index.js';
+import { t, speechLang, currentLang } from '../../i18n/index.js';
+import { sizeText } from '../../features/content/files.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle, slidePaths } from '../../features/document/captions.js';
 import { INK_CSS, inkJS } from '../runtime/ink.js';
 import { deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
@@ -71,6 +72,14 @@ function customEffectCSS(deck) {
 export { esc };
 
 // Objects that are links: a click (or Enter) goes to the slide or opens the page.
+// Attached files: a click downloads the file (a PDF's page opens it in a new
+// tab); the PDF viewer loads it in its frame. From their data, as blobs.
+const FILE_JS = `(function(){function blob(el){var s=el.getAttribute('data-src'),i=s.indexOf(','),m=s.slice(5,i).split(';')[0],b=atob(s.slice(i+1)),a=new Uint8Array(b.length);
+for(var k=0;k<b.length;k++)a[k]=b.charCodeAt(k);return URL.createObjectURL(new Blob([a],{type:m}));}
+function act(el){var u=blob(el);if(el.hasAttribute('data-open')){window.open(u,'_blank','noopener');}else{var a=document.createElement('a');a.href=u;a.download=el.getAttribute('data-name')||'';document.body.appendChild(a);a.click();a.remove();}}
+document.addEventListener('click',function(e){var el=e.target.closest&&e.target.closest('[data-file]');if(el){e.stopPropagation();act(el);}},true);
+document.addEventListener('keydown',function(e){var el=e.target.closest&&e.target.closest('[data-file]');if(el&&(e.key==='Enter'||e.key===' ')){e.preventDefault();act(el);}});
+document.querySelectorAll('[data-file-view]').forEach(function(el){el.querySelector('iframe').src=blob(el)+'#view=FitH';});})();`;
 const LINK_JS = `(function(){function go(el){var g=el.getAttribute('data-goto'),h=el.getAttribute('data-href');
 if(h){window.open(h,'_blank','noopener');return;}
 var s=Reveal.getSlides(),i=s.indexOf(Reveal.getCurrentSlide()),t=null;
@@ -265,6 +274,13 @@ function blockHTMLRaw(b, slide) {
       + ` data-end="${esc(b.endText ?? t('¡Tiempo!'))}" style="${box(b)}cursor:pointer">${timerSVG(b)}</div>`;
   if (b.type === 'math')
     return `<div${a} class="math" data-latex="${esc(mathTeX(b))}" style="${box(b)}display:flex;align-items:center;${mathCSS(b)}"></div>`;
+  if (b.type === 'file' && safeURL(b.src || '')) {                 // opened or downloaded by FILE_JS
+    const src = ` data-src="${esc(b.src)}" data-name="${esc(b.name || 'archivo')}"`;
+    if (b.display === 'viewer' && b.poster) return `<div${a} data-file-view${src} style="${box(b)}background:#fff url('${esc(b.poster)}') center/contain no-repeat"><iframe title="${esc(b.name || '')}" style="width:100%;height:100%;border:0;display:block"></iframe></div>`;
+    const pdf = b.display === 'page' && b.poster, label = `${t(pdf ? 'Abrir' : 'Descargar')} ${b.name || ''}`;
+    return `<div${a} data-file${pdf ? ' data-open' : ''}${src} role="button" tabindex="0" aria-label="${esc(label)}" title="${esc(label)}" style="${box(b)}cursor:pointer">`
+      + (pdf ? `<img src="${esc(b.poster)}" alt="" style="width:100%;height:100%;object-fit:contain;display:block">` : fileIconHTML(b, sizeText(b.bytes || 0, currentLang()))) + `</div>`;
+  }
   if (b.type === 'table')
     return `<div${a} style="${box(b)}"><table class="${tableClass(b)}" style="${tableVars(b)}">`
       + tableRowsHTML(b) + `</table></div>`;
@@ -511,6 +527,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${/ data-sound="/.test(slides) ? `(${soundRuntime.toString()})();` : ''}
  ${bgmHTML ? BGM_JS : ''}
  ${/ data-(goto|href)="/.test(slides) ? LINK_JS : ''}
+ ${/ data-file(-view)?[ >]/.test(slides) ? FILE_JS : ''}
  ${hasMedia ? `${createMediaPlayer.toString()}\n${revelaMediaRuntime.toString()}\nrevelaMediaRuntime(${JSON.stringify(GIFUCT)});` : ''}
  ${inkJS(w, h, { pen: t('Lápiz'), hl: t('Resaltador'), laser: t('Puntero láser'), color: t('Color de la tinta'), erase: t('Borrar la tinta de la diapositiva'),
    cc: t('Subtítulos en directo'), lang: speechLang(), ccWarn: t('Los subtítulos usan el reconocimiento de voz del navegador: en Chrome y Edge el audio se envía a su servicio de voz. ¿Activarlos?') })}

@@ -787,3 +787,19 @@ export function shapeTextHTML(b) {
     + `${st.color ? `color:${st.color};` : ''}${st.fontFamily ? `font-family:${st.fontFamily};` : ''}${st.fontWeight ? `font-weight:${st.fontWeight};` : ''}${st.fontStyle ? `font-style:${st.fontStyle};` : ''}`
     + `${st.lineHeight ? `line-height:${st.lineHeight};` : ''}display:flex;flex-direction:column;justify-content:${j};overflow:hidden">${b.html}</div>`;
 }
+
+// An attached file as an icon (Insert ▸ Object "as icon"): a page with its
+// extension on a band of its colour (PDF red, Word blue, Excel green…), its
+// name and size under it. The same in the editor, the thumbnails and the export.
+const FILE_COLOURS = [[/^pdf$/, '#d93025'], [/^(docx?|odt|rtf|txt|md)$/, '#2b579a'], [/^(xlsx?|ods|csv)$/, '#217346'], [/^(pptx?|odp|key)$/, '#d24726'],
+  [/^(zip|rar|7z|tar|gz)$/, '#6d6d6d'], [/^(png|jpe?g|gif|webp|svg)$/, '#8e44ad'], [/^(mp3|wav|ogg|m4a|mp4|webm|mov)$/, '#0f7b8a']];
+export const fileExt = name => ((String(name || '').match(/\.([a-z0-9]{1,5})$/i) || [])[1] || '').toLowerCase();
+export function fileIconHTML(b, sizeLabel = '') {
+  const ext = fileExt(b.name), colour = (FILE_COLOURS.find(([re]) => re.test(ext)) || [])[1] || '#5f6b7a';
+  const icon = `<svg viewBox="0 0 80 100" style="height:62%;max-width:90%;display:block;overflow:visible"><path d="M4 2H56L76 22V98H4Z" fill="#fff" stroke="#c4c9d0" stroke-width="2"/>`
+    + `<path d="M56 2V22H76" fill="#eef0f3" stroke="#c4c9d0" stroke-width="2" stroke-linejoin="round"/>`
+    + `<rect x="0" y="52" width="62" height="26" rx="3" fill="${colour}"/><text x="31" y="70.5" font-size="15" font-weight="700" fill="#fff" text-anchor="middle" font-family="system-ui,sans-serif">${escSvg((ext || 'file').toUpperCase().slice(0, 4))}</text></svg>`;
+  return `<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4%;font-family:system-ui,sans-serif;text-align:center;overflow:hidden">${icon}`
+    + `<div style="font-size:15px;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word">${escSvg(b.name || '')}</div>`
+    + (sizeLabel ? `<div style="font-size:12px;opacity:.65">${escSvg(sizeLabel)}</div>` : '') + `</div>`;
+}

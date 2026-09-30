@@ -229,6 +229,8 @@ export function setCode(props) {
   const b = selectedBlock(); if (!b || b.type !== 'code') return;
   commit(() => Object.assign(b, props));
 }
+// An attached file or PDF (features/content/files.js makes the block).
+export function addFileBlock(b) { insert(b); }
 export function addChart() { insert(chartBlock()); }
 export function addMath() { insert(mathBlock()); }
 // A countdown (5 minutes, a ring; starts when its slide is shown, beeps at the end).

@@ -3,6 +3,8 @@
 // videos, sounds and 3D models (glTF, GLB, STL) are inserted where they are
 // dropped; a presentation (.json, .pptx, .odp) is opened; Markdown adds slides.
 
+import { fileBlock, pdfToSlides, FILE_LIMIT } from '../../features/content/files.js';
+import { choosePdfMode } from '../dialogs/pdfmode.js';
 import { state, replaceDeck, currentSlide, amend } from '../../core/store.js';
 import { isBlankDeck } from '../../core/model.js';
 import * as blocks from '../../features/document/blocks.js';
@@ -73,8 +75,19 @@ function kindOf(f) {
   if (ty.startsWith('image/')) return 'image';
   if (ty.startsWith('video/')) return 'video';
   if (ty.startsWith('audio/')) return 'audio';
-  return null;
+  if (ty === 'application/pdf' || /\.pdf$/.test(n)) return 'pdf';
+  return 'file';                                           // anything else: attached, as an icon to download
 }
+// A PDF or another file, inside the presentation (not too big: it travels in it).
+async function attachFile(f) {
+  if (f.size > FILE_LIMIT) { alertDialog(t('El archivo es demasiado grande para llevarlo dentro de la presentación (máximo 25 MB). Súbelo a la nube e inserta un vínculo.')); return false; }
+  const src = await dataURL(f);
+  if (kindOf(f) !== 'pdf') { blocks.addFileBlock(await fileBlock(f, src, 'icon')); return true; }
+  const mode = await choosePdfMode(f.name); if (!mode) return false;
+  if (mode === 'slides') return (await pdfToSlides(src)) > 0;
+  blocks.addFileBlock(await fileBlock(f, src, mode)); return true;
+}
+const selectedIsFile = () => currentSlide().blocks.find(x => x.id === state.ui.selection)?.type === 'file';
 // Insert pictures, videos, sounds and 3D models; at (x, y) on the slide if given
 // (each next one a little lower and to the right). Returns how many went in.
 export async function insertFiles(files, at = null) {
@@ -87,6 +100,7 @@ export async function insertFiles(files, at = null) {
       else if (k === 'audio') blocks.addAudio(await dataURL(f));
       else if (k === 'model') blocks.addModel((await dataURL(f)).replace(/^data:[^;,]*/, /\.gltf$/i.test(f.name) ? 'data:model/gltf+json' : 'data:model/gltf-binary'));
       else if (k === 'stl') blocks.addModel(stlToGLB(await f.arrayBuffer()));
+      else if (k === 'pdf' || k === 'file') { if (!(await attachFile(f))) continue; if (k === 'pdf' && !selectedIsFile()) { n++; continue; } }
       else continue;
     } catch (e) { alertDialog(t('No se pudo añadir: ') + (e.message || e)); continue; }
     if (at) amend(() => {                                  // (same undo step as adding it)
@@ -110,7 +124,6 @@ export async function dropFiles(files, at = null) {
   let n = 0;
   for (const f of list.filter(x => kindOf(x) === 'markdown')) if (insertMarkdown(await f.text())) n++;
   n += await insertFiles(list, at);
-  if (!n && list.length) alertDialog(t('Ese tipo de archivo no se puede añadir. Prueba con imágenes, vídeos, sonidos, modelos 3D (GLB, glTF, STL) o presentaciones (PPTX, ODP).'));
   return n;
 }
 

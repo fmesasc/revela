@@ -1400,4 +1400,57 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob), xml = await zip.file('ppt/slides/slide1.xml').async('string');
     assert(!/<c:chart /.test(xml) && /<p:pic>/.test(xml), 'en PowerPoint, como imagen');
   });
+
+  await test('PDF y archivos: página, visor, icono o una diapositiva por página; se abren o descargan al presentar', async () => {
+    reset(); const W = frame.contentWindow;
+    // A two-page PDF, written here (offsets worked out so pdf.js reads it without repairing).
+    const pdfText = (() => {
+      const objs = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>',
+        '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 400 300] /Contents 4 0 R >>', null,
+        '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 400 300] /Contents 6 0 R >>', null];
+      const stream = c => `<< /Length ${c.length} >>\nstream\n${c}\nendstream`;
+      objs[3] = stream('1 0 0 rg 20 20 360 260 re f'); objs[5] = stream('0 0 1 rg 20 20 360 260 re f');
+      let out = '%PDF-1.4\n'; const offs = [];
+      objs.forEach((o, k) => { offs.push(out.length); out += `${k + 1} 0 obj\n${o}\nendobj\n`; });
+      const x = out.length;
+      out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + offs.map(o => String(o).padStart(10, '0') + ' 00000 n \n').join('');
+      return out + `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${x}\n%%EOF`;
+    })();
+    const pdf = new W.File([pdfText], 'informe.pdf', { type: 'application/pdf' });
+    // Dropped: it asks how; one page on the slide.
+    const p1 = R.openfile.dropFiles([pdf]); await sleep(50);
+    const modes = [...D.querySelectorAll('#pdf-modal .pdf-mode')].map(b => b.dataset.mode);
+    eq(modes.join(), 'page,viewer,icon,slides', 'cuatro maneras');
+    D.querySelector('#pdf-modal [data-mode="page"]').click(); await p1; await sleep(30);
+    const b = last(); eq(b.type, 'file'); eq(b.pages, 2, 'sabe cuántas páginas tiene'); assert(/^data:image\/png/.test(b.poster), 'su primera página, dibujada');
+    assert(/^data:application\/pdf/.test(b.src), 'el PDF va dentro');
+    assert(Math.abs(b.w / b.h - 4 / 3) < 0.02, 'con la proporción de la página');
+    assert(D.querySelector(`#stage .block[data-id="${b.id}"] .file-badge`), 'con su distintivo PDF');
+    // Another page, from the ribbon.
+    select(b); await sleep(20);
+    const poster1 = b.poster;
+    await R.files.setPdfPage(b, 2); eq(b.page, 2); assert(b.poster !== poster1, 'otra página');
+    let html = R.io.buildHTML();
+    assert(/data-file data-open data-src="data:application\/pdf/.test(html) && /data-name="informe.pdf"/.test(html), 'al presentar, un clic abre el PDF');
+    // As a viewer, and as an icon.
+    await R.files.setFileDisplay(b, 'viewer'); html = R.io.buildHTML();
+    assert(/data-file-view data-src="data:application\/pdf/.test(html) && /<iframe title="informe.pdf"/.test(html), 'visor de PDF');
+    await R.files.setFileDisplay(b, 'icon'); await sleep(20);
+    eq(b.w + 'x' + b.h, '200x250', 'icono');
+    assert(/PDF/.test(D.querySelector(`#stage .block[data-id="${b.id}"]`).textContent) && /informe\.pdf/.test(D.querySelector(`#stage .block[data-id="${b.id}"]`).textContent), 'icono con su tipo y nombre');
+    // One slide per page.
+    const n0 = R.state.deck.slides.length;
+    eq(await R.files.pdfToSlides(b.src), 2); eq(R.state.deck.slides.length, n0 + 2, 'dos diapositivas nuevas');
+    assert(slide().blocks[0].type === 'image' && /^data:image\/png/.test(slide().blocks[0].src), 'cada página, como imagen');
+    // Any other file: an icon that downloads it (generic data: the presentation keeps only known kinds).
+    reset();
+    await R.openfile.dropFiles([new W.File(['a,b\n1,2'], 'datos.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })]); await sleep(20);
+    const f = last(); eq(f.type, 'file'); eq(f.display, 'icon'); assert(/^data:application\/octet-stream/.test(f.src), 'como descarga');
+    html = R.io.buildHTML();
+    assert(/data-file data-src="data:application\/octet-stream[^"]*" data-name="datos.xlsx"/.test(html) && /XLSX/.test(html), 'al presentar, el icono descarga el archivo');
+    assert(/createObjectURL/.test(html), 'con su código');
+    // PowerPoint: as a picture.
+    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob);
+    assert(/<p:pic>/.test(await zip.file('ppt/slides/slide1.xml').async('string')), 'en PowerPoint, su imagen');
+  });
 }

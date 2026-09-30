@@ -1,5 +1,6 @@
 // Non‑interactive block rendering, shared by slide thumbnails.
 
+import { fileIconHTML } from '../../render/svg.js';
 import { pollEditorHTML } from '../../features/live/poll.js';
 import { safeURL } from '../../features/document/sanitize.js';
 import { currentPalette } from '../../features/design/palettes.js';
@@ -67,6 +68,8 @@ export function blockPreview(b) {
     el.innerHTML = timerSVG(b);
   } else if (b.type === 'figindex') {
     el.innerHTML = `<div style="width:100%;height:100%;display:grid;place-items:center;color:#fff;font-size:40px">📑</div>`;
+  } else if (b.type === 'file') {
+    el.innerHTML = b.display !== 'icon' && b.poster ? `<img src="${b.poster}" style="width:100%;height:100%;object-fit:contain">` : fileIconHTML(b);
   } else if (b.type === 'table') {
     ensurePreviewCSS();
     el.innerHTML = `<div class="pv" style="width:100%;height:100%"><table class="${tableClass(b)}" style="${tableVars(b)}">`

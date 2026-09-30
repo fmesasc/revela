@@ -2,7 +2,7 @@
 // shortcuts, the context menu and the tests).
 
 import { editText } from '../canvas/content.js';
-import { readFile, openProject, openPresentation, insertMarkdown } from '../shell/openfile.js';
+import { readFile, openProject, openPresentation, insertMarkdown, insertFiles } from '../shell/openfile.js';
 import { openFindPanel } from '../dialogs/find.js';
 import { toggleDictation } from '../shell/dictate.js';
 import { toggleSelectionPane } from '../panels/selection.js';
@@ -177,6 +177,7 @@ export const ACTIONS = {
   'insert-chart': blocks.addChart,
   'insert-math': blocks.addMath,
   'insert-timer': () => blocks.addTimer(),
+  'insert-file': () => { const i = document.createElement('input'); i.type = 'file'; i.addEventListener('change', () => { if (i.files.length) insertFiles(i.files); }); i.click(); },
   'insert-model': () => readFile('.glb,.gltf', blocks.addModel),
   'resources': () => openElements('gif'),
   // Canvas mode (Prezi-like), off by default; turning it on opens the canvas view.

@@ -1,6 +1,8 @@
 // What each object shows on the canvas and how it is edited in place: text,
 // equations (KaTeX), code (highlight.js), tables, embeds, 3D models, slide links.
 
+import { sizeText } from '../../features/content/files.js';
+import { fileIconHTML } from '../../render/svg.js';
 import { shortSig } from '../../core/text.js';
 import { esc } from '../../core/text.js';
 import { shownRows } from '../../core/formulas.js';
@@ -9,7 +11,7 @@ import { state, commit, amend, currentSlide } from '../../core/store.js';
 import { borderCSS, tableColsHTML, cellBg, textPadding, webCardHTML, webCardSig, mathTeX, mathCSS, mathSig, shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan, inkSVG, timerSVG, deviceStyle, timerSig, inkSig, tableClass, tableVars } from '../../render/svg.js';
 import { collectFigures, captionLine, figIndexTitle } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
-import { t } from '../../i18n/index.js';
+import { t, currentLang } from '../../i18n/index.js';
 import { setEmbedDisplay } from '../../features/document/blocks.js';
 import { currentPalette } from '../../features/design/palettes.js';
 import { cameraRadius } from '../../features/live/media.js';
@@ -138,6 +140,7 @@ export function content(b) {
     const d = document.createElement('div'); d.className = 'slideref'; renderSlideRef(d, b); return d;
   }
   if (b.type === 'table') return tableContent(b);
+  if (b.type === 'file') { const d = document.createElement('div'); d.className = 'file-blk'; paintFile(d, b); return d; }
   if (b.type === 'chart') {
     const d = document.createElement('div'); d.className = 'chart';
     d.dataset.sig = chartSig(b); d.innerHTML = chartSVG(b); return d;
@@ -273,6 +276,14 @@ export function setupCode(el, b) {
     commit(() => { b.code = code.textContent; });
     paintCode(code, b);
   });
+}
+// An attached file: a PDF's page (with a badge saying it is a PDF and which page), or its icon.
+export const fileSig = b => [b.display, b.poster?.length, b.page, b.name].join('|');
+export function paintFile(d, b) {
+  d.dataset.sig = fileSig(b);
+  d.innerHTML = b.display !== 'icon' && b.poster
+    ? `<img src="${b.poster}" draggable="false" alt=""><span class="file-badge"><i class="ms">${b.display === 'viewer' ? 'menu_book' : 'picture_as_pdf'}</i>${b.pages > 1 ? ` ${b.page || 1}/${b.pages}` : ''}</span>`
+    : fileIconHTML(b, sizeText(b.bytes || 0, currentLang()));
 }
 export const tableSig = b => b.rows.length + 'x' + (b.rows[0]?.length || 0) + '|' + JSON.stringify([b.merges || [], b.colW, b.rowH, b.cellBg]);
 export function tableContent(b) {

@@ -474,3 +474,8 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .block.is-hidden{display:none}
 .block.is-hidden.selected{display:block;opacity:.3;outline:1px dashed var(--accent)}
 @media (max-width:760px){#selection-panel{width:auto;max-height:45vh;border-inline-start:none;border-top:1px solid var(--line2)}}
+/* How to add a PDF. */
+.pdf-modes{display:flex;flex-direction:column;gap:8px}
+.pdf-mode{display:flex;gap:12px;align-items:center;text-align:start;padding:10px 12px;border:1px solid var(--line2);border-radius:10px;background:var(--panel);color:inherit;cursor:pointer;font:inherit}
+.pdf-mode:hover,.pdf-mode:focus-visible{border-color:var(--accent);background:var(--accent-bg)}
+.pdf-mode .ms{font-size:28px;color:var(--accent)}.pdf-mode span{display:flex;flex-direction:column;gap:2px}.pdf-mode small{color:var(--txt2)}

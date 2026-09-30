@@ -357,8 +357,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.querySelector('.modal-backdrop .dlg-ok').click(); await sleep(100);
     eq(R.state.deck.name, 'Arrastrada', 'y la abre');
     await drop([new W.File(['x'], 'nota.xyz', { type: 'application/x-nada' })], r.left + 10, r.top + 10);
-    assert(/no se puede añadir/.test(D.querySelector('.modal-backdrop .dlg-msg')?.textContent || ''), 'un tipo desconocido se explica');
-    D.querySelector('.modal-backdrop .dlg-ok').click();
+    await sleep(60); eq(slide().blocks.at(-1)?.type, 'file', 'cualquier otro archivo, como icono para descargarlo'); eq(slide().blocks.at(-1).name, 'nota.xyz');
     await sleep(50); const before = R.state.deck;
     await drop([new W.File(['PK'], 'Charla.key', { type: '' })], r.left + 10, r.top + 10);
     assert(/Keynote.*Exportar a ▸ PowerPoint/.test(D.querySelector('.modal-backdrop .dlg-msg')?.textContent || '') && R.state.deck === before, 'Keynote: explica cómo pasarlo a PowerPoint, sin tocar la presentación');

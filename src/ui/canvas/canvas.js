@@ -2,6 +2,7 @@
 // direct manipulation — drag from anywhere on a block, snap to alignment
 // guides, resize from the corners, edit text on double‑click.
 
+import { openFile } from '../../features/content/files.js';
 import { shortSig } from '../../core/text.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
 import { state, commit, currentSlide, selectedBlock, isSelected, setSelection } from '../../core/store.js';
@@ -17,7 +18,7 @@ import { cameraRadius } from '../../features/live/media.js';
 import { pollEditorHTML } from '../../features/live/poll.js';
 import { masterBlocksFor, PH_PROMPT, styled, layoutInUse, masterInUse } from '../../features/document/master.js';
 import { stageBackground } from '../../io/formats/html.js';
-import { styleRich, paintWebCard, paintMath, pollSig, renderSlideRef, figIndexHTML, connectorHTML, applyImgStyle, applyModelAttrs, content, hostOf, hasInlineMath, renderInlineMath, paintCode, setupCode, tableSig, fillTable, setupTable, setupText, setupMath, setupModel, setupEmbed } from './content.js';
+import { styleRich, paintWebCard, paintMath, pollSig, renderSlideRef, figIndexHTML, connectorHTML, applyImgStyle, applyModelAttrs, content, hostOf, hasInlineMath, renderInlineMath, paintCode, setupCode, tableSig, fillTable, fileSig, paintFile, setupTable, setupText, setupMath, setupModel, setupEmbed } from './content.js';
 import { mediaViewCurrent } from './mediaview.js';
 import { addGuideFromRuler, drawPGuides, startMarquee, startDrag, startRotate, startResize } from './interact.js';
 
@@ -299,6 +300,8 @@ function reconcile(b) {
     const d = el.querySelector('.shape'); const sig = shapeSig(b);
     if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = shapeSVG(b); }
     paintShapeText(el, b);
+  } else if (b.type === 'file') {
+    const d = el.querySelector('.file-blk'); if (d && d.dataset.sig !== fileSig(b)) paintFile(d, b);
   } else if (b.type === 'table') {
     const t = el.querySelector('.tbl'); if (!t) return;
     const sig = tableSig(b);
@@ -372,6 +375,7 @@ function blockEl(b) {
   else if (hasShapeText(b)) { paintShapeText(el, b); setupText(b, el); }
   else if (b.type === 'model') setupModel(el);
   else if (b.type === 'embed') setupEmbed(el);
+  else if (b.type === 'file') el.addEventListener('dblclick', () => openFile(el._b));   // (double-click: open or download it)
   else if (b.type === 'table') setupTable(el, b);
   else if (b.type === 'code') setupCode(el, b);
   else if (b.type === 'math') setupMath(el, b);
