@@ -38,6 +38,8 @@
 .group>label{text-align:center;color:var(--txt2);font-size:11px}
 .group .row{display:flex;align-items:center;gap:3px;flex:1}
 .group.wide .row{flex-wrap:nowrap}
+.group.inline-labels .row button:has(span){flex-direction:row;gap:5px;padding:4px 7px}.group.inline-labels .row button span{text-align:start}
+.group.two-rows{justify-content:flex-start}.group.two-rows>.row{flex:0 0 auto}.group.two-rows>label{margin-top:auto}
 
 .row button,.row label.color,.row select{background:none;border:1px solid transparent;border-radius:6px;
   cursor:pointer;color:var(--txt);display:flex;flex-direction:column;align-items:center;justify-content:center;

@@ -32,6 +32,7 @@ import { t } from '../../i18n/index.js';
 import { readFile } from '../shell/openfile.js';
 import { animPaint, endAnimPaint, ACTIONS } from './actions.js';
 import { applyZoom, fitZoom, zoomFitting, wireZoom } from './zoom.js';
+import { compactGroups } from './compact.js';
 import { closePopover, togglePopover } from './popovers.js';
 
 const $ = s => document.querySelector(s);
@@ -420,6 +421,6 @@ export function renderRibbon() {
   updateFormatState();
   renderContextual();
   renderMorphHint();
-  document.querySelectorAll('#ribbon .ribbon-page.active').forEach(markOverflow);
+  document.querySelectorAll('#ribbon .ribbon-page.active').forEach(p => { compactGroups(p); markOverflow(p); });
 }
 function syncValue(sel, val) { const el = $(sel); if (el && el.value !== val) el.value = val; }

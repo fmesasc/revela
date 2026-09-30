@@ -473,4 +473,17 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(RV.changesOf().length, 0, 'los cambios de otros (en directo) los anota quien los hace, no aquí');
     RV.setTracking(false); R.store.commit(() => { R.state.ui.showReview = false; }, { history: false });
   });
+
+  await test('cinta: los grupos de controles pequeños ocupan dos filas (se aprovecha la altura)', async () => {
+    reset(); D.querySelector('[data-tab="home"]').click(); await sleep(50);
+    const font = D.querySelector('[data-fmt="bold"]').closest('.group'), size = D.querySelector('[data-font]').closest('.group');
+    eq(font.querySelectorAll(':scope > .row').length, 2, 'Fuente: dos filas');
+    eq(size.querySelectorAll(':scope > .row').length, 2, 'Tipo de letra: dos filas');
+    assert(D.querySelector('[data-fmt="bold"]').getBoundingClientRect().top < D.querySelector('[data-fmt="removeFormat"]').getBoundingClientRect().top, 'una encima de otra');
+    D.querySelector('[data-tab="design"]').click(); await sleep(50);
+    const g = D.querySelector('[data-action="design-ideas"]').closest('.group');
+    assert(g.classList.contains('inline-labels') && g.querySelectorAll(':scope > .row').length === 2, 'botones con texto: el texto al lado del icono, en dos filas');
+    assert(D.querySelector('[data-tab="insert"]') && (D.querySelector('[data-tab="insert"]').click(), await sleep(50), !D.querySelector('[data-page="insert"] .group.two-rows .lg')), 'los botones grandes no se tocan');
+    D.querySelector('[data-tab="home"]').click();
+  });
 }
