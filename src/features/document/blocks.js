@@ -1,5 +1,7 @@
 // Block insertion and manipulation.
 
+import { cellNumber } from '../../core/formulas.js';
+import { plainText } from '../../core/text.js';
 import { state, commit, currentSlide, selectedBlock,
   selectedBlocks, selectedIds, setSelection, setMulti } from '../../core/store.js';
 import { DEFAULT_SHADOW } from '../../render/svg.js';
@@ -391,6 +393,13 @@ export function setChart(props) {
 function withTable(fn) { const b = selectedBlock(); if (b && b.type === 'table') commit(() => fn(b)); }
 export const tableAddRow = () => withTable(b => b.rows.push(Array(b.rows[0]?.length || 1).fill('')));
 export const tableAddCol = () => withTable(b => b.rows.forEach(r => r.push('')));
+// A row of totals under the numbers (Excel's AutoSum): "Total" and, under each column with numbers, a formula adding them.
+export const tableAddTotal = () => withTable(b => {
+  const cols = b.rows[0]?.length || 1, from = b.header ? 1 : 0;
+  const row = Array.from({ length: cols }, (_, c) => (b.rows.slice(from).some(r => cellNumber(plainText(r[c] || ''))) ? t('=SUMA(ARRIBA)') : ''));
+  if (!row[0]) row[0] = `<b>${t('Total')}</b>`;
+  b.rows.push(row);
+});
 export const tableDelRow = () => withTable(b => { if (b.rows.length > 1) { b.rows.pop(); clampMerges(b); } });
 export const tableDelCol = () => withTable(b => { if ((b.rows[0]?.length || 0) > 1) { b.rows.forEach(r => r.pop()); clampMerges(b); } });
 // Merged cells live in b.merges = [{r, c, rs, cs}] (top-left cell + span).

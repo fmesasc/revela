@@ -3,6 +3,7 @@
 
 import { shortSig } from '../../core/text.js';
 import { esc } from '../../core/text.js';
+import { shownRows } from '../../core/formulas.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
 import { state, commit, amend, currentSlide } from '../../core/store.js';
 import { borderCSS, tableColsHTML, cellBg, textPadding, webCardHTML, webCardSig, mathTeX, mathCSS, mathSig, shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan, inkSVG, timerSVG, deviceStyle, timerSig, inkSig, tableClass, tableVars } from '../../render/svg.js';
@@ -282,15 +283,26 @@ export function tableContent(b) {
 }
 export function fillTable(t, b) {
   t.innerHTML = tableColsHTML(b);
-  const span = tableSpan(b);
+  const span = tableSpan(b), shown = shownRows(b);
   b.rows.forEach((row, r) => {
     const tr = t.insertRow(); if (b.rowH?.[r]) tr.style.height = b.rowH[r] + 'px';
     row.forEach((cell, c) => {
       const sp = span(r, c); if (!sp) return;              // covered by a merged cell
-      const td = tr.insertCell(); td.innerHTML = cell || ''; td.dataset.r = r; td.dataset.c = c;
+      const td = tr.insertCell(); td.innerHTML = shown[r][c] || ''; td.dataset.r = r; td.dataset.c = c;
+      if (shown[r][c] !== cell) td.classList.add('formula');                  // (its result; the formula itself while editing)
       if (cellBg(b, r, c)) td.style.background = cellBg(b, r, c);
       if (sp.cs > 1) td.colSpan = sp.cs; if (sp.rs > 1) td.rowSpan = sp.rs;
     });
+  });
+}
+// The formulas' results again, in every cell but the one being written in.
+function refreshFormulas(t, b) {
+  const shown = shownRows(b);
+  t.querySelectorAll('td').forEach(td => {
+    const r = +td.dataset.r, c = +td.dataset.c;
+    if (td === document.activeElement) return;
+    if (shown[r][c] !== b.rows[r][c]) { if (td.innerHTML !== shown[r][c]) td.innerHTML = shown[r][c]; td.classList.remove('src'); td.classList.add('formula'); }
+    else if (td.matches('.formula, .src')) { td.classList.remove('formula', 'src'); if (td.innerHTML !== (b.rows[r][c] || '')) td.innerHTML = b.rows[r][c] || ''; }
   });
 }
 // Cells edit on double‑click (like text boxes); Esc / clicking away saves.
@@ -301,6 +313,9 @@ export function setupTable(el, b) {
     el.querySelectorAll('.tbl td').forEach(td => (td.contentEditable = 'true'));
     e.target.closest('td').focus();
   });
+  // A formula cell shows its formula while the caret is in it, and the results come back when it leaves.
+  el.addEventListener('focusin', e => { const td = e.target.closest?.('td.formula'); if (td) { td.innerHTML = b.rows[+td.dataset.r][+td.dataset.c] || ''; td.classList.replace('formula', 'src'); } });
+  el.addEventListener('focusout', e => { if (e.target.closest?.('td')) setTimeout(() => { const t = el.querySelector('.tbl'); if (t) refreshFormulas(t, b); }, 0); });
   el.addEventListener('input', e => { const td = e.target.closest('td'); if (td) b.rows[+td.dataset.r][+td.dataset.c] = td.innerHTML; });
   el.addEventListener('focusout', () => setTimeout(() => {
     if (!el.contains(document.activeElement)) {

@@ -10,6 +10,7 @@
 import { animsOf } from '../../features/animation/transitions.js';
 import { state } from '../../core/store.js';
 import { uid } from '../../core/model.js';
+import { shownRows } from '../../core/formulas.js';
 import { chartSVG, iconSVG, inkSVG, timerSVG, tableSpan } from '../../render/svg.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled } from '../../features/document/master.js';
@@ -190,7 +191,7 @@ export async function buildODP(deck = state.deck) {
       const span = tableSpan(b), cols = b.rows[0]?.length || 1;
       const cellP = style('paragraph', 'P', `<style:text-properties fo:font-size="${pt(22)}" fo:color="${hex(fg) || '#ffffff'}"/>`);
       const cellSt = style('table-cell', 'ce', `<style:graphic-properties draw:fill="none"/><style:table-cell-properties fo:border="0.03cm solid ${hex(b.stroke) || '#888888'}"/>`);
-      const rows = b.rows.map((row, r) => `<table:table-row>${row.map((c, j) => {
+      const rows = shownRows(b).map((row, r) => `<table:table-row>${row.map((c, j) => {
         const s = span(r, j);
         if (!s) return '<table:covered-table-cell/>';
         const t = new DOMParser().parseFromString(`<div>${c || ''}</div>`, 'text/html').body.textContent;

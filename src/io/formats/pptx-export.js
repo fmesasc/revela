@@ -9,6 +9,7 @@ import { alertUser } from '../../core/notify.js';
 import { t } from '../../i18n/index.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
 import { plainText } from '../../core/text.js';
+import { shownRows } from '../../core/formulas.js';
 import { chartSVG, chartSeries, histogramBins, iconSVG, inkSVG, timerSVG, shapeTextStyle } from '../../render/svg.js';
 import { blockImage } from '../export/images.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, styleKind } from '../../features/document/master.js';
@@ -151,7 +152,7 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
       // Merged cells: PptxGenJS wants the covered cells omitted and colspan/rowspan on the first.
       const ms = b.merges || [];
       const covered = (r, c) => ms.some(m => r >= m.r && r < m.r + m.rs && c >= m.c && c < m.c + m.cs && !(r === m.r && c === m.c));
-      const rows = (b.rows || []).map((row, r) => row.map((c, j) => {
+      const rows = shownRows(b).map((row, r) => row.map((c, j) => {                 // (formulas: their result)
         if (covered(r, j)) return null;
         const m = ms.find(x => x.r === r && x.c === j), cell = { text: plain(c) }, o = {};
         if (m) Object.assign(o, m.cs > 1 && { colspan: m.cs }, m.rs > 1 && { rowspan: m.rs });

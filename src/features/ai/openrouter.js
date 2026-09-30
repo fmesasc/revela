@@ -7,6 +7,7 @@
 // challenge; they come back with ?code=…, which we exchange for a key that is
 // stored only in this browser.
 
+import { isFormula } from '../../core/formulas.js';
 import { esc, plainText } from '../../core/text.js';
 import { state, commit, currentSlide, selectedBlock } from '../../core/store.js';
 import { uid } from '../../core/model.js';
@@ -188,7 +189,7 @@ export async function translateDeck(targetLang, onProgress) {
     const s = slides[i], items = {};
     for (const b of s.blocks) {
       if (b.type === 'text' && plain(b.html)) items[b.id] = b.html;
-      if (b.type === 'table') b.rows.forEach((row, r) => row.forEach((c, k) => { if (plain(c)) items[`${b.id}|${r}|${k}`] = c; }));
+      if (b.type === 'table') b.rows.forEach((row, r) => row.forEach((c, k) => { if (plain(c) && !isFormula(c)) items[`${b.id}|${r}|${k}`] = c; }));
     }
     if (s.notes?.trim()) items[`notes|${s.id}`] = s.notes;
     if (!Object.keys(items).length) { onProgress?.((i + 1) / slides.length); continue; }

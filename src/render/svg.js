@@ -1,4 +1,5 @@
 import { plainText } from '../core/text.js';
+import { shownRows } from '../core/formulas.js';
 
 // Image filter/opacity, shared by the canvas, thumbnails and export.
 export function imgFilter(b) {
@@ -60,7 +61,7 @@ export const tableColsHTML = b => (b.colW ? `<colgroup>${b.colW.map(w => `<col s
 export const cellBg = (b, r, c) => b.cellBg?.[`${r},${c}`] || '';
 export function tableRowsHTML(b, cellStyle = '') {
   const span = tableSpan(b);
-  return tableColsHTML(b) + b.rows.map((row, r) => `<tr${b.rowH?.[r] ? ` style="height:${b.rowH[r]}px"` : ''}>${row.map((cell, c) => {
+  return tableColsHTML(b) + shownRows(b).map((row, r) => `<tr${b.rowH?.[r] ? ` style="height:${b.rowH[r]}px"` : ''}>${row.map((cell, c) => {
     const s = span(r, c); if (!s) return '';
     const at = (s.cs > 1 ? ` colspan="${s.cs}"` : '') + (s.rs > 1 ? ` rowspan="${s.rs}"` : '');
     const st = cellStyle + (cellBg(b, r, c) ? `background:${cellBg(b, r, c)};` : '');

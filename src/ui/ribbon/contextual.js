@@ -41,6 +41,10 @@ const TITLES = { shape: 'Forma', image: 'Imagen', model: 'Modelo 3D', video: 'V�
 const SHAPES = Object.entries(SHAPE_NAMES).filter(([k]) => !isLineShape(k) && k !== 'freeform');
 const CHARTS = [['bar', 'Barras'], ['stacked', 'Barras apiladas'], ['stacked100', 'Barras apiladas al 100 %'], ['hbar', 'Barras horizontales'], ['histogram', 'Histograma'], ['line', 'Líneas'], ['area', 'Área'], ['pie', 'Circular'], ['doughnut', 'Dona'], ['scatter', 'Dispersión'], ['radar', 'Radar'], ['map', 'Mapa']];
 // A map chart: its outlines come from the internet the first time.
+const formulaHelp = () => alertDialog([t('Escribe en una celda una fórmula que empiece por «=»:'), '=SUMA(ARRIBA) · =PROMEDIO(B2:B5) · =B2*C2',
+  t('Funciones: SUMA, PROMEDIO, MIN, MAX, CONTAR, PRODUCTO, REDONDEAR y ABS (también sus nombres en inglés).'),
+  t('Direcciones: ARRIBA, DEBAJO, IZQUIERDA y DERECHA. Celdas: la letra de la columna y el número de la fila (A1, B2:B5).'),
+  t('La celda muestra el resultado; al escribir en ella, la fórmula.')].join('\n\n'));
 const chartMap = (b, scope) => blocks.setChartMap(b.id, scope).catch(e => alertDialog(t('No se pudo cargar el mapa:') + ' ' + (e.message || e)));
 
 // A control: ['btn', icon, label, fn, on?] · ['color', icon, label, value, fn] · ['select', label, [[v, l]], value, fn] · ['num', label, value, fn, min, max, step]
@@ -132,7 +136,8 @@ function groupsFor(b) {
   else if (b.type === 'table') G.push(
     ['Filas y columnas', [btn('table_rows', 'Añadir fila', () => blocks.tableAddRow()), btn('view_column', 'Añadir columna', () => blocks.tableAddCol()),
       btn('remove', 'Quitar fila', () => blocks.tableDelRow()), btn('remove', 'Quitar columna', () => blocks.tableDelCol())]],
-    ['Estilo', [btn('title', 'Encabezado', () => blocks.tableToggleHeader(), !!b.header), btn('palette', 'Estilo de tabla', () => openTableStyle(b)), btn('bar_chart', 'Crear gráfico', () => blocks.chartFromTable())]]);
+    ['Estilo', [btn('title', 'Encabezado', () => blocks.tableToggleHeader(), !!b.header), btn('palette', 'Estilo de tabla', () => openTableStyle(b)), btn('bar_chart', 'Crear gráfico', () => blocks.chartFromTable())]],
+    ['Cálculos', [btn('functions', 'Fila de totales', () => blocks.tableAddTotal()), btn('help', 'Fórmulas', () => formulaHelp())]]);
   else if (b.type === 'chart') G.push(['Datos', [btn('edit', 'Editar datos', () => openChartData(b)), btn('link', b.dataUrl ? 'Datos vinculados' : 'Vincular CSV', () => openLinkChart(b)),
     ...(b.dataUrl ? [btn('refresh', 'Actualizar', () => refreshChart(b))] : [])]],
     ['Diseño', [['select', 'Tipo de gráfico', CHARTS, b.chartType || 'bar', v => (v === 'map' ? chartMap(b, b.mapScope || 'world') : set(b, x => { x.chartType = v; }))],

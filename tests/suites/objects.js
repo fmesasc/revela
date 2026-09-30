@@ -1323,4 +1323,28 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/Ventas \(k€\)/.test(D.querySelector(`.block[data-id="${c.id}"]`).innerHTML), 'en el lienzo');
     assert(/Ventas \(k€\)/.test(R.io.buildHTML()), 'en la presentación');
   });
+
+  await test('tablas: fórmulas (=SUMA(ARRIBA), =B2*C2, rangos), fila de totales y el resultado en todas partes', async () => {
+    reset(); const W = frame.contentWindow, F = await W.eval("import('/src/core/formulas.js')");
+    const rows = [['Producto', '2024', 'Precio'], ['A', '3', '10 €'], ['B', '4', '12,5 €'], ['Total', '=SUMA(ARRIBA)', '=SUM(ABOVE)'], ['Media', '=PROMEDIO(B2:B3)', '=C4/2'], ['x', '=B6', '=(1+2']];
+    const v = F.tableValues(rows, 'es', { header: true }).map(r => r.map(c => c.text));
+    eq(v[3][1], '7', 'suma de lo de arriba, sin el encabezado «2024»'); eq(v[3][2], '22,5 €', 'con su unidad');
+    eq(v[4][1], '3,5', 'promedio de un rango'); eq(v[4][2], '11,25 €', 'usando otra fórmula');
+    eq(v[5][1], '#¡ERROR!', 'una que se usa a sí misma'); eq(v[5][2], '#¡ERROR!', 'mal escrita');
+    eq(F.cellNumber('1.234,5').v, 1234.5); eq(F.cellNumber('1,234.5').v, 1234.5); assert(!F.cellNumber('Año 2024'), 'texto con número: texto');
+    // In the editor: the result shown, the formula while writing in it.
+    R.blocks.addTable(); const b = last(); select(b); R.blocks.tableToggleHeader();
+    R.store.commit(() => { b.rows = [['Mes', 'Ventas'], ['Enero', '100'], ['Febrero', '250']]; }); await sleep(20);
+    R.blocks.tableAddTotal(); await sleep(30);
+    eq(b.rows[3][1], '=SUMA(ARRIBA)', 'fila de totales con su fórmula'); assert(/Total/.test(b.rows[3][0]), 'y su nombre');
+    const el = () => D.querySelector(`#stage .block[data-id="${b.id}"]`), td = () => el().querySelector('td[data-r="3"][data-c="1"]');
+    eq(td().textContent, '350', 'en la diapositiva, el resultado');
+    td().dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); await sleep(10);
+    eq(td().textContent, '=SUMA(ARRIBA)', 'al entrar en la celda, la fórmula');
+    const n = el().querySelector('td[data-r="1"][data-c="1"]'); n.focus(); n.textContent = '150'; n.dispatchEvent(new Event('input', { bubbles: true })); await sleep(30);
+    eq(td().textContent, '400', 'al salir, el resultado, recalculado');
+    assert(/<td>400<\/td>/.test(R.io.buildHTML()), 'en la presentación exportada');
+    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob), xml = await zip.file('ppt/slides/slide1.xml').async('string');
+    assert(/<a:t>400<\/a:t>/.test(xml) && !/SUMA/.test(xml), 'en PowerPoint, el resultado');
+  });
 }
