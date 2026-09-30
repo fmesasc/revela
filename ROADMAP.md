@@ -164,6 +164,10 @@ the origin of every requirement is traceable.
 - ✅ Audience Q&A — the audience sends questions from their phones and upvotes others'; the slide shows them ranked live (max 5 per person) `GS`
 - ✅ Live captions while presenting (browser speech recognition, CC button or C key, asks first because Chrome/Edge send audio to their speech service) `PP`
 - ✅ Present in a video call (Google Meet, Microsoft Teams, Zoom): the presentation in its own window to share, speaker notes in another `PP·GS`
+- ✅ Graded activities from the phone — put in order, match pairs, fill in the gaps, label a picture; the answers never reach the phones, points join the quiz leaderboard `GS`
+- ✅ Classroom mode — students follow the slides on their own device at the presenter's pace (code and QR in a corner), answer there; results per student with CSV `—`
+- ✅ Live captions on the audience's devices, translated per person (the browser's own translator, or the presenter's AI) `PP`
+- ✅ Self-paced mode — quizzes and activities answered inside the slides, without phones, to practise or as homework `—`
 
 ## 7. Collaboration *(needs a backend — not possible on static hosting alone)*
 - ✅ Real-time co-editing: share links, everyone sees changes at once (per-object merging, so people can work on different objects together), others' selections on the slide, undo only undoes your own changes. Browser-to-browser (WebRTC), no server needed; the person sharing keeps the tab open `PP·GS·OO`
@@ -177,6 +181,10 @@ the origin of every requirement is traceable.
 - ✅ Protect — project encrypted with a password (AES-GCM 256, PBKDF2) and "mark as final" (read-only) `PP·OO`
 - ✅ Digital signatures: sign in the browser (ECDSA P-256, key kept in the browser), several signers, check validity and changes after signing, key fingerprint to confirm the signer (no certificate authority) `OO`
 - ✅ Tasks in comments — assign to someone (`+name` or a field) with a due date, reassign, mark as done; all tasks or only mine, counted on the button `GS`
+- ✅ Presentations in Revela's cloud (official edition): shared with specific people or by link as viewer, commenter or editor, every read and change checked by the server; automatic sync, server-side versions, per-slide viewing statistics (no personal data) `GS`
+- ✅ Track changes — each change recorded with its author, outlined on the slide, accepted or rejected one by one or all `OO`
+- ✅ Video calls in the editor for the people of a cloud presentation (Cloudflare Realtime) `GS`
+- ✅ Teams (schools, companies) — seats, invitations by email, shared brand kit and templates `PP·GS`
 
 ## 8. Import & export
 - ✅ Export to self-contained HTML (reveal.js) `—`
@@ -196,12 +204,15 @@ the origin of every requirement is traceable.
 - ✅ OpenDocument (`.odp`) export & import — text with formatting and lists, pictures, shapes, lines/arrows, merged shapes, tables with merged cells, charts/icons/ink as SVG, backgrounds, notes, hidden slides (validated with LibreOffice) `OO`
 - ✅ Dropbox and OneDrive — save and open presentations in Revela's folder there, PKCE sign-in with no secret, configurable app identifiers `PP·GS`
 - ✅ Comments to and from PowerPoint (classic and Microsoft 365 formats) and OpenDocument, keeping threads, tasks and resolved state `PP·OO`
+- ✅ Import from Google Slides (chosen in Drive, converted by Drive) `—`
+- ✅ Embeds for Figma, Miro, Canva, Loom and Google Docs/Sheets/Slides/Forms; a part of a YouTube or Vimeo video per slide `PP·GS`
 
 ## 9. Accessibility & internationalisation
 - ✅ Alt text for every non-text object, "mark as decorative" (exported as ARIA) `PP·GS·OO`
 - ✅ UI localisation — 11 languages (ES/EN/FR/DE/IT/PT/CA complete; GL/NL/EU/AR main interface, with English or Spanish fallback) `PP·GS·OO`
 - ✅ Content text direction (RTL) `PP·OO`
 - ✅ Accessibility checker — missing alt text, empty/untitled slides, duplicate titles, tables without header, low text contrast (WCAG) `PP·GS·OO`
+- ✅ Fix low contrast in one click (the same colours, darker or lighter) and a style guide: too many fonts, titles of different sizes, text too small or too long, objects almost aligned or off the slide `PP`
 - ✅ Reading order pane; Tab / Shift+Tab walks the objects of the slide `PP·OO`
 - ✅ Screen reader support in the editor — named slide and objects, live announcement of the selection `PP·GS·OO`
 - ✅ Editor appearance — light, dark, automatic (system) or custom accent and background `PP·GS·OO`
@@ -222,6 +233,8 @@ the origin of every requirement is traceable.
 - ✅ AI image generation (OpenRouter Image API, model configurable) `PP·GS`
 - ✅ AI speaker notes (one slide or all) and alt text for images `PP·GS`
 - ✅ AI authoring: whole decks from a brief or a document (txt/md/pdf) with 11 slide kinds laid out by Revela (stats, timeline, chart with data, table, quote…), optional AI images; improve slide; agenda; review quiz; assistant that edits the deck from plain-language requests (validated operations, one undo step) `PP·GS`
+- ✅ More design ideas with AI — new arrangements of the same objects, checked before they're applied `PP`
+- ✅ AI voice-over from the speaker notes: plays while presenting and goes into the exported MP4 `PP`
 
 ## 12. Platform
 - ✅ Static web app with automatic deployment (GitHub Pages) `GS`
@@ -234,3 +247,6 @@ the origin of every requirement is traceable.
 - ✅ Offline mode & installable app (service worker + manifest; works offline after one online visit) `PP·GS·OO`
 - ✅ Autosave to Google Drive and multi-device sync: saves a few seconds after each change, brings a newer version from another device, and asks when both changed `PP·GS`
 - ✅ Official site (revelaslides.com: home, plans, support; the app in `/app/`) built from the same repository (`tools/build-site.mjs`, Cloudflare Pages); the open edition links to it `—`
+- ✅ Learning platforms (LTI 1.3: Moodle, Canvas…) — dynamic registration, choosing a presentation as an activity, self-paced answers marked on the server and grades sent to the gradebook; share to Google Classroom `—`
+- ✅ Stock photos from Unsplash and Pexels (official edition), with the photographer's credit `PP·GS`
+- ✅ Your data (GDPR): download everything an account holds, or delete it `—`
