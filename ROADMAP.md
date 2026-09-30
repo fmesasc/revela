@@ -111,6 +111,7 @@ the origin of every requirement is traceable.
 - ✅ Formulas in table cells — `=SUM(ABOVE)`, cell references and ranges, SUM/AVERAGE/MIN/MAX/COUNT/PRODUCT/ROUND/ABS in Spanish or English, units kept, total row; results in the export, PowerPoint and ODP `PP·OO`
 - ✅ Waterfall (with totals) and funnel charts `PP`
 - ✅ PDFs and other files, dropped or inserted: a PDF as one of its pages, as the document to leaf through when presenting, as an icon, or one slide per page; any other file as an icon that downloads it `PP`
+- ✅ PDF animation steps — "page and zoom" in the timeline (on click, after the previous one, on clicking another object), the part chosen on the page; when presenting, drawn sharp with pdf.js with a bar to leaf through and zoom `—`
 - ✅ Crop a picture to an aspect ratio (1:1, 4:3, 16:9…) with framing; pictures exported to PowerPoint without stretching and with their crop (srcRect), read back when importing `PP·GS·OO`
 - ✅ Treemap and bubble charts (bubbles as PowerPoint's own chart, both ways) `PP`
 
