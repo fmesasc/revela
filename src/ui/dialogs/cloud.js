@@ -9,6 +9,7 @@ import * as cd from '../../io/cloud/clouddocs.js';
 import { t, currentLang } from '../../i18n/index.js';
 import { alertDialog, confirmDialog } from './dialog.js';
 import { openAccount } from './account.js';
+import { present } from '../shell/present.js';
 
 const ROLE_NAMES = { view: 'Puede ver', comment: 'Puede comentar', edit: 'Puede editar', owner: 'Propietario' };
 const LINK_NAMES = { none: 'Solo las personas añadidas', view: 'Cualquiera con el enlace puede ver', comment: 'Cualquiera con el enlace puede comentar', edit: 'Cualquiera con el enlace puede editar' };
@@ -170,10 +171,18 @@ export function mountCloudStatus() {
   paint();
 }
 
-// Opened with ?doc=… : sign in if needed, then open it.
+// Opened with ?doc=… : sign in if needed, then open it. With &lti=… (an activity
+// from Moodle or another learning platform) or &self=1, it starts at once for
+// answering its activities at one's own pace; with lti, Revela's server marks
+// each answer and sends the mark to the platform.
 export async function openFromLink(id = cd.docIdFrom()) {
   if (!id) return false;
-  try { await cd.openDoc(id); return true; }
+  const q = new URLSearchParams(location.search), lti = /^[\w-]{20,64}$/.test(q.get('lti') || '') ? q.get('lti') : null;
+  try {
+    await cd.openDoc(id);
+    if (lti || q.get('self') === '1') present({ selfPaced: true, fullscreen: false, ...(lti && { answer: (pollId, answer) => acc.api('lti/answer', { lti, pollId, answer }) }) });
+    return true;
+  }
   catch (e) {
     if (e.status === 401 && await confirmDialog(t('Esta presentación está compartida con personas concretas. Inicia sesión con tu cuenta de Google para abrirla.'))) {
       try { await acc.signIn(); await cd.openDoc(id); return true; } catch (err) { alertDialog(errorText(err)); }

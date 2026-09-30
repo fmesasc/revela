@@ -14,10 +14,14 @@ import { confirmDialog, alertDialog } from '../dialogs/dialog.js';
 // slide's auto-advance.
 // onRehearsal(times): what to do with the times instead of offering to save them.
 // fromCurrent: start at the slide being edited (PowerPoint's "From current slide").
-export function present({ rehearse = false, fullscreen = true, onEnd = null, onRehearsal = null, fromCurrent = false } = {}) {
+// selfPaced: the quizzes and activities are answered inside the slides (see
+// io/runtime/selfpaced.js); answer(pollId, answer) → Promise<{ score, sent }> marks
+// them elsewhere (the server, for a learning platform), else they're marked here.
+export function present({ rehearse = false, fullscreen = true, onEnd = null, onRehearsal = null, fromCurrent = false, selfPaced = false, answer = null } = {}) {
   const startAt = fromCurrent ? slidePaths(state.deck).get(state.ui.slideIndex) : null;
   const deck = rehearse ? { ...state.deck, slides: state.deck.slides.map(s => ({ ...s, autoSlide: 0 })) } : state.deck;
-  const url = URL.createObjectURL(new Blob([buildHTML(deck, { inApp: true })], { type: 'text/html' }));
+  window.__revelaAnswer = selfPaced && answer ? answer : undefined;
+  const url = URL.createObjectURL(new Blob([buildHTML(deck, { inApp: true, selfPaced })], { type: 'text/html' }));
 
   const overlay = document.createElement('div');
   overlay.id = 'present-overlay';

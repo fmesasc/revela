@@ -25,6 +25,7 @@
 //   POST /api/desktop/start    { nonce, challenge }     (the desktop app, before opening the browser)
 //   POST /api/desktop/approve  { nonce, code }          (the signed-in browser, after asking the user)
 //   POST /api/desktop/claim    { nonce, verifier }      (the desktop app: its session, once)
+//   …/api/lti/…                Moodle and other platforms (LTI 1.3: activities marked here, grades sent back; lti.js)
 //   …/api/team/…               teams: seats, members, brand kit, templates (teams.js)
 //   GET  /api/account/export   → everything the account holds (JSON)
 //   POST /api/account/delete   { confirm: email }       (deletes it all; from the website)
@@ -36,6 +37,7 @@
 import { verifyGoogleToken } from './auth.js';
 import { handleDocs } from './docs.js';
 import { handleTeams, teamStatus } from './teams.js';
+import { handleLti } from './lti.js';
 
 const enc = new TextEncoder();
 const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -273,6 +275,8 @@ export async function handleApi(req, env, url) {
   const json = (o, status = 200, extra = {}) => new Response(JSON.stringify(o), { status, headers: { ...cors, 'Content-Type': 'application/json', ...extra } });
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   const path = url.pathname.replace(/^\/api/, '');
+  // LTI (learning platforms): their own forms and signed tokens, no session here (lti.js).
+  if (path.startsWith('/lti/')) return handleLti(req, env, url, s.site);
   // Stripe's own calls: signed, no browser involved.
   if (path === '/billing/webhook' && req.method === 'POST') return stripeWebhook(req, env, json);
   // Anything that changes something, sent with the cookie, must come from Revela's site (no cross-site requests).

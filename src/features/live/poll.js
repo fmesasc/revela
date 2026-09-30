@@ -34,38 +34,10 @@ export function setPoll(id, props) {
 // indices (multi), a number 1-5 (rating) or a string (word). → counts.
 // A quiz (Kahoot style): votes { voter: { a: option, t: ms after it started, n: nickname } };
 // right answers score 500 to 1000 points, more the faster; wrong ones 0.
-// Activities with right answers, answered from the phone (none of the answers
-// reach it): put in order, match pairs, fill in the gaps, label a picture.
-// Each answer is a list of texts; each item right or wrong, and the score is
-// the share right (1000 points for all of them). Self-contained, like tallyVotes.
-//   order  options: the items in the right order
-//   match  options: "left = right" lines
-//   gaps   text: "The capital of France is [Paris]" ([a|b]: either is right)
-//   label  options: the labels; points: [{ x, y }] in % of image, one per label
-export var ACTIVITIES = ['order', 'match', 'gaps', 'label'];
-export function gradeActivity(p, a) {
-  var norm = function (s) { return String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); };
-  var o = p.options || [], per = [];
-  a = Array.isArray(a) ? a : [];
-  if (p.kind === 'order' || p.kind === 'label') per = o.map(function (x, i) { return norm(a[i]) !== '' && norm(a[i]) === norm(x); });
-  else if (p.kind === 'match') per = o.map(function (l, i) { var r = String(l).split('=').slice(1).join('='); return norm(a[i]) !== '' && norm(a[i]) === norm(r); });
-  else if (p.kind === 'gaps') { var re = /\[([^\]]+)\]/g, m, i = 0; while ((m = re.exec(String(p.text || '')))) { var got = norm(a[i++]); per.push(got !== '' && m[1].split('|').some(function (alt) { return norm(alt) === got; })); } }
-  var ok = per.filter(Boolean).length;
-  return { per: per, score: per.length ? ok / per.length : 0 };
-}
-// What the phones get: the items shuffled (the same way every time), never the answers.
-export function publicActivity(p) {
-  var seed = 7, id = String(p.pollId || ''), o = p.options || [];
-  for (var i = 0; i < id.length; i++) seed = (seed * 31 + id.charCodeAt(i)) >>> 0;
-  var rnd = function () { seed = (seed * 1103515245 + 12345) >>> 0; return seed / 4294967296; };
-  var shuffle = function (arr) { var a = arr.slice(); for (var k = a.length - 1; k > 0; k--) { var j = Math.floor(rnd() * (k + 1)), t = a[k]; a[k] = a[j]; a[j] = t; } return a; };
-  var split = function (l) { var x = String(l).split('='); return [x[0].trim(), x.slice(1).join('=').trim()]; };
-  if (p.kind === 'order') { var s = shuffle(o); if (o.length > 1 && s.join('\u0001') === o.join('\u0001')) s.push(s.shift()); return { items: s }; }
-  if (p.kind === 'match') { var pr = o.map(split); return { left: pr.map(function (x) { return x[0]; }), right: shuffle(pr.map(function (x) { return x[1]; })) }; }
-  if (p.kind === 'gaps') { var parts = [], last = 0, t = String(p.text || ''), re = /\[([^\]]+)\]/g, m; while ((m = re.exec(t))) { parts.push(t.slice(last, m.index), null); last = re.lastIndex; } parts.push(t.slice(last)); return { parts: parts }; }
-  if (p.kind === 'label') return { image: p.image || '', points: (p.points || []).slice(0, o.length), labels: shuffle(o) };
-  return null;
-}
+// Activities with right answers (put in order, match, fill in the gaps, label a
+// picture): marking and what the phones get, in grading.js (the server marks too).
+import { ACTIVITIES, gradeActivity, publicActivity, gradeAnswer } from './grading.js';
+export { ACTIVITIES, gradeActivity, publicActivity, gradeAnswer };
 export function tallyVotes(poll, votes) {
   var kind = poll.kind || 'choice', n = (poll.options || []).length, counts = [], words = {}, sum = 0, voters = 0;
   if (kind === 'order' || kind === 'match' || kind === 'gaps' || kind === 'label') {

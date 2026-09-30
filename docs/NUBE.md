@@ -78,6 +78,16 @@ las tenía compartidas) y su lista de compartidas, y se cancela la suscripción 
 Stripe (las facturas las conserva Stripe). Hay que escribir el propio correo y
 hacerlo desde la web (no desde un token de la aplicación de escritorio).
 
+**Moodle y otras plataformas (LTI 1.3).** La administración de la plataforma
+registra Revela pegando `https://revelaslides.com/api/lti/register` (registro
+dinámico). El profesorado añade una actividad externa y pega el enlace de una
+presentación compartida con «Cualquiera con el enlace puede ver». Cada alumno la
+abre a su ritmo, responde los cuestionarios y actividades en las diapositivas, el
+servidor corrige cada respuesta (con la presentación que tiene él, no la del
+navegador; un intento por actividad) y manda la nota al libro de calificaciones.
+Todo va firmado: los tokens de la plataforma se comprueban con sus claves y los
+nuestros se firman con `LTI_PRIVATE_JWK` (secreto de Cloudflare).
+
 **Pagos.** `/api/billing/checkout` crea una página de pago de Stripe con el
 **precio de Stripe** (el navegador solo elige el producto). Los planes y
 créditos solo cambian cuando llega el aviso **firmado** de Stripe

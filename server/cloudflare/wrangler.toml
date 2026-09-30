@@ -105,3 +105,13 @@ class_name = "Team"
 [[migrations]]
 tag = "v5"
 new_sqlite_classes = ["Team"]
+
+# LTI 1.3 (lti.js): platforms, logins and students' sessions. Secret: LTI_PRIVATE_JWK
+# (`node tools/lti-key.mjs | npx wrangler secret put LTI_PRIVATE_JWK`).
+[[durable_objects.bindings]]
+name = "LTI"
+class_name = "LtiStore"
+
+[[migrations]]
+tag = "v6"
+new_sqlite_classes = ["LtiStore"]

@@ -13,7 +13,8 @@ import { state } from '../../core/store.js';
 import { REVEAL, KATEX, MODEL_VIEWER, GIFUCT, PDFJS } from '../../core/vendor.js';
 import { download, slug } from '../files.js';
 import { TRIGGER_JS, CAMERA_JS, pollJS, liveDataJS, LIGHTBOX_JS, overviewJS } from '../runtime/scripts.js';
-import { ACTIVITIES } from '../../features/live/poll.js';
+import { ACTIVITIES, publicActivity, gradeAnswer, gradeActivity } from '../../features/live/poll.js';
+import { selfPacedRuntime } from '../runtime/selfpaced.js';
 import { createMediaPlayer, revelaMediaRuntime } from '../runtime/media.js';
 import { needsPlayer, mediaConfig } from '../../features/live/media.js';
 import { modelAttrsHTML, bleedBox } from '../../features/content/model3d.js';
@@ -257,7 +258,7 @@ function blockHTMLRaw(b, slide) {
       + `style="${box(b)}display:grid;grid-template-columns:1fr auto;gap:1em;font-size:${b.fontSize || 32}px">`
       + `<div style="display:flex;flex-direction:column;min-width:0"><div style="font-weight:700;margin-bottom:.5em">${esc(b.question || '')}</div>`
       + `<div class="rv-poll-res" style="flex:1;min-height:0"></div></div>`
-      + `<div style="text-align:center;font-size:18px;align-self:center"><canvas width="220" height="220" style="background:#fff;border-radius:8px"></canvas>`
+      + `<div class="rv-poll-qr" style="text-align:center;font-size:18px;align-self:center"><canvas width="220" height="220" style="background:#fff;border-radius:8px"></canvas>`
       + `<div class="rv-poll-url" style="margin-top:6px;opacity:.8"></div><div>Código <b class="rv-poll-code" style="letter-spacing:3px">·····</b></div></div></div>`;
   if (b.type === 'camera')   // Cameo: filled with the presenter's camera when the slide is shown
     return `<video${a} data-camera autoplay muted playsinline style="${box(b)}object-fit:cover;background:#223;`
@@ -422,7 +423,7 @@ function revealOptions(deck, inApp) {
 export function buildHTML(deck = state.deck, opts = {}) {
   return dedupeMedia(buildHTMLRaw(deck, opts));
 }
-function buildHTMLRaw(deck, { inApp = false } = {}) {
+function buildHTMLRaw(deck, { inApp = false, selfPaced = false } = {}) {
   const { w, h } = deck.size;
   const figMap = figuresMap(deck);
   // Vertical stacks: a slide marked `vertical` goes below the previous visible one.
@@ -547,7 +548,9 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${hasInlineMath ? 'window.addEventListener("load",function(){window.renderMathInElement&&renderMathInElement(document.body,{delimiters:[{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}],throwOnError:false});});' : ''}
  ${hasTrig ? TRIGGER_JS : ''}
  ${hasCam ? CAMERA_JS : ''}
- ${hasPoll ? pollJS(currentPalette(deck).accents, { classroom: !!deck.classroom }) : ''}
+ ${hasPoll && !selfPaced ? pollJS(currentPalette(deck).accents, { classroom: !!deck.classroom }) : ''}
+ ${selfPaced && hasPoll ? `(${selfPacedRuntime})(${publicActivity}, (function () { var gradeActivity = ${gradeActivity}; return ${gradeAnswer}; })(), ${JSON.stringify({ check: t('Comprobar'), allRight: t('¡Todo bien!'), partly: t('{n} % de aciertos'),
+   wrong: t('No es correcto'), sent: t('Nota enviada'), failed: t('No se pudo enviar la respuesta. Inténtalo otra vez.'), live: t('Esta votación es en directo, con quien presenta.') })});` : ''}
  ${hasLive ? liveDataJS() : ''}
  ${hasZoomable ? LIGHTBOX_JS : ''}
  ${canvas ? `${canvasRuntimeDeps()}\ncanvasRuntime(${JSON.stringify(groups.map(g => frameOf(g[0], deck.slides.indexOf(g[0]), deck.size)))}, ${w}, ${h});` : ''}

@@ -103,6 +103,38 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     W.localStorage.removeItem('revela.poll.' + q.pollId); W.localStorage.removeItem('revela.poll.' + o.pollId);
   });
 
+  await test('a su ritmo: las actividades se responden dentro de las diapositivas (y se corrigen fuera si hay plataforma)', async () => {
+    reset(); const P = R.poll;
+    P.addPoll({ kind: 'quiz', question: 'Capital', options: ['Roma', 'París'], correct: [1] });
+    R.slides.addSlide(); P.addPoll({ kind: 'order', question: 'Ordena', options: ['Primavera', 'Verano', 'Otoño'] });
+    R.slides.addSlide(); P.addPoll({ kind: 'choice', question: 'En directo', options: ['a', 'b'] }); await sleep(10);
+    const html = R.io.buildHTML(R.state.deck, { selfPaced: true });
+    assert(!/new Peer\(/.test(html) && /function selfPacedRuntime/.test(html), 'sin conexión con móviles: todo en la página');
+    for (const sc of new DOMParser().parseFromString(html, 'text/html').querySelectorAll('script:not([src])')) { try { new Function(sc.textContent); } catch (e) { assert(false, 'código con error: ' + e.message); } }
+    const asked = []; window.__revelaAnswer = (id, a) => { asked.push([id, a]); return Promise.resolve({ score: 1, sent: true }); };
+    const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:640px;height:360px;opacity:0';
+    f.src = URL.createObjectURL(new Blob([html], { type: 'text/html' })); document.body.appendChild(f);
+    let w; for (let i = 0; i < 80 && !((w = f.contentWindow).Reveal?.isReady?.() && w.document.querySelector('.rv-poll button')); i++) await sleep(100);
+    try {
+      const polls = [...w.document.querySelectorAll('.rv-poll')];
+      eq(getComputedStyle(polls[0].querySelector('.rv-poll-qr')).display, 'none', 'sin QR');
+      polls[0].querySelectorAll('.rv-poll-res button')[1].click(); await sleep(30);
+      eq(JSON.stringify(asked[0]), JSON.stringify([JSON.parse(polls[0].dataset.poll).pollId, 1]), 'la respuesta va a quien la corrige (la plataforma, por el servidor): ' + polls[0].querySelector('.rv-poll-res').innerHTML.slice(0, 300));
+      assert(/¡Todo bien!.*Nota enviada/.test(polls[0].querySelector('.rv-self-result')?.textContent), 'y se ve el resultado: ' + polls[0].innerHTML.slice(-400));
+      assert([...polls[0].querySelectorAll('button')].every(b => b.disabled), 'un intento');
+      assert(/en directo/.test(polls[2]?.textContent), 'las votaciones en directo lo dicen');
+      delete window.__revelaAnswer;                                          // (without a platform: marked here)
+      w.sessionStorage.clear(); f.contentWindow.location.reload(); await sleep(50);
+      for (let i = 0; i < 80 && !(f.contentWindow.Reveal?.isReady?.() && f.contentWindow.document.querySelector('.rv-self-check')); i++) await sleep(100);
+      const ord = f.contentWindow.document.querySelectorAll('.rv-poll')[1], rows = () => [...ord.querySelectorAll('span')].map(x => x.textContent);
+      const want = ['Primavera', 'Verano', 'Otoño'];
+      for (let k = 0; k < 6 && rows().join() !== want.join(); k++) { const i = rows().findIndex((t, j) => t !== want[j]), j = rows().indexOf(want[i]); ord.querySelectorAll('button')[j * 2].click(); await sleep(5); }
+      eq(rows().join(), want.join(), 'se ordena con las flechas');
+      ord.querySelector('.rv-self-check').click(); await sleep(30);
+      assert(/¡Todo bien!/.test(ord.querySelector('.rv-self-result')?.textContent), 'sin plataforma se corrige en la página: ' + ord.innerHTML.slice(-300));
+    } finally { f.remove(); delete window.__revelaAnswer; }
+  });
+
   await test('votación en directo: recuento, resultados, export y QR', async () => {
     reset(); const P = R.poll;
     const c = P.tallyVotes({ kind: 'choice', options: ['a', 'b', 'c'] }, { v1: 0, v2: 2, v3: 2, v4: 9 });

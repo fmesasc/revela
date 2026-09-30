@@ -6,6 +6,10 @@ import { esc } from '../../core/text.js';
 import { state } from '../../core/store.js';
 import { tallyVotes, savedVotes, GRADED } from '../../features/live/poll.js';
 import { t } from '../../i18n/index.js';
+import { alertDialog } from './dialog.js';
+import { hasAccounts } from '../../io/cloud/account.js';
+import { cloudDoc, docLink } from '../../io/cloud/clouddocs.js';
+import { openCloudShare } from './cloud.js';
 
 export function classResults(deck = state.deck) {
   const polls = deck.slides.flatMap((s, i) => s.blocks.filter(b => b.type === 'poll' && GRADED.includes(b.kind)).map(b => ({ b, slide: i + 1 })));
@@ -40,4 +44,14 @@ export function openClassResults() {
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + classResultsCSV()], { type: 'text/csv' }));
     a.download = 'resultados-aula.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   });
+}
+
+// Google Classroom's share page, with the presentation's link (from Revela's
+// cloud, shared by link: then students open it at their own pace, ?self=1).
+export function shareToClassroom() {
+  const d = hasAccounts() && cloudDoc();
+  if (!d) return hasAccounts() ? openCloudShare() : alertDialog(t('Para compartirla en Classroom, súbela a tu web o a Drive (Archivo ▸ Compartir) y comparte ese enlace; o usa revelaslides.com, que la guarda en la nube y la comparte directamente.'));
+  if (d.role === 'owner' && (d.sharing?.link || 'none') === 'none') return alertDialog(t('Primero compártela por enlace (Personas ▸ Enlace: «Cualquiera con el enlace puede ver») para que el alumnado pueda abrirla.')).then(() => openCloudShare());
+  const url = docLink(d.id) + '&self=1';
+  window.open('https://classroom.google.com/share?' + new URLSearchParams({ url, title: state.deck.name || 'Revela' }), '_blank', 'noopener,width=640,height=640');
 }

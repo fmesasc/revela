@@ -32,7 +32,8 @@ import { verifyGoogleToken, resetCerts } from './auth.js';
 import { handleApi, Account, Budget, DesktopLink } from './api.js';
 import { CloudDoc } from './docs.js';
 import { Team } from './teams.js';
-export { CollabRoom, ShareBox, Limits, Account, Budget, DesktopLink, CloudDoc, Team, verifyGoogleToken, resetCerts };
+import { LtiStore } from './lti.js';
+export { CollabRoom, ShareBox, Limits, Account, Budget, DesktopLink, CloudDoc, Team, LtiStore, verifyGoogleToken, resetCerts };
 
 const box = (env, id) => env.SHAREBOX.get(env.SHAREBOX.idFromName(id));
 // Who counts for the daily limits: the Google account, else the key, else the address.

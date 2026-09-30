@@ -11,7 +11,7 @@ name: Server
 on:
   push:
     branches: [main]
-    paths: ['server/cloudflare/**', 'src/features/live/collabsync.js', 'tests/server.mjs', 'tests/server-api.mjs', '.github/workflows/server.yml']
+    paths: ['server/cloudflare/**', 'src/features/live/collabsync.js', 'tests/server.mjs', 'tests/server-api.mjs', 'tests/server-lti.mjs', 'src/features/live/grading.js', '.github/workflows/server.yml']
   workflow_dispatch:
 
 permissions:
@@ -32,7 +32,7 @@ jobs:
         with:
           node-version: 22
       - name: Tests
-        run: node tests/server.mjs && node tests/server-api.mjs
+        run: node tests/server.mjs && node tests/server-api.mjs && node tests/server-lti.mjs
       - name: Deploy to Cloudflare
         if: env.HAS_TOKEN == 'true'
         uses: cloudflare/wrangler-action@v3
