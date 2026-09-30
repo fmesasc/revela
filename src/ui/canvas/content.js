@@ -1,6 +1,8 @@
 // What each object shows on the canvas and how it is edited in place: text,
 // equations (KaTeX), code (highlight.js), tables, embeds, 3D models, slide links.
 
+import { diagramHTML, diagramSig } from '../../render/diagrams.js';
+import { diagramOpts } from '../../features/document/blocks.js';
 import { showTextRuler, hideTextRuler } from './textruler.js';
 import { tabRuntime } from '../../io/runtime/tabs.js';
 import { sizeText } from '../../features/content/files.js';
@@ -182,6 +184,7 @@ export function content(b) {
   }
   if (b.type === 'table') return tableContent(b);
   if (b.type === 'file') { const d = document.createElement('div'); d.className = 'file-blk'; paintFile(d, b); return d; }
+  if (b.type === 'diagram') { const d = document.createElement('div'); d.className = 'diagram-blk'; d.dataset.sig = diagramSig(b); d.innerHTML = diagramHTML(b, diagramOpts()); return d; }
   if (b.type === 'chart') {
     const d = document.createElement('div'); d.className = 'chart';
     d.dataset.sig = chartSig(b); d.innerHTML = chartSVG(b); return d;

@@ -125,3 +125,4 @@
 #text-ruler .tr-kind{position:absolute;left:-26px;top:-1px;width:22px;height:22px;padding:0;border:1px solid #b9bec6;border-radius:3px;background:#fff;color:#222;font:700 13px/1 system-ui,sans-serif;cursor:pointer}
 #text-ruler .tr-stop{position:absolute;bottom:-1px;transform:translateX(-50%);font:700 13px/1 system-ui,sans-serif;color:#1e2a3a;cursor:ew-resize;padding:0 2px}
 #text-ruler .tr-stop.off{opacity:.3}
+.block .diagram-blk{width:100%;height:100%}

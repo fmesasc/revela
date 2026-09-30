@@ -1,7 +1,8 @@
 // Block insertion and manipulation.
 
+import { diagramLayout, DIAGRAM_SAMPLES, DEFAULT_DIAGRAM_TEXT } from '../../render/diagrams.js';
 import { cellNumber } from '../../core/formulas.js';
-import { plainText } from '../../core/text.js';
+import { plainText, esc } from '../../core/text.js';
 import { state, commit, currentSlide, selectedBlock,
   selectedBlocks, selectedIds, setSelection, setMulti } from '../../core/store.js';
 import { DEFAULT_SHADOW } from '../../render/svg.js';
@@ -149,46 +150,49 @@ export function setBoxStyle(props) {
   commit(() => Object.assign(b, props));
 }
 
-// SmartArt‑lite: a row of boxes (process, with arrows) or a column (list).
-export function addDiagram(kind = 'process') {
-  const { w, h } = state.deck.size;
-  commit(() => {
-    const s = currentSlide();
-    const n = 3, box = (x, y, bw, bh, i) => ({
-      id: uid(), type: 'text', x, y, w: bw, h: bh, rotation: 0, animation: null,
-      fontSize: 26, textAlign: 'center', html: `Paso ${i + 1}`,
-      bg: '#3f6497', borderColor: '#1e2a3a', radius: 10,
-    });
-    const ids = [];
-    if (kind === 'hierarchy') {
-      const top = box((w - 240) / 2, h * 0.14, 240, 100, 0); top.html = 'Principal'; s.blocks.push(top);
-      const cn = 3, cw = 200, ch = 90, gap = 40, totalW = cn * cw + (cn - 1) * gap, x0 = (w - totalW) / 2, y = h * 0.56;
-      for (let i = 0; i < cn; i++) {
-        const c = box(x0 + i * (cw + gap), y, cw, ch, i); c.html = `Sub ${i + 1}`; s.blocks.push(c);
-        s.blocks.push({ id: uid(), type: 'connector', from: top.id, to: c.id, color: '#8a8a8a', arrow: true, route: 'elbow', x: 0, y: 0, w, h, rotation: 0, animation: null });
-      }
-    } else if (kind === 'cycle') {
-      const bw = 220, bh = 100, R = Math.min(w, h) * 0.32, cx = w / 2, cy = h / 2;
-      for (let i = 0; i < n; i++) {
-        const ang = -Math.PI / 2 + i * 2 * Math.PI / n;
-        const b = box(cx + R * Math.cos(ang) - bw / 2, cy + R * Math.sin(ang) - bh / 2, bw, bh, i);
-        s.blocks.push(b); ids.push(b.id);
-      }
-      for (let i = 0; i < n; i++)
-        s.blocks.push({ id: uid(), type: 'connector', from: ids[i], to: ids[(i + 1) % n], color: '#8a8a8a', arrow: true, x: 0, y: 0, w, h, rotation: 0, animation: null });
-    } else if (kind === 'list') {
-      const bw = 640, bh = 90, gap = 24, totalH = n * bh + (n - 1) * gap;
-      let y = (h - totalH) / 2;
-      for (let i = 0; i < n; i++) { const b = box((w - bw) / 2, y, bw, bh, i); s.blocks.push(b); ids.push(b.id); y += bh + gap; }
-    } else {
-      const bw = 280, bh = 130, gap = 70, totalW = n * bw + (n - 1) * gap;
-      const x0 = (w - totalW) / 2, y = (h - bh) / 2;
-      for (let i = 0; i < n; i++) { const b = box(x0 + i * (bw + gap), y, bw, bh, i); s.blocks.push(b); ids.push(b.id); }
-      for (let i = 0; i < n - 1; i++)
-        s.blocks.push({ id: uid(), type: 'connector', from: ids[i], to: ids[i + 1], color: '#8a8a8a', arrow: true, x: 0, y: 0, w, h, rotation: 0, animation: null });
+// Diagrams (SmartArt): one object, its text as an outline, laid out and
+// coloured by render/diagrams.js. Its colours follow the theme's.
+export const diagramOpts = (deck = state.deck) => ({ accents: currentPalette(deck).accents, fg: deckFg(deck) });
+export function addDiagram(layout = 'process') {
+  const { w, h } = state.deck.size, bw = Math.round(w * 0.78), bh = Math.round(h * 0.62);
+  // (The sample text in the app's language, line by line, keeping its indentation.)
+  const text = (DIAGRAM_SAMPLES[layout] || DEFAULT_DIAGRAM_TEXT).split('\n').map(l => l.match(/^\s*/)[0] + t(l.trim())).join('\n');
+  insert({ id: uid(), type: 'diagram', layout, colors: 'colorful', text,
+    x: Math.round((w - bw) / 2), y: Math.round(h * 0.22), w: bw, h: bh, rotation: 0, animation: null });
+}
+export function setDiagram(id, props) {
+  const b = currentSlide().blocks.find(x => x.id === id); if (!b || b.type !== 'diagram') return;
+  commit(() => { for (const [k, v] of Object.entries(props)) if (v == null || v === false) delete b[k]; else b[k] = v; });
+}
+// "Convert to shapes": each part a shape of its own (boxes keep their text inside), all grouped, in its place.
+export function diagramToShapes(id) {
+  const s = currentSlide(), at = s.blocks.findIndex(x => x.id === id), b = s.blocks[at]; if (!b || b.type !== 'diagram') return;
+  const parts = diagramLayout(b, diagramOpts()), g = uid(), made = [], f = v => +v.toFixed(2);
+  const htmlOf = p => `<div><b>${esc(p.text)}</b></div>` + (p.sub ? p.sub.split('\n').map(l => `<div style="font-size:${Math.max(10, Math.round(p.fs * 0.72))}px">${esc(l)}</div>`).join('') : '');
+  const texts = parts.filter(p => p.type === 'text');
+  for (const p of parts) {
+    if (p.type === 'text') continue;
+    const box = p.type === 'poly' ? (() => { const xs = p.pts.map(q => q[0]), ys = p.pts.map(q => q[1]), x = Math.min(...xs), y = Math.min(...ys);
+      return { x, y, w: Math.max(2, Math.max(...xs) - x), h: Math.max(2, Math.max(...ys) - y) }; })() : { x: p.x, y: p.y, w: p.w, h: p.h };
+    const o = { id: uid(), type: 'shape', groupId: g, x: Math.round(b.x + box.x), y: Math.round(b.y + box.y), w: Math.round(box.w), h: Math.round(box.h), rotation: 0, animation: null,
+      fill: p.fill, stroke: p.stroke === 'none' ? (p.fill === 'none' ? '#888888' : p.fill) : p.stroke, strokeWidth: p.stroke === 'none' ? 0 : (p.sw || 2) };
+    if (p.type === 'rect') Object.assign(o, p.r > 1 ? { shape: 'rounded', radius: Math.round(p.r) } : { shape: 'rect' });
+    else if (p.type === 'ellipse') o.shape = 'ellipse';
+    else {
+      const pts = p.pts.map(([x, y]) => [f((x - box.x) / box.w * 100), f((y - box.y) / box.h * 100)]);
+      Object.assign(o, { shape: 'custom', path: 'M' + pts.map(q => q.join(' ')).join('L') + (p.closed ? 'Z' : ''), ...(p.closed && { rings: [pts] }) });
+      if (!p.closed) { o.fill = 'none'; o.stroke = p.stroke; o.strokeWidth = p.sw || 2; }
     }
-    setSelection(null);
-  });
+    if (p.opacity != null && p.opacity < 1) o.opacity = Math.round(p.opacity * 100);
+    // Its text, if a text box sits on it (the box's own words, in the shape).
+    const t = (p.type === 'rect' || p.type === 'ellipse' || p.closed) && texts.find(q => !q.used && q.i === p.i && q.x >= box.x - 1 && q.y >= box.y - 1 && q.x + q.w <= box.x + box.w + 1 && q.y + q.h <= box.y + box.h + 1);
+    if (t) { t.used = true; Object.assign(o, { html: htmlOf(t), fontSize: t.fs, color: t.color, textAlign: t.align }); }
+    made.push(o);
+  }
+  for (const t of texts.filter(q => !q.used))
+    made.push({ id: uid(), type: 'text', groupId: g, x: Math.round(b.x + t.x), y: Math.round(b.y + t.y), w: Math.round(t.w), h: Math.round(t.h), rotation: 0, animation: null,
+      html: htmlOf(t), fontSize: t.fs, color: t.color, textAlign: t.align, vAlign: t.valign === 'bottom' ? 'bottom' : t.valign === 'top' ? 'top' : 'middle' });
+  commit(() => { s.blocks.splice(at, 1, ...made); state.ui.selection = made[0]?.id || null; state.ui.multi = made.map(x => x.id); });
 }
 
 export function addTable() { insert(tableBlock()); }

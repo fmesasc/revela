@@ -21,7 +21,8 @@ reveal.js, de modo que el resultado es una página web estándar y autónoma.
 
 - **Editor completo tipo ofimática** (Archivo, Inicio, Insertar, Dibujar,
   Diseño, Transiciones, Animaciones, Ver, IA): texto con formato, listas
-  anidadas, estilos, columnas, WordArt, más de 70 formas (con texto dentro,
+  anidadas, estilos, columnas, WordArt, diagramas tipo SmartArt (15 diseños que
+  se escriben como un esquema, editables en PowerPoint), más de 70 formas (con texto dentro,
   botones de acción, forma libre) y combinar formas, tablas con celdas
   combinadas, estilos y fórmulas (=SUMA(ARRIBA)…), gráficos (varias series,
   combinados, apilados, 100 %, histograma, cascada, embudo, rectángulos,

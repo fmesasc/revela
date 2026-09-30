@@ -2,6 +2,9 @@
 // direct manipulation — drag from anywhere on a block, snap to alignment
 // guides, resize from the corners, edit text on double‑click.
 
+import { diagramHTML, diagramSig } from '../../render/diagrams.js';
+import { diagramOpts } from '../../features/document/blocks.js';
+import { openDiagramText } from '../dialogs/diagram.js';
 import { openFile } from '../../features/content/files.js';
 import { shortSig } from '../../core/text.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
@@ -301,6 +304,9 @@ function reconcile(b) {
     const d = el.querySelector('.shape'); const sig = shapeSig(b);
     if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = shapeSVG(b); }
     paintShapeText(el, b);
+  } else if (b.type === 'diagram') {
+    const d = el.querySelector('.diagram-blk'), sig = diagramSig(b) + JSON.stringify(diagramOpts());
+    if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = diagramHTML(b, diagramOpts()); }
   } else if (b.type === 'file') {
     const d = el.querySelector('.file-blk'); if (d && d.dataset.sig !== fileSig(b)) paintFile(d, b);
   } else if (b.type === 'table') {
@@ -376,7 +382,8 @@ function blockEl(b) {
   else if (hasShapeText(b)) { paintShapeText(el, b); setupText(b, el); }
   else if (b.type === 'model') setupModel(el);
   else if (b.type === 'embed') setupEmbed(el);
-  else if (b.type === 'file') el.addEventListener('dblclick', () => openFile(el._b));   // (double-click: open or download it)
+  else if (b.type === 'file') el.addEventListener('dblclick', () => openFile(el._b));
+  else if (b.type === 'diagram') el.addEventListener('dblclick', () => openDiagramText(el._b));   // (double-click: its text)   // (double-click: open or download it)
   else if (b.type === 'table') setupTable(el, b);
   else if (b.type === 'code') setupCode(el, b);
   else if (b.type === 'math') setupMath(el, b);

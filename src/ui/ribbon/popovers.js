@@ -1,6 +1,7 @@
 // Ribbon group launchers (the small arrow in a group's corner, as in Office)
 // and the galleries they open: symbols, icons, WordArt, palettes, fonts, layouts.
 
+import { DIAGRAM_LAYOUTS, DIAGRAM_SAMPLES, DEFAULT_DIAGRAM_TEXT, diagramHTML } from '../../render/diagrams.js';
 import { esc } from '../../core/text.js';
 import { state, selectedBlock, currentSlide } from '../../core/store.js';
 import { ensureLayouts, applyLayout, resetSlide, editLayout, allMasters, masterOf } from '../../features/document/master.js';
@@ -37,6 +38,10 @@ export const POPS = {
   // Insert ▸ More shapes: every shape, by kind.
   shapes: () => SHAPE_CATALOG.map(([cat, list]) => `<h4>${t(cat)}</h4><div class="shape-pop">`
     + list.map(([k, l]) => `<button data-shape-pick="${k}" type="button" title="${esc(t(l))}">${shapeThumb(k)}</button>`).join('') + '</div>').join(''),
+  // Insert ▸ Diagram: every layout, drawn small with the theme's colours.
+  diagrams: () => DIAGRAM_LAYOUTS.map(([cat, list]) => `<h4>${t(cat)}</h4><div class="dg-pop">`
+    + list.map(([k, l]) => `<button data-diagram-pick="${k}" type="button" title="${esc(t(l))}"><span class="dg-thumb" style="background:${esc(currentSlide()?.background || "#1b1f26")}">${diagramHTML({ layout: k, colors: 'colorful', w: 600, h: 340,
+      text: (DIAGRAM_SAMPLES[k] || DEFAULT_DIAGRAM_TEXT).split('\n').filter(l => !/^\s/.test(l) || k === 'hierarchy' || k === 'radial').slice(0, 7).join('\n') }, blocks.diagramOpts())}</span><span>${esc(t(l))}</span></button>`).join('') + '</div>').join(''),
   // "New slide ▾": the layouts, as in PowerPoint.
   newslide: () => `<h4>${t('Nueva diapositiva')}</h4><div class="layout-grid">`
     + allMasters().map((m, i, ms) => (ms.length > 1 ? `<div class="layout-master">${esc(m.name || (i ? `${t('Patrón')} ${i + 1}` : t('Patrón')))}</div>` : '')
@@ -107,6 +112,8 @@ export function togglePopover(launcher, type) {
   });
   pop.querySelectorAll('[data-layout]').forEach(x =>
     x.addEventListener('click', () => { applyLayout(x.dataset.layout); closePopover(); }));
+  pop.querySelectorAll('[data-diagram-pick]').forEach(x =>
+    x.addEventListener('click', () => { closePopover(); blocks.addDiagram(x.dataset.diagramPick); }));
   pop.querySelectorAll('[data-shape-pick]').forEach(x =>
     x.addEventListener('click', () => { closePopover(); if (x.dataset.shapePick === 'freeform') startFreeform(); else blocks.addShape(x.dataset.shapePick); }));
   pop.querySelectorAll('[data-newslide]').forEach(x =>

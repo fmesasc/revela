@@ -3,6 +3,8 @@
 // ribbon with all of its options, so nothing needs a right click. It goes
 // away when nothing is selected. Several objects: arranging them.
 
+import { DIAGRAM_LAYOUTS, DIAGRAM_COLORS } from '../../render/diagrams.js';
+import { openDiagramText } from '../dialogs/diagram.js';
 import * as files from '../../features/content/files.js';
 import { modelClips } from '../canvas/mediaview.js';
 import { shortSig } from '../../core/text.js';
@@ -36,7 +38,7 @@ import { MAP_SCOPES } from '../../features/content/maps.js';
 import { openObjectLink } from '../dialogs/objlink.js';
 import { t } from '../../i18n/index.js';
 
-const TITLES = { file: 'Archivo', shape: 'Forma', image: 'Imagen', model: 'Modelo 3D', video: 'Vídeo', audio: 'Audio', text: 'Cuadro de texto', table: 'Tabla', chart: 'Gráfico',
+const TITLES = { diagram: 'Diagrama', file: 'Archivo', shape: 'Forma', image: 'Imagen', model: 'Modelo 3D', video: 'Vídeo', audio: 'Audio', text: 'Cuadro de texto', table: 'Tabla', chart: 'Gráfico',
   math: 'Ecuación', code: 'Código', poll: 'Votación', embed: 'Web', icon: 'Icono', camera: 'Cámara', slideref: 'Zoom', figindex: 'Índice', ink: 'Dibujo', connector: 'Conector', timer: 'Cuenta atrás' };
 // Every shape once (the catalogue's first name for each).
 const SHAPES = Object.entries(SHAPE_NAMES).filter(([k]) => !isLineShape(k) && k !== 'freeform');
@@ -139,6 +141,12 @@ function groupsFor(b) {
       btn('remove', 'Quitar fila', () => blocks.tableDelRow()), btn('remove', 'Quitar columna', () => blocks.tableDelCol())]],
     ['Estilo', [btn('title', 'Encabezado', () => blocks.tableToggleHeader(), !!b.header), btn('palette', 'Estilo de tabla', () => openTableStyle(b)), btn('bar_chart', 'Crear gráfico', () => blocks.chartFromTable())]],
     ['Cálculos', [btn('functions', 'Fila de totales', () => blocks.tableAddTotal()), btn('help', 'Fórmulas', () => formulaHelp())]]);
+  else if (b.type === 'diagram') G.push(
+    ['Diagrama', [['select', 'Diseño', DIAGRAM_LAYOUTS.flatMap(([, l]) => l), b.layout || 'process', v => blocks.setDiagram(b.id, { layout: v })],
+      ['select', 'Colores', DIAGRAM_COLORS, b.colors || 'colorful', v => blocks.setDiagram(b.id, { colors: v })],
+      btn('edit_note', 'Editar texto', () => openDiagramText(b))]],
+    ['Organizar', [btn('format_list_numbered', 'Uno a uno al presentar', () => blocks.setDiagram(b.id, { oneByOne: !b.oneByOne }), !!b.oneByOne),
+      btn('category', 'Convertir en formas', () => blocks.diagramToShapes(b.id))]]);
   else if (b.type === 'file') {
     const pdf = files.isPdf(b), busy = p => p.catch(e => alertDialog(t('No se pudo leer el PDF:') + ' ' + (e.message || e)));
     G.push(['Archivo', [btn(pdf ? 'open_in_new' : 'download', pdf ? 'Abrir' : 'Descargar', () => files.openFile(b)), ...(pdf ? [btn('download', 'Descargar', () => files.downloadFile(b))] : [])]]);

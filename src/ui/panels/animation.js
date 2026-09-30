@@ -38,7 +38,7 @@ export function objLabel(b) {
   const txt = b.type === 'text' ? (new DOMParser().parseFromString(b.html || '', 'text/html').body.textContent || '').trim().slice(0, 24) : '';
   return t(ANIM_NAMES[b.type] || b.type) + (txt ? ` «${txt}»` : '');
 }
-export const ANIM_NAMES = { poll: 'Votación', camera: 'Cámara en directo', ink: 'Tinta', text: 'Texto', image: 'Imagen', shape: 'Forma', chart: 'Gráfico', table: 'Tabla',
+export const ANIM_NAMES = { diagram: 'Diagrama', file: 'Archivo', poll: 'Votación', camera: 'Cámara en directo', ink: 'Tinta', text: 'Texto', image: 'Imagen', shape: 'Forma', chart: 'Gráfico', table: 'Tabla',
   icon: 'Icono', math: 'Ecuación', model: '3D', video: 'Vídeo', embed: 'Web', code: 'Código', figindex: 'Índice de figuras', slideref: 'Diapositiva' };
 export function openAnimPanel() {
   if (document.getElementById('anim-modal')) return;

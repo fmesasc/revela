@@ -77,7 +77,7 @@ the origin of every requirement is traceable.
 - ✅ Tables — editable cells, add/remove rows & columns, header row, border colour, merge/split cells `PP·GS·OO`
 - ✅ Charts — bar, line, area, pie, doughnut, scatter, radar; multiple series with legend, combo (bars + lines), paste data from a spreadsheet, chart from a table (SVG, no library; native in .pptx) `PP·GS·OO`
 - ✅ Charts: negative values, gridlines with a scale, data labels and axis titles (native options in .pptx) `PP·GS·OO`
-- ✅ SmartArt / diagrams — process, cycle, hierarchy & list `PP·OO`
+- ✅ SmartArt / diagrams — 15 layouts (lists, process, chevrons, steps, timeline, cycle, radial, org chart, Venn, matrix, pyramid, funnel, target) written as an outline, theme colour schemes, one by one when presenting, convert to shapes; native editable shapes in PowerPoint `PP·OO`
 - ✅ Icons — built-in inline-SVG icon set with colour `PP·GS`
 - ✅ Emoji picker `GS`
 - ✅ Animated GIF playback `PP·OO`

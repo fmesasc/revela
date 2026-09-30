@@ -4,11 +4,12 @@
 // text, images, shapes, tables and charts. 3D models, video, web embeds, icons
 // and equations can't be represented natively and are skipped.
 
+import { diagramLayout } from '../../render/diagrams.js';
 import { commentText } from '../../features/collab/comments.js';
 import { state } from '../../core/store.js';
 import { alertUser } from '../../core/notify.js';
 import { t } from '../../i18n/index.js';
-import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
+import { deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
 import { plainText } from '../../core/text.js';
 import { shownRows } from '../../core/formulas.js';
 import { chartSVG, chartSeries, histogramBins, bubblePoints, iconSVG, inkSVG, timerSVG, shapeTextStyle } from '../../render/svg.js';
@@ -157,6 +158,26 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
       slide.addMedia({ ...pos, type: 'video', data: b.src.replace(/^data:/, '') });
     } else if (b.type === 'embed') {
       slide.addText([{ text: '🔗 ' + (b.alt || b.src), options: { hyperlink: { url: b.src } } }], { ...pos, fontSize: 18, color: hex(deckFg()) || 'FFFFFF', valign: 'middle', align: 'center' });
+    } else if (b.type === 'diagram') {
+      // A diagram: its own shapes and text boxes, native and editable in PowerPoint.
+      const col = c => (c && c !== 'none' ? { color: hex(c) || '3F6497' } : { type: 'none' });
+      for (const p of diagramLayout(b, { accents: currentPalette(exportDeck).accents, fg: deckFg(exportDeck) })) {
+        const fill = p.fill && p.fill !== 'none' ? { color: hex(p.fill) || '3F6497', ...(p.opacity != null && p.opacity < 1 && { transparency: Math.round((1 - p.opacity) * 100) }) } : { type: 'none' };
+        const line = p.stroke && p.stroke !== 'none' ? { color: hex(p.stroke) || '888888', width: +(((p.sw || 2) * 0.75).toFixed(2)) } : { type: 'none' };
+        if (p.type === 'text') {
+          const runs = [{ text: p.text, options: { bold: p.bold, fontSize: Math.round(p.fs * 0.75), breakLine: !!p.sub } }]
+            .concat(p.sub ? p.sub.split('\n').map((l, k, all) => ({ text: l, options: { fontSize: Math.max(8, Math.round(p.fs * 0.72 * 0.75)), breakLine: k < all.length - 1 } })) : []);
+          slide.addText(runs, { x: IN(b.x + p.x), y: IN(b.y + p.y), w: IN(p.w), h: IN(p.h), color: col(p.color).color || 'FFFFFF', align: p.align, valign: p.valign, margin: 0, fontFace: undefined });
+        } else if (p.type === 'rect') {
+          slide.addShape(p.r > 1 ? pptx.ShapeType.roundRect : pptx.ShapeType.rect, { x: IN(b.x + p.x), y: IN(b.y + p.y), w: IN(p.w), h: IN(p.h), fill, line, ...(p.r > 1 && { rectRadius: IN(p.r) }) });
+        } else if (p.type === 'ellipse') {
+          slide.addShape(pptx.ShapeType.ellipse, { x: IN(b.x + p.x), y: IN(b.y + p.y), w: IN(p.w), h: IN(p.h), fill, line });
+        } else {
+          const xs = p.pts.map(q => q[0]), ys = p.pts.map(q => q[1]), x0 = Math.min(...xs), y0 = Math.min(...ys);
+          const points = p.pts.map(([x, y], k) => ({ x: IN(x - x0), y: IN(y - y0), ...(k === 0 && { moveTo: true }) })).concat(p.closed ? [{ close: true }] : []);
+          slide.addShape(pptx.ShapeType.custGeom, { x: IN(b.x + x0), y: IN(b.y + y0), w: IN(Math.max(1, Math.max(...xs) - x0)), h: IN(Math.max(1, Math.max(...ys) - y0)), points, fill: p.closed ? fill : { type: 'none' }, line });
+        }
+      }
     } else if (b.type === 'image') {
       const nat = picSizes.get(b.id), pf = nat && pictureFrame(b, nat[0], nat[1]);
       if (pf) {
@@ -313,7 +334,9 @@ function addPlaceholderText(slide, s, b, p) {
   slide.addText(htmlToRuns(b.html, own), { placeholder: phName(p) });
 }
 
+let exportDeck = null;                                  // (the deck being exported: its theme colours)
 export async function buildPptx(deck = state.deck) {
+  exportDeck = deck;
   await Promise.all([loadScript(PPTXGEN, 'PptxGenJS'), naturalSizes(deck)]);
   const pptx = new window.PptxGenJS();
   const { w, h } = deck.size;

@@ -76,13 +76,6 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(c.series[0].values.join(','), '7,9', 'segunda serie (sin HTML)'); eq(c.seriesName, 'Q1', 'nombres de la cabecera');
   });
 
-  await test('diagrama en ciclo: n cajas y n conectores', async () => {
-    reset(); const n0 = slide().blocks.length; R.blocks.addDiagram('cycle');
-    const added = slide().blocks.slice(n0);
-    eq(added.filter(x => x.type === 'text').length, 3, 'tres cajas');
-    eq(added.filter(x => x.type === 'connector').length, 3, 'tres conectores (cerrado)');
-  });
-
   await test('gráfico circular: sectores en el export', async () => {
     reset(); R.blocks.addChart(); const b = last(); select(b);
     R.blocks.setChart({ chartType: 'pie' });
@@ -116,20 +109,6 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const open = D.querySelector(`.block[data-id="${b.id}"] .embed .embed-open`);
     assert(open && open.getAttribute('href') === 'https://example.com', 'sin enlace de apertura');
     assert(/<iframe[^>]*sandbox=/.test(R.io.buildHTML()), 'export sin iframe');
-  });
-
-  await test('diagrama de proceso: cajas + conectores', async () => {
-    reset(); const n0 = slide().blocks.length; R.blocks.addDiagram('process'); await sleep(20);
-    const added = slide().blocks.slice(n0);
-    eq(added.filter(x => x.type === 'text').length, 3, 'tres cajas');
-    eq(added.filter(x => x.type === 'connector').length, 2, 'dos conectores');
-  });
-
-  await test('diagrama de lista: cajas apiladas sin conectores', async () => {
-    reset(); const n0 = slide().blocks.length; R.blocks.addDiagram('list'); await sleep(10);
-    const added = slide().blocks.slice(n0);
-    eq(added.filter(x => x.type === 'text').length, 3, 'tres cajas');
-    eq(added.filter(x => x.type === 'connector').length, 0, 'sin conectores');
   });
 
   await test('tablas: render, edición de fila/columna y export', async () => {
@@ -636,8 +615,6 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     [...D.querySelectorAll('#ribbon [data-page="ctx"] button')].find(x => x.querySelector('span')?.textContent === 'Flecha al inicio').click(); await sleep(20);
     assert(slide().blocks.find(x => x.id === cn.id).arrowStart, 'flecha al inicio');
     assert(/marker-start/.test(R.io.buildHTML()), 'y así se presenta');
-    reset(); R.blocks.addDiagram('hierarchy'); await sleep(10);
-    assert(slide().blocks.filter(x => x.type === 'connector').every(x => x.route === 'elbow'), 'la jerarquía, con conectores de codo');
   });
 
   await test('líneas con dos flechas, curvas y formas libres dibujadas a mano', async () => {
@@ -1186,13 +1163,6 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/opacity:0\.5/.test(R.io.buildHTML()), 'opacidad en el export');
   });
 
-  await test('diagrama de jerarquía: raíz + 3 hijos con conectores', async () => {
-    reset(); const n0 = slide().blocks.length; R.blocks.addDiagram('hierarchy');
-    const added = slide().blocks.slice(n0);
-    eq(added.filter(x => x.type === 'text').length, 4, 'raíz + 3 hijos');
-    eq(added.filter(x => x.type === 'connector').length, 3, 'tres conectores');
-  });
-
   await test('bloquear objeto marca la bandera y la clase', async () => {
     reset(); const b = newText(); R.blocks.toggleLock(); await sleep(20);
     assert(b.locked, 'bandera locked');
@@ -1508,5 +1478,55 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(chartFile && /<c:bubbleChart>/.test(await zip.file(chartFile).async('string')), 'gráfico de burbujas de PowerPoint');
     const back = (await R.pptxImport.importPPTX(new W.File([blob], 'b.pptx'))).slides[0].blocks.find(x => x.type === 'chart');
     eq(back.chartType, 'bubble'); eq(back.data.map(d => d.label + ':' + d.value).join(), '1:10,3:20,5:15'); eq(back.series[0].values.join(), '1,4,9', 'con sus tamaños');
+  });
+
+  await test('diagramas: 15 diseños desde un esquema de texto, colores del tema, uno a uno, convertir en formas y PowerPoint editable', async () => {
+    reset(); const W = frame.contentWindow, DG = await W.eval("import('/src/render/diagrams.js')");
+    const tree = DG.parseOutline('A\n  a1\n  a2\nB\n\tb1\n    b11\n- C');
+    eq(JSON.stringify(tree.map(x => [x.text, x.kids.map(k => [k.text, k.kids.length])])), JSON.stringify([['A', [['a1', 0], ['a2', 0]]], ['B', [['b1', 1]]], ['C', []]]), 'el esquema: sangría = subelementos');
+    const all = DG.DIAGRAM_LAYOUTS.flatMap(([, l]) => l.map(x => x[0]));
+    eq(all.length, 15, '15 diseños');
+    for (const k of all) {
+      const parts = DG.diagramLayout({ layout: k, w: 900, h: 460, text: DG.DIAGRAM_SAMPLES[k] || DG.DEFAULT_DIAGRAM_TEXT });
+      assert(parts.some(p => p.type === 'text') && parts.some(p => p.type !== 'text'), 'se dibuja: ' + k);
+      const out = parts.filter(p => (p.type === 'poly' ? p.pts.some(([x, y]) => x < -1 || y < -1 || x > 901 || y > 461) : p.x < -1 || p.y < -1 || p.x + p.w > 901 || p.y + p.h > 461));
+      eq(out.length, 0, 'dentro de su caja: ' + k);
+    }
+    // Hierarchy: every person, a box; each one under their boss.
+    const org = DG.diagramLayout({ layout: 'hierarchy', w: 900, h: 460, text: DG.DIAGRAM_SAMPLES.hierarchy }).filter(p => p.type === 'rect');
+    eq(org.length, 7, 'siete cajas'); eq(new Set(org.map(r => Math.round(r.y))).size, 3, 'en tres niveles');
+    // Inserted: one object with its text, in the app's language.
+    R.blocks.addDiagram('process'); const b = last(); select(b); await sleep(20);
+    eq(b.type, 'diagram'); assert(/^Primero\n  Una explicación breve/.test(b.text), 'texto de ejemplo');
+    const el = () => D.querySelector(`#stage .block[data-id="${b.id}"]`);
+    eq(el().querySelectorAll('.rv-diagram rect').length, 3, 'tres cajas');
+    // Its text: typed in the dialog (live), one undo step.
+    el().dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); await sleep(20);
+    const ta = D.querySelector('#dg-modal .dg-text'); ta.value = 'Idea\nDiseño\nPrueba\nVenta'; ta.dispatchEvent(new W.Event('input')); await sleep(200);
+    eq(el().querySelectorAll('.rv-diagram rect').length, 4, 'cuatro al escribir la cuarta línea');
+    D.querySelector('#dg-modal .dg-ok').click(); await sleep(20);
+    R.store.undo(); await sleep(20); assert(/^Primero/.test(last().text), 'deshacer vuelve al texto de antes'); R.store.redo(); await sleep(20);
+    // Layout and colours from the ribbon.
+    const sels = [...D.querySelectorAll('#ribbon [data-page="ctx"] select')], lay = sels.find(x => [...x.options].some(o => o.value === 'venn')), col = sels.find(x => [...x.options].some(o => o.value === 'outline'));
+    lay.value = 'chevrons'; lay.dispatchEvent(new W.Event('change')); await sleep(20); eq(last().layout, 'chevrons');
+    col.value = 'accent'; col.dispatchEvent(new W.Event('change')); await sleep(20); eq(last().colors, 'accent');
+    const P = await W.eval("import('/src/features/design/palettes.js')"), acc = P.currentPalette().accents[0].toLowerCase();
+    assert(el().querySelector('.rv-diagram path').getAttribute('fill').toLowerCase() === acc, 'con el color del tema');
+    // One by one: each item a click.
+    R.blocks.setDiagram(last().id, { oneByOne: true });
+    const html = R.io.buildHTML(), frags = (html.match(/class="fragment fade-in" data-fragment-index="\d+"/g) || []);
+    assert(frags.length >= 8 && /data-fragment-index="4"/.test(html), 'uno a uno: ' + frags.length);
+    // PowerPoint: shapes and text, not a picture.
+    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob), xml = await zip.file('ppt/slides/slide1.xml').async('string');
+    assert((xml.match(/<a:custGeom>/g) || []).length >= 4 && /<a:t>Prueba<\/a:t>/.test(xml) && !/<p:pic>/.test(xml), 'en PowerPoint, formas editables');
+    // Convert to shapes: grouped shapes with their words.
+    R.blocks.diagramToShapes(last().id); await sleep(20);
+    const shapes = slide().blocks.filter(x => x.groupId);
+    assert(shapes.length >= 4 && shapes.every(x => x.groupId === shapes[0].groupId), 'formas agrupadas');
+    assert(shapes.some(x => x.type === 'shape' && /Venta/.test(x.html || '')), 'cada caja con su texto dentro');
+    // The gallery in Insert.
+    D.querySelector('[data-diagrams-open]').click(); await sleep(30);
+    const picks = D.querySelectorAll('.popover [data-diagram-pick]'); eq(picks.length, 15, 'galería con los 15');
+    D.querySelector('.popover [data-diagram-pick="venn"]').click(); await sleep(20); eq(last().layout, 'venn', 'se inserta desde la galería');
   });
 }

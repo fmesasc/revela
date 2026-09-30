@@ -155,6 +155,8 @@ export function initRibbon() {
     if (dir) { format.toggleDir(); return; }
     const vert = e.target.closest('[data-vertical]');
     if (vert) { format.toggleVertical(); return; }
+    const dgo = e.target.closest('[data-diagrams-open]');
+    if (dgo) { e.stopPropagation(); togglePopover(dgo, 'diagrams'); return; }
     const diag = e.target.closest('[data-diagram]');
     if (diag) { blocks.addDiagram(diag.dataset.diagram); return; }
   });

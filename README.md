@@ -22,6 +22,8 @@ standard, self-contained web page.
 - **Full office-style editor** (File, Home, Insert, Draw, Design, Transitions,
   Animations, View, AI): rich text, nested lists, styles, columns, WordArt,
   70+ shapes (with text inside, action buttons, freeform) and shape merging,
+  SmartArt-style diagrams (15 layouts written as an outline, editable in
+  PowerPoint),
   tables with merged cells, styles and formulas (=SUM(ABOVE)…), charts
   (multi-series, combo, stacked, 100 %, histogram, waterfall, funnel, treemap,
   bubble, maps; from a table or a

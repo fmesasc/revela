@@ -287,7 +287,8 @@ const EXAMPLES_DEF = {
   } },
 
   // Diagrams with connectors that follow their boxes, WordArt and icons.
-  diagrams: { name: 'Diagramas y diseño', summary: 'Diagramas de proceso y ciclo con conectores que siguen a las cajas, iconos y Text Art', make: () => {
+  diagrams: { name: 'Diagramas y diseño', summary: 'Diagramas (organigrama, cronología, Venn, pirámide, ciclo, galones) que se escriben como un esquema, uno a uno al presentar; cajas con conectores, iconos y Text Art', make: () => {
+    const dg = (layout, text, o = {}) => ({ ...base(90, 170, 1100, 480), type: 'diagram', layout, colors: 'colorful', text, ...o });
     const boxes = (labels, pos, color) => labels.map((l, i) => text(`<b>${l}</b>`, ...pos(i), { fontSize: 28, textAlign: 'center', bg: color, radius: 16, color: '#ffffff', vAlign: 'middle' }));
     const links = list => list.slice(0, -1).map((b, i) => ({ ...base(0, 0, 1280, 720), type: 'connector', from: b.id, to: list[i + 1].id, color: '#9aa7b8', arrow: true }));
     const proc = boxes(['Idea', 'Prototipo', 'Prueba', 'Lanzamiento'], i => [70 + i * 300, 300, 240, 130], '#3f6497').map((b, i) => anim(b, i + 1, 'fade-right'));
@@ -295,6 +296,11 @@ const EXAMPLES_DEF = {
     return build({ name: 'Diagramas y diseño', palette: 'office', fonts: 'clean', decor: p => bar(p, 1) }, [
       { layout: 'blank', extra: [text('Diagramas', 140, 240, 1000, 160, { fontSize: 110, textAlign: 'center', wordart: 'gradient' }),
         text('Cajas unidas con conectores: mueve una y la flecha la sigue', 140, 420, 1000, 60, { fontSize: 30, textAlign: 'center' })] },
+      { title: 'Organigrama', layout: 'titleOnly', extra: [dg('hierarchy', 'Dirección\n  Proyectos\n    Diseño\n    Desarrollo\n  Operaciones\n    Ventas\n    Soporte', { oneByOne: true })],
+        notes: 'Insertar ▸ Diagrama. Se escribe como un esquema (doble clic): con dos espacios delante, depende del de arriba. «Uno a uno al presentar» lo va mostrando por partes.' },
+      { title: 'Cronología', layout: 'titleOnly', extra: [dg('timeline', '2023\n  Idea\n2024\n  Prototipo\n2025\n  Lanzamiento\n2026\n  Crecimiento', { oneByOne: true })] },
+      { title: 'Lo que hace falta', layout: 'titleOnly', extra: [dg('venn', 'Deseable\nViable\nFactible', { colors: 'light' })] },
+      { title: 'Pirámide y galones', layout: 'titleOnly', extra: [dg('pyramid', 'Visión\nEstrategia\nTácticas', { w: 520 }), dg('chevrons', 'Idea\n  Pensar\nPlan\n  Organizar\nHecho\n  Revisar', { x: 640, w: 560, colors: 'accent' })] },
       { title: 'Proceso', layout: 'titleOnly', extra: [...proc, ...links(proc)],
         notes: 'Insertar ▸ Proceso. Cada caja aparece con un clic; los conectores siguen a las cajas al moverlas.' },
       { title: 'Ciclo (PDCA)', layout: 'titleOnly', extra: [...cyc, ...links([...cyc, cyc[0]])], notes: 'Insertar ▸ Ciclo.' },

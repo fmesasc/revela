@@ -50,7 +50,7 @@ const NEEDS_ALT = { image: 'Imagen sin texto alternativo', chart: 'Gráfico sin 
   model: 'Modelo 3D sin texto alternativo', video: 'Vídeo sin texto alternativo', icon: 'Icono sin texto alternativo' };
 
 // Accessible name of an object: its alt text, else its text, else its kind.
-const KIND = { text: 'Texto', image: 'Imagen', shape: 'Forma', chart: 'Gráfico', table: 'Tabla', icon: 'Icono', math: 'Ecuación',
+const KIND = { diagram: 'Diagrama', file: 'Archivo', text: 'Texto', image: 'Imagen', shape: 'Forma', chart: 'Gráfico', table: 'Tabla', icon: 'Icono', math: 'Ecuación',
   model: '3D', video: 'Vídeo', audio: 'Audio', embed: 'Web', code: 'Código', figindex: 'Índice de figuras', slideref: 'Diapositiva',
   connector: 'Conector', ink: 'Tinta', camera: 'Cámara en directo', poll: 'Votación' };
 export function blockLabel(b, tr = x => x) {

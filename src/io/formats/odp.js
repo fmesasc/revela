@@ -225,7 +225,7 @@ export async function buildODP(deck = state.deck) {
   const raster = new Map();
   for (const s of [deck.master || { blocks: [] }, ...deck.slides]) for (const b of s.blocks)
     if (b.type === 'file' && b.poster) raster.set(b.id, b.poster);
-    else if (['math', 'poll', 'figindex', 'file'].includes(b.type)) { try { const img = await blockImage(b, s, deck); if (img) raster.set(b.id, img); } catch {} }
+    else if (['math', 'poll', 'figindex', 'file', 'diagram'].includes(b.type)) { try { const img = await blockImage(b, s, deck); if (img) raster.set(b.id, img); } catch {} }
   const pages = deck.slides.map((s, i) => {
     const bg = hex(s.background) || '#101317';
     const dp = style('drawing-page', 'dp', `<style:drawing-page-properties draw:fill="solid" draw:fill-color="${bg}" presentation:background-visible="true"${odpTransition(s, deck)}/>`);

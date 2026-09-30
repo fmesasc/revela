@@ -2,6 +2,7 @@
 // document shown when presenting), and each object's inline HTML, reused by
 // the print and image exports.
 
+import { diagramHTML } from '../../render/diagrams.js';
 import { pdfRuntime } from '../runtime/pdf.js';
 import { tabRuntime } from '../runtime/tabs.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
@@ -286,6 +287,15 @@ function blockHTMLRaw(b, slide) {
       + ` data-end="${esc(b.endText ?? t('¡Tiempo!'))}" style="${box(b)}cursor:pointer">${timerSVG(b)}</div>`;
   if (b.type === 'math')
     return `<div${a} class="math" data-latex="${esc(mathTeX(b))}" style="${box(b)}display:flex;align-items:center;${mathCSS(b)}"></div>`;
+  if (b.type === 'diagram') {
+    // "One by one": each item (its shapes and words) a click of its own, after the slide's other steps.
+    let inner = diagramHTML(b, { accents: currentPalette(state.deck).accents, fg: deckFg(state.deck), step: !!b.oneByOne });
+    if (b.oneByOne) {
+      const base = b.animation && !b.animation.trigger ? b.animation.order : Math.max(0, ...(slide?.blocks || []).flatMap(x => animsOf(x)).map(x => +x.order || 0)) + 1;
+      inner = inner.replace(/ data-dg="(-?\d+)"/g, (m, k) => (+k < 0 ? '' : ` class="fragment fade-in" data-fragment-index="${base + +k}"`));
+    }
+    return `<div${a} style="${box(b)}">${inner}</div>`;
+  }
   if (b.type === 'file' && safeURL(b.src || '')) {                 // opened or downloaded by FILE_JS
     const src = ` data-src="${esc(b.src)}" data-name="${esc(b.name || 'archivo')}"`;
     if (b.display === 'viewer' && b.poster) return `<div${a} data-file-view${src} style="${box(b)}background:#fff url('${esc(b.poster)}') center/contain no-repeat"><iframe title="${esc(b.name || '')}" style="width:100%;height:100%;border:0;display:block"></iframe></div>`;
