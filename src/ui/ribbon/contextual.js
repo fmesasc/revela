@@ -183,7 +183,8 @@ function groupsFor(b) {
       btn('edit_note', 'Texto final', async () => { const v = await promptDialog(t('Texto al acabar el tiempo:'), b.endText ?? t('¡Tiempo!')); if (v != null) set(b, x => { x.endText = v.slice(0, 40); }); })]]);
   else if (b.type === 'ink') G.push(['Dibujo', [btn('gesture', 'Trazar al presentar', () => (b.animation?.effect === 'draw' ? clearAnimation() : setAnimation('draw')), b.animation?.effect === 'draw')]]);
   else if (b.type === 'icon') G.push(['Icono', [btn('palette', 'Color del icono', () => openIconColor(b))]]);
-  else if (b.type === 'embed') G.push(['Web', [btn(b.display === 'card' ? 'web' : 'link', b.display === 'card' ? 'Mostrar la web' : 'Mostrar como tarjeta', () => blocks.setEmbedDisplay(b.id, b.display === 'card' ? 'frame' : 'card'))]]);
+  else if (b.type === 'embed') G.push(['Web', [btn(b.display === 'card' ? 'web' : 'link', b.display === 'card' ? 'Mostrar la web' : 'Mostrar como tarjeta', () => blocks.setEmbedDisplay(b.id, b.display === 'card' ? 'frame' : 'card')),
+    ...(blocks.isVideoEmbed(b.src) ? [btn('content_cut', 'Fragmento del vídeo', () => askVideoClip(b))] : [])]]);
   else if (b.type === 'slideref') G.push(['Zoom', [btn('slideshow', 'Elegir diapositiva', () => openSlidePicker(b)), btn('undo', 'Volver aquí', () => blocks.toggleSlideRefReturn(), !!b.returnBack)]]);
   else if (b.type === 'camera') G.push(['Cámara', [btn('circle', 'Círculo', () => set(b, x => { x.shape = 'circle'; }), b.shape === 'circle'), btn('crop_square', 'Redondeada', () => set(b, x => { x.shape = 'rounded'; }), b.shape === 'rounded'),
     btn('rectangle', 'Rectángulo', () => set(b, x => { x.shape = 'rect'; }), b.shape === 'rect'), btn('flip', 'Reflejar', () => set(b, x => { x.mirror = x.mirror === false; }), b.mirror !== false)]]);
@@ -304,4 +305,13 @@ function control(c) {
     i.value = value; i.addEventListener('change', () => fn(i.value));
   }
   return el;
+}
+
+// A part of a video for this slide ("1:20-2:05"; empty: all of it): each slide can play its own chapter.
+async function askVideoClip(b) {
+  const { start, end } = blocks.clipOf(b.src), mmss = s => (s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '');
+  const v = await promptDialog(t('Fragmento del vídeo en esta diapositiva, desde-hasta (p. ej. 1:20-2:05; vacío: entero):'), start || end ? `${mmss(start) || '0:00'}-${mmss(end)}` : '');
+  if (v == null) return;
+  const [a, z = ''] = v.split(/\s*[-–]\s*/);
+  if (!blocks.setVideoClip(b.id, blocks.parseTime(a), blocks.parseTime(z))) alertDialog(t('Escribe los tiempos como minutos:segundos, y el final después del principio.'));
 }

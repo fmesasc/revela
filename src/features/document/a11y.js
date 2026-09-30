@@ -82,7 +82,7 @@ export function checkAccessibility(deck = state.deck) {
       if (b.type === 'table' && !b.header) add('tablehead', i, 'Tabla sin fila de encabezado', b.id);
       if (b.type === 'text' && bg && plain(b.html) && !b.wordart) {
         const back = b.bg && rgb(b.bg) ? b.bg : bg;
-        const fg = textColours(b.html, THEME_FG[deck.theme] || '#ffffff');
+        const fg = textColours(b.html, b.color || THEME_FG[deck.theme] || '#ffffff');
         const worst = Math.min(...fg.map(c => contrast(c, back) ?? 21));
         const need = (b.fontSize || 40) >= 24 ? 3 : 4.5;          // WCAG: large text needs 3:1
         if (worst < need) add('contrast', i, 'Contraste de texto bajo', b.id, worst.toFixed(1) + ':1');
@@ -90,4 +90,75 @@ export function checkAccessibility(deck = state.deck) {
     }
   });
   return issues;
+}
+
+// ---- Fixing low contrast ------------------------------------------------------------------
+const hex = a => '#' + a.map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+// The same colour, darker or lighter (towards black on light backgrounds, white on dark ones), until it reads.
+export function readableColour(c, back, need = 4.5) {
+  const A = rgb(c), B = rgb(back); if (!A || !B) return c;
+  const to = lum(B) > 0.18 ? [0, 0, 0] : [255, 255, 255];
+  for (let k = 1; k <= 20; k++) { const m = hex(A.map((v, i) => v + (to[i] - v) * k / 20)); if (contrast(m, back) >= need + 0.05) return m; }
+  return hex(to);
+}
+// Give a text box's colours enough contrast against what's behind it. true if something changed.
+export function fixContrast(deck, slideIndex, blockId) {
+  const s = deck.slides[slideIndex], b = s?.blocks.find(x => x.id === blockId); if (!b || b.type !== 'text') return false;
+  const back = b.bg && rgb(b.bg) ? b.bg : s.background; if (!rgb(back)) return false;
+  const need = (b.fontSize || 40) >= 24 ? 3 : 4.5;
+  let changed = false;
+  const d = new DOMParser().parseFromString(b.html || '', 'text/html').body;
+  d.querySelectorAll('[style*="color"], font[color]').forEach(el => {
+    const c = el.getAttribute('color') || el.style.color;
+    if (!c || !el.textContent.trim() || (contrast(c, back) ?? 21) >= need) return;
+    const n = readableColour(c, back, need);
+    if (el.getAttribute('color')) el.setAttribute('color', n); else el.style.color = n;
+    changed = true;
+  });
+  if (changed) b.html = d.innerHTML;
+  const base = b.color || THEME_FG[deck.theme] || '#ffffff';
+  if ((contrast(base, back) ?? 21) < need) { b.color = readableColour(base, back, need); changed = true; }
+  return changed;
+}
+
+// ---- Style guide: things that look careless when projected ----------------------------------
+// Hints, not errors: many fonts, titles of different sizes, text too small to
+// read from the back of a room, too much text on a slide, objects almost (but
+// not quite) aligned, objects off the slide.
+const words = html => plain(html).split(/\s+/).filter(Boolean).length;
+const fontsOf = b => [b.font, ...[...String(b.html || '').matchAll(/font-family:\s*([^;"]+)/gi)].map(m => m[1])].filter(Boolean)
+  .map(f => f.split(',')[0].replace(/&quot;|["']/g, '').trim().toLowerCase()).filter(Boolean);
+export function checkStyle(deck = state.deck) {
+  const out = [], add = (kind, slide, msg, blockId = null, extra = '') => out.push({ kind, slide, blockId, msg, extra });
+  const W = deck.size?.w || 1280, H = deck.size?.h || 720;
+  const fonts = new Set(deck.slides.flatMap(s => s.blocks.flatMap(fontsOf)));
+  if (fonts.size > 3) add('fonts', 0, 'Demasiados tipos de letra', null, [...fonts].slice(0, 6).join(', '));
+  const titleSizes = new Map();
+  deck.slides.forEach((s, i) => {
+    const texts = s.blocks.filter(b => b.type === 'text' && plain(b.html));
+    const title = texts.find(b => b.ph === 'title');
+    if (title && s.layoutId !== 'title') titleSizes.set(i, title.fontSize || 40);
+    const n = texts.reduce((t, b) => t + words(b.html), 0);
+    if (n > 90) add('wordy', i, 'Demasiado texto en una diapositiva', null, n);
+    for (const b of texts) if ((b.fontSize || 40) < 16 && !b.caption) add('small', i, 'Texto muy pequeño para proyectar', b.id, (b.fontSize || 40) + ' px');
+    for (const b of s.blocks) if (!b.hidden && (b.x + b.w < 1 || b.y + b.h < 1 || b.x > W - 1 || b.y > H - 1)) add('offslide', i, 'Objeto fuera de la diapositiva', b.id);
+    // Almost aligned: left edges (or centres) 1–6 px apart.
+    const vis = s.blocks.filter(b => !b.hidden && b.type !== 'connector' && !b.groupId);
+    const flagged = new Set();
+    for (let a = 0; a < vis.length; a++) for (let c = a + 1; c < vis.length; c++) {
+      const A = vis[a], C = vis[c], dl = Math.abs(A.x - C.x), dc = Math.abs(A.x + A.w / 2 - (C.x + C.w / 2));
+      if (((dl >= 1 && dl <= 6) || (dc >= 1 && dc <= 6 && dl > 6)) && !flagged.has(C.id)) { flagged.add(C.id); add('nearalign', i, 'Objetos casi alineados', C.id, A.id); }
+    }
+  });
+  const sizes = [...titleSizes.values()], common = sizes.sort((a, b) => sizes.filter(x => x === b).length - sizes.filter(x => x === a).length)[0];
+  for (const [i, size] of titleSizes) if (size !== common) add('titlesize', i, 'Título de otro tamaño que los demás', deck.slides[i].blocks.find(b => b.ph === 'title')?.id, `${size} px ≠ ${common} px`);
+  return out;
+}
+// Line an almost-aligned object up with the one it nearly matches (left edges, or centres).
+export function fixAlign(deck, slideIndex, blockId, refId) {
+  const bs = deck.slides[slideIndex]?.blocks || [], b = bs.find(x => x.id === blockId), r = bs.find(x => x.id === refId);
+  if (!b || !r) return false;
+  const dl = Math.abs(b.x - r.x);
+  b.x = dl <= 6 ? r.x : Math.round(r.x + r.w / 2 - b.w / 2);
+  return true;
 }

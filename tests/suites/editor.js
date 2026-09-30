@@ -262,6 +262,22 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.querySelector('[data-action="a11y-check"]').click(); await sleep(20);
     assert(D.querySelector('#a11y-modal .a11y-item, #a11y-modal .a11y-ok'), 'diálogo con resultados');
     D.querySelector('#a11y-modal .modal-close').click();
+    // Low contrast, fixed; and the style guide.
+    const A = await frame.contentWindow.eval("import('/src/features/document/a11y.js')");
+    const dk = { theme: 'white', size: { w: 1280, h: 720 }, slides: [{ background: '#ffffff', layoutId: 'content', blocks: [
+      { id: 't1', type: 'text', ph: 'title', x: 100, y: 50, w: 800, h: 80, fontSize: 18, html: '<span style="color:#dddddd">Gris claro</span> y normal' },
+      { id: 't2', type: 'text', x: 103, y: 200, w: 500, h: 80, fontSize: 12, html: 'pequeño', color: '#eeeeee' },
+      { id: 'x', type: 'shape', x: 1400, y: 10, w: 100, h: 100 }] },
+      { background: '#ffffff', layoutId: 'content', blocks: [{ id: 't3', type: 'text', ph: 'title', x: 100, y: 50, w: 800, h: 80, fontSize: 44, html: 'Otro' }] },
+      { background: '#ffffff', layoutId: 'content', blocks: [{ id: 't4', type: 'text', ph: 'title', x: 100, y: 50, w: 800, h: 80, fontSize: 44, html: 'Y otro' }] }] };
+    eq(A.checkAccessibility(dk).filter(i => i.kind === 'contrast').length, 2, 'contraste bajo (también el color propio del cuadro)');
+    assert(A.fixContrast(dk, 0, 't1') && A.fixContrast(dk, 0, 't2'), 'se corrige');
+    eq(A.checkAccessibility(dk).filter(i => i.kind === 'contrast').length, 0, 'y ya se lee');
+    assert(A.contrast(A.readableColour('#dddddd', '#ffffff', 4.5), '#ffffff') >= 4.5, 'el mismo color, más oscuro');
+    const st = A.checkStyle(dk), kinds = st.map(i => i.kind);
+    assert(kinds.includes('small') && kinds.includes('offslide') && kinds.includes('nearalign') && kinds.includes('titlesize'), 'guía de estilo: ' + kinds.join());
+    const na = st.find(i => i.kind === 'nearalign'); A.fixAlign(dk, 0, na.blockId, na.extra);
+    eq(dk.slides[0].blocks[1].x, 100, 'casi alineado: se alinea');
   });
 
   await test('zoom: acercar y restablecer', async () => {

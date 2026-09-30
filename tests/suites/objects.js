@@ -1247,6 +1247,19 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(E('https://www.youtube.com/shorts/abcdefghijk'), 'https://www.youtube.com/embed/abcdefghijk', 'shorts');
     eq(E('https://vimeo.com/76979871'), 'https://player.vimeo.com/video/76979871', 'Vimeo');
     eq(E('https://es.wikipedia.org/wiki/Reveal.js'), 'https://es.wikipedia.org/wiki/Reveal.js', 'otras webs sin cambios');
+    eq(E('https://www.figma.com/design/AbC123/Mi-diseno?node-id=1-2'), 'https://www.figma.com/embed?embed_host=revela&url=' + encodeURIComponent('https://www.figma.com/design/AbC123/Mi-diseno?node-id=1-2'), 'Figma');
+    eq(E('https://miro.com/app/board/uXjVK1a2b3c=/'), 'https://miro.com/app/live-embed/uXjVK1a2b3c=/?embedMode=view_only_without_ui', 'Miro');
+    eq(E('https://www.canva.com/design/DAF1234abcd/aBcD-efGh/view'), 'https://www.canva.com/design/DAF1234abcd/aBcD-efGh/view?embed', 'Canva');
+    eq(E('https://docs.google.com/presentation/d/1AbCdEf/edit#slide=id.p'), 'https://docs.google.com/presentation/d/1AbCdEf/embed', 'Presentaciones de Google');
+    eq(E('https://www.loom.com/share/0123abcd'), 'https://www.loom.com/embed/0123abcd', 'Loom');
+    // A chapter of the video per slide
+    const yt = 'https://www.youtube.com/embed/jNQXAC9IVRw';
+    eq(R.blocks.withClip(yt, 80, 125), yt + '?start=80&end=125', 'fragmento: desde-hasta');
+    eq(JSON.stringify(R.blocks.clipOf(yt + '?start=80&end=125')), '{"start":80,"end":125}', 'y se lee');
+    eq(R.blocks.withClip(yt + '?start=80&end=125', 0, 0), yt, 'vacío: entero');
+    eq(R.blocks.parseTime('1:20'), 80, 'minutos:segundos'); eq(R.blocks.parseTime('1:02:03'), 3723, 'horas');
+    reset(); R.blocks.addEmbed(yt); eq(R.blocks.setVideoClip(last().id, 30, 10), false, 'el final antes del principio: no');
+    assert(R.blocks.setVideoClip(last().id, 30, 90) && /start=30&end=90/.test(last().src), 'en el objeto');
     reset(); R.blocks.addEmbed('https://youtu.be/jNQXAC9IVRw'); eq(last().src, 'https://www.youtube.com/embed/jNQXAC9IVRw', 'al insertar');
     const html = R.io.buildHTML();
     assert(/<iframe[^>]*referrerpolicy="strict-origin-when-cross-origin"/.test(html), 'envía el origen (sin él YouTube da «Error 153»)');

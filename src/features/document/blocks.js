@@ -100,7 +100,37 @@ export function embedUrl(input) {
   }
   if (id && /^[\w-]{6,}$/.test(id)) return `https://www.youtube.com/embed/${id}${start}`;
   if (host === 'vimeo.com') { const m = u.pathname.match(/^\/(\d+)/); if (m) return `https://player.vimeo.com/video/${m[1]}`; }
+  // Design and whiteboard tools, and Google's documents: their "embed" addresses.
+  if (host === 'figma.com' && /^\/(file|design|proto|board|slides)\//.test(u.pathname)) return `https://www.figma.com/embed?embed_host=revela&url=${encodeURIComponent(url)}`;
+  if (host === 'miro.com') { const m = u.pathname.match(/^\/app\/board\/([^/]+)/); if (m) return `https://miro.com/app/live-embed/${m[1]}/?embedMode=view_only_without_ui`; }
+  if (host === 'canva.com') { const m = u.pathname.match(/^\/design\/([\w-]+)\/([\w-]+)/); if (m) return `https://www.canva.com/design/${m[1]}/${m[2]}/view?embed`; }
+  if (host === 'loom.com') { const m = u.pathname.match(/^\/share\/([\w-]+)/); if (m) return `https://www.loom.com/embed/${m[1]}`; }
+  if (host === 'docs.google.com') {
+    const m = u.pathname.match(/^\/(presentation|document|spreadsheets|forms)\/d\/(e\/)?([\w-]+)/);
+    if (m) return `https://docs.google.com/${m[1]}/d/${m[2] || ''}${m[3]}/${m[1] === 'presentation' ? 'embed' : m[1] === 'forms' ? 'viewform?embedded=true' : 'preview'}`;
+  }
   return url;
+}
+// A video clip (YouTube, Vimeo): from/to in seconds (0 or empty: from the start / to the end).
+// Each slide can show its own part of the same video, like chapters.
+export const parseTime = s => { s = String(s ?? '').trim(); if (!s) return 0; const p = s.split(':').map(Number); return p.some(isNaN) ? NaN : p.reduce((t, v) => t * 60 + v, 0); };
+export const isVideoEmbed = src => /^https:\/\/(www\.youtube\.com\/embed|player\.vimeo\.com\/video)\//.test(src || '');
+export function clipOf(src) {
+  let u; try { u = new URL(src); } catch { return { start: 0, end: 0 }; }
+  if (u.hostname === 'player.vimeo.com') { const m = u.hash.match(/t=(\d+)/); return { start: m ? +m[1] : 0, end: 0 }; }
+  return { start: +u.searchParams.get('start') || 0, end: +u.searchParams.get('end') || 0 };
+}
+export function withClip(src, start, end) {
+  const u = new URL(src);
+  if (u.hostname === 'player.vimeo.com') { u.hash = start > 0 ? `t=${Math.round(start)}s` : ''; return u.toString(); }
+  for (const [k, v] of [['start', start], ['end', end]]) { if (v > 0) u.searchParams.set(k, String(Math.round(v))); else u.searchParams.delete(k); }
+  return u.toString();
+}
+export function setVideoClip(id, start, end) {
+  const b = currentSlide().blocks.find(x => x.id === id); if (!b || b.type !== 'embed' || !isVideoEmbed(b.src)) return false;
+  if (!(start >= 0) || !(end >= 0) || (end && end <= start)) return false;
+  commit(() => { b.src = withClip(b.src, start, end); });
+  return true;
 }
 
 export function addEmbed(url) {
