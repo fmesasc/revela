@@ -548,3 +548,5 @@ body:not([data-edition="cloud"]):not([data-edition="desktop"]) .accounts-only{di
 .cr-table{border-collapse:collapse;width:100%;font-size:13px}.cr-table th,.cr-table td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:center}
 .cr-table th:first-child,.cr-table td:first-child{text-align:start}.cr-table thead th{position:sticky;top:0;background:var(--ribbon)}
 .gal-ai .gal-ai-in{display:grid;place-items:center;background:var(--accent-bg);aspect-ratio:var(--ar);border:1px dashed var(--accent)}.gal-ai .gal-ai-in .ms{font-size:34px;color:var(--accent)}
+.tm-sw{display:inline-block;width:14px;height:14px;border-radius:3px;margin-inline-start:4px;vertical-align:middle;border:1px solid var(--line2)}
+#team-modal .sh-item small{color:var(--txt2)}

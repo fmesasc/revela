@@ -232,11 +232,21 @@ def site_checks(send, recv):
         def signed(self): return 'rv_session=ok' in (self.headers.get('Cookie') or '')
         def do_GET(self):
             if self.path.startswith('/api/me'):
-                return self.reply(200, {'email': 'ana@example.com', 'plan': 'free', 'credits': 50, 'features': ['ai'], 'billing': False}) if self.signed() else self.reply(401, {'error': 'no session'})
+                return self.reply(200, {'email': 'ana@example.com', 'plan': 'free', 'credits': 50, 'features': ['ai', 'cloud-save'], 'billing': False, 'photos': ['unsplash']}) if self.signed() else self.reply(401, {'error': 'no session'})
+            if self.path.startswith('/api/') and not self.signed(): return self.reply(401, {'error': 'no session'})
+            if self.path == '/api/team':
+                return self.reply(200, {'team': {'id': 'team123456789', 'name': 'IES Ejemplo', 'seats': 3, 'active': True, 'until': 1893456000000, 'members': {'ana@example.com': {'role': 'admin'}, 'pepe@example.com': {'role': 'member'}},
+                    'invited': {'eva@example.com': {'role': 'member'}}, 'brand': {'name': 'Centro', 'colors': ['#123456', '#ffffff']}, 'templates': [{'id': 'tpl1', 'name': 'Plantilla del centro'}]}, 'role': 'admin', 'invites': []})
+            if self.path == '/api/docs':
+                return self.reply(200, {'mine': [{'id': 'abcdefghijklmnop1234', 'name': 'Charla de otoño', 'updated': 1790000000000}], 'shared': [{'id': 'zyxwvutsrqponmlk9876', 'name': 'De Luis', 'owner': 'luis@example.com', 'role': 'comment'}], 'limit': 3})
+            if self.path.startswith('/api/stock/search'):
+                return self.reply(200, {'results': [{'id': 'f1', 'thumb': '/app/icons/icon-192.png', 'src': '/app/icons/icon-512.png', 'width': 512, 'height': 512, 'alt': 'Logo',
+                    'author': 'Ana Foto', 'authorUrl': 'https://unsplash.com/@ana', 'source': 'Unsplash', 'sourceUrl': 'https://unsplash.com'}]})
             return super().do_GET()
         def do_POST(self):
             body = self.rfile.read(int(self.headers.get('Content-Length') or 0))
             if self.path == '/api/login': return self.reply(200, {'ok': True}, {'Set-Cookie': 'rv_session=ok; Path=/api; HttpOnly; SameSite=Strict'})
+            if self.path == '/api/stock/used': seen.setdefault('used', []).append(json.loads(body or b'{}')); return self.reply(200, {'ok': True})
             if self.path == '/api/ai/chat':
                 if not self.signed(): return self.reply(401, {'error': 'no session'})
                 seen['ai'].append(json.loads(body or b'{}')); return self.reply(200, {'choices': [{'message': {'content': 'hola desde el servidor'}}], 'charged': 3})
@@ -277,6 +287,26 @@ def site_checks(send, recv):
         check(ans == 'hola desde el servidor' and seen['ai'] and seen['ai'][-1].get('max_tokens') == 100, 'la IA de la cuenta, por el servidor: ' + str(ans))
         ev("document.getElementById('plan-btn').click();1"); time.sleep(0.4)
         check(ev("(m=>!!m&&/50/.test(m.querySelector('.acc-credits').textContent)&&m.querySelector('[data-buy]').disabled)(document.getElementById('account-modal'))"), '«Mi cuenta»: créditos, y pagos aún no disponibles')
+        check(ev("!!document.querySelector('#account-modal .acc-team')&&!!document.querySelector('#account-modal .acc-export')&&!!document.querySelector('#account-modal .acc-delete')"), '«Mi cuenta»: equipos y tus datos')
+        ev("document.querySelector('#account-modal .modal-close').click();1")
+        # Revela's cloud: the group in File, my presentations, sharing with people (not saved yet)
+        check(ev("getComputedStyle(document.querySelector('[data-action=\"cloud-docs\"]').closest('.group')).display!=='none'"), 'la nube de Revela en Archivo (solo en la edición oficial)')
+        ev("document.querySelector('[data-action=\"cloud-docs\"]').click();1"); time.sleep(0.6)
+        check(ev("(m=>!!m&&/Charla de otoño/.test(m.textContent)&&/De Luis/.test(m.textContent)&&/1 \\/ 3/.test(m.textContent))(document.getElementById('cloud-docs-modal'))"), '«Mi nube»: las mías (con el límite) y las compartidas')
+        ev("document.querySelector('#cloud-docs-modal .modal-close').click();document.querySelector('[data-action=\"cloud-share\"]').click();1"); time.sleep(0.5)
+        check(ev("!!document.querySelector('#cloud-share-modal .cl-save')"), '«Personas»: primero, guardarla en la nube')
+        ev("document.querySelector('#cloud-share-modal .modal-close').click();1")
+        # My team
+        ev("import('./src/ui/dialogs/team.js').then(m=>m.openTeam()).then(()=>1)"); time.sleep(0.8)
+        check(ev("(m=>!!m&&/IES Ejemplo/.test(m.textContent)&&/3\\/3/.test(m.textContent)&&/Plantilla del centro/.test(m.textContent)&&!!m.querySelector('.tm-invite')&&!!m.querySelector('.tm-sw'))(document.getElementById('team-modal'))"), '«Mi equipo»: personas y puestos, marca y plantillas')
+        ev("document.querySelector('#team-modal .modal-close').click();1")
+        # Photos (Unsplash/Pexels through the server)
+        ev("(()=>{localStorage.setItem('revela.consent.revelaphotos','1');document.querySelector('[data-action=\"insert-stock\"]').click();return 1})()"); time.sleep(0.4)
+        check(ev("!!document.querySelector('[data-et=\"photos\"]')"), 'pestaña Fotos (el servidor la ofrece)')
+        ev("(()=>{document.querySelector('[data-et=\"photos\"]').click();const q=document.querySelector('.sk-q');q.value='faro';document.querySelector('.sk-go').click();return 1})()"); time.sleep(0.8)
+        ev("(()=>{const it=document.querySelector('#elements-panel .el-grid .el-item, #elements-panel .el-grid button');it&&it.click();return 1})()"); time.sleep(0.5)
+        check(ev("(b=>!!b&&b.caption==='Ana Foto / Unsplash')(window.__revela.state.deck.slides[window.__revela.state.ui.slideIndex].blocks.at(-1))"), 'una foto añadida, con su autor')
+        check(seen.get('used') and seen['used'][-1].get('id') == 'f1', 'y se avisa a Unsplash de que se usa')
         recv(send('Target.closeTarget', targetId=tid))
     finally:
         srv.shutdown(); shutil.rmtree(out, ignore_errors=True)

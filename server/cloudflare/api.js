@@ -25,6 +25,7 @@
 //   POST /api/desktop/start    { nonce, challenge }     (the desktop app, before opening the browser)
 //   POST /api/desktop/approve  { nonce, code }          (the signed-in browser, after asking the user)
 //   POST /api/desktop/claim    { nonce, verifier }      (the desktop app: its session, once)
+//   …/api/team/…               teams: seats, members, brand kit, templates (teams.js)
 //   GET  /api/account/export   → everything the account holds (JSON)
 //   POST /api/account/delete   { confirm: email }       (deletes it all; from the website)
 //   …/api/docs/…               presentations in the cloud, shared with people or by link (docs.js)
@@ -34,6 +35,7 @@
 
 import { verifyGoogleToken } from './auth.js';
 import { handleDocs } from './docs.js';
+import { handleTeams, teamStatus } from './teams.js';
 
 const enc = new TextEncoder();
 const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -70,6 +72,7 @@ export function settings(env) {
       'pro-year': { price: env.STRIPE_PRICE_PRO_YEAR, mode: 'subscription' },
       'credits-500': { price: env.STRIPE_PRICE_CREDITS_500, mode: 'payment', credits: 500 },
       'credits-1500': { price: env.STRIPE_PRICE_CREDITS_1500, mode: 'payment', credits: 1500 },
+      'team-seat': { price: env.STRIPE_PRICE_TEAM_SEAT, mode: 'subscription', team: true },   // (per seat and month; quantity = seats)
     },
   };
 }
@@ -116,9 +119,18 @@ export class Account {
         await this.put({ sessions }); return this.json({ ok: true });
       }
       case 'me': {
-        const prof = await this.get('profile', {}), plan = await this.plan(), p = await this.get('plan', null);
-        return this.json({ email: prof.email, plan, until: plan === 'pro' ? p.until : null, credits: await this.get('credits', 0), features: FEATURES[plan] || FEATURES.free });
+        const prof = await this.get('profile', {}), own = await this.plan(), p = await this.get('plan', null), teamId = await this.get('team', null);
+        // (A member of a paid team has Pro too.)
+        const team = teamId ? await teamStatus(this.env, teamId, prof.email).catch(() => null) : null, byTeam = !!(team?.member && team.active);
+        const plan = own === 'pro' || byTeam ? 'pro' : 'free';
+        return this.json({ email: prof.email, plan, until: own === 'pro' ? p.until : null, credits: await this.get('credits', 0), features: FEATURES[plan] || FEATURES.free,
+          ...(team?.member && { team: { name: team.name, role: team.role, active: team.active } }) });
       }
+      case 'team-id': return this.json({ id: await this.get('team', null) });
+      case 'team-set': { if (a.only && (await this.get('team', null)) !== a.only) return this.json({ ok: true }); await this.put({ team: a.id || null }); return this.json({ ok: true }); }
+      case 'invites-list': return this.json({ invites: await this.get('invites', []) });
+      case 'invites-add': { const l = (await this.get('invites', [])).filter(x => x.id !== a.id); l.unshift({ id: a.id, name: a.name, by: a.by, at: Date.now() }); await this.put({ invites: l.slice(0, 20) }); return this.json({ ok: true }); }
+      case 'invites-remove': await this.put({ invites: (await this.get('invites', [])).filter(x => x.id !== a.id) }); return this.json({ ok: true });
       case 'ratek': {                                      // { key, per }: one more of these this minute? (searches…)
         const now = Date.now(), k = 'rate:' + String(a.key || 'x').slice(0, 20), w = (await this.get(k, [])).filter(t => t > now - 60e3);
         if (w.length >= (+a.per || 30)) return this.json({ ok: false });
@@ -302,6 +314,7 @@ export async function handleApi(req, env, url) {
   }
   if (!me) return json({ error: 'no session' }, 401);
   const A = acct(env, me.sub);
+  if (path === '/team' || path.startsWith('/team/')) { const prof = await call(A, 'me'); return handleTeams(path, req, body, url, env, { sub: me.sub, email: prof.email }, A, acct, call, json); }
   switch (path) {
     case '/me': {
       const r = await call(A, 'me');
@@ -485,10 +498,18 @@ async function checkout(env, s, me, A, body, json) {
   const p = s.products[body.product];
   if (!env.STRIPE_SECRET_KEY || !p || !p.price) return json({ error: 'billing not available' }, 503);
   const c = await call(A, 'customer');
-  const params = { mode: p.mode, 'line_items[0][price]': p.price, 'line_items[0][quantity]': '1', client_reference_id: me.sub,
+  let team = null, seats = 1;
+  if (p.team) {                                            // (a team's seats: its admin buys them)
+    team = (await call(A, 'team-id')).id; if (!team) return json({ error: 'no team' }, 400);
+    const tc = await (await env.TEAMS.get(env.TEAMS.idFromName('team:' + team)).fetch('https://team/customer', { method: 'POST', body: JSON.stringify({ email: c.email }) })).json();
+    if (!tc.admin) return json({ error: 'forbidden' }, 403);
+    seats = Math.max(1, Math.min(1000, Math.round(+body.seats || 1)));
+  }
+  const params = { mode: p.mode, 'line_items[0][price]': p.price, 'line_items[0][quantity]': String(seats), client_reference_id: me.sub,
     success_url: `${s.site}/app/?paid=1`, cancel_url: `${s.site}/pricing`, 'metadata[sub]': me.sub, 'metadata[product]': body.product,
     ...(c.customer ? { customer: c.customer } : { customer_email: c.email }),
-    ...(p.mode === 'subscription' && { 'subscription_data[metadata][sub]': me.sub }) };
+    ...(p.mode === 'subscription' && { 'subscription_data[metadata][sub]': me.sub }),
+    ...(team && { 'metadata[team]': team, 'subscription_data[metadata][team]': team }) };
   const r = await stripe(env, 'checkout/sessions', params);
   const d = await r.json().catch(() => ({}));
   return d.url ? json({ url: d.url }) : json({ error: 'billing failed' }, 502);
@@ -512,12 +533,20 @@ async function stripeWebhook(req, env, json) {
   const body = await req.text();
   if (!(await verifyStripe(body, req.headers.get('Stripe-Signature'), env.STRIPE_WEBHOOK_SECRET))) return json({ error: 'signature' }, 400);
   const ev = JSON.parse(body), o = ev.data?.object || {}, s = settings(env);
+  const teamOf = x => x?.metadata?.team || x?.subscription_details?.metadata?.team || x?.parent?.subscription_details?.metadata?.team || null;
   const subOf = x => x?.metadata?.sub || x?.client_reference_id || x?.subscription_details?.metadata?.sub || x?.parent?.subscription_details?.metadata?.sub;
   if (ev.type === 'checkout.session.completed') {
     const sub = subOf(o); if (!sub) return json({ ok: true });
     const p = s.products[o.metadata?.product];
     if (o.mode === 'payment' && p?.credits && o.payment_status === 'paid') await call(acct(env, sub), 'grant', { credits: p.credits, reason: 'purchase', ref: ev.id });
     if (o.customer) { const A = acct(env, sub), m = await call(A, 'me'); await call(A, 'setplan', { name: m.plan, until: m.until || 0, customer: o.customer }); }
+  } else if (ev.type === 'invoice.paid' && teamOf(o)) {
+    // A team's month: its seats and until when; each member gets the month's credits.
+    const id = teamOf(o), line = o.lines?.data?.[0] || {}, end = (+line.period?.end || (Date.now() / 1000 + 31 * 86400)) * 1000 + 3 * DAY;
+    const r = await (await env.TEAMS.get(env.TEAMS.idFromName('team:' + id)).fetch('https://team/billing', { method: 'POST', body: JSON.stringify({ seats: +line.quantity || 1, until: end, customer: o.customer }) })).json();
+    for (const [email, m] of Object.entries(r.members || {})) if (m.sub) await call(acct(env, m.sub), 'grant', { credits: s.proCredits, reason: 'team', ref: ev.id + ':' + email });
+  } else if (ev.type === 'customer.subscription.deleted' && teamOf(o)) {
+    await env.TEAMS.get(env.TEAMS.idFromName('team:' + teamOf(o))).fetch('https://team/billing', { method: 'POST', body: JSON.stringify({ until: 0 }) });
   } else if (ev.type === 'invoice.paid') {
     const sub = subOf(o); if (!sub) return json({ ok: true });
     const end = (+o.lines?.data?.[0]?.period?.end || (Date.now() / 1000 + 31 * 86400)) * 1000 + 3 * DAY;   // (3 days' grace)

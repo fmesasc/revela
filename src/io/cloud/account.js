@@ -107,5 +107,5 @@ export const cloudAi = {
 // ---- Payments: the server makes the Stripe page; prices are Stripe's ----
 // (In the desktop app, Stripe's page opens in the browser.)
 const go = url => (EDITION === 'desktop' ? openInBrowser(url) : location.assign(url));
-export async function buy(product) { const { url } = await api('billing/checkout', { product }); go(url); }
+export async function buy(product, extra = {}) { const { url } = await api('billing/checkout', { product, ...extra }); go(url); }
 export async function manageBilling() { const { url } = await api('billing/portal', {}); go(url); }

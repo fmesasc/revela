@@ -96,3 +96,12 @@ class_name = "CloudDoc"
 [[migrations]]
 tag = "v4"
 new_sqlite_classes = ["CloudDoc"]
+
+# Teams (teams.js): one object per team (seats, members, brand kit, templates).
+[[durable_objects.bindings]]
+name = "TEAMS"
+class_name = "Team"
+
+[[migrations]]
+tag = "v5"
+new_sqlite_classes = ["Team"]
