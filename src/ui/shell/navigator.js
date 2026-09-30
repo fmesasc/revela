@@ -30,6 +30,8 @@ export function initPanel() {
   // Thumbnails scale to the width they really get (it depends on the panel and
   // the screen): a fixed scale cut off their right and bottom edges.
   new ResizeObserver(fitThumbs).observe(panel);
+  // Another language: the thumbnails (kept between renders) take its hint too.
+  addEventListener('revela:lang', () => panel.querySelectorAll('.thumb').forEach(el => { el.title = t('Arrástrala para cambiar el orden, o suéltala en la diapositiva para incrustarla como zoom'); }));
   // A thumbnail dropped on the slide: a slide zoom to it (PowerPoint: drag a slide in), where it is dropped.
   const stage = document.getElementById('stage'), ours = e => [...(e.dataTransfer?.types || [])].includes(SLIDE_DRAG);
   stage?.addEventListener('dragover', e => { if (!ours(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; stage.classList.add('el-drop'); });

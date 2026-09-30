@@ -422,6 +422,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const I = await frame.contentWindow.eval("import('/src/i18n/index.js')");
     await I.setLang('en'); eq(a.querySelector('span').textContent, 'Premium version', 'traducido');
     await I.setLang('fr'); eq(a.querySelector('span').textContent, 'Version premium');
+    // (And the other texts outside the ribbon's buttons: saved, colour labels, thumbnails' hint.)
+    await I.setLang('en');
+    eq(D.querySelector('#save-state span').textContent, 'Saved');
+    assert(/^Drag/.test(D.querySelector('#navigator .thumb').title), 'miniaturas: ' + D.querySelector('#navigator .thumb').title);
+    assert([...D.querySelectorAll('#ribbon label.color>span')].every(s => !/^Color$/.test(s.textContent) || s.textContent === 'Colour' || s.textContent === 'Color'), 'etiquetas de color');
+    await I.setLang('fr'); eq(D.querySelector('#ribbon label.color>span')?.textContent, 'Couleur');
     await I.setLang('es'); eq(a.querySelector('span').textContent, 'Versión premium');
   });
 }
