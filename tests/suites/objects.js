@@ -1381,4 +1381,23 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.querySelector('[data-action="selection-pane"]').click(); await sleep(10);
     assert(!p(), 'se cierra');
   });
+
+  await test('gráficos de cascada y de embudo (con «Total»), en la cinta y en PowerPoint como imagen', async () => {
+    reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
+    const data = [{ label: 'Inicio', value: 100 }, { label: 'Ventas', value: 40 }, { label: 'Gastos', value: -30 }, { label: 'Total', value: 0 }];
+    const svg = S.chartSVG({ chartType: 'waterfall', data, color: '#3f6497' });
+    eq((svg.match(/<rect /g) || []).length, 4, 'una barra por dato');
+    assert(/fill="#c0392b"/.test(svg) && /fill="#7f8c8d"/.test(svg), 'bajadas en rojo, el total en gris');
+    assert(/>\+40</.test(svg) && />-30</.test(svg) && />110</.test(svg), 'etiquetas: +40, -30 y el total 110');
+    assert(S.isTotalLabel('Subtotal') && S.isTotalLabel('Summe') && !S.isTotalLabel('Totalmente'), 'qué cuenta como total');
+    const f = S.chartSVG({ chartType: 'funnel', data: [{ label: 'Visitas', value: 1000 }, { label: 'Registros', value: 400 }, { label: 'Compras', value: 80 }] });
+    const ws = [...f.matchAll(/<rect x="[^"]+" y="[^"]+" width="([^"]+)"/g)].map(m => +m[1]);
+    assert(ws.length === 3 && ws[0] > ws[1] && ws[1] > ws[2], 'embudo: cada etapa más estrecha');
+    R.blocks.addChart(); const b = last(); select(b); await sleep(20);
+    const kind = [...D.querySelectorAll('#ribbon [data-page="ctx"] select')].find(x => [...x.options].some(o => o.value === 'waterfall'));
+    assert(kind && [...kind.options].some(o => o.value === 'funnel'), 'en la pestaña Gráfico');
+    R.store.commit(() => { b.chartType = 'waterfall'; b.data = data; }); await sleep(10);
+    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob), xml = await zip.file('ppt/slides/slide1.xml').async('string');
+    assert(!/<c:chart /.test(xml) && /<p:pic>/.test(xml), 'en PowerPoint, como imagen');
+  });
 }

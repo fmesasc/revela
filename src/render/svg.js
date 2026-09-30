@@ -158,6 +158,8 @@ export function histogramBins(values, k = 0) {
 export function chartSVG(b) {
   if (b.chartType === 'histogram') return chartSVG({ ...b, chartType: 'bar', data: histogramBins((b.data || []).map(d => +d.value)), series: [], combo: false, _adjacent: true });
   if (b.chartType === 'hbar') return hbarSVG(b);
+  if (b.chartType === 'waterfall') return waterfallSVG(b);
+  if (b.chartType === 'funnel') return funnelSVG(b);
   if (b.chartType === 'map') return mapSVG(b);
   const data = b.data || []; const color = b.color || '#3f6497';
   const palette = ['#3f6497', '#c0392b', '#2b7a3b', '#d68910', '#7d3c98', '#16a085', '#c0392b'];
@@ -285,6 +287,41 @@ function mapSVG(b) {
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">${paths}${inset}${legend}${credit}</svg>`;
 }
 // Horizontal bars: the categories down the side, the bars across (several series side by side).
+// Waterfall (PowerPoint's): each bar starts where the one before ended — ups in
+// the chart's colour, downs in red; a point called "Total" (or "Subtotal", in
+// any language set out in TOTAL_WORDS) is a bar from zero to the running sum.
+const TOTAL_WORDS = /^\s*(sub)?(total|totale|totaal|summe|guztira|المجموع)\b/i;
+export const isTotalLabel = s => TOTAL_WORDS.test(String(s || ''));
+function waterfallSVG(b) {
+  const data = b.data || [], n = data.length || 1, up = b.color || '#3f6497', down = '#c0392b', tot = '#7f8c8d';
+  let run = 0;
+  const steps = data.map(d => { const total = isTotalLabel(d.label), v = +d.value || 0, from = total ? 0 : run, to = total ? run : run + v; run = to; return { from, to, total, v: total ? to : v }; });
+  const all = steps.flatMap(s => [s.from, s.to]), lo = Math.min(0, ...all), hi = Math.max(0, ...all) || 1;
+  const L = 8, R = 98, T = 4, B = 52, Y = v => B - (v - lo) / ((hi - lo) || 1) * (B - T), gap = (R - L) / n, bw = gap * 0.62;
+  const num = v => (Math.abs(v) >= 1000 ? v.toLocaleString('es') : String(+v.toFixed(2)));
+  const bars = steps.map((s, i) => {
+    const x = L + gap * i + (gap - bw) / 2, y = Math.min(Y(s.from), Y(s.to)), h = Math.max(0.3, Math.abs(Y(s.to) - Y(s.from)));
+    const fill = s.total ? tot : s.to >= s.from ? up : down;
+    const link = i < steps.length - 1 ? `<line x1="${(x + bw).toFixed(1)}" y1="${Y(s.to).toFixed(1)}" x2="${(x + gap).toFixed(1)}" y2="${Y(s.to).toFixed(1)}" stroke="#8a8a8a" stroke-width="0.3" stroke-dasharray="1 1" vector-effect="non-scaling-stroke"/>` : '';
+    return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${fill}"/>${link}`
+      + (b.dataLabels !== false ? `<text x="${(x + bw / 2).toFixed(1)}" y="${(y - 1).toFixed(1)}" font-size="3" text-anchor="middle" fill="#8a8a8a">${escSvg((s.v > 0 && !s.total ? '+' : '') + num(s.v))}</text>` : '')
+      + `<text x="${(x + bw / 2).toFixed(1)}" y="${B + 4}" font-size="3.4" text-anchor="middle" fill="#8a8a8a">${escSvg(data[i].label || '')}</text>`;
+  }).join('');
+  const axis = `<line x1="${L}" y1="${Y(0).toFixed(1)}" x2="${R}" y2="${Y(0).toFixed(1)}" stroke="#8a8a8a" stroke-width="0.4" vector-effect="non-scaling-stroke"/>`;
+  return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">${axis}${bars}</svg>`;
+}
+// Funnel: centred bars, as wide as their value, one under another (stages of a process).
+function funnelSVG(b) {
+  const data = b.data || [], n = data.length || 1, max = Math.max(1, ...data.map(d => +d.value || 0)), color = b.color || '#3f6497';
+  const T = 2, H = 56 / n, bh = H * 0.8, num = v => (Math.abs(v) >= 1000 ? v.toLocaleString('es') : String(+(+v).toFixed(2)));
+  const bars = data.map((d, i) => {
+    const w = Math.max(1, (+d.value || 0) / max * 70), x = 50 - w / 2, y = T + i * H, op = (1 - i / (n + 1) * 0.55).toFixed(2);
+    return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${bh.toFixed(1)}" fill="${color}" fill-opacity="${op}"/>`
+      + `<text x="${(x - 1.5).toFixed(1)}" y="${(y + bh / 2 + 1.2).toFixed(1)}" font-size="3.4" text-anchor="end" fill="#8a8a8a">${escSvg(d.label || '')}</text>`
+      + `<text x="50" y="${(y + bh / 2 + 1.2).toFixed(1)}" font-size="3.4" text-anchor="middle" fill="#fff" font-weight="600">${escSvg(num(d.value || 0))}</text>`;
+  }).join('');
+  return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">${bars}</svg>`;
+}
 function hbarSVG(b) {
   const data = b.data || [], ser = chartSeries(b), n = data.length || 1, all = ser.flatMap(x => x.values);
   const lo = Math.min(0, ...all), hi = Math.max(0, ...all) || 1, L = 22, R = 96, T = ser.length > 1 ? 8 : 3, B = 58;

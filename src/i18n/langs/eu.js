@@ -430,6 +430,8 @@ export default {
   "Dona": "Erroskila",
   "Dispersión": "Sakabanaketa",
   "Radar": "Radarra",
+  "Cascada": "Ur-jauzia",
+  "Embudo": "Inbutua",
   "Panel de selección: ocultar, bloquear, renombrar y ordenar los objetos": "Hautapen-panela: objektuak ezkutatu, blokeatu, izena aldatu eta ordenatu",
   "Selección": "Hautapena",
   "Mostrar todo": "Erakutsi dena",

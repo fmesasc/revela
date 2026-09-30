@@ -429,6 +429,8 @@ export const ROWS = [
   ['Dona', 'Doughnut', 'Anneau', 'Ring', 'Ciambella', 'Rosca', 'Rosco'],
   ['Dispersión', 'Scatter', 'Nuage de points', 'Punktdiagramm', 'Dispersione', 'Dispersão', 'Dispersió'],
   ['Radar', 'Radar', 'Radar', 'Netz', 'Radar', 'Radar', 'Radar'],
+  ['Cascada', 'Waterfall', 'Cascade', 'Wasserfall', 'A cascata', 'Cascata', 'Cascada'],
+  ['Embudo', 'Funnel', 'Entonnoir', 'Trichter', 'Imbuto', 'Funil', 'Embut'],
   ['Panel de selección: ocultar, bloquear, renombrar y ordenar los objetos', 'Selection pane: hide, lock, rename and reorder objects', 'Volet Sélection : masquer, verrouiller, renommer et réordonner les objets', 'Auswahlbereich: Objekte ausblenden, sperren, umbenennen und anordnen', 'Riquadro di selezione: nascondi, blocca, rinomina e riordina gli oggetti', 'Painel de seleção: ocultar, bloquear, mudar o nome e ordenar os objetos', 'Tauler de selecció: amaga, bloqueja, reanomena i ordena els objectes'],
   ['Selección', 'Selection', 'Sélection', 'Auswahl', 'Selezione', 'Seleção', 'Selecció'],
   ['Mostrar todo', 'Show all', 'Tout afficher', 'Alle anzeigen', 'Mostra tutto', 'Mostrar tudo', 'Mostra-ho tot'],

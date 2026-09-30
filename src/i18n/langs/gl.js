@@ -418,6 +418,8 @@ export default {
   "Dona": "Rosca",
   "Dispersión": "Dispersión",
   "Radar": "Radar",
+  "Cascada": "Fervenza",
+  "Embudo": "Funil",
   "Panel de selección: ocultar, bloquear, renombrar y ordenar los objetos": "Panel de selección: agochar, bloquear, renomear e ordenar os obxectos",
   "Selección": "Selección",
   "Mostrar todo": "Amosar todo",

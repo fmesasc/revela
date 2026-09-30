@@ -278,7 +278,7 @@ export async function buildPptx(deck = state.deck) {
       if (b.type === 'icon') raster.set(b.id, await svgToPNG(iconSVG(b), b.w, b.h));
       else if (b.type === 'ink') raster.set(b.id, await svgToPNG(inkSVG(b), b.w, b.h));
       else if (b.type === 'timer') raster.set(b.id, await svgToPNG(timerSVG(b), b.w, b.h));
-      else if (b.type === 'chart' && b.chartType === 'map') raster.set(b.id, await svgToPNG(chartSVG(b), b.w, b.h));      // (PowerPoint's own maps can't be written here)
+      else if (b.type === 'chart' && ['map', 'waterfall', 'funnel'].includes(b.chartType)) raster.set(b.id, await svgToPNG(chartSVG(b), b.w, b.h));      // (PowerPoint's own maps can't be written here)
       else if (b.type === 'math' || b.type === 'poll' || b.type === 'figindex') { const img = await blockImage(b, s, deck); if (img) raster.set(b.id, img); }
     } catch {}
   }

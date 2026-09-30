@@ -430,6 +430,8 @@ export default {
   "Dona": "دائري مجوف",
   "Dispersión": "مبعثر",
   "Radar": "رادار",
+  "Cascada": "شلالي",
+  "Embudo": "قمعي",
   "Panel de selección: ocultar, bloquear, renombrar y ordenar los objetos": "جزء التحديد: إخفاء الكائنات وقفلها وإعادة تسميتها وترتيبها",
   "Selección": "التحديد",
   "Mostrar todo": "إظهار الكل",

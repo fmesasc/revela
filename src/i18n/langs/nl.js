@@ -418,6 +418,8 @@ export default {
   "Dona": "Ring",
   "Dispersión": "Spreiding",
   "Radar": "Radar",
+  "Cascada": "Waterval",
+  "Embudo": "Trechter",
   "Panel de selección: ocultar, bloquear, renombrar y ordenar los objetos": "Selectiedeelvenster: objecten verbergen, vergrendelen, hernoemen en ordenen",
   "Selección": "Selectie",
   "Mostrar todo": "Alles tonen",
