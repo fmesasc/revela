@@ -18,24 +18,53 @@ Qué permite cada servicio (comprobado en su documentación, septiembre de 2026)
 
 ## Google Drive
 
-En [Google Cloud Console](https://console.cloud.google.com/), en el mismo
-proyecto que ya usa Revela:
+Todo se hace en [Google Cloud Console](https://console.cloud.google.com/), en el
+proyecto que ya usa Revela (el de su ID de cliente). Los nombres de los menús
+pueden salir en inglés o en español según el idioma de la consola.
 
-1. **API y servicios ▸ Biblioteca ▸ Google Drive API ▸ Administrar ▸
-   Integración con la IU de Drive** (*Drive UI integration*):
-   - **Nombre de la aplicación**: Revela. Descripciones corta y larga.
-   - **Iconos**: los de `icons/drive/` (16, 32, 48, 64, 96, 128 y 256 px).
-   - **URL de apertura** (*Open URL*): `https://fmesasc.github.io/revela/`
-     (Drive añade `?state=…` con el archivo).
-   - **Tipos MIME predeterminados**: `application/vnd.revela+json`
-     (el tipo con el que Revela guarda desde ahora sus presentaciones).
-   - **Tipos MIME secundarios**: `application/json` (las guardadas antes).
-   - **Creación de archivos**: activada, con la misma URL; así aparece en
-     **Nuevo ▸ Más ▸ Revela** y la presentación nueva se guarda en esa carpeta.
-2. **Pantalla de consentimiento de OAuth ▸ Ámbitos**: añadir
-   `https://www.googleapis.com/auth/drive.install` (no es sensible). Revela lo
-   pide al iniciar sesión con Google; con eso aparece en «Abrir con» para esa
-   persona, sin publicarla en Google Workspace Marketplace.
+### 1. Integración con la IU de Drive
+
+☰ Menú ▸ **APIs y servicios ▸ APIs y servicios habilitados ▸ Google Drive API**
+▸ pestaña **Integración con la IU de Drive** (*Drive UI integration*):
+
+| Apartado | Qué poner |
+| --- | --- |
+| Nombre de la aplicación | `Revela` |
+| Descripción breve | `Editor de presentaciones` |
+| Descripción larga | Una frase: qué es Revela y qué abre (presentaciones `.revela.json`) |
+| Iconos de la aplicación | Los PNG de `icons/drive/` del tamaño que pida cada casilla (16, 32, 48, 64, 96, 128, 256) |
+| URL de apertura (*Open URL*) | `https://fmesasc.github.io/revela/` |
+| Tipos MIME predeterminados | `application/vnd.revela+json` |
+| Extensiones predeterminadas | vacío (poner `json` haría a Revela la aplicación de todos los JSON) |
+| Tipos MIME secundarios | `application/json` (presentaciones guardadas antes de este cambio) |
+| Extensiones secundarias | vacío, o `json` si se quiere ver Revela también para cualquier `.json` |
+| Creación de archivos | marcado · URL nueva: `https://fmesasc.github.io/revela/` · nombre del documento: `Presentación de Revela` |
+| Importación | sin marcar |
+| Compatibilidad con unidades compartidas | marcado |
+
+Y **Enviar** (*Submit*). Los iconos pueden tardar hasta 24 horas en verse.
+
+### 2. Permiso `drive.install`
+
+☰ Menú ▸ **Google Auth Platform** (antes «Pantalla de consentimiento de OAuth»)
+▸ **Acceso a datos** ▸ **Añadir o quitar permisos** ▸ en «Añadir permisos
+manualmente», pegar `https://www.googleapis.com/auth/drive.install` ▸ **Añadir a
+la tabla** ▸ **Actualizar** ▸ **Guardar**.
+
+En **Público**: si la app está «En prueba», solo entran las cuentas añadidas
+como usuarios de prueba; para que la use cualquiera, **Publicar la aplicación**
+(«En producción»). Si la consola marcase el permiso como sensible, pediría
+verificación.
+
+### 3. Probarlo
+
+1. En Revela, iniciar sesión con Google otra vez: la ventana de permisos pide
+   ahora también «conectarse a Google Drive».
+2. Guardar una presentación en Drive (se guarda con el tipo nuevo).
+3. En Drive: botón derecho sobre el `.revela.json` ▸ **Abrir con ▸ Revela**, y
+   **Nuevo ▸ Más ▸ Revela** para crear una.
+4. Si no aparece: Drive ▸ ⚙ Configuración ▸ **Administrar aplicaciones** debe
+   mostrar Revela; los cambios pueden tardar un rato.
 
 ## Dropbox
 
