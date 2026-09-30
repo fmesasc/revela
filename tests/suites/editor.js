@@ -487,6 +487,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     // The object tabs: labelled lists with the label beside, two by two
     R.store.commit(() => { slide().blocks.push({ id: 'm3', type: 'model', src: 'data:model/gltf-binary;base64,Z2xURg==', x: 100, y: 100, w: 300, h: 200, rotation: 0, animation: null }); R.state.ui.selection = 'm3'; R.state.ui.multi = ['m3']; });
     await sleep(50); D.querySelector('[data-tab="ctx"]').click(); await sleep(80);
+    // An icon can be changed for another (same place, size and colour)
+    R.blocks.addIcon('star'); await sleep(40); D.querySelector('[data-tab="ctx"]').click(); await sleep(60);
+    const ic = slide().blocks.at(-1); D.querySelector('[data-page="ctx"] [data-ctx="icon-change"]').click(); await sleep(30);
+    D.querySelector('.popover [data-icon="home"]').click(); await sleep(30);
+    eq(slide().blocks.at(-1).icon, 'home', 'cambiar el icono'); eq(slide().blocks.at(-1).id, ic.id, 'el mismo objeto, no uno nuevo');
+    R.store.commit(() => { R.state.ui.selection = 'm3'; R.state.ui.multi = ['m3']; }); await sleep(40); D.querySelector('[data-tab="ctx"]').click(); await sleep(60);
     const cam = [...D.querySelectorAll('[data-page="ctx"] .ctx-field')].find(f => /Cámara/.test(f.textContent));
     assert(cam && cam.closest('.group').classList.contains('grid2'), 'desplegables de dos en dos');
     const sp = cam.querySelector('span').getBoundingClientRect(), se = cam.querySelector('select').getBoundingClientRect();

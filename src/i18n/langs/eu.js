@@ -2150,4 +2150,7 @@ export default {
   "Encuadre": "Enkoadraketa",
   "Margen": "Marjina",
   "Vínculo y descripción": "Esteka eta deskribapena",
+  "Vínculo y accesibilidad": "Esteka eta irisgarritasuna",
+  "Trazo a mano": "Eskuz marraztua",
+  "Cambiar icono": "Aldatu ikonoa",
 };

@@ -2150,4 +2150,7 @@ export default {
   "Encuadre": "الإطار",
   "Margen": "الهامش",
   "Vínculo y descripción": "الرابط والوصف",
+  "Vínculo y accesibilidad": "الرابط وإمكانية الوصول",
+  "Trazo a mano": "رسم يدوي",
+  "Cambiar icono": "تغيير الأيقونة",
 };

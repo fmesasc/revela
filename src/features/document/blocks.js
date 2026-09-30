@@ -386,6 +386,11 @@ export function addInk(points, { color = '#ff2d2d', width = 4, hl = false } = {}
 export function addIcon(name) {
   insert({ id: uid(), type: 'icon', icon: name, color: '#ffffff', x: 560, y: 280, w: 160, h: 160, rotation: 0, animation: null });
 }
+// Another icon in its place (same size, colour and position).
+export function setIcon(id, name) {
+  const b = currentSlide().blocks.find(x => x.id === id); if (!b || b.type !== 'icon' || !name) return;
+  commit(() => { b.icon = name; });
+}
 export function setIconColor(color) {
   const b = selectedBlock(); if (!b || b.type !== 'icon') return;
   commit(() => { b.color = color; }, { history: false });

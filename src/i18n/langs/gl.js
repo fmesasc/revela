@@ -2150,4 +2150,7 @@ export default {
   "Encuadre": "Encadre",
   "Margen": "Marxe",
   "Vínculo y descripción": "Ligazón e descrición",
+  "Vínculo y accesibilidad": "Ligazón e accesibilidade",
+  "Trazo a mano": "Trazo a man",
+  "Cambiar icono": "Cambiar icona",
 };

@@ -2169,5 +2169,8 @@ export const ROWS = [
   ['Encuadre', 'Framing', 'Cadrage', 'Bildausschnitt', 'Inquadratura', 'Enquadramento', 'Enquadrament'],
   ['Margen', 'Margin', 'Marge', 'Rand', 'Margine', 'Margem', 'Marge'],
   ['Vínculo y descripción', 'Link and description', 'Lien et description', 'Link und Beschreibung', 'Collegamento e descrizione', 'Ligação e descrição', 'Enllaç i descripció'],
+  ['Vínculo y accesibilidad', 'Link and accessibility', 'Lien et accessibilité', 'Link und Barrierefreiheit', 'Collegamento e accessibilità', 'Ligação e acessibilidade', 'Enllaç i accessibilitat'],
+  ['Trazo a mano', 'Hand-drawn', 'Tracé à main levée', 'Handgezeichnet', 'Tratto a mano', 'Traço à mão', 'Traç a mà'],
+  ['Cambiar icono', 'Change icon', 'Changer d\'icône', 'Symbol ändern', 'Cambia icona', 'Mudar ícone', 'Canvia la icona'],
 ];
 // Additional languages (partial; anything missing falls back to Spanish).

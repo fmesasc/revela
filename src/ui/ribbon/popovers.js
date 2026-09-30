@@ -75,7 +75,8 @@ export const POPS = {
   },
 };
 export function closePopover() { if (openPop) { openPop.remove(); openPop = null; } }
-export function togglePopover(launcher, type) {
+// replaceId: the icons gallery changes that icon instead of adding one.
+export function togglePopover(launcher, type, { replaceId = null } = {}) {
   const same = openPop && openPop.dataset.type === type;
   closePopover();
   if (same || !POPS[type]) return;
@@ -101,7 +102,7 @@ export function togglePopover(launcher, type) {
     x.addEventListener('click', () => format.insertSymbol(x.textContent));
   });
   pop.querySelectorAll('[data-icon]').forEach(x =>
-    x.addEventListener('click', () => { blocks.addIcon(x.dataset.icon); closePopover(); }));
+    x.addEventListener('click', () => { if (replaceId) blocks.setIcon(replaceId, x.dataset.icon); else blocks.addIcon(x.dataset.icon); closePopover(); }));
   pop.querySelectorAll('[data-wa]').forEach(x =>
     x.addEventListener('click', () => { blocks.addWordArt(x.dataset.wa); closePopover(); }));
   pop.querySelectorAll('[data-palette]').forEach(x =>

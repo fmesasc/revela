@@ -2150,4 +2150,7 @@ export default {
   "Encuadre": "Kadrering",
   "Margen": "Marge",
   "Vínculo y descripción": "Link en beschrijving",
+  "Vínculo y accesibilidad": "Link en toegankelijkheid",
+  "Trazo a mano": "Handgetekend",
+  "Cambiar icono": "Pictogram wijzigen",
 };

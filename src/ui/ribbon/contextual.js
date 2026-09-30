@@ -10,6 +10,7 @@ import { modelClips } from '../canvas/mediaview.js';
 import { shortSig } from '../../core/text.js';
 import { state, commit, currentSlide, selectedBlock, selectedBlocks } from '../../core/store.js';
 import * as blocks from '../../features/document/blocks.js';
+import { togglePopover } from './popovers.js';
 import * as format from '../../features/document/format.js';
 import * as shapeops from '../../features/document/shapeops.js';
 import { MOTIONS_3D, VIEWS_3D, BLEEDS_3D, EDGES_3D, ARRIVALS_3D, modelBleed } from '../../features/content/model3d.js';
@@ -69,13 +70,14 @@ function groupsFor(b) {
       ['color', 'border_color', 'Borde', b.stroke || '#1e2a3a', v => blocks.setShapeStyle('stroke', v)],
       ['num', 'Grosor', b.strokeWidth ?? 2, v => blocks.setShapeStyle('strokeWidth', Math.max(0, +v || 0)), 0, 40, 1],
       ['select', 'Línea', [['solid', '━ Continua'], ['dash', '╍ Guiones'], ['dot', '┈ Puntos'], ['dashDot', '─·─ Guion y punto']], b.dash || 'solid', v => blocks.setLineDash(v)],
-      btn('format_color_reset', 'Sin relleno', () => blocks.setShapeStyle('fill', 'none'), b.fill === 'none')]],
-    // Gradient (PowerPoint's "Gradient fill") and a hand-drawn look (its "Sketched" outline).
+      btn('format_color_reset', 'Sin relleno', () => blocks.setShapeStyle('fill', 'none'), b.fill === 'none'),
+      // (A hand-drawn look: PowerPoint's "Sketched" outline.)
+      btn('draw', 'Trazo a mano', () => set(b, x => { if (x.sketch) delete x.sketch; else x.sketch = true; }), !!b.sketch)]],
+    // Gradient (PowerPoint's "Gradient fill").
     ['Relleno', [['select', 'Tipo de relleno', [['solid', 'Sólido'], ['linear', 'Degradado lineal'], ['radial', 'Degradado radial']], b.fill2 ? b.gradType || 'linear' : 'solid',
         v => set(b, x => { if (v === 'solid') { delete x.fill2; delete x.gradType; } else { x.fill2 ||= '#ffffff'; x.gradType = v; } })],
       ...(b.fill2 ? [['color', 'gradient', 'Segundo color', b.fill2, v => set(b, x => { x.fill2 = v; })]] : []),
-      ...(b.fill2 && b.gradType !== 'radial' ? [['num', 'Ángulo', b.gradAngle ?? 0, v => set(b, x => { x.gradAngle = ((+v || 0) % 360 + 360) % 360; }), 0, 359, 15]] : []),
-      btn('draw', 'A mano alzada', () => set(b, x => { if (x.sketch) delete x.sketch; else x.sketch = true; }), !!b.sketch)]],
+      ...(b.fill2 && b.gradType !== 'radial' ? [['num', 'Ángulo', b.gradAngle ?? 0, v => set(b, x => { x.gradAngle = ((+v || 0) % 360 + 360) % 360; }), 0, 359, 15]] : [])]],
     ['Forma', [['select', 'Cambiar forma', SHAPES, b.shape, v => set(b, x => { x.shape = v; })], wrapBtn(b),
       ...(hasShapeText(b) ? [btn('edit_note', 'Escribir texto', () => editText(b.id, { selectAll: false }))] : [])]]);
   else if (b.type === 'image') G.push(
@@ -148,7 +150,7 @@ function groupsFor(b) {
     ['Diagrama', [['select', 'Diseño', DIAGRAM_LAYOUTS.flatMap(([, l]) => l), b.layout || 'process', v => blocks.setDiagram(b.id, { layout: v })],
       ['select', 'Colores', DIAGRAM_COLORS, b.colors || 'colorful', v => blocks.setDiagram(b.id, { colors: v })],
       btn('edit_note', 'Editar texto', () => openDiagramText(b))]],
-    ['Organizar', [btn('format_list_numbered', 'Uno a uno al presentar', () => blocks.setDiagram(b.id, { oneByOne: !b.oneByOne }), !!b.oneByOne),
+    ['Opciones', [btn('format_list_numbered', 'Uno a uno al presentar', () => blocks.setDiagram(b.id, { oneByOne: !b.oneByOne }), !!b.oneByOne),
       btn('category', 'Convertir en formas', () => blocks.diagramToShapes(b.id))]]);
   else if (b.type === 'file') {
     const pdf = files.isPdf(b), busy = p => p.catch(e => alertDialog(t('No se pudo leer el PDF:') + ' ' + (e.message || e)));
@@ -185,7 +187,8 @@ function groupsFor(b) {
       btn('volume_up', 'Sonido al acabar', () => set(b, x => { x.sound = x.sound === false; }), b.sound !== false),
       btn('edit_note', 'Texto final', async () => { const v = await promptDialog(t('Texto al acabar el tiempo:'), b.endText ?? t('¡Tiempo!')); if (v != null) set(b, x => { x.endText = v.slice(0, 40); }); })]]);
   else if (b.type === 'ink') G.push(['Dibujo', [btn('gesture', 'Trazar al presentar', () => (b.animation?.effect === 'draw' ? clearAnimation() : setAnimation('draw')), b.animation?.effect === 'draw')]]);
-  else if (b.type === 'icon') G.push(['Icono', [btn('palette', 'Color del icono', () => openIconColor(b))]]);
+  else if (b.type === 'icon') G.push(['Icono', [btn('interests', 'Cambiar icono', () => togglePopover(document.querySelector('#ribbon [data-page="ctx"] [data-ctx="icon-change"]'), 'icons', { replaceId: b.id }), false, 'icon-change'),
+    btn('palette', 'Color del icono', () => openIconColor(b))]]);
   else if (b.type === 'embed') G.push(['Web', [btn(b.display === 'card' ? 'web' : 'link', b.display === 'card' ? 'Mostrar la web' : 'Mostrar como tarjeta', () => blocks.setEmbedDisplay(b.id, b.display === 'card' ? 'frame' : 'card')),
     ...(blocks.isVideoEmbed(b.src) ? [btn('content_cut', 'Fragmento del vídeo', () => askVideoClip(b))] : [])]]);
   else if (b.type === 'slideref') G.push(['Zoom', [btn('slideshow', 'Elegir diapositiva', () => openSlidePicker(b)), btn('undo', 'Volver aquí', () => blocks.toggleSlideRefReturn(), !!b.returnBack)]]);
@@ -196,8 +199,9 @@ function groupsFor(b) {
   G.push(['Animaciones', [btn('add_circle', n ? `${t('Añadir animación')} (${n})` : 'Añadir animación', () => openAddAnimation(document.querySelector('#ribbon [data-page="ctx"] [data-ctx="add"]')), false, 'add'),
     btn('gesture', n ? 'Añadir movimiento' : 'Dibujar recorrido', () => startPathDraw({ append: true })), btn('tune', 'Panel', () => openAnimPanel())]]);
   // (The link with the alt text and description: one group, not a column for a single button.)
-  G.push(['Vínculo y descripción', [...(!['text', 'connector'].includes(b.type) ? [btn('link', b.href || b.goto ? 'Cambiar vínculo' : 'Vínculo', () => openObjectLink(b), !!(b.href || b.goto))] : []),
-    btn('accessibility', 'Texto alternativo', () => openAlt(b)), ...(!['text', 'connector', 'figindex', 'slideref'].includes(b.type) ? [btn('short_text', b.caption ? 'Editar descripción' : 'Descripción', () => openCaption(b))] : [])]]);
+  const linkable = !['text', 'connector'].includes(b.type), described = !['text', 'connector', 'figindex', 'slideref'].includes(b.type);
+  G.push([linkable ? 'Vínculo y accesibilidad' : 'Accesibilidad', [...(linkable ? [btn('link', b.href || b.goto ? 'Cambiar vínculo' : 'Vínculo', () => openObjectLink(b), !!(b.href || b.goto))] : []),
+    btn('accessibility', 'Texto alternativo', () => openAlt(b)), ...(described ? [btn('short_text', b.caption ? 'Editar descripción' : 'Descripción', () => openCaption(b))] : [])]]);
   G.push(arrange(b));
   return G;
 }

@@ -726,7 +726,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     sel().value = 'linear'; sel().dispatchEvent(new W.Event('change')); await sleep(20);
     assert(last().fill2 && last().gradType === 'linear', 'degradado desde la pestaña');
     assert([...page().querySelectorAll('label, .ctx-field')].some(l => /Ángulo/.test(l.textContent)), 'con su ángulo');
-    [...page().querySelectorAll('button')].find(x => x.querySelector('span')?.textContent === 'A mano alzada').click(); await sleep(20);
+    [...page().querySelectorAll('button')].find(x => x.querySelector('span')?.textContent === 'Trazo a mano').click(); await sleep(20);
     assert(last().sketch, 'a mano alzada desde la pestaña');
     sel().value = 'solid'; sel().dispatchEvent(new W.Event('change')); await sleep(20); assert(!last().fill2, 'vuelta a sólido');
   });
