@@ -731,4 +731,39 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert([...f.contentDocument.scripts].some(x => x.src === 'https://accounts.google.com/gsi/client'), 'con el botón de Google');
     } finally { f.remove(); }
   });
+
+  await test('comentarios a PowerPoint y de vuelta: hilos, tareas, resueltos; y los comentarios modernos de Microsoft 365', async () => {
+    reset(); const W = frame.contentWindow, C = R.comments; C.setAuthor('Ana');
+    const b = slide().blocks[0]; select(b);
+    const id = C.addComment('Revisa el título', b.id, { assignee: 'Luis', due: '2026-10-15' });
+    C.reply(id, 'Hecho, <mira> & dime'); C.setAuthor('Luis'); C.reply(id, 'Vale');
+    const id2 = C.addComment('Cambiar la foto +Marta', null); C.setResolved(id2);
+    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob);
+    const xml = await zip.file('ppt/comments/comment1.xml').async('string'), au = await zip.file('ppt/commentAuthors.xml').async('string');
+    assert(/<p:cm authorId="0"[^>]*><p:pos [^>]*\/><p:text>Revisa el título \+Luis · 2026-10-15<\/p:text>/.test(xml), 'la tarea, con su nombre y fecha: ' + xml.slice(0, 300));
+    assert(/↪ Hecho, &lt;mira&gt; &amp; dime/.test(xml) && /✓ Cambiar la foto \+Marta/.test(xml), 'respuestas y resueltos');
+    assert(/name="Ana"/.test(au) && /name="Luis"/.test(au), 'los autores');
+    assert(/relationships\/comments" Target="..\/comments\/comment1.xml"/.test(await zip.file('ppt/slides/_rels/slide1.xml.rels').async('string')), 'enlazado a la diapositiva');
+    assert(/commentAuthors\+xml/.test(await zip.file('[Content_Types].xml').async('string')), 'tipos de contenido');
+    const back = (await R.pptxImport.importPPTX(new W.File([blob], 'c.pptx'))).slides[0].comments;
+    eq(back.length, 2, 'vuelven los dos');
+    eq(back[0].text, 'Revisa el título +Luis'); eq(back[0].assignee, 'Luis'); eq(back[0].due, '2026-10-15'); eq(back[0].author, 'Ana');
+    eq(back[0].replies.map(r => r.author + ':' + r.text).join('|'), 'Ana:Hecho, <mira> & dime|Luis:Vale', 'con sus respuestas');
+    assert(back[1].resolved && back[1].assignee === 'Marta', 'resuelto y asignado');
+    // LibreOffice (.odp): the same, as annotations.
+    const odp = await R.odp.buildODP(), oz = await W.JSZip.loadAsync(odp), content = await oz.file('content.xml').async('string');
+    assert(/<officeooo:annotation [^>]*><dc:creator>Ana<\/dc:creator>/.test(content) && /↪ Vale/.test(content), 'en ODP, como anotaciones');
+    const ob = (await R.odp.importODP(new W.File([odp], 'c.odp'))).slides[0].comments;
+    assert(ob.length === 2 && ob[0].assignee === 'Luis' && ob[0].replies.length === 2 && ob[1].resolved, 'y vuelven de ODP');
+    // A Microsoft 365 comment (modern format) on the first object, with a reply.
+    const spid = (await zip.file('ppt/slides/slide1.xml').async('string')).match(/<p:cNvPr id="(\d+)" name="rv-/)[1];
+    zip.file('ppt/authors.xml', '<p188:authorLst xmlns:p188="http://schemas.microsoft.com/office/powerpoint/2018/8/main"><p188:author id="{A1}" name="Rosa" initials="R" userId="r" providerId="None"/></p188:authorLst>');
+    zip.file('ppt/comments/modernComment_1.xml', `<p188:cmLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:ac="http://schemas.microsoft.com/office/drawing/2013/main/command" xmlns:p188="http://schemas.microsoft.com/office/powerpoint/2018/8/main"><p188:cm id="{C1}" authorId="{A1}" created="2026-09-01T10:00:00.000" status="resolved"><ac:deMkLst><ac:spMk id="${spid}" creationId="x"/></ac:deMkLst><p188:replyLst><p188:reply id="{R1}" authorId="{A1}" created="2026-09-02T10:00:00.000"><p188:txBody><a:bodyPr/><a:p><a:r><a:t>Ya está</a:t></a:r></a:p></p188:txBody></p188:reply></p188:replyLst><p188:txBody><a:bodyPr/><a:p><a:r><a:t>Más grande</a:t></a:r></a:p></p188:txBody></p188:cm></p188:cmLst>`);
+    const rp = 'ppt/slides/_rels/slide1.xml.rels';
+    zip.file(rp, (await zip.file(rp).async('string')).replace('</Relationships>', '<Relationship Id="rIdM" Type="http://schemas.microsoft.com/office/2018/10/relationships/comments" Target="../comments/modernComment_1.xml"/></Relationships>'));
+    const again = (await R.pptxImport.importPPTX(new W.File([await zip.generateAsync({ type: 'blob' })], 'm.pptx'))).slides[0];
+    const m = again.comments.find(c => c.text === 'Más grande');
+    assert(m && m.author === 'Rosa' && m.resolved && m.replies[0]?.text === 'Ya está', 'comentario moderno con su respuesta');
+    assert(m.blockId && again.blocks.some(x => x.id === m.blockId), 'anclado a su objeto');
+  });
 }

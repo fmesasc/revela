@@ -64,3 +64,24 @@ export function deleteComment(id) {
 }
 // @names mentioned in a text.
 export const mentions = text => [...String(text).matchAll(/@([\p{L}\p{N}_.-]+)/gu)].map(m => m[1]);
+
+// Comments as plain text, for formats without threads, tasks or "resolved"
+// (PowerPoint's classic comments, OpenDocument's annotations): a reply is its own
+// comment starting with "↪ ", a task keeps its "+name" (and its date after
+// " · "), a resolved one starts with "✓ ". parseCommentText reads them back.
+export function commentText(c) {
+  let s = c.text || '';
+  if (c.assignee && !new RegExp(`\\+${c.assignee.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}])`, 'u').test(s)) s += ` +${c.assignee}`;
+  if (c.assignee && c.due) s += ` · ${c.due}`;
+  return (c.resolved ? '✓ ' : '') + s;
+}
+// Text → { reply: true, text } or a comment's { text, resolved, assignee, due }.
+export function parseCommentText(text) {
+  text = String(text || '').trim();
+  if (text.startsWith('↪ ')) return { reply: true, text: text.slice(2) };
+  const c = { text, resolved: false };
+  if (text.startsWith('✓ ')) { c.resolved = true; c.text = text = text.slice(2); }
+  const due = text.match(/\s·\s(\d{4}-\d{2}-\d{2})$/), plus = text.match(/(?:^|\s)\+([\p{L}\p{N}_.-]+)/u);
+  if (plus) { c.assignee = plus[1]; if (due) { c.due = due[1]; c.text = text.slice(0, due.index); } }
+  return c;
+}

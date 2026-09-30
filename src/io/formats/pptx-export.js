@@ -4,6 +4,7 @@
 // text, images, shapes, tables and charts. 3D models, video, web embeds, icons
 // and equations can't be represented natively and are skipped.
 
+import { commentText } from '../../features/collab/comments.js';
 import { state } from '../../core/store.js';
 import { alertUser } from '../../core/notify.js';
 import { t } from '../../i18n/index.js';
@@ -439,7 +440,44 @@ async function addMotion(blob, deck) {
       : xml.replace(/(<p:extLst>[\s\S]*<\/p:extLst>)?\s*<\/p:sld>\s*$/, m => extra + m);
     zip.file(`ppt/slides/slide${i + 1}.xml`, xml);
   }
+  await addComments(zip, deck);
   return zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
+}
+
+// Comments, in PowerPoint's classic comment format (PowerPoint and LibreOffice
+// read it): one per comment, at its object's place. That format has no threads,
+// tasks or "resolved": they are written as text (commentText, in comments.js)
+// and pptx-import.js reads them back as they were.
+const XE = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+async function addComments(zip, deck) {
+  if (!deck.slides.some(s => s.comments?.length)) return;
+  const P = 'http://schemas.openxmlformats.org/presentationml/2006/main', REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  const authors = new Map(), who = n => { const k = n || 'Revela'; if (!authors.has(k)) authors.set(k, { id: authors.size, n: 0 }); return authors.get(k); };
+  const dt = ms => new Date(ms || Date.now()).toISOString().replace('Z', '');
+  let types = await zip.file('[Content_Types].xml').async('string'), n = 0;
+  for (let i = 0; i < deck.slides.length; i++) {
+    const s = deck.slides[i]; if (!s.comments?.length) continue;
+    const cms = [];
+    for (const c of s.comments) {
+      const b = c.blockId && s.blocks.find(x => x.id === c.blockId);
+      const pos = `<p:pos x="${Math.round(((b ? b.x + b.w : 20)) * 6)}" y="${Math.round((b ? b.y : 20) * 6)}"/>`;   // (576 units per inch: 6 per px)
+      for (const [text, a, time] of [[commentText(c), c.author, c.time], ...(c.replies || []).map(r => ['↪ ' + r.text, r.author, r.time])]) {
+        const au = who(a); au.n++;
+        cms.push(`<p:cm authorId="${au.id}" dt="${dt(time)}" idx="${au.n}">${pos}<p:text>${XE(text)}</p:text></p:cm>`);
+      }
+    }
+    n++;
+    zip.file(`ppt/comments/comment${n}.xml`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<p:cmLst xmlns:p="${P}">${cms.join('')}</p:cmLst>`);
+    const rp = `ppt/slides/_rels/slide${i + 1}.xml.rels`, rx = await zip.file(rp)?.async('string');
+    if (rx) zip.file(rp, rx.replace('</Relationships>', `<Relationship Id="rIdRvCm" Type="${REL}/comments" Target="../comments/comment${n}.xml"/></Relationships>`));
+    types = types.replace('</Types>', `<Override PartName="/ppt/comments/comment${n}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.comments+xml"/></Types>`);
+  }
+  zip.file('ppt/commentAuthors.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<p:cmAuthorLst xmlns:p="${P}">`
+    + [...authors].map(([name, a]) => `<p:cmAuthor id="${a.id}" name="${XE(name)}" initials="${XE(name.split(/\s+/).map(w => w[0] || '').join('').slice(0, 3).toUpperCase())}" lastIdx="${a.n}" clrIdx="${a.id % 8}"/>`).join('') + `</p:cmAuthorLst>`);
+  types = types.replace('</Types>', `<Override PartName="/ppt/commentAuthors.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.commentAuthors+xml"/></Types>`);
+  zip.file('[Content_Types].xml', types);
+  const pr = 'ppt/_rels/presentation.xml.rels', px = await zip.file(pr).async('string');
+  zip.file(pr, px.replace('</Relationships>', `<Relationship Id="rIdRvCmA" Type="${REL}/commentAuthors" Target="commentAuthors.xml"/></Relationships>`));
 }
 
 export async function buildPptxBlob(deck = state.deck) {

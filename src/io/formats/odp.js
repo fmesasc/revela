@@ -10,6 +10,7 @@
 import { animsOf } from '../../features/animation/transitions.js';
 import { state } from '../../core/store.js';
 import { uid } from '../../core/model.js';
+import { commentText, parseCommentText } from '../../features/collab/comments.js';
 import { shownRows } from '../../core/formulas.js';
 import { chartSVG, iconSVG, inkSVG, timerSVG, tableSpan } from '../../render/svg.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
@@ -28,7 +29,7 @@ const NS = 'xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmln
   + 'xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0" '
   + 'xmlns:presentation="urn:oasis:names:tc:opendocument:xmlns:presentation:1.0" xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0" '
   + 'xmlns:smil="urn:oasis:names:tc:opendocument:xmlns:smil-compatible:1.0" xmlns:anim="urn:oasis:names:tc:opendocument:xmlns:animation:1.0" '
-  + 'xmlns:dc="http://purl.org/dc/elements/1.1/" office:version="1.3"';
+  + 'xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:officeooo="http://openoffice.org/2009/office" office:version="1.3"';
 
 const ODF_SHAPE = { rect: 'rectangle', rounded: 'round-rectangle', ellipse: 'ellipse', triangle: 'isosceles-triangle', diamond: 'diamond',
   pentagon: 'pentagon', star: 'star5', rightarrow: 'right-arrow', leftarrow: 'left-arrow', hexagon: 'hexagon',
@@ -241,7 +242,14 @@ export async function buildODP(deck = state.deck) {
     const anim = odpTimingXML(s, id => xids.get(id) || '', deck);
     const notes = s.notes ? `<presentation:notes><draw:frame presentation:class="notes" svg:x="2cm" svg:y="12cm" svg:width="17cm" svg:height="12cm"><draw:text-box>`
       + s.notes.split('\n').map(l => `<text:p>${X(l)}</text:p>`).join('') + '</draw:text-box></draw:frame></presentation:notes>' : '';
-    return `<draw:page draw:name="${X('page' + (i + 1))}" draw:style-name="${dp}" draw:master-page-name="Default"${s.hidden ? ' presentation:visibility="hidden"' : ''}>${objs}${anim}${notes}</draw:page>`;
+    // Comments, as LibreOffice's annotations (threads, tasks and "resolved" as text: commentText).
+    const notes2 = (s.comments || []).map(c => {
+      const bl = c.blockId && s.blocks.find(x => x.id === c.blockId), at = `svg:x="${cm((bl ? bl.x + bl.w : 20))}" svg:y="${cm(bl ? bl.y : 20)}" svg:width="4cm" svg:height="2cm"`;
+      return [[commentText(c), c.author, c.time], ...(c.replies || []).map(r => ['↪ ' + r.text, r.author, r.time])].map(([text, a, time]) =>
+        `<officeooo:annotation ${at}><dc:creator>${X(a || '')}</dc:creator><dc:date>${new Date(time || Date.now()).toISOString().replace('Z', '')}</dc:date>`
+        + text.split('\n').map(l => `<text:p>${X(l)}</text:p>`).join('') + '</officeooo:annotation>').join('');
+    }).join('');
+    return `<draw:page draw:name="${X('page' + (i + 1))}" draw:style-name="${dp}" draw:master-page-name="Default"${s.hidden ? ' presentation:visibility="hidden"' : ''}>${objs}${notes2}${anim}${notes}</draw:page>`;
   }).join('');
 
   const content = `<?xml version="1.0" encoding="UTF-8"?><office:document-content ${NS}><office:automatic-styles>`
@@ -409,7 +417,16 @@ export async function importODP(file) {
     const dur = (prop(dp, 'style:drawing-page-properties', 'presentation:duration') || '').match(/PT([\d.]+)S/);
     const auto = prop(dp, 'style:drawing-page-properties', 'presentation:transition-type') === 'automatic' && dur ? Math.round(+dur[1] * 1000) : 0;
     const [transition, transitionDir] = fromSmil(smil, prop(dp, 'style:drawing-page-properties', 'smil:subtype'), prop(dp, 'style:drawing-page-properties', 'smil:direction') === 'reverse');
-    slides.push({ id: uid(), sectionId: null, background, transition, ...(transitionDir && { transitionDir }), notes, autoSlide: auto,
+    // LibreOffice's comments (annotations), with Revela's threads, tasks and "resolved" in their text.
+    const comments = [];
+    for (const an of kids(page).filter(e => /(^|:)annotation$/.test(e.tagName))) {
+      const p = parseCommentText(all(an, 'text:p').map(x => x.textContent).join('\n'));
+      const author = an.getElementsByTagName('dc:creator')[0]?.textContent || '', t = Date.parse(an.getElementsByTagName('dc:date')[0]?.textContent || '');
+      const time = Number.isFinite(t) ? t : Date.now();
+      if (p.reply && comments.length) { comments.at(-1).replies.push({ id: uid(), text: p.text, author, time }); continue; }
+      delete p.reply; comments.push({ id: uid(), author, time, blockId: null, replies: [], ...p });
+    }
+    slides.push({ id: uid(), sectionId: null, background, transition, ...(transitionDir && { transitionDir }), notes, autoSlide: auto, ...(comments.length && { comments }),
       hidden: page.getAttribute('presentation:visibility') === 'hidden' || prop(dp, 'style:drawing-page-properties', 'presentation:visibility') === 'hidden', blocks });
   }
   if (!slides.length) throw new Error('No se encontraron diapositivas en el archivo.');

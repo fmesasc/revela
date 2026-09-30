@@ -18,6 +18,7 @@
 //   notes, hidden slides and transitions.
 // Effects without an equivalent (shadows, SmartArt…) are approximated or skipped.
 
+import { parseCommentText } from '../../features/collab/comments.js';
 import { esc } from '../../core/text.js';
 import { uid } from '../../core/model.js';
 import { styled, masterStyles } from '../../features/document/master.js';
@@ -37,6 +38,45 @@ async function loadJSZip() {
   if (window.JSZip) return window.JSZip;
   const mod = await import(JSZIP_ESM);
   return mod.default || mod;
+}
+
+// ---- Comments --------------------------------------------------------------
+// Both PowerPoint formats: the classic one (ppt/comments/commentN.xml, authors in
+// commentAuthors.xml) and the modern one of Microsoft 365 (modernComment_*.xml,
+// with replies, "resolved" and the object it is about; authors in authors.xml).
+// Revela's own conventions in the classic format (see pptx-export.js) come back
+// as threads, tasks and resolved comments.
+const byLocal = (el, name) => (el ? [...el.getElementsByTagNameNS('*', name)] : []);
+async function readCommentAuthors(zip) {
+  const names = new Map();
+  for (const f of ['ppt/commentAuthors.xml', 'ppt/authors.xml']) {
+    const x = await zip.file(f)?.async('string'); if (!x) continue;
+    for (const a of [...byLocal(parseXML(x), 'cmAuthor'), ...byLocal(parseXML(x), 'author')]) names.set(a.getAttribute('id'), a.getAttribute('name') || '');
+  }
+  return names;
+}
+const cmText = el => {
+  const t = [...el.children].find(c => c.localName === 'text'); if (t) return t.textContent.trim();
+  const body = [...el.children].find(c => c.localName === 'txBody');
+  return body ? byLocal(body, 'p').map(p => byLocal(p, 't').map(x => x.textContent).join('')).join('\n').trim() : '';
+};
+const when = el => { const v = Date.parse(el.getAttribute('dt') || el.getAttribute('created') || ''); return Number.isFinite(v) ? v : Date.now(); };
+async function readComments(zip, srels, authors, spidOf) {
+  const out = [];
+  for (const r of Object.values(srels).filter(r => r.type === 'comments')) {
+    const x = await zip.file(r.path)?.async('string'); if (!x) continue;
+    for (const cm of byLocal(parseXML(x), 'cm')) {
+      const p = parseCommentText(cmText(cm)), author = authors.get(cm.getAttribute('authorId')) || '', time = when(cm);
+      if (p.reply && out.length) { out.at(-1).replies.push({ id: uid(), text: p.text, author, time }); continue; }
+      const c = { id: uid(), author, time, blockId: null, replies: [], ...p, resolved: p.resolved || cm.getAttribute('status') === 'resolved' };
+      delete c.reply;
+      const sp = byLocal(cm, 'spMk')[0]?.getAttribute('id') || byLocal(cm, 'cNvPrMk')[0]?.getAttribute('id');   // (modern: the object it is about)
+      if (sp && spidOf.has(sp)) c.blockId = spidOf.get(sp);
+      for (const rp of byLocal(cm, 'reply')) c.replies.push({ id: uid(), text: cmText(rp), author: authors.get(rp.getAttribute('authorId')) || '', time: when(rp) });
+      out.push(c);
+    }
+  }
+  return out;
 }
 
 // ---- Relationships ---------------------------------------------------------
@@ -410,6 +450,7 @@ export async function importPPTX(file) {
   const scale = CANVAS_W / cx;
   const size = { w: CANVAS_W, h: Math.round(cy * scale) };
   const presRels = rels(await zip.file(relsPath(presFile)).async('string'), 'ppt');
+  const commentAuthors = await readCommentAuthors(zip);
 
   // Theme: colours and fonts.
   const themePath = Object.values(presRels).find(r => r.type === 'theme')?.path
@@ -738,6 +779,7 @@ export async function importPPTX(file) {
       const body = all(nd, 'p:sp').find(sp => phOf(sp)?.type === 'body');
       notes = kids(kid(body, 'p:txBody'), 'a:p').map(p => all(p, 'a:t').map(t => t.textContent).join('')).join('\n').trim();
     }
+    const comments = await readComments(zip, srels, commentAuthors, spidOf);
     const hidden = doc.documentElement.getAttribute('show') === '0';
     // Transition (the p14/p15 variants sit inside mc:AlternateContent) and its auto-advance time.
     const tr = all(doc, 'p:transition')[0];
@@ -759,7 +801,7 @@ export async function importPPTX(file) {
     }
     readAnimations(doc, spidOf, blocks, size);
     slides.push({ _path: slidePath, id: uid(), sectionId: null, background, transition, ...(transitionDir && { transitionDir }), hidden, notes, autoSlide, blocks, _layout: layoutPath, ...(hideMaster && { hideMaster: true }),
-      ...(morph && { autoAnimate: true }), ...(morph && morph !== 'objects' && { morphBy: morph }) });
+      ...(morph && { autoAnimate: true }), ...(morph && morph !== 'objects' && { morphBy: morph }), ...(comments.length && { comments }) });
   }
 
   // Links to a slide: from the slide's file to its id.
