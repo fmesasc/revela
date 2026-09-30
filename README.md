@@ -23,9 +23,10 @@ standard, self-contained web page.
   Animations, View, AI): rich text, nested lists, styles, columns, WordArt,
   70+ shapes (with text inside, action buttons, freeform) and shape merging,
   tables with merged cells, styles and formulas (=SUM(ABOVE)…), charts
-  (multi-series, combo, stacked, 100 %, histogram, waterfall, funnel, maps; from a table or a
-  live CSV), icons, equations, code, **3D models**, video, custom fonts and
-  voice dictation.
+  (multi-series, combo, stacked, 100 %, histogram, waterfall, funnel, treemap,
+  bubble, maps; from a table or a
+  live CSV), icons, equations, code, **3D models**, video, PDFs and attached
+  files, tab stops, custom fonts and voice dictation.
 - **Copy, cut and paste** (Ctrl+C/X/V, ribbon and context menu; long-press on
   phones), undo/redo, alignment guides and smart spacing, grouping, locking,
   selection pane (hide, rename, reorder), format painter for any object,

@@ -66,6 +66,7 @@ the origin of every requirement is traceable.
 - ✅ Enlarge images on click while presenting (lightbox) `—`
 - ✅ Multi-level lists (Tab / Shift+Tab) `PP·GS·OO`
 - ✅ Voice dictation — speak and it is written where the caret is, with spoken punctuation (browser speech recognition, asks first) `PP·GS`
+- ✅ Text ruler with tab stops (left, centre, right, decimal) and the Tab key; laid out the same when presenting; PowerPoint both ways `PP·OO`
 
 ## 3. Objects & content
 - ✅ Images `PP·GS·OO`
@@ -109,6 +110,9 @@ the origin of every requirement is traceable.
 - ✅ More than 70 shapes — pie, chord, block arc, cube, folded corner, smiley, sun, "no" sign, banners, thought bubble, arc, brackets and braces; action buttons; freeform `PP·GS·OO`
 - ✅ Formulas in table cells — `=SUM(ABOVE)`, cell references and ranges, SUM/AVERAGE/MIN/MAX/COUNT/PRODUCT/ROUND/ABS in Spanish or English, units kept, total row; results in the export, PowerPoint and ODP `PP·OO`
 - ✅ Waterfall (with totals) and funnel charts `PP`
+- ✅ PDFs and other files, dropped or inserted: a PDF as one of its pages, as the document to leaf through when presenting, as an icon, or one slide per page; any other file as an icon that downloads it `PP`
+- ✅ Crop a picture to an aspect ratio (1:1, 4:3, 16:9…) with framing; pictures exported to PowerPoint without stretching and with their crop (srcRect), read back when importing `PP·GS·OO`
+- ✅ Treemap and bubble charts (bubbles as PowerPoint's own chart, both ways) `PP`
 
 ## 4. Slides & structure
 - ✅ Sections (create/rename/remove inline from the navigator) `PP·GS·OO`

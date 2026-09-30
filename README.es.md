@@ -24,9 +24,10 @@ reveal.js, de modo que el resultado es una página web estándar y autónoma.
   anidadas, estilos, columnas, WordArt, más de 70 formas (con texto dentro,
   botones de acción, forma libre) y combinar formas, tablas con celdas
   combinadas, estilos y fórmulas (=SUMA(ARRIBA)…), gráficos (varias series,
-  combinados, apilados, 100 %, histograma, cascada, embudo, mapas; desde tabla o CSV en vivo),
-  iconos, ecuaciones, código, **modelos 3D**, vídeo, fuentes propias y dictado
-  por voz.
+  combinados, apilados, 100 %, histograma, cascada, embudo, rectángulos,
+  burbujas, mapas; desde tabla o CSV en vivo),
+  iconos, ecuaciones, código, **modelos 3D**, vídeo, PDF y archivos adjuntos,
+  tabulaciones, fuentes propias y dictado por voz.
 - **Copiar, cortar y pegar** (Ctrl+C/X/V, cinta y menú contextual; también
   con pulsación larga en el móvil), deshacer/rehacer, alineación con guías y
   espaciado inteligente, agrupar, bloquear, panel de selección (ocultar,
