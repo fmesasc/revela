@@ -34,8 +34,49 @@ export function setPoll(id, props) {
 // indices (multi), a number 1-5 (rating) or a string (word). → counts.
 // A quiz (Kahoot style): votes { voter: { a: option, t: ms after it started, n: nickname } };
 // right answers score 500 to 1000 points, more the faster; wrong ones 0.
+// Activities with right answers, answered from the phone (none of the answers
+// reach it): put in order, match pairs, fill in the gaps, label a picture.
+// Each answer is a list of texts; each item right or wrong, and the score is
+// the share right (1000 points for all of them). Self-contained, like tallyVotes.
+//   order  options: the items in the right order
+//   match  options: "left = right" lines
+//   gaps   text: "The capital of France is [Paris]" ([a|b]: either is right)
+//   label  options: the labels; points: [{ x, y }] in % of image, one per label
+export var ACTIVITIES = ['order', 'match', 'gaps', 'label'];
+export function gradeActivity(p, a) {
+  var norm = function (s) { return String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); };
+  var o = p.options || [], per = [];
+  a = Array.isArray(a) ? a : [];
+  if (p.kind === 'order' || p.kind === 'label') per = o.map(function (x, i) { return norm(a[i]) !== '' && norm(a[i]) === norm(x); });
+  else if (p.kind === 'match') per = o.map(function (l, i) { var r = String(l).split('=').slice(1).join('='); return norm(a[i]) !== '' && norm(a[i]) === norm(r); });
+  else if (p.kind === 'gaps') { var re = /\[([^\]]+)\]/g, m, i = 0; while ((m = re.exec(String(p.text || '')))) { var got = norm(a[i++]); per.push(got !== '' && m[1].split('|').some(function (alt) { return norm(alt) === got; })); } }
+  var ok = per.filter(Boolean).length;
+  return { per: per, score: per.length ? ok / per.length : 0 };
+}
+// What the phones get: the items shuffled (the same way every time), never the answers.
+export function publicActivity(p) {
+  var seed = 7, id = String(p.pollId || ''), o = p.options || [];
+  for (var i = 0; i < id.length; i++) seed = (seed * 31 + id.charCodeAt(i)) >>> 0;
+  var rnd = function () { seed = (seed * 1103515245 + 12345) >>> 0; return seed / 4294967296; };
+  var shuffle = function (arr) { var a = arr.slice(); for (var k = a.length - 1; k > 0; k--) { var j = Math.floor(rnd() * (k + 1)), t = a[k]; a[k] = a[j]; a[j] = t; } return a; };
+  var split = function (l) { var x = String(l).split('='); return [x[0].trim(), x.slice(1).join('=').trim()]; };
+  if (p.kind === 'order') { var s = shuffle(o); if (o.length > 1 && s.join('\u0001') === o.join('\u0001')) s.push(s.shift()); return { items: s }; }
+  if (p.kind === 'match') { var pr = o.map(split); return { left: pr.map(function (x) { return x[0]; }), right: shuffle(pr.map(function (x) { return x[1]; })) }; }
+  if (p.kind === 'gaps') { var parts = [], last = 0, t = String(p.text || ''), re = /\[([^\]]+)\]/g, m; while ((m = re.exec(t))) { parts.push(t.slice(last, m.index), null); last = re.lastIndex; } parts.push(t.slice(last)); return { parts: parts }; }
+  if (p.kind === 'label') return { image: p.image || '', points: (p.points || []).slice(0, o.length), labels: shuffle(o) };
+  return null;
+}
 export function tallyVotes(poll, votes) {
   var kind = poll.kind || 'choice', n = (poll.options || []).length, counts = [], words = {}, sum = 0, voters = 0;
+  if (kind === 'order' || kind === 'match' || kind === 'gaps' || kind === 'label') {
+    var items = null, total = 0, list = [];
+    for (var w in votes) { var vv = votes[w]; if (!vv || !vv.a) continue; var g = gradeActivity(poll, vv.a); voters++; total += g.score;
+      if (!items) items = g.per.map(function () { return 0; });
+      g.per.forEach(function (ok, i) { if (ok) items[i]++; });
+      list.push({ id: w, n: vv.n || '', pts: Math.round(1000 * g.score), ok: g.score === 1 }); }
+    list.sort(function (a, b) { return b.pts - a.pts; });
+    return { counts: items || [], words: {}, voters: voters, average: voters ? total / voters : 0, board: list };
+  }
   if (kind === 'quiz') {
     var right = poll.correct || [], lim = (+poll.time || 20) * 1000, board = [];
     for (var i0 = 0; i0 < n; i0++) counts.push(0);
@@ -102,6 +143,24 @@ export function pollResultsHTML(poll, res, accent) {
         + '<div style="flex:1;background:#8882;border-radius:.2em;height:1.3em"><div style="height:100%;width:' + (counts[i] * 100 / max) + '%;background:' + (ok ? '#26890c' : tiles[i % tiles.length]) + ';border-radius:.2em"></div></div>'
         + '<div style="flex:0 0 2em;font-weight:700">' + counts[i] + '</div></div>'; }).join('') + '</div>' + ((res.board || []).length ? ranking(res.board, 5) : '');
   }
+  if (kind === 'order' || kind === 'match' || kind === 'gaps' || kind === 'label') {
+    var gl = kind === 'order' ? labels.map(function (l, i) { return (i + 1) + '. ' + l; })
+      : kind === 'match' ? labels.map(function (l) { var x = String(l).split('='); return x[0].trim() + ' → ' + x.slice(1).join('=').trim(); })
+      : kind === 'label' ? labels.map(function (l, i) { return (i + 1) + '. ' + l; })
+      : (String(poll.text || '').match(/\[([^\]]+)\]/g) || []).map(function (g, i) { return (i + 1) + '. ' + g.slice(1, -1).split('|')[0]; });
+    var avg = Math.round((res.average || 0) * 100), nv = res.voters || 0;
+    var pic = kind === 'label' && poll.image ? '<div style="position:relative;flex:0 0 42%;align-self:center"><img src="' + esc(poll.image) + '" alt="" style="width:100%;display:block;border-radius:.2em">'
+      + (poll.points || []).map(function (pt, i) { return '<b style="position:absolute;left:' + pt.x + '%;top:' + pt.y + '%;transform:translate(-50%,-50%);background:' + cols[0] + ';color:#fff;border-radius:1em;padding:0 .35em;font-size:.55em;white-space:nowrap">'
+        + (i + 1) + (res.revealed ? ' ' + esc(labels[i] || '') : '') + '</b>'; }).join('') + '</div>' : '';
+    var body = !res.revealed
+      ? '<div style="display:flex;flex-direction:column;justify-content:center;align-items:center;height:100%;gap:.2em"><div style="font-size:2.2em;font-weight:800">' + nv + '</div><div style="font-size:.6em;opacity:.8">'
+        + (nv === 1 ? 'respuesta' : 'respuestas') + (nv ? ' · ' + avg + ' % de aciertos' : '') + '</div><div style="font-size:.45em;opacity:.6;margin-top:.4em">Clic para ver las soluciones</div></div>'
+      : '<div style="display:flex;flex-direction:column;gap:.25em">' + gl.map(function (l, i) { var pc = nv ? Math.round((counts[i] || 0) * 100 / nv) : 0;
+          return '<div style="display:flex;align-items:center;gap:.5em;font-size:.6em"><div style="flex:0 0 45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(l) + '</div>'
+            + '<div style="flex:1;background:#8882;border-radius:.2em;height:1.2em"><div style="height:100%;width:' + pc + '%;background:#26890c;border-radius:.2em"></div></div><div style="flex:0 0 3em;font-weight:700">' + pc + ' %</div></div>'; }).join('')
+        + '</div><div style="margin-top:.4em;font-size:.55em;opacity:.8">' + nv + ' ' + (nv === 1 ? 'respuesta' : 'respuestas') + ' · ' + avg + ' % de aciertos</div>' + ((res.board || []).length ? ranking(res.board, 3) : '');
+    return pic ? '<div style="display:flex;gap:.8em;height:100%">' + pic + '<div style="flex:1;min-width:0">' + body + '</div></div>' : body;
+  }
   if (kind === 'qa') {
     var list = (res.questions || []).slice(0, 8);
     return '<div style="display:flex;flex-direction:column;gap:.3em;font-size:.7em">' + (list.length ? list.map(function (q, i) {
@@ -141,9 +200,10 @@ export function pollResultsHTML(poll, res, accent) {
 
 // Markup of a poll in the editor and thumbnails: question, current results
 // (last saved votes) and a QR placeholder (the real code exists only while presenting).
+export const GRADED = ['quiz', ...ACTIVITIES];
 export function pollEditorHTML(b, accents) {
-  const res = b.kind === 'board' ? { board: quizTotals(state.deck.slides.flatMap(s => s.blocks).filter(x => x.type === 'poll' && x.kind === 'quiz').map(p => ({ poll: p, votes: savedVotes(p.pollId) }))) }
-    : (r => ({ ...r, showRight: true, revealed: b.kind === 'quiz' && r.voters > 0 }))(tallyVotes(b, savedVotes(b.pollId)));
+  const res = b.kind === 'board' ? { board: quizTotals(state.deck.slides.flatMap(s => s.blocks).filter(x => x.type === 'poll' && GRADED.includes(x.kind)).map(p => ({ poll: p, votes: savedVotes(p.pollId) }))) }
+    : (r => ({ ...r, showRight: true, revealed: (b.kind === 'quiz' && r.voters > 0) || ACTIVITIES.includes(b.kind) }))(tallyVotes(b, savedVotes(b.pollId)));
   return `<div style="width:100%;height:100%;display:grid;grid-template-columns:1fr auto;gap:1em;font-size:${b.fontSize || 32}px">`
     + `<div style="display:flex;flex-direction:column;min-width:0"><div style="font-weight:700;margin-bottom:.5em">${esc(b.question || '')}</div>`
     + `<div style="flex:1;min-height:0">${pollResultsHTML(b, res, accents)}</div></div>`
@@ -159,6 +219,7 @@ export function votesCSV(poll) {
   const q = s => `"${String(s).replace(/"/g, '""')}"`;
   if (poll.kind === 'qa') return 'pregunta,votos\n' + res.questions.map(x => `${q(x.text)},${x.up}`).join('\n');
   if (poll.kind === 'word') return 'palabra,votos\n' + Object.entries(res.words).map(([w, c]) => `${q(w)},${c}`).join('\n');
+  if (ACTIVITIES.includes(poll.kind)) return 'participante,puntos,aciertos\n' + res.board.map(r => `${q(r.n || r.id)},${r.pts},${Math.round(r.pts / 10)} %`).join('\n');
   const labels = poll.kind === 'rating' ? ['1', '2', '3', '4', '5'] : poll.options;
   return 'opcion,votos\n' + labels.map((l, i) => `${q(l)},${res.counts[i]}`).join('\n');
 }

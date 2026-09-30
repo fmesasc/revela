@@ -38,6 +38,47 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/data-poll="[^"]*&quot;correct&quot;:\[1\],&quot;time&quot;:30/.test(html), 'la presentación sabe cuál es la correcta y el tiempo');
   });
 
+  await test('actividades con nota: ordenar, unir, completar huecos, etiquetar una imagen', async () => {
+    reset(); const W = frame.contentWindow, P = await W.eval("import('/src/features/live/poll.js')");
+    const order = { kind: 'order', pollId: 'o1', options: ['Primavera', 'Verano', 'Otoño', 'Invierno'] };
+    const pub = P.publicActivity(order);
+    assert(pub.items.length === 4 && pub.items.join() !== order.options.join(), 'ordenar: a los móviles, desordenados');
+    eq(JSON.stringify(P.publicActivity(order)), JSON.stringify(pub), 'siempre del mismo modo (al reconectar)');
+    eq(P.gradeActivity(order, ['Primavera', 'verano', 'Invierno', 'Otoño']).score, 0.5, 'la nota: la parte en su sitio (sin mayúsculas)');
+    const match = { kind: 'match', pollId: 'm1', options: ['H = Hidrógeno', 'O = Oxígeno', 'C = Carbono'] };
+    const mp = P.publicActivity(match); eq(mp.left.join(), 'H,O,C', 'unir: la izquierda en orden'); assert(mp.right.sort().join() === 'Carbono,Hidrógeno,Oxígeno', 'la derecha, desordenada');
+    assert(!JSON.stringify(mp).includes('=') , 'sin las parejas');
+    eq(P.gradeActivity(match, ['Hidrógeno', 'Oxigeno', '']).score, 2 / 3, 'unir: sin tildes también vale; en blanco no');
+    const gaps = { kind: 'gaps', pollId: 'g1', text: 'El agua hierve a [100] grados y se congela a [0|cero].' };
+    const gp = P.publicActivity(gaps); eq(JSON.stringify(gp.parts), '["El agua hierve a ",null," grados y se congela a ",null,"."]', 'huecos: el texto sin las respuestas');
+    eq(P.gradeActivity(gaps, ['100', 'Cero']).score, 1, 'varias respuestas válidas');
+    const label = { kind: 'label', pollId: 'l1', options: ['Núcleo', 'Membrana'], points: [{ x: 50, y: 50 }, { x: 90, y: 20 }], image: 'data:image/png;base64,iVBORw0KGgo=' };
+    const lp = P.publicActivity(label); eq(lp.points.length, 2, 'etiquetar: los puntos'); assert(lp.labels.length === 2 && lp.image, 'las etiquetas y la imagen');
+    // Tally, results and the leaderboard with the quizzes
+    const votes = { ana: { a: ['Primavera', 'Verano', 'Otoño', 'Invierno'], n: 'Ana' }, luis: { a: ['Verano', 'Primavera', 'Otoño', 'Invierno'], n: 'Luis' } };
+    const r = P.tallyVotes(order, votes);
+    eq(r.board.map(x => `${x.n}:${x.pts}`).join(), 'Ana:1000,Luis:500', 'puntos: todo bien 1000, la mitad 500'); eq(r.counts.join(), '1,1,2,2', 'aciertos por elemento');
+    eq(Math.round(r.average * 100), 75, 'media');
+    const hidden = P.pollResultsHTML(order, { ...r, revealed: false });
+    assert(/75 % de aciertos/.test(hidden) && !/Primavera/.test(hidden), 'mientras se responde: sin desvelar las soluciones');
+    assert(/1\. Primavera/.test(P.pollResultsHTML(order, { ...r, revealed: true })), 'con un clic: las soluciones y cuánto acertó cada una');
+    eq(P.quizTotals([{ poll: order, votes }, { poll: { kind: 'quiz', options: ['a', 'b'], correct: [0], time: 20 }, votes: { luis: { a: 0, t: 0, n: 'Luis' } } }]).map(x => `${x.n}:${x.pts}`).join(), 'Luis:1500,Ana:1000', 'la clasificación suma actividades y cuestionarios');
+    // The editor
+    const b = P.addPoll(); await sleep(20);
+    const E = await W.eval("import('/src/ui/dialogs/poll.js')"); E.openPollEditor(slide().blocks.find(x => x.id === b.id)); await sleep(10);
+    const m = D.getElementById('poll-modal'); m.querySelector('.pl-kind').value = 'gaps'; m.querySelector('.pl-kind').dispatchEvent(new W.Event('change'));
+    assert(!m.querySelector('.pl-text-l').hidden && m.querySelector('.pl-opts-l').hidden, 'huecos: el texto en lugar de las opciones');
+    m.querySelector('.pl-text').value = gaps.text; m.querySelector('.pl-ok').click(); await sleep(20);
+    const g = slide().blocks.find(x => x.id === b.id); eq(g.kind + '|' + g.text, 'gaps|' + gaps.text, 'se guarda');
+    const html = R.io.buildHTML();
+    assert(/function publicActivity/.test(html) && /pub:act\?publicActivity\(p\):null/.test(html), 'la presentación manda a los móviles solo lo público');
+    assert(/options:act\?\[\]:p\.options/.test(html), 'y no las opciones (que llevan las respuestas)');
+    E.openPollEditor(g); await sleep(10); const m2 = D.getElementById('poll-modal');
+    m2.querySelector('.pl-kind').value = 'label'; m2.querySelector('.pl-kind').dispatchEvent(new W.Event('change'));
+    assert(!m2.querySelector('.pl-pic').hidden, 'etiquetar: imagen y colocar');
+    m2.querySelector('.modal-close').click();
+  });
+
   await test('votación en directo: recuento, resultados, export y QR', async () => {
     reset(); const P = R.poll;
     const c = P.tallyVotes({ kind: 'choice', options: ['a', 'b', 'c'] }, { v1: 0, v2: 2, v3: 2, v4: 9 });

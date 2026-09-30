@@ -66,14 +66,15 @@ function renderQuiz(box) {
 function quizResult(d) {
   const box = $('#quiz-res'); if (!box || poll?.pollId !== d.pollId) return;
   clearInterval(quizTimer); $('#answers').querySelectorAll('button').forEach(x => { x.disabled = true; });
-  box.className = 'quiz-res'; box.style.background = !d.answered ? '#555' : d.ok ? '#26890c' : '#b3261e';
-  box.innerHTML = `<b>${!d.answered ? 'Sin respuesta' : d.ok ? '¡Correcto!' : 'Fallaste'}</b>+${d.pts} puntos · ${d.total} en total`
+  const part = poll?.pub && d.answered && !d.ok && d.pts > 0;       // (activities: some right)
+  box.className = 'quiz-res'; box.style.background = !d.answered ? '#555' : d.ok ? '#26890c' : part ? '#b07d00' : '#b3261e';
+  box.innerHTML = `<b>${!d.answered ? 'Sin respuesta' : d.ok ? (poll?.pub ? '¡Todo correcto!' : '¡Correcto!') : part ? `${Math.round(d.pts / 10)} % de aciertos` : 'Fallaste'}</b>+${d.pts} puntos · ${d.total} en total`
     + (d.rank ? `<br>Vas ${d.rank}.º de ${d.of}` : '');
 }
 function onData(d) {
   if (d?.type === 'quizresult') { quizResult(d); return; }
   if (d?.type === 'qa') { if (poll?.pollId === d.pollId) renderQA(d.list || []); return; }
-  if (d?.type === 'ok') { if (poll?.kind === 'quiz') { const r = $('#quiz-res'); if (r && !r.textContent) r.textContent = '✔ Respuesta enviada. Espera al resultado…'; return; } $('#done').hidden = false; return; }
+  if (d?.type === 'ok') { if (poll?.pub) return; if (poll?.kind === 'quiz') { const r = $('#quiz-res'); if (r && !r.textContent) r.textContent = '✔ Respuesta enviada. Espera al resultado…'; return; } $('#done').hidden = false; return; }
   if (d?.type !== 'poll') return;
   if (!d.poll) { poll = null; show('wait'); return; }
   if (poll?.pollId === d.poll.pollId) return;               // same question: keep the choice
@@ -81,10 +82,52 @@ function onData(d) {
   $('#q').textContent = poll.question; $('#done').hidden = true; renderAnswers(); show('poll');
 }
 
+// Activities (put in order, match, fill in the gaps, label a picture): the
+// answer is a list of texts; the presentation marks it (it alone knows the answers).
+const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
+function nickField(box) {
+  const name = el('input', { type: 'text', maxLength: 24, placeholder: 'Tu apodo', value: nick() });
+  name.addEventListener('input', () => { try { localStorage.setItem('revela.nick', name.value.trim()); } catch {} });
+  box.append(el('div', { className: 'quiz-top' }, name)); return name;
+}
+const choose = (list, onPick) => { const s = el('select'); s.append(el('option', { value: '', textContent: '—' }), ...list.map(x => el('option', { value: x, textContent: x }))); s.addEventListener('change', () => onPick(s.value)); return s; };
+function renderActivity(box) {
+  const pub = poll.pub || {}, name = nickField(box);
+  if (poll.kind === 'order') {
+    answer = pub.items.slice();
+    const list = el('div', { style: 'display:flex;flex-direction:column;gap:8px' });
+    const draw = () => { list.innerHTML = ''; answer.forEach((txt, i) => {
+      const up = el('button', { textContent: '▲', disabled: !i, ariaLabel: 'Subir' }), down = el('button', { textContent: '▼', disabled: i === answer.length - 1, ariaLabel: 'Bajar' });
+      up.addEventListener('click', () => { [answer[i - 1], answer[i]] = [answer[i], answer[i - 1]]; draw(); });
+      down.addEventListener('click', () => { [answer[i + 1], answer[i]] = [answer[i], answer[i + 1]]; draw(); });
+      list.append(el('div', { className: 'act-row' }, el('b', { className: 'act-num', textContent: i + 1 }), el('span', { textContent: txt }), up, down)); }); };
+    draw(); box.append(el('p', { textContent: 'Ordena de arriba abajo:' }), list);
+  } else if (poll.kind === 'match') {
+    answer = pub.left.map(() => '');
+    pub.left.forEach((l, i) => box.append(el('div', { className: 'act-row' }, el('span', { textContent: l }), choose(pub.right, v => { answer[i] = v; }))));
+  } else if (poll.kind === 'gaps') {
+    answer = []; const p = el('div', { className: 'act-text' }); let n = 0;
+    for (const part of pub.parts) {
+      if (part !== null) { p.append(part); continue; }
+      const k = n++, i = el('input', { type: 'text', maxLength: 60, autocomplete: 'off', ariaLabel: 'Hueco ' + (k + 1) }); answer[k] = '';
+      i.addEventListener('input', () => { answer[k] = i.value; }); p.append(i);
+    }
+    box.append(p);
+  } else if (poll.kind === 'label') {
+    answer = pub.points.map(() => '');
+    const pic = el('div', { className: 'act-pic' }, el('img', { src: pub.image, alt: '' }));
+    pub.points.forEach((pt, i) => pic.append(el('b', { className: 'act-num', textContent: i + 1, style: `left:${pt.x}%;top:${pt.y}%` })));
+    box.append(pic, ...pub.points.map((_, i) => el('div', { className: 'act-row' }, el('b', { className: 'act-num', textContent: i + 1 }), choose(pub.labels, v => { answer[i] = v; }))));
+  }
+  box.append(el('div', { id: 'quiz-res' }));
+  box.nameField = name;
+}
+
 function renderAnswers() {
   const box = $('#answers'); box.innerHTML = '';
   $('#send').hidden = poll.kind === 'qa';
   if (poll.kind === 'quiz') { renderQuiz(box); return; }
+  if (poll.pub) { renderActivity(box); return; }
   if (poll.kind === 'qa') {
     const ta = document.createElement('textarea'); ta.maxLength = 200; ta.rows = 3; ta.placeholder = 'Escribe tu pregunta…';
     const ask = document.createElement('button'); ask.textContent = 'Preguntar';
@@ -118,6 +161,12 @@ function renderAnswers() {
 $('#send').addEventListener('click', () => {
   if (!conn?.open || !poll) return;
   if (answer == null || answer === '' || (Array.isArray(answer) && !answer.length)) return;
+  if (poll.pub) {                                         // (an activity: sent once, with the nickname)
+    conn.send({ type: 'vote', pollId: poll.pollId, voter, answer, name: $('#answers').nameField?.value.trim() || '' });
+    $('#send').hidden = true; $('#answers').querySelectorAll('input,select,button').forEach(x => { x.disabled = true; });
+    const r = $('#quiz-res'); if (r) r.textContent = '✔ Respuesta enviada. Espera a la corrección…';
+    return;
+  }
   conn.send({ type: 'vote', pollId: poll.pollId, voter, answer });
 });
 $('#go').addEventListener('click', () => join($('#code').value));

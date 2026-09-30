@@ -5,7 +5,7 @@
 
 import { jsData } from '../../core/text.js';
 import { chartRuntimeJS } from '../../render/svg.js';
-import { tallyVotes, pollResultsHTML, quizTotals, VOTE_URL } from '../../features/live/poll.js';
+import { tallyVotes, pollResultsHTML, quizTotals, gradeActivity, publicActivity, VOTE_URL } from '../../features/live/poll.js';
 import { parseChartGrid } from '../../features/document/blocks.js';
 import { QRCODE, PEERJS } from '../../core/vendor.js';
 
@@ -23,6 +23,8 @@ export const CAMERA_JS = `(function(){var st=null,asked=false;
 // phones. Loaded only when the deck has polls.
 export function pollJS(accents) {
   return `(function(){
+ var gradeActivity=${gradeActivity.toString()}, publicActivity=${publicActivity.toString()};
+ var ACT=['order','match','gaps','label'], GR=['quiz'].concat(ACT);
  var tally=${tallyVotes.toString()};
  var render=${pollResultsHTML.toString()};
  var tallyVotes=tally, totals=${quizTotals.toString()};         // (quizTotals counts with tallyVotes)
@@ -36,9 +38,10 @@ export function pollJS(accents) {
  function V(id){return votes[id]||(votes[id]=load(id));}
  // Quizzes: the time left, the answer shown when it runs out (or on a click), and every quiz added up.
  function left(p){return started[p.pollId]?(+p.time||20)-(Date.now()-started[p.pollId])/1000:(+p.time||20);}
- function quizzes(){return all().map(def).filter(function(p){return p&&p.kind==='quiz';}).map(function(p){return {poll:p,votes:V(p.pollId)};});}
+ function quizzes(){return all().map(def).filter(function(p){return p&&GR.indexOf(p.kind)>=0;}).map(function(p){return {poll:p,votes:V(p.pollId)};});}
  function paint(el){var p=def(el);if(!p)return;var r=p.kind==='board'?{board:totals(quizzes())}:tally(p,V(p.pollId));
   if(p.kind==='quiz'){r.revealed=!!revealed[p.pollId];r.left=left(p);if(r.revealed)r.board=totals(quizzes());}
+  if(ACT.indexOf(p.kind)>=0)r.revealed=!!revealed[p.pollId];
   el.querySelector('.rv-poll-res').innerHTML=render(p,r,ACC);}
  function reveal(p){if(revealed[p.pollId])return;revealed[p.pollId]=true;all().forEach(paint);
   var board=totals(quizzes()),mine=tally(p,V(p.pollId)).board;
@@ -46,7 +49,8 @@ export function pollJS(accents) {
    send(c,{type:'quizresult',pollId:p.pollId,answered:!!m,ok:!!(m&&m.ok),pts:m?m.pts:0,total:k>=0?board[k].pts:0,rank:k>=0?k+1:0,of:board.length});});}
  function tick(){var p=current();if(!p||p.kind!=='quiz'||revealed[p.pollId]){clearInterval(timer);timer=null;return;}
   var el=all().filter(function(e){var q=def(e);return q&&q.pollId===p.pollId;})[0];if(el)paint(el);if(left(p)<=0)reveal(p);}
- function current(){var s=Reveal.getCurrentSlide(),el=s&&s.querySelector('.rv-poll');var p=el&&def(el);return p?{pollId:p.pollId,kind:p.kind,question:p.question,options:p.options,time:p.time,left:p.kind==='quiz'?left(p):null,revealed:!!revealed[p.pollId]}:null;}
+ function current(){var s=Reveal.getCurrentSlide(),el=s&&s.querySelector('.rv-poll');var p=el&&def(el);if(!p)return null;var act=ACT.indexOf(p.kind)>=0;
+  return {pollId:p.pollId,kind:p.kind,question:p.question,options:act?[]:p.options,pub:act?publicActivity(p):null,time:p.time,left:p.kind==='quiz'?left(p):null,revealed:!!revealed[p.pollId]};}
  function send(c,m){try{if(c.open)c.send(m);}catch(e){}}
  function qaList(p){var r=tally(p,votes[p.pollId]||(votes[p.pollId]=load(p.pollId)));return (r.questions||[]).map(function(q){return {id:q.id,text:q.text,up:q.up};});}
  function broadcastQA(p){var cur=current();if(!cur||cur.pollId!==p.pollId)return;conns.forEach(function(c){send(c,{type:'qa',pollId:p.pollId,list:qaList(p)});});}
@@ -74,13 +78,15 @@ export function pollJS(accents) {
       c.voter=who;
       if(p.kind==='quiz'){if(revealed[p.pollId]||!started[p.pollId]||V[who])return;var q=clean(p,d.answer);if(q===null)return;
         V[who]={a:q,t:Date.now()-started[p.pollId],n:String(d.name||'').slice(0,24)};store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId});return;}
+      if(ACT.indexOf(p.kind)>=0){if(revealed[p.pollId]||V[who])return;var arr=(Array.isArray(d.answer)?d.answer:[]).slice(0,40).map(function(x){return String(x==null?'':x).slice(0,100);});
+        V[who]={a:arr,n:String(d.name||'').slice(0,24)};store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId});return;}
       var a2=clean(p,d.answer);if(a2===null||a2==='')return;V[who]=a2;
       store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId});});
     c.on('close',function(){conns=conns.filter(function(x){return x!==c;});});});
   peer.on('error',function(e){if(e.type==='unavailable-id'&&tries<5){peer.destroy();start(tries+1);}});}
  all().forEach(paint);
  // A click on a quiz shows its answer at once.
- document.addEventListener('click',function(e){var el=e.target.closest&&e.target.closest('.rv-poll');var p=el&&def(el);if(p&&p.kind==='quiz'&&started[p.pollId]){e.stopPropagation();reveal(p);}},true);
+ document.addEventListener('click',function(e){var el=e.target.closest&&e.target.closest('.rv-poll');var p=el&&def(el);if(p&&((p.kind==='quiz'&&started[p.pollId])||ACT.indexOf(p.kind)>=0)){e.stopPropagation();if(revealed[p.pollId]&&ACT.indexOf(p.kind)>=0)return;reveal(p);}},true);
  js(${JSON.stringify(QRCODE)}).catch(function(){}).then(function(){return js(${JSON.stringify(PEERJS)});}).then(function(){start(0);});
  Reveal.on('slidechanged',broadcast);
  // (A quiz on the first slide starts with the presentation.)
