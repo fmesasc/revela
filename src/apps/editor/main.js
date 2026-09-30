@@ -1,5 +1,6 @@
 // Application bootstrap: wire the modules together and subscribe the render.
 
+import { handleOpenWith } from '../../ui/shell/openwith.js';
 import { editText } from '../../ui/canvas/content.js';
 import { ACTIONS } from '../../ui/ribbon/actions.js';
 import { initFileDrop } from '../../ui/shell/openfile.js';
@@ -232,7 +233,7 @@ initFileDrop();
 // First visit (nothing saved in this browser, no shared link): start from the
 // templates, as PowerPoint and Canva do; closing it leaves the blank slide.
 { const q = new URLSearchParams(location.search), fresh = (() => { try { return !localStorage.getItem(model.STORAGE_KEY) && !localStorage.getItem('revela.welcomed'); } catch { return false; } })();
-  if (!testing && fresh && !['collab', 'open', 'u', 'd'].some(k => q.has(k))) {
+  if (!testing && fresh && !['collab', 'open', 'u', 'd', 'state', 'dropbox'].some(k => q.has(k))) {
     try { localStorage.setItem('revela.welcomed', '1'); } catch {}
     import('../../ui/dialogs/gallery.js').then(g => g.openGallery());
   } }
@@ -243,6 +244,8 @@ if (!testing) loadPlugins();
 // Charts linked to a CSV load fresh data when the editor opens.
 if (!testing) refreshLinkedCharts().catch(() => {});
 // Back from OpenRouter sign-in (?code=…): exchange it for the key.
+// Opened from Drive's or Dropbox's "Open with ▸ Revela" (or Drive's "New ▸ Revela").
+if (!testing) handleOpenWith();
 if (!testing) finishOpenRouterLogin().then(ok => { if (ok) alertDialog(t('IA conectada con OpenRouter.')); })
   .catch(e => alertDialog(t('No se pudo conectar con OpenRouter: ') + e.message));
 

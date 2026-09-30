@@ -21,9 +21,14 @@ import { loadScript } from '../../core/vendor.js';
 const GIS = 'https://accounts.google.com/gsi/client';
 const GAPI = 'https://apis.google.com/js/api.js';
 const API = 'https://www.googleapis.com';
-const SCOPE = 'openid email profile https://www.googleapis.com/auth/drive.file';
+// (drive.install: Revela in Drive's "Open with" and "New" menus for .revela.json files — see docs/ABRIR-CON.md.)
+const SCOPE = 'openid email profile https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.install';
 const LS = 'revela.gdrive', LS_ACCOUNT = 'revela.gaccount', LS_FILE = 'revela.gdrive.file';
-const PROJECT_MIME = 'application/json';
+// Revela's own type, so Drive offers Revela to open them (older files are application/json).
+const PROJECT_MIME = 'application/vnd.revela+json';
+// Drive's "New ▸ Revela" in a folder: the new presentation goes there.
+let newFolder = null;
+export const setNewFileFolder = id => { newFolder = typeof id === 'string' && /^[\w-]+$/.test(id) ? id : null; };
 
 const readLS = k => { try { return JSON.parse(localStorage.getItem(k)) || null; } catch { return null; } };
 const writeLS = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch {} };
@@ -102,7 +107,7 @@ const b64url = s => s.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 
 async function upload({ id, name, mimeType, body, thumbnail }) {
   const boundary = 'revela' + Math.random().toString(36).slice(2);
-  const meta = id ? {} : { name, mimeType, appProperties: { revela: '1' } };
+  const meta = id ? {} : { name, mimeType, appProperties: { revela: '1' }, ...(newFolder && { parents: [newFolder] }) };
   if (thumbnail) meta.contentHints = { thumbnail: { image: b64url(thumbnail), mimeType: 'image/jpeg' } };
   const multipart = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n`
     + `--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n${body}\r\n--${boundary}--`;
@@ -211,7 +216,7 @@ async function pickFile() {
   await new Promise(res => window.gapi.load('picker', res));
   const g = window.google;
   return new Promise(resolve => {
-    const view = new g.picker.DocsView(g.picker.ViewId.DOCS).setMimeTypes('application/json,text/html,application/octet-stream');
+    const view = new g.picker.DocsView(g.picker.ViewId.DOCS).setMimeTypes('application/vnd.revela+json,application/json,text/html,application/octet-stream');
     const builder = new g.picker.PickerBuilder().setOAuthToken(token).setDeveloperKey(apiKey).addView(view)
       .setCallback(data => {
         if (data.action === g.picker.Action.PICKED) resolve(data.docs[0]);

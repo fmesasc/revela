@@ -183,6 +183,43 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.fetch = realFetch; W.open = realOpen; W.localStorage.removeItem('revela.cloudKeys'); OC.signOutCloud('dropbox'); OC.signOutCloud('onedrive'); D.getElementById('oc-modal')?.remove(); }
   });
 
+  await test('«Abrir con Revela» desde Drive y Dropbox: ver o editar; Drive guarda con su tipo propio', async () => {
+    reset(); const W = frame.contentWindow, OW = await W.eval("import('/src/ui/shell/openwith.js')"), OC = await W.eval("import('/src/io/cloud/othercloud.js')");
+    // What Drive and Dropbox send.
+    const st = JSON.stringify({ ids: ['1AbC'], action: 'open', userId: '123' });
+    eq(JSON.stringify(OW.openRequest('?state=' + encodeURIComponent(st))), JSON.stringify({ service: 'drive', action: 'open', id: '1AbC', user: '123' }));
+    eq(OW.openRequest('?state=' + encodeURIComponent(JSON.stringify({ action: 'create', folderId: 'F1', userId: '1' }))).folder, 'F1', 'nuevo, en su carpeta');
+    eq(OW.openRequest('?dropbox&file_id=id:XyZ').id, 'id:XyZ'); eq(OW.openRequest('?state=basura'), null); eq(OW.openRequest(''), null);
+    const G = await W.eval("import('/src/io/cloud/gdrive.js')"); assert(typeof G.setNewFileFolder === 'function', 'carpeta para lo nuevo');
+    const src = await (await W.fetch('/src/io/cloud/gdrive.js')).text();
+    assert(/application\/vnd\.revela\+json/.test(src) && /auth\/drive\.install/.test(src), 'tipo propio y permiso para aparecer en «Abrir con»');
+    // Dropbox, full access: ask, sign in, download by its id, open to edit.
+    OC.setOwnKey('dropbox', 'k1'); OC.setDropboxFull(true);
+    const realFetch = W.fetch, realOpen = W.open, popup = { location: { href: '' }, closed: false }, calls = [];
+    W.open = () => popup;
+    W.fetch = async (url, o = {}) => {
+      const u = String(url), h = o.headers || {}; calls.push({ u, h, body: o.body });
+      const json = (v, stt = 200) => new W.Response(JSON.stringify(v), { status: stt });
+      if (u.endsWith('/oauth2/token')) return json({ access_token: 'T', expires_in: 3600 });
+      if (u.endsWith('/files/download')) return new W.Response(JSON.stringify({ name: 'Desde Dropbox', size: { w: 1280, h: 720 }, slides: [{ id: 'a', blocks: [] }, { id: 'b', blocks: [] }, { id: 'c', blocks: [] }] }));
+      if (u.endsWith('/files/list_folder')) return json({ error_summary: 'path/not_found/' }, 409);
+      return json({}, 404);
+    };
+    try {
+      const p = OW.handleOpenWith({ service: 'dropbox', action: 'open', id: 'id:XyZ' }); await sleep(20);
+      assert(D.getElementById('openwith-modal'), 'pregunta si ver o editar');
+      D.querySelector('#openwith-modal [data-how="edit"]').click();
+      for (let i = 0; i < 50 && !popup.location.href; i++) await sleep(10);
+      const q = new URL(popup.location.href);
+      W.postMessage({ type: 'revela-auth', query: '?code=C&state=' + q.searchParams.get('state') }, W.location.origin);
+      eq(await p, true); eq(R.state.deck.slides.length, 3, 'abierta'); eq(R.state.deck.name, 'Desde Dropbox');
+      eq(JSON.parse(calls.find(c => c.u.endsWith('/files/download')).h['Dropbox-API-Arg']).path, 'id:XyZ', 'por su id de Dropbox');
+      assert(/files\.metadata\.read/.test(q.searchParams.get('scope')), 'con el permiso que piden las extensiones');
+      eq((await OC.listCloud('dropbox')).length, 0, 'sin carpeta Revela todavía: nada');
+      eq(JSON.parse(calls.find(c => c.u.endsWith('/files/list_folder')).body).path, '/Revela', 'con acceso completo, la carpeta Revela');
+    } finally { W.fetch = realFetch; W.open = realOpen; OC.setDropboxFull(false); OC.setOwnKey('dropbox', ''); OC.signOutCloud('dropbox'); D.getElementById('openwith-modal')?.remove(); }
+  });
+
   await test('IA: generar imagen y traducir la presentación (respuestas simuladas)', async () => {
     reset(); const W = frame.contentWindow, AI = R.ai, realFetch = W.fetch, calls = [];
     AI.setAiKey('sk-or-prueba');

@@ -17,6 +17,12 @@ export function setOwnKey(id, key) {
   try { localStorage.setItem(LS, JSON.stringify(all)); } catch {}
   tokens.delete(id);
 }
+// A Dropbox app with access to all of Dropbox (needed for its "Open with"
+// extension): the presentations go to the Revela folder there; an app-folder
+// app keeps them in Apps/Revela.
+export const dropboxFull = () => !!read().dropboxFull;
+export function setDropboxFull(on) { const all = read(); if (on) all.dropboxFull = true; else delete all.dropboxFull; try { localStorage.setItem(LS, JSON.stringify(all)); } catch {} tokens.delete('dropbox'); }
+const dbxRoot = () => (dropboxFull() ? '/Revela' : '');
 export const cloudKey = id => ownKey(id) || CLOUD_KEYS[id] || '';
 export const cloudReady = id => !!cloudKey(id);
 
@@ -29,15 +35,17 @@ export const PROVIDERS = {
   dropbox: {
     name: 'Dropbox', console: 'https://www.dropbox.com/developers/apps',
     auth: { authorize: 'https://www.dropbox.com/oauth2/authorize', token: 'https://api.dropboxapi.com/oauth2/token',
-      scope: 'files.content.read files.content.write', extra: { token_access_type: 'online' } },
+      scope: 'files.metadata.read files.content.read files.content.write', extra: { token_access_type: 'online' } },
     async list(api) {
-      const r = await api('https://api.dropboxapi.com/2/files/list_folder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: '' }) });
+      let r;
+      try { r = await api('https://api.dropboxapi.com/2/files/list_folder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: dbxRoot() }) }); }
+      catch (e) { if (e.status === 409) return []; throw e; }      // (no Revela folder yet)
       return (r.entries || []).filter(e => e['.tag'] === 'file' && /\.revela\.json$/i.test(e.name))
         .map(e => ({ id: e.path_lower, name: e.name, modified: e.server_modified }));
     },
     async save(api, name, text) {
       const r = await api('https://content.dropboxapi.com/2/files/upload', { method: 'POST',
-        headers: { 'Content-Type': 'application/octet-stream', 'Dropbox-API-Arg': asciiJSON({ path: '/' + name, mode: 'overwrite', mute: true }) }, body: text });
+        headers: { 'Content-Type': 'application/octet-stream', 'Dropbox-API-Arg': asciiJSON({ path: dbxRoot() + '/' + name, mode: 'overwrite', mute: true }) }, body: text });
       return { id: r.path_lower, name: r.name };
     },
     open: (api, id) => api('https://content.dropboxapi.com/2/files/download', { method: 'POST', headers: { 'Dropbox-API-Arg': asciiJSON({ path: id }) } }, 'text'),

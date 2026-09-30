@@ -208,6 +208,7 @@ the origin of every requirement is traceable.
 - ✅ Right-to-left **interface** (Arabic) — mirrored ribbon and panels, slide geometry untouched `PP·OO`
 - ✅ Translate the whole presentation with AI (text keeping formatting, tables, notes; one undo step) `GS·OO`
 - ✅ Complete Galician, Dutch, Basque and Arabic interface (machine-assisted; corrections from native speakers welcome), each loaded only when chosen `PP·GS·OO`
+- ✅ “Open with Revela” from Google Drive (and “New ▸ Revela”) and Dropbox: view the presentation full screen or edit it; own file type `application/vnd.revela+json` `GS`
 
 ## 10. Extensibility & automation
 - ✅ Add-in system — ES modules by URL, ribbon buttons, stored locally `GS·OO`

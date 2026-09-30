@@ -22,7 +22,7 @@
     <p>Your presentations, settings, your name (if you type it to comment, collaborate or sign) and, if you sign, a signing key that cannot leave the browser. They are kept in the browser's local storage (localStorage and IndexedDB) and you can delete them at any time by clearing the site's data.</p>
 
     <h2>Google Drive and your Google account</h2>
-    <p>If you choose to connect Google Drive, Revela asks for your permission through Google with the <code>drive.file</code> scope. With it, Revela <strong>can only see and change the files it creates or that you explicitly open with Revela</strong>; it cannot see the rest of your Drive. If you sign in, Revela may receive your name, email address and profile picture only to show which account you are using.</p>
+    <p>If you choose to connect Google Drive, Revela asks for your permission through Google with the <code>drive.file</code> scope. With it, Revela <strong>can only see and change the files it creates or that you explicitly open with Revela</strong>; it cannot see the rest of your Drive. It also asks for <code>drive.install</code>, which only lets Revela appear in Drive's “Open with” and “New” menus. If you sign in, Revela may receive your name, email address and profile picture only to show which account you are using.</p>
     <ul>
       <li>Revela uses this data only for what you ask: listing, opening, saving and sharing your Revela presentations.</li>
       <li>Data goes directly from your browser to Google; it does not go through or get stored on any Revela server.</li>
@@ -36,7 +36,7 @@
       <li><strong>Sharing:</strong> the presentation is encrypted in your browser before it leaves; it is stored in your Google Drive, in a file you upload yourself, or on a server you configure. Without the key or password it cannot be read.</li>
       <li><strong>Live collaboration and phone remote:</strong> browsers connect directly (WebRTC, encrypted). PeerJS's public service only introduces them; if a collaboration server is used, it is the one configured by whoever runs the installation.</li>
       <li><strong>Audience polls and Q&amp;A:</strong> likewise, browser to browser.</li>
-      <li><strong>Dropbox and OneDrive:</strong> only if you connect them; your presentation goes directly from your browser to Revela's folder there (Dropbox: Apps/Revela only; OneDrive: the Revela folder). The access is kept in memory while the page is open, and no Revela server is involved.</li>
+      <li><strong>Dropbox and OneDrive:</strong> only if you connect them; your presentation goes directly from your browser to Revela's folder there (Dropbox: Apps/Revela only, or the Revela folder if you set up an app with full access to use “Open with Revela”; OneDrive: the Revela folder). The access is kept in memory while the page is open, and no Revela server is involved.</li>
       <li><strong>Artificial intelligence:</strong> only with your own OpenRouter key; the text you send goes to OpenRouter and the model you choose, under their terms.</li>
       <li><strong>Live captions, speaker coach and dictation:</strong> use the browser's speech recognition; in Chrome and Edge the audio is sent to their speech service. Revela warns you before turning it on.</li>
       <li><strong>Image background removal:</strong> the model is downloaded once and runs in your browser; the image never leaves it.</li>
@@ -62,7 +62,7 @@
     <p>Tus presentaciones, la configuración, tu nombre (si lo escribes para comentar, colaborar o firmar) y, si firmas, una clave de firma que no puede salir del navegador. Se guardan en el almacenamiento local del navegador (localStorage e IndexedDB). Puedes borrarlos cuando quieras borrando los datos del sitio en tu navegador.</p>
 
     <h2>Google Drive y tu cuenta de Google</h2>
-    <p>Si decides conectar Google Drive, Revela te pide permiso mediante el sistema de Google con el alcance <code>drive.file</code>. Con él, Revela <strong>solo puede ver y modificar los archivos que crea él mismo o que tú abres expresamente con Revela</strong>; no puede ver el resto de tu Drive. Si inicias sesión, Revela puede recibir tu nombre, tu dirección de correo y tu foto de perfil solo para mostrarte con qué cuenta has entrado.</p>
+    <p>Si decides conectar Google Drive, Revela te pide permiso mediante el sistema de Google con el alcance <code>drive.file</code>. Con él, Revela <strong>solo puede ver y modificar los archivos que crea él mismo o que tú abres expresamente con Revela</strong>; no puede ver el resto de tu Drive. También pide <code>drive.install</code>, que solo permite que Revela aparezca en los menús «Abrir con» y «Nuevo» de Drive. Si inicias sesión, Revela puede recibir tu nombre, tu dirección de correo y tu foto de perfil solo para mostrarte con qué cuenta has entrado.</p>
     <ul>
       <li>Revela usa estos datos únicamente para lo que pides: listar tus presentaciones de Revela, abrirlas, guardarlas y compartirlas.</li>
       <li>Los datos van directamente de tu navegador a Google; no pasan por ningún servidor de Revela ni se guardan en él.</li>
@@ -76,7 +76,7 @@
       <li><strong>Compartir:</strong> la presentación se cifra en tu navegador antes de salir; se guarda en tu Google Drive, en un archivo que subes tú o en el servidor que tú configures. Sin la clave o la contraseña no se puede leer.</li>
       <li><strong>Colaborar en directo y mando del móvil:</strong> los navegadores se conectan directamente (WebRTC, cifrado). El servicio público de PeerJS solo los presenta entre sí; si se usa un servidor de colaboración, es el que configure quien administra la instalación.</li>
       <li><strong>Votaciones y preguntas del público:</strong> igual, de navegador a navegador.</li>
-      <li><strong>Dropbox y OneDrive:</strong> solo si los conectas; la presentación va directamente de tu navegador a la carpeta de Revela allí (Dropbox: solo Aplicaciones/Revela; OneDrive: la carpeta Revela). El acceso se guarda en memoria mientras la página está abierta y no interviene ningún servidor de Revela.</li>
+      <li><strong>Dropbox y OneDrive:</strong> solo si los conectas; la presentación va directamente de tu navegador a la carpeta de Revela allí (Dropbox: solo Aplicaciones/Revela, o la carpeta Revela si configuras una app con acceso completo para usar «Abrir con Revela»; OneDrive: la carpeta Revela). El acceso se guarda en memoria mientras la página está abierta y no interviene ningún servidor de Revela.</li>
       <li><strong>Inteligencia artificial:</strong> solo con tu propia clave de OpenRouter; el texto que envías va a OpenRouter y al modelo que elijas, con sus condiciones.</li>
       <li><strong>Subtítulos en directo, entrenador de oratoria y dictado:</strong> usan el reconocimiento de voz del navegador; en Chrome y Edge el audio se envía a su servicio de voz. Revela avisa antes de activarlo.</li>
       <li><strong>Quitar el fondo de imágenes:</strong> el modelo se descarga una vez y se ejecuta en tu navegador; la imagen no sale de él.</li>

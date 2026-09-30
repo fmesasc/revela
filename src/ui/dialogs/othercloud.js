@@ -38,9 +38,14 @@ export function openCloud(id) {
       <input type="text" class="oc-redirect" readonly value="${esc(redirectURI())}" aria-label="${t('Dirección de redirección')}">
       <p><a href="${p.console}" target="_blank" rel="noopener">${t('Abrir la consola de {s}').replace('{s}', esc(p.name))} ↗</a></p>
       <label class="fr-l">${t(id === 'dropbox' ? 'Clave de la app (App key)' : 'Id. de aplicación (cliente)')}<input type="text" class="oc-key" value="${esc(oc.ownKey(id))}" spellcheck="false"></label>
+      ${id === 'dropbox' ? `<label class="fr-chk"><input type="checkbox" class="oc-full"${oc.dropboxFull() ? ' checked' : ''}> ${t('La app tiene acceso a todo Dropbox (necesario para «Abrir con Revela»; guarda en la carpeta Revela)')}</label>` : ''}
       <div class="fr-actions"><button class="fr-do oc-save-key">${t('Guardar')}</button></div>`;
     body.querySelector('.oc-redirect').addEventListener('focus', e => e.target.select());
-    body.querySelector('.oc-save-key').addEventListener('click', () => { oc.setOwnKey(id, body.querySelector('.oc-key').value); render(); });
+    body.querySelector('.oc-save-key').addEventListener('click', () => {
+      oc.setOwnKey(id, body.querySelector('.oc-key').value);
+      if (id === 'dropbox') oc.setDropboxFull(body.querySelector('.oc-full').checked);
+      render();
+    });
   }
   // Signed in or not: connect, then the list and "Save here".
   async function files() {
@@ -48,7 +53,7 @@ export function openCloud(id) {
         ${oc.signedIn(id) ? '' : `<button class="fr-do oc-connect">${t('Conectar con {s}').replace('{s}', esc(p.name))}</button>`}
         <button class="fr-do oc-save"${oc.signedIn(id) ? '' : ' disabled'}><i class="ms">cloud_upload</i> ${t('Guardar aquí esta presentación')}</button></div>
       <p class="oc-note host-help"></p><div class="oc-list"></div>
-      <p class="host-help" style="font-size:12px">${t(id === 'dropbox' ? 'Se guarda en la carpeta Aplicaciones/Revela de tu Dropbox.' : 'Se guarda en la carpeta Revela de tu OneDrive.')}
+      <p class="host-help" style="font-size:12px">${t(id === 'dropbox' ? (oc.dropboxFull() ? 'Se guarda en la carpeta Revela de tu Dropbox.' : 'Se guarda en la carpeta Aplicaciones/Revela de tu Dropbox.') : 'Se guarda en la carpeta Revela de tu OneDrive.')}
         <a href="#" class="oc-keys">${t('Cambiar la app')}</a></p>`;
     body.querySelector('.oc-keys').addEventListener('click', e => { e.preventDefault(); setup(); });
     body.querySelector('.oc-connect')?.addEventListener('click', () => oc.connect(id).then(files).catch(e => note(message(e), true)));
