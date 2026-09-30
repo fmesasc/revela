@@ -2139,4 +2139,8 @@ export default {
   "Presentar desde el principio (F5)": "Hasieratik aurkeztu (F5)",
   "Presentar desde esta diapositiva (Mayús + F5)": "Diapositiba honetatik aurkeztu (Maius + F5)",
   "Zoom (Ctrl + rueda del ratón)": "Zooma (Ktrl + saguaren gurpila)",
+  "Ir a la diapositiva": "Joan diapositibara",
+  "Puntero normal": "Erakusle arrunta",
+  "Pantalla en blanco": "Pantaila zuria",
+  "Terminar la presentación": "Amaitu aurkezpena",
 };

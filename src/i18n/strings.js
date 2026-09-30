@@ -2158,5 +2158,9 @@ export const ROWS = [
   ['Presentar desde el principio (F5)', 'Present from the beginning (F5)', 'Présenter depuis le début (F5)', 'Von Anfang an präsentieren (F5)', 'Presenta dall\'inizio (F5)', 'Apresentar desde o início (F5)', 'Presenta des del principi (F5)'],
   ['Presentar desde esta diapositiva (Mayús + F5)', 'Present from this slide (Shift + F5)', 'Présenter depuis cette diapositive (Maj + F5)', 'Ab dieser Folie präsentieren (Umschalt + F5)', 'Presenta da questa diapositiva (Maiusc + F5)', 'Apresentar a partir deste diapositivo (Shift + F5)', 'Presenta des d\'aquesta diapositiva (Maj + F5)'],
   ['Zoom (Ctrl + rueda del ratón)', 'Zoom (Ctrl + mouse wheel)', 'Zoom (Ctrl + molette)', 'Zoom (Strg + Mausrad)', 'Zoom (Ctrl + rotellina)', 'Zoom (Ctrl + roda do rato)', 'Zoom (Ctrl + roda del ratolí)'],
+  ['Ir a la diapositiva', 'Go to slide', 'Aller à la diapositive', 'Gehe zu Folie', 'Vai alla diapositiva', 'Ir para o diapositivo', 'Ves a la diapositiva'],
+  ['Puntero normal', 'Normal pointer', 'Pointeur normal', 'Normaler Zeiger', 'Puntatore normale', 'Ponteiro normal', 'Punter normal'],
+  ['Pantalla en blanco', 'White screen', 'Écran blanc', 'Weißer Bildschirm', 'Schermo bianco', 'Ecrã branco', 'Pantalla en blanc'],
+  ['Terminar la presentación', 'End the show', 'Terminer la présentation', 'Präsentation beenden', 'Termina la presentazione', 'Terminar a apresentação', 'Acaba la presentació'],
 ];
 // Additional languages (partial; anything missing falls back to Spanish).

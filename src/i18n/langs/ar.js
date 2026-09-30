@@ -2139,4 +2139,8 @@ export default {
   "Presentar desde el principio (F5)": "العرض من البداية (F5)",
   "Presentar desde esta diapositiva (Mayús + F5)": "العرض من هذه الشريحة (Shift + F5)",
   "Zoom (Ctrl + rueda del ratón)": "تكبير (Ctrl + عجلة الفأرة)",
+  "Ir a la diapositiva": "الانتقال إلى الشريحة",
+  "Puntero normal": "المؤشر العادي",
+  "Pantalla en blanco": "شاشة بيضاء",
+  "Terminar la presentación": "إنهاء العرض",
 };

@@ -159,6 +159,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     select(slide().blocks.at(-1)); await sleep(20);
     assert([...D.querySelectorAll('#ribbon select')].some(x => [...x.options].some(o => o.value === 'fade')) && [...D.querySelectorAll('#ribbon select')].some(x => [...x.options].some(o => o.value === 'front')), 'se elige en la pestaña del 3D');
     // Zoom while presenting
+    R.store.commit(() => { slide().blocks.find(b => b.type === 'text').html = 'Clases sencillas'; });
     const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:640px;height:360px;opacity:0';
     f.src = URL.createObjectURL(new Blob([R.io.buildHTML(R.state.deck, { inApp: true })], { type: 'text/html' })); document.body.appendChild(f);
     let w; for (let i = 0; i < 80 && !((w = f.contentWindow).Reveal?.isReady?.() && w.document.querySelector('#ink-bar [data-z]')); i++) await sleep(100);
@@ -173,7 +174,26 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       w.dispatchEvent(new w.WheelEvent('wheel', { deltaY: -200, ctrlKey: true, clientX: 100, clientY: 100, cancelable: true }));
       assert(+rv.style.scale > 1.25, 'Ctrl + rueda');
       w.dispatchEvent(new w.KeyboardEvent('keydown', { key: '0', bubbles: true })); eq(rv.style.scale, '', '0: tamaño normal');
+      // Right-click: the presenting menu
+      const cm = (x = 200, y = 150) => { w.document.body.dispatchEvent(new w.MouseEvent('contextmenu', { clientX: x, clientY: y, bubbles: true, cancelable: true })); return w.document.getElementById('rv-cm'); };
+      let m = cm(); assert(m, 'clic derecho: menú de presentación');
+      const acts = [...m.querySelectorAll('[data-m]')].map(b => b.dataset.m).join();
+      eq(acts, 'next,prev,goto,ov,pen,hl,laser,arrow,erase,cc,zin,zout,z0,black,white,full,end', 'con lo que tiene sentido al presentar');
+      m.querySelector('[data-m="pen"]').click(); assert(w.document.getElementById('ink-canvas').classList.contains('on') && !w.document.getElementById('rv-cm'), 'elegir el lápiz (y se cierra)');
+      m = cm(); assert(m.querySelector('[data-m="pen"]').classList.contains('on'), 'marca lo que está activo'); m.querySelector('[data-m="arrow"]').click();
+      m = cm(); m.querySelector('[data-m="goto"]').click(); const list = m.querySelectorAll('.rv-cm-list button');
+      eq(list.length, w.Reveal.getSlides().length, 'ir a una diapositiva: todas en una lista');
+      eq(list[0].textContent, '1. Clases sencillas', 'con sus títulos');
+      m = cm(); m.querySelector('[data-m="white"]').click(); eq(w.document.getElementById('rv-white').style.display, 'block', 'pantalla en blanco');
+      w.document.getElementById('rv-white').click(); eq(w.document.getElementById('rv-white').style.display, 'none', 'y un clic la quita');
+      m = cm(); w.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); assert(!w.document.getElementById('rv-cm'), 'Esc cierra el menú');
     } finally { f.remove(); }
+    // Morph of a text: what travels is the text itself (a tight box), and its size isn't animated twice
+    reset(); R.store.commit(() => { slide().blocks[0].html = 'NOVA'; slide().blocks[0].textAlign = 'center'; });
+    R.slides.duplicateSlide(); R.store.commit(() => { const s2 = R.state.deck.slides[1]; s2.autoAnimate = true; s2.blocks[0].textAlign = 'left'; s2.blocks[0].fontSize = 30; });
+    const mh = R.io.buildHTML();
+    assert(/<div class="rv-mt" data-id="[^"]+" style="display:inline-block[^"]*">NOVA<\/div>/.test(mh), 'transformar un texto: se mueve la caja justa del texto');
+    assert(/autoAnimateStyles:\['opacity','color'/.test(mh) && !/autoAnimateStyles:\[[^\]]*font-size/.test(mh), 'sin animar el tamaño de letra además de la escala');
     // Quick buttons and the editor's zoom slider
     assert(D.querySelector('.titlebar .tb-play [data-action="present"]') && D.querySelector('.titlebar .tb-play [data-action="present-current"]'), 'presentar desde el principio o desde aquí, en la barra de título');
     const sl = D.getElementById('zoom-slider'); sl.value = '150'; sl.dispatchEvent(new W.Event('input')); eq(R.state.ui.zoom, 1.5, 'deslizador de zoom del editor');

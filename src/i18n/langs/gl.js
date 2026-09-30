@@ -2139,4 +2139,8 @@ export default {
   "Presentar desde el principio (F5)": "Presentar desde o principio (F5)",
   "Presentar desde esta diapositiva (Mayús + F5)": "Presentar desde esta diapositiva (Maiús + F5)",
   "Zoom (Ctrl + rueda del ratón)": "Zoom (Ctrl + roda do rato)",
+  "Ir a la diapositiva": "Ir á diapositiva",
+  "Puntero normal": "Punteiro normal",
+  "Pantalla en blanco": "Pantalla en branco",
+  "Terminar la presentación": "Rematar a presentación",
 };

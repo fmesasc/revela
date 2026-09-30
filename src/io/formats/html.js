@@ -15,6 +15,7 @@ import { download, slug } from '../files.js';
 import { TRIGGER_JS, CAMERA_JS, pollJS, liveDataJS, LIGHTBOX_JS, overviewJS } from '../runtime/scripts.js';
 import { ACTIVITIES, publicActivity, gradeAnswer, gradeActivity } from '../../features/live/poll.js';
 import { selfPacedRuntime } from '../runtime/selfpaced.js';
+import { slideTitle } from '../../features/document/a11y.js';
 import { createMediaPlayer, revelaMediaRuntime } from '../runtime/media.js';
 import { needsPlayer, mediaConfig } from '../../features/live/media.js';
 import { modelAttrsHTML, bleedBox, edgeCSS } from '../../features/content/model3d.js';
@@ -220,7 +221,14 @@ function blockHTMLRaw(b, slide) {
   if (b.type === 'text') {
     const wr = wrapFor(b, slide);
     const tabbed = !b.curve && /\t/.test(b.html || '');         // (tab stops laid out by tabRuntime)
-    return `<div${a}${b.levels ? ' class="lv"' : ''}${wrapAttrs(wr)}${tabbed ? ` data-tabs="${esc(JSON.stringify(b.tabs || []))}"` : ''} style="${box(b)}${wrapVars(wr)}${tabbed ? 'white-space:pre-wrap;tab-size:96px;' : ''}font-size:${b.fontSize || 40}px;${b.color ? `color:${b.color};` : ''}${b.levels ? levelVars(b) : ''}`
+    // Morph of plain text (no box of its own): what travels is the text itself —
+    // a box as tight as the words — so it glides and grows evenly from where it
+    // was, whatever the alignment in its frame (the frame would stretch it, and a
+    // change of alignment would make it jump).
+    const tight = b.morphId && !byText && !b.bg && !b.borderColor && !b.curve && !(b.columns > 1) && !b.vertical && !tabbed;
+    const ta = { center: 'center', right: 'flex-end', justify: 'stretch' }[b.textAlign] || 'flex-start';
+    const inner = html => (tight ? `<div class="rv-mt" data-id="${esc(b.morphId)}" style="display:inline-block;max-width:100%;vertical-align:top;${b.vAlign ? `align-self:${ta};` : ''}">${html}</div>` : html);
+    return `<div${tight ? a.replace(/ data-id="[^"]*"/, '') : a}${b.levels ? ' class="lv"' : ''}${wrapAttrs(wr)}${tabbed ? ` data-tabs="${esc(JSON.stringify(b.tabs || []))}"` : ''} style="${box(b)}${wrapVars(wr)}${tabbed ? 'white-space:pre-wrap;tab-size:96px;' : ''}font-size:${b.fontSize || 40}px;${b.color ? `color:${b.color};` : ''}${b.levels ? levelVars(b) : ''}`
       + `text-align:${b.textAlign || 'left'};${b.fontFamily ? `font-family:${b.fontFamily};` : ''}`
       + `${b.lineHeight ? `line-height:${b.lineHeight};` : ''}`
       + `${b.letterSpacing ? `letter-spacing:${b.letterSpacing}px;` : ''}`
@@ -235,7 +243,7 @@ function blockHTMLRaw(b, slide) {
       + `${b.fontWeight ? `font-weight:${b.fontWeight};` : ''}${b.fontStyle ? `font-style:${b.fontStyle};` : ''}`
       + `${b.columns > 1 ? `column-count:${b.columns};column-gap:32px;` : ''}`
       + `${b.wordart ? wordartCSS(b.wordart) : ''}">`
-      + `${b.curve ? curvedTextSVG(b) : b.html || ''}</div>`;
+      + `${b.curve ? curvedTextSVG(b) : inner(b.html || '')}</div>`;
   }
   if (b.type === 'model')
     return `<model-viewer${a}${modelAttrsHTML(b)} style="${box(bleedBox(b))}background:transparent;${edgeCSS(b)}${bleedBox(b) !== b ? 'pointer-events:none' : ''}"></model-viewer>`;
@@ -417,6 +425,7 @@ function revealOptions(deck, inApp) {
   return `controls:${!!o.controls}, controlsLayout:${J(o.controlsLayout)}, progress:${!!o.progress}, navigationMode:${J(o.navigationMode)},
    mouseWheel:${!!o.mouseWheel}, shuffle:${!!o.shuffle}, hideInactiveCursor:${!!o.hideInactiveCursor}, jumpToSlide:${!!o.jumpToSlide},
    previewLinks:${!!o.previewLinks}, rtl:${!!o.rtl}, autoAnimateDuration:${+o.autoAnimateDuration || 1}, autoAnimateEasing:${J(o.autoAnimateEasing)},
+   autoAnimateStyles:['opacity','color','background-color','padding','border-width','border-color','border-radius','outline','outline-offset'],
    autoSlideStoppable:${!!o.autoSlideStoppable}, fragmentInURL:${!inApp && !!o.fragmentInURL},${o.view === 'scroll' ? " view:'scroll', scrollProgress:true," : ''}
    ${o.parallax ? `parallaxBackgroundImage:${J(o.parallax)}, parallaxBackgroundSize:${J(o.parallaxSize || '')},` : ''}`;
 }
@@ -564,7 +573,8 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${/ data-file(-view)?[ >]/.test(slides) ? FILE_JS : ''}
  ${hasMedia ? `${createMediaPlayer.toString()}\n${revelaMediaRuntime.toString()}\nrevelaMediaRuntime(${JSON.stringify(GIFUCT)});` : ''}
  ${inkJS(w, h, { pen: t('Lápiz'), hl: t('Resaltador'), laser: t('Puntero láser'), color: t('Color de la tinta'), erase: t('Borrar la tinta de la diapositiva'),
-   cc: t('Subtítulos en directo'), zin: t('Acercar'), zout: t('Alejar'), zreset: t('Tamaño normal'), lang: speechLang(), ccWarn: t('Los subtítulos usan el reconocimiento de voz del navegador: en Chrome y Edge el audio se envía a su servicio de voz. ¿Activarlos?') })}
+   cc: t('Subtítulos en directo'), zin: t('Acercar'), zout: t('Alejar'), zreset: t('Tamaño normal'), next: t('Siguiente'), prev: t('Anterior'), go: t('Ir a la diapositiva'), overview: t('Vista general'),
+   titles: deck.slides.filter(s => !s.hidden).map(s => slideTitle(s)), arrow: t('Puntero normal'), black: t('Pantalla en negro'), white: t('Pantalla en blanco'), full: t('Pantalla completa'), end: t('Terminar la presentación'), lang: speechLang(), ccWarn: t('Los subtítulos usan el reconocimiento de voz del navegador: en Chrome y Edge el audio se envía a su servicio de voz. ¿Activarlos?') })}
  ${overviewJS(groups.map(g => (deck.sections || []).find(x => x.id === g[0].sectionId)?.name || ''),
    { title: t('Vista general'), help: t('Flechas e Intro, o clic, para ir · Esc para cerrar') })}
  ${hasZoomReturn ? '(function(){var p=null;document.addEventListener("click",function(e){var a=e.target.closest("a.slide-zoom[data-zoom-return]");if(a){p={t:a.dataset.target,o:a.dataset.origin.split("/"),arrived:false};}});Reveal.on("slidechanged",function(ev){if(!p)return;if(ev.indexh+"/"+(ev.indexv||0)===p.t){p.arrived=true;return;}if(p.arrived){var o=p.o;p=null;setTimeout(function(){Reveal.slide(+o[0],+o[1]);},0);}});})();' : ''}

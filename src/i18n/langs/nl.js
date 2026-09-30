@@ -2139,4 +2139,8 @@ export default {
   "Presentar desde el principio (F5)": "Presenteren vanaf het begin (F5)",
   "Presentar desde esta diapositiva (Mayús + F5)": "Presenteren vanaf deze dia (Shift + F5)",
   "Zoom (Ctrl + rueda del ratón)": "Zoom (Ctrl + scrollwiel)",
+  "Ir a la diapositiva": "Ga naar dia",
+  "Puntero normal": "Normale aanwijzer",
+  "Pantalla en blanco": "Wit scherm",
+  "Terminar la presentación": "Presentatie beëindigen",
 };
