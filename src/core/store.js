@@ -96,12 +96,17 @@ export function checkpoint() {
   base = snapshot(state.deck);
   return true;
 }
-export function commit(fn, { history = true, force = false, comment = false } = {}) {
+// Who wants to know what each edit changed (track changes): fn(before, after).
+// Not told of remote changes, undo/redo or edits made with { track: false }.
+const editWatchers = new Set();
+export const onEdit = fn => { editWatchers.add(fn); return () => editWatchers.delete(fn); };
+export function commit(fn, { history = true, force = false, comment = false, track = true } = {}) {
   // A deck marked as final is read-only: edits are refused (selection and
   // other UI changes, which don't record history, still work). So is a shared
   // one opened to view (or only to comment: then comments are allowed).
   const lock = state.ui.lock;
   if ((state.deck.final || (lock && !(lock === 'comment' && comment))) && history && !force) { window.dispatchEvent(new Event('revela:readonly')); return; }
+  const before = history && track && editWatchers.size ? base : null;   // (the last step: with what was typed since)
   if (history) checkpoint();          // changes made in place before are a step of their own
   if (fn) fn();
   clampSlide();
@@ -110,6 +115,7 @@ export function commit(fn, { history = true, force = false, comment = false } = 
   notify();
   // What drawing it filled in (default styles created on first use…) belongs to this step.
   if (history) base = snapshot(state.deck);
+  if (before && !same(before, state.deck)) editWatchers.forEach(w => { try { w(before, state.deck); } catch {} });
 }
 
 export function mutate(fn) { commit(fn, { history: false }); }

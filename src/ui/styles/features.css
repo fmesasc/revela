@@ -126,7 +126,7 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .vs-meta span{font-size:12px;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vs-item button{border:1px solid var(--line2);background:none;border-radius:6px;padding:4px 8px;cursor:pointer;color:inherit}
 /* Comments */
-#comments-panel{width:280px;flex-shrink:0;background:var(--panel);border-inline-start:1px solid var(--line2);overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+#comments-panel,#review-panel{width:280px;flex-shrink:0;background:var(--panel);border-inline-start:1px solid var(--line2);overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
 .cm-head{display:flex;align-items:center;justify-content:space-between}
 .cm-head button,.cm-actions button{border:1px solid var(--line2);background:none;border-radius:6px;cursor:pointer;padding:3px 8px;color:inherit;font-size:12px}
 .cm-new{display:flex;flex-direction:column;gap:6px}.cm-new textarea{border:1px solid var(--line2);border-radius:6px;padding:6px;font:inherit;resize:vertical}
@@ -162,7 +162,7 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 @media (max-width:860px){
   .lang-select{max-width:92px;flex-shrink:0}
   .qat [data-action="save"]{display:none}       /* also in File; frees room on phones */
-  #comments-panel{width:auto;max-height:45vh;border-inline-start:none;border-top:1px solid var(--line2)}
+  #comments-panel,#review-panel{width:auto;max-height:45vh;border-inline-start:none;border-top:1px solid var(--line2)}
   #final-banner,#master-banner{font-size:12px;flex-wrap:wrap}
   .gal-grid,.ts-grid{grid-template-columns:repeat(2,1fr)}
   .pal-grid{grid-template-columns:repeat(2,1fr)}
@@ -539,3 +539,5 @@ body:not([data-edition="cloud"]):not([data-edition="desktop"]) .accounts-only{di
 .sh-cloud{display:flex;gap:12px;align-items:center;justify-content:space-between;background:var(--accent-bg);border-radius:8px;padding:10px 12px;margin:6px 0 10px}
 .sh-cloud small{color:var(--txt2)}.sh-cloud .fr-do{display:flex;align-items:center;gap:4px;white-space:nowrap}
 .modal.share h4{margin:10px 0 2px;font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--txt2)}
+#canvas-wrap .block.rv-changed{outline:2px dashed #e8590c;outline-offset:3px}
+#review-panel .rv-all{justify-content:flex-start}

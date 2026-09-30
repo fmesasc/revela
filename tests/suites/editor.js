@@ -446,4 +446,31 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     await I.setLang('fr'); eq(D.querySelector('#ribbon label.color>span')?.textContent, 'Couleur');
     await I.setLang('es'); eq(a.querySelector('span').textContent, 'Versión premium');
   });
+
+  await test('control de cambios: cada cambio con su autor, aceptar o rechazar', async () => {
+    reset(); const RV = R.review; R.comments.setAuthor('Ana');
+    R.blocks.addShape('rect'); await sleep(10); const a = last();
+    eq(RV.changesOf().length, 0, 'apagado: no se anota nada');
+    RV.setTracking(true);
+    R.blocks.addShape('ellipse'); await sleep(10); const b = last();
+    R.store.commit(() => { b.x += 50; }); await sleep(10);
+    eq(RV.changesOf().length, 1, 'añadir y mover el mismo objeto enseguida: un solo cambio');
+    eq(RV.changesOf()[0].author, 'Ana', 'con su autor'); eq(RV.describe(RV.changesOf()[0]), 'Objeto añadido');
+    R.store.commit(() => { a.x = 300; }); await sleep(10);
+    eq(RV.changesOf().length, 2, 'otro objeto: otro cambio'); eq(RV.describe(RV.changesOf()[1]), 'Movido o cambiado de tamaño');
+    R.store.commit(() => { R.state.ui.showReview = true; }, { history: false }); await sleep(20);
+    eq(D.querySelectorAll('#review-panel .rv-item').length, 2, 'en el panel'); assert(D.querySelector(`.block[data-id="${a.id}"]`).classList.contains('rv-changed'), 'y marcados en la diapositiva');
+    const old = RV.changesOf()[1].undo.find(o => o.p.at(-1) === 'x').v;
+    RV.reject(RV.changesOf()[1].id); await sleep(10);
+    eq(slide().blocks.find(x => x.id === a.id).x, old, 'rechazar: vuelve lo de antes'); eq(RV.changesOf().length, 1);
+    RV.reject(RV.changesOf()[0].id); await sleep(10);
+    assert(!slide().blocks.some(x => x.id === b.id), 'rechazar un objeto añadido: desaparece');
+    R.store.commit(() => { a.y = 10; }); await sleep(10); RV.accept(RV.changesOf()[0].id); await sleep(10);
+    eq(slide().blocks.find(x => x.id === a.id).y, 10, 'aceptar: se queda'); eq(RV.changesOf().length, 0, 'y el registro se va');
+    R.store.commit(() => { a.y = 20; }); await sleep(10); R.store.undo(); await sleep(10);
+    eq(RV.changesOf().length, 0, 'deshacer también quita el registro');
+    R.store.applyRemote(root => { const x = root.slides[R.state.ui.slideIndex]?.blocks.find(x => x.id === a.id); if (x) x.y = 99; }); await sleep(10);
+    eq(RV.changesOf().length, 0, 'los cambios de otros (en directo) los anota quien los hace, no aquí');
+    RV.setTracking(false); R.store.commit(() => { R.state.ui.showReview = false; }, { history: false });
+  });
 }

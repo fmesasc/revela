@@ -46,6 +46,7 @@ import { openVersions } from '../dialogs/versions.js';
 import { openCloudDocs, openCloudShare } from '../dialogs/cloud.js';
 import * as protect from '../../features/collab/protect.js';
 import { toggleComments } from '../panels/comments.js';
+import { toggleReview } from '../panels/review.js';
 import * as media from '../../features/live/media.js';
 import * as poll from '../../features/live/poll.js';
 import { openPollEditor } from '../dialogs/poll.js';
@@ -93,10 +94,12 @@ export const ACTIONS = {
   'gallery': () => openGallery(),
   'home': () => openHome(),
   'versions': () => openVersions(),
+  'review-panel': () => toggleReview(),
   'cloud-docs': () => openCloudDocs(),
   'cloud-share': () => openCloudShare(),
   'design-ideas': () => openDesignIdeas(),
   'gdrive-open': () => gdrive.openWithUI(),
+  'gslides-import': () => gdrive.pickSlidesFile().then(f => f && openPresentation(f)).catch(e => alertDialog(e.message === 'NO_TOKEN' ? t('Vuelve a iniciar sesión con Google.') : e.message)),
   'gdrive-save': () => gdrive.saveWithUI(),
   'gdrive-html': () => gdrive.saveHtmlWithUI(),
   'gdrive-config': () => openGdriveSetup(),

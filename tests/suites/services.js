@@ -864,4 +864,26 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       eq(CD.docIdFrom('?doc=abcdefghijklmnop1234'), 'abcdefghijklmnop1234', 'se abre con ?doc='); eq(CD.docIdFrom('?doc=../x'), null, 'solo ids válidos');
     } finally { CD.closeDoc(); }
   });
+
+  await test('Google Slides: se elige en Drive, Drive la convierte a PowerPoint y se importa', async () => {
+    reset(); const W = frame.contentWindow, GD = await W.eval("import('/src/io/cloud/gdrive.js')");
+    R.slides.addSlide(); R.slides.addSlide(); await sleep(10);
+    const pptx = await R.pptx.buildPptxBlob(), n = R.state.deck.slides.length, realGoogle = W.google, realGapi = W.gapi, realFetch = W.fetch, urls = [];
+    let mimes = '';
+    W.google = { accounts: { oauth2: { initTokenClient: () => ({ requestAccessToken() { this.callback({ access_token: 'tok', expires_in: 3600 }); } }), revoke: () => {} } },
+      picker: { ViewId: { DOCS: 'docs' }, Action: { PICKED: 'picked', CANCEL: 'cancel' },
+        DocsView: class { setMimeTypes(m) { mimes = m; return this; } },
+        PickerBuilder: class { setOAuthToken() { return this; } setDeveloperKey() { return this; } addView() { return this; } setAppId() { return this; }
+          setCallback(cb) { this.cb = cb; return this; } build() { return { setVisible: () => this.cb({ action: 'picked', docs: [{ id: 'gs1', name: 'Clase de historia', mimeType: 'application/vnd.google-apps.presentation' }] }) }; } } } };
+    W.gapi = { load: (_, cb) => cb() };
+    W.fetch = async (url, o) => { url = String(url); if (!url.startsWith('https://www.googleapis.com')) return realFetch(url, o); urls.push(url); return new W.Response(pptx); };
+    try {
+      const f = await GD.pickSlidesFile();
+      assert(/google-apps\.presentation/.test(mimes), 'el selector muestra las de Google Slides');
+      assert(/\/files\/gs1\/export\?mimeType=application%2Fvnd\.openxmlformats-officedocument\.presentationml\.presentation/.test(urls[0]), 'Drive la exporta a .pptx: ' + urls[0]);
+      eq(f.name, 'Clase de historia.pptx', 'con su nombre');
+      R.store.replaceDeck(R.model.emptyDeck()); await R.openfile.openPresentation(f);
+      eq(R.state.deck.slides.length, n, 'y se importa con todas sus diapositivas');
+    } finally { W.google = realGoogle; W.gapi = realGapi; W.fetch = realFetch; await GD.signOut(); }
+  });
 }

@@ -28,6 +28,9 @@ const LS = 'revela.gdrive', LS_ACCOUNT = 'revela.gaccount', LS_FILE = 'revela.gd
 const PROJECT_MIME = 'application/vnd.revela+json';
 // Drive's "New ▸ Revela" in a folder: the new presentation goes there.
 let newFolder = null;
+// The setup dialog (it lives in the interface; the editor passes it in).
+let openGdriveSetup = () => { throw new Error(t('Conecta primero Google Drive.')); };
+export const setGdriveSetup = fn => { openGdriveSetup = fn; };
 export const setNewFileFolder = id => { newFolder = typeof id === 'string' && /^[\w-]+$/.test(id) ? id : null; };
 
 const readLS = k => { try { return JSON.parse(localStorage.getItem(k)) || null; } catch { return null; } };
@@ -209,14 +212,14 @@ export const keepMine = () => savePresentation({ force: true });
 export const loadTheirs = () => openPresentation(linkedFile().id);
 
 // ---- Older entry points (Archivo ▸ Google Drive) -------------------------------------
-async function pickFile() {
+async function pickFile(mimeTypes = 'application/vnd.revela+json,application/json,text/html,application/octet-stream') {
   const { apiKey, appId } = gdriveConfig();
   const token = await ensureToken(true);
   if (!window.gapi) await loadScript(GAPI);
   await new Promise(res => window.gapi.load('picker', res));
   const g = window.google;
   return new Promise(resolve => {
-    const view = new g.picker.DocsView(g.picker.ViewId.DOCS).setMimeTypes('application/vnd.revela+json,application/json,text/html,application/octet-stream');
+    const view = new g.picker.DocsView(g.picker.ViewId.DOCS).setMimeTypes(mimeTypes);
     const builder = new g.picker.PickerBuilder().setOAuthToken(token).setDeveloperKey(apiKey).addView(view)
       .setCallback(data => {
         if (data.action === g.picker.Action.PICKED) resolve(data.docs[0]);
@@ -230,6 +233,18 @@ export async function driveOpen() {
   if (!gdriveReady()) return openGdriveSetup();
   const doc = await pickFile(); if (!doc) return;
   await openPresentation(doc.id);
+}
+
+// A presentation from Google Slides (or a PowerPoint file in Drive), as a .pptx file to import:
+// Drive converts Google's own format itself. null if none was chosen.
+const GSLIDES = 'application/vnd.google-apps.presentation', PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+export async function pickSlidesFile() {
+  if (!gdriveReady()) { openGdriveSetup(); return null; }
+  const doc = await pickFile(`${GSLIDES},${PPTX}`); if (!doc) return null;
+  const id = encodeURIComponent(doc.id);
+  const r = await api(doc.mimeType === GSLIDES ? `/drive/v3/files/${id}/export?mimeType=${encodeURIComponent(PPTX)}` : `/drive/v3/files/${id}?alt=media`);
+  if (!r.ok) throw new Error(t('No se pudo abrir el archivo.'));
+  return new File([await r.blob()], (doc.name || 'presentacion').replace(/\.pptx$/i, '') + '.pptx', { type: PPTX });
 }
 
 // Export the reveal.js HTML presentation to Drive (a new file each time).

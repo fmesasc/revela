@@ -19,6 +19,8 @@ import { nudge } from '../../ui/canvas/interact.js';
 import { initPanel, renderPanel } from '../../ui/shell/navigator.js';
 import { sorterOn, setSorter, sorterColumns } from '../../ui/shell/sorter.js';
 import { renderComments } from '../../ui/panels/comments.js';
+import { renderReview } from '../../ui/panels/review.js';
+import * as review from '../../features/collab/review.js';
 import { renderSelectionPane } from '../../ui/panels/selection.js';
 import { renderAssistant } from '../../ui/dialogs/ai.js';
 import * as aiDeck from '../../features/ai/authoring.js';
@@ -49,6 +51,7 @@ import * as remote from '../../features/live/remote.js';
 import * as search from '../../features/document/search.js';
 import * as i18n from '../../i18n/index.js';
 import * as gdrive from '../../io/cloud/gdrive.js';
+import { openGdriveSetup } from '../../ui/dialogs/gdrive.js';
 import * as pptx from '../../io/formats/pptx-export.js';
 import * as html from '../../io/formats/html.js';
 import * as printing from '../../io/export/print.js';
@@ -84,6 +87,8 @@ import * as api from '../../api/index.js';
 
 // Every deck from outside (files, Drive, imports, co-editors) is cleaned before use; so is the one saved here.
 store.setDeckFilter(sanitizeDeck);
+gdrive.setGdriveSetup(openGdriveSetup);
+review.startTracking();
 sanitizeDeck(state.deck);
 
 // io and features ask the user through core/notify: here, with our dialogs.
@@ -98,6 +103,7 @@ function render() {
   renderCanvas();
   renderPanel();
   renderComments();
+  renderReview();
   renderSelectionPane();
   renderAssistant();
   const s = document.getElementById('status-slide');
@@ -224,7 +230,7 @@ initI18n();
 // and inspect the real app. Only active with ?test in the URL.
 const testing = new URLSearchParams(location.search).has('test');
 if (testing)
-  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, examples, designer, pptxImport, odp, api, ai, versions, comments, protect, aiDeck, poll, dashboards, stock, clipboard: clip, markdown, notify, vendor, session, objects, picture, shares, shareServer, clouddocs, files, openfile, video: () => import('../../io/export/video.js') };
+  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, examples, designer, pptxImport, odp, api, ai, versions, comments, protect, aiDeck, poll, dashboards, stock, clipboard: clip, markdown, notify, vendor, session, objects, picture, shares, shareServer, clouddocs, review, files, openfile, video: () => import('../../io/export/video.js') };
 
 // Public scripting API for plugins, macros and the console; installed plugins
 // load after the editor is ready (not in the test harness).
