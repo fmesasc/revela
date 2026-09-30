@@ -63,6 +63,7 @@ the origin of every requirement is traceable.
 - ✅ Fit text to its box (reveal's r-fit-text) and shrink text on overflow `PP·GS·OO`
 - ✅ Enlarge images on click while presenting (lightbox) `—`
 - ✅ Multi-level lists (Tab / Shift+Tab) `PP·GS·OO`
+- ✅ Voice dictation — speak and it is written where the caret is, with spoken punctuation (browser speech recognition, asks first) `PP·GS`
 
 ## 3. Objects & content
 - ✅ Images `PP·GS·OO`
@@ -103,6 +104,8 @@ the origin of every requirement is traceable.
 - ✅ Live data — dashboards (Power BI, Looker Studio, Tableau, Google Sheets, Grafana, Datawrapper, Flourish, Metabase) from their share link, with periodic reload; charts linked to a published CSV, refreshed in the editor and while presenting `GS·OO`
 - ✅ Screen / camera recording into a video object, live camera on the slide (Cameo: circle/rounded/rect, mirrored) `PP`
 - ✅ Freehand ink on the slide (Draw tab: pen, highlighter, stroke eraser, colour & thickness; strokes are movable objects) `PP·OO`
+- ✅ More than 70 shapes — pie, chord, block arc, cube, folded corner, smiley, sun, "no" sign, banners, thought bubble, arc, brackets and braces; action buttons; freeform `PP·GS·OO`
+- ✅ Formulas in table cells — `=SUM(ABOVE)`, cell references and ranges, SUM/AVERAGE/MIN/MAX/COUNT/PRODUCT/ROUND/ABS in Spanish or English, units kept, total row; results in the export, PowerPoint and ODP `PP·OO`
 
 ## 4. Slides & structure
 - ✅ Sections (create/rename/remove inline from the navigator) `PP·GS·OO`
@@ -138,6 +141,7 @@ the origin of every requirement is traceable.
 - ✅ Animation painter `PP`
 - ✅ Per-slide transition options — different exit transition, per-slide speed, apply to all `PP·GS·OO`
 - ✅ More transition effects: effect options (direction of wipe and push, split vertical/horizontal), circle and diamond reveals; as in PowerPoint, the old slide keeps the rest of the screen while the shape grows `PP·GS·OO`
+- ✅ Sounds on animations — click, pop, chime, whoosh, drum roll, applause (synthesised, nothing downloaded) or one's own file `PP`
 
 ## 6. Presenting
 - ✅ Presenter view (notes, next slide, timer) — reveal presenter view (S) + phone companion `PP·GS·OO`
@@ -164,6 +168,7 @@ the origin of every requirement is traceable.
 - ✅ View statistics for shared presentations — a counter and the last date, nothing about the viewer (self-hosted server) `GS`
 - ✅ Protect — project encrypted with a password (AES-GCM 256, PBKDF2) and "mark as final" (read-only) `PP·OO`
 - ✅ Digital signatures: sign in the browser (ECDSA P-256, key kept in the browser), several signers, check validity and changes after signing, key fingerprint to confirm the signer (no certificate authority) `OO`
+- ✅ Tasks in comments — assign to someone (`+name` or a field) with a due date, reassign, mark as done; all tasks or only mine, counted on the button `GS`
 
 ## 8. Import & export
 - ✅ Export to self-contained HTML (reveal.js) `—`
@@ -181,6 +186,7 @@ the origin of every requirement is traceable.
 - ✅ Export to video — MP4 (H.264, WebCodecs) or animated GIF rendered from the slides with cross-fades and per-slide timings; .webm by recording the live slideshow (with animations) `PP·GS`
 - ✅ Publish to the web / shareable link — see private sharing (section 7) `GS`
 - ✅ OpenDocument (`.odp`) export & import — text with formatting and lists, pictures, shapes, lines/arrows, merged shapes, tables with merged cells, charts/icons/ink as SVG, backgrounds, notes, hidden slides (validated with LibreOffice) `OO`
+- ✅ Dropbox and OneDrive — save and open presentations in Revela's folder there, PKCE sign-in with no secret, configurable app identifiers `PP·GS`
 
 ## 9. Accessibility & internationalisation
 - ✅ Alt text for every non-text object, "mark as decorative" (exported as ARIA) `PP·GS·OO`
