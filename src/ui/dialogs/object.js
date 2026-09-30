@@ -299,7 +299,13 @@ export function openImageCrop(b) {
   const back = document.createElement('div');
   back.id = 'crop-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:start;min-width:280px">
-    <button class="modal-close">✕</button><h3>${t('Recortar imagen (%)')}</h3>
+    <button class="modal-close">✕</button><h3>${t('Recortar imagen')}</h3>
+    <div class="fr-l">${t('Proporción')}</div>
+    <div class="crop-ratios">${blocks.CROP_RATIOS.map(([v, l]) => `<button type="button" class="mini2${(b.ratio || (b.fit === 'cover' ? '' : 'original')) === v ? ' on' : ''}" data-ratio="${v}">${v === 'original' ? t(l) : l}</button>`).join('')}</div>
+    <div class="crop-focus"${b.fit === 'cover' ? '' : ' hidden'}>
+      <label class="fr-l">${t('Encuadre horizontal')} <input type="range" data-focus="x" min="0" max="100" value="${b.focusX ?? 50}"></label>
+      <label class="fr-l">${t('Encuadre vertical')} <input type="range" data-focus="y" min="0" max="100" value="${b.focusY ?? 50}"></label></div>
+    <div class="fr-l" style="margin-top:8px">${t('Recortar los bordes (%)')}</div>
     ${sl(t('Arriba'), 'top')}${sl(t('Derecha'), 'right')}${sl(t('Abajo'), 'bottom')}${sl(t('Izquierda'), 'left')}
     <div class="fr-actions"><button class="fr-do" data-reset>${t('Restablecer')}</button></div>
   </div>`;
@@ -309,6 +315,12 @@ export function openImageCrop(b) {
   back.addEventListener('click', e => { if (e.target === back) close(); });
   back.querySelectorAll('[data-crop]').forEach(r =>
     r.addEventListener('input', () => blocks.setImageCrop(r.dataset.crop, r.value)));
+  back.querySelectorAll('[data-ratio]').forEach(x => x.addEventListener('click', async () => {
+    await blocks.cropToRatio(b.id, x.dataset.ratio);
+    back.querySelectorAll('[data-ratio]').forEach(y => y.classList.toggle('on', y === x));
+    back.querySelector('.crop-focus').hidden = x.dataset.ratio === 'original';
+  }));
+  back.querySelectorAll('[data-focus]').forEach(r => r.addEventListener('input', () => blocks.setImageFocus(b.id, r.dataset.focus, r.value)));
   back.querySelector('[data-reset]').addEventListener('click', () => {
     blocks.resetImageCrop();
     back.querySelectorAll('[data-crop]').forEach(r => (r.value = 0));

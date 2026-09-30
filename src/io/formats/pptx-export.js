@@ -94,6 +94,42 @@ async function svgToPNG(svg, w, h) {
   return c.toDataURL('image/png');
 }
 
+// A picture as it shows in Revela, as PowerPoint wants it: the part of the box
+// the picture covers (contained: letterboxed; filled: all of it, with its
+// focus; minus the edges trimmed) and which part of the image that is
+// (fractions cut from each side: PowerPoint's srcRect). Flips mirror both.
+export function pictureFrame(b, nw, nh) {
+  const R = nw / nh, bw = b.w, bh = b.h, boxR = bw / bh, fx = (b.focusX ?? 50) / 100, fy = (b.focusY ?? 50) / 100;
+  let D = { x: b.x, y: b.y, w: bw, h: bh }, S = { l: 0, t: 0, r: 0, b: 0 };
+  if (b.fit === 'cover') {
+    if (R > boxR) { const e = 1 - boxR / R; S.l = e * fx; S.r = e - S.l; } else { const e = 1 - R / boxR; S.t = e * fy; S.b = e - S.t; }
+  } else if (b.fit !== 'fill') {
+    if (R > boxR) { D.h = bw / R; D.y = b.y + (bh - D.h) / 2; } else { D.w = bh * R; D.x = b.x + (bw - D.w) / 2; }
+  }
+  const c = b.crop || {}, C = { x0: b.x + bw * (c.left || 0) / 100, x1: b.x + bw * (1 - (c.right || 0) / 100), y0: b.y + bh * (c.top || 0) / 100, y1: b.y + bh * (1 - (c.bottom || 0) / 100) };
+  const x0 = Math.max(D.x, C.x0), x1 = Math.min(D.x + D.w, C.x1), y0 = Math.max(D.y, C.y0), y1 = Math.min(D.y + D.h, C.y1);
+  if (x1 - x0 < 1 || y1 - y0 < 1) return null;
+  const sx = px => S.l + (px - D.x) / D.w * (1 - S.l - S.r), sy = py => S.t + (py - D.y) / D.h * (1 - S.t - S.b);
+  let src = { l: sx(x0), r: 1 - sx(x1), t: sy(y0), b: 1 - sy(y1) }, F = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  // Flipped in Revela around the box's centre: the frame and the cut are mirrored.
+  if (b.flipH) { F.x = 2 * b.x + bw - F.x - F.w; src = { ...src, l: src.r, r: src.l }; }
+  if (b.flipV) { F.y = 2 * b.y + bh - F.y - F.h; src = { ...src, t: src.b, b: src.t }; }
+  // Turned around the box's centre: the frame's centre turns with it.
+  if (b.rotation) {
+    const a = b.rotation * Math.PI / 180, cx = b.x + bw / 2, cy = b.y + bh / 2, dx = F.x + F.w / 2 - cx, dy = F.y + F.h / 2 - cy;
+    F.x = cx + dx * Math.cos(a) - dy * Math.sin(a) - F.w / 2; F.y = cy + dx * Math.sin(a) + dy * Math.cos(a) - F.h / 2;
+  }
+  return { frame: F, src };
+}
+const picSizes = new Map(), picCrops = new Map();       // (for the export under way: images' natural sizes, and their srcRect)
+async function naturalSizes(deck) {
+  picSizes.clear(); picCrops.clear();
+  const imgs = [deck.master, ...(deck.layouts || []), ...deck.slides].flatMap(s => s?.blocks || []).filter(b => b.type === 'image' && b.src);
+  await Promise.all(imgs.map(b => new Promise(res => {
+    const i = new Image(); i.onload = () => { if (i.naturalWidth) picSizes.set(b.id, [i.naturalWidth, i.naturalHeight]); res(); }; i.onerror = res; i.src = b.src;
+  })));
+}
+
 function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), link = null) {
   const pos = { x: IN(b.x), y: IN(b.y), w: IN(b.w), h: IN(b.h) }, hl = link ? { hyperlink: link } : {};   // (an object that is a link)
   if (b.rotation) pos.rotate = b.rotation;
@@ -122,6 +158,11 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
     } else if (b.type === 'embed') {
       slide.addText([{ text: '🔗 ' + (b.alt || b.src), options: { hyperlink: { url: b.src } } }], { ...pos, fontSize: 18, color: hex(deckFg()) || 'FFFFFF', valign: 'middle', align: 'center' });
     } else if (b.type === 'image') {
+      const nat = picSizes.get(b.id), pf = nat && pictureFrame(b, nat[0], nat[1]);
+      if (pf) {
+        Object.assign(pos, { x: IN(pf.frame.x), y: IN(pf.frame.y), w: IN(pf.frame.w), h: IN(pf.frame.h) });
+        if (Object.values(pf.src).some(v => v > 0.0005)) picCrops.set(b.id, pf.src);
+      }
       slide.addImage({ ...pos, ...hl, data: b.src, ...(b.alt && !b.decorative && { altText: b.alt }), ...(b.flipH && { flipH: true }), ...(b.flipV && { flipV: true }) });
     } else if (b.type === 'shape') {
       if (b.shape === 'custom' && b.rings?.length) {
@@ -267,7 +308,7 @@ function addPlaceholderText(slide, s, b, p) {
 }
 
 export async function buildPptx(deck = state.deck) {
-  await loadScript(PPTXGEN, 'PptxGenJS');
+  await Promise.all([loadScript(PPTXGEN, 'PptxGenJS'), naturalSizes(deck)]);
   const pptx = new window.PptxGenJS();
   const { w, h } = deck.size;
   pptx.defineLayout({ name: 'REVELA', width: IN(w), height: IN(h) });
@@ -432,10 +473,17 @@ async function addMotion(blob, deck) {
     let xml = await f.async('string');
     const spids = new Map([...xml.matchAll(/<p:cNvPr id="(\d+)" name="rv-([^"]+)"/g)].map(m => [m[2], m[1]]));
     const extra = transitionXML(deck.slides[i], deck) + timingXML(deck.slides[i], spids, deck);
+    // Pictures cropped (filled, or with their edges trimmed): PowerPoint's srcRect.
+    for (const [id, c] of picCrops) {
+      const at = xml.indexOf(`name="rv-${id}"`); if (at < 0) continue;
+      const st = xml.indexOf('<a:stretch>', at); if (st < 0) continue;
+      const k = v => Math.round(Math.max(0, v) * 100000);
+      xml = xml.slice(0, st) + `<a:srcRect l="${k(c.l)}" t="${k(c.t)}" r="${k(c.r)}" b="${k(c.b)}"/>` + xml.slice(st);
+    }
     // Objects hidden in the selection pane: hidden in PowerPoint's too.
     const hidden = deck.slides[i].blocks.filter(b => b.hidden && spids.has(b.id));
     for (const b of hidden) xml = xml.replace(`<p:cNvPr id="${spids.get(b.id)}" name="rv-${b.id}"`, m => m + ' hidden="1"');
-    if (!extra) { if (hidden.length) zip.file(`ppt/slides/slide${i + 1}.xml`, xml); continue; }
+    if (!extra) { if (hidden.length || xml.includes('<a:srcRect')) zip.file(`ppt/slides/slide${i + 1}.xml`, xml); continue; }
     // Schema order: cSld, clrMapOvr, transition, timing, extLst.
     xml = xml.includes('</p:clrMapOvr>') ? xml.replace('</p:clrMapOvr>', '</p:clrMapOvr>' + extra)
       : xml.replace(/(<p:extLst>[\s\S]*<\/p:extLst>)?\s*<\/p:sld>\s*$/, m => extra + m);

@@ -539,9 +539,32 @@ export function setImageCrop(side, value) {
   const b = selectedBlock(); if (!b || b.type !== 'image') return;
   commit(() => { b.crop = Object.assign({ ...DEF_CROP }, b.crop); b.crop[side] = +value; }, { history: false });
 }
+// Crop to a proportion (PowerPoint's Crop ▸ Aspect ratio): the picture's box
+// takes that shape around the same centre and about the same area, and the
+// picture fills it ("cover"); which part shows is its focus (0-100 across and
+// down, 50 = the middle). 'original' goes back to the whole picture.
+export const CROP_RATIOS = [['original', 'Original'], ['1:1', '1:1'], ['4:3', '4:3'], ['3:4', '3:4'], ['16:9', '16:9'], ['9:16', '9:16'], ['3:2', '3:2'], ['2:3', '2:3']];
+export async function cropToRatio(id, ratio) {
+  const b = currentSlide().blocks.find(x => x.id === id); if (!b || b.type !== 'image') return;
+  let r;
+  if (ratio === 'original') r = await new Promise(res => { const i = new Image(); i.onload = () => res(i.naturalWidth / i.naturalHeight || b.w / b.h); i.onerror = () => res(b.w / b.h); i.src = b.src; });
+  else { const [a, c] = String(ratio).split(':').map(Number); if (!(a > 0 && c > 0)) return; r = a / c; }
+  commit(() => {
+    const cx = b.x + b.w / 2, cy = b.y + b.h / 2, area = b.w * b.h;
+    b.w = Math.round(Math.sqrt(area * r)); b.h = Math.round(b.w / r);
+    b.x = Math.round(cx - b.w / 2); b.y = Math.round(cy - b.h / 2);
+    delete b.crop;
+    if (ratio === 'original') { b.fit = 'contain'; delete b.focusX; delete b.focusY; delete b.ratio; }
+    else { b.fit = 'cover'; b.ratio = ratio; }
+  });
+}
+export function setImageFocus(id, axis, value) {
+  const b = currentSlide().blocks.find(x => x.id === id); if (!b) return;
+  commit(() => { const k = axis === 'y' ? 'focusY' : 'focusX', v = Math.max(0, Math.min(100, Math.round(+value))); if (v === 50) delete b[k]; else b[k] = v; }, { history: false });
+}
 export function resetImageCrop() {
   const b = selectedBlock(); if (!b || b.type !== 'image') return;
-  commit(() => { delete b.crop; });
+  commit(() => { delete b.crop; delete b.focusX; delete b.focusY; });
 }
 
 export function deleteBlock(id = state.ui.selection) {

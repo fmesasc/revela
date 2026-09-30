@@ -2,7 +2,7 @@
 // equations (KaTeX), code (highlight.js), tables, embeds, 3D models, slide links.
 
 import { sizeText } from '../../features/content/files.js';
-import { fileIconHTML } from '../../render/svg.js';
+import { fileIconHTML, imgFocus } from '../../render/svg.js';
 import { shortSig } from '../../core/text.js';
 import { esc } from '../../core/text.js';
 import { shownRows } from '../../core/formulas.js';
@@ -49,6 +49,7 @@ export const connectorHTML = b => {
 };
 export function applyImgStyle(img, b) {
   img.style.objectFit = b.fit || 'contain';
+  img.style.objectPosition = imgFocus(b);
   img.style.filter = imgFilter(b);
   img.style.opacity = imgOpacity(b);
   img.style.clipPath = imgClip(b);

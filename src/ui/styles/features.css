@@ -479,3 +479,4 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .pdf-mode{display:flex;gap:12px;align-items:center;text-align:start;padding:10px 12px;border:1px solid var(--line2);border-radius:10px;background:var(--panel);color:inherit;cursor:pointer;font:inherit}
 .pdf-mode:hover,.pdf-mode:focus-visible{border-color:var(--accent);background:var(--accent-bg)}
 .pdf-mode .ms{font-size:28px;color:var(--accent)}.pdf-mode span{display:flex;flex-direction:column;gap:2px}.pdf-mode small{color:var(--txt2)}
+.crop-ratios{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}.crop-ratios .on{background:var(--accent-bg);border-color:var(--accent)}

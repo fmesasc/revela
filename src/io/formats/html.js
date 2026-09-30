@@ -19,7 +19,7 @@ import { soundRuntime } from '../runtime/sounds.js';
 import { safeURL } from '../../features/document/sanitize.js';
 import { canvasRuntimeDeps } from '../runtime/canvas.js';
 import { canvasOn, frameOf } from '../../features/design/canvasmode.js';
-import { shadowCSS, borderCSS, levelCSS, textPadding, webCardHTML, mathTeX, mathCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, curvedTextSVG, deviceCSS, shapeTextHTML, hasShapeText, wrapFor, wrapAttrs, wrapVars, WRAP_CSS, tableClass, tableVars, tableCSS, fileIconHTML } from '../../render/svg.js';
+import { shadowCSS, borderCSS, levelCSS, textPadding, webCardHTML, mathTeX, mathCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, curvedTextSVG, deviceCSS, shapeTextHTML, hasShapeText, wrapFor, wrapAttrs, wrapVars, WRAP_CSS, tableClass, tableVars, tableCSS, fileIconHTML, imgFocus } from '../../render/svg.js';
 import { googleFontLinks } from '../../features/design/fonts.js';
 import { t, speechLang, currentLang } from '../../i18n/index.js';
 import { sizeText } from '../../features/content/files.js';
@@ -234,7 +234,7 @@ function blockHTMLRaw(b, slide) {
     return `<div${a} id="rvm-${b.id}" data-media="${esc(JSON.stringify(cfg))}" style="${box(b)}${b.type === 'image' ? `filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)};${deviceCSS(b)}` : ''}"></div>${clicks}`;
   }
   if (b.type === 'image')
-    return `<img${a} src="${esc(b.src || '')}"${b.zoomable ? ' data-lightbox' : ''} alt="${b.decorative ? '' : esc(b.alt || '')}" style="${box(b)}object-fit:${b.fit || 'contain'};`
+    return `<img${a} src="${esc(b.src || '')}"${b.zoomable ? ' data-lightbox' : ''} alt="${b.decorative ? '' : esc(b.alt || '')}" style="${box(b)}object-fit:${b.fit || 'contain'};${b.fit === 'cover' && (b.focusX != null || b.focusY != null) ? `object-position:${imgFocus(b)};` : ''}`
       + `filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)};${deviceCSS(b)}">`;
   if (b.type === 'video')
     return `<video${a} src="${esc(b.src || '')}" controls style="${box(b)}object-fit:contain"></video>`;

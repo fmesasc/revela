@@ -1453,4 +1453,37 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob);
     assert(/<p:pic>/.test(await zip.file('ppt/slides/slide1.xml').async('string')), 'en PowerPoint, su imagen');
   });
+
+  await test('recortar a una proporción (1:1, 16:9…) con encuadre; en PowerPoint, recortada igual (srcRect) y de vuelta', async () => {
+    reset(); const W = frame.contentWindow, PX = await W.eval("import('/src/io/formats/pptx-export.js')");
+    // A 200×100 picture: left half red, right half blue.
+    const c = D.createElement('canvas'); c.width = 200; c.height = 100; const g = c.getContext('2d');
+    g.fillStyle = '#ff0000'; g.fillRect(0, 0, 100, 100); g.fillStyle = '#0000ff'; g.fillRect(100, 0, 100, 100);
+    R.store.commit(() => slide().blocks.push({ id: 'pic', type: 'image', src: c.toDataURL('image/png'), x: 100, y: 100, w: 400, h: 200, rotation: 0, animation: null }));
+    const b = slide().blocks.at(-1); select(b); await sleep(10);
+    // From the dialog: 1:1, then framing to the left.
+    const { openImageCrop } = await W.eval("import('/src/ui/dialogs/object.js')"); openImageCrop(b); await sleep(10);
+    D.querySelector('#crop-modal [data-ratio="1:1"]').click(); await sleep(30);
+    eq(b.w, b.h, 'cuadrada'); eq(b.fit, 'cover', 'la imagen la llena'); assert(Math.abs(b.x + b.w / 2 - 300) <= 1, 'mismo centro');
+    const fx = D.querySelector('#crop-modal [data-focus="x"]'); fx.value = 0; fx.dispatchEvent(new W.Event('input')); await sleep(10);
+    eq(b.focusX, 0); eq(D.querySelector(`#stage .block[data-id="pic"] img`).style.objectPosition, '0% 50%', 'se ve la parte izquierda');
+    D.querySelector('#crop-modal .modal-close').click();
+    // Frames: contained pictures are not stretched; filled ones are cut.
+    const f1 = PX.pictureFrame({ x: 0, y: 0, w: 400, h: 400, fit: 'contain' }, 200, 100);
+    eq([f1.frame.y, f1.frame.h].join(), '100,200', 'contener: centrada, sin estirar');
+    const f2 = PX.pictureFrame({ x: 0, y: 0, w: 300, h: 300, fit: 'cover', focusX: 0 }, 200, 100);
+    eq([f2.src.l, f2.src.r].join(), '0,0.5', 'rellenar con encuadre: la mitad izquierda');
+    const f3 = PX.pictureFrame({ x: 0, y: 0, w: 200, h: 100, fit: 'fill', crop: { left: 25, right: 25 } }, 200, 100);
+    eq([f3.frame.x, f3.frame.w, f3.src.l, f3.src.r].join(), '50,100,0.25,0.25', 'bordes recortados');
+    // PowerPoint and back: the red half, square.
+    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob), xml = await zip.file('ppt/slides/slide1.xml').async('string');
+    assert(/<a:srcRect l="0" t="0" r="50000" b="0"\/><a:stretch>/.test(xml), 'srcRect en PowerPoint: ' + (xml.match(/<a:srcRect[^>]*>/) || [''])[0]);
+    const back = (await R.pptxImport.importPPTX(new W.File([blob], 'r.pptx'))).slides[0].blocks.find(x => x.type === 'image');
+    const im = new W.Image(); im.src = back.src; await im.decode();
+    eq(im.naturalWidth + 'x' + im.naturalHeight, '100x100', 'vuelve recortada');
+    const k = D.createElement('canvas'); k.width = 100; k.height = 100; const kg = k.getContext('2d'); kg.drawImage(im, 0, 0);
+    eq([...kg.getImageData(50, 50, 1, 1).data].slice(0, 3).join(), '255,0,0', 'la parte roja');
+    // Original again.
+    await R.blocks.cropToRatio(b.id, 'original'); eq(b.fit, 'contain'); eq(Math.round(b.w / b.h * 10), 20, 'con su proporción (2:1)');
+  });
 }

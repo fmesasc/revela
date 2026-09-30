@@ -6,6 +6,8 @@ export function imgFilter(b) {
   const a = b.adj || {};
   return `brightness(${a.brightness ?? 100}%) contrast(${a.contrast ?? 100}%) saturate(${a.saturate ?? 100}%)`;
 }
+// Which part of a picture shows when it fills its box ("cover"): its focus, 50 % 50 % by default.
+export const imgFocus = b => `${b.focusX ?? 50}% ${b.focusY ?? 50}%`;
 export function imgOpacity(b) { return (b.adj?.opacity ?? 100) / 100; }
 export function imgClip(b) {
   const c = b.crop; if (!c) return 'none';

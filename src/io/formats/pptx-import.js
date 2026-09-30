@@ -40,6 +40,19 @@ async function loadJSZip() {
   return mod.default || mod;
 }
 
+// ---- Pictures ---------------------------------------------------------------
+// The part of a picture left after cutting fractions [left, top, right, bottom],
+// in its own format (JPEG stays JPEG); as it was if nothing is cut or it can't be read.
+async function cropPicture(src, [l, t, r, b]) {
+  if (l + t + r + b < 0.001 || l + r >= 1 || t + b >= 1 || /^data:image\/svg/.test(src)) return src;
+  try {
+    const img = new Image(); img.src = src; await img.decode();
+    const W = img.naturalWidth, H = img.naturalHeight, x = Math.round(W * l), y = Math.round(H * t), w = Math.max(1, Math.round(W * (1 - l - r))), h = Math.max(1, Math.round(H * (1 - t - b)));
+    const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(img, x, y, w, h, 0, 0, w, h);
+    return /^data:image\/jpe?g/.test(src) ? c.toDataURL('image/jpeg', 0.92) : c.toDataURL('image/png');
+  } catch { return src; }
+}
+
 // ---- Comments --------------------------------------------------------------
 // Both PowerPoint formats: the classic one (ppt/comments/commentN.xml, authors in
 // commentAuthors.xml) and the modern one of Microsoft 365 (modernComment_*.xml,
@@ -634,7 +647,10 @@ export async function importPPTX(file) {
       if (decorMode && phOf(pic)) return;
       const geo = xfrmOf(kid(pic, 'p:spPr')); const blip = all(pic, 'a:blip')[0];
       if (!geo || !blip) return;
-      const src = await media(blip.getAttribute('r:embed')); if (!src) return;
+      let src = await media(blip.getAttribute('r:embed')); if (!src) return;
+      // Cropped in PowerPoint (srcRect: thousandths of a percent cut from each side): the part that shows.
+      const sr = all(pic, 'a:srcRect')[0];
+      if (sr) src = await cropPicture(src, ['l', 't', 'r', 'b'].map(k => Math.max(0, +(sr.getAttribute(k) || 0) / 100000)));
       const descr = all(pic, 'p:cNvPr')[0]?.getAttribute('descr') || '';
       const shadow = shadowOf(kid(pic, 'p:spPr'), theme, scale);
       blocks.push({ id: uid(), ...objLink(pic), type: 'image', fit: 'fill', src, ...(descr && { alt: descr }), ...(shadow && { shadow }), ...box(map(geo)) });
