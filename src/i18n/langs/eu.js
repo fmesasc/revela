@@ -2055,4 +2055,12 @@ export default {
   "Comida": "Janaria",
   "Viajes": "Bidaiak",
   "Deporte": "Kirola",
+  "Tus datos": "Zure datuak",
+  "Descarga una copia de todo lo que guarda tu cuenta, o elimínala con todas tus presentaciones en la nube. Las facturas las conserva Stripe, como exige la ley.": "Deskargatu zure kontuak gordetzen duen guztiaren kopia, edo ezabatu hodeiko aurkezpen guztiekin. Fakturak Stripek gordetzen ditu, legeak eskatzen duen bezala.",
+  "Descargar mis datos": "Deskargatu nire datuak",
+  "Eliminar mi cuenta": "Ezabatu nire kontua",
+  "Por seguridad, la cuenta se elimina desde la web: se ha abierto revelaslides.com. Inicia sesión allí y usa «Eliminar mi cuenta».": "Segurtasunagatik, kontua webgunetik ezabatzen da: revelaslides.com ireki da. Hasi saioa bertan eta erabili «Ezabatu nire kontua».",
+  "Se borrarán tu cuenta, tus créditos y tus presentaciones en la nube (también para quien las tenga compartidas), y se cancelará tu suscripción. No se puede deshacer. Escribe tu correo ({email}) para confirmar:": "Zure kontua, kredituak eta hodeiko aurkezpenak ezabatuko dira (partekatuta dituztenentzat ere), eta harpidetza bertan behera geratuko da. Ezin da desegin. Idatzi zure helbide elektronikoa ({email}) berresteko:",
+  "El correo no coincide: no se ha eliminado nada.": "Helbide elektronikoa ez dator bat: ez da ezer ezabatu.",
+  "Tu cuenta se ha eliminado.": "Zure kontua ezabatu da.",
 };

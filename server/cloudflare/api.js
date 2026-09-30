@@ -25,6 +25,8 @@
 //   POST /api/desktop/start    { nonce, challenge }     (the desktop app, before opening the browser)
 //   POST /api/desktop/approve  { nonce, code }          (the signed-in browser, after asking the user)
 //   POST /api/desktop/claim    { nonce, verifier }      (the desktop app: its session, once)
+//   GET  /api/account/export   → everything the account holds (JSON)
+//   POST /api/account/delete   { confirm: email }       (deletes it all; from the website)
 //   …/api/docs/…               presentations in the cloud, shared with people or by link (docs.js)
 //
 // Sessions: a cookie on the web (HttpOnly, Secure, SameSite=Strict, only for
@@ -159,6 +161,13 @@ export class Account {
       }
       case 'customer': return this.json({ customer: await this.get('customer', null), email: (await this.get('profile', {})).email });
       // Cloud documents: the owner's list (with the plan's limit), and "shared with me" (in the 'e:' + email objects).
+      // Everything this account holds (to hand over), and wiping it (the account is closed).
+      case 'export': return this.json({ profile: await this.get('profile', {}), plan: await this.get('plan', null), credits: await this.get('credits', 0),
+        ledger: await this.get('ledger', []), docs: await this.get('docs', []), sessions: Object.values(await this.get('sessions', {})).map(v => ({ created: v.created, expires: v.expires, kind: v.kind })) });
+      case 'wipe': {
+        const out = { docs: (await this.get('docs', [])).map(d => d.id), customer: await this.get('customer', null), email: (await this.get('profile', {})).email || null };
+        await this.ctx.storage.deleteAll(); return this.json(out);
+      }
       case 'docs-list': return this.json({ docs: await this.get('docs', []) });
       case 'docs-add': {
         const docs = await this.get('docs', []);
@@ -309,6 +318,8 @@ export async function handleApi(req, env, url) {
       if (!res.ok) await call(A, 'logout', { secret: r.secret });   // (not used: gone)
       return json(await res.json(), res.status);
     }
+    case '/account/export': return accountExport(env, me, A, json);
+    case '/account/delete': return accountDelete(env, s, me, A, body, json);
     case '/ai/chat': return aiChat(env, s, A, body, json);
     case '/ai/image': return aiImage(env, s, A, body, json);
     case '/ai/speech': return aiSpeech(env, s, A, body, json);
@@ -403,6 +414,37 @@ async function aiSpeech(env, s, A, body, json) {
   const st = await call(A, 'settle', { id: g.hold, credits: cr, reason: 'speech' });
   let bin = ''; const bytes = new Uint8Array(buf); for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return json({ audio: btoa(bin), media_type: 'audio/mpeg', charged: st.used });
+}
+
+// ---- Your data (GDPR): a copy of everything, or delete it all -----------------------------------
+async function accountExport(env, me, A, json) {
+  const data = await call(A, 'export'), inbox = data.profile.email ? (await call(acct(env, 'e:' + data.profile.email), 'inbox-list')).docs : [];
+  const docs = [];
+  for (const d of data.docs) { const r = await env.DOCS?.get(env.DOCS.idFromName('doc:' + d.id)).fetch('https://doc/get', { method: 'POST', body: JSON.stringify({ who: { sub: me.sub } }) });
+    if (r?.ok) { const x = await r.json(); docs.push({ id: d.id, name: x.name, updated: x.updated, sharing: x.sharing, deck: x.deck }); } }
+  return json({ exported: new Date().toISOString(), account: { ...data.profile, plan: data.plan, credits: data.credits }, ledger: data.ledger, sessions: data.sessions, documents: docs, sharedWithMe: inbox },
+    200, { 'Content-Disposition': 'attachment; filename="revela-mis-datos.json"' });
+}
+// Delete the account: its documents (and who they were shared with), its list of
+// shared documents, its sessions and credits; a Stripe subscription is cancelled.
+// Invoices stay with Stripe (the law asks to keep them). To be sure it's wanted,
+// the email must be typed, and a session in the browser (not a desktop token) is needed.
+async function accountDelete(env, s, me, A, body, json) {
+  const prof = await call(A, 'me');
+  if (String(body.confirm || '').trim().toLowerCase() !== prof.email) return json({ error: 'confirm' }, 400);
+  if (me.via !== 'cookie') return json({ error: 'from the website' }, 403);
+  const w = await call(A, 'wipe');
+  for (const id of w.docs) {
+    const r = await env.DOCS?.get(env.DOCS.idFromName('doc:' + id)).fetch('https://doc/delete', { method: 'POST', body: JSON.stringify({ who: { sub: me.sub } }) });
+    const people = r?.ok ? (await r.json()).people || [] : [];
+    for (const e of people) await call(acct(env, 'e:' + e), 'inbox-remove', { id });
+  }
+  if (w.email) await call(acct(env, 'e:' + w.email), 'wipe');
+  if (w.customer && env.STRIPE_SECRET_KEY) {
+    const subs = await (await (env.FETCH || fetch)('https://api.stripe.com/v1/subscriptions?' + new URLSearchParams({ customer: w.customer, status: 'active' }), { headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}` } }).catch(() => null))?.json().catch(() => null);
+    for (const sub of subs?.data || []) await (env.FETCH || fetch)('https://api.stripe.com/v1/subscriptions/' + encodeURIComponent(sub.id), { method: 'DELETE', headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}` } }).catch(() => null);
+  }
+  return json({ ok: true }, 200, { 'Set-Cookie': `${COOKIE}=; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=0` });
 }
 
 // ---- Photos (Unsplash, Pexels): searched with Revela's keys, which stay here ----

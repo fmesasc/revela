@@ -71,6 +71,13 @@ cambios (una cada media hora como mucho, las diez últimas) y, para el dueño co
 Pro, estadísticas por diapositiva (vistas y tiempo) con un identificador
 aleatorio del navegador, sin correos ni direcciones.
 
+**Tus datos (RGPD).** «Mi cuenta ▸ Tus datos» descarga todo lo que guarda la
+cuenta (perfil, plan, movimientos de créditos, sesiones y presentaciones) y
+permite eliminarla: se borran la cuenta, sus presentaciones (también para quien
+las tenía compartidas) y su lista de compartidas, y se cancela la suscripción de
+Stripe (las facturas las conserva Stripe). Hay que escribir el propio correo y
+hacerlo desde la web (no desde un token de la aplicación de escritorio).
+
 **Pagos.** `/api/billing/checkout` crea una página de pago de Stripe con el
 **precio de Stripe** (el navegador solo elige el producto). Los planes y
 créditos solo cambian cuando llega el aviso **firmado** de Stripe
@@ -119,5 +126,4 @@ que el servidor los rechaza.
 ## Pendiente
 
 - Videollamadas en el editor (Cloudflare Realtime), con límites por plan.
-- Borrado de la cuenta y exportación de sus datos (RGPD), y textos legales de la
-  edición oficial.
+- Textos legales de la edición oficial.

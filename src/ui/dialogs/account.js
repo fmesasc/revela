@@ -6,7 +6,7 @@ import { esc } from '../../core/text.js';
 import { EDITION, OFFICIAL_SITE } from '../../core/config.js';
 import * as acc from '../../io/cloud/account.js';
 import { t, currentLang } from '../../i18n/index.js';
-import { alertDialog, confirmDialog } from './dialog.js';
+import { alertDialog, confirmDialog, promptDialog } from './dialog.js';
 
 const FEATURE_NAMES = { ai: 'IA incluida', 'share-people': 'Compartir con personas', 'cloud-save': 'Guardado en la nube', 'video-calls': 'Videollamadas en el editor', 'premium-templates': 'Plantillas premium' };
 const errorText = e => (e.message === 'CANCELLED' ? t('No se ha iniciado sesión.') : e.message === 'EXPIRED' ? t('Se acabó el tiempo para confirmar. Vuelve a intentarlo.') : `${t('Algo ha fallado:')} ${e.message}`);
@@ -55,10 +55,27 @@ export function openAccount() {
       ${me.billing ? '' : `<p class="host-help" style="font-size:12px">${t('Los pagos estarán disponibles muy pronto.')}</p>`}
       <div class="fr-actions" style="justify-content:space-between">
         ${pro ? `<button type="button" class="mini2 acc-portal">${t('Gestionar la suscripción')}</button>` : '<span></span>'}
-        <button type="button" class="mini2 acc-out">${t('Cerrar sesión')}</button></div>`;
+        <button type="button" class="mini2 acc-out">${t('Cerrar sesión')}</button></div>
+      <details class="acc-data"><summary>${t('Tus datos')}</summary>
+        <p class="host-help">${t('Descarga una copia de todo lo que guarda tu cuenta, o elimínala con todas tus presentaciones en la nube. Las facturas las conserva Stripe, como exige la ley.')}</p>
+        <div class="fr-actions" style="justify-content:flex-start;flex-wrap:wrap"><button type="button" class="mini2 acc-export">${t('Descargar mis datos')}</button>
+          <button type="button" class="mini2 acc-delete">${t('Eliminar mi cuenta')}</button></div></details>`;
     body.querySelectorAll('[data-buy]').forEach(b => b.addEventListener('click', () => acc.buy(b.dataset.buy).catch(e => alertDialog(errorText(e)))));
     body.querySelector('.acc-portal')?.addEventListener('click', () => acc.manageBilling().catch(e => alertDialog(errorText(e))));
     body.querySelector('.acc-out').addEventListener('click', async () => { await acc.signOut(); render(); });
+    body.querySelector('.acc-export').addEventListener('click', async () => {
+      try { const d = await acc.api('account/export'); const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' })); a.download = 'revela-mis-datos.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+      } catch (e) { alertDialog(errorText(e)); }
+    });
+    body.querySelector('.acc-delete').addEventListener('click', async () => {
+      if (EDITION === 'desktop') { window.__TAURI__?.opener?.openUrl?.(OFFICIAL_SITE + '/app/'); return alertDialog(t('Por seguridad, la cuenta se elimina desde la web: se ha abierto revelaslides.com. Inicia sesión allí y usa «Eliminar mi cuenta».')); }
+      const typed = await promptDialog(t('Se borrarán tu cuenta, tus créditos y tus presentaciones en la nube (también para quien las tenga compartidas), y se cancelará tu suscripción. No se puede deshacer. Escribe tu correo ({email}) para confirmar:').replace('{email}', me.email), '');
+      if (typed == null) return;
+      if (typed.trim().toLowerCase() !== me.email) return alertDialog(t('El correo no coincide: no se ha eliminado nada.'));
+      try { await acc.api('account/delete', { confirm: typed.trim() }); await acc.signOut(); close(); alertDialog(t('Tu cuenta se ha eliminado.')); }
+      catch (e) { alertDialog(errorText(e)); }
+    });
   };
   render();
   acc.refreshAccount().then(render, () => {});

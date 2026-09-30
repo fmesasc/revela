@@ -2055,4 +2055,12 @@ export default {
   "Comida": "طعام",
   "Viajes": "سفر",
   "Deporte": "رياضة",
+  "Tus datos": "بياناتك",
+  "Descarga una copia de todo lo que guarda tu cuenta, o elimínala con todas tus presentaciones en la nube. Las facturas las conserva Stripe, como exige la ley.": "نزّل نسخة من كل ما يحفظه حسابك، أو احذفه مع كل عروضك في السحابة. تحتفظ Stripe بالفواتير كما يقتضي القانون.",
+  "Descargar mis datos": "تنزيل بياناتي",
+  "Eliminar mi cuenta": "حذف حسابي",
+  "Por seguridad, la cuenta se elimina desde la web: se ha abierto revelaslides.com. Inicia sesión allí y usa «Eliminar mi cuenta».": "للأمان، يُحذف الحساب من الموقع: تم فتح revelaslides.com. سجّل الدخول هناك واستخدم «حذف حسابي».",
+  "Se borrarán tu cuenta, tus créditos y tus presentaciones en la nube (también para quien las tenga compartidas), y se cancelará tu suscripción. No se puede deshacer. Escribe tu correo ({email}) para confirmar:": "سيُحذف حسابك ورصيدك وعروضك في السحابة (وأيضًا لمن شاركتها معهم)، وسيُلغى اشتراكك. لا يمكن التراجع. اكتب بريدك ({email}) للتأكيد:",
+  "El correo no coincide: no se ha eliminado nada.": "البريد غير مطابق: لم يُحذف شيء.",
+  "Tu cuenta se ha eliminado.": "تم حذف حسابك.",
 };

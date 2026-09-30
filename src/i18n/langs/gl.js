@@ -2055,4 +2055,12 @@ export default {
   "Comida": "Comida",
   "Viajes": "Viaxes",
   "Deporte": "Deporte",
+  "Tus datos": "Os teus datos",
+  "Descarga una copia de todo lo que guarda tu cuenta, o elimínala con todas tus presentaciones en la nube. Las facturas las conserva Stripe, como exige la ley.": "Descarga unha copia de todo o que garda a túa conta, ou elimínaa con todas as túas presentacións na nube. As facturas consérvaas Stripe, como esixe a lei.",
+  "Descargar mis datos": "Descargar os meus datos",
+  "Eliminar mi cuenta": "Eliminar a miña conta",
+  "Por seguridad, la cuenta se elimina desde la web: se ha abierto revelaslides.com. Inicia sesión allí y usa «Eliminar mi cuenta».": "Por seguridade, a conta elimínase desde a web: abriuse revelaslides.com. Inicia sesión alí e usa «Eliminar a miña conta».",
+  "Se borrarán tu cuenta, tus créditos y tus presentaciones en la nube (también para quien las tenga compartidas), y se cancelará tu suscripción. No se puede deshacer. Escribe tu correo ({email}) para confirmar:": "Borraranse a túa conta, os créditos e as presentacións na nube (tamén para quen as teña compartidas), e cancelarase a subscrición. Non se pode desfacer. Escribe o teu correo ({email}) para confirmar:",
+  "El correo no coincide: no se ha eliminado nada.": "O correo non coincide: non se eliminou nada.",
+  "Tu cuenta se ha eliminado.": "A túa conta eliminouse.",
 };

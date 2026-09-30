@@ -2055,4 +2055,12 @@ export default {
   "Comida": "Eten",
   "Viajes": "Reizen",
   "Deporte": "Sport",
+  "Tus datos": "Je gegevens",
+  "Descarga una copia de todo lo que guarda tu cuenta, o elimínala con todas tus presentaciones en la nube. Las facturas las conserva Stripe, como exige la ley.": "Download een kopie van alles wat je account bevat, of verwijder het met al je presentaties in de cloud. Facturen bewaart Stripe, zoals de wet vereist.",
+  "Descargar mis datos": "Mijn gegevens downloaden",
+  "Eliminar mi cuenta": "Mijn account verwijderen",
+  "Por seguridad, la cuenta se elimina desde la web: se ha abierto revelaslides.com. Inicia sesión allí y usa «Eliminar mi cuenta».": "Voor de veiligheid verwijder je het account via de website: revelaslides.com is geopend. Meld je daar aan en gebruik \"Mijn account verwijderen\".",
+  "Se borrarán tu cuenta, tus créditos y tus presentaciones en la nube (también para quien las tenga compartidas), y se cancelará tu suscripción. No se puede deshacer. Escribe tu correo ({email}) para confirmar:": "Je account, credits en presentaties in de cloud worden verwijderd (ook voor wie ermee gedeeld is), en je abonnement wordt opgezegd. Dit kan niet ongedaan worden. Typ je e-mail ({email}) om te bevestigen:",
+  "El correo no coincide: no se ha eliminado nada.": "Het e-mailadres klopt niet: er is niets verwijderd.",
+  "Tu cuenta se ha eliminado.": "Je account is verwijderd.",
 };
