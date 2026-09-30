@@ -158,7 +158,7 @@ export function openChartData(b) {
       <option value="bar">${t('Barras')}</option><option value="stacked">${t('Barras apiladas')}</option><option value="stacked100">${t('Barras apiladas al 100 %')}</option>
       <option value="hbar">${t('Barras horizontales')}</option><option value="histogram">${t('Histograma')}</option><option value="line">${t('Líneas')}</option><option value="area">${t('Área')}</option>
       <option value="pie">${t('Circular')}</option><option value="doughnut">${t('Dona')}</option>
-      <option value="scatter">${t('Dispersión')}</option><option value="radar">${t('Radar')}</option><option value="waterfall">${t('Cascada')}</option><option value="funnel">${t('Embudo')}</option><option value="map">${t('Mapa')}</option></select></label>
+      <option value="scatter">${t('Dispersión')}</option><option value="radar">${t('Radar')}</option><option value="bubble">${t('Burbujas')}</option><option value="treemap">${t('Rectángulos (treemap)')}</option><option value="waterfall">${t('Cascada')}</option><option value="funnel">${t('Embudo')}</option><option value="map">${t('Mapa')}</option></select></label>
     <label class="fr-l">${t('Color (barras)')} <input type="color" class="ch-color" value="${b.color || '#3f6497'}"></label>
     <label class="fr-chk"><input type="checkbox" class="ch-combo"${b.combo ? ' checked' : ''}> ${t('Combinado: series extra como líneas')}</label>
     <label class="fr-chk"><input type="checkbox" class="ch-grid"${b.grid ? ' checked' : ''}> ${t('Líneas de cuadrícula con la escala')}</label>

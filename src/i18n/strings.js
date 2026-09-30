@@ -429,6 +429,8 @@ export const ROWS = [
   ['Dona', 'Doughnut', 'Anneau', 'Ring', 'Ciambella', 'Rosca', 'Rosco'],
   ['Dispersión', 'Scatter', 'Nuage de points', 'Punktdiagramm', 'Dispersione', 'Dispersão', 'Dispersió'],
   ['Radar', 'Radar', 'Radar', 'Netz', 'Radar', 'Radar', 'Radar'],
+  ['Burbujas', 'Bubble', 'Bulles', 'Blasen', 'Bolle', 'Bolhas', 'Bombolles'],
+  ['Rectángulos (treemap)', 'Treemap', 'Compartimentage (treemap)', 'Treemap', 'Mappa ad albero (treemap)', 'Mapa de árvore (treemap)', 'Rectangles (treemap)'],
   ['Recortar imagen', 'Crop picture', 'Rogner l\'image', 'Bild zuschneiden', 'Ritaglia immagine', 'Recortar imagem', 'Retalla la imatge'],
   ['Proporción', 'Aspect ratio', 'Proportions', 'Seitenverhältnis', 'Proporzioni', 'Proporção', 'Proporció'],
   ['Original', 'Original', 'Original', 'Original', 'Originale', 'Original', 'Original'],

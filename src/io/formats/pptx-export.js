@@ -11,7 +11,7 @@ import { t } from '../../i18n/index.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
 import { plainText } from '../../core/text.js';
 import { shownRows } from '../../core/formulas.js';
-import { chartSVG, chartSeries, histogramBins, iconSVG, inkSVG, timerSVG, shapeTextStyle } from '../../render/svg.js';
+import { chartSVG, chartSeries, histogramBins, bubblePoints, iconSVG, inkSVG, timerSVG, shapeTextStyle } from '../../render/svg.js';
 import { blockImage } from '../export/images.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, styleKind } from '../../features/document/master.js';
 import { PPTXGEN, JSZIP, loadScript } from '../../core/vendor.js';
@@ -220,6 +220,12 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
            { name: 'Y', values: rows.map(d => +d.value || 0) }]
         : null;
       if (data) { slide.addChart(pptx.ChartType[type], data, { ...pos, showLegend: false }); return; }
+      if (kind === 'bubble') {                                // (PowerPoint's: x, then y with the sizes)
+        const p = bubblePoints(b);
+        slide.addChart(pptx.ChartType.bubble, [{ name: 'X', values: p.map(q => q.x) }, { name: b.seriesName || 'Y', values: p.map(q => q.y), sizes: p.map(q => q.s) }],
+          { ...pos, showLegend: false, chartColors: [hex(b.color) || '3F6497'] });
+        return;
+      }
       // Bar/line/area (and pie, radar) with every series; a combo chart becomes
       // PowerPoint's multi-type chart: bars + lines.
       const labels = rows.map(d => d.label);
@@ -320,7 +326,7 @@ export async function buildPptx(deck = state.deck) {
       if (b.type === 'icon') raster.set(b.id, await svgToPNG(iconSVG(b), b.w, b.h));
       else if (b.type === 'ink') raster.set(b.id, await svgToPNG(inkSVG(b), b.w, b.h));
       else if (b.type === 'timer') raster.set(b.id, await svgToPNG(timerSVG(b), b.w, b.h));
-      else if (b.type === 'chart' && ['map', 'waterfall', 'funnel'].includes(b.chartType)) raster.set(b.id, await svgToPNG(chartSVG(b), b.w, b.h));      // (PowerPoint's own maps can't be written here)
+      else if (b.type === 'chart' && ['map', 'waterfall', 'funnel', 'treemap'].includes(b.chartType)) raster.set(b.id, await svgToPNG(chartSVG(b), b.w, b.h));      // (PowerPoint's own maps can't be written here)
       else if (b.type === 'file' && b.poster) raster.set(b.id, b.poster);          // (a PDF's page; the file itself stays in Revela)
       else if (b.type === 'math' || b.type === 'poll' || b.type === 'figindex' || b.type === 'file') { const img = await blockImage(b, s, deck); if (img) raster.set(b.id, img); }
     } catch {}

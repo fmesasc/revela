@@ -430,6 +430,8 @@ export default {
   "Dona": "Erroskila",
   "Dispersión": "Sakabanaketa",
   "Radar": "Radarra",
+  "Burbujas": "Burbuilak",
+  "Rectángulos (treemap)": "Laukizuzenak (treemap)",
   "Recortar imagen": "Irudia moztu",
   "Proporción": "Proportzioa",
   "Original": "Jatorrizkoa",

@@ -430,6 +430,8 @@ export default {
   "Dona": "دائري مجوف",
   "Dispersión": "مبعثر",
   "Radar": "رادار",
+  "Burbujas": "فقاعي",
+  "Rectángulos (treemap)": "خريطة شجرية",
   "Recortar imagen": "اقتصاص الصورة",
   "Proporción": "نسبة العرض إلى الارتفاع",
   "Original": "الأصلي",

@@ -418,6 +418,8 @@ export default {
   "Dona": "Rosca",
   "Dispersión": "Dispersión",
   "Radar": "Radar",
+  "Burbujas": "Burbullas",
+  "Rectángulos (treemap)": "Rectángulos (treemap)",
   "Recortar imagen": "Recortar imaxe",
   "Proporción": "Proporción",
   "Original": "Orixinal",

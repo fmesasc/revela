@@ -145,7 +145,7 @@ export function connectorSVG(b, fromB, toB, W, H) {
 }
 
 // Chart as inline SVG (no library, self‑contained on export). Bar or pie.
-export function chartSig(b) { return (b.chartType || 'bar') + '|' + (b.color || '') + '|' + (b.map ? b.map.scope + b.map.regions.length : '') + '|' + JSON.stringify([b.data || [], b.series || [], b.combo || 0, b.seriesName || '', b.grid, b.dataLabels, b.xTitle, b.yTitle]); }
+export function chartSig(b) { return (b.chartType || 'bar') + '|' + (b.chartType === 'bubble' ? b.w + 'x' + b.h : '') + '|' + (b.color || '') + '|' + (b.map ? b.map.scope + b.map.regions.length : '') + '|' + JSON.stringify([b.data || [], b.series || [], b.combo || 0, b.seriesName || '', b.grid, b.dataLabels, b.xTitle, b.yTitle]); }
 // A histogram: the values (labels don't matter) grouped into ranges (Sturges' rule), counted.
 export function histogramBins(values, k = 0) {
   const v = values.filter(Number.isFinite); if (!v.length) return [];
@@ -162,6 +162,8 @@ export function chartSVG(b) {
   if (b.chartType === 'hbar') return hbarSVG(b);
   if (b.chartType === 'waterfall') return waterfallSVG(b);
   if (b.chartType === 'funnel') return funnelSVG(b);
+  if (b.chartType === 'treemap') return treemapSVG(b);
+  if (b.chartType === 'bubble') return bubbleSVG(b);
   if (b.chartType === 'map') return mapSVG(b);
   const data = b.data || []; const color = b.color || '#3f6497';
   const palette = ['#3f6497', '#c0392b', '#2b7a3b', '#d68910', '#7d3c98', '#16a085', '#c0392b'];
@@ -311,6 +313,60 @@ function waterfallSVG(b) {
   }).join('');
   const axis = `<line x1="${L}" y1="${Y(0).toFixed(1)}" x2="${R}" y2="${Y(0).toFixed(1)}" stroke="#8a8a8a" stroke-width="0.4" vector-effect="non-scaling-stroke"/>`;
   return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">${axis}${bars}</svg>`;
+}
+// Treemap: each item a rectangle with an area in proportion to its value, laid
+// out "squarified" (rows as square as they can be; Bruls, Huizing & van Wijk).
+export function squarify(values, x, y, w, h) {
+  const items = values.map((v, i) => ({ v: Math.max(0, +v || 0), i })).filter(o => o.v > 0).sort((a, b) => b.v - a.v);
+  const total = items.reduce((s, o) => s + o.v, 0) || 1, out = [];
+  let rect = { x, y, w, h }, rest = items.map(o => ({ ...o, a: o.v / total * w * h }));
+  const worst = (row, side) => { const s = row.reduce((t, o) => t + o.a, 0), mx = Math.max(...row.map(o => o.a)), mn = Math.min(...row.map(o => o.a)); return Math.max(side * side * mx / (s * s), (s * s) / (side * side * mn)); };
+  while (rest.length) {
+    const side = Math.min(rect.w, rect.h); let row = [rest[0]], k = 1;
+    while (k < rest.length && worst([...row, rest[k]], side) <= worst(row, side)) row.push(rest[k++]);
+    rest = rest.slice(k);
+    const s = row.reduce((t, o) => t + o.a, 0);
+    if (rect.w >= rect.h) {                          // a column on the left
+      const cw = s / rect.h; let yy = rect.y;
+      for (const o of row) { const hh = o.a / cw; out.push({ i: o.i, x: rect.x, y: yy, w: cw, h: hh }); yy += hh; }
+      rect = { x: rect.x + cw, y: rect.y, w: rect.w - cw, h: rect.h };
+    } else {                                         // a row on top
+      const rh = s / rect.w; let xx = rect.x;
+      for (const o of row) { const ww = o.a / rh; out.push({ i: o.i, x: xx, y: rect.y, w: ww, h: rh }); xx += ww; }
+      rect = { x: rect.x, y: rect.y + rh, w: rect.w, h: rect.h - rh };
+    }
+  }
+  return out;
+}
+const TREE_COLOURS = ['#3f6497', '#e0873b', '#4caf7d', '#c94f4f', '#8e6cc9', '#3bb3c3', '#d4a017', '#7f8c8d'];
+function treemapSVG(b) {
+  const data = b.data || [], num = v => (Math.abs(v) >= 1000 ? v.toLocaleString('es') : String(+(+v).toFixed(2)));
+  const cells = squarify(data.map(d => d.value), 0, 0, 100, 60).map(r => {
+    const d = data[r.i], fill = r.i === 0 && b.color ? b.color : TREE_COLOURS[r.i % TREE_COLOURS.length], fs = Math.min(4, r.w / 6, r.h / 3);
+    return `<rect x="${r.x.toFixed(2)}" y="${r.y.toFixed(2)}" width="${r.w.toFixed(2)}" height="${r.h.toFixed(2)}" fill="${fill}" stroke="#fff" stroke-width="0.6" vector-effect="non-scaling-stroke"/>`
+      + (fs >= 1.6 ? `<text x="${(r.x + 1.2).toFixed(2)}" y="${(r.y + fs + 0.8).toFixed(2)}" font-size="${fs.toFixed(2)}" fill="#fff" font-weight="600">${escSvg(d.label || '')}</text>`
+        + (b.dataLabels !== false && r.h > fs * 2.6 ? `<text x="${(r.x + 1.2).toFixed(2)}" y="${(r.y + fs * 2.2 + 0.8).toFixed(2)}" font-size="${(fs * 0.85).toFixed(2)}" fill="#fff" opacity=".85">${escSvg(num(d.value))}</text>` : '') : '');
+  }).join('');
+  return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%">${cells}</svg>`;
+}
+// Bubbles: x (a numeric label, or its place), y (the value), size (the second series; area in proportion).
+export function bubblePoints(b) {
+  const data = b.data || [], sizes = (b.series?.[0]?.values || []).map(v => Math.max(0, +v || 0));
+  return data.map((d, i) => ({ name: isFinite(parseFloat(d.label)) ? '' : String(d.label || ''), x: isFinite(parseFloat(d.label)) ? parseFloat(d.label) : i + 1, y: +d.value || 0, s: sizes[i] ?? 1 }));
+}
+function bubbleSVG(b) {
+  const pts = bubblePoints(b), color = b.color || '#3f6497';
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y), maxS = Math.max(1e-9, ...pts.map(p => p.s));
+  const minX = Math.min(...xs, 0), maxX = Math.max(...xs, 1), minY = Math.min(...ys, 0), maxY = Math.max(...ys, 1);
+  const X = x => 8 + (x - minX) / ((maxX - minX) || 1) * 86, Y = y => 52 - ((y - minY) / ((maxY - minY) || 1)) * 46;
+  // Round whatever the box's shape (the drawing stretches with it): radii in the box's pixels.
+  const W = b.w || 100, H = b.h || 60, side = Math.min(W, H);
+  const dots = pts.map(p => { const r = side * (0.02 + 0.11 * Math.sqrt(p.s / maxS)), rx = r / W * 100, ry = r / H * 60;
+    return `<ellipse cx="${X(p.x).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" rx="${rx.toFixed(2)}" ry="${ry.toFixed(2)}" fill="${color}" fill-opacity=".6" stroke="${color}" stroke-width="0.4" vector-effect="non-scaling-stroke"/>`
+      + (p.name ? `<text x="${X(p.x).toFixed(1)}" y="${(Y(p.y) + 1.2).toFixed(1)}" font-size="3" text-anchor="middle" fill="#fff" font-weight="600">${escSvg(p.name)}</text>` : ''); }).join('');
+  return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">`
+    + `<line x1="8" y1="54" x2="98" y2="54" stroke="#8a8a8a" stroke-width="0.4" vector-effect="non-scaling-stroke"/>`
+    + `<line x1="8" y1="2" x2="8" y2="54" stroke="#8a8a8a" stroke-width="0.4" vector-effect="non-scaling-stroke"/>${dots}</svg>`;
 }
 // Funnel: centred bars, as wide as their value, one under another (stages of a process).
 function funnelSVG(b) {

@@ -40,7 +40,7 @@ const TITLES = { file: 'Archivo', shape: 'Forma', image: 'Imagen', model: 'Model
   math: 'Ecuación', code: 'Código', poll: 'Votación', embed: 'Web', icon: 'Icono', camera: 'Cámara', slideref: 'Zoom', figindex: 'Índice', ink: 'Dibujo', connector: 'Conector', timer: 'Cuenta atrás' };
 // Every shape once (the catalogue's first name for each).
 const SHAPES = Object.entries(SHAPE_NAMES).filter(([k]) => !isLineShape(k) && k !== 'freeform');
-const CHARTS = [['bar', 'Barras'], ['stacked', 'Barras apiladas'], ['stacked100', 'Barras apiladas al 100 %'], ['hbar', 'Barras horizontales'], ['histogram', 'Histograma'], ['line', 'Líneas'], ['area', 'Área'], ['pie', 'Circular'], ['doughnut', 'Dona'], ['scatter', 'Dispersión'], ['radar', 'Radar'], ['waterfall', 'Cascada'], ['funnel', 'Embudo'], ['map', 'Mapa']];
+const CHARTS = [['bar', 'Barras'], ['stacked', 'Barras apiladas'], ['stacked100', 'Barras apiladas al 100 %'], ['hbar', 'Barras horizontales'], ['histogram', 'Histograma'], ['line', 'Líneas'], ['area', 'Área'], ['pie', 'Circular'], ['doughnut', 'Dona'], ['scatter', 'Dispersión'], ['radar', 'Radar'], ['bubble', 'Burbujas'], ['treemap', 'Rectángulos (treemap)'], ['waterfall', 'Cascada'], ['funnel', 'Embudo'], ['map', 'Mapa']];
 // A map chart: its outlines come from the internet the first time.
 const formulaHelp = () => alertDialog([t('Escribe en una celda una fórmula que empiece por «=»:'), '=SUMA(ARRIBA) · =PROMEDIO(B2:B5) · =B2*C2',
   t('Funciones: SUMA, PROMEDIO, MIN, MAX, CONTAR, PRODUCTO, REDONDEAR y ABS (también sus nombres en inglés).'),

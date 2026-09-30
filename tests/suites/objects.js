@@ -1486,4 +1486,27 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     // Original again.
     await R.blocks.cropToRatio(b.id, 'original'); eq(b.fit, 'contain'); eq(Math.round(b.w / b.h * 10), 20, 'con su proporción (2:1)');
   });
+
+  await test('gráficos de rectángulos (treemap) y de burbujas; las burbujas, como gráfico de PowerPoint y de vuelta', async () => {
+    reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
+    const rs = S.squarify([60, 30, 10], 0, 0, 100, 60);
+    const area = r => r.w * r.h;
+    assert(Math.abs(area(rs.find(r => r.i === 0)) - 3600) < 1 && Math.abs(area(rs.find(r => r.i === 2)) - 600) < 1, 'áreas en proporción');
+    assert(rs.every(r => r.x >= -0.01 && r.y >= -0.01 && r.x + r.w <= 100.01 && r.y + r.h <= 60.01), 'dentro del gráfico');
+    const tm = S.chartSVG({ chartType: 'treemap', data: [{ label: 'Madrid', value: 60 }, { label: 'Sevilla', value: 30 }, { label: 'Lugo', value: 10 }] });
+    eq((tm.match(/<rect /g) || []).length, 3); assert(/>Madrid</.test(tm), 'con sus nombres');
+    const data = [{ label: '1', value: 10 }, { label: '3', value: 20 }, { label: '5', value: 15 }];
+    const bs = S.chartSVG({ chartType: 'bubble', data, series: [{ name: 'Tamaño', values: [1, 4, 9] }] });
+    const ry = [...bs.matchAll(/ry="([\d.]+)"/g)].map(m => +m[1]);
+    assert(ry.length === 3 && ry[0] < ry[1] && ry[1] < ry[2], 'burbujas más grandes con más tamaño');
+    R.blocks.addChart(); const b = last(); select(b); await sleep(20);
+    const kind = [...D.querySelectorAll('#ribbon [data-page="ctx"] select')].find(x => [...x.options].some(o => o.value === 'treemap'));
+    assert(kind && [...kind.options].some(o => o.value === 'bubble'), 'en la pestaña Gráfico');
+    R.store.commit(() => { b.chartType = 'bubble'; b.data = data; b.series = [{ name: 'Tamaño', values: [1, 4, 9] }]; }); await sleep(10);
+    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob);
+    const chartFile = Object.keys(zip.files).find(f => /^ppt\/charts\/chart\d+\.xml$/.test(f));
+    assert(chartFile && /<c:bubbleChart>/.test(await zip.file(chartFile).async('string')), 'gráfico de burbujas de PowerPoint');
+    const back = (await R.pptxImport.importPPTX(new W.File([blob], 'b.pptx'))).slides[0].blocks.find(x => x.type === 'chart');
+    eq(back.chartType, 'bubble'); eq(back.data.map(d => d.label + ':' + d.value).join(), '1:10,3:20,5:15'); eq(back.series[0].values.join(), '1,4,9', 'con sus tamaños');
+  });
 }

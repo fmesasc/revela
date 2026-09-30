@@ -418,6 +418,8 @@ export default {
   "Dona": "Ring",
   "Dispersión": "Spreiding",
   "Radar": "Radar",
+  "Burbujas": "Bellen",
+  "Rectángulos (treemap)": "Treemap",
   "Recortar imagen": "Afbeelding bijsnijden",
   "Proporción": "Verhouding",
   "Original": "Origineel",

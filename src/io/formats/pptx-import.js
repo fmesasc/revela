@@ -686,7 +686,7 @@ export async function importPPTX(file) {
       const cd = parseXML(await zip.file(part).async('string'));
       const plot = all(cd, 'c:plotArea')[0]; if (!plot) return false;
       const KIND = { 'c:barChart': 'bar', 'c:bar3DChart': 'bar', 'c:lineChart': 'line', 'c:line3DChart': 'line', 'c:areaChart': 'area',
-        'c:pieChart': 'pie', 'c:pie3DChart': 'pie', 'c:doughnutChart': 'doughnut', 'c:radarChart': 'radar', 'c:scatterChart': 'scatter' };
+        'c:pieChart': 'pie', 'c:pie3DChart': 'pie', 'c:doughnutChart': 'doughnut', 'c:radarChart': 'radar', 'c:scatterChart': 'scatter', 'c:bubbleChart': 'bubble' };
       const groups = [...plot.children].filter(c => KIND[c.tagName]);
       if (!groups.length) return false;
       const pts = el => { const out = []; for (const p of all(el, 'c:pt')) out[+p.getAttribute('idx')] = kid(p, 'c:v')?.textContent ?? ''; return out; };
@@ -696,13 +696,15 @@ export async function importPPTX(file) {
         cats: pts(kid(ser, 'c:cat') || kid(ser, 'c:xVal')),
         vals: pts(kid(ser, 'c:val') || kid(ser, 'c:yVal')).map(v => +v || 0),
         color: fillOf(kid(ser, 'c:spPr'), theme),
+        sizes: pts(kid(ser, 'c:bubbleSize')).map(v => +v || 0),
       })));
       if (!series.length) return false;
       const first = series[0], labels = first.cats.length ? first.cats : first.vals.map((_, i) => String(i + 1));
       const b = { id: uid(), type: 'chart', chartType: first.kind, color: first.color && first.color !== 'none' ? first.color : (theme.accent1 || '#3f6497'),
         data: labels.map((l, i) => ({ label: String(l ?? ''), value: first.vals[i] ?? 0 })), ...box(map(geo)) };
       if (first.name) b.seriesName = first.name;
-      const rest = series.slice(1);
+      if (first.kind === 'bubble' && first.sizes.length) b.series = [{ name: 'Tamaño', values: labels.map((_, k) => first.sizes[k] ?? 1) }];
+      const rest = first.kind === 'bubble' ? [] : series.slice(1);
       if (rest.length) {
         b.series = rest.map((x, i) => ({ name: x.name, values: labels.map((_, k) => x.vals[k] ?? 0),
           ...(x.color && x.color !== 'none' ? { color: x.color } : theme['accent' + (i + 2)] ? { color: theme['accent' + (i + 2)] } : {}) }));
