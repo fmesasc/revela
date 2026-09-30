@@ -430,7 +430,10 @@ async function addMotion(blob, deck) {
     let xml = await f.async('string');
     const spids = new Map([...xml.matchAll(/<p:cNvPr id="(\d+)" name="rv-([^"]+)"/g)].map(m => [m[2], m[1]]));
     const extra = transitionXML(deck.slides[i], deck) + timingXML(deck.slides[i], spids, deck);
-    if (!extra) continue;
+    // Objects hidden in the selection pane: hidden in PowerPoint's too.
+    const hidden = deck.slides[i].blocks.filter(b => b.hidden && spids.has(b.id));
+    for (const b of hidden) xml = xml.replace(`<p:cNvPr id="${spids.get(b.id)}" name="rv-${b.id}"`, m => m + ' hidden="1"');
+    if (!extra) { if (hidden.length) zip.file(`ppt/slides/slide${i + 1}.xml`, xml); continue; }
     // Schema order: cSld, clrMapOvr, transition, timing, extLst.
     xml = xml.includes('</p:clrMapOvr>') ? xml.replace('</p:clrMapOvr>', '</p:clrMapOvr>' + extra)
       : xml.replace(/(<p:extLst>[\s\S]*<\/p:extLst>)?\s*<\/p:sld>\s*$/, m => extra + m);

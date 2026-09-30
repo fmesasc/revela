@@ -14,6 +14,7 @@ function ensurePreviewCSS() {
 }
 
 export function blockPreview(b) {
+  if (b.hidden) { const h = document.createElement('div'); h.hidden = true; return h; }   // (hidden in the selection pane)
   ensurePreviewCSS();
   const el = document.createElement('div');
   el.className = 'pv-block';

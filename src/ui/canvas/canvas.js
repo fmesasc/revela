@@ -265,6 +265,7 @@ function reconcile(b) {
   if (badge) { if (nc) badge.textContent = nc; else badge.remove(); }
   el.classList.toggle('animated', !!b.animation || !!b.anims?.length);
   el.classList.toggle('locked', !!b.locked);
+  el.classList.toggle('is-hidden', !!b.hidden);
   el.classList.toggle('linked', !!(b.href || b.goto) && b.type !== 'text');
   // A colour key switched on or off, or a new source for a keyed one: new view.
   if ((b.type === 'image' || b.type === 'video') && !mediaViewCurrent(el, b)) el.firstElementChild.replaceWith(content(b));
@@ -338,7 +339,7 @@ function reconcile(b) {
 function blockEl(b) {
   const el = document.createElement('div');
   el.className = 'block' + (isSelected(b.id) ? ' selected' : '')
-    + (b.animation ? ' animated' : '') + (b.locked ? ' locked' : '') + (b.type === 'connector' ? ' __conn' : '');
+    + (b.animation ? ' animated' : '') + (b.locked ? ' locked' : '') + (b.hidden ? ' is-hidden' : '') + (b.type === 'connector' ? ' __conn' : '');
   el.dataset.id = b.id; el._b = b;
   el.setAttribute('role', 'group'); el.setAttribute('aria-label', blockLabel(b, t));
   el.style.cssText = `left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px`;

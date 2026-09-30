@@ -5,6 +5,7 @@ import { editText } from '../canvas/content.js';
 import { readFile, openProject, openPresentation, insertMarkdown } from '../shell/openfile.js';
 import { openFindPanel } from '../dialogs/find.js';
 import { toggleDictation } from '../shell/dictate.js';
+import { toggleSelectionPane } from '../panels/selection.js';
 import { openGdriveSetup } from '../dialogs/gdrive.js';
 import { openCloud } from '../dialogs/othercloud.js';
 import { state, commit, undo, redo, replaceDeck, currentSlide, selectedBlock, selectedBlocks } from '../../core/store.js';
@@ -232,6 +233,7 @@ export const ACTIONS = {
   'insert-summary': () => blocks.addSummaryZoom(),
   'find-replace': () => openFindPanel(),
   dictate: () => toggleDictation(),
+  'selection-pane': () => toggleSelectionPane(),
   'copy-style': () => { format.copyStyle(); commit(() => {}, { history: false }); },   // refresh: Pegar formato becomes available
   'paste-style': () => format.pasteStyle(),
   'bg-gradient': () => {

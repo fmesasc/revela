@@ -11,6 +11,7 @@ import { nudge } from '../../ui/canvas/interact.js';
 import { initPanel, renderPanel } from '../../ui/shell/navigator.js';
 import { sorterOn, setSorter, sorterColumns } from '../../ui/shell/sorter.js';
 import { renderComments } from '../../ui/panels/comments.js';
+import { renderSelectionPane } from '../../ui/panels/selection.js';
 import { renderAssistant } from '../../ui/dialogs/ai.js';
 import * as aiDeck from '../../features/ai/authoring.js';
 import * as poll from '../../features/live/poll.js';
@@ -89,6 +90,7 @@ function render() {
   renderCanvas();
   renderPanel();
   renderComments();
+  renderSelectionPane();
   renderAssistant();
   const s = document.getElementById('status-slide');
   if (s) s.textContent = `${t('Diapositiva')} ${state.ui.slideIndex + 1} ${t('de')} ${state.deck.slides.length}`;

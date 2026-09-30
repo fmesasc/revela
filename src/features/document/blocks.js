@@ -121,6 +121,28 @@ export function moveInOrder(id, dir) {
   });
 }
 
+// Selection pane (PowerPoint's): hide an object (in the editor, the thumbnails
+// and the presentation; PowerPoint keeps it hidden too), give it a name, or
+// move it to another place in the stacking order (0 = at the back).
+export function setHidden(id, on) {
+  const b = currentSlide().blocks.find(x => x.id === id); if (!b) return;
+  commit(() => { if (on) b.hidden = true; else delete b.hidden; });
+}
+export function setAllHidden(on) {
+  commit(() => { for (const b of currentSlide().blocks) if (on) b.hidden = true; else delete b.hidden; });
+}
+export function renameBlock(id, name) {
+  const b = currentSlide().blocks.find(x => x.id === id); if (!b) return;
+  name = String(name || '').trim().slice(0, 80);
+  commit(() => { if (name) b.label = name; else delete b.label; });
+}
+export function moveToIndex(id, to) {
+  commit(() => {
+    const arr = currentSlide().blocks, i = arr.findIndex(b => b.id === id); if (i < 0) return;
+    const [b] = arr.splice(i, 1); arr.splice(Math.max(0, Math.min(arr.length, to)), 0, b);
+  });
+}
+
 // Fill / border for a text box (also used by diagrams).
 export function setBoxStyle(props) {
   const b = selectedBlock(); if (!b || (b.type !== 'text' && b.type !== 'math')) return;

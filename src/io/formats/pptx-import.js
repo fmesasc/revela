@@ -491,7 +491,8 @@ export async function importPPTX(file) {
           else if (tag === 'p:pic') await addPic(el, map);
           else if (tag === 'p:graphicFrame') { if (!(await addChart(el, map)) && !(await addDiagram(el, map))) addTable(el, map); }
           // Shape id → the block that stands for it (its text if it has one), for the animations.
-          const made = blocks.slice(before), spid = all(el, 'p:cNvPr')[0]?.getAttribute('id');
+          const made = blocks.slice(before), cnv = all(el, 'p:cNvPr')[0], spid = cnv?.getAttribute('id');
+          if (cnv?.getAttribute('hidden') === '1' || cnv?.getAttribute('hidden') === 'true') made.forEach(b => { b.hidden = true; });   // (hidden in its selection pane)
           if (spid && made.length && !decorMode) spidOf.set(spid, (made.find(b => b.type === 'text') || made[made.length - 1]).id);
         }
       }

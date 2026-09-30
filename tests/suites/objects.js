@@ -1347,4 +1347,38 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob), xml = await zip.file('ppt/slides/slide1.xml').async('string');
     assert(/<a:t>400<\/a:t>/.test(xml) && !/SUMA/.test(xml), 'en PowerPoint, el resultado');
   });
+
+  await test('panel de selección: ocultar, bloquear, renombrar y reordenar; lo oculto no sale al presentar y sigue oculto en PowerPoint', async () => {
+    reset(); const W = frame.contentWindow;
+    R.slides.addSlide('blank'); await sleep(10);
+    R.blocks.addShape('rect'); R.blocks.addShape('ellipse'); R.blocks.addText('Hola');
+    const [a, b, c] = slide().blocks;
+    D.querySelector('[data-action="selection-pane"]').click(); await sleep(20);
+    const p = () => D.getElementById('selection-panel'), rows = () => [...p().querySelectorAll('.sp-row')];
+    eq(rows().map(r => r.dataset.id).join(), [c.id, b.id, a.id].join(), 'el de delante, primero');
+    // Hide the ellipse.
+    rows()[1].querySelector('.sp-eye').click(); await sleep(20);
+    assert(b.hidden && D.querySelector(`#stage .block[data-id="${b.id}"]`).classList.contains('is-hidden'), 'oculto en el editor');
+    assert(!R.io.buildHTML().includes(`data-rv-id="${b.id}"`) && !/<ellipse/.test(R.io.slideInnerHTML(slide())), 'no sale en la presentación');
+    // Rename by double-click.
+    rows()[2].querySelector('.sp-name').dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); await sleep(10);
+    const inp = p().querySelector('.sp-rename'); inp.value = 'Fondo azul'; inp.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await sleep(20);
+    eq(a.label, 'Fondo azul'); assert(rows().some(r => r.textContent.includes('Fondo azul')), 'con su nombre en la lista');
+    // Lock, and select by clicking.
+    rows()[0].querySelector('.sp-lock').click(); await sleep(10); assert(c.locked, 'bloqueado');
+    rows()[2].click(); await sleep(10); eq(R.state.ui.selection, a.id, 'se selecciona al hacer clic');
+    // Drag the back one above the front one: now at the front.
+    const dt = new W.DataTransfer(), src = rows()[2], dst = rows()[0], r = dst.getBoundingClientRect();
+    src.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+    dst.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt, clientY: r.top + 1 }));
+    dst.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt, clientY: r.top + 1 })); await sleep(20);
+    eq(slide().blocks.at(-1).id, a.id, 'arrastrado delante de todo');
+    // PowerPoint: still hidden there, and hidden when it comes back.
+    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob), xml = await zip.file('ppt/slides/slide2.xml').async('string');
+    assert(new RegExp(`name="rv-${b.id}" hidden="1"`).test(xml), 'oculto en PowerPoint');
+    const back = await R.pptxImport.importPPTX(new W.File([blob], 'sel.pptx'));
+    assert(back.slides[1].blocks.some(x => x.shape === 'ellipse' && x.hidden), 'y vuelve oculto');
+    D.querySelector('[data-action="selection-pane"]').click(); await sleep(10);
+    assert(!p(), 'se cierra');
+  });
 }

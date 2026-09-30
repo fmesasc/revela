@@ -341,6 +341,7 @@ export function renderRibbon() {
   { const has = !!selectedBlock(); ['clip-copy', 'clip-cut', 'obj-duplicate'].forEach(a => { const el = $(`[data-action="${a}"]`); if (el) el.disabled = !has; });
     const p = $('[data-action="clip-paste"]'); if (p) p.disabled = !clip.hasClipboard(); }
   $('[data-action="mark-final"]')?.classList.toggle('on', protect.isFinal());
+  document.querySelectorAll('[data-action="selection-pane"]').forEach(b => b.classList.toggle('on', !!state.ui.showSelection));
   // My open tasks (comments assigned to me), counted on the Comments button.
   { const n = author() ? tasksOf({ who: author() }).length : 0;
     document.querySelectorAll('[data-action="comments"]').forEach(b => {

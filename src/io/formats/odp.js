@@ -227,7 +227,7 @@ export async function buildODP(deck = state.deck) {
   const pages = deck.slides.map((s, i) => {
     const bg = hex(s.background) || '#101317';
     const dp = style('drawing-page', 'dp', `<style:drawing-page-properties draw:fill="solid" draw:fill-color="${bg}" presentation:background-visible="true"${odpTransition(s, deck)}/>`);
-    const list = [...masterBlocksFor(s, deck), ...s.blocks.map(b => styled(b, s, deck))].filter(b => !isEmptyPlaceholder(b));
+    const list = [...masterBlocksFor(s, deck), ...s.blocks.map(b => styled(b, s, deck))].filter(b => !b.hidden && !isEmptyPlaceholder(b));
     byId = new Map(list.map(b => [b.id, b]));
     // Objects that are animated or start animations get an id the timing refers to.
     const named = new Set(s.blocks.flatMap(b => animsOf(b).flatMap(a => [b.id, a.trigger])).filter(Boolean));

@@ -123,7 +123,7 @@ function stepLayers(html, b, slide, tl) {
 // What a slide shows: the master's objects (unless hidden) under its own, and
 // no empty placeholders.
 // (In canvas mode the canvas's picture is one layer that moves with the camera, not a copy per slide.)
-export const blocksOf = (s, deck = state.deck) => [...masterBlocksFor(s, deck), ...s.blocks.map(b => styled(b, s, deck))].filter(b => !isEmptyPlaceholder(b) && !(b.backdrop && canvasOn(deck)));
+export const blocksOf = (s, deck = state.deck) => [...masterBlocksFor(s, deck), ...s.blocks.map(b => styled(b, s, deck))].filter(b => !b.hidden && !isEmptyPlaceholder(b) && !(b.backdrop && canvasOn(deck)));
 
 function ariaAttrs(b) {
   if (b.decorative) return ' aria-hidden="true"';
