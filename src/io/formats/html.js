@@ -2,6 +2,7 @@
 // document shown when presenting), and each object's inline HTML, reused by
 // the print and image exports.
 
+import { tabRuntime } from '../runtime/tabs.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
 import { esc, jsData } from '../../core/text.js';
 import { morphPlan, morphSig } from '../../features/animation/morph.js';
@@ -205,7 +206,8 @@ function blockHTMLRaw(b, slide) {
   }
   if (b.type === 'text') {
     const wr = wrapFor(b, slide);
-    return `<div${a}${b.levels ? ' class="lv"' : ''}${wrapAttrs(wr)} style="${box(b)}${wrapVars(wr)}font-size:${b.fontSize || 40}px;${b.color ? `color:${b.color};` : ''}${b.levels ? levelVars(b) : ''}`
+    const tabbed = !b.curve && /\t/.test(b.html || '');         // (tab stops laid out by tabRuntime)
+    return `<div${a}${b.levels ? ' class="lv"' : ''}${wrapAttrs(wr)}${tabbed ? ` data-tabs="${esc(JSON.stringify(b.tabs || []))}"` : ''} style="${box(b)}${wrapVars(wr)}${tabbed ? 'white-space:pre-wrap;tab-size:96px;' : ''}font-size:${b.fontSize || 40}px;${b.color ? `color:${b.color};` : ''}${b.levels ? levelVars(b) : ''}`
       + `text-align:${b.textAlign || 'left'};${b.fontFamily ? `font-family:${b.fontFamily};` : ''}`
       + `${b.lineHeight ? `line-height:${b.lineHeight};` : ''}`
       + `${b.letterSpacing ? `letter-spacing:${b.letterSpacing}px;` : ''}`
@@ -525,6 +527,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${hasModel3d ? `(${model3dRuntime.toString()})();` : ''}
  ${hasTimer ? `(${timerRuntime.toString()})();` : ''}
  ${/ data-sound="/.test(slides) ? `(${soundRuntime.toString()})();` : ''}
+ ${/ data-tabs="/.test(slides) ? `(${tabRuntime.toString()})();` : ''}
  ${bgmHTML ? BGM_JS : ''}
  ${/ data-(goto|href)="/.test(slides) ? LINK_JS : ''}
  ${/ data-file(-view)?[ >]/.test(slides) ? FILE_JS : ''}

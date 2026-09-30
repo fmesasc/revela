@@ -286,4 +286,45 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(inst.stopped && !D.getElementById('dictate-bar'), 'se detiene');
     delete W.SpeechRecognition; W.localStorage.removeItem('revela.consent.dictation');
   });
+
+  await test('tabulaciones: regla del texto (izquierda, centrada, derecha, decimal), tecla Tab, presentación y PowerPoint', async () => {
+    reset(); const W = frame.contentWindow;
+    R.blocks.addText('x'); const b = last();
+    R.store.commit(() => { Object.assign(b, { x: 100, y: 200, w: 800, h: 200, fontSize: 30, html: '<div>Café\t1,50 €</div><div>Menú del día\t12,75 €</div>', tabs: [{ pos: 500, align: 'decimal' }] }); });
+    await sleep(80);
+    const rich = D.querySelector(`#stage .block[data-id="${b.id}"] .rich`);
+    const spans = rich.querySelectorAll('span.rv-tab'); eq(spans.length, 2, 'cada tabulador, colocado');
+    // Decimal: the commas one under the other, at 500 px from the text's edge.
+    const k = rich.getBoundingClientRect().width / rich.offsetWidth, left = rich.getBoundingClientRect().left + parseFloat(W.getComputedStyle(rich).paddingLeft) * k;
+    const commaX = el => { const t = el.nextSibling; const r = D.createRange(); const i = t.nodeValue.indexOf(','); r.setStart(t, i); r.setEnd(t, i + 1); return (r.getBoundingClientRect().left - left) / k; };
+    assert(Math.abs(commaX(spans[0]) - 500) < 2 && Math.abs(commaX(spans[1]) - 500) < 2, 'decimal: las comas alineadas en su tope: ' + commaX(spans[0]).toFixed(1) + ' / ' + commaX(spans[1]).toFixed(1));
+    eq(b.html, '<div>Café\t1,50 €</div><div>Menú del día\t12,75 €</div>', 'el modelo guarda tabuladores sin más');
+    // Right tab.
+    R.blocks.setTabs(b.id, [{ pos: 600, align: 'right' }]); await sleep(80);
+    const s2 = rich.querySelector('span.rv-tab'), r2 = D.createRange(); r2.selectNodeContents(s2.parentNode); 
+    const end = (r2.getBoundingClientRect().right - left) / k; assert(Math.abs(end - 600) < 2, 'derecha: el texto acaba en su tope: ' + end.toFixed(1));
+    // Editing: the ruler over the text; a click puts a tab there; Tab writes one.
+    R.store.commit(() => { R.state.ui.showRuler = true; }, { history: false });
+    rich.closest('.block').dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); await sleep(30);
+    const ruler = D.getElementById('text-ruler'); assert(ruler, 'la regla del texto aparece');
+    eq(ruler.querySelectorAll('.tr-stop').length, 1, 'con su tabulación');
+    ruler.querySelector('.tr-kind').click(); await sleep(10);     // left → centre
+    const rr = D.getElementById('text-ruler').getBoundingClientRect(), kk = rr.width / D.getElementById('text-ruler').offsetWidth;
+    D.getElementById('text-ruler').dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: rr.left + (6 + 200) * kk, clientY: rr.top + 5 }));
+    await sleep(20);
+    assert(b.tabs.some(s => s.align === 'center' && Math.abs(s.pos - 200) < 6), 'un clic en la regla pone una tabulación centrada: ' + JSON.stringify(b.tabs));
+    const sel = W.getSelection(), rg = D.createRange(); rg.selectNodeContents(rich); rg.collapse(false); sel.removeAllRanges(); sel.addRange(rg);
+    rich.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })); await sleep(20);
+    assert(/12,75 €\t<\/div>$/.test(b.html), 'Tab escribe un tabulador: ' + JSON.stringify(b.html));
+    rich.blur(); await sleep(20); assert(!D.getElementById('text-ruler'), 'la regla se va al dejar de escribir');
+    R.store.commit(() => { R.state.ui.showRuler = false; }, { history: false });
+    // Presentation: laid out there too; PowerPoint: a:tabLst, and back.
+    const html = R.io.buildHTML();
+    assert(/data-tabs="\[\{&quot;pos&quot;:/.test(html) && /white-space:pre-wrap;tab-size:96px/.test(html) && /rv-tab/.test(html), 'en la presentación');
+    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob), xml = await zip.file('ppt/slides/slide1.xml').async('string');
+    assert(/<a:tabLst><a:tab pos="\d+" algn="ctr"\/><a:tab pos="5715000" algn="r"\/><\/a:tabLst>/.test(xml), 'tabulaciones en PowerPoint: ' + (xml.match(/<a:tabLst>.*?<\/a:tabLst>/) || [''])[0]);
+    assert(/Café\t1,50/.test(xml), 'con sus tabuladores');
+    const back = (await R.pptxImport.importPPTX(new W.File([blob], 't.pptx'))).slides[0].blocks.find(x => x.tabs);
+    eq(JSON.stringify(back?.tabs?.map(s => [Math.round(s.pos), s.align])), JSON.stringify(b.tabs.map(s => [Math.round(s.pos), s.align])), 'y vuelven');
+  });
 }

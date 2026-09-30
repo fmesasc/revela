@@ -616,7 +616,10 @@ export async function importPPTX(file) {
       const anchor = body.anchor || (ph?.type === 'ctrTitle' ? 'b' : null);
       const first = t.first || {};
       const font = first.font || fonts[isTitle ? 'major' : 'minor'];
-      blocks.push({ id: uid(), type: 'text', ...box(geo), rotation: Math.round(geo.rot || 0), fontSize: first.size || ctx.pt(levels[0].r.sz || 18),
+      // Tab stops (the first paragraph's that has them): px from the text's edge.
+      const tabs = (all(txBody, 'a:tabLst').find(x => all(x, 'a:tab').length) ? all(all(txBody, 'a:tabLst').find(x => all(x, 'a:tab').length), 'a:tab') : [])
+        .map(x => ({ pos: Math.round(ctx.emu(+x.getAttribute('pos') || 0) * 10) / 10, align: { ctr: 'center', r: 'right', dec: 'decimal' }[x.getAttribute('algn')] || 'left' })).filter(x => x.pos > 0);
+      blocks.push({ id: uid(), type: 'text', ...box(geo), ...(tabs.length && { tabs }), rotation: Math.round(geo.rot || 0), fontSize: first.size || ctx.pt(levels[0].r.sz || 18),
         html: t.html, pad: [ctx.emu(body.t), ctx.emu(body.r), ctx.emu(body.b), ctx.emu(body.l)],
         ...(t.align && { textAlign: t.align }), ...(anchor && { vAlign: { t: 'top', ctr: 'middle', b: 'bottom' }[anchor] }),
         ...(body.vert && { vertical: true }),

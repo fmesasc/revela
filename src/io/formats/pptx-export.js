@@ -55,7 +55,7 @@ export function htmlToRuns(html, base = {}) {
   const endPara = () => { if (runs.length && !runs[runs.length - 1].options.breakLine) runs[runs.length - 1].options.breakLine = true; pending = false; };
   const walk = (n, st, list) => {
     if (n.nodeType === 3) {
-      const text = n.data.replace(/\s+/g, ' '); if (!text.trim() && !pending) return;
+      const text = n.data.replace(/[^\S\t]+/g, ' '); if (!/\S|\t/.test(text) && !pending) return;   // (tabs kept: they go to the tab stops)
       runs.push({ text, options: { ...para, ...st } }); pending = true; return;
     }
     if (n.nodeType !== 1) return;
@@ -486,10 +486,23 @@ async function addMotion(blob, deck) {
       const k = v => Math.round(Math.max(0, v) * 100000);
       xml = xml.slice(0, st) + `<a:srcRect l="${k(c.l)}" t="${k(c.t)}" r="${k(c.r)}" b="${k(c.b)}"/>` + xml.slice(st);
     }
+    // Tab stops of text boxes: each paragraph's a:tabLst (in its pPr, before its defRPr).
+    for (const b of deck.slides[i].blocks.filter(x => x.type === 'text' && x.tabs?.length)) {
+      const at = xml.indexOf(`name="rv-${b.id}"`); if (at < 0) continue;
+      const s0 = xml.indexOf('<p:txBody>', at), s1 = xml.indexOf('</p:txBody>', s0); if (s0 < 0 || s1 < 0) continue;
+      const lst = `<a:tabLst>${b.tabs.map(s => `<a:tab pos="${Math.round(s.pos * 9525)}" algn="${{ center: 'ctr', right: 'r', decimal: 'dec' }[s.align] || 'l'}"/>`).join('')}</a:tabLst>`;
+      const seg = xml.slice(s0, s1).replace(/<a:p>(?:(<a:pPr\b[^>]*?)(\/>|>([\s\S]*?)<\/a:pPr>))?/g, (m, open, close, inner) => {
+        if (!open) return `<a:p><a:pPr>${lst}</a:pPr>`;
+        if (close === '/>') return `<a:p>${open}>${lst}</a:pPr>`;
+        const k = inner.search(/<a:(defRPr|extLst)\b/);
+        return `<a:p>${open}>${k < 0 ? inner + lst : inner.slice(0, k) + lst + inner.slice(k)}</a:pPr>`;
+      });
+      xml = xml.slice(0, s0) + seg + xml.slice(s1);
+    }
     // Objects hidden in the selection pane: hidden in PowerPoint's too.
     const hidden = deck.slides[i].blocks.filter(b => b.hidden && spids.has(b.id));
     for (const b of hidden) xml = xml.replace(`<p:cNvPr id="${spids.get(b.id)}" name="rv-${b.id}"`, m => m + ' hidden="1"');
-    if (!extra) { if (hidden.length || xml.includes('<a:srcRect')) zip.file(`ppt/slides/slide${i + 1}.xml`, xml); continue; }
+    if (!extra) { if (hidden.length || xml.includes('<a:srcRect') || xml.includes('<a:tabLst>')) zip.file(`ppt/slides/slide${i + 1}.xml`, xml); continue; }
     // Schema order: cSld, clrMapOvr, transition, timing, extLst.
     xml = xml.includes('</p:clrMapOvr>') ? xml.replace('</p:clrMapOvr>', '</p:clrMapOvr>' + extra)
       : xml.replace(/(<p:extLst>[\s\S]*<\/p:extLst>)?\s*<\/p:sld>\s*$/, m => extra + m);

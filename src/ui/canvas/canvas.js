@@ -18,7 +18,7 @@ import { cameraRadius } from '../../features/live/media.js';
 import { pollEditorHTML } from '../../features/live/poll.js';
 import { masterBlocksFor, PH_PROMPT, styled, layoutInUse, masterInUse } from '../../features/document/master.js';
 import { stageBackground } from '../../io/formats/html.js';
-import { styleRich, paintWebCard, paintMath, pollSig, renderSlideRef, figIndexHTML, connectorHTML, applyImgStyle, applyModelAttrs, content, hostOf, hasInlineMath, renderInlineMath, paintCode, setupCode, tableSig, fillTable, fileSig, paintFile, setupTable, setupText, setupMath, setupModel, setupEmbed } from './content.js';
+import { styleRich, paintWebCard, paintMath, pollSig, renderSlideRef, figIndexHTML, connectorHTML, applyImgStyle, applyModelAttrs, content, hostOf, hasInlineMath, renderInlineMath, paintCode, setupCode, tableSig, fillTable, fileSig, paintFile, paintTabs, setupTable, setupText, setupMath, setupModel, setupEmbed } from './content.js';
 import { mediaViewCurrent } from './mediaview.js';
 import { addGuideFromRuler, drawPGuides, startMarquee, startDrag, startRotate, startResize } from './interact.js';
 
@@ -276,9 +276,10 @@ function reconcile(b) {
       styleRich(rich, styled(b, currentSlide()));
       if (b.ph) rich.dataset.ph = t(PH_PROMPT[b.ph] || PH_PROMPT.body); else delete rich.dataset.ph;
       // Not editing: show the (math‑rendered) HTML; re‑render only when it changed.
-      if (!el.classList.contains('editing') && rich.dataset.msrc !== (b.html || '')) {
+      if (!el.classList.contains('editing') && (rich.dataset.msrc !== (b.html || '') || rich.dataset.tabsig !== JSON.stringify(b.tabs || []))) {
         rich.innerHTML = b.html || ''; rich.dataset.msrc = b.html || '';
         if (hasInlineMath(b.html)) renderInlineMath(rich);
+        paintTabs(rich, b);
       }
     }
     paintCurve(el, b); paintWrap(el, b);

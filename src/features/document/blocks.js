@@ -229,6 +229,13 @@ export function setCode(props) {
   const b = selectedBlock(); if (!b || b.type !== 'code') return;
   commit(() => Object.assign(b, props));
 }
+// Tab stops of a text box ({ pos: px from the text's left edge, align: left | center | right | decimal }).
+export function setTabs(id, list) {
+  const b = currentSlide().blocks.find(x => x.id === id); if (!b) return;
+  const ok = (list || []).filter(s => s.pos > 0 && ['left', 'center', 'right', 'decimal'].includes(s.align || 'left'))
+    .map(s => ({ pos: Math.round(s.pos * 10) / 10, align: s.align || 'left' })).sort((a, c) => a.pos - c.pos);
+  commit(() => { if (ok.length) b.tabs = ok; else delete b.tabs; });
+}
 // An attached file or PDF (features/content/files.js makes the block).
 export function addFileBlock(b) { insert(b); }
 export function addChart() { insert(chartBlock()); }

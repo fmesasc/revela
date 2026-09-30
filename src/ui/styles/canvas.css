@@ -117,3 +117,11 @@
 .block .file-blk img{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;background:#fff}
 .block .file-badge{position:absolute;right:6px;bottom:6px;display:flex;align-items:center;gap:3px;padding:2px 7px;border-radius:10px;background:#d93025;color:#fff;font:600 12px system-ui,sans-serif;pointer-events:none}
 .block .file-badge .ms{font-size:15px}
+/* Text ruler: over the text being written in, with its tab stops. */
+#text-ruler{position:absolute;height:22px;z-index:40;background:#fdfdfd;border:1px solid #b9bec6;border-radius:3px;box-sizing:border-box;color:#555;font:10px system-ui,sans-serif;cursor:copy;user-select:none}
+#text-ruler .tr-tick{position:absolute;bottom:0;width:1px;height:4px;background:#9aa0a8}
+#text-ruler .tr-tick.big{height:7px}
+#text-ruler b{position:absolute;top:1px;transform:translateX(-50%);font-weight:400}
+#text-ruler .tr-kind{position:absolute;left:-26px;top:-1px;width:22px;height:22px;padding:0;border:1px solid #b9bec6;border-radius:3px;background:#fff;color:#222;font:700 13px/1 system-ui,sans-serif;cursor:pointer}
+#text-ruler .tr-stop{position:absolute;bottom:-1px;transform:translateX(-50%);font:700 13px/1 system-ui,sans-serif;color:#1e2a3a;cursor:ew-resize;padding:0 2px}
+#text-ruler .tr-stop.off{opacity:.3}

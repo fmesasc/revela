@@ -1,6 +1,8 @@
 // What each object shows on the canvas and how it is edited in place: text,
 // equations (KaTeX), code (highlight.js), tables, embeds, 3D models, slide links.
 
+import { showTextRuler, hideTextRuler } from './textruler.js';
+import { tabRuntime } from '../../io/runtime/tabs.js';
 import { sizeText } from '../../features/content/files.js';
 import { fileIconHTML, imgFocus } from '../../render/svg.js';
 import { shortSig } from '../../core/text.js';
@@ -81,6 +83,8 @@ export function styleRich(rich, b) {
   if (!b.wordart) rich.style.color = b.color || '';        // after WordArt, which resets it
   if (!b.wordart) rich.style.fontWeight = b.fontWeight || '';
   rich.style.fontStyle = b.fontStyle || '';
+  rich.style.whiteSpace = /\t/.test(b.html || '') ? 'pre-wrap' : '';      // (tabs: kept, laid out at their stops)
+  rich.style.tabSize = '96px';
   rich.style.columnCount = b.columns > 1 ? b.columns : '';
   rich.style.columnGap = b.columns > 1 ? '32px' : '';
   // Body levels from the master (sizes and bullets per nesting level).
@@ -96,6 +100,41 @@ function fillMediaPlaceholder(b) {
     r.onload = () => fillPlaceholder(b.id, { type: 'image', src: r.result, fit: 'cover', alt: '' }); r.readAsDataURL(f); };
   inp.click();
 }
+// Tab stops: laid out once the text is on the page (it has to be measured).
+let tabs = null;
+export function paintTabs(rich, b) {
+  rich.dataset.tabsig = JSON.stringify(b.tabs || []);
+  if (!/\t/.test(b.html || '')) return;
+  const go = () => { if (rich.isConnected && rich.contentEditable !== 'true') (tabs ||= tabRuntime()).layout(rich, b.tabs || []); };
+  requestAnimationFrame(go); document.fonts?.ready.then(go);          // (again once the fonts have arrived: widths change)
+}
+// While writing: the stops laid out too, the caret kept where it was (by its
+// place in the text, which laying out doesn't change); the model keeps plain tabs.
+// (Chrome wraps a typed tab in its own <span style="white-space:pre">: unwrapped too.)
+const unTab = h => h.replace(/<span class="rv-tab"[^>]*>([^<]*)<\/span>/g, '$1').replace(/<span style="white-space: ?pre;?">(\t+)<\/span>/g, '$1');
+function caretOffset(root) {
+  const sel = getSelection(); if (!sel.rangeCount || !root.contains(sel.anchorNode)) return -1;
+  const r = document.createRange(); r.selectNodeContents(root); r.setEnd(sel.anchorNode, sel.anchorOffset); return r.toString().length;
+}
+function setCaret(root, n) {
+  if (n < 0) return;
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let t;
+  while ((t = w.nextNode())) {
+    if (n <= t.nodeValue.length) {
+      // (at the very end of a tab: just after it, not inside it)
+      if (n === t.nodeValue.length && t.parentNode.classList?.contains('rv-tab')) { const r = document.createRange(); r.setStartAfter(t.parentNode); r.collapse(true); getSelection().removeAllRanges(); getSelection().addRange(r); return; }
+      const r = document.createRange(); r.setStart(t, n); r.collapse(true); getSelection().removeAllRanges(); getSelection().addRange(r); return;
+    }
+    n -= t.nodeValue.length;
+  }
+}
+export function liveTabs(rich, b) {
+  if (!/\t/.test(rich.textContent)) return;
+  const at = caretOffset(rich);
+  (tabs ||= tabRuntime()).layout(rich, b.tabs || []);
+  setCaret(rich, at);
+}
+let tabTimer = 0;
 export function content(b) {
   if (b.type === 'text') {
     const d = document.createElement('div');
@@ -105,6 +144,7 @@ export function content(b) {
     styleRich(d, styled(b, currentSlide()));
     d.innerHTML = b.html || ''; d.dataset.msrc = b.html || '';
     if (hasInlineMath(b.html)) renderInlineMath(d);
+    paintTabs(d, b);
     return d;
   }
   if (b.type === 'model') {
@@ -355,27 +395,35 @@ export function setupText(b, el) {
     // Show the raw source (with $…$) while editing, not the rendered math.
     if (rich.dataset.msrc !== undefined) { rich.innerHTML = b.html || ''; rich.dataset.msrc = ''; }
     rich.contentEditable = 'true'; rich.focus(); el.classList.add('editing');
+    showTextRuler(el, b); liveTabs(rich, b);
   });
   rich.addEventListener('input', e => {             // no re-render: keep the caret
     if (e.inputType === 'insertText') autocorrectAtCaret(rich);
-    b.html = rich.innerHTML;
+    b.html = unTab(rich.innerHTML);
+    if (/\t/.test(b.html)) { clearTimeout(tabTimer); tabTimer = setTimeout(() => liveTabs(rich, b), 150); }
     // "Shrink text on overflow": reduce the size while it doesn't fit.
     if (b.shrink && (rich.scrollHeight > rich.clientHeight + 1)) { b.fontSize = fitFontSize(b, true); rich.style.fontSize = b.fontSize + 'px'; }
     if (b.ph && isEmptyPlaceholder(b)) b.html = '';   // back to the prompt when emptied
   });
-  // Tab / Shift+Tab inside a list: nest / un-nest the item (bullet levels).
+  // Tab / Shift+Tab inside a list: nest / un-nest the item (bullet levels);
+  // elsewhere, Tab writes a tab (to the next tab stop, as in PowerPoint).
   rich.addEventListener('keydown', e => {
     if (e.key !== 'Tab') return;
     const sel = window.getSelection();
     const li = sel && sel.anchorNode && (sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement)?.closest('li');
-    if (!li || !rich.contains(li)) return;
+    if (!li || !rich.contains(li)) {
+      if (e.shiftKey) return;
+      e.preventDefault(); rich.style.whiteSpace = 'pre-wrap';
+      document.execCommand('insertText', false, '\t'); b.html = unTab(rich.innerHTML); liveTabs(rich, b);
+      return;
+    }
     e.preventDefault();
     document.execCommand(e.shiftKey ? 'outdent' : 'indent');
     b.html = rich.innerHTML;
   });
   rich.addEventListener('blur', () => {
-    rich.contentEditable = 'false'; el.classList.remove('editing');
-    commit(() => { b.html = rich.innerHTML; });   // what was typed is one undo step
+    rich.contentEditable = 'false'; el.classList.remove('editing'); hideTextRuler();
+    commit(() => { b.html = unTab(rich.innerHTML); });   // what was typed is one undo step
   });
 }
 // An equation is edited in the equation editor: double-click opens it.
