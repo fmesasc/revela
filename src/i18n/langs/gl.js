@@ -2144,4 +2144,10 @@ export default {
   "Pantalla en blanco": "Pantalla en branco",
   "Terminar la presentación": "Rematar a presentación",
   "Vista previa de la transición": "Vista previa da transición",
+  "Al entrar": "Ao entrar",
+  "Desde la anterior": "Desde a anterior",
+  "Llega": "Chega",
+  "Encuadre": "Encadre",
+  "Margen": "Marxe",
+  "Vínculo y descripción": "Ligazón e descrición",
 };

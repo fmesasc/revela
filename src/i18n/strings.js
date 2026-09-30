@@ -2163,5 +2163,11 @@ export const ROWS = [
   ['Pantalla en blanco', 'White screen', 'Écran blanc', 'Weißer Bildschirm', 'Schermo bianco', 'Ecrã branco', 'Pantalla en blanc'],
   ['Terminar la presentación', 'End the show', 'Terminer la présentation', 'Präsentation beenden', 'Termina la presentazione', 'Terminar a apresentação', 'Acaba la presentació'],
   ['Vista previa de la transición', 'Transition preview', 'Aperçu de la transition', 'Vorschau des Übergangs', 'Anteprima della transizione', 'Pré-visualização da transição', 'Previsualització de la transició'],
+  ['Al entrar', 'On entering', 'À l\'entrée', 'Beim Erscheinen', 'All\'ingresso', 'Ao entrar', 'En entrar'],
+  ['Desde la anterior', 'From the previous slide', 'Depuis la précédente', 'Von der vorigen', 'Dalla precedente', 'Do anterior', 'Des de l\'anterior'],
+  ['Llega', 'Arrives', 'Arrive', 'Kommt an', 'Arriva', 'Chega', 'Arriba'],
+  ['Encuadre', 'Framing', 'Cadrage', 'Bildausschnitt', 'Inquadratura', 'Enquadramento', 'Enquadrament'],
+  ['Margen', 'Margin', 'Marge', 'Rand', 'Margine', 'Margem', 'Marge'],
+  ['Vínculo y descripción', 'Link and description', 'Lien et description', 'Link und Beschreibung', 'Collegamento e descrizione', 'Ligação e descrição', 'Enllaç i descripció'],
 ];
 // Additional languages (partial; anything missing falls back to Spanish).

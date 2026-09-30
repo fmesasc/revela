@@ -2144,4 +2144,10 @@ export default {
   "Pantalla en blanco": "Wit scherm",
   "Terminar la presentación": "Presentatie beëindigen",
   "Vista previa de la transición": "Voorbeeld van de overgang",
+  "Al entrar": "Bij binnenkomst",
+  "Desde la anterior": "Vanaf de vorige",
+  "Llega": "Komt aan",
+  "Encuadre": "Kadrering",
+  "Margen": "Marge",
+  "Vínculo y descripción": "Link en beschrijving",
 };

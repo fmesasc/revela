@@ -2144,4 +2144,10 @@ export default {
   "Pantalla en blanco": "شاشة بيضاء",
   "Terminar la presentación": "إنهاء العرض",
   "Vista previa de la transición": "معاينة الانتقال",
+  "Al entrar": "عند الدخول",
+  "Desde la anterior": "من السابقة",
+  "Llega": "يصل",
+  "Encuadre": "الإطار",
+  "Margen": "الهامش",
+  "Vínculo y descripción": "الرابط والوصف",
 };

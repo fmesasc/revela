@@ -97,11 +97,12 @@ function groupsFor(b) {
         if (v) x.walk = { end: '', endOnce: true, face: true, look: true, ...x.walk, clip: v }; else delete x.walk; })],
         btn('play_circle', 'Probar', () => playAnimations())]],
       ['Vista', [['select', 'Cámara', VIEWS_3D, b.view || '', v => set(b, x => { if (v) x.view = v; else delete x.view; })],
-        ['select', 'Al llegar a la diapositiva', MOTIONS_3D, b.motion || 'none', v => set(b, x => { if (v !== 'none') x.motion = v; else delete x.motion; })],
-        // (So that a hand waving or a jump is not cut by the frame.)
-        ['select', 'Margen para moverse', BLEEDS_3D, String(b.bleed != null ? Math.max(1, Math.min(3, +b.bleed || 1)) : modelBleed({ ...b, edge: '' })), v => set(b, x => { x.bleed = +v; })],
-        ['select', 'Bordes', EDGES_3D, b.edge || 'hard', v => set(b, x => { if (v !== 'hard') x.edge = v; else delete x.edge; })],
-        ['select', 'Si viene de la diapositiva anterior', ARRIVALS_3D, b.arrive || 'keep', v => set(b, x => { if (v !== 'keep') x.arrive = v; else delete x.arrive; })]]],
+        ['select', 'Al entrar', MOTIONS_3D, b.motion || 'none', v => set(b, x => { if (v !== 'none') x.motion = v; else delete x.motion; })]]],
+      // (When the same model was on the slide before: Morph, or the same file.)
+      ['Desde la anterior', [['select', 'Llega', ARRIVALS_3D, b.arrive || 'keep', v => set(b, x => { if (v !== 'keep') x.arrive = v; else delete x.arrive; })]]],
+      // (So that a hand waving or a jump is not cut by the frame.)
+      ['Encuadre', [['select', 'Margen', BLEEDS_3D, String(b.bleed != null ? Math.max(1, Math.min(3, +b.bleed || 1)) : modelBleed({ ...b, edge: '' })), v => set(b, x => { x.bleed = +v; })],
+        ['select', 'Bordes', EDGES_3D, b.edge || 'hard', v => set(b, x => { if (v !== 'hard') x.edge = v; else delete x.edge; })]]],
       ['Esqueleto', [btn('accessibility_new', 'Esqueleto automático', () => openAutoRig(b))]],
       ['Archivo', [btn('download', 'Descargar (.glb)', () => saveFile(b)), btn('swap_horiz', 'Reemplazar', () => replaceModel(b))]]);
   } else if (b.type === 'video') G.push(
@@ -194,8 +195,9 @@ function groupsFor(b) {
   const n = animsOf(b).length;
   G.push(['Animaciones', [btn('add_circle', n ? `${t('Añadir animación')} (${n})` : 'Añadir animación', () => openAddAnimation(document.querySelector('#ribbon [data-page="ctx"] [data-ctx="add"]')), false, 'add'),
     btn('gesture', n ? 'Añadir movimiento' : 'Dibujar recorrido', () => startPathDraw({ append: true })), btn('tune', 'Panel', () => openAnimPanel())]]);
-  if (!['text', 'connector'].includes(b.type)) G.push(['Vínculo', [btn('link', b.href || b.goto ? 'Cambiar vínculo' : 'Vínculo', () => openObjectLink(b), !!(b.href || b.goto))]]);
-  G.push(['Accesibilidad', [btn('accessibility', 'Texto alternativo', () => openAlt(b)), ...(!['text', 'connector', 'figindex', 'slideref'].includes(b.type) ? [btn('short_text', b.caption ? 'Editar descripción' : 'Descripción', () => openCaption(b))] : [])]]);
+  // (The link with the alt text and description: one group, not a column for a single button.)
+  G.push(['Vínculo y descripción', [...(!['text', 'connector'].includes(b.type) ? [btn('link', b.href || b.goto ? 'Cambiar vínculo' : 'Vínculo', () => openObjectLink(b), !!(b.href || b.goto))] : []),
+    btn('accessibility', 'Texto alternativo', () => openAlt(b)), ...(!['text', 'connector', 'figindex', 'slideref'].includes(b.type) ? [btn('short_text', b.caption ? 'Editar descripción' : 'Descripción', () => openCaption(b))] : [])]]);
   G.push(arrange(b));
   return G;
 }

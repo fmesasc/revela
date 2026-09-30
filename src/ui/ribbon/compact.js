@@ -12,7 +12,18 @@ export function compactGroups(page) {
     g.dataset.compact = '1';
     const rows = g.querySelectorAll(':scope > .row'); if (rows.length !== 1) continue;
     const row = rows[0], items = [...row.children].filter(el => !el.matches(SKIP) && el.offsetParent);
-    if (items.length < 3 || items.some(el => el.matches('.lg'))) continue;
+    if (items.some(el => el.matches('.lg'))) continue;
+    // Labelled lists and numbers (the object tabs): the label beside each one, and
+    // them two by two in aligned columns, as in a form.
+    const fields = items.filter(el => el.matches('.ctx-field')).length;
+    if (fields) g.classList.add('inline-labels');
+    if (fields >= 2 && fields * 2 >= items.length) {
+      g.classList.add('grid2');
+      const tall = Math.max(...items.map(el => el.offsetHeight));
+      if (tall * 2 + 6 > row.clientHeight) g.classList.remove('grid2');
+      continue;
+    }
+    if (items.length < 3) continue;
     // Buttons with a label under the icon: the label beside it (PowerPoint's small buttons).
     const labelled = items.filter(el => el.matches('button') && el.querySelector('span'));
     const saved = labelled.map(el => [el.querySelector('span'), el.querySelector('span').innerHTML]);

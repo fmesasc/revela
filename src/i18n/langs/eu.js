@@ -2144,4 +2144,10 @@ export default {
   "Pantalla en blanco": "Pantaila zuria",
   "Terminar la presentación": "Amaitu aurkezpena",
   "Vista previa de la transición": "Trantsizioaren aurrebista",
+  "Al entrar": "Sartzean",
+  "Desde la anterior": "Aurrekotik",
+  "Llega": "Iristen da",
+  "Encuadre": "Enkoadraketa",
+  "Margen": "Marjina",
+  "Vínculo y descripción": "Esteka eta deskribapena",
 };

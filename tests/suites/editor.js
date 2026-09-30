@@ -484,6 +484,13 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const g = D.querySelector('[data-action="design-ideas"]').closest('.group');
     assert(g.classList.contains('inline-labels') && g.querySelectorAll(':scope > .row').length === 2, 'botones con texto: el texto al lado del icono, en dos filas');
     assert(D.querySelector('[data-tab="insert"]') && (D.querySelector('[data-tab="insert"]').click(), await sleep(50), !D.querySelector('[data-page="insert"] .group.two-rows .lg')), 'los botones grandes no se tocan');
+    // The object tabs: labelled lists with the label beside, two by two
+    R.store.commit(() => { slide().blocks.push({ id: 'm3', type: 'model', src: 'data:model/gltf-binary;base64,Z2xURg==', x: 100, y: 100, w: 300, h: 200, rotation: 0, animation: null }); R.state.ui.selection = 'm3'; R.state.ui.multi = ['m3']; });
+    await sleep(50); D.querySelector('[data-tab="ctx"]').click(); await sleep(80);
+    const cam = [...D.querySelectorAll('[data-page="ctx"] .ctx-field')].find(f => /Cámara/.test(f.textContent));
+    assert(cam && cam.closest('.group').classList.contains('grid2'), 'desplegables de dos en dos');
+    const sp = cam.querySelector('span').getBoundingClientRect(), se = cam.querySelector('select').getBoundingClientRect();
+    assert(sp.right <= se.left + 1 && Math.abs((sp.top + sp.bottom) / 2 - (se.top + se.bottom) / 2) < 8, 'con la etiqueta al lado');
     D.querySelector('[data-tab="home"]').click();
   });
 }
