@@ -1,0 +1,6 @@
+# Cloudflare Pages: security headers for every page of revelaslides.com.
+# (No X-Frame-Options: shared presentations may be embedded in other sites, such as Moodle.)
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains

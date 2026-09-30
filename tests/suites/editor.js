@@ -414,4 +414,10 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(rich()?.isContentEditable, 'Intro: también'); rich().blur();
   });
 
+
+  await test('edición abierta: botón «Versión premium» que lleva a los planes de revelaslides.com', async () => {
+    const a = D.getElementById('premium');
+    assert(a && !a.hidden, 'visible en la edición abierta'); eq(a.getAttribute('href'), 'https://revelaslides.com/precios');
+    eq(a.getAttribute('target'), '_blank'); eq(D.body.dataset.edition, 'open');
+  });
 }

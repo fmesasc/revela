@@ -430,6 +430,8 @@ export default {
   "Dona": "دائري مجوف",
   "Dispersión": "مبعثر",
   "Radar": "رادار",
+  "Versión premium": "النسخة المميزة",
+  "Revela en revelaslides.com: IA incluida, sin claves, y más funciones": "Revela على revelaslides.com: ذكاء اصطناعي مضمّن، بلا مفاتيح، ومزايا أكثر",
   "Diagrama": "مخطط",
   "Listas, procesos, ciclos, organigramas, Venn, matrices, pirámides…": "قوائم وعمليات ودورات ومخططات تنظيمية وفن ومصفوفات وأهرامات…",
   "Relación": "علاقة",

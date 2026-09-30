@@ -418,6 +418,8 @@ export default {
   "Dona": "Rosca",
   "Dispersión": "Dispersión",
   "Radar": "Radar",
+  "Versión premium": "Versión premium",
+  "Revela en revelaslides.com: IA incluida, sin claves, y más funciones": "Revela en revelaslides.com: IA incluída, sen claves, e máis funcións",
   "Diagrama": "Diagrama",
   "Listas, procesos, ciclos, organigramas, Venn, matrices, pirámides…": "Listas, procesos, ciclos, organigramas, Venn, matrices, pirámides…",
   "Relación": "Relación",

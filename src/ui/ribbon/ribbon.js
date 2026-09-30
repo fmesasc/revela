@@ -15,7 +15,7 @@ import * as master from '../../features/document/master.js';
 import * as clip from '../../features/document/clipboard.js';
 import { autocorrectOn } from '../../features/document/autocorrect.js';
 import { aiRewrite } from '../dialogs/ai.js';
-import { DONATE_URL } from '../../core/config.js';
+import { DONATE_URL, EDITION, OFFICIAL_SITE } from '../../core/config.js';
 import { canvasOn } from '../../features/design/canvasmode.js';
 import { canvasViewOpen } from '../shell/canvasview.js';
 import { editAnyway } from '../dialogs/signature.js';
@@ -87,6 +87,10 @@ export function initRibbon() {
   document.getElementById('ap-btn')?.addEventListener('click', () => openAppearance());
   const don = document.getElementById('donate');
   if (don && DONATE_URL) { don.href = DONATE_URL; don.hidden = false; }
+  // The open edition points to the official one's plans (the official one shows the account instead).
+  const pre = document.getElementById('premium');
+  if (pre && EDITION === 'open') { pre.href = OFFICIAL_SITE + '/precios'; pre.hidden = false; }
+  document.body.dataset.edition = EDITION;
   document.getElementById('final-banner')?.addEventListener('click', e => {
     if (e.target.closest('[data-action="mark-final"]')) editAnyway();
   });

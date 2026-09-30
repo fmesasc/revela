@@ -211,6 +211,51 @@ def e2e_checks(send, recv, port):
     return fails
 
 
+def site_checks(send, recv):
+    """The official site as Cloudflare Pages publishes it (tools/build-site.mjs):
+    home, plans and support at the top, the app in /app/ as the official edition,
+    working like the open one."""
+    if not shutil.which('node'): return []
+    out = tempfile.mkdtemp(prefix='revela-site-')
+    subprocess.run(['node', os.path.join(ROOT, 'tools', 'build-site.mjs'), out], check=True, stdout=subprocess.DEVNULL)
+
+    class Site(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *a, **k): super().__init__(*a, directory=out, **k)
+        def log_message(self, *a): pass
+    srv = socketserver.TCPServer(('127.0.0.1', 0), Site); port = srv.server_address[1]
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    fails = []
+    def check(ok, name):
+        if not ok: fails.append('✗ web: ' + name)
+    try:
+        tid = recv(send('Target.createTarget', url='about:blank'))['result']['targetId']
+        sid = recv(send('Target.attachToTarget', targetId=tid, flatten=True))['result']['sessionId']
+        ev = lambda e: recv(send('Runtime.evaluate', sid, expression=e, awaitPromise=True, returnByValue=True)).get('result', {}).get('result', {}).get('value')
+        # The home page: its pictures load, its own links lead somewhere (Pages serves /precios as precios.html).
+        recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/index.html')); time.sleep(1.5)
+        check('Revela' in (ev('document.title') or ''), 'portada')
+        # (Pictures further down load when scrolled to: those are checked by fetching them.)
+        check(ev("Promise.all([...document.images].map(i=>i.loading==='lazy'?fetch(i.src).then(r=>r.ok):i.complete&&i.naturalWidth>0)).then(a=>a.every(Boolean))"), 'las imágenes de la portada cargan')
+        bad = ev("""(async()=>{const hrefs=[...new Set([...document.querySelectorAll('a[href]')].map(a=>a.getAttribute('href')).filter(h=>!/^(https?:|#|mailto:)/.test(h)).map(h=>h.split('#')[0]).filter(Boolean))];
+          const bad=[];for(const h of hrefs){const u=/[.\/]$/.test(h)||/\.html$/.test(h)?h:h+'.html';const r=await fetch(u);if(!r.ok)bad.push(h);}return bad.join(',')})()""")
+        check(bad == '', 'enlaces rotos en la portada: ' + str(bad))
+        for page in ('precios.html', 'soporte.html', 'privacy.html', 'terms.html'):
+            check(ev(f"fetch('{page}').then(r=>r.ok)"), 'página ' + page)
+        # The app in /app/: the official edition, and working.
+        recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/app/index.html?test')); time.sleep(3)
+        check(ev("!!window.__revela"), 'la aplicación arranca en /app/')
+        check(ev("document.body.dataset.edition") == 'cloud', 'edición oficial en /app/')
+        check(ev("document.getElementById('premium').hidden"), 'sin el botón «Versión premium» en la edición oficial')
+        n = ev("(()=>{const R=window.__revela;R.store.replaceDeck(R.model.emptyDeck());R.slides.addSlide('blank');return R.state.deck.slides.length})()")
+        check(n == 2, 'añadir una diapositiva en /app/')
+        check((ev("window.__revela.io.buildHTML().length") or 0) > 5000, 'exportar la presentación en /app/')
+        check(ev("fetch('sw.js').then(r=>r.ok)") and ev("fetch('auth.html').then(r=>r.ok)"), 'archivos de la aplicación en /app/')
+        recv(send('Target.closeTarget', targetId=tid))
+    finally:
+        srv.shutdown(); shutil.rmtree(out, ignore_errors=True)
+    return fails
+
+
 def main():
     chrome = next((shutil.which(c) for c in ('google-chrome', 'chromium', 'chromium-browser') if shutil.which(c)), None)
     if not chrome:
@@ -285,6 +330,10 @@ def main():
         if math_fail:
             print('REVELATEST FAIL ecuación'); print('\n'.join(math_fail)); return 1
         if out.startswith('REVELATEST PASS'): out += ' + ecuación'
+        site_fail = site_checks(send, recv) if out.startswith('REVELATEST PASS') else []
+        if site_fail:
+            print('REVELATEST FAIL web'); print('\n'.join(site_fail)); return 1
+        if out.startswith('REVELATEST PASS') and shutil.which('node'): out += ' + web'
         if out.startswith('REVELATEST PASS') and '--e2e' in sys.argv:
             e2e_fail = e2e_checks(send, recv, port)
             if e2e_fail: print('REVELATEST FAIL e2e'); print('\n'.join(e2e_fail)); return 1

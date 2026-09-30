@@ -66,8 +66,7 @@ jobs:
       - name: Web app into the bundle
         shell: bash
         run: |
-          mkdir -p desktop/dist
-          cp -r index.html remote.html view.html vote.html privacy.html terms.html legal.css manifest.webmanifest sw.js icons assets src desktop/dist/
+          node tools/build-site.mjs desktop/dist --app-only
       - name: Icons
         working-directory: desktop/src-tauri
         run: npx --yes @tauri-apps/cli@2 icon ../../icons/icon-512.png

@@ -418,6 +418,8 @@ export default {
   "Dona": "Ring",
   "Dispersión": "Spreiding",
   "Radar": "Radar",
+  "Versión premium": "Premiumversie",
+  "Revela en revelaslides.com: IA incluida, sin claves, y más funciones": "Revela op revelaslides.com: AI inbegrepen, geen sleutels, meer functies",
   "Diagrama": "Diagram",
   "Listas, procesos, ciclos, organigramas, Venn, matrices, pirámides…": "Lijsten, processen, cycli, organigrammen, Venn, matrices, piramides…",
   "Relación": "Relatie",

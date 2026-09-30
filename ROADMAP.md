@@ -233,3 +233,4 @@ the origin of every requirement is traceable.
 - ✅ Desktop application ([Tauri](https://tauri.app/)): Windows, macOS and Linux installers built on every change and published in the releases `PP·OO`
 - ✅ Offline mode & installable app (service worker + manifest; works offline after one online visit) `PP·GS·OO`
 - ✅ Autosave to Google Drive and multi-device sync: saves a few seconds after each change, brings a newer version from another device, and asks when both changed `PP·GS`
+- ✅ Official site (revelaslides.com: home, plans, support; the app in `/app/`) built from the same repository (`tools/build-site.mjs`, Cloudflare Pages); the open edition links to it `—`

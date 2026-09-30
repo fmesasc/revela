@@ -430,6 +430,8 @@ export default {
   "Dona": "Erroskila",
   "Dispersión": "Sakabanaketa",
   "Radar": "Radarra",
+  "Versión premium": "Premium bertsioa",
+  "Revela en revelaslides.com: IA incluida, sin claves, y más funciones": "Revela revelaslides.com-en: AA barne, gakorik gabe, eta funtzio gehiago",
   "Diagrama": "Diagrama",
   "Listas, procesos, ciclos, organigramas, Venn, matrices, pirámides…": "Zerrendak, prozesuak, zikloak, organigramak, Venn, matrizeak, piramideak…",
   "Relación": "Harremana",

@@ -1,5 +1,12 @@
 // Project settings that aren't part of any deck.
 
+// Two editions from the same code: the open one (GitHub Pages, and any copy)
+// and the official one at revelaslides.com/app/, which tools/build-site.mjs
+// marks with <meta name="revela-edition" content="cloud">. The open edition
+// shows a link to the official one's plans; the official one, the account.
+export const OFFICIAL_SITE = 'https://revelaslides.com';
+export const EDITION = globalThis.document?.querySelector?.('meta[name="revela-edition"]')?.content === 'cloud' ? 'cloud' : 'open';
+
 // Donations link (PayPal.me, Ko-fi, GitHub Sponsors…). Empty = no button.
 export const DONATE_URL = 'https://paypal.me/fmesasc';
 

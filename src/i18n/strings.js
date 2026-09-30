@@ -429,6 +429,8 @@ export const ROWS = [
   ['Dona', 'Doughnut', 'Anneau', 'Ring', 'Ciambella', 'Rosca', 'Rosco'],
   ['Dispersión', 'Scatter', 'Nuage de points', 'Punktdiagramm', 'Dispersione', 'Dispersão', 'Dispersió'],
   ['Radar', 'Radar', 'Radar', 'Netz', 'Radar', 'Radar', 'Radar'],
+  ['Versión premium', 'Premium version', 'Version premium', 'Premium-Version', 'Versione premium', 'Versão premium', 'Versió prèmium'],
+  ['Revela en revelaslides.com: IA incluida, sin claves, y más funciones', 'Revela at revelaslides.com: AI included, no keys, and more features', 'Revela sur revelaslides.com : IA incluse, sans clés, et plus de fonctions', 'Revela auf revelaslides.com: KI inklusive, ohne Schlüssel, mehr Funktionen', 'Revela su revelaslides.com: IA inclusa, senza chiavi, e più funzioni', 'Revela em revelaslides.com: IA incluída, sem chaves, e mais funções', 'Revela a revelaslides.com: IA inclosa, sense claus, i més funcions'],
   ['Diagrama', 'Diagram', 'Diagramme', 'Diagramm', 'Diagramma', 'Diagrama', 'Diagrama'],
   ['Listas, procesos, ciclos, organigramas, Venn, matrices, pirámides…', 'Lists, processes, cycles, org charts, Venn, matrices, pyramids…', 'Listes, processus, cycles, organigrammes, Venn, matrices, pyramides…', 'Listen, Prozesse, Zyklen, Organigramme, Venn, Matrizen, Pyramiden…', 'Elenchi, processi, cicli, organigrammi, Venn, matrici, piramidi…', 'Listas, processos, ciclos, organogramas, Venn, matrizes, pirâmides…', 'Llistes, processos, cicles, organigrames, Venn, matrius, piràmides…'],
   ['Relación', 'Relationship', 'Relation', 'Beziehung', 'Relazione', 'Relação', 'Relació'],

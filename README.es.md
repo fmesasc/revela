@@ -5,7 +5,7 @@
 **Editor visual de presentaciones interactivas con 3D en vivo, construido sobre
 [reveal.js](https://revealjs.com/).**
 
-[English](README.md) · [Español](README.es.md) · [Demo](https://fmesasc.github.io/revela/) · [App de escritorio](https://github.com/fmesasc/revela/releases/latest) · [Hoja de ruta](ROADMAP.md)
+[English](README.md) · [Español](README.es.md) · [Web oficial](https://revelaslides.com) · [Demo](https://fmesasc.github.io/revela/) · [App de escritorio](https://github.com/fmesasc/revela/releases/latest) · [Hoja de ruta](ROADMAP.md)
 
 </div>
 
@@ -132,6 +132,23 @@ src/
 ```
 
 Más detalles en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Ediciones y web oficial
+
+El mismo código se publica dos veces, sin proyectos duplicados:
+
+- **Edición abierta** — [fmesasc.github.io/revela](https://fmesasc.github.io/revela/): el repositorio tal
+  cual, gratis, con IA mediante tu propia clave de OpenRouter.
+- **Web oficial** — [revelaslides.com](https://revelaslides.com): las páginas de `site/` (portada, precios,
+  soporte) y la aplicación en `/app/`, montadas con `node tools/build-site.mjs` (Cloudflare Pages). Allí la
+  aplicación va marcada como edición oficial; las funciones de pago dependen de su servidor, que comprueba
+  por sí mismo cuentas, planes y créditos (los secretos nunca van en este repositorio).
+
+## Marca
+
+El código tiene licencia MIT, pero el nombre **Revela**, su logotipo y el dominio **revelaslides.com**
+identifican el proyecto oficial. Las copias y derivados son bienvenidos con otro nombre; por favor, no los
+presentes como el Revela oficial.
 
 ## Contribuir
 

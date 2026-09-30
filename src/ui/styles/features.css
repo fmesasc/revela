@@ -113,6 +113,9 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .titlebar .donate{display:inline-flex;align-items:center;gap:4px;margin-inline-end:10px;padding:3px 10px;border-radius:14px;
   border:1px solid #e0587a;color:#c0305a;text-decoration:none;font-size:13px}
 .titlebar .donate:hover{background:#fdecf1}
+.titlebar .premium{display:inline-flex;align-items:center;gap:4px;margin-inline-end:8px;padding:3px 10px;border-radius:14px;text-decoration:none;font-size:13px;font-weight:600;color:#fff;background:linear-gradient(90deg,#6d5dfc,#3f6497);white-space:nowrap}
+.titlebar .premium:hover{filter:brightness(1.1)}
+.titlebar .premium .ms{font-size:17px}
 /* Version history */
 .vs-list{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;max-height:55vh;overflow:auto}
 .vs-item{display:flex;align-items:center;gap:6px;border:1px solid var(--line2);border-radius:8px;padding:6px 8px}
@@ -148,6 +151,13 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
   .titlebar .grow{flex:0 0 0}
   .titlebar .donate{padding:3px 7px;margin-inline-end:4px}
   .titlebar .donate span{display:none}             /* heart only */
+  .titlebar .premium span{display:none}
+  .titlebar .premium{padding:3px 6px;margin-inline-end:4px}
+}
+@media (max-width:600px){
+  .titlebar .premium{display:none}                 /* no room on a phone held upright */
+}
+@media (max-width:860px){
   .lang-select{max-width:92px;flex-shrink:0}
   .qat [data-action="save"]{display:none}       /* also in File; frees room on phones */
   #comments-panel{width:auto;max-height:45vh;border-inline-start:none;border-top:1px solid var(--line2)}
