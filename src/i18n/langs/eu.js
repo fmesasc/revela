@@ -2035,4 +2035,5 @@ export default {
   "Sin apodo": "Ezizenik gabe",
   "alumnos": "ikasle",
   "Descargar CSV": "Deskargatu CSV",
+  "Más ideas con IA": "Ideia gehiago AArekin",
 };

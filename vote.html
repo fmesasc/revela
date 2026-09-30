@@ -30,6 +30,8 @@
     .quiz-res{text-align:center;padding:18px;border-radius:12px;font-size:20px;margin-top:12px}.quiz-res b{display:block;font-size:34px}
     #slide-view{position:relative;border-radius:10px;overflow:hidden;background:#000}#slide-view iframe{border:0;transform-origin:0 0;display:block}
     #slide-n{position:absolute;right:8px;bottom:6px;font-size:12px;color:#fff;background:#0008;border-radius:8px;padding:1px 6px}
+    #cc{position:sticky;bottom:0;background:#000d;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;order:99}
+    #cc-text{font-size:20px;line-height:1.35;min-height:1.35em}#cc-text i{opacity:.6;font-style:normal}#cc label{font-size:13px;color:var(--txt2)}#cc select{font-size:14px;padding:4px 8px}#cc-note{color:var(--txt2)}
     .act-row{display:flex;gap:8px;align-items:center;background:var(--panel);border:2px solid var(--line);border-radius:10px;padding:8px 10px}
     .act-row span{flex:1}.act-row button{min-width:44px;padding:8px}
     select{font-size:17px;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--txt);color-scheme:dark}.act-row select{flex:1;max-width:62%}
@@ -48,6 +50,11 @@
   <header><b>Revela</b> <span>· Votar</span><span id="status">Sin conectar</span></header>
   <main>
     <div id="slide-view" hidden><iframe title="Diapositiva" sandbox="" scrolling="no"></iframe><small id="slide-n"></small></div>
+    <div id="cc" hidden><div id="cc-text" aria-live="polite"></div>
+      <label>Subtítulos: <select id="cc-lang"><option value="">Original</option><option value="es">Español</option><option value="en">English</option><option value="fr">Français</option>
+        <option value="de">Deutsch</option><option value="it">Italiano</option><option value="pt">Português</option><option value="ca">Català</option><option value="gl">Galego</option>
+        <option value="eu">Euskara</option><option value="nl">Nederlands</option><option value="ar">العربية</option><option value="uk">Українська</option><option value="ro">Română</option><option value="zh">中文</option></select></label>
+      <small id="cc-note"></small></div>
     <section id="join">
       <h1>Introduce el código</h1>
       <p>Aparece en la pantalla de la presentación, junto al QR.</p><br>

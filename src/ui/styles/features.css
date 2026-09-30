@@ -547,3 +547,4 @@ body:not([data-edition="cloud"]):not([data-edition="desktop"]) .accounts-only{di
 .cr-wrap{max-height:55vh;overflow:auto;margin:6px 0 12px;border:1px solid var(--line);border-radius:8px}
 .cr-table{border-collapse:collapse;width:100%;font-size:13px}.cr-table th,.cr-table td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:center}
 .cr-table th:first-child,.cr-table td:first-child{text-align:start}.cr-table thead th{position:sticky;top:0;background:var(--ribbon)}
+.gal-ai .gal-ai-in{display:grid;place-items:center;background:var(--accent-bg);aspect-ratio:var(--ar);border:1px dashed var(--accent)}.gal-ai .gal-ai-in .ms{font-size:34px;color:var(--accent)}

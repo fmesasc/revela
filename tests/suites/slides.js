@@ -307,7 +307,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const ideas = R.designer.designIdeas();
     eq(ideas.map(i => i.name).join('|'), 'Clásica|Visual a la derecha|Visual a la izquierda|Visual de fondo|Centrada', 'cinco ideas');
     D.querySelector('[data-action="design-ideas"]').click(); await sleep(20);
-    eq(D.querySelectorAll('#ideas-modal .gal-item').length, 5, 'miniaturas de las ideas');
+    eq(D.querySelectorAll('#ideas-modal .gal-item:not(.gal-ai)').length, 5, 'miniaturas de las ideas'); assert(D.querySelector('#ideas-modal .gal-ai'), 'y «más ideas con IA»');
     D.querySelectorAll('#ideas-modal .gal-item')[1].click(); await sleep(10);
     assert(img.x >= 640 || slide().blocks.find(b => b.id === img.id).x >= 640, 'imagen a la derecha');
     R.designer.applyIdea(R.designer.designIdeas()[3]); await sleep(10);

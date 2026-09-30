@@ -199,6 +199,55 @@ export async function improveSlide(slide = currentSlide()) {
   return spec.kind;
 }
 
+// Design ideas by the AI (PowerPoint Designer's "more ideas"): three new
+// arrangements of what the slide already has — the same objects, moved,
+// resized, aligned; texts may get a size, an alignment and a backing colour.
+// Checked here: only this slide's objects, inside the slide, pictures keep
+// their proportions. Same shape as features/design/designer.js ideas.
+const HEX = /^#[0-9a-f]{6}([0-9a-f]{2})?$/i;
+export function checkIdeas(raw, slide, W = 1280, H = 720) {
+  const byId = new Map(slide.blocks.map(b => [b.id, b])), num = (v, lo, hi) => (Number.isFinite(+v) ? Math.max(lo, Math.min(hi, Math.round(+v))) : null);
+  return (Array.isArray(raw?.ideas) ? raw.ideas : []).slice(0, 4).map(idea => {
+    const changes = {};
+    for (const [id, c] of Object.entries(idea?.blocks || {})) {
+      const b = byId.get(id); if (!b || !c || typeof c !== 'object') continue;
+      const w = num(c.w, 20, W), h = num(c.h, 20, H), x = num(c.x, 0, W - 20), y = num(c.y, 0, H - 20); if ([w, h, x, y].includes(null)) continue;
+      const ch = { x: Math.min(x, W - w), y: Math.min(y, H - h), w, h };
+      if (['image', 'video', 'model'].includes(b.type) && b.w && b.h) ch.h = Math.round(w * b.h / b.w);          // (pictures keep their shape)
+      if (ch.y + ch.h > H) { ch.h = H - ch.y; if (['image', 'video', 'model'].includes(b.type)) ch.w = Math.round(ch.h * b.w / b.h); }
+      if (b.type === 'text') {
+        if (num(c.fontSize, 10, 160) != null) ch.fontSize = num(c.fontSize, 10, 160);
+        if (['left', 'center', 'right'].includes(c.textAlign)) ch.textAlign = c.textAlign;
+        if (HEX.test(c.bg || '')) { ch.bg = c.bg; ch.radius = num(c.radius, 0, 40) ?? 8; }
+      }
+      changes[id] = ch;
+    }
+    return { name: String(idea?.name || '').slice(0, 40) || 'IA', changes, ai: true };
+  }).filter(i => Object.keys(i.changes).length);
+}
+export async function redesignIdeas(slide = currentSlide(), deck = state.deck) {
+  const { w: W, h: H } = deck.size;
+  const list = slide.blocks.filter(b => !b.hidden && b.type !== 'connector').map(b => ({ id: b.id, type: b.type, x: b.x, y: b.y, w: b.w, h: b.h,
+    ...(b.type === 'text' && { text: plain(b.html || '').slice(0, 120), fontSize: b.fontSize || 40, ...(b.ph && { role: b.ph }) }) }));
+  if (!list.length) throw new Error('EMPTY');
+  const out = await chat([
+    { role: 'system', content: `You are a presentation designer. Propose 3 clearly different, professional layouts for this ${W}x${H} slide, using ONLY its existing objects (move and resize them; do not add or remove any). Principles: strong visual hierarchy (the title prominent), generous margins (at least 48 px), aligned edges on a grid, consistent spacing, no overlapping texts, a picture may fill a whole side or the background. Texts may get "fontSize", "textAlign" ("left"|"center"|"right") and "bg" (a #rrggbbaa backing colour, for text over pictures). Give each layout a short name in ${lang()}. Answer JSON only: {"ideas":[{"name":"…","blocks":{"<id>":{"x":0,"y":0,"w":0,"h":0,"fontSize":40,"textAlign":"left","bg":"#00000099"}}}]}` },
+    { role: 'user', content: `Background: ${slide.background || deck.background || '?'}\nObjects:\n${JSON.stringify(list)}` },
+  ], { json: true, maxTokens: 2500 });
+  const ideas = checkIdeas(parseJSON(out), slide, W, H);
+  if (!ideas.length) throw new Error('EMPTY');
+  return ideas;
+}
+
+// One line of live captions, translated for the audience (while presenting from the editor).
+const TO = { es: 'Spanish', en: 'English', fr: 'French', de: 'German', it: 'Italian', pt: 'Portuguese', ca: 'Catalan', gl: 'Galician', eu: 'Basque', nl: 'Dutch', ar: 'Arabic', zh: 'Chinese', uk: 'Ukrainian', ro: 'Romanian' };
+export async function translateLine(text, to) {
+  if (!TO[to] || !String(text || '').trim()) return null;
+  const out = await chat([{ role: 'system', content: `Translate the user's text (spoken, live captions) into ${TO[to]}. Answer with the translation only.` },
+    { role: 'user', content: String(text).slice(0, 600) }], { maxTokens: 300 });
+  return String(out || '').trim().slice(0, 800) || null;
+}
+
 // Agenda (from the section / title slides) or a quiz from the content.
 export async function addAgenda() {
   const titles = state.deck.slides.filter(s => !s.hidden).map(s => plain(s.blocks.find(b => b.type === 'text')?.html || '')).filter(Boolean);

@@ -73,7 +73,7 @@ export function pollJS(accents, { classroom = false } = {}) {
     if(window.QRCode)QRCode.toCanvas(el.querySelector('canvas'),url,{width:220,margin:1},function(){});});});
   peer.on('connection',function(c){conns.push(c);
     c.on('open',function(){if(CLASS){send(c,{type:'css',css:css()});send(c,slideMsg());}var p=current();send(c,{type:'poll',poll:p});if(p&&p.kind==='qa')send(c,{type:'qa',pollId:p.pollId,list:qaList(p)});});
-    c.on('data',function(d){if(!d||d.type!=='vote')return;var el=all().filter(function(e){var p=def(e);return p&&p.pollId===d.pollId;})[0];if(!el)return;
+    c.on('data',function(d){if(d&&d.type==='lang'){c.lang=/^[a-z]{2}$/.test(d.lang||'')?d.lang:null;return;}if(!d||d.type!=='vote')return;var el=all().filter(function(e){var p=def(e);return p&&p.pollId===d.pollId;})[0];if(!el)return;
       var p=def(el),who=String(d.voter).slice(0,40),V=votes[p.pollId]||(votes[p.pollId]=load(p.pollId));
       if(p.kind==='qa'){var a=d.answer||{};
         if(a.ask){var txt=String(a.ask).trim().slice(0,200);if(!txt)return;var n=Object.keys(V).filter(function(k){return V[k].by===who;}).length;if(n>=5)return;
@@ -104,6 +104,16 @@ export function pollJS(accents, { classroom = false } = {}) {
    b.innerHTML='<canvas style="display:block;width:120px;height:120px;margin:0 auto 4px"></canvas><div>'+url.replace(/^https?:\\/\\//,'').replace(/\\?.*$/,'')+'</div><div>C\u00f3digo <b style="letter-spacing:2px">'+code+'</b></div>';
    document.body.appendChild(b);document.addEventListener('keydown',function(e){if((e.key==='a'||e.key==='A')&&!e.ctrlKey&&!e.metaKey)b.hidden=!b.hidden;});}
   if(window.QRCode)QRCode.toCanvas(b.querySelector('canvas'),url,{width:240,margin:1},function(){});}
+ // Live captions to the audience; translated ones for whoever asks, when the
+ // editor that is presenting offers its AI (asked once), else each device translates.
+ var TR=null;try{TR=window.parent!==window&&window.parent.__revelaTranslate;}catch(e){}
+ var trOk=null;
+ window.addEventListener('rv-caption',function(e){var d=e.detail||{};if(!d.text)return;
+  conns.forEach(function(c){send(c,{type:'caption',text:d.text,final:!!d.final,lang:d.lang});});
+  if(!d.final||!TR)return;var want={};conns.forEach(function(c){if(c.lang)want[c.lang]=1;});var ls=Object.keys(want).slice(0,5);if(!ls.length)return;
+  if(trOk===null)trOk=confirm('El p\u00fablico pide los subt\u00edtulos traducidos ('+ls.join(', ')+'). \u00bfTraducirlos con tu IA? Cada frase gasta un poco de cr\u00e9dito.');
+  if(!trOk)return;
+  ls.forEach(function(l){TR(d.text,l).then(function(t){if(!t)return;conns.forEach(function(c){if(c.lang===l)send(c,{type:'caption',text:t,final:true,lang:l,translated:true});});}).catch(function(){});});});
  if(CLASS){Reveal.on('slidechanged',pushSlide);Reveal.on('fragmentshown',pushSlide);Reveal.on('fragmenthidden',pushSlide);}
  // (A quiz on the first slide starts with the presentation.)
  if(Reveal.isReady())broadcast();else Reveal.on('ready',broadcast);

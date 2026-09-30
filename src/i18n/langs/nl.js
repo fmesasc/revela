@@ -2035,4 +2035,5 @@ export default {
   "Sin apodo": "Zonder bijnaam",
   "alumnos": "leerlingen",
   "Descargar CSV": "CSV downloaden",
+  "Más ideas con IA": "Meer ideeën met AI",
 };

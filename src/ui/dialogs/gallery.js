@@ -10,6 +10,8 @@ import { PALETTES, pairStacks, deckFg } from '../../features/design/palettes.js'
 import { ensureDeckFonts } from '../../features/design/fonts.js';
 import { blockPreview } from '../shell/preview.js';
 import { confirmDialog } from './dialog.js';
+import { run as runAi } from './ai.js';
+import * as aiDeck from '../../features/ai/authoring.js';
 import { t } from '../../i18n/index.js';
 
 export function openGallery() {
@@ -77,9 +79,9 @@ export function openDesignIdeas() {
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(820px,94vw);max-width:94vw">
     <button class="modal-close">✕</button><h3>${t('Ideas de diseño')}</h3><div class="gal-grid"></div></div>`;
   const grid = back.querySelector('.gal-grid');
-  if (!ideas.length) grid.outerHTML = `<p class="host-help">${t('Escribe un título en la diapositiva para recibir ideas de diseño.')}</p>`;
+  if (!ideas.length) grid.insertAdjacentHTML('beforebegin', `<p class="host-help">${t('Escribe un título en la diapositiva para recibir ideas de diseño.')}</p>`);
   const { w, h } = state.deck.size;
-  ideas.forEach(idea => {
+  const tile = idea => {
     const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'gal-item';
     const cv = document.createElement('div'); cv.className = 'thumb-canvas'; cv.style.background = slide.background; cv.style.setProperty('--ar', w / h);
     const inner = document.createElement('div'); inner.className = 'thumb-inner';
@@ -89,8 +91,19 @@ export function openDesignIdeas() {
     const lab = document.createElement('span'); lab.textContent = t(idea.name);
     btn.append(cv, lab);
     btn.addEventListener('click', () => { applyIdea(idea); back.remove(); });
-    grid.appendChild(btn);
-  });
+    return btn;
+  };
+  ideas.forEach(idea => grid.appendChild(tile(idea)));
+  // More, from the AI (its own arrangements of the same objects).
+  if (slide.blocks.length) {
+    const more = document.createElement('button'); more.type = 'button'; more.className = 'gal-item gal-ai';
+    more.innerHTML = `<div class="thumb-canvas gal-ai-in" style="--ar:${w / h}"><i class="ms">auto_awesome</i></div><span>${t('Más ideas con IA')}</span>`;
+    more.addEventListener('click', async () => {
+      const got = await runAi(() => aiDeck.redesignIdeas(slide)); if (!got) return;
+      for (const idea of got) grid.insertBefore(tile(idea), more);
+    });
+    grid.appendChild(more);
+  }
   document.body.appendChild(back);
   back.querySelector('.modal-close').addEventListener('click', () => back.remove());
   back.addEventListener('click', e => { if (e.target === back) back.remove(); });

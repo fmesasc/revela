@@ -886,4 +886,31 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       eq(R.state.deck.slides.length, n, 'y se importa con todas sus diapositivas');
     } finally { W.google = realGoogle; W.gapi = realGapi; W.fetch = realFetch; await GD.signOut(); }
   });
+
+  await test('ideas de diseño con IA: los mismos objetos recolocados, comprobados antes de aplicarlos', async () => {
+    reset(); const W = frame.contentWindow, A = R.aiDeck, realFetch = W.fetch; let sent = null;
+    R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    R.blocks.addShape('rect'); await sleep(5);
+    const s = slide(), t0 = s.blocks.find(b => b.type === 'text') || s.blocks[0];
+    const img = { id: 'img1', type: 'image', x: 100, y: 100, w: 400, h: 200, src: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=' };
+    R.store.commit(() => { s.blocks.push(img); });
+    const answer = { ideas: [
+      { name: 'Imagen a la derecha', blocks: { [t0.id]: { x: 60, y: 80, w: 560, h: 120, fontSize: 64, textAlign: 'left' }, img1: { x: 700, y: 60, w: 520, h: 999 }, inventado: { x: 0, y: 0, w: 10, h: 10 } } },
+      { name: 'Fuera', blocks: { [t0.id]: { x: 5000, y: -40, w: 99999, h: 100, bg: 'url(javascript:alert(1))', fontSize: 9999 } } },
+      { name: 'Vacía', blocks: { nadie: { x: 1, y: 1, w: 30, h: 30 } } }] };
+    W.fetch = async (url, o) => { sent = JSON.parse(o.body); return new W.Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(answer) } }] })); };
+    try {
+      const ideas = await A.redesignIdeas(s);
+      assert(/Objects:/.test(sent.messages[1].content) && sent.messages[1].content.includes('img1'), 'le manda los objetos de la diapositiva');
+      eq(ideas.length, 2, 'las ideas sin objetos de esta diapositiva se descartan');
+      const a = ideas[0].changes;
+      assert(!a.inventado, 'objetos que no existen: fuera');
+      eq(a.img1.h, 260, 'la imagen conserva su proporción (520 × 200/400)');
+      eq(a[t0.id].fontSize, 64, 'tamaño de letra'); eq(a[t0.id].textAlign, 'left');
+      const b = ideas[1].changes[t0.id];
+      assert(b.x + b.w <= 1280 && b.y >= 0 && b.w <= 1280, 'dentro de la diapositiva'); assert(!('bg' in b), 'colores no válidos: fuera'); eq(b.fontSize, 160, 'tamaños razonables');
+      R.designer.applyIdea(ideas[0]); await sleep(5);
+      eq(slide().blocks.find(x => x.id === 'img1').x, 700, 'se aplica');
+    } finally { W.fetch = realFetch; R.ai.disconnectAi(); }
+  });
 }

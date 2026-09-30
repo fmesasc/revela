@@ -174,8 +174,40 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       w.__rec.onresult({ resultIndex: 0, results: [res('hola a todos', true)] });
       w.__rec.onresult({ resultIndex: 1, results: [res('hola a todos', true), res('bienvenidos', false)] });
       eq(f.contentDocument.getElementById('captions').textContent, 'hola a todos bienvenidos', 'texto en pantalla (final + provisional)');
+      const heard = []; w.addEventListener('rv-caption', e => heard.push(e.detail));
+      w.__rec.onresult({ resultIndex: 0, results: [res('para el público', true)] });
+      assert(heard.some(h => h.text === 'para el público' && h.final && h.lang === 'es-ES'), 'cada frase sale también hacia el público');
       w.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'c', bubbles: true }));
       assert(!w.__ink.captionsOn && !w.__rec.started, 'C los apaga');
+    } finally { f.remove(); }
+  });
+
+  await test('la página del público: diapositiva del aula, subtítulos (traducidos) y actividades', async () => {
+    const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:390px;height:700px;opacity:0';
+    f.src = new URL('../vote.html?test', D.baseURI).href; document.body.appendChild(f);
+    let v; for (let i = 0; i < 60 && !(v = f.contentWindow)?.__vote; i++) await sleep(100);
+    try {
+      const Q = s => f.contentDocument.querySelector(s);
+      v.__vote.onData({ type: 'css', css: '<style>.x{color:red}</style>' });
+      v.__vote.onData({ type: 'slide', html: '<section class="present"><h2 class="x">Hola aula</h2></section>', bg: '', w: 1280, h: 720, cls: 'reveal', n: 3, of: 9 });
+      assert(!Q('#slide-view').hidden && /Hola aula/.test(Q('#slide-view iframe').srcdoc) && /color:red/.test(Q('#slide-view iframe').srcdoc), 'la diapositiva, con los estilos de la presentación');
+      eq(Q('#slide-view iframe').getAttribute('sandbox'), '', 'sin ejecutar nada de ella'); eq(Q('#slide-n').textContent, '3 / 9');
+      v.__vote.onData({ type: 'caption', text: 'buenos días', final: true, lang: 'es-ES' });
+      eq(Q('#cc-text').textContent, 'buenos días', 'subtítulos');
+      delete v.Translator; v.Translator = undefined;
+      Q('#cc-lang').value = 'en'; Q('#cc-lang').dispatchEvent(new v.Event('change')); await sleep(20);
+      assert(v.__sent.some(m => m.type === 'lang' && m.lang === 'en'), 'sin traductor en el navegador: se pide a quien presenta');
+      v.__vote.onData({ type: 'caption', text: 'good morning', final: true, lang: 'en', translated: true });
+      eq(Q('#cc-text').textContent, 'good morning', 'y llega traducido');
+      v.Translator = { availability: async () => 'available', create: async () => ({ translate: async t => '[EN] ' + t }) };
+      Q('#cc-lang').value = 'en'; Q('#cc-lang').dispatchEvent(new v.Event('change')); await sleep(20);
+      v.__vote.onData({ type: 'caption', text: 'hasta luego', final: true, lang: 'es-ES' }); await sleep(20);
+      eq(Q('#cc-text').textContent, '[EN] hasta luego', 'con traductor en el navegador: se traduce en el propio móvil');
+      v.__vote.onData({ type: 'poll', poll: { pollId: 'o9', kind: 'order', question: 'Ordena', options: [], pub: { items: ['B', 'A'] } } });
+      eq([...f.contentDocument.querySelectorAll('.act-row span')].map(x => x.textContent).join(), 'B,A', 'actividad de ordenar');
+      f.contentDocument.querySelectorAll('.act-row button')[1].click();
+      Q('#send').click();
+      const vote = v.__sent.find(m => m.type === 'vote'); eq(JSON.stringify(vote.answer), '["A","B"]', 'envía el orden elegido');
     } finally { f.remove(); }
   });
 

@@ -72,6 +72,8 @@ export function inkJS(W, H, labels) {
  // audio to their speech service, so the presenter is asked first).
  var SR=window.SpeechRecognition||window.webkitSpeechRecognition,rec=null,capOn=false,capEl=null,finalTxt='';
  if(!SR){var ccb=bar.querySelector('[data-t="cc"]');if(ccb)ccb.hidden=true;}
+ // (Each phrase also goes out as an event: the audience's devices show it, see pollJS.)
+ function cap(text,final){try{window.dispatchEvent(new CustomEvent('rv-caption',{detail:{text:String(text).trim(),final:final,lang:L.lang}}));}catch(_){}}
  function captions(){if(!SR)return;
   if(capOn){capOn=false;try{rec.stop();}catch(_){}if(capEl)capEl.style.display='none';bar.querySelector('[data-t="cc"]').classList.remove('on');return;}
   var ok;try{ok=sessionStorage.getItem('revela-cc-ok');}catch(e){}
@@ -80,7 +82,8 @@ export function inkJS(W, H, labels) {
   capEl.style.display='block';capEl.textContent='…';capOn=true;bar.querySelector('[data-t="cc"]').classList.add('on');
   rec=new SR();rec.lang=L.lang;rec.continuous=true;rec.interimResults=true;
   rec.onresult=function(ev){var interim='';for(var i=ev.resultIndex;i<ev.results.length;i++){var r=ev.results[i];
-    if(r.isFinal)finalTxt=(finalTxt+' '+r[0].transcript).trim().slice(-220);else interim+=r[0].transcript;}
+    if(r.isFinal){finalTxt=(finalTxt+' '+r[0].transcript).trim().slice(-220);cap(r[0].transcript,true);}else interim+=r[0].transcript;}
+   if(interim)cap(interim,false);
    capEl.textContent=(finalTxt+' '+interim).trim().slice(-160);};
   rec.onend=function(){if(capOn){try{rec.start();}catch(_){}}};
   rec.onerror=function(e){if(e.error==='not-allowed'){capOn=false;capEl.style.display='none';}};

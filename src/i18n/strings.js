@@ -2054,5 +2054,6 @@ export const ROWS = [
   ['Sin apodo', 'No nickname', 'Sans pseudo', 'Ohne Spitznamen', 'Senza soprannome', 'Sem alcunha', 'Sense sobrenom'],
   ['alumnos', 'students', 'élèves', 'Lernende', 'studenti', 'alunos', 'alumnes'],
   ['Descargar CSV', 'Download CSV', 'Télécharger en CSV', 'CSV herunterladen', 'Scarica CSV', 'Descarregar CSV', 'Baixa el CSV'],
+  ['Más ideas con IA', 'More ideas with AI', 'Plus d\'idées avec l\'IA', 'Mehr Ideen mit KI', 'Altre idee con l\'IA', 'Mais ideias com IA', 'Més idees amb IA'],
 ];
 // Additional languages (partial; anything missing falls back to Spanish).

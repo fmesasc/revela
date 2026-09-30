@@ -95,7 +95,35 @@ function fit() {
 window.addEventListener('resize', fit);
 if (window.ResizeObserver) new ResizeObserver(fit).observe($('#slide-view'));
 
+// Live captions from the presenter: the original, or translated — here, with
+// the browser's own translator when it has one (nothing leaves the device);
+// else by the presenter (if they allow it).
+let ccLang = '', ccLines = [], translator = null, ccFrom = 'es';
+const ccShow = (interim = '') => { $('#cc').hidden = false; $('#cc-text').innerHTML = ''; $('#cc-text').append(ccLines.slice(-2).join(' '), ...(interim ? [' ', el('i', { textContent: interim })] : [])); };
+async function localTranslator(to) {
+  if (!('Translator' in self)) return null;
+  try { const T = self.Translator, opts = { sourceLanguage: ccFrom, targetLanguage: to };
+    if ((await T.availability(opts)) === 'unavailable') return null; return await T.create(opts); } catch { return null; }
+}
+$('#cc-lang').addEventListener('change', async e => {
+  ccLang = e.target.value; ccLines = []; translator = null; $('#cc-note').textContent = '';
+  if (ccLang && ccLang !== ccFrom) {
+    translator = await localTranslator(ccLang);
+    if (!translator) { conn?.send({ type: 'lang', lang: ccLang }); $('#cc-note').textContent = 'Traducción pedida a quien presenta.'; }
+    else conn?.send({ type: 'lang', lang: '' });
+  } else conn?.send({ type: 'lang', lang: '' });
+});
+async function onCaption(d) {
+  if (!d.translated) ccFrom = String(d.lang || 'es').slice(0, 2);   // (the speaker's language)
+  const want = ccLang && ccLang !== ccFrom;
+  if (d.translated) { if (d.lang === ccLang) { ccLines.push(d.text); ccShow(); } return; }
+  if (!want) { if (d.final) { ccLines.push(d.text); ccShow(); } else ccShow(d.text); return; }
+  if (translator && d.final) { try { ccLines.push(await translator.translate(d.text)); ccShow(); } catch {} }
+  else if (!translator && !d.final) ccShow(d.text);               // (the original while the translation comes)
+}
+
 function onData(d) {
+  if (d?.type === 'caption') { onCaption(d); return; }
   if (d?.type === 'css') { styles = String(d.css || ''); return; }
   if (d?.type === 'slide') { showSlide(d); return; }
   if (d?.type === 'quizresult') { quizResult(d); return; }

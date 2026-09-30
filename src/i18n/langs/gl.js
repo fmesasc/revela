@@ -2035,4 +2035,5 @@ export default {
   "Sin apodo": "Sen alcume",
   "alumnos": "alumnos",
   "Descargar CSV": "Descargar CSV",
+  "Más ideas con IA": "Máis ideas con IA",
 };

@@ -58,7 +58,7 @@ async function ready() {
 const MSG = { NO_KEY: 'Conecta primero la IA.', BAD_KEY: 'La clave de OpenRouter no es válida.', NO_CREDIT: 'No te queda saldo en OpenRouter.',
   TOO_MANY: 'Demasiadas peticiones seguidas: espera un minuto.', AI_PAUSED: 'La IA está en pausa ahora mismo. Inténtalo más tarde.',
   NO_TEXT: 'Selecciona primero un cuadro de texto.', NO_IMAGE: 'Selecciona primero una imagen.', EMPTY: 'La IA no devolvió contenido.' };
-async function run(fn) {
+export async function run(fn) {
   if (!(await ready())) return;
   const busy = document.createElement('div'); busy.id = 'ai-busy'; busy.innerHTML = `<i class="ms">auto_awesome</i> ${t('La IA está trabajando…')}`;
   document.body.appendChild(busy);

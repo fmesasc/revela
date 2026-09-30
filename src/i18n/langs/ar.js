@@ -2035,4 +2035,5 @@ export default {
   "Sin apodo": "بلا لقب",
   "alumnos": "طلاب",
   "Descargar CSV": "تنزيل CSV",
+  "Más ideas con IA": "مزيد من الأفكار بالذكاء الاصطناعي",
 };
