@@ -103,8 +103,44 @@ export function model3dRuntime() {
       mv.style.pointerEvents = inside ? 'auto' : 'none';
     });
   }, { passive: true });
-  if (window.Reveal) { Reveal.on('ready', function (e) { enter(e.currentSlide); }); Reveal.on('slidechanged', function (e) { enter(e.currentSlide); }); if (Reveal.isReady()) enter(Reveal.getCurrentSlide());
+  // The same model on the slide before (Morph pairs them by data-id; else the same
+  // file): it arrives with the angle and turning it had, and then, as chosen
+  // (data-arrive), stays so, turns to face the audience, goes to this slide's
+  // view, or takes a full turn on the way ('reset': starts afresh).
+  function orbitOf(mv) { try { var o = mv.getCameraOrbit(); return { t: o.theta * 180 / Math.PI, p: o.phi * 180 / Math.PI }; } catch (e) { return null; } }
+  function partner(mv, prev) {
+    var id = mv.getAttribute('data-id'), src = mv.getAttribute('src');
+    if (id) { var byId = prev.querySelector('model-viewer[data-id="' + id.replace(/"/g, '') + '"]'); if (byId) return byId; }
+    return [].slice.call(prev.querySelectorAll('model-viewer')).filter(function (x) { return x.getAttribute('src') === src; })[0] || null;
+  }
+  function handoff(prev, cur) {
+    if (!prev || !cur || prev === cur) return;
+    [].slice.call(cur.querySelectorAll('model-viewer')).forEach(function (mv) {
+      var how = mv.getAttribute('data-arrive') || 'keep'; if (how === 'reset') return;
+      var old = partner(mv, prev); if (!old || !old.loaded) return;
+      var o = orbitOf(old), spin = typeof old.turntableRotation === 'number' ? old.turntableRotation : 0;
+      var own = (mv.getAttribute('camera-orbit') || '0deg 75deg auto').split(' '), ownT = parseFloat(own[0]) || 0, ownP = own[1] || '75deg';
+      function apply() {
+        mv.interpolationDecay = 180;
+        if (o) { mv.cameraOrbit = o.t.toFixed(1) + 'deg ' + o.p.toFixed(1) + 'deg ' + R(mv); if (mv.jumpCameraToGoal) mv.jumpCameraToGoal(); }
+        if (mv.resetTurntableRotation) mv.resetTurntableRotation(spin);
+        if (how === 'keep') return;
+        var t0 = performance.now(), dur = how === 'turn' ? 2400 : 1400, from = o ? o.t : ownT, to = how === 'front' ? 0 : ownT;
+        if (how === 'turn') to += to >= from ? 360 : -360;
+        (function step(now) {
+          var k = Math.min(1, (now - t0) / dur), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+          if (mv.resetTurntableRotation) mv.resetTurntableRotation(spin * (1 - e));
+          mv.cameraOrbit = (from + (to - from) * e).toFixed(1) + 'deg ' + (how === 'front' ? '75deg' : ownP) + ' ' + R(mv);
+          if (mv.jumpCameraToGoal) mv.jumpCameraToGoal();
+          if (k < 1) requestAnimationFrame(step);
+          else if (how === 'front') { mv.removeAttribute('auto-rotate'); mv.autoRotate = false; }   // (and it stays facing the audience)
+        })(t0);
+      }
+      if (mv.loaded) apply(); else mv.addEventListener('load', apply, { once: true });
+    });
+  }
+  if (window.Reveal) { Reveal.on('ready', function (e) { enter(e.currentSlide); }); Reveal.on('slidechanged', function (e) { handoff(e.previousSlide, e.currentSlide); enter(e.currentSlide); }); if (Reveal.isReady()) enter(Reveal.getCurrentSlide());
     Reveal.on('fragmentshown', function (e) { (e.fragments || [e.fragment]).forEach(function (f) { clipStep(f, true); }); });
     Reveal.on('fragmenthidden', function (e) { (e.fragments || [e.fragment]).forEach(function (f) { clipStep(f, false); }); }); }
-  return { start: start, stop: stop, move: move, clip: function (mv, name, once) { playClip(mv, name, once); if (once) mv.addEventListener('finished', function () { rest(mv); }, { once: true }); } };
+  return { handoff: handoff, start: start, stop: stop, move: move, clip: function (mv, name, once) { playClip(mv, name, once); if (once) mv.addEventListener('finished', function () { rest(mv); }, { once: true }); } };
 }

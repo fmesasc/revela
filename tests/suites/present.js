@@ -135,6 +135,46 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { f.remove(); delete window.__revelaAnswer; }
   });
 
+  await test('3D: continuidad entre diapositivas, bordes y zoom al presentar; botones rápidos para presentar', async () => {
+    reset(); const W = frame.contentWindow, M = await W.eval("import('/src/io/runtime/model3d.js')");
+    // The same model on the next slide: it arrives with its angle and turning, then as chosen.
+    const mk = (id, extra = '') => { const s = document.createElement('section'); s.innerHTML = `<model-viewer data-id="${id}" src="a.glb" camera-orbit="30deg 75deg auto" ${extra}></model-viewer>`;
+      const mv = s.firstChild, st = { spin: 0, orbit: null };
+      Object.defineProperties(mv, { loaded: { value: true }, turntableRotation: { get: () => st.spin }, cameraOrbit: { set: v => { st.orbit = v; }, get: () => st.orbit } });
+      mv.getCameraOrbit = () => ({ theta: 50 * Math.PI / 180, phi: 70 * Math.PI / 180 }); mv.resetTurntableRotation = v => { st.spin = v; }; mv.jumpCameraToGoal = () => {}; mv.st = st; return s; };
+    const api = M.model3dRuntime(), prev = mk('m1'), cur = mk('m1'); prev.firstChild.st.spin = 1.2;
+    api.handoff(prev, cur);
+    eq(cur.firstChild.st.spin, 1.2, 'sigue girando desde donde estaba'); assert(/^50\.0deg 70\.0deg/.test(cur.firstChild.st.orbit), 'y con el mismo ángulo de cámara');
+    const cur2 = mk('m1', 'data-arrive="front" auto-rotate'); api.handoff(prev, cur2); await sleep(1600);
+    assert(Math.abs(cur2.firstChild.st.spin) < 0.01 && /^0\.0deg 75deg/.test(cur2.firstChild.st.orbit) && !cur2.firstChild.hasAttribute('auto-rotate'), 'o gira hasta quedar de frente (y se queda)');
+    const cur3 = mk('m1', 'data-arrive="reset"'); api.handoff(prev, cur3); eq(cur3.firstChild.st.spin, 0, 'o empieza de cero');
+    const cur4 = mk('otro'); cur4.firstChild.setAttribute('src', 'b.glb'); api.handoff(prev, cur4); eq(cur4.firstChild.st.spin, 0, 'otro modelo distinto: nada que continuar');
+    // Edges, and the runtime in every presentation with 3D
+    R.store.commit(() => { slide().blocks.push({ id: 'md', type: 'model', src: 'data:model/gltf-binary;base64,Z2xURg==', x: 100, y: 100, w: 300, h: 200, edge: 'fade', arrive: 'turn', rotation: 0, animation: null }); });
+    let html = R.io.buildHTML();
+    assert(/function model3dRuntime/.test(html) && /data-arrive="turn"/.test(html), 'continuidad y llegada, en la presentación');
+    assert(/<model-viewer[^>]*style="[^"]*mask-image:linear-gradient/.test(html), 'bordes difuminados');
+    R.store.commit(() => { slide().blocks.at(-1).edge = 'free'; }); html = R.io.buildHTML();
+    assert(/<model-viewer[^>]*data-bleed="3"/.test(html), 'sin corte: el visor ocupa el triple alrededor');
+    select(slide().blocks.at(-1)); await sleep(20);
+    assert([...D.querySelectorAll('#ribbon select')].some(x => [...x.options].some(o => o.value === 'fade')) && [...D.querySelectorAll('#ribbon select')].some(x => [...x.options].some(o => o.value === 'front')), 'se elige en la pestaña del 3D');
+    // Zoom while presenting
+    const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:640px;height:360px;opacity:0';
+    f.src = URL.createObjectURL(new Blob([R.io.buildHTML(R.state.deck, { inApp: true })], { type: 'text/html' })); document.body.appendChild(f);
+    let w; for (let i = 0; i < 80 && !((w = f.contentWindow).Reveal?.isReady?.() && w.document.querySelector('#ink-bar [data-z]')); i++) await sleep(100);
+    try {
+      const rv = w.document.querySelector('.reveal');
+      w.document.querySelector('#ink-bar [data-z="1"]').click(); eq(rv.style.scale, '1.25', 'acercar desde la barra');
+      w.dispatchEvent(new w.WheelEvent('wheel', { deltaY: -200, ctrlKey: true, clientX: 100, clientY: 100, cancelable: true }));
+      assert(+rv.style.scale > 1.25, 'Ctrl + rueda');
+      w.dispatchEvent(new w.KeyboardEvent('keydown', { key: '0', bubbles: true })); eq(rv.style.scale, '', '0: tamaño normal');
+    } finally { f.remove(); }
+    // Quick buttons and the editor's zoom slider
+    assert(D.querySelector('.titlebar .tb-play [data-action="present"]') && D.querySelector('.titlebar .tb-play [data-action="present-current"]'), 'presentar desde el principio o desde aquí, en la barra de título');
+    const sl = D.getElementById('zoom-slider'); sl.value = '150'; sl.dispatchEvent(new W.Event('input')); eq(R.state.ui.zoom, 1.5, 'deslizador de zoom del editor');
+    D.querySelector('[data-action="zoom-fit"]').click();
+  });
+
   await test('votación en directo: recuento, resultados, export y QR', async () => {
     reset(); const P = R.poll;
     const c = P.tallyVotes({ kind: 'choice', options: ['a', 'b', 'c'] }, { v1: 0, v2: 2, v3: 2, v4: 9 });

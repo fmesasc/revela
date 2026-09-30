@@ -31,7 +31,10 @@ export function inkJS(W, H, labels) {
   +'<button data-t="laser" title="'+L.laser+' (Ctrl+L)">\\u25CF</button>'
   +'<input type="color" value="#ff2d2d" title="'+L.color+'">'
   +'<button data-t="erase" title="'+L.erase+' (E)">\\u232B</button>'
-  +'<button data-t="cc" title="'+L.cc+' (C)" style="font-weight:700;font-size:12px">CC</button>';
+  +'<button data-t="cc" title="'+L.cc+' (C)" style="font-weight:700;font-size:12px">CC</button>'
+  +'<button data-z="-1" title="'+L.zout+' (\u2212)" style="font-size:20px">\u2212</button>'
+  +'<button data-z="0" title="'+L.zreset+' (0)" style="font-size:11px;width:auto;padding:0 6px" class="rv-zl">100%</button>'
+  +'<button data-z="1" title="'+L.zin+' (+ \u00b7 Ctrl + rueda)" style="font-size:20px">+</button>';
  document.body.appendChild(bar);
  function key(){var i=Reveal.getIndices();return i.h+'/'+(i.v||0);}
  function rect(){return document.querySelector('.reveal .slides').getBoundingClientRect();}
@@ -49,7 +52,24 @@ export function inkJS(W, H, labels) {
   bar.querySelectorAll('button[data-t]').forEach(function(b){b.classList.toggle('on',b.dataset.t===tool);});draw();}
  function erase(){delete ink[key()];draw();}
  bar.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;
+  if(b.dataset.z!=null){var d=+b.dataset.z;d?zoomBy(d>0?1.25:0.8):zoomTo(1);return;}
   if(b.dataset.t==='erase')erase();else if(b.dataset.t==='cc')captions();else setTool(b.dataset.t);});
+ // Zoom into the slide being shown (the whole view, around the pointer or the
+ // centre); drag to move around while zoomed; back to normal on the next slide.
+ var zoom=1,tx=0,ty=0,drag=null,rv=document.querySelector('.reveal');
+ function paintZoom(){if(!rv)return;rv.style.transformOrigin='0 0';rv.style.translate=zoom===1?'':(tx.toFixed(1)+'px '+ty.toFixed(1)+'px');rv.style.scale=zoom===1?'':String(zoom);
+  document.body.style.cursor=zoom>1&&!tool?'grab':'';var l=bar.querySelector('.rv-zl');if(l)l.textContent=Math.round(zoom*100)+'%';draw();}
+ function zoomTo(z,qx,qy){z=Math.max(1,Math.min(6,z));if(qx==null){qx=innerWidth/2;qy=innerHeight/2;}
+  tx=qx-(qx-tx)*z/zoom;ty=qy-(qy-ty)*z/zoom;zoom=z;if(zoom===1){tx=ty=0;}
+  tx=Math.min(0,Math.max(innerWidth*(1-zoom),tx));ty=Math.min(0,Math.max(innerHeight*(1-zoom),ty));paintZoom();}
+ function zoomBy(f,qx,qy){zoomTo(zoom*f,qx,qy);}
+ window.addEventListener('wheel',function(e){if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();zoomBy(Math.exp(-e.deltaY*0.003),e.clientX,e.clientY);},{passive:false});
+ document.addEventListener('pointerdown',function(e){if(zoom===1||tool||e.button!==0)return;
+  if(e.target.closest&&e.target.closest('model-viewer,button,a,input,select,textarea,video,iframe,#ink-bar,.rv-poll,.controls'))return;
+  drag={x:e.clientX,y:e.clientY,tx:tx,ty:ty};document.body.style.cursor='grabbing';e.preventDefault();},true);
+ document.addEventListener('pointermove',function(e){if(!drag)return;tx=drag.tx+e.clientX-drag.x;ty=drag.ty+e.clientY-drag.y;zoomTo(zoom);});
+ document.addEventListener('pointerup',function(){if(drag){drag=null;paintZoom();}});
+ Reveal.on('slidechanged',function(){if(zoom!==1)zoomTo(1);});
  bar.querySelector('input').addEventListener('input',function(e){color=e.target.value;});
  cv.addEventListener('pointerdown',function(e){if(!tool||tool==='laser')return;try{cv.setPointerCapture(e.pointerId);}catch(_){}
   cur={c:color,hl:tool==='hl',p:[toDeck(e)]};(ink[key()]=ink[key()]||[]).push(cur);draw();});
@@ -63,6 +83,10 @@ export function inkJS(W, H, labels) {
   else if(k==='e'&&!c&&!e.altKey){erase();}
   else if(k==='c'&&!c&&!e.altKey){captions();}
   else if(k==='escape'&&tool){setTool(tool);}
+  else if(!c&&!e.altKey&&(k==='+'||k==='=')){zoomBy(1.25);}
+  else if(!c&&!e.altKey&&k==='-'){zoomBy(0.8);}
+  else if(!c&&!e.altKey&&k==='0'){zoomTo(1);}
+  else if(k==='escape'&&zoom!==1){zoomTo(1);}
   else return;
   if(t)setTool(t);e.preventDefault();e.stopImmediatePropagation();},true);
  var hide;document.addEventListener('mousemove',function(){bar.classList.add('show');clearTimeout(hide);

@@ -1093,7 +1093,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const html = R.io.buildHTML();
     assert(/<model-viewer[^>]*animation-name="Run"[^>]*data-motion="swing"/.test(html) && /function model3dRuntime/.test(html), 'la presentación lleva la animación y el movimiento');
     R.store.commit(() => { delete last().motion; delete last().clip; last().spin = 45; }); await sleep(30);
-    assert(/rotation-per-second="45deg"/.test(R.io.buildHTML()) && !/model3dRuntime/.test(R.io.buildHTML()), 'giro a su velocidad; sin movimiento no hace falta el script');
+    assert(/rotation-per-second="45deg"/.test(R.io.buildHTML()) && /model3dRuntime/.test(R.io.buildHTML()), 'giro a su velocidad (y el script, para que siga en la diapositiva siguiente)');
     // The dialog.
     const { openModel3D } = await W.eval("import('/src/ui/dialogs/model3d.js')");
     await openModel3D(last()); await sleep(50);

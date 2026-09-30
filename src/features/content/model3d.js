@@ -28,7 +28,22 @@ const ORBITS = { front: '0deg 75deg auto', three: '35deg 70deg auto', side: '90d
 // with the camera as much further away: the model looks the same size, and
 // what goes out of the box still shows. By default, for models that move.
 export const BLEEDS_3D = [['1', 'Ninguno'], ['1.3', 'Poco'], ['1.5', 'Normal'], ['2', 'Mucho']];
-export const modelBleed = b => (b.bleed != null ? Math.max(1, Math.min(3, +b.bleed || 1)) : (b.clip || b.walk?.clip) ? 1.5 : 1);
+// Its edges when the model reaches them (turning, zooming in): cut straight, faded
+// out, or no cut — the view takes much more room (three times the box) around it.
+export const EDGES_3D = [['hard', 'Corte recto'], ['fade', 'Difuminado'], ['free', 'Sin corte (más espacio)']];
+export const modelBleed = b => {
+  const k = b.bleed != null ? Math.max(1, Math.min(3, +b.bleed || 1)) : (b.clip || b.walk?.clip) ? 1.5 : 1;
+  return b.edge === 'free' ? Math.max(k, 3) : k;
+};
+// A faded edge: the view fades out over its last 12 % on every side.
+export const EDGE_FADE_CSS = '-webkit-mask-image:linear-gradient(to right,transparent,#000 12%,#000 88%,transparent),linear-gradient(to bottom,transparent,#000 12%,#000 88%,transparent);'
+  + '-webkit-mask-composite:source-in;mask-image:linear-gradient(to right,transparent,#000 12%,#000 88%,transparent),linear-gradient(to bottom,transparent,#000 12%,#000 88%,transparent);mask-composite:intersect;';
+export const edgeCSS = b => (b.edge === 'fade' || b.edge === 'free' ? EDGE_FADE_CSS : '');
+// When the same model was on the slide before (Morph, or the same file): how it
+// arrives — as it was (its angle and its turning carry on), turning to face the
+// audience, going to this slide's camera view, taking a full turn on the way,
+// or starting afresh as if it were new.
+export const ARRIVALS_3D = [['keep', 'Seguir como estaba'], ['front', 'Girar hasta quedar de frente'], ['view', 'Ir a la vista de esta diapositiva'], ['turn', 'Dar una vuelta hasta su vista'], ['reset', 'Empezar de cero']];
 // The camera's distance for a bleed (model-viewer's own is 105 % of the fitting one).
 export const bleedRadius = k => (k === 1 ? 'auto' : `${Math.round(105 * k)}%`);
 // The box the 3D view takes on the slide.
@@ -65,6 +80,7 @@ export function modelAttrs(b) {
     if (walk.look !== false) a.push(['data-look', '']);
   }
   if (b.motion && b.motion !== 'none') a.push(['data-motion', b.motion]);
+  if (b.arrive && b.arrive !== 'keep') a.push(['data-arrive', b.arrive]);
   return a;
 }
 export const modelAttrsHTML = b => modelAttrs(b).map(([k, v]) => (v === '' ? ` ${k}` : ` ${k}="${String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"`)).join('');

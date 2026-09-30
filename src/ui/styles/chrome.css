@@ -132,3 +132,11 @@
 @media (max-width:760px){#statusbar .legal-link{display:none}}
 .save-state{display:inline-flex;align-items:center;gap:3px;font-size:12px;color:var(--txt2);margin-inline-start:8px;white-space:nowrap}.save-state .ms{font-size:16px;color:#2f9e44}
 @media (max-width:860px){.save-state span{display:none}}
+
+/* Quick presenting buttons in the title bar */
+.tb-play{display:flex;gap:2px;margin-inline-start:10px}
+.tb-play button{width:30px;height:28px;border:1px solid var(--line2);border-radius:7px;background:var(--panel);color:var(--accent);cursor:pointer;display:grid;place-items:center}
+.tb-play button:first-child{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.tb-play button:hover{filter:brightness(1.08)}.tb-play .ms{font-size:20px}
+#zoom-slider{width:110px;vertical-align:middle;accent-color:var(--accent)}
+@media (max-width:600px){#zoom-slider,.tb-play{display:none}}

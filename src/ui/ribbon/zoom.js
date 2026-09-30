@@ -17,6 +17,24 @@ export function applyZoom() {
   }
   const lbl = document.getElementById('zoom-label');
   if (lbl) lbl.textContent = Math.round(z * 100) + '%';
+  const sl = document.getElementById('zoom-slider');
+  if (sl && document.activeElement !== sl) sl.value = String(Math.round(z * 100));
+}
+// The slider in the status bar, and Ctrl + wheel (or a trackpad pinch) over the
+// slide: zooms keeping what is under the pointer where it is.
+export function wireZoom() {
+  const sl = document.getElementById('zoom-slider');
+  sl?.addEventListener('input', () => setZoom(+sl.value / 100));
+  const wrap = document.getElementById('canvas-wrap');
+  wrap?.addEventListener('wheel', e => {
+    if (!(e.ctrlKey || e.metaKey)) return;
+    e.preventDefault();
+    const z0 = state.ui.zoom || 1, z1 = Math.max(0.1, Math.min(3, z0 * Math.exp(-e.deltaY * 0.0025)));
+    const r = wrap.getBoundingClientRect(), px = e.clientX - r.left + wrap.scrollLeft, py = e.clientY - r.top + wrap.scrollTop;
+    setZoom(z1);
+    const k = (state.ui.zoom || 1) / z0;
+    wrap.scrollLeft = px * k - (e.clientX - r.left); wrap.scrollTop = py * k - (e.clientY - r.top);
+  }, { passive: false });
 }
 // Fit to the window (as PowerPoint does) until the user picks a zoom; then theirs is kept.
 let fitting = true;

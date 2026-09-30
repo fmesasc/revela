@@ -17,7 +17,7 @@ import { ACTIVITIES, publicActivity, gradeAnswer, gradeActivity } from '../../fe
 import { selfPacedRuntime } from '../runtime/selfpaced.js';
 import { createMediaPlayer, revelaMediaRuntime } from '../runtime/media.js';
 import { needsPlayer, mediaConfig } from '../../features/live/media.js';
-import { modelAttrsHTML, bleedBox } from '../../features/content/model3d.js';
+import { modelAttrsHTML, bleedBox, edgeCSS } from '../../features/content/model3d.js';
 import { model3dRuntime } from '../runtime/model3d.js';
 import { timerRuntime } from '../runtime/timer.js';
 import { soundRuntime } from '../runtime/sounds.js';
@@ -238,7 +238,7 @@ function blockHTMLRaw(b, slide) {
       + `${b.curve ? curvedTextSVG(b) : b.html || ''}</div>`;
   }
   if (b.type === 'model')
-    return `<model-viewer${a}${modelAttrsHTML(b)} style="${box(bleedBox(b))}background:transparent${bleedBox(b) !== b ? ';pointer-events:none' : ''}"></model-viewer>`;
+    return `<model-viewer${a}${modelAttrsHTML(b)} style="${box(bleedBox(b))}background:transparent;${edgeCSS(b)}${bleedBox(b) !== b ? 'pointer-events:none' : ''}"></model-viewer>`;
   // Video / GIF with segments, autoplay, loop, mute or a colour key: the media
   // player draws it; each segment after the first automatic one is a click.
   if (needsPlayer(b)) {
@@ -456,7 +456,7 @@ function buildHTMLRaw(deck, { inApp = false, selfPaced = false } = {}) {
   const hasZoomable = deck.slides.some(s => s.blocks.some(b => b.type === 'image' && b.zoomable));
   const hasMedia = deck.slides.some(s => !s.hidden && s.blocks.some(needsPlayer));
   const hasTimer = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'timer'));
-  const hasModel3d = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'model' && (b.motion || b.clip || b.walk || animsOf(b).some(a => a.effect === 'clip3d'))));
+  const hasModel3d = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'model'));   // (also for a model that carries on to the next slide)
   const hasLive = deck.slides.some(s => s.blocks.some(b => (b.type === 'chart' && b.dataUrl) || (b.type === 'embed' && b.refreshMin)));
   const ft = deck.footer || { show: false };
   const footerText = ft.show
@@ -564,7 +564,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${/ data-file(-view)?[ >]/.test(slides) ? FILE_JS : ''}
  ${hasMedia ? `${createMediaPlayer.toString()}\n${revelaMediaRuntime.toString()}\nrevelaMediaRuntime(${JSON.stringify(GIFUCT)});` : ''}
  ${inkJS(w, h, { pen: t('Lápiz'), hl: t('Resaltador'), laser: t('Puntero láser'), color: t('Color de la tinta'), erase: t('Borrar la tinta de la diapositiva'),
-   cc: t('Subtítulos en directo'), lang: speechLang(), ccWarn: t('Los subtítulos usan el reconocimiento de voz del navegador: en Chrome y Edge el audio se envía a su servicio de voz. ¿Activarlos?') })}
+   cc: t('Subtítulos en directo'), zin: t('Acercar'), zout: t('Alejar'), zreset: t('Tamaño normal'), lang: speechLang(), ccWarn: t('Los subtítulos usan el reconocimiento de voz del navegador: en Chrome y Edge el audio se envía a su servicio de voz. ¿Activarlos?') })}
  ${overviewJS(groups.map(g => (deck.sections || []).find(x => x.id === g[0].sectionId)?.name || ''),
    { title: t('Vista general'), help: t('Flechas e Intro, o clic, para ir · Esc para cerrar') })}
  ${hasZoomReturn ? '(function(){var p=null;document.addEventListener("click",function(e){var a=e.target.closest("a.slide-zoom[data-zoom-return]");if(a){p={t:a.dataset.target,o:a.dataset.origin.split("/"),arrived:false};}});Reveal.on("slidechanged",function(ev){if(!p)return;if(ev.indexh+"/"+(ev.indexv||0)===p.t){p.arrived=true;return;}if(p.arrived){var o=p.o;p=null;setTimeout(function(){Reveal.slide(+o[0],+o[1]);},0);}});})();' : ''}

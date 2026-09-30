@@ -437,7 +437,7 @@ export function setupMath(el, b) {
 // what changed is touched, so the view doesn't reload.
 export function applyModelAttrs(mv, b) {
   const want = new Map(modelAttrs(b));
-  for (const name of ['auto-rotate', 'auto-rotate-delay', 'rotation-per-second', 'autoplay', 'animation-name', 'data-once', 'data-speed', 'data-motion', 'camera-orbit', 'data-bleed'])
+  for (const name of ['auto-rotate', 'auto-rotate-delay', 'rotation-per-second', 'autoplay', 'animation-name', 'data-once', 'data-speed', 'data-motion', 'camera-orbit', 'data-bleed', 'data-arrive'])
     if (!want.has(name) && mv.hasAttribute(name)) mv.removeAttribute(name);   // only ours: model-viewer adds its own
   for (const [k, v] of want) if (mv.getAttribute(k) !== v) mv.setAttribute(k, v);
   const sp = b.clipSpeed || 1; if (mv.timeScale !== sp) mv.timeScale = sp;
@@ -445,7 +445,12 @@ export function applyModelAttrs(mv, b) {
   const k = modelBleed(b), m = `${-(k - 1) * 50}%`;
   mv.style.position = k > 1 ? 'absolute' : ''; mv.style.inset = k > 1 ? `${m} ${m}` : '';
   mv.style.width = mv.style.height = k > 1 ? `${k * 100}%` : '';
+  // Faded edges (or none: a faded, much bigger view).
+  const fade = b.edge === 'fade' || b.edge === 'free';
+  for (const p of ['maskImage', 'webkitMaskImage']) mv.style[p] = fade ? EDGE_MASK : '';
+  mv.style.maskComposite = fade ? 'intersect' : ''; mv.style.webkitMaskComposite = fade ? 'source-in' : '';
 }
+const EDGE_MASK = 'linear-gradient(to right,transparent,#000 12%,#000 88%,transparent),linear-gradient(to bottom,transparent,#000 12%,#000 88%,transparent)';
 // A picture of the model once it has loaded (its "poster"): the thumbnails, the
 // gallery and PowerPoint (which has no 3D) show it instead of a placeholder.
 // Only the model's own box, not the room around it; small.

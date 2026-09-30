@@ -43,6 +43,10 @@
       <button id="drive-status" class="drive-status" type="button" hidden></button>
       <button id="cloud-status" class="drive-status cloud-status" type="button" hidden title="Compartir y permisos"></button>
       <span id="save-state" class="save-state" hidden title="Se guarda solo en este navegador, con cada cambio. Para llevártelo: Archivo ▸ Guardar, o Google Drive."><i class="ms">check_circle</i> <span>Guardado</span></span>
+      <span class="tb-play">
+        <button data-action="present" type="button" title="Presentar desde el principio (F5)"><i class="ms">play_arrow</i></button>
+        <button data-action="present-current" type="button" title="Presentar desde esta diapositiva (Mayús + F5)"><i class="ms">slideshow</i></button>
+      </span>
       <span class="grow"></span>
       <div id="collab-bar" class="collab-bar" hidden>
         <span class="collab-role"></span><span class="collab-peers"></span>
@@ -694,6 +698,7 @@
     <span id="status-slide"></span>
     <span class="zoom">
       <button data-action="zoom-out" title="Alejar"><i class="ms">remove</i></button>
+      <input type="range" id="zoom-slider" min="10" max="300" step="5" value="100" title="Zoom (Ctrl + rueda del ratón)" aria-label="Zoom">
       <button data-action="zoom-reset" id="zoom-label" title="Restablecer al 100%">100%</button>
       <button data-action="zoom-in" title="Acercar"><i class="ms">add</i></button>
       <button data-action="zoom-fit" title="Ajustar a la ventana"><i class="ms">fit_screen</i></button>

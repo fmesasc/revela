@@ -12,7 +12,7 @@ import { state, commit, currentSlide, selectedBlock, selectedBlocks } from '../.
 import * as blocks from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
 import * as shapeops from '../../features/document/shapeops.js';
-import { MOTIONS_3D, VIEWS_3D, BLEEDS_3D, modelBleed } from '../../features/content/model3d.js';
+import { MOTIONS_3D, VIEWS_3D, BLEEDS_3D, EDGES_3D, ARRIVALS_3D, modelBleed } from '../../features/content/model3d.js';
 import { isGif } from '../../features/live/media.js';
 import { CURVES, DEVICES, SHAPE_NAMES, hasShapeText, CONNECTOR_ROUTES, isLineShape } from '../../render/svg.js';
 import { styled } from '../../features/document/master.js';
@@ -99,7 +99,9 @@ function groupsFor(b) {
       ['Vista', [['select', 'Cámara', VIEWS_3D, b.view || '', v => set(b, x => { if (v) x.view = v; else delete x.view; })],
         ['select', 'Al llegar a la diapositiva', MOTIONS_3D, b.motion || 'none', v => set(b, x => { if (v !== 'none') x.motion = v; else delete x.motion; })],
         // (So that a hand waving or a jump is not cut by the frame.)
-        ['select', 'Margen para moverse', BLEEDS_3D, String(modelBleed(b)), v => set(b, x => { x.bleed = +v; })]]],
+        ['select', 'Margen para moverse', BLEEDS_3D, String(b.bleed != null ? Math.max(1, Math.min(3, +b.bleed || 1)) : modelBleed({ ...b, edge: '' })), v => set(b, x => { x.bleed = +v; })],
+        ['select', 'Bordes', EDGES_3D, b.edge || 'hard', v => set(b, x => { if (v !== 'hard') x.edge = v; else delete x.edge; })],
+        ['select', 'Si viene de la diapositiva anterior', ARRIVALS_3D, b.arrive || 'keep', v => set(b, x => { if (v !== 'keep') x.arrive = v; else delete x.arrive; })]]],
       ['Esqueleto', [btn('accessibility_new', 'Esqueleto automático', () => openAutoRig(b))]],
       ['Archivo', [btn('download', 'Descargar (.glb)', () => saveFile(b)), btn('swap_horiz', 'Reemplazar', () => replaceModel(b))]]);
   } else if (b.type === 'video') G.push(
