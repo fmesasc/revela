@@ -89,7 +89,7 @@ export function initRibbon() {
   if (don && DONATE_URL) { don.href = DONATE_URL; don.hidden = false; }
   // The open edition points to the official one's plans (the official one shows the account instead).
   const pre = document.getElementById('premium');
-  if (pre && EDITION === 'open') { pre.href = OFFICIAL_SITE + '/precios'; pre.hidden = false; }
+  if (pre && EDITION === 'open') { pre.href = OFFICIAL_SITE + '/pricing'; pre.hidden = false; }
   document.body.dataset.edition = EDITION;
   document.getElementById('final-banner')?.addEventListener('click', e => {
     if (e.target.closest('[data-action="mark-final"]')) editAnyway();

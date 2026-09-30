@@ -55,7 +55,7 @@ export function applyI18n() {
       el.setAttribute('title', t(el.dataset.i18nt));
     });
   }
-  document.querySelectorAll('#ribbon .tabs button, #ribbon .group>label, #ribbon .row button span, #ribbon select option, #statusbar .hint, #master-banner span, #master-banner button, #master-banner option, #final-banner span, #final-banner button, #donate span, #statusbar .legal-link, #drive-conflict span, #drive-conflict button')
+  document.querySelectorAll('#ribbon .tabs button, #ribbon .group>label, #ribbon .row button span, #ribbon select option, #statusbar .hint, #master-banner span, #master-banner button, #master-banner option, #final-banner span, #final-banner button, #donate span, #premium span, #statusbar .legal-link, #drive-conflict span, #drive-conflict button')
     .forEach(el => {
       if (el.dataset.i18n === undefined) el.dataset.i18n = el.innerHTML.trim();
       el.innerHTML = t(el.dataset.i18n);

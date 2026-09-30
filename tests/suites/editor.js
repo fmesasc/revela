@@ -417,7 +417,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
 
   await test('edición abierta: botón «Versión premium» que lleva a los planes de revelaslides.com', async () => {
     const a = D.getElementById('premium');
-    assert(a && !a.hidden, 'visible en la edición abierta'); eq(a.getAttribute('href'), 'https://revelaslides.com/precios');
+    assert(a && !a.hidden, 'visible en la edición abierta'); eq(a.getAttribute('href'), 'https://revelaslides.com/pricing');
     eq(a.getAttribute('target'), '_blank'); eq(D.body.dataset.edition, 'open');
+    const I = await frame.contentWindow.eval("import('/src/i18n/index.js')");
+    await I.setLang('en'); eq(a.querySelector('span').textContent, 'Premium version', 'traducido');
+    await I.setLang('fr'); eq(a.querySelector('span').textContent, 'Version premium');
+    await I.setLang('es'); eq(a.querySelector('span').textContent, 'Versión premium');
   });
 }

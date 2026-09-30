@@ -231,7 +231,7 @@ def site_checks(send, recv):
         tid = recv(send('Target.createTarget', url='about:blank'))['result']['targetId']
         sid = recv(send('Target.attachToTarget', targetId=tid, flatten=True))['result']['sessionId']
         ev = lambda e: recv(send('Runtime.evaluate', sid, expression=e, awaitPromise=True, returnByValue=True)).get('result', {}).get('result', {}).get('value')
-        # The home page: its pictures load, its own links lead somewhere (Pages serves /precios as precios.html).
+        # The home page: its pictures load, its own links lead somewhere (Pages serves /pricing as pricing.html).
         recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/index.html')); time.sleep(1.5)
         check('Revela' in (ev('document.title') or ''), 'portada')
         # (Pictures further down load when scrolled to: those are checked by fetching them.)
@@ -239,7 +239,7 @@ def site_checks(send, recv):
         bad = ev("""(async()=>{const hrefs=[...new Set([...document.querySelectorAll('a[href]')].map(a=>a.getAttribute('href')).filter(h=>!/^(https?:|#|mailto:)/.test(h)).map(h=>h.split('#')[0]).filter(Boolean))];
           const bad=[];for(const h of hrefs){const u=/[.\/]$/.test(h)||/\.html$/.test(h)?h:h+'.html';const r=await fetch(u);if(!r.ok)bad.push(h);}return bad.join(',')})()""")
         check(bad == '', 'enlaces rotos en la portada: ' + str(bad))
-        for page in ('precios.html', 'soporte.html', 'privacy.html', 'terms.html'):
+        for page in ('pricing.html', 'support.html', 'privacy.html', 'terms.html'):
             check(ev(f"fetch('{page}').then(r=>r.ok)"), 'página ' + page)
         # The app in /app/: the official edition, and working.
         recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/app/index.html?test')); time.sleep(3)
