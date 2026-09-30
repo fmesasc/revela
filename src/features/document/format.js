@@ -37,14 +37,36 @@ export function setColumns(n) {
   const c = ctx(); if (!c) return;
   commit(() => { c.b.columns = Math.max(1, Math.min(4, parseInt(n, 10) || 1)); });
 }
+// Format painter for any object (PowerPoint's copies a shape's fill and line, a
+// picture's corrections and border, a connector's line…): what each kind has
+// as its look. Pasting onto another kind takes what the two have in common (a
+// shape's text style onto a text box, a text box's border onto a picture…);
+// what the original doesn't have is taken away, so both end up alike.
+const LOOK = {
+  text: [...STYLE_KEYS, 'color', 'bg', 'borderColor', 'borderDash', 'radius', 'shadow', 'vAlign'],
+  shape: ['fill', 'fill2', 'gradType', 'gradAngle', 'stroke', 'strokeWidth', 'dash', 'sketch', 'shadow',
+    'fontSize', 'fontFamily', 'fontWeight', 'fontStyle', 'textAlign', 'lineHeight', 'color', 'vAlign'],
+  image: ['adj', 'shadow', 'radius', 'borderColor', 'borderDash', 'device'],
+  connector: ['color', 'width', 'dash', 'arrow', 'arrowStart', 'route'],
+  chart: ['color', 'grid', 'dataLabels'],
+  table: ['header', 'banded', 'band', 'bandAlpha', 'headBg', 'headFg', 'firstCol', 'stroke', 'fontSize'],
+  icon: ['color', 'shadow'],
+  math: ['color', 'highlight', 'bold', 'underline', 'bg', 'borderColor', 'radius'],
+};
+const lookOf = type => LOOK[type] || ['shadow'];
 export function copyStyle() {
-  const b = selectedBlock(); if (!b || b.type !== 'text') return;
-  styleClip = {}; for (const k of STYLE_KEYS) if (b[k] !== undefined) styleClip[k] = b[k];
+  const b = selectedBlock(); if (!b) return;
+  const keys = lookOf(b.type), values = {};
+  for (const k of keys) if (b[k] !== undefined) values[k] = structuredClone(b[k]);
+  styleClip = { type: b.type, keys, values };
 }
 export function pasteStyle() {
   if (!styleClip) return;
-  const bs = selectedBlocks().filter(b => b.type === 'text'); if (!bs.length) return;
-  commit(() => { for (const b of bs) Object.assign(b, styleClip); });
+  const bs = selectedBlocks(); if (!bs.length) return;
+  commit(() => { for (const b of bs) for (const k of lookOf(b.type)) {
+    if (!styleClip.keys.includes(k)) continue;                     // (not something the original has at all)
+    if (k in styleClip.values) b[k] = structuredClone(styleClip.values[k]); else delete b[k];
+  } });
 }
 export const hasStyleClip = () => !!styleClip;
 

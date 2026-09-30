@@ -121,6 +121,8 @@ function forBlock(b, cell = null) {
     ['Eliminar', () => blocks.deleteBlock(b.id)],
     [b.shadow ? 'Quitar sombra' : 'Sombra', () => blocks.toggleShadow()],
     ['Guardar como imagen…', () => openSaveAsPicture()],
+    ['Copiar formato', () => format.copyStyle()],
+    format.hasStyleClip() ? ['Pegar formato', () => format.pasteStyle()] : null,
     ...(!['text', 'connector'].includes(b.type) ? [['Vínculo…', () => openObjectLink(b)]] : []),
     null,
   ];
@@ -132,8 +134,6 @@ function forBlock(b, cell = null) {
       ['Alinear texto a la izquierda', () => format.align('left')],
       ['Centrar texto', () => format.align('center')],
       ['Alinear texto a la derecha', () => format.align('right')],
-      ['Copiar formato', () => format.copyStyle()],
-      format.hasStyleClip() ? ['Pegar formato', () => format.pasteStyle()] : null,
       ['Relleno y borde…', () => openBoxStyle(b)],
       ['Ajustar el tamaño de letra al cuadro', () => fitTextToBox(b)],
       [b.shrink ? 'No reducir el texto si no cabe' : 'Reducir el texto si no cabe', () => commit(() => { if (b.shrink) delete b.shrink; else b.shrink = true; })],

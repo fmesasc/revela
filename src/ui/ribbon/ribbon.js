@@ -335,7 +335,7 @@ export function renderRibbon() {
   { const sel = selectedBlocks(), texts = sel.filter(b => b.type === 'text'), objs = sel.filter(b => b.type !== 'connector');
     const need = { front: sel.length, back: sel.length, forward: sel.length, backward: sel.length,
       group: objs.length >= 2, ungroup: sel.some(b => b.groupId), 'connect-blocks': objs.length === 2,
-      'copy-style': texts.length === 1, 'paste-style': texts.length && format.hasStyleClip(),
+      'copy-style': sel.length === 1, 'paste-style': sel.length && format.hasStyleClip(),
       'obj-anim-clear': sel.some(b => b.animation), 'anim-play': (currentSlide()?.blocks || []).some(b => b.animation) };
     for (const [a, ok] of Object.entries(need)) document.querySelectorAll(`[data-action="${a}"]`).forEach(el => { el.disabled = !ok; }); }
   { const has = !!selectedBlock(); ['clip-copy', 'clip-cut', 'obj-duplicate'].forEach(a => { const el = $(`[data-action="${a}"]`); if (el) el.disabled = !has; });

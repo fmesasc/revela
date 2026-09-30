@@ -120,6 +120,28 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(b.fontSize, 66, 'tamaño copiado'); eq(b.textAlign, 'center', 'alineación'); eq(b.bullet, 'square', 'viñeta');
   });
 
+  await test('copiar formato de cualquier objeto: formas, imágenes, conectores, y de una forma a un cuadro de texto', async () => {
+    reset(); const pick = x => { R.state.ui.multi = []; select(x); };
+    R.blocks.addShape('rect'); R.blocks.addShape('ellipse'); R.blocks.addText();
+    const [s1, s2, tx] = slide().blocks.slice(-3);
+    Object.assign(s1, { fill: '#ff0000', fill2: '#0000ff', gradType: 'radial', stroke: '#00ff00', strokeWidth: 5, dash: 'dot', sketch: true, fontSize: 50, color: '#ffffff' });
+    s2.shadow = { x: 4, y: 4, blur: 8 };
+    pick(s1); await sleep(10);
+    assert(!D.querySelector('[data-action="copy-style"]').disabled, 'se puede copiar con una forma');
+    D.querySelector('[data-action="copy-style"]').click(); await sleep(10);
+    pick(s2); await sleep(10); D.querySelector('[data-action="paste-style"]').click(); await sleep(10);
+    eq(s2.fill, '#ff0000'); eq(s2.gradType, 'radial'); eq(s2.strokeWidth, 5); eq(s2.dash, 'dot'); assert(s2.sketch, 'a mano alzada');
+    assert(!s2.shadow, 'sin la sombra que el original no tiene'); eq(s2.shape, 'ellipse', 'su forma no cambia');
+    pick(tx); R.format.pasteStyle(); eq(tx.fontSize, 50, 'a un texto: el tamaño de letra'); eq(tx.color, '#ffffff'); assert(!tx.fill, 'pero no el relleno de forma');
+    // Pictures: corrections and border.
+    R.store.commit(() => slide().blocks.push({ id: 'i1', type: 'image', src: 'data:image/png;base64,iVBORw0KGgo=', x: 0, y: 0, w: 100, h: 100, rotation: 0, animation: null, adj: { brightness: 130 }, radius: 20 },
+      { id: 'i2', type: 'image', src: 'data:image/png;base64,iVBORw0KGgo=', x: 200, y: 0, w: 100, h: 100, rotation: 0, animation: null }));
+    const [i1, i2] = slide().blocks.slice(-2);
+    pick(i1); R.format.copyStyle(); pick(i2); R.format.pasteStyle();
+    eq(i2.adj.brightness, 130, 'correcciones de imagen'); eq(i2.radius, 20, 'redondeo');
+    i1.adj.brightness = 50; eq(i2.adj.brightness, 130, 'copia independiente');
+  });
+
   await test('insertar campo de fecha', async () => {
     reset(); const n0 = slide().blocks.length; D.querySelector('[data-action="insert-date"]').click(); await sleep(10);
     eq(slide().blocks.length, n0 + 1, 'se añadió un bloque de fecha');
