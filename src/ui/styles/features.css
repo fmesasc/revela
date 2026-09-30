@@ -517,3 +517,23 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 #account-modal .acc-code{margin:10px 0;padding:10px;border-radius:8px;background:var(--bg);font-size:14px}
 #account-modal .acc-code b{display:block;font:700 28px ui-monospace,monospace;letter-spacing:6px;margin-top:6px}
 @media (max-width:600px){.titlebar .plan-btn span{display:none}}
+
+/* Revela's cloud (official edition and desktop app only) */
+body:not([data-edition="cloud"]):not([data-edition="desktop"]) .accounts-only{display:none}
+.modal.cloud h4{margin:14px 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--txt2)}
+.modal.cloud fieldset{border:1px solid var(--line);border-radius:8px;margin:10px 0;padding:6px 12px 10px}
+.modal.cloud legend{font-size:12px;color:var(--txt2);padding:0 4px}
+.modal.cloud .cl-linkrole{width:100%;padding:7px;margin:4px 0}
+.modal.cloud .sh-row select{padding:6px}.modal.cloud .cl-email{flex:1;min-width:0;padding:7px}
+.modal.cloud .cl-here{font-size:12px;color:var(--go)}
+.cl-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0 14px}
+.cl-kpis div{background:var(--ribbon);border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center}
+.cl-kpis b{display:block;font-size:18px;color:var(--txt)}.cl-kpis small{color:var(--txt2);font-size:11px}
+.cl-bars{display:flex;flex-direction:column;gap:4px}
+.cl-bar{display:grid;grid-template-columns:28px 1fr 110px;align-items:center;gap:6px;font-size:12px;color:var(--txt2)}
+.cl-bar i{display:block;height:12px;border-radius:3px;background:var(--accent);min-width:2px}
+.cloud-status[data-status="offline"],.cloud-status[data-status="forbidden"],.cloud-status[data-status="too-large"],.cloud-status[data-status="gone"]{color:var(--danger)}
+@media (max-width:600px){.cl-kpis{grid-template-columns:repeat(2,1fr)}}
+.sh-cloud{display:flex;gap:12px;align-items:center;justify-content:space-between;background:var(--accent-bg);border-radius:8px;padding:10px 12px;margin:6px 0 10px}
+.sh-cloud small{color:var(--txt2)}.sh-cloud .fr-do{display:flex;align-items:center;gap:4px;white-space:nowrap}
+.modal.share h4{margin:10px 0 2px;font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--txt2)}

@@ -60,6 +60,17 @@ servidor:
    resto. Si la IA falla, no cobra nada. Si alguna petición se corta, lo
    apartado vuelve solo en 10 minutos.
 
+**Presentaciones en la nube** (`server/cloudflare/docs.js`). Cada presentación
+es un Durable Object: el documento diapositiva a diapositiva, su dueño, las
+personas con su permiso (ver, comentar, editar) y el permiso del enlace. Los
+cambios viajan como operaciones pequeñas (las mismas que la colaboración en
+directo) y el servidor comprueba cada una contra el permiso de quien la envía:
+quien comenta solo puede tocar comentarios, y si una operación no está
+permitida no se aplica ninguna. Guarda una versión antes de cada tanda de
+cambios (una cada media hora como mucho, las diez últimas) y, para el dueño con
+Pro, estadísticas por diapositiva (vistas y tiempo) con un identificador
+aleatorio del navegador, sin correos ni direcciones.
+
 **Pagos.** `/api/billing/checkout` crea una página de pago de Stripe con el
 **precio de Stripe** (el navegador solo elige el producto). Los planes y
 créditos solo cambian cuando llega el aviso **firmado** de Stripe
@@ -80,6 +91,8 @@ créditos solo cambian cuando llega el aviso **firmado** de Stripe
 | Otra web leyendo las respuestas | CORS solo para revelaslides.com (con credenciales) y la aplicación de escritorio (sin cookies) |
 | Suplantar la aplicación de escritorio | Hay que confirmar en el navegador, con sesión, el código que muestra la aplicación; sin su secreto no se recoge la sesión |
 | Montar una copia del servidor | Es otro servidor, sin tus claves, tu base de datos ni tus usuarios: no toca los tuyos |
+| Abrir o cambiar una presentación ajena | Cada lectura y cada cambio se comprueba en el servidor con la sesión (o el permiso del enlace); el cuerpo de la petición no puede decir quién eres |
+| Colar una edición junto a un comentario | Todo o nada: si una operación no está permitida para ese permiso, no se aplica ninguna |
 | Acceso de administrador | No hay ninguna API de administración; se administra desde la cuenta de Cloudflare (con verificación en dos pasos) |
 
 Los tests `tests/server-api.mjs` intentan cada uno de estos ataques y comprueban
@@ -105,9 +118,6 @@ que el servidor los rechaza.
 
 ## Pendiente
 
-- Compartir con permisos por persona (lector, comentarista, editor) sobre las
-  cuentas.
-- Guardado en la nube con historial.
 - Videollamadas en el editor (Cloudflare Realtime), con límites por plan.
 - Borrado de la cuenta y exportación de sus datos (RGPD), y textos legales de la
   edición oficial.

@@ -10,6 +10,8 @@ import { serverConfig, setServerConfig, serverReady, serverUnshare, serverStats 
 import { SERVER_URL } from '../../core/config.js';
 import { t } from '../../i18n/index.js';
 import { alertDialog, confirmDialog } from './dialog.js';
+import { hasAccounts } from '../../io/cloud/account.js';
+import { openCloudShare } from './cloud.js';
 
 const copyBtn = sel => `<button type="button" class="mini2 sh-copy" data-copy="${sel}">${t('Copiar')}</button>`;
 
@@ -20,6 +22,8 @@ export function openShare() {
   back.id = 'share-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal share" style="text-align:start;min-width:320px;max-width:min(560px,94vw)">
     <button class="modal-close">✕</button><h3>${t('Compartir')}</h3>
+${hasAccounts() ? `<div class="sh-cloud"><div><b>${t('Con personas concretas')}</b><br><small>${t('Desde tu nube de Revela: cada persona con su permiso (ver, comentar o editar), y los cambios al momento.')}</small></div>
+      <button type="button" class="fr-do sh-people"><i class="ms">person_add</i> ${t('Personas')}</button></div><h4>${t('O una copia cifrada')}</h4>` : ''}
     <p class="host-help">${t('La presentación se cifra en este navegador antes de salir de él: quien guarde la copia no puede leerla sin la clave o la contraseña, y no aparece en buscadores.')}</p>
     <fieldset><legend>${t('Protección')}</legend>
       <label class="fr-chk"><input type="radio" name="sh-p" value="key" checked> ${t('Enlace secreto (la clave va en el propio enlace)')}</label>
@@ -56,6 +60,7 @@ export function openShare() {
   const val = n => back.querySelector(`input[name="${n}"]:checked`).value;
   const sync = () => { q('.sh-pw').hidden = val('sh-p') !== 'password'; q('.sh-srv').hidden = val('sh-w') !== 'server'; };
   back.querySelectorAll('input[type=radio]').forEach(r => r.addEventListener('change', sync));
+  q('.sh-people')?.addEventListener('click', () => { close(); openCloudShare(); });
   q('.sh-gd')?.addEventListener('click', e => { e.preventDefault(); openGdriveSetup(); });
   back.addEventListener('click', e => {
     const c = e.target.closest('.sh-copy'); if (!c) return;

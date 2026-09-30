@@ -1,6 +1,8 @@
 // Application bootstrap: wire the modules together and subscribe the render.
 
 import { hasAccounts, cloudAi, refreshAccount, onAccount, account } from '../../io/cloud/account.js';
+import { mountCloudStatus, openFromLink } from '../../ui/dialogs/cloud.js';
+import * as clouddocs from '../../io/cloud/clouddocs.js';
 import { setCloudAi } from '../../features/ai/openrouter.js';
 import { openAccount, handleDesktopRequest } from '../../ui/dialogs/account.js';
 import { handleOpenWith } from '../../ui/shell/openwith.js';
@@ -222,14 +224,14 @@ initI18n();
 // and inspect the real app. Only active with ?test in the URL.
 const testing = new URLSearchParams(location.search).has('test');
 if (testing)
-  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, examples, designer, pptxImport, odp, api, ai, versions, comments, protect, aiDeck, poll, dashboards, stock, clipboard: clip, markdown, notify, vendor, session, objects, picture, shares, shareServer, files, openfile, video: () => import('../../io/export/video.js') };
+  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, examples, designer, pptxImport, odp, api, ai, versions, comments, protect, aiDeck, poll, dashboards, stock, clipboard: clip, markdown, notify, vendor, session, objects, picture, shares, shareServer, clouddocs, files, openfile, video: () => import('../../io/export/video.js') };
 
 // Public scripting API for plugins, macros and the console; installed plugins
 // load after the editor is ready (not in the test harness).
 window.Revela = Revela;
 // A deck too big for localStorage lives in IndexedDB: load it if it's newer.
 // (Not when opening someone's shared session: that document comes from them.)
-if (!testing && !new URLSearchParams(location.search).has('collab')) loadNewerDeck(state.deck).then(d => { if (d) store.adoptDeck(d, { sameDocument: true }); });
+if (!testing && !['collab', 'doc'].some(k => new URLSearchParams(location.search).has(k))) loadNewerDeck(state.deck).then(d => { if (d) store.adoptDeck(d, { sameDocument: true }); });
 initCollabUI();
 initHome();
 initFileDrop();
@@ -253,11 +255,11 @@ if (hasAccounts()) {
   setCloudAi(cloudAi);
   const btn = document.getElementById('plan-btn'), paint = me => { btn.hidden = false;
     btn.querySelector('span').textContent = me ? `${Math.max(0, me.credits | 0)}` : t('Iniciar sesión'); btn.classList.toggle('in', !!me); };
-  onAccount(paint); paint(null);
+  onAccount(paint); paint(null); mountCloudStatus();
   btn.addEventListener('click', () => openAccount());
   window.addEventListener('revela:lang', () => paint(account()));
   if (!testing) {
-    refreshAccount().catch(() => {}).finally(() => handleDesktopRequest());
+    refreshAccount().catch(() => {}).finally(() => { handleDesktopRequest(); openFromLink(); });
     if (new URLSearchParams(location.search).has('paid')) { history.replaceState(null, '', location.pathname); alertDialog(t('¡Gracias! Tu compra se ha registrado.')); }
   }
 }

@@ -357,7 +357,7 @@ export function renderRibbon() {
   document.querySelectorAll('[data-action="undo"]').forEach(b => { b.disabled = !canUndo(); });
   document.querySelectorAll('[data-action="redo"]').forEach(b => { b.disabled = !canRedo(); });
   // Saved here after a change (unless Drive shows its own state).
-  { const ss = $('#save-state'); if (ss) ss.hidden = !docVersion() || !$('#drive-status')?.hidden || !!state.ui.lock; }
+  { const ss = $('#save-state'); if (ss) ss.hidden = !docVersion() || !$('#drive-status')?.hidden || !$('#cloud-status')?.hidden || !!state.ui.lock; }
   document.querySelector('[data-action="canvas-mode"]')?.classList.toggle('on', canvasOn());
   document.querySelectorAll('[data-action="canvas-view"]').forEach(b => b.classList.toggle('on', canvasViewOpen()));
   const fb = document.getElementById('final-banner'); if (fb) fb.hidden = !protect.isFinal();

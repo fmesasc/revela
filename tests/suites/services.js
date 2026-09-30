@@ -813,4 +813,55 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       D.querySelector('.dlg-cancel').click();
     } finally { W.fetch = realFetch; W.google = realGoogle; await GD.signOut(); }
   });
+
+  await test('nube de Revela: abrir, guardar solo, recibir cambios de otros y respetar el permiso', async () => {
+    reset(); const W = frame.contentWindow, CD = R.clouddocs, CS = await W.eval("import('/src/features/live/collabsync.js')");
+    // A server in memory, like server/cloudflare/docs.js: a revision, a log of changes, the role of this person.
+    const base = JSON.parse(JSON.stringify(R.state.deck)); base.name = 'Nube';
+    base.slides = [{ ...base.slides[0], id: 's1', blocks: [{ id: 'b1', type: 'text', x: 0, y: 0, w: 100, h: 50, html: 'Uno' }], comments: [] }];
+    const srv = { deck: base, rev: 1, log: [], role: 'edit', calls: [] };
+    const io = async (path, body) => {
+      srv.calls.push(path);
+      if (/^docs\/[\w-]+$/.test(path)) return { deck: JSON.parse(JSON.stringify(srv.deck)), rev: srv.rev, role: srv.role, owner: 'ana@example.com' };
+      if (/\/since\?rev=/.test(path)) { const from = +path.split('=')[1]; return { rev: srv.rev, ops: srv.log.filter(e => e.rev > from).flatMap(e => e.ops) }; }
+      if (/\/ops$/.test(path)) {
+        if (!body.ops.every(o => CS.allowed(o, srv.role))) throw Object.assign(new Error('forbidden'), { status: 403 });
+        CS.applyOps(srv.deck, body.ops); srv.log.push({ rev: ++srv.rev, ops: body.ops }); return { rev: srv.rev };
+      }
+      if (/\/view$/.test(path)) return { ok: true };
+      throw new Error('?' + path);
+    };
+    const other = ops => { CS.applyOps(srv.deck, ops); srv.log.push({ rev: ++srv.rev, ops }); };
+    try {
+      await CD.openDoc('abcdefghijklmnop1234', { io, pollMs: 60, debounceMs: 30 });
+      eq(slide().blocks[0].html, 'Uno', 'se abre la de la nube');
+      eq(CD.cloudDoc().role, 'edit', 'con el permiso que da el servidor');
+      R.store.commit(() => { slide().blocks[0].html = 'Uno, editado'; }); await sleep(250);
+      eq(srv.deck.slides[0].blocks[0].html, 'Uno, editado', 'lo que se cambia aquí llega solo al servidor');
+      eq(CD.cloudDoc().status, 'saved', 'y queda «guardado»');
+      other([{ p: ['slides', 's1', 'blocks', 'b1', 'x'], v: 40 }, { p: ['slides', 's1', 'blocks', 'b2'], v: { id: 'b2', type: 'text', x: 0, y: 100, w: 100, h: 50, html: '<img src=x onerror=alert(1)>Dos' } }]);
+      await sleep(250);
+      eq(slide().blocks.length, 2, 'lo que cambian otros llega aquí');
+      eq(slide().blocks[0].x, 40, 'y se mezcla con lo de aquí');
+      eq(slide().blocks[0].html, 'Uno, editado', 'sin perder lo de aquí');
+      assert(!/onerror/.test(slide().blocks[1].html), 'lo de otros no puede ejecutar código');
+      R.store.undo(); await sleep(20);
+      eq(slide().blocks.length, 2, 'deshacer solo deshace lo propio');
+      CD.closeDoc();
+      // Someone who can only comment: the editor won't edit, comments do reach the server.
+      srv.role = 'comment'; await CD.openDoc('abcdefghijklmnop1234', { io, pollMs: 60, debounceMs: 30 });
+      eq(R.state.ui.lock, 'comment', 'con permiso para comentar, el resto bloqueado');
+      const before = slide().blocks[0].html; R.store.commit(() => { slide().blocks[0].html = 'no'; }); await sleep(120);
+      eq(slide().blocks[0].html, before, 'no se puede editar');
+      R.comments.addComment('Buen trabajo'); await sleep(250);
+      eq(srv.deck.slides[0].comments.at(-1)?.text, 'Buen trabajo', 'pero sí comentar, y llega al servidor');
+      CD.closeDoc();
+      srv.role = 'view'; await CD.openDoc('abcdefghijklmnop1234', { io, pollMs: 60, debounceMs: 30 });
+      const n = srv.calls.filter(c => /\/ops$/.test(c)).length; R.comments.addComment('x'); await sleep(150);
+      eq(srv.calls.filter(c => /\/ops$/.test(c)).length, n, 'quien solo ve no envía nada');
+      assert(srv.calls.some(c => /\/view$/.test(c)), 'y cuenta en las estadísticas (qué diapositiva y cuánto tiempo)');
+      CD.closeDoc(); eq(R.state.ui.lock, null, 'al cerrarla, el editor vuelve a ser libre');
+      eq(CD.docIdFrom('?doc=abcdefghijklmnop1234'), 'abcdefghijklmnop1234', 'se abre con ?doc='); eq(CD.docIdFrom('?doc=../x'), null, 'solo ids válidos');
+    } finally { CD.closeDoc(); }
+  });
 }

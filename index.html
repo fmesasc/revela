@@ -41,6 +41,7 @@
       <span class="doc-name" contenteditable="true" spellcheck="false"
         title="Haz clic para renombrar la presentación"></span>
       <button id="drive-status" class="drive-status" type="button" hidden></button>
+      <button id="cloud-status" class="drive-status cloud-status" type="button" hidden title="Compartir y permisos"></button>
       <span id="save-state" class="save-state" hidden title="Se guarda solo en este navegador, con cada cambio. Para llevártelo: Archivo ▸ Guardar, o Google Drive."><i class="ms">check_circle</i> <span>Guardado</span></span>
       <span class="grow"></span>
       <div id="collab-bar" class="collab-bar" hidden>
@@ -82,6 +83,12 @@
             <button data-action="mark-final" title="Marcar como final: solo lectura"><i class="ms">verified</i><span>Final</span></button>
             <button data-action="signatures" title="Firmar la presentación y comprobar sus firmas"><i class="ms">draw</i><span>Firmas</span></button>
           </div><label>Proyecto</label>
+        </div>
+        <div class="group accounts-only">
+          <div class="row">
+            <button data-action="cloud-docs" class="lg" title="Tus presentaciones en la nube de Revela y las compartidas contigo"><i class="ms">cloud</i><span>Mi nube</span></button>
+            <button data-action="cloud-share" title="Compartir con personas concretas o por enlace: ver, comentar o editar"><i class="ms">person_add</i><span>Personas</span></button>
+          </div><label>Revela</label>
         </div>
         <div class="group">
           <div class="row">

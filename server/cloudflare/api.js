@@ -22,11 +22,13 @@
 //   POST /api/desktop/start    { nonce, challenge }     (the desktop app, before opening the browser)
 //   POST /api/desktop/approve  { nonce, code }          (the signed-in browser, after asking the user)
 //   POST /api/desktop/claim    { nonce, verifier }      (the desktop app: its session, once)
+//   …/api/docs/…               presentations in the cloud, shared with people or by link (docs.js)
 //
 // Sessions: a cookie on the web (HttpOnly, Secure, SameSite=Strict, only for
 // /api), a bearer token in the desktop app. Only a hash of each is stored.
 
 import { verifyGoogleToken } from './auth.js';
+import { handleDocs } from './docs.js';
 
 const enc = new TextEncoder();
 const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -63,7 +65,7 @@ export function settings(env) {
     },
   };
 }
-export const FEATURES = { free: ['ai'], pro: ['ai', 'share-people', 'cloud-save', 'video-calls', 'premium-templates'] };
+export const FEATURES = { free: ['ai', 'cloud-save'], pro: ['ai', 'cloud-save', 'share-people', 'analytics', 'video-calls', 'premium-templates'] };
 
 // ---- One account ------------------------------------------------------------------------
 export class Account {
@@ -145,6 +147,24 @@ export class Account {
         return this.json({ ok: true });
       }
       case 'customer': return this.json({ customer: await this.get('customer', null), email: (await this.get('profile', {})).email });
+      // Cloud documents: the owner's list (with the plan's limit), and "shared with me" (in the 'e:' + email objects).
+      case 'docs-list': return this.json({ docs: await this.get('docs', []) });
+      case 'docs-add': {
+        const docs = await this.get('docs', []);
+        if (docs.length >= +a.limit) return this.json({ ok: false, limit: +a.limit });
+        docs.unshift({ id: a.id, name: a.name, updated: Date.now() }); await this.put({ docs }); return this.json({ ok: true });
+      }
+      case 'docs-touch': {
+        const docs = await this.get('docs', []), d = docs.find(x => x.id === a.id); if (!d) return this.json({ ok: false });
+        Object.assign(d, { name: a.name, updated: Date.now() }); docs.sort((x, y) => y.updated - x.updated); await this.put({ docs }); return this.json({ ok: true });
+      }
+      case 'docs-remove': await this.put({ docs: (await this.get('docs', [])).filter(x => x.id !== a.id) }); return this.json({ ok: true });
+      case 'inbox-list': return this.json({ docs: await this.get('inbox', []) });
+      case 'inbox-add': {
+        const inbox = (await this.get('inbox', [])).filter(x => x.id !== a.id);
+        inbox.unshift({ id: a.id, name: a.name, owner: a.owner, role: a.role, at: Date.now() }); await this.put({ inbox: inbox.slice(0, 1000) }); return this.json({ ok: true });
+      }
+      case 'inbox-remove': await this.put({ inbox: (await this.get('inbox', [])).filter(x => x.id !== a.id) }); return this.json({ ok: true });
     }
     return this.json({ error: 'unknown' }, 404);
   }
@@ -225,8 +245,11 @@ export async function handleApi(req, env, url) {
   if (path === '/billing/webhook' && req.method === 'POST') return stripeWebhook(req, env, json);
   // Anything that changes something, sent with the cookie, must come from Revela's site (no cross-site requests).
   if (req.method === 'POST' && cookieOf(req) && !req.headers.get('Authorization') && !webOrigin) return json({ error: 'origin' }, 403);
-  if (+(req.headers.get('Content-Length') || 0) > 2e6) return json({ error: 'too large' }, 413);
+  const isDocs = path === '/docs' || path.startsWith('/docs/');
+  const maxBody = isDocs ? (+env.MAX_MB || 30) * 1024 * 1024 : 2e6;
+  if (+(req.headers.get('Content-Length') || 0) > maxBody) return json({ error: 'too large' }, 413);
   const text = req.method === 'POST' ? await req.text() : '';
+  if (text.length > maxBody) return json({ error: 'too large' }, 413);
   let body = {}; if (text) { try { body = JSON.parse(text); } catch { body = null; } }
   if (req.method === 'POST' && (!body || typeof body !== 'object' || Array.isArray(body))) return json({ error: 'bad request' }, 400);
 
@@ -252,6 +275,11 @@ export async function handleApi(req, env, url) {
   }
 
   const me = await sessionOf(req, env);
+  // Cloud documents: a link may give access without a session (to read).
+  if (isDocs) {
+    const who = me && { ...me, ...(await call(acct(env, me.sub), 'me')) };
+    return handleDocs(path, req, body, url, env, who && { sub: me.sub, email: who.email, plan: who.plan, features: who.features }, acct, call, json);
+  }
   if (!me) return json({ error: 'no session' }, 401);
   const A = acct(env, me.sub);
   switch (path) {

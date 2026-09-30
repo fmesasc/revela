@@ -43,6 +43,7 @@ import { openGallery, openDesignIdeas } from '../dialogs/gallery.js';
 import { autocorrectOn, setAutocorrect } from '../../features/document/autocorrect.js';
 import { openPlugins, openMacros } from '../dialogs/plugins.js';
 import { openVersions } from '../dialogs/versions.js';
+import { openCloudDocs, openCloudShare } from '../dialogs/cloud.js';
 import * as protect from '../../features/collab/protect.js';
 import { toggleComments } from '../panels/comments.js';
 import * as media from '../../features/live/media.js';
@@ -92,6 +93,8 @@ export const ACTIONS = {
   'gallery': () => openGallery(),
   'home': () => openHome(),
   'versions': () => openVersions(),
+  'cloud-docs': () => openCloudDocs(),
+  'cloud-share': () => openCloudShare(),
   'design-ideas': () => openDesignIdeas(),
   'gdrive-open': () => gdrive.openWithUI(),
   'gdrive-save': () => gdrive.saveWithUI(),

@@ -32,6 +32,10 @@ TRIAL_CREDITS = "50"
 PRO_CREDITS = "1000"
 CREDIT_USD = "0.002"
 IMAGE_CREDITS = "15"
+# Cloud documents per account (free / Pro) and people per document.
+FREE_DOCS = "3"
+PRO_DOCS = "500"
+MAX_PEOPLE = "50"
 AI_PER_MINUTE = "20"
 # Every account's AI together, per calendar month: over it, the AI pauses until next month.
 MONTHLY_BUDGET_USD = "50"
@@ -78,3 +82,12 @@ class_name = "DesktopLink"
 [[migrations]]
 tag = "v3"
 new_sqlite_classes = ["Account", "Budget", "DesktopLink"]
+
+# Presentations saved in the cloud (docs.js): one object per document.
+[[durable_objects.bindings]]
+name = "DOCS"
+class_name = "CloudDoc"
+
+[[migrations]]
+tag = "v4"
+new_sqlite_classes = ["CloudDoc"]
