@@ -13,7 +13,8 @@ export const INK_CSS = `
  #ink-canvas.laser{cursor:none}
  #ink-bar{position:fixed;left:12px;bottom:12px;z-index:41;display:flex;gap:4px;padding:4px;border-radius:8px;
    background:rgba(20,20,20,.72);opacity:0;transition:opacity .25s}
- #ink-bar.show,#ink-bar:hover{opacity:1}
+ #ink-bar{pointer-events:none}
+ #ink-bar.show{opacity:1;pointer-events:auto}
  #ink-bar button{width:32px;height:32px;border:0;border-radius:6px;background:none;color:#fff;font:16px/1 sans-serif;cursor:pointer}
  #ink-bar button:hover{background:rgba(255,255,255,.15)}
  #ink-bar button.on{background:rgba(255,255,255,.28)}
@@ -89,8 +90,13 @@ export function inkJS(W, H, labels) {
   else if(k==='escape'&&zoom!==1){zoomTo(1);}
   else return;
   if(t)setTool(t);e.preventDefault();e.stopImmediatePropagation();},true);
- var hide;document.addEventListener('mousemove',function(){bar.classList.add('show');clearTimeout(hide);
-  hide=setTimeout(function(){bar.classList.remove('show');},2000);});
+ // The bar appears only when the pointer rests a moment in the bottom-left corner
+ // (not with every move: a presenter's remote pointer moves all the time), and
+ // goes when it leaves that corner.
+ var hide,dwell;document.addEventListener('mousemove',function(e){
+  var near=e.clientX<Math.max(260,bar.offsetWidth+40)&&e.clientY>innerHeight-110;
+  if(near){clearTimeout(hide);if(!bar.classList.contains('show')&&!dwell)dwell=setTimeout(function(){dwell=null;bar.classList.add('show');},350);}
+  else{clearTimeout(dwell);dwell=null;if(bar.classList.contains('show')){clearTimeout(hide);hide=setTimeout(function(){bar.classList.remove('show');},600);}}});
  window.addEventListener('resize',size);Reveal.on('slidechanged',draw);Reveal.on('resize',draw);Reveal.on('ready',size);size();
  // Live captions with the browser's speech recognition (Chrome/Edge send the
  // audio to their speech service, so the presenter is asked first).

@@ -163,6 +163,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     f.src = URL.createObjectURL(new Blob([R.io.buildHTML(R.state.deck, { inApp: true })], { type: 'text/html' })); document.body.appendChild(f);
     let w; for (let i = 0; i < 80 && !((w = f.contentWindow).Reveal?.isReady?.() && w.document.querySelector('#ink-bar [data-z]')); i++) await sleep(100);
     try {
+      const bar = w.document.getElementById('ink-bar'), move = (x, y) => w.document.dispatchEvent(new w.MouseEvent('mousemove', { clientX: x, clientY: y, bubbles: true }));
+      move(320, 180); await sleep(500); assert(!bar.classList.contains('show'), 'mover el ratón (o el puntero) por la pantalla no saca la barra');
+      move(30, 340); assert(!bar.classList.contains('show'), 'ni al pasar de largo por la esquina');
+      await sleep(450); assert(bar.classList.contains('show'), 'sale al dejarlo un momento abajo a la izquierda');
+      move(320, 180); await sleep(750); assert(!bar.classList.contains('show'), 'y se va al salir de la esquina');
       const rv = w.document.querySelector('.reveal');
       w.document.querySelector('#ink-bar [data-z="1"]').click(); eq(rv.style.scale, '1.25', 'acercar desde la barra');
       w.dispatchEvent(new w.WheelEvent('wheel', { deltaY: -200, ctrlKey: true, clientX: 100, clientY: 100, cancelable: true }));
