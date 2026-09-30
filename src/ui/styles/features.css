@@ -503,3 +503,17 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .dg-thumb{display:block;width:150px;height:85px;overflow:hidden;position:relative;background:#1b1f26;border-radius:4px}
 .dg-thumb>.rv-diagram{width:600px!important;height:340px!important;transform:scale(.25);transform-origin:0 0}
 @media (max-width:600px){.dg-pop{grid-template-columns:repeat(2,160px)}}
+/* Revela account: the credits in the title bar, and "My account". */
+.titlebar .plan-btn{display:inline-flex;align-items:center;gap:4px;margin-inline-end:8px;padding:3px 10px;border-radius:14px;border:1px solid var(--line2);background:var(--panel);color:inherit;font:600 13px system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+.titlebar .plan-btn .ms{font-size:17px;color:#6d5dfc}.titlebar .plan-btn.in{border-color:#6d5dfc}
+.titlebar .plan-btn[hidden]{display:none}
+#account-modal .acc-who{font-weight:600}
+#account-modal .acc-plan{display:flex;gap:8px;align-items:center;margin:6px 0}
+#account-modal .acc-badge{padding:2px 10px;border-radius:12px;background:var(--bg);font-weight:700;font-size:13px}
+#account-modal .acc-badge.pro{background:linear-gradient(90deg,#6d5dfc,#3f6497);color:#fff}
+#account-modal .acc-credits{font-size:15px;margin:8px 0}#account-modal .acc-credits b{font-size:34px}
+#account-modal .acc-features{list-style:none;padding:0;margin:6px 0 12px;font-size:14px}
+#account-modal .acc-buy{display:flex;gap:6px;flex-wrap:wrap}
+#account-modal .acc-code{margin:10px 0;padding:10px;border-radius:8px;background:var(--bg);font-size:14px}
+#account-modal .acc-code b{display:block;font:700 28px ui-monospace,monospace;letter-spacing:6px;margin-top:6px}
+@media (max-width:600px){.titlebar .plan-btn span{display:none}}

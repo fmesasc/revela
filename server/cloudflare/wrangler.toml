@@ -22,6 +22,24 @@ MAX_MB = "30"
 # Per Google account (or address) and in total, per day: shares + rooms created.
 DAILY_PER_USER = "30"
 DAILY_TOTAL = "3000"
+# Accounts API (api.js). Origins allowed to use it with their session cookie,
+# and the site the payments come back to.
+API_ORIGINS = "https://revelaslides.com"
+SITE_URL = "https://revelaslides.com"
+# Credits: a new account's gift (once), a paid month's, and what one credit
+# pays for in the AI provider's dollars (1000 credits = 2 $ at most).
+TRIAL_CREDITS = "50"
+PRO_CREDITS = "1000"
+CREDIT_USD = "0.002"
+IMAGE_CREDITS = "15"
+AI_PER_MINUTE = "20"
+# Every account's AI together, per calendar month: over it, the AI pauses until next month.
+MONTHLY_BUDGET_USD = "50"
+# Models people may use (the first is the default) and their prices per million
+# tokens [input, output] in dollars, for the estimate made before each request
+# (check them at openrouter.ai/models; the real cost is charged afterwards).
+AI_MODELS = "openai/gpt-4o-mini,google/gemini-2.5-flash,anthropic/claude-haiku-4.5"
+AI_PRICES = '{"openai/gpt-4o-mini":[0.15,0.6],"google/gemini-2.5-flash":[0.3,2.5],"anthropic/claude-haiku-4.5":[1,5]}'
 # Revela's Google client (public, as in src/core/config.js): people signed in to
 # Revela with Google can share and open collaboration rooms. To limit it to
 # some accounts: `npx wrangler secret put ALLOWED` with e.g. "ana@x.org, @school.example".
@@ -39,3 +57,24 @@ new_sqlite_classes = ["CollabRoom"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["ShareBox", "Limits"]
+
+# Accounts API (api.js): one object per account, the global AI budget, and
+# desktop sign-ins. Secrets (never in this file): `npx wrangler secret put …`
+#   OPENROUTER_KEY          the AI key (set a credit limit on it at openrouter.ai)
+#   STRIPE_SECRET_KEY       Stripe's secret key (billing; optional until you sell)
+#   STRIPE_WEBHOOK_SECRET   the signing secret of the webhook (…/api/billing/webhook)
+[[durable_objects.bindings]]
+name = "ACCOUNTS"
+class_name = "Account"
+
+[[durable_objects.bindings]]
+name = "BUDGET"
+class_name = "Budget"
+
+[[durable_objects.bindings]]
+name = "DESKTOP"
+class_name = "DesktopLink"
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["Account", "Budget", "DesktopLink"]

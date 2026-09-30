@@ -1,5 +1,8 @@
 // Application bootstrap: wire the modules together and subscribe the render.
 
+import { hasAccounts, cloudAi, refreshAccount, onAccount, account } from '../../io/cloud/account.js';
+import { setCloudAi } from '../../features/ai/openrouter.js';
+import { openAccount, handleDesktopRequest } from '../../ui/dialogs/account.js';
 import { handleOpenWith } from '../../ui/shell/openwith.js';
 import { editText } from '../../ui/canvas/content.js';
 import { ACTIONS } from '../../ui/ribbon/actions.js';
@@ -244,6 +247,20 @@ if (!testing) loadPlugins();
 // Charts linked to a CSV load fresh data when the editor opens.
 if (!testing) refreshLinkedCharts().catch(() => {});
 // Back from OpenRouter sign-in (?code=…): exchange it for the key.
+// The official edition and the desktop app: the Revela account (its AI, credits,
+// payments). The button shows the credits; the desktop app's sign-in is confirmed here.
+if (hasAccounts()) {
+  setCloudAi(cloudAi);
+  const btn = document.getElementById('plan-btn'), paint = me => { btn.hidden = false;
+    btn.querySelector('span').textContent = me ? `${Math.max(0, me.credits | 0)}` : t('Iniciar sesión'); btn.classList.toggle('in', !!me); };
+  onAccount(paint); paint(null);
+  btn.addEventListener('click', () => openAccount());
+  window.addEventListener('revela:lang', () => paint(account()));
+  if (!testing) {
+    refreshAccount().catch(() => {}).finally(() => handleDesktopRequest());
+    if (new URLSearchParams(location.search).has('paid')) { history.replaceState(null, '', location.pathname); alertDialog(t('¡Gracias! Tu compra se ha registrado.')); }
+  }
+}
 // Opened from Drive's or Dropbox's "Open with ▸ Revela" (or Drive's "New ▸ Revela").
 if (!testing) handleOpenWith();
 if (!testing) finishOpenRouterLogin().then(ok => { if (ok) alertDialog(t('IA conectada con OpenRouter.')); })

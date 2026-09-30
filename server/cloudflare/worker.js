@@ -28,7 +28,9 @@
 
 import { handleCollab, CollabRoom } from './collab.js';
 import { ShareBox, Limits, takeQuota } from './store.js';
-export { CollabRoom, ShareBox, Limits };
+import { verifyGoogleToken, resetCerts } from './auth.js';
+import { handleApi, Account, Budget, DesktopLink } from './api.js';
+export { CollabRoom, ShareBox, Limits, Account, Budget, DesktopLink, verifyGoogleToken, resetCerts };
 
 const box = (env, id) => env.SHAREBOX.get(env.SHAREBOX.idFromName(id));
 // Who counts for the daily limits: the Google account, else the key, else the address.
@@ -37,22 +39,7 @@ export const whoKey = (who, req) => who.email || (who.key ? 'key' : 'ip:' + (req
 const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const random = n => b64url(crypto.getRandomValues(new Uint8Array(n)));
 const sha256 = async s => b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))));
-const fromB64url = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0));
 
-// Google ID token (JWT, RS256) → its claims, if the signature, issuer,
-// audience and expiry are right. Google's public keys are cached for an hour.
-let certs = null, certsAt = 0;
-export async function verifyGoogleToken(jwt, clientId, fetchImpl = fetch) {
-  const [h, p, sig] = String(jwt || '').split('.'); if (!sig) return null;
-  const head = JSON.parse(new TextDecoder().decode(fromB64url(h))), claims = JSON.parse(new TextDecoder().decode(fromB64url(p)));
-  if (!certs || Date.now() - certsAt > 3600e3) { certs = (await (await fetchImpl('https://www.googleapis.com/oauth2/v3/certs')).json()).keys; certsAt = Date.now(); }
-  const jwk = certs.find(k => k.kid === head.kid); if (!jwk || head.alg !== 'RS256') return null;
-  const key = await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
-  const ok = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, fromB64url(sig), new TextEncoder().encode(h + '.' + p));
-  if (!ok || claims.aud !== clientId || !['accounts.google.com', 'https://accounts.google.com'].includes(claims.iss) || claims.exp * 1000 < Date.now()) return null;
-  return claims;
-}
-export const resetCerts = () => { certs = null; };
 
 // Who may upload a share or open a collaboration room:
 // - whoever sends the upload key (X-Upload-Key), if UPLOAD_KEY is set;
@@ -93,6 +80,9 @@ export default {
       'Referrer-Policy': 'no-referrer',
     };
     const json = (obj, status = 200, extra = {}) => new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json', ...extra } });
+    // The accounts API (api.js), and the same share and collaboration routes under /api (revelaslides.com/api/…).
+    if (/^\/api\/(?!s(\/|$)|c(\/|$))/.test(url.pathname)) return handleApi(req, env, url);
+    if (/^\/api\/(s|c)(\/|$)/.test(url.pathname)) url.pathname = url.pathname.slice(4);
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
     if (url.pathname === '/robots.txt') return new Response('User-agent: *\nDisallow: /\n', { headers: cors });
     if (url.pathname === '/c' || url.pathname.startsWith('/c/')) return handleCollab(req, env, url, json);

@@ -1,6 +1,15 @@
-# Revela server (Cloudflare): sharing and live collaboration
+# Revela server (Cloudflare): sharing, live collaboration and accounts
 
-One Worker does two things, both optional:
+One Worker does three things, all optional:
+
+- **Accounts** (`/api/…`, `api.js`): sign-in, plan and credits, AI through
+  Revela's own key (charged in credits), payments with Stripe and signing in the
+  desktop app. The server checks every request itself — see
+  [docs/NUBE.md](../../docs/NUBE.md) for the design and its security. Needs the
+  `OPENROUTER_KEY` secret for the AI (and Stripe's for payments); on
+  revelaslides.com it answers under the route `revelaslides.com/api/*`. The
+  sharing and collaboration routes also answer under `/api/s` and `/api/c`.
+
 
 - **Sharing** (`/s`): stores the **sealed** (encrypted in the browser)
   presentations that Revela shares by link. The server never sees the key (it

@@ -1,6 +1,8 @@
 // AI tab: connection settings (OpenRouter sign-in or own key), privacy notice,
 // and the actions. A small overlay shows while the model is working.
 
+import { hasAccounts } from '../../io/cloud/account.js';
+import { openAccount } from './account.js';
 import * as ai from '../../features/ai/openrouter.js';
 import { state, commit, replaceDeck } from '../../core/store.js';
 import { emptyDeck } from '../../core/model.js';
@@ -44,6 +46,8 @@ export function openAiSettings() {
 
 // Make sure the user is connected and has seen the privacy notice.
 async function ready() {
+  // The official edition: the AI comes with the account (sign in first).
+  if (!ai.aiConnected() && hasAccounts()) { openAccount(); return false; }
   if (!ai.aiConnected()) { openAiSettings(); return false; }
   if (!ai.privacyAccepted()) {
     const ok = await confirmDialog(t('Al usar la IA, el texto de tus diapositivas (y la imagen, para el texto alternativo) se envía a OpenRouter y al proveedor del modelo elegido.') + ' ' + t('¿Continuar?'));
@@ -52,13 +56,17 @@ async function ready() {
   return true;
 }
 const MSG = { NO_KEY: 'Conecta primero la IA.', BAD_KEY: 'La clave de OpenRouter no es válida.', NO_CREDIT: 'No te queda saldo en OpenRouter.',
+  TOO_MANY: 'Demasiadas peticiones seguidas: espera un minuto.', AI_PAUSED: 'La IA está en pausa ahora mismo. Inténtalo más tarde.',
   NO_TEXT: 'Selecciona primero un cuadro de texto.', NO_IMAGE: 'Selecciona primero una imagen.', EMPTY: 'La IA no devolvió contenido.' };
 async function run(fn) {
   if (!(await ready())) return;
   const busy = document.createElement('div'); busy.id = 'ai-busy'; busy.innerHTML = `<i class="ms">auto_awesome</i> ${t('La IA está trabajando…')}`;
   document.body.appendChild(busy);
   try { return await fn(); }
-  catch (e) { alertDialog(t(MSG[e.message] || 'No se pudo completar: ') + (MSG[e.message] ? '' : (e.message || e))); }
+  catch (e) {
+    if (e.message === 'NO_CREDIT' && ai.usingCloudAi()) { alertDialog(t('No te quedan créditos. Consigue más desde tu cuenta.')); openAccount(); return; }
+    alertDialog(t(MSG[e.message] || 'No se pudo completar: ') + (MSG[e.message] ? '' : (e.message || e)));
+  }
   finally { busy.remove(); }
 }
 

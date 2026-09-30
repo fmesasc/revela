@@ -5,7 +5,8 @@
 // marks with <meta name="revela-edition" content="cloud">. The open edition
 // shows a link to the official one's plans; the official one, the account.
 export const OFFICIAL_SITE = 'https://revelaslides.com';
-export const EDITION = globalThis.document?.querySelector?.('meta[name="revela-edition"]')?.content === 'cloud' ? 'cloud' : 'open';
+// The desktop app is marked "desktop" (tools/build-site.mjs --app-only): it uses the official server too.
+export const EDITION = (e => (e === 'cloud' || e === 'desktop' ? e : 'open'))(globalThis.document?.querySelector?.('meta[name="revela-edition"]')?.content);
 
 // Donations link (PayPal.me, Ko-fi, GitHub Sponsors…). Empty = no button.
 export const DONATE_URL = 'https://paypal.me/fmesasc';

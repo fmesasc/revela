@@ -219,9 +219,28 @@ def site_checks(send, recv):
     out = tempfile.mkdtemp(prefix='revela-site-')
     subprocess.run(['node', os.path.join(ROOT, 'tools', 'build-site.mjs'), out], check=True, stdout=subprocess.DEVNULL)
 
+    # A stand-in for the accounts API (server/cloudflare/api.js has its own tests):
+    # enough to see the official edition use it.
+    seen = {'ai': []}
     class Site(http.server.SimpleHTTPRequestHandler):
         def __init__(self, *a, **k): super().__init__(*a, directory=out, **k)
         def log_message(self, *a): pass
+        def reply(self, status, obj, extra=None):
+            b = json.dumps(obj).encode(); self.send_response(status); self.send_header('Content-Type', 'application/json')
+            for k, v in (extra or {}).items(): self.send_header(k, v)
+            self.send_header('Content-Length', str(len(b))); self.end_headers(); self.wfile.write(b)
+        def signed(self): return 'rv_session=ok' in (self.headers.get('Cookie') or '')
+        def do_GET(self):
+            if self.path.startswith('/api/me'):
+                return self.reply(200, {'email': 'ana@example.com', 'plan': 'free', 'credits': 50, 'features': ['ai'], 'billing': False}) if self.signed() else self.reply(401, {'error': 'no session'})
+            return super().do_GET()
+        def do_POST(self):
+            body = self.rfile.read(int(self.headers.get('Content-Length') or 0))
+            if self.path == '/api/login': return self.reply(200, {'ok': True}, {'Set-Cookie': 'rv_session=ok; Path=/api; HttpOnly; SameSite=Strict'})
+            if self.path == '/api/ai/chat':
+                if not self.signed(): return self.reply(401, {'error': 'no session'})
+                seen['ai'].append(json.loads(body or b'{}')); return self.reply(200, {'choices': [{'message': {'content': 'hola desde el servidor'}}], 'charged': 3})
+            return self.reply(404, {'error': 'not found'})
     srv = socketserver.TCPServer(('127.0.0.1', 0), Site); port = srv.server_address[1]
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     fails = []
@@ -250,6 +269,14 @@ def site_checks(send, recv):
         check(n == 2, 'añadir una diapositiva en /app/')
         check((ev("window.__revela.io.buildHTML().length") or 0) > 5000, 'exportar la presentación en /app/')
         check(ev("fetch('sw.js').then(r=>r.ok)") and ev("fetch('auth.html').then(r=>r.ok)"), 'archivos de la aplicación en /app/')
+        # The account: signed out, then in; its AI goes through the server (no OpenRouter key here).
+        check(ev("(b=>!b.hidden&&/Iniciar sesi/.test(b.textContent))(document.getElementById('plan-btn'))"), 'botón de la cuenta: iniciar sesión')
+        ev("fetch('/api/login',{method:'POST',body:'{}'}).then(()=>import('./src/io/cloud/account.js')).then(m=>m.refreshAccount()).then(()=>1)"); time.sleep(0.3)
+        check(ev("document.querySelector('#plan-btn span').textContent.trim()") == '50', 'con sesión: sus créditos en el botón')
+        ans = ev("import('./src/features/ai/openrouter.js').then(m=>m.chat([{role:'user',content:'Hola'}],{maxTokens:100}))")
+        check(ans == 'hola desde el servidor' and seen['ai'] and seen['ai'][-1].get('max_tokens') == 100, 'la IA de la cuenta, por el servidor: ' + str(ans))
+        ev("document.getElementById('plan-btn').click();1"); time.sleep(0.4)
+        check(ev("(m=>!!m&&/50/.test(m.querySelector('.acc-credits').textContent)&&m.querySelector('[data-buy]').disabled)(document.getElementById('account-modal'))"), '«Mi cuenta»: créditos, y pagos aún no disponibles')
         recv(send('Target.closeTarget', targetId=tid))
     finally:
         srv.shutdown(); shutil.rmtree(out, ignore_errors=True)

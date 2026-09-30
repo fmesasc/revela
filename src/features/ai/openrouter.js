@@ -21,7 +21,15 @@ export const APP_URL = 'https://fmesasc.github.io/revela/';
 const read = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } };
 const write = v => { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch {} };
 export const aiSettings = () => ({ model: DEFAULT_MODEL, ...read() });
-export const aiConnected = () => !!read().key;
+// The official edition's AI: through the person's Revela account (credits), set by
+// the app (io/cloud/account.js) — { active(), chat(body), image(body) }. With it,
+// requests go to Revela's server, which pays OpenRouter and charges credits.
+let cloud = null;
+export const setCloudAi = c => { cloud = c; };
+export const usingCloudAi = () => !!(cloud && cloud.active());
+export const aiConnected = () => !!read().key || usingCloudAi();
+// A failure from the account's AI, as the same errors the rest of the app knows.
+const cloudError = e => new Error(e.status === 402 ? 'NO_CREDIT' : e.status === 401 ? 'NO_KEY' : e.status === 429 ? 'TOO_MANY' : e.status === 503 ? 'AI_PAUSED' : 'OpenRouter ' + (e.status || '') + ' ' + (e.message || ''));
 export const setAiKey = key => write({ ...read(), key: (key || '').trim() || undefined });
 export const setAiModel = model => write({ ...read(), model: (model || '').trim() || DEFAULT_MODEL });
 export const acceptPrivacy = () => write({ ...read(), accepted: true });
@@ -61,6 +69,10 @@ export async function finishOpenRouterLogin(loc = location) {
 // ---- Chat --------------------------------------------------------------------
 export async function chat(messages, { json = false, maxTokens = 2000 } = {}) {
   const { key, model } = aiSettings();
+  if (!key && usingCloudAi()) {
+    const data = await cloud.chat({ messages, max_tokens: maxTokens, json, ...(model !== DEFAULT_MODEL && { model }) }).catch(e => { throw cloudError(e); });
+    return data.choices?.[0]?.message?.content?.trim() || '';
+  }
   if (!key) throw new Error('NO_KEY');
   const r = await fetch(`${API}/chat/completions`, {
     method: 'POST',
@@ -161,7 +173,12 @@ export const setImageModel = m => write({ ...read(), imageModel: (m || '').trim(
 
 // Generate an image (OpenRouter Image API) and place it on the current slide.
 export async function generateImage(prompt, aspect = '16:9') {
-  const { key } = aiSettings(); if (!key) throw new Error('NO_KEY');
+  const { key } = aiSettings();
+  if (!key && usingCloudAi()) {
+    const data = await cloud.image({ prompt, aspect_ratio: aspect }).catch(e => { throw cloudError(e); });
+    return placeImage(data.data?.[0], prompt, aspect);
+  }
+  if (!key) throw new Error('NO_KEY');
   const r = await fetch(`${API}/images`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, 'HTTP-Referer': APP_URL, 'X-Title': 'Revela' },
@@ -170,7 +187,9 @@ export async function generateImage(prompt, aspect = '16:9') {
   if (r.status === 401) throw new Error('BAD_KEY');
   if (r.status === 402) throw new Error('NO_CREDIT');
   if (!r.ok) throw new Error('OpenRouter ' + r.status + ' ' + ((await r.text().catch(() => '')).slice(0, 200)));
-  const img = (await r.json()).data?.[0];
+  return placeImage((await r.json()).data?.[0], prompt, aspect);
+}
+function placeImage(img, prompt, aspect) {
   if (!img?.b64_json) throw new Error('EMPTY');
   const src = `data:${img.media_type || 'image/png'};base64,${img.b64_json}`;
   const [aw, ah] = aspect.split(':').map(Number), { w: W, h: H } = state.deck.size;
