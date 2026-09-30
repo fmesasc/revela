@@ -449,7 +449,7 @@ function buildHTMLRaw(deck, { inApp = false } = {}) {
   const katexNeeded = hasMath || hasInlineMath;
   const hasTrig = deck.slides.some(s => s.blocks.some(b => animsOf(b).some(a => a.trigger)));
   const hasCam = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'camera'));
-  const hasPoll = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'poll'));
+  const hasPoll = !!deck.classroom || deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'poll'));
   const hasZoomable = deck.slides.some(s => s.blocks.some(b => b.type === 'image' && b.zoomable));
   const hasMedia = deck.slides.some(s => !s.hidden && s.blocks.some(needsPlayer));
   const hasTimer = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'timer'));
@@ -545,7 +545,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${hasInlineMath ? 'window.addEventListener("load",function(){window.renderMathInElement&&renderMathInElement(document.body,{delimiters:[{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}],throwOnError:false});});' : ''}
  ${hasTrig ? TRIGGER_JS : ''}
  ${hasCam ? CAMERA_JS : ''}
- ${hasPoll ? pollJS(currentPalette(deck).accents) : ''}
+ ${hasPoll ? pollJS(currentPalette(deck).accents, { classroom: !!deck.classroom }) : ''}
  ${hasLive ? liveDataJS() : ''}
  ${hasZoomable ? LIGHTBOX_JS : ''}
  ${canvas ? `${canvasRuntimeDeps()}\ncanvasRuntime(${JSON.stringify(groups.map(g => frameOf(g[0], deck.slides.indexOf(g[0]), deck.size)))}, ${w}, ${h});` : ''}

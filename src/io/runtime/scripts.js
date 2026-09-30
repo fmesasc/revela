@@ -21,8 +21,13 @@ export const CAMERA_JS = `(function(){var st=null,asked=false;
 // Live polls: host a PeerJS peer, show the QR on every poll, tally votes and
 // repaint the results as they arrive; the current slide's poll is sent to the
 // phones. Loaded only when the deck has polls.
-export function pollJS(accents) {
+// classroom: the audience also sees the slides on their devices, at the
+// presenter's pace (the current slide's markup, fragments as shown, with the
+// page's styles, drawn without scripts on the phone); a corner badge with the
+// code and QR to join (A shows or hides it).
+export function pollJS(accents, { classroom = false } = {}) {
   return `(function(){
+ var CLASS=${classroom ? 'true' : 'false'};
  var gradeActivity=${gradeActivity.toString()}, publicActivity=${publicActivity.toString()};
  var ACT=['order','match','gaps','label'], GR=['quiz'].concat(ACT);
  var tally=${tallyVotes.toString()};
@@ -63,11 +68,11 @@ export function pollJS(accents) {
   var n=+a;return p.kind==='rating'?(n>=1&&n<=5?Math.round(n):null):(n>=0&&n<p.options.length?n:null);}
  function start(tries){code='';for(var i=0;i<5;i++)code+=AB[Math.floor(Math.random()*AB.length)];
   peer=new Peer('revela-vote-'+code);
-  peer.on('open',function(){var url=VOTE+'?c='+code;all().forEach(function(el){el.querySelector('.rv-poll-code').textContent=code;
+  peer.on('open',function(){var url=VOTE+'?c='+code;badge(url);all().forEach(function(el){el.querySelector('.rv-poll-code').textContent=code;
     el.querySelector('.rv-poll-url').textContent=url.replace(/^https?:\\/\\//,'').replace(/\\?.*$/,'');
     if(window.QRCode)QRCode.toCanvas(el.querySelector('canvas'),url,{width:220,margin:1},function(){});});});
   peer.on('connection',function(c){conns.push(c);
-    c.on('open',function(){var p=current();send(c,{type:'poll',poll:p});if(p&&p.kind==='qa')send(c,{type:'qa',pollId:p.pollId,list:qaList(p)});});
+    c.on('open',function(){if(CLASS){send(c,{type:'css',css:css()});send(c,slideMsg());}var p=current();send(c,{type:'poll',poll:p});if(p&&p.kind==='qa')send(c,{type:'qa',pollId:p.pollId,list:qaList(p)});});
     c.on('data',function(d){if(!d||d.type!=='vote')return;var el=all().filter(function(e){var p=def(e);return p&&p.pollId===d.pollId;})[0];if(!el)return;
       var p=def(el),who=String(d.voter).slice(0,40),V=votes[p.pollId]||(votes[p.pollId]=load(p.pollId));
       if(p.kind==='qa'){var a=d.answer||{};
@@ -89,6 +94,17 @@ export function pollJS(accents) {
  document.addEventListener('click',function(e){var el=e.target.closest&&e.target.closest('.rv-poll');var p=el&&def(el);if(p&&((p.kind==='quiz'&&started[p.pollId])||ACT.indexOf(p.kind)>=0)){e.stopPropagation();if(revealed[p.pollId]&&ACT.indexOf(p.kind)>=0)return;reveal(p);}},true);
  js(${JSON.stringify(QRCODE)}).catch(function(){}).then(function(){return js(${JSON.stringify(PEERJS)});}).then(function(){start(0);});
  Reveal.on('slidechanged',broadcast);
+ // Classroom: the slide to every device, as it changes (and its fragments).
+ function css(){return [].slice.call(document.querySelectorAll('link[rel=stylesheet],style')).map(function(n){return n.outerHTML;}).join('\\n');}
+ function slideMsg(){var s=Reveal.getCurrentSlide(),bg=s&&Reveal.getSlideBackground&&Reveal.getSlideBackground(s),cfg=Reveal.getConfig();
+  return {type:'slide',html:s?s.outerHTML:'',bg:bg?bg.outerHTML:'',w:cfg.width,h:cfg.height,cls:document.querySelector('.reveal').className,n:Reveal.getSlidePastCount()+1,of:Reveal.getTotalSlides()};}
+ function pushSlide(){if(!CLASS)return;var m=slideMsg();conns.forEach(function(c){send(c,m);});}
+ function badge(url){if(!CLASS)return;var b=document.getElementById('rv-class');if(!b){b=document.createElement('div');b.id='rv-class';
+   b.style.cssText='position:fixed;right:12px;bottom:12px;z-index:40;background:#fff;color:#223;border-radius:10px;padding:8px 10px;font:600 14px system-ui,sans-serif;text-align:center;box-shadow:0 4px 20px #0005';
+   b.innerHTML='<canvas style="display:block;width:120px;height:120px;margin:0 auto 4px"></canvas><div>'+url.replace(/^https?:\\/\\//,'').replace(/\\?.*$/,'')+'</div><div>C\u00f3digo <b style="letter-spacing:2px">'+code+'</b></div>';
+   document.body.appendChild(b);document.addEventListener('keydown',function(e){if((e.key==='a'||e.key==='A')&&!e.ctrlKey&&!e.metaKey)b.hidden=!b.hidden;});}
+  if(window.QRCode)QRCode.toCanvas(b.querySelector('canvas'),url,{width:240,margin:1},function(){});}
+ if(CLASS){Reveal.on('slidechanged',pushSlide);Reveal.on('fragmentshown',pushSlide);Reveal.on('fragmenthidden',pushSlide);}
  // (A quiz on the first slide starts with the presentation.)
  if(Reveal.isReady())broadcast();else Reveal.on('ready',broadcast);
 })();`;

@@ -71,7 +71,33 @@ function quizResult(d) {
   box.innerHTML = `<b>${!d.answered ? 'Sin respuesta' : d.ok ? (poll?.pub ? '¡Todo correcto!' : '¡Correcto!') : part ? `${Math.round(d.pts / 10)} % de aciertos` : 'Fallaste'}</b>+${d.pts} puntos · ${d.total} en total`
     + (d.rank ? `<br>Vas ${d.rank}.º de ${d.of}` : '');
 }
+// Classroom: the presenter's current slide, drawn here without its scripts (sandboxed).
+let styles = '', lastSlide = null;
+function showSlide(d) {
+  lastSlide = d;
+  const view = $('#slide-view'), f = view.querySelector('iframe'), w = +d.w || 1280, h = +d.h || 720;
+  view.hidden = !d.html;
+  f.style.width = w + 'px'; f.style.height = h + 'px';
+  f.srcdoc = `<!doctype html><html><head><meta charset="utf-8">${styles}<style>html,body{margin:0;overflow:hidden;background:#000}
+    .reveal{width:${w}px;height:${h}px;position:relative;overflow:hidden}.reveal .slides{position:absolute!important;inset:0;width:${w}px!important;height:${h}px!important;margin:0!important;transform:none!important;left:0!important;top:0!important}
+    .reveal .slides>section.present{display:block!important;visibility:visible!important;transform:none!important}.reveal .backgrounds{position:absolute;inset:0}
+    .reveal .slide-background.present{display:block!important;visibility:visible!important;opacity:1!important}</style></head>
+    <body><div class="${String(d.cls || 'reveal').replace(/"/g, '')}">${d.bg ? `<div class="backgrounds">${d.bg}</div>` : ''}<div class="slides">${d.html}</div></div></body></html>`;
+  $('#slide-n').textContent = d.n && d.of ? `${d.n} / ${d.of}` : '';
+  $('#wait h1').textContent = 'Sigue la presentación'; $('#wait p').textContent = 'Cuando haya una pregunta o una actividad, aparecerá aquí.';
+  fit();
+}
+function fit() {
+  const view = $('#slide-view'), f = view.querySelector('iframe'); if (view.hidden || !lastSlide) return;
+  const w = +lastSlide.w || 1280, h = +lastSlide.h || 720, k = view.clientWidth / w;
+  f.style.transform = `scale(${k})`; view.style.height = Math.round(h * k) + 'px';
+}
+window.addEventListener('resize', fit);
+if (window.ResizeObserver) new ResizeObserver(fit).observe($('#slide-view'));
+
 function onData(d) {
+  if (d?.type === 'css') { styles = String(d.css || ''); return; }
+  if (d?.type === 'slide') { showSlide(d); return; }
   if (d?.type === 'quizresult') { quizResult(d); return; }
   if (d?.type === 'qa') { if (poll?.pollId === d.pollId) renderQA(d.list || []); return; }
   if (d?.type === 'ok') { if (poll?.pub) return; if (poll?.kind === 'quiz') { const r = $('#quiz-res'); if (r && !r.textContent) r.textContent = '✔ Respuesta enviada. Espera al resultado…'; return; } $('#done').hidden = false; return; }

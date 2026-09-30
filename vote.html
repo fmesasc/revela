@@ -28,6 +28,8 @@
     .quiz-top{display:flex;gap:8px;align-items:center;margin-bottom:10px}.quiz-top input{flex:1}
     .quiz-left{font-size:22px;font-weight:800;min-width:3ch;text-align:right}
     .quiz-res{text-align:center;padding:18px;border-radius:12px;font-size:20px;margin-top:12px}.quiz-res b{display:block;font-size:34px}
+    #slide-view{position:relative;border-radius:10px;overflow:hidden;background:#000}#slide-view iframe{border:0;transform-origin:0 0;display:block}
+    #slide-n{position:absolute;right:8px;bottom:6px;font-size:12px;color:#fff;background:#0008;border-radius:8px;padding:1px 6px}
     .act-row{display:flex;gap:8px;align-items:center;background:var(--panel);border:2px solid var(--line);border-radius:10px;padding:8px 10px}
     .act-row span{flex:1}.act-row button{min-width:44px;padding:8px}
     select{font-size:17px;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--txt);color-scheme:dark}.act-row select{flex:1;max-width:62%}
@@ -45,6 +47,7 @@
 <body>
   <header><b>Revela</b> <span>· Votar</span><span id="status">Sin conectar</span></header>
   <main>
+    <div id="slide-view" hidden><iframe title="Diapositiva" sandbox="" scrolling="no"></iframe><small id="slide-n"></small></div>
     <section id="join">
       <h1>Introduce el código</h1>
       <p>Aparece en la pantalla de la presentación, junto al QR.</p><br>

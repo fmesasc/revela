@@ -43,6 +43,7 @@ import { openGallery, openDesignIdeas } from '../dialogs/gallery.js';
 import { autocorrectOn, setAutocorrect } from '../../features/document/autocorrect.js';
 import { openPlugins, openMacros } from '../dialogs/plugins.js';
 import { openVersions } from '../dialogs/versions.js';
+import { openClassResults } from '../dialogs/classroom.js';
 import { openCloudDocs, openCloudShare } from '../dialogs/cloud.js';
 import * as protect from '../../features/collab/protect.js';
 import { toggleComments } from '../panels/comments.js';
@@ -119,6 +120,8 @@ export const ACTIONS = {
   'present-current': () => present({ fromCurrent: true }),
   'present-call': () => openCallPresent(),
   'rehearse': () => present({ rehearse: true }),
+  'classroom': () => commit(() => { if (state.deck.classroom) delete state.deck.classroom; else state.deck.classroom = true; }),
+  'classroom-results': () => openClassResults(),
   'coach': () => startCoach(),
   'record-show': () => recorder.recordSlideshow(),
   'record-screen': () => recorder.recordToSlide('screen'),

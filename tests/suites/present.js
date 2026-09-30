@@ -79,6 +79,30 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     m2.querySelector('.modal-close').click();
   });
 
+  await test('modo aula: las diapositivas en los dispositivos del alumnado y los resultados de cada alumno', async () => {
+    reset(); const W = frame.contentWindow, P = R.poll;
+    assert(!/var CLASS=true/.test(R.io.buildHTML()), 'apagado: nada de aula');
+    D.querySelector('[data-action="classroom"]').click(); await sleep(10);
+    assert(R.state.deck.classroom && D.querySelector('[data-action="classroom"]').classList.contains('on'), 'se activa');
+    const html = R.io.buildHTML();
+    assert(/var CLASS=true/.test(html) && /Reveal\.on\('fragmentshown',pushSlide\)/.test(html), 'la presentación manda cada diapositiva (y sus animaciones) aunque no haya votaciones');
+    assert(/id='rv-class'|getElementById\('rv-class'\)/.test(html), 'con el código y el QR en una esquina');
+    for (const sc of new W.DOMParser().parseFromString(html, 'text/html').querySelectorAll('script:not([src])')) {
+      try { new W.Function(sc.textContent); } catch (e) { assert(false, 'el código de la presentación tiene un error: ' + e.message); }
+    }
+    // Results per student
+    const q = P.addPoll({ kind: 'quiz', question: 'Capital', options: ['Roma', 'París'], correct: [1], time: 20 });
+    R.slides.addSlide(); const o = P.addPoll({ kind: 'order', question: 'Estaciones', options: ['Primavera', 'Verano'] }); await sleep(10);
+    W.localStorage.setItem('revela.poll.' + q.pollId, JSON.stringify({ ana: { a: 1, t: 0, n: 'Ana' }, luis: { a: 0, t: 0, n: 'Luis' } }));
+    W.localStorage.setItem('revela.poll.' + o.pollId, JSON.stringify({ luis: { a: ['Primavera', 'Verano'], n: 'Luis' } }));
+    const C = await W.eval("import('/src/ui/dialogs/classroom.js')"), r = C.classResults();
+    eq(r.rows.map(x => `${x.name}:${x.pts.join('/')}:${x.total}`).join(' '), 'Ana:1000/:1000 Luis:0/1000:1000', 'cada alumno en cada actividad, y su total');
+    assert(/^"Alumno","1\. Capital","2\. Estaciones","Total"\n"Ana",1000,,1000/.test(C.classResultsCSV()), 'en CSV: ' + C.classResultsCSV().split('\n')[1]);
+    D.querySelector('[data-action="classroom-results"]').click(); await sleep(10);
+    eq(D.querySelectorAll('#class-modal .cr-table tbody tr').length, 2, 'en una tabla'); D.querySelector('#class-modal .modal-close').click();
+    W.localStorage.removeItem('revela.poll.' + q.pollId); W.localStorage.removeItem('revela.poll.' + o.pollId);
+  });
+
   await test('votación en directo: recuento, resultados, export y QR', async () => {
     reset(); const P = R.poll;
     const c = P.tallyVotes({ kind: 'choice', options: ['a', 'b', 'c'] }, { v1: 0, v2: 2, v3: 2, v4: 9 });

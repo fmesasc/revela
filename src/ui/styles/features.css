@@ -544,3 +544,6 @@ body:not([data-edition="cloud"]):not([data-edition="desktop"]) .accounts-only{di
 .pl-stage{position:relative;margin-top:8px;cursor:crosshair}.pl-stage img{width:100%;display:block;border-radius:6px}
 .pl-marks b{position:absolute;transform:translate(-50%,-50%);min-width:22px;height:22px;border-radius:11px;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-size:12px;pointer-events:none}
 .pl-img-btn{display:inline-block}
+.cr-wrap{max-height:55vh;overflow:auto;margin:6px 0 12px;border:1px solid var(--line);border-radius:8px}
+.cr-table{border-collapse:collapse;width:100%;font-size:13px}.cr-table th,.cr-table td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:center}
+.cr-table th:first-child,.cr-table td:first-child{text-align:start}.cr-table thead th{position:sticky;top:0;background:var(--ribbon)}
