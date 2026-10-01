@@ -2187,4 +2187,6 @@ export default {
   "Leyenda con el porcentaje de cada porción": "Zati bakoitzaren ehunekoa duen legenda",
   "Latido": "Taupada",
   "Salto": "Jauzia",
+  "Pro mensual": "Pro hilekoa",
+  "Pro anual": "Pro urtekoa",
 };

@@ -4,93 +4,146 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Precios — Revela</title>
-  <meta name="description" content="Planes de Revela: gratis, Pro con IA incluida y paquetes de créditos.">
+  <meta name="description" content="Revela es gratis para empezar. Pro: 10 € al mes o 96 € al año, con IA incluida. Equipos y centros: 6 € por persona y mes. Créditos de IA sin suscripción.">
   <link rel="icon" href="img/icon.svg" type="image/svg+xml">
+  <link rel="preload" href="fonts/newsreader.woff2" as="font" type="font/woff2" crossorigin>
+  <script>try{if(localStorage.getItem('theme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}</script>
   <link rel="stylesheet" href="site.css">
 </head>
 <body>
   <header class="top"><div class="wrap">
     <a class="logo" href="./"><img src="img/icon.svg" alt="">Revela</a>
-    <nav class="links">
+    <nav class="links" aria-label="Principal">
       <a href="./#funciones">Funciones</a>
+      <a href="./#plantillas">Plantillas</a>
       <a href="pricing" aria-current="page">Precios</a>
       <a href="support">Soporte</a>
+      <button class="theme" type="button" aria-label="Modo oscuro"><i data-icon="sun" class="sun"></i><i data-icon="moon" class="moon"></i></button>
       <a class="btn primary small" href="app/">Abrir Revela</a>
     </nav>
   </div></header>
 
   <main>
     <div class="hero"><div class="wrap">
-      <h1>Planes <em>sencillos</em></h1>
-      <p class="lead">Empieza gratis. Paga solo si quieres la IA incluida y las funciones Pro.</p>
+      <p class="eyebrow">Precios</p>
+      <h1>Gratis para <em>empezar</em>.</h1>
+      <p class="lead">Todo el editor es gratis. Pasa a Pro si quieres la IA incluida cada mes, tus presentaciones en la nube y compartirlas con personas concretas.</p>
+      <div class="billing" role="group" aria-label="Periodo de pago">
+        <button type="button" data-period="month">Mensual</button>
+        <button type="button" data-period="year">Anual <small>· ahorra un 20 %</small></button>
+      </div>
     </div></div>
 
-    <section style="padding-top:10px"><div class="wrap">
-      <!-- PRECIOS: ajustar cuando estén decididos (cifras, créditos incluidos, paquetes). -->
+    <section style="padding-top:0"><div class="wrap">
       <div class="plans">
         <div class="plan">
           <h3>Gratis</h3>
+          <p class="for">Para crear y presentar, sin límite de tiempo.</p>
           <div class="price">0 €</div>
-          <ul class="checks">
-            <li>Todo el editor: 3D, animaciones, diagramas, PDF…</li>
-            <li>Votaciones, concursos y preguntas del público</li>
-            <li>PowerPoint, LibreOffice, PDF, vídeo</li>
-            <li>Guardado en tu navegador y en Google Drive</li>
-            <li>IA con tu propia clave de OpenRouter</li>
+          <p class="per">Para siempre</p>
+          <ul>
+            <li>Todo el editor: 3D, animaciones, gráficos, diagramas</li>
+            <li>Votaciones y actividades con el público</li>
+            <li>PowerPoint, LibreOffice, PDF y vídeo</li>
+            <li>Más de cien presentaciones de ejemplo</li>
+            <li>50 créditos de IA de regalo al crear tu cuenta</li>
+            <li>3 presentaciones en la nube de Revela</li>
           </ul>
-          <a class="btn ghost" href="app/">Empezar</a>
+          <a class="btn line" href="app/">Empezar</a>
         </div>
         <div class="plan best">
-          <span class="tag">Próximamente</span>
+          <span class="tag">El más completo</span>
           <h3>Pro</h3>
-          <div class="price">— <small>/ mes</small></div>
-          <ul class="checks">
+          <p class="for">Para quien presenta a menudo y quiere la IA sin preocuparse de claves.</p>
+          <div class="price" data-month="10 €" data-year="8 €">8 €</div>
+          <p class="per" data-month="al mes" data-year="al mes · 96 € al año">al mes · 96 € al año</p>
+          <ul>
             <li>Todo lo del plan gratuito</li>
-            <li>IA incluida cada mes, sin claves</li>
-            <li>Presentaciones completas con IA e imágenes</li>
-            <li>Colaboración ampliada: chat y videollamada en el editor</li>
-            <li>Plantillas y funciones Pro</li>
+            <li>1000 créditos de IA cada mes, que no caducan</li>
+            <li>500 presentaciones en la nube</li>
+            <li>Compartir con personas concretas, con permisos</li>
+            <li>Estadísticas de cada diapositiva</li>
+            <li>Videollamadas dentro del editor</li>
           </ul>
-          <span class="btn primary" aria-disabled="true" style="opacity:.6;cursor:default">Próximamente</span>
+          <a class="btn primary" href="app/?comprar=pro-year" data-buy-month="app/?comprar=pro-month" data-buy-year="app/?comprar=pro-year">Pasar a Pro</a>
         </div>
         <div class="plan">
-          <span class="tag">Próximamente</span>
-          <h3>Créditos</h3>
-          <div class="price">— <small>por paquete</small></div>
-          <ul class="checks">
-            <li>Para usar la IA sin suscripción</li>
-            <li>Pagas solo cuando la necesitas</li>
-            <li>Sin caducidad mensual</li>
+          <h3>Equipos</h3>
+          <p class="for">Para empresas, academias y centros educativos.</p>
+          <div class="price">6 € <small>por persona</small></div>
+          <p class="per">al mes · desde 3 personas</p>
+          <ul>
+            <li>Pro para cada miembro del equipo</li>
+            <li>Kit de marca: colores, letras y logotipo comunes</li>
+            <li>Plantillas compartidas por el equipo</li>
+            <li>Invitaciones y permisos de administración</li>
+            <li>Moodle y otras plataformas, con notas automáticas</li>
           </ul>
-          <span class="btn ghost" aria-disabled="true" style="opacity:.6;cursor:default">Próximamente</span>
+          <a class="btn line" href="app/">Crear un equipo</a>
         </div>
+      </div>
+      <p class="note">Precios con IVA incluido. Puedes cancelar cuando quieras desde tu cuenta, y sigues teniendo Pro hasta el final del periodo pagado. El equipo se crea en la aplicación: Mi cuenta ▸ Equipos y centros.</p>
+    </div></section>
+
+    <section class="tint"><div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Sin suscripción</p>
+        <h2>Créditos de IA, cuando los necesites.</h2>
+        <p>Cada acción de la IA gasta lo que cuesta de verdad: un texto corto, poco; una presentación completa con imágenes, más. Los créditos no caducan y se suman a los que ya tengas.</p>
+      </div>
+      <div class="packs">
+        <div class="pack"><div><div class="n">500 <small>créditos</small></div><div class="u">1 céntimo por crédito</div></div><div class="p">5 €</div><a class="btn line small" href="app/?comprar=credits-500">Comprar</a></div>
+        <div class="pack"><div><div class="n">1500 <small>créditos</small></div><div class="u">0,8 céntimos por crédito</div></div><div class="p">12 €</div><a class="btn line small" href="app/?comprar=credits-1500">Comprar</a></div>
       </div>
     </div></section>
 
-    <section class="alt"><div class="wrap faq">
-      <h2>Preguntas frecuentes</h2>
+    <section><div class="wrap">
+      <div class="section-head"><h2>Comparar los planes</h2></div>
+      <table class="compare">
+        <thead><tr><th></th><th>Gratis</th><th>Pro</th><th>Equipos</th></tr></thead>
+        <tbody>
+          <tr><td>Editor completo, plantillas y exportación</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Votaciones y actividades con el público</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Colaboración en directo por enlace</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>IA con tu propia clave de OpenRouter</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Créditos de IA incluidos</td><td>50 al empezar</td><td>1000 al mes</td><td>1000 al mes por persona</td></tr>
+          <tr><td>Presentaciones en la nube de Revela</td><td>3</td><td>500</td><td>500 por persona</td></tr>
+          <tr><td>Compartir con personas concretas y permisos</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Estadísticas por diapositiva</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Videollamadas en el editor</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Kit de marca y plantillas del equipo</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td></tr>
+        </tbody>
+      </table>
+    </div></section>
+
+    <section class="tint"><div class="wrap faq">
+      <div class="section-head" style="margin-bottom:24px"><h2>Preguntas frecuentes</h2></div>
       <details><summary>¿Qué es un crédito?</summary>
-        <p>La unidad con la que se mide el uso de la IA incluida. Cada acción gasta según lo que cuesta de verdad: un texto corto, poco; una presentación completa con imágenes, más. Siempre verás cuántos te quedan.</p></details>
+        <p>La unidad con la que se mide el uso de la IA incluida. Cada acción gasta según lo que cuesta de verdad, y si la IA falla no se cobra nada. Siempre ves cuántos te quedan en tu cuenta.</p></details>
+      <details><summary>¿Caducan los créditos?</summary>
+        <p>No. Los que compras y los que recibes cada mes con Pro se suman y siguen ahí mientras tengas la cuenta.</p></details>
       <details><summary>¿Puedo seguir usando mi propia clave de IA?</summary>
-        <p>Sí. En la edición abierta y en el plan gratuito puedes conectar tu cuenta de OpenRouter y pagar tu propio consumo directamente allí.</p></details>
+        <p>Sí, en cualquier plan: conecta tu cuenta de OpenRouter y pagas tu consumo directamente allí.</p></details>
       <details><summary>¿Dónde se guardan mis presentaciones?</summary>
-        <p>En tu navegador y, si quieres, en tu Google Drive, Dropbox u OneDrive. Revela no guarda tus presentaciones en sus servidores salvo que las compartas por enlace o colaboréis en directo.</p></details>
-      <details><summary>¿Qué diferencia hay con la edición de GitHub?</summary>
-        <p>El editor es el mismo. La versión oficial añade la IA incluida (sin claves), tu cuenta con créditos y las funciones Pro que dependen de un servidor.</p></details>
+        <p>Donde quieras: en tu navegador, en tu Google Drive, Dropbox u OneDrive, o en la nube de Revela si tienes cuenta. Consulta la <a href="privacy.html">política de privacidad</a>.</p></details>
+      <details><summary>¿Hay precio especial para centros educativos?</summary>
+        <p>El plan Equipos ya está pensado para ellos: cada docente y cada alumno con Pro, plantillas comunes y conexión con Moodle. Para centros grandes, escríbenos desde la página de <a href="support">soporte</a>.</p></details>
       <details><summary>¿Puedo cancelar cuando quiera?</summary>
-        <p>Sí. La suscripción se podrá cancelar en cualquier momento desde tu cuenta y seguirás teniendo acceso hasta el final del periodo pagado.</p></details>
+        <p>Sí, desde Mi cuenta ▸ Gestionar la suscripción. Sigues con Pro hasta el final del periodo que has pagado.</p></details>
     </div></section>
   </main>
 
   <footer><div class="wrap">
-    <span>© 2026 Revela · Francisco Mesas Cervilla</span>
-    <nav>
+    <a class="logo" href="./"><img src="img/icon.svg" alt="">Revela</a>
+    <nav aria-label="Pie">
       <a href="./">Inicio</a>
       <a href="support">Soporte</a>
       <a href="privacy.html">Privacidad</a>
       <a href="terms.html">Condiciones</a>
       <a href="https://github.com/fmesasc/revela">Código en GitHub</a>
     </nav>
+    <span>© 2026 Revela · Francisco Mesas Cervilla</span>
   </div></footer>
+  <script src="site.js"></script>
 </body>
 </html>

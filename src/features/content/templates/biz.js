@@ -279,7 +279,7 @@ export default {
         ['bolt', '#e0a100', 'Probamos rápido', 'Una prueba pequeña vale más que una reunión larga.'], ['star', G, 'Bien hecho', 'Lo terminamos como si fuera para nosotros.']].flatMap(([ic, c, h, d], i) => { const x = 90 + i * 280;
         return [withAnims(shape('ellipse', x + 70, 210, 120, 120, c), chain(i, 'zoom-in')),
           withAnims(icon(ic, x + 100, 240, 60, '#ffffff'), A('spin', { start: 'withPrev', duration: 700 })),
-          withAnims(text(`<div style="font-size:30px;font-weight:700;color:${c}">${h}</div><div>${d}</div>`, x, 355, 260, 240, { fontSize: 25, textAlign: 'center', color: INK }), A('fade-up', { start: 'withPrev' }))]; }),
+          withAnims(text(`<div style="font-size:30px;font-weight:700;color:${c === '#e0a100' ? '#a87400' : c}">${h}</div><div>${d}</div>`, x, 355, 260, 240, { fontSize: 25, textAlign: 'center', color: INK }), A('fade-up', { start: 'withPrev' }))]; }),
         notes: 'Cuatro valores con su icono. Pedir a alguien del equipo un ejemplo real de cada uno.' },
       { title: 'Tu primera semana', layout: 'titleOnly', extra: [
         shape('rounded', 120, 516, 1040, 10, '#cfe3cf', { radius: 5 }),

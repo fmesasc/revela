@@ -49,9 +49,9 @@ export default {
         { layout: 'blank', bg: W, transition: 'none', extra: [
           R(0, 470, 1280, 250, INK),
           huge('SIN<br>ADORNOS', 60, 50, 900, 420, 200, INK),
-          text('MANIFIESTO DEL DISEÑO WEB HONESTO · ESTUDIO HORMIGÓN · 2026', 60, 545, 980, 50, { fontSize: 24, color: W, letterSpacing: 4, fontWeight: 700 }),
+          text('MANIFIESTO DEL DISEÑO WEB HONESTO · ESTUDIO HORMIGÓN · 2026', 60, 545, 990, 50, { fontSize: 22, color: W, letterSpacing: 3, fontWeight: 700 }),
           text('→', 1060, 500, 160, 180, { fontSize: 150, color: Y, fontFamily: FF.anton, textAlign: 'center' }),
-          withAnims(shape('burst', 900, 90, 300, 300, Y, { stroke: INK, strokeWidth: 5, rotation: 12, html: 'DIEZ<br>REGLAS', fontFamily: FF.anton, fontSize: 46, color: INK, lineHeight: 0.95 }),
+          withAnims(shape('burst', 900, 90, 300, 300, Y, { stroke: INK, strokeWidth: 5, rotation: 12, html: 'SEIS<br>REGLAS', fontFamily: FF.anton, fontSize: 46, color: INK, lineHeight: 0.95 }),
             A('zoom-in', { duration: 300, sound: 'pop' }), A('spin', { start: 'afterPrev', duration: 700 }))],
           notes: 'Portada brutalista: una sola tipografía condensada, enorme, y un bloque negro que corta la diapositiva. Con el primer clic entra la pegatina amarilla y gira (dos animaciones seguidas en el mismo objeto).' },
         { layout: 'blank', bg: INK, transition: 'wipe', extra: [
@@ -87,7 +87,7 @@ export default {
           notes: 'Caso inventado. La tabla usa el estilo del manifiesto: cabecera negra con letra amarilla y bordes gruesos.' },
         { layout: 'blank', bg: W, transition: 'none', extra: [
           R(40, 40, 1200, 640, 'none', { stroke: INK, strokeWidth: 10 }),
-          pollBlock({ fontSize: 34, x: 80, y: 70, w: 1120, h: 580, question: '¿Qué quitarías HOY de tu web?', options: ['El carrusel de la portada', 'Las ventanas emergentes', 'La tercera tipografía', 'Nada: está perfecta'] })],
+          pollBlock({ fontSize: 34, x: 80, y: 70, w: 1120, h: 580, question: '¿Qué quitarías HOY de tu web?', options: ['El carrusel de la portada', 'Ventanas emergentes', 'La tercera tipografía', 'Nada: está perfecta'] })],
           notes: 'Votación en directo: el público responde con el móvil desde el QR. Comentad el resultado antes de pasar.' },
         { layout: 'blank', bg: INK, transition: 'none', extra: [
           huge('MENOS.', 60, 60, 900, 240, 230, W),
@@ -224,8 +224,8 @@ export default {
         { title: 'Mira cómo crece', layout: 'titleOnly', transition: 'fade', extra: [
           withAnims(blot('ellipse', 120, 220, 460, 420, '#9cc58a', 0, 55), A('fade-in', { duration: 1200 })),
           { id: uid(), x: 150, y: 200, w: 400, h: 420, rotation: 0, type: 'ink', points: sprout, vw: 400, vh: 380, color: GREEN, width: 9, animation: A('draw', { duration: 3000, start: 'withPrev' }) },
-          at(hand('← hojas nuevas', 580, 260, 300, 60, 44, TERRA), 'fade-right', { start: 'afterPrev' }),
-          at(hand('← tallo', 580, 450, 300, 60, 44, TERRA), 'fade-right', { start: 'afterPrev' }),
+          at(hand('← hojas nuevas', 470, 270, 300, 60, 44, TERRA), 'fade-right', { start: 'afterPrev' }),
+          at(hand('← tallo', 380, 450, 200, 60, 44, TERRA), 'fade-right', { start: 'afterPrev' }),
           text('Las primeras dos hojas no son «hojas de verdad»: son los cotiledones, la reserva de energía de la semilla. Las siguientes ya son las de la planta.', 900, 230, 320, 380, { fontSize: 26, color: INK })],
           notes: 'Clic: la mancha aparece y el brote se dibuja solo (efecto Dibujar sobre un trazo de tinta). Después llegan las etiquetas manuscritas.' },
         { title: 'De hueso a planta', layout: 'titleOnly', transition: 'fade', extra: [

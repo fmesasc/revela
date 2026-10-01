@@ -44,7 +44,7 @@ export async function openTeam() {
         ${admin || e === me ? `<button type="button" class="mini2" data-rm="${esc(e)}">${t(e === me ? 'Salir' : 'Quitar')}</button>` : ''}</div>`).join('')}
       ${Object.keys(T.invited).map(e => `<div class="sh-item"><span>${esc(e)}</span><small>${t('Invitación pendiente')}</small>${admin ? `<button type="button" class="mini2" data-rm="${esc(e)}">${t('Quitar')}</button>` : ''}</div>`).join('')}
       ${admin ? `<div class="sh-row"><input type="email" class="tm-email" placeholder="${t('correo@ejemplo.com')}"><select class="tm-role"><option value="member">${t('Miembro')}</option><option value="admin">${t('Administración')}</option></select><button type="button" class="mini2 tm-invite">${t('Invitar')}</button></div>
-        <div class="sh-row"><label class="fr-chk" style="margin:0">${t('Puestos')} <input type="number" class="tm-seats" min="1" max="1000" value="${Math.max(T.seats, used)}" style="width:6em"></label><button type="button" class="fr-do tm-buy">${t('Pagar los puestos')}</button>
+        <div class="sh-row"><label class="fr-chk" style="margin:0">${t('Puestos')} <input type="number" class="tm-seats" min="3" max="1000" value="${Math.max(3, T.seats, used)}" style="width:6em"></label><button type="button" class="fr-do tm-buy">${t('Pagar los puestos')}</button>
           ${T.active ? `<button type="button" class="mini2 tm-portal">${t('Gestionar la suscripción')}</button>` : ''}</div>` : ''}
       <h4>${t('Kit de marca del equipo')}</h4>
       ${T.brand ? `<div class="sh-item"><span>${esc(T.brand.name || '')} ${(T.brand.colors || []).map(c => `<i class="tm-sw" style="background:${esc(c)}"></i>`).join('')}</span><button type="button" class="mini2 tm-use-brand">${t('Aplicar a esta presentación')}</button></div>` : `<p class="host-help">${t('Aún no hay kit de marca.')}</p>`}
@@ -59,7 +59,7 @@ export async function openTeam() {
       await acc.api('team/remove', { email: b.dataset.rm }); await acc.refreshAccount();
     })));
     q('.tm-invite')?.addEventListener('click', act(async () => { const e = q('.tm-email').value.trim(); if (!e) return; await acc.api('team/invite', { email: e, role: q('.tm-role').value }); }));
-    q('.tm-buy')?.addEventListener('click', act(() => acc.buy('team-seat', { seats: +q('.tm-seats').value || 1 })));
+    q('.tm-buy')?.addEventListener('click', act(() => acc.buy('team-seat', { seats: Math.max(3, +q('.tm-seats').value || 3) })));
     q('.tm-portal')?.addEventListener('click', act(() => acc.manageBilling()));
     q('.tm-use-brand')?.addEventListener('click', () => { const k = cleanKit(T.brand); if (k) { saveKit({ ...k, id: 'team-' + T.id }); applyKit(k); close(); } });
     q('.tm-set-brand')?.addEventListener('click', act(async () => {

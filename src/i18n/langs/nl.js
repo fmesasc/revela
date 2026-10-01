@@ -2187,4 +2187,6 @@ export default {
   "Leyenda con el porcentaje de cada porción": "Legenda met het percentage van elk segment",
   "Latido": "Pulseren",
   "Salto": "Springen",
+  "Pro mensual": "Pro maandelijks",
+  "Pro anual": "Pro jaarlijks",
 };

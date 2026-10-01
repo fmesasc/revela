@@ -12,7 +12,9 @@ import { openTeam } from './team.js';
 const FEATURE_NAMES = { ai: 'IA incluida', 'share-people': 'Compartir con personas', 'cloud-save': 'Guardado en la nube', 'video-calls': 'Videollamadas en el editor', 'premium-templates': 'Plantillas premium' };
 const errorText = e => (e.message === 'CANCELLED' ? t('No se ha iniciado sesión.') : e.message === 'EXPIRED' ? t('Se acabó el tiempo para confirmar. Vuelve a intentarlo.') : `${t('Algo ha fallado:')} ${e.message}`);
 
-export function openAccount() {
+// (buy: a product chosen on the prices page — ?comprar=pro-year —, paid for as soon as there is a session.)
+export const BUYABLE = ['pro-month', 'pro-year', 'credits-500', 'credits-1500'];
+export function openAccount({ buy } = {}) {
   document.getElementById('account-modal')?.remove();
   const back = document.createElement('div'); back.id = 'account-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(440px,94vw)"><button class="modal-close">✕</button><h3>${t('Mi cuenta de Revela')}</h3><div class="acc-body"></div></div>`;
@@ -43,13 +45,14 @@ export function openAccount() {
       });
       return;
     }
+    if (buy && BUYABLE.includes(buy) && me.billing && !(me.plan === 'pro' && buy.startsWith('pro'))) { const b = buy; buy = null; acc.buy(b).catch(e => alertDialog(errorText(e))); }
     const pro = me.plan === 'pro', until = me.until ? new Date(me.until).toLocaleDateString(currentLang(), { dateStyle: 'long' }) : '';
     body.innerHTML = `<div class="acc-who">${esc(me.email)}</div>
       <div class="acc-plan"><span class="acc-badge${pro ? ' pro' : ''}">${t(pro ? 'Pro' : 'Gratis')}</span>${pro && until ? `<small>${t('Renovación:')} ${esc(until)}</small>` : ''}</div>
       <div class="acc-credits"><b>${Math.max(0, me.credits | 0)}</b> ${t('créditos')}</div>
       <ul class="acc-features">${(me.features || []).map(f => `<li>✓ ${t(FEATURE_NAMES[f] || f)}</li>`).join('')}</ul>
       <div class="acc-buy">
-        ${pro ? '' : `<button type="button" class="fr-do" data-buy="pro-month"${me.billing ? '' : ' disabled'}>${t('Pasar a Pro')}</button>`}
+        ${pro ? '' : `<button type="button" class="fr-do" data-buy="pro-month"${me.billing ? '' : ' disabled'}>${t('Pro mensual')}</button><button type="button" class="fr-do" data-buy="pro-year"${me.billing ? '' : ' disabled'}>${t('Pro anual')}</button>`}
         <button type="button" class="mini2" data-buy="credits-500"${me.billing ? '' : ' disabled'}>${t('500 créditos')}</button>
         <button type="button" class="mini2" data-buy="credits-1500"${me.billing ? '' : ' disabled'}>${t('1500 créditos')}</button>
       </div>

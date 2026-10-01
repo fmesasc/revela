@@ -234,9 +234,9 @@ export default {
               { fontSize: 22, textAlign: 'center', vAlign: i % 2 ? 'top' : 'bottom', color: INK }), i % 2 ? 'fade-down' : 'fade-up')]; })],
         notes: 'Un solo clic: la línea se dibuja y los hechos aparecen uno detrás de otro con un «clic» de sonido. Azul: la etapa moderada; rojo: la radical.' },
       { layout: 'blank', bg: '#efe6d2', transition: 'page', extra: [
-        text('“', 90, 60, 200, 200, { fontFamily: H, fontSize: 240, color: RED, lineHeight: 1 }),
-        text('Los hombres nacen y permanecen libres e iguales en derechos.', 180, 200, 920, 220, { fontFamily: H, fontSize: 54, fontStyle: 'italic', color: INK }),
-        text('— Declaración de los Derechos del Hombre y del Ciudadano, artículo 1 (26 de agosto de 1789)', 180, 450, 920, 80, { fontSize: 26, color: '#6b5b45' })],
+        text('“', 90, 20, 200, 240, { fontFamily: H, fontSize: 240, color: RED, lineHeight: 1 }),
+        text('Los hombres nacen y permanecen libres e iguales en derechos.', 180, 220, 920, 220, { fontFamily: H, fontSize: 54, fontStyle: 'italic', color: INK }),
+        text('— Declaración de los Derechos del Hombre y del Ciudadano, artículo 1 (26 de agosto de 1789)', 180, 470, 920, 80, { fontSize: 26, color: '#6b5b45' })],
         notes: 'Comentar que «hombres» excluía de hecho a las mujeres: Olympe de Gouges respondió en 1791 con su Declaración de los Derechos de la Mujer.' },
       { title: 'Las etapas', layout: 'titleOnly', extra: [
         dg('chevrons', 'Monarquía constitucional\n  1789–1792\nRepública jacobina\n  1792–1794\nDirectorio\n  1795–1799\nConsulado\n  Napoleón, 1799', 90, 200, 1100, 400, { colors: 'accent', oneByOne: true })],
@@ -417,7 +417,7 @@ export default {
         on(card('<div>💡 De cada 100 litros de agua del planeta, solo unos <b>0,03</b> están en ríos y lagos.</div>', 90, 560, 1100, 90, '#ffffff10', { fontSize: 26, color: FG, pad: [14, 22, 14, 22], vAlign: 'middle' }), 'fade-up')],
         notes: 'Porcentajes aproximados. De cada 100 litros de agua del planeta, solo unos 2,5 son dulces y casi todo está congelado.' },
       { title: 'Tres estados, la misma agua', layout: 'titleOnly', bg: BG, extra: [
-        ...[['❄️', 'Sólido', 'Hielo y nieve', 'por debajo de 0 °C', '#7fb8e6'], ['💧', 'Líquido', 'Mares, ríos y lluvia', 'entre 0 y 100 °C', '#4a90d9'], ['☁️', 'Gaseoso', 'Vapor de agua', 'al evaporarse o hervir (100 °C)', '#50e3c2']]
+        ...[['❄️', 'Sólido', 'Hielo y nieve', 'por debajo de 0&nbsp;°C', '#7fb8e6'], ['💧', 'Líquido', 'Mares, ríos y lluvia', 'entre 0 y 100&nbsp;°C', '#4a90d9'], ['☁️', 'Gaseoso', 'Vapor de agua', 'al evaporarse o hervir (100&nbsp;°C)', '#50e3c2']]
           .map(([e, h, d, t, c], i) => withAnims(card(`<div style="font-size:72px">${e}</div><div style="font-size:36px;font-weight:700;color:${c}">${h}</div><div>${d}</div><div style="font-size:20px;opacity:.75;margin-top:8px">${t}</div>`,
             90 + i * 380, 190, 340, 400, '#ffffff10', { fontSize: 26, color: FG, textAlign: 'center', vAlign: 'middle', borderColor: c }), A('flip', { start: i ? 'afterPrev' : 'click', duration: 600 })))],
         notes: 'Las tarjetas giran una tras otra (efecto «Voltear»). El agua es la única sustancia que encontramos de forma natural en los tres estados.' },
@@ -633,13 +633,13 @@ export default {
         text('fox · zorro', 60, 600, 440, 50, { fontFamily: H, fontSize: 30, fontWeight: 700, color: C[1], textAlign: 'center' }),
         ...[['🐱 cat', 'gato'], ['🐶 dog', 'perro'], ['🐦 bird', 'pájaro'], ['🐟 fish', 'pez']].map(([en, es], i) =>
           flip(en, es, 540 + (i % 2) * 330, 180 + Math.floor(i / 2) * 230, 310, 200, C[(i + 2) % 6], i, i ? 'afterPrev' : 'click')),
-        text(`Zorro 3D: ${lib3d('kh-Fox').credit}`, 540, 650, 650, 30, { fontSize: 12, color: '#8a8f96' })],
+        text(`Zorro 3D: ${lib3d('kh-Fox').credit}`, 540, 640, 650, 44, { fontSize: 12, color: '#8a8f96' })],
         notes: 'Un clic y las cuatro tarjetas giran seguidas. El zorro 3D se puede girar con el ratón: What is it? It is a fox!' },
       { title: 'Colours · Colores', layout: 'titleOnly', bg: BG, extra: [
         ...[['red', '#d62828'], ['blue', '#1d6fd1'], ['yellow', '#f4c20d'], ['green', '#2a9d3a'], ['orange', '#f77f00'], ['purple', '#7b2cbf']].flatMap(([n, c], i) => [
           withAnims(shape('ellipse', 120 + i * 180, 230, 140, 140, c, { stroke: '#ffffff', strokeWidth: 6, shadow: { x: 0, y: 6, blur: 0, color: '#00000030' } }),
             A('bounce', { start: i ? 'afterPrev' : 'click', duration: 500, sound: 'pop' })),
-          along(text(n, 100 + i * 180, 390, 180, 60, { fontFamily: H, fontSize: 34, fontWeight: 800, color: c, textAlign: 'center' }), 'fade-up', { duration: 300 })]),
+          along(text(n, 100 + i * 180, 390, 180, 60, { fontFamily: H, fontSize: 34, fontWeight: 800, color: { yellow: '#a87c00', orange: '#c95f00' }[n] || c, textAlign: 'center' }), 'fade-up', { duration: 300 })]),
         text('What colour is it? · ¿De qué color es?', 90, 520, 1100, 60, { fontSize: 32, color: INK, textAlign: 'center' })],
         notes: 'Los colores botan uno tras otro con un «pop». Después, señalar objetos de la clase y preguntar: What colour is it?' },
       { title: "Let's go to school!", layout: 'titleOnly', bg: BG, extra: [

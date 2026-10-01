@@ -136,7 +136,7 @@ const EXAMPLES_DEF = {
     { title: 'Qué salió bien · qué mejorar', layout: 'twoContent', body: '<b>Bien</b>' + ul('Lanzamos la búsqueda nueva', 'Cero incidencias graves'), body2: '<b>Mejorar</b>' + ul('Revisiones de código más cortas', 'Documentar las decisiones') },
     { title: 'Tareas', layout: 'titleOnly', extra: [tableBlock({ x: 90, y: 180, w: 1100, h: 340, fontSize: 30, header: true, stroke: '#a5a5a5', headBg: '#404040', headFg: '#ffffff', banded: true, band: '#7f7f7f',
       rows: [['Tarea', 'Responsable', 'Fecha'], ['Guía de estilo', 'Ana', '3 oct'], ['Pruebas de rendimiento', 'Luis', '6 oct'], ['Encuesta a usuarios', 'Marta', '10 oct']], colW: [6, 3, 2] })] },
-    { layout: 'section', title: 'Próxima reunión: lunes 5 a las 10:00' },
+    { layout: 'section', title: 'Próxima reunión', subtitle: 'Lunes 5 de octubre, a las 10:00' },
   ]) },
 
   event: { name: 'Conferencia: programa del día', summary: 'Programa en tabla, preguntas del público (Q&A) y cierre', make: () => build({
@@ -156,9 +156,9 @@ const EXAMPLES_DEF = {
   }, [
     { layout: 'title', title: 'Hola, soy Laura', subtitle: 'Diseñadora de producto · 8 años haciendo cosas útiles' },
     { title: 'Lo que hago', layout: 'titleOnly', extra: [
-      icon('user', 150, 200, 90, '#e4572e'), text('<b>Investigación</b><br>Entrevistas y pruebas con usuarios', 90, 310, 300, 160, { fontSize: 28, textAlign: 'center' }),
-      icon('gear', 595, 200, 90, '#f3a712'), text('<b>Diseño</b><br>Prototipos y sistemas de diseño', 490, 310, 300, 160, { fontSize: 28, textAlign: 'center' }),
-      icon('bolt', 1040, 200, 90, '#a8c686'), text('<b>Lanzamiento</b><br>Con el equipo hasta producción', 890, 310, 300, 160, { fontSize: 28, textAlign: 'center' })] },
+      icon('user', 195, 220, 90, '#e4572e'), text('<b>Investigación</b><br>Entrevistas y pruebas con usuarios', 90, 330, 300, 160, { fontSize: 28, textAlign: 'center' }),
+      icon('gear', 595, 220, 90, '#f3a712'), text('<b>Diseño</b><br>Prototipos y sistemas de diseño', 490, 330, 300, 160, { fontSize: 28, textAlign: 'center' }),
+      icon('bolt', 995, 220, 90, '#a8c686'), text('<b>Lanzamiento</b><br>Con el equipo hasta producción', 890, 330, 300, 160, { fontSize: 28, textAlign: 'center' })] },
     { title: 'Proyecto destacado', layout: 'twoContent', body: '<b>El reto</b>' + ul('Una app bancaria que la gente abandonaba', 'Solo el 40 % terminaba el alta'), body2: '<b>El resultado</b>' + ul('Alta en 3 pasos en lugar de 9', '<b>78 %</b> de altas completadas') },
     { layout: 'section', title: 'Hablemos', subtitle: 'laura@ejemplo.example · linkedin.com/in/laura', extra: [icon('mail', 610, 520, 60, '#f3a712')] },
   ]) },
@@ -187,10 +187,10 @@ const EXAMPLES_DEF = {
         text('1 · anda hasta el centro y saluda<br>2 · baila<br>3 · vuelve andando', 820, 250, 400, 220, { fontSize: 30, color: '#f2f5fa' })],
         notes: 'Un mismo objeto con cuatro animaciones (Animaciones ▸ Añadir animación). El orden y el «después de la anterior» se cambian en el Panel.' },
       { title: 'Movimientos de cámara', layout: 'titleOnly', extra: [
-        model('kh-Fox', 90, 200, 520, 380, { view: 'three', motion: 'orbit' }),
-        model('kn-character', 720, 210, 400, 380, { motion: 'float' }),
-        text('Vuelta completa al entrar', 90, 600, 520, 50, { fontSize: 26, textAlign: 'center', color: '#b9c4d6' }),
-        text('Flotar', 720, 600, 400, 50, { fontSize: 26, textAlign: 'center', color: '#b9c4d6' })],
+        model('kh-Fox', 90, 170, 520, 350, { view: 'three', motion: 'orbit' }),
+        model('kn-character', 720, 170, 400, 350, { motion: 'float' }),
+        text('Vuelta completa al entrar', 90, 615, 520, 50, { fontSize: 26, textAlign: 'center', color: '#b9c4d6' }),
+        text('Flotar', 720, 615, 400, 50, { fontSize: 26, textAlign: 'center', color: '#b9c4d6' })],
         notes: 'Modelo 3D ▸ Al llegar a la diapositiva: balanceo, acercar, vuelta completa, flotar o desde arriba.' },
       { layout: 'section', title: 'Ahora tú', subtitle: 'Insertar ▸ Recursos ▸ 3D con movimiento · ¿Un modelo sin esqueleto? Modelo 3D ▸ Esqueleto automático' },
     ]));
@@ -232,7 +232,7 @@ const EXAMPLES_DEF = {
     const dg = (layout, text, o = {}) => ({ ...base(90, 170, 1100, 480), type: 'diagram', layout, colors: 'colorful', text, ...o });
     const boxes = (labels, pos, color) => labels.map((l, i) => text(`<b>${l}</b>`, ...pos(i), { fontSize: 28, textAlign: 'center', bg: color, radius: 16, color: '#ffffff', vAlign: 'middle' }));
     const links = list => list.slice(0, -1).map((b, i) => ({ ...base(0, 0, 1280, 720), type: 'connector', from: b.id, to: list[i + 1].id, color: '#9aa7b8', arrow: true }));
-    const proc = boxes(['Idea', 'Prototipo', 'Prueba', 'Lanzamiento'], i => [70 + i * 300, 300, 240, 130], '#3f6497').map((b, i) => anim(b, i + 1, 'fade-right'));
+    const proc = boxes(['Idea', 'Prototipo', 'Prueba', 'Lanzamiento'], i => [90 + i * 290, 300, 230, 130], '#3f6497').map((b, i) => anim(b, i + 1, 'fade-right'));
     const cyc = boxes(['Planificar', 'Hacer', 'Comprobar', 'Actuar'], i => { const a = -Math.PI / 2 + i * Math.PI / 2; return [640 + 250 * Math.cos(a) - 110, 390 + 200 * Math.sin(a) - 50, 220, 100]; }, '#2a9d8f');
     return build({ name: 'Diagramas y diseño', palette: 'office', fonts: 'clean', decor: p => bar(p, 1) }, [
       { layout: 'blank', extra: [text('Diagramas', 140, 240, 1000, 160, { fontSize: 110, textAlign: 'center', wordart: 'gradient' }),
@@ -245,7 +245,9 @@ const EXAMPLES_DEF = {
       { title: 'Proceso', layout: 'titleOnly', extra: [...proc, ...links(proc)],
         notes: 'Insertar ▸ Proceso. Cada caja aparece con un clic; los conectores siguen a las cajas al moverlas.' },
       { title: 'Ciclo (PDCA)', layout: 'titleOnly', extra: [...cyc, ...links([...cyc, cyc[0]])], notes: 'Insertar ▸ Ciclo.' },
-      { title: 'Iconos', layout: 'titleOnly', extra: ['home', 'user', 'gear', 'bolt', 'heart', 'star'].map((n, i) => ({ ...icon(n, 110 + i * 180, 300, 110, ['#3f6497', '#2a9d8f', '#e76f51', '#f3a712', '#c0392b', '#7d3c98'][i]), decorative: false, alt: n })),
+      { title: 'Iconos', layout: 'titleOnly', extra: [['home', 'Inicio'], ['user', 'Persona'], ['gear', 'Ajustes'], ['bolt', 'Energía'], ['heart', 'Me gusta'], ['star', 'Favorito']].flatMap(([n, l], i) => [
+        { ...icon(n, 110 + i * 180, 280, 110, ['#3f6497', '#2a9d8f', '#e76f51', '#f3a712', '#c0392b', '#7d3c98'][i]), decorative: false, alt: l },
+        text(l, 75 + i * 180, 410, 180, 50, { fontSize: 26, textAlign: 'center' })]),
         notes: 'Insertar ▸ Iconos, o más de 200 000 en Insertar ▸ Recursos ▸ Iconos.' },
     ]);
   } },
@@ -286,9 +288,9 @@ const EXAMPLES_DEF = {
         notes: 'Imagen ▸ Dispositivo: dentro de un móvil, una tableta, un portátil, un monitor o una ventana de navegador.' },
       { title: 'Texto alrededor', layout: 'titleOnly', extra: [
         shape('ellipse', 110, 200, 220, 220, '#66bb6a', { wrap: true, fill2: '#2e7d32', gradType: 'radial' }),
-        text('Reciclar no es solo separar la basura: es pensar antes de comprar, reutilizar lo que ya tenemos y reparar lo que se rompe. '.repeat(3), 90, 180, 1100, 470, { fontSize: 28 })],
+        text('Reciclar no es solo separar la basura: es pensar antes de comprar, reutilizar lo que ya tenemos y reparar lo que se rompe. El papel y el cartón van al contenedor azul; los envases de plástico, las latas y los briks, al amarillo; el vidrio, al verde. Lo que no sabemos dónde va, al punto limpio. Y lo mejor de todo: la basura que no llega a existir no hay que separarla.', 90, 180, 1100, 470, { fontSize: 28 })],
         notes: 'Forma o Imagen ▸ Texto alrededor: los cuadros de texto que la tocan le dejan hueco.' },
-      { layout: 'section', title: '¡Buen trabajo!', subtitle: 'Diseño ▸ Cambiar tamaño: esta clase en A4 o en vertical para el móvil' },
+      { layout: 'section', title: '¡Buen trabajo!', subtitle: 'Diseño ▸ Cambiar tamaño: en A4 o en vertical para el móvil' },
     ]));
   } },
 
@@ -309,7 +311,7 @@ const EXAMPLES_DEF = {
         notes: 'Plantilla «neón»: brillos con degradado radial, Text Art «Neón» y un modelo 3D que gira solo.' },
       { title: 'El problema', layout: 'titleOnly', bg: BG, extra: [
         ...[['bolt', 'Pantallas por todas partes', 'Miramos el móvil 150 veces al día.'], ['clock', 'Tiempo perdido', 'Buscar, desbloquear, volver a guardar.'], ['user', 'Nadie te mira', 'Hablamos mirando abajo, no a los ojos.']]
-          .map(([ic, h, d], i) => withAnims(card(`<div style="font-size:34px;font-weight:700;color:#fee440;margin-top:70px">${h}</div><div style="opacity:.85">${d}</div>`, 90 + i * 380, 210, 340, 360, '#ffffff12', { color: '#f3eefe', fontSize: 26 }),
+          .map(([ic, h, d], i) => withAnims(card(`<div style="font-size:34px;font-weight:700;color:#fee440;margin-top:70px">${h}</div><div style="opacity:.85">${d}</div>`, 90 + i * 380, 210, 340, 320, '#ffffff12', { color: '#f3eefe', fontSize: 28 }),
             A('fade-up', { start: i ? 'afterPrev' : 'click', duration: 500 }))),
         ...[0, 1, 2].map(i => icon(['bolt', 'clock', 'user'][i], 122 + i * 380, 240, 56, ['#f15bb5', '#00bbf9', '#00f5d4'][i]))] },
       { layout: 'blank', bg: BG, autoAnimate: true, extra: [glow(390, 60, 600, '#9b5de5', BG, 50),
@@ -320,7 +322,7 @@ const EXAMPLES_DEF = {
         dg('chevrons', 'Ver\n  Realidad aumentada ligera\nOír\n  Audio abierto, sin tapar\nHablar\n  Asistente por voz\nDurar\n  18 horas de batería', 500, 170, 740, 460, { oneByOne: true })] },
       { title: 'Un mercado enorme', layout: 'titleOnly', bg: BG, extra: [
         chartBlock({ x: 90, y: 170, w: 620, h: 470, chartType: 'funnel', color: '#9b5de5', data: [{ label: 'Gafas vendidas', value: 1500 }, { label: 'Con graduación', value: 900 }, { label: 'Interesados en «smart»', value: 240 }, { label: 'Nuestro objetivo', value: 60 }] }),
-        text('<b style="color:#fee440;font-size:64px">60 M</b><br>de gafas inteligentes al año en 2030 (millones de unidades, estimación)', 770, 260, 420, 300, { fontSize: 28, color: '#f3eefe' })] },
+        text('<b style="color:#fee440;font-size:64px">60 M</b><br>de personas al alcance de NOVA: el 4 % de quienes compran gafas cada año (millones, estimación)', 770, 250, 420, 320, { fontSize: 28, color: '#f3eefe' })] },
       { title: 'Elige tu NOVA', layout: 'titleOnly', bg: BG, extra: [
         shape('rounded', 470, 170, 340, 470, '#9b5de5', { fill2: '#f15bb5', gradAngle: 45, radius: 26 }),
         ...[['Lite', '199 €', 'Audio y asistente'], ['Pro', '349 €', 'Todo, con realidad aumentada'], ['Graduadas', '449 €', 'Pro con tus lentes']].map(([n, pr, d], i) =>
@@ -372,8 +374,8 @@ const EXAMPLES_DEF = {
       { layout: 'blank', bg: BG, extra: [
         shape('burst', 60, 60, 220, 220, '#fee440', { sketch: true, stroke: '#1b1030', strokeWidth: 4, rotation: -12 }), shape('star', 1010, 430, 200, 200, '#00f5d4', { sketch: true, stroke: '#1b1030', strokeWidth: 4, rotation: 14 }),
         shape('ellipse', 1040, 70, 120, 120, '#f15bb5', { sketch: true, stroke: '#1b1030', strokeWidth: 4 }), shape('triangle', 150, 470, 150, 150, '#00bbf9', { sketch: true, stroke: '#1b1030', strokeWidth: 4, rotation: 20 }),
-        text('¡Gran concurso!', 240, 160, 800, 160, { fontFamily: pairStacks('friendly').heading, fontSize: 110, wordart: 'fire', textAlign: 'center' }),
-        text('Saca el móvil y escanea el código de la primera pregunta', 290, 340, 700, 90, { fontSize: 32, textAlign: 'center', color: '#ffffff' }),
+        text('¡Gran concurso!', 190, 140, 900, 180, { fontFamily: pairStacks('friendly').heading, fontSize: 110, wordart: 'fire', textAlign: 'center' }),
+        text('Saca el móvil y escanea el código de la primera pregunta', 190, 340, 900, 90, { fontSize: 32, textAlign: 'center', color: '#ffffff' }),
         timer(60, 545, 440, 190, { color: '#fee440' })],
         notes: 'Un minuto para que todo el mundo entre. Las preguntas dan puntos por acertar y por rapidez.' },
       { layout: 'blank', bg: BG, extra: [q('¿Cuál es el planeta más grande del sistema solar?', ['Marte', 'Júpiter', 'Saturno', 'La Tierra'], 1)] },
@@ -384,7 +386,7 @@ const EXAMPLES_DEF = {
       { layout: 'blank', bg: BG, extra: [
         ...[[120, 90, '#fee440'], [980, 110, '#00f5d4'], [200, 470, '#f15bb5'], [960, 460, '#00bbf9']].map(([x, y, c], i) =>
           withAnims(shape('star', x, y, 150, 150, c, { sketch: true, stroke: '#1b1030', strokeWidth: 4 }), A('bounce', { start: i ? 'withPrev' : 'afterPrev', delay: i * 150, ...(i === 0 && { sound: 'applause' }) }))),
-        text('¡Enhorabuena!', 240, 250, 800, 160, { fontFamily: pairStacks('friendly').heading, fontSize: 110, wordart: 'gold', textAlign: 'center' }),
+        text('¡Enhorabuena!', 190, 230, 900, 180, { fontFamily: pairStacks('friendly').heading, fontSize: 110, wordart: 'gold', textAlign: 'center' }),
         text('Gracias por jugar', 340, 420, 600, 70, { fontSize: 40, textAlign: 'center', color: '#ffffff' })],
         notes: 'Las estrellas rebotan solas al llegar, con aplausos (Animaciones ▸ Sonido).' },
     ]));
@@ -410,12 +412,13 @@ const EXAMPLES_DEF = {
         data: [{ label: 'Ingresos', value: 4200 }, { label: 'Coste de ventas', value: -2600 }, { label: 'Personal', value: -700 }, { label: 'Marketing', value: -350 }, { label: 'Otros', value: -150 }, { label: 'Total', value: 0 }] })] },
       { title: 'Del visitante al cliente', layout: 'twoContent', bg: BG, body: '', body2: '', extra: [
         chartBlock({ x: 90, y: 170, w: 620, h: 480, chartType: 'funnel', color: '#7aa2f7', data: [{ label: 'Visitas', value: 120000 }, { label: 'Registros', value: 18000 }, { label: 'Pruebas', value: 5200 }, { label: 'Clientes', value: 1240 }] }),
-        text('<b style="color:#e0af68;font-size:54px">1 %</b><br>de las visitas acaba siendo cliente. El mayor salto está entre registro y prueba: ahí está la oportunidad.', 760, 250, 430, 330, { fontSize: 28, color: '#e6e9ef' })] },
+        text('<b style="color:#e0af68;font-size:54px">1 %</b><br>de las visitas acaba siendo cliente. El mayor salto está entre la visita y el registro: solo se registra el 15 %. Ahí está la oportunidad.', 760, 250, 430, 330, { fontSize: 28, color: '#e6e9ef' })] },
       { title: 'Ventas por región', layout: 'titleOnly', bg: BG, extra: [chartBlock({ x: 90, y: 170, w: 1100, h: 480, chartType: 'treemap',
         data: [{ label: 'Madrid', value: 1300 }, { label: 'Cataluña', value: 1050 }, { label: 'Andalucía', value: 700 }, { label: 'Valencia', value: 520 }, { label: 'País Vasco', value: 330 }, { label: 'Galicia', value: 180 }, { label: 'Resto', value: 120 }] })] },
       { title: 'Productos: precio, ventas y margen', layout: 'titleOnly', bg: BG, extra: [chartBlock({ x: 90, y: 170, w: 1100, h: 480, chartType: 'bubble', color: '#bb9af7',
-        data: [{ label: 'Básico', value: 1800 }, { label: 'Estándar', value: 1300 }, { label: 'Pro', value: 900 }, { label: 'Empresa', value: 300 }], series: [{ name: 'Margen', values: [18, 30, 42, 55] }] }),
-        text('Tamaño de la burbuja: margen', 90, 650, 1100, 40, { fontSize: 20, color: '#a9b1d6' })] },
+        grid: true, xTitle: 'Precio (€ al mes)', yTitle: 'Clientes', xMin: 0, xMax: 120,
+        data: [{ label: '9', value: 1800 }, { label: '29', value: 1300 }, { label: '59', value: 900 }, { label: '99', value: 300 }], series: [{ name: 'Margen', values: [18, 30, 42, 55] }] }),
+        text('Básico 9 € · Estándar 29 € · Pro 59 € · Empresa 99 € — tamaño de la burbuja: margen', 90, 655, 1100, 40, { fontSize: 22, color: '#a9b1d6' })] },
       { title: 'Resumen por trimestre', layout: 'titleOnly', bg: BG, extra: [tableBlock({ x: 90, y: 180, w: 1100, h: 420, fontSize: 26, header: true, headBg: '#7aa2f7', headFg: '#0b0f19', stroke: '#2a2f45', banded: true, band: '#7aa2f7',
         rows: [['Trimestre', 'Ingresos', 'Clientes nuevos'], ['T1', '850.000 €', '210'], ['T2', '960.000 €', '260'], ['T3', '1.090.000 €', '330'], ['T4', '1.300.000 €', '440'], ['<b>Total</b>', '=SUMA(ARRIBA)', '=SUMA(ARRIBA)']], colW: [2, 3, 3] })],
       notes: 'Los totales son fórmulas: si cambias un trimestre, se recalculan solos.' },
@@ -450,7 +453,7 @@ const EXAMPLES_DEF = {
         text('Laura convirtió un proceso de veinte pasos en tres pantallas. Nuestros usuarios lo notaron el primer día.', 180, 190, 950, 300, { fontSize: 48, color: INK, fontStyle: 'italic' }),
         text('— Marta Gil, directora de producto', 180, 500, 900, 60, { fontSize: 28, color: '#555555' })] },
       { layout: 'blank', transition: 'zoom', extra: [
-        text('HABLEMOS', 80, 160, 1100, 220, { fontFamily: pairStacks('bold').heading, fontSize: 230, color: INK }),
+        text('HABLEMOS', 80, 130, 1100, 270, { fontFamily: pairStacks('bold').heading, fontSize: 230, color: INK }),
         icon('mail', 90, 430, 56, ACC), text('hola@lauravega.example', 170, 430, 700, 60, { fontSize: 36, color: INK }),
         icon('location', 90, 510, 56, ACC), text('Madrid, España', 170, 510, 700, 60, { fontSize: 36, color: INK })] },
     ]));
@@ -466,10 +469,10 @@ const EXAMPLES_DEF = {
         notes: 'Modo lienzo: todas las diapositivas son marcos sobre un mismo dibujo. Diseño ▸ Vista de lienzo para moverlos, cambiar su tamaño o girarlos, o cambiar la imagen del lienzo.' },
       { title: '1 · La idea', body: ul('Todo empieza con una pregunta', 'Anota qué quieres cambiar') },
       { title: '2 · El plan', body: ul('Tres pasos, no diez', 'Quién hace qué'), notes: 'La siguiente diapositiva está dentro de esta: la cámara se acerca como una lupa.' },
-      { layout: 'blank', extra: [card('<b>🔍 El detalle</b><br>Un marco pequeño dentro de otro: al llegar, la cámara se acerca como una lupa.', 140, 170, 1000, 380, '#ffffffee', { fontSize: 46, textAlign: 'center', color: '#1b2a41' })] },
+      { layout: 'blank', extra: [card('<b>🔍 El detalle</b><br>Un marco pequeño dentro de otro: al llegar, la cámara se acerca como una lupa.', 140, 210, 1000, 290, '#ffffffee', { fontSize: 46, textAlign: 'center', color: '#1b2a41' })] },
       { title: '3 · La prueba', body: ul('Pruébalo con poca gente', 'Aprende rápido') },
       { title: '4 · El resultado', body: ul('Qué ha funcionado', 'Siguiente paso') },
-      { layout: 'section', title: '¡Cima! 🏁', subtitle: 'Gracias · hecho con el modo lienzo de Revela' },
+      { layout: 'blank', extra: [card('<b style="font-size:64px">¡Cima! 🏁</b><br>Gracias · hecho con el modo lienzo de Revela', 240, 40, 800, 190, '#ffffffe6', { fontSize: 30, textAlign: 'center', color: '#1b2a41' })] },
     ]);
     placeOnDesign(deck, canvasDesign('mountain'));
     // Stops: idea, plan (with the detail inside), test, result, and the top.
@@ -477,7 +480,7 @@ const EXAMPLES_DEF = {
     deck.slides[3].frame = { x: f[2].x + 150, y: f[2].y + 70, s: 0.08, r: -10 };
     deck.slides[4].frame = f[3]; deck.slides[5].frame = f[4]; deck.slides[6].frame = { ...f[5], s: 0.6 };
     // Text on the picture: light cards behind titles and lists.
-    for (const s of deck.slides.slice(1)) for (const b of s.blocks) if (b.ph) Object.assign(b, { bg: '#ffffffe6', radius: 18 });
+    for (const s of deck.slides.slice(1)) for (const b of s.blocks) if (b.ph) Object.assign(b, { bg: '#ffffffe6', radius: 18 }, b.ph === 'body' && { h: 200 });
     return deck;
   } },
 };

@@ -512,7 +512,7 @@ async function checkout(env, s, me, A, body, json) {
     team = (await call(A, 'team-id')).id; if (!team) return json({ error: 'no team' }, 400);
     const tc = await (await env.TEAMS.get(env.TEAMS.idFromName('team:' + team)).fetch('https://team/customer', { method: 'POST', body: JSON.stringify({ email: c.email }) })).json();
     if (!tc.admin) return json({ error: 'forbidden' }, 403);
-    seats = Math.max(1, Math.min(1000, Math.round(+body.seats || 1)));
+    seats = Math.max(3, Math.min(1000, Math.round(+body.seats || 3)));   // (3 seats at least)
   }
   const params = { mode: p.mode, 'line_items[0][price]': p.price, 'line_items[0][quantity]': String(seats), client_reference_id: me.sub,
     success_url: `${s.site}/app/?paid=1`, cancel_url: `${s.site}/pricing`, 'metadata[sub]': me.sub, 'metadata[product]': body.product,

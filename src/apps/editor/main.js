@@ -4,7 +4,7 @@ import { hasAccounts, cloudAi, refreshAccount, onAccount, account } from '../../
 import { mountCloudStatus, openFromLink } from '../../ui/dialogs/cloud.js';
 import * as clouddocs from '../../io/cloud/clouddocs.js';
 import { setCloudAi } from '../../features/ai/openrouter.js';
-import { openAccount, handleDesktopRequest } from '../../ui/dialogs/account.js';
+import { openAccount, handleDesktopRequest, BUYABLE } from '../../ui/dialogs/account.js';
 import { handleOpenWith } from '../../ui/shell/openwith.js';
 import { editText } from '../../ui/canvas/content.js';
 import { ACTIONS } from '../../ui/ribbon/actions.js';
@@ -269,6 +269,9 @@ if (hasAccounts()) {
   if (!testing) {
     refreshAccount().catch(() => {}).finally(() => { handleDesktopRequest(); openFromLink(); });
     if (new URLSearchParams(location.search).has('paid')) { history.replaceState(null, '', location.pathname); alertDialog(t('¡Gracias! Tu compra se ha registrado.')); }
+    // From the prices page (revelaslides.com/pricing): the account, with the product chosen.
+    const buy = new URLSearchParams(location.search).get('comprar');
+    if (BUYABLE.includes(buy)) { history.replaceState(null, '', location.pathname); refreshAccount().catch(() => {}).finally(() => openAccount({ buy })); }
   }
 }
 // Opened from Drive's or Dropbox's "Open with ▸ Revela" (or Drive's "New ▸ Revela").

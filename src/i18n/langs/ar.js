@@ -2187,4 +2187,6 @@ export default {
   "Leyenda con el porcentaje de cada porción": "وسيلة إيضاح بنسبة كل شريحة",
   "Latido": "نبض",
   "Salto": "قفزة",
+  "Pro mensual": "Pro شهري",
+  "Pro anual": "Pro سنوي",
 };

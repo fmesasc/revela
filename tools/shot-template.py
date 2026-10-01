@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Pictures of an example presentation's slides, as they look in the editor, in one sheet.
    python3 tools/shot-template.py KEY [OUT.png]   (needs Chrome; serves the repository locally)
-   Also: --present N  takes slide N (1-based) while presenting, 2 s after it appears (animations, 3D)."""
+   Also: --present N  takes slide N (1-based) while presenting, 2 s after it appears (animations, 3D).
+         --editor N   the whole editor window on slide N (for the website's pictures); --gallery: the gallery open.
+         --size WxH   the window's size (default 1600x1000); --dark: the editor in dark mode."""
 import base64, http.server, json, os, shutil, socketserver, subprocess, sys, threading, time, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 class Q(http.server.SimpleHTTPRequestHandler):
@@ -33,7 +35,9 @@ def main():
     tid = recv(send('Target.createTarget', url='about:blank'))['result']['targetId']
     sid = recv(send('Target.attachToTarget', targetId=tid, flatten=True))['result']['sessionId']
     ev = lambda e: recv(send('Runtime.evaluate', sid, expression=e, awaitPromise=True, returnByValue=True)).get('result', {}).get('result', {}).get('value')
-    recv(send('Emulation.setDeviceMetricsOverride', sid, width=1600, height=1000, deviceScaleFactor=1, mobile=False))
+    size = next((sys.argv[i + 1] for i, a in enumerate(sys.argv) if a == '--size'), '1600x1000'); W, H = map(int, size.split('x'))
+    recv(send('Emulation.setDeviceMetricsOverride', sid, width=W, height=H, deviceScaleFactor=1, mobile=False))
+    recv(send('Emulation.setEmulatedMedia', sid, features=[{'name': 'prefers-color-scheme', 'value': 'dark' if '--dark' in sys.argv else 'light'}]))
     recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/index.html?test'))
     for _ in range(80):
         if ev('!!window.__revela'): break
@@ -51,6 +55,14 @@ def main():
         return base64.b64decode(recv(send('Page.captureScreenshot', sid, **p))['result']['data'])
     from PIL import Image
     import io
+    editor = next((int(sys.argv[i + 1]) for i, a in enumerate(sys.argv) if a == '--editor'), 0)
+    if editor or '--gallery' in sys.argv:
+        ev(f"(()=>{{const R=window.__revela;R.slides.goToSlide({max(0, editor - 1)});R.render();return 1}})()"); time.sleep(1); models(); time.sleep(1)
+        if '--gallery' in sys.argv:                          # (the example presentations, with their covers)
+            ev("(()=>{document.querySelector('[data-action=\"gallery\"]').click();return 1})()"); time.sleep(1)
+            cat = next((sys.argv[i + 1] for i, a in enumerate(sys.argv) if a == '--group'), '')   # (--group creative: only that group)
+            ev("(()=>{const b=document.querySelector('#gallery-modal .gal-bar');b.previousElementSibling.scrollIntoView({block:'start'});" + (f"b.querySelector('.gal-cat[data-cat={json.dumps(cat)}]').click();" if cat else '') + "return 1})()"); time.sleep(7)
+        open(out, 'wb').write(shot()); print(out); proc.kill(); return
     if present:
         ev(f"(()=>{{const R=window.__revela;R.slides.goToSlide({present - 1});R.io.present({{fullscreen:false,fromCurrent:true}});return 1}})()"); time.sleep(2); models(); time.sleep(2)
         open(out, 'wb').write(shot()); print(out); return

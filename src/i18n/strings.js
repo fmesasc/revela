@@ -2206,5 +2206,7 @@ export const ROWS = [
   ['Leyenda con el porcentaje de cada porción', 'Legend with each slice’s percentage', 'Légende avec le pourcentage de chaque part', 'Legende mit dem Anteil jedes Segments', 'Legenda con la percentuale di ogni fetta', 'Legenda com a percentagem de cada fatia', 'Llegenda amb el percentatge de cada porció'],
   ['Latido', 'Pulse', 'Pulsation', 'Pulsieren', 'Pulsazione', 'Pulsar', 'Batec'],
   ['Salto', 'Jump', 'Saut', 'Springen', 'Salto', 'Salto', 'Salt'],
+  ['Pro mensual', 'Pro monthly', 'Pro mensuel', 'Pro monatlich', 'Pro mensile', 'Pro mensal', 'Pro mensual'],
+  ['Pro anual', 'Pro yearly', 'Pro annuel', 'Pro jährlich', 'Pro annuale', 'Pro anual', 'Pro anual'],
 ];
 // Additional languages (partial; anything missing falls back to Spanish).

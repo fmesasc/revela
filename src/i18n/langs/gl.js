@@ -2187,4 +2187,6 @@ export default {
   "Leyenda con el porcentaje de cada porción": "Lenda coa porcentaxe de cada porción",
   "Latido": "Latexo",
   "Salto": "Salto",
+  "Pro mensual": "Pro mensual",
+  "Pro anual": "Pro anual",
 };

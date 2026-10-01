@@ -13,6 +13,7 @@ const together = (blocks, effect = 'fade-up', start = 'click', props = {}) =>
 const keep = (b, id) => ({ ...b, id });                    // (the same id on two slides: Transform moves it)
 // Pie and doughnut charts draw their slices in these colours, without labels: a legend beside them.
 const PIE = ['#3f6497', '#c0392b', '#2b7a3b', '#d68910', '#7d3c98', '#16a085'];
+const pieData = pairs => pairs.map(([label, value], i) => ({ label, value, color: PIE[i % PIE.length] }));   // (the slices in the legend's colours)
 const legend = (labels, x, y, w, color, fontSize = 22) => labels.flatMap((l, i) => [shape('rounded', x, y + i * (fontSize + 18) + 4, fontSize, fontSize, PIE[i % PIE.length], { radius: 5 }),
   text(l, x + fontSize + 12, y + i * (fontSize + 18) - 4, w - fontSize - 12, fontSize + 16, { fontSize, color, vAlign: 'middle' })]);
 // numbered(), and on section slides the shapes (glows, decorations) under the title and subtitle.
@@ -67,7 +68,7 @@ export default {
           ...plan.flatMap(([h, what, ic], i) => { const y = 190 + i * 92;
             return together([shape('ellipse', 110, y, 64, 64, SOFT, { stroke: GOLD, strokeWidth: 2 }), icon(ic, 128, y + 18, 28, GOLD),
               text(`<b>${h}</b>`, 200, y + 6, 110, 52, { fontSize: 30, vAlign: 'middle', color: GOLD }), text(what, 310, y + 6, 450, 52, { fontSize: 30, vAlign: 'middle', color: INK })], 'fade-right', i ? 'afterPrev' : 'click', { duration: 500 }); }),
-          card('<div style="font-size:24px;letter-spacing:4px;color:#b8964f">AL AIRE LIBRE</div><div style="font-size:34px;margin:10px 0 14px"><b>Bajo los olivos</b></div>La ceremonia será en el jardín. Habrá sombra, abanicos y limonada fresca para todos.',
+          card('<div style="font-size:24px;letter-spacing:4px;color:#8b6f47">AL AIRE LIBRE</div><div style="font-size:34px;margin:10px 0 14px"><b>Bajo los olivos</b></div>La ceremonia será en el jardín. Habrá sombra, abanicos y limonada fresca para todos.',
             800, 230, 380, 330, SOFT, { fontSize: 26, color: INK, borderColor: GOLD, borderDash: 'dash', vAlign: 'middle' })],
           notes: 'Clic: el programa aparece hora a hora, cada fila después de la anterior. La tarjeta de la derecha tiene un borde discontinuo dorado.' },
         { title: 'Cómo llegar', layout: 'titleOnly', bg: BG, extra: [
@@ -127,7 +128,7 @@ export default {
             text(n, 90 + i * 380, 590, 340, 50, { fontSize: 30, fontWeight: 800, textAlign: 'center', color: c })])],
           notes: 'Tres personajes 3D celebrando, cada uno a su velocidad (Modelo 3D ▸ Velocidad). ¡Ven disfrazado de uno de ellos!' },
         { title: 'El plan de la tarde', layout: 'titleOnly', bg: CREAM, extra: [
-          dg('steps', '17:00\n  Búsqueda del tesoro\n17:45\n  Merienda\n18:30\n  ¡Tarta y velas!\n19:00\n  Piñata\n19:30\n  Baile loco', 90, 180, 1100, 470, { colors: 'colorful', oneByOne: true })],
+          dg('steps', '17:00\n  Búsqueda del tesoro\n17:45\n  Merienda\n18:30\n  ¡Tarta y velas!\n19:00\n  Piñata\n19:30\n  Baile loco', 90, 180, 1100, 470, { colors: 'colorful', oneByOne: true, fontScale: 1.4 })],
           notes: 'Diagrama «Escalera» que aparece peldaño a peldaño.' },
         { layout: 'blank', bg: SKY, extra: [q('¿Cuántas velas soplará Leo?', ['5', '6', '7', '8'], 2)],
           notes: 'Concurso desde el móvil: puntos por acertar y por rapidez. Los mayores pueden ayudar a los peques a votar.' },
@@ -191,7 +192,7 @@ export default {
             return [text(n, 100, y, 440, 40, { fontSize: 26, color: FG }), text(v + ' %', 470, y, 130, 40, { fontSize: 24, textAlign: 'right', color: c }),
               shape('rounded', 100, y + 46, 500, 16, '#ffffff', { opacity: 15 }),
               withAnims(shape('rounded', 100, y + 46, Math.round(500 * v / 100), 16, c), A('fade-right', { start: i ? 'afterPrev' : 'click', duration: 500 }))]; }),
-          chartBlock({ x: 680, y: 170, w: 520, h: 480, chartType: 'radar', color: MINT,
+          chartBlock({ x: 680, y: 170, w: 520, h: 480, chartType: 'radar', color: MINT, yMax: 100,
             data: [{ label: 'Investigar', value: 95 }, { label: 'Diseñar', value: 90 }, { label: 'Datos', value: 75 }, { label: 'Enseñar', value: 85 }, { label: 'Liderar', value: 70 }, { label: 'Escribir', value: 80 }] })],
           notes: 'Las barras se llenan una tras otra con un clic. A la derecha, el mismo perfil en un gráfico de radar (valores de autoevaluación).' },
         { title: 'Proyectos destacados', layout: 'titleOnly', bg: BG, extra: [
@@ -201,9 +202,9 @@ export default {
           card('<b style="color:#f5a623">Banca digital</b><br>−35 % de llamadas al servicio de ayuda.', 960, 420, 240, 200, '#ffffff12', { fontSize: 22, color: FG, pad: [16, 18, 16, 18] })],
           notes: 'Imagen ▸ Dispositivo: la misma captura dentro de un móvil o un portátil. Las pantallas son dibujos SVG de ejemplo; las cifras, inventadas.' },
         { title: 'Idiomas y herramientas', layout: 'titleOnly', bg: BG, extra: [
-          tableBlock({ x: 100, y: 190, w: 500, h: 260, fontSize: 26, header: true, headBg: MINT, headFg: '#0f2940', stroke: '#2c4f70', banded: true, band: SKYB,
+          tableBlock({ x: 100, y: 190, w: 500, h: 224, fontSize: 26, header: true, headBg: MINT, headFg: '#0f2940', stroke: '#2c4f70', banded: true, band: SKYB,
             rows: [['Idioma', 'Nivel'], ['Español', 'Nativo'], ['Inglés', 'C1'], ['Francés', 'B2']], colW: [3, 2] }),
-          text('Certificados oficiales; inglés en el trabajo diario desde 2020.', 100, 470, 500, 90, { fontSize: 22, color: MUTE }),
+          text('Certificados oficiales; inglés en el trabajo diario desde 2020.', 100, 440, 500, 90, { fontSize: 22, color: MUTE }),
           ...['Figma', 'Python', 'SQL', 'Miro', 'HTML y CSS', 'Revela', 'Tableau', 'Notion'].map((t, i) =>
             anim(text(t, 680 + (i % 2) * 260, 190 + Math.floor(i / 2) * 100, 230, 70, { fontSize: 28, textAlign: 'center', vAlign: 'middle', color: FG, bg: ['#4a90d922', '#50e3c222', '#f5a62322', '#9b6cf022'][i % 4], borderColor: [SKYB, MINT, SUN, '#9b6cf0'][i % 4], radius: 35 }), 1, 'zoom-in'))],
           notes: 'Tabla con filas en bandas; las herramientas son cuadros de texto con borde redondeado («píldoras») que entran todas juntas.' },
@@ -247,10 +248,10 @@ export default {
           tableBlock({ x: 90, y: 180, w: 620, h: 430, fontSize: 24, header: true, headBg: TERRA, headFg: '#ffffff', stroke: '#d8ccb6', banded: true, band: '#cd853f',
             rows: [['Concepto', 'Precio (€)', 'Veces', 'Total (€)'], ['Vuelos ida y vuelta', '180', '1', '=B2*C2'], ['Alojamiento (noche)', '65', '9', '=B3*C3'], ['Trenes', '160', '1', '=B4*C4'],
               ['Comidas (día)', '45', '10', '=B5*C5'], ['Museos y visitas', '95', '1', '=B6*C6'], ['<b>Total</b>', '', '', '=SUMA(ARRIBA)']], colW: [4, 2, 2, 2] }),
-          chartBlock({ x: 750, y: 180, w: 260, h: 260, chartType: 'pie', color: TERRA,
-            data: [{ label: 'Vuelos', value: 180 }, { label: 'Alojamiento', value: 585 }, { label: 'Trenes', value: 160 }, { label: 'Comidas', value: 450 }, { label: 'Museos', value: 95 }] }),
+          chartBlock({ x: 750, y: 180, w: 260, h: 260, chartType: 'pie', color: TERRA, legend: false,
+            data: pieData([['Vuelos', 180], ['Alojamiento', 585], ['Trenes', 160], ['Comidas', 450], ['Museos', 95]]) }),
           ...legend(['Vuelos', 'Alojamiento', 'Trenes', 'Comidas', 'Museos'], 1030, 200, 170, INK),
-          text('Dormir y comer se llevan <b>más del 70 %</b> del presupuesto.', 750, 480, 440, 110, { fontSize: 26, color: INK, fontStyle: 'italic' })],
+          text('Dormir y comer se llevan <b>más del 70&nbsp;%</b> del presupuesto.', 750, 480, 440, 110, { fontSize: 26, color: INK, fontStyle: 'italic' })],
           notes: 'Cada fila multiplica precio por veces (=B2*C2) y la última suma la columna (=SUMA(ARRIBA)): cambia un precio y todo se recalcula.' },
         { title: 'Qué comer en cada ciudad', layout: 'titleOnly', bg: BG, extra: [
           ...[['Venecia', 'Cicchetti', 'Tapas en barras de madera junto al canal.'], ['Florencia', 'Bistecca', 'Chuletón a la brasa para compartir.'], ['Roma', 'Cacio e pepe', 'Pasta con queso pecorino y pimienta.'],
@@ -262,7 +263,7 @@ export default {
           options: ['Buongiorno = Buenos días', 'Grazie mille = Muchas gracias', 'Il conto, per favore = La cuenta, por favor', 'Quanto costa? = ¿Cuánto cuesta?', 'Dov\'è la stazione? = ¿Dónde está la estación?'] })],
           notes: 'Actividad de emparejar desde el móvil: cada uno une las frases y la corrección es automática.' },
         { title: 'El tiempo en mayo', layout: 'titleOnly', bg: BG, extra: [
-          chartBlock({ x: 90, y: 170, w: 760, h: 480, chartType: 'bar', color: TERRA, seriesName: 'Máxima (°C)',
+          chartBlock({ x: 90, y: 170, w: 760, h: 480, chartType: 'bar', color: TERRA, seriesName: 'Máxima (°C)', dataLabels: true,
             data: [{ label: 'Venecia', value: 21 }, { label: 'Florencia', value: 24 }, { label: 'Roma', value: 24 }, { label: 'Nápoles', value: 23 }, { label: 'Amalfi', value: 22 }],
             series: [{ name: 'Mínima (°C)', values: [13, 12, 13, 14, 15], color: BLUE }] }),
           card('<b>En la maleta</b><br>Chaqueta fina, calzado cómodo y algo para cubrir hombros en las iglesias.', 890, 220, 300, 330, '#fffaf2', { fontSize: 26, color: INK, borderColor: '#e2d6c0' })],
@@ -302,7 +303,7 @@ export default {
           avocado(860, 200, 340, 340)],
           notes: 'Transformar: el título y el aguacate se mueven solos desde la portada. El total de la tabla es una fórmula (=SUMA(ARRIBA)); precios orientativos.' },
         { title: 'Paso a paso', layout: 'titleOnly', bg: BG, extra: [
-          dg('list', 'Cortar\n  Abre los aguacates, quita el hueso y saca la pulpa\nMachacar\n  Con un tenedor: mejor con tropezones que en puré\nPicar\n  Cebolla, tomate sin semillas y cilantro, muy fino\nAliñar\n  Zumo de lima, sal y una pizca de chile\nServir\n  Al momento, con totopos templados', 90, 180, 1100, 480, { oneByOne: true, colors: 'colorful' })],
+          dg('list', 'Cortar\n  Abre los aguacates, quita el hueso y saca la pulpa\nMachacar\n  Con un tenedor: mejor con tropezones que en puré\nPicar\n  Cebolla, tomate sin semillas y cilantro, muy fino\nAliñar\n  Zumo de lima, sal y una pizca de chile\nServir\n  Al momento, con totopos templados', 90, 180, 1100, 480, { oneByOne: true, colors: 'colorful', fontScale: 1.4 })],
           notes: 'Diagrama «Lista vertical» uno a uno: cada paso aparece con un clic; explícalo mientras tanto.' },
         { layout: 'blank', bg: BG, extra: [
           text('EL TRUCO', 90, 120, 520, 120, { fontFamily: head, fontSize: 110, wordart: 'fire' }),
@@ -315,8 +316,8 @@ export default {
           timer(300, 800, 180, 400, { color: GREEN, endText: '¡A la mesa!' })],
           notes: 'Cuenta atrás de cinco minutos: empieza sola y suena al terminar. Un clic la pausa.' },
         { title: 'Por ración', layout: 'titleOnly', bg: BG, extra: [
-          chartBlock({ x: 90, y: 200, w: 400, h: 400, chartType: 'doughnut', color: GREEN,
-            data: [{ label: 'Grasas (g)', value: 15 }, { label: 'Hidratos (g)', value: 9 }, { label: 'Fibra (g)', value: 7 }, { label: 'Proteínas (g)', value: 2 }] }),
+          chartBlock({ x: 90, y: 200, w: 400, h: 400, chartType: 'doughnut', color: GREEN, legend: false,
+            data: pieData([['Grasas (g)', 15], ['Hidratos (g)', 9], ['Fibra (g)', 7], ['Proteínas (g)', 2]]) }),
           ...legend(['Grasas · 15 g', 'Hidratos · 9 g', 'Fibra · 7 g', 'Proteínas · 2 g'], 510, 300, 220, FG, 24),
           ...[['190', 'kcal por ración', GREEN], ['80 %', 'grasas insaturadas', ORANGE], ['0', 'azúcares añadidos', RED]].map(([n, l, c], i) =>
             anim(text(`<span style="font-family:${head};font-size:80px;color:${c}">${n}</span><br>${l}`, 820, 180 + i * 160, 370, 150, { fontSize: 26, color: FG }), i + 1, 'fade-left'))],
@@ -364,7 +365,7 @@ export default {
             colW: [2, 7, 2], cellBg: Object.fromEntries([2, 4, 7].flatMap(r => [0, 1, 2].map(c => [`${r},${c}`, '#1f2a24']))) })],
           notes: 'Los días de descanso tienen otro fondo (color de celda). El total semanal es una fórmula: cambia una sesión y se recalcula.' },
         { title: 'Tu progreso', layout: 'titleOnly', bg: BG, extra: [
-          chartBlock({ x: 90, y: 170, w: 760, h: 480, chartType: 'line', color: ORANGE, seriesName: 'Real',
+          chartBlock({ x: 90, y: 170, w: 760, h: 480, chartType: 'line', color: ORANGE, seriesName: 'Real', grid: true, yTitle: 'Minutos seguidos',
             data: ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'].map((l, i) => ({ label: l, value: [1, 2, 3, 5, 8, 12, 20, 30][i] })),
             series: [{ name: 'Objetivo', values: [1, 2, 3, 5, 10, 15, 22, 30], color: '#5c6670' }] }),
           text(`<span style="font-family:${head};font-size:72px;font-weight:800;color:${GREEN}">×30</span><br>de 1 minuto a media hora seguida en ocho semanas`, 890, 230, 300, 300, { fontSize: 28, color: FG })],
@@ -411,7 +412,7 @@ export default {
         { layout: 'blank', bg: BG, transition: 'fade', extra: [
           glow(600, 100, 760, '#3b1d66', BG, 80),
           text('SESIÓN DE OCTUBRE · BIBLIOTECA', 90, 180, 660, 40, { fontSize: 22, letterSpacing: 4, color: MINT }),
-          text('Club de lectura', 80, 220, 700, 220, { fontFamily: serif, fontSize: 92, wordart: 'purple', lineHeight: 1.05 }),
+          text('Club de lectura', 80, 220, 700, 220, { fontFamily: serif, fontSize: 92, wordart: 'neon', wordartColor: PURP, lineHeight: 1.05 }),
           text('Este mes: «El faro de las horas»', 90, 450, 660, 60, { fontSize: 34, fontStyle: 'italic', color: FG }),
           text('Jueves 15 de octubre · 19:00 · Sala de lectura', 90, 530, 660, 50, { fontSize: 26, color: MUTE }),
           shape('rect', 760, 600, 470, 14, '#5b3a2a', { sketch: true, stroke: '#0d0718', strokeWidth: 3 }), ...shelf],
@@ -426,7 +427,7 @@ export default {
           text('Inés Valcárcel', 110, 580, 290, 36, { fontSize: 20, textAlign: 'center', color: '#e8dcff' }),
           text('En un faro del norte, una farera recibe cada noche una carta que aún no se ha escrito. Una novela sobre el tiempo, la memoria y las familias que se eligen.', 480, 180, 710, 260, { fontFamily: serif, fontSize: 32, color: FG, lineHeight: 1.4 }),
           ...[['312', 'páginas'], ['2024', 'publicación'], ['4,3', 'nota media del club']].flatMap(([n, l], i) => [
-            text(n, 480 + i * 240, 480, 220, 70, { fontFamily: serif, fontSize: 56, fontWeight: 700, color: [YEL, MINT, PINK][i] }), text(l, 480 + i * 240, 555, 220, 40, { fontSize: 22, color: MUTE })])],
+            text(n, 480 + i * 240, 480, 220, 70, { fontFamily: serif, fontSize: 56, fontWeight: 700, color: [YEL, MINT, PINK][i] }), text(l, 480 + i * 240, 555, 220, 64, { fontSize: 22, color: MUTE })])],
           notes: 'Portada dibujada con formas: degradados, un faro con un trapecio y una onda para el mar. Libro inventado: cambia el texto por el vuestro.' },
         { layout: 'blank', bg: BG, autoAnimate: true, extra: quote(70, PINK, 'Hay luces que no sirven para ver, sino para que otros sepan dónde estamos.', '— Capítulo 3, página 41'),
           notes: 'Transformar: las comillas, la cita y la referencia son los mismos objetos en la diapositiva siguiente, y se mueven y cambian solos.' },
@@ -503,7 +504,7 @@ export default {
         { title: 'Presupuesto', layout: 'titleOnly', bg: BG, extra: [
           tableBlock({ x: 90, y: 180, w: 560, h: 420, fontSize: 25, header: true, headBg: INK, headFg: '#ffffff', stroke: '#d9d2c5', banded: true, band: WOOD,
             rows: [['Concepto', 'Importe'], ['Camión y 3 operarios', '650 €'], ['Cajas y embalaje', '90 €'], ['Limpieza del piso antiguo', '120 €'], ['Pintura del salón', '300 €'], ['Cambio de cerradura', '80 €'], ['<b>Total</b>', '=SUMA(ARRIBA)']], colW: [3, 2] }),
-          chartBlock({ x: 690, y: 180, w: 500, h: 420, chartType: 'hbar', color: CLAY, dataLabels: true,
+          chartBlock({ x: 690, y: 200, w: 510, h: 340, chartType: 'hbar', color: CLAY, dataLabels: true,
             data: [{ label: 'Camión', value: 650 }, { label: 'Pintura', value: 300 }, { label: 'Limpieza', value: 120 }, { label: 'Cajas', value: 90 }, { label: 'Cerradura', value: 80 }] })],
           notes: 'El total es una fórmula. Importes de ejemplo.' },
         { layout: 'blank', bg: BG, extra: [pollBlock({ kind: 'order', fontSize: 32, question: '¿En qué orden se hace? Ordénalo desde el móvil', x: 90, y: 70, w: 1100, h: 580,
@@ -608,7 +609,7 @@ export default {
           notes: 'La planta es un modelo 3D con transmisión de luz en las hojas. En la siguiente diapositiva se mueve con Transformar. El sol gira una vez al llegar.' },
         { title: '¿Por qué un huerto?', layout: 'titleOnly', bg: BG, autoAnimate: true, extra: [
           plant(80, 170, 330, 440),
-          ...[['heart', BERRY, 'Comemos mejor', 'Verdura de temporada recién cogida, sin envases.'], ['user', BLUE, 'Hacemos barrio', 'Veinte vecinos, un turno de riego cada uno.'], ['star', SUN, 'Aprendemos', 'Los peques ven de dónde sale lo que comen.']].flatMap(([ic, c, h, d], i) =>
+          ...[['heart', BERRY, 'Comemos mejor', 'Verdura de temporada recién cogida, sin envases.'], ['user', BLUE, 'Hacemos barrio', 'Veinte vecinos, un turno de riego cada uno.'], ['star', '#a66f00', 'Aprendemos', 'Los peques ven de dónde sale lo que comen.']].flatMap(([ic, c, h, d], i) =>
             together([icon(ic, 470, 200 + i * 140, 56, c), text(`<b style="color:${c}">${h}</b><br>${d}`, 550, 186 + i * 140, 640, 110, { fontSize: 28, color: INK })], 'fade-left'))],
           notes: 'Transformar: la planta viaja de la portada a la izquierda. Las tres razones entran con un clic cada una.' },
         { title: 'Calendario de siembra', layout: 'titleOnly', bg: BG, extra: [
@@ -626,7 +627,7 @@ export default {
           text(ul('<b>La albahaca</b> aleja a la mosca blanca del tomate', '<b>La caléndula</b> atrae a las mariquitas, que se comen el pulgón', '<b>Juntas</b> aprovechan mejor el agua y la sombra'), 700, 200, 490, 420, { fontSize: 28, color: INK })],
           notes: 'Diagrama de Venn: plantas que se ayudan entre sí (asociaciones de cultivos).' },
         { title: 'Agua: lluvia y riego', layout: 'titleOnly', bg: BG, extra: [
-          chartBlock({ x: 90, y: 170, w: 760, h: 480, chartType: 'stacked', color: BLUE, seriesName: 'Lluvia (l/m²)',
+          chartBlock({ x: 90, y: 170, w: 760, h: 480, chartType: 'stacked', color: BLUE, seriesName: 'Lluvia (l/m²)', grid: true, yTitle: 'Litros por m² al mes',
             data: ['Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep'].map((l, i) => ({ label: l, value: [40, 35, 15, 5, 8, 25][i] })),
             series: [{ name: 'Riego (l/m²)', values: [20, 35, 70, 95, 90, 45], color: LEAF }] }),
           card('<b>Riego por goteo</b><br>Ahorra hasta la mitad del agua. Riega al amanecer o al anochecer.', 890, 230, 300, 320, '#e6f1df', { fontSize: 26, color: INK })],
@@ -635,7 +636,7 @@ export default {
           image: tomato, options: ['Raíz', 'Tallo', 'Hoja', 'Flor', 'Fruto'], points: [{ x: 50, y: 90 }, { x: 50, y: 70 }, { x: 30, y: 47 }, { x: 62, y: 18 }, { x: 72, y: 42 }] })],
           notes: 'Actividad «Etiquetar una imagen»: cada persona arrastra los nombres a los puntos desde el móvil. El dibujo es un SVG hecho a medida.' },
         { title: 'Cómo crece una tomatera', layout: 'titleOnly', bg: BG, extra: [
-          chartBlock({ x: 90, y: 170, w: 760, h: 480, chartType: 'area', color: GREEN, data: ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'].map((l, i) => ({ label: l, value: [5, 9, 15, 24, 36, 50, 63, 75][i] })) }),
+          chartBlock({ x: 90, y: 170, w: 760, h: 480, chartType: 'area', color: GREEN, grid: true, yTitle: 'Altura (cm)', data: ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'].map((l, i) => ({ label: l, value: [5, 9, 15, 24, 36, 50, 63, 75][i] })) }),
           text(`<span style="font-family:${fr};font-size:80px;font-weight:800;color:${GREEN}">75 cm</span><br>en ocho semanas desde el trasplante`, 890, 240, 300, 280, { fontSize: 28, color: INK })],
           notes: 'Gráfico de área con la altura media (en cm) medida cada semana. Datos de ejemplo.' },
         { layout: 'blank', bg: BG, transition: 'zoom', extra: [

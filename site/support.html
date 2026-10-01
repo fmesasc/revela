@@ -6,66 +6,75 @@
   <title>Soporte — Revela</title>
   <meta name="description" content="Ayuda de Revela: primeros pasos, preguntas frecuentes y cómo contactar.">
   <link rel="icon" href="img/icon.svg" type="image/svg+xml">
+  <link rel="preload" href="fonts/newsreader.woff2" as="font" type="font/woff2" crossorigin>
+  <script>try{if(localStorage.getItem('theme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}</script>
   <link rel="stylesheet" href="site.css">
 </head>
 <body>
   <header class="top"><div class="wrap">
     <a class="logo" href="./"><img src="img/icon.svg" alt="">Revela</a>
-    <nav class="links">
+    <nav class="links" aria-label="Principal">
       <a href="./#funciones">Funciones</a>
+      <a href="./#plantillas">Plantillas</a>
       <a href="pricing">Precios</a>
       <a href="support" aria-current="page">Soporte</a>
+      <button class="theme" type="button" aria-label="Modo oscuro"><i data-icon="sun" class="sun"></i><i data-icon="moon" class="moon"></i></button>
       <a class="btn primary small" href="app/">Abrir Revela</a>
     </nav>
   </div></header>
 
   <main>
     <div class="hero"><div class="wrap">
+      <p class="eyebrow">Soporte</p>
       <h1>¿En qué te <em>ayudamos</em>?</h1>
-      <p class="lead">Primeros pasos, respuestas rápidas y cómo contactar.</p>
+      <p class="lead">Los primeros pasos, las dudas más habituales y cómo contarnos un problema.</p>
     </div></div>
 
-    <section style="padding-top:10px"><div class="wrap">
-      <h2>Primeros pasos</h2>
-      <div class="grid">
-        <div class="card"><div class="ico">🚀</div><h3>Empieza con una plantilla</h3><p>Al abrir Revela por primera vez verás la galería de plantillas y ejemplos. También en Archivo ▸ Nuevo.</p></div>
-        <div class="card"><div class="ico">📂</div><h3>Trae tu PowerPoint</h3><p>Arrastra un .pptx o .odp a la ventana, o usa Archivo ▸ Abrir. Para guardar, Archivo ▸ Exportar.</p></div>
-        <div class="card"><div class="ico">▶️</div><h3>Presenta</h3><p>Botón Presentar, o la tecla F5. Con el móvil como mando: Presentar ▸ Mando desde el móvil.</p></div>
-        <div class="card"><div class="ico">☁️</div><h3>Guarda en la nube</h3><p>Archivo ▸ Mis presentaciones con tu cuenta de Google: se guarda sola en tu Drive.</p></div>
+    <section style="padding-top:80px"><div class="wrap">
+      <div class="section-head" style="margin-bottom:36px"><h2>Primeros pasos</h2></div>
+      <div class="steps">
+        <div><span class="num">01</span><h3>Elige un punto de partida</h3><p>Al abrir Revela verás la galería: un diseño en blanco o una de las presentaciones de ejemplo. También en Archivo ▸ Nuevo.</p></div>
+        <div><span class="num">02</span><h3>Trae tu PowerPoint</h3><p>Arrastra un .pptx o .odp a la ventana, o usa Archivo ▸ Abrir. Para guardarlo como PowerPoint, Archivo ▸ Exportar.</p></div>
+        <div><span class="num">03</span><h3>Presenta</h3><p>Con el botón Presentar o la tecla F5. Tu móvil puede ser el mando: Presentar ▸ Mando desde el móvil.</p></div>
+        <div><span class="num">04</span><h3>Guarda donde quieras</h3><p>En tu navegador, en tu Google Drive, Dropbox u OneDrive, o en la nube de Revela con tu cuenta.</p></div>
       </div>
     </div></section>
 
-    <section class="alt"><div class="wrap faq">
-      <h2>Preguntas frecuentes</h2>
+    <section class="tint"><div class="wrap faq">
+      <div class="section-head" style="margin-bottom:24px"><h2>Preguntas frecuentes</h2></div>
       <details><summary>¿Necesito instalar algo?</summary>
         <p>No. Revela funciona en el navegador (Chrome, Edge, Firefox, Safari). Si quieres, puedes instalarlo como aplicación desde el propio navegador, y también hay versión de escritorio para Windows, macOS y Linux.</p></details>
       <details><summary>¿Funciona sin conexión?</summary>
         <p>Sí, después de abrirlo una vez con conexión. Lo que necesita internet (buscar imágenes, IA, compartir, colaborar) avisa cuando no la hay.</p></details>
       <details><summary>¿Se ve bien mi presentación de PowerPoint?</summary>
-        <p>Revela lee textos, formas, imágenes, tablas, gráficos, animaciones, transiciones, comentarios y más. Si algo no se ve como esperas, cuéntanoslo con el archivo de ejemplo si puedes.</p></details>
+        <p>Revela lee textos, formas, imágenes, tablas, gráficos, animaciones, transiciones, comentarios y más. Si algo no se ve como esperas, cuéntanoslo con un archivo de ejemplo si puedes.</p></details>
       <details><summary>¿Cómo comparto una presentación?</summary>
-        <p>Botón Compartir: un enlace para verla (cifrada en tu navegador, con clave o contraseña) o para colaborar en directo.</p></details>
+        <p>Con el botón Compartir: un enlace para verla (cifrada en tu navegador, con clave o contraseña) o para colaborar en directo. Con Pro, también con personas concretas y sus permisos.</p></details>
+      <details><summary>¿Cómo funciona el público con el móvil?</summary>
+        <p>Inserta una votación o una actividad. Al presentar, la diapositiva muestra un código QR y un código corto: quien te escucha lo abre en su móvil y responde, sin instalar nada ni registrarse.</p></details>
       <details><summary>Mis datos y mi privacidad</summary>
-        <p>Consulta la <a href="privacy.html">política de privacidad</a>: qué sale de tu navegador, cuándo y a qué servicio, siempre con tu permiso.</p></details>
+        <p>Consulta la <a href="privacy.html">política de privacidad</a>: qué sale de tu navegador, cuándo y a qué servicio. Desde Mi cuenta ▸ Tus datos puedes descargar todo lo que guarda tu cuenta o eliminarla.</p></details>
     </div></section>
 
-    <section><div class="wrap cta-band">
-      <h2>¿Sigues con dudas o has encontrado un fallo?</h2>
-      <p class="sub">Escríbenos en GitHub: cuéntanos qué hacías, qué esperabas y qué pasó (una captura ayuda mucho).</p>
+    <section class="closing"><div class="wrap">
+      <h2>¿Sigues con dudas o has encontrado un <em>fallo</em>?</h2>
+      <p>Escríbenos en GitHub: cuéntanos qué hacías, qué esperabas y qué pasó. Una captura ayuda mucho.</p>
       <!-- SOPORTE: añadir aquí un correo de contacto cuando lo haya. -->
       <a class="btn primary" href="https://github.com/fmesasc/revela/issues">Abrir una consulta en GitHub</a>
     </div></section>
   </main>
 
   <footer><div class="wrap">
-    <span>© 2026 Revela · Francisco Mesas Cervilla</span>
-    <nav>
+    <a class="logo" href="./"><img src="img/icon.svg" alt="">Revela</a>
+    <nav aria-label="Pie">
       <a href="./">Inicio</a>
       <a href="pricing">Precios</a>
       <a href="privacy.html">Privacidad</a>
       <a href="terms.html">Condiciones</a>
       <a href="https://github.com/fmesasc/revela">Código en GitHub</a>
     </nav>
+    <span>© 2026 Revela · Francisco Mesas Cervilla</span>
   </div></footer>
+  <script src="site.js"></script>
 </body>
 </html>

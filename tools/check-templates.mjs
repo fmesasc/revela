@@ -20,7 +20,7 @@ for (const f of (await import('../src/features/content/templates/catalog.js')).B
 const MODELS = new Set([...LIBRARY_3D.map(m => m.src), ...NASA_3D.map(m => m.src)]);
 const EFFECTS = new Set([...Object.keys(EFFECT_KF), 'path', 'clip3d', 'pdfview']);
 const TRANSITIONS = new Set(['none', 'fade', 'slide', 'convex', 'concave', 'zoom', 'flip', 'push', 'push-top', 'push-right', 'push-left', 'wipe', 'rise', 'split', 'circle', 'diamond', 'cube', 'cover', 'page', 'gallery', 'fall', 'drop', 'swirl', 'shrink', 'blur', 'flash']);
-const CHARTS = new Set(['bar', 'stacked', 'stacked100', 'hbar', 'histogram', 'line', 'area', 'pie', 'doughnut', 'scatter', 'radar', 'waterfall', 'funnel', 'treemap', 'bubble', 'map']);
+const CHARTS = new Set(['bar', 'stacked', 'stacked100', 'hbar', 'histogram', 'line', 'area', 'pie', 'doughnut', 'scatter', 'radar', 'waterfall', 'funnel', 'treemap', 'bubble', 'map', 'stackedArea']);
 const LAYOUTS = new Set(DIAGRAM_LAYOUTS.flatMap(([, l]) => l.map(x => x[0])));
 const POLLS = new Set(['choice', 'multi', 'rating', 'word', 'qa', 'quiz', 'board', 'order', 'match', 'gaps', 'label']);
 const TYPES = new Set(['text', 'shape', 'image', 'icon', 'chart', 'table', 'code', 'math', 'model', 'video', 'audio', 'embed', 'poll', 'timer', 'connector', 'ink', 'diagram', 'camera', 'slideref', 'figindex', 'file']);

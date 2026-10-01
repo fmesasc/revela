@@ -3,109 +3,172 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Revela — Presentaciones interactivas en tu navegador</title>
-  <meta name="description" content="Crea presentaciones con 3D, animaciones, votaciones en directo y colaboración, sin instalar nada. Abre y guarda PowerPoint. Con IA incluida en la versión oficial.">
+  <title>Revela — Presentaciones que se mueven</title>
+  <meta name="description" content="Editor de presentaciones en el navegador: 3D que se mueve, animaciones, votaciones del público, colaboración y PowerPoint. Más de cien presentaciones de ejemplo. Gratis para empezar.">
   <link rel="icon" href="img/icon.svg" type="image/svg+xml">
-  <meta property="og:title" content="Revela — Presentaciones interactivas">
+  <meta property="og:title" content="Revela — Presentaciones que se mueven">
   <meta property="og:description" content="3D, animaciones, votaciones en directo, colaboración e IA, en tu navegador.">
-  <meta property="og:image" content="https://revelaslides.com/img/editor-3d.webp">
+  <meta property="og:image" content="https://revelaslides.com/img/editor-reloj.webp">
+  <link rel="preload" href="fonts/newsreader.woff2" as="font" type="font/woff2" crossorigin>
+  <script>try{if(localStorage.getItem('theme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}</script>
   <link rel="stylesheet" href="site.css">
 </head>
 <body>
   <header class="top"><div class="wrap">
     <a class="logo" href="./"><img src="img/icon.svg" alt="">Revela</a>
-    <nav class="links">
+    <nav class="links" aria-label="Principal">
       <a href="#funciones">Funciones</a>
+      <a href="#plantillas">Plantillas</a>
       <a href="pricing">Precios</a>
       <a href="support">Soporte</a>
+      <button class="theme" type="button" aria-label="Modo oscuro"><i data-icon="sun" class="sun"></i><i data-icon="moon" class="moon"></i></button>
       <a class="btn primary small" href="app/">Abrir Revela</a>
     </nav>
   </div></header>
 
   <main>
     <div class="hero"><div class="wrap">
-      <h1>Presentaciones que <em>se mueven</em>,<br>directamente en tu navegador</h1>
-      <p class="lead">Personajes 3D que andan y saludan, animaciones, votaciones con el móvil del público, PDF que se hojean y colaboración en directo. Sin instalar nada, y compatible con PowerPoint.</p>
+      <p class="eyebrow">Editor de presentaciones</p>
+      <h1>Presentaciones que <em>se mueven</em>.</h1>
+      <p class="lead">Objetos 3D que giran y caminan, animaciones con su propio ritmo y un público que vota desde el móvil. Todo en el navegador, sin instalar nada, y compatible con PowerPoint.</p>
       <div class="ctas">
         <a class="btn primary" href="app/">Empezar gratis</a>
-        <a class="btn ghost" href="pricing">Ver planes</a>
+        <a class="arrow-link" href="pricing">Ver precios</a>
       </div>
-      <p class="note">Sin registro para empezar. Tus presentaciones se guardan en tu navegador o en tu Google Drive.</p>
-      <div class="shot"><img src="img/editor-3d.webp" width="1600" height="900" alt="El editor de Revela con una diapositiva en la que un robot 3D saluda"></div>
+      <ul class="facts">
+        <li>Sin registrarte para empezar</li>
+        <li>Abre y guarda .pptx</li>
+        <li>En 11 idiomas</li>
+        <li>Código abierto</li>
+      </ul>
+      <div class="window"><div class="bar"><i></i><i></i><i></i></div>
+        <img src="img/editor-reloj.webp" width="1600" height="900" alt="El editor de Revela con una presentación de producto: un reloj en 3D junto a sus características">
+      </div>
     </div></div>
 
     <section id="funciones"><div class="wrap">
-      <h2>Todo lo que esperas de un editor de presentaciones… y más</h2>
-      <p class="sub">Revela tiene lo de PowerPoint, Google Slides o Canva, y añade lo que ellos no tienen: 3D de verdad y presentaciones que conversan con el público.</p>
-      <div class="grid">
-        <div class="card"><div class="ico">🧊</div><h3>3D en movimiento</h3><p>Modelos que giran, andan por un recorrido y saludan. Modelos 3D gratuitos a un clic, desde el propio editor.</p></div>
-        <div class="card"><div class="ico">✨</div><h3>Animaciones y transiciones</h3><p>Entradas, trayectorias dibujadas a mano, sonidos, Morph y más de 20 transiciones.</p></div>
-        <div class="card"><div class="ico">📱</div><h3>El público participa</h3><p>Votaciones y concursos con puntos desde el móvil con un código QR, y preguntas en directo.</p></div>
-        <div class="card"><div class="ico">🧩</div><h3>Diagramas tipo SmartArt</h3><p>Quince diseños que se escriben como un esquema: organigramas, procesos, ciclos, Venn…</p></div>
-        <div class="card"><div class="ico">📄</div><h3>PDF y archivos</h3><p>Suelta un PDF: una página, el documento para hojearlo con zoom, o una diapositiva por página.</p></div>
-        <div class="card"><div class="ico">🤝</div><h3>Colaboración en directo</h3><p>Editad a la vez, con chat, comentarios y tareas asignadas. Historial de versiones.</p></div>
-        <div class="card"><div class="ico">🔁</div><h3>PowerPoint y LibreOffice</h3><p>Abre y guarda .pptx y .odp, en los dos sentidos. También HTML, PDF, imágenes y vídeo.</p></div>
-        <div class="card"><div class="ico">🤖</div><h3>Inteligencia artificial</h3><p>Crea una presentación desde un tema o un documento, mejora diapositivas, traduce, genera imágenes.</p></div>
-        <div class="card"><div class="ico">🌍</div><h3>Accesible y en 11 idiomas</h3><p>Comprobador de accesibilidad, texto alternativo, lector de pantalla y dictado por voz.</p></div>
+      <div class="section-head">
+        <p class="eyebrow">Lo que lo hace distinto</p>
+        <h2>Lo de siempre, y lo que <em>faltaba</em>.</h2>
+        <p>Revela hace lo que esperas de un editor de presentaciones. Y añade tres cosas que cambian cómo se cuentan las ideas.</p>
+      </div>
+
+      <div class="row">
+        <div class="text">
+          <span class="num">01</span>
+          <h3>3D que se mueve de verdad</h3>
+          <p>Coloca un modelo en la diapositiva y decide cómo entra: girando, acercándose, andando por un recorrido. Si aparece en la siguiente diapositiva, viaja hasta su nuevo sitio.</p>
+          <ul>
+            <li>Cientos de modelos gratuitos, de la NASA y de bibliotecas abiertas</li>
+            <li>Personajes que andan, saludan y bailan</li>
+            <li>Bordes difuminados, vistas y movimientos de cámara</li>
+          </ul>
+        </div>
+        <div class="frame"><img src="img/editor-3d.webp" width="1600" height="900" alt="Una diapositiva con un robot 3D que saluda" loading="lazy"></div>
+      </div>
+
+      <div class="row flip">
+        <div class="text">
+          <span class="num">02</span>
+          <h3>El público participa</h3>
+          <p>Quien te escucha abre la votación con un código QR y responde desde su móvil, sin instalar nada. Los resultados aparecen en la diapositiva mientras llegan.</p>
+          <ul>
+            <li>Votaciones, nubes de palabras y valoraciones</li>
+            <li>Concursos con tiempo y puntos, y preguntas del público</li>
+            <li>Actividades para clase: ordenar, emparejar, completar</li>
+          </ul>
+        </div>
+        <div class="poll" aria-label="Ejemplo de votación en directo">
+          <p class="q">¿Qué tema tratamos primero?</p>
+          <p class="meta"><span>Votación en directo</span><span>48 respuestas</span></p>
+          <div class="opt win"><span>Presupuesto del próximo año</span><b>46 %</b><div class="track"><span style="width:46%"></span></div></div>
+          <div class="opt"><span>Nuevas oficinas</span><b>31 %</b><div class="track"><span style="width:31%"></span></div></div>
+          <div class="opt"><span>Plan de formación</span><b>23 %</b><div class="track"><span style="width:23%"></span></div></div>
+          <p class="code">Entra desde el móvil con el código <b>K7Q2M</b> o el QR de la pantalla</p>
+        </div>
+      </div>
+
+      <div class="row" id="plantillas">
+        <div class="text">
+          <span class="num">03</span>
+          <h3>Más de cien presentaciones para empezar</h3>
+          <p>No son plantillas vacías: cada una tiene su tema, su diseño y su contenido, de una clase de historia a la presentación de un producto. Ábrela, cámbiala y es tuya.</p>
+          <ul>
+            <li>Educación, ciencia, empresa, producto, datos y vida personal</li>
+            <li>Cada una con notas para quien presenta</li>
+            <li>Buscador y grupos para encontrar la tuya</li>
+          </ul>
+        </div>
+        <div class="frame"><img src="img/galeria.webp" width="1600" height="900" alt="La galería de presentaciones de ejemplo de Revela, con estilos muy distintos" loading="lazy"></div>
       </div>
     </div></section>
 
-    <section class="alt"><div class="wrap split">
-      <div>
-        <h2 style="text-align:start">Escribe un esquema, obtén un diagrama</h2>
-        <ul class="checks">
-          <li>Organigramas, cronologías, ciclos, pirámides, Venn…</li>
-          <li>Con los colores de tu tema, y uno a uno al presentar</li>
-          <li>Se exportan a PowerPoint como formas editables</li>
-        </ul>
+    <section class="tint"><div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Y todo lo demás</p>
+        <h2>Un editor completo.</h2>
       </div>
-      <img src="img/editor-diagramas.webp" width="1600" height="900" alt="Un organigrama en el editor de Revela" loading="lazy">
+      <div class="index">
+        <div><i data-icon="sparkles"></i><h3>Animaciones y transiciones</h3><p>Entradas, énfasis, trayectorias dibujadas a mano, sonidos y más de veinte transiciones.</p></div>
+        <div><i data-icon="refresh-cw"></i><h3>Transformar</h3><p>Los objetos que se repiten pasan de una diapositiva a otra cambiando de sitio, tamaño y color.</p></div>
+        <div><i data-icon="chart-column"></i><h3>Gráficos, tablas y diagramas</h3><p>Gráficos editables, tablas con fórmulas y diagramas que se escriben como un esquema.</p></div>
+        <div><i data-icon="file-text"></i><h3>PowerPoint, PDF y LibreOffice</h3><p>Abre y guarda .pptx y .odp. Exporta a PDF, imágenes, vídeo o una página web.</p></div>
+        <div><i data-icon="users"></i><h3>Colaboración en directo</h3><p>Editad a la vez, con comentarios, tareas y un historial de versiones.</p></div>
+        <div><i data-icon="presentation"></i><h3>Para presentar</h3><p>Vista de presentador, el móvil como mando, puntero láser y tinta sobre las diapositivas.</p></div>
+        <div><i data-icon="bot"></i><h3>Inteligencia artificial</h3><p>Crea una presentación desde un tema o un documento, mejora una diapositiva, traduce.</p></div>
+        <div><i data-icon="accessibility"></i><h3>Accesible</h3><p>Comprobador de accesibilidad, texto alternativo, lectura en voz alta y dictado.</p></div>
+        <div><i data-icon="monitor"></i><h3>Donde trabajes</h3><p>En el navegador, sin conexión una vez abierto, y como aplicación para Windows, macOS y Linux.</p></div>
+      </div>
     </div></section>
 
     <section><div class="wrap">
-      <h2>Dos ediciones, el mismo Revela</h2>
-      <p class="sub">El código de Revela es abierto. Puedes usarlo gratis tal cual, o usar la versión oficial con la IA incluida y funciones extra.</p>
-      <div class="plans">
-        <div class="plan">
+      <div class="section-head">
+        <p class="eyebrow">Dos ediciones</p>
+        <h2>Abierto por dentro.</h2>
+        <p>El código de Revela es público. Puedes usarlo gratis tal cual, o usar la versión oficial con la IA incluida y las funciones que necesitan un servidor.</p>
+      </div>
+      <div class="editions">
+        <div>
           <h3>Edición abierta</h3>
-          <p class="soon">En GitHub, gratis para siempre</p>
-          <ul class="checks">
+          <p class="where">fmesasc.github.io/revela · gratis para siempre</p>
+          <ul>
             <li>Todo el editor</li>
             <li>IA con tu propia clave de OpenRouter</li>
-            <li>Guardado en tu navegador y en Google Drive</li>
+            <li>Guardado en tu navegador y en tu nube</li>
           </ul>
-          <a class="btn ghost" href="https://fmesasc.github.io/revela/">Abrir la edición abierta</a>
+          <a class="arrow-link" href="https://fmesasc.github.io/revela/">Abrir la edición abierta</a>
         </div>
-        <div class="plan best">
-          <span class="tag">Recomendada</span>
+        <div>
           <h3>Versión oficial</h3>
-          <p class="soon">En revelaslides.com</p>
-          <ul class="checks">
+          <p class="where">revelaslides.com · gratis o Pro</p>
+          <ul>
             <li>Todo lo de la edición abierta</li>
             <li>IA incluida, sin claves ni configuraciones</li>
-            <li>Funciones Pro según tu plan</li>
+            <li>Presentaciones en la nube, compartir con personas, videollamadas</li>
           </ul>
-          <a class="btn primary" href="pricing">Ver planes</a>
+          <a class="arrow-link" href="pricing">Ver precios</a>
         </div>
       </div>
     </div></section>
 
-    <section class="alt cta-band"><div class="wrap">
-      <h2>Empieza en un minuto</h2>
-      <p class="sub">Sin instalar nada. Si ya usas PowerPoint, arrastra tu archivo y sigue desde ahí.</p>
+    <section class="tint closing"><div class="wrap">
+      <h2>Tu próxima presentación empieza <em>aquí</em>.</h2>
+      <p>Sin instalar nada. Si ya usas PowerPoint, arrastra tu archivo y sigue desde ahí.</p>
       <a class="btn primary" href="app/">Abrir Revela</a>
     </div></section>
   </main>
 
   <footer><div class="wrap">
-    <span>© 2026 Revela · Francisco Mesas Cervilla</span>
-    <nav>
+    <a class="logo" href="./"><img src="img/icon.svg" alt="">Revela</a>
+    <nav aria-label="Pie">
       <a href="pricing">Precios</a>
       <a href="support">Soporte</a>
       <a href="privacy.html">Privacidad</a>
       <a href="terms.html">Condiciones</a>
       <a href="https://github.com/fmesasc/revela">Código en GitHub</a>
     </nav>
+    <span>© 2026 Revela · Francisco Mesas Cervilla</span>
   </div></footer>
+  <script src="site.js"></script>
 </body>
 </html>

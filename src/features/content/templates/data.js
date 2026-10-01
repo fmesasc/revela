@@ -37,15 +37,6 @@ const spark = (values, x, y, w, h, color, type = 'area') => {
   const lo = Math.min(...values), hi = Math.max(...values), floor = type === 'bar' ? 0 : lo - (hi - lo) * 0.35;
   return chartBlock({ x, y, w, h, chartType: type, color, data: values.map(v => ({ label: '', value: +(v - floor).toFixed(3) })) });
 };
-// Two scatter series on the same axes: two charts one over the other, the one
-// with the smaller top value shorter so both share the scale (all values ≥ 0,
-// and both reach the same largest x).
-const scatterPair = (a, b, x, y, w, h, ca, cb) => {
-  const top = s => Math.max(1, ...s.map(p => p[1])), M = Math.max(top(a), top(b)), floor = y + h * 54 / 60;
-  const one = (s, c) => { const hh = h * top(s) / M; return chartBlock({ x, y: Math.round(floor - hh * 54 / 60), w, h: Math.round(hh), chartType: 'scatter', color: c, data: s.map(([px, py]) => ({ label: String(px), value: py })) }); };
-  return [one(a, ca), one(b, cb)];
-};
-
 // =====================================================================================
 // 1 · Sales by region: corporate white and blue.
 const salesRegions = () => {
@@ -103,7 +94,7 @@ const salesRegions = () => {
       auto(tableBlock({ x: 100, y: 180, w: 1080, h: 406, fontSize: 26, header: true, banded: true, firstCol: true, headBg: BLUE, headFg: '#ffffff', band: BLUE, bandAlpha: 0.1, stroke: '#d0dbe4',
         cellPad: [10, 16, 10, 16], colW: [2.2, 1.4, 1.4, 1.4, 1.4, 1.8],
         rows: [['Región', 'T1', 'T2', 'T3', 'T4', 'Total'],
-          ...R.map((r, i) => [r, ...Q.map(q => q[i] + ' k€'), '=SUMA(IZQUIERDA)']),
+          ...R.map((r, i) => [r, ...Q.map(q => q[i].toLocaleString('es-ES', { useGrouping: 'always' }) + ' k€'), '=SUMA(IZQUIERDA)']),
           ['Total', '=SUMA(ARRIBA)', '=SUMA(ARRIBA)', '=SUMA(ARRIBA)', '=SUMA(ARRIBA)', '=SUMA(ARRIBA)']] }), 'fade-in', { duration: 700 }),
       text('La columna y la fila «Total» son fórmulas (=SUMA(IZQUIERDA) y =SUMA(ARRIBA)): cambia una cifra y se recalculan.', 100, 606, 1080, 36, { fontSize: 20, color: MUTED })],
       notes: 'Tabla con estilo de bandas, fila de encabezado, primera columna en negrita y fila de totales calculada con fórmulas.' },
@@ -140,15 +131,15 @@ const survey = () => {
       ...[0, 1, 2, 3, 4].map(i => auto(shape('star', 110 + i * 100, 430, 84, 84, YEL, { opacity: i === 4 ? 25 : 100 }), 'bounce', { duration: 500 })),
       shape('rounded', 720, 190, 460, 430, '#2a1a4a', { radius: 24 }),
       text('Recomendación neta (NPS)', 760, 215, 400, 40, { fontSize: 24, color: SOFT }),
-      auto(text('+42', 760, 255, 400, 120, { fontSize: 110, fontWeight: 800, color: MINT, fontFamily: F.heading }), 'zoom-in', { sound: 'pop' }),
+      auto(text('+42', 760, 255, 400, 140, { fontSize: 110, fontWeight: 800, color: MINT, fontFamily: F.heading }), 'zoom-in', { sound: 'pop' }),
       ...group([shape('rect', 760, 420, 210, 46, MINT), shape('rect', 970, 420, 125, 46, '#8a7fa8'), shape('rect', 1095, 420, 50, 46, PINK)], 'fade-right', { duration: 700 }),
       text(`<span style="color:${MINT}">●</span> Promotores 55 %<br><span style="color:#8a7fa8">●</span> Pasivos 32 %<br><span style="color:${PINK}">●</span> Detractores 13 %`, 760, 485, 400, 120, { fontSize: 22, color: FG, lineHeight: 1.45 })],
       notes: 'La media de las 1.284 notas es 8,1. El NPS es el porcentaje de promotores menos el de detractores: 55 − 13 = 42.' },
     { title: 'Por aspecto: 2025 frente a 2026', layout: 'titleOnly', extra: [
-      auto(chartBlock({ x: 110, y: 180, w: 440, h: 440, chartType: 'radar', color: CYAN, data: D(ASPECTS, [7.2, 6.1, 6.8, 8.4, 5.9, 7.0]) }), 'fade-right', { duration: 700 }),
+      auto(chartBlock({ x: 110, y: 180, w: 440, h: 440, chartType: 'radar', color: CYAN, yMax: 10, data: D(ASPECTS, [7.2, 6.1, 6.8, 8.4, 5.9, 7.0]) }), 'fade-right', { duration: 700 }),
       text('2025', 110, 620, 440, 44, { fontSize: 28, color: CYAN, textAlign: 'center', fontWeight: 700 }),
       auto(shape('rightarrow', 590, 370, 90, 60, YEL), 'fade-right'),
-      auto(chartBlock({ x: 720, y: 180, w: 440, h: 440, chartType: 'radar', color: PINK, data: D(ASPECTS, [8.4, 6.5, 7.9, 8.3, 7.6, 8.1]) }), 'fade-left', { duration: 700 }),
+      auto(chartBlock({ x: 720, y: 180, w: 440, h: 440, chartType: 'radar', color: PINK, yMax: 10, data: D(ASPECTS, [8.4, 6.5, 7.9, 8.3, 7.6, 8.1]) }), 'fade-left', { duration: 700 }),
       text('2026', 720, 620, 440, 44, { fontSize: 28, color: PINK, textAlign: 'center', fontWeight: 700 })],
       notes: 'Dos gráficos de radar con la nota media de cada aspecto (sobre 10). La web pasa de 5,9 a 7,6 y la atención de 7,2 a 8,4; el precio sigue siendo lo más flojo.' },
     { title: 'Cómo se reparten las notas', layout: 'titleOnly', extra: [
@@ -168,7 +159,7 @@ const survey = () => {
       pollBlock({ kind: 'word', question: 'Resume en una palabra tu experiencia con nosotros', options: [], fontSize: 36, x: 80, y: 60, w: 1120, h: 600 })],
       notes: 'Nube de palabras en directo: las palabras más repetidas se ven más grandes.' },
     { title: 'Plan de mejora', layout: 'titleOnly', transition: 'convex', extra: [
-      dg('steps', 'Web\n  Nuevo buscador en noviembre\nPrecio\n  Programa de puntos para clientes fieles\nDevoluciones\n  Recogida gratis en casa', 100, 180, 1080, 450, { oneByOne: true, colors: 'colorful' })],
+      dg('steps', 'Web\n  Nuevo buscador en noviembre\nPrecio\n  Programa de puntos para clientes fieles\nDevoluciones\n  Recogida gratis en casa', 100, 180, 1080, 450, { oneByOne: true, colors: 'colorful', fontScale: 1.4 })],
       notes: 'Diagrama de escalera, un peldaño por clic: tres cambios ligados a lo que peor puntúa.' },
   ]));
 };
@@ -269,8 +260,8 @@ const webMetrics = () => {
       notes: 'Líneas con cuatro series, cuadrícula y títulos de ejes. Las redes sociales casi triplican sus visitas en el trimestre.' },
     { title: 'Móvil y ordenador', layout: 'titleOnly', extra: [
       auto(chartBlock({ x: 100, y: 170, w: 1080, h: 490, chartType: 'area', color: SKY, seriesName: 'Móvil', data: D(W, [20, 22, 24, 23, 26, 28, 29, 31, 33, 34, 36, 39]), grid: true, yTitle: 'Miles de sesiones',
-        series: [{ name: 'Ordenador', values: [14, 15, 18, 18, 21, 21, 24, 23, 26, 26, 27, 29], color: AMB }] }), 'fade-up', { duration: 1000 }),
-      auto(card('<b>57 %</b> de las visitas ya llega desde el móvil', 160, 190, 360, 100, '#0f2940dd', { fontSize: 24, color: FG, borderColor: SKY }), 'zoom-in')],
+        series: [{ name: 'Ordenador', values: [14, 15, 18, 18, 21, 21, 24, 23, 26, 26, 27, 29], color: AMB }], yMax: 60 }), 'fade-up', { duration: 1000 }),
+      auto(card('<b>57 %</b> de las visitas ya llega desde el móvil', 270, 250, 360, 96, '#0f2940dd', { fontSize: 24, color: FG, borderColor: SKY }), 'zoom-in')],
       notes: 'Gráfico de áreas con dos series superpuestas y transparentes: se ven las dos aunque se crucen.' },
     { title: 'Del clic a la compra', layout: 'titleOnly', extra: [
       auto(chartBlock({ x: 100, y: 175, w: 660, h: 470, chartType: 'funnel', color: MINT,
@@ -290,7 +281,7 @@ const webMetrics = () => {
       text('«Coste por venta» = Inversión ÷ Ventas (=REDONDEAR(B2/C2;2)); la fila Total suma con =SUMA(ARRIBA).', 100, 575, 1080, 36, { fontSize: 20, color: SOFT })],
       notes: 'Tabla con bandas y fórmulas que dividen dos columnas y redondean. «Clientes fieles» sale a 6,25 € por venta: la más eficiente.' },
     { title: 'Próximos pasos', layout: 'titleOnly', transition: 'slide', extra: [
-      dg('chevrons', 'Móvil\n  Página de producto el doble de rápida\nCarrito\n  Envío gratis desde 40 €\nEmail\n  Doblar la inversión', 100, 220, 1080, 420, { oneByOne: true, colors: 'accent' })],
+      dg('chevrons', 'Móvil\n  Página de producto el doble de rápida\nCarrito\n  Envío gratis desde 40 €\nEmail\n  Doblar la inversión', 100, 220, 1080, 420, { oneByOne: true, colors: 'accent', fontScale: 1.4 })],
       notes: 'Diagrama de galones, uno por clic: cada paso ataca un dato del informe (rebote en móvil, fuga del carrito, retorno del email).' },
   ]));
 };
@@ -300,7 +291,7 @@ const webMetrics = () => {
 const marketStudy = () => {
   const F = pairStacks('editorial'), BG = '#2b1512', FG = '#fff4ec', SOFT = '#e3c9b8', RED = '#e4572e', GOLD = '#f3a712', SAGE = '#a8c686', BLUE = '#669bbc', SAND = '#f0c987';
   const BR = ['Marca blanca', 'Soyuna', 'Avenal', 'Nubia', 'Almendra Real', 'VerdeVida'];     // by price per litre, low to high
-  const PRICE = ['1,10 €', '1,65 €', '1,90 €', '2,30 €', '2,70 €', '3,20 €'];
+  const PRICE = ['1.10', '1.65', '1.90', '2.30', '2.70', '3.20'], MARGIN = [9, 18, 22, 27, 31, 35];      // € per litre; margin, %
   const bub = { x: 100, y: 175, w: 1080, h: 430 };
   const PROT = [[0.4, 1.1], [0.6, 1.3], [0.8, 1.2], [1.0, 1.6], [1.0, 1.9], [1.2, 1.7], [1.5, 2.1], [1.8, 2.0], [2.0, 2.6], [2.4, 2.4], [2.6, 2.9], [2.9, 3.1], [3.2, 3.0], [3.4, 3.5]];
   return numbered(build({ name: 'Estudio de mercado: bebidas vegetales', palette: 'warm', fonts: 'editorial', title: { size: 44, color: GOLD },
@@ -325,17 +316,21 @@ const marketStudy = () => {
       text('Cuota de mercado en valor, en %. Marcas ficticias.', 100, 630, 1080, 34, { fontSize: 20, color: SOFT })],
       notes: 'Gráfico de rectángulos (treemap): el área de cada marca es su cuota. Tres marcas y la marca blanca suman el 80 %.' },
     { title: 'Precio, ventas y margen por marca', layout: 'titleOnly', extra: [
-      auto(chartBlock({ ...bub, chartType: 'bubble', color: GOLD, data: D(BR, [273, 236, 335, 62, 149, 99]), series: [{ name: 'Margen', values: [9, 18, 22, 27, 31, 35] }] }), 'grow', { duration: 900 }),
-      ...BR.map((_, i) => text(PRICE[i], bub.x + bub.w * (8 + (i + 1) / 6 * 86) / 100 - 50, bub.y + bub.h + 4, 100, 30, { fontSize: 20, color: SOFT, textAlign: 'center' })),
-      text('Ventas (M€) ↑', 100, 170, 300, 30, { fontSize: 20, color: SOFT }),
-      text('Precio por litro →', 880, 640, 300, 30, { fontSize: 20, color: SOFT, textAlign: 'right' }),
-      text('Tamaño de la burbuja: margen', 400, 640, 480, 30, { fontSize: 20, color: SOFT, textAlign: 'center' })],
+      // (x = the price per litre, on the chart's own axis; the names over each bubble — below Soyuna's,
+      // which would run into Avenal —, placed where the chart draws them with these fixed ends.)
+      auto(chartBlock({ ...bub, chartType: 'bubble', color: GOLD, xMin: 1, xMax: 3.5, yMin: 0, yMax: 400, xTitle: 'Precio por litro (€)', yTitle: 'Ventas (M€)',
+        data: D(PRICE, [273, 236, 335, 62, 149, 99]), series: [{ name: 'Margen', values: MARGIN }] }), 'grow', { duration: 900 }),
+      ...BR.map((name, i) => {
+        const p = +PRICE[i].replace(',', '.'), v = [273, 236, 335, 62, 149, 99][i], r = bub.h * (0.02 + 0.11 * Math.sqrt(MARGIN[i] / 35));
+        const cx = bub.x + bub.w * (10.5 + (p - 1) / 2.5 * 87.5) / 100, cy = bub.y + bub.h * (50 - v / 400 * 46) / 60, below = name === 'Soyuna';
+        return auto(text(name, cx - 90, below ? cy + r + 2 : cy - r - 34, 180, 32, { fontSize: 20, fontWeight: 700, color: FG, textAlign: 'center' }), 'fade-in', { duration: 300 });
+      }),
+      text('Tamaño de la burbuja: margen (%)', 100, 630, 1080, 30, { fontSize: 20, color: SOFT, textAlign: 'center' })],
       notes: 'Gráfico de burbujas: a la derecha, más caro; arriba, más ventas; cuanto mayor la burbuja, más margen. Las marcas caras venden menos pero ganan más por litro.' },
     { title: '¿Más proteína, más caro?', layout: 'titleOnly', extra: [
-      auto(chartBlock({ x: 150, y: 175, w: 800, h: 430, chartType: 'scatter', color: SAGE, data: PROT.map(([g, e]) => ({ label: String(g), value: e })) }), 'fade-in', { duration: 900 }),
-      text('Precio (€/L) ↑', 150, 168, 300, 30, { fontSize: 20, color: SOFT }),
-      text('Proteína por 100 ml (g) →', 650, 615, 300, 30, { fontSize: 20, color: SOFT, textAlign: 'right' }),
-      click(card(`<div style="font-size:44px;color:${SAGE};font-weight:700;white-space:nowrap">r = 0,95</div>Cada gramo de proteína se paga a unos <b>0,70 € más</b> por litro.`, 970, 230, 250, 330, '#3d211b', { fontSize: 22, color: FG }), 'fade-left')],
+      auto(chartBlock({ x: 100, y: 175, w: 840, h: 470, chartType: 'scatter', color: SAGE, grid: true, xTitle: 'Proteína por 100 ml (g)', yTitle: 'Precio (€/L)',
+        data: PROT.map(([g, e]) => ({ label: String(g), value: e })) }), 'fade-in', { duration: 900 }),
+      click(card(`<div style="font-size:44px;color:${SAGE};font-weight:700;white-space:nowrap">r = 0,95</div>Cada gramo de proteína se paga a unos <b>0,70 € más</b> por litro.`, 970, 250, 250, 230, '#3d211b', { fontSize: 22, color: FG }), 'fade-left')],
       notes: 'Gráfico de dispersión con 14 productos: proteína en el eje horizontal y precio en el vertical. La relación es casi lineal (datos simulados).' },
     { title: 'Qué busca cada comprador', layout: 'titleOnly', extra: [
       auto(chartBlock({ x: 100, y: 170, w: 1080, h: 470, chartType: 'hbar', color: GOLD, seriesName: '18 a 34 años', dataLabels: true,
@@ -358,11 +353,10 @@ const marketStudy = () => {
 const demographics = () => {
   const F = pairStacks('clean'), INK = '#1e3320', GREEN = '#2e7d32', LEAF = '#66bb6a', MEN = '#0277bd', WOMEN = '#ad1457', MUTED = '#55705a';
   const AGES = ['80+', '70–79', '60–69', '50–59', '40–49', '30–39', '20–29', '10–19', '0–9'];
-  const M = [2.1, 3.6, 5.4, 7.6, 8.1, 6.2, 5.0, 4.9, 4.6], Wm = [3.4, 4.3, 5.9, 7.9, 8.1, 6.0, 4.8, 4.6, 4.3];
+  const M = [2.1, 3.6, 5.4, 7.6, 8.1, 6.2, 5.0, 4.9, 4.6], Wm = [3.4, 4.3, 5.9, 7.9, 8.1, 6.0, 4.8, 4.6, 4.3], TOP = 9;
   // A sample of 120 neighbours' ages, spread over each decade as in the pyramid.
   const sample = AGES.slice().reverse().flatMap((_, d) => { const n = Math.round((M[8 - d] + Wm[8 - d]) * 1.2); return Array.from({ length: n }, (_, k) => Math.min(94, d * 10 + ((k * 7 + d * 3) % 10))); });
   // The pyramid: two horizontal bar charts back to back, on the same scale.
-  const wR = 520, xR = 640, zeroL = xR + 0.06 * wR, wL = wR * 0.74 / (0.74 * 8.1 / 9.1), xL = zeroL - wL * (22 + 74 * 8.1 / 9.1) / 100;
   return numbered(build({ name: 'Así cambia nuestra población', palette: 'forest', fonts: 'clean', title: { size: 46, color: GREEN },
     decor: () => [shape('wave', -40, 668, 1360, 80, '#d7e8d2')] }, [
     { layout: 'blank', transition: 'fade', extra: [
@@ -372,31 +366,33 @@ const demographics = () => {
       ...Array.from({ length: 12 }, (_, i) => auto(icon('user', 760 + (i % 4) * 110, 170 + Math.floor(i / 4) * 130, 90, [MEN, WOMEN, LEAF][i % 3]), 'fade-up', { duration: 300 }))],
       notes: 'Un municipio imaginario; todas las cifras son simuladas. Con un clic, los iconos de personas aparecen uno tras otro, encadenados.' },
     { title: 'Pirámide de población 2026', layout: 'titleOnly', extra: [
-      text('Hombres', xL + wL * 0.22, 168, 300, 36, { fontSize: 26, fontWeight: 700, color: MEN }),
-      text('Mujeres', xR + wR - 300, 168, 300, 36, { fontSize: 26, fontWeight: 700, color: WOMEN, textAlign: 'right' }),
-      auto(chartBlock({ x: Math.round(xL), y: 205, w: Math.round(wL), h: 450, chartType: 'hbar', color: MEN, data: D(AGES.map(() => ''), M.map(v => -v)) }), 'fade-left', { duration: 900 }),
-      withAnims(chartBlock({ x: xR, y: 205, w: wR, h: 450, chartType: 'hbar', color: WOMEN, data: D(AGES, Wm) }), A('fade-right', { start: 'withPrev', duration: 900 })),
-      auto(card('<b>% de la población</b> por sexo y edad. La base se estrecha: nacen menos niños.', 50, 470, 250, 150, '#ffffffcc', { fontSize: 20, color: INK, pad: [12, 14, 12, 14] }), 'fade-in')],
+      text('Hombres', 300, 168, 260, 36, { fontSize: 26, fontWeight: 700, color: MEN, textAlign: 'right' }),
+      text('Mujeres', 720, 168, 260, 36, { fontSize: 26, fontWeight: 700, color: WOMEN }),
+      // (Back to back on the same scale: the men to the left, the ages in the middle, the women to the right.)
+      auto(chartBlock({ x: 82, y: 205, w: 500, h: 450, chartType: 'hbar', color: MEN, yMin: -TOP, yMax: 0, data: D(AGES.map(() => ''), M.map(v => -v)) }), 'fade-left', { duration: 900 }),
+      withAnims(chartBlock({ x: 695, y: 205, w: 500, h: 450, chartType: 'hbar', color: WOMEN, yMin: 0, yMax: TOP, data: D(AGES.map(() => ''), Wm) }), A('fade-right', { start: 'withPrev', duration: 900 })),
+      ...AGES.map((a, i) => text(a, 580, Math.round(205 + 450 * (3 + (55 / 9) * (i + 0.5)) / 60 - 16), 120, 32, { fontSize: 20, color: INK, textAlign: 'center' })),
+      auto(card('<b>% de la población</b> por sexo y edad. La base se estrecha: nacen menos niños.', 860, 40, 360, 110, '#ffffffcc', { fontSize: 20, color: INK, pad: [12, 14, 12, 14] }), 'fade-in')],
       notes: 'Una pirámide de población hecha con dos gráficos de barras horizontales espalda con espalda (los hombres con valores negativos). El grupo más numeroso es el de 40 a 59 años.' },
     { title: 'Edades de una muestra de vecinos', layout: 'titleOnly', extra: [
-      auto(chartBlock({ x: 100, y: 170, w: 1080, h: 490, chartType: 'histogram', color: LEAF, data: sample.map(v => ({ label: '', value: v })), grid: true, dataLabels: true,
+      auto(chartBlock({ x: 100, y: 170, w: 1080, h: 490, chartType: 'histogram', color: LEAF, data: sample.map(v => ({ label: '', value: v })), grid: true, dataLabels: true, bins: 10,
         xTitle: 'Edad (años)', yTitle: 'Personas' }), 'fade-up', { duration: 900 })],
-      notes: `Histograma: el gráfico agrupa solo las ${sample.length} edades en tramos iguales y cuenta cuántas hay en cada uno.` },
+      notes: `Histograma: el gráfico agrupa solo las ${sample.length} edades en tramos iguales (aquí, diez tramos de diez años: Gráfico ▸ Intervalos) y cuenta cuántas hay en cada uno.` },
     { title: 'Habitantes por barrio', layout: 'titleOnly', extra: [
       auto(chartBlock({ x: 100, y: 170, w: 760, h: 480, chartType: 'hbar', color: GREEN, dataLabels: true,
         data: D(['Centro', 'Ensanche', 'La Vega', 'Los Pinos', 'El Molino', 'Las Eras'], [11200, 9800, 8100, 7300, 6400, 5200]) }), 'fade-right', { duration: 900 }),
-      click(fig('+31 %', 'crece Las Eras desde 2016, el barrio de las casas nuevas', 900, 200, 280, 200, { color: LEAF, fg: INK, size: 64, labelSize: 22 }), 'zoom-in'),
+      click(fig('+31 %', 'crece Las Eras desde 2016, el barrio de las casas nuevas', 900, 200, 280, 200, { color: GREEN, fg: INK, size: 64, labelSize: 22 }), 'zoom-in'),
       click(fig('−8 %', 'pierde el Centro: casas más pequeñas y vecinos mayores', 900, 420, 280, 200, { color: WOMEN, fg: INK, size: 64, labelSize: 22 }), 'zoom-in')],
       notes: 'Barras horizontales ordenadas de mayor a menor, con etiquetas de datos. Las dos cifras de la derecha entran con un clic.' },
     { title: 'Nacimientos y defunciones', layout: 'titleOnly', extra: [
-      auto(chartBlock({ x: 100, y: 170, w: 1080, h: 430, chartType: 'line', color: LEAF, seriesName: 'Nacimientos', grid: true, xTitle: 'Año', yTitle: 'Personas al año',
+      auto(chartBlock({ x: 100, y: 170, w: 1080, h: 415, chartType: 'line', color: LEAF, seriesName: 'Nacimientos', grid: true, xTitle: 'Año', yTitle: 'Personas al año',
         data: D(['2006', '2010', '2014', '2018', '2022', '2026'], [520, 505, 460, 410, 380, 365]), series: [{ name: 'Defunciones', values: [330, 345, 370, 395, 430, 445], color: '#8d6e63' }] }), 'fade-right', { duration: 1000 }),
-      auto(text('Desde 2020 hay más defunciones que nacimientos: la población crece por quienes llegan a vivir aquí.', 100, 612, 1080, 50, { fontSize: 24, color: INK, textAlign: 'center' }), 'fade-in')],
-      notes: 'Dos líneas con etiquetas de datos que se cruzan: el crecimiento natural se vuelve negativo.' },
+      auto(text('Desde 2020 hay más defunciones que nacimientos: la población crece por quienes llegan a vivir aquí.', 100, 594, 1080, 72, { fontSize: 24, color: INK, textAlign: 'center' }), 'fade-in')],
+      notes: 'Dos líneas que se cruzan: el crecimiento natural se vuelve negativo.' },
     { title: 'Hogares por tamaño', layout: 'titleOnly', extra: [
-      auto(chartBlock({ x: 100, y: 170, w: 1080, h: 490, chartType: 'bar', color: '#a5d6a7', seriesName: '2006', grid: true, dataLabels: true, xTitle: 'Personas en el hogar', yTitle: '% de los hogares',
+      auto(chartBlock({ x: 100, y: 170, w: 1080, h: 490, chartType: 'bar', color: '#78909c', seriesName: '2006', grid: true, dataLabels: true, xTitle: 'Personas en el hogar', yTitle: '% de los hogares',
         data: D(['1', '2', '3', '4', '5 o más'], [18, 27, 22, 23, 10]), series: [{ name: '2026', values: [29, 32, 19, 15, 5], color: GREEN }] }), 'fade-up', { duration: 900 })],
-      notes: 'Columnas agrupadas: 2006 en verde claro, 2026 en verde oscuro. Los hogares de una persona pasan del 18 % al 29 %.' },
+      notes: 'Columnas agrupadas: 2006 en gris, 2026 en verde. Los hogares de una persona pasan del 18 % al 29 %.' },
     { title: 'Veinte años en cinco indicadores', layout: 'titleOnly', extra: [
       auto(tableBlock({ x: 100, y: 180, w: 1080, h: 400, fontSize: 26, header: true, lines: true, headBg: GREEN, headFg: '#ffffff', stroke: '#9fbf9f', cellPad: [12, 18, 12, 18], colW: [3.2, 2, 2, 2],
         rows: [['Indicador', '2006', '2026', 'Cambio'], ['Habitantes', '41.300', '48.000', '=C2-B2'], ['Edad media', '38,2 años', '44,6 años', '=C3-B3'],
@@ -445,9 +441,9 @@ const season = () => {
         data: D(['Oct', 'Nov', 'Dic', 'Ene', 'Feb', 'Mar', 'Abr', 'May'], [-3, 4, 10, -2, 13, 7, 7, 13]) }), 'fade-up', { duration: 900 })],
       notes: 'Columnas con valores negativos: crecen hacia abajo desde la línea del cero. Octubre y enero, los dos baches de la temporada.' },
     { title: 'La carrera por el título', layout: 'titleOnly', extra: [
-      auto(chartBlock({ x: 100, y: 170, w: 1080, h: 490, chartType: 'line', color: OR, seriesName: 'CB Ribera', grid: true, dataLabels: true, xTitle: 'Jornada', yTitle: 'Victorias acumuladas',
+      auto(chartBlock({ x: 100, y: 170, w: 1080, h: 490, chartType: 'line', color: OR, seriesName: 'CB Ribera', grid: true, xTitle: 'Jornada', yTitle: 'Victorias acumuladas',
         data: D(['J5', 'J10', 'J15', 'J20', 'J25', 'J30', 'J34'], [3, 7, 11, 14, 18, 21, 24]), series: [{ name: 'Marina (líder)', values: [4, 9, 13, 17, 20, 24, 27], color: GREY }] }), 'fade-right', { duration: 1100 })],
-      notes: 'Dos líneas con etiquetas: nunca estuvimos a más de tres victorias del líder.' },
+      notes: 'Dos líneas casi paralelas (sin etiquetas de datos: se pisarían): nunca estuvimos a más de tres victorias del líder.' },
     { title: 'Máximos anotadores', layout: 'titleOnly', extra: [
       auto(chartBlock({ x: 100, y: 170, w: 780, h: 480, chartType: 'hbar', color: OR, dataLabels: true,
         data: D(['M. Lera', 'I. Soto', 'D. Ferrer', 'H. Prieto', 'A. Núñez'], [605, 483, 425, 371, 286]) }), 'fade-right', { duration: 900 }),
@@ -459,7 +455,7 @@ const season = () => {
       auto(fig('82 %', 'de victorias en nuestra pista: la afición juega', 790, 230, 390, 280, { color: OR, fg: GREY, size: 120, labelSize: 34, fontFamily: F.heading }), 'zoom-in')],
       notes: 'Columnas apiladas con etiquetas dentro de cada tramo: 14 de 17 partidos ganados en casa.' },
     { title: 'Perfil del equipo', layout: 'titleOnly', extra: [
-      auto(chartBlock({ x: 190, y: 170, w: 460, h: 480, chartType: 'radar', color: OR,
+      auto(chartBlock({ x: 110, y: 160, w: 550, h: 500, chartType: 'radar', color: OR, yMax: 100,
         data: D(['Ataque', 'Defensa', 'Rebote', 'Triples', 'Tiros libres', 'Pases'], [88, 64, 71, 92, 58, 79]) }), 'zoom-in', { duration: 900 }),
       click(card(`<b style="color:${OR}">Lo mejor</b><br>Triples: 2.º de la liga<br>Ataque: 86,4 puntos`, 680, 200, 500, 170, DARK, { fontSize: 28, color: FG }), 'fade-left'),
       click(card(`<b style="color:#c94f4f">A mejorar</b><br>Tiros libres: 71 % de acierto<br>Defensa en el último cuarto`, 680, 400, 500, 170, DARK, { fontSize: 28, color: FG }), 'fade-left')],
@@ -479,7 +475,6 @@ const energy = () => {
   const F = pairStacks('modern'), BG = '#06171c', FG = '#e6f1f2', SOFT = '#9fbcc0', SUN = '#f5c542', GREEN = '#5ed39b', CYAN = '#2ac3de', PINK = '#f7768e', CARD = '#0d262d';
   const H = Array.from({ length: 12 }, (_, i) => `${i * 2} h`);
   const baseL = [0.3, 0.3, 0.3, 0.3, 0.35, 0.4, 0.4, 0.4, 0.45, 0.4, 0.35, 0.3], clima = [0.2, 0.1, 0.1, 0.2, 0.3, 0.6, 0.9, 1.0, 0.8, 0.7, 0.8, 0.5], cook = [0.05, 0.05, 0.05, 0.4, 0.2, 0.3, 1.2, 0.3, 0.2, 0.4, 1.4, 0.3];
-  const r2 = v => +v.toFixed(2), withClima = baseL.map((v, i) => r2(v + clima[i])), all = withClima.map((v, i) => r2(v + cook[i]));
   const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
   const USE = [420, 380, 350, 300, 280, 340, 420, 410, 320, 300, 350, 430], SOLAR = [110, 160, 250, 320, 380, 410, 430, 400, 310, 220, 140, 100];
   const GRID = USE.map((u, i) => Math.round(u - Math.min(u * 0.75, SOLAR[i] * 0.6)));
@@ -495,9 +490,9 @@ const energy = () => {
       text('Un año de consumo, placas solares y factura en una vivienda de cuatro personas', 92, 480, 600, 90, { fontSize: 26, color: SOFT })],
       notes: 'Datos simulados de una vivienda tipo. Al primer clic el sol gira y los paneles solares se colocan uno tras otro.' }),
     S({ title: 'Un día de consumo, hora a hora', layout: 'titleOnly', extra: [
-      auto(chartBlock({ x: 100, y: 170, w: 1080, h: 490, chartType: 'area', color: PINK, seriesName: 'Cocina y otros', data: D(H, all), grid: true, xTitle: 'Hora del día', yTitle: 'Potencia (kW)',
-        series: [{ name: 'Climatización', values: withClima, color: CYAN }, { name: 'Base', values: baseL, color: GREEN }] }), 'fade-up', { duration: 1000 })],
-      notes: 'Áreas apiladas: cada capa se suma a la de debajo (consumo base, climatización y, encima, cocina y otros). Los picos de las 12 h y las 20 h son las comidas.' }),
+      auto(chartBlock({ x: 100, y: 170, w: 1080, h: 490, chartType: 'stackedArea', color: GREEN, seriesName: 'Base', data: D(H, baseL), grid: true, xTitle: 'Hora del día', yTitle: 'Potencia (kW)',
+        series: [{ name: 'Climatización', values: clima, color: CYAN }, { name: 'Cocina y otros', values: cook, color: PINK }] }), 'fade-up', { duration: 1000 })],
+      notes: 'Áreas apiladas (Gráfico ▸ Áreas apiladas): cada capa se suma a la de debajo (consumo base, climatización y, encima, cocina y otros). Los picos de las 12 h y las 20 h son las comidas.' }),
     S({ title: 'Mes a mes: consumo, sol y red', layout: 'titleOnly', extra: [
       auto(chartBlock({ x: 100, y: 170, w: 1080, h: 490, chartType: 'line', color: PINK, seriesName: 'Consumo', data: D(MONTHS, USE), grid: true, xTitle: 'Mes', yTitle: 'kWh al mes',
         series: [{ name: 'Solar', values: SOLAR, color: SUN }, { name: 'Red', values: GRID, color: CYAN }] }), 'fade-right', { duration: 1100 })],
@@ -526,7 +521,7 @@ const energy = () => {
         data: D(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'], [0, 800, 1600, 2400, 3200, 4000, 4800, 5600, 6400, 7200, 8000]), series: [{ name: 'Inversión', values: Array(11).fill(5600), color: PINK }] }), 'fade-right', { duration: 1000 })],
       notes: 'Tres cifras grandes animadas y, debajo, el ahorro acumulado frente a la inversión de 5.600 €: se cruzan en el séptimo año.' }),
     S({ title: 'Cinco hábitos que más ahorran', layout: 'titleOnly', transition: 'convex', extra: [
-      dg('radial', 'Ahorro\n  Termostato a 20 °C\n  Lavadora en valle\n  Luces LED\n  Sin modo espera\n  Ducha corta', 240, 165, 800, 500, { oneByOne: true, colors: 'colorful' })],
+      dg('radial', 'Ahorro\n  Termostato a 20 °C\n  Lavadora en valle\n  Luces LED\n  Sin modo espera\n  Ducha corta', 190, 165, 900, 500, { oneByOne: true, colors: 'colorful' })],
       notes: 'Diagrama radial que aparece pieza a pieza. Cierra el informe con acciones concretas.' }),
   ]));
 };
@@ -537,7 +532,9 @@ const abTest = () => {
   const F = pairStacks('websafe'), INK = '#111111', MUTED = '#5c5c5c', GA = '#5b6770', OB = '#e4572e';
   const days = Array.from({ length: 14 }, (_, i) => i + 1);
   const ca = [25, 27, 24, 26, 28, 23, 25, 27, 26, 24, 28, 25, 26, 27], cb = [31, 30, 33, 29, 32, 34, 31, 30, 33, 32, 35, 31, 32, 33];
-  const [sa, sb] = scatterPair(days.map((d, i) => [d, ca[i]]), days.map((d, i) => [d, cb[i]]), 130, 175, 760, 430, GA, OB);
+  // (Both versions on the same axes: one scatter with two series.)
+  const scat = chartBlock({ x: 130, y: 175, w: 760, h: 430, chartType: 'scatter', color: GA, seriesName: 'A · actual', grid: true, xTitle: 'Día del experimento', yTitle: 'Compras por 1.000 visitas',
+    yMin: 20, data: days.map((d, i) => ({ label: String(d), value: ca[i] })), series: [{ name: 'B · nuevo', color: OB, x: days, values: cb }] });
   return numbered(build({ name: 'Experimento A/B: el botón de compra', palette: 'grayscale', fonts: 'websafe', title: { size: 42, color: INK },
     decor: () => [...Array.from({ length: 32 }, (_, i) => shape('rect', i * 40 + 20, 0, 1, 720, '#2060a012')), ...Array.from({ length: 18 }, (_, i) => shape('rect', 0, i * 40 + 20, 1280, 1, '#2060a012')),
       shape('rect', 60, 0, 2, 720, '#e4572e55')] }, [
@@ -561,7 +558,7 @@ const abTest = () => {
       click(text('Si |z| > 1,96, la diferencia no es casualidad (95 % de confianza).', 640, 580, 540, 60, { fontSize: 22, color: MUTED, textAlign: 'center' }), 'fade-in')],
       notes: 'Las dos ecuaciones aparecen con un clic cada una: la conversión de cada versión y la prueba z para comparar dos proporciones.' },
     { title: 'Cómo lo hicimos', layout: 'titleOnly', extra: [
-      dg('process', 'Reparto al azar\n  La mitad ve A y la otra mitad B\n14 días\n  Dos semanas completas\n48.000 visitas\n  24.000 por versión\nMedición\n  Compras por visita', 100, 190, 1080, 330, { oneByOne: true, colors: 'accent' }),
+      dg('process', 'Reparto al azar\n  La mitad ve A y la otra mitad B\n14 días\n  Dos semanas completas\n48.000 visitas\n  24.000 por versión\nMedición\n  Compras por visita', 100, 190, 1080, 330, { oneByOne: true, colors: 'accent', fontScale: 1.3 }),
       click(card('<b>Regla de parada fijada antes de empezar:</b> 14 días completos y 24.000 visitas por versión. Nada de mirar los datos a mitad y parar cuando «parece» que gana una.', 100, 530, 1080, 120, '#f3f5f6', { fontSize: 22, color: INK, borderColor: '#cfd6da' }), 'fade-up')],
       notes: 'Diagrama de proceso, un paso por clic. Dos semanas completas evitan que pese más un día de la semana que otro.' },
     { title: 'Compras por cada 1.000 visitas', layout: 'titleOnly', extra: [
@@ -569,10 +566,7 @@ const abTest = () => {
         data: D(['Móvil', 'Ordenador', 'Tableta', 'Total'], [21, 34, 26, 26]), series: [{ name: 'B · nuevo', values: [29, 37, 28, 32], color: OB }] }), 'fade-up', { duration: 900 })],
       notes: 'Columnas agrupadas con etiquetas de datos: B gana en los tres dispositivos y, sobre todo, en el móvil (de 21 a 29).' },
     { title: 'Día a día', layout: 'titleOnly', extra: [
-      auto(sa, 'fade-in', { duration: 700 }), auto(sb, 'fade-in', { duration: 700 }),
-      text('Compras por 1.000 visitas ↑', 130, 165, 400, 30, { fontSize: 20, color: MUTED }),
-      text('Día del experimento →', 590, 610, 300, 30, { fontSize: 20, color: MUTED, textAlign: 'right' }),
-      key('A · actual', GA, 930, 220, 250, { fg: INK, size: 26 }), key('B · nuevo', OB, 930, 270, 250, { fg: INK, size: 26 }),
+      auto(scat, 'fade-in', { duration: 700 }),
       click(card('<b>B gana los 14 días.</b> No es un día bueno: es una diferencia que se repite.', 930, 360, 250, 220, '#fff7f3', { fontSize: 22, color: INK, borderColor: '#f3c2b0' }), 'fade-left')],
       notes: 'Gráfico de dispersión con dos series en los mismos ejes (cada punto, un día). Los puntos naranjas quedan siempre por encima de los grises.' },
     { title: '¿Es significativo?', layout: 'titleOnly', extra: [
@@ -589,7 +583,7 @@ const abTest = () => {
       auto(text('al año: 1,2 millones de visitas × 0,6 puntos más de conversión × 26 € de pedido medio', 190, 430, 900, 90, { fontSize: 26, color: MUTED, textAlign: 'center' }), 'fade-in')],
       notes: 'Estimación sencilla del impacto anual: visitas × mejora de conversión × pedido medio. Cifras inventadas.' },
     { title: 'Conclusiones', layout: 'titleOnly', transition: 'fade', extra: [
-      dg('list', 'Adoptar B\n  En todos los dispositivos desde el lunes\nEl móvil, el gran ganador\n  +38 % de conversión: 29 frente a 21 por mil\nSiguiente prueba\n  Separar el color del texto del botón', 100, 180, 1080, 450, { oneByOne: true, colors: 'light' })],
+      dg('list', 'Adoptar B\n  En todos los dispositivos desde el lunes\nEl móvil, el gran ganador\n  +38 % de conversión: 29 frente a 21 por mil\nSiguiente prueba\n  Separar el color del texto del botón', 100, 180, 1080, 450, { oneByOne: true, colors: 'light', fontScale: 1.4 })],
       notes: 'Lista que aparece punto a punto. La siguiente prueba separa los dos cambios para saber cuál pesa más.' },
   ]));
 };
@@ -621,7 +615,7 @@ const execPanel = () => {
       text('Septiembre de 2026 · Resultados del mes', 152, 330, 640, 50, { fontSize: 28, color: MUTED }),
       ...[[OK, '8', 'en objetivo'], [MID, '3', 'a vigilar'], [BAD, '1', 'fuera de objetivo']].flatMap(([c, n, l], i) => group([
         shape('ellipse', 152 + i * 240, 440, 64, 64, c),
-        text(`<b style="font-size:36px;line-height:1">${n}</b><br><span style="color:${MUTED}">${l}</span>`, 228 + i * 240, 432, 170, 80, { fontSize: 20, color: INK })], 'bounce', { duration: 600 })),
+        text(`<b style="font-size:36px;line-height:1">${n}</b><br><span style="color:${MUTED}">${l}</span>`, 228 + i * 240, 432, 210, 84, { fontSize: 20, color: INK })], 'bounce', { duration: 600 })),
       auto(spark([3410, 3280, 3550, 3600, 3720, 3900, 3480, 3310, 3820], 860, 170, 290, 200, BLUE), 'fade-left', { duration: 800 }),
       text('Ingresos mensuales 2026', 860, 380, 290, 30, { fontSize: 18, color: MUTED, textAlign: 'center' })],
       notes: 'Panel mensual de una empresa inventada. Los semáforos resumen los doce indicadores del mes y rebotan con el primer clic.' }),
