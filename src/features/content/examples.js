@@ -40,21 +40,21 @@ const EXAMPLES_DEF = {
       anim(big('+18 %', 'ingresos respecto al T2', 90, 230, '#156082', '#1f1f1f'), 1),
       anim(big('4,6', 'satisfacción de clientes (sobre 5)', 470, 230, '#e97132', '#1f1f1f'), 2),
       anim(big('312', 'clientes nuevos', 850, 230, '#196b24', '#1f1f1f'), 3)] },
-    { title: 'Ingresos por mes', layout: 'titleOnly', extra: [chartBlock({ x: 90, y: 170, w: 1100, h: 480, chartType: 'bar', color: '#156082',
+    { title: 'Ingresos por mes', layout: 'titleOnly', extra: [chartBlock({ x: 90, y: 170, w: 1100, h: 480, chartType: 'bar', color: '#156082', grid: true, yTitle: 'miles de €',
       data: [{ label: 'Jul', value: 42 }, { label: 'Ago', value: 38 }, { label: 'Sep', value: 51 }], seriesName: '2026',
       series: [{ name: '2025', values: [35, 33, 40], color: '#a0c4dc' }] })] },
     { title: 'Evolución y reparto', layout: 'twoContent', body: '', body2: '', extra: [
-      chartBlock({ x: 90, y: 180, w: 530, h: 440, chartType: 'line', color: '#e97132', data: [{ label: 'T1', value: 96 }, { label: 'T2', value: 128 }, { label: 'T3', value: 151 }] }),
+      chartBlock({ x: 90, y: 180, w: 530, h: 440, chartType: 'line', color: '#e97132', grid: true, dataLabels: true, data: [{ label: 'T1', value: 96 }, { label: 'T2', value: 128 }, { label: 'T3', value: 151 }] }),
       chartBlock({ x: 660, y: 180, w: 530, h: 440, chartType: 'doughnut', color: '#156082', data: [{ label: 'Web', value: 55 }, { label: 'Tienda', value: 30 }, { label: 'Socios', value: 15 }] })] },
     { title: 'Próximos pasos', body: ul('Abrir el canal de socios en Portugal', 'Reducir el tiempo de respuesta a 24 h', 'Lanzar la versión móvil en noviembre') },
   ]) },
 
   pitch: { name: 'Pitch de startup', summary: 'Portada de impacto, animación morph (auto-animate) y cifras', make: () => {
     const logo = uid(), claim = uid();
-    const mk = (y, size) => [{ ...text('<b>Rumbo</b>', 90, y, 600, 140, { fontSize: size }), id: logo }];
+    const mk = (y, size) => [{ ...text('<b>Rumbo</b>', 90, y, 600, Math.round(size * 1.3), { fontSize: size }), id: logo }];
     return build({ name: 'Pitch de startup', palette: 'violet', fonts: 'bold', title: { size: 64 },
       decor: p => [shape('rect', 0, 690, 1280, 30, p.accents[0]), shape('rect', 0, 690, 420, 30, p.accents[1])] }, [
-      { layout: 'blank', autoAnimate: true, extra: [...mk(260, 150), { ...text('El copiloto de tus viajes en tren', 90, 430, 1000, 70, { fontSize: 38 }), id: claim }] },
+      { layout: 'blank', autoAnimate: true, extra: [...mk(230, 150), { ...text('El copiloto de tus viajes en tren', 90, 430, 1000, 70, { fontSize: 38 }), id: claim }] },
       { layout: 'blank', autoAnimate: true, extra: [...mk(40, 60), { ...text('El copiloto de tus viajes en tren', 90, 120, 1000, 60, { fontSize: 28 }), id: claim },
         text(ul('Retrasos que nadie avisa', 'Conexiones perdidas', 'Billetes en cinco apps distintas'), 90, 230, 1100, 360, { fontSize: 40 })],
         notes: 'Diapositivas con «auto-animate»: el logotipo y el lema se mueven solos de una a otra.' },
@@ -68,14 +68,14 @@ const EXAMPLES_DEF = {
     name: 'Taller de programación', palette: 'midnight', fonts: 'tech', decor: p => [shape('rect', 0, 0, 10, 720, p.accents[0])],
   }, [
     { layout: 'title', title: 'Taller: JavaScript desde cero', subtitle: 'Funciones, arrays y async/await' },
-    { title: 'Funciones', layout: 'titleOnly', extra: [codeBlock({ x: 90, y: 170, w: 1100, h: 440, fontSize: 26, lang: 'javascript', lineSteps: '1-3|5-7|9',
+    { title: 'Funciones', layout: 'titleOnly', extra: [codeBlock({ x: 90, y: 170, w: 1100, h: 440, fontSize: 30, lang: 'javascript', lineSteps: '1-3|5-7|9',
       code: 'function saludar(nombre) {\n  return `Hola, ${nombre}`;\n}\n\nconst doble = n => n * 2;\nconst lista = [1, 2, 3];\nconst dobles = lista.map(doble);\n\nconsole.log(saludar("Revela"), dobles);' })],
       notes: 'El código resalta las líneas por pasos: primero la función, luego la flecha y el map, y al final el console.log.' },
     { title: 'Arrays: los tres métodos clave', body: ul('<code>map</code>: transforma cada elemento', '<code>filter</code>: se queda con los que cumplen', '<code>reduce</code>: combina todos en un valor') },
-    { title: 'Ejemplo de reduce', layout: 'titleOnly', vertical: true, extra: [codeBlock({ x: 90, y: 170, w: 1100, h: 300, fontSize: 28, lang: 'javascript', lineSteps: '1|2|3',
+    { title: 'Ejemplo de reduce', layout: 'titleOnly', vertical: true, extra: [codeBlock({ x: 90, y: 170, w: 1100, h: 240, fontSize: 34, lang: 'javascript', lineSteps: '1|2|3',
       code: 'const notas = [7, 9, 6];\nconst suma = notas.reduce((a, n) => a + n, 0);\nconst media = suma / notas.length;' })],
       notes: 'Esta diapositiva está debajo de la anterior (pila vertical de reveal.js): se llega con la flecha abajo.' },
-    { title: 'async / await', layout: 'titleOnly', extra: [codeBlock({ x: 90, y: 170, w: 1100, h: 400, fontSize: 26, lang: 'javascript', lineSteps: '2|3|4-5',
+    { title: 'async / await', layout: 'titleOnly', extra: [codeBlock({ x: 90, y: 170, w: 1100, h: 400, fontSize: 32, lang: 'javascript', lineSteps: '2|3|4-5',
       code: 'async function cargar() {\n  const r = await fetch("/datos.json");\n  if (!r.ok) throw new Error(r.status);\n  const datos = await r.json();\n  return datos;\n}' })] },
     { layout: 'section', title: 'Ahora te toca', subtitle: 'Ejercicios en el repositorio del curso' },
   ]) },
@@ -88,7 +88,7 @@ const EXAMPLES_DEF = {
       text('Si $a > 0$ la parábola abre hacia arriba; si $a < 0$, hacia abajo.', 140, 440, 1000, 90, { fontSize: 34, textAlign: 'center' })] },
     { title: 'Las raíces', layout: 'titleOnly', extra: [mathBlock({ x: 140, y: 200, w: 1000, h: 200, fontSize: 60, latex: 'x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}' }),
       anim(text('El discriminante $\\Delta = b^2 - 4ac$ dice cuántas raíces reales hay.', 140, 450, 1000, 90, { fontSize: 34, textAlign: 'center' }), 1)] },
-    { title: 'Ejemplo: $f(x) = x^2$', layout: 'titleOnly', extra: [chartBlock({ x: 190, y: 170, w: 900, h: 470, chartType: 'line', color: '#b5651d',
+    { title: 'Ejemplo: $f(x) = x^2$', layout: 'titleOnly', extra: [chartBlock({ x: 190, y: 170, w: 900, h: 470, chartType: 'line', color: '#b5651d', grid: true,
       data: [-3, -2, -1, 0, 1, 2, 3].map(x => ({ label: String(x), value: x * x })) }),
       text('Vértice en $(0, 0)$; simétrica respecto al eje $y$.', 190, 640, 900, 60, { fontSize: 26, textAlign: 'center' })] },
     { title: 'Para practicar', body: ul('Halla las raíces de $x^2 - 5x + 6$', 'Dibuja $f(x) = -x^2 + 2x$', 'Encuentra el vértice de $f(x) = 2x^2 - 8x + 3$') },
@@ -96,11 +96,13 @@ const EXAMPLES_DEF = {
 
   science: { name: 'Ciencias: el sistema solar', summary: 'Formas, animaciones en orden, transiciones y diagrama', make: () => {
     const planets = [['Mercurio', '#b1adad', 18], ['Venus', '#e3bb76', 30], ['Tierra', '#4b9cd3', 32], ['Marte', '#c1440e', 24], ['Júpiter', '#d8ca9d', 70], ['Saturno', '#e3d9a5', 60]];
-    let x = 250;
-    const orbit = planets.map(([n, c, r], i) => { const b = anim(shape('ellipse', x, 360 - r, r * 2, r * 2, c, { alt: n }), i + 1, 'zoom-in'); x += r * 2 + 40; return b; });
+    let x = 290;
+    const orbit = planets.flatMap(([n, c, r], i) => { const cx = x + r; x += r * 2 + 70;
+      return [anim(shape('ellipse', cx - r, 400 - r, r * 2, r * 2, c, { alt: n }), i + 1, 'zoom-in'),
+        anim(text(n, cx - 75, 490, 150, 44, { fontSize: 24, textAlign: 'center' }), i + 1)]; });
     return build({ name: 'Ciencias: el sistema solar', palette: 'ocean', fonts: 'modern', decor: p => [shape('ellipse', 1120, -80, 240, 240, p.accents[2], { opacity: 60 })] }, [
       { layout: 'title', title: 'El sistema solar', subtitle: 'Un paseo por nuestro vecindario cósmico', transition: 'zoom' },
-      { title: 'Del Sol hacia fuera', layout: 'titleOnly', extra: [shape('ellipse', 40, 260, 200, 200, '#f5a623', { alt: 'Sol' }), ...orbit],
+      { title: 'Del Sol hacia fuera', layout: 'titleOnly', extra: [shape('ellipse', 40, 300, 200, 200, '#f5a623', { alt: 'Sol' }), ...orbit],
         notes: 'Cada planeta aparece con un clic, en orden desde el Sol.' },
       { title: 'Planetas rocosos y gigantes', layout: 'twoContent', body: '<b>Rocosos</b>' + ul('Mercurio', 'Venus', 'Tierra', 'Marte'), body2: '<b>Gigantes</b>' + ul('Júpiter y Saturno (gas)', 'Urano y Neptuno (hielo)'), transition: 'fade' },
       { title: 'Datos curiosos', layout: 'titleOnly', extra: [
@@ -114,9 +116,9 @@ const EXAMPLES_DEF = {
 
   history: { name: 'Historia: línea de tiempo', summary: 'Línea de tiempo animada, citas y dos columnas', make: () => {
     const events = [['1450', 'Imprenta de Gutenberg'], ['1492', 'Llegada a América'], ['1687', 'Principia de Newton'], ['1789', 'Revolución francesa'], ['1969', 'Llegada a la Luna']];
-    const tl = [shape('rect', 110, 395, 1060, 6, '#b5651d'),
-      ...events.flatMap(([y, e], i) => { const cx = 150 + i * 245; return [anim(shape('ellipse', cx - 17, 381, 34, 34, '#8b3a62'), i + 1, 'zoom-in'),
-        anim(text(`<div><b>${y}</b></div><div>${e}</div>`, cx - 125, i % 2 ? 435 : 225, 250, 140, { fontSize: 28, textAlign: 'center', vAlign: i % 2 ? 'top' : 'bottom' }), i + 1)]; })];
+    const tl = [shape('rect', 140, 395, 1000, 6, '#b5651d'),
+      ...events.flatMap(([y, e], i) => { const cx = 180 + i * 230; return [anim(shape('ellipse', cx - 17, 381, 34, 34, '#8b3a62'), i + 1, 'zoom-in'),
+        anim(text(`<div><b>${y}</b></div><div>${e}</div>`, cx - 115, i % 2 ? 435 : 225, 230, 140, { fontSize: 28, textAlign: 'center', vAlign: i % 2 ? 'top' : 'bottom' }), i + 1)]; })];
     return build({ name: 'Historia: línea de tiempo', palette: 'paper', fonts: 'classic', decor: p => [shape('rect', 40, 40, 1200, 640, 'none', { stroke: p.accents[0], strokeWidth: 2 })] }, [
       { layout: 'title', title: 'Cinco momentos que cambiaron el mundo', subtitle: 'Historia · Bachillerato' },
       { title: 'Línea de tiempo', layout: 'titleOnly', extra: tl, notes: 'Cada hito aparece al hacer clic, de izquierda a derecha.' },

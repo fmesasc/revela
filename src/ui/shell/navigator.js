@@ -157,7 +157,7 @@ function thumb(slide) {
   const inner = document.createElement('div');
   inner.className = 'thumb-inner';
   inner.style.cssText = `width:${w}px;height:${h}px;transform:scale(var(--tk,${188 / w}));color:${deckFg()};font-family:${deckBodyFont() || 'inherit'}`;
-  for (const b of [...masterBlocksFor(slide), ...slide.blocks.map(x => styled(x, slide))]) if (!isEmptyPlaceholder(b)) inner.appendChild(blockPreview(b));
+  for (const b of [...masterBlocksFor(slide), ...slide.blocks.map(x => styled(x, slide))]) if (!isEmptyPlaceholder(b)) inner.appendChild(blockPreview(b, slide));
   canvas.appendChild(inner);
 
   const del = document.createElement('button'); del.className = 'thumb-del'; del.textContent = '×';

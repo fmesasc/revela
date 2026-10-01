@@ -163,3 +163,5 @@ Si este proyecto te ha sido útil y te gustaría ver más proyectos similares, c
 ## Licencia
 
 [MIT](LICENSE) © Francisco Mesas Cervilla.
+
+Los iconos integrados de `src/render/icons.js` proceden de [Lucide](https://lucide.dev) (licencia ISC; algunos derivan de Feather, MIT); sus avisos están en ese archivo.

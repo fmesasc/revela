@@ -68,4 +68,14 @@ export default {"biz_board":["Resultats trimestrals al consell","Blau fosc i dau
 "sci_python":["Programació en Python","Estil editor fosc: terminal que s'escriu sol, codi amb passos de ressaltat, sortida animada, ordenar línies i repte amb compte enrere"],
 "sci_solar":["El sistema solar","Planetes a escala que apareixen en cadena, tres sondes 3D amb vistes i moviments diferents, taula, diagrama radial i aparellar"],
 "sci_stats":["Estadística i probabilitat","Estil editorial: campana que es dibuixa, fórmules, histograma, dispersió, àrea, barres i bombolles, i pregunta amb punts"],
-"sci_thesis":["Defensa del TFG","Acadèmic sobri: portada institucional, índex, metodologia amb equació, taula amb totals, resultats en gràfics, bibliografia i preguntes"]};
+"sci_thesis":["Defensa del TFG","Acadèmic sobri: portada institucional, índex, metodologia amb equació, taula amb totals, resultats en gràfics, bibliografia i preguntes"],
+"showcase_3d":["Catàleg: el 3D a fons","Models 3D amb totes les opcions: vistes, moviments en entrar, gir, vores, marge, clips, caminar i arribada amb Transformació"],
+"showcase_animations":["Catàleg: animacions","Totes les animacions d’objecte: entrada, èmfasi, sortida, trajectòries, dibuixar, encadenades, sons i diverses en un objecte"],
+"showcase_charts":["Catàleg: gràfics","Els 15 tipus de gràfic, dos per diapositiva, amb sèries, combinat, quadrícula, etiquetes i títols d’eixos, i la taula d’opcions"],
+"showcase_diagrams":["Catàleg: diagrames","Els 15 dissenys de diagrama escrits com un esquema, els 4 esquemes de color i l’aparició un a un en presentar"],
+"showcase_morph":["Catàleg: Transformació","Transformació pas a pas: text que canvia de mida i de lloc, formes, barres que creixen, imatge, 3D i lletres que es reordenen"],
+"showcase_objects":["Catàleg: multimèdia i objectes","Codi amb passos, equacions, icones, cinc dispositius, taules amb estils i fórmules, zoom de diapositiva i connectors"],
+"showcase_polls":["Catàleg: votacions i activitats","Els 11 tipus de votació i activitat des del mòbil, compte enrere en els tres estils, classificació i mode aula"],
+"showcase_shapes":["Catàleg: formes","Totes les formes per categories amb el nom, línies i guions, degradats, opacitat, traç a mà, ombres, text a dins i gir"],
+"showcase_text":["Catàleg: Text Art i tipografia","Els 10 estils de Text Art, text corbat, columnes, cinc nivells de pics, els 8 parells de lletra, alineació i espaiat"],
+"showcase_transitions":["Catàleg: transicions","Les 22 transicions de diapositiva, una a una: entrada, sortida diferent, direccions, velocitat i avançament automàtic"]};

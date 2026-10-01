@@ -68,4 +68,14 @@ export default {"biz_board":["Résultats trimestriels au conseil","Bleu foncé e
 "sci_python":["Programmer en Python","Style éditeur sombre : terminal qui s'écrit tout seul, code avec étapes de surlignage, sortie animée, lignes à ordonner et défi chronométré"],
 "sci_solar":["Le système solaire","Planètes à l'échelle qui apparaissent en chaîne, trois sondes 3D aux vues et mouvements différents, tableau, diagramme radial et association"],
 "sci_stats":["Statistiques et probabilités","Style éditorial : courbe en cloche qui se dessine, formules, histogramme, nuage de points, aires, barres et bulles, et question à points"],
-"sci_thesis":["Soutenance de mémoire de licence","Académique sobre : couverture institutionnelle, sommaire, méthodologie avec équation, tableau avec totaux, résultats en graphiques, bibliographie et Q&R"]};
+"sci_thesis":["Soutenance de mémoire de licence","Académique sobre : couverture institutionnelle, sommaire, méthodologie avec équation, tableau avec totaux, résultats en graphiques, bibliographie et Q&R"],
+"showcase_3d":["Catalogue : la 3D en détail","Modèles 3D avec toutes leurs options : vues, mouvements à l’entrée, rotation, bords, marge, clips, marche et arrivée avec Morphose"],
+"showcase_animations":["Catalogue : animations","Toutes les animations d’objet : entrée, emphase, sortie, trajectoires, dessin, enchaînées, sons et plusieurs sur un objet"],
+"showcase_charts":["Catalogue : graphiques","Les 15 types de graphique, deux par diapositive, avec séries, combiné, grille, étiquettes et titres d’axes, et le tableau des options"],
+"showcase_diagrams":["Catalogue : diagrammes","Les 15 dispositions de diagramme écrites comme un plan, les 4 jeux de couleurs et l’apparition un à un en présentation"],
+"showcase_morph":["Catalogue : Morphose","Morphose pas à pas : texte qui change de taille et de place, formes, barres qui grandissent, image, 3D et lettres qui se réordonnent"],
+"showcase_objects":["Catalogue : multimédia et objets","Code par étapes, équations, icônes, cinq appareils, tableaux avec styles et formules, zoom de diapositive et connecteurs"],
+"showcase_polls":["Catalogue : sondages et activités","Les 11 types de sondage et d’activité depuis le mobile, compte à rebours dans ses trois styles, classement et mode classe"],
+"showcase_shapes":["Catalogue : formes","Toutes les formes par catégorie avec leur nom, lignes et tirets, dégradés, opacité, tracé à main levée, ombres, texte à l’intérieur et rotation"],
+"showcase_text":["Catalogue : Text Art et typographie","Les 10 styles de Text Art, texte courbé, colonnes, cinq niveaux de puces, les 8 paires de polices, alignement et espacement"],
+"showcase_transitions":["Catalogue : transitions","Les 22 transitions de diapositive, une à une : entrée, sortie différente, directions, vitesse et avance automatique"]};

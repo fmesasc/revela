@@ -68,4 +68,14 @@ export default {"biz_board":["Kwartaalresultaten voor de raad","Donkerblauw en g
 "sci_python":["Programmeren in Python","Donkere editorstijl: terminal die zichzelf typt, code met markeerstappen, geanimeerde uitvoer, regels ordenen en uitdaging met aftelklok"],
 "sci_solar":["Het zonnestelsel","Planeten op schaal die na elkaar verschijnen, drie 3D-sondes met verschillende aanzichten en bewegingen, tabel, radiaal diagram en koppelen"],
 "sci_stats":["Statistiek en kansrekening","Redactionele stijl: klokcurve die zichzelf tekent, formules, histogram, spreidings-, vlak-, staaf- en bellendiagram, en een vraag met punten"],
-"sci_thesis":["Verdediging van de bachelorscriptie","Sober academisch: institutionele titelpagina, inhoud, methode met vergelijking, tabel met totalen, resultaten in grafieken, literatuur en vragen"]};
+"sci_thesis":["Verdediging van de bachelorscriptie","Sober academisch: institutionele titelpagina, inhoud, methode met vergelijking, tabel met totalen, resultaten in grafieken, literatuur en vragen"],
+"showcase_3d":["Catalogus: 3D tot in detail","3D-modellen met alle opties: weergaven, bewegingen bij binnenkomst, draaien, randen, marge, clips, lopen en aankomst met Morphen"],
+"showcase_animations":["Catalogus: animaties","Alle objectanimaties: ingang, nadruk, uitgang, bewegingspaden, tekenen, gekoppeld, geluiden en meerdere op één object"],
+"showcase_charts":["Catalogus: grafieken","De 15 grafiektypen, twee per dia, met reeksen, combinatie, raster, labels en astitels, plus de optietabel"],
+"showcase_diagrams":["Catalogus: diagrammen","De 15 diagramindelingen als overzicht geschreven, de 4 kleurenschema’s en één voor één verschijnen tijdens het presenteren"],
+"showcase_morph":["Catalogus: Morphen","Morphen stap voor stap: tekst die van grootte en plaats verandert, vormen, groeiende balken, afbeelding, 3D en letters die van plaats wisselen"],
+"showcase_objects":["Catalogus: multimedia en objecten","Code met stappen, vergelijkingen, pictogrammen, vijf apparaten, tabellen met stijlen en formules, diazoom en verbindingslijnen"],
+"showcase_polls":["Catalogus: peilingen en activiteiten","De 11 soorten peilingen en activiteiten via de telefoon, aftellen in drie stijlen, ranglijst en klasmodus"],
+"showcase_shapes":["Catalogus: vormen","Alle vormen per categorie met hun naam, lijnen en streepjes, verlopen, dekking, handgetekend, schaduwen, tekst erin en draaien"],
+"showcase_text":["Catalogus: Text Art en typografie","De 10 Text Art-stijlen, gebogen tekst, kolommen, vijf opsommingsniveaus, de 8 lettertypeparen, uitlijning en afstand"],
+"showcase_transitions":["Catalogus: overgangen","Alle 22 dia-overgangen, één voor één: ingang, andere uitgang, richtingen, snelheid en automatisch doorgaan"]};

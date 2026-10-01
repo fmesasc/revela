@@ -13,11 +13,13 @@ import * as palettes from '../../features/design/palettes.js';
 import * as fontsMod from '../../features/design/fonts.js';
 import { ICON_NAMES, iconSVG, WORDART_KEYS, wordartCSS, SHAPE_CATALOG, shapeThumb } from '../../render/svg.js';
 import { t } from '../../i18n/index.js';
+import { ICON_GROUPS, BASIC_ICONS } from '../../render/icons.js';
 
 const $ = s => document.querySelector(s);
 
 // ---- Group "more options" popovers (like Office's dialog launchers) --------
 export let openPop = null;
+const fold = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');   // (search without accents)
 export const POPS = {
   symbols: () => {
     const chars = ['→','←','↑','↓','↔','⇒','•','◦','▪','‣','✓','✔','✗','✘','★','☆','♦','●','■','▶',
@@ -26,8 +28,11 @@ export const POPS = {
     return `<h4>${t('Símbolos y emojis')}</h4><div class="sym-grid">`
       + chars.map(c => `<button data-sym type="button">${c}</button>`).join('') + `</div>`;
   },
-  icons: () => `<h4>${t('Iconos')}</h4><div class="sym-grid icons">`
-    + ICON_NAMES.map(n => `<button data-icon="${n}" type="button" title="${n}">${iconSVG({ icon: n, color: '#333' })}</button>`).join('') + `</div>`,
+  // By groups, with a search box (Spanish or English names, and in the app's language).
+  icons: () => `<h4>${t('Iconos')}</h4><input type="search" class="icon-search" data-icon-search placeholder="${esc(t('Buscar icono…'))}"><div class="icon-groups">`
+    + [['Básicos', BASIC_ICONS], ...ICON_GROUPS].map(([cat, list]) => `<h5 class="icon-cat">${esc(t(cat))}</h5><div class="sym-grid icons">`
+      + list.filter(([n]) => ICON_NAMES.includes(n)).map(([n, l, k]) => `<button data-icon="${n}" type="button" title="${esc(t(l))}" data-k="${esc(fold(`${n} ${l} ${t(l)} ${k} ${cat} ${t(cat)}`))}">${iconSVG({ icon: n, color: '#333' })}</button>`).join('') + `</div>`).join('')
+    + `<p class="icon-none" hidden>${esc(t('Ningún icono coincide'))}</p></div>`,
   // (With a text selected the style goes on it, and its colour can be changed: neon, fill and gradient in any colour.)
   wordart: () => { const b = selectedBlock(), on = b?.type === 'text';
     return `<h4>Text Art</h4><div class="wa-grid">`
@@ -103,6 +108,15 @@ export function togglePopover(launcher, type, { replaceId = null } = {}) {
   pop.querySelectorAll('[data-sym]').forEach(x => {
     x.addEventListener('mousedown', e => e.preventDefault());   // keep the caret in the text
     x.addEventListener('click', () => format.insertSymbol(x.textContent));
+  });
+  pop.querySelector('[data-icon-search]')?.addEventListener('input', e => {
+    const q = fold(e.target.value).trim().split(/\s+/).filter(Boolean);
+    let any = false;
+    pop.querySelectorAll('.icon-groups .sym-grid').forEach(g => {
+      let n = 0; g.querySelectorAll('[data-icon]').forEach(x => { const on = q.every(w => x.dataset.k.includes(w)); x.hidden = !on; n += on; });
+      g.hidden = !n; g.previousElementSibling.hidden = !n; any ||= n > 0;
+    });
+    pop.querySelector('.icon-none').hidden = any;
   });
   pop.querySelectorAll('[data-icon]').forEach(x =>
     x.addEventListener('click', () => { if (replaceId) blocks.setIcon(replaceId, x.dataset.icon); else blocks.addIcon(x.dataset.icon); closePopover(); }));

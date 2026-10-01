@@ -45,6 +45,22 @@ const subText = n => n.kids.map(k => k.text).join('\n');
 const hexRGB = h => { const m = String(h).match(/^#?([0-9a-f]{6})/i); const v = m ? parseInt(m[1], 16) : 0x3f6497; return [v >> 16, (v >> 8) & 255, v & 255]; };
 const mix = (a, b, t) => { const x = hexRGB(a), y = hexRGB(b); return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, '0')).join(''); };
 const light = c => { const [r, g, b] = hexRGB(c); return (0.299 * r + 0.587 * g + 0.114 * b) > 170; };
+// The words that sit on the slide (not on a shape) in a colour that reads on the
+// slide's own background: the theme's text colour, unless the slide has a
+// background of its own (a dark one on a light theme, or the other way round).
+// A gradient is judged by the average of its colours; a picture can't be: the theme's.
+const lumOf = c => { const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; const [r, g, b] = hexRGB(c); return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+const ratio = (a, b) => { const [x, y] = [lumOf(a), lumOf(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+function backColour(back) {
+  const s = String(back || ''); if (!s || /url\(/i.test(s)) return null;
+  const cs = [...s.matchAll(/#([0-9a-f]{6}|[0-9a-f]{3})\b|rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)/gi)].map(m => (m[1] ? hexRGB(m[1].length === 3 ? m[1].replace(/./g, '$&$&') : m[1]) : [+m[2], +m[3], +m[4]]));
+  if (!cs.length) return null;
+  return '#' + [0, 1, 2].map(k => Math.round(cs.reduce((t, c) => t + c[k], 0) / cs.length).toString(16).padStart(2, '0')).join('');
+}
+export function readableOn(fg, back) {
+  const bc = backColour(back); if (!bc || ratio(fg, bc) >= 3) return fg;
+  return lumOf(bc) > 0.18 ? '#1e2a3a' : '#ffffff';
+}
 function paint(scheme, accents, fg, i, n) {
   const a = accents.length ? accents : ['#3f6497'], base = a[0];
   if (scheme === 'accent') { const f = mix(base, '#000000', 0.25 * (n > 1 ? i / (n - 1) : 0)); return { fill: f, stroke: 'none', text: light(f) ? '#1e2a3a' : '#ffffff' }; }
@@ -71,13 +87,21 @@ const fitFont = (w, h, text, max = 30) => {
 };
 
 // The geometry of a diagram: a list of shapes in its own pixels (W × H).
-export function diagramLayout(b, { accents = ['#3f6497', '#e0873b', '#4caf7d', '#c94f4f', '#8e6cc9', '#3bb3c3'], fg = '#ffffff' } = {}) {
+// Options: the theme's accents and text colour, and `back`, the slide's background
+// (so that the words on it read). The object's own: `textColor` (the words on the
+// slide, instead of the automatic one) and `fontScale` (bigger or smaller letters, 0.5–2.5).
+export function diagramLayout(b, { accents = ['#3f6497', '#e0873b', '#4caf7d', '#c94f4f', '#8e6cc9', '#3bb3c3'], fg = '#ffffff', back = '' } = {}) {
   const W = b.w || 900, H = b.h || 460, items = parseOutline(b.text ?? DEFAULT_DIAGRAM_TEXT), n = Math.max(1, items.length);
+  fg = /^#[0-9a-f]{6}$/i.test(b.textColor || '') ? b.textColor : readableOn(fg, back);
+  // Letters: the sizes below suit a diagram of about 900 × 460; a bigger one may have bigger ones.
+  const scale = Math.min(2.5, Math.max(0.5, +b.fontScale || 1)), roomy = Math.min(2.2, Math.max(1, Math.min(W / 900, H / 460)));
   const scheme = b.colors || 'colorful', P = (i, m = n) => paint(scheme, accents, fg, i, m), out = [];
   const rect = (x, y, w, h, i, text, sub, o = {}) => { const c = P(i, o.m); out.push({ type: 'rect', x, y, w, h, r: o.r ?? Math.min(w, h) * 0.12, fill: c.fill, stroke: c.stroke, i: o.item ?? i });
     if (text != null) out.push(textBox(x, y, w, h, text, sub, c.text, o)); };
   const textBox = (x, y, w, h, text, sub, color, o = {}) => {
-    const pad = Math.min(w, h) * 0.08, fs = o.fs || (sub ? fitBoth(w - 2 * pad, h - 2 * pad, text, sub, o.max || 30) : fitFont(w - 2 * pad, h - 2 * pad, text, o.max || 30));
+    const pad = Math.min(w, h) * 0.08, max = (o.max || 30) * roomy * Math.max(1, scale);
+    // (Bigger: up to what fits the box; smaller: always.)
+    const fs = Math.max(8, Math.round((o.fs || (sub ? fitBoth(w - 2 * pad, h - 2 * pad, text, sub, max) : fitFont(w - 2 * pad, h - 2 * pad, text, max))) * Math.min(1, scale)));
     return { type: 'text', x: x + pad, y: y + pad, w: w - 2 * pad, h: h - 2 * pad, text, sub: sub || '', fs, color, align: o.align || 'center', valign: o.valign || 'middle', bold: o.bold ?? true, i: o.item ?? o.i ?? 0 };
   };
   const line = (pts, color, width = 2, o = {}) => out.push({ type: 'poly', pts, closed: false, fill: 'none', stroke: color, sw: width, i: o.item ?? -1 });
@@ -157,10 +181,13 @@ export function diagramLayout(b, { accents = ['#3f6497', '#e0873b', '#4caf7d', '
       line([[0, y], [W, y]], lineColor, 4);
       arrowHead(W, y, 0, 18, lineColor);
       items.forEach((it, i) => {
-        const cx = step * (i + 0.5), up = i % 2 === 0, c = P(i), lh = H * 0.42 - d;
+        // (Neighbours alternate above and below the line: each text may be almost two steps wide;
+        // the first and the last stop at the box's edge, and lean on it.)
+        const cx = step * (i + 0.5), up = i % 2 === 0, c = P(i), lh = H / 2 - d * 1.5, half = n === 1 ? W / 2 : step * 0.95;
+        const x0 = Math.max(0, cx - half), x1 = Math.min(W, cx + half), align = n === 1 || (x0 > 0 && x1 < W) ? 'center' : x0 === 0 ? 'left' : 'right';
         out.push({ type: 'ellipse', x: cx - d / 2, y: y - d / 2, w: d, h: d, fill: c.fill === 'none' ? accents[i % accents.length] : c.fill, stroke: '#ffffff', i });
         line([[cx, up ? y - d / 2 : y + d / 2], [cx, up ? y - d * 1.4 : y + d * 1.4]], lineColor, 2, { item: i });
-        out.push(textBox(cx - step * 0.55, up ? 0 : y + d * 1.5, step * 1.1, lh, it.text, subText(it), fg, { valign: up ? 'bottom' : 'top', max: 36, item: i }));
+        out.push(textBox(x0, up ? 0 : y + d * 1.5, x1 - x0, lh, it.text, subText(it), fg, { valign: up ? 'bottom' : 'top', align, max: 36, item: i }));
       });
       break;
     }
@@ -285,4 +312,4 @@ export function diagramHTML(b, opts = {}) {
     + (p.sub ? `<div style="font-size:${Math.max(10, Math.round(p.fs * 0.72))}px;opacity:.9;margin-top:.25em;white-space:pre-line">${escSvg(p.sub)}</div>` : '') + `</div>`).join('');
   return `<div class="rv-diagram" style="position:relative;width:100%;height:100%"><svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" preserveAspectRatio="none" style="position:absolute;inset:0;overflow:visible">${svg}</svg>${texts}</div>`;
 }
-export const diagramSig = b => JSON.stringify([b.layout, b.colors, b.text, b.w, b.h]);
+export const diagramSig = b => JSON.stringify([b.layout, b.colors, b.text, b.w, b.h, b.fontScale, b.textColor]);

@@ -4,8 +4,9 @@
 //   =B2*C2         =PROMEDIO(B2:B5) cells by column letter and row number, and ranges
 // Functions (Spanish or English names): SUMA, PROMEDIO, MIN, MAX, CONTAR,
 // PRODUCTO, REDONDEAR, ABS; operators + − × ÷ ^ %, and brackets. Numbers in the
-// cells may be written "1.234,5", "1,234.5", "12 €" or "30 %"; when all the
-// numbers used carry the same unit, the result carries it too. A formula may use
+// cells may be written "1.234,5", "1,234.5", "12 €" or "30 %" (a fraction, as in a
+// spreadsheet), and in the formula with a decimal comma (=B4*0,21; see tokens); the
+// result carries the unit that follows from the sum or product (see U). A formula may use
 // others (not itself): the source stays in the cell and the result is shown.
 
 import { plainText } from './text.js';
@@ -38,15 +39,52 @@ export function cellNumber(text) {
   return { v, unit: [m[1].trim(), m[3].trim()] };
 }
 
+// A comma between digits is a decimal comma ("=B4*0,21", as in Spanish
+// spreadsheets) when ";" separates the arguments, when the formula is written
+// with Spanish names, or outside any function's brackets; otherwise (=MAX(3,5))
+// it separates arguments, as in English.
+const ES_WORDS = /\b(SUMA|PROMEDIO|MEDIA|PRODUCTO|REDONDEAR|CONTAR|ARRIBA|DEBAJO|ABAJO|IZQUIERDA|DERECHA)\b/i;
 function tokens(src) {
   const out = [], re = /\s*(?:(\d+(?:\.\d+)?)|([A-Za-zÁÉÍÓÚÑáéíóúñ]+\d*)|(:|,|;|\(|\)|\+|-|−|\*|×|\/|÷|\^|%))/y;
-  let m; re.lastIndex = 0;
+  const commaDec = /;/.test(src) || ES_WORDS.test(src);
+  let m, depth = 0; re.lastIndex = 0;
   while (re.lastIndex < src.length) {
     if (!(m = re.exec(src))) { if (/^\s*$/.test(src.slice(re.lastIndex))) break; throw new Error('syntax'); }
+    if (m[1] && !m[1].includes('.') && (commaDec || !depth)) {
+      const d = /^,(\d+)/.exec(src.slice(re.lastIndex));
+      if (d) { out.push({ n: +(m[1] + '.' + d[1]) }); re.lastIndex += d[0].length; continue; }
+    }
+    if (m[3] === '(') depth++; else if (m[3] === ')') depth--;
     out.push(m[1] ? { n: +m[1] } : m[2] ? { w: m[2].toUpperCase() } : { o: { '−': '-', '×': '*', '÷': '/', ';': ',' }[m[3]] || m[3] });
   }
   return out;
 }
+
+// Units through a formula, so the result's is coherent: a plain number or a
+// percentage scales a quantity (=B2*C2 with "10 €" and "3" → €; =B2*21% → €),
+// adding the same units keeps them, a ratio of the same unit has none
+// (=B6/C6 with € over € → a plain number), and mixing units leaves none.
+// A unit is [before, after] (["€", ""] or ["", "km"]); null = a plain number; false = none (mixed).
+const PCT = ['', '%'];
+const isPct = u => !!u && !u[0] && u[1] === '%';
+const sameU = (a, b) => !!a && !!b && a[0] === b[0] && a[1] === b[1];
+const U = {
+  add: (a, b) => (a === false || b === false ? false : !a ? b : !b ? a : sameU(a, b) ? a : false),
+  mul: (a, b) => (a === false || b === false ? false : !a ? b : !b ? a : isPct(a) ? b : isPct(b) ? a : false),
+  div: (a, b) => (a === false || b === false ? false : !b || isPct(b) ? a : sameU(a, b) ? null : false),
+};
+
+// A number shown as Spanish spreadsheets do (and the charts): thousands grouped
+// from 1000 on ("4.215", not "4215") and at most two decimals, in the given language.
+export function formatNumber(v, locale, maxFrac = 2) {
+  const o = { maximumFractionDigits: maxFrac };
+  try { return v.toLocaleString(locale, { ...o, useGrouping: 'always' }); } catch { /* older browsers */ }
+  const s = v.toLocaleString(locale, o);
+  if (Math.abs(v) < 1000 || Math.abs(v) >= 10000) return s;
+  const g = (10000).toLocaleString(locale).replace(/\d/g, '') || '.';   // (the separator for 10.000)
+  return s.replace(/^(-?\d)(\d{3})(?!\d)/, `$1${g}$2`);
+}
+
 const colOf = s => [...s].reduce((a, ch) => a * 26 + ch.charCodeAt(0) - 64, 0) - 1;
 
 // Every cell's value in a table: rows of { text } (what to show) and, for formulas, { formula: true }.
@@ -56,16 +94,19 @@ export function tableValues(rows, locale, { header = false } = {}) {
   const H = rows.length, W = Math.max(0, ...rows.map(r => r.length)), memo = new Map(), busy = new Set();
   const fmt = (v, unit) => {
     if (!Number.isFinite(v)) return '#¡ERROR!';
-    const s = v.toLocaleString(locale, { maximumFractionDigits: 2 });
-    return unit ? `${unit[0]}${unit[0] && !/[$£€¥]$/.test(unit[0]) ? ' ' : ''}${s}${unit[1] ? (unit[1] === '%' ? ' %' : ' ' + unit[1]) : ''}`.trim() : s;
+    if (isPct(unit)) return formatNumber(v * 100, locale) + ' %';     // (a percentage is kept as a fraction: 21 % = 0,21)
+    const s = formatNumber(v, locale);
+    return unit ? `${unit[0]}${unit[0] && !/[$£€¥]$/.test(unit[0]) ? ' ' : ''}${s}${unit[1] ? ' ' + unit[1] : ''}`.trim() : s;
   };
-  // A cell as a number (a formula's result, or the number written in it), or null.
-  function num(r, c, units) {
+  // A cell as { v, u } (a formula's result, or the number written in it), or null.
+  // A percentage counts as a fraction, as in a spreadsheet: "21 %" is 0,21.
+  function num(r, c) {
     if (r < 0 || c < 0 || r >= H || c >= W) return null;
     const txt = plainText(rows[r][c] ?? '');
-    if (/^\s*=/.test(txt)) { const res = calc(r, c); if (!res.ok) return null; if (res.unit) units.push(res.unit); return res.v; }
+    if (/^\s*=/.test(txt)) { const res = calc(r, c); return res.ok ? { v: res.v, u: res.unit || null } : null; }
     const n = cellNumber(txt); if (!n) return null;
-    units.push(n.unit); return n.v;
+    const u = n.unit[0] || n.unit[1] ? n.unit : null;
+    return isPct(u) ? { v: n.v / 100, u: PCT } : { v: n.v, u };
   }
   function calc(r, c) {
     const key = r + ',' + c; if (memo.has(key)) return memo.get(key);
@@ -73,12 +114,12 @@ export function tableValues(rows, locale, { header = false } = {}) {
     busy.add(key);
     let res;
     try {
-      const src = plainText(rows[r][c]).replace(/^\s*=/, ''), tk = tokens(src), units = [];
-      let i = 0, counting = false;
+      const src = plainText(rows[r][c]).replace(/^\s*=/, ''), tk = tokens(src);
+      let i = 0;
       const peek = () => tk[i], take = o => (tk[i]?.o === o ? (i++, true) : false);
       const need = o => { if (!take(o)) throw new Error('syntax'); };
       const ref = w => { const m = w.match(/^([A-Z]{1,2})(\d+)$/); return m ? [+m[2] - 1, colOf(m[1])] : null; };
-      // A function's arguments: numbers, ranges and directions, as a flat list.
+      // A function's arguments: numbers, ranges and directions, as a flat list of { v, u }.
       const args = () => {
         const xs = []; need('(');
         if (take(')')) return xs;
@@ -86,32 +127,52 @@ export function tableValues(rows, locale, { header = false } = {}) {
           const t = peek(), a = t?.w && ref(t.w);
           if (t?.w && DIR[t.w]) {
             i++; const d = DIR[t.w], [dr, dc] = { up: [-1, 0], down: [1, 0], left: [0, -1], right: [0, 1] }[d];
-            for (let rr = r + dr, cc = c + dc; rr >= (header ? 1 : 0) && cc >= 0 && rr < H && cc < W; rr += dr, cc += dc) { const v = num(rr, cc, units); if (v != null) xs.push(v); }
+            for (let rr = r + dr, cc = c + dc; rr >= (header ? 1 : 0) && cc >= 0 && rr < H && cc < W; rr += dr, cc += dc) { const x = num(rr, cc); if (x) xs.push(x); }
           } else if (a && tk[i + 1]?.o === ':' && tk[i + 2]?.w && ref(tk[i + 2].w)) {
             const b = ref(tk[i + 2].w); i += 3;
             for (let rr = Math.min(a[0], b[0]); rr <= Math.max(a[0], b[0]); rr++)
-              for (let cc = Math.min(a[1], b[1]); cc <= Math.max(a[1], b[1]); cc++) { const v = num(rr, cc, units); if (v != null) xs.push(v); }
+              for (let cc = Math.min(a[1], b[1]); cc <= Math.max(a[1], b[1]); cc++) { const x = num(rr, cc); if (x) xs.push(x); }
           } else xs.push(expr());
         } while (take(','));
         need(')'); return xs;
       };
+      const call = (f, xs) => {
+        const v = AGG[f](xs.map(x => x.v));
+        const u = f === 'COUNT' ? null : f === 'PRODUCT' ? xs.reduce((a, x) => U.mul(a, x.u), null)
+          : f === 'ROUND' || f === 'ABS' ? (xs[0]?.u ?? null) : xs.reduce((a, x) => U.add(a, x.u), null);
+        return { v, u };
+      };
       const atom = () => {
         const t = tk[i++]; if (!t) throw new Error('syntax');
-        if ('n' in t) return t.n;
-        if (t.o === '(') { const v = expr(); need(')'); return v; }
-        if (t.o === '-') return -factor();
+        if ('n' in t) return { v: t.n, u: null };
+        if (t.o === '(') { const x = expr(); need(')'); return x; }
+        if (t.o === '-') { const x = factor(); return { v: -x.v, u: x.u }; }
         if (t.o === '+') return factor();
-        if (t.w && FN[t.w]) { if (FN[t.w] === 'COUNT') counting = true; return AGG[FN[t.w]](args()); }
+        if (t.w && FN[t.w]) return call(FN[t.w], args());
         const a = t.w && ref(t.w);
-        if (a) { const v = num(a[0], a[1], units); if (v == null) throw new Error('ref'); return v; }
+        if (a) { const x = num(a[0], a[1]); if (!x) throw new Error('ref'); return x; }
         throw new Error('syntax');
       };
-      const factor = () => { let v = atom(); if (take('%')) v /= 100; if (take('^')) v = v ** factor(); return v; };
-      const term = () => { let v = factor(); for (;;) { if (take('*')) v *= factor(); else if (take('/')) v /= factor(); else return v; } };
-      const expr = () => { let v = term(); for (;;) { if (take('+')) v += term(); else if (take('-')) v -= term(); else return v; } };
-      const v = expr(); if (i < tk.length) throw new Error('syntax');
-      const same = units.length && units.every(u => u[0] === units[0][0] && u[1] === units[0][1]) && (units[0][0] || units[0][1]);
-      res = { ok: Number.isFinite(v), v, unit: same && !counting ? units[0] : null };
+      const factor = () => {
+        let x = atom();
+        if (take('%')) x = { v: x.v / 100, u: x.u ? false : PCT };
+        if (take('^')) { const e = factor(); x = { v: x.v ** e.v, u: x.u ? false : null }; }
+        return x;
+      };
+      const term = () => {
+        let x = factor();
+        for (;;) {
+          if (take('*')) { const y = factor(); x = { v: x.v * y.v, u: U.mul(x.u, y.u) }; } else if (take('/')) { const y = factor(); x = { v: x.v / y.v, u: U.div(x.u, y.u) }; } else return x;
+        }
+      };
+      const expr = () => {
+        let x = term();
+        for (;;) {
+          if (take('+')) { const y = term(); x = { v: x.v + y.v, u: U.add(x.u, y.u) }; } else if (take('-')) { const y = term(); x = { v: x.v - y.v, u: U.add(x.u, y.u) }; } else return x;
+        }
+      };
+      const x = expr(); if (i < tk.length) throw new Error('syntax');
+      res = { ok: Number.isFinite(x.v), v: x.v, unit: x.u || null };
     } catch { res = { ok: false }; }
     busy.delete(key); memo.set(key, res);
     return res;

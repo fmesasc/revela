@@ -68,4 +68,14 @@ export default {"biz_board":["Risultati trimestrali al consiglio","Blu scuro e o
 "sci_python":["Programmare in Python","Stile editor scuro: terminale che si scrive da solo, codice con passi di evidenziazione, output animato, ordinare righe e sfida a tempo"],
 "sci_solar":["Il sistema solare","Pianeti in scala che appaiono in sequenza, tre sonde 3D con viste e movimenti diversi, tabella, diagramma radiale e abbinamento"],
 "sci_stats":["Statistica e probabilità","Stile editoriale: campana che si disegna, formule, istogramma, dispersione, area, barre e bolle, e domanda a punti"],
-"sci_thesis":["Discussione della tesi di laurea","Accademico sobrio: copertina istituzionale, indice, metodologia con equazione, tabella con totali, risultati in grafici, bibliografia e domande"]};
+"sci_thesis":["Discussione della tesi di laurea","Accademico sobrio: copertina istituzionale, indice, metodologia con equazione, tabella con totali, risultati in grafici, bibliografia e domande"],
+"showcase_3d":["Catalogo: il 3D a fondo","Modelli 3D con tutte le opzioni: viste, movimenti in entrata, rotazione, bordi, margine, clip, camminata e arrivo con Trasformazione"],
+"showcase_animations":["Catalogo: animazioni","Tutte le animazioni degli oggetti: entrata, enfasi, uscita, percorsi, disegno, concatenate, suoni e più su un oggetto"],
+"showcase_charts":["Catalogo: grafici","I 15 tipi di grafico, due per diapositiva, con serie, combinato, griglia, etichette e titoli degli assi, e la tabella delle opzioni"],
+"showcase_diagrams":["Catalogo: diagrammi","I 15 layout di diagramma scritti come schema, i 4 schemi di colore e la comparsa uno a uno durante la presentazione"],
+"showcase_morph":["Catalogo: Trasformazione","Trasformazione passo passo: testo che cambia dimensione e posto, forme, barre che crescono, immagine, 3D e lettere che si riordinano"],
+"showcase_objects":["Catalogo: multimedia e oggetti","Codice a passi, equazioni, icone, cinque dispositivi, tabelle con stili e formule, zoom di diapositiva e connettori"],
+"showcase_polls":["Catalogo: sondaggi e attività","Gli 11 tipi di sondaggio e attività dal cellulare, conto alla rovescia nei suoi tre stili, classifica e modalità aula"],
+"showcase_shapes":["Catalogo: forme","Tutte le forme per categoria con il loro nome, linee e tratteggi, sfumature, opacità, tratto a mano, ombre, testo dentro e rotazione"],
+"showcase_text":["Catalogo: Text Art e tipografia","I 10 stili di Text Art, testo curvo, colonne, cinque livelli di elenco, le 8 coppie di caratteri, allineamento e spaziatura"],
+"showcase_transitions":["Catalogo: transizioni","Le 22 transizioni di diapositiva, una per una: entrata, uscita diversa, direzioni, velocità e avanzamento automatico"]};

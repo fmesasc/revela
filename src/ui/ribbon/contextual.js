@@ -3,7 +3,7 @@
 // ribbon with all of its options, so nothing needs a right click. It goes
 // away when nothing is selected. Several objects: arranging them.
 
-import { DIAGRAM_LAYOUTS, DIAGRAM_COLORS } from '../../render/diagrams.js';
+import { DIAGRAM_LAYOUTS, DIAGRAM_COLORS, readableOn } from '../../render/diagrams.js';
 import { openDiagramText } from '../dialogs/diagram.js';
 import * as files from '../../features/content/files.js';
 import { modelClips } from '../canvas/mediaview.js';
@@ -43,7 +43,7 @@ const TITLES = { diagram: 'Diagrama', file: 'Archivo', shape: 'Forma', image: 'I
   math: 'Ecuación', code: 'Código', poll: 'Votación', embed: 'Web', icon: 'Icono', camera: 'Cámara', slideref: 'Zoom', figindex: 'Índice', ink: 'Dibujo', connector: 'Conector', timer: 'Cuenta atrás' };
 // Every shape once (the catalogue's first name for each).
 const SHAPES = Object.entries(SHAPE_NAMES).filter(([k]) => !isLineShape(k) && k !== 'freeform');
-const CHARTS = [['bar', 'Barras'], ['stacked', 'Barras apiladas'], ['stacked100', 'Barras apiladas al 100 %'], ['hbar', 'Barras horizontales'], ['histogram', 'Histograma'], ['line', 'Líneas'], ['area', 'Área'], ['pie', 'Circular'], ['doughnut', 'Dona'], ['scatter', 'Dispersión'], ['radar', 'Radar'], ['bubble', 'Burbujas'], ['treemap', 'Rectángulos (treemap)'], ['waterfall', 'Cascada'], ['funnel', 'Embudo'], ['map', 'Mapa']];
+const CHARTS = [['bar', 'Barras'], ['stacked', 'Barras apiladas'], ['stacked100', 'Barras apiladas al 100 %'], ['hbar', 'Barras horizontales'], ['histogram', 'Histograma'], ['line', 'Líneas'], ['area', 'Área'], ['stackedArea', 'Áreas apiladas'], ['pie', 'Circular'], ['doughnut', 'Dona'], ['scatter', 'Dispersión'], ['radar', 'Radar'], ['bubble', 'Burbujas'], ['treemap', 'Rectángulos (treemap)'], ['waterfall', 'Cascada'], ['funnel', 'Embudo'], ['map', 'Mapa']];
 // A map chart: its outlines come from the internet the first time.
 const formulaHelp = () => alertDialog([t('Escribe en una celda una fórmula que empiece por «=»:'), '=SUMA(ARRIBA) · =PROMEDIO(B2:B5) · =B2*C2',
   t('Funciones: SUMA, PROMEDIO, MIN, MAX, CONTAR, PRODUCTO, REDONDEAR y ABS (también sus nombres en inglés).'),
@@ -152,6 +152,10 @@ function groupsFor(b) {
     ['Diagrama', [['select', 'Diseño', DIAGRAM_LAYOUTS.flatMap(([, l]) => l), b.layout || 'process', v => blocks.setDiagram(b.id, { layout: v })],
       ['select', 'Colores', DIAGRAM_COLORS, b.colors || 'colorful', v => blocks.setDiagram(b.id, { colors: v })],
       btn('edit_note', 'Editar texto', () => openDiagramText(b))]],
+    // Letters bigger or smaller than the automatic size (b.fontScale), and the colour of the words on the slide (b.textColor; automatic: one that reads on its background).
+    ['Texto', [['num', 'Tamaño de letra (%)', Math.round((b.fontScale || 1) * 100), v => blocks.setDiagram(b.id, { fontScale: Math.round(+v || 100) === 100 ? null : Math.min(250, Math.max(50, +v)) / 100 }), 50, 250, 10],
+      ['color', 'format_color_text', 'Color del texto', /^#[0-9a-f]{6}$/i.test(b.textColor || '') ? b.textColor : (o => readableOn(o.fg, o.back))(blocks.diagramOpts()), v => blocks.setDiagram(b.id, { textColor: v })],
+      btn('format_color_reset', 'Color automático', () => blocks.setDiagram(b.id, { textColor: null }), !b.textColor)]],
     ['Opciones', [btn('format_list_numbered', 'Uno a uno al presentar', () => blocks.setDiagram(b.id, { oneByOne: !b.oneByOne }), !!b.oneByOne),
       btn('category', 'Convertir en formas', () => blocks.diagramToShapes(b.id))]]);
   else if (b.type === 'file') {
@@ -165,6 +169,8 @@ function groupsFor(b) {
     ...(b.dataUrl ? [btn('refresh', 'Actualizar', () => refreshChart(b))] : [])]],
     ['Diseño', [['select', 'Tipo de gráfico', CHARTS, b.chartType || 'bar', v => (v === 'map' ? chartMap(b, b.mapScope || 'world') : set(b, x => { x.chartType = v; }))],
       ...(b.chartType === 'map' ? [['select', 'Mapa de', MAP_SCOPES, b.mapScope || 'world', v => chartMap(b, v)]] : []),
+      // (A histogram: how many intervals; 0, automatic — Sturges' rule.)
+      ...(b.chartType === 'histogram' ? [['num', 'Intervalos (0: automático)', b.bins || 0, v => set(b, x => { if (+v > 0) x.bins = Math.min(60, Math.round(+v)); else delete x.bins; }), 0, 60, 1]] : []),
       ['color', 'format_color_fill', 'Color', b.color || '#3f6497', v => set(b, x => { x.color = v; })],
       btn('grid_4x4', 'Cuadrícula', () => set(b, x => { x.grid = !x.grid; }), !!b.grid),
       btn('pin', 'Etiquetas de datos', () => set(b, x => { x.dataLabels = !x.dataLabels; }), !!b.dataLabels)]]);

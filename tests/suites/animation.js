@@ -578,4 +578,24 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     // PowerPoint: the steps have no equivalent (the page stays as a picture).
     const blob = await R.pptx.buildPptxBlob(); assert(blob.size > 0, 'se exporta igual');
   });
+
+  await test('énfasis que no oculta: latido, balanceo, salto y destello (editor, presentación y PowerPoint)', async () => {
+    reset(); const W = frame.contentWindow, T = await W.eval("import('/src/features/animation/transitions.js')");
+    for (const e of ['pulse', 'teeter', 'jump', 'color-pulse']) { assert(!T.isEntrance(e) && T.EFFECT_KF[e], e + ': énfasis con su animación'); }
+    assert(/@keyframes rvGrow\{from\{transform:none\}/.test(T.EFFECT_KF_CSS), 'agrandar ya no parte de invisible');
+    const b = newText(); select(b); await sleep(10);
+    D.querySelector('[data-action="anim-add"]').click(); await sleep(10);
+    const menu = D.getElementById('anim-add-menu');
+    assert(['pulse', 'teeter', 'jump', 'color-pulse'].every(e => menu.querySelector(`[data-add="${e}"]`)), 'en la paleta de énfasis');
+    menu.querySelector('[data-add="pulse"]').click(); await sleep(10);
+    eq(b.animation.effect, 'pulse', 'se añade');
+    const html = R.io.buildHTML();
+    assert(/class="fragment pulse"/.test(html) && /\.fragment\.pulse\{opacity:1;visibility:inherit\}/.test(html) && /@keyframes rvPulse/.test(html), 'visible antes del clic y late al llegar');
+    R.store.commit(() => { b.anims = [{ effect: 'teeter', order: 2, start: 'click' }, { effect: 'jump', order: 3, start: 'click' }]; });
+    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob), xml = await zip.file('ppt/slides/slide1.xml').async('string');
+    assert(/presetID="26" presetClass="emph"/.test(xml) && /autoRev="1"/.test(xml), 'en PowerPoint: Pulso');
+    assert(/presetID="32" presetClass="emph"/.test(xml) && /<p:animRot by="420000">/.test(xml), 'Balanceo');
+    assert(/path="M 0 0 L 0 -0\.\d+ L 0 0/.test(xml), 'y salto en el sitio');
+    assert(!/presetClass="exit"/.test(xml) && !/presetClass="entr"/.test(xml), 'ninguno como entrada o salida');
+  });
 }

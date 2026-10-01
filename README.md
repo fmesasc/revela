@@ -159,3 +159,5 @@ If this project is useful to you and you'd like to see more like it, consider bu
 ## License
 
 [MIT](LICENSE) © Francisco Mesas Cervilla.
+
+The built-in icons in `src/render/icons.js` come from [Lucide](https://lucide.dev) (ISC licence; some derived from Feather, MIT); their notices are in that file.

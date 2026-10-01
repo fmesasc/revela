@@ -661,7 +661,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const st = S.chartSVG({ chartType: 'stacked', data: d, series: ser, dataLabels: true });
     eq((st.match(/<rect (?![^>]*width="3")/g) || []).length, 4, 'apiladas: una columna por categoría, un trozo por serie (sin contar la leyenda)');
     assert(/>75 %</.test(S.chartSVG({ chartType: 'stacked100', data: d, series: ser, dataLabels: true })), 'al 100 %: en porcentajes (30 de 40 = 75 %)');
-    assert(/<text x="20\.5"[^>]*text-anchor="end"[^>]*>A</.test(S.chartSVG({ chartType: 'hbar', data: d })), 'horizontales: las categorías a un lado');
+    assert(/<text x="[\d.]+"[^>]*text-anchor="end"[^>]*>A</.test(S.chartSVG({ chartType: 'hbar', data: d })), 'horizontales: las categorías a un lado');
     eq(JSON.stringify(S.histogramBins([1, 2, 2, 3, 7, 8, 9])), '[{"label":"0–2","value":1},{"label":"2–4","value":3},{"label":"4–6","value":0},{"label":"6–8","value":1},{"label":"8–10","value":2}]', 'histograma: intervalos redondos, contados');
     // From its tab, and PowerPoint both ways.
     R.blocks.addChart(); await sleep(20);
@@ -1505,6 +1505,128 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(back.chartType, 'bubble'); eq(back.data.map(d => d.label + ':' + d.value).join(), '1:10,3:20,5:15'); eq(back.series[0].values.join(), '1,4,9', 'con sus tamaños');
   });
 
+  await test('gráficos: números a la española (4.215; 1.234,5) en etiquetas, ejes, cascada y tarta', async () => {
+    const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
+    eq([4215, 1234.5, 0.25, -12500, 999, 1e6, 2.004].map(v => S.fmtNum(v)).join(' '), '4.215 1.234,5 0,25 -12.500 999 1.000.000 2', 'coma decimal y punto de miles desde 1.000');
+    eq(S.fmtNum(97.46, 1), '97,5', 'con los decimales pedidos');
+    const d = [{ label: 'A', value: 4215 }, { label: 'B', value: 1234.5 }];
+    const bar = S.chartSVG({ chartType: 'bar', data: d, dataLabels: true, grid: true });
+    assert(/>4\.215</.test(bar) && />1\.234,5</.test(bar) && />2\.000</.test(bar), 'etiquetas y escala con punto de miles');
+    assert(/>4\.215</.test(S.chartSVG({ chartType: 'hbar', data: d, dataLabels: true })), 'también en las horizontales');
+    assert(/>\+1\.500</.test(S.chartSVG({ chartType: 'waterfall', data: [{ label: 'Inicio', value: 2500 }, { label: 'Más', value: 1500 }] })), 'y en la cascada');
+    eq(S.histogramBins([0.5, 1.2, 2.7]).map(x => x.label).join(' '), '0–1 1–2 2–3');
+    // Pie and doughnut: a legend in a readable size, and a decimal when the share needs it.
+    const pie = S.chartSVG({ chartType: 'pie', data: [{ label: 'Web', value: 97.5 }, { label: 'Tienda', value: 2.5 }] });
+    assert(/>Web · 97,5 %</.test(pie) && />Tienda · 2,5 %</.test(pie), 'porcentajes con un decimal: ' + pie.match(/>[^<]+%</g));
+    assert(/>Web · 50 %</.test(S.chartSVG({ chartType: 'doughnut', data: [{ label: 'Web', value: 1 }, { label: 'App', value: 1 }] })), 'sin decimales si no hacen falta');
+    assert([...pie.matchAll(/<text [^>]*font-size="([\d.]+)"/g)].every(m => +m[1] >= 9), 'la leyenda, legible (el doble que antes)');
+  });
+
+  await test('gráficos: etiquetas largas que caben (horizontales, cascada, 100 %, radar) y cuadrícula y títulos en las horizontales', async () => {
+    const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')"), P = s => new W.DOMParser().parseFromString(s, 'image/svg+xml');
+    const xOf = (svg, txt) => +[...P(svg).querySelectorAll('text')].find(t => t.textContent === txt).getAttribute('x');
+    // Horizontal bars: the names' room as wide as the longest needs (up to a limit, then two lines).
+    const short = S.chartSVG({ chartType: 'hbar', data: [{ label: 'A', value: 1 }, { label: 'B', value: 2 }], w: 800, h: 400 });
+    const long = S.chartSVG({ chartType: 'hbar', data: [{ label: 'A', value: 1 }, { label: 'Sur peninsular', value: 2 }], w: 800, h: 400 });
+    assert(xOf(short, 'A') < 8 && xOf(long, 'A') > xOf(short, 'A') + 5, 'la zona de etiquetas se adapta: ' + xOf(short, 'A') + ' / ' + xOf(long, 'A'));
+    const very = P(S.chartSVG({ chartType: 'hbar', data: [{ label: 'Una categoría con un nombre larguísimo de verdad', value: 1 }, { label: 'B', value: 2 }], w: 600, h: 400 }));
+    const vt = [...very.querySelectorAll('text')].map(t => t.textContent);
+    assert(vt.includes('Una categoría con un') || vt.some(t => /^Una categoría/.test(t) && !/verdad$/.test(t)), 'las muy largas, en dos líneas: ' + vt.join('|'));
+    const hg = P(S.chartSVG({ chartType: 'hbar', data: [{ label: 'A', value: 30 }, { label: 'B', value: 10 }], grid: true, xTitle: 'Euros', yTitle: 'Región' }));
+    const ht = [...hg.querySelectorAll('text')].map(t => t.textContent);
+    assert(ht.includes('Euros') && ht.includes('Región') && ht.includes('0') && ht.includes('30'), 'horizontales con escala y títulos: ' + ht.join('|'));
+    assert(hg.querySelectorAll('line[stroke-opacity]').length >= 3, 'con cuadrícula');
+    // Waterfall: every name the same size, long ones in more lines.
+    const wf = P(S.chartSVG({ chartType: 'waterfall', w: 900, h: 400, data: [{ label: 'Ingresos', value: 100 }, { label: 'Coste de los productos vendidos', value: -40 }, { label: 'Otros', value: 5 }, { label: 'Gastos generales de la empresa', value: -20 }, { label: 'Total', value: 0 }] }));
+    const names = [...wf.querySelectorAll('text')].filter(t => !/^[+-]?[\d.,]+$/.test(t.textContent));
+    eq(new Set(names.map(t => t.getAttribute('font-size'))).size, 1, 'un solo tamaño');
+    assert(names.length > 5, 'los largos, partidos: ' + names.map(t => t.textContent).join('|'));
+    // 100 % bars: long category names in two lines, one size.
+    const cats = [{ label: 'Hogar y jardín', value: 1 }, { label: 'Oficina y papelería', value: 2 }, { label: 'Industria pesada', value: 3 }, { label: 'Otros', value: 1 }];
+    const st = P(S.chartSVG({ chartType: 'stacked100', data: cats, series: [{ name: 'X', values: [1, 1, 1, 1] }], w: 500, h: 300 }));
+    const lab = [...st.querySelectorAll('text')].filter(t => t.getAttribute('fill') === '#8a8a8a' && !/%/.test(t.textContent) && t.textContent !== 'X' && t.textContent !== 'Serie 1');
+    assert(lab.length > 4 && new Set(lab.map(t => t.getAttribute('font-size'))).size === 1, 'barras al 100 %: en líneas y de un tamaño: ' + lab.map(t => t.textContent).join('|'));
+    // Radar: room around for the names at the sides.
+    const rd = S.chartSVG({ chartType: 'radar', data: [{ label: 'Norte', value: 5 }, { label: 'Atención al cliente', value: 7 }, { label: 'Sur', value: 4 }, { label: 'Precio competitivo', value: 6 }] });
+    const vb = rd.match(/viewBox="([^"]+)"/)[1].split(' ').map(Number);
+    assert(vb[0] < 0 && vb[0] + vb[2] > 100, 'el dibujo se ensancha para que no se corten: ' + vb.join(' '));
+    assert(/text-anchor="start"[^>]*>Atención/.test(rd) && /text-anchor="end"[^>]*>Precio/.test(rd), 'hacia fuera a cada lado');
+  });
+
+  await test('gráficos: dispersión con escala y series, áreas apiladas, mínimo y máximo del eje, intervalos del histograma y nombres de burbujas', async () => {
+    const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')"), P = s => new W.DOMParser().parseFromString(s, 'image/svg+xml');
+    const tx = s => [...P(s).querySelectorAll('text')].map(t => t.textContent);
+    // Scatter: scale, gridlines, titles, data labels and several series (one with its own x).
+    const sc = S.chartSVG({ chartType: 'scatter', data: [{ label: '1', value: 2 }, { label: '3', value: 4 }, { label: '5', value: 1, name: 'Ana' }], seriesName: 'A',
+      series: [{ name: 'B', x: [2, 4], values: [3, 5] }], grid: true, dataLabels: true, xTitle: 'Horas', yTitle: 'Nota' });
+    const st = tx(sc);
+    eq((sc.match(/<circle /g) || []).length, 5, 'los puntos de las dos series');
+    assert(['Horas', 'Nota', 'A', 'B', 'Ana', '0'].every(t => st.includes(t)) && st.includes('4'), 'títulos, leyenda, etiquetas y escala: ' + st.join('|'));
+    assert(P(sc).querySelectorAll('line[stroke-opacity]').length >= 6, 'cuadrícula en los dos ejes');
+    eq(S.scatterSeries({ data: [{ label: '1,5', value: 2 }] })[0].pts[0].x, 1.5, 'x con coma decimal');
+    // Stacked areas: one band per series, the top at the sum.
+    const sa = S.chartSVG({ chartType: 'stackedArea', data: [{ label: 'a', value: 1 }, { label: 'b', value: 2 }], series: [{ name: 'Y', values: [3, 2] }, { name: 'Z', values: [4, 4] }], grid: true });
+    eq((sa.match(/<polygon [^>]*fill-opacity="0\.8"/g) || []).length, 3, 'tres bandas');
+    assert(tx(sa).includes('8') && !tx(sa).includes('10'), 'la escala llega a la suma (8): ' + tx(sa).join('|'));
+    // The value axis' ends: a narrow range widened.
+    const co2 = P(S.chartSVG({ chartType: 'line', data: [{ label: '2020', value: 412 }, { label: '2021', value: 416 }], grid: true, yMin: 400, yMax: 420 }));
+    const ticks = [...co2.querySelectorAll('text[text-anchor="end"]')].map(t => t.textContent);
+    eq(ticks[0] + '…' + ticks[ticks.length - 1], '400…420', 'la escala de 400 a 420');
+    const bars = P(S.chartSVG({ chartType: 'bar', data: [{ label: 'x', value: 410 }, { label: 'y', value: 415 }], yMin: 400, yMax: 420 })).querySelectorAll('rect');
+    assert(Math.abs(bars[0].getAttribute('height') / bars[1].getAttribute('height') - 10 / 15) < 0.02, 'barras desde el mínimo: 10 y 15 por encima de 400');
+    // Histogram: the intervals asked for; under the bars the edges, not the ranges.
+    const vals = Array.from({ length: 100 }, (_, i) => i);
+    assert(Math.abs(S.histogramBins(vals, 10).length - 10) <= 1 && Math.abs(S.histogramBins(vals, 20).length - 20) <= 1, 'b.bins: ' + S.histogramBins(vals, 10).length + ', ' + S.histogramBins(vals, 20).length);
+    const hs = tx(S.chartSVG({ chartType: 'histogram', bins: 5, data: vals.map(v => ({ value: v })) }));
+    assert(hs.includes('0') && hs.includes('100') && !hs.some(t => /–/.test(t)), 'bordes de los intervalos: ' + hs.join('|'));
+    // Bubbles: a name that doesn't fit in its bubble goes beside it.
+    const bb = S.chartSVG({ chartType: 'bubble', w: 800, h: 400, data: [{ label: 'Grande', value: 10 }, { label: 'Una marca con nombre largo', value: 20 }], series: [{ name: 'T', values: [100, 1] }] });
+    assert(/text-anchor="middle" fill="#fff"[^>]*>Grande</.test(bb), 'dentro si cabe');
+    assert(/text-anchor="(start|end)"[^>]*>Una marca con nombre largo</.test(bb), 'al lado si no');
+    // The same in a presentation whose data reload (the runtime has every helper).
+    const run = new W.Function(S.chartRuntimeJS() + '\nreturn chartSVG;')();
+    for (const b of [{ chartType: 'scatter', data: [{ label: '1', value: 2 }], series: [{ name: 'B', x: [2], values: [3] }], grid: true }, { chartType: 'stackedArea', data: [{ label: 'a', value: 1 }], series: [{ values: [2] }] },
+      { chartType: 'radar', data: [{ label: 'Uno largo de verdad', value: 1 }, { label: 'b', value: 2 }, { label: 'c', value: 3 }] }, { chartType: 'pie', data: [{ label: 'a', value: 1 }] }, { chartType: 'histogram', bins: 4, data: vals.map(v => ({ value: v })) }])
+      eq(run({ ...b, w: 700, h: 300 }), S.chartSVG({ ...b, w: 700, h: 300 }), 'datos en vivo: ' + b.chartType);
+  });
+
+  await test('gráficos: opciones nuevas en el diálogo y la cinta, y en PowerPoint (áreas apiladas, ejes, dispersión con series)', async () => {
+    reset(); const W = frame.contentWindow;
+    R.blocks.addChart(); const c = last(); select(c); await sleep(20);
+    const kind = [...D.querySelectorAll('#ribbon [data-page="ctx"] select')].find(x => [...x.options].some(o => o.value === 'stackedArea'));
+    assert(kind, 'áreas apiladas en la pestaña Gráfico');
+    R.store.commit(() => { c.chartType = 'histogram'; }); R.render(); await sleep(20);
+    assert([...D.querySelectorAll('#ribbon [data-page="ctx"] input')].some(i => /Intervalos/.test(i.title || i.closest('label,[title]')?.textContent || i.getAttribute('aria-label') || '')), 'intervalos del histograma en la cinta');
+    D.querySelector(`.block[data-id="${c.id}"]`).dispatchEvent(new W.MouseEvent('contextmenu', { bubbles: true, clientX: 300, clientY: 300 })); await sleep(10);
+    [...D.querySelectorAll('#context-menu .ctx-item')].find(x => /Editar datos/.test(x.textContent)).click(); await sleep(10);
+    const m = D.getElementById('chart-modal');
+    assert(m.querySelector('.ch-hist').style.display !== 'none' && m.querySelector('.ch-xy').style.display === 'none', 'sólo las opciones del tipo');
+    m.querySelector('.ch-type').value = 'line'; m.querySelector('.ch-type').dispatchEvent(new W.Event('change'));
+    m.querySelector('.ch-ymin').value = '400'; m.querySelector('.ch-ymax').value = ''; m.querySelector('.fr-do').click(); await sleep(20);
+    assert(c.chartType === 'line' && c.yMin === 400 && !('yMax' in c) && !('bins' in c), 'el diálogo guarda el mínimo (y quita lo vacío)');
+    // PowerPoint, both ways.
+    const d = [{ label: 'A', value: 410 }, { label: 'B', value: 415 }];
+    R.store.commit(() => { slide().blocks = [
+      { id: 'g0', type: 'chart', chartType: 'stackedArea', data: d, series: [{ name: 'X', values: [1, 2] }], x: 0, y: 0, w: 400, h: 300, rotation: 0, animation: null },
+      { id: 'g1', type: 'chart', chartType: 'line', data: d, yMin: 400, yMax: 420, x: 400, y: 0, w: 400, h: 300, rotation: 0, animation: null },
+      { id: 'g2', type: 'chart', chartType: 'scatter', data: [{ label: '1', value: 2 }, { label: '3', value: 4 }], seriesName: 'A', series: [{ name: 'B', x: [2, 5, 6], values: [1, 2, 3] }], xTitle: 'Horas', x: 0, y: 300, w: 400, h: 300, rotation: 0, animation: null },
+      { id: 'g3', type: 'chart', chartType: 'hbar', data: d, xTitle: 'Euros', yTitle: 'Región', x: 400, y: 300, w: 400, h: 300, rotation: 0, animation: null }]; }); await sleep(10);
+    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob);
+    const xml = await Promise.all(Object.keys(zip.files).filter(f => /^ppt\/charts\/chart\d+\.xml$/.test(f)).sort().map(f => zip.file(f).async('string')));
+    assert(xml.some(x => /<c:areaChart><c:grouping val="stacked"/.test(x)), 'áreas apiladas de PowerPoint');
+    assert(xml.some(x => /<c:max val="420"\/><c:min val="400"\/>/.test(x)), 'mínimo y máximo del eje');
+    assert(xml.some(x => /<c:scatterChart>/.test(x) && (x.match(/<c:ser>/g) || []).length === 2), 'dispersión con dos series');
+    const hb = xml.find(x => /<c:barDir val="bar"/.test(x));
+    assert(hb && /<c:catAx>[\s\S]*Región[\s\S]*<\/c:catAx>/.test(hb) && /<c:valAx>[\s\S]*Euros[\s\S]*<\/c:valAx>/.test(hb), 'horizontales: los títulos en su eje');
+    assert(xml.some(x => /formatCode="#,##0"/.test(x)), 'números con separador de miles');
+    const back = (await R.pptxImport.importPPTX(new W.File([blob], 'g.pptx'))).slides[0].blocks.filter(b => b.type === 'chart');
+    const by = t => back.find(b => b.chartType === t);
+    assert(by('stackedArea'), 'vuelven las áreas apiladas: ' + back.map(b => b.chartType));
+    assert(by('line') && by('line').yMin === 400 && by('line').yMax === 420, 'vuelven el mínimo y el máximo');
+    const sp = by('scatter');
+    assert(sp && sp.data.length === 2 && sp.series?.[0]?.x?.join() === '2,5,6' && sp.series[0].values.join() === '1,2,3', 'vuelve la dispersión con sus series: ' + JSON.stringify(sp && [sp.data, sp.series]));
+  });
+
   await test('diagramas: 15 diseños desde un esquema de texto, colores del tema, uno a uno, convertir en formas y PowerPoint editable', async () => {
     reset(); const W = frame.contentWindow, DG = await W.eval("import('/src/render/diagrams.js')");
     const tree = DG.parseOutline('A\n  a1\n  a2\nB\n\tb1\n    b11\n- C');
@@ -1553,5 +1675,110 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.querySelector('[data-diagrams-open]').click(); await sleep(30);
     const picks = D.querySelectorAll('.popover [data-diagram-pick]'); eq(picks.length, 15, 'galería con los 15');
     D.querySelector('.popover [data-diagram-pick="venn"]').click(); await sleep(20); eq(last().layout, 'venn', 'se inserta desde la galería');
+  });
+
+  await test('fórmulas: coma decimal (=B4*0,21), unidades coherentes y miles agrupados desde 1000', async () => {
+    reset(); const W = frame.contentWindow, F = await W.eval("import('/src/core/formulas.js')");
+    const rows = [['Concepto', 'Uds', 'Precio', 'Importe'], ['A', '3', '10 €', '=B2*C2'], ['B', '4', '12,5 €', '=B3*C3'], ['IVA', '', '21 %', '=D2*C4'],
+      ['x', '=B2*0,21', '=REDONDEAR(D2/C2;2)', '=SUMA(D2:D3)'], ['Total', '4215', '=MAX(3,5)', '=D2*21%'], ['', '=1,5+1', '=REDONDEAR(B6/C6;2)', '=C4+C4']];
+    const v = F.tableValues(rows, 'es', { header: true }).map(r => r.map(c => c.text));
+    eq(v[1][3], '30 €', 'cantidad × precio: el € del precio'); eq(v[3][3], '6,3 €', '€ × %: euros (el % como fracción)');
+    eq(v[4][1], '0,63', 'coma decimal en la fórmula'); eq(v[4][2], '3', '€ / €: un número, sin unidad'); eq(v[4][3], '80 €', 'suma de euros');
+    eq(v[5][2], '5', 'en inglés, la coma separa argumentos'); eq(v[5][3], '6,3 €', 'B2*21%');
+    eq(v[6][1], '2,5', 'coma decimal fuera de paréntesis'); eq(v[6][2], '843', 'REDONDEAR(4215/5;2)'); eq(v[6][3], '42 %', 'porcentajes que se suman');
+    eq(F.formatNumber(4215, 'es'), '4.215', 'miles desde 1000'); eq(F.formatNumber(1234.567, 'es'), '1.234,57', 'y decimales con coma');
+    eq(F.tableValues([['=4000+215']], 'es')[0][0].text, '4.215', 'también en la tabla');
+  });
+
+  await test('ecuaciones: \\text{} con tildes, errores visibles y las que se dibujaron antes de cargar KaTeX', async () => {
+    reset(); const W = frame.contentWindow, C = await W.eval("import('/src/ui/canvas/content.js')");
+    R.blocks.addMath(); const b = last(); R.store.commit(() => { b.latex = '\\text{Previsión} = 3'; }); R.render();
+    const box = () => D.querySelector(`#stage .block[data-id="${b.id}"] .math-blk`);
+    for (let i = 0; i < 100 && !box()?.querySelector('.katex'); i++) await sleep(50);
+    assert(box().querySelector('.katex') && /Previsi/.test(box().textContent) && !box().classList.contains('math-error'), 'con tilde se dibuja');
+    R.store.commit(() => { b.latex = '\\frac{1}{'; }); await sleep(50);
+    assert(box().classList.contains('math-error') && /frac/.test(box().textContent) && box().title, 'un error se ve, con su mensaje');
+    // One drawn while KaTeX was still loading (left empty) is drawn once it is there.
+    const d = D.createElement('div'); d.className = 'math-blk'; d.dataset.latex = 'x^2'; D.getElementById('stage').appendChild(d);
+    eq(C.redrawPendingMath(), 1, 'una pendiente'); assert(d.querySelector('.katex'), 'y se dibuja'); d.remove();
+    // In the master, the export loads KaTeX too.
+    R.store.commit(() => { R.state.deck.master.blocks.push(R.model.mathBlock({ id: 'mm1' })); });
+    assert(/katex\.min\.js/.test(R.io.buildHTML()), 'KaTeX en la presentación con una ecuación en el patrón');
+    R.store.commit(() => { R.state.deck.master.blocks = R.state.deck.master.blocks.filter(x => x.id !== 'mm1'); });
+  });
+
+  await test('diagramas: tamaño de letra (fontScale), texto más grande en la cronología y color legible sobre el fondo', async () => {
+    reset(); const W = frame.contentWindow, G = await W.eval("import('/src/render/diagrams.js')");
+    const base = { layout: 'timeline', w: 1100, h: 420, text: G.DIAGRAM_SAMPLES.timeline };
+    const fs = (o = {}, opt = { fg: '#1e2a3a', back: '#ffffff' }) => G.diagramLayout({ ...base, ...o }, opt).filter(p => p.type === 'text');
+    assert(fs()[0].fs >= 34, 'la cronología aprovecha el sitio: ' + fs()[0].fs);
+    assert(fs({ fontScale: 1.5 })[0].fs > fs()[0].fs && fs({ fontScale: 0.6 })[0].fs < fs()[0].fs, 'más grande y más pequeño');
+    eq(fs({}, { fg: '#1e2a3a', back: '#0b1020' })[0].color, '#ffffff', 'texto oscuro del tema sobre fondo oscuro: blanco');
+    eq(fs({}, { fg: '#ffffff', back: 'linear-gradient(#ffffff, #f0f0f0)' })[0].color, '#1e2a3a', 'y sobre un degradado claro, oscuro');
+    eq(fs({ textColor: '#ff0000' }, { fg: '#1e2a3a', back: '#0b1020' })[0].color, '#ff0000', 'o un color propio');
+    // In the editor: the ribbon's controls, and the slide's background.
+    R.blocks.addDiagram('timeline'); const b = last(); select(b); R.store.commit(() => { slide().background = '#000000'; R.state.deck.textColor = '#222222'; }); await sleep(30);
+    const el = () => D.querySelector(`#stage .block[data-id="${b.id}"] .rv-diagram div`);
+    eq(getComputedStyle(el()).color, 'rgb(255, 255, 255)', 'en el lienzo, legible sobre el fondo de la diapositiva');
+    const num = [...D.querySelectorAll('#ribbon [data-page="ctx"] input')].find(x => /Tamaño de letra/.test(x.closest('[title]')?.title || x.title || x.parentElement?.textContent || ''));
+    assert(num, 'control de tamaño en la cinta');
+    R.blocks.setDiagram(b.id, { fontScale: 1.4 }); await sleep(20);
+    assert(/"fontScale":1\.4/.test(JSON.stringify(b)) && /color:#ffffff/.test(R.io.buildHTML()), 'se guarda y se exporta legible');
+    delete R.state.deck.textColor;
+  });
+
+  await test('iconos: un centenar, con buscador, y en PowerPoint', async () => {
+    reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
+    assert(S.ICON_NAMES.length >= 96 && ['graduation-cap', 'flask-conical', 'rocket', 'stethoscope', 'circle-check'].every(n => S.ICON_NAMES.includes(n)), 'iconos: ' + S.ICON_NAMES.length);
+    assert(S.ICON_NAMES.every(n => /<(path|circle|rect|line|polyline|polygon|ellipse)\b/.test(S.iconSVG({ icon: n }))), 'todos con dibujo');
+    D.querySelector('[data-icons]').click(); await sleep(30);
+    const pop = D.querySelector('.popover'), q = pop.querySelector('[data-icon-search]');
+    assert(pop.querySelectorAll('[data-icon]').length === S.ICON_NAMES.length, 'todos en el selector');
+    q.value = 'graduacion'; q.dispatchEvent(new W.Event('input')); await sleep(10);
+    const shown = [...pop.querySelectorAll('[data-icon]')].filter(x => !x.hidden).map(x => x.dataset.icon);
+    eq(shown.join(), 'graduation-cap', 'busca sin tildes');
+    pop.querySelector('[data-icon="graduation-cap"]').click(); await sleep(20);
+    eq(last().icon, 'graduation-cap', 'se inserta');
+    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob), xml = await zip.file('ppt/slides/slide1.xml').async('string');
+    assert(/<p:pic>/.test(xml), 'en PowerPoint, como imagen');
+  });
+
+  await test('opacidad (0–100) en el patrón, miniaturas, presentación y PowerPoint', async () => {
+    reset(); const W = frame.contentWindow, M = await W.eval("import('/src/core/model.js')");
+    eq(M.opacityOf({ opacity: 10 }), 0.1); eq(M.opacityOf({ opacity: 0.1 }), 0.1, 'una fracción, como fracción'); eq(M.opacityOf({}), 1);
+    R.store.commit(() => { R.state.deck.master.blocks.push({ id: 'wave1', type: 'shape', shape: 'wave', x: 0, y: 500, w: 1280, h: 220, rotation: 0, animation: null, fill: '#3f6497', opacity: 10 }); });
+    R.render(); await sleep(30);
+    const pv = [...D.querySelectorAll('#stage .master-layer .pv-block')].find(x => x.querySelector('svg'));
+    eq(pv && pv.style.opacity, '0.1', 'en el editor, bajo la diapositiva');
+    assert(/opacity:0\.1;/.test(R.io.buildHTML()), 'en la presentación');
+    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob), xml = await zip.file('ppt/slides/slide1.xml').async('string');
+    assert(/<a:alpha val="10000"\/>/.test(xml), 'en PowerPoint, transparencia del 90 %');
+    R.store.commit(() => { R.state.deck.master.blocks = R.state.deck.master.blocks.filter(x => x.id !== 'wave1'); });
+  });
+
+  await test('modelo 3D: un anillo discreto mientras carga, sin la barra gris', async () => {
+    reset();
+    R.store.commit(() => { slide().blocks.push({ id: 'mv1', type: 'model', src: 'data:model/gltf-binary;base64,AAAA', x: 100, y: 100, w: 300, h: 300, rotation: 0, animation: null, bleed: 2 }); });
+    R.render(); await sleep(30);
+    assert(D.querySelector('#stage .block[data-id="mv1"] model-viewer > .mv-loading[slot="progress-bar"]'), 'en el editor, en el centro');
+    assert(/model-viewer::part\(default-progress-bar\)\{display:none\}/.test(R.io.buildHTML()), 'al presentar, sin barra');
+  });
+
+  await test('votaciones en el editor: llenan su caja', async () => {
+    reset(); const W = frame.contentWindow, P = await W.eval("import('/src/features/live/poll.js')");
+    const b = P.addPoll(); await sleep(30);
+    const el = D.querySelector(`#stage .block[data-id="${b.id}"]`), grid = el.querySelector('.poll-blk > div');
+    assert(Math.abs(grid.getBoundingClientRect().height - el.getBoundingClientRect().height) < 2, 'la vista ocupa toda la caja');
+  });
+
+  await test('Text Art: si no cabe, la letra se reduce (editor, presentación y PowerPoint)', async () => {
+    reset(); const W = frame.contentWindow;
+    R.blocks.addWordArt('gradient'); const b = last(); R.store.commit(() => { b.html = '¡Bienvenidos a la jornada de puertas abiertas!'; }); R.render(); await sleep(30);
+    const r = D.querySelector(`#stage .block[data-id="${b.id}"] .rich`);
+    assert(parseFloat(r.style.fontSize) < 80 && r.scrollHeight <= r.clientHeight + 1, 'cabe: ' + r.style.fontSize + ' ' + r.scrollHeight + '/' + r.clientHeight);
+    eq(b.fontSize, 80, 'sin cambiar su tamaño propio');
+    assert(new RegExp(`font-size:${parseFloat(r.style.fontSize)}px`).test(R.io.buildHTML()), 'igual en la presentación');
+    R.store.commit(() => { b.html = 'Hola'; }); await sleep(20);
+    eq(D.querySelector(`#stage .block[data-id="${b.id}"] .rich`).style.fontSize, '80px', 'si cabe, su tamaño');
   });
 }

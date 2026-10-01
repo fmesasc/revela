@@ -1,6 +1,8 @@
 // Non‑interactive block rendering, shared by slide thumbnails.
 
 import { diagramHTML } from '../../render/diagrams.js';
+import { opacityOf } from '../../core/model.js';
+import { wordartSize } from '../../render/textfit.js';
 import { diagramOpts } from '../../features/document/blocks.js';
 import { fileIconHTML, imgFocus } from '../../render/svg.js';
 import { pollEditorHTML } from '../../features/live/poll.js';
@@ -16,15 +18,17 @@ function ensurePreviewCSS() {
   document.head.appendChild(st);
 }
 
-export function blockPreview(b) {
+// (`slide`: the one it is on, when known — a diagram's words read on its background.)
+export function blockPreview(b, slide) {
   if (b.hidden) { const h = document.createElement('div'); h.hidden = true; return h; }   // (hidden in the selection pane)
   ensurePreviewCSS();
   const el = document.createElement('div');
   el.className = 'pv-block';
   el.style.cssText = `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px;`
-    + `transform:rotate(${b.rotation || 0}deg)${b.flipH ? ' scaleX(-1)' : ''}${b.flipV ? ' scaleY(-1)' : ''};${b.shadow ? `filter:${shadowCSS(b)};` : ''}`;
+    + `transform:rotate(${b.rotation || 0}deg)${b.flipH ? ' scaleX(-1)' : ''}${b.flipV ? ' scaleY(-1)' : ''};${b.shadow ? `filter:${shadowCSS(b)};` : ''}`
+    + (opacityOf(b) < 1 ? `opacity:${opacityOf(b)};` : '');           // (the master's objects in the editor are drawn this way too)
   if (b.type === 'text') {
-    el.innerHTML = `<div${b.levels ? ' class="lv"' : ''} style="font-size:${b.fontSize || 40}px;color:${b.color || 'inherit'};${b.levels ? levelVars(b) : ''}`
+    el.innerHTML = `<div${b.levels ? ' class="lv"' : ''} style="font-size:${wordartSize(b)}px;color:${b.color || 'inherit'};${b.levels ? levelVars(b) : ''}`
       + `text-align:${b.textAlign || 'left'};${b.fontFamily ? `font-family:${b.fontFamily};` : ''}`
       + `${b.lineHeight ? `line-height:${b.lineHeight};` : ''}`
       + `${b.letterSpacing ? `letter-spacing:${b.letterSpacing}px;` : ''}`
@@ -71,7 +75,7 @@ export function blockPreview(b) {
   } else if (b.type === 'figindex') {
     el.innerHTML = `<div style="width:100%;height:100%;display:grid;place-items:center;color:#fff;font-size:40px">📑</div>`;
   } else if (b.type === 'diagram') {
-    el.innerHTML = diagramHTML(b, diagramOpts());
+    el.innerHTML = diagramHTML(b, diagramOpts(undefined, slide));
   } else if (b.type === 'file') {
     el.innerHTML = b.display !== 'icon' && b.poster ? `<img src="${b.poster}" style="width:100%;height:100%;object-fit:contain">` : fileIconHTML(b);
   } else if (b.type === 'table') {

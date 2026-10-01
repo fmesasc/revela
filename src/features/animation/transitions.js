@@ -101,15 +101,20 @@ export const EFFECT_KF = {
   'fade-out': 'rvOut', 'semi-fade-out': 'rvSemi', 'fade-in-then-out': 'rvInOut', 'fade-in-then-semi-out': 'rvInSemi', 'current-visible': 'rvInOut',
   'highlight-current-red': 'rvHi', 'highlight-current-green': 'rvHi', 'highlight-current-blue': 'rvHi', 'highlight-red': 'rvHi', 'highlight-green': 'rvHi', 'highlight-blue': 'rvHi',
   'strike': 'rvIn', 'path': 'rvPath', 'spin360': 'rvTurn', 'draw': 'rvIn',
+  'pulse': 'rvPulse', 'teeter': 'rvTeeter', 'jump': 'rvJump', 'color-pulse': 'rvGlow',
 };
+// Emphasis on an object that stays where it is, seen before and after (PowerPoint's
+// Pulse, Teeter, a jump on the spot, Color pulse): they hide nothing.
+// (Grow and shrink are emphasis too: bigger or smaller, and so they stay.)
+export const EMPHASIS_FX = ['pulse', 'teeter', 'jump', 'color-pulse'];
 export const EFFECT_KF_CSS = `@keyframes rvIn{from{opacity:0}to{opacity:1}}
 @keyframes rvUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:none}}
 @keyframes rvDown{from{opacity:0;transform:translateY(-40px)}to{opacity:1;transform:none}}
 @keyframes rvLeft{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}
 @keyframes rvRight{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:none}}
 @keyframes rvZoom{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
-@keyframes rvGrow{from{opacity:0;transform:scale(.3)}to{opacity:1;transform:none}}
-@keyframes rvShrink{from{opacity:0;transform:scale(1.7)}to{opacity:1;transform:none}}
+@keyframes rvGrow{from{transform:none}to{transform:scale(1.3)}}
+@keyframes rvShrink{from{transform:none}to{transform:scale(.7)}}
 @keyframes rvSpin{from{opacity:0;transform:rotate(-200deg) scale(.6)}to{opacity:1;transform:none}}
 @keyframes rvFlip{from{opacity:0;transform:perspective(600px) rotateY(90deg)}to{opacity:1;transform:none}}
 @keyframes rvBounce{0%{opacity:0;transform:translateY(-60px)}60%{opacity:1;transform:translateY(12px)}80%{transform:translateY(-6px)}100%{opacity:1;transform:none}}
@@ -119,7 +124,11 @@ export const EFFECT_KF_CSS = `@keyframes rvIn{from{opacity:0}to{opacity:1}}
 @keyframes rvInSemi{0%{opacity:0}30%,70%{opacity:1}100%{opacity:.5}}
 @keyframes rvHi{0%,100%{background:transparent}50%{background:#ff3b3b66}}
 @keyframes rvPath{to{translate:var(--dx,0) var(--dy,0)}}
-@keyframes rvTurn{from{transform:rotate(0)}to{transform:rotate(360deg)}}`;
+@keyframes rvTurn{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes rvPulse{0%,100%{transform:none}30%{transform:scale(1.15)}60%{transform:scale(.97)}}
+@keyframes rvTeeter{0%,100%{transform:none}20%{transform:rotate(7deg)}40%{transform:rotate(-6deg)}60%{transform:rotate(4deg)}80%{transform:rotate(-2deg)}}
+@keyframes rvJump{0%,55%,85%,100%{transform:none}30%{transform:translateY(-40px)}70%{transform:translateY(-12px)}}
+@keyframes rvGlow{0%,100%{filter:none}50%{filter:brightness(1.45) saturate(1.8) drop-shadow(0 0 14px rgba(255,214,90,.9))}}`;
 // Motion paths: points (offsets from the start) along the chosen shape, ending
 // at (dx, dy). 'line' is straight; 'arc' bulges to one side; 'wave' snakes;
 // 'loop' makes a full turn half way; 'custom' is drawn by hand (a.points, the
@@ -220,7 +229,7 @@ export function simplifyStroke(pts, tol = 6) {
 }
 
 // Effects that make an object appear (it starts hidden until it plays).
-export const isEntrance = effect => !['fade-out', 'semi-fade-out', 'highlight-red', 'highlight-green', 'highlight-blue', 'highlight-current-red', 'highlight-current-green', 'highlight-current-blue', 'strike', 'path', 'grow', 'shrink', 'clip3d', 'spin360', 'pdfview'].includes(effect);
+export const isEntrance = effect => !['fade-out', 'semi-fade-out', 'highlight-red', 'highlight-green', 'highlight-blue', 'highlight-current-red', 'highlight-current-green', 'highlight-current-blue', 'strike', 'path', 'grow', 'shrink', 'clip3d', 'spin360', 'pdfview', ...EMPHASIS_FX].includes(effect);
 
 // Per‑object animations: effect + order (fragment index, the click) + start + timing.
 // An object can have several, one after another (like PowerPoint's "Add

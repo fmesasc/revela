@@ -182,7 +182,8 @@ export function setBoxStyle(props) {
 
 // Diagrams (SmartArt): one object, its text as an outline, laid out and
 // coloured by render/diagrams.js. Its colours follow the theme's.
-export const diagramOpts = (deck = state.deck) => ({ accents: currentPalette(deck).accents, fg: deckFg(deck) });
+// (`back`: the slide's background, so that the words on it read — see readableOn.)
+export const diagramOpts = (deck = state.deck, slide = deck === state.deck ? currentSlide() : null) => ({ accents: currentPalette(deck).accents, fg: deckFg(deck), back: slide?.background || currentPalette(deck).bg });
 export function addDiagram(layout = 'process') {
   const { w, h } = state.deck.size, bw = Math.round(w * 0.78), bh = Math.round(h * 0.62);
   // (The sample text in the app's language, line by line, keeping its indentation.)
@@ -436,6 +437,7 @@ export function setChartGrid(text, props = {}) {
   const old = b.series || [];
   commit(() => {
     Object.assign(b, props, { data });
+    for (const k in props) if (props[k] === undefined) delete b[k];   // (an option left empty: automatic again)
     if (names[0]) b.seriesName = names[0]; else delete b.seriesName;
     if (series.length) b.series = series.map((x, i) => ({ ...x, color: old[i]?.color })).map(x => (x.color ? x : { name: x.name, values: x.values }));
     else delete b.series;

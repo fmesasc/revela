@@ -68,4 +68,14 @@ export default {"biz_board":["Quartalsergebnisse für den Vorstand","Dunkelblau 
 "sci_python":["Programmieren mit Python","Dunkler Editor-Stil: Terminal, das sich selbst schreibt, Code mit Hervorhebungsschritten, animierte Ausgabe, Zeilen ordnen und Countdown-Aufgabe"],
 "sci_solar":["Das Sonnensystem","Maßstabsgetreue Planeten, die nacheinander erscheinen, drei 3D-Sonden mit verschiedenen Ansichten und Bewegungen, Tabelle, Radialdiagramm und Zuordnen"],
 "sci_stats":["Statistik und Wahrscheinlichkeit","Editorialer Stil: Glockenkurve, die sich selbst zeichnet, Formeln, Histogramm, Streu-, Flächen-, Balken- und Blasendiagramm, Punktefrage"],
-"sci_thesis":["Verteidigung der Bachelorarbeit","Nüchtern akademisch: Titelseite der Hochschule, Gliederung, Methodik mit Gleichung, Tabelle mit Summen, Ergebnisse in Diagrammen, Literatur und Fragerunde"]};
+"sci_thesis":["Verteidigung der Bachelorarbeit","Nüchtern akademisch: Titelseite der Hochschule, Gliederung, Methodik mit Gleichung, Tabelle mit Summen, Ergebnisse in Diagrammen, Literatur und Fragerunde"],
+"showcase_3d":["Katalog: 3D im Detail","3D-Modelle mit allen Optionen: Ansichten, Bewegungen beim Eintritt, Drehung, Ränder, Rand, Clips, Gehen und Ankunft mit Morphen"],
+"showcase_animations":["Katalog: Animationen","Alle Objektanimationen: Eingang, Betonung, Ausgang, Pfade, Zeichnen, verkettet, Klänge und mehrere an einem Objekt"],
+"showcase_charts":["Katalog: Diagramme","Die 15 Diagrammtypen, zwei pro Folie, mit Reihen, Kombination, Gitter, Beschriftungen und Achsentiteln, dazu die Optionstabelle"],
+"showcase_diagrams":["Katalog: Schaubilder","Die 15 Schaubild-Layouts als Gliederung geschrieben, die 4 Farbschemata und das Erscheinen nacheinander beim Präsentieren"],
+"showcase_morph":["Katalog: Morphen","Morphen Schritt für Schritt: Text, der Größe und Ort ändert, Formen, wachsende Balken, Bild, 3D und Buchstaben, die sich neu ordnen"],
+"showcase_objects":["Katalog: Multimedia und Objekte","Code mit Schritten, Gleichungen, Symbole, fünf Geräte, Tabellen mit Stilen und Formeln, Folienzoom und Verbinder"],
+"showcase_polls":["Katalog: Umfragen und Aktivitäten","Die 11 Arten von Umfragen und Aktivitäten per Handy, Countdown in drei Stilen, Rangliste und Klassenmodus"],
+"showcase_shapes":["Katalog: Formen","Alle Formen nach Kategorien mit Namen, Linien und Striche, Verläufe, Deckkraft, Freihandstil, Schatten, Text darin und Drehung"],
+"showcase_text":["Katalog: Text Art und Typografie","Die 10 Text-Art-Stile, gebogener Text, Spalten, fünf Aufzählungsebenen, die 8 Schriftpaare, Ausrichtung und Abstände"],
+"showcase_transitions":["Katalog: Übergänge","Alle 22 Folienübergänge einzeln: Eingang, anderer Ausgang, Richtungen, Tempo und automatisches Weiterschalten"]};

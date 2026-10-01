@@ -68,4 +68,14 @@ export default {"biz_board":["Resultados trimestrais ao consello","Azul escuro e
 "sci_python":["Programación en Python","Estilo editor escuro: terminal que se escribe soa, código con pasos de resaltado, saída animada, ordenar liñas e reto con conta atrás"],
 "sci_solar":["O sistema solar","Planetas a escala que aparecen en cadea, tres sondas 3D con vistas e movementos distintos, táboa, diagrama radial e emparellar"],
 "sci_stats":["Estatística e probabilidade","Estilo editorial: campá que se debuxa, fórmulas, histograma, dispersión, área, barras e burbullas, e pregunta con puntos"],
-"sci_thesis":["Defensa do TFG","Académico sobrio: portada institucional, índice, metodoloxía con ecuación, táboa con totais, resultados en gráficos, bibliografía e preguntas"]};
+"sci_thesis":["Defensa do TFG","Académico sobrio: portada institucional, índice, metodoloxía con ecuación, táboa con totais, resultados en gráficos, bibliografía e preguntas"],
+"showcase_3d":["Catálogo: o 3D a fondo","Modelos 3D con todas as opcións: vistas, movementos ao entrar, xiro, bordos, marxe, clips, andar e chegada con Transformar"],
+"showcase_animations":["Catálogo: animacións","Todas as animacións de obxecto: entrada, énfase, saída, traxectorias, debuxar, encadeadas, sons e varias nun obxecto"],
+"showcase_charts":["Catálogo: gráficos","Os 15 tipos de gráfico, dous por diapositiva, con series, combinado, grade, etiquetas e títulos de eixos, e a táboa de opcións"],
+"showcase_diagrams":["Catálogo: diagramas","Os 15 deseños de diagrama escritos como esquema, os 4 esquemas de cor e a aparición un a un ao presentar"],
+"showcase_morph":["Catálogo: Transformar","Transformar paso a paso: texto que cambia de tamaño e sitio, formas, barras que medran, imaxe, 3D e letras que se reordenan"],
+"showcase_objects":["Catálogo: multimedia e obxectos","Código con pasos, ecuacións, iconas, cinco dispositivos, táboas con estilos e fórmulas, zoom de diapositiva e conectores"],
+"showcase_polls":["Catálogo: votacións e actividades","Os 11 tipos de votación e actividade desde o móbil, conta atrás nos seus tres estilos, clasificación e modo aula"],
+"showcase_shapes":["Catálogo: formas","Todas as formas por categorías co seu nome, liñas e guións, degradados, opacidade, trazo a man, sombras, texto dentro e xiro"],
+"showcase_text":["Catálogo: Text Art e tipografía","Os 10 estilos de Text Art, texto curvo, columnas, cinco niveis de viñetas, os 8 pares de letra, aliñamento e espazamento"],
+"showcase_transitions":["Catálogo: transicións","As 22 transicións de diapositiva, unha a unha: entrada, saída distinta, direccións, velocidade e avance automático"]};

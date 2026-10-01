@@ -7,6 +7,7 @@ import { diagramOpts } from '../../features/document/blocks.js';
 import { openDiagramText } from '../dialogs/diagram.js';
 import { openFile } from '../../features/content/files.js';
 import { shortSig } from '../../core/text.js';
+import { opacityOf } from '../../core/model.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
 import { state, commit, currentSlide, selectedBlock, isSelected, setSelection } from '../../core/store.js';
 import { shadowCSS, levelCSS, shapeSVG, shapeSig, chartSVG, chartSig, iconSVG, iconSig, inkSVG, timerSVG, curvedTextSVG, hasShapeText, shapeTextStyle, wrapFor, timerSig, inkSig, tableClass, tableVars } from '../../render/svg.js';
@@ -258,7 +259,7 @@ function reconcile(b) {
   el.style.left = b.x + 'px'; el.style.top = b.y + 'px';
   el.style.width = b.w + 'px'; el.style.height = b.h + 'px';
   el.style.transform = transformOf(b);
-  el.style.opacity = (b.opacity != null && b.opacity < 100) ? b.opacity / 100 : '';
+  el.style.opacity = opacityOf(b) < 1 ? opacityOf(b) : '';
   el.style.filter = shadowCSS(b);
   el.classList.toggle('selected', isSelected(b.id));
   el.setAttribute('aria-label', blockLabel(b, t));
@@ -354,7 +355,7 @@ function blockEl(b) {
   el.setAttribute('role', 'group'); el.setAttribute('aria-label', blockLabel(b, t));
   el.style.cssText = `left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px`;
   el.style.transform = transformOf(b);
-  if (b.opacity != null && b.opacity < 100) el.style.opacity = b.opacity / 100;
+  if (opacityOf(b) < 1) el.style.opacity = opacityOf(b);
   if (b.shadow) el.style.filter = shadowCSS(b);
   el.appendChild(content(b));
 

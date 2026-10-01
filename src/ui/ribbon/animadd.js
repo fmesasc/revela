@@ -15,7 +15,8 @@ import { t } from '../../i18n/index.js';
 
 const PALETTE = [
   ['Entrada', [['fade-in', 'Aparecer', 'visibility'], ['fade-up', 'Subir', 'arrow_upward'], ['zoom-in', 'Zoom', 'zoom_in'], ['bounce', 'Rebotar', 'sports_basketball'], ['spin', 'Girar', 'rotate_right'], ['draw', 'Dibujar', 'draw']]],
-  ['Énfasis', [['grow', 'Agrandar', 'zoom_out_map'], ['shrink', 'Encoger', 'close_fullscreen'], ['spin360', 'Dar una vuelta', 'autorenew'], ['highlight-red', 'Resaltar', 'ink_highlighter']]],
+  ['Énfasis', [['grow', 'Agrandar', 'zoom_out_map'], ['shrink', 'Encoger', 'close_fullscreen'], ['spin360', 'Dar una vuelta', 'autorenew'], ['highlight-red', 'Resaltar', 'ink_highlighter'],
+    ['pulse', 'Latido', 'favorite'], ['teeter', 'Balanceo', 'vibration'], ['jump', 'Salto', 'keyboard_double_arrow_up'], ['color-pulse', 'Destello', 'flare']]],
   ['Salida', [['fade-out', 'Desaparecer', 'visibility_off'], ['semi-fade-out', 'Atenuar', 'opacity']]],
   ['Movimiento', [['path', 'Trayectoria recta', 'trending_flat'], ['draw', 'Dibujar un recorrido', 'gesture']]],
 ];

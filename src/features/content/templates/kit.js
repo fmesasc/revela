@@ -67,7 +67,9 @@ let seq = 0;
 export const A = (effect, props = {}) => ({ effect, order: 1, seq: ++seq, start: 'click', duration: effect === 'path' ? 2000 : 600, delay: 0, ...props });
 export const withAnims = (b, first, ...more) => ({ ...b, animation: first, ...(more.length && { anims: more }) });
 // A path through points (relative to where the object is), smooth and at even speed.
-export const path = (points, props = {}) => A('path', { pathShape: 'custom', points, dx: points.at(-1)[0], dy: points.at(-1)[1], ...props });
+// (A path starts where the object is: [0,0] first, added if missing — otherwise it would jump to the first point.)
+export const path = (points, props = {}) => { const pts = points[0]?.[0] === 0 && points[0]?.[1] === 0 ? points : [[0, 0], ...points];
+  return A('path', { pathShape: 'custom', points: pts, dx: pts.at(-1)[0], dy: pts.at(-1)[1], ...props }); };
 export const numbered = deck => { deck.slides.forEach(sl => normalizeAnim(sl)); return deck; };
 export const bar = (p, i = 0) => [shape('rect', 0, 0, 1280, 12, p.accents[i]), shape('rect', 0, 708, 1280, 12, p.accents[i])];
 // A soft light behind things: a round gradient from a colour into the background.

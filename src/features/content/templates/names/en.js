@@ -68,4 +68,14 @@ export default {"biz_board":["Quarterly results for the board","Dark blue and go
 "sci_python":["Programming in Python","Dark code-editor style: terminal that types itself, code with highlight steps, animated output, line ordering and a countdown challenge"],
 "sci_solar":["The solar system","Planets to scale appearing in a chain, three 3D probes with different views and movements, table, radial diagram and matching"],
 "sci_stats":["Statistics and probability","Editorial style: bell curve that draws itself, formulas, histogram, scatter, area, bar and bubble charts, and a scored question"],
-"sci_thesis":["Bachelor's thesis defence","Sober academic look: institutional cover, contents, method with an equation, table with totals, results in charts, references and Q&A"]};
+"sci_thesis":["Bachelor's thesis defence","Sober academic look: institutional cover, contents, method with an equation, table with totals, results in charts, references and Q&A"],
+"showcase_3d":["Catalogue: 3D in depth","3D models with all their options: views, moves on entry, spin, edges, margin, clips, walking and arrival with Morph"],
+"showcase_animations":["Catalogue: animations","Every object animation: entrance, emphasis, exit, motion paths, draw, chained, sounds and several on one object"],
+"showcase_charts":["Catalogue: charts","The 15 chart types, two per slide, with series, combo, grid, labels and axis titles, plus the table of options"],
+"showcase_diagrams":["Catalogue: diagrams","The 15 diagram layouts written as an outline, the 4 colour schemes and appearing one by one when presenting"],
+"showcase_morph":["Catalogue: Morph","Morph step by step: text that changes size and place, shapes, growing bars, a picture, 3D and letters that rearrange"],
+"showcase_objects":["Catalogue: media and objects","Code with steps, equations, icons, five devices, tables with styles and formulas, slide zoom and connectors"],
+"showcase_polls":["Catalogue: polls and activities","The 11 kinds of poll and activity from phones, the countdown in its three styles, leaderboard and classroom mode"],
+"showcase_shapes":["Catalogue: shapes","Every shape by category with its name, lines and dashes, gradients, opacity, hand-drawn look, shadows, text inside and rotation"],
+"showcase_text":["Catalogue: Text Art and typography","The 10 Text Art styles, curved text, columns, five bullet levels, the 8 font pairs, alignment and spacing"],
+"showcase_transitions":["Catalogue: transitions","All 22 slide transitions, one by one: entrance, a different exit, directions, speed and auto-advance"]};

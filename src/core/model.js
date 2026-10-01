@@ -17,6 +17,13 @@ export const uid = () => Math.random().toString(36).slice(2, 9)
   + Date.now().toString(36).slice(-3);
 
 // A new, untouched presentation (the one Revela starts with): replacing it loses nothing.
+// An object's opacity: b.opacity is a percentage, 0–100 (none or 100: opaque),
+// the same in the editor, the thumbnails, the master and every export. A
+// fraction (0 < v < 1, as in CSS: 0.1) is read as such. Returns 0–1.
+export function opacityOf(b) {
+  const v = Number(b?.opacity); if (b?.opacity == null || b.opacity === '' || !Number.isFinite(v)) return 1;
+  return Math.max(0, Math.min(1, v > 0 && v < 1 ? v : v / 100));
+}
 export function isBlankDeck(d) {
   const s = d?.slides; if (!s || s.length !== 1) return false;
   const want = emptyDeck().slides[0].blocks.map(b => b.html).join('|');

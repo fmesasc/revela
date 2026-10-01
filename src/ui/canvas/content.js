@@ -2,6 +2,7 @@
 // equations (KaTeX), code (highlight.js), tables, embeds, 3D models, slide links.
 
 import { diagramHTML, diagramSig } from '../../render/diagrams.js';
+import { wordartSize } from '../../render/textfit.js';
 import { diagramOpts } from '../../features/document/blocks.js';
 import { showTextRuler, hideTextRuler } from './textruler.js';
 import { tabRuntime } from '../../io/runtime/tabs.js';
@@ -65,7 +66,7 @@ export function applyImgStyle(img, b) {
 // Box-level look of a text object (safe while editing: no caret impact). `b`
 // has its inherited formatting filled in (master.styled).
 export function styleRich(rich, b) {
-  rich.style.fontSize = (b.fontSize || 40) + 'px';
+  rich.style.fontSize = wordartSize(b) + 'px';               // (Text Art: smaller if it doesn't fit, see render/textfit.js)
   rich.style.textAlign = b.textAlign || 'left';
   rich.style.fontFamily = b.fontFamily || '';
   rich.style.lineHeight = b.lineHeight || '';
@@ -151,6 +152,11 @@ export function content(b) {
   if (b.type === 'model') {
     const mv = document.createElement('model-viewer');
     applyModelAttrs(mv, b);
+    // While it loads: a small ring in its middle, instead of model-viewer's grey bar along its top edge.
+    const busy = document.createElement('div'); busy.slot = 'progress-bar'; busy.className = 'mv-loading';
+    mv.addEventListener('progress', e => busy.classList.toggle('done', (e.detail?.totalProgress ?? 0) >= 1));
+    mv.addEventListener('load', () => busy.classList.add('done'));
+    mv.appendChild(busy);
     if (!b.poster) mv.addEventListener('load', () => capturePoster(mv, b.id), { once: true });
     mv.style.pointerEvents = 'none'; // dragging the body moves the block…
     return mv;
@@ -222,7 +228,9 @@ export const hostOf = u => { try { return new URL(u).host || u; } catch { return
 // KaTeX for equation blocks, loaded on demand.
 export function ensureKatex() {
   loadStyle(`${KATEX}/katex.min.css`);
-  return loadScript(`${KATEX}/katex.min.js`, 'katex');
+  const p = loadScript(`${KATEX}/katex.min.js`, 'katex');
+  if (!window.katex) p.then(() => setTimeout(() => redrawPendingMath(), 0), () => {});
+  return p;
 }
 export const ensureKatexAuto = () => ensureKatex().then(() => loadScript(`${KATEX}/contrib/auto-render.min.js`, 'renderMathInElement'));
 // Render inline $...$ / $$...$$ inside a text element (only when not editing).
@@ -237,13 +245,35 @@ export function renderInlineMath(el) {
     } catch {}
   }).catch(() => {});
 }
+// An equation: a mistake in the LaTeX shows the source in red, marked (and its
+// message on hover) instead of an empty box; accented text (\text{Previsión},
+// or "ó" typed in the formula) is drawn as is (strict: 'ignore').
 export function renderMath(el, latex) {
   el.dataset.latex = latex || '';
-  ensureKatex().then(() => {
-    try { window.katex.render(latex || '', el, { throwOnError: false, displayMode: true }); }
-    catch { el.textContent = latex || ''; }
-  }).catch(() => { el.textContent = latex || ''; });
+  ensureKatex().then(() => katexInto(el, latex || '')).catch(() => { el.textContent = latex || ''; });
 }
+function katexInto(el, tex) {
+  if (el.dataset.latex !== tex) return;              // (changed again while KaTeX was loading)
+  el.classList.remove('math-error'); el.removeAttribute('title');
+  try { window.katex.render(tex, el, { throwOnError: true, displayMode: true, strict: 'ignore' }); }
+  catch (e) {
+    try { window.katex.render(tex, el, { throwOnError: false, displayMode: true, strict: 'ignore' }); } catch { el.textContent = tex; }
+    if (!el.textContent.trim()) el.textContent = tex;
+    el.classList.add('math-error'); el.title = String(e?.message || e).replace(/^KaTeX parse error: /, '');
+  }
+}
+// The first equations may be drawn while KaTeX is still loading: once it is
+// there, any one left without its drawing is drawn (the editor and thumbnails).
+export function redrawPendingMath(root = document) {
+  if (!window.katex) return 0;
+  let n = 0;
+  root.querySelectorAll('.math-blk[data-latex]').forEach(el => { if (!el.querySelector('.katex, .katex-error') && !el.classList.contains('math-error')) { katexInto(el, el.dataset.latex); n++; } });
+  return n;
+}
+// When the stylesheet arrives after the script, KaTeX measured without it: draw them again then.
+document.addEventListener('load', e => {
+  if (window.katex && e.target?.tagName === 'LINK' && e.target.href.includes('katex')) document.querySelectorAll('.math-blk[data-latex]').forEach(el => katexInto(el, el.dataset.latex));
+}, true);
 // An equation block with its formatting; repainted only when something changed.
 export function paintMath(d, b) {
   const sig = mathSig(b); if (d.dataset.sig === sig) return;
@@ -405,6 +435,7 @@ export function setupText(b, el) {
     if (/\t/.test(b.html)) { clearTimeout(tabTimer); tabTimer = setTimeout(() => liveTabs(rich, b), 150); }
     // "Shrink text on overflow": reduce the size while it doesn't fit.
     if (b.shrink && (rich.scrollHeight > rich.clientHeight + 1)) { b.fontSize = fitFontSize(b, true); rich.style.fontSize = b.fontSize + 'px'; }
+    else if (b.wordart) rich.style.fontSize = wordartSize(b) + 'px';            // (Text Art fits as it is written)
     if (b.ph && isEmptyPlaceholder(b)) b.html = '';   // back to the prompt when emptied
   });
   // Tab / Shift+Tab inside a list: nest / un-nest the item (bullet levels);

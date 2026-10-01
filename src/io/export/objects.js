@@ -7,6 +7,7 @@
 // replaces the photo. Rotation and flips are left to html2canvas.
 
 import { state, currentSlide } from '../../core/store.js';
+import { opacityOf } from '../../core/model.js';
 import { HTML2CANVAS, JSZIP, loadScript } from '../../core/vendor.js';
 import { tableCSS, levelCSS, shapeSVG, iconSVG, chartSVG, inkSVG } from '../../render/svg.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
@@ -132,7 +133,7 @@ export function vectorSVG(b) {
   if (!draw) return null;
   const tf = b.flipH || b.flipV ? `scale(${b.flipH ? -1 : 1} ${b.flipV ? -1 : 1})` : '';
   const inner = draw(b).replace(/<svg\b/, '<svg x="0" y="0"').replace(/\swidth="100%"/, ` width="${b.w}"`).replace(/\sheight="100%"/, ` height="${b.h}"`);
-  const op = b.opacity != null && b.opacity < 100 ? ` opacity="${b.opacity / 100}"` : '';
+  const op = opacityOf(b) < 1 ? ` opacity="${+opacityOf(b).toFixed(3)}"` : '';
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${b.w}" height="${b.h}" viewBox="0 0 ${b.w} ${b.h}">`
     + `<g${op}${tf ? ` transform="translate(${b.flipH ? b.w : 0} ${b.flipV ? b.h : 0}) ${tf}"` : ''}>${inner}</g></svg>`;
 }

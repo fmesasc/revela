@@ -20,7 +20,7 @@ export async function hydrateStatic(root, deck) {
       const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = `${KATEX}/katex.min.css`; l.dataset.katex = '1'; document.head.appendChild(l);
     }
     await loadScript(`${KATEX}/katex.min.js`, 'katex');
-    root.querySelectorAll('.math[data-latex]').forEach(el => { try { window.katex.render(el.dataset.latex, el, { throwOnError: false, displayMode: true }); } catch {} });
+    root.querySelectorAll('.math[data-latex]').forEach(el => { try { window.katex.render(el.dataset.latex, el, { throwOnError: false, displayMode: true, strict: 'ignore' }); } catch { el.textContent = el.dataset.latex; } });
     if (/\$[^$]/.test(root.textContent)) {
       await loadScript(`${KATEX}/contrib/auto-render.min.js`, 'renderMathInElement');
       try { window.renderMathInElement(root, { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }], throwOnError: false }); } catch {}

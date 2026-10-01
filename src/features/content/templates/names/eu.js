@@ -68,4 +68,14 @@ export default {"biz_board":["Hiruhileko emaitzak kontseiluari","Urdin iluna eta
 "sci_python":["Python programazioa","Editore ilunaren estiloa: bere kabuz idazten den terminala, nabarmentze-urratsak dituen kodea, irteera animatua, lerroak ordenatu eta atzerako kontaketa duen erronka"],
 "sci_solar":["Eguzki-sistema","Eskalan dauden planetak katean agertzen, hiru 3D zunda ikuspegi eta mugimendu desberdinekin, taula, diagrama erradiala eta parekatzea"],
 "sci_stats":["Estatistika eta probabilitatea","Estilo editoriala: bere burua marrazten duen kanpaia, formulak, histograma, sakabanatzea, azalera, barrak eta burbuilak, eta puntudun galdera"],
-"sci_thesis":["GrALaren defentsa","Akademiko soila: azal instituzionala, aurkibidea, ekuazioa duen metodologia, guztizkoak dituen taula, emaitzak grafikoetan, bibliografia eta galderak"]};
+"sci_thesis":["GrALaren defentsa","Akademiko soila: azal instituzionala, aurkibidea, ekuazioa duen metodologia, guztizkoak dituen taula, emaitzak grafikoetan, bibliografia eta galderak"],
+"showcase_3d":["Katalogoa: 3D sakonean","3D ereduak aukera guztiekin: ikuspegiak, sartzean mugimenduak, biraketa, ertzak, marjina, klipak, ibiltzea eta Eraldatu bidezko iristea"],
+"showcase_animations":["Katalogoa: animazioak","Objektuen animazio guztiak: sarrera, enfasia, irteera, ibilbideak, marraztu, kateatuak, soinuak eta hainbat objektu bakarrean"],
+"showcase_charts":["Katalogoa: grafikoak","15 grafiko motak, bi diapositiba bakoitzeko, serieekin, konbinatuarekin, saretarekin, etiketekin eta ardatzen izenburuekin, eta aukeren taula"],
+"showcase_diagrams":["Katalogoa: diagramak","Eskema gisa idatzitako 15 diagrama-diseinuak, 4 kolore-eskemak eta aurkeztean banan-banan agertzea"],
+"showcase_morph":["Katalogoa: Eraldatu","Eraldatu urratsez urrats: tamaina eta lekua aldatzen dituen testua, formak, hazten diren barrak, irudia, 3D eta berrantolatzen diren letrak"],
+"showcase_objects":["Katalogoa: multimedia eta objektuak","Kodea urratsekin, ekuazioak, ikonoak, bost gailu, estilo eta formuladun taulak, diapositiba-zooma eta konektoreak"],
+"showcase_polls":["Katalogoa: bozketak eta jarduerak","Mugikorretik egiteko 11 bozketa eta jarduera mota, atzerako kontaketa bere hiru estiloetan, sailkapena eta ikasgela modua"],
+"showcase_shapes":["Katalogoa: formak","Forma guztiak kategoriaka bere izenarekin, lerroak eta marrak, gradienteak, opakutasuna, eskuzko trazua, itzalak, barruko testua eta biraketa"],
+"showcase_text":["Katalogoa: Text Art eta tipografia","Text Art-en 10 estiloak, testu kurbatua, zutabeak, bost buleta-maila, 8 letra-bikoteak, lerrokatzea eta tartea"],
+"showcase_transitions":["Katalogoa: trantsizioak","22 diapositiba-trantsizioak, banan-banan: sarrera, irteera desberdina, norabideak, abiadura eta aurrerapen automatikoa"]};

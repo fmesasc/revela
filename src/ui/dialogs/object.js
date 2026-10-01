@@ -156,7 +156,7 @@ export function openChartData(b) {
     <button class="modal-close">✕</button><h3>${t('Datos del gráfico')}</h3>
     <label class="fr-l">${t('Tipo')} <select class="ch-type">
       <option value="bar">${t('Barras')}</option><option value="stacked">${t('Barras apiladas')}</option><option value="stacked100">${t('Barras apiladas al 100 %')}</option>
-      <option value="hbar">${t('Barras horizontales')}</option><option value="histogram">${t('Histograma')}</option><option value="line">${t('Líneas')}</option><option value="area">${t('Área')}</option>
+      <option value="hbar">${t('Barras horizontales')}</option><option value="histogram">${t('Histograma')}</option><option value="line">${t('Líneas')}</option><option value="area">${t('Área')}</option><option value="stackedArea">${t('Áreas apiladas')}</option>
       <option value="pie">${t('Circular')}</option><option value="doughnut">${t('Dona')}</option>
       <option value="scatter">${t('Dispersión')}</option><option value="radar">${t('Radar')}</option><option value="bubble">${t('Burbujas')}</option><option value="treemap">${t('Rectángulos (treemap)')}</option><option value="waterfall">${t('Cascada')}</option><option value="funnel">${t('Embudo')}</option><option value="map">${t('Mapa')}</option></select></label>
     <label class="fr-l">${t('Color (barras)')} <input type="color" class="ch-color" value="${b.color || '#3f6497'}"></label>
@@ -165,12 +165,27 @@ export function openChartData(b) {
     <label class="fr-chk"><input type="checkbox" class="ch-labels"${b.dataLabels ? ' checked' : ''}> ${t('Etiquetas de datos (valores)')}</label>
     <label class="fr-l">${t('Título del eje horizontal')} <input type="text" class="ch-xt" value="${(b.xTitle || '').replace(/"/g, '&quot;')}"></label>
     <label class="fr-l">${t('Título del eje vertical')} <input type="text" class="ch-yt" value="${(b.yTitle || '').replace(/"/g, '&quot;')}"></label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <label class="fr-l" title="${t('Vacío: automático')}">${t('Mínimo del eje de valores')} <input type="number" step="any" class="ch-ymin" style="width:7em" value="${b.yMin ?? ''}" placeholder="${t('Automático')}"></label>
+      <label class="fr-l" title="${t('Vacío: automático')}">${t('Máximo del eje de valores')} <input type="number" step="any" class="ch-ymax" style="width:7em" value="${b.yMax ?? ''}" placeholder="${t('Automático')}"></label></div>
+    <div class="ch-xy" style="display:flex;gap:8px;flex-wrap:wrap">
+      <label class="fr-l">${t('Mínimo del eje horizontal')} <input type="number" step="any" class="ch-xmin" style="width:7em" value="${b.xMin ?? ''}" placeholder="${t('Automático')}"></label>
+      <label class="fr-l">${t('Máximo del eje horizontal')} <input type="number" step="any" class="ch-xmax" style="width:7em" value="${b.xMax ?? ''}" placeholder="${t('Automático')}"></label></div>
+    <label class="fr-l ch-hist">${t('Número de intervalos')} <input type="number" min="1" max="60" step="1" class="ch-bins" style="width:7em" value="${b.bins ?? ''}" placeholder="${t('Automático')}"></label>
+    <label class="fr-chk ch-pie"><input type="checkbox" class="ch-legend"${b.legend !== false ? ' checked' : ''}> ${t('Leyenda con el porcentaje de cada porción')}</label>
     <label class="fr-l">${t('Datos: etiqueta y una columna por serie; primera fila opcional con los nombres')}
       <textarea class="ch-data" rows="6" style="font-family:monospace">${lines}</textarea></label>
     <div class="fr-actions"><button class="fr-do">${t('Aplicar')}</button></div>
   </div>`;
   document.body.appendChild(back);
   back.querySelector('.ch-type').value = b.chartType || 'bar';
+  // (Only the options of the chosen type: x axis' ends for scatter and bubbles, intervals for a histogram, the legend for pies.)
+  const showFor = () => { const v = back.querySelector('.ch-type').value;
+    back.querySelector('.ch-xy').style.display = ['scatter', 'bubble'].includes(v) ? 'flex' : 'none';
+    back.querySelector('.ch-hist').style.display = v === 'histogram' ? '' : 'none';
+    back.querySelector('.ch-pie').style.display = ['pie', 'doughnut'].includes(v) ? '' : 'none'; };
+  back.querySelector('.ch-type').addEventListener('change', showFor); showFor();
+  const numOf = sel => { const v = back.querySelector(sel).value.trim().replace(',', '.'); return v === '' || !isFinite(+v) ? undefined : +v; };
   const close = () => back.remove();
   back.querySelector('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
@@ -178,7 +193,9 @@ export function openChartData(b) {
     blocks.setChartGrid(back.querySelector('.ch-data').value, { chartType: back.querySelector('.ch-type').value,
       color: back.querySelector('.ch-color').value, combo: back.querySelector('.ch-combo').checked,
       grid: back.querySelector('.ch-grid').checked, dataLabels: back.querySelector('.ch-labels').checked,
-      xTitle: back.querySelector('.ch-xt').value.trim(), yTitle: back.querySelector('.ch-yt').value.trim() });
+      xTitle: back.querySelector('.ch-xt').value.trim(), yTitle: back.querySelector('.ch-yt').value.trim(),
+      yMin: numOf('.ch-ymin'), yMax: numOf('.ch-ymax'), xMin: numOf('.ch-xmin'), xMax: numOf('.ch-xmax'),
+      bins: numOf('.ch-bins') > 0 ? Math.round(numOf('.ch-bins')) : undefined, legend: back.querySelector('.ch-legend').checked ? undefined : false });
     // (A map needs its outlines: loaded once, from the internet.)
     if (back.querySelector('.ch-type').value === 'map' && !b.map) blocks.setChartMap(b.id, b.mapScope || 'world').catch(e => alertDialog(t('No se pudo cargar el mapa:') + ' ' + (e.message || e)));
     close();

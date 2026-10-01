@@ -7,6 +7,8 @@ import { pdfRuntime } from '../runtime/pdf.js';
 import { tabRuntime } from '../runtime/tabs.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
 import { esc, jsData } from '../../core/text.js';
+import { opacityOf } from '../../core/model.js';
+import { wordartSize } from '../../render/textfit.js';
 import { morphPlan, morphSig } from '../../features/animation/morph.js';
 export { morphPlan, morphSig };                // (for tests and older callers)
 import { state } from '../../core/store.js';
@@ -32,7 +34,7 @@ import { sizeText } from '../../features/content/files.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle, slidePaths } from '../../features/document/captions.js';
 import { INK_CSS, inkJS } from '../runtime/ink.js';
 import { deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
-import { animTimeline, animEntries, EFFECT_KF, EFFECT_KF_CSS, isEntrance, customTransitionCSS, transitionName, isShapeTransition, pathKeyframesCSS, pathTurns, animsOf, animKey, offsetBefore } from '../../features/animation/transitions.js';
+import { animTimeline, animEntries, EFFECT_KF, EFFECT_KF_CSS, EMPHASIS_FX, isEntrance, customTransitionCSS, transitionName, isShapeTransition, pathKeyframesCSS, pathTurns, animsOf, animKey, offsetBefore } from '../../features/animation/transitions.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, levelVars } from '../../features/document/master.js';
 
 
@@ -45,7 +47,7 @@ const tfCSS = b => b.animation
   : `transform:${tf(b)};`;
 const box = b => `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;`
   + `height:${b.h}px;${tfCSS(b)}`
-  + (b.opacity != null && b.opacity < 100 ? `opacity:${b.opacity / 100};` : '')
+  + (opacityOf(b) < 1 ? `opacity:${+opacityOf(b).toFixed(3)};` : '')
   + (b.shadow ? `filter:${shadowCSS(b)};` : '')
   + animVars(b);
 // Timing (and motion path) of one of an object's animations (its first by
@@ -67,6 +69,13 @@ const pathKeyframes = deck => deck.slides.flatMap(s => s.blocks.flatMap(b => ani
   .map(([b, a, i]) => pathKeyframesCSS('rvP' + cssKey(animKey(b, i)), a, i ? 0 : b.rotation || 0, b.type !== 'model')).join('\n');
 const ownTransition = s => s.transition && transitionName(s.transition, s.transitionDir);
 const usedTransitions = deck => new Set([deck.defaultTransition, ...deck.slides.flatMap(s => [ownTransition(s), s.transitionOut])].filter(Boolean));
+// Emphasis that hides nothing (pulse, teeter, jump, color-pulse): seen before its click, played on it.
+function emphasisCSS(deck) {
+  const used = new Set(deck.slides.flatMap(s => s.blocks.flatMap(b => animsOf(b).map(a => a.effect))).filter(e => EMPHASIS_FX.includes(e)));
+  if (!used.size) return '';
+  const kf = EFFECT_KF_CSS.split('\n').filter(l => [...used].some(e => l.startsWith(`@keyframes ${EFFECT_KF[e]}{`)));
+  return [...used].map(e => `.reveal .slides section .fragment.${e}{opacity:1;visibility:inherit} .reveal .slides section .fragment.${e}.visible{animation:${EFFECT_KF[e]} var(--anim-dur,600ms) ease-in-out var(--anim-del,0ms) both}`).join(' ') + ' ' + kf.join(' ');
+}
 function customEffectCSS(deck) {
   const used = new Set();
   deck.slides.forEach(s => s.blocks.forEach(b => animsOf(b).forEach(a => { if (CUSTOM_KF[a.effect]) used.add(a.effect); })));
@@ -233,7 +242,7 @@ function blockHTMLRaw(b, slide) {
     const tight = b.morphId && !byText && !b.bg && !b.borderColor && !b.curve && !(b.columns > 1) && !b.vertical && !tabbed;
     const ta = { center: 'center', right: 'flex-end', justify: 'stretch' }[b.textAlign] || 'flex-start';
     const inner = html => (tight ? `<div class="rv-mt" data-id="${esc(b.morphId)}" style="display:inline-block;max-width:100%;vertical-align:top;${b.vAlign ? `align-self:${ta};` : ''}">${html}</div>` : html);
-    return `<div${tight ? a.replace(/ data-id="[^"]*"/, '') : a}${b.levels ? ' class="lv"' : ''}${wrapAttrs(wr)}${tabbed ? ` data-tabs="${esc(JSON.stringify(b.tabs || []))}"` : ''} style="${box(b)}${wrapVars(wr)}${tabbed ? 'white-space:pre-wrap;tab-size:96px;' : ''}font-size:${b.fontSize || 40}px;${b.color ? `color:${b.color};` : ''}${b.levels ? levelVars(b) : ''}`
+    return `<div${tight ? a.replace(/ data-id="[^"]*"/, '') : a}${b.levels ? ' class="lv"' : ''}${wrapAttrs(wr)}${tabbed ? ` data-tabs="${esc(JSON.stringify(b.tabs || []))}"` : ''} style="${box(b)}${wrapVars(wr)}${tabbed ? 'white-space:pre-wrap;tab-size:96px;' : ''}font-size:${wordartSize(b)}px;${b.color ? `color:${b.color};` : ''}${b.levels ? levelVars(b) : ''}`
       + `text-align:${b.textAlign || 'left'};${b.fontFamily ? `font-family:${b.fontFamily};` : ''}`
       + `${b.lineHeight ? `line-height:${b.lineHeight};` : ''}`
       + `${b.letterSpacing ? `letter-spacing:${b.letterSpacing}px;` : ''}`
@@ -304,7 +313,7 @@ function blockHTMLRaw(b, slide) {
     return `<div${a} class="math" data-latex="${esc(mathTeX(b))}" style="${box(b)}display:flex;align-items:center;${mathCSS(b)}"></div>`;
   if (b.type === 'diagram') {
     // "One by one": each item (its shapes and words) a click of its own, after the slide's other steps.
-    let inner = diagramHTML(b, { accents: currentPalette(state.deck).accents, fg: deckFg(state.deck), step: !!b.oneByOne });
+    let inner = diagramHTML(b, { accents: currentPalette(state.deck).accents, fg: deckFg(state.deck), back: slide?.background || currentPalette(state.deck).bg, step: !!b.oneByOne });
     if (b.oneByOne) {
       const base = b.animation && !b.animation.trigger ? b.animation.order : Math.max(0, ...(slide?.blocks || []).flatMap(x => animsOf(x)).map(x => +x.order || 0)) + 1;
       inner = inner.replace(/ data-dg="(-?\d+)"/g, (m, k) => (+k < 0 ? '' : ` class="fragment fade-in" data-fragment-index="${base + +k}"`));
@@ -462,7 +471,7 @@ function buildHTMLRaw(deck, { inApp = false, selfPaced = false } = {}) {
   const sn = deck.slideNumber || { show: false };
   const snPos = SLIDENUM_POS[sn.position] || SLIDENUM_POS.br;
   const hasCode = deck.slides.some(s => s.blocks.some(b => b.type === 'code'));
-  const hasMath = deck.slides.some(s => s.blocks.some(b => b.type === 'math'));
+  const hasMath = deck.slides.some(s => s.blocks.some(b => b.type === 'math')) || / class="math" data-latex=/.test(slides);   // (also one in the master)
   const hasInlineMath = deck.slides.some(s => s.blocks.some(b => b.type === 'text' && /\$[^$]/.test(b.html || '')));
   const hasZoomReturn = deck.slides.some(s => s.blocks.some(b => b.type === 'slideref' && b.returnBack));
   const katexNeeded = hasMath || hasInlineMath;
@@ -514,6 +523,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  ${tableCSS('.reveal ')}
  .reveal .stage.pass{pointer-events:none} .reveal .stage.pass>*{pointer-events:auto}
  .reveal .math .katex-display{margin:0}
+ model-viewer::part(default-progress-bar){display:none}
  .reveal .rv-code pre{box-shadow:none}
  .reveal .rv-code pre code{max-height:100%;height:100%;box-sizing:border-box;overflow:auto;scrollbar-width:thin;scrollbar-color:#6668 transparent}
  .reveal .rv-code.no-scroll pre code{overflow:hidden}
@@ -532,6 +542,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  ${WRAP_CSS}
  .reveal .slides section .fragment.spin360.visible{animation:rvTurn var(--anim-dur,600ms) ease-in-out var(--anim-del,0ms) both}
  @keyframes rvTurn{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+ ${emphasisCSS(deck)}
  .reveal .slides section .rv-step{pointer-events:none}.reveal .slides section .rv-step>*{pointer-events:auto}
  .reveal .slides section .fragment.rv-pathc{opacity:1;visibility:inherit}
  .reveal .slides section .fragment.rv-pathc.visible{animation:var(--pk) var(--anim-dur,600ms) ease-in-out var(--anim-del,0ms) both}
@@ -560,7 +571,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
    transition:${jsData(deck.defaultTransition)}, transitionSpeed:${jsData(deck.transitionSpeed)},
    ${revealOptions(deck, inApp)}${canvas ? " center:false, viewDistance:1000, mobileViewDistance:1000, backgroundTransition:'none'," : ''}
    plugins:[ RevealNotes${hasCode ? ', RevealHighlight' : ''}${rv(deck).zoom !== false ? ', RevealZoom' : ''}${rv(deck).search !== false ? ', RevealSearch' : ''} ] });
- ${hasMath ? 'window.addEventListener("load",function(){window.katex&&document.querySelectorAll(".math[data-latex]").forEach(function(el){try{katex.render(el.getAttribute("data-latex"),el,{throwOnError:false,displayMode:true});}catch(e){}});});' : ''}
+ ${hasMath ? 'window.addEventListener("load",function(){window.katex&&document.querySelectorAll(".math[data-latex]").forEach(function(el){try{katex.render(el.getAttribute("data-latex"),el,{throwOnError:false,displayMode:true,strict:"ignore"});}catch(e){el.textContent=el.getAttribute("data-latex");}});});' : ''}
  ${hasInlineMath ? 'window.addEventListener("load",function(){window.renderMathInElement&&renderMathInElement(document.body,{delimiters:[{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}],throwOnError:false});});' : ''}
  ${hasTrig ? TRIGGER_JS : ''}
  ${hasCam ? CAMERA_JS : ''}

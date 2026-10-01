@@ -16,6 +16,14 @@
    (the default solid blue hid it). No `color` override → text keeps its own. */
 .block .rich::selection,.block .rich *::selection{background:rgba(63,100,151,.30)}
 .block model-viewer{width:100%;height:100%}
+/* A poll or activity fills its box, as when presenting (its grid is 100 % of this). */
+.block .poll-blk{width:100%;height:100%;overflow:hidden}
+/* Loading a 3D model: a small ring in its middle (not model-viewer's bar along the top, which a bleed moves off the frame). */
+.block model-viewer::part(default-progress-bar){display:none}
+.block .mv-loading{position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;box-sizing:border-box;border-radius:50%;
+  border:3px solid rgba(128,128,128,.22);border-top-color:rgba(128,128,128,.75);animation:mv-spin 0.9s linear infinite;pointer-events:none}
+.block .mv-loading.done{display:none}
+@keyframes mv-spin{to{transform:rotate(360deg)}}
 .block img,.block video{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none}
 .block audio{width:100%;pointer-events:none}
 .block iframe{width:100%;height:100%;border:0;display:block;background:#fff}
@@ -39,6 +47,8 @@
 .block .math-blk{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:inherit;overflow:visible}
 /* KaTeX's display margin would push the equation off-centre and add a scrollbar. */
 .block .math-blk .katex-display{margin:0}
+/* A mistake in the LaTeX: its source, marked (the message on hover), not an empty box. */
+.block .math-blk.math-error{outline:2px dashed #c0392b;outline-offset:-2px;font-family:monospace;white-space:pre-wrap;overflow:hidden}
 .block.__conn{pointer-events:none}          /* only the line is clickable */
 .block .connector{width:100%;height:100%}
 .block.__conn.selected{border-color:transparent}

@@ -435,6 +435,8 @@ function readAnimations(doc, spidOf, blocks, size) {
     const start = { withEffect: 'withPrev', afterEffect: 'afterPrev' }[c.getAttribute('nodeType')] || 'click';
     let effect = 'fade-in', extra = {};
     if (cls === 'exit') effect = 'fade-out';
+    else if (cls === 'emph' && preset === 26) effect = 'pulse';         // PowerPoint's Pulse
+    else if (cls === 'emph' && preset === 32) effect = 'teeter';        // and Teeter
     else if (cls === 'emph' && (preset === 8 || all(c, 'p:animRot').length)) effect = 'spin360';
     else if (cls === 'emph') effect = +(all(c, 'p:by')[0]?.getAttribute('x') || 125000) >= 100000 ? 'grow' : 'shrink';
     else if (cls === 'path') {
@@ -700,6 +702,7 @@ export async function importPPTX(file) {
         vals: pts(kid(ser, 'c:val') || kid(ser, 'c:yVal')).map(v => +v || 0),
         color: fillOf(kid(ser, 'c:spPr'), theme),
         sizes: pts(kid(ser, 'c:bubbleSize')).map(v => +v || 0),
+        raw: pts(kid(ser, 'c:val') || kid(ser, 'c:yVal')),
       })));
       if (!series.length) return false;
       const first = series[0], labels = first.cats.length ? first.cats : first.vals.map((_, i) => String(i + 1));
@@ -719,6 +722,21 @@ export async function importPPTX(file) {
         const grouping = kid(bg, 'c:grouping')?.getAttribute('val'), dir = kid(bg, 'c:barDir')?.getAttribute('val');
         if (grouping === 'stacked') b.chartType = 'stacked'; else if (grouping === 'percentStacked') b.chartType = 'stacked100'; else if (dir === 'bar') b.chartType = 'hbar';
       }
+      // Stacked areas; a scatter's series each with its own x (the empty points left out).
+      const ag = groups.find(g => g.tagName === 'c:areaChart');
+      if (ag && first.kind === 'area' && kid(ag, 'c:grouping')?.getAttribute('val') === 'stacked') b.chartType = 'stackedArea';
+      if (first.kind === 'scatter') {
+        const own = x => x.raw.map((v, k) => [x.cats[k], v]).filter(([, v]) => v !== '' && v != null);
+        b.data = own(first).map(([l, v]) => ({ label: String(l ?? ''), value: +v || 0 }));
+        if (rest.length) b.series = rest.map((x, i) => ({ name: x.name, x: own(x).map(([l]) => +l || 0), values: own(x).map(([, v]) => +v || 0),
+          ...(x.color && x.color !== 'none' ? { color: x.color } : theme['accent' + (i + 2)] ? { color: theme['accent' + (i + 2)] } : {}) }));
+      }
+      // The value axis' ends, if set (b.yMin/b.yMax; a scatter's x axis: b.xMin/b.xMax).
+      const axes = all(plot, 'c:valAx'), endOf = (ax, tag) => { const v = kid(kid(ax, 'c:scaling'), tag)?.getAttribute('val'); return v != null && isFinite(+v) ? +v : null; };
+      const xy = first.kind === 'scatter' || first.kind === 'bubble', isX = ax => ['b', 't'].includes(kid(ax, 'c:axPos')?.getAttribute('val'));
+      const xAx = xy ? axes.find(isX) || axes[0] : null, vAx = xy ? axes.find(ax => ax !== xAx) : axes[0];
+      if (vAx && b.chartType !== 'stacked100') { if (endOf(vAx, 'c:min') != null) b.yMin = endOf(vAx, 'c:min'); if (endOf(vAx, 'c:max') != null) b.yMax = endOf(vAx, 'c:max'); }
+      if (xAx) { if (endOf(xAx, 'c:min') != null) b.xMin = endOf(xAx, 'c:min'); if (endOf(xAx, 'c:max') != null) b.xMax = endOf(xAx, 'c:max'); }
       const title = all(all(cd, 'c:title')[0], 'a:t').map(t => t.textContent).join('');
       if (title) b.alt = title;
       blocks.push(b);

@@ -11,8 +11,10 @@ import { alertUser } from '../../core/notify.js';
 import { t } from '../../i18n/index.js';
 import { deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
 import { plainText } from '../../core/text.js';
+import { opacityOf } from '../../core/model.js';
+import { wordartSize } from '../../render/textfit.js';
 import { shownRows } from '../../core/formulas.js';
-import { chartSVG, chartSeries, histogramBins, bubblePoints, iconSVG, inkSVG, timerSVG, shapeTextStyle } from '../../render/svg.js';
+import { chartSVG, chartSeries, histogramBins, bubblePoints, scatterSeries, pieColours, iconSVG, inkSVG, timerSVG, shapeTextStyle } from '../../render/svg.js';
 import { blockImage } from '../export/images.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, styleKind } from '../../features/document/master.js';
 import { PPTXGEN, JSZIP, loadScript } from '../../core/vendor.js';
@@ -134,10 +136,12 @@ async function naturalSizes(deck) {
 function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), link = null) {
   const pos = { x: IN(b.x), y: IN(b.y), w: IN(b.w), h: IN(b.h) }, hl = link ? { hyperlink: link } : {};   // (an object that is a link)
   if (b.rotation) pos.rotate = b.rotation;
+  // (Its opacity, as PowerPoint's transparency of the fill and the line, 0–100.)
+  const see = opacityOf(b) < 1 ? { transparency: Math.round((1 - opacityOf(b)) * 100) } : {};
   try {
     if (b.type === 'text') {
       const fam = (b.fontFamily || deckBodyFont() || '').split(',')[0].replace(/['"]/g, '').trim();
-      const base = { fontSize: Math.round((b.fontSize || 40) * 0.75), color: hex(b.color || deckFg()) || 'FFFFFF', align: b.textAlign || 'left',
+      const base = { fontSize: Math.round(wordartSize(b) * 0.75), color: hex(b.color || deckFg()) || 'FFFFFF', align: b.textAlign || 'left',
         ...(fam && { fontFace: fam }), ...(b.fontWeight === '700' && { bold: true }), ...(b.fontStyle === 'italic' && { italic: true }),
         ...(b.lineHeight && { lineSpacingMultiple: +b.lineHeight }) };
       const opts = { ...pos, valign: { middle: 'middle', bottom: 'bottom' }[b.vAlign] || 'top', margin: 4,
@@ -153,7 +157,7 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
       slide.addShape(pptx.ShapeType.line, { x: IN(Math.min(x1, x2)), y: IN(Math.min(y1, y2)), w: IN(Math.max(1, Math.abs(x2 - x1))), h: IN(Math.max(1, Math.abs(y2 - y1))),
         flipH: x2 < x1, flipV: y2 < y1, line: { color: hex(b.color) || '8A8A8A', width: 1.5, ...dashOf(b.dash), ...(b.arrow !== false && { endArrowType: 'triangle' }) } });
     } else if (raster.has(b.id)) {                            // icons, ink, equations, polls…
-      slide.addImage({ ...pos, ...hl, data: raster.get(b.id), ...(b.alt && { altText: b.alt }) });
+      slide.addImage({ ...pos, ...hl, ...see, data: raster.get(b.id), ...(b.alt && { altText: b.alt }) });
     } else if (b.type === 'video' && /^data:video\//.test(b.src || '')) {
       slide.addMedia({ ...pos, type: 'video', data: b.src.replace(/^data:/, '') });
     } else if (b.type === 'embed') {
@@ -161,7 +165,7 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
     } else if (b.type === 'diagram') {
       // A diagram: its own shapes and text boxes, native and editable in PowerPoint.
       const col = c => (c && c !== 'none' ? { color: hex(c) || '3F6497' } : { type: 'none' });
-      for (const p of diagramLayout(b, { accents: currentPalette(exportDeck).accents, fg: deckFg(exportDeck) })) {
+      for (const p of diagramLayout(b, { accents: currentPalette(exportDeck).accents, fg: deckFg(exportDeck), back: exportBack || currentPalette(exportDeck).bg })) {
         const fill = p.fill && p.fill !== 'none' ? { color: hex(p.fill) || '3F6497', ...(p.opacity != null && p.opacity < 1 && { transparency: Math.round((1 - p.opacity) * 100) }) } : { type: 'none' };
         const line = p.stroke && p.stroke !== 'none' ? { color: hex(p.stroke) || '888888', width: +(((p.sw || 2) * 0.75).toFixed(2)) } : { type: 'none' };
         if (p.type === 'text') {
@@ -184,26 +188,26 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
         Object.assign(pos, { x: IN(pf.frame.x), y: IN(pf.frame.y), w: IN(pf.frame.w), h: IN(pf.frame.h) });
         if (Object.values(pf.src).some(v => v > 0.0005)) picCrops.set(b.id, pf.src);
       }
-      slide.addImage({ ...pos, ...hl, data: b.src, ...(b.alt && !b.decorative && { altText: b.alt }), ...(b.flipH && { flipH: true }), ...(b.flipV && { flipV: true }) });
+      slide.addImage({ ...pos, ...hl, ...see, data: b.src, ...(b.alt && !b.decorative && { altText: b.alt }), ...(b.flipH && { flipH: true }), ...(b.flipV && { flipV: true }) });
     } else if (b.type === 'shape') {
       if (b.shape === 'custom' && b.rings?.length) {
         // Merged shape → custom geometry (points in inches inside the box).
-        const fill = b.fill && b.fill !== 'none' ? { color: hex(b.fill) || '3F6497' } : { type: 'none' };
+        const fill = b.fill && b.fill !== 'none' ? { color: hex(b.fill) || '3F6497', ...see } : { type: 'none' };
         const points = b.rings.flatMap(r => r.map(([u, v], i) => ({ x: IN(u / 100 * b.w), y: IN(v / 100 * b.h), ...(i === 0 && { moveTo: true }) }))
           .concat({ close: true }));
-        slide.addShape(pptx.ShapeType.custGeom, { ...pos, ...hl, points, fill, line: { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth || 1, ...dashOf(b.dash) } });
+        slide.addShape(pptx.ShapeType.custGeom, { ...pos, ...hl, points, fill, line: { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth || 1, ...dashOf(b.dash), ...see } });
       } else if (b.shape === 'line' || b.shape === 'arrow' || b.shape === 'doublearrow') {
-        slide.addShape(pptx.ShapeType.line, { ...pos, line: { color: hex(b.stroke) || '888888', width: b.strokeWidth || 2, ...dashOf(b.dash),
+        slide.addShape(pptx.ShapeType.line, { ...pos, line: { color: hex(b.stroke) || '888888', width: b.strokeWidth || 2, ...dashOf(b.dash), ...see,
           endArrowType: b.shape === 'line' ? 'none' : 'triangle', ...(b.shape === 'doublearrow' && { beginArrowType: 'triangle' }) } });
       } else if (b.shape === 'curve') {                    // the same curve, as a PowerPoint freeform (no fill)
         const P = (u, v) => ({ x: IN(u / 100 * b.w), y: IN(v / 100 * b.h) });
-        slide.addShape(pptx.ShapeType.custGeom, { ...pos, fill: { type: 'none' }, line: { color: hex(b.stroke) || '888888', width: b.strokeWidth || 2, ...dashOf(b.dash) },
+        slide.addShape(pptx.ShapeType.custGeom, { ...pos, fill: { type: 'none' }, line: { color: hex(b.stroke) || '888888', width: b.strokeWidth || 2, ...dashOf(b.dash), ...see },
           points: [{ ...P(3, 82), moveTo: true }, { ...P(97, 82), curve: { type: 'cubic', x1: P(28, -8).x, y1: P(28, -8).y, x2: P(72, -8).x, y2: P(72, -8).y } }] });
       } else {
         // (PptxGenJS knows the folded corner only misspelt, «folderCorner»: given by its real name, it writes it as it is.)
         const st = pptx.ShapeType[SHAPE_MAP[b.shape]] || (SHAPE_MAP[b.shape] === 'foldedCorner' ? 'foldedCorner' : pptx.ShapeType.rect);
-        const fill = b.fill && b.fill !== 'none' ? { color: hex(b.fill) || '3F6497' } : { type: 'none' };
-        const line = { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth || 1, ...dashOf(b.dash) };
+        const fill = b.fill && b.fill !== 'none' ? { color: hex(b.fill) || '3F6497', ...see } : { type: 'none' };
+        const line = { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth || 1, ...dashOf(b.dash), ...see };
         if (b.html && plainText(b.html).trim()) {          // text inside: one PowerPoint shape with its text
           const s2 = shapeTextStyle(b), fam = (s2.fontFamily || deckBodyFont() || '').split(',')[0].replace(/['"]/g, '').trim();
           const base = { fontSize: Math.round(s2.fontSize * 0.75), color: hex(s2.color) || hex(deckFg()) || 'FFFFFF', align: s2.textAlign,
@@ -232,19 +236,33 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
       // Stacked (and 100 %) and horizontal bars are PowerPoint bar charts with their grouping and
       // direction; a histogram, bars of its ranges already counted.
       const kind = b.chartType || 'bar', barish = ['stacked', 'stacked100', 'hbar', 'histogram'].includes(kind);
-      const type = barish ? 'bar' : { bar: 'bar', line: 'line', area: 'area', pie: 'pie', doughnut: 'doughnut', radar: 'radar', scatter: 'scatter' }[kind] || 'bar';
+      const type = barish ? 'bar' : { bar: 'bar', line: 'line', area: 'area', stackedArea: 'area', pie: 'pie', doughnut: 'doughnut', radar: 'radar', scatter: 'scatter' }[kind] || 'bar';
       const barOpts = { ...(kind === 'stacked' && { barGrouping: 'stacked' }), ...(kind === 'stacked100' && { barGrouping: 'percentStacked' }),
-        ...(kind === 'hbar' && { barDir: 'bar' }), ...(kind === 'histogram' && { barGapWidthPct: 5 }) };
-      const rows = kind === 'histogram' ? histogramBins((b.data || []).map(d => +d.value)) : b.data || [];
-      const data = type === 'scatter'
-        ? [{ name: 'X', values: rows.map((d, i) => (isFinite(parseFloat(d.label)) ? parseFloat(d.label) : i)) },
-           { name: 'Y', values: rows.map(d => +d.value || 0) }]
-        : null;
-      if (data) { slide.addChart(pptx.ChartType[type], data, { ...pos, showLegend: false }); return; }
+        ...(kind === 'hbar' && { barDir: 'bar' }), ...(kind === 'histogram' && { barGapWidthPct: 5 }), ...(kind === 'stackedArea' && { barGrouping: 'stacked' }) };
+      const rows = kind === 'histogram' ? histogramBins((b.data || []).map(d => +d.value), Math.round(+b.bins) || 0) : b.data || [];
+      // The numbers with thousands separators and the decimals they need (shown as 4.215 or 12,5 in Spanish).
+      const given = v => (v === '' || v == null || !isFinite(+v) ? null : +v);
+      const fmtCode = vals => { const d = Math.min(2, Math.max(0, ...vals.filter(v => v != null && isFinite(v)).map(v => (String(+(+v).toFixed(2)).split('.')[1] || '').length)));
+        return '#,##0' + (d ? '.' + '0'.repeat(d) : ''); };
+      // The axes of a scatter or bubble chart: titles, gridlines, ends.
+      const xyAxes = (xs, ys) => ({ valGridLine: { style: b.grid ? 'solid' : 'none', color: 'BFBFBF' }, catGridLine: { style: b.grid ? 'solid' : 'none', color: 'BFBFBF' },
+        ...(b.xTitle && { showCatAxisTitle: true, catAxisTitle: b.xTitle }), ...(b.yTitle && { showValAxisTitle: true, valAxisTitle: b.yTitle }),
+        ...(given(b.xMin) != null && { catAxisMinVal: given(b.xMin) }), ...(given(b.xMax) != null && { catAxisMaxVal: given(b.xMax) }),
+        ...(given(b.yMin) != null && { valAxisMinVal: given(b.yMin) }), ...(given(b.yMax) != null && { valAxisMaxVal: given(b.yMax) }),
+        valAxisLabelFormatCode: fmtCode([...xs, ...ys]) });   // (PowerPoint uses it for both axes here)
+      if (kind === 'scatter') {                               // (every series' points, without lines; each series its own x)
+        const S = scatterSeries(b), X = S.flatMap(s => s.pts.map(p => p.x));
+        let at = 0; const Ys = S.map(s => { const v = X.map(() => null); s.pts.forEach((p, i) => { v[at + i] = p.y; }); at += s.pts.length; return { s, v }; });
+        at = 0; const labs = S.map(s => { const l = X.map(() => ''); s.pts.forEach((p, i) => { l[at + i] = p.name ?? String(+p.y.toFixed(2)).replace('.', ','); }); at += s.pts.length; return l; });
+        slide.addChart(pptx.ChartType.scatter, [{ name: 'X', values: X }, ...Ys.map(({ s, v }, k) => ({ name: s.name, values: v, ...(b.dataLabels && { labels: [labs[k]] }) }))],
+          { ...pos, showLegend: S.length > 1, legendPos: 't', lineSize: 0, lineDataSymbol: 'circle', lineDataSymbolSize: 7, chartColors: S.map(s => hex(s.color) || '3F6497'),
+            ...(b.dataLabels && { showLabel: true, dataLabelFormatScatter: 'custom' }), ...xyAxes(X, S.flatMap(s => s.pts.map(p => p.y))) });
+        return;
+      }
       if (kind === 'bubble') {                                // (PowerPoint's: x, then y with the sizes)
         const p = bubblePoints(b);
         slide.addChart(pptx.ChartType.bubble, [{ name: 'X', values: p.map(q => q.x) }, { name: b.seriesName || 'Y', values: p.map(q => q.y), sizes: p.map(q => q.s) }],
-          { ...pos, showLegend: false, chartColors: [hex(b.color) || '3F6497'] });
+          { ...pos, showLegend: false, chartColors: [hex(b.color) || '3F6497'], ...xyAxes(p.map(q => q.x), p.map(q => q.y)) });
         return;
       }
       // Bar/line/area (and pie, radar) with every series; a combo chart becomes
@@ -254,16 +272,23 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
       const toData = list => list.map(x => ({ name: x.name, labels, values: x.values }));
       const colors = ser.map(x => hex(x.color) || '3F6497');
       // Gridlines, data labels and axis titles, as PowerPoint's own chart options.
+      // (In horizontal bars the categories' axis is the vertical one: its title is b.yTitle. The
+      // value axis' ends, b.yMin/b.yMax, if given.)
+      const catT = kind === 'hbar' ? b.yTitle : b.xTitle, valT = kind === 'hbar' ? b.xTitle : b.yTitle, nums = ser.flatMap(x => x.values);
       const extra = { ...(b.dataLabels && { showValue: true }), valGridLine: { style: b.grid ? 'solid' : 'none', color: 'BFBFBF' },
-        ...(b.xTitle && { showCatAxisTitle: true, catAxisTitle: b.xTitle }), ...(b.yTitle && { showValAxisTitle: true, valAxisTitle: b.yTitle }) };
+        ...(catT && { showCatAxisTitle: true, catAxisTitle: catT }), ...(valT && { showValAxisTitle: true, valAxisTitle: valT }),
+        ...(kind !== 'stacked100' && given(b.yMin) != null && { valAxisMinVal: given(b.yMin) }), ...(kind !== 'stacked100' && given(b.yMax) != null && { valAxisMaxVal: given(b.yMax) }),
+        ...(kind !== 'stacked100' && { dataLabelFormatCode: fmtCode(nums), valAxisLabelFormatCode: fmtCode(nums) }) };
       if (type === 'bar' && b.combo && ser.length > 1) {
         slide.addChart([
           { type: pptx.ChartType.bar, data: toData(ser.filter(x => x.type === 'bar')), options: { chartColors: colors.slice(0, 1), barGrouping: 'clustered' } },
           { type: pptx.ChartType.line, data: toData(ser.filter(x => x.type !== 'bar')), options: { chartColors: colors.slice(1) } },
         ], { ...pos, showLegend: true, legendPos: 't', ...extra });
       } else {
-        slide.addChart(pptx.ChartType[type], toData(ser), { ...pos, ...barOpts, showLegend: ser.length > 1, legendPos: 't', ...(['pie', 'doughnut'].includes(type) ? { ...(b.dataLabels && { showValue: true }) } : extra),
-          ...(['pie', 'doughnut'].includes(type) ? {} : { chartColors: colors }) });
+        // (A pie or doughnut: each slice its colour, and the legend at the side as in the editor.)
+        const pie = ['pie', 'doughnut'].includes(type), legend = b.legend !== false && rows.some(d => d.label);
+        slide.addChart(pptx.ChartType[type], toData(ser), { ...pos, ...barOpts, showLegend: pie ? legend : ser.length > 1, legendPos: pie ? 'r' : 't',
+          ...(pie ? { ...(b.dataLabels && { showValue: true }), chartColors: pieColours({ ...b, data: rows }).map(c => hex(c) || '3F6497') } : { ...extra, chartColors: colors }) });
       }
     }
     // 3D models: their picture, if they have one (PowerPoint's own 3D can't be written here); audio: skipped.
@@ -283,7 +308,7 @@ const phName = p => 'rv-ph-' + p.id;
 function masterObject(b) {
   const pos = { x: IN(b.x), y: IN(b.y), w: IN(b.w), h: IN(b.h) };
   if (b.rotation || b.flipH || b.flipV) return null;
-  if (b.type === 'shape' && b.shape === 'rect') return { rect: { ...pos, fill: { color: hex(b.fill) || 'FFFFFF', ...(b.fill === 'none' && { transparency: 100 }) },
+  if (b.type === 'shape' && b.shape === 'rect') return { rect: { ...pos, fill: { color: hex(b.fill) || 'FFFFFF', ...(opacityOf(b) < 1 && { transparency: Math.round((1 - opacityOf(b)) * 100) }), ...(b.fill === 'none' && { transparency: 100 }) },
     ...(b.strokeWidth && hex(b.stroke) && { line: { color: hex(b.stroke), width: b.strokeWidth * 0.75, ...dashOf(b.dash) } }) } };
   if (b.type === 'shape' && b.shape === 'line') return { line: { ...pos, line: { color: hex(b.stroke) || '888888', width: (b.strokeWidth || 2) * 0.75, ...dashOf(b.dash) } } };
   if (b.type === 'image' && /^data:image\/(png|jpe?g|gif)/.test(b.src || '') && !b.crop && !b.adj) return { image: { ...pos, data: b.src } };
@@ -335,6 +360,7 @@ function addPlaceholderText(slide, s, b, p) {
 }
 
 let exportDeck = null;                                  // (the deck being exported: its theme colours)
+let exportBack = '';                                    // (and the slide's background, for the words of a diagram)
 export async function buildPptx(deck = state.deck) {
   exportDeck = deck;
   await Promise.all([loadScript(PPTXGEN, 'PptxGenJS'), naturalSizes(deck)]);
@@ -358,6 +384,7 @@ export async function buildPptx(deck = state.deck) {
   for (const s of deck.slides) {
     const m = s.layoutId && masters.get(s.layoutId);
     const slide = m ? pptx.addSlide({ masterName: m.name }) : pptx.addSlide();
+    exportBack = s.background || '';
     if (s.hidden) slide.hidden = true;                     // kept, hidden (like PowerPoint)
     const bg = hex(s.background);
     if (bg) slide.background = { color: bg };
@@ -452,6 +479,22 @@ function effectXML(a, spid, ids, deck, delay, first) {
     const k = a.effect === 'grow' ? 125000 : 80000;
     cls = 'emph'; preset = 6;
     body = `<p:animScale><p:cBhvr><p:cTn id="${id()}" dur="${dur}" fill="hold"/>${tgt}</p:cBhvr><p:by x="${k}" y="${k}"/></p:animScale>`;
+  } else if (a.effect === 'pulse' || a.effect === 'color-pulse') {
+    // PowerPoint's "Pulse": a little bigger and back (a colour pulse, the same: PowerPoint can't brighten any object).
+    const k = a.effect === 'pulse' ? 115000 : 108000;
+    cls = 'emph'; preset = 26;
+    body = `<p:animScale><p:cBhvr><p:cTn id="${id()}" dur="${Math.max(1, Math.round(dur / 2))}" autoRev="1" fill="hold"/>${tgt}</p:cBhvr><p:by x="${k}" y="${k}"/></p:animScale>`;
+  } else if (a.effect === 'teeter') {
+    // PowerPoint's "Teeter": turns a little one way and the other, and back.
+    cls = 'emph'; preset = 32;
+    const turns = [7, -13, 10, -6, 2], q = Math.max(1, Math.round(dur / turns.length));
+    body = turns.map((deg, k) => `<p:animRot by="${deg * 60000}"><p:cBhvr><p:cTn id="${id()}" dur="${q}" fill="hold"><p:stCondLst><p:cond delay="${k * q}"/></p:stCondLst></p:cTn>${tgt}`
+      + `<p:attrNameLst><p:attrName>r</p:attrName></p:attrNameLst></p:cBhvr></p:animRot>`).join('');
+  } else if (a.effect === 'jump') {
+    // A jump on the spot: up and down again, as a motion path that ends where it began.
+    const up = +(40 / deck.size.h).toFixed(4), up2 = +(12 / deck.size.h).toFixed(4);
+    cls = 'path'; preset = 0;
+    body = `<p:animMotion origin="layout" path="M 0 0 L 0 -${up} L 0 0 L 0 -${up2} L 0 0 E" pathEditMode="relative"><p:cBhvr><p:cTn id="${id()}" dur="${dur}" fill="hold"/>${tgt}<p:attrNameLst><p:attrName>ppt_x</p:attrName><p:attrName>ppt_y</p:attrName></p:attrNameLst></p:cBhvr></p:animMotion>`;
   } else if (!isEntrance(a.effect)) {
     cls = 'exit'; preset = 10;
     body = `<p:animEffect transition="out" filter="fade"><p:cBhvr><p:cTn id="${id()}" dur="${dur}"/>${tgt}</p:cBhvr></p:animEffect>`
