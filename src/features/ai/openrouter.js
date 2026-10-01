@@ -29,7 +29,7 @@ export const setCloudAi = c => { cloud = c; };
 export const usingCloudAi = () => !!(cloud && cloud.active());
 export const aiConnected = () => !!read().key || usingCloudAi();
 // A failure from the account's AI, as the same errors the rest of the app knows.
-const cloudError = e => new Error(e.status === 402 ? 'NO_CREDIT' : e.status === 401 ? 'NO_KEY' : e.status === 429 ? 'TOO_MANY' : e.status === 503 ? 'AI_PAUSED' : 'OpenRouter ' + (e.status || '') + ' ' + (e.message || ''));
+const cloudError = e => new Error(e.status === 402 ? 'NO_CREDIT' : e.status === 401 ? 'NO_KEY' : e.status === 429 ? 'TOO_MANY' : e.status === 503 ? 'AI_PAUSED' : 'OpenRouter ' + (e.status || '') + ' ' + (e.message || '') + (e.data?.detail ? ': ' + e.data.detail : ''));
 export const setAiKey = key => write({ ...read(), key: (key || '').trim() || undefined });
 export const setAiModel = model => write({ ...read(), model: (model || '').trim() || DEFAULT_MODEL });
 export const acceptPrivacy = () => write({ ...read(), accepted: true });

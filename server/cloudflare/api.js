@@ -569,6 +569,13 @@ async function guard(env, s, A, holdCredits, estimateUsd, json) {
   if (!h.ok) return { stop: json({ error: 'no credits', credits: h.credits }, 402) };
   return { hold: h.id, budget };
 }
+// Why the AI provider said no (its status and message: no key, prompt or answer), in the
+// Worker's logs and for the app to show — so a failure can be told apart (no credit, no model…).
+function aiFailure(what, r, data) {
+  const status = r?.status || 0, detail = String(data?.error?.message || data?.error || '').slice(0, 300);
+  console.log(JSON.stringify({ ai: what, status, detail }));
+  return { error: 'ai failed', status, ...(detail && { detail }) };
+}
 async function aiChat(env, s, A, body, json) {
   const messages = Array.isArray(body.messages) ? body.messages : null;
   if (!messages || !messages.length || messages.length > 60 || JSON.stringify(messages).length > 1.5e6) return json({ error: 'bad request' }, 400);
@@ -586,7 +593,7 @@ async function aiChat(env, s, A, body, json) {
       body: JSON.stringify({ model, messages, max_tokens: maxTokens, usage: { include: true }, provider: { data_collection: 'deny' }, ...(body.json && { response_format: { type: 'json_object' } }) }) });
     data = await r.json().catch(() => null);
   } catch { r = null; }
-  if (!r || !r.ok || !data) { await call(A, 'settle', { id: g.hold, credits: 0 }); return json({ error: 'ai failed' }, 502); }
+  if (!r || !r.ok || !data) { await call(A, 'settle', { id: g.hold, credits: 0 }); return json(aiFailure('chat', r, data), 502); }
   const u = data.usage || {}, usd = +u.cost > 0 ? +u.cost : ((+u.prompt_tokens || inTok) * pin + (+u.completion_tokens || maxTokens) * pout) / 1e6;
   await call(g.budget, 'spend', { usd });
   const st = await call(A, 'settle', { id: g.hold, credits: credits(usd, s), reason: 'ai' });
@@ -603,7 +610,7 @@ async function aiImage(env, s, A, body, json) {
       body: JSON.stringify({ model: s.imageModel, prompt, aspect_ratio: aspect, n: 1 }) });
     data = await r.json().catch(() => null);
   } catch { r = null; }
-  if (!r || !r.ok || !data?.data?.[0]?.b64_json) { await call(A, 'settle', { id: g.hold, credits: 0 }); return json({ error: 'ai failed' }, 502); }
+  if (!r || !r.ok || !data?.data?.[0]?.b64_json) { await call(A, 'settle', { id: g.hold, credits: 0 }); return json(aiFailure('image', r, data), 502); }
   await call(g.budget, 'spend', { usd: +data.usage?.cost || s.imageCredits * s.creditUsd });
   const st = await call(A, 'settle', { id: g.hold, credits: s.imageCredits, reason: 'image' });
   return json({ data: [{ b64_json: data.data[0].b64_json, media_type: data.data[0].media_type || 'image/png' }], charged: st.used });
