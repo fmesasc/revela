@@ -2354,4 +2354,9 @@ export default {
   "Modelo creado con IA": "Modelo creado con IA",
   "Describe el modelo que quieres.": "Describe o modelo que queres.",
   "Como mucho 3 fotos de referencia.": "Como moito 3 fotos de referencia.",
+  "Estilo de lo nuevo": "Estilo do novo",
+  "Como el resto": "Coma o resto",
+  "Más visual": "Máis visual",
+  "Con animación": "Con animación",
+  "Sorpréndeme": "Sorpréndeme",
 };

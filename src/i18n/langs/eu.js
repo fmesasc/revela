@@ -2354,4 +2354,9 @@ export default {
   "Modelo creado con IA": "AArekin sortutako eredua",
   "Describe el modelo que quieres.": "Deskribatu nahi duzun eredua.",
   "Como mucho 3 fotos de referencia.": "Gehienez 3 erreferentziako argazki.",
+  "Estilo de lo nuevo": "Berrien estiloa",
+  "Como el resto": "Gainerakoak bezala",
+  "Más visual": "Bisualagoa",
+  "Con animación": "Animazioarekin",
+  "Sorpréndeme": "Harritu nazazu",
 };

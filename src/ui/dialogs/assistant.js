@@ -6,18 +6,19 @@
 
 import { state, commit, undo, snapshot } from '../../core/store.js';
 import * as agent from '../../features/ai/agent.js';
+import { STYLES } from '../../features/ai/fromspec.js';
 import { PALETTES, FONT_PAIRS, deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled } from '../../features/document/master.js';
 import { blockPreview } from '../shell/preview.js';
 import { ready, aiFailed } from './ai.js';
 import { t } from '../../i18n/index.js';
 
-// Remembered: permissions, scope kind, "apply without asking".
+// Remembered: permissions, scope kind, "apply without asking", the style of new slides.
 const KEY = 'revela.assistant.v1';
 const prefs = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } })();
 const opts = { auto: !!prefs.auto, scope: ['all', 'current', 'selection', 'range'].includes(prefs.scope) ? prefs.scope : 'all',
-  perms: { ...agent.DEFAULT_PERMS, ...(prefs.perms || {}) }, from: 0, to: 0 };
-const keep = () => { try { localStorage.setItem(KEY, JSON.stringify({ auto: opts.auto, scope: opts.scope, perms: opts.perms })); } catch {} };
+  perms: { ...agent.DEFAULT_PERMS, ...(prefs.perms || {}) }, style: STYLES.includes(prefs.style) ? prefs.style : 'same', from: 0, to: 0 };
+const keep = () => { try { localStorage.setItem(KEY, JSON.stringify({ auto: opts.auto, scope: opts.scope, perms: opts.perms, style: opts.style })); } catch {} };
 
 const chatLog = [];                  // [{ role, content, shown }] for the model and for display
 let pending = null;                  // the proposal on screen: { ops, base, dropped, problems, message, cost, steps, done }
@@ -29,6 +30,7 @@ export function toggleAssistant(on = !state.ui.showAssistant) { commit(() => { s
 
 const HINTS = ['Añade una diapositiva de conclusiones', 'Acorta todos los títulos', 'Escribe notas para todas las diapositivas', 'Convierte la diapositiva actual en una línea de tiempo',
   'Revisa que todos los textos quepan y no se solapen'];
+const STYLE_LABEL = { same: 'Como el resto', visual: 'Más visual', minimal: 'Minimalista', animated: 'Con animación', surprise: 'Sorpréndeme' };
 const PERM_LABEL = { delete: 'Borrar diapositivas', design: 'Cambiar diseño, colores y tipografía', objects: 'Añadir o quitar objetos', animation: 'Animaciones y transiciones' };
 
 export function renderAssistant() {
@@ -42,6 +44,8 @@ export function renderAssistant() {
         <option value="all">${t('Toda la presentación')}</option><option value="current">${t('Diapositiva actual')}</option>
         <option value="selection">${t('Objetos seleccionados')}</option><option value="range">${t('De la diapositiva…')}</option></select></label>
       <div class="as-range" hidden><input type="number" class="as-from" min="1" aria-label="${t('Desde')}"> – <input type="number" class="as-to" min="1" aria-label="${t('Hasta')}"></div>
+      <label class="as-row"><span>${t('Estilo de lo nuevo')}</span><select class="as-style">
+        ${STYLES.map(k => `<option value="${k}">${t(STYLE_LABEL[k])}</option>`).join('')}</select></label>
       <details class="as-perms"><summary>${t('Permisos')} <span class="as-psum"></span></summary>
         ${agent.PERMS.map(p => `<label class="as-chk"><input type="checkbox" data-perm="${p}"${opts.perms[p] ? ' checked' : ''}> ${t(PERM_LABEL[p])}</label>`).join('')}
         <label class="as-chk as-auto"><input type="checkbox" class="as-autochk"${opts.auto ? ' checked' : ''}> ${t('Aplicar sin preguntar')}</label>
@@ -60,6 +64,8 @@ export function renderAssistant() {
   showCost(panel);
   q('.as-scope').value = opts.scope;
   q('.as-scope').addEventListener('change', e => { opts.scope = e.target.value; keep(); syncScope(panel, true); });
+  q('.as-style').value = opts.style;
+  q('.as-style').addEventListener('change', e => { opts.style = e.target.value; keep(); });
   for (const inp of [q('.as-from'), q('.as-to')]) inp.addEventListener('change', () => { opts.from = +q('.as-from').value || 1; opts.to = +q('.as-to').value || opts.from; });
   panel.querySelectorAll('[data-perm]').forEach(c => c.addEventListener('change', () => { opts.perms[c.dataset.perm] = c.checked; keep(); permSummary(panel); }));
   q('.as-autochk').addEventListener('change', e => { opts.auto = e.target.checked; keep(); });
@@ -115,7 +121,7 @@ async function ask(panel, text) {
   cur()?.querySelector('.as-send')?.setAttribute('disabled', '');
   const before = { ...spent };
   try {
-    const res = await agent.runAgent(request, { history: chatLog.map(({ role, content }) => ({ role, content })), scope, perms: { ...opts.perms }, signal: ctrl.signal,
+    const res = await agent.runAgent(request, { history: chatLog.map(({ role, content }) => ({ role, content })), scope, perms: { ...opts.perms }, style: opts.style, signal: ctrl.signal,
       onStep: s => { job.el.querySelector('.as-step').textContent = STEP[s.kind]?.(s) || t('Pensando…'); },
       onCost: c => { spent.credits = before.credits + c.credits; spent.usd = before.usd + c.usd; showCost(cur()); } });
     chatLog.push({ role: 'user', content: request, shown: text },
@@ -288,4 +294,4 @@ const slideName = s => agent.textOf((s.blocks.find(b => b.ph === 'title' && b.ty
 // (For tests and the API: the proposal on screen.)
 export const assistantState = () => ({ pending, busy: !!job, opts: { ...opts, perms: { ...opts.perms } }, spent: { ...spent }, log: chatLog.length });
 export const resetAssistant = () => { pending = null; chatLog.length = 0; spent.usd = spent.credits = 0; revising = false; job?.ctrl.abort();
-  Object.assign(opts, { auto: false, scope: 'all', perms: { ...agent.DEFAULT_PERMS } }); };
+  Object.assign(opts, { auto: false, scope: 'all', style: 'same', perms: { ...agent.DEFAULT_PERMS } }); };

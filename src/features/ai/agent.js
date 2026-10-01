@@ -14,7 +14,8 @@
 import { state, commit, snapshot } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 import { chat, lang, parseJSON, esc, plain } from './openrouter.js';
-import { layoutSlide, slideFromSpec, SPEC_DOC, KINDS } from './authoring.js';
+import { slideFromSpec, rebuildSlide, SPEC_DOC, KINDS } from './authoring.js';
+import { STYLES } from './fromspec.js';
 import { PALETTES, FONT_PAIRS, swapPalette, swapFontPair, currentPalette, deckFg, deckBodyFont } from '../design/palettes.js';
 import { designIdeas, applyIdeaTo } from '../design/designer.js';
 import { EFFECT_KF } from '../animation/transitions.js';
@@ -195,8 +196,9 @@ const no = (code, detail) => { throw new Rejected(code, detail); };
 
 // Checks the model's operations against the deck (as it is now), the scope and the
 // permissions. → { ops (clean, with the slide's id in `sid`), dropped: [{ op, code, detail }] }
-// ctx: { scope, perms, images (urls search_images gave) }
-export function validateOps(raw, { scope = { kind: 'all' }, perms = DEFAULT_PERMS, images = new Set(), deck = state.deck, ui = state.ui } = {}) {
+// ctx: { scope, perms, images (urls search_images gave), style (of the slides it makes: STYLES) }
+export function validateOps(raw, { scope = { kind: 'all' }, perms = DEFAULT_PERMS, images = new Set(), style = 'same', deck = state.deck, ui = state.ui } = {}) {
+  const look = STYLES.includes(style) && style !== 'same' ? { style } : {};
   const sc = scope.idx ? scope : scopeOf(scope, deck, ui), { w: W, h: H } = deck.size;
   const ops = [], dropped = [], list = Array.isArray(raw) ? raw.slice(0, 200) : [];
   for (const o of list) {
@@ -248,9 +250,9 @@ export function validateOps(raw, { scope = { kind: 'all' }, perms = DEFAULT_PERM
         const after = +o.after | 0; if (after < 0 || after > deck.slides.length) no('slide', String(o.after));
         const ref = after ? deck.slides[after - 1] : null;
         if (ref) inScope(ref); else if (!sc.all) no('scope', 'after 0');
-        return { op: 'add_slide', after, afterId: ref?.id || null, spec: { ...o.spec, kind: KINDS.includes(o.spec.kind) ? o.spec.kind : 'bullets' }, newId: uid() };
+        return { op: 'add_slide', after, afterId: ref?.id || null, spec: { ...o.spec, kind: KINDS.includes(o.spec.kind) ? o.spec.kind : 'bullets' }, newId: uid(), ...look };
       }
-      case 'replace_slide': if (!o.spec || typeof o.spec !== 'object') no('value', 'spec'); return { ...base, spec: { ...o.spec, kind: KINDS.includes(o.spec.kind) ? o.spec.kind : 'bullets' } };
+      case 'replace_slide': if (!o.spec || typeof o.spec !== 'object') no('value', 'spec'); return { ...base, spec: { ...o.spec, kind: KINDS.includes(o.spec.kind) ? o.spec.kind : 'bullets' }, ...look };
       // ("all": every slide, also the ones this list adds; with a narrower scope, the scope's slides.)
       case 'set_background': if (!HEX6.test(o.color || '')) no('value', 'color');
         return s ? { ...base, color: o.color } : sc.all ? { op: o.op, all: true, color: o.color } : sc.idx.map(i => ({ op: 'set_background', sid: deck.slides[i].id, slide: i + 1, color: o.color }));
@@ -338,15 +340,12 @@ export function applyTo(deck, ops) {
       case 'add_slide': {
         const prev = lastAfter.get(o.afterId || ''), ref = o.afterId ? byId(o.afterId) : null;
         const at = prev && slides.includes(prev) ? slides.indexOf(prev) + 1 : ref ? slides.indexOf(ref) + 1 : o.afterId ? Math.min(slides.length, o.after) : 0;
-        const ns = slideFromSpec(o.spec, ref?.background || currentPalette(deck).bg, deck);
+        // (Like the slides around it; a style's random choices seeded by the new slide's id, so a preview and what is applied match.)
+        const ns = slideFromSpec(o.spec, ref?.background || currentPalette(deck).bg, deck, { at, style: o.style, seed: o.newId });
         ns.id = o.newId; ns.sectionId = ref?.sectionId || null;
         slides.splice(at, 0, ns); lastAfter.set(o.afterId || '', ns); break;
       }
-      case 'replace_slide': {
-        const keep = s.blocks.filter(x => ['image', 'model', 'video', 'embed', 'camera'].includes(x.type));
-        s.blocks = [...layoutSlide(o.spec, deck.size.w, deck.size.h, currentPalette(deck)), ...keep];
-        if (o.spec.notes) s.notes = String(o.spec.notes); break;
-      }
+      case 'replace_slide': rebuildSlide(s, o.spec, deck, { style: o.style, seed: s.id + '|' + JSON.stringify(o.spec).length }); break;
       case 'set_background': (o.all ? slides : [s]).forEach(x => { x.background = o.color; }); break;
       case 'set_transition': (o.all ? slides : [s]).forEach(x => { x.transition = o.transition; }); break;
       case 'apply_palette': if (!swapPalette(o.name, deck)) continue; break;
@@ -488,7 +487,15 @@ export function checkOps(ops, deck = state.deck) {
 // ---- The agent loop -----------------------------------------------------------------
 const PERM_TEXT = { delete: 'delete slides', design: 'change layout, positions, sizes, colours and fonts (set_props, set_layout, set_background, apply_palette, set_fonts)',
   objects: 'add or remove objects (add_object, delete_object, replace_slide)', animation: 'change animations and transitions (set_animation, set_transition)' };
-function systemPrompt({ sc, perms, deck, maxSteps, images }) {
+// The style the user picked for new slides, as told to the model (the slides are built in that style too: features/ai/fromspec.js).
+const STYLE_TEXT = {
+  same: 'New and remade slides (add_slide, replace_slide) take the deck\'s look by themselves — its layouts, fonts, colours, background and decorations: give only their content.',
+  visual: 'Style for new and remade slides: MORE VISUAL. Prefer the kinds "stats" (big numbers), "timeline", "chart" (only with real data) and "quote" over "bullets"; when you use bullets, at most 4 short ones. Give every slide an "icon" that fits it. Their layout, colours and fonts are applied by themselves.',
+  minimal: 'Style for new and remade slides: MINIMAL. One idea per slide, short phrases, at most 3 bullets per slide (prefer fewer), plain kinds ("title", "section", "quote", "bullets", "stats" with 2-3 numbers); no icons. Spacing and type size are applied by themselves.',
+  animated: 'Style for new and remade slides: WITH ANIMATION. Write their content as usual: entrance animations one after another and a transition are added to them by themselves (do not add set_animation or set_transition for those slides).',
+  surprise: 'Style for new and remade slides: SURPRISE ME. Vary the kinds boldly ("stats", "timeline", "quote", "two_columns", "chart" with real data…) and give each an "icon"; a layout and an animation are chosen for them by themselves, with the deck\'s colours and fonts.',
+};
+function systemPrompt({ sc, perms, deck, maxSteps, images, style = 'same' }) {
   const allowed = PERMS.filter(p => perms[p]), denied = PERMS.filter(p => !perms[p]);
   return `You are the assistant inside the Revela presentation editor. You PROPOSE changes as operations; the user reviews them and decides which to apply. Write "message" (and nothing else for the user) in ${lang()}, short and plain.
 The slides are ${deck.size.w}×${deck.size.h} px; boxes are [x, y, w, h] from the top-left corner.
@@ -501,6 +508,7 @@ Answer with ONE JSON object each time, either a tool call:
 or the final answer, which ends your turn:
 {"message":"…","ops":[…],"done":true}
 You have at most ${maxSteps} answers in all. When you move, resize or add objects, or change text sizes, use "check" first and fix what it reports. A question gets an answer in "message" and no ops. Never invent facts or figures. Keep the deck's style (its colours and fonts) unless asked.
+${STYLE_TEXT[style] || STYLE_TEXT.same}
 ${OPS_DOC()}
 ${SPEC_DOC}`;
 }
@@ -521,11 +529,13 @@ export const AGENT_MODEL = 'google/gemini-2.5-flash';
 
 // Run it. → { message, ops (clean), dropped, problems, cost: { usd, credits, calls }, steps, raw }
 // onStep({ kind: 'think'|'look'|'check'|'search', slide?, step }), onCost(cost); signal: stops (Error 'STOPPED').
-export async function runAgent(request, { history = [], scope = { kind: 'all' }, perms = DEFAULT_PERMS, maxSteps = 6, maxCredits = 60, maxUsd = 0.12,
+// style: how the slides it adds or remakes look (STYLES: 'same' | 'visual' | 'minimal' | 'animated' | 'surprise').
+export async function runAgent(request, { history = [], scope = { kind: 'all' }, perms = DEFAULT_PERMS, style = 'same', maxSteps = 6, maxCredits = 60, maxUsd = 0.12,
   onStep = () => {}, onCost = () => {}, signal = null, deck = state.deck, ui = state.ui } = {}) {
   const sc = scopeOf(scope, deck, ui), images = new Set(), canSearch = perms.objects && consented('openverse');
-  const cost = { usd: 0, credits: 0, calls: 0 }, ctx = { scope: sc, perms, images, deck, ui };
-  const msgs = [{ role: 'system', content: systemPrompt({ sc, perms, deck, maxSteps, images: canSearch }) },
+  if (!STYLES.includes(style)) style = 'same';
+  const cost = { usd: 0, credits: 0, calls: 0 }, ctx = { scope: sc, perms, images, style, deck, ui };
+  const msgs = [{ role: 'system', content: systemPrompt({ sc, perms, deck, maxSteps, images: canSearch, style }) },
     ...history.slice(-6).map(({ role, content }) => ({ role, content: String(content).slice(0, 12000) })),
     { role: 'user', content: `Deck:\n${JSON.stringify(deckOutline(deck, sc))}\n\nCurrent slide: ${(ui.slideIndex || 0) + 1}\n\nRequest: ${request}` }];
   let final = null, lastChecked = null, steps = 0, asked = false;

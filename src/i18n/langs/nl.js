@@ -2354,4 +2354,9 @@ export default {
   "Modelo creado con IA": "Model gemaakt met AI",
   "Describe el modelo que quieres.": "Beschrijf het model dat je wilt.",
   "Como mucho 3 fotos de referencia.": "Hoogstens 3 referentiefoto’s.",
+  "Estilo de lo nuevo": "Stijl van het nieuwe",
+  "Como el resto": "Zoals de rest",
+  "Más visual": "Visueler",
+  "Con animación": "Met animatie",
+  "Sorpréndeme": "Verras me",
 };

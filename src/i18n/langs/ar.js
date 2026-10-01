@@ -2354,4 +2354,9 @@ export default {
   "Modelo creado con IA": "نموذج أُنشئ بالذكاء الاصطناعي",
   "Describe el modelo que quieres.": "صِف النموذج الذي تريده.",
   "Como mucho 3 fotos de referencia.": "3 صور مرجعية كحد أقصى.",
+  "Estilo de lo nuevo": "نمط الجديد",
+  "Como el resto": "مثل البقية",
+  "Más visual": "أكثر بصرية",
+  "Con animación": "مع حركة",
+  "Sorpréndeme": "فاجئني",
 };

@@ -11,6 +11,8 @@ import { uid } from '../../core/model.js';
 import { chat, lang, parseJSON, esc, plain, generateImage } from './openrouter.js';
 import { currentPalette } from '../design/palettes.js';
 import { PDFJS } from '../../core/vendor.js';
+import { styledSlide, hasLayouts, pictureBox } from './fromspec.js';
+import { ICON_NAMES } from '../../render/svg.js';
 
 // ---- Slide kinds → objects ------------------------------------------------------
 export const KINDS = ['title', 'section', 'bullets', 'two_columns', 'quote', 'stats', 'timeline', 'chart', 'table', 'image', 'closing'];
@@ -26,6 +28,7 @@ export const SPEC_DOC = `Slide kinds and their fields:
 - "table": title, header [..], rows [[..]] (max 6 rows, max 5 columns)
 - "image": title, bullets (2-4), image_prompt (a detailed description for an image generator)
 - "closing": title, subtitle
+Any slide may have "icon": one icon name that fits it (${ICON_NAMES.filter((_, i) => i % 3 === 0).slice(0, 45).join(', ')}, …).
 Every slide also has "notes": 2-4 sentences the presenter would say. Only use real data you are given or well-known facts; never invent statistics — if unsure, use bullets instead of stats/chart.`;
 
 const T = (x, y, w, h, fontSize, html, extra = {}) => ({ id: uid(), type: 'text', x, y, w, h, fontSize, html, rotation: 0, animation: null, ...extra });
@@ -116,10 +119,24 @@ export function layoutSlide(spec, W = 1280, H = 720, pal = currentPalette()) {
   }
   return b.map(x => (x.color ? (({ color, ...r }) => ({ ...r, html: `<span style="color:${color}">${r.html}</span>` }))(x) : x));
 }
-export const slideFromSpec = (spec, bg = currentPalette().bg, deck = state.deck) => ({
+// A slide from a spec. In a deck with layouts it looks like the rest (features/ai/fromspec.js):
+// opts { at: the index it will have, style, seed }; otherwise the objects above on `bg`.
+export const slideFromSpec = (spec, bg = currentPalette().bg, deck = state.deck, opts = {}) => (hasLayouts(deck) ? styledSlide(spec, deck, opts) : {
   id: uid(), sectionId: null, background: bg, transition: null, hidden: false, autoSlide: 0,
   notes: str(spec.notes), blocks: layoutSlide(spec, deck.size.w, deck.size.h),
 });
+// The same slide made again from a spec (its pictures, 3D models, videos stay).
+// opts: { style, seed }
+export function rebuildSlide(s, spec, deck = state.deck, opts = {}) {
+  const keep = s.blocks.filter(b => ['image', 'model', 'video', 'embed', 'camera'].includes(b.type));
+  if (hasLayouts(deck)) {
+    const ns = styledSlide(spec, deck, { ...opts, at: deck.slides.indexOf(s), self: s });
+    Object.assign(s, { layoutId: ns.layoutId, background: ns.background, blocks: [...ns.blocks, ...keep] });
+    if (opts.style && opts.style !== 'same' && ns.transition) s.transition = ns.transition;
+    if (ns.hideMaster) s.hideMaster = true; else delete s.hideMaster;
+  } else s.blocks = [...layoutSlide(spec, deck.size.w, deck.size.h, currentPalette(deck)), ...keep];
+  if (spec.notes) s.notes = str(spec.notes);
+}
 
 // ---- Whole decks -----------------------------------------------------------------
 // opts: { topic, source (document text), count, audience, tone, language, images, palette }
@@ -139,7 +156,7 @@ export async function createDeck(opts = {}) {
 }
 // Insert generated specs after the current slide (images are generated after).
 export async function insertSpecs(specs, { images = false, onProgress } = {}) {
-  const made = specs.map(sp => slideFromSpec(sp));
+  const at0 = state.ui.slideIndex + 1, made = specs.map(sp => slideFromSpec(sp, undefined, state.deck, { at: at0 }));
   commit(() => {
     const at = state.ui.slideIndex + 1, sec = currentSlide()?.sectionId || null;
     made.forEach(s => (s.sectionId = sec));
@@ -154,8 +171,11 @@ export async function insertSpecs(specs, { images = false, onProgress } = {}) {
       state.ui.slideIndex = idx;
       try {
         const id = await generateImage(str(sp.image_prompt), '4:3');
-        const b = currentSlide().blocks.find(x => x.id === id), { w: W, h: H } = state.deck.size;
-        if (b) commit(() => Object.assign(b, { x: Math.round(W * 0.52), y: 170, w: Math.round(W * 0.42), h: Math.round(W * 0.42 * 3 / 4) }), { history: false });
+        const b = currentSlide().blocks.find(x => x.id === id), { w: W } = state.deck.size, box = pictureBox(slide);
+        // (In the picture's place when the slide has one: as big as fits, 4:3.)
+        const at = box ? (() => { const w = Math.min(box.w, box.h * 4 / 3), h = w * 3 / 4; return { x: Math.round(box.x + (box.w - w) / 2), y: Math.round(box.y + (box.h - h) / 2), w: Math.round(w), h: Math.round(h) }; })()
+          : { x: Math.round(W * 0.52), y: 170, w: Math.round(W * 0.42), h: Math.round(W * 0.42 * 3 / 4) };
+        if (b) commit(() => { Object.assign(b, at); slide.blocks = slide.blocks.filter(x => !(x.type === 'placeholder' && x.ph === 'picture')); }, { history: false });
       } catch (e) { if (e.message === 'NO_CREDIT' || e.message === 'BAD_KEY') throw e; }
       onProgress?.((k + 1) / withImg.length);
     }
@@ -189,12 +209,7 @@ export async function improveSlide(slide = currentSlide()) {
     { role: 'user', content: `Current slide:\n${slideText(slide)}\n\nNotes: ${slide.notes || ''}` },
   ], { json: true, maxTokens: 2000 });
   const spec = parseJSON(out); if (!spec || !spec.kind) throw new Error('EMPTY');
-  const keep = slide.blocks.filter(b => ['image', 'model', 'video', 'embed', 'camera'].includes(b.type));
-  commit(() => {
-    slide.blocks = [...layoutSlide(spec, state.deck.size.w, state.deck.size.h), ...keep];
-    if (spec.notes) slide.notes = str(spec.notes);
-    state.ui.selection = null;
-  });
+  commit(() => { rebuildSlide(slide, spec, state.deck); state.ui.selection = null; });
   return spec.kind;
 }
 
@@ -255,7 +270,7 @@ export async function addAgenda() {
     { role: 'user', content: titles.join('\n') },
   ], { json: true, maxTokens: 800 });
   const spec = parseJSON(out);
-  commit(() => { state.deck.slides.splice(1, 0, slideFromSpec({ ...spec, kind: 'bullets' })); state.ui.slideIndex = 1; });
+  commit(() => { state.deck.slides.splice(1, 0, slideFromSpec({ ...spec, kind: 'bullets' }, undefined, state.deck, { at: 1 })); state.ui.slideIndex = 1; });
 }
 export async function addQuiz(n = 3) {
   const text = state.deck.slides.filter(s => !s.hidden).map(slideText).join('\n---\n').slice(0, 40000);

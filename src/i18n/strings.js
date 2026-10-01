@@ -2373,5 +2373,10 @@ export const ROWS = [
   ['Modelo creado con IA', 'Model created with AI', 'Modèle créé avec l’IA', 'Mit KI erstelltes Modell', 'Modello creato con l’IA', 'Modelo criado com IA', 'Model creat amb IA'],
   ['Describe el modelo que quieres.', 'Describe the model you want.', 'Décrivez le modèle que vous voulez.', 'Beschreiben Sie das gewünschte Modell.', 'Descrivi il modello che vuoi.', 'Descreve o modelo que queres.', 'Descriu el model que vols.'],
   ['Como mucho 3 fotos de referencia.', 'At most 3 reference photos.', '3 photos de référence au maximum.', 'Höchstens 3 Referenzfotos.', 'Al massimo 3 foto di riferimento.', 'No máximo 3 fotos de referência.', 'Com a màxim 3 fotos de referència.'],
+  ['Estilo de lo nuevo', 'Style of new slides', 'Style des nouveautés', 'Stil des Neuen', 'Stile delle novità', 'Estilo do novo', 'Estil del que és nou'],
+  ['Como el resto', 'Like the rest', 'Comme le reste', 'Wie der Rest', 'Come il resto', 'Como o resto', 'Com la resta'],
+  ['Más visual', 'More visual', 'Plus visuel', 'Visueller', 'Più visivo', 'Mais visual', 'Més visual'],
+  ['Con animación', 'Animated', 'Animé', 'Mit Animation', 'Con animazione', 'Com animação', 'Amb animació'],
+  ['Sorpréndeme', 'Surprise me', 'Surprends-moi', 'Überrasch mich', 'Sorprendimi', 'Surpreende-me', 'Sorprèn-me'],
 ];
 // Additional languages (partial; anything missing falls back to Spanish).

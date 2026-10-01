@@ -522,6 +522,120 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     }
   });
 
+  // New slides in a deck made from a template: its layouts, master styles, background, decorations and transition.
+  const fromTemplate = async key => { const d = await R.examples.loadExample(key); R.store.replaceDeck(d); R.slides.goToSlide(0); return R.state.deck; };
+  const addOp = (spec, after, style = 'same') => R.aiAgent.validateOps([{ op: 'add_slide', after, spec }], { perms: ALL, style }).ops;
+  const OWN = ['fontSize', 'fontFamily', 'color'];
+  await test('asistente: una diapositiva añadida a una plantilla hereda su estilo (diseño, patrón, fondo, decoraciones, transición)', async () => {
+    const deck = await fromTemplate('data_sales_regions'), AG = R.aiAgent, { w: W, h: H } = deck.size;
+    // La 3 (Solo el título) lleva un brillo, una banda abajo y transición propias; las demás no.
+    const ref = deck.slides[2]; eq(ref.layoutId, 'titleOnly', 'la referencia usa «Solo el título»');
+    R.store.commit(() => { ref.background = '#f6f8fa'; ref.transition = 'push';
+      ref.blocks.unshift({ id: 'brillo', type: 'shape', shape: 'ellipse', x: 800, y: -200, w: 700, h: 700, fill: '#156082', fill2: '#f6f8fa', gradType: 'radial', opacity: 40, stroke: '#156082', strokeWidth: 0, rotation: 0, animation: null },
+        { id: 'banda', type: 'shape', shape: 'rect', x: 0, y: H - 40, w: W, h: 40, fill: '#156082', stroke: '#156082', strokeWidth: 0, rotation: 0, animation: { effect: 'fade-in', order: 1 } }); });
+    const ops = addOp({ kind: 'stats', title: 'Conclusiones', stats: [{ value: '18 M€', label: 'facturación' }, { value: '+12 %', label: 'crecimiento' }, { value: '3', label: 'regiones' }] }, 3);
+    eq(ops.length, 1, 'operación válida'); AG.applyOps(ops);
+    const ns = R.state.deck.slides[3], ids = new Set(ref.blocks.map(b => b.id));
+    eq(ns.layoutId, 'titleOnly', 'usa el diseño del patrón para cifras');
+    const phs = ns.blocks.filter(b => b.ph);
+    assert(phs.length && phs.every(b => b.lp && R.state.deck.layouts.find(l => l.id === 'titleOnly').blocks.some(p => p.id === b.lp)), 'marcadores enlazados al diseño (lp)');
+    assert(phs.every(b => OWN.every(k => b[k] == null)), 'los marcadores no fijan tamaño, tipo de letra ni color: ' + JSON.stringify(phs.map(b => OWN.map(k => b[k]))));
+    assert(/Conclusiones/.test(phs[0].html), 'título en su marcador');
+    eq(ns.background, '#f6f8fa', 'fondo de la de referencia'); eq(ns.transition, 'push', 'y su transición');
+    const glow = ns.blocks.find(b => b.gradType === 'radial'), band = ns.blocks.find(b => b.type === 'shape' && b.y === H - 40 && b.w === W);
+    assert(glow && band, 'copia el brillo y la banda'); assert(!ids.has(glow.id) && !ids.has(band.id), 'con ids nuevos');
+    assert(glow.decorative && !band.animation, 'como decoración, sin animación');
+    assert(!ns.blocks.some(b => b.type === 'chart'), 'no copia el contenido de la referencia');
+    assert(ns.blocks.indexOf(glow) < ns.blocks.indexOf(phs[0]), 'las decoraciones, detrás');
+    const values = ns.blocks.filter(b => b.type === 'text' && !b.ph && /<b>/.test(b.html));
+    eq(values.length, 3, 'tres cifras'); assert(values.every(v => v.fontFamily && /Montserrat/.test(v.fontFamily)), 'cifras con la tipografía de títulos del patrón');
+    const body = R.state.deck.layouts.find(l => l.id === 'titleOnly').blocks[0];
+    assert(values.every(v => v.y > body.y + body.h && v.y + v.h <= H - 40 && v.x >= body.x - 1 && v.x + v.w <= body.x + body.w + 1), 'dentro del área libre bajo el título y sobre la banda');
+    // Viñetas → «Título y contenido»; portada → «Portada»; sin diseños: como antes.
+    AG.applyOps(addOp({ kind: 'bullets', title: 'Resumen', bullets: ['Uno', 'Dos'] }, 1));
+    eq(R.state.deck.slides[1].layoutId, 'titleContent', 'viñetas en «Título y contenido»');
+    assert(/<li>Uno<\/li>/.test(R.state.deck.slides[1].blocks.find(b => b.ph === 'body').html), 'viñetas en el cuerpo');
+    AG.applyOps(addOp({ kind: 'closing', title: 'Gracias', subtitle: 'Preguntas' }, R.state.deck.slides.length));
+    eq(R.state.deck.slides.at(-1).layoutId, 'title', 'cierre con el diseño de portada');
+    const old = R.model.emptyDeck(); R.store.replaceDeck(old); R.state.deck.layouts = [];
+    AG.applyOps(addOp({ kind: 'bullets', title: 'Sin diseños', bullets: ['a'] }, 1));
+    const plainSlide = R.state.deck.slides[1]; assert(!plainSlide.layoutId && plainSlide.blocks[0].fontSize === 44, 'sin diseños, como antes');
+  });
+
+  await test('asistente: estilos de lo nuevo (visual, minimalista, con animación, sorpréndeme)', async () => {
+    const AG = R.aiAgent, spec = { kind: 'bullets', title: 'Conclusiones', icon: 'rocket', bullets: ['Una idea', 'Otra idea', 'La última'] };
+    // Más visual: idea del diseñador (no la plana) e icono del conjunto.
+    let deck = await fromTemplate('product_watch');
+    AG.applyOps(addOp(spec, 4, 'visual'));
+    let ns = R.state.deck.slides[4], title = ns.blocks.find(b => b.ph === 'title'), lay = R.state.deck.layouts.find(l => l.id === ns.layoutId).blocks.find(b => b.ph === 'title');
+    const icon = ns.blocks.find(b => b.type === 'icon'); assert(icon && icon.icon === 'rocket', 'icono del spec');
+    assert(title.x !== lay.x || title.w !== lay.w, 'otra disposición del diseñador');
+    assert(ns.blocks.filter(b => b.ph).every(b => OWN.every(k => b[k] == null)), 'sigue heredando del patrón');
+    AG.applyOps(addOp({ kind: 'stats', title: 'Datos clave', stats: [{ value: '14', label: 'días' }, { value: '38 g', label: 'peso' }] }, 4, 'visual'));
+    assert(R.state.deck.slides[4].blocks.some(b => b.type === 'icon' && b.icon), 'cifras: icono junto al título');
+    // Minimalista: más aire, cuerpo algo mayor (escala relativa) y sin decoración añadida.
+    deck = await fromTemplate('product_watch');
+    AG.applyOps(addOp(spec, 4, 'minimal'));
+    ns = R.state.deck.slides[4]; const body = ns.blocks.find(b => b.ph === 'body'), lb = R.state.deck.layouts.find(l => l.id === ns.layoutId).blocks.find(b => b.ph === 'body');
+    assert(body.x > lb.x && body.w < lb.w, 'márgenes mayores'); assert(body.fit > 1 && body.fontSize == null, 'cuerpo mayor con un factor, sin tamaño propio: ' + body.fit);
+    assert(!ns.blocks.some(b => b.type === 'icon'), 'sin icono');
+    AG.applyOps(addOp({ kind: 'stats', title: 'Cifras', stats: [{ value: '1', label: 'a' }, { value: '2', label: 'b' }] }, 4, 'minimal'));
+    assert(!R.state.deck.slides[4].blocks.some(b => b.type === 'shape' && !b.decorative), 'cifras sin tarjetas');
+    // Con animación: entradas encadenadas (la primera también arranca sola) y una transición.
+    deck = await fromTemplate('product_watch');
+    AG.applyOps(addOp({ kind: 'timeline', title: 'Pasos', steps: [{ label: '1', text: 'a' }, { label: '2', text: 'b' }, { label: '3', text: 'c' }] }, 4, 'animated'));
+    ns = R.state.deck.slides[4];
+    const anims = ns.blocks.filter(b => b.animation).map(b => b.animation).sort((a, b) => a.seq - b.seq);
+    assert(anims.length >= 7, 'título, etiquetas y textos animados: ' + anims.length);
+    assert(anims.every(a => ['fade-up', 'zoom-in'].includes(a.effect) && ['afterPrev', 'withPrev'].includes(a.start)), 'aparecer o acercar, tras la anterior');
+    eq(anims[0].start, 'afterPrev', 'la primera arranca sola'); assert(anims.every(a => a.order === 1), 'sin clics');
+    assert(anims.slice(1).some(a => a.delay > 0 && a.delay <= 300), 'con retardos cortos');
+    assert(ns.blocks.filter(b => b.decorative).every(b => !b.animation), 'las decoraciones, quietas');
+    eq(ns.transition, 'fade', 'la transición más usada de la presentación');
+    // Sorpréndeme: al azar con semilla por diapositiva: la vista previa y lo aplicado coinciden.
+    deck = await fromTemplate('creative_swiss_film');
+    const ops = addOp({ ...spec, icon: undefined }, 3, 'surprise'); eq(ops[0].style, 'surprise', 'la operación lleva el estilo');
+    const sig = s => JSON.stringify(s.blocks.map(b => [b.type, b.ph || '', b.x, b.y, b.w, b.h, b.icon || '', b.animation?.effect || '', b.animation?.start || '']).concat([[s.layoutId, s.transition]]));
+    const p1 = AG.previewDeck(ops).slides[3], p2 = AG.previewDeck(ops).slides[3];
+    eq(sig(p1), sig(p2), 'misma vista previa dos veces');
+    AG.applyOps(ops); eq(sig(R.state.deck.slides[3]), sig(p1), 'lo aplicado es lo que se vio');
+    assert(R.state.deck.slides[3].blocks.some(b => b.animation), 'con animación');
+    assert(R.state.deck.slides[3].blocks.filter(b => b.ph).every(b => OWN.every(k => b[k] == null)), 'con las tipografías y colores del patrón');
+    // Rehacer una diapositiva: en su diseño y con su fondo.
+    const s5 = R.state.deck.slides[5], bg5 = s5.background;
+    AG.applyOps(AG.validateOps([{ op: 'replace_slide', slide: 6, spec: { kind: 'bullets', title: 'Rehecha', bullets: ['x'] } }], { perms: ALL }).ops);
+    eq(s5.layoutId, 'titleContent', 'rehecha con su diseño'); eq(s5.background, bg5, 'conserva el fondo');
+  });
+
+  await test('asistente: el estilo de lo nuevo en el panel (recordado, enviado al modelo y en las miniaturas)', async () => {
+    await fromTemplate('product_watch'); R.slides.goToSlide(3);
+    const W = frame.contentWindow, real = W.fetch, calls = [], P = await W.eval("import('/src/ui/dialogs/assistant.js')");
+    P.resetAssistant(); W.localStorage.removeItem('revela.assistant.v1');
+    R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    W.fetch = agentMock(W, [{ message: 'Añado las conclusiones', done: true, ops: [{ op: 'add_slide', after: 4, spec: { kind: 'bullets', title: 'Conclusiones', icon: 'rocket', bullets: ['a', 'b'] } }] }], calls);
+    const panelOf = () => D.getElementById('assistant-panel');
+    try {
+      D.querySelector('[data-action="ai-assistant"]').click(); await sleep(20);
+      const sel = panelOf().querySelector('.as-style'); assert(sel, 'selector «Estilo de lo nuevo»');
+      eq(sel.value, 'same', 'por defecto, como el resto'); eq(sel.options.length, 5, 'cinco estilos');
+      sel.value = 'visual'; sel.dispatchEvent(new W.Event('change'));
+      eq(JSON.parse(W.localStorage.getItem('revela.assistant.v1')).style, 'visual', 'recordado');
+      panelOf().querySelector('textarea').value = 'Añade conclusiones'; panelOf().querySelector('.as-send').click();
+      for (let i = 0; i < 100 && (!P.assistantState().pending || P.assistantState().busy); i++) await sleep(20);
+      assert(/MORE VISUAL/.test(calls[0].messages[0].content), 'se explica al modelo');
+      const pend = P.assistantState().pending; eq(pend.ops[0].style, 'visual', 'la propuesta lleva el estilo');
+      const th = panelOf().querySelectorAll('.as-prop .as-th'), after = th[th.length - 1];
+      const inner = after.firstElementChild, ns = R.aiAgent.previewDeck(pend.ops, pend.base).slides[4];
+      const iconBox = ns.blocks.find(b => b.type === 'icon');
+      assert(iconBox && [...inner.children].some(el => el.style.left === iconBox.x + 'px' && el.style.top === iconBox.y + 'px'), 'la miniatura de después ya lleva el icono');
+      panelOf().querySelector('.as-apply').click(); await sleep(20);
+      assert(R.state.deck.slides[4].blocks.some(b => b.type === 'icon' && b.icon === 'rocket'), 'aplicado con el estilo');
+    } finally {
+      W.fetch = real; R.ai.disconnectAi(); W.localStorage.removeItem('revela.assistant.v1'); P.resetAssistant();
+      if (panelOf()) D.querySelector('[data-action="ai-assistant"]').click();
+    }
+  });
+
   await test('imágenes libres (Openverse) e iconos en línea (Iconify)', async () => {
     reset(); const W = frame.contentWindow, S = R.stock, real = W.fetch, calls = [];
     const gif = Uint8Array.from(atob('R0lGODlhAQABAAAAACw='), c => c.charCodeAt(0));
