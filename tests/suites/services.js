@@ -441,6 +441,25 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.fetch = real; R.ai.disconnectAi(); }
   });
 
+  await test('asistente: entiende respuestas con otro formato y pide repetir una vacía; usa el modelo del agente', async () => {
+    reset(); const W = frame.contentWindow, real = W.fetch, calls = [], AG = R.aiAgent;
+    R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    const spec = { kind: 'bullets', title: 'Conclusiones', bullets: ['Una', 'Dos'] };
+    try {
+      W.fetch = agentMock(W, [{ reply: 'Añado las conclusiones', changes: [{ op: 'add_slide', after: 1, spec }] }], calls);
+      let res = await AG.runAgent('Añade una diapositiva de conclusiones', { perms: ALL });
+      eq(res.ops.length, 1, '«changes» y «reply» valen como ops y message'); eq(res.message, 'Añado las conclusiones', 'el mensaje');
+      eq(calls[0].model, AG.AGENT_MODEL, 'el modelo del agente si no se eligió otro');
+      calls.length = 0;
+      W.fetch = agentMock(W, [{ final: { message: 'Hecho', operations: [{ op: 'add_slide', after: 1, spec }] } }], calls);
+      res = await AG.runAgent('Lo mismo', { perms: ALL }); eq(res.ops.length, 1, 'propuesta anidada en «final»');
+      calls.length = 0;
+      W.fetch = agentMock(W, [{ ok: true }, { message: 'Ahora sí', ops: [{ op: 'add_slide', after: 1, spec }], done: true }], calls);
+      res = await AG.runAgent('Otra vez', { perms: ALL });
+      eq(calls.length, 2, 'una respuesta vacía se pide de nuevo'); eq(res.ops.length, 1, 'y la segunda vale');
+    } finally { W.fetch = real; R.ai.disconnectAi(); }
+  });
+
   await test('asistente (panel): propone con miniaturas, aplica solo lo marcado, descarta, detiene y aplica sin preguntar', async () => {
     reset(); R.slides.addSlide(); R.slides.goToSlide(0);
     const W = frame.contentWindow, real = W.fetch, calls = [], P = await W.eval("import('/src/ui/dialogs/assistant.js')");

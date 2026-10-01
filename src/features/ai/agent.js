@@ -504,7 +504,20 @@ You have at most ${maxSteps} answers in all. When you move, resize or add object
 ${OPS_DOC()}
 ${SPEC_DOC}`;
 }
-const outOf = r => { const t = r.tool || (r.done || Array.isArray(r.ops) || r.message != null ? 'propose' : null); return { tool: t, args: t === 'propose' && !r.tool ? r : r.args || {} }; };
+// The model's answer: a tool call, or the proposal. (Smaller models wander from the format: the
+// usual variants are read too — operations/changes/actions for ops, reply/answer for message, a
+// proposal nested under final/result/propose, or the tool's arguments next to it.)
+const OPS_KEYS = ['ops', 'operations', 'changes', 'actions', 'edits'], MSG_KEYS = ['message', 'reply', 'answer', 'response', 'text'];
+const pick = (o, keys) => { for (const k of keys) if (o && o[k] != null) return o[k]; return undefined; };
+const outOf = r => {
+  if (r && typeof r === 'object' && !r.tool) for (const k of ['final', 'result', 'propose', 'proposal']) if (r[k] && typeof r[k] === 'object' && !Array.isArray(r[k])) { r = { ...r[k], done: true }; break; }
+  const ops = pick(r, OPS_KEYS), message = pick(r, MSG_KEYS);
+  const t = r.tool || r.name || (r.done || Array.isArray(ops) || message != null ? 'propose' : null);
+  const args = r.args || r.arguments || r.parameters || (r.tool || r.name ? Object.fromEntries(Object.entries(r).filter(([k]) => !['tool', 'name', 'thoughts'].includes(k))) : {});
+  return { tool: t, args: t === 'propose' && !r.tool && !r.name ? { message, ops: Array.isArray(ops) ? ops : [] } : { ...args, ops: pick(args, OPS_KEYS) ?? args.ops, message: pick(args, MSG_KEYS) ?? args.message } };
+};
+// The model the agent works best with (tool use, long JSON), if the person didn't choose one.
+export const AGENT_MODEL = 'google/gemini-2.5-flash';
 
 // Run it. → { message, ops (clean), dropped, problems, cost: { usd, credits, calls }, steps, raw }
 // onStep({ kind: 'think'|'look'|'check'|'search', slide?, step }), onCost(cost); signal: stops (Error 'STOPPED').
@@ -515,7 +528,7 @@ export async function runAgent(request, { history = [], scope = { kind: 'all' },
   const msgs = [{ role: 'system', content: systemPrompt({ sc, perms, deck, maxSteps, images: canSearch }) },
     ...history.slice(-6).map(({ role, content }) => ({ role, content: String(content).slice(0, 12000) })),
     { role: 'user', content: `Deck:\n${JSON.stringify(deckOutline(deck, sc))}\n\nCurrent slide: ${(ui.slideIndex || 0) + 1}\n\nRequest: ${request}` }];
-  let final = null, lastChecked = null, steps = 0;
+  let final = null, lastChecked = null, steps = 0, asked = false;
   const stopped = () => { if (signal?.aborted) throw new Error('STOPPED'); };
   while (!final) {
     stopped();
@@ -523,7 +536,7 @@ export async function runAgent(request, { history = [], scope = { kind: 'all' },
     const last = steps >= maxSteps || cost.credits >= maxCredits || cost.usd >= maxUsd;
     if (last && steps > 1) msgs.push({ role: 'user', content: 'That was your last tool call: answer now with the final {"message","ops","done":true}.' });
     onStep({ kind: 'think', step: steps });
-    const out = await chat(msgs, { json: true, maxTokens: 4000, signal,
+    const out = await chat(msgs, { json: true, maxTokens: 4000, signal, prefer: AGENT_MODEL,
       onUsage: u => { cost.usd += u.usd || 0; cost.credits += u.credits || 0; } });
     cost.calls++; onCost({ ...cost });
     stopped();
@@ -534,7 +547,12 @@ export async function runAgent(request, { history = [], scope = { kind: 'all' },
       msgs.push({ role: 'user', content: 'Answer with ONE JSON object only, as described.' }); continue;
     }
     const { tool, args } = outOf(res);
-    if (!tool || tool === 'propose') { final = { message: args.message ?? res.message, ops: args.ops ?? res.ops ?? [] }; break; }
+    if (!tool || tool === 'propose') {
+      const ops = Array.isArray(args.ops) ? args.ops : [], message = args.message ?? '';
+      // (Nothing at all — no changes and no words — is a misunderstood format: once, ask again.)
+      if (!ops.length && !String(message).trim() && !asked && !last) { asked = true; msgs.push({ role: 'user', content: 'Your answer had neither "ops" nor "message". Answer with ONE JSON object: a tool call, or {"message":"…","ops":[…],"done":true}.' }); continue; }
+      final = { message, ops }; break;
+    }
     if (last) { final = { message: res.thoughts || res.message || '', ops: lastChecked || [] }; break; }
     let result;
     if (tool === 'get_slide') {

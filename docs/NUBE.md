@@ -349,12 +349,12 @@ que el servidor los rechaza.
    `customer.subscription.updated` (avisos de cancelación) y
    `customer.subscription.deleted`.
 7. **Correos.** Una de dos:
-   - **Cloudflare Email Service** (preferido): Compute ▸ Email Service ▸ Email Sending ▸
+   - **Cloudflare Email Service** (requiere el plan de pago de Workers): Compute ▸ Email Service ▸ Email Sending ▸
      *Onboard Domain* con `revelaslides.com`; Cloudflare añade los registros DNS (MX y SPF en
      el subdominio `cf-bounce`, DKIM, y DMARC en `_dmarc.revelaslides.com`). Cuando esté
      verificado, descomentar en `wrangler.toml` el bloque `[[send_email]]` con
      `name = "EMAIL"` y desplegar.
-   - **Resend:** verificar el dominio en resend.com (sus registros SPF y DKIM en el DNS de
+   - **Resend** (elegido: gratis hasta 3000 correos al mes): verificar el dominio en resend.com (sus registros SPF y DKIM en el DNS de
      Cloudflare) y `npx wrangler secret put RESEND_KEY`.
 
    En los dos casos: `openssl rand -base64 32 | npx wrangler secret put MAIL_SECRET` (firma
