@@ -21,6 +21,32 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     R.api.saveMacro('prueba', 'return 1'); assert(R.api.macroList().some(m => m.name === 'prueba'), 'macro guardada'); R.api.deleteMacro('prueba');
   });
 
+  await test('complementos de ejemplo (examples/complementos): agenda, palabras y numerar', async () => {
+    reset(); const W = frame.contentWindow, base = W.location.origin + '/examples/complementos/';
+    for (const f of ['agenda', 'palabras', 'numerar']) await R.api.addPlugin(base + f + '.js');
+    const btn = id => D.querySelector(`#plugin-buttons [data-plugin="${id}"]`);
+    assert(btn('agenda') && btn('palabras') && btn('numerar'), 'los tres botones en la cinta');
+    // A deck with a cover and two titled slides.
+    const A = W.Revela; A.slides.add(); A.slides.add();
+    A.deck().slides.forEach((s, i) => { const t = s.blocks.find(b => b.ph === 'title'); if (t) A.update(t.id, { html: ['Portada', 'Objetivos', 'Resultados'][i] }); });
+    R.store.commit(() => { R.state.deck.slides[1].notes = 'Uno dos tres cuatro cinco'; });
+    btn('agenda').click(); await sleep(30);
+    const ag = A.deck().slides[1], text = ag.blocks.map(b => b.html || '').join(' ');
+    assert(/Agenda/.test(text) && /<li>Objetivos<\/li><li>Resultados<\/li>/.test(text), 'agenda tras la portada con los títulos: ' + text);
+    eq(A.slides.count(), 4, 'una diapositiva más');
+    btn('numerar').click(); await sleep(30);
+    const nums = A.deck().slides.map(s => s.blocks.find(b => b.numerar)?.html || '');
+    eq(nums.join(','), ',2 / 4,3 / 4,4 / 4', 'numeradas menos la portada');
+    A.slides.goTo(3); A.slides.add(); btn('numerar').click(); await sleep(30);
+    eq(A.deck().slides.map(s => s.blocks.filter(b => b.numerar).length).join(''), '01111', 'al repetir, actualiza sin duplicar');
+    eq(A.deck().slides[1].blocks.find(b => b.numerar).html, '2 / 5', 'con el nuevo total');
+    btn('palabras').click(); await sleep(30);
+    const modal = [...D.querySelectorAll('.modal-backdrop .modal')].at(-1);
+    assert(modal && /5 diapositivas/.test(modal.textContent) && /5 en las notas/.test(modal.textContent), 'palabras: ' + modal?.textContent);
+    modal.closest('.modal-backdrop').querySelector('button')?.click(); await sleep(10);
+    for (const f of ['agenda', 'palabras', 'numerar']) R.api.removePlugin(base + f + '.js');
+  });
+
   await test('IA con OpenRouter: inicio de sesión PKCE y funciones (respuestas simuladas)', async () => {
     reset(); const W = frame.contentWindow, AI = R.ai, realFetch = W.fetch, calls = [];
     eq(await AI.pkceChallenge('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'), 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', 'reto PKCE (vector del RFC 7636)');

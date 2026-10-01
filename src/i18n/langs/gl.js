@@ -2202,4 +2202,5 @@ export default {
   "Tienes más presentaciones de las que permite tu plan gratuito ({n}): las más recientes se pueden editar y las demás quedan en solo lectura. No se borra ninguna. Pasa a Pro o borra alguna para editarlas.": "Tes máis presentacións das que permite o teu plan gratuíto ({n}): as máis recentes pódense editar e as demais quedan en só lectura. Non se borra ningunha. Pasa a Pro ou borra algunha para editalas.",
   "Listo: ahora es una copia en este navegador, aparte de la de la nube. Lo que cambies se guarda aquí.": "Listo: agora é unha copia neste navegador, á parte da da nube. O que cambies gárdase aquí.",
   "Lo que cambies aquí no se guarda en la nube: guarda una copia o descárgala para conservarlo.": "O que cambies aquí non se garda na nube: garda unha copia ou descárgaa para conservalo.",
+  "Cómo crear un complemento, con ejemplos": "Como crear un complemento, con exemplos",
 };

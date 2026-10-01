@@ -97,6 +97,9 @@ slides and objects, update them (one undo step each), listen to changes,
 export, and add buttons to the ribbon. **View › Add-ins** loads an ES module
 by URL that exports `default function (Revela)`; **View › Macros** runs saved
 snippets with `Revela` in scope. Both are stored only in your browser.
+The full guide, the API reference and three working examples are in
+[docs/COMPLEMENTOS.md](docs/COMPLEMENTOS.md) (in Spanish) and
+[examples/complementos/](examples/complementos/).
 
 ```js
 // my-addin.js

@@ -2202,4 +2202,5 @@ export default {
   "Tienes más presentaciones de las que permite tu plan gratuito ({n}): las más recientes se pueden editar y las demás quedan en solo lectura. No se borra ninguna. Pasa a Pro o borra alguna para editarlas.": "Zure doako planak baimentzen dituenak baino aurkezpen gehiago dituzu ({n}): berrienak edita daitezke eta besteak irakurtzeko soilik geratzen dira. Ez da bat ere ezabatzen. Pasa zaitez Pro-ra edo ezabatu batzuk editatzeko.",
   "Listo: ahora es una copia en este navegador, aparte de la de la nube. Lo que cambies se guarda aquí.": "Eginda: orain nabigatzaile honetako kopia bat da, hodeikotik aparte. Aldatzen duzuna hemen gordetzen da.",
   "Lo que cambies aquí no se guarda en la nube: guarda una copia o descárgala para conservarlo.": "Hemen aldatzen duzuna ez da hodeian gordetzen: gorde kopia bat edo deskargatu gordetzeko.",
+  "Cómo crear un complemento, con ejemplos": "Nola sortu osagarri bat, adibideekin",
 };

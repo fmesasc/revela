@@ -101,6 +101,8 @@ escuchar cambios, exportar y añadir botones a la cinta. **Ver › Complementos*
 carga un módulo ES por URL que exporta `default function (Revela)`;
 **Ver › Macros** ejecuta fragmentos guardados con `Revela` disponible. Ambos se
 guardan solo en tu navegador.
+La guía completa, la referencia de la API y tres ejemplos que funcionan están en
+[docs/COMPLEMENTOS.md](docs/COMPLEMENTOS.md) y [examples/complementos/](examples/complementos/).
 
 ```js
 // mi-complemento.js

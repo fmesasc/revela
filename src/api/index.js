@@ -11,6 +11,9 @@
 //   Revela.on('change', fn) → unsubscribe
 //   Revela.export.html() / .pptx() / .odp() / .pdf()
 //   Revela.ui.addButton({ id, label, icon, title, onClick })   (ribbon "Complementos")
+//   Revela.ui.alert(msg) / .confirm(msg) → bool / .prompt(msg, value?) → text|null   (Revela's own dialogs)
+//
+// Guide and examples: docs/COMPLEMENTOS.md and examples/complementos/.
 //
 // Plugins are ES modules (by URL) exporting `default function (Revela) {…}`.
 // Macros are snippets run with `Revela` in scope. Both are stored only in this
@@ -23,6 +26,7 @@ import { buildHTML } from '../io/formats/html.js';
 import { exportPDF } from '../io/export/print.js';
 import { buildPptxBlob } from '../io/formats/pptx-export.js';
 import { buildODP } from '../io/formats/odp.js';
+import { alertUser, confirmUser, promptUser } from '../core/notify.js';
 
 const find = id => { for (const s of [state.deck.master, ...state.deck.slides]) { const b = s?.blocks.find(x => x.id === id); if (b) return b; } return null; };
 const last = () => currentSlide().blocks.at(-1);
@@ -66,6 +70,9 @@ export const Revela = Object.freeze({
   ui: Object.freeze({
     addButton: b => { if (!b?.id || typeof b.onClick !== 'function') throw new Error('addButton({ id, label, onClick })'); buttons.set(b.id, b); renderButtons(); },
     removeButton: id => { buttons.delete(id); renderButtons(); },
+    alert: msg => alertUser(String(msg)),
+    confirm: msg => confirmUser(String(msg)),
+    prompt: (msg, value = '') => promptUser(String(msg), value),
   }),
 });
 

@@ -2202,4 +2202,5 @@ export default {
   "Tienes más presentaciones de las que permite tu plan gratuito ({n}): las más recientes se pueden editar y las demás quedan en solo lectura. No se borra ninguna. Pasa a Pro o borra alguna para editarlas.": "لديك عروض أكثر مما تسمح به خطتك المجانية ({n}): يمكن تعديل الأحدث وتبقى البقية للقراءة فقط. لا يُحذف أي منها. انتقل إلى Pro أو احذف بعضها لتعديلها.",
   "Listo: ahora es una copia en este navegador, aparte de la de la nube. Lo que cambies se guarda aquí.": "تم: أصبحت الآن نسخة في هذا المتصفح منفصلة عن نسخة السحابة. ما تغيّره يُحفظ هنا.",
   "Lo que cambies aquí no se guarda en la nube: guarda una copia o descárgala para conservarlo.": "ما تغيّره هنا لا يُحفظ في السحابة: احفظ نسخة أو نزّلها للاحتفاظ به.",
+  "Cómo crear un complemento, con ejemplos": "كيفية إنشاء وظيفة إضافية، مع أمثلة",
 };

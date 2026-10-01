@@ -2202,4 +2202,5 @@ export default {
   "Tienes más presentaciones de las que permite tu plan gratuito ({n}): las más recientes se pueden editar y las demás quedan en solo lectura. No se borra ninguna. Pasa a Pro o borra alguna para editarlas.": "Je hebt meer presentaties dan je gratis abonnement toestaat ({n}): de recentste kun je bewerken, de rest is alleen-lezen. Er wordt niets verwijderd. Stap over op Pro of verwijder er een paar om ze te bewerken.",
   "Listo: ahora es una copia en este navegador, aparte de la de la nube. Lo que cambies se guarda aquí.": "Klaar: het is nu een kopie in deze browser, los van die in de cloud. Wat je wijzigt wordt hier opgeslagen.",
   "Lo que cambies aquí no se guarda en la nube: guarda una copia o descárgala para conservarlo.": "Wat je hier wijzigt wordt niet in de cloud opgeslagen: sla een kopie op of download haar om het te bewaren.",
+  "Cómo crear un complemento, con ejemplos": "Een invoegtoepassing maken, met voorbeelden",
 };

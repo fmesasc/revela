@@ -18,7 +18,8 @@ export function openPlugins() {
   const back = modal('plugins-modal', t('Complementos'), `
     <p class="host-help">${t('Un complemento es un módulo JavaScript que recibe la API de Revela. Añade solo complementos de fuentes de confianza: se ejecutan con acceso a tu presentación.')}</p>
     <ul class="pl-list"></ul>
-    <div class="pl-add"><input type="url" class="pl-url" placeholder="https://…/mi-complemento.js"><button class="fr-do pl-go">${t('Añadir')}</button></div>`);
+    <div class="pl-add"><input type="url" class="pl-url" placeholder="https://…/mi-complemento.js"><button class="fr-do pl-go">${t('Añadir')}</button></div>
+    <p class="host-help"><a href="https://github.com/fmesasc/revela/blob/main/docs/COMPLEMENTOS.md" target="_blank" rel="noopener">${t('Cómo crear un complemento, con ejemplos')}</a></p>`);
   const list = back.querySelector('.pl-list');
   const fill = () => {
     const urls = pluginList();
