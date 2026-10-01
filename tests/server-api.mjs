@@ -24,7 +24,7 @@ env.FETCH = async (url, init = {}) => {
   const u = String(url);
   if (u.startsWith('https://oauth2.googleapis.com/tokeninfo')) {
     const t = new URL(u).searchParams.get('access_token');
-    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' } }[t];
+    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' } }[t];
     if (t === 'tok-otraapp') return Response.json({ aud: 'otra-app', sub: '333', email: 'x@example.com', email_verified: 'true' });
     return who ? Response.json({ aud: CID, ...who, email_verified: 'true', expires_in: 3000 }) : new Response('bad', { status: 400 });
   }
@@ -104,7 +104,7 @@ r = await req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { max_to
 ok(r.status === 402 && (await r.json()).credits === 10 && aiCalls.length === 1, 'sin créditos suficientes: 402, sin llamar a la IA');
 env.AI_PRICES = '{"openai/gpt-4o-mini":[0.15,0.6]}';
 // Credits held by a request that never finished come back after 10 minutes.
-const holds = acc('111').ctx.storage.m; holds.set('holds', { x: { n: 7, at: Date.now() - 11 * 60e3 } }); holds.set('credits', 3);
+const holds = acc('111').ctx.storage.m; holds.set('holds', { x: { n: 7, taken: [{ n: 7, exp: Date.now() + 9e6 }], at: Date.now() - 11 * 60e3 } }); holds.set('lots', [{ n: 3, exp: Date.now() + 9e6 }]); holds.set('debt', 0); holds.set('credits', 3);
 aiReply = () => ({ status: 200, body: { choices: [{ message: { content: 'ok' } }], usage: { cost: 0.002 } } });
 await req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { max_tokens: 50, messages: [{ role: 'user', content: 'x' }] } });
 ok(acc('111').ctx.storage.m.get('credits') === 9, 'créditos apartados y olvidados: vuelven: ' + acc('111').ctx.storage.m.get('credits'));
@@ -330,6 +330,8 @@ ok((await req('POST', '/api/desktop/claim', { origin: 'tauri://localhost', body:
   ok((await T(pepe, '/template/delete', { id: tid })).status === 403, 'equipo: un miembro no borra plantillas');
   // Credits for each member each month
   const before = (await (await req('GET', '/api/me', { headers: { Cookie: pepe } })).json()).credits;
+  const pepeStore = [...env.ACCOUNTS.inst.values()].find(a => a.ctx.storage.m.get('profile')?.email === 'pepe@escuela.example').ctx.storage.m;
+  pepeStore.set('monthly', Date.now() - 31 * 86400e3);                    // (a month later)
   await hook({ id: 'evt_team2', type: 'invoice.paid', data: { object: { customer: 'cus_team', lines: { data: [{ quantity: 3, period: { end: Math.floor(Date.now() / 1000) + 60 * 86400 } }] }, parent: { subscription_details: { metadata: { team: id } } } } } });
   ok((await (await req('GET', '/api/me', { headers: { Cookie: pepe } })).json()).credits === before + 1000, 'equipo: créditos del mes para cada miembro');
   // Leaving, the last admin, the end of the subscription
@@ -359,6 +361,43 @@ ok((await req('POST', '/api/desktop/claim', { origin: 'tauri://localhost', body:
   ok((await req('GET', `/api/docs/${id}`, { headers: { Cookie: ev } })).status === 404, 'borrada: sus presentaciones también');
   ok(!(await (await req('GET', '/api/docs', { headers: { Cookie: ev } })).json()).shared.some(x => x.id === id), 'y desaparecen de «compartido conmigo» de los demás');
   ok(stripeCalls.some(c => /subscriptions\?customer=cus_luis/.test(c.u)), 'y se cancela su suscripción de Stripe');
+}
+
+// ---- Credits that expire: the gift in 3 months, a pack in a year, each month of Pro that month and the next ----
+{
+  const mar = cookieFrom(await req('POST', '/api/login', { body: { accessToken: 'tok-mar' } })), M = acc('777').ctx.storage.m, DAYms = 86400e3;
+  const me = async () => (await req('GET', '/api/me', { headers: { Cookie: mar } })).json();
+  let j = await me();
+  ok(j.credits === 50 && Math.abs(j.expiring[0].exp - (Date.now() + 90 * DAYms)) < 60e3, 'el regalo: 50 créditos que caducan a los 3 meses');
+  await hook({ id: 'evt_mar_pack', type: 'checkout.session.completed', data: { object: { mode: 'payment', payment_status: 'paid', client_reference_id: '777', metadata: { sub: '777', product: 'credits-500' } } } });
+  j = await me(); ok(j.credits === 550 && j.expiring.some(l => l.n === 500 && Math.abs(l.exp - (Date.now() + 365 * DAYms)) < 60e3), 'un paquete: caduca al año');
+  // Spending goes first to what expires first (the gift).
+  M.set('lots', [{ n: 50, exp: Date.now() + 10 * DAYms }, { n: 500, exp: Date.now() + 300 * DAYms }]);
+  aiReply = () => ({ status: 200, body: { choices: [{ message: { content: 'ok' } }], usage: { cost: 0.06 } } });     // (30 credits)
+  await req('POST', '/api/ai/chat', { headers: { Cookie: mar }, body: { max_tokens: 50, messages: [{ role: 'user', content: 'x' }] } });
+  ok(JSON.stringify(M.get('lots').map(l => l.n)) === '[20,500]', 'se gasta primero lo que caduca antes: ' + JSON.stringify(M.get('lots')));
+  // What expires goes, and says so in the movements.
+  M.set('lots', [{ n: 20, exp: Date.now() - 1000 }, { n: 500, exp: Date.now() + 300 * DAYms }]);
+  j = await me(); ok(j.credits === 500 && M.get('ledger').at(-1).reason === 'expired' && M.get('ledger').at(-1).delta === -20, 'lo caducado se va (y queda anotado)');
+  // A yearly Pro: its credits every month, not once a year; each month's last that month and the next.
+  await hook({ id: 'evt_mar_year', type: 'invoice.paid', data: { object: { customer: 'cus_mar', subscription_details: { metadata: { sub: '777' } }, lines: { data: [{ period: { end: Math.floor(Date.now() / 1000) + 365 * 86400 } }] } } } });
+  j = await me(); ok(j.plan === 'pro' && j.credits === 1500, 'Pro anual: el primer mes, 1000');
+  j = await me(); ok(j.credits === 1500, 'y no otra vez hasta el mes siguiente');
+  M.set('monthly', Date.now() - 31 * DAYms); j = await me();
+  ok(j.credits === 2500, 'al mes siguiente, otros 1000 (aunque el pago sea anual)');
+  const months = M.get('lots').filter(l => Math.abs(l.exp - Date.now() - 60 * DAYms) < 60e3);
+  ok(months.reduce((t, l) => t + l.n, 0) === 2000, 'cada mes vale ese mes y el siguiente: ' + JSON.stringify(M.get('lots')));
+  // Two months later, the first month's are gone: at most two months together.
+  M.set('lots', [{ n: 1000, exp: Date.now() - 1 }, { n: 1000, exp: Date.now() + 29 * DAYms }, { n: 500, exp: Date.now() + 300 * DAYms }]); M.set('monthly', Date.now() - 31 * DAYms);
+  j = await me(); ok(j.credits === 2500 && M.get('lots').filter(l => l.exp < Date.now() + 61 * DAYms).reduce((t, l) => t + l.n, 0) === 2000, 'nunca más de dos meses juntos');
+  // A charge beyond the balance is a debt, paid by the next credits.
+  M.set('lots', [{ n: 5, exp: Date.now() + DAYms }]); M.set('debt', 0); M.set('monthly', Date.now());
+  aiReply = () => ({ status: 200, body: { choices: [{ message: { content: 'ok' } }], usage: { cost: 0.02 } } });     // (10 credits; 5 held, 10 real)
+  env.AI_PRICES = '{"openai/gpt-4o-mini":[0.001,0.001]}';
+  await req('POST', '/api/ai/chat', { headers: { Cookie: mar }, body: { max_tokens: 50, messages: [{ role: 'user', content: 'x' }] } });
+  ok(M.get('credits') === -5 && M.get('debt') === 5, 'lo que costó de más queda como deuda: ' + M.get('credits'));
+  M.set('monthly', Date.now() - 31 * DAYms); j = await me(); ok(j.credits === 995, 'y lo paga el siguiente ingreso');
+  env.AI_PRICES = '{"openai/gpt-4o-mini":[0.15,0.6]}';
 }
 
 // ---- Logging out; and the share routes under /api ----

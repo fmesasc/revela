@@ -2190,4 +2190,5 @@ export default {
   "Pro mensual": "Pro maandelijks",
   "Pro anual": "Pro jaarlijks",
   "Aviso legal": "Juridische kennisgeving",
+  "{n} caducan el {d}": "{n} vervallen op {d}",
 };

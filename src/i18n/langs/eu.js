@@ -2190,4 +2190,5 @@ export default {
   "Pro mensual": "Pro hilekoa",
   "Pro anual": "Pro urtekoa",
   "Aviso legal": "Lege-oharra",
+  "{n} caducan el {d}": "{n} iraungitzen dira {d}(e)an",
 };

@@ -2209,5 +2209,6 @@ export const ROWS = [
   ['Pro mensual', 'Pro monthly', 'Pro mensuel', 'Pro monatlich', 'Pro mensile', 'Pro mensal', 'Pro mensual'],
   ['Pro anual', 'Pro yearly', 'Pro annuel', 'Pro jährlich', 'Pro annuale', 'Pro anual', 'Pro anual'],
   ['Aviso legal', 'Legal notice', 'Mentions légales', 'Impressum', 'Note legali', 'Aviso legal', 'Avís legal'],
+  ['{n} caducan el {d}', '{n} expire on {d}', '{n} expirent le {d}', '{n} verfallen am {d}', '{n} scadono il {d}', '{n} expiram a {d}', '{n} caduquen el {d}'],
 ];
 // Additional languages (partial; anything missing falls back to Spanish).

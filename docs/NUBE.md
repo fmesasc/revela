@@ -60,6 +60,21 @@ servidor:
    resto. Si la IA falla, no cobra nada. Si alguna petición se corta, lo
    apartado vuelve solo en 10 minutos.
 
+**Créditos que caducan.** Cada cuenta guarda sus créditos en bolsas con fecha
+(`Account.lots`) y gasta primero la que caduca antes. El regalo de bienvenida dura
+3 meses (`TRIAL_DAYS`); un paquete comprado, un año (`PACK_DAYS`); los de Pro (o de
+un equipo) llegan cada 30 días mientras el plan está activo, sea mensual, anual o de
+equipo, y valen ese mes y el siguiente (`MONTH_DAYS` = 60): lo no gastado pasa al mes
+siguiente y luego caduca. Si una petición costó más de lo que quedaba, la diferencia
+es una deuda que paga el siguiente ingreso.
+
+**Los números del negocio** (créditos de cada plan, valor de un crédito, margen sobre el
+coste de la IA, tope de gasto, plazos) no están en el repositorio: se ponen como
+variables en Cloudflare (Workers ▸ revela-share ▸ Configuración ▸ Variables y secretos),
+que es el panel de administración. Se cambian ahí sin tocar el código y no son públicos;
+los despliegues no los tocan (`keep_vars`). El código, con sus valores por defecto, sí
+es público.
+
 **Presentaciones en la nube** (`server/cloudflare/docs.js`). Cada presentación
 es un Durable Object: el documento diapositiva a diapositiva, su dueño, las
 personas con su permiso (ver, comentar, editar) y el permiso del enlace. Los

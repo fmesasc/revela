@@ -2190,4 +2190,5 @@ export default {
   "Pro mensual": "Pro mensual",
   "Pro anual": "Pro anual",
   "Aviso legal": "Aviso legal",
+  "{n} caducan el {d}": "{n} caducan o {d}",
 };

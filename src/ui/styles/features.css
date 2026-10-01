@@ -514,6 +514,7 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 #account-modal .acc-badge{padding:2px 10px;border-radius:12px;background:var(--bg);font-weight:700;font-size:13px}
 #account-modal .acc-badge.pro{background:linear-gradient(90deg,#6d5dfc,#3f6497);color:#fff}
 #account-modal .acc-credits{font-size:15px;margin:8px 0}#account-modal .acc-credits b{font-size:34px}
+#account-modal .acc-credits small{display:block;font-size:12px;color:var(--txt2);margin-top:2px}
 #account-modal .acc-features{list-style:none;padding:0;margin:6px 0 12px;font-size:14px}
 #account-modal .acc-buy{display:flex;gap:6px;flex-wrap:wrap}
 #account-modal .acc-code{margin:10px 0;padding:10px;border-radius:8px;background:var(--bg);font-size:14px}

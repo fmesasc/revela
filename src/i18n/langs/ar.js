@@ -2190,4 +2190,5 @@ export default {
   "Pro mensual": "Pro شهري",
   "Pro anual": "Pro سنوي",
   "Aviso legal": "إشعار قانوني",
+  "{n} caducan el {d}": "تنتهي صلاحية {n} في {d}",
 };

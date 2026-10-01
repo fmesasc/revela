@@ -4,6 +4,8 @@ compatibility_date = "2026-09-01"
 # Served at https://<name>.<account>.workers.dev; no extra preview addresses per version.
 workers_dev = true
 preview_urls = false
+# Variables set in Cloudflare's dashboard stay through deploys (the business's numbers live there).
+keep_vars = true
 # The official site (Cloudflare Pages) sends its /api/… here; the rest of the domain stays with the site.
 routes = [{ pattern = "revelaslides.com/api/*", zone_name = "revelaslides.com" }]
 
@@ -28,19 +30,18 @@ DAILY_TOTAL = "3000"
 # and the site the payments come back to.
 API_ORIGINS = "https://revelaslides.com"
 SITE_URL = "https://revelaslides.com"
-# Credits: a new account's gift (once), a paid month's, and what one credit
-# pays for in the AI provider's dollars (1000 credits = 2 $ at most).
-TRIAL_CREDITS = "50"
-PRO_CREDITS = "1000"
-CREDIT_USD = "0.002"
-IMAGE_CREDITS = "15"
+# The business's numbers are NOT here: they are set in Cloudflare (Workers ▸ revela-share ▸
+# Settings ▸ Variables and secrets), so they can be changed there without a commit and are not
+# public. Without them the code's defaults apply (api.js, settings()):
+#   TRIAL_CREDITS 50 · PRO_CREDITS 1000 · CREDIT_USD 0.002 (what one credit pays for in the AI
+#   provider's dollars) · MARKUP 1 (× the AI's real cost) · IMAGE_CREDITS 15 · MONTHLY_BUDGET_USD 50
+#   TRIAL_DAYS 90 · PACK_DAYS 365 · MONTH_DAYS 60 (how long credits last)
 # Cloud documents per account (free / Pro) and people per document.
 FREE_DOCS = "3"
 PRO_DOCS = "500"
 MAX_PEOPLE = "50"
 AI_PER_MINUTE = "20"
-# Every account's AI together, per calendar month: over it, the AI pauses until next month.
-MONTHLY_BUDGET_USD = "50"
+# Every account's AI together, per calendar month (MONTHLY_BUDGET_USD): set in Cloudflare, see above.
 # Models people may use (the first is the default) and their prices per million
 # tokens [input, output] in dollars, for the estimate made before each request
 # (check them at openrouter.ai/models; the real cost is charged afterwards).

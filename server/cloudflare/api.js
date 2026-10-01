@@ -60,6 +60,9 @@ export function settings(env) {
     proCredits: num(env.PRO_CREDITS, 1000),              // each paid month
     creditUsd: num(env.CREDIT_USD, 0.002),               // what one credit pays for, in the AI provider's dollars
     markup: num(env.MARKUP, 1),
+    // How long credits last (days): the welcome gift; a pack bought; each month of Pro (that
+    // month and the next, like a phone plan's rollover).
+    trialDays: num(env.TRIAL_DAYS, 90), packDays: num(env.PACK_DAYS, 365), monthDays: num(env.MONTH_DAYS, 60),
     imageCredits: num(env.IMAGE_CREDITS, 15),
     perMinute: num(env.AI_PER_MINUTE, 20),
     monthlyBudget: num(env.MONTHLY_BUDGET_USD, 50),      // all AI together, per calendar month
@@ -90,12 +93,65 @@ export class Account {
   async put(o) { await this.ctx.storage.put(o); }
   // The plan now: Pro while paid (and a few days' grace), else free.
   async plan() { const p = await this.get('plan', null); return p && p.until > Date.now() ? p.name : 'free'; }
-  async entry(delta, reason, ref) {
-    const bal = await this.get('credits', 0), list = await this.get('ledger', []);
-    list.push({ at: Date.now(), delta, reason, ...(ref && { ref }), balance: bal + delta });
-    await this.put({ credits: bal + delta, ledger: list.slice(-500) });
-    return bal + delta;
+  // Credits come in lots, each with its expiry ({ n, exp }); they are spent from the one that
+  // expires first. What a request really cost beyond the balance is a debt, paid by the next
+  // credits. 'credits' is always the balance: the lots minus the debt.
+  async lots() {
+    let lots = await this.get('lots', null);
+    if (!lots) { const c = await this.get('credits', 0); lots = c > 0 ? [{ n: c, exp: Date.now() + 365 * DAY }] : []; }   // (from before lots)
+    return lots;
   }
+  async save(lots, debt) {
+    const by = new Map(); for (const l of lots) if (l.n > 0) by.set(l.exp, (by.get(l.exp) || 0) + l.n);   // (one lot per expiry)
+    lots = [...by].map(([exp, n]) => ({ n, exp })).sort((a, b) => a.exp - b.exp);
+    const credits = lots.reduce((t, l) => t + l.n, 0) - debt;
+    await this.put({ lots, debt, credits }); return credits;
+  }
+  async add(n, exp) {                                     // → balance
+    const lots = await this.lots(); let debt = await this.get('debt', 0);
+    const pay = Math.min(debt, n); debt -= pay; n -= pay;
+    if (n > 0) lots.push({ n, exp });
+    return this.save(lots, debt);
+  }
+  async take(n) {                                         // → [{ n, exp }] taken (to give back exactly), balance
+    const lots = await this.lots(), taken = []; let debt = await this.get('debt', 0);
+    for (const l of lots) { if (!n) break; const k = Math.min(l.n, n); l.n -= k; n -= k; taken.push({ n: k, exp: l.exp }); }
+    debt += n;
+    return { taken, credits: await this.save(lots, debt) };
+  }
+  async giveBack(taken) { const lots = await this.lots(); for (const t of taken) if (t.exp > Date.now()) lots.push({ ...t }); return this.save(lots, await this.get('debt', 0)); }
+  async expire() {                                        // the lots past their date go (in the ledger as 'expired')
+    const lots = await this.lots(), now = Date.now(), gone = lots.filter(l => l.exp <= now).reduce((t, l) => t + l.n, 0);
+    if (!gone && (await this.get('lots', null))) return;
+    await this.save(lots.filter(l => l.exp > now), await this.get('debt', 0));
+    if (gone) await this.log(-gone, 'expired');
+  }
+  async log(delta, reason, ref) {
+    const list = await this.get('ledger', []);
+    list.push({ at: Date.now(), delta, reason, ...(ref && { ref }), balance: await this.get('credits', 0) });
+    await this.put({ ledger: list.slice(-500) });
+  }
+  async entry(delta, reason, ref, days = 365) {
+    const bal = delta >= 0 ? await this.add(delta, Date.now() + days * DAY) : (await this.take(-delta)).credits;
+    await this.log(delta, reason, ref);
+    return bal;
+  }
+  // Pro's month: while the plan (own or the team's) lasts, its credits every 30 days, whatever
+  // the billing period (monthly, yearly or a team's), each lot for that month and the next.
+  async monthly(pro, s) {
+    const last = await this.get('monthly', 0);
+    if (!pro || Date.now() - last < 30 * DAY || s.proCredits <= 0) return;
+    await this.put({ monthly: Date.now() });
+    await this.entry(s.proCredits, 'pro', null, s.monthDays);
+  }
+  async isPro() {
+    if ((await this.plan()) === 'pro') return true;
+    const teamId = await this.get('team', null); if (!teamId) return false;
+    const t = await teamStatus(this.env, teamId, (await this.get('profile', {})).email).catch(() => null);
+    return !!(t?.member && t.active);
+  }
+  // The lots that expire next (to show them): [{ n, exp }], the soonest first.
+  async soon() { return (await this.lots()).filter(l => l.exp > Date.now()).slice(0, 3); }
   // One request at a time, whole (Cloudflare already runs a Durable Object's
   // storage steps in order; this also keeps any await in between from mixing two).
   fetch(req) { const run = () => this.handle(req); const p = (this.queue || Promise.resolve()).then(run, run); this.queue = p.catch(() => {}); return p; }
@@ -105,7 +161,7 @@ export class Account {
     switch (op) {
       case 'login': {                                      // { sub, email, kind } → { token }
         const prof = await this.get('profile', null);
-        if (!prof) { await this.put({ profile: { sub: a.sub, email: a.email, created: Date.now() } }); if (s.trial > 0) await this.entry(s.trial, 'trial'); }
+        if (!prof) { await this.put({ profile: { sub: a.sub, email: a.email, created: Date.now() } }); if (s.trial > 0) await this.entry(s.trial, 'trial', null, s.trialDays); }
         else if (prof.email !== a.email) await this.put({ profile: { ...prof, email: a.email } });
         const secret = random(32), sessions = await this.get('sessions', {});
         const days = a.kind === 'desktop' ? 90 : 30;
@@ -127,7 +183,8 @@ export class Account {
         // (A member of a paid team has Pro too.)
         const team = teamId ? await teamStatus(this.env, teamId, prof.email).catch(() => null) : null, byTeam = !!(team?.member && team.active);
         const plan = own === 'pro' || byTeam ? 'pro' : 'free';
-        return this.json({ email: prof.email, plan, until: own === 'pro' ? p.until : null, credits: await this.get('credits', 0), features: FEATURES[plan] || FEATURES.free,
+        await this.expire(); await this.monthly(plan === 'pro', s);
+        return this.json({ email: prof.email, plan, until: own === 'pro' ? p.until : null, credits: await this.get('credits', 0), expiring: await this.soon(), features: FEATURES[plan] || FEATURES.free,
           ...(team?.member && { team: { name: team.name, role: team.role, active: team.active } }) });
       }
       case 'call-sessions': return this.json({ ids: await this.get('callSessions', []) });
@@ -150,12 +207,13 @@ export class Account {
       case 'hold': {                                       // { credits } → keep them aside, or say no
         // (Held for a request that never finished — 10 minutes — go back first.)
         const old = await this.get('holds', {}), stale = Object.entries(old).filter(([, v]) => v.at < Date.now() - 10 * 60e3);
-        if (stale.length) { for (const [k] of stale) delete old[k]; await this.put({ holds: old, credits: (await this.get('credits', 0)) + stale.reduce((t, [, v]) => t + v.n, 0) }); }
+        if (stale.length) { for (const [k] of stale) delete old[k]; await this.put({ holds: old }); for (const [, v] of stale) await this.giveBack(v.taken || [{ n: v.n, exp: Date.now() + DAY }]); }
+        await this.expire(); await this.monthly(await this.isPro(), s);
         const bal = await this.get('credits', 0), n = Math.max(1, Math.ceil(+a.credits || 0));
         if (bal < n) return this.json({ ok: false, credits: bal });
-        const id = random(9), holds = await this.get('holds', {});
-        holds[id] = { n, at: Date.now() };
-        await this.put({ credits: bal - n, holds }); return this.json({ ok: true, id });
+        const id = random(9), { taken } = await this.take(n), holds = await this.get('holds', {});
+        holds[id] = { n, taken, at: Date.now() };
+        await this.put({ holds }); return this.json({ ok: true, id });
       }
       case 'settle': {                                     // { id, credits } → charge what it really cost, give back the rest
         // (What it really cost, even above the estimate — outdated prices must not
@@ -163,14 +221,14 @@ export class Account {
         const holds = await this.get('holds', {}), h = holds[a.id]; if (!h) return this.json({ ok: false });
         delete holds[a.id]; await this.put({ holds });
         const used = Math.max(0, Math.ceil(+a.credits || 0));
-        await this.put({ credits: (await this.get('credits', 0)) + h.n });   // (back, then the real charge as an entry)
+        await this.giveBack(h.taken || [{ n: h.n, exp: Date.now() + DAY }]);   // (back where they were, then the real charge as an entry)
         await this.entry(-used, a.reason || 'ai', a.ref); return this.json({ ok: true, used });
       }
       case 'grant': {                                      // { credits, reason, ref } — once per ref (payments)
         const done = await this.get('refs', []);
         if (a.ref && done.includes(a.ref)) return this.json({ ok: true, duplicate: true });
         await this.put({ refs: [...done, a.ref].filter(Boolean).slice(-300) });
-        const bal = await this.entry(Math.round(+a.credits || 0), a.reason || 'grant', a.ref);
+        const bal = await this.entry(Math.round(+a.credits || 0), a.reason || 'grant', a.ref, +a.days || s.packDays);
         return this.json({ ok: true, credits: bal });
       }
       case 'setplan': {                                    // { name, until, customer? }
@@ -553,13 +611,14 @@ async function stripeWebhook(req, env, json) {
   if (ev.type === 'checkout.session.completed') {
     const sub = subOf(o); if (!sub) return json({ ok: true });
     const p = s.products[o.metadata?.product];
-    if (o.mode === 'payment' && p?.credits && o.payment_status === 'paid') await call(acct(env, sub), 'grant', { credits: p.credits, reason: 'purchase', ref: ev.id });
+    if (o.mode === 'payment' && p?.credits && o.payment_status === 'paid') await call(acct(env, sub), 'grant', { credits: p.credits, reason: 'purchase', ref: ev.id, days: s.packDays });
     if (o.customer) { const A = acct(env, sub), m = await call(A, 'me'); await call(A, 'setplan', { name: m.plan, until: m.until || 0, customer: o.customer }); }
   } else if (ev.type === 'invoice.paid' && teamOf(o)) {
     // A team's month: its seats and until when; each member gets the month's credits.
     const id = teamOf(o), line = o.lines?.data?.[0] || {}, end = (+line.period?.end || (Date.now() / 1000 + 31 * 86400)) * 1000 + 3 * DAY;
     const r = await (await env.TEAMS.get(env.TEAMS.idFromName('team:' + id)).fetch('https://team/billing', { method: 'POST', body: JSON.stringify({ seats: +line.quantity || 1, until: end, customer: o.customer }) })).json();
-    for (const [email, m] of Object.entries(r.members || {})) if (m.sub) await call(acct(env, m.sub), 'grant', { credits: s.proCredits, reason: 'team', ref: ev.id + ':' + email });
+    // (Each member's month of credits comes with their account's next request: see Account.monthly.)
+    void r;
   } else if (ev.type === 'customer.subscription.deleted' && teamOf(o)) {
     await env.TEAMS.get(env.TEAMS.idFromName('team:' + teamOf(o))).fetch('https://team/billing', { method: 'POST', body: JSON.stringify({ until: 0 }) });
   } else if (ev.type === 'invoice.paid') {
@@ -567,7 +626,7 @@ async function stripeWebhook(req, env, json) {
     const end = (+o.lines?.data?.[0]?.period?.end || (Date.now() / 1000 + 31 * 86400)) * 1000 + 3 * DAY;   // (3 days' grace)
     const A = acct(env, sub);
     await call(A, 'setplan', { name: 'pro', until: end, customer: o.customer });
-    await call(A, 'grant', { credits: s.proCredits, reason: 'pro', ref: ev.id });
+    await call(A, 'me');                                   // (its month of credits now, if due: Account.monthly)
   } else if (ev.type === 'customer.subscription.deleted') {
     const sub = subOf(o); if (sub) await call(acct(env, sub), 'setplan', { name: 'free', until: 0 });
   }
