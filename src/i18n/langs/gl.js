@@ -2359,4 +2359,11 @@ export default {
   "Más visual": "Máis visual",
   "Con animación": "Con animación",
   "Sorpréndeme": "Sorpréndeme",
+  "Avisos por correo": "Avisos por correo",
+  "Revela te escribe a {email} cuando te comparten una presentación, te invitan a un equipo o cambia tu plan.": "Revela escríbeche a {email} cando che comparten unha presentación, te convidan a un equipo ou cambia o teu plan.",
+  "Avisarme cuando mis créditos estén a punto de caducar": "Avisarme cando os meus créditos estean a piques de caducar",
+  "Enviarme un correo de prueba": "Enviarme un correo de proba",
+  "Enviado a {email}. Si no te llega en unos minutos, mira en «Spam».": "Enviado a {email}. Se non che chega nuns minutos, mira no spam.",
+  "Ya has pedido uno hace poco: espera una hora para pedir otro.": "Xa pediches un hai pouco: agarda unha hora para pedir outro.",
+  "Los correos aún no están activados en este servidor.": "Os correos aínda non están activados neste servidor.",
 };

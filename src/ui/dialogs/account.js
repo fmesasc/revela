@@ -100,6 +100,10 @@ export function openAccount({ buy } = {}) {
         ${pro ? `<button type="button" class="mini2 acc-portal">${t('Gestionar la suscripción')}</button>` : '<span></span>'}
         <button type="button" class="mini2 acc-out">${t('Cerrar sesión')}</button></div>
       <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 acc-team"><i class="ms">groups</i> ${me.team ? esc(me.team.name) : t('Equipos y centros')}</button></div>
+      <details class="acc-mail"><summary>${t('Avisos por correo')}</summary>
+        <p class="host-help">${t('Revela te escribe a {email} cuando te comparten una presentación, te invitan a un equipo o cambia tu plan.').replace('{email}', esc(me.email))}</p>
+        <label class="fr-chk"><input type="checkbox" class="acc-mail-credits"> ${t('Avisarme cuando mis créditos estén a punto de caducar')}</label>
+        <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 acc-mail-test">${t('Enviarme un correo de prueba')}</button></div></details>
       <details class="acc-data"><summary>${t('Tus datos')}</summary>
         <p class="host-help">${t('Descarga una copia de todo lo que guarda tu cuenta, o elimínala con todas tus presentaciones en la nube. Las facturas las conserva Stripe, como exige la ley.')}</p>
         <div class="fr-actions" style="justify-content:flex-start;flex-wrap:wrap"><button type="button" class="mini2 acc-export">${t('Descargar mis datos')}</button>
@@ -108,6 +112,21 @@ export function openAccount({ buy } = {}) {
     body.querySelector('.acc-portal')?.addEventListener('click', () => acc.manageBilling().catch(e => alertDialog(errorText(e))));
     body.querySelector('.acc-out').addEventListener('click', async () => { await acc.signOut(); render(); });
     body.querySelector('.acc-team').addEventListener('click', () => { close(); openTeam(); });
+    // (Email notices: the optional ones can be switched off; a test email shows whether they arrive.)
+    const credBox = body.querySelector('.acc-mail-credits');
+    body.querySelector('.acc-mail').addEventListener('toggle', async e => {
+      if (!e.target.open || credBox.dataset.loaded) return;
+      try { const p = await acc.api('mail/prefs'); credBox.checked = !p.off.includes('credits'); credBox.dataset.loaded = '1'; } catch {}
+    });
+    credBox.addEventListener('change', async () => {
+      try { const p = await acc.api('mail/prefs'); await acc.api('mail/prefs', { off: credBox.checked ? p.off.filter(k => k !== 'credits') : [...new Set([...p.off, 'credits'])] }); }
+      catch (e) { alertDialog(errorText(e)); }
+    });
+    body.querySelector('.acc-mail-test').addEventListener('click', async e => {
+      e.target.disabled = true;
+      try { await acc.api('mail/test', {}); alertDialog(t('Enviado a {email}. Si no te llega en unos minutos, mira en «Spam».').replace('{email}', me.email)); }
+      catch (err) { alertDialog(err.status === 429 ? t('Ya has pedido uno hace poco: espera una hora para pedir otro.') : err.status === 503 ? t('Los correos aún no están activados en este servidor.') : errorText(err)); }
+    });
     body.querySelector('.acc-export').addEventListener('click', async () => {
       try { const d = await acc.api('account/export'); const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' })); a.download = 'revela-mis-datos.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 3000);

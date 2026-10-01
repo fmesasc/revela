@@ -16,6 +16,8 @@
 //   POST /api/logout
 //   GET  /api/me               → { email, plan, credits, features, billing, terms (accepted the current ones?), docs }
 //   POST /api/terms            { version, lang? }       (accepting the current terms, once; accounts from before)
+//   POST /api/mail/test                                 (a test email to my own address, once an hour)
+//   GET|POST /api/mail/prefs   { off: [kinds] }         (the optional notices I stopped)
 //   GET|POST /api/mail/unsubscribe?t=…                  (stop optional notices; signed link in the email: mail.js)
 //   POST /api/ai/chat          { messages, max_tokens?, json? } → OpenRouter's answer (credits charged)
 //   POST /api/ai/image         { prompt, aspect_ratio? } → { data: [{ b64_json, media_type }] }
@@ -45,7 +47,7 @@ import { handleTeams, teamStatus } from './teams.js';
 import { handleLti } from './lti.js';
 import { handleCalls } from './calls.js';
 import { docsSettings } from './docs.js';
-import { mail, readUnsubToken, unsubPage, fmtDate } from './mail.js';
+import { mail, readUnsubToken, unsubPage, fmtDate, mailConfigured, OPTIONAL } from './mail.js';
 import { scheduleAt, dayOf } from './schedule.js';
 import { handle3d, configured3d } from './model3d.js';
 
@@ -272,6 +274,17 @@ export class Account {
       case 'terms': {                                      // { version, lang? }: the current terms, accepted
         const prof = await this.get('profile', null); if (!prof || a.version !== s.termsVersion) return this.json({ error: 'terms', version: s.termsVersion }, 400);
         await this.put({ profile: { ...prof, terms: { version: s.termsVersion, at: Date.now() }, ...(a.lang && { lang: a.lang }) } }); return this.json({ ok: true });
+      }
+      case 'mail-test': {                                  // a test email to this account, at most once an hour
+        const last = await this.get('mailTest', 0); if (Date.now() - last < 60 * 60e3) return this.json({ ok: false, error: 'too soon' }, 429);
+        if (!mailConfigured(this.env)) return this.json({ ok: false, error: 'mail not configured' }, 503);
+        await this.put({ mailTest: Date.now() });
+        const ok = await this.mailMe('test', { url: (this.env.SITE_URL || 'https://revelaslides.com') + '/app/' });
+        return this.json({ ok: !!ok }, ok ? 200 : 502);
+      }
+      case 'mail-prefs': {                                 // { off?: [kinds] } → the optional kinds stopped
+        if (Array.isArray(a.off)) await this.put({ mailOff: a.off.filter(k => OPTIONAL.includes(k)) });
+        return this.json({ off: await this.get('mailOff', []), optional: OPTIONAL });
       }
       case 'mail-off': {                                   // { kind }: no more of these (the signed link in an email)
         const prof = await this.get('profile', null); if (!prof) return this.json({ ok: false });
@@ -508,6 +521,13 @@ export async function handleApi(req, env, url) {
     case '/me': {
       const r = await call(A, 'me');
       return json({ ...r, billing: !!(env.STRIPE_SECRET_KEY && env.STRIPE_WEBHOOK_SECRET), photos: photoProviders(env), model3d: configured3d(env) && !!env.MODELJOBS });
+    }
+    case '/mail/test': {                                  // «Send me a test email» (only to the account's own address)
+      if (req.method !== 'POST') return json({ error: 'method' }, 405);
+      const r = await call(A, 'mail-test'); return json(r, r.error === 'too soon' ? 429 : r.error ? 503 : r.ok ? 200 : 502);
+    }
+    case '/mail/prefs': {                                 // GET → { off, optional }; POST { off: [kinds] }
+      return json(await call(A, 'mail-prefs', req.method === 'POST' ? { off: body.off } : {}));
     }
     case '/terms': {
       if (req.method !== 'POST') return json({ error: 'method' }, 405);

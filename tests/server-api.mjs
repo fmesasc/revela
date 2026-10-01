@@ -520,6 +520,14 @@ const runCron = async ts => { const w = []; await worker.scheduled({ scheduledTi
   await acc('888').fetch(new Request('https://do/grant', { method: 'POST', body: JSON.stringify({ credits: 10, ref: 'x1', days: 9 }) }));
   sent = []; at(Date.now() + 3 * DAYms); await runCron(Date.now()); Date.now = realNow;
   ok(!sent.some(x => x.to === 'sol@example.com' && /caducan/.test(x.subject)), 'tras la baja, ya no llegan esos avisos');
+  // «Send me a test email» from My account: only to my own address, once an hour; and the optional notices' switch
+  sent = []; r = await req('POST', '/api/mail/test', { headers: { Cookie: sol } });
+  ok(r.status === 200 && sent.length === 1 && sent[0].to === 'sol@example.com' && /funcionan/.test(sent[0].subject), 'correo de prueba a mi dirección');
+  ok((await req('POST', '/api/mail/test', { headers: { Cookie: sol } })).status === 429 && sent.length === 1, 'como mucho uno por hora');
+  ok((await req('POST', '/api/mail/test')).status === 401, 'sin sesión, nada');
+  j = await (await req('GET', '/api/mail/prefs', { headers: { Cookie: sol } })).json(); ok(j.off.includes('credits') && j.optional.includes('credits'), 'preferencias: la baja de antes');
+  j = await (await req('POST', '/api/mail/prefs', { headers: { Cookie: sol }, body: { off: [] } })).json(); ok(!j.off.length, 'volver a recibir los avisos opcionales');
+  j = await (await req('POST', '/api/mail/prefs', { headers: { Cookie: sol }, body: { off: ['credits', 'share'] } })).json(); ok(j.off.join() === 'credits', 'los avisos del servicio no se pueden quitar');
   // Without MAIL_SECRET optional notices aren't sent (no way out); with Resend instead of Email Service
   const { sendMail, mail } = await import('../server/cloudflare/mail.js');
   ok(!(await mail({ EMAIL: env.EMAIL }, { to: 'a@b.c', kind: 'credits', lang: 'es', vars: { n: 1, date: 'x' }, sub: '1' })), 'sin MAIL_SECRET no hay avisos opcionales');

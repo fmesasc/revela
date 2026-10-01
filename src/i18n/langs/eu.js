@@ -2359,4 +2359,11 @@ export default {
   "Más visual": "Bisualagoa",
   "Con animación": "Animazioarekin",
   "Sorpréndeme": "Harritu nazazu",
+  "Avisos por correo": "Posta bidezko oharrak",
+  "Revela te escribe a {email} cuando te comparten una presentación, te invitan a un equipo o cambia tu plan.": "Revelak {email} helbidera idazten dizu aurkezpen bat partekatzen dizutenean, talde batera gonbidatzen zaituztenean edo zure plana aldatzen denean.",
+  "Avisarme cuando mis créditos estén a punto de caducar": "Abisatu nire kredituak iraungitzear daudenean",
+  "Enviarme un correo de prueba": "Bidali proba-mezu bat",
+  "Enviado a {email}. Si no te llega en unos minutos, mira en «Spam».": "{email} helbidera bidalia. Minutu batzuetan iristen ez bada, begiratu spam karpetan.",
+  "Ya has pedido uno hace poco: espera una hora para pedir otro.": "Duela gutxi eskatu duzu bat: itxaron ordubete beste bat eskatzeko.",
+  "Los correos aún no están activados en este servidor.": "Mezuak ez daude oraindik aktibatuta zerbitzari honetan.",
 };

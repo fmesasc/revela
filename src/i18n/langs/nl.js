@@ -2359,4 +2359,11 @@ export default {
   "Más visual": "Visueler",
   "Con animación": "Met animatie",
   "Sorpréndeme": "Verras me",
+  "Avisos por correo": "Meldingen per e-mail",
+  "Revela te escribe a {email} cuando te comparten una presentación, te invitan a un equipo o cambia tu plan.": "Revela schrijft naar {email} als iemand een presentatie met je deelt, je voor een team wordt uitgenodigd of je abonnement verandert.",
+  "Avisarme cuando mis créditos estén a punto de caducar": "Laat het me weten als mijn tegoed bijna verloopt",
+  "Enviarme un correo de prueba": "Stuur me een testmail",
+  "Enviado a {email}. Si no te llega en unos minutos, mira en «Spam».": "Verzonden naar {email}. Komt hij niet binnen een paar minuten, kijk dan in je spammap.",
+  "Ya has pedido uno hace poco: espera una hora para pedir otro.": "Je hebt er net een aangevraagd: wacht een uur voor je er nog een aanvraagt.",
+  "Los correos aún no están activados en este servidor.": "E-mails zijn op deze server nog niet ingeschakeld.",
 };

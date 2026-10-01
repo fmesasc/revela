@@ -2359,4 +2359,11 @@ export default {
   "Más visual": "أكثر بصرية",
   "Con animación": "مع حركة",
   "Sorpréndeme": "فاجئني",
+  "Avisos por correo": "الإشعارات بالبريد الإلكتروني",
+  "Revela te escribe a {email} cuando te comparten una presentación, te invitan a un equipo o cambia tu plan.": "يراسلك Revela على {email} عندما يشاركك أحد عرضًا تقديميًا أو تتم دعوتك إلى فريق أو تتغير خطتك.",
+  "Avisarme cuando mis créditos estén a punto de caducar": "نبّهني عندما توشك أرصدتي على الانتهاء",
+  "Enviarme un correo de prueba": "أرسل لي رسالة تجريبية",
+  "Enviado a {email}. Si no te llega en unos minutos, mira en «Spam».": "أُرسلت إلى {email}. إن لم تصل خلال دقائق، فتحقق من مجلد الرسائل غير المرغوب فيها.",
+  "Ya has pedido uno hace poco: espera una hora para pedir otro.": "لقد طلبت واحدة مؤخرًا: انتظر ساعة قبل أن تطلب أخرى.",
+  "Los correos aún no están activados en este servidor.": "لم يتم تفعيل البريد الإلكتروني على هذا الخادم بعد.",
 };
