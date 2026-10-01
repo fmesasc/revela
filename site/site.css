@@ -1,8 +1,8 @@
 /* revelaslides.com: home, prices and support (the app lives in /app/).
    Light by default; dark when chosen with the switch in the header (saved in
    this browser) — data-theme on <html>, set before the page is painted. */
-@font-face{font-family:"Newsreader";src:url(fonts/newsreader.woff2) format("woff2");font-weight:300 700;font-style:normal;font-display:swap}
-@font-face{font-family:"Newsreader";src:url(fonts/newsreader-italic.woff2) format("woff2");font-weight:300 700;font-style:italic;font-display:swap}
+@font-face{font-family:"Newsreader";src:url(assets/fonts/newsreader.woff2) format("woff2");font-weight:300 700;font-style:normal;font-display:swap}
+@font-face{font-family:"Newsreader";src:url(assets/fonts/newsreader-italic.woff2) format("woff2");font-weight:300 700;font-style:italic;font-display:swap}
 
 :root{
   --paper:#faf8f4; --paper2:#f1ede5; --card:#ffffff; --ink:#17181c; --ink2:#5d5f66; --ink3:#8a8b90; --line:#e3ded4;
