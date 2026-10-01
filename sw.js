@@ -7,7 +7,7 @@
 // - Everything else (Google Drive API, sign-in, the phone remote's signalling)
 //   is not touched: it goes straight to the network.
 
-const CACHE = 'revela-v2';
+const CACHE = 'revela-v3';
 const SHELL = ['./', 'index.html', 'src/ui/styles/tokens.css', 'src/ui/styles/ribbon.css', 'src/ui/styles/layout.css', 'src/ui/styles/canvas.css', 'src/ui/styles/chrome.css', 'src/ui/styles/responsive.css', 'src/ui/styles/features.css', 'src/apps/editor/main.js', 'manifest.webmanifest', 'icons/icon.svg'];
 const CDN = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 
