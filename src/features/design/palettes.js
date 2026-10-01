@@ -59,24 +59,28 @@ const COLOUR_PROPS = ['fill', 'stroke', 'color', 'bg', 'borderColor', 'headBg', 
 const HEX = /#[0-9a-f]{6}\b/gi;
 
 export function applyPalette(key, deck = state.deck, custom = null) {
-  const to = key === 'custom' ? customPalette(custom) : PALETTES[key]; if (!to) return;
+  if (key === 'custom' ? !customPalette(custom) : !PALETTES[key]) return;
+  commit(() => swapPalette(key, deck, custom));
+}
+// The same change, without recording it (for a copy, or inside another commit).
+export function swapPalette(key, deck, custom = null) {
+  const to = key === 'custom' ? customPalette(custom) : PALETTES[key]; if (!to) return false;
   const from = currentPalette(deck);
   const map = new Map([[from.bg, to.bg], [from.fg, to.fg], ...from.accents.map((c, i) => [c, to.accents[i]])]
     .map(([a, b]) => [a.toLowerCase(), b]));
   const swap = str => String(str).replace(HEX, m => map.get(m.toLowerCase()) || m);
-  commit(() => {
-    for (const s of deck.slides) {
-      if (s.background) s.background = swap(s.background);
-      for (const b of s.blocks) {
-        for (const k of COLOUR_PROPS) if (typeof b[k] === 'string') b[k] = swap(b[k]);
-        if (b.type === 'text' && b.html) b.html = swap(b.html);
-      }
+  for (const s of deck.slides) {
+    if (s.background) s.background = swap(s.background);
+    for (const b of s.blocks) {
+      for (const k of COLOUR_PROPS) if (typeof b[k] === 'string') b[k] = swap(b[k]);
+      if (b.type === 'text' && b.html) b.html = swap(b.html);
     }
-    if (deck.textColor) deck.textColor = swap(deck.textColor);
-    deck.palette = key;
-    if (key === 'custom') deck.customPalette = to; else delete deck.customPalette;
-    if (!deck.textColor || deck.textColor.toLowerCase() === to.fg.toLowerCase()) delete deck.textColor;
-  });
+  }
+  if (deck.textColor) deck.textColor = swap(deck.textColor);
+  deck.palette = key;
+  if (key === 'custom') deck.customPalette = to; else delete deck.customPalette;
+  if (!deck.textColor || deck.textColor.toLowerCase() === to.fg.toLowerCase()) delete deck.textColor;
+  return true;
 }
 
 export function setDeckTextColor(c, deck = state.deck) {
@@ -97,11 +101,15 @@ export function applyFonts(heading, body, deck = state.deck) {
   });
 }
 export function applyFontPair(key, deck = state.deck) {
-  const st = pairStacks(key); if (!st) return;
+  if (!pairStacks(key)) return;
+  commit(() => swapFontPair(key, deck));
+}
+// (Without recording it: for a copy, or inside another commit.)
+export function swapFontPair(key, deck) {
+  const st = pairStacks(key); if (!st) return false;
   ensureFont(st.heading); ensureFont(st.body);
-  commit(() => {
-    for (const s of deck.slides) for (const b of s.blocks)
-      if (b.type === 'text' && !b.wordart) b.fontFamily = isHeading(b) ? st.heading : st.body;
-    deck.fontPair = key; deck.bodyFont = st.body;
-  });
+  for (const s of deck.slides) for (const b of s.blocks)
+    if (b.type === 'text' && !b.wordart) b.fontFamily = isHeading(b) ? st.heading : st.body;
+  deck.fontPair = key; deck.bodyFont = st.body;
+  return true;
 }

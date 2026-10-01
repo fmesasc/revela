@@ -1,0 +1,48 @@
+# Despliega revela-blender (server/blender: Blender en Cloudflare Containers, para «Crear modelo 3D
+# con IA») cuando cambia, después de pasar sus pruebas. SOLO despliega si el repositorio tiene
+# BLENDER_DEPLOY = 1 (variable o secreto en Settings ▸ Secrets and variables ▸ Actions): Containers
+# necesita el plan de pago de Workers, y sin activarlo el despliegue fallaría.
+#
+# Usa los mismos secretos que server.yml (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID); el token
+# necesita además permiso de Containers (plantilla «Edit Cloudflare Workers» + Account ▸ Containers ▸
+# Edit). El secreto del propio Worker (BLENDER_SECRET) se pone una vez en Cloudflare y no se toca.
+# `wrangler deploy` construye la imagen (Dockerfile: Blender LTS oficial, versión y SHA-256 fijas) con
+# el Docker del ejecutor y la sube al registro de Cloudflare.
+name: Blender
+
+on:
+  push:
+    branches: [main]
+    paths: ['server/blender/**', 'tests/server-blender.mjs', '.github/workflows/blender.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: blender
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      ENABLED: ${{ vars.BLENDER_DEPLOY == '1' || secrets.BLENDER_DEPLOY == '1' }}
+      HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Tests
+        run: node tests/server-blender.mjs && python3 -m py_compile server/blender/runner.py server/blender/run.py
+      - name: Deploy to Cloudflare
+        if: env.ENABLED == 'true' && env.HAS_TOKEN == 'true'
+        working-directory: server/blender
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npm install --no-audit --no-fund && npx wrangler deploy
+      - name: Not enabled
+        if: env.ENABLED != 'true' || env.HAS_TOKEN != 'true'
+        run: echo '::notice::revela-blender no se despliega (falta BLENDER_DEPLOY=1 o CLOUDFLARE_API_TOKEN); pruebas pasadas.'

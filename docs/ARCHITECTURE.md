@@ -81,7 +81,7 @@ src/
                                canvasmode + canvasdesigns (Prezi-like canvas and its pictures)
     animation/                 transitions.js (effects, several per object, timeline,
                                transitions, motion paths), morph.js (Morph pairing)
-    ai/                        openrouter.js (sign-in, calls), authoring.js (decks, rewriting)
+    ai/                        openrouter.js (sign-in, calls), authoring.js (decks, rewriting), agent.js (the assistant: proposals, scope, permissions, checks)
     collab/                    comments, versions, protect (password, mark as final), signature
     live/                      remote (phone), poll, dashboards (live data), media (camera,
                                video/GIF playback), gifbg (GIF background removal), coach,
@@ -127,12 +127,15 @@ tests/
 server/
   cloudflare/                  optional server (Worker + Durable Objects with SQLite storage):
                                sealed shares and co-editing rooms, daily quotas
+  blender/                     revela-blender: Blender in Cloudflare Containers for
+                               «Crear modelo 3D con IA» (signed requests only; docs/NUBE.md)
 desktop/                       Tauri app (Windows, macOS, Linux) with self-update
 tools/
   move.py  extract.py          move files / declarations and rewrite imports
   shot.py  embeddable.py       screenshots; which web pages can be embedded
   pptx-compare.py              compare a PowerPoint file with Revela's rendering
   nasa3d.py                    NASA's 3D model index and thumbnails
+  blender-try.py               run the Blender wrapper of the AI 3D models with this computer's Blender
 ```
 
 ## Data model

@@ -4,18 +4,17 @@
 //   out by Revela (title, section, bullets, two columns, quote, big numbers,
 //   timeline, chart with data, table, image, closing) and optional AI images;
 // - improve one slide; agenda and quiz slides from the content;
-// - an assistant that edits the deck from plain-language requests through a
-//   small set of validated operations (one undo step).
+// - (the assistant that proposes changes to the deck: agent.js).
 
 import { state, commit, currentSlide } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 import { chat, lang, parseJSON, esc, plain, generateImage } from './openrouter.js';
-import { currentPalette, applyPalette, PALETTES } from '../design/palettes.js';
+import { currentPalette } from '../design/palettes.js';
 import { PDFJS } from '../../core/vendor.js';
 
 // ---- Slide kinds → objects ------------------------------------------------------
 export const KINDS = ['title', 'section', 'bullets', 'two_columns', 'quote', 'stats', 'timeline', 'chart', 'table', 'image', 'closing'];
-const SPEC_DOC = `Slide kinds and their fields:
+export const SPEC_DOC = `Slide kinds and their fields:
 - "title": title, subtitle
 - "section": title, subtitle
 - "bullets": title, bullets (3-6 short strings)
@@ -283,66 +282,4 @@ export async function addQuiz(n = 3) {
   return qs.length;
 }
 
-// ---- Assistant ---------------------------------------------------------------------
-// The deck as the model sees it: slide numbers, text objects with ids, notes.
-export function deckOutline(deck = state.deck) {
-  return deck.slides.map((s, i) => ({
-    slide: i + 1, hidden: !!s.hidden || undefined, background: s.background?.startsWith('#') ? s.background : undefined,
-    texts: s.blocks.filter(b => b.type === 'text' && plain(b.html)).map(b => ({ id: b.id, text: plain(b.html).slice(0, 400) })),
-    other: s.blocks.filter(b => b.type !== 'text' && b.type !== 'connector').map(b => b.type),
-    notes: (s.notes || '').slice(0, 300) || undefined,
-  }));
-}
-const OPS_DOC = `Operations (slide numbers are 1-based and refer to the deck BEFORE your changes; apply order is the list order, and "add_slide" after:N inserts after the slide that was N):
-{"op":"set_text","slide":N,"id":"…","text":"…"}   (use "- " at line starts for bullets)
-{"op":"add_slide","after":N,"spec":{"kind":…}}     (spec as described below)
-{"op":"replace_slide","slide":N,"spec":{"kind":…}}
-{"op":"delete_slide","slide":N}
-{"op":"move_slide","slide":N,"to":M}
-{"op":"set_notes","slide":N,"notes":"…"}
-{"op":"set_hidden","slide":N,"hidden":true|false}
-{"op":"set_background","slide":N|"all","color":"#rrggbb"}
-{"op":"apply_palette","name":"${Object.keys(PALETTES).join('"|"')}"}`;
-
-export async function assistant(request, history = []) {
-  const out = await chat([
-    { role: 'system', content: `You are the assistant inside the Revela presentation editor. Change the user's deck by answering only JSON {"message":"short reply to the user in their language","ops":[…]}.\n${OPS_DOC}\n${SPEC_DOC}\nIf the request is only a question, answer in "message" with no ops. Never invent facts or figures.` },
-    ...history.slice(-6),
-    { role: 'user', content: `Deck:\n${JSON.stringify(deckOutline())}\n\nCurrent slide: ${state.ui.slideIndex + 1}\n\nRequest: ${request}` },
-  ], { json: true, maxTokens: 6000 });
-  const res = parseJSON(out);
-  const applied = applyOps(res.ops || []);
-  return { message: str(res.message), applied, ops: res.ops || [] };
-}
-
-// Validate and apply operations in one undo step. Returns how many applied.
-export function applyOps(ops) {
-  if (!Array.isArray(ops) || !ops.length) return 0;
-  let n = 0;
-  commit(() => {
-    const slides = state.deck.slides, orig = [...slides];          // numbers refer to the original deck
-    const at = N => orig[(+N | 0) - 1];
-    const toHTML = t => { const lines = str(t).split('\n').map(l => l.trim()).filter(Boolean);
-      return lines.length && lines.every(l => /^[-•*]\s/.test(l)) ? `<ul>${lines.map(l => `<li>${esc(l.replace(/^[-•*]\s+/, ''))}</li>`).join('')}</ul>` : lines.map(esc).join('<br>'); };
-    for (const o of ops.slice(0, 200)) {
-      const s = at(o.slide);
-      switch (o.op) {
-        case 'set_text': { const b = s?.blocks.find(x => x.id === o.id && x.type === 'text'); if (b) { b.html = toHTML(o.text); n++; } break; }
-        case 'set_notes': if (s) { s.notes = str(o.notes); n++; } break;
-        case 'set_hidden': if (s) { s.hidden = !!o.hidden; n++; } break;
-        case 'delete_slide': if (s && slides.length > 1) { slides.splice(slides.indexOf(s), 1); n++; } break;
-        case 'move_slide': if (s) { const i = slides.indexOf(s), to = Math.max(0, Math.min(slides.length - 1, (+o.to | 0) - 1)); slides.splice(i, 1); slides.splice(to, 0, s); n++; } break;
-        case 'add_slide': if (o.spec && typeof o.spec === 'object') {
-          const ref = at(o.after), i = ref ? slides.indexOf(ref) + 1 : (+o.after | 0) <= 0 ? 0 : slides.length;
-          slides.splice(i, 0, slideFromSpec(o.spec, ref?.background)); n++; } break;
-        case 'replace_slide': if (s && o.spec) { s.blocks = layoutSlide(o.spec, state.deck.size.w, state.deck.size.h); if (o.spec.notes) s.notes = str(o.spec.notes); n++; } break;
-        case 'set_background': if (/^#[0-9a-f]{6}$/i.test(o.color || '')) { (o.slide === 'all' ? slides : [s]).filter(Boolean).forEach(x => (x.background = o.color)); n++; } break;
-        case 'apply_palette': break;                                   // done after this commit
-      }
-    }
-    state.ui.slideIndex = Math.min(state.ui.slideIndex, slides.length - 1); state.ui.selection = null;
-  });
-  const pal = ops.find(o => o.op === 'apply_palette' && PALETTES[o.name]);
-  if (pal) { applyPalette(pal.name); n++; }
-  return n;
-}
+// The assistant (proposals, scope, permissions, its operations): features/ai/agent.js.

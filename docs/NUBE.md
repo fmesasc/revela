@@ -27,6 +27,7 @@ Navegador / escritorio                         Cloudflare
 └──────────────────────────┘                   │  ├─ DesktopLink (1 por inicio de sesión)│
                                                │  ├─ ShareBox / CollabRoom (compartir)   │
                                                │  ├─ Schedule (avisos por día) ← cron    │
+                                               │  ├─ ModelJob (1 por modelo 3D con IA) ──┼──▶ revela-blender (Blender en Containers)
                                                │  └─ secretos: OPENROUTER_KEY, STRIPE_…  │
                                                └───────┬───────────────┬─────────────────┘
                                                        ▼               ▼
@@ -180,6 +181,131 @@ están en esa misma llamada. Coste: 0,05 $ por GB de salida, los primeros
 créditos solo cambian cuando llega el aviso **firmado** de Stripe
 (`/api/billing/webhook`), y cada aviso cuenta una sola vez.
 
+## Modelos 3D con IA
+
+«Insertar ▸ Crear 3D con IA» (solo en las ediciones con cuenta): la persona describe un objeto
+(«una taza de café de cerámica azul»), puede adjuntar hasta 3 fotos de referencia, y un agente
+escribe un guion de Blender, lo ejecuta, mira la vista previa y se corrige, como hace Claude Code con
+Blender en un ordenador. Al terminar se ve el modelo girando y se puede **Insertar** (un objeto 3D
+con el GLB dentro de la presentación, como los modelos subidos, y el pie «Modelo creado con IA»),
+**Pedir cambios** (otra tanda de rondas con ese texto) o **Descartar**.
+
+### Arquitectura
+
+```
+App (src/ui/dialogs/model3dai.js)
+  │  POST /api/3d/jobs { prompt, images? }   GET /api/3d/jobs/:id (cada 2,5 s)   …/feedback  …/cancel  …/model
+  ▼
+revela-share (server/cloudflare/model3d.js)
+  ├─ ModelJob (Durable Object, uno por trabajo): el bucle, por rondas con alarm()
+  │    ronda: modelo con visión de OpenRouter (AI_3D_MODEL) → JSON { done, note, script }
+  │           → revela-blender ejecuta el guion → GLB + vista previa → la ronda siguiente la ve
+  ├─ Account: créditos (hold/settle) y el turno «un trabajo activo por cuenta» (slot)
+  └─ Budget: el tope global de gasto del mes
+        │  POST BLENDER_URL/run  (cabecera X-Revela-Signature: HMAC-SHA256 de «t.cuerpo» con BLENDER_SECRET)
+        ▼
+revela-blender (server/blender: otro Worker)
+  ├─ gate.js: comprueba la firma (máx. 5 minutos) y nada más: no cobra ni guarda
+  └─ BlenderRunner (Cloudflare Container, standard-3: 2 vCPU, 8 GiB) con la imagen del Dockerfile:
+       Debian slim + Blender 4.5.14 LTS oficial (SHA-256 fija) + runner.py (POST /run)
+       blender -b --factory-startup -noaudio --python-exit-code 1 -P run.py -- <carpeta>
+       run.py: escena vacía → guion → exporta out.glb → vista previa 768×768 (Cycles CPU, 16 muestras,
+       eliminación de ruido; si falla, Workbench) → { ok, log, glb, preview, thumb, seconds }
+```
+
+Cada ronda (como mucho **4 por petición** y **12 por trabajo**, `AI_3D_MAX_ROUNDS`): la primera escribe
+el guion; si Blender falla, la siguiente recibe el error; si funciona, recibe la vista previa (imagen) y
+decide si está bien (`done`) o manda otro guion. Las pautas del sistema (`SYSTEM_3D`) piden metros,
+el objeto centrado y apoyado en el suelo, Principled BSDF con colores, nombres claros, modificadores
+en vez de mallas enormes, menos de 150 000 triángulos (300 000 como máximo, lo comprueba run.py),
+nada de cámaras ni luces (las pone run.py) y nada de `os`, `subprocess`, sockets, archivos ni red.
+
+El trabajo se guarda en su Durable Object (descripción, fotos, notas, miniaturas, la última vista
+previa y el GLB en trozos con `writeText`) y **se borra a las 24 h** (alarm), o al insertarlo o
+descartarlo. El modelo elegido: `google/gemini-3.8-flash` (acepta imágenes; 0,75 $ / 3,75 $ por millón de
+tokens, comprobado en openrouter.ai/api/v1/models el 2026-10-01); para más calidad,
+`anthropic/claude-sonnet-5.5` (2 $ / 10 $), cambiando `AI_3D_MODEL` y su precio en `AI_PRICES`.
+
+### Seguridad
+
+- **Quién paga y cuánto lo decide el servidor:** antes de cada ronda aparta los créditos del peor caso
+  (tokens máximos + el tiempo máximo de Blender); sin bastantes, `402` sin llamar a nada. Después cobra
+  la IA por lo que informa OpenRouter y Blender por los segundos que midió el propio servidor, y solo si
+  la ejecución funcionó (un guion que falla no cobra Blender, pero sí la IA que lo escribió; si la IA
+  falla, nada). Cuenta en el tope global del mes (`Budget`) y en el límite por minuto.
+- **Un trabajo activo por cuenta** (`409 busy`), tope de rondas, y las fotos limitadas a 3 data URL
+  JPEG/PNG de 600 000 caracteres.
+- **revela-blender solo acepta peticiones firmadas** por revela-share (HMAC-SHA256 del cuerpo y la hora con
+  `BLENDER_SECRET`, que solo está en los secretos de Cloudflare de los dos Workers; de más de 5 minutos o
+  con el cuerpo cambiado, `401`). Su dirección pública no sirve de nada sin el secreto. El contenedor no
+  tiene secretos.
+- **El guion no puede salir de su carpeta:** el contenedor tiene `enableInternet = false` (con Containers,
+  sin manejadores de salida configurados, toda petición saliente se rechaza: documentado en
+  developers.cloudflare.com/containers/configuration/outbound-traffic); Blender corre como un usuario sin
+  privilegios que solo puede escribir en `/work` (`/tmp` cerrado); `run.py` pone un *audit hook* de
+  Python (no se puede quitar) que bloquea escribir fuera de la carpeta del trabajo, sockets, procesos,
+  `ctypes` y similares; y `runner.py` limita a 90 s (mata el grupo de procesos), 6 GiB de memoria
+  (`RLIMIT_AS`), el tamaño de archivo y el GLB (15 MB). Una ejecución cada vez por contenedor. Antes de
+  gastar Blender, el servidor rechaza los guiones que importan módulos prohibidos.
+- Sin `BLENDER_URL` y `BLENDER_SECRET`, `/api/3d/jobs` responde `503 { error: 'not configured' }`, `/api/me`
+  dice `model3d: false` y la app oculta el botón (en la edición abierta, siempre oculto).
+
+Se prueba en `tests/server-api.mjs` (con Blender y OpenRouter simulados: rondas, cobro, 402, un trabajo a
+la vez, cambios, cancelar, descarga, firma, 503), `tests/server-blender.mjs` (la puerta de revela-blender) y
+`tests/suites/services.js` (el diálogo). El envoltorio de Blender se prueba de verdad con el Blender del
+equipo: `python3 tools/blender-try.py [guion.py]` deja `out.glb` y `preview.png` en `tmp/blender-try/`
+(con Blender Flatpak; los guiones deben estar bajo /home). La imagen también se puede probar con Docker:
+`docker build -t revela-blender server/blender && docker run -p 8080:8080 revela-blender` y
+`POST http://localhost:8080/run`.
+
+### Costes
+
+Containers (plan de pago de Workers, que incluye al mes 25 GiB·h de memoria, 375 min de vCPU y 200 GB·h
+de disco): 0,000020 $ por vCPU·s (solo uso activo), 0,0000025 $ por GiB·s y 0,00000007 $ por GB·s de disco
+(estos dos mientras el contenedor está despierto). Un standard-3 (2 vCPU, 8 GiB, 16 GB) a pleno uso:
+2 × 0,00002 + 8 × 0,0000025 + 16 × 0,00000007 ≈ **0,000061 $/s**. Se cobra `BLENDER_USD_PER_SECOND` =
+**0,0001 $/s** (un 64 % más), que cubre el arranque y el minuto que sigue despierto tras la última ejecución
+(`sleepAfter`, ≈ 0,0013 $ en memoria y disco). Una ejecución típica tarda 15–25 s (la vista previa, unos 13 s
+con 2 vCPU; medido con la imagen en Docker).
+
+Por modelo, con `google/gemini-3.8-flash` y un crédito = 0,002 $ (`CREDIT_USD`, `MARKUP` 1):
+
+| | IA | Blender | Total |
+| --- | --- | --- | --- |
+| Ronda típica (≈ 6 000 tokens de entrada con la imagen, ≈ 3 000 de salida; 20 s) | ≈ 0,016 $ | 0,002 $ | ≈ 0,018 $ → **9–10 créditos** |
+| Modelo típico (escribe, revisa la vista previa, da el visto bueno: 3 rondas, la última sin Blender) | ≈ 0,04 $ | ≈ 0,004 $ | ≈ 0,045 $ → **≈ 24 créditos** |
+| Lo que se aparta por ronda (7 000 de entrada + 8 000 de salida + 120 s) | 0,035 $ | 0,012 $ | 0,047 $ → **24 créditos** |
+| Máximo por petición (4 rondas al peor caso) | | | ≈ 0,19 $ → **96 créditos** (lo que muestra el diálogo) |
+| Máximo por trabajo (12 rondas con los cambios) | | | ≈ 0,57 $ → **288 créditos** |
+
+Si la entrada fuera mayor que lo previsto se cobra igualmente lo real (como en el resto de la IA).
+
+### Activarlo (paso a paso)
+
+1. **Plan de pago de Workers** (5 $/mes) en la cuenta de Cloudflare (Containers lo necesita) y una alerta
+   de gasto en Facturación ▸ Notificaciones.
+2. **Secreto compartido:** `openssl rand -base64 32` y ponerlo en los dos Workers:
+   `cd server/blender && npx wrangler secret put BLENDER_SECRET` y
+   `cd server/cloudflare && npx wrangler secret put BLENDER_SECRET` (el mismo valor). La primera vez,
+   si revela-blender aún no existe, primero se despliega (paso 3) y luego se pone el secreto.
+3. **Desplegar revela-blender:** en GitHub, Settings ▸ Secrets and variables ▸ Actions ▸ Variables:
+   `BLENDER_DEPLOY` = `1` (o un secreto con ese nombre), y que el token `CLOUDFLARE_API_TOKEN` tenga
+   también permiso de Containers (Account ▸ Containers ▸ Edit). Luego Actions ▸ Blender ▸ *Run workflow*
+   (o un cambio en `server/blender/`). También a mano: `cd server/blender && npm install && npx wrangler
+   deploy` (necesita Docker). Construye la imagen (unos 2 GB) y la sube al registro de Cloudflare.
+4. **BLENDER_URL** en revela-share: Workers ▸ revela-share ▸ Configuración ▸ Variables y secretos ▸
+   `BLENDER_URL` = `https://revela-blender.<tu-subdominio>.workers.dev` (la dirección que muestra el
+   despliegue). Si Cloudflare no dejara a un Worker llamar a otro de la misma cuenta por su dirección
+   workers.dev, añadir en `server/cloudflare/wrangler.toml` un *service binding*
+   (`[[services]] binding = "BLENDER_SVC"`, `service = "revela-blender"`): el código lo usa si existe.
+5. **Desplegar revela-share** (crea `ModelJob`, migración `v9`). Desde ese momento `/api/me` dice
+   `model3d: true` y la app muestra «Crear 3D con IA».
+6. Opcional: cambiar `AI_3D_MODEL`, `BLENDER_USD_PER_SECOND`, `AI_3D_MAX_ROUNDS` o `BLENDER_TIMEOUT` en las
+   variables de Cloudflare; y `RUNNERS` / `max_instances` en `server/blender/wrangler.toml` para más
+   ejecuciones a la vez.
+
+Para apagarlo: quitar `BLENDER_URL` (la app oculta la opción) y, si se quiere, borrar revela-blender.
+
 ## Qué impide saltarse las restricciones
 
 | Riesgo | Protección |
@@ -200,6 +326,7 @@ créditos solo cambian cuando llega el aviso **firmado** de Stripe
 | Editar una presentación en solo lectura (por el límite) | El propio documento pregunta a la cuenta del dueño antes de aplicar cada cambio; nada en la petición lo evita |
 | Dar de baja de avisos a otra persona | El enlace va firmado (HMAC con `MAIL_SECRET`, solo en Cloudflare) para esa cuenta y ese tipo de aviso |
 | Colar HTML en un correo (nombre de una presentación, de un equipo o de una persona) | Todo lo que viene de personas se escapa en las plantillas |
+| Usar Blender sin pagar o ejecutar código fuera de su sitio | Solo revela-share puede pedir ejecuciones (firma con `BLENDER_SECRET`), cobra antes cada ronda y el contenedor no tiene red, ni permisos fuera de su carpeta, ni secretos |
 | Acceso de administrador | No hay ninguna API de administración; se administra desde la cuenta de Cloudflare (con verificación en dos pasos) |
 
 Los tests `tests/server-api.mjs` intentan cada uno de estos ataques y comprueban

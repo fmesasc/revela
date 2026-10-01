@@ -60,9 +60,10 @@ export function previewBlocks(slide, idea) {
 const stripMeta = c => { const { toBack, ...rest } = c; return Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, typeof v === 'number' ? Math.round(v) : v])); };
 
 export function applyIdea(idea) {
-  commit(() => {
-    const s = currentSlide();
-    s.blocks = previewBlocks(s, idea).map(b => b);
-    for (const b of s.blocks) if (idea.changes[b.id]) Object.assign(b, stripMeta(idea.changes[b.id]));
-  });
+  commit(() => applyIdeaTo(currentSlide(), idea));
+}
+// (Without recording it: on any slide, or a copy.)
+export function applyIdeaTo(s, idea) {
+  s.blocks = previewBlocks(s, idea).map(b => b);
+  for (const b of s.blocks) if (idea.changes[b.id]) Object.assign(b, stripMeta(idea.changes[b.id]));
 }

@@ -67,22 +67,31 @@ export async function finishOpenRouterLogin(loc = location) {
 }
 
 // ---- Chat --------------------------------------------------------------------
-export async function chat(messages, { json = false, maxTokens = 2000 } = {}) {
+// onUsage({ usd?, credits? }): what the call cost — credits charged through the
+// account, the provider's dollars with an own key. signal: stops waiting (own key).
+export async function chat(messages, { json = false, maxTokens = 2000, onUsage = null, signal = null } = {}) {
   const { key, model } = aiSettings();
   if (!key && usingCloudAi()) {
     const data = await cloud.chat({ messages, max_tokens: maxTokens, json, ...(model !== DEFAULT_MODEL && { model }) }).catch(e => { throw cloudError(e); });
+    if (signal?.aborted) throw new Error('STOPPED');
+    if (onUsage && +data.charged > 0) onUsage({ credits: +data.charged });
     return data.choices?.[0]?.message?.content?.trim() || '';
   }
   if (!key) throw new Error('NO_KEY');
-  const r = await fetch(`${API}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, 'HTTP-Referer': APP_URL, 'X-Title': 'Revela' },
-    body: JSON.stringify({ model, messages, max_tokens: maxTokens, ...(json && { response_format: { type: 'json_object' } }) }),
-  });
+  let r;
+  try {
+    r = await fetch(`${API}/chat/completions`, {
+      method: 'POST', ...(signal && { signal }),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, 'HTTP-Referer': APP_URL, 'X-Title': 'Revela' },
+      body: JSON.stringify({ model, messages, max_tokens: maxTokens, ...(onUsage && { usage: { include: true } }), ...(json && { response_format: { type: 'json_object' } }) }),
+    });
+  } catch (e) { if (signal?.aborted) throw new Error('STOPPED'); throw e; }
   if (r.status === 401) throw new Error('BAD_KEY');
   if (r.status === 402) throw new Error('NO_CREDIT');
   if (!r.ok) throw new Error('OpenRouter ' + r.status + ' ' + ((await r.text().catch(() => '')).slice(0, 200)));
   const data = await r.json();
+  if (signal?.aborted) throw new Error('STOPPED');
+  if (onUsage && +data.usage?.cost > 0) onUsage({ usd: +data.usage.cost });
   return data.choices?.[0]?.message?.content?.trim() || '';
 }
 // ---- Speech (voice-over): mp3 of a text, through the account or the user's key ----

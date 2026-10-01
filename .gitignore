@@ -15,3 +15,5 @@ tmp/
 
 # Local state of `wrangler dev` (server/cloudflare)
 .wrangler/
+__pycache__/
+node_modules/

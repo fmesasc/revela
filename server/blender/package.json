@@ -1,0 +1,12 @@
+{
+  "name": "revela-blender",
+  "private": true,
+  "type": "module",
+  "description": "Blender in Cloudflare Containers for Revela's «Crear modelo 3D con IA» (see worker.js)",
+  "dependencies": {
+    "@cloudflare/containers": "0.3.7"
+  },
+  "devDependencies": {
+    "wrangler": "4.145.0"
+  }
+}

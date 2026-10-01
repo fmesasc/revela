@@ -314,26 +314,193 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       const total = R.state.deck.slides.length; eq(await A.addQuiz(1), 1, 'una pregunta');
       eq(R.state.deck.slides.length, total + 2, 'pregunta y respuesta');
       const ans = R.state.deck.slides.at(-1).blocks; eq(ans[3].opacity, undefined, 'correcta resaltada'); eq(ans[1].opacity, 30, 'incorrectas atenuadas');
-      // Asistente con operaciones
+      // Asistente: propone (no cambia nada) y se aplica lo propuesto en un paso de deshacer
       reset(); R.slides.addSlide();
-      const [s1, s2] = R.state.deck.slides, tid = s1.blocks[0].id;
+      const [s1, s2] = R.state.deck.slides, tid = s1.blocks[0].id, AG = R.aiAgent;
       answer = { message: 'Listo', ops: [
         { op: 'set_text', slide: 1, id: tid, text: 'Nuevo título' },
         { op: 'add_slide', after: 1, spec: { kind: 'bullets', title: 'Añadida', bullets: ['x'] } },
         { op: 'delete_slide', slide: 2 }, { op: 'set_notes', slide: 1, notes: 'Notas IA' },
         { op: 'set_background', slide: 'all', color: '#223344' }, { op: 'bogus' }] };
-      const res = await A.assistant('Cambia cosas');
-      eq(res.message, 'Listo', 'mensaje'); eq(res.applied, 5, 'operaciones válidas aplicadas');
+      const res = await AG.assistant('Cambia cosas', [], { perms: { delete: true, design: true, objects: true, animation: true } });
+      eq(res.message, 'Listo', 'mensaje'); eq(res.ops.length, 5, 'operaciones válidas'); eq(res.dropped.length, 1, 'la desconocida se descarta');
+      assert(s1.blocks[0].html !== 'Nuevo título' && R.state.deck.slides.length === 2, 'propuesta sin aplicar: nada cambia');
+      eq(AG.applyOps(res.ops), 5, 'aplicadas');
       eq(s1.blocks[0].html, 'Nuevo título', 'texto'); eq(s1.notes, 'Notas IA', 'notas');
       eq(R.state.deck.slides.length, 2, 'añade una y borra la original 2'); assert(!R.state.deck.slides.includes(s2), 'borrada la correcta');
       assert(/Añadida/.test(R.state.deck.slides[1].blocks[0].html), 'insertada tras la 1');
       assert(R.state.deck.slides.every(s => s.background === '#223344'), 'fondo en todas');
-      const ctx = calls.at(-1).body.messages.at(-1).content; assert(ctx.includes(tid), 'el asistente recibe los ids de los textos');
+      const ctx = calls.at(-1).body.messages.at(-1).content; assert(ctx.includes(tid), 'el asistente recibe los ids de los objetos');
       R.store.undo(); eq(R.state.deck.slides.length, 2, 'deshacer'); assert(R.state.deck.slides.some(x => x.id === s2.id), 'un solo paso de deshacer');
       eq(await A.readDocument(new W.File(['Hola documento'], 'd.txt')), 'Hola documento', 'leer .txt');
       D.querySelector('[data-action="ai-assistant"]').click(); await sleep(10);
       assert(D.getElementById('assistant-panel'), 'panel del asistente'); D.querySelector('[data-action="ai-assistant"]').click();
     } finally { W.fetch = realFetch; R.ai.disconnectAi(); }
+  });
+
+  // The assistant as an agent: simulated model answers, one per call (each one a JSON text).
+  const agentMock = (W, answers, calls, { cost = 0.001, wait = null } = {}) => async (url, opts) => {
+    const body = JSON.parse(opts.body); calls.push(body);
+    if (wait) await new Promise((ok, ko) => { const t = setTimeout(ok, wait); opts.signal?.addEventListener('abort', () => { clearTimeout(t); ko(new W.DOMException('aborted', 'AbortError')); }); });
+    const a = answers.length > 1 ? answers.shift() : answers[0];
+    return new W.Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(a) } }], usage: { cost } }));
+  };
+  const ALL = { delete: true, design: true, objects: true, animation: true };
+
+  await test('asistente: alcance, permisos y operaciones nuevas validadas', async () => {
+    reset(); R.slides.addSlide(); R.slides.goToSlide(0);
+    const AG = R.aiAgent, [s1, s2] = R.state.deck.slides, t1 = s1.blocks[0].id, t2 = s2.blocks[0]?.id || 'x';
+    const v = (ops, o = {}) => AG.validateOps(ops, { perms: ALL, ...o });
+    // Alcance: diapositiva actual, selección, rango.
+    let r = v([{ op: 'set_text', slide: 1, id: t1, text: 'A' }, { op: 'set_text', slide: 2, id: t2, text: 'B' }, { op: 'apply_palette', name: 'ocean' }], { scope: { kind: 'current' } });
+    eq(r.ops.length, 1, 'solo la actual'); eq(r.dropped.map(d => d.code).join(), 'scope,scope', 'lo de fuera se descarta');
+    R.state.ui.selection = t1; R.state.ui.multi = [t1];
+    r = v([{ op: 'set_props', slide: 1, id: t1, props: { fontSize: 50 } }, { op: 'set_props', slide: 1, id: s1.blocks[1].id, props: { fontSize: 50 } }, { op: 'set_notes', slide: 1, notes: 'n' }], { scope: { kind: 'selection' } });
+    eq(r.ops.length, 1, 'selección: solo el objeto elegido'); eq(r.dropped.length, 2, 'ni otros objetos ni la diapositiva');
+    r = v([{ op: 'set_background', slide: 'all', color: '#112233' }], { scope: { kind: 'range', from: 2, to: 2 } });
+    eq(r.ops.length, 1, '«all» se limita al rango'); eq(r.ops[0].sid, s2.id, 'en la 2');
+    // Permisos.
+    r = AG.validateOps([{ op: 'delete_slide', slide: 2 }, { op: 'set_props', slide: 1, id: t1, props: { x: 10 } }, { op: 'add_object', slide: 1, object: { type: 'text', text: 'hola', x: 10, y: 10, w: 200, h: 60 } },
+      { op: 'set_transition', slide: 1, transition: 'fade' }, { op: 'set_text', slide: 1, id: t1, text: 'Siempre' }], { perms: { delete: false, design: false, objects: false, animation: false } });
+    eq(r.dropped.map(d => d.code).join(), 'perm:delete,perm:design,perm:objects,perm:animation', 'cada permiso'); eq(r.ops.length, 1, 'el texto siempre');
+    // Validación de las operaciones nuevas.
+    const bad = [
+      { op: 'set_props', slide: 1, id: t1, props: { x: 1200 } },                                  // se sale (w 1000)
+      { op: 'set_props', slide: 1, id: 'no-existe', props: { x: 0 } },
+      { op: 'set_props', slide: 1, id: t1, props: { fill: '#ff0000' } },                          // un texto no tiene relleno
+      { op: 'set_props', slide: 1, id: t1, props: { fontSize: 900 } },
+      { op: 'add_object', slide: 1, object: { type: 'video', x: 0, y: 0, w: 100, h: 100 } },
+      { op: 'add_object', slide: 1, object: { type: 'image', src: 'https://ejemplo.org/a.png', alt: 'a', x: 0, y: 0, w: 100, h: 100 } },   // no viene de la búsqueda
+      { op: 'add_object', slide: 1, object: { type: 'shape', x: 1000, y: 600, w: 400, h: 200 } },
+      { op: 'set_animation', slide: 1, id: t1, effect: 'explotar' },
+      { op: 'set_transition', slide: 1, transition: 'tornado' },
+      { op: 'set_chart_data', slide: 1, id: t1, data: [{ label: 'a', value: 1 }] },                // no es un gráfico
+      { op: 'set_props', slide: 9, id: t1, props: { x: 0 } }];
+    r = v(bad);
+    eq(r.ops.length, 0, 'ninguna pasa'); eq(r.dropped.map(d => d.code).join(), 'range,id,prop,value,type,value,range,value,value,type,slide', 'motivos');
+    const good = [
+      { op: 'set_props', slide: 1, id: t1, props: { fontSize: 60, color: '#ffcc00', textAlign: 'center', y: 200 } },
+      { op: 'add_object', slide: 1, object: { type: 'chart', chartType: 'line', data: [{ label: '2020', value: 3 }, { label: '2021', value: 5 }], seriesName: 'Ventas', x: 100, y: 400, w: 500, h: 300 } },
+      { op: 'add_object', slide: 2, object: { type: 'table', rows: [['País', 'GW'], ['<b>China</b>', '600']], x: 100, y: 100, w: 600, h: 200 } },
+      { op: 'add_object', slide: 2, object: { type: 'icon', icon: 'rocket', x: 900, y: 100, w: 120, h: 120 } },
+      { op: 'set_animation', slide: 1, id: t1, effect: 'fade-up', start: 'afterPrev' },
+      { op: 'set_transition', slide: 2, transition: 'fade' }, { op: 'apply_palette', name: 'paper' }, { op: 'set_fonts', pair: 'classic' }];
+    r = v(good); eq(r.dropped.length, 0, 'válidas: ' + JSON.stringify(r.dropped)); eq(r.ops.length, 8, 'todas');
+    const json0 = JSON.stringify(R.state.deck);
+    const after = AG.previewDeck(r.ops); eq(JSON.stringify(R.state.deck), json0, 'la vista previa es una copia');
+    eq(AG.applyOps(r.ops), 8, 'aplicadas');
+    const [a1, a2] = R.state.deck.slides, tb = a1.blocks.find(b => b.id === t1);
+    eq(tb.fontSize, 60, 'tamaño'); eq(tb.textAlign, 'center', 'alineación'); eq(tb.animation.effect, 'fade-up', 'animación'); eq(tb.animation.start, 'afterPrev', 'empieza tras la anterior');
+    const ch = a1.blocks.find(b => b.type === 'chart'); eq(ch.chartType, 'line', 'gráfico'); eq(ch.data[1].value, 5, 'datos');
+    const tab = a2.blocks.find(b => b.type === 'table'); eq(tab.rows[1][0], '&lt;b&gt;China&lt;/b&gt;', 'celdas escapadas'); assert(tab.header, 'cabecera');
+    eq(a2.blocks.find(b => b.type === 'icon').icon, 'rocket', 'icono'); eq(a2.transition, 'fade', 'transición');
+    eq(R.state.deck.palette, 'paper', 'paleta'); eq(R.state.deck.fontPair, 'classic', 'tipografía');
+    assert(after.slides[0].blocks.some(b => b.type === 'chart'), 'la copia tenía lo mismo');
+    // Datos del gráfico y tabla sobre los objetos ya creados.
+    r = v([{ op: 'set_chart_data', slide: 1, id: ch.id, data: [['A', 1], ['B', 2], ['C', 3]], series: [{ name: 'Meta', values: [2, 2, 2] }] },
+      { op: 'set_table', slide: 2, id: tab.id, rows: [['x', 'y', 'z']], header: false }]);
+    AG.applyOps(r.ops); eq(ch.data.length, 3, 'datos nuevos'); eq(ch.series[0].name, 'Meta', 'serie'); eq(tab.rows[0].length, 3, 'tabla nueva'); eq(tab.header, false, 'sin cabecera');
+    R.store.undo(); const ch2 = R.state.deck.slides[0].blocks.find(b => b.id === ch.id), tab2 = R.state.deck.slides[1].blocks.find(b => b.id === tab.id);
+    eq(ch2.data.length, 2, 'un paso de deshacer'); eq(tab2.rows.length, 2, 'también la tabla');
+  });
+
+  await test('asistente: bucle con get_slide y check que corrige un texto que no cabe; detener', async () => {
+    reset(); const W = frame.contentWindow, real = W.fetch, calls = [], AG = R.aiAgent;
+    R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    const box = slide().blocks[1]; R.store.commit(() => Object.assign(box, { x: 140, y: 390, w: 300, h: 60, fontSize: 30, html: 'Corto' }));
+    const long = 'Un texto bastante más largo que no puede caber de ninguna manera en una caja tan pequeña como esta';
+    const answers = [
+      { thoughts: 'miro', tool: 'get_slide', args: { slide: 1 } },
+      { thoughts: 'compruebo', tool: 'check', args: { ops: [{ op: 'set_text', slide: 1, id: box.id, text: long }] } },
+      { thoughts: 'corrijo', tool: 'check', args: { ops: [{ op: 'set_text', slide: 1, id: box.id, text: long }, { op: 'set_props', slide: 1, id: box.id, props: { w: 1000, h: 200, fontSize: 24 } }] } },
+      { message: 'Texto ampliado y caja ajustada', ops: [{ op: 'set_text', slide: 1, id: box.id, text: long }, { op: 'set_props', slide: 1, id: box.id, props: { w: 1000, h: 200, fontSize: 24 } }], done: true }];
+    W.fetch = agentMock(W, answers, calls);
+    try {
+      const steps = [], json0 = JSON.stringify(R.state.deck);
+      const res = await AG.runAgent('Pon un texto más largo', { perms: ALL, onStep: s => steps.push(s.kind + (s.slide || '')) });
+      eq(steps.join(), 'think,look1,think,check,think,check,think', 'pasos: mirar, comprobar dos veces, proponer');
+      const r1 = calls[1].messages.at(-1).content, r2 = calls[2].messages.at(-1).content, r3 = calls[3].messages.at(-1).content;
+      assert(/Result of get_slide/.test(r1) && r1.includes(box.id) && /"layouts"/.test(r1), 'get_slide devuelve el detalle');
+      assert(/"problem":"overflow"/.test(r2), 'check avisa de que no cabe: ' + r2.slice(0, 300));
+      assert(!/overflow/.test(r3) && /"ok":true/.test(r3), 'tras corregir, sin problemas: ' + r3.slice(0, 300));
+      eq(res.ops.length, 2, 'propuesta'); eq(res.problems.filter(p => !p.before).length, 0, 'sin avisos');
+      eq(res.cost.calls, 4, 'cuatro llamadas'); assert(Math.abs(res.cost.usd - 0.004) < 1e-9, 'coste sumado: ' + res.cost.usd);
+      assert(calls[0].usage?.include, 'pide el coste real');
+      eq(JSON.stringify(R.state.deck), json0, 'nada cambia hasta aplicar');
+      // Máximo de pasos: si sigue pidiendo herramientas, se queda con lo último comprobado.
+      calls.length = 0; W.fetch = agentMock(W, [{ tool: 'check', args: { ops: [{ op: 'set_notes', slide: 1, notes: 'n' }] } }], calls);
+      const capped = await AG.runAgent('Notas', { perms: ALL, maxSteps: 3 });
+      eq(calls.length, 3, 'tres llamadas como mucho'); eq(capped.ops.length, 1, 'propone lo comprobado');
+      assert(/last tool call/.test(calls[2].messages.at(-1).content), 'avisa del último paso');
+      // Detener.
+      W.fetch = agentMock(W, [{ tool: 'get_slide', args: { slide: 1 } }], calls, { wait: 2000 });
+      const ctrl = new W.AbortController(), p = AG.runAgent('Algo', { signal: ctrl.signal });
+      await sleep(30); ctrl.abort();
+      let err = null; try { await p; } catch (e) { err = e.message; }
+      eq(err, 'STOPPED', 'detenido');
+    } finally { W.fetch = real; R.ai.disconnectAi(); }
+  });
+
+  await test('asistente (panel): propone con miniaturas, aplica solo lo marcado, descarta, detiene y aplica sin preguntar', async () => {
+    reset(); R.slides.addSlide(); R.slides.goToSlide(0);
+    const W = frame.contentWindow, real = W.fetch, calls = [], P = await W.eval("import('/src/ui/dialogs/assistant.js')");
+    P.resetAssistant(); W.localStorage.removeItem('revela.assistant.v1');
+    R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    const [s1, s2] = R.state.deck.slides, t1 = s1.blocks[0].id;
+    const proposal = { message: 'Te propongo esto', done: true, ops: [
+      { op: 'set_text', slide: 1, id: t1, text: 'Título nuevo' }, { op: 'set_notes', slide: 1, notes: 'Notas' },
+      { op: 'set_background', slide: 2, color: '#334455' }, { op: 'delete_slide', slide: 2 }] };
+    W.fetch = agentMock(W, [proposal], calls);
+    const panelOf = () => D.getElementById('assistant-panel');
+    const send = async text => { panelOf().querySelector('textarea').value = text; panelOf().querySelector('.as-send').click(); await sleep(30); for (let i = 0; i < 100 && P.assistantState().busy; i++) await sleep(20); await sleep(20); };
+    try {
+      D.querySelector('[data-action="ai-assistant"]').click(); await sleep(20);
+      const panel = panelOf(); assert(panel, 'panel abierto');
+      assert(panel.querySelector('.as-scope') && panel.querySelectorAll('[data-perm]').length === 4, 'alcance y permisos arriba');
+      eq(panel.querySelector('[data-perm="delete"]').checked, false, 'borrar diapositivas, desactivado por defecto');
+      const json0 = JSON.stringify(R.state.deck);
+      await send('Mejora la portada');
+      const card = panel.querySelector('.as-prop'); assert(card, 'tarjeta de propuesta');
+      eq(JSON.stringify(R.state.deck), json0, 'la propuesta no cambia la presentación');
+      eq(card.querySelectorAll('.as-group').length, 2, 'agrupada por diapositiva');
+      eq(card.querySelectorAll('input[data-i]').length, 3, 'una casilla por cambio');
+      assert(/borrar diapositivas/i.test(card.querySelector('.as-warn').textContent), 'avisa del cambio sin permiso: ' + card.querySelector('.as-warn').textContent);
+      const g1 = card.querySelector('.as-group'); eq(g1.querySelectorAll('.as-th').length, 2, 'antes y después');
+      assert(/Título nuevo/.test(g1.querySelectorAll('.as-th')[1].textContent) && !/Título nuevo/.test(g1.querySelectorAll('.as-th')[0].textContent), 'el después lleva el cambio');
+      assert(/Título nuevo/.test(card.textContent), 'línea en lenguaje llano');
+      // Desmarcar las notas y aplicar.
+      const notes = [...card.querySelectorAll('.as-op')].find(l => /Notas del orador/.test(l.textContent)).querySelector('input');
+      notes.click(); await sleep(40);
+      assert(/\(2\)/.test(card.querySelector('.as-apply').textContent), 'cuenta lo marcado');
+      card.querySelector('.as-apply').click(); await sleep(20);
+      eq(s1.blocks[0].html, 'Título nuevo', 'aplicado el texto'); eq(s1.notes || '', '', 'no las notas desmarcadas'); eq(s2.background, '#334455', 'fondo de la 2');
+      eq(R.state.deck.slides.length, 2, 'la diapositiva sin permiso sigue');
+      assert(/US\$/.test(panel.querySelector('.as-cost').textContent), 'muestra lo gastado');
+      R.store.undo(); { const [u1, u2] = R.state.deck.slides; assert(u1.blocks[0].html !== 'Título nuevo' && u2.background !== '#334455', 'un solo paso de deshacer'); }
+      // Descartar.
+      await send('Otra vez'); panel.querySelector('.as-prop:not(.settled) .as-discard').click(); await sleep(20);
+      assert(R.state.deck.slides[0].blocks[0].html !== 'Título nuevo', 'descartada: nada cambia'); eq(P.assistantState().pending, null, 'sin propuesta pendiente');
+      // Pedir cambios: sigue la conversación.
+      await send('Una más'); panel.querySelector('.as-prop:not(.settled) .as-more').click();
+      await send('Más corto'); assert(/About your last proposal: Más corto/.test(calls.at(-1).messages.at(-1).content), 'pide cambios sobre la propuesta');
+      assert(calls.at(-1).messages.some(m => m.role === 'assistant' && /Te propongo esto/.test(m.content)), 'con el historial');
+      // Detener.
+      W.fetch = agentMock(W, [proposal], calls, { wait: 3000 });
+      panel.querySelector('textarea').value = 'Lento'; panel.querySelector('.as-send').click(); await sleep(60);
+      assert(panel.querySelector('.as-progress'), 'progreso visible'); panel.querySelector('.as-stop').click(); await sleep(60);
+      assert(!P.assistantState().busy && /Detenido/.test(panel.querySelector('.as-log').textContent), 'detenido');
+      // Aplicar sin preguntar (recordado).
+      W.fetch = agentMock(W, [proposal], calls);
+      panel.querySelector('.as-autochk').click(); panel.querySelector('[data-perm="delete"]').click();
+      assert(JSON.parse(W.localStorage.getItem('revela.assistant.v1')).auto, 'opción recordada');
+      await send('Hazlo');
+      eq(R.state.deck.slides[0].blocks[0].html, 'Título nuevo', 'aplicado sin preguntar'); eq(R.state.deck.slides.length, 1, 'con permiso, también borra');
+      assert(/Cambios aplicados/.test([...panel.querySelectorAll('.as-prop')].at(-1).textContent), 'lo dice');
+      R.store.undo(); eq(R.state.deck.slides.length, 2, 'y se deshace de una vez');
+    } finally {
+      W.fetch = real; R.ai.disconnectAi(); W.localStorage.removeItem('revela.assistant.v1'); P.resetAssistant();
+      if (panelOf()) D.querySelector('[data-action="ai-assistant"]').click();
+    }
   });
 
   await test('imágenes libres (Openverse) e iconos en línea (Iconify)', async () => {
@@ -1042,5 +1209,51 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       a.setMic(false); eq(a.stream.getAudioTracks()[0].enabled, false, 'silenciar el micrófono');
     } finally { await a.stop(); await b.stop(); }
     eq(room.size, 0, 'al colgar, salen de la sala');
+  });
+
+  await test('Crear modelo 3D con IA: rondas, cambios e insertar (servidor simulado)', async () => {
+    reset(); const W = frame.contentWindow, M = await W.eval("import('/src/ui/dialogs/model3dai.js')"), calls = [];
+    // The server: round 1 fails in Blender, round 2 works; then a request for changes, and discarding.
+    const rounds = [{ n: 1, ok: false, note: 'Primera versión', error: 'script' }, { n: 2, ok: true, note: 'Taza azul con asa', preview: 'data:image/jpeg;base64,/9j/AA==' }];
+    let polls = 0, status = 'running', shown = [];
+    const api = async (path, body) => {
+      calls.push([path, body]);
+      if (path === '3d') return { ok: true, estimate: { perRound: 26, rounds: 4, max: 104 } };
+      if (path === '3d/jobs') return { id: 'job-de-prueba-123456', estimate: { perRound: 26, max: 104 } };
+      if (path.endsWith('/model')) return { glb: 'data:model/gltf-binary;base64,Z2xURg==' };
+      if (path.endsWith('/feedback')) { status = 'running'; shown = rounds.slice(0, 2); polls = 0; return { ok: true }; }
+      if (path.endsWith('/cancel')) return { ok: true };
+      polls++; if (polls === 1) shown = rounds.slice(0, 1); else { shown = rounds; status = 'done'; }
+      return { status, rounds: shown, left: 2, total: shown.length, max: 12, glb: status === 'done' };
+    };
+    await M.openModelAi({ api, interval: 5 });
+    const m = D.getElementById('m3a-modal'), q = s => m.querySelector(s);
+    assert(m && /104/.test(q('.m3a-est').textContent), 'el diálogo muestra la estimación en créditos');
+    eq(m.querySelectorAll('.m3a-ex').length, 3, 'con ejemplos');
+    m.querySelectorAll('.m3a-ex')[0].click();
+    assert(/taza/.test(q('.m3a-prompt').value), 'un ejemplo rellena la descripción');
+    q('.m3a-go').click();
+    for (let i = 0; i < 100 && !(status === 'done' && !q('.m3a-insert').disabled && q('.m3a-view model-viewer')); i++) await sleep(20);
+    eq(calls.find(c => c[0] === '3d/jobs')[1].prompt, q('.m3a-prompt').value, 'envía la descripción');
+    eq(m.querySelectorAll('.m3a-rounds li').length, 2, 'una entrada por ronda');
+    assert(m.querySelector('.m3a-rounds li.ko') && /Blender/.test(m.querySelector('.m3a-rounds li.ko').textContent), 'la ronda que falló lo dice');
+    assert(m.querySelector('.m3a-rounds li.ok img')?.src.startsWith('data:image/jpeg') && /Taza azul/.test(m.querySelector('.m3a-rounds li.ok').textContent), 'la buena, con su vista previa y la nota');
+    eq(q('.m3a-view model-viewer').getAttribute('src') || q('.m3a-view model-viewer').src, 'data:model/gltf-binary;base64,Z2xURg==', 'el modelo girando');
+    // Asking for changes: another round.
+    q('.m3a-fb').value = 'más alta'; q('.m3a-more').click();
+    for (let i = 0; i < 100 && !(status === 'done' && !q('.m3a-end').hidden); i++) await sleep(20);
+    eq(calls.find(c => c[0].endsWith('/feedback'))[1].text, 'más alta', 'pide los cambios');
+    // Insert: a model object with the GLB and its caption; the job is deleted from the server.
+    const n = slide().blocks.length; q('.m3a-insert').click();
+    eq(slide().blocks.length, n + 1, 'se inserta'); eq(last().type, 'model'); eq(last().src, 'data:model/gltf-binary;base64,Z2xURg==');
+    eq(last().caption, 'Modelo creado con IA', 'con su pie');
+    assert(!D.getElementById('m3a-modal'), 'el diálogo se cierra');
+    await sleep(10); assert(calls.at(-1)[0].endsWith('/cancel'), 'y se borra el trabajo del servidor');
+    // Not set up on the server: it says so and opens nothing.
+    await M.openModelAi({ api: async () => ({ ok: false }) });
+    assert(!D.getElementById('m3a-modal'), 'sin servicio no se abre'); D.querySelector('.modal-backdrop .fr-do, .modal-backdrop button')?.click(); D.querySelectorAll('.modal-backdrop').forEach(x => x.remove());
+    // The open edition: the button is hidden (accounts-only).
+    const btn = D.querySelector('[data-action="model-ai"]');
+    assert(btn && W.getComputedStyle(btn).display === 'none', 'en la edición abierta el botón está oculto');
   });
 }

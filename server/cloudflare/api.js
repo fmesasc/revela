@@ -34,6 +34,7 @@
 //   GET  /api/account/export   → everything the account holds (JSON)
 //   POST /api/account/delete   { confirm: email }       (deletes it all; from the website)
 //   …/api/docs/…               presentations in the cloud, shared with people or by link (docs.js)
+//   …/api/3d/…                 «Crear modelo 3D con IA»: jobs of rounds AI + Blender (model3d.js)
 //
 // Sessions: a cookie on the web (HttpOnly, Secure, SameSite=Strict, only for
 // /api), a bearer token in the desktop app. Only a hash of each is stored.
@@ -46,6 +47,7 @@ import { handleCalls } from './calls.js';
 import { docsSettings } from './docs.js';
 import { mail, readUnsubToken, unsubPage, fmtDate } from './mail.js';
 import { scheduleAt, dayOf } from './schedule.js';
+import { handle3d, configured3d } from './model3d.js';
 
 const enc = new TextEncoder();
 const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -303,6 +305,12 @@ export class Account {
         if (w.length >= (+a.per || 30)) return this.json({ ok: false });
         w.push(now); await this.put({ [k]: w }); return this.json({ ok: true });
       }
+      case 'slot': {                                       // { key, id, ttl }: one of these at a time per account (3D jobs)
+        const k = 'slot:' + a.key, cur = await this.get(k, null);
+        if (cur && cur.id !== a.id && cur.until > Date.now()) return this.json({ ok: false, id: cur.id });
+        await this.put({ [k]: { id: a.id, until: Date.now() + (+a.ttl || 30 * 60e3) } }); return this.json({ ok: true });
+      }
+      case 'unslot': { const k = 'slot:' + a.key; if ((await this.get(k, null))?.id === a.id) await this.ctx.storage.delete(k); return this.json({ ok: true }); }
       case 'rate': {                                       // one more AI request this minute?
         const now = Date.now(), w = (await this.get('rate', [])).filter(t => t > now - 60e3);
         if (w.length >= s.perMinute) return this.json({ ok: false });
@@ -416,8 +424,8 @@ export class DesktopLink {
 }
 
 // ---- Requests ----------------------------------------------------------------------------------------
-const acct = (env, sub) => env.ACCOUNTS.get(env.ACCOUNTS.idFromName('u:' + sub));
-const call = async (stub, op, body) => (await stub.fetch('https://do/' + op, { method: 'POST', body: JSON.stringify(body || {}) })).json();
+export const acct = (env, sub) => env.ACCOUNTS.get(env.ACCOUNTS.idFromName('u:' + sub));
+export const call = async (stub, op, body) => (await stub.fetch('https://do/' + op, { method: 'POST', body: JSON.stringify(body || {}) })).json();
 const COOKIE = 'rv_session';
 const tokenOf = (sub, secret) => `${b64url(enc.encode(sub))}.${secret}`;
 const parseToken = t => { const [a, b] = String(t || '').split('.'); if (!a || !b) return null; try { return { sub: new TextDecoder().decode(Uint8Array.from(atob(a.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((a.length + 3) % 4)), c => c.charCodeAt(0))), secret: b }; } catch { return null; } };
@@ -494,11 +502,12 @@ export async function handleApi(req, env, url) {
   if (!me) return json({ error: 'no session' }, 401);
   const A = acct(env, me.sub);
   if (path.startsWith('/call/') && req.method === 'POST') { const prof = await call(A, 'me'); return handleCalls(path, body, env, { sub: me.sub, email: prof.email, features: prof.features }, A, call, json); }
+  if (path === '/3d' || path.startsWith('/3d/')) return handle3d(path, req, body, env, me, A, json);
   if (path === '/team' || path.startsWith('/team/')) { const prof = await call(A, 'me'); return handleTeams(path, req, body, url, env, { sub: me.sub, email: prof.email, name: prof.name }, A, acct, call, json); }
   switch (path) {
     case '/me': {
       const r = await call(A, 'me');
-      return json({ ...r, billing: !!(env.STRIPE_SECRET_KEY && env.STRIPE_WEBHOOK_SECRET), photos: photoProviders(env) });
+      return json({ ...r, billing: !!(env.STRIPE_SECRET_KEY && env.STRIPE_WEBHOOK_SECRET), photos: photoProviders(env), model3d: configured3d(env) && !!env.MODELJOBS });
     }
     case '/terms': {
       if (req.method !== 'POST') return json({ error: 'method' }, 405);
@@ -549,8 +558,8 @@ async function googleUser(accessToken, idToken, clientId, fetchImpl) {
 const nameOf = n => (typeof n === 'string' && n.trim() ? n.replace(/[<>\r\n]/g, '').trim().slice(0, 80) : null);
 
 // ---- AI --------------------------------------------------------------------------------------------
-const credits = (usd, s) => Math.max(1, Math.ceil((usd * s.markup) / s.creditUsd));
-const priceOf = (s, model) => s.prices[model] || [1, 4];                  // (unknown: a cautious guess per million tokens)
+export const credits = (usd, s) => Math.max(1, Math.ceil((usd * s.markup) / s.creditUsd));
+export const priceOf = (s, model) => s.prices[model] || [1, 4];                  // (unknown: a cautious guess per million tokens)
 async function guard(env, s, A, holdCredits, estimateUsd, json) {
   if (!env.OPENROUTER_KEY) return { stop: json({ error: 'ai not configured' }, 503) };
   if (!(await call(A, 'rate')).ok) return { stop: json({ error: 'too many requests' }, 429) };

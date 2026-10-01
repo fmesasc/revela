@@ -46,7 +46,7 @@ export function openAiSettings() {
 }
 
 // Make sure the user is connected and has seen the privacy notice.
-async function ready() {
+export async function ready() {
   // The official edition: the AI comes with the account (sign in first).
   if (!ai.aiConnected() && hasAccounts()) { openAccount(); return false; }
   if (!ai.aiConnected()) { openAiSettings(); return false; }
@@ -84,15 +84,17 @@ async function openVoiceover() {
   });
 }
 
+// Tell the user what went wrong (out of credits: the account, to get more).
+export function aiFailed(e) {
+  if (e.message === 'NO_CREDIT' && ai.usingCloudAi()) { alertDialog(t('No te quedan créditos. Consigue más desde tu cuenta.')); openAccount(); return; }
+  alertDialog(t(MSG[e.message] || 'No se pudo completar: ') + (MSG[e.message] ? '' : (e.message || e)));
+}
 export async function run(fn) {
   if (!(await ready())) return;
   const busy = document.createElement('div'); busy.id = 'ai-busy'; busy.innerHTML = `<i class="ms">auto_awesome</i> ${t('La IA está trabajando…')}`;
   document.body.appendChild(busy);
   try { return await fn(); }
-  catch (e) {
-    if (e.message === 'NO_CREDIT' && ai.usingCloudAi()) { alertDialog(t('No te quedan créditos. Consigue más desde tu cuenta.')); openAccount(); return; }
-    alertDialog(t(MSG[e.message] || 'No se pudo completar: ') + (MSG[e.message] ? '' : (e.message || e)));
-  }
+  catch (e) { aiFailed(e); }
   finally { busy.remove(); }
 }
 
@@ -160,43 +162,12 @@ export function openCreateDeck() {
   });
 }
 
-// ---- Assistant panel -------------------------------------------------------------
-const chatLog = [];                          // [{ role, content }] for context + display
-export function toggleAssistant(on = !state.ui.showAssistant) { commit(() => { state.ui.showAssistant = on; }, { history: false }); }
-export function renderAssistant() {
-  let panel = document.getElementById('assistant-panel');
-  if (!state.ui.showAssistant) { panel?.remove(); return; }
-  if (panel) return;
-  panel = document.createElement('aside'); panel.id = 'assistant-panel';
-  panel.innerHTML = `<div class="cm-head"><b>✨ ${t('Asistente')}</b><button type="button" class="cm-close" title="${t('Cerrar')}">✕</button></div>
-    <div class="as-log"></div>
-    <div class="as-hints">${['Añade una diapositiva de conclusiones', 'Acorta todos los títulos', 'Escribe notas para todas las diapositivas', 'Convierte la diapositiva actual en una línea de tiempo']
-      .map(h => `<button type="button" class="as-hint">${t(h)}</button>`).join('')}</div>
-    <div class="cm-new"><textarea rows="3" placeholder="${t('Pide un cambio o haz una pregunta…')}"></textarea><button type="button" class="fr-do as-send">${t('Enviar')}</button></div>`;
-  document.querySelector('main').appendChild(panel);
-  const log = panel.querySelector('.as-log'), ta = panel.querySelector('textarea');
-  const add = (who, text) => { const d = document.createElement('div'); d.className = 'as-msg ' + who; d.textContent = text; log.appendChild(d); log.scrollTop = log.scrollHeight; };
-  for (const m of chatLog) add(m.role === 'user' ? 'me' : 'ai', m.shown || m.content);
-  const send = async () => {
-    const text = ta.value.trim(); if (!text) return;
-    ta.value = ''; add('me', text);
-    const res = await run(() => deck.assistant(text, chatLog.map(({ role, content }) => ({ role, content }))));
-    if (!res) return;
-    const note = res.applied ? ` (${res.applied} ${t('cambios aplicados; Ctrl+Z para deshacer')})` : '';
-    add('ai', (res.message || t('Hecho.')) + note);
-    chatLog.push({ role: 'user', content: text }, { role: 'assistant', content: JSON.stringify({ message: res.message, ops: res.ops }), shown: res.message + note });
-  };
-  panel.querySelector('.as-send').addEventListener('click', send);
-  ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
-  panel.querySelectorAll('.as-hint').forEach(h => h.addEventListener('click', () => { ta.value = h.textContent; send(); }));
-  panel.querySelector('.cm-close').addEventListener('click', () => toggleAssistant(false));
-}
+// (The assistant panel: assistant.js.)
 
 Object.assign(AI_ACTIONS, {
   'ai-deck': () => openCreateDeck(),
   'ai-improve': () => run(() => deck.improveSlide()),
   'ai-agenda': () => run(() => deck.addAgenda()),
   'ai-quiz': () => run(async () => { const n = await deck.addQuiz(3); alertDialog(t('Preguntas añadidas al final: ') + n); }),
-  'ai-assistant': () => toggleAssistant(),
   'ai-voiceover': () => openVoiceover(),
 });

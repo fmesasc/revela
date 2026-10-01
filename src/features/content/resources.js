@@ -176,6 +176,9 @@ export function insertSketchfab(m) {
     alt: m.name, ...centred(760, 480), rotation: 0, animation: null });
 }
 
+// A model made with AI (ui/dialogs/model3dai.js): a GLB data URL, with its caption.
+export const insertGeneratedModel = (src, caption) => addModelBlock({ src, caption });
+
 // A 3D model object, ready to move (see model3d.js).
 function addModelBlock({ src, caption, credit, animated = false, clip = null }) {
   return place({ id: uid(), type: 'model', src, caption, credit, autoRotate: !animated, ...(animated && { clip: clip || '*' }), ...centred(440, 440), rotation: 0, animation: null });

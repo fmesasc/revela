@@ -72,6 +72,8 @@ import { openAnimPanel } from '../panels/animation.js';
 import { setZoom, fitZoom } from './zoom.js';
 import { setNavHidden } from '../shell/navigator.js';
 import { AI_ACTIONS } from '../dialogs/ai.js';
+import { openModelAi } from '../dialogs/model3dai.js';
+import { toggleAssistant } from '../dialogs/assistant.js';
 
 const $ = s => document.querySelector(s);
 
@@ -151,6 +153,7 @@ export const ACTIONS = {
   'reading-order': () => openReadingOrder(),
   'comments': () => toggleComments(),
   ...AI_ACTIONS,
+  'ai-assistant': () => toggleAssistant(),
   'plugins': () => openPlugins(),
   'macros': () => openMacros(),
   'autocorrect': () => { setAutocorrect(!autocorrectOn()); renderRibbon(); },
@@ -197,6 +200,7 @@ export const ACTIONS = {
   'canvas-mode': () => { const on = !canvasOn(); setCanvasMode(on); toggleCanvasView(on); },
   'canvas-view': () => { if (!canvasOn()) setCanvasMode(true); toggleCanvasView(); },
   'resources-3d': () => openElements('anim3d'),
+  'model-ai': () => openModelAi(),
   // A GIF is inserted as an image (it can have segments and a colour key too).
   'insert-video': () => readFile('video/*,image/gif', src => (/^data:image\/gif/.test(src) ? blocks.addImage(src) : blocks.addVideo(src))),
   'insert-audio': () => readFile('audio/*', blocks.addAudio),

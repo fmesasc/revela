@@ -5,6 +5,7 @@ import { mountCloudStatus, openFromLink } from '../../ui/dialogs/cloud.js';
 import * as clouddocs from '../../io/cloud/clouddocs.js';
 import { setCloudAi } from '../../features/ai/openrouter.js';
 import { openAccount, handleDesktopRequest, BUYABLE, watchTerms } from '../../ui/dialogs/account.js';
+import { initModelAi } from '../../ui/dialogs/model3dai.js';
 import { handleOpenWith } from '../../ui/shell/openwith.js';
 import { editText } from '../../ui/canvas/content.js';
 import { ACTIONS } from '../../ui/ribbon/actions.js';
@@ -22,8 +23,9 @@ import { renderComments } from '../../ui/panels/comments.js';
 import { renderReview } from '../../ui/panels/review.js';
 import * as review from '../../features/collab/review.js';
 import { renderSelectionPane } from '../../ui/panels/selection.js';
-import { renderAssistant } from '../../ui/dialogs/ai.js';
+import { renderAssistant } from '../../ui/dialogs/assistant.js';
 import * as aiDeck from '../../features/ai/authoring.js';
+import * as aiAgent from '../../features/ai/agent.js';
 import * as poll from '../../features/live/poll.js';
 import * as dashboards from '../../features/live/dashboards.js';
 import * as stock from '../../features/content/stock.js';
@@ -232,7 +234,7 @@ initI18n();
 // and inspect the real app. Only active with ?test in the URL.
 const testing = new URLSearchParams(location.search).has('test');
 if (testing)
-  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, examples, designer, pptxImport, odp, api, ai, versions, comments, protect, aiDeck, poll, dashboards, stock, clipboard: clip, markdown, notify, vendor, session, objects, picture, shares, shareServer, clouddocs, review, files, openfile, video: () => import('../../io/export/video.js') };
+  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, examples, designer, pptxImport, odp, api, ai, versions, comments, protect, aiDeck, aiAgent, poll, dashboards, stock, clipboard: clip, markdown, notify, vendor, session, objects, picture, shares, shareServer, clouddocs, review, files, openfile, video: () => import('../../io/export/video.js') };
 
 // Public scripting API for plugins, macros and the console; installed plugins
 // load after the editor is ready (not in the test harness).
@@ -264,6 +266,7 @@ if (hasAccounts()) {
   const btn = document.getElementById('plan-btn'), paint = me => { btn.hidden = false;
     btn.querySelector('span').textContent = me ? `${Math.max(0, me.credits | 0)}` : t('Iniciar sesión'); btn.classList.toggle('in', !!me); };
   onAccount(paint); paint(null); mountCloudStatus(); watchTerms();
+  initModelAi();
   btn.addEventListener('click', () => openAccount());
   window.addEventListener('revela:lang', () => paint(account()));
   if (!testing) {

@@ -1,0 +1,31 @@
+# revela-blender: Blender in Cloudflare Containers for «Crear modelo 3D con IA» (see worker.js and
+# docs/NUBE.md). Needs Workers Paid. Deployed by .github/workflows/blender.yml only when the
+# repository has BLENDER_DEPLOY = 1. Secret (never here): BLENDER_SECRET, the same as revela-share's
+# (`openssl rand -base64 32`, then `npx wrangler secret put BLENDER_SECRET` here and in server/cloudflare).
+name = "revela-blender"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+preview_urls = false
+keep_vars = true
+
+# standard-3: 2 vCPU, 8 GiB, 16 GB disk (Blender ~1.2 GB unpacked). CPU is billed by active use,
+# memory and disk while the container is awake (sleepAfter = 1 min, worker.js).
+[[containers]]
+class_name = "BlenderRunner"
+image = "./Dockerfile"
+instance_type = "standard-3"
+max_instances = 3
+
+[[durable_objects.bindings]]
+name = "BLENDER"
+class_name = "BlenderRunner"
+
+[exports.BlenderRunner]
+type = "durable-object"
+storage = "sqlite"
+
+[vars]
+# Containers used at once (≤ max_instances above), and the longest run allowed (seconds).
+RUNNERS = "3"
+MAX_SECONDS = "90"

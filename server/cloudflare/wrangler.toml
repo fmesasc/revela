@@ -49,7 +49,13 @@ AI_MODELS = "openai/gpt-4o-mini,google/gemini-2.5-flash,anthropic/claude-haiku-4
 # Voice-over (text to speech): model, voices, and a cautious price per character (check the model page).
 AI_TTS_MODEL = "openai/gpt-4o-mini-tts-2025-12-15"
 AI_TTS_USD_PER_CHAR = "0.00002"
-AI_PRICES = '{"openai/gpt-4o-mini":[0.15,0.6],"google/gemini-2.5-flash":[0.3,2.5],"anthropic/claude-haiku-4.5":[1,5]}'
+AI_PRICES = '{"openai/gpt-4o-mini":[0.15,0.6],"google/gemini-2.5-flash":[0.3,2.5],"anthropic/claude-haiku-4.5":[1,5],"google/gemini-3.8-flash":[0.75,3.75]}'
+# «Crear modelo 3D con IA» (model3d.js): the vision model that writes the Blender scripts (its price is in
+# AI_PRICES above), and what one second of the Blender container costs, in dollars (see docs/NUBE.md).
+AI_3D_MODEL = "google/gemini-3.8-flash"
+BLENDER_USD_PER_SECOND = "0.0001"
+# BLENDER_URL (the revela-blender Worker, e.g. https://revela-blender.<account>.workers.dev) is set in
+# Cloudflare with the secret BLENDER_SECRET; without both the feature is off (503 'not configured').
 # Emails (mail.js). From whom (optional; default "Revela <avisos@revelaslides.com>"):
 # MAIL_FROM = "Revela <avisos@revelaslides.com>"
 # Secrets: MAIL_SECRET (signs the links to stop optional notices: `openssl rand -base64 32 |
@@ -147,6 +153,17 @@ new_sqlite_classes = ["Schedule"]
 
 [triggers]
 crons = ["0 8 * * *"]
+
+# «Crear modelo 3D con IA» (model3d.js): one object per job (its rounds, the GLB; deleted after 24 h).
+# Blender runs in another Worker, revela-blender (server/blender), reached at BLENDER_URL with the
+# secret BLENDER_SECRET (`npx wrangler secret put BLENDER_SECRET`, the same value in both Workers).
+[[durable_objects.bindings]]
+name = "MODELJOBS"
+class_name = "ModelJob"
+
+[[migrations]]
+tag = "v9"
+new_sqlite_classes = ["ModelJob"]
 
 # Emails with Cloudflare Email Service (Compute ▸ Email Service ▸ Email Sending ▸ Onboard
 # Domain: revelaslides.com, then its DNS records). Uncomment once the domain is onboarded;

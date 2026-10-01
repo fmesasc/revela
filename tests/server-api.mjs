@@ -2,7 +2,8 @@
 // payments and the desktop sign-in — above all, that nothing can be skipped
 // from outside. In-memory Durable Objects; the AI provider, Google and Stripe
 // are simulated. Run by tests/run.sh when Node.js is available.
-import worker, { Account, Budget, DesktopLink, ShareBox, Limits, CloudDoc, Team, CallRoom, Schedule } from '../server/cloudflare/worker.js';
+import worker, { Account, Budget, DesktopLink, ShareBox, Limits, CloudDoc, Team, CallRoom, Schedule, ModelJob } from '../server/cloudflare/worker.js';
+import { verifyBody } from '../server/blender/gate.js';
 import { verifyStripe, sha256, shortCode } from '../server/cloudflare/api.js';
 
 function fakeStorage() {
@@ -16,7 +17,7 @@ const namespace = (Cls, env) => { const inst = new Map();
     return { fetch: (u, init) => o.fetch(u instanceof Request ? u : new Request(u, init)) }; } }; };
 
 const SITE = 'https://revelaslides.com', CID = 'cid.apps.googleusercontent.com';
-let resendCalls = [], rtCalls = [], stockCalls = [], aiCalls = [], aiReply = () => ({ status: 200, body: { choices: [{ message: { content: 'hola' } }], usage: { cost: 0.01, prompt_tokens: 100, completion_tokens: 50 } } }), stripeCalls = [];
+let blenderCalls = [], blenderReply = () => Response.json({ ok: false }), resendCalls = [], rtCalls = [], stockCalls = [], aiCalls = [], aiReply = () => ({ status: 200, body: { choices: [{ message: { content: 'hola' } }], usage: { cost: 0.01, prompt_tokens: 100, completion_tokens: 50 } } }), stripeCalls = [];
 const env = { GOOGLE_CLIENT_ID: CID, OPENROUTER_KEY: 'sk-or-secreta', TRIAL_CREDITS: '50', CREDIT_USD: '0.002', AI_PER_MINUTE: '100', MONTHLY_BUDGET_USD: '50',
   AI_MODELS: 'openai/gpt-4o-mini,google/gemini-2.5-flash', AI_PRICES: '{"openai/gpt-4o-mini":[0.15,0.6]}', STRIPE_SECRET_KEY: 'sk_test', STRIPE_WEBHOOK_SECRET: 'whsec_x',
   STRIPE_PRICE_PRO_MONTH: 'price_pm', STRIPE_PRICE_CREDITS_500: 'price_c500', STRIPE_PRICE_TEAM_SEAT: 'price_team' };
@@ -24,7 +25,7 @@ env.FETCH = async (url, init = {}) => {
   const u = String(url);
   if (u.startsWith('https://oauth2.googleapis.com/tokeninfo')) {
     const t = new URL(u).searchParams.get('access_token');
-    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' } }[t];
+    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' }, 'tok-gil': { sub: '1212', email: 'gil@example.com' }, 'tok-noa': { sub: '1313', email: 'noa@example.com' } }[t];
     if (t === 'tok-otraapp') return Response.json({ aud: 'otra-app', sub: '333', email: 'x@example.com', email_verified: 'true' });
     return who ? Response.json({ aud: CID, ...who, email_verified: 'true', expires_in: 3000 }) : new Response('bad', { status: 400 });
   }
@@ -38,6 +39,7 @@ env.FETCH = async (url, init = {}) => {
       user: { name: 'Ana Foto', links: { html: 'https://unsplash.com/@ana' } } }, { id: 'malo', urls: { small: 'javascript:alert(1)', regular: 'http://x/y.jpg' }, user: {} }] }); }
   if (u.startsWith('https://openrouter.ai/api/v1/audio/speech')) { aiCalls.push({ u, body: JSON.parse(init.body), auth: init.headers.Authorization }); return new Response(new Uint8Array([73, 68, 51, 4, 0]), { headers: { 'Content-Type': 'audio/mpeg' } }); }
   if (u.startsWith('https://openrouter.ai/')) { aiCalls.push({ u, body: JSON.parse(init.body), auth: init.headers.Authorization }); const r = aiReply(u); return Response.json(r.body, { status: r.status }); }
+  if (u.startsWith('https://blender.test/')) { blenderCalls.push({ u, body: init.body, sig: init.headers['X-Revela-Signature'] }); return blenderReply(JSON.parse(init.body)); }
   if (u.startsWith('https://api.stripe.com/')) { stripeCalls.push({ u, body: String(init.body) }); return Response.json({ url: 'https://checkout.stripe.com/c/pay_x' }); }
   return new Response('?', { status: 404 });
 };
@@ -549,6 +551,119 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   ok(!!S.get('profile') && env.DOCS.inst.get('doc:' + ids[3]).ctx.storage.m.has('meta'), 'la de quien volvió sigue, con sus presentaciones');
   ok(!!acc('444').ctx.storage.m.get('profile') && !!acc('1010').ctx.storage.m.get('profile') && !allSent.some(x => ['eva@example.com', 'ines@example.com'].includes(x.to)), 'con Pro activo (propio o de un equipo pagado) no cuenta como inactiva: ni avisos ni borrado');
   Date.now = realNow;
+}
+
+// ---- «Crear modelo 3D con IA»: rounds of AI + Blender (model3d.js; Blender and OpenRouter simulated) ----
+{
+  const now0 = Date.now; let skew = 0; Date.now = () => now0() + skew;
+  const gil = cookieFrom(await req('POST', '/api/login', { body: { accessToken: 'tok-gil', terms: TERMS } }));
+  const G = () => acc('1212').ctx.storage.m, credits = () => G().get('credits');
+  const say = o => ({ status: 200, body: { choices: [{ message: { content: typeof o === 'string' ? o : '```json\n' + JSON.stringify(o) + '\n```' } }], usage: { cost: 0.01 } } });
+  let answers = []; aiReply = () => answers.shift() || { status: 500, body: {} };
+  const ok3d = { ok: true, glb: Buffer.from('glTF-binario').toString('base64'), preview: 'iVBORw0KGgoAAAA', thumb: '/9j/4AAQ', seconds: 9, log: '' };
+  let blenderAnswer = () => ok3d;
+  blenderReply = () => { skew += 10e3; return Response.json(blenderAnswer()); };   // (each run takes 10 s)
+  const job = id => env.MODELJOBS.inst.get('job:' + id), tick = id => job(id).alarm();
+  const status = async id => (await req('GET', '/api/3d/jobs/' + id, { headers: { Cookie: gil } })).json();
+
+  // Not set up yet: 503 and the app is told (it hides the option).
+  ok((await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: 'una taza' } })).status === 503, '3D: sin BLENDER_URL, 503 «not configured»');
+  ok((await (await req('GET', '/api/3d', { headers: { Cookie: gil } })).json()).ok === false && (await (await req('GET', '/api/me', { headers: { Cookie: gil } })).json()).model3d === false, '3D: la app sabe que no está disponible');
+  env.BLENDER_URL = 'https://blender.test'; env.BLENDER_SECRET = 'secreto-blender'; env.MODELJOBS = namespace(ModelJob, env);
+  env.BLENDER_USD_PER_SECOND = '0.0004'; env.AI_PRICES = '{"openai/gpt-4o-mini":[0.15,0.6],"google/gemini-3.8-flash":[0.1,0.4]}';
+  ok((await (await req('GET', '/api/me', { headers: { Cookie: gil } })).json()).model3d === true, '3D: configurado');
+  const est = (await (await req('GET', '/api/3d', { headers: { Cookie: gil } })).json()).estimate;
+  ok(est.perRound === 26 && est.max === 104, '3D: estimación por ronda (peor caso: tokens máximos + 120 s de Blender) y máxima: ' + JSON.stringify(est));
+  ok((await req('POST', '/api/3d/jobs', { body: { prompt: 'una taza' } })).status === 401, '3D: sin sesión no');
+  ok((await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: '' } })).status === 400, '3D: sin descripción no');
+  ok((await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: 'una taza', images: Array(4).fill('data:image/png;base64,AAAA') } })).status === 400, '3D: como mucho 3 fotos');
+  ok((await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: 'una taza', images: ['https://malo.example/x.png'] } })).status === 400, '3D: las fotos solo como data URL JPEG o PNG');
+  ok((await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: 'una taza', images: ['data:image/png;base64,' + 'A'.repeat(600_001)] } })).status === 400, '3D: fotos de tamaño limitado');
+
+  // A job: round 1 fails in Blender, round 2 corrects it, round 3 sees the preview and says it's done.
+  answers = [say({ done: false, note: 'Primera versión', script: 'bpy.ops.mesh.primitive_cylinder_add(radius=mal)' }), say({ done: false, note: 'Corregido el radio', script: 'bpy.ops.mesh.primitive_cylinder_add(radius=0.04)' }), say({ done: true, note: 'La taza está lista', script: '' })];
+  blenderAnswer = () => (blenderCalls.length === 1 ? { ok: false, error: 'script', message: "NameError: name 'mal' is not defined", log: 'Traceback…', seconds: 1 } : ok3d);
+  blenderCalls = []; aiCalls = [];
+  let r = await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: 'una taza de café de cerámica azul', images: ['data:image/jpeg;base64,/9j/AAAA'], lang: 'es' } });
+  const { id, estimate } = await r.json();
+  ok(r.status === 200 && /^[\w-]{22}$/.test(id) && estimate.perRound === 26, '3D: trabajo creado, con su estimación');
+  ok(credits() === 50 - 26 && !aiCalls.length, '3D: se apartan los créditos de la primera ronda antes de nada: ' + credits());
+  ok((await status(id)).status === 'running', '3D: trabajando');
+  ok((await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: 'otra cosa' } })).status === 409, '3D: un trabajo activo por cuenta');
+  await tick(id);
+  let st = await status(id), ai = aiCalls.at(-1).body;
+  ok(ai.model === 'google/gemini-3.8-flash' && ai.response_format?.type === 'json_object' && ai.provider?.data_collection === 'deny' && aiCalls.at(-1).auth === 'Bearer sk-or-secreta', '3D: el modelo con visión, con la clave del servidor y sin guardar datos');
+  ok(/Blender/.test(ai.messages[0].content) && /metres/.test(ai.messages[0].content) && /Spanish/.test(ai.messages[0].content), '3D: las pautas del sistema (y la nota en el idioma de la persona)');
+  ok(ai.messages[1].content.some(c => c.type === 'image_url' && c.image_url.url.startsWith('data:image/jpeg')), '3D: la foto de referencia va al modelo');
+  ok(blenderCalls.length === 1 && JSON.parse(blenderCalls[0].body).script.includes('radius=mal') && JSON.parse(blenderCalls[0].body).timeoutSec === 90, '3D: Blender recibe el guion');
+  ok(await verifyBody(blenderCalls[0].body, blenderCalls[0].sig, 'secreto-blender') && !(await verifyBody(blenderCalls[0].body, blenderCalls[0].sig, 'otro')) && !(await verifyBody(blenderCalls[0].body.replace('mal', 'otro'), blenderCalls[0].sig, 'secreto-blender')), '3D: la petición a revela-blender va firmada (HMAC del cuerpo con BLENDER_SECRET)');
+  ok(st.rounds.length === 1 && st.rounds[0].ok === false && st.rounds[0].error === 'script' && st.rounds[0].note === 'Primera versión' && !st.glb, '3D: ronda 1 falla en Blender');
+  ok(credits() === 50 - 5, '3D: el fallo de Blender no se cobra; la IA sí (0,01 $ = 5 créditos): ' + credits());
+  await tick(id);
+  ai = aiCalls.at(-1).body;
+  ok(JSON.stringify(ai.messages.at(-1)).includes("NameError: name 'mal' is not defined") && ai.messages.at(-2).role === 'assistant', '3D: la ronda siguiente recibe el error para corregirlo');
+  st = await status(id);
+  ok(st.rounds[1].ok && st.rounds[1].preview === 'data:image/jpeg;base64,/9j/4AAQ' && st.glb && st.status === 'running', '3D: ronda 2 funciona, con su vista previa');
+  ok(credits() === 50 - 5 - 7, '3D: se cobran la IA y los segundos de Blender (0,01 $ + 10 s × 0,0004 $ = 7 créditos): ' + credits());
+  await tick(id);
+  ai = aiCalls.at(-1).body;
+  ok(ai.messages.at(-1).content.some(c => c.type === 'image_url' && c.image_url.url === 'data:image/png;base64,iVBORw0KGgoAAAA'), '3D: el modelo mira la vista previa');
+  st = await status(id);
+  ok(st.status === 'done' && st.rounds.length === 2 && st.total === 3 && st.rounds[1].note === 'La taza está lista' && blenderCalls.length === 2 && st.charged === 17, '3D: el modelo da el visto bueno → terminado: ' + JSON.stringify([st.status, st.charged]));
+  ok(credits() === 50 - 17 && G().get('ledger').filter(x => x.reason === 'model3d').length === 3, '3D: saldo y movimientos correctos: ' + credits());
+  r = await req('GET', '/api/3d/jobs/' + id + '/model', { headers: { Cookie: gil } });
+  ok(r.status === 200 && (await r.json()).glb === 'data:model/gltf-binary;base64,' + ok3d.glb, '3D: se descarga el GLB');
+  const noa = cookieFrom(await req('POST', '/api/login', { body: { accessToken: 'tok-noa', terms: TERMS } }));
+  ok((await req('GET', '/api/3d/jobs/' + id, { headers: { Cookie: noa } })).status === 404 && (await req('GET', '/api/3d/jobs/' + id + '/model', { headers: { Cookie: noa } })).status === 404
+    && (await req('POST', '/api/3d/jobs/' + id + '/cancel', { headers: { Cookie: noa }, body: {} })).status === 404, '3D: el trabajo de otra cuenta no existe para ti');
+
+  // Asking for changes: another request of rounds, with the text and the current render.
+  answers = [say({ done: false, note: 'Más alta', script: 'bpy.ops.mesh.primitive_cylinder_add(radius=0.04, depth=0.12)' }), say({ done: true, note: 'Hecho' })];
+  ok((await req('POST', '/api/3d/jobs/' + id + '/feedback', { headers: { Cookie: gil }, body: { text: '' } })).status === 400, '3D: cambios sin texto no');
+  r = await req('POST', '/api/3d/jobs/' + id + '/feedback', { headers: { Cookie: gil }, body: { text: 'hazla más alta' } });
+  ok(r.status === 200 && (await status(id)).status === 'running' && (await status(id)).left === 4, '3D: pedir cambios abre otra tanda de rondas');
+  ok((await req('POST', '/api/3d/jobs/' + id + '/feedback', { headers: { Cookie: gil }, body: { text: 'otra' } })).status === 409, '3D: no mientras trabaja');
+  await tick(id);
+  ai = aiCalls.at(-1).body;
+  ok(JSON.stringify(ai.messages.at(-1)).includes('hazla más alta') && ai.messages.at(-1).content.some(c => c.type === 'image_url'), '3D: el modelo recibe los cambios pedidos y la vista previa actual');
+  await tick(id);
+  st = await status(id);
+  ok(st.status === 'done' && st.rounds.length === 3 && st.total === 5 && credits() === 50 - 17 - 7 - 5, '3D: cambios hechos y cobrados: ' + JSON.stringify([st.status, st.error, st.total, credits(), G().get('ledger').slice(-4)]));
+  // At most 12 rounds per job.
+  { const J = job(id).ctx.storage.m, j = J.get('job'); J.set('job', { ...j, total: 12 }); }
+  ok((await req('POST', '/api/3d/jobs/' + id + '/feedback', { headers: { Cookie: gil }, body: { text: 'más' } })).status === 409 && credits() === 21, '3D: tope de rondas por trabajo (sin apartar créditos)');
+
+  // Cancelling: everything goes; the account may start another.
+  ok((await req('POST', '/api/3d/jobs/' + id + '/cancel', { headers: { Cookie: gil }, body: {} })).status === 200 && (await req('GET', '/api/3d/jobs/' + id, { headers: { Cookie: gil } })).status === 404
+    && !job(id).ctx.storage.m.size, '3D: descartar lo borra todo');
+
+  // A forbidden module never reaches Blender; Blender down: the AI is charged, the run isn't.
+  answers = [say({ done: false, note: 'x', script: 'import os\nos.system("ls")' }), say({ done: false, note: 'y', script: 'bpy.ops.mesh.primitive_cube_add()' })];
+  blenderCalls = []; blenderReply = () => new Response('caído', { status: 500 });
+  await acc('1212').fetch(new Request('https://do/grant', { method: 'POST', body: JSON.stringify({ credits: 100, reason: 'grant', ref: 't3d' }) }));
+  const id2 = (await (await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: 'un cubo' } })).json()).id;
+  ok(!!id2, '3D: tras descartar, se puede empezar otro');
+  await tick(id2); st = await status(id2);
+  ok(st.rounds[0].error === 'not allowed: import os' && !blenderCalls.length && credits() === 121 - 5, '3D: un guion con módulos prohibidos no llega a Blender: ' + JSON.stringify(st.rounds[0]));
+  await tick(id2); st = await status(id2);
+  ok(st.status === 'error' && st.error === 'blender unavailable' && blenderCalls.length === 1 && credits() === 121 - 10, '3D: Blender no responde → error, solo se cobra la IA: ' + credits());
+  ok(!G().get('slot:3d'), '3D: al terminar se libera el turno de la cuenta');
+  // The AI fails: nothing charged.
+  answers = []; await req('POST', '/api/3d/jobs/' + id2 + '/feedback', { headers: { Cookie: gil }, body: { text: 'otra vez' } }); await tick(id2);
+  st = await status(id2);
+  ok(st.status === 'error' && st.error === 'ai failed' && credits() === 111, '3D: si la IA falla no se cobra: ' + credits());
+  // No credits: 402, nothing started, the turn released.
+  G().set('lots', [{ n: 11, exp: Date.now() + 9e6 }]); G().set('debt', 0); G().set('credits', 11);
+  r = await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: 'un edificio de oficinas de 5 plantas' } });
+  ok(r.status === 402 && (await r.json()).credits === 11 && !G().get('slot:3d'), '3D: sin créditos suficientes, 402');
+  // The global monthly budget.
+  env.MONTHLY_BUDGET_USD = '0.001';
+  ok((await req('POST', '/api/3d/jobs', { headers: { Cookie: noa }, body: { prompt: 'una silla' } })).status === 503, '3D: tope de gasto mensual global');
+  env.MONTHLY_BUDGET_USD = '50';
+  // After 24 hours the job is deleted.
+  skew += 25 * 3600e3; await tick(id2);
+  ok(!job(id2).ctx.storage.m.size, '3D: a las 24 h el trabajo se borra');
+  Date.now = now0; aiReply = () => ({ status: 200, body: { choices: [{ message: { content: 'hola' } }], usage: { cost: 0.01 } } });
 }
 
 console.log(fails ? `API FAIL ${n - fails}/${n}` : `API OK ${n}/${n}`);
