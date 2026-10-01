@@ -3,7 +3,7 @@
 
 import { DIAGRAM_LAYOUTS, DIAGRAM_SAMPLES, DEFAULT_DIAGRAM_TEXT, diagramHTML } from '../../render/diagrams.js';
 import { esc } from '../../core/text.js';
-import { state, selectedBlock, currentSlide } from '../../core/store.js';
+import { state, selectedBlock, currentSlide, commit } from '../../core/store.js';
 import { ensureLayouts, applyLayout, resetSlide, editLayout, allMasters, masterOf } from '../../features/document/master.js';
 import * as slides from '../../features/document/slides.js';
 import { startFreeform } from '../canvas/freeform.js';
@@ -28,8 +28,11 @@ export const POPS = {
   },
   icons: () => `<h4>${t('Iconos')}</h4><div class="sym-grid icons">`
     + ICON_NAMES.map(n => `<button data-icon="${n}" type="button" title="${n}">${iconSVG({ icon: n, color: '#333' })}</button>`).join('') + `</div>`,
-  wordart: () => `<h4>Text Art</h4><div class="wa-grid">`
-    + WORDART_KEYS.map(k => `<button data-wa="${k}" type="button" style="${wordartCSS(k)}">Aa</button>`).join('') + `</div>`,
+  // (With a text selected the style goes on it, and its colour can be changed: neon, fill and gradient in any colour.)
+  wordart: () => { const b = selectedBlock(), on = b?.type === 'text';
+    return `<h4>Text Art</h4><div class="wa-grid">`
+    + WORDART_KEYS.map(k => `<button data-wa="${k}" type="button" style="${wordartCSS(k, on && b.wordartColor)}">Aa</button>`).join('') + `</div>`
+    + (on && b.wordart ? `<label class="wa-tint">${t('Color del efecto')} <input type="color" data-wa-tint value="${b.wordartColor || '#3f6497'}"></label>` : ''); },
   layout: () => `<h4>${t('Diseño')}</h4><div class="layout-grid">`
     + allMasters().map((m, i, ms) => (ms.length > 1 ? `<div class="layout-master">${esc(m.name || (i ? `${t('Patrón')} ${i + 1}` : t('Patrón')))}</div>` : '')
       + ensureLayouts().filter(l => masterOf(l) === m).map(l => `<button data-layout="${l.id}" type="button" class="${currentSlide()?.layoutId === l.id ? 'on' : ''}">${t(l.name)}</button>`).join('')).join('')
@@ -104,7 +107,15 @@ export function togglePopover(launcher, type, { replaceId = null } = {}) {
   pop.querySelectorAll('[data-icon]').forEach(x =>
     x.addEventListener('click', () => { if (replaceId) blocks.setIcon(replaceId, x.dataset.icon); else blocks.addIcon(x.dataset.icon); closePopover(); }));
   pop.querySelectorAll('[data-wa]').forEach(x =>
-    x.addEventListener('click', () => { blocks.addWordArt(x.dataset.wa); closePopover(); }));
+    x.addEventListener('click', () => {
+      const b = selectedBlock();
+      if (b?.type === 'text') commit(() => { const y = currentSlide().blocks.find(z => z.id === b.id); if (y) y.wordart = x.dataset.wa; });
+      else blocks.addWordArt(x.dataset.wa);
+      closePopover();
+    }));
+  pop.querySelector('[data-wa-tint]')?.addEventListener('change', e => {
+    const b = selectedBlock(); if (b?.type === 'text') commit(() => { const y = currentSlide().blocks.find(z => z.id === b.id); if (y) y.wordartColor = e.target.value; });
+  });
   pop.querySelectorAll('[data-palette]').forEach(x =>
     x.addEventListener('click', () => { palettes.applyPalette(x.dataset.palette); closePopover(); }));
   pop.querySelectorAll('[data-fontpair]').forEach(x => {

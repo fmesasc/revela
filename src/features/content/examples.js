@@ -6,83 +6,8 @@
 // so no files are needed (the 3D models load from their address); each one is
 // an ordinary deck that can be edited from its master.
 
-import { emptyDeck, uid, chartBlock, tableBlock, codeBlock, mathBlock } from '../../core/model.js';
-import { PALETTES, pairStacks } from '../design/palettes.js';
-import { ensureLayouts, masterStyles, newSlideBlocks } from '../document/master.js';
-import { pollBlock } from '../live/poll.js';
-import { placeOnDesign } from '../design/canvasmode.js';
-import { canvasDesign } from '../design/canvasdesigns.js';
-import { LIBRARY_3D } from './library3d.js';
-import { normalizeAnim } from '../animation/transitions.js';
-
-// ---- Small builders ------------------------------------------------------------
-// ul('a', ['a1', 'a2'], 'b'): an array right after an item nests under it.
-const ul = (...items) => '<ul>' + items.map((it, i) => (Array.isArray(it) ? ''
-  : `<li>${it}${Array.isArray(items[i + 1]) ? ul(...items[i + 1]) : ''}</li>`)).join('') + '</ul>';
-const base = (x, y, w, h) => ({ id: uid(), x, y, w, h, rotation: 0, animation: null });
-const text = (html, x, y, w, h, props = {}) => ({ ...base(x, y, w, h), type: 'text', html, fontSize: 28, ...props });
-const card = (html, x, y, w, h, bg, props = {}) => text(html, x, y, w, h, { bg, radius: 18, pad: [24, 26, 24, 26], fontSize: 30, ...props });
-const shape = (kind, x, y, w, h, fill, props = {}) => ({ ...base(x, y, w, h), type: 'shape', shape: kind, fill, stroke: fill, strokeWidth: 0, ...props });
-const icon = (name, x, y, size, color) => ({ ...base(x, y, size, size), type: 'icon', icon: name, color, decorative: true });
-const anim = (b, order, effect = 'fade-up') => ({ ...b, animation: { effect, order, duration: 500, delay: 0 } });
-const big = (n, label, x, y, color, fg) => text(`<div style="font-size:96px;font-weight:800;color:${color};line-height:1.05">${n}</div><div>${label}</div>`, x, y, 340, 220, { fontSize: 30, textAlign: 'center', color: fg });
-
-// A deck: palette + font pair → master styles, decorations and the layouts.
-function build({ name, palette, fonts, decor = () => [], title = {}, body = {} }, slides) {
-  const p = PALETTES[palette], st = pairStacks(fonts);
-  const deck = emptyDeck();
-  Object.assign(deck, { name, palette, fontPair: fonts, bodyFont: st.body });
-  deck.master = { id: 'master', background: null, blocks: decor(p).map(b => ({ ...b, decorative: true })) };
-  const s = masterStyles(deck);
-  Object.assign(s.title, { size: 52, font: st.heading, color: p.accents[0], bold: true, ...title });
-  Object.assign(s.subtitle, { size: 34, font: st.body, color: p.fg });
-  Object.assign(s.body, { size: 36, font: st.body, color: p.fg, ...body });
-  // Sizes that read well projected: 36 / 30 / 26 / 24 / 22 px by level.
-  [36, 30, 26, 24, 22].forEach((z, i) => { s.body.levels[i].size = i ? z : s.body.size; });
-  ensureLayouts(deck);
-  deck.slides = slides.map(sl => slide(deck, p, sl));
-  return deck;
-}
-function slide(deck, p, { layout = 'titleContent', title, subtitle, body, body2, notes = '', extra = [], transition = null, bg, ...rest }) {
-  const lay = deck.layouts.find(l => l.id === layout);
-  const blocks = newSlideBlocks(lay);
-  const bodies = [body, body2];
-  for (const b of blocks) {
-    if (b.ph === 'title' && title != null) b.html = title;
-    else if (b.ph === 'subtitle' && subtitle != null) b.html = subtitle;
-    else if (b.ph === 'body') b.html = bodies.shift() ?? '';
-  }
-  return { id: uid(), layoutId: lay.id, background: bg || p.bg, sectionId: null, transition, hidden: false, notes, autoSlide: 0,
-    blocks: [...blocks.filter(b => b.html), ...extra], ...rest };
-}
-// A 3D model from the library (loaded from its address: needs a connection), with its credit.
-const lib3d = id => LIBRARY_3D.find(m => m.id === id);
-const model = (id, x, y, w, h, props = {}) => { const m = lib3d(id);
-  // (Its credit as a caption only when the licence asks for it: CC0 doesn't.)
-  const credit = m.licenses.every(l => l === 'CC0-1.0') ? {} : { caption: m.credit };
-  return { ...base(x, y, w, h), type: 'model', src: m.src, poster: m.thumb, alt: m.label, ...credit, autoRotate: false, view: 'front', ...(m.rest && { clip: m.rest }), ...props }; };
-// Animations: { effect, start: 'click' | 'withPrev' | 'afterPrev', … } in play order (seq); the click numbers come after.
-let seq = 0;
-const A = (effect, props = {}) => ({ effect, order: 1, seq: ++seq, start: 'click', duration: effect === 'path' ? 2000 : 600, delay: 0, ...props });
-const withAnims = (b, first, ...more) => ({ ...b, animation: first, ...(more.length && { anims: more }) });
-// A path through points (relative to where the object is), smooth and at even speed.
-const path = (points, props = {}) => A('path', { pathShape: 'custom', points, dx: points.at(-1)[0], dy: points.at(-1)[1], ...props });
-const numbered = deck => { deck.slides.forEach(sl => normalizeAnim(sl)); return deck; };
-const bar = (p, i = 0) => [shape('rect', 0, 0, 1280, 12, p.accents[i]), shape('rect', 0, 708, 1280, 12, p.accents[i])];
-// A soft light behind things: a round gradient from a colour into the background.
-const glow = (x, y, d, color, bg, opacity = 70) => shape('ellipse', x, y, d, d, color, { fill2: bg, gradType: 'radial', opacity });
-// A diagram (SmartArt-style), written as an outline.
-const dg = (layout, outline, x, y, w, h, props = {}) => ({ ...base(x, y, w, h), type: 'diagram', layout, colors: 'colorful', text: outline, ...props });
-const timer = (seconds, x, y, size, props = {}) => ({ ...base(x, y, size, size), type: 'timer', seconds, style: 'ring', auto: true, sound: true, ...props });
-// A made-up app screen (SVG), to show inside a phone or a laptop.
-const appScreen = (w, h, color, title, rows = 4) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="#f5f6fa"/>`
-  + `<rect width="${w}" height="${h * 0.16}" fill="${color}"/><text x="${w * 0.07}" y="${h * 0.105}" font-family="sans-serif" font-size="${h * 0.045}" font-weight="700" fill="#fff">${title}</text>`
-  + Array.from({ length: rows }, (_, i) => { const y = h * 0.2 + i * h * 0.19;
-    return `<rect x="${w * 0.06}" y="${y}" width="${w * 0.88}" height="${h * 0.16}" rx="${h * 0.02}" fill="#fff" stroke="#e1e4ec"/>`
-      + `<circle cx="${w * 0.17}" cy="${y + h * 0.08}" r="${h * 0.045}" fill="${color}" opacity="${1 - i * 0.18}"/>`
-      + `<rect x="${w * 0.3}" y="${y + h * 0.05}" width="${w * 0.5}" height="${h * 0.025}" rx="${h * 0.012}" fill="#cfd4df"/>`
-      + `<rect x="${w * 0.3}" y="${y + h * 0.095}" width="${w * 0.33}" height="${h * 0.02}" rx="${h * 0.01}" fill="#e3e6ee"/>`; }).join('') + '</svg>');
+import { A, anim, appScreen, bar, base, big, build, card, dg, glow, icon, lib3d, model, numbered, path, shape, slide, text, timer, ul, withAnims, emptyDeck, uid, chartBlock, tableBlock, codeBlock, mathBlock, PALETTES, pairStacks, ensureLayouts, masterStyles, newSlideBlocks, pollBlock, placeOnDesign, canvasDesign, LIBRARY_3D, normalizeAnim } from './templates/kit.js';
+import { CATALOG, LOADERS } from './templates/catalog.js';
 
 // ---- The ten examples --------------------------------------------------------------
 const EXAMPLES_DEF = {
@@ -555,5 +480,27 @@ const EXAMPLES_DEF = {
   } },
 };
 
-export const EXAMPLES = Object.fromEntries(Object.entries(EXAMPLES_DEF).map(([k, v]) => [k, { name: v.name, summary: v.summary }]));
-export const buildExample = key => EXAMPLES_DEF[key]?.make() || null;
+// Which group each of these belongs to (the gallery shows them by group).
+const CAT = {'lesson': 'edu', 'report': 'biz', 'pitch': 'biz', 'coding': 'sci', 'maths': 'sci', 'science': 'edu', 'history': 'edu', 'meeting': 'biz', 'event': 'life', 'portfolio': 'life', 'moving3d': 'showcase', 'effects': 'showcase', 'diagrams': 'showcase', 'classroom': 'edu', 'launch': 'product', 'travel': 'life', 'quiz': 'edu', 'dashboard': 'data', 'folio': 'creative', 'canvas': 'showcase'};
+for (const [k, v] of Object.entries(EXAMPLES_DEF)) v.cat ||= CAT[k] || 'showcase';
+
+// The groups, and the presentations of each, from their own files (templates/*.js).
+export const CATEGORIES = [['edu', 'Educación'], ['sci', 'Ciencia y universidad'], ['biz', 'Empresa'], ['product', 'Producto y tecnología'],
+  ['data', 'Datos'], ['life', 'Eventos y vida personal'], ['creative', 'Estilos creativos'], ['showcase', 'Catálogo de funciones']];
+// All of them listed (name, summary, group); the ones in templates/*.js are
+// loaded when needed (catalog.js, made by tools/build-catalog.mjs).
+export const EXAMPLES = { ...Object.fromEntries(Object.entries(EXAMPLES_DEF).map(([k, v]) => [k, { name: v.name, summary: v.summary, cat: v.cat }])), ...CATALOG };
+const loaded = { ...EXAMPLES_DEF };
+// At once, for the ones already here (the first twenty, or a file already loaded).
+export const buildExample = key => loaded[key]?.make() || null;
+// Names and summaries in another language: [name, summary] by key, from templates/names/<lang>.js (only when asked:
+// with a thousand presentations they would weigh on the start-up). The first twenty are in the interface's strings.
+const NAME_LANGS = ['en', 'fr', 'de', 'it', 'pt', 'ca', 'gl', 'nl', 'eu', 'ar'];
+export async function exampleNames(lang) {
+  if (!NAME_LANGS.includes(lang)) return {};
+  try { return (await import(`./templates/names/${lang}.js`)).default; } catch { return {}; }
+}
+export async function loadExample(key) {
+  if (!loaded[key]) { const f = CATALOG[key]?.file; if (!f || !LOADERS[f]) return null; Object.assign(loaded, (await LOADERS[f]()).default); }
+  return loaded[key]?.make() || null;
+}

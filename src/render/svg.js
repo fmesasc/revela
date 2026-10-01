@@ -88,14 +88,16 @@ export const WORDART_KEYS = Object.keys(WORDART);
 export const WORDART_PROPS = ['color', 'fontWeight', 'webkitTextStroke', 'paintOrder', 'textShadow', 'backgroundImage', 'webkitBackgroundClip', 'backgroundClip'];
 const kebab = p => { const k = p.replace(/[A-Z]/g, m => '-' + m.toLowerCase()); return k.startsWith('webkit') ? '-' + k : k; };
 // Inline CSS string for export/preview.
-export function wordartCSS(key) {
+// (A tint, if given, takes the place of the preset's own blue: neon, fill and gradient in any colour.)
+const tinted = (v, tint) => (tint && /^#[0-9a-f]{3,8}$/i.test(tint) ? String(v).split('#3f6497').join(tint) : v);
+export function wordartCSS(key, tint) {
   const w = WORDART[key]; if (!w) return '';
-  return Object.entries(w).map(([p, v]) => `${kebab(p)}:${v}`).join(';') + ';';
+  return Object.entries(w).map(([p, v]) => `${kebab(p)}:${tinted(v, tint)}`).join(';') + ';';
 }
 // Apply/clear the managed props on a live element (editor).
-export function applyWordart(el, key) {
+export function applyWordart(el, key, tint) {
   const w = WORDART[key] || {};
-  for (const p of WORDART_PROPS) el.style[p] = w[p] || '';
+  for (const p of WORDART_PROPS) el.style[p] = w[p] ? tinted(w[p], tint) : '';
 }
 
 // Point on a box's border in the direction of (tx,ty), so a connector meets the
@@ -186,29 +188,40 @@ function drawChart(b) {
   const data = b.data || []; const color = b.color || '#3f6497';
   const palette = ['#3f6497', '#c0392b', '#2b7a3b', '#d68910', '#7d3c98', '#16a085', '#c0392b'];
   if (b.chartType === 'pie' || b.chartType === 'doughnut') {
+    // (Each slice its own colour if given — d.color —, else the chart's colour first and then the
+    // series colours; with labels, a legend at the side with each share.)
     const rI = b.chartType === 'doughnut' ? 20 : 0, rO = 40;
     const total = data.reduce((s, d) => s + (+d.value || 0), 0) || 1;
+    const cols = b.color ? [b.color, ...SERIES_COLOURS] : palette, fillOf = (d, i) => d.color || cols[i % cols.length];
+    const legend = b.legend !== false && data.some(d => d.label);
     let a0 = -Math.PI / 2; const arcs = data.map((d, i) => {
       const a1 = a0 + (d.value / total) * 2 * Math.PI;
       const pt = (r, a) => `${(50 + r * Math.cos(a)).toFixed(1)},${(50 + r * Math.sin(a)).toFixed(1)}`;
-      const large = a1 - a0 > Math.PI ? 1 : 0; const fill = palette[i % palette.length];
+      const large = a1 - a0 > Math.PI ? 1 : 0; const fill = fillOf(d, i);
       const path = rI
         ? `M${pt(rO, a0)} A${rO},${rO} 0 ${large} 1 ${pt(rO, a1)} L${pt(rI, a1)} A${rI},${rI} 0 ${large} 0 ${pt(rI, a0)} Z`
         : `M50,50 L${pt(rO, a0)} A${rO},${rO} 0 ${large} 1 ${pt(rO, a1)} Z`;
       a0 = a1;
       return `<path d="${path}" fill="${fill}"/>`;
     }).join('');
-    return `<svg viewBox="0 0 100 100" width="100%" height="100%">${arcs}</svg>`;
+    if (!legend) return `<svg viewBox="0 0 100 100" width="100%" height="100%">${arcs}</svg>`;
+    const rows = data.length, lh = Math.min(12, 84 / rows), y0 = 50 - (rows * lh) / 2 + lh / 2;
+    const keys = data.map((d, i) => { const y = y0 + i * lh;
+      return `<rect x="100" y="${(y - 2.6).toFixed(1)}" width="5.2" height="5.2" rx="1" fill="${fillOf(d, i)}"/>`
+        + `<text x="108" y="${(y + 1.6).toFixed(1)}" font-size="${Math.min(5, lh * 0.55).toFixed(1)}" fill="${b.labelColor || '#8a8a8a'}">${escSvg(d.label || '')} · ${Math.round((+d.value || 0) / total * 100)} %</text>`; }).join('');
+    return `<svg viewBox="0 0 180 100" width="100%" height="100%">${arcs}${keys}</svg>`;
   }
   if (b.chartType === 'radar') {
-    const n = Math.max(3, data.length), max = Math.max(1, ...data.map(d => +d.value || 0));
+    // (Several series too — today against the goal —, each its own outline, with the key.)
+    const ser = chartSeries({ ...b, chartType: 'line' }).map(x => ({ ...x, values: x.values.map(v => +v || 0) }));
+    const n = Math.max(3, data.length), max = Math.max(1, ...ser.flatMap(x => x.values));
     const pt = (i, r) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n; return [50 + r * Math.cos(a), 50 + r * Math.sin(a)]; };
     const rings = [0.25, 0.5, 0.75, 1].map(f => `<polygon points="${Array.from({ length: n }, (_, i) => pt(i, 40 * f).map(v => v.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="#8a8a8a55" stroke-width="0.4"/>`).join('');
     const axes = Array.from({ length: n }, (_, i) => { const [x, y] = pt(i, 40); return `<line x1="50" y1="50" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#8a8a8a55" stroke-width="0.4"/>`; }).join('');
-    const poly = data.map((d, i) => pt(i, 40 * ((+d.value || 0) / max)).map(v => v.toFixed(1)).join(',')).join(' ');
+    const polys = ser.map((x, k) => `<polygon points="${x.values.map((v, i) => pt(i, 40 * (v / max)).map(q => q.toFixed(1)).join(',')).join(' ')}" fill="${x.color}" fill-opacity="${k ? 0.15 : 0.35}" stroke="${x.color}" stroke-width="1"/>`).join('');
     const labels = data.map((d, i) => { const [x, y] = pt(i, 47); return `<text x="${x.toFixed(1)}" y="${(y + 1.5).toFixed(1)}" font-size="4" text-anchor="middle" fill="#8a8a8a">${escSvg(d.label || '')}</text>`; }).join('');
-    return `<svg viewBox="0 0 100 100" width="100%" height="100%">${rings}${axes}`
-      + `<polygon points="${poly}" fill="${color}" fill-opacity="0.35" stroke="${color}" stroke-width="1"/>${labels}</svg>`;
+    const key = ser.length > 1 ? ser.map((x, k) => `<rect x="2" y="${(2 + k * 6).toFixed(1)}" width="3.6" height="3.6" fill="${x.color}"/><text x="7" y="${(5.1 + k * 6).toFixed(1)}" font-size="4" fill="#8a8a8a">${escSvg(x.name)}</text>`).join('') : '';
+    return `<svg viewBox="0 0 100 100" width="100%" height="100%">${rings}${axes}${polys}${labels}${key}</svg>`;
   }
   if (b.chartType === 'scatter') {
     // x = numeric label if present, else the index; y = value.
@@ -230,7 +243,7 @@ function drawChart(b) {
   let ser = chartSeries(b);
   if (pct) { const tot = data.map((_, i) => ser.reduce((a, x) => a + Math.abs(x.values[i] || 0), 0) || 1); ser = ser.map(x => ({ ...x, values: x.values.map((v, i) => v / tot[i] * 100) })); }
   const n = data.length || 1, sums = stacked ? data.map((_, i) => [ser.reduce((a, x) => a + Math.max(0, x.values[i]), 0), ser.reduce((a, x) => a + Math.min(0, x.values[i]), 0)]) : [];
-  const all = stacked ? sums.flat() : ser.flatMap(x => x.values);
+  const all = stacked ? sums.flat() : ser.flatMap(x => x.values).filter(v => v != null);
   const T = ser.length > 1 ? 9 : 4;                          // room for the legend
   const B = b.xTitle ? 46 : 50;                              // plot bottom (as before without the new options)
   const L = (b.grid ? 8 : 0) + (b.yTitle ? 4 : 0);           // room for the scale and the y title
@@ -260,20 +273,21 @@ function drawChart(b) {
   // Lines: across the full width for line/area charts, centred on the bars in a combo.
   const lx = i => (barSer.length ? X(i) : (n > 1 ? L + i * W / (n - 1) : L + W / 2));
   const lines = lineSer.map((x, k) => {
-    const pts = x.values.map((v, i) => `${lx(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
-    const area = b.chartType === 'area'
-      ? `<polygon points="${+lx(0).toFixed(1)},${Y0.toFixed(1)} ${pts} ${+lx(n - 1).toFixed(1)},${Y0.toFixed(1)}" fill="${x.color}" opacity="${k ? 0.18 : 0.25}"/>` : '';
-    const dots = x.values.map((v, i) => `<circle cx="${lx(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="1.3" fill="${x.color}"/>` + dl(lx(i), Y(v) - 1, v, x.color)).join('');
-    return `${area}<polyline points="${pts}" fill="none" stroke="${x.color}" stroke-width="1.2" vector-effect="non-scaling-stroke"/>${dots}`;
+    // (Split at the gaps: one stretch of line, and of area, per run of values.)
+    const runs = []; x.values.forEach((v, i) => { if (v == null) return; const r = runs[runs.length - 1]; if (r && r[r.length - 1] === i - 1) r.push(i); else runs.push([i]); });
+    return runs.map(r => {
+      const pts = r.map(i => `${lx(i).toFixed(1)},${Y(x.values[i]).toFixed(1)}`).join(' ');
+      const area = b.chartType === 'area'
+        ? `<polygon points="${+lx(r[0]).toFixed(1)},${Y0.toFixed(1)} ${pts} ${+lx(r[r.length - 1]).toFixed(1)},${Y0.toFixed(1)}" fill="${x.color}" opacity="${k ? 0.18 : 0.25}"/>` : '';
+      const dots = r.map(i => `<circle cx="${lx(i).toFixed(1)}" cy="${Y(x.values[i]).toFixed(1)}" r="1.3" fill="${x.color}"/>` + dl(lx(i), Y(x.values[i]) - 1, x.values[i], x.color)).join('');
+      return `${area}${r.length > 1 ? `<polyline points="${pts}" fill="none" stroke="${x.color}" stroke-width="1.2" vector-effect="non-scaling-stroke"/>` : ''}${dots}`;
+    }).join('');
   }).join('');
   const zero = lo < 0 ? `<line x1="${L}" y1="${Y0.toFixed(1)}" x2="100" y2="${Y0.toFixed(1)}" stroke="#8a8a8a" stroke-width="0.5" vector-effect="non-scaling-stroke"/>` : '';
   const labels = data.map((d, i) => `<text x="${(barSer.length ? X(i) : lx(i)).toFixed(1)}" y="${(B + 8).toFixed(1)}" font-size="4" text-anchor="middle" fill="#8a8a8a">${escSvg(d.label || '')}</text>`).join('');
   const titles = (b.xTitle ? `<text x="${(L + W / 2).toFixed(1)}" y="59" font-size="3.6" text-anchor="middle" fill="#8a8a8a">${escSvg(b.xTitle)}</text>` : '')
     + (b.yTitle ? `<text x="2.6" y="${((T + B) / 2).toFixed(1)}" font-size="3.6" text-anchor="middle" fill="#8a8a8a" transform="rotate(-90 2.6 ${((T + B) / 2).toFixed(1)})">${escSvg(b.yTitle)}</text>` : '');
-  const legend = ser.length > 1 ? ser.map((x, k) => {
-    const lx0 = 100 - (ser.length - k) * 22;
-    return `<rect x="${lx0}" y="0" width="3" height="3" fill="${x.color}"/><text x="${lx0 + 4}" y="2.6" font-size="3.4" fill="#8a8a8a">${escSvg(x.name)}</text>`;
-  }).join('') : '';
+  const legend = seriesLegend(ser);
   return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">${grid}${bars}${lines}${zero}${labels}${titles}${legend}</svg>`;
 }
 // Filled map: each region in a shade between light and the chart's colour by its
@@ -417,8 +431,17 @@ function hbarSVG(b) {
   }).join('')).join('');
   const labels = data.map((d, i) => `<text x="${L - 1.5}" y="${(T + gap * i + gap / 2 + 1.3).toFixed(1)}" font-size="3.6" text-anchor="end" fill="#8a8a8a">${escSvg(d.label || '')}</text>`).join('');
   const axis = `<line x1="${X(0).toFixed(1)}" y1="${T}" x2="${X(0).toFixed(1)}" y2="${B}" stroke="#8a8a8a" stroke-width="0.4" vector-effect="non-scaling-stroke"/>`;
-  const legend = ser.length > 1 ? ser.map((x, k) => { const lx0 = 100 - (ser.length - k) * 22; return `<rect x="${lx0}" y="0" width="3" height="3" fill="${x.color}"/><text x="${lx0 + 4}" y="2.6" font-size="3.4" fill="#8a8a8a">${escSvg(x.name)}</text>`; }).join('') : '';
+  const legend = seriesLegend(ser);
   return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">${bars}${axis}${labels}${legend}</svg>`;
+}
+// The series' key, top right: each name as wide as it is (long ones don't run into the next),
+// smaller if they don't all fit.
+function seriesLegend(ser) {
+  if (ser.length < 2) return '';
+  const wid = x => 4 + [...String(x.name)].length * 1.85 + 3, total = ser.reduce((a, x) => a + wid(x), 0), f = Math.min(1, 100 / total);
+  let at = 100 - total * f;
+  return ser.map(x => { const x0 = at; at += wid(x) * f;
+    return `<rect x="${+x0.toFixed(1)}" y="0" width="${+(3 * f).toFixed(2)}" height="${+(3 * f).toFixed(2)}" fill="${x.color}"/><text x="${+(x0 + 4 * f).toFixed(1)}" y="${+(2.6 * f).toFixed(2)}" font-size="${+(3.4 * f).toFixed(2)}" fill="#8a8a8a">${escSvg(x.name)}</text>`; }).join('');
 }
 // A round step for a scale (1, 2, 2.5, 5 × 10^n).
 export function niceStep(raw) {
@@ -432,10 +455,12 @@ export function niceStep(raw) {
 export const SERIES_COLOURS = ['#e0873b', '#4caf7d', '#c94f4f', '#8e6cc9', '#3bb3c3', '#d4a017'];
 export function chartSeries(b) {
   const data = b.data || [], bar = ['bar', 'stacked', 'stacked100', 'hbar', 'histogram'].includes(b.chartType || 'bar');
-  return [{ name: b.seriesName || 'Serie 1', color: b.color || '#3f6497', values: data.map(d => +d.value || 0), type: bar ? 'bar' : 'line' }]
+  // (In lines an empty value — null or '' — is a gap, not a zero: years still to come…)
+  const val = (v, line) => (line && (v == null || v === '') ? null : +v || 0);
+  return [{ name: b.seriesName || 'Serie 1', color: b.color || '#3f6497', values: data.map(d => val(d.value, !bar)), type: bar ? 'bar' : 'line' }]
     .concat((b.series || []).map((x, i) => ({
       name: x.name || `Serie ${i + 2}`, color: x.color || SERIES_COLOURS[i % SERIES_COLOURS.length],
-      values: data.map((_, k) => +(x.values || [])[k] || 0), type: bar && !b.combo ? 'bar' : 'line',
+      values: data.map((_, k) => val((x.values || [])[k], !(bar && !b.combo))), type: bar && !b.combo ? 'bar' : 'line',
     })));
 }
 
@@ -865,10 +890,10 @@ export function shapeTextStyle(b) {
 
 // The text inside a shape, over it (same box styles as a text box's).
 export function shapeTextHTML(b) {
-  const st = shapeTextStyle(b), j = { top: 'flex-start', middle: 'center', bottom: 'flex-end' }[st.vAlign];
+  const st = shapeTextStyle(b), j = { top: 'start', middle: 'center', bottom: 'end' }[st.vAlign];
   return `<div class="rv-shape-text" style="position:absolute;inset:0;box-sizing:border-box;padding:${textPadding(st)};font-size:${st.fontSize}px;text-align:${st.textAlign};`
     + `${st.color ? `color:${st.color};` : ''}${st.fontFamily ? `font-family:${st.fontFamily};` : ''}${st.fontWeight ? `font-weight:${st.fontWeight};` : ''}${st.fontStyle ? `font-style:${st.fontStyle};` : ''}`
-    + `${st.lineHeight ? `line-height:${st.lineHeight};` : ''}display:flex;flex-direction:column;justify-content:${j};overflow:hidden">${b.html}</div>`;
+    + `${st.lineHeight ? `line-height:${st.lineHeight};` : ''}align-content:${j};overflow:hidden">${b.html}</div>`;
 }
 
 // An attached file as an icon (Insert ▸ Object "as icon"): a page with its
@@ -889,7 +914,7 @@ export function fileIconHTML(b, sizeLabel = '') {
 
 // The chart drawing code as a script, for charts that reload their data while presenting.
 export function chartRuntimeJS() {
-  const fns = [chartSVG, unstretchChart, drawChart, histogramBins, hbarSVG, waterfallSVG, funnelSVG, treemapSVG, squarify, bubblePoints, bubbleSVG, mapMatch, mapSVG, chartSeries, niceStep];
+  const fns = [chartSVG, unstretchChart, drawChart, histogramBins, hbarSVG, waterfallSVG, funnelSVG, treemapSVG, squarify, bubblePoints, bubbleSVG, mapMatch, mapSVG, chartSeries, niceStep, seriesLegend];
   const arrows = { escSvg, escA, plain, isTotalLabel };
   return `var SERIES_COLOURS=${JSON.stringify(SERIES_COLOURS)},TREE_COLOURS=${JSON.stringify(TREE_COLOURS)},TOTAL_WORDS=${TOTAL_WORDS};\n`
     + Object.entries(arrows).map(([k, f]) => `var ${k}=${f};`).join('\n') + '\n' + fns.map(f => String(f)).join('\n');

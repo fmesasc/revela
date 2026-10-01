@@ -78,10 +78,9 @@ export function styleRich(rich, b) {
   rich.style.background = b.bg || '';
   rich.style.border = b.borderColor ? borderCSS(b.borderColor, b.borderDash) : '';
   rich.style.borderRadius = (b.radius || 0) + 'px';
-  const vj = { top: 'flex-start', middle: 'center', bottom: 'flex-end' }[b.vAlign];
-  rich.style.display = vj ? 'flex' : ''; rich.style.flexDirection = vj ? 'column' : '';
-  rich.style.justifyContent = vj || '';
-  applyWordart(rich, b.wordart);
+  // (Vertical alignment on the block itself — align-content —, not as a flex column, where each bold word would be a line.)
+  rich.style.alignContent = { top: 'start', middle: 'center', bottom: 'end' }[b.vAlign] || '';
+  applyWordart(rich, b.wordart, b.wordartColor);
   if (!b.wordart) rich.style.color = b.color || '';        // after WordArt, which resets it
   if (!b.wordart) rich.style.fontWeight = b.fontWeight || '';
   rich.style.fontStyle = b.fontStyle || '';

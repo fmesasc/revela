@@ -35,7 +35,7 @@ export function blockPreview(b) {
       + `${b.radius ? `border-radius:${b.radius}px;` : ''}box-sizing:border-box;`
       + `${b.fontWeight ? `font-weight:${b.fontWeight};` : ''}${b.fontStyle ? `font-style:${b.fontStyle};` : ''}`
       + `${b.columns > 1 ? `column-count:${b.columns};column-gap:32px;` : ''}`
-      + `${b.wordart ? wordartCSS(b.wordart) : ''}">`
+      + `${b.wordart ? wordartCSS(b.wordart, b.wordartColor) : ''}">`
       + `${b.curve ? curvedTextSVG(b) : b.html || ''}</div>`;
   } else if (b.type === 'image') {
     // (An element with its src set: the picture's megabytes aren't parsed as HTML.)

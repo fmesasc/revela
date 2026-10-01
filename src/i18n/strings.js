@@ -2174,5 +2174,16 @@ export const ROWS = [
   ['Cambiar icono', 'Change icon', 'Changer d\'icône', 'Symbol ändern', 'Cambia icona', 'Mudar ícone', 'Canvia la icona'],
   ['Centrar en la diapositiva', 'Centre on the slide', 'Centrer sur la diapositive', 'Auf der Folie zentrieren', 'Centra nella diapositiva', 'Centrar no diapositivo', 'Centra a la diapositiva'],
   ['Quitar el giro', 'Remove rotation', 'Supprimer la rotation', 'Drehung entfernen', 'Rimuovi rotazione', 'Remover a rotação', 'Treu el gir'],
+  ['Buscar entre {n} presentaciones…', 'Search {n} presentations…', 'Rechercher parmi {n} présentations…', '{n} Präsentationen durchsuchen…', 'Cerca tra {n} presentazioni…', 'Pesquisar entre {n} apresentações…', 'Cerca entre {n} presentacions…'],
+  ['Todas', 'All', 'Toutes', 'Alle', 'Tutte', 'Todas', 'Totes'],
+  ['Ninguna presentación coincide.', 'No presentation matches.', 'Aucune présentation ne correspond.', 'Keine Präsentation passt.', 'Nessuna presentazione corrisponde.', 'Nenhuma apresentação coincide.', 'Cap presentació no coincideix.'],
+  ['Educación', 'Education', 'Éducation', 'Bildung', 'Istruzione', 'Educação', 'Educació'],
+  ['Ciencia y universidad', 'Science and university', 'Science et université', 'Wissenschaft und Universität', 'Scienza e università', 'Ciência e universidade', 'Ciència i universitat'],
+  ['Empresa', 'Business', 'Entreprise', 'Unternehmen', 'Azienda', 'Empresa', 'Empresa'],
+  ['Producto y tecnología', 'Product and technology', 'Produit et technologie', 'Produkt und Technik', 'Prodotto e tecnologia', 'Produto e tecnologia', 'Producte i tecnologia'],
+  ['Eventos y vida personal', 'Events and personal life', 'Événements et vie personnelle', 'Veranstaltungen und Privatleben', 'Eventi e vita personale', 'Eventos e vida pessoal', 'Esdeveniments i vida personal'],
+  ['Estilos creativos', 'Creative styles', 'Styles créatifs', 'Kreative Stile', 'Stili creativi', 'Estilos criativos', 'Estils creatius'],
+  ['Catálogo de funciones', 'Feature catalogue', 'Catalogue des fonctions', 'Funktionskatalog', 'Catalogo delle funzioni', 'Catálogo de funções', 'Catàleg de funcions'],
+  ['Color del efecto', 'Effect colour', 'Couleur de l’effet', 'Effektfarbe', 'Colore dell’effetto', 'Cor do efeito', 'Color de l’efecte'],
 ];
 // Additional languages (partial; anything missing falls back to Spanish).

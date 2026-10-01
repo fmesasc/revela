@@ -500,9 +500,19 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     reset(); D.querySelector('[data-action="gallery"]').click(); await sleep(50);
     const items = D.querySelectorAll('#gallery-modal .gal-examples .gal-item');
     eq(items.length, Object.keys(R.examples.EXAMPLES).length, 'todos los ejemplos en la galería'); assert(items.length >= 20, 'al menos veinte');
+    // (Search and groups: the cards that don't match hide.)
+    const q = D.querySelector('#gallery-modal .gal-q'); q.value = 'código'; q.dispatchEvent(new Event('input'));
+    const shown = [...items].filter(b => !b.hidden);
+    assert(shown.length && shown.length < items.length && shown.some(b => b.dataset.example === 'coding'), 'la búsqueda filtra');
+    q.value = ''; q.dispatchEvent(new Event('input'));
+    D.querySelector('#gallery-modal .gal-cat[data-cat="data"]').click();
+    assert([...items].every(b => b.hidden === (b.dataset.cat !== 'data')), 'los grupos filtran');
     D.querySelector('#gallery-modal .modal-close').click();
+    // (The rest are loaded on demand; tools/check-templates.mjs goes through them all.)
+    const more = Object.keys(R.examples.EXAMPLES).find(k => !R.examples.buildExample(k));
+    if (more) assert((await R.examples.loadExample(more))?.slides.length >= 5, 'se carga una plantilla del catálogo');
     const kinds = new Set();
-    for (const key of Object.keys(R.examples.EXAMPLES)) {
+    for (const key of Object.keys(R.examples.EXAMPLES).filter(k => R.examples.buildExample(k))) {
       const deck = R.examples.buildExample(key);
       assert(deck.slides.length >= 4, key + ': varias diapositivas');
       assert(deck.master.styles?.title?.font && deck.layouts?.length, key + ': con estilos de patrón y diseños');

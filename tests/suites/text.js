@@ -88,7 +88,13 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
 
   await test('alineación vertical del cuadro de texto en el export', async () => {
     reset(); const b = newText(); R.format.setVAlign('middle');
-    assert(/justify-content:center/.test(R.io.buildHTML()), 'centrado vertical');
+    assert(/align-content:center/.test(R.io.buildHTML()), 'centrado vertical');
+    // (On the block itself, not as a flex column: a bold word stays in its line.)
+    b.html = 'Una <b>palabra</b> en negrita'; b.h = 300; R.render(); await sleep(20);
+    const r = richOf(b), bold = r.querySelector('b').getBoundingClientRect(), all = r.getBoundingClientRect();
+    assert(Math.abs(bold.top + bold.height / 2 - (all.top + all.height / 2)) < 30, 'centrado en el editor');
+    const range = D.createRange(); range.selectNodeContents(r);
+    eq(new Set([...range.getClientRects()].map(x => Math.round(x.top))).size, 1, 'todo en una línea');
   });
 
   await test('insertar símbolo en el texto', async () => {

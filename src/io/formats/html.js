@@ -32,7 +32,7 @@ import { sizeText } from '../../features/content/files.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle, slidePaths } from '../../features/document/captions.js';
 import { INK_CSS, inkJS } from '../runtime/ink.js';
 import { deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
-import { animTimeline, EFFECT_KF, EFFECT_KF_CSS, isEntrance, customTransitionCSS, transitionName, isShapeTransition, pathKeyframesCSS, pathTurns, animsOf, animKey, offsetBefore } from '../../features/animation/transitions.js';
+import { animTimeline, animEntries, EFFECT_KF, EFFECT_KF_CSS, isEntrance, customTransitionCSS, transitionName, isShapeTransition, pathKeyframesCSS, pathTurns, animsOf, animKey, offsetBefore } from '../../features/animation/transitions.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, levelVars } from '../../features/document/master.js';
 
 
@@ -112,6 +112,11 @@ document.addEventListener('click',function(e){var b=e.target.closest&&e.target.c
 if(a.paused){a.removeAttribute('data-off');a.play().catch(function(){});}else{a.pause();a.setAttribute('data-off','');}},true);
 list.forEach(function(a){a.addEventListener('play',btns);a.addEventListener('pause',btns);});
 Reveal.on('ready',upd);Reveal.on('slidechanged',upd);if(Reveal.isReady())upd();})();`;
+
+// Slides whose first animation starts by itself: on arriving (forwards), their first step plays.
+const START_JS = `(function(){function go(){var s=Reveal.getCurrentSlide(),f=Reveal.getIndices().f;
+if(s&&s.hasAttribute('data-rv-start')&&(f===undefined||f<0))setTimeout(function(){if(Reveal.getCurrentSlide()===s)Reveal.nextFragment();},60);}
+Reveal.on('slidechanged',go);Reveal.on('ready',go);if(Reveal.isReady())go();})();`;
 
 // A PDF's "page and zoom" step: the page, the point of it in the middle (0-1) and how much it is enlarged.
 const pdfStep = a => ({ page: Math.max(1, Math.round(+a.page || 1)), x: +(+(a.zx ?? 0.5)).toFixed(4), y: +(+(a.zy ?? 0.5)).toFixed(4), s: Math.min(8, Math.max(1, +a.zs || 1)) });
@@ -239,10 +244,10 @@ function blockHTMLRaw(b, slide) {
       + `${b.numStyle ? `--num:${b.numStyle};` : ''}`
       + `${b.bg ? `background:${b.bg};` : ''}${b.borderColor ? `border:${borderCSS(b.borderColor, b.borderDash)};` : ''}`
       + `${b.radius ? `border-radius:${b.radius}px;` : ''}box-sizing:border-box;`
-      + `${b.vAlign ? `display:flex;flex-direction:column;justify-content:${{ top: 'flex-start', middle: 'center', bottom: 'flex-end' }[b.vAlign]};` : ''}`
+      + `${b.vAlign ? `align-content:${{ top: 'start', middle: 'center', bottom: 'end' }[b.vAlign]};` : ''}`   // (on the block itself: bold words stay in their line)
       + `${b.fontWeight ? `font-weight:${b.fontWeight};` : ''}${b.fontStyle ? `font-style:${b.fontStyle};` : ''}`
       + `${b.columns > 1 ? `column-count:${b.columns};column-gap:32px;` : ''}`
-      + `${b.wordart ? wordartCSS(b.wordart) : ''}">`
+      + `${b.wordart ? wordartCSS(b.wordart, b.wordartColor) : ''}">`
       + `${b.curve ? curvedTextSVG(b) : inner(b.html || '')}</div>`;
   }
   if (b.type === 'model')
@@ -400,7 +405,9 @@ function slideHTML(s, deck, figMap, plan = morphPlan(deck)) {
     // Voice-over: plays when the slide is shown (reveal.js's data-autoplay).
     + (s.narration?.src && /^data:audio\/|^https:\/\//.test(s.narration.src) ? `<audio class="rv-narration" data-autoplay src="${esc(s.narration.src)}" preload="auto"></audio>` : '');
   const aa = (plan.marked.has(s.id) ? ' data-auto-animate' : '') + (s.aaDuration ? ` data-auto-animate-duration="${+s.aaDuration}"` : '') + (s.aaDelay ? ` data-auto-animate-delay="${+s.aaDelay}"` : '');
-  return `<section${trans}${speed}${auto}${bg}${aa} data-rv-id="${esc(s.id)}">`
+  // (A first animation "with/after previous" plays on its own when the slide comes in, as in PowerPoint.)
+  const first = animEntries(s).find(e => !e.a.trigger), start = first && ['withPrev', 'afterPrev'].includes(first.a.start) ? ' data-rv-start' : '';
+  return `<section${trans}${speed}${auto}${bg}${aa}${start} data-rv-id="${esc(s.id)}">`
     + `<div class="stage${s.bgIframe && s.bgInteractive ? ' pass' : ''}" style="background:${stageBackground(s)}">${bgLayer(s)}${inner}</div>${notes}</section>`;
 }
 
@@ -569,6 +576,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${/ data-tabs="/.test(slides) ? `(${tabRuntime.toString()})();` : ''}
  ${/ data-pdf[ >]/.test(slides) ? `(${pdfRuntime.toString()})(${JSON.stringify(PDFJS)});` : ''}
  ${bgmHTML ? BGM_JS : ''}
+ ${/ data-rv-start[ >]/.test(slides) ? START_JS : ''}
  ${/ data-(goto|href)="/.test(slides) ? LINK_JS : ''}
  ${/ data-file(-view)?[ >]/.test(slides) ? FILE_JS : ''}
  ${hasMedia ? `${createMediaPlayer.toString()}\n${revelaMediaRuntime.toString()}\nrevelaMediaRuntime(${JSON.stringify(GIFUCT)});` : ''}

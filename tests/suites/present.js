@@ -408,6 +408,26 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { f.remove(); }
   });
 
+  await test('una primera animación «con/después de la anterior» arranca sola al llegar a la diapositiva', async () => {
+    const d = R.model.emptyDeck(); R.store.replaceDeck(d); R.slides.addSlide?.();
+    const s2 = { ...JSON.parse(JSON.stringify(d.slides[0])), id: 'auto2', blocks: [] };
+    const box = (id, start, order, seq) => ({ id, type: 'shape', shape: 'rect', x: 100, y: 100, w: 100, h: 100, fill: '#c00', rotation: 0, animation: { effect: 'fade-in', start, order, seq, duration: 200, delay: 0 } });
+    s2.blocks = [box('ra', 'afterPrev', 1, 1), box('rb', 'click', 2, 2)];
+    d.slides = [d.slides[0], s2];
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:800px;visibility:hidden'; D.body.appendChild(f);
+    try {
+      f.srcdoc = R.io.buildHTML(d, { inApp: true });
+      for (let i = 0; i < 100 && !f.contentWindow.Reveal?.isReady?.(); i++) await sleep(100);
+      const W = f.contentWindow, frag = id => f.contentDocument.querySelectorAll('[data-rv-id="auto2"] .fragment')[id === 'ra' ? 0 : 1];
+      assert(f.contentDocument.querySelector('[data-rv-id="auto2"]').hasAttribute('data-rv-start'), 'marcada');
+      W.Reveal.slide(1); await sleep(400);
+      assert(frag('ra')?.classList.contains('visible'), 'la primera, sin clic');
+      assert(!frag('rb')?.classList.contains('visible'), 'la de clic espera');
+      W.Reveal.slide(0); await sleep(100); W.Reveal.slide(1, 0, 1); await sleep(300);
+      assert(frag('rb')?.classList.contains('visible'), 'al volver hacia atrás no se repite: todo a la vista');
+    } finally { f.remove(); }
+  });
+
   await test('vista general al presentar (Esc): mosaico por secciones que cabe en pantalla y navegable', async () => {
     const d = R.examples.buildExample('coding');
     d.sections = [{ id: 's1', name: 'Fundamentos' }, { id: 's2', name: 'Asincronía' }];
