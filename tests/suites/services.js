@@ -865,6 +865,65 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { CD.closeDoc(); }
   });
 
+  await test('nube de Revela: solo lectura por el límite del plan (aviso amable, nada se envía, nada se pierde)', async () => {
+    reset(); const W = frame.contentWindow, CD = R.clouddocs, CS = await W.eval("import('/src/features/live/collabsync.js')"), UI = await W.eval("import('/src/ui/dialogs/cloud.js')");
+    const base = JSON.parse(JSON.stringify(R.state.deck)); base.name = 'Vieja';
+    base.slides = [{ ...base.slides[0], id: 's1', blocks: [{ id: 'b1', type: 'text', x: 0, y: 0, w: 100, h: 50, html: 'Uno' }], comments: [] }];
+    const srv = { deck: base, rev: 1, readOnly: true, calls: [] };
+    const io = async (path, body) => {
+      srv.calls.push(path);
+      if (/^docs\/[\w-]+$/.test(path)) return { deck: JSON.parse(JSON.stringify(srv.deck)), rev: srv.rev, role: 'owner', sharing: { link: 'none', people: {} }, ...(srv.readOnly && { readOnly: true, reason: 'over limit', limit: 3 }) };
+      if (/\/since\?rev=/.test(path)) return { rev: srv.rev, ops: [] };
+      if (/\/ops$/.test(path)) { if (srv.readOnly) throw Object.assign(new Error('read only'), { status: 402, data: { error: 'read only', reason: 'over limit', limit: 3 } }); CS.applyOps(srv.deck, body.ops); return { rev: ++srv.rev }; }
+      return { ok: true };
+    };
+    if (!W.__roMounted) { UI.mountCloudStatus(); W.__roMounted = true; }
+    try {
+      await CD.openDoc('abcdefghijklmnop5678', { io, pollMs: 60, debounceMs: 30 });
+      eq(CD.cloudDoc().readOnly?.limit, 3, 'el servidor dice que está en solo lectura por el límite');
+      eq(CD.cloudDoc().status, 'readonly', 'estado: solo lectura');
+      const banner = D.getElementById('cloud-ro-banner');
+      assert(banner && banner.style.display !== 'none' && /tu plan gratuito permite editar 3\. Pasa a Pro o borra alguna para editarla/.test(banner.textContent), 'aviso claro y amable: ' + banner?.textContent);
+      assert(banner.querySelector('[data-ro="copy"]') && banner.querySelector('[data-ro="download"]') && banner.querySelector('[data-ro="pro"]'), 'con copia, descarga y Pro');
+      eq(D.querySelector('#cloud-status span')?.textContent, 'Solo lectura', 'y en la barra');
+      R.store.commit(() => { slide().blocks[0].html = 'Uno, cambiado aquí'; }); await sleep(200);
+      eq(srv.calls.filter(c => /\/ops$/.test(c)).length, 0, 'no intenta guardar cambios en la nube');
+      eq(slide().blocks[0].html, 'Uno, cambiado aquí', 'pero lo hecho no se pierde');
+      // Back to Pro (or some deleted): checked again, and what was changed here is sent.
+      srv.readOnly = false; eq(await CD.recheckReadOnly(), true, 'al volver a Pro se desbloquea'); await sleep(200);
+      eq(srv.deck.slides[0].blocks[0].html, 'Uno, cambiado aquí', 'y se envía lo cambiado');
+      eq(banner.style.display, 'none', 'el aviso se va');
+      // Locked while editing (the server answers 402): kept here, not sent again.
+      srv.readOnly = true; const n = srv.calls.filter(c => /\/ops$/.test(c)).length;
+      R.store.commit(() => { slide().blocks[0].html = 'Dos'; }); await sleep(200);
+      eq(CD.cloudDoc().status, 'readonly', 'si el servidor la bloquea a mitad: solo lectura');
+      R.store.commit(() => { slide().blocks[0].html = 'Tres'; }); await sleep(200);
+      eq(srv.calls.filter(c => /\/ops$/.test(c)).length, n + 1, 'y deja de enviar');
+      // Keep it as a copy in this browser.
+      banner.querySelector('[data-ro="copy"]').click(); await sleep(20);
+      eq(CD.cloudDoc(), null, 'guardar una copia: queda aparte de la nube'); eq(slide().blocks[0].html, 'Tres', 'con lo cambiado');
+      D.querySelector('.dlg-ok')?.click();
+    } finally { CD.closeDoc(); }
+  });
+
+  await test('cuenta de Revela: aceptar las condiciones (y tener 14 años o más) antes de iniciar sesión', async () => {
+    reset(); const W = frame.contentWindow, AD = await W.eval("import('/src/ui/dialogs/account.js')"), AC = await W.eval("import('/src/io/cloud/account.js')");
+    W.localStorage.removeItem('revela.terms');
+    try {
+      AD.openAccount(); await sleep(30);
+      const box = D.querySelector('#account-modal .acc-terms-ok'), btn = D.querySelector('#account-modal .acc-login'), label = D.querySelector('#account-modal .acc-terms');
+      assert(box && !box.checked && btn.disabled, 'casilla sin marcar y el botón desactivado');
+      assert(/14 años o más/.test(label.textContent) && label.querySelector('a[href$="/terms.html"]') && label.querySelector('a[href$="/privacy.html"]'), 'texto con enlaces a las condiciones y a la privacidad');
+      box.checked = true; box.dispatchEvent(new W.Event('change')); eq(btn.disabled, false, 'al marcarla se puede iniciar sesión');
+      D.querySelector('#account-modal .modal-close').click();
+      const p = AD.askTerms(); await sleep(10);
+      const ok = D.querySelector('#terms-modal .tm-ok'); assert(ok.disabled, 'el aviso: hay que marcar la casilla');
+      const b2 = D.querySelector('#terms-modal .acc-terms-ok'); b2.checked = true; b2.dispatchEvent(new W.Event('change')); ok.click();
+      eq(await p, true, 'aceptadas'); eq(AC.termsAccepted(), true, 'y se recuerdan para enviarlas al iniciar sesión');
+      eq(AC.TERMS_VERSION, '2026-10-01', 'versión de las condiciones');
+    } finally { W.localStorage.removeItem('revela.terms'); D.getElementById('account-modal')?.remove(); D.getElementById('terms-modal')?.remove(); }
+  });
+
   await test('Google Slides: se elige en Drive, Drive la convierte a PowerPoint y se importa', async () => {
     reset(); const W = frame.contentWindow, GD = await W.eval("import('/src/io/cloud/gdrive.js')");
     R.slides.addSlide(); R.slides.addSlide(); await sleep(10);

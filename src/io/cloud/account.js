@@ -13,6 +13,7 @@
 
 import { EDITION, OFFICIAL_SITE, GOOGLE } from '../../core/config.js';
 import { loadScript } from '../../core/vendor.js';
+import { currentLang } from '../../i18n/index.js';
 
 const GIS = 'https://accounts.google.com/gsi/client';
 
@@ -56,10 +57,23 @@ function googleToken() {
     client.requestAccessToken({ prompt: '' });
   });
 }
+// The terms of service: a new account accepts them (and confirms being 14 or older) before
+// signing in; the server keeps the date and version (server/cloudflare/api.js, TERMS_VERSION).
+// This browser remembers they were accepted, to send it again with the next sign-ins.
+export const TERMS_VERSION = '2026-10-01';
+export const TERMS_URL = OFFICIAL_SITE + '/terms.html', PRIVACY_URL = OFFICIAL_SITE + '/privacy.html';
+const TERMS_KEY = 'revela.terms';
+export const termsAccepted = () => { try { return localStorage.getItem(TERMS_KEY) === TERMS_VERSION; } catch { return false; } };
+export const rememberTerms = () => { try { localStorage.setItem(TERMS_KEY, TERMS_VERSION); } catch {} };
+// An account from before (the server says terms: false): accepted once.
+export async function acceptTerms() { await api('terms', { version: TERMS_VERSION, lang: currentLang() }); rememberTerms(); return refreshAccount(); }
+
+// (Throws Error('TERMS') when the server needs the terms accepted first: a new account.)
 export async function signIn() {
   if (EDITION === 'desktop') return desktopSignIn();
   if (!window.google?.accounts?.oauth2) await loadScript(GIS);
-  await api('login', { accessToken: await googleToken() });
+  try { await api('login', { accessToken: await googleToken(), lang: currentLang(), ...(termsAccepted() && { terms: TERMS_VERSION }) }); }
+  catch (e) { if (e.status === 400 && e.data?.error === 'terms') throw new Error('TERMS'); throw e; }
   return refreshAccount();
 }
 export async function signOut() {

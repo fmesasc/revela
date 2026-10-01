@@ -20,7 +20,8 @@
 // an account of that domain (Authorization: Bearer <id token>), checked here
 // against Google's keys; the key in the link is still needed to read it.
 //
-// Also live collaboration rooms under /c (collab.js).
+// Also live collaboration rooms under /c (collab.js), and, once a day (cron in
+// wrangler.toml), the scheduled notices of the accounts (schedule.js, mail.js).
 //
 // Bindings (wrangler.toml): SHAREBOX, ROOMS, LIMITS (Durable Objects). Optional
 // vars: UPLOAD_KEY and/or GOOGLE_CLIENT_ID + ALLOWED (who can upload or open
@@ -34,7 +35,8 @@ import { CloudDoc } from './docs.js';
 import { Team } from './teams.js';
 import { LtiStore } from './lti.js';
 import { CallRoom } from './calls.js';
-export { CollabRoom, ShareBox, Limits, Account, Budget, DesktopLink, CloudDoc, Team, LtiStore, CallRoom, verifyGoogleToken, resetCerts };
+import { Schedule, runSchedule } from './schedule.js';
+export { CollabRoom, ShareBox, Limits, Account, Budget, DesktopLink, CloudDoc, Team, LtiStore, CallRoom, Schedule, verifyGoogleToken, resetCerts };
 
 const box = (env, id) => env.SHAREBOX.get(env.SHAREBOX.idFromName(id));
 // Who counts for the daily limits: the Google account, else the key, else the address.
@@ -74,6 +76,8 @@ export async function authorize(req, env, fetchImpl = fetch) {
 }
 
 export default {
+  // The daily cron: notices due (credits that expire, the end of Pro, unused accounts).
+  scheduled(event, env, ctx) { ctx.waitUntil(runSchedule(env, event.scheduledTime || Date.now())); },
   async fetch(req, env) {
     const url = new URL(req.url);
     const cors = {

@@ -4,12 +4,13 @@
 // read and every change against the role of whoever sends it, so the app's
 // code can't give anyone more than they were given.
 //
-//   GET  /api/docs                    → { mine: [...], shared: [...], limit }
+//   GET  /api/docs                    → { mine: [...], shared: [...], limit }  (mine: readOnly: true beyond the plan's limit)
 //   POST /api/docs                    { deck } → { id, rev }
-//   GET  /api/docs/:id                → { deck, rev, role, name, owner?, sharing? }  (a link role needs no session)
+//   GET  /api/docs/:id                → { deck, rev, role, name, owner?, sharing?, readOnly?, limit? }  (a link role needs no session)
 //   GET  /api/docs/:id/since?rev=N    → { rev, ops } (what changed since), or { rev, deck } when too old
-//   POST /api/docs/:id/ops            { ops } → { rev }  (each op checked against the role)
-//   POST /api/docs/:id/share          { link, people: { email: role } }  (owner; people need Pro)
+//   POST /api/docs/:id/ops            { ops } → { rev }  (each op checked against the role; 402 { error: 'read only',
+//                                     reason: 'over limit', limit } when its owner has more than the plan allows)
+//   POST /api/docs/:id/share          { link, people: { email: role } }  (owner; people need Pro; new people get an email)
 //   POST /api/docs/:id/delete         (owner)
 //   GET  /api/docs/:id/versions       → [{ at, rev }]      (edit role)
 //   GET  /api/docs/:id/version?at=T   → { deck }           (edit role)
@@ -21,9 +22,15 @@
 // their Account, and "shared with me" lists per email (in the same namespace,
 // 'e:' + email). Statistics keep counts and times per slide and a random
 // visitor id made by the viewer's browser — no email, address or browser data.
+//
+// Read-only beyond the plan: when the owner has more documents than their plan
+// allows (after leaving Pro), only the N most recently edited can change; the
+// others can be opened, presented, exported, shared and deleted, but no change
+// is accepted from anyone. Nothing is deleted. The owner's Account decides (docState).
 
 import { applyOps, allowed } from '../../src/features/live/collabsync.js';
 import { writeDeck, readDeck, writeText, readParts } from './store.js';
+import { mail } from './mail.js';
 
 const ROLE_RANK = { view: 1, comment: 2, edit: 3, owner: 4 };
 const LINK_ROLES = ['none', 'view', 'comment', 'edit'];
@@ -55,6 +62,12 @@ export class CloudDoc {
     const person = who?.email && meta.people[who.email], link = meta.link !== 'none' ? meta.link : null;
     return [person, link].filter(Boolean).sort((a, b) => ROLE_RANK[b] - ROLE_RANK[a])[0] || null;
   }
+  // Whether its owner's plan leaves it read-only (id: given by the worker, never by the body).
+  async locked(meta, id) {
+    if (!id || !this.env.ACCOUNTS) return { locked: false };
+    const r = await this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName('u:' + meta.owner)).fetch('https://do/docs-locked', { method: 'POST', body: JSON.stringify({ id }) });
+    return r.ok ? r.json() : { locked: false };
+  }
   // One request at a time (see Account.fetch).
   fetch(req) { const run = () => this.handle(req); const p = (this.queue || Promise.resolve()).then(run, run); this.queue = p.catch(() => {}); return p; }
   async handle(req) {
@@ -71,9 +84,11 @@ export class CloudDoc {
     const at = r => ROLE_RANK[role] >= ROLE_RANK[r];
     const sharing = () => ({ link: meta.link, people: meta.people });
     switch (op) {
-      case 'get':
-        return this.json({ deck: doc.deck, rev: meta.rev, role, name: meta.name, updated: meta.updated,
+      case 'get': {
+        const lk = await this.locked(meta, a.id);
+        return this.json({ deck: doc.deck, rev: meta.rev, role, name: meta.name, updated: meta.updated, ...(lk.locked && { readOnly: true, reason: 'over limit', limit: lk.limit }),
           ...(role === 'owner' ? { sharing: sharing() } : { owner: meta.ownerEmail }) });
+      }
       case 'since': {
         const log = (await st.get('log')) || [], from = +a.rev || 0;
         if (from === meta.rev) return this.json({ rev: meta.rev, ops: [] });
@@ -88,6 +103,8 @@ export class CloudDoc {
         const ok = ops.filter(o => o && Array.isArray(o.p) && o.p.length && o.p.length < 40 && allowed(o, roleForOps));
         if (ok.length !== ops.length) return this.json({ error: 'forbidden' }, 403);   // (all or nothing: nothing half-applied)
         if (!ok.length) return this.json({ rev: meta.rev });
+        const lk = await this.locked(meta, a.id);
+        if (lk.locked) return this.json({ error: 'read only', reason: 'over limit', limit: lk.limit }, 402);
         const before = at('edit') && Date.now() - (((await st.get('versions')) || []).slice(-1)[0]?.at || 0) > VERSION_EVERY ? JSON.stringify(doc.deck) : null;
         applyOps(doc.deck, ok);
         const size = JSON.stringify(doc.deck).length;
@@ -174,7 +191,7 @@ export async function handleDocs(path, req, body, url, env, me, acct, call, json
     const A = acct(env, me.sub);
     if (req.method === 'GET') {
       const mine = await call(A, 'docs-list'), inbox = await call(acct(env, 'e:' + me.email), 'inbox-list');
-      return json({ mine: mine.docs, shared: inbox.docs, limit: me.plan === 'pro' ? s.proDocs : s.freeDocs });
+      return json({ mine: mine.docs, shared: inbox.docs, limit: mine.limit ?? (me.plan === 'pro' ? s.proDocs : s.freeDocs) });
     }
     const deck = body.deck;
     if (!deck || typeof deck !== 'object' || !Array.isArray(deck.slides)) return json({ error: 'bad request' }, 400);
@@ -191,7 +208,7 @@ export async function handleDocs(path, req, body, url, env, me, acct, call, json
   if (GETS.includes(op) !== (req.method === 'GET')) return json({ error: 'method' }, 405);
   if (op === 'stats' && !(me?.features || []).includes('analytics')) return json({ error: 'pro only' }, 402);
   const args = { who, ...(op === 'since' && { rev: url.searchParams.get('rev') }), ...(op === 'version' && { at: url.searchParams.get('at') }), ...(req.method === 'POST' && body) };
-  args.who = who;                                          // (never from the body)
+  args.who = who; args.id = id;                            // (never from the body)
   if (op === 'ops' && !me) return json({ error: 'no session' }, 401);
   if (op === 'share') {
     if (!me) return json({ error: 'no session' }, 401);
@@ -203,7 +220,11 @@ export async function handleDocs(path, req, body, url, env, me, acct, call, json
   if (op === 'share') {
     const now = r.data.sharing.people, was = r.data.before;
     for (const e of Object.keys(was)) if (!now[e]) await call(acct(env, 'e:' + e), 'inbox-remove', { id });
-    for (const [e, role] of Object.entries(now)) await call(acct(env, 'e:' + e), 'inbox-add', { id, name: r.data.name, owner: me.email, role });
+    for (const [e, role] of Object.entries(now)) {
+      const x = await call(acct(env, 'e:' + e), 'inbox-add', { id, name: r.data.name, owner: me.email, role });
+      // (Someone new: an email with the link — a service email, no opt-out.)
+      if (!was[e]) await mail(env, { to: e, kind: 'share', lang: x.lang, vars: { by: me.name ? `${me.name} (${me.email})` : me.email, name: r.data.name, role, url: `${env.SITE_URL || 'https://revelaslides.com'}/app/?doc=${encodeURIComponent(id)}` } });
+    }
     delete r.data.before;
   } else if (op === 'delete') {
     await call(acct(env, me.sub), 'docs-remove', { id });

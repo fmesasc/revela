@@ -50,6 +50,12 @@ AI_MODELS = "openai/gpt-4o-mini,google/gemini-2.5-flash,anthropic/claude-haiku-4
 AI_TTS_MODEL = "openai/gpt-4o-mini-tts-2025-12-15"
 AI_TTS_USD_PER_CHAR = "0.00002"
 AI_PRICES = '{"openai/gpt-4o-mini":[0.15,0.6],"google/gemini-2.5-flash":[0.3,2.5],"anthropic/claude-haiku-4.5":[1,5]}'
+# Emails (mail.js). From whom (optional; default "Revela <avisos@revelaslides.com>"):
+# MAIL_FROM = "Revela <avisos@revelaslides.com>"
+# Secrets: MAIL_SECRET (signs the links to stop optional notices: `openssl rand -base64 32 |
+# npx wrangler secret put MAIL_SECRET`) and, only when not using Cloudflare Email Service,
+# RESEND_KEY (Resend's API key). Terms of service in force (their date; bump it to ask again):
+# TERMS_VERSION = "2026-10-01"
 # Revela's Google client (public, as in src/core/config.js): people signed in to
 # Revela with Google can share and open collaboration rooms. To limit it to
 # some accounts: `npx wrangler secret put ALLOWED` with e.g. "ana@x.org, @school.example".
@@ -128,3 +134,22 @@ class_name = "CallRoom"
 [[migrations]]
 tag = "v7"
 new_sqlite_classes = ["CallRoom"]
+
+# Scheduled notices (schedule.js): the accounts note here what to look at on which day,
+# and a daily cron goes through it (credits that expire, the end of Pro, unused accounts).
+[[durable_objects.bindings]]
+name = "SCHEDULE"
+class_name = "Schedule"
+
+[[migrations]]
+tag = "v8"
+new_sqlite_classes = ["Schedule"]
+
+[triggers]
+crons = ["0 8 * * *"]
+
+# Emails with Cloudflare Email Service (Compute ▸ Email Service ▸ Email Sending ▸ Onboard
+# Domain: revelaslides.com, then its DNS records). Uncomment once the domain is onboarded;
+# without it (and without RESEND_KEY) no email is sent.
+# [[send_email]]
+# name = "EMAIL"

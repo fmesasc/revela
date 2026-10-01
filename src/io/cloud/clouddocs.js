@@ -8,10 +8,15 @@
 // id, so two people editing different objects never step on each other; the
 // server checks each one against the sender's role. Pushes and pulls run one
 // after another.
+//
+// Read-only beyond the plan: when its owner has more presentations than their plan
+// allows (after leaving Pro), the server keeps the older ones read-only (readOnly).
+// Then nothing is sent: what is changed here stays here (status 'readonly') and can
+// be kept as a copy (keepCopy) or exported; it's checked again when the account changes.
 
 import { api, hasAccounts } from './account.js';
 import { OFFICIAL_SITE } from '../../core/config.js';
-import { state, subscribe, snapshot, applyRemote, adoptDeck, replaceDeck, setPersist } from '../../core/store.js';
+import { state, subscribe, snapshot, applyRemote, adoptDeck, replaceDeck, setPersist, mutate } from '../../core/store.js';
 import { diff, applyOps } from '../../features/live/collabsync.js';
 import { cleanValue } from '../../features/document/sanitize.js';
 
@@ -28,11 +33,11 @@ export const docVersions = id => api(path(id, 'versions'));
 export const docVersion = (id, at) => api(path(id, 'version') + '?at=' + encodeURIComponent(at));
 
 // ---- The open cloud document ------------------------------------------------------------
-let cur = null;                  // { id, role, rev, base, sharing, owner, stop }
+let cur = null;                  // { id, role, rev, base, sharing, owner, readOnly: { limit } | null, stop }
 const listeners = new Set();
 export const onCloud = fn => { listeners.add(fn); return () => listeners.delete(fn); };
 const emit = (what, data) => listeners.forEach(fn => { try { fn(what, data); } catch {} });
-export const cloudDoc = () => (cur ? { id: cur.id, role: cur.role, sharing: cur.sharing, owner: cur.owner, status: cur.status } : null);
+export const cloudDoc = () => (cur ? { id: cur.id, role: cur.role, sharing: cur.sharing, owner: cur.owner, status: cur.status, readOnly: cur.readOnly } : null);
 export const setSharing = sharing => { if (cur) { cur.sharing = sharing; emit('sharing', sharing); } };
 // A version from the cloud becomes the current document (and is sent like any change).
 export const restoreVersion = deck => replaceDeck(deck);
@@ -49,7 +54,7 @@ export async function openDoc(id, { io = api, pollMs = 5000, debounceMs = 1200 }
   adoptDeck(r.deck);
   state.ui.lock = r.role === 'view' ? 'view' : r.role === 'comment' ? 'comment' : null;
   setPersist(r.role === 'owner');                        // (someone else's: this browser keeps no copy)
-  cur = { id, role: r.role, rev: r.rev, base: snapshot(state.deck), sharing: r.sharing || null, owner: r.owner || null, status: 'saved', io };
+  cur = { id, role: r.role, rev: r.rev, base: snapshot(state.deck), sharing: r.sharing || null, owner: r.owner || null, readOnly: r.readOnly ? { limit: r.limit } : null, status: r.readOnly ? 'readonly' : 'saved', io };
   startSync(pollMs, debounceMs);
   emit('open', cloudDoc());
   return cloudDoc();
@@ -67,12 +72,25 @@ export function closeDoc() {
   if (!cur) return;
   cur.stop?.(); cur = null; state.ui.lock = null; setPersist(true); emit('close');
 }
+// Read-only (beyond the plan): keep what's in the editor as a presentation of this browser, apart from the cloud's.
+export function keepCopy() {
+  if (!cur) return;
+  closeDoc(); mutate(() => {});                          // (saved here from now on, like any local presentation)
+}
+// Still read-only? (After the plan changed or some were deleted.) If not, what was changed here is sent.
+export async function recheckReadOnly() {
+  const me = cur; if (!me?.readOnly) return false;
+  let r; try { r = await me.io(path(me.id)); } catch { return false; }
+  if (cur !== me || r.readOnly) return false;
+  me.readOnly = null; setStatus(diff(me.base, state.deck).length ? 'pending' : 'saved'); emit('readonly', null);
+  await me.flush?.(); return true;
+}
 
 let chain = Promise.resolve();
 const queue = fn => (chain = chain.then(fn, fn));
 function startSync(pollMs, debounceMs) {
   const me = cur; let timer = null;
-  const schedule = () => { if (cur !== me || me.role === 'view') return; clearTimeout(timer); timer = setTimeout(() => queue(() => push(me)), debounceMs); if (diff(me.base, state.deck).length) setStatus('pending'); };
+  const schedule = () => { if (cur !== me || me.role === 'view' || me.readOnly) return; clearTimeout(timer); timer = setTimeout(() => queue(() => push(me)), debounceMs); if (diff(me.base, state.deck).length) setStatus('pending'); };
   const unsub = subscribe(schedule);
   const poll = setInterval(() => { if (typeof document === 'undefined' || document.visibilityState !== 'hidden') queue(() => pull(me)); }, pollMs);
   const stats = me.role === 'owner' ? null : watchViews(me);
@@ -96,7 +114,7 @@ async function pull(me) {
 }
 // This browser's changes.
 async function push(me) {
-  if (cur !== me || me.role === 'view') return;
+  if (cur !== me || me.role === 'view' || me.readOnly) return;
   await pull(me);
   const ops = diff(me.base, state.deck);
   if (!ops.length) { setStatus('saved'); return; }
@@ -109,6 +127,7 @@ async function push(me) {
 }
 function fail(me, e) {
   if (cur !== me) return;
+  if (e.status === 402 && e.data?.error === 'read only') { me.readOnly = { limit: e.data.limit }; setStatus('readonly'); emit('readonly', me.readOnly); return; }   // (kept here, not sent)
   setStatus(e.status === 403 ? 'forbidden' : e.status === 413 ? 'too-large' : e.status === 404 ? 'gone' : 'offline');
 }
 

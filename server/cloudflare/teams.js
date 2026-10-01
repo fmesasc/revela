@@ -4,7 +4,7 @@
 //
 //   GET  /api/team                     → { team, role, invites } (mine, and invitations for my email)
 //   POST /api/team                     { name } → create one (I'm its admin)
-//   POST /api/team/invite              { email, role? }        (admin; within the seats)
+//   POST /api/team/invite              { email, role? }        (admin; within the seats; they get an email)
 //   POST /api/team/remove              { email }               (admin; or myself, to leave)
 //   POST /api/team/accept              { id }                  (an invitation for my email)
 //   POST /api/team/brand               { brand }               (admin: the team's brand kit)
@@ -17,6 +17,7 @@
 // and the 'e:' + email objects keep the invitations.
 
 import { writeText, readParts } from './store.js';
+import { mail } from './mail.js';
 
 const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const random = n => b64url(crypto.getRandomValues(new Uint8Array(n)));
@@ -131,7 +132,10 @@ export async function handleTeams(path, req, body, url, env, me, A, acct, call, 
   const ops = { '/team/invite': 'invite', '/team/remove': 'remove', '/team/brand': 'brand', '/team/template': 'template', '/team/template/delete': 'template-delete' };
   const op = ops[path]; if (!op || req.method !== 'POST') return json({ error: 'not found' }, 404);
   const r = await ask(env, mine, op, { ...body, email: me.email, invite: body.email, remove: body.email });
-  if (r.status === 200 && op === 'invite' && !r.data.already) await call(acct(env, 'e:' + String(body.email).trim().toLowerCase()), 'invites-add', { id: mine, name: r.data.name, by: me.email });
+  if (r.status === 200 && op === 'invite' && !r.data.already) {
+    const to = String(body.email).trim().toLowerCase(), x = await call(acct(env, 'e:' + to), 'invites-add', { id: mine, name: r.data.name, by: me.email });
+    await mail(env, { to, kind: 'invite', lang: x.lang, vars: { by: me.name ? `${me.name} (${me.email})` : me.email, team: r.data.name } });   // (a service email)
+  }
   if (r.status === 200 && op === 'remove') {
     const email = String(body.email).trim().toLowerCase();
     await call(acct(env, 'e:' + email), 'invites-remove', { id: mine });

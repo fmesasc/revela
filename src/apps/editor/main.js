@@ -4,7 +4,7 @@ import { hasAccounts, cloudAi, refreshAccount, onAccount, account } from '../../
 import { mountCloudStatus, openFromLink } from '../../ui/dialogs/cloud.js';
 import * as clouddocs from '../../io/cloud/clouddocs.js';
 import { setCloudAi } from '../../features/ai/openrouter.js';
-import { openAccount, handleDesktopRequest, BUYABLE } from '../../ui/dialogs/account.js';
+import { openAccount, handleDesktopRequest, BUYABLE, watchTerms } from '../../ui/dialogs/account.js';
 import { handleOpenWith } from '../../ui/shell/openwith.js';
 import { editText } from '../../ui/canvas/content.js';
 import { ACTIONS } from '../../ui/ribbon/actions.js';
@@ -263,7 +263,7 @@ if (hasAccounts()) {
   setCloudAi(cloudAi);
   const btn = document.getElementById('plan-btn'), paint = me => { btn.hidden = false;
     btn.querySelector('span').textContent = me ? `${Math.max(0, me.credits | 0)}` : t('Iniciar sesión'); btn.classList.toggle('in', !!me); };
-  onAccount(paint); paint(null); mountCloudStatus();
+  onAccount(paint); paint(null); mountCloudStatus(); watchTerms();
   btn.addEventListener('click', () => openAccount());
   window.addEventListener('revela:lang', () => paint(account()));
   if (!testing) {

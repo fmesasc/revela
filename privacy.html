@@ -11,7 +11,7 @@
 </head>
 <body>
 <main>
-  <p class="lang"><a href="#es">Español</a> · <a href="#en">English</a></p>
+  <p class="lang"><a href="#es">Español</a> · <a href="#ca">Català</a> · <a href="#en">English</a></p>
 
   <article id="es" lang="es">
     <h1>Política de privacidad de Revela</h1>
@@ -34,12 +34,13 @@
     <h2>Tu cuenta de Revela (versión oficial)</h2>
     <p>Inicias sesión con Google. El servidor de Revela guarda:</p>
     <ul>
-      <li><strong>Tu identificador de Google y tu correo</strong>, y la fecha de alta.</li>
+      <li><strong>Tu identificador de Google, tu correo y tu nombre</strong>, el idioma en que usas Revela (para escribirte en él), la fecha de alta y el último día que usaste la cuenta (solo el día, para el borrado por inactividad).</li>
       <li><strong>Tus sesiones</strong>: solo una huella de cada una (no la clave), cuándo se creó, cuándo caduca (30 días en la web, 90 en la aplicación de escritorio) y si es de la web o del escritorio.</li>
       <li><strong>Tu plan, tus créditos y sus movimientos</strong> (cuántos, cuándo y por qué: regalo, compra, uso de la IA).</li>
       <li><strong>La lista de tus presentaciones en la nube</strong> y de las que otras personas comparten contigo, y tu equipo si perteneces a uno.</li>
+      <li><strong>Tu aceptación de las condiciones</strong>: la fecha y la versión de las <a href="terms.html">condiciones del servicio</a> que aceptaste al crear la cuenta, para poder acreditar el contrato.</li>
     </ul>
-    <p><strong>Para qué:</strong> darte el servicio que pides (tu cuenta, la IA incluida, la nube y los planes de pago). <strong>Base legal:</strong> la ejecución del contrato que aceptas al crear la cuenta (art. 6.1.b RGPD), y el interés legítimo en proteger el servicio frente a abusos con límites de uso (art. 6.1.f). <strong>Cuánto tiempo:</strong> mientras tengas la cuenta. Puedes descargarlo todo o eliminar la cuenta tú mismo en <em>Mi cuenta ▸ Tus datos</em>: se borran tu cuenta y tus presentaciones en la nube, y se cancela la suscripción.</p>
+    <p><strong>Para qué:</strong> darte el servicio que pides (tu cuenta, la IA incluida, la nube y los planes de pago). <strong>Base legal:</strong> la ejecución del contrato que aceptas al crear la cuenta (art. 6.1.b RGPD), y el interés legítimo en proteger el servicio frente a abusos con límites de uso y en poder acreditar qué condiciones aceptaste (art. 6.1.f). <strong>Cuánto tiempo:</strong> mientras tengas la cuenta (y, si no la usas en 24 meses, se elimina; ver <a href="#conservacion">cuánto tiempo se guardan los datos</a>). Puedes descargarlo todo o eliminar la cuenta tú mismo en <em>Mi cuenta ▸ Tus datos</em>: se borran tu cuenta y tus presentaciones en la nube, y se cancela la suscripción.</p>
 
     <h2>Presentaciones en la nube y compartidas</h2>
     <ul>
@@ -57,11 +58,19 @@
     <h2>Equipos, centros educativos y Moodle</h2>
     <ul>
       <li><strong>Equipos:</strong> se guardan el nombre del equipo, el correo y el papel de cada miembro, las invitaciones, el kit de marca y las plantillas del equipo. Quien administra el equipo ve los correos de sus miembros.</li>
-      <li><strong>Moodle y otras plataformas (LTI):</strong> cuando un centro usa Revela como actividad, recibe de la plataforma un identificador del alumno y su nombre para el ejercicio, y envía la nota al libro de calificaciones. En este caso el <strong>centro</strong> es el responsable de los datos de su alumnado y Revela trata esos datos por su cuenta (encargado del tratamiento). Los centros pueden pedir el contrato de encargo desde la página de contacto.</li>
+      <li><strong>Moodle y otras plataformas (LTI):</strong> cuando un centro usa Revela como actividad, recibe de la plataforma un identificador del alumno y su nombre para el ejercicio, y envía la nota al libro de calificaciones. En este caso el <strong>centro</strong> es el responsable de los datos de su alumnado y Revela trata esos datos por su cuenta (encargado del tratamiento). El centro y FM Lab firman el <a href="dpa.html">contrato de encargado del tratamiento</a> (art. 28 RGPD), que puedes descargar y rellenar.</li>
     </ul>
 
     <h2>Videollamadas (Pro)</h2>
     <p>La imagen y el sonido viajan cifrados a través del servicio Realtime de <strong>Cloudflare</strong> entre quienes están en la llamada. No se graban ni se guardan. El servidor solo sabe quién está en la llamada de cada presentación mientras dura.</p>
+
+    <h2 id="correos">Correos que te envía Revela</h2>
+    <p>Si tienes cuenta, o si alguien comparte algo contigo, Revela puede enviarte estos correos a la dirección de tu cuenta de Google (o a la que haya escrito quien comparte o invita):</p>
+    <ul>
+      <li><strong>Avisos del servicio</strong>, necesarios para la cuenta y el contrato (art. 6.1.b RGPD): que alguien ha compartido una presentación contigo; una invitación a un equipo; que tu plan Pro termina o ha terminado; que tu cuenta lleva tiempo sin usarse y se eliminará (30 y 7 días antes, ver <a href="#conservacion">abajo</a>), y la confirmación de que tu cuenta se ha eliminado.</li>
+      <li><strong>Avisos opcionales</strong>, como que tienes créditos de IA a punto de caducar. Se envían por el interés legítimo en que no pierdas lo que has pagado (art. 6.1.f RGPD) y cada correo lleva un enlace para darte de baja con un clic.</li>
+    </ul>
+    <p>Nunca se envía publicidad ni se cede tu dirección. Los correos salen a través del <strong>servicio de envío de correo de Cloudflare</strong>, que solo los procesa para entregarlos. Si en algún momento cambia el proveedor de envío, se actualizará esta página.</p>
 
     <h2>Google Drive y tu cuenta de Google</h2>
     <p>Si decides conectar Google Drive, Revela te pide permiso mediante el sistema de Google con el alcance <code>drive.file</code>. Con él, Revela <strong>solo puede ver y modificar los archivos que crea él mismo o que tú abres expresamente con Revela</strong>; no puede ver el resto de tu Drive. También pide <code>drive.install</code>, que solo permite que Revela aparezca en los menús «Abrir con» y «Nuevo» de Drive. Si inicias sesión, Revela puede recibir tu nombre, tu dirección de correo y tu foto de perfil solo para mostrarte con qué cuenta has entrado.</p>
@@ -92,12 +101,22 @@
     <h2>Proveedores y transferencias internacionales</h2>
     <p>Para dar el servicio, Revela usa estos proveedores, con contratos que protegen los datos:</p>
     <ul>
-      <li><strong>Cloudflare</strong> (alojamiento del sitio y del servidor, videollamadas).</li>
+      <li><strong>Cloudflare</strong> (alojamiento del sitio y del servidor, videollamadas y envío de correos).</li>
       <li><strong>Google</strong> (inicio de sesión, y Drive si lo conectas).</li>
       <li><strong>Stripe</strong> (pagos).</li>
       <li><strong>OpenRouter</strong> y el proveedor del modelo elegido (IA incluida).</li>
     </ul>
     <p>Algunos están en Estados Unidos. Las transferencias se amparan en el Marco de Privacidad de Datos UE-EE. UU. o en las cláusulas contractuales tipo de la Comisión Europea.</p>
+
+    <h2 id="conservacion">Cuánto tiempo se guardan los datos</h2>
+    <ul>
+      <li><strong>La cuenta</strong> y todo lo que tiene (perfil, créditos, presentaciones en la nube, aceptación de las condiciones), mientras la tengas. Si la eliminas, se borra al momento.</li>
+      <li><strong>Cuentas sin uso:</strong> si pasan <strong>24 meses</strong> sin que inicies sesión ni uses la cuenta, se elimina con sus presentaciones en la nube. Antes te avisamos por correo dos veces, 30 y 7 días antes; basta con iniciar sesión para conservarla. Mientras tengas Pro activo, la cuenta no se considera sin uso. Así no se guardan datos que ya nadie usa.</li>
+      <li><strong>Al terminar Pro</strong>, tus presentaciones en la nube <strong>no se borran</strong>: las que pasen del límite del plan gratuito quedan en solo lectura (puedes abrirlas, descargarlas o eliminarlas).</li>
+      <li><strong>Sesiones:</strong> caducan a los 30 días (web) o 90 (aplicación de escritorio). <strong>Versiones</strong> de cada presentación: las diez últimas.</li>
+      <li><strong>Moodle y otras plataformas:</strong> la sesión de cada alumno en una actividad dura un día; la nota queda en la plataforma del centro.</li>
+      <li><strong>Facturas:</strong> las conserva Stripe el tiempo que exige la ley fiscal y mercantil.</li>
+    </ul>
 
     <h2 id="cookies">Cookies y almacenamiento</h2>
     <ul>
@@ -119,6 +138,129 @@
     <p>Si esta política cambia, se actualizará esta página con su fecha; si el cambio es importante, se avisará en la aplicación a quien tenga cuenta. Para cualquier duda, escribe por el formulario de <a href="https://fmesasc.com/#contact">fmesasc.com</a> o abre una consulta en <a href="https://github.com/fmesasc/revela/issues">github.com/fmesasc/revela/issues</a>. El código fuente es público en <a href="https://github.com/fmesasc/revela">github.com/fmesasc/revela</a>.</p>
   </article>
 
+  <article id="ca" lang="ca">
+    <h1>Política de privacitat de Revela</h1>
+    <p class="date">Darrera actualització: 1 d'octubre de 2026</p>
+
+    <h2>En resum</h2>
+    <p>Revela és un editor de presentacions de codi obert. Es pot fer servir de dues maneres:</p>
+    <ul>
+      <li><strong>Sense compte</strong> (l'edició oberta, o l'oficial sense iniciar la sessió): les teves presentacions es desen al navegador i només en surten quan tu ho demanes (desar-les al teu núvol, compartir-les, col·laborar…). Revela no rep res.</li>
+      <li><strong>Amb un compte de Revela</strong> (la versió oficial a revelaslides.com i l'aplicació d'escriptori): el servidor de Revela desa el que cal per al teu compte, els teus crèdits d'IA, els teus pagaments i les presentacions que desis al seu núvol. S'explica a continuació, amb detall.</li>
+    </ul>
+    <p>En cap cas no hi ha publicitat, venda de dades, analítica de persones ni galetes de seguiment.</p>
+
+    <h2>Responsable del tractament</h2>
+    <p><strong>FM Lab (Francisco Mesas Cervilla)</strong>, Barcelona, Espanya. Contacte: el formulari de <a href="https://fmesasc.com/#contact">fmesasc.com</a> o una consulta a <a href="https://github.com/fmesasc/revela/issues">github.com/fmesasc/revela/issues</a>. Més dades a l'<a href="legal.html#ca">avís legal</a>.</p>
+
+    <h2>Què es desa al teu navegador</h2>
+    <p>Les teves presentacions, la configuració, el teu nom (si l'escrius per comentar, col·laborar o signar) i, si signes, una clau de signatura que no pot sortir del navegador. Es desen a l'emmagatzematge local del navegador (localStorage i IndexedDB). Els pots esborrar quan vulguis esborrant les dades del lloc al navegador.</p>
+
+    <h2>El teu compte de Revela (versió oficial)</h2>
+    <p>Inicies la sessió amb Google. El servidor de Revela desa:</p>
+    <ul>
+      <li><strong>El teu identificador de Google, el teu correu i el teu nom</strong>, la llengua en què fas servir Revela (per escriure't en aquesta llengua), la data d'alta i el darrer dia que vas fer servir el compte (només el dia, per a l'esborrament per inactivitat).</li>
+      <li><strong>Les teves sessions</strong>: només una empremta de cadascuna (no la clau), quan es va crear, quan caduca (30 dies al web, 90 a l'aplicació d'escriptori) i si és del web o de l'escriptori.</li>
+      <li><strong>El teu pla, els teus crèdits i els seus moviments</strong> (quants, quan i per què: regal, compra, ús de la IA).</li>
+      <li><strong>La llista de les teves presentacions al núvol</strong> i de les que altres persones comparteixen amb tu, i el teu equip si en formes part.</li>
+      <li><strong>La teva acceptació de les condicions</strong>: la data i la versió de les <a href="terms.html#ca">condicions del servei</a> que vas acceptar en crear el compte, per poder acreditar el contracte.</li>
+    </ul>
+    <p><strong>Per a què:</strong> donar-te el servei que demanes (el teu compte, la IA inclosa, el núvol i els plans de pagament). <strong>Base jurídica:</strong> l'execució del contracte que acceptes en crear el compte (art. 6.1.b RGPD), i l'interès legítim a protegir el servei d'abusos amb límits d'ús i a poder acreditar quines condicions vas acceptar (art. 6.1.f). <strong>Quant de temps:</strong> mentre tinguis el compte (i, si no el fas servir en 24 mesos, s'elimina; vegeu <a href="#conservacio">quant de temps es conserven les dades</a>). Pots descarregar-ho tot o eliminar el compte tu mateix a <em>El meu compte ▸ Les teves dades</em>: s'esborren el compte i les presentacions al núvol, i es cancel·la la subscripció.</p>
+
+    <h2>Presentacions al núvol i compartides</h2>
+    <ul>
+      <li>Les presentacions que deses al núvol de Revela es desen al seu servidor amb el seu propietari, les persones amb permís (veure, comentar o editar) i el permís de l'enllaç. Es conserven les deu darreres versions.</li>
+      <li>Si comparteixes amb una persona, es desa el seu correu per donar-li accés.</li>
+      <li><strong>Estadístiques (Pro):</strong> per al propietari, quantes vegades i quant de temps es veu cada diapositiva, amb un identificador aleatori que crea el navegador de qui la mira. No es desa el seu correu, la seva adreça IP ni dades del seu navegador.</li>
+    </ul>
+
+    <h2>Intel·ligència artificial inclosa</h2>
+    <p>Quan fas servir la IA amb el teu compte, el que li demanes (el text i, si l'envies, el contingut de la diapositiva o del document) passa pel servidor de Revela cap a <strong>OpenRouter</strong> i el model triat, que el tracten per respondre. El servidor de Revela no desa aquest contingut: només anota el que ha costat, per descomptar-ho dels teus crèdits. Revela no el fa servir per entrenar models i, per al text, demana a OpenRouter que només faci servir proveïdors que no desen ni entrenen amb el que se'ls envia.</p>
+
+    <h2>Pagaments</h2>
+    <p>Els pagaments els gestiona <strong>Stripe</strong>. Revela mai no veu ni desa les dades de la teva targeta: només rep de Stripe l'avís signat que el pagament s'ha fet, i desa el teu identificador de client de Stripe per gestionar la subscripció. Les factures les conserva Stripe durant el temps que exigeix la llei (obligació legal, art. 6.1.c RGPD).</p>
+
+    <h2>Equips, centres educatius i Moodle</h2>
+    <ul>
+      <li><strong>Equips:</strong> es desen el nom de l'equip, el correu i el paper de cada membre, les invitacions, el kit de marca i les plantilles de l'equip. Qui administra l'equip veu els correus dels seus membres.</li>
+      <li><strong>Moodle i altres plataformes (LTI):</strong> quan un centre fa servir Revela com a activitat, rep de la plataforma un identificador de l'alumne i el seu nom per a l'exercici, i envia la nota al llibre de qualificacions. En aquest cas el <strong>centre</strong> és el responsable de les dades del seu alumnat i Revela les tracta per compte seu (encarregat del tractament). El centre i FM Lab signen el <a href="dpa.html#ca">contracte d'encarregat del tractament</a> (art. 28 RGPD), que pots descarregar i emplenar.</li>
+    </ul>
+
+    <h2>Videotrucades (Pro)</h2>
+    <p>La imatge i el so viatgen xifrats a través del servei Realtime de <strong>Cloudflare</strong> entre les persones que són a la trucada. No s'enregistren ni es desen. El servidor només sap qui és a la trucada de cada presentació mentre dura.</p>
+
+    <h2 id="correus">Correus que t'envia Revela</h2>
+    <p>Si tens compte, o si algú comparteix alguna cosa amb tu, Revela et pot enviar aquests correus a l'adreça del teu compte de Google (o a la que hagi escrit qui comparteix o convida):</p>
+    <ul>
+      <li><strong>Avisos del servei</strong>, necessaris per al compte i el contracte (art. 6.1.b RGPD): que algú ha compartit una presentació amb tu; una invitació a un equip; que el teu pla Pro s'acaba o s'ha acabat; que el teu compte fa temps que no es fa servir i s'eliminarà (30 i 7 dies abans, vegeu <a href="#conservacio">més avall</a>), i la confirmació que el teu compte s'ha eliminat.</li>
+      <li><strong>Avisos opcionals</strong>, com ara que tens crèdits d'IA a punt de caducar. S'envien per l'interès legítim que no perdis el que has pagat (art. 6.1.f RGPD) i cada correu porta un enllaç per donar-te de baixa amb un clic.</li>
+    </ul>
+    <p>Mai no s'envia publicitat ni es cedeix la teva adreça. Els correus surten a través del <strong>servei d'enviament de correu de Cloudflare</strong>, que només els tracta per lliurar-los. Si en algun moment canvia el proveïdor d'enviament, s'actualitzarà aquesta pàgina.</p>
+
+    <h2>Google Drive i el teu compte de Google</h2>
+    <p>Si decideixes connectar Google Drive, Revela et demana permís mitjançant el sistema de Google amb l'abast <code>drive.file</code>. Amb aquest abast, Revela <strong>només pot veure i modificar els fitxers que crea ell mateix o que obres expressament amb Revela</strong>; no pot veure la resta del teu Drive. També demana <code>drive.install</code>, que només permet que Revela aparegui als menús «Obre amb» i «Nou» de Drive. Si inicies la sessió, Revela pot rebre el teu nom, la teva adreça de correu i la teva foto de perfil només per mostrar-te amb quin compte has entrat.</p>
+    <ul>
+      <li>Revela fa servir aquestes dades únicament per al que demanes: llistar les teves presentacions de Revela, obrir-les, desar-les i compartir-les.</li>
+      <li>Els fitxers de Drive van directament del teu navegador a Google; no passen pel servidor de Revela ni s'hi desen.</li>
+      <li>Revela no ven ni cedeix les teves dades de Google, ni les fa servir per a publicitat ni per entrenar models d'intel·ligència artificial.</li>
+      <li>Pots retirar el permís en qualsevol moment a <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</li>
+    </ul>
+    <p>L'ús i la transferència per part de Revela de la informació rebuda de les API de Google s'ajusten a la <a href="https://developers.google.com/terms/api-services-user-data-policy">Política de dades d'usuari dels serveis d'API de Google</a>, inclosos els requisits d'ús limitat.</p>
+
+    <h2>Funcions que es comuniquen amb altres serveis (només si les fas servir)</h2>
+    <ul>
+      <li><strong>Compartir:</strong> la presentació es xifra al teu navegador abans de sortir-ne; es desa al teu Google Drive, en un fitxer que puges tu o al servidor que tu configuris. Sense la clau o la contrasenya no es pot llegir.</li>
+      <li><strong>Col·laborar en directe i comandament del mòbil:</strong> els navegadors es connecten directament (WebRTC, xifrat). El servei públic de PeerJS només els presenta entre ells; si es fa servir un servidor de col·laboració, és el que configuri qui administra la instal·lació.</li>
+      <li><strong>Votacions i preguntes del públic:</strong> igual, de navegador a navegador.</li>
+      <li><strong>Dropbox i OneDrive:</strong> només si els connectes; la presentació va directament del teu navegador a la carpeta de Revela (Dropbox: només Aplicacions/Revela, o la carpeta Revela si configures una aplicació amb accés complet per fer servir «Obre amb Revela»; OneDrive: la carpeta Revela). L'accés es desa a la memòria mentre la pàgina és oberta i no hi intervé cap servidor de Revela.</li>
+      <li><strong>Intel·ligència artificial amb la teva pròpia clau:</strong> el text que envies va directament a OpenRouter i al model que triïs, amb les seves condicions.</li>
+      <li><strong>Fotos d'Unsplash i Pexels</strong> (versió oficial): les paraules que cerques passen pel servidor de Revela, que pregunta a aquests serveis amb la seva clau; no es desen.</li>
+      <li><strong>Subtítols en directe, entrenador d'oratòria i dictat:</strong> fan servir el reconeixement de veu del navegador; a Chrome i Edge l'àudio s'envia al seu servei de veu. Revela t'avisa abans d'activar-lo.</li>
+      <li><strong>Treure el fons de les imatges:</strong> el model es descarrega una vegada i s'executa al teu navegador; la imatge no en surt.</li>
+      <li><strong>Cerca de recursos lliures, fonts i biblioteques:</strong> només quan els fas servir (i després de preguntar-t'ho una vegada), les paraules que cerques van al servei on cerques —Openverse (imatges, GIF, sons), Iconify (icones), Wikimedia Commons (vídeos i models 3D), Poly Haven o Sketchfab (models 3D)— i els fitxers que afegeixes es descarreguen dels seus webs (els sons, de Freesound o Jamendo); Google Fonts i jsDelivr serveixen fonts i biblioteques. Com qualsevol web, reben la petició i la teva adreça IP; no s'envia res de la teva presentació.</li>
+      <li><strong>Contingut inserit</strong> (YouTube, Vimeo, pàgines web, taulers de dades): el serveix cada servei, amb la seva pròpia política.</li>
+    </ul>
+
+    <h2>Proveïdors i transferències internacionals</h2>
+    <p>Per donar el servei, Revela fa servir aquests proveïdors, amb contractes que protegeixen les dades:</p>
+    <ul>
+      <li><strong>Cloudflare</strong> (allotjament del lloc i del servidor, videotrucades i enviament de correus).</li>
+      <li><strong>Google</strong> (inici de sessió, i Drive si el connectes).</li>
+      <li><strong>Stripe</strong> (pagaments).</li>
+      <li><strong>OpenRouter</strong> i el proveïdor del model triat (IA inclosa).</li>
+    </ul>
+    <p>Alguns són als Estats Units. Les transferències s'emparen en el Marc de privacitat de dades UE-EUA o en les clàusules contractuals tipus de la Comissió Europea.</p>
+
+    <h2 id="conservacio">Quant de temps es conserven les dades</h2>
+    <ul>
+      <li><strong>El compte</strong> i tot el que conté (perfil, crèdits, presentacions al núvol, acceptació de les condicions), mentre el tinguis. Si l'elimines, s'esborra a l'instant.</li>
+      <li><strong>Comptes sense ús:</strong> si passen <strong>24 mesos</strong> sense que iniciïs la sessió ni facis servir el compte, s'elimina amb les seves presentacions al núvol. Abans t'avisem per correu dues vegades, 30 i 7 dies abans; n'hi ha prou d'iniciar la sessió per conservar-lo. Mentre tinguis Pro actiu, el compte no es considera sense ús. Així no es conserven dades que ja no fa servir ningú.</li>
+      <li><strong>Quan s'acaba Pro</strong>, les teves presentacions al núvol <strong>no s'esborren</strong>: les que superin el límit del pla gratuït queden només de lectura (les pots obrir, descarregar o eliminar).</li>
+      <li><strong>Sessions:</strong> caduquen als 30 dies (web) o als 90 (aplicació d'escriptori). <strong>Versions</strong> de cada presentació: les deu darreres.</li>
+      <li><strong>Moodle i altres plataformes:</strong> la sessió de cada alumne en una activitat dura un dia; la nota queda a la plataforma del centre.</li>
+      <li><strong>Factures:</strong> les conserva Stripe el temps que exigeix la legislació fiscal i mercantil.</li>
+    </ul>
+
+    <h2 id="galetes">Galetes i emmagatzematge</h2>
+    <ul>
+      <li><strong>Galeta de sessió</strong> (només si inicies la sessió a la versió oficial): una galeta tècnica, segura i només per al servidor de Revela, que manté la teva sessió. És necessària per al servei que demanes; per això no requereix consentiment (art. 22.2 LSSI-CE).</li>
+      <li><strong>Emmagatzematge del navegador</strong>: les teves presentacions, preferències (per exemple, el mode fosc del web) i la configuració. No surt del teu navegador.</li>
+      <li>No hi ha galetes de publicitat, seguiment ni analítica.</li>
+    </ul>
+
+    <h2>Els teus drets</h2>
+    <p>Pots accedir a les teves dades, rectificar-les, suprimir-les, endur-te-les (portabilitat), oposar-te al tractament o demanar-ne la limitació. La majoria els pots exercir tu mateix a <em>El meu compte ▸ Les teves dades</em> (descarregar-ho tot o eliminar el compte); per a la resta, escriu pel formulari de <a href="https://fmesasc.com/#contact">fmesasc.com</a>. Si creus que no s'han respectat els teus drets, pots presentar una reclamació a l'<a href="https://www.aepd.es">Agència Espanyola de Protecció de Dades</a>.</p>
+
+    <h2>Menors</h2>
+    <p>Per crear un compte de Revela cal tenir com a mínim 14 anys. Per sota d'aquesta edat, Revela es pot fer servir sense compte, o a través del centre educatiu (equips i Moodle), que és qui decideix i respon dels comptes del seu alumnat. Revela no recull dades per a perfils ni publicitat.</p>
+
+    <h2>Seguretat</h2>
+    <p>Les connexions van xifrades (HTTPS). Les sessions només es desen com a empremtes, els permisos es comproven al servidor en cada operació i les presentacions compartides per enllaç es xifren al teu navegador. El codi és públic perquè qualsevol el pugui revisar.</p>
+
+    <h2>Canvis i contacte</h2>
+    <p>Si aquesta política canvia, s'actualitzarà aquesta pàgina amb la seva data; si el canvi és important, s'avisarà a l'aplicació a qui tingui compte. Per a qualsevol dubte, escriu pel formulari de <a href="https://fmesasc.com/#contact">fmesasc.com</a> o obre una consulta a <a href="https://github.com/fmesasc/revela/issues">github.com/fmesasc/revela/issues</a>. El codi font és públic a <a href="https://github.com/fmesasc/revela">github.com/fmesasc/revela</a>.</p>
+  </article>
+
   <article id="en" lang="en">
     <h1>Revela Privacy Policy</h1>
     <p class="date">Last updated: October 1, 2026</p>
@@ -133,7 +275,7 @@
     <p>Your presentations, settings, your name (if you type it to comment, collaborate or sign) and, if you sign, a signing key that cannot leave the browser, in the browser's local storage. You can delete them at any time by clearing the site's data.</p>
 
     <h2>Your Revela account (official edition)</h2>
-    <p>You sign in with Google. Revela's server keeps your Google identifier and email, your sessions (only a fingerprint of each, with its dates: 30 days on the web, 90 in the desktop app), your plan, credits and their movements, the list of your cloud presentations and of those shared with you, and your team if you belong to one. Purpose: providing the service you ask for. Legal basis: the contract you accept when creating the account (Art. 6.1.b GDPR) and our legitimate interest in protecting the service from abuse (Art. 6.1.f). Kept while you have the account; you can download it all or delete the account yourself in <em>My account ▸ Your data</em>.</p>
+    <p>You sign in with Google. Revela's server keeps your Google identifier, email and name, the language you use Revela in (to write to you in it), the sign-up date and the last day you used the account (only the day, for deletion after inactivity), your sessions (only a fingerprint of each, with its dates: 30 days on the web, 90 in the desktop app), your plan, credits and their movements, the list of your cloud presentations and of those shared with you, and your team if you belong to one, plus the date and version of the <a href="terms.html#en">terms</a> you accepted when creating the account, to be able to prove the contract. Purpose: providing the service you ask for. Legal basis: the contract you accept when creating the account (Art. 6.1.b GDPR) and our legitimate interest in protecting the service from abuse and in proving which terms you accepted (Art. 6.1.f). Kept while you have the account (see <a href="#retention">retention</a>); you can download it all or delete the account yourself in <em>My account ▸ Your data</em>.</p>
 
     <h2>Cloud and shared presentations</h2>
     <p>Presentations saved to Revela's cloud are stored with their owner, the people with permission and the link's permission; the last ten versions are kept. If you share with someone, their email is kept to give them access. Pro statistics show the owner how often and how long each slide is seen, with a random identifier made by the viewer's browser — no email, IP address or browser data.</p>
@@ -145,10 +287,13 @@
     <p>Payments are handled by <strong>Stripe</strong>. Revela never sees or stores your card details; it receives Stripe's signed notice and keeps your Stripe customer id to manage the subscription. Stripe keeps invoices as the law requires.</p>
 
     <h2>Teams, schools and Moodle</h2>
-    <p>Teams keep the team's name, each member's email and role, invitations, brand kit and templates; admins see their members' emails. When a school uses Revela through Moodle or another LTI platform, Revela receives a student identifier and name for the activity and sends the grade back; the <strong>school</strong> is the controller of its students' data and Revela processes it on its behalf. Schools can request the data processing agreement through the contact page.</p>
+    <p>Teams keep the team's name, each member's email and role, invitations, brand kit and templates; admins see their members' emails. When a school uses Revela through Moodle or another LTI platform, Revela receives a student identifier and name for the activity and sends the grade back; the <strong>school</strong> is the controller of its students' data and Revela processes it on its behalf. The school and FM Lab sign the <a href="dpa.html">data processing agreement</a> (Art. 28 GDPR; in Spanish and Catalan), which can be downloaded and filled in.</p>
 
     <h2>Video calls (Pro)</h2>
     <p>Video and sound travel encrypted through <strong>Cloudflare</strong>'s Realtime service between the people in the call. Nothing is recorded or stored.</p>
+
+    <h2 id="emails">Emails Revela sends</h2>
+    <p><strong>Service notices</strong>, needed for your account and contract (Art. 6.1.b GDPR): someone shared a presentation with you; a team invitation; your Pro plan is ending or has ended; your account has been unused and will be deleted (30 and 7 days before, see <a href="#retention">retention</a>); confirmation that your account was deleted. <strong>Optional notices</strong>, such as AI credits about to expire, based on our legitimate interest in you not losing what you paid for (Art. 6.1.f), each with a one-click unsubscribe link. No advertising is ever sent and your address is never shared. Emails are sent through <strong>Cloudflare's email sending service</strong>, which only processes them to deliver them; if the sending provider changes, this page will be updated.</p>
 
     <h2>Google Drive and your Google account</h2>
     <p>If you choose to connect Google Drive, Revela asks for your permission through Google with the <code>drive.file</code> scope. With it, Revela <strong>can only see and change the files it creates or that you explicitly open with Revela</strong>; it cannot see the rest of your Drive. It also asks for <code>drive.install</code>, which only lets Revela appear in Drive's “Open with” and “New” menus. If you sign in, Revela may receive your name, email address and profile picture only to show which account you are using.</p>
@@ -177,7 +322,10 @@
 
     
     <h2>Providers and international transfers</h2>
-    <p>Revela uses Cloudflare (hosting, server, video calls), Google (sign-in, Drive if you connect it), Stripe (payments) and OpenRouter with the chosen model provider (built-in AI). Some are in the United States; transfers rely on the EU-US Data Privacy Framework or the European Commission's standard contractual clauses.</p>
+    <p>Revela uses Cloudflare (hosting, server, video calls, sending emails), Google (sign-in, Drive if you connect it), Stripe (payments) and OpenRouter with the chosen model provider (built-in AI). Some are in the United States; transfers rely on the EU-US Data Privacy Framework or the European Commission's standard contractual clauses.</p>
+
+    <h2 id="retention">Retention</h2>
+    <p>Your account and everything in it are kept while you have it and erased at once if you delete it. Accounts unused for <strong>24 months</strong> (no sign-in or use) are deleted with their cloud presentations, after two email reminders 30 and 7 days before; signing in keeps the account, and an account with active Pro is never considered unused. When Pro ends, cloud presentations are <strong>not deleted</strong>: those over the free plan's limit become read-only. Sessions expire after 30 days (web) or 90 (desktop app); each presentation keeps its last ten versions. A student's session in a Moodle/LTI activity lasts one day; the grade stays on the school's platform. Stripe keeps invoices as tax law requires.</p>
 
     <h2 id="cookies-en">Cookies and storage</h2>
     <p>Only a technical session cookie when you sign in to the official edition (needed for the service you ask for, so it requires no consent), plus the browser storage for your presentations and preferences. No advertising, tracking or analytics cookies.</p>

@@ -2,7 +2,7 @@
 // payments and the desktop sign-in — above all, that nothing can be skipped
 // from outside. In-memory Durable Objects; the AI provider, Google and Stripe
 // are simulated. Run by tests/run.sh when Node.js is available.
-import worker, { Account, Budget, DesktopLink, ShareBox, Limits, CloudDoc, Team, CallRoom } from '../server/cloudflare/worker.js';
+import worker, { Account, Budget, DesktopLink, ShareBox, Limits, CloudDoc, Team, CallRoom, Schedule } from '../server/cloudflare/worker.js';
 import { verifyStripe, sha256, shortCode } from '../server/cloudflare/api.js';
 
 function fakeStorage() {
@@ -16,7 +16,7 @@ const namespace = (Cls, env) => { const inst = new Map();
     return { fetch: (u, init) => o.fetch(u instanceof Request ? u : new Request(u, init)) }; } }; };
 
 const SITE = 'https://revelaslides.com', CID = 'cid.apps.googleusercontent.com';
-let rtCalls = [], stockCalls = [], aiCalls = [], aiReply = () => ({ status: 200, body: { choices: [{ message: { content: 'hola' } }], usage: { cost: 0.01, prompt_tokens: 100, completion_tokens: 50 } } }), stripeCalls = [];
+let resendCalls = [], rtCalls = [], stockCalls = [], aiCalls = [], aiReply = () => ({ status: 200, body: { choices: [{ message: { content: 'hola' } }], usage: { cost: 0.01, prompt_tokens: 100, completion_tokens: 50 } } }), stripeCalls = [];
 const env = { GOOGLE_CLIENT_ID: CID, OPENROUTER_KEY: 'sk-or-secreta', TRIAL_CREDITS: '50', CREDIT_USD: '0.002', AI_PER_MINUTE: '100', MONTHLY_BUDGET_USD: '50',
   AI_MODELS: 'openai/gpt-4o-mini,google/gemini-2.5-flash', AI_PRICES: '{"openai/gpt-4o-mini":[0.15,0.6]}', STRIPE_SECRET_KEY: 'sk_test', STRIPE_WEBHOOK_SECRET: 'whsec_x',
   STRIPE_PRICE_PRO_MONTH: 'price_pm', STRIPE_PRICE_CREDITS_500: 'price_c500', STRIPE_PRICE_TEAM_SEAT: 'price_team' };
@@ -24,10 +24,12 @@ env.FETCH = async (url, init = {}) => {
   const u = String(url);
   if (u.startsWith('https://oauth2.googleapis.com/tokeninfo')) {
     const t = new URL(u).searchParams.get('access_token');
-    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' } }[t];
+    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' } }[t];
     if (t === 'tok-otraapp') return Response.json({ aud: 'otra-app', sub: '333', email: 'x@example.com', email_verified: 'true' });
     return who ? Response.json({ aud: CID, ...who, email_verified: 'true', expires_in: 3000 }) : new Response('bad', { status: 400 });
   }
+  if (u === 'https://openidconnect.googleapis.com/v1/userinfo') return init.headers.Authorization === 'Bearer tok-sol' ? Response.json({ sub: '888', name: 'Sol <García>' }) : new Response('no', { status: 401 });
+  if (u === 'https://api.resend.com/emails') { resendCalls.push({ auth: init.headers.Authorization, body: JSON.parse(init.body) }); return Response.json({ id: 're_1' }); }
   if (u.startsWith('https://rtc.live.cloudflare.com/v1/apps/')) { rtCalls.push({ u, method: init.method, auth: init.headers.Authorization, body: init.body && JSON.parse(init.body) });
     if (u.endsWith('/sessions/new')) return Response.json({ sessionId: 'sess-' + rtCalls.length });
     return Response.json({ sessionDescription: { type: 'answer', sdp: 'v=0 fake' }, tracks: [], requiresImmediateRenegotiation: false }); }
@@ -40,6 +42,10 @@ env.FETCH = async (url, init = {}) => {
   return new Response('?', { status: 404 });
 };
 env.ACCOUNTS = namespace(Account, env); env.BUDGET = namespace(Budget, env); env.DESKTOP = namespace(DesktopLink, env);
+env.SCHEDULE = namespace(Schedule, env);
+// Cloudflare Email Service, simulated: what was sent.
+let sent = []; env.EMAIL = { send: async m => { sent.push(m); return { messageId: 'm' + sent.length }; } }; env.MAIL_SECRET = 'secreto-de-correo';
+const TERMS = '2026-10-01';
 env.SHAREBOX = namespace(ShareBox, env); env.DOCS = namespace(CloudDoc, env); env.TEAMS = namespace(Team, env); env.CALLS = namespace(CallRoom, env); env.LIMITS = namespace(Limits, env);
 
 let fails = 0, n = 0;
@@ -50,18 +56,33 @@ const cookieFrom = r => (r.headers.get('Set-Cookie') || '').split(';')[0];
 const acc = sub => env.ACCOUNTS.inst.get('u:' + sub);
 
 // ---- Signing in ----
+let r0, r;
 ok((await req('GET', '/api/me')).status === 401, 'sin sesión: nada');
 ok((await req('POST', '/api/login', { body: { accessToken: 'inventado' } })).status === 401, 'un token que Google no reconoce: no');
 ok((await req('POST', '/api/login', { body: { accessToken: 'tok-otraapp' } })).status === 401, 'un token de otra aplicación: no');
-const lr = await req('POST', '/api/login', { body: { accessToken: 'tok-ana' } }), setc = lr.headers.get('Set-Cookie') || '';
+// Accepting the terms (and being 14 or older) when the account is created
+r0 = await req('POST', '/api/login', { body: { accessToken: 'tok-ana' } });
+ok(r0.status === 400 && (await r0.json()).error === 'terms' && !acc('111')?.ctx.storage.m.get('profile'), 'cuenta nueva sin aceptar las condiciones: 400 y no se crea');
+ok((await req('POST', '/api/login', { body: { accessToken: 'tok-ana', terms: '2020-01-01' } })).status === 400, 'condiciones de otra versión: no');
+const lr = await req('POST', '/api/login', { body: { accessToken: 'tok-ana', terms: TERMS, lang: 'en' } }), setc = lr.headers.get('Set-Cookie') || '';
 ok(lr.status === 200 && /HttpOnly/.test(setc) && /Secure/.test(setc) && /SameSite=Strict/.test(setc) && /Path=\/api/.test(setc), 'cookie de sesión segura: ' + setc);
 const ana = cookieFrom(lr);
+ok(acc('111').ctx.storage.m.get('profile').terms?.version === TERMS && acc('111').ctx.storage.m.get('profile').lang === 'en', 'se registran la aceptación (fecha y versión) y el idioma');
 ok(!JSON.stringify([...acc('111').ctx.storage.m.get('sessions') ? Object.keys(acc('111').ctx.storage.m.get('sessions')) : []]).includes(ana.split('.')[1]), 'solo se guarda un resumen (hash) de la sesión');
 let me = await (await req('GET', '/api/me', { headers: { Cookie: ana } })).json();
 ok(me.email === 'ana@example.com' && me.plan === 'free' && me.credits === 50 && me.features.join() === 'ai,cloud-save', 'cuenta nueva: plan gratis y 50 créditos de regalo: ' + JSON.stringify(me));
-await req('POST', '/api/login', { body: { accessToken: 'tok-ana' } });
+await req('POST', '/api/login', { body: { accessToken: 'tok-ana', terms: TERMS } });
 me = await (await req('GET', '/api/me', { headers: { Cookie: ana } })).json();
 ok(me.credits === 50, 'el regalo es una sola vez (volver a entrar no da más)');
+ok(me.terms === true, '/api/me: condiciones aceptadas');
+// An account from before the terms: asked once (/api/me terms: false), accepted with POST /api/terms.
+{ const P = acc('111').ctx.storage.m, prof = P.get('profile'); P.set('profile', { ...prof, terms: undefined });
+  ok((await (await req('GET', '/api/me', { headers: { Cookie: ana } })).json()).terms === false, 'cuenta anterior: /api/me dice terms: false');
+  ok((await req('POST', '/api/login', { body: { accessToken: 'tok-ana' } })).status === 200, 'una cuenta que ya existe entra sin enviarlas');
+  ok((await req('POST', '/api/terms', { headers: { Cookie: ana }, body: { version: 'vieja' } })).status === 400, 'aceptar otra versión: no');
+  ok((await req('POST', '/api/terms', { body: { version: TERMS } })).status === 401, 'aceptar sin sesión: no');
+  ok((await req('POST', '/api/terms', { headers: { Cookie: ana }, body: { version: TERMS } })).status === 200
+    && (await (await req('GET', '/api/me', { headers: { Cookie: ana } })).json()).terms === true && P.get('profile').terms.at > 0, 'aceptarlas: queda registrado'); }
 
 // ---- Forged sessions ----
 const [subPart] = ana.split('=')[1].split('.');
@@ -77,7 +98,7 @@ ok(!(await req('GET', '/api/me', { origin: 'https://malo.example', headers: { Co
 ok((await req('OPTIONS', '/api/me')).headers.get('Access-Control-Allow-Credentials') === 'true', 'CORS con credenciales solo para revelaslides.com');
 
 // ---- AI with credits ----
-let r = await req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { model: 'modelo/carisimo', max_tokens: 999999, messages: [{ role: 'user', content: 'Hola' }] } });
+r = await req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { model: 'modelo/carisimo', max_tokens: 999999, messages: [{ role: 'user', content: 'Hola' }] } });
 let j = await r.json();
 ok(r.status === 200 && j.choices[0].message.content === 'hola', 'responde la IA');
 ok(aiCalls[0].body.model === 'openai/gpt-4o-mini' && aiCalls[0].body.max_tokens === 4000, 'modelo fuera de la lista → el de por defecto; tokens limitados: ' + JSON.stringify([aiCalls[0].body.model, aiCalls[0].body.max_tokens]));
@@ -116,7 +137,7 @@ env.AI_PER_MINUTE = '100'; env.MONTHLY_BUDGET_USD = '0.001';
 acc('111').ctx.storage.m.set('rate', []);
 ok((await req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { max_tokens: 20, messages: [{ role: 'user', content: 'x' }] } })).status === 503, 'tope de gasto mensual global: la IA se pausa');
 env.MONTHLY_BUDGET_USD = '50';
-const bob = cookieFrom(await req('POST', '/api/login', { body: { accessToken: 'tok-luis' } }));
+const bob = cookieFrom(await req('POST', '/api/login', { body: { accessToken: 'tok-luis', terms: TERMS } }));
 env.OPENROUTER_KEY = ''; ok((await req('POST', '/api/ai/chat', { headers: { Cookie: bob }, body: { messages: [{ role: 'user', content: 'x' }] } })).status === 503, 'sin clave de IA configurada: 503'); env.OPENROUTER_KEY = 'sk-or-secreta';
 // Images: a fixed price.
 aiReply = u => (u.endsWith('/images') ? { status: 200, body: { data: [{ b64_json: 'AAAA', media_type: 'image/png' }] } } : { status: 500, body: {} });
@@ -166,7 +187,7 @@ ok((await req('POST', '/api/desktop/claim', { origin: 'tauri://localhost', body:
 
 // ---- Voice-over (speech) ----
 {
-  const ev = cookieFrom(await req('POST', '/api/login', { body: { accessToken: 'tok-eva' } }));
+  const ev = cookieFrom(await req('POST', '/api/login', { body: { accessToken: 'tok-eva', terms: TERMS } }));
   const before = (await (await req('GET', '/api/me', { headers: { Cookie: ev } })).json()).credits;
   let r = await req('POST', '/api/ai/speech', { headers: { Cookie: ev }, body: { input: 'Hola a todos. '.repeat(20), voice: 'nova' } });
   j = await r.json();
@@ -182,7 +203,7 @@ ok((await req('POST', '/api/desktop/claim', { origin: 'tauri://localhost', body:
 
 // ---- Photos (Unsplash, Pexels) with the server's keys ----
 {
-  const ev = cookieFrom(await req('POST', '/api/login', { body: { accessToken: 'tok-eva' } }));
+  const ev = cookieFrom(await req('POST', '/api/login', { body: { accessToken: 'tok-eva', terms: TERMS } }));
   ok((await req('GET', '/api/stock/search?provider=unsplash&q=faro', { headers: { Cookie: ev } })).status === 503, 'fotos: sin clave configurada, no disponible');
   ok(!(await (await req('GET', '/api/me', { headers: { Cookie: ev } })).json()).photos.length, 'fotos: la app sabe cuáles hay');
   env.UNSPLASH_ACCESS_KEY = 'unsplash-secreta';
@@ -201,7 +222,7 @@ ok((await req('POST', '/api/desktop/claim', { origin: 'tauri://localhost', body:
 
 // ---- Presentations in the cloud: roles checked by the server ----
 {
-  const login = async tok => cookieFrom(await req('POST', '/api/login', { body: { accessToken: tok } }));
+  const login = async tok => cookieFrom(await req('POST', '/api/login', { body: { accessToken: tok, terms: TERMS } }));
   const eva = await login('tok-eva'), luis = await login('tok-luis');
   const deck = { name: 'Mi charla', slides: [{ id: 's1', blocks: [{ id: 'b1', type: 'text', html: 'Hola' }], comments: [] }, { id: 's2', blocks: [], comments: [] }] };
   ok((await req('POST', '/api/docs', { body: { deck } })).status === 401, 'nube: sin sesión no se guarda nada');
@@ -263,7 +284,7 @@ ok((await req('POST', '/api/desktop/claim', { origin: 'tauri://localhost', body:
 
 // ---- Video calls (Pro, Cloudflare Realtime) ----
 {
-  const login = async tok => cookieFrom(await req('POST', '/api/login', { body: { accessToken: tok } }));
+  const login = async tok => cookieFrom(await req('POST', '/api/login', { body: { accessToken: tok, terms: TERMS } }));
   const pa = await login('tok-ana'), pl = await login('tok-luis');
   const { id: doc } = await (await req('POST', '/api/docs', { headers: { Cookie: pa }, body: { deck: { name: 'Llamada', slides: [{ id: 's', blocks: [] }] } } })).json();
   const C = (c, path, body) => req('POST', '/api/call' + path, { headers: { Cookie: c }, body: { doc, ...body } });
@@ -295,7 +316,7 @@ ok((await req('POST', '/api/desktop/claim', { origin: 'tauri://localhost', body:
 
 // ---- Teams: seats, invitations, Pro for members, brand kit and templates ----
 {
-  const login = async tok => cookieFrom(await req('POST', '/api/login', { body: { accessToken: tok } }));
+  const login = async tok => cookieFrom(await req('POST', '/api/login', { body: { accessToken: tok, terms: TERMS } }));
   const rosa = await login('tok-rosa'), pepe = await login('tok-pepe');
   const T = (c, path, body) => req(body === undefined ? 'GET' : 'POST', '/api/team' + path, { headers: { Cookie: c }, body });
   let r = await T(rosa, '', { name: 'IES Ejemplo' }); const { id } = await r.json();
@@ -344,7 +365,7 @@ ok((await req('POST', '/api/desktop/claim', { origin: 'tauri://localhost', body:
 
 // ---- Your data: export and delete (GDPR) ----
 {
-  const login = async tok => cookieFrom(await req('POST', '/api/login', { body: { accessToken: tok } }));
+  const login = async tok => cookieFrom(await req('POST', '/api/login', { body: { accessToken: tok, terms: TERMS } }));
   const lu = await login('tok-luis'), ev = await login('tok-eva');
   const deck = { name: 'De Luis', slides: [{ id: 's1', blocks: [], comments: [] }] };
   const { id } = await (await req('POST', '/api/docs', { headers: { Cookie: lu }, body: { deck } })).json();
@@ -361,11 +382,13 @@ ok((await req('POST', '/api/desktop/claim', { origin: 'tauri://localhost', body:
   ok((await req('GET', `/api/docs/${id}`, { headers: { Cookie: ev } })).status === 404, 'borrada: sus presentaciones también');
   ok(!(await (await req('GET', '/api/docs', { headers: { Cookie: ev } })).json()).shared.some(x => x.id === id), 'y desaparecen de «compartido conmigo» de los demás');
   ok(stripeCalls.some(c => /subscriptions\?customer=cus_luis/.test(c.u)), 'y se cancela su suscripción de Stripe');
+  const bye = sent.filter(m => m.to === 'luis@example.com' && /se ha eliminado/.test(m.subject));
+  ok(bye.length === 1 && /como pediste/.test(bye[0].text) && !bye[0].headers, 'correo de confirmación al eliminarla (sin baja: es del servicio)');
 }
 
 // ---- Credits that expire: the gift in 3 months, a pack in a year, each month of Pro that month and the next ----
 {
-  const mar = cookieFrom(await req('POST', '/api/login', { body: { accessToken: 'tok-mar' } })), M = acc('777').ctx.storage.m, DAYms = 86400e3;
+  const mar = cookieFrom(await req('POST', '/api/login', { body: { accessToken: 'tok-mar', terms: TERMS } })), M = acc('777').ctx.storage.m, DAYms = 86400e3;
   const me = async () => (await req('GET', '/api/me', { headers: { Cookie: mar } })).json();
   let j = await me();
   ok(j.credits === 50 && Math.abs(j.expiring[0].exp - (Date.now() + 90 * DAYms)) < 60e3, 'el regalo: 50 créditos que caducan a los 3 meses');
@@ -400,11 +423,133 @@ ok((await req('POST', '/api/desktop/claim', { origin: 'tauri://localhost', body:
   env.AI_PRICES = '{"openai/gpt-4o-mini":[0.15,0.6]}';
 }
 
+// ---- Read-only beyond the plan (after leaving Pro): nothing deleted, only the N most recent editable ----
+const login2 = async (tok, extra = {}) => cookieFrom(await req('POST', '/api/login', { body: { accessToken: tok, terms: TERMS, ...extra } }));
+const sol = await login2('tok-sol'), teo = await login2('tok-teo', { lang: 'en' });
+const setPlan = (sub, until) => env.ACCOUNTS.get('u:' + sub).fetch('https://do/setplan', { method: 'POST', body: JSON.stringify({ name: until ? 'pro' : 'free', until }) });
+const ids = [];
+{
+  await setPlan('888', Date.now() + 30 * 864e5);
+  for (let i = 1; i <= 5; i++) ids.push((await (await req('POST', '/api/docs', { headers: { Cookie: sol }, body: { deck: { name: 'Doc ' + i, slides: [{ id: 's', blocks: [], comments: [] }] } } })).json()).id);
+  const S = acc('888').ctx.storage.m; S.set('docs', S.get('docs').map(d => ({ ...d, updated: Date.now() - 1000 * (10 - +d.name.slice(4)) })));   // (Doc 5 the latest)
+  sent = [];
+  ok((await req('POST', `/api/docs/${ids[0]}/share`, { headers: { Cookie: sol }, body: { people: { 'teo@example.com': 'edit' } } })).status === 200, 'solo lectura: con Pro, comparte con edición');
+  // Correo al compartir: con el nombre de quien comparte, el enlace, en el idioma de quien lo recibe, sin baja.
+  const m = sent.find(x => x.to === 'teo@example.com');
+  ok(m && /Sol García \(sol@example\.com\) shared “Doc 1” with you/.test(m.subject) && m.html.includes(`https://revelaslides.com/app/?doc=${ids[0]}`) && m.text.includes(`/app/?doc=${ids[0]}`), 'correo al compartir: quién, cuál y el enlace (en inglés): ' + m?.subject);
+  ok(m.from.email === 'avisos@revelaslides.com' && m.from.name === 'Revela' && !m.headers && /a project by FM Lab/.test(m.text) && !/<García>/.test(m.html), 'remitente de Revela, pie, sin baja (es del servicio) y sin HTML de nadie');
+  ok(/#2f5a8f/.test(m.html) && /Georgia/.test(m.html) && /#faf8f4/.test(m.html), 'plantilla sobria: papel, serif y un solo acento');
+  sent = [];
+  await req('POST', `/api/docs/${ids[0]}/share`, { headers: { Cookie: sol }, body: { people: { 'teo@example.com': 'edit' }, link: 'view' } });
+  ok(!sent.length, 'cambiar otra cosa no vuelve a avisar');
+  await setPlan('888', 0);                                                       // (back to free: 3)
+  let j = await (await req('GET', '/api/docs', { headers: { Cookie: sol } })).json();
+  const ro = j.mine.filter(d => d.readOnly).map(d => d.name).sort();
+  ok(j.limit === 3 && j.mine.length === 5 && ro.join() === 'Doc 1,Doc 2', 'al dejar Pro no se borra nada: las 2 menos recientes, en solo lectura: ' + JSON.stringify(ro));
+  ok((await (await req('GET', '/api/me', { headers: { Cookie: sol } })).json()).docs.readOnly === 2, '/api/me dice cuántas');
+  j = await (await req('GET', `/api/docs/${ids[0]}`, { headers: { Cookie: sol } })).json();
+  ok(j.deck && j.readOnly === true && j.reason === 'over limit' && j.limit === 3, 'se puede abrir, y dice que está en solo lectura por el límite');
+  ok((await (await req('GET', `/api/docs/${ids[4]}`, { headers: { Cookie: sol } })).json()).readOnly === undefined, 'las recientes no');
+  const edit = (c, id) => req('POST', `/api/docs/${id}/ops`, { headers: { Cookie: c }, body: { ops: [{ p: ['name'], v: 'Cambio' }] } });
+  let r = await edit(sol, ids[0]); j = await r.json();
+  ok(r.status === 402 && j.error === 'read only' && j.reason === 'over limit' && j.limit === 3, 'la dueña no puede cambiarla: 402 read only');
+  ok((await edit(teo, ids[0])).status === 402, 'ni quien tiene permiso de edición compartido');
+  ok((await req('POST', `/api/docs/${ids[0]}/ops`, { headers: { Cookie: teo }, body: { ops: [{ p: ['slides', 's', 'comments', 'c1'], v: { id: 'c1', text: 'x', replies: [] } }] } })).status === 402, 'ni comentarios: solo lectura para todos');
+  ok((await (await req('GET', `/api/docs/${ids[0]}`, { headers: { Cookie: teo } })).json()).readOnly === true, 'quien la tiene compartida también lo ve');
+  ok((await edit(sol, ids[4])).status === 200, 'las 3 más recientes se editan');
+  ok((await req('POST', `/api/docs/${ids[0]}/share`, { headers: { Cookie: sol }, body: { link: 'view' } })).status === 200, 'compartir para ver, sí');
+  ok((await req('POST', '/api/docs', { headers: { Cookie: sol }, body: { deck: { name: 'x', slides: [] } } })).status === 402, 'crear otra, no');
+  ok((await req('POST', `/api/docs/${ids[2]}/delete`, { headers: { Cookie: sol } })).status === 200, 'borrar, sí');
+  ok((await edit(sol, ids[1])).status === 200 && (await edit(sol, ids[0])).status === 402, 'al borrar una, la siguiente más reciente se desbloquea');
+  await setPlan('888', Date.now() + 30 * 864e5);
+  ok((await edit(teo, ids[0])).status === 200, 'al volver a Pro, todas editables');
+}
+
+// ---- Emails: team invitation, the end of Pro, credits that expire, unsubscribing ----
+const realNow = Date.now, at = ts => { Date.now = () => ts; }, DAYms = 864e5;
+const runCron = async ts => { const w = []; await worker.scheduled({ scheduledTime: ts }, env, { waitUntil: p => w.push(p) }); await Promise.all(w); };
+{
+  // Team invitation
+  const ines = await login2('tok-ines', { lang: 'ca' }); sent = [];
+  const { id: team } = await (await req('POST', '/api/team', { headers: { Cookie: sol }, body: { name: 'Taller <b>' } })).json();
+  await env.TEAMS.get('team:' + team).fetch('https://team/billing', { method: 'POST', body: JSON.stringify({ seats: 5, until: Date.now() + 1000 * 864e5 }) });
+  ok((await req('POST', '/api/team/invite', { headers: { Cookie: sol }, body: { email: 'ines@example.com' } })).status === 200, 'invitar a un equipo');
+  let m = sent.find(x => x.to === 'ines@example.com');
+  ok(m && /Et conviden a l’equip «Taller <b>»/.test(m.subject) && m.html.includes('Taller &lt;b&gt;') && !m.headers, 'correo de invitación (en catalán, sin HTML colado, sin baja): ' + m?.subject);
+  ok((await req('POST', '/api/team/accept', { headers: { Cookie: ines }, body: { id: team } })).status === 200, 'y acepta (Pro por el equipo)');
+  // The end of Pro: Stripe says it was cancelled (ends at the end of the period)
+  sent = [];
+  const end = Math.floor(Date.now() / 1000) + 20 * 86400;
+  const upd = (id, cancel, e = end) => hook({ id, type: 'customer.subscription.updated', data: { object: { id: 'sub_sol', cancel_at_period_end: cancel, current_period_end: e, metadata: { sub: '888' } } } });
+  await upd('evt_sol_c1', true);
+  m = sent.find(x => x.to === 'sol@example.com');
+  ok(m && /Tu plan Pro termina el/.test(m.subject) && /las otras 1 quedarán en solo lectura/.test(m.text) && /No se borra nada/.test(m.text) && /créditos se conservan/.test(m.text) && !m.headers, 'aviso de fin de Pro: qué pasa (solo lectura, créditos que se conservan): ' + m?.text);
+  await upd('evt_sol_c2', true); ok(sent.filter(x => x.to === 'sol@example.com').length === 1, 'el mismo aviso, una sola vez');
+  // A week before the end: the reminder (the daily run, with the date simulated)
+  sent = []; at(end * 1000 - 7 * DAYms + 3600e3); await runCron(Date.now());
+  ok(sent.filter(x => x.to === 'sol@example.com' && /termina/.test(x.subject)).length === 1, 'y otro unos 7 días antes del fin');
+  await runCron(Date.now()); ok(sent.filter(x => x.to === 'sol@example.com').length === 1, 'el cron repetido no lo repite');
+  Date.now = realNow;
+  // Cancelled and then renewed: no reminder
+  const end2 = end + 30 * 86400; await upd('evt_sol_c3', true, end2); await upd('evt_sol_c4', false, end2); sent = [];
+  at(end2 * 1000 - 7 * DAYms + 3600e3); await runCron(Date.now()); Date.now = realNow;
+  ok(!sent.some(x => x.to === 'sol@example.com' && /termina/.test(x.subject)), 'si se renueva, no hay recordatorio');
+  // It ended
+  sent = [];
+  await hook({ id: 'evt_sol_d', type: 'customer.subscription.deleted', data: { object: { id: 'sub_sol', metadata: { sub: '888' } } } });
+  await hook({ id: 'evt_sol_d2', type: 'customer.subscription.deleted', data: { object: { id: 'sub_sol', metadata: { sub: '888' } } } });
+  ok(sent.filter(x => x.to === 'sol@example.com' && /ha terminado/.test(x.subject)).length === 1, 'aviso de que Pro ha terminado (una vez)');
+  // Credits that expire in 7 days: the welcome gift (90 days); optional, so with the link to stop them
+  const S = acc('888').ctx.storage.m, gift = S.get('lots').find(l => l.n === 50);
+  ok(gift && env.SCHEDULE.inst.get('global').ctx.storage.m.get('days').length > 0, 'las cuentas anotan en Schedule qué mirar y cuándo');
+  sent = []; at(gift.exp - 6 * DAYms); await runCron(Date.now()); Date.now = realNow;
+  m = sent.find(x => x.to === 'sol@example.com' && /caducan/.test(x.subject));
+  ok(m && /^50 créditos caducan el/.test(m.subject), 'aviso de créditos que caducan: ' + m?.subject);
+  ok(m.headers?.['List-Unsubscribe-Post'] === 'List-Unsubscribe=One-Click' && /\/api\/mail\/unsubscribe\?t=/.test(m.headers['List-Unsubscribe']) && /No quiero más avisos/.test(m.html), 'con enlace para darse de baja (y cabecera List-Unsubscribe)');
+  at(gift.exp - 5 * DAYms); await runCron(Date.now()); Date.now = realNow;
+  ok(sent.filter(x => x.to === 'sol@example.com' && /caducan/.test(x.subject)).length === 1 && sent.filter(x => x.to === 'eva@example.com').length === 1, 'uno por lote, sin repetir');
+  const link = m.headers['List-Unsubscribe'].slice(1, -1), t = new URL(link).searchParams.get('t');
+  ok((await req('GET', '/api/mail/unsubscribe?t=' + t.slice(0, -2) + 'xx', { origin: null })).status === 400, 'baja: un enlace falsificado no vale');
+  const forged = Buffer.from('111').toString('base64url') + '.' + t.split('.').slice(1).join('.');
+  ok((await req('GET', '/api/mail/unsubscribe?t=' + forged, { origin: null })).status === 400, 'ni el de otra cuenta');
+  r = await req('GET', '/api/mail/unsubscribe?t=' + t, { origin: null });
+  ok(r.status === 200 && /text\/html/.test(r.headers.get('Content-Type')) && /ya no recibirás avisos/.test(await r.text()) && S.get('mailOff').includes('credits'), 'baja: página sencilla y queda marcado en la cuenta');
+  ok((await worker.fetch(new Request(SITE + '/api/mail/unsubscribe?t=' + t, { method: 'POST', body: 'List-Unsubscribe=One-Click', headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }), env)).status === 200, 'baja con un clic (POST del programa de correo)');
+  await acc('888').fetch(new Request('https://do/grant', { method: 'POST', body: JSON.stringify({ credits: 10, ref: 'x1', days: 9 }) }));
+  sent = []; at(Date.now() + 3 * DAYms); await runCron(Date.now()); Date.now = realNow;
+  ok(!sent.some(x => x.to === 'sol@example.com' && /caducan/.test(x.subject)), 'tras la baja, ya no llegan esos avisos');
+  // Without MAIL_SECRET optional notices aren't sent (no way out); with Resend instead of Email Service
+  const { sendMail, mail } = await import('../server/cloudflare/mail.js');
+  ok(!(await mail({ EMAIL: env.EMAIL }, { to: 'a@b.c', kind: 'credits', lang: 'es', vars: { n: 1, date: 'x' }, sub: '1' })), 'sin MAIL_SECRET no hay avisos opcionales');
+  ok(await sendMail({ RESEND_KEY: 're_secreta', FETCH: env.FETCH }, { to: 'a@b.c', subject: 'Hola', html: '<p>h</p>', text: 'h' }) && resendCalls[0].auth === 'Bearer re_secreta' && resendCalls[0].body.from === 'Revela <avisos@revelaslides.com>' && resendCalls[0].body.to === 'a@b.c', 'con Resend si no hay Email Service');
+  ok(!(await sendMail({}, { to: 'a@b.c', subject: 'x', html: '', text: '' })), 'sin ninguno, no se envía');
+}
+
 // ---- Logging out; and the share routes under /api ----
 ok((await req('POST', '/api/logout', { headers: { Cookie: ana } })).status === 200, 'cerrar sesión');
 ok((await req('GET', '/api/me', { headers: { Cookie: ana } })).status === 401, 'la sesión cerrada ya no vale');
 ok((await req('GET', '/api/me', { origin: 'tauri://localhost', headers: { Authorization: 'Bearer ' + desk } })).status === 200, 'la de escritorio sigue (cada sesión por separado)');
 ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir también en /api/s');
+
+// ---- Unused accounts: warned 30 and 7 days before; deleted at 24 months (the date simulated) ----
+{
+  const S = acc('888').ctx.storage.m, T = acc('999').ctx.storage.m, day0 = Date.parse(T.get('lastSeen'));
+  await setPlan('444', realNow() + 1000 * DAYms);                                  // (Eva: her own Pro; Inés: her team's)
+  const allSent = []; const keep = () => allSent.push(...sent);
+  ok(T.get('lastSeen') === new Date(realNow()).toISOString().slice(0, 10), 'cada uso queda anotado (al día)');
+  sent = []; at(day0 + 700 * DAYms + 3600e3); await runCron(Date.now());
+  let m = sent.find(x => x.to === 'teo@example.com');
+  ok(m && /deleted in 30 days/.test(m.subject) && !m.headers, 'a ~23 meses sin usarla: aviso a 30 días (obligatorio, sin baja): ' + m?.subject);
+  // Sol comes back meanwhile: no more warnings for her.
+  at(day0 + 710 * DAYms); await login2('tok-sol');
+  keep(); sent = []; at(day0 + 723 * DAYms + 3600e3); await runCron(Date.now());
+  ok(sent.some(x => x.to === 'teo@example.com' && /7 days/.test(x.subject)) && !sent.some(x => x.to === 'sol@example.com' && /eliminará/.test(x.subject)), 'aviso a 7 días; quien volvió no lo recibe');
+  keep(); sent = []; at(day0 + 730 * DAYms + 3600e3); await runCron(Date.now()); keep();
+  ok(!T.get('profile') && sent.some(x => x.to === 'teo@example.com' && /deleted/.test(x.subject) && /two years/.test(x.text)), 'a los 24 meses se borra la cuenta y se confirma por correo');
+  ok(!!S.get('profile') && env.DOCS.inst.get('doc:' + ids[3]).ctx.storage.m.has('meta'), 'la de quien volvió sigue, con sus presentaciones');
+  ok(!!acc('444').ctx.storage.m.get('profile') && !!acc('1010').ctx.storage.m.get('profile') && !allSent.some(x => ['eva@example.com', 'ines@example.com'].includes(x.to)), 'con Pro activo (propio o de un equipo pagado) no cuenta como inactiva: ni avisos ni borrado');
+  Date.now = realNow;
+}
 
 console.log(fails ? `API FAIL ${n - fails}/${n}` : `API OK ${n}/${n}`);
 process.exit(fails ? 1 : 0);

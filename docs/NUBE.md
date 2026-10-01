@@ -26,10 +26,11 @@ Navegador / escritorio                         Cloudflare
 │   (IA por la cuenta)     │                   │  ├─ Budget (gasto global de IA del mes) │
 └──────────────────────────┘                   │  ├─ DesktopLink (1 por inicio de sesión)│
                                                │  ├─ ShareBox / CollabRoom (compartir)   │
+                                               │  ├─ Schedule (avisos por día) ← cron    │
                                                │  └─ secretos: OPENROUTER_KEY, STRIPE_…  │
                                                └───────┬───────────────┬─────────────────┘
                                                        ▼               ▼
-                                                  OpenRouter        Stripe
+                                                  OpenRouter        Stripe      (correos: Email Service o Resend)
 ```
 
 ## Flujos
@@ -86,6 +87,70 @@ cambios (una cada media hora como mucho, las diez últimas) y, para el dueño co
 Pro, estadísticas por diapositiva (vistas y tiempo) con un identificador
 aleatorio del navegador, sin correos ni direcciones.
 
+**Solo lectura al dejar Pro.** Nunca se borra nada por dejar Pro. Si el dueño tiene
+más presentaciones en la nube que las que permite su plan (3 en el gratuito, `FREE_DOCS`),
+solo se pueden editar las N editadas más recientemente (N = el límite; el orden es el
+`updated` de su lista en `Account.docs`). Las demás quedan en **solo lectura para todos**
+(también para quien tiene permiso de edición compartido): se abren, se presentan, se
+exportan, se comparten y se borran, pero el servidor rechaza cualquier cambio (también los
+comentarios) con `402 { error: 'read only', reason: 'over limit', limit }`; lo comprueba el
+propio `CloudDoc` preguntando a la cuenta del dueño (`docs-locked`). `GET /api/docs` marca
+`readOnly: true` en cada una de «Mis presentaciones» afectada (las compartidas contigo lo
+dicen al abrirlas), `GET /api/docs/:id` lo dice al abrirla (`readOnly`, `reason`, `limit`) y
+`/api/me` cuenta cuántas (`docs.readOnly`). Al volver a Pro (propio o de un equipo) o borrar
+hasta quedar dentro, se desbloquean solas. La app muestra un aviso encima de la diapositiva
+(«Esta presentación está en solo lectura porque tu plan gratuito permite editar 3. Pasa a
+Pro o borra alguna para editarla»), no envía cambios y no pierde lo que se haga: se puede
+guardar como copia en el navegador o descargar.
+
+**Condiciones al crear la cuenta.** Antes del primer inicio de sesión la app muestra «Al
+continuar aceptas las condiciones del servicio y la política de privacidad, y confirmas que
+tienes 14 años o más» con una casilla que hay que marcar (también en la aplicación de
+escritorio y en el navegador que la conecta). El servidor solo crea una cuenta nueva si el
+inicio de sesión trae la versión vigente de las condiciones (`terms`; si no,
+`400 { error: 'terms' }`) y guarda en el perfil la fecha y la versión (`TERMS_VERSION`, por
+defecto `2026-10-01`; la app lleva la misma en `src/io/cloud/account.js`). A las cuentas
+anteriores, o cuando cambie la versión, `/api/me` responde `terms: false` y la app lo pide
+una vez por visita hasta aceptarlas (`POST /api/terms`). El inicio de sesión también guarda
+el idioma de la app (para los correos).
+
+**Correos** (`server/cloudflare/mail.js`). Transaccionales, sobrios (fondo papel, títulos con
+serif, un solo color de acento, con su versión en texto plano), en el idioma de la persona
+(español, inglés o catalán; si no se conoce, español), con enlace a revelaslides.com/app y
+el pie «Revela · un proyecto de FM Lab»:
+
+| Correo | Cuándo | Baja |
+| --- | --- | --- |
+| Te han compartido una presentación | La dueña añade a alguien: quién (nombre de Google y correo), cuál y el enlace `…/app/?doc=…` | No (servicio) |
+| Te invitan a un equipo | Una administradora invita | No (servicio) |
+| Tu Pro termina | Stripe avisa de la cancelación (`customer.subscription.updated` con `cancel_at_period_end`) y otra vez unos 7 días antes del fin: cuántas quedarán en solo lectura, créditos que se conservan | No (servicio) |
+| Tu Pro ha terminado | `customer.subscription.deleted` | No (servicio) |
+| Créditos que caducan | 7 días antes de que caduque un lote con créditos (uno por lote) | **Sí** |
+| Cuenta inactiva | ~23 meses sin usarla: a 30 y a 7 días del borrado | No (obligatorio) |
+| Cuenta eliminada | Al eliminarla la persona, o a los 24 meses sin uso | No (servicio) |
+
+«Usar» la cuenta es iniciar sesión o cualquier petición con sesión (`Account.lastSeen`, con
+resolución de un día: se escribe una vez al día). Una cuenta con Pro activo, propio o de un
+equipo pagado, no cuenta como inactiva: ni avisos ni borrado. El borrado por inactividad es
+el mismo que el voluntario (cuenta, presentaciones, listas de compartidas, suscripción). Las
+cuentas que no se vuelvan a usar después de este cambio no tienen aún fecha anotada: entran
+en el calendario la próxima vez que se usen.
+
+Los avisos opcionales llevan un enlace para darse de baja (y la cabecera `List-Unsubscribe`
+de un clic): un token firmado con HMAC (`MAIL_SECRET`) que `GET|POST /api/mail/unsubscribe?t=…`
+comprueba y anota en la cuenta (`mailOff`). Sin `MAIL_SECRET` no se envían avisos opcionales
+(no habría forma de darse de baja).
+
+**Avisos programados** (`server/cloudflare/schedule.js`). Los Durable Objects no se pueden
+recorrer, así que cada cuenta apunta en un objeto `Schedule` qué mirar y qué día
+(`'d:AAAA-MM-DD'` → `[{ sub, kind, ref }]`): al recibir un lote de créditos, al cancelar Pro y
+al usarse (inactividad; una sola entrada pendiente por cuenta). Un cron diario
+(`[triggers]` en `wrangler.toml`, 08:00 UTC) recorre los días vencidos —también los que se
+hubieran saltado— y pide a cada cuenta que compruebe y actúe. La cuenta decide con su propio
+estado y recuerda lo enviado (cada aviso con su `ref`), así que una entrada repetida, ya sin
+sentido o procesada dos veces no hace nada; si alguien vuelve a usar la cuenta, el aviso de
+inactividad se aplaza solo.
+
 **Tus datos (RGPD).** «Mi cuenta ▸ Tus datos» descarga todo lo que guarda la
 cuenta (perfil, plan, movimientos de créditos, sesiones y presentaciones) y
 permite eliminarla: se borran la cuenta, sus presentaciones (también para quien
@@ -132,6 +197,9 @@ créditos solo cambian cuando llega el aviso **firmado** de Stripe
 | Montar una copia del servidor | Es otro servidor, sin tus claves, tu base de datos ni tus usuarios: no toca los tuyos |
 | Abrir o cambiar una presentación ajena | Cada lectura y cada cambio se comprueba en el servidor con la sesión (o el permiso del enlace); el cuerpo de la petición no puede decir quién eres |
 | Colar una edición junto a un comentario | Todo o nada: si una operación no está permitida para ese permiso, no se aplica ninguna |
+| Editar una presentación en solo lectura (por el límite) | El propio documento pregunta a la cuenta del dueño antes de aplicar cada cambio; nada en la petición lo evita |
+| Dar de baja de avisos a otra persona | El enlace va firmado (HMAC con `MAIL_SECRET`, solo en Cloudflare) para esa cuenta y ese tipo de aviso |
+| Colar HTML en un correo (nombre de una presentación, de un equipo o de una persona) | Todo lo que viene de personas se escapa en las plantillas |
 | Acceso de administrador | No hay ninguna API de administración; se administra desde la cuenta de Cloudflare (con verificación en dos pasos) |
 
 Los tests `tests/server-api.mjs` intentan cada uno de estos ataques y comprueban
@@ -142,7 +210,7 @@ que el servidor los rechaza.
 1. **Ruta:** en Cloudflare, Workers ▸ revela-share ▸ Configuración ▸ Dominios y
    rutas ▸ añadir la ruta `revelaslides.com/api/*`.
 2. **Desplegar:** `cd server/cloudflare && npx wrangler deploy` (crea los objetos
-   nuevos: Account, Budget, DesktopLink).
+   nuevos: Account, Budget, DesktopLink, Schedule, y el cron diario).
 3. **Secretos:** `npx wrangler secret put OPENROUTER_KEY` (y, cuando se venda,
    `STRIPE_SECRET_KEY` y `STRIPE_WEBHOOK_SECRET`).
 4. **OpenRouter:** crear una clave solo para el servidor con **límite de crédito**.
@@ -150,9 +218,23 @@ que el servidor los rechaza.
    JavaScript autorizados del cliente OAuth.
 6. **Stripe (más adelante):** crear los productos y sus precios, poner sus ids en
    `STRIPE_PRICE_*` y el webhook `https://revelaslides.com/api/billing/webhook`
-   con los eventos `checkout.session.completed`, `invoice.paid` y
+   con los eventos `checkout.session.completed`, `invoice.paid`,
+   `customer.subscription.updated` (avisos de cancelación) y
    `customer.subscription.deleted`.
-7. **Plan de pago de Workers** (5 $/mes) al abrirlo al público, y una alerta de
+7. **Correos.** Una de dos:
+   - **Cloudflare Email Service** (preferido): Compute ▸ Email Service ▸ Email Sending ▸
+     *Onboard Domain* con `revelaslides.com`; Cloudflare añade los registros DNS (MX y SPF en
+     el subdominio `cf-bounce`, DKIM, y DMARC en `_dmarc.revelaslides.com`). Cuando esté
+     verificado, descomentar en `wrangler.toml` el bloque `[[send_email]]` con
+     `name = "EMAIL"` y desplegar.
+   - **Resend:** verificar el dominio en resend.com (sus registros SPF y DKIM en el DNS de
+     Cloudflare) y `npx wrangler secret put RESEND_KEY`.
+
+   En los dos casos: `openssl rand -base64 32 | npx wrangler secret put MAIL_SECRET` (firma
+   los enlaces de baja) y, si se quiere otro remitente, la variable `MAIL_FROM` (por defecto
+   `Revela <avisos@revelaslides.com>`; la dirección debe ser del dominio verificado). Sin
+   `EMAIL` ni `RESEND_KEY` no se envía nada y todo lo demás funciona igual.
+8. **Plan de pago de Workers** (5 $/mes) al abrirlo al público, y una alerta de
    gasto en Facturación ▸ Notificaciones.
 
 ## Textos legales

@@ -11,9 +11,12 @@
 // a time, so credits can't be spent twice by requests that arrive together —,
 // one for the global AI budget (Budget), and one per desktop sign-in (DesktopLink).
 //
-//   POST /api/login            { accessToken } (Google, issued to Revela's client) → session
+//   POST /api/login            { accessToken, terms?, lang? } (Google, issued to Revela's client) → session
+//                              (a new account needs terms: the version of the terms accepted; else 400 { error: 'terms' })
 //   POST /api/logout
-//   GET  /api/me               → { email, plan, credits, features, billing }
+//   GET  /api/me               → { email, plan, credits, features, billing, terms (accepted the current ones?), docs }
+//   POST /api/terms            { version, lang? }       (accepting the current terms, once; accounts from before)
+//   GET|POST /api/mail/unsubscribe?t=…                  (stop optional notices; signed link in the email: mail.js)
 //   POST /api/ai/chat          { messages, max_tokens?, json? } → OpenRouter's answer (credits charged)
 //   POST /api/ai/image         { prompt, aspect_ratio? } → { data: [{ b64_json, media_type }] }
 //   POST /api/ai/speech        { input, voice?, speed? } → { audio (base64 mp3) }  (credits per character)
@@ -40,6 +43,9 @@ import { handleDocs } from './docs.js';
 import { handleTeams, teamStatus } from './teams.js';
 import { handleLti } from './lti.js';
 import { handleCalls } from './calls.js';
+import { docsSettings } from './docs.js';
+import { mail, readUnsubToken, unsubPage, fmtDate } from './mail.js';
+import { scheduleAt, dayOf } from './schedule.js';
 
 const enc = new TextEncoder();
 const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -63,6 +69,9 @@ export function settings(env) {
     // How long credits last (days): the welcome gift; a pack bought; each month of Pro (that
     // month and the next, like a phone plan's rollover).
     trialDays: num(env.TRIAL_DAYS, 90), packDays: num(env.PACK_DAYS, 365), monthDays: num(env.MONTH_DAYS, 60),
+    // The terms of service in force (their date): accepted when the account is created, and again when they change.
+    termsVersion: env.TERMS_VERSION || '2026-10-01',
+    idleDays: num(env.IDLE_DAYS, 730),                   // an account unused this long is deleted (warned 30 and 7 days before)
     imageCredits: num(env.IMAGE_CREDITS, 15),
     perMinute: num(env.AI_PER_MINUTE, 20),
     monthlyBudget: num(env.MONTHLY_BUDGET_USD, 50),      // all AI together, per calendar month
@@ -110,8 +119,14 @@ export class Account {
   async add(n, exp) {                                     // → balance
     const lots = await this.lots(); let debt = await this.get('debt', 0);
     const pay = Math.min(debt, n); debt -= pay; n -= pay;
-    if (n > 0) lots.push({ n, exp });
+    if (n > 0) { lots.push({ n, exp }); await this.remind(exp); }
     return this.save(lots, debt);
+  }
+  // A lot of credits: a notice 7 days before it expires (once per lot; the daily run checks it's still there).
+  async remind(exp) {
+    const sub = (await this.get('profile', {})).sub, done = await this.get('reminders', []); if (!sub || done.includes(exp)) return;
+    await this.put({ reminders: [...done.filter(x => x > Date.now()), exp].slice(-50) });
+    await scheduleAt(this.env, exp - 7 * DAY, sub, 'credits', String(exp));
   }
   async take(n) {                                         // → [{ n, exp }] taken (to give back exactly), balance
     const lots = await this.lots(), taken = []; let debt = await this.get('debt', 0);
@@ -152,6 +167,63 @@ export class Account {
   }
   // The lots that expire next (to show them): [{ n, exp }], the soonest first.
   async soon() { return (await this.lots()).filter(l => l.exp > Date.now()).slice(0, 3); }
+  // Cloud documents beyond the plan's limit are read-only: all but the N most recently edited
+  // (N = the plan's limit). Nothing is deleted; going back to Pro or deleting some unlocks them.
+  async docState(pro) {
+    const ds = docsSettings(this.env), limit = (pro ?? (await this.isPro())) ? ds.proDocs : ds.freeDocs;
+    const docs = (await this.get('docs', [])).slice().sort((x, y) => y.updated - x.updated);
+    return { limit, docs, locked: docs.slice(limit).map(d => d.id) };
+  }
+  // ---- Emails (mail.js) and what the daily run looks at (schedule.js) ----
+  // One email to this account, at most once per ref; optional kinds not if stopped.
+  async mailMe(kind, vars, ref) {
+    const prof = await this.get('profile', null), sent = await this.get('mailed', []);
+    if (!prof?.email || (ref && sent.includes(ref)) || (await this.get('mailOff', [])).includes(kind)) return false;
+    const ok = await mail(this.env, { to: prof.email, kind, lang: prof.lang, vars: { email: prof.email, ...vars }, sub: prof.sub });
+    if (ok && ref) await this.put({ mailed: [...sent, ref].slice(-200) });
+    return ok;
+  }
+  // What the end of Pro means here: how many documents become read-only, the credits kept.
+  async proVars(lang) {
+    const free = docsSettings(this.env).freeDocs, n = (await this.get('docs', [])).length, lots = (await this.lots()).filter(l => l.exp > Date.now());
+    return { free, locked: Math.max(0, n - free), credits: Math.max(0, await this.get('credits', 0)), next: lots[0] ? fmtDate(lots[0].exp, lang) : '' };
+  }
+  // Used today (signing in, or any request with a session): kept to the day, written once a day.
+  async seen() {
+    const today = dayOf(Date.now()); if ((await this.get('lastSeen', null)) === today) return;
+    await this.put({ lastSeen: today });
+    if (!(await this.get('idleNext', null))) await this.idleFrom(today);
+  }
+  async idleFrom(day) {
+    const sub = (await this.get('profile', {})).sub; if (!sub) return;
+    const ref = 'w30:' + day; await this.put({ idleNext: ref });
+    await scheduleAt(this.env, Date.parse(day) + (settings(this.env).idleDays - 30) * DAY, sub, 'idle', ref);
+  }
+  // The daily run asks: { kind, ref } → act if it still applies ({ delete: true }: the worker deletes the account).
+  async due(a) {
+    const prof = await this.get('profile', null); if (!prof) return {};
+    const now = Date.now(), lang = prof.lang;
+    if (a.kind === 'credits') {
+      const lot = (await this.lots()).find(l => l.exp === +a.ref);
+      if (lot && lot.n > 0 && lot.exp > now && lot.exp - now <= 8 * DAY) await this.mailMe('credits', { n: lot.n, date: fmtDate(lot.exp, lang) }, 'credits:' + a.ref);
+    } else if (a.kind === 'pro-soon') {
+      const end = await this.get('cancelAt', null), p = await this.get('plan', null);
+      if (end === +a.ref && p?.until > now && end > now) await this.mailMe('proEnding', { date: fmtDate(end, lang), ...(await this.proVars(lang)) }, 'pro-soon:' + a.ref);
+    } else if (a.kind === 'idle') {
+      const seen = await this.get('lastSeen', null), [stage, at] = String(a.ref).split(':'), idle = settings(this.env).idleDays;
+      if (!seen) return {};
+      // (An active Pro — own or a paid team's — is an account in use: no warnings, never deleted.)
+      if (await this.isPro()) { await this.put({ lastSeen: dayOf(now) }); await this.idleFrom(dayOf(now)); return {}; }
+      if (at !== seen) { await this.idleFrom(seen); return {}; }          // (used since: start counting again)
+      const end = Date.parse(seen) + idle * DAY, days = Math.max(1, Math.round((end - now) / DAY));
+      if (stage === 'w30' || stage === 'w7') {
+        await this.mailMe('idle', { days, date: fmtDate(end, lang) }, `idle:${stage}:${seen}`);
+        const next = stage === 'w30' ? 'w7:' + seen : 'del:' + seen; await this.put({ idleNext: next });
+        await scheduleAt(this.env, stage === 'w30' ? end - 7 * DAY : end, prof.sub, 'idle', next);
+      } else if (stage === 'del') return { delete: true };
+    }
+    return {};
+  }
   // One request at a time, whole (Cloudflare already runs a Durable Object's
   // storage steps in order; this also keeps any await in between from mixing two).
   fetch(req) { const run = () => this.handle(req); const p = (this.queue || Promise.resolve()).then(run, run); this.queue = p.catch(() => {}); return p; }
@@ -159,10 +231,15 @@ export class Account {
     const op = new URL(req.url).pathname.split('/').pop(), a = req.method === 'POST' ? await req.json() : {};
     const s = settings(this.env);
     switch (op) {
-      case 'login': {                                      // { sub, email, kind } → { token }
-        const prof = await this.get('profile', null);
-        if (!prof) { await this.put({ profile: { sub: a.sub, email: a.email, created: Date.now() } }); if (s.trial > 0) await this.entry(s.trial, 'trial', null, s.trialDays); }
-        else if (prof.email !== a.email) await this.put({ profile: { ...prof, email: a.email } });
+      case 'login': {                                      // { sub, email, name?, kind, terms?, lang? } → { token }
+        const prof = await this.get('profile', null), terms = a.terms === s.termsVersion ? { version: s.termsVersion, at: Date.now() } : null;
+        if (!prof && !terms) return this.json({ error: 'terms', version: s.termsVersion });   // (a new account accepts the terms first)
+        if (!prof) { await this.put({ profile: { sub: a.sub, email: a.email, ...(a.name && { name: a.name }), ...(a.lang && { lang: a.lang }), created: Date.now(), terms } }); if (s.trial > 0) await this.entry(s.trial, 'trial', null, s.trialDays); }
+        else {
+          const next = { ...prof, email: a.email, ...(a.name && { name: a.name }), ...(a.lang && { lang: a.lang }), ...(terms && prof.terms?.version !== s.termsVersion && { terms }) };
+          if (JSON.stringify(next) !== JSON.stringify(prof)) await this.put({ profile: next });
+        }
+        await this.seen();
         const secret = random(32), sessions = await this.get('sessions', {});
         const days = a.kind === 'desktop' ? 90 : 30;
         // (At most 20 sessions: the oldest go.)
@@ -171,8 +248,9 @@ export class Account {
         return this.json({ secret, days });
       }
       case 'check': {                                      // { secret } → ok?
-        const sessions = await this.get('sessions', {}), v = sessions[await sha256(a.secret || '')];
-        return this.json({ ok: !!v && v.expires > Date.now() });
+        const sessions = await this.get('sessions', {}), v = sessions[await sha256(a.secret || '')], ok = !!v && v.expires > Date.now();
+        if (ok) await this.seen();
+        return this.json({ ok });
       }
       case 'logout': {
         const sessions = await this.get('sessions', {}); delete sessions[await sha256(a.secret || '')];
@@ -184,15 +262,41 @@ export class Account {
         const team = teamId ? await teamStatus(this.env, teamId, prof.email).catch(() => null) : null, byTeam = !!(team?.member && team.active);
         const plan = own === 'pro' || byTeam ? 'pro' : 'free';
         await this.expire(); await this.monthly(plan === 'pro', s);
-        return this.json({ email: prof.email, plan, until: own === 'pro' ? p.until : null, credits: await this.get('credits', 0), expiring: await this.soon(), features: FEATURES[plan] || FEATURES.free,
+        const ds = await this.docState(plan === 'pro');
+        return this.json({ email: prof.email, name: prof.name || null, plan, until: own === 'pro' ? p.until : null, credits: await this.get('credits', 0), expiring: await this.soon(), features: FEATURES[plan] || FEATURES.free,
+          terms: prof.terms?.version === s.termsVersion, docs: { n: ds.docs.length, limit: ds.limit, readOnly: ds.locked.length },
           ...(team?.member && { team: { name: team.name, role: team.role, active: team.active } }) });
       }
+      case 'terms': {                                      // { version, lang? }: the current terms, accepted
+        const prof = await this.get('profile', null); if (!prof || a.version !== s.termsVersion) return this.json({ error: 'terms', version: s.termsVersion }, 400);
+        await this.put({ profile: { ...prof, terms: { version: s.termsVersion, at: Date.now() }, ...(a.lang && { lang: a.lang }) } }); return this.json({ ok: true });
+      }
+      case 'mail-off': {                                   // { kind }: no more of these (the signed link in an email)
+        const prof = await this.get('profile', null); if (!prof) return this.json({ ok: false });
+        const off = await this.get('mailOff', []); if (!off.includes(a.kind)) await this.put({ mailOff: [...off, a.kind] });
+        return this.json({ ok: true, lang: prof.lang });
+      }
+      case 'plan-ending': {                                // { end, ref }: Pro was cancelled and ends then (end 0: renewed again)
+        if (!+a.end) { await this.put({ cancelAt: null }); return this.json({ ok: true }); }
+        const end = +a.end, lang = (await this.get('profile', {})).lang; await this.put({ cancelAt: end });
+        await this.mailMe('proEnding', { date: fmtDate(end, lang), ...(await this.proVars(lang)) }, 'pro-ending:' + end);
+        const sub = (await this.get('profile', {})).sub;
+        if (end - 7 * DAY > Date.now() + DAY) await scheduleAt(this.env, end - 7 * DAY, sub, 'pro-soon', String(end));
+        return this.json({ ok: true });
+      }
+      case 'plan-ended': {                                 // { ref }: Pro is over
+        const lang = (await this.get('profile', {})).lang; await this.put({ cancelAt: null });
+        await this.mailMe('proEnded', await this.proVars(lang), 'pro-ended:' + a.ref); return this.json({ ok: true });
+      }
+      case 'due': return this.json(await this.due(a));
+      // ('e:' + email objects: the language of whoever has that address, for emails sent to it.)
+      case 'set-lang': await this.put({ lang: a.lang }); return this.json({ ok: true });
       case 'call-sessions': return this.json({ ids: await this.get('callSessions', []) });
       case 'call-session-add': await this.put({ callSessions: [a.id, ...(await this.get('callSessions', []))].slice(0, 20) }); return this.json({ ok: true });
       case 'team-id': return this.json({ id: await this.get('team', null) });
       case 'team-set': { if (a.only && (await this.get('team', null)) !== a.only) return this.json({ ok: true }); await this.put({ team: a.id || null }); return this.json({ ok: true }); }
       case 'invites-list': return this.json({ invites: await this.get('invites', []) });
-      case 'invites-add': { const l = (await this.get('invites', [])).filter(x => x.id !== a.id); l.unshift({ id: a.id, name: a.name, by: a.by, at: Date.now() }); await this.put({ invites: l.slice(0, 20) }); return this.json({ ok: true }); }
+      case 'invites-add': { const l = (await this.get('invites', [])).filter(x => x.id !== a.id); l.unshift({ id: a.id, name: a.name, by: a.by, at: Date.now() }); await this.put({ invites: l.slice(0, 20) }); return this.json({ ok: true, lang: await this.get('lang', null) }); }
       case 'invites-remove': await this.put({ invites: (await this.get('invites', [])).filter(x => x.id !== a.id) }); return this.json({ ok: true });
       case 'ratek': {                                      // { key, per }: one more of these this minute? (searches…)
         const now = Date.now(), k = 'rate:' + String(a.key || 'x').slice(0, 20), w = (await this.get(k, [])).filter(t => t > now - 60e3);
@@ -238,13 +342,14 @@ export class Account {
       case 'customer': return this.json({ customer: await this.get('customer', null), email: (await this.get('profile', {})).email });
       // Cloud documents: the owner's list (with the plan's limit), and "shared with me" (in the 'e:' + email objects).
       // Everything this account holds (to hand over), and wiping it (the account is closed).
-      case 'export': return this.json({ profile: await this.get('profile', {}), plan: await this.get('plan', null), credits: await this.get('credits', 0),
+      case 'export': return this.json({ profile: await this.get('profile', {}), plan: await this.get('plan', null), credits: await this.get('credits', 0), lastSeen: await this.get('lastSeen', null), mailOff: await this.get('mailOff', []),
         ledger: await this.get('ledger', []), docs: await this.get('docs', []), sessions: Object.values(await this.get('sessions', {})).map(v => ({ created: v.created, expires: v.expires, kind: v.kind })) });
       case 'wipe': {
-        const out = { docs: (await this.get('docs', [])).map(d => d.id), customer: await this.get('customer', null), email: (await this.get('profile', {})).email || null };
+        const prof = await this.get('profile', {}), out = { docs: (await this.get('docs', [])).map(d => d.id), customer: await this.get('customer', null), email: prof.email || null, lang: prof.lang || null };
         await this.ctx.storage.deleteAll(); return this.json(out);
       }
-      case 'docs-list': return this.json({ docs: await this.get('docs', []) });
+      case 'docs-list': { const d = await this.docState(); return this.json({ docs: (await this.get('docs', [])).map(x => (d.locked.includes(x.id) ? { ...x, readOnly: true } : x)), limit: d.limit }); }
+      case 'docs-locked': { const d = await this.docState(); return this.json({ locked: d.locked.includes(a.id), limit: d.limit }); }
       case 'docs-add': {
         const docs = await this.get('docs', []);
         if (docs.length >= +a.limit) return this.json({ ok: false, limit: +a.limit });
@@ -258,7 +363,7 @@ export class Account {
       case 'inbox-list': return this.json({ docs: await this.get('inbox', []) });
       case 'inbox-add': {
         const inbox = (await this.get('inbox', [])).filter(x => x.id !== a.id);
-        inbox.unshift({ id: a.id, name: a.name, owner: a.owner, role: a.role, at: Date.now() }); await this.put({ inbox: inbox.slice(0, 1000) }); return this.json({ ok: true });
+        inbox.unshift({ id: a.id, name: a.name, owner: a.owner, role: a.role, at: Date.now() }); await this.put({ inbox: inbox.slice(0, 1000) }); return this.json({ ok: true, lang: await this.get('lang', null) });
       }
       case 'inbox-remove': await this.put({ inbox: (await this.get('inbox', [])).filter(x => x.id !== a.id) }); return this.json({ ok: true });
     }
@@ -341,6 +446,12 @@ export async function handleApi(req, env, url) {
   if (path.startsWith('/lti/')) return handleLti(req, env, url, s.site);
   // Stripe's own calls: signed, no browser involved.
   if (path === '/billing/webhook' && req.method === 'POST') return stripeWebhook(req, env, json);
+  // The link to stop optional emails (signed; no session: it's opened from the email, or posted by the mail app).
+  if (path === '/mail/unsubscribe' && (req.method === 'GET' || req.method === 'POST')) {
+    const t = await readUnsubToken(env, url.searchParams.get('t')), r = t ? await call(acct(env, t.sub), 'mail-off', { kind: t.kind }) : { ok: false };
+    return new Response(unsubPage(r.lang, r.ok, s.site), { status: r.ok ? 200 : 400, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex',
+      'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'", 'Referrer-Policy': 'no-referrer' } });
+  }
   // Anything that changes something, sent with the cookie, must come from Revela's site (no cross-site requests).
   if (req.method === 'POST' && cookieOf(req) && !req.headers.get('Authorization') && !webOrigin) return json({ error: 'origin' }, 403);
   const isDocs = path === '/docs' || path.startsWith('/docs/');
@@ -354,8 +465,10 @@ export async function handleApi(req, env, url) {
   if (path === '/login' && req.method === 'POST') {
     const who = await googleUser(body.accessToken, body.idToken, s.clientId, env.FETCH || fetch);
     if (!who) return json({ error: 'not signed in with Google' }, 401);
-    const kind = body.kind === 'desktop' && !webOrigin ? 'desktop' : 'web';
-    const r = await call(acct(env, who.sub), 'login', { sub: who.sub, email: who.email, kind });
+    const kind = body.kind === 'desktop' && !webOrigin ? 'desktop' : 'web', lang = langOf(body.lang);
+    const r = await call(acct(env, who.sub), 'login', { sub: who.sub, email: who.email, name: who.name, kind, lang, terms: body.terms });
+    if (r.error === 'terms') return json(r, 400);
+    if (lang) await call(acct(env, 'e:' + who.email), 'set-lang', { lang });   // (for emails to this address: shares, invitations)
     const token = tokenOf(who.sub, r.secret);
     if (kind === 'desktop') return json({ ok: true, token });
     return json({ ok: true }, 200, { 'Set-Cookie': `${COOKIE}=${token}; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=${r.days * 86400}` });
@@ -376,16 +489,21 @@ export async function handleApi(req, env, url) {
   // Cloud documents: a link may give access without a session (to read).
   if (isDocs) {
     const who = me && { ...me, ...(await call(acct(env, me.sub), 'me')) };
-    return handleDocs(path, req, body, url, env, who && { sub: me.sub, email: who.email, plan: who.plan, features: who.features }, acct, call, json);
+    return handleDocs(path, req, body, url, env, who && { sub: me.sub, email: who.email, name: who.name, plan: who.plan, features: who.features }, acct, call, json);
   }
   if (!me) return json({ error: 'no session' }, 401);
   const A = acct(env, me.sub);
   if (path.startsWith('/call/') && req.method === 'POST') { const prof = await call(A, 'me'); return handleCalls(path, body, env, { sub: me.sub, email: prof.email, features: prof.features }, A, call, json); }
-  if (path === '/team' || path.startsWith('/team/')) { const prof = await call(A, 'me'); return handleTeams(path, req, body, url, env, { sub: me.sub, email: prof.email }, A, acct, call, json); }
+  if (path === '/team' || path.startsWith('/team/')) { const prof = await call(A, 'me'); return handleTeams(path, req, body, url, env, { sub: me.sub, email: prof.email, name: prof.name }, A, acct, call, json); }
   switch (path) {
     case '/me': {
       const r = await call(A, 'me');
       return json({ ...r, billing: !!(env.STRIPE_SECRET_KEY && env.STRIPE_WEBHOOK_SECRET), photos: photoProviders(env) });
+    }
+    case '/terms': {
+      if (req.method !== 'POST') return json({ error: 'method' }, 405);
+      const r = await call(A, 'terms', { version: body.version, lang: langOf(body.lang) });
+      return json(r, r.error ? 400 : 200);
     }
     case '/logout': {
       await call(A, 'logout', { secret: me.secret });
@@ -411,19 +529,24 @@ export async function handleApi(req, env, url) {
   return json({ error: 'not found' }, 404);
 }
 const linkOf = (env, nonce) => env.DESKTOP.get(env.DESKTOP.idFromName('d:' + nonce));
+const langOf = l => (typeof l === 'string' && /^[a-z]{2}$/.test(l) ? l : null);
 
 // A Google sign-in, checked with Google: an ID token (its signature) or an
 // access token (tokeninfo), issued to Revela's client, with a verified email.
 async function googleUser(accessToken, idToken, clientId, fetchImpl) {
   if (!clientId) return null;
-  if (idToken) { const c = await verifyGoogleToken(idToken, clientId, fetchImpl).catch(() => null); return c && c.email_verified && c.sub ? { sub: c.sub, email: String(c.email).toLowerCase() } : null; }
+  if (idToken) { const c = await verifyGoogleToken(idToken, clientId, fetchImpl).catch(() => null); return c && c.email_verified && c.sub ? { sub: c.sub, email: String(c.email).toLowerCase(), name: nameOf(c.name) } : null; }
   if (!accessToken || typeof accessToken !== 'string' || accessToken.length > 4096) return null;
   const r = await fetchImpl('https://oauth2.googleapis.com/tokeninfo?access_token=' + encodeURIComponent(accessToken)).catch(() => null);
   if (!r || !r.ok) return null;
   const i = await r.json();
   if ((i.aud !== clientId && i.azp !== clientId) || !i.sub || !i.email || String(i.email_verified) !== 'true') return null;
-  return { sub: String(i.sub), email: String(i.email).toLowerCase() };
+  // (The name, to sign the emails sent for this person — "Ana shared…"; optional.)
+  const u = await fetchImpl('https://openidconnect.googleapis.com/v1/userinfo', { headers: { Authorization: 'Bearer ' + accessToken } }).then(x => (x.ok ? x.json() : null)).catch(() => null);
+  return { sub: String(i.sub), email: String(i.email).toLowerCase(), name: u?.sub === String(i.sub) ? nameOf(u.name) : null };
 }
+
+const nameOf = n => (typeof n === 'string' && n.trim() ? n.replace(/[<>\r\n]/g, '').trim().slice(0, 80) : null);
 
 // ---- AI --------------------------------------------------------------------------------------------
 const credits = (usd, s) => Math.max(1, Math.ceil((usd * s.markup) / s.creditUsd));
@@ -514,18 +637,24 @@ async function accountDelete(env, s, me, A, body, json) {
   const prof = await call(A, 'me');
   if (String(body.confirm || '').trim().toLowerCase() !== prof.email) return json({ error: 'confirm' }, 400);
   if (me.via !== 'cookie') return json({ error: 'from the website' }, 403);
-  const w = await call(A, 'wipe');
+  const w = await deleteAccount(env, me.sub);
+  if (w.email) await mail(env, { to: w.email, kind: 'deleted', lang: w.lang, vars: {} });   // (the confirmation)
+  return json({ ok: true }, 200, { 'Set-Cookie': `${COOKIE}=; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=0` });
+}
+// (Also for an account unused for two years: schedule.js.) → { email, lang } it had.
+export async function deleteAccount(env, sub) {
+  const w = await call(acct(env, sub), 'wipe');
   for (const id of w.docs) {
-    const r = await env.DOCS?.get(env.DOCS.idFromName('doc:' + id)).fetch('https://doc/delete', { method: 'POST', body: JSON.stringify({ who: { sub: me.sub } }) });
+    const r = await env.DOCS?.get(env.DOCS.idFromName('doc:' + id)).fetch('https://doc/delete', { method: 'POST', body: JSON.stringify({ who: { sub } }) });
     const people = r?.ok ? (await r.json()).people || [] : [];
     for (const e of people) await call(acct(env, 'e:' + e), 'inbox-remove', { id });
   }
   if (w.email) await call(acct(env, 'e:' + w.email), 'wipe');
   if (w.customer && env.STRIPE_SECRET_KEY) {
     const subs = await (await (env.FETCH || fetch)('https://api.stripe.com/v1/subscriptions?' + new URLSearchParams({ customer: w.customer, status: 'active' }), { headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}` } }).catch(() => null))?.json().catch(() => null);
-    for (const sub of subs?.data || []) await (env.FETCH || fetch)('https://api.stripe.com/v1/subscriptions/' + encodeURIComponent(sub.id), { method: 'DELETE', headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}` } }).catch(() => null);
+    for (const x of subs?.data || []) await (env.FETCH || fetch)('https://api.stripe.com/v1/subscriptions/' + encodeURIComponent(x.id), { method: 'DELETE', headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}` } }).catch(() => null);
   }
-  return json({ ok: true }, 200, { 'Set-Cookie': `${COOKIE}=; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=0` });
+  return { email: w.email, lang: w.lang };
 }
 
 // ---- Photos (Unsplash, Pexels): searched with Revela's keys, which stay here ----
@@ -627,8 +756,13 @@ async function stripeWebhook(req, env, json) {
     const A = acct(env, sub);
     await call(A, 'setplan', { name: 'pro', until: end, customer: o.customer });
     await call(A, 'me');                                   // (its month of credits now, if due: Account.monthly)
+  } else if (ev.type === 'customer.subscription.updated' && !teamOf(o)) {
+    // Cancelled (it ends at the end of the period), or renewed again: told now, and reminded a week before.
+    const sub = subOf(o); if (!sub) return json({ ok: true });
+    const end = (+o.cancel_at || +o.current_period_end || +o.items?.data?.[0]?.current_period_end || 0) * 1000;
+    await call(acct(env, sub), 'plan-ending', { end: (o.cancel_at_period_end || o.cancel_at) && end > Date.now() ? end : 0 });
   } else if (ev.type === 'customer.subscription.deleted') {
-    const sub = subOf(o); if (sub) await call(acct(env, sub), 'setplan', { name: 'free', until: 0 });
+    const sub = subOf(o); if (sub) { const A = acct(env, sub); await call(A, 'setplan', { name: 'free', until: 0 }); await call(A, 'plan-ended', { ref: o.id || ev.id }); }
   }
   return json({ ok: true });
 }

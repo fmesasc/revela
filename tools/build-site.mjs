@@ -19,7 +19,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // The app: every file and folder it needs, and nothing else (no tests, tools, server…).
-export const APP_FILES = ['index.html', 'remote.html', 'view.html', 'vote.html', 'auth.html', 'dropbox.html', 'privacy.html', 'terms.html', 'legal.html',
+export const APP_FILES = ['index.html', 'remote.html', 'view.html', 'vote.html', 'auth.html', 'dropbox.html', 'privacy.html', 'terms.html', 'legal.html', 'dpa.html',
   'legal.css', 'manifest.webmanifest', 'sw.js', 'icons', 'assets', 'src'];
 
 function markEdition(index, edition) {
@@ -46,7 +46,7 @@ export async function build(out = join(ROOT, 'dist'), { appOnly = false, open = 
   copyApp(join(out, 'app'));
   markEdition(join(out, 'app', 'index.html'), 'cloud');
   // Privacy and terms at the top too (Google's consent screen links them), with their style.
-  for (const f of ['privacy.html', 'terms.html', 'legal.html', 'legal.css']) cpSync(join(ROOT, f), join(out, f));
+  for (const f of ['privacy.html', 'terms.html', 'legal.html', 'dpa.html', 'legal.css']) cpSync(join(ROOT, f), join(out, f));
   // The app's icon, for the site's pages.
   mkdirSync(join(out, 'img'), { recursive: true });
   cpSync(join(ROOT, 'icons', 'icon.svg'), join(out, 'img', 'icon.svg'));

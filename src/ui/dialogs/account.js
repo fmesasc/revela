@@ -10,7 +10,41 @@ import { alertDialog, confirmDialog, promptDialog } from './dialog.js';
 import { openTeam } from './team.js';
 
 const FEATURE_NAMES = { ai: 'IA incluida', 'share-people': 'Compartir con personas', 'cloud-save': 'Guardado en la nube', 'video-calls': 'Videollamadas en el editor', 'premium-templates': 'Plantillas premium' };
-const errorText = e => (e.message === 'CANCELLED' ? t('No se ha iniciado sesión.') : e.message === 'EXPIRED' ? t('Se acabó el tiempo para confirmar. Vuelve a intentarlo.') : `${t('Algo ha fallado:')} ${e.message}`);
+const errorText = e => (e.message === 'CANCELLED' || e.message === 'TERMS' ? t('No se ha iniciado sesión.') : e.message === 'EXPIRED' ? t('Se acabó el tiempo para confirmar. Vuelve a intentarlo.') : `${t('Algo ha fallado:')} ${e.message}`);
+
+// ---- The terms of service: accepted (and being 14 or older confirmed) before the first sign-in ----
+const termsText = () => t('Al continuar aceptas las {terms} y la {privacy}, y confirmas que tienes 14 años o más.')
+  .replace('{terms}', `<a href="${acc.TERMS_URL}" target="_blank" rel="noopener">${t('condiciones del servicio')}</a>`)
+  .replace('{privacy}', `<a href="${acc.PRIVACY_URL}" target="_blank" rel="noopener">${t('política de privacidad')}</a>`);
+const termsBox = () => `<label class="acc-terms" style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin:10px 0"><input type="checkbox" class="acc-terms-ok"${acc.termsAccepted() ? ' checked' : ''} style="margin-top:3px"><span>${termsText()}</span></label>`;
+// A dialog asking for them: resolves true once accepted (the box ticked), false if closed.
+export function askTerms() {
+  return new Promise(resolve => {
+    document.getElementById('terms-modal')?.remove();
+    const back = document.createElement('div'); back.id = 'terms-modal'; back.className = 'modal-backdrop';
+    back.innerHTML = `<div class="modal" style="text-align:start;width:min(440px,94vw)"><h3>${t('Condiciones de Revela')}</h3>${termsBox()}
+      <div class="fr-actions"><button type="button" class="mini2 tm-no">${t('Cancelar')}</button><button type="button" class="fr-do tm-ok" disabled>${t('Continuar')}</button></div></div>`;
+    document.body.appendChild(back);
+    const box = back.querySelector('.acc-terms-ok'), go = back.querySelector('.tm-ok'), done = v => { back.remove(); resolve(v); };
+    box.checked = false; box.addEventListener('change', () => { go.disabled = !box.checked; });
+    go.addEventListener('click', () => { acc.rememberTerms(); done(true); });
+    back.querySelector('.tm-no').addEventListener('click', () => done(false));
+  });
+}
+// Signing in from anywhere (a shared link, the desktop app's request): the terms first, if this browser hasn't accepted them.
+export async function signInWithTerms() {
+  if (!acc.termsAccepted() && !(await askTerms())) throw new Error('CANCELLED');
+  return acc.signIn();
+}
+// An account from before the terms (the server says terms: false): asked once per visit until accepted.
+let termsAsked = false;
+export function watchTerms() {
+  acc.onAccount(me => {
+    if (!me || me.terms !== false || termsAsked) return;
+    termsAsked = true;
+    (acc.termsAccepted() ? Promise.resolve(true) : askTerms()).then(ok => ok && acc.acceptTerms()).catch(() => {});
+  });
+}
 
 // (buy: a product chosen on the prices page — ?comprar=pro-year —, paid for as soon as there is a session.)
 export const BUYABLE = ['pro-month', 'pro-year', 'credits-500', 'credits-1500'];
@@ -28,17 +62,22 @@ export function openAccount({ buy } = {}) {
     const me = acc.account();
     if (!me) {
       body.innerHTML = `<p class="host-help">${t('Inicia sesión para usar la IA incluida, sin claves. Las cuentas nuevas reciben créditos de regalo para probarla.')}</p>
+        ${termsBox()}
         <div class="acc-code" hidden></div>
-        <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="fr-do acc-login">${t(EDITION === 'desktop' ? 'Iniciar sesión en el navegador' : 'Iniciar sesión con Google')}</button></div>
+        <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="fr-do acc-login"${acc.termsAccepted() ? '' : ' disabled'}>${t(EDITION === 'desktop' ? 'Iniciar sesión en el navegador' : 'Iniciar sesión con Google')}</button></div>
         <p class="host-help" style="font-size:12px"><a href="${OFFICIAL_SITE}/pricing" target="_blank" rel="noopener">${t('Ver planes y precios')}</a></p>`;
-      body.querySelector('.acc-login').addEventListener('click', async e => {
-        e.target.disabled = true;
+      const termsOk = body.querySelector('.acc-terms-ok'), loginBtn = body.querySelector('.acc-login');
+      termsOk.addEventListener('change', () => { loginBtn.disabled = !termsOk.checked; });
+      loginBtn.addEventListener('click', async e => {
+        if (!termsOk.checked) return;
+        e.target.disabled = true; acc.rememberTerms();
         try {
           if (EDITION === 'desktop') {
             abort = new AbortController();
             const box = body.querySelector('.acc-code');
             await acc.desktopSignIn({ signal: abort.signal, onCode: code => { box.hidden = false;
               box.innerHTML = `${t('Se ha abierto tu navegador. Inicia sesión allí y confirma este código:')}<b>${esc(code)}</b>`; } });
+            if (acc.account()?.terms === false) await acc.acceptTerms();   // (the box was ticked here)
           } else await acc.signIn();
           render();
         } catch (err) { e.target.disabled = false; if (err.message !== 'CANCELLED' || EDITION !== 'desktop') alertDialog(errorText(err)); }
@@ -95,7 +134,7 @@ export async function handleDesktopRequest(req = acc.desktopRequest()) {
     await acc.refreshAccount().catch(() => null);
     if (!acc.account()) {
       if (!(await confirmDialog(t('La aplicación de escritorio de Revela quiere iniciar sesión. Primero, inicia sesión aquí.')))) return false;
-      try { await acc.signIn(); } catch (e) { alertDialog(errorText(e)); return false; }
+      try { await signInWithTerms(); } catch (e) { if (e.message !== 'CANCELLED') alertDialog(errorText(e)); return false; }
     }
   }
   const ok = await confirmDialog(t('¿Conectar la aplicación de escritorio de Revela a tu cuenta ({email})? Hazlo solo si acabas de pedirlo tú y la aplicación muestra este código: {code}')
