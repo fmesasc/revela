@@ -74,9 +74,12 @@ Dropbox (no «carpeta de la app»).
 1. En la [consola de Dropbox](https://www.dropbox.com/developers/apps), crear
    (o usar) una app **Scoped access ▸ Full Dropbox**, con los permisos
    `files.metadata.read`, `files.content.read` y `files.content.write`, y la
-   dirección de redirección `https://fmesasc.github.io/revela/auth.html`.
+   direcciones de redirección `https://revelaslides.com/app/auth.html` y
+   `https://fmesasc.github.io/revela/auth.html`. La app de Revela (App key
+   `u1j9rgsw5ww13e7`, pública) ya está en `src/core/config.js`; con ella las
+   presentaciones se guardan en una carpeta `Revela`.
 2. Pestaña **Extensions ▸ Add extension**:
-   - **Extension URI**: `https://fmesasc.github.io/revela/dropbox.html`
+   - **Extension URI**: `https://revelaslides.com/app/dropbox.html`
      (Dropbox añade `?file_id=…`).
    - **Supported file types**: `.json`.
    - Menú: **Open**.

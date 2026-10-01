@@ -22,7 +22,9 @@ export function setOwnKey(id, key) {
 // app keeps them in Apps/Revela.
 export const dropboxFull = () => !!read().dropboxFull;
 export function setDropboxFull(on) { const all = read(); if (on) all.dropboxFull = true; else delete all.dropboxFull; try { localStorage.setItem(LS, JSON.stringify(all)); } catch {} tokens.delete('dropbox'); }
-const dbxRoot = () => (dropboxFull() ? '/Revela' : '');
+// (With Revela's own app — whatever its access, the whole Dropbox or an app folder — always a Revela
+// folder: never loose files in someone's Dropbox root.)
+const dbxRoot = () => (dropboxFull() || !ownKey('dropbox') ? '/Revela' : '');
 export const cloudKey = id => ownKey(id) || CLOUD_KEYS[id] || '';
 export const cloudReady = id => !!cloudKey(id);
 

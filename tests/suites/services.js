@@ -137,6 +137,10 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   await test('Dropbox y OneDrive: configurar la app, iniciar sesión (PKCE), guardar, listar y abrir (servicios simulados)', async () => {
     reset(); const W = frame.contentWindow, OC = await W.eval("import('/src/io/cloud/othercloud.js')"), realFetch = W.fetch, realOpen = W.open, calls = [];
     W.localStorage.removeItem('revela.cloudKeys');
+    // (Revela's own Dropbox app aside: this test is about someone's own app.)
+    const CFG = await W.eval("import('/src/core/config.js')"), official = CFG.CLOUD_KEYS.dropbox;
+    assert(official && OC.cloudKey('dropbox') === official, 'la app de Revela en Dropbox, sin configurar nada');
+    CFG.CLOUD_KEYS.dropbox = '';
     try {
       // Without an app: how to register one, and where to write its identifier.
       D.querySelector('[data-action="cloud-dropbox"]').click(); await sleep(20);
@@ -206,7 +210,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       await OC.saveToCloud('onedrive');
       eq(pieces.length, 2, 'grande: en dos trozos'); assert(/^bytes 0-3276799\//.test(pieces[0]), 'trozos de 320 KiB × 10: ' + pieces[0]);
       assert(!calls.find(c => c.u.startsWith('https://upload.example/')).o.headers.Authorization, 'sin el token en la dirección de subida');
-    } finally { W.fetch = realFetch; W.open = realOpen; W.localStorage.removeItem('revela.cloudKeys'); OC.signOutCloud('dropbox'); OC.signOutCloud('onedrive'); D.getElementById('oc-modal')?.remove(); }
+    } finally { CFG.CLOUD_KEYS.dropbox = official; W.fetch = realFetch; W.open = realOpen; W.localStorage.removeItem('revela.cloudKeys'); OC.signOutCloud('dropbox'); OC.signOutCloud('onedrive'); D.getElementById('oc-modal')?.remove(); }
   });
 
   await test('«Abrir con Revela» desde Drive y Dropbox: ver o editar; Drive guarda con su tipo propio', async () => {

@@ -40,4 +40,4 @@ export const SERVER_URL = 'https://revela-share.fmesasc.workers.dev';
 // (Entra) application ID. Like Google's, they are not secrets (PKCE sign-in, no
 // client secret). Empty until the apps are registered; meanwhile anyone can
 // write their own in the dialog (kept only in that browser).
-export const CLOUD_KEYS = { dropbox: '', onedrive: '' };
+export const CLOUD_KEYS = { dropbox: 'u1j9rgsw5ww13e7', onedrive: '' };
