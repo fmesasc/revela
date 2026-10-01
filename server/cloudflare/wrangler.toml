@@ -4,6 +4,8 @@ compatibility_date = "2026-09-01"
 # Served at https://<name>.<account>.workers.dev; no extra preview addresses per version.
 workers_dev = true
 preview_urls = false
+# The official site (Cloudflare Pages) sends its /api/… here; the rest of the domain stays with the site.
+routes = [{ pattern = "revelaslides.com/api/*", zone_name = "revelaslides.com" }]
 
 # Everything is stored in Durable Objects (store.js), not R2: on the Workers Free
 # plan they have hard limits (it stops for the day, it never bills).
