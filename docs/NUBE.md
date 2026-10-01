@@ -164,8 +164,9 @@ desistimiento, créditos). Antes de cobrar:
 
 - Añadir el NIF y la dirección en `legal.html` (art. 10 LSSI-CE).
 - En Stripe: los datos de quien vende, las facturas por correo y la URL de las
-  condiciones (`https://revelaslides.com/terms`). Cada precio en **dos monedas** (las mismas
-  cifras): EUR como moneda principal, **con IVA incluido**, y USD en «Añadir otra moneda»
-  (`currency_options`), **sin impuestos**. Stripe Checkout cobra en la moneda de quien paga
-  sin cambiar nada en el servidor (el mismo `price` id).
+  condiciones (`https://revelaslides.com/terms`). Cada precio **sin impuestos** (comportamiento fiscal «exclusivo») y en **dos monedas** con las
+  mismas cifras: EUR como principal y USD en «Añadir otra moneda» (`currency_options`). Activar
+  **Stripe Tax** (o un Merchant of Record) para que Checkout añada el IVA del país de quien paga.
+  La página de precios muestra en euros el precio final con el IVA de España, como exige la ley
+  ante consumidores, y debajo el precio sin IVA. Nada que cambiar en el servidor (el mismo `price` id).
   El pago ya muestra, junto al botón, la renuncia al desistimiento al activarse al momento.

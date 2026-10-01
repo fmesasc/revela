@@ -138,6 +138,8 @@ section.tint{background:var(--paper2)}
 .plan .for{color:var(--ink2);font-size:15px;margin-top:6px;min-height:3.2em}
 .plan .price{font:400 54px/1 var(--serif);margin:26px 0 4px;letter-spacing:-.02em}
 .plan .price small{font:500 15px var(--sans);color:var(--ink2);letter-spacing:0}
+.plan .vat{font-size:13px;color:var(--ink3);margin:2px 0 0}
+.pack .vat{display:block;font:500 12px var(--sans);color:var(--ink3);text-align:right}
 .plan .per{font-size:13px;color:var(--ink3);min-height:1.6em}
 .plan ul{list-style:none;padding:0;margin:26px 0 30px;display:grid;gap:10px;font-size:15px;flex:1}
 .plan li{padding-left:24px;position:relative}
