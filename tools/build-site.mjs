@@ -8,6 +8,7 @@
 //
 //   node tools/build-site.mjs [out]              → the site (default: dist)
 //   node tools/build-site.mjs out --app-only     → only the app, marked "desktop" (the desktop app)
+//   node tools/build-site.mjs out --open         → only the app, unmarked: the open edition (GitHub Pages)
 //
 // Nothing is compiled: files are copied. GitHub Pages keeps publishing the
 // repository as it is (the open edition at fmesasc.github.io/revela).
@@ -18,7 +19,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // The app: every file and folder it needs, and nothing else (no tests, tools, server…).
-export const APP_FILES = ['index.html', 'remote.html', 'view.html', 'vote.html', 'auth.html', 'dropbox.html', 'privacy.html', 'terms.html',
+export const APP_FILES = ['index.html', 'remote.html', 'view.html', 'vote.html', 'auth.html', 'dropbox.html', 'privacy.html', 'terms.html', 'legal.html',
   'legal.css', 'manifest.webmanifest', 'sw.js', 'icons', 'assets', 'src'];
 
 function markEdition(index, edition) {
@@ -34,8 +35,9 @@ function copyApp(to) {
   }
 }
 
-export async function build(out = join(ROOT, 'dist'), { appOnly = false } = {}) {
+export async function build(out = join(ROOT, 'dist'), { appOnly = false, open = false } = {}) {
   rmSync(out, { recursive: true, force: true });
+  if (open) { copyApp(out); return out; }    // (GitHub Pages: the app and its legal pages, not the site nor the repository's other files)
   if (appOnly) { copyApp(out); markEdition(join(out, 'index.html'), 'desktop'); return out; }   // (the desktop app: an account on the official server)
   // The site's own pages and files.
   cpSync(join(ROOT, 'site'), out, { recursive: true });
@@ -44,7 +46,7 @@ export async function build(out = join(ROOT, 'dist'), { appOnly = false } = {}) 
   copyApp(join(out, 'app'));
   markEdition(join(out, 'app', 'index.html'), 'cloud');
   // Privacy and terms at the top too (Google's consent screen links them), with their style.
-  for (const f of ['privacy.html', 'terms.html', 'legal.css']) cpSync(join(ROOT, f), join(out, f));
+  for (const f of ['privacy.html', 'terms.html', 'legal.html', 'legal.css']) cpSync(join(ROOT, f), join(out, f));
   // The app's icon, for the site's pages.
   mkdirSync(join(out, 'img'), { recursive: true });
   cpSync(join(ROOT, 'icons', 'icon.svg'), join(out, 'img', 'icon.svg'));
@@ -66,8 +68,8 @@ async function inlineIcons(dir) {
 
 // Run from the command line.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const args = process.argv.slice(2), appOnly = args.includes('--app-only'), outArg = args.find(a => !a.startsWith('--'));
-  const out = await build(outArg ? resolve(outArg) : undefined, { appOnly });
+  const args = process.argv.slice(2), appOnly = args.includes('--app-only'), open = args.includes('--open'), outArg = args.find(a => !a.startsWith('--'));
+  const out = await build(outArg ? resolve(outArg) : undefined, { appOnly, open });
   const count = d => readdirSync(d, { withFileTypes: true }).reduce((n, e) => n + (e.isDirectory() ? count(join(d, e.name)) : 1), 0);
-  console.log(`${appOnly ? 'App' : 'Site'} built in ${out} (${count(out)} files)`);
+  console.log(`${appOnly || open ? 'App' : 'Site'} built in ${out} (${count(out)} files)`);
 }

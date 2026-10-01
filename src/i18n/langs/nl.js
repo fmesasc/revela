@@ -2189,4 +2189,5 @@ export default {
   "Salto": "Springen",
   "Pro mensual": "Pro maandelijks",
   "Pro anual": "Pro jaarlijks",
+  "Aviso legal": "Juridische kennisgeving",
 };

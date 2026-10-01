@@ -392,7 +392,8 @@ async function aiChat(env, s, A, body, json) {
   try {
     r = await (env.FETCH || fetch)('https://openrouter.ai/api/v1/chat/completions', { method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.OPENROUTER_KEY}`, 'HTTP-Referer': s.site, 'X-Title': 'Revela' },
-      body: JSON.stringify({ model, messages, max_tokens: maxTokens, usage: { include: true }, ...(body.json && { response_format: { type: 'json_object' } }) }) });
+      // (provider.data_collection 'deny': only providers that neither store nor train on the request.)
+      body: JSON.stringify({ model, messages, max_tokens: maxTokens, usage: { include: true }, provider: { data_collection: 'deny' }, ...(body.json && { response_format: { type: 'json_object' } }) }) });
     data = await r.json().catch(() => null);
   } catch { r = null; }
   if (!r || !r.ok || !data) { await call(A, 'settle', { id: g.hold, credits: 0 }); return json({ error: 'ai failed' }, 502); }
@@ -518,7 +519,12 @@ async function checkout(env, s, me, A, body, json) {
     success_url: `${s.site}/app/?paid=1`, cancel_url: `${s.site}/pricing`, 'metadata[sub]': me.sub, 'metadata[product]': body.product,
     ...(c.customer ? { customer: c.customer } : { customer_email: c.email }),
     ...(p.mode === 'subscription' && { 'subscription_data[metadata][sub]': me.sub }),
-    ...(team && { 'metadata[team]': team, 'subscription_data[metadata][team]': team }) };
+    ...(team && { 'metadata[team]': team, 'subscription_data[metadata][team]': team }),
+    // (An invoice for one-off purchases too; and, by the pay button, the request for immediate
+    // activation that waives the 14-day withdrawal right — Art. 103 m) of the Spanish consumer law.)
+    ...(p.mode === 'payment' && { 'invoice_creation[enabled]': 'true' }),
+    'custom_text[submit][message]': 'Al pagar pides que se active ya y aceptas que, una vez activado, pierdes el derecho de desistimiento de 14 días (art. 103 LGDCU). Condiciones: ' + s.site + '/terms.html',
+    locale: 'auto' };
   const r = await stripe(env, 'checkout/sessions', params);
   const d = await r.json().catch(() => ({}));
   return d.url ? json({ url: d.url }) : json({ error: 'billing failed' }, 502);

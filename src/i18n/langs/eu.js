@@ -2189,4 +2189,5 @@ export default {
   "Salto": "Jauzia",
   "Pro mensual": "Pro hilekoa",
   "Pro anual": "Pro urtekoa",
+  "Aviso legal": "Lege-oharra",
 };

@@ -140,6 +140,14 @@ que el servidor los rechaza.
 7. **Plan de pago de Workers** (5 $/mes) al abrirlo al público, y una alerta de
    gasto en Facturación ▸ Notificaciones.
 
-## Pendiente
+## Textos legales
 
-- Textos legales de la edición oficial.
+`legal.html` (aviso legal, LSSI-CE), `privacy.html` (RGPD: cuenta, nube, IA, pagos,
+equipos, Moodle, videollamadas, proveedores, cookies, derechos) y `terms.html`
+(condiciones de uso y de contratación: precios con IVA, renovación, cancelación,
+desistimiento, créditos). Antes de cobrar:
+
+- Añadir el NIF y la dirección en `legal.html` (art. 10 LSSI-CE).
+- En Stripe: los datos de la empresa, las facturas por correo, los precios **con
+  IVA incluido** y la URL de las condiciones (`https://revelaslides.com/terms.html`).
+  El pago ya muestra, junto al botón, la renuncia al desistimiento al activarse al momento.

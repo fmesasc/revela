@@ -2208,5 +2208,6 @@ export const ROWS = [
   ['Salto', 'Jump', 'Saut', 'Springen', 'Salto', 'Salto', 'Salt'],
   ['Pro mensual', 'Pro monthly', 'Pro mensuel', 'Pro monatlich', 'Pro mensile', 'Pro mensal', 'Pro mensual'],
   ['Pro anual', 'Pro yearly', 'Pro annuel', 'Pro jährlich', 'Pro annuale', 'Pro anual', 'Pro anual'],
+  ['Aviso legal', 'Legal notice', 'Mentions légales', 'Impressum', 'Note legali', 'Aviso legal', 'Avís legal'],
 ];
 // Additional languages (partial; anything missing falls back to Spanish).

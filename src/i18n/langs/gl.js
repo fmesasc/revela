@@ -2189,4 +2189,5 @@ export default {
   "Salto": "Salto",
   "Pro mensual": "Pro mensual",
   "Pro anual": "Pro anual",
+  "Aviso legal": "Aviso legal",
 };

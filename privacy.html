@@ -1,94 +1,195 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Revela · Privacy Policy</title>
+  <title>Revela · Política de privacidad</title>
+  <meta name="description" content="Qué datos trata Revela, para qué, con qué proveedores y cómo ejercer tus derechos.">
+  <link rel="canonical" href="https://revelaslides.com/privacy.html">
   <link rel="icon" href="icons/icon.svg">
   <link rel="stylesheet" href="legal.css">
 </head>
 <body>
 <main>
-  <p class="lang"><a href="#en">English</a> · <a href="#es">Español</a></p>
-
-  <article id="en">
-    <h1>Revela Privacy Policy</h1>
-    <p class="date">Last updated: September 28, 2026</p>
-
-    <h2>Summary</h2>
-    <p>Revela is an open-source presentation editor that runs in your browser. <strong>It has no servers of its own that receive your presentations or data</strong>: your work is stored in your browser and only leaves it when you ask (saving to Google Drive, sharing, collaborating, using AI…). There are no ads, no analytics and no tracking cookies.</p>
-
-    <h2>What is stored in your browser</h2>
-    <p>Your presentations, settings, your name (if you type it to comment, collaborate or sign) and, if you sign, a signing key that cannot leave the browser. They are kept in the browser's local storage (localStorage and IndexedDB) and you can delete them at any time by clearing the site's data.</p>
-
-    <h2>Google Drive and your Google account</h2>
-    <p>If you choose to connect Google Drive, Revela asks for your permission through Google with the <code>drive.file</code> scope. With it, Revela <strong>can only see and change the files it creates or that you explicitly open with Revela</strong>; it cannot see the rest of your Drive. It also asks for <code>drive.install</code>, which only lets Revela appear in Drive's “Open with” and “New” menus. If you sign in, Revela may receive your name, email address and profile picture only to show which account you are using.</p>
-    <ul>
-      <li>Revela uses this data only for what you ask: listing, opening, saving and sharing your Revela presentations.</li>
-      <li>Data goes directly from your browser to Google; it does not go through or get stored on any Revela server.</li>
-      <li>Revela does not sell or transfer your Google data, and does not use it for advertising or to train artificial-intelligence models.</li>
-      <li>You can revoke access at any time at <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</li>
-    </ul>
-    <p>Revela's use and transfer of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
-
-    <h2>Features that talk to other services (only if you use them)</h2>
-    <ul>
-      <li><strong>Sharing:</strong> the presentation is encrypted in your browser before it leaves; it is stored in your Google Drive, in a file you upload yourself, or on a server you configure. Without the key or password it cannot be read.</li>
-      <li><strong>Live collaboration and phone remote:</strong> browsers connect directly (WebRTC, encrypted). PeerJS's public service only introduces them; if a collaboration server is used, it is the one configured by whoever runs the installation.</li>
-      <li><strong>Audience polls and Q&amp;A:</strong> likewise, browser to browser.</li>
-      <li><strong>Dropbox and OneDrive:</strong> only if you connect them; your presentation goes directly from your browser to Revela's folder there (Dropbox: Apps/Revela only, or the Revela folder if you set up an app with full access to use “Open with Revela”; OneDrive: the Revela folder). The access is kept in memory while the page is open, and no Revela server is involved.</li>
-      <li><strong>Artificial intelligence:</strong> only with your own OpenRouter key; the text you send goes to OpenRouter and the model you choose, under their terms.</li>
-      <li><strong>Live captions, speaker coach and dictation:</strong> use the browser's speech recognition; in Chrome and Edge the audio is sent to their speech service. Revela warns you before turning it on.</li>
-      <li><strong>Image background removal:</strong> the model is downloaded once and runs in your browser; the image never leaves it.</li>
-      <li><strong>Searching free resources, fonts and libraries:</strong> only when you use them (and after asking once), the search words go to the service you search — Openverse (pictures, GIFs, sounds), Iconify (icons), Wikimedia Commons (videos and 3D models), Poly Haven or Sketchfab (3D models) — and the files you add come from their sites (sounds from Freesound or Jamendo); Google Fonts and jsDelivr serve fonts and libraries. Like any website, they receive the request and your IP address; nothing from your presentation is sent.</li>
-      <li><strong>Embedded content</strong> (YouTube, Vimeo, web pages, dashboards): served by each service under its own policy.</li>
-    </ul>
-
-    <h2>Children</h2>
-    <p>Revela can be used in schools. It collects no data for profiling or advertising. When a school uses it with students, the school decides which accounts and services are connected.</p>
-
-    <h2>Changes and contact</h2>
-    <p>If this policy changes, this page will be updated with its date. For questions or to exercise your rights, open an issue at <a href="https://github.com/fmesasc/revela/issues">github.com/fmesasc/revela/issues</a>. The source code is public at <a href="https://github.com/fmesasc/revela">github.com/fmesasc/revela</a>.</p>
-  </article>
+  <p class="lang"><a href="#es">Español</a> · <a href="#en">English</a></p>
 
   <article id="es" lang="es">
     <h1>Política de privacidad de Revela</h1>
-    <p class="date">Última actualización: 28 de septiembre de 2026</p>
+    <p class="date">Última actualización: 1 de octubre de 2026</p>
 
     <h2>En resumen</h2>
-    <p>Revela es un editor de presentaciones de código abierto que funciona dentro de tu navegador. <strong>No tiene servidores propios que reciban tus presentaciones ni tus datos</strong>: lo que haces se guarda en tu navegador, y solo sale de él cuando tú lo pides (guardar en Google Drive, compartir, colaborar, usar la IA…). No hay publicidad, ni analítica, ni cookies de seguimiento.</p>
+    <p>Revela es un editor de presentaciones de código abierto. Hay dos formas de usarlo:</p>
+    <ul>
+      <li><strong>Sin cuenta</strong> (la edición abierta, o la oficial sin iniciar sesión): tus presentaciones se guardan en tu navegador y solo salen de él cuando tú lo pides (guardar en tu nube, compartir, colaborar…). Revela no recibe nada.</li>
+      <li><strong>Con una cuenta de Revela</strong> (la versión oficial en revelaslides.com y la aplicación de escritorio): el servidor de Revela guarda lo necesario para tu cuenta, tus créditos de IA, tus pagos y las presentaciones que guardes en su nube. Se explica abajo, con detalle.</li>
+    </ul>
+    <p>En ningún caso hay publicidad, venta de datos, analítica de personas ni cookies de seguimiento.</p>
+
+    <h2>Responsable del tratamiento</h2>
+    <p><strong>FM Lab (Francisco Mesas Cervilla)</strong>, Barcelona, España. Contacto: el formulario de <a href="https://fmesasc.com/#contact">fmesasc.com</a> o una consulta en <a href="https://github.com/fmesasc/revela/issues">github.com/fmesasc/revela/issues</a>. Más datos en el <a href="legal.html">aviso legal</a>.</p>
 
     <h2>Qué se guarda en tu navegador</h2>
     <p>Tus presentaciones, la configuración, tu nombre (si lo escribes para comentar, colaborar o firmar) y, si firmas, una clave de firma que no puede salir del navegador. Se guardan en el almacenamiento local del navegador (localStorage e IndexedDB). Puedes borrarlos cuando quieras borrando los datos del sitio en tu navegador.</p>
+
+    <h2>Tu cuenta de Revela (versión oficial)</h2>
+    <p>Inicias sesión con Google. El servidor de Revela guarda:</p>
+    <ul>
+      <li><strong>Tu identificador de Google y tu correo</strong>, y la fecha de alta.</li>
+      <li><strong>Tus sesiones</strong>: solo una huella de cada una (no la clave), cuándo se creó, cuándo caduca (30 días en la web, 90 en la aplicación de escritorio) y si es de la web o del escritorio.</li>
+      <li><strong>Tu plan, tus créditos y sus movimientos</strong> (cuántos, cuándo y por qué: regalo, compra, uso de la IA).</li>
+      <li><strong>La lista de tus presentaciones en la nube</strong> y de las que otras personas comparten contigo, y tu equipo si perteneces a uno.</li>
+    </ul>
+    <p><strong>Para qué:</strong> darte el servicio que pides (tu cuenta, la IA incluida, la nube y los planes de pago). <strong>Base legal:</strong> la ejecución del contrato que aceptas al crear la cuenta (art. 6.1.b RGPD), y el interés legítimo en proteger el servicio frente a abusos con límites de uso (art. 6.1.f). <strong>Cuánto tiempo:</strong> mientras tengas la cuenta. Puedes descargarlo todo o eliminar la cuenta tú mismo en <em>Mi cuenta ▸ Tus datos</em>: se borran tu cuenta y tus presentaciones en la nube, y se cancela la suscripción.</p>
+
+    <h2>Presentaciones en la nube y compartidas</h2>
+    <ul>
+      <li>Las presentaciones que guardas en la nube de Revela se guardan en su servidor con su dueño, las personas con permiso (ver, comentar o editar) y el permiso del enlace. Se conservan las diez últimas versiones.</li>
+      <li>Si compartes con una persona, se guarda su correo para darle acceso.</li>
+      <li><strong>Estadísticas (Pro):</strong> para el dueño, cuántas veces y cuánto tiempo se ve cada diapositiva, con un identificador aleatorio que crea el navegador de quien la ve. No se guarda su correo, su dirección IP ni datos de su navegador.</li>
+    </ul>
+
+    <h2>Inteligencia artificial incluida</h2>
+    <p>Cuando usas la IA con tu cuenta, lo que le pides (el texto y, si lo envías, el contenido de la diapositiva o el documento) pasa por el servidor de Revela hacia <strong>OpenRouter</strong> y el modelo elegido, que lo procesan para responder. El servidor de Revela no guarda ese contenido: solo apunta lo que costó, para descontarlo de tus créditos. Revela no lo usa para entrenar modelos, y para el texto pide a OpenRouter que solo use proveedores que no guardan ni entrenan con lo que se les envía.</p>
+
+    <h2>Pagos</h2>
+    <p>Los pagos los gestiona <strong>Stripe</strong>. Revela nunca ve ni guarda los datos de tu tarjeta: solo recibe de Stripe el aviso firmado de que el pago se ha hecho, y guarda tu identificador de cliente de Stripe para gestionar la suscripción. Las facturas las conserva Stripe durante el tiempo que exige la ley (obligación legal, art. 6.1.c RGPD).</p>
+
+    <h2>Equipos, centros educativos y Moodle</h2>
+    <ul>
+      <li><strong>Equipos:</strong> se guardan el nombre del equipo, el correo y el papel de cada miembro, las invitaciones, el kit de marca y las plantillas del equipo. Quien administra el equipo ve los correos de sus miembros.</li>
+      <li><strong>Moodle y otras plataformas (LTI):</strong> cuando un centro usa Revela como actividad, recibe de la plataforma un identificador del alumno y su nombre para el ejercicio, y envía la nota al libro de calificaciones. En este caso el <strong>centro</strong> es el responsable de los datos de su alumnado y Revela trata esos datos por su cuenta (encargado del tratamiento). Los centros pueden pedir el contrato de encargo desde la página de contacto.</li>
+    </ul>
+
+    <h2>Videollamadas (Pro)</h2>
+    <p>La imagen y el sonido viajan cifrados a través del servicio Realtime de <strong>Cloudflare</strong> entre quienes están en la llamada. No se graban ni se guardan. El servidor solo sabe quién está en la llamada de cada presentación mientras dura.</p>
 
     <h2>Google Drive y tu cuenta de Google</h2>
     <p>Si decides conectar Google Drive, Revela te pide permiso mediante el sistema de Google con el alcance <code>drive.file</code>. Con él, Revela <strong>solo puede ver y modificar los archivos que crea él mismo o que tú abres expresamente con Revela</strong>; no puede ver el resto de tu Drive. También pide <code>drive.install</code>, que solo permite que Revela aparezca en los menús «Abrir con» y «Nuevo» de Drive. Si inicias sesión, Revela puede recibir tu nombre, tu dirección de correo y tu foto de perfil solo para mostrarte con qué cuenta has entrado.</p>
     <ul>
       <li>Revela usa estos datos únicamente para lo que pides: listar tus presentaciones de Revela, abrirlas, guardarlas y compartirlas.</li>
-      <li>Los datos van directamente de tu navegador a Google; no pasan por ningún servidor de Revela ni se guardan en él.</li>
+      <li>Los archivos de Drive van directamente de tu navegador a Google; no pasan por el servidor de Revela ni se guardan en él.</li>
       <li>Revela no vende, no cede y no usa tus datos de Google para publicidad ni para entrenar modelos de inteligencia artificial.</li>
       <li>Puedes retirar el permiso en cualquier momento en <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</li>
     </ul>
     <p>El uso y la transferencia por parte de Revela de la información recibida de las API de Google se ajustan a la <a href="https://developers.google.com/terms/api-services-user-data-policy">Política de datos de usuario de los servicios de API de Google</a>, incluidos los requisitos de uso limitado.</p>
 
+    
     <h2>Funciones que se comunican con otros servicios (solo si las usas)</h2>
     <ul>
       <li><strong>Compartir:</strong> la presentación se cifra en tu navegador antes de salir; se guarda en tu Google Drive, en un archivo que subes tú o en el servidor que tú configures. Sin la clave o la contraseña no se puede leer.</li>
       <li><strong>Colaborar en directo y mando del móvil:</strong> los navegadores se conectan directamente (WebRTC, cifrado). El servicio público de PeerJS solo los presenta entre sí; si se usa un servidor de colaboración, es el que configure quien administra la instalación.</li>
       <li><strong>Votaciones y preguntas del público:</strong> igual, de navegador a navegador.</li>
       <li><strong>Dropbox y OneDrive:</strong> solo si los conectas; la presentación va directamente de tu navegador a la carpeta de Revela allí (Dropbox: solo Aplicaciones/Revela, o la carpeta Revela si configuras una app con acceso completo para usar «Abrir con Revela»; OneDrive: la carpeta Revela). El acceso se guarda en memoria mientras la página está abierta y no interviene ningún servidor de Revela.</li>
-      <li><strong>Inteligencia artificial:</strong> solo con tu propia clave de OpenRouter; el texto que envías va a OpenRouter y al modelo que elijas, con sus condiciones.</li>
+      <li><strong>Inteligencia artificial con tu propia clave:</strong> el texto que envías va directamente a OpenRouter y al modelo que elijas, con sus condiciones.</li>
+      <li><strong>Fotos de Unsplash y Pexels</strong> (versión oficial): las palabras que buscas pasan por el servidor de Revela, que pregunta a esos servicios con su clave; no se guardan.</li>
       <li><strong>Subtítulos en directo, entrenador de oratoria y dictado:</strong> usan el reconocimiento de voz del navegador; en Chrome y Edge el audio se envía a su servicio de voz. Revela avisa antes de activarlo.</li>
       <li><strong>Quitar el fondo de imágenes:</strong> el modelo se descarga una vez y se ejecuta en tu navegador; la imagen no sale de él.</li>
       <li><strong>Búsqueda de recursos libres, fuentes y bibliotecas:</strong> solo cuando los usas (y tras preguntarte una vez), las palabras que buscas van al servicio donde buscas —Openverse (imágenes, GIF, sonidos), Iconify (iconos), Wikimedia Commons (vídeos y modelos 3D), Poly Haven o Sketchfab (modelos 3D)— y los archivos que añades se descargan de sus webs (los sonidos, de Freesound o Jamendo); Google Fonts y jsDelivr sirven fuentes y bibliotecas. Como cualquier web, reciben la petición y tu dirección IP; no se envía nada de tu presentación.</li>
       <li><strong>Contenido insertado</strong> (YouTube, Vimeo, páginas web, paneles de datos): lo sirve cada servicio, con su propia política.</li>
     </ul>
 
+    
+    <h2>Proveedores y transferencias internacionales</h2>
+    <p>Para dar el servicio, Revela usa estos proveedores, con contratos que protegen los datos:</p>
+    <ul>
+      <li><strong>Cloudflare</strong> (alojamiento del sitio y del servidor, videollamadas).</li>
+      <li><strong>Google</strong> (inicio de sesión, y Drive si lo conectas).</li>
+      <li><strong>Stripe</strong> (pagos).</li>
+      <li><strong>OpenRouter</strong> y el proveedor del modelo elegido (IA incluida).</li>
+    </ul>
+    <p>Algunos están en Estados Unidos. Las transferencias se amparan en el Marco de Privacidad de Datos UE-EE. UU. o en las cláusulas contractuales tipo de la Comisión Europea.</p>
+
+    <h2 id="cookies">Cookies y almacenamiento</h2>
+    <ul>
+      <li><strong>Cookie de sesión</strong> (solo si inicias sesión en la versión oficial): una cookie técnica, segura y solo para el servidor de Revela, que mantiene tu sesión. Es necesaria para el servicio que pides, por eso no requiere consentimiento (art. 22.2 LSSI-CE).</li>
+      <li><strong>Almacenamiento del navegador</strong>: tus presentaciones, preferencias (por ejemplo, el modo oscuro de la web) y la configuración. No sale de tu navegador.</li>
+      <li>No hay cookies de publicidad, seguimiento ni analítica.</li>
+    </ul>
+
+    <h2>Tus derechos</h2>
+    <p>Puedes acceder a tus datos, rectificarlos, suprimirlos, llevártelos (portabilidad), oponerte o pedir que se limite su tratamiento. La mayoría puedes hacerlos tú mismo en <em>Mi cuenta ▸ Tus datos</em> (descargar todo o eliminar la cuenta); para lo demás, escribe por el formulario de <a href="https://fmesasc.com/#contact">fmesasc.com</a>. Si crees que no se han respetado tus derechos, puedes reclamar ante la <a href="https://www.aepd.es">Agencia Española de Protección de Datos</a>.</p>
+
     <h2>Menores</h2>
-    <p>Revela puede usarse en centros educativos. No recoge datos para perfiles ni publicidad. Si un centro lo usa con alumnado, el centro decide qué cuentas y servicios se conectan.</p>
+    <p>Para crear una cuenta de Revela hay que tener al menos 14 años. Por debajo de esa edad, Revela puede usarse sin cuenta, o a través del centro educativo (equipos y Moodle), que es quien decide y responde de las cuentas de su alumnado. Revela no recoge datos para perfiles ni publicidad.</p>
+
+    <h2>Seguridad</h2>
+    <p>Las conexiones van cifradas (HTTPS). Las sesiones se guardan solo como huellas, los permisos se comprueban en el servidor en cada operación y las presentaciones compartidas por enlace se cifran en tu navegador. El código es público para que cualquiera pueda revisarlo.</p>
 
     <h2>Cambios y contacto</h2>
-    <p>Si esta política cambia, se actualizará esta página con su fecha. Para cualquier duda o para ejercer tus derechos, abre una consulta en <a href="https://github.com/fmesasc/revela/issues">github.com/fmesasc/revela/issues</a>. El código fuente es público en <a href="https://github.com/fmesasc/revela">github.com/fmesasc/revela</a>.</p>
+    <p>Si esta política cambia, se actualizará esta página con su fecha; si el cambio es importante, se avisará en la aplicación a quien tenga cuenta. Para cualquier duda, escribe por el formulario de <a href="https://fmesasc.com/#contact">fmesasc.com</a> o abre una consulta en <a href="https://github.com/fmesasc/revela/issues">github.com/fmesasc/revela/issues</a>. El código fuente es público en <a href="https://github.com/fmesasc/revela">github.com/fmesasc/revela</a>.</p>
+  </article>
+
+  <article id="en" lang="en">
+    <h1>Revela Privacy Policy</h1>
+    <p class="date">Last updated: October 1, 2026</p>
+
+    <h2>Summary</h2>
+    <p>Revela is an open-source presentation editor. <strong>Without an account</strong> (the open edition, or the official one without signing in), your presentations stay in your browser and only leave it when you ask. <strong>With a Revela account</strong> (the official edition at revelaslides.com and the desktop app), Revela's server keeps what your account, AI credits, payments and cloud presentations need, as explained below. There are never ads, data sales, people analytics or tracking cookies.</p>
+
+    <h2>Controller</h2>
+    <p><strong>FM Lab (Francisco Mesas Cervilla)</strong>, Barcelona, Spain. Contact: the form at <a href="https://fmesasc.com/#contact">fmesasc.com</a> or <a href="https://github.com/fmesasc/revela/issues">github.com/fmesasc/revela/issues</a>. See the <a href="legal.html">legal notice</a>.</p>
+
+    <h2>What is stored in your browser</h2>
+    <p>Your presentations, settings, your name (if you type it to comment, collaborate or sign) and, if you sign, a signing key that cannot leave the browser, in the browser's local storage. You can delete them at any time by clearing the site's data.</p>
+
+    <h2>Your Revela account (official edition)</h2>
+    <p>You sign in with Google. Revela's server keeps your Google identifier and email, your sessions (only a fingerprint of each, with its dates: 30 days on the web, 90 in the desktop app), your plan, credits and their movements, the list of your cloud presentations and of those shared with you, and your team if you belong to one. Purpose: providing the service you ask for. Legal basis: the contract you accept when creating the account (Art. 6.1.b GDPR) and our legitimate interest in protecting the service from abuse (Art. 6.1.f). Kept while you have the account; you can download it all or delete the account yourself in <em>My account ▸ Your data</em>.</p>
+
+    <h2>Cloud and shared presentations</h2>
+    <p>Presentations saved to Revela's cloud are stored with their owner, the people with permission and the link's permission; the last ten versions are kept. If you share with someone, their email is kept to give them access. Pro statistics show the owner how often and how long each slide is seen, with a random identifier made by the viewer's browser — no email, IP address or browser data.</p>
+
+    <h2>Built-in AI</h2>
+    <p>What you ask the AI goes through Revela's server to <strong>OpenRouter</strong> and the chosen model, which process it to answer. Revela's server does not keep that content; it only records what it cost, to deduct your credits. Revela does not use it to train models, and for text it asks OpenRouter to use only providers that neither store nor train on what is sent.</p>
+
+    <h2>Payments</h2>
+    <p>Payments are handled by <strong>Stripe</strong>. Revela never sees or stores your card details; it receives Stripe's signed notice and keeps your Stripe customer id to manage the subscription. Stripe keeps invoices as the law requires.</p>
+
+    <h2>Teams, schools and Moodle</h2>
+    <p>Teams keep the team's name, each member's email and role, invitations, brand kit and templates; admins see their members' emails. When a school uses Revela through Moodle or another LTI platform, Revela receives a student identifier and name for the activity and sends the grade back; the <strong>school</strong> is the controller of its students' data and Revela processes it on its behalf. Schools can request the data processing agreement through the contact page.</p>
+
+    <h2>Video calls (Pro)</h2>
+    <p>Video and sound travel encrypted through <strong>Cloudflare</strong>'s Realtime service between the people in the call. Nothing is recorded or stored.</p>
+
+    <h2>Google Drive and your Google account</h2>
+    <p>If you choose to connect Google Drive, Revela asks for your permission through Google with the <code>drive.file</code> scope. With it, Revela <strong>can only see and change the files it creates or that you explicitly open with Revela</strong>; it cannot see the rest of your Drive. It also asks for <code>drive.install</code>, which only lets Revela appear in Drive's “Open with” and “New” menus. If you sign in, Revela may receive your name, email address and profile picture only to show which account you are using.</p>
+    <ul>
+      <li>Revela uses this data only for what you ask: listing, opening, saving and sharing your Revela presentations.</li>
+      <li>Drive files go directly from your browser to Google; they do not go through or get stored on Revela's server.</li>
+      <li>Revela does not sell or transfer your Google data, and does not use it for advertising or to train artificial-intelligence models.</li>
+      <li>You can revoke access at any time at <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</li>
+    </ul>
+    <p>Revela's use and transfer of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+
+    
+    <h2>Features that talk to other services (only if you use them)</h2>
+    <ul>
+      <li><strong>Sharing:</strong> the presentation is encrypted in your browser before it leaves; it is stored in your Google Drive, in a file you upload yourself, or on a server you configure. Without the key or password it cannot be read.</li>
+      <li><strong>Live collaboration and phone remote:</strong> browsers connect directly (WebRTC, encrypted). PeerJS's public service only introduces them; if a collaboration server is used, it is the one configured by whoever runs the installation.</li>
+      <li><strong>Audience polls and Q&amp;A:</strong> likewise, browser to browser.</li>
+      <li><strong>Dropbox and OneDrive:</strong> only if you connect them; your presentation goes directly from your browser to Revela's folder there (Dropbox: Apps/Revela only, or the Revela folder if you set up an app with full access to use “Open with Revela”; OneDrive: the Revela folder). The access is kept in memory while the page is open, and no Revela server is involved.</li>
+      <li><strong>Artificial intelligence with your own key:</strong> the text you send goes directly to OpenRouter and the model you choose, under their terms.</li>
+      <li><strong>Unsplash and Pexels photos</strong> (official edition): your search words go through Revela's server, which asks those services with its key; they are not stored.</li>
+      <li><strong>Live captions, speaker coach and dictation:</strong> use the browser's speech recognition; in Chrome and Edge the audio is sent to their speech service. Revela warns you before turning it on.</li>
+      <li><strong>Image background removal:</strong> the model is downloaded once and runs in your browser; the image never leaves it.</li>
+      <li><strong>Searching free resources, fonts and libraries:</strong> only when you use them (and after asking once), the search words go to the service you search — Openverse (pictures, GIFs, sounds), Iconify (icons), Wikimedia Commons (videos and 3D models), Poly Haven or Sketchfab (3D models) — and the files you add come from their sites (sounds from Freesound or Jamendo); Google Fonts and jsDelivr serve fonts and libraries. Like any website, they receive the request and your IP address; nothing from your presentation is sent.</li>
+      <li><strong>Embedded content</strong> (YouTube, Vimeo, web pages, dashboards): served by each service under its own policy.</li>
+    </ul>
+
+    
+    <h2>Providers and international transfers</h2>
+    <p>Revela uses Cloudflare (hosting, server, video calls), Google (sign-in, Drive if you connect it), Stripe (payments) and OpenRouter with the chosen model provider (built-in AI). Some are in the United States; transfers rely on the EU-US Data Privacy Framework or the European Commission's standard contractual clauses.</p>
+
+    <h2 id="cookies-en">Cookies and storage</h2>
+    <p>Only a technical session cookie when you sign in to the official edition (needed for the service you ask for, so it requires no consent), plus the browser storage for your presentations and preferences. No advertising, tracking or analytics cookies.</p>
+
+    <h2>Your rights</h2>
+    <p>You may access, rectify, erase, port, object to or restrict the processing of your data — most of it yourself in <em>My account ▸ Your data</em>; for the rest, use the form at <a href="https://fmesasc.com/#contact">fmesasc.com</a>. You may also complain to the Spanish Data Protection Agency (<a href="https://www.aepd.es">aepd.es</a>).</p>
+
+    <h2>Children</h2>
+    <p>You must be at least 14 to create a Revela account. Younger people can use Revela without an account or through their school (teams and Moodle), which decides on and is responsible for its students' accounts.</p>
+
+    <h2>Security, changes and contact</h2>
+    <p>Connections are encrypted (HTTPS), sessions are stored only as fingerprints, permissions are checked on the server for every operation, and link-shared presentations are encrypted in your browser. If this policy changes, this page will be updated with its date. Contact: <a href="https://fmesasc.com/#contact">fmesasc.com</a> or <a href="https://github.com/fmesasc/revela/issues">github.com/fmesasc/revela/issues</a>. Source code: <a href="https://github.com/fmesasc/revela">github.com/fmesasc/revela</a>.</p>
   </article>
 </main>
 </body>

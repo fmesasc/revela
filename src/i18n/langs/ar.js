@@ -2189,4 +2189,5 @@ export default {
   "Salto": "قفزة",
   "Pro mensual": "Pro شهري",
   "Pro anual": "Pro سنوي",
+  "Aviso legal": "إشعار قانوني",
 };

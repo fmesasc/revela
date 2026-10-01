@@ -1,4 +1,4 @@
-# Publica el sitio estático (la raíz del repo) en GitHub Pages en cada push a main.
+# Publica la edición abierta (la aplicación, sin la web de revelaslides.com) en GitHub Pages en cada push a main.
 # No hay build: Revela es HTML/CSS/JS puro, así que se sube tal cual.
 name: Deploy to GitHub Pages
 
@@ -25,8 +25,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # (Only the app and its legal pages: the website is revelaslides.com's, and the
+      # repository's tests, tools and server code are not for publishing.)
+      - run: node tools/build-site.mjs _site --open
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4
