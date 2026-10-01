@@ -125,7 +125,7 @@ section.tint{background:var(--paper2)}
 .closing p{color:var(--ink2);margin:22px auto 36px;max-width:34em}
 
 /* Prices */
-.billing{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:4px;margin-top:36px;background:var(--card)}
+.billing{display:inline-flex;margin-right:10px;border:1px solid var(--line);border-radius:999px;padding:4px;margin-top:36px;background:var(--card)}
 .billing button{appearance:none;border:0;background:transparent;color:var(--ink2);font:600 14px var(--sans);padding:9px 18px;border-radius:999px;cursor:pointer}
 .billing button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
 .billing small{font-weight:500;color:var(--warm)}

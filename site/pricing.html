@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Precios — Revela</title>
-  <meta name="description" content="Revela es gratis para empezar. Pro: 10 € al mes o 96 € al año, con IA incluida. Equipos y centros: 6 € por persona y mes. Créditos de IA sin suscripción.">
+  <meta name="description" content="Revela es gratis para empezar. Pro: 10 € (o 10 $) al mes, o 96 € al año, con IA incluida. Equipos y centros: 6 € por persona y mes. Créditos de IA sin suscripción.">
   <link rel="icon" href="img/icon.svg" type="image/svg+xml">
   <link rel="canonical" href="https://revelaslides.com/pricing">
   <meta property="og:type" content="website">
@@ -12,7 +12,7 @@
   <meta property="og:locale" content="es_ES">
   <meta property="og:url" content="https://revelaslides.com/pricing">
   <meta property="og:title" content="Precios — Revela">
-  <meta property="og:description" content="Revela es gratis para empezar. Pro: 10 € al mes o 96 € al año, con IA incluida. Equipos y centros: 6 € por persona y mes. Créditos de IA sin suscripción.">
+  <meta property="og:description" content="Revela es gratis para empezar. Pro: 10 € (o 10 $) al mes, o 96 € al año, con IA incluida. Equipos y centros: 6 € por persona y mes. Créditos de IA sin suscripción.">
   <meta property="og:image" content="https://revelaslides.com/img/og.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -45,6 +45,10 @@
         <button type="button" data-period="month">Mensual</button>
         <button type="button" data-period="year">Anual <small>· ahorra un 20 %</small></button>
       </div>
+      <div class="billing currency" role="group" aria-label="Moneda">
+        <button type="button" data-currency="EUR">€ Euros</button>
+        <button type="button" data-currency="USD">$ Dólares</button>
+      </div>
     </div></div>
 
     <section style="padding-top:0"><div class="wrap">
@@ -52,7 +56,7 @@
         <div class="plan">
           <h3>Gratis</h3>
           <p class="for">Para crear y presentar, sin límite de tiempo.</p>
-          <div class="price">0 €</div>
+          <div class="price"><span class="amt" data-v="0">0 €</span></div>
           <p class="per">Para siempre</p>
           <ul>
             <li>Todo el editor: 3D, animaciones, gráficos, diagramas</li>
@@ -68,8 +72,8 @@
           <span class="tag">El más completo</span>
           <h3>Pro</h3>
           <p class="for">Para quien presenta a menudo y quiere la IA sin preocuparse de claves.</p>
-          <div class="price" data-month="10 €" data-year="8 €">8 €</div>
-          <p class="per" data-month="al mes" data-year="al mes · 96 € al año">al mes · 96 € al año</p>
+          <div class="price" data-month="[10]" data-year="[8]">8 €</div>
+          <p class="per" data-month="al mes" data-year="al mes · [96] al año">al mes · 96 € al año</p>
           <ul>
             <li>Todo lo del plan gratuito</li>
             <li>1000 créditos de IA cada mes; lo que no gastes pasa al mes siguiente</li>
@@ -83,7 +87,7 @@
         <div class="plan">
           <h3>Equipos</h3>
           <p class="for">Para empresas, academias y centros educativos.</p>
-          <div class="price">6 € <small>por persona</small></div>
+          <div class="price"><span class="amt" data-v="6">6 €</span> <small>por persona</small></div>
           <p class="per">al mes · desde 3 personas</p>
           <ul>
             <li>Pro para cada miembro del equipo</li>
@@ -95,7 +99,7 @@
           <a class="btn line" href="app/">Crear un equipo</a>
         </div>
       </div>
-      <p class="note">Precios con IVA incluido. Puedes cancelar cuando quieras desde tu cuenta, y sigues teniendo Pro hasta el final del periodo pagado. El equipo se crea en la aplicación: Mi cuenta ▸ Equipos y centros. Pro y los créditos se activan al momento de la compra; detalles en las <a href="terms">condiciones del servicio</a>.</p>
+      <p class="note"><span data-tax-eur="Precios en euros con IVA incluido." data-tax-usd="Precios en dólares, sin impuestos: al pagar se añaden los que correspondan a tu país.">Precios en euros con IVA incluido.</span> Puedes cancelar cuando quieras desde tu cuenta, y sigues teniendo Pro hasta el final del periodo pagado. El equipo se crea en la aplicación: Mi cuenta ▸ Equipos y centros. Pro y los créditos se activan al momento de la compra; detalles en las <a href="terms">condiciones del servicio</a>.</p>
     </div></section>
 
     <section class="tint"><div class="wrap">
@@ -105,8 +109,8 @@
         <p>Cada acción de la IA gasta lo que cuesta de verdad: un texto corto, poco; una presentación completa con imágenes, más. Valen un año desde la compra y se suman a los que ya tengas.</p>
       </div>
       <div class="packs">
-        <div class="pack"><div><div class="n">500 <small>créditos</small></div><div class="u">1 céntimo por crédito</div></div><div class="p">5 €</div><a class="btn line small" href="app/?comprar=credits-500">Comprar</a></div>
-        <div class="pack"><div><div class="n">1500 <small>créditos</small></div><div class="u">0,8 céntimos por crédito</div></div><div class="p">12 €</div><a class="btn line small" href="app/?comprar=credits-1500">Comprar</a></div>
+        <div class="pack"><div><div class="n">500 <small>créditos</small></div><div class="u"><span class="cent" data-v="1">1 céntimo</span> por crédito</div></div><div class="p"><span class="amt" data-v="5">5 €</span></div><a class="btn line small" href="app/?comprar=credits-500">Comprar</a></div>
+        <div class="pack"><div><div class="n">1500 <small>créditos</small></div><div class="u"><span class="cent" data-v="0.8">0,8 céntimos</span> por crédito</div></div><div class="p"><span class="amt" data-v="12">12 €</span></div><a class="btn line small" href="app/?comprar=credits-1500">Comprar</a></div>
       </div>
     </div></section>
 

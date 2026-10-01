@@ -163,6 +163,9 @@ equipos, Moodle, videollamadas, proveedores, cookies, derechos) y `terms.html`
 desistimiento, créditos). Antes de cobrar:
 
 - Añadir el NIF y la dirección en `legal.html` (art. 10 LSSI-CE).
-- En Stripe: los datos de la empresa, las facturas por correo, los precios **con
-  IVA incluido** y la URL de las condiciones (`https://revelaslides.com/terms.html`).
+- En Stripe: los datos de quien vende, las facturas por correo y la URL de las
+  condiciones (`https://revelaslides.com/terms`). Cada precio en **dos monedas** (las mismas
+  cifras): EUR como moneda principal, **con IVA incluido**, y USD en «Añadir otra moneda»
+  (`currency_options`), **sin impuestos**. Stripe Checkout cobra en la moneda de quien paga
+  sin cambiar nada en el servidor (el mismo `price` id).
   El pago ya muestra, junto al botón, la renuncia al desistimiento al activarse al momento.
