@@ -266,7 +266,7 @@ export default {
           text('Prueba Marea gratis durante 14 días', 96, 340, 640, 50, { fontSize: 32, color: SKY }),
           text('marea.example · iOS y Android', 96, 410, 640, 40, { fontSize: 24, color: DIM, letterSpacing: 2 }),
           sea(600, 120)],
-          notes: 'Cierre con un farol 3D que flota (Modelo 3D ▸ Al llegar ▸ Flotar), como una luz que se queda encendida. Despídete despacio.' },
+          notes: 'Cierre con un farol 3D que flota (Modelo 3D ▸ Vista ▸ Al entrar ▸ Flotar), como una luz que se queda encendida. Despídete despacio.' },
       ]));
     } },
 
@@ -299,7 +299,7 @@ export default {
             ['Hello!', 200, 440, BLUE, 5], ['Merhaba!', 470, 450, '#8b3a62', -4], ['Hej!', 790, 440, RED, 3], ['Kaixo!', 1010, 450, GREEN, -6]].map(([s, x, y, c, r], i) =>
             withAnims(shape(i % 2 ? 'speechround' : 'speech', x, y, 190, 140, c, { rotation: r, html: `<b>${s}</b>`, fontSize: 30, color: '#ffffff' }),
               A('zoom-in', { start: i ? 'afterPrev' : 'click', duration: 300, sound: 'pop' })))],
-          notes: 'Un solo clic y los ocho bocadillos saltan uno tras otro con un «pop» (Animaciones ▸ Sonido). Pregunta al público cuántos saludos reconoce.' },
+          notes: 'Un solo clic y los ocho bocadillos saltan uno tras otro con un «pop» (Panel de animación ▸ Sonido). Pregunta al público cuántos saludos reconoce.' },
         { layout: 'blank', bg: PAPER, autoAnimate: true, extra: [
           chat(100, 80, 270), stamp(400, 60, 90, -6),
           text('Aprender hablando', 520, 80, 680, 70, { fontFamily: head, fontSize: 46, fontWeight: 700, color: INK }),
@@ -762,7 +762,7 @@ export default {
             data: scatter(400, 5, r => ({ label: '', value: Math.round(Math.min(255, Math.max(0, 120 + (r() + r() + r() - 1.5) * 120 + (r() > 0.8 ? 70 : 0)))) })) }),
           ...chain([['A la izquierda', 'sombras: si se amontonan, la foto está oscura.'], ['En el centro', 'medios tonos: aquí vive casi todo.'], ['A la derecha', 'luces: si chocan con el borde, se queman.']].map(([h, d], i) =>
             text(`<b style="color:${AMB}">${h}</b>: ${d}`, 830, 190 + i * 140, 370, 120, { fontSize: 24, color: PAPER, lineHeight: 1.35 })), 'fade-left', 'click', { duration: 450 })],
-          notes: 'Histograma (Insertar ▸ Gráfico ▸ Histograma) con la luminosidad de 400 píxeles de la foto de ejemplo. Explica las tres zonas con un clic cada una.' },
+          notes: 'Histograma (Gráfico ▸ Tipo de gráfico ▸ Histograma) con la luminosidad de 400 píxeles de la foto de ejemplo. Explica las tres zonas con un clic cada una.' },
         { layout: 'titleOnly', title: 'Hoja de contactos y cuarto oscuro', bg: BG, extra: [
           withAnims(device(granoEdit(), 'tablet', 90, 170, 640, 480, 'Edición en Grano: la foto con controles de exposición, contraste y grano'), A('fade-right', { duration: 500 })),
           withAnims(phone(granoSheet(), 800, 150, 250, 'Hoja de contactos del carrete en el móvil'), A('fade-left', { start: 'afterPrev', duration: 500 })),
@@ -805,7 +805,7 @@ export default {
           text('Reserva tu clase en el gimnasio de tu barrio. Sin colas, sin tarjetas.', 90, 500, 620, 90, { fontSize: 28, color: DIM, lineHeight: 1.35 }),
           glow(780, 120, 520, '#5a0d0d', BG, 60),
           m3d('kk-Barbarian', 800, 80, 400, 580, { clip: barb.arrive, view: 'front', bleed: 1.3 })],
-          notes: 'Portada de marcador LED: dígitos de JetBrains Mono con resplandor rojo (sombra de texto) y un luchador 3D que celebra en bucle (Modelo 3D ▸ Animación ▸ Cheer).' },
+          notes: 'Portada de marcador LED: dígitos de JetBrains Mono con resplandor rojo (sombra de texto) y un luchador 3D que celebra en bucle (Modelo 3D ▸ Animación ▸ En reposo ▸ Cheer).' },
         { layout: 'blank', bg: BG, transition: 'push', extra: [
           phone(serieClasses(), 110, 60, 300, 'Clases de hoy en Serie, con plazas libres'),
           text('TU CLASE, A UN TOQUE', 480, 70, 720, 90, { fontFamily: head, fontSize: 72, color: FG }),

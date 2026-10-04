@@ -211,7 +211,7 @@ export default {
               text(n, OX + x - 75, OY + y + (i % 2 || !i ? 18 : -50), 150, 32, { fontSize: 18, fontWeight: 700, color: INK, textAlign: 'center', bg: '#ffffffe6', radius: 16, vAlign: 'middle' })]; }),
           withAnims(img(tramSVG, OX + line[0][0] - tramW / 2, OY + line[0][1] - tramH + 6, tramW, tramH, { alt: 'Tranvía 28' }), path(tramPath, { duration: 7000, sound: 'click' })),
           text('Clic: el tranvía recorre la ciudad. Unos 40 minutos de trayecto si no hay atasco.', OX, 625, 1100, 40, { fontSize: 22, fontStyle: 'italic', color: '#5c6b82', textAlign: 'center' })],
-          notes: 'Con un clic, el tranvía hace la ruta subiendo y bajando las colinas (Animaciones ▸ Trayectoria personalizada, con sonido). El dibujo de colinas y casas es un SVG hecho para esta plantilla; el trazado es aproximado.' },
+          notes: 'Con un clic, el tranvía hace la ruta subiendo y bajando las colinas (Animaciones ▸ Dibujar recorrido, con sonido). El dibujo de colinas y casas es un SVG hecho para esta plantilla; el trazado es aproximado.' },
         { title: 'Sube, baja, vuelve a subir', layout: 'titleOnly', bg: '#ffffff', extra: [
           chartBlock({ x: 90, y: 180, w: 720, h: 440, chartType: 'area', color: AZ, seriesName: 'Altura (m)', grid: true, yTitle: 'Metros sobre el Tajo',
             data: [['M. Moniz', 20], ['Graça', 90], ['Sé', 50], ['Baixa', 10], ['Chiado', 60], ['Estrela', 70], ['Prazeres', 80]].map(([label, value]) => ({ label, value })) }),
@@ -465,7 +465,7 @@ export default {
           kicker('UN FIN DE SEMANA LARGO · DICIEMBRE', 90, 160, 640, GOLD, 18),
           text('Praga', 84, 190, 640, 170, { fontFamily: H, fontSize: 140, color: CREAM, fontWeight: 700 }),
           text('La ciudad de las cien torres, el río Moldava y un reloj que funciona desde 1410', 90, 370, 580, 130, { fontFamily: CG, fontSize: 34, color: DIM, fontStyle: 'italic' })],
-          notes: 'El reloj astronómico está hecho solo con formas: anillos, degradados radiales, una forma libre para la tierra y texto curvo con los números romanos. La aguja del sol da una vuelta sola al llegar (Énfasis ▸ Girar 360°).' },
+          notes: 'El reloj astronómico está hecho solo con formas: anillos, degradados radiales, una forma libre para la tierra y texto curvo con los números romanos. La aguja del sol da una vuelta sola al llegar (Animaciones ▸ Añadir animación ▸ Énfasis ▸ Dar una vuelta).' },
         { title: 'Cada hora en punto', layout: 'titleOnly', bg: DEEP, autoAnimate: true, extra: [
           ...dial(300, 420, 230),
           ...chain(Array.from({ length: 12 }, (_, i) => { const x = 610 + (i % 6) * 95, y = 190 + Math.floor(i / 6) * 150;

@@ -339,7 +339,7 @@ export default {
           .map(([e, h, d], i) => withAnims(card(`<div style="font-size:24px;font-weight:700;color:${CY}">${e} ${h}</div><div style="font-size:20px;opacity:.85">${d}</div>`,
             440 + (i % 2) * 380, 170 + Math.floor(i / 2) * 160, 360, 140, '#ffffff0d', { color: FG, pad: [16, 20, 16, 20], vAlign: 'middle', borderColor: '#2a2f45' }),
             A('fade-up', { start: i ? 'afterPrev' : 'click', duration: 400 })))],
-        notes: 'La figura llega desde la portada dando una vuelta (Modelo 3D ▸ Al llegar: «Dar una vuelta»). Un clic muestra los seis sistemas encadenados.' },
+        notes: 'La figura llega desde la portada dando una vuelta (Modelo 3D ▸ Desde la anterior ▸ Llega: «Dar una vuelta hasta su vista»). Un clic muestra los seis sistemas encadenados.' },
       { title: 'En marcha: el aparato locomotor', layout: 'titleOnly', bg: BG, extra: [
         shape('rect', 60, 600, 1160, 4, '#ffffff30'),
         withAnims(model('kh-CesiumMan', 60, 330, 220, 280, { walk: { clip: '*', face: true, look: true }, caption: '' }),
@@ -428,7 +428,7 @@ export default {
         nasa('global-precipitation-measurement', 70, 160, 560, 480, { motion: 'orbit' }),
         text('Los satélites miden la lluvia y la nieve de todo el planeta varias veces al día.', 680, 200, 510, 170, { fontSize: 32, color: FG }),
         card('🛰️ La misión GPM, de NASA y JAXA, despegó en 2014 y sus datos ayudan a prever inundaciones y sequías.', 680, 400, 510, 180, '#ffffff10', { fontSize: 24, color: FG })],
-        notes: 'Modelo 3D de NASA con una vuelta de cámara al entrar (Modelo 3D ▸ Al llegar ▸ Vuelta completa). Necesita conexión.' },
+        notes: 'Modelo 3D de NASA con una vuelta de cámara al entrar (Modelo 3D ▸ Vista ▸ Al entrar ▸ Vuelta completa al entrar). Necesita conexión.' },
       { layout: 'blank', bg: BG, extra: [pollBlock({ kind: 'multi', question: '¿Qué haces tú para ahorrar agua? (marca todas)', fontSize: 42, x: 60, y: 50, w: 1160, h: 620,
         options: ['Ducharme rápido', 'Cerrar el grifo', 'Lavadora llena', 'Regar de noche', 'Avisar de fugas'] })],
         notes: 'Votación de respuesta múltiple en directo. Comentar qué gesto ahorra más (la ducha corta).' },
@@ -623,7 +623,7 @@ export default {
         text('English for beginners · Unit 1', 96, 430, 680, 60, { fontSize: 36, color: INK, fontWeight: 700 }),
         text('Inglés · 3.º de primaria', 96, 490, 680, 50, { fontSize: 26, color: '#5b6570' }),
         model('three-RobotExpressive', 800, 110, 380, 520, { clip: 'Wave' })],
-        notes: 'Modo aula activado (Presentación ▸ Modo aula): el alumnado sigue las diapositivas en su móvil y responde allí. El robot saluda: decimos todos «Hello!».' },
+        notes: 'Modo aula activado (Ver ▸ Aula ▸ Modo aula): el alumnado sigue las diapositivas en su móvil y responde allí. El robot saluda: decimos todos «Hello!».' },
       { title: 'Greetings · Saludos', layout: 'titleOnly', bg: BG, extra: [
         ...[['Hello!', 'Hola'], ['Good morning!', 'Buenos días'], ['Goodbye!', 'Adiós'], ['Thank you!', 'Gracias']].map(([en, es], i) =>
           flip(en, es, 90 + (i % 2) * 560, 180 + Math.floor(i / 2) * 240, 530, 210, C[i], i))],

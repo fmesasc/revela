@@ -83,7 +83,7 @@ export default {
         text('El tiempo, a tu medida', 90, 440, 560, 60, { fontSize: 40, color: CREAM, fontStyle: 'italic' }),
         text('Titanio, zafiro y catorce días de batería', 90, 510, 560, 40, { fontSize: 24, color: DIM }),
         watch(680, 80, 520, 560, { autoRotate: true, spin: 18, view: 'three', edge: 'fade' })],
-        notes: 'Portada: el reloj 3D gira despacio (Modelo 3D ▸ Girar solo, 18°/s) con bordes difuminados. El título es Text Art «Oro». Deja unos segundos de silencio antes de empezar.' },
+        notes: 'Portada: el reloj 3D gira despacio (Modelo 3D ▸ Movimiento 3D ▸ Giro, 18°/s) con bordes difuminados. El título es Text Art «Oro». Deja unos segundos de silencio antes de empezar.' },
       { layout: 'blank', bg: BG, autoAnimate: true, extra: [
         watch(40, 100, 500, 540, { autoRotate: false, view: 'front', arrive: 'turn' }),
         name(600, 70, 400, 110, 80),
@@ -91,20 +91,20 @@ export default {
         ...[['Caja de titanio de 42 mm', 'Un 40 % más ligera que el acero.'], ['Cristal de zafiro', 'Solo el diamante lo raya.'], ['Sumergible a 100 metros', 'Para nadar, bucear o ducharse.']].map(([h, d], i) =>
           withAnims(text(`<div style="font-size:30px;color:${GOLD};font-weight:700">${h}</div><div style="color:${CREAM};opacity:.85">${d}</div>`, 604, 270 + i * 130, 600, 110,
             { fontSize: 24, borderColor: '#d4a85755', pad: [14, 20, 14, 20], radius: 12 }), A('fade-left', { start: i ? 'afterPrev' : 'click', duration: 500 })))],
-        notes: 'Transformar: el reloj y el nombre viajan desde la portada. El reloj llega «dando una vuelta hasta su vista» (Modelo 3D ▸ Al llegar). Las tres tarjetas entran seguidas con un clic.' },
+        notes: 'Transformar: el reloj y el nombre viajan desde la portada. El reloj llega «dando una vuelta hasta su vista» (Modelo 3D ▸ Desde la anterior ▸ Llega). Las tres tarjetas entran seguidas con un clic.' },
       { layout: 'blank', bg: BG, autoAnimate: true, extra: [
         name(90, 60, 400, 110, 80),
         watch(700, 80, 500, 560, { autoRotate: false, view: 'side', arrive: 'view' }),
         anim(stat('14 días', 'de batería en uso normal', 90, 200, 560, GOLD, CREAM, 80), 1, 'fade-up'),
         anim(stat('38 g', 'con la correa de titanio', 90, 400, 270, GOLD, CREAM, 64), 2, 'fade-up'),
         anim(stat('5 ATM', 'resistencia al agua', 380, 400, 270, GOLD, CREAM, 64), 3, 'fade-up')],
-        notes: 'Segunda Transformar: ahora el reloj va a la vista de lado de esta diapositiva (Al llegar ▸ Ir a la vista). Cifras de ejemplo, inventadas para la plantilla.' },
+        notes: 'Segunda Transformar: ahora el reloj va a la vista de lado de esta diapositiva (Modelo 3D ▸ Desde la anterior ▸ Llega ▸ Ir a la vista de esta diapositiva). Cifras de ejemplo, inventadas para la plantilla.' },
       { layout: 'titleOnly', title: 'Autonomía según el uso', bg: BG, autoAnimate: true, extra: [
         watch(1030, 30, 190, 190, { autoRotate: true, spin: 40, view: 'front', arrive: 'front' }),
         chartBlock({ x: 90, y: 190, w: 760, h: 450, chartType: 'hbar', color: GOLD, dataLabels: true, grid: true,
           data: [{ label: 'Solo hora', value: 45 }, { label: 'Uso normal', value: 14 }, { label: 'Deporte diario', value: 8 }, { label: 'GPS continuo', value: 2 }], xTitle: 'Días' }),
         text('Carga completa en <b style="color:#d4a857">55 minutos</b> con la base magnética.', 890, 300, 330, 200, { fontSize: 28, color: CREAM })],
-        notes: 'Tercera Transformar: el reloj se encoge a la esquina y llega girando hasta quedar de frente (Al llegar ▸ Girar hasta quedar de frente). Datos de autonomía inventados.' },
+        notes: 'Tercera Transformar: el reloj se encoge a la esquina y llega girando hasta quedar de frente (Modelo 3D ▸ Desde la anterior ▸ Llega ▸ Girar hasta quedar de frente). Datos de autonomía inventados.' },
       { layout: 'titleOnly', title: 'Tu salud, de un vistazo', bg: BG, transition: 'fade', extra: [
         chartBlock({ x: 90, y: 170, w: 520, h: 490, chartType: 'radar', color: GOLD,
           data: [{ label: 'Pulso', value: 95 }, { label: 'Oxígeno', value: 90 }, { label: 'Sueño', value: 85 }, { label: 'Estrés', value: 70 }, { label: 'Temperatura', value: 75 }, { label: 'Actividad', value: 98 }] }),
@@ -123,7 +123,7 @@ export default {
         text('Reservas abiertas hoy · envío gratuito · 30 días de prueba', 90, 380, 600, 80, { fontSize: 26, color: DIM }),
         m3d('kh-ChronographWatch', 760, 110, 440, 480, { autoRotate: false, motion: 'float', view: 'three', edge: 'fade' }),
         credits(['kh-ChronographWatch'], 90, 640, 1100, '#6f6356')],
-        notes: 'Cierre: el reloj flota (Modelo 3D ▸ Al llegar a la diapositiva ▸ Flotar). La transición «Zoom» da el remate.' },
+        notes: 'Cierre: el reloj flota (Modelo 3D ▸ Vista ▸ Al entrar ▸ Flotar). La transición «Zoom» da el remate.' },
     ]));
   } },
 
@@ -139,7 +139,7 @@ export default {
         text('VOLTA E-1', 90, 40, 1100, 150, { fontFamily: pairStacks('bold').heading, fontSize: 150, textAlign: 'center', wordart: 'ice', letterSpacing: 8 }),
         text('EL ELÉCTRICO QUE SE CARGA MIENTRAS TOMAS UN CAFÉ', 90, 190, 1100, 40, { fontSize: 24, textAlign: 'center', color: CY, letterSpacing: 5 }),
         car(140, 200, 1000, 540, { autoRotate: false, view: 'three', motion: 'orbit', edge: 'free' })],
-        notes: 'El coche da una vuelta completa al llegar (Modelo 3D ▸ Al llegar a la diapositiva ▸ Vuelta completa) y sus bordes son «sin corte»: la vista 3D ocupa más que su marco y nada se recorta.' },
+        notes: 'El coche da una vuelta completa al llegar (Modelo 3D ▸ Vista ▸ Al entrar ▸ Vuelta completa al entrar) y sus bordes son «sin corte»: la vista 3D ocupa más que su marco y nada se recorta.' },
       { layout: 'blank', bg: BG, autoAnimate: true, extra: [
         car(430, 90, 820, 560, { autoRotate: false, view: 'side', arrive: 'turn', edge: 'fade' }),
         text('Diseñado<br>por el viento', 90, 90, 500, 200, { fontFamily: pairStacks('bold').heading, fontSize: 84, color: FG, lineHeight: 1 }),
@@ -276,7 +276,7 @@ export default {
         text('NUEVO', 640, 200, 500, 40, { fontSize: 24, color: BLUE, letterSpacing: 6 }),
         text('Fuente', 640, 240, 560, 130, { fontSize: 110, color: INK, fontWeight: 700 }),
         text('La botella que sabe cuánto has bebido y te lo recuerda con una luz suave.', 640, 390, 540, 140, { fontSize: 32, color: GRAY })],
-        notes: 'La botella flota sobre el fondo gris (Modelo 3D ▸ Al llegar ▸ Flotar).' },
+        notes: 'La botella flota sobre el fondo gris (Modelo 3D ▸ Vista ▸ Al entrar ▸ Flotar).' },
       { layout: 'blank', bg: '#ffffff', autoAnimate: true, extra: [
         bottle(780, 80, 400, 560, { autoRotate: true, spin: 30, view: 'front', arrive: 'front' }),
         text('Se lleva bien con todo', 90, 90, 640, 70, { fontSize: 50, color: INK, fontWeight: 700 }),
@@ -292,7 +292,7 @@ export default {
         text(`<b>${grad('Juntas, 99 €')}</b>`, 400, 260, 480, 90, { fontSize: 60, textAlign: 'center' }),
         text('Pack Calma: Prisma + Fuente<br>Reservas desde hoy<br>Llegan el 8 de octubre', 400, 370, 480, 130, { fontSize: 26, color: '#a1a1a6', textAlign: 'center' }),
         credits(['kh-IridescenceLamp'], 90, 650, 1100, '#6e6e73')],
-        notes: 'Remate: las dos piezas se acercan al entrar (Modelo 3D ▸ Al llegar ▸ Acercar) y el precio del pack en el centro.' },
+        notes: 'Remate: las dos piezas se acercan al entrar (Modelo 3D ▸ Vista ▸ Al entrar ▸ Acercar al entrar) y el precio del pack en el centro.' },
     ]));
   } },
 
@@ -421,7 +421,7 @@ export default {
         text('Sofá Velvet', 730, 120, 480, 90, { fontFamily: serif, fontSize: 64, color: INK }),
         text('1.290 €', 734, 210, 480, 50, { fontSize: 30, color: TER }),
         text(ul('Terciopelo de algodón reciclado', 'Estructura de haya con certificado forestal', 'Fundas lavables a 30 °C', 'Tres plazas · 210 × 92 cm'), 730, 280, 480, 330, { fontSize: 26, color: INK, lineHeight: 1.45 })],
-        notes: 'Transformar: el sofá viene de la portada y da una vuelta hasta quedar de frente (Al llegar ▸ Dar una vuelta).' },
+        notes: 'Transformar: el sofá viene de la portada y da una vuelta hasta quedar de frente (Modelo 3D ▸ Desde la anterior ▸ Llega ▸ Dar una vuelta hasta su vista).' },
       { layout: 'blank', bg: BG, autoAnimate: true, extra: [
         sofa(340, 60, 600, 360, { autoRotate: false, view: 'side', arrive: 'view' }),
         text('Cinco colores de temporada', 90, 420, 1100, 60, { fontFamily: serif, fontSize: 40, color: INK, textAlign: 'center' }),
@@ -434,7 +434,7 @@ export default {
         m3d('kh-ChairDamaskPurplegold', 710, 170, 460, 380, { autoRotate: false, view: 'three', motion: 'swing' }),
         text('<b>Silla Lino</b> · 189 €<br><span style="color:#7d6e5d">Tejido con brillo satinado</span>', 110, 560, 460, 90, { fontSize: 24, color: INK, textAlign: 'center' }),
         text('<b>Butaca Damasco</b> · 640 €<br><span style="color:#7d6e5d">Tapizado jacquard hecho a mano</span>', 710, 560, 460, 90, { fontSize: 24, color: INK, textAlign: 'center' })],
-        notes: 'Las dos sillas se balancean al llegar (Modelo 3D ▸ Al llegar ▸ Balanceo) para enseñar el volumen del tapizado.' },
+        notes: 'Las dos sillas se balancean al llegar (Modelo 3D ▸ Vista ▸ Al entrar ▸ Balanceo) para enseñar el volumen del tapizado.' },
       { layout: 'blank', bg: '#2f2a24', transition: 'fade', extra: [
         m3d('kh-SheenWoodLeatherSofa', 520, 130, 700, 460, { autoRotate: false, view: 'three', motion: 'orbit', edge: 'free' }),
         text('EDICIÓN LIMITADA', 90, 170, 420, 40, { fontSize: 20, color: SAND, letterSpacing: 6 }),
@@ -478,7 +478,7 @@ export default {
         text('El compañero que carga lo pesado', 90, 430, 640, 50, { fontSize: 34, color: FG }),
         text('Presentación a clientes · almacenes y centros de distribución', 90, 500, 640, 40, { fontSize: 22, color: DIM }),
         m3d('three-RobotExpressive', 760, 90, 400, 540, { clip: 'Wave', view: 'front', bleed: 1.5 })],
-        notes: 'El robot saluda en bucle (Modelo 3D ▸ Animación ▸ Wave). Tiene margen para moverse, así que la mano no se corta.' },
+        notes: 'El robot saluda en bucle (Modelo 3D ▸ Animación ▸ En reposo ▸ Wave). Tiene margen para moverse, así que la mano no se corta.' },
       { title: 'Se mueve solo por el almacén', layout: 'titleOnly', bg: BG, extra: [
         shape('rect', 60, 600, 1160, 4, '#2c2e33'), ...[0, 1, 2, 3].map(i => shape('rect', 200 + i * 280, 598, 120, 8, Y, { opacity: 60 })),
         withAnims(m3d('three-RobotExpressive', 60, 250, 260, 360, { walk: { clip: robot.walk, end: 'ThumbsUp', endOnce: true, face: true, look: true } }),
@@ -514,7 +514,7 @@ export default {
         text('¿Lo probamos<br>en tu almacén?', 90, 180, 660, 260, { fontFamily: pairStacks('bold').heading, fontSize: 104, color: Y, lineHeight: 1 }),
         text('Piloto de 30 días sin coste · rb1.example', 90, 470, 620, 50, { fontSize: 30, color: FG }),
         m3d('three-RobotExpressive', 780, 110, 380, 520, { clip: 'Dance', view: 'three', bleed: 1.6 })],
-        notes: 'Cierre con el robot bailando (Animación ▸ Dance) y la propuesta de piloto.' },
+        notes: 'Cierre con el robot bailando (Modelo 3D ▸ Animación ▸ En reposo ▸ Dance) y la propuesta de piloto.' },
     ]));
   } },
 

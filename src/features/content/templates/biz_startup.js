@@ -610,7 +610,7 @@ export default {
           text('CORREO RURAL · ALPENDE · 2026 · ', 560, 470, 170, 170, { fontSize: 15, curve: 100, color: SAND, textAlign: 'center', fontWeight: 700 }),
           text('PITCH', 560, 538, 170, 36, { fontFamily: HF, fontSize: 26, color: SAND, textAlign: 'center' }),
           m3d('kh-Lantern', 860, 150, 340, 480, { view: 'three', motion: 'float' })],
-          notes: 'Alpende es una empresa inventada; las cifras son de ejemplo. El paisaje es un dibujo propio; el matasellos es texto curvo en círculo (Curvar texto ▸ Círculo). El farol 3D flota despacio.' },
+          notes: 'Alpende es una empresa inventada; las cifras son de ejemplo. El paisaje es un dibujo propio; el matasellos es texto curvo en círculo (Cuadro de texto ▸ Efectos de texto ▸ Curvar texto ▸ Círculo). El farol 3D flota despacio.' },
         { title: 'Pueblos que se vacían', layout: 'titleOnly', bg: PAPER, extra: [
           chartBlock({ x: 80, y: 170, w: 720, h: 470, chartType: 'line', color: CORAL, seriesName: 'Habitantes en pueblos de menos de 1.000 vecinos (millones)', grid: true, dataLabels: true,
             data: [['1960', 2.9], ['1970', 2.4], ['1981', 2.0], ['1991', 1.8], ['2001', 1.6], ['2011', 1.5], ['2021', 1.4]].map(([label, value]) => ({ label, value })) }),
@@ -690,7 +690,7 @@ export default {
             path([[180, 0], [360, 0]], { start: 'afterPrev', duration: 2600 })),
           card(`<div style="font-family:${BB};font-size:58px;color:${AMBER};line-height:1">FOGÓN F1</div><div style="font-size:19px;color:${GREY};margin:6px 0 14px">Ficha técnica</div>`
             + ul('2 brazos y 4 fuegos de inducción', '120 recetas cargadas', 'Un plato cada 90 segundos', 'Ocupa 1,8 m de línea', 'Se limpia solo en 6 minutos'), 760, 90, 440, 430, STEEL, { fontSize: 24, lineHeight: 1.4, color: TILE, radius: 14 })],
-          notes: 'Al llegar, el robot 3D entra andando sobre la encimera y saluda al pararse (Modelo 3D ▸ Al moverse: andar; al llegar: saludar). La pared es un dibujo propio de azulejos.' },
+          notes: 'Al llegar, el robot 3D entra andando sobre la encimera y saluda al pararse (Modelo 3D ▸ Al moverse ▸ Mientras se mueve: andar; Modelo 3D ▸ Movimiento 3D ▸ Al terminar el recorrido: saludar). La pared es un dibujo propio de azulejos.' },
         { layout: 'blank', bg: '#0e0f12', extra: [ttl('La receta es código'),
           codeBlock({ x: 80, y: 150, w: 680, h: 500, fontSize: 20, lang: 'yaml', lineSteps: '1-3|4-8|9-14',
             code: 'receta: pad_thai\nraciones: 1\ntiempo_total: 95s\ningredientes:\n  - fideos_arroz: 120g\n  - gambas: 80g\n  - salsa_tamarindo: 40ml\n  - huevo: 1\npasos:\n  - wok: {fuego: 4, aceite: 10ml, temp: 230}\n  - añadir: [huevo, gambas]\n  - saltear: 25s\n  - añadir: [fideos_arroz, salsa_tamarindo]\n  - emplatar: plato_hondo' }),

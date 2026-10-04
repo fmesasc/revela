@@ -115,18 +115,18 @@ export default {
           withAnims(text('Fiesta de aventureros', 130, 290, 740, 100, { fontFamily: fr, fontSize: 50, wordart: 'retro', textAlign: 'center' }), A('zoom-in', { start: 'afterPrev', sound: 'pop' })),
           text('Sábado 17 de octubre · 17:00', 230, 410, 540, 54, { fontSize: 32, textAlign: 'center', color: INK, bg: '#ffffff', radius: 27 }),
           model('three-RobotExpressive', 830, 170, 360, 450, { clip: 'Dance' })],
-          notes: 'Título con texto curvo y Text Art «Retro». El robot 3D baila sin parar (Modelo 3D ▸ Animación: Dance). Los globos son formas a mano alzada.' },
+          notes: 'Título con texto curvo y Text Art «Retro». El robot 3D baila sin parar (Modelo 3D ▸ Animación ▸ En reposo: Dance). Los globos son formas a mano alzada.' },
         { title: '¿Cuándo, dónde y qué traer?', layout: 'titleOnly', bg: CREAM, extra: [
           ...[['clock', RED, '#ffe0e1', 'Cuándo', 'Sábado 17 de octubre<br>de 17:00 a 20:00'], ['location', BLUE, '#dcefff', 'Dónde', 'Ludoteca La Colmena<br>calle del Tren, 12'], ['star', GREEN, '#dcf7e9', 'Qué traer', 'Un disfraz de aventurero y ganas de jugar']]
             .flatMap(([ic, c, f, h, d], i) => together([shape('rounded', 90 + i * 380, 190, 340, 430, f, { sketch: true, stroke: INK, strokeWidth: 3 }), icon(ic, 220 + i * 380, 225, 80, c),
               text(`<div style="font-size:38px;font-weight:800;color:${c}">${h}</div><div style="margin-top:8px">${d}</div>`, 115 + i * 380, 330, 290, 250, { fontSize: 30, textAlign: 'center', color: INK })], 'bounce', 'click', { sound: 'pop' }))],
-          notes: 'Cada tarjeta entra rebotando con un «pop» al hacer clic (Animaciones ▸ Sonido).' },
+          notes: 'Cada tarjeta entra rebotando con un «pop» al hacer clic (Panel de animación ▸ Sonido).' },
         { title: 'Invitados especiales', layout: 'titleOnly', bg: SKY, extra: [
           ...[['kk-Knight', 'Sir Leo el Valiente', RED], ['kk-Mage', 'Lúa la Maga', PURPLE], ['kk-Barbarian', 'Bruno el Fuerte', GREEN]].flatMap(([id, n, c], i) => [
             shape('ellipse', 160 + i * 380, 470, 200, 44, '#9fd3f2'),
             model(id, 110 + i * 380, 170, 300, 400, { clip: 'Cheer', clipSpeed: [1, 0.8, 1.2][i], view: 'front' }),
             text(n, 90 + i * 380, 590, 340, 50, { fontSize: 30, fontWeight: 800, textAlign: 'center', color: c })])],
-          notes: 'Tres personajes 3D celebrando, cada uno a su velocidad (Modelo 3D ▸ Velocidad). ¡Ven disfrazado de uno de ellos!' },
+          notes: 'Tres personajes 3D celebrando, cada uno a su velocidad (Modelo 3D ▸ Movimiento 3D ▸ Velocidad). ¡Ven disfrazado de uno de ellos!' },
         { title: 'El plan de la tarde', layout: 'titleOnly', bg: CREAM, extra: [
           dg('steps', '17:00\n  Búsqueda del tesoro\n17:45\n  Merienda\n18:30\n  ¡Tarta y velas!\n19:00\n  Piñata\n19:30\n  Baile loco', 90, 180, 1100, 470, { colors: 'colorful', oneByOne: true, fontScale: 1.4 })],
           notes: 'Diagrama «Escalera» que aparece peldaño a peldaño.' },
@@ -138,7 +138,7 @@ export default {
           text('¡El zorro!', 90, 90, 500, 140, { fontFamily: fr, fontSize: 96, wordart: 'fire' }),
           text('Leo dice que es «el más listo del bosque». ¿Quién lo ha acertado?', 90, 250, 480, 160, { fontSize: 32, color: INK }),
           model('kh-Fox', 560, 110, 640, 520, { view: 'three', motion: 'orbit' })],
-          notes: 'El zorro da una vuelta completa al llegar (Modelo 3D ▸ Al llegar a la diapositiva: vuelta completa). Su crédito CC BY aparece debajo.' },
+          notes: 'El zorro da una vuelta completa al llegar (Modelo 3D ▸ Vista ▸ Al entrar: vuelta completa). Su crédito CC BY aparece debajo.' },
         { title: '¡Baile de las estatuas!', layout: 'titleOnly', bg: CREAM, extra: [
           withAnims(model('three-RobotExpressive', 90, 300, 260, 340, { walk: { clip: robot.walk, face: true, look: true } }),
             path([[260, -20], [480, 0]], { duration: 2400 }),
@@ -233,7 +233,7 @@ export default {
           text('Italia', 90, 180, 640, 220, { fontFamily: head, fontSize: 170, color: INK }),
           text('Diez días de norte a sur, en tren', 96, 410, 620, 60, { fontSize: 36, fontStyle: 'italic', color: TERRA }),
           text('MAYO 2027 · CUATRO AMIGOS · 1.470 € POR PERSONA', 96, 490, 680, 40, { fontSize: 20, letterSpacing: 3, color: OLIVE })],
-          notes: 'Texto curvo en círculo alrededor del sol (Curvar texto ▸ Círculo). Viaje y cifras inventados como ejemplo.' },
+          notes: 'Texto curvo en círculo alrededor del sol (Cuadro de texto ▸ Efectos de texto ▸ Curvar texto ▸ Círculo). Viaje y cifras inventados como ejemplo.' },
         { title: 'La ruta', layout: 'titleOnly', bg: BG, extra: [
           text(ul('<b>Venecia</b> · 2 noches', '<b>Florencia</b> · 3 noches, con Siena', '<b>Roma</b> · 3 noches', '<b>Nápoles</b> · 1 noche', '<b>Costa Amalfitana</b> · 1 noche'), 100, 190, 560, 340, { fontSize: 30, color: INK }),
           text('Todo en tren: el trayecto más largo, Venecia–Florencia, dura 2 h 15 min.', 100, 540, 560, 90, { fontSize: 24, fontStyle: 'italic', color: OLIVE }),
@@ -295,7 +295,7 @@ export default {
           text('de verdad, machacado a mano', 90, 410, 620, 60, { fontSize: 38, color: FG }),
           ...[['clock', '15 min'], ['user', '4 raciones'], ['star', 'Fácil']].flatMap(([ic, t], i) => [icon(ic, 92 + i * 220, 510, 36, ORANGE), text(t, 136 + i * 220, 504, 170, 48, { fontSize: 26, color: FG })]),
           avocado(700, 110, 520, 520)],
-          notes: 'El aguacate es un modelo 3D (Recursos ▸ 3D) que gira solo. En la siguiente diapositiva viaja a su sitio con Transformar.' },
+          notes: 'El aguacate es un modelo 3D (GIF y stickers ▸ 3D con movimiento) que gira solo. En la siguiente diapositiva viaja a su sitio con Transformar.' },
         { layout: 'blank', bg: BG, autoAnimate: true, extra: [
           keep(text('INGREDIENTES', 80, 50, 700, 110, { fontFamily: head, fontSize: 90, color: GREEN }), title),
           tableBlock({ x: 90, y: 180, w: 720, h: 440, fontSize: 25, header: true, headBg: GREEN, headFg: '#1f120f', stroke: '#4a3530', banded: true, band: GREEN, bandAlpha: 0.12,
@@ -310,7 +310,7 @@ export default {
           text('Deja el hueso dentro del cuenco y cubre con film tocando la superficie: así no se oscurece.', 90, 260, 560, 220, { fontSize: 36, color: FG }),
           withAnims(text('Y la lima, siempre al final.', 90, 500, 560, 60, { fontSize: 32, color: LIME, fontStyle: 'italic' }), A('fade-up', { sound: 'pop' })),
           model('kh-Avocado', 700, 120, 480, 480, { view: 'front', motion: 'zoom' })],
-          notes: 'El aguacate se acerca al llegar (Modelo 3D ▸ Al llegar: acercar). Clic: aparece el último consejo con un «pop».' },
+          notes: 'El aguacate se acerca al llegar (Modelo 3D ▸ Vista ▸ Al entrar: acercar). Clic: aparece el último consejo con un «pop».' },
         { title: 'Reposo en la nevera', layout: 'titleOnly', bg: BG, extra: [
           text(ul('Tapa el cuenco con el hueso dentro', 'Mientras, calienta los totopos en el horno', 'Corta unos gajos de lima para servir'), 90, 190, 620, 360, { fontSize: 32, color: FG }),
           timer(300, 800, 180, 400, { color: GREEN, endText: '¡A la mesa!' })],
@@ -500,7 +500,7 @@ export default {
           text('ventana', 300, 196, 240, 30, { fontSize: 18, textAlign: 'center', color: GREY }),
           text(ul('Sofá frente a la ventana', 'Butaca junto a la luz', 'Alfombra de 2 × 3 m', 'Paso libre de 90 cm'), 890, 200, 320, 300, { fontSize: 26, color: INK }),
           text(`Modelos 3D: ${lib3d('kh-GlamVelvetSofa').credit} · ${lib3d('kh-SheenChair').credit}`, 890, 580, 320, 60, { fontSize: 12, color: GREY })],
-          notes: 'Transformar: el sofá y la butaca de la diapositiva anterior bajan al plano y se ven desde arriba (Modelo 3D ▸ Vista: desde arriba).' },
+          notes: 'Transformar: el sofá y la butaca de la diapositiva anterior bajan al plano y se ven desde arriba (Modelo 3D ▸ Vista ▸ Cámara: desde arriba).' },
         { title: 'Presupuesto', layout: 'titleOnly', bg: BG, extra: [
           tableBlock({ x: 90, y: 180, w: 560, h: 420, fontSize: 25, header: true, headBg: INK, headFg: '#ffffff', stroke: '#d9d2c5', banded: true, band: WOOD,
             rows: [['Concepto', 'Importe'], ['Camión y 3 operarios', '650 €'], ['Cajas y embalaje', '90 €'], ['Limpieza del piso antiguo', '120 €'], ['Pintura del salón', '300 €'], ['Cambio de cerradura', '80 €'], ['<b>Total</b>', '=SUMA(ARRIBA)']], colW: [3, 2] }),
@@ -618,7 +618,7 @@ export default {
           shape('rounded', 90, 600, 30, 30, SOW, { radius: 6 }), text('Siembra', 130, 596, 200, 40, { fontSize: 24, color: INK }),
           shape('rounded', 300, 600, 30, 30, CROP, { radius: 6 }), text('Cosecha', 340, 596, 200, 40, { fontSize: 24, color: INK }),
           text('Orientativo: ajústalo un mes según tu zona.', 600, 596, 590, 40, { fontSize: 20, color: SOIL, fontStyle: 'italic', textAlign: 'right' })],
-          notes: 'Tabla con celdas de color (Tabla ▸ Color de celda): verde para sembrar y naranja para cosechar. Calendario orientativo.' },
+          notes: 'Tabla con celdas de color: verde para sembrar y naranja para cosechar. Calendario orientativo.' },
         { title: 'El ciclo del huerto', layout: 'titleOnly', bg: BG, extra: [
           dg('cycle', 'Sembrar\nRegar\nCuidar\nCosechar\nCompostar', 190, 170, 900, 480, { colors: 'colorful', oneByOne: true })],
           notes: 'Diagrama de ciclo uno a uno: lo que se cosecha vuelve a la tierra como compost.' },
@@ -644,7 +644,7 @@ export default {
           text('Próxima jornada: sábado a las 10:00 en la azotea. Trae guantes y una botella de agua.', 90, 440, 600, 120, { fontSize: 30, color: INK }),
           model('kh-DiffuseTransmissionPlant', 780, 130, 400, 500, { view: 'three', motion: 'orbit', caption: '' }),
           text(credit3d('kh-DiffuseTransmissionPlant'), 90, 610, 680, 30, { fontSize: 13, color: SOIL })],
-          notes: 'La planta da una vuelta completa al llegar (Modelo 3D ▸ Al llegar: vuelta completa). Cierre con transición «Zoom».' },
+          notes: 'La planta da una vuelta completa al llegar (Modelo 3D ▸ Vista ▸ Al entrar: vuelta completa). Cierre con transición «Zoom».' },
       ]));
     } },
 };
