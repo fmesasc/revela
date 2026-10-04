@@ -73,6 +73,16 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 .camera-blk small{font-size:12px;opacity:.75;text-align:center;padding:0 8px}
 .camera-blk.cut{background:repeating-conic-gradient(#2234 0 25%,#2238 0 50%) 0 0/24px 24px!important;outline:2px dashed #8899aa;outline-offset:-2px}
 .camera-blk.live{position:relative}
+/* Trying a model that follows the camera: your picture and what is happening. */
+#puppet-panel{position:fixed;right:16px;bottom:16px;z-index:900;display:flex;gap:10px;align-items:flex-start;max-width:min(440px,calc(100vw - 32px));padding:10px;border-radius:12px;background:var(--panel);color:var(--txt);border:1px solid var(--line);box-shadow:0 6px 24px #0004;font-size:13px}
+#puppet-panel .pp-video{width:128px;aspect-ratio:4/3;object-fit:cover;border-radius:8px;background:#000;flex:none}
+#puppet-panel .pp-text{display:flex;flex-direction:column;gap:4px;min-width:0}
+#puppet-panel .pp-about:empty{display:none}
+#puppet-panel .pp-about{color:var(--txt2);font-style:italic}
+#puppet-panel small{opacity:.7}
+#puppet-panel.failed .pp-say{color:var(--danger)}
+#puppet-panel .pp-stop{flex:none}
+@media (max-width:560px){#puppet-panel{flex-wrap:wrap}#puppet-panel .pp-video{width:96px}}
 #rec-bar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:10001;display:flex;align-items:center;gap:10px;
   padding:8px 12px;border-radius:24px;background:#1b1d22;color:#fff;box-shadow:0 4px 18px #0006;font:14px system-ui,sans-serif}
 #rec-bar .rec-dot{width:10px;height:10px;border-radius:50%;background:#e53935;animation:recBlink 1s infinite}

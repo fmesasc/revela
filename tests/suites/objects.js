@@ -609,6 +609,203 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/<div class="fragment rv-path" data-fragment-index="1" [^>]*--dx:480px[^>]*><span class="caption"/.test(R.io.buildHTML()), 'su pie de foto se mueve con él');
   });
 
+  // "Controlar con la cámara": a person seen by the camera (MediaPipe's 33 pose
+  // landmarks, made up here: x right in the picture, y down, z away from it).
+  const person = ({ armL = 'down', armR = 'down', headYaw = 0, lean = 0, hide = [] } = {}) => {
+    const P = Array.from({ length: 33 }, () => ({ x: 0, y: 0, z: 0, visibility: 0.1 }));
+    const set = (i, x, y, z) => { P[i] = { x, y, z, visibility: hide.includes(i) ? 0.1 : 0.99 }; };
+    set(11, 0.18, -0.5 - Math.sin(lean) * 0.18, 0); set(12, -0.18, -0.5 + Math.sin(lean) * 0.18, 0);   // (its left shoulder: right of the picture)
+    set(23, 0.1, 0, 0); set(24, -0.1, 0, 0);
+    const arm = (s, e, w, side, how) => { const d = { down: [0, 1, 0], up: [0, -1, 0], side: [side, 0, 0] }[how], o = P[s];
+      set(e, o.x + d[0] * 0.28, o.y + d[1] * 0.28, o.z); set(w, o.x + d[0] * 0.53, o.y + d[1] * 0.53, o.z); };
+    arm(11, 13, 15, 1, armL); arm(12, 14, 16, -1, armR);
+    const c = Math.cos(headYaw), s = Math.sin(headYaw);   // (turning to its left: the nose towards +x)
+    const head = { 0: [0, 0.02, -0.1], 2: [0.03, -0.02, -0.08], 5: [-0.03, -0.02, -0.08], 7: [0.075, 0, 0], 8: [-0.075, 0, 0], 9: [0.025, 0.06, -0.08], 10: [-0.025, 0.06, -0.08] };
+    for (const [i, [x, y, z]] of Object.entries(head)) set(+i, x * c - z * s, -0.64 + y, x * s + z * c);
+    return P;
+  };
+  const near = (v, w, m) => assert(v && w.every((x, i) => Math.abs(v[i] - x) < 0.05), `${m} (esperaba ${JSON.stringify(w)}, obtuvo ${JSON.stringify(v && v.map(x => +x.toFixed(2)))})`);
+
+  await test('cámara que mueve un 3D: reconoce los huesos por su nombre (robot, Mixamo, VRM, KayKit, esqueleto automático)', async () => {
+    const P = await frame.contentWindow.eval("import('/src/io/runtime/puppet.js')"), A = await frame.contentWindow.eval("import('/src/features/content/autorig.js')");
+    const roles = names => Object.fromEntries(Object.entries(P.puppetBones(names)).map(([k, i]) => [k, names[i]]));
+    // The templates' robot, as three.js names it (it drops the dots of "UpperArm.L").
+    const robot = roles(['Bone', 'FootL', 'Body', 'Hips', 'Abdomen', 'Torso', 'Neck', 'Head', 'ShoulderL', 'UpperArmL', 'LowerArmL', 'Palm2L', 'ShoulderR', 'UpperArmR', 'LowerArmR', 'UpperLegL']);
+    eq(JSON.stringify(robot), JSON.stringify({ hips: 'Hips', spine: 'Abdomen', chest: 'Torso', neck: 'Neck', head: 'Head', upperArmL: 'UpperArmL', lowerArmL: 'LowerArmL', upperArmR: 'UpperArmR', lowerArmR: 'LowerArmR' }), 'el robot');
+    const mixamo = roles(['mixamorig:Hips', 'mixamorig:Spine', 'mixamorig:Spine1', 'mixamorig:Spine2', 'mixamorig:Neck', 'mixamorig:Head', 'mixamorig:HeadTop_End', 'mixamorig:LeftShoulder', 'mixamorig:LeftArm', 'mixamorig:LeftForeArm', 'mixamorig:LeftHand', 'mixamorig:LeftHandIndex1', 'mixamorig:RightArm', 'mixamorig:RightForeArm', 'mixamorig:RightHand', 'mixamorig:LeftUpLeg']);
+    assert(mixamo.upperArmL === 'mixamorig:LeftArm' && mixamo.lowerArmL === 'mixamorig:LeftForeArm' && mixamo.handL === 'mixamorig:LeftHand' && mixamo.upperArmR === 'mixamorig:RightArm', 'Mixamo: los brazos (no el hombro ni los dedos)');
+    assert(mixamo.head === 'mixamorig:Head' && mixamo.chest === 'mixamorig:Spine2' && mixamo.spine === 'mixamorig:Spine', 'Mixamo: cabeza (no su punta), pecho y espalda');
+    eq(roles(['mixamorigLeftForeArm']).lowerArmL, 'mixamorigLeftForeArm', 'Mixamo, como lo deja three.js');
+    const vrm = roles(['J_Bip_C_Hips', 'J_Bip_C_Spine', 'J_Bip_C_Chest', 'J_Bip_C_Neck', 'J_Bip_C_Head', 'J_Bip_L_UpperArm', 'J_Bip_L_LowerArm', 'J_Bip_R_UpperArm', 'J_Bip_R_LowerArm']);
+    assert(vrm.upperArmL === 'J_Bip_L_UpperArm' && vrm.lowerArmR === 'J_Bip_R_LowerArm' && vrm.head === 'J_Bip_C_Head', 'VRM');
+    eq(roles(['leftUpperArm', 'rightLowerArm']).upperArmL, 'leftUpperArm', 'nombres humanoides (VRM 1)');
+    const kay = roles(['hips', 'spine', 'chest', 'upperarml', 'lowerarml', 'wristl', 'handl', 'handslotl', 'upperarmr', 'lowerarmr', 'head', 'upperlegl', 'elbowIKl']);
+    assert(kay.upperArmL === 'upperarml' && kay.lowerArmR === 'lowerarmr' && kay.handL === 'wristl' && kay.head === 'head', 'KayKit ("upperarm.l" sin el punto)');
+    const auto = roles(A.SKELETONS.person.map(([n]) => n));
+    assert(auto.upperArmL === 'armL' && auto.lowerArmL === 'forearmL' && auto.handR === 'handR' && auto.head === 'head' && auto.chest === 'chest', 'el esqueleto automático de Revela');
+    eq(Object.keys(roles(A.SKELETONS.animal.map(([n]) => n))).filter(k => /Arm/.test(k)).length, 0, 'un animal no tiene brazos (solo cabeza)');
+    eq(Object.keys(roles(['Cube', 'Leg.L', 'Armature'])).length, 0, 'nada reconocible: el modelo entero');
+    assert(P.puppetMorph('jawOpen') === 'jaw' && P.puppetMorph('mouth_open') === 'jaw' && P.puppetMorph('eyeBlinkLeft') === 'blink' && P.puppetMorph('Surprised') === null, 'gestos de la cara');
+  });
+
+  await test('cámara que mueve un 3D: de los puntos del cuerpo a los giros (brazo arriba, cabeza a un lado y al otro, espejo)', async () => {
+    const P = await frame.contentWindow.eval("import('/src/io/runtime/puppet.js')");
+    const solve = (o, mirror) => P.puppetSolve({ world: person(o) }, null, { mirror });
+    const rest = solve({}, false);
+    near(rest.arms.L.upper, [0, -1, 0], 'brazos abajo'); near([rest.head.yaw, rest.head.pitch, rest.head.roll], [0, 0, 0], 'cabeza de frente'); assert(rest.seen, 'te ve');
+    near(solve({ armL: 'up' }, false).arms.L.upper, [0, 1, 0], 'sin espejo: tu brazo izquierdo arriba, su brazo izquierdo arriba');
+    near(solve({ armL: 'up' }, false).arms.R.upper, [0, -1, 0], 'y el otro, abajo');
+    near(solve({ armL: 'up' }, true).arms.R.upper, [0, 1, 0], 'con espejo: el del mismo lado de la pantalla (su derecho)');
+    near(solve({ armL: 'side' }, false).arms.L.lower, [1, 0, 0], 'en cruz: hacia su izquierda');
+    near(solve({ armL: 'side' }, true).arms.R.lower, [-1, 0, 0], 'en cruz con espejo: hacia su derecha');
+    const left = solve({ headYaw: 0.5 }, false).head, right = solve({ headYaw: -0.5 }, false).head;
+    assert(Math.abs(left.yaw - 0.5) < 0.05 && Math.abs(right.yaw + 0.5) < 0.05, 'la cabeza gira a su izquierda y a su derecha: ' + left.yaw.toFixed(2) + ' ' + right.yaw.toFixed(2));
+    assert(Math.abs(solve({ headYaw: 0.5 }, true).head.yaw + 0.5) < 0.05, 'con espejo, al otro lado');
+    assert(Math.abs(solve({ headYaw: 2.5 }, false).head.yaw) <= 1.2 + 1e-9, 'limitado a lo posible');
+    assert(solve({ lean: 0.3 }, false).torso.roll > 0.2, 'te inclinas: se inclina');
+    eq(solve({ hide: [13, 15] }, false).arms.L, null, 'un brazo que no se ve: no se mueve (vuelve a su animación)');
+    eq(P.puppetSolve(null, null, {}).seen, false, 'sin nadie: nada');
+    // The face (more precise for the head): eye corners and chin to forehead, in the picture.
+    const F = Array.from({ length: 478 }, () => ({ x: 0.5, y: 0.5, z: 0 })), turn = a => {
+      const pt = (x, y, z) => ({ x: 0.5 + x * Math.cos(a) - z * Math.sin(a), y: 0.5 + y, z: x * Math.sin(a) + z * Math.cos(a) });
+      F[33] = pt(-0.05, 0, 0); F[263] = pt(0.05, 0, 0); F[10] = pt(0, -0.1, 0); F[152] = pt(0, 0.1, 0); return F;
+    };
+    const fy = P.puppetSolve(null, { points: turn(0.4), shapes: { jawOpen: 0.5 } }, { mirror: false });
+    assert(fy.seen && Math.abs(fy.head.yaw - 0.4) < 0.05 && fy.jaw > 0.5, 'con la cara: el giro y la boca');
+  });
+
+  await test('cámara que mueve un 3D: la presentación lleva el motor solo si hace falta (y una sola cámara con Cameo)', async () => {
+    reset(); const d = R.state.deck;
+    const m = { id: 'pm1', type: 'model', src: 'data:model/gltf-binary;base64,AAAA', x: 100, y: 100, w: 300, h: 300, rotation: 0, animation: null };
+    d.slides[0].blocks.push(m);
+    let html = R.io.buildHTML();
+    assert(!/function createPuppet/.test(html) && !/data-puppet/.test(html) && !/pose_landmarker/.test(html), 'sin «Controlar con la cámara»: nada de esto');
+    m.puppet = { mode: 'head', mirror: false, preview: true };
+    html = R.io.buildHTML();
+    assert(/<model-viewer[^>]*data-puppet="head" data-puppet-mirror="0" data-puppet-preview/.test(html), 'el modelo lleva sus opciones');
+    assert(/revelaPuppetRuntime\("https:\/\/cdn\.jsdelivr\.net\/npm\/@mediapipe\/tasks-vision@[\d.]+", "https:\/\/storage\.googleapis\.com\/[^"]+pose_landmarker_lite\.task", "https:\/\/storage\.googleapis\.com\/[^"]+face_landmarker\.task"\)/.test(html), 'el seguimiento: versiones fijas');
+    eq((html.match(/function createCameraEngine/g) || []).length, 1, 'el motor de la cámara, una vez');
+    d.slides[0].blocks.push({ id: 'cm1', type: 'camera', shape: 'circle', x: 0, y: 0, w: 100, h: 100, rotation: 0, animation: null });
+    html = R.io.buildHTML();
+    eq((html.match(/function createCameraEngine/g) || []).length, 1, 'con Cameo también: una sola cámara para los dos');
+    assert(html.indexOf('revelaCameraRuntime(') < html.indexOf('revelaPuppetRuntime('), 'Cameo primero (la cámara compartida)');
+    // The page runs (no syntax errors in what's embedded) and, while no slide with such a model is shown, asks for nothing.
+    m.puppet = null; d.slides.push({ ...JSON.parse(JSON.stringify(d.slides[0])), id: 'pz2', blocks: [{ ...m, id: 'pm2', puppet: { mode: 'body' } }] });
+    d.slides[0].blocks = d.slides[0].blocks.filter(b => b.type !== 'camera');
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:800px;height:500px;visibility:hidden'; D.body.appendChild(f);
+    try {
+      let asked = 0;
+      f.srcdoc = R.io.buildHTML(d, { inApp: true });
+      for (let i = 0; i < 100 && !f.contentWindow.Reveal?.isReady?.(); i++) { await sleep(100); const md = f.contentWindow.navigator?.mediaDevices; if (md && !md.__w) { md.__w = 1; const g = md.getUserMedia.bind(md); md.getUserMedia = c => { asked++; return g(c); }; } }
+      const W = f.contentWindow;
+      assert(typeof W.revelaPuppetRuntime === 'function' && typeof W.puppetSolve === 'function' && W.__rvCam, 'el motor está en la página');
+      await sleep(200); eq(asked, 0, 'en una diapositiva sin él, no pide la cámara');
+    } finally { f.remove(); }
+  });
+
+  await test('cámara que mueve un 3D: «Controlar con la cámara» en su pestaña y en su menú, con sus opciones', async () => {
+    reset(); const W = frame.contentWindow, page = () => D.querySelector('#ribbon [data-page="ctx"]');
+    const m = { id: 'pm3', type: 'model', src: 'data:model/gltf-binary;base64,AAAA', x: 10, y: 10, w: 200, h: 200, rotation: 0, animation: null };
+    R.store.commit(() => { slide().blocks.push(m); R.state.ui.selection = 'pm3'; R.state.ui.multi = ['pm3']; }); await sleep(20);
+    D.querySelector('[data-tab="ctx"]').click(); await sleep(20);
+    const b = () => slide().blocks.find(x => x.id === 'pm3'), btn = k => page().querySelector(`[data-ctx="${k}"]`);
+    assert(btn('puppet') && !btn('puppet').classList.contains('on') && !btn('puppet-mirror'), 'apagado: solo el interruptor (y Probar)');
+    assert(btn('puppet-try'), 'y «Probar con la cámara»');
+    btn('puppet').click(); await sleep(20);
+    eq(JSON.stringify(b().puppet), JSON.stringify({ mode: 'body', mirror: true, preview: false }), 'encendido: todo el cuerpo, como un espejo');
+    assert(btn('puppet').classList.contains('on') && btn('puppet-mirror').classList.contains('on'), 'los botones lo muestran');
+    btn('puppet-mirror').click(); await sleep(20); eq(b().puppet.mirror, false, 'sin espejo');
+    btn('puppet-preview').click(); await sleep(20); eq(b().puppet.preview, true, 'tu vídeo en pequeño');
+    const sel = [...page().querySelectorAll('select')].find(x => [...x.options].some(o => o.value === 'head'));
+    sel.value = 'head'; sel.dispatchEvent(new W.Event('change')); await sleep(20); eq(b().puppet.mode, 'head', 'solo la cabeza');
+    const labels = [...page().querySelectorAll('.group > label')].map(l => l.textContent);
+    assert(labels.includes('Con la cámara'), 'su grupo: ' + labels.join(', '));
+    const M = await W.eval("import('/src/features/content/model3d.js')");
+    eq(M.modelBleed(b()), 1.5, 'con margen para los brazos levantados');
+    eq(D.querySelector(`#stage .block[data-id="pm3"] model-viewer`).getAttribute('data-puppet'), 'head', 'el modelo del lienzo lo lleva');
+    // The right-click menu: off again.
+    const el = D.querySelector('#stage .block[data-id="pm3"]'), r = el.getBoundingClientRect();
+    el.dispatchEvent(new W.MouseEvent('contextmenu', { bubbles: true, clientX: r.left + 20, clientY: r.top + 20 })); await sleep(20);
+    const item = [...D.querySelectorAll('.ctx-item')].find(x => x.textContent === 'Dejar de controlar con la cámara');
+    assert(item && [...D.querySelectorAll('.ctx-item')].some(x => x.textContent === 'Probar con la cámara'), 'en el menú contextual');
+    item.click(); await sleep(20);
+    assert(!b().puppet && !D.querySelector(`#stage .block[data-id="pm3"] model-viewer`).hasAttribute('data-puppet'), 'apagado desde el menú');
+    R.store.undo(); await sleep(20); assert(b().puppet, 'se deshace');
+    D.querySelector('[data-tab="home"]').click();
+  });
+
+  await test('cámara que mueve un 3D: el robot de las plantillas levanta los brazos y gira la cabeza; sin nadie, vuelve a su animación', async () => {
+    const W = frame.contentWindow, V = await W.eval("import('/src/core/vendor.js')"), P = await W.eval("import('/src/io/runtime/puppet.js')");
+    const K = await W.eval("import('/src/features/content/templates/kit.js')");
+    await V.loadScript(V.MODEL_VIEWER);
+    const mv = D.createElement('model-viewer');
+    mv.setAttribute('src', K.lib3d('three-RobotExpressive').src); mv.setAttribute('autoplay', ''); mv.setAttribute('animation-name', 'Idle'); mv.setAttribute('auto-rotate', '');
+    mv.style.cssText = 'position:fixed;left:0;top:0;width:300px;height:300px';
+    D.body.appendChild(mv);
+    let who = person({ armL: 'up', armR: 'up', headYaw: 0.6 });
+    const pp = P.createPuppet({ track: () => ({ pose: who && { world: who }, face: null }) });
+    try {
+      for (let i = 0; i < 300 && !mv.loaded; i++) await sleep(50);
+      assert(mv.loaded, 'el robot se carga');
+      const sc = mv[Object.getOwnPropertySymbols(mv).find(s => s.description === 'scene')], root = sc.model;
+      const bone = n => { let x = null; root.traverse(o => { if (o.isBone && o.name === n) x = o; }); return x; };
+      const dirUp = (a, b) => { const p = bone(a).getWorldPosition(bone(a).position.clone()), q = bone(b).getWorldPosition(bone(b).position.clone()); return (q.y - p.y) / q.distanceTo(p); };
+      const idleUp = dirUp('UpperArmL', 'LowerArmL');
+      pp.show([{ mv, mode: 'body', mirror: true }]);
+      for (let i = 0; i < 60 && pp.weight(mv) < 0.97; i++) await sleep(50);
+      eq(pp.kind(mv), 'body', 'reconoce su esqueleto: todo el cuerpo');
+      assert(mv.autoRotate === false, 'mientras te sigue, no gira solo');
+      await sleep(100);
+      assert(dirUp('UpperArmL', 'LowerArmL') > 0.9 && dirUp('UpperArmR', 'LowerArmR') > 0.9, 'los dos brazos, arriba: ' + dirUp('UpperArmL', 'LowerArmL').toFixed(2));
+      assert(idleUp < 0, 'en reposo los tenía abajo');
+      // The head: its forward (where its +z looks, in the model's frame) towards the side.
+      const fwd = () => { const h = bone('Head'), q = h.getWorldQuaternion(h.quaternion.clone()), r = root.getWorldQuaternion(h.quaternion.clone()).invert(); const v = h.position.clone().set(0, 0, 1).applyQuaternion(r.multiply(q)); return Math.atan2(v.x, v.z); };
+      const turned = fwd();
+      who = person({ armL: 'up', armR: 'up', headYaw: -0.6 }); await sleep(700);
+      assert(Math.abs(turned - fwd()) > 0.8, `la cabeza gira con la tuya (${turned.toFixed(2)} → ${fwd().toFixed(2)})`);
+      // Nobody: back to its own animation.
+      who = null;
+      for (let i = 0; i < 60 && pp.weight(mv) > 0.03; i++) await sleep(50);
+      await sleep(100);
+      assert(dirUp('UpperArmL', 'LowerArmL') < 0, 'sin nadie delante, vuelve a su animación');
+      pp.stop();
+      assert(mv.autoRotate === true && !Object.prototype.hasOwnProperty.call(sc, 'updateAnimation'), 'al parar, todo como estaba');
+    } finally { pp.stop(); mv.remove(); }
+  });
+
+  await test('cámara que mueve un 3D: una sola cámara compartida con Cameo, que se apaga cuando nadie la usa', async () => {
+    const C = await frame.contentWindow.eval("import('/src/io/runtime/camera.js')");
+    const eng = C.createCameraEngine({ keep: false });
+    try {
+      const s = await eng.hold(); assert(s && s.getTracks()[0].readyState === 'live', 'quien la pide la tiene');
+      const s2 = await eng.hold(); assert(s2 === s, 'la misma para los dos');
+      await eng.show([]); assert(s.getTracks()[0].readyState === 'live', 'Cameo no la apaga mientras otro la usa');
+      eng.drop(); assert(s.getTracks()[0].readyState === 'live', 'aún la usa uno');
+      eng.drop(); eq(s.getTracks()[0].readyState, 'ended', 'nadie: se apaga');
+    } finally { eng.release(); }
+  });
+
+  await test('cámara que mueve un 3D: «Probar» en el editor (panel, y la cámara se suelta al detener o al cambiar de diapositiva)', async () => {
+    reset();
+    const m = { id: 'pm4', type: 'model', src: 'data:model/gltf-binary;base64,AAAA', x: 10, y: 10, w: 200, h: 200, rotation: 0, animation: null, puppet: { mode: 'body', mirror: true } };
+    R.store.commit(() => { slide().blocks.push(m); R.state.ui.selection = 'pm4'; R.state.ui.multi = ['pm4']; }); await sleep(20);
+    const PV = await frame.contentWindow.eval("import('/src/ui/canvas/puppetview.js')");
+    const panel = () => D.getElementById('puppet-panel'), video = () => panel()?.querySelector('video');
+    PV.tryPuppet(slide().blocks.find(x => x.id === 'pm4'));
+    assert(panel() && /cámara/.test(panel().textContent), 'el panel, diciendo lo que pasa');
+    assert(/no sale de tu equipo/.test(panel().textContent), 'y que la imagen no sale del navegador');
+    for (let i = 0; i < 60 && !video()?.srcObject; i++) await sleep(50);
+    const tr = video().srcObject.getTracks()[0]; eq(tr.readyState, 'live', 'tu vídeo, en el panel');
+    eq(PV.puppetTrying(), 'pm4', 'probando');
+    D.querySelector('#puppet-panel .pp-stop').click(); await sleep(20);
+    assert(!panel() && tr.readyState === 'ended' && !PV.puppetTrying(), 'Detener: la cámara se apaga');
+    PV.tryPuppet(slide().blocks.find(x => x.id === 'pm4'));
+    for (let i = 0; i < 60 && !video()?.srcObject; i++) await sleep(50);
+    const tr2 = video().srcObject.getTracks()[0];
+    R.slides.addSlide(); await sleep(60);
+    assert(!panel() && tr2.readyState === 'ended', 'en otra diapositiva se para y la suelta');
+  });
+
   await test('pestaña del objeto seleccionado (como PowerPoint): aparece al seleccionar, con sus opciones', async () => {
     reset(); const W = frame.contentWindow;
     const tab = () => D.querySelector('#ribbon [data-tab="ctx"]'), page = () => D.querySelector('#ribbon [data-page="ctx"]');

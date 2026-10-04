@@ -17,7 +17,7 @@ RANK = {'core': 0, 'i18n': 1, 'render': 1, 'features': 2, 'io': 3, 'api': 4, 'ui
 # Pairs of the same rank that must not know each other.
 APART = {('render', 'i18n')}
 # Code that runs inside the exported presentation cannot import at all.
-SELF_CONTAINED = {'io/runtime/ink.js', 'io/runtime/camera.js'}
+SELF_CONTAINED = {'io/runtime/ink.js', 'io/runtime/camera.js', 'io/runtime/puppet.js'}
 
 IMPORT = re.compile(r"""(?:^\s*import\s[^'"]*?from\s*|^\s*import\s*|\bimport\()\s*['"](\.[^'"]+)['"]""", re.M)
 

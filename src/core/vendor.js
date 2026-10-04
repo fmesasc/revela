@@ -24,6 +24,10 @@ export const GIFUCT = NPM + 'gifuct-js@2.1.2/+esm';
 // the browser (the camera's picture never leaves it); the model, a fixed version.
 export const VISION = NPM + '@mediapipe/tasks-vision@1.0.1';
 export const SELFIE_MODEL = 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite';
+// A 3D model following the presenter (io/runtime/puppet.js), also in the browser:
+// the lightest pose model (the body, ~6 MB) and the face one (head turns, mouth and blinks, ~4 MB).
+export const POSE_MODEL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
+export const FACE_MODEL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 
 // A classic script, once: resolves at once if `global` already exists, and
 // concurrent calls for the same URL share one request.

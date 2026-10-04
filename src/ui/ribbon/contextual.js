@@ -13,9 +13,10 @@ import * as blocks from '../../features/document/blocks.js';
 import { togglePopover } from './popovers.js';
 import * as format from '../../features/document/format.js';
 import * as shapeops from '../../features/document/shapeops.js';
-import { MOTIONS_3D, VIEWS_3D, BLEEDS_3D, EDGES_3D, ARRIVALS_3D, modelBleed } from '../../features/content/model3d.js';
+import { MOTIONS_3D, VIEWS_3D, BLEEDS_3D, EDGES_3D, ARRIVALS_3D, PUPPET_MODES, PUPPET_DEFAULT, modelBleed } from '../../features/content/model3d.js';
 import { isGif, CAMERA_FILTERS, CAMERA_BACKGROUNDS, DEFAULT_CAMERA_COLOR, cameraBrightness, setCameraLook } from '../../features/live/media.js';
 import { cameraLive, setCameraLive, setCameraBackground, pickCameraImage } from '../canvas/cameraview.js';
+import { puppetTrying, tryPuppet, togglePuppet } from '../canvas/puppetview.js';
 import { CURVES, DEVICES, SHAPE_NAMES, hasShapeText, CONNECTOR_ROUTES, isLineShape } from '../../render/svg.js';
 import { styled } from '../../features/document/master.js';
 import { saveBlockFile as saveFile } from '../shell/files.js';
@@ -63,6 +64,16 @@ function replaceModel(b) {
   inp.click();
 }
 const clipsOf = b => modelClips(b.id);
+// "Controlar con la cámara": on/off, then what it follows, mirror, your picture small, and trying it here.
+const setPuppet = (b, k, v) => set(b, x => { x.puppet = { ...PUPPET_DEFAULT, ...x.puppet, [k]: v }; });
+function puppetControls(b) {
+  const p = b.puppet, trying = puppetTrying() === b.id;
+  return [btn('video_camera_front', 'Controlar con la cámara', () => togglePuppet(b), !!p, 'puppet'),
+    ...(p ? [['select', 'Sigue', PUPPET_MODES, p.mode || 'body', v => setPuppet(b, 'mode', v)],
+      btn('flip', 'Espejo', () => setPuppet(b, 'mirror', p.mirror === false), p.mirror !== false, 'puppet-mirror'),
+      btn('picture_in_picture', 'Mostrar mi vídeo en pequeño', () => setPuppet(b, 'preview', !p.preview), !!p.preview, 'puppet-preview')] : []),
+    btn(trying ? 'stop_circle' : 'play_circle', trying ? 'Detener' : 'Probar con la cámara', () => tryPuppet(b), trying, 'puppet-try')];
+}
 // Text round it (PowerPoint's "Wrap text: Square"): the text boxes it overlaps leave it a gap.
 const wrapBtn = b => btn('wrap_text', 'Texto alrededor', () => set(b, x => { if (x.wrap) delete x.wrap; else x.wrap = true; }), !!b.wrap);
 
@@ -99,6 +110,8 @@ function groupsFor(b) {
       ['Animación', [['select', 'En reposo', opts, b.clip || '', v => set(b, x => { if (v) x.clip = v; else delete x.clip; })],
         btn('motion_photos_on', 'Movimiento 3D', () => openModel3D(b)),
         btn('autorenew', 'Girar solo', () => set(b, x => { x.autoRotate = !(x.autoRotate !== false); }), b.autoRotate !== false && !b.walk?.clip)]],
+      // (The model moves with whoever is in front of the camera: io/runtime/puppet.js.)
+      ['Con la cámara', puppetControls(b)],
       ['Al moverse', [['select', 'Mientras se mueve', [['', 'Nada'], ...names.map(n => [n, n])], b.walk?.clip || '', v => set(b, x => {
         if (v) x.walk = { end: '', endOnce: true, face: true, look: true, ...x.walk, clip: v }; else delete x.walk; })],
         btn('play_circle', 'Probar', () => playAnimations())]],
@@ -279,7 +292,7 @@ export function renderContextual() {
   if (opened) tab.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });   // (with its name, so all of it shows)
   const names = b?.type === 'model' ? clipsOf(b) : [];
   // (Moving or resizing it doesn't change its options: no rebuild while nudging.)
-  const sig = shortSig([list.map(x => x.id), b && { ...b, x: 0, y: 0, w: 0, h: 0 }, names, b && styled(b, currentSlide()).fontSize, b?.type === 'camera' && cameraLive()]);
+  const sig = shortSig([list.map(x => x.id), b && { ...b, x: 0, y: 0, w: 0, h: 0 }, names, b && styled(b, currentSlide()).fontSize, b?.type === 'camera' && cameraLive(), b?.type === 'model' && puppetTrying()]);
   if (sig === lastSig) return;
   lastSig = sig;
   const groups = b ? groupsFor(b) : groupsForMany(list);

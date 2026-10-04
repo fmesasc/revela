@@ -463,7 +463,7 @@ export function setupMath(el, b) {
 // what changed is touched, so the view doesn't reload.
 export function applyModelAttrs(mv, b) {
   const want = new Map(modelAttrs(b));
-  for (const name of ['auto-rotate', 'auto-rotate-delay', 'rotation-per-second', 'autoplay', 'animation-name', 'data-once', 'data-speed', 'data-motion', 'camera-orbit', 'data-bleed', 'data-arrive'])
+  for (const name of ['auto-rotate', 'auto-rotate-delay', 'rotation-per-second', 'autoplay', 'animation-name', 'data-once', 'data-speed', 'data-motion', 'camera-orbit', 'data-bleed', 'data-arrive', 'data-puppet', 'data-puppet-mirror', 'data-puppet-preview'])
     if (!want.has(name) && mv.hasAttribute(name)) mv.removeAttribute(name);   // only ours: model-viewer adds its own
   for (const [k, v] of want) if (mv.getAttribute(k) !== v) mv.setAttribute(k, v);
   const sp = b.clipSpeed || 1; if (mv.timeScale !== sp) mv.timeScale = sp;
