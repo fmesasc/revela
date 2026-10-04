@@ -1979,6 +1979,7 @@ export default {
   "500 créditos": "500 رصيد",
   "1500 créditos": "1500 رصيد",
   "Los pagos estarán disponibles muy pronto.": "ستتوفر المدفوعات قريبًا جدًا.",
+  "Modo de prueba: no se cobra nada (tarjeta de prueba 4242 4242 4242 4242)": "وضع الاختبار: لا يُخصم أي مبلغ (بطاقة الاختبار 4242 4242 4242 4242)",
   "Gestionar la suscripción": "إدارة الاشتراك",
   "Se acabó el tiempo para confirmar. Vuelve a intentarlo.": "انتهى وقت التأكيد. حاول مرة أخرى.",
   "La aplicación de escritorio de Revela quiere iniciar sesión. Primero, inicia sesión aquí.": "يريد تطبيق Revela لسطح المكتب تسجيل الدخول. سجّل الدخول هنا أولًا.",

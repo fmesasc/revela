@@ -15,13 +15,16 @@
 // itself (Origin), so another site can't use the Access cookie (CSRF).
 //
 //   GET  /api/admin/whoami                 → { email }
-//   GET  /api/admin/stats                  → { users, pro, blocked, ai: { month, usd, limit }, tickets: { open, waiting, closed } }
+//   GET  /api/admin/stats                  → { users, pro, blocked, ai: { month, usd, limit }, tickets: { open, waiting, closed },
+//                                          test: { accounts (billingTest), pro (Pro only from test mode), credits } }
 //   GET  /api/admin/users?q=&cursor=       → { users, cursor }   (q: email prefix or Google sub; none: most recently seen)
 //   GET  /api/admin/users/:sub             → the account: profile, plan, credits and lots, ledger, sessions, docs, team
 //   POST /api/admin/credits                { sub, delta, reason, expiresDays?, notify? }   (ledger kind 'admin')
 //   POST /api/admin/refund                 { sub, reason? , notify? }   (gives back the last AI charge not refunded yet)
 //   POST /api/admin/plan                   { sub, until (ms, 0 = remove), reason }   (Pro given by hand; Stripe's untouched)
 //   POST /api/admin/block                  { sub, blocked, reason }   (blocked: 403 on AI, cloud documents, calls…)
+//   POST /api/admin/billing-test           { sub, on, reason }   (this account pays in Stripe's test mode: api.js stripeConf)
+//   POST /api/admin/clear-test             { sub, reason? }   (removes what test mode gave: test Pro, test credits, a test-paid team; the real stays)
 //   GET  /api/admin/tickets?status=&cursor= → { tickets, cursor }   (open, waiting, closed; in each, the latest activity first)
 //   GET  /api/admin/tickets/:id            → the ticket (thread, notes)
 //   GET  /api/admin/tickets/:id/attachment → the attached presentation (JSON)
@@ -116,7 +119,8 @@ export async function verifyAccess(jwt, env, fetchImpl = fetch, now = Date.now()
 }
 
 // ---- Directory: one object for all accounts --------------------------------------------------------
-//   'u:' + sub → { sub, email, name, plan, until, credits, created, lastSeen, team, blocked, updated }
+//   'u:' + sub → { sub, email, name, plan, until, credits, created, lastSeen, team, blocked, billingTest, test (Pro only from
+//                 Stripe's test mode), testCredits, updated }
 //   'e:' + email + '|' + sub → sub          (search by email prefix)
 //   's:' + lastSeen + '|' + sub → sub       (the most recently seen first)
 export class Directory {
@@ -128,7 +132,8 @@ export class Directory {
     if (op === 'upsert') {
       if (!a.sub) return Response.json({ error: 'bad request' }, { status: 400 });
       const old = await st.get('u:' + a.sub), rec = { sub: String(a.sub), email: String(a.email || '').toLowerCase(), name: a.name || null, plan: a.plan || 'free', until: +a.until || 0,
-        credits: +a.credits || 0, created: +a.created || null, lastSeen: a.lastSeen || null, team: a.team || null, blocked: !!a.blocked, updated: Date.now() };
+        credits: +a.credits || 0, created: +a.created || null, lastSeen: a.lastSeen || null, team: a.team || null, blocked: !!a.blocked,
+        billingTest: !!a.billingTest, test: !!a.test, testCredits: Math.max(0, +a.testCredits || 0), updated: Date.now() };
       const gone = old ? [emailKey(old), seenKey(old)].filter(k => k !== emailKey(rec) && k !== seenKey(rec)) : [];
       if (gone.length) await st.delete(gone);
       await st.put({ ['u:' + rec.sub]: rec, [emailKey(rec)]: rec.sub, [seenKey(rec)]: rec.sub });
@@ -155,12 +160,16 @@ export class Directory {
     }
     if (op === 'stats') {                                 // (a scan of every record: fine for thousands of accounts)
       const now = Date.now(), d1 = new Date(now).toISOString().slice(0, 10), d30 = new Date(now - 29 * 864e5).toISOString().slice(0, 10);
+      // (Stripe's test mode apart: a Pro only from it and test credits are not counted as real.)
       let users = 0, pro = 0, blocked = 0, active1 = 0, active30 = 0, credits = 0;
+      const test = { accounts: 0, pro: 0, credits: 0 };
       for (const [, r] of await st.list({ prefix: 'u:' })) {
-        users++; if (r.plan === 'pro' && r.until > now) pro++; if (r.blocked) blocked++;
-        if (r.lastSeen >= d1) active1++; if (r.lastSeen >= d30) active30++; if (r.credits > 0) credits += r.credits;
+        users++; if (r.plan === 'pro' && r.until > now) { if (r.test) test.pro++; else pro++; } if (r.blocked) blocked++;
+        if (r.lastSeen >= d1) active1++; if (r.lastSeen >= d30) active30++;
+        const tc = Math.min(Math.max(0, r.credits), r.testCredits || 0); if (r.credits > 0) credits += r.credits - tc; test.credits += tc;
+        if (r.billingTest) test.accounts++;
       }
-      return Response.json({ users, pro, blocked, active1, active30, credits });
+      return Response.json({ users, pro, blocked, active1, active30, credits, test });
     }
     return Response.json({ error: 'unknown' }, { status: 404 });
   }
@@ -513,7 +522,8 @@ export async function handleAdmin(req, env, url) {
   if (GET && m) {
     const v = await account(m[1]); if (!v) return json({ error: 'not found' }, 404);
     const team = v.team ? await teamStatus(env, v.team, v.profile.email).catch(() => null) : null;
-    return json({ ...v, team: v.team ? { id: v.team, name: team?.name || null, role: team?.role || null, active: !!team?.active } : null, directory: (await call(D, 'get', { sub: m[1] })).user });
+    return json({ ...v, team: v.team ? { id: v.team, name: team?.name || null, role: team?.role || null, active: !!team?.active, test: !!team?.test } : null,
+      billingGlobalTest: String(env.STRIPE_MODE || '').trim().toLowerCase() === 'test', billingTestReady: !!(env.STRIPE_TEST_SECRET_KEY && env.STRIPE_TEST_WEBHOOK_SECRET), directory: (await call(D, 'get', { sub: m[1] })).user });
   }
   if (POST && path === '/credits') {
     const delta = Math.round(+body.delta), reason = clip(body.reason, 500).trim(), days = Math.min(3650, Math.max(1, Math.round(+body.expiresDays || settings(env).packDays)));
@@ -547,6 +557,29 @@ export async function handleAdmin(req, env, url) {
     const r = await call(acct(env, body.sub), 'admin-block', { blocked: body.blocked, reason, by });
     await audit(env, { by, action: body.blocked ? 'block' : 'unblock', target: body.sub, reason, before: r.before, after: r.after });
     return json({ ok: true, ...r });
+  }
+  // Stripe's test mode for one account (api.js stripeConf): its purchases use the test keys and prices; what they
+  // grant is marked test and kept out of the business's figures.
+  if (POST && path === '/billing-test') {
+    const reason = clip(body.reason, 500).trim(); if (!reason || typeof body.on !== 'boolean') return json({ error: 'bad request' }, 400);
+    if (!(await account(body.sub))) return json({ error: 'not found' }, 404);
+    const r = await call(acct(env, body.sub), 'admin-billing-test', { on: body.on, reason, by });
+    await audit(env, { by, action: body.on ? 'billing-test-on' : 'billing-test-off', target: body.sub, reason, before: r.before, after: r.after });
+    return json({ ok: true, ...r });
+  }
+  if (POST && path === '/clear-test') {
+    if (!(await account(body.sub))) return json({ error: 'not found' }, 404);
+    const reason = clip(body.reason, 500).trim() || 'Quitar lo de prueba';
+    const r = await call(acct(env, body.sub), 'admin-clear-test', { reason, by });
+    // (A team this account administers, paid in test mode, loses that period too.)
+    let team = null;
+    if (r.team && env.TEAMS) {
+      const ts = await teamStatus(env, r.team, r.email).catch(() => null);
+      if (ts?.role === 'admin' && ts.test) team = await (await env.TEAMS.get(env.TEAMS.idFromName('team:' + r.team)).fetch('https://team/clear-test', { method: 'POST', body: JSON.stringify({}) })).json();
+    }
+    const removed = { ...r.removed, ...(team?.cleared && { team: r.team }) };
+    await audit(env, { by, action: 'clear-test', target: body.sub, reason, before: r.before, after: { ...r.after, removed } });
+    return json({ ok: true, before: r.before, after: r.after, removed });
   }
   if (GET && path === '/tickets') return json(await call(T, 'list', { status: q.get('status') || '', cursor: q.get('cursor') || null, limit: +q.get('limit') || 50 }));
   m = path.match(/^\/tickets\/(\d{1,10})(?:\/(attachment|status|note|reply|suggest))?$/);

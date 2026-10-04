@@ -14,7 +14,7 @@
 //   POST /api/login            { accessToken, terms?, lang? } (Google, issued to Revela's client) → session
 //                              (a new account needs terms: the version of the terms accepted; else 400 { error: 'terms' })
 //   POST /api/logout
-//   GET  /api/me               → { email, plan, credits, features, billing, terms (accepted the current ones?), docs }
+//   GET  /api/me               → { email, plan, credits, features, billing, billingTest, terms (accepted the current ones?), docs }
 //   POST /api/terms            { version, lang? }       (accepting the current terms, once; accounts from before)
 //   POST /api/mail/test                                 (a test email to my own address, once an hour)
 //   GET|POST /api/mail/prefs   { off: [kinds] }         (the optional notices I stopped)
@@ -28,6 +28,7 @@
 //   POST /api/billing/checkout { product } → { url }   (Stripe Checkout)
 //   POST /api/billing/portal   → { url }                (Stripe customer portal)
 //   POST /api/billing/webhook  Stripe's events (signed)
+//   POST /api/billing/webhook-test  Stripe's test-mode events (signed with STRIPE_TEST_WEBHOOK_SECRET; see stripeConf)
 //   POST /api/desktop/start    { nonce, challenge }     (the desktop app, before opening the browser)
 //   POST /api/desktop/approve  { nonce, code }          (the signed-in browser, after asking the user)
 //   POST /api/desktop/claim    { nonce, verifier }      (the desktop app: its session, once)
@@ -97,7 +98,7 @@ export function settings(env) {
     ttsUsdPerChar: num(env.AI_TTS_USD_PER_CHAR, 0.00002),      // (priced per character; the provider doesn't report it back: a cautious figure)
     // Price per million tokens [input, output] in dollars, for the estimate before a request.
     prices: (() => { try { return JSON.parse(env.AI_PRICES || '{}'); } catch { return {}; } })(),
-    products: {                                          // Stripe prices (ids) and what each gives
+    products: {                                          // Stripe prices (live ids; test ones: stripeConf) and what each gives
       'pro-month': { price: env.STRIPE_PRICE_PRO_MONTH, mode: 'subscription' },
       'pro-year': { price: env.STRIPE_PRICE_PRO_YEAR, mode: 'subscription' },
       'credits-500': { price: env.STRIPE_PRICE_CREDITS_500, mode: 'payment', credits: 500 },
@@ -106,7 +107,21 @@ export function settings(env) {
     },
   };
 }
-export const FEATURES = { free: ['ai', 'cloud-save'], pro: ['ai', 'cloud-save', 'share-people', 'analytics', 'video-calls', 'premium-templates'] };
+// Stripe has two configurations: live (real money) and test (Stripe's test mode: test cards, nothing charged).
+//   live: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_{PRO_MONTH,PRO_YEAR,CREDITS_500,CREDITS_1500,TEAM_SEAT}
+//   test: STRIPE_TEST_SECRET_KEY, STRIPE_TEST_WEBHOOK_SECRET, STRIPE_TEST_PRICE_{…the same}
+// An account pays in test mode when an admin marked it (Account 'billingTest', admin.js) or when the
+// plain var STRIPE_MODE = 'test' (everyone; default live). What test mode grants is marked test: true
+// (plan, credit lots, ledger, finance) and kept out of the business's figures.
+const PRICE_VARS = { 'pro-month': 'PRO_MONTH', 'pro-year': 'PRO_YEAR', 'credits-500': 'CREDITS_500', 'credits-1500': 'CREDITS_1500', 'team-seat': 'TEAM_SEAT' };
+export function stripeConf(env, mode = 'live') {
+  const P = mode === 'test' ? 'STRIPE_TEST_' : 'STRIPE_', key = env[P + 'SECRET_KEY'] || '', webhook = env[P + 'WEBHOOK_SECRET'] || '';
+  return { mode: mode === 'test' ? 'test' : 'live', key, webhook, ok: !!(key && webhook),
+    prices: Object.fromEntries(Object.entries(PRICE_VARS).map(([k, v]) => [k, env[P + 'PRICE_' + v] || ''])) };
+}
+export const globalTest = env => String(env.STRIPE_MODE || '').trim().toLowerCase() === 'test';
+export const billingMode = (env, accountTest) => (accountTest || globalTest(env) ? 'test' : 'live');
+export const FEATURES ={ free: ['ai', 'cloud-save'], pro: ['ai', 'cloud-save', 'share-people', 'analytics', 'video-calls', 'premium-templates'] };
 
 // ---- One account ------------------------------------------------------------------------
 export class Account {
@@ -123,9 +138,12 @@ export class Account {
     if (!this.env.DIRECTORY) return;
     const prof = await this.get('profile', null); if (!prof?.sub) return;
     const own = await this.plan(), rec = { sub: prof.sub, email: prof.email, name: prof.name || null, plan: own, until: own === 'pro' ? await this.proUntil() : 0, credits: await this.get('credits', 0),
-      created: prof.created || null, lastSeen: await this.get('lastSeen', null), team: await this.get('team', null), blocked: !!(await this.get('blocked', null)) };
-    const last = await this.get('dirRec', null), now = Date.now(), same = x => JSON.stringify({ ...x, credits: 0 });
-    if (!force && last && same(last.rec) === same(rec) && (last.rec.credits === rec.credits || now - last.at < 5 * 60e3)) return;
+      created: prof.created || null, lastSeen: await this.get('lastSeen', null), team: await this.get('team', null), blocked: !!(await this.get('blocked', null)),
+      // (Test mode, apart: the flag, a Pro only from test mode, and the test credits — kept out of the real counts.)
+      billingTest: !!(await this.get('billingTest', null)), test: own === 'pro' && !!(await this.get('plan', null))?.test && !((await this.get('proGift', null))?.until > Date.now()),
+      testCredits: (await this.lots()).filter(l => l.test && l.exp > Date.now()).reduce((t, l) => t + l.n, 0) };
+    const last = await this.get('dirRec', null), now = Date.now(), same = x => JSON.stringify({ ...x, credits: 0, testCredits: 0 });
+    if (!force && last && same(last.rec) === same(rec) && ((last.rec.credits === rec.credits && last.rec.testCredits === rec.testCredits) || now - last.at < 5 * 60e3)) return;
     if (await directoryUpsert(this.env, rec)) await this.put({ dirRec: { rec, at: now } });
   }
   // Credits come in lots, each with its expiry ({ n, exp }); they are spent from the one that
@@ -136,16 +154,18 @@ export class Account {
     if (!lots) { const c = await this.get('credits', 0); lots = c > 0 ? [{ n: c, exp: Date.now() + 365 * DAY }] : []; }   // (from before lots)
     return lots;
   }
+  // (A lot granted in Stripe's test mode is marked test: true and kept apart, so «clear test» removes exactly those.)
   async save(lots, debt) {
-    const by = new Map(); for (const l of lots) if (l.n > 0) by.set(l.exp, (by.get(l.exp) || 0) + l.n);   // (one lot per expiry)
-    lots = [...by].map(([exp, n]) => ({ n, exp })).sort((a, b) => a.exp - b.exp);
+    const by = new Map();                                 // (one lot per expiry, and per kind: real or test)
+    for (const l of lots) if (l.n > 0) { const k = l.exp + (l.test ? '|t' : ''); by.set(k, { exp: l.exp, test: !!l.test, n: (by.get(k)?.n || 0) + l.n }); }
+    lots = [...by.values()].map(({ n, exp, test }) => ({ n, exp, ...(test && { test: true }) })).sort((a, b) => a.exp - b.exp);
     const credits = lots.reduce((t, l) => t + l.n, 0) - debt;
     await this.put({ lots, debt, credits }); return credits;
   }
-  async add(n, exp) {                                     // → balance
+  async add(n, exp, test) {                               // → balance
     const lots = await this.lots(); let debt = await this.get('debt', 0);
     const pay = Math.min(debt, n); debt -= pay; n -= pay;
-    if (n > 0) { lots.push({ n, exp }); await this.remind(exp); }
+    if (n > 0) { lots.push({ n, exp, ...(test && { test: true }) }); await this.remind(exp); }
     return this.save(lots, debt);
   }
   // A lot of credits: a notice 7 days before it expires (once per lot; the daily run checks it's still there).
@@ -156,7 +176,7 @@ export class Account {
   }
   async take(n) {                                         // → [{ n, exp }] taken (to give back exactly), balance
     const lots = await this.lots(), taken = []; let debt = await this.get('debt', 0);
-    for (const l of lots) { if (!n) break; const k = Math.min(l.n, n); l.n -= k; n -= k; taken.push({ n: k, exp: l.exp }); }
+    for (const l of lots) { if (!n) break; const k = Math.min(l.n, n); l.n -= k; n -= k; taken.push({ n: k, exp: l.exp, ...(l.test && { test: true }) }); }
     debt += n;
     return { taken, credits: await this.save(lots, debt) };
   }
@@ -172,10 +192,10 @@ export class Account {
     list.push({ at: Date.now(), delta, reason, ...(ref && { ref }), ...extra, balance: await this.get('credits', 0) });
     await this.put({ ledger: list.slice(-500) });
     // (The business's accounts, finance.js: credits granted, expired or taken; AI charges go with their request, see 'settle'.)
-    if (delta && !CHARGES.includes(reason)) await record(this.env, { kind: 'credits', reason: String(ref || '').startsWith('refund:') ? 'refund' : reason, delta, sub: (await this.get('profile', {})).sub });
+    if (delta && !CHARGES.includes(reason)) await record(this.env, { kind: 'credits', reason: String(ref || '').startsWith('refund:') ? 'refund' : reason, delta, sub: (await this.get('profile', {})).sub, ...(extra?.test && { test: true }) });
   }
   async entry(delta, reason, ref, days = 365, extra) {
-    const bal = delta >= 0 ? await this.add(delta, Date.now() + days * DAY) : (await this.take(-delta)).credits;
+    const bal = delta >= 0 ? await this.add(delta, Date.now() + days * DAY, extra?.test) : (await this.take(-delta)).credits;
     await this.log(delta, reason, ref, extra);
     return bal;
   }
@@ -185,7 +205,9 @@ export class Account {
     const last = await this.get('monthly', 0);
     if (!pro || Date.now() - last < 30 * DAY || s.proCredits <= 0) return;
     await this.put({ monthly: Date.now() });
-    await this.entry(s.proCredits, 'pro', null, s.monthDays);
+    // (Pro only from a test-mode plan: its month's credits are test ones too.)
+    const p = await this.get('plan', null), g = await this.get('proGift', null), now = Date.now(), test = !!(p?.test && p.until > now && !(g?.until > now));
+    await this.entry(s.proCredits, 'pro', null, s.monthDays, test && { test: true });
   }
   async isPro() {
     if ((await this.plan()) === 'pro') return true;
@@ -294,7 +316,7 @@ export class Account {
         await this.expire(); await this.monthly(plan === 'pro', s);
         const ds = await this.docState(plan === 'pro'); await this.dirSync();
         return this.json({ email: prof.email, name: prof.name || null, plan, until: own === 'pro' ? await this.proUntil() : null, ...((await this.get('blocked', null)) && { blocked: true }), credits: await this.get('credits', 0), expiring: await this.soon(), features: FEATURES[plan] || FEATURES.free,
-          terms: prof.terms?.version === s.termsVersion, docs: { n: ds.docs.length, limit: ds.limit, readOnly: ds.locked.length },
+          terms: prof.terms?.version === s.termsVersion, docs: { n: ds.docs.length, limit: ds.limit, readOnly: ds.locked.length }, ...((await this.get('billingTest', null)) && { billingTest: true }),
           ...(team?.member && { team: { name: team.name, role: team.role, active: team.active } }) });
       }
       case 'terms': {                                      // { version, lang? }: the current terms, accepted
@@ -384,20 +406,27 @@ export class Account {
         const done = await this.get('refs', []);
         if (a.ref && done.includes(a.ref)) return this.json({ ok: true, duplicate: true });
         await this.put({ refs: [...done, a.ref].filter(Boolean).slice(-300) });
-        const bal = await this.entry(Math.round(+a.credits || 0), a.reason || 'grant', a.ref, +a.days || s.packDays); await this.dirSync();
+        const bal = await this.entry(Math.round(+a.credits || 0), a.reason || 'grant', a.ref, +a.days || s.packDays, a.test && { test: true }); await this.dirSync();
         return this.json({ ok: true, credits: bal });
       }
-      case 'setplan': {                                    // { name, until, customer? }
-        await this.put({ plan: { name: a.name, until: +a.until || 0 }, ...(a.customer && { customer: a.customer }) }); await this.dirSync();
+      case 'setplan': {                                    // { name, until, customer?, test? }
+        // (Test mode never replaces a real plan still running.)
+        const cur = await this.get('plan', null);
+        if (a.test && cur && !cur.test && cur.until > Date.now()) return this.json({ ok: true, ignored: true });
+        await this.put({ plan: { name: a.name, until: +a.until || 0, ...(a.test && { test: true }) }, ...(a.customer && { [a.test ? 'customerTest' : 'customer']: a.customer }) }); await this.dirSync();
         return this.json({ ok: true });
       }
-      case 'customer': return this.json({ customer: await this.get('customer', null), email: (await this.get('profile', {})).email });
+      // Stripe's customer: its ids differ between live and test mode, so each is kept apart.
+      case 'set-customer': await this.put({ [a.test ? 'customerTest' : 'customer']: a.customer }); return this.json({ ok: true });
+      case 'customer': return this.json({ customer: await this.get('customer', null), customerTest: await this.get('customerTest', null), email: (await this.get('profile', {})).email,
+        billingTest: !!(await this.get('billingTest', null)) });
+      case 'billing-test': return this.json({ test: !!(await this.get('billingTest', null)), exists: !!(await this.get('profile', null)) });
       // Cloud documents: the owner's list (with the plan's limit), and "shared with me" (in the 'e:' + email objects).
       // Everything this account holds (to hand over), and wiping it (the account is closed).
       case 'export': return this.json({ profile: await this.get('profile', {}), plan: await this.get('plan', null), credits: await this.get('credits', 0), lastSeen: await this.get('lastSeen', null), mailOff: await this.get('mailOff', []),
         ledger: await this.get('ledger', []), docs: await this.get('docs', []), sessions: Object.values(await this.get('sessions', {})).map(v => ({ created: v.created, expires: v.expires, kind: v.kind })) });
       case 'wipe': {
-        const prof = await this.get('profile', {}), out = { docs: (await this.get('docs', [])).map(d => d.id), customer: await this.get('customer', null), email: prof.email || null, lang: prof.lang || null };
+        const prof = await this.get('profile', {}), out = { docs: (await this.get('docs', [])).map(d => d.id), customer: await this.get('customer', null), customerTest: await this.get('customerTest', null), email: prof.email || null, lang: prof.lang || null };
         await this.ctx.storage.deleteAll(); if (prof.sub) await directoryRemove(this.env, prof.sub); return this.json(out);
       }
       case 'docs-list': { const d = await this.docState(); return this.json({ docs: (await this.get('docs', [])).map(x => (d.locked.includes(x.id) ? { ...x, readOnly: true } : x)), limit: d.limit }); }
@@ -426,7 +455,8 @@ export class Account {
         return this.json({ profile: prof, plan: await this.plan(), until: await this.proUntil(), stored: await this.get('plan', null), proGift: await this.get('proGift', null),
           credits: await this.get('credits', 0), debt: await this.get('debt', 0), lots: await this.lots(), ledger: (await this.get('ledger', [])).slice(-50).reverse(),
           sessions: { n: sessions.length, kinds: sessions.map(v => v.kind) }, docs: (await this.get('docs', [])).length, team: await this.get('team', null),
-          blocked: await this.get('blocked', null), lastSeen: await this.get('lastSeen', null), mailOff: await this.get('mailOff', []), customer: !!(await this.get('customer', null)), refunded: await this.get('refunded', []) });
+          blocked: await this.get('blocked', null), lastSeen: await this.get('lastSeen', null), mailOff: await this.get('mailOff', []), customer: !!(await this.get('customer', null)), refunded: await this.get('refunded', []),
+          billingTest: await this.get('billingTest', null), customerTest: !!(await this.get('customerTest', null)) });
       }
       case 'admin-credits': {                              // { delta, reason, days, by } → { before, after, delta, expires? }
         await this.expire();
@@ -456,6 +486,22 @@ export class Account {
         if (a.blocked) await this.put({ blocked: { at: Date.now(), by: a.by, reason: a.reason } }); else await this.ctx.storage.delete('blocked');
         await this.dirSync(true);
         return this.json({ before: { blocked: before }, after: { blocked: await this.get('blocked', null) } });
+      }
+      case 'admin-billing-test': {                         // { on, reason, by }: this account pays in Stripe's test mode
+        const before = await this.get('billingTest', null);
+        if (a.on) await this.put({ billingTest: { at: Date.now(), by: a.by, reason: a.reason } }); else await this.ctx.storage.delete('billingTest');
+        await this.dirSync(true);
+        return this.json({ before: { billingTest: before }, after: { billingTest: await this.get('billingTest', null) } });
+      }
+      case 'admin-clear-test': {                           // { reason, by }: what test mode gave (Pro, credits) goes; the real stays
+        await this.expire();
+        const lots = await this.lots(), n = lots.filter(l => l.test).reduce((t, l) => t + l.n, 0), p = await this.get('plan', null);
+        const before = { credits: await this.get('credits', 0), testCredits: n, plan: p };
+        if (n) { await this.save(lots.filter(l => !l.test), await this.get('debt', 0)); await this.log(-n, 'admin', null, { note: a.reason, by: a.by, test: true }); }
+        if (p?.test) await this.put({ plan: { name: 'free', until: 0 }, monthly: 0, cancelAt: null });   // (a real Pro later gets its month's credits at once)
+        await this.dirSync(true);
+        return this.json({ before, after: { credits: await this.get('credits', 0), testCredits: 0, plan: await this.get('plan', null) }, removed: { credits: n, pro: !!p?.test },
+          team: await this.get('team', null), email: (await this.get('profile', {})).email });
       }
       case 'admin-mail': {                                 // { kind: 'creditsAdded', n, exp }: telling the person (a service email)
         const lang = (await this.get('profile', {})).lang;
@@ -540,7 +586,8 @@ export async function handleApi(req, env, url) {
   // LTI (learning platforms): their own forms and signed tokens, no session here (lti.js).
   if (path.startsWith('/lti/')) return handleLti(req, env, url, s.site);
   // Stripe's own calls: signed, no browser involved.
-  if (path === '/billing/webhook' && req.method === 'POST') return stripeWebhook(req, env, json);
+  if (path === '/billing/webhook' && req.method === 'POST') return stripeWebhook(req, env, json, 'live');
+  if (path === '/billing/webhook-test' && req.method === 'POST') return stripeWebhook(req, env, json, 'test');
   // The link to stop optional emails (signed; no session: it's opened from the email, or posted by the mail app).
   if (path === '/mail/unsubscribe' && (req.method === 'GET' || req.method === 'POST')) {
     const t = await readUnsubToken(env, url.searchParams.get('t')), r = t ? await call(acct(env, t.sub), 'mail-off', { kind: t.kind }) : { ok: false };
@@ -604,8 +651,9 @@ export async function handleApi(req, env, url) {
   if (path === '/team' || path.startsWith('/team/')) { const prof = await call(A, 'me'); return handleTeams(path, req, body, url, env, { sub: me.sub, email: prof.email, name: prof.name }, A, acct, call, json); }
   switch (path) {
     case '/me': {
-      const r = await call(A, 'me');
-      return json({ ...r, billing: !!(env.STRIPE_SECRET_KEY && env.STRIPE_WEBHOOK_SECRET), photos: photoProviders(env), model3d: configured3d(env) && !!env.MODELJOBS });
+      // (billing: payments set up for this account's mode; billingTest: it pays in Stripe's test mode — the app says so.)
+      const r = await call(A, 'me'), mode = billingMode(env, r.billingTest);
+      return json({ ...r, billing: stripeConf(env, mode).ok, billingTest: mode === 'test', photos: photoProviders(env), model3d: configured3d(env) && !!env.MODELJOBS });
     }
     case '/mail/test': {                                  // «Send me a test email» (only to the account's own address)
       if (req.method !== 'POST') return json({ error: 'method' }, 405);
@@ -796,9 +844,10 @@ export async function deleteAccount(env, sub) {
     for (const e of people) await call(acct(env, 'e:' + e), 'inbox-remove', { id });
   }
   if (w.email) await call(acct(env, 'e:' + w.email), 'wipe');
-  if (w.customer && env.STRIPE_SECRET_KEY) {
-    const subs = await (await (env.FETCH || fetch)('https://api.stripe.com/v1/subscriptions?' + new URLSearchParams({ customer: w.customer, status: 'active' }), { headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}` } }).catch(() => null))?.json().catch(() => null);
-    for (const x of subs?.data || []) await (env.FETCH || fetch)('https://api.stripe.com/v1/subscriptions/' + encodeURIComponent(x.id), { method: 'DELETE', headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}` } }).catch(() => null);
+  for (const [customer, key] of [[w.customer, env.STRIPE_SECRET_KEY], [w.customerTest, env.STRIPE_TEST_SECRET_KEY]]) {
+    if (!customer || !key) continue;
+    const subs = await (await (env.FETCH || fetch)('https://api.stripe.com/v1/subscriptions?' + new URLSearchParams({ customer, status: 'active' }), { headers: { Authorization: `Bearer ${key}` } }).catch(() => null))?.json().catch(() => null);
+    for (const x of subs?.data || []) await (env.FETCH || fetch)('https://api.stripe.com/v1/subscriptions/' + encodeURIComponent(x.id), { method: 'DELETE', headers: { Authorization: `Bearer ${key}` } }).catch(() => null);
   }
   return { email: w.email, lang: w.lang };
 }
@@ -835,12 +884,14 @@ async function stockUsed(env, body, json) {
 export const photoProviders = env => Object.keys(PHOTO_PROVIDERS).filter(k => PHOTO_PROVIDERS[k].key(env));
 
 // ---- Payments (Stripe) ------------------------------------------------------------------------------------
-const stripe = (env, path, params) => (env.FETCH || fetch)('https://api.stripe.com/v1/' + path, { method: 'POST',
-  headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(params) });
+// Live or test (stripeConf, billingMode): the key, the prices and the account's customer of that mode.
+const stripe = (env, key, path, params) => (env.FETCH || fetch)('https://api.stripe.com/v1/' + path, { method: 'POST',
+  headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(params) });
 async function checkout(env, s, me, A, body, json) {
-  const p = s.products[body.product];
-  if (!env.STRIPE_SECRET_KEY || !p || !p.price) return json({ error: 'billing not available' }, 503);
-  const c = await call(A, 'customer');
+  const p = s.products[body.product], c = await call(A, 'customer'), mode = billingMode(env, c.billingTest), conf = stripeConf(env, mode);
+  if (mode === 'test' && !conf.ok) return json({ error: 'billing test not configured' }, 503);
+  const price = conf.prices[body.product], customer = mode === 'test' ? c.customerTest : c.customer;
+  if (!conf.key || !p || !price) return json({ error: 'billing not available' }, 503);
   let team = null, seats = 1;
   if (p.team) {                                            // (a team's seats: its admin buys them)
     team = (await call(A, 'team-id')).id; if (!team) return json({ error: 'no team' }, 400);
@@ -848,9 +899,9 @@ async function checkout(env, s, me, A, body, json) {
     if (!tc.admin) return json({ error: 'forbidden' }, 403);
     seats = Math.max(3, Math.min(1000, Math.round(+body.seats || 3)));   // (3 seats at least)
   }
-  const params = { mode: p.mode, 'line_items[0][price]': p.price, 'line_items[0][quantity]': String(seats), client_reference_id: me.sub,
+  const params = { mode: p.mode, 'line_items[0][price]': price, 'line_items[0][quantity]': String(seats), client_reference_id: me.sub,
     success_url: `${s.site}/app/?paid=1`, cancel_url: `${s.site}/pricing`, 'metadata[sub]': me.sub, 'metadata[product]': body.product,
-    ...(c.customer ? { customer: c.customer } : { customer_email: c.email }),
+    ...(customer ? { customer } : { customer_email: c.email }),
     ...(p.mode === 'subscription' && { 'subscription_data[metadata][sub]': me.sub }),
     ...(team && { 'metadata[team]': team, 'subscription_data[metadata][team]': team }),
     // (An invoice for one-off purchases too; and, by the pay button, the request for immediate
@@ -859,17 +910,18 @@ async function checkout(env, s, me, A, body, json) {
     // (With Stripe Tax on — STRIPE_AUTOMATIC_TAX=1 — Stripe adds each country's tax to the price
     // and asks for the address it needs; a business can give its VAT number.)
     ...(env.STRIPE_AUTOMATIC_TAX === '1' && { 'automatic_tax[enabled]': 'true', 'tax_id_collection[enabled]': 'true',
-      ...(c.customer && { 'customer_update[address]': 'auto', 'customer_update[name]': 'auto' }) }),
+      ...(customer && { 'customer_update[address]': 'auto', 'customer_update[name]': 'auto' }) }),
     'custom_text[submit][message]': 'Al pagar pides que se active ya y aceptas que, una vez activado, pierdes el derecho de desistimiento de 14 días (art. 103 LGDCU). Condiciones: ' + s.site + '/terms.html',
     locale: 'auto' };
-  const r = await stripe(env, 'checkout/sessions', params);
+  const r = await stripe(env, conf.key, 'checkout/sessions', params);
   const d = await r.json().catch(() => ({}));
-  return d.url ? json({ url: d.url }) : json({ error: 'billing failed' }, 502);
+  return d.url ? json({ url: d.url, ...(mode === 'test' && { test: true }) }) : json({ error: 'billing failed' }, 502);
 }
 async function portal(env, s, A, json) {
-  const c = await call(A, 'customer');
-  if (!env.STRIPE_SECRET_KEY || !c.customer) return json({ error: 'billing not available' }, 503);
-  const d = await (await stripe(env, 'billing_portal/sessions', { customer: c.customer, return_url: `${s.site}/app/` })).json().catch(() => ({}));
+  const c = await call(A, 'customer'), mode = billingMode(env, c.billingTest), conf = stripeConf(env, mode), customer = mode === 'test' ? c.customerTest : c.customer;
+  if (mode === 'test' && !conf.ok) return json({ error: 'billing test not configured' }, 503);
+  if (!conf.key || !customer) return json({ error: 'billing not available' }, 503);
+  const d = await (await stripe(env, conf.key, 'billing_portal/sessions', { customer, return_url: `${s.site}/app/` })).json().catch(() => ({}));
   return d.url ? json({ url: d.url }) : json({ error: 'billing failed' }, 502);
 }
 // Stripe's signature: HMAC-SHA256 of "timestamp.body" with the webhook secret, at most 5 minutes old.
@@ -881,31 +933,40 @@ export async function verifyStripe(body, header, secret, now = Date.now()) {
   const all = String(header).split(',').filter(x => x.startsWith('v1=')).map(x => x.slice(3));
   return all.some(v => v.length === sig.length && [...v].reduce((d, ch, i) => d | (ch.charCodeAt(0) ^ sig.charCodeAt(i)), 0) === 0);
 }
-async function stripeWebhook(req, env, json) {
-  const body = await req.text();
-  if (!(await verifyStripe(body, req.headers.get('Stripe-Signature'), env.STRIPE_WEBHOOK_SECRET))) return json({ error: 'signature' }, 400);
+// /api/billing/webhook (live) and /api/billing/webhook-test (test: STRIPE_TEST_WEBHOOK_SECRET). A test event
+// grants the same (Pro, credits, seats) marked test, and only to an account in test mode (billingTest) — or
+// to anyone with STRIPE_MODE = 'test'; any other is logged and ignored.
+async function stripeWebhook(req, env, json, mode) {
+  const conf = stripeConf(env, mode), body = await req.text(), test = mode === 'test';
+  if (test && !conf.webhook) return json({ error: 'billing test not configured' }, 503);
+  if (!(await verifyStripe(body, req.headers.get('Stripe-Signature'), conf.webhook))) return json({ error: 'signature' }, 400);
   const ev = JSON.parse(body), o = ev.data?.object || {}, s = settings(env);
   const teamOf = x => x?.metadata?.team || x?.subscription_details?.metadata?.team || x?.parent?.subscription_details?.metadata?.team || null;
   const subOf = x => x?.metadata?.sub || x?.client_reference_id || x?.subscription_details?.metadata?.sub || x?.parent?.subscription_details?.metadata?.sub;
-  await moneyEvent(env, s, ev, o, subOf(o), teamOf(o));
+  if (test && !globalTest(env)) {
+    const sub = subOf(o), ok = sub ? (await call(acct(env, sub), 'billing-test')).test : false;
+    if (!ok) { console.log(JSON.stringify({ stripe: 'test event ignored', type: ev.type, id: ev.id, sub: sub || null })); return json({ ok: true, ignored: true }); }
+  }
+  const T = test ? { test: true } : {};
+  await moneyEvent(env, s, conf, ev, o, subOf(o), teamOf(o));
   if (ev.type === 'checkout.session.completed') {
     const sub = subOf(o); if (!sub) return json({ ok: true });
     const p = s.products[o.metadata?.product];
-    if (o.mode === 'payment' && p?.credits && o.payment_status === 'paid') await call(acct(env, sub), 'grant', { credits: p.credits, reason: 'purchase', ref: ev.id, days: s.packDays });
-    if (o.customer) { const A = acct(env, sub), m = await call(A, 'me'); await call(A, 'setplan', { name: m.plan, until: m.until || 0, customer: o.customer }); }
+    if (o.mode === 'payment' && p?.credits && o.payment_status === 'paid') await call(acct(env, sub), 'grant', { credits: p.credits, reason: 'purchase', ref: ev.id, days: s.packDays, ...T });
+    if (o.customer) await call(acct(env, sub), 'set-customer', { customer: o.customer, ...T });
   } else if (ev.type === 'invoice.paid' && teamOf(o)) {
     // A team's month: its seats and until when; each member gets the month's credits.
     const id = teamOf(o), line = o.lines?.data?.[0] || {}, end = (+line.period?.end || (Date.now() / 1000 + 31 * 86400)) * 1000 + 3 * DAY;
-    const r = await (await env.TEAMS.get(env.TEAMS.idFromName('team:' + id)).fetch('https://team/billing', { method: 'POST', body: JSON.stringify({ seats: +line.quantity || 1, until: end, customer: o.customer }) })).json();
+    const r = await (await env.TEAMS.get(env.TEAMS.idFromName('team:' + id)).fetch('https://team/billing', { method: 'POST', body: JSON.stringify({ seats: +line.quantity || 1, until: end, customer: o.customer, ...T }) })).json();
     // (Each member's month of credits comes with their account's next request: see Account.monthly.)
     void r;
   } else if (ev.type === 'customer.subscription.deleted' && teamOf(o)) {
-    await env.TEAMS.get(env.TEAMS.idFromName('team:' + teamOf(o))).fetch('https://team/billing', { method: 'POST', body: JSON.stringify({ until: 0 }) });
+    await env.TEAMS.get(env.TEAMS.idFromName('team:' + teamOf(o))).fetch('https://team/billing', { method: 'POST', body: JSON.stringify({ until: 0, ...T }) });
   } else if (ev.type === 'invoice.paid') {
     const sub = subOf(o); if (!sub) return json({ ok: true });
     const end = (+o.lines?.data?.[0]?.period?.end || (Date.now() / 1000 + 31 * 86400)) * 1000 + 3 * DAY;   // (3 days' grace)
     const A = acct(env, sub);
-    await call(A, 'setplan', { name: 'pro', until: end, customer: o.customer });
+    await call(A, 'setplan', { name: 'pro', until: end, customer: o.customer, ...T });
     await call(A, 'me');                                   // (its month of credits now, if due: Account.monthly)
   } else if (ev.type === 'customer.subscription.updated' && !teamOf(o)) {
     // Cancelled (it ends at the end of the period), or renewed again: told now, and reminded a week before.
@@ -913,7 +974,8 @@ async function stripeWebhook(req, env, json) {
     const end = (+o.cancel_at || +o.current_period_end || +o.items?.data?.[0]?.current_period_end || 0) * 1000;
     await call(acct(env, sub), 'plan-ending', { end: (o.cancel_at_period_end || o.cancel_at) && end > Date.now() ? end : 0 });
   } else if (ev.type === 'customer.subscription.deleted') {
-    const sub = subOf(o); if (sub) { const A = acct(env, sub); await call(A, 'setplan', { name: 'free', until: 0 }); await call(A, 'plan-ended', { ref: o.id || ev.id }); }
+    const sub = subOf(o);
+    if (sub) { const A = acct(env, sub), r = await call(A, 'setplan', { name: 'free', until: 0, ...T }); if (!r.ignored) await call(A, 'plan-ended', { ref: o.id || ev.id }); }
   }
   return json({ ok: true });
 }
@@ -921,41 +983,42 @@ async function stripeWebhook(req, env, json) {
 // ---- The business's accounts (finance.js): what each Stripe event brought in or gave back ----------
 // Payments: one-off purchases at checkout; subscriptions (Pro, team seats) at each paid invoice (an invoice
 // of a one-off purchase is already counted at its checkout). Amounts in minor units, as Stripe sends them.
-// Stripe's fee comes from the payment's balance transaction (read with STRIPE_SECRET_KEY); if that fails,
+// Stripe's fee comes from the payment's balance transaction (read with the mode's key); if that fails,
 // it is estimated with STRIPE_FEE_PCT and STRIPE_FEE_FIXED. Each event once (finance.js keeps its id).
-const stripeGet = (env, path, params) => (env.FETCH || fetch)('https://api.stripe.com/v1/' + path + '?' + new URLSearchParams(params), { headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}` } })
+// Test-mode events are recorded with test: true (finance.js keeps them out of every total).
+const stripeGet = (env, key, path, params) => (env.FETCH || fetch)('https://api.stripe.com/v1/' + path + '?' + new URLSearchParams(params), { headers: { Authorization: `Bearer ${key}` } })
   .then(r => (r.ok ? r.json() : null)).catch(() => null);
-export async function stripeFee(env, { charge, intent, gross, cur }) {
+export async function stripeFee(env, { charge, intent, gross, cur }, key = env.STRIPE_SECRET_KEY) {
   const id = x => (typeof x === 'string' && /^[\w-]{3,100}$/.test(x) ? x : null);
   let bt = null;
-  if (env.STRIPE_SECRET_KEY && id(charge)) bt = (await stripeGet(env, 'charges/' + id(charge), { 'expand[]': 'balance_transaction' }))?.balance_transaction;
-  else if (env.STRIPE_SECRET_KEY && id(intent)) bt = (await stripeGet(env, 'payment_intents/' + id(intent), { 'expand[]': 'latest_charge.balance_transaction' }))?.latest_charge?.balance_transaction;
+  if (key && id(charge)) bt = (await stripeGet(env, key, 'charges/' + id(charge), { 'expand[]': 'balance_transaction' }))?.balance_transaction;
+  else if (key && id(intent)) bt = (await stripeGet(env, key, 'payment_intents/' + id(intent), { 'expand[]': 'latest_charge.balance_transaction' }))?.latest_charge?.balance_transaction;
   if (bt && typeof bt === 'object' && Number.isFinite(+bt.fee)) return { fee: +bt.fee, feeCur: String(bt.currency || cur).toLowerCase() };
   const f = financeSettings(env);
   return { fee: gross > 0 ? Math.round((gross * f.feePct) / 100 + f.feeFixed * 100) : 0, feeCur: cur, feeEstimated: true };
 }
-async function moneyEvent(env, s, ev, o, sub, team) {
+async function moneyEvent(env, s, conf, ev, o, sub, team) {
   if (!env.FINANCE) return;
-  const cur = String(o.currency || 'eur').toLowerCase(), ref = ev.id;
+  const cur = String(o.currency || 'eur').toLowerCase(), ref = ev.id, T = conf.mode === 'test' ? { test: true } : {};
   if (ev.type === 'checkout.session.completed' && o.mode === 'payment' && o.payment_status === 'paid') {
     const gross = +o.amount_total || 0, p = s.products[o.metadata?.product];
     await record(env, { kind: 'payment', product: o.metadata?.product || 'other', cur, gross, tax: +o.total_details?.amount_tax || 0, ...(p?.credits && { credits: p.credits }),
-      sub, ref, ...(await stripeFee(env, { intent: o.payment_intent, gross, cur })) });
+      sub, ref, ...T, ...(await stripeFee(env, { intent: o.payment_intent, gross, cur }, conf.key)) });
   } else if (ev.type === 'invoice.paid') {
     const line = o.lines?.data?.[0] || {}, pay = o.payments?.data?.[0]?.payment || {};
     const subscription = o.subscription || o.parent?.subscription_details?.subscription || line.subscription || line.parent?.subscription_item_details?.subscription
       || ((o.subscription_details || o.parent?.subscription_details || /^subscription/.test(o.billing_reason || '')) && o.customer ? 'cus:' + o.customer : null);
     const gross = +o.amount_paid || 0; if (!subscription || gross <= 0) return;
     const price = line.price?.id || line.pricing?.price_details?.price || line.plan?.id;
-    const product = team ? 'team-seat' : Object.keys(s.products).find(k => s.products[k].price && s.products[k].price === price) || 'pro';
+    const product = team ? 'team-seat' : Object.keys(conf.prices).find(k => conf.prices[k] && conf.prices[k] === price) || 'pro';
     const span = (+line.period?.end - +line.period?.start) * 1000, months = span > 0 ? Math.max(1, Math.round(span / (30.44 * DAY))) : 1;
     const tax = +o.tax || (o.total_taxes || []).reduce((t, x) => t + (+x.amount || 0), 0) || (o.total_tax_amounts || []).reduce((t, x) => t + (+x.amount || 0), 0);
-    await record(env, { kind: 'payment', product, cur, gross, tax, subscription, months, sub: sub || null, ref,
-      ...(await stripeFee(env, { charge: o.charge || pay.charge, intent: o.payment_intent || pay.payment_intent, gross, cur })) });
+    await record(env, { kind: 'payment', product, cur, gross, tax, subscription, months, sub: sub || null, ref, ...T,
+      ...(await stripeFee(env, { charge: o.charge || pay.charge, intent: o.payment_intent || pay.payment_intent, gross, cur }, conf.key)) });
   } else if (ev.type === 'charge.refunded') {
     const before = +ev.data?.previous_attributes?.amount_refunded || 0, amount = (+o.amount_refunded || 0) - before;
-    if (amount > 0) await record(env, { kind: 'refund', cur, amount, sub: o.metadata?.sub || null, ref });
+    if (amount > 0) await record(env, { kind: 'refund', cur, amount, sub: o.metadata?.sub || null, ref, ...T });
   } else if (ev.type === 'customer.subscription.deleted') {
-    await record(env, { kind: 'sub-end', subscription: o.id || ('cus:' + o.customer), sub: sub || null, ref, ...(team && { product: 'team-seat' }) });
+    await record(env, { kind: 'sub-end', subscription: o.id || ('cus:' + o.customer), sub: sub || null, ref, ...T, ...(team && { product: 'team-seat' }) });
   }
 }

@@ -43,6 +43,7 @@ export async function openTeam() {
       ${Object.entries(T.members).map(([e, m]) => `<div class="sh-item"><span>${esc(e)}${e === me ? ` (${t('tú')})` : ''}</span><small>${t(m.role === 'admin' ? 'Administración' : 'Miembro')}</small>
         ${admin || e === me ? `<button type="button" class="mini2" data-rm="${esc(e)}">${t(e === me ? 'Salir' : 'Quitar')}</button>` : ''}</div>`).join('')}
       ${Object.keys(T.invited).map(e => `<div class="sh-item"><span>${esc(e)}</span><small>${t('Invitación pendiente')}</small>${admin ? `<button type="button" class="mini2" data-rm="${esc(e)}">${t('Quitar')}</button>` : ''}</div>`).join('')}
+      ${admin && acc.account()?.billingTest ? `<p class="host-help acc-test" role="note">${t('Modo de prueba: no se cobra nada (tarjeta de prueba 4242 4242 4242 4242)')}</p>` : ''}
       ${admin ? `<div class="sh-row"><input type="email" class="tm-email" placeholder="${t('correo@ejemplo.com')}"><select class="tm-role"><option value="member">${t('Miembro')}</option><option value="admin">${t('Administración')}</option></select><button type="button" class="mini2 tm-invite">${t('Invitar')}</button></div>
         <div class="sh-row"><label class="fr-chk" style="margin:0">${t('Puestos')} <input type="number" class="tm-seats" min="3" max="1000" value="${Math.max(3, T.seats, used)}" style="width:6em"></label><button type="button" class="fr-do tm-buy">${t('Pagar los puestos')}</button>
           ${T.active ? `<button type="button" class="mini2 tm-portal">${t('Gestionar la suscripción')}</button>` : ''}</div>` : ''}

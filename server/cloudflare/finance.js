@@ -14,6 +14,9 @@
 //             taken by an admin (Account.log); AI charges come inside 'ai' (credits)
 //   signup    { sub }                                                 — a new account
 // Plus, without a raw event, the daily active counter (active(): from Account.seen, once a day per account).
+// Stripe's test mode (api.js stripeConf): payment, refund, sub-end and credits events may carry test: true. They are
+// kept (raw, and counted apart as 'test.*' in the day's sums, subscriptions as 'ts:') but never enter revenue, fees,
+// net, MRR, churn, conversion, per-account figures or the accountant's CSV; summarize() reports them under 'test'.
 //
 // Storage:
 //   'd:' + YYYY-MM-DD → { key: number }      the day's sums and counts (forever; see bump())
@@ -78,14 +81,23 @@ function clean(a, s) {
   if (a.kind === 'refund') { e.cur = cur(a.cur); e.amount = fin(a.amount); if (e.cur !== 'eur') e.fx = s.usdEur; }
   if (a.kind === 'sub-end') { str('subscription'); str('product', 40); }
   if (a.kind === 'credits') { str('reason', 40); e.delta = Math.round(fin(a.delta)); if (!e.delta) return null; }
+  if (a.test && ['payment', 'refund', 'sub-end', 'credits'].includes(a.kind)) e.test = true;
   return e;
 }
 
 // A day's sums and counts, from one event. Keys: ai.n ai.usd ai.tin ai.tout ai.f.<feature>.(usd|n) ai.m.<model>.(usd|n)
 // bl.n bl.secs bl.usd · mail.n mail.usd · pay.n pay.<cur>.(gross|tax|net) pay.<feeCur>.fee pay.p.<product>.n pay.p.<product>.<cur>.gross
 // ref.n ref.<cur> · sub.new sub.cancel · cr.used cr.sold cr.in.<reason> cr.out.<reason> · users.new · act.dau act.mau
+// Test mode, apart: test.pay.n test.pay.<cur>.gross test.ref.n test.ref.<cur> test.sub.new test.sub.cancel test.cr.sold test.cr.in test.cr.out
 export function bump(t, e) {
   const add = (k, v) => { if (v) t[k] = r6((t[k] || 0) + v); };
+  if (e.test) {
+    if (e.kind === 'payment') { add('test.pay.n', 1); add(`test.pay.${e.cur}.gross`, e.gross); add('test.cr.sold', e.credits); if (e.newSub) add('test.sub.new', 1); }
+    else if (e.kind === 'refund') { add('test.ref.n', 1); add(`test.ref.${e.cur}`, e.amount); }
+    else if (e.kind === 'sub-end') { if (e.counted) add('test.sub.cancel', 1); }
+    else if (e.kind === 'credits') add(`test.cr.${e.delta > 0 ? 'in' : 'out'}`, Math.abs(e.delta));
+    return t;
+  }
   if (e.kind === 'ai') {
     add('ai.n', 1); add('ai.usd', e.usd); add('ai.tin', e.tin); add('ai.tout', e.tout); add('cr.used', e.credits);
     add(`ai.f.${e.feature}.usd`, e.usd); add(`ai.f.${e.feature}.n`, 1);
@@ -114,18 +126,19 @@ export class Finance {
       if (MONEY.includes(e.kind) && e.ref) { if (await st.get('k:' + e.ref)) return J({ ok: true, duplicate: true }); await st.put('k:' + e.ref, e.at); }
       const day = dayOf(e.at), month = day.slice(0, 7), put = {};
       // Subscriptions: started with their first payment, ended when Stripe deletes them.
+      const sk = (e.test ? 'ts:' : 's:') + e.subscription;  // (test-mode subscriptions apart: never in MRR or churn)
       if (e.kind === 'payment' && e.subscription) {
-        const k = 's:' + e.subscription, old = await st.get(k), months = Math.max(1, Math.round(e.months || 1));
+        const k = sk, old = await st.get(k), months = Math.max(1, Math.round(e.months || 1));
         put[k] = { id: e.subscription, sub: e.sub || old?.sub || null, product: e.product || old?.product || null, cur: e.cur, monthly: Math.round((e.gross - (e.tax || 0)) / months),
           start: old?.start || e.at, periodEnd: Math.max(old?.periodEnd || 0, e.at + months * 31 * DAY), end: null };
         if (!old) e.newSub = true;
       }
       if (e.kind === 'sub-end' && e.subscription) {
-        const k = 's:' + e.subscription, old = await st.get(k);
+        const k = sk, old = await st.get(k);
         if (old && !old.end) { put[k] = { ...old, end: e.at }; e.counted = true; e.product ??= old.product; e.sub ??= old.sub; }
       }
       // Per account and month: what its AI cost, and what it paid.
-      if (e.sub && ['ai', 'payment', 'refund'].includes(e.kind)) {
+      if (e.sub && !e.test && ['ai', 'payment', 'refund'].includes(e.kind)) {
         const k = `u:${month}|${e.sub}`, u = (await st.get(k)) || { usd: 0, cr: 0, n: 0, rev: {} };
         if (e.kind === 'ai') { u.usd = r6(u.usd + (e.usd || 0) + (e.blenderUsd || 0)); u.cr += e.credits || 0; u.n++; }
         if (e.kind === 'payment') u.rev[e.cur] = (u.rev[e.cur] || 0) + (e.gross - (e.tax || 0));
@@ -173,12 +186,12 @@ export class Finance {
         const money = [...(await st.list({ prefix: 'p:', start: 'p:' + lo, end: 'p:' + hi })).values()];
         return new Response(toCsv({ days, entries, money, from, to, s }), { headers: { 'Content-Type': 'text/csv; charset=utf-8' } });
       }
-      const subs = [...(await st.list({ prefix: 's:' })).values()], users = {};
+      const subs = [...(await st.list({ prefix: 's:' })).values()], testSubs = [...(await st.list({ prefix: 'ts:' })).values()], users = {};
       for (const m of monthsOf(from, to)) for (const [k, u] of await st.list({ prefix: `u:${m}|` })) {
         const sub = k.slice(k.indexOf('|') + 1), x = users[sub] ||= { usd: 0, cr: 0, n: 0, rev: {} };
         x.usd += u.usd; x.cr += u.cr; x.n += u.n; for (const [c, v] of Object.entries(u.rev || {})) x.rev[c] = (x.rev[c] || 0) + v;
       }
-      return J(summarize({ days, entries, subs, users, from, to, group: a.group, s, now: +a.now || Date.now() }));
+      return J(summarize({ days, entries, subs, testSubs, users, from, to, group: a.group, s, now: +a.now || Date.now() }));
     }
     return J({ error: 'unknown' }, 404);
   }
@@ -209,7 +222,7 @@ const subActive = (x, t) => x.start <= t && (!x.end || x.end > t) && x.periodEnd
 const PRO = p => /^pro/.test(p || '');
 
 // Everything the «Negocio» page shows, in EUR (USD at s.usdEur). Pure: tested with a synthetic dataset.
-export function summarize({ days, entries, subs, users, from, to, group = 'month', s, now = Date.now() }) {
+export function summarize({ days, entries, subs, testSubs = [], users, from, to, group = 'month', s, now = Date.now() }) {
   const R = s.usdEur, toEur = (cur, major) => (cur === 'usd' ? major * R : major);   // (other currencies: as EUR; see warnings)
   const warnings = new Set(), key = group === 'day' ? d => d : d => d.slice(0, 7);
   const blank = k => ({ key: k, gross: 0, tax: 0, fees: 0, refunds: 0, revenue: 0, net: 0, ai: 0, blender: 0, email: 0, variable: 0, fixed: 0, costs: 0, grossProfit: 0, profit: 0,
@@ -217,6 +230,8 @@ export function summarize({ days, entries, subs, users, from, to, group = 'month
   const buckets = new Map(), T = blank('total');
   const aiF = {}, aiM = {}, products = {}, crIn = {}, crOut = {}, hoursCat = {}, hoursMonth = {}, fixedCat = {};
   let aiUsd = 0, tokens = { in: 0, out: 0 }, aiN = 0, blSecs = 0, blN = 0, mailN = 0, payN = 0, refN = 0;
+  // Stripe's test mode: counted here only (the 'test.*' keys match none of the patterns below).
+  const test = { payments: 0, gross: 0, refunds: 0, refunded: 0, newSubs: 0, cancels: 0, active: 0, credits: { sold: 0, granted: 0, taken: 0 } };
   const fixed = entries.filter(e => e.type === 'fixed'), time = entries.filter(e => e.type === 'time');
   for (let t = Date.parse(from); t <= Date.parse(to); t += DAY) {
     const d = dayOf(t), a = days[d] || {}, b = buckets.get(key(d)) || buckets.set(key(d), blank(key(d))).get(key(d));
@@ -229,7 +244,11 @@ export function summarize({ days, entries, subs, users, from, to, group = 'month
       else if ((m = k.match(/^ai\.m\.(.+)\.(usd|n)$/))) { const x = aiM[m[1]] ||= { usd: 0, n: 0 }; x[m[2]] += v; }
       else if ((m = k.match(/^pay\.p\.([\w-]+)\.(n|[a-z]{3}\.gross)$/))) { const x = products[m[1]] ||= { n: 0, gross: 0 }; if (m[2] === 'n') x.n += v; else x.gross += toEur(m[2].slice(0, 3), v / 100); }
       else if ((m = k.match(/^cr\.(in|out)\.([\w-]+)$/))) { const o = m[1] === 'in' ? crIn : crOut; o[m[2]] = (o[m[2]] || 0) + v; }
+      else if ((m = k.match(/^test\.pay\.([a-z]{3})\.gross$/))) test.gross += toEur(m[1], v / 100);
+      else if ((m = k.match(/^test\.ref\.([a-z]{3})$/))) test.refunded += toEur(m[1], v / 100);
     }
+    test.payments += a['test.pay.n'] || 0; test.refunds += a['test.ref.n'] || 0; test.newSubs += a['test.sub.new'] || 0; test.cancels += a['test.sub.cancel'] || 0;
+    test.credits.sold += a['test.cr.sold'] || 0; test.credits.granted += a['test.cr.in'] || 0; test.credits.taken += a['test.cr.out'] || 0;
     const fx = (a['ai.usd'] || 0) * R, bl = (a['bl.usd'] || 0) * R, ml = (a['mail.usd'] || 0) * R;
     aiUsd += a['ai.usd'] || 0; tokens.in += a['ai.tin'] || 0; tokens.out += a['ai.tout'] || 0; aiN += a['ai.n'] || 0; blSecs += a['bl.secs'] || 0; blN += a['bl.n'] || 0;
     mailN += a['mail.n'] || 0; payN += a['pay.n'] || 0; refN += a['ref.n'] || 0;
@@ -284,6 +303,8 @@ export function summarize({ days, entries, subs, users, from, to, group = 'month
     breakEven: { fixedMonthly: r2(fixedMonthly), grossProfitMonthly: r2(T.grossProfit / months), reached: T.grossProfit / months >= fixedMonthly,
       subsNeeded: arpuSub > 0 ? Math.ceil(fixedMonthly / arpuSub) : null },
     topUsers: top,
+    // (Stripe's test mode: nothing here was real money; never in the figures above.)
+    test: { ...test, gross: r2(test.gross), refunded: r2(test.refunded), active: testSubs.filter(x => subActive(x, Math.min(now, Date.parse(to) + DAY - 1))).length },
   };
 }
 
@@ -301,6 +322,7 @@ export function toCsv({ days, entries, money, from, to, s }) {
   const row = o => rows.push([o.date, o.type, o.what || '', o.cat || '', o.amount ?? '', o.cur ? o.cur.toUpperCase() : '', o.tax ?? '', o.fee ?? '', o.net ?? '',
     o.amount != null && o.cur ? Math.round(eur(o.cur, o.amount) * 100) / 100 : '', o.cur === 'usd' ? R : '', o.hours ?? '', o.sub || '', o.ref || '']);
   for (const e of money) {
+    if (e.test) continue;                                 // (Stripe's test mode: no real money)
     const date = dayOf(e.at);
     if (e.kind === 'payment') row({ date, type: 'ingreso', what: (e.product || '') + (e.feeCur !== e.cur ? ` (comisión en ${e.feeCur.toUpperCase()})` : '') + (e.feeEstimated ? ' (comisión estimada)' : ''), amount: e.gross / 100, cur: e.cur, tax: (e.tax || 0) / 100, fee: (e.fee || 0) / 100,
       net: (e.gross - (e.tax || 0) - (e.feeCur === e.cur ? e.fee || 0 : 0)) / 100, sub: e.sub, ref: e.ref });

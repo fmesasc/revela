@@ -40,7 +40,7 @@ export class Team {
     const view = () => ({ id: t.id, name: t.name, seats: t.seats, active, until: t.until, members: t.members, invited: t.invited, brand: t.brand,
       templates: t.templates.map(({ id, name, updated }) => ({ id, name, updated })) });
     switch (op) {
-      case 'status': return this.json({ member: !!me, role: me?.role || null, active, name: t.name });
+      case 'status': return this.json({ member: !!me, role: me?.role || null, active, name: t.name, ...(t.test && { test: true }) });
       case 'get': return me ? this.json({ team: view(), role: me.role }) : this.json({ error: 'forbidden' }, 403);
       case 'invite': {
         if (!admin) return this.json({ error: 'forbidden' }, 403);
@@ -91,7 +91,13 @@ export class Team {
         return this.json({ deck: JSON.parse(parts.join('')) });
       }
       // Billing (only from the worker, after Stripe's signed notice).
-      case 'billing': { Object.assign(t, { seats: Math.max(1, Math.min(10000, +a.seats || t.seats)), until: +a.until || 0, ...(a.customer && { customer: a.customer }) }); await st.put('team', t); return this.json({ ok: true, members: t.members }); }
+      // (test: from Stripe's test mode — marked, its customer kept apart, and never over a real paid period still running.)
+      case 'billing': {
+        if (a.test && !t.test && t.until > Date.now()) return this.json({ ok: true, ignored: true });
+        Object.assign(t, { seats: Math.max(1, Math.min(10000, +a.seats || t.seats)), until: +a.until || 0, test: !!a.test, ...(a.customer && { [a.test ? 'customerTest' : 'customer']: a.customer }) });
+        await st.put('team', t); return this.json({ ok: true, members: t.members });
+      }
+      case 'clear-test': { const was = !!t.test && t.until > Date.now(); if (t.test) { t.until = 0; t.test = false; await st.put('team', t); } return this.json({ ok: true, cleared: was }); }
       case 'customer': return this.json({ customer: t.customer, admin });
     }
     return this.json({ error: 'unknown' }, 404);

@@ -7,7 +7,7 @@ import { summarize, bump, toCsv, cleanEntry, featureOf } from '../server/cloudfl
 import { verifyAccess, resetAccessCerts } from '../server/cloudflare/admin.js';
 import { ticketToken } from '../server/cloudflare/mail.js';
 import { verifyBody } from '../server/blender/gate.js';
-import { verifyStripe, sha256, shortCode, settings } from '../server/cloudflare/api.js';
+import { verifyStripe, sha256, shortCode, settings, stripeConf, billingMode } from '../server/cloudflare/api.js';
 
 function fakeStorage() {
   const m = new Map(); let alarm = null;
@@ -34,7 +34,7 @@ env.FETCH = async (url, init = {}) => {
   const u = String(url);
   if (u.startsWith('https://oauth2.googleapis.com/tokeninfo')) {
     const t = new URL(u).searchParams.get('access_token');
-    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' }, 'tok-gil': { sub: '1212', email: 'gil@example.com' }, 'tok-noa': { sub: '1313', email: 'noa@example.com' }, 'tok-pia': { sub: '1414', email: 'pia@example.com' } }[t];
+    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' }, 'tok-gil': { sub: '1212', email: 'gil@example.com' }, 'tok-noa': { sub: '1313', email: 'noa@example.com' }, 'tok-pia': { sub: '1414', email: 'pia@example.com' }, 'tok-tess': { sub: '1515', email: 'tess@example.com' }, 'tok-ivo': { sub: '1616', email: 'ivo@example.com' } }[t];
     if (t === 'tok-otraapp') return Response.json({ aud: 'otra-app', sub: '333', email: 'x@example.com', email_verified: 'true' });
     return who ? Response.json({ aud: CID, ...who, email_verified: 'true', expires_in: 3000 }) : new Response('bad', { status: 400 });
   }
@@ -49,7 +49,7 @@ env.FETCH = async (url, init = {}) => {
   if (u.startsWith('https://openrouter.ai/api/v1/audio/speech')) { aiCalls.push({ u, body: JSON.parse(init.body), auth: init.headers.Authorization }); return new Response(new Uint8Array([73, 68, 51, 4, 0]), { headers: { 'Content-Type': 'audio/mpeg' } }); }
   if (u.startsWith('https://openrouter.ai/')) { aiCalls.push({ u, body: JSON.parse(init.body), auth: init.headers.Authorization }); const r = aiReply(u); return Response.json(r.body, { status: r.status }); }
   if (u.startsWith('https://blender.test/')) { blenderCalls.push({ u, body: init.body, sig: init.headers['X-Revela-Signature'] }); return blenderReply(JSON.parse(init.body)); }
-  if (u.startsWith('https://api.stripe.com/')) { stripeCalls.push({ u, body: String(init.body) }); return Response.json({ url: 'https://checkout.stripe.com/c/pay_x' }); }
+  if (u.startsWith('https://api.stripe.com/')) { stripeCalls.push({ u, body: String(init.body), auth: init.headers?.Authorization }); return Response.json({ url: 'https://checkout.stripe.com/c/pay_x' }); }
   return new Response('?', { status: 404 });
 };
 env.ACCOUNTS = namespace(Account, env); env.BUDGET = namespace(Budget, env); env.DESKTOP = namespace(DesktopLink, env);
@@ -1127,6 +1127,113 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
       const pays = (await A('GET', '/finance/events?kind=payment')).j.events; ok(pays.length >= 2 && pays.every(e => e.kind === 'payment') && pays[0].ref === 'evt_f2' && pays[1].ref === 'evt_f1', 'eventos: filtrar por tipo'); }
     ok((await adm('DELETE', '/finance/entries/' + inj, { headers: { Origin: ADMIN } })).status === 200 && (await adm('DELETE', '/finance/entries/' + inj, { headers: { Origin: ADMIN } })).status === 404
       && (await A('GET', '/audit?target=finance:' + inj)).j.entries[0].action === 'finance-delete' && !(await A('GET', '/finance/entries')).j.entries.some(e => e.id === inj), 'entradas: borrar (auditado)');
+  }
+
+  // ---- Stripe's test mode (api.js stripeConf): per account (set by an admin) or for everyone (STRIPE_MODE) ----
+  {
+    const FS = () => env.FINANCE.inst.get('global').ctx.storage.m, today = new Date().toISOString().slice(0, 10), D = () => FS().get('d:' + today) || {};
+    const TS = () => acc('1515').ctx.storage.m, IS = () => acc('1616').ctx.storage.m;
+    const hookT = async (ev, secret = 'whsec_t') => { const body = JSON.stringify(ev); return worker.fetch(new Request(SITE + '/api/billing/webhook-test', { method: 'POST', body, headers: { 'Stripe-Signature': await sign(body, secret) } }), env); };
+    const meOf = async c => (await req('GET', '/api/me', { headers: { Cookie: c } })).json();
+    const tess = cookieFrom(await req('POST', '/api/login', { body: { accessToken: 'tok-tess', terms: TERMS } }));
+    const ivo = cookieFrom(await req('POST', '/api/login', { body: { accessToken: 'tok-ivo', terms: TERMS } }));
+    const sum = async () => (await A('GET', `/finance/summary?from=${today}&to=${today}&group=day`)).j;
+    const s0 = await sum(), pay0 = D()['pay.n'] || 0, crAdmin0 = D()['cr.out.admin'] || 0;
+
+    // Configuration and mode.
+    { const c = stripeConf({ STRIPE_TEST_SECRET_KEY: 'k', STRIPE_TEST_WEBHOOK_SECRET: 'w', STRIPE_TEST_PRICE_PRO_MONTH: 'p', STRIPE_PRICE_PRO_MONTH: 'live' }, 'test');
+      ok(c.mode === 'test' && c.ok && c.key === 'k' && c.webhook === 'w' && c.prices['pro-month'] === 'p' && stripeConf(env).key === 'sk_test' && stripeConf(env).prices['pro-month'] === 'price_pm' && !stripeConf({}, 'test').ok,
+        'stripeConf: claves, secreto del webhook y precios de cada modo: ' + JSON.stringify(c)); }
+    ok(billingMode({}, false) === 'live' && billingMode({}, true) === 'test' && billingMode({ STRIPE_MODE: 'test' }, false) === 'test' && billingMode({ STRIPE_MODE: 'live' }, false) === 'live', 'modo: la marca de la cuenta o STRIPE_MODE=test; por defecto, real');
+    me = await meOf(tess); ok(me.billingTest === false && me.billing === true, '/api/me: sin marca, pagos reales: ' + JSON.stringify([me.billingTest, me.billing]));
+
+    // The admin marks the account (audited); without the test configuration: a clear 503.
+    ok((await A('POST', '/billing-test', { body: { sub: '1515', on: true } })).status === 400 && (await A('POST', '/billing-test', { body: { sub: '1515', on: 'sí', reason: 'x' } })).status === 400, 'modo de prueba: sin motivo o sin on → 400');
+    ok((await A('POST', '/billing-test', { body: { sub: 'nadie', on: true, reason: 'x' } })).status === 404, 'modo de prueba: cuenta inexistente → 404');
+    x = await A('POST', '/billing-test', { body: { sub: '1515', on: true, reason: 'Probar compras sin dinero' } });
+    ok(x.status === 200 && x.j.after.billingTest.by === 'jefe@example.com' && !x.j.before.billingTest, 'modo de prueba: activado por la administración: ' + JSON.stringify(x.j));
+    me = await meOf(tess); ok(me.billingTest === true && me.billing === false, '/api/me: billingTest, y pagos no disponibles sin la configuración de prueba: ' + JSON.stringify([me.billingTest, me.billing]));
+    r = await req('POST', '/api/billing/checkout', { headers: { Cookie: tess }, body: { product: 'pro-month' } });
+    ok(r.status === 503 && (await r.json()).error === 'billing test not configured', 'sin STRIPE_TEST_*: 503 «billing test not configured»');
+    ok((await req('POST', '/api/billing/portal', { headers: { Cookie: tess } })).status === 503, 'portal sin configuración de prueba: 503');
+    ok((await hookT({ id: 'evt_t0', type: 'invoice.paid', data: { object: {} } })).status === 503, 'webhook de prueba sin STRIPE_TEST_WEBHOOK_SECRET: 503');
+
+    // With it: the flagged account pays with the test key and prices; the others, real.
+    Object.assign(env, { STRIPE_TEST_SECRET_KEY: 'sk_test_t', STRIPE_TEST_WEBHOOK_SECRET: 'whsec_t', STRIPE_TEST_PRICE_PRO_MONTH: 'price_t_pm', STRIPE_TEST_PRICE_CREDITS_500: 'price_t_c500' });
+    me = await meOf(tess); ok(me.billingTest === true && me.billing === true, '/api/me: modo de prueba configurado');
+    stripeCalls = [];
+    r = await req('POST', '/api/billing/checkout', { headers: { Cookie: tess }, body: { product: 'pro-month' } });
+    ok(r.status === 200 && (await r.json()).test === true && stripeCalls.at(-1).auth === 'Bearer sk_test_t' && /price_t_pm/.test(stripeCalls.at(-1).body) && !/price_pm/.test(stripeCalls.at(-1).body),
+      'cuenta marcada: Checkout con la clave y el precio de prueba: ' + JSON.stringify(stripeCalls.at(-1)?.auth));
+    r = await req('POST', '/api/billing/checkout', { headers: { Cookie: ivo }, body: { product: 'pro-month' } });
+    ok(r.status === 200 && stripeCalls.at(-1).auth === 'Bearer sk_test' && /price_pm/.test(stripeCalls.at(-1).body) && !(await meOf(ivo)).billingTest, 'otra cuenta: Checkout real (clave y precio reales)');
+
+    // Webhooks: each endpoint with its own secret.
+    const tpack = { id: 'evt_t1', type: 'checkout.session.completed', livemode: false, data: { object: { mode: 'payment', payment_status: 'paid', currency: 'eur', amount_total: 1210, total_details: { amount_tax: 210 }, customer: 'cus_test_tess', metadata: { sub: '1515', product: 'credits-500' } } } };
+    ok((await hookT(tpack, 'whsec_x')).status === 400 && (await hook(tpack, 'whsec_t')).status === 400, 'webhook de prueba solo con su secreto (y el real solo con el suyo)');
+    const c0 = TS().get('credits');
+    ok((await hookT(tpack)).status === 200 && (await hookT(tpack)).status === 200, 'webhook de prueba firmado (y repetido)');
+    { const e = TS().get('ledger').at(-1);
+      ok(TS().get('credits') === c0 + 500 && e.reason === 'purchase' && e.test === true && e.delta === 500, 'compra de prueba: los créditos, marcados de prueba en el historial (una sola vez): ' + JSON.stringify(e));
+      ok(TS().get('lots').some(l => l.test && l.n === 500) && TS().get('customerTest') === 'cus_test_tess' && !TS().get('customer'), 'lote de prueba aparte; cliente de Stripe de prueba guardado aparte'); }
+    const end = Math.floor(Date.now() / 1000) + 30 * 86400, start = end - 30 * 86400;
+    await hookT({ id: 'evt_t2', type: 'invoice.paid', livemode: false, data: { object: { customer: 'cus_test_tess', currency: 'eur', amount_paid: 1210, tax: 210, billing_reason: 'subscription_create',
+      parent: { subscription_details: { subscription: 'sub_t1', metadata: { sub: '1515' } } }, lines: { data: [{ period: { start, end }, price: { id: 'price_t_pm' } }] } } } });
+    me = await meOf(tess);
+    ok(me.plan === 'pro' && TS().get('plan').test === true && TS().get('ledger').some(e => e.reason === 'pro' && e.test && e.delta === 1000), 'Pro de prueba: el plan marcado y sus créditos del mes de prueba: ' + JSON.stringify(TS().get('plan')));
+    { const evs = [...FS().values()].filter(v => v?.kind === 'payment' && ['evt_t1', 'evt_t2'].includes(v.ref));
+      ok(evs.length === 2 && evs.every(v => v.test) && evs.find(v => v.ref === 'evt_t2').product === 'pro-month' && FS().get('ts:sub_t1') && !FS().get('s:sub_t1'), 'finanzas: pagos de prueba marcados; la suscripción de prueba aparte: ' + JSON.stringify(evs.map(v => v.product)));
+      ok(D()['test.pay.n'] === 2 && (D()['pay.n'] || 0) === pay0 && D()['test.cr.sold'] === 500, 'finanzas: los pagos de prueba se cuentan aparte'); }
+    { const s1 = await sum(), t0 = s0.totals, t1 = s1.totals;
+      ok(['gross', 'tax', 'fees', 'refunds', 'revenue', 'net', 'profit', 'mrr'].every(k => t0[k] === t1[k]) && s1.subscriptions.new === s0.subscriptions.new && s1.subscriptions.active === s0.subscriptions.active
+        && s1.credits.sold === s0.credits.sold && s1.users.conversion === s0.users.conversion && JSON.stringify(s1.credits.granted) === JSON.stringify(s0.credits.granted) && s1.revenue.payments === s0.revenue.payments,
+        'resumen: lo de prueba no entra en ingresos, comisiones, neto, MRR, altas, conversión ni créditos: ' + JSON.stringify([t0.net, t1.net, t0.mrr, t1.mrr]));
+      ok(s1.test.payments === 2 && s1.test.gross === 24.2 && s1.test.newSubs === 1 && s1.test.active === 1 && s1.test.credits.sold === 500 && s1.test.credits.granted >= 1500, 'resumen: «Pruebas» aparte: ' + JSON.stringify(s1.test));
+      const csv = await (await adm('GET', `/finance/export.csv?from=${today}&to=${today}`)).text(); ok(!/evt_t1|evt_t2/.test(csv), 'CSV de la gestoría: sin pagos de prueba'); }
+
+    // The guard: a test event never touches an account that isn't in test mode (unless STRIPE_MODE=test).
+    const ic0 = IS().get('credits');
+    r = await hookT({ id: 'evt_t3', type: 'checkout.session.completed', data: { object: { mode: 'payment', payment_status: 'paid', currency: 'eur', amount_total: 1210, customer: 'cus_t_ivo', metadata: { sub: '1616', product: 'credits-500' } } } });
+    ok(r.status === 200 && (await r.json()).ignored === true && IS().get('credits') === ic0 && !IS().get('customerTest') && ![...FS().values()].some(v => v?.ref === 'evt_t3'), 'evento de prueba para una cuenta sin la marca: se ignora (ni créditos ni finanzas)');
+    r = await hookT({ id: 'evt_t3b', type: 'charge.refunded', data: { object: { currency: 'eur', amount_refunded: 100 } } });
+    ok(r.status === 200 && (await r.json()).ignored === true, 'evento de prueba sin cuenta: se ignora');
+    // A real Pro is never replaced nor ended by test mode.
+    await hook({ id: 'evt_l9', type: 'invoice.paid', data: { object: { customer: 'cus_ivo', subscription_details: { metadata: { sub: '1616' } }, lines: { data: [{ period: { end } }] } } } });
+    env.STRIPE_MODE = 'test';
+    me = await meOf(ivo); ok(me.billingTest === true && me.plan === 'pro', 'STRIPE_MODE=test: todas las cuentas en modo de prueba');
+    r = await req('POST', '/api/billing/checkout', { headers: { Cookie: ivo }, body: { product: 'credits-500' } });
+    ok(r.status === 200 && stripeCalls.at(-1).auth === 'Bearer sk_test_t' && /price_t_c500/.test(stripeCalls.at(-1).body) && !/customer=cus_ivo/.test(stripeCalls.at(-1).body), 'STRIPE_MODE=test: Checkout de prueba (sin el cliente real)');
+    const ic1 = IS().get('credits');
+    r = await hookT({ id: 'evt_t4', type: 'checkout.session.completed', data: { object: { mode: 'payment', payment_status: 'paid', currency: 'eur', amount_total: 1210, customer: 'cus_t_ivo', metadata: { sub: '1616', product: 'credits-500' } } } });
+    ok(r.status === 200 && !(await r.json()).ignored && IS().get('credits') === ic1 + 500 && IS().get('ledger').at(-1).test, 'STRIPE_MODE=test: el evento de prueba se aplica (marcado)');
+    await hookT({ id: 'evt_t5', type: 'customer.subscription.deleted', data: { object: { id: 'sub_x', metadata: { sub: '1616' } } } });
+    await hookT({ id: 'evt_t6', type: 'invoice.paid', data: { object: { customer: 'cus_t_ivo', subscription_details: { metadata: { sub: '1616' } }, lines: { data: [{ period: { end: end + 400 * 86400 } }] } } } });
+    ok(IS().get('plan').name === 'pro' && !IS().get('plan').test && IS().get('plan').until < (end + 100 * 86400) * 1000, 'un evento de prueba no termina ni sustituye un Pro real: ' + JSON.stringify(IS().get('plan')));
+    delete env.STRIPE_MODE;
+    ok((await meOf(ivo)).billingTest === false, 'sin STRIPE_MODE: vuelve a pagos reales');
+
+    // The admin's view: the flag, the test plan and ledger entries, the directory and the overview.
+    x = await A('GET', '/users/1515');
+    ok(x.j.billingTest?.reason === 'Probar compras sin dinero' && x.j.stored.test && x.j.ledger.some(e => e.test && e.reason === 'purchase') && x.j.customerTest && x.j.billingTestReady && x.j.directory.test && x.j.directory.billingTest && x.j.directory.testCredits >= 500,
+      'ficha: modo de prueba, Pro y movimientos de prueba: ' + JSON.stringify([x.j.billingTest, x.j.stored, x.j.directory]));
+    x = await A('GET', '/stats'); ok(x.j.test.accounts === 1 && x.j.test.pro === 1 && x.j.test.credits >= 500, 'resumen: lo de prueba aparte: ' + JSON.stringify(x.j.test));
+
+    // «Quitar lo de prueba»: test Pro and test credits go; the real ones stay (audited).
+    const real = TS().get('lots').filter(l => !l.test).reduce((t, l) => t + l.n, 0);
+    x = await A('POST', '/clear-test', { body: { sub: '1515' } });
+    me = await meOf(tess);
+    ok(x.status === 200 && x.j.removed.credits === 1500 && x.j.removed.pro && me.plan === 'free' && me.credits === real && !TS().get('lots').some(l => l.test), 'quitar lo de prueba: Pro y créditos de prueba fuera, los reales se quedan: ' + JSON.stringify([x.j.removed, me.credits, real]));
+    ok(TS().get('ledger').at(-1).delta === -1500 && TS().get('ledger').at(-1).test && (D()['cr.out.admin'] || 0) === crAdmin0 && D()['test.cr.out'] >= 1500, 'quitar lo de prueba: en el historial (de prueba) y fuera de las cifras reales');
+    ok((await A('POST', '/clear-test', { body: { sub: 'nadie' } })).status === 404, 'quitar lo de prueba: cuenta inexistente → 404');
+    // Real credits are never taken: a second clear removes nothing.
+    await A('POST', '/credits', { body: { sub: '1515', delta: 20, reason: 'real' } });
+    x = await A('POST', '/clear-test', { body: { sub: '1515' } }); ok(x.j.removed.credits === 0 && !x.j.removed.pro && TS().get('credits') === real + 20, 'quitar lo de prueba otra vez: nada real se toca');
+    { const acts = (await A('GET', '/audit?target=1515')).j.entries.map(e => e.action); ok(acts.includes('billing-test-on') && acts.filter(a => a === 'clear-test').length === 2, 'auditoría: activar el modo de prueba y quitar lo de prueba: ' + acts); }
+    x = await A('POST', '/billing-test', { body: { sub: '1515', on: false, reason: 'Pruebas terminadas' } });
+    me = await meOf(tess); r = await req('POST', '/api/billing/checkout', { headers: { Cookie: tess }, body: { product: 'pro-month' } });
+    ok(x.status === 200 && !x.j.after.billingTest && me.billingTest === false && r.status === 200 && stripeCalls.at(-1).auth === 'Bearer sk_test' && (await A('GET', '/audit?target=1515')).j.entries[0].action === 'billing-test-off',
+      'modo de prueba desactivado: vuelve a pagar de verdad (auditado)');
+    for (const k of ['STRIPE_TEST_SECRET_KEY', 'STRIPE_TEST_WEBHOOK_SECRET', 'STRIPE_TEST_PRICE_PRO_MONTH', 'STRIPE_TEST_PRICE_CREDITS_500']) delete env[k];
   }
 
   // Deleting the account takes it out of the directory.

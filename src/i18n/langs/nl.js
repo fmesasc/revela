@@ -1979,6 +1979,7 @@ export default {
   "500 créditos": "500 tegoed",
   "1500 créditos": "1500 tegoed",
   "Los pagos estarán disponibles muy pronto.": "Betalen is binnenkort mogelijk.",
+  "Modo de prueba: no se cobra nada (tarjeta de prueba 4242 4242 4242 4242)": "Testmodus: er wordt niets afgeschreven (testkaart 4242 4242 4242 4242)",
   "Gestionar la suscripción": "Abonnement beheren",
   "Se acabó el tiempo para confirmar. Vuelve a intentarlo.": "De tijd om te bevestigen is verstreken. Probeer het opnieuw.",
   "La aplicación de escritorio de Revela quiere iniciar sesión. Primero, inicia sesión aquí.": "De Revela-desktopapp wil zich aanmelden. Meld je eerst hier aan.",

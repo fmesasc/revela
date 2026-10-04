@@ -90,6 +90,10 @@ new_sqlite_classes = ["ShareBox", "Limits"]
 #   OPENROUTER_KEY          the AI key (set a credit limit on it at openrouter.ai)
 #   STRIPE_SECRET_KEY       Stripe's secret key (billing; optional until you sell)
 #   STRIPE_WEBHOOK_SECRET   the signing secret of the webhook (…/api/billing/webhook)
+#   STRIPE_TEST_SECRET_KEY, STRIPE_TEST_WEBHOOK_SECRET   Stripe's test mode (…/api/billing/webhook-test; optional:
+#                           accounts an admin puts in test mode, or everyone with the var STRIPE_MODE = "test")
+# Plain vars set in the dashboard: STRIPE_PRICE_* and STRIPE_TEST_PRICE_* (PRO_MONTH, PRO_YEAR, CREDITS_500,
+# CREDITS_1500, TEAM_SEAT), STRIPE_MODE (live | test; default live). See docs/NUBE.md.
 #   UNSPLASH_ACCESS_KEY     Unsplash's access key (photos; optional)
 #   PEXELS_API_KEY          Pexels' API key (photos; optional)
 #   CALLS_APP_ID, CALLS_APP_SECRET   Cloudflare Realtime SFU app (video calls; optional)

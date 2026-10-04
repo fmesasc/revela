@@ -1979,6 +1979,7 @@ export default {
   "500 créditos": "500 créditos",
   "1500 créditos": "1500 créditos",
   "Los pagos estarán disponibles muy pronto.": "Os pagamentos estarán dispoñibles moi pronto.",
+  "Modo de prueba: no se cobra nada (tarjeta de prueba 4242 4242 4242 4242)": "Modo de proba: non se cobra nada (tarxeta de proba 4242 4242 4242 4242)",
   "Gestionar la suscripción": "Xestionar a subscrición",
   "Se acabó el tiempo para confirmar. Vuelve a intentarlo.": "Acabouse o tempo para confirmar. Téntao de novo.",
   "La aplicación de escritorio de Revela quiere iniciar sesión. Primero, inicia sesión aquí.": "A aplicación de escritorio de Revela quere iniciar sesión. Primeiro, inicia sesión aquí.",

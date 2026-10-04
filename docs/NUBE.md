@@ -181,7 +181,10 @@ están en esa misma llamada. Coste: 0,05 $ por GB de salida, los primeros
 **Pagos.** `/api/billing/checkout` crea una página de pago de Stripe con el
 **precio de Stripe** (el navegador solo elige el producto). Los planes y
 créditos solo cambian cuando llega el aviso **firmado** de Stripe
-(`/api/billing/webhook`), y cada aviso cuenta una sola vez.
+(`/api/billing/webhook`), y cada aviso cuenta una sola vez. Las cuentas que la administración
+pone en **modo de prueba** pagan con la configuración de prueba de Stripe (sin dinero real; sus
+avisos llegan a `/api/billing/webhook-test`) y lo que reciben va marcado de prueba, fuera de las
+cifras del negocio (ver «Modo de prueba de Stripe» en la puesta en marcha).
 
 ## Modelos 3D con IA
 
@@ -429,6 +432,40 @@ que el servidor los rechaza.
    en cada precio, *Include tax in price* = **No** (los precios son sin impuestos); añadir el registro
    de IVA de España en Stripe ▸ Tax ▸ Registrations; y la variable `STRIPE_AUTOMATIC_TAX = 1` en el
    Worker: Checkout sumará el impuesto de cada país y pedirá el NIF-IVA a las empresas.
+
+   **Modo de prueba de Stripe (comprar sin dinero real, en producción).** Revela guarda las dos
+   configuraciones de Stripe a la vez, la real y la de prueba, y la administración elige quién
+   paga en modo de prueba: en la ficha de la cuenta, «Pagos en modo de prueba» (queda en la
+   auditoría). Esa cuenta compra con la clave y los precios de prueba (tarjeta `4242 4242 4242 4242`,
+   cualquier fecha futura y cualquier CVC), y la aplicación lo avisa en «Mi cuenta». Lo que da una
+   compra de prueba (Pro, créditos, puestos de equipo) es igual que lo real pero va **marcado de
+   prueba**: en el historial de créditos, en el plan («Pro (prueba)») y en la contabilidad, donde
+   **no cuenta** en ingresos, comisiones, neto, MRR, bajas ni conversión (Negocio lo muestra aparte,
+   en «Pruebas», y el CSV de la gestoría no lo incluye). «Quitar lo de prueba» en la ficha retira el
+   Pro y los créditos de prueba sin tocar los reales. Un evento de prueba para una cuenta sin la
+   marca se ignora (y se apunta en el registro del Worker). Por qué así: probar el pago entero en
+   el sitio real, con cuentas reales, sin cobrar a nadie ni ensuciar las cifras del negocio.
+
+   Pasos, en Stripe con el interruptor **Modo de prueba** (Test mode) activado:
+   1. **Clave restringida de prueba** (Developers ▸ API keys ▸ *Create restricted key*), con los
+      mismos 6 permisos que la real: *Checkout Sessions* — escritura; *Customer portal* — escritura;
+      *Subscriptions* — escritura; *Charges* — lectura; *PaymentIntents* — lectura; *Balance* — lectura
+      (las comisiones; también *Balance transactions* si aparece aparte).
+   2. **Productos y precios de prueba**, los mismos que los reales (Pro mensual, Pro anual, 500 y 1500
+      créditos, puesto de equipo); en modo de prueba sus ids son otros.
+   3. **Webhook de prueba**: endpoint `https://revelaslides.com/api/billing/webhook-test` con los
+      eventos `checkout.session.completed`, `invoice.paid`, `customer.subscription.updated`,
+      `customer.subscription.deleted` y `charge.refunded` (el real sigue en `…/api/billing/webhook`).
+   4. **Secretos** (nunca en el repositorio): `npx wrangler secret put STRIPE_TEST_SECRET_KEY` (la clave
+      `rk_test_…`) y `npx wrangler secret put STRIPE_TEST_WEBHOOK_SECRET` (el `whsec_…` del webhook de prueba).
+   5. **Variables** (Workers ▸ revela-share ▸ Settings ▸ Variables), con los ids de prueba:
+      `STRIPE_TEST_PRICE_PRO_MONTH`, `STRIPE_TEST_PRICE_PRO_YEAR`, `STRIPE_TEST_PRICE_CREDITS_500`,
+      `STRIPE_TEST_PRICE_CREDITS_1500` y `STRIPE_TEST_PRICE_TEAM_SEAT`.
+   6. Opcional: `STRIPE_MODE = test` pone **a todo el mundo** en modo de prueba (por ejemplo, antes de
+      abrir las ventas); por defecto, `live`.
+
+   Sin la clave o el secreto de prueba, una cuenta marcada no puede comprar (503 «billing test not
+   configured») y la aplicación no muestra los botones de pago activos.
 7. **Correos.** Una de dos:
    - **Cloudflare Email Service** (requiere el plan de pago de Workers): Compute ▸ Email Service ▸ Email Sending ▸
      *Onboard Domain* con `revelaslides.com`; Cloudflare añade los registros DNS (MX y SPF en

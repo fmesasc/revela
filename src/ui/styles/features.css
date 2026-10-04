@@ -679,6 +679,8 @@ body.file-drag::after{content:attr(data-drop-hint);position:fixed;left:50%;botto
 #account-modal .acc-credits small{display:block;font-size:12px;color:var(--txt2);margin-top:2px}
 #account-modal .acc-features{list-style:none;padding:0;margin:6px 0 12px;font-size:14px}
 #account-modal .acc-buy{display:flex;gap:6px;flex-wrap:wrap}
+/* Stripe's test mode (the server says so): nothing is charged */
+#account-modal .acc-test,#team-modal .acc-test{margin:8px 0;padding:8px 10px;border-radius:8px;border:1px dashed #b7791f;background:rgba(214,158,46,.12);color:inherit;font-size:13px}
 #account-modal .acc-code{margin:10px 0;padding:10px;border-radius:8px;background:var(--bg);font-size:14px}
 #account-modal .acc-code b{display:block;font:700 28px ui-monospace,monospace;letter-spacing:6px;margin-top:6px}
 @media (max-width:600px){.titlebar .plan-btn span{display:none}}

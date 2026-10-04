@@ -1979,6 +1979,7 @@ export default {
   "500 créditos": "500 kreditu",
   "1500 créditos": "1500 kreditu",
   "Los pagos estarán disponibles muy pronto.": "Ordainketak laster egongo dira erabilgarri.",
+  "Modo de prueba: no se cobra nada (tarjeta de prueba 4242 4242 4242 4242)": "Proba modua: ez da ezer kobratzen (proba-txartela 4242 4242 4242 4242)",
   "Gestionar la suscripción": "Kudeatu harpidetza",
   "Se acabó el tiempo para confirmar. Vuelve a intentarlo.": "Berresteko denbora amaitu da. Saiatu berriro.",
   "La aplicación de escritorio de Revela quiere iniciar sesión. Primero, inicia sesión aquí.": "Revela-ren mahaigaineko aplikazioak saioa hasi nahi du. Lehenik, hasi saioa hemen.",
