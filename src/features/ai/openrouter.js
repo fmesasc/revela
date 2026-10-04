@@ -190,7 +190,8 @@ export async function writeNotes({ all = false } = {}) {
 export async function describeImage() {
   const b = selectedBlock(); if (!b || b.type !== 'image') throw new Error('NO_IMAGE');
   // (Made small first: a JPEG data: URL, what the account's server takes, at a fraction of the cost.)
-  const shot = await (await import('./vision.js')).downscale(b.src).catch(() => { throw new Error('NO_IMAGE'); });
+  // (A picture the browser can't redraw — an odd format, another site's without CORS — goes as it is, if it's inside the deck.)
+  const shot = await (await import('./vision.js')).downscale(b.src).catch(() => { if (/^data:image\//.test(b.src || '')) return { url: b.src }; throw new Error('NO_IMAGE'); });
   const alt = await chat([
     { role: 'system', content: `Write alt text for this image for a screen reader: one sentence, max 125 characters, in ${lang()}, no "image of".` },
     { role: 'user', content: [{ type: 'text', text: 'Describe the image.' }, { type: 'image_url', image_url: { url: shot.url } }] },
