@@ -423,8 +423,8 @@ que el servidor los rechaza.
 6. **Stripe (más adelante):** crear los productos y sus precios, poner sus ids en
    `STRIPE_PRICE_*` y el webhook `https://revelaslides.com/api/billing/webhook`
    con los eventos `checkout.session.completed`, `invoice.paid`,
-   `customer.subscription.updated` (avisos de cancelación) y
-   `customer.subscription.deleted`.
+   `customer.subscription.updated` (avisos de cancelación),
+   `customer.subscription.deleted` y `charge.refunded` (reembolsos, para la contabilidad).
 7. **Correos.** Una de dos:
    - **Cloudflare Email Service** (requiere el plan de pago de Workers): Compute ▸ Email Service ▸ Email Sending ▸
      *Onboard Domain* con `revelaslides.com`; Cloudflare añade los registros DNS (MX y SPF en
@@ -441,7 +441,6 @@ que el servidor los rechaza.
 8. **Cuentas del negocio** (opcional; los valores por defecto sirven): en Workers ▸ revela-share ▸
    Settings ▸ Variables, `USD_EUR` (cuántos euros es un dólar, para los informes), `EMAIL_USD` (lo que cuesta
    un correo) y, solo si la clave de Stripe no puede leer las comisiones, `STRIPE_FEE_PCT` y `STRIPE_FEE_FIXED`.
-   En el webhook de Stripe añadir también el evento `charge.refunded` (reembolsos).
 9. **Plan de pago de Workers** (5 $/mes) al abrirlo al público, y una alerta de
    gasto en Facturación ▸ Notificaciones.
 
