@@ -444,6 +444,252 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(R.remote.presentationState().total, 1, 'solo cuenta visibles');
   });
 
+  // ---- Phone remote: touchpad, pairing and security ----------------------------------
+  // A stand-in for PeerJS: peers by id; connections and messages arrive a moment
+  // later, as over WebRTC, and messages are copies (JSON), as over the wire.
+  const fakeBroker = () => {
+    const peers = new Map(), later = f => setTimeout(f, 0);
+    const emitter = o => { o.h = {}; o.on = (e, f) => { (o.h[e] = o.h[e] || []).push(f); return o; }; o.emit = (e, ...a) => (o.h[e] || []).forEach(f => f(...a)); return o; };
+    class Peer {
+      constructor(id) { emitter(this); this.id = id || 'anon-' + Math.random().toString(36).slice(2); peers.set(this.id, this); later(() => this.emit('open', this.id)); }
+      connect(id) {
+        const a = emitter({ open: false }), b = emitter({ open: false });
+        const link = (x, y) => {
+          x.send = d => { if (!x.open) return; const c = JSON.parse(JSON.stringify(d)); later(() => y.open && y.emit('data', c)); };
+          x.close = () => { if (!x.open) return; x.open = y.open = false; later(() => { x.emit('close'); y.emit('close'); }); };
+        };
+        link(a, b); link(b, a);
+        later(() => {
+          const to = peers.get(id);
+          if (!to) { this.emit('error', { type: 'peer-unavailable' }); return; }
+          to.emit('connection', b); a.open = b.open = true; later(() => { a.emit('open'); b.emit('open'); });
+        });
+        return a;
+      }
+      destroy() { peers.delete(this.id); }
+    }
+    return { Peer };
+  };
+  // An exported presentation in a frame of this page; → its window once reveal.js is ready.
+  const deckFrame = async (html, w = 800, h = 600) => {
+    const f = document.createElement('iframe'); f.style.cssText = `position:fixed;left:0;top:0;width:${w}px;height:${h}px;opacity:0;border:0`;
+    f.srcdoc = html; document.body.appendChild(f);
+    let win; for (let i = 0; i < 100 && !((win = f.contentWindow).Reveal?.isReady?.()); i++) await sleep(100);
+    return { f, win, doc: f.contentDocument };
+  };
+  const near = (a, b, msg, tol = 1.5) => assert(Math.abs(a - b) <= tol, `${msg}: ${a} ≠ ${b}`);
+  // Something absolutely placed on the current slide, in slide pixels.
+  const put = (win, tag, x, y, w, h, css = '') => {
+    const el = win.document.createElement(tag); el.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;${css}`;
+    win.Reveal.getCurrentSlide().querySelector('.stage').appendChild(el); return el;
+  };
+
+  await test('mando: las coordenadas del móvil caen en la diapositiva (franjas, otra proporción, zoom)', async () => {
+    reset(); const W = frame.contentWindow, P = await W.eval("import('/src/features/live/remotepad.js')");
+    const { f, win, doc } = await deckFrame(R.io.buildHTML(), 800, 600);
+    try {
+      const stage = () => win.Reveal.getCurrentSlide().querySelector('.stage').getBoundingClientRect();
+      let r = stage();
+      assert(r.top > 20 && Math.abs(r.left) < 2, 'pantalla 4:3 → franjas arriba y abajo');
+      near(P.toClient(doc, 0, 0).x, r.left, 'esquina izquierda'); near(P.toClient(doc, 0, 0).y, r.top, 'esquina superior');
+      near(P.toClient(doc, 1, 1).x, r.right, 'esquina derecha'); near(P.toClient(doc, 1, 1).y, r.bottom, 'esquina inferior');
+      f.style.width = '1000px'; f.style.height = '300px'; win.dispatchEvent(new win.Event('resize')); await sleep(250);
+      r = stage();
+      assert(r.left > 20, 'pantalla muy ancha → franjas a los lados');
+      near(P.toClient(doc, 0.5, 0.25).x, r.left + r.width / 2, 'otra proporción: x'); near(P.toClient(doc, 0.5, 0.25).y, r.top + r.height / 4, 'otra proporción: y');
+      // Zoomed in (the presentation's own zoom): the same slide point is found where it now is.
+      const btn = put(win, 'button', 100, 100, 200, 100); let hits = 0; btn.addEventListener('click', () => hits++);
+      const W2 = R.state.deck.size.w, H2 = R.state.deck.size.h, bx = 200 / W2, by = 150 / H2;
+      P.zoomBy(doc, bx, by, 2); await sleep(20);
+      near(P.zoomLevel(doc), 2, 'ampliado ×2', 0.01);
+      const b = btn.getBoundingClientRect(), c = P.toClient(doc, bx, by);
+      near(c.x, b.left + b.width / 2, 'con zoom: x del botón'); near(c.y, b.top + b.height / 2, 'con zoom: y del botón');
+      P.tap(doc, bx, by); eq(hits, 1, 'con zoom, tocar el botón lo pulsa');
+      P.zoomReset(doc); near(P.zoomLevel(doc), 1, 'doble toque: tamaño normal', 0.01);
+    } finally { f.remove(); }
+  });
+
+  await test('mando: foco, láser, flecha y lupa se dibujan y se quitan en la presentación', async () => {
+    reset(); const W = frame.contentWindow, P = await W.eval("import('/src/features/live/remotepad.js')");
+    const { f, doc } = await deckFrame(R.io.buildHTML(), 800, 450);
+    try {
+      const vis = id => { const el = doc.getElementById(id); return !!el && el.style.display !== 'none'; };
+      P.point(doc, 'spot', 0.5, 0.5, 0.1);
+      assert(vis('__rv-spot'), 'el foco aparece');
+      const bg = doc.getElementById('__rv-spot').style.background;
+      assert(/radial-gradient/.test(bg) && /400(\.0)?px 225(\.0)?px/.test(bg) && /80(\.0)?px/.test(bg), 'oscurece todo salvo un círculo en el punto (radio = 10 % del ancho): ' + bg);
+      P.point(doc, 'spot', 0.5, 0.5, 0.2);
+      assert(/160(\.0)?px/.test(doc.getElementById('__rv-spot').style.background), 'el radio sigue a la presión');
+      P.pointOff(doc); assert(!vis('__rv-spot'), 'al levantar el dedo se quita');
+      P.point(doc, 'laser', 0.25, 0.25); P.point(doc, 'laser', 0.3, 0.3);
+      assert(vis('__laser') && doc.getElementById('__laser-trail'), 'láser con estela');
+      P.point(doc, 'arrow', 0.1, 0.1);
+      assert(vis('__rv-arrow') && !vis('__laser'), 'la flecha sustituye al láser');
+      P.pointOff(doc); assert(vis('__rv-arrow'), 'la flecha se queda donde se dejó');
+      P.point(doc, 'lens', 0.5, 0.5, 0.15);
+      assert(vis('__rv-lens') && doc.getElementById('__rv-lens').querySelector('.stage'), 'la lupa muestra la diapositiva ampliada');
+      P.clearAll(doc); assert(!vis('__rv-arrow') && !vis('__rv-lens'), 'cambiar de herramienta lo quita todo');
+      P.black(doc, true); assert(vis('__black'), 'pantalla negra'); P.black(doc, false); assert(!vis('__black'), 'sin pantalla negra');
+    } finally { f.remove(); }
+  });
+
+  await test('mando: tocar, arrastrar y desplazar con dos dedos llegan al elemento correcto', async () => {
+    reset(); const W = frame.contentWindow, P = await W.eval("import('/src/features/live/remotepad.js')");
+    const { f, win, doc } = await deckFrame(R.io.buildHTML(), 800, 450);
+    try {
+      const { w: SW, h: SH } = R.state.deck.size, at = (x, y) => [x / SW, y / SH];
+      const btn = put(win, 'button', 100, 100, 200, 100), other = put(win, 'button', 320, 100, 100, 100);
+      const log = []; btn.addEventListener('click', () => log.push('btn')); other.addEventListener('click', () => log.push('other'));
+      P.tap(doc, ...at(200, 150)); eq(log.join(), 'btn', 'tocar pulsa el botón que hay debajo (y no otro)');
+      // Scroll a box that scrolls; content follows the fingers (fingers up → further down).
+      const box = put(win, 'div', 500, 100, 300, 200, 'overflow:auto'); box.innerHTML = '<div style="height:2000px"></div>';
+      const r1 = P.wheel(doc, ...at(650, 200), 0, -0.2);
+      assert(r1.scrolled && box.scrollTop > 50, 'dos dedos hacia arriba desplazan la caja hacia abajo: ' + box.scrollTop);
+      // Drag: down, moves, up on the element pressed.
+      const item = put(win, 'div', 500, 400, 100, 100, 'background:#c00'); const seq = [];
+      ['pointerdown', 'pointermove', 'pointerup', 'mousedown', 'mouseup'].forEach(t => item.addEventListener(t, e => seq.push(t + ':' + Math.round(e.clientX))));
+      P.drag(doc, 'start', ...at(550, 450)); P.drag(doc, 'move', ...at(560, 450)); P.drag(doc, 'end', ...at(570, 450));
+      const kinds = seq.map(s => s.split(':')[0]);
+      assert(kinds[0] === 'pointerdown' && kinds.includes('pointermove') && kinds.includes('pointerup'), 'arrastrar: pulsar, mover, soltar: ' + kinds);
+      const xs = seq.filter(s => s.startsWith('pointer')).map(s => +s.split(':')[1]);
+      assert(xs[2] > xs[0], 'el movimiento avanza en la pantalla');
+      // A web page of this same origin: its button is clicked and it scrolls inside.
+      const fr = put(win, 'iframe', 900, 100, 300, 300, 'border:0');
+      fr.srcdoc = '<body style="margin:0"><button id=b style="width:120px;height:60px">B</button><div style="height:3000px"></div></body>';
+      for (let i = 0; i < 30 && !fr.contentDocument?.getElementById('b'); i++) await sleep(50);
+      let inner = 0; fr.contentDocument.getElementById('b').addEventListener('click', () => inner++);
+      eq(P.tap(doc, ...at(930, 120)).blocked, false, 'web del mismo origen: se puede tocar');
+      eq(inner, 1, 'tocar dentro de la web pulsa su botón');
+      const r2 = P.wheel(doc, ...at(1050, 300), 0, -0.3);
+      assert(r2.scrolled && fr.contentDocument.scrollingElement.scrollTop > 50, 'la web se desplaza por dentro');
+      // A web page of another origin (a sandboxed frame stands in for it): blocked, said so.
+      const cross = put(win, 'iframe', 100, 400, 300, 200, 'border:0'); cross.setAttribute('sandbox', 'allow-scripts'); cross.srcdoc = '<div style="height:3000px">x</div>';
+      await sleep(150);
+      eq(P.tap(doc, ...at(250, 500)).blocked, true, 'web de otro origen: el navegador no deja tocarla');
+      const r3 = P.wheel(doc, ...at(250, 500), 0, -0.2);
+      assert(r3.blocked && !r3.scrolled, 'ni desplazarla (y se avisa al móvil)');
+    } finally { f.remove(); }
+  });
+
+  await test('mando: límite de órdenes por segundo', async () => {
+    let tm = 0; const lim = R.remote.createLimiter(12, 6, () => tm);
+    let ok = 0; for (let i = 0; i < 40; i++) if (lim()) ok++;
+    eq(ok, 12, 'una ráfaga pasa hasta el máximo');
+    tm = 1000; ok = 0; for (let i = 0; i < 40; i++) if (lim()) ok++;
+    eq(ok, 6, 'luego, al ritmo permitido');
+  });
+
+  await test('mando: solo manda el móvil emparejado (clave del QR, permiso, uno a la vez, desconectar, límite)', async () => {
+    reset(); for (let i = 0; i < 30; i++) R.slides.addSlide(); R.slides.goToSlide(0); R.render();
+    const { Peer } = fakeBroker(); let last = null;
+    await R.remote.startHost(s => { last = s; }, { Peer }); await sleep(20);
+    try {
+      const key = new URL(last.link).searchParams.get('k'), code = last.code;
+      assert(key && key.length >= 16 && /^[A-Z2-9]{5}$/.test(code), 'el enlace del QR lleva el código y una clave');
+      const phone = () => { const c = new Peer().connect('revela-' + code), got = []; c.on('data', d => got.push(d)); return { c, got, has: k => got.some(m => m.kind === k) }; };
+      const idx = () => R.state.ui.slideIndex;
+      const a = phone(); await sleep(30);
+      a.c.send({ type: 'next' }); a.c.send({ type: 'pointer', x: 0.5, y: 0.5 }); await sleep(30);
+      eq(idx(), 0, 'sin emparejar, nada de lo que envía cuenta');
+      a.c.send({ type: 'hello', key: 'NOESLACLAVE' }); await sleep(30);
+      assert(a.has('pending') && last.state === 'request', 'solo con el código: espera el permiso de quien presenta');
+      a.c.send({ type: 'next' }); await sleep(30); eq(idx(), 0, 'mientras espera, no manda');
+      last.deny(); await sleep(30); assert(a.has('denied'), 'rechazado');
+      const b = phone(); await sleep(30); b.c.send({ type: 'hello', key }); await sleep(30);
+      assert(b.has('welcome') && last.state === 'connected', 'con la clave del QR entra directamente');
+      assert(b.got.some(m => m.kind === 'state'), 'recibe el estado');
+      b.c.send({ type: 'next' }); await sleep(30); eq(idx(), 1, 'el móvil emparejado pasa la diapositiva');
+      const c = phone(); await sleep(30); c.c.send({ type: 'hello', key }); await sleep(30);
+      assert(c.has('busy'), 'otro móvil (aunque tenga la clave): ocupado');
+      c.c.send({ type: 'prev' }); await sleep(30); eq(idx(), 1, 'y no manda');
+      // Rate limit: a burst of 30 is cut to the bucket's size.
+      for (let i = 0; i < 30; i++) b.c.send({ type: 'next' });
+      await sleep(80);
+      assert(idx() > 1 && idx() <= 1 + 13, 'una ráfaga de órdenes se recorta: ' + idx());
+      const before = idx();
+      R.remote.disconnectRemote(); await sleep(30);
+      assert(b.has('revoked'), 'quien presenta lo desconecta');
+      b.c.send({ type: 'prev' }); await sleep(30); eq(idx(), before, 'desconectado, ya no manda');
+      const key2 = new URL(last.link).searchParams.get('k');
+      assert(key2 && key2 !== key, 'la clave cambia: el enlace anterior deja de valer');
+      await sleep(350);
+      const d = phone(); await sleep(30); d.c.send({ type: 'hello', key }); await sleep(30);
+      assert(d.has('pending'), 'con la clave vieja hace falta permiso');
+      last.allow(); await sleep(30); assert(d.has('welcome'), 'permitido');
+      d.c.send({ type: 'prev' }); await sleep(30); eq(idx(), before - 1, 'y entonces manda');
+    } finally { R.remote.stopHost(); }
+  });
+
+  await test('mando: una conexión de votación no puede mandar órdenes del mando', async () => {
+    reset(); R.poll.addPoll({ question: 'P', options: ['A', 'B'] }); R.slides.addSlide(); R.slides.goToSlide(0);
+    // The presentation's own vote host, with a stand-in PeerJS (the real one would go to the internet).
+    const fake = URL.createObjectURL(new Blob(['window.Peer=function(id){var s=this;s.h={};s.on=function(e,f){(s.h[e]=s.h[e]||[]).push(f);};s.destroy=function(){};window.__votePeer=s;setTimeout(function(){(s.h.open||[]).forEach(function(f){f(id);});},0);};'], { type: 'text/javascript' }));
+    const noqr = URL.createObjectURL(new Blob(['window.QRCode=null;'], { type: 'text/javascript' }));
+    const html = R.io.buildHTML().split(R.vendor.PEERJS).join(fake).split(R.vendor.QRCODE).join(noqr);
+    const { f, win, doc } = await deckFrame(html, 800, 450);
+    try {
+      for (let i = 0; i < 40 && !win.__votePeer?.h.connection; i++) await sleep(50);
+      assert(win.__votePeer?.h.connection, 'la presentación espera votos');
+      const sent = [], c = { open: true, h: {}, on(e, fn) { (this.h[e] = this.h[e] || []).push(fn); }, send(m) { sent.push(m); }, close() {} };
+      win.__votePeer.h.connection.forEach(fn => fn(c));
+      const btn = put(win, 'button', 540, 310, 200, 100); let clicks = 0; btn.addEventListener('click', () => clicks++);
+      const start = win.Reveal.getIndices().h;
+      for (const type of ['hello', 'pointer', 'tap', 'click', 'drag', 'wheel', 'zoom', 'black', 'next', 'goto'])
+        c.h.data.forEach(fn => fn({ type, key: 'x', x: 0.5, y: 0.5, on: true, phase: 'start', index: 1, dx: 0, dy: 1, factor: 2 }));
+      await sleep(80);
+      eq(win.Reveal.getIndices().h, start, 'no pasa diapositivas');
+      eq(clicks, 0, 'no pulsa nada');
+      assert(!doc.getElementById('__laser') && !doc.getElementById('__rv-spot') && !doc.getElementById('__black'), 'no dibuja puntero, foco ni pantalla negra');
+      assert(!sent.some(m => m.kind === 'welcome' || m.kind === 'state'), 'no se le trata como mando');
+      eq(R.remote.remoteConnected(), false, 'el mando del editor sigue sin nadie');
+    } finally { f.remove(); URL.revokeObjectURL(fake); URL.revokeObjectURL(noqr); }
+  });
+
+  await test('mando: el panel táctil del móvil (390×844) maneja la presentación de punta a punta', async () => {
+    reset(); R.slides.addSlide(); R.slides.goToSlide(0); R.render();
+    const { Peer } = fakeBroker(); let last = null;
+    const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    await R.remote.startHost(s => { last = s; }, { Peer, thumb: async () => PNG }); await sleep(20);
+    R.io.present({ fullscreen: false });
+    const pf = () => R.session.present?.frame;
+    for (let i = 0; i < 100 && !pf()?.contentWindow.Reveal?.isReady?.(); i++) await sleep(100);
+    const pw = pf().contentWindow, pd = pf().contentDocument;
+    const ph = document.createElement('iframe'); ph.style.cssText = 'position:fixed;left:0;top:0;width:390px;height:844px;opacity:0;border:0';
+    ph.src = '/remote.html?k=' + new URL(last.link).searchParams.get('k'); document.body.appendChild(ph);
+    try {
+      let M; for (let i = 0; i < 60 && !((M = ph.contentDocument)?.getElementById('padhint')?.textContent); i++) await sleep(100);
+      ph.contentWindow.Peer = Peer;
+      M.getElementById('code').value = last.code; M.getElementById('go').click();
+      for (let i = 0; i < 40 && !M.getElementById('control').classList.contains('active'); i++) await sleep(50);
+      assert(M.getElementById('control').classList.contains('active'), 'el móvil se empareja con la clave del enlace');
+      for (let i = 0; i < 40 && M.getElementById('thumb').hidden; i++) await sleep(50);
+      assert(!M.getElementById('thumb').hidden, 'el panel muestra la diapositiva actual');
+      M.querySelector('[data-view=pad]').click(); M.querySelector('[data-tool=spot]').click(); await sleep(50);
+      const pad = M.getElementById('pad'), pr = pad.getBoundingClientRect();
+      assert(pr.width > 300 && pr.width <= 390, 'el panel ocupa el ancho del móvil: ' + pr.width);
+      near(pr.width / pr.height, 16 / 9, 'con la proporción de la diapositiva', 0.05);
+      const PE = (type, u, v, id = 7) => pad.dispatchEvent(new ph.contentWindow.PointerEvent(type, { bubbles: true, cancelable: true, pointerId: id, pointerType: 'touch', clientX: pr.left + u * pr.width, clientY: pr.top + v * pr.height }));
+      PE('pointerdown', 0.5, 0.5); PE('pointermove', 0.52, 0.5);
+      for (let i = 0; i < 40 && pd.getElementById('__rv-spot')?.style.display !== 'block'; i++) await sleep(50);
+      eq(pd.getElementById('__rv-spot')?.style.display, 'block', 'el foco aparece en la presentación');
+      PE('pointerup', 0.52, 0.5); await sleep(120);
+      eq(pd.getElementById('__rv-spot').style.display, 'none', 'al levantar el dedo se quita');
+      // Interact: a tap presses what is there on the slide.
+      const { w: SW, h: SH } = R.state.deck.size;
+      const btn = pd.createElement('button'); btn.style.cssText = `position:absolute;left:${SW * 0.4}px;top:${SH * 0.4}px;width:${SW * 0.2}px;height:${SH * 0.2}px`;
+      pw.Reveal.getCurrentSlide().querySelector('.stage').appendChild(btn); let clicks = 0; btn.addEventListener('click', () => clicks++);
+      M.querySelector('[data-tool=touch]').click(); await sleep(30);
+      PE('pointerdown', 0.5, 0.5, 8); PE('pointerup', 0.5, 0.5, 8);
+      for (let i = 0; i < 20 && !clicks; i++) await sleep(50);
+      eq(clicks, 1, 'tocar en el panel pulsa el botón de la diapositiva');
+      M.getElementById('next').click();
+      for (let i = 0; i < 20 && pw.Reveal.getIndices().h !== 1; i++) await sleep(50);
+      eq(pw.Reveal.getIndices().h, 1, 'Siguiente pasa la diapositiva');
+      const fs = () => parseFloat(M.documentElement.style.getPropertyValue('--notes')), f0 = fs();
+      M.getElementById('font-up').click(); eq(fs(), Math.min(40, f0 + 2), 'letra de las notas más grande');
+    } finally { ph.remove(); D.getElementById('present-close')?.click(); R.remote.stopHost(); }
+  });
+
   await test('presentación: lápiz, resaltador y borrar tinta', async () => {
     reset(); R.blocks.addText();
     const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:640px;height:360px;opacity:0';

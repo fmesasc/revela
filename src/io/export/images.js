@@ -115,7 +115,8 @@ export async function magnifyImage(b, slide, deck = state.deck) {
 
 // Rasterise one slide with html2canvas. Web embeds can't be rasterised (they
 // come out blank), 3D models come out as their picture; everything else does.
-export async function slideImageBlob(s, type = 'png', deck = state.deck) {
+// scale: pixels per slide pixel (2 for export; small for previews); quality: JPG's.
+export async function slideImageBlob(s, type = 'png', deck = state.deck, { scale = 2, quality = 0.92 } = {}) {
   const { w, h } = deck.size;
   const holder = document.createElement('div'); holder.className = 'rst';   // (.rst: the images' size rule below must not reach html2canvas's own iframe)
   holder.style.cssText = `position:fixed;left:-99999px;top:0;width:${w}px;height:${h}px;overflow:hidden;color:${deckFg(deck)};font-family:${deckBodyFont(deck) || 'inherit'};background:${s.background}`;
@@ -126,9 +127,9 @@ export async function slideImageBlob(s, type = 'png', deck = state.deck) {
   try {
     await hydrateStatic(holder, deck);
     // JPG has no transparency: paint the page colour underneath.
-    const canvas = await rasterize(holder, { width: w, height: h, scale: 2, useCORS: true, logging: false,
+    const canvas = await rasterize(holder, { width: w, height: h, scale, useCORS: true, logging: false,
       backgroundColor: type === 'jpg' ? '#ffffff' : null });
-    return await new Promise(res => canvas.toBlob(res, type === 'jpg' ? 'image/jpeg' : 'image/png', 0.92));
+    return await new Promise(res => canvas.toBlob(res, type === 'jpg' ? 'image/jpeg' : 'image/png', quality));
   } finally { holder.remove(); }
 }
 
