@@ -1638,7 +1638,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const md5 = c => { let h = 7; for (const ch of String(c)) h = (h * 31 + ch.charCodeAt(0)) | 0; return 'h' + (h >>> 0).toString(16); };   // (a fingerprint of the content, like Drive's)
     const realGoogle = W.google, realFetch = W.fetch;
     W.google = { accounts: { oauth2: { initTokenClient: o => ({ requestAccessToken() { this.callback({ access_token: 'tok', expires_in: 3600 }); } }), revoke: (_, cb) => cb?.() } } };
-    const file = (id, name, content, extra = {}) => drive.set(id, { id, name, content, version: '1', modifiedTime: new Date(Date.now() - 1000 * (++n)).toISOString(), ...extra });
+    const file = (id, name, content, extra = {}) => drive.set(id, { id, name, content, version: '1', parents: ['raiz0'], modifiedTime: new Date(Date.now() - 1000 * (++n)).toISOString(), ...extra });
+    const folders = new Map([['fproy', { id: 'fproy', name: 'Proyectos' }]]);
     file('old1', 'Clase 1.revela.json', JSON.stringify({ ...R.model.emptyDeck(), name: 'Clase 1' }));
     file('old2', 'Clase 2.revela.json', JSON.stringify({ ...R.model.emptyDeck(), name: 'Clase 2' }), { thumbnailLink: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=' });
     W.fetch = async (url, o = {}) => {
@@ -1651,9 +1652,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
         const parts = o.body.split(/--revela\w+/).filter(x => x.includes('\r\n\r\n')).map(x => x.split('\r\n\r\n').slice(1).join('\r\n\r\n').replace(/\r\n$/, ''));
         const meta = JSON.parse(parts[0]), content = parts[1];
         if (id) { const f = drive.get(id); f.content = content; f.version = String(+f.version + 1); f.modifiedTime = new Date().toISOString(); f.thumb = !!meta.contentHints; return ok(f); }
-        const nid = 'new' + (++n); file(nid, meta.name, content, { modifiedTime: new Date().toISOString(), thumb: !!meta.contentHints }); return ok(drive.get(nid));
+        const nid = 'new' + (++n); file(nid, meta.name, content, { modifiedTime: new Date().toISOString(), thumb: !!meta.contentHints, ...(meta.parents && { parents: meta.parents }) }); return ok(drive.get(nid));
       }
       if (url.includes('/drive/v3/files?q=')) return ok({ files: [...drive.values()].filter(f => !f.trashed).sort((a, b) => b.modifiedTime.localeCompare(a.modifiedTime)) });
+      if (id && folders.has(id)) return ok(folders.get(id));
+      if (id && !drive.has(id)) return new W.Response('{"error":{"code":404}}', { status: 404 });
       if (id && url.includes('alt=media')) return ok(drive.get(id).content);
       if (id && o.method === 'PATCH') { drive.get(id).trashed = true; return ok({}); }
       if (id) return ok(drive.get(id));
@@ -1688,6 +1691,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       // Two saves at once (a slow one and the autosave): one after the other, no conflict with itself.
       await Promise.all([GD.savePresentation({ interactive: false }), GD.savePresentation({ interactive: false })]);
       assert(D.getElementById('drive-conflict').hidden, 'dos guardados seguidos no se pisan');
+      // Moved to another folder and renamed in Drive: the same file, so it keeps saving there; it learns where, and says so.
+      Object.assign(drive.get('old2'), { parents: ['fproy'], name: 'Clase 2 bis.revela.json' });
+      R.store.commit(() => { R.state.deck.slides[0].notes = 'nota 1c'; }); await sleep(250);
+      assert(drive.get('old2').content.includes('nota 1c') && D.getElementById('drive-conflict').hidden, 'movida: se sigue guardando en el mismo archivo');
+      eq(GD.linkedFile().folder?.name, 'Proyectos', 'sabe en qué carpeta está ahora'); eq(GD.linkedFile().name, 'Clase 2 bis.revela.json', 'y su nombre nuevo');
+      assert(/Proyectos/.test(D.getElementById('toasts')?.textContent || ''), 'y lo dice: ' + D.getElementById('toasts')?.textContent);
       // Changed on another device meanwhile → asks.
       drive.get('old2').version = '5'; drive.get('old2').content = JSON.stringify({ ...R.model.emptyDeck(), name: 'Clase 2 (tablet)' });
       R.store.commit(() => { R.state.deck.slides[0].notes = 'nota 2'; }); await sleep(250);
@@ -1706,6 +1715,13 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       D.querySelector('[data-action="home"]').click(); await sleep(80);
       D.querySelector('#home-screen [data-home="new"]').click(); await sleep(150);
       const nf = GD.linkedFile(); assert(nf && drive.get(nf.id), 'nueva: se crea en Drive');
+      // Deleted for good in Drive (or no access): unlinked, and it asks where to keep it now — nothing saved blindly.
+      drive.delete(nf.id); const count = drive.size;
+      R.store.commit(() => { R.state.deck.slides[0].notes = 'tras borrar'; }); await sleep(250);
+      for (let i = 0; i < 20 && !D.querySelector('.dlg-msg'); i++) await sleep(20);
+      assert(/No encuentro/.test(D.querySelector('.dlg-msg')?.textContent || ''), 'pregunta: ' + (D.querySelector('.dlg-msg')?.textContent || ''));
+      D.querySelector('.dlg-cancel').click(); await sleep(30);
+      eq(GD.linkedFile(), null, 'ya no está vinculada'); eq(drive.size, count, 'y no se ha creado nada sin preguntar');
       // Sign out.
       await GD.signOut(); eq(GD.account(), null, 'cerrar sesión'); eq(GD.linkedFile(), null);
     } finally { W.fetch = realFetch; W.google = realGoogle; GD.setAutosaveDelay(4000); D.getElementById('home-screen')?.remove(); }

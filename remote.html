@@ -6,6 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#11151c">
   <title>Revela · Mando</title>
+  <!-- Its own app: «Add to Home Screen» from here installs the remote (no browser bars), not the editor. -->
+  <link rel="manifest" href="remote.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mando">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%233f6497'/%3E%3Ctext x='16' y='23' font-size='20' font-family='sans-serif' fill='white' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
   <style>
     :root{--accent:#3f6497;--bg:#11151c;--panel:#1b212b;--line:#2c3542;--txt:#eef1f5;--txt2:#9aa4b2;--notes:18px}
@@ -101,12 +108,16 @@
       #pad{width:auto;height:100%;max-width:100%}
       .hint{min-height:0}
     }
+    .fsbtn{margin-inline-start:8px;background:none;border:1px solid var(--line);color:var(--txt);border-radius:8px;width:36px;height:32px;font-size:18px;padding:0}
+    .a2hs{display:flex;gap:8px;align-items:flex-start;margin-top:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:14px;color:var(--txt2)}
+    .a2hs[hidden]{display:none}.a2hs .ghost{padding:2px 8px;min-height:0;flex:none}
   </style>
 </head>
 <body>
   <header>
     <span class="brand">Revela</span><span> · <span data-t="Mando">Mando</span></span>
     <span class="status" id="status" data-t="Sin conectar">Sin conectar</span>
+    <button class="fsbtn" id="fs" hidden data-tt="Pantalla completa" title="Pantalla completa" aria-label="Pantalla completa">⛶</button>
   </header>
   <main>
     <section class="screen active" id="connect">
@@ -115,6 +126,8 @@
       <input id="code" maxlength="5" autocomplete="off" autocapitalize="characters" placeholder="ABCDE" aria-label="Código">
       <button id="go" data-t="Conectar">Conectar</button>
       <div class="err" id="err" role="status"></div>
+      <div class="a2hs" id="a2hs" hidden><span data-t="Para usarlo sin las barras del navegador: Compartir ▸ «Añadir a pantalla de inicio». Se abre como una app.">Para usarlo sin las barras del navegador: Compartir ▸ «Añadir a pantalla de inicio». Se abre como una app.</span>
+        <button class="ghost" id="a2hs-x" data-tt="Cerrar" title="Cerrar" aria-label="Cerrar">✕</button></div>
     </section>
 
     <section class="screen" id="control">

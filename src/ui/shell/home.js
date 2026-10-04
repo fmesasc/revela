@@ -11,7 +11,8 @@ import { slideImageBlob } from '../../io/export/images.js';
 import { isEmptyPlaceholder } from '../../features/document/master.js';
 import { t } from '../../i18n/index.js';
 import { alertDialog, confirmDialog } from '../dialogs/dialog.js';
-import { savedDialog } from '../dialogs/gdrive.js';
+import { savedDialog, driveSaveAsUI } from '../dialogs/gdrive.js';
+import { toast } from './toast.js';
 
 const friendly = e => alertDialog(e.message === 'NO_TOKEN' ? t('Vuelve a iniciar sesión con Google.') : (e.message || String(e)));
 const initial = a => esc((a?.name || a?.email || '?').trim()[0].toUpperCase());
@@ -144,6 +145,13 @@ export function initHome() {
   gd.setThumbnailMaker(thumbnail);
   gd.startAutosave();
   gd.onDrive(paintBar);
+  // Moved or renamed in Drive: it keeps saving there, and says where; gone: asks where to keep it now.
+  gd.onDriveNote(async n => {
+    if (n.kind === 'moved') toast(n.folder ? t('La presentación se ha movido en Drive a «{f}»: se sigue guardando ahí.').replace('{f}', n.folder) : t('La presentación se ha movido a otra carpeta de Drive: se sigue guardando ahí.'));
+    else if (n.kind === 'renamed') toast(t('En Drive ahora se llama «{n}».').replace('{n}', n.name.replace(/\.revela\.json$/i, '')));
+    else if (n.kind === 'missing') { paintBar(); if (await confirmDialog(t('No encuentro «{n}» en Drive: se ha borrado o ya no tienes acceso. ¿La guardas de nuevo en Drive?').replace('{n}', (n.name || '').replace(/\.revela\.json$/i, '')))) driveSaveAsUI(); }
+    paintBar();
+  });
   window.addEventListener('revela:lang', paintBar);
   document.getElementById('account-btn')?.addEventListener('click', e => (gd.account() ? accountMenu(e.currentTarget) : signInFlow()));
   document.getElementById('drive-status')?.addEventListener('click', async () => {

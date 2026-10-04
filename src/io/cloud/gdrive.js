@@ -142,7 +142,7 @@ async function upload({ id, name, mimeType, body, thumbnail, text, parent = newF
   if (thumbnail || text) meta.contentHints = { ...(thumbnail && { thumbnail: { image: b64url(thumbnail), mimeType: 'image/jpeg' } }), ...(text && { indexableText: text }) };
   const head = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`, tail = `\r\n--${boundary}--`;
   const multipart = typeof body === 'string' ? head + body + tail : new Blob([head, body, tail]);   // (a .pptx is binary)
-  const r = await api(`/upload/drive/v3/files${id ? '/' + encodeURIComponent(id) : ''}?uploadType=multipart&fields=id,name,version,md5Checksum,modifiedTime,webViewLink`,
+  const r = await api(`/upload/drive/v3/files${id ? '/' + encodeURIComponent(id) : ''}?uploadType=multipart&fields=id,name,version,md5Checksum,parents,modifiedTime,webViewLink`,
     { method: id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + boundary }, body: multipart }, !id);
   if (!r.ok) throw new Error(t('No se pudo guardar.'));
   return r.json();
@@ -156,12 +156,12 @@ export async function listPresentations() {
   return ((await r.json()).files || []).map(f => ({ ...f, title: f.name.replace(/\.revela\.json$/i, '') }));
 }
 export async function openPresentation(id) {
-  const meta = await (await api(`/drive/v3/files/${encodeURIComponent(id)}?fields=id,name,version,md5Checksum`)).json();
+  const meta = await (await api(`/drive/v3/files/${encodeURIComponent(id)}?fields=id,name,version,md5Checksum,parents`)).json();
   const r = await api(`/drive/v3/files/${encodeURIComponent(id)}?alt=media`);
   if (!r.ok) throw new Error(t('No se pudo abrir el archivo.'));
   let deck; try { deck = JSON.parse(await r.text()); } catch { throw new Error(t('El archivo no es un proyecto de Revela.')); }
   if (!deck || !Array.isArray(deck.slides)) throw new Error(t('El archivo no es un proyecto de Revela.'));
-  replaceDeck(deck); setLinked({ id: meta.id, name: meta.name, version: meta.version, md5: meta.md5Checksum || null });
+  replaceDeck(deck); setLinked({ id: meta.id, name: meta.name, version: meta.version, md5: meta.md5Checksum || null, parent: meta.parents?.[0] || null });
   lastSaved = docVersion(); setStatus('saved');
 }
 // A PowerPoint or OpenDocument file opened from Drive ("Open with ▸ Revela"):
@@ -188,6 +188,33 @@ export const setThumbnailMaker = fn => { makeThumbnail = fn; };
 // force: overwrite even if it changed in Drive meanwhile. A new file (first
 // save, asNew) goes to `folder` ({ id, name }; null = My Drive) if given, else
 // to Drive's "New" folder or the last one used; named `name`.
+// The linked file as Drive has it now. Moved to another folder or renamed (in Drive, from here or
+// from another device): the same file still, so saving goes on there; the link learns where it is and
+// says so. Gone for good, or no longer ours to see (404): unlinked, and said — nothing is saved blindly.
+const notes = new Set();
+export const onDriveNote = fn => { notes.add(fn); return () => notes.delete(fn); };
+const note = n => notes.forEach(fn => { try { fn(n); } catch {} });
+async function fileState(cur, interactive) {
+  const r = await api(`/drive/v3/files/${encodeURIComponent(cur.id)}?fields=version,md5Checksum,trashed,name,parents`, {}, interactive);
+  if (r.status === 404) { setLinked(null); note({ kind: 'missing', name: cur.name || '' }); return { missing: true }; }
+  const m = await r.json();
+  if (m.trashed) return m;
+  const parent = Array.isArray(m.parents) ? m.parents[0] : null;
+  const moved = !!(parent && cur.parent && parent !== cur.parent), renamed = !!(m.name && cur.name && m.name !== cur.name);
+  if (moved || renamed || (parent && !cur.parent)) {
+    let folder = cur.folder;
+    if (moved) {
+      let name = '';                                          // (a folder this app may not see: then only that it moved)
+      try { const f = await api(`/drive/v3/files/${encodeURIComponent(parent)}?fields=name`, {}, false); if (f.ok) name = (await f.json()).name || ''; } catch {}
+      folder = { id: parent, name };
+    }
+    const next = { ...linkedFile(), name: m.name || cur.name, parent, folder };
+    setLinked(next);
+    if (moved || renamed) note({ kind: moved ? 'moved' : 'renamed', where: whereLabel(next), folder: moved ? folder.name : null, name: next.name });
+  }
+  return m;
+}
+
 // One save at a time: a second one (the autosave while a slow save is still going) waits for the first —
 // at the same time, the second would take the first's new version for someone else's change.
 let saving = Promise.resolve();
@@ -210,16 +237,17 @@ async function saveNow({ interactive = true, force = false, asNew = false, name,
     const cur = linkedFile();
     if (cur && !asNew) {
       if (!force) {                                          // changed from another device?
-        const m = await (await api(`/drive/v3/files/${encodeURIComponent(cur.id)}?fields=version,md5Checksum,trashed`, {}, interactive)).json();
+        const m = await fileState(cur, interactive);
+        if (m.missing) { setStatus('error'); return false; }
         if (m.trashed) { setLinked(null); return saveNow({ interactive, force, asNew }); }
         if (changedThere(cur, m)) { setStatus('conflict'); return 'conflict'; }
       }
       const f = await upload({ id: cur.id, mimeType: PROJECT_MIME, body, thumbnail, text });
-      setLinked({ ...cur, version: f.version, md5: f.md5Checksum || null, name: f.name, dirty: false });
+      setLinked({ ...linkedFile(), version: f.version, md5: f.md5Checksum || null, name: f.name, parent: f.parents?.[0] || linkedFile()?.parent || null, dirty: false });
     } else {
       const where = folder !== undefined ? folder || ROOT : newFolder ? { id: newFolder, name: '' } : lastFolder() || ROOT;
       const f = await upload({ name: (cleanName(name) || safeName()) + '.revela.json', mimeType: PROJECT_MIME, body, thumbnail, text, parent: where.id });
-      setLinked({ id: f.id, name: f.name, version: f.version, md5: f.md5Checksum || null, folder: where, link: f.webViewLink || '' });
+      setLinked({ id: f.id, name: f.name, version: f.version, md5: f.md5Checksum || null, parent: f.parents?.[0] || null, folder: where, link: f.webViewLink || '' });
       if (folder !== undefined) rememberFolder(folder);
     }
     lastSaved = savedVersion; setStatus('saved');
@@ -251,7 +279,8 @@ export function startAutosave() {
 export async function reconnect() {
   const cur = linkedFile(); if (!cur) return null;
   await ensureToken(true);
-  const m = await (await api(`/drive/v3/files/${encodeURIComponent(cur.id)}?fields=version,md5Checksum,trashed`)).json();
+  const m = await fileState(cur, true);
+  if (m.missing) { setStatus('error'); return 'missing'; }
   if (m.trashed) { unlinkFile(); return 'unlinked'; }
   const newer = changedThere(cur, m);
   if (newer && !cur.dirty) { await openPresentation(cur.id); return 'loaded'; }

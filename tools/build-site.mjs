@@ -23,7 +23,7 @@ import { SITE_LANGS, pageTexts, translatePage, sitemap } from './site-i18n.mjs';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // The app: every file and folder it needs, and nothing else (no tests, tools, server…).
 export const APP_FILES = ['index.html', 'remote.html', 'view.html', 'vote.html', 'auth.html', 'dropbox.html', 'privacy.html', 'terms.html', 'legal.html', 'dpa.html',
-  'legal.css', 'legal.js', 'manifest.webmanifest', 'sw.js', 'icons', 'assets', 'src'];
+  'legal.css', 'legal.js', 'manifest.webmanifest', 'remote.webmanifest', 'sw.js', 'icons', 'assets', 'src'];
 
 function markEdition(index, edition) {
   const html = readFileSync(index, 'utf8');

@@ -324,5 +324,18 @@ document.querySelectorAll('.toolsel [data-tool]').forEach(b => b.addEventListene
 $('font-dn').addEventListener('click', () => setNotes(notesPx - 2));
 $('font-up').addEventListener('click', () => setNotes(notesPx + 2));
 setNotes(notesPx); setTool(tool); setView(view);
+// Full screen (Android and others); on an iPhone, where a page can't, «Add to Home Screen» does it.
+{
+  const fs = $('fs'), root = document.documentElement;
+  const standalone = matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone === true;
+  if (document.fullscreenEnabled && !standalone) {
+    fs.hidden = false;
+    fs.addEventListener('click', () => { buzz(8); (document.fullscreenElement ? document.exitFullscreen() : root.requestFullscreen({ navigationUI: 'hide' })).catch(() => {}); });
+    document.addEventListener('fullscreenchange', () => { fs.textContent = document.fullscreenElement ? '🗗' : '⛶'; });
+  } else if (!standalone && /iPhone|iPod/.test(navigator.userAgent) && store('a2hs') !== 'no') {
+    $('a2hs').hidden = false;
+    $('a2hs-x').addEventListener('click', () => { $('a2hs').hidden = true; store('a2hs', 'no'); });
+  }
+}
 // Opened from the QR code / link: connect straight away.
 if (preset && preset.length >= 4) connect(preset.toUpperCase());

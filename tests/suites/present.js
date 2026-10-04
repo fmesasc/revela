@@ -684,6 +684,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     ph.src = '/remote.html?k=' + new URL(last.link).searchParams.get('k'); document.body.appendChild(ph);
     try {
       let M; for (let i = 0; i < 60 && !((M = ph.contentDocument)?.getElementById('padhint')?.textContent); i++) await sleep(100);
+      // «Add to Home Screen» from the remote installs the remote (its own manifest), shown without the browser's bars.
+      const man = await (await fetch(M.querySelector('link[rel=manifest]').href)).json();
+      assert(/remote\.html$/.test(man.start_url) && man.display === 'standalone', 'manifiesto propio del mando: ' + JSON.stringify(man));
       ph.contentWindow.Peer = Peer;
       M.getElementById('code').value = last.code; M.getElementById('go').click();
       for (let i = 0; i < 40 && !M.getElementById('control').classList.contains('active'); i++) await sleep(50);

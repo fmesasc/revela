@@ -1,0 +1,20 @@
+{
+  "id": "./remote.html",
+  "name": "Revela · Mando",
+  "short_name": "Mando",
+  "description": "Mando de Revela: pasa diapositivas, lee tus notas y señala desde el móvil.",
+  "start_url": "./remote.html",
+  "scope": "./remote.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#11151c",
+  "theme_color": "#11151c",
+  "lang": "es",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
