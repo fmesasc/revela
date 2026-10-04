@@ -373,8 +373,9 @@ body.master-view #navigator{display:flex}
 .ts2 input[type=color]{width:34px;height:26px;padding:0;vertical-align:middle}
 .ts2 .ts2-col{display:flex;align-items:center;gap:4px}.ts2-sw{display:inline-block;width:14px;height:14px;border-radius:3px;border:1px solid var(--line2);flex:none}
 .ts2 select[data-k=font]{max-width:200px}.ts2 select[data-k=cref]{max-width:120px}.ts2-own .mini2{padding:4px 8px;font-size:11px}
-.ts2-body{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}.ts2-body .ts2-wrap{flex:1 1 560px;min-width:0}
-.ts2-preview{flex:0 0 240px}.ts2-slide{border-radius:6px;border:1px solid var(--line2);padding:12px 14px;min-height:150px;overflow:hidden;line-height:1.25}
+.ts2-body{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}.ts2-body .ts2-wrap{flex:1 1 100%;min-width:0}
+/* (The preview goes under the table, which takes the whole width: it is never cut.) */
+.ts2-preview{flex:0 0 320px}.ts2-slide{border-radius:6px;border:1px solid var(--line2);padding:12px 14px;min-height:150px;overflow:hidden;line-height:1.25}
 .ts2-slide ul{margin:2px 0 0;padding-inline-start:1.2em}.ts2-slide>div:first-child{margin-bottom:6px}
 .ts2 .mini2.on{background:var(--accent-bg);border-color:var(--accent)}
 /* Share dialog */

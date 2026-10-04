@@ -63,7 +63,7 @@ export function openTextStyles() {
       <td class="ts2-own">${whole ? '<button type="button" class="mini2" data-k="own" hidden></button>' : ''}</td>
     </tr>`;
   };
-  back.innerHTML = `<div class="modal" style="text-align:start;max-width:min(980px,96vw)">
+  back.innerHTML = `<div class="modal" style="text-align:start;max-width:min(1240px,96vw);width:min(1240px,96vw)">
     <button class="modal-close">✕</button><h3>${t('Estilos de texto del patrón')}${contextMaster().name ? ` · ${esc(contextMaster().name)}` : ''}</h3>
     <p class="host-help">${t('Los colores y fuentes del tema son la base; los estilos de texto deciden qué usa cada nivel. Un color o una fuente «del tema» cambia con Diseño ▸ Colores y Fuentes; uno propio, no.')}
       ${t('Se aplican a los marcadores de todas las diapositivas, salvo lo que se haya cambiado a mano en ellas. Los niveles son los de las listas (Tab para bajar de nivel).')}</p>
