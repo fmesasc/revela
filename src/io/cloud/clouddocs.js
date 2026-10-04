@@ -21,16 +21,75 @@ import { diff, applyOps } from '../../features/live/collabsync.js';
 import { cleanValue } from '../../features/document/sanitize.js';
 
 export const cloudAvailable = hasAccounts;
-export const listDocs = () => api('docs');
-export const createDoc = deck => api('docs', { deck });
+// How requests reach the server: the account's API (the tests put a stand-in here).
+let transport = api;
+const send = (...a) => transport(...a);
+export const setTransport = fn => { transport = fn || api; };
+export const customTransport = () => transport !== api;
+export const listDocs = () => send('docs');
+export const createDoc = (deck, folder = null) => send('docs', { deck, ...(folder && { folder }) });
 export const docLink = id => `${OFFICIAL_SITE}/app/?doc=${encodeURIComponent(id)}`;
 export const docIdFrom = (search = location.search) => { const id = new URLSearchParams(search).get('doc'); return id && /^[\w-]{16,40}$/.test(id) ? id : null; };
 const path = (id, op = '') => `docs/${encodeURIComponent(id)}${op ? '/' + op : ''}`;
-export const shareDoc = (id, sharing) => api(path(id, 'share'), sharing);
-export const deleteDoc = id => api(path(id, 'delete'), {});
-export const docStats = id => api(path(id, 'stats'));
-export const docVersions = id => api(path(id, 'versions'));
-export const docVersion = (id, at) => api(path(id, 'version') + '?at=' + encodeURIComponent(at));
+export const shareDoc = (id, sharing) => send(path(id, 'share'), sharing);
+export const deleteDoc = id => send(path(id, 'delete'), {});
+export const docStats = id => send(path(id, 'stats'));
+export const docVersions = id => send(path(id, 'versions'));
+export const docVersion = (id, at) => send(path(id, 'version') + '?at=' + encodeURIComponent(at));
+// Organising them (the manager, ui/dialogs/cloudlibrary.js): folders, name, folder, star, trash, copies.
+export const createFolder = (name, parent = null) => send('docs/folders', { name, parent });
+export const editFolder = (id, patch) => send('docs/folders/' + encodeURIComponent(id), patch);
+export const deleteFolder = id => send(`docs/folders/${encodeURIComponent(id)}/delete`, {});
+export const setDocMeta = (id, patch) => send(path(id, 'meta'), patch);
+export const trashDoc = id => send(path(id, 'trash'), {});
+export const restoreDoc = id => send(path(id, 'restore'), {});
+export const duplicateDoc = (id, name) => send(path(id, 'duplicate'), name ? { name } : {});
+export async function emptyTrash() { let n = 0, r; do { r = await send('docs/trash/empty', {}); n += r.n; } while (r.more && r.n); return n; }
+export const fetchDeck = async id => (await send(path(id))).deck;
+
+// ---- Pictures of the first slide, for the lists ------------------------------------------------
+// Made here when saving (small WebP, else JPEG, ≤ THUMB_MAX characters), kept by the server with the
+// document, fetched for the lists in batches and remembered while the page is open.
+export const THUMB_MAX = 30000;
+const thumbs = new Map();                                // id → { at, data } (data null: it has none)
+export const cachedThumb = id => thumbs.get(id);
+export async function loadThumbs(docs, io = send) {
+  const want = docs.filter(d => { const c = thumbs.get(d.id); return !c || (d.thumbAt && c.at !== d.thumbAt); });
+  for (let i = 0; i < want.length; i += 24) {
+    const part = want.slice(i, i + 24), r = await io('docs/thumbs', { ids: part.map(d => d.id) });
+    for (const d of part) thumbs.set(d.id, { at: d.thumbAt || null, data: r.thumbs?.[d.id] || null });
+  }
+}
+// The maker (the tests replace it): the deck's first visible slide → a data URL.
+const firstSlidePicture = async deck => {
+  const { slideImageBlob } = await import('../export/images.js');
+  const blob = await slideImageBlob(deck.slides.find(s => !s.hidden) || deck.slides[0], 'jpg', deck); if (!blob) return null;
+  const img = await createImageBitmap(blob), W = 320, H = Math.round(W * img.height / img.width);
+  const c = document.createElement('canvas'); c.width = W; c.height = H; c.getContext('2d').drawImage(img, 0, 0, W, H);
+  for (const q of [0.8, 0.65, 0.5, 0.35]) {
+    let url = c.toDataURL('image/webp', q);
+    if (!url.startsWith('data:image/webp')) url = c.toDataURL('image/jpeg', q);   // (Safari can't write WebP)
+    if (url.length <= THUMB_MAX) return url;
+  }
+  return null;
+};
+let thumbMaker = firstSlidePicture;
+export const setThumbMaker = fn => { thumbMaker = fn || firstSlidePicture; };
+const firstSlideKey = deck => { const s = deck.slides.find(x => !x.hidden) || deck.slides[0]; return s ? JSON.stringify([s, deck.size, deck.theme, deck.master, deck.layouts]) : ''; };
+// Sent when the first slide changed (at most every THUMB_EVERY), and the first time.
+const THUMB_EVERY = 60e3;
+async function sendThumb(me, force = false) {
+  if (cur !== me || !['owner', 'edit'].includes(me.role) || me.readOnly || me.thumbBusy) return;
+  const key = firstSlideKey(state.deck), wait = (me.thumbSent || 0) + THUMB_EVERY - Date.now();
+  if (!force && key === me.thumbKey) return;
+  if (!force && wait > 0) { if (!me.thumbTimer) me.thumbTimer = setTimeout(() => { me.thumbTimer = null; sendThumb(me); }, wait); return; }
+  me.thumbBusy = true;
+  try {
+    const data = await thumbMaker(snapshot(state.deck)); if (!data || cur !== me) return;
+    const r = await me.io(path(me.id, 'thumb'), { thumb: data });
+    me.thumbKey = key; me.thumbSent = Date.now(); thumbs.set(me.id, { at: r.at, data });
+  } catch {} finally { me.thumbBusy = false; }
+}
 
 // ---- The open cloud document ------------------------------------------------------------
 let cur = null;                  // { id, role, rev, base, sharing, owner, readOnly: { limit } | null, stop }
@@ -48,24 +107,27 @@ const clean = ops => ops.map(op => (op && 'v' in op ? { ...op, v: cleanValue(op.
 
 // Open one (replacing the document in the editor), with the role the server gives.
 // io: the transport (the tests pass a fake); pollMs: how often to look for others' changes.
-export async function openDoc(id, { io = api, pollMs = 5000, debounceMs = 1200 } = {}) {
+export async function openDoc(id, { io = send, pollMs = 5000, debounceMs = 1200 } = {}) {
   const r = await io(path(id));
   closeDoc();
   adoptDeck(r.deck);
   state.ui.lock = r.role === 'view' ? 'view' : r.role === 'comment' ? 'comment' : null;
   setPersist(r.role === 'owner');                        // (someone else's: this browser keeps no copy)
   cur = { id, role: r.role, rev: r.rev, base: snapshot(state.deck), sharing: r.sharing || null, owner: r.owner || null, readOnly: r.readOnly ? { limit: r.limit } : null, status: r.readOnly ? 'readonly' : 'saved', io };
+  if (r.thumbAt) cur.thumbKey = firstSlideKey(state.deck);   // (it has its picture: a new one only when the first slide changes)
   startSync(pollMs, debounceMs);
   emit('open', cloudDoc());
+  if (!r.thumbAt) { const me = cur; setTimeout(() => sendThumb(me, true), 1500); }   // (saved before there were pictures)
   return cloudDoc();
 }
-// Put the current presentation in the cloud and keep it in step from now on.
-export async function saveToCloud({ io = api, pollMs = 5000, debounceMs = 1200 } = {}) {
-  const deck = snapshot(state.deck), r = await io('docs', { deck });
+// Put the current presentation in the cloud (in one of my folders, if given) and keep it in step from now on.
+export async function saveToCloud({ io = send, pollMs = 5000, debounceMs = 1200, folder = null } = {}) {
+  const deck = snapshot(state.deck), r = await io('docs', { deck, ...(folder && { folder }) });
   closeDoc();
   cur = { id: r.id, role: 'owner', rev: r.rev, base: deck, sharing: { link: 'none', people: {} }, owner: null, status: 'saved', io };
   startSync(pollMs, debounceMs);
   emit('open', cloudDoc());
+  sendThumb(cur, true);
   return cloudDoc();
 }
 export function closeDoc() {
@@ -94,7 +156,7 @@ function startSync(pollMs, debounceMs) {
   const unsub = subscribe(schedule);
   const poll = setInterval(() => { if (typeof document === 'undefined' || document.visibilityState !== 'hidden') queue(() => pull(me)); }, pollMs);
   const stats = me.role === 'owner' ? null : watchViews(me);
-  me.stop = () => { unsub(); clearInterval(poll); clearTimeout(timer); stats?.(); };
+  me.stop = () => { unsub(); clearInterval(poll); clearTimeout(timer); clearTimeout(me.thumbTimer); stats?.(); };
   me.flush = () => { clearTimeout(timer); return queue(() => push(me)); };
 }
 export const flushCloud = () => cur?.flush?.() || Promise.resolve();
@@ -124,6 +186,7 @@ async function push(me) {
   applyOps(me.base, ops);
   if (r.rev === me.rev + 1) me.rev = r.rev;              // (else others changed it in between: the next pull brings both)
   setStatus(diff(me.base, state.deck).length ? 'pending' : 'saved');
+  sendThumb(me);                                          // (not waited for: the picture never holds up saving)
 }
 function fail(me, e) {
   if (cur !== me) return;

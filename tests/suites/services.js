@@ -1653,6 +1653,116 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { CD.closeDoc(); }
   });
 
+  await test('«Mi nube»: página con miniaturas, carpetas (crear, arrastrar, «Mover a…», migas), cuadrícula/lista, búsqueda, teclado, destacadas y papelera', async () => {
+    reset(); const W = frame.contentWindow, CD = R.clouddocs, UI = await W.eval("import('/src/ui/dialogs/cloudlibrary.js')"), { fakeCloud } = await W.eval("import('/tests/fixtures/fakecloud.js')");
+    const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const C = fakeCloud({ folders: [{ id: 'fclases01', name: 'Clases', parent: null }, { id: 'ftrabajo1', name: 'Trabajo', parent: null }],
+      docs: [{ id: 'docvolcanes0000001', name: 'Geología', text: 'Volcanes · Erupciones', thumb: png, slides: 12 }, { id: 'docmates00000000001', name: 'Funciones', folder: 'fclases01', slides: 3 }, { id: 'docinforme000000001', name: 'Informe', thumb: png }],
+      shared: [{ id: 'docdeluis000000001', name: 'De Luis', owner: 'luis@example.com', role: 'edit' }] });
+    const page = () => D.getElementById('cloud-docs-modal'), $ = s => page()?.querySelector(s), $$ = s => [...(page()?.querySelectorAll(s) || [])];
+    const item = id => $(`.nb-item[data-id="${id}"]`), until = async (fn, ms = 1500) => { for (let t = 0; t < ms && !fn(); t += 20) await sleep(20); return fn(); };
+    const menuItem = text => [...D.querySelectorAll('.nb-menu button')].find(b => b.querySelector('span').textContent === text);
+    const answer = async (value, ok = true) => { await until(() => D.querySelector('.dlg-ok')); const i = D.querySelector('.dlg-in'); if (i && value != null) i.value = value; D.querySelector(ok ? '.dlg-ok' : '.dlg-cancel').click(); await sleep(60); };
+    W.localStorage.removeItem('revela.cloud.view'); CD.setTransport(C.io);
+    try {
+      await UI.openCloudDocs();
+      const r = page().getBoundingClientRect();
+      assert(r.width === W.innerWidth && r.height === W.innerHeight, 'ocupa toda la ventana, como una página');
+      eq($$('.nb-folders .nb-folder .nb-name').map(x => x.textContent.trim()).join(','), 'Clases,Trabajo', 'las carpetas de arriba');
+      eq($$('.nb-docs .nb-doc').length, 2, 'y las presentaciones que no están en carpetas');
+      await until(() => item('docvolcanes0000001').querySelector('.nb-thumb img'));
+      eq(item('docvolcanes0000001').querySelector('.nb-thumb img')?.getAttribute('src'), png, 'la miniatura de su primera diapositiva');
+      assert(item('docvolcanes0000001').textContent.includes('12 diapositivas'), 'con el número de diapositivas');
+      assert(item('docinforme000000001').querySelector('img'), 'otra miniatura');
+      eq($('.nb-quota small').textContent, '3 de 500 presentaciones', 'cuántas de las del plan');
+      // Into a folder and back by the breadcrumbs.
+      item('fclases01').click(); await sleep(20);
+      eq($$('.nb-crumbs > *').map(x => x.textContent.trim()).filter(Boolean).join('›'), 'Mi nube›chevron_right›Clases', 'migas de pan: Mi nube › Clases');
+      eq($$('.nb-docs .nb-doc').map(x => x.dataset.id).join(), 'docmates00000000001', 'dentro, lo suyo');
+      assert(item('docmates00000000001').querySelector('.nb-ph')?.textContent.includes('Funciones'), 'sin miniatura: un color con el título');
+      // A folder inside this one.
+      $('[data-act="folder"]').click(); await answer('Tema 2');
+      const sub = C.db.folders.find(f => f.name === 'Tema 2');
+      assert(sub && sub.parent === 'fclases01', 'carpeta nueva dentro de la actual');
+      assert(item(sub.id), 'y se ve');
+      $('.nb-crumbs [data-go=""]').click(); await sleep(20);
+      eq($$('.nb-crumbs > *').length, 1, 'de vuelta arriba');
+      // Drag a presentation onto a folder.
+      const dt = new W.DataTransfer(), fire = (el, type) => el.dispatchEvent(new W.DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: dt }));
+      fire(item('docinforme000000001'), 'dragstart'); fire(item('ftrabajo1'), 'dragover'); fire(item('ftrabajo1'), 'drop'); fire(item('docinforme000000001'), 'dragend');
+      await until(() => !item('docinforme000000001'));
+      eq(C.db.docs.find(d => d.id === 'docinforme000000001').folder, 'ftrabajo1', 'arrastrar a una carpeta la mueve');
+      // «Mover a…» from its menu.
+      item('docvolcanes0000001').querySelector('.nb-more').click(); await sleep(20);
+      assert(D.querySelector('.nb-menu') && ['Abrir', 'Abrir en pestaña nueva', 'Cambiar nombre', 'Destacar', 'Hacer una copia', 'Mover a…', 'Compartir…', 'Descargar (.revela)', 'Descargar como PowerPoint (.pptx)', 'Mover a la papelera'].every(menuItem), 'su menú: abrir, renombrar, copiar, mover, compartir, descargar, eliminar');
+      menuItem('Mover a…').click(); await sleep(20);
+      const dest = [...D.querySelectorAll('#cloud-move-modal .nb-dest')];
+      eq(dest.map(b => b.textContent.trim()).join('|'), 'cloudMi nube|folderClases|folderTema 2|folderTrabajo', 'el árbol de carpetas');
+      assert(dest[0].disabled, 'donde ya está, no');
+      dest[1].click(); await until(() => !item('docvolcanes0000001'));
+      eq(C.db.docs.find(d => d.id === 'docvolcanes0000001').folder, 'fclases01', '«Mover a…» la mueve');
+      // A folder can't go inside itself.
+      item('fclases01').querySelector('.nb-more').click(); await sleep(20); menuItem('Mover a…').click(); await sleep(20);
+      eq([...D.querySelectorAll('#cloud-move-modal .nb-dest')].filter(b => b.disabled).map(b => b.textContent.trim()).join(), 'cloudMi nube,folderClases,folderTema 2', 'una carpeta: ni donde está, ni en sí misma, ni en sus hijas');
+      D.querySelector('#cloud-move-modal .modal-close').click();
+      // Grid / list, remembered.
+      $('[data-view="list"]').click(); await sleep(20);
+      eq(page().dataset.view, 'list', 'vista de lista'); assert($('.nb-lhead'), 'con columnas');
+      UI.closePage(); await UI.openCloudDocs(); eq(page().dataset.view, 'list', 'y se recuerda');
+      $('[data-view="grid"]').click(); await sleep(20); eq(W.localStorage.getItem('revela.cloud.view'), 'grid', 'cuadrícula de nuevo');
+      // Search: by name and by the slides' titles, in every folder.
+      const q = $('.nb-search input'); q.value = 'volcan'; q.dispatchEvent(new W.Event('input')); await sleep(200);
+      eq($$('.nb-doc').map(x => x.dataset.id).join(), 'docvolcanes0000001', 'buscar por el título de una diapositiva (en cualquier carpeta)');
+      assert(item('docvolcanes0000001').textContent.includes('Clases'), 'y dice dónde está');
+      q.value = 'zzz'; q.dispatchEvent(new W.Event('input')); await sleep(200);
+      assert(/Nada coincide con «zzz»/.test($('.nb-content').textContent), 'sin resultados: lo dice');
+      q.value = ''; q.dispatchEvent(new W.Event('input')); await sleep(200);
+      // Keyboard: arrows, F2, Delete.
+      const first = $('.nb-content .nb-item'); first.focus();
+      first.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      eq(D.activeElement, $$('.nb-content .nb-item')[1], 'flecha: el siguiente');
+      eq($$('.nb-content .nb-item[tabindex="0"]').length, 1, 'uno solo en el orden de tabulación');
+      item('fclases01').click(); await sleep(20);
+      const fx = item('docvolcanes0000001'); fx.focus();
+      fx.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'F2', bubbles: true })); await answer('Geología y volcanes');
+      eq(C.db.docs.find(d => d.id === 'docvolcanes0000001').name, 'Geología y volcanes', 'F2 cambia el nombre');
+      item('docvolcanes0000001').focus(); item('docvolcanes0000001').dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Delete', bubbles: true }));
+      await until(() => D.querySelector('.dlg-msg')); assert(/papelera/.test(D.querySelector('.dlg-msg').textContent) && /30 días/.test(D.querySelector('.dlg-msg').textContent), 'Supr pregunta antes: a la papelera, 30 días');
+      await answer(null);
+      assert(C.db.docs.find(d => d.id === 'docvolcanes0000001').trashed, 'a la papelera');
+      await until(() => !item('docvolcanes0000001')); assert(!item('docvolcanes0000001'), 'y ya no está en su carpeta');
+      // The trash: restore.
+      $('[data-sec="trash"]').click(); await sleep(20);
+      assert(item('docvolcanes0000001') && /30 días/.test($('.nb-note').textContent), 'en la papelera, con su aviso');
+      item('docvolcanes0000001').querySelector('.nb-more').click(); await sleep(20);
+      assert(menuItem('Restaurar') && menuItem('Eliminar para siempre'), 'restaurar o eliminar para siempre');
+      menuItem('Restaurar').click(); await until(() => !C.db.docs.find(d => d.id === 'docvolcanes0000001').trashed);
+      assert(!C.db.docs.find(d => d.id === 'docvolcanes0000001').trashed, 'restaurada');
+      // Shared with me: apart, with who shared it; starred.
+      $('[data-sec="shared"]').click(); await sleep(20);
+      assert(item('docdeluis000000001') && item('docdeluis000000001').textContent.includes('luis@example.com'), 'compartidas conmigo: con quién la compartió');
+      item('docdeluis000000001').querySelector('.nb-more').click(); await sleep(20);
+      assert(!menuItem('Mover a…') && !menuItem('Mover a la papelera'), 'no se mueve a mis carpetas ni se borra');
+      menuItem('Destacar').click(); await until(() => C.db.shared[0].starred);
+      $('[data-sec="starred"]').click(); await sleep(20);
+      eq($$('.nb-doc').map(x => x.dataset.id).join(), 'docdeluis000000001', 'destacadas');
+      $('[data-sec="recent"]').click(); await sleep(20); eq($$('.nb-doc').length, 4, 'recientes: las mías y las compartidas');
+      // Save the one in the editor into a folder: its thumbnail goes with it.
+      $('[data-sec="mine"]').click(); await sleep(20); item('ftrabajo1').click(); await sleep(20);
+      CD.setThumbMaker(async deck => (deck.slides.length ? 'data:image/webp;base64,UklGRg==' : null));
+      R.state.deck.name = 'Desde el editor';
+      $('[data-act="save"]').click(); await until(() => C.db.docs.some(d => d.name === 'Desde el editor' && d.thumbAt));
+      const saved = C.db.docs.find(d => d.name === 'Desde el editor');
+      eq(saved?.folder, 'ftrabajo1', 'guardar aquí: en la carpeta abierta');
+      eq(C.db.thumbs[saved.id], 'data:image/webp;base64,UklGRg==', 'con la miniatura de su primera diapositiva');
+      D.querySelector('#cloud-share-modal .modal-close')?.click();
+      // Empty states.
+      CD.closeDoc(); C.db.docs = []; C.db.folders = []; await UI.openCloudDocs();
+      assert($('.nb-empty [data-act="save"]') && $('.nb-empty [data-act="new"]'), 'vacía: guardar esta o empezar una nueva');
+      page().dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); eq(page(), null, 'Escape cierra');
+    } finally { CD.closeDoc(); CD.setTransport(null); CD.setThumbMaker(null); UI.closePage(); D.querySelectorAll('.nb-menu,#cloud-move-modal,#cloud-share-modal,#account-modal').forEach(x => x.remove()); W.localStorage.removeItem('revela.cloud.view'); }
+  });
+
   await test('cuenta de Revela: aceptar las condiciones (y tener 14 años o más) antes de iniciar sesión', async () => {
     reset(); const W = frame.contentWindow, AD = await W.eval("import('/src/ui/dialogs/account.js')"), AC = await W.eval("import('/src/io/cloud/account.js')");
     W.localStorage.removeItem('revela.terms');

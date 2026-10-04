@@ -1,6 +1,6 @@
 // Scheduled notices. Durable Objects can't be listed, so the accounts tell one
 // object (Schedule) what to look at on which day — credits that expire, the end
-// of Pro, an account unused for a long time — and a daily cron (worker.js,
+// of Pro, an account unused for a long time, presentations in the trash — and a daily cron (worker.js,
 // scheduled()) goes through the days due and asks each account to check and act.
 // The account decides with its own state (and remembers what it sent), so an
 // entry that is stale, repeated or run twice does nothing.
@@ -9,6 +9,7 @@
 
 import { deleteAccount } from './api.js';
 import { mail } from './mail.js';
+import { purgeDoc } from './docs.js';
 
 const DAY = 864e5;
 export const dayOf = ts => new Date(ts).toISOString().slice(0, 10);
@@ -65,6 +66,7 @@ export async function runSchedule(env, now = Date.now()) {
 async function dueOne(env, it) {
   const A = env.ACCOUNTS.get(env.ACCOUNTS.idFromName('u:' + it.sub));
   const r = await (await A.fetch('https://do/due', { method: 'POST', body: JSON.stringify({ kind: it.kind, ref: it.ref }) })).json();
+  for (const id of r.purge || []) await purgeDoc(env, it.sub, id);   // (30 days in the trash: docs.js)
   if (r.delete) {                                         // unused for two years: deleted like a voluntary deletion, and told
     const w = await deleteAccount(env, it.sub);
     if (w.email) await mail(env, { to: w.email, kind: 'deleted', lang: w.lang, vars: { idle: true } });

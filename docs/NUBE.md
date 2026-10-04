@@ -106,6 +106,32 @@ hasta quedar dentro, se desbloquean solas. La app muestra un aviso encima de la 
 Pro o borra alguna para editarla»), no envía cambios y no pierde lo que se haga: se puede
 guardar como copia en el navegador o descargar.
 
+**«Mi nube», el gestor** (`src/ui/dialogs/cloudlibrary.js`). Una página a pantalla completa
+(lista en el móvil) con: miniatura de la primera diapositiva de cada una, carpetas (crear,
+cambiar el nombre, borrar —lo que contienen sube un nivel, no se borra nada—, hasta 3 niveles,
+200 como mucho, nombres de 80 caracteres), migas de pan, mover arrastrando o con «Mover a…»,
+destacadas, recientes, búsqueda por nombre y por los títulos de las diapositivas, orden por
+modificación, nombre o creación, cuadrícula o lista (se recuerda en el navegador), un menú por
+presentación (abrir, en pestaña nueva, cambiar nombre, destacar, hacer una copia, mover, compartir,
+descargar .revela o .pptx, a la papelera) y teclado (flechas, Intro abre, F2 renombra, Supr a la
+papelera, tecla de menú o Mayús+F10, «/» busca, Escape cierra). Las compartidas conmigo van aparte:
+se destacan (en mi lista, no en la del dueño) pero no entran en mis carpetas.
+Por qué así, en el servidor:
+- **Miniaturas**: las hace el navegador al guardar (WebP pequeño, JPEG en Safari; ≤ 30 000
+  caracteres) y otra vez cuando cambia la primera diapositiva (como mucho una por minuto). El
+  servidor solo acepta `data:image/(webp|jpeg|png);base64` de hasta 40 000 caracteres (nada de SVG,
+  que podría llevar código) y solo de quien puede editarla; se guardan en el `CloudDoc` (no en la
+  cuenta: 500 miniaturas no caben en un valor) y la lista las pide por tandas
+  (`POST /api/docs/thumbs`, 24 cada vez, solo las que quien pregunta puede leer).
+- **Carpetas, estrellas y papelera** viven en la lista de la cuenta (`Account.docs`, `folders`),
+  junto con el número de diapositivas y un índice corto de títulos (400 caracteres) que el
+  servidor calcula a cada cambio, para buscar sin abrir nada.
+- **Papelera**: `POST /api/docs/:id/trash` la marca; mientras tanto solo la abre su dueño y sale
+  de «Compartidas conmigo» de los demás (vuelve, con su estrella y sin otro correo, al
+  restaurarla). Sigue contando para el límite del plan (y es la primera en quedar en solo
+  lectura). A los 30 días (`TRASH_DAYS`) el cron diario la borra para siempre (`Schedule`, tipo
+  `trash`); «Vaciar la papelera» lo hace al momento.
+
 **Condiciones al crear la cuenta.** Antes del primer inicio de sesión la app muestra «Al
 continuar aceptas las condiciones del servicio y la política de privacidad, y confirmas que
 tienes 14 años o más» con una casilla que hay que marcar (también en la aplicación de

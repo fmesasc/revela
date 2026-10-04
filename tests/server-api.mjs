@@ -34,7 +34,7 @@ env.FETCH = async (url, init = {}) => {
   const u = String(url);
   if (u.startsWith('https://oauth2.googleapis.com/tokeninfo')) {
     const t = new URL(u).searchParams.get('access_token');
-    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' }, 'tok-gil': { sub: '1212', email: 'gil@example.com' }, 'tok-noa': { sub: '1313', email: 'noa@example.com' }, 'tok-pia': { sub: '1414', email: 'pia@example.com' }, 'tok-tess': { sub: '1515', email: 'tess@example.com' }, 'tok-ivo': { sub: '1616', email: 'ivo@example.com' }, 'tok-ada': { sub: '1717', email: 'ada@example.com' }, 'tok-bea': { sub: '1818', email: 'bea@example.com' }, 'tok-cid': { sub: '1919', email: 'cid@example.com' }, 'tok-dan': { sub: '2020', email: 'dan@example.com' } }[t];
+    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' }, 'tok-gil': { sub: '1212', email: 'gil@example.com' }, 'tok-noa': { sub: '1313', email: 'noa@example.com' }, 'tok-pia': { sub: '1414', email: 'pia@example.com' }, 'tok-tess': { sub: '1515', email: 'tess@example.com' }, 'tok-ivo': { sub: '1616', email: 'ivo@example.com' }, 'tok-ada': { sub: '1717', email: 'ada@example.com' }, 'tok-bea': { sub: '1818', email: 'bea@example.com' }, 'tok-cid': { sub: '1919', email: 'cid@example.com' }, 'tok-dan': { sub: '2020', email: 'dan@example.com' }, 'tok-zoe': { sub: '2121', email: 'zoe@example.com' }, 'tok-kai': { sub: '2222', email: 'kai@example.com' } }[t];
     if (t === 'tok-otraapp') return Response.json({ aud: 'otra-app', sub: '333', email: 'x@example.com', email_verified: 'true' });
     return who ? Response.json({ aud: CID, ...who, email_verified: 'true', expires_in: 3000 }) : new Response('bad', { status: 400 });
   }
@@ -1466,6 +1466,97 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     && cleanEntry({ type: 'time', hours: 1, date: '2026-01-01', category: 'soporte', note: 'x'.repeat(900) }).note.length === 500, 'entradas: fechas, importes y notas comprobados');
   const csv = toCsv({ days, entries, money: [], from: '2026-01-01', to: '2026-02-28', s }).split('\r\n');
   ok(csv.filter(l => /;gasto fijo;Servidor \(mensual\);/.test(l)).length === 2 && csv.some(l => /^2026-02-10;gasto fijo;Logo;marketing;-50;USD;;;;-25;0,5;/.test(l)) && !csv.some(l => /Antes/.test(l)), 'CSV: gastos fijos por mes y puntuales, en su moneda y en EUR');
+}
+
+// ---- «Mi nube» as a manager: folders, stars, thumbnails, rename, duplicate, the trash (purged by the cron) ----
+{
+  const zoe = await login2('tok-zoe'), kai = await login2('tok-kai');
+  await setPlan('2121', Date.now() + 365 * 864e5); await setPlan('2222', Date.now() + 365 * 864e5);
+  const Z = () => acc('2121').ctx.storage.m, post = (c, path, body = {}) => req('POST', '/api/docs' + path, { headers: c ? { Cookie: c } : {}, body });
+  const list = async (c = zoe) => (await req('GET', '/api/docs', { headers: { Cookie: c } })).json();
+  // Folders: created, nested (3 deep at most), renamed, moved; names and number limited; only mine.
+  let r = await post(zoe, '/folders', { name: '  Clases  ' }); let j = await r.json();
+  ok(r.status === 200 && j.folder.name === 'Clases' && j.folder.parent === null && /^[\w-]{8}$/.test(j.folder.id), 'carpetas: crear una (nombre recortado)');
+  const fA = j.folder.id;
+  const fB = (await (await post(zoe, '/folders', { name: '1º ESO', parent: fA })).json()).folder.id;
+  const fC = (await (await post(zoe, '/folders', { name: 'Tema 1', parent: fB })).json()).folder.id;
+  r = await post(zoe, '/folders', { name: 'Demasiado', parent: fC }); ok(r.status === 400 && (await r.json()).error === 'too deep', 'carpetas: como mucho 3 niveles');
+  ok((await post(zoe, '/folders', { name: 'x'.repeat(81) })).status === 400 && (await post(zoe, '/folders', { name: '   ' })).status === 400, 'carpetas: nombre de 1 a 80 caracteres');
+  ok((await post(zoe, '/folders', { name: 'Huérfana', parent: 'noexiste' })).status === 404, 'carpetas: dentro de una que no existe, no');
+  ok((await post(zoe, `/folders/${fA}`, { parent: fC })).status === 400, 'carpetas: no dentro de sí misma (ni de sus hijas)');
+  ok((await post(kai, `/folders/${fA}`, { name: 'Mía' })).status === 404 && (await post(kai, `/folders/${fA}/delete`)).status === 404, 'carpetas: las de otra persona no existen para mí');
+  ok((await post(zoe, `/folders/${fB}`, { name: 'Primero' })).status === 200 && Z().get('folders').find(f => f.id === fB).name === 'Primero', 'carpetas: cambiar el nombre');
+  ok((await post(null, '/folders', { name: 'x' })).status === 401, 'carpetas: sin sesión, no');
+  // Documents in folders; the list says what the manager shows.
+  const deck = n => ({ name: n, slides: [{ id: 's1', blocks: [{ id: 't', type: 'text', ph: 'title', html: '<b>Volcanes</b> &amp; lava' }] }, { id: 's2', blocks: [{ id: 'u', type: 'text', html: 'Erupciones' }] }] });
+  const d1 = (await (await post(zoe, '', { deck: deck('Ciencias'), folder: fC })).json()).id;
+  const d2 = (await (await post(zoe, '', { deck: deck('Historia'), folder: 'noexiste' })).json()).id;
+  j = await list(); let e1 = j.mine.find(d => d.id === d1);
+  ok(e1.folder === fC && j.mine.find(d => d.id === d2).folder === null, 'en una carpeta al guardarla (si no existe, arriba)');
+  ok(e1.slides === 2 && e1.text === 'Volcanes & lava · Erupciones' && e1.created > 0 && e1.updated > 0, 'número de diapositivas y sus títulos para buscar: ' + e1.text);
+  ok(j.folders.length === 3 && j.trashDays === 30 && j.limit === 500, 'la lista trae las carpetas y los días de la papelera');
+  // Moving and starring; others can't.
+  ok((await post(zoe, `/${d2}/meta`, { folder: fA })).status === 200 && Z().get('docs').find(d => d.id === d2).folder === fA, 'mover a una carpeta');
+  ok((await post(zoe, `/${d2}/meta`, { folder: 'noexiste' })).status === 404, 'a una carpeta que no existe, no');
+  ok((await post(kai, `/${d2}/meta`, { folder: null })).status === 403 && Z().get('docs').find(d => d.id === d2).folder === fA, 'nadie más la mueve');
+  ok((await post(zoe, `/${d2}/meta`, { starred: true })).status === 200 && (await list()).mine.find(d => d.id === d2).starred === true, 'destacarla');
+  // Rename: the document changes too (everyone sees it); only with the edit role.
+  r = await post(zoe, `/${d1}/meta`, { name: '  Geología  ' });
+  ok(r.status === 200 && (await r.json()).name === 'Geología' && (await (await req('GET', `/api/docs/${d1}`, { headers: { Cookie: zoe } })).json()).deck.name === 'Geología'
+    && (await list()).mine.find(d => d.id === d1).name === 'Geología', 'cambiar el nombre: en el documento y en la lista');
+  ok((await post(kai, `/${d1}/meta`, { name: 'Mío' })).status === 403 && (await post(zoe, `/${d1}/meta`, { name: '' })).status === 400, 'renombrar: solo con permiso, y con nombre');
+  // Thumbnails: a small image data URL, checked; read by anyone who can read it.
+  const png = 'data:image/png;base64,' + 'iVBORw0KGgo'.padEnd(400, 'A') + '=';
+  ok((await post(zoe, `/${d1}/thumb`, { thumb: 'data:image/svg+xml;base64,PHN2Zz4=' })).status === 400, 'miniatura: SVG no (podría llevar código)');
+  ok((await post(zoe, `/${d1}/thumb`, { thumb: 'data:image/webp;base64,' + 'A'.repeat(41000) })).status === 400, 'miniatura: como mucho ~30 KB');
+  ok((await post(zoe, `/${d1}/thumb`, { thumb: 'javascript:alert(1)' })).status === 400 && (await post(zoe, `/${d1}/thumb`, { thumb: png + '"><script>' })).status === 400, 'miniatura: solo una imagen');
+  ok((await post(kai, `/${d1}/thumb`, { thumb: png })).status === 403, 'miniatura: solo quien puede editar');
+  r = await post(zoe, `/${d1}/thumb`, { thumb: png }); j = await r.json();
+  ok(r.status === 200 && j.at > 0 && (await list()).mine.find(d => d.id === d1).thumbAt === j.at, 'miniatura guardada, y la lista sabe de cuándo es');
+  j = await (await post(zoe, '/thumbs', { ids: [d1, d2, 'mal', d1] })).json();
+  ok(j.thumbs[d1] === png && !(d2 in j.thumbs) && Object.keys(j.thumbs).length === 1, 'varias miniaturas de una vez (las que hay)');
+  ok(!Object.keys((await (await post(kai, '/thumbs', { ids: [d1] })).json()).thumbs).length, 'miniaturas: de las de otros, nada');
+  // Shared with someone: they see it, can star it (in their list), not move it.
+  await post(zoe, `/${d1}/share`, { people: { 'kai@example.com': 'edit' } });
+  ok((await post(kai, `/${d1}/meta`, { starred: true })).status === 200 && (await list(kai)).shared.find(d => d.id === d1).starred === true && !Z().get('docs').find(d => d.id === d1).starred, 'compartida conmigo: la destaco en mi lista, no en la suya');
+  ok((await post(kai, `/${d1}/meta`, { folder: fA })).status === 403, 'compartida conmigo: no va a mis carpetas');
+  ok(Object.keys((await (await post(kai, '/thumbs', { ids: [d1] })).json()).thumbs).length === 1, 'y veo su miniatura');
+  // Duplicate: a copy in the same folder, with its picture; counts against the plan.
+  r = await post(zoe, `/${d1}/duplicate`, { name: 'Copia de Geología' }); const d3 = (await r.json()).id;
+  e1 = (await list()).mine.find(d => d.id === d3);
+  ok(r.status === 200 && e1.name === 'Copia de Geología' && e1.folder === fC && e1.thumbAt > 0 && (await (await req('GET', `/api/docs/${d3}`, { headers: { Cookie: zoe } })).json()).deck.slides.length === 2, 'duplicar: copia en la misma carpeta, con miniatura');
+  const k3 = (await (await post(kai, `/${d1}/duplicate`)).json()).id;
+  ok(k3 && (await list(kai)).mine.find(d => d.id === k3)?.folder === null, 'quien puede editarla, hace su copia (en su nube)');
+  await post(zoe, `/${d1}/share`, { people: { 'kai@example.com': 'view' } });
+  ok((await post(kai, `/${d1}/duplicate`)).status === 403, 'quien solo puede verla, no la copia');
+  ok((await post(null, `/${d1}/duplicate`)).status === 401, 'sin sesión, no');
+  // Deleting a folder: what it held goes up one level.
+  ok((await post(zoe, `/folders/${fB}/delete`)).status === 200, 'borrar una carpeta');
+  ok(Z().get('folders').find(f => f.id === fC).parent === fA && Z().get('folders').length === 2, 'sus carpetas suben un nivel');
+  // The trash: the owner's only; shared people lose it meanwhile; restore; 30 days later the cron deletes it.
+  ok((await post(kai, `/${d1}/trash`)).status === 403, 'papelera: solo la dueña');
+  ok((await post(zoe, `/${d1}/trash`)).status === 200, 'a la papelera');
+  j = await list(); e1 = j.mine.find(d => d.id === d1);
+  ok(e1.trashed > 0 && !(await list(kai)).shared.some(d => d.id === d1) && (await req('GET', `/api/docs/${d1}`, { headers: { Cookie: kai } })).status === 404, 'en la papelera: quien la tenía compartida deja de verla');
+  ok((await req('GET', `/api/docs/${d1}`, { headers: { Cookie: zoe } })).status === 200, 'la dueña aún puede abrirla');
+  sent = [];
+  ok((await post(zoe, `/${d1}/restore`)).status === 200 && !(await list()).mine.find(d => d.id === d1).trashed, 'restaurar');
+  ok((await list(kai)).shared.find(d => d.id === d1)?.starred === true && (await req('GET', `/api/docs/${d1}`, { headers: { Cookie: kai } })).status === 200 && !sent.length, 'restaurada: vuelve a su lista (con su estrella), sin otro correo');
+  await post(zoe, `/${d1}/trash`); await post(zoe, `/${d2}/trash`);
+  const trashedAt = Z().get('docs').find(d => d.id === d1).trashed;
+  at(trashedAt + 10 * DAYms); await runCron(Date.now()); Date.now = realNow;
+  ok(Z().get('docs').some(d => d.id === d1), 'a los 10 días sigue en la papelera');
+  at(trashedAt + 31 * DAYms); await runCron(Date.now()); Date.now = realNow;
+  ok(!Z().get('docs').some(d => d.id === d1 || d.id === d2) && (await req('GET', `/api/docs/${d1}`, { headers: { Cookie: zoe } })).status === 404, 'a los 30 días el cron la borra para siempre');
+  ok(!(await list(kai)).shared.some(d => d.id === d1), 'y de las listas de los demás');
+  // Emptying the trash.
+  await post(zoe, `/${d3}/trash`);
+  j = await (await post(zoe, '/trash/empty')).json();
+  ok(j.n === 1 && !j.more && !Z().get('docs').some(d => d.id === d3), 'vaciar la papelera');
+  ok((await post(kai, '/trash/empty')).status === 200 && (await list(kai)).mine.some(d => d.id === k3), 'vaciar la mía no toca las de nadie más');
+  // Folder limit
+  Z().set('folders', Array.from({ length: 200 }, (_, i) => ({ id: 'f' + String(i).padStart(7, '0'), name: 'C' + i, parent: null, created: 1 })));
+  r = await post(zoe, '/folders', { name: 'Una más' }); ok(r.status === 402 && (await r.json()).limit === 200, 'carpetas: como mucho 200');
 }
 
 console.log(fails ? `API FAIL ${n - fails}/${n}` : `API OK ${n}/${n}`);
