@@ -90,6 +90,9 @@
 .handle-size.ne{right:-6px;top:-6px;cursor:nesw-resize}
 .handle-size.sw{left:-6px;bottom:-6px;cursor:nesw-resize}
 .handle-size.se{right:-6px;bottom:-6px;cursor:nwse-resize}
+.handle-size.n,.handle-size.s{left:calc(50% - 6px);cursor:ns-resize}.handle-size.n{top:-6px}.handle-size.s{bottom:-6px}
+.handle-size.e,.handle-size.w{top:calc(50% - 6px);cursor:ew-resize}.handle-size.e{right:-6px}.handle-size.w{left:-6px}
+.block.thin-h .handle-size.n,.block.thin-h .handle-size.s,.block.thin-w .handle-size.e,.block.thin-w .handle-size.w{display:none}
 .block.selected .handle-size{display:block}
 .block.locked{cursor:default}
 .block.locked.selected{border-style:dashed}

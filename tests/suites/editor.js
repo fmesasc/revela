@@ -34,6 +34,24 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(slide().blocks.length, n0 + 1, 'redo falló');
   });
 
+  await test('imagen: el cuadro toma su proporción; las esquinas la conservan y los lados la estiran', async () => {
+    reset(); const W = frame.contentWindow;
+    R.blocks.addImage('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAIAAADwyuo0AAAAEElEQVR4nGP4z8AARwzIHABvqgf5gNwAKAAAAABJRU5ErkJggg==');
+    const b = last(); await sleep(60);
+    eq(b.w + '×' + b.h, '600×300', 'una imagen 2:1 entra con un cuadro 2:1');
+    R.store.setSelection(b.id); R.render(); await sleep(10);
+    const el = () => D.querySelector(`.block[data-id="${b.id}"]`);
+    const drag = async (c, dx, dy) => { const h = el().querySelector('.handle-size.' + c), r = h.getBoundingClientRect(), o = { bubbles: true, pointerId: 1, button: 0, isPrimary: true };
+      h.dispatchEvent(new W.PointerEvent('pointerdown', { ...o, clientX: r.left, clientY: r.top })); D.dispatchEvent(new W.PointerEvent('pointermove', { ...o, clientX: r.left + dx, clientY: r.top + dy }));
+      D.dispatchEvent(new W.PointerEvent('pointerup', { ...o, clientX: r.left + dx, clientY: r.top + dy })); await sleep(10); };
+    await drag('se', 80, 0);
+    assert(b.w > 600 && Math.abs(b.w / b.h - 2) < 0.02 && (b.fit || 'contain') === 'contain', 'esquina: crece sin deformarse (' + b.w + '×' + b.h + ')');
+    assert(['n', 'e', 's', 'w'].every(c => el().querySelector('.handle-size.' + c)), 'tiradores en los lados');
+    const w0 = b.w, h0 = b.h; await drag('e', 60, 0);
+    assert(b.w > w0 && b.h === h0 && b.fit === 'fill', 'lado: se estira y la imagen ocupa todo el cuadro (' + b.w + '×' + b.h + ', ' + b.fit + ')');
+    eq(el().querySelector('img').style.objectFit, 'fill', 'y se ve estirada');
+  });
+
   await test('Ctrl+Z deshace lo que se mueve, se redimensiona o se escribe (un paso por gesto)', async () => {
     reset(); const W = frame.contentWindow;
     const key = (k, o = {}) => D.dispatchEvent(new W.KeyboardEvent('keydown', { key: k, ctrlKey: true, bubbles: true, ...o }));

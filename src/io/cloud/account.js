@@ -37,8 +37,16 @@ export async function api(path, body) {
     ...(body !== undefined && { body: JSON.stringify(body) }) });
   const data = await r.json().catch(() => ({}));
   if (r.status === 401 && path !== 'login') { me = null; if (EDITION === 'desktop') setBearer(''); changed(); }
-  if (!r.ok) throw Object.assign(new Error(data.error || 'HTTP ' + r.status), { status: r.status, data });
+  if (!r.ok) { if (r.status === 402) spent(0); throw Object.assign(new Error(data.error || 'HTTP ' + r.status), { status: r.status, data }); }
+  if (+data.charged > 0) spent(path.startsWith('ai/') ? +data.charged : 0);   // (a 3D job reports its running total: only re-asked)
   return data;
+}
+// Something charged credits (data.charged): the button shows it at once, and the server's
+// figure (with what expires) follows shortly after, once for a burst of calls or polls.
+let recheck = null;
+function spent(n) {
+  if (me && n) { me = { ...me, credits: Math.max(0, (me.credits | 0) - n) }; changed(); }
+  clearTimeout(recheck); recheck = setTimeout(() => refreshAccount().catch(() => {}), 1500);
 }
 
 // Who is signed in (null if nobody), asking the server.

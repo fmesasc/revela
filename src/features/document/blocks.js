@@ -60,9 +60,19 @@ export function addModel(src) {
     rotation: 0, animation: null, src, autoRotate: true });
 }
 
+// The box takes the picture's own proportion (within 600 × 460, about the same centre)
+// once it has loaded, so its handles sit on the picture's edges.
 export function addImage(src) {
-  insert({ id: uid(), type: 'image', x: 340, y: 130, w: 600, h: 460,
-    rotation: 0, animation: null, src, fit: 'contain' });
+  const b = { id: uid(), type: 'image', x: 340, y: 130, w: 600, h: 460, rotation: 0, animation: null, src, fit: 'contain' };
+  insert(b);
+  if (typeof Image !== 'function') return;
+  const i = new Image();
+  i.onload = () => {
+    const r = i.naturalWidth / i.naturalHeight; if (!(r > 0) || b.w !== 600 || b.h !== 460) return;   // (already resized by hand)
+    const w = r > 600 / 460 ? 600 : Math.round(460 * r), h = r > 600 / 460 ? Math.round(600 / r) : 460;
+    commit(() => { Object.assign(b, { x: Math.round(b.x + (b.w - w) / 2), y: Math.round(b.y + (b.h - h) / 2), w, h }); }, { history: false });
+  };
+  i.src = src;
 }
 
 export function addVideo(src) {

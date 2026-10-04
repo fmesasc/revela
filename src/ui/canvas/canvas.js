@@ -92,6 +92,7 @@ export function renderCanvas() {
   drawMotionPath();
   drawMasterLayer();
   drawBgMedia(slide);
+  sideHandles();
   const banner = document.getElementById('master-banner');
   if (banner) {
     banner.hidden = !state.ui.editMaster;
@@ -113,6 +114,16 @@ export function renderCanvas() {
   const sel = selectedBlock(), sr = document.getElementById('sr-status');
   const msg = sel ? `${t('Seleccionado')}: ${blockLabel(sel, t)}` : '';
   if (sr && sr.textContent !== msg) sr.textContent = msg;
+}
+
+// The side handles only where there's room on screen: on a thin object they'd cover the
+// middle, where it is grabbed to move it.
+function sideHandles() {
+  for (const el of stage.querySelectorAll('.block.selected')) {
+    const hd = el.querySelector('.handle-size.nw'); if (!hd) continue;   // (a corner: always shown)
+    const r = el.getBoundingClientRect(), k = hd.getBoundingClientRect().width * 3.5;
+    el.classList.toggle('thin-h', r.height < k); el.classList.toggle('thin-w', r.width < k);
+  }
 }
 
 // Video / web page / translucent image behind the slide (Design ▸ Advanced background).
@@ -371,7 +382,7 @@ function blockEl(b) {
   rot.className = 'handle-rot'; rot.title = 'Girar (Mayús: 15°)';
   rot.addEventListener('pointerdown', ev => startRotate(ev, b, el));
   el.appendChild(rot);
-  for (const c of ['nw', 'ne', 'sw', 'se']) {
+  for (const c of ['nw', 'ne', 'sw', 'se', 'n', 'e', 's', 'w']) {   // (corners, then sides: one dimension)
     const hd = document.createElement('div');
     hd.className = 'handle-size ' + c;
     hd.addEventListener('pointerdown', ev => startResize(ev, b, el, c));

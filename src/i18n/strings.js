@@ -1849,6 +1849,8 @@ export const ROWS = [
   ['Reemplazar', 'Replace', 'Remplacer', 'Ersetzen', 'Sostituisci', 'Substituir', 'Substitueix'],
   ['Reflejar', 'Mirror', 'Miroir', 'Spiegeln', 'Specchia', 'Espelhar', 'Reflecteix'],
   ['Rellenar', 'Fill', 'Remplir', 'Füllen', 'Riempi', 'Preencher', 'Omple'],
+  ['Estirar', 'Stretch', 'Étirer', 'Strecken', 'Allunga', 'Esticar', 'Estira'],
+  ['Proporción original', 'Original proportion', 'Proportions d’origine', 'Originalproportion', 'Proporzioni originali', 'Proporção original', 'Proporció original'],
   ['Relleno y borde…', 'Fill and border…', 'Remplissage et bordure…', 'Füllung und Rahmen…', 'Riempimento e bordo…', 'Preenchimento e contorno…', 'Emplenament i vora…'],
   ['Renombrar sección', 'Rename section', 'Renommer la section', 'Abschnitt umbenennen', 'Rinomina sezione', 'Mudar o nome da secção', 'Canvia el nom de la secció'],
   ['Restar', 'Subtract', 'Soustraire', 'Subtrahieren', 'Sottrai', 'Subtrair', 'Resta'],

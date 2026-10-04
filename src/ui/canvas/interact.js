@@ -124,7 +124,7 @@ export function startResize(ev, b, el, corner) {
   if (b.locked || readOnly()) return;
   const f = factor(), sx = ev.clientX, sy = ev.clientY, o = { x: b.x, y: b.y, w: b.w, h: b.h };
   try { el.setPointerCapture?.(ev.pointerId); } catch {}
-  const ratio = o.w / o.h;
+  const ratio = o.w / o.h, pic = b.type === 'image' && !b.device;
   // A rotated object is resized along its own sides, and the opposite corner
   // stays where it is on screen (the rotation is about the centre).
   const a = (b.rotation || 0) * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
@@ -137,7 +137,15 @@ export function startResize(ev, b, el, corner) {
     const dx = (e.clientX - sx) * f, dy = (e.clientY - sy) * f;
     const lx = dx * cos + dy * sin, ly = -dx * sin + dy * cos;       // the drag along the object's sides
     let w = sxg ? Math.max(30, o.w + sxg * lx) : o.w, h = syg ? Math.max(20, o.h + syg * ly) : o.h;
-    if (e.shiftKey) h = Math.max(20, w / ratio);                         // hold Shift to keep the aspect ratio
+    // Keeping the proportion: Shift; for a picture, its corners do it (Shift frees them), as
+    // in PowerPoint. A picture's side handle stretches it: a whole one ("contain") is
+    // drawn deformed then ("fill"), so the box and the picture stay the same.
+    if (pic && sxg && syg ? !e.shiftKey : e.shiftKey) {
+      if (!syg) h = Math.max(20, w / ratio); else if (!sxg) w = Math.max(30, h * ratio);
+      else if (Math.abs(w / o.w) >= Math.abs(h / o.h)) h = Math.max(20, w / ratio); else w = Math.max(30, h * ratio);
+    } else if (pic && (b.fit || 'contain') === 'contain' && Math.abs(w / h - ratio) > 0.01) {
+      b.fit = 'fill'; const img = el.querySelector('img'); if (img) img.style.objectFit = 'fill';
+    }
     w = Math.round(w); h = Math.round(h);
     const cx = ax + (sxg * w / 2) * cos - (syg * h / 2) * sin, cy = ay + (sxg * w / 2) * sin + (syg * h / 2) * cos;
     Object.assign(b, { w, h, x: Math.round(cx - w / 2), y: Math.round(cy - h / 2) });

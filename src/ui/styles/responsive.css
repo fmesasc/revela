@@ -37,6 +37,7 @@
   .handle-size{width:16px;height:16px}
   .handle-size.nw{left:-9px;top:-9px}.handle-size.ne{right:-9px;top:-9px}
   .handle-size.sw{left:-9px;bottom:-9px}.handle-size.se{right:-9px;bottom:-9px}
+  .handle-size.n{top:-9px;left:calc(50% - 8px)}.handle-size.s{bottom:-9px;left:calc(50% - 8px)}.handle-size.e{right:-9px;top:calc(50% - 8px)}.handle-size.w{left:-9px;top:calc(50% - 8px)}
   .handle-del{width:28px;height:28px;font-size:16px}
   .handle-rot{width:20px;height:20px}
 }
