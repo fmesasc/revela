@@ -2391,4 +2391,13 @@ export default {
   "Ver la cámara en el editor": "De camera in de editor tonen",
   "Dejar de ver la cámara en el editor": "De camera niet meer in de editor tonen",
   "El fondo se separa de la persona en el propio navegador: la imagen de la cámara no sale de tu equipo.": "De achtergrond wordt in de browser zelf van de persoon gescheiden: het camerabeeld verlaat je apparaat niet.",
+  "Creando el archivo ODP…": "ODP-bestand wordt gemaakt…",
+  "Archivo ODP descargado.": "ODP-bestand gedownload.",
+  "Página web descargada: se abre con cualquier navegador.": "Webpagina gedownload: die opent in elke browser.",
+  "Creando el archivo de PowerPoint…": "PowerPoint-bestand wordt gemaakt…",
+  "PowerPoint descargado.": "PowerPoint gedownload.",
+  "Proyecto descargado (.revela.json). Para seguir con él otro día: Archivo ▸ Abrir.": "Project gedownload (.revela.json). Om er later mee verder te gaan: Bestand ▸ Openen.",
+  "Suelta el archivo para añadirlo a la diapositiva (o abrirlo, si es una presentación)": "Zet het bestand neer om het aan de dia toe te voegen (of te openen, als het een presentatie is)",
+  "Sin guardar": "Niet opgeslagen",
+  "Este navegador no deja guardar la presentación (¿ventana privada o disco lleno?). Haz clic para descargar una copia.": "Deze browser laat de presentatie niet opslaan (privévenster of volle schijf?). Klik om een kopie te downloaden.",
 };

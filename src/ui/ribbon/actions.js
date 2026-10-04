@@ -67,6 +67,7 @@ import { openHostPanel } from '../dialogs/remote.js';
 import { t } from '../../i18n/index.js';
 import { confirmDialog, promptDialog, alertDialog } from '../dialogs/dialog.js';
 import { renderRibbon } from './ribbon.js';
+import { toast, withProgress } from '../shell/toast.js';
 import { openShortcuts } from '../dialogs/shortcuts.js';
 import { openHeaderFooter } from '../dialogs/headerfooter.js';
 import { openAnimPanel } from '../panels/animation.js';
@@ -95,7 +96,7 @@ export const ACTIONS = {
   },
   'mark-final': () => toggleFinal(),
   'signatures': () => openSignatures(),
-  'save': saveProject,
+  'save': () => { saveProject(); toast(t('Proyecto descargado (.revela.json). Para seguir con él otro día: Archivo ▸ Abrir.')); },
   'gallery': () => openGallery(),
   'home': () => openHome(),
   'versions': () => openVersions(),
@@ -111,8 +112,9 @@ export const ACTIONS = {
   'gdrive-config': () => openGdriveSetup(),
   'cloud-onedrive': () => openCloud('onedrive'),
   'cloud-dropbox': () => openCloud('dropbox'),
-  'export': exportHTML,
-  'export-pptx': () => exportPPTX(),
+  // (A download alone is easy to miss: each one says what it was and what next.)
+  'export': () => { exportHTML(); toast(t('Página web descargada: se abre con cualquier navegador.')); },
+  'export-pptx': () => withProgress(t('Creando el archivo de PowerPoint…'), exportPPTX, t('PowerPoint descargado.')),
   'export-pdf': exportPDF,
   'export-png': () => openImageDialog(),
   'share': () => openShare(),
@@ -140,14 +142,14 @@ export const ACTIONS = {
   'insert-online-icon': () => openElements('icons'),
   'trans-apply-all': () => trans.applyTransitionToAll(),
   'import-pptx': () => readFile('.pptx,.odp,.key', openPresentation, 'file'),
-  'export-odp': async () => {
+  'export-odp': () => withProgress(t('Creando el archivo ODP…'), async () => {
     try {
       const blob = await odp.buildODP();
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
       a.download = (state.deck.name || 'presentacion').replace(/[^\p{L}\p{N}]+/gu, '-') + '.odp'; a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    } catch (e) { alertDialog(t('No se pudo exportar: ') + e.message); }
-  },
+    } catch (e) { alertDialog(t('No se pudo exportar: ') + e.message); return false; }
+  }, t('Archivo ODP descargado.')),
   'reuse-slides': () => pickReuseFile(),
   'import-md': () => readFile('.md,.markdown,.txt,text/markdown', insertMarkdown, 'text'),
   'a11y-check': () => openA11yCheck(),

@@ -61,6 +61,7 @@ def touch_checks(send, recv, port):
     fits = "(()=>{const w=document.getElementById('canvas-wrap').getBoundingClientRect(),s=document.getElementById('stage').getBoundingClientRect();return s.width>100&&s.left>=w.left-1&&s.right<=w.right+1&&s.top>=w.top-1&&s.bottom<=w.bottom+1})()"
     check(ev(fits), 'en vertical la diapositiva se ve entera')
     check(ev("document.querySelector('.titlebar').scrollWidth<=innerWidth+1"), 'la barra de título cabe en vertical')
+    check(ev("(()=>{const r=document.querySelector('.titlebar [data-action=present]').getBoundingClientRect();return r.width>20&&r.right<=innerWidth})()"), 'en el móvil se ve el botón Presentar')
     # A new object's tab opens and shows whole, though the tabs scroll.
     tabin = ev("(async()=>{const R=window.__revela;R.store.commit(()=>R.store.setSelection(null),{history:false});await new Promise(r=>setTimeout(r,100));document.querySelector('#ribbon [data-tab=ctx]').textContent='';document.querySelector('#ribbon .tabs').scrollLeft=0;R.blocks.addShape('rect');await new Promise(r=>setTimeout(r,300));const t=document.querySelector('#ribbon [data-tab=ctx]').getBoundingClientRect(),b=document.querySelector('#ribbon .tabs').getBoundingClientRect();return t.width>20&&t.left>=b.left-1&&t.right<=b.right+1})()")
     check(tabin, 'la pestaña del objeto nuevo se ve entera')
@@ -145,6 +146,51 @@ def math_keyboard_check(send, recv, port):
     check(not ev("!!document.getElementById('math-modal')"), 'un clic en el fondo cierra el editor')
     ev("document.querySelector('#math-modal .modal-close')?.click();1"); time.sleep(0.4)
     check(not ev("window.mathVirtualKeyboard?.visible"), 'al cerrar el editor se oculta el teclado')
+    recv(send('Target.closeTarget', targetId=tid))
+    return fails
+
+
+def mouse_checks(send, recv, port):
+    """Real mouse and keys (trusted events, which the suite can't make): a
+    double-click on a word selects it; Esc closes a dialog and focus goes back."""
+    import json as _j
+    tid = recv(send('Target.createTarget', url='about:blank'))['result']['targetId']
+    sid = recv(send('Target.attachToTarget', targetId=tid, flatten=True))['result']['sessionId']
+    ev = lambda e: recv(send('Runtime.evaluate', sid, expression=e, awaitPromise=True, returnByValue=True)).get('result', {}).get('result', {}).get('value')
+    def click(x, y, n=1):
+        recv(send('Input.dispatchMouseEvent', sid, type='mouseMoved', x=x, y=y))
+        for c in range(1, n + 1):
+            for kind in ('mousePressed', 'mouseReleased'):
+                recv(send('Input.dispatchMouseEvent', sid, type=kind, x=x, y=y, button='left', clickCount=c))
+    def key(k, vk):
+        for kind in ('rawKeyDown', 'keyUp'):
+            recv(send('Input.dispatchKeyEvent', sid, type=kind, key=k, code=k, windowsVirtualKeyCode=vk))
+    recv(send('Emulation.setDeviceMetricsOverride', sid, width=1280, height=800, deviceScaleFactor=1, mobile=False))
+    recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/index.html?test')); time.sleep(3)
+    ev("(()=>{const R=window.__revela;R.store.replaceDeck(R.model.emptyDeck());R.blocks.addText('Uno dos tres');R.store.setSelection(null);R.render();return 1})()"); time.sleep(0.4)
+    fails = []
+    def check(ok, name):
+        if not ok: fails.append('✗ ratón: ' + name)
+    # The middle of "dos", in the text box just added.
+    at = _j.loads(ev("""(()=>{const b=window.__revela.store.currentSlide().blocks.at(-1),e=document.querySelector(`#stage .block[data-id="${b.id}"] .rich`);
+      const n=document.createTreeWalker(e,NodeFilter.SHOW_TEXT).nextNode(),r=document.createRange(),i=n.nodeValue.indexOf('dos');r.setStart(n,i+1);r.setEnd(n,i+2);
+      const q=r.getBoundingClientRect();return JSON.stringify({x:q.left+q.width/2,y:q.top+q.height/2})})()""") or 'null')
+    if at:
+        click(at['x'], at['y'], 2); time.sleep(0.3)
+        sel = ev("getSelection().toString()")
+        check(sel == 'dos', f'doble clic en una palabra la selecciona ({sel!r})')
+    else: check(False, 'texto de prueba en la diapositiva')
+    ev("document.activeElement?.blur?.();1"); time.sleep(0.2)
+    # A dialog opened from a button: focus goes in; Esc closes it and focus goes back to the button.
+    b = _j.loads(ev("(()=>{document.querySelector('#ribbon [data-tab=view]').click();const b=document.querySelector('#ribbon [data-action=shortcuts]'),r=b.getBoundingClientRect();return JSON.stringify({x:r.left+r.width/2,y:r.top+r.height/2,w:r.width})})()") or 'null')
+    time.sleep(0.3)
+    if b and b['w'] > 0:
+        click(b['x'], b['y']); time.sleep(0.4)
+        check(ev("!!document.activeElement?.closest('#sc-modal')"), 'al abrir un diálogo el foco entra en él')
+        key('Escape', 27); time.sleep(0.3)
+        check(not ev("!!document.getElementById('sc-modal')"), 'Esc cierra el diálogo')
+        check(ev("document.activeElement?.dataset?.action==='shortcuts'"), 'al cerrarlo el foco vuelve al botón')
+    else: check(False, 'botón de atajos en la cinta (Ver)')
     recv(send('Target.closeTarget', targetId=tid))
     return fails
 
@@ -400,11 +446,15 @@ def main():
         touch_fail = touch_checks(send, recv, port) if out.startswith('REVELATEST PASS') else []
         if touch_fail:
             print('REVELATEST FAIL touch'); print('\n'.join(touch_fail)); return 1
-        if out.startswith('REVELATEST PASS'): out += ' + táctil 12/12'
+        if out.startswith('REVELATEST PASS'): out += ' + táctil 13/13'
         math_fail = math_keyboard_check(send, recv, port) if out.startswith('REVELATEST PASS') else []
         if math_fail:
             print('REVELATEST FAIL ecuación'); print('\n'.join(math_fail)); return 1
         if out.startswith('REVELATEST PASS'): out += ' + ecuación'
+        mouse_fail = mouse_checks(send, recv, port) if out.startswith('REVELATEST PASS') else []
+        if mouse_fail:
+            print('REVELATEST FAIL ratón'); print('\n'.join(mouse_fail)); return 1
+        if out.startswith('REVELATEST PASS'): out += ' + ratón'
         site_fail = site_checks(send, recv) if out.startswith('REVELATEST PASS') else []
         if site_fail:
             print('REVELATEST FAIL web'); print('\n'.join(site_fail)); return 1

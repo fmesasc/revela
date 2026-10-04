@@ -257,8 +257,11 @@ the server).
 3. Its interface goes in `ui/`: a button in `index.html` with a `data-action`
    handled in `ui/ribbon/actions.js`, and — if it acts on the selected object —
    an entry in that object's contextual tab (`ui/ribbon/contextual.js`) and
-   context menu; a dialog in `ui/dialogs/`, a small menu with
-   `ui/shell/menu.js`, styles in the matching `ui/styles/` file, strings
+   context menu; a dialog in `ui/dialogs/` (any `.modal-backdrop` with a
+   `.modal-close` or `.dlg-cancel` gets Esc, focus in and back, and Tab kept
+   inside from `ui/dialogs/modalkeys.js`), a small menu with
+   `ui/shell/menu.js`, a note when something slow ends or a file is downloaded
+   with `ui/shell/toast.js`, styles in the matching `ui/styles/` file, strings
    through `t()` with translations in `i18n/strings.js` (and `i18n/langs/`).
    Text into HTML goes through `esc` (`core/text.js`).
 4. A library from a CDN: add its pinned URL to `core/vendor.js`.

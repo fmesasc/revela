@@ -517,4 +517,82 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(sp.right <= se.left + 1 && Math.abs((sp.top + sp.bottom) / 2 - (se.top + se.bottom) / 2) < 8, 'con la etiqueta al lado');
     D.querySelector('[data-tab="home"]').click();
   });
+
+  // ---- Dialogs and menus with the keyboard (ui/dialogs/modalkeys.js) ----
+  const W = frame.contentWindow, frameTick = () => new Promise(r => W.requestAnimationFrame(() => setTimeout(r, 0)));
+  const press = (key, o = {}) => { const e = new W.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...o }); (D.activeElement || D.body).dispatchEvent(e); return e; };
+
+  await test('diálogos: se anuncian como tales, el foco entra, Esc los cierra y el foco vuelve', async () => {
+    reset(); D.querySelector('[data-tab="view"]').click(); await sleep(20);
+    const btn = D.querySelector('#ribbon [data-action="shortcuts"]'); btn.focus(); btn.click(); await frameTick();
+    const m = D.getElementById('sc-modal'), box = m.querySelector('.modal');
+    eq(box.getAttribute('role'), 'dialog', 'role=dialog'); eq(box.getAttribute('aria-modal'), 'true', 'aria-modal');
+    assert(D.getElementById(box.getAttribute('aria-labelledby'))?.textContent.trim(), 'con su título como nombre');
+    eq(m.querySelector('.modal-close').getAttribute('aria-label'), 'Cerrar', 'la ✕ se lee «Cerrar»');
+    assert(m.contains(D.activeElement), 'el foco entra en el diálogo');
+    assert(press('Escape').defaultPrevented, 'Esc se atiende'); await sleep(10);
+    assert(!D.getElementById('sc-modal'), 'Esc lo cierra');
+    eq(D.activeElement, btn, 'el foco vuelve al botón que lo abrió');
+    D.querySelector('[data-tab="home"]').click();
+  });
+
+  await test('confirmación: Aceptar con el foco (Intro), Esc cancela; Tab no sale del diálogo', async () => {
+    reset(); R.blocks.addText('Algo'); const n = slide().blocks.length;
+    D.querySelector('[data-action="new"]').click(); await frameTick();
+    assert(D.activeElement?.classList.contains('dlg-ok'), 'el foco en Aceptar (Intro confirma)');
+    press('Tab'); assert(D.querySelector('.modal-backdrop').contains(D.activeElement), 'Tab desde el último botón vuelve al primero');
+    press('Tab', { shiftKey: true }); assert(D.querySelector('.modal-backdrop').contains(D.activeElement), 'y Mayús+Tab al revés');
+    press('Escape'); await sleep(20);
+    assert(!D.querySelector('.modal-backdrop'), 'Esc cierra la pregunta');
+    eq(slide().blocks.length, n, 'y equivale a Cancelar: nada se pierde');
+  });
+
+  await test('Esc cierra primero el menú abierto (galería, menú contextual), sin quitar la selección', async () => {
+    reset(); R.blocks.addText('Hola'); const id = R.state.ui.selection; await sleep(10);
+    D.querySelector('[data-newslide-open]').click(); await sleep(10);
+    assert(D.querySelector('.popover'), 'la galería de diseños se abre');
+    press('Escape'); assert(!D.querySelector('.popover'), 'Esc la cierra'); eq(R.state.ui.selection, id, 'el objeto sigue seleccionado');
+    const st = D.getElementById('stage').getBoundingClientRect();
+    D.getElementById('stage').dispatchEvent(new W.MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: st.left + 5, clientY: st.top + 5 })); await sleep(10);
+    assert(!D.getElementById('context-menu').hidden, 'el menú contextual se abre');
+    press('Escape'); assert(D.getElementById('context-menu').hidden, 'Esc lo cierra');
+  });
+
+  await test('archivos soltados en cualquier parte de la ventana (no solo en la diapositiva) se insertan, con aviso al arrastrar', async () => {
+    reset(); const n = slide().blocks.length;
+    const png = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAIAAADwyuo0AAAAEElEQVR4nGP4z8AARwzIHABvqgf5gNwAKAAAAABJRU5ErkJggg=='), c => c.charCodeAt(0));
+    const dt = new W.DataTransfer(); dt.items.add(new W.File([png], 'foto.png', { type: 'image/png' }));
+    const ribbon = D.querySelector('#ribbon .tabs');
+    const over = new W.DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt }); ribbon.dispatchEvent(over);
+    assert(over.defaultPrevented, 'la ventana acepta el archivo (el navegador no se va del editor a mostrarlo)');
+    assert(D.body.classList.contains('file-drag') && D.body.dataset.dropHint, 'se dice qué pasará al soltarlo');
+    const drop = new W.DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }); ribbon.dispatchEvent(drop);
+    assert(drop.defaultPrevented, 'soltado en la cinta, el navegador no lo abre'); await sleep(150);
+    eq(slide().blocks.length, n + 1, 'la imagen entra en la diapositiva'); eq(slide().blocks.at(-1).type, 'image', 'como imagen');
+    assert(!D.body.classList.contains('file-drag'), 'el aviso se va');
+  });
+
+  await test('Guardar y exportar dicen qué ha pasado (avisos abajo)', async () => {
+    reset(); D.getElementById('toasts')?.remove();
+    D.querySelector('#ribbon [data-action="save"].mini').click(); await sleep(20);
+    const box = D.getElementById('toasts');
+    assert(box && box.getAttribute('aria-live') === 'polite', 'una zona de avisos que se lee en voz alta');
+    assert(/revela\.json/.test(box.textContent) && /Abrir/.test(box.textContent), 'dice qué se descargó y cómo seguir: ' + box.textContent);
+    box.querySelector('.toast').click(); await sleep(300); eq(box.children.length, 0, 'un clic lo quita');
+  });
+
+  await test('si el navegador no puede guardar, la barra lo dice y un clic descarga una copia', async () => {
+    reset(); const S = W.Storage.prototype, P = W.IDBObjectStore.prototype, set = S.setItem, put = P.put;
+    const ss = D.getElementById('save-state');
+    try {
+      S.setItem = function (k) { if (k === R.model.STORAGE_KEY) throw new W.DOMException('lleno', 'QuotaExceededError'); return set.apply(this, arguments); };
+      P.put = function () { throw new W.DOMException('lleno', 'QuotaExceededError'); };
+      R.blocks.addText('Algo'); await sleep(700);
+      assert(ss.classList.contains('failed') && !ss.hidden, 'aviso «Sin guardar» a la vista');
+      eq(ss.querySelector('span').textContent, 'Sin guardar', 'con texto'); assert(/descargar una copia/.test(ss.title), 'y qué hacer');
+    } finally { S.setItem = set; P.put = put; }
+    R.blocks.addText('Otra'); await sleep(700);
+    assert(!ss.classList.contains('failed'), 'al volver a poder guardar, vuelve «Guardado»');
+    eq(ss.querySelector('span').textContent, 'Guardado', 'texto de vuelta');
+  });
 }

@@ -619,8 +619,10 @@ export async function buildPptxBlob(deck = state.deck) {
   return addMotion(await pptx.write({ outputType: 'blob' }), deck);
 }
 
+// True once downloaded; false if it failed (the user is told why).
 export async function exportPPTX() {
   try {
     download(await buildPptxBlob(), slug(state.deck.name) + '.pptx');
-  } catch (e) { alertUser(t('No se pudo exportar a PowerPoint: ') + (e.message || e)); }
+    return true;
+  } catch (e) { alertUser(t('No se pudo exportar a PowerPoint: ') + (e.message || e)); return false; }
 }

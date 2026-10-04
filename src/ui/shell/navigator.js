@@ -141,8 +141,10 @@ function thumb(slide) {
     e.dataTransfer?.setData(SLIDE_DRAG, slide.id); if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copyMove';
   });
   el.addEventListener('dragend', () => { dragFrom = null; el.classList.remove('dragging'); clearMarks(); });
-  el.addEventListener('dragover', e => { e.preventDefault(); markTarget(el); });
+  // (Only slides being moved: files dropped here go to the window's own handler.)
+  el.addEventListener('dragover', e => { if (dragFrom === null) return; e.preventDefault(); markTarget(el); });
   el.addEventListener('drop', e => {
+    if (dragFrom === null) return;
     e.preventDefault();
     const to = +el.dataset.index;
     if (dragFrom !== null && dragFrom !== to) moveSlide(dragFrom, to);

@@ -102,7 +102,10 @@ body.master-view #navigator{display:flex}
 .lt-count{background:var(--accent);color:#fff;border-radius:8px;font-size:10px;padding:0 5px;line-height:15px;font-weight:600}
 .layout-grid .layout-master{grid-column:1/-1;font-size:11px;color:var(--txt2);text-transform:uppercase;margin-top:6px}
 .layout-thumb .layout-name{font-size:11px;color:var(--txt2);padding:3px 2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.block .rich[data-ph]:empty::before{content:attr(data-ph);opacity:.45;font-style:italic;pointer-events:none}
+/* (The prompt on one line, smaller if the box is narrow for it: in a big title font
+   it would spill over the box below. Ellipsis if it still doesn't fit.) */
+.block .rich[data-ph]:empty{container-type:inline-size}
+.block .rich[data-ph]:empty::before{content:attr(data-ph);opacity:.45;font-style:italic;pointer-events:none;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:min(1em,5.4cqi)}
 .block:not(.selected):has(.rich[data-ph]:empty){outline:1px dashed #8a8a8a88}
 /* Template gallery */
 .gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;max-height:65vh;overflow:auto;padding:2px}
@@ -172,6 +175,11 @@ body.master-view #navigator{display:flex}
 @media (max-width:600px){
   .titlebar .premium{display:none}                 /* no room on a phone held upright */
 }
+@media (max-width:480px){                          /* room for the Present button */
+  .titlebar{gap:4px}
+  .titlebar .doc-name{min-width:44px}
+}
+@media (max-width:400px){.titlebar .donate{display:none}}   /* (small phones: Present before the heart) */
 @media (max-width:860px){
   .lang-select{max-width:92px;flex-shrink:0}
   .qat [data-action="save"]{display:none}       /* also in File; frees room on phones */
@@ -462,6 +470,9 @@ body.master-view #navigator{display:flex}
 .an-step{font-weight:400;font-size:11px;color:var(--txt2);background:var(--bg);border-radius:8px;padding:1px 6px;margin-inline-start:4px}.an-grid .an-chk{flex-direction:row;align-items:center;gap:4px}
 .gal-blank .thumb-canvas{display:grid;place-items:center;background:var(--bg);border:2px dashed var(--line2)}.gal-blank .thumb-canvas .ms{font-size:44px;color:var(--accent)}
 #canvas-wrap.file-drop{outline:3px dashed var(--accent);outline-offset:-10px;background:color-mix(in srgb,var(--accent) 8%,transparent)}
+/* (While a file is dragged over the window: what dropping it will do.) */
+body.file-drag::after{content:attr(data-drop-hint);position:fixed;left:50%;bottom:44px;transform:translateX(-50%);z-index:3500;pointer-events:none;
+  max-width:calc(100vw - 24px);padding:9px 16px;border-radius:10px;background:var(--accent);color:var(--on-accent);font-size:13px;box-shadow:0 8px 24px #0003}
 /* Picture search filters; the checkerboard shows which previews are see-through. */
 .el-filters{display:grid;grid-template-columns:1fr 1fr;gap:6px 8px;font-size:12px;align-items:center}
 .el-filters[hidden]{display:none}

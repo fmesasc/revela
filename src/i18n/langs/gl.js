@@ -2391,4 +2391,13 @@ export default {
   "Ver la cámara en el editor": "Ver a cámara no editor",
   "Dejar de ver la cámara en el editor": "Deixar de ver a cámara no editor",
   "El fondo se separa de la persona en el propio navegador: la imagen de la cámara no sale de tu equipo.": "O fondo sepárase da persoa no propio navegador: a imaxe da cámara non sae do teu equipo.",
+  "Creando el archivo ODP…": "Creando o ficheiro ODP…",
+  "Archivo ODP descargado.": "Ficheiro ODP descargado.",
+  "Página web descargada: se abre con cualquier navegador.": "Páxina web descargada: ábrese con calquera navegador.",
+  "Creando el archivo de PowerPoint…": "Creando o ficheiro de PowerPoint…",
+  "PowerPoint descargado.": "PowerPoint descargado.",
+  "Proyecto descargado (.revela.json). Para seguir con él otro día: Archivo ▸ Abrir.": "Proxecto descargado (.revela.json). Para seguir con el outro día: Ficheiro ▸ Abrir.",
+  "Suelta el archivo para añadirlo a la diapositiva (o abrirlo, si es una presentación)": "Solta o ficheiro para engadilo á diapositiva (ou abrilo, se é unha presentación)",
+  "Sin guardar": "Sen gardar",
+  "Este navegador no deja guardar la presentación (¿ventana privada o disco lleno?). Haz clic para descargar una copia.": "Este navegador non deixa gardar a presentación (xanela privada ou disco cheo?). Fai clic para descargar unha copia.",
 };
