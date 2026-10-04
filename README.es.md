@@ -29,6 +29,9 @@ reveal.js, de modo que el resultado es una página web estándar y autónoma.
   burbujas, mapas; desde tabla o CSV en vivo),
   iconos, ecuaciones, código, **modelos 3D**, vídeo, PDF y archivos adjuntos,
   tabulaciones, fuentes propias y dictado por voz.
+- **Buscar comandos** (Ctrl+K, Alt+Q o «/»): escribe lo que quieres («código»,
+  «imagen 3D», «pie de página»…) en cualquier idioma y se ejecuta; enseña
+  dónde está en la cinta.
 - **Copiar, cortar y pegar** (Ctrl+C/X/V, cinta y menú contextual; también
   con pulsación larga en el móvil), deshacer/rehacer, alineación con guías y
   espaciado inteligente, agrupar, bloquear, panel de selección (ocultar,

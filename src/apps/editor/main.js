@@ -37,6 +37,7 @@ import * as comments from '../../features/collab/comments.js';
 import * as protect from '../../features/collab/protect.js';
 import { initRibbon, renderRibbon } from '../../ui/ribbon/ribbon.js';
 import { initContextMenu } from '../../ui/shell/contextmenu.js';
+import * as palette from '../../ui/shell/palette.js';
 import { initDraw } from '../../ui/shell/draw.js';
 import { initI18n, t } from '../../i18n/index.js';
 import { deleteSelected, duplicateSelected, groupSelected, ungroupSelected, addImage, addTableFromText, addText } from '../../features/document/blocks.js';
@@ -219,6 +220,7 @@ initRibbon();
 initContextMenu();
 initDraw();
 initModalKeys();
+palette.initPalette();
 document.addEventListener('keydown', keyboard);
 // Paste onto the slide (not while typing): an image becomes a picture, cells
 // copied from a spreadsheet become a table, other text a text box.
@@ -254,7 +256,7 @@ initI18n();
 // and inspect the real app. Only active with ?test in the URL.
 const testing = new URLSearchParams(location.search).has('test');
 if (testing)
-  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, examples, designer, pptxImport, odp, api, ai, versions, comments, protect, aiDeck, aiAgent, poll, dashboards, stock, clipboard: clip, markdown, notify, vendor, session, objects, picture, shares, shareServer, clouddocs, review, files, openfile, video: () => import('../../io/export/video.js') };
+  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, examples, designer, pptxImport, odp, api, ai, versions, comments, protect, aiDeck, aiAgent, poll, dashboards, stock, clipboard: clip, markdown, notify, vendor, session, objects, picture, shares, shareServer, clouddocs, review, files, openfile, palette, video: () => import('../../io/export/video.js') };
 
 // Public scripting API for plugins, macros and the console; installed plugins
 // load after the editor is ready (not in the test harness).

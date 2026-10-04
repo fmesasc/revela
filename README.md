@@ -29,6 +29,9 @@ standard, self-contained web page.
   bubble, maps; from a table or a
   live CSV), icons, equations, code, **3D models**, video, PDFs and attached
   files, tab stops, custom fonts and voice dictation.
+- **Command search** (Ctrl+K, Alt+Q or «/»): type what you want («code»,
+  «3D image», «footer»…) in any language and run it; it shows where it lives
+  in the ribbon.
 - **Copy, cut and paste** (Ctrl+C/X/V, ribbon and context menu; long-press on
   phones), undo/redo, alignment guides and smart spacing, grouping, locking,
   selection pane (hide, rename, reorder), format painter for any object,

@@ -16,7 +16,7 @@ export const SHORTCUTS = [
   ['Arrastrar en vacío', 'Selección múltiple'], ['Mayús + clic', 'Añadir a la selección'],
   ['Tab / Mayús + Tab', 'Recorrer los objetos (con la diapositiva enfocada)'],
   ['Mantener pulsado', 'Menú de opciones en pantallas táctiles'],
-  ['Ctrl/⌘ + A', 'Seleccionar todo'], ['Esc', 'Quitar la selección'], ['Ctrl/⌘ + S', 'Guardar'],
+  ['Ctrl/⌘ + K · Alt + Q · /', 'Buscar comandos'], ['Ctrl/⌘ + A', 'Seleccionar todo'], ['Esc', 'Quitar la selección'], ['Ctrl/⌘ + S', 'Guardar'],
   ['', 'Diapositivas'],
   ['Ctrl/⌘ + M', 'Nueva diapositiva'], ['Re Pág · Av Pág', 'Diapositiva anterior · siguiente'], ['Inicio · Fin', 'Primera · última diapositiva'],
   ['Flechas (sin nada seleccionado)', 'Cambiar de diapositiva'], ['F5', 'Presentar desde el principio'], ['Mayús + F5', 'Presentar desde esta diapositiva'],
