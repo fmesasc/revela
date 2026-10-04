@@ -70,6 +70,50 @@ export function addCamera(shape = 'circle') {
 }
 export const cameraRadius = b => (b.shape === 'circle' ? '50%' : b.shape === 'rounded' ? '14%' : '0');
 
+// Its look: a colour filter, the brightness and the background behind the
+// person (blurred, removed so the slide shows through, a colour or a picture).
+// The background needs the person segmenter (io/runtime/camera.js); a filter alone doesn't.
+export const CAMERA_FILTERS = [['', 'Sin filtro'], ['bw', 'Blanco y negro'], ['sepia', 'Sepia'], ['warm', 'Cálido'], ['cool', 'Frío'],
+  ['contrast', 'Alto contraste'], ['vivid', 'Colores intensos'], ['faded', 'Desvaído'], ['soft', 'Desenfoque suave']];
+export const CAMERA_BACKGROUNDS = [['', 'Normal'], ['blur', 'Desenfocar fondo'], ['remove', 'Quitar fondo'], ['color', 'Fondo de color'], ['image', 'Imagen de fondo']];
+const FILTER_CSS = { bw: 'grayscale(1) contrast(1.1)', sepia: 'sepia(.8)', warm: 'url(#rv-cam-warm)', cool: 'url(#rv-cam-cool)',
+  contrast: 'contrast(1.5) saturate(1.15)', vivid: 'saturate(1.7) contrast(1.05)', faded: 'contrast(.82) saturate(.55) brightness(1.08)', soft: 'blur(1.5px) brightness(1.04)' };
+// Warm and cool tint the colours (a colour matrix: CSS has no such filter).
+const MATRIX = { warm: '1.1 0 0 0 .04 0 1.02 0 0 .01 0 0 .82 0 0 0 0 0 1 0', cool: '.88 0 0 0 0 0 .98 0 0 .02 0 0 1.12 0 .06 0 0 0 1 0' };
+export const DEFAULT_CAMERA_COLOR = '#1e3a5f';
+export const cameraBrightness = b => Math.max(30, Math.min(200, Math.round(+b.brightness || 100)));
+export const cameraFilterCSS = b => [FILTER_CSS[b.filter], cameraBrightness(b) !== 100 && `brightness(${cameraBrightness(b) / 100})`].filter(Boolean).join(' ');
+// What the segmenter does: 'blur' (the background, blurred) or 'cut' (only the person; behind, the box's own background).
+export const cameraSegment = b => (b.bg === 'blur' ? 'blur' : ['remove', 'color', 'image'].includes(b.bg) ? 'cut' : '');
+const cssURL = u => String(u).replace(/['"\\()\s<>&]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0'));
+// The box: its shape and what is behind the person.
+export function cameraBoxCSS(b) {
+  const bg = b.bg === 'remove' ? 'transparent' : b.bg === 'color' ? (/^#[0-9a-f]{3,8}$/i.test(b.bgColor || '') ? b.bgColor : DEFAULT_CAMERA_COLOR)
+    : b.bg === 'image' && b.bgImage ? `#223 url('${cssURL(b.bgImage)}') center/cover no-repeat` : '#223';
+  return `border-radius:${cameraRadius(b)};overflow:hidden;background:${bg};`;
+}
+// Inside the box: the video, and the canvas the segmenter draws on (at the box's size).
+export function cameraInnerHTML(b) {
+  const fx = cameraFilterCSS(b), seg = cameraSegment(b);
+  const st = `position:absolute;left:0;top:0;width:100%;height:100%;margin:0;object-fit:cover;pointer-events:none;${fx ? `filter:${fx};` : ''}${b.mirror !== false ? 'transform:scaleX(-1);' : ''}`;
+  return (MATRIX[b.filter] ? `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="rv-cam-${b.filter}" color-interpolation-filters="sRGB"><feColorMatrix values="${MATRIX[b.filter]}"/></filter></svg>` : '')
+    + `<video data-camera autoplay muted playsinline data-ignore style="${st}"></video>`
+    + (seg ? `<canvas width="${Math.max(1, Math.round(b.w))}" height="${Math.max(1, Math.round(b.h))}" style="${st}visibility:hidden"></canvas>` : '');
+}
+export const cameraSig = b => JSON.stringify([b.shape, b.mirror !== false, b.filter || '', cameraBrightness(b), b.bg || '', b.bgColor || '',
+  b.bgImage ? b.bgImage.length + b.bgImage.slice(-24) : '']);
+// Change its look; an empty value goes back to the default.
+export function setCameraLook(id, props) {
+  commit(() => {
+    const b = currentSlide().blocks.find(x => x.id === id); if (!b || b.type !== 'camera') return;
+    for (const [k, v] of Object.entries(props)) {
+      if (k === 'brightness') { const n = cameraBrightness({ brightness: v }); if (n === 100) delete b.brightness; else b.brightness = n; }
+      else if (v == null || v === '' || (k === 'filter' && !FILTER_CSS[v]) || (k === 'bg' && !cameraSegment({ bg: v }))) delete b[k];
+      else b[k] = v;
+    }
+  });
+}
+
 // ---- Video and GIF playback ------------------------------------------------------
 // A video or an animated GIF can play in segments (each click of the
 // presentation plays the next: from second X to second Y), start by itself

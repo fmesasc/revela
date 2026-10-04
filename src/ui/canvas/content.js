@@ -19,7 +19,7 @@ import { blockPreview } from '../shell/preview.js';
 import { t, currentLang } from '../../i18n/index.js';
 import { setEmbedDisplay } from '../../features/document/blocks.js';
 import { currentPalette } from '../../features/design/palettes.js';
-import { cameraRadius } from '../../features/live/media.js';
+import { cameraView } from './cameraview.js';
 import { pollEditorHTML, savedVotes } from '../../features/live/poll.js';
 import { PH_PROMPT, isEmptyPlaceholder, styled, levelVars, fillPlaceholder } from '../../features/document/master.js';
 import { tableBlock, chartBlock } from '../../core/model.js';
@@ -205,11 +205,7 @@ export function content(b) {
   if (b.type === 'poll') {
     const d = document.createElement('div'); d.className = 'poll-blk'; d.dataset.sig = pollSig(b); d.innerHTML = pollEditorHTML(b, currentPalette().accents); return d;
   }
-  if (b.type === 'camera') {
-    const d = document.createElement('div'); d.className = 'camera-blk'; d.style.borderRadius = cameraRadius(b);
-    d.innerHTML = `<i class="ms">videocam</i><span>${t('Cámara en directo')}</span>`;
-    return d;
-  }
+  if (b.type === 'camera') return cameraView(b);
   if (b.type === 'audio') { const a = document.createElement('audio'); a.src = b.src; a.controls = true; return a; }
   if (b.type === 'embed') return embedContent(b);
   if (b.type === 'placeholder') {

@@ -70,6 +70,9 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 /* Camera (Cameo) and recording */
 .camera-blk{width:100%;height:100%;background:#223;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;overflow:hidden;font-size:14px}
 .camera-blk .ms{font-size:48px;opacity:.8}
+.camera-blk small{font-size:12px;opacity:.75;text-align:center;padding:0 8px}
+.camera-blk.cut{background:repeating-conic-gradient(#2234 0 25%,#2238 0 50%) 0 0/24px 24px!important;outline:2px dashed #8899aa;outline-offset:-2px}
+.camera-blk.live{position:relative}
 #rec-bar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:10001;display:flex;align-items:center;gap:10px;
   padding:8px 12px;border-radius:24px;background:#1b1d22;color:#fff;box-shadow:0 4px 18px #0006;font:14px system-ui,sans-serif}
 #rec-bar .rec-dot{width:10px;height:10px;border-radius:50%;background:#e53935;animation:recBlink 1s infinite}

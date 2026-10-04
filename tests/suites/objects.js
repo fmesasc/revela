@@ -329,9 +329,142 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(d && d.style.borderRadius === '50%', 'marcador circular en el lienzo');
     const html = R.io.buildHTML();
     assert(/<video[^>]*data-camera autoplay muted playsinline/.test(html), 'vídeo de cámara en el export');
-    assert(/getUserMedia\(\{video:true/.test(html), 'pide la cámara al mostrar la diapositiva');
+    assert(/getUserMedia\(\{ video: true/.test(html), 'pide la cámara al mostrar la diapositiva');
+    assert(/data-camera-box style=[^>]*border-radius:50%/.test(html) && !/data-bg=/.test(html) && !/<canvas width/.test(html), 'sin efecto de fondo: solo el vídeo');
     slide().blocks = slide().blocks.filter(x => x.id !== b.id);
     assert(!/getUserMedia/.test(R.io.buildHTML()), 'sin cámara no se incluye el script');
+  });
+
+  await test('cámara en directo: filtros, brillo y fondo desde la cinta, el menú y el diálogo; y en el export', async () => {
+    reset(); D.querySelector('[data-action="insert-camera"]').click(); await sleep(20);
+    const id = last().id, cam = () => slide().blocks.find(x => x.id === id), W = frame.contentWindow;
+    D.querySelector('[data-tab="ctx"]').click(); await sleep(40);
+    const field = re => [...D.querySelectorAll('[data-page="ctx"] .ctx-field')].find(f => re.test(f.querySelector('span').textContent));
+    const pick = async (re, v) => { const s = field(re).querySelector('select, input'); s.value = v; s.dispatchEvent(new W.Event('change')); await sleep(40); };
+    await pick(/^Filtro$/, 'sepia'); eq(cam().filter, 'sepia', 'filtro desde la cinta');
+    await pick(/^Brillo/, '120'); eq(cam().brightness, 120, 'brillo');
+    await pick(/^Fondo$/, 'blur'); eq(cam().bg, 'blur', 'fondo desenfocado');
+    const blk = D.querySelector(`.block[data-id="${id}"] .camera-blk`);
+    assert(/Desenfocar fondo/.test(blk.textContent) && /Sepia/.test(blk.textContent), 'el marcador dice qué efecto tiene');
+    let html = R.io.buildHTML();
+    assert(/<div[^>]*data-camera-box data-bg="blur"/.test(html), 'el export marca el fondo a desenfocar');
+    assert(/<video[^>]*data-camera autoplay muted playsinline data-ignore style="[^"]*filter:sepia\(\.8\) brightness\(1\.2\);transform:scaleX\(-1\)/.test(html), 'filtro, brillo y reflejo en el vídeo (y reveal.js no lo pausa)');
+    assert(/<canvas width="260" height="260"/.test(html), 'un lienzo al tamaño de la cámara para dibujar sin fondo');
+    assert(/revelaCameraRuntime\("https:\/\/cdn\.jsdelivr\.net\/npm\/@mediapipe\/tasks-vision@[\d.]+", "https:\/\/storage\.googleapis\.com\/[^"]+selfie_segmenter\.tflite"\)/.test(html), 'el segmentador: versión fija, cargado solo al mostrar la cámara');
+    // Context menu: background straight away; the dialog for the rest.
+    const menu = () => { D.querySelector(`.block[data-id="${id}"]`).dispatchEvent(new W.MouseEvent('contextmenu', { bubbles: true, clientX: 980, clientY: 440 })); return [...D.querySelectorAll('#context-menu .ctx-item')]; };
+    menu().find(x => x.textContent === 'Quitar el fondo').click(); await sleep(30);
+    eq(cam().bg, 'remove', 'quitar el fondo desde el menú');
+    assert(/data-bg="cut"[^>]*background:transparent/.test(R.io.buildHTML()), 'sin fondo: se ve la diapositiva detrás');
+    menu().find(x => x.textContent === 'Filtros y fondo…').click(); await sleep(30);
+    const m = D.getElementById('cam-modal'); assert(m, 'diálogo de filtros y fondo');
+    m.querySelector('.cam-bg').value = 'color'; m.querySelector('.cam-bg').dispatchEvent(new W.Event('change')); await sleep(20);
+    assert(!m.querySelector('.cam-color-l').hidden, 'con el color a elegir');
+    m.querySelector('.cam-color').value = '#00ff00'; m.querySelector('.cam-color').dispatchEvent(new W.Event('input'));
+    m.querySelector('.cam-filter').value = 'cool'; m.querySelector('.cam-filter').dispatchEvent(new W.Event('change')); await sleep(20);
+    eq(JSON.stringify([cam().bg, cam().bgColor, cam().filter]), '["color","#00ff00","cool"]', 'color del fondo y filtro desde el diálogo');
+    m.querySelector('.modal-close').click();
+    html = R.io.buildHTML();
+    assert(/data-bg="cut"[^>]*background:#00ff00/.test(html) && /<filter id="rv-cam-cool"/.test(html) && /filter:url\(#rv-cam-cool\)/.test(html), 'fondo de color; el tono frío, con su matriz de color');
+    // Back to normal: nothing extra.
+    const M = await W.eval("import('/src/features/live/media.js')");
+    M.setCameraLook(id, { filter: '', bg: '', brightness: 100, bgColor: null }); await sleep(20);
+    eq(JSON.stringify(['filter', 'bg', 'brightness', 'bgColor'].filter(k => k in cam())), '[]', 'sin efectos no se guarda nada');
+    M.setCameraLook(id, { filter: 'nope', bg: 'nope' }); eq(cam().filter ?? cam().bg ?? null, null, 'valores desconocidos: se ignoran');
+    eq(M.cameraFilterCSS({ filter: 'bw', brightness: 500 }), 'grayscale(1) contrast(1.1) brightness(2)', 'el brillo, acotado');
+    eq(M.cameraBoxCSS({ shape: 'rect', bg: 'image', bgImage: "x'); color:red" }).includes("url('x%27%29;%20color:red')"), true, 'la imagen de fondo, sin salirse del CSS');
+    D.querySelector('[data-tab="home"]').click();
+  });
+
+  await test('cámara en directo: el motor (vídeo, máscara de la persona, pausa y vuelta, sin segmentador)', async () => {
+    const W = frame.contentWindow, C = await W.eval("import('/src/io/runtime/camera.js')"), M = await W.eval("import('/src/features/live/media.js')");
+    const host = D.createElement('div'); host.style.cssText = 'position:fixed;left:0;top:0;width:160px;height:120px';
+    host.innerHTML = `<div data-camera-box data-bg="cut" style="position:relative;width:160px;height:120px">${M.cameraInnerHTML({ w: 160, h: 120, bg: 'remove', mirror: false })}</div>`;
+    D.body.appendChild(host);
+    const bx = host.firstElementChild, v = bx.querySelector('video'), c = bx.querySelector('canvas');
+    // A fake segmenter: the person is the left half.
+    let calls = 0; const seg = { segmentForVideo() { calls++; const f = new Float32Array(8 * 6); for (let i = 0; i < f.length; i++) f[i] = i % 8 < 4 ? 1 : 0; return { confidenceMasks: [{ width: 8, height: 6, getAsFloat32Array: () => f }], close() {} }; } };
+    const eng = C.createCameraEngine({ keep: true, load: () => seg });
+    let eng2;
+    try {
+      await eng.show([bx]);
+      for (let i = 0; i < 60 && !(calls && c.style.visibility === 'visible'); i++) await sleep(50);
+      assert(v.srcObject && !v.paused, 'la cámara (falsa) en el vídeo');
+      assert(calls > 0 && c.style.visibility === 'visible' && v.style.opacity === '0', 'dibuja en el lienzo con la máscara');
+      const px = (x, y) => c.getContext('2d').getImageData(x, y, 1, 1).data[3];
+      assert(px(20, 60) > 200 && px(140, 60) === 0, 'la persona se ve, el fondo es transparente');
+      // Another slide, and back (the bug: the last frame stayed still).
+      await eng.show([]); assert(v.paused, 'otra diapositiva: en pausa');
+      const n = calls; await sleep(200); eq(calls, n, 'y sin procesar');
+      await eng.show([bx]); await sleep(300);
+      assert(!v.paused && calls > n, 'al volver: sigue en directo');
+      v.pause(); await eng.show([bx]); assert(!v.paused, 'si algo la pausó, vuelve a reproducirse');
+      // Without a segmenter (no network, no WebGL…): the plain video.
+      eng2 = C.createCameraEngine({ keep: false, load: () => { throw new Error('x'); } });
+      c.style.visibility = 'hidden'; v.style.opacity = '';
+      await eng.show([]); await eng2.show([bx]); await sleep(100);
+      assert(!v.paused && c.style.visibility === 'hidden' && v.style.opacity === '', 'sin segmentador: el vídeo tal cual');
+      const tr = v.srcObject.getTracks()[0]; eng2.release();
+      assert(!v.srcObject && tr.readyState === 'ended', 'al soltarla, la cámara se apaga');
+    } finally { eng.release(); eng2?.release(); host.remove(); }
+  });
+
+  await test('cámara en directo: el segmentador de MediaPipe se carga y separa a la persona (la cámara falsa no tiene)', async () => {
+    const W = frame.contentWindow, C = await W.eval("import('/src/io/runtime/camera.js')"), M = await W.eval("import('/src/features/live/media.js')"), V = await W.eval("import('/src/core/vendor.js')");
+    const host = D.createElement('div'); host.style.cssText = 'position:fixed;left:0;top:0;width:160px;height:120px';
+    host.innerHTML = `<div data-camera-box data-bg="cut" style="position:relative;width:160px;height:120px">${M.cameraInnerHTML({ w: 160, h: 120, bg: 'remove' })}</div>`;
+    D.body.appendChild(host);
+    const bx = host.firstElementChild, c = bx.querySelector('canvas'), eng = C.createCameraEngine({ keep: true, vision: V.VISION, model: V.SELFIE_MODEL });
+    try {
+      await eng.show([bx]);
+      for (let i = 0; i < 400 && c.style.visibility !== 'visible'; i++) await sleep(50);
+      assert(c.style.visibility === 'visible', 'dibuja con el segmentador real');
+      await sleep(200);
+      const d = c.getContext('2d').getImageData(0, 0, 160, 120).data; let a = 0; for (let i = 3; i < d.length; i += 4) a += d[i];
+      assert(a / (160 * 120) < 20, 'sin persona en la imagen: todo fondo, transparente (la máscara buena es la de la persona)');
+    } finally { eng.release(); host.remove(); }
+  });
+
+  await test('cámara en directo en el editor: «Ver en directo» la enciende, y se apaga al dejar la diapositiva', async () => {
+    reset(); D.querySelector('[data-action="insert-camera"]').click(); await sleep(20);
+    const id = last().id, el = () => D.querySelector(`#stage .block[data-id="${id}"] .camera-blk`);
+    D.querySelector('[data-tab="ctx"]').click(); await sleep(40);
+    const liveBtn = () => [...D.querySelectorAll('[data-page="ctx"] button')].find(x => x.textContent.includes('Ver en directo'));
+    assert(!el().querySelector('video'), 'sin pedir la cámara: un marcador');
+    liveBtn().click();
+    let v; for (let i = 0; i < 60 && !((v = el().querySelector('video')) && v.srcObject && !v.paused); i++) await sleep(50);
+    assert(v && v.srcObject && !v.paused, 'la cámara en el lienzo');
+    assert(liveBtn().classList.contains('on'), 'el botón, encendido');
+    const tr = v.srcObject.getTracks()[0];
+    const M = await frame.contentWindow.eval("import('/src/features/live/media.js')"); M.setCameraLook(id, { bg: 'blur' });
+    await sleep(30);
+    assert(el().querySelector('canvas[width="260"]'), 'con fondo desenfocado: su lienzo');
+    R.store.commit(() => { slide().blocks.find(x => x.id === id).w = 300; }); await sleep(30);
+    assert(el().querySelector('canvas[width="300"]'), 'al cambiar de tamaño, el lienzo también');
+    R.slides.addSlide(); await sleep(60);
+    eq(tr.readyState, 'ended', 'en otra diapositiva la cámara se apaga');
+    R.store.undo(); await sleep(60);
+    const cv = await frame.contentWindow.eval("import('/src/ui/canvas/cameraview.js')"); cv.setCameraLive(false); await sleep(30);
+    assert(!el().querySelector('video'), 'apagada: otra vez el marcador');
+    D.querySelector('[data-tab="home"]').click();
+  });
+
+  await test('cámara al presentar: al volver a su diapositiva sigue en directo', async () => {
+    const d = R.model.emptyDeck(); R.store.replaceDeck(d);
+    d.slides[0].blocks.push({ id: 'cm1', type: 'camera', shape: 'circle', mirror: true, x: 100, y: 100, w: 200, h: 200, rotation: 0, animation: null });
+    d.slides.push({ ...JSON.parse(JSON.stringify(d.slides[0])), id: 'cam2', blocks: [] });
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:800px;visibility:hidden'; D.body.appendChild(f);
+    try {
+      f.srcdoc = R.io.buildHTML(d, { inApp: true });
+      for (let i = 0; i < 100 && !f.contentWindow.Reveal?.isReady?.(); i++) await sleep(100);
+      const W = f.contentWindow, v = f.contentDocument.querySelector('video[data-camera]');
+      for (let i = 0; i < 60 && (v.paused || !v.srcObject); i++) await sleep(50);
+      assert(v.srcObject && !v.paused, 'en directo en su diapositiva');
+      W.Reveal.slide(1); await sleep(300); assert(v.paused, 'pausada en otra diapositiva');
+      W.Reveal.slide(0); await sleep(300);
+      const t0 = v.currentTime; await sleep(400);
+      assert(!v.paused && v.currentTime > t0, 'al volver se sigue moviendo');
+    } finally { f.remove(); }
   });
 
   await test('grabar con la cámara inserta un vídeo', async () => {

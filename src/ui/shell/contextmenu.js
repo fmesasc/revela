@@ -27,9 +27,13 @@ import { openBackgroundDialog } from '../dialogs/background.js';
 import { masterMenu } from './masterview.js';
 import { playInEditor } from '../canvas/mediaview.js';
 import { isGif } from '../../features/live/media.js';
+import { cameraLive, setCameraLive, setCameraBackground } from '../canvas/cameraview.js';
+import { openCameraEffects } from '../dialogs/media.js';
 import { openImageAdjust, openMath, openChartData, openOpacity, openIconColor, openBoxStyle, openSlidePicker, openCaption, openAlt, openImageCrop, removeBackground, openTableStyle } from '../dialogs/object.js';
 
 let menuEl, menuOpenedAt = 0;
+// The live camera's background, straight from the menu.
+const CAMERA_BG_ITEMS = { '': 'Fondo normal', blur: 'Desenfocar el fondo', remove: 'Quitar el fondo', color: 'Fondo de color', image: 'Imagen de fondo…' };
 
 export function initContextMenu() {
   menuEl = document.createElement('div');
@@ -177,6 +181,10 @@ function forBlock(b, cell = null) {
       ['Forma: redondeada', () => commit(() => { b.shape = 'rounded'; })],
       ['Forma: rectángulo', () => commit(() => { b.shape = 'rect'; })],
       [b.mirror !== false ? 'No reflejar la imagen' : 'Reflejar la imagen', () => commit(() => { b.mirror = b.mirror === false; })],
+      null,
+      ['Filtros y fondo…', () => openCameraEffects(b)],
+      ...Object.entries(CAMERA_BG_ITEMS).filter(([v]) => v !== (b.bg || '')).map(([v, l]) => [l, () => setCameraBackground(b, v)]),
+      [cameraLive() ? 'Dejar de ver la cámara en el editor' : 'Ver la cámara en el editor', () => setCameraLive(!cameraLive())],
       null);
   } else if (b.type === 'figindex') {
     items.push(

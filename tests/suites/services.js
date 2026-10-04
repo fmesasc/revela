@@ -900,7 +900,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
 
   await test('núcleo: librerías externas en un solo sitio y cargadas una vez', async () => {
     for (const [k, v] of Object.entries(R.vendor))
-      if (typeof v === 'string') assert(/^https:\/\/cdn\.jsdelivr\.net\/npm\/(@[^/]+\/)?[^/@]+@\d/.test(v), k + ' con versión fijada');
+      if (typeof v === 'string') assert(/^https:\/\/cdn\.jsdelivr\.net\/npm\/(@[^/]+\/)?[^/@]+@\d/.test(v)
+        || /^https:\/\/storage\.googleapis\.com\/mediapipe-models\/[\w/]+\/\d+\/[\w.]+$/.test(v), k + ' con versión fijada');   // (MediaPipe's models: from Google, by version)
     const W = frame.contentWindow, url = 'data:text/javascript,window.__vendorHits=(window.__vendorHits||0)+1;window.__vendorLib={ok:1}';
     const [a, b] = await Promise.all([R.vendor.loadScript(url, '__vendorLib'), R.vendor.loadScript(url, '__vendorLib')]);
     eq(W.__vendorHits, 1, 'dos peticiones simultáneas → una sola carga');

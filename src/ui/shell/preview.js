@@ -6,6 +6,7 @@ import { wordartSize } from '../../render/textfit.js';
 import { diagramOpts } from '../../features/document/blocks.js';
 import { fileIconHTML, imgFocus } from '../../render/svg.js';
 import { pollEditorHTML } from '../../features/live/poll.js';
+import { cameraBoxCSS } from '../../features/live/media.js';
 import { safeURL } from '../../features/document/sanitize.js';
 import { currentPalette } from '../../features/design/palettes.js';
 import { levelVars } from '../../features/document/master.js';
@@ -67,7 +68,7 @@ export function blockPreview(b, slide) {
   } else if (b.type === 'poll') {
     el.innerHTML = pollEditorHTML(b, currentPalette().accents);
   } else if (b.type === 'camera') {
-    el.innerHTML = `<div style="width:100%;height:100%;background:#223;border-radius:${b.shape === 'circle' ? '50%' : b.shape === 'rounded' ? '14%' : '0'};display:grid;place-items:center;color:#fff;font-size:60px">●</div>`;
+    el.innerHTML = `<div style="width:100%;height:100%;${cameraBoxCSS(b)}${b.bg === 'remove' ? 'outline:4px dashed #8899aa;outline-offset:-4px;' : ''}display:grid;place-items:center;color:#fff;font-size:60px">●</div>`;
   } else if (b.type === 'math') {
     el.innerHTML = `<div style="width:100%;height:100%;display:grid;place-items:center;color:inherit;font-size:40px">∑</div>`;
   } else if (b.type === 'timer') {
