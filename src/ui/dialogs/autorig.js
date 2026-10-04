@@ -12,14 +12,22 @@ import { aiConnected, privacyAccepted, acceptPrivacy } from '../../features/ai/o
 import { detectWithAI } from '../../features/ai/rigkind.js';
 import { loadModelViewer } from '../../core/vendor.js';
 import { alertDialog, confirmDialog } from './dialog.js';
+import { toast } from '../shell/toast.js';
 import { ready as aiReady, aiFailed } from './ai.js';
 import { t } from '../../i18n/index.js';
 
 const ERRORS = {
-  compressed: 'Este modelo está comprimido (Draco o meshopt) y no se puede preparar aquí.',
-  external: 'Este modelo enlaza archivos aparte y no se puede preparar aquí.',
+  external: 'Este modelo enlaza archivos aparte (.bin o texturas) que no se han podido descargar. Ábrelo como .glb, con todo dentro, o desde su dirección web.',
+  decoder: 'No se pudo cargar el descompresor de modelos 3D. Comprueba la conexión a internet y vuelve a intentarlo.',
+  unpack: 'No se pudo descomprimir este modelo: puede que esté dañado.',
   empty: 'No se ha encontrado ninguna malla en este modelo.',
 };
+// What was left out of the model, if anything.
+const NOTES = {
+  basisu: 'Las texturas comprimidas para la tarjeta gráfica (KTX2) no se pueden leer aquí: el modelo queda sin ellas.',
+  images: 'Algunas texturas no se han podido descargar: el modelo queda sin ellas.',
+};
+const STEPS = { fetch: 'Descargando los archivos del modelo…', decode: 'Descomprimiendo el modelo…' };
 const VIEW_LABELS = { front: ['Frente', 'person'], side: ['Lado', 'switch_left'], top: ['Arriba', 'vertical_align_top'] };
 const sureness = c => t(c >= 0.7 ? 'bastante seguro' : c >= 0.5 ? 'probable' : 'poco seguro');
 // The model drawn flat, as the editor and the AI see it.
@@ -32,8 +40,11 @@ function paint(ctx, tris, bg = null) {
 
 export async function openAutoRig(b, { onDone } = {}) {
   document.getElementById('rig-modal')?.remove();
-  let g;
-  try { g = await readModel(b.src); } catch (e) { alertDialog(t(ERRORS[e.message] || 'No se pudo leer el modelo: ') + (ERRORS[e.message] ? '' : e.message)); return; }
+  let g, note = null;
+  // (a compressed model is unpacked first: a note while it is, as it takes a moment)
+  const step = s => { note?.close(); note = toast(t(STEPS[s]), { busy: true }); };
+  try { g = await readModel(b.src, { onStep: step }); } catch (e) { alertDialog(t(ERRORS[e.message] || 'No se pudo leer el modelo: ') + (ERRORS[e.message] ? '' : e.message)); return; }
+  finally { note?.close(); }
   await loadModelViewer().catch(() => {});
   let shape;
   try { shape = modelShape(g, 0); } catch (e) { alertDialog(t(ERRORS[e.message] || 'No se pudo leer el modelo: ') + (ERRORS[e.message] ? '' : e.message)); return; }
@@ -47,6 +58,7 @@ export async function openAutoRig(b, { onDone } = {}) {
   back.innerHTML = `<div class="modal rig" style="text-align:start;width:min(1000px,96vw);max-width:96vw">
     <button class="modal-close">✕</button><h3>${t('Esqueleto automático')}</h3>
     <p class="host-help">${t('Elige qué es el modelo (Revela intenta adivinarlo) y arrastra las articulaciones a su sitio sobre el modelo; a la derecha ves cómo se mueve.')}</p>
+    ${g.notes?.length ? `<p class="host-help rig-note"><i class="ms">info</i> ${[...new Set(g.notes)].map(n => t(NOTES[n])).join(' ')}</p>` : ''}
     <div class="rig-kinds" role="radiogroup" aria-label="${t('¿Qué es?')}">${Object.entries(KINDS).map(([k, v]) =>
       `<button type="button" role="radio" data-kind="${k}" aria-checked="false" title="${t(v.label)}"><i class="ms">${v.icon}</i><span>${t(v.label)}</span></button>`).join('')}</div>
     <div class="rig-guess"><span class="rig-guess-txt"></span>

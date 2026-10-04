@@ -20,6 +20,11 @@ export const JSZIP_ESM = NPM + 'jszip@3.10.1/+esm';
 export const PDFJS = NPM + 'pdfjs-dist@4.10.38/build';
 export const BG_REMOVAL = NPM + '@imgly/background-removal@1.5.5/+esm';
 export const GIFUCT = NPM + 'gifuct-js@2.1.2/+esm';
+// Compressed 3D models, unpacked in the browser (features/content/gltfunpack.js): Google's
+// Draco decoder, its glTF-only build (~60 KB of JS + ~190 KB of wasm, not on npm: from its
+// repository, by tag), and meshoptimizer's (~32 KB, the wasm inside).
+export const DRACO = 'https://cdn.jsdelivr.net/gh/google/draco@1.5.7/javascript/';
+export const MESHOPT = NPM + 'meshoptimizer@1.0.1/meshopt_decoder.mjs';
 // Live camera background (blur / remove): MediaPipe's person segmenter, run in
 // the browser (the camera's picture never leaves it); the model, a fixed version.
 export const VISION = NPM + '@mediapipe/tasks-vision@1.0.1';

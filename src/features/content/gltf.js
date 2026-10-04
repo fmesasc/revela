@@ -1,13 +1,18 @@
-// glTF 2.0 in and out, without a library: read a model (.glb, or .gltf with its
-// data inside) into { json, bin } with a single buffer, read and add accessors,
-// and write it back as one self-contained GLB (data URL). Used by the automatic
-// skeleton, STL conversion and saving a model to a file.
+// glTF 2.0 in and out, without a library: read a model (.glb, or .gltf) into
+// { json, bin } with a single buffer, read and add accessors, and write it back
+// as one self-contained GLB (data URL). Compressed models and .gltf files with
+// their data in other files are unpacked first (gltfunpack.js, only then loaded).
+// Used by the automatic skeleton, STL conversion and saving a model to a file.
 
-const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+export const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
 function toB64(u8) { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+// What needs unpacking: these extensions, or data outside the file (not data: URIs).
+const PACKED = /^(KHR_draco_mesh_compression|(EXT|KHR)_meshopt_compression|KHR_mesh_quantization|KHR_texture_basisu)$/;
+const outside = x => x.uri != null && !x.uri.startsWith('data:');
 
-// A model (data URL or address, .glb or .gltf with its data inside) → { json, bin } with a single buffer.
-export async function readModel(src) {
+// A model (data URL or address, .glb or .gltf) → { json, bin } with a single buffer (and
+// notes: what was left out, if anything). onStep('fetch' | 'decode'): before slow work.
+export async function readModel(src, { onStep } = {}) {
   let bytes;
   if (src.startsWith('data:')) bytes = b64(src.slice(src.indexOf(',') + 1));
   else bytes = new Uint8Array(await (await fetch(src)).arrayBuffer());
@@ -20,19 +25,18 @@ export async function readModel(src) {
       off += 8 + len;
     }
   } else json = JSON.parse(new TextDecoder().decode(bytes));
-  const used = json.extensionsRequired || [];
-  if (used.some(e => /draco|meshopt/i.test(e))) throw new Error('compressed');
-  // Every buffer into one (the GLB's, then data: URIs), fixing the views' offsets.
-  const parts = [], starts = []; let total = 0;
-  (json.buffers || []).forEach((buf, i) => {
-    const data = buf.uri ? (buf.uri.startsWith('data:') ? b64(buf.uri.slice(buf.uri.indexOf(',') + 1)) : null) : bin;
-    if (!data) throw new Error('external');
-    total = Math.ceil(total / 4) * 4; starts[i] = total; parts.push([total, data]); total += data.length;
-  });
-  const one = new Uint8Array(total); for (const [o, d] of parts) one.set(d, o);
+  if ((json.extensionsUsed || []).some(e => PACKED.test(e)) || (json.buffers || []).some(outside) || (json.images || []).some(outside))
+    return (await import('./gltfunpack.js')).unpack(json, bin, src, onStep);
+  return { json, bin: joinBuffers(json, (json.buffers || []).map(buf => (buf.uri ? b64(buf.uri.slice(buf.uri.indexOf(',') + 1)) : bin))), notes: [] };
+}
+// Every buffer (their bytes, in order) into one, fixing the views' offsets.
+export function joinBuffers(json, datas) {
+  const starts = []; let total = 0;
+  datas.forEach((d, i) => { total = Math.ceil(total / 4) * 4; starts[i] = total; total += d.length; });
+  const one = new Uint8Array(total); datas.forEach((d, i) => one.set(d, starts[i]));
   for (const v of json.bufferViews || []) { v.byteOffset = (v.byteOffset || 0) + starts[v.buffer || 0]; v.buffer = 0; }
   json.buffers = [{ byteLength: total }];
-  return { json, bin: one };
+  return one;
 }
 export function writeGLB({ json, bin }) {
   json.buffers = [{ byteLength: bin.length }];
@@ -43,6 +47,9 @@ export function writeGLB({ json, bin }) {
   dv.setUint32(20 + jl, bl, true); dv.setUint32(24 + jl, 0x004e4942, true); out.set(bin, 28 + jl);
   return 'data:model/gltf-binary;base64,' + toB64(out);
 }
+// Component types by array (by name: arrays from another window too) and back.
+const CTYPE = { Float32Array: 5126, Uint32Array: 5125, Uint16Array: 5123, Int16Array: 5122, Uint8Array: 5121, Int8Array: 5120 };
+export const ARRAYS = { 5126: Float32Array, 5125: Uint32Array, 5123: Uint16Array, 5122: Int16Array, 5121: Uint8Array, 5120: Int8Array };
 export const COMPS = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT4: 16 };
 export function readAccessor({ json, bin }, i) {
   const a = json.accessors[i], n = COMPS[a.type], out = new Float32Array(a.count * n);
@@ -61,7 +68,7 @@ export function addAccessor(g, typed, type, extra = {}) {
   const pad = (4 - g.bin.length % 4) % 4, off = g.bin.length + pad, bytes = new Uint8Array(typed.buffer, typed.byteOffset, typed.byteLength);
   const nb = new Uint8Array(off + bytes.length); nb.set(g.bin); nb.set(bytes, off); g.bin = nb;
   g.json.bufferViews.push({ buffer: 0, byteOffset: off, byteLength: bytes.length });
-  const ct = typed instanceof Float32Array ? 5126 : typed instanceof Uint16Array ? 5123 : 5121;
+  const ct = CTYPE[typed.constructor.name] || 5121;
   g.json.accessors.push({ bufferView: g.json.bufferViews.length - 1, componentType: ct, count: typed.length / COMPS[type], type, ...extra });
   return g.json.accessors.length - 1;
 }

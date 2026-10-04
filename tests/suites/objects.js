@@ -1506,6 +1506,88 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.fetch = realFetch; if (saved == null) W.localStorage.removeItem(KEY); else W.localStorage.setItem(KEY, saved); }
   });
 
+  await test('esqueleto automático: modelos comprimidos (Draco, meshopt), cuantizados y con archivos aparte', async () => {
+    reset(); const W = frame.contentWindow, dir = '/tests/fixtures/autorig/';
+    const A = await W.eval("import('/src/features/content/autorig.js')"), G = await W.eval("import('/src/features/content/gltf.js')");
+    const verts = s => s.parts.reduce((n, p) => n + p.pos.length / 3, 0), tris = s => s.parts.reduce((n, p) => n + p.idx.length / 3, 0);
+    const near = (a, b, d) => a.box.min.concat(a.box.max).every((v, i) => Math.abs(v - b.box.min.concat(b.box.max)[i]) < d);
+    // Plain glTF: one buffer with everything inside, float positions, no compression left, references that hold.
+    const SIZE = { 5126: 4, 5125: 4, 5123: 2, 5122: 2, 5121: 1, 5120: 1 };
+    const valid = (g, name) => {
+      const j = g.json, bad = [];
+      if (j.buffers?.length !== 1 || j.buffers[0].uri != null || j.buffers[0].byteLength !== g.bin.length) bad.push('buffers');
+      for (const e of [...(j.extensionsUsed || []), ...(j.extensionsRequired || [])]) if (/draco|meshopt|quantization|basisu/i.test(e)) bad.push(e);
+      for (const [k, v] of Object.entries(j)) if (Array.isArray(v) && !v.length) bad.push(k + ' vacío');
+      j.bufferViews.forEach((v, i) => { if (v.buffer !== 0 || v.byteOffset + v.byteLength > g.bin.length || v.extensions) bad.push('vista ' + i); });
+      j.accessors.forEach((a, i) => {
+        if (a.bufferView == null) return;
+        const v = j.bufferViews[a.bufferView], size = SIZE[a.componentType] * G.COMPS[a.type];
+        if (!v || (a.byteOffset || 0) + (v.byteStride || size) * (a.count - 1) + size > v.byteLength) bad.push('accessor ' + i);
+      });
+      for (const p of j.meshes.flatMap(m => m.primitives)) {
+        if (p.extensions) bad.push('primitiva comprimida');
+        for (const [k, i] of Object.entries(p.attributes)) {
+          const a = j.accessors[i]; if (!a || a.bufferView == null) { bad.push(k + ' sin datos'); continue; }
+          if (/^(POSITION|NORMAL|TANGENT)$/.test(k) && a.componentType !== 5126) bad.push(k + ' sin float');
+          if (k === 'POSITION' && !a.min) bad.push('POSITION sin min/max');
+        }
+      }
+      const texRefs = []; const walk = o => { for (const [k, v] of Object.entries(o)) if (v && typeof v === 'object') { if (/Texture$/.test(k)) texRefs.push(v.index); else walk(v); } };
+      (j.materials || []).forEach(walk);
+      if (texRefs.some(i => !j.textures?.[i])) bad.push('textura que no existe');
+      for (const t of j.textures || []) if (!j.images?.[t.source]) bad.push('textura sin imagen');
+      for (const im of j.images || []) if (im.uri != null || im.bufferView == null || !/^image\/(png|jpeg|webp)$/.test(im.mimeType)) bad.push('imagen');
+      eq(bad.join(), '', name + ': glTF válido y sin comprimir');
+    };
+    const src = await A.readModel(dir + 'person.glb'), s0 = A.modelShape(src);
+    for (const f of ['draco', 'meshopt', 'quant']) {
+      const steps = [], g = await A.readModel(dir + `person-${f}.glb`, { onStep: s => steps.push(s) }), s = A.modelShape(g);
+      eq(steps.join(), f === 'quant' ? '' : 'decode', f + ': avisa mientras descomprime');
+      eq(verts(s) + '/' + tris(s), verts(s0) + '/' + tris(s0), f + ': los mismos vértices y triángulos');
+      assert(near(s, s0, 0.002), f + ': las mismas medidas');
+      valid(g, f);
+      const tex = g.json.materials[0].pbrMetallicRoughness.baseColorTexture;
+      assert(tex && g.json.images[g.json.textures[tex.index].source].mimeType === 'image/png', f + ': conserva el material y su textura');
+      // Rigged: still plain, with the texture and the coordinates it needs.
+      const J = A.proposeJoints(s, 'person'), g2 = await G.readModel(A.buildRig(g, s, 'person', J));
+      valid(g2, f + ' con esqueleto');
+      const p = g2.json.meshes[g2.json.nodes.find(n => n.skin === 0).mesh].primitives[0];
+      assert(p.attributes.JOINTS_0 != null && p.attributes.TEXCOORD_0 != null && g2.json.animations.length > 3 && g2.json.images.length === 1, f + ': con huesos, animaciones y textura');
+    }
+    // A .gltf with its .bin and picture next to it: fetched and packed inside.
+    const steps = [], ge = await A.readModel(dir + 'ext/person.gltf', { onStep: s => steps.push(s) }), se = A.modelShape(ge);
+    eq(steps.join(), 'fetch', 'archivos aparte: los descarga');
+    assert(verts(se) === verts(s0) && near(se, s0, 1e-6), 'archivos aparte: el mismo modelo');
+    valid(ge, 'archivos aparte'); assert(ge.json.images.length === 1, 'con su textura dentro');
+    // …but from a file (a data: URL) there is nowhere to fetch them from.
+    const text = await (await W.fetch(dir + 'ext/person.gltf')).text();
+    eq(await A.readModel('data:model/gltf+json;base64,' + W.btoa(text)).then(() => '', e => e.message), 'external', 'sin dirección: lo dice');
+    // GPU textures (KTX2) without a fallback, and a picture not found: out, with a note; the rest stays.
+    const j = structuredClone(src.json);
+    j.images.push({ uri: 'cara.ktx2', mimeType: 'image/ktx2' }, { uri: 'no-esta.png' });
+    j.textures.push({ extensions: { KHR_texture_basisu: { source: 1 } } }, { source: 2 }, { source: 0, extensions: { KHR_texture_basisu: { source: 1 } } });
+    Object.assign(j.materials[0], { normalTexture: { index: 1 }, emissiveTexture: { index: 2 }, occlusionTexture: { index: 3 } });
+    j.extensionsUsed = ['KHR_texture_basisu']; j.extensionsRequired = ['KHR_texture_basisu'];
+    const gk = await A.readModel(A.writeGLB({ json: j, bin: src.bin }));
+    eq(gk.notes.slice().sort().join(), 'basisu,images', 'texturas que no se pueden leer: avisa');
+    const m = gk.json.materials[0];
+    assert(!m.normalTexture && !m.emissiveTexture && m.occlusionTexture && m.pbrMetallicRoughness.baseColorTexture, 'quita esas y deja las que tienen otra imagen');
+    eq(gk.json.textures.length + '/' + gk.json.images.length, '2/1', 'sin texturas ni imágenes de sobra');
+    valid(gk, 'KTX2');
+    // The dialog: a note while unpacking, then the skeleton as always.
+    const seen = [], mo = new W.MutationObserver(() => D.querySelectorAll('#toasts .toast.busy').forEach(x => seen.push(x.textContent)));
+    mo.observe(D.body, { childList: true, subtree: true });
+    R.store.commit(() => { slide().blocks.push({ id: 'rigz', type: 'model', src: dir + 'person-draco.glb', x: 100, y: 100, w: 300, h: 300, rotation: 0, animation: null }); });
+    const Dl = await W.eval("import('/src/ui/dialogs/autorig.js')"), dlg = await Dl.openAutoRig(slide().blocks.at(-1));
+    mo.disconnect();
+    assert(seen.some(x => /Descomprimiendo el modelo/.test(x)), 'el diálogo avisa mientras descomprime');
+    assert(!D.querySelector('#toasts .toast.busy:not(.out)'), 'y el aviso se va');
+    eq(dlg.kind, 'person', 'reconoce la persona');
+    for (let i = 0; i < 40 && !dlg.built; i++) await sleep(50);
+    assert(dlg.built?.startsWith('data:model/gltf-binary'), 'prepara el modelo con esqueleto');
+    D.querySelector('#rig-modal .modal-close').click();
+  });
+
   await test('recursos: stickers animados, GIF, 3D (biblioteca, Poly Haven empaquetado, Sketchfab)', async () => {
     reset(); const W = frame.contentWindow, realFetch = W.fetch;
     const Rz = await W.eval("import('/src/features/content/resources.js')");

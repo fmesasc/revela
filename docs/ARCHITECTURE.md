@@ -89,6 +89,7 @@ src/
     content/                   stock (Openverse, Iconify), resources (GIFs, stickers, 3D search:
                                library3d, nasa3d, Poly Haven, Wikimedia STL, Sketchfab),
                                model3d (3D attributes, views, walking), gltf (read/write GLB),
+                               gltfunpack (Draco/meshopt/quantized models and .gltf with separate files → plain GLB),
                                stl (STL → glTF), autorig (automatic skeleton and animations: people, animals, birds, dragons, fish, snakes, spiders, octopuses, objects; guesses the kind from the shape),
                                examples (templates)
   io/
