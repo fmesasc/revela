@@ -150,7 +150,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const cur3 = mk('m1', 'data-arrive="reset"'); api.handoff(prev, cur3); eq(cur3.firstChild.st.spin, 0, 'o empieza de cero');
     const cur4 = mk('otro'); cur4.firstChild.setAttribute('src', 'b.glb'); api.handoff(prev, cur4); eq(cur4.firstChild.st.spin, 0, 'otro modelo distinto: nada que continuar');
     // With Morph and "zoom in on arrival": it goes back while travelling, and zooms in once there (not at once)
-    const cur5 = mk('m1', 'data-motion="zoom"'); cur5.setAttribute('data-auto-animate', '');
+    const cur5 = mk('m1', 'data-motion="zoom"'); cur5.setAttribute('data-auto-animate', ''); prev.setAttribute('data-auto-animate', '');   // (reveal.js morphs only between two marked slides)
     D.body.appendChild(cur5); prev.firstChild.st.spin = 0.5;
     api.enter(cur5, api.handoff(prev, cur5)); await sleep(200);
     assert(/ 300%$/.test(cur5.firstChild.st.orbit), 'mientras viaja, la cámara se aleja (se hace pequeño): ' + cur5.firstChild.st.orbit);
@@ -210,6 +210,67 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(D.querySelector('.titlebar .tb-play [data-action="present"]') && D.querySelector('.titlebar .tb-play [data-action="present-current"]'), 'presentar desde el principio o desde aquí, en la barra de título');
     const sl = D.getElementById('zoom-slider'); sl.value = '150'; sl.dispatchEvent(new W.Event('input')); eq(R.state.ui.zoom, 1.5, 'deslizador de zoom del editor');
     D.querySelector('[data-action="zoom-fit"]').click();
+  });
+
+  await test('3D al presentar: con transiciones, al volver, al saltar, y sus imágenes donde no se dibuja', async () => {
+    reset(); const W = frame.contentWindow, M = await W.eval("import('/src/io/runtime/model3d.js')");
+    // (In the page first: model-viewer takes over its element then, and the stand-ins go on top.)
+    const mk = (extra = '', loaded = true) => { const s = D.createElement('section'); s.innerHTML = `<model-viewer data-id="m1" src="a.glb" camera-orbit="0deg 75deg auto" ${extra}></model-viewer>`;
+      D.body.appendChild(s); const mv = s.firstChild, st = { orbit: null, log: [], name: '' }, c = { configurable: true };
+      Object.defineProperties(mv, { loaded: { value: loaded, ...c }, turntableRotation: { value: 0, ...c }, cameraOrbit: { set: v => { st.orbit = v; }, get: () => st.orbit, ...c },
+        availableAnimations: { value: ['Idle', 'Walk', 'Wave'], ...c }, animationName: { get: () => st.name, set: v => { st.name = v; }, ...c }, updateComplete: { value: null, writable: true, ...c } });
+      mv.getCameraOrbit = () => ({ theta: 0.5, phi: 1.2 }); mv.resetTurntableRotation = () => {}; mv.jumpCameraToGoal = () => {};
+      mv.play = o => st.log.push(st.name + (o ? ' una vez' : '')); mv.pause = () => st.log.push('pausa'); mv.st = st; return s; };
+    const api = M.model3dRuntime(), prev = mk(), cur = mk('data-arrive="front" auto-rotate');
+    try {
+      // Arriving "facing the audience" stops its turning there; reached another way, it turns again.
+      api.enter(cur, api.handoff(prev, cur), prev); await sleep(1600);
+      assert(!cur.firstChild.hasAttribute('auto-rotate'), 'llega de frente y deja de girar');
+      api.enter(cur, new Map(), null);
+      assert(cur.firstChild.hasAttribute('auto-rotate'), 'al volver a ella sin venir de la anterior, gira otra vez');
+      // A new clip name is applied by model-viewer on its next update: "once" is asked for after it.
+      const mv = cur.firstChild; let done; mv.updateComplete = new Promise(r => { done = r; });
+      api.clip(mv, 'Wave', true); eq(mv.st.log.length, 0, 'espera a que el visor cambie de animación');
+      done(); await sleep(0); eq(mv.st.log.at(-1), 'Wave una vez', 'y la pide una sola vez (si no, se repetía sin fin)');
+      mv.updateComplete = null;
+      // Walking that ends where a step "after the previous" plays its clip (a wave): the arrival doesn't undo it.
+      mv.setAttribute('data-move-clip', 'Walk'); mv.st.log.length = 0;
+      const step = D.createElement('div'); step.className = 'fragment'; step.setAttribute('data-clip', 'Wave'); step.setAttribute('data-clip-once', ''); step.style.setProperty('--anim-del', '50ms');
+      cur.appendChild(step); step.appendChild(mv);
+      // (as reveal.js's fragmentshown would: the wave comes 50 ms in, before the walk is over)
+      api.move(mv, 120, mv); api.step(step, true);
+      await sleep(250);
+      eq(mv.st.log.join(), 'Walk,Wave una vez', 'anda, saluda, y la llegada no le quita el saludo');
+      // A slide that was marked for Morph only because of the next one: with a real transition, its model waits for it.
+      const a = mk('data-motion="orbit"', true), b2 = mk(); a.setAttribute('data-auto-animate', ''); a.setAttribute('data-transition', 'fade');
+      a.firstChild.st.orbit = 'x'; api.enter(a, new Map(), b2); await sleep(100);
+      eq(a.firstChild.st.orbit, 'x', 'sin Transformar de verdad (la otra no lo tiene), espera a que acabe la transición');
+      api.stop(a.firstChild); a.remove(); b2.remove();
+      // Not loaded yet: the movement waits for it (not seen half over).
+      const c = mk('data-motion="orbit"', false); api.start(c.firstChild); await sleep(80);
+      eq(c.firstChild.st.orbit, null, 'sin cargar, aún no se mueve');
+      Object.defineProperty(c.firstChild, 'loaded', { value: true }); c.firstChild.dispatchEvent(new W.Event('load')); await sleep(80);
+      assert(/deg 75deg/.test(c.firstChild.st.orbit || ''), 'y al cargar, empieza');
+      api.stop(c.firstChild); c.remove();
+      // Floating doesn't take away its turn (its transform).
+      const fl = mk('data-motion="float"'), fm = fl.firstChild; fm.style.transform = 'rotate(20deg)'; api.start(fm); await sleep(60);
+      assert(fm.style.transform === 'rotate(20deg)' && /px$/.test(fm.style.marginTop), 'flota sin perder su giro');
+      api.stop(fm); eq(fm.style.transform, 'rotate(20deg)', 'y al parar, sigue girado'); fl.remove();
+    } finally { api.stop(cur.firstChild); prev.remove(); cur.remove(); }
+    // Its picture in the page: while it loads, in the overview, and as a slide image; dropped in PowerPoint as a picture.
+    R.store.commit(() => { slide().blocks.push({ id: 'mp', type: 'model', src: 'data:model/gltf-binary;base64,Z2xURg==', poster: 'icons/icon-192.png', x: 100, y: 100, w: 300, h: 200, clip: 'Wave', rotation: 0, animation: null }); });
+    const html = R.io.buildHTML(), tag = html.match(/<model-viewer[^>]*>/)[0];
+    assert(/data-poster="https?:\/\/[^"]+\/icons\/icon-192\.png"/.test(tag), 'su imagen, con dirección completa: ' + tag.slice(0, 200));
+    R.store.commit(() => { slide().blocks.at(-1).poster = 'javascript:alert(1)'; });
+    assert(!/data-poster=/.test(R.io.buildHTML()), 'sin direcciones peligrosas');
+    R.store.commit(() => { slide().blocks.at(-1).poster = 'icons/icon-192.png'; });
+    const I = await W.eval("import('/src/io/export/images.js')"), host = D.createElement('div');
+    host.innerHTML = R.io.buildHTML().match(/<model-viewer[^>]*><\/model-viewer>/)[0]; D.body.appendChild(host);
+    await I.hydrateStatic(host, R.state.deck);
+    const im = host.querySelector('img'); assert(!host.querySelector('model-viewer') && im && /icon-192/.test(im.src), 'en una imagen de la diapositiva, su imagen');
+    assert(Math.abs(parseFloat(im.style.width) - 100 / 1.5) < 0.1, 'en la caja del modelo, no en su margen'); host.remove();
+    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob);
+    assert(/<p:pic>/.test(await zip.file('ppt/slides/slide1.xml').async('string')), 'en PowerPoint, su imagen (también si es una dirección, no solo incrustada)');
   });
 
   await test('transiciones: al pasar el ratón por un efecto, se ve en pequeño con la propia diapositiva', async () => {

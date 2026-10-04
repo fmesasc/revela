@@ -593,7 +593,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       await sleep(450);
       eq(log.join(), 'Walk,Wave una vez', 'al llegar, la otra animación');
       assert(/^0(\.0)?deg/.test(mv.cameraOrbit), 'y mira al público');
-      mv.dispatchEvent(new W.Event('finished')); eq(log.at(-1), 'Survey', 'y vuelve al reposo');
+      mv.dispatchEvent(new W.Event('finished')); await sleep(20); eq(log.at(-1), 'Survey', 'y vuelve al reposo');
       // Moving up the slide it shows its back; with a curved path (keyframes) too.
       log.length = 0; mv.style.animationDuration = '300ms';
       mv.animate([{ translate: '0px 0px' }, { translate: '0px -200px' }], { duration: 300 });

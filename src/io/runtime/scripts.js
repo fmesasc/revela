@@ -169,7 +169,11 @@ export function overviewJS(sections, texts) {
   var inner=document.createElement('div');inner.className='rv-ov-in';inner.style.width=W+'px';inner.style.height=H+'px';
   [].forEach.call(sec.children,function(c){if(c.tagName==='ASIDE')return;inner.appendChild(c.cloneNode(true));});
   // No live media in thumbnails (pages, videos and 3D would load again).
-  inner.querySelectorAll('iframe,video,audio,model-viewer').forEach(function(m){var d=document.createElement('div');d.className='rv-ov-ph';d.style.cssText=m.style.cssText;m.replaceWith(d);});
+  inner.querySelectorAll('iframe,video,audio,model-viewer').forEach(function(m){var d=document.createElement('div');d.className='rv-ov-ph';d.style.cssText=m.style.cssText;
+   // (A 3D model: its picture, in its own box, if it has one.)
+   var p=m.getAttribute('data-poster'),k=parseFloat(m.getAttribute('data-bleed'))||1;
+   if(p){d.style.background='none';d.style.webkitMaskImage=d.style.maskImage='none';var i=document.createElement('img');i.src=p;i.alt='';i.style.cssText='position:absolute;inset:'+((1-1/k)*50)+'%;width:'+(100/k)+'%;height:'+(100/k)+'%;object-fit:contain;margin:0;border:0;max-width:none;max-height:none;background:none;box-shadow:none';d.appendChild(i);}
+   m.replaceWith(d);});
   inner.querySelectorAll('[id]').forEach(function(e){e.removeAttribute('id');});
   it.appendChild(inner);var num=document.createElement('span');num.className='rv-ov-n';num.textContent=n;it.appendChild(num);
   return {el:it,inner:inner};

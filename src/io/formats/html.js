@@ -164,6 +164,14 @@ function stepLayers(html, b, slide, tl) {
 // (In canvas mode the canvas's picture is one layer that moves with the camera, not a copy per slide.)
 export const blocksOf = (s, deck = state.deck) => [...masterBlocksFor(s, deck), ...s.blocks.map(b => styled(b, s, deck))].filter(b => !b.hidden && !isEmptyPlaceholder(b) && !(b.backdrop && canvasOn(deck)));
 
+// A 3D model's picture, shown while it loads and wherever it can't be drawn live
+// (the overview, slides saved as images). A library thumbnail (assets/…) as a full address.
+function posterAttr(b) {
+  const p = String(b.poster || '');
+  if (!/^(data:image\/|https?:)/i.test(p) && (/^[a-z][a-z0-9+.-]*:/i.test(p) || !p)) return '';
+  let u = p; if (!/^(data|https?):/i.test(p)) try { u = new URL(p, document.baseURI).href; } catch { return ''; }
+  return safeURL(u) ? ` data-poster="${esc(u)}"` : '';
+}
 function ariaAttrs(b) {
   if (b.decorative) return ' aria-hidden="true"';
   const alt = (b.alt || '').trim(); if (!alt) return '';
@@ -261,7 +269,7 @@ function blockHTMLRaw(b, slide) {
       + `${b.curve ? curvedTextSVG(b) : inner(b.html || '')}</div>`;
   }
   if (b.type === 'model')
-    return `<model-viewer${a}${modelAttrsHTML(b)} style="${box(bleedBox(b))}background:transparent;${edgeCSS(b)}${bleedBox(b) !== b ? 'pointer-events:none' : ''}"></model-viewer>`;
+    return `<model-viewer${a}${modelAttrsHTML(b)}${posterAttr(b)} style="${box(bleedBox(b))}background:transparent;${edgeCSS(b)}${bleedBox(b) !== b ? 'pointer-events:none' : ''}"></model-viewer>`;
   // Video / GIF with segments, autoplay, loop, mute or a colour key: the media
   // player draws it; each segment after the first automatic one is a click.
   if (needsPlayer(b)) {
@@ -604,13 +612,14 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
 // a slide and its Morph twin) is written once: a table read before the slides
 // start gives each element its source. The file stays self-contained.
 function dedupeMedia(html) {
-  const RE = / src="(data:[^"]{2000,})"/g, count = new Map();
-  for (const m of html.matchAll(RE)) count.set(m[1], (count.get(m[1]) || 0) + 1);
+  const RE = / (src|data-poster)="(data:[^"]{2000,})"/g, count = new Map();
+  for (const m of html.matchAll(RE)) count.set(m[2], (count.get(m[2]) || 0) + 1);
   const ids = new Map([...count].filter(([, n]) => n > 1).map(([u], i) => [u, 'm' + i]));
   if (!ids.size) return html;
-  const out = html.replace(RE, (m, u) => (ids.has(u) ? ` data-rv-src="${ids.get(u)}"` : m));
+  const out = html.replace(RE, (m, at, u) => (ids.has(u) ? ` data-rv-${at === 'src' ? 'src' : 'poster'}="${ids.get(u)}"` : m));
   const table = `<script>(function(){var M=${jsData(Object.fromEntries([...ids].map(([u, k]) => [k, u])))};`
-    + `document.querySelectorAll('[data-rv-src]').forEach(function(el){el.setAttribute('src',M[el.getAttribute('data-rv-src')]);});})();</script>\n`;
+    + `document.querySelectorAll('[data-rv-src]').forEach(function(el){el.setAttribute('src',M[el.getAttribute('data-rv-src')]);});`
+    + `document.querySelectorAll('[data-rv-poster]').forEach(function(el){el.setAttribute('data-poster',M[el.getAttribute('data-rv-poster')]);});})();</script>\n`;
   return out.replace(/<script src="[^"]*\/dist\/reveal\.js"><\/script>/, x => table + x);
 }
 

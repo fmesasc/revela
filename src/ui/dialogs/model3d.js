@@ -8,15 +8,17 @@ import { commit, currentSlide, setSelection } from '../../core/store.js';
 import { startPathDraw } from '../canvas/pathdraw.js';
 import { openAutoRig } from './autorig.js';
 import { animatedBlocks } from '../../features/animation/transitions.js';
-import { MOTIONS_3D, modelAttrs } from '../../features/content/model3d.js';
+import { MOTIONS_3D, ARRIVALS_3D, modelAttrs } from '../../features/content/model3d.js';
 import { model3dRuntime } from '../../io/runtime/model3d.js';
-import { MODEL_VIEWER, loadScript } from '../../core/vendor.js';
+import { loadModelViewer } from '../../core/vendor.js';
 import { t } from '../../i18n/index.js';
 
+// (The same one every time the dialog opens: each one listens to the whole page.)
+let runtime = null;
 
 export async function openModel3D(b) {
   document.getElementById('m3d-modal')?.remove();
-  await loadScript(MODEL_VIEWER).catch(() => {});
+  await loadModelViewer().catch(() => {});
   const back = document.createElement('div'); back.id = 'm3d-modal'; back.className = 'modal-backdrop';
   const o = { autoRotate: b.autoRotate !== false, spin: b.spin || 30, clip: b.clip || '', clipOnce: !!b.clipOnce, clipSpeed: b.clipSpeed || 1, motion: b.motion || 'none' };
   const w = { clip: '', end: '', endOnce: true, face: true, look: true, ...b.walk }, hasMove = !!b.animation;
@@ -33,21 +35,26 @@ export async function openModel3D(b) {
     <fieldset class="m3d-walk"><legend>${t('Al moverse por la diapositiva')}</legend>
       <p class="host-help">${t('Mientras se mueve (su trayectoria u otra animación) hace una animación, por ejemplo andar, y al llegar otra.')}</p>
       <label class="fr-l">${t('Mientras se mueve')} <select class="m3d-wclip" data-keep="1"><option value="">${t('Nada (como siempre)')}</option></select></label>
-      <label class="fr-l">${t('Al llegar')} <select class="m3d-wend" data-keep="1"><option value="">${t('Volver al reposo')}</option></select></label>
+      <label class="fr-l">${t('Al terminar el recorrido')} <select class="m3d-wend" data-keep="1"><option value="">${t('Volver al reposo')}</option></select></label>
       <label class="fr-chk"><input type="checkbox" class="m3d-wonce"${w.endOnce ? ' checked' : ''}> ${t('Una vez y volver al reposo')}</label>
       <label class="fr-chk"><input type="checkbox" class="m3d-wface"${w.face ? ' checked' : ''}> ${t('Mirar hacia donde va')}</label>
-      <label class="fr-chk"><input type="checkbox" class="m3d-wlook"${w.look ? ' checked' : ''}> ${t('Al llegar, mirar al público')}</label>
+      <label class="fr-chk"><input type="checkbox" class="m3d-wlook"${w.look ? ' checked' : ''}> ${t('Al terminar, mirar al público')}</label>
       <label class="fr-chk m3d-wpath"${hasMove ? ' hidden' : ''}><input type="checkbox" class="m3d-waddpath" checked> ${t('Darle un recorrido de izquierda a derecha (se cambia en Animaciones ▸ Trayectoria)')}</label>
       <button type="button" class="mini2 m3d-wtry">${t('Probar andando')}</button>
       <button type="button" class="mini2 m3d-wdraw" title="${t('Aplica lo elegido y dibuja en la diapositiva por dónde irá')}"><i class="ms">gesture</i> ${t('Dibujar su recorrido')}</button>
     </fieldset>
-    <fieldset><legend>${t('Giro')}</legend>
+    <fieldset class="m3d-spinbox"><legend>${t('Giro')}</legend>
       <label class="fr-chk"><input type="checkbox" class="m3d-rot"${o.autoRotate ? ' checked' : ''}> ${t('Girar solo')}</label>
       <label class="fr-l">${t('Velocidad (grados por segundo; negativo: al revés)')} <input type="range" class="m3d-spin" min="-120" max="120" step="10" value="${o.spin}"></label>
+      <p class="host-help m3d-nospin" hidden>${t('Con un movimiento al entrar, el modelo no gira solo.')}</p>
     </fieldset>
-    <fieldset><legend>${t('Movimiento al llegar a la diapositiva')}</legend>
+    <fieldset><legend>${t('Movimiento al entrar en la diapositiva')}</legend>
       <select class="m3d-motion">${MOTIONS_3D.map(([k, l]) => `<option value="${k}"${o.motion === k ? ' selected' : ''}>${t(l)}</option>`).join('')}</select>
       <button type="button" class="mini2 m3d-try">${t('Probar')}</button>
+    </fieldset>
+    <fieldset><legend>${t('Si ya estaba en la diapositiva anterior')}</legend>
+      <p class="host-help">${t('Con Transformar, o el mismo modelo en las dos: cómo sigue al pasar de una a otra.')}</p>
+      <select class="m3d-arrive">${ARRIVALS_3D.map(([k, l]) => `<option value="${k}"${(b.arrive || 'keep') === k ? ' selected' : ''}>${t(l)}</option>`).join('')}</select>
     </fieldset>
     <div class="fr-actions"><span></span><button class="fr-do m3d-ok">${t('Aplicar')}</button></div></div>`;
   document.body.appendChild(back);
@@ -59,9 +66,9 @@ export async function openModel3D(b) {
   const mv = document.createElement('model-viewer');
   mv.style.cssText = 'width:100%;height:100%';
   q('.m3d-view').appendChild(mv);
-  const runtime = model3dRuntime();
+  runtime ||= model3dRuntime();
   const current = () => ({ ...b, autoRotate: q('.m3d-rot').checked, spin: +q('.m3d-spin').value, clip: q('.m3d-clip').value || null,
-    clipOnce: q('.m3d-once').checked, clipSpeed: +q('.m3d-speed').value, motion: q('.m3d-motion').value,
+    clipOnce: q('.m3d-once').checked, clipSpeed: +q('.m3d-speed').value, motion: q('.m3d-motion').value, arrive: q('.m3d-arrive').value,
     walk: q('.m3d-wclip').value ? { clip: q('.m3d-wclip').value, end: q('.m3d-wend').value, endOnce: q('.m3d-wonce').checked,
       face: q('.m3d-wface').checked, look: q('.m3d-wlook').checked } : null });
   const preview = () => {
@@ -70,6 +77,9 @@ export async function openModel3D(b) {
     for (const n of ['auto-rotate', 'rotation-per-second', 'autoplay', 'animation-name', 'data-move-clip', 'data-end-clip', 'data-end-once', 'data-face', 'data-look'])
       if (!modelAttrs(c).some(([k]) => k === n)) mv.removeAttribute(n);
     back.querySelectorAll('.m3d-walk label:not(:first-of-type)').forEach(l => l.classList.toggle('off', !c.walk));
+    // (Turning by itself only without a movement on entering or walking: modelAttrs.)
+    const still = c.motion === 'none' && !c.walk;
+    back.querySelectorAll('.m3d-spinbox label').forEach(l => l.classList.toggle('off', !still)); q('.m3d-nospin').hidden = c.motion === 'none' || !c.autoRotate;
     mv.timeScale = c.clipSpeed;
   };
   mv.addEventListener('load', () => {
@@ -112,7 +122,7 @@ export async function openModel3D(b) {
     commit(() => {
       const x = currentSlide().blocks.find(y => y.id === b.id); if (!x) return;
       x.autoRotate = c.autoRotate;
-      for (const [k, v] of [['spin', c.spin !== 30 ? c.spin : null], ['clip', c.clip], ['clipOnce', c.clip && c.clipOnce], ['clipSpeed', c.clip && c.clipSpeed !== 1 ? c.clipSpeed : null], ['motion', c.motion !== 'none' ? c.motion : null]])
+      for (const [k, v] of [['spin', c.spin !== 30 ? c.spin : null], ['clip', c.clip], ['clipOnce', c.clip && c.clipOnce], ['clipSpeed', c.clip && c.clipSpeed !== 1 ? c.clipSpeed : null], ['motion', c.motion !== 'none' ? c.motion : null], ['arrive', c.arrive !== 'keep' ? c.arrive : null]])
         if (v) x[k] = v; else delete x[k];
       if (c.walk) {
         x.walk = c.walk;

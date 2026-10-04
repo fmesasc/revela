@@ -27,6 +27,15 @@ export async function hydrateStatic(root, deck) {
     }
     await document.fonts?.ready;
   }
+  // 3D models can't be rasterised: their picture instead, in the model's own box.
+  const posters = [...root.querySelectorAll('model-viewer[data-poster]')].map(mv => {
+    const k = parseFloat(mv.getAttribute('data-bleed')) || 1, d = document.createElement('div'), img = new Image();
+    d.style.cssText = mv.style.cssText; d.style.webkitMaskImage = d.style.maskImage = 'none';
+    img.crossOrigin = 'anonymous'; img.src = mv.getAttribute('data-poster'); img.alt = '';
+    img.style.cssText = `position:absolute;left:${(1 - 1 / k) * 50}%;top:${(1 - 1 / k) * 50}%;width:${100 / k}%;height:${100 / k}%;object-fit:contain`;
+    d.appendChild(img); mv.replaceWith(d); return img.decode().catch(() => {});
+  });
+  await Promise.all(posters);
   root.querySelectorAll('.rv-poll').forEach(el => {
     try { const p = JSON.parse(el.getAttribute('data-poll')); el.querySelector('.rv-poll-res').innerHTML = pollResultsHTML(p, tallyVotes(p, savedVotes(p.pollId)), currentPalette(deck).accents); } catch {}
   });
@@ -46,8 +55,8 @@ export async function blockImage(b, slide, deck = state.deck) {
   } finally { holder.remove(); }
 }
 
-// Rasterise one slide with html2canvas. 3D models and web embeds can't be
-// rasterised (they come out blank); everything else does.
+// Rasterise one slide with html2canvas. Web embeds can't be rasterised (they
+// come out blank), 3D models come out as their picture; everything else does.
 export async function slideImageBlob(s, type = 'png', deck = state.deck) {
   const { w, h } = deck.size;
   const holder = document.createElement('div');

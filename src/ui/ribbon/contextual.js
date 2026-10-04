@@ -98,7 +98,8 @@ function groupsFor(b) {
     G.push(
       ['Animación', [['select', 'En reposo', opts, b.clip || '', v => set(b, x => { if (v) x.clip = v; else delete x.clip; })],
         btn('motion_photos_on', 'Movimiento 3D', () => openModel3D(b)),
-        btn('autorenew', 'Girar solo', () => set(b, x => { x.autoRotate = !(x.autoRotate !== false); }), b.autoRotate !== false && !b.walk?.clip)]],
+        // (It turns by itself only without a movement on entering: turning it on takes that away.)
+        btn('autorenew', 'Girar solo', () => set(b, x => { const on = x.autoRotate !== false && !x.motion; x.autoRotate = !on; if (!on) delete x.motion; }), b.autoRotate !== false && !b.walk?.clip && !b.motion)]],
       ['Al moverse', [['select', 'Mientras se mueve', [['', 'Nada'], ...names.map(n => [n, n])], b.walk?.clip || '', v => set(b, x => {
         if (v) x.walk = { end: '', endOnce: true, face: true, look: true, ...x.walk, clip: v }; else delete x.walk; })],
         btn('play_circle', 'Probar', () => playAnimations())]],

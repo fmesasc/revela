@@ -372,7 +372,7 @@ body.master-view #navigator{display:flex}
 /* Recursos (GIF, stickers, 3D) and Movimiento 3D */
 .sk-item.busy{opacity:.5;cursor:progress}
 .modal.m3d{max-height:92vh;overflow:auto}.m3d-view{position:sticky;top:-22px;z-index:1}
-.m3d-walk label.off{opacity:.45}
+.m3d-walk label.off,.m3d-spinbox label.off{opacity:.45}
 /* Crear modelo 3D con IA (ui/dialogs/model3dai.js) */
 .modal.m3a{max-height:92vh;overflow:auto}.m3a-examples{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 10px}
 .m3a-rounds{list-style:none;padding:0;margin:8px 0;display:grid;gap:8px}
