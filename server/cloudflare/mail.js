@@ -12,6 +12,11 @@
 // a token signed with HMAC (secret MAIL_SECRET), checked by
 //   GET|POST /api/mail/unsubscribe?t=…   (POST: one-click, RFC 8058)
 // Without MAIL_SECRET, optional notices aren't sent (there would be no way out).
+//
+// Support emails carry another signed link (HMAC over ticket number + address + expiry, 30 days)
+// to answer inside the same ticket, or mark it solved, without signing in (admin.js):
+//   GET|POST /api/support/reply?t=…
+// Without MAIL_SECRET there is no link and the old advice (send another report) is given.
 
 const enc = new TextEncoder();
 const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -55,6 +60,27 @@ export async function readUnsubToken(env, t) {                // → { sub, kind
   try { return { sub: unb64(a), kind }; } catch { return null; }
 }
 
+// ---- Answering a ticket: a token for (ticket, address, expiry), signed ------------------------
+export const TICKET_LINK_DAYS = 30;
+export async function ticketToken(env, id, email, exp) {
+  if (!env.MAIL_SECRET) return null;
+  const body = `${+id}.${Math.floor(exp).toString(36)}.${b64url(enc.encode(String(email || '').toLowerCase()))}`;
+  return `${body}.${await hmac(env.MAIL_SECRET, 'ticket:' + body)}`;
+}
+export async function readTicketToken(env, t, now = Date.now()) { // → { id, email, exp } or null (bad, forged or expired)
+  const parts = String(t || '').split('.'), [id, e36, em, sig] = parts;
+  if (!env.MAIL_SECRET || parts.length !== 4 || !/^\d{1,10}$/.test(id) || !/^[0-9a-z]{1,12}$/.test(e36) || !em || !sig) return null;
+  const want = await hmac(env.MAIL_SECRET, `ticket:${id}.${e36}.${em}`);
+  if (want.length !== sig.length || [...want].reduce((d, ch, i) => d | (ch.charCodeAt(0) ^ sig.charCodeAt(i)), 0)) return null;
+  const exp = parseInt(e36, 36); if (!(exp > now)) return null;
+  try { return { id: +id, email: unb64(em), exp }; } catch { return null; }
+}
+// The page's address with a fresh token (null without MAIL_SECRET).
+export async function ticketLink(env, id, email, site = env.SITE_URL || 'https://revelaslides.com') {
+  const t = await ticketToken(env, id, email, Date.now() + TICKET_LINK_DAYS * 864e5);
+  return t && `${site}/api/support/reply?t=${encodeURIComponent(t)}`;
+}
+
 // ---- Texts -------------------------------------------------------------------------------------
 // Each: (vars) → { subject, title, paras: [...], cta?: [label, url] }. Values from people are escaped when drawn.
 const T = {
@@ -81,12 +107,25 @@ const T = {
       paras: [v.idle ? 'Como llevaba dos años sin usarse, hemos eliminado tu cuenta de Revela, con sus presentaciones en la nube y sus créditos.' : 'Hemos eliminado tu cuenta de Revela, como pediste, con sus presentaciones en la nube y sus créditos.',
         'Si tenías una suscripción, está cancelada. Las facturas las conserva Stripe, como exige la ley. Puedes volver cuando quieras con una cuenta nueva.'], cta: ['Ir a Revela', v.url] }),
     ticket: v => ({ subject: `Hemos recibido tu consulta #${v.n}`, title: 'Hemos recibido tu consulta',
-      paras: [`Gracias por escribirnos. Tu mensaje ha quedado registrado con el número #${v.n}.`, 'Te responderemos a esta dirección lo antes posible. Si necesitas añadir algo, envía otro informe desde Revela indicando ese número.'], cta: ['Abrir Revela', v.url] }),
+      paras: [`Gracias por escribirnos. Tu mensaje ha quedado registrado con el número #${v.n}.`, v.link ? `Te responderemos a esta dirección lo antes posible. Si necesitas añadir algo, escríbelo en la consulta con este enlace (vale ${v.days} días).` : 'Te responderemos a esta dirección lo antes posible. Si necesitas añadir algo, envía otro informe desde Revela indicando ese número.'],
+      cta: v.link ? ['Añadir algo a la consulta', v.link] : ['Abrir Revela', v.url] }),
     ticketReply: v => ({ subject: `Respuesta a tu consulta #${v.n}`, title: `Respuesta a tu consulta #${v.n}`,
-      paras: [...lines(v.text), `Si necesitas añadir algo, envía otro informe desde Revela indicando el número #${v.n}.`], cta: ['Abrir Revela', v.url] }),
+      paras: [...lines(v.text), !v.link ? `Si necesitas añadir algo, envía otro informe desde Revela indicando el número #${v.n}.`
+        : v.closed ? `Damos la consulta por resuelta. Si no es así, respóndenos con este enlace en los próximos ${v.days} días y la volveremos a abrir.`
+        : `Para contestarnos, o decirnos que ya está resuelto, usa este enlace (vale ${v.days} días).`], cta: v.link ? ['Responder', v.link] : ['Abrir Revela', v.url] }),
+    ticketRemind: v => ({ subject: `¿Sigues necesitando ayuda con la consulta #${v.n}?`, title: `¿Seguimos con la consulta #${v.n}?`,
+      paras: [`El ${v.date} te respondimos y estamos esperando tu respuesta.`, v.close ? `Si ya está resuelto, dínoslo con el enlace; si no nos escribes, la cerraremos el ${v.close}. Aun cerrada, podrás volver a abrirla con el enlace mientras valga (${v.days} días).` : `Si ya está resuelto, dínoslo con el enlace (vale ${v.days} días).`],
+      cta: ['Responder', v.link] }),
+    ticketAdmin: v => ({ subject: `${v.solved ? 'Resuelto' : 'Respuesta'} en el ticket #${v.n} (${v.email})`, title: `Ticket #${v.n}: ${v.solved ? 'la persona lo da por resuelto' : 'te toca a ti'}`,
+      paras: [`${v.email} ha escrito en el ticket #${v.n}${v.solved ? ' y lo ha marcado como resuelto' : ''}:`, ...lines(v.text)], cta: ['Abrir el ticket', v.admin] }),
     creditsAdded: v => ({ subject: `Te hemos añadido ${v.n} créditos`, title: 'Tienes créditos nuevos',
       paras: [`Hemos añadido ${v.n} créditos de IA a tu cuenta de Revela. Caducan el ${v.date}.`, 'Gracias por tu paciencia.'], cta: ['Abrir Revela', v.url] }),
     page: { ok: 'Hecho: ya no recibirás avisos de créditos que caducan.', bad: 'Este enlace no es válido o ha caducado.', back: 'Volver a Revela' },
+    reply: { title: n => `Consulta #${n}`, you: 'Tú', us: 'Revela', label: 'Tu respuesta', solved: 'Ya está resuelto, gracias', send: 'Enviar',
+      closed: 'Esta consulta está resuelta. Si escribes, la volveremos a abrir.', open: 'Escribe aquí lo que quieras añadir o contestar.',
+      bad: 'Este enlace no es válido o ha caducado. Si necesitas ayuda, envía un informe nuevo desde Revela (Vista ▸ Informar de un problema).',
+      done: 'Gracias: lo hemos recibido y te responderemos por correo.', thanks: 'Gracias: damos la consulta por resuelta.',
+      limit: 'Has enviado muchas respuestas hoy. Vuelve a intentarlo mañana.', empty: 'Escribe tu respuesta o marca que ya está resuelto.', long: 'El texto es demasiado largo.' },
   },
   en: {
     foot: 'Revela · a project by FM Lab', why: 'You are receiving this email because you have a Revela account or someone invited you to use it.',
@@ -111,12 +150,23 @@ const T = {
       paras: [v.idle ? 'As it had not been used for two years, we have deleted your Revela account, with its presentations in the cloud and its credits.' : 'We have deleted your Revela account, as you asked, with its presentations in the cloud and its credits.',
         'If you had a subscription, it is cancelled. Stripe keeps the invoices, as the law requires. You can come back any time with a new account.'], cta: ['Go to Revela', v.url] }),
     ticket: v => ({ subject: `We received your request #${v.n}`, title: 'We received your request',
-      paras: [`Thank you for writing to us. Your message has been registered with the number #${v.n}.`, 'We will answer to this address as soon as possible. If you need to add something, send another report from Revela mentioning that number.'], cta: ['Open Revela', v.url] }),
+      paras: [`Thank you for writing to us. Your message has been registered with the number #${v.n}.`, v.link ? `We will answer to this address as soon as possible. If you need to add something, write it in the request with this link (valid for ${v.days} days).` : 'We will answer to this address as soon as possible. If you need to add something, send another report from Revela mentioning that number.'],
+      cta: v.link ? ['Add to the request', v.link] : ['Open Revela', v.url] }),
     ticketReply: v => ({ subject: `Answer to your request #${v.n}`, title: `Answer to your request #${v.n}`,
-      paras: [...lines(v.text), `If you need to add something, send another report from Revela mentioning the number #${v.n}.`], cta: ['Open Revela', v.url] }),
+      paras: [...lines(v.text), !v.link ? `If you need to add something, send another report from Revela mentioning the number #${v.n}.`
+        : v.closed ? `We consider the request solved. If it isn't, answer with this link within ${v.days} days and we'll open it again.`
+        : `To answer us, or tell us it's solved, use this link (valid for ${v.days} days).`], cta: v.link ? ['Answer', v.link] : ['Open Revela', v.url] }),
+    ticketRemind: v => ({ subject: `Do you still need help with request #${v.n}?`, title: `Shall we go on with request #${v.n}?`,
+      paras: [`We answered you on ${v.date} and are waiting for your reply.`, v.close ? `If it's solved, tell us with the link; if we don't hear from you, we'll close it on ${v.close}. Even closed, you can open it again with the link while it's valid (${v.days} days).` : `If it's solved, tell us with the link (valid for ${v.days} days).`],
+      cta: ['Answer', v.link] }),
     creditsAdded: v => ({ subject: `We added ${v.n} credits to your account`, title: 'You have new credits',
       paras: [`We have added ${v.n} AI credits to your Revela account. They expire on ${v.date}.`, 'Thank you for your patience.'], cta: ['Open Revela', v.url] }),
     page: { ok: 'Done: you will no longer get notices about expiring credits.', bad: 'This link is not valid or has expired.', back: 'Back to Revela' },
+    reply: { title: n => `Request #${n}`, you: 'You', us: 'Revela', label: 'Your answer', solved: 'It’s solved, thank you', send: 'Send',
+      closed: 'This request is solved. If you write, we’ll open it again.', open: 'Write here what you want to add or answer.',
+      bad: 'This link is not valid or has expired. If you need help, send a new report from Revela (View ▸ Report a problem).',
+      done: 'Thank you: we got it and will answer you by email.', thanks: 'Thank you: we consider the request solved.',
+      limit: 'You have sent many answers today. Please try again tomorrow.', empty: 'Write your answer or mark it as solved.', long: 'The text is too long.' },
   },
   ca: {
     foot: 'Revela · un projecte d’FM Lab', why: 'Reps aquest correu perquè tens un compte de Revela o algú t’ha convidat a fer-lo servir.',
@@ -141,12 +191,23 @@ const T = {
       paras: [v.idle ? 'Com que feia dos anys que no es feia servir, hem eliminat el teu compte de Revela, amb les seves presentacions al núvol i els seus crèdits.' : 'Hem eliminat el teu compte de Revela, tal com vas demanar, amb les seves presentacions al núvol i els seus crèdits.',
         'Si tenies una subscripció, està cancel·lada. Les factures les conserva Stripe, com exigeix la llei. Pots tornar quan vulguis amb un compte nou.'], cta: ['Vés a Revela', v.url] }),
     ticket: v => ({ subject: `Hem rebut la teva consulta #${v.n}`, title: 'Hem rebut la teva consulta',
-      paras: [`Gràcies per escriure’ns. El teu missatge ha quedat registrat amb el número #${v.n}.`, 'Et respondrem a aquesta adreça tan aviat com puguem. Si necessites afegir-hi alguna cosa, envia un altre informe des de Revela indicant aquest número.'], cta: ['Obre Revela', v.url] }),
+      paras: [`Gràcies per escriure’ns. El teu missatge ha quedat registrat amb el número #${v.n}.`, v.link ? `Et respondrem a aquesta adreça tan aviat com puguem. Si necessites afegir-hi alguna cosa, escriu-ho a la consulta amb aquest enllaç (val ${v.days} dies).` : 'Et respondrem a aquesta adreça tan aviat com puguem. Si necessites afegir-hi alguna cosa, envia un altre informe des de Revela indicant aquest número.'],
+      cta: v.link ? ['Afegeix alguna cosa a la consulta', v.link] : ['Obre Revela', v.url] }),
     ticketReply: v => ({ subject: `Resposta a la teva consulta #${v.n}`, title: `Resposta a la teva consulta #${v.n}`,
-      paras: [...lines(v.text), `Si necessites afegir-hi alguna cosa, envia un altre informe des de Revela indicant el número #${v.n}.`], cta: ['Obre Revela', v.url] }),
+      paras: [...lines(v.text), !v.link ? `Si necessites afegir-hi alguna cosa, envia un altre informe des de Revela indicant el número #${v.n}.`
+        : v.closed ? `Donem la consulta per resolta. Si no és així, respon-nos amb aquest enllaç en els propers ${v.days} dies i la tornarem a obrir.`
+        : `Per respondre’ns, o dir-nos que ja està resolt, fes servir aquest enllaç (val ${v.days} dies).`], cta: v.link ? ['Respon', v.link] : ['Obre Revela', v.url] }),
+    ticketRemind: v => ({ subject: `Encara necessites ajuda amb la consulta #${v.n}?`, title: `Continuem amb la consulta #${v.n}?`,
+      paras: [`El ${v.date} et vam respondre i estem esperant la teva resposta.`, v.close ? `Si ja està resolt, digues-nos-ho amb l’enllaç; si no ens escrius, la tancarem el ${v.close}. Encara que estigui tancada, la podràs tornar a obrir amb l’enllaç mentre sigui vàlid (${v.days} dies).` : `Si ja està resolt, digues-nos-ho amb l’enllaç (val ${v.days} dies).`],
+      cta: ['Respon', v.link] }),
     creditsAdded: v => ({ subject: `T’hem afegit ${v.n} crèdits`, title: 'Tens crèdits nous',
       paras: [`Hem afegit ${v.n} crèdits d’IA al teu compte de Revela. Caduquen el ${v.date}.`, 'Gràcies per la teva paciència.'], cta: ['Obre Revela', v.url] }),
     page: { ok: 'Fet: ja no rebràs avisos de crèdits que caduquen.', bad: 'Aquest enllaç no és vàlid o ha caducat.', back: 'Torna a Revela' },
+    reply: { title: n => `Consulta #${n}`, you: 'Tu', us: 'Revela', label: 'La teva resposta', solved: 'Ja està resolt, gràcies', send: 'Envia',
+      closed: 'Aquesta consulta està resolta. Si escrius, la tornarem a obrir.', open: 'Escriu aquí el que vulguis afegir o respondre.',
+      bad: 'Aquest enllaç no és vàlid o ha caducat. Si necessites ajuda, envia un informe nou des de Revela (Visualització ▸ Informa d’un problema).',
+      done: 'Gràcies: ho hem rebut i et respondrem per correu.', thanks: 'Gràcies: donem la consulta per resolta.',
+      limit: 'Has enviat moltes respostes avui. Torna-ho a provar demà.', empty: 'Escriu la teva resposta o marca que ja està resolt.', long: 'El text és massa llarg.' },
   },
 };
 // A text written by someone (an answer to a ticket): one paragraph per line.
@@ -165,7 +226,7 @@ export const fmtDate = (ts, lang) => { try { return new Date(ts).toLocaleDateStr
 // The email of one kind: { subject, html, text } (vars: the values to fill in; unsub: the link to stop them).
 export function render(kind, lang, vars, unsub) {
   const L = T[mailLang(lang)], v = { ...vars, ...(vars.role && { role: L.roles[vars.role] || vars.role }) };
-  const m = L[kind](v), cta = m.cta;
+  const m = (L[kind] || T.es[kind])(v), cta = m.cta;               // (admin-only kinds: Spanish)
   const P = 'margin:0 0 16px';
   const html = `<!doctype html><html lang="${mailLang(lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escHtml(m.subject)}</title></head>
 <body style="margin:0;padding:0;background:#faf8f4;color:#17181c;font:16px/1.6 system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif">
@@ -188,6 +249,27 @@ export async function mail(env, { to, kind, lang, vars, sub, site = env.SITE_URL
   return sendMail(env, { to, ...render(kind, lang, { url: site + '/app/', ...vars }, unsub), ...(unsub && { unsubscribe: unsub }) });
 }
 
+// The page to answer a ticket (state: 'form' | 'bad' | 'done' | 'thanks' | 'limit' | 'empty'; t: the ticket, without notes).
+export function ticketPage(lang, { state, t, token, site }) {
+  const L = T[mailLang(lang)], R = L.reply, shown = t && state !== 'bad', form = shown && token && state !== 'done' && state !== 'thanks';
+  const msg = { bad: R.bad, done: R.done, thanks: R.thanks, limit: R.limit, empty: R.empty, long: R.long }[state];
+  const thread = shown ? t.thread.map(m => `<div style="margin:0 0 14px;padding:12px 14px;border-radius:10px;${m.from === 'user' ? 'background:#fff;border:1px solid #e3ded4' : 'background:#eef3f9'}">
+<p style="margin:0 0 6px;font-size:13px;color:#5d5f66">${escHtml(m.from === 'user' ? R.you : R.us)} · ${escHtml(fmtDate(m.at, lang))}</p>${lines(m.text).map(p => `<p style="margin:0 0 8px">${escHtml(p)}</p>`).join('')}${m.solved ? `<p style="margin:0;font-style:italic">✓ ${escHtml(R.solved)}</p>` : ''}</div>`).join('\n') : '';
+  return `<!doctype html><html lang="${mailLang(lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Revela${shown ? ' · ' + escHtml(R.title(t.id)) : ''}</title></head>
+<body style="margin:0;background:#faf8f4;color:#17181c;font:17px/1.6 system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif"><main style="max-width:600px;margin:6vh auto;padding:0 20px">
+<p style="font:500 24px/1 Georgia,serif;margin:0 0 24px">Revela</p>${shown ? `<h1 style="font:normal 28px/1.2 Georgia,serif;margin:0 0 18px">${escHtml(R.title(t.id))}</h1>` : ''}
+${msg ? `<p role="status" style="padding:10px 14px;border-radius:8px;background:#fff6e0">${escHtml(msg)}</p>` : ''}
+${thread}
+${form ? `<form method="post" action="/api/support/reply" style="margin-top:22px">
+<input type="hidden" name="t" value="${escHtml(token)}">
+<p style="margin:0 0 8px">${escHtml(t.status === 'closed' ? R.closed : R.open)}</p>
+<label style="display:block;font-weight:600;margin:0 0 6px" for="text">${escHtml(R.label)}</label>
+<textarea id="text" name="text" rows="7" maxlength="5000" style="box-sizing:border-box;width:100%;font:inherit;padding:10px;border:1px solid #c9c3b8;border-radius:8px"></textarea>
+<label style="display:flex;gap:8px;align-items:center;margin:12px 0"><input type="checkbox" name="solved" value="1"> ${escHtml(R.solved)}</label>
+<button type="submit" style="font:inherit;background:#2f5a8f;color:#fff;border:0;border-radius:8px;padding:10px 20px;cursor:pointer">${escHtml(R.send)}</button></form>` : ''}
+<p style="margin-top:28px"><a href="${escHtml(site)}/app/" style="color:#2f5a8f">${escHtml(L.page.back)}</a></p>
+<p style="margin-top:40px;font-size:13px;color:#5d5f66">${escHtml(L.foot)}</p></main></body></html>`;
+}
 // The page shown after following the link.
 export function unsubPage(lang, ok, site) {
   const L = T[mailLang(lang)];

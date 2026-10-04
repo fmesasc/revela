@@ -184,6 +184,10 @@ new_sqlite_classes = ["ModelJob"]
 # ADMIN_HOST = "admin.revelaslides.com"  (optional; that is the default)
 # Support tickets per day: SUPPORT_PER_DAY (per address or account, default 5), SUPPORT_DAILY_TOTAL
 # (default 500), SUPPORT_ATTACH_KB (largest attached presentation, default 1500).
+# Answers in a ticket from the signed link in its emails (needs MAIL_SECRET): SUPPORT_REPLIES_PER_DAY
+# (per address and per ticket, default 10); who is told: SUPPORT_NOTIFY (default the first of ADMIN_EMAILS).
+# The daily cron reminds once about tickets waiting for the person after SUPPORT_REMIND_DAYS (default 7)
+# and closes them after SUPPORT_AUTOCLOSE_DAYS (default 21) since the answer; 0 turns either off.
 [[durable_objects.bindings]]
 name = "DIRECTORY"
 class_name = "Directory"

@@ -40,6 +40,7 @@
 //   …/api/3d/…                 «Crear modelo 3D con IA»: jobs of rounds AI + Blender (model3d.js)
 //   POST /api/support          { message, category, email? (no session), version, browser, deckName?, attach? }
 //                              → { id } a support ticket, acknowledged by email (admin.js; limited per day)
+//   GET|POST /api/support/reply?t=…  the person's answer in the same ticket (signed link in its emails, no session: admin.js)
 //   …/api/admin/…              administration, only on the admin host behind Cloudflare Access (admin.js)
 //
 // A blocked account (by an administrator, admin.js) can still sign in, see its account,
@@ -57,7 +58,7 @@ import { docsSettings } from './docs.js';
 import { mail, readUnsubToken, unsubPage, fmtDate, mailConfigured, OPTIONAL } from './mail.js';
 import { scheduleAt, dayOf } from './schedule.js';
 import { handle3d, configured3d } from './model3d.js';
-import { createTicket, directoryUpsert, directoryRemove, CHARGES } from './admin.js';
+import { createTicket, supportReply, directoryUpsert, directoryRemove, CHARGES } from './admin.js';
 
 const enc = new TextEncoder();
 const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -536,6 +537,8 @@ export async function handleApi(req, env, url) {
     return new Response(unsubPage(r.lang, r.ok, s.site), { status: r.ok ? 200 : 400, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex',
       'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'", 'Referrer-Policy': 'no-referrer' } });
   }
+  // Answering a ticket: the signed link in its emails is the proof (no session; a form, so before the JSON body).
+  if (path === '/support/reply' && (req.method === 'GET' || req.method === 'POST')) return supportReply(req, env, url, s.site);
   // Anything that changes something, sent with the cookie, must come from Revela's site (no cross-site requests).
   if (req.method === 'POST' && cookieOf(req) && !req.headers.get('Authorization') && !webOrigin) return json({ error: 'origin' }, 403);
   const isDocs = path === '/docs' || path.startsWith('/docs/');

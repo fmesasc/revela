@@ -39,7 +39,7 @@ import { LtiStore } from './lti.js';
 import { CallRoom } from './calls.js';
 import { Schedule, runSchedule } from './schedule.js';
 import { ModelJob } from './model3d.js';
-import { handleAdmin, adminHost, Directory, Tickets, Audit } from './admin.js';
+import { handleAdmin, adminHost, Directory, Tickets, Audit, ticketsDue } from './admin.js';
 export { CollabRoom, ShareBox, Limits, Account, Budget, DesktopLink, CloudDoc, Team, LtiStore, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, verifyGoogleToken, resetCerts };
 
 const box = (env, id) => env.SHAREBOX.get(env.SHAREBOX.idFromName(id));
@@ -80,8 +80,13 @@ export async function authorize(req, env, fetchImpl = fetch) {
 }
 
 export default {
-  // The daily cron: notices due (credits that expire, the end of Pro, unused accounts).
-  scheduled(event, env, ctx) { ctx.waitUntil(runSchedule(env, event.scheduledTime || Date.now())); },
+  // The daily cron: notices due (credits that expire, the end of Pro, unused accounts), and support
+  // tickets left waiting for the person (a reminder, then closed: admin.js). Each on its own: one failing doesn't stop the other.
+  scheduled(event, env, ctx) {
+    const now = event.scheduledTime || Date.now();
+    ctx.waitUntil(runSchedule(env, now).catch(e => console.log('schedule', e?.message)));
+    ctx.waitUntil(ticketsDue(env, now).catch(e => console.log('tickets', e?.message)));
+  },
   async fetch(req, env) {
     const url = new URL(req.url);
     const cors = {

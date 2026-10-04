@@ -329,6 +329,14 @@ privado aparte (un proyecto de Cloudflare Pages servido en admin.revelaslides.co
   y el nombre de la presentación; su contenido solo si se marca la casilla (hasta
   `SUPPORT_ATTACH_KB`). Sin sesión hace falta un correo. Acuse por correo con el número; las
   respuestas del administrador se envían por correo y quedan en el hilo, con notas internas.
+  Estados: «Nuevo / te toca» (`open`), «Esperando respuesta del usuario» (`waiting`; el antiguo
+  `pending` se lee así y se migra solo) y «Resuelto» (`closed`). Al responder se elige: esperar su
+  respuesta, marcar como resuelto o solo nota interna. Cada correo lleva un enlace firmado (HMAC con
+  `MAIL_SECRET`: número, correo y caducidad de 30 días; sin iniciar sesión) a una página donde la
+  persona contesta en el mismo ticket o lo marca «Ya está resuelto, gracias»: vuelve a «te toca» (o
+  se cierra), se avisa al administrador (`SUPPORT_NOTIFY` o el primero de `ADMIN_EMAILS`) y un
+  ticket cerrado se reabre con el enlace mientras valga. El cron diario manda un recordatorio a los
+  `SUPPORT_REMIND_DAYS` (7) de esperar y lo cierra con una nota a los `SUPPORT_AUTOCLOSE_DAYS` (21); 0 lo apaga.
 - **Auditoría** (`Audit`): quién, cuándo, qué, antes y después de cada cambio; sin borrar.
 
 ## Qué impide saltarse las restricciones
@@ -356,6 +364,7 @@ privado aparte (un proyecto de Cloudflare Pages servido en admin.revelaslides.co
 | Otra web usando la sesión de Access del administrador (CSRF) | Cada petición lleva la cabecera `X-Revela-Admin` (otra web no puede ponerla sin permiso CORS, que no hay) y los cambios solo se aceptan con `Origin` del propio host de administración |
 | Un cambio de administración sin rastro | Cada cambio (créditos, plan, bloqueo, tickets) se apunta antes en un registro (`Audit`) que no tiene forma de editarse ni borrarse |
 | Inundar el soporte o usarlo para mandar correos a terceros | Límite diario por dirección IP o cuenta, y por destinatario del acuse (`SUPPORT_PER_DAY`, por defecto 5), un tope diario total, un campo trampa para robots, solo desde Revela (Origin), y el acuse no copia el texto del mensaje |
+| Responder en un ticket ajeno o con un enlace viejo | El enlace va firmado (HMAC con `MAIL_SECRET`) sobre el número, el correo de la consulta y la caducidad (30 días): uno cambiado, de otra consulta o caducado responde 403; las respuestas tienen límite por dirección y por consulta al día (`SUPPORT_REPLIES_PER_DAY`, 10) y de tamaño |
 
 Los tests `tests/server-api.mjs` intentan cada uno de estos ataques y comprueban
 que el servidor los rechaza.

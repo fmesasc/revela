@@ -4,6 +4,7 @@
 // are simulated. Run by tests/run.sh when Node.js is available.
 import worker, { Account, Budget, DesktopLink, ShareBox, Limits, CloudDoc, Team, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit } from '../server/cloudflare/worker.js';
 import { verifyAccess, resetAccessCerts } from '../server/cloudflare/admin.js';
+import { ticketToken } from '../server/cloudflare/mail.js';
 import { verifyBody } from '../server/blender/gate.js';
 import { verifyStripe, sha256, shortCode, settings } from '../server/cloudflare/api.js';
 
@@ -848,20 +849,134 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   ok((await A('POST', '/tickets/1001/note', { body: { text: 'Pedir el archivo' } })).j.ticket.notes[0].by === 'jefe@example.com', 'nota interna');
   sent = [];
   x = await A('POST', '/tickets/1001/reply', { body: { text: 'Hola:\nPrueba a abrirlo de nuevo.' } });
-  ok(x.status === 200 && x.j.mailed && x.j.after === 'pending' && x.j.ticket.thread.length === 2 && sent.length === 1 && sent[0].to === 'eva2@example.com' && /#1001/.test(sent[0].subject)
+  ok(x.status === 200 && x.j.mailed && x.j.after === 'waiting' && x.j.ticket.thread.length === 2 && sent.length === 1 && sent[0].to === 'eva2@example.com' && /#1001/.test(sent[0].subject)
     && /Prueba a abrirlo de nuevo/.test(sent[0].text) && !/Pedir el archivo/.test(sent[0].text), 'responder: correo a la persona, en el hilo, sin las notas internas');
   ok((await A('GET', '/tickets/9999')).status === 404, 'consulta inexistente → 404');
   env.SUPPORT_PER_DAY = '';
 
   // The overview and the audit log.
   x = await A('GET', '/stats');
-  ok(x.j.users >= 5 && x.j.tickets.open === 1 && x.j.tickets.pending === 1 && x.j.tickets.closed === 1 && typeof x.j.ai.usd === 'number' && x.j.ai.limit === 50, 'resumen: ' + JSON.stringify(x.j));
+  ok(x.j.users >= 5 && x.j.tickets.open === 1 && x.j.tickets.waiting === 1 && x.j.tickets.closed === 1 && typeof x.j.ai.usd === 'number' && x.j.ai.limit === 50, 'resumen: ' + JSON.stringify(x.j));
   x = await A('GET', '/audit');
   const acts = x.j.entries.map(e => e.action);
   ok(['credits', 'refund', 'plan', 'block', 'unblock', 'ticket-status', 'ticket-note', 'ticket-reply'].every(a => acts.includes(a)) && x.j.entries[0].action === 'ticket-reply', 'auditoría: cada cambio, el último primero: ' + acts);
   { const e = x.j.entries.find(e => e.action === 'credits'); ok(e.by === 'jefe@example.com' && e.target === '1414' && e.before.credits !== undefined && e.after.credits !== undefined && e.at > 0 && e.reason, 'auditoría: quién, cuándo, qué, antes y después'); }
   ok((await A('GET', '/audit?target=1414')).j.entries.every(e => e.target === '1414'), 'auditoría: por cuenta');
   ok((await A('POST', '/audit', { body: {} })).status === 404 && !(await env.AUDIT.get('audit').fetch('https://a/delete', { method: 'POST', body: '{}' })).ok, 'auditoría: no se puede borrar ni cambiar');
+
+  // Ticket lifecycle: open (our turn) → waiting (theirs) → closed; the person answers with the signed link in the emails.
+  {
+    const linkOf = m => decodeURIComponent((String(m?.text || '').match(/\/api\/support\/reply\?t=(\S+)/) || [])[1] || '');
+    const page = (t, { ip = '10.1.0.1' } = {}) => worker.fetch(new Request(SITE + '/api/support/reply?t=' + encodeURIComponent(t), { headers: { 'CF-Connecting-IP': ip, 'Accept-Language': 'es-ES' } }), env);
+    const answer = (t, fields, { ip = '10.1.0.1', json: asJson = false } = {}) => worker.fetch(new Request(SITE + '/api/support/reply', { method: 'POST',
+      headers: { Origin: SITE, 'CF-Connecting-IP': ip, 'Content-Type': asJson ? 'application/json' : 'application/x-www-form-urlencoded' },
+      body: asJson ? JSON.stringify({ t, ...fields }) : new URLSearchParams({ t, ...fields }).toString() }), env);
+    // (The admin's Access token is checked against the real clock.)
+    const real = async f => { const fake = Date.now; Date.now = realNow; try { return await f(); } finally { Date.now = fake; } };
+    const get = id => real(async () => (await A('GET', '/tickets/' + id)).j.ticket);
+    const audits = id => real(async () => (await A('GET', '/audit?target=ticket:' + id)).j.entries);
+
+    // The acknowledgement already carries the link (instead of «send another report»).
+    sent = [];
+    r = await sup({ message: 'No puedo exportar a PDF', email: 'leo@example.com', lang: 'es' }, { ip: '10.0.0.20' }); const t1 = (await r.json()).id;
+    let m = sent.find(x => x.to === 'leo@example.com'), tok = linkOf(m);
+    ok(m && tok && /Añadir algo a la consulta/.test(m.text) && !/envía otro informe/.test(m.text), 'consulta: el acuse lleva el enlace para responder, no «envía otro informe»: ' + m?.text);
+
+    // Old tickets: 'pending' (before 'waiting') is read as 'waiting' and moved once.
+    { const old = new Tickets({ storage: fakeStorage() }, env), S = old.ctx.storage.m, k = '0000001001';
+      S.set('n', 1001); S.set('t:' + k, { id: 1001, at: 1000, updated: 2000, status: 'pending', email: 'x@example.com', category: 'bug', message: 'Antiguo', thread: [{ at: 1000, from: 'user', text: 'Antiguo' }, { at: 2000, from: 'admin', by: 'jefe@example.com', text: 'Mira esto' }], notes: [] });
+      S.set('x:' + k, { id: 1001, status: 'pending' }); S.set('i:pending|' + k, 1001);
+      const call0 = async (op, b) => (await old.fetch(new Request('https://do/' + op, { method: 'POST', body: JSON.stringify(b || {}) }))).json();
+      const c = await call0('counts'), l = await call0('list', { status: 'pending' }), g = (await call0('get', { id: 1001 })).ticket;
+      ok(c.waiting === 1 && c.open === 0 && !('pending' in c) && l.tickets.length === 1 && l.tickets[0].status === 'waiting' && l.tickets[0].last === 'admin' && l.tickets[0].lastAt === 2000
+        && g.status === 'waiting' && g.waitingSince === 2000 && g.updated === 2000 && ![...S.keys()].some(x => x.startsWith('i:pending|')) && S.get('v') === 2,
+      'estados: «pending» antiguo pasa a «waiting» (índice rehecho, quién habló el último): ' + JSON.stringify([c, l.tickets[0]]));
+      ok((await call0('status', { id: 1001, status: 'pending' })).after === 'waiting' && (await call0('status', { id: 1001, status: 'raro' })).error, 'estados: «pending» se acepta como alias; uno inventado no'); }
+    ok((await A('POST', `/tickets/${t1}/status`, { body: { status: 'pending' } })).j.after === 'waiting' && (await A('POST', `/tickets/${t1}/status`, { body: { status: 'open' } })).j.after === 'open', 'admin: «pending» → «waiting»');
+
+    // Answering: «and wait for their answer» (waiting), «and mark it solved» (closed), «internal note only».
+    sent = []; x = await A('POST', `/tickets/${t1}/reply`, { body: { text: '¿Qué navegador usas?', status: 'waiting' } });
+    m = sent.find(y => y.to === 'leo@example.com'); tok = linkOf(m);
+    ok(x.j.after === 'waiting' && x.j.ticket.last === 'admin' && x.j.ticket.waitingSince > 0 && m && tok && /Responder/.test(m.text) && /30 días/.test(m.text) && /resuelto/.test(m.text), 'responder y esperar: «waiting», con el enlace en el correo: ' + m?.text);
+    sent = []; x = await A('POST', `/tickets/${t1}/note`, { body: { text: 'Seguramente Safari' } });
+    ok(x.j.ticket.status === 'waiting' && !sent.length && (await get(t1)).last === 'admin', 'solo nota interna: ni correo ni cambio de estado');
+    x = await A('GET', '/tickets?status=waiting');
+    ok(x.j.tickets.some(t => t.id === t1 && t.last === 'admin' && t.lastAt > 0), 'la lista dice quién escribió el último y cuándo');
+
+    // The page: valid, forged, another ticket, expired.
+    r = await page(tok); let html = await r.text();
+    ok(r.status === 200 && /¿Qué navegador usas\?/.test(html) && /No puedo exportar a PDF/.test(html) && /Ya está resuelto, gracias/.test(html) && !/Seguramente Safari/.test(html)
+      && /form-action 'self'/.test(r.headers.get('Content-Security-Policy')) && /no-store/.test(r.headers.get('Cache-Control')), 'enlace válido: la conversación (sin notas internas) y el formulario');
+    ok((await page(tok.slice(0, -2) + (tok.endsWith('A') ? 'BB' : 'AA'))).status === 403, 'enlace con la firma cambiada → 403');
+    { const [, e, em, sig] = tok.split('.'); ok((await answer(`1003.${e}.${em}.${sig}`, { text: 'Hola' })).status === 403, 'enlace con otro número de consulta → 403'); }
+    ok((await page(await ticketToken(env, 1003, 'leo@example.com', Date.now() + 864e5))).status === 403, 'enlace firmado para otra consulta (otro correo) → 403');
+    ok((await page(await ticketToken(env, t1, 'leo@example.com', Date.now() - 1000))).status === 403, 'enlace caducado → 403');
+    ok((await page(await ticketToken({ MAIL_SECRET: 'otro' }, t1, 'leo@example.com', Date.now() + 864e5))).status === 403 && (await page('basura')).status === 403, 'enlace firmado con otra clave, o basura → 403');
+    ok(/no es válido o ha caducado/.test(await (await page('basura')).text()), 'enlace malo: la página lo dice');
+
+    // The person answers: the ticket is ours again, and the admin is told.
+    ok((await answer(tok, { text: '' })).status === 400, 'respuesta vacía (sin marcar resuelto) → 400');
+    ok((await answer(tok, { text: 'x'.repeat(30000) })).status === 413, 'respuesta demasiado grande → 413');
+    sent = []; r = await answer(tok, { text: 'Uso Safari 18.' }); html = await r.text();
+    let t = await get(t1);
+    ok(r.status === 200 && /lo hemos recibido/.test(html) && t.status === 'open' && t.last === 'user' && t.thread.at(-1).text === 'Uso Safari 18.' && t.thread.at(-1).from === 'user', 'la persona responde: vuelve a «open» (nos toca)');
+    m = sent.find(y => y.to === 'jefe@example.com');
+    ok(m && sent.length === 1 && /#\d+/.test(m.subject) && /Uso Safari 18/.test(m.text) && /admin\.revelaslides\.com\/#tickets\//.test(m.text), 'aviso al primer correo de ADMIN_EMAILS: ' + JSON.stringify(sent.map(y => [y.to, y.subject])));
+    ok((await audits(t1)).some(e => e.action === 'ticket-user-reply' && e.by === 'user' && e.before.status === 'waiting' && e.after.status === 'open'), 'auditoría: la respuesta de la persona, como «user»');
+    env.SUPPORT_NOTIFY = 'soporte@example.com'; sent = [];
+    r = await answer(tok, { solved: true }, { json: true }); j = await r.json(); t = await get(t1);
+    ok(r.status === 200 && j.status === 'closed' && t.status === 'closed' && t.thread.at(-1).solved && sent.some(y => y.to === 'soporte@example.com' && /Resuelto/.test(y.subject)), 'marca «ya está resuelto» (JSON): cerrada; aviso a SUPPORT_NOTIFY');
+    env.SUPPORT_NOTIFY = '';
+    // Solved and closed by the admin; the person can open it again with the link.
+    sent = []; x = await A('POST', `/tickets/${t1}/reply`, { body: { text: 'Arreglado en la versión 0.4.', status: 'closed' } });
+    m = sent.find(y => y.to === 'leo@example.com'); const tokClosed = linkOf(m);
+    ok(x.j.after === 'closed' && /Damos la consulta por resuelta/.test(m?.text) && tokClosed, 'responder y marcar como resuelto: «closed», el correo lo dice y deja el enlace');
+    ok(/la volveremos a abrir/.test(await (await page(tokClosed)).text()), 'cerrada: la página avisa de que escribir la reabre');
+    r = await answer(tokClosed, { text: 'Sigue fallando con la 0.4' }, { ip: '10.1.0.2' });
+    ok(r.status === 200 && (await get(t1)).status === 'open', 'una consulta cerrada se reabre con el enlace');
+
+    // Limits: per ticket (and per address) a day.
+    env.SUPPORT_REPLIES_PER_DAY = '2';
+    r = await sup({ message: 'Me cobran dos veces', email: 'ona@example.com' }, { ip: '10.0.0.21' }); const t2 = (await r.json()).id;
+    const tok2 = linkOf(sent.find(y => y.to === 'ona@example.com'));
+    ok((await answer(tok2, { text: 'Uno' }, { ip: '10.2.0.1' })).status === 200 && (await answer(tok2, { text: 'Dos' }, { ip: '10.2.0.2' })).status === 200, 'límite: dentro del cupo');
+    r = await answer(tok2, { text: 'Tres' }, { ip: '10.2.0.3' });
+    ok(r.status === 429 && /muchas respuestas/.test(await r.text()) && (await get(t2)).thread.length === 3, 'límite por consulta y día → 429, y no se guarda');
+    env.SUPPORT_REPLIES_PER_DAY = '';
+
+    // The daily cron: a reminder after 7 days waiting, closed after 21; 0 turns either off.
+    sent = []; await A('POST', `/tickets/${t2}/reply`, { body: { text: '¿Puedes mandarnos el recibo?' } });
+    const since = (await get(t2)).waitingSince;
+    at(since + 6 * DAYms); await runCron(Date.now());
+    ok(!sent.some(y => y.to === 'ona@example.com' && /Sigues/.test(y.subject)), 'cron: a los 6 días, nada');
+    at(since + 7 * DAYms + 3600e3); await runCron(Date.now());
+    m = sent.find(y => y.to === 'ona@example.com' && /Sigues/.test(y.subject)); const tokRemind = linkOf(m);
+    ok(m && tokRemind && /la cerraremos el/.test(m.text) && (await get(t2)).status === 'waiting', 'cron: a los 7 días, un recordatorio con el enlace: ' + m?.text);
+    at(since + 8 * DAYms); await runCron(Date.now());
+    ok(sent.filter(y => y.to === 'ona@example.com' && /Sigues/.test(y.subject)).length === 1, 'cron: un solo recordatorio');
+    at(since + 21 * DAYms + 3600e3); await runCron(Date.now()); t = await get(t2);
+    ok(t.status === 'closed' && t.notes.some(n => n.by === 'system' && /automáticamente/.test(n.text)) && sent.filter(y => y.to === 'ona@example.com').length === 2, 'cron: a los 21 días, cerrada con una nota (sin más correos)');
+    ok((await audits(t2)).some(e => e.action === 'ticket-autoclose' && e.by === 'system') && (await audits(t2)).some(e => e.action === 'ticket-remind'), 'auditoría: recordatorio y cierre automáticos');
+    at(since + 25 * DAYms); r = await answer(tokRemind, { text: 'Perdón, estaba de viaje' }, { ip: '10.2.0.9' });
+    ok(r.status === 200 && (await get(t2)).status === 'open', 'tras el cierre automático, la persona la reabre con el enlace del recordatorio');
+    at(since + 7 * DAYms + 31 * DAYms); ok((await page(tokRemind)).status === 403, 'el enlace caduca a los 30 días');
+    Date.now = realNow;
+    // Turned off: SUPPORT_REMIND_DAYS=0 (no reminder), SUPPORT_AUTOCLOSE_DAYS=0 (never closed).
+    env.SUPPORT_REMIND_DAYS = '0'; env.SUPPORT_AUTOCLOSE_DAYS = '0'; sent = [];
+    await A('POST', `/tickets/${t2}/reply`, { body: { text: '¿Sigue?' } }); const s2 = (await get(t2)).waitingSince;
+    at(s2 + 60 * DAYms); await runCron(Date.now()); Date.now = realNow;
+    ok((await get(t2)).status === 'waiting' && !sent.some(y => y.to === 'ona@example.com' && /Sigues/.test(y.subject)), 'cron: con 0, ni recordatorio ni cierre');
+    env.SUPPORT_REMIND_DAYS = ''; env.SUPPORT_AUTOCLOSE_DAYS = '';
+
+    // The list: open first, then waiting, then closed; in each, the latest activity first.
+    x = await A('GET', '/tickets?limit=100');
+    const order = { open: 0, waiting: 1, closed: 2 }, L = x.j.tickets;
+    ok(L.length >= 5 && L.every((t, i) => !i || order[L[i - 1].status] < order[t.status] || (L[i - 1].status === t.status && L[i - 1].lastAt >= t.lastAt)), 'lista: por estado y por última actividad: ' + L.map(t => t.id + t.status[0]));
+    { const a1 = await A('GET', '/tickets?limit=2'), a2 = await A('GET', '/tickets?limit=2&cursor=' + encodeURIComponent(a1.j.cursor)), a3 = await A('GET', '/tickets?limit=100&cursor=' + encodeURIComponent(a2.j.cursor));
+      ok([...a1.j.tickets, ...a2.j.tickets, ...a3.j.tickets].map(t => t.id).join() === L.map(t => t.id).join() && !a3.j.cursor, 'lista: paginada de un estado al siguiente'); }
+    x = await A('GET', '/stats'); const c = x.j.tickets;
+    ok(c.open + c.waiting + c.closed === L.length && c.waiting >= 1, 'resumen: cuántas en cada estado: ' + JSON.stringify(c));
+  }
 
   // Deleting the account takes it out of the directory.
   ok((await req('POST', '/api/account/delete', { headers: { Cookie: pia }, body: { confirm: 'pia@example.com' } })).status === 200 && (await A('GET', '/users?q=pia')).j.users.length === 0, 'cuenta eliminada: fuera del directorio');

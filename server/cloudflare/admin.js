@@ -15,19 +15,20 @@
 // itself (Origin), so another site can't use the Access cookie (CSRF).
 //
 //   GET  /api/admin/whoami                 → { email }
-//   GET  /api/admin/stats                  → { users, pro, blocked, ai: { month, usd, limit }, tickets: { open, pending, closed } }
+//   GET  /api/admin/stats                  → { users, pro, blocked, ai: { month, usd, limit }, tickets: { open, waiting, closed } }
 //   GET  /api/admin/users?q=&cursor=       → { users, cursor }   (q: email prefix or Google sub; none: most recently seen)
 //   GET  /api/admin/users/:sub             → the account: profile, plan, credits and lots, ledger, sessions, docs, team
 //   POST /api/admin/credits                { sub, delta, reason, expiresDays?, notify? }   (ledger kind 'admin')
 //   POST /api/admin/refund                 { sub, reason? , notify? }   (gives back the last AI charge not refunded yet)
 //   POST /api/admin/plan                   { sub, until (ms, 0 = remove), reason }   (Pro given by hand; Stripe's untouched)
 //   POST /api/admin/block                  { sub, blocked, reason }   (blocked: 403 on AI, cloud documents, calls…)
-//   GET  /api/admin/tickets?status=&cursor= → { tickets, cursor }
+//   GET  /api/admin/tickets?status=&cursor= → { tickets, cursor }   (open, waiting, closed; in each, the latest activity first)
 //   GET  /api/admin/tickets/:id            → the ticket (thread, notes)
 //   GET  /api/admin/tickets/:id/attachment → the attached presentation (JSON)
-//   POST /api/admin/tickets/:id/status     { status: open | pending | closed }
+//   POST /api/admin/tickets/:id/status     { status: open | waiting | closed }   ('pending', the old name of 'waiting', also)
 //   POST /api/admin/tickets/:id/note       { text }   (internal)
-//   POST /api/admin/tickets/:id/reply      { text, status? }   (emailed to the person; in the thread)
+//   POST /api/admin/tickets/:id/reply      { text, status?: waiting (default) | closed | open }   (emailed to the person, with
+//                                          the signed link to answer in the same ticket; in the thread)
 //   GET  /api/admin/audit?cursor=&target=  → { entries, cursor }
 //
 // Every change is written first to the audit log (Audit: who, when, what, before and after),
@@ -39,10 +40,14 @@
 // until they next sign in (there is no way to find them before).
 //
 // Tickets (POST /api/support, in api.js → createTicket): from the app's «Informar de un problema»,
-// signed in or with an email address; limited per address (IP) and per day (Limits).
+// signed in or with an email address; limited per address (IP) and per day (Limits). Their emails
+// carry a signed link (mail.js) to a page where the person answers in the same ticket or marks it
+// solved (GET|POST /api/support/reply → supportReply): that opens it again (or closes it) and emails
+// the admin (SUPPORT_NOTIFY, else the first of ADMIN_EMAILS). The daily cron reminds once and then
+// closes tickets left waiting for the person (ticketsDue: SUPPORT_REMIND_DAYS, SUPPORT_AUTOCLOSE_DAYS).
 
 import { acct, call, settings } from './api.js';
-import { mail } from './mail.js';
+import { mail, mailConfigured, ticketLink, readTicketToken, ticketPage, fmtDate, TICKET_LINK_DAYS } from './mail.js';
 import { fromB64url } from './auth.js';
 import { takeQuota, writeText, readParts } from './store.js';
 import { teamStatus } from './teams.js';
@@ -50,7 +55,8 @@ import { teamStatus } from './teams.js';
 const enc = new TextEncoder(), dec = new TextDecoder();
 const pad = n => String(n).padStart(10, '0');
 const EMAIL = /^[^\s@<>"]{1,64}@[a-z0-9.-]{1,190}\.[a-z]{2,}$/;
-export const STATUSES = ['open', 'pending', 'closed'];
+export const STATUSES = ['open', 'waiting', 'closed'];   // (see Tickets)
+export const statusOf = s => (s === 'pending' ? 'waiting' : STATUSES.includes(s) ? s : null);
 export const CATEGORIES = ['bug', 'ai', 'billing', 'account', 'cloud', 'other'];
 export const CHARGES = ['ai', 'image', 'speech', 'model3d'];           // (ledger kinds that are AI charges: refundable)
 const clip = (s, n) => String(s ?? '').replace(/\r/g, '').slice(0, n);
@@ -183,57 +189,104 @@ export class Audit {
 const audit = (env, e) => call(stub(env.AUDIT, 'audit'), 'add', e);
 
 // ---- Tickets -------------------------------------------------------------------------------------------
+// Statuses: 'open' (new, or the person wrote: our turn), 'waiting' (we answered: theirs), 'closed' (solved).
+// 'pending' (before 'waiting') is read as 'waiting'; stored ones are moved once (migrate()).
 //   'n' → last number (the first is 1001); 't:' + n → the ticket; 'x:' + n → its summary (lists);
-//   'i:' + status + '|' + n → n (by status); 'a:' + n + ':' → the attached presentation (store.js parts)
+//   'i:' + status + '|' + last activity + '|' + n → n (by status, latest activity last); 'a:' + n + ':' → the attached presentation (store.js parts)
+//   'v' → storage version (2: that index)
+// A ticket: { id, at, updated, status, email, sub, name, lang, category, message, …, thread: [{ at, from: 'user' | 'admin', text, by?, mailed?, solved? }],
+//   notes: [{ at, by, text }], last: who wrote last ('user' | 'admin'), lastAt, waitingSince, reminded, ix: its index key }
+const DAY = 864e5;
+const tsKey = n => String(Math.floor(+n || 0)).padStart(15, '0');
 const summary = t => ({ id: t.id, at: t.at, updated: t.updated, status: t.status, email: t.email, sub: t.sub || null, category: t.category,
-  subject: clip(t.message, 120).replace(/\s+/g, ' '), deckName: t.deckName || null, attachment: !!t.attachment, replies: t.thread.filter(x => x.from === 'admin').length });
+  subject: clip(t.message, 120).replace(/\s+/g, ' '), deckName: t.deckName || null, attachment: !!t.attachment, replies: t.thread.filter(x => x.from === 'admin').length,
+  last: t.last, lastAt: t.lastAt });
 export class Tickets {
   constructor(ctx, env) { this.ctx = ctx; this.env = env; }
   fetch(req) { const run = () => this.handle(req); const p = (this.queue || Promise.resolve()).then(run, run); this.queue = p.catch(() => {}); return p; }
-  async save(t, oldStatus) {
-    const st = this.ctx.storage; t.updated = Date.now();
-    if (oldStatus && oldStatus !== t.status) await st.delete(`i:${oldStatus}|${pad(t.id)}`);
-    await st.put({ ['t:' + pad(t.id)]: t, ['x:' + pad(t.id)]: summary(t), [`i:${t.status}|${pad(t.id)}`]: t.id });
+  async save(t, { keep } = {}) {
+    const st = this.ctx.storage; if (!keep) t.updated = Date.now();
+    t.status = statusOf(t.status) || 'open';
+    const m = t.thread.at(-1); t.last ??= m?.from || 'user'; t.lastAt ??= m?.at || t.at;
+    const ix = `i:${t.status}|${tsKey(t.lastAt)}|${pad(t.id)}`;
+    if (t.ix && t.ix !== ix) await st.delete(t.ix);
+    t.ix = ix;
+    await st.put({ ['t:' + pad(t.id)]: t, ['x:' + pad(t.id)]: summary(t), [ix]: t.id });
+  }
+  // Once: the index by last activity (instead of by number), 'pending' → 'waiting', who wrote last.
+  async migrate() {
+    const st = this.ctx.storage; if ((await st.get('v')) >= 2) return;
+    const old = [...(await st.list({ prefix: 'i:' })).keys()];
+    for (let i = 0; i < old.length; i += 128) await st.delete(old.slice(i, i + 128));
+    for (const [, t] of await st.list({ prefix: 't:' })) {
+      delete t.ix;
+      if (t.status === 'pending' && !t.waitingSince) t.waitingSince = t.lastAt || t.thread.at(-1)?.at || t.updated || t.at;
+      await this.save(t, { keep: true });
+    }
+    await st.put('v', 2);
   }
   async handle(req) {
     const op = new URL(req.url).pathname.split('/').pop(), a = await req.json().catch(() => ({})), st = this.ctx.storage;
+    await this.migrate();
     if (op === 'create') {
       const id = ((await st.get('n')) || 1000) + 1, now = Date.now();
       const t = { id, at: now, status: 'open', email: a.email, sub: a.sub || null, name: a.name || null, lang: a.lang || null, category: a.category, message: a.message,
         version: a.version || '', browser: a.browser || '', deckName: a.deckName || null, attachment: a.attach ? { size: a.attach.length } : null,
-        thread: [{ at: now, from: 'user', text: a.message }], notes: [] };
+        thread: [{ at: now, from: 'user', text: a.message }], notes: [], last: 'user', lastAt: now };
       await st.put('n', id);
       if (a.attach) await writeText(st, `a:${pad(id)}:`, a.attach);
       await this.save(t);
       return Response.json({ ok: true, id });
     }
-    if (op === 'list') {                                  // { status, cursor, limit } → the newest first
-      const limit = Math.min(100, Math.max(1, +a.limit || 50));
-      if (STATUSES.includes(a.status)) {
-        const m = [...(await st.list({ prefix: `i:${a.status}|`, reverse: true, limit: limit + 1, ...(a.cursor && { end: a.cursor }) }))];
-        const tickets = await getMany(st, m.slice(0, limit).map(([, n]) => 'x:' + pad(n)));
-        return Response.json({ tickets, cursor: m.length > limit ? m[limit - 1][0] : null });
+    if (op === 'list') {                                  // { status, cursor, limit } → open, waiting, closed; in each, the latest activity first
+      const limit = Math.min(100, Math.max(1, +a.limit || 50)), only = statusOf(a.status), order = only ? [only] : STATUSES, cur = String(a.cursor || ''), got = [];
+      for (let i = Math.max(0, cur ? order.findIndex(s => cur.startsWith(`i:${s}|`)) : 0); i < order.length && got.length <= limit; i++) {
+        const end = cur.startsWith(`i:${order[i]}|`) ? cur : null;
+        got.push(...(await st.list({ prefix: `i:${order[i]}|`, reverse: true, limit: limit + 1 - got.length, ...(end && { end }) })));
       }
-      const m = [...(await st.list({ prefix: 'x:', reverse: true, limit: limit + 1, ...(a.cursor && { end: a.cursor }) }))];
-      return Response.json({ tickets: m.slice(0, limit).map(([, v]) => v), cursor: m.length > limit ? m[limit - 1][0] : null });
+      const page = got.slice(0, limit);
+      return Response.json({ tickets: await getMany(st, page.map(([, n]) => 'x:' + pad(n))), cursor: got.length > limit ? page.at(-1)[0] : null });
     }
     if (op === 'counts') {
       const c = {}; for (const s of STATUSES) c[s] = (await st.list({ prefix: `i:${s}|` })).size;
       return Response.json(c);
     }
+    if (op === 'due') {                                   // { now, remind, close } (ms; 0: never) → { items: [{ kind: 'remind' | 'close', id, email, lang, since, closeAt }] }
+      const items = [];
+      for (const [, n] of await st.list({ prefix: 'i:waiting|' })) {
+        const t = await st.get('t:' + pad(n)); if (!t || t.status !== 'waiting') continue;
+        const since = t.waitingSince || t.lastAt || t.at, age = a.now - since, item = { id: t.id, email: t.email, lang: t.lang, since, closeAt: a.close ? since + a.close : null };
+        if (a.close && age >= a.close) {
+          t.status = 'closed'; t.autoClosed = a.now;
+          t.notes.push({ at: a.now, by: 'system', text: `Cerrado automáticamente: sin respuesta de la persona en ${Math.round(a.close / DAY)} días.` });
+          await this.save(t); items.push({ kind: 'close', ...item });
+        } else if (a.remind && !t.reminded && age >= a.remind) {
+          t.reminded = a.now; await this.save(t, { keep: true }); items.push({ kind: 'remind', ...item });
+        }
+      }
+      return Response.json({ items });
+    }
     const t = await st.get('t:' + pad(+a.id || 0)); if (!t) return Response.json({ error: 'not found' }, { status: 404 });
     if (op === 'get') return Response.json({ ticket: t });
     if (op === 'attachment') { const parts = t.attachment ? await readParts(st, `a:${pad(t.id)}:`) : null; return Response.json({ text: parts ? parts.join('') : null }); }
-    const before = t.status;
+    const before = t.status, now = Date.now();
+    const turn = s => { t.status = s; t.waitingSince = s === 'waiting' ? now : null; t.reminded = null; };
     if (op === 'status') {
-      if (!STATUSES.includes(a.status)) return Response.json({ error: 'bad status' }, { status: 400 });
-      t.status = a.status; await this.save(t, before); return Response.json({ ok: true, before, after: t.status });
+      const s = statusOf(a.status); if (!s) return Response.json({ error: 'bad status' }, { status: 400 });
+      if (s !== before) turn(s);
+      await this.save(t); return Response.json({ ok: true, before, after: t.status });
     }
-    if (op === 'note') { t.notes.push({ at: Date.now(), by: a.by, text: a.text }); await this.save(t, before); return Response.json({ ok: true, ticket: t }); }
-    if (op === 'reply') {
-      t.thread.push({ at: Date.now(), from: 'admin', by: a.by, text: a.text, mailed: !!a.mailed });
-      if (STATUSES.includes(a.status)) t.status = a.status;
-      await this.save(t, before); return Response.json({ ok: true, before, after: t.status, ticket: t });
+    if (op === 'note') { t.notes.push({ at: now, by: a.by, text: a.text }); await this.save(t); return Response.json({ ok: true, ticket: t }); }
+    if (op === 'reply') {                                 // from the admin: { text, by, status (waiting | closed | open), mailed }
+      t.thread.push({ at: now, from: 'admin', by: a.by, text: a.text, mailed: !!a.mailed });
+      t.last = 'admin'; t.lastAt = now; turn(statusOf(a.status) || 'waiting');
+      await this.save(t); return Response.json({ ok: true, before, after: t.status, ticket: t });
+    }
+    if (op === 'user-reply') {                            // from the person, with the signed link: { email, text, solved } → open again, or closed
+      if (String(a.email || '').toLowerCase() !== String(t.email || '').toLowerCase()) return Response.json({ error: 'forbidden' }, { status: 403 });
+      t.thread.push({ at: now, from: 'user', text: a.text || '', ...(a.solved && { solved: true }) });
+      t.last = 'user'; t.lastAt = now; turn(a.solved ? 'closed' : 'open');
+      await this.save(t); return Response.json({ ok: true, before, after: t.status, ticket: t });
     }
     return Response.json({ error: 'unknown' }, { status: 404 });
   }
@@ -260,8 +313,66 @@ export async function createTicket(req, env, me, body, json) {
   if (!(await takeQuota(env, 'support:to:' + email, { per, scope: 'support-to' }))) return json({ error: 'daily limit' }, 429);
   const r = await call(stub(env.TICKETS, 'tickets'), 'create', { email, sub: me?.sub || null, name, lang, category, message,
     version: clip(body.version, 60), browser: clip(body.browser, 400), deckName: body.deckName ? clip(body.deckName, 200) : null, attach });
-  const mailed = await mail(env, { to: email, kind: 'ticket', lang, vars: { n: r.id } });
+  const mailed = await mail(env, { to: email, kind: 'ticket', lang, vars: { n: r.id, link: await ticketLink(env, r.id, email), days: TICKET_LINK_DAYS } });
   return json({ ok: true, id: r.id, mailed });
+}
+
+// The person's answer in a ticket, from the signed link in its emails (no session): GET → the page with
+// the conversation and a form; POST (that form, or JSON { t, text, solved }) → added to the thread, the
+// ticket open again (or closed if solved), the admin told by email. Limited per address and per ticket a day.
+export async function supportReply(req, env, url, site) {
+  const asJson = req.method === 'POST' && /json/i.test(req.headers.get('Content-Type') || '');
+  const guess = (req.headers.get('Accept-Language') || '').slice(0, 2).toLowerCase();
+  const out = (state, t, lang, token, status) => asJson
+    ? Response.json({ ok: status < 400, ...(status >= 400 && { error: state }), ...(t && { status: t.status }) }, { status, headers: { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } })
+    : new Response(ticketPage(lang, { state, token, site, t: t && { id: t.id, status: t.status, thread: t.thread.map(({ at, from, text, solved }) => ({ at, from, text, solved })) } }), { status,
+      headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex', 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY',
+        'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'" } });
+  if (!env.TICKETS) return out('bad', null, guess, null, 503);
+  let token = url.searchParams.get('t') || '', text = '', solved = false;
+  if (req.method === 'POST') {
+    const max = 20000;
+    if (+(req.headers.get('Content-Length') || 0) > max) return out('long', null, guess, null, 413);
+    const raw = await req.text(); if (raw.length > max) return out('long', null, guess, null, 413);
+    let f = {}; try { f = asJson ? JSON.parse(raw || '{}') : Object.fromEntries(new URLSearchParams(raw)); } catch { f = null; }
+    if (!f || typeof f !== 'object' || Array.isArray(f)) return out('bad', null, guess, null, 400);
+    token = String(f.t || token); text = clip(f.text, 5000).trim(); solved = [true, '1', 'on', 'true'].includes(f.solved);
+  }
+  const tok = await readTicketToken(env, token), T = stub(env.TICKETS, 'tickets');
+  const t = tok && (await call(T, 'get', { id: tok.id })).ticket;
+  if (!t || String(t.email).toLowerCase() !== tok.email) return out('bad', null, guess, null, 403);
+  if (req.method === 'GET') return out('form', t, t.lang, token, 200);
+  if (!text && !solved) return out('empty', t, t.lang, token, 400);
+  const ip = req.headers.get('CF-Connecting-IP') || '?', per = +env.SUPPORT_REPLIES_PER_DAY || 10;
+  if (!(await takeQuota(env, 'reply:ip:' + ip, { per, scope: 'support-reply' })) || !(await takeQuota(env, 'reply:t:' + t.id, { per, scope: 'support-reply' })))
+    return out('limit', t, t.lang, token, 429);
+  const r = await call(T, 'user-reply', { id: t.id, email: tok.email, text, solved });
+  if (!r.ok) return out('bad', null, t.lang, null, 403);
+  if (env.AUDIT) await audit(env, { by: 'user', action: 'ticket-user-reply', target: 'ticket:' + t.id, reason: t.email, before: { status: r.before }, after: { status: r.after, reply: text, ...(solved && { solved }) } });
+  const to = String(env.SUPPORT_NOTIFY || '').trim() || emails(env)[0];
+  if (to) await mail(env, { to, kind: 'ticketAdmin', lang: 'es', vars: { n: t.id, email: t.email, text, solved, admin: `https://${adminHost(env)}/#tickets/${t.id}` } });
+  return out(solved ? 'thanks' : 'done', r.ticket, t.lang, token, 200);
+}
+
+// The daily cron (worker.js): tickets waiting for the person get one reminder after SUPPORT_REMIND_DAYS
+// (default 7) and are closed after SUPPORT_AUTOCLOSE_DAYS (default 21) since our answer; 0 turns either off.
+// (No reminder without MAIL_SECRET and a way to send email: it carries the link to answer.)
+const daysVar = (v, d) => (v === undefined || v === null || String(v).trim() === '' ? d : Math.max(0, +v || 0));
+export async function ticketsDue(env, now = Date.now()) {
+  if (!env.TICKETS) return { reminded: 0, closed: 0 };
+  const remind = env.MAIL_SECRET && mailConfigured(env) ? daysVar(env.SUPPORT_REMIND_DAYS, 7) * DAY : 0, close = daysVar(env.SUPPORT_AUTOCLOSE_DAYS, 21) * DAY;
+  if (!remind && !close) return { reminded: 0, closed: 0 };
+  const { items = [] } = await call(stub(env.TICKETS, 'tickets'), 'due', { now, remind, close });
+  let reminded = 0, closed = 0;
+  for (const x of items) {
+    if (x.kind === 'remind') {
+      const link = await ticketLink(env, x.id, x.email);
+      if (link && await mail(env, { to: x.email, kind: 'ticketRemind', lang: x.lang, vars: { n: x.id, link, days: TICKET_LINK_DAYS, date: fmtDate(x.since, x.lang), close: x.closeAt && fmtDate(x.closeAt, x.lang) } })) reminded++;
+    } else closed++;
+    if (env.AUDIT) await audit(env, { by: 'system', action: x.kind === 'close' ? 'ticket-autoclose' : 'ticket-remind', target: 'ticket:' + x.id,
+      before: { status: 'waiting' }, after: { status: x.kind === 'close' ? 'closed' : 'waiting' } }).catch(() => {});
+  }
+  return { reminded, closed };
 }
 
 // ---- The admin API -------------------------------------------------------------------------------------
@@ -344,9 +455,9 @@ export async function handleAdmin(req, env, url) {
       return new Response(r.text, { headers: { ...headers, 'Content-Type': 'application/json', 'Content-Disposition': `attachment; filename="consulta-${id}.revela.json"` } });
     }
     if (POST && op === 'status') {
-      if (!STATUSES.includes(body.status)) return json({ error: 'bad request' }, 400);
-      await audit(env, { by, action: 'ticket-status', target: 'ticket:' + id, before: { status: t.status }, after: { status: body.status } });
-      return json(await call(T, 'status', { id, status: body.status }));
+      const status = statusOf(body.status); if (!status) return json({ error: 'bad request' }, 400);
+      await audit(env, { by, action: 'ticket-status', target: 'ticket:' + id, before: { status: t.status }, after: { status } });
+      return json(await call(T, 'status', { id, status }));
     }
     if (POST && op === 'note') {
       const text = clip(body.text, 5000).trim(); if (!text) return json({ error: 'bad request' }, 400);
@@ -355,9 +466,10 @@ export async function handleAdmin(req, env, url) {
     }
     if (POST && op === 'reply') {
       const text = clip(body.text, 10000).trim(); if (!text) return json({ error: 'bad request' }, 400);
-      const status = STATUSES.includes(body.status) ? body.status : 'pending';
+      const status = statusOf(body.status) || 'waiting';
       await audit(env, { by, action: 'ticket-reply', target: 'ticket:' + id, before: { status: t.status }, after: { status, reply: text } });
-      const mailed = await mail(env, { to: t.email, kind: 'ticketReply', lang: t.lang, vars: { n: id, text } });
+      const link = await ticketLink(env, id, t.email);
+      const mailed = await mail(env, { to: t.email, kind: 'ticketReply', lang: t.lang, vars: { n: id, text, link, days: TICKET_LINK_DAYS, closed: status === 'closed' } });
       return json({ ...(await call(T, 'reply', { id, text, by, status, mailed })), mailed });
     }
   }
