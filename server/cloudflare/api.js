@@ -856,6 +856,10 @@ async function checkout(env, s, me, A, body, json) {
     // (An invoice for one-off purchases too; and, by the pay button, the request for immediate
     // activation that waives the 14-day withdrawal right — Art. 103 m) of the Spanish consumer law.)
     ...(p.mode === 'payment' && { 'invoice_creation[enabled]': 'true' }),
+    // (With Stripe Tax on — STRIPE_AUTOMATIC_TAX=1 — Stripe adds each country's tax to the price
+    // and asks for the address it needs; a business can give its VAT number.)
+    ...(env.STRIPE_AUTOMATIC_TAX === '1' && { 'automatic_tax[enabled]': 'true', 'tax_id_collection[enabled]': 'true',
+      ...(c.customer && { 'customer_update[address]': 'auto', 'customer_update[name]': 'auto' }) }),
     'custom_text[submit][message]': 'Al pagar pides que se active ya y aceptas que, una vez activado, pierdes el derecho de desistimiento de 14 días (art. 103 LGDCU). Condiciones: ' + s.site + '/terms.html',
     locale: 'auto' };
   const r = await stripe(env, 'checkout/sessions', params);

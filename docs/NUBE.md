@@ -425,6 +425,10 @@ que el servidor los rechaza.
    con los eventos `checkout.session.completed`, `invoice.paid`,
    `customer.subscription.updated` (avisos de cancelación),
    `customer.subscription.deleted` y `charge.refunded` (reembolsos, para la contabilidad).
+   **Impuestos (Stripe Tax):** categoría de producto *Software as a service (SaaS) – personal use*;
+   en cada precio, *Include tax in price* = **No** (los precios son sin impuestos); añadir el registro
+   de IVA de España en Stripe ▸ Tax ▸ Registrations; y la variable `STRIPE_AUTOMATIC_TAX = 1` en el
+   Worker: Checkout sumará el impuesto de cada país y pedirá el NIF-IVA a las empresas.
 7. **Correos.** Una de dos:
    - **Cloudflare Email Service** (requiere el plan de pago de Workers): Compute ▸ Email Service ▸ Email Sending ▸
      *Onboard Domain* con `revelaslides.com`; Cloudflare añade los registros DNS (MX y SPF en

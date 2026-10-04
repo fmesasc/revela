@@ -214,6 +214,11 @@ r = await req('POST', '/api/billing/checkout', { headers: { Cookie: bob }, body:
 ok(r.status === 200 && (await r.json()).url.startsWith('https://checkout.stripe.com/') && /client_reference_id=222/.test(stripeCalls.at(-1).body), 'pago con Stripe Checkout, ligado a la cuenta');
 ok((await req('POST', '/api/billing/checkout', { headers: { Cookie: bob }, body: { product: 'gratis-para-siempre' } })).status === 503, 'productos inventados: no');
 ok(!/unit_amount|price_data/.test(stripeCalls.at(-1).body), 'el precio lo pone Stripe, no el navegador');
+ok(!/automatic_tax/.test(stripeCalls.at(-1).body), 'sin Stripe Tax activado, no se le pide calcular impuestos');
+env.STRIPE_AUTOMATIC_TAX = '1';
+await req('POST', '/api/billing/checkout', { headers: { Cookie: bob }, body: { product: 'pro-month' } });
+ok(/automatic_tax%5Benabled%5D=true/.test(stripeCalls.at(-1).body) && /tax_id_collection%5Benabled%5D=true/.test(stripeCalls.at(-1).body), 'con STRIPE_AUTOMATIC_TAX=1: Stripe calcula el impuesto de cada país y pide el NIF de empresa');
+delete env.STRIPE_AUTOMATIC_TAX;
 
 // ---- Desktop sign-in ----
 const verifier = 'v'.repeat(10) + crypto.randomUUID().replace(/-/g, ''), challenge = await sha256(verifier), nonce = crypto.randomUUID().replace(/-/g, '');
