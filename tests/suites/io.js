@@ -76,6 +76,19 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(png.type, 'image/png', 'PNG de la diapositiva');
   });
 
+  await test('diapositiva como imagen: el texto con degradado (Text Art «Oro») se recorta a las letras, no sale una barra', async () => {
+    reset(); R.blocks.addWordArt('gold'); const b = slide().blocks.at(-1);
+    R.store.commit(() => { b.html = 'Oro'; }); await sleep(20);
+    const png = await R.io.slideImageBlob(slide(), 'png');
+    const bmp = await createImageBitmap(png), k = bmp.width / R.state.deck.size.w;
+    const cv = document.createElement('canvas'); cv.width = bmp.width; cv.height = bmp.height; const g = cv.getContext('2d'); g.drawImage(bmp, 0, 0);
+    const d = g.getImageData(Math.round(b.x * k), Math.round(b.y * k), Math.round(b.w * k), Math.round(b.h * k)).data;
+    let gold = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 150 && d[i + 2] < 140 && d[i + 3] > 200) gold++;
+    const share = gold / (d.length / 4);
+    assert(share > 0.01, 'hay letras doradas (' + share.toFixed(3) + ')');
+    assert(share < 0.4, 'no es una barra entera (' + share.toFixed(3) + ')');
+  });
+
   await test('importar PowerPoint con formato: formas, colores, tamaños, tablas, notas', async () => {
     reset();
     await R.pptx.buildPptx();                            // carga PptxGenJS
