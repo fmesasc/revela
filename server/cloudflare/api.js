@@ -174,9 +174,9 @@ export class Account {
     // (The business's accounts, finance.js: credits granted, expired or taken; AI charges go with their request, see 'settle'.)
     if (delta && !CHARGES.includes(reason)) await record(this.env, { kind: 'credits', reason: String(ref || '').startsWith('refund:') ? 'refund' : reason, delta, sub: (await this.get('profile', {})).sub });
   }
-  async entry(delta, reason, ref, days = 365) {
+  async entry(delta, reason, ref, days = 365, extra) {
     const bal = delta >= 0 ? await this.add(delta, Date.now() + days * DAY) : (await this.take(-delta)).credits;
-    await this.log(delta, reason, ref);
+    await this.log(delta, reason, ref, extra);
     return bal;
   }
   // Pro's month: while the plan (own or the team's) lasts, its credits every 30 days, whatever
@@ -373,7 +373,8 @@ export class Account {
         delete holds[a.id]; await this.put({ holds });
         const used = Math.max(0, Math.ceil(+a.credits || 0));
         await this.giveBack(h.taken || [{ n: h.n, exp: Date.now() + DAY }]);   // (back where they were, then the real charge as an entry)
-        await this.entry(-used, a.reason || 'ai', a.ref);
+        // (In the person's ledger, what it was for and which model: the admin sees it.)
+        await this.entry(-used, a.reason || 'ai', a.ref, undefined, a.ai && { feature: String(a.ai.feature || 'other').slice(0, 30), model: String(a.ai.model || '').slice(0, 80) });
         // (What the request cost Revela and what it charged, for the business's accounts: finance.js.)
         if (a.ai) await record(this.env, { kind: 'ai', ...a.ai, credits: used, sub: (await this.get('profile', {})).sub });
         else if (used) await record(this.env, { kind: 'credits', reason: a.reason || 'ai', delta: -used, sub: (await this.get('profile', {})).sub });

@@ -118,6 +118,8 @@ ok(aiCalls[0].auth === 'Bearer sk-or-secreta' && !JSON.stringify(j).includes('sk
 ok(aiCalls[0].body.provider?.data_collection === 'deny', 'solo proveedores que no guardan ni entrenan con los datos');
 me = await (await req('GET', '/api/me', { headers: { Cookie: ana } })).json();
 ok(j.charged === 5 && me.credits === 45, 'cobra lo que costó de verdad (0,01 $ = 5 créditos): ' + JSON.stringify([j.charged, me.credits]));
+{ const led = await (await req('GET', '/api/account/export', { headers: { Cookie: ana } })).json(), e = led.ledger.at(-1);
+  ok(e.reason === 'ai' && e.delta === -5 && e.feature === 'other' && e.model === 'openai/gpt-4o-mini', 'el movimiento dice para qué fue y con qué modelo: ' + JSON.stringify(e)); }
 ok((await req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { messages: 'no' } })).status === 400, 'petición mal formada: 400');
 ok((await req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { messages: [{ role: 'tool', content: 'x' }] } })).status === 400, 'papeles no permitidos: 400');
 // Pictures in the messages (describing screenshots): data: JPEG/PNG/WebP, limited; the estimate counts them as fixed tokens.
