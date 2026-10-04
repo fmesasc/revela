@@ -541,7 +541,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const pics = [0, 1, 2, 3, 4, 5, 6, 7].map(k => pictureOf(W, 1600, 900, k * 40));
     const slides = [{ id: 's1', background: '#101317', notes: '', blocks: [ph('title', 'Curso de Power BI', [120, 250, 1040, 130]), ph('subtitle', 'Introducción para empezar', [120, 390, 1040, 70])] }];
     for (let k = 0; k < 7; k++) {
-      const blocks = k === 2 ? [ph('title'), ph('body', 'Texto mío', [520, 180, 660, 480]), img(pics[2], 100, 182, 396, 223)]
+      const blocks = k === 5 ? [ph('title'), ph('body', '', [100, 180, 520, 480]), ph('body', '', [660, 180, 520, 480]), img(pics[5], 680, 200, 480, 270)]   // (two content boxes, the picture in the second)
+        : k === 2 ? [ph('title'), ph('body', 'Texto mío', [520, 180, 660, 480]), img(pics[2], 100, 182, 396, 223)]
         : [ph('title', k === 1 ? 'Mi título' : ''), ph('body'), ...(k === 3 ? [img(pics[3], 60, 200, 560, 400), img(pics[7], 660, 200, 560, 400)] : [img(pics[k], 280, 120 + k * 4, 720, 470)])];
       slides.push({ id: 's' + (k + 2), background: '#101317', notes: k === 2 ? 'Mis notas' : '', blocks });
     }
@@ -629,6 +630,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(s2.blocks[1].x + s2.blocks[1].w < s2.blocks[2].x, 'texto a la izquierda, imagen a la derecha');
       assert(s8.blocks[2].w > 760 && s8.blocks[1].y > s8.blocks[2].y + s8.blocks[2].h - 1 && !/<li>/.test(s8.blocks[1].html), 'imagen grande con una línea de pie: ' + JSON.stringify(s8.blocks.map(b => [b.type, b.x, b.y, b.w, b.h, b.html])));
       assert(s5.blocks.filter(b => b.type === 'image').every(p => p.x > s5.blocks[1].x + s5.blocks[1].w), 'dos imágenes, juntas al lado del texto');
+      // Two content boxes: the empty second one under the picture is gone, and in general no empty placeholder is left under an object.
+      const s7 = R.state.deck.slides[6];
+      eq(s7.blocks.filter(b => b.ph === 'body').length, 1, 'el segundo cuadro de contenido vacío, bajo la imagen, se quita');
+      eq(R.aiAgent.checkSlides(R.state.deck).filter(p => p.kind === 'emptyph').length, 0, 'ningún marcador vacío bajo un objeto');
+      for (const s of R.state.deck.slides) for (const e of s.blocks.filter(b => R.master.isEmptyPlaceholder(b))) for (const o of s.blocks.filter(b => b !== e && b.type === 'image')) assert(!rectsHit(e, o), 'marcador vacío bajo una imagen');
       eq(C.estimateCompletion({ scope: { kind: 'all' }, mode: 'empty' }).slides, 0, 'ya no queda nada vacío');
       // Again ("improve"): the descriptions are reused, nothing is described again.
       log.length = 0;

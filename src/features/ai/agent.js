@@ -21,7 +21,7 @@ import { richHTML } from './richtext.js';
 import { PALETTES, FONT_PAIRS, swapPalette, swapFontPair, currentPalette, deckFg, deckBodyFont } from '../design/palettes.js';
 import { designIdeas, applyIdeaTo } from '../design/designer.js';
 import { EFFECT_KF } from '../animation/transitions.js';
-import { styled } from '../document/master.js';
+import { styled, isEmptyPlaceholder } from '../document/master.js';
 import { searchImages, consented } from '../content/stock.js';
 import { SHAPE_NAMES, ICON_NAMES, WORDART_KEYS, textPadding, levelCSS } from '../../render/svg.js';
 import { wordartSize, paragraphs } from '../../render/textfit.js';
@@ -433,7 +433,7 @@ const lum = c => { const m = String(c).match(/[\d.]+/g); if (!m || m.length < 3)
   const [r, g, b] = m.slice(0, 3).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
 const hexRGB = h => { const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})?$/i.exec(String(h || '').trim()); return m && (!m[4] || parseInt(m[4], 16) > 230) ? `rgb(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)})` : null; };
 // A text block laid out: its height, and its lines' ink (slide px) with each piece's colour.
-function measureText(b, slide, deck) {
+export function measureText(b, slide, deck) {
   const sb = styled(b, slide, deck), h = measureHost(deck);
   const el = document.createElement('div'); el.className = 'block';
   el.style.cssText = `position:absolute;left:0;top:0;width:${sb.w}px;height:auto`;
@@ -463,7 +463,7 @@ const area = (a, b) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x
 const exits = b => [b.animation, ...(b.anims || [])].some(a => a && /out|path|current-visible/.test(a.effect || ''));
 const snippet = b => textOf(b.html).replace(/\s+/g, ' ').slice(0, 50);
 // Problems on the given slides of a deck: [{ slide, id, kind, text }]
-// kind: 'overflow' (doesn't fit its box) | 'offslide' | 'overlap' | 'over' (text over a chart, table…) | 'contrast'.
+// kind: 'overflow' (doesn't fit its box) | 'offslide' | 'overlap' | 'over' (text over a chart, table…) | 'contrast' | 'emptyph' (an empty placeholder under an object).
 export function checkSlides(deck, ids = null) {
   const out = [], { w: W, h: H } = deck.size;
   deck.slides.forEach((s, si) => {
@@ -496,6 +496,11 @@ export function checkSlides(deck, ids = null) {
     for (const { b, m } of T) for (const c of C) {
       if (c.type === 'image' && vis.indexOf(c) < vis.indexOf(b)) continue;          // (a picture behind the text: a background)
       if (m.ink.reduce((a, r) => a + area(r, c), 0) > 200) out.push({ slide: si + 1, id: b.id, other: c.id, kind: 'over', text: `${snippet(b)} / ${c.type}` });
+    }
+    // An empty placeholder under an object shows its "click to add text" prompt over it.
+    for (const e of vis.filter(isEmptyPlaceholder)) for (const c of vis) {
+      if (c === e || isEmptyPlaceholder(c) || c.decorative || c.type === 'connector') continue;
+      if (area(e, c) > 400) out.push({ slide: si + 1, id: e.id, other: c.id, kind: 'emptyph', text: `${e.ph} / ${c.type}` });
     }
   });
   return out;

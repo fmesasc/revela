@@ -11,8 +11,8 @@
 import { state, commit } from '../../core/store.js';
 import { chat, lang, parseJSON, plain, aiSettings, usingCloudAi } from './openrouter.js';
 import { cleanTitle, cleanLine } from './richtext.js';
-import { textOf, checkOps, AGENT_MODEL } from './agent.js';
-import { styleKind } from '../document/master.js';
+import { textOf, checkOps, measureText, AGENT_MODEL } from './agent.js';
+import { styleKind, isEmptyPlaceholder } from '../document/master.js';
 import { describeImages, captionOf, VISION_MODEL, BATCH } from './vision.js';
 
 export const MODES = ['empty', 'improve'];
@@ -110,7 +110,8 @@ function fitPictures(images, area, gap = 16) {
 export function arrangeSlide(s, layout, deck = state.deck) {
   const { w: W, h: H } = deck.size, p = partsOf(s), t = p.title, gap = 32;
   if (!p.images.length || p.others.length) return null;
-  const top = t ? t.y + t.h + 16 : 40, side = Math.max(40, Math.min(t?.x ?? 80, p.body?.x ?? 80));
+  const top = t ? t.y + Math.max(t.h, plain(t.html) ? measureText(t, s, deck).height : 0) + 16 : 40,     // (a title longer than its box: from where its text ends)
+     side = Math.max(40, Math.min(t?.x ?? 80, p.body?.x ?? 80));
   let area = p.body ? R(p.body) : { x: side, y: top, w: W - 2 * side, h: H - 40 - top };
   if (p.bodies.length > 1 && layout === 'image-full-caption') {
     const x0 = Math.min(...p.bodies.map(b => b.x)), y0 = Math.min(...p.bodies.map(b => b.y));
@@ -201,6 +202,11 @@ function opsFor(x, w, deck, mode) {
     if (arrange) ops.push({ ...o, arrange });
     else if (!clash || !covers(o.id === p.title?.id ? p.title : p.body)) ops.push(o);     // (no room: only what covers nothing)
   }
+  // (An empty placeholder an object now sits on — the second content box of a two-content slide — is removed:
+  // its "click to add text" prompt would show over the picture.)
+  const filled = new Set(ops.map(o => o.id)), at = b => ({ ...b, ...(arrange?.boxes[b.id] || {}) });
+  for (const e of s.blocks.filter(b => VISIBLE(b) && isEmptyPlaceholder(b) && !filled.has(b.id)))
+    if ([...p.images, ...p.others].some(o => overlap(at(e), at(o)) > 400)) ops.push({ op: 'delete_object', ...base, id: e.id });
   const notes = want.notes && clip(w.notes, 2000);
   if (notes && notes !== p.notes) ops.push({ op: 'set_notes', ...base, notes });
   // (Accessibility: pictures without alternative text get one from their description.)
