@@ -29,6 +29,16 @@ export const customTransport = () => transport !== api;
 export const listDocs = () => send('docs');
 export const createDoc = (deck, folder = null) => send('docs', { deck, ...(folder && { folder }) });
 export const docLink = id => `${OFFICIAL_SITE}/app/?doc=${encodeURIComponent(id)}`;
+// Embedding one shared by link in another site (an iframe): the viewer page, in presentation mode.
+export const embedLink = id => `${OFFICIAL_SITE}/app/view.html?doc=${encodeURIComponent(id)}`;
+export const embedCode = (id, name = '') => `<iframe src="${embedLink(id)}" width="960" height="540" style="border:0;max-width:100%;aspect-ratio:16/9;height:auto" allow="fullscreen" allowfullscreen loading="lazy"${name ? ` title="${String(name).replace(/[<>"&]/g, '')}"` : ''}></iframe>`;
+// The presentation of a link that anyone can view (no account): → { deck, name } or throws { status }.
+export async function publicDeck(id, fetcher = fetch) {
+  const r = await fetcher(new URL('/api/docs/' + encodeURIComponent(id), location.origin).href, { credentials: 'include' });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j?.deck?.slides) throw Object.assign(new Error('DOC'), { status: r.ok ? 500 : r.status });
+  return { deck: cleanValue(j.deck), name: j.name || '' };
+}
 export const docIdFrom = (search = location.search) => { const id = new URLSearchParams(search).get('doc'); return id && /^[\w-]{16,40}$/.test(id) ? id : null; };
 const path = (id, op = '') => `docs/${encodeURIComponent(id)}${op ? '/' + op : ''}`;
 export const shareDoc = (id, sharing) => send(path(id, 'share'), sharing);

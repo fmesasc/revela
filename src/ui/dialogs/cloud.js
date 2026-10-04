@@ -4,6 +4,7 @@
 // these dialogs only ask it and show what it says.
 
 import { esc } from '../../core/text.js';
+import { state } from '../../core/store.js';
 import * as acc from '../../io/cloud/account.js';
 import * as cd from '../../io/cloud/clouddocs.js';
 import { t, currentLang } from '../../i18n/index.js';
@@ -78,6 +79,9 @@ export async function openCloudShare() {
       <fieldset><legend>${t('Enlace')}</legend>
         <select class="cl-linkrole">${Object.entries(LINK_NAMES).map(([k, v]) => `<option value="${k}"${k === link ? ' selected' : ''}>${t(v)}</option>`).join('')}</select>
         <div class="sh-row"><input readonly class="cl-link" value="${esc(cd.docLink(doc.id))}"><button type="button" class="mini2 cl-copy">${t('Copiar')}</button></div>
+        <div class="cl-embed"${link === 'none' ? ' hidden' : ''}><label class="fr-l">${t('Insertar en una web (iframe)')}</label>
+          <div class="sh-row"><textarea readonly class="cl-ifr" rows="3">${esc(cd.embedCode(doc.id, doc.name || state.deck.name || ''))}</textarea><button type="button" class="mini2 cl-copy-ifr">${t('Copiar')}</button></div>
+          <p class="host-help">${t('Se ve como presentación, sin el editor, y siempre con los últimos cambios.')}</p></div>
         <p class="host-help cl-linkhint" hidden><i class="ms">lock</i> ${t('Con «Solo las personas añadidas», el enlace solo lo abren las personas de arriba. Para que lo abra cualquiera, elige «Cualquiera con el enlace puede ver».')}</p>
         <p class="host-help">${t('Las personas añadidas entran con su cuenta de Google. Con el enlace para ver no hace falta cuenta.')}</p>
       </fieldset>
@@ -97,6 +101,7 @@ export async function openCloudShare() {
     q('.cl-linkrole').addEventListener('change', e => { link = e.target.value; linkHint(); apply(); });
     q('.cl-copy').addEventListener('click', e => { navigator.clipboard?.writeText(cd.docLink(doc.id)); e.target.textContent = t('Copiado'); linkHint(); });
     linkHint(); status(shareSt);
+    q('.cl-copy-ifr').addEventListener('click', e => { navigator.clipboard?.writeText(q('.cl-ifr').value); e.target.textContent = t('Copiado'); });
     q('.cl-stats')?.addEventListener('click', () => openCloudStats());
     q('.cl-versions').addEventListener('click', () => openCloudVersions());
     q('.cl-apply').addEventListener('click', async () => { await saving; close(); });
@@ -105,7 +110,7 @@ export async function openCloudShare() {
   let saving = Promise.resolve(), shareSt = 'saved';
   const status = st => { shareSt = st; const el = body.querySelector('.cl-status'); if (!el) return;
     el.dataset.st = st; el.innerHTML = st === 'saving' ? `<span class="btn-spin" aria-hidden="true"></span> ${t('Guardando…')}` : st === 'error' ? `<i class="ms">error</i> ${t('No se pudo guardar')}` : `<i class="ms">check</i> ${t('Guardado')}`; };
-  const linkHint = () => { const el = body.querySelector('.cl-linkhint'); if (el) el.hidden = link !== 'none'; };
+  const linkHint = () => { const el = body.querySelector('.cl-linkhint'); if (el) el.hidden = link !== 'none'; const em = body.querySelector('.cl-embed'); if (em) em.hidden = link === 'none'; };
   const apply = () => {
     const want = { link, ...(pro && { people: { ...people } }) };
     status('saving');

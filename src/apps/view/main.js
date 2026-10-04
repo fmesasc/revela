@@ -1,10 +1,15 @@
 // Viewer of shared presentations: view.html?d=<Drive file>&a=<API key>#k=<key>
 // or view.html?u=<https URL of a sealed copy>#k=<key>. The page fetches the
 // sealed copy and opens it with the key in the link or a password.
+// view.html?doc=<id>: one in Revela's cloud that anyone with the link can view, presented
+// (what the «Insert in a web page» iframe shows).
 
 import { openerPageHTML } from '../../io/share/seal.js';
 import { driveSealedURL } from '../../io/cloud/gdrive.js';
 import { t, currentLang } from '../../i18n/index.js';
+import { docIdFrom, publicDeck } from '../../io/cloud/clouddocs.js';
+import { adoptDeck, state } from '../../core/store.js';
+import { buildHTML } from '../../io/formats/html.js';
 
 const p = new URLSearchParams(location.search);
 // Only an https address, or a blob made by this same site.
@@ -16,5 +21,21 @@ const texts = { locked: t('Presentación protegida'), ask: t('Escribe la contras
   wrong: t('Contraseña incorrecta.'), nokey: t('Falta la clave del enlace: cópialo entero, con lo que va detrás de «#».'),
   loading: t('Abriendo…'), failed: t('No se pudo abrir la presentación: puede que ya no se comparta.'),
   signin: t('Esta presentación es solo para cuentas de {d}. Inicia sesión con Google para verla.') };
-if (src) { document.open(); document.write(openerPageHTML({ src, lang: currentLang(), texts })); document.close(); }
+const doc = docIdFrom();
+if (doc) openCloud(doc);
+else if (src) { document.open(); document.write(openerPageHTML({ src, lang: currentLang(), texts })); document.close(); }
 else document.getElementById('m').textContent = texts.failed;
+
+async function openCloud(id) {
+  const m = document.getElementById('m'); m.textContent = texts.loading;
+  try {
+    const { deck, name } = await publicDeck(id);
+    adoptDeck(deck);
+    const html = buildHTML(state.deck);
+    document.open(); document.write(html); document.close();
+    if (name) document.title = name;
+  } catch (e) {
+    m.textContent = e.status === 401 || e.status === 403 ? t('Esta presentación no es pública. Quien la comparte debe elegir «Cualquiera con el enlace puede ver».')
+      : e.status === 404 ? t('Esta presentación ya no está en la nube.') : texts.failed;
+  }
+}

@@ -110,6 +110,7 @@ new_sqlite_classes = ["ShareBox", "Limits"]
 #   UNSPLASH_ACCESS_KEY     Unsplash's access key (photos; optional)
 #   PEXELS_API_KEY          Pexels' API key (photos; optional)
 #   CALLS_APP_ID, CALLS_APP_SECRET   Cloudflare Realtime SFU app (video calls; optional)
+#   TURN_KEY_ID, TURN_KEY_API_TOKEN  Cloudflare Realtime ▸ TURN Server: relays for the phone remote, votes and live collaboration (optional; without them, STUN only)
 [[durable_objects.bindings]]
 name = "ACCOUNTS"
 class_name = "Account"

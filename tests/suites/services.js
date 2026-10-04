@@ -1819,6 +1819,24 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { CD.closeDoc(); }
   });
 
+  await test('insertar en una web: iframe del visor con la presentación de la nube (pública por enlace); si no lo es, lo dice', async () => {
+    reset(); const W = frame.contentWindow, CD = R.clouddocs;
+    const code = CD.embedCode('docpublica00000001', 'Mi "charla" <b>');
+    assert(/^<iframe src="https:\/\/revelaslides\.com\/app\/view\.html\?doc=docpublica00000001"/.test(code) && /allowfullscreen/.test(code) && !/<b>|"charla"/.test(code), 'el código del iframe: ' + code);
+    const deck = JSON.parse(JSON.stringify(R.state.deck)); deck.slides[0].blocks[0].html = 'Hola desde la nube';
+    const ok = async () => ({ ok: true, status: 200, json: async () => ({ deck, rev: 3, role: 'view', name: 'Charla' }) });
+    const got = await CD.publicDeck('docpublica00000001', ok);
+    eq(got.name, 'Charla'); assert(/Hola desde la nube/.test(JSON.stringify(got.deck)), 'la presentación');
+    let st = 0; try { await CD.publicDeck('docprivada00000001', async () => ({ ok: false, status: 401, json: async () => ({ error: 'sign in' }) })); } catch (e) { st = e.status; }
+    eq(st, 401, 'privada: no');
+    // The viewer page itself (no server here: it says so instead of staying blank).
+    const f = D.createElement('iframe'); f.src = '/view.html?doc=docquenoexiste00001'; f.style.cssText = 'position:fixed;width:400px;height:300px;opacity:0'; D.body.appendChild(f);
+    try {
+      let m; for (let i = 0; i < 60 && !/nube|cloud|abrir|open|pública|public/i.test((m = f.contentDocument?.getElementById('m'))?.textContent || ''); i++) await sleep(100);
+      assert(/nube|cloud|abrir|open|pública|public/i.test(m?.textContent || ''), 'el visor dice qué pasa: ' + (m?.textContent || ''));
+    } finally { f.remove(); }
+  });
+
   await test('abrir un enlace compartido que falla: la pantalla de carga se quita antes del aviso (no tapa la pregunta)', async () => {
     reset(); const W = frame.contentWindow, CD = R.clouddocs, UI = await W.eval("import('/src/ui/dialogs/cloud.js')"), { fakeCloud } = await W.eval("import('/tests/fixtures/fakecloud.js')");
     CD.setTransport(fakeCloud({}).io);
