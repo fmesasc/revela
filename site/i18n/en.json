@@ -137,7 +137,6 @@
   "créditos": "credits",
   "<span class=\"cent\" data-v=\"1\">1 céntimo</span> por crédito": "<span class=\"cent\" data-v=\"1\">1 cent</span> per credit",
   "Comprar": "Buy",
-  "<span class=\"cent\" data-v=\"0.8\">0,8 céntimos</span> por crédito": "<span class=\"cent\" data-v=\"0.8\">0.8 cents</span> per credit",
   "Comparar los planes": "Compare the plans",
   "Editor completo, plantillas y exportación": "Full editor, templates and export",
   "Colaboración en directo por enlace": "Live collaboration via link",
@@ -213,5 +212,6 @@
   "<span aria-hidden=\"true\">▶</span> Ver en directo": "<span aria-hidden=\"true\">▶</span> Watch it live",
   "¿Quién lee lo que envío a soporte?": "Who reads what I send to support?",
   "Una persona del equipo de Revela, que te responde por correo. Para ayudarla, tu mensaje y el resumen de tu cuenta pueden analizarse con un modelo de IA a través de OpenRouter, con proveedores que no los guardan ni entrenan con ellos; la IA solo sugiere y la presentación adjunta nunca se le envía. Más en la <a href=\"privacy\">política de privacidad</a>.": "A person on the Revela team, who answers you by email. To help them, your message and your account summary may be analysed by an AI model through OpenRouter, with providers that neither store nor train on them; the AI only suggests and the attached presentation is never sent to it. More in the <a href=\"privacy\">privacy policy</a>.",
-  "Revela es gratis para empezar. Pro: 10 € + IVA al mes, o 96 € + IVA al año, con IA incluida. Equipos y centros: 6 € + IVA por persona y mes. Créditos de IA sin suscripción.": "Revela is free to start. Pro: €10 + VAT a month, or €96 + VAT a year, with AI included. Teams and schools: €6 + VAT per person per month. AI credits with no subscription."
+  "Revela es gratis para empezar. Pro: 10 € + IVA al mes, o 96 € + IVA al año, con IA incluida. Equipos y centros: 6 € + IVA por persona y mes. Créditos de IA sin suscripción.": "Revela is free to start. Pro: €10 + VAT a month, or €96 + VAT a year, with AI included. Teams and schools: €6 + VAT per person per month. AI credits with no subscription.",
+  "<span class=\"cent\" data-v=\"1.33\">1,33 céntimos</span> por crédito": "<span class=\"cent\" data-v=\"1.33\">1.33 cents</span> per credit"
 }

@@ -137,7 +137,6 @@
   "créditos": "créditos",
   "<span class=\"cent\" data-v=\"1\">1 céntimo</span> por crédito": "<span class=\"cent\" data-v=\"1\">1 cêntimo</span> por crédito",
   "Comprar": "Comprar",
-  "<span class=\"cent\" data-v=\"0.8\">0,8 céntimos</span> por crédito": "<span class=\"cent\" data-v=\"0.8\">0,8 cêntimos</span> por crédito",
   "Comparar los planes": "Comparar os planos",
   "Editor completo, plantillas y exportación": "Editor completo, modelos e exportação",
   "Colaboración en directo por enlace": "Colaboração em direto por ligação",
@@ -213,5 +212,6 @@
   "<span aria-hidden=\"true\">▶</span> Ver en directo": "<span aria-hidden=\"true\">▶</span> Ver em direto",
   "¿Quién lee lo que envío a soporte?": "Quem lê o que envio ao suporte?",
   "Una persona del equipo de Revela, que te responde por correo. Para ayudarla, tu mensaje y el resumen de tu cuenta pueden analizarse con un modelo de IA a través de OpenRouter, con proveedores que no los guardan ni entrenan con ellos; la IA solo sugiere y la presentación adjunta nunca se le envía. Más en la <a href=\"privacy\">política de privacidad</a>.": "Uma pessoa da equipa do Revela, que te responde por e-mail. Para a ajudar, a tua mensagem e o resumo da tua conta podem ser analisados por um modelo de IA através do OpenRouter, com fornecedores que não os guardam nem treinam com eles; a IA só sugere e a apresentação anexada nunca lhe é enviada. Mais na <a href=\"privacy\">política de privacidade</a>.",
-  "Revela es gratis para empezar. Pro: 10 € + IVA al mes, o 96 € + IVA al año, con IA incluida. Equipos y centros: 6 € + IVA por persona y mes. Créditos de IA sin suscripción.": "O Revela é grátis para começar. Pro: 10 € + IVA por mês, ou 96 € + IVA por ano, com IA incluída. Equipas e escolas: 6 € + IVA por pessoa e por mês. Créditos de IA sem subscrição."
+  "Revela es gratis para empezar. Pro: 10 € + IVA al mes, o 96 € + IVA al año, con IA incluida. Equipos y centros: 6 € + IVA por persona y mes. Créditos de IA sin suscripción.": "O Revela é grátis para começar. Pro: 10 € + IVA por mês, ou 96 € + IVA por ano, com IA incluída. Equipas e escolas: 6 € + IVA por pessoa e por mês. Créditos de IA sem subscrição.",
+  "<span class=\"cent\" data-v=\"1.33\">1,33 céntimos</span> por crédito": "<span class=\"cent\" data-v=\"1.33\">1,33 cêntimos</span> por crédito"
 }

@@ -137,7 +137,6 @@
   "créditos": "crèdits",
   "<span class=\"cent\" data-v=\"1\">1 céntimo</span> por crédito": "<span class=\"cent\" data-v=\"1\">1 cèntim</span> per crèdit",
   "Comprar": "Compra",
-  "<span class=\"cent\" data-v=\"0.8\">0,8 céntimos</span> por crédito": "<span class=\"cent\" data-v=\"0.8\">0,8 cèntims</span> per crèdit",
   "Comparar los planes": "Compara els plans",
   "Editor completo, plantillas y exportación": "Editor complet, plantilles i exportació",
   "Colaboración en directo por enlace": "Col·laboració en directe per enllaç",
@@ -213,5 +212,6 @@
   "<span aria-hidden=\"true\">▶</span> Ver en directo": "<span aria-hidden=\"true\">▶</span> Veure-la en directe",
   "¿Quién lee lo que envío a soporte?": "Qui llegeix el que envio a suport?",
   "Una persona del equipo de Revela, que te responde por correo. Para ayudarla, tu mensaje y el resumen de tu cuenta pueden analizarse con un modelo de IA a través de OpenRouter, con proveedores que no los guardan ni entrenan con ellos; la IA solo sugiere y la presentación adjunta nunca se le envía. Más en la <a href=\"privacy\">política de privacidad</a>.": "Una persona de l’equip de Revela, que et respon per correu. Per ajudar-la, el teu missatge i el resum del teu compte es poden analitzar amb un model d’IA a través d’OpenRouter, amb proveïdors que no els desen ni entrenen amb ells; la IA només suggereix i la presentació adjunta no se li envia mai. Més a la <a href=\"privacy\">política de privadesa</a>.",
-  "Revela es gratis para empezar. Pro: 10 € + IVA al mes, o 96 € + IVA al año, con IA incluida. Equipos y centros: 6 € + IVA por persona y mes. Créditos de IA sin suscripción.": "Revela és gratis per començar. Pro: 10 € + IVA al mes, o 96 € + IVA l’any, amb IA inclosa. Equips i centres: 6 € + IVA per persona i mes. Crèdits d’IA sense subscripció."
+  "Revela es gratis para empezar. Pro: 10 € + IVA al mes, o 96 € + IVA al año, con IA incluida. Equipos y centros: 6 € + IVA por persona y mes. Créditos de IA sin suscripción.": "Revela és gratis per començar. Pro: 10 € + IVA al mes, o 96 € + IVA l’any, amb IA inclosa. Equips i centres: 6 € + IVA per persona i mes. Crèdits d’IA sense subscripció.",
+  "<span class=\"cent\" data-v=\"1.33\">1,33 céntimos</span> por crédito": "<span class=\"cent\" data-v=\"1.33\">1,33 cèntims</span> per crèdit"
 }

@@ -137,7 +137,6 @@
   "créditos": "Credits",
   "<span class=\"cent\" data-v=\"1\">1 céntimo</span> por crédito": "<span class=\"cent\" data-v=\"1\">1 Cent</span> pro Credit",
   "Comprar": "Kaufen",
-  "<span class=\"cent\" data-v=\"0.8\">0,8 céntimos</span> por crédito": "<span class=\"cent\" data-v=\"0.8\">0,8 Cent</span> pro Credit",
   "Comparar los planes": "Tarife vergleichen",
   "Editor completo, plantillas y exportación": "Kompletter Editor, Vorlagen und Export",
   "Colaboración en directo por enlace": "Live-Zusammenarbeit per Link",
@@ -213,5 +212,6 @@
   "<span aria-hidden=\"true\">▶</span> Ver en directo": "<span aria-hidden=\"true\">▶</span> Live ansehen",
   "¿Quién lee lo que envío a soporte?": "Wer liest, was ich an den Support schicke?",
   "Una persona del equipo de Revela, que te responde por correo. Para ayudarla, tu mensaje y el resumen de tu cuenta pueden analizarse con un modelo de IA a través de OpenRouter, con proveedores que no los guardan ni entrenan con ellos; la IA solo sugiere y la presentación adjunta nunca se le envía. Más en la <a href=\"privacy\">política de privacidad</a>.": "Eine Person aus dem Revela-Team, die dir per E-Mail antwortet. Um ihr zu helfen, können deine Nachricht und die Zusammenfassung deines Kontos über OpenRouter von einem KI-Modell analysiert werden, nur bei Anbietern, die sie weder speichern noch damit trainieren; die KI macht nur Vorschläge, und die angehängte Präsentation wird ihr nie geschickt. Mehr in der <a href=\"privacy\">Datenschutzerklärung</a>.",
-  "Revela es gratis para empezar. Pro: 10 € + IVA al mes, o 96 € + IVA al año, con IA incluida. Equipos y centros: 6 € + IVA por persona y mes. Créditos de IA sin suscripción.": "Revela ist zum Einstieg kostenlos. Pro: 10 € zzgl. MwSt. pro Monat oder 96 € zzgl. MwSt. pro Jahr, KI inklusive. Teams und Schulen: 6 € zzgl. MwSt. pro Person und Monat. KI-Credits ohne Abo."
+  "Revela es gratis para empezar. Pro: 10 € + IVA al mes, o 96 € + IVA al año, con IA incluida. Equipos y centros: 6 € + IVA por persona y mes. Créditos de IA sin suscripción.": "Revela ist zum Einstieg kostenlos. Pro: 10 € zzgl. MwSt. pro Monat oder 96 € zzgl. MwSt. pro Jahr, KI inklusive. Teams und Schulen: 6 € zzgl. MwSt. pro Person und Monat. KI-Credits ohne Abo.",
+  "<span class=\"cent\" data-v=\"1.33\">1,33 céntimos</span> por crédito": "<span class=\"cent\" data-v=\"1.33\">1,33 Cent</span> pro Credit"
 }

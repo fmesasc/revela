@@ -137,7 +137,6 @@
   "créditos": "crédits",
   "<span class=\"cent\" data-v=\"1\">1 céntimo</span> por crédito": "<span class=\"cent\" data-v=\"1\">1 centime</span> par crédit",
   "Comprar": "Acheter",
-  "<span class=\"cent\" data-v=\"0.8\">0,8 céntimos</span> por crédito": "<span class=\"cent\" data-v=\"0.8\">0,8 centimes</span> par crédit",
   "Comparar los planes": "Comparer les forfaits",
   "Editor completo, plantillas y exportación": "Éditeur complet, modèles et exportation",
   "Colaboración en directo por enlace": "Collaboration en direct par lien",
@@ -213,5 +212,6 @@
   "<span aria-hidden=\"true\">▶</span> Ver en directo": "<span aria-hidden=\"true\">▶</span> Voir en direct",
   "¿Quién lee lo que envío a soporte?": "Qui lit ce que j’envoie au support ?",
   "Una persona del equipo de Revela, que te responde por correo. Para ayudarla, tu mensaje y el resumen de tu cuenta pueden analizarse con un modelo de IA a través de OpenRouter, con proveedores que no los guardan ni entrenan con ellos; la IA solo sugiere y la presentación adjunta nunca se le envía. Más en la <a href=\"privacy\">política de privacidad</a>.": "Une personne de l’équipe Revela, qui vous répond par e-mail. Pour l’aider, votre message et le résumé de votre compte peuvent être analysés par un modèle d’IA via OpenRouter, avec des fournisseurs qui ne les conservent pas et ne s’en servent pas pour l’entraînement ; l’IA ne fait que suggérer et la présentation jointe ne lui est jamais envoyée. Plus d’informations dans la <a href=\"privacy\">politique de confidentialité</a>.",
-  "Revela es gratis para empezar. Pro: 10 € + IVA al mes, o 96 € + IVA al año, con IA incluida. Equipos y centros: 6 € + IVA por persona y mes. Créditos de IA sin suscripción.": "Revela est gratuit pour commencer. Pro : 10 € HT par mois, ou 96 € HT par an, IA incluse. Équipes et établissements : 6 € HT par personne et par mois. Crédits d’IA sans abonnement."
+  "Revela es gratis para empezar. Pro: 10 € + IVA al mes, o 96 € + IVA al año, con IA incluida. Equipos y centros: 6 € + IVA por persona y mes. Créditos de IA sin suscripción.": "Revela est gratuit pour commencer. Pro : 10 € HT par mois, ou 96 € HT par an, IA incluse. Équipes et établissements : 6 € HT par personne et par mois. Crédits d’IA sans abonnement.",
+  "<span class=\"cent\" data-v=\"1.33\">1,33 céntimos</span> por crédito": "<span class=\"cent\" data-v=\"1.33\">1,33 centimes</span> par crédit"
 }
