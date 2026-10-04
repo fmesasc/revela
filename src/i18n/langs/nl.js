@@ -2706,4 +2706,8 @@ export default {
   "Quitar las líneas": "Lijnen verwijderen",
   "Zona ampliada: arrástrala para ampliar otra parte": "Vergroot gebied: sleep het om een ander deel te vergroten",
   "Dibuja un rectángulo sobre la zona que quieres ampliar · Esc: cancelar": "Teken een rechthoek over het gebied dat je wilt vergroten · Esc: annuleren",
+  "Prueba Pro {n} días gratis": "Probeer Pro {n} dagen gratis",
+  "Prueba gratis hasta:": "Gratis proefperiode tot:",
+  "Se pide una tarjeta, pero no se cobra nada hasta que acabe la prueba. Puedes cancelarla antes en «Gestionar la suscripción».": "Er is een kaart nodig, maar er wordt niets afgeschreven tot de proefperiode afloopt. Je kunt daarvoor opzeggen via „Abonnement beheren”.",
+  "Avisarme antes de que acabe mi prueba de Pro": "Herinner me voordat mijn Pro-proefperiode afloopt",
 };

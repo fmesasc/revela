@@ -2706,4 +2706,8 @@ export default {
   "Quitar las líneas": "إزالة الخطوط",
   "Zona ampliada: arrástrala para ampliar otra parte": "المنطقة المكبَّرة: اسحبها لتكبير جزء آخر",
   "Dibuja un rectángulo sobre la zona que quieres ampliar · Esc: cancelar": "ارسم مستطيلاً فوق المنطقة التي تريد تكبيرها · Esc: إلغاء",
+  "Prueba Pro {n} días gratis": "جرّب Pro مجانًا لمدة {n} أيام",
+  "Prueba gratis hasta:": "تجربة مجانية حتى:",
+  "Se pide una tarjeta, pero no se cobra nada hasta que acabe la prueba. Puedes cancelarla antes en «Gestionar la suscripción».": "تُطلب بطاقة، لكن لا يُخصم أي مبلغ حتى نهاية التجربة. يمكنك الإلغاء قبل ذلك من «إدارة الاشتراك».",
+  "Avisarme antes de que acabe mi prueba de Pro": "ذكّرني قبل انتهاء تجربة Pro",
 };

@@ -88,19 +88,21 @@ export function openAccount({ buy } = {}) {
       return;
     }
     if (buy && BUYABLE.includes(buy) && me.billing && !(me.plan === 'pro' && buy.startsWith('pro'))) { const b = buy; buy = null; acc.buy(b).catch(e => alertDialog(errorText(e))); }
-    const pro = me.plan === 'pro', until = me.until ? new Date(me.until).toLocaleDateString(currentLang(), { dateStyle: 'long' }) : '';
+    // (trialDays: Pro's free trial on offer to this account — the server decides; 0: none.)
+    const pro = me.plan === 'pro', trialDays = !pro && me.billing && me.trialDays > 0 ? me.trialDays | 0 : 0, until = me.until ? new Date(me.until).toLocaleDateString(currentLang(), { dateStyle: 'long' }) : '';
     body.innerHTML = `<div class="acc-who">${esc(me.email)}</div>
       ${me.blocked ? `<p class="host-help acc-blocked" role="alert">${t('Tu cuenta está bloqueada: la IA y la nube no están disponibles. Si crees que es un error, usa «Informar de un problema».')}</p>` : ''}
-      <div class="acc-plan"><span class="acc-badge${pro ? ' pro' : ''}">${t(pro ? 'Pro' : 'Gratis')}</span>${pro && until ? `<small>${t('Renovación:')} ${esc(until)}</small>` : ''}</div>
+      <div class="acc-plan"><span class="acc-badge${pro ? ' pro' : ''}">${t(pro ? 'Pro' : 'Gratis')}</span>${pro && until ? `<small>${t(me.trial ? 'Prueba gratis hasta:' : 'Renovación:')} ${esc(until)}</small>` : ''}</div>
       <div class="acc-credits"><b>${Math.max(0, me.credits | 0)}</b> ${t('créditos')}${me.expiring?.[0] ? `<small>${t('{n} caducan el {d}').replace('{n}', me.expiring[0].n).replace('{d}', new Date(me.expiring[0].exp).toLocaleDateString(currentLang(), { day: 'numeric', month: 'long' }))}</small>` : ''}</div>
       <ul class="acc-features">${(me.features || []).map(f => `<li>✓ ${t(FEATURE_NAMES[f] || f)}</li>`).join('')}</ul>
       ${me.billingTest ? `<p class="host-help acc-test" role="note">${t('Modo de prueba: no se cobra nada (tarjeta de prueba 4242 4242 4242 4242)')}</p>` : ''}
       <div class="acc-buy">
-        ${pro ? '' : `<button type="button" class="fr-do" data-buy="pro-month"${me.billing ? '' : ' disabled'}>${t('Pro mensual')}</button><button type="button" class="fr-do" data-buy="pro-year"${me.billing ? '' : ' disabled'}>${t('Pro anual')}</button>`}
+        ${pro ? '' : `<button type="button" class="fr-do" data-buy="pro-month"${me.billing ? '' : ' disabled'}>${trialDays ? t('Prueba Pro {n} días gratis').replace('{n}', trialDays) : t('Pro mensual')}</button><button type="button" class="fr-do" data-buy="pro-year"${me.billing ? '' : ' disabled'}>${t('Pro anual')}</button>`}
         <button type="button" class="mini2" data-buy="credits-500"${me.billing ? '' : ' disabled'}>${t('500 créditos')}</button>
         <button type="button" class="mini2" data-buy="credits-1500"${me.billing ? '' : ' disabled'}>${t('1500 créditos')}</button>
       </div>
       ${me.billing ? '' : `<p class="host-help" style="font-size:12px">${t('Los pagos estarán disponibles muy pronto.')}</p>`}
+      ${trialDays ? `<p class="host-help acc-trial" style="font-size:12px">${t('Se pide una tarjeta, pero no se cobra nada hasta que acabe la prueba. Puedes cancelarla antes en «Gestionar la suscripción».')}</p>` : ''}
       <div class="fr-actions" style="justify-content:space-between">
         ${pro ? `<button type="button" class="mini2 acc-portal">${t('Gestionar la suscripción')}</button>` : '<span></span>'}
         <button type="button" class="mini2 acc-out">${t('Cerrar sesión')}</button></div>
@@ -108,7 +110,8 @@ export function openAccount({ buy } = {}) {
         <button type="button" class="mini2 acc-report"><i class="ms">bug_report</i> ${t('Informar de un problema')}</button></div>
       <details class="acc-mail"><summary>${t('Avisos por correo')}</summary>
         <p class="host-help">${t('Revela te escribe a {email} cuando te comparten una presentación, te invitan a un equipo o cambia tu plan.').replace('{email}', esc(me.email))}</p>
-        <label class="fr-chk"><input type="checkbox" class="acc-mail-credits"> ${t('Avisarme cuando mis créditos estén a punto de caducar')}</label>
+        <label class="fr-chk"><input type="checkbox" class="acc-mail-opt" data-kind="credits"> ${t('Avisarme cuando mis créditos estén a punto de caducar')}</label>
+        <label class="fr-chk"><input type="checkbox" class="acc-mail-opt" data-kind="trialEnding"> ${t('Avisarme antes de que acabe mi prueba de Pro')}</label>
         <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 acc-mail-test">${t('Enviarme un correo de prueba')}</button></div></details>
       <details class="acc-data"><summary>${t('Tus datos')}</summary>
         <p class="host-help">${t('Descarga una copia de todo lo que guarda tu cuenta, o elimínala con todas tus presentaciones en la nube. Las facturas las conserva Stripe, como exige la ley.')}</p>
@@ -120,13 +123,14 @@ export function openAccount({ buy } = {}) {
     body.querySelector('.acc-team').addEventListener('click', () => { close(); openTeam(); });
     body.querySelector('.acc-report').addEventListener('click', () => { close(); openReport(); });
     // (Email notices: the optional ones can be switched off; a test email shows whether they arrive.)
-    const credBox = body.querySelector('.acc-mail-credits');
+    const optBoxes = [...body.querySelectorAll('.acc-mail-opt')];
     body.querySelector('.acc-mail').addEventListener('toggle', async e => {
-      if (!e.target.open || credBox.dataset.loaded) return;
-      try { const p = await acc.api('mail/prefs'); credBox.checked = !p.off.includes('credits'); credBox.dataset.loaded = '1'; } catch {}
+      if (!e.target.open || body.querySelector('.acc-mail').dataset.loaded) return;
+      try { const p = await acc.api('mail/prefs'); for (const b of optBoxes) b.checked = !p.off.includes(b.dataset.kind); body.querySelector('.acc-mail').dataset.loaded = '1'; } catch {}
     });
-    credBox.addEventListener('change', async () => {
-      try { const p = await acc.api('mail/prefs'); await acc.api('mail/prefs', { off: credBox.checked ? p.off.filter(k => k !== 'credits') : [...new Set([...p.off, 'credits'])] }); }
+    for (const box of optBoxes) box.addEventListener('change', async () => {
+      const k = box.dataset.kind;
+      try { const p = await acc.api('mail/prefs'); await acc.api('mail/prefs', { off: box.checked ? p.off.filter(x => x !== k) : [...new Set([...p.off, k])] }); }
       catch (e) { alertDialog(errorText(e)); }
     });
     body.querySelector('.acc-mail-test').addEventListener('click', async e => {

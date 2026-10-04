@@ -43,6 +43,15 @@
 //   POST /api/admin/finance/entries        { type: 'fixed', name, amount, currency, date, recurring, until?, category }
 //                                          or { type: 'time', date, hours, category, note }; with id: changes it
 //   DELETE /api/admin/finance/entries/:id
+//   GET  /api/admin/promos?mode=live|test  → { mode, codes, at, cached }   (Stripe's promotion codes with their coupon, status and
+//                                          times redeemed — cached a minute —, plus Revela's own figures for each: finance.js)
+//   POST /api/admin/promos                 { mode?, code, percent | amount + currency (eur|usd), duration: once | repeating | forever,
+//                                          months?, appliesTo: [pro, credits, team] (none: everything), maxRedemptions?, expires? (YYYY-MM-DD),
+//                                          firstTime?, perCustomer?, reason? }   (a coupon + its promotion code, in Stripe)
+//   POST /api/admin/promos/:id/active      { mode?, active, reason? }   (deactivate or reactivate a code)
+//   GET  /api/admin/promos/trial           → { config, stats: { live, test } }   (Pro's free trial: api.js trialConfig)
+//   POST /api/admin/promos/trial           { trialDays, trialCredits, trialOncePerAccount, reason? }
+//   (Stripe errors for want of permission: 502 { error: 'stripe permissions', message } naming what to add to the restricted key.)
 //
 // Every change is written first to the audit log (Audit: who, when, what, before and after),
 // which has no way to edit or delete entries.
@@ -59,12 +68,12 @@
 // the admin (SUPPORT_NOTIFY, else the first of ADMIN_EMAILS). The daily cron reminds once and then
 // closes tickets left waiting for the person (ticketsDue: SUPPORT_REMIND_DAYS, SUPPORT_AUTOCLOSE_DAYS).
 
-import { acct, call, settings, priceOf } from './api.js';
+import { acct, call, settings, priceOf, stripeConf, trialConfig, cleanTrial, resetTrialCache } from './api.js';
 import { mail, mailConfigured, ticketLink, readTicketToken, ticketPage, fmtDate, TICKET_LINK_DAYS } from './mail.js';
 import { fromB64url } from './auth.js';
 import { takeQuota, writeText, readParts } from './store.js';
 import { teamStatus } from './teams.js';
-import { record, financeCall, financeSettings, cleanEntry, periodOk, dayOf } from './finance.js';
+import { record, financeCall, financeSettings, cleanEntry, periodOk, dayOf, promoKey } from './finance.js';
 
 const enc = new TextEncoder(), dec = new TextDecoder();
 const pad = n => String(n).padStart(10, '0');
@@ -615,6 +624,7 @@ export async function handleAdmin(req, env, url) {
       return json({ ...(await call(T, 'reply', { id, text, by, status, mailed })), mailed });
     }
   }
+  if (path === '/promos' || path.startsWith('/promos/')) return promosApi(env, path, q, body, { GET, POST, by, json });
   if (path.startsWith('/finance/')) return financeApi(env, path, q, body, { GET, POST, DELETE, by, json, headers, D });
   if (GET && path === '/audit') return json(await call(L, 'list', { cursor: q.get('cursor') || null, target: clip(q.get('target'), 100) || null, limit: +q.get('limit') || 50 }));
   return json({ error: 'not found' }, 404);
@@ -655,6 +665,144 @@ async function financeApi(env, path, q, body, { GET, POST, DELETE, by, json, hea
     const before = (await F('entry-get', { id: m[1] })).entry; if (!before) return json({ error: 'not found' }, 404);
     await audit(env, { by, action: 'finance-delete', target: 'finance:' + m[1], reason: before.type === 'fixed' ? before.name : before.note, before, after: null });
     return json(await F('entry-del', { id: m[1] }));
+  }
+  return json({ error: 'not found' }, 404);
+}
+
+// ---- Promotions: Stripe's promotion codes, and Pro's free trial ---------------------------------------------
+// Codes live in Stripe (a coupon and its promotion code), in live or test mode (stripeConf): Checkout lets people
+// type them (api.js checkout: allow_promotion_codes). What each code brought is in finance.js ('pc:'). The restricted
+// key needs, besides Checkout's: Coupons — Write, Promotion Codes — Write, Products — Read, Prices — Read.
+// Stripe has no per-customer limit for a code: perCustomer is kept in its metadata, and uses beyond it are shown here.
+export const PROMO_PERMISSIONS = ['Coupons: Write', 'Promotion Codes: Write', 'Products: Read', 'Prices: Read'];
+export const PROMO_GROUPS = { pro: ['pro-month', 'pro-year'], credits: ['credits-500', 'credits-1500'], team: ['team-seat'] };
+let promoCache = new Map();                               // mode → { at, codes }
+export const resetPromoCache = () => { promoCache = new Map(); };
+async function stripeCall(env, key, method, path, params) {
+  const body = method === 'GET' ? null : new URLSearchParams(params || []);
+  const url = 'https://api.stripe.com/v1/' + path + (method === 'GET' && params ? '?' + new URLSearchParams(params) : '');
+  const r = await (env.FETCH || fetch)(url, { method, headers: { Authorization: `Bearer ${key}`, ...(body && { 'Content-Type': 'application/x-www-form-urlencoded' }) }, ...(body && { body }) }).catch(() => null);
+  const d = r ? await r.json().catch(() => null) : null;
+  return { ok: !!r?.ok && !d?.error, status: r?.status || 0, d, err: d?.error || (r ? null : { message: 'network' }) };
+}
+// A Stripe failure, for the admin page: a missing permission named clearly.
+function stripeFailure(x, mode, json) {
+  const msg = String(x.err?.message || '');
+  if (x.status === 403 || /permission/i.test(msg) || x.err?.code === 'secret_key_required')
+    return json({ error: 'stripe permissions', permissions: PROMO_PERMISSIONS, stripe: msg.slice(0, 300),
+      message: `La clave de Stripe ${mode === 'test' ? 'de prueba (STRIPE_TEST_SECRET_KEY)' : 'real (STRIPE_SECRET_KEY)'} no tiene permiso para esto. En Stripe ▸ Developers ▸ API keys, edita la clave restringida y añade estos permisos: ${PROMO_PERMISSIONS.join(', ')}.` }, 502);
+  return json({ error: 'stripe failed', message: `Stripe dice: ${msg.slice(0, 300) || 'error ' + x.status}`, status: x.status }, 502);
+}
+// One code as the page shows it (Stripe's object, either API shape: coupon embedded or in promotion.coupon).
+function promoView(pc, coupons, now = Date.now()) {
+  const cid = typeof pc.coupon === 'object' ? pc.coupon?.id : pc.coupon || pc.promotion?.coupon?.id || pc.promotion?.coupon;
+  const c = (typeof pc.coupon === 'object' && pc.coupon) || (typeof pc.promotion?.coupon === 'object' && pc.promotion.coupon) || coupons.get(cid) || {};
+  const expires = pc.expires_at ? pc.expires_at * 1000 : null, max = pc.max_redemptions || null, times = +pc.times_redeemed || 0;
+  const status = !pc.active ? 'inactive' : expires && expires <= now ? 'expired' : max && times >= max ? 'exhausted' : c.valid === false ? 'invalid' : 'active';
+  return { id: pc.id, code: pc.code, active: !!pc.active, status, times, max, expires, created: pc.created ? pc.created * 1000 : null, firstTime: !!pc.restrictions?.first_time_transaction,
+    perCustomer: +pc.metadata?.per_customer || null, appliesTo: pc.metadata?.applies ? String(pc.metadata.applies).split(',').filter(Boolean) : null, test: pc.livemode === false,
+    coupon: { id: c.id || cid || null, percent: c.percent_off ?? null, amount: c.amount_off ?? null, currency: c.currency || null, duration: c.duration || null, months: c.duration_in_months || null,
+      products: c.applies_to?.products || null, valid: c.valid !== false } };
+}
+// The admin's new code, checked → { code, coupon params, promotion params } or { error }.
+export function cleanPromo(b, now = Date.now()) {
+  const code = String(b?.code || '').trim().toUpperCase();
+  if (!/^[A-Z0-9-]{3,40}$/.test(code)) return { error: 'code' };
+  const out = { code, coupon: [['name', code], ['metadata[revela]', '1']], promo: [['code', code]] };
+  if (b.percent != null && b.percent !== '') {
+    const pct = Math.round(+b.percent * 100) / 100; if (!(pct > 0 && pct <= 100)) return { error: 'percent' };
+    out.coupon.push(['percent_off', String(pct)]); out.off = { percent: pct };
+  } else {
+    const amount = Math.round(+b.amount * 100), cur = String(b.currency || 'eur').toLowerCase();
+    if (!(amount > 0 && amount <= 1e6) || !['eur', 'usd'].includes(cur)) return { error: 'amount' };
+    out.coupon.push(['amount_off', String(amount)], ['currency', cur]); out.off = { amount, currency: cur };
+  }
+  if (!['once', 'repeating', 'forever'].includes(b.duration)) return { error: 'duration' };
+  out.coupon.push(['duration', b.duration]);
+  if (b.duration === 'repeating') { const m = Math.round(+b.months); if (!(m >= 1 && m <= 36)) return { error: 'months' }; out.coupon.push(['duration_in_months', String(m)]); out.months = m; }
+  const groups = Array.isArray(b.appliesTo) ? [...new Set(b.appliesTo)] : [];
+  if (groups.some(g => !PROMO_GROUPS[g])) return { error: 'appliesTo' };
+  out.groups = groups.length === Object.keys(PROMO_GROUPS).length ? [] : groups;   // (all three: everything)
+  if (b.maxRedemptions != null && b.maxRedemptions !== '') { const n = Math.round(+b.maxRedemptions); if (!(n >= 1 && n <= 1e6)) return { error: 'maxRedemptions' }; out.promo.push(['max_redemptions', String(n)]); }
+  if (b.expires) {
+    const t = Date.parse(String(b.expires) + 'T23:59:59Z'); if (!/^\d{4}-\d\d-\d\d$/.test(b.expires) || !(t > now) || t > now + 5 * 366 * DAY) return { error: 'expires' };
+    out.promo.push(['expires_at', String(Math.floor(t / 1000))]);
+  }
+  if (b.firstTime === true) out.promo.push(['restrictions[first_time_transaction]', 'true']);
+  if (b.perCustomer != null && b.perCustomer !== '') { const n = Math.round(+b.perCustomer); if (!(n >= 1 && n <= 100)) return { error: 'perCustomer' }; out.promo.push(['metadata[per_customer]', String(n)]); }
+  out.promo.push(['metadata[applies]', out.groups.join(',')]);
+  return out;
+}
+async function promosApi(env, path, q, body, { GET, POST, by, json }) {
+  // Pro's free trial: the settings (audited) and how trials went (finance.js).
+  if (path === '/promos/trial') {
+    if (GET) {
+      const st = env.FINANCE ? await financeCall(env, 'trials') : { live: {}, test: {} };
+      const view = c => ({ started: c.start || 0, converted: c.convert || 0, cancelled: c.cancel || 0, running: Math.max(0, (c.start || 0) - (c.convert || 0) - (c.cancel || 0)),
+        conversion: (c.convert || 0) + (c.cancel || 0) ? Math.round(((c.convert || 0) / ((c.convert || 0) + (c.cancel || 0))) * 1e4) / 1e4 : null });
+      return json({ config: await trialConfig(env, true), stats: { live: view(st.live), test: view(st.test) } });
+    }
+    if (POST) {
+      const after = cleanTrial(body); if (!after) return json({ error: 'bad request' }, 400);
+      const before = await trialConfig(env, true), reason = clip(body.reason, 500).trim();
+      await audit(env, { by, action: 'trial-config', target: 'config:trial', reason, before, after });
+      await call(stub(env.BUDGET, 'global'), 'config-set', { trial: after }); resetTrialCache();
+      return json({ ok: true, before, after });
+    }
+    return json({ error: 'method' }, 405);
+  }
+  const mode = (POST ? body.mode : q.get('mode')) === 'test' ? 'test' : 'live', conf = stripeConf(env, mode);
+  if (!conf.key) return json({ error: mode === 'test' ? 'billing test not configured' : 'billing not configured',
+    message: mode === 'test' ? 'Falta STRIPE_TEST_SECRET_KEY: no hay modo de prueba de Stripe.' : 'Falta STRIPE_SECRET_KEY.' }, 503);
+  if (GET && path === '/promos') {
+    const c = promoCache.get(mode);
+    let codes = c && Date.now() - c.at < 60e3 ? c.codes : null, cached = !!codes;
+    if (!codes) {
+      const [pcs, cps] = await Promise.all([stripeCall(env, conf.key, 'GET', 'promotion_codes', { limit: '100' }), stripeCall(env, conf.key, 'GET', 'coupons', { limit: '100' })]);
+      if (!pcs.ok) return stripeFailure(pcs, mode, json);
+      const coupons = new Map((cps.ok ? cps.d?.data || [] : []).map(x => [x.id, x]));
+      codes = (pcs.d?.data || []).map(x => promoView(x, coupons)); promoCache.set(mode, { at: Date.now(), codes });
+    }
+    // (Revela's own figures: uses recorded from the webhooks, discount and paid, and uses beyond a per-customer limit.)
+    const fin = env.FINANCE ? (await financeCall(env, 'promos'))[mode] || {} : {}, R = financeSettings(env).usdEur;
+    const out = codes.map(x => {
+      const f = fin[promoKey(x.code)], eur = k => Object.entries(f?.money || {}).reduce((t, [cur, v]) => t + (cur === 'usd' ? v[k] * R : v[k]) / 100, 0);
+      const over = x.perCustomer && f ? Object.values(f.users || {}).reduce((t, n) => t + Math.max(0, n - x.perCustomer), 0) : 0;
+      return { ...x, test: mode === 'test', revela: f ? { uses: f.n, discount: Math.round(eur('disc') * 100) / 100, gross: Math.round(eur('gross') * 100) / 100, customers: Object.keys(f.users || {}).length, overLimit: over } : null };
+    });
+    return json({ mode, codes: out, at: (promoCache.get(mode) || {}).at || Date.now(), cached });
+  }
+  if (POST && path === '/promos') {
+    const v = cleanPromo(body); if (v.error) return json({ error: 'bad request', field: v.error }, 400);
+    // (applies_to: the products of the configured prices — STRIPE_PRICE_* or STRIPE_TEST_PRICE_* — of the groups chosen.)
+    const products = new Set();
+    for (const g of v.groups) for (const k of PROMO_GROUPS[g]) {
+      if (!conf.prices[k]) continue;
+      const x = await stripeCall(env, conf.key, 'GET', 'prices/' + encodeURIComponent(conf.prices[k]));
+      if (!x.ok) return stripeFailure(x, mode, json);
+      const prod = typeof x.d.product === 'object' ? x.d.product?.id : x.d.product; if (prod) products.add(prod);
+    }
+    if (v.groups.length && !products.size) return json({ error: 'no products', message: 'No hay precios configurados para lo elegido (STRIPE_PRICE_*).' }, 400);
+    const cp = await stripeCall(env, conf.key, 'POST', 'coupons', [...v.coupon, ...[...products].map(id => ['applies_to[products][]', id]), ['metadata[by]', by]]);
+    if (!cp.ok) return stripeFailure(cp, mode, json);
+    // (Stripe's newer API takes promotion[coupon]; older versions, coupon.)
+    let pc = await stripeCall(env, conf.key, 'POST', 'promotion_codes', [['promotion[type]', 'coupon'], ['promotion[coupon]', cp.d.id], ...v.promo, ['metadata[by]', by]]);
+    if (!pc.ok && /promotion/.test(String(pc.err?.param || pc.err?.message || '')) && pc.status === 400) pc = await stripeCall(env, conf.key, 'POST', 'promotion_codes', [['coupon', cp.d.id], ...v.promo, ['metadata[by]', by]]);
+    if (!pc.ok) { await stripeCall(env, conf.key, 'DELETE', 'coupons/' + encodeURIComponent(cp.d.id)); return stripeFailure(pc, mode, json); }
+    const code = promoView(pc.d, new Map([[cp.d.id, cp.d]]));
+    await audit(env, { by, action: 'promo-create', target: 'promo:' + code.code, reason: clip(body.reason, 500).trim(), after: { mode, ...code } });
+    promoCache.delete(mode);
+    return json({ ok: true, mode, code });
+  }
+  const m = path.match(/^\/promos\/(promo_[\w]{1,80})\/active$/);
+  if (POST && m) {
+    if (typeof body.active !== 'boolean') return json({ error: 'bad request' }, 400);
+    const x = await stripeCall(env, conf.key, 'POST', 'promotion_codes/' + m[1], [['active', String(body.active)]]);
+    if (!x.ok) return stripeFailure(x, mode, json);
+    await audit(env, { by, action: body.active ? 'promo-reactivate' : 'promo-deactivate', target: 'promo:' + (x.d.code || m[1]), reason: clip(body.reason, 500).trim(),
+      before: { mode, id: m[1], active: !body.active }, after: { mode, id: m[1], active: !!x.d.active } });
+    promoCache.delete(mode);
+    return json({ ok: true, mode, code: promoView(x.d, new Map()) });
   }
   return json({ error: 'not found' }, 404);
 }

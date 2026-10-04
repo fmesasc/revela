@@ -4,8 +4,8 @@
 // are simulated. Run by tests/run.sh when Node.js is available.
 import worker, { Account, Budget, DesktopLink, ShareBox, Limits, CloudDoc, Team, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance } from '../server/cloudflare/worker.js';
 import { summarize, bump, toCsv, cleanEntry, featureOf } from '../server/cloudflare/finance.js';
-import { verifyAccess, resetAccessCerts } from '../server/cloudflare/admin.js';
-import { ticketToken } from '../server/cloudflare/mail.js';
+import { verifyAccess, resetAccessCerts, resetPromoCache } from '../server/cloudflare/admin.js';
+import { ticketToken, render } from '../server/cloudflare/mail.js';
 import { verifyBody } from '../server/blender/gate.js';
 import { verifyStripe, sha256, shortCode, settings, stripeConf, billingMode } from '../server/cloudflare/api.js';
 
@@ -34,7 +34,7 @@ env.FETCH = async (url, init = {}) => {
   const u = String(url);
   if (u.startsWith('https://oauth2.googleapis.com/tokeninfo')) {
     const t = new URL(u).searchParams.get('access_token');
-    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' }, 'tok-gil': { sub: '1212', email: 'gil@example.com' }, 'tok-noa': { sub: '1313', email: 'noa@example.com' }, 'tok-pia': { sub: '1414', email: 'pia@example.com' }, 'tok-tess': { sub: '1515', email: 'tess@example.com' }, 'tok-ivo': { sub: '1616', email: 'ivo@example.com' } }[t];
+    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' }, 'tok-gil': { sub: '1212', email: 'gil@example.com' }, 'tok-noa': { sub: '1313', email: 'noa@example.com' }, 'tok-pia': { sub: '1414', email: 'pia@example.com' }, 'tok-tess': { sub: '1515', email: 'tess@example.com' }, 'tok-ivo': { sub: '1616', email: 'ivo@example.com' }, 'tok-ada': { sub: '1717', email: 'ada@example.com' }, 'tok-bea': { sub: '1818', email: 'bea@example.com' }, 'tok-cid': { sub: '1919', email: 'cid@example.com' }, 'tok-dan': { sub: '2020', email: 'dan@example.com' } }[t];
     if (t === 'tok-otraapp') return Response.json({ aud: 'otra-app', sub: '333', email: 'x@example.com', email_verified: 'true' });
     return who ? Response.json({ aud: CID, ...who, email_verified: 'true', expires_in: 3000 }) : new Response('bad', { status: 400 });
   }
@@ -1234,6 +1234,186 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok(x.status === 200 && !x.j.after.billingTest && me.billingTest === false && r.status === 200 && stripeCalls.at(-1).auth === 'Bearer sk_test' && (await A('GET', '/audit?target=1515')).j.entries[0].action === 'billing-test-off',
       'modo de prueba desactivado: vuelve a pagar de verdad (auditado)');
     for (const k of ['STRIPE_TEST_SECRET_KEY', 'STRIPE_TEST_WEBHOOK_SECRET', 'STRIPE_TEST_PRICE_PRO_MONTH', 'STRIPE_TEST_PRICE_CREDITS_500']) delete env[k];
+  }
+
+  // ---- Promotions (admin.js promosApi: Stripe's promotion codes) and Pro's free trial (api.js trialConfig) ----
+  {
+    const FS = () => env.FINANCE.inst.get('global').ctx.storage.m, today = new Date().toISOString().slice(0, 10), D = () => FS().get('d:' + today) || {};
+    const meOf = async c => (await req('GET', '/api/me', { headers: { Cookie: c } })).json();
+    const login = async (tok, lang) => cookieFrom(await req('POST', '/api/login', { body: { accessToken: tok, terms: TERMS, ...(lang && { lang }) } }));
+    // Stripe, simulated: coupons, promotion codes, prices (→ their product), an invoice's discounts.
+    const fake = { coupons: new Map(), promos: new Map(), calls: [], deny: false, oldApi: false };
+    const prev = env.FETCH;
+    env.FETCH = async (u, init = {}) => {
+      const s = String(u); if (!/^https:\/\/api\.stripe\.com\/v1\/(coupons|promotion_codes|prices\/|invoices\/)/.test(s)) return prev(u, init);
+      const method = init.method || 'GET', b = new URLSearchParams(init.body ? String(init.body) : ''), path = new URL(s).pathname.slice(3);
+      fake.calls.push({ s, method, auth: init.headers?.Authorization, b });
+      if (fake.deny) return Response.json({ error: { type: 'invalid_request_error', message: "The provided key 'rk_live_***' does not have the required permissions for this endpoint on account 'acct_1'. Having the 'rak_coupon_write' permission would allow this request to continue." } }, { status: 403 });
+      if (path.startsWith('/prices/')) return Response.json({ id: path.slice(8), product: 'prod_' + path.slice(8) });
+      if (path === '/invoices/in_7') return Response.json({ id: 'in_7', discounts: [{ id: 'di_1', promotion_code: 'promo_1' }] });
+      if (path === '/coupons' && method === 'POST') {
+        const id = 'cp_' + (fake.coupons.size + 1), c = { id, object: 'coupon', valid: true, percent_off: b.get('percent_off') ? +b.get('percent_off') : null, amount_off: b.get('amount_off') ? +b.get('amount_off') : null,
+          currency: b.get('currency'), duration: b.get('duration'), duration_in_months: b.get('duration_in_months') ? +b.get('duration_in_months') : null, applies_to: b.getAll('applies_to[products][]').length ? { products: b.getAll('applies_to[products][]') } : undefined };
+        fake.coupons.set(id, c); return Response.json(c);
+      }
+      if (path === '/coupons' && method === 'GET') return Response.json({ data: [...fake.coupons.values()] });
+      if (path.startsWith('/coupons/') && method === 'DELETE') { fake.coupons.delete(path.slice(9)); return Response.json({ deleted: true }); }
+      if (path === '/promotion_codes' && method === 'POST') {
+        if (fake.oldApi && b.has('promotion[coupon]')) return Response.json({ error: { type: 'invalid_request_error', param: 'promotion', message: 'Received unknown parameter: promotion' } }, { status: 400 });
+        const id = 'promo_' + (fake.promos.size + 1), cid = b.get('promotion[coupon]') || b.get('coupon');
+        const pc = { id, object: 'promotion_code', code: b.get('code'), active: true, times_redeemed: 0, max_redemptions: b.get('max_redemptions') ? +b.get('max_redemptions') : null, expires_at: b.get('expires_at') ? +b.get('expires_at') : null,
+          restrictions: { first_time_transaction: b.get('restrictions[first_time_transaction]') === 'true' }, metadata: { ...(b.get('metadata[per_customer]') && { per_customer: b.get('metadata[per_customer]') }), applies: b.get('metadata[applies]') || '' },
+          livemode: !/sk_test_t/.test(init.headers.Authorization), ...(b.has('coupon') ? { coupon: fake.coupons.get(cid) } : { promotion: { type: 'coupon', coupon: cid } }) };
+        fake.promos.set(id, pc); return Response.json(pc);
+      }
+      if (path === '/promotion_codes' && method === 'GET') return Response.json({ data: [...fake.promos.values()] });
+      const m = path.match(/^\/promotion_codes\/(promo_\d+)$/), pc = m && fake.promos.get(m[1]);
+      if (pc && method === 'POST') { pc.active = b.get('active') === 'true'; return Response.json(pc); }
+      if (pc) return Response.json(pc);
+      return Response.json({ error: { message: 'No such object' } }, { status: 404 });
+    };
+
+    // Checkout: promotion codes allowed, subscriptions and one-off purchases alike.
+    const ada = await login('tok-ada');
+    stripeCalls = [];
+    await req('POST', '/api/billing/checkout', { headers: { Cookie: ada }, body: { product: 'pro-month' } });
+    await req('POST', '/api/billing/checkout', { headers: { Cookie: ada }, body: { product: 'credits-500' } });
+    ok(stripeCalls.length === 2 && stripeCalls.every(c => /(^|&)allow_promotion_codes=true(&|$)/.test(c.body)) && !stripeCalls.some(c => /trial_period_days/.test(c.body)),
+      'Checkout: «Añadir código promocional» (allow_promotion_codes) en Pro y en paquetes; sin prueba gratis si no está activada');
+
+    // Creating a code: a coupon (the discount, what it applies to) and its promotion code (limits); audited.
+    ok((await A('POST', '/promos', { body: { code: 'x', percent: 30, duration: 'once' } })).status === 400 && (await A('POST', '/promos', { body: { code: 'BIEN', percent: 0, duration: 'once' } })).status === 400
+      && (await A('POST', '/promos', { body: { code: 'BIEN', percent: 10, duration: 'siempre' } })).status === 400 && (await A('POST', '/promos', { body: { code: 'BIEN', amount: 5, currency: 'gbp', duration: 'once' } })).status === 400
+      && (await A('POST', '/promos', { body: { code: 'BIEN', percent: 10, duration: 'once', expires: '2020-01-01' } })).status === 400 && !fake.calls.length, 'promociones: código, descuento, duración, moneda o caducidad inválidos → 400 (sin llamar a Stripe)');
+    const exp = new Date(Date.now() + 40 * 864e5).toISOString().slice(0, 10);
+    x = await A('POST', '/promos', { body: { code: 'lanzamiento30', percent: 30, duration: 'repeating', months: 3, appliesTo: ['pro'], maxRedemptions: 100, expires: exp, firstTime: true, perCustomer: 1, reason: 'Lanzamiento' } });
+    { const cp = fake.calls.find(c => c.s.endsWith('/v1/coupons') && c.method === 'POST'), pc = fake.calls.find(c => c.s.endsWith('/v1/promotion_codes') && c.method === 'POST');
+      ok(x.status === 200 && x.j.code.code === 'LANZAMIENTO30' && x.j.code.status === 'active' && x.j.mode === 'live', 'promociones: código creado: ' + JSON.stringify(x.j));
+      ok(cp && cp.auth === 'Bearer sk_test' && cp.b.get('percent_off') === '30' && cp.b.get('duration') === 'repeating' && cp.b.get('duration_in_months') === '3' && cp.b.getAll('applies_to[products][]').join() === 'prod_price_pm'
+        && fake.calls.some(c => c.s.endsWith('/v1/prices/price_pm')), 'promociones: cupón en Stripe (30 %, 3 meses, solo el producto de Pro, sacado de STRIPE_PRICE_*): ' + cp?.b);
+      ok(pc && pc.b.get('promotion[coupon]') === 'cp_1' && pc.b.get('promotion[type]') === 'coupon' && pc.b.get('code') === 'LANZAMIENTO30' && pc.b.get('max_redemptions') === '100' && pc.b.get('restrictions[first_time_transaction]') === 'true'
+        && pc.b.get('metadata[per_customer]') === '1' && +pc.b.get('expires_at') === Math.floor(Date.parse(exp + 'T23:59:59Z') / 1000), 'promociones: código promocional (máximo de usos, caducidad, solo clientes nuevos, límite por cliente): ' + pc?.b); }
+    { const e = (await A('GET', '/audit?target=promo:LANZAMIENTO30')).j.entries[0];
+      ok(e?.action === 'promo-create' && e.by === 'jefe@example.com' && e.reason === 'Lanzamiento' && e.after.mode === 'live' && e.after.coupon.percent === 30, 'promociones: en la auditoría: ' + JSON.stringify(e)); }
+    // (Stripe's older API: coupon instead of promotion[coupon].)
+    fake.oldApi = true; x = await A('POST', '/promos', { body: { code: 'VIEJO10', percent: 10, duration: 'forever' } }); fake.oldApi = false;
+    ok(x.status === 200 && fake.calls.at(-1).b.get('coupon') === 'cp_2' && x.j.code.coupon.duration === 'forever', 'promociones: con la API antigua de Stripe (coupon) también');
+    // Listing (from Stripe, cached a minute), deactivating and reactivating (audited).
+    let n0 = fake.calls.length; x = await A('GET', '/promos');
+    { const c = x.j.codes.find(y => y.code === 'LANZAMIENTO30');
+      ok(x.status === 200 && x.j.mode === 'live' && x.j.cached === false && c.status === 'active' && c.times === 0 && c.max === 100 && c.firstTime && c.perCustomer === 1 && c.coupon.percent === 30 && c.coupon.months === 3 && !c.test, 'promociones: lista con estado y usos: ' + JSON.stringify(c)); }
+    x = await A('GET', '/promos'); ok(x.j.cached === true && fake.calls.length === n0 + 2, 'promociones: la lista se guarda un rato (no se pide a Stripe otra vez)');
+    x = await A('POST', '/promos/promo_1/active', { body: { active: false, reason: 'Fin de la campaña' } });
+    ok(x.status === 200 && fake.calls.at(-1).s.endsWith('/v1/promotion_codes/promo_1') && fake.calls.at(-1).b.get('active') === 'false' && x.j.code.status === 'inactive', 'promociones: desactivar');
+    ok((await A('GET', '/promos')).j.codes.find(y => y.id === 'promo_1').status === 'inactive', 'promociones: la lista se renueva tras un cambio');
+    ok((await A('GET', '/audit?target=promo:LANZAMIENTO30')).j.entries[0].action === 'promo-deactivate', 'promociones: desactivar, auditado');
+    x = await A('POST', '/promos/promo_1/active', { body: { active: true } }); ok(x.status === 200 && x.j.code.active && (await A('GET', '/audit?target=promo:LANZAMIENTO30')).j.entries[0].action === 'promo-reactivate', 'promociones: reactivar (auditado)');
+    ok((await A('POST', '/promos/promo_1/active', { body: { active: 'no' } })).status === 400 && (await A('POST', '/promos/nada/active', { body: { active: true } })).status === 404, 'promociones: peticiones mal formadas');
+    // Test mode: its key; without it, a clear 503.
+    ok((await A('GET', '/promos?mode=test')).status === 503, 'promociones de prueba sin STRIPE_TEST_SECRET_KEY → 503');
+    env.STRIPE_TEST_SECRET_KEY = 'sk_test_t';
+    x = await A('POST', '/promos', { body: { mode: 'test', code: 'PRUEBA5', amount: 5, currency: 'eur', duration: 'once', appliesTo: ['pro', 'credits', 'team'] } });
+    { const cp = fake.calls.filter(c => c.s.endsWith('/v1/coupons') && c.method === 'POST').at(-1);
+      ok(x.status === 200 && x.j.mode === 'test' && cp.auth === 'Bearer sk_test_t' && cp.b.get('amount_off') === '500' && cp.b.get('currency') === 'eur' && !cp.b.has('applies_to[products][]'), 'promociones de prueba: con la clave de prueba; 5 € una vez, para todo'); }
+    x = await A('GET', '/promos?mode=test'); ok(x.j.mode === 'test' && x.j.codes.some(y => y.code === 'PRUEBA5' && y.test), 'promociones de prueba: marcadas «prueba»');
+    ok((await A('GET', '/audit?target=promo:PRUEBA5')).j.entries[0].after.mode === 'test', 'promociones de prueba: auditadas con su modo');
+    delete env.STRIPE_TEST_SECRET_KEY;
+    // A restricted key without the permissions: the message says which ones to add.
+    fake.deny = true; resetPromoCache();
+    for (const [m, p, b] of [['POST', '/promos', { code: 'NOPERM', percent: 10, duration: 'once', appliesTo: ['pro'] }], ['GET', '/promos'], ['POST', '/promos/promo_1/active', { active: false }]]) {
+      x = await A(m, p, b && { body: b });
+      ok(x.status === 502 && x.j.error === 'stripe permissions' && ['Coupons: Write', 'Promotion Codes: Write', 'Products: Read', 'Prices: Read'].every(k => x.j.message.includes(k)) && /STRIPE_SECRET_KEY/.test(x.j.message),
+        `promociones: sin permisos en la clave (${m} ${p}) → mensaje claro: ` + x.j?.message);
+    }
+    fake.deny = false;
+    // Access: the same checks as the rest of the admin API.
+    ok((await adm('GET', '/promos', { token: null })).status === 403 && (await adm('GET', '/promos', { host: SITE })).status === 404 && (await adm('POST', '/promos', { origin: 'https://malo.example', body: {} })).status === 403
+      && (await adm('POST', '/promos/trial', { origin: 'https://malo.example', body: {} })).status === 403, 'promociones: solo administración');
+
+    // Discounts in the business's accounts: gross before the discount, the discount, and per code.
+    const s0 = (await A('GET', `/finance/summary?from=${today}&to=${today}&group=day`)).j;
+    await hook({ id: 'evt_pr1', type: 'checkout.session.completed', data: { object: { mode: 'payment', payment_status: 'paid', currency: 'eur', amount_total: 900, total_details: { amount_tax: 0, amount_discount: 300 },
+      discounts: [{ coupon: 'cp_1', promotion_code: 'promo_1' }], customer: 'cus_ada', metadata: { sub: '1717', product: 'credits-500' } } } });
+    const pend = Math.floor(Date.now() / 1000) + 30 * 86400;
+    await hook({ id: 'evt_pr2', type: 'invoice.paid', data: { object: { object: 'invoice', id: 'in_7', customer: 'cus_ada', currency: 'eur', amount_paid: 847, tax: 147, billing_reason: 'subscription_create',
+      total_discount_amounts: [{ amount: 363, discount: 'di_1' }], discounts: ['di_1'], parent: { subscription_details: { subscription: 'sub_pr', metadata: { sub: '1717' } } }, lines: { data: [{ period: { start: pend - 30 * 86400, end: pend }, price: { id: 'price_pm' } }] } } } });
+    { const ev = [...FS().values()].filter(v => v?.kind === 'payment' && ['evt_pr1', 'evt_pr2'].includes(v.ref));
+      ok(ev.length === 2 && ev.every(v => v.promo === 'LANZAMIENTO30') && ev.find(v => v.ref === 'evt_pr1').discount === 300 && ev.find(v => v.ref === 'evt_pr2').discount === 363, 'finanzas: el descuento y el código usado (de Checkout y de la factura): ' + JSON.stringify(ev.map(v => [v.discount, v.promo]))); }
+    const s1 = (await A('GET', `/finance/summary?from=${today}&to=${today}&group=day`)).j;
+    ok(Math.abs(s1.totals.discounts - s0.totals.discounts - 6.63) < 0.001 && Math.abs(s1.totals.list - s1.totals.gross - s1.totals.discounts) < 0.001 && Math.abs(s1.totals.gross - s0.totals.gross - 17.47) < 0.001,
+      'resumen: bruto antes del descuento, descuento y lo cobrado: ' + JSON.stringify([s1.totals.list, s1.totals.discounts, s1.totals.gross]));
+    ok(s1.promos.LANZAMIENTO30?.n === 2 && s1.promos.LANZAMIENTO30.discount === 6.63 && s1.promos.LANZAMIENTO30.gross === 17.47, 'resumen: cifras por código: ' + JSON.stringify(s1.promos));
+    { const c = (await A('GET', '/promos')).j.codes.find(y => y.code === 'LANZAMIENTO30');
+      ok(c.revela?.uses === 2 && c.revela.discount === 6.63 && c.revela.customers === 1 && c.revela.overLimit === 1, 'promociones: usos según Revela y por encima del límite por cliente: ' + JSON.stringify(c.revela)); }
+    { const csv = await (await adm('GET', `/finance/export.csv?from=${today}&to=${today}`)).text(); ok(/descuento 3 EUR, código LANZAMIENTO30/.test(csv), 'CSV: el descuento y el código en el concepto'); }
+
+    // Pro's free trial: settings from the admin (checked, audited).
+    ok((await A('GET', '/promos/trial')).j.config.trialDays === 0, 'prueba gratis: apagada por defecto');
+    ok((await A('POST', '/promos/trial', { body: { trialDays: -1, trialCredits: 100, trialOncePerAccount: true } })).status === 400 && (await A('POST', '/promos/trial', { body: { trialDays: 7, trialCredits: 100 } })).status === 400, 'prueba gratis: ajustes inválidos → 400');
+    x = await A('POST', '/promos/trial', { body: { trialDays: 7, trialCredits: 100, trialOncePerAccount: true, reason: 'Probar la prueba' } });
+    ok(x.status === 200 && x.j.after.trialDays === 7 && x.j.before.trialDays === 0 && (await A('GET', '/audit?target=config:trial')).j.entries[0]?.action === 'trial-config', 'prueba gratis: activada (auditado)');
+    // Who gets it: an account that never had Pro, yes; one with a paid Pro or with a plan from before, no.
+    const bea = await login('tok-bea', 'en'), cid = await login('tok-cid'), BS = () => acc('1818').ctx.storage.m;
+    me = await meOf(bea); ok(me.trialDays === 7, '/api/me: prueba de 7 días disponible para una cuenta nueva');
+    stripeCalls = [];
+    await req('POST', '/api/billing/checkout', { headers: { Cookie: bea }, body: { product: 'pro-month' } });
+    ok(/subscription_data%5Btrial_period_days%5D=7/.test(stripeCalls.at(-1).body) && /subscription_data%5Bmetadata%5D%5Btrial%5D=7/.test(stripeCalls.at(-1).body) && /payment_method_collection=always/.test(stripeCalls.at(-1).body)
+      && /allow_promotion_codes=true/.test(stripeCalls.at(-1).body), 'Checkout de Pro: 7 días de prueba (con tarjeta) y códigos promocionales: ' + stripeCalls.at(-1).body.slice(0, 120));
+    await req('POST', '/api/billing/checkout', { headers: { Cookie: bea }, body: { product: 'credits-500' } });
+    ok(!/trial_period_days/.test(stripeCalls.at(-1).body), 'la prueba es solo para Pro (no para paquetes)');
+    await req('POST', '/api/billing/checkout', { headers: { Cookie: await login('tok-ivo') }, body: { product: 'pro-month' } });
+    ok(!/trial_period_days/.test(stripeCalls.at(-1).body), 'una cuenta que ya pagó Pro: sin prueba');
+    acc('1919').ctx.storage.m.set('plan', { name: 'free', until: 0 });
+    me = await meOf(cid); await req('POST', '/api/billing/checkout', { headers: { Cookie: cid }, body: { product: 'pro-month' } });
+    ok(me.trialDays === 0 && !/trial_period_days/.test(stripeCalls.at(-1).body), 'una cuenta con un plan de antes (pagado): sin prueba');
+    // The trial starts (Stripe's 0 invoice): Pro, but only the trial's credits.
+    const c0 = BS().get('credits'), tend = Math.floor(Date.now() / 1000) + 7 * 86400;
+    const tinv = (id, extra) => ({ id, type: 'invoice.paid', data: { object: { customer: 'cus_bea', currency: 'eur', amount_paid: 0, billing_reason: 'subscription_create',
+      parent: { subscription_details: { subscription: 'sub_tr1', metadata: { sub: '1818', trial: '7' } } }, lines: { data: [{ period: { start: tend - 7 * 86400, end: tend }, price: { id: 'price_pm' } }] }, ...extra } } });
+    const tr0 = D()['trial.start'] || 0;
+    await hook(tinv('evt_tr1')); await hook(tinv('evt_tr1b'));
+    me = await meOf(bea);
+    ok(me.plan === 'pro' && me.features.includes('share-people') && me.trial?.until > Date.now() && me.trialDays === 0 && BS().get('plan').trial, 'prueba: Pro con sus funciones, y la app sabe hasta cuándo: ' + JSON.stringify([me.plan, me.trial]));
+    ok(me.credits === c0 + 100 && BS().get('ledger').filter(e => e.reason === 'pro-trial').length === 1 && !BS().get('ledger').some(e => e.reason === 'pro'), 'prueba: solo los 100 créditos de la prueba (no los 1000 del mes), una vez: ' + me.credits);
+    ok(D()['trial.start'] === tr0 + 1 && D()['cr.in.pro-trial'] >= 100, 'finanzas: prueba empezada (una vez)');
+    // Three days before its end: the reminder (in the person's language; optional, with the way out).
+    sent = [];
+    const willEnd = (id, end) => hook({ id, type: 'customer.subscription.trial_will_end', data: { object: { id: 'sub_tr1', status: 'trialing', trial_end: end, metadata: { sub: '1818', trial: '7' } } } });
+    await willEnd('evt_tw1', tend); await willEnd('evt_tw1b', tend);
+    { const m = sent.filter(y => y.to === 'bea@example.com');
+      ok(m.length === 1 && /Your Revela Pro trial ends on/.test(m[0].subject) && /Manage subscription/.test(m[0].text) && /1000 credits/.test(m[0].text) && /\/api\/mail\/unsubscribe\?t=/.test(m[0].headers?.['List-Unsubscribe'] || ''),
+        'aviso del fin de la prueba: una vez, en su idioma, con baja: ' + m[0]?.subject); }
+    ok(/^Tu prueba de Revela Pro termina el/.test(render('trialEnding', 'es', { date: '1 de enero', credits: 1000, url: 'x' }).subject) && /^La teva prova de Revela Pro acaba el/.test(render('trialEnding', 'ca', { date: '1 de gener', credits: 1000, url: 'x' }).subject),
+      'aviso del fin de la prueba: en español y catalán');
+    await req('POST', '/api/mail/prefs', { headers: { Cookie: bea }, body: { off: ['trialEnding'] } }); sent = [];
+    await willEnd('evt_tw2', tend + 86400);
+    ok(!sent.some(y => y.to === 'bea@example.com') && (await (await req('GET', '/api/mail/prefs', { headers: { Cookie: bea } })).json()).optional.includes('trialEnding'), 'aviso del fin de la prueba: se puede desactivar');
+    // Converted: the first paid invoice brings the month's credits.
+    const c1 = BS().get('credits');
+    await hook(tinv('evt_tr2', { amount_paid: 1210, tax: 210, billing_reason: 'subscription_cycle', lines: { data: [{ period: { start: tend, end: tend + 30 * 86400 }, price: { id: 'price_pm' } }] } }));
+    me = await meOf(bea);
+    ok(me.plan === 'pro' && !me.trial && !BS().get('plan').trial && BS().get('proPaid') && me.credits === c1 + 1000, 'prueba convertida: Pro pagado y sus 1000 créditos del mes: ' + JSON.stringify([me.credits, c1]));
+    ok(D()['trial.convert'] === 1 && FS().get('tr:sub_tr1').convert > 0, 'finanzas: prueba convertida');
+    // Another one, cancelled before paying: once per account, unless the admin allows trials again.
+    const dan = await login('tok-dan'), DS = () => acc('2020').ctx.storage.m;
+    const dinv = { id: 'evt_td1', type: 'invoice.paid', data: { object: { customer: 'cus_dan', currency: 'eur', amount_paid: 0, billing_reason: 'subscription_create',
+      parent: { subscription_details: { subscription: 'sub_tr2', metadata: { sub: '2020', trial: '7' } } }, lines: { data: [{ period: { end: tend } }] } } } };
+    await hook(dinv);
+    await hook({ id: 'evt_td2', type: 'customer.subscription.deleted', data: { object: { id: 'sub_tr2', metadata: { sub: '2020', trial: '7' } } } });
+    await hook({ id: 'evt_td3', type: 'customer.subscription.deleted', data: { object: { id: 'sub_tr1', metadata: { sub: '1818', trial: '7' } } } });
+    me = await meOf(dan);
+    ok(me.plan === 'free' && DS().get('trialUsed') && me.trialDays === 0 && D()['trial.cancel'] === 1, 'prueba cancelada: vuelve a gratis, cuenta como cancelada (la baja de una convertida no) y no se repite');
+    await A('POST', '/promos/trial', { body: { trialDays: 14, trialCredits: 50, trialOncePerAccount: false } });
+    ok((await meOf(dan)).trialDays === 14 && (await meOf(bea)).trialDays === 0, 'sin «una vez por cuenta»: otra prueba para quien no pagó; nunca para quien ya pagó Pro');
+    // The figures: started, converted, cancelled, conversion.
+    x = await A('GET', `/finance/summary?from=${today}&to=${today}&group=day`);
+    ok(x.j.trials.started === 2 && x.j.trials.converted === 1 && x.j.trials.cancelled === 1 && x.j.trials.conversion === 0.5, 'resumen: pruebas empezadas, convertidas, canceladas y conversión: ' + JSON.stringify(x.j.trials));
+    x = await A('GET', '/promos/trial');
+    ok(x.j.config.trialDays === 14 && !x.j.config.trialOncePerAccount && x.j.stats.live.started === 2 && x.j.stats.live.converted === 1 && x.j.stats.live.conversion === 0.5 && x.j.stats.live.running === 0, 'promociones: ajustes y cifras de la prueba: ' + JSON.stringify(x.j));
+    ok(x.j.config && (await A('GET', '/users/1818')).j.trial.used && (await A('GET', '/users/1818')).j.trial.paid, 'ficha: prueba usada y Pro pagado');
+    await A('POST', '/promos/trial', { body: { trialDays: 0, trialCredits: 100, trialOncePerAccount: true } });
+    ok((await meOf(dan)).trialDays === 0, 'prueba gratis apagada otra vez');
+    env.FETCH = prev;
   }
 
   // Deleting the account takes it out of the directory.

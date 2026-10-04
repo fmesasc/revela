@@ -1,5 +1,5 @@
 // Transactional emails (revelaslides.com): someone shared a presentation with
-// you, a team invitation, the end of Pro, credits about to expire, an account
+// you, a team invitation, the end of Pro (and of its free trial), credits about to expire, an account
 // unused for almost two years, the confirmation of a deleted account, and support:
 // a problem reported (its number), the answer to it, credits added by hand (admin.js).
 //
@@ -8,7 +8,7 @@
 // nothing is sent. From MAIL_FROM (default 'Revela <avisos@revelaslides.com>').
 //
 // Service emails (sharing, invitations, the end of Pro, inactivity, deletion, support) are
-// always sent. Optional notices (credits that expire) carry a link to stop them:
+// always sent. Optional notices (credits that expire, Pro's free trial about to end) carry a link to stop them:
 // a token signed with HMAC (secret MAIL_SECRET), checked by
 //   GET|POST /api/mail/unsubscribe?t=…   (POST: one-click, RFC 8058)
 // Without MAIL_SECRET, optional notices aren't sent (there would be no way out).
@@ -24,7 +24,7 @@ const enc = new TextEncoder();
 const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const unb64 = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0)));
 const escHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-export const OPTIONAL = ['credits'];                       // (kinds one can stop receiving)
+export const OPTIONAL = ['credits', 'trialEnding'];        // (kinds one can stop receiving)
 
 // The person's language, among those with texts (the others: Spanish, or English for most).
 export const mailLang = l => (['es', 'en', 'ca'].includes(l) ? l : ['gl', 'eu'].includes(l) ? 'es' : l && /^[a-z]{2}$/.test(l) ? 'en' : 'es');
@@ -106,6 +106,9 @@ const T = {
       paras: [`Tu suscripción a Revela Pro termina el ${v.date} y no se renovará. Después pasarás al plan gratuito.`, ...proAfter.es(v)], cta: ['Gestionar mi cuenta', v.url] }),
     proEnded: v => ({ subject: 'Tu plan Pro ha terminado', title: 'Tu plan Pro ha terminado',
       paras: ['Tu suscripción a Revela Pro ha terminado y ahora tienes el plan gratuito.', ...proAfter.es(v)], cta: ['Volver a Pro', v.url] }),
+    trialEnding: v => ({ subject: `Tu prueba de Revela Pro termina el ${v.date}`, title: 'Tu prueba gratuita termina pronto',
+      paras: [`Tu prueba gratuita de Revela Pro termina el ${v.date}. Ese día empezará tu suscripción y se cobrará con la tarjeta que diste; recibirás tus ${v.credits} créditos del mes.`,
+        'Si no quieres seguir, cancélala antes de esa fecha en Revela ▸ Mi cuenta ▸ Gestionar la suscripción: no se te cobrará nada y conservarás lo que has creado.'], cta: ['Gestionar mi cuenta', v.url] }),
     credits: v => ({ subject: `${v.n} créditos caducan el ${v.date}`, title: 'Tienes créditos que caducan pronto',
       paras: [`${v.n} de tus créditos de IA caducan el ${v.date}. Úsalos antes en Revela: textos, imágenes, voz…`], cta: ['Abrir Revela', v.url] }),
     idle: v => ({ subject: `Tu cuenta de Revela se eliminará en ${v.days} días`, title: 'Echamos de menos tu cuenta',
@@ -128,7 +131,7 @@ const T = {
       paras: [`${v.email} ha escrito en el ticket #${v.n}${v.solved ? ' y lo ha marcado como resuelto' : ''}:`, ...lines(v.text)], cta: ['Abrir el ticket', v.admin] }),
     creditsAdded: v => ({ subject: `Te hemos añadido ${v.n} créditos`, title: 'Tienes créditos nuevos',
       paras: [`Hemos añadido ${v.n} créditos de IA a tu cuenta de Revela. Caducan el ${v.date}.`, 'Gracias por tu paciencia.'], cta: ['Abrir Revela', v.url] }),
-    page: { ok: 'Hecho: ya no recibirás avisos de créditos que caducan.', bad: 'Este enlace no es válido o ha caducado.', back: 'Volver a Revela' },
+    page: { ok: 'Hecho: ya no recibirás avisos de créditos que caducan.', okTrial: 'Hecho: ya no recibirás avisos del fin de la prueba de Pro.', bad: 'Este enlace no es válido o ha caducado.', back: 'Volver a Revela' },
     reply: { title: n => `Consulta #${n}`, you: 'Tú', us: 'Revela', label: 'Tu respuesta', solved: 'Ya está resuelto, gracias', send: 'Enviar',
       closed: 'Esta consulta está resuelta. Si escribes, la volveremos a abrir.', open: 'Escribe aquí lo que quieras añadir o contestar.',
       bad: 'Este enlace no es válido o ha caducado. Si necesitas ayuda, envía un informe nuevo desde Revela (Vista ▸ Informar de un problema).',
@@ -149,6 +152,9 @@ const T = {
       paras: [`Your Revela Pro subscription ends on ${v.date} and won't renew. After that you'll be on the free plan.`, ...proAfter.en(v)], cta: ['Manage my account', v.url] }),
     proEnded: v => ({ subject: 'Your Pro plan has ended', title: 'Your Pro plan has ended',
       paras: ['Your Revela Pro subscription has ended and you are now on the free plan.', ...proAfter.en(v)], cta: ['Back to Pro', v.url] }),
+    trialEnding: v => ({ subject: `Your Revela Pro trial ends on ${v.date}`, title: 'Your free trial ends soon',
+      paras: [`Your free trial of Revela Pro ends on ${v.date}. That day your subscription starts and is charged to the card you gave; you'll get your ${v.credits} credits for the month.`,
+        "If you don't want to go on, cancel before that date in Revela ▸ My account ▸ Manage subscription: you won't be charged and you keep what you made."], cta: ['Manage my account', v.url] }),
     credits: v => ({ subject: `${v.n} credits expire on ${v.date}`, title: 'Some credits expire soon',
       paras: [`${v.n} of your AI credits expire on ${v.date}. Use them before then in Revela: text, images, voice…`], cta: ['Open Revela', v.url] }),
     idle: v => ({ subject: `Your Revela account will be deleted in ${v.days} days`, title: 'We miss your account',
@@ -169,7 +175,7 @@ const T = {
       cta: ['Answer', v.link] }),
     creditsAdded: v => ({ subject: `We added ${v.n} credits to your account`, title: 'You have new credits',
       paras: [`We have added ${v.n} AI credits to your Revela account. They expire on ${v.date}.`, 'Thank you for your patience.'], cta: ['Open Revela', v.url] }),
-    page: { ok: 'Done: you will no longer get notices about expiring credits.', bad: 'This link is not valid or has expired.', back: 'Back to Revela' },
+    page: { ok: 'Done: you will no longer get notices about expiring credits.', okTrial: 'Done: you will no longer get notices about the end of the Pro trial.', bad: 'This link is not valid or has expired.', back: 'Back to Revela' },
     reply: { title: n => `Request #${n}`, you: 'You', us: 'Revela', label: 'Your answer', solved: 'It’s solved, thank you', send: 'Send',
       closed: 'This request is solved. If you write, we’ll open it again.', open: 'Write here what you want to add or answer.',
       bad: 'This link is not valid or has expired. If you need help, send a new report from Revela (View ▸ Report a problem).',
@@ -190,6 +196,9 @@ const T = {
       paras: [`La teva subscripció a Revela Pro acaba el ${v.date} i no es renovarà. Després passaràs al pla gratuït.`, ...proAfter.ca(v)], cta: ['Gestiona el meu compte', v.url] }),
     proEnded: v => ({ subject: 'El teu pla Pro ha acabat', title: 'El teu pla Pro ha acabat',
       paras: ['La teva subscripció a Revela Pro ha acabat i ara tens el pla gratuït.', ...proAfter.ca(v)], cta: ['Torna a Pro', v.url] }),
+    trialEnding: v => ({ subject: `La teva prova de Revela Pro acaba el ${v.date}`, title: 'La teva prova gratuïta acaba aviat',
+      paras: [`La teva prova gratuïta de Revela Pro acaba el ${v.date}. Aquell dia començarà la teva subscripció i es cobrarà amb la targeta que vas donar; rebràs els teus ${v.credits} crèdits del mes.`,
+        'Si no vols continuar, cancel·la-la abans d’aquesta data a Revela ▸ El meu compte ▸ Gestiona la subscripció: no se’t cobrarà res i conservaràs el que has creat.'], cta: ['Gestiona el meu compte', v.url] }),
     credits: v => ({ subject: `${v.n} crèdits caduquen el ${v.date}`, title: 'Tens crèdits que caduquen aviat',
       paras: [`${v.n} dels teus crèdits d’IA caduquen el ${v.date}. Fes-los servir abans a Revela: textos, imatges, veu…`], cta: ['Obre Revela', v.url] }),
     idle: v => ({ subject: `El teu compte de Revela s’eliminarà d’aquí a ${v.days} dies`, title: 'Trobem a faltar el teu compte',
@@ -210,7 +219,7 @@ const T = {
       cta: ['Respon', v.link] }),
     creditsAdded: v => ({ subject: `T’hem afegit ${v.n} crèdits`, title: 'Tens crèdits nous',
       paras: [`Hem afegit ${v.n} crèdits d’IA al teu compte de Revela. Caduquen el ${v.date}.`, 'Gràcies per la teva paciència.'], cta: ['Obre Revela', v.url] }),
-    page: { ok: 'Fet: ja no rebràs avisos de crèdits que caduquen.', bad: 'Aquest enllaç no és vàlid o ha caducat.', back: 'Torna a Revela' },
+    page: { ok: 'Fet: ja no rebràs avisos de crèdits que caduquen.', okTrial: 'Fet: ja no rebràs avisos del final de la prova de Pro.', bad: 'Aquest enllaç no és vàlid o ha caducat.', back: 'Torna a Revela' },
     reply: { title: n => `Consulta #${n}`, you: 'Tu', us: 'Revela', label: 'La teva resposta', solved: 'Ja està resolt, gràcies', send: 'Envia',
       closed: 'Aquesta consulta està resolta. Si escrius, la tornarem a obrir.', open: 'Escriu aquí el que vulguis afegir o respondre.',
       bad: 'Aquest enllaç no és vàlid o ha caducat. Si necessites ajuda, envia un informe nou des de Revela (Visualització ▸ Informa d’un problema).',
@@ -279,10 +288,10 @@ ${form ? `<form method="post" action="/api/support/reply" style="margin-top:22px
 <p style="margin-top:40px;font-size:13px;color:#5d5f66">${escHtml(L.foot)}</p></main></body></html>`;
 }
 // The page shown after following the link.
-export function unsubPage(lang, ok, site) {
+export function unsubPage(lang, ok, site, kind) {
   const L = T[mailLang(lang)];
   return `<!doctype html><html lang="${mailLang(lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Revela</title></head>
 <body style="margin:0;background:#faf8f4;color:#17181c;font:17px/1.6 system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif"><main style="max-width:520px;margin:12vh auto;padding:0 24px">
-<p style="font:500 24px/1 Georgia,serif;margin:0 0 24px">Revela</p><p>${escHtml(ok ? L.page.ok : L.page.bad)}</p><p><a href="${escHtml(site)}/app/" style="color:#2f5a8f">${escHtml(L.page.back)}</a></p>
+<p style="font:500 24px/1 Georgia,serif;margin:0 0 24px">Revela</p><p>${escHtml(ok ? (kind === 'trialEnding' ? L.page.okTrial : L.page.ok) : L.page.bad)}</p><p><a href="${escHtml(site)}/app/" style="color:#2f5a8f">${escHtml(L.page.back)}</a></p>
 <p style="margin-top:40px;font-size:13px;color:#5d5f66">${escHtml(L.foot)}</p></main></body></html>`;
 }
