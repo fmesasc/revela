@@ -78,22 +78,25 @@ function retry() {
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && back && !paired) { tries = 0; clearTimeout(retryT); connect(lastCode); } });
 
-async function connect(code) {
+async function connect(code, again = false) {
   lastCode = code;
-  err(''); $('go').disabled = true; setStatus(back ? t('Reconectando…') : t('Conectando…'));
+  err(''); $('go').disabled = true; setStatus(back || again ? t('Reconectando…') : t('Conectando…'));
   try { await loadPeerJS(); } catch (e) { err(e.message); $('go').disabled = false; return; }
   try { peer?.destroy(); } catch {}
   clearTimeout(slow);
   peer = new window.Peer(await peerOptions());
   const mine = peer;
-  // Never «Connecting…» for ever: after a while, say what to try.
+  // Never «Connecting…» for ever: after 10 s, once more from the start (the first try sometimes sticks);
+  // then, say what to try. (A direct connection is always tried first; relays only if there's no way.)
+  const fresh = !again;
   slow = setTimeout(() => {
     if (peer !== mine || paired || conn?.open) return;
     try { mine.destroy(); } catch {}
     if (back) { retry(); return; }
+    if (fresh) { connect(code, true); return; }
     err(t('No se pudo conectar. Comprueba el código en el ordenador; si sigue sin ir, conecta el móvil a la misma wifi que el ordenador y vuelve a intentarlo.'));
     $('go').disabled = false; setStatus(t('Sin conectar'));
-  }, 20000);
+  }, 10000);
   peer.on('error', e => {
     if (peer !== mine) return;
     clearTimeout(slow);

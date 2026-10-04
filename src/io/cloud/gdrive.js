@@ -142,7 +142,7 @@ async function upload({ id, name, mimeType, body, thumbnail, text, parent = newF
   if (thumbnail || text) meta.contentHints = { ...(thumbnail && { thumbnail: { image: b64url(thumbnail), mimeType: 'image/jpeg' } }), ...(text && { indexableText: text }) };
   const head = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`, tail = `\r\n--${boundary}--`;
   const multipart = typeof body === 'string' ? head + body + tail : new Blob([head, body, tail]);   // (a .pptx is binary)
-  const r = await api(`/upload/drive/v3/files${id ? '/' + encodeURIComponent(id) : ''}?uploadType=multipart&fields=id,name,version,modifiedTime,webViewLink`,
+  const r = await api(`/upload/drive/v3/files${id ? '/' + encodeURIComponent(id) : ''}?uploadType=multipart&fields=id,name,version,md5Checksum,modifiedTime,webViewLink`,
     { method: id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + boundary }, body: multipart }, !id);
   if (!r.ok) throw new Error(t('No se pudo guardar.'));
   return r.json();
@@ -156,12 +156,12 @@ export async function listPresentations() {
   return ((await r.json()).files || []).map(f => ({ ...f, title: f.name.replace(/\.revela\.json$/i, '') }));
 }
 export async function openPresentation(id) {
-  const meta = await (await api(`/drive/v3/files/${encodeURIComponent(id)}?fields=id,name,version`)).json();
+  const meta = await (await api(`/drive/v3/files/${encodeURIComponent(id)}?fields=id,name,version,md5Checksum`)).json();
   const r = await api(`/drive/v3/files/${encodeURIComponent(id)}?alt=media`);
   if (!r.ok) throw new Error(t('No se pudo abrir el archivo.'));
   let deck; try { deck = JSON.parse(await r.text()); } catch { throw new Error(t('El archivo no es un proyecto de Revela.')); }
   if (!deck || !Array.isArray(deck.slides)) throw new Error(t('El archivo no es un proyecto de Revela.'));
-  replaceDeck(deck); setLinked({ id: meta.id, name: meta.name, version: meta.version });
+  replaceDeck(deck); setLinked({ id: meta.id, name: meta.name, version: meta.version, md5: meta.md5Checksum || null });
   lastSaved = docVersion(); setStatus('saved');
 }
 // A PowerPoint or OpenDocument file opened from Drive ("Open with ▸ Revela"):
@@ -188,8 +188,20 @@ export const setThumbnailMaker = fn => { makeThumbnail = fn; };
 // force: overwrite even if it changed in Drive meanwhile. A new file (first
 // save, asNew) goes to `folder` ({ id, name }; null = My Drive) if given, else
 // to Drive's "New" folder or the last one used; named `name`.
-export async function savePresentation({ interactive = true, force = false, asNew = false, name, folder } = {}) {
-  if (!gdriveReady()) { openGdriveSetup(); return false; }
+// One save at a time: a second one (the autosave while a slow save is still going) waits for the first —
+// at the same time, the second would take the first's new version for someone else's change.
+let saving = Promise.resolve();
+export function savePresentation(opts = {}) {
+  if (!gdriveReady()) { openGdriveSetup(); return Promise.resolve(false); }
+  const run = saving.catch(() => {}).then(() => saveNow(opts));
+  saving = run.catch(() => {});
+  return run;
+}
+// Changed in Drive since this device last loaded or saved it? Its content's fingerprint (md5) says so:
+// the version number also goes up when Drive itself touches the file (its thumbnail, its index…),
+// which isn't anyone's change. (Linked before there was a fingerprint: the version, once.)
+const changedThere = (cur, m) => (cur.md5 && m.md5Checksum ? cur.md5 !== m.md5Checksum : !!(cur.version && m.version && +m.version > +cur.version));
+async function saveNow({ interactive = true, force = false, asNew = false, name, folder } = {}) {
   const body = JSON.stringify(state.deck), text = deckIndexText();
   const savedVersion = docVersion();                     // (what this upload contains)
   let thumbnail = null; try { thumbnail = await makeThumbnail(); } catch {}
@@ -198,16 +210,16 @@ export async function savePresentation({ interactive = true, force = false, asNe
     const cur = linkedFile();
     if (cur && !asNew) {
       if (!force) {                                          // changed from another device?
-        const m = await (await api(`/drive/v3/files/${encodeURIComponent(cur.id)}?fields=version,trashed`, {}, interactive)).json();
-        if (m.trashed) { setLinked(null); return savePresentation({ interactive, force, asNew }); }
-        if (cur.version && m.version && +m.version > +cur.version) { setStatus('conflict'); return 'conflict'; }
+        const m = await (await api(`/drive/v3/files/${encodeURIComponent(cur.id)}?fields=version,md5Checksum,trashed`, {}, interactive)).json();
+        if (m.trashed) { setLinked(null); return saveNow({ interactive, force, asNew }); }
+        if (changedThere(cur, m)) { setStatus('conflict'); return 'conflict'; }
       }
       const f = await upload({ id: cur.id, mimeType: PROJECT_MIME, body, thumbnail, text });
-      setLinked({ ...cur, version: f.version, name: f.name, dirty: false });
+      setLinked({ ...cur, version: f.version, md5: f.md5Checksum || null, name: f.name, dirty: false });
     } else {
       const where = folder !== undefined ? folder || ROOT : newFolder ? { id: newFolder, name: '' } : lastFolder() || ROOT;
       const f = await upload({ name: (cleanName(name) || safeName()) + '.revela.json', mimeType: PROJECT_MIME, body, thumbnail, text, parent: where.id });
-      setLinked({ id: f.id, name: f.name, version: f.version, folder: where, link: f.webViewLink || '' });
+      setLinked({ id: f.id, name: f.name, version: f.version, md5: f.md5Checksum || null, folder: where, link: f.webViewLink || '' });
       if (folder !== undefined) rememberFolder(folder);
     }
     lastSaved = savedVersion; setStatus('saved');
@@ -239,9 +251,9 @@ export function startAutosave() {
 export async function reconnect() {
   const cur = linkedFile(); if (!cur) return null;
   await ensureToken(true);
-  const m = await (await api(`/drive/v3/files/${encodeURIComponent(cur.id)}?fields=version,trashed`)).json();
+  const m = await (await api(`/drive/v3/files/${encodeURIComponent(cur.id)}?fields=version,md5Checksum,trashed`)).json();
   if (m.trashed) { unlinkFile(); return 'unlinked'; }
-  const newer = cur.version && m.version && +m.version > +cur.version;
+  const newer = changedThere(cur, m);
   if (newer && !cur.dirty) { await openPresentation(cur.id); return 'loaded'; }
   if (newer) { setStatus('conflict'); return 'conflict'; }
   if (cur.dirty) return savePresentation();

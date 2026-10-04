@@ -1635,6 +1635,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const GD = await W.eval("import('/src/io/cloud/gdrive.js')");
     // A fake Google: accounts (token) and Drive (files with versions).
     const drive = new Map(); let n = 0, requests = [];
+    const md5 = c => { let h = 7; for (const ch of String(c)) h = (h * 31 + ch.charCodeAt(0)) | 0; return 'h' + (h >>> 0).toString(16); };   // (a fingerprint of the content, like Drive's)
     const realGoogle = W.google, realFetch = W.fetch;
     W.google = { accounts: { oauth2: { initTokenClient: o => ({ requestAccessToken() { this.callback({ access_token: 'tok', expires_in: 3600 }); } }), revoke: (_, cb) => cb?.() } } };
     const file = (id, name, content, extra = {}) => drive.set(id, { id, name, content, version: '1', modifiedTime: new Date(Date.now() - 1000 * (++n)).toISOString(), ...extra });
@@ -1642,7 +1643,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     file('old2', 'Clase 2.revela.json', JSON.stringify({ ...R.model.emptyDeck(), name: 'Clase 2' }), { thumbnailLink: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=' });
     W.fetch = async (url, o = {}) => {
       url = String(url); requests.push({ url, method: o.method || 'GET' });
-      const ok = b => new W.Response(typeof b === 'string' ? b : JSON.stringify(b), { status: 200 });
+      const ok = b => new W.Response(typeof b === 'string' ? b : JSON.stringify(b && b.content !== undefined ? { ...b, md5Checksum: md5(b.content) } : b), { status: 200 });
       if (!url.startsWith('https://www.googleapis.com')) return realFetch(url, o);
       if (url.includes('/oauth2/v3/userinfo')) return ok({ name: 'Ana Pérez', email: 'ana@example.org' });
       const m = url.match(/\/files\/([^/?]+)/), id = m && decodeURIComponent(m[1]);
@@ -1680,6 +1681,13 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       R.store.commit(() => { R.state.deck.slides[0].notes = 'nota 1'; }); await sleep(250);
       assert(drive.get('old2').content.includes('nota 1') && drive.get('old2').version === '2', 'se guarda sola en el mismo archivo');
       eq(D.getElementById('drive-status').dataset.state, 'saved', 'estado: guardado');
+      // Drive touching the file by itself (its thumbnail, its index): a newer version, the same content → no conflict.
+      drive.get('old2').version = '3';
+      R.store.commit(() => { R.state.deck.slides[0].notes = 'nota 1b'; }); await sleep(250);
+      assert(D.getElementById('drive-conflict').hidden && drive.get('old2').content.includes('nota 1b'), 'una versión nueva sin cambios de contenido no es un conflicto');
+      // Two saves at once (a slow one and the autosave): one after the other, no conflict with itself.
+      await Promise.all([GD.savePresentation({ interactive: false }), GD.savePresentation({ interactive: false })]);
+      assert(D.getElementById('drive-conflict').hidden, 'dos guardados seguidos no se pisan');
       // Changed on another device meanwhile → asks.
       drive.get('old2').version = '5'; drive.get('old2').content = JSON.stringify({ ...R.model.emptyDeck(), name: 'Clase 2 (tablet)' });
       R.store.commit(() => { R.state.deck.slides[0].notes = 'nota 2'; }); await sleep(250);
