@@ -6,7 +6,7 @@
 
 import { api as accountApi, account, hasAccounts, onAccount } from '../../io/cloud/account.js';
 import { insertGeneratedModel } from '../../features/content/resources.js';
-import { MODEL_VIEWER, loadScript } from '../../core/vendor.js';
+import { loadModelViewer } from '../../core/vendor.js';
 import { esc } from '../../core/text.js';
 import { openAccount } from './account.js';
 import { alertDialog } from './dialog.js';
@@ -42,7 +42,7 @@ export async function openModelAi({ api = accountApi, interval = 2500 } = {}) {
   let info;
   try { info = await api('3d'); } catch { info = { ok: false }; }
   if (!info.ok) { alertDialog(t('Crear modelos 3D con IA aún no está disponible.')); return; }
-  loadScript(MODEL_VIEWER).catch(() => {});
+  loadModelViewer().catch(() => {});
   document.getElementById('m3a-modal')?.remove();
   const back = document.createElement('div'); back.id = 'm3a-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal m3a" style="text-align:start;width:min(600px,94vw);max-width:94vw">

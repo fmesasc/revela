@@ -25,19 +25,21 @@ export const GIFUCT = NPM + 'gifuct-js@2.1.2/+esm';
 export const VISION = NPM + '@mediapipe/tasks-vision@1.0.1';
 export const SELFIE_MODEL = 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite';
 
-// A classic script, once: resolves at once if `global` already exists, and
-// concurrent calls for the same URL share one request.
+// A classic script (or an ES module), once: resolves at once if `global` already
+// exists, and concurrent calls for the same URL share one request.
 const pending = new Map();
-export function loadScript(src, global) {
+export function loadScript(src, global, module = false) {
   if (global && window[global]) return Promise.resolve(window[global]);
   if (!pending.has(src)) pending.set(src, new Promise((res, rej) => {
-    const s = document.createElement('script'); s.src = src; s.async = true;
+    const s = document.createElement('script'); s.src = src; s.async = true; if (module) s.type = 'module';
     s.onload = () => res(global ? window[global] : undefined);
     s.onerror = () => { pending.delete(src); s.remove(); rej(new Error('No se pudo cargar ' + (src.split('/npm/')[1] || src))); };
     document.head.appendChild(s);
   }));
   return pending.get(src);
 }
+// <model-viewer>, unless the page has it already (it is an ES module: as a classic script it fails).
+export const loadModelViewer = () => (customElements.get('model-viewer') ? Promise.resolve() : loadScript(MODEL_VIEWER, null, true));
 // A stylesheet, once.
 export function loadStyle(href) {
   if (![...document.querySelectorAll('link[rel=stylesheet]')].some(l => l.href === href)) {

@@ -96,6 +96,15 @@ async function svgToPNG(svg, w, h) {
   c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
   return c.toDataURL('image/png');
 }
+// A 3D model's picture (an address, a library thumbnail, WebP…) → a PNG of its box,
+// the picture contained in it, since PowerPoint can't draw the model.
+async function posterPNG(src, w, h) {
+  const img = new Image(); img.crossOrigin = 'anonymous'; img.src = src; await img.decode();
+  const k = 2, c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
+  const s = Math.min(c.width / img.naturalWidth, c.height / img.naturalHeight), dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+  c.getContext('2d').drawImage(img, (c.width - dw) / 2, (c.height - dh) / 2, dw, dh);
+  return c.toDataURL('image/png');
+}
 
 // A picture as it shows in Revela, as PowerPoint wants it: the part of the box
 // the picture covers (contained: letterboxed; filled: all of it, with its
@@ -291,9 +300,7 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
           ...(pie ? { ...(b.dataLabels && { showValue: true }), chartColors: pieColours({ ...b, data: rows }).map(c => hex(c) || '3F6497') } : { ...extra, chartColors: colors }) });
       }
     }
-    // 3D models: their picture, if they have one (PowerPoint's own 3D can't be written here); audio: skipped.
-    else if (b.type === 'model' && /^data:image\/(png|jpeg|webp|gif);base64,/.test(b.poster || ''))
-      slide.addImage({ ...pos, ...hl, data: b.poster, sizing: { type: 'contain', w: pos.w, h: pos.h }, ...(b.alt && { altText: b.alt }) });
+    // 3D models: their picture, made into a PNG above (PowerPoint's own 3D can't be written here); audio: skipped.
   } catch {}
 }
 
@@ -377,6 +384,7 @@ export async function buildPptx(deck = state.deck) {
       else if (b.type === 'timer') raster.set(b.id, await svgToPNG(timerSVG(b), b.w, b.h));
       else if (b.type === 'chart' && ['map', 'waterfall', 'funnel', 'treemap'].includes(b.chartType)) raster.set(b.id, await svgToPNG(chartSVG(b), b.w, b.h));      // (PowerPoint's own maps can't be written here)
       else if (b.type === 'file' && b.poster) raster.set(b.id, b.poster);          // (a PDF's page; the file itself stays in Revela)
+      else if (b.type === 'model' && b.poster) raster.set(b.id, await posterPNG(b.poster, b.w, b.h));
       else if (b.type === 'math' || b.type === 'poll' || b.type === 'figindex' || b.type === 'file') { const img = await blockImage(b, s, deck); if (img) raster.set(b.id, img); }
     } catch {}
   }

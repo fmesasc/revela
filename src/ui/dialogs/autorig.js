@@ -6,7 +6,7 @@
 
 import { commit, currentSlide } from '../../core/store.js';
 import { readModel, modelShape, proposeJoints, buildRig, SKELETONS, JOINT_LABELS, CLIPS, CLIP_LABELS, mirrorOf } from '../../features/content/autorig.js';
-import { MODEL_VIEWER, loadScript } from '../../core/vendor.js';
+import { loadModelViewer } from '../../core/vendor.js';
 import { alertDialog } from './dialog.js';
 import { t } from '../../i18n/index.js';
 
@@ -20,7 +20,7 @@ export async function openAutoRig(b, { onDone } = {}) {
   document.getElementById('rig-modal')?.remove();
   let g;
   try { g = await readModel(b.src); } catch (e) { alertDialog(t(ERRORS[e.message] || 'No se pudo leer el modelo: ') + (ERRORS[e.message] ? '' : e.message)); return; }
-  await loadScript(MODEL_VIEWER).catch(() => {});
+  await loadModelViewer().catch(() => {});
   let kind = 'person', yaw = 0, shape, J, built = null, mirror = true, clip = 'Walk';
   try { shape = modelShape(g, yaw); } catch (e) { alertDialog(t(ERRORS[e.message] || 'No se pudo leer el modelo: ') + (ERRORS[e.message] ? '' : e.message)); return; }
   J = proposeJoints(shape, kind);

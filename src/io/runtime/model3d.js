@@ -7,6 +7,15 @@ export function model3dRuntime() {
   var timers = new WeakMap();
   function setup(mv) {
     if (mv.__rv) return; mv.__rv = true;
+    mv.__spin = mv.hasAttribute('auto-rotate');             // (its own turning: an arrival "facing the audience" stops it, only there)
+    // Its picture until it has loaded (a slow connection), in the model's own box.
+    // (Not a photo — JPEG, with its own background: a grey box on the slide.)
+    var p = mv.getAttribute('data-poster');
+    if (p && !/^data:image\/jpe?g|\.jpe?g(\?|#|$)/i.test(p) && !mv.loaded && !mv.querySelector('[slot="poster"]')) {
+      var k = parseFloat(mv.getAttribute('data-bleed')) || 1, m = ((1 - 1 / k) * 50).toFixed(2) + '%', d = document.createElement('div');
+      d.slot = 'poster'; d.style.cssText = 'position:absolute;inset:' + m + ';background:center/contain no-repeat;pointer-events:none';
+      d.style.backgroundImage = 'url("' + p.replace(/["\\]/g, '') + '")'; mv.appendChild(d);
+    }
     mv.addEventListener('load', function () {
       var sp = parseFloat(mv.getAttribute('data-speed')); if (sp) mv.timeScale = sp;
       if (mv.hasAttribute('data-once') && mv.hasAttribute('autoplay')) { mv.pause(); mv.play({ repetitions: 1 }); }
@@ -16,8 +25,15 @@ export function model3dRuntime() {
   // turning the camera round it: model-viewer eases that), then the arrival.
   var walks = new WeakMap();
   function clipName(mv, n) { var list = mv.availableAnimations || []; return n === '*' ? list[0] : (list.indexOf(n) >= 0 ? n : null); }
-  function playClip(mv, n, once) { n = clipName(mv, n); if (!n) { mv.pause(); return; } mv.animationName = n; mv.play(once ? { repetitions: 1 } : undefined); }
-  function rest(mv) { var idle = mv.hasAttribute('autoplay') ? (mv.getAttribute('animation-name') || '*') : null; if (idle) playClip(mv, idle); else mv.pause(); }
+  // (A new clip name is applied by model-viewer on its next update, which plays it
+  // looping: "once" is asked for after that, or it would never stop.)
+  function playClip(mv, n, once) {
+    mv.__step = false; n = clipName(mv, n); var k = mv.__clip = {};
+    if (!n) { mv.pause(); return; }
+    var go = function () { if (mv.__clip === k) mv.play(once ? { repetitions: 1 } : undefined); };
+    if (mv.animationName !== n && mv.updateComplete) { mv.animationName = n; mv.updateComplete.then(go); } else { mv.animationName = n; go(); }
+  }
+  function rest(mv) { var idle = mv.hasAttribute('autoplay') ? (mv.getAttribute('animation-name') || '*') : null; mv.__step = false; if (idle) playClip(mv, idle); else mv.pause(); }
   // The camera's distance: further away when the view has room around the model (data-bleed).
   function R(mv, pct) { var k = parseFloat(mv.getAttribute('data-bleed')) || 1; return pct ? Math.round(pct * k) + '%' : (k === 1 ? 'auto' : Math.round(105 * k) + '%'); }
   function turn(mv, yaw) { var o = (mv.getAttribute('camera-orbit') || '0deg 75deg auto').split(' '); mv.cameraOrbit = (parseFloat(o[0]) - yaw).toFixed(1) + 'deg ' + (o[1] || '75deg') + ' ' + R(mv); }
@@ -41,6 +57,7 @@ export function model3dRuntime() {
   function arrive(mv) {
     walks.delete(mv);
     if (mv.hasAttribute('data-look')) turn(mv, 0);
+    if (mv.__step) return;                                // (a step "after the previous" already plays its own: a wave on arrival)
     var end = mv.getAttribute('data-end-clip');
     if (!end) { rest(mv); return; }
     var once = mv.hasAttribute('data-end-once');
@@ -68,17 +85,21 @@ export function model3dRuntime() {
     var mv = f.tagName === 'MODEL-VIEWER' ? f : f.querySelector('model-viewer'); if (!mv) return;
     if (!show) { rest(mv); return; }
     setTimeout(function () {
-      var once = f.hasAttribute('data-clip-once'); playClip(mv, name, once);
-      if (once) mv.addEventListener('finished', function () { rest(mv); }, { once: true });
+      var once = f.hasAttribute('data-clip-once'); playClip(mv, name, once); mv.__step = true;
+      if (once) mv.addEventListener('finished', function () { if (mv.__step) rest(mv); }, { once: true });
     }, secs(getComputedStyle(f).getPropertyValue('--anim-del')));
   }
-  function stop(mv) { var t = timers.get(mv); if (t) { cancelAnimationFrame(t.raf); clearInterval(t.iv); clearTimeout(t.iv); } timers.delete(mv); mv.style.transform = ''; }
+  function stop(mv) { var t = timers.get(mv); if (t) { cancelAnimationFrame(t.raf); clearInterval(t.iv); clearTimeout(t.iv); } timers.delete(mv); mv.style.marginTop = ''; }
   // smooth: the model came from the slide before (Morph) and has just arrived —
   // the movement starts from where it is, with no jump of the camera.
   // delay: a slide still coming in — the camera takes its starting place now
   // (far, or above) and the movement plays once the slide is in.
   function start(mv, smooth, delay) {
     stop(mv);
+    if (!mv.loaded) {                                       // (not there yet: the movement waits for it, not seen half over)
+      var w = {}; timers.set(mv, w);
+      mv.addEventListener('load', function () { if (timers.get(mv) === w) start(mv, smooth); }, { once: true }); return;
+    }
     var m = mv.getAttribute('data-motion'), t = {}, t0 = performance.now(), o = smooth && orbitOf(mv), th = o ? o.t : 0;
     timers.set(mv, t);
     if (m === 'swing') { var side = 1; mv.cameraOrbit = '-35deg 75deg ' + R(mv); t.iv = setInterval(function () { side = -side; mv.cameraOrbit = (35 * side) + 'deg 75deg ' + R(mv); }, 2200); }
@@ -93,21 +114,33 @@ export function model3dRuntime() {
       (function step(now) { var k = Math.min(1, (now - t0) / 4000), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
         mv.cameraOrbit = (th + e * 360) + 'deg 75deg ' + R(mv); mv.jumpCameraToGoal && mv.jumpCameraToGoal(); if (k < 1) t.raf = requestAnimationFrame(step); })(t0);
     } else if (m === 'float') {
-      (function step(now) { mv.style.transform = 'translateY(' + (Math.sin((now - t0) / 700) * 14).toFixed(1) + 'px)'; t.raf = requestAnimationFrame(step); })(t0);
+      // (By its margin: its transform has its turn and flip, its translate the path it moves along.)
+      (function step(now) { mv.style.marginTop = (Math.sin((now - t0) / 700) * 14).toFixed(1) + 'px'; t.raf = requestAnimationFrame(step); })(t0);
     }
+  }
+  // The models of this slide and the next ones load now, not when they come into
+  // view (model-viewer waits for that): else a slide arrives with an empty box.
+  function preload(slide) {
+    var all = window.Reveal ? Reveal.getSlides() : [], i = all.indexOf(slide);
+    all.slice(Math.max(0, i - 1), i + 3).concat(slide ? [slide] : []).forEach(function (s) {
+      s.querySelectorAll('model-viewer:not([loading="eager"])').forEach(function (mv) { mv.setAttribute('loading', 'eager'); });
+    });
   }
   // handed: models that came from the slide before → how long until they arrive.
   // While they travel, a "zoom in on arrival" first takes the camera back (the
   // model shrinks as it moves), then zooms in once it is there; the other
   // movements start when it has arrived.
-  function enter(slide, handed) {
+  function enter(slide, handed, prev) {
+    preload(slide);
     document.querySelectorAll('model-viewer').forEach(function (mv) {
       setup(mv);
+      var here = slide && slide.contains(mv);
+      if (here && mv.__spin && !mv.hasAttribute('auto-rotate') && !(handed && handed.has(mv) && mv.getAttribute('data-arrive') === 'front')) mv.setAttribute('auto-rotate', '');
       if (!mv.hasAttribute('data-motion')) return;
-      if (!(slide && slide.contains(mv))) { stop(mv); return; }
+      if (!here) { stop(mv); return; }
       var wait = handed && handed.get(mv);
       if (wait == null) {                                   // (a slide coming in with a transition: once it's in)
-        var tw = handed ? slideIn(slide) : 0, m = mv.getAttribute('data-motion');
+        var tw = handed ? slideIn(slide, prev) : 0, m = mv.getAttribute('data-motion');
         if (!tw || m === 'zoom' || m === 'top') { start(mv, false, tw); return; }
         stop(mv); timers.set(mv, { iv: setTimeout(function () { start(mv); }, tw) }); return;
       }
@@ -140,15 +173,17 @@ export function model3dRuntime() {
     if (id) { var byId = prev.querySelector('model-viewer[data-id="' + id.replace(/"/g, '') + '"]'); if (byId) return byId; }
     return [].slice.call(prev.querySelectorAll('model-viewer')).filter(function (x) { return x.getAttribute('src') === src; })[0] || null;
   }
+  // Morph between two slides: reveal.js does it only when both are marked.
+  function morphs(prev, cur) { return !!(prev && cur && prev.hasAttribute('data-auto-animate') && cur.hasAttribute('data-auto-animate')); }
   // How long a slide takes to come in (its transition; reveal.js's speeds).
-  function slideIn(sec) {
+  function slideIn(sec, prev) {
     var tr = (sec.getAttribute('data-transition') || (window.Reveal && Reveal.getConfig().transition) || 'slide').split(' ')[0].replace(/-in$/, '');
-    if (tr === 'none' || sec.hasAttribute('data-auto-animate')) return 0;
+    if (tr === 'none' || morphs(prev, sec)) return 0;
     var sp = sec.getAttribute('data-transition-speed') || (window.Reveal && Reveal.getConfig().transitionSpeed) || 'default';
     return { fast: 400, slow: 1200 }[sp] || 800;
   }
-  function travel(cur) {
-    if (!cur.hasAttribute('data-auto-animate')) return 0;
+  function travel(prev, cur) {
+    if (!morphs(prev, cur)) return 0;
     var d = parseFloat(cur.getAttribute('data-auto-animate-duration')) || (window.Reveal && Reveal.getConfig().autoAnimateDuration) || 1;
     return d * 1000;
   }
@@ -158,7 +193,7 @@ export function model3dRuntime() {
     [].slice.call(cur.querySelectorAll('model-viewer')).forEach(function (mv) {
       var how = mv.getAttribute('data-arrive') || 'keep'; if (how === 'reset') return;
       var old = partner(mv, prev); if (!old || !old.loaded) return;
-      handed.set(mv, Math.max(travel(cur), how === 'turn' ? 2400 + 150 : how === 'keep' ? 0 : 1400 + 150));   // (its own movement starts once the arrival is over)
+      handed.set(mv, Math.max(travel(prev, cur), how === 'turn' ? 2400 + 150 : how === 'keep' ? 0 : 1400 + 150));   // (its own movement starts once the arrival is over)
       var o = orbitOf(old), spin = typeof old.turntableRotation === 'number' ? old.turntableRotation : 0;
       var own = (mv.getAttribute('camera-orbit') || '0deg 75deg auto').split(' '), ownT = parseFloat(own[0]) || 0, ownP = own[1] || '75deg';
       var zoomIn = mv.getAttribute('data-motion') === 'zoom';
@@ -183,8 +218,8 @@ export function model3dRuntime() {
     });
     return handed;
   }
-  if (window.Reveal) { Reveal.on('ready', function (e) { enter(e.currentSlide); }); Reveal.on('slidechanged', function (e) { enter(e.currentSlide, handoff(e.previousSlide, e.currentSlide)); }); if (Reveal.isReady()) enter(Reveal.getCurrentSlide());
+  if (window.Reveal) { Reveal.on('ready', function (e) { enter(e.currentSlide); }); Reveal.on('slidechanged', function (e) { enter(e.currentSlide, handoff(e.previousSlide, e.currentSlide), e.previousSlide); }); if (Reveal.isReady()) enter(Reveal.getCurrentSlide());
     Reveal.on('fragmentshown', function (e) { (e.fragments || [e.fragment]).forEach(function (f) { clipStep(f, true); }); });
     Reveal.on('fragmenthidden', function (e) { (e.fragments || [e.fragment]).forEach(function (f) { clipStep(f, false); }); }); }
-  return { enter: enter, handoff: handoff, start: start, stop: stop, move: move, clip: function (mv, name, once) { playClip(mv, name, once); if (once) mv.addEventListener('finished', function () { rest(mv); }, { once: true }); } };
+  return { enter: enter, handoff: handoff, start: start, stop: stop, move: move, step: clipStep, clip: function (mv, name, once) { playClip(mv, name, once); if (once) mv.addEventListener('finished', function () { rest(mv); }, { once: true }); } };
 }
