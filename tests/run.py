@@ -230,11 +230,28 @@ def e2e_checks(send, recv, port):
     code = wait(A, "(()=>{const c=document.querySelector('#host-modal .host-code')?.textContent||'';return /^[A-Z0-9]{5}$/.test(c)?c:''})()")
     check(code, 'el mando obtiene un código')
     check(ev(A, "(()=>{const c=document.querySelector('#host-modal canvas');const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let k=0;for(let i=0;i<d.length;i+=4)if(d[i]<100&&d[i+3])k++;return k>100})()"), 'QR del mando dibujado')
-    B = tab(f'{base}/remote.html?code={code}')
+    link = ev(A, "document.querySelector('#host-modal .host-link')?.href||''")
+    check(f'code={code}' in (link or '') and '&k=' in (link or ''), 'el enlace del QR lleva el código y la clave')
+    B = tab(link or f'{base}/remote.html?code={code}')
     check(wait(A, "document.querySelector('#host-modal .host-status')?.classList.contains('on')"), 'el móvil se conecta solo desde el QR')
     wait(B, "document.getElementById('control')?.classList.contains('active')", 10)
     ev(B, "document.getElementById('next').click();1")
     check(wait(A, "window.__revela.state.ui.slideIndex===1", 8), 'Siguiente desde el móvil')
+    # A second phone with the code alone: one controls at a time.
+    B2 = tab(f'{base}/remote.html?code={code}')
+    check(wait(B2, "!!document.getElementById('err')?.textContent&&!document.getElementById('control').classList.contains('active')", 10), 'un segundo móvil: ocupado')
+    # The touchpad while presenting: the spotlight follows the finger on the real presentation.
+    ev(A, "(()=>{window.__revela.io.present({fullscreen:false});return 1})()")
+    wait(B, "document.getElementById('pad').classList.contains('live')", 10)   # (the phone knows the slides are on screen)
+    ev(B, "(()=>{document.querySelector('[data-view=pad]').click();document.querySelector('[data-tool=spot]').click();const p=document.getElementById('pad'),r=p.getBoundingClientRect();"
+          "const E=(t,u)=>p.dispatchEvent(new PointerEvent(t,{bubbles:true,pointerId:3,pointerType:'touch',clientX:r.left+u*r.width,clientY:r.top+r.height/2}));"
+          "E('pointerdown',.5);E('pointermove',.55);window.__up=()=>E('pointerup',.55);return 1})()")
+    check(wait(A, "window.__revela.session.present?.frame.contentDocument.getElementById('__rv-spot')?.style.display==='block'", 8), 'el foco del móvil en la presentación')
+    ev(B, "window.__up();1")
+    check(wait(A, "window.__revela.session.present?.frame.contentDocument.getElementById('__rv-spot')?.style.display==='none'", 8), 'al levantar el dedo se quita')
+    ev(A, "document.querySelector('#host-modal .host-cut')?.click();1")
+    check(wait(B, "document.getElementById('connect').classList.contains('active')&&!!document.getElementById('err').textContent", 8), 'quien presenta desconecta el móvil')
+    ev(A, "document.getElementById('present-close')?.click();1")
     # Live poll + Q&A inside the exported presentation
     ev(A, "(async()=>{const R=window.__revela;R.store.replaceDeck(R.model.emptyDeck());R.poll.addPoll({question:'P',options:['A','B']});R.slides.addSlide();R.poll.addPoll({question:'Q',kind:'qa'});R.slides.goToSlide(0);"
           "const html=R.io.buildHTML().replace(/https:\\/\\/fmesasc\\.github\\.io\\/revela\\/vote\\.html/g,location.origin+'/vote.html');document.open();document.write(html);document.close();return 1})()")
@@ -485,7 +502,7 @@ def main():
         if out.startswith('REVELATEST PASS') and '--e2e' in sys.argv:
             e2e_fail = e2e_checks(send, recv, port)
             if e2e_fail: print('REVELATEST FAIL e2e'); print('\n'.join(e2e_fail)); return 1
-            out += ' + e2e 14/14'
+            out += ' + e2e 19/19'
         if out.startswith('REVELATEST FAIL'):
             r = recv(send('Runtime.evaluate', sid, returnByValue=True,
                           expression="[...document.querySelectorAll('.row.ko')].map(e=>e.innerText.replace(/\\s+/g,' ')).join('\\n')"))

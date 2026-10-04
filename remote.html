@@ -3,87 +3,157 @@
 <head>
   <meta charset="utf-8">
   <meta name="robots" content="noindex">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#11151c">
   <title>Revela · Mando</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%233f6497'/%3E%3Ctext x='16' y='23' font-size='20' font-family='sans-serif' fill='white' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
   <style>
-    :root{--accent:#3f6497;--bg:#11151c;--panel:#1b212b;--line:#2c3542;--txt:#eef1f5;--txt2:#9aa4b2}
+    :root{--accent:#3f6497;--bg:#11151c;--panel:#1b212b;--line:#2c3542;--txt:#eef1f5;--txt2:#9aa4b2;--notes:18px}
     *{box-sizing:border-box}
     html,body{margin:0;height:100%;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-      background:var(--bg);color:var(--txt);-webkit-tap-highlight-color:transparent}
-    body{display:flex;flex-direction:column}
-    header{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line)}
+      background:var(--bg);color:var(--txt);-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+    body{display:flex;flex-direction:column;padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left)}
+    header{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--line)}
     header .brand{font-weight:800;color:#7fa6d8}
     header .status{margin-left:auto;font-size:12px;color:var(--txt2)}
     header .status.on{color:#4ec06a}
     main{flex:1;display:flex;flex-direction:column;min-height:0}
-    .screen{flex:1;display:none;flex-direction:column;padding:16px;gap:14px}
+    .screen{flex:1;display:none;flex-direction:column;padding:12px 16px calc(12px + env(safe-area-inset-bottom));gap:10px;min-height:0}
     .screen.active{display:flex}
+    button{font-family:inherit;font-size:16px;border:none;border-radius:12px;padding:14px;background:var(--accent);
+      color:#fff;cursor:pointer;font-weight:600;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+    button.ghost{background:var(--panel);border:1px solid var(--line);color:var(--txt)}
+    button:disabled{opacity:.5}
+    button:active{filter:brightness(1.25)}
     /* connect */
     #connect{justify-content:center;align-items:center;text-align:center}
     #connect h1{font-size:19px;margin:0}
     #connect p{color:var(--txt2);font-size:14px;margin:0 0 4px}
     #code{font-size:34px;letter-spacing:8px;text-transform:uppercase;text-align:center;width:100%;max-width:320px;
       padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--txt);font-weight:700}
-    button{font-family:inherit;font-size:16px;border:none;border-radius:12px;padding:14px;background:var(--accent);
-      color:#fff;cursor:pointer;font-weight:600}
-    button.ghost{background:var(--panel);border:1px solid var(--line);color:var(--txt)}
-    button:disabled{opacity:.5}
-    .err{color:#ff8080;font-size:13px;min-height:18px}
+    #go{min-width:200px}
+    .err{color:#ff8080;font-size:14px;min-height:18px;max-width:320px}
+    .err.info{color:var(--txt2)}
     /* control */
-    .meta{display:flex;align-items:baseline;gap:10px}
-    .meta .pos{font-size:15px;color:var(--txt2)}
+    #control{display:none;grid-template-columns:1fr;grid-template-rows:auto auto 1fr auto auto;gap:10px}
+    #control.active{display:grid}
+    .meta{display:flex;align-items:center;gap:10px;min-width:0}
+    .meta .pos{font-size:15px;color:var(--txt2);font-variant-numeric:tabular-nums}
     .meta .title{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-    .meta{display:flex;align-items:baseline;gap:10px}
-    .meta .timer{margin-left:auto;font-variant-numeric:tabular-nums;color:#7fa6d8;font-weight:700}
-    .notes{flex:1;min-height:0;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;font-size:18px;line-height:1.5}
-    .notes .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--txt2);margin-bottom:6px}
+    .meta .timer{font-variant-numeric:tabular-nums;color:#7fa6d8;font-weight:700;background:none;padding:4px 6px;font-size:16px}
+    .tabs{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:3px}
+    .tabs button{flex:1;background:none;color:var(--txt2);padding:9px;font-size:15px;border-radius:9px}
+    .tabs button[aria-selected=true]{background:var(--accent);color:#fff}
+    .view{display:none;min-height:0;flex-direction:column;gap:8px}
+    .view.on{display:flex}
+    .notes{flex:1;min-height:0;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:var(--notes);line-height:1.5}
+    #notes{white-space:pre-wrap;margin-top:6px}
+    .lblrow{display:flex;align-items:center;gap:6px}
+    .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--txt2)}
+    .lblrow .lbl{flex:1}
+    .lblrow button{padding:4px 12px;font-size:15px;border-radius:8px}
     .next{color:var(--txt2);font-size:14px;border-top:1px dashed var(--line);margin-top:12px;padding-top:10px}
-    .nav{display:flex;gap:12px}
-    .nav button{flex:1;font-size:20px;padding:20px}
-    .tools{display:flex;gap:12px}
-    .tools button{flex:1}
-    .tools button.armed{background:#c0392b}
-    #pad{display:none;position:fixed;inset:0;z-index:50;background:#000c;touch-action:none}
-    #pad .hint{position:absolute;top:16px;left:0;right:0;text-align:center;color:#fff9;font-size:14px}
-    #pad .dot{position:absolute;width:34px;height:34px;border-radius:50%;transform:translate(-50%,-50%);
-      background:radial-gradient(circle,#ff2d2d 30%,#ff2d2d55 55%,transparent 70%);pointer-events:none;display:none}
-    #pad .close{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);background:#fff2;border:1px solid #fff4}
+    /* touchpad */
+    .toolsel{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+    .toolsel button{padding:8px 2px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--panel);border:1px solid var(--line);color:var(--txt)}
+    .toolsel button .ic{font-size:20px;line-height:1}
+    .toolsel button[aria-pressed=true]{background:var(--accent);border-color:#7fa6d8;color:#fff}
+    #padwrap{flex:1;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;position:relative}
+    #padwrap .hint{align-self:stretch}
+    #pad{position:relative;width:100%;aspect-ratio:var(--ar,16/9);background:#000;border-radius:10px;overflow:hidden;touch-action:none;
+      border:2px solid var(--line);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+    #pad.live{border-color:#7fa6d8}
+    #thumb{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;opacity:.85;pointer-events:none}
+    #thumb[hidden]{display:none}
+    #pad .empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--txt2);font-size:14px;padding:20px;text-align:center}
+    #finger{position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;pointer-events:none;display:none;
+      background:radial-gradient(circle,#ff2d2d 30%,#ff2d2d55 55%,transparent 70%)}
+    #finger.spot,#finger.lens{background:none;border:2px solid #fff;box-shadow:0 0 0 999px #0006}
+    #finger.lens{box-shadow:none;border-color:#7fa6d8}
+    #finger.arrow{background:none;width:22px;height:22px;margin:-2px 0 0 -4px;border-radius:0}
+    #finger.arrow::before{content:'';position:absolute;inset:0;background:#fff;clip-path:polygon(0 0,80% 60%,48% 64%,64% 100%,48% 100%,34% 68%,0 92%)}
+    #finger.touch{background:#fff8;border:2px solid #fff}
+    #zoomtag{position:absolute;right:6px;top:6px;background:#000a;color:#fff;font-size:12px;font-weight:700;padding:3px 8px;border-radius:10px;display:none}
+    .hint{font-size:12.5px;color:var(--txt2);line-height:1.35;min-height:2.7em}
+    .bar{display:flex;gap:8px}
+    .bar button{flex:1;padding:10px;font-size:14px}
+    .bar button.armed{background:#c0392b;border-color:#c0392b;color:#fff}
+    .nav{display:flex;gap:10px}
+    .nav button{flex:1;font-size:20px;padding:20px 10px;min-height:68px}
+    .nav #prev{flex:.8}
+    #toast{position:fixed;left:16px;right:16px;bottom:calc(110px + env(safe-area-inset-bottom));background:#2b3442;color:#fff;border:1px solid #445;
+      border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.35;box-shadow:0 8px 30px #0008;opacity:0;transform:translateY(10px);
+      transition:opacity .2s,transform .2s;pointer-events:none;z-index:10}
+    #toast.on{opacity:1;transform:none}
+    /* landscape phone: the pad (or the notes) on the left, the buttons on the right */
+    @media (orientation:landscape) and (max-height:560px){
+      header{padding:6px 16px}
+      #control{grid-template-columns:1fr minmax(170px,30%);grid-template-rows:auto auto 1fr auto;gap:8px 12px;padding-top:8px}
+      #control .meta{grid-column:1/-1}
+      #control .tabs{grid-column:2;grid-row:2}
+      #control .view{grid-column:1;grid-row:2/5}
+      #control .bar{grid-column:2;grid-row:3;align-self:end;flex-direction:column}
+      #control .nav{grid-column:2;grid-row:4}
+      .nav button{padding:14px 6px;min-height:56px;font-size:16px;white-space:nowrap}
+      .toolsel{grid-template-columns:repeat(5,auto);justify-content:start}
+      .toolsel button{flex-direction:row;padding:6px 10px}
+      #padwrap{min-height:0}
+      #pad{width:auto;height:100%;max-width:100%}
+      .hint{min-height:0}
+    }
   </style>
 </head>
 <body>
   <header>
-    <span class="brand">Revela</span><span> · Mando</span>
-    <span class="status" id="status">Sin conectar</span>
+    <span class="brand">Revela</span><span> · <span data-t="Mando">Mando</span></span>
+    <span class="status" id="status" data-t="Sin conectar">Sin conectar</span>
   </header>
   <main>
     <section class="screen active" id="connect">
-      <h1>Conecta con la presentación</h1>
-      <p>En el ordenador: <b>Ver ▸ Conectar móvil</b>. Escribe aquí el código:</p>
-      <input id="code" maxlength="5" autocomplete="off" autocapitalize="characters" placeholder="ABCDE">
-      <button id="go">Conectar</button>
-      <div class="err" id="err"></div>
+      <h1 data-t="Conecta con la presentación">Conecta con la presentación</h1>
+      <p data-t="En el ordenador: Ver ▸ Conectar móvil. Escribe aquí el código:">En el ordenador: Ver ▸ Conectar móvil. Escribe aquí el código:</p>
+      <input id="code" maxlength="5" autocomplete="off" autocapitalize="characters" placeholder="ABCDE" aria-label="Código">
+      <button id="go" data-t="Conectar">Conectar</button>
+      <div class="err" id="err" role="status"></div>
     </section>
 
     <section class="screen" id="control">
       <div class="meta"><span class="pos" id="pos">–/–</span><span class="title" id="title"></span>
-        <span class="timer" id="timer">00:00</span></div>
-      <div class="notes"><div class="lbl">Notas de esta diapositiva</div><div id="notes"></div>
-        <div class="next"><span class="lbl">Siguiente</span> <span id="nextnotes"></span></div></div>
-      <div class="nav">
-        <button class="ghost" id="prev">◀ Anterior</button>
-        <button id="next">Siguiente ▶</button>
+        <button class="timer" id="reset-timer" data-tt="Reiniciar el cronómetro" title="Reiniciar el cronómetro"><span id="timer">00:00</span> ⟲</button></div>
+      <div class="tabs" role="tablist">
+        <button role="tab" data-view="notes" aria-selected="true" data-t="Notas">Notas</button>
+        <button role="tab" data-view="pad" aria-selected="false" data-t="Panel táctil">Panel táctil</button>
       </div>
-      <div class="tools">
-        <button class="ghost" id="pointer">Puntero láser</button>
-        <button class="ghost" id="black">Pantalla negra</button>
-        <button class="ghost" id="reset-timer">⏱ Reiniciar</button>
+      <div class="view on" id="v-notes">
+        <div class="notes" id="notesbox"><div class="lblrow"><span class="lbl" data-t="Notas de esta diapositiva">Notas de esta diapositiva</span>
+            <button class="ghost" id="font-dn" data-tt="Letra más pequeña" title="Letra más pequeña" aria-label="A−">A−</button>
+            <button class="ghost" id="font-up" data-tt="Letra más grande" title="Letra más grande" aria-label="A+">A+</button></div>
+          <div id="notes"></div>
+          <div class="next"><span class="lbl" data-t="Siguiente">Siguiente</span> <span id="nextnotes"></span></div></div>
+      </div>
+      <div class="view" id="v-pad">
+        <div class="toolsel" role="group">
+          <button data-tool="laser" aria-pressed="true"><span class="ic">🔴</span><span data-t="Láser">Láser</span></button>
+          <button data-tool="spot" aria-pressed="false"><span class="ic">🔦</span><span data-t="Foco">Foco</span></button>
+          <button data-tool="arrow" aria-pressed="false"><span class="ic">➚</span><span data-t="Puntero">Puntero</span></button>
+          <button data-tool="lens" aria-pressed="false"><span class="ic">🔍</span><span data-t="Lupa">Lupa</span></button>
+          <button data-tool="touch" aria-pressed="false"><span class="ic">👆</span><span data-t="Interactuar">Interactuar</span></button>
+        </div>
+        <div id="padwrap"><div id="pad"><img id="thumb" alt="" hidden><div class="empty" id="padempty"></div>
+          <div id="finger"></div><div id="zoomtag"></div></div>
+          <div class="hint" id="padhint"></div></div>
+      </div>
+      <div class="bar">
+        <button class="ghost" id="black" data-t="Pantalla negra">Pantalla negra</button>
+        <button class="ghost" id="zoomreset" data-t="Tamaño normal">Tamaño normal</button>
+      </div>
+      <div class="nav">
+        <button class="ghost" id="prev">◀ <span data-t="Anterior">Anterior</span></button>
+        <button id="next"><span data-t="Siguiente">Siguiente</span> ▶</button>
       </div>
     </section>
   </main>
-
-  <div id="pad"><div class="hint">Mueve el dedo para apuntar</div><div class="dot" id="dot"></div>
-    <button class="close" id="padclose">Cerrar puntero</button></div>
+  <div id="toast" role="status"></div>
 
   <script type="module" src="src/apps/remote/main.js"></script>
 </body>

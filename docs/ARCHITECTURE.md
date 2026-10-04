@@ -14,7 +14,7 @@ and links already printed point to them.
 | Page          | Entry point                 | What it is                                   |
 |---------------|-----------------------------|----------------------------------------------|
 | `index.html`  | `src/apps/editor/main.js`   | The editor (installable PWA, works offline)  |
-| `remote.html` | `src/apps/remote/main.js`   | Phone remote: notes, next/previous, pointer  |
+| `remote.html` | `src/apps/remote/main.js`   | Phone remote: notes, next/previous, touchpad (pointer, spotlight, taps) |
 | `vote.html`   | `src/apps/vote/main.js`     | Audience page for live polls and Q&A         |
 | `view.html`   | `src/apps/view/main.js`     | Viewer of shared (sealed) presentations      |
 
