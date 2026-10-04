@@ -45,11 +45,11 @@ AI_PER_MINUTE = "20"
 # Models people may use (the first is the default) and their prices per million
 # tokens [input, output] in dollars, for the estimate made before each request
 # (check them at openrouter.ai/models; the real cost is charged afterwards).
-AI_MODELS = "openai/gpt-4o-mini,google/gemini-2.5-flash,anthropic/claude-haiku-4.5"
+AI_MODELS = "openai/gpt-4o-mini,google/gemini-2.5-flash,anthropic/claude-haiku-4.5,google/gemini-2.5-flash-lite"
 # Voice-over (text to speech): model, voices, and a cautious price per character (check the model page).
 AI_TTS_MODEL = "openai/gpt-4o-mini-tts-2025-12-15"
 AI_TTS_USD_PER_CHAR = "0.00002"
-AI_PRICES = '{"openai/gpt-4o-mini":[0.15,0.6],"google/gemini-2.5-flash":[0.3,2.5],"anthropic/claude-haiku-4.5":[1,5],"google/gemini-3.8-flash":[0.75,3.75]}'
+AI_PRICES = '{"openai/gpt-4o-mini":[0.15,0.6],"google/gemini-2.5-flash":[0.3,2.5],"google/gemini-2.5-flash-lite":[0.1,0.4],"anthropic/claude-haiku-4.5":[1,5],"google/gemini-3.8-flash":[0.75,3.75]}'
 # «Crear modelo 3D con IA» (model3d.js): the vision model that writes the Blender scripts (its price is in
 # AI_PRICES above), and what one second of the Blender container costs, in dollars (see docs/NUBE.md).
 AI_3D_MODEL = "google/gemini-3.8-flash"

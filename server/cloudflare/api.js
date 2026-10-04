@@ -20,6 +20,7 @@
 //   GET|POST /api/mail/prefs   { off: [kinds] }         (the optional notices I stopped)
 //   GET|POST /api/mail/unsubscribe?t=…                  (stop optional notices; signed link in the email: mail.js)
 //   POST /api/ai/chat          { messages, max_tokens?, json? } → OpenRouter's answer (credits charged)
+//                              (content: a string, or parts [{ type: 'text' }, { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,…' } }])
 //   POST /api/ai/image         { prompt, aspect_ratio? } → { data: [{ b64_json, media_type }] }
 //   POST /api/ai/speech        { input, voice?, speed? } → { audio (base64 mp3) }  (credits per character)
 //   GET  /api/stock/search     ?provider=unsplash|pexels&q=&page= → { results }   (Revela's keys; per-minute limit)
@@ -80,7 +81,7 @@ export function settings(env) {
     perMinute: num(env.AI_PER_MINUTE, 20),
     monthlyBudget: num(env.MONTHLY_BUDGET_USD, 50),      // all AI together, per calendar month
     maxTokens: num(env.AI_MAX_TOKENS, 4000),
-    models: String(env.AI_MODELS || 'openai/gpt-4o-mini,anthropic/claude-haiku-4.5,google/gemini-2.5-flash').split(/[\s,]+/).filter(Boolean),
+    models: String(env.AI_MODELS || 'openai/gpt-4o-mini,anthropic/claude-haiku-4.5,google/gemini-2.5-flash,google/gemini-2.5-flash-lite').split(/[\s,]+/).filter(Boolean),
     imageModel: env.AI_IMAGE_MODEL || 'bytedance-seed/seedream-4.5',
     ttsModel: env.AI_TTS_MODEL || 'openai/gpt-4o-mini-tts-2025-12-15',
     ttsVoices: String(env.AI_TTS_VOICES || 'alloy,ash,ballad,coral,echo,fable,nova,onyx,sage,shimmer').split(/[\s,]+/).filter(Boolean),
@@ -596,13 +597,36 @@ function aiFailure(what, r, data) {
   console.log(JSON.stringify({ ai: what, status, detail }));
   return { error: 'ai failed', status, ...(detail && { detail }) };
 }
+// Pictures a chat request may carry: data: URLs only (no addresses for the provider to fetch), JPEG, PNG
+// or WebP, each up to ~300 KB, at most 8 and ~2 MB per request. Counted as a fixed number of tokens
+// each for the estimate (not by their base64 length, which would inflate the hold).
+export const IMAGE_LIMITS = { each: 300 * 1024, total: 2 * 1024 * 1024, count: 8, tokens: 1100 };
+const IMAGE_URL = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/;
+// The messages' content: → { text (characters besides the pictures), images }, or null when a part isn't allowed.
+export function contentOf(messages) {
+  let text = 0, images = 0, bytes = 0;
+  for (const m of messages) {
+    if (!m || !['system', 'user', 'assistant'].includes(m.role)) return null;
+    if (typeof m.content === 'string') { text += m.content.length; continue; }
+    if (!Array.isArray(m.content) || !m.content.length || m.content.length > 40) return null;
+    for (const p of m.content) {
+      if (p?.type === 'text' && typeof p.text === 'string') { text += p.text.length; continue; }
+      const url = p?.type === 'image_url' && typeof p.image_url?.url === 'string' ? p.image_url.url : null;
+      if (!url || m.role !== 'user' || !IMAGE_URL.test(url)) return null;
+      const size = Math.floor((url.length - url.indexOf(',') - 1) * 3 / 4);
+      if (size > IMAGE_LIMITS.each || ++images > IMAGE_LIMITS.count || (bytes += size) > IMAGE_LIMITS.total) return null;
+    }
+  }
+  return { text, images };
+}
 async function aiChat(env, s, A, body, json) {
   const messages = Array.isArray(body.messages) ? body.messages : null;
-  if (!messages || !messages.length || messages.length > 60 || JSON.stringify(messages).length > 1.5e6) return json({ error: 'bad request' }, 400);
-  if (!messages.every(m => m && ['system', 'user', 'assistant'].includes(m.role) && (typeof m.content === 'string' || Array.isArray(m.content)))) return json({ error: 'bad request' }, 400);
+  if (!messages || !messages.length || messages.length > 60) return json({ error: 'bad request' }, 400);
+  const c = contentOf(messages);
+  if (!c || c.text > 1.5e6) return json({ error: 'bad request' }, 400);
   const model = s.models.includes(body.model) ? body.model : s.models[0];
   const maxTokens = Math.min(s.maxTokens, Math.max(16, Math.round(+body.max_tokens || 1000)));
-  const [pin, pout] = priceOf(s, model), inTok = JSON.stringify(messages).length / 3;
+  const [pin, pout] = priceOf(s, model), inTok = c.text / 3 + c.images * IMAGE_LIMITS.tokens;
   const estimate = (inTok * pin + maxTokens * pout) / 1e6;
   const g = await guard(env, s, A, credits(estimate, s), estimate, json); if (g.stop) return g.stop;
   let r, data;

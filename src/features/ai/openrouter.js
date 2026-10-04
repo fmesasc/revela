@@ -70,9 +70,10 @@ export async function finishOpenRouterLogin(loc = location) {
 // onUsage({ usd?, credits? }): what the call cost — credits charged through the
 // account, the provider's dollars with an own key. signal: stops waiting (own key).
 // prefer: the model a task works best with, used unless the person chose one (with the account,
-// the server only takes the models it allows).
-export async function chat(messages, { json = false, maxTokens = 2000, onUsage = null, signal = null, prefer = null } = {}) {
-  const set = aiSettings(), key = set.key, model = prefer && set.model === DEFAULT_MODEL ? prefer : set.model;
+// the server only takes the models it allows); force: that model whatever was chosen (a cheap one
+// for a cheap task). A message's content may be parts: text and pictures (data: URLs), both ways.
+export async function chat(messages, { json = false, maxTokens = 2000, onUsage = null, signal = null, prefer = null, force = null } = {}) {
+  const set = aiSettings(), key = set.key, model = force || (prefer && set.model === DEFAULT_MODEL ? prefer : set.model);
   if (!key && usingCloudAi()) {
     const data = await cloud.chat({ messages, max_tokens: maxTokens, json, ...(model !== DEFAULT_MODEL && { model }) }).catch(e => { throw cloudError(e); });
     if (signal?.aborted) throw new Error('STOPPED');
@@ -188,9 +189,11 @@ export async function writeNotes({ all = false } = {}) {
 // Alt text for the selected image (needs a model that accepts images).
 export async function describeImage() {
   const b = selectedBlock(); if (!b || b.type !== 'image') throw new Error('NO_IMAGE');
+  // (Made small first: a JPEG data: URL, what the account's server takes, at a fraction of the cost.)
+  const shot = await (await import('./vision.js')).downscale(b.src).catch(() => { throw new Error('NO_IMAGE'); });
   const alt = await chat([
     { role: 'system', content: `Write alt text for this image for a screen reader: one sentence, max 125 characters, in ${lang()}, no "image of".` },
-    { role: 'user', content: [{ type: 'text', text: 'Describe the image.' }, { type: 'image_url', image_url: { url: b.src } }] },
+    { role: 'user', content: [{ type: 'text', text: 'Describe the image.' }, { type: 'image_url', image_url: { url: shot.url } }] },
   ], { maxTokens: 120 });
   commit(() => { b.alt = alt.replace(/^["']|["']$/g, ''); delete b.decorative; });
   return b.alt;
