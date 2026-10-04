@@ -36,6 +36,7 @@ import { openHandoutDialog, openImageDialog, openVideoDialog } from '../dialogs/
 import { openSaveAsPicture } from '../dialogs/picture.js';
 import { openShare } from '../dialogs/share.js';
 import { openTextStyles } from '../dialogs/textstyles.js';
+import * as mv from '../shell/masterview.js';
 import * as recorder from '../shell/recorder.js';
 import * as master from '../../features/document/master.js';
 import * as clip from '../../features/document/clipboard.js';
@@ -162,15 +163,13 @@ export const ACTIONS = {
   'master-styles': () => openTextStyles(),
   'layout-new': () => master.addLayout(),
   'master-new': () => master.addMaster(),
-  'master-delete': () => confirmDialog(t('¿Eliminar este patrón y sus diseños?')).then(ok => { if (ok) master.deleteMaster(state.ui.editMaster); }),
+  'master-delete': () => mv.deleteItem(),
   'layout-dup': () => master.addLayout(state.ui.editMaster),
-  'layout-rename': () => {
-    const e = state.ui.editMaster, l = state.deck.layouts?.find(x => x.id === e), m = !l && master.contextMaster();
-    const cur = l ? l.name : (m.name || t('Patrón'));
-    promptDialog(l ? t('Nombre del diseño:') : t('Nombre del patrón:'), cur).then(v => { if (!v || !v.trim()) return;
-      if (l) master.renameLayout(l.id, v.trim()); else commit(() => { m.name = v.trim(); }); });
-  },
-  'layout-delete': () => confirmDialog(t('¿Eliminar este diseño?')).then(ok => { if (ok) master.deleteLayout(state.ui.editMaster); }),
+  'layout-rename': () => mv.renameItem(),
+  'layout-delete': () => mv.deleteItem(),
+  'master-item-delete': () => mv.deleteItem(),
+  'layout-hide-graphics': () => mv.toggleLayoutGraphics(),
+  'layout-master-bg': () => mv.toggleLayoutMasterBg(),
   'hide-master': () => master.toggleHideMaster(),
   'export-handout': () => openHandoutDialog(),
   'undo': undo, 'redo': redo,

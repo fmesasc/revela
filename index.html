@@ -64,6 +64,7 @@
 
     <nav class="tabs">
       <button data-tab="file">Archivo</button>
+      <button data-tab="master" class="ctx-tab master-tab" hidden>Patrón de diapositivas</button>
       <button data-tab="home" class="active">Inicio</button>
       <button data-tab="insert">Insertar</button>
       <button data-tab="draw">Dibujar</button>
@@ -133,6 +134,45 @@
             <button data-action="export-video" class="lg" title="MP4 o GIF animado con todas las diapositivas"><i class="ms">movie</i><span>Exportar<br>vídeo</span></button>
             <button data-action="present" class="lg go"><i class="ms">play_arrow</i><span>Presentar</span></button>
           </div><label>Salida</label>
+        </div>
+      </section>
+
+      <!-- PATRÓN DE DIAPOSITIVAS (only in the master view) -->
+      <section class="ribbon-page" data-page="master">
+        <div class="group">
+          <div class="row">
+            <button data-action="master-new" class="lg" title="Otro patrón con sus propios estilos, objetos y diseños (copia del actual)"><i class="ms">library_add</i><span>Insertar<br>patrón</span></button>
+            <button data-action="layout-new" class="lg" title="Un diseño nuevo bajo el patrón, con un título"><i class="ms">add_box</i><span>Insertar<br>diseño</span></button>
+            <button data-action="layout-dup" class="mb-lay" title="Duplicar el diseño seleccionado"><i class="ms">content_copy</i><span>Duplicar</span></button>
+            <button data-action="layout-rename" title="Cambiar el nombre del patrón o del diseño"><i class="ms">edit</i><span>Cambiar nombre</span></button>
+            <button data-action="master-item-delete" title="Eliminar el diseño (sus diapositivas pasan a otro) o el patrón añadido"><i class="ms">delete</i><span>Eliminar</span></button>
+          </div><label>Editar patrón</label>
+        </div>
+        <div class="group">
+          <div class="row">
+            <select class="mb-lay mb-ph" title="Insertar un marcador en el diseño"><option value="">Insertar marcador…</option><option value="title">Título</option><option value="subtitle">Subtítulo</option><option value="body">Texto</option><option value="picture">Imagen</option><option value="table">Tabla</option><option value="chart">Gráfico</option></select>
+            <button data-action="master-styles" title="Tipo de letra, tamaño, color y viñetas de títulos y texto (5 niveles), para el patrón y todos sus diseños"><i class="ms">format_size</i><span>Estilos de texto</span></button>
+            <button data-action="layout-hide-graphics" class="mb-lay" title="Este diseño no muestra los objetos del patrón (logos, decoraciones)"><i class="ms">layers_clear</i><span>Ocultar gráficos del patrón</span></button>
+            <button data-action="layout-master-bg" class="mb-lay" title="Este diseño usa el fondo del patrón (desactívalo para darle uno propio)"><i class="ms">wallpaper</i><span>Usar fondo del patrón</span></button>
+          </div><label>Diseño del patrón</label>
+        </div>
+        <div class="group">
+          <div class="row">
+            <label class="color" title="Color de fondo del patrón o del diseño"><i class="ms">format_color_fill</i><span>Color</span><input type="color" data-master-bg value="#101317"></label>
+            <button data-action="bg-image" title="Imagen de fondo"><i class="ms">image</i><span>Imagen</span></button>
+            <button data-action="bg-advanced" title="Formato del fondo: imagen, vídeo, página web, mosaico, opacidad y transición del fondo"><i class="ms">tune</i><span>Formato del fondo</span></button>
+          </div><label>Fondo</label>
+        </div>
+        <div class="group">
+          <div class="row">
+            <button data-palettes-open title="Colores del tema"><i class="ms">palette</i><span>Colores</span></button>
+            <button data-fontpairs-open title="Fuentes del tema"><i class="ms">text_fields</i><span>Fuentes</span></button>
+          </div><label>Tema</label>
+        </div>
+        <div class="group">
+          <div class="row">
+            <button data-action="master-close" class="lg go" title="Volver a las diapositivas"><i class="ms">close</i><span>Cerrar vista<br>Patrón</span></button>
+          </div><label>Cerrar</label>
         </div>
       </section>
 
@@ -403,7 +443,6 @@
         <div class="group">
           <div class="row">
             <button data-action="canvas-mode" class="lg" title="Opcional: las diapositivas como marcos en un lienzo grande; al presentar, la cámara vuela de uno a otro (como Prezi)"><i class="ms">zoom_out_map</i><span>Lienzo<br>(tipo Prezi)</span></button>
-            <button data-action="canvas-view" class="lg" title="Ver y colocar los marcos en el lienzo"><i class="ms">hub</i><span>Vista de<br>lienzo</span></button>
           </div><label>Lienzo</label>
         </div>
         <div class="group">
@@ -414,11 +453,12 @@
             <button data-action="bg-gradient" title="Aplicar degradado"><i class="ms">gradient</i><span>Degradado</span></button>
             <button data-action="bg-image" title="Imagen de fondo"><i class="ms">wallpaper</i><span>Imagen</span></button>
             <button data-action="bg-all" title="Aplicar este fondo a todas"><i class="ms">select_all</i><span>Aplicar a<br>todas</span></button>
-            <button data-action="bg-advanced" title="Fondo avanzado: vídeo, página web, mosaico, opacidad y transición del fondo"><i class="ms">tune</i><span>Avanzado</span></button>
+            <button data-action="bg-advanced" title="Formato del fondo: vídeo, página web, mosaico, opacidad y transición del fondo"><i class="ms">tune</i><span>Formato<br>del fondo</span></button>
           </div><label>Fondo</label>
         </div>
         <div class="group">
           <div class="row">
+            <button data-action="brand-kit" title="Los colores, las fuentes y el logotipo de tu centro o empresa, aplicados con un clic"><i class="ms">verified</i><span>Kit de<br>marca</span></button>
             <button data-action="set-logo" title="Elegir un logo para todas las diapositivas"><i class="ms">add_photo_alternate</i><span>Logo</span></button>
             <select data-logo-pos title="Posición del logo">
               <option value="br">Abajo dcha.</option><option value="bl">Abajo izq.</option>
@@ -430,10 +470,10 @@
         </div>
         <div class="group">
           <div class="row">
-            <button data-action="brand-kit" title="Los colores, las fuentes y el logotipo de tu centro o empresa, aplicados con un clic"><i class="ms">verified</i><span>Kit de<br>marca</span></button>
             <button data-action="design-ideas" title="Propuestas de composición para esta diapositiva"><i class="ms">auto_awesome</i><span>Ideas de<br>diseño</span></button>
             <button data-palettes-open title="Colores del tema"><i class="ms">palette</i><span>Colores</span></button>
             <button data-fontpairs-open title="Fuentes del tema"><i class="ms">text_fields</i><span>Fuentes</span></button>
+            <button data-action="master-edit" title="Fondo, objetos, estilos de texto y diseños comunes a todas las diapositivas"><i class="ms">dashboard_customize</i><span>Patrón de<br>diapositivas</span></button>
             <label class="color" title="Color del texto del tema"><i class="ms">format_color_text</i><input type="color" data-deck-fg value="#ffffff"></label>
             <select data-theme title="Tema">
               <option value="black">Oscuro</option><option value="white">Claro</option>
@@ -612,6 +652,14 @@
         </div>
         <div class="group">
           <div class="row">
+            <button data-action="slide-sorter" class="lg" title="Clasificador de diapositivas: todas en cuadrícula para ordenarlas arrastrando, duplicarlas u ocultarlas (doble clic: editar una)"><i class="ms">grid_view</i><span>Clasificador</span></button>
+            <button data-action="toggle-nav" class="lg" title="Mostrar u ocultar el panel de diapositivas (como la tira de Google Presentaciones)"><i class="ms">view_sidebar</i><span>Panel de<br>diapositivas</span></button>
+            <button data-action="canvas-view" class="lg" title="Ver y colocar los marcos en el lienzo (modo lienzo, tipo Prezi)"><i class="ms">hub</i><span>Vista de<br>lienzo</span></button>
+            <button data-action="master-edit" class="lg" title="Fondo, objetos, estilos de texto y diseños comunes a todas las diapositivas"><i class="ms">dashboard_customize</i><span>Patrón de<br>diapositivas</span></button>
+          </div><label>Vistas</label>
+        </div>
+        <div class="group">
+          <div class="row">
             <button data-action="classroom" class="lg" title="Al presentar, el alumnado sigue las diapositivas en su móvil o portátil (con un código y un QR en la esquina) y responde desde ahí las actividades"><i class="ms">school</i><span>Modo<br>aula</span></button>
             <button data-action="present-self" class="lg" title="Presentar para responder las actividades dentro de las diapositivas, sin móviles: para practicar o hacerlo en casa"><i class="ms">self_improvement</i><span>A su<br>ritmo</span></button>
             <button data-action="share-classroom" class="lg" title="Compartir el enlace de la presentación en Google Classroom"><i class="ms">assignment</i><span>Google<br>Classroom</span></button>
@@ -620,23 +668,19 @@
         </div>
         <div class="group">
           <div class="row">
-            <button data-action="canvas-view" title="Ver y colocar los marcos en el lienzo (modo lienzo)"><i class="ms">hub</i><span>Lienzo</span></button>
             <button data-action="toggle-guides"><i class="ms">grid_on</i><span>Guías</span></button>
             <button data-action="toggle-ruler"><i class="ms">straighten</i><span>Regla</span></button>
             <button data-action="toggle-snap"><i class="ms">grid_goldenratio</i><span>Ajustar</span></button>
             <button data-action="toggle-notes"><i class="ms">sticky_note_2</i><span>Notas</span></button>
-            <button data-action="slide-sorter" title="Clasificador de diapositivas: todas en cuadrícula para ordenarlas arrastrando, duplicarlas u ocultarlas (doble clic: editar una)"><i class="ms">grid_view</i><span>Clasificador</span></button>
-            <button data-action="toggle-nav" title="Mostrar u ocultar el panel de diapositivas (como la tira de Google Presentaciones)"><i class="ms">view_sidebar</i><span>Panel de<br>diapositivas</span></button>
             <button data-action="shortcuts"><i class="ms">keyboard</i><span>Atajos</span></button>
             <button data-action="appearance"><i class="ms">contrast</i><span>Apariencia</span></button>
-          </div><label>Ayudas</label>
+          </div><label>Mostrar</label>
         </div>
         <div class="group">
           <div class="row">
             <button data-action="comments" class="lg"><i class="ms">comment</i><span>Comentarios</span></button>
             <button data-action="review-panel" class="lg" title="Registrar cada cambio con su autor para aceptarlo o rechazarlo después"><i class="ms">rate_review</i><span>Control de<br>cambios</span></button>
             <button data-action="a11y-check" class="lg"><i class="ms">accessibility_new</i><span>Comprobar<br>accesibilidad</span></button>
-            <button data-action="master-edit" class="lg" title="Objetos que aparecen en todas las diapositivas"><i class="ms">dashboard_customize</i><span>Patrón de<br>diapositivas</span></button>
             <button data-action="autocorrect" class="lg" title="Sustituir al escribir: -- → —, -> → →, (c) → ©…"><i class="ms">spellcheck</i><span>Autocorrección</span></button>
             <button data-action="reading-order" class="lg"><i class="ms">format_list_numbered</i><span>Orden de<br>lectura</span></button>
           </div><label>Revisar</label>
@@ -664,15 +708,7 @@
       <div id="final-banner" hidden><i class="ms">verified</i> <span>Marcada como final: la presentación es de solo lectura.</span>
         <button data-action="mark-final" type="button">Editar de todos modos</button></div>
       <div id="master-banner" hidden><i class="ms">dashboard_customize</i> <span class="mb-text">Editando el patrón: lo que pongas aquí aparece en todas las diapositivas.</span>
-        <button data-action="master-styles" type="button" title="Tipo de letra, tamaño, color y viñetas de títulos y texto (5 niveles)">Estilos de texto</button>
-        <button data-action="master-new" type="button" title="Otro patrón con sus propios estilos, objetos y diseños (copia del actual)">Nuevo patrón</button>
-        <button data-action="master-delete" type="button" class="mb-master">Eliminar patrón</button>
-        <button data-action="layout-new" type="button">Nuevo diseño</button>
-        <button data-action="layout-dup" type="button" class="mb-lay">Duplicar diseño</button>
-        <button data-action="layout-rename" type="button" class="mb-lay">Cambiar nombre</button>
-        <button data-action="layout-delete" type="button" class="mb-lay">Eliminar diseño</button>
-        <select class="mb-lay mb-ph" title="Insertar un marcador en el diseño"><option value="">Insertar marcador…</option><option value="title">Título</option><option value="subtitle">Subtítulo</option><option value="body">Texto</option><option value="picture">Imagen</option><option value="table">Tabla</option><option value="chart">Gráfico</option></select>
-        <button data-action="master-close" type="button">Cerrar patrón</button></div>
+        <button data-action="master-close" type="button">Cerrar vista Patrón</button></div>
       <div id="stage-sizer">
         <div id="stage-grid">
           <div id="ruler-corner"></div>

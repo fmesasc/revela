@@ -266,7 +266,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(html.includes('Mi título') && html.includes('Mi texto'), 'contenido exportado');
     eq((html.match(/Haz clic para/g) || []).length, 0, 'los avisos no se exportan');
     const sec = html.split('<section')[1];
-    eq((sec.match(/<div[^>]*font-size:28px/g) || []).length, 1, 'el marcador vacío no se exporta');
+    eq(slide().layoutId, 'twoContent', 'Insertar ▸ «Dos contenidos» aplica el diseño de la presentación (como Inicio ▸ Diseño)');
+    eq((sec.match(/<div[^>]*font-size:30px/g) || []).length, 1, 'el marcador vacío no se exporta');
   });
 
   await test('galería de plantillas: presentaciones completas', async () => {
@@ -476,11 +477,13 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const thumbs = D.querySelectorAll('#navigator .layout-thumb');
     eq(thumbs.length, 1 + R.state.deck.layouts.length, 'patrón + diseños en el panel');
     assert(!D.getElementById('master-banner').hidden, 'barra del patrón');
+    assert(!D.querySelector('#ribbon [data-tab="master"]').hidden && R.state.ui.activeTab === 'master', 'se abre la pestaña «Patrón de diapositivas»');
     thumbs[2].click(); await sleep(20);
     eq(R.state.ui.editMaster, R.state.deck.layouts[1].id, 'clic en un diseño lo edita');
     assert(/Título y contenido/.test(D.querySelector('#master-banner .mb-text').textContent), 'la barra dice qué diseño');
-    assert(D.querySelector('[data-action="layout-delete"]').disabled, 'no se borra un diseño en uso');
-    const sel = D.querySelector('#master-banner .mb-ph'); sel.value = 'subtitle'; sel.dispatchEvent(new frame.contentWindow.Event('change'));
+    const del = D.querySelector('[data-action="master-item-delete"]');
+    assert(!del.disabled && /1 diapositiva/.test(del.title), 'un diseño en uso se puede eliminar (sus diapositivas pasan a otro): ' + del.title);
+    const sel = D.querySelector('#ribbon .mb-ph'); sel.value = 'subtitle'; sel.dispatchEvent(new frame.contentWindow.Event('change'));
     assert(R.store.currentSlide().blocks.some(b => b.ph === 'subtitle'), 'insertar marcador en el diseño');
     D.querySelector('[data-action="layout-new"]').click(); await sleep(10);
     eq(R.state.deck.layouts.at(-1).name, 'Diseño personalizado', 'nuevo diseño');
@@ -494,6 +497,123 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     m.querySelector('.modal-close').click();
     D.querySelector('[data-action="master-close"]').click(); await sleep(10);
     assert(!R.state.ui.editMaster && !D.querySelector('#navigator .layout-thumb'), 'al cerrar vuelven las diapositivas');
+    assert(D.querySelector('#ribbon [data-tab="master"]').hidden && R.state.ui.activeTab === 'home', 'y la pestaña del patrón se va');
+  });
+
+  await test('vista de patrón: árbol (patrón y sus diseños), «Usado por N diapositivas», menú, reordenar y eliminar reasignando', async () => {
+    reset(); const W = frame.contentWindow;
+    R.slides.addSlide('titleContent'); R.slides.addSlide('titleContent'); R.slides.addSlide('twoContent');
+    const two = slide(); two.blocks[0].html = 'Mi título'; two.blocks[1].html = 'Columna'; R.render();
+    D.querySelector('[data-page="view"] [data-action="master-edit"]').click(); await sleep(20);
+    const lays = R.state.deck.layouts, mt = D.querySelector('#navigator .master-tree .layout-thumb.is-master');
+    assert(mt, 'el patrón arriba'); eq(D.querySelectorAll('#navigator .master-kids .layout-thumb').length, lays.length, 'y sus diseños colgando de él');
+    assert(mt.getBoundingClientRect().width > D.querySelector('.master-kids .layout-thumb').getBoundingClientRect().width, 'el patrón, más grande');
+    const tc = D.querySelector('.layout-thumb[data-edit="titleContent"]');
+    assert(/Usado por 2 diapositivas/.test(tc.title), 'aviso de uso: ' + tc.title); eq(tc.querySelector('.lt-count').textContent, '2', 'y el número');
+    assert(/No lo usa ninguna diapositiva/.test(D.querySelector('.layout-thumb[data-edit="blank"]').title), 'sin uso');
+    // Right-click: the layout's menu.
+    const menu = el => { const r = el.getBoundingClientRect(); el.dispatchEvent(new W.MouseEvent('contextmenu', { bubbles: true, clientX: r.left + 20, clientY: r.top + 20 })); return [...D.querySelectorAll('#context-menu .ctx-item')]; };
+    const pick = (items, text) => { const it = items.find(x => x.textContent === text); assert(it, 'opción: ' + text); it.click(); };
+    let items = menu(D.querySelector('.layout-thumb[data-edit="twoContent"]'));
+    eq(R.state.ui.editMaster, 'twoContent', 'clic derecho lo selecciona');
+    for (const x of ['Insertar diseño', 'Duplicar diseño', 'Cambiar nombre…', 'Eliminar diseño', 'Subir', 'Bajar', 'Ocultar gráficos del patrón', 'Cerrar vista Patrón']) assert(items.some(i => i.textContent === x), 'opción ' + x);
+    const order = () => R.state.deck.layouts.map(l => l.id).join();
+    pick(items, 'Subir'); await sleep(10);
+    eq(order().split(',').indexOf('twoContent'), 1, 'sube un puesto');
+    R.master.moveLayoutTo('twoContent', 'blank'); eq(R.state.deck.layouts.at(-1).id, 'twoContent', 'arrastrado al final');
+    R.store.undo(); R.store.undo(); eq(R.state.deck.layouts[2].id, 'twoContent', 'deshacer devuelve el orden');
+    // Delete a layout in use: its slides move to another one, keeping their text.
+    R.master.editLayout('twoContent'); await sleep(10);
+    D.querySelector('[data-action="master-item-delete"]').click(); await sleep(10);
+    const dlg = D.querySelector('.modal-backdrop .dlg-msg');
+    eq(dlg?.textContent, 'Lo usa 1 diapositiva: pasará al diseño «Título y contenido», con lo que tenga escrito. ¿Eliminar el diseño?', 'avisa de a qué diseño pasa');
+    D.querySelector('.modal-backdrop .dlg-ok').click(); await sleep(20);
+    assert(!R.state.deck.layouts.some(l => l.id === 'twoContent'), 'diseño eliminado');
+    const moved = R.state.deck.slides.find(s => s.id === two.id);
+    eq(moved.layoutId, 'titleContent', 'su diapositiva pasa a «Título y contenido»');
+    assert(moved.blocks.some(b => b.html === 'Mi título') && moved.blocks.some(b => b.html === 'Columna'), 'sin perder lo escrito');
+    assert(R.state.ui.editMaster && R.state.ui.editMaster !== 'twoContent', 'queda seleccionado otro');
+    // Rename and insert from the ribbon.
+    D.querySelector('[data-page="master"] [data-action="layout-new"]').click(); await sleep(10);
+    const nl = R.state.deck.layouts.find(l => l.id === R.state.ui.editMaster);
+    assert(nl && nl.blocks.some(b => b.ph === 'title'), 'un diseño nuevo, con su título');
+    D.querySelector('[data-page="master"] [data-action="layout-rename"]').click(); await sleep(10);
+    const inp = D.querySelector('.modal-backdrop .dlg-in'); inp.value = 'Mi diseño'; D.querySelector('.modal-backdrop .dlg-ok').click(); await sleep(10);
+    eq(nl.name, 'Mi diseño', 'renombrado'); assert(D.querySelector(`.layout-thumb[data-edit="${nl.id}"]`).textContent.includes('Mi diseño'), 'en el panel');
+    R.master.toggleMasterEdit(false);
+  });
+
+  await test('patrón: los diseños heredan su fondo y sus gráficos (salvo que digan otra cosa), y las diapositivas los de su diseño', async () => {
+    reset(); const W = frame.contentWindow;
+    R.slides.addSlide('titleContent'); const a = slide(); R.slides.addSlide('twoContent'); const b = slide();
+    R.slides.addSlide('titleContent'); const own = slide(); R.store.commit(() => { own.background = '#ff0000'; });
+    D.querySelector('[data-action="master-edit"]').click(); await sleep(10);
+    R.store.commit(() => { R.state.deck.master.blocks.push({ id: 'deco', type: 'shape', shape: 'rect', x: 0, y: 690, w: 1280, h: 30, fill: '#e0873b', rotation: 0, animation: null }); });
+    // Master background from the ribbon: layouts and slides follow; a slide with its own keeps it.
+    const col = D.querySelector('[data-page="master"] [data-master-bg]'); col.value = '#123456'; col.dispatchEvent(new W.Event('input')); await sleep(10);
+    const S = id => R.state.deck.slides.find(s => s.id === id), L = id => R.state.deck.layouts.find(l => l.id === id);
+    eq(R.state.deck.master.background, '#123456', 'fondo del patrón');
+    eq(S(a.id).background, '#123456', 'las diapositivas lo toman'); eq(S(b.id).background, '#123456', 'todas');
+    eq(S(own.id).background, '#ff0000', 'salvo la que tenía uno propio');
+    eq(R.master.viewBackground(L('titleContent')), '#123456', 'el diseño hereda el fondo del patrón');
+    assert(/18, 52, 86|#123456/i.test(D.querySelector('.layout-thumb[data-edit="titleContent"] .thumb-canvas').style.background), 'y se ve en su miniatura');
+    // A layout with its own background: «Usar fondo del patrón» off.
+    R.master.editLayout('twoContent'); await sleep(10);
+    const useBg = D.querySelector('[data-action="layout-master-bg"]');
+    assert(useBg.classList.contains('on'), '«Usar fondo del patrón» activado por defecto');
+    useBg.click(); await sleep(10); assert(!useBg.classList.contains('on') && L('twoContent').background, 'desactivado: fondo propio');
+    col.value = '#00ff00'; col.dispatchEvent(new W.Event('input')); await sleep(10);
+    eq(L('twoContent').background, '#00ff00', 'el fondo del diseño'); eq(S(b.id).background, '#00ff00', 'sus diapositivas lo toman');
+    eq(S(a.id).background, '#123456', 'las de otros diseños no');
+    useBg.click(); await sleep(10);
+    eq(L('twoContent').background, null, 'otra vez el del patrón'); eq(S(b.id).background, '#123456', 'y sus diapositivas también');
+    // «Ocultar gráficos del patrón».
+    R.master.editLayout('titleContent'); await sleep(10);
+    assert(R.master.masterBlocksFor(S(a.id)).some(x => x.id === 'deco'), 'los gráficos del patrón bajo la diapositiva');
+    D.querySelector('[data-action="layout-hide-graphics"]').click(); await sleep(10);
+    assert(L('titleContent').hideMaster && D.querySelector('[data-action="layout-hide-graphics"]').classList.contains('on'), 'ocultos en el diseño');
+    assert(!R.master.masterBlocksFor(S(a.id)).some(x => x.id === 'deco'), 'y en sus diapositivas');
+    assert(R.master.masterBlocksFor(S(b.id)).some(x => x.id === 'deco'), 'no en las de otros diseños');
+    assert(D.querySelector('.layout-thumb[data-edit="titleContent"] .layout-name .ms'), 'la miniatura lo indica');
+    // Text styles of the master reach the layouts' placeholders.
+    R.master.setMasterStyle('title', { size: 58 });
+    const lp = L('titleContent').blocks.find(x => x.ph === 'title');
+    eq(R.master.styled(lp, L('titleContent')).fontSize, 58, 'el marcador del diseño hereda el estilo del patrón');
+    // Back to the slides: a new one takes its layout's background; the master is not editable there.
+    D.querySelector('#master-banner [data-action="master-close"]').click(); await sleep(10);
+    R.slides.addSlide('titleContent'); eq(slide().background, '#123456', 'diapositiva nueva con el fondo de su diseño');
+    assert(!R.state.ui.editMaster && !slide().blocks.some(x => x.id === 'deco'), 'los gráficos del patrón no son de la diapositiva');
+    // Another document does not take this one's changes.
+    R.store.replaceDeck(R.model.emptyDeck()); R.render(); eq(R.state.deck.slides[0].background, '#101317', 'otro documento, su fondo');
+  });
+
+  await test('menús coherentes: cada orden en su sitio y con el mismo nombre', async () => {
+    reset(); const W = frame.contentWindow;
+    const inPage = (page, act) => !!D.querySelector(`.ribbon-page[data-page="${page}"] [data-action="${act}"]`);
+    const views = [...D.querySelectorAll('.ribbon-page[data-page="view"] .group')].find(g => g.querySelector('label:last-child')?.textContent === 'Vistas');
+    assert(views, 'Ver ▸ Vistas');
+    for (const a of ['slide-sorter', 'toggle-nav', 'canvas-view', 'master-edit']) assert(views.querySelector(`[data-action="${a}"]`), 'en Vistas: ' + a);
+    assert(!inPage('design', 'canvas-view'), 'la vista de lienzo es una vista (Ver), no un ajuste de Diseño');
+    assert(inPage('design', 'master-edit'), 'el patrón también desde Diseño ▸ Tema');
+    assert(/^Formato\s*del fondo$/.test(D.querySelector('.ribbon-page[data-page="design"] [data-action="bg-advanced"] span').textContent.trim()), 'Diseño ▸ «Formato del fondo», como en el menú contextual');
+    const brand = D.querySelector('.ribbon-page[data-page="design"] [data-action="brand-kit"]').closest('.group');
+    eq(brand.querySelector(':scope>label').textContent, 'Marca', 'el kit de marca, con la marca');
+    D.querySelector('[data-action="bg-advanced"]').click(); await sleep(10);
+    eq(D.querySelector('#bg-modal h3').textContent, 'Formato del fondo', 'el diálogo se llama igual'); D.querySelector('#bg-modal .modal-close').click();
+    // In the master view, the canvas menu offers what makes sense there.
+    R.master.toggleMasterEdit(true); await sleep(10);
+    const st = D.getElementById('stage'), r = st.getBoundingClientRect();
+    st.dispatchEvent(new W.MouseEvent('contextmenu', { bubbles: true, clientX: r.left + 5, clientY: r.top + 5 }));
+    const items = [...D.querySelectorAll('#context-menu .ctx-item')].map(x => x.textContent);
+    assert(items.includes('Cerrar vista Patrón') && !items.includes('Nueva diapositiva'), 'menú del lienzo en el patrón: ' + items.join(' | '));
+    D.body.click(); R.master.toggleMasterEdit(false); await sleep(10);
+    // A slide's menu leads to its layout in the master.
+    R.slides.addSlide('titleContent'); await sleep(10);
+    const th = D.querySelectorAll('#navigator .thumb')[1], tr = th.getBoundingClientRect();
+    th.dispatchEvent(new W.MouseEvent('contextmenu', { bubbles: true, clientX: tr.left + 20, clientY: tr.top + 20 }));
+    [...D.querySelectorAll('#context-menu .ctx-item')].find(x => x.textContent === 'Editar su diseño en el patrón').click(); await sleep(10);
+    eq(R.state.ui.editMaster, 'titleContent', '«Editar su diseño en el patrón» abre ese diseño');
+    R.master.toggleMasterEdit(false);
   });
 
   await test('presentaciones de ejemplo completas: se abren, usan patrón y diseños y se exportan', async () => {
@@ -550,7 +670,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
 
   await test('marcadores de imagen, tabla y gráfico en los diseños: clic para rellenar, no se exportan vacíos', async () => {
     reset(); R.master.editLayout('titleOnly'); await sleep(10);
-    for (const k of ['picture', 'table', 'chart']) { const sel = D.querySelector('#master-banner .mb-ph'); sel.value = k; sel.dispatchEvent(new frame.contentWindow.Event('change')); }
+    for (const k of ['picture', 'table', 'chart']) { const sel = D.querySelector('#ribbon .mb-ph'); sel.value = k; sel.dispatchEvent(new frame.contentWindow.Event('change')); }
     const lay = R.state.deck.layouts.find(l => l.id === 'titleOnly');
     eq(lay.blocks.filter(b => b.type === 'placeholder').map(b => b.ph).join(), 'picture,table,chart', 'marcadores en el diseño');
     R.master.toggleMasterEdit(false); R.slides.addSlide('titleOnly'); R.render(); await sleep(20);
