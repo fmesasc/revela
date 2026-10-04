@@ -16,6 +16,8 @@ export function openHeaderFooter() {
     <label class="fr-l">${t('Texto del pie')}<input type="text" class="hf-text" value="${(f.text || '').replace(/"/g, '&quot;')}"></label>
     <label class="fr-chk"><input type="checkbox" class="hf-date" ${f.date ? 'checked' : ''}> ${t('Fecha')}</label>
     <label class="fr-chk"><input type="checkbox" class="hf-num" ${sn.show ? 'checked' : ''}> ${t('Número de diapositiva')}</label>
+    <label class="fr-l">${t('Posición del número')}<select class="hf-pos">${[['br', 'Abajo dcha.'], ['bl', 'Abajo izq.'], ['tr', 'Arriba dcha.'], ['tl', 'Arriba izq.']].map(([v, l]) => `<option value="${v}"${(sn.position || 'br') === v ? ' selected' : ''}>${t(l)}</option>`).join('')}</select></label>
+    <label class="fr-l">${t('Formato del número')}<select class="hf-fmt"><option value="c"${(sn.format || 'c') === 'c' ? ' selected' : ''}>1</option><option value="c/t"${sn.format === 'c/t' ? ' selected' : ''}>1 / N</option></select></label>
     <div class="fr-actions"><button class="fr-do hf-ok">${t('Aplicar')}</button></div>
   </div>`;
   document.body.appendChild(back);
@@ -26,5 +28,7 @@ export function openHeaderFooter() {
   q('.hf-text').addEventListener('input', e => commit(() => { state.deck.footer.text = e.target.value; }, { history: false }));
   q('.hf-date').addEventListener('change', e => commit(() => { state.deck.footer.date = e.target.checked; }));
   q('.hf-num').addEventListener('change', e => commit(() => { state.deck.slideNumber.show = e.target.checked; }));
+  q('.hf-pos').addEventListener('change', e => commit(() => { state.deck.slideNumber.position = e.target.value; }));
+  q('.hf-fmt').addEventListener('change', e => commit(() => { state.deck.slideNumber.format = e.target.value; }));
   q('.hf-ok').addEventListener('click', close);
 }
