@@ -293,6 +293,16 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(t0.animation.order < rc.animation.order && rc.animation.order < by(b => /Cuerpo/.test(b.html || '')).animation.order, 'orden');
   });
 
+  await test('HTML: el código en DAX, Power Query o Excel también se colorea al presentar', async () => {
+    reset();
+    R.store.commit(() => { slide().blocks.push({ id: 'cd1', type: 'code', lang: 'dax', code: 'M = VAR x = MAX(T[year]) RETURN x', x: 0, y: 0, w: 600, h: 200 }); });
+    const h = R.io.buildHTML();
+    assert(/RevealHighlight\(\)\.hljs/.test(h) && /registerLanguage/.test(h) && /'dax'/.test(h), 'los lenguajes se enseñan al resaltador de la presentación');
+    assert(h.indexOf('registerLanguage') < h.indexOf('Reveal.initialize'), 'antes de arrancarla');
+    R.store.commit(() => { slide().blocks.pop(); });
+    assert(!/registerLanguage/.test(R.io.buildHTML()), 'sin código, no se añade nada');
+  });
+
   await test('HTML: una imagen repetida va una sola vez (también con imágenes enormes)', async () => {
     reset();
     const pic = 'data:image/png;base64,' + 'A'.repeat(3000), huge = 'data:image/png;base64,' + 'B'.repeat(6e6);

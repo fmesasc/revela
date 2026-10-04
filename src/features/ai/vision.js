@@ -99,19 +99,49 @@ export async function describeImages(items, { context = '', language = lang(), o
 // SQL, Python, an Excel formula…) transcribed verbatim, with its language. Kept on the image
 // block (b.aiCode, with the picture's hash) like its description: read once, then free.
 export const CODE_SHOT = { max: 1280, quality: 0.75, maxBytes: 420 * 1024 };
-export const codeOf = b => (b?.aiCode && b.aiCode.hash === srcHash(b.src) ? b.aiCode : null);
+// (Reading code needs a sharper eye than describing a picture: a better model, and a second look
+// at the code's own area, cut out at full resolution, when the first reading may be short of it.)
+export const CODE_MODEL = 'google/gemini-2.5-flash';
+const CODE_V = 2;                                        // (readings made the older way are read again)
+export const codeOf = b => (b?.aiCode && b.aiCode.hash === srcHash(b.src) && b.aiCode.v === CODE_V ? b.aiCode : null);
 const LANGS = 'dax | powerquery (Power Query M) | sql | python | javascript | typescript | excel (a worksheet formula) | r | json | plaintext';
-const TRANSCRIBE = `You transcribe code from a picture (often a screenshot of Power BI, Excel, an editor or a notebook). Copy the code or formula you see EXACTLY as written — same names, accents, symbols, line breaks and indentation; do not fix, complete, translate or explain it; leave out line numbers, the editor's buttons and anything that is not the code. If there are several, take the main one. "language": one of ${LANGS}. "confidence": 0..1, how sure you are that the transcription is exact. No code in the picture: "code":"". Answer only JSON: {"language":"…","code":"…","confidence":0.0}`;
-// Transcribe one image block → { hash, language, code, confidence, model, date } (code '' if none);
+const TRANSCRIBE = `You transcribe code from a picture (often a screenshot of Power BI, Excel, an editor or a notebook). Copy the code or formula you see EXACTLY as written — every line, same names, accents (ñ, á…), symbols, line breaks and indentation; do not fix, shorten, complete, translate or explain it; leave out line numbers, the editor's buttons and anything that is not the code. If there are several, take the main one. "language": one of ${LANGS}. "confidence": 0..1, how sure you are that the transcription is exact and complete. "box": where the code is in the picture, [left, top, right, bottom] from 0 to 1000. No code in the picture: "code":"". Answer only JSON: {"language":"…","code":"…","confidence":0.0,"box":[0,0,1000,1000]}`;
+// Brackets that don't close: a reading cut short.
+export const looksCut = code => { let d = 0; for (const ch of code) { if ('([{'.includes(ch)) d++; else if (')]}'.includes(ch)) d--; } return d !== 0 || /[=(,+\-*/]\s*$/.test(code); };
+// The code's area of the picture, at up to 1600 px wide (a JPEG data URL).
+async function cropShot(src, box) {
+  const img = await load(src), W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
+  const [l, t, r, bt] = box.map(v => Math.max(0, Math.min(1000, +v || 0)) / 1000), pad = 0.02;
+  const x = Math.max(0, (l - pad) * W), y = Math.max(0, (t - pad) * H), w = Math.min(W, (r + pad) * W) - x, h = Math.min(H, (bt + pad) * H) - y;
+  if (!(w > 8 && h > 8)) return null;
+  const k = Math.min(2, 1600 / w), c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
+  const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.imageSmoothingQuality = 'high'; g.drawImage(img, x, y, w, h, 0, 0, c.width, c.height);
+  let q = 0.85, url = c.toDataURL('image/jpeg', q);
+  while (url.length > CODE_SHOT.maxBytes && q > 0.45) { q -= 0.1; url = c.toDataURL('image/jpeg', q); }
+  return url;
+}
+// Transcribe one image block → { hash, language, code, confidence, model, date, v } (code '' if none);
 // the cached one when there is. hint: a line about what is wanted (the user's request).
-export async function transcribeImage(b, { hint = '', onUsage = null, signal = null, model = VISION_MODEL } = {}) {
+export async function transcribeImage(b, { hint = '', onUsage = null, signal = null, model = CODE_MODEL } = {}) {
   const had = codeOf(b); if (had) return { ...had, cached: true };
+  const ask = async url => {
+    const content = [{ type: 'text', text: hint ? `Wanted: ${String(hint).slice(0, 300)}` : 'Transcribe the code.' }, { type: 'image_url', image_url: { url } }];
+    const res = await chat([{ role: 'system', content: TRANSCRIBE }, { role: 'user', content }], { json: true, maxTokens: 2400, force: model, onUsage, signal, feature: 'vision' });
+    let j = {}; try { j = parseJSON(res) || {}; } catch {}
+    return { code: typeof j.code === 'string' ? j.code.replace(/\r\n?/g, '\n').replace(/^\n+|\s+$/g, '').slice(0, 4000) : '',
+      language: String(j.language || '').toLowerCase().trim().slice(0, 20) || 'plaintext',
+      confidence: Math.max(0, Math.min(1, Number.isFinite(+j.confidence) ? +j.confidence : 0.5)), box: Array.isArray(j.box) && j.box.length === 4 ? j.box : null };
+  };
   const shot = await downscale(b.src, CODE_SHOT);
   if (signal?.aborted) throw new Error('STOPPED');
-  const content = [{ type: 'text', text: hint ? `Wanted: ${String(hint).slice(0, 300)}` : 'Transcribe the code.' }, { type: 'image_url', image_url: { url: shot.url } }];
-  const res = await chat([{ role: 'system', content: TRANSCRIBE }, { role: 'user', content }], { json: true, maxTokens: 1600, force: model, onUsage, signal, feature: 'vision' });
-  let j = {}; try { j = parseJSON(res) || {}; } catch {}
-  const code = typeof j.code === 'string' ? j.code.replace(/\r\n?/g, '\n').replace(/^\n+|\s+$/g, '').slice(0, 4000) : '';
-  return { hash: srcHash(b.src), language: String(j.language || '').toLowerCase().trim().slice(0, 20) || 'plaintext', code,
-    confidence: Math.max(0, Math.min(1, Number.isFinite(+j.confidence) ? +j.confidence : 0.5)), model, date: new Date().toISOString().slice(0, 10) };
+  let r = await ask(shot.url);
+  // (A second look, closer, when the first may be incomplete or unsure.)
+  if (r.code && r.box && (r.confidence < 0.9 || looksCut(r.code))) {
+    const url = await cropShot(b.src, r.box).catch(() => null);
+    if (url && !signal?.aborted) {
+      const r2 = await ask(url);
+      if (r2.code && (looksCut(r.code) && !looksCut(r2.code) || r2.code.length > r.code.length * 1.1 || r2.confidence > r.confidence)) r = { ...r2, language: r2.language || r.language };
+    }
+  }
+  return { hash: srcHash(b.src), language: r.language, code: r.code, confidence: r.confidence, model, v: CODE_V, date: new Date().toISOString().slice(0, 10) };
 }

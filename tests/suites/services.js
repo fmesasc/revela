@@ -489,6 +489,28 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     };
   };
 
+  await test('asistente: si la primera lectura del código sale cortada, se recorta su zona y se lee otra vez; las lecturas antiguas se rehacen', async () => {
+    reset(); const W = frame.contentWindow, real = W.fetch, V = await W.eval("import('/src/features/ai/vision.js')"), shots = [];
+    R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    const { img } = codeScene(W);
+    const cut = DAX.split('\n').slice(0, 2).join('\n');
+    W.fetch = async (url, opts) => {
+      const body = JSON.parse(opts.body), pic = body.messages[1].content.find(p => p.type === 'image_url').image_url.url; shots.push({ model: body.model, pic });
+      const answer = shots.length === 1 ? { language: 'dax', code: cut + '\nRETURN\n    CALCULATE(', confidence: 0.6, box: [0, 50, 600, 420] } : { language: 'dax', code: DAX, confidence: 0.95, box: [0, 0, 1000, 1000] };
+      return new W.Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(answer) } }], usage: { cost: 0.0004 } }));
+    };
+    try {
+      img.aiCode = { hash: V.srcHash(img.src), language: 'dax', code: cut, confidence: 0.9 };   // (an old, short reading)
+      eq(V.codeOf(img), null, 'la lectura antigua no se reutiliza');
+      const r = await V.transcribeImage(img);
+      eq(shots.length, 2, 'dos miradas: la imagen entera y la zona del código');
+      eq(shots[0].model, V.CODE_MODEL, 'con el modelo para leer código');
+      assert(shots[1].pic !== shots[0].pic, 'la segunda, una imagen distinta (el recorte)');
+      eq(r.code, DAX, 'se queda con la lectura completa'); eq(r.v, 2, 'marcada con la versión nueva');
+      assert(V.looksCut('CALCULATE(') && !V.looksCut(DAX), 'paréntesis sin cerrar = lectura cortada');
+    } finally { W.fetch = real; R.ai.disconnectAi(); }
+  });
+
   await test('asistente: el código de una captura en un bloque de código (leído una vez), código y ecuaciones validados', async () => {
     reset(); const W = frame.contentWindow, real = W.fetch, calls = [], seen = { vision: [] }, AG = R.aiAgent, V = await W.eval("import('/src/features/ai/vision.js')");
     R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();

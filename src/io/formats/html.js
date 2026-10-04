@@ -2,6 +2,7 @@
 // document shown when presenting), and each object's inline HTML, reused by
 // the print and image exports.
 
+import { registerCodeLangs } from '../../render/codelangs.js';
 import { diagramHTML } from '../../render/diagrams.js';
 import { pdfRuntime } from '../runtime/pdf.js';
 import { tabRuntime } from '../runtime/tabs.js';
@@ -639,6 +640,7 @@ ${rv(deck).zoom !== false ? `<script src="${REVEAL}/plugin/zoom/zoom.js"></scrip
 ${rv(deck).search !== false ? `<script src="${REVEAL}/plugin/search/search.js"></script>` : ''}
 ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : ''}
 <script>
+ ${hasCode ? `try{(${registerCodeLangs.toString()})(RevealHighlight().hljs);}catch(e){}` : ''}
  Reveal.initialize({ width:${w}, height:${h}, margin:0, minScale:0.05, maxScale:20, hash:${inApp ? 'false' : 'true'}, respondToHashChanges:true, loop:${deck.loop ? 'true' : 'false'},
    slideNumber:${sn.show ? jsData(sn.format || 'c') : 'false'},
    transition:${jsData(deck.defaultTransition)}, transitionSpeed:${jsData(deck.transitionSpeed)},
