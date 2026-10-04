@@ -76,8 +76,11 @@
 
   // The live presentation on the home page: loaded once the page is (the picture of the
   // editor meanwhile, and instead of it for whoever asked to save data).
-  var live = document.querySelector('.live iframe[data-src]');
-  if (live && !(navigator.connection && navigator.connection.saveData)) {
+  // Phones and tablets (touch): the picture, and a button that opens it full screen instead —
+  // Safari on iOS sizes a page inside another one by its content, not by its box.
+  var live = document.querySelector('.live iframe[data-src]'), touch = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+  if (live && touch) { live.remove(); var play = document.querySelector('.live-play'); if (play) play.hidden = false; }
+  else if (live && !(navigator.connection && navigator.connection.saveData)) {
     var start = function () {
       live.addEventListener('load', function () { setTimeout(function () { live.parentNode.classList.add('on'); }, 700); });
       live.src = live.dataset.src;
