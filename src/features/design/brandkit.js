@@ -7,7 +7,7 @@
 
 import { state, commit } from '../../core/store.js';
 import { uid } from '../../core/model.js';
-import { currentPalette, applyPalette, applyFonts } from './palettes.js';
+import { currentPalette, applyPalette, applyFonts, styleFont } from './palettes.js';
 import { FONTS } from './fonts.js';
 import { safeURL } from '../document/sanitize.js';
 
@@ -44,7 +44,7 @@ export function kitFromDeck(deck = state.deck) {
   const p = currentPalette(deck), styles = deck.master?.styles || {};
   return { id: uid(), name: deck.name && deck.name !== 'Presentación sin título' ? deck.name : 'Mi marca',
     colors: [p.bg, deck.textColor || p.fg, ...p.accents],
-    fonts: { heading: fontName(styles.title?.font) || fontName(deck.bodyFont), body: fontName(deck.bodyFont) },
+    fonts: { heading: fontName(styleFont(styles.title?.font, deck)) || fontName(deck.bodyFont), body: fontName(deck.bodyFont) },
     logos: deck.logo?.src && /^data:image\//.test(deck.logo.src) ? [deck.logo.src] : [] };
 }
 

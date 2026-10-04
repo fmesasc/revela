@@ -13,7 +13,7 @@ import { uid } from '../../core/model.js';
 import { commentText, parseCommentText } from '../../features/collab/comments.js';
 import { shownRows } from '../../core/formulas.js';
 import { chartSVG, iconSVG, inkSVG, timerSVG, tableSpan } from '../../render/svg.js';
-import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
+import { deckFg, deckBodyFont, customPalette, themeFontStacks, PALETTES } from '../../features/design/palettes.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled } from '../../features/document/master.js';
 import { blockImage } from '../export/images.js';
 import { JSZIP, loadScript } from '../../core/vendor.js';
@@ -431,8 +431,46 @@ export async function importODP(file) {
       hidden: page.getAttribute('presentation:visibility') === 'hidden' || prop(dp, 'style:drawing-page-properties', 'presentation:visibility') === 'hidden', blocks });
   }
   if (!slides.length) throw new Error('No se encontraron diapositivas en el archivo.');
-  return { version: 3, name: (file.name || '').replace(/\.odp$/i, '') || 'Presentación', size, theme: 'white', defaultTransition: 'slide',
-    transitionSpeed: 'default', sections: [], master: { id: 'master', blocks: [], background: null },
+  const theme = odpTheme(stylesDoc, all, mp);
+  const deck = { version: 3, name: (file.name || '').replace(/\.(odp|otp)$/i, '') || 'Presentación', size, theme: 'white', defaultTransition: 'slide',
+    transitionSpeed: 'default', sections: [], master: { id: 'master', blocks: [], background: theme?.colors.bg || null },
     slideNumber: { show: false, position: 'br', format: 'c' }, footer: { show: false, text: '', date: false },
     logo: { src: '', position: 'br', size: 120 }, loop: false, guides: { v: [], h: [] }, textColor: '#000000', slides };
+  // The template's theme (Diseño ▸ Colores / Fuentes show it by name).
+  if (theme) {
+    deck.officeTheme = theme; deck.palette = 'custom'; deck.customPalette = theme.colors; deck.textColor = theme.colors.fg;
+    if (theme.fonts) { deck.fontPair = 'theme'; const st = themeFontStacks(theme.fonts); if (st) deck.bodyFont = st.body; }
+  }
+  return deck;
+}
+
+// The theme of an Impress file: its master page's name, its title and outline
+// styles' fonts and colours, its background; the colour scheme LibreOffice
+// 7.6+ writes (loext:theme) when there is one.
+function odpTheme(stylesDoc, all, mp) {
+  if (!stylesDoc || !mp) return null;
+  const unesc = s => String(s || '').replace(/_([0-9a-f]{2})_/gi, (m, h) => String.fromCharCode(parseInt(h, 16)));
+  const masterName = unesc(mp.getAttribute('style:display-name') || mp.getAttribute('style:name'));
+  const pstyle = n => all(stylesDoc, 'style:style').find(s => s.getAttribute('style:name') === n && s.getAttribute('style:family') === 'presentation');
+  const tprops = el => (el ? [...el.children].find(c => c.tagName === 'style:text-properties') : null);
+  const faces = new Map(all(stylesDoc, 'style:font-face').map(f => [f.getAttribute('style:name'), (f.getAttribute('svg:font-family') || '').replace(/['"]/g, '')]));
+  const fontOf = el => { const p = tprops(el); return p ? faces.get(p.getAttribute('style:font-name')) || (p.getAttribute('fo:font-family') || '').replace(/['"]/g, '') : ''; };
+  const colourOf = el => colour(tprops(el)?.getAttribute('fo:color'));
+  const key = mp.getAttribute('style:name'), title = pstyle(`${key}-title`), outline = pstyle(`${key}-outline1`);
+  const dpName = mp.getAttribute('draw:style-name'), dp = all(stylesDoc, 'style:style').find(s => s.getAttribute('style:name') === dpName);
+  const dpp = all(dp, 'style:drawing-page-properties')[0];
+  const bg = dpp?.getAttribute('draw:fill') === 'solid' ? colour(dpp.getAttribute('draw:fill-color')) : null;
+  // LibreOffice 7.6+: <loext:theme loext:name="…"><loext:theme-colors><loext:color loext:name="accent1" loext:color="#…"/>
+  const th = all(stylesDoc, 'loext:theme')[0], tc = {};
+  if (!th && !title && !outline) return null;            // (a file without a designed master: nothing to detect)
+  for (const c of all(th, 'loext:color')) tc[c.getAttribute('loext:name')] = colour(c.getAttribute('loext:color'));
+  const SLOTS = { dk1: 'dark1', lt1: 'light1', dk2: 'dark2', lt2: 'light2', accent1: 'accent1', accent2: 'accent2', accent3: 'accent3', accent4: 'accent4',
+    accent5: 'accent5', accent6: 'accent6', hlink: 'hyperlink', folHlink: 'followed-hyperlink' };
+  const scheme = Object.fromEntries(Object.entries(SLOTS).map(([k, v]) => [k, tc[v]]));
+  const name = (th?.getAttribute('loext:name') || masterName || 'LibreOffice').slice(0, 60);
+  const fg = colourOf(outline) || colourOf(title) || scheme.dk1 || '#000000';
+  const colors = customPalette({ name: all(th, 'loext:theme-colors')[0]?.getAttribute('loext:name') || name, bg: bg || scheme.lt1 || '#ffffff', fg,
+    accents: [1, 2, 3, 4, 5, 6].map(i => scheme['accent' + i] || PALETTES.office.accents[i - 1]), ...(Object.values(scheme).every(Boolean) && { scheme }) });
+  const major = fontOf(title), minor = fontOf(outline);
+  return { name, colors, ...((major || minor) && { fonts: { name, major: major || minor, minor: minor || major } }) };
 }

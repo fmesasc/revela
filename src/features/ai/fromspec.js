@@ -11,7 +11,7 @@
 
 import { uid } from '../../core/model.js';
 import { esc, plain } from './openrouter.js';
-import { currentPalette, deckFg, pairStacks } from '../design/palettes.js';
+import { currentPalette, deckFg, pairStacks, styleColour, styleFont } from '../design/palettes.js';
 import { ensureMaster, masterStyles, masterOf, newSlideBlocks, styleKind, styled } from '../document/master.js';
 import { designIdeas, applyIdeaTo } from '../design/designer.js';
 import { normalizeAnim } from '../animation/transitions.js';
@@ -76,8 +76,8 @@ const COVER = ['title', 'closing', 'section', 'quote'];
 
 // The colours the master gives texts, and the slide's colour behind them.
 function textColours(deck, master) {
-  const st = masterStyles(deck, master), fg = st.body.color || deckFg(deck);
-  return { title: st.title.color || fg, body: fg };
+  const st = masterStyles(deck, master), fg = styleColour(st.body.color, deck) || deckFg(deck);
+  return { title: styleColour(st.title.color, deck) || fg, body: fg };
 }
 const fullBox = (b, W, H) => b.x <= 2 && b.y <= 2 && b.x + b.w >= W - 2 && b.y + b.h >= H - 2;
 export function backColour(s, deck) {
@@ -191,8 +191,8 @@ function lookOf(deck, slide, bg) {
   const accent2 = used.find(c => c.toLowerCase() !== accent.toLowerCase()) || accent;
   // (Several, for cards and steps, only when the slides show them: like the templates, one colour per item.)
   const accents = [...new Set([accent, ...used].map(c => c.toLowerCase()))].slice(0, 4);
-  return { fg, title, accent, accent2, accents, bg, ok, pal, head: st.title.font || pair?.heading || deck.bodyFont || '',
-    body: st.body.font || pair?.body || deck.bodyFont || '', bodySize: st.body.size || 30, titleSize: st.title.size || 48 };
+  return { fg, title, accent, accent2, accents, bg, ok, pal, head: styleFont(st.title.font, deck) || pair?.heading || deck.bodyFont || '',
+    body: styleFont(st.body.font, deck) || pair?.body || deck.bodyFont || '', bodySize: st.body.size || 30, titleSize: st.title.size || 48 };
 }
 // The colours the slides' objects use (fills, texts, charts, tables), most used first.
 function deckColours(deck) {

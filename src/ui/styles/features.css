@@ -29,6 +29,13 @@
 .fp-list{display:flex;flex-direction:column;gap:4px;min-width:220px}
 .fp-list button{text-align:left;color:var(--txt)}
 .fp-list b{font-size:17px}.fp-list span{font-size:13px}.fp-list small{color:var(--txt2)}
+/* Design ▸ Themes: the document's theme and where to take another from */
+.theme-card{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:8px;border:1px solid var(--line2);min-width:260px;max-width:320px}
+.theme-card b{font-size:18px;overflow-wrap:anywhere}.theme-card small{opacity:.8}
+.theme-card .pal-sw{height:16px;padding:0}.theme-card .pal-sw i:first-of-type{margin-left:0}
+.theme-hint{font-size:12px;color:var(--txt2);max-width:320px;margin:10px 0 6px}
+.theme-actions{display:flex;flex-direction:column;gap:6px}.theme-actions .mini2{text-align:left;padding:7px 10px}
+.theme-now{display:block;font-size:10px;line-height:1.1;max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--accent)}.theme-now[hidden]{display:none}
 @keyframes rvInOut{0%{opacity:0}30%,70%{opacity:1}100%{opacity:0}}
 @keyframes rvPath{to{translate:var(--dx,0) var(--dy,0)}}
 /* Motion path guide on the selected object */
@@ -364,7 +371,11 @@ body.master-view #navigator{display:flex}
 .ts2 th,.ts2 td{padding:4px 6px;text-align:start;white-space:nowrap;border-bottom:1px solid var(--line)}
 .ts2 input[type=number]{width:62px}
 .ts2 input[type=color]{width:34px;height:26px;padding:0;vertical-align:middle}
-.ts2 .ts2-auto{font-size:11px;color:var(--txt2);margin-inline-start:4px}
+.ts2 .ts2-col{display:flex;align-items:center;gap:4px}.ts2-sw{display:inline-block;width:14px;height:14px;border-radius:3px;border:1px solid var(--line2);flex:none}
+.ts2 select[data-k=font]{max-width:200px}.ts2 select[data-k=cref]{max-width:120px}.ts2-own .mini2{padding:4px 8px;font-size:11px}
+.ts2-body{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}.ts2-body .ts2-wrap{flex:1 1 560px;min-width:0}
+.ts2-preview{flex:0 0 240px}.ts2-slide{border-radius:6px;border:1px solid var(--line2);padding:12px 14px;min-height:150px;overflow:hidden;line-height:1.25}
+.ts2-slide ul{margin:2px 0 0;padding-inline-start:1.2em}.ts2-slide>div:first-child{margin-bottom:6px}
 .ts2 .mini2.on{background:var(--accent-bg);border-color:var(--accent)}
 /* Share dialog */
 .modal.share fieldset{border:1px solid var(--line);border-radius:8px;margin:10px 0;padding:6px 12px 10px}

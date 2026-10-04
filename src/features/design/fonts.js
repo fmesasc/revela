@@ -2,6 +2,8 @@
 // fetched on demand (only when actually used) so the editor stays light, and
 // the export embeds just the families the deck really uses.
 
+import { styleFont } from './palettes.js';          // (each imports the other: used only when called)
+
 export const FONTS = [
   { name: 'Predeterminada', stack: '' },
   // Web‑safe
@@ -64,13 +66,56 @@ const ICON_FONTS = {
   'Material Symbols Outlined': 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined',
   'Material Symbols Rounded': 'https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded',
 };
+// Office and system fonts the browser may not have (Linux, Android, ChromeOS…),
+// with a free equivalent on Google Fonts: metric-compatible where one exists
+// (Carlito ↔ Calibri, Caladea ↔ Cambria, Arimo ↔ Arial, Tinos ↔ Times New Roman,
+// Cousine ↔ Courier New, Gelasio ↔ Georgia), else the closest in look (Aptos
+// and Segoe UI → Open Sans, by Aptos' own designer; Century Gothic → Questrial…).
+// The original name stays first, so whoever has it installed sees it.
+export const OFFICE_FONTS = {
+  'aptos': 'Open Sans', 'aptos display': 'Open Sans', 'aptos narrow': 'Open Sans', 'aptos light': 'Open Sans', 'aptos serif': 'Gelasio',
+  'calibri': 'Carlito', 'calibri light': 'Carlito', 'cambria': 'Caladea', 'cambria math': 'Caladea',
+  'segoe ui': 'Open Sans', 'segoe ui light': 'Open Sans', 'segoe ui semibold': 'Open Sans', 'segoe ui semilight': 'Open Sans', 'segoe print': 'Caveat',
+  'arial': 'Arimo', 'helvetica': 'Arimo', 'helvetica neue': 'Arimo', 'liberation sans': 'Arimo', 'arial narrow': 'Arimo',
+  'times new roman': 'Tinos', 'times': 'Tinos', 'liberation serif': 'Tinos', 'courier new': 'Cousine', 'liberation mono': 'Cousine',
+  'georgia': 'Gelasio', 'century gothic': 'Questrial', 'tw cen mt': 'Questrial', 'gill sans mt': 'Cabin', 'gill sans': 'Cabin',
+  'franklin gothic book': 'Libre Franklin', 'franklin gothic medium': 'Libre Franklin', 'trebuchet ms': 'Fira Sans', 'corbel': 'Open Sans',
+  'candara': 'Cabin', 'garamond': 'EB Garamond', 'consolas': 'Inconsolata', 'rockwell': 'Arvo', 'tahoma': 'PT Sans', 'verdana': 'PT Sans',
+  'book antiqua': 'EB Garamond', 'palatino linotype': 'EB Garamond', 'constantia': 'Caladea', 'source sans pro': 'Source Sans 3',
+  'meiryo': 'Noto Sans JP', 'yu gothic': 'Noto Sans JP', 'yu gothic light': 'Noto Sans JP', '游ゴシック': 'Noto Sans JP', '游ゴシック light': 'Noto Sans JP',
+  'ms gothic': 'Noto Sans JP', 'ms mincho': 'Noto Serif JP', 'dengxian': 'Noto Sans SC', '等线': 'Noto Sans SC', '等线 light': 'Noto Sans SC',
+  'microsoft yahei': 'Noto Sans SC', 'simsun': 'Noto Serif SC', 'malgun gothic': 'Noto Sans KR', '맑은 고딕': 'Noto Sans KR',
+};
+const SERIF = /^(cambria|caladea|times|tinos|georgia|gelasio|garamond|eb garamond|book antiqua|palatino|constantia|rockwell|arvo|ms mincho|simsun|noto serif|aptos serif|liberation serif)/i;
+const MONO = /^(courier|cousine|consolas|inconsolata|liberation mono)/i;
+const SAFE_NAME = /^[\p{L}\p{N} ._&+-]{1,60}$/u;
+// The web equivalent of a font named in an Office file (null: it needs none, or there is none).
+// (A weight or width in the name — "Segoe UI Black", "Source Sans Pro Semibold" — is the family's.)
+const WEIGHT = / (thin|extralight|extra light|light|semilight|regular|medium|semibold|demibold|bold|extrabold|black|heavy|condensed|narrow|display)$/;
+export function webEquivalent(name) {
+  let n = String(name || '').trim().toLowerCase();
+  for (let i = 0; i < 3 && n; i++) { if (OFFICE_FONTS[n]) return OFFICE_FONTS[n]; n = WEIGHT.test(n) ? n.replace(WEIGHT, '') : ''; }
+  return null;
+}
+// A CSS stack for a font named in an Office file: the font itself, its web
+// equivalent, the generic family. '' for a name that can't go into a style.
+export function officeStack(name) {
+  const n = String(name || '').trim(); if (!SAFE_NAME.test(n)) return '';
+  const eq = webEquivalent(n), generic = MONO.test(n) ? 'monospace' : SERIF.test(n) ? 'serif' : 'sans-serif';
+  return [`'${n}'`, ...(eq && eq.toLowerCase() !== n.toLowerCase() ? [`'${eq}'`] : []), generic].join(', ');
+}
 const GOOGLE = new Map([...FONTS.filter(f => f.google).map(f => [f.google.toLowerCase(), f.google]),
+  ...Object.values(OFFICE_FONTS).map(g => [g.toLowerCase(), g]),
   ...Object.keys(ICON_FONTS).map(k => [k.toLowerCase(), k])]);
 const googleUrl = family => ICON_FONTS[family]
   || `https://fonts.googleapis.com/css2?family=${family.replace(/ /g, '+')}:wght@400;700&display=swap`;
-// The Google family named first in a CSS font-family value, if any.
-const googleIn = value => GOOGLE.get(String(value || '').split(',')[0].replace(/["']|&quot;/g, '').trim().toLowerCase()) || null;
+// The first Google family named in a CSS font-family value, if any (an Office
+// font's stack names its web equivalent second).
+const googleIn = value => String(value || '').split(',').map(f => GOOGLE.get(f.replace(/["']|&quot;|&#39;/g, '').trim().toLowerCase())).find(Boolean) || null;
 
+// Fonts that come with the systems (not fetched from Google even if a theme names them).
+const LOCAL = /^(arial|helvetica|verdana|tahoma|trebuchet|georgia|times|courier|impact|comic sans|segoe|calibri|cambria|candara|consolas|constantia|corbel|franklin|gill sans|century|garamond|palatino|book antiqua|lucida|symbol|wingdings|webdings|marlett|ms |microsoft|meiryo|yu |simsun|mangal|aptos|dejavu|liberation|noto sans$|sans-serif|serif|monospace|\+m[nj]-)/i;
+const themeFontNames = deck => { const f = deck?.officeTheme?.fonts; return f ? [f.major, f.minor].filter(x => typeof x === 'string' && x) : []; };
 const loaded = new Set();
 function inject(family, doc = document) {
   const key = doc === document ? family : 'x:' + family; // per‑document guard
@@ -92,11 +137,14 @@ export function googleFamiliesInDeck(deck) {
   const used = new Set();
   const add = stack => { const f = byStack.get(stack); if (f && f.google) used.add(f.google); else if (googleIn(stack)) used.add(googleIn(stack)); };
   add(deck.bodyFont);                                // theme body font (default for text)
+  // An imported theme's fonts: their web equivalents, or the font itself when it
+  // may be a Google one (Google Slides themes use any of them).
+  for (const f of themeFontNames(deck)) { const g = webEquivalent(f); if (g) used.add(g); else if (!LOCAL.test(f) && SAFE_NAME.test(f)) used.add(f); }
   // The masters' text styles: the headings' font (and any other the styles name).
   const masters = [deck.master, ...(deck.masters || [])].filter(Boolean);
   for (const m of masters) for (const st of Object.values(m.styles || {})) {
-    if (st?.font) add(st.font);
-    for (const lv of st?.levels || []) if (lv?.font) add(lv.font);
+    if (st?.font) add(styleFont(st.font, deck));                 // (a theme font named by reference: the one it is now)
+    for (const lv of st?.levels || []) if (lv?.font) add(styleFont(lv.font, deck));
   }
   // Named by the box, or inside the text (imported decks: 'Roboto', sans-serif…); layouts' boxes too.
   for (const b of [...masters.flatMap(m => m.blocks || []), ...(deck.layouts || []).flatMap(l => l.blocks || []), ...deck.slides.flatMap(s => s.blocks)]) for (const g of familiesOf(b)) used.add(g);

@@ -18,6 +18,7 @@
 import { state, commit, amend, subscribe, currentSlide, selectedSlideIndices } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 import { canvasBackdrop } from '../design/canvasmode.js';
+import { styleColour, styleFont, linkStyleRefs } from '../design/palettes.js';
 
 export const MAX_LEVELS = 5;
 export const DEFAULT_STYLES = {
@@ -43,8 +44,10 @@ export function contextMaster(deck = state.deck) {
   if (e) { const x = e === true ? ensureMaster(deck) : deck.layouts?.find(l => l.id === e) || deck.masters?.find(mm => mm.id === e); if (x) return masterOf(x, deck); }
   return masterOf(deck.slides[state.ui.slideIndex], deck);
 }
+const linked = new WeakSet();               // (styles already linked to the theme, see palettes.linkStyleRefs)
 export const masterStyles = (deck = state.deck, m = ensureMaster(deck)) => {
   const st = (m.styles ||= structuredClone(DEFAULT_STYLES));
+  if (!linked.has(st)) { linked.add(st); linkStyleRefs(st, deck); }
   for (const k of Object.keys(DEFAULT_STYLES)) st[k] ||= structuredClone(DEFAULT_STYLES[k]);
   const lv = (st.body.levels ||= []);
   for (let i = 0; i < MAX_LEVELS; i++) lv[i] ||= structuredClone(DEFAULT_STYLES.body.levels[i]);
@@ -97,12 +100,15 @@ function masterOnly(slide, deck) {
 // ---- Text styles -------------------------------------------------------------
 const KIND = { title: 'title', ctrTitle: 'title', subtitle: 'subtitle', subTitle: 'subtitle', body: 'body', obj: 'body' };
 export const styleKind = b => (b && b.type === 'text' && KIND[b.ph]) || null;
-// A style → block properties.
-const asProps = st => ({
-  ...(st.size && { fontSize: st.size }), ...(st.font && { fontFamily: st.font }), ...(st.color && { color: st.color }),
-  ...(st.bold != null && { fontWeight: st.bold ? '700' : '400' }), ...(st.italic != null && { fontStyle: st.italic ? 'italic' : 'normal' }),
-  ...(st.align && { textAlign: st.align }), ...(st.lineHeight && { lineHeight: st.lineHeight }),
-});
+// A style → block properties (theme colours and fonts resolved to what they are now).
+const asProps = (st, deck) => {
+  const color = styleColour(st.color, deck), font = styleFont(st.font, deck);
+  return {
+    ...(st.size && { fontSize: st.size }), ...(font && { fontFamily: font }), ...(color && { color }),
+    ...(st.bold != null && { fontWeight: st.bold ? '700' : '400' }), ...(st.italic != null && { fontStyle: st.italic ? 'italic' : 'normal' }),
+    ...(st.align && { textAlign: st.align }), ...(st.lineHeight && { lineHeight: st.lineHeight }),
+  };
+};
 const OWN = ['fontSize', 'fontFamily', 'color', 'fontWeight', 'fontStyle', 'textAlign', 'lineHeight'];
 const ownOf = b => Object.fromEntries(OWN.filter(k => b[k] != null && b[k] !== '').map(k => [k, b[k]]));
 // The layout placeholder a slide placeholder follows.
@@ -111,37 +117,74 @@ export function layoutPlaceholder(b, slide, deck = state.deck) {
   return lay.blocks.find(x => x.id === b.lp) || lay.blocks.find(x => x.ph && styleKind(x) === styleKind(b)) || null;
 }
 // A text block with the formatting it inherits filled in (a copy; other blocks
-// are returned as they are). levels: the body's per-level sizes and bullets.
+// are returned as they are). levels: the body's per-level sizes, bullets and
+// colours (a box with a colour of its own keeps it on every level).
 export function styled(b, slide, deck = state.deck) {
   const kind = styleKind(b); if (!kind) return b;
   const st = masterStyles(deck, masterOf(slide, deck))[kind];
   const lp = !isLayout(slide, deck) && !isMaster(slide, deck) ? layoutPlaceholder(b, slide, deck) : null;
-  const out = { ...b, ...asProps(st), ...(lp ? ownOf(lp) : {}), ...ownOf(b) };
+  const out = { ...b, ...asProps(st, deck), ...(lp ? ownOf(lp) : {}), ...ownOf(b) };
   // "Shrink text on overflow" (imported from PowerPoint): a factor on the
   // inherited size, so the text still follows the master.
   if (b.fit && b.fontSize == null) out.fontSize = Math.round(out.fontSize * b.fit);
-  if (kind === 'body') out.levels = st.levels;
+  if (kind === 'body') {
+    const own = b.color || lp?.color;
+    out.levels = st.levels.map(l => { const c = !own && styleColour(l.color, deck); const { color, ...rest } = l; return c ? { ...rest, color: c } : rest; });
+  }
   return out;
 }
-// CSS custom properties for the body's levels (sizes, bullets), used by
-// levelCSS() in render/svg.js; the first level follows the box's size.
+// CSS custom properties for the body's levels (sizes, bullets, colours), used
+// by levelCSS() in render/svg.js; the first level follows the box's size.
+const CSS_COLOUR = /^(#[0-9a-f]{3,8}|rgba?\([\d.,\s%]+\))$/i;
 export function levelVars(b) {
   if (!b.levels) return '';
   const base = b.levels[0]?.size || 30, k = (b.fontSize || base) / base;
   return b.levels.map((l, i) => `--l${i + 1}:${Math.round((l.size || base) * k)}px;--b${i + 1}:${/^[a-z-]+$/.test(l.bullet || 'disc') ? l.bullet || 'disc' : `'${String(l.bullet).replace(/'/g, '')} '`};`
-    + (l.color ? `--c${i + 1}:${l.color};` : '')).join('');
+    + (l.color && CSS_COLOUR.test(l.color) ? `--c${i + 1}:${l.color};` : '')).join('');
 }
 
+// Style property → the block property that overrides it in a placeholder.
+const PROP = { size: 'fontSize', font: 'fontFamily', color: 'color', bold: 'fontWeight', italic: 'fontStyle', align: 'textAlign' };
+const asBlock = (k, v, deck) => (k === 'color' ? styleColour(v, deck) : k === 'font' ? styleFont(v, deck) : k === 'bold' ? (v ? '700' : '400') : k === 'italic' ? (v ? 'italic' : 'normal') : v);
+// The placeholders of a master's layouts and slides of one kind (title, subtitle, body).
+function placeholdersOf(m, kind, deck) {
+  const lays = (deck.layouts || []).filter(l => masterOf(l, deck) === m);
+  const slides = deck.slides.filter(s => masterOf(s, deck) === m);
+  return [...lays.flatMap(l => l.blocks), ...slides.flatMap(s => s.blocks)].filter(b => styleKind(b) === kind);
+}
+// The placeholders that keep their own value for a style property (they don't
+// change with it): PowerPoint's "formatting set on the slide".
+export function styleOverrides(kind, prop, deck = state.deck, m = contextMaster(deck)) {
+  const k = PROP[prop]; if (!k) return [];
+  return placeholdersOf(m, kind, deck).filter(b => b[k] != null && b[k] !== '');
+}
+// Drop those own values: they take the master's again.
+export function clearStyleOverrides(kind, prop) {
+  commit(() => { const k = PROP[prop]; for (const b of styleOverrides(kind, prop)) { delete b[k]; if (k === 'fontSize') delete b.fit; } });
+}
+
+// Change a master text style. The first level of the body is the body's own
+// size and colour (the box's), as in PowerPoint; placeholders that had the old
+// value written on them (a layout's copy of the same thing, an imported
+// slide's) follow too. Values that differ — set by hand — stay, and the Text
+// Styles dialog says how many there are.
 export function setMasterStyle(kind, props, level = null) {
   commit(() => {
-    const st = masterStyles(state.deck, contextMaster())[kind];
+    const deck = state.deck, m = contextMaster(deck), st = masterStyles(deck, m)[kind];
     const target = level != null ? st.levels[level] : st;
+    const whole = level == null || level === 0;
+    const before = Object.fromEntries(Object.keys(props).filter(k => PROP[k]).map(k => [k, asBlock(k, (level === 0 && k !== 'size' && k !== 'color' ? st : target)[k] ?? st[k], deck)]));
     for (const [k, v] of Object.entries(props)) { if (v === null || v === '') delete target[k]; else target[k] = v; }
-    if (kind === 'body' && level === 0 && props.size) st.size = props.size;
-    if (kind === 'body' && level == null && props.size) st.levels[0].size = props.size;
+    if (kind === 'body' && level === 0) for (const k of ['size', 'color']) if (k in props) { if (props[k] == null || props[k] === '') delete st[k]; else st[k] = props[k]; }
+    if (kind === 'body' && level == null) for (const k of ['size', 'color']) if (k in props) { if (props[k] == null || props[k] === '') delete st.levels[0][k]; else st.levels[0][k] = props[k]; }
+    if (!whole) return;
+    for (const [k, old] of Object.entries(before)) {
+      if (old == null) continue;
+      const bk = PROP[k];
+      for (const b of placeholdersOf(m, kind, deck)) if (b[bk] != null && String(b[bk]).toLowerCase() === String(old).toLowerCase()) { delete b[bk]; if (bk === 'fontSize') delete b.fit; }
+    }
   });
 }
-
 // ---- Layouts -----------------------------------------------------------------
 const freshPlaceholders = lay => lay.blocks.filter(b => b.ph).map(p => (p.type === 'placeholder'
   ? { id: uid(), type: 'placeholder', ph: p.ph, lp: p.id, x: p.x, y: p.y, w: p.w, h: p.h, rotation: 0, animation: null }
@@ -157,7 +200,7 @@ export function applyLayout(id, index = null) {
     state.ui.selection = null;
   });
 }
-function relayout(s, lay, deck = state.deck) {
+function relayout(s, lay, deck = state.deck, background = true) {
   const old = s.blocks, used = new Set();
   const texts = old.filter(b => b.type === 'text' && (b.html || '').replace(/<[^>]*>/g, '').trim());
   const take = test => { const b = texts.find(x => !used.has(x) && test(x)); if (b) used.add(b); return b; };
@@ -169,7 +212,7 @@ function relayout(s, lay, deck = state.deck) {
   }
   // The background follows the new layout's, unless the slide had its own.
   const was = layoutOf(s, deck), nb = layoutBackground(lay, deck);
-  if (nb && followsBackground(s, was ? layoutBackground(was, deck) : masterOf(s, deck).background, deck)) s.background = nb;
+  if (background && nb && followsBackground(s, was ? layoutBackground(was, deck) : masterOf(s, deck).background, deck)) s.background = nb;
   s.layoutId = lay.id;
   // Old empty placeholders go; connectors to moved text go with it.
   const keep = old.filter(b => !used.has(b) && !(b.ph && !(b.html || '').replace(/<[^>]*>/g, '').trim())
@@ -177,6 +220,8 @@ function relayout(s, lay, deck = state.deck) {
   s.blocks = [...fresh, ...keep];
 }
 export const newSlideBlocks = lay => freshPlaceholders(lay);
+// (Without touching the background: applying another theme decides it.)
+export const relayoutSlide = (s, lay, deck = state.deck) => relayout(s, lay, deck, false);
 // Back to the layout: placeholders return to its place and lose the formatting
 // set on the slide (PowerPoint's "Reset").
 export function resetSlide(index = null) {
