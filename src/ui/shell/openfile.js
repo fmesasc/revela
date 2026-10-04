@@ -127,18 +127,27 @@ export async function dropFiles(files, at = null) {
   return n;
 }
 
-// Files dragged from the computer onto the editing area.
+// Files dragged from the computer onto the editor.
 export function initFileDrop() {
   const area = document.getElementById('canvas-wrap'), stage = document.getElementById('stage');
   if (!area) return;
   const hasFiles = e => [...(e.dataTransfer?.types || [])].includes('Files');
-  let depth = 0;
-  area.addEventListener('dragenter', e => { if (hasFiles(e)) { depth++; area.classList.add('file-drop'); } });
-  area.addEventListener('dragleave', e => { if (hasFiles(e) && --depth <= 0) { depth = 0; area.classList.remove('file-drop'); } });
-  area.addEventListener('dragover', e => { if (hasFiles(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });
-  area.addEventListener('drop', e => {
-    if (!hasFiles(e)) return;
-    e.preventDefault(); depth = 0; area.classList.remove('file-drop');
+  const inDialog = e => !!e.target.closest?.('.modal-backdrop');
+  // The whole window takes files, not only the slide's area: dropped on the
+  // ribbon or the thumbnails the browser would leave the editor to show the file.
+  // (Dialogs with a drop zone of their own handle it first; other dialogs refuse it.)
+  let off = 0;
+  const show = on => { area.classList.toggle('file-drop', on); document.body.classList.toggle('file-drag', on);
+    if (on) document.body.dataset.dropHint = t('Suelta el archivo para añadirlo a la diapositiva (o abrirlo, si es una presentación)'); };
+  document.addEventListener('dragover', e => {
+    if (!hasFiles(e) || e.defaultPrevented) return;
+    e.preventDefault(); const no = inDialog(e); e.dataTransfer.dropEffect = no ? 'none' : 'copy';
+    show(!no); clearTimeout(off); off = setTimeout(() => show(false), 200);
+  });
+  document.addEventListener('drop', e => {
+    if (!hasFiles(e) || e.defaultPrevented) return;
+    e.preventDefault(); clearTimeout(off); show(false);
+    if (inDialog(e)) return;
     // Where on the slide (if dropped on it).
     const r = stage.getBoundingClientRect(), k = factor(), inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
     dropFiles(e.dataTransfer.files, inside ? [(e.clientX - r.left) * k, (e.clientY - r.top) * k] : null);

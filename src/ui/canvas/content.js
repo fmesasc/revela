@@ -391,7 +391,8 @@ export function setupTable(el, b) {
     if (!e.target.closest('td')) return;
     el.classList.add('editing');
     el.querySelectorAll('.tbl td').forEach(td => (td.contentEditable = 'true'));
-    e.target.closest('td').focus();
+    const td = e.target.closest('td'); td.focus();
+    if (e.isTrusted) selectWordAt(td, e.clientX, e.clientY);
   });
   // A formula cell shows its formula while the caret is in it, and the results come back when it leaves.
   el.addEventListener('focusin', e => { const td = e.target.closest?.('td.formula'); if (td) { td.innerHTML = b.rows[+td.dataset.r][+td.dataset.c] || ''; td.classList.replace('formula', 'src'); } });
@@ -416,13 +417,31 @@ export function editText(id, { selectAll = true } = {}) {
 }
 // Double‑click enters content mode: text becomes editable, a model can be
 // orbited. Clicking elsewhere leaves it.
+// The word under the pointer selected, as a double-click does in any editor (the
+// text only becomes editable on that double-click, so the browser doesn't; focus
+// alone would leave the caret at the start). False if the point isn't in the text.
+function selectWordAt(rich, x, y) {
+  const pos = document.caretPositionFromPoint?.(x, y), alt = pos ? null : document.caretRangeFromPoint?.(x, y);
+  const node = pos ? pos.offsetNode : alt?.startContainer, off = pos ? pos.offset : alt?.startOffset;
+  if (!node || !rich.contains(node)) return false;
+  const r = document.createRange();
+  if (node.nodeType === Node.TEXT_NODE) {
+    const s = node.nodeValue, word = /[\p{L}\p{N}_'’]/u; let a = off, z = off;
+    while (a > 0 && word.test(s[a - 1])) a--;
+    while (z < s.length && word.test(s[z])) z++;
+    r.setStart(node, a); r.setEnd(node, z);
+  } else { r.setStart(node, off); r.collapse(true); }
+  const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+  return true;
+}
 export function setupText(b, el) {
   const rich = el.querySelector('.rich');
-  el.addEventListener('dblclick', () => {
+  el.addEventListener('dblclick', e => {
     if (readOnly()) return;
     // Show the raw source (with $…$) while editing, not the rendered math.
     if (rich.dataset.msrc !== undefined) { rich.innerHTML = b.html || ''; rich.dataset.msrc = ''; }
     rich.contentEditable = 'true'; rich.focus(); el.classList.add('editing');
+    if (e.isTrusted) selectWordAt(rich, e.clientX, e.clientY);
     showTextRuler(el, b); liveTabs(rich, b);
   });
   rich.addEventListener('input', e => {             // no re-render: keep the caret

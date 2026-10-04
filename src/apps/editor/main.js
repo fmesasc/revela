@@ -81,6 +81,7 @@ import { startAutoVersions } from '../../features/collab/versions.js';
 import * as versions from '../../features/collab/versions.js';
 import { finishOpenRouterLogin } from '../../features/ai/openrouter.js';
 import { alertDialog, confirmDialog, promptDialog } from '../../ui/dialogs/dialog.js';
+import { initModalKeys } from '../../ui/dialogs/modalkeys.js';
 import * as notify from '../../core/notify.js';
 import * as vendor from '../../core/vendor.js';
 import { session } from '../../core/session.js';
@@ -201,6 +202,7 @@ initPanel();
 initRibbon();
 initContextMenu();
 initDraw();
+initModalKeys();
 document.addEventListener('keydown', keyboard);
 // Paste onto the slide (not while typing): an image becomes a picture, cells
 // copied from a spreadsheet become a table, other text a text box.

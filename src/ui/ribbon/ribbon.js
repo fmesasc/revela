@@ -4,6 +4,7 @@ import { author, tasksOf } from '../../features/collab/comments.js';
 import { renderMorphHint } from '../shell/morphhint.js';
 import { renderContextual } from './contextual.js';
 import { state, commit, currentSlide, selectedBlock, selectedBlocks, canUndo, canRedo, docVersion } from '../../core/store.js';
+import { savedHere, onSavedHere } from '../../core/model.js';
 import { MATH_SIZE } from '../../render/svg.js';
 import { styled, addPlaceholder } from '../../features/document/master.js';
 import * as blocks from '../../features/document/blocks.js';
@@ -41,6 +42,9 @@ import { syncMasterRibbon } from '../shell/masterview.js';
 const TEMPLATE_LAYOUT = { title: 'title', titleContent: 'titleContent', twoContent: 'twoContent', sectionHeader: 'section', blank: 'blank' };
 
 const $ = s => document.querySelector(s);
+// The title bar's save state: [icon, text, tooltip] (Spanish, translated when shown).
+const SAVE_OK = ['check_circle', 'Guardado', 'Se guarda solo en este navegador, con cada cambio. Para llevártelo: Archivo ▸ Guardar, o Google Drive.'];
+const SAVE_FAILED = ['error', 'Sin guardar', 'Este navegador no deja guardar la presentación (¿ventana privada o disco lleno?). Haz clic para descargar una copia.'];
 
 // Fill the font picker from the catalogue (each option shown in its own font
 // where already available).
@@ -66,6 +70,9 @@ function fillShapeGallery() {
 }
 export function initRibbon() {
   fillShapeGallery();
+  onSavedHere(() => renderRibbon());
+  { const ss = $('#save-state'), copy = e => { if (!savedHere() && (e.type === 'click' || e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); ACTIONS.save(); } };
+    ss?.addEventListener('click', copy); ss?.addEventListener('keydown', copy); }
   // Master view: insert a placeholder into the layout being edited.
   document.querySelector('#ribbon .mb-ph')?.addEventListener('change', e => {
     if (e.target.value) addPlaceholder(e.target.value); e.target.value = '';
@@ -366,8 +373,16 @@ export function renderRibbon() {
       c.textContent = n; c.title = t('Tareas pendientes para ti'); }); }
   document.querySelectorAll('[data-action="undo"]').forEach(b => { b.disabled = !canUndo(); });
   document.querySelectorAll('[data-action="redo"]').forEach(b => { b.disabled = !canRedo(); });
-  // Saved here after a change (unless Drive shows its own state).
-  { const ss = $('#save-state'); if (ss) ss.hidden = !docVersion() || !$('#drive-status')?.hidden || !$('#cloud-status')?.hidden || !!state.ui.lock; }
+  // Saved here after a change (unless Drive shows its own state); if this browser
+  // can't keep it, that shows instead, and a click downloads a copy.
+  { const ss = $('#save-state'); if (ss) { const ok = savedHere();
+    ss.hidden = (ok && !docVersion()) || !$('#drive-status')?.hidden || !$('#cloud-status')?.hidden || !!state.ui.lock;
+    if (ss.classList.contains('failed') !== !ok) {
+      const [icon, text, tip] = ok ? SAVE_OK : SAVE_FAILED, sp = ss.querySelector('span');
+      ss.classList.toggle('failed', !ok); ss.querySelector('.ms').textContent = icon;
+      sp.dataset.i18n = text; sp.textContent = t(text); ss.dataset.i18nt = tip; ss.title = t(tip);
+      ss.setAttribute('role', ok ? 'status' : 'button'); ss.tabIndex = ok ? -1 : 0;
+    } } }
   document.querySelector('[data-action="canvas-mode"]')?.classList.toggle('on', canvasOn());
   document.querySelectorAll('[data-action="canvas-view"]').forEach(b => b.classList.toggle('on', canvasViewOpen()));
   const fb = document.getElementById('final-banner'); if (fb) fb.hidden = !protect.isFinal();

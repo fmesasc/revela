@@ -133,25 +133,34 @@ export function approxSize(v) {
 // Called only when the content changed (see store.save): localStorage at once,
 // IndexedDB a moment later (big decks: later still).
 let pending = null;
+// Is the last change kept in this browser (in either store)? Not in some private
+// windows or with the disk full: the title bar then says so, to download a copy.
+let kept = true;
+const keptWatchers = new Set();
+export const savedHere = () => kept;
+export const onSavedHere = fn => { keptWatchers.add(fn); };
+function setKept(v) { if (v !== kept) { kept = v; keptWatchers.forEach(fn => fn(v)); } }
+// True if the whole deck went into localStorage.
 function writeLocal(deck, size = approxSize(deck)) {
   try {
-    if (size < LS_MAX) localStorage.setItem(STORAGE_KEY, JSON.stringify(deck));
-    else localStorage.setItem(STORAGE_KEY, JSON.stringify({ tooBig: true, savedAt: deck.savedAt }));
+    if (size < LS_MAX) { localStorage.setItem(STORAGE_KEY, JSON.stringify(deck)); return true; }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ tooBig: true, savedAt: deck.savedAt }));
   } catch {}
+  return false;
 }
+const writeIdb = (deck, local) => kvSet('deck', deck).then(() => setKept(true), () => { if (!local) setKept(false); });
 export function saveDeck(deck) {
   deck.savedAt = Date.now(); pending = deck;
-  const size = approxSize(deck);
-  writeLocal(deck, size);
+  const size = approxSize(deck), local = writeLocal(deck, size);
+  if (local) setKept(true);
   clearTimeout(idbTimer);
-  idbTimer = setTimeout(() => { pending = null; kvSet('deck', deck).catch(() => {}); }, size > 20e6 ? 3000 : 400);
+  idbTimer = setTimeout(() => { pending = null; writeIdb(deck, local); }, size > 20e6 ? 3000 : 400);
 }
 // Everything now (leaving the page, or before reading it back).
 export function flushSave(deck = pending) {
   clearTimeout(idbTimer); pending = null;
   if (!deck) return Promise.resolve();
-  writeLocal(deck);
-  return kvSet('deck', deck).catch(() => {});
+  return writeIdb(deck, writeLocal(deck));
 }
 // The IndexedDB copy, if it's newer than what localStorage gave us at start.
 export async function loadNewerDeck(current) {

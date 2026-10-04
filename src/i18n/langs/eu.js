@@ -2447,4 +2447,13 @@ export default {
   "Vistas": "Ikuspegiak",
   "Estirar": "Luzatu",
   "Proporción original": "Jatorrizko proportzioa",
+  "Creando el archivo ODP…": "ODP fitxategia sortzen…",
+  "Archivo ODP descargado.": "ODP fitxategia deskargatuta.",
+  "Página web descargada: se abre con cualquier navegador.": "Web orria deskargatuta: edozein nabigatzailerekin irekitzen da.",
+  "Creando el archivo de PowerPoint…": "PowerPoint fitxategia sortzen…",
+  "PowerPoint descargado.": "PowerPointa deskargatuta.",
+  "Proyecto descargado (.revela.json). Para seguir con él otro día: Archivo ▸ Abrir.": "Proiektua deskargatuta (.revela.json). Beste egun batean jarraitzeko: Fitxategia ▸ Ireki.",
+  "Suelta el archivo para añadirlo a la diapositiva (o abrirlo, si es una presentación)": "Askatu fitxategia diapositibari gehitzeko (edo irekitzeko, aurkezpen bat bada)",
+  "Sin guardar": "Gorde gabe",
+  "Este navegador no deja guardar la presentación (¿ventana privada o disco lleno?). Haz clic para descargar una copia.": "Nabigatzaile honek ez du aurkezpena gordetzen uzten (leiho pribatua edo disko betea?). Egin klik kopia bat deskargatzeko.",
 };

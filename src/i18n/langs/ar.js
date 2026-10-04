@@ -2447,4 +2447,13 @@ export default {
   "Vistas": "طرق العرض",
   "Estirar": "تمديد",
   "Proporción original": "النسبة الأصلية",
+  "Creando el archivo ODP…": "جارٍ إنشاء ملف ODP…",
+  "Archivo ODP descargado.": "تم تنزيل ملف ODP.",
+  "Página web descargada: se abre con cualquier navegador.": "تم تنزيل صفحة الويب: تُفتح في أي متصفح.",
+  "Creando el archivo de PowerPoint…": "جارٍ إنشاء ملف PowerPoint…",
+  "PowerPoint descargado.": "تم تنزيل ملف PowerPoint.",
+  "Proyecto descargado (.revela.json). Para seguir con él otro día: Archivo ▸ Abrir.": "تم تنزيل المشروع (.revela.json). لمتابعته في يوم آخر: ملف ▸ فتح.",
+  "Suelta el archivo para añadirlo a la diapositiva (o abrirlo, si es una presentación)": "أفلت الملف لإضافته إلى الشريحة (أو لفتحه إن كان عرضًا تقديميًا)",
+  "Sin guardar": "غير محفوظ",
+  "Este navegador no deja guardar la presentación (¿ventana privada o disco lleno?). Haz clic para descargar una copia.": "لا يسمح هذا المتصفح بحفظ العرض التقديمي (نافذة خاصة أو قرص ممتلئ؟). انقر لتنزيل نسخة.",
 };

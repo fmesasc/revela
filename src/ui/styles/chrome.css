@@ -32,6 +32,8 @@
 .modal{background:var(--panel);border-radius:12px;box-shadow:0 20px 60px #0004;padding:22px 24px;max-width:340px;
   text-align:center;position:relative;max-height:calc(100dvh - 68px);overflow:auto}
 .modal h3{margin:0 0 8px;color:var(--accent)}
+/* (A dialog itself takes the focus when it opens: no ring around all of it.) */
+[aria-modal][tabindex="-1"]:focus{outline:none}
 .modal,.popover{accent-color:var(--accent)}
 .modal a:not([class]){color:var(--accent)}
 /* Base look of form controls in dialogs and popovers (zero specificity, so each
@@ -138,7 +140,18 @@
 #statusbar .hint{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#status-slide{white-space:nowrap}#statusbar .legal-link:hover{text-decoration:underline}
 @media (max-width:760px){#statusbar .legal-link{display:none}}
 .save-state{display:inline-flex;align-items:center;gap:3px;font-size:12px;color:var(--txt2);margin-inline-start:8px;white-space:nowrap}.save-state .ms{font-size:16px;color:#2f9e44}
+.save-state.failed{color:var(--danger);font-weight:600;cursor:pointer;padding:2px 6px;border-radius:6px;background:color-mix(in srgb,var(--danger) 10%,transparent)}.save-state.failed .ms{color:var(--danger)}
 @media (max-width:860px){.save-state span{display:none}}
+
+/* Notes at the bottom (ui/shell/toast.js): downloads done, exports in progress. */
+#toasts{position:fixed;left:50%;bottom:44px;transform:translateX(-50%);z-index:3500;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;width:max-content;max-width:calc(100vw - 24px)}
+.toast{display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:10px;background:#2f333a;color:#fff;border:1px solid #ffffff26;font-size:13px;line-height:1.35;
+  box-shadow:0 8px 24px #0003;pointer-events:auto;cursor:default;animation:toastIn .2s ease-out;transition:opacity .25s,transform .25s}
+.toast .ms{font-size:18px;color:#5fd38a}.toast.error .ms{color:#ff8a80}
+.toast.out{opacity:0;transform:translateY(8px)}
+.toast-spin{width:14px;height:14px;flex:0 0 14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:rvTurn .8s linear infinite}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}}
+@media (prefers-reduced-motion:reduce){.toast{animation:none;transition:none}}
 
 /* Quick presenting buttons in the title bar */
 .tb-play{display:flex;gap:2px;margin-inline-start:10px}
@@ -146,4 +159,5 @@
 .tb-play button:first-child{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .tb-play button:hover{filter:brightness(1.08)}.tb-play .ms{font-size:20px}
 #zoom-slider{width:110px;vertical-align:middle;accent-color:var(--accent)}
-@media (max-width:600px){#zoom-slider,.tb-play{display:none}}
+/* (Phones: "Present" stays, the one way there in sight; the second button goes.) */
+@media (max-width:600px){#zoom-slider,.tb-play button+button{display:none}.tb-play{margin-inline-start:2px;flex-shrink:0}}
