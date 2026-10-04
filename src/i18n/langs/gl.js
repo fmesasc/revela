@@ -11,6 +11,8 @@ export default {
   "(varios)": "(varios)",
   "Elige una animación para ver sus opciones. Ctrl o Mayús: varias a la vez.": "Escolle unha animación para ver as súas opcións. Ctrl ou Maiús: varias á vez.",
   "Ampliar una zona de esta lupa": "Ampliar unha zona desta lupa",
+  "No se pudo guardar": "Non se puido gardar",
+  "Con «Solo las personas añadidas», el enlace solo lo abren las personas de arriba. Para que lo abra cualquiera, elige «Cualquiera con el enlace puede ver».": "Con «Só as persoas engadidas», a ligazón só a abren as persoas de arriba. Para que a abra calquera, escolle «Calquera coa ligazón pode ver».",
   "Archivo": "Ficheiro",
   "Inicio": "Inicio",
   "Insertar": "Inserir",

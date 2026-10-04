@@ -177,6 +177,10 @@
 /* (Phones: "Present" stays, the one way there in sight; the second button goes.) */
 @media (max-width:600px){#zoom-slider,.tb-play button+button{display:none}.tb-play{margin-inline-start:2px;flex-shrink:0}}
 /* A shared presentation opening (?doc=): covers the empty editor until it's there. */
+/* A small spinner inside a button or a status line (saving…). */
+.btn-spin{display:inline-block;width:13px;height:13px;border-radius:50%;border:2px solid currentColor;border-top-color:transparent;animation:od-spin .8s linear infinite;vertical-align:-2px;opacity:.8}
+@media (prefers-reduced-motion:reduce){.btn-spin{animation:none}}
+.cl-status{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--txt2);margin-inline-end:8px}.cl-status .ms{font-size:16px}.cl-status[data-st=saved] .ms{color:#2e9d4b}.cl-status[data-st=error]{color:#c62828}
 #opening-doc{position:fixed;inset:0;z-index:9000;display:grid;place-items:center;background:var(--bg,#f4f5f7);transition:opacity .25s}
 #opening-doc.done{opacity:0;pointer-events:none}
 #opening-doc .od-box{display:flex;align-items:center;gap:12px;font-size:15px;color:var(--txt2,#555)}

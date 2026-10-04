@@ -1819,6 +1819,19 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { CD.closeDoc(); }
   });
 
+  await test('abrir un enlace compartido que falla: la pantalla de carga se quita antes del aviso (no tapa la pregunta)', async () => {
+    reset(); const W = frame.contentWindow, CD = R.clouddocs, UI = await W.eval("import('/src/ui/dialogs/cloud.js')"), { fakeCloud } = await W.eval("import('/tests/fixtures/fakecloud.js')");
+    CD.setTransport(fakeCloud({}).io);
+    try {
+      const seen = [];
+      const done = UI.openFromLink('docquenoexiste00001', { settle: () => seen.push(!!D.querySelector('.dlg-msg')) });
+      for (let i = 0; i < 50 && !D.querySelector('.dlg-msg'); i++) await sleep(20);
+      eq(seen.join(), 'false', 'primero se quita la carga, después el aviso');
+      assert(/ya no está en la nube/.test(D.querySelector('.dlg-msg').textContent), 'el aviso: ' + D.querySelector('.dlg-msg').textContent);
+      D.querySelector('.dlg-ok').click(); eq(await done, false);
+    } finally { CD.closeDoc(); CD.setTransport(null); }
+  });
+
   await test('«Mi nube»: página con miniaturas, carpetas (crear, arrastrar, «Mover a…», migas), cuadrícula/lista, búsqueda, teclado, destacadas y papelera', async () => {
     reset(); const W = frame.contentWindow, CD = R.clouddocs, UI = await W.eval("import('/src/ui/dialogs/cloudlibrary.js')"), { fakeCloud } = await W.eval("import('/tests/fixtures/fakecloud.js')");
     const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';

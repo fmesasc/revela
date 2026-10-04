@@ -11,6 +11,8 @@ export default {
   "(varios)": "(meerdere)",
   "Elige una animación para ver sus opciones. Ctrl o Mayús: varias a la vez.": "Kies een animatie om de opties te zien. Ctrl of Shift: meerdere tegelijk.",
   "Ampliar una zona de esta lupa": "Een deel van dit vergrootglas vergroten",
+  "No se pudo guardar": "Opslaan mislukt",
+  "Con «Solo las personas añadidas», el enlace solo lo abren las personas de arriba. Para que lo abra cualquiera, elige «Cualquiera con el enlace puede ver».": "Met «Alleen toegevoegde personen» kunnen alleen de personen hierboven de link openen. Kies «Iedereen met de link kan bekijken» zodat iedereen hem kan openen.",
   "Archivo": "Bestand",
   "Inicio": "Start",
   "Insertar": "Invoegen",

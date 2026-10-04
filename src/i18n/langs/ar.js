@@ -11,6 +11,8 @@ export default {
   "(varios)": "(متعددة)",
   "Elige una animación para ver sus opciones. Ctrl o Mayús: varias a la vez.": "اختر حركة لترى خياراتها. Ctrl أو Shift: عدة حركات معًا.",
   "Ampliar una zona de esta lupa": "تكبير جزء من هذه العدسة",
+  "No se pudo guardar": "تعذّر الحفظ",
+  "Con «Solo las personas añadidas», el enlace solo lo abren las personas de arriba. Para que lo abra cualquiera, elige «Cualquiera con el enlace puede ver».": "مع «الأشخاص المضافون فقط» لا يفتح الرابط إلا الأشخاص أعلاه. ليفتحه أي شخص، اختر «أي شخص لديه الرابط يمكنه العرض».",
   "Archivo": "ملف",
   "Inicio": "الصفحة الرئيسية",
   "Insertar": "إدراج",

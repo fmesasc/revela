@@ -11,6 +11,8 @@ export default {
   "(varios)": "(hainbat)",
   "Elige una animación para ver sus opciones. Ctrl o Mayús: varias a la vez.": "Aukeratu animazio bat bere aukerak ikusteko. Ktrl edo Maius: hainbat batera.",
   "Ampliar una zona de esta lupa": "Lupa honen zati bat handitu",
+  "No se pudo guardar": "Ezin izan da gorde",
+  "Con «Solo las personas añadidas», el enlace solo lo abren las personas de arriba. Para que lo abra cualquiera, elige «Cualquiera con el enlace puede ver».": "«Gehitutako pertsonak soilik» aukerarekin, goiko pertsonek bakarrik ireki dezakete esteka. Edonork ireki dezan, aukeratu «Esteka duen edonork ikus dezake».",
   "Archivo": "Fitxategia",
   "Inicio": "Hasiera",
   "Insertar": "Txertatu",

@@ -53,8 +53,9 @@ export async function openCloudShare() {
     body.innerHTML = `<p class="host-help">${t('Para compartirla con personas concretas o por enlace, guárdala en tu nube de Revela. Los cambios se guardan solos y quien tenga permiso los ve.')}</p>
       <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="fr-do cl-save">${t('Guardar en la nube')}</button></div>`;
     body.querySelector('.cl-save').addEventListener('click', async e => {
-      e.target.disabled = true;
-      try { await cd.saveToCloud(); openCloudShare(); } catch (err) { e.target.disabled = false; alertDialog(errorText(err)); }
+      const btn = e.currentTarget, was = btn.innerHTML;
+      btn.disabled = true; btn.innerHTML = `<span class="btn-spin" aria-hidden="true"></span> ${t('Guardando…')}`; btn.setAttribute('aria-busy', 'true');
+      try { await cd.saveToCloud(); close(); openCloudShare(); } catch (err) { btn.disabled = false; btn.innerHTML = was; btn.removeAttribute('aria-busy'); alertDialog(errorText(err)); }
     });
     return;
   }
@@ -77,30 +78,42 @@ export async function openCloudShare() {
       <fieldset><legend>${t('Enlace')}</legend>
         <select class="cl-linkrole">${Object.entries(LINK_NAMES).map(([k, v]) => `<option value="${k}"${k === link ? ' selected' : ''}>${t(v)}</option>`).join('')}</select>
         <div class="sh-row"><input readonly class="cl-link" value="${esc(cd.docLink(doc.id))}"><button type="button" class="mini2 cl-copy">${t('Copiar')}</button></div>
+        <p class="host-help cl-linkhint" hidden><i class="ms">lock</i> ${t('Con «Solo las personas añadidas», el enlace solo lo abren las personas de arriba. Para que lo abra cualquiera, elige «Cualquiera con el enlace puede ver».')}</p>
         <p class="host-help">${t('Las personas añadidas entran con su cuenta de Google. Con el enlace para ver no hace falta cuenta.')}</p>
       </fieldset>
       <div class="fr-actions"><span>${analytics ? `<button type="button" class="mini2 cl-stats"><i class="ms">insights</i> ${t('Estadísticas')}</button>` : ''}
         <button type="button" class="mini2 cl-versions"><i class="ms">history</i> ${t('Versiones')}</button></span>
-        <button type="button" class="fr-do cl-apply">${t('Guardar')}</button></div>`;
+        <span class="cl-status" role="status" aria-live="polite"></span><button type="button" class="fr-do cl-apply">${t('Listo')}</button></div>`;
     const q = s => body.querySelector(s);
     body.querySelectorAll('.cl-role').forEach(s => s.addEventListener('change', () => {
-      const e = s.closest('[data-email]').dataset.email; if (s.value) people[e] = s.value; else delete people[e]; render();
+      const e = s.closest('[data-email]').dataset.email; if (s.value) people[e] = s.value; else delete people[e]; render(); apply();
     }));
     q('.cl-add').addEventListener('click', () => {
       const e = q('.cl-email').value.trim().toLowerCase();
       if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(e)) return alertDialog(t('Escribe un correo válido.'));
-      people[e] = q('.cl-new-role').value; render();
+      people[e] = q('.cl-new-role').value; render(); apply();
     });
     q('.cl-email').addEventListener('keydown', e => { if (e.key === 'Enter') q('.cl-add').click(); });
-    q('.cl-linkrole').addEventListener('change', e => { link = e.target.value; });
-    q('.cl-copy').addEventListener('click', e => { navigator.clipboard?.writeText(cd.docLink(doc.id)); e.target.textContent = t('Copiado'); });
+    q('.cl-linkrole').addEventListener('change', e => { link = e.target.value; linkHint(); apply(); });
+    q('.cl-copy').addEventListener('click', e => { navigator.clipboard?.writeText(cd.docLink(doc.id)); e.target.textContent = t('Copiado'); linkHint(); });
+    linkHint(); status(shareSt);
     q('.cl-stats')?.addEventListener('click', () => openCloudStats());
     q('.cl-versions').addEventListener('click', () => openCloudVersions());
-    q('.cl-apply').addEventListener('click', async e => {
-      e.target.disabled = true;
-      try { const r = await cd.shareDoc(doc.id, { link, ...(pro && { people }) }); cd.setSharing(r.sharing); close(); }
-      catch (err) { e.target.disabled = false; alertDialog(errorText(err)); }
+    q('.cl-apply').addEventListener('click', async () => { await saving; close(); });
+  };
+  // Each change is saved at once (no «Save» to forget: a link chosen and copied works).
+  let saving = Promise.resolve(), shareSt = 'saved';
+  const status = st => { shareSt = st; const el = body.querySelector('.cl-status'); if (!el) return;
+    el.dataset.st = st; el.innerHTML = st === 'saving' ? `<span class="btn-spin" aria-hidden="true"></span> ${t('Guardando…')}` : st === 'error' ? `<i class="ms">error</i> ${t('No se pudo guardar')}` : `<i class="ms">check</i> ${t('Guardado')}`; };
+  const linkHint = () => { const el = body.querySelector('.cl-linkhint'); if (el) el.hidden = link !== 'none'; };
+  const apply = () => {
+    const want = { link, ...(pro && { people: { ...people } }) };
+    status('saving');
+    saving = saving.then(async () => {
+      try { const r = await cd.shareDoc(doc.id, want); cd.setSharing(r.sharing); doc = cd.cloudDoc() || doc; status('saved'); }
+      catch (err) { status('error'); alertDialog(errorText(err)); }
     });
+    return saving;
   };
   render();
 }
@@ -176,7 +189,8 @@ function paintReadOnly() {
 // from Moodle or another learning platform) or &self=1, it starts at once for
 // answering its activities at one's own pace; with lti, Revela's server marks
 // each answer and sends the mark to the platform.
-export async function openFromLink(id = cd.docIdFrom()) {
+// settle: called before any question or message (the loading screen goes first, or it would hide them).
+export async function openFromLink(id = cd.docIdFrom(), { settle = () => {} } = {}) {
   if (!id) return false;
   const q = new URLSearchParams(location.search), lti = /^[\w-]{20,64}$/.test(q.get('lti') || '') ? q.get('lti') : null;
   try {
@@ -185,6 +199,7 @@ export async function openFromLink(id = cd.docIdFrom()) {
     return true;
   }
   catch (e) {
+    settle();
     if (e.status === 401 && await confirmDialog(t('Esta presentación está compartida con personas concretas. Inicia sesión con tu cuenta de Google para abrirla.'))) {
       try { await signInWithTerms(); await cd.openDoc(id); return true; } catch (err) { if (err.message !== 'CANCELLED') alertDialog(errorText(err)); }
     } else if (e.status === 403) alertDialog(t('Tu cuenta ({email}) no tiene acceso a esta presentación. Pide a quien te la envió que te añada.').replace('{email}', acc.account()?.email || ''));

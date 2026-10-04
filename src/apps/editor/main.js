@@ -297,7 +297,7 @@ if (hasAccounts()) {
     // (A shared link, ?doc=: asked for at once, alongside the account, under a loading screen —
     // not the empty editor first and the presentation popping in later.)
     const opening = docIdFrom() ? openingScreen() : null;
-    if (opening) openFromLink().finally(opening);
+    if (opening) openFromLink(undefined, { settle: opening }).finally(opening);
     refreshAccount().catch(() => {}).finally(() => { handleDesktopRequest(); });
     if (new URLSearchParams(location.search).has('paid')) { history.replaceState(null, '', location.pathname); alertDialog(t('¡Gracias! Tu compra se ha registrado.')); }
     // From the prices page (revelaslides.com/pricing): the account, with the product chosen.
@@ -322,5 +322,5 @@ function openingScreen() {
   el.id = 'opening-doc'; el.setAttribute('role', 'status');
   el.innerHTML = `<div class="od-box"><span class="od-spin" aria-hidden="true"></span><span>${t('Abriendo la presentación…')}</span></div>`;
   document.body.appendChild(el);
-  return () => { el.classList.add('done'); setTimeout(() => el.remove(), 250); };
+  return () => { if (el.classList.contains('done')) return; el.classList.add('done'); setTimeout(() => el.remove(), 250); };
 }
