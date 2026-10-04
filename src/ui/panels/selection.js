@@ -14,7 +14,7 @@ export function toggleSelectionPane(on = !state.ui.showSelection) {
   commit(() => { state.ui.showSelection = on; }, { history: false });
 }
 const ICON = { text: 'title', image: 'image', shape: 'category', chart: 'bar_chart', table: 'table', icon: 'star', math: 'functions', model: 'deployed_code',
-  video: 'movie', audio: 'music_note', embed: 'language', code: 'code', connector: 'timeline', ink: 'draw', camera: 'videocam', poll: 'how_to_vote', timer: 'timer', slideref: 'filter_none' };
+  video: 'movie', audio: 'music_note', embed: 'language', code: 'code', connector: 'timeline', ink: 'draw', camera: 'videocam', poll: 'how_to_vote', timer: 'timer', slideref: 'filter_none', magnify: 'loupe' };
 
 export function renderSelectionPane() {
   let panel = document.getElementById('selection-panel');

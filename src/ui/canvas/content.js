@@ -187,6 +187,7 @@ export function content(b) {
   if (b.type === 'slideref') {
     const d = document.createElement('div'); d.className = 'slideref'; renderSlideRef(d, b); return d;
   }
+  if (b.type === 'magnify') { const d = document.createElement('div'); d.className = 'magnify'; return d; }   // (painted by magnifyview.js)
   if (b.type === 'table') return tableContent(b);
   if (b.type === 'file') { const d = document.createElement('div'); d.className = 'file-blk'; paintFile(d, b); return d; }
   if (b.type === 'diagram') { const d = document.createElement('div'); d.className = 'diagram-blk'; d.dataset.sig = diagramSig(b); d.innerHTML = diagramHTML(b, diagramOpts()); return d; }

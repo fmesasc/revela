@@ -62,6 +62,7 @@ import { openAppearance } from '../shell/appearance.js';
 import { openDashboardDialog } from '../dialogs/data.js';
 import { playAnimations } from '../canvas/preview.js';
 import { startPathDraw } from '../canvas/pathdraw.js';
+import { startMagnifyDraw } from '../canvas/magnifyview.js';
 import { openAddAnimation } from './animadd.js';
 import { openHostPanel } from '../dialogs/remote.js';
 import { t } from '../../i18n/index.js';
@@ -252,6 +253,7 @@ export const ACTIONS = {
   'insert-figindex': () => blocks.addFigIndex(),
   'insert-slideref': () => blocks.addSlideRef(),
   'insert-summary': () => blocks.addSummaryZoom(),
+  'insert-magnify': () => startMagnifyDraw(),
   'find-replace': () => openFindPanel(),
   dictate: () => toggleDictation(),
   'selection-pane': () => toggleSelectionPane(),

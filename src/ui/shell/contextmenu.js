@@ -1,6 +1,8 @@
 // Right‑click context menu. Actions adapt to what was clicked: a block, an
 // image (extra processing options) or the empty canvas.
 
+import { startMagnifyDraw } from '../canvas/magnifyview.js';
+import * as mag from '../../features/document/magnify.js';
 import { state, commit, currentSlide, selectedBlock, selectedBlocks, isSelected, setSelection, setMulti, isSlideSelected, selectedSlideIndices } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 import * as blocks from '../../features/document/blocks.js';
@@ -200,6 +202,7 @@ function forBlock(b, cell = null) {
       ['Texto alternativo…', () => openAlt(b)],
       [b.zoomable ? 'No ampliar al hacer clic' : 'Ampliar al hacer clic (al presentar)', () => commit(() => { if (b.zoomable) delete b.zoomable; else b.zoomable = true; })],
       ['Quitar fondo (IA)', () => removeBackground(b)],
+      ['Ampliar una zona de la imagen', () => startMagnifyDraw({ within: b })],
       ['Descargar la imagen', () => saveFile(b)],
       ...(isGif(b) ? [['Reproducción…', () => openMediaPlayback(b)]] : []),
       null);
@@ -236,6 +239,11 @@ function forBlock(b, cell = null) {
       ['Mostrar figuras y tablas', () => blocks.setFigIndexKind('all')],
       ['Solo figuras', () => blocks.setFigIndexKind('figures')],
       ['Solo tablas', () => blocks.setFigIndexKind('tables')], null);
+  } else if (b.type === 'magnify') {
+    items.push(
+      ['Colocar automáticamente', () => mag.placeAgain(b.id)],
+      ['Al otro lado', () => mag.swapSide(b.id)],
+      [b.lines === 'none' ? 'Mostrar las líneas' : 'Quitar las líneas', () => commit(() => { b.lines = b.lines === 'none' ? 'corners' : 'none'; })], null);
   } else if (b.type === 'slideref') {
     items.push(
       ['Elegir diapositiva…', () => openSlidePicker(b)],
@@ -284,7 +292,7 @@ function forBlock(b, cell = null) {
     items.push(null, ['Texto alternativo…', () => openAlt(b)]);
 
   // Caption (figures, tables and other objects — not plain text/connectors).
-  if (!['text', 'connector', 'figindex', 'slideref'].includes(b.type)) {
+  if (!['text', 'connector', 'figindex', 'slideref', 'magnify'].includes(b.type)) {
     items.push(null, [b.caption ? 'Editar descripción…' : 'Añadir descripción…', () => openCaption(b)]);
     if (b.caption) items.push(['Quitar descripción', () => blocks.setCaption('')]);
   }

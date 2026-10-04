@@ -15,7 +15,8 @@ import { opacityOf } from '../../core/model.js';
 import { wordartSize } from '../../render/textfit.js';
 import { shownRows } from '../../core/formulas.js';
 import { chartSVG, chartSeries, histogramBins, bubblePoints, scatterSeries, pieColours, iconSVG, inkSVG, timerSVG, shapeTextStyle } from '../../render/svg.js';
-import { blockImage } from '../export/images.js';
+import { blockImage, magnifyImage } from '../export/images.js';
+import { magGeometry, viewOf, underArea, targetImage, imageCrop } from '../../features/document/magnify.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, styleKind } from '../../features/document/master.js';
 import { PPTXGEN, JSZIP, loadScript } from '../../core/vendor.js';
 import { animTimeline, animEntries, isEntrance, motionPoints } from '../../features/animation/transitions.js';
@@ -134,6 +135,30 @@ export function pictureFrame(b, nw, nh) {
   }
   return { frame: F, src };
 }
+// A magnifier whose area lies on one picture (nothing over it there): that
+// picture, cropped by PowerPoint itself (srcRect), as its box.
+const slideBlocks = (s, deck) => (s.id === 'master' ? s.blocks : [...masterBlocksFor(s, deck), ...s.blocks.map(b => styled(b, s, deck))]);
+function magCrop(b, blocks) {
+  const v = viewOf(b), img = targetImage(blocks, v), under = underArea(blocks, v);
+  if (!img || under.at(-1)?.id !== img.id) return null;
+  const nat = picSizes.get(img.id), src = nat && imageCrop(img, v, nat[0], nat[1]);
+  return src ? { img, src } : null;
+}
+// Its lines and the area's frame, the box (a cropped picture, or a picture of
+// what is under the area) and its frame: native shapes, named after it.
+function addMagnifier(slide, b, pptx, raster, blocks) {
+  const { st, src, box, lines } = magGeometry(b), id = 'rv-' + b.id, none = { type: 'none' };
+  const line = (c, w, dash) => ({ color: hex(c) || 'E53935', width: +(w * 0.75).toFixed(2), ...(dash === 'dashed' ? { dashType: 'dash' } : dash === 'dotted' ? { dashType: 'sysDot' } : {}) });
+  const rect = (r, radius, name) => slide.addShape(radius ? pptx.ShapeType.roundRect : pptx.ShapeType.rect, { x: IN(r.x), y: IN(r.y), w: IN(r.w), h: IN(r.h),
+    ...(radius && { rectRadius: IN(radius) }), fill: none, line: line(st.color, st.width, st.style), objectName: name });
+  lines.forEach(([x1, y1, x2, y2], i) => slide.addShape(pptx.ShapeType.line, { x: IN(Math.min(x1, x2)), y: IN(Math.min(y1, y2)), w: IN(Math.max(1, Math.abs(x2 - x1))), h: IN(Math.max(1, Math.abs(y2 - y1))),
+    flipH: x2 < x1, flipV: y2 < y1, line: line(st.lineColor, st.lineWidth, st.lineDash), objectName: `${id}-line${i + 1}` }));
+  if (st.sourceFrame && st.width) rect(src, st.radius / Math.max(1, viewOf(b).k), `${id}-area`);
+  const crop = magCrop(b, blocks), pos = { x: IN(b.x), y: IN(b.y), w: IN(b.w), h: IN(b.h) };
+  if (crop) { slide.addImage({ ...pos, data: crop.img.src, objectName: id, ...(crop.img.flipH && { flipH: true }), ...(crop.img.flipV && { flipV: true }) }); picCrops.set(b.id, crop.src); }
+  else if (raster.has(b.id)) slide.addImage({ ...pos, data: raster.get(b.id), objectName: id });
+  if (st.width) rect(box, Math.max(0, st.radius - st.width / 2), `${id}-frame`);
+}
 const picSizes = new Map(), picCrops = new Map();       // (for the export under way: images' natural sizes, and their srcRect)
 async function naturalSizes(deck) {
   picSizes.clear(); picCrops.clear();
@@ -166,6 +191,8 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
       const x1 = f.x + f.w / 2, y1 = f.y + f.h / 2, x2 = to.x + to.w / 2, y2 = to.y + to.h / 2;
       slide.addShape(pptx.ShapeType.line, { x: IN(Math.min(x1, x2)), y: IN(Math.min(y1, y2)), w: IN(Math.max(1, Math.abs(x2 - x1))), h: IN(Math.max(1, Math.abs(y2 - y1))),
         flipH: x2 < x1, flipV: y2 < y1, line: { color: hex(b.color) || '8A8A8A', width: 1.5, ...dashOf(b.dash), ...(b.arrow !== false && { endArrowType: 'triangle' }) } });
+    } else if (b.type === 'magnify') {
+      addMagnifier(slide, b, pptx, raster, [...blocksById.values()]);
     } else if (raster.has(b.id)) {                            // icons, ink, equations, polls…
       slide.addImage({ ...pos, ...hl, ...see, data: raster.get(b.id), ...(b.alt && { altText: b.alt }) });
     } else if (b.type === 'video' && /^data:video\//.test(b.src || '')) {
@@ -387,6 +414,7 @@ export async function buildPptx(deck = state.deck) {
       else if (b.type === 'file' && b.poster) raster.set(b.id, b.poster);          // (a PDF's page; the file itself stays in Revela)
       else if (b.type === 'model' && b.poster) raster.set(b.id, await posterPNG(b.poster, b.w, b.h));
       else if (b.type === 'math' || b.type === 'poll' || b.type === 'figindex' || b.type === 'file') { const img = await blockImage(b, s, deck); if (img) raster.set(b.id, img); }
+      else if (b.type === 'magnify' && !magCrop(b, slideBlocks(s, deck))) { const img = await magnifyImage(b, s, deck); if (img) raster.set(b.id, img); }
     } catch {}
   }
   const masters = defineMasters(pptx, deck);
@@ -425,7 +453,7 @@ const named = (slide, name, b = null) => new Proxy(slide, {
     if (!/^add(Text|Shape|Image|Media|Table|Chart)$/.test(k)) return f.bind(t);
     return (...args) => {
       const i = args.length - 1;
-      if (args[i] && typeof args[i] === 'object' && !Array.isArray(args[i])) args[i] = { ...args[i], objectName: name, ...(b?.shadow && k !== 'addTable' && k !== 'addChart' && { shadow: pptShadow(b.shadow) }) };
+      if (args[i] && typeof args[i] === 'object' && !Array.isArray(args[i])) args[i] = { ...args[i], objectName: args[i].objectName || name, ...(b?.shadow && k !== 'addTable' && k !== 'addChart' && { shadow: pptShadow(b.shadow) }) };
       return f.apply(t, args);
     };
   },

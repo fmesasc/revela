@@ -35,7 +35,10 @@ function resizeBlock(b, sx, sy, W1, H1, W2, H2) {
     const f = Math.min(Math.sqrt(sx * sy), (W2 * 0.96) / b.w, (H2 * 0.96) / b.h, Math.max(sx, sy));
     w = b.w * f; h = b.h * f;
   }
+  const k = Math.max(4, r(w)) / b.w;
   b.w = Math.max(4, r(w)); b.h = Math.max(4, r(h));
+  // A magnifier's area: where it was, in proportion, as much bigger as its box.
+  if (b.type === 'magnify' && b.source) { const s = b.source, sx2 = (s.x + s.w / 2) * sx, sy2 = (s.y + s.h / 2) * sy; s.w = r(s.w * k); s.h = r(s.h * k); s.x = r(sx2 - s.w / 2); s.y = r(sy2 - s.h / 2); }
   // Its centre where it was, in proportion, but inside the slide (unless it was out on purpose).
   let x = cx - b.w / 2, y = cy - b.h / 2;
   if (b.x >= 0 && b.x + (b.w / sx) <= W1 + 1) x = Math.min(Math.max(0, x), Math.max(0, W2 - b.w));

@@ -2369,4 +2369,180 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     R.store.commit(() => { b.html = 'Hola'; }); await sleep(20);
     eq(D.querySelector(`#stage .block[data-id="${b.id}"] .rich`).style.fontSize, '80px', 'si cabe, su tamaño');
   });
+
+  // ---- Magnifier (lupa) ------------------------------------------------------------
+  const PIC = (() => { const c = D.createElement('canvas'); c.width = 1280; c.height = 720; const g = c.getContext('2d');
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, 1280, 720); g.fillStyle = '#ff0000'; g.fillRect(0, 0, 640, 360); g.fillStyle = '#0000ff'; g.fillRect(640, 360, 640, 360); return c.toDataURL('image/png'); })();
+  const magMod = () => frame.contentWindow.eval("import('/src/features/document/magnify.js')");
+  const picSlide = async () => {
+    reset(); R.store.commit(() => { slide().blocks = [{ id: 'pic', type: 'image', src: PIC, x: 0, y: 0, w: 1280, h: 720, fit: 'cover', rotation: 0, animation: null }]; R.state.ui.selection = null; R.state.ui.multi = []; });
+    R.render(); await sleep(20);
+  };
+  const drag = (el, x0, y0, x1, y1, o = {}) => {
+    const W = frame.contentWindow, opt = (x, y) => ({ clientX: x, clientY: y, bubbles: true, pointerId: 1, button: 0, isPrimary: true, ...o });
+    el.dispatchEvent(new W.PointerEvent('pointerdown', opt(x0, y0)));
+    const to = () => (el.isConnected ? el : D);
+    to().dispatchEvent(new W.PointerEvent('pointermove', opt((x0 + x1) / 2, (y0 + y1) / 2)));
+    to().dispatchEvent(new W.PointerEvent('pointermove', opt(x1, y1)));
+    to().dispatchEvent(new W.PointerEvent('pointerup', opt(x1, y1)));
+  };
+  // Slide coordinates → screen.
+  const scr = (x, y) => { const r = D.getElementById('stage').getBoundingClientRect(), k = r.width / R.state.deck.size.w; return [r.left + x * k, r.top + y * k]; };
+  const apart = (b, s) => !(b.x < s.x + s.w && s.x < b.x + b.w && b.y < s.y + s.h && s.y < b.y + b.h);
+
+  await test('lupa: se dibuja la zona (Esc cancela); el recuadro aparece solo, ×2, dentro de la diapositiva y sin tapar la zona; se deshace', async () => {
+    await picSlide(); const n = slide().blocks.length;
+    D.querySelector('[data-action="insert-magnify"]').click(); await sleep(10);
+    assert(D.querySelector('#stage .mag-draw'), 'el cursor dibuja un rectángulo');
+    D.dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(10);
+    assert(!D.querySelector('#stage .mag-draw') && slide().blocks.length === n, 'Esc cancela');
+    D.querySelector('[data-action="insert-magnify"]').click(); await sleep(10);
+    drag(D.querySelector('#stage .mag-draw'), ...scr(100, 80), ...scr(300, 190)); await sleep(30);
+    const b = last(); eq(b.type, 'magnify', 'una lupa');
+    assert(Math.abs(b.source.x - 100) <= 2 && Math.abs(b.source.y - 80) <= 2 && Math.abs(b.source.w - 200) <= 2 && Math.abs(b.source.h - 110) <= 2, 'la zona dibujada: ' + JSON.stringify(b.source));
+    eq(b.target, 'pic', 'sobre la imagen');
+    const { w: W, h: H } = R.state.deck.size, s = b.source;
+    assert(b.x >= 0 && b.y >= 0 && b.x + b.w <= W && b.y + b.h <= H, 'dentro de la diapositiva');
+    assert(apart(b, s), 'sin tapar la zona');
+    assert(Math.abs(b.w / s.w - 2) < 0.02 && Math.abs(b.w / b.h - s.w / s.h) < 0.02, `×2 con su proporción (${b.w}×${b.h})`);
+    eq(R.state.ui.selection, b.id, 'seleccionada');
+    const el = D.querySelector(`#stage .block[data-id="${b.id}"]`);
+    eq(el.querySelectorAll('.rv-mag-lines line').length, 2, 'dos líneas');
+    assert(el.querySelector('.rv-mag-lines rect.rv-mag-src') && el.querySelector('.rv-mag-fr rect'), 'marco en la zona y en el recuadro');
+    assert(el.querySelector('.rv-mag-view img')?.getAttribute('src') === PIC, 'la imagen ampliada dentro');
+    eq(D.querySelector('#ribbon [data-tab="ctx"]').textContent, 'Lupa', 'su pestaña');
+    R.store.undo(); await sleep(20);
+    assert(!slide().blocks.some(x => x.type === 'magnify'), 'deshacer la quita');
+  });
+
+  await test('lupa: líneas tangentes de las esquinas (a la derecha, debajo, encima, en diagonal; dentro: ninguna)', async () => {
+    const M = await magMod(), key = ls => ls.map(l => l.join(',')).sort().join(' | ');
+    const S = { x: 0, y: 0, w: 10, h: 10 };
+    eq(key(M.tangentLines(S, { x: 20, y: 0, w: 20, h: 20 })), key([[10, 0, 20, 0], [0, 10, 20, 20]]), 'a la derecha, alineadas arriba');
+    eq(key(M.tangentLines(S, { x: 20, y: 20, w: 10, h: 10 })), key([[10, 0, 30, 20], [0, 10, 20, 30]]), 'en diagonal');
+    eq(key(M.tangentLines({ x: 0, y: 50, w: 10, h: 10 }, { x: 0, y: 0, w: 20, h: 20 })), key([[0, 50, 0, 20], [10, 60, 20, 20]]), 'encima');
+    eq(key(M.tangentLines({ x: 40, y: 0, w: 10, h: 10 }, { x: 20, y: 30, w: 50, h: 30 })), key([[40, 0, 20, 30], [50, 0, 70, 30]]), 'debajo, más ancho (como una lupa)');
+    eq(M.tangentLines({ x: 10, y: 10, w: 5, h: 5 }, { x: 0, y: 0, w: 50, h: 50 }).length, 0, 'una dentro de otra');
+    // Every line leaves all eight corners on one side: it crosses neither rectangle.
+    const P = r => [[r.x, r.y], [r.x + r.w, r.y], [r.x + r.w, r.y + r.h], [r.x, r.y + r.h]];
+    for (const [a, c] of [[S, { x: 30, y: -40, w: 30, h: 25 }], [{ x: 100, y: 100, w: 40, h: 20 }, { x: 10, y: 140, w: 80, h: 40 }]]) {
+      const ls = M.tangentLines(a, c); eq(ls.length, 2, 'dos líneas');
+      for (const [x1, y1, x2, y2] of ls) {
+        const sides = [...P(a), ...P(c)].map(([x, y]) => Math.sign(Math.round((x2 - x1) * (y - y1) - (y2 - y1) * (x - x1))));
+        assert(!(sides.includes(1) && sides.includes(-1)), 'no cruza los rectángulos');
+      }
+    }
+    const [c] = M.centerLine({ x: 0, y: 0, w: 10, h: 10 }, { x: 30, y: 0, w: 10, h: 10 });
+    eq(c.join(), '10,5,30,5', 'desde el centro: de borde a borde');
+  });
+
+  await test('lupa: proporción fija al redimensionar el recuadro o la zona (Mayús la libera y la otra la sigue); aumento, colocar y al otro lado', async () => {
+    await picSlide(); const M = await magMod();
+    const b = M.addMagnify({ x: 100, y: 100, w: 160, h: 90 }); R.render(); await sleep(20);
+    const el = () => D.querySelector(`#stage .block[data-id="${b.id}"]`), ratio = () => b.source.w / b.source.h;
+    const e = el().querySelector('.handle-size.e').getBoundingClientRect();
+    drag(el().querySelector('.handle-size.e'), e.left + 5, e.top + 5, e.left + 85, e.top + 5); await sleep(20);
+    assert(b.w > 320 && Math.abs(b.w / b.h - ratio()) < 0.02, `el recuadro mantiene la proporción (${b.w}×${b.h})`);
+    const se = el().querySelector('.mag-h.se').getBoundingClientRect(), z0 = M.zoomOf(b);
+    drag(el().querySelector('.mag-h.se'), se.left + 5, se.top + 5, se.left + 45, se.top + 5); await sleep(20);
+    assert(Math.abs(ratio() - 16 / 9) < 0.03 && M.zoomOf(b) < z0, `la zona también (${b.source.w}×${b.source.h}), y amplía menos`);
+    const se2 = el().querySelector('.mag-h.se').getBoundingClientRect();
+    drag(el().querySelector('.mag-h.se'), se2.left + 5, se2.top + 5, se2.left + 5, se2.top + 60, { shiftKey: true }); await sleep(20);
+    assert(ratio() < 1.5 && Math.abs(b.w / b.h - ratio()) < 0.03, `Mayús: otra forma, y el recuadro la sigue (${b.w}×${b.h} / ${b.source.w}×${b.source.h})`);
+    M.setZoom(b.id, 2.5); await sleep(10);
+    assert(Math.abs(M.zoomOf(b) - 2.5) < 0.05, 'aumento ×2,5: ' + M.zoomOf(b));
+    eq(D.querySelector(`#stage .block[data-id="${b.id}"] .mag-k`).textContent, '×2,5', 'el aumento se ve');
+    R.store.commit(() => { Object.assign(b, { x: b.source.x, y: b.source.y }); }); M.placeAgain(b.id); await sleep(10);
+    assert(apart(b, b.source), 'colocar automáticamente: fuera de la zona');
+    const cx = b.x + b.w / 2 - (b.source.x + b.source.w / 2); M.swapSide(b.id); await sleep(10);
+    assert(Math.sign(b.x + b.w / 2 - (b.source.x + b.source.w / 2)) !== Math.sign(cx) || b.x === 0 || b.x + b.w === R.state.deck.size.w, 'al otro lado');
+  });
+
+  await test('lupa: arrastrar la zona amplía otra parte (y cambia de imagen); mover la lupa con otros mueve también su zona', async () => {
+    await picSlide(); const M = await magMod();
+    R.store.commit(() => { slide().blocks.push({ id: 'pic2', type: 'image', src: PIC, x: 900, y: 500, w: 300, h: 169, fit: 'contain', rotation: 0, animation: null }); });
+    const b = M.addMagnify({ x: 100, y: 100, w: 160, h: 90 }); R.render(); await sleep(20);
+    const el = D.querySelector(`#stage .block[data-id="${b.id}"] .mag-src`), r = el.getBoundingClientRect(), [dx, dy] = scr(980, 560), [ox, oy] = scr(100, 100);
+    drag(el, r.left + 20, r.top + 20, r.left + 20 + dx - ox, r.top + 20 + dy - oy); await sleep(20);
+    assert(Math.abs(b.source.x - 980) <= 3 && Math.abs(b.source.y - 560) <= 3, 'la zona se movió: ' + JSON.stringify(b.source));
+    eq(b.target, 'pic2', 'otra imagen debajo');
+    R.store.commit(() => { R.state.ui.multi = ['pic2', b.id]; R.state.ui.selection = b.id; }); R.render(); await sleep(10);
+    const s0 = { ...b.source }; R.store.commit(() => {});
+    const { nudge } = await frame.contentWindow.eval("import('/src/ui/canvas/interact.js')"); nudge(10, 0); await sleep(10);
+    eq(b.source.x, s0.x + 10, 'con la imagen, la zona va con ella');
+  });
+
+  await test('lupa: qué parte de la imagen es (contener, rellenar, recorte, volteo; fuera: ninguna)', async () => {
+    const M = await magMod(), r4 = o => o && Object.values(o).map(v => +v.toFixed(4)).join(',');
+    eq(r4(M.imageCrop({ x: 0, y: 0, w: 640, h: 360, fit: 'contain' }, { x: 160, y: 90, w: 80, h: 45 }, 1280, 720)), '0.25,0.25,0.625,0.625', 'contener, misma proporción');
+    // A square picture contained in a 16:9 box: bands left and right.
+    eq(r4(M.imageCrop({ x: 0, y: 0, w: 640, h: 360, fit: 'contain' }, { x: 140, y: 0, w: 180, h: 180 }, 1000, 1000)), '0,0,0.5,0.5', 'contener con bandas');
+    eq(M.imageCrop({ x: 0, y: 0, w: 640, h: 360, fit: 'contain' }, { x: 0, y: 0, w: 100, h: 100 }, 1000, 1000), null, 'sobre la banda: no es la imagen');
+    eq(r4(M.imageCrop({ x: 0, y: 0, w: 640, h: 360, fit: 'cover' }, { x: 0, y: 0, w: 320, h: 180 }, 1000, 1000)), '0,0.2188,0.5,0.5', 'rellenar (centrada)');
+    eq(r4(M.imageCrop({ x: 0, y: 0, w: 640, h: 360, fit: 'fill', crop: { left: 50 } }, { x: 400, y: 0, w: 100, h: 100 }, 640, 360)), '0.625,0,0.2188,0.7222', 'recortada, dentro de lo visible');
+    eq(M.imageCrop({ x: 0, y: 0, w: 640, h: 360, fit: 'fill', crop: { left: 50 } }, { x: 100, y: 0, w: 100, h: 100 }, 640, 360), null, 'en la parte recortada: no');
+    eq(r4(M.imageCrop({ x: 0, y: 0, w: 640, h: 360, fit: 'fill', flipH: true }, { x: 0, y: 0, w: 160, h: 90 }, 640, 360)), '0.75,0,0,0.75', 'volteada: la parte que se ve ahí');
+  });
+
+  await test('lupa: sobre texto y gráficos, una copia viva ampliada (editor y presentación); bordes discontinuos y de otro color', async () => {
+    reset(); const M = await magMod();
+    const t = slide().blocks[0]; R.store.commit(() => { t.html = 'Lupa sobre texto'; });
+    R.blocks.addChart(); const ch = last();
+    const b = M.addMagnify({ x: t.x, y: t.y, w: 320, h: 180 }); R.render(); await sleep(20);
+    const view = () => D.querySelector(`#stage .block[data-id="${b.id}"] .rv-mag-view`);
+    assert(/Lupa sobre texto/.test(view().textContent), 'el texto ampliado en el editor');
+    R.store.commit(() => { t.html = 'Texto cambiado'; }); await sleep(20);
+    assert(/Texto cambiado/.test(view().textContent), 'sigue los cambios');
+    const html = R.io.buildHTML();
+    assert(/class="rv-mag"/.test(html) && /Texto cambiado/.test(html.slice(html.indexOf('rv-mag-in'))) && /Texto cambiado/.test(html.slice(0, html.indexOf('rv-mag-in'))), 'en la presentación, el texto y su copia ampliada');
+    assert(/<line [^>]*stroke="#e53935"/.test(html), 'líneas rojas');
+    const c2 = M.addMagnify({ x: ch.x + 40, y: ch.y + 40, w: 200, h: 120 }); R.render(); await sleep(20);
+    assert(D.querySelector(`#stage .block[data-id="${c2.id}"] .rv-mag-view svg rect`), 'el gráfico ampliado');
+    M.setMagStyle(c2.id, { color: '#fdd835', style: 'dashed' }); R.store.commit(() => { c2.lines = 'center'; }); await sleep(20);
+    const fr = D.querySelector(`#stage .block[data-id="${c2.id}"] .rv-mag-fr rect`);
+    assert(fr.getAttribute('stroke') === '#fdd835' && fr.hasAttribute('stroke-dasharray'), 'amarillo y discontinuo');
+    eq(D.querySelectorAll(`#stage .block[data-id="${c2.id}"] .rv-mag-lines line`).length, 1, 'una línea desde el centro');
+    R.store.commit(() => { b.border = { ...b.border, color: '"><script>x</script>' }; }); await sleep(10);
+    assert(!/<script>x/.test(R.io.buildHTML()), 'un color que no es un color no entra en el SVG');
+  });
+
+  await test('lupa: con entrada «Zoom» crece desde la zona; en la pestaña, colores rápidos y «Aparecer con zoom»', async () => {
+    await picSlide(); const M = await magMod();
+    const b = M.addMagnify({ x: 100, y: 100, w: 160, h: 90 }); R.render(); await sleep(20);
+    D.querySelector('[data-tab="ctx"]').click(); await sleep(40);
+    const page = D.querySelector('#ribbon [data-page="ctx"]');
+    const sw = [...page.querySelectorAll('.ctx-swatch')]; eq(sw.length, 5, 'cinco colores rápidos');
+    sw[1].click(); await sleep(20); eq(b.border.color, '#fdd835', 'amarillo');
+    [...D.querySelectorAll('#ribbon [data-page="ctx"] button')].find(x => /Aparecer con zoom/.test(x.textContent)).click(); await sleep(20);
+    eq(b.animation?.effect, 'zoom-in', 'entrada con zoom');
+    const html = R.io.buildHTML(), tag = html.match(/<div[^>]*class="[^"]*rv-mag[^"]*"[^>]*>/)[0];
+    assert(/fragment/.test(tag) && /zoom-in/.test(tag), 'animada al presentar');
+    const v = M.viewOf(b); assert(tag.includes(`transform-origin:${Math.round(v.x + v.w / 2 - b.x)}px ${Math.round(v.y + v.h / 2 - b.y)}px`), 'crece desde la zona');
+    D.querySelector('[data-tab="home"]').click();
+  });
+
+  await test('lupa: en PowerPoint, la parte de la imagen recortada (srcRect) o una imagen de lo que hay, y el marco y las líneas como formas', async () => {
+    await picSlide(); const M = await magMod(), W = frame.contentWindow;
+    const b = M.addMagnify({ x: 320, y: 180, w: 160, h: 90 });
+    R.blocks.addChart(); const ch = last(); R.store.commit(() => Object.assign(ch, { x: 700, y: 360 }));
+    const c = M.addMagnify({ x: 760, y: 420, w: 160, h: 90 });
+    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob), xml = await zip.file('ppt/slides/slide1.xml').async('string');
+    for (const n of ['-line1', '-line2', '-area', '', '-frame']) assert(xml.includes(`name="rv-${b.id}${n}"`), 'pieza ' + n);
+    const pic = xml.slice(xml.indexOf(`name="rv-${b.id}"`)), rect = pic.match(/<a:srcRect l="(\d+)" t="(\d+)" r="(\d+)" b="(\d+)"\/>/);
+    assert(rect && +rect[1] === 25000 && +rect[2] === 25000 && +rect[3] === 62500 && +rect[4] === 62500, 'recortada: ' + (rect && rect[0]));
+    const cp = xml.slice(xml.lastIndexOf('<p:pic>', xml.indexOf(`name="rv-${c.id}"`)));
+    assert(cp.indexOf(`name="rv-${c.id}"`) < cp.indexOf('</p:pic>') && !/<a:srcRect/.test(cp.slice(0, cp.indexOf('</p:pic>'))), 'la del gráfico, una imagen de lo que hay');
+    assert((xml.match(/prst="line"/g) || []).length >= 4, 'líneas nativas');
+    assert(/<a:srgbClr val="E53935"/.test(xml), 'en rojo');
+  });
+
+  await test('lupa: «Ampliar una zona de la imagen» desde la imagen (la zona se queda en ella)', async () => {
+    reset(); R.store.commit(() => { slide().blocks = [{ id: 'pic', type: 'image', src: PIC, x: 200, y: 200, w: 400, h: 225, fit: 'cover', rotation: 0, animation: null }]; R.state.ui.selection = 'pic'; R.state.ui.multi = ['pic']; });
+    R.render(); await sleep(20); D.querySelector('[data-tab="ctx"]').click(); await sleep(40);
+    D.querySelector('#ribbon [data-page="ctx"] [data-ctx="magnify-image"]').click(); await sleep(10);
+    drag(D.querySelector('#stage .mag-draw'), ...scr(500, 300), ...scr(900, 600)); await sleep(30);
+    const b = last(); eq(b.type, 'magnify', 'una lupa');
+    assert(b.source.x + b.source.w <= 601 && b.source.y + b.source.h <= 426, 'dentro de la imagen: ' + JSON.stringify(b.source));
+    eq(b.target, 'pic', 'de esa imagen'); D.querySelector('[data-tab="home"]').click();
+  });
 }
