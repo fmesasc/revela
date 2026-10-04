@@ -125,7 +125,7 @@ export function translatePage(html, lang, dict, page) {
     for (const a of readAttrs(t)) toks[i] = toks[i].replace(`${a.name}="${a.value}"`, `${a.name}="${tr(a.value).replace(/"/g, '&quot;')}"`);
   }
   for (const { key, at: [a, b] } of out) { toks[a] = tr(key); for (let i = a + 1; i <= b; i++) toks[i] = ''; }
-  let res = toks.join('').replace(/<[a-zA-Z][^>]*>/g, tag => tag.replace(/\s(href|src|data-buy-month|data-buy-year)="([^"]*)"/g, (m, n, v) => ` ${n}="${relink(v, lang)}"`));
+  let res = toks.join('').replace(/<[a-zA-Z][^>]*>/g, tag => tag.replace(/\s(href|src|data-src|data-buy-month|data-buy-year)="([^"]*)"/g, (m, n, v) => ` ${n}="${relink(v, lang)}"`));
   // Structured data, in this language and with its addresses.
   res = res.replace(/(<script type="application\/ld\+json">)([\s\S]*?)(<\/script>)/g, (m, a, j, c) => {
     const walk = (o, k) => { if (typeof o === 'string') return LD_KEYS.includes(k) && hasWords(o) ? tr(o) : o;

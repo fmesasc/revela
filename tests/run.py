@@ -270,6 +270,8 @@ def site_checks(send, recv):
         check(bad == '', 'enlaces rotos en la portada: ' + str(bad))
         for page in ('pricing.html', 'support.html', 'privacy.html', 'terms.html'):
             check(ev(f"fetch('{page}').then(r=>r.ok)"), 'página ' + page)
+        # The live presentation on the home page: loaded after the page, a real exported one.
+        check(ev("(f=>!!f&&/\\/demo\\/reloj\\.html$/.test(f.src))(document.querySelector('.live iframe'))") and ev("fetch('/demo/reloj.html').then(r=>r.text()).then(t=>/Reveal\\.initialize/.test(t)&&/noindex/.test(t)&&!/fonts\\.googleapis/.test(t))"), 'la presentación en directo de la portada')
         # In other languages: each its own address, with links between them for search engines.
         check(ev("[...document.querySelectorAll('link[rel=alternate][hreflang]')].map(l=>l.hreflang).join()") == 'es,en,fr,de,it,pt,ca,x-default', 'hreflang en la portada')
         check(ev("fetch('sitemap.xml').then(r=>r.text()).then(t=>(t.match(/<loc>/g)||[]).length)") == 25, 'sitemap: 3 páginas × 7 idiomas + 4 legales')

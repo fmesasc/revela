@@ -73,4 +73,15 @@
       bar.append(p, go, x); document.body.prepend(bar);
     }
   }
+
+  // The live presentation on the home page: loaded once the page is (the picture of the
+  // editor meanwhile, and instead of it for whoever asked to save data).
+  var live = document.querySelector('.live iframe[data-src]');
+  if (live && !(navigator.connection && navigator.connection.saveData)) {
+    var start = function () {
+      live.addEventListener('load', function () { setTimeout(function () { live.parentNode.classList.add('on'); }, 700); });
+      live.src = live.dataset.src;
+    };
+    if (document.readyState === 'complete') start(); else window.addEventListener('load', start);
+  }
 })();

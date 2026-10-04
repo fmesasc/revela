@@ -3,12 +3,34 @@
    python3 tools/shot-template.py KEY [OUT.png]   (needs Chrome; serves the repository locally)
    Also: --present N  takes slide N (1-based) while presenting, 2 s after it appears (animations, 3D).
          --editor N   the whole editor window on slide N (for the website's pictures); --gallery: the gallery open.
-         --size WxH   the window's size (default 1600x1000); --dark: the editor in dark mode."""
+         --size WxH   the window's size (default 1600x1000); --dark: the editor in dark mode.
+         --export     OUT is the presentation exported as a web page (File ▸ Export ▸ HTML), not a picture.
+         --demo       with --export: for the website (site/demo/): it moves on by itself (Ns, --every N, default 6)
+                      and loops until touched, not indexed, and its Google fonts copied next to it (no visits to Google)."""
 import base64, http.server, json, os, shutil, socketserver, subprocess, sys, threading, time, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 class Q(http.server.SimpleHTTPRequestHandler):
     def __init__(s, *a, **k): super().__init__(*a, directory=ROOT, **k)
     def log_message(s, *a): pass
+def demo_page(html, folder):
+    """The exported page, for the website: not indexed, and its Google fonts as files of its own."""
+    import re, urllib.request
+    UA = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36'}
+    os.makedirs(os.path.join(folder, 'fonts'), exist_ok=True)
+    def local(m):
+        css = urllib.request.urlopen(urllib.request.Request(m.group(1).replace('&amp;', '&'), headers=UA)).read().decode()
+        def get(u):
+            name = re.sub(r'[^\w.-]', '_', u.group(1).split('/s/')[-1])
+            path = os.path.join(folder, 'fonts', name)
+            if not os.path.exists(path): open(path, 'wb').write(urllib.request.urlopen(urllib.request.Request(u.group(1), headers=UA)).read())
+            return f'url(fonts/{name})'
+        # (only the Latin subsets: the others are left out)
+        css = '\n'.join(b for b in re.split(r'(?=/\* )', css) if b.startswith('/* latin */') or b.startswith('/* latin-ext */'))
+        return '<style>' + re.sub(r'url\((https://fonts\.gstatic\.com/[^)]+)\)', get, css) + '</style>'
+    html = re.sub(r'<link[^>]+href="(https://fonts\.googleapis\.com/[^"]+)"[^>]*>', local, html)
+    html = re.sub(r'<link[^>]+href="https://fonts\.gstatic\.com[^"]*"[^>]*>', '', html)
+    return html.replace('<head>', '<head>\n<meta name="robots" content="noindex">', 1)
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     key = args[0]; out = args[1] if len(args) > 1 else f'/tmp/tpl-{key}.png'
@@ -53,6 +75,13 @@ def main():
         p = {'format': 'png'}
         if clip: p['clip'] = {**clip, 'scale': 1}
         return base64.b64decode(recv(send('Page.captureScreenshot', sid, **p))['result']['data'])
+    if '--export' in sys.argv:                               # (the web page, as File ▸ Export makes it)
+        if '--demo' in sys.argv:
+            every = int(next((sys.argv[i + 1] for i, a in enumerate(sys.argv) if a == '--every'), '6')) * 1000
+            ev(f"(()=>{{const R=window.__revela;R.store.commit(()=>{{R.state.deck.loop=true;R.state.deck.slides.forEach(s=>{{s.autoSlide={every}}})}});return 1}})()")
+        html = ev('window.__revela.io.buildHTML()')
+        if '--demo' in sys.argv: html = demo_page(html, os.path.dirname(os.path.abspath(out)))
+        open(out, 'w').write(html); print(out); proc.kill(); return
     from PIL import Image
     import io
     editor = next((int(sys.argv[i + 1]) for i, a in enumerate(sys.argv) if a == '--editor'), 0)
