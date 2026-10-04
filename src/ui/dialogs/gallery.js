@@ -58,7 +58,7 @@ export function openGallery() {
     + CATEGORIES.filter(([c]) => counts[c]).map(([c, l]) => `<button type="button" class="gal-cat" data-cat="${c}">${t(l)} <small>${counts[c]}</small></button>`).join('') + '</div>';
   const ex = document.createElement('div'); ex.className = 'gal-grid gal-examples';
   const none = document.createElement('p'); none.className = 'host-help'; none.hidden = true; none.textContent = t('Ninguna presentación coincide.');
-  back.querySelector('.modal').append(h, bar, ex, none);
+  back.querySelector('.modal > h4').before(h, bar, ex, none);   // (the examples first, the blank themes after)
   const cover = (btn, deck) => {
     const c = deck.slides[0], cv = btn.querySelector('.thumb-canvas'); cv.style.background = c.background;
     const inner = document.createElement('div'); inner.className = 'thumb-inner';

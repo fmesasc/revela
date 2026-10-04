@@ -52,7 +52,7 @@ export default {
       ['fade', 'Fundido', 'La nueva aparece mientras la anterior se desvanece. La más discreta: vale para casi todo.', ['none', 'Ninguna'], '', null],
       ['slide', 'Deslizar', 'La nueva entra desde un lado y empuja el ritmo hacia delante. La clásica de reveal.js.', ['cover', 'Cubrir'], 'fast', null],
       ['push', 'Empujar', 'La nueva empuja a la anterior fuera de la pantalla. Se elige desde dónde: abajo, arriba, derecha o izquierda.', ['drop', 'Desde arriba'], '', ['top', 'Desde arriba']],
-      ['convex', 'Convex', 'Las dos giran como sobre un cilindro visto por fuera. Con su pareja, Concave, por dentro.', ['concave', 'Concave'], '', null],
+      ['convex', 'Convexa', 'Las dos giran como sobre un cilindro visto por fuera. Con su pareja, Cóncava, por dentro.', ['concave', 'Cóncava'], '', null],
       ['zoom', 'Zoom', 'La nueva crece desde el centro: perfecta para entrar en un tema o en un detalle.', ['shrink', 'Encoger'], 'slow', null],
       ['flip', 'Voltear', 'Se da la vuelta como una tarjeta sobre su eje vertical.', ['rise', 'Elevar'], '', null],
       ['wipe', 'Barrido', 'Un borde recto barre la pantalla y descubre la nueva. Desde la derecha, izquierda, abajo o arriba.', ['fall', 'Caer'], '', ['left', 'Desde la izquierda']],
@@ -104,9 +104,9 @@ export default {
           ...sketch(v, c),
           text(`<span style="color:${OLD}">■</span> la anterior &nbsp; <span style="color:${c}">■</span> la nueva`, BX, BY + BH + 20, BW, 34, { fontSize: 17, color: DIM, textAlign: 'center' }),
           ...strip(i)],
-        notes: `${name} (${val}). ${what}${out ? ` Al salir de esta diapositiva se usa otra: ${out[1]} (Transiciones ▸ Salida).` : ''}${speed ? ` Velocidad ${SPEED[speed].toLowerCase()} solo en esta diapositiva.` : ''}${v === 'page' ? ' Avance automático: Transiciones ▸ Avanzar después de 6 s.' : ''}` };
+        notes: `${name} (${val}). ${what}${out ? ` Al salir de esta diapositiva se usa otra: ${out[1]} (Transiciones ▸ Opciones ▸ Salida).` : ''}${speed ? ` Velocidad ${SPEED[speed].toLowerCase()} solo en esta diapositiva.` : ''}${v === 'page' ? ' Avance automático: Transiciones ▸ Avance automático (s): 6.' : ''}` };
     });
-    const groups = [['Básicas', ['Ninguna', 'Fundido', 'Deslizar', 'Empujar', 'Convex', 'Concave', 'Zoom']], ['En 3D', ['Voltear', 'Cubo', 'Página', 'Galería', 'Caer']],
+    const groups = [['Básicas', ['Ninguna', 'Fundido', 'Deslizar', 'Empujar', 'Convexa', 'Cóncava', 'Zoom']], ['En 3D', ['Voltear', 'Cubo', 'Página', 'Galería', 'Caer']],
       ['Por una forma', ['Barrido', 'Dividir', 'Círculo', 'Rombo']], ['Efectos', ['Elevar', 'Cubrir', 'Desde arriba', 'Remolino', 'Encoger', 'Desenfocar', 'Destello']]];
     return build({ name: 'Catálogo: transiciones', palette: 'revela', fonts: 'modern', title: { color: W } }, [
       { layout: 'blank', bg: '#101317', extra: [
@@ -152,7 +152,7 @@ export default {
         { ...text('Todas las que puede tener un objeto, con su nombre y cómo se escribe', 90, 330, 1100, 50, { fontSize: 30, color: W }), animation: A('fade-up', { start: 'afterPrev' }) },
         ...[['Entrada', 11], ['Énfasis', 8], ['Salida', 5], ['Trayectorias', 6], ['Dibujar', 1], ['Sonidos', 6]].map(([n, k], i) =>
           withAnims(pill(`<b>${n}</b> · ${k}`, 90 + i * 180, 430, 168, CARD, W, { fontSize: 19, borderColor: C[i] }), A('fade-up', { start: 'afterPrev', duration: 350 }))),
-        text('Animaciones ▸ Añadir animación · el Panel ordena, encadena y cambia la duración', 90, 520, 1000, 40, { fontSize: 22, color: DIM })],
+        text('Animaciones ▸ Añadir animación · el Panel de animación ordena, encadena y cambia la duración', 90, 520, 1000, 40, { fontSize: 22, color: DIM })],
         notes: 'Hasta las de la portada están animadas: el título entra al hacer clic y el resto lo sigue sin más clics («después de la anterior»).' },
       { title: 'Entrada: once maneras de aparecer', layout: 'titleOnly', bg: BG, extra: [
         ...IN.map(([n, v], i) => { const [x, y] = cell(i, 4, 90, 175, 280, 160); return withAnims(tile(n, `'${v}'`, x, y, 260, 140, C[i % 6]), A(v, { start: i ? 'afterPrev' : 'click', duration: 650 })); }),
@@ -172,7 +172,7 @@ export default {
         const obj = a.turn ? shape('chevron', sx - 26, sy - 22, 52, 44, C[2]) : shape('ellipse', sx - 22, sy - 22, 44, 44, C[i % 6]);
         return [shape('rounded', x, y, 350, 230, '#ffffff', { opacity: 6, radius: 18 }), ink(pts.map(([px, py]) => [sx + px, sy + py]), '#ffffff40', 2),
           withAnims(obj, A('path', { ...a, duration: 2600, start: i ? 'withPrev' : 'click' })), cap(n, v, x, y + 168, 350, W)]; }),
-        notes: 'Un clic y las seis a la vez («con la anterior»). La línea fina es el camino. Animaciones ▸ Dibujar recorrido para trazarlo a mano; en el Panel, «Giro en el camino».' },
+        notes: 'Un clic y las seis a la vez («con la anterior»). La línea fina es el camino. Animaciones ▸ Dibujar recorrido para trazarlo a mano; en el Panel de animación, «Giro en el camino».' },
       { title: 'Dibujar: se traza solo al presentar', layout: 'titleOnly', bg: BG, extra: [
         withAnims(ink(heart, '#ff6b81', 9), A('draw', { duration: 2200 })),
         withAnims(shape('star', 520, 205, 240, 240, C[2], { stroke: W, strokeWidth: 3, sketch: true }), A('draw', { duration: 1800, start: 'afterPrev' })),
@@ -193,7 +193,7 @@ export default {
         return [shape('rounded', x, y, 350, 220, '#ffffff', { opacity: 6, radius: 18 }),
           withAnims(shape(k, x + 125, y + 25, 100, 100, C[i], k === 'smiley' || k === 'cylinder' ? {} : { stroke: W, strokeWidth: 0 }), A(i % 2 ? 'bounce' : 'zoom-in', { sound: v, duration: 700 })),
           cap(n, `sound: '${v}'`, x, y + 145, 350, W)]; }),
-        notes: 'Seis clics, seis sonidos (hechos en el navegador, sin archivos). Animaciones ▸ Sonido; también se puede poner uno propio.' },
+        notes: 'Seis clics, seis sonidos (hechos en el navegador, sin archivos). Panel de animación ▸ Sonido; también se puede poner uno propio.' },
       { title: 'Varias animaciones en un mismo objeto', layout: 'titleOnly', bg: BG, extra: [
         ...[['1', 'Entra', "'zoom-in' · clic"], ['2', 'Da una vuelta', "'spin360' · después"], ['3', 'Viaja en onda', "'path' · después"], ['4', 'Se va', "'fade-out' · clic"]].map(([k, n, v], i) =>
           card(`<div style="font-size:30px;font-weight:800;color:${C[i]}">${k}</div><div><b>${n}</b></div><div style="font-family:${MONO};font-size:16px;color:${DIM}">${v}</div>`,
@@ -232,7 +232,7 @@ export default {
         ...['view', 'motion', 'autoRotate', 'spin', 'edge', 'bleed', 'clip', 'walk', 'arrive'].map((t, i) => pill(code(t), 90 + (i % 3) * 200, 515 + Math.floor(i / 3) * 44, 186, '#ffffff10', C[i % 6], { fontSize: 17 })),
         nasa('astronaut', 770, 90, 420, 540, { caption: '', autoRotate: true, spin: 25, view: 'three', edge: 'fade' }),
         credit('Modelos 3D: NASA 3D Resources; KayKit (Kay Lousberg), Kenney y three.js, CC0. Se cargan de internet al presentar.')],
-        notes: 'El astronauta de la NASA gira solo y despacio (autoRotate con spin de 25 °/s) y tiene los bordes difuminados. Los modelos necesitan conexión; al insertarlos desde Recursos se guardan dentro.' },
+        notes: 'El astronauta de la NASA gira solo y despacio (autoRotate con spin de 25 °/s) y tiene los bordes difuminados. Los modelos necesitan conexión; al insertarlos desde GIF y stickers se guardan dentro.' },
       { title: 'Vistas: desde dónde mira la cámara', layout: 'titleOnly', bg: BG, extra: [['front', 'De frente'], ['three', 'Tres cuartos'], ['side', 'De lado'], ['back', 'Por detrás'], ['top', 'Desde arriba'], ['low', 'Desde abajo']]
         .flatMap(([v, n], i) => { const [x, y] = [90 + (i % 3) * 375, 165 + Math.floor(i / 3) * 255];
           return [frame(x, y, 350, 235), model('kk-Knight', x + 85, y + 8, 180, 172, { view: v, bleed: 1 }), cap(n, `view: '${v}'`, x, y + 178, 350, W)]; }),
@@ -271,7 +271,7 @@ export default {
           path([[0, 0], [200, -60], [420, 10], [620, -70], [800, -20]], { duration: 4500 })),
         card(`<div style="font-family:${MONO};font-size:18px;line-height:1.6">walk: {<br>&nbsp; clip: 'Walking_A',<br>&nbsp; end: 'Cheer',<br>&nbsp; face: true, look: true<br>}</div>`, 830, 170, 360, 210, '#ffffff0c', { color: C[2], fontSize: 18 }),
         text('Clic: anda siguiendo la línea, mira hacia donde va y al llegar lo celebra y se vuelve hacia el público.', 90, 170, 700, 100, { fontSize: 24, color: '#b8c0d6' })],
-        notes: 'Animaciones ▸ Dibujar recorrido para el camino; Modelo 3D ▸ Al moverse: la animación mientras anda (clip) y la de llegada (end).' },
+        notes: 'Animaciones ▸ Dibujar recorrido para el camino; Modelo 3D ▸ Al moverse ▸ Mientras se mueve: la animación mientras anda (clip); la de llegada (end), en Modelo 3D ▸ Movimiento 3D ▸ Al terminar el recorrido.' },
       { layout: 'blank', bg: BG, extra: [glow(-200, 120, 700, C[0], BG, 30),
         kicker('LLEGADA DESDE LA ANTERIOR · 1 DE 2', 90, 110, 700, C[0]),
         text('El mismo modelo en dos diapositivas seguidas', 90, 150, 560, 130, { fontFamily: H, fontSize: 46, color: W }),
@@ -336,7 +336,7 @@ export default {
         ...BARS.map(([y, v], i) => text(`<b>${y}</b>`, 470 + i * 170, 550, 120, 40, { fontSize: 24, color: W, textAlign: 'center' })),
         ...BARS.map(([, v], i) => text(`${v} k`, 470 + i * 170, 500 - v, 120, 34, { fontSize: 22, color: '#fee440', textAlign: 'center' })),
         text('Las barras son las mismas formas de la diapositiva anterior, ahora más altas. Esta transición dura más: 1,6 s.', 90, 270, 340, 230, { fontSize: 22, color: W }),
-        note(`Duración propia de la transformación: ${code('aaDuration: 1.6')} (Transiciones ▸ Duración). Cifras inventadas: usuarios por año.`, 615)],
+        note(`Duración propia de la transformación: ${code('aaDuration: 1.6')} (Transiciones ▸ Configuración ▸ Transformar ▸ Duración). Cifras inventadas: usuarios por año.`, 615)],
         notes: 'Un gráfico que crece hecho con formas: cada barra tiene el mismo id en las dos diapositivas. Las cifras son de ejemplo.' },
       { layout: 'blank', bg: BG, autoAnimate: true, extra: [title(90, 60, 560, 90, 84), step(4, 'IMÁGENES'),
         same(PIC, image(pic, 870, 200, 300, 200, 'Paisaje: montañas y un lago al atardecer', { radius: 14 })),
@@ -363,7 +363,7 @@ export default {
       { layout: 'blank', bg: BG, autoAnimate: true, morphBy: 'chars', extra: [step(6, 'LETRAS'),
         same(WORD, text('AMOR', 140, 190, 1000, 260, { fontFamily: H, fontSize: 260, textAlign: 'center', wordart: 'gold', letterSpacing: 20 })),
         text(`<div><b>Transformar por caracteres</b> ${code("morphBy: 'chars'")}: las letras que se repiten viajan.</div><div>Por palabras ${code("morphBy: 'words'")}: lo mismo con palabras enteras.</div>`, 90, 500, 1100, 110, { fontSize: 24, color: W, textAlign: 'center' })],
-        notes: 'Transiciones ▸ Transformar ▸ Opciones: por objetos, por palabras o por caracteres.' },
+        notes: 'Transiciones ▸ Entre diapositivas: por objetos, por palabras o por caracteres.' },
     ]);
   } },
 
@@ -392,12 +392,12 @@ export default {
       { title: 'Text Art: diez estilos', layout: 'titleOnly', extra: ART.flatMap(([v, n, bg], i) => { const [x, y] = cell(i, 5, 90, 175, 222, 235), dark = bg !== PAPER;
         return [shape('rounded', x, y, 206, 150, bg, { radius: 14, stroke: LINE, strokeWidth: dark ? 0 : 1.5 }),
           text('Revela', x, y + 30, 206, 90, { fontFamily: H, fontSize: 50, wordart: v, textAlign: 'center', vAlign: 'middle' }), cap(n, `wordart: '${v}'`, x, y + 158, 206, INK)]; }),
-        notes: 'Insertar ▸ Text Art, o en un cuadro de texto: Formato ▸ Text Art. Cada estilo sobre el fondo que mejor le sienta.' },
+        notes: 'Insertar ▸ Text Art, también con un cuadro de texto seleccionado. Cada estilo sobre el fondo que mejor le sienta.' },
       { title: 'Texto curvo: siete formas', layout: 'titleOnly', extra: [
         ...CURVES.flatMap(([v, n], i) => { const [x, y] = cell(i, 4, 90, 170, 280, 250), circ = v === '100';
           return [paper(x, y, 260, 180), circ ? text('ALREDEDOR · DE UN CÍRCULO · ', x + 55, y + 15, 150, 150, { fontSize: 16, curve: 100, color: C[3], textAlign: 'center', letterSpacing: 1 })
             : text('Texto curvo', x + 10, y + 30, 240, 120, { fontSize: 36, curve: +v, color: C[i % 6], textAlign: 'center', fontFamily: H }), cap(n, `curve: ${v}`, x, y + 185, 260, INK)]; }),
-        card('Formato ▸ <b>Curvar texto</b>. Los valores van de −100 a 100: positivos hacia arriba, negativos hacia abajo y 100 da la vuelta entera.', 930, 420, 260, 180, '#f0e6d2', { fontSize: 19, color: INK })],
+        card('Cuadro de texto ▸ Efectos de texto ▸ <b>Curvar texto</b>. Los valores van de −100 a 100: positivos hacia arriba, negativos hacia abajo y 100 da la vuelta entera.', 930, 420, 260, 180, '#f0e6d2', { fontSize: 19, color: INK })],
         notes: 'El texto curvo sigue siendo texto: se edita con doble clic y se puede cambiar de tamaño y color como cualquier otro.' },
       { title: 'Columnas: dos y tres', layout: 'titleOnly', extra: [
         kicker('COLUMNS: 2', 90, 165, 400, C[0]), text(lorem2, 90, 200, 1100, 190, { fontSize: 24, columns: 2, color: INK, textAlign: 'justify', lineHeight: 1.4 }),
@@ -411,7 +411,7 @@ export default {
         const hn = st.heading.split(',')[0].replace(/'/g, ''), bn = st.body.split(',')[0].replace(/'/g, '');
         return [paper(x, y, 260, 230), text(`<div style="font-family:${st.heading};font-size:${hn.length > 11 ? 26 : 32}px;line-height:1.15;color:${C[i % 6]}">${hn}</div><div style="font-family:${st.body};font-size:19px;margin-top:8px">${bn}<br>para el texto: Aa Bb 123</div>`,
           x + 18, y + 18, 224, 130, { color: INK }), cap(n, `fonts: '${v}'`, x, y + 160, 260, INK)]; }),
-        notes: 'Diseño ▸ Tipos de letra: el par cambia los títulos y el texto de toda la presentación. «Sin descargas» usa letras que ya tiene cualquier ordenador.' },
+        notes: 'Diseño ▸ Fuentes: el par cambia los títulos y el texto de toda la presentación. «Sin descargas» usa letras que ya tiene cualquier ordenador.' },
       { title: 'Alineación y cuadro', layout: 'titleOnly', extra: [
         ...[['left', 'Izquierda'], ['center', 'Centro'], ['right', 'Derecha'], ['justify', 'Justificado']].flatMap(([v, n], i) => { const x = 90 + i * 280;
           return [text('Un párrafo corto para ver cómo se alinea en su cuadro de texto.', x, 170, 260, 130, { fontSize: 20, textAlign: v, color: INK, borderColor: LINE, borderDash: 'dash', pad: [12, 14, 12, 14] }),
@@ -472,7 +472,7 @@ export default {
         ink([[110, 625], [160, 590], [230, 640], [300, 585], [380, 630], [440, 600]], C[5], 4), cap('Forma libre', 'a mano', 460, 592, 180, INK, { textAlign: 'left' }),
         ...[['solid', 'Continua'], ['dash', 'Guiones'], ['dot', 'Puntos'], ['dashDot', 'Guion y punto']].flatMap(([v, n], i) => { const y = 185 + i * 110;
           return [shape('line', 700, y + 10, 300, 40, 'none', { stroke: INK, strokeWidth: 2 + i * 2, dash: v }), cap(n, `dash: '${v}' · ${2 + i * 2} px`, 1010, y, 200, INK, { textAlign: 'left' })]; })],
-        notes: 'Forma ▸ Contorno: color, grosor y tipo de línea. La forma libre se dibuja con el ratón o el dedo (pestaña Dibujo).' },
+        notes: 'Forma ▸ Estilo de forma: color, grosor y tipo de línea. La forma libre se dibuja con el ratón o el dedo (pestaña Dibujo).' },
       { title: 'Relleno: degradado y transparencia', layout: 'titleOnly', extra: [
         ...[[0, 'Lineal 0°'], [45, 'Lineal 45°'], [90, 'Lineal 90°'], [135, 'Lineal 135°'], [180, 'Lineal 180°'], ['radial', 'Radial']].flatMap(([a, n], i) => { const x = 90 + i * 185;
           return [shape(a === 'radial' ? 'ellipse' : 'rounded', x + 11, 175, 150, 150, C[4], { fill2: C[1], ...(a === 'radial' ? { gradType: 'radial' } : { gradAngle: a }), radius: 18 }),
@@ -487,7 +487,7 @@ export default {
         ...[['Sin sombra', 'shadow: —', null], ['Suave', 'x 4 · y 6 · blur 10', {}], ['Dura', 'x 10 · y 10 · blur 0', { x: 10, y: 10, blur: 0, color: '#1e332055' }],
           ['Brillo de color', 'x 0 · y 0 · blur 24', { x: 0, y: 0, blur: 24, color: '#66bb6acc' }], ['Lejana', 'x 18 · y 24 · blur 16', { x: 18, y: 24, blur: 16, color: '#00000044' }]]
           .flatMap(([n, v, sh], i) => { const x = 90 + i * 222; return [shape('rounded', x + 40, 400, 130, 120, '#ffffff', { radius: 16, stroke: '#dfe8dc', strokeWidth: 1, ...(sh && { shadow: sh }) }), cap(n, v, x, 540, 210, INK)]; })],
-        notes: 'Forma ▸ Contorno (grosor, guiones) y Estilo ▸ A mano alzada. Las sombras, en Forma ▸ Efectos ▸ Sombra: desplazamiento, desenfoque y color.' },
+        notes: 'Forma ▸ Estilo de forma (grosor, guiones) y Trazo a mano. La sombra se activa en Organizar ▸ Sombra; aquí se ven sus valores: desplazamiento, desenfoque y color.' },
       { title: 'Texto dentro de las formas, y giro', layout: 'titleOnly', extra: [
         shape('speechround', 90, 180, 300, 220, C[0], { html: '¡Hola!<br>Doble clic para escribir', fontSize: 24 }),
         shape('hexagon', 430, 190, 220, 200, C[4], { html: '<div><b>Hexágono</b></div><div>con texto</div>', fontSize: 24 }),
@@ -495,7 +495,7 @@ export default {
         shape('homeplate', 970, 230, 220, 110, C[5], { html: 'Paso 1', fontSize: 28 }),
         cap('Bocadillo', 'html + fontSize', 90, 410, 300, INK), cap('Hexágono', 'el texto se ajusta', 430, 410, 220, INK), cap('Explosión', 'color del texto', 690, 410, 240, INK), cap('Flecha', 'homeplate', 970, 410, 220, INK),
         ...[-30, -10, 0, 15, 45].flatMap((r, i) => [shape('rounded', 145 + i * 220, 505, 110, 80, C[1], { rotation: r, radius: 12, html: `${r}°`, fontSize: 22, color: INK }), cap('', `rotation: ${r}`, 110 + i * 220, 610, 180, SOFT)])],
-        notes: 'Todas las formas cerradas admiten texto: doble clic y escribe. El texto se coloca dentro del hueco útil de cada forma. Para girar, el asa redonda de arriba o Organizar ▸ Girar.' },
+        notes: 'Todas las formas cerradas admiten texto: doble clic y escribe. El texto se coloca dentro del hueco útil de cada forma. Para girar, el asa redonda de arriba.' },
     ]);
   } },
 
@@ -629,7 +629,7 @@ export default {
           ['Ordenar', 'order'], ['Relacionar', 'match'], ['Huecos', 'gaps'], ['Etiquetar', 'label']].map(([n, v], i) =>
           pill(`<b>${n}</b> ${code(v)}`, 90 + (i % 4) * 270, 485 + Math.floor(i / 4) * 50, 256, '#ffffff14', W, { fontSize: 18, borderColor: C[i % 6] + 'aa' })),
         timer(90, 960, 150, 230, { style: 'ring', color: C[4], auto: false, sound: false })],
-        notes: 'Cada votación muestra su QR al presentar; los resultados se ven en directo. Esta presentación tiene activado el modo aula (pestaña Presentación con diapositivas ▸ Modo aula).' },
+        notes: 'Cada votación muestra su QR al presentar; los resultados se ven en directo. Esta presentación tiene activado el modo aula (pestaña Ver ▸ Aula ▸ Modo aula).' },
       { layout: 'blank', bg: BG, extra: [head('Elección única', 'choice', 60, 1160, 'Una opción por persona; resultado en barras'),
         poll({ kind: 'choice', display: 'bar', question: '¿Con qué película abrimos el festival?', options: ['Una comedia', 'Un documental del barrio', 'Un clásico en versión original'], y: 130, h: 550 })],
         notes: 'Votación ▸ Editar votación: pregunta, opciones y cómo se muestran los resultados (barras, tarta o números).' },
@@ -659,7 +659,7 @@ export default {
         notes: 'Insertar ▸ Cuenta atrás. Minutos y segundos, estilo y color en su pestaña. Aquí solo la primera empieza sola.' },
       { title: 'Modo aula y a su ritmo', layout: 'titleOnly', bg: BG, extra: [
         ...[['Modo aula', 'El alumnado sigue las diapositivas en su móvil o portátil (código y QR en la esquina) y responde ahí. Activado en esta presentación.', 'deck.classroom'],
-          ['A su ritmo', 'Se presenta sin móviles: cada persona responde las actividades dentro de las diapositivas, para practicar o en casa.', 'Presentar ▸ A su ritmo'],
+          ['A su ritmo', 'Se presenta sin móviles: cada persona responde las actividades dentro de las diapositivas, para practicar o en casa.', 'Ver ▸ Aula ▸ A su ritmo'],
           ['Resultados del aula', 'Los puntos de cada alumno en cada concurso y actividad, y descarga en CSV.', 'Resultados del aula'],
           ['En la plataforma', 'Como tarea de Moodle u otra plataforma (LTI): el servidor corrige y devuelve la nota.', 'Compartir en el aula']]
           .map(([h, d, v], i) => { const [x, y] = cell(i, 2, 90, 175, 560, 235);
@@ -707,7 +707,7 @@ export default {
         notes: 'Insertar ▸ Ecuación (LaTeX, con KaTeX). En un cuadro de texto, lo que va entre $ y $ se escribe como ecuación.' },
       { title: 'Iconos', layout: 'titleOnly', extra: ICONS.flatMap((n, i) => { const [x, y] = cell(i, 8, 90, 180, 140, 220), c = [ACC, BLUE, GREEN, INK][i % 4];
         return [shape('rounded', x, y, 124, 124, LIGHT, { radius: 18 }), { ...icon(n, x + 27, y + 27, 70, c), decorative: false, alt: n }, cap('', `'${n}'`, x - 8, y + 130, 140, SOFT)]; }),
-        notes: 'Los dieciséis iconos de Revela (Insertar ▸ Iconos); en Recursos ▸ Iconos hay más de 200 000. Cambian de color con su pestaña.' },
+        notes: 'Los dieciséis iconos de Revela (Insertar ▸ Iconos); en Insertar ▸ Iconos en línea hay más de 200 000. Cambian de color con su pestaña.' },
       { title: 'Dispositivos: móvil, tableta y portátil', layout: 'titleOnly', extra: [
         dev('phone', appScreen(360, 720, ACC, 'Agenda'), 110, 170, 220, 440, 'App de agenda en un móvil'), cap('Móvil', "device: 'phone'", 90, 620, 260, INK),
         dev('tablet', appScreen(768, 1024, BLUE, 'Agenda · Semana', 5), 400, 180, 320, 420, 'App de agenda en una tableta'), cap('Tableta', "device: 'tablet'", 430, 620, 260, INK),
@@ -742,7 +742,7 @@ export default {
         link(n1, n2), link(n2, n6, { route: 'curve', color: BLUE }), link(n1, n5, { route: 'elbow', color: ACC }), link(n4, n5, { dash: 'dash' }), link(n5, n6, { arrowStart: true, color: '#c2255c' }), link(n3, n6, { color: GREEN, dash: 'dot' }),
         cap('Recto', "route: 'straight'", 300, 160, 230, SOFT), cap('Curvo', "route: 'curve'", 820, 300, 200, SOFT), cap('De codo', "route: 'elbow'", 428, 330, 130, SOFT, { textAlign: 'left', fontSize: 18 }),
         cap('A guiones', "dash: 'dash'", 300, 575, 230, SOFT), cap('Flecha en los dos extremos', 'arrowStart: true', 740, 575, 240, SOFT), cap('Punteado', "dash: 'dot'", 1100, 330, 120, SOFT, { textAlign: 'left' })],
-        notes: 'Selecciona dos objetos e Insertar ▸ Conector: la línea los sigue cuando se mueven. En su pestaña: recto, de codo o curvo, flechas y tipo de línea.' },
+        notes: 'Selecciona dos objetos y pulsa Conectar (Inicio ▸ Organizar): la línea los sigue cuando se mueven. En su pestaña: recto, de codo o curvo, flechas y tipo de línea.' },
     ]);
     // The zooms point at the slides of code, icons and tables.
     [1, 3, 6].forEach((k, i) => { zooms[i].target = deck.slides[k].id; });

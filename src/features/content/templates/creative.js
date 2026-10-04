@@ -61,12 +61,12 @@ export default {
           at(huge('2,4 MB', 56, 250, 820, 270, 250, W), 'zoom-in', { duration: 350 }),
           text('pesa de media la portada de una web. Diez veces más que en 2010. Casi todo es decoración que nadie pidió.', 64, 540, 790, 130, { fontSize: 30, color: '#d9d9d9' }),
           text('CARGANDO… CARGANDO…', 960, 40, 260, 640, { fontFamily: FF.anton, fontSize: 104, color: INK, vertical: true, lineHeight: 1 })],
-          notes: 'Cifras inventadas pero verosímiles. El texto de la franja amarilla es texto vertical (Formato ▸ Dirección del texto).' },
+          notes: 'Cifras inventadas pero verosímiles. El texto de la franja amarilla es texto vertical (Inicio ▸ Párrafo ▸ Texto vertical).' },
         { title: 'LAS REGLAS', layout: 'titleOnly', bg: W, transition: 'push', extra: rules.map(([n, r], i) =>
           withAnims(card(`<div style="font-family:${FF.anton};font-size:64px;line-height:1;color:${Y}">${n}</div><div style="margin-top:14px">${r}</div>`,
             60 + (i % 3) * 393, 190 + Math.floor(i / 3) * 255, 365, 225, INK, { radius: 0, color: W, fontSize: 28, fontWeight: 700, shadow: { x: 12, y: 12, blur: 0, color: Y } }),
           A('fade-up', { start: i ? 'afterPrev' : 'click', duration: 250 }))),
-          notes: 'Las seis tarjetas aparecen de golpe, una tras otra, con un solo clic. Sombra dura sin desenfoque: el truco brutalista (Formato ▸ Sombra, desenfoque 0).' },
+          notes: 'Las seis tarjetas aparecen de golpe, una tras otra, con un solo clic. Sombra dura sin desenfoque: el truco brutalista (Organizar ▸ Sombra, desenfoque 0).' },
         { layout: 'blank', bg: Y, transition: 'none', extra: [
           huge('LO QUE SOBRA', 60, 40, 1100, 140, 120, INK),
           ...['SOMBRAS SUAVES', 'CARRUSELES', 'VENTANAS EMERGENTES', 'VÍDEOS QUE SE REPRODUCEN SOLOS'].map((t, i) =>
@@ -208,7 +208,7 @@ export default {
             .map(([e, h, d, c], i) => withAnims(sk('rounded', 90 + (i % 2) * 560, 185 + Math.floor(i / 2) * 240, 530, 215, c, {
               html: `<div style="font-size:44px;line-height:1">${e}</div><div style="font-family:${FF.playfair};font-size:32px;color:${GREEN};margin:6px 0">${h}</div><div>${d}</div>`, fontSize: 25, color: INK, rotation: i % 2 ? 1 : -1 }),
             A('fade-in', { start: i ? 'afterPrev' : 'click', duration: 700 })))],
-          notes: 'Tarjetas con trazo a mano alzada (Forma ▸ Estilo boceto) y un poco giradas, para que no parezcan de ordenador.' },
+          notes: 'Tarjetas con trazo a mano alzada (Forma ▸ Estilo de forma ▸ Trazo a mano) y un poco giradas, para que no parezcan de ordenador.' },
         { title: 'Calendario de siembra', layout: 'titleOnly', transition: 'fade', extra: [
           blot('ellipse', 120, 200, 1040, 470, '#c9e0b8', 0, 45),
           tableBlock({ x: 140, y: 200, w: 1000, h: 400, fontSize: 28, header: true, headBg: GREEN, headFg: '#ffffff', stroke: '#cdbfa6', banded: true, band: '#6b8e23',
@@ -422,7 +422,7 @@ export default {
             + 'No te pedimos que lo tires todo. Solo que, la próxima vez, mires dos veces.', 520, 70, 700, 570, { fontSize: 26, lineHeight: 1.55, columns: 2, color: INK }),
           text('— La redacción', 900, 600, 320, 50, { fontFamily: FF.playfair, fontStyle: 'italic', fontSize: 26, color: WINE, textAlign: 'right' }),
           folio('3')],
-          notes: 'Texto en dos columnas (Formato ▸ Columnas) con letra capitular y la entradilla en cursiva: maquetación de revista.' },
+          notes: 'Texto en dos columnas (Cuadro de texto ▸ Párrafo ▸ Columnas) con letra capitular y la entradilla en cursiva: maquetación de revista.' },
         { layout: 'blank', bg: WINE, transition: 'fade', extra: [
           text('“', 60, 10, 300, 320, { fontFamily: FF.abril, fontSize: 340, color: CAMEL, lineHeight: 1 }),
           at(text('La elegancia consiste en quitar, no en añadir.', 160, 230, 980, 300, { fontFamily: FF.playfair, fontStyle: 'italic', fontSize: 92, color: IVORY, lineHeight: 1.15 }), 'fade-up', { duration: 900 }),

@@ -270,9 +270,25 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq((sec.match(/<div[^>]*font-size:30px/g) || []).length, 1, 'el marcador vacío no se exporta');
   });
 
+  await test('presentación en blanco: marcadores vacíos con su indicación solo en el editor (si se olvidan, no salen al presentar)', async () => {
+    R.store.replaceDeck(R.model.emptyDeck()); R.render(); await sleep(20);
+    const [a, b] = slide().blocks;
+    eq([a.ph, b.ph, a.html, b.html].join('|'), 'title|subtitle||', 'título y subtítulo: marcadores sin texto');
+    assert(R.model.isBlankDeck(R.state.deck), 'cuenta como presentación vacía');
+    const prompts = [...D.querySelectorAll('#stage .rich[data-ph]')].map(e => e.dataset.ph);
+    eq(prompts.length, 2, 'el editor muestra la indicación de los dos'); assert(/título/i.test(prompts[0]) && /subtítulo/i.test(prompts[1]), 'indicaciones: ' + prompts);
+    const html = R.io.buildHTML();
+    assert(!/[A-Za-zÁ-ú]/.test((html.split('<section')[1] || '').split('</section>')[0].replace(/<[^>]*>/g, '').replace(/ data-[^>]*/, '')), 'al presentar no sale ningún texto');
+    // A deck saved with the first version's sample texts still counts as untouched.
+    const old = R.model.emptyDeck(); old.slides[0].blocks.forEach(x => { delete x.ph; }); old.slides[0].blocks[0].html = '<b>Título</b>'; old.slides[0].blocks[1].html = 'Subtítulo — doble clic para editar';
+    assert(R.model.isBlankDeck(old), 'con los textos antiguos, también vacía');
+    old.slides[0].blocks[0].html = 'Mi título'; assert(!R.model.isBlankDeck(old), 'con texto propio, no');
+  });
+
   await test('galería de plantillas: presentaciones completas', async () => {
     reset(); D.querySelector('[data-action="gallery"]').click(); await sleep(20);
     eq(D.querySelectorAll('#gallery-modal .gal-grid:not(.gal-examples) .gal-item').length, Object.keys(R.gallery.GALLERY).length + 1, 'una miniatura por plantilla, y «En blanco»');
+    assert(D.querySelector('#gallery-modal .gal-grid').classList.contains('gal-examples'), 'primero las presentaciones de ejemplo, después las plantillas en blanco');
     // With changes, choosing asks first; «En blanco» starts an empty one.
     R.store.commit(() => { slide().blocks[0].html = 'Algo mío'; }); await sleep(10);
     D.querySelector('#gallery-modal [data-gallery="blank"]').click(); await sleep(20);

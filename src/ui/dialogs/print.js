@@ -6,6 +6,7 @@ import { exportImages } from '../../io/export/images.js';
 import { t } from '../../i18n/index.js';
 import { state } from '../../core/store.js';
 import { alertDialog } from './dialog.js';
+import { toast } from '../shell/toast.js';
 
 export function openHandoutDialog() {
   document.getElementById('handout-modal')?.remove();
@@ -28,7 +29,7 @@ export function openHandoutDialog() {
   back.querySelector('.ho-layout').value = '6';
   back.querySelector('.ho-go').addEventListener('click', () => {
     const v = back.querySelector('.ho-layout').value;
-    exportHandout(v === 'notes' ? 'notes' : +v); close();
+    exportHandout(v === 'notes' ? 'notes' : +v, msg => toast(msg, { ms: 9000 })); close();
   });
 }
 

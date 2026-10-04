@@ -217,13 +217,9 @@ export function initRibbon() {
   bindChange('[data-size]', v => format.setFontSize(parseInt(v, 10) || 40));
   bindChange('[data-linespacing]', v => format.lineSpacing(v));
   bindChange('[data-textstyle]', v => { if (v) format.applyTextStyle(v); });
-  bindChange('[data-slidenum-pos]', v => commit(() => (state.deck.slideNumber.position = v)));
-  bindChange('[data-slidenum-fmt]', v => commit(() => (state.deck.slideNumber.format = v)));
   bindChange('[data-logo-pos]', v => commit(() => (state.deck.logo.position = v)));
   bindChange('[data-logo-size]', v => commit(() => (state.deck.logo.size = Math.max(20, parseInt(v, 10) || 120))));
   bindChange('[data-autoslide]', v => commit(() => { currentSlide().autoSlide = Math.max(0, (parseFloat(v) || 0)) * 1000; }));
-  const ft = $('[data-footer-text]');
-  if (ft) ft.addEventListener('input', () => commit(() => { state.deck.footer.text = ft.value; }, { history: false }));
 
   // Reflect the active character formatting on the toolbar as the caret moves.
   document.addEventListener('selectionchange', updateFormatState);
@@ -244,6 +240,13 @@ export function initRibbon() {
     e.preventDefault(); page.scrollLeft += e.deltaY;
   }, { passive: false });
   pages?.addEventListener('scroll', e => markOverflow(e.target), true);
+  // Arrows over the faded edges: it's plain that there is more, and a click shows it.
+  for (const dir of [-1, 1]) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'rb-more ' + (dir > 0 ? 'right' : 'left');
+    b.tabIndex = -1; b.setAttribute('aria-hidden', 'true'); b.innerHTML = '<i class="ms">' + (dir > 0 ? 'chevron_right' : 'chevron_left') + '</i>';
+    b.addEventListener('click', () => { const pg = pages.querySelector('.ribbon-page.active'); pg?.scrollBy({ left: dir * pg.clientWidth * 0.7, behavior: 'smooth' }); });
+    pages?.appendChild(b);
+  }
   window.addEventListener('resize', () => document.querySelectorAll('#ribbon .ribbon-page.active').forEach(markOverflow));
 
   // Editable document title.
@@ -333,6 +336,10 @@ export function markOverflow(page) {
   const more = page.scrollWidth - page.clientWidth > 2;
   page.classList.toggle('more-right', more && page.scrollLeft + page.clientWidth < page.scrollWidth - 2);
   page.classList.toggle('more-left', more && page.scrollLeft > 2);
+  if (page.classList.contains('active')) {                 // (the arrows over the edges)
+    const pg = page.parentElement;
+    pg.classList.toggle('has-right', page.classList.contains('more-right')); pg.classList.toggle('has-left', page.classList.contains('more-left'));
+  }
 }
 export function renderRibbon() {
   populateFonts(); syncCustomFonts(state.deck);
@@ -407,16 +414,7 @@ export function renderRibbon() {
   document.querySelector('[data-action="toggle-guides"]')?.classList.toggle('on', !!state.ui.showGuides);
   document.querySelector('[data-action="toggle-ruler"]')?.classList.toggle('on', !!state.ui.showRuler);
   document.querySelector('[data-action="toggle-snap"]')?.classList.toggle('on', state.ui.snap !== false);
-  const sn = state.deck.slideNumber || {};
-  document.querySelector('[data-action="toggle-slidenum"]')?.classList.toggle('on', !!sn.show);
-  syncValue('[data-slidenum-pos]', sn.position || 'br');
-  syncValue('[data-slidenum-fmt]', sn.format || 'c');
-  const ft = state.deck.footer || {};
-  document.querySelector('[data-action="toggle-footer"]')?.classList.toggle('on', !!ft.show);
-  document.querySelector('[data-action="toggle-footerdate"]')?.classList.toggle('on', !!ft.date);
   document.querySelector('[data-action="toggle-loop"]')?.classList.toggle('on', !!state.deck.loop);
-  const ftInput = $('[data-footer-text]');
-  if (ftInput && document.activeElement !== ftInput) ftInput.value = ft.text || '';
   const lg = state.deck.logo || {};
   syncValue('[data-logo-pos]', lg.position || 'br');
   const lsz = $('[data-logo-size]');

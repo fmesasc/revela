@@ -116,7 +116,7 @@ export const ACTIONS = {
   // (A download alone is easy to miss: each one says what it was and what next.)
   'export': () => { exportHTML(); toast(t('Página web descargada: se abre con cualquier navegador.')); },
   'export-pptx': () => withProgress(t('Creando el archivo de PowerPoint…'), exportPPTX, t('PowerPoint descargado.')),
-  'export-pdf': exportPDF,
+  'export-pdf': () => exportPDF(msg => toast(msg, { ms: 9000 })),
   'export-png': () => openImageDialog(),
   'share': () => openShare(),
   'collab': () => openCollab(),
@@ -233,9 +233,6 @@ export const ACTIONS = {
   'toggle-guides': () => commit(() => (state.ui.showGuides = !state.ui.showGuides), { history: false }),
   'toggle-ruler': () => commit(() => (state.ui.showRuler = !state.ui.showRuler), { history: false }),
   'toggle-snap': () => commit(() => (state.ui.snap = state.ui.snap === false), { history: false }),
-  'toggle-slidenum': () => commit(() => (state.deck.slideNumber.show = !state.deck.slideNumber.show)),
-  'toggle-footer': () => commit(() => (state.deck.footer.show = !state.deck.footer.show)),
-  'toggle-footerdate': () => commit(() => (state.deck.footer.date = !state.deck.footer.date)),
   'toggle-loop': () => commit(() => (state.deck.loop = !state.deck.loop)),
   'toggle-autoanimate': () => slides.toggleAutoAnimate(),
   'dup-animate': () => slides.duplicateForAnimate(),

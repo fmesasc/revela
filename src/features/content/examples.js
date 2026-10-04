@@ -174,12 +174,12 @@ const EXAMPLES_DEF = {
         text('<b>Personajes 3D<br>que se mueven</b>', 90, 170, 620, 260, { fontSize: 72, color: '#f2f5fa' }),
         text('Cada uno con sus propias animaciones: saludar, andar, bailar…', 90, 450, 600, 100, { fontSize: 30, color: '#b9c4d6' }),
         model('three-RobotExpressive', 760, 120, 400, 480, { clip: 'Wave' })],
-        notes: 'El robot saluda sin cortarse: la vista 3D tiene margen alrededor del marco (Modelo 3D ▸ Margen para moverse). Los modelos se cargan de internet; al insertarlos desde Recursos se guardan dentro.' },
+        notes: 'El robot saluda sin cortarse: la vista 3D tiene margen alrededor del marco (Modelo 3D ▸ Encuadre ▸ Margen). Los modelos se cargan de internet; al insertarlos desde GIF y stickers se guardan dentro.' },
       { title: 'Anda por donde le digas', layout: 'titleOnly', extra: [
         withAnims(model('kk-Knight', 60, 250, 290, 390, { walk: { clip: knight.walk, end: knight.arrive, endOnce: true, face: true, look: true } }),
           path([[180, -120], [460, -40], [640, -150], [860, -60]], { duration: 4200 })),
         text('Clic: el caballero sigue el recorrido, gira hacia donde va y al llegar lo celebra.<br><small>Animaciones ▸ Dibujar recorrido: dibújalo con el ratón o el dedo.</small>', 330, 560, 880, 110, { fontSize: 26, color: '#b9c4d6' })],
-        notes: 'Recorrido dibujado a mano (Animaciones ▸ Dibujar recorrido). En Modelo 3D ▸ Al moverse: la animación mientras anda y la de llegada.' },
+        notes: 'Recorrido dibujado a mano (Animaciones ▸ Dibujar recorrido). En Modelo 3D ▸ Al moverse ▸ Mientras se mueve: la animación mientras anda; la de llegada, en Modelo 3D ▸ Movimiento 3D ▸ Al terminar el recorrido.' },
       { title: 'Varias animaciones seguidas', layout: 'titleOnly', extra: [
         withAnims(model('three-RobotExpressive', 100, 250, 260, 330, { walk: { clip: robot.walk, face: true, look: true } }),
           path([[300, 0], [560, 40]], { duration: 2400 }),
@@ -187,14 +187,14 @@ const EXAMPLES_DEF = {
           A('clip3d', { clip: 'Dance', start: 'click', duration: 3000 }),
           path([[-200, -30], [-420, 0]], { duration: 2200, start: 'click' })),
         text('1 · anda hasta el centro y saluda<br>2 · baila<br>3 · vuelve andando', 820, 250, 400, 220, { fontSize: 30, color: '#f2f5fa' })],
-        notes: 'Un mismo objeto con cuatro animaciones (Animaciones ▸ Añadir animación). El orden y el «después de la anterior» se cambian en el Panel.' },
+        notes: 'Un mismo objeto con cuatro animaciones (Animaciones ▸ Añadir animación). El orden y el «después de la anterior» se cambian en el Panel de animación.' },
       { title: 'Movimientos de cámara', layout: 'titleOnly', extra: [
         model('kh-Fox', 90, 170, 520, 350, { view: 'three', motion: 'orbit' }),
         model('kn-character', 720, 170, 400, 350, { motion: 'float' }),
         text('Vuelta completa al entrar', 90, 615, 520, 50, { fontSize: 26, textAlign: 'center', color: '#b9c4d6' }),
         text('Flotar', 720, 615, 400, 50, { fontSize: 26, textAlign: 'center', color: '#b9c4d6' })],
-        notes: 'Modelo 3D ▸ Al llegar a la diapositiva: balanceo, acercar, vuelta completa, flotar o desde arriba.' },
-      { layout: 'section', title: 'Ahora tú', subtitle: 'Insertar ▸ Recursos ▸ 3D con movimiento · ¿Un modelo sin esqueleto? Modelo 3D ▸ Esqueleto automático' },
+        notes: 'Modelo 3D ▸ Vista ▸ Al entrar: balanceo, acercar, vuelta completa, flotar o desde arriba.' },
+      { layout: 'section', title: 'Ahora tú', subtitle: 'Insertar ▸ GIF y stickers ▸ 3D con movimiento · ¿Un modelo sin esqueleto? Modelo 3D ▸ Esqueleto automático' },
     ]));
   } },
 
@@ -212,12 +212,12 @@ const EXAMPLES_DEF = {
         withAnims(shape('star', 510, 260, 260, 260, '#e76f51'), A('zoom-in'), A('highlight-red', { start: 'withPrev' })),
         withAnims(shape('rounded', 880, 280, 260, 220, '#2a9d8f'), A('fade-in'), A('fade-out', { start: 'click' })),
         text('Aparece y crece · entra y se resalta · aparece y se va', 140, 570, 1000, 50, { fontSize: 26, textAlign: 'center' })],
-        notes: 'Varias animaciones por objeto: Animaciones ▸ Añadir animación. «Con la anterior» y «después de la anterior» en el Panel.' },
+        notes: 'Varias animaciones por objeto: Animaciones ▸ Añadir animación. «Con la anterior» y «después de la anterior» en el Panel de animación.' },
       { title: 'Una trayectoria que gira con el objeto', layout: 'titleOnly', extra: [
         withAnims(shape('chevron', 90, 520, 130, 90, '#f3a712'),
           path([[160, -180], [420, -260], [640, -80], [880, -200], [980, -330]], { duration: 3500, turn: 'follow' })),
         text('La punta de flecha sigue una curva y apunta siempre hacia donde va.', 300, 600, 900, 50, { fontSize: 26 })],
-        notes: 'Animaciones ▸ Dibujar recorrido, y en el Panel: Giro en el camino ▸ «Seguir el camino».' },
+        notes: 'Animaciones ▸ Dibujar recorrido, y en el Panel de animación: Giro en el camino ▸ «Seguir el camino».' },
       { layout: 'blank', autoAnimate: true, extra: [
         { ...shape('ellipse', 120, 140, 180, 180, '#f3a712'), id: sun },
         { ...card('<b>Transformar</b><br>Los objetos que están en las dos diapositivas se mueven, crecen y cambian de color solos.', 360, 180, 800, 300, '#ffffff22', { fontSize: 30 }), id: cardA }],
@@ -225,7 +225,7 @@ const EXAMPLES_DEF = {
       { layout: 'blank', autoAnimate: true, extra: [
         { ...shape('ellipse', 900, 60, 320, 320, '#e76f51'), id: sun },
         { ...card('<b>Transformar</b><br>Mismo objeto, otra posición, tamaño y color.', 120, 380, 700, 240, '#ffffff33', { fontSize: 30 }), id: cardA }] },
-      { layout: 'section', title: 'Tu turno', subtitle: 'Animaciones ▸ Añadir animación · Panel · Dibujar recorrido', extra: [{ ...shape('star', 590, 520, 100, 100, '#f3a712'), id: cardB, animation: A('spin', { duration: 1200 }) }] },
+      { layout: 'section', title: 'Tu turno', subtitle: 'Animaciones ▸ Añadir animación · Panel de animación · Dibujar recorrido', extra: [{ ...shape('star', 590, 520, 100, 100, '#f3a712'), id: cardB, animation: A('spin', { duration: 1200 }) }] },
     ]));
   } },
 
@@ -250,7 +250,7 @@ const EXAMPLES_DEF = {
       { title: 'Iconos', layout: 'titleOnly', extra: [['home', 'Inicio'], ['user', 'Persona'], ['gear', 'Ajustes'], ['bolt', 'Energía'], ['heart', 'Me gusta'], ['star', 'Favorito']].flatMap(([n, l], i) => [
         { ...icon(n, 110 + i * 180, 280, 110, ['#3f6497', '#2a9d8f', '#e76f51', '#f3a712', '#c0392b', '#7d3c98'][i]), decorative: false, alt: l },
         text(l, 75 + i * 180, 410, 180, 50, { fontSize: 26, textAlign: 'center' })]),
-        notes: 'Insertar ▸ Iconos, o más de 200 000 en Insertar ▸ Recursos ▸ Iconos.' },
+        notes: 'Insertar ▸ Iconos, o más de 200 000 en Insertar ▸ Iconos en línea.' },
     ]);
   } },
 
@@ -274,7 +274,7 @@ const EXAMPLES_DEF = {
         text('<b>¡Bienvenidos a clase!</b>', 190, 90, 900, 330, { fontSize: 78, curve: 30, color: '#2e7d32' }),
         text('Hoy: el reciclaje, en equipo', 190, 450, 900, 60, { fontSize: 34, textAlign: 'center' }),
         shape('rounded', 520, 540, 240, 90, '#66bb6a', { fill2: '#fbc02d', gradAngle: 0, sketch: true, stroke: '#1e3320', strokeWidth: 2 })],
-        notes: 'El título es texto curvo (Cuadro de texto ▸ Curvar texto). La forma de abajo tiene degradado y estilo a mano alzada (pestaña Forma).' },
+        notes: 'El título es texto curvo (Cuadro de texto ▸ Efectos de texto ▸ Curvar texto). La forma de abajo tiene degradado y estilo a mano alzada (pestaña Forma).' },
       { title: 'Trabajo en grupo', layout: 'titleOnly', extra: [
         text(ul('Formad equipos de cuatro', 'Anotad tres cosas que tiráis cada día', 'Pensad dónde va cada una'), 90, 190, 620, 380, { fontSize: 32 }),
         { ...base(800, 170, 380, 380), type: 'timer', seconds: 300, style: 'ring', color: '#2e7d32', auto: true, sound: true, endText: '¡Tiempo!' }],
@@ -352,7 +352,7 @@ const EXAMPLES_DEF = {
       text('Japón', 90, 200, 640, 200, { fontSize: 150, fontFamily: pairStacks('classic').heading, color: '#3b3228' }),
       text('Guía de 7 días en primavera', 96, 410, 620, 60, { fontSize: 36, fontStyle: 'italic', color: '#8b3a62' }),
       shape('line', 96, 490, 300, 20, 'none', { stroke: '#bc002d', strokeWidth: 3 })],
-      notes: 'Texto curvo en círculo alrededor del sol (Formato ▸ Curvar texto ▸ Círculo).' },
+      notes: 'Texto curvo en círculo alrededor del sol (Cuadro de texto ▸ Efectos de texto ▸ Curvar texto ▸ Círculo).' },
     { title: 'El itinerario', layout: 'titleOnly', extra: [dg('timeline', 'Día 1\n  Tokio: Shibuya y Asakusa\nDía 3\n  Nikko, entre templos\nDía 4\n  Kioto: Fushimi Inari\nDía 6\n  Nara y sus ciervos\nDía 7\n  Osaka: Dotonbori', 90, 170, 1100, 470, { oneByOne: true, colors: 'colorful' })],
       notes: 'Diagrama «Cronología» uno a uno: cada parada aparece con un clic.' },
     { title: 'Lo que no te puedes perder', layout: 'titleOnly', extra: [dg('cards', '🍣 Comer\n  Sushi del mercado de Tsukiji\n⛩️ Ver\n  Los mil toriis de Fushimi Inari\n🌸 Pasear\n  El camino de la filosofía\n♨️ Descansar\n  Un onsen en Hakone', 90, 170, 1100, 470, { colors: 'light' })] },
@@ -390,7 +390,7 @@ const EXAMPLES_DEF = {
           withAnims(shape('star', x, y, 150, 150, c, { sketch: true, stroke: '#1b1030', strokeWidth: 4 }), A('bounce', { start: i ? 'withPrev' : 'afterPrev', delay: i * 150, ...(i === 0 && { sound: 'applause' }) }))),
         text('¡Enhorabuena!', 190, 230, 900, 180, { fontFamily: pairStacks('friendly').heading, fontSize: 110, wordart: 'gold', textAlign: 'center' }),
         text('Gracias por jugar', 340, 420, 600, 70, { fontSize: 40, textAlign: 'center', color: '#ffffff' })],
-        notes: 'Las estrellas rebotan solas al llegar, con aplausos (Animaciones ▸ Sonido).' },
+        notes: 'Las estrellas rebotan solas al llegar, con aplausos (Panel de animación ▸ Sonido).' },
     ]));
   } },
 
@@ -468,7 +468,7 @@ const EXAMPLES_DEF = {
       { layout: 'blank', extra: [
         text('<b>Camino a la cima</b>', 240, 40, 800, 90, { fontSize: 64, textAlign: 'center', color: '#1b2a41' }),
         text('Pulsa → para subir parada a parada · O: ver todo el lienzo', 240, 128, 800, 40, { fontSize: 24, textAlign: 'center', color: '#1b2a41' })],
-        notes: 'Modo lienzo: todas las diapositivas son marcos sobre un mismo dibujo. Diseño ▸ Vista de lienzo para moverlos, cambiar su tamaño o girarlos, o cambiar la imagen del lienzo.' },
+        notes: 'Modo lienzo: todas las diapositivas son marcos sobre un mismo dibujo. Ver ▸ Vista de lienzo para moverlos, cambiar su tamaño o girarlos, o cambiar la imagen del lienzo.' },
       { title: '1 · La idea', body: ul('Todo empieza con una pregunta', 'Anota qué quieres cambiar') },
       { title: '2 · El plan', body: ul('Tres pasos, no diez', 'Quién hace qué'), notes: 'La siguiente diapositiva está dentro de esta: la cámara se acerca como una lupa.' },
       { layout: 'blank', extra: [card('<b>🔍 El detalle</b><br>Un marco pequeño dentro de otro: al llegar, la cámara se acerca como una lupa.', 140, 210, 1000, 290, '#ffffffee', { fontSize: 46, textAlign: 'center', color: '#1b2a41' })] },

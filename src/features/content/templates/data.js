@@ -89,7 +89,7 @@ const salesRegions = () => {
       auto(chartBlock({ x: 100, y: 170, w: 1080, h: 420, chartType: 'bar', combo: true, color: BLUE, seriesName: 'Ventas', data: D(R, tot), grid: true, yTitle: 'Miles de euros',
         series: [{ name: 'Objetivo', values: GOAL, color: ORANGE }] }), 'fade-up', { duration: 900 }),
       auto(text('Norte <b style="color:#196b24">+4 %</b> · Centro <b style="color:#196b24">+5 %</b> · Este <b style="color:#c0392b">−6 %</b> · Sur <b style="color:#196b24">+6 %</b> · Islas <b style="color:#c0392b">−13 %</b>', 100, 608, 1080, 44, { fontSize: 26, color: INK, textAlign: 'center' }), 'fade-in')],
-      notes: 'Gráfico combinado: las ventas en barras y el objetivo como línea sobre ellas (Gráfico ▸ Combinado). Debajo, la desviación de cada región respecto a su objetivo.' },
+      notes: 'Gráfico combinado: las ventas en barras y el objetivo como línea sobre ellas (Gráfico ▸ Tipo de gráfico ▸ Combinado). Debajo, la desviación de cada región respecto a su objetivo.' },
     { title: 'Detalle por región', layout: 'titleOnly', extra: [
       auto(tableBlock({ x: 100, y: 180, w: 1080, h: 406, fontSize: 26, header: true, banded: true, firstCol: true, headBg: BLUE, headFg: '#ffffff', band: BLUE, bandAlpha: 0.1, stroke: '#d0dbe4',
         cellPad: [10, 16, 10, 16], colW: [2.2, 1.4, 1.4, 1.4, 1.4, 1.8],
@@ -492,7 +492,7 @@ const energy = () => {
     S({ title: 'Un día de consumo, hora a hora', layout: 'titleOnly', extra: [
       auto(chartBlock({ x: 100, y: 170, w: 1080, h: 490, chartType: 'stackedArea', color: GREEN, seriesName: 'Base', data: D(H, baseL), grid: true, xTitle: 'Hora del día', yTitle: 'Potencia (kW)',
         series: [{ name: 'Climatización', values: clima, color: CYAN }, { name: 'Cocina y otros', values: cook, color: PINK }] }), 'fade-up', { duration: 1000 })],
-      notes: 'Áreas apiladas (Gráfico ▸ Áreas apiladas): cada capa se suma a la de debajo (consumo base, climatización y, encima, cocina y otros). Los picos de las 12 h y las 20 h son las comidas.' }),
+      notes: 'Áreas apiladas (Gráfico ▸ Tipo de gráfico ▸ Áreas apiladas): cada capa se suma a la de debajo (consumo base, climatización y, encima, cocina y otros). Los picos de las 12 h y las 20 h son las comidas.' }),
     S({ title: 'Mes a mes: consumo, sol y red', layout: 'titleOnly', extra: [
       auto(chartBlock({ x: 100, y: 170, w: 1080, h: 490, chartType: 'line', color: PINK, seriesName: 'Consumo', data: D(MONTHS, USE), grid: true, xTitle: 'Mes', yTitle: 'kWh al mes',
         series: [{ name: 'Solar', values: SOLAR, color: SUN }, { name: 'Red', values: GRID, color: CYAN }] }), 'fade-right', { duration: 1100 })],

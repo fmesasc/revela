@@ -249,7 +249,7 @@ export default {
             at(R(620, 214 + i * 110, 600, 2, INK), 'fade-right', { start: i ? 'afterPrev' : 'click', duration: 300 }),
             at(T(`<span style="font-size:44px;font-weight:700">${n}</span>`, 620, 222 + i * 110, 70, 80, 20, INK, WS), 'fade-up', { start: 'withPrev', duration: 300 }),
             at(T(`<b style="font-size:28px">${t}</b><br>${d}`, 700, 226 + i * 110, 520, 80, 20, GREY, WS, { lineHeight: 1.35 }), 'fade-up', { start: 'withPrev', duration: 300 })])],
-          notes: 'Transformar: el disco, la silla y el título vienen de la portada a su nuevo sitio; la silla llega girando hasta verse de lado (Modelo 3D ▸ Al llegar ▸ Ir a la vista). Con un clic, las cuatro salas en cadena.' },
+          notes: 'Transformar: el disco, la silla y el título vienen de la portada a su nuevo sitio; la silla llega girando hasta verse de lado (Modelo 3D ▸ Desde la anterior ▸ Llega ▸ Ir a la vista de esta diapositiva). Con un clic, las cuatro salas en cadena.' },
         { layout: 'blank', bg: INK, transition: 'push', extra: [
           kicker('RECORRIDO', 60, 60, 400, LIME),
           T('Un siglo en seis sillas', 60, 92, 900, 70, 54, '#f2f0eb', WS, { fontWeight: 700, letterSpacing: -1 }),
@@ -278,7 +278,7 @@ export default {
           ...[['Taller', 'Ribera, Valencia'], ['Año', '1962'], ['Materiales', 'Haya, muelles y damasco'], ['Procedencia', 'Donación de una familia']].flatMap(([k, v], i) => [
             R(60, 380 + i * 64, 540, 1, INK, { opacity: 40 }),
             T(k, 60, 390 + i * 64, 200, 40, 20, GREY, WS), T(v, 260, 390 + i * 64, 340, 40, 20, INK, WS, { fontWeight: 600 })])],
-          notes: 'Ficha de catálogo con filetes finos y la butaca 3D dando una vuelta completa al llegar (Modelo 3D ▸ Al llegar ▸ Vuelta completa). Taller y procedencia inventados.' },
+          notes: 'Ficha de catálogo con filetes finos y la butaca 3D dando una vuelta completa al llegar (Modelo 3D ▸ Vista ▸ Al entrar ▸ Vuelta completa al entrar). Taller y procedencia inventados.' },
         { layout: 'blank', bg: BG, transition: 'push', extra: [
           kicker('VISITAS EN GRUPO', 60, 60, 400),
           T('¿Cuánto cuesta<br>venir con la clase?', 60, 92, 520, 150, 50, INK, WS, { fontWeight: 700, letterSpacing: -1, lineHeight: 1.05 }),
@@ -355,7 +355,7 @@ export default {
           withAnims(m3d('kh-Fox', 40, 360, 300, 290, { view: 'side', walk: { clip: 'Walk', end: 'Survey', face: true, look: true } }),
             path([[220, -10], [460, 0]], { duration: 4200 })),
           T('El zorro es el carnívoro más extendido de la península: vive en bosques, campos y hasta en las afueras de las ciudades.', 60, 220, 740, 100, 24, K, FI, { lineHeight: 1.4 })],
-          notes: 'Con un clic, el zorro 3D cruza la sala andando y, al llegar, se para a olfatear (Modelo 3D ▸ Al moverse: animación de andar y de llegada). Cifras de la sala inventadas.' },
+          notes: 'Con un clic, el zorro 3D cruza la sala andando y, al llegar, se para a olfatear (Modelo 3D ▸ Al moverse ▸ Mientras se mueve: animación de andar; la de llegada, en Modelo 3D ▸ Movimiento 3D). Cifras de la sala inventadas.' },
         { layout: 'blank', bg: K, transition: 'push', extra: [
           kicker('LA COLECCIÓN', 60, 60, 400, Y),
           at(T('4,5', 54, 90, 520, 260, 260, Y, FI, { fontWeight: 700, letterSpacing: -10, lineHeight: 1 }), 'zoom-in', { start: 'afterPrev', duration: 600 }),

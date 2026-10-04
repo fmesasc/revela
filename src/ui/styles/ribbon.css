@@ -22,7 +22,12 @@
 .tabs button:hover{background:var(--ribbon)}
 .tabs button.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
 
-.pages{background:var(--ribbon);border-top:1px solid var(--line)}
+.pages{background:var(--ribbon);border-top:1px solid var(--line);position:relative}
+.rb-more{display:none;position:absolute;top:50%;transform:translateY(-50%);width:26px;height:44px;padding:0;border:1px solid var(--line2);
+  border-radius:13px;background:var(--panel);color:var(--accent);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.18);align-items:center;justify-content:center}
+.rb-more i{font-size:20px;font-style:normal}.rb-more:hover{background:var(--accent-bg)}
+.rb-more.right{right:4px}.rb-more.left{left:4px}
+.pages.has-right .rb-more.right,.pages.has-left .rb-more.left{display:flex}
 .ribbon-page{display:none;align-items:stretch;padding:6px 2px;min-height:115px;box-sizing:border-box;
   overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;
   scrollbar-width:thin;scrollbar-color:transparent transparent;transition:scrollbar-color .25s}

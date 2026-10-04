@@ -24,16 +24,18 @@ export function opacityOf(b) {
   const v = Number(b?.opacity); if (b?.opacity == null || b.opacity === '' || !Number.isFinite(v)) return 1;
   return Math.max(0, Math.min(1, v > 0 && v < 1 ? v : v / 100));
 }
+// Nothing written yet: one slide with empty placeholders (or the texts the first version put in them).
+const SAMPLE_TEXTS = ['<b>Título</b>', 'Subtítulo — doble clic para editar'];
 export function isBlankDeck(d) {
   const s = d?.slides; if (!s || s.length !== 1) return false;
-  const want = emptyDeck().slides[0].blocks.map(b => b.html).join('|');
-  return s[0].blocks.map(b => b.html).join('|') === want || !s[0].blocks.length;
+  return s[0].blocks.every(b => b.type === 'text' && (b.ph ? !(b.html || '').replace(/<[^>]*>/g, '').trim() : SAMPLE_TEXTS.includes(b.html)));
 }
 export function emptyDeck() {
   const first = blankSlide('#101317');
+  // (Empty placeholders, like the templates': the editor shows their prompt, a presentation shows nothing.)
   first.blocks = [
-    textBlock({ x: 140, y: 250, w: 1000, h: 130, fontSize: 72, html: '<b>Título</b>' }),
-    textBlock({ x: 140, y: 390, w: 1000, h: 80, fontSize: 30, html: 'Subtítulo — doble clic para editar' }),
+    textBlock({ ph: 'title', x: 140, y: 250, w: 1000, h: 130, fontSize: 72, fontWeight: '700', html: '' }),
+    textBlock({ ph: 'subtitle', x: 140, y: 390, w: 1000, h: 80, fontSize: 30, html: '' }),
   ];
   return {
     version: 3,

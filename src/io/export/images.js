@@ -41,6 +41,51 @@ export async function hydrateStatic(root, deck) {
   });
 }
 
+// html2canvas with the gradient texts right. It ignores background-clip:text (Text Art «Oro», gradient…) and
+// paints the gradient as a solid bar. Those texts are drawn apart: the letters (a mask), the gradient, and the
+// gradient kept only where the letters are, over the rest of the picture.
+const isClipped = el => /text/.test(el.style.backgroundClip || el.style.webkitBackgroundClip || '');
+// A copy of the holder with only that element in it (in the same place), on a clear background.
+function alone(holder, el) {
+  const path = []; for (let n = el; n !== holder; n = n.parentNode) path.unshift([...n.parentNode.children].indexOf(n));
+  const copy = holder.cloneNode(true); copy.style.background = 'transparent';
+  let node = copy;
+  for (const i of path) {
+    const keep = node.children[i];
+    [...node.childNodes].forEach(c => { if (c !== keep && c.nodeName !== 'STYLE') c.remove(); });
+    if (node !== copy) { node.style.background = 'transparent'; node.style.border = '0'; }
+    node = keep;
+  }
+  document.body.appendChild(copy);
+  return { copy, target: node };
+}
+export async function rasterize(holder, opts) {
+  await loadScript(HTML2CANVAS, 'html2canvas');
+  const clipped = [...holder.querySelectorAll('[style]')].filter(isClipped);
+  if (!clipped.length) return window.html2canvas(holder, opts);
+  const saved = clipped.map(el => el.style.cssText);
+  const draw = async (el, style) => {
+    const { copy, target } = alone(holder, el);
+    try { target.style.cssText += ';' + style; return await window.html2canvas(copy, { ...opts, backgroundColor: null }); } finally { copy.remove(); }
+  };
+  try {
+    const parts = [];
+    for (const el of clipped) {
+      const mask = await draw(el, 'background:none;color:#000');
+      const fill = await draw(el, 'color:transparent;-webkit-background-clip:border-box;background-clip:border-box');
+      const both = Object.assign(document.createElement('canvas'), { width: fill.width, height: fill.height }), g = both.getContext('2d');   // (a new canvas: html2canvas's own keep a clip)
+      g.drawImage(fill, 0, 0); g.globalCompositeOperation = 'destination-in'; g.drawImage(mask, 0, 0);
+      parts.push(both);
+    }
+    clipped.forEach(el => { el.style.visibility = 'hidden'; });
+    const out = await window.html2canvas(holder, opts);
+    const o = out.getContext('2d'); o.save(); o.setTransform(1, 0, 0, 1, 0, 0);
+    parts.forEach(c => o.drawImage(c, 0, 0));
+    o.restore();
+    return out;
+  } finally { clipped.forEach((el, i) => { el.style.cssText = saved[i]; }); }
+}
+
 // One object as a PNG data URL (for formats that can't draw it natively).
 export async function blockImage(b, slide, deck = state.deck) {
   const holder = document.createElement('div');
@@ -49,8 +94,7 @@ export async function blockImage(b, slide, deck = state.deck) {
   document.body.appendChild(holder);
   try {
     await hydrateStatic(holder, deck);
-    await loadScript(HTML2CANVAS, 'html2canvas');
-    const c = await window.html2canvas(holder, { width: b.w, height: b.h, scale: 2, useCORS: true, logging: false, backgroundColor: null });
+    const c = await rasterize(holder, { width: b.w, height: b.h, scale: 2, useCORS: true, logging: false, backgroundColor: null });
     return c.toDataURL('image/png');
   } finally { holder.remove(); }
 }
@@ -59,17 +103,16 @@ export async function blockImage(b, slide, deck = state.deck) {
 // come out blank), 3D models come out as their picture; everything else does.
 export async function slideImageBlob(s, type = 'png', deck = state.deck) {
   const { w, h } = deck.size;
-  const holder = document.createElement('div');
+  const holder = document.createElement('div'); holder.className = 'rst';   // (.rst: the images' size rule below must not reach html2canvas's own iframe)
   holder.style.cssText = `position:fixed;left:-99999px;top:0;width:${w}px;height:${h}px;overflow:hidden;color:${deckFg(deck)};font-family:${deckBodyFont(deck) || 'inherit'};background:${s.background}`;
   holder.innerHTML = `<style>*{box-sizing:border-box}ul{list-style-type:var(--bullet,disc)}ol{list-style-type:var(--num,decimal)}`
-    + `img,video,model-viewer,iframe{width:100%;height:100%}${tableCSS()}${levelCSS()}</style>`
+    + `.rst img,.rst video,.rst model-viewer,.rst iframe{width:100%;height:100%}${tableCSS()}${levelCSS()}</style>`
     + slideInnerHTML(s, deck);
   document.body.appendChild(holder);
   try {
     await hydrateStatic(holder, deck);
-    await loadScript(HTML2CANVAS, 'html2canvas');
     // JPG has no transparency: paint the page colour underneath.
-    const canvas = await window.html2canvas(holder, { width: w, height: h, scale: 2, useCORS: true, logging: false,
+    const canvas = await rasterize(holder, { width: w, height: h, scale: 2, useCORS: true, logging: false,
       backgroundColor: type === 'jpg' ? '#ffffff' : null });
     return await new Promise(res => canvas.toBlob(res, type === 'jpg' ? 'image/jpeg' : 'image/png', 0.92));
   } finally { holder.remove(); }

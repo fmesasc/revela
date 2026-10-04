@@ -105,7 +105,7 @@ export default {
             withAnims(text(`<div style="font-size:54px;font-weight:800;line-height:1.1;color:#ffffff">${n}</div><div style="font-size:23px;color:${A2};margin-bottom:14px">${l}</div><div style="font-size:19px;color:${dc}">${d}</div>`,
               x + 18, 230, 225, 200, { textAlign: 'left', color: W }), A('fade-up', { start: 'withPrev' }))]; }),
         withAnims(text('El mejor trimestre de nuestra historia en ingresos. El margen baja por el coste de los paneles importados, ya cubierto al 80 % para 2027.', 100, 500, 1080, 110, { fontSize: 27, color: A2 }), A('fade-up', { start: 'afterPrev' }))],
-        notes: 'Un solo clic: las cuatro tarjetas entran en cadena y suena una campanilla con la primera (Animaciones ▸ Sonido). Detenerse en el margen: es la única cifra bajo el plan.' },
+        notes: 'Un solo clic: las cuatro tarjetas entran en cadena y suena una campanilla con la primera (Panel de animación ▸ Sonido). Detenerse en el margen: es la única cifra bajo el plan.' },
       { title: 'Del ingreso al EBITDA (M€)', layout: 'titleOnly', bg: BG, extra: [chartBlock({ x: 100, y: 180, w: 1080, h: 460, chartType: 'waterfall', color: MINT,
         data: [{ label: 'Ingresos', value: 12.4 }, { label: 'Compras', value: -6.1 }, { label: 'Personal', value: -2.6 }, { label: 'Operación', value: -1.1 }, { label: 'Otros gastos', value: -0.5 }, { label: 'Total EBITDA', value: 0 }] })],
         notes: 'Gráfico de cascada: cada barra parte de donde acabó la anterior y la última («Total…») se calcula sola.' },
@@ -156,7 +156,7 @@ export default {
         kicker('PLAN DE MARKETING · SEP–DIC 2026', 90, 170, 640, YE),
         text('Otoño<br>lento', 84, 210, 640, 330, { fontFamily: head('bold'), fontSize: 170, lineHeight: 0.92, color: W }),
         text('Brasa · café de especialidad', 90, 560, 640, 50, { fontSize: 30, color: SA })],
-        notes: 'Texto curvo en círculo alrededor del sol de la portada (Cuadro de texto ▸ Curvar texto). Brasa es una marca inventada.' },
+        notes: 'Texto curvo en círculo alrededor del sol de la portada (Cuadro de texto ▸ Efectos de texto ▸ Curvar texto). Brasa es una marca inventada.' },
       { title: 'Lo que queremos conseguir', layout: 'titleOnly', bg: BG, extra: [
         ...[['+25 %', 'ventas en la tienda online', OR], ['8.000', 'suscriptores nuevos', YE], ['4,7', 'valoración media de clientes', GR]].map(([n, l, c], i) =>
           withAnims(big(n, l, 90 + i * 380, 210, c, W), chain(i, 'fade-up'))),
@@ -217,7 +217,7 @@ export default {
         chartBlock({ x: 90, y: 165, w: 1100, h: 450, chartType: 'bar', combo: true, grid: true, color: T, seriesName: 'Facturación',
           data: months.map((m, i) => ({ label: m, value: sales[i] })), series: [{ name: 'Objetivo', values: [850, 850, 900, 950, 1000, 1050, 1050, 950, 1050, 1100, 1200, 1350], color: C }] }),
         text('Total 2026: <b>12,4 M€</b>. Por debajo del objetivo hasta julio y por encima todo el segundo semestre.', 90, 625, 1100, 50, { fontSize: 22, color: MUTE })],
-        notes: 'Gráfico combinado (Gráfico ▸ Combinado): la facturación en barras y el objetivo como línea encima, con cuadrícula y escala.' },
+        notes: 'Gráfico combinado (Gráfico ▸ Tipo de gráfico ▸ Combinado): la facturación en barras y el objetivo como línea encima, con cuadrícula y escala.' },
       { title: 'Previsión 2027 por trimestre (M€)', layout: 'titleOnly', extra: [
         chartBlock({ x: 90, y: 170, w: 760, h: 470, chartType: 'line', grid: true, color: T, seriesName: 'Base',
           data: [{ label: 'T1', value: 3.1 }, { label: 'T2', value: 3.4 }, { label: 'T3', value: 3.5 }, { label: 'T4', value: 4.5 }],
@@ -266,7 +266,7 @@ export default {
         text('<b>¡Hola!</b>', 90, 205, 640, 110, { fontFamily: head('friendly'), fontSize: 92, lineHeight: 1.1, color: G }),
         text('<b>Te damos la bienvenida a Tándem</b>', 90, 320, 640, 130, { fontFamily: head('friendly'), fontSize: 46, lineHeight: 1.15, color: INK }),
         text('Todo lo que necesitas para tu primera semana', 90, 470, 660, 50, { fontSize: 28, color: '#4a6b4d' })],
-        notes: 'El robot 3D saluda en bucle (Modelo 3D ▸ Animación: Wave). Tándem es una empresa inventada.' },
+        notes: 'El robot 3D saluda en bucle (Modelo 3D ▸ Animación ▸ En reposo: Wave). Tándem es una empresa inventada.' },
       { title: 'Tándem en pocas palabras', layout: 'titleOnly', extra: [
         ...[['2012', 'el año en que empezamos', G], ['140', 'personas en 4 ciudades', BL], ['92 %', 'de clientes nos recomiendan', PK]].map(([n, l, c], i) =>
           withAnims(big(n, l, 90 + i * 380, 200, c, INK), chain(i, 'bounce'))),

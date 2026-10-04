@@ -8,12 +8,12 @@
 
 import { state, currentSlide } from '../../core/store.js';
 import { opacityOf } from '../../core/model.js';
-import { HTML2CANVAS, JSZIP, loadScript } from '../../core/vendor.js';
+import { JSZIP, loadScript } from '../../core/vendor.js';
 import { tableCSS, levelCSS, shapeSVG, iconSVG, chartSVG, inkSVG } from '../../render/svg.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
 import { t } from '../../i18n/index.js';
 import { blockHTML } from '../formats/html.js';
-import { hydrateStatic } from './images.js';
+import { hydrateStatic, rasterize } from './images.js';
 import { styled } from '../../features/document/master.js';
 import { download, slug } from '../files.js';
 
@@ -108,19 +108,18 @@ export async function selectionCanvas(blocks, { scale = 2, background = null, sl
     ? { ...b, src: (await bakeImage(b, scale)).toDataURL('image/png'), adj: null, crop: null, fit: 'fill' }
     : b)));
   const bg = background === 'slide' ? slide?.background || '#ffffff' : background;
-  const holder = document.createElement('div');
+  const holder = document.createElement('div'); holder.className = 'rst';   // (.rst: the images' size rule below must not reach html2canvas's own iframe)
   holder.style.cssText = `position:fixed;left:-99999px;top:0;width:${box.w}px;height:${box.h}px;overflow:hidden;`
     + `color:${deckFg(deck)};font-family:${deckBodyFont(deck) || 'inherit'};${bg ? `background:${bg};` : ''}`;
   holder.innerHTML = `<style>*{box-sizing:border-box}ul{list-style-type:var(--bullet,disc)}ol{list-style-type:var(--num,decimal)}`
-    + `img,video,model-viewer,iframe{width:100%;height:100%}${tableCSS()}${levelCSS()}</style>`
+    + `.rst img,.rst video,.rst model-viewer,.rst iframe{width:100%;height:100%}${tableCSS()}${levelCSS()}</style>`
     + `<div style="position:absolute;left:${-box.x}px;top:${-box.y}px;width:${deck.size.w}px;height:${deck.size.h}px">`
     + baked.map(b => blockHTML({ ...styled(b, slide, deck), animation: null }, { ...slide, blocks: baked })).join('') + '</div>';
   document.body.appendChild(holder);
   try {
     await hydrateStatic(holder, deck);
     await Promise.all([...holder.querySelectorAll('img')].map(i => i.complete ? null : new Promise(r => { i.onload = i.onerror = r; })));
-    await loadScript(HTML2CANVAS, 'html2canvas');
-    return await window.html2canvas(holder, { width: box.w, height: box.h, scale, useCORS: true, logging: false, backgroundColor: null });
+    return await rasterize(holder, { width: box.w, height: box.h, scale, useCORS: true, logging: false, backgroundColor: null });
   } finally { holder.remove(); }
 }
 

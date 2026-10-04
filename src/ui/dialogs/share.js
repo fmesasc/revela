@@ -23,15 +23,15 @@ export function openShare() {
   back.innerHTML = `<div class="modal share" style="text-align:start;min-width:320px;max-width:min(560px,94vw)">
     <button class="modal-close">✕</button><h3>${t('Compartir')}</h3>
 ${hasAccounts() ? `<div class="sh-cloud"><div><b>${t('Con personas concretas')}</b><br><small>${t('Desde tu nube de Revela: cada persona con su permiso (ver, comentar o editar), y los cambios al momento.')}</small></div>
-      <button type="button" class="fr-do sh-people"><i class="ms">person_add</i> ${t('Personas')}</button></div><h4>${t('O una copia cifrada')}</h4>` : ''}
-    <p class="host-help">${t('La presentación se cifra en este navegador antes de salir de él: quien guarde la copia no puede leerla sin la clave o la contraseña, y no aparece en buscadores.')}</p>
-    <fieldset><legend>${t('Protección')}</legend>
-      <label class="fr-chk"><input type="radio" name="sh-p" value="key" checked> ${t('Enlace secreto (la clave va en el propio enlace)')}</label>
-      <label class="fr-chk"><input type="radio" name="sh-p" value="password"> ${t('Contraseña (se pide al abrirla)')}</label>
+      <button type="button" class="fr-do sh-people"><i class="ms">person_add</i> ${t('Personas')}</button></div><h4>${t('O un enlace o archivo protegido')}</h4>` : ''}
+    <p class="host-help">${t('La presentación sale de tu navegador ya protegida: ni el servidor ni quien guarde el archivo pueden leerla sin el enlace completo o la contraseña, y no aparece en buscadores.')}</p>
+    <fieldset><legend>${t('¿Quién puede abrirla?')}</legend>
+      <label class="fr-chk"><input type="radio" name="sh-p" value="key" checked> ${t('Cualquiera que tenga el enlace (sin contraseña)')}</label>
+      <label class="fr-chk"><input type="radio" name="sh-p" value="password"> ${t('Solo quien sepa la contraseña (se pide al abrirla)')}</label>
       <div class="sh-pw" hidden>
         <input type="password" class="sh-pw1" placeholder="${t('Contraseña')}" autocomplete="new-password">
         <input type="password" class="sh-pw2" placeholder="${t('Repite la contraseña')}" autocomplete="new-password">
-        <p class="host-help">${t('Usa una frase larga: quien tenga la copia cifrada puede probar contraseñas sin límite.')}</p>
+        <p class="host-help">${t('Usa una frase larga: quien consiga el enlace o el archivo puede ir probando contraseñas sin límite.')}</p>
       </div>
     </fieldset>
     <fieldset><legend>${t('Dónde')}</legend>
@@ -80,12 +80,12 @@ ${hasAccounts() ? `<div class="sh-cloud"><div><b>${t('Con personas concretas')}<
       if (!serverReady()) return alertDialog(t('Escribe la dirección https del servidor.'));
     }
     if (where === 'drive' && !gdriveReady()) return openGdriveSetup();
-    const go = q('.sh-go'); go.disabled = true; go.textContent = t('Cifrando…');
+    const go = q('.sh-go'); go.disabled = true; go.textContent = t('Preparando…');
     try {
       const r = await publish({ where, password, days: +q('.sh-days').value, domain: where === 'server' ? q('.sh-domain').value.trim().replace(/^@/, '') : '' });
       q('.sh-out').innerHTML = r.where === 'file'
         ? `<p class="host-help">${t('Se ha descargado')} <b>${esc(r.file)}</b>. ${t('Súbelo a tu web y usa su dirección en un iframe.')}</p>`
-          + (r.key ? `<p class="host-help">${t('Añade esto al final de su dirección (es la clave; sin ella no se abre):')}</p>
+          + (r.key ? `<p class="host-help">${t('Añade esto al final de su dirección; sin ello la presentación no se abre:')}</p>
               <div class="sh-row"><input readonly class="sh-suffix" value="${esc(r.suffix)}">${copyBtn('.sh-suffix')}</div>` : '')
           + `<div class="sh-row"><textarea readonly class="sh-ifr" rows="2">${esc(`<iframe src="https://…/${r.file}${r.suffix}" width="960" height="540" style="border:0;max-width:100%" allow="fullscreen" allowfullscreen></iframe>`)}</textarea>${copyBtn('.sh-ifr')}</div>`
         : `<label class="fr-l">${t('Enlace')}</label><div class="sh-row"><input readonly class="sh-link" value="${esc(r.link)}">${copyBtn('.sh-link')}</div>
