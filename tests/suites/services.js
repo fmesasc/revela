@@ -301,8 +301,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       await A.insertSpecs(got, { images: true });
       eq(R.state.deck.slides.length, n0 + 11, 'once diapositivas');
       const S = R.state.deck.slides.slice(1), types = s => s.blocks.map(b => b.type).join(',');
-      assert(/<b>42%<\/b>/.test(S[5].blocks[1].html), 'cifras destacadas');
-      eq(S[6].blocks.filter(b => b.type === 'connector').length, 2, 'línea de tiempo con conectores');
+      assert(S[5].blocks.some(b => /<b>42%<\/b>/.test(b.html || '')), 'cifras destacadas');
+      eq(S[6].blocks.filter(b => b.type === 'shape' && b.shape === 'ellipse' && b.opacity == null).length, 3, 'línea de tiempo: un punto por momento');
       const ch = S[7].blocks.find(b => b.type === 'chart'); eq(ch.chartType, 'line', 'gráfico'); eq(ch.data[1].value, 2, 'datos del gráfico');
       const tb = S[8].blocks.find(b => b.type === 'table'); eq(tb.rows.length, 3, 'tabla con cabecera'); assert(tb.header, 'cabecera');
       assert(S[9].blocks.some(b => b.type === 'image'), 'imagen generada en la diapositiva de imagen');
@@ -609,6 +609,107 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const s5 = R.state.deck.slides[5], bg5 = s5.background;
     AG.applyOps(AG.validateOps([{ op: 'replace_slide', slide: 6, spec: { kind: 'bullets', title: 'Rehecha', bullets: ['x'] } }], { perms: ALL }).ops);
     eq(s5.layoutId, 'titleContent', 'rehecha con su diseño'); eq(s5.background, bg5, 'conserva el fondo');
+  });
+
+  // A real answer of the model (Gemini 2.5 Flash) that read badly: "1." typed by hand, "•" inside the items,
+  // nesting with spaces, headings as one more bullet, "Label: text" without bold, all crammed in one box.
+  const BAD_HTML = "<ul><li>Porque la energía nuclear tiene otros problemas que no son climáticos:</li><li>1. Los residuos radiactivos: Deben guardarse durante miles de años.</li><li>2. Riesgo de accidentes: Impacto social y mediático enorme (Chernóbil, Fukushima).</li><li>3. No es infinita: El uranio es un mineral; NO es renovable.</li><li>Cómo clasificarla de forma 100% rigurosa en tu Power BI:</li><li>• En lugar de 'Limpia vs Sucia', usa la taxonomía oficial de la ONU:</li><li>    • Combustibles Fósiles: Carbón, Gas, Petróleo.</li><li>    • Bajas en Carbono: Solar, Eólica, Hidroeléctrica y Nuclear.</li></ul>";
+  const BAD_TEXT = "- Porque la energía nuclear tiene otros problemas que no son climáticos:\n- 1. Los residuos radiactivos: Deben guardarse durante miles de años.\n- 2. Riesgo de accidentes: Impacto social y mediático enorme (Chernóbil, Fukushima).\n- 3. No es infinita: El uranio es un mineral; NO es renovable.\n- Cómo clasificarla de forma 100% rigurosa en tu Power BI:\n- • En lugar de 'Limpia vs Sucia', usa la taxonomía oficial de la ONU:\n-     • Combustibles Fósiles: Carbón, Gas, Petróleo.\n-     • Bajas en Carbono: Solar, Eólica, Hidroeléctrica y Nuclear.";
+  const GOOD_HTML = '<p><b>Porque la energía nuclear tiene otros problemas que no son climáticos</b></p><ol><li><b>Los residuos radiactivos:</b> Deben guardarse durante miles de años.</li>'
+    + '<li><b>Riesgo de accidentes:</b> Impacto social y mediático enorme (Chernóbil, Fukushima).</li><li><b>No es infinita:</b> El uranio es un mineral; NO es renovable.</li></ol>'
+    + "<p><b>Cómo clasificarla de forma 100% rigurosa en tu Power BI</b></p><ul><li>En lugar de 'Limpia vs Sucia', usa la taxonomía oficial de la ONU:<ul>"
+    + '<li><b>Combustibles Fósiles:</b> Carbón, Gas, Petróleo.</li><li><b>Bajas en Carbono:</b> Solar, Eólica, Hidroeléctrica y Nuclear.</li></ul></li></ul>';
+  await test('IA: texto de la IA normalizado (numeración, viñetas, sangrías, subtítulos, «Etiqueta:» en negrita)', async () => {
+    const W = frame.contentWindow, RT = await W.eval("import('/src/features/ai/richtext.js')"), AG = R.aiAgent;
+    eq(RT.richHTML(BAD_HTML), GOOD_HTML, 'el HTML del ejemplo, arreglado');
+    eq(RT.richHTML(BAD_TEXT), GOOD_HTML, 'y lo mismo desde el texto con «- » que manda el modelo');
+    eq(AG.toHTML(BAD_TEXT), GOOD_HTML, 'set_text lo usa');
+    const sh = RT.shapeOf(RT.outline(BAD_HTML)); eq(sh.groups, 2, 'dos grupos'); eq(sh.headings, 2, 'con subtítulo'); assert(sh.nested, 'con anidación');
+    // Lo de siempre sigue igual; lo que no es una lista, tampoco.
+    eq(AG.toHTML('Nuevo título'), 'Nuevo título', 'una línea'); eq(AG.toHTML('- a\n- b'), '<ul><li>a</li><li>b</li></ul>', 'viñetas');
+    eq(AG.toHTML('uno\ndos'), 'uno<br>dos', 'líneas'); eq(AG.toHTML('— Anónimo'), '— Anónimo', 'una firma no es una lista');
+    eq(AG.toHTML('Cuesta 3.200 €'), 'Cuesta 3.200 €', 'un número no es una numeración');
+    eq(RT.richHTML(['1) Medir', '2) Reducir']), '<ol><li>Medir</li><li>Reducir</li></ol>', 'numeradas a mano → lista numerada');
+    eq(RT.richHTML('* uno\n  * dos\n* tres'), '<ul><li>uno<ul><li>dos</li></ul></li><li>tres</li></ul>', 'anidada por sangría');
+    eq(RT.richHTML('### Ventajas\n- **Coste:** bajo'), '<p><b>Ventajas</b></p><ul><li><b>Coste:</b> bajo</li></ul>', 'markdown: encabezado y negrita');
+    eq(RT.richHTML('- Ver https://x.org: aquí'), '<ul><li>Ver https://x.org: aquí</li></ul>', 'una dirección no es una etiqueta');
+    eq(RT.richHTML('<b>Nota:</b> &lt;algo&gt;'), '<b>Nota:</b> &lt;algo&gt;', 'el HTML que manda, escapado');
+  });
+
+  await test('asistente: un cuerpo largo y estructurado se convierte en columnas o tarjetas (y si no, cabe)', async () => {
+    const deck = await fromTemplate('product_watch'), AG = R.aiAgent;
+    AG.applyOps(addOp({ kind: 'bullets', title: 'Energía', bullets: ['Una idea', 'Otra'] }, 1));
+    const s = R.state.deck.slides[1], body = s.blocks.find(b => b.ph === 'body'), title = s.blocks.find(b => b.ph === 'title');
+    const ops = AG.validateOps([{ op: 'set_text', slide: 2, id: title.id, text: '¿Es «limpia» la nuclear?' }, { op: 'set_text', slide: 2, id: body.id, text: BAD_TEXT }], { perms: ALL }).ops;
+    eq(ops[1].op, 'replace_slide', 'se rehace la diapositiva'); eq(ops[1].spec.kind, 'comparison', 'en columnas');
+    eq(ops[1].spec.columns.map(c => c.heading).join('|'), 'Porque la energía nuclear tiene otros problemas que no son climáticos|Cómo clasificarla de forma 100% rigurosa en tu Power BI', 'los subtítulos, de encabezado');
+    AG.applyOps(ops);
+    const ns = R.state.deck.slides[1], texts = ns.blocks.filter(b => b.type === 'text');
+    assert(/limpia/.test(ns.blocks.find(b => b.ph === 'title').html), 'con el título nuevo (cambiado en la misma propuesta)');
+    eq(texts.filter(b => b.bg && /Porque|Cómo/.test(b.html)).length, 2, 'dos encabezados con color');
+    assert(texts.some(b => /<ol><li><b>Los residuos radiactivos:<\/b>/.test(b.html)), 'los numerados, en una lista numerada con la etiqueta en negrita');
+    assert(texts.some(b => /<li>En lugar de .*<ul><li><b>Combustibles Fósiles:<\/b>/.test(b.html)), 'los anidados, anidados');
+    eq(AG.checkSlides(R.state.deck, new Set([ns.id])).filter(p => p.kind !== 'contrast').length, 0, 'todo cabe, sin solaparse');
+    // Sin permiso para objetos: el mismo cuadro, normalizado, y que quepa (en dos columnas si hace falta).
+    const s2 = R.state.deck.slides[1];
+    AG.applyOps(addOp({ kind: 'bullets', title: 'Energía', bullets: ['Una idea', 'Otra'] }, 1));
+    const s3 = R.state.deck.slides[1], b3 = s3.blocks.find(b => b.ph === 'body');
+    const o2 = AG.validateOps([{ op: 'set_text', slide: 2, id: b3.id, text: BAD_TEXT }], { perms: { ...ALL, objects: false } }).ops;
+    eq(o2[0].op, 'set_text', 'sin permiso, sigue siendo un texto'); AG.applyOps(o2);
+    eq(b3.html, GOOD_HTML, 'normalizado'); assert(s2 !== s3, 'otra diapositiva');
+    eq(AG.checkSlides(R.state.deck, new Set([s3.id])).filter(p => p.kind === 'overflow').length, 0, 'y cabe: ' + JSON.stringify({ fit: b3.fit, columns: b3.columns }));
+    // Una diapositiva con más cosas (una tabla) no se rehace.
+    R.store.commit(() => s3.blocks.push({ id: 'tabla', type: 'table', rows: [['a']], x: 900, y: 600, w: 100, h: 40, rotation: 0, animation: null }));
+    eq(AG.validateOps([{ op: 'set_text', slide: 2, id: b3.id, text: BAD_TEXT }], { perms: ALL }).ops[0].op, 'set_text', 'con una tabla, solo el texto');
+  });
+
+  await test('asistente: diapositivas con composiciones según el contenido (y lo que manda el modelo, aunque venga mal)', async () => {
+    const deck = await fromTemplate('biz_climate'), AG = R.aiAgent, n0 = deck.slides.length;
+    const specs = [
+      { kind: 'bullets', title: 'Problemas', bullets: ['1. Residuos: duran miles de años.', '2. Accidentes: impacto enorme.', '3. Uranio: no es renovable.'] },
+      { kind: 'bullets', title: 'Ventajas', bullets: ['Coste: la más barata', 'Empleo: puestos locales', 'Independencia: menos importaciones', 'Salud: aire más limpio'] },
+      { kind: 'Process', title: 'Cómo empezar', steps: ['Paso 1: Medir el consumo', 'Paso 2: Reducir', 'Paso 3: Contratar energía verde'] },
+      { kind: 'KPIs', title: 'Cifras', items: ['42 %: renovable', '−18 %: emisiones', '3.200 empleos nuevos'] },
+      { kind: 'bullets', title: 'Agenda', bullets: ['Contexto', 'Opciones', 'Costes', 'Plan'] },
+      { kind: 'statement', text: 'La energía más limpia es la que no se consume.' },
+      { kind: 'comparison', title: 'A favor y en contra', pros: ['Barata', 'Limpia'], cons: ['Intermitente'] },
+      { kind: 'cards', title: 'Qué gana', items: [{ name: 'Ahorro', description: 'Un 30 % menos', icon: 'piggy-bank' }, { heading: 'Clima', desc: 'Menos CO₂' }, 'Imagen: marca responsable'] },
+      { kind: 'roadmap', title: 'Calendario', events: [{ year: 2025, text: 'Auditoría' }, { year: 2026, text: 'Contrato' }, { year: 2030, text: 'Neutralidad' }] },
+      { kind: 42, title: null, bullets: 'una\ndos' },
+    ];
+    const ops = AG.validateOps(specs.map(spec => ({ op: 'add_slide', after: n0, spec })), { perms: ALL }).ops;
+    eq(ops.map(o => o.spec.kind).join(','), 'steps,features,steps,stats,agenda,key_idea,comparison,features,timeline,bullets', 'el tipo que pide el contenido');
+    eq(ops[2].spec.steps.map(s => s.title).join('|'), 'Medir el consumo|Reducir|Contratar energía verde', '«Paso 1:» fuera');
+    eq(ops[3].spec.stats.map(s => s.value).join('|'), '42 %|−18 %|3.200', 'cifras leídas de textos');
+    eq(ops[7].spec.items.map(s => s.title).join('|'), 'Ahorro|Clima|Imagen', 'tarjetas con otros nombres de campos');
+    eq(ops[8].spec.steps.map(s => s.label).join('|'), '2025|2026|2030', 'fechas');
+    AG.applyOps(ops);
+    const made = R.state.deck.slides.slice(n0), ids = new Set(made.map(s => s.id)), { w: W, h: H } = deck.size;
+    const m = R.master.masterStyles(R.state.deck), cols = new Set(R.state.deck.slides.slice(0, n0).flatMap(s => s.blocks.flatMap(b => [b.fill, b.color, b.bg])).filter(Boolean).map(c => String(c).toLowerCase()));
+    for (const s of made) {
+      const own = s.blocks.filter(b => b.fromSpec);
+      assert(own.every(b => b.x >= 0 && b.y >= 0 && b.x + b.w <= W + 1 && b.y + b.h <= H + 1), 'dentro de la diapositiva: ' + s.blocks[0].html);
+      assert(own.filter(b => b.type === 'text').every(b => [m.title.font, m.body.font].includes(b.fontFamily)), 'con las tipografías del patrón');
+      assert(own.filter(b => b.type === 'shape').every(b => cols.has(String(b.fill).toLowerCase()) || b.fill === m.body.color), 'con los colores de la presentación');
+    }
+    const steps = made[0].blocks.filter(b => b.fromSpec === 'steps' && b.type === 'text' && /^<b>\d<\/b>$/.test(b.html));
+    eq(steps.map(b => b.html).join(''), '<b>1</b><b>2</b><b>3</b>', 'tarjetas numeradas');
+    eq(made[1].blocks.filter(b => b.type === 'icon').length, 4, 'tarjetas con iconos');
+    const probs = AG.checkSlides(R.state.deck, ids).filter(p => ['overflow', 'offslide', 'overlap'].includes(p.kind));
+    eq(probs.length, 0, 'todo cabe y sin solaparse: ' + JSON.stringify(probs.slice(0, 3)));
+    // Una lista larga: en dos columnas; más larga aún: dos diapositivas.
+    const short = Array.from({ length: 9 }, (_, i) => `Medida número ${i + 1}`);
+    const long = Array.from({ length: 12 }, (_, i) => `Una medida bastante larga, la número ${i + 1}, que ocupa casi una línea entera`);
+    let o = AG.validateOps([{ op: 'add_slide', after: 1, spec: { kind: 'bullets', title: 'Medidas', bullets: short } }], { perms: ALL }).ops;
+    eq(o.length, 1, 'una'); eq(o[0].spec.columns, 2, 'en dos columnas');
+    AG.applyOps(o); eq(R.state.deck.slides[1].blocks.find(b => b.ph === 'body').columns, 2, 'el cuerpo, en dos columnas');
+    o = AG.validateOps([{ op: 'add_slide', after: 1, spec: { kind: 'bullets', title: 'Medidas', bullets: long } }], { perms: ALL }).ops;
+    eq(o.length, 2, 'dos diapositivas'); eq(o[1].spec.title, 'Medidas (2)', 'la segunda, numerada');
+    eq(o[0].spec.bullets.length + o[1].spec.bullets.length, 12, 'repartidas');
+    // Sin diseños (una presentación vacía): las mismas composiciones con la paleta.
+    reset(); R.state.deck.layouts = [];
+    AG.applyOps(AG.validateOps([{ op: 'add_slide', after: 1, spec: specs[1] }], { perms: ALL }).ops);
+    eq(R.state.deck.slides[1].blocks.filter(b => b.type === 'icon').length, 4, 'tarjetas con iconos también sin diseños');
   });
 
   await test('asistente: el estilo de lo nuevo en el panel (recordado, enviado al modelo y en las miniaturas)', async () => {

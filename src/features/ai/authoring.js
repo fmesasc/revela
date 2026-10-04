@@ -11,32 +11,41 @@ import { uid } from '../../core/model.js';
 import { chat, lang, parseJSON, esc, plain, generateImage } from './openrouter.js';
 import { currentPalette } from '../design/palettes.js';
 import { PDFJS } from '../../core/vendor.js';
-import { styledSlide, hasLayouts, pictureBox } from './fromspec.js';
+import { styledSlide, hasLayouts, pictureBox, compose, contrast } from './fromspec.js';
+import { KINDS, prepareSpec, splitSpec } from './specs.js';
+import { richHTML } from './richtext.js';
 import { ICON_NAMES } from '../../render/svg.js';
 
 // ---- Slide kinds → objects ------------------------------------------------------
-export const KINDS = ['title', 'section', 'bullets', 'two_columns', 'quote', 'stats', 'timeline', 'chart', 'table', 'image', 'closing'];
-export const SPEC_DOC = `Slide kinds and their fields:
+export { KINDS };
+export const SPEC_DOC = `Slide kinds and their fields — choose the kind that fits the content; a plain list ("bullets") only when nothing else does:
 - "title": title, subtitle
 - "section": title, subtitle
-- "bullets": title, bullets (3-6 short strings)
+- "bullets": title, bullets (3-6 short phrases, max ~12 words each; no numbers, "•" or "-" inside the strings; a sub-point is a nested array right after its point)
+- "steps": title, steps [{title (2-4 words), text (one sentence)}] (2-6, a process or numbered points — the numbers are drawn, do not write them)
+- "features": title, items [{icon, title (2-4 words), text (one sentence)}] (2-6, benefits, reasons, key points, each with an icon)
+- "comparison": title, columns [{heading, bullets}] (2-3: options, before/after, pros/cons)
 - "two_columns": title, left {heading, bullets}, right {heading, bullets}
+- "key_idea": title (short), statement (the one sentence to remember), text (optional, one supporting sentence)
 - "quote": quote, author
-- "stats": title, stats [{value (short, e.g. "42%"), label}] (2-4 items)
-- "timeline": title, steps [{label, text}] (3-5 items)
+- "stats": title, stats [{value (short, e.g. "42%"), label}] (1-4 items)
+- "timeline": title, steps [{label (a date or phase), text}] (3-6 items)
+- "agenda": title, items [short strings] (3-8)
 - "chart": title, chart {type: "bar"|"line"|"pie"|"doughnut"|"area", labels [..], values [numbers], series_name}, bullets (0-2)
 - "table": title, header [..], rows [[..]] (max 6 rows, max 5 columns)
 - "image": title, bullets (2-4), image_prompt (a detailed description for an image generator)
 - "closing": title, subtitle
+One idea per slide: when there is more, make two slides. Text is plain (no markdown, no HTML); "Label: text" items are shown with the label in bold.
 Any slide may have "icon": one icon name that fits it (${ICON_NAMES.filter((_, i) => i % 3 === 0).slice(0, 45).join(', ')}, …).
-Every slide also has "notes": 2-4 sentences the presenter would say. Only use real data you are given or well-known facts; never invent statistics — if unsure, use bullets instead of stats/chart.`;
+Every slide also has "notes": 2-4 sentences the presenter would say. Only use real data you are given or well-known facts; never invent statistics — if unsure, use another kind instead of stats/chart.`;
 
 const T = (x, y, w, h, fontSize, html, extra = {}) => ({ id: uid(), type: 'text', x, y, w, h, fontSize, html, rotation: 0, animation: null, ...extra });
-const list = items => (items || []).filter(Boolean).length ? `<ul>${items.filter(Boolean).map(i => `<li>${esc(i)}</li>`).join('')}</ul>` : '';
+const list = items => richHTML((items || []).filter(Boolean));
 const str = v => (v == null ? '' : String(v));
 
 // Build the objects of one slide from a spec. W×H is the deck size.
 export function layoutSlide(spec, W = 1280, H = 720, pal = currentPalette()) {
+  spec = prepareSpec(spec);
   const k = KINDS.includes(spec.kind) ? spec.kind : 'bullets';
   const [a1, a2] = pal.accents;
   const title = (y = 50, size = 44) => T(80, y, W - 160, 90, size, esc(str(spec.title)), { ph: 'title', fontWeight: '700' });
@@ -62,34 +71,19 @@ export function layoutSlide(spec, W = 1280, H = 720, pal = currentPalette()) {
       col(spec.left, 80); col(spec.right, W / 2 + 20);
       break;
     }
+    // Comparison, key idea, steps, cards, agenda, numbers, timeline: the compositions of fromspec.js with the palette's colours.
+    case 'comparison': case 'key_idea': case 'steps': case 'features': case 'agenda': case 'stats': case 'timeline': {
+      b.push(title());
+      const accents = pal.accents.filter(c => contrast(c, pal.bg) >= 2.2).slice(0, 4);
+      const look = { fg: pal.fg, title: pal.fg, accent: accents[0] || a1, accent2: accents[1] || a2 || a1, accents: accents.length ? accents : [a1], bg: pal.bg, head: '', body: '', bodySize: 30, titleSize: 44 };
+      b.push(...compose(k, spec, { x: 80, y: 170, w: W - 160, h: H - 220 }, look));
+      break;
+    }
     case 'quote':
       b.push(T(140, H * 0.2, 80, 120, 140, '“', { fontWeight: '700', html: `<span style="color:${a1}">“</span>` }));
       b.push(T(160, H * 0.3, W - 320, 220, 40, `<i>${esc(str(spec.quote))}</i>`, { ph: 'title', vAlign: 'middle' }));
       if (spec.author) b.push(T(160, H * 0.3 + 235, W - 320, 50, 24, '— ' + esc(str(spec.author)), { textAlign: 'right' }));
       break;
-    case 'stats': {
-      b.push(title());
-      const st = (spec.stats || []).slice(0, 4), n = Math.max(1, st.length), gw = (W - 160 - (n - 1) * 30) / n;
-      st.forEach((s, i) => {
-        const x = 80 + i * (gw + 30);
-        b.push(T(x, H / 2 - 120, gw, 150, 72, `<b>${esc(str(s.value))}</b>`, { textAlign: 'center', vAlign: 'middle', bg: a1, radius: 14 }));
-        b.push(T(x, H / 2 + 45, gw, 120, 26, esc(str(s.label)), { textAlign: 'center' }));
-      });
-      break;
-    }
-    case 'timeline': {
-      b.push(title());
-      const steps = (spec.steps || []).slice(0, 5), n = Math.max(1, steps.length), gw = (W - 160 - (n - 1) * 40) / n, ids = [];
-      steps.forEach((s, i) => {
-        const x = 80 + i * (gw + 40);
-        const box = T(x, H / 2 - 110, gw, 90, 28, `<b>${esc(str(s.label))}</b>`, { textAlign: 'center', vAlign: 'middle', bg: i % 2 ? a2 : a1, radius: 10 });
-        b.push(box); ids.push(box.id);
-        b.push(T(x, H / 2 + 5, gw, H / 2 - 60, 22, esc(str(s.text)), { textAlign: 'center' }));
-      });
-      for (let i = 0; i < ids.length - 1; i++)
-        b.push({ id: uid(), type: 'connector', from: ids[i], to: ids[i + 1], color: '#8a8a8a', arrow: true, x: 0, y: 0, w: W, h: H, rotation: 0, animation: null });
-      break;
-    }
     case 'chart': {
       b.push(title());
       const c = spec.chart || {}, labels = (c.labels || []).map(str), values = (c.values || []).map(v => +v || 0);
@@ -150,7 +144,8 @@ export async function createDeck(opts = {}) {
     { role: 'user', content: brief + source },
   ], { json: true, maxTokens: 8000 });
   const res = parseJSON(out);
-  const specs = (res.slides || []).filter(s => s && typeof s === 'object').slice(0, 40);
+  // (Cleaned, and what is too much for one slide in two.)
+  const specs = (res.slides || []).filter(s => s && typeof s === 'object').slice(0, 40).flatMap(s => splitSpec(prepareSpec(s)));
   if (!specs.length) throw new Error('EMPTY');
   return specs;
 }
@@ -266,11 +261,11 @@ export async function translateLine(text, to) {
 export async function addAgenda() {
   const titles = state.deck.slides.filter(s => !s.hidden).map(s => plain(s.blocks.find(b => b.type === 'text')?.html || '')).filter(Boolean);
   const out = await chat([
-    { role: 'system', content: `Write an agenda slide for a talk with these slide titles: group them into 3-6 agenda items. Answer only JSON {"kind":"bullets","title":…,"bullets":[…],"notes":…} in ${lang()}.` },
+    { role: 'system', content: `Write an agenda slide for a talk with these slide titles: group them into 3-6 agenda items. Answer only JSON {"kind":"agenda","title":…,"items":[…],"notes":…} in ${lang()}.` },
     { role: 'user', content: titles.join('\n') },
   ], { json: true, maxTokens: 800 });
   const spec = parseJSON(out);
-  commit(() => { state.deck.slides.splice(1, 0, slideFromSpec({ ...spec, kind: 'bullets' }, undefined, state.deck, { at: 1 })); state.ui.slideIndex = 1; });
+  commit(() => { state.deck.slides.splice(1, 0, slideFromSpec({ ...spec, kind: 'agenda' }, undefined, state.deck, { at: 1 })); state.ui.slideIndex = 1; });
 }
 export async function addQuiz(n = 3) {
   const text = state.deck.slides.filter(s => !s.hidden).map(slideText).join('\n---\n').slice(0, 40000);

@@ -14,8 +14,10 @@
 import { state, commit, snapshot } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 import { chat, lang, parseJSON, esc, plain } from './openrouter.js';
-import { slideFromSpec, rebuildSlide, SPEC_DOC, KINDS } from './authoring.js';
-import { STYLES } from './fromspec.js';
+import { slideFromSpec, rebuildSlide, SPEC_DOC } from './authoring.js';
+import { STYLES, fitBody } from './fromspec.js';
+import { prepareSpec, splitSpec, specFromText } from './specs.js';
+import { richHTML } from './richtext.js';
 import { PALETTES, FONT_PAIRS, swapPalette, swapFontPair, currentPalette, deckFg, deckBodyFont } from '../design/palettes.js';
 import { designIdeas, applyIdeaTo } from '../design/designer.js';
 import { EFFECT_KF } from '../animation/transitions.js';
@@ -121,7 +123,7 @@ export const EFFECTS = Object.keys(EFFECT_KF).filter(e => !['path', 'current-vis
 const OBJECT_TYPES = ['text', 'shape', 'chart', 'table', 'icon', 'image'];
 
 export const OPS_DOC = () => `Operations ("slide" numbers are 1-based and refer to the deck BEFORE your changes; ids are the objects' ids; coordinates in px inside the slide, x+w and y+h within its size):
-{"op":"set_text","slide":N,"id":"…","text":"…"}   (use "- " at line starts for bullets)
+{"op":"set_text","slide":N,"id":"…","text":"…"}   (plain text, no markdown or HTML; "- " at line starts for bullets, two more spaces before "- " for a sub-point; never type "1." or "•" yourself — a list of steps is "1. " lines; a subheading is a line ending in ":" before its bullets; at most ~6 short lines in a box: for more, or for steps, numbers, a comparison, use replace_slide/add_slide with a fitting kind)
 {"op":"set_props","slide":N,"id":"…","props":{…}}  allowed props — any object: x, y, w, h, rotation (-360..360), opacity (0..100);
    text: fontSize (8..200), color "#rrggbb", fontFamily, textAlign left|center|right|justify, fontWeight "400"|"700", fontStyle normal|italic, bg "#rrggbb[aa]"|null, vAlign top|middle|bottom, lineHeight (0.8..3), wordart ${WORDART_KEYS.slice(0, 6).join('|')}…|null;
    shape: fill, stroke ("#rrggbb"|"none"), strokeWidth (0..40), shape (e.g. rect|rounded|ellipse|arrow|chevron|star); icon: color, icon; image: alt, fit contain|cover;
@@ -167,11 +169,9 @@ const PROPS = {
   table: { stroke: hex, headBg: hex, headFg: hex, band: hex },
   model: { autoRotate: bool, spin: num(1, 360), alt: text(250) },
 };
-// Lines → HTML ("- " lines: a list).
-export const toHTML = t => {
-  const lines = String(t ?? '').split('\n').map(l => l.trim()).filter(Boolean);
-  return lines.length && lines.every(l => /^[-•*]\s/.test(l)) ? `<ul>${lines.map(l => `<li>${esc(l.replace(/^[-•*]\s+/, ''))}</li>`).join('')}</ul>` : lines.map(esc).join('<br>');
-};
+// The model's text → HTML: "- " lines a list, "1." lines a numbered one, nesting by
+// indentation, "Heading:" lines over their items, "Label:" in bold (features/ai/richtext.js).
+export const toHTML = t => richHTML(String(t ?? ''));
 const chartData = d => {
   if (!Array.isArray(d) || !d.length || d.length > 60) return BAD;
   const out = d.map(x => (Array.isArray(x) ? { label: x[0], value: x[1] } : x)).map(x => (x && typeof x === 'object' && Number.isFinite(+x.value)
@@ -207,6 +207,16 @@ export function validateOps(raw, { scope = { kind: 'all' }, perms = DEFAULT_PERM
   }
   return { ops, dropped };
 
+  // A body placeholder rewritten with a long, structured text (numbered points,
+  // labelled points, lists under headings) on a slide with nothing else: the slide
+  // remade with a composition for it (numbered cards, cards, columns) — if objects may be added.
+  function asComposition(s, b, text) {
+    if (!perms.objects || b.ph !== 'body' || sc.kind === 'selection') return null;
+    const others = s.blocks.filter(x => x !== b && !x.decorative && !x.hidden && !(x.ph && ['title', 'subtitle'].includes(x.ph)));
+    if (others.some(x => x.type !== 'shape' || plain(x.html || ''))) return null;
+    const title = s.blocks.find(x => x.ph === 'title' && x.type === 'text');
+    return specFromText(title ? textOf(title.html) : '', text);
+  }
   function slideAt(n) { const s = deck.slides[(+n | 0) - 1]; if (!s || !Number.isInteger(+n)) no('slide', String(n)); return s; }
   function inScope(s) { if (!sc.ids.has(s.id)) no('scope', `slide ${deck.slides.indexOf(s) + 1}`); }
   function blockOf(s, id) {
@@ -239,7 +249,11 @@ export function validateOps(raw, { scope = { kind: 'all' }, perms = DEFAULT_PERM
     if (s) inScope(s);
     const base = { op: o.op, ...(s && { sid: s.id, slide: deck.slides.indexOf(s) + 1 }) };
     switch (o.op) {
-      case 'set_text': { const b = blockOf(s, o.id); if (b.type !== 'text') no('type', b.type); if (typeof o.text !== 'string') no('value', 'text'); return { ...base, id: b.id, text: o.text.slice(0, 4000) }; }
+      case 'set_text': {
+        const b = blockOf(s, o.id); if (b.type !== 'text') no('type', b.type); if (typeof o.text !== 'string') no('value', 'text');
+        const text = o.text.slice(0, 4000), rich = asComposition(s, b, text);
+        return rich ? { ...base, op: 'replace_slide', spec: rich, fromText: true, ...look } : { ...base, id: b.id, text };
+      }
       case 'set_notes': return { ...base, notes: String(o.notes ?? '').slice(0, 8000) };
       case 'set_hidden': return { ...base, hidden: !!o.hidden };
       case 'delete_slide': if (deck.slides.length < 2) no('value', 'last slide'); return base;
@@ -250,9 +264,14 @@ export function validateOps(raw, { scope = { kind: 'all' }, perms = DEFAULT_PERM
         const after = +o.after | 0; if (after < 0 || after > deck.slides.length) no('slide', String(o.after));
         const ref = after ? deck.slides[after - 1] : null;
         if (ref) inScope(ref); else if (!sc.all) no('scope', 'after 0');
-        return { op: 'add_slide', after, afterId: ref?.id || null, spec: { ...o.spec, kind: KINDS.includes(o.spec.kind) ? o.spec.kind : 'bullets' }, newId: uid(), ...look };
+        // (Too much for one slide: two, one after the other.)
+        return splitSpec(prepareSpec(o.spec)).map(spec => ({ op: 'add_slide', after, afterId: ref?.id || null, spec, newId: uid(), ...look }));
       }
-      case 'replace_slide': if (!o.spec || typeof o.spec !== 'object') no('value', 'spec'); return { ...base, spec: { ...o.spec, kind: KINDS.includes(o.spec.kind) ? o.spec.kind : 'bullets' }, ...look };
+      case 'replace_slide': {
+        if (!o.spec || typeof o.spec !== 'object') no('value', 'spec');
+        const [spec, ...more] = splitSpec(prepareSpec(o.spec));
+        return [{ ...base, spec, ...look }, ...more.map(sp => ({ op: 'add_slide', after: base.slide, afterId: s.id, spec: sp, newId: uid(), ...look }))];
+      }
       // ("all": every slide, also the ones this list adds; with a narrower scope, the scope's slides.)
       case 'set_background': if (!HEX6.test(o.color || '')) no('value', 'color');
         return s ? { ...base, color: o.color } : sc.all ? { op: o.op, all: true, color: o.color } : sc.idx.map(i => ({ op: 'set_background', sid: deck.slides[i].id, slide: i + 1, color: o.color }));
@@ -332,7 +351,7 @@ export function applyTo(deck, ops) {
     if (o.sid && !s) continue;
     if (o.id && !b && o.op !== 'add_object') continue;
     switch (o.op) {
-      case 'set_text': b.html = toHTML(o.text); break;
+      case 'set_text': b.html = toHTML(o.text); fitBody(b, s, deck); break;
       case 'set_notes': s.notes = o.notes; break;
       case 'set_hidden': s.hidden = o.hidden; break;
       case 'delete_slide': if (slides.length < 2) continue; slides.splice(slides.indexOf(s), 1); break;
@@ -345,7 +364,12 @@ export function applyTo(deck, ops) {
         ns.id = o.newId; ns.sectionId = ref?.sectionId || null;
         slides.splice(at, 0, ns); lastAfter.set(o.afterId || '', ns); break;
       }
-      case 'replace_slide': rebuildSlide(s, o.spec, deck, { style: o.style, seed: s.id + '|' + JSON.stringify(o.spec).length }); break;
+      case 'replace_slide': {
+        // (A body text made into a composition: with the slide's title as it is now — maybe just changed too.)
+        const t = o.fromText && s.blocks.find(x => x.ph === 'title' && x.type === 'text');
+        const spec = t ? { ...o.spec, title: textOf(t.html) } : o.spec;
+        rebuildSlide(s, spec, deck, { style: o.style, seed: s.id + '|' + JSON.stringify(o.spec).length }); break;
+      }
       case 'set_background': (o.all ? slides : [s]).forEach(x => { x.background = o.color; }); break;
       case 'set_transition': (o.all ? slides : [s]).forEach(x => { x.transition = o.transition; }); break;
       case 'apply_palette': if (!swapPalette(o.name, deck)) continue; break;
@@ -489,11 +513,11 @@ const PERM_TEXT = { delete: 'delete slides', design: 'change layout, positions, 
   objects: 'add or remove objects (add_object, delete_object, replace_slide)', animation: 'change animations and transitions (set_animation, set_transition)' };
 // The style the user picked for new slides, as told to the model (the slides are built in that style too: features/ai/fromspec.js).
 const STYLE_TEXT = {
-  same: 'New and remade slides (add_slide, replace_slide) take the deck\'s look by themselves — its layouts, fonts, colours, background and decorations: give only their content.',
-  visual: 'Style for new and remade slides: MORE VISUAL. Prefer the kinds "stats" (big numbers), "timeline", "chart" (only with real data) and "quote" over "bullets"; when you use bullets, at most 4 short ones. Give every slide an "icon" that fits it. Their layout, colours and fonts are applied by themselves.',
-  minimal: 'Style for new and remade slides: MINIMAL. One idea per slide, short phrases, at most 3 bullets per slide (prefer fewer), plain kinds ("title", "section", "quote", "bullets", "stats" with 2-3 numbers); no icons. Spacing and type size are applied by themselves.',
+  same: 'New and remade slides (add_slide, replace_slide) take the deck\'s look by themselves — its layouts, fonts, colours, background and decorations: give only their content, in the kind that fits it best (steps, features, comparison, key_idea, stats, timeline… rather than bullets).',
+  visual: 'Style for new and remade slides: MORE VISUAL. Prefer the kinds "features", "steps", "stats" (big numbers), "comparison", "timeline", "key_idea", "chart" (only with real data) and "quote" over "bullets"; when you use bullets, at most 4 short ones. Give every slide an "icon" that fits it. Their layout, colours and fonts are applied by themselves.',
+  minimal: 'Style for new and remade slides: MINIMAL. One idea per slide, short phrases, at most 3 bullets per slide (prefer fewer), plain kinds ("title", "section", "key_idea", "quote", "bullets", "steps", "stats" with 2-3 numbers); no icons. Spacing and type size are applied by themselves.',
   animated: 'Style for new and remade slides: WITH ANIMATION. Write their content as usual: entrance animations one after another and a transition are added to them by themselves (do not add set_animation or set_transition for those slides).',
-  surprise: 'Style for new and remade slides: SURPRISE ME. Vary the kinds boldly ("stats", "timeline", "quote", "two_columns", "chart" with real data…) and give each an "icon"; a layout and an animation are chosen for them by themselves, with the deck\'s colours and fonts.',
+  surprise: 'Style for new and remade slides: SURPRISE ME. Vary the kinds boldly ("features", "steps", "comparison", "key_idea", "stats", "timeline", "quote", "chart" with real data…) and give each an "icon"; a layout and an animation are chosen for them by themselves, with the deck\'s colours and fonts.',
 };
 function systemPrompt({ sc, perms, deck, maxSteps, images, style = 'same' }) {
   const allowed = PERMS.filter(p => perms[p]), denied = PERMS.filter(p => !perms[p]);

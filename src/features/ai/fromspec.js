@@ -16,11 +16,13 @@ import { ensureMaster, masterStyles, masterOf, newSlideBlocks, styleKind, styled
 import { designIdeas, applyIdeaTo } from '../design/designer.js';
 import { normalizeAnim } from '../animation/transitions.js';
 import { ICON_NAMES } from '../../render/svg.js';
+import { richHTML, inline } from './richtext.js';
+import { prepareSpec, RICH } from './specs.js';
 
 export const STYLES = ['same', 'visual', 'minimal', 'animated', 'surprise'];
 export const hasLayouts = deck => Array.isArray(deck?.layouts) && deck.layouts.length > 0;
 const str = v => (v == null ? '' : String(v));
-const list = items => ((items || []).filter(Boolean).length ? `<ul>${items.filter(Boolean).map(i => `<li>${esc(str(i))}</li>`).join('')}</ul>` : '');
+const list = (items, accent = '') => richHTML((items || []).filter(Boolean), { accent });
 const R = v => Math.round(v);
 
 // ---- A seeded random (sfc32 over a string hash) -----------------------------------
@@ -50,7 +52,7 @@ const areaOf = rects => rects.reduce((s, r) => s + r.w * r.h, 0) || 1;
 
 // ---- Which layout, which slide to follow --------------------------------------------
 const WANT = { title: 'title', closing: 'title', section: 'section', quote: 'section', bullets: 'titleContent', two_columns: 'twoContent', image: 'twoContent',
-  chart: 'titleOnly', stats: 'titleOnly', timeline: 'titleOnly', table: 'titleOnly' };
+  chart: 'titleOnly', table: 'titleOnly', ...Object.fromEntries(RICH.map(k => [k, 'titleOnly'])) };
 const FALLBACK = { title: ['section', 'titleOnly', 'titleContent'], section: ['title', 'titleOnly', 'titleContent'], titleContent: ['twoContent', 'titleOnly'],
   twoContent: ['titleContent', 'titleOnly'], titleOnly: ['titleContent', 'twoContent'] };
 const sig = l => { const k = l.blocks.filter(b => b.ph).map(b => styleKind(b) || b.ph); const n = x => k.filter(y => y === x).length;
@@ -111,7 +113,8 @@ export function decorationsOf(ref, deck, rects) {
   const { w: W, h: H } = deck.size, out = [], total = areaOf(rects);
   let backdrop = false;
   for (const b of ref.blocks) {
-    if (b.ph || b.hidden || b.type === 'connector' || b.type === 'placeholder') continue;
+    // (Nor the cards, rules and dots of a composition: they are that slide's content.)
+    if (b.ph || b.hidden || b.type === 'connector' || b.type === 'placeholder' || b.fromSpec) continue;
     const full = fullBox(b, W, H), hit = overlapAll(b, rects), own = (b.w * b.h) || 1;
     const edge = b.x <= 1 || b.y <= 1 || b.x + b.w >= W - 1 || b.y + b.h >= H - 1;
     const thin = Math.min(b.w, b.h) <= 12, long = b.w >= W * 0.9 || b.h >= H * 0.9;
@@ -139,18 +142,35 @@ const isMotif = (b, W, H) => isGlow(b, W) || (Math.min(b.w, b.h) <= 12 && (b.w >
 // ---- Text that has to fit: an estimate (the master's size, shrunk with `fit`) ------
 function needHeight(html, fs, w, lh) {
   const isList = /<li/i.test(html);
-  const paras = str(html).replace(/<\/(li|p|div)>|<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').replace(/&[#\w]+;/g, 'x')
+  const paras = str(html).replace(/<\/(li|p|div)>|<br\s*\/?>|<(ul|ol)\b[^>]*>/gi, '\n').replace(/<[^>]*>/g, '').replace(/&[#\w]+;/g, 'x')
     .split('\n').map(s => s.trim()).filter(Boolean);
   const perLine = Math.max(4, Math.floor((w - 28 - (isList ? fs * 1.3 : 0)) / (fs * 0.54)));
-  return paras.reduce((h, p) => h + Math.ceil(p.length / perLine) * fs * lh + (isList ? fs * 0.3 : 0), 0) + 20;
+  // (Paragraphs and lists at the top keep 1em above and below them, shared between neighbours.)
+  let depth = 0, blocks = 0;
+  for (const [, close, tag] of str(html).matchAll(/<(\/?)(ul|ol|p)\b/gi)) {
+    if (tag.toLowerCase() === 'p') { if (!close && !depth) blocks++; continue; }
+    if (close) depth = Math.max(0, depth - 1); else if (!depth++) blocks++;
+  }
+  return paras.reduce((h, p) => h + Math.ceil(p.length / perLine) * fs * lh + (isList ? fs * 0.3 : 0), 0) + (blocks ? (blocks + 1) * fs : 0) + 20;
 }
 // The factor (≤ 1, or `want` when it fits) for a placeholder's text in its box.
 function fitPlaceholder(b, slide, deck, want = 1) {
   const sb = styled({ ...b, fit: undefined }, slide, deck), fs = sb.fontSize || 40, lh = styleKind(b) === 'body' ? 1.32 : 1.18;
+  // (In columns: each as wide as a column, the text shared between them.)
+  const c = b.columns > 1 ? b.columns : 1, w = (b.w - 32 * (c - 1)) / c, need = f => needHeight(b.html, fs * f, w, lh) / c + (c > 1 ? fs * f : 0);
   let f = want;
-  while (f > 0.45 && needHeight(b.html, fs * f, b.w, lh) > b.h) f -= 0.05;
+  while (f > 0.45 && need(f) > b.h) f -= 0.05;
   f = Math.round(f * 100) / 100;
   if (f !== 1) b.fit = f; else delete b.fit;
+}
+// A body placeholder whose text the AI rewrote: its size made to fit again, and
+// in two columns when that lets it be read much bigger.
+export function fitBody(b, slide, deck) {
+  if (!b?.ph || b.type !== 'text' || styleKind(b) !== 'body') return;
+  fitPlaceholder(b, slide, deck);
+  if ((b.fit ?? 1) >= 0.8 || b.columns > 1 || b.w < 700) return;
+  const one = b.fit ?? 1; b.columns = 2; fitPlaceholder(b, slide, deck);
+  if ((b.fit ?? 1) < one + 0.1) { delete b.columns; fitPlaceholder(b, slide, deck); }
 }
 // A free text: the size that fits.
 function fitSize(html, size, w, h, lh = 1.25, min = 14) {
@@ -169,7 +189,9 @@ function lookOf(deck, slide, bg) {
   const accent = [...used.slice(0, 1), title, ...used, ...pal.accents].find(good) || pal.accents.find(c => contrast(c, bg) >= 1.6) || pal.accents[0];
   // (A second one only if the slides use it: a palette colour the deck never shows would clash.)
   const accent2 = used.find(c => c.toLowerCase() !== accent.toLowerCase()) || accent;
-  return { fg, title, accent, accent2, bg, ok, pal, head: st.title.font || pair?.heading || deck.bodyFont || '',
+  // (Several, for cards and steps, only when the slides show them: like the templates, one colour per item.)
+  const accents = [...new Set([accent, ...used].map(c => c.toLowerCase()))].slice(0, 4);
+  return { fg, title, accent, accent2, accents, bg, ok, pal, head: st.title.font || pair?.heading || deck.bodyFont || '',
     body: st.body.font || pair?.body || deck.bodyFont || '', bodySize: st.body.size || 30, titleSize: st.title.size || 48 };
 }
 // The colours the slides' objects use (fills, texts, charts, tables), most used first.
@@ -189,10 +211,14 @@ const S = (shape, x, y, w, h, fill, props = {}) => ({ id: uid(), type: 'shape', 
 const WORDS = [[/conclus|summary|resumen|recap|takeaway|claves/i, 'circle-check'], [/gracias|thank|merci|danke|grazie/i, 'heart'], [/objetiv|goal|meta\b|target/i, 'target'],
   [/equipo|team|personas|people/i, 'users'], [/idea|innova/i, 'lightbulb'], [/dato|cifra|number|data|estad/i, 'chart-column'], [/crec|growth|aument/i, 'trending-up'],
   [/tiempo|historia|history|cronolog|time|fechas|calendar/i, 'calendar'], [/riesg|risk|segur|security/i, 'shield-check'], [/dinero|coste|cost|precio|price|financ|budget|presupuesto/i, 'piggy-bank'],
-  [/futuro|future|próximos|next|siguientes/i, 'rocket'], [/pregunta|question|dudas/i, 'circle-help'], [/aprend|learn|educa|clase|lesson/i, 'graduation-cap'],
+  [/futuro|future|próximos|next|siguientes/i, 'rocket'], [/ahorr|saving|eficien|efficien/i, 'piggy-bank'], [/energ|electric|power|solar/i, 'bolt'],
+  [/emisi|emission|carbon|co2|contamin|pollut/i, 'leaf'], [/precio|price|tarifa|pago|payment/i, 'wallet'], [/empleo|trabaj|job|work|emplead/i, 'briefcase'],
+  [/salud|health/i, 'heart-pulse'], [/rápid|fast|veloc|speed|tiempo real|real time/i, 'timer'], [/calidad|quality|premio|award/i, 'award'], [/cliente|customer|usuari|user/i, 'users'],
+  [/datos|data|análisis|analysis|medir|measure/i, 'chart-line'], [/comunic|mensaje|message|contact/i, 'message-circle'], [/seguridad|privac|protec/i, 'lock'],
+  [/escala|scale|crecer|grow/i, 'trending-up'], [/ciudad|city|urban/i, 'building-2'], [/agua|water|riego/i, 'droplet'], [/independ|libertad|freedom|autonom/i, 'key'], [/pregunta|question|dudas/i, 'circle-help'], [/aprend|learn|educa|clase|lesson/i, 'graduation-cap'],
   [/salud|health|médic/i, 'heart-pulse'], [/natura|medio ambiente|environment|sostenib|sustain|clima/i, 'leaf'], [/mundo|global|world|internacional/i, 'globe']];
 const BY_KIND = { title: 'sparkles', closing: 'flag', section: 'bookmark', bullets: 'lightbulb', two_columns: 'scale', stats: 'trending-up', timeline: 'calendar',
-  chart: 'chart-column', table: 'clipboard-list', quote: 'quote', image: 'camera' };
+  chart: 'chart-column', table: 'clipboard-list', quote: 'quote', image: 'camera', comparison: 'scale', key_idea: 'lightbulb', steps: 'target', features: 'sparkles', agenda: 'clipboard-list' };
 export function iconFor(spec, kind) {
   if (ICON_NAMES.includes(spec.icon)) return spec.icon;
   const words = [spec.title, spec.subtitle, spec.quote].filter(Boolean).join(' ');
@@ -202,6 +228,7 @@ export function iconFor(spec, kind) {
 // ---- Building --------------------------------------------------------------------
 // opts: { at (where it goes: the index it will have), self (the slide it replaces), style, seed }
 export function styledSlide(spec, deck, { at = deck.slides.length, self = null, style = 'same', seed = '' } = {}) {
+  spec = prepareSpec(spec);
   const KINDS = Object.keys(WANT);
   const kind = KINDS.includes(spec.kind) ? spec.kind : 'bullets', { w: W, h: H } = deck.size;
   const near = self || deck.slides[at - 1] || deck.slides[at] || null;
@@ -236,7 +263,6 @@ export function styledSlide(spec, deck, { at = deck.slides.length, self = null, 
   const set = (b, html) => { if (b) b.html = html; };
   const extra = [], drop = new Set();
   const area = bodies[0] ? boxOf(bodies[0]) : { ...free };
-  const T = (x, y, w, h, html, props) => X(x, y, w, h, html, { fontFamily: look.body, color: look.fg, ...props });
   set(title, esc(str(spec.title)));
   switch (kind) {
     case 'title': case 'closing': case 'section':
@@ -246,9 +272,13 @@ export function styledSlide(spec, deck, { at = deck.slides.length, self = null, 
       set(title, `<i>“${esc(str(spec.quote || spec.title))}”</i>`);
       if (spec.author) set(subs[0], '— ' + esc(str(spec.author)));
       break;
-    case 'bullets': set(bodies[0], list(spec.bullets)); break;
+    case 'bullets':
+      set(bodies[0], list(spec.bullets, minimal ? '' : look.accent));
+      // (A long list of short items: in two columns.)
+      if (spec.columns === 2 && bodies[0] && bodies[0].w >= 640) bodies[0].columns = 2;
+      break;
     case 'two_columns': {
-      const col = c => (c ? (c.heading ? `<p><span style="color:${look.accent}"><b>${esc(str(c.heading))}</b></span></p>` : '') + list(c.bullets) : '');
+      const col = c => (c ? (c.heading ? `<p><span style="color:${look.accent}"><b>${inline(str(c.heading))}</b></span></p>` : '') + list(c.bullets) : '');
       if (bodies.length > 1) { set(bodies[0], col(spec.left)); set(bodies[1], col(spec.right)); } else set(bodies[0], col(spec.left) + col(spec.right));
       break;
     }
@@ -274,37 +304,7 @@ export function styledSlide(spec, deck, { at = deck.slides.length, self = null, 
         stroke: hex2(look.fg) + '40', fontSize: fs, x: area.x, y: R(area.y + (minimal ? (area.h - h) / 2 : 0)), w: area.w, h: R(h), rotation: 0, animation: null });
       break;
     }
-    case 'stats': {
-      const st = (spec.stats || []).slice(0, 4), n = Math.max(1, st.length), gap = minimal ? 48 : 32, gw = (area.w - (n - 1) * gap) / n;
-      const ch = Math.min(area.h, minimal ? 260 : 300), y0 = area.y + (area.h - ch) / 2;
-      const big = Math.min(style === 'visual' ? 132 : 104, ...st.map(s => (gw - 24) / Math.max(2, str(s.value).length * 0.58)));
-      st.forEach((s, i) => {
-        const x = area.x + i * (gw + gap);
-        if (!minimal) { extra.push(S('rounded', x, y0, gw, ch, look.accent, { opacity: 14, radius: 18 }), S('rect', x + 24, y0 + 22, 56, 6, look.accent)); }
-        extra.push(T(x + 12, y0 + 36, gw - 24, big * 1.25, `<b>${esc(str(s.value))}</b>`, { fontSize: R(big), fontFamily: look.head, color: look.accent, textAlign: minimal ? 'center' : 'left', vAlign: 'middle', lineHeight: 1 }));
-        const lw = gw - 24, lh = ch - 36 - big * 1.25 - 16, lab = esc(str(s.label));
-        extra.push(T(x + 12, y0 + 40 + big * 1.25, lw, lh, lab, { fontSize: fitSize(lab, R(look.bodySize * 0.72), lw, lh, 1.25, 14), textAlign: minimal ? 'center' : 'left' }));
-      });
-      break;
-    }
-    case 'timeline': {
-      const steps = (spec.steps || []).slice(0, 5), n = Math.max(1, steps.length), gap = 40, gw = (area.w - (n - 1) * gap) / n, ids = [];
-      const bh = 84, fs = R(look.bodySize * 0.66);
-      // (The texts' height: what the longest needs; the whole row centred in the area.)
-      const th = Math.min(area.h - bh - 20, Math.max(80, ...steps.map(s => needHeight(esc(str(s.text)), fs, gw, 1.3))));
-      const y0 = area.y + Math.max(0, (area.h - bh - 20 - th) * 0.45);
-      steps.forEach((s, i) => {
-        const x = area.x + i * (gw + gap), c = i % 2 && !minimal ? look.accent2 : look.accent, lab = `<b>${esc(str(s.label))}</b>`;
-        const box = T(x, y0, gw, bh, lab, { fontSize: fitSize(lab, R(look.bodySize * 0.8), gw, bh, 1.1, 14), fontFamily: look.head, textAlign: 'center', vAlign: 'middle',
-          ...(minimal ? { color: look.accent, borderColor: look.accent, radius: 10 } : { bg: c, color: inkOn(c), radius: 12 }) });
-        extra.push(box); ids.push(box.id);
-        const tx = esc(str(s.text));
-        extra.push(T(x, y0 + bh + 20, gw, th, tx, { fontSize: fitSize(tx, fs, gw, th, 1.3, 14), textAlign: 'center' }));
-      });
-      for (let i = 0; i < ids.length - 1; i++)
-        extra.push({ id: uid(), type: 'connector', from: ids[i], to: ids[i + 1], color: look.accent, arrow: true, x: 0, y: 0, w: W, h: H, rotation: 0, animation: null });
-      break;
-    }
+    default: extra.push(...compose(kind, spec, area, look, { minimal, style }));
   }
   // Empty placeholders go (as in the templates).
   const phs = ph.filter(b => !drop.has(b) && plain(b.html || ''));
@@ -324,6 +324,144 @@ export function styledSlide(spec, deck, { at = deck.slides.length, self = null, 
   slide.blocks = [...decor, ...phs, ...extra];
   applyStyle(slide, spec, deck, { kind, style, seed: seed || slide.id, look, decor: new Set(decor.map(d => d.id)) });
   return slide;
+}
+
+// ---- Compositions: what goes under the title for the richer kinds --------------------
+// Built like the templates do it — cards on a soft tint of the text colour, numbers
+// and icons in the deck's accents (one per item when the deck shows several), the
+// heading font for figures and titles — always with the deck's own colours and fonts.
+// area: the free box under the title; look: lookOf() (or the palette's, for decks
+// without layouts: authoring.js).
+const ICONS = ['sparkles', 'target', 'lightbulb', 'star', 'award', 'rocket'];
+export function compose(kind, spec, area, look, { minimal = false, style = 'same' } = {}) {
+  const out = [], bs = Math.max(30, look.bodySize || 30), acc = i => (look.accents?.length ? look.accents[i % look.accents.length] : look.accent);
+  const push = (...bl) => out.push(...bl.filter(Boolean).map(b => Object.assign(b, { fromSpec: kind })));
+  const T = (x, y, w, h, html, props) => X(x, y, w, h, html, { fontFamily: look.body, color: look.fg, ...props });
+  const card = (x, y, w, h) => (minimal ? null : S('rounded', x, y, w, h, look.fg, { opacity: 7, radius: 18 }));
+  // (Where card i of n goes: rows of `cols`, a last row with fewer centred.)
+  const cell = (i, n, cols, cw, ch, gap, y0) => { const r = Math.floor(i / cols), inRow = Math.min(cols, n - r * cols);
+    return { x: area.x + (i % cols) * (cw + gap) + (cols - inRow) * (cw + gap) / 2, y: y0 + r * (ch + gap) }; };
+  switch (kind) {
+    case 'stats': {
+      const st = (spec.stats || []).slice(0, 4), n = Math.max(1, st.length);
+      if (n === 1) {
+        // One figure: big on the left, what it means on the right.
+        const s = st[0], v = `<b>${esc(str(s.value))}</b>`, vw = area.w * 0.5;
+        const big = Math.min(200, area.h * 0.62, (vw - 24) / Math.max(2, str(s.value).length * 0.6)), vh = big * 1.2, y = area.y + (area.h - vh) * 0.45;
+        push(T(area.x, y, vw, vh, v, { fontSize: R(big), fontFamily: look.head, color: acc(0), vAlign: 'middle', lineHeight: 1 }));
+        if (!minimal) push(S('rect', area.x + vw + 12, y + vh * 0.1, 6, vh * 0.8, acc(0)));
+        const lab = esc(str(s.label)), lw = area.w - vw - 60;
+        push(T(area.x + vw + 48, y, lw, vh, lab, { fontSize: fitSize(lab, R(bs * 0.95), lw, vh, 1.25, 16), vAlign: 'middle' }));
+        break;
+      }
+      const gap = minimal ? 48 : 32, gw = (area.w - (n - 1) * gap) / n;
+      const ch = Math.min(area.h, minimal ? 260 : 300), y0 = area.y + (area.h - ch) / 2;
+      const big = Math.min(style === 'visual' ? 132 : 104, ...st.map(s => (gw - 24) / Math.max(2, str(s.value).length * 0.58)));
+      st.forEach((s, i) => {
+        const x = area.x + i * (gw + gap), c = minimal ? look.accent : acc(i);
+        push(card(x, y0, gw, ch), !minimal && S('rect', x + 24, y0 + 22, 56, 6, c));
+        push(T(x + 12, y0 + 36, gw - 24, big * 1.25, `<b>${esc(str(s.value))}</b>`, { fontSize: R(big), fontFamily: look.head, color: c, textAlign: minimal ? 'center' : 'left', vAlign: 'middle', lineHeight: 1 }));
+        const lw = gw - 24, lh = ch - 36 - big * 1.25 - 16, lab = esc(str(s.label));
+        push(T(x + 12, y0 + 40 + big * 1.25, lw, lh, lab, { fontSize: fitSize(lab, R(bs * 0.76), lw, lh, 1.25, 16), textAlign: minimal ? 'center' : 'left' }));
+      });
+      break;
+    }
+    case 'timeline': {
+      // A line with a dot per moment: the date over it, what happened under it.
+      const steps = (spec.steps || []).slice(0, 6), n = Math.max(1, steps.length), gw = area.w / n, fs = R(bs * 0.7), ls = R(bs * 0.86);
+      const lh = R(Math.min(90, Math.max(50, ls * 1.7))), th = Math.min(area.h - lh - 70, Math.max(70, ...steps.map(s => needHeight(inline(s.text), fs, gw - 24, 1.3))));
+      const y0 = area.y + Math.max(0, (area.h - lh - 70 - th) * 0.42), ly = y0 + lh + 34;
+      if (n > 1) push(S('rect', area.x + gw / 2, ly - 2, area.w - gw, 4, look.fg, { opacity: 28 }));
+      steps.forEach((s, i) => {
+        const cx = area.x + gw * i + gw / 2, c = minimal ? look.accent : acc(i), lab = `<b>${inline(s.label)}</b>`, tx = inline(s.text);
+        push(T(cx - gw / 2 + 8, y0, gw - 16, lh, lab, { fontSize: fitSize(lab, ls, gw - 16, lh, 1.1, 14), fontFamily: look.head, color: c, textAlign: 'center', vAlign: 'bottom', lineHeight: 1.1 }));
+        if (!minimal) push(S('ellipse', cx - 19, ly - 19, 38, 38, c, { opacity: 28 }));
+        push(S('ellipse', cx - 11, ly - 11, 22, 22, c));
+        if (s.text) push(T(cx - gw / 2 + 12, ly + 36, gw - 24, th, tx, { fontSize: fitSize(tx, fs, gw - 24, th, 1.3, 14), textAlign: 'center', lineHeight: 1.3 }));
+      });
+      break;
+    }
+    case 'steps': case 'features': {
+      // Numbered cards (steps) or cards with an icon (features): a row, or two.
+      const it = ((kind === 'steps' ? spec.steps : spec.items) || []).slice(0, 6), n = Math.max(1, it.length);
+      const cols = kind === 'steps' ? (n <= 4 ? n : 3) : (n <= 3 ? n : n === 4 ? 2 : 3), rows = Math.ceil(n / cols), gap = minimal ? 40 : 28;
+      const cw = (area.w - (cols - 1) * gap) / cols, side = kind === 'features' && cw >= 440, pad = minimal ? 0 : 26, d = rows > 1 ? 54 : 68;
+      const iw = side ? cw - 2 * pad - d - 22 : cw - 2 * pad, hasT = it.some(s => s.title);
+      const ts = R(bs * (rows > 1 ? 0.76 : 0.82)), xs = R(bs * (hasT ? (rows > 1 ? 0.66 : 0.7) : 0.78));
+      const tH = hasT ? Math.max(...it.map(s => (s.title ? needHeight(inline(s.title), ts, iw, 1.15) : 0))) : 0;
+      const xH = Math.max(0, ...it.map(s => (s.text ? needHeight(inline(s.text), xs, iw, 1.3) : 0)));
+      const maxH = (area.h - (rows - 1) * gap) / rows, inner = tH + (hasT ? 6 : 0) + xH;
+      const ch = Math.min(maxH, side ? 2 * pad + Math.max(d, inner) : 2 * pad + d + 18 + inner);
+      const y0 = area.y + Math.max(0, (area.h - rows * ch - (rows - 1) * gap) * 0.4), used = new Set();
+      it.forEach((s, i) => {
+        const { x, y } = cell(i, n, cols, cw, ch, gap, y0), c = acc(i);
+        push(card(x, y, cw, ch));
+        if (kind === 'steps') push(S('ellipse', x + pad, y + pad, d, d, c), T(x + pad, y + pad, d, d, `<b>${i + 1}</b>`, { fontSize: R(d * 0.46), fontFamily: look.head, color: inkOn(c), textAlign: 'center', vAlign: 'middle', lineHeight: 1, pad: [0, 0, 0, 0] }));
+        else {
+          let name = ICON_NAMES.includes(s.icon) ? s.icon : iconFor({ title: s.title, subtitle: s.text }, '');
+          if (!ICON_NAMES.includes(name) || used.has(name)) name = ICONS.find(k => !used.has(k)) || 'sparkles';
+          used.add(name);
+          push(S('ellipse', x + pad, y + pad, d, d, c, { opacity: 18 }), { id: uid(), type: 'icon', icon: name, color: c, x: R(x + pad + d * 0.22), y: R(y + pad + d * 0.22), w: R(d * 0.56), h: R(d * 0.56), rotation: 0, animation: null, alt: '' });
+        }
+        const tx = side ? x + pad + d + 22 : x + pad, room = y + ch - pad - (side ? y + pad : y + pad + d + 18), th = Math.min(tH, room * 0.55);
+        let ty = side ? y + pad : y + pad + d + 18;
+        if (s.title) { const ht = `<b>${inline(s.title)}</b>`;
+          push(T(tx, ty, iw, th, ht, { fontSize: fitSize(ht, ts, iw, th, 1.15, 14), fontFamily: look.head, color: kind === 'features' && !minimal ? c : look.title, lineHeight: 1.15 })); }
+        if (hasT) ty += th + 6;
+        if (s.text) { const h = y + ch - pad - ty, ht = inline(s.text); push(T(tx, ty, iw, h, ht, { fontSize: fitSize(ht, xs, iw, h, 1.3, 14), lineHeight: 1.3 })); }
+        // (One row of steps: a chevron between the cards.)
+        if (kind === 'steps' && rows === 1 && i < n - 1 && !minimal) push(S('chevron', x + cw + gap / 2 - 7, y + pad + d / 2 - 10, 14, 20, look.fg, { opacity: 40, decorative: true }));
+      });
+      break;
+    }
+    case 'comparison': {
+      // Two or three columns: a header in a colour of the deck, the list under it, each on its card.
+      const cols = (spec.columns || [spec.left, spec.right]).filter(Boolean).slice(0, 3), n = Math.max(1, cols.length), gap = minimal ? 48 : 32;
+      const cw = (area.w - (n - 1) * gap) / n, pad = minimal ? 0 : 26, iw = cw - 2 * pad, hs = R(bs * 0.8);
+      const heads = cols.map(c => (c.heading ? `<b>${inline(c.heading)}</b>` : '')), bodies = cols.map(c => list(c.bullets));
+      const hH = Math.max(0, ...heads.map(h => (h ? Math.min(150, needHeight(h, hs, cw - 44, 1.15)) : 0)));
+      const room = area.h - hH - 18 - pad;
+      const xs = Math.min(...bodies.map(h => fitSize(h, R(bs * 0.74), iw, room, 1.3, 16)));
+      const bH = Math.min(room, Math.max(...bodies.map(h => needHeight(h, xs, iw, 1.3))));
+      const ch = hH + 18 + bH + pad, y0 = area.y + Math.max(0, (area.h - ch) * 0.3);
+      cols.forEach((c, i) => {
+        const x = area.x + i * (cw + gap), col = c.tone === 'bad' ? look.accent2 : acc(i);
+        push(card(x, y0, cw, ch));
+        if (heads[i]) push(minimal ? T(x, y0, cw, hH, heads[i], { fontSize: fitSize(heads[i], hs, cw, hH, 1.15, 16), fontFamily: look.head, color: col, vAlign: 'bottom', lineHeight: 1.15 })
+          : T(x, y0, cw, hH, heads[i], { fontSize: fitSize(heads[i], hs, cw - 44, hH, 1.15, 16), fontFamily: look.head, color: inkOn(col), bg: col, radius: 18, pad: [10, 22, 10, 22], vAlign: 'middle', lineHeight: 1.15 }));
+        if (minimal && heads[i]) push(S('rect', x, y0 + hH + 4, 64, 5, col));
+        push(T(x + pad, y0 + hH + 18, iw, bH, bodies[i], { fontSize: xs, lineHeight: 1.3 }));
+      });
+      break;
+    }
+    case 'agenda': {
+      // Numbered rows: "01" in an accent, the item beside it, a hairline between them.
+      const it = (spec.items || []).slice(0, 10), n = Math.max(1, it.length), cols = n > 5 ? 2 : 1, per = Math.ceil(n / cols), gap = 56;
+      const cw = (area.w - (cols - 1) * gap) / cols, rh = Math.min(104, area.h / per), ns = R(Math.min(rh * 0.6, bs * 1.5)), ts = R(Math.min(bs * 0.9, rh * 0.42)), nw = ns * 1.4 + 24;
+      const y0 = area.y + Math.max(0, (area.h - per * rh) * 0.35);
+      it.forEach((s, i) => {
+        const k = Math.floor(i / per), r = i % per, x = area.x + k * (cw + gap), y = y0 + r * rh, c = minimal ? look.accent : acc(i), tx = inline(s);
+        push(T(x, y, nw, rh, `<b>${String(i + 1).padStart(2, '0')}</b>`, { fontSize: ns, fontFamily: look.head, color: c, vAlign: 'middle', lineHeight: 1 }));
+        push(T(x + nw + 16, y, cw - nw - 16, rh, tx, { fontSize: fitSize(tx, ts, cw - nw - 16, rh, 1.2, 14), vAlign: 'middle', lineHeight: 1.2 }));
+        if (r < per - 1 && i < n - 1 && !minimal) push(S('rect', x, y + rh - 1, cw, 2, look.fg, { opacity: 14 }));
+      });
+      break;
+    }
+    case 'key_idea': {
+      // One sentence, big, in the heading font, with an accent bar; a line of support under it.
+      const st = inline(spec.statement || ''), tx = spec.text ? inline(spec.text) : '', x = area.x + (minimal ? 0 : 52), w = area.w - (minimal ? 0 : 52);
+      const maxS = area.h * (tx ? 0.66 : 0.9), big = fitSize(st, R(Math.max(40, Math.min((look.titleSize || 48) * 1.2, 76))), w, maxS, 1.15, 24);
+      const sh = Math.min(maxS, needHeight(st, big, w, 1.15)), ts = R(bs * 0.74), th = tx ? Math.min(area.h - sh - 24, needHeight(tx, ts, w, 1.3)) : 0;
+      const y = area.y + Math.max(0, (area.h - sh - (tx ? th + 24 : 0)) * 0.42), al = minimal ? 'center' : 'left';
+      if (!minimal) push(S('rect', area.x, y + 8, 10, sh - 16, look.accent));
+      push(T(x, y, w, sh, `<b>${st}</b>`, { fontSize: big, fontFamily: look.head, color: look.title, lineHeight: 1.15, textAlign: al, vAlign: 'middle' }));
+      if (tx) push(T(x, y + sh + 24, w, th, tx, { fontSize: fitSize(tx, ts, w, th, 1.3, 14), textAlign: al, lineHeight: 1.3 }));
+      break;
+    }
+    default: { const h = list(spec.bullets);
+      push(T(area.x, area.y, area.w, area.h, h, { fontSize: fitSize(h, R(bs * 0.8), area.w, area.h, 1.3, 14) })); }
+  }
+  return out;
 }
 
 // ---- The style of what is new -------------------------------------------------------
@@ -400,7 +538,7 @@ function addVisual(slide, spec, deck, { kind, look, r, surprise }) {
 // then each part in reading order; what sits on top of the one before, with it.
 function animate(slide, deck, { kind, decor, effect = null }) {
   const own = slide.blocks.filter(b => !decor.has(b.id) && b.type !== 'connector' && b.type !== 'placeholder' && !b.decorative);
-  const cols = ['stats', 'timeline'].includes(kind);
+  const cols = ['stats', 'timeline', 'comparison', 'steps'].includes(kind);
   const order = [...own].sort((a, b) => (b.ph === 'title') - (a.ph === 'title') || (cols ? (a.x + a.w / 2 > b.x + b.w + 1 ? 1 : b.x + b.w / 2 > a.x + a.w + 1 ? -1 : 0) || a.y - b.y : a.y - b.y || a.x - b.x));
   let prev = null, seq = 0;
   for (const b of order) {
