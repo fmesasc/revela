@@ -73,7 +73,7 @@ def main():
     keys = [k for k, c, f in keys if not only or c in only or f in only or k in only]
     found = []
     for key in keys:
-        cnt = ev(f"window.__revela.examples.loadExample({json.dumps(key)}, {json.dumps(lang)}).then(d=>{{window.__revela.store.replaceDeck(d);return d.slides.length}})")
+        cnt = ev(f"window.__revela.examples.loadExample({json.dumps(key)}, {json.dumps(lang)}).then(d=>d&&import('/src/ui/canvas/fittext.js').then(m=>m.fitTranslated(d))).then(d=>{{window.__revela.store.replaceDeck(d);return d.slides.length}})")
         ev("document.fonts.ready.then(()=>1)"); time.sleep(0.4)
         for i in range(cnt or 0):
             ev(f"(()=>{{const R=window.__revela;R.slides.goToSlide({i});R.render();return 1}})()"); time.sleep(0.35)

@@ -53,6 +53,7 @@ export function createCameraEngine(o) {
       // (Leaving a slide pauses its videos: coming back must play them again.)
       boxes.forEach(function (bx) {
         var v = vid(bx); if (!v) return;
+        if (bgOf(bx)) v.style.opacity = '0';
         if (v.srcObject !== s) v.srcObject = s;
         if (v.paused) { var p = v.play(); if (p && p.catch) p.catch(function () {}); }
       });

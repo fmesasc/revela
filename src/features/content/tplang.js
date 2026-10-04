@@ -44,9 +44,12 @@ export function translateDeck(deck, dict) {
     }
   };
   walk(deck);
-  for (const slide of deck.slides || []) for (const b of slide.blocks || []) if (was.has(b)) keepLines(b, was.get(b), slide, deck);
+  for (const slide of deck.slides || []) for (const b of slide.blocks || []) if (was.has(b)) { ORIGINAL.set(b, was.get(b)); keepLines(b, was.get(b), slide, deck); }
   return deck;
 }
+// A translated text object's Spanish text (to compare how much room each takes: ui/canvas/fittext.js).
+const ORIGINAL = new WeakMap();
+export const originalText = b => ORIGINAL.get(b);
 function keepLines(b, before, slide, deck) {
   if (b.type !== 'text' || b.wordart || b.vertical || b.curve) return;                 // (Text Art shrinks by itself)
   const st = styled(b, slide, deck), fs = +st.fontSize || 32, pad = Array.isArray(b.pad) ? b.pad[1] + b.pad[3] : 12;

@@ -66,7 +66,7 @@ def main():
         if ev('!!window.__revela'): break
         time.sleep(0.25)
     lang = next((sys.argv[i + 1] for i, a in enumerate(sys.argv) if a == '--lang'), 'es')
-    count = ev(f"(()=>{{const R=window.__revela;return R.examples.loadExample({json.dumps(key)}, {json.dumps(lang)}).then(d=>{{if(!d)return -1;R.store.replaceDeck(d);return d.slides.length}})}})()")
+    count = ev(f"(()=>{{const R=window.__revela;return R.examples.loadExample({json.dumps(key)}, {json.dumps(lang)}).then(d=>d&&import('/src/ui/canvas/fittext.js').then(m=>m.fitTranslated(d))).then(d=>{{if(!d)return -1;R.store.replaceDeck(d);return d.slides.length}})}})()")
     if count is None or count < 0: print('No existe', key); sys.exit(1)
     ev("document.fonts.ready.then(()=>1)"); time.sleep(1.5)
     # (3D models: up to 30 s for them to load, in the editor and in the presentation's frame.)

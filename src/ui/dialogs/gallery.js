@@ -9,6 +9,7 @@ import { masterBlocksFor, styled } from '../../features/document/master.js';
 import { PALETTES, pairStacks, deckFg } from '../../features/design/palettes.js';
 import { ensureDeckFonts } from '../../features/design/fonts.js';
 import { blockPreview } from '../shell/preview.js';
+import { fitTranslated } from '../canvas/fittext.js';
 import { confirmDialog } from './dialog.js';
 import { run as runAi } from './ai.js';
 import * as aiDeck from '../../features/ai/authoring.js';
@@ -76,7 +77,7 @@ export function openGallery() {
     btn.innerHTML = `<div class="thumb-canvas"><i class="ms gal-wait">slideshow</i></div>`;
     const lab = document.createElement('span'); lab.innerHTML = `<b></b><small></small>`; lab.querySelector('b').textContent = t(e.name); lab.querySelector('small').textContent = t(e.summary);
     btn.append(lab);
-    btn.addEventListener('click', async () => { const d = await loadExample(key); if (d) replaceWith(d, t('¿Abrir el ejemplo? Se perderá la presentación actual si no la has guardado.')); });
+    btn.addEventListener('click', async () => { const d = await loadExample(key).then(x => x && fitTranslated(x)); if (d) replaceWith(d, t('¿Abrir el ejemplo? Se perderá la presentación actual si no la has guardado.')); });
     ex.appendChild(btn); seen.observe(btn); return btn;
   });
   // (In another language, the names and summaries come with the gallery: one file for all of them.)

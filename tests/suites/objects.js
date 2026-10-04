@@ -382,6 +382,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     host.innerHTML = `<div data-camera-box data-bg="cut" style="position:relative;width:160px;height:120px">${M.cameraInnerHTML({ w: 160, h: 120, bg: 'remove', mirror: false })}</div>`;
     D.body.appendChild(host);
     const bx = host.firstElementChild, v = bx.querySelector('video'), c = bx.querySelector('canvas');
+    eq(v.style.opacity, '0', 'el vídeo empieza invisible para no mostrar el fondo antes de segmentar');
     // A fake segmenter: the person is the left half.
     let calls = 0; const seg = { segmentForVideo() { calls++; const f = new Float32Array(8 * 6); for (let i = 0; i < f.length; i++) f[i] = i % 8 < 4 ? 1 : 0; return { confidenceMasks: [{ width: 8, height: 6, getAsFloat32Array: () => f }], close() {} }; } };
     const eng = C.createCameraEngine({ keep: true, load: () => seg });

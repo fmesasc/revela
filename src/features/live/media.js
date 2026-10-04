@@ -97,7 +97,7 @@ export function cameraInnerHTML(b) {
   const fx = cameraFilterCSS(b), seg = cameraSegment(b);
   const st = `position:absolute;left:0;top:0;width:100%;height:100%;margin:0;object-fit:cover;pointer-events:none;${fx ? `filter:${fx};` : ''}${b.mirror !== false ? 'transform:scaleX(-1);' : ''}`;
   return (MATRIX[b.filter] ? `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="rv-cam-${b.filter}" color-interpolation-filters="sRGB"><feColorMatrix values="${MATRIX[b.filter]}"/></filter></svg>` : '')
-    + `<video data-camera autoplay muted playsinline data-ignore style="${st}"></video>`
+    + `<video data-camera autoplay muted playsinline data-ignore style="${st}${seg ? 'opacity:0;' : ''}"></video>`
     + (seg ? `<canvas width="${Math.max(1, Math.round(b.w))}" height="${Math.max(1, Math.round(b.h))}" style="${st}visibility:hidden"></canvas>` : '');
 }
 export const cameraSig = b => JSON.stringify([b.shape, b.mirror !== false, b.filter || '', cameraBrightness(b), b.bg || '', b.bgColor || '',
