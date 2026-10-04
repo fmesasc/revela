@@ -6,6 +6,7 @@ import { esc } from '../../core/text.js';
 import { state, selectedBlock, currentSlide, commit } from '../../core/store.js';
 import { ensureLayouts, applyLayout, resetSlide, editLayout, allMasters, masterOf } from '../../features/document/master.js';
 import * as slides from '../../features/document/slides.js';
+import * as templates from '../../features/document/templates.js';
 import { startFreeform } from '../canvas/freeform.js';
 import * as blocks from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
@@ -20,6 +21,12 @@ const $ = s => document.querySelector(s);
 // ---- Group "more options" popovers (like Office's dialog launchers) --------
 export let openPop = null;
 const fold = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');   // (search without accents)
+// The slides saved with Insert ▸ «Guardar plantilla», under the layouts.
+function savedTemplates() {
+  const mine = Object.entries(templates.userTemplates()); if (!mine.length) return '';
+  return `<h4>${t('Mis plantillas')}</h4><div class="layout-grid">`
+    + mine.map(([id, tp]) => `<button data-user-tpl="${esc(id)}" type="button">${esc(tp.name)}</button>`).join('') + '</div>';
+}
 export const POPS = {
   symbols: () => {
     const chars = ['→','←','↑','↓','↔','⇒','•','◦','▪','‣','✓','✔','✗','✘','★','☆','♦','●','■','▶',
@@ -41,7 +48,8 @@ export const POPS = {
   layout: () => `<h4>${t('Diseño')}</h4><div class="layout-grid">`
     + allMasters().map((m, i, ms) => (ms.length > 1 ? `<div class="layout-master">${esc(m.name || (i ? `${t('Patrón')} ${i + 1}` : t('Patrón')))}</div>` : '')
       + ensureLayouts().filter(l => masterOf(l) === m).map(l => `<button data-layout="${l.id}" type="button" class="${currentSlide()?.layoutId === l.id ? 'on' : ''}">${t(l.name)}</button>`).join('')).join('')
-    + `</div><div class="fr-actions"><button type="button" class="mini2" data-reset-slide>${t('Restablecer')}</button>`
+    + `</div>${savedTemplates()}`
+    + `<div class="fr-actions"><button type="button" class="mini2" data-reset-slide>${t('Restablecer')}</button>`
     + `<button type="button" class="mini2" data-edit-layouts>${t('Editar diseños…')}</button></div>`,
   // Insert ▸ More shapes: every shape, by kind.
   shapes: () => SHAPE_CATALOG.map(([cat, list]) => `<h4>${t(cat)}</h4><div class="shape-pop">`
@@ -144,6 +152,8 @@ export function togglePopover(launcher, type, { replaceId = null } = {}) {
     x.addEventListener('click', () => { closePopover(); if (x.dataset.shapePick === 'freeform') startFreeform(); else blocks.addShape(x.dataset.shapePick); }));
   pop.querySelectorAll('[data-newslide]').forEach(x =>
     x.addEventListener('click', () => { slides.addSlide(x.dataset.newslide); closePopover(); }));
+  pop.querySelectorAll('[data-user-tpl]').forEach(x =>
+    x.addEventListener('click', () => { const tp = templates.userTemplates()[x.dataset.userTpl]; if (tp) templates.applyTemplate(tp); closePopover(); }));
   pop.querySelector('[data-reset-slide]')?.addEventListener('click', () => { resetSlide(); closePopover(); });
   pop.querySelector('[data-edit-layouts]')?.addEventListener('click', () => { editLayout(currentSlide()?.layoutId || true); closePopover(); });
   openPop = pop;

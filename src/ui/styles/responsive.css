@@ -13,6 +13,7 @@
   /* Bigger touch targets on the ribbon */
   .ribbon-page{min-height:0;padding:4px 2px}
   .row button,.row label.color,.row select{min-height:38px}
+  .row .shape-gallery button{min-height:0}          /* (three rows of small shapes: not stretched over the group's name) */
   .group{padding:2px 6px}
 
   /* Stack the layout: thumbnails become a horizontal strip on top */

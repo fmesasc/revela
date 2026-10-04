@@ -1,4 +1,4 @@
-// The ribbon's groups of small controls (font, size, bold, italic…, lists,
+// The ribbon's groups of small controls (font and size over bold, italic…, lists,
 // colour pickers) in two rows instead of one long one, as PowerPoint does: the
 // ribbon's height is used and less of it has to scroll sideways. Done once per
 // group when it is first shown (the contextual tabs' groups are new each time);
@@ -35,9 +35,10 @@ export function compactGroups(page) {
     }
     const widths = items.map(el => el.offsetWidth), total = widths.reduce((a, b) => a + b, 0);
     if (total < 170) continue;                             // (short already)
-    // Split where the first row gets about half the width (never leaving a row empty).
-    let acc = 0, cut = 1;
-    for (let i = 0; i < items.length - 1; i++) { acc += widths[i]; cut = i + 1; if (acc >= total / 2) break; }
+    // Split where the group says (.row-break: Home ▸ Font, family and size above), else
+    // where the first row gets about half the width (never leaving a row empty).
+    let acc = 0, cut = items.findIndex(el => el.matches('.row-break'));
+    if (cut < 1) for (let i = 0; i < items.length - 1; i++) { acc += widths[i]; cut = i + 1; if (acc >= total / 2) break; }
     const second = document.createElement('div'); second.className = 'row';
     const rest = [...row.children].slice([...row.children].indexOf(items[cut]));
     for (const el of rest) if (!el.matches('.group-more')) second.appendChild(el);

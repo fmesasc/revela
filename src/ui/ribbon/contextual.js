@@ -54,7 +54,7 @@ const chartMap = (b, scope) => blocks.setChartMap(b.id, scope).catch(e => alertD
 
 // A control: ['btn', icon, label, fn, on?] · ['color', icon, label, value, fn] · ['select', label, [[v, l]], value, fn] · ['num', label, value, fn, min, max, step]
 const btn = (icon, label, fn, on = false, key = '') => ['btn', icon, label, fn, on, key];
-// Icon only (the name as a tooltip): the blocks every object tab ends with.
+// Icon only (the name as a tooltip): «Organizar», which every object tab ends with (as on Home).
 const ico = (icon, label, fn, on = false, key = '') => ['ibtn', icon, label, fn, on, key];
 const set = (b, fn) => commit(() => { const x = currentSlide().blocks.find(y => y.id === b.id); if (x) fn(x); });
 function replaceModel(b) {
@@ -84,7 +84,7 @@ function groupsFor(b) {
     ['Forma', [['select', 'Cambiar forma', SHAPES, b.shape, v => set(b, x => { x.shape = v; })], wrapBtn(b),
       ...(hasShapeText(b) ? [btn('edit_note', 'Escribir texto', () => editText(b.id, { selectAll: false }))] : [])]]);
   else if (b.type === 'image') G.push(
-    ['Ajustar', [btn('tune', 'Ajustes', () => openImageAdjust(b)), btn('crop', 'Recortar', () => openImageCrop(b)), btn('auto_fix_high', 'Quitar fondo', () => removeBackground(b)),
+    ['Ajustar', [btn('tune', 'Ajustes de imagen', () => openImageAdjust(b)), btn('crop', 'Recortar', () => openImageCrop(b)), btn('auto_fix_high', 'Quitar fondo', () => removeBackground(b)),
       btn('fit_screen', 'Contener', () => set(b, x => { x.fit = 'contain'; }), (b.fit || 'contain') === 'contain'), btn('crop_free', 'Rellenar', () => set(b, x => { x.fit = 'cover'; }), b.fit === 'cover'),
       btn('open_in_full', 'Estirar', () => set(b, x => { x.fit = 'fill'; }), b.fit === 'fill'), btn('aspect_ratio', 'Proporción original', () => blocks.cropToRatio(b.id, 'original'))]],
     // A mockup: the picture inside a phone, a laptop… (filling its screen).
@@ -214,11 +214,11 @@ function groupsFor(b) {
   // Every object: its animations (several, one after another), description, accessibility and arrangement.
   const n = animsOf(b).length;
   G.push(['Animaciones', [btn('add_circle', n ? `${t('Añadir animación')} (${n})` : 'Añadir animación', () => openAddAnimation(document.querySelector('#ribbon [data-page="ctx"] [data-ctx="add"]')), false, 'add'),
-    ico('gesture', n ? 'Añadir movimiento' : 'Dibujar recorrido', () => startPathDraw({ append: true })), ico('tune', 'Panel de animación', () => openAnimPanel())]]);
+    btn('gesture', 'Dibujar recorrido', () => startPathDraw({ append: true })), btn('tune', 'Panel de animación', () => openAnimPanel())]]);
   // (The link with the alt text and description: one group, not a column for a single button.)
   const linkable = !['text', 'connector'].includes(b.type), described = !['text', 'connector', 'figindex', 'slideref'].includes(b.type);
-  G.push([linkable ? 'Vínculo y accesibilidad' : 'Accesibilidad', [...(linkable ? [ico('link', b.href || b.goto ? 'Cambiar vínculo' : 'Vínculo', () => openObjectLink(b), !!(b.href || b.goto), 'link')] : []),
-    ico('accessibility', 'Texto alternativo', () => openAlt(b)), ...(described ? [ico('short_text', b.caption ? 'Editar descripción' : 'Descripción', () => openCaption(b), !!b.caption)] : [])]]);
+  G.push([linkable ? 'Vínculo y accesibilidad' : 'Accesibilidad', [...(linkable ? [btn('link', b.href || b.goto ? 'Cambiar vínculo' : 'Vínculo', () => openObjectLink(b), !!(b.href || b.goto), 'link')] : []),
+    btn('accessibility', 'Texto alternativo', () => openAlt(b)), ...(described ? [btn('short_text', b.caption ? 'Editar descripción' : 'Descripción', () => openCaption(b), !!b.caption)] : [])]]);
   G.push(arrange(b));
   return G;
 }

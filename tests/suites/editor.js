@@ -494,10 +494,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
 
   await test('cinta: los grupos de controles pequeños ocupan dos filas (se aprovecha la altura)', async () => {
     reset(); D.querySelector('[data-tab="home"]').click(); await sleep(50);
-    const font = D.querySelector('[data-fmt="bold"]').closest('.group'), size = D.querySelector('[data-font]').closest('.group');
+    // Home ▸ Font: one group, as in PowerPoint: family and size above, bold, italic… below.
+    const font = D.querySelector('[data-fmt="bold"]').closest('.group');
+    eq(D.querySelector('[data-font]').closest('.group'), font, 'tipo de letra y formato, en un solo grupo «Fuente»');
     eq(font.querySelectorAll(':scope > .row').length, 2, 'Fuente: dos filas');
-    eq(size.querySelectorAll(':scope > .row').length, 2, 'Tipo de letra: dos filas');
-    assert(D.querySelector('[data-fmt="bold"]').getBoundingClientRect().top < D.querySelector('[data-fmt="removeFormat"]').getBoundingClientRect().top, 'una encima de otra');
+    const top = sel => D.querySelector(sel).getBoundingClientRect().top;
+    assert(top('[data-font]') < top('[data-fmt="bold"]') && Math.abs(top('[data-fmt="bold"]') - top('[data-fmt="removeFormat"]')) < 4, 'el tipo de letra encima; negrita… quitar formato, debajo en una fila');
     D.querySelector('[data-tab="design"]').click(); await sleep(50);
     const g = D.querySelector('[data-action="design-ideas"]').closest('.group');
     assert(g.classList.contains('inline-labels') && g.querySelectorAll(':scope > .row').length === 2, 'botones con texto: el texto al lado del icono, en dos filas');
@@ -516,5 +518,99 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const sp = cam.querySelector('span').getBoundingClientRect(), se = cam.querySelector('select').getBoundingClientRect();
     assert(sp.right <= se.left + 1 && Math.abs((sp.top + sp.bottom) / 2 - (se.top + se.bottom) / 2) < 8, 'con la etiqueta al lado');
     D.querySelector('[data-tab="home"]').click();
+  });
+
+  // ---- The ribbon, clear in every language --------------------------------
+  const W = frame.contentWindow, PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const OBJECTS = { text: () => R.blocks.addText(), shape: () => R.blocks.addShape('rect'), image: () => R.blocks.addImage(PNG), table: () => R.blocks.addTable(),
+    chart: () => R.blocks.addChart(), model: () => R.blocks.addModel('data:model/gltf-binary;base64,AAAA'), video: () => R.blocks.addVideo('data:video/mp4;base64,AAAA'),
+    audio: () => R.blocks.addAudio('data:audio/mp3;base64,AAAA'), poll: () => R.poll.addPoll(), diagram: () => R.blocks.addDiagram(),
+    camera: async () => (await W.eval("import('/src/features/live/media.js')")).addCamera(), math: () => R.blocks.addMath(), code: () => R.blocks.addCode(),
+    timer: () => R.blocks.addTimer(), icon: () => R.blocks.addIcon('star'), embed: () => R.blocks.addEmbed('https://example.com'), slideref: () => R.blocks.addSlideRef(),
+    ink: () => R.blocks.addInk([[10, 10], [100, 100], [200, 50]]), figindex: () => R.blocks.addFigIndex() };
+  const pick = ids => R.store.commit(() => { R.state.ui.multi = ids.length > 1 ? ids : []; R.state.ui.selection = ids.at(-1) || null; }, { history: false });
+  // Every object's tab (and that of several objects), drawn: fn(page, kind).
+  async function eachObjectTab(fn) {
+    for (const [kind, add] of Object.entries(OBJECTS)) { reset(); pick([]); await add(); pick([last().id]); await sleep(10); await fn(D.querySelector('#ribbon [data-page="ctx"]'), kind); }
+    reset(); R.blocks.addShape('rect'); R.blocks.addShape('ellipse'); pick(slide().blocks.slice(-2).map(b => b.id)); await sleep(10);
+    await fn(D.querySelector('#ribbon [data-page="ctx"]'), 'several');
+    pick([]); reset();
+  }
+
+  await test('cinta: cada texto (pestañas, grupos, botones, avisos, listas y pestañas de objeto) está traducido a en, fr, de, it, pt y ca', async () => {
+    const { ROWS } = await W.eval("import('/src/i18n/strings.js')"), rows = new Map(ROWS.map(r => [r[0], r]));
+    // (Names, the same in every language: brands, fonts, reveal.js themes.)
+    const NAMES = new Set(['Revela', 'OneDrive', 'Dropbox', 'Text Art', 'Idioma / Language', 'Power BI, Looker Studio, Tableau, Google Sheets, Grafana…',
+      ...[...D.querySelectorAll('#ribbon [data-font] option')].map(o => o.textContent)]);
+    const found = new Map();
+    const add = (s, where) => { s = (s || '').trim(); if (s.length > 1 && !/^[\d\s.,:%/–+()·×N-]*$/.test(s) && !NAMES.has(s) && !found.has(s)) found.set(s, where); };
+    const scan = (root, where) => {
+      root.querySelectorAll('[title]:not(#lang-select)').forEach(el => add(el.dataset.i18nt ?? el.title, where));
+      root.querySelectorAll('[aria-label]').forEach(el => add(el.getAttribute('aria-label'), where));
+      root.querySelectorAll('.group>label, button span, .ctx-field>span, label.color>span').forEach(el => add(el.dataset.i18n ?? el.innerHTML, where));
+      root.querySelectorAll('select:not(#lang-select):not([data-font]) option').forEach(o => { if (o.textContent.toLowerCase() !== o.value) add(o.dataset.i18n ?? o.textContent, where); });
+      root.querySelectorAll('input[placeholder]').forEach(el => add(el.placeholder, where));
+    };
+    scan(D.getElementById('ribbon'), 'cinta'); scan(D.getElementById('statusbar'), 'barra de estado');
+    D.querySelectorAll('#ribbon .tabs [data-tab]').forEach(b => add(b.dataset.i18n ?? b.textContent, 'pestañas'));
+    await eachObjectTab((page, kind) => { scan(page, kind); if (kind !== 'several') add(D.querySelector('#ribbon [data-tab="ctx"]').textContent, kind); });
+    const bad = [...found].filter(([s]) => !rows.has(s) || rows.get(s).slice(1, 7).some(x => !x)).map(([s, w]) => `${w}: ${s}`);
+    eq(bad.length, 0, 'sin traducción: ' + bad.slice(0, 6).join(' | '));
+  });
+
+  await test('cinta: ningún botón es solo un icono sin nombre, y en una pestaña no hay dos grupos que se llamen igual (en ningún idioma)', async () => {
+    const nameless = el => el.matches('button') && !el.closest('[hidden]') && !el.querySelector('span')?.textContent.trim() && !el.title && !el.getAttribute('aria-label');
+    for (const p of D.querySelectorAll('#ribbon .ribbon-page:not([data-page="ctx"])'))
+      for (const b of p.querySelectorAll('button')) assert(!nameless(b), `${p.dataset.page}: un botón sin nombre ni descripción (${b.outerHTML.slice(0, 80)})`);
+    await eachObjectTab(page => { for (const b of page.querySelectorAll('button')) assert(!nameless(b), `pestaña de objeto: un botón sin nombre (${b.outerHTML.slice(0, 80)})`); });
+    for (const lang of ['es', 'en', 'fr', 'de', 'it', 'pt', 'ca']) {
+      await R.i18n.setLang(lang);
+      for (const p of D.querySelectorAll('#ribbon .ribbon-page:not([data-page="ctx"])')) {
+        const names = [...p.querySelectorAll(':scope > .group:not([hidden]) > label')].map(l => l.textContent.trim());
+        eq(names.filter((n, i) => names.indexOf(n) !== i).join(), '', `${lang}, ${p.dataset.page}: grupos repetidos`);
+      }
+    }
+    await R.i18n.setLang('es');
+  });
+
+  await test('cinta: Insertar por temas, y las entradas de Animaciones con los nombres del panel de animación', async () => {
+    const group = sel => D.querySelector(`#ribbon [data-page="insert"] ${sel}`).closest('.group').querySelector(':scope > label').textContent;
+    eq(group('[data-action="insert-image"]'), 'Imágenes'); eq(group('[data-icons]'), 'Imágenes');
+    eq(group('[data-action="insert-chart"]'), 'Tablas y gráficos'); eq(group('[data-action="insert-math"]'), 'Texto');
+    eq(group('[data-action="insert-poll"]'), 'Interactivo'); eq(group('[data-template="twoContent"]'), 'Diseño de esta diapositiva', 'aplica un diseño a esta diapositiva: lo dice');
+    assert(!D.querySelector('#ribbon [data-page="insert"] .group > label').textContent.includes('Básico'), 'sin un cajón de sastre «Básico»');
+    const { EFFECT_NAMES } = await W.eval("import('/src/ui/panels/animation.js')");
+    for (const b of D.querySelectorAll('#ribbon [data-page="animations"] [data-animation]'))
+      if (EFFECT_NAMES[b.dataset.animation]) eq(b.querySelector('span').textContent, EFFECT_NAMES[b.dataset.animation], 'el mismo nombre que en el panel: ' + b.dataset.animation);
+    eq(D.querySelector('[data-slide-transition="convex"] span').textContent, 'Convexa', 'transiciones en español');
+  });
+
+  await test('Insertar ▸ Guardar plantilla: la diapositiva guardada aparece en Inicio ▸ Diseño y se aplica (con objetos nuevos)', async () => {
+    reset(); let saved = null; try { saved = W.localStorage.getItem('revela.templates.v1'); W.localStorage.removeItem('revela.templates.v1'); } catch {}
+    try {
+      slide().blocks[0].html = 'Mi portada'; R.render();
+      D.querySelector('[data-action="template-save"]').click(); await sleep(30);
+      D.querySelector('.modal-backdrop input').value = 'Mía'; D.querySelector('.modal-backdrop .dlg-ok').click(); await sleep(30);
+      R.slides.addSlide(); await sleep(10);
+      D.querySelector('#ribbon [data-layout-open]').click(); await sleep(30);
+      const mine = D.querySelector('.popover [data-user-tpl]'); assert(mine && mine.textContent === 'Mía', 'en el menú de diseños, bajo «Mis plantillas»');
+      const before = new Set(R.state.deck.slides.flatMap(s => s.blocks.map(b => b.id)));
+      mine.click(); await sleep(20);
+      assert(slide().blocks.some(b => b.html === 'Mi portada'), 'se aplica a la diapositiva');
+      assert(slide().blocks.every(b => !before.has(b.id)), 'con identificadores nuevos (no los de la diapositiva de la que salió)');
+    } finally { try { if (saved) W.localStorage.setItem('revela.templates.v1', saved); else W.localStorage.removeItem('revela.templates.v1'); } catch {} D.querySelectorAll('.modal-backdrop').forEach(m => m.remove()); }
+  });
+
+  await test('barra de título y barra de estado: en una ventana estrecha caben en una línea (el nombre y el idioma se ven)', async () => {
+    reset();
+    for (const lang of ['es', 'en']) {
+      await R.i18n.setLang(lang); await sleep(20);
+      const bar = D.querySelector('.titlebar'), sel = D.getElementById('lang-select').getBoundingClientRect(), name = D.querySelector('.doc-name').getBoundingClientRect();
+      assert(bar.scrollWidth <= bar.clientWidth + 1 && sel.right <= W.innerWidth + 1, `${lang}: la barra de título cabe (${W.innerWidth}px)`);
+      assert(name.width >= 60, `${lang}: el nombre de la presentación se ve (${Math.round(name.width)}px)`);
+      const sb = D.getElementById('statusbar'), line = [...sb.children].filter(x => x.offsetParent).map(x => x.getBoundingClientRect().height);
+      assert(Math.max(...line) < 32, `${lang}: la barra de estado en una línea`);
+    }
+    await R.i18n.setLang('es');
   });
 }

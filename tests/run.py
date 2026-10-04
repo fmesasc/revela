@@ -69,6 +69,9 @@ def touch_checks(send, recv, port):
     check(wide == '', 'los diálogos caben a lo ancho en el móvil (' + str(wide) + ')')
     ev("(()=>{const R=window.__revela;R.store.commit(()=>R.store.setSelection(null),{history:false});return 1})()"); time.sleep(0.2)
     check(ev("(()=>{const t=document.querySelector('#ribbon [data-tab=home]').getBoundingClientRect(),b=document.querySelector('#ribbon .tabs').getBoundingClientRect();return t.left>=b.left-1&&t.right<=b.right+1})()"), 'al quitar la selección, la pestaña Inicio se ve')
+    # Insert ▸ Shapes: its three rows of small shapes, not stretched over the group's name.
+    shapes = ev("(async()=>{document.querySelector('#ribbon [data-tab=insert]').click();await new Promise(r=>setTimeout(r,200));const g=document.querySelector('[data-shape-gallery]'),b=g.querySelector('button').getBoundingClientRect(),l=g.closest('.group').querySelector(':scope>label').getBoundingClientRect(),gr=g.getBoundingClientRect();document.querySelector('#ribbon [data-tab=home]').click();return b.height<32&&gr.bottom<=l.top+1})()")
+    check(shapes, 'Insertar ▸ Formas: las formas no se estiran sobre el nombre del grupo')
     recv(send('Emulation.setDeviceMetricsOverride', sid, width=844, height=390, deviceScaleFactor=2, mobile=True)); time.sleep(0.8)
     check(ev(fits), 'en horizontal (móvil tumbado) la diapositiva se ve entera')
     return fails
