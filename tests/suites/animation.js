@@ -598,4 +598,117 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/path="M 0 0 L 0 -0\.\d+ L 0 0/.test(xml), 'y salto en el sitio');
     assert(!/presetClass="exit"/.test(xml) && !/presetClass="entr"/.test(xml), 'ninguno como entrada o salida');
   });
+
+  // ---- The ribbon mirrors the selection (PowerPoint's) ----------------------
+  const rb = s => D.querySelector('#ribbon ' + s);
+  const change = (el, v) => { el.value = v; el.dispatchEvent(new frame.contentWindow.Event('change', { bubbles: true })); };
+  const show = async tab => { R.store.commit(() => { R.state.ui.activeTab = tab; }, { history: false }); await sleep(20); };
+
+  await test('cinta de animaciones: marca el efecto aplicado y sus controles editan esa animación (no añaden otra)', async () => {
+    reset(); await show('animations'); const [a, b] = slide().blocks; select(a); await sleep(10);
+    assert(!D.querySelector('#ribbon [data-animation].on'), 'sin animación: nada marcado');
+    assert(rb('[data-anim-start]').disabled && rb('[data-anim-duration]').disabled, 'sin animación: los controles, desactivados');
+    eq(rb('[data-anim-count]').textContent, 'Sin animación');
+    R.trans.setAnimation('fade-up'); await sleep(10);
+    const up = rb('[data-animation="fade-up"]');
+    assert(up.classList.contains('on') && up.getAttribute('aria-pressed') === 'true', 'el efecto aplicado, pulsado');
+    eq(up.dataset.kind, 'entrance', 'marcado como entrada'); eq(rb('[data-animation="fade-out"]').dataset.kind, 'exit'); eq(rb('[data-animation="path"]').dataset.kind, 'path');
+    eq(D.querySelectorAll('#ribbon [data-animation].on').length, 1, 'solo ese');
+    eq(rb('[data-anim-start]').value, 'click'); eq(rb('[data-anim-duration]').value, '0.5', 'su duración, en segundos');
+    // Changing a control edits that animation.
+    change(rb('[data-anim-duration]'), '1.5'); change(rb('[data-anim-start]'), 'afterPrev'); change(rb('[data-anim-delay]'), '0.2'); await sleep(10);
+    eq(R.trans.animsOf(a).length, 1, 'ninguna animación nueva');
+    eq(a.animation.duration, 1500); eq(a.animation.start, 'afterPrev'); eq(a.animation.delay, 200);
+    // Effect options: the direction of «Subir» (PowerPoint's «Opciones de efecto»).
+    const opts = rb('[data-anim-opts]'); assert(!opts.disabled && opts.value === 'effect:fade-up', 'opciones de efecto con la dirección actual');
+    change(opts, 'effect:fade-left'); await sleep(10); eq(a.animation.effect, 'fade-left', 'cambia la dirección');
+    assert(rb('[data-animation="fade-left"]').classList.contains('on'), 'y la galería lo sigue');
+    // Picking another effect replaces it (its timing stays).
+    rb('[data-animation="zoom-in"]').click(); await sleep(10);
+    eq(R.trans.animsOf(a).length, 1, 'otro efecto de la galería sustituye'); eq(a.animation.effect, 'zoom-in'); eq(a.animation.duration, 1500, 'conserva sus intervalos');
+    // «Añadir animación» adds one, and it becomes the one edited.
+    rb('[data-action="anim-add"]').click(); await sleep(20);
+    D.querySelector('#anim-add-menu [data-add="pulse"]').click(); await sleep(20);
+    eq(R.trans.animsOf(a).length, 2, '«Añadir animación» añade');
+    eq(rb('[data-anim-count]').textContent, '2 animaciones', 'el indicador');
+    eq(rb('[data-anim-pick]').value, '1', 'edita la nueva'); assert(!rb('[data-anim-pick]').disabled, 'se puede cambiar');
+    assert(rb('[data-animation="zoom-in"]').classList.contains('has') && !rb('[data-animation="zoom-in"]').classList.contains('on'), 'la otra, marcada aparte');
+    change(rb('[data-anim-duration]'), '0.8'); await sleep(10);
+    eq(a.anims[0].duration, 800, 'edita la que se muestra'); eq(a.animation.duration, 1500, 'y no la otra');
+    rb('[data-animation="grow"]').click(); await sleep(10);
+    eq(a.anims[0].effect, 'grow', 'la galería sustituye la que se edita'); eq(a.animation.effect, 'zoom-in');
+    // Switching which one the controls show.
+    change(rb('[data-anim-pick]'), '0'); await sleep(10);
+    eq(rb('[data-anim-duration]').value, '1.5', 'muestra la primera'); assert(rb('[data-animation="zoom-in"]').classList.contains('on'), 'y su efecto');
+    // The Animation pane chooses it too.
+    rb('[data-action="anim-panel"]').click(); await sleep(30);
+    const rows = D.querySelectorAll('#anim-modal .an-row'); assert(rows[0].classList.contains('cur'), 'en el panel, la que se edita');
+    rows[1].click(); await sleep(20);
+    eq(R.state.ui.animEdit.i, 1, 'elegir una fila del panel la muestra en la cinta'); eq(rb('[data-anim-duration]').value, '0.8');
+    D.querySelector('#anim-modal .modal-close').click(); await sleep(10);
+    // Another object, not animated: nothing marked.
+    R.store.commit(() => R.store.setSelection(b.id), { history: false }); await sleep(10);
+    assert(!D.querySelector('#ribbon [data-animation].on') && rb('[data-anim-start]').disabled, 'otro objeto sin animación: nada marcado');
+    // Two objects with different durations: blank (mixed) until changed.
+    R.trans.setAnimation('zoom-in'); R.store.commit(() => { R.state.ui.multi = [a.id, b.id]; R.state.ui.selection = b.id; }, { history: false }); await sleep(10);
+    assert(rb('[data-animation="zoom-in"]').classList.contains('on'), 'varios con el mismo efecto: marcado');
+    eq(rb('[data-anim-duration]').value, '', 'duraciones distintas: en blanco'); eq(rb('[data-anim-duration]').placeholder, '—');
+    eq(a.animation.duration, 1500, 'sin tocarlas'); eq(b.animation.duration, 500);
+    change(rb('[data-anim-duration]'), '1'); await sleep(10);
+    eq(a.animation.duration + b.animation.duration, 2000, 'al cambiarla, a los dos');
+    await show('home');
+  });
+
+  await test('cinta de transiciones: muestra la de la diapositiva, y «mixto» con varias distintas', async () => {
+    reset(); await show('transitions'); R.slides.addSlide('blank'); R.slides.addSlide('blank'); await sleep(10);
+    const [s1, s2] = R.state.deck.slides.slice(1);
+    R.store.commit(() => { s1.transition = 'wipe'; s1.transitionDir = 'top'; s1.transitionSpeed = 'slow'; s1.autoSlide = 3000; s2.transition = 'fade'; s2.transitionSpeed = 'fast'; });
+    R.slides.goToSlide(1); await sleep(20);
+    const wipe = rb('[data-slide-transition="wipe"]');
+    assert(wipe.classList.contains('on') && wipe.getAttribute('aria-pressed') === 'true', 'su transición, pulsada');
+    eq(rb('[data-slide-trans-dir]').value, 'top', 'su dirección'); eq(rb('[data-slide-speed]').value, 'slow', 'su velocidad'); eq(rb('[data-autoslide]').value, '3', 'su avance automático');
+    R.store.commit(() => R.store.setSlideSel([s1.id, s2.id], 1), { history: false }); await sleep(20);
+    eq(wipe.getAttribute('aria-pressed'), 'mixed', 'dos distintas: mixto'); eq(rb('[data-slide-transition="fade"]').getAttribute('aria-pressed'), 'mixed');
+    assert(!D.querySelector('#ribbon [data-slide-transition].on'), 'ninguna pulsada del todo');
+    eq(rb('[data-slide-speed]').selectedIndex, -1, 'velocidad: en blanco'); eq(rb('[data-autoslide]').value, '', 'avance: en blanco');
+    assert(rb('[data-slide-trans-dir]').disabled, 'sin opciones de efecto comunes');
+    eq(s1.transitionSpeed + s2.transitionSpeed, 'slowfast', 'no se sobrescribe nada');
+    change(rb('[data-slide-speed]'), 'default'); await sleep(10);
+    eq(s1.transitionSpeed + s2.transitionSpeed, 'defaultdefault', 'al cambiarla, a las dos');
+    rb('[data-slide-transition="push"]').click(); await sleep(10);
+    eq(wipe.getAttribute('aria-pressed'), 'false'); eq(rb('[data-slide-transition="push"]').getAttribute('aria-pressed'), 'true', 'la misma en las dos: pulsada');
+    R.store.commit(() => R.store.setSlideSel([]), { history: false }); await show('home');
+  });
+
+  await test('cinta: formato y pestañas del objeto reflejan la selección (negrita, alineación, colores, varios objetos)', async () => {
+    reset(); await show('home'); const [a, b] = slide().blocks;
+    select(a); await sleep(20);
+    const bold = rb('[data-fmt="bold"]');
+    eq(bold.getAttribute('aria-pressed'), 'true', 'título todo en negrita: pulsada sin entrar a escribir');
+    R.store.commit(() => { a.html = '<b>Hola</b> mundo'; a.fontWeight = '400'; }); await sleep(20);
+    eq(bold.getAttribute('aria-pressed'), 'mixed', 'en parte: mixto');
+    eq(rb('[data-fmt="italic"]').getAttribute('aria-pressed'), 'false');
+    R.store.commit(() => { a.textAlign = 'center'; a.vAlign = 'middle'; a.color = '#ff0000'; }); await sleep(20);
+    eq(rb('[data-para="center"]').getAttribute('aria-pressed'), 'true', 'alineación'); eq(rb('[data-valign="middle"]').getAttribute('aria-pressed'), 'true', 'alineación vertical');
+    eq(rb('[data-color]').value, '#ff0000', 'el color del texto en su muestra');
+    const ctxBold = D.querySelector('#ribbon [data-page="ctx"] [data-st="bold"]'); eq(ctxBold?.getAttribute('aria-pressed'), 'mixed', 'también en la pestaña del cuadro de texto');
+    R.store.commit(() => { b.textAlign = 'right'; R.state.ui.multi = [a.id, b.id]; R.state.ui.selection = b.id; }, { history: false }); await sleep(20);
+    eq(rb('[data-para="center"]').getAttribute('aria-pressed'), 'mixed', 'dos cuadros con alineaciones distintas: mixto');
+    assert(!D.querySelector('#ribbon [data-para].on'), 'ninguna pulsada');
+    // Shapes: Home ▸ Drawing and the shapes' tab.
+    R.blocks.addShape('rect'); const s1 = last(); R.blocks.addShape('ellipse'); const s2 = last();
+    R.store.commit(() => { s1.fill = '#112233'; s2.fill = '#112233'; s1.stroke = '#aa0000'; s2.stroke = '#00aa00'; R.state.ui.multi = [s1.id, s2.id]; R.state.ui.selection = s2.id; }); await sleep(20);
+    eq(rb('[data-shape-fill]').value, '#112233', 'relleno común en Inicio');
+    assert(rb('[data-shape-stroke]').closest('label').classList.contains('mixed'), 'bordes distintos: mixto');
+    const g = [...D.querySelectorAll('#ribbon [data-page="ctx"] .group')].find(x => x.querySelector(':scope > label').textContent === 'Estilo de forma');
+    assert(g, 'varias formas: su estilo en la pestaña'); assert(g.querySelectorAll('label.color')[1].classList.contains('mixed'), 'con el borde mixto');
+    rb('[data-page="ctx"] [title="Relleno"] input').value = '#445566'; rb('[data-page="ctx"] [title="Relleno"] input').dispatchEvent(new frame.contentWindow.Event('change')); await sleep(20);
+    eq(s1.fill + s2.fill, '#445566#445566', 'el relleno, a las dos');
+    // A toggle in an object's tab says whether it is on.
+    select(s1); R.store.commit(() => { R.state.ui.multi = [s1.id]; }, { history: false }); await sleep(20);
+    const sketch = [...D.querySelectorAll('#ribbon [data-page="ctx"] button')].find(x => x.textContent.includes('Trazo a mano'));
+    eq(sketch.getAttribute('aria-pressed'), 'false'); sketch.click(); await sleep(20);
+    eq([...D.querySelectorAll('#ribbon [data-page="ctx"] button')].find(x => x.textContent.includes('Trazo a mano')).getAttribute('aria-pressed'), 'true', 'aria-pressed en la pestaña del objeto');
+    R.store.commit(() => { R.state.ui.multi = []; R.state.ui.selection = null; }, { history: false }); await show('home');
+  });
 }

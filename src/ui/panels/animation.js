@@ -4,7 +4,7 @@
 import { isPdf } from '../../features/content/files.js';
 import { openPdfZone } from '../dialogs/pdfzone.js';
 import { esc } from '../../core/text.js';
-import { currentSlide, commit, setSelection, subscribe } from '../../core/store.js';
+import { state, currentSlide, commit, setSelection, subscribe } from '../../core/store.js';
 import * as trans from '../../features/animation/transitions.js';
 import { playAnimations } from '../canvas/preview.js';
 import { startPathDraw } from '../canvas/pathdraw.js';
@@ -55,11 +55,12 @@ export function openAnimPanel() {
   const close = () => { unsub(); back.remove(); };
   back.querySelector('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
+  const cur = (b, i) => b.id === state.ui.selection && i === trans.animEditIndex(b);
   const render = () => {
     const list = trans.animEntries(), count = new Map();
     list.forEach(e => count.set(e.b.id, (count.get(e.b.id) || 0) + 1));
     body.innerHTML = list.length ? list.map(({ b, a, i }, n) => `
-      <div class="an-row" data-id="${b.id}" data-i="${i}">
+      <div class="an-row${cur(b, i) ? ' cur' : ''}" data-id="${b.id}" data-i="${i}" aria-current="${cur(b, i)}">
         <div class="an-title">${n + 1}. ${t(ANIM_NAMES[b.type] || b.type)}${count.get(b.id) > 1 ? ` <span class="an-step">${t('animación')} ${i + 1}/${count.get(b.id)}</span>` : ''}</div>
         <div class="an-grid">
           <label>${t('Efecto')}<select data-p="effect">${[...ANIM_EFFECTS, ...(b.type === 'model' ? ['clip3d'] : []), ...(isPdf(b) ? ['pdfview'] : [])].map(e => `<option value="${e}"${a.effect === e ? ' selected' : ''}>${EFFECT_LABEL(e)}</option>`).join('')}</select></label>
@@ -91,6 +92,13 @@ export function openAnimPanel() {
       : `<p class="host-help">${t('Aplica una animación de entrada a un objeto primero.')}</p>`;
     body.querySelectorAll('.an-row').forEach(row => {
       const id = row.dataset.id, i = +row.dataset.i, set = (p, v) => trans.setAnimPropForId(id, p, v, i);
+      // Choosing a row selects its object and makes it the animation the ribbon shows and edits.
+      const choose = () => {
+        if (row.classList.contains('cur')) return;
+        body.querySelectorAll('.an-row').forEach(r => { r.classList.toggle('cur', r === row); r.setAttribute('aria-current', String(r === row)); });
+        commit(() => { setSelection(id); state.ui.animEdit = { id, i }; }, { history: false });
+      };
+      row.addEventListener('focusin', choose); row.addEventListener('click', choose);
       row.querySelector('[data-p="effect"]').addEventListener('change', e => { set('effect', e.target.value); render(); });
       row.querySelector('[data-p="pathShape"]')?.addEventListener('change', e => set('pathShape', e.target.value));
       row.querySelector('[data-p="turn"]')?.addEventListener('change', e => set('turn', e.target.value));

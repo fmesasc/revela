@@ -43,6 +43,7 @@ import { editText } from '../canvas/content.js';
 import { MAP_SCOPES } from '../../features/content/maps.js';
 import { openObjectLink } from '../dialogs/objlink.js';
 import { t } from '../../i18n/index.js';
+import { press, common, MIXED } from './reflect.js';
 
 const TITLES = { diagram: 'Diagrama', file: 'Archivo', shape: 'Forma', image: 'Imagen', model: 'Modelo 3D', video: 'Vídeo', audio: 'Audio', text: 'Cuadro de texto', table: 'Tabla', chart: 'Gráfico',
   math: 'Ecuación', code: 'Código', poll: 'Votación', embed: 'Web', icon: 'Icono', camera: 'Cámara', slideref: 'Zoom', magnify: 'Lupa', figindex: 'Índice', ink: 'Dibujo', connector: 'Conector', timer: 'Cuenta atrás' };
@@ -56,10 +57,12 @@ const formulaHelp = () => alertDialog([t('Escribe en una celda una fórmula que 
   t('La celda muestra el resultado; al escribir en ella, la fórmula.')].join('\n\n'));
 const chartMap = (b, scope) => blocks.setChartMap(b.id, scope).catch(e => alertDialog(t('No se pudo cargar el mapa:') + ' ' + (e.message || e)));
 
-// A control: ['btn', icon, label, fn, on?] · ['color', icon, label, value, fn] · ['select', label, [[v, l]], value, fn] · ['num', label, value, fn, min, max, step]
-const btn = (icon, label, fn, on = false, key = '') => ['btn', icon, label, fn, on, key];
+// A control: ['btn', icon, label, fn, on?] · ['color', icon, label, value, fn, mixed?] · ['select', label, [[v, l]], value, fn] · ['num', label, value, fn, min, max, step]
+// on: true / false for a toggle (aria-pressed), MIXED when only some of the objects have it, null for a plain button.
+// A key "st:<command>" is a character format whose state follows the text selection (see reflect.js).
+const btn = (icon, label, fn, on = null, key = '') => ['btn', icon, label, fn, on, key];
 // Icon only (the name as a tooltip): «Organizar», which every object tab ends with (as on Home).
-const ico = (icon, label, fn, on = false, key = '') => ['ibtn', icon, label, fn, on, key];
+const ico = (icon, label, fn, on = null, key = '') => ['ibtn', icon, label, fn, on, key];
 const set = (b, fn) => commit(() => { const x = currentSlide().blocks.find(y => y.id === b.id); if (x) fn(x); });
 function replaceModel(b) {
   const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.glb,.gltf,model/gltf-binary';
@@ -107,7 +110,7 @@ function groupsFor(b) {
     ['Al presentar', [btn('zoom_in', 'Ampliar al clic', () => set(b, x => { if (x.zoomable) delete x.zoomable; else x.zoomable = true; }), !!b.zoomable),
       ...(isGif(b) ? [btn('slow_motion_video', 'Reproducción', () => openMediaPlayback(b))] : [])]],
     ['Archivo', [btn('download', 'Descargar', () => saveFile(b)), btn('photo_camera', 'Guardar como imagen', () => openSaveAsPicture())]],
-    ['Lupa', [btn('loupe', 'Ampliar una zona de la imagen', () => startMagnifyDraw({ within: b }), false, 'magnify-image')]]);
+    ['Lupa', [btn('loupe', 'Ampliar una zona de la imagen', () => startMagnifyDraw({ within: b }), null, 'magnify-image')]]);
   else if (b.type === 'magnify') G.push(...magnifyGroups(b));
   else if (b.type === 'model') {
     const names = clipsOf(b), opts = [['', 'Ninguna'], ...(names.length ? names : ['*']).map(n => [n, n === '*' ? 'La primera' : n])];
@@ -148,14 +151,14 @@ function groupsFor(b) {
   else if (b.type === 'text') G.push(
     ['Fuente', [['select', 'Tipo de letra', fontOptions(), b.fontFamily || '', v => format.fontFamily(v)],
       ['num', 'Tamaño', Math.round(styled(b, currentSlide()).fontSize || 40), v => format.setFontSize(parseInt(v, 10) || 40), 6, 400, 2],
-      ['ibtn', 'format_bold', 'Negrita', () => format.exec('bold')], ['ibtn', 'format_italic', 'Cursiva', () => format.exec('italic')],
-      ['ibtn', 'format_underlined', 'Subrayado', () => format.exec('underline')],
+      ['ibtn', 'format_bold', 'Negrita', () => format.exec('bold'), null, 'st:bold'], ['ibtn', 'format_italic', 'Cursiva', () => format.exec('italic'), null, 'st:italic'],
+      ['ibtn', 'format_underlined', 'Subrayado', () => format.exec('underline'), null, 'st:underline'],
       ['color', 'format_color_text', 'Color del texto', /^#[0-9a-f]{6}$/i.test(b.color || '') ? b.color : '#ffffff', v => format.color(v)]]],
     ['Párrafo', [['ibtn', 'format_align_left', 'Alinear texto a la izquierda', () => format.align('left'), (b.textAlign || 'left') === 'left'],
       ['ibtn', 'format_align_center', 'Centrar texto', () => format.align('center'), b.textAlign === 'center'],
       ['ibtn', 'format_align_right', 'Alinear texto a la derecha', () => format.align('right'), b.textAlign === 'right'],
       ['ibtn', 'format_align_justify', 'Justificar', () => format.align('justify'), b.textAlign === 'justify'],
-      ['ibtn', 'format_list_bulleted', 'Viñetas', () => format.list('insertUnorderedList')], ['ibtn', 'format_list_numbered', 'Lista numerada', () => format.list('insertOrderedList')],
+      ['ibtn', 'format_list_bulleted', 'Viñetas', () => format.list('insertUnorderedList'), null, 'st:insertUnorderedList'], ['ibtn', 'format_list_numbered', 'Lista numerada', () => format.list('insertOrderedList'), null, 'st:insertOrderedList'],
       ['ibtn', 'vertical_align_top', 'Alinear el texto arriba del cuadro', () => format.setVAlign('top'), (b.vAlign || 'top') === 'top'],
       ['ibtn', 'vertical_align_center', 'Centrar el texto en el cuadro', () => format.setVAlign('middle'), b.vAlign === 'middle'],
       ['ibtn', 'vertical_align_bottom', 'Alinear el texto abajo del cuadro', () => format.setVAlign('bottom'), b.vAlign === 'bottom'],
@@ -216,7 +219,7 @@ function groupsFor(b) {
       btn('volume_up', 'Sonido al acabar', () => set(b, x => { x.sound = x.sound === false; }), b.sound !== false),
       btn('edit_note', 'Texto final', async () => { const v = await promptDialog(t('Texto al acabar el tiempo:'), b.endText ?? t('¡Tiempo!')); if (v != null) set(b, x => { x.endText = v.slice(0, 40); }); })]]);
   else if (b.type === 'ink') G.push(['Dibujo', [btn('gesture', 'Trazar al presentar', () => (b.animation?.effect === 'draw' ? clearAnimation() : setAnimation('draw')), b.animation?.effect === 'draw')]]);
-  else if (b.type === 'icon') G.push(['Icono', [btn('interests', 'Cambiar icono', () => togglePopover(document.querySelector('#ribbon [data-page="ctx"] [data-ctx="icon-change"]'), 'icons', { replaceId: b.id }), false, 'icon-change'),
+  else if (b.type === 'icon') G.push(['Icono', [btn('interests', 'Cambiar icono', () => togglePopover(document.querySelector('#ribbon [data-page="ctx"] [data-ctx="icon-change"]'), 'icons', { replaceId: b.id }), null, 'icon-change'),
     btn('palette', 'Color del icono', () => openIconColor(b))]]);
   else if (b.type === 'embed') G.push(['Web', [btn(b.display === 'card' ? 'web' : 'link', b.display === 'card' ? 'Mostrar la web' : 'Mostrar como tarjeta', () => blocks.setEmbedDisplay(b.id, b.display === 'card' ? 'frame' : 'card')),
     ...(blocks.isVideoEmbed(b.src) ? [btn('content_cut', 'Fragmento del vídeo', () => askVideoClip(b))] : [])]]);
@@ -232,7 +235,7 @@ function groupsFor(b) {
       ...(b.bg === 'image' ? [btn('image', 'Cambiar imagen', () => pickCameraImage(b))] : [])]]);
   // Every object: its animations (several, one after another), description, accessibility and arrangement.
   const n = animsOf(b).length;
-  G.push(['Animaciones', [btn('add_circle', n ? `${t('Añadir animación')} (${n})` : 'Añadir animación', () => openAddAnimation(document.querySelector('#ribbon [data-page="ctx"] [data-ctx="add"]')), false, 'add'),
+  G.push(['Animaciones', [btn('add_circle', n ? `${t('Añadir animación')} (${n})` : 'Añadir animación', () => openAddAnimation(document.querySelector('#ribbon [data-page="ctx"] [data-ctx="add"]')), null, 'add'),
     btn('gesture', 'Dibujar recorrido', () => startPathDraw({ append: true })), btn('tune', 'Panel de animación', () => openAnimPanel())]]);
   // (The link with the alt text and description: one group, not a column for a single button.)
   const linkable = !['text', 'connector'].includes(b.type), described = !['text', 'connector', 'figindex', 'slideref', 'magnify'].includes(b.type);
@@ -282,7 +285,16 @@ function groupsForMany(list) {
     const run = op => shapeops.mergeShapes(op, ordered).then(r => { if (!r) alertDialog(t('Las formas no se solapan.')); }).catch(() => alertDialog(t('No se pudo cargar la librería de formas.')));
     G.push(['Combinar formas', [btn('join_full', 'Unión', () => run('union')), btn('join_inner', 'Intersecar', () => run('intersection')), btn('join_left', 'Restar', () => run('difference')), btn('join', 'Combinar', () => run('xor'))]]);
   }
-  G.push(['Organizar', [ico('flip_to_front', 'Traer al frente', () => blocks.bringToFront()), ico('flip_to_back', 'Enviar al fondo', () => blocks.sendToBack()), ico('shadow', 'Sombra', () => blocks.toggleShadow())]]);
+  // All shapes: their fill, border and line (the common value, or marked as mixed).
+  if (list.every(x => x.type === 'shape')) {
+    const fill = common(list, x => (x.fill && x.fill !== 'none' ? x.fill : '#3f6497')), stroke = common(list, x => x.stroke || '#1e2a3a');
+    G.unshift(['Estilo de forma', [['color', 'format_color_fill', 'Relleno', fill === MIXED ? list[0].fill : fill, v => blocks.setShapeStyle('fill', v), fill === MIXED],
+      ['color', 'border_color', 'Borde', stroke === MIXED ? list[0].stroke : stroke, v => blocks.setShapeStyle('stroke', v), stroke === MIXED],
+      ['num', 'Grosor', common(list, x => x.strokeWidth ?? 2), v => blocks.setShapeStyle('strokeWidth', Math.max(0, +v || 0)), 0, 40, 1],
+      ['select', 'Línea', [['solid', '━ Continua'], ['dash', '╍ Guiones'], ['dot', '┈ Puntos'], ['dashDot', '─·─ Guion y punto']], common(list, x => x.dash || 'solid'), v => blocks.setLineDash(v)]]]);
+  }
+  const shadow = common(list, x => !!x.shadow);
+  G.push(['Organizar', [ico('flip_to_front', 'Traer al frente', () => blocks.bringToFront()), ico('flip_to_back', 'Enviar al fondo', () => blocks.sendToBack()), ico('shadow', 'Sombra', () => blocks.toggleShadow(), shadow)]]);
   return G;
 }
 
@@ -320,7 +332,7 @@ export function renderContextual() {
   if (opened) tab.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });   // (with its name, so all of it shows)
   const names = b?.type === 'model' ? clipsOf(b) : [];
   // (Moving or resizing it doesn't change its options: no rebuild while nudging.)
-  const sig = shortSig([list.map(x => x.id), b && { ...b, x: 0, y: 0, w: 0, h: 0 }, names, b && styled(b, currentSlide()).fontSize, b?.type === 'camera' && cameraLive(), b?.type === 'model' && puppetTrying(), b?.type === 'magnify' && Math.round(mag.zoomOf(b) * 10)]);
+  const sig = shortSig([list.map(x => x.id), list.length > 1 && list.map(x => [x.fill, x.stroke, x.strokeWidth, x.dash, !!x.shadow, x.groupId]), b && { ...b, x: 0, y: 0, w: 0, h: 0 }, names, b && styled(b, currentSlide()).fontSize, b?.type === 'camera' && cameraLive(), b?.type === 'model' && puppetTrying(), b?.type === 'magnify' && Math.round(mag.zoomOf(b) * 10)]);
   if (sig === lastSig) return;
   lastSig = sig;
   const groups = b ? groupsFor(b) : groupsForMany(list);
@@ -339,29 +351,33 @@ export function renderContextual() {
 }
 // The deck's fonts, as in Home's font list.
 const fontOptions = () => [['', 'Del tema'], ...[...(document.querySelector('#ribbon [data-font]')?.options || [])].filter(o => o.value && o.value !== '__upload').map(o => [o.value, o.textContent])];
+// A button's state (aria-pressed for toggles) and its key.
+function pressed(el, on, key) {
+  if (on !== null && on !== undefined) press(el, on === MIXED ? MIXED : !!on);
+  if (key?.startsWith('st:')) el.dataset.st = key.slice(3); else if (key) el.dataset.ctx = key;
+}
 function control(c) {
   if (c[0] === 'ibtn') {                                     // icon only; keeps the text selection while editing
     const [, icon, label, fn, on, key] = c, el = document.createElement('button'); el.type = 'button'; el.title = t(label); el.setAttribute('aria-label', t(label));
-    el.innerHTML = `<i class="ms">${icon}</i>`; el.classList.toggle('on', !!on); if (key) el.dataset.ctx = key;
+    el.innerHTML = `<i class="ms">${icon}</i>`; pressed(el, on, key);
     el.addEventListener('mousedown', e => e.preventDefault());
     el.addEventListener('click', e => { e.stopPropagation(); fn(); });
     return el;
   }
   if (c[0] === 'btn') {
     const [, icon, label, fn, on, key] = c, el = document.createElement('button'); el.type = 'button';
-    el.innerHTML = `<i class="ms">${icon}</i><span>${t(label)}</span>`; el.classList.toggle('on', !!on);
-    if (key) el.dataset.ctx = key;
+    el.innerHTML = `<i class="ms">${icon}</i><span>${t(label)}</span>`; pressed(el, on, key);
     el.addEventListener('click', e => { e.stopPropagation(); fn(); });
     return el;
   }
   if (c[0] === 'swatch') {                                   // a quick colour: a dot, named in its tooltip
     const [, col, label, fn, on] = c, el = document.createElement('button'); el.type = 'button'; el.className = 'ctx-swatch'; el.title = t(label); el.setAttribute('aria-label', t(label));
-    el.innerHTML = `<span style="background:${col}"></span>`; el.classList.toggle('on', !!on);
+    el.innerHTML = `<span style="background:${col}"></span>`; press(el, !!on);
     el.addEventListener('click', e => { e.stopPropagation(); fn(); });
     return el;
   }
   if (c[0] === 'color') {
-    const [, icon, label, value, fn] = c, el = document.createElement('label'); el.className = 'color'; el.title = t(label);
+    const [, icon, label, value, fn, mixed] = c, el = document.createElement('label'); el.className = 'color' + (mixed ? ' mixed' : ''); el.title = t(label);
     el.innerHTML = `<i class="ms">${icon}</i><input type="color">`; const inp = el.querySelector('input'); inp.value = /^#[0-9a-f]{6}$/i.test(value) ? value : '#000000';
     inp.addEventListener('change', () => fn(inp.value)); return el;
   }
@@ -370,11 +386,13 @@ function control(c) {
     const [, label, opts, value, fn] = c;
     el.innerHTML = `<span>${t(label)}</span><select></select>`; const s = el.querySelector('select');
     for (const [v, l] of opts) { const o = document.createElement('option'); o.value = v; o.textContent = t(l); s.appendChild(o); }
-    s.value = value; s.addEventListener('change', () => fn(s.value));
+    if (value === MIXED) { s.selectedIndex = -1; s.classList.add('mixed'); } else s.value = value;
+    s.addEventListener('change', () => fn(s.value));
   } else {
     const [, label, value, fn, min, max, step] = c;
     el.innerHTML = `<span>${t(label)}</span><input type="number" min="${min}" max="${max}" step="${step}">`; const i = el.querySelector('input');
-    i.value = value; i.addEventListener('change', () => fn(i.value));
+    i.value = value === MIXED ? '' : value; if (value === MIXED) { i.placeholder = '—'; i.classList.add('mixed'); }
+    i.addEventListener('change', () => { if (i.value !== '') fn(i.value); });
   }
   return el;
 }

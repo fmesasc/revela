@@ -73,6 +73,7 @@
 .modal .mt-btn{border:1px solid var(--line2);background:var(--panel);border-radius:6px;cursor:pointer;font-size:15px;padding:6px 0;line-height:1;color:var(--txt)}
 .modal .mt-btn:hover{background:var(--accent-bg);border-color:#b9cbe0}
 .modal .an-row{border:1px solid var(--line2);border-radius:8px;padding:8px 10px;margin-bottom:8px}
+.modal .an-row.cur{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}   /* the one the ribbon edits */
 .modal .an-title{font-weight:600;margin-bottom:6px;color:var(--txt)}
 .modal .an-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .modal .an-grid label{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--txt2)}

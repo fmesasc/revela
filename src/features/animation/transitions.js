@@ -1,6 +1,6 @@
 // Per‑slide transitions and per‑object entrance animations.
 
-import { state, commit, currentSlide, selectedBlock, targetSlides } from '../../core/store.js';
+import { state, commit, currentSlide, selectedBlock, selectedBlocks, targetSlides } from '../../core/store.js';
 
 // Effect options (as in PowerPoint): where the new slide comes from, or how
 // it opens. The first one is the default.
@@ -248,25 +248,49 @@ const nextSeq = () => animEntries().reduce((m, e) => Math.max(m, e.a.seq ?? e.k)
 const fresh = (effect, props = {}) => ({ effect, order: animEntries().length + 1, seq: nextSeq(), start: 'click', duration: effect === 'path' ? 2000 : effect === 'draw' ? 1500 : 500, delay: 0,
   ...(effect === 'path' && { dx: 200, dy: 0 }), ...props });
 
+// Which kind of effect it is (PowerPoint's green, yellow and red stars, and paths).
+const EXIT_FX = ['fade-out', 'semi-fade-out'];
+export const effectKind = effect => (effect === 'path' ? 'path' : EXIT_FX.includes(effect) ? 'exit' : isEntrance(effect) ? 'entrance' : 'emphasis');
+// The animation of an object that the ribbon shows and edits: the one chosen
+// (in the Animation pane, the ribbon's picker, or the one just added), else its first.
+export function animEditIndex(b) {
+  const e = state.ui.animEdit, n = b ? animsOf(b).length : 0;
+  return e && b && e.id === b.id && e.i < n ? e.i : 0;
+}
+// The selected objects the Animations tab acts on, each with the index of its animation being edited.
+// (The primary selection always counts: the others only along with it.)
+export function animSelection() {
+  const one = selectedBlock(), all = selectedBlocks();
+  return (one && !all.includes(one) ? [one] : all).filter(b => b.type !== 'connector');
+}
+const animTargets = () => { const list = animSelection();
+  return list.map(b => [b, list.length === 1 ? animEditIndex(b) : 0]); };
+// Picking an effect in the gallery replaces the animation being edited (its
+// timing stays, as in PowerPoint); an object without one gets it. «Añadir animación» adds instead.
 export function setAnimation(effect) {
-  const b = selectedBlock(); if (!b) return;
+  const list = animTargets(); if (!list.length) return;
   commit(() => {
-    if (b.animation) b.animation.effect = effect;
-    else b.animation = fresh(effect);                      // (a path takes longer than a fade)
-    if (effect === 'path' && !b.animation.dx && !b.animation.dy) b.animation.dx = 200;
-    if (effect === 'draw' && (b.animation.duration || 0) < 1000) b.animation.duration = 1500;   // (tracing takes a while)
+    for (const [b, i] of list) {
+      let a = animsOf(b)[i];
+      if (a) a.effect = effect;
+      else a = b.animation = fresh(effect);                // (a path takes longer than a fade)
+      if (effect === 'path' && !a.dx && !a.dy) a.dx = 200;
+      if (effect === 'draw' && (a.duration || 0) < 1000) a.duration = 1500;   // (tracing takes a while)
+    }
     normalizeAnim();
   });
 }
 // One more animation for the selected object, after the ones it has (by default
-// right after the previous one). Returns its index.
+// right after the previous one). Returns its index; it becomes the one edited.
 export function addAnimation(effect, props = {}) {
   const b = selectedBlock(); if (!b) return -1;
   let idx = 0;
   commit(() => {
-    if (!b.animation) { b.animation = fresh(effect, props); idx = 0; }
-    else { (b.anims ||= []).push(fresh(effect, { start: 'afterPrev', ...props })); idx = b.anims.length; }
+    const a = b.animation ? fresh(effect, { start: 'afterPrev', ...props }) : fresh(effect, props);
+    if (!b.animation) b.animation = a; else (b.anims ||= []).push(a);
     normalizeAnim();
+    idx = animsOf(b).indexOf(a);
+    state.ui.animEdit = { id: b.id, i: idx };
   });
   return idx;
 }
@@ -306,19 +330,24 @@ const byId = id => currentSlide().blocks.find(x => x.id === id);
 
 export function setAnimPropForId(id, prop, value, i = 0) {
   const b = byId(id), a = b && animsOf(b)[i]; if (!a) return;
-  commit(() => {
-    if (prop === 'duration' || prop === 'delay') a[prop] = Math.max(0, +value || 0);
-    else if (prop === 'dx' || prop === 'dy') { a[prop] = Math.round(+value || 0); if (a.pathShape === 'custom') scalePoints(a); }
-    else if (prop === 'spin') { if (+value) a.spin = Math.round(+value); else delete a.spin; }
-    else if (prop === 'turn' && !value) delete a.turn;
-    else if (prop === 'points') { a.points = value; [a.dx, a.dy] = value.at(-1); }
-    else if (prop === 'trigger' && !value) delete a.trigger;
-    else if (prop === 'once') { if (value) a.once = true; else delete a.once; }
-    else if (prop === 'sound') { if (value) a.sound = value; else { delete a.sound; delete a.soundSrc; } }
-    else a[prop] = value;
-    if (prop === 'effect' && value === 'path' && !a.dx && !a.dy) a.dx = 200;
-    normalizeAnim();
-  });
+  commit(() => { applyAnimProp(a, prop, value); normalizeAnim(); });
+}
+// The same on the animation being edited of every selected object (the Animations tab).
+export function setEditedAnimProp(prop, value) {
+  const list = animTargets().map(([b, i]) => animsOf(b)[i]).filter(Boolean); if (!list.length) return;
+  commit(() => { list.forEach(a => applyAnimProp(a, prop, value)); normalizeAnim(); });
+}
+function applyAnimProp(a, prop, value) {
+  if (prop === 'duration' || prop === 'delay') a[prop] = Math.max(0, +value || 0);
+  else if (prop === 'dx' || prop === 'dy') { a[prop] = Math.round(+value || 0); if (a.pathShape === 'custom') scalePoints(a); }
+  else if (prop === 'spin') { if (+value) a.spin = Math.round(+value); else delete a.spin; }
+  else if (prop === 'turn' && !value) delete a.turn;
+  else if (prop === 'points') { a.points = value; [a.dx, a.dy] = value.at(-1); }
+  else if (prop === 'trigger' && !value) delete a.trigger;
+  else if (prop === 'once') { if (value) a.once = true; else delete a.once; }
+  else if (prop === 'sound') { if (value) a.sound = value; else { delete a.sound; delete a.soundSrc; } }
+  else a[prop] = value;
+  if (prop === 'effect' && value === 'path' && !a.dx && !a.dy) a.dx = 200;
 }
 // A drawn path whose end is moved by number: the whole drawing stretches to the new end.
 function scalePoints(a) {

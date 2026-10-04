@@ -577,9 +577,10 @@ export function toggleShadow() {
   const on = !list.every(b => b.shadow);
   commit(() => { for (const b of list) { if (on) b.shadow = { ...DEFAULT_SHADOW }; else delete b.shadow; } });
 }
+// (Every selected shape.)
 export function setShapeStyle(prop, value) {
-  const b = selectedBlock(); if (!b || b.type !== 'shape') return;
-  commit(() => { b[prop] = value; });
+  const list = selectedBlocks().filter(b => b.type === 'shape'); if (!list.length) return;
+  commit(() => { for (const b of list) b[prop] = value; });
 }
 
 const DEF_ADJ = { brightness: 100, contrast: 100, saturate: 100, opacity: 100 };

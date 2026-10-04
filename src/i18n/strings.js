@@ -2751,5 +2751,16 @@ export const ROWS = [
   ['Prueba gratis hasta:', 'Free trial until:', 'Essai gratuit jusqu’au :', 'Kostenloser Test bis:', 'Prova gratuita fino al:', 'Teste grátis até:', 'Prova gratuïta fins al:'],
   ['Se pide una tarjeta, pero no se cobra nada hasta que acabe la prueba. Puedes cancelarla antes en «Gestionar la suscripción».', 'A card is required, but nothing is charged until the trial ends. You can cancel before then in “Manage subscription”.', 'Une carte est demandée, mais rien n’est débité avant la fin de l’essai. Vous pouvez l’annuler avant dans « Gérer l’abonnement ».', 'Eine Karte ist erforderlich, aber bis zum Ende des Tests wird nichts abgebucht. Sie können vorher unter „Abonnement verwalten“ kündigen.', 'È richiesta una carta, ma non viene addebitato nulla fino alla fine della prova. Puoi annullarla prima in «Gestisci l’abbonamento».', 'É pedido um cartão, mas nada é cobrado até ao fim do teste. Pode cancelá-lo antes em «Gerir a subscrição».', 'Es demana una targeta, però no es cobra res fins que acabi la prova. Pots cancel·lar-la abans a «Gestiona la subscripció».'],
   ['Avisarme antes de que acabe mi prueba de Pro', 'Remind me before my Pro trial ends', 'Me prévenir avant la fin de mon essai Pro', 'Mich vor dem Ende meines Pro-Tests erinnern', 'Avvisami prima che finisca la mia prova di Pro', 'Avisar-me antes de o meu teste do Pro acabar', 'Avisa’m abans que acabi la meva prova de Pro'],
+  ['{n} animaciones', '{n} animations', '{n} animations', '{n} Animationen', '{n} animazioni', '{n} animações', '{n} animacions'],
+  ['1 animación', '1 animation', '1 animation', '1 Animation', '1 animazione', '1 animação', '1 animació'],
+  ['Sin animación', 'No animation', 'Aucune animation', 'Keine Animation', 'Nessuna animazione', 'Sem animação', 'Sense animació'],
+  ['Verde', 'Green', 'Vert', 'Grün', 'Verde', 'Verde', 'Verd'],
+  ['Azul', 'Blue', 'Bleu', 'Blau', 'Blu', 'Azul', 'Blau'],
+  ['Animación que se edita', 'Animation being edited', 'Animation en cours de modification', 'Bearbeitete Animation', 'Animazione in modifica', 'Animação em edição', 'Animació que s\'edita'],
+  ['Sonido de la animación', 'Animation sound', 'Son de l\'animation', 'Animationston', 'Suono dell\'animazione', 'Som da animação', 'So de l\'animació'],
+  ['Cuándo empieza la animación', 'When the animation starts', 'Quand l\'animation commence', 'Wann die Animation beginnt', 'Quando inizia l\'animazione', 'Quando a animação começa', 'Quan comença l\'animació'],
+  ['Duración de la animación en segundos', 'Animation duration in seconds', 'Durée de l\'animation en secondes', 'Dauer der Animation in Sekunden', 'Durata dell\'animazione in secondi', 'Duração da animação em segundos', 'Durada de l\'animació en segons'],
+  ['Retardo antes de empezar, en segundos', 'Delay before it starts, in seconds', 'Délai avant le début, en secondes', 'Verzögerung vor dem Start, in Sekunden', 'Ritardo prima dell\'inizio, in secondi', 'Atraso antes de começar, em segundos', 'Retard abans de començar, en segons'],
+  ['Intervalos', 'Timing', 'Minutage', 'Anzeigedauer', 'Intervallo', 'Intervalos', 'Intervals'],
 ];
 // Additional languages (partial; anything missing falls back to Spanish).

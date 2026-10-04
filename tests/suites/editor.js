@@ -569,7 +569,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       root.querySelectorAll('[title]:not(#lang-select)').forEach(el => add(el.dataset.i18nt ?? el.title, where));
       root.querySelectorAll('[aria-label]').forEach(el => add(el.getAttribute('aria-label'), where));
       root.querySelectorAll('.group>label, button span, .ctx-field>span, label.color>span').forEach(el => add(el.dataset.i18n ?? el.innerHTML, where));
-      root.querySelectorAll('select:not(#lang-select):not([data-font]) option').forEach(o => { if (o.textContent.toLowerCase() !== o.value) add(o.dataset.i18n ?? o.textContent, where); });
+      // (The animation's trigger and picker list the slide's objects and its effects: made of translated parts.)
+      root.querySelectorAll('select:not(#lang-select):not([data-font]):not([data-anim-trigger]):not([data-anim-pick]) option').forEach(o => { if (o.textContent.toLowerCase() !== o.value) add(o.dataset.i18n ?? o.textContent, where); });
       root.querySelectorAll('input[placeholder]').forEach(el => add(el.placeholder, where));
     };
     scan(D.getElementById('ribbon'), 'cinta'); scan(D.getElementById('statusbar'), 'barra de estado');

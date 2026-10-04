@@ -639,6 +639,22 @@
             <button data-action="draw-path" title="Dibuja con el ratón o el dedo por dónde se moverá el objeto seleccionado"><i class="ms">gesture</i><span>Dibujar<br>recorrido</span></button>
           </div><label>Énfasis y salida</label>
         </div>
+        <div class="group" data-anim-effect>
+          <div class="row">
+            <label class="ctx-field rb-field anim-now"><b data-anim-count aria-live="polite"></b><select data-anim-pick title="Animación que se edita"></select></label>
+            <label class="ctx-field rb-field"><span>Opciones de efecto</span><select data-anim-opts title="Opciones de efecto"></select></label>
+            <label class="ctx-field rb-field"><span>Sonido</span><select data-anim-sound title="Sonido de la animación"></select></label>
+          </div><label>Efecto</label>
+        </div>
+        <div class="group" data-anim-timing>
+          <div class="row">
+            <label class="ctx-field rb-field"><span>Comienzo</span><select data-anim-start title="Cuándo empieza la animación">
+              <option value="click">Al hacer clic</option><option value="withPrev">Con la anterior</option><option value="afterPrev">Después de la anterior</option></select></label>
+            <label class="ctx-field rb-field"><span>Duración (s)</span><input data-anim-duration type="number" min="0" step="0.1" title="Duración de la animación en segundos"></label>
+            <label class="ctx-field rb-field"><span>Retardo (s)</span><input data-anim-delay type="number" min="0" step="0.1" title="Retardo antes de empezar, en segundos"></label>
+            <label class="ctx-field rb-field"><span>Disparador</span><select data-anim-trigger title="Disparador"></select></label>
+          </div><label>Intervalos</label>
+        </div>
         <div class="group">
           <div class="row">
             <button data-action="anim-add" class="go" title="Añadir otra animación al objeto, después de las que tiene (moverse a un sitio, luego a otro, girar…)"><i class="ms">add_circle</i><span>Añadir<br>animación</span></button>

@@ -5,8 +5,7 @@ import { renderMorphHint } from '../shell/morphhint.js';
 import { renderContextual } from './contextual.js';
 import { state, commit, currentSlide, selectedBlock, selectedBlocks, canUndo, canRedo, docVersion, targetSlides, slideSelCount } from '../../core/store.js';
 import { savedHere, onSavedHere } from '../../core/model.js';
-import { MATH_SIZE } from '../../render/svg.js';
-import { styled, addPlaceholder } from '../../features/document/master.js';
+import { addPlaceholder } from '../../features/document/master.js';
 import * as blocks from '../../features/document/blocks.js';
 import * as slides from '../../features/document/slides.js';
 import * as format from '../../features/document/format.js';
@@ -37,6 +36,8 @@ import { compactGroups } from './compact.js';
 import { wireTransitionPreview } from './transpreview.js';
 import { closePopover, togglePopover } from './popovers.js';
 import { syncMasterRibbon } from '../shell/masterview.js';
+import { syncCharState, syncBoxFormat, syncSlideState, press } from './reflect.js';
+import { wireAnimRibbon, syncAnimRibbon } from './animribbon.js';
 
 // Insert ▸ Templates buttons that are the deck's layouts.
 const TEMPLATE_LAYOUT = { title: 'title', titleContent: 'titleContent', twoContent: 'twoContent', sectionHeader: 'section', blank: 'blank' };
@@ -78,7 +79,7 @@ export function initRibbon() {
     if (e.target.value) addPlaceholder(e.target.value); e.target.value = '';
   });
   populateFonts();
-  applyZoom(); wireZoom(); wireTransitionPreview(document.getElementById('ribbon') || document);
+  applyZoom(); wireZoom(); wireTransitionPreview(document.getElementById('ribbon') || document); wireAnimRibbon();
   // On phones/tablets, start zoomed to fit and refit on rotation/resize.
   const small = () => window.innerWidth < 860 || window.innerHeight < 520;
   // The slide fits the space it has — at start, when the window or the panels
@@ -224,7 +225,7 @@ export function initRibbon() {
   bindChange('[data-autoslide]', v => commit(() => targetSlides().forEach(s => { s.autoSlide = Math.max(0, (parseFloat(v) || 0)) * 1000; })));
 
   // Reflect the active character formatting on the toolbar as the caret moves.
-  document.addEventListener('selectionchange', updateFormatState);
+  document.addEventListener('selectionchange', () => syncCharState());
 
   // Status-bar actions (zoom) live outside the ribbon.
   document.getElementById('statusbar').addEventListener('click', e => {
@@ -269,18 +270,6 @@ export function initRibbon() {
   if (notes) notes.addEventListener('input', () => {
     const s = currentSlide(); if (s) commit(() => { s.notes = notes.value; }, { history: false });
   });
-}
-
-const STATE_CMDS = ['bold', 'italic', 'underline', 'strikeThrough', 'superscript', 'subscript'];
-function updateFormatState() {
-  const focused = document.activeElement?.classList?.contains('rich');
-  for (const btn of document.querySelectorAll('[data-fmt]')) {
-    if (!STATE_CMDS.includes(btn.dataset.fmt)) continue;
-    let on = false;
-    try { on = focused && document.queryCommandState(btn.dataset.fmt); } catch {}
-    const m = selectedBlock(); if (m?.type === 'math') on = !!m[btn.dataset.fmt];
-    btn.classList.toggle('on', on);
-  }
 }
 
 document.addEventListener('click', () => closePopover());
@@ -371,11 +360,6 @@ export function renderRibbon() {
   const docName = $('.doc-name');
   if (docName && document.activeElement !== docName && docName.textContent !== state.deck.name)
     docName.textContent = state.deck.name || 'Presentación sin título';
-  const slide = currentSlide();
-  document.querySelectorAll('[data-slide-transition]').forEach(b =>
-    b.classList.toggle('on', (slide.transition || 'inherit') === b.dataset.slideTransition));
-  document.querySelector('[data-action="toggle-autoanimate"]')?.classList.toggle('on', !!slide.autoAnimate);
-  syncValue('[data-morphby]', slide.morphBy || 'objects');
   syncValue('[data-theme]', state.deck.theme);
   syncValue('[data-deck-fg]', palettes.deckFg());
   // The detected theme's name under Design ▸ Themes (an imported Office, Google Slides or LibreOffice theme).
@@ -421,15 +405,8 @@ export function renderRibbon() {
   $('[data-action="comments"]')?.classList.toggle('on', !!state.ui.showComments);
   $('[data-action="autocorrect"]')?.classList.toggle('on', autocorrectOn());
   document.querySelectorAll('[data-action="master-edit"]').forEach(b => b.classList.toggle('on', !!state.ui.editMaster));
-  syncValue('[data-slide-trans-out]', currentSlide()?.transitionOut || '');
-  // Effect options: only those of this slide's transition (wipe, push, split).
-  { const sel = $('[data-slide-trans-dir]'), dirs = trans.TRANSITION_DIRS[currentSlide()?.transition] || [];
-    if (sel) { sel.disabled = !dirs.length; [...sel.options].forEach(o => (o.hidden = o.value ? !dirs.includes(o.value) : dirs.length > 0));
-      syncValue('[data-slide-trans-dir]', dirs.includes(currentSlide()?.transitionDir) ? currentSlide().transitionDir : dirs[0] || ''); } }
-  syncValue('[data-slide-speed]', currentSlide()?.transitionSpeed || '');
+  syncSlideState();             // (transitions and background: the selected slides')
   document.querySelectorAll('[data-draw]').forEach(b => b.classList.toggle('on', (state.ui.drawTool || '') === b.dataset.draw));
-  const bgHex = (currentSlide()?.background || '').match(/^#[0-9a-f]{6}$/i);
-  if (bgHex) syncValue('[data-bg]', bgHex[0].toLowerCase());
   syncSwatches();
   syncValue('[data-speed]', state.deck.transitionSpeed);
   syncValue('[data-deck-transition]', state.deck.defaultTransition);
@@ -448,23 +425,16 @@ export function renderRibbon() {
   document.querySelector('[data-action="toggle-notes"]')?.classList.toggle('on', !!state.ui.showNotes);
   const notes = document.getElementById('notes');
   if (notes && document.activeElement !== notes) notes.value = currentSlide()?.notes || '';
-  const asEl = $('[data-autoslide]');
-  if (asEl && document.activeElement !== asEl) asEl.value = String((slide.autoSlide || 0) / 1000);
 
-  // Reflect the selected text box in the font and paragraph controls.
-  const b = selectedBlock();
-  const isText = b && b.type === 'text';
-  syncValue('[data-line-dash]', b ? (b.dash || b.borderDash || 'solid') : 'solid');
-  syncValue('[data-font]', isText ? (b.fontFamily || '') : '');
-  const isMath = b && b.type === 'math';
-  syncValue('[data-size]', isText ? String(styled(b, currentSlide()).fontSize || 40) : isMath ? String(b.fontSize || MATH_SIZE) : '');
-  syncValue('[data-linespacing]', isText ? String(b.lineHeight || 1) : '1');
-  syncValue('[data-textstyle]', isText ? (b.textStyle || '') : '');
-  document.querySelectorAll('[data-para]').forEach(x =>
-    x.classList.toggle('on', (isText && (b.textAlign || 'left') === x.dataset.para) || (isMath && (b.textAlign || 'center') === x.dataset.para)));
-  updateFormatState();
+  // The selection's formatting, and its animations.
+  syncBoxFormat(); syncAnimRibbon();
   renderContextual();
+  queueMicrotask(() => syncCharState());   // (once the slide is drawn — its text is read — and after the object's tab: bold, italic… too)
   renderMorphHint();
   document.querySelectorAll('#ribbon .ribbon-page.active').forEach(p => { compactGroups(p); markOverflow(p); });
+  document.querySelectorAll(TOGGLES).forEach(b => press(b, b.classList.contains('on')));
 }
+// Buttons that switch something on and off: aria-pressed follows their state.
+const TOGGLES = ['[data-action^="toggle-"]:not([data-action="toggle-autoanimate"])', 'mark-final', 'classroom', 'selection-pane', 'comments', 'autocorrect', 'master-edit', 'canvas-mode', 'canvas-view', 'slide-vertical', 'anim-paint']
+  .map(a => (a.startsWith('[') ? `#ribbon ${a}` : `#ribbon [data-action="${a}"]`)).concat('#ribbon [data-draw]').join(',');
 function syncValue(sel, val) { const el = $(sel); if (el && el.value !== val) el.value = val; }

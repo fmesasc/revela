@@ -45,7 +45,7 @@ export const POPS = {
   // (With a text selected the style goes on it, and its colour can be changed: neon, fill and gradient in any colour.)
   wordart: () => { const b = selectedBlock(), on = b?.type === 'text';
     return `<h4>Text Art</h4><div class="wa-grid">`
-    + WORDART_KEYS.map(k => `<button data-wa="${k}" type="button" style="${wordartCSS(k, on && b.wordartColor)}">Aa</button>`).join('') + `</div>`
+    + WORDART_KEYS.map(k => `<button data-wa="${k}" type="button" class="${on && b.wordart === k ? 'on' : ''}" style="${wordartCSS(k, on && b.wordartColor)}">Aa</button>`).join('') + `</div>`
     + (on && b.wordart ? `<label class="wa-tint">${t('Color del efecto')} <input type="color" data-wa-tint value="${b.wordartColor || '#3f6497'}"></label>` : ''); },
   layout: () => `<h4>${t('Diseño')}</h4><div class="layout-grid">`
     + allMasters().map((m, i, ms) => (ms.length > 1 ? `<div class="layout-master">${esc(m.name || (i ? `${t('Patrón')} ${i + 1}` : t('Patrón')))}</div>` : '')
@@ -121,6 +121,8 @@ export function togglePopover(launcher, type, { replaceId = null } = {}) {
   const pop = document.createElement('div');
   pop.className = 'popover'; pop.dataset.type = type;
   pop.innerHTML = POPS[type]();
+  // (The gallery's current choice — layout, colours, fonts, Text Art — is pressed.)
+  pop.querySelectorAll('[data-layout],[data-palette],[data-palette-theme],[data-fontpair],[data-fontpair-theme],[data-wa]').forEach(x => x.setAttribute('aria-pressed', String(x.classList.contains('on'))));
   document.body.appendChild(pop);
   const r = launcher.getBoundingClientRect();
   pop.style.left = Math.min(r.left, innerWidth - pop.offsetWidth - 10) + 'px';
