@@ -512,6 +512,15 @@ body.master-view #navigator{display:flex}
 .rig-bar .seg{display:flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden}
 .rig-bar .seg button{border:0;background:none;padding:6px 10px;cursor:pointer;font:inherit;font-size:13px;display:flex;gap:4px;align-items:center;color:var(--txt2)}
 .rig-bar .seg button[aria-pressed=true]{background:var(--accent);color:var(--on-accent)}
+.rig-kinds{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px;margin:8px 0}
+.rig-kinds button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;border:1px solid var(--line2);border-radius:8px;background:none;cursor:pointer;font:inherit;font-size:12px;line-height:1.2;color:var(--txt2);text-align:center}
+.rig-kinds button .ms{font-size:24px}
+.rig-kinds button:hover{border-color:var(--accent)}
+.rig-kinds button[aria-checked=true]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.rig-guess{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--txt2)}
+.rig-guess .ms{font-size:18px;vertical-align:-4px}
+.rig-ai-msg{font-size:12px}
+.rig-count{display:flex;gap:4px;align-items:center;font-size:13px}
 .rig-main{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .rig-edit{position:relative;background:#e9edf3;border-radius:10px}
 .rig-cv{width:100%;height:auto;display:block;touch-action:none}

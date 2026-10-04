@@ -81,7 +81,7 @@ src/
                                canvasmode + canvasdesigns (Prezi-like canvas and its pictures)
     animation/                 transitions.js (effects, several per object, timeline,
                                transitions, motion paths), morph.js (Morph pairing)
-    ai/                        openrouter.js (sign-in, calls), authoring.js (decks, rewriting), agent.js (the assistant: proposals, scope, permissions, checks)
+    ai/                        openrouter.js (sign-in, calls), authoring.js (decks, rewriting), agent.js (the assistant: proposals, scope, permissions, checks), rigkind.js (what a 3D model is, seen by a vision model)
     collab/                    comments, versions, protect (password, mark as final), signature
     live/                      remote (phone), poll, dashboards (live data), media (camera,
                                video/GIF playback), gifbg (GIF background removal), coach,
@@ -89,7 +89,7 @@ src/
     content/                   stock (Openverse, Iconify), resources (GIFs, stickers, 3D search:
                                library3d, nasa3d, Poly Haven, Wikimedia STL, Sketchfab),
                                model3d (3D attributes, views, walking), gltf (read/write GLB),
-                               stl (STL → glTF), autorig (automatic skeleton and animations),
+                               stl (STL → glTF), autorig (automatic skeleton and animations: people, animals, birds, dragons, fish, snakes, spiders, octopuses, objects; guesses the kind from the shape),
                                examples (templates)
   io/
     formats/                   html (reveal.js), project (.revela.json), pptx-import,

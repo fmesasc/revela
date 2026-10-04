@@ -1331,6 +1331,181 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     R.store.undo(); eq(slide().blocks.at(-1).src, person, 'se deshace');
   });
 
+  // Models made of boxes ([x0, y0, z0, x1, y1, z1] each), all facing +Z: one of each kind.
+  const boxModel = (W, A, boxes) => {
+    const pos = [], idx = [];
+    for (const [a, b, c, d, e, f] of boxes) {
+      const o = pos.length / 3;
+      for (const [x, y, z] of [[a, b, c], [d, b, c], [d, e, c], [a, e, c], [a, b, f], [d, b, f], [d, e, f], [a, e, f]]) pos.push(x, y, z);
+      for (const t of [0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6, 0, 4, 5, 0, 5, 1, 1, 5, 6, 1, 6, 2, 2, 6, 7, 2, 7, 3, 3, 7, 4, 3, 4, 0]) idx.push(o + t);
+    }
+    const P = new W.Float32Array(pos), I = new W.Uint32Array(idx), bin = new W.Uint8Array(P.byteLength + I.byteLength);
+    bin.set(new W.Uint8Array(P.buffer)); bin.set(new W.Uint8Array(I.buffer), P.byteLength);
+    const json = { asset: { version: '2.0' }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{ mesh: 0 }], meshes: [{ primitives: [{ attributes: { POSITION: 0 }, indices: 1 }] }],
+      bufferViews: [{ buffer: 0, byteOffset: 0, byteLength: P.byteLength }, { buffer: 0, byteOffset: P.byteLength, byteLength: I.byteLength }],
+      accessors: [{ bufferView: 0, componentType: 5126, count: pos.length / 3, type: 'VEC3', min: [-9, -9, -9], max: [9, 9, 9] }, { bufferView: 1, componentType: 5125, count: idx.length, type: 'SCALAR' }] };
+    return A.writeGLB({ json, bin });
+  };
+  const legs = (zs, reach, h, body) => zs.flatMap((z, i) => [1, -1].flatMap(s => {
+    const fz = z + (i - (zs.length - 1) / 2) * -0.12, fx = s * reach;
+    return [[Math.min(s * body, fx), h - 0.03, z - 0.015, Math.max(s * body, fx), h, z + 0.015], [fx - 0.015, 0, fz - 0.015, fx + 0.015, h, fz + 0.015]];
+  }));
+  const ring = n => Array.from({ length: n }, (_, i) => [0.3, 0.405, 0.51, 0.615, 0.72].map(r => { const a = 2 * Math.PI * i / n, x = Math.sin(a) * r, z = Math.cos(a) * r; return [x - 0.06, 0, z - 0.06, x + 0.06, 0.12, z + 0.06]; })).flat();
+  const KIND_MODELS = {
+    bird: ['bird', [[-0.1, 0.3, -0.22, 0.1, 0.52, 0.22], [-0.07, 0.48, 0.18, 0.07, 0.66, 0.36], [-0.02, 0.55, 0.36, 0.02, 0.58, 0.44], [-0.06, 0.38, -0.5, 0.06, 0.42, -0.22],
+      [0.04, 0, -0.02, 0.07, 0.3, 0.02], [-0.07, 0, -0.02, -0.04, 0.3, 0.02], [0.1, 0.45, -0.1, 0.7, 0.48, 0.12], [-0.7, 0.45, -0.1, -0.1, 0.48, 0.12]]],
+    dragon: ['winged', [[-0.15, 0.4, -0.5, 0.15, 0.7, 0.5], [-0.12, 0.55, 0.5, 0.12, 0.9, 0.8], [-0.03, 0.55, -1.0, 0.03, 0.62, -0.5],
+      ...[[0.08, 0.35], [-0.12, 0.35], [0.08, -0.4], [-0.12, -0.4]].map(([x, z]) => [x, 0, z, x + 0.05, 0.4, z + 0.08]), [0.15, 0.68, -0.2, 1.3, 0.72, 0.3], [-1.3, 0.68, -0.2, -0.15, 0.72, 0.3]]],
+    fish: ['fish', [[-0.08, 0.3, 0.3, 0.08, 0.7, 0.6], [-0.07, 0.32, -0.1, 0.07, 0.68, 0.3], [-0.04, 0.4, -0.4, 0.04, 0.6, -0.1], [-0.01, 0.2, -0.6, 0.01, 0.8, -0.4],
+      [0.08, 0.4, 0.3, 0.2, 0.42, 0.4], [-0.2, 0.4, 0.3, -0.08, 0.42, 0.4], [-0.01, 0.7, -0.05, 0.01, 0.85, 0.15]]],
+    snake: ['snake', Array.from({ length: 16 }, (_, i) => { const z = -1 + i * 0.125, x = 0.15 * Math.sin(i * 0.8); return [x - 0.05, 0, z, x + 0.05, 0.08 + (i > 13 ? 0.03 : 0), z + 0.14]; })],
+    spider: ['spider', [[-0.15, 0.25, -0.4, 0.15, 0.45, 0], [-0.1, 0.25, 0, 0.1, 0.4, 0.25], ...legs([0.2, 0.12, 0.04, -0.04], 0.6, 0.4, 0.08)]],
+    insect: ['spider', [[-0.13, 0.13, -0.55, 0.13, 0.33, -0.1], [-0.08, 0.15, -0.1, 0.08, 0.28, 0.3], [-0.07, 0.15, 0.3, 0.07, 0.27, 0.45], ...legs([0.15, -0.05, -0.25], 0.4, 0.22, 0.08)]],
+    octopus: ['octopus', [[-0.25, 0.12, -0.25, 0.25, 1.3, 0.25], ...ring(8)]],
+    jar: ['object', [[-0.3, 0, -0.3, 0.3, 0.5, 0.3], [-0.2, 0.5, -0.2, 0.2, 0.9, 0.2]]],
+    table: ['object', [[-0.6, 0.7, -0.4, 0.6, 0.76, 0.4], ...[[-0.55, -0.35], [0.5, -0.35], [-0.55, 0.3], [0.5, 0.3]].map(([x, z]) => [x, 0, z, x + 0.05, 0.7, z + 0.05])]],
+  };
+
+  await test('esqueleto automático: más tipos (pájaro, dragón, pez, serpiente, araña, pulpo, objeto) con huesos, animaciones y glTF válidos', async () => {
+    reset(); const W = frame.contentWindow;
+    const A = await W.eval("import('/src/features/content/autorig.js')"), G = await W.eval("import('/src/features/content/gltf.js')");
+    const fin = a => Array.from(a).every(Number.isFinite);
+    for (const [name, [kind, boxes]] of Object.entries(KIND_MODELS)) {
+      const g = await A.readModel(boxModel(W, A, boxes)), shape = A.modelShape(g), d = A.detectKind(shape);
+      const J = A.proposeJoints(shape, kind, d.opts), list = A.skeletonOf(kind, J), H = shape.box.max[1] - shape.box.min[1];
+      // The bones: one root, each parent before its children, every joint placed.
+      eq(list.filter(([, p]) => !p).length, 1, name + ': una sola raíz');
+      assert(list.every(([n, p], i) => !p || list.findIndex(([m]) => m === p) < i) && new Set(list.map(([n]) => n)).size === list.length, name + ': jerarquía válida');
+      assert(list.every(([n]) => J[n] && J[n].length === 3 && fin(J[n])), name + ': todas las articulaciones en su sitio');
+      assert(list.every(([n]) => typeof A.jointLabel(n, kind) === 'string' && !/\{n\}/.test(A.jointLabel(n, kind))), name + ': con nombre');
+      // The clips: finite turns, and something moves.
+      for (const [clip] of A.CLIPS[kind]) {
+        let moved = 0;
+        for (const t of [0, 0.2, 0.45, 0.7, 0.9]) {
+          const p = A.posedJoints(kind, J, clip, t, H);
+          assert(list.every(([n]) => fin(p[n])), `${name} ${clip}: posiciones finitas`);
+          for (const [n] of list) moved = Math.max(moved, Math.hypot(...p[n].map((v, i) => v - J[n][i])));
+        }
+        assert(moved > H * 0.01, `${name} ${clip}: se mueve (${(moved / H).toFixed(3)})`);
+      }
+      // The glTF: a skin over every joint, inverse bind matrices, the clips sampled.
+      const g2 = await A.readModel(A.buildRig(g, shape, kind, J)), j = g2.json, skin = j.skins[0];
+      eq(skin.joints.length, list.length, name + ': un hueso por articulación');
+      const ibm = j.accessors[skin.inverseBindMatrices]; assert(ibm.type === 'MAT4' && ibm.count === list.length, name + ': matrices de unión');
+      assert(fin(G.readAccessor(g2, skin.inverseBindMatrices)), name + ': matrices finitas');
+      const skinned = j.nodes.filter(n => n.skin === 0);
+      assert(skinned.length && skinned.every(n => j.meshes[n.mesh].primitives.every(p => p.attributes.JOINTS_0 != null && p.attributes.WEIGHTS_0 != null)), name + ': la malla unida a los huesos');
+      eq(j.animations.map(a => a.name).join(), A.CLIPS[kind].map(([c]) => c).join(), name + ': animaciones');
+      for (const an of j.animations) for (const ch of an.channels) {
+        assert(skin.joints.includes(ch.target.node), name + ': cada canal mueve un hueso');
+        const out = G.readAccessor(g2, an.samplers[ch.sampler].output); assert(fin(out), `${name} ${an.name}: valores finitos`);
+        if (ch.target.path === 'rotation') for (let i = 0; i < out.length; i += 4) assert(Math.abs(Math.hypot(out[i], out[i + 1], out[i + 2], out[i + 3]) - 1) < 1e-3, name + ': giros unitarios');
+      }
+    }
+    // What each one does.
+    const rig = async (name, opts) => { const [kind, boxes] = KIND_MODELS[name], g = await A.readModel(boxModel(W, A, boxes)), s = A.modelShape(g), J = A.proposeJoints(s, kind, opts);
+      return { kind, J, H: s.box.max[1] - s.box.min[1], at: (clip, t) => A.posedJoints(kind, J, clip, t, s.box.max[1] - s.box.min[1]) }; };
+    const bird = await rig('bird'), up = bird.at('Fly', 0.25), down = bird.at('Fly', 0.75);
+    assert(up.wingTipL[1] - down.wingTipL[1] > bird.H * 0.3 && up.wingTipR[1] - down.wingTipR[1] > bird.H * 0.3, 'pájaro: bate las dos alas');
+    const snake = await rig('snake'), s1 = snake.at('Slither', 0), s2 = snake.at('Slither', 0.5);
+    assert(Math.abs(s1.tail4[0] - s2.tail4[0]) > 0.05, 'serpiente: la cola va de lado a lado');
+    const spider = await rig('spider'), w = spider.at('Walk', 0.25);
+    eq(A.countOf('spider', spider.J), 8, 'araña: ocho patas');
+    const fwd = n => w[n][2] - spider.J[n][2];
+    assert(fwd('foot1L') * fwd('foot2L') < 0 && fwd('foot1L') * fwd('foot1R') < 0 && fwd('foot1L') * fwd('foot3L') > 0, 'araña: patas alternas (dos grupos)');
+    const insect = await rig('insect', { legs: 6 }); eq(A.skeletonOf('spider', insect.J).filter(([n]) => /^leg/.test(n)).length, 6, 'insecto: seis patas');
+    const fish = await rig('fish'), f1 = fish.at('Swim', 0), f2 = fish.at('Swim', 0.5);
+    assert(Math.abs(f1.tail3[0] - f2.tail3[0]) > Math.abs(f1.head[0] - f2.head[0]), 'pez: la cola se mueve más que la cabeza');
+    const octo = await rig('octopus'), o1 = octo.at('Swim', 0.25), o2 = octo.at('Swim', 0.75);
+    assert(o1.arm1c[1] - o2.arm1c[1] > octo.H * 0.05 && o1.arm5c[1] - o2.arm5c[1] > octo.H * 0.05, 'pulpo: los tentáculos se abren y cierran a la vez');
+    const jar = await rig('jar'); assert(jar.at('Bounce', 0.5).hips[1] > jar.J.hips[1] + jar.H * 0.2, 'objeto: bota');
+    const sq = jar.at('Squash', 0.25); assert(sq.bend2[1] - sq.hips[1] > (jar.J.bend2[1] - jar.J.hips[1]) * 1.1, 'objeto: se estira');
+    const drag = await rig('dragon'); assert(drag.at('Fly', 0.5).hips[1] > drag.J.hips[1] + drag.H * 0.1 && drag.at('Fly', 0.25).wingTipL[1] > drag.J.wingTipL[1], 'dragón: vuela batiendo las alas');
+    // Counts, from the options or the joints; labels with their number.
+    eq(A.countOf('snake', { segs: 6 }), 6); eq(A.skeletonOf('snake', { segs: 6 }).length, 6, 'serpiente de 6 segmentos');
+    eq(A.countOf('octopus', A.proposeJoints(A.modelShape(await A.readModel(boxModel(W, A, KIND_MODELS.octopus[1]))), 'octopus', { arms: 5 })), 5, 'pulpo de 5 tentáculos');
+    eq(A.jointLabel('leg3R', 'spider'), 'Pata 3 der.'); eq(A.jointLabel('hips', 'object'), 'Base'); eq(A.jointLabel('arm2c', 'octopus'), 'Tentáculo 2 (punta)');
+  });
+
+  await test('esqueleto automático: adivina qué es por su forma (y hacia dónde mira)', async () => {
+    reset(); const W = frame.contentWindow;
+    const A = await W.eval("import('/src/features/content/autorig.js')");
+    const person = [[0.05, 0, -0.08, 0.2, 0.85, 0.08], [-0.2, 0, -0.08, -0.05, 0.85, 0.08], [-0.22, 0.85, -0.1, 0.22, 1.45, 0.1],
+      [0.27, 0.8, -0.05, 0.37, 1.42, 0.05], [-0.37, 0.8, -0.05, -0.27, 1.42, 0.05], [-0.05, 1.45, -0.05, 0.05, 1.52, 0.05], [-0.14, 1.52, -0.12, 0.14, 1.8, 0.12]];
+    const animal = [[-0.15, 0.4, -0.5, 0.15, 0.7, 0.5], [-0.12, 0.55, 0.5, 0.12, 0.8, 0.8], [-0.03, 0.55, -0.9, 0.03, 0.62, -0.5],
+      ...[[0.08, 0.35], [-0.12, 0.35], [0.08, -0.4], [-0.12, -0.4]].map(([x, z]) => [x, 0, z, x + 0.05, 0.4, z + 0.08])];
+    const all = { person: ['person', person], animal: ['animal', animal], ...KIND_MODELS }, wrong = [];
+    let n = 0, ok = 0, facing = 0, turned = 0;
+    for (const [name, [kind, boxes]] of Object.entries(all)) {
+      const g = await A.readModel(boxModel(W, A, boxes));
+      for (const yaw of [0, 90, 180, 270]) {
+        const d = A.detectKind(A.modelShape(g, yaw)); n++;
+        if (d.kind === kind) ok++; else wrong.push(`${name}@${yaw}→${d.kind}`);
+        assert(d.confidence > 0 && d.confidence <= 1, 'con una confianza');
+        if (!/object|octopus|person/.test(kind)) { turned++; if ((yaw + d.yaw) % 360 === 0) facing++; }
+      }
+    }
+    eq(wrong.join(' '), '', `acierta qué es (${ok}/${n})`);
+    assert(facing >= turned * 0.9, `y lo gira para que mire de frente (${facing}/${turned})`);
+    const sp = A.detectKind(A.modelShape(await A.readModel(boxModel(W, A, KIND_MODELS.insect[1])))); eq(sp.opts.legs, 6, 'cuenta seis patas');
+    const oc = A.detectKind(A.modelShape(await A.readModel(boxModel(W, A, KIND_MODELS.octopus[1])))); eq(oc.opts.arms, 8, 'y ocho tentáculos');
+    eq(A.groundContacts(A.modelShape(await A.readModel(boxModel(W, A, animal)))).length, 4, 'cuatro patas en el suelo');
+  });
+
+  await test('esqueleto automático: detectar con IA (tres vistas al modelo que ve, respuesta descuidada, sin IA)', async () => {
+    reset(); const W = frame.contentWindow, realFetch = W.fetch, KEY = 'revela.ai.v1', saved = W.localStorage.getItem(KEY);
+    const A = await W.eval("import('/src/features/content/autorig.js')"), K = await W.eval("import('/src/features/ai/rigkind.js')");
+    // Reading the answer: in fences, bare keys, single quotes, trailing commas, percentages, synonyms.
+    const a1 = K.readAnswer("Here: ```json\n{kind: 'dragon', facing: 'right', limbs: {legs: 4, wings: 2,}, joints: {side: {head: {x: 80, y: 30}}},}\n```");
+    eq([a1.kind, a1.facing, a1.turn, a1.marks.side.head.join()].join('|'), 'winged|right|270|0.8,0.3', 'JSON descuidado');
+    eq(K.readAnswer('{"kind":"Quadruped","limbs":{"legs":8}}').kind, 'spider', 'ocho patas: araña');
+    eq(K.readAnswer('{"kind":"duck"}').kind, 'bird'); eq(K.readAnswer('{"kind":"sports car"}').kind, 'object', 'lo desconocido: un objeto');
+    eq(K.readAnswer('It is a jellyfish, facing: back').kind, 'octopus', 'sin JSON: las palabras');
+    let threw = ''; try { K.readAnswer('no sé'); } catch (e) { threw = e.message; } eq(threw, 'EMPTY', 'sin nada útil: error');
+    // The dialog, with a bird-like model: it guesses a bird; the AI says a dragon facing right.
+    const [, boxes] = KIND_MODELS.bird, src = boxModel(W, A, boxes);
+    R.store.commit(() => { slide().blocks.push({ id: 'rigai', type: 'model', src, x: 100, y: 100, w: 300, h: 300, rotation: 0, animation: null }); });
+    const calls = [];
+    let reply = () => new W.Response(JSON.stringify({ choices: [{ message: { content: "```json\n{kind: 'bird', facing: 'right', limbs: {legs: 2, wings: 2}, joints: {side: {head: [0.85, 0.2]}, front: {wingTipL: [0.95, 0.45]}},}\n```" } }], usage: { cost: 0.00012 } }));
+    W.fetch = async (url, o) => { if (String(url).includes('openrouter.ai/api/v1/chat')) { calls.push(JSON.parse(o.body)); return reply(calls.length); } return realFetch(url, o); };
+    try {
+      W.localStorage.removeItem(KEY);
+      const Dl = await W.eval("import('/src/ui/dialogs/autorig.js')"), dlg = await Dl.openAutoRig(slide().blocks.at(-1));
+      eq(dlg.kind, 'bird', 'adivina un pájaro por su forma');
+      eq(D.querySelector('#rig-modal [data-kind][aria-checked="true"]').dataset.kind, 'bird', 'y lo deja elegido');
+      assert(/Pájaro/.test(D.querySelector('#rig-modal .rig-guess-txt').textContent), 'dice lo que parece');
+      eq(D.querySelectorAll('#rig-modal .rig-kinds [data-kind]').length, Object.keys(A.KINDS).length, 'todos los tipos para elegir');
+      // Without AI: how to turn it on.
+      D.querySelector('#rig-modal .rig-ai').click(); await sleep(20);
+      assert(D.querySelector('#rig-modal .rig-ai-msg .rig-ai-on') && !calls.length, 'sin IA: explica cómo conectarla');
+      // With AI, privacy not yet accepted: asks first.
+      W.localStorage.setItem(KEY, JSON.stringify({ key: 'sk-test' }));
+      D.querySelector('#rig-modal .rig-ai').click(); await sleep(30);
+      const ok = D.querySelector('.modal-backdrop:last-child .dlg-ok'); assert(ok && /tres imágenes/.test(D.querySelector('.dlg-msg').textContent), 'avisa de lo que se envía');
+      ok.click();
+      for (let i = 0; i < 60 && dlg.kind === 'bird' && !/Coste/.test(D.querySelector('#rig-modal .rig-ai-msg').textContent); i++) await sleep(50);
+      eq(calls.length, 1, 'una petición');
+      const body = calls[0], imgs = body.messages[1].content.filter(c => c.type === 'image_url');
+      eq(body.model, 'google/gemini-2.5-flash-lite', 'con el modelo barato que ve imágenes');
+      assert(imgs.length === 3 && imgs.every(c => /^data:image\/jpeg;base64,/.test(c.image_url.url) && c.image_url.url.length < 120000), 'tres vistas pequeñas');
+      assert(JSON.parse(W.localStorage.getItem(KEY)).accepted, 'el aviso queda aceptado');
+      eq([dlg.kind, dlg.yaw].join(), 'bird,270', 'la IA elige el tipo y gira el modelo para que mire de frente');
+      assert(/\$0\.0001/.test(D.querySelector('#rig-modal .rig-ai-msg').textContent), 'muestra lo que costó');
+      assert(dlg.joints.head && Number.isFinite(dlg.joints.head[0]), 'las articulaciones, a partir de sus puntos');
+      for (let i = 0; i < 40 && !dlg.built; i++) await sleep(50);
+      assert(/^data:model\/gltf-binary/.test(dlg.built), 'se prepara el modelo');
+      // The vision model fails: the usual one instead.
+      calls.length = 0;
+      reply = n => (n === 1 ? new W.Response('{"error":"no such model"}', { status: 400 }) : new W.Response(JSON.stringify({ choices: [{ message: { content: '{"kind":"fish","facing":"front"}' } }] })));
+      D.querySelector('#rig-modal .rig-ai').click();
+      for (let i = 0; i < 60 && dlg.kind !== 'fish'; i++) await sleep(50);
+      eq(calls.map(c => c.model).join(), 'google/gemini-2.5-flash-lite,openrouter/auto', 'si falla, con el modelo de siempre');
+      eq(dlg.kind, 'fish', 'y vale su respuesta');
+      eq(dlg.view, 'side', 'el pez, de lado');
+      D.querySelector('#rig-modal .modal-close').click();
+    } finally { W.fetch = realFetch; if (saved == null) W.localStorage.removeItem(KEY); else W.localStorage.setItem(KEY, saved); }
+  });
+
   await test('recursos: stickers animados, GIF, 3D (biblioteca, Poly Haven empaquetado, Sketchfab)', async () => {
     reset(); const W = frame.contentWindow, realFetch = W.fetch;
     const Rz = await W.eval("import('/src/features/content/resources.js')");

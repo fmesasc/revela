@@ -70,10 +70,11 @@ export async function finishOpenRouterLogin(loc = location) {
 // onUsage({ usd?, credits? }): what the call cost — credits charged through the
 // account, the provider's dollars with an own key. signal: stops waiting (own key).
 // prefer: the model a task works best with, used unless the person chose one (with the account,
-// the server only takes the models it allows); force: that model whatever was chosen (a cheap one
-// for a cheap task). A message's content may be parts: text and pictures (data: URLs), both ways.
-export async function chat(messages, { json = false, maxTokens = 2000, onUsage = null, signal = null, prefer = null, force = null } = {}) {
-  const set = aiSettings(), key = set.key, model = force || (prefer && set.model === DEFAULT_MODEL ? prefer : set.model);
+// the server only takes the models it allows); force (or model): that model whatever was chosen
+// (a cheap one for a cheap task, one that sees images…). A message's content may be parts: text and
+// pictures (data: URLs), both ways.
+export async function chat(messages, { json = false, maxTokens = 2000, onUsage = null, signal = null, prefer = null, force = null, model: only = null } = {}) {
+  const set = aiSettings(), key = set.key, model = force || only || (prefer && set.model === DEFAULT_MODEL ? prefer : set.model);
   if (!key && usingCloudAi()) {
     const data = await cloud.chat({ messages, max_tokens: maxTokens, json, ...(model !== DEFAULT_MODEL && { model }) }).catch(e => { throw cloudError(e); });
     if (signal?.aborted) throw new Error('STOPPED');

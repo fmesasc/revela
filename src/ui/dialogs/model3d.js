@@ -29,7 +29,7 @@ export async function openModel3D(b) {
       <label class="fr-l">${t('Animación')} <select class="m3d-clip"><option value="">${t('Ninguna')}</option><option value="*">${t('La primera')}</option></select></label>
       <label class="fr-chk"><input type="checkbox" class="m3d-once"${o.clipOnce ? ' checked' : ''}> ${t('Solo una vez (no repetir)')}</label>
       <label class="fr-l">${t('Velocidad')} <input type="range" class="m3d-speed" min="0.25" max="3" step="0.25" value="${o.clipSpeed}"></label>
-      <p class="host-help m3d-noclips" hidden>${t('Este modelo no trae animaciones propias. Si es una persona o un animal, Revela puede ponerle un esqueleto y animaciones (andar, correr, saludar…).')}</p>
+      <p class="host-help m3d-noclips" hidden>${t('Este modelo no trae animaciones propias. Revela puede ponerle un esqueleto y animaciones: personas, animales, pájaros, peces, serpientes, arañas, pulpos u objetos (andar, volar, nadar, botar…).')}</p>
       <button type="button" class="mini2 m3d-rig"><i class="ms">accessibility_new</i> ${t('Esqueleto automático…')}</button>
     </fieldset>
     <fieldset class="m3d-walk"><legend>${t('Al moverse por la diapositiva')}</legend>

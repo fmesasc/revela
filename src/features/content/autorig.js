@@ -1,8 +1,9 @@
 // Automatic skeleton ("rig") for a 3D model that has none, so it can walk:
-// like Mixamo, simplified. From the model's shape it proposes where the joints
-// go — a person (two legs) or an animal (four legs) — the user adjusts them,
-// and the mesh is bound to the bones (each vertex to the nearest ones) and
-// given animations made here: rest, walk, run, wave, jump, cheer…
+// like Mixamo, simplified. From the model's shape it guesses what it is (a
+// person, a four-legged animal, a bird, a dragon, a fish, a snake, a spider, an
+// octopus or just an object) and proposes where the joints go; the user adjusts
+// them, and the mesh is bound to the bones (each vertex to the nearest ones) and
+// given animations made here: rest, walk, run, fly, swim, slither, bounce…
 // The result is an ordinary glTF with a skin and animations (all in one GLB).
 //
 // Conventions: the character faces +Z (glTF's front), +Y is up, its left is +X.
@@ -74,28 +75,93 @@ export function modelShape(g, yaw = 0) {
 }
 
 // ---- Skeletons -------------------------------------------------------------------------------
-// [name, parent, label]; the end of each bone is its first child, or a tip.
-export const SKELETONS = {
-  person: [['hips', null], ['spine', 'hips'], ['chest', 'spine'], ['neck', 'chest'], ['head', 'neck'],
-    ['armL', 'chest'], ['forearmL', 'armL'], ['handL', 'forearmL'], ['armR', 'chest'], ['forearmR', 'armR'], ['handR', 'forearmR'],
-    ['thighL', 'hips'], ['shinL', 'thighL'], ['footL', 'shinL'], ['thighR', 'hips'], ['shinR', 'thighR'], ['footR', 'shinR']],
-  animal: [['hips', null], ['spine', 'hips'], ['chest', 'spine'], ['neck', 'chest'], ['head', 'neck'], ['tail', 'hips'],
-    ['legFL', 'chest'], ['kneeFL', 'legFL'], ['pawFL', 'kneeFL'], ['legFR', 'chest'], ['kneeFR', 'legFR'], ['pawFR', 'kneeFR'],
-    ['legBL', 'hips'], ['kneeBL', 'legBL'], ['pawBL', 'kneeBL'], ['legBR', 'hips'], ['kneeBR', 'legBR'], ['pawBR', 'kneeBR']],
+// [name, parent]; the end of each bone is its first child, or a tip.
+const sides = f => [...f('L'), ...f('R')];
+const range = (n, f) => Array.from({ length: Math.max(0, n) }, (_, i) => f(i + 1));
+const PERSON = [['hips', null], ['spine', 'hips'], ['chest', 'spine'], ['neck', 'chest'], ['head', 'neck'],
+  ['armL', 'chest'], ['forearmL', 'armL'], ['handL', 'forearmL'], ['armR', 'chest'], ['forearmR', 'armR'], ['handR', 'forearmR'],
+  ['thighL', 'hips'], ['shinL', 'thighL'], ['footL', 'shinL'], ['thighR', 'hips'], ['shinR', 'thighR'], ['footR', 'shinR']];
+const ANIMAL = [['hips', null], ['spine', 'hips'], ['chest', 'spine'], ['neck', 'chest'], ['head', 'neck'], ['tail', 'hips'],
+  ['legFL', 'chest'], ['kneeFL', 'legFL'], ['pawFL', 'kneeFL'], ['legFR', 'chest'], ['kneeFR', 'legFR'], ['pawFR', 'kneeFR'],
+  ['legBL', 'hips'], ['kneeBL', 'legBL'], ['pawBL', 'kneeBL'], ['legBR', 'hips'], ['kneeBR', 'legBR'], ['pawBR', 'kneeBR']];
+const WINGS = sides(s => [['wing' + s, 'chest'], ['wing2' + s, 'wing' + s], ['wingTip' + s, 'wing2' + s]]);
+
+// The kinds of model: label, icon, the view its joints are edited in, the clip
+// it moves with along a path (and the one when it arrives), and what can be counted.
+export const KINDS = {
+  person: { label: 'Persona (dos piernas)', icon: 'accessibility_new', view: 'front', move: 'Walk', end: 'Wave' },
+  animal: { label: 'Animal (cuatro patas)', icon: 'pets', view: 'side', move: 'Walk' },
+  bird: { label: 'Pájaro', icon: 'flutter_dash', view: 'side', move: 'Fly' },
+  winged: { label: 'Dragón (patas y alas)', icon: 'local_fire_department', view: 'side', move: 'Fly' },
+  fish: { label: 'Pez', icon: 'set_meal', view: 'side', move: 'Swim', count: { key: 'tail', label: 'Partes de la cola', options: [2, 3, 4, 5], def: 3 } },
+  snake: { label: 'Serpiente o gusano', icon: 'gesture', view: 'top', move: 'Slither', count: { key: 'segs', label: 'Segmentos', options: [6, 8, 10, 12, 16], def: 10 } },
+  spider: { label: 'Araña o insecto', icon: 'pest_control', view: 'top', move: 'Walk', count: { key: 'legs', label: 'Patas', options: [6, 8], def: 8 } },
+  octopus: { label: 'Pulpo o medusa', icon: 'waves', view: 'top', move: 'Swim', count: { key: 'arms', label: 'Tentáculos', options: [4, 5, 6, 8, 10], def: 8 } },
+  object: { label: 'Objeto (sin patas)', icon: 'deployed_code', view: 'front', move: 'Bounce', count: { key: 'bends', label: 'Partes que se doblan', options: [0, 1, 2, 3], def: 2 } },
 };
+const LIMITS = { tail: [1, 6], segs: [4, 24], legs: [4, 10], arms: [3, 12], bends: [0, 4] };
+// How many segments, legs, tentacles…: from the options ({ legs: 6 }), or counted in the joints.
+export function countOf(kind, src = {}) {
+  const c = KINDS[kind]?.count; if (!c) return 0;
+  let n = src[c.key] == null ? NaN : +src[c.key];
+  if (Array.isArray(src.hips)) {
+    const rx = { tail: /^tail\d+$/, segs: /^(body|tail)\d+$/, legs: /^leg\d+L$/, arms: /^arm\d+a$/, bends: /^bend\d+$/ }[c.key];
+    n = Object.keys(src).filter(k => rx.test(k)).length; n = c.key === 'segs' ? n + 2 : c.key === 'legs' ? n * 2 : n;
+  }
+  if (!Number.isFinite(n)) n = c.def;
+  const [lo, hi] = LIMITS[c.key]; n = Math.max(lo, Math.min(hi, Math.round(n)));
+  return c.key === 'legs' ? n - n % 2 : n;
+}
+// The skeleton of a kind: [name, parent], parents first.
+export function skeletonOf(kind, src = {}) {
+  const n = countOf(kind, src);
+  switch (kind) {
+    case 'animal': return ANIMAL;
+    case 'winged': return [...ANIMAL, ...WINGS];
+    case 'bird': return [['hips', null], ['chest', 'hips'], ['neck', 'chest'], ['head', 'neck'], ['tail', 'hips'], ...WINGS,
+      ...sides(s => [['thigh' + s, 'hips'], ['shin' + s, 'thigh' + s], ['foot' + s, 'shin' + s]])];
+    case 'fish': return [['hips', null], ['chest', 'hips'], ['head', 'chest'], ...range(n, i => ['tail' + i, i > 1 ? 'tail' + (i - 1) : 'hips']),
+      ['finL', 'chest'], ['finR', 'chest'], ['finTop', 'hips']];
+    case 'snake': {                                              // n joints: the tail's tip … the middle (hips) … the head
+      const back = Math.floor((n - 1) / 2), fwd = n - 2 - back;
+      return [['hips', null], ...range(fwd, i => ['body' + i, i > 1 ? 'body' + (i - 1) : 'hips']), ['head', fwd ? 'body' + fwd : 'hips'],
+        ...range(back, i => ['tail' + i, i > 1 ? 'tail' + (i - 1) : 'hips'])];
+    }
+    case 'spider': return [['hips', null], ['head', 'hips'], ['abdomen', 'hips'],
+      ...sides(s => range(n / 2, i => [['leg' + i + s, 'hips'], ['knee' + i + s, 'leg' + i + s], ['foot' + i + s, 'knee' + i + s]]).flat())];
+    case 'octopus': return [['hips', null], ['head', 'hips'], ...range(n, i => [['arm' + i + 'a', 'hips'], ['arm' + i + 'b', 'arm' + i + 'a'], ['arm' + i + 'c', 'arm' + i + 'b']]).flat()];
+    case 'object': return [['hips', null], ...range(n, i => ['bend' + i, i > 1 ? 'bend' + (i - 1) : 'hips'])];
+    default: return PERSON;
+  }
+}
+// (each kind with its usual counts)
+export const SKELETONS = Object.fromEntries(Object.keys(KINDS).map(k => [k, skeletonOf(k)]));
 export const JOINT_LABELS = { hips: 'Cadera', spine: 'Espalda', chest: 'Pecho', neck: 'Cuello', head: 'Cabeza', tail: 'Cola',
   armL: 'Hombro izq.', forearmL: 'Codo izq.', handL: 'Mano izq.', armR: 'Hombro der.', forearmR: 'Codo der.', handR: 'Mano der.',
   thighL: 'Cadera izq.', shinL: 'Rodilla izq.', footL: 'Tobillo izq.', thighR: 'Cadera der.', shinR: 'Rodilla der.', footR: 'Tobillo der.',
   legFL: 'Pata del. izq.', kneeFL: 'Rodilla del. izq.', pawFL: 'Pie del. izq.', legFR: 'Pata del. der.', kneeFR: 'Rodilla del. der.', pawFR: 'Pie del. der.',
-  legBL: 'Pata tras. izq.', kneeBL: 'Rodilla tras. izq.', pawBL: 'Pie tras. izq.', legBR: 'Pata tras. der.', kneeBR: 'Rodilla tras. der.', pawBR: 'Pie tras. der.' };
+  legBL: 'Pata tras. izq.', kneeBL: 'Rodilla tras. izq.', pawBL: 'Pie tras. izq.', legBR: 'Pata tras. der.', kneeBR: 'Rodilla tras. der.', pawBR: 'Pie tras. der.',
+  wingL: 'Ala izq.', wing2L: 'Codo del ala izq.', wingTipL: 'Punta del ala izq.', wingR: 'Ala der.', wing2R: 'Codo del ala der.', wingTipR: 'Punta del ala der.',
+  finL: 'Aleta izq.', finR: 'Aleta der.', finTop: 'Aleta de arriba', abdomen: 'Abdomen' };
+const NUMBERED = [[/^tail(\d+)$/, 'Cola {n}'], [/^body(\d+)$/, 'Cuerpo {n}'], [/^bend(\d+)$/, 'Doblez {n}'],
+  [/^leg(\d+)L$/, 'Pata {n} izq.'], [/^leg(\d+)R$/, 'Pata {n} der.'], [/^knee(\d+)L$/, 'Rodilla {n} izq.'], [/^knee(\d+)R$/, 'Rodilla {n} der.'],
+  [/^foot(\d+)L$/, 'Pie {n} izq.'], [/^foot(\d+)R$/, 'Pie {n} der.'], [/^arm(\d+)a$/, 'Tentáculo {n}'], [/^arm(\d+)b$/, 'Tentáculo {n} (medio)'], [/^arm(\d+)c$/, 'Tentáculo {n} (punta)']];
+// A joint's name for people (tr: the translation function).
+export function jointLabel(name, kind = 'person', tr = s => s) {
+  if (name === 'hips') return tr(['person', 'animal', 'bird', 'winged'].includes(kind) ? 'Cadera' : kind === 'object' ? 'Base' : 'Centro');
+  if (JOINT_LABELS[name]) return tr(JOINT_LABELS[name]);
+  for (const [rx, s] of NUMBERED) { const m = name.match(rx); if (m) return tr(s).replace('{n}', m[1]); }
+  return name;
+}
 // The mirror of a joint (to move both sides together).
 export const mirrorOf = n => (/[LR]$/.test(n) ? n.slice(0, -1) + (n.endsWith('L') ? 'R' : 'L') : null);
 
 // Vertices near a plane slice of the model (for the proposal): their x range and centre.
-function slab(shape, axis, lo, hi) {
+// keep(x, y, z): only some of them.
+function slab(shape, axis, lo, hi, keep = null) {
   let n = 0, mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity], sum = [0, 0, 0];
   for (const { pos } of shape.parts) for (let k = 0; k < pos.length; k += 3) {
-    const v = pos[k + axis]; if (v < lo || v > hi) continue;
+    const v = pos[k + axis]; if (v < lo || v > hi || (keep && !keep(pos[k], pos[k + 1], pos[k + 2]))) continue;
     n++; for (let c = 0; c < 3; c++) { mn[c] = Math.min(mn[c], pos[k + c]); mx[c] = Math.max(mx[c], pos[k + c]); sum[c] += pos[k + c]; }
   }
   return n ? { n, min: mn, max: mx, mid: sum.map(s => s / n) } : null;
@@ -141,7 +207,8 @@ export function profile(shape, n = 64, axis = 1, across = 0) {
 }
 
 // Where the joints probably are (the user then adjusts them).
-export function proposeJoints(shape, kind = 'person') {
+export function proposeJoints(shape, kind = 'person', opts = {}) {
+  if (PROPOSE[kind]) return PROPOSE[kind](shape, countOf(kind, opts));
   const { min, max } = shape.box, H = max[1] - min[1], W = max[0] - min[0], D = max[2] - min[2];
   const cx = (min[0] + max[0]) / 2, cz = (min[2] + max[2]) / 2, y = f => min[1] + H * f, J = {};
   if (kind === 'person') {
@@ -275,20 +342,254 @@ function animalFromProfile(prof, shape) {
   return J;
 }
 
+// ---- The other kinds, from the shape -------------------------------------------------------
+const dims = ({ box: { min, max } }) => ({ min, max, W: max[0] - min[0] || 1e-6, H: max[1] - min[1] || 1e-6, D: max[2] - min[2] || 1e-6,
+  cx: (min[0] + max[0]) / 2, cy: (min[1] + max[1]) / 2, cz: (min[2] + max[2]) / 2 });
+const mirrorX = (p, cx) => [2 * cx - p[0], p[1], p[2]];
+const quant = (a, q) => { if (!a.length) return NaN; const s = Float64Array.from(a).sort(); return s[Math.round(q * (s.length - 1))]; };
+const centroid = P => (P.length ? scale(P.reduce(add, [0, 0, 0]), 1 / P.length) : null);
+// The vertices that pass a test, as [x, y, z] (about 20 000 at most, evenly picked).
+function points(shape, keep) {
+  let total = 0; for (const { pos } of shape.parts) total += pos.length / 3;
+  const step = 3 * Math.max(1, Math.floor(total / 20000)), out = [];
+  for (const { pos } of shape.parts) for (let k = 0; k < pos.length; k += step) if (keep(pos[k], pos[k + 1], pos[k + 2])) out.push([pos[k], pos[k + 1], pos[k + 2]]);
+  return out;
+}
+// The widest piece of the slice at a fraction f of a profile (its middle: the body's).
+const widest = (prof, f) => prof[Math.max(0, Math.min(prof.length - 1, Math.round(f * prof.length - 0.5)))].pieces.reduce((b, p) => (!b || p.w > b.w ? p : b), null);
+// Copy the left joints (x > centre) to the right.
+const mirrorLeft = (J, names, cx) => { for (const n of names) J[mirrorOf(n)] = mirrorX(J[n], cx); return J; };
+
+// Wings from the sides of the chest: spread (reaching far out) or folded along the back.
+function addWings(shape, J, half) {
+  const { min, H, W, D, cx } = dims(shape), by = J.chest[1];
+  let tip = null;
+  for (const p of points(shape, (x, y) => x > cx + half && y > min[1] + H * 0.15)) if (!tip || p[0] > tip[0]) tip = p;
+  if (tip && tip[0] - cx > half * 2.2) {
+    J.wingL = [cx + half * 0.7, by + H * 0.05, J.chest[2]]; J.wingTipL = [tip[0] - W * 0.03, tip[1], tip[2]]; J.wing2L = lerp(J.wingL, J.wingTipL, 0.45);
+  } else {
+    J.wingL = [cx + half * 0.8, by + H * 0.06, J.chest[2]]; J.wing2L = [cx + half * 0.9, by + H * 0.03, lerp(J.chest, J.hips, 0.8)[2]];
+    J.wingTipL = [cx + half * 0.9, by, min[2] + D * 0.12];
+  }
+  return mirrorLeft(J, ['wingL', 'wing2L', 'wingTipL'], cx);
+}
+
+// A bird: a body along Z (head ahead and up), two legs under it, wings at its sides.
+function proposeBird(shape) {
+  const { min, W, H, D, cx } = dims(shape), z = f => min[2] + D * f, y = f => min[1] + H * f;
+  const half = Math.max(W * 0.1, D * 0.16), core = x => Math.abs(x - cx) <= half, J = {};
+  const ys = points(shape, (x, yy, zz) => core(x) && zz > z(0.25) && zz < z(0.7) && yy > y(0.2)).map(p => p[1]);
+  const by = ys.length ? quant(ys, 0.5) : y(0.5), belly = ys.length ? quant(ys, 0.08) : y(0.35), top = ys.length ? quant(ys, 0.95) : y(0.7);
+  J.hips = [cx, by, z(0.4)]; J.chest = [cx, by + (top - by) * 0.25, z(0.6)];
+  const front = centroid(points(shape, (x, yy, zz) => core(x) && zz > z(0.75) && yy > by));
+  J.head = front ? [cx, front[1], front[2]] : [cx, y(0.85), z(0.88)]; J.neck = lerp(J.chest, J.head, 0.5);
+  const back = centroid(points(shape, (x, yy, zz) => core(x) && zz < z(0.12) && yy > y(0.2)));
+  J.tail = lerp(J.hips, [cx, back ? back[1] : by, z(0.02)], 0.35);                // (its bone reaches the tip)
+  const foot = groundContacts(shape).sort((a, b) => b.cells - a.cells).slice(0, 2).find(c => c.x > cx);
+  const lx = foot ? foot.x : cx + half * 0.45, lz = foot ? foot.z : z(0.45);
+  J.thighL = [cx + (lx - cx) * 0.7, belly + (by - belly) * 0.3, J.hips[2]]; J.footL = [lx, y(0.03), lz];
+  J.shinL = [lx, lerp(J.footL, J.thighL, 0.45)[1], lz - D * 0.04];
+  mirrorLeft(J, ['thighL', 'shinL', 'footL'], cx);
+  return addWings(shape, J, half);
+}
+// A dragon: a four-legged animal with wings.
+function proposeWinged(shape) {
+  const { D, cx } = dims(shape), J = proposeJoints(shape, 'animal');
+  // (the wings widen the model: the legs' sides from where they touch the ground)
+  const feet = groundContacts(shape).map(c => Math.abs(c.x - cx)), legX = feet.length >= 2 ? quant(feet, 0.5) : D * 0.08;
+  for (const n of Object.keys(J)) if (/^(leg|knee|paw)/.test(n)) J[n][0] = cx + (n.endsWith('L') ? legX : -legX);
+  return addWings(shape, J, Math.max(legX * 1.5, D * 0.06));
+}
+// A fish: a spine along Z, the tail in n parts, side fins and one on top.
+function proposeFish(shape, n) {
+  const { min, D, cx, cy } = dims(shape), z = f => min[2] + D * f, py = profile(shape, 48, 2, 1), px = profile(shape, 48, 2, 0);
+  const at = f => { const p = widest(py, f); return p ? [p.z, p.mid, z(f)] : [cx, cy, z(f)]; };
+  const J = { hips: at(0.5), chest: at(0.68), head: at(0.86) };
+  for (let i = 1; i <= n; i++) J['tail' + i] = at(0.5 - 0.44 * i / n);
+  const w = widest(px, 0.64), h = widest(py, 0.64), hw = w ? w.w / 2 : D * 0.05;
+  J.finL = [J.chest[0] + hw * 0.8, J.chest[1] - (h ? h.w : D * 0.2) * 0.15, z(0.64)]; J.finR = mirrorX(J.finL, J.chest[0]);
+  const top = widest(py, 0.5); J.finTop = [J.hips[0], J.hips[1] + ((top ? top.b : J.hips[1]) - J.hips[1]) * 0.6, z(0.5)];
+  return J;
+}
+// A snake (worm, eel…): n joints along its body, following its bends, head at +Z.
+function proposeSnake(shape, n) {
+  const { min, D, cx, cy } = dims(shape), back = Math.floor((n - 1) / 2), J = {}, prof = profile(shape, 64, 2, 1);
+  for (let i = 0; i < n; i++) {
+    const f = 0.03 + 0.94 * i / (n - 1), zz = min[2] + D * f, s = widest(prof, f), p = s ? [s.z, s.mid, zz] : [cx, cy, zz];
+    J[i < back ? 'tail' + (back - i) : i === back ? 'hips' : i === n - 1 ? 'head' : 'body' + (i - back)] = p;
+  }
+  return J;
+}
+// A spider or an insect: a body along Z (head ahead, abdomen behind) and n legs
+// arching up from its sides down to the ground.
+function proposeSpider(shape, n) {
+  const { min, max, W, H, D, cx, cz } = dims(shape), pairs = n / 2, J = {};
+  const body = slab(shape, 2, min[2], max[2], (x, y) => Math.abs(x - cx) < W * 0.1 && y > min[1] + H * 0.15);
+  const back = body ? body.min[2] : cz - D * 0.25, front = body ? body.max[2] : cz + D * 0.25, by = body ? (body.min[1] + body.max[1]) / 2 : min[1] + H * 0.5;
+  const bl = front - back, bw = Math.max(bl * 0.15, W * 0.04);
+  J.hips = [cx, by, back + bl * 0.6]; J.head = [cx, by, back + bl * 0.9]; J.abdomen = [cx, by, back + bl * 0.2];
+  const feet = groundContacts(shape).filter(c => c.x > cx + bw).sort((a, b) => b.z - a.z);
+  for (let i = 1; i <= pairs; i++) {
+    const a = (25 + 130 * (i - 1) / Math.max(1, pairs - 1)) * deg, f = feet.length === pairs ? feet[i - 1] : null;
+    const root = [cx + bw, by, J.hips[2] + bw * 1.6 * Math.cos(a)];
+    const foot = f ? [f.x, min[1] + H * 0.03, f.z] : [cx + Math.sin(a) * W * 0.45, min[1] + H * 0.03, J.hips[2] + Math.cos(a) * D * 0.45];
+    const knee = lerp(root, foot, 0.4); knee[1] = by + (max[1] - by) * 0.6;
+    J['leg' + i + 'L'] = root; J['knee' + i + 'L'] = knee; J['foot' + i + 'L'] = foot;
+    mirrorLeft(J, ['leg' + i + 'L', 'knee' + i + 'L', 'foot' + i + 'L'], cx);
+  }
+  return J;
+}
+// An octopus (or a jellyfish): a body on top, n tentacles around it, down to the ground.
+function proposeOctopus(shape, n) {
+  const { min, W, H, D, cx, cz } = dims(shape), y = f => min[1] + H * f;
+  const top = slab(shape, 1, y(0.45), y(1)), hx = top ? top.mid[0] : cx, hz = top ? top.mid[2] : cz;
+  const J = { hips: [hx, y(0.3), hz], head: [hx, top ? top.min[1] + (top.max[1] - top.min[1]) * 0.6 : y(0.8), hz] };
+  // Where the tentacles touch the ground (when there are as many), else evenly around.
+  const feet = groundContacts(shape).map(c => ({ ...c, ang: Math.atan2(c.x - hx, c.z - hz), r: Math.hypot(c.far[0] - hx, c.far[1] - hz) })).sort((a, b) => a.ang - b.ang);
+  const R = Math.min(W, D) * 0.45;
+  for (let i = 1; i <= n; i++) {
+    const f = feet.length === n ? feet[i - 1] : null, ang = f ? f.ang : 2 * Math.PI * (i - 1) / n, r = f ? f.r : R;
+    const at = (k, yy) => [hx + Math.sin(ang) * r * k, yy, hz + Math.cos(ang) * r * k];
+    J['arm' + i + 'a'] = at(0.2, y(0.2)); J['arm' + i + 'b'] = at(0.5, y(0.08)); J['arm' + i + 'c'] = at(0.8, y(0.04));
+  }
+  return J;
+}
+// An object: a root at its base and n joints up its middle (where it bends).
+function proposeObject(shape, n) {
+  const { min, H, cx, cz } = dims(shape), J = { hips: [cx, min[1], cz] };
+  for (let i = 1; i <= n; i++) {
+    const yy = min[1] + H * i / (n + 1), s = slab(shape, 1, yy - H * 0.05, yy + H * 0.05);
+    J['bend' + i] = [s ? (s.min[0] + s.max[0]) / 2 : cx, yy, s ? (s.min[2] + s.max[2]) / 2 : cz];
+  }
+  return J;
+}
+const PROPOSE = { bird: proposeBird, winged: proposeWinged, fish: proposeFish, snake: proposeSnake, spider: proposeSpider, octopus: proposeOctopus, object: proposeObject };
+
+// ---- What the model is (a free guess from its shape) -----------------------------------------
+// The separate pieces where the model meets the ground (feet, paws, tentacles…), seen
+// from above: a cut just over its lowest point, drawn in a grid, its connected parts.
+export function groundContacts(shape) {
+  const { min, W, H, D } = dims(shape), cell = Math.max(W, D) / 64, nx = Math.ceil(W / cell) + 1, nz = Math.ceil(D / cell) + 1;
+  const cut = y0 => {
+    const grid = new Uint8Array(nx * nz);
+    const mark = (x, z) => { const i = Math.floor((x - min[0]) / cell), j = Math.floor((z - min[2]) / cell); if (i >= 0 && j >= 0 && i < nx && j < nz) grid[j * nx + i] = 1; };
+    for (const { pos, idx } of shape.parts) {
+      if (!idx) continue;
+      for (let t = 0; t < idx.length; t += 3) {
+        const v = [idx[t] * 3, idx[t + 1] * 3, idx[t + 2] * 3], pts = [];
+        for (const [p, q] of [[v[0], v[1]], [v[1], v[2]], [v[2], v[0]]]) {
+          const a = pos[p + 1] - y0, b = pos[q + 1] - y0; if ((a < 0) === (b < 0)) continue;
+          const k = a / (a - b); pts.push([pos[p] + (pos[q] - pos[p]) * k, pos[p + 2] + (pos[q + 2] - pos[p + 2]) * k]);
+        }
+        if (pts.length < 2) continue;
+        const [[x0, z0], [x1, z1]] = pts, steps = Math.ceil(Math.hypot(x1 - x0, z1 - z0) / cell * 2) + 1;
+        for (let s = 0; s <= steps; s++) mark(x0 + (x1 - x0) * s / steps, z0 + (z1 - z0) * s / steps);
+      }
+    }
+    const seen = new Uint8Array(nx * nz), comps = [];
+    for (let s0 = 0; s0 < grid.length; s0++) {
+      if (!grid[s0] || seen[s0]) continue;
+      const stack = [s0], c = { cells: 0, x: 0, z: 0, min: [Infinity, Infinity], max: [-Infinity, -Infinity], far: null }, cells = [];
+      seen[s0] = 1;
+      while (stack.length) {
+        const s = stack.pop(), i = s % nx, j = (s - i) / nx, x = min[0] + (i + 0.5) * cell, z = min[2] + (j + 0.5) * cell;
+        c.cells++; c.x += x; c.z += z; cells.push([x, z]);
+        c.min = [Math.min(c.min[0], x), Math.min(c.min[1], z)]; c.max = [Math.max(c.max[0], x), Math.max(c.max[1], z)];
+        for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+          const ii = i + di, jj = j + dj, o = jj * nx + ii;
+          if (ii >= 0 && jj >= 0 && ii < nx && jj < nz && grid[o] && !seen[o]) { seen[o] = 1; stack.push(o); }
+        }
+      }
+      c.x /= c.cells; c.z /= c.cells;
+      const ctr = [min[0] + W / 2, min[2] + D / 2];                // (its point farthest from the middle)
+      c.far = cells.reduce((b, p) => (Math.hypot(p[0] - ctr[0], p[1] - ctr[1]) > Math.hypot(b[0] - ctr[0], b[1] - ctr[1]) ? p : b), cells[0]);
+      comps.push(c);
+    }
+    return comps;
+  };
+  // Three heights; the middle answer.
+  const cuts = [0.03, 0.06, 0.1].map(f => cut(min[1] + H * f)), order = [0, 1, 2].sort((a, b) => cuts[a].length - cuts[b].length);
+  return cuts[cuts[1].length === cuts[order[1]].length ? 1 : order[1]];
+}
+
+// The two ends of the model along an axis (the outer fifth of each): how high they
+// reach and how thick they are (to tell the head from the tail).
+function ends(shape, axis) {
+  const { min, max } = shape.box, len = max[axis] - min[axis], side = 2 - axis;
+  const stat = (lo, hi) => {
+    const P = points(shape, (...p) => p[axis] >= lo && p[axis] <= hi), cuts = [];
+    // Thickness: the mean cross-section (width × height) of thin slices across the band.
+    for (let i = 0; i < 6; i++) {
+      const a = lo + (hi - lo) * i / 6, b = lo + (hi - lo) * (i + 1) / 6, S = P.filter(p => p[axis] >= a && p[axis] <= b);
+      if (S.length > 1) cuts.push((Math.max(...S.map(p => p[side])) - Math.min(...S.map(p => p[side]))) * (Math.max(...S.map(p => p[1])) - Math.min(...S.map(p => p[1]))));
+    }
+    return { n: P.length, top: P.length ? Math.max(...P.map(p => p[1])) : -Infinity, wide: cuts.length ? cuts.reduce((s, c) => s + c, 0) / cuts.length : 0 };
+  };
+  return { lo: stat(min[axis] + len * 0.08, min[axis] + len * 0.3), hi: stat(max[axis] - len * 0.3, max[axis] - len * 0.08),
+    loTop: stat(min[axis], min[axis] + len * 0.25).top, hiTop: stat(max[axis] - len * 0.25, max[axis]).top };
+}
+// The turn (degrees, as modelShape takes it) that brings a head lying along an axis, at its + or − end, to +Z.
+const yawFor = (axis, plus) => (axis === 2 ? (plus ? 0 : 180) : (plus ? 270 : 90));
+
+// A guess at what the model is: { kind, confidence 0–1, yaw (to face +Z), opts (counts), contacts }.
+export function detectKind(shape) {
+  const { W, H, D } = dims(shape), feet = groundContacts(shape), n = feet.length;
+  const L = Math.max(W, D), B = Math.min(W, D), long = W > D ? 0 : 2;
+  // Upright: how deep the body is, half way up, against its height (a person's trunk is thin; a bird's body long).
+  const mid = slab(shape, 1, shape.box.min[1] + H * 0.5, shape.box.min[1] + H * 0.75), ex = mid ? mid.max[0] - mid.min[0] : W, ez = mid ? mid.max[2] - mid.min[2] : D;
+  const upright = Math.round(Math.min(ex, ez) / H * 100) / 100, facing = ez <= ex ? 0 : 90;
+  // The head right over the feet (a person, however chubby) or ahead of them (a bird, an animal).
+  const headOver = axis => { const top = centroid(points(shape, (...p) => p[1] > shape.box.max[1] - H * 0.15)), at = feet.reduce((s, c) => s + (axis ? c.z : c.x), 0) / (n || 1);
+    return top && n ? Math.abs(top[axis] - at) / (axis ? D : W) : 1; };
+  const out = (kind, confidence, yaw = 0, opts = {}) => ({ kind, confidence: Math.round(Math.max(0.1, Math.min(0.95, confidence)) * 100) / 100, yaw, opts, contacts: n, upright });
+  const spread = axis => (n ? Math.max(...feet.map(c => (axis ? c.z : c.x))) - Math.min(...feet.map(c => (axis ? c.z : c.x))) : 0);
+  const thicker = axis => { const e = ends(shape, axis); return e.hi.wide >= e.lo.wide; };   // the + end is the thicker one
+  const higher = axis => { const e = ends(shape, axis); return e.hiTop >= e.loTop; };
+  // Long and low: a snake, a worm, an eel.
+  const thin = L / Math.max(B, H);
+  if (thin > 3.5 && H < 0.45 * L) return out('snake', 0.55 + (thin - 3.5) * 0.05, yawFor(long, thicker(long)));
+  if (n >= 5) {
+    if (n >= 9 || H > 0.7 * L) return out('octopus', 0.5 + (n >= 8 ? 0.1 : 0), 0, { arms: n >= 4 && n <= 12 ? n : 8 });
+    // Legs spread more across the body than along it; the abdomen is the thicker end.
+    const across = spread(0) >= spread(1) ? 0 : 2, along = 2 - across;
+    return out('spider', 0.65, yawFor(along, !thicker(along)), { legs: n >= 7 ? 8 : 6 });
+  }
+  if (n === 2) {
+    const across = Math.abs(feet[0].x - feet[1].x) >= Math.abs(feet[0].z - feet[1].z) ? 0 : 2, along = 2 - across, depth = along ? D : W;
+    if (H > 2.2 * depth || upright < 0.4 || headOver(along) < 0.22) return out('person', 0.5 + Math.max(0, Math.min(0.4, (0.4 - upright) * 1.5)), across === 0 ? 0 : 90);
+    return out('bird', 0.55, yawFor(along, higher(along)));
+  }
+  if (n === 3 || n === 4) {
+    const along = spread(0) > spread(1) ? 0 : 2, across = 2 - along, lenExt = along ? D : W, sideExt = across ? D : W;
+    const head = higher(along);
+    if (n === 3 && headOver(along) < 0.12 && headOver(across) < 0.12) return out('person', 0.45, facing);
+    if (sideExt > Math.max(2.5 * spread(across), 0.75 * lenExt)) return out('winged', 0.55, yawFor(along, head));
+    // Furniture and vehicles: legs (wheels) right at the ends, or the middle higher than both ends.
+    const { min, max } = shape.box, pos = feet.map(c => (along ? c.z : c.x)), lo = min[along], hi = max[along];
+    const over = Math.max(Math.min(...pos) - lo, hi - Math.max(...pos)) / lenExt, e = ends(shape, along);
+    if (over < 0.12 || Math.max(e.loTop, e.hiTop) < shape.box.min[1] + 0.8 * H) return out('object', 0.45);
+    return out('animal', n === 4 ? 0.7 : 0.5, yawFor(along, head));
+  }
+  // Nothing (or one piece) on the ground: a fish if long and flat sideways, a statue-like person if tall.
+  if (L > 1.8 * H && L > 2 * B && H > 1.1 * B) return out('fish', 0.5, yawFor(long, thicker(long)));
+  if (H > 2 * L || (upright < 0.3 && H > 1.2 * L)) return out('person', 0.4, facing);
+  return out('object', 0.5);
+}
+
 // ---- Binding the mesh to the bones ---------------------------------------------------------
 // Each bone: from its joint to its child (the first), or a short tip for the ends.
-function bones(kind, J) {
-  const list = SKELETONS[kind];
+function bones(kind, J, list = skeletonOf(kind, J)) {
   return list.map(([name, parent]) => {
     const kids = list.filter(([, p]) => p === name).map(([n]) => n);
-    const main = kids.find(k => !/^(arm|thigh|leg|tail)/.test(k)) || kids[0];
+    const main = kids.find(k => !/^(arm|thigh|leg|tail|wing|fin|abdomen)/.test(k)) || kids[0];
     let end;
     if (main) end = J[main];
     else {                                                       // the ends: a tip beyond the joint
-      const from = parent ? J[parent] : J[name], dir = sub(J[name], from), l = Math.hypot(...dir) || 1;
-      end = name === 'head' ? add(J[name], kind === 'animal' ? scale(norm(dir), l * 1.5) : [0, l * 1.2, 0])
-        : name === 'tail' ? add(J[name], scale(norm(dir), l * 2)) : add(J[name], scale(norm(dir), l * (/foot|paw/.test(name) ? 0.4 : 0.5)));
-      if (/foot/.test(name)) end = add(J[name], [0, 0, l * 0.5]);
+      const from = parent ? J[parent] : J[name], dir = sub(J[name], from), l = Math.hypot(...dir) || 1, d = norm(dir);
+      const reach = name === 'tail' ? 2 : /^(paw|foot)/.test(name) ? 0.4 : /^(tail|arm)\d/.test(name) ? 0.9 : /^bend/.test(name) ? 0.8 : 0.5;
+      end = name === 'head' ? add(J[name], kind === 'person' ? [0, l * 1.2, 0] : scale(d, l * (['animal', 'winged', 'bird', 'spider'].includes(kind) ? 1.5 : 0.8)))
+        : add(J[name], scale(d, l * reach));
+      if (/^foot[LR]$/.test(name)) end = add(J[name], [0, 0, l * 0.5]);
     }
     return { name, a: J[name], b: end };
   });
@@ -401,21 +702,125 @@ function animalPose(J, clip, t, H) {
   }
   return { P, lift };
 }
-export const CLIPS = { person: [['Idle', 2.4], ['Walk', 1.1], ['Run', 0.7], ['Wave', 1.4], ['Jump', 1.2], ['Cheer', 1.2], ['Dance', 1.6]], animal: [['Idle', 2.6], ['Walk', 1.1], ['Run', 0.6], ['Jump', 1.0]] };
-export const CLIP_LABELS = { Idle: 'Reposo', Walk: 'Andar', Run: 'Correr', Wave: 'Saludar', Jump: 'Saltar', Cheer: 'Celebrar', Dance: 'Bailar' };
+// The turn raising a limb (from joint a towards b) by d degrees about its horizontal
+// hinge: whatever way it points out from the body, positive lifts it.
+function raise(J, a, b, d) {
+  const v = sub(J[b], J[a]), k = [-v[2], 0, v[0]], l = Math.hypot(k[0], k[2]);
+  return Q.axis(l > 1e-9 ? [k[0] / l, 0, k[2] / l] : J[b][0] >= J[a][0] ? Z : [0, 0, -1], d);
+}
+const NONE = [0, 0, 0, 1];
+// Both wings: the inner part raised a1 degrees, the outer one a2 (in all).
+function flap(P, J, a1, a2) {
+  for (const s of 'LR') { P['wing' + s] = raise(J, 'wing' + s, 'wing2' + s, a1); P['wing2' + s] = raise(J, 'wing2' + s, 'wingTip' + s, a2); P['wingTip' + s] = P['wing2' + s]; }
+}
+function wingedPose(J, clip, t, H) {
+  const fly = clip === 'Fly', { P, lift } = animalPose(J, fly ? 'Idle' : clip, t, H), ph = t * 2 * Math.PI;
+  if (!fly) { const a = clip === 'Idle' ? 3 * Math.sin(ph) : 6 * Math.sin(ph * 2); flap(P, J, a, a); return { P, lift }; }
+  const a = 45 * Math.sin(ph);
+  flap(P, J, a, a + 20 * Math.sin(ph - 0.9));
+  for (const s of 'LR') {                                       // legs tucked back
+    P['legF' + s] = Q.axis(X, 30); P['kneeF' + s] = Q.axis(X, 85); P['pawF' + s] = P['kneeF' + s];
+    P['legB' + s] = Q.axis(X, 55); P['kneeB' + s] = Q.axis(X, 70); P['pawB' + s] = P['kneeB' + s];
+  }
+  P.neck = Q.axis(X, 5 * Math.sin(ph * 2)); P.head = P.neck; P.tail = Q.axis(Y, 12 * Math.sin(ph));
+  return { P, lift: H * (0.2 - 0.03 * Math.cos(ph)) };
+}
+function birdPose(J, clip, t, H) {
+  const P = {}, ph = t * 2 * Math.PI; let lift = 0;
+  const legs = (sl, kl, sr, kr) => { for (const [s, sw, kn] of [['L', sl, kl], ['R', sr, kr]]) { P['thigh' + s] = Q.axis(X, -sw); P['shin' + s] = Q.axis(X, kn - sw); P['foot' + s] = P['shin' + s]; } };
+  if (clip === 'Fly') {
+    const a = 42 * Math.sin(ph); flap(P, J, a, a + 18 * Math.sin(ph - 0.9)); legs(-50, 20, -50, 20);
+    P.tail = Q.axis(X, 6 * Math.sin(ph)); P.neck = Q.axis(X, -4 * Math.sin(ph)); P.head = P.neck;
+    lift = H * (0.18 - 0.03 * Math.cos(ph));
+  } else if (clip === 'Walk') {
+    legs(18 * Math.sin(ph), 26 * Math.max(0, Math.sin(ph + 0.6)), -18 * Math.sin(ph), 26 * Math.max(0, Math.sin(ph + Math.PI + 0.6)));
+    const bob = Q.axis(X, 10 * Math.sin(ph * 2)); P.neck = bob; P.head = bob; P.tail = Q.axis(X, -5 * Math.sin(ph * 2));
+    flap(P, J, 3, 3); lift = H * 0.015 * Math.abs(Math.sin(ph));
+  } else if (clip === 'Hop') {
+    const up = Math.max(0, Math.sin(ph)), cr = Math.max(0, -Math.sin(ph));
+    legs(15 * cr - 20 * up, 40 * cr, 15 * cr - 20 * up, 40 * cr); flap(P, J, 22 * up, 30 * up);
+    P.tail = Q.axis(X, -10 * up); lift = H * (0.14 * up - 0.03 * cr);
+  } else {                                                       // Idle: looks around, pecks
+    const look = Q.axis(Y, 25 * Math.sin(ph)), peck = Q.axis(X, 18 * Math.max(0, Math.sin(ph * 2 - 1)) ** 3);
+    P.neck = look; P.head = Q.mul(look, peck); P.tail = Q.axis(Y, 8 * Math.sin(ph * 3));
+    flap(P, J, 2 * Math.sin(ph), 2 * Math.sin(ph)); lift = H * 0.004 * Math.sin(ph * 2);
+  }
+  return { P, lift };
+}
+// A wave along the body, stronger towards the tail.
+function fishPose(J, clip, t, H, list) {
+  const P = {}, ph = t * 2 * Math.PI, n = list.filter(([k]) => /^tail\d/.test(k)).length, A = clip === 'Swim' ? 22 : 7;
+  P.hips = Q.axis(Y, A * 0.25 * Math.sin(ph)); P.chest = Q.axis(Y, A * 0.15 * Math.sin(ph + 0.8)); P.head = Q.axis(Y, -A * 0.2 * Math.sin(ph + 1.6));
+  for (let i = 1; i <= n; i++) P['tail' + i] = Q.axis(Y, A * (0.5 + i / n) * Math.sin(ph - 1.1 * i));
+  const f = (clip === 'Swim' ? 18 : 28) * Math.sin(ph * 2);
+  P.finL = raise(J, 'chest', 'finL', f); P.finR = raise(J, 'chest', 'finR', f); P.finTop = P.hips;
+  return { P, lift: H * 0.03 * Math.sin(ph) };
+}
+// The joints of a chain from the tail's tip to the head.
+const snakeChain = list => [...list.filter(([k]) => /^tail\d/.test(k)).map(([k]) => k).reverse(), 'hips', ...list.filter(([k]) => /^body\d/.test(k)).map(([k]) => k), 'head'];
+function snakePose(J, clip, t, H, list) {
+  const P = {}, ph = t * 2 * Math.PI, chain = snakeChain(list), n = chain.length, go = clip === 'Slither';
+  chain.forEach((k, i) => { P[k] = Q.axis(Y, (go ? 30 : 9) * Math.cos(2 * Math.PI * (go ? 1.3 : 0.8) * i / (n - 1) - ph)); });
+  P.head = Q.mul(P.head, Q.axis(X, go ? -6 : -12 - 6 * Math.sin(ph)));
+  return { P, lift: 0 };
+}
+// Legs in two alternating groups (a tripod for six, four and four for eight).
+function spiderPose(J, clip, t, H, list) {
+  const P = {}, ph = t * 2 * Math.PI, pairs = list.filter(([k]) => /^leg\d+L$/.test(k)).length, walk = clip === 'Walk';
+  for (let i = 1; i <= pairs; i++) for (const [s, sd] of [['L', 1], ['R', -1]]) {
+    const off = ((i + (s === 'L' ? 0 : 1)) % 2) * Math.PI, sw = (walk ? 16 : 3) * Math.sin(ph + off);
+    const up = walk ? 22 * Math.max(0, Math.cos(ph + off)) : 2 * Math.max(0, Math.sin(ph * 2 + i));
+    const q = Q.mul(Q.axis(Y, -sd * sw), raise(J, 'leg' + i + s, 'knee' + i + s, up));
+    P['leg' + i + s] = q; P['knee' + i + s] = q; P['foot' + i + s] = q;
+  }
+  P.abdomen = Q.axis(X, (walk ? 3 : 5) * Math.sin(ph)); P.head = walk ? NONE : Q.axis(Y, 6 * Math.sin(ph));
+  return { P, lift: walk ? H * 0.015 * Math.abs(Math.sin(ph * 2)) : H * 0.005 * Math.sin(ph) };
+}
+// Tentacles open and close together (swimming), or each one sways on its own.
+function octopusPose(J, clip, t, H, list) {
+  const P = {}, ph = t * 2 * Math.PI, n = list.filter(([k]) => /^arm\d+a$/.test(k)).length, swim = clip === 'Swim';
+  for (let i = 1; i <= n; i++) {
+    const o = 2 * Math.PI * i / n, arm = k => 'arm' + i + k;
+    const a = swim ? 28 * Math.sin(ph) : 7 * Math.sin(ph + o * 2), b = a + (swim ? 22 : 9) * Math.sin(ph - 0.7 + (swim ? 0 : o)), c = b + (swim ? 22 : 10) * Math.sin(ph - 1.4 + (swim ? 0 : o));
+    const sway = swim ? NONE : Q.axis(Y, 6 * Math.sin(ph + o));
+    P[arm('a')] = Q.mul(sway, raise(J, 'hips', arm('a'), a)); P[arm('b')] = Q.mul(sway, raise(J, 'hips', arm('a'), b)); P[arm('c')] = Q.mul(sway, raise(J, 'hips', arm('a'), c));
+  }
+  P.head = Q.axis(X, (swim ? 6 : 3) * Math.sin(ph - 0.5));
+  return { P, lift: swim ? H * 0.12 * (1 + Math.sin(ph - 1.2)) / 2 : H * 0.01 * Math.sin(ph) };
+}
+// An object: bounces, wobbles, spins or squashes (its base stays put); scale: the root's.
+function objectPose(J, clip, t, H, list) {
+  const P = {}, ph = t * 2 * Math.PI, n = list.length - 1; let lift = 0, sy = 1;
+  const bend = (ax, amp, lag) => { for (let i = 1; i <= n; i++) P['bend' + i] = Q.axis(ax, amp * i * Math.sin(ph - lag * i)); };
+  if (clip === 'Bounce') { const h = 4 * t * (1 - t), c = Math.max(0, 1 - h * 5); lift = H * 0.3 * h; sy = 1 - 0.2 * c + 0.06 * h * (1 - c); bend(X, 2, 0.5); }
+  else if (clip === 'Wobble') { P.hips = Q.axis(Z, (n ? 4 : 9) * Math.sin(ph)); bend(Z, 7, 0.6); }
+  else if (clip === 'Spin') { P.hips = Q.axis(Y, 360 * t); lift = H * 0.03 * Math.sin(ph); }
+  else if (clip === 'Squash') sy = 1 + 0.18 * Math.sin(ph);
+  else { sy = 1 + 0.02 * Math.sin(ph); bend(X, 1.5, 0.4); }
+  const sx = 1 / Math.sqrt(sy);
+  return { P, lift, scale: [sx, sy, sx] };
+}
+const POSES = { person: personPose, animal: animalPose, winged: wingedPose, bird: birdPose, fish: fishPose, snake: snakePose, spider: spiderPose, octopus: octopusPose, object: objectPose };
+export const CLIPS = { person: [['Idle', 2.4], ['Walk', 1.1], ['Run', 0.7], ['Wave', 1.4], ['Jump', 1.2], ['Cheer', 1.2], ['Dance', 1.6]], animal: [['Idle', 2.6], ['Walk', 1.1], ['Run', 0.6], ['Jump', 1.0]],
+  bird: [['Idle', 2.4], ['Walk', 0.9], ['Hop', 0.7], ['Fly', 0.6]], winged: [['Idle', 2.6], ['Walk', 1.1], ['Run', 0.6], ['Fly', 1.0]],
+  fish: [['Idle', 2.8], ['Swim', 1.1]], snake: [['Idle', 3], ['Slither', 1.6]], spider: [['Idle', 2.4], ['Walk', 0.8]], octopus: [['Idle', 3], ['Swim', 1.6]],
+  object: [['Idle', 2.4], ['Bounce', 0.9], ['Wobble', 1.4], ['Spin', 2], ['Squash', 1.2]] };
+export const CLIP_LABELS = { Idle: 'Reposo', Walk: 'Andar', Run: 'Correr', Wave: 'Saludar', Jump: 'Saltar', Cheer: 'Celebrar', Dance: 'Bailar',
+  Fly: 'Volar', Hop: 'Dar saltitos', Swim: 'Nadar', Slither: 'Reptar', Bounce: 'Botar', Wobble: 'Bambolearse', Spin: 'Girar', Squash: 'Estirar y encoger' };
+const poseOf = (kind, J, clip, t, H, list) => (POSES[kind] || personPose)(J, clip, t, H, list);
 
 // World turns per joint → the local ones glTF wants (each relative to its parent).
-function localTurns(kind, P) {
-  const list = SKELETONS[kind], W = {}, L = {};
-  for (const [name, parent] of list) { W[name] = P[name] || (parent ? W[parent] : [0, 0, 0, 1]); L[name] = parent ? Q.mul(Q.inv(W[parent]), W[name]) : W[name]; }
+function localTurns(list, P) {
+  const W = {}, L = {};
+  for (const [name, parent] of list) { W[name] = P[name] || (parent ? W[parent] : NONE); L[name] = parent ? Q.mul(Q.inv(W[parent]), W[name]) : W[name]; }
   return L;
 }
 
 // ---- Putting it together ----------------------------------------------------------------------
 // The model with a skeleton at J (joints) and the animations: a GLB data URL.
 export function buildRig(g, shape, kind, J) {
-  const json = structuredClone(g.json), out = { json, bin: g.bin.slice() }, list = SKELETONS[kind];
-  const H = shape.box.max[1] - shape.box.min[1], B = bones(kind, J);
+  const json = structuredClone(g.json), out = { json, bin: g.bin.slice() }, list = skeletonOf(kind, J);
+  const H = shape.box.max[1] - shape.box.min[1], B = bones(kind, J, list);
   delete json.skins; json.animations = [];
   for (const n of json.nodes) { delete n.skin; delete n.weights; }          // (the old ones, left out of the scene)
   // Joints: nodes with only a position (their parent's offset).
@@ -443,28 +848,108 @@ export function buildRig(g, shape, kind, J) {
   for (const [clip, secs] of CLIPS[kind]) {
     const n = Math.round(secs * 24) + 1, times = Float32Array.from({ length: n }, (_, i) => secs * i / (n - 1)), input = addAccessor(out, times, 'SCALAR', { min: [0], max: [secs] });
     const rot = Object.fromEntries(list.map(([nm]) => [nm, new Float32Array(n * 4)])), hip = new Float32Array(n * 3);
+    let size = null;
     for (let i = 0; i < n; i++) {
-      const { P, lift } = (kind === 'person' ? personPose : animalPose)(J, clip, i / (n - 1), H), L = localTurns(kind, P);
+      const pose = poseOf(kind, J, clip, i / (n - 1), H, list), L = localTurns(list, pose.P);
       for (const [nm] of list) rot[nm].set(L[nm], i * 4);
-      hip.set(add(J.hips, [0, lift, 0]), i * 3);
+      hip.set(add(J.hips, [0, pose.lift, 0]), i * 3);
+      if (pose.scale) (size ||= new Float32Array(n * 3)).set(pose.scale, i * 3);
     }
     const samplers = [], channels = [];
-    for (const [nm] of list) {
-      samplers.push({ input, output: addAccessor(out, rot[nm], 'VEC4'), interpolation: 'LINEAR' });
-      channels.push({ sampler: samplers.length - 1, target: { node: idx[nm], path: 'rotation' } });
-    }
-    samplers.push({ input, output: addAccessor(out, hip, 'VEC3'), interpolation: 'LINEAR' });
-    channels.push({ sampler: samplers.length - 1, target: { node: idx.hips, path: 'translation' } });
+    const channel = (node, path, output, type) => { samplers.push({ input, output: addAccessor(out, output, type), interpolation: 'LINEAR' }); channels.push({ sampler: samplers.length - 1, target: { node, path } }); };
+    for (const [nm] of list) channel(idx[nm], 'rotation', rot[nm], 'VEC4');
+    channel(idx.hips, 'translation', hip, 'VEC3');
+    if (size) channel(idx.hips, 'scale', size, 'VEC3');
     json.animations.push({ name: clip, samplers, channels });
   }
   return writeGLB(out);
 }
 // A tiny preview of the pose (for tests and the editor): where a joint ends up at time t of a clip.
 export function posedJoints(kind, J, clip, t, H) {
-  const list = SKELETONS[kind], { P, lift } = (kind === 'person' ? personPose : animalPose)(J, clip, t, H), L = localTurns(kind, P), W = {}, pos = {};
+  const list = skeletonOf(kind, J), { P, lift, scale: S } = poseOf(kind, J, clip, t, H, list), L = localTurns(list, P), W = {}, pos = {};
   for (const [name, parent] of list) {
     if (!parent) { W[name] = L[name]; pos[name] = add(J[name], [0, lift, 0]); continue; }
     W[name] = Q.mul(W[parent], L[name]); pos[name] = add(pos[parent], Q.rotate(W[parent], sub(J[name], J[parent])));
   }
+  if (S) {                                                       // (the root's scale, along its own axes)
+    const r = pos.hips, q = W.hips;
+    for (const [name] of list) { const d = Q.rotate(Q.inv(q), sub(pos[name], r)); pos[name] = add(r, Q.rotate(q, [d[0] * S[0], d[1] * S[1], d[2] * S[2]])); }
+  }
   return pos;
+}
+
+// ---- Flat views (to edit the joints, and to show the model to the AI) ------------------------
+// front: x right, y up; side: z right (the head of a model facing +Z), y up; top: x right, z down.
+export const VIEWS = { front: { u: 0, v: 1, sv: 1, depth: 2 }, side: { u: 2, v: 1, sv: 1, depth: 0 }, top: { u: 0, v: 2, sv: -1, depth: 1 } };
+// How a view of the model fits a square of size px (pad: the margin).
+export function projectView(shape, name, size, pad = 30) {
+  const V = VIEWS[name], { min, max } = shape.box, w = max[V.u] - min[V.u] || 1e-6, h = max[V.v] - min[V.v] || 1e-6, k = Math.min((size - pad * 2) / w, (size - pad * 2) / h);
+  return { ...V, name, size, k, ox: size / 2 - k * (min[V.u] + max[V.u]) / 2, oy: size / 2 + V.sv * k * (min[V.v] + max[V.v]) / 2 };
+}
+export const toView = (view, p) => [view.ox + p[view.u] * view.k, view.oy - view.sv * p[view.v] * view.k];
+// The model's triangles in a view, far to near, each with a shade (how much it faces us).
+export function viewTriangles(shape, view) {
+  const tris = [], d = view.depth;
+  for (const { pos, idx } of shape.parts) {
+    if (!idx) continue;
+    for (let i = 0; i < idx.length; i += 3) {
+      const P = [idx[i] * 3, idx[i + 1] * 3, idx[i + 2] * 3].map(o => [pos[o], pos[o + 1], pos[o + 2]]);
+      const n = cross(sub(P[1], P[0]), sub(P[2], P[0])), l = Math.hypot(...n) || 1;
+      tris.push([P.map(p => toView(view, p)), 55 + Math.abs(n[d] / l) * 150 | 0, (P[0][d] + P[1][d] + P[2][d]) / 3]);
+    }
+  }
+  return tris.sort((a, b) => a[2] - b[2]);
+}
+
+// ---- Joints from hints (the AI's), held to the mesh ----------------------------------------
+// The middle of the vertices around p (within r): inside the limb rather than on its skin.
+export function snapToMesh(shape, p, r) {
+  let n = 0; const s = [0, 0, 0];
+  for (const { pos } of shape.parts) for (let k = 0; k < pos.length; k += 3) {
+    const dx = pos[k] - p[0], dy = pos[k + 1] - p[1], dz = pos[k + 2] - p[2];
+    if (dx * dx + dy * dy + dz * dz <= r * r) { n++; s[0] += pos[k]; s[1] += pos[k + 1]; s[2] += pos[k + 2]; }
+  }
+  return n ? lerp(p, scale(s, 1 / n), 0.7) : p;
+}
+// Points marked on the flat views ({ front: { head: [x, y] } }, 0–1 of each picture)
+// → partial positions in the model ({ head: { 0: x, 1: y } }; averaged where views agree).
+export function pointsFromViews(views, marks = {}) {
+  const sum = {};
+  for (const [v, pts] of Object.entries(marks || {})) {
+    const view = views[v]; if (!view || !pts) continue;
+    for (const [name, xy] of Object.entries(pts)) {
+      const sx = xy[0] * view.size, sy = xy[1] * view.size, c = (sum[name] ||= {});
+      for (const [axis, val] of [[view.u, (sx - view.ox) / view.k], [view.v, (view.oy - sy) / (view.sv * view.k)]]) (c[axis] ||= []).push(val);
+    }
+  }
+  return Object.fromEntries(Object.entries(sum).map(([n, c]) => [n, Object.fromEntries(Object.entries(c).map(([a, vals]) => [a, vals.reduce((s, x) => s + x, 0) / vals.length]))]));
+}
+// Landmarks (names the AI knows) → this kind's joints.
+const LANDMARK = {
+  person: { head: 'head', neck: 'neck', hips: 'hips', handL: 'handL', handR: 'handR', footL: 'footL', footR: 'footR' },
+  animal: { head: 'head', neck: 'neck', hips: 'hips', frontFootL: 'pawFL', frontFootR: 'pawFR', backFootL: 'pawBL', backFootR: 'pawBR' },
+  bird: { head: 'head', neck: 'neck', hips: 'hips', footL: 'footL', footR: 'footR', wingTipL: 'wingTipL', wingTipR: 'wingTipR' },
+  fish: { head: 'head', hips: 'hips' }, snake: { head: 'head', hips: 'hips' }, spider: { head: 'head', hips: 'hips' }, octopus: { head: 'head' }, object: {},
+};
+LANDMARK.winged = { ...LANDMARK.animal, wingTipL: 'wingTipL', wingTipR: 'wingTipR' };
+// Move the proposed joints to the hinted points (turn: degrees the model was turned since the
+// hints were made), filling what a hint lacks from the proposal, held inside the mesh.
+export function seedJoints(shape, kind, J, hints = {}, turn = 0) {
+  const out = structuredClone(J), q = Q.axis(Y, turn), r = Math.max(...sub(shape.box.max, shape.box.min)) * 0.06, cx = (shape.box.min[0] + shape.box.max[0]) / 2;
+  const map = { ...LANDMARK[kind] }, chain = kind === 'snake' ? snakeChain(skeletonOf(kind, J)) : null, tails = Object.keys(J).filter(k => /^tail\d+$/.test(k));
+  if (kind === 'snake') map.tailTip = chain[0]; else if (kind === 'fish' && tails.length) map.tailTip = 'tail' + tails.length;
+  const moved = new Set();
+  for (const [mark, name] of Object.entries(map)) {
+    const h = hints[mark]; if (!h || !out[name]) continue;
+    const old = Q.rotate(Q.inv(q), out[name]), p = [0, 1, 2].map(a => (Number.isFinite(h[a]) ? h[a] : old[a]));
+    out[name] = snapToMesh(shape, Q.rotate(q, p), r); moved.add(name);
+  }
+  // One side hinted, not the other: its mirror.
+  for (const name of moved) { const m = mirrorOf(name); if (m && out[m] && !moved.has(m)) out[m] = [2 * cx - out[name][0], out[name][1], out[name][2]]; }
+  // A tail's tip hinted (animals, birds): their tail joint a third of the way there.
+  if (hints.tailTip && /^(animal|winged|bird)$/.test(kind)) {
+    const h = hints.tailTip, old = Q.rotate(Q.inv(q), out.tail), tip = Q.rotate(q, [0, 1, 2].map(a => (Number.isFinite(h[a]) ? h[a] : old[a])));
+    out.tail = lerp(out.hips, tip, 0.35);
+  }
+  return out;
 }
