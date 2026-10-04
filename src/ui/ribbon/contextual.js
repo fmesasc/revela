@@ -34,7 +34,7 @@ import { startMagnifyDraw } from '../canvas/magnifyview.js';
 import * as mag from '../../features/document/magnify.js';
 import { currentPalette } from '../../features/design/palettes.js';
 import { openAddAnimation } from './animadd.js';
-import { openAnimPanel } from '../panels/animation.js';
+import { toggleAnimPane } from '../panels/animation.js';
 import { animsOf, setAnimation, clearAnimation } from '../../features/animation/transitions.js';
 import { playAnimations } from '../canvas/preview.js';
 import { playInEditor } from '../canvas/mediaview.js';
@@ -236,7 +236,7 @@ function groupsFor(b) {
   // Every object: its animations (several, one after another), description, accessibility and arrangement.
   const n = animsOf(b).length;
   G.push(['Animaciones', [btn('add_circle', n ? `${t('Añadir animación')} (${n})` : 'Añadir animación', () => openAddAnimation(document.querySelector('#ribbon [data-page="ctx"] [data-ctx="add"]')), null, 'add'),
-    btn('gesture', 'Dibujar recorrido', () => startPathDraw({ append: true })), btn('tune', 'Panel de animación', () => openAnimPanel())]]);
+    btn('gesture', 'Dibujar recorrido', () => startPathDraw({ append: true })), btn('tune', 'Panel de animación', () => toggleAnimPane())]]);
   // (The link with the alt text and description: one group, not a column for a single button.)
   const linkable = !['text', 'connector'].includes(b.type), described = !['text', 'connector', 'figindex', 'slideref', 'magnify'].includes(b.type);
   G.push([linkable ? 'Vínculo y accesibilidad' : 'Accesibilidad', [...(linkable ? [btn('link', b.href || b.goto ? 'Cambiar vínculo' : 'Vínculo', () => openObjectLink(b), !!(b.href || b.goto), 'link')] : []),
@@ -264,6 +264,7 @@ function magnifyGroups(b) {
     ['Ampliación', [['num', 'Aumento (×)', k, v => mag.setZoom(b.id, v), 1, 12, 0.5],
       btn('auto_awesome_mosaic', 'Colocar automáticamente', () => mag.placeAgain(b.id)),
       btn('swap_horiz', 'Al otro lado', () => mag.swapSide(b.id)),
+      btn('loupe', 'Ampliar una zona de esta lupa', () => startMagnifyDraw({ within: b }), null, 'magnify-again'),
       btn('zoom_in', 'Aparecer con zoom', () => (b.animation?.effect === 'zoom-in' ? clearAnimation() : setAnimation('zoom-in')), b.animation?.effect === 'zoom-in')]]];
 }
 function arrange(b) {

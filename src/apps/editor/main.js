@@ -25,6 +25,7 @@ import { renderComments } from '../../ui/panels/comments.js';
 import { renderReview } from '../../ui/panels/review.js';
 import * as review from '../../features/collab/review.js';
 import { renderSelectionPane } from '../../ui/panels/selection.js';
+import { renderAnimPane } from '../../ui/panels/animation.js';
 import { renderAssistant } from '../../ui/dialogs/assistant.js';
 import * as aiDeck from '../../features/ai/authoring.js';
 import * as aiAgent from '../../features/ai/agent.js';
@@ -113,6 +114,7 @@ function render() {
   renderComments();
   renderReview();
   renderSelectionPane();
+  renderAnimPane();
   renderAssistant();
   const s = document.getElementById('status-slide');
   const ns = store.slideSelCount();

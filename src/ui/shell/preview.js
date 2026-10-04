@@ -98,7 +98,7 @@ export function blockPreview(b, slide) {
 
 // A magnifier: the lines and the area's frame over the slide, the box with the
 // slide's objects under the area enlarged in it (each drawn by `clone`), its frame.
-export function magnifyView(b, slide, clone = null) {
+export function magnifyView(b, slide, clone = null, chain = []) {
   slide ||= state.deck.slides.find(s => s.blocks.some(x => x.id === b.id)) || { blocks: [] };
   const { w: W, h: H } = state.deck.size, accent = currentPalette().accents[0];
   const root = document.createElement('div'); root.className = 'rv-mag'; root.style.cssText = 'position:absolute;inset:0';
@@ -110,7 +110,13 @@ export function magnifyView(b, slide, clone = null) {
   view.style.cssText = `${magViewCSS(b)};width:${W}px;height:${H}px;background:${slide.background || 'transparent'}`;
   const all = [...(slide.id ? masterBlocksFor(slide) : []), ...slide.blocks.map(x => (slide.id ? styled(x, slide) : x))];
   // (As in the presentation: no copies of live objects — web pages, polls, cameras, timers, sounds, zooms.)
-  for (const o of underArea(all, viewOf(b)).filter(x => !MAG_SKIP.includes(x.type))) view.appendChild(clone ? clone(o, slide) : blockPreview(o, slide));
+  for (const o of underArea(all, viewOf(b), [...chain, b.id]).filter(x => !MAG_SKIP.includes(x.type))) {
+    if (o.type !== 'magnify') { view.appendChild(clone ? clone(o, slide) : blockPreview(o, slide)); continue; }
+    // Another magnifier: its box (without its lines), enlarged in turn.
+    const sub = magnifyView(o, slide, clone, [...chain, b.id]), at = document.createElement('div');
+    sub.querySelector('.rv-mag-lines').remove(); at.style.cssText = `position:absolute;left:${o.x}px;top:${o.y}px;width:${o.w}px;height:${o.h}px`;
+    at.appendChild(sub); view.appendChild(at);
+  }
   inset.appendChild(view);
   const frame = document.createElement('div'); frame.className = 'rv-mag-fr'; frame.style.cssText = 'position:absolute;inset:0;pointer-events:none';
   frame.innerHTML = magFrameSVG(b, accent);

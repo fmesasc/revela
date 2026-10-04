@@ -72,7 +72,7 @@ import { toast, withProgress } from '../shell/toast.js';
 import { openShortcuts } from '../dialogs/shortcuts.js';
 import { openReport } from '../dialogs/report.js';
 import { openHeaderFooter } from '../dialogs/headerfooter.js';
-import { openAnimPanel } from '../panels/animation.js';
+import { toggleAnimPane } from '../panels/animation.js';
 import { setZoom, fitZoom } from './zoom.js';
 import { setNavHidden } from '../shell/navigator.js';
 import { AI_ACTIONS } from '../dialogs/ai.js';
@@ -246,7 +246,7 @@ export const ACTIONS = {
   'shortcuts': () => openShortcuts(),
   'report-problem': () => openReport(),
   'insert-hf': () => openHeaderFooter(),
-  'anim-panel': () => openAnimPanel(),
+  'anim-panel': () => toggleAnimPane(),
   'anim-play': () => playAnimations(),
   'draw-path': () => startPathDraw(),
   'anim-add': () => openAddAnimation(document.querySelector('[data-action="anim-add"]')),

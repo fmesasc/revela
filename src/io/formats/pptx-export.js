@@ -139,7 +139,7 @@ export function pictureFrame(b, nw, nh) {
 // picture, cropped by PowerPoint itself (srcRect), as its box.
 const slideBlocks = (s, deck) => (s.id === 'master' ? s.blocks : [...masterBlocksFor(s, deck), ...s.blocks.map(b => styled(b, s, deck))]);
 function magCrop(b, blocks) {
-  const v = viewOf(b), img = targetImage(blocks, v), under = underArea(blocks, v);
+  const v = viewOf(b), img = targetImage(blocks, v), under = underArea(blocks, v, [b.id]);   // (another magnifier on the picture: a picture of both)
   if (!img || under.at(-1)?.id !== img.id) return null;
   const nat = picSizes.get(img.id), src = nat && imageCrop(img, v, nat[0], nat[1]);
   return src ? { img, src } : null;

@@ -7,6 +7,8 @@
 // part of it that is, and the SVG of the frames and lines.
 // Limits: a copy is still — 3D models and videos show their picture; web
 // pages, polls, live cameras, timers, sounds and slide zooms aren't copied.
+// Another magnifier's box under the area shows enlarged too (a zoom of the zoom),
+// up to MAG_DEPTH deep, and never one that is enlarging this one.
 
 import { state, commit, currentSlide, setSelection } from '../../core/store.js';
 import { magnifyBlock } from '../../core/model.js';
@@ -14,7 +16,8 @@ import { isEmptyPlaceholder } from './master.js';
 
 export const MAG_RED = '#e53935';
 // What isn't copied into the box (live objects; see above).
-export const MAG_SKIP = ['slideref', 'figindex', 'poll', 'camera', 'timer', 'audio', 'embed', 'magnify'];
+export const MAG_SKIP = ['slideref', 'figindex', 'poll', 'camera', 'timer', 'audio', 'embed'];
+export const MAG_DEPTH = 3;
 export const MAG_COLORS = [['#e53935', 'Rojo'], ['#fdd835', 'Amarillo'], ['accent', 'Color de acento'], ['#ffffff', 'Blanco'], ['#000000', 'Negro']];
 export const MAG_LINES = [['corners', 'Esquinas'], ['center', 'Desde el centro'], ['none', 'Sin líneas']];
 const MARGIN = 20, GAP = 24;                      // from the slide's edges; between the area and its box
@@ -109,7 +112,10 @@ export const magInsetCSS = b => { const st = magStyle(b); return `position:absol
 export const magOrigin = b => { const v = viewOf(b); return `${Math.round(v.x + v.w / 2 - b.x)}px ${Math.round(v.y + v.h / 2 - b.y)}px`; };
 
 // The slide's objects that show in the area (in their order), not other magnifiers.
-export const underArea = (blocks, rect) => blocks.filter(o => o.type !== 'magnify' && !o.hidden && !isEmptyPlaceholder(o) && o.w > 0 && o.h > 0 && overlaps(o, rect));
+// chain: the magnifiers being shown, the outer first (b itself last). Without it, no magnifiers;
+// with it, the other magnifiers' boxes under the area too, while not deeper than MAG_DEPTH.
+export const underArea = (blocks, rect, chain = null) => blocks.filter(o => (o.type !== 'magnify' || (chain && chain.length < MAG_DEPTH && !chain.includes(o.id)))
+  && !o.hidden && !isEmptyPlaceholder(o) && o.w > 0 && o.h > 0 && overlaps(o, rect));
 // The picture under the area: the topmost one that covers most of it.
 export function targetImage(blocks, rect) {
   let best = null, most = 0;

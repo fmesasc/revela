@@ -364,6 +364,36 @@ export function moveAnimForId(id, dir, i = 0) {
     normalizeAnim();
   });
 }
+// Several animations (the objects themselves, as animEntries gives them) moved together, in their
+// order, to a place among the others: to = how many of the others go before them (the Animation pane's drag).
+export function moveAnims(anims, to) {
+  commit(() => {
+    const list = animEntries().map(e => e.a), moving = list.filter(a => anims.includes(a)), rest = list.filter(a => !anims.includes(a));
+    if (!moving.length) return;
+    rest.splice(Math.max(0, Math.min(rest.length, to)), 0, ...moving);
+    rest.forEach((a, n) => { a.seq = n + 1; });
+    normalizeAnim();
+  });
+}
+// Where those animations are now: how many of the others go before the first of them.
+export const animSlot = anims => { const list = animEntries().map(e => e.a), at = list.findIndex(a => anims.includes(a));
+  return at < 0 ? 0 : list.slice(0, at).filter(a => !anims.includes(a)).length; };
+// One property, the same value, on several animations at once (one undo step).
+export function setAnimsProp(anims, prop, value) {
+  if (!anims.length) return;
+  commit(() => { anims.forEach(a => applyAnimProp(a, prop, value)); normalizeAnim(); });
+}
+// Several animations removed at once.
+export function clearAnims(anims) {
+  commit(() => {
+    for (const { b, a, i } of animEntries().filter(e => anims.includes(e.a)).reverse()) {
+      if (animsOf(b)[i] !== a) continue;
+      if (i === 0) b.animation = b.anims?.shift() || null; else b.anims?.splice(i - 1, 1);
+      if (!b.anims?.length) delete b.anims;
+    }
+    normalizeAnim();
+  });
+}
 export function clearAnimationForId(id, i = 0) {
   const b = byId(id); if (!b) return;
   commit(() => {

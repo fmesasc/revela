@@ -652,6 +652,32 @@ body.file-drag::after{content:attr(data-drop-hint);position:fixed;left:50%;botto
 /* Hidden objects: not on the slide; while selected in the pane, a faint outline of where they are. */
 .block.is-hidden{display:none}
 .block.is-hidden.selected{display:block;opacity:.3;outline:1px dashed var(--accent)}
+/* Animation pane: beside the slide. Short rows (step, how it starts, kind, object and effect, when it plays), the details below. */
+#anim-pane{width:300px;flex-shrink:0;background:var(--panel);border-inline-start:1px solid var(--line2);overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+#anim-pane .sp-tools button:disabled{opacity:.4;cursor:default}
+.an-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.an-list .an-row{display:grid;grid-template-columns:18px 18px 18px minmax(0,1fr) 54px 16px;align-items:center;gap:4px;padding:4px 6px;border-radius:6px;cursor:pointer;font-size:12.5px;border:1px solid transparent;user-select:none}
+.an-list .an-row:hover{background:var(--bg)}.an-list .an-row.on{background:var(--accent-bg);border-color:var(--accent)}
+.an-list .an-row.cur{box-shadow:inset 3px 0 0 var(--accent)}.an-list .an-row.dragging{opacity:.45}
+.an-list .an-row:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.an-list .an-row[data-drop=above]{box-shadow:0 -2px 0 var(--accent)}.an-list .an-row[data-drop=below]{box-shadow:0 2px 0 var(--accent)}
+.an-n{font-weight:700;font-size:11px;text-align:center;color:var(--txt2)}.an-n .ms,.an-start,.an-kind{font-size:16px;color:var(--txt2)}
+.an-kind.k-entrance{color:#2e9d4b}.an-kind.k-emphasis{color:#d4a017}.an-kind.k-exit{color:#d64545}.an-kind.k-path{color:#3a78d8}
+.an-name{min-width:0;display:flex;flex-direction:column;line-height:1.2}.an-name b,.an-name small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.an-name b{font-weight:600}.an-name small{color:var(--txt2);font-size:11px}
+.an-bar{position:relative;height:8px;background:var(--bg);border-radius:4px;overflow:hidden}.an-bar i{position:absolute;top:0;bottom:0;background:var(--accent);border-radius:4px;opacity:.75}
+.an-x{border:none;background:none;color:inherit;cursor:pointer;padding:0;opacity:0;font-size:12px}.an-row:hover .an-x,.an-row:focus-within .an-x{opacity:.6}.an-x:hover{opacity:1!important}
+.an-detail{border-top:1px solid var(--line2);padding-top:8px}
+.an-detail .an-title{font-weight:600;margin-bottom:6px;font-size:13px}
+.an-detail .an-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.an-detail .an-grid label{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--txt2);min-width:0}
+.an-detail .an-grid select,.an-detail .an-grid input{border:1px solid var(--line2);border-radius:6px;padding:4px;font-family:inherit;font-size:12.5px;color:var(--txt);background:var(--panel);min-width:0}
+.an-detail .an-snd{display:flex;gap:4px}.an-detail .an-snd select{flex:1}
+.an-detail .an-actions{margin-top:8px}.an-detail .an-actions button{border:1px solid var(--line2);background:var(--panel);border-radius:6px;cursor:pointer;padding:4px 8px;color:var(--txt);display:flex;align-items:center;gap:4px;font-size:12px}
+.an-detail .an-actions .ms{font-size:16px}
+/* The object of the row under the pointer, on the slide. */
+.block.anim-hover{outline:2px dashed var(--accent);outline-offset:3px}
+@media (max-width:760px){#anim-pane{width:auto;max-height:45vh;border-inline-start:none;border-top:1px solid var(--line2)}}
 @media (max-width:760px){#selection-panel{width:auto;max-height:45vh;border-inline-start:none;border-top:1px solid var(--line2)}}
 /* How to add a PDF. */
 .pdf-modes{display:flex;flex-direction:column;gap:8px}

@@ -28,9 +28,9 @@ const liveSig = under => under.filter(o => o.type === 'math' || o.type === 'code
 export function paintMagnify(el, b) {
   const d = el.querySelector(':scope > .magnify'); if (!d) return;
   const slide = currentSlide(), { w: W, h: H } = state.deck.size, accent = currentPalette().accents[0];
-  const all = [...masterBlocksFor(slide), ...slide.blocks.map(x => styled(x, slide))], under = underArea(all, viewOf(b));
+  const all = [...masterBlocksFor(slide), ...slide.blocks.map(x => styled(x, slide))], under = underArea(all, viewOf(b), [b.id]);
   // What it shows changes with the objects under the area (and the slide's background); where and how big, every time.
-  const sig = shortSig([slide.background, under, liveSig(under), W, H]);
+  const sig = shortSig([slide.background, under, liveSig(under), W, H, under.filter(o => o.type === 'magnify').map(o => underArea(all, viewOf(o), [b.id, o.id]))]);
   if (d.dataset.sig !== sig || !d.querySelector('.rv-mag')) {
     d.dataset.sig = sig;
     d.replaceChildren(magnifyView(b, slide, cloneOf), handles());

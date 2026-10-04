@@ -243,6 +243,7 @@ function forBlock(b, cell = null) {
     items.push(
       ['Colocar automáticamente', () => mag.placeAgain(b.id)],
       ['Al otro lado', () => mag.swapSide(b.id)],
+      ['Ampliar una zona de esta lupa', () => startMagnifyDraw({ within: b })],
       [b.lines === 'none' ? 'Mostrar las líneas' : 'Quitar las líneas', () => commit(() => { b.lines = b.lines === 'none' ? 'corners' : 'none'; })], null);
   } else if (b.type === 'slideref') {
     items.push(

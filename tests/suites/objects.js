@@ -2536,6 +2536,27 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/<a:srgbClr val="E53935"/.test(xml), 'en rojo');
   });
 
+  await test('lupa de una lupa: el recuadro de la otra se ve ampliado (editor, presentación), sin bucles', async () => {
+    reset(); const M = await magMod();
+    const t = slide().blocks[0]; R.store.commit(() => { t.html = 'Detalle pequeño'; });
+    const a = M.addMagnify({ x: t.x, y: t.y, w: 160, h: 90 }); R.render(); await sleep(20);
+    // Desde la pestaña de la lupa: una zona de su recuadro.
+    R.store.commit(() => R.store.setSelection(a.id), { history: false }); await sleep(20); D.querySelector('[data-tab="ctx"]').click(); await sleep(40);
+    D.querySelector('#ribbon [data-page="ctx"] [data-ctx="magnify-again"]').click(); await sleep(10);
+    drag(D.querySelector('#stage .mag-draw'), ...scr(a.x + 10, a.y + 10), ...scr(a.x + a.w / 2, a.y + a.h / 2)); await sleep(30);
+    const b = last(); eq(b.type, 'magnify', 'otra lupa');
+    assert(b.source.x >= a.x - 1 && b.source.x + b.source.w <= a.x + a.w + 1, 'su zona, dentro del recuadro de la primera');
+    R.render(); await sleep(20);
+    const inner = D.querySelector(`#stage .block[data-id="${b.id}"] .rv-mag-view .rv-mag-view`);
+    assert(inner && /Detalle pequeño/.test(inner.textContent), 'en el editor, la primera lupa dentro de la segunda');
+    const html = R.io.buildHTML(), at = html.indexOf(`data-bid="${b.id}"`) >= 0 ? html.indexOf(`data-bid="${b.id}"`) : html.lastIndexOf('class="rv-mag"');
+    eq((html.slice(at).match(/class="rv-mag-in"/g) || []).length >= 2, true, 'en la presentación, también anidada');
+    // Una lupa que se amplía a sí misma (las dos zonas sobre el otro recuadro) no se repite sin fin.
+    R.store.commit(() => { a.source = { x: b.x, y: b.y, w: b.w / 2, h: b.h / 2 }; }); R.render(); await sleep(20);
+    assert(R.io.buildHTML().length < 2e6, 'sin bucles');
+    D.querySelector('[data-tab="home"]').click();
+  });
+
   await test('lupa: «Ampliar una zona de la imagen» desde la imagen (la zona se queda en ella)', async () => {
     reset(); R.store.commit(() => { slide().blocks = [{ id: 'pic', type: 'image', src: PIC, x: 200, y: 200, w: 400, h: 225, fit: 'cover', rotation: 0, animation: null }]; R.state.ui.selection = 'pic'; R.state.ui.multi = ['pic']; });
     R.render(); await sleep(20); D.querySelector('[data-tab="ctx"]').click(); await sleep(40);

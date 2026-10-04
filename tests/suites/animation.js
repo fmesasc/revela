@@ -155,14 +155,14 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { f.remove(); }
     // The panel: one row per animation; moving and removing one.
     D.querySelector('[data-action="anim-panel"]').click(); await sleep(20);
-    const rows = () => [...D.querySelectorAll('#anim-modal .an-row')];
+    const rows = () => [...D.querySelectorAll('#anim-pane .an-row')];
     eq(rows().length, 4, 'una fila por animación');
-    assert(/animación 2\/4/.test(rows()[1].textContent), 'se ve cuál es de cada objeto');
-    rows()[3].querySelector('[data-move="-1"]').click(); await sleep(10);
+    assert(/2\/4/.test(rows()[1].textContent), 'se ve cuál es de cada objeto');
+    rows()[3].click(); await sleep(10); D.querySelector('#anim-pane [data-shift="-1"]').click(); await sleep(10);
     eq(x().anims.map(a => a.effect).join(), 'path,spin360,path', 'se reordenan');
     rows()[2].querySelector('[data-remove]').click(); await sleep(10);
     eq(x().anims.map(a => a.effect).join(), 'path,path', 'se quita una sola');
-    D.querySelector('#anim-modal .modal-close').click();
+    D.querySelector('#anim-pane .cm-close').click();
     // The palette: a 3D model's own clips as steps.
     D.querySelector('[data-action="anim-add"]').click(); await sleep(10);
     const menu = D.getElementById('anim-add-menu');
@@ -505,15 +505,58 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!slide().morphBy, 'volver a objetos desde la cinta');
   });
 
+  await test('panel de animación: al lado de la diapositiva, varias a la vez, se arrastran juntas y se cambian juntas', async () => {
+    reset(); R.slides.addSlide('blank'); await sleep(10);
+    for (let k = 0; k < 4; k++) R.blocks.addShape('rect');
+    const bs = slide().blocks;
+    for (const b of bs) { select(b); R.trans.setAnimation('fade-in'); }
+    const W = frame.contentWindow, rows = () => [...D.querySelectorAll('#anim-pane .an-row')], ids = () => rows().map(r => r.dataset.id).join();
+    D.querySelector('[data-action="anim-panel"]').click(); await sleep(30);
+    const pane = D.getElementById('anim-pane'), st = D.getElementById('canvas-wrap').getBoundingClientRect(), pr = pane.getBoundingClientRect();
+    assert(pane && !D.querySelector('.modal-backdrop'), 'un panel, no una ventana encima');
+    assert(pr.left >= st.right - 1 || pr.top >= st.bottom - 1, 'no tapa la diapositiva');
+    eq(rows().length, 4, 'una fila por animación');
+    // Pasar por encima de una fila marca su objeto en la diapositiva.
+    rows()[2].dispatchEvent(new W.MouseEvent('mouseenter'));
+    assert(D.querySelector(`#stage .block[data-id="${bs[2].id}"]`).classList.contains('anim-hover'), 'se ve qué objeto es');
+    rows()[2].dispatchEvent(new W.MouseEvent('mouseleave'));
+    // Clic: elige y selecciona su objeto; Ctrl: varias.
+    rows()[0].click(); await sleep(10);
+    eq(R.state.ui.selection, bs[0].id, 'selecciona el objeto');
+    rows()[2].dispatchEvent(new W.MouseEvent('click', { bubbles: true, ctrlKey: true })); await sleep(10);
+    eq(rows().filter(r => r.classList.contains('on')).length, 2, 'dos elegidas');
+    assert(R.store.isSelected(bs[0].id) && R.store.isSelected(bs[2].id), 'y sus dos objetos');
+    // Cambiar a la vez.
+    const dur = D.querySelector('#anim-pane .an-detail [data-p="duration"]'); dur.value = '1200'; dur.dispatchEvent(new W.Event('change')); await sleep(10);
+    eq([bs[0], bs[1], bs[2]].map(b => b.animation.duration).join(), '1200,500,1200', 'la duración, en las dos');
+    // Bajar las dos juntas.
+    D.querySelector('#anim-pane [data-shift="1"]').click(); await sleep(10);
+    eq(ids(), [bs[1], bs[0], bs[2], bs[3]].map(b => b.id).join(), 'bajan juntas, seguidas');
+    R.store.undo(); await sleep(10); eq(ids(), bs.map(b => b.id).join(), 'un paso de deshacer');
+    // Arrastrar las elegidas detrás de la última.
+    rows()[0].click(); await sleep(10); rows()[1].dispatchEvent(new W.MouseEvent('click', { bubbles: true, shiftKey: true })); await sleep(10);
+    const dt = new W.DataTransfer(), last = rows()[3], r = last.getBoundingClientRect();
+    rows()[0].dispatchEvent(new W.DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+    last.dispatchEvent(new W.DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt, clientY: r.bottom - 2 }));
+    last.dispatchEvent(new W.DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }));
+    await sleep(10);
+    eq(ids(), [bs[2], bs[3], bs[0], bs[1]].map(b => b.id).join(), 'arrastradas juntas al final');
+    // Quitar las elegidas.
+    D.querySelector('#anim-pane .an-del').click(); await sleep(10);
+    eq(rows().length, 2, 'quitadas las dos'); const now = id => slide().blocks.find(b => b.id === id); assert(!now(bs[0].id).animation && !now(bs[1].id).animation && now(bs[2].id).animation, 'de sus objetos');
+    D.querySelector('#anim-pane .cm-close').click(); await sleep(10);
+    assert(!D.getElementById('anim-pane'), 'se cierra');
+  });
+
   await test('sonido en las animaciones: elegido en el panel, suena al presentar', async () => {
     reset(); const b = slide().blocks[0]; select(b); R.trans.setAnimation('fade-in');
     D.querySelector('[data-action="anim-panel"]').click(); await sleep(20);
-    const sel = D.querySelector('#anim-modal [data-p="sound"]');
+    const sel = D.querySelector('#anim-pane .an-detail [data-p="sound"]');
     assert(sel && [...sel.options].some(o => o.value === 'applause'), 'selector con sonidos');
     sel.value = 'chime'; sel.dispatchEvent(new frame.contentWindow.Event('change')); await sleep(20);
     eq(b.animation.sound, 'chime');
-    assert(!D.querySelector('#anim-modal .an-hear').disabled, 'se puede escuchar');
-    D.querySelector('#anim-modal .modal-close').click();
+    assert(!D.querySelector('#anim-pane .an-hear').disabled, 'se puede escuchar');
+    D.querySelector('#anim-pane .cm-close').click();
     const html = R.io.buildHTML();
     assert(/data-sound="chime"/.test(html) && /AudioContext/.test(html), 'en el export, con su sintetizador');
     R.trans.setAnimPropForId(b.id, 'sound', '');
@@ -544,9 +587,10 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     R.trans.addAnimation('pdfview', { page: 2, zx: 0.25, zy: 0.25, zs: 2, duration: 300, start: 'click' });
     // In the animation panel: page, zoom and "choose the part".
     D.querySelector('[data-action="anim-panel"]').click(); await sleep(20);
-    const row = D.querySelector('#anim-modal .an-row[data-i="1"]');
+    D.querySelector('#anim-pane .an-row[data-i="1"]').click(); await sleep(20);
+    const row = D.querySelector('#anim-pane .an-detail');
     assert(row.querySelector('[data-pdf-p="page"]').value === '2' && row.querySelector('[data-pdf-p="zs"]').value === '2' && row.querySelector('.an-zone'), 'en el panel');
-    D.querySelector('#anim-modal .modal-close').click();
+    D.querySelector('#anim-pane .cm-close').click();
     const F = await W.eval("import('/src/features/content/files.js')");
     const z = F.zoomForRect(800, 500, 4 / 3, { x: 0, y: 0, w: 0.5, h: 0.5 }); eq([z.zx, z.zy, z.zs].join(), '0.25,0.25,2', 'la zona marcada, como zoom');
     const html = R.io.buildHTML();
@@ -642,10 +686,10 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(rb('[data-anim-duration]').value, '1.5', 'muestra la primera'); assert(rb('[data-animation="zoom-in"]').classList.contains('on'), 'y su efecto');
     // The Animation pane chooses it too.
     rb('[data-action="anim-panel"]').click(); await sleep(30);
-    const rows = D.querySelectorAll('#anim-modal .an-row'); assert(rows[0].classList.contains('cur'), 'en el panel, la que se edita');
+    const rows = D.querySelectorAll('#anim-pane .an-row'); assert(rows[0].classList.contains('cur'), 'en el panel, la que se edita');
     rows[1].click(); await sleep(20);
     eq(R.state.ui.animEdit.i, 1, 'elegir una fila del panel la muestra en la cinta'); eq(rb('[data-anim-duration]').value, '0.8');
-    D.querySelector('#anim-modal .modal-close').click(); await sleep(10);
+    D.querySelector('#anim-pane .cm-close').click(); await sleep(10);
     // Another object, not animated: nothing marked.
     R.store.commit(() => R.store.setSelection(b.id), { history: false }); await sleep(10);
     assert(!D.querySelector('#ribbon [data-animation].on') && rb('[data-anim-start]').disabled, 'otro objeto sin animación: nada marcado');

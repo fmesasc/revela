@@ -374,8 +374,10 @@ function magnifyHTML(b, slide, a = '', deck = state.deck) {
 // animations, links or live parts), scaled. Web pages, polls, cameras, timers,
 // sounds and slide zooms are left out; 3D models and videos show their picture.
 const STILL = { animation: null, anims: null, morphId: null, href: null, goto: null, decorative: true, zoomable: false, dataUrl: null, refreshMin: null, oneByOne: false, lineSteps: null };
-function magCloneHTML(o, slide) {
+function magCloneHTML(o, slide, deck, chain) {
   if (MAG_SKIP.includes(o.type)) return '';
+  // Another magnifier: its box as it is (what it enlarges, and its frame), enlarged in turn.
+  if (o.type === 'magnify') return `<div style="${box({ ...o, ...STILL })}">${magnifyInsetHTML(o, slide, deck, chain)}<div style="position:absolute;inset:0;pointer-events:none">${magFrameSVG(o, currentPalette(deck).accents[0])}</div></div>`;
   const pic = src => (src && safeURL(src) ? `<img src="${esc(src)}" alt="" style="${box({ ...o, ...STILL })}object-fit:contain">` : '');
   if (o.type === 'model') return pic(o.poster);
   if (o.type === 'video') return pic(o.poster) || `<div style="${box({ ...o, ...STILL })}background:#000"></div>`;
@@ -385,11 +387,11 @@ function magCloneHTML(o, slide) {
   if (needsPlayer(o)) return '';
   return blockHTML({ ...o, ...STILL }, slide).replace(/ data-bid="[^"]*"/g, '');
 }
-export function magnifyInsetHTML(b, slide, deck = state.deck) {
-  const { w: W, h: H } = deck.size;
-  const under = slide ? underArea(blocksOf(slide, deck), viewOf(b)) : [];
+export function magnifyInsetHTML(b, slide, deck = state.deck, chain = []) {
+  const { w: W, h: H } = deck.size, ch = [...chain, b.id];
+  const under = slide ? underArea(blocksOf(slide, deck), viewOf(b), ch) : [];
   return `<div class="rv-mag-in" style="${magInsetCSS(b)}"><div aria-hidden="true" style="${magViewCSS(b)};width:${W}px;height:${H}px;background:${slide ? stageBackground(slide) : 'transparent'}">`
-    + `${slide ? bgLayer(slide) : ''}${under.map(o => magCloneHTML(o, slide)).join('')}</div></div>`;
+    + `${slide ? bgLayer(slide) : ''}${under.map(o => magCloneHTML(o, slide, deck, ch)).join('')}</div></div>`;
 }
 
 function figIndexExport(b, deck) {

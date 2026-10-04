@@ -381,6 +381,7 @@ export function renderRibbon() {
   $('[data-action="mark-final"]')?.classList.toggle('on', protect.isFinal());
   $('[data-action="classroom"]')?.classList.toggle('on', !!state.deck.classroom);
   document.querySelectorAll('[data-action="selection-pane"]').forEach(b => b.classList.toggle('on', !!state.ui.showSelection));
+  document.querySelectorAll('[data-action="anim-panel"]').forEach(b => b.classList.toggle('on', !!state.ui.showAnim));
   // My open tasks (comments assigned to me), counted on the Comments button.
   { const n = author() ? tasksOf({ who: author() }).length : 0;
     document.querySelectorAll('[data-action="comments"]').forEach(b => {
