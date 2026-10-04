@@ -60,6 +60,18 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(el().querySelector('img').style.objectFit, 'fill', 'y se ve estirada');
   });
 
+  await test('imagen que ya estaba en un cuadro de otra proporción: al seleccionarla, el cuadro se ajusta a la imagen', async () => {
+    reset();
+    R.store.commit(() => { slide().blocks.push({ id: 'pic', type: 'image', fit: 'contain', x: 100, y: 100, w: 400, h: 400, rotation: 0, animation: null,
+      src: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAIAAADwyuo0AAAAEElEQVR4nGP4z8AARwzIHABvqgf5gNwAKAAAAABJRU5ErkJggg==' }); });
+    const b = slide().blocks.at(-1); R.render(); await sleep(60);
+    eq(b.w + '×' + b.h, '400×400', 'sin seleccionar: como estaba');
+    R.store.setSelection(b.id); R.render(); await sleep(80);
+    eq(`${b.x},${b.y} ${b.w}×${b.h}`, '100,200 400×200', 'seleccionada: el cuadro es el de la imagen 2:1, en el mismo sitio');
+    R.store.commit(() => { b.fit = 'cover'; b.w = 300; b.h = 300; }); R.render(); await sleep(60);
+    eq(b.w + '×' + b.h, '300×300', 'recortada («Rellenar»): no se toca');
+  });
+
   await test('Ctrl+Z deshace lo que se mueve, se redimensiona o se escribe (un paso por gesto)', async () => {
     reset(); const W = frame.contentWindow;
     const key = (k, o = {}) => D.dispatchEvent(new W.KeyboardEvent('keydown', { key: k, ctrlKey: true, bubbles: true, ...o }));

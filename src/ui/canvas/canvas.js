@@ -95,6 +95,7 @@ export function renderCanvas() {
   drawMasterLayer();
   drawBgMedia(slide);
   sideHandles();
+  fitPictureBox();
   syncCameras(stage);
   syncPuppet(stage, slide);
   // Screen readers: name the slide and announce the selected object.
@@ -112,6 +113,19 @@ function sideHandles() {
     const r = el.getBoundingClientRect(), k = hd.getBoundingClientRect().width * 3.5;
     el.classList.toggle('thin-h', r.height < k); el.classList.toggle('thin-w', r.width < k);
   }
+}
+
+// A whole picture ("contain") in a box of another proportion shows bands around it, and its
+// handles stand off its edges: selected, the box takes the picture's own shape (what shows
+// doesn't change, only the box). Once the picture has loaded; not cropped, framed or deformed ones.
+function fitPictureBox() {
+  const b = selectedBlock();
+  if (!b || b.type !== 'image' || (b.fit || 'contain') !== 'contain' || b.device || b.crop || b.locked || state.ui.lock || state.deck.final) return;
+  const img = stage.querySelector(`.block[data-id="${b.id}"] img`); if (!img) return;
+  if (!img.complete || !img.naturalWidth) { img.addEventListener('load', () => { if (selectedBlock() === b) fitPictureBox(); }, { once: true }); return; }
+  const r = img.naturalWidth / img.naturalHeight; if (!(r > 0) || !(b.w > 0 && b.h > 0) || Math.abs(b.w / b.h - r) / r < 0.01) return;
+  const w = Math.round(Math.min(b.w, b.h * r)), h = Math.round(w / r);
+  commit(() => { Object.assign(b, { x: Math.round(b.x + (b.w - w) / 2), y: Math.round(b.y + (b.h - h) / 2), w, h }); }, { history: false });
 }
 
 // Video / web page / translucent image behind the slide (Design ▸ Format background).
