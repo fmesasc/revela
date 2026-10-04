@@ -491,6 +491,8 @@ function revealOptions(deck, inApp) {
 export function buildHTML(deck = state.deck, opts = {}) {
   return dedupeMedia(buildHTMLRaw(deck, opts));
 }
+// (Reveal is set to fill the screen as the editor shows the slide: no margin, and no cap on how far it
+// grows — reveal.js stops at 2× by default, which left wide borders on large or high-resolution screens.)
 function buildHTMLRaw(deck, { inApp = false, selfPaced = false } = {}) {
   const { w, h } = deck.size;
   const figMap = figuresMap(deck);
@@ -610,7 +612,7 @@ ${rv(deck).zoom !== false ? `<script src="${REVEAL}/plugin/zoom/zoom.js"></scrip
 ${rv(deck).search !== false ? `<script src="${REVEAL}/plugin/search/search.js"></script>` : ''}
 ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : ''}
 <script>
- Reveal.initialize({ width:${w}, height:${h}, margin:0.03, hash:${inApp ? 'false' : 'true'}, respondToHashChanges:true, loop:${deck.loop ? 'true' : 'false'},
+ Reveal.initialize({ width:${w}, height:${h}, margin:0, minScale:0.05, maxScale:20, hash:${inApp ? 'false' : 'true'}, respondToHashChanges:true, loop:${deck.loop ? 'true' : 'false'},
    slideNumber:${sn.show ? jsData(sn.format || 'c') : 'false'},
    transition:${jsData(deck.defaultTransition)}, transitionSpeed:${jsData(deck.transitionSpeed)},
    ${revealOptions(deck, inApp)}${canvas ? " center:false, viewDistance:1000, mobileViewDistance:1000, backgroundTransition:'none'," : ''}
