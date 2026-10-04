@@ -25,11 +25,13 @@ import { modelAttrsHTML, bleedBox, edgeCSS } from '../../features/content/model3
 import { model3dRuntime } from '../runtime/model3d.js';
 import { puppetBones, puppetMorph, puppetSolve, puppetMirror, createPuppet, revelaPuppetRuntime } from '../runtime/puppet.js';
 import { timerRuntime } from '../runtime/timer.js';
+import { screenFitRuntime } from '../runtime/screenfit.js';
+import { fitMode, fitSize, adaptLayout } from '../../features/design/screenfit.js';
 import { soundRuntime } from '../runtime/sounds.js';
 import { safeURL } from '../../features/document/sanitize.js';
 import { canvasRuntimeDeps } from '../runtime/canvas.js';
 import { canvasOn, frameOf } from '../../features/design/canvasmode.js';
-import { shadowCSS, borderCSS, levelCSS, textPadding, webCardHTML, mathTeX, mathCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, curvedTextSVG, deviceCSS, shapeTextHTML, hasShapeText, wrapFor, wrapAttrs, wrapVars, WRAP_CSS, tableClass, tableVars, tableCSS, fileIconHTML, imgFocus } from '../../render/svg.js';
+import { shadowCSS, borderCSS, levelCSS, textPadding, webCardHTML, mathTeX, mathCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, connectorPath, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, curvedTextSVG, deviceCSS, shapeTextHTML, hasShapeText, wrapFor, wrapAttrs, wrapVars, WRAP_CSS, tableClass, tableVars, tableCSS, fileIconHTML, imgFocus } from '../../render/svg.js';
 import { googleFontLinks } from '../../features/design/fonts.js';
 import { t, speechLang, currentLang } from '../../i18n/index.js';
 import { sizeText } from '../../features/content/files.js';
@@ -416,7 +418,27 @@ export const stageBackground = s => (s.bgVideo || s.bgIframe || (s.bgOpacity ?? 
 export const bgLayer = s => ((s.bgOpacity ?? 100) < 100 && !s.bgVideo && !s.bgIframe
   ? `<div style="position:absolute;inset:0;background:${s.background};opacity:${s.bgOpacity / 100};pointer-events:none"></div>` : '');
 
-function slideHTML(s, deck, figMap, plan = morphPlan(deck)) {
+// On a screen of another proportion (features/design/screenfit.js): what the
+// bands show of the slide's background — its gradient (g) or picture (i)
+// carried out to the screen's edges; a video or web page (m) stays boxed.
+function fillAttrs(s, fit) {
+  if (fit === 'bands') return '';
+  if (s.bgVideo || s.bgIframe) return ' data-fill="m"';
+  const bg = String(s.background || '');
+  const kind = /url\(/i.test(bg) ? 'i' : /gradient\(/i.test(bg) ? 'g' : '';
+  return kind ? ` data-fill="${kind}"` : '';             // (the background itself: the stage's, not a second copy)
+}
+// Adapting to the screen: each object says what it is and where (in slide
+// pixels), for io/runtime/screenfit.js to lay it out again.
+function fitAttrs(html, b) {
+  const kind = b.type === 'connector' ? 'conn' : b.type === 'text' && !b.vertical ? 'text' : '';
+  const at = ` data-fid="${esc(b.id)}" data-fb="${[b.x, b.y, b.w, b.h].map(v => +(+v || 0).toFixed(2)).join(',')}"`
+    + (kind ? ` data-fx="${kind}"` : '') + (b.groupId ? ` data-fg="${esc(b.groupId)}"` : '')
+    + (kind === 'conn' ? ` data-fc="${esc(`${b.from} ${b.to} ${b.route || ''}`)}"` : '');
+  return html.replace(/^<([a-zA-Z][\w-]*)/, (m, tag) => `<${tag}${at}`);
+}
+
+function slideHTML(s, deck, figMap, plan = morphPlan(deck), fit = fitMode(deck)) {
   // Entry/exit can differ (reveal's "x-in y-out"); speed can be set per slide.
   const tin = ownTransition(s) || deck.defaultTransition || 'slide';
   // As in PowerPoint, a shape reveal (wipe, circle…) belongs to the slide that
@@ -434,7 +456,8 @@ function slideHTML(s, deck, figMap, plan = morphPlan(deck)) {
     + (s.bgVideo ? ` data-background-video="${esc(s.bgVideo)}"${s.bgVideoLoop !== false ? ' data-background-video-loop' : ''}${s.bgVideoMuted !== false ? ' data-background-video-muted' : ''}` : '')
     + (s.bgIframe ? ` data-background-iframe="${esc(s.bgIframe)}"${s.bgInteractive ? ' data-background-interactive' : ''}` : '')
     + (s.bgTransition ? ` data-background-transition="${s.bgTransition}"` : '')
-    + (s.uncounted ? ' data-visibility="uncounted"' : '');
+    + (s.uncounted ? ' data-visibility="uncounted"' : '')
+    + fillAttrs(s, fit);
   const tl = animTimeline(s);
   const morphCounts = {};
   const inner = blocksOf(s, deck).map(b00 => {
@@ -444,12 +467,13 @@ function slideHTML(s, deck, figMap, plan = morphPlan(deck)) {
     const b0 = tm && b00.type === 'text' ? { ...b01, byText: true, html: morphText(b00.html, tm, morphCounts) } : b01;
     // Effective start time within the click ("with/after previous" resolved).
     const b = b0.animation && tl.has(b0.id) ? { ...b0, animation: { ...b0.animation, delay: tl.get(b0.id).delay } } : b0;
-    if (b.type === 'figindex') return figIndexExport(b, deck);
-    if (b.type === 'slideref') return slideRefExport(b, s, deck);
-    let html = blockHTML(b, s);
+    const adapt = fit === 'adapt' ? h => fitAttrs(h, b) : h => h;
+    if (b.type === 'figindex') return adapt(figIndexExport(b, deck));
+    if (b.type === 'slideref') return adapt(slideRefExport(b, s, deck));
+    let html = adapt(blockHTML(b, s));
     const f = figMap.get(b.id);
     // (The caption goes with its object: it appears, leaves or moves along with it.)
-    if (f) html += `<div${animAttrs(b, s).replace(/ data-bid="[^"]*"/, '')} style="position:absolute;left:${b.x}px;top:${b.y + b.h + 4}px;width:${b.w}px;`
+    if (f) html += `<div${animAttrs(b, s).replace(/ data-bid="[^"]*"/, '')}${fit === 'adapt' ? ` data-fcap="${esc(b.id)}"` : ''} style="position:absolute;left:${b.x}px;top:${b.y + b.h + 4}px;width:${b.w}px;`
       + `text-align:center;font-style:italic;font-size:16px;${animVars(b)}"><span class="caption" style="opacity:.85">${esc(captionLine(f))}</span></div>`;
     return b0.anims?.length ? stepLayers(html, b0, s, tl) : html;
   }).join('\n');
@@ -478,7 +502,7 @@ export const slidePathsFor = deck => slidePaths(deck);
 export const rv = deck => deck.reveal || {};
 export const REVEAL_DEFAULTS = { controls: true, controlsLayout: 'bottom-right', progress: true, navigationMode: 'default', view: 'slides',
   mouseWheel: false, shuffle: false, hideInactiveCursor: true, jumpToSlide: true, previewLinks: false, rtl: false, center: true,
-  autoAnimateDuration: 1.0, autoAnimateEasing: 'ease', autoSlideStoppable: true, fragmentInURL: true, zoom: true, search: true, parallax: '' };
+  autoAnimateDuration: 1.0, autoAnimateEasing: 'ease', autoSlideStoppable: true, fragmentInURL: true, zoom: true, search: true, parallax: '', fit: 'fill' };
 function revealOptions(deck, inApp) {
   const o = { ...REVEAL_DEFAULTS, ...rv(deck) }, J = jsData;
   return `controls:${!!o.controls}, controlsLayout:${J(o.controlsLayout)}, progress:${!!o.progress}, navigationMode:${J(o.navigationMode)},
@@ -499,6 +523,7 @@ function buildHTMLRaw(deck, { inApp = false, selfPaced = false } = {}) {
   // Vertical stacks: a slide marked `vertical` goes below the previous visible one.
   const groups = [];
   const canvas = canvasOn(deck);                        // canvas mode: frames on one canvas, no stacks
+  const fit = fitMode(deck);                            // on a screen of another proportion
   for (const s of deck.slides.filter(x => !x.hidden)) {
     if (s.vertical && groups.length && !canvas) groups[groups.length - 1].push(s); else groups.push([s]);
   }
@@ -596,6 +621,8 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  ${/ data-pdf[ >]/.test(slides) ? PDF_CSS : ''}
  ${hasTrig ? `[data-bid]{cursor:pointer} .rv-trig.rv-in:not(.on){opacity:0} ${EFFECT_KF_CSS.replace(/\n/g, ' ')}` : ''}
  ${INK_CSS}
+ ${canvas ? '' : fit === 'bands' ? '.reveal-viewport{background:#000!important} .reveal .slides section>.stage{clip-path:inset(0)}'
+    : '.reveal .slides section[data-fill=g]>.stage{background:transparent!important}'}
  ${canvas ? `.reveal.rv-canvas{background:${deck.canvas.bg || '#0d1117'}} .reveal.rv-canvas .backgrounds{display:none}
  .reveal.rv-canvas .slides>section{display:block!important;visibility:visible!important;opacity:1!important;top:0!important;left:0!important;clip-path:none!important;transform-origin:0 0!important;
    transition:transform var(--rv-fly,1.4s) cubic-bezier(.65,0,.35,1)!important;pointer-events:none}
@@ -603,7 +630,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  html.rv-canvas-overview .reveal.rv-canvas .slides>section{pointer-events:auto;cursor:zoom-in}
  .reveal.rv-canvas .rv-world{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0;z-index:1;pointer-events:none;transition:transform var(--rv-fly,1.4s) cubic-bezier(.65,0,.35,1)}` : ''}
 </style></head><body>
-<div class="reveal${canvas ? ' rv-canvas' : ''}"><div class="slides">${canvas && deck.canvas.image?.src ? `<div class="rv-world"><img alt="" src="${esc(deck.canvas.image.src)}" style="max-width:none;max-height:none;margin:0;position:absolute;left:${deck.canvas.image.x}px;top:${deck.canvas.image.y}px;width:${deck.canvas.image.w}px;height:${deck.canvas.image.h}px"></div>` : ''}
+<div class="reveal${canvas ? ' rv-canvas' : ''}" data-fit="${fit}"><div class="slides">${canvas && deck.canvas.image?.src ? `<div class="rv-world"><img alt="" src="${esc(deck.canvas.image.src)}" style="max-width:none;max-height:none;margin:0;position:absolute;left:${deck.canvas.image.x}px;top:${deck.canvas.image.y}px;width:${deck.canvas.image.w}px;height:${deck.canvas.image.h}px"></div>` : ''}
 ${slides}
 </div>${footerText}${logoHTML}</div>${bgmHTML}
 <script src="${REVEAL}/dist/reveal.js"></script>
@@ -630,6 +657,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${canvas ? `${canvasRuntimeDeps()}\ncanvasRuntime(${JSON.stringify(groups.map(g => frameOf(g[0], deck.slides.indexOf(g[0]), deck.size)))}, ${w}, ${h});` : ''}
  ${hasModel3d ? `(${model3dRuntime.toString()})();` : ''}
  ${hasTimer ? `(${timerRuntime.toString()})();` : ''}
+ ${canvas ? '' : `(${screenFitRuntime})(${jsData(fit)}, ${w}, ${h}, ${fitSize}, ${adaptLayout}, ${connectorPath});`}
  ${/ data-sound="/.test(slides) ? `(${soundRuntime.toString()})();` : ''}
  ${/ data-tabs="/.test(slides) ? `(${tabRuntime.toString()})();` : ''}
  ${/ data-pdf[ >]/.test(slides) ? `(${pdfRuntime.toString()})(${JSON.stringify(PDFJS)});` : ''}
