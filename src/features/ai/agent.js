@@ -701,7 +701,8 @@ export async function runAgent(request, { history = [], scope = { kind: 'all' },
   if (wantsCode(request) && cur && sc.ids.has(cur.id) && perms.objects)
     for (const b of cur.blocks.filter(x => x.type === 'image' && x.src && !x.decorative).slice(0, 2)) { await read(b, deck.slides.indexOf(cur) + 1); stopped(); }
   const msgs = [{ role: 'system', content: systemPrompt({ sc, perms, deck, maxSteps, images: canSearch, style }) },
-    ...history.slice(-6).map(({ role, content }) => ({ role, content: String(content).slice(0, 12000) })),
+    // (The last messages only, and short: the presentation goes whole each time anyway.)
+    ...history.slice(-6).map(({ role, content }) => ({ role, content: String(content).slice(0, role === 'user' ? 2000 : 1500) })),
     { role: 'user', content: `Deck:\n${JSON.stringify(deckOutline(deck, sc))}\n\nCurrent slide: ${(ui.slideIndex || 0) + 1}\n\nRequest: ${request}` }];
   let final = null, lastChecked = null, asked = false;
   while (!final) {

@@ -18,6 +18,7 @@ import { PALETTES, FONT_PAIRS, deckFg, deckBodyFont, currentPalette } from '../.
 import { masterBlocksFor, isEmptyPlaceholder, styled } from '../../features/document/master.js';
 import { blockPreview } from '../shell/preview.js';
 import { ready, aiFailed, aiErrorText } from './ai.js';
+import { confirmDialog } from './dialog.js';
 import { t } from '../../i18n/index.js';
 
 // Remembered: permissions, scope kind, "apply without asking", the style of new slides, the completion's mode.
@@ -29,6 +30,22 @@ const opts = { auto: !!prefs.auto, scope: ['all', 'current', 'slides', 'selectio
 const keep = () => { try { localStorage.setItem(KEY, JSON.stringify({ auto: opts.auto, scope: opts.scope, perms: opts.perms, style: opts.style, mode: opts.mode })); } catch {} };
 
 const chatLog = [];                  // [{ role, content, shown, cost?, error? }] for the model and for display
+// The conversation is kept in this browser, per presentation (its first slide's id stands for it),
+// so a reload doesn't lose it; «Nueva» clears it. Only what is shown and what the AI is sent.
+const CHAT_KEY = () => 'revela.chat.' + (state.deck.slides[0]?.id || 'none');
+let chatFor = null;
+function persistChat() {
+  try {
+    const keep = chatLog.filter(m => !m.error && (m.content || m.shown)).slice(-60).map(({ role, content, shown, cost }) => ({ role, content, shown, ...(cost && { cost }) }));
+    const json = JSON.stringify(keep);
+    if (!keep.length) localStorage.removeItem(CHAT_KEY()); else if (json.length < 300000) localStorage.setItem(CHAT_KEY(), json);
+  } catch {}
+}
+function restoreChat() {
+  const key = CHAT_KEY(); if (chatFor === key) return;
+  chatFor = key; chatLog.length = 0;
+  try { for (const m of JSON.parse(localStorage.getItem(key) || '[]')) if (m && (m.role === 'user' || m.role === 'assistant')) chatLog.push({ ...m, display: true }); } catch {}
+}
 let pending = null;                  // the proposal on screen: { ops, base, dropped, problems, message, cost, steps, done }
 let job = null;                      // the running request: { ctrl, el }
 let revising = false;                // the next message asks for changes to the proposal
@@ -49,9 +66,11 @@ const PERM_LABEL = { delete: 'Borrar diapositivas', design: 'Cambiar diseño, co
 export function renderAssistant() {
   let panel = document.getElementById('assistant-panel');
   if (!state.ui.showAssistant) { panel?.remove(); document.getElementById('as-viewer')?.remove(); return; }
+  if (panel && chatFor !== CHAT_KEY() && !job) { panel.remove(); panel = null; }   // (another presentation: its own conversation)
   if (panel) { syncScope(panel); return; }
+  if (!job) restoreChat();
   panel = document.createElement('aside'); panel.id = 'assistant-panel';
-  panel.innerHTML = `<div class="cm-head"><b><i class="ms">auto_awesome</i> ${t('Asistente')}</b><button type="button" class="cm-close" title="${t('Cerrar')}">✕</button></div>
+  panel.innerHTML = `<div class="cm-head"><b><i class="ms">auto_awesome</i> ${t('Asistente')}</b><button type="button" class="as-newchat" title="${t('Nueva conversación: la IA olvida los mensajes anteriores (sigue viendo la presentación)')}"><i class="ms">add_comment</i> ${t('Nueva')}</button><button type="button" class="cm-close" title="${t('Cerrar')}">✕</button></div>
     <div class="as-opts">
       <label class="as-row"><span>${t('Alcance')}</span><select class="as-scope">
         <option value="all">${t('Toda la presentación')}</option><option value="current">${t('Diapositiva actual')}</option><option value="slides">${t('Diapositivas seleccionadas')}</option>
@@ -69,7 +88,7 @@ export function renderAssistant() {
     <div class="as-quick">${QUICK.map((a, i) => `<button type="button" class="as-qa" data-q="${i}"><i class="ms">${a.icon}</i>${t(a.label)}</button>`).join('')}</div>
     <div class="as-hints">${HINTS.map(h => `<button type="button" class="as-hint">${t(h)}</button>`).join('')}</div>
     <div class="cm-new"><textarea rows="2" placeholder="${t('Pide un cambio o haz una pregunta…')}"></textarea>
-      <div class="as-foot"><span class="as-cost"></span><span class="as-keys">${t('Intro para enviar · Mayús+Intro, nueva línea')}</span><button type="button" class="as-send">${t('Enviar')}</button></div></div>`;
+      <div class="as-foot"><span class="as-cost"></span><span class="as-mem" hidden></span><span class="as-keys">${t('Intro para enviar · Mayús+Intro, nueva línea')}</span><button type="button" class="as-send">${t('Enviar')}</button></div></div>`;
   document.querySelector('main').appendChild(panel);
   const q = s => panel.querySelector(s), log = q('.as-log'), ta = q('textarea');
   for (const m of chatLog) if (m.shown !== '') addMsg(log, m.role === 'user' ? 'me' : 'ai', m.shown ?? m.content, m);
@@ -96,6 +115,7 @@ export function renderAssistant() {
     if (a.complete) openComplete(a.complete); else ask(panel, t(a.ask));
   }));
   q('.cm-close').addEventListener('click', () => toggleAssistant(false));
+  q('.as-newchat').addEventListener('click', async () => { if (await newConversation()) { toggleAssistant(false); toggleAssistant(true); } });
   if (job) q('.as-send').setAttribute('disabled', '');
   stick(log, true);
 }
@@ -148,10 +168,10 @@ function addMsg(log, who, text, m = {}) {
 }
 function failed(e, again) {
   const lg = curPanel()?.querySelector('.as-log');
-  if (e.message === 'STOPPED') { const m = { role: 'assistant', content: t('Detenido.'), shown: t('Detenido.'), display: true }; chatLog.push(m); if (lg) addMsg(lg, 'ai', m.shown, m); return; }
+  if (e.message === 'STOPPED') { const m = { role: 'assistant', content: t('Detenido.'), shown: t('Detenido.'), display: true }; chatLog.push(m); persistChat(); showCost(curPanel()); if (lg) addMsg(lg, 'ai', m.shown, m); return; }
   if (e.message === 'NO_CREDIT' || e.message === 'NO_KEY') aiFailed(e);                 // (they need the account or the settings)
   retry = again;
-  const m = { role: 'assistant', content: '', shown: aiErrorText(e), error: true, display: true }; chatLog.push(m);
+  const m = { role: 'assistant', content: '', shown: aiErrorText(e), error: true, display: true }; chatLog.push(m); persistChat(); showCost(curPanel());
   if (lg) addMsg(lg, 'ai', m.shown, m);
 }
 
@@ -175,6 +195,19 @@ function syncScope(panel, init = false) {
 function showCost(panel) {
   const el = panel?.querySelector('.as-cost'); if (!el) return;
   el.textContent = spent.credits ? `${t('Gastado')}: ${spent.credits} ${t('créditos')}` : spent.usd ? `${t('Gastado')}: ${spent.usd.toFixed(4)} US$` : '';
+  // (What the AI is sent of the conversation besides the presentation: the last messages, up to 6.)
+  const mem = panel.querySelector('.as-mem'), n = Math.min(6, chatLog.filter(m => !m.error && m.content).length);
+  persistChat();
+  if (mem) { mem.hidden = !n; mem.textContent = n ? ` · ${t('Recuerda {n} mensajes').replace('{n}', n)}` : ''; mem.title = t('Para una pregunta nueva, «Nueva» la vacía: gasta menos.'); }
+}
+// A new conversation: the AI forgets the earlier messages (not the presentation, nor what was spent).
+// → false if the person keeps the current one (a proposal waiting to be applied).
+export async function newConversation() {
+  if (job) return false;
+  if (pending && !(await confirmDialog(t('Hay cambios propuestos sin aplicar. ¿Empezar una conversación nueva y descartarlos?')))) return false;
+  pending = null; chatLog.length = 0; revising = false; completing = null; retry = null;
+  try { localStorage.removeItem(CHAT_KEY()); } catch {}
+  return true;
 }
 const costText = c => (c.credits ? `${c.credits} ${t('créditos')}` : c.usd ? `${c.usd.toFixed(4)} US$` : '');
 
@@ -221,7 +254,7 @@ async function ask(panel, text) {
       onStep: s => stepJob(STEP[s.kind]?.(s) || t('Pensando…')),
       onCost: c => { spent.credits = before.credits + c.credits; spent.usd = before.usd + c.usd; showCost(curPanel()); } });
     const reply = { role: 'assistant', content: JSON.stringify({ message: res.message, ops: res.raw }).slice(0, 12000), shown: res.message || (res.ops.length ? '' : t('Hecho.')), cost: res.cost };
-    chatLog.push(reply);
+    chatLog.push(reply); persistChat(); showCost(curPanel());
     const lg = lg0();
     if (res.message || !res.ops.length) { reply.shown = res.message || t('No hay cambios que proponer.'); lg && addMsg(lg, 'ai', reply.shown, reply); }
     else reply.shown = '';
@@ -324,7 +357,7 @@ async function runComplete(scope) {
     if (st.cached) msg += ' ' + t('Ya descritas antes, sin coste: {n}.').replace('{n}', st.cached);
     if (st.failed) msg += ' ' + t('{n} imágenes no se pudieron leer.').replace('{n}', st.failed);
     if (res.ops.length) msg += '\n' + t('Revisa la propuesta: pulsa una diapositiva para verla en grande.');
-    const reply = { role: 'assistant', content: msg, shown: msg, cost: res.cost }; chatLog.push(reply);
+    const reply = { role: 'assistant', content: msg, shown: msg, cost: res.cost }; chatLog.push(reply); persistChat(); showCost(curPanel());
     const lg = lg0(); if (lg) addMsg(lg, 'ai', msg, reply);
     if (res.ops.length) showProposal({ ...res, message: msg });
   } catch (e) {
@@ -709,6 +742,8 @@ export function openViewer(card, at = 0) {
 
 // (For tests and the API: the proposal on screen.)
 export const assistantState = () => ({ pending, busy: !!job, opts: { ...opts, perms: { ...opts.perms } }, spent: { ...spent }, log: chatLog.length, completing });
-export const resetAssistant = () => { pending = null; chatLog.length = 0; spent.usd = spent.credits = 0; revising = false; completing = null; retry = null; job?.ctrl.abort();
+export const resetAssistant = () => { pending = null; chatLog.length = 0; chatFor = null;
+  try { for (const k of Object.keys(localStorage)) if (k.startsWith('revela.chat.')) localStorage.removeItem(k); } catch {}
+  spent.usd = spent.credits = 0; revising = false; completing = null; retry = null; job?.ctrl.abort();
   document.getElementById('as-viewer')?.remove();
   Object.assign(opts, { auto: false, scope: 'all', style: 'same', mode: 'empty', perms: { ...agent.DEFAULT_PERMS } }); };

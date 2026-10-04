@@ -3,6 +3,10 @@
 export default {
   "Abriendo la presentación…": "جارٍ فتح العرض التقديمي…",
   "Se abre una copia: para guardar los cambios, guárdala en Drive.": "تُفتح نسخة: لحفظ التغييرات، احفظها في Drive.",
+  "Nueva conversación: la IA olvida los mensajes anteriores (sigue viendo la presentación)": "محادثة جديدة: ينسى الذكاء الاصطناعي الرسائل السابقة (ويظل يرى العرض)",
+  "Recuerda {n} mensajes": "يتذكر {n} رسائل",
+  "Para una pregunta nueva, «Nueva» la vacía: gasta menos.": "لسؤال جديد، زر «جديدة» يفرغها: يكلّف أقل.",
+  "Hay cambios propuestos sin aplicar. ¿Empezar una conversación nueva y descartarlos?": "توجد تغييرات مقترحة لم تُطبّق. هل تبدأ محادثة جديدة وتتجاهلها؟",
   "Archivo": "ملف",
   "Inicio": "الصفحة الرئيسية",
   "Insertar": "إدراج",

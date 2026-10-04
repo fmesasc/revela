@@ -3,6 +3,10 @@
 export default {
   "Abriendo la presentación…": "Abrindo a presentación…",
   "Se abre una copia: para guardar los cambios, guárdala en Drive.": "Ábrese unha copia: para gardar os cambios, gárdaa en Drive.",
+  "Nueva conversación: la IA olvida los mensajes anteriores (sigue viendo la presentación)": "Conversa nova: a IA esquece as mensaxes anteriores (segue vendo a presentación)",
+  "Recuerda {n} mensajes": "Lembra {n} mensaxes",
+  "Para una pregunta nueva, «Nueva» la vacía: gasta menos.": "Para unha pregunta nova, «Nova» baleira a conversa: gasta menos.",
+  "Hay cambios propuestos sin aplicar. ¿Empezar una conversación nueva y descartarlos?": "Hai cambios propostos sen aplicar. Comezar unha conversa nova e descartalos?",
   "Archivo": "Ficheiro",
   "Inicio": "Inicio",
   "Insertar": "Inserir",

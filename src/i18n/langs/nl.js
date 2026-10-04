@@ -3,6 +3,10 @@
 export default {
   "Abriendo la presentación…": "De presentatie wordt geopend…",
   "Se abre una copia: para guardar los cambios, guárdala en Drive.": "Er wordt een kopie geopend: sla die op in Drive om je wijzigingen te bewaren.",
+  "Nueva conversación: la IA olvida los mensajes anteriores (sigue viendo la presentación)": "Nieuw gesprek: de AI vergeet de eerdere berichten (ziet de presentatie nog wel)",
+  "Recuerda {n} mensajes": "Onthoudt {n} berichten",
+  "Para una pregunta nueva, «Nueva» la vacía: gasta menos.": "Voor een nieuwe vraag maakt «Nieuw» het leeg: dat kost minder.",
+  "Hay cambios propuestos sin aplicar. ¿Empezar una conversación nueva y descartarlos?": "Er zijn voorgestelde wijzigingen die nog niet zijn toegepast. Een nieuw gesprek beginnen en ze verwerpen?",
   "Archivo": "Bestand",
   "Inicio": "Start",
   "Insertar": "Invoegen",

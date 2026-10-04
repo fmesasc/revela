@@ -3,6 +3,10 @@
 export default {
   "Abriendo la presentación…": "Aurkezpena irekitzen…",
   "Se abre una copia: para guardar los cambios, guárdala en Drive.": "Kopia bat irekitzen da: aldaketak gordetzeko, gorde ezazu Driven.",
+  "Nueva conversación: la IA olvida los mensajes anteriores (sigue viendo la presentación)": "Elkarrizketa berria: AAk aurreko mezuak ahazten ditu (aurkezpena ikusten jarraitzen du)",
+  "Recuerda {n} mensajes": "{n} mezu gogoratzen ditu",
+  "Para una pregunta nueva, «Nueva» la vacía: gasta menos.": "Galdera berri baterako, «Berria»-k hustu egiten du: gutxiago gastatzen da.",
+  "Hay cambios propuestos sin aplicar. ¿Empezar una conversación nueva y descartarlos?": "Aplikatu gabeko aldaketa proposatuak daude. Elkarrizketa berria hasi eta baztertu?",
   "Archivo": "Fitxategia",
   "Inicio": "Hasiera",
   "Insertar": "Txertatu",

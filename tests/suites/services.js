@@ -603,6 +603,33 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(r.ops.length, 1, 'set_math vale; un texto que no es una fórmula no se convierte'); eq(RV.lossOf(r.ops[0]).what, 'math', 'cambiar la ecuación se ve como sustitución');
   });
 
+  await test('asistente: la conversación se guarda por presentación y «Nueva» la vacía', async () => {
+    reset(); R.slides.addSlide(); R.slides.goToSlide(0);
+    const W = frame.contentWindow, real = W.fetch, calls = [], P = await W.eval("import('/src/ui/dialogs/assistant.js')");
+    P.resetAssistant(); W.localStorage.removeItem('revela.assistant.v1');
+    R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    W.fetch = agentMock(W, [{ message: 'Hola, te ayudo', done: true, ops: [] }], calls);
+    const panelOf = () => D.getElementById('assistant-panel'), key = 'revela.chat.' + R.state.deck.slides[0].id;
+    const toggle = async () => { D.querySelector('[data-action="ai-assistant"]').click(); await sleep(30); };
+    try {
+      await toggle();
+      panelOf().querySelector('textarea').value = '¿Qué tal?'; panelOf().querySelector('.as-send').click(); await sleep(30);
+      for (let i = 0; i < 100 && P.assistantState().busy; i++) await sleep(20); await sleep(20);
+      const saved = JSON.parse(W.localStorage.getItem(key) || '[]');
+      eq(saved.map(m => m.role).join(), 'user,assistant', 'guardada en el navegador, con su presentación');
+      assert(/Recuerda 2/.test(panelOf().querySelector('.as-mem').textContent), 'dice cuánto recuerda');
+      // Como al recargar: el panel se vuelve a hacer con lo guardado.
+      await toggle(); P.resetAssistant(); W.localStorage.setItem(key, JSON.stringify(saved)); await toggle();
+      eq(P.assistantState().log, 2, 'recupera la conversación'); assert(/Hola, te ayudo/.test(panelOf().querySelector('.as-log').textContent), 'y se ve');
+      panelOf().querySelector('.as-newchat').click(); await sleep(40);
+      eq(P.assistantState().log, 0, '«Nueva» la vacía'); eq(W.localStorage.getItem(key), null, 'y la borra del navegador');
+      assert(!/Hola, te ayudo/.test(panelOf().querySelector('.as-log').textContent), 'el panel empieza de cero');
+    } finally {
+      W.fetch = real; R.ai.disconnectAi(); W.localStorage.removeItem('revela.assistant.v1'); P.resetAssistant();
+      if (panelOf()) D.querySelector('[data-action="ai-assistant"]').click();
+    }
+  });
+
   await test('asistente (panel): propone con miniaturas, aplica solo lo marcado, descarta, detiene y aplica sin preguntar', async () => {
     reset(); R.slides.addSlide(); R.slides.goToSlide(0);
     const W = frame.contentWindow, real = W.fetch, calls = [], P = await W.eval("import('/src/ui/dialogs/assistant.js')");
