@@ -20,7 +20,7 @@ import { drawPathHandles } from './pathdraw.js';
 import { blockLabel } from '../../features/document/a11y.js';
 import { cameraRadius } from '../../features/live/media.js';
 import { pollEditorHTML } from '../../features/live/poll.js';
-import { masterBlocksFor, PH_PROMPT, styled, layoutInUse, masterInUse } from '../../features/document/master.js';
+import { masterBlocksFor, PH_PROMPT, styled, viewBackground } from '../../features/document/master.js';
 import { stageBackground } from '../../io/formats/html.js';
 import { styleRich, paintWebCard, paintMath, pollSig, renderSlideRef, figIndexHTML, connectorHTML, applyImgStyle, applyModelAttrs, content, hostOf, hasInlineMath, renderInlineMath, paintCode, setupCode, tableSig, fillTable, fileSig, paintFile, paintTabs, setupTable, setupText, setupMath, setupModel, setupEmbed } from './content.js';
 import { mediaViewCurrent } from './mediaview.js';
@@ -70,7 +70,8 @@ export function renderCanvas() {
   const { w, h } = state.deck.size;
   stage.style.width = w + 'px';
   stage.style.height = h + 'px';
-  stage.style.background = (slide.background ? stageBackground(slide) : null) || state.deck.slides[state.ui.slideIndex]?.background || '#101317';
+  // (A layout without a background of its own shows its master's.)
+  stage.style.background = (slide.background ? stageBackground(slide) : null) || (state.ui.editMaster ? viewBackground(slide) : null) || state.deck.slides[state.ui.slideIndex]?.background || '#101317';
   stage.classList.toggle('editing-master', !!state.ui.editMaster);
   stage.style.color = deckFg();
   stage.style.fontFamily = deckBodyFont();
@@ -93,22 +94,6 @@ export function renderCanvas() {
   drawMasterLayer();
   drawBgMedia(slide);
   sideHandles();
-  const banner = document.getElementById('master-banner');
-  if (banner) {
-    banner.hidden = !state.ui.editMaster;
-    const lay = state.ui.editMaster && state.ui.editMaster !== true ? state.deck.layouts?.find(l => l.id === state.ui.editMaster) : null;
-    const txt = banner.querySelector('.mb-text');
-    if (txt) txt.textContent = lay ? `${t('Diseño')} «${t(lay.name)}»: ${t('sus marcadores y objetos aparecen en las diapositivas que lo usan.')}`
-      : t('Editando el patrón: lo que pongas aquí aparece en todas las diapositivas.');
-    banner.querySelectorAll('.mb-lay').forEach(x => { x.disabled = !lay; });
-    // Rename works for masters too; an extra master can be deleted when no slide uses it.
-    const ren = banner.querySelector('[data-action="layout-rename"]'); if (ren) ren.disabled = false;
-    const extra = !lay && state.ui.editMaster !== true ? state.ui.editMaster : null;
-    const md = banner.querySelector('[data-action="master-delete"]');
-    if (md) { md.hidden = !extra; md.disabled = !!(extra && masterInUse(extra)); }
-    const del = banner.querySelector('[data-action="layout-delete"]');
-    if (del && lay) { const n = layoutInUse(lay.id); del.disabled = n > 0; del.title = n ? t('Lo usan diapositivas: cámbialas de diseño antes.') : ''; }
-  }
   // Screen readers: name the slide and announce the selected object.
   stage.setAttribute('aria-label', `${t('Diapositiva')} ${state.ui.slideIndex + 1} / ${state.deck.slides.length}`);
   const sel = selectedBlock(), sr = document.getElementById('sr-status');
@@ -126,7 +111,7 @@ function sideHandles() {
   }
 }
 
-// Video / web page / translucent image behind the slide (Design ▸ Advanced background).
+// Video / web page / translucent image behind the slide (Design ▸ Format background).
 function drawBgMedia(slide) {
   const want = slide.bgVideo ? 'v:' + slide.bgVideo : slide.bgIframe ? 'i:' + slide.bgIframe
     : (slide.bgOpacity ?? 100) < 100 ? 'o:' + slide.bgOpacity + slide.background : '';

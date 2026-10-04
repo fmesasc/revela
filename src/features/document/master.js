@@ -152,22 +152,28 @@ const freshPlaceholders = lay => lay.blocks.filter(b => b.ph).map(p => (p.type =
 export function applyLayout(id, index = state.ui.slideIndex) {
   commit(() => {
     const lay = ensureLayouts().find(l => l.id === id); const s = state.deck.slides[index]; if (!lay || !s) return;
-    const old = s.blocks, used = new Set();
-    const texts = old.filter(b => b.type === 'text' && (b.html || '').replace(/<[^>]*>/g, '').trim());
-    const take = test => { const b = texts.find(x => !used.has(x) && test(x)); if (b) used.add(b); return b; };
-    const fresh = freshPlaceholders(lay);
-    for (const p of fresh) {
-      const src = styleKind(p) === 'title' ? take(b => styleKind(b) === 'title') || take(b => !b.ph)
-        : take(b => styleKind(b) === styleKind(p)) || take(b => styleKind(b) !== 'title');
-      if (src) p.html = src.html;
-    }
-    s.layoutId = lay.id;
-    // Old empty placeholders go; connectors to moved text go with it.
-    const keep = old.filter(b => !used.has(b) && !(b.ph && !(b.html || '').replace(/<[^>]*>/g, '').trim())
-      && !(b.type === 'connector' && [...used].some(u => u.id === b.from || u.id === b.to)));
-    s.blocks = [...fresh, ...keep];
+    relayout(s, lay);
     state.ui.selection = null;
   });
+}
+function relayout(s, lay, deck = state.deck) {
+  const old = s.blocks, used = new Set();
+  const texts = old.filter(b => b.type === 'text' && (b.html || '').replace(/<[^>]*>/g, '').trim());
+  const take = test => { const b = texts.find(x => !used.has(x) && test(x)); if (b) used.add(b); return b; };
+  const fresh = freshPlaceholders(lay);
+  for (const p of fresh) {
+    const src = styleKind(p) === 'title' ? take(b => styleKind(b) === 'title') || take(b => !b.ph)
+      : take(b => styleKind(b) === styleKind(p)) || take(b => styleKind(b) !== 'title');
+    if (src) p.html = src.html;
+  }
+  // The background follows the new layout's, unless the slide had its own.
+  const was = layoutOf(s, deck), nb = layoutBackground(lay, deck);
+  if (nb && followsBackground(s, was ? layoutBackground(was, deck) : masterOf(s, deck).background, deck)) s.background = nb;
+  s.layoutId = lay.id;
+  // Old empty placeholders go; connectors to moved text go with it.
+  const keep = old.filter(b => !used.has(b) && !(b.ph && !(b.html || '').replace(/<[^>]*>/g, '').trim())
+    && !(b.type === 'connector' && [...used].some(u => u.id === b.from || u.id === b.to)));
+  s.blocks = [...fresh, ...keep];
 }
 export const newSlideBlocks = lay => freshPlaceholders(lay);
 // Back to the layout: placeholders return to its place and lose the formatting
@@ -186,20 +192,89 @@ export function resetSlide(index = state.ui.slideIndex) {
 export function addLayout(copyOf = null) {
   commit(() => {
     const src = copyOf && ensureLayouts().find(l => l.id === copyOf);
-    const mid = contextMaster().id, owner = mid === ensureMaster().id ? {} : { masterId: mid };
-    const lay = src ? { ...structuredClone(src), id: uid(), name: src.name + ' (2)' } : { id: uid(), name: 'Diseño personalizado', background: null, blocks: [], ...owner };
+    const mid = src ? masterOf(src).id : contextMaster().id, owner = mid === ensureMaster().id ? {} : { masterId: mid };
+    // (A new one starts with a title, as in PowerPoint.)
+    const title = { id: uid(), type: 'text', ph: 'title', x: 100, y: 60, w: state.deck.size.w - 200, h: 100, rotation: 0, animation: null, html: '' };
+    const lay = src ? { ...structuredClone(src), id: uid(), name: src.name + ' (2)' } : { id: uid(), name: 'Diseño personalizado', background: null, blocks: [title], ...owner };
     if (src) lay.blocks.forEach(b => { b.id = uid(); });
-    ensureLayouts().push(lay); state.ui.editMaster = lay.id; state.ui.selection = null;
+    // Right after the one it copies, or at the end of its master's.
+    const lays = ensureLayouts(), after = src || lays.filter(l => masterOf(l) === masterOf(lay)).at(-1);
+    lays.splice(after ? lays.indexOf(after) + 1 : lays.length, 0, lay);
+    state.ui.editMaster = lay.id; state.ui.selection = null;
   });
 }
 export function renameLayout(id, name) { commit(() => { const l = ensureLayouts().find(x => x.id === id); if (l && name) l.name = name; }); }
-export function deleteLayout(id) {
+// Delete a layout. The slides that use it move to another one (reassignTo),
+// keeping what was written in them; without it, a layout in use stays.
+export function deleteLayout(id, reassignTo = null) {
   commit(() => {
-    const d = state.deck; if (d.slides.some(s => s.layoutId === id) || ensureLayouts().length < 2) return;
-    d.layouts = d.layouts.filter(l => l.id !== id); if (state.ui.editMaster) state.ui.editMaster = true;
+    const d = state.deck, lays = ensureLayouts(d), lay = lays.find(l => l.id === id); if (!lay || lays.length < 2) return;
+    const users = d.slides.filter(s => s.layoutId === id);
+    if (users.length) {
+      const to = lays.find(l => l.id === reassignTo && l !== lay); if (!to) return;
+      users.forEach(s => relayout(s, to, d));
+    }
+    const m = masterOf(lay, d), sibs = lays.filter(l => masterOf(l, d) === m), i = sibs.indexOf(lay);
+    const next = sibs[i + 1] || sibs[i - 1];
+    d.layouts = lays.filter(l => l !== lay);
+    if (state.ui.editMaster) state.ui.editMaster = next?.id || (m === ensureMaster(d) ? true : m.id);
   });
 }
+// Where the slides of a deleted layout go: one of its master's with text
+// («Title and content»-like), else any.
+export function fallbackLayout(id, deck = state.deck) {
+  const lays = ensureLayouts(deck), lay = lays.find(l => l.id === id), m = lay && masterOf(lay, deck);
+  const sibs = lays.filter(l => l !== lay && masterOf(l, deck) === m);
+  return sibs.find(l => l.blocks.some(b => b.ph === 'body')) || sibs[0] || lays.find(l => l !== lay) || null;
+}
 export const layoutInUse = id => state.deck.slides.filter(s => s.layoutId === id).length;
+// Reorder among its master's layouts: one place up (−1) or down (+1)…
+export function moveLayout(id, delta) {
+  commit(() => {
+    const lays = ensureLayouts(), lay = lays.find(l => l.id === id); if (!lay) return;
+    const sibs = lays.filter(l => masterOf(l) === masterOf(lay)), other = sibs[sibs.indexOf(lay) + delta]; if (!other) return;
+    const a = lays.indexOf(lay), b = lays.indexOf(other); [lays[a], lays[b]] = [lays[b], lays[a]];
+  });
+}
+// …or to where another one is (dragged onto it).
+export function moveLayoutTo(id, targetId) {
+  commit(() => {
+    const lays = ensureLayouts(), lay = lays.find(l => l.id === id), target = lays.find(l => l.id === targetId);
+    if (!lay || !target || lay === target || masterOf(lay) !== masterOf(target)) return;
+    const down = lays.indexOf(lay) < lays.indexOf(target);
+    lays.splice(lays.indexOf(lay), 1);
+    lays.splice(lays.indexOf(target) + (down ? 1 : 0), 0, lay);
+  });
+}
+// PowerPoint's layout options: «Ocultar gráficos del patrón» (hideMaster) and
+// «Usar fondo del patrón» (masterBg: the layout has no background of its own).
+export function setLayoutOptions(id, { hideMaster, masterBg } = {}) {
+  commit(() => {
+    const l = ensureLayouts().find(x => x.id === id); if (!l) return;
+    if (hideMaster != null) { if (hideMaster) l.hideMaster = true; else delete l.hideMaster; }
+    if (masterBg === true) l.background = null;
+    else if (masterBg === false && !l.background) l.background = viewBackground(l);
+  });
+}
+
+// ---- Backgrounds -------------------------------------------------------------
+// A layout without a background of its own shows its master's, and slides
+// show their layout's: followLayouts carries the changes to the slides that
+// still had the old one (not to those given one of their own).
+export function layoutBackground(x, deck = state.deck) {
+  if (!x) return null;
+  return isMaster(x, deck) ? x.background || null : x.background || masterOf(x, deck).background || null;
+}
+// The usual background of a master's slides (the most frequent).
+export function commonBackground(m = ensureMaster(), deck = state.deck) {
+  const n = new Map();
+  for (const s of deck.slides) if (s.background && masterOf(s, deck) === m) n.set(s.background, (n.get(s.background) || 0) + 1);
+  return [...n].sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+}
+// What the master view shows behind a master or a layout.
+export const viewBackground = (x, deck = state.deck) => layoutBackground(x, deck) || commonBackground(masterOf(x, deck), deck) || deck.slides[0]?.background || '#101317';
+// Whether a slide still has the background it got (`was`; none set: the usual one).
+const followsBackground = (s, was, deck) => s.background === (was || commonBackground(masterOf(s, deck), deck));
 export const MEDIA_PH = ['picture', 'table', 'chart'];
 export function addPlaceholder(ph) {
   commit(() => {
@@ -213,20 +288,34 @@ export function addPlaceholder(ph) {
 }
 
 // Moving or resizing a layout placeholder moves the slides' placeholders that
-// were still where it was (the ones moved by hand stay). It follows every
-// change, so undo moves them back too.
-let geo = new Map();
+// were still where it was (the ones moved by hand stay); changing a master's
+// or layout's background in the master view changes the slides' that still
+// had the old one. It follows every change, so undo moves them back too.
+let geo = new Map(), bgs = new Map(), bgDeck = null;
 const key = b => `${b.x},${b.y},${b.w},${b.h}`;
+const bgMap = d => new Map([...allMasters(d).map(m => ['m:' + m.id, m.background || null]),
+  ...(d.layouts || []).map(l => ['l:' + l.id, layoutBackground(l, d)])]);
 export function followLayouts() {
-  const snap = () => { geo = new Map((state.deck.layouts || []).flatMap(l => l.blocks.filter(b => b.ph).map(b => [b.id, key(b)]))); };
+  const snap = () => {
+    geo = new Map((state.deck.layouts || []).flatMap(l => l.blocks.filter(b => b.ph).map(b => [b.id, key(b)])));
+    bgs = bgMap(state.deck); bgDeck = state.deck;
+  };
   snap();
   return subscribe(() => {
-    const moved = [];
-    for (const l of state.deck.layouts || []) for (const b of l.blocks) if (b.ph && geo.has(b.id) && geo.get(b.id) !== key(b)) moved.push([geo.get(b.id), b]);
-    snap();
-    if (!moved.length) return;
+    const d = state.deck, moved = [], newBg = [];
+    for (const l of d.layouts || []) for (const b of l.blocks) if (b.ph && geo.has(b.id) && geo.get(b.id) !== key(b)) moved.push([geo.get(b.id), b]);
+    // (Not when another document comes, nor with undo: their slides come as they were.)
+    if (d === bgDeck && state.ui.editMaster) for (const [k, now] of bgMap(d)) {
+      if (!now || !bgs.has(k) || bgs.get(k) === now) continue;
+      const id = k.slice(2), lay = k[0] === 'l' && d.layouts.find(l => l.id === id);
+      const slides = lay ? d.slides.filter(s => s.layoutId === id) : d.slides.filter(s => !layoutOf(s, d) && masterOf(s, d).id === id);
+      // (Without one before, the slides with the usual background: worked out before any changes.)
+      newBg.push([slides, bgs.get(k) || commonBackground(lay ? masterOf(lay, d) : allMasters(d).find(m => m.id === id), d), now]);
+    }
     let n = 0;
-    for (const s of state.deck.slides) for (const x of s.blocks) {
+    for (const [slides, old, now] of newBg) for (const s of slides) if (s.background === old) { s.background = now; n++; }
+    snap();
+    for (const s of d.slides) for (const x of s.blocks) {
       const m = moved.find(([old, lp]) => x.lp === lp.id && key(x) === old);
       if (m) { Object.assign(x, { x: m[1].x, y: m[1].y, w: m[1].w, h: m[1].h }); n++; }
     }

@@ -35,6 +35,10 @@ import { applyZoom, fitZoom, zoomFitting, wireZoom } from './zoom.js';
 import { compactGroups } from './compact.js';
 import { wireTransitionPreview } from './transpreview.js';
 import { closePopover, togglePopover } from './popovers.js';
+import { syncMasterRibbon } from '../shell/masterview.js';
+
+// Insert ▸ Templates buttons that are the deck's layouts.
+const TEMPLATE_LAYOUT = { title: 'title', titleContent: 'titleContent', twoContent: 'twoContent', sectionHeader: 'section', blank: 'blank' };
 
 const $ = s => document.querySelector(s);
 
@@ -63,7 +67,7 @@ function fillShapeGallery() {
 export function initRibbon() {
   fillShapeGallery();
   // Master view: insert a placeholder into the layout being edited.
-  document.querySelector('#master-banner .mb-ph')?.addEventListener('change', e => {
+  document.querySelector('#ribbon .mb-ph')?.addEventListener('change', e => {
     if (e.target.value) addPlaceholder(e.target.value); e.target.value = '';
   });
   populateFonts();
@@ -134,7 +138,8 @@ export function initRibbon() {
     const an = e.target.closest('[data-animation]');
     if (an) { trans.setAnimation(an.dataset.animation); return; }
     const tpl = e.target.closest('[data-template]');
-    if (tpl) { templates.applyTemplate(templates.BUILTIN[tpl.dataset.template]); return; }
+    // (The ones named like a layout apply the deck's layout, as Home ▸ Layout does: one feature, one behaviour.)
+    if (tpl) { const lay = TEMPLATE_LAYOUT[tpl.dataset.template]; if (lay && master.ensureLayouts().some(l => l.id === lay)) master.applyLayout(lay); else templates.applyTemplate(templates.BUILTIN[tpl.dataset.template]); return; }
     const al = e.target.closest('[data-align]');
     if (al) { blocks.alignSelected(al.dataset.align); return; }
     const dist = e.target.closest('[data-distribute]');
@@ -180,6 +185,7 @@ export function initRibbon() {
   bindInput('[data-shape-fill]', v => blocks.setShapeStyle('fill', v), true);
   bindInput('[data-shape-stroke]', v => blocks.setShapeStyle('stroke', v), true);
   bindInput('[data-bg]', v => commit(() => (currentSlide().background = v)));
+  bindInput('[data-master-bg]', v => commit(() => (currentSlide().background = v)));      // (the master's or the layout's, in the master view)
   bindInput('[data-deck-fg]', v => palettes.setDeckTextColor(v));
   bindInput('[data-ink-color]', v => { drawOpts.color = v; });
   bindChange('[data-slide-trans-out]', v => trans.setSlideTransOptions({ transitionOut: v }));
@@ -275,7 +281,7 @@ function bindInput(sel, cb, keepFocus) {
 // Eyedropper next to each colour picker (EyeDropper API: Chrome/Edge/Opera).
 // It samples any pixel on screen and feeds the colour through the same input
 // event as the picker, so undo and all targets work unchanged.
-const EYEDROP_TARGETS = ['[data-color]', '[data-highlight]', '[data-shape-fill]', '[data-shape-stroke]', '[data-bg]'];
+const EYEDROP_TARGETS = ['[data-color]', '[data-highlight]', '[data-shape-fill]', '[data-shape-stroke]', '[data-bg]', '[data-master-bg]'];
 export function applyPickedColour(input, hex) {
   input.value = hex; input.dispatchEvent(new Event('input', { bubbles: true }));
 }
@@ -323,6 +329,7 @@ export function markOverflow(page) {
 }
 export function renderRibbon() {
   populateFonts(); syncCustomFonts(state.deck);
+  syncMasterRibbon();            // (before the tabs: entering the master view opens its tab)
   ensureDeckFonts(state.deck);   // load any Google fonts the deck uses
   document.querySelectorAll('[data-tab]').forEach(t => t.classList.toggle('active', t.dataset.tab === state.ui.activeTab));
   // (On a narrow screen the tabs scroll: keep the active one in view.)
@@ -368,7 +375,7 @@ export function renderRibbon() {
     if (sp) sp.textContent = sigs.length ? `${t('Firmada por')} ${sigs.map(s => s.name).join(', ')}: ${t('la presentación es de solo lectura.')}` : t('Marcada como final: la presentación es de solo lectura.'); }
   $('[data-action="comments"]')?.classList.toggle('on', !!state.ui.showComments);
   $('[data-action="autocorrect"]')?.classList.toggle('on', autocorrectOn());
-  $('[data-action="master-edit"]')?.classList.toggle('on', !!state.ui.editMaster);
+  document.querySelectorAll('[data-action="master-edit"]').forEach(b => b.classList.toggle('on', !!state.ui.editMaster));
   syncValue('[data-slide-trans-out]', currentSlide()?.transitionOut || '');
   // Effect options: only those of this slide's transition (wipe, push, split).
   { const sel = $('[data-slide-trans-dir]'), dirs = trans.TRANSITION_DIRS[currentSlide()?.transition] || [];

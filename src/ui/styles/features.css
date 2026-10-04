@@ -86,7 +86,17 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 #master-banner button,#master-banner select{border:1px solid #e0873b;background:#fff;color:#7a4a12;border-radius:6px;padding:4px 10px;cursor:pointer;font:inherit}
 #master-banner .mb-text{flex:1 1 220px}
 #master-banner button:disabled,#master-banner select:disabled{opacity:.45;cursor:default}
-.layout-thumb.indent .layout-name::before{content:'└ ';opacity:.6}
+/* The master view's panel: each master, bigger, with its layouts hanging from it */
+body.master-view #navigator{display:flex}
+.master-tree{display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.master-kids{display:flex;flex-direction:column;gap:8px;margin-inline-start:8px;padding-inline-start:12px;border-inline-start:2px solid var(--line2)}
+.layout-thumb{background:var(--panel)}
+.layout-thumb.is-master{border-width:3px}
+.layout-thumb.is-master .layout-name{font-weight:600;color:var(--txt)}
+.layout-thumb .layout-name{display:flex;align-items:center;gap:4px}
+.layout-thumb .layout-name span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.layout-thumb .layout-name .ms{font-size:13px;opacity:.7}
+.lt-count{background:var(--accent);color:#fff;border-radius:8px;font-size:10px;padding:0 5px;line-height:15px;font-weight:600}
 .layout-grid .layout-master{grid-column:1/-1;font-size:11px;color:var(--txt2);text-transform:uppercase;margin-top:6px}
 .layout-thumb .layout-name{font-size:11px;color:var(--txt2);padding:3px 2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .block .rich[data-ph]:empty::before{content:attr(data-ph);opacity:.45;font-style:italic;pointer-events:none}

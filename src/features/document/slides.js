@@ -2,17 +2,17 @@
 
 import { state, commit, currentSlide, clampSlide } from '../../core/store.js';
 import { blankSlide, uid } from '../../core/model.js';
-import { ensureLayouts, newSlideBlocks } from './master.js';
+import { ensureLayouts, newSlideBlocks, layoutBackground } from './master.js';
 
 export function addSlide(layoutId = null) {
-  const base = currentSlide();
+  const base = state.deck.slides[state.ui.slideIndex];          // (also from the master view: not the master)
   commit(() => {
     const s = blankSlide(base ? base.background : '#101317', base ? base.sectionId : null);
     // Same layout as the current slide (after a cover or section header, "Title and content").
     const lays = ensureLayouts();
     const want = layoutId || (base?.layoutId && !['title', 'section'].includes(base.layoutId) ? base.layoutId : 'titleContent');
     const lay = want && lays.find(l => l.id === want);
-    if (lay) { s.layoutId = lay.id; s.blocks = newSlideBlocks(lay); }
+    if (lay) { s.layoutId = lay.id; s.blocks = newSlideBlocks(lay); s.background = layoutBackground(lay) || s.background; }   // (the layout's background, or its master's)
     state.deck.slides.splice(state.ui.slideIndex + 1, 0, s);
     state.ui.slideIndex++;
     state.ui.selection = null;

@@ -24,6 +24,7 @@ import { openObjectLink } from '../dialogs/objlink.js';
 import { saveBlockFile as saveFile } from './files.js';
 import { present } from './present.js';
 import { openBackgroundDialog } from '../dialogs/background.js';
+import { masterMenu } from './masterview.js';
 import { playInEditor } from '../canvas/mediaview.js';
 import { isGif } from '../../features/live/media.js';
 import { openImageAdjust, openMath, openChartData, openOpacity, openIconColor, openBoxStyle, openSlidePicker, openCaption, openAlt, openImageCrop, removeBackground, openTableStyle } from '../dialogs/object.js';
@@ -56,6 +57,10 @@ export function initContextMenu() {
   const openNavMenu = (x, y, target) => {
     const head = target && target.closest('.section-head');
     if (head) { open(x, y, forSection(head.dataset.sectionId)); return; }
+    // (The master view: its masters and layouts.)
+    const lt = target && target.closest('.layout-thumb');
+    if (lt) { open(x, y, masterMenu(lt.dataset.edit)); return; }
+    if (state.ui.editMaster) { open(x, y, masterMenu(state.ui.editMaster === true ? 'master' : state.ui.editMaster)); return; }
     const th = target && target.closest('.thumb');
     if (th) { const i = +th.dataset.index; goToSlide(i); open(x, y, forThumb(i)); return; }
     open(x, y, [['Nueva diapositiva', () => addSlide()]]);
@@ -94,6 +99,7 @@ function forThumb(i) {
     null,
     ['Presentar desde aquí', () => present({ fromCurrent: true })],
     ['Formato del fondo…', () => openBackgroundDialog()],
+    master.layoutOf(slide) ? ['Editar su diseño en el patrón', () => master.editLayout(slide.layoutId)] : null,
     null,
     [slide.hidden ? 'Mostrar diapositiva' : 'Ocultar diapositiva', () => toggleSlideHidden(i)],
     [slide.uncounted ? 'Contar en la numeración' : 'No contar en la numeración (anexo)', () => commit(() => { if (slide.uncounted) delete slide.uncounted; else slide.uncounted = true; })],
@@ -292,13 +298,13 @@ function forCanvas() {
     ['Seleccionar todo', currentSlide()?.blocks.some(b => !b.locked)
       ? () => commit(() => setMulti(currentSlide().blocks.filter(b => !b.locked).map(b => b.id)), { history: false }) : null],
     null,
-    ['Nueva diapositiva', () => addSlide()],
+    state.ui.editMaster ? null : ['Nueva diapositiva', () => addSlide()],
     ['Formato del fondo…', () => openBackgroundDialog()],
     null,
     [state.ui.showGuides ? 'Ocultar guías' : 'Mostrar guías', () => commit(() => (state.ui.showGuides = !state.ui.showGuides), { history: false })],
     [state.ui.snap === false ? 'Ajustar a otros objetos' : 'No ajustar a otros objetos', () => commit(() => (state.ui.snap = state.ui.snap === false), { history: false })],
-    ...(state.ui.editMaster ? [null, ['Cerrar patrón', () => master.toggleMasterEdit(false)]]
-      : state.deck.master?.blocks?.length ? [null, [currentSlide()?.hideMaster ? 'Mostrar objetos del patrón' : 'Ocultar objetos del patrón', () => master.toggleHideMaster()]] : []),
+    ...(state.ui.editMaster ? [null, ['Cerrar vista Patrón', () => master.toggleMasterEdit(false)]]
+      : master.masterOf(currentSlide()).blocks?.length || master.layoutOf(currentSlide())?.blocks.some(b => !b.ph) || currentSlide()?.hideMaster ? [null, [currentSlide()?.hideMaster ? 'Mostrar gráficos del patrón' : 'Ocultar gráficos del patrón', () => master.toggleHideMaster()]] : []),
   ];
 }
 

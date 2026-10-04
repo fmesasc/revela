@@ -10,7 +10,8 @@ import { addSlideRef } from '../../features/document/blocks.js';
 import { factor } from '../canvas/interact.js';
 import { t } from '../../i18n/index.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
-import { masterBlocksFor, isEmptyPlaceholder, styled, styleKind, ensureLayouts, editLayout, layoutInUse, allMasters, masterOf } from '../../features/document/master.js';
+import { masterBlocksFor, isEmptyPlaceholder, styled } from '../../features/document/master.js';
+import { renderMasterPanel, fitMasterThumbs } from './masterview.js';
 
 let panel;
 let dragFrom = null;
@@ -46,6 +47,7 @@ export function initPanel() {
   });
 }
 function fitThumbs() {
+  if (state.ui.editMaster) return fitMasterThumbs(panel);
   const c = panel.querySelector('.thumb-canvas'); if (!c || !c.clientWidth) return;
   const k = c.clientWidth / state.deck.size.w;
   if (panel.style.getPropertyValue('--tk') !== String(k)) panel.style.setProperty('--tk', k);
@@ -58,7 +60,7 @@ const cache = new Map();                   // slide id → { sig, el }
 const sigOf = shortSig;
 
 export function renderPanel() {
-  if (state.ui.editMaster) return renderMasterPanel();
+  if (state.ui.editMaster) return renderMasterPanel(panel);   // (the master view: masters and layouts instead)
   const d = state.deck;
   const common = sigOf([d.size, d.master, d.layouts, d.canvas, deckFg(), deckBodyFont()]);
   const nodes = [], seen = new Set();
@@ -78,43 +80,6 @@ export function renderPanel() {
     seen.add(slide.id); nodes.push(c.el);
   });
   for (const id of cache.keys()) if (!seen.has(id)) cache.delete(id);
-  panel.replaceChildren(...nodes);
-  fitThumbs();
-}
-
-// Master view (PowerPoint's Slide Master): the master and its layouts, each
-// with its placeholders as dashed frames; click one to edit it.
-const PH_LABEL = { title: 'Título', subtitle: 'Subtítulo', body: 'Texto', picture: '🖼 Imagen', table: '▦ Tabla', chart: '📊 Gráfico' };
-function renderMasterPanel() {
-  const d = state.deck, { w, h } = d.size, sel = state.ui.editMaster;
-  const card = (label, sub, active, slide, blocks, onClick, indent) => {
-    const el = document.createElement('div'); el.className = 'thumb layout-thumb' + (active ? ' active' : '') + (indent ? ' indent' : '');
-    const canvas = document.createElement('div'); canvas.className = 'thumb-canvas';
-    canvas.style.background = slide.background || d.slides[0]?.background || '#101317'; canvas.style.setProperty('--ar', w / h);
-    const inner = document.createElement('div'); inner.className = 'thumb-inner';
-    inner.style.cssText = `width:${w}px;height:${h}px;transform:scale(var(--tk,${188 / w}));color:${deckFg()};font-family:${deckBodyFont() || 'inherit'}`;
-    for (const b of blocks) {
-      if (b.ph) {
-        const f = document.createElement('div'); const st = styled(b, slide);
-        f.style.cssText = `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px;border:6px dashed currentColor;opacity:.55;`
-          + `font-size:${st.fontSize || 40}px;${st.color ? `color:${st.color};` : ''}${st.fontFamily ? `font-family:${st.fontFamily};` : ''}font-weight:${st.fontWeight || 400};padding:12px;box-sizing:border-box;text-align:${st.textAlign || 'left'}`;
-        f.textContent = PH_LABEL[styleKind(b) || b.ph] || b.ph; inner.appendChild(f);
-      } else inner.appendChild(blockPreview(b));
-    }
-    canvas.appendChild(inner);
-    const cap = document.createElement('div'); cap.className = 'layout-name'; cap.textContent = label + (sub ? ' · ' + sub : '');
-    el.append(canvas, cap); el.addEventListener('click', onClick);
-    return el;
-  };
-  const nodes = [], lays = ensureLayouts(d);
-  allMasters(d).forEach((m, i) => {
-    const main = i === 0;
-    nodes.push(card(m.name || (main ? 'Patrón' : `Patrón ${i + 1}`), '', main ? sel === true : sel === m.id, m, m.blocks, () => editLayout(main ? true : m.id), false));
-    for (const l of lays.filter(x => masterOf(x, d) === m)) {
-      const n = layoutInUse(l.id);
-      nodes.push(card(l.name, n ? `${n} diap.` : '', sel === l.id, l, [...masterBlocksFor(l, d), ...l.blocks], () => editLayout(l.id), true));
-    }
-  });
   panel.replaceChildren(...nodes);
   fitThumbs();
 }
