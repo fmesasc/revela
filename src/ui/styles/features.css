@@ -653,6 +653,10 @@ body.file-drag::after{content:attr(data-drop-hint);position:fixed;left:50%;botto
 .pdf-mode{display:flex;gap:12px;align-items:center;text-align:start;padding:10px 12px;border:1px solid var(--line2);border-radius:10px;background:var(--panel);color:inherit;cursor:pointer;font:inherit}
 .pdf-mode:hover,.pdf-mode:focus-visible{border-color:var(--accent);background:var(--accent-bg)}
 .pdf-mode .ms{font-size:28px;color:var(--accent)}.pdf-mode span{display:flex;flex-direction:column;gap:2px}.pdf-mode small{color:var(--txt2)}
+.pdf-mode:has(input:checked){border-color:var(--accent);background:var(--accent-bg)}
+/* Save to Drive: the folder row */
+.gs-where{display:flex;align-items:center;gap:8px;margin:10px 0 12px;flex-wrap:wrap}.gs-where .ms{color:var(--accent)}.gs-where span{flex:1;min-width:0;overflow-wrap:anywhere}
+.gs-path{overflow-wrap:anywhere}
 .crop-ratios{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}.crop-ratios .on{background:var(--accent-bg);border-color:var(--accent)}
 /* Choosing a PDF's page and zoom. */
 .pz-nav{display:flex;gap:6px;align-items:center;margin-bottom:8px}.pz-n{min-width:60px;text-align:center}

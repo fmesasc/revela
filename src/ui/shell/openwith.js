@@ -9,6 +9,7 @@ import { emptyDeck } from '../../core/model.js';
 import * as gdrive from '../../io/cloud/gdrive.js';
 import * as oc from '../../io/cloud/othercloud.js';
 import { present } from './present.js';
+import { openPresentation } from './openfile.js';
 import { t } from '../../i18n/index.js';
 import { alertDialog } from '../dialogs/dialog.js';
 
@@ -50,7 +51,10 @@ export async function handleOpenWith(req = openRequest()) {
       return true;
     }
     const how = await askHow(req.service === 'drive' ? 'Google Drive' : 'Dropbox'); if (!how) return false;
-    if (req.service === 'drive') await gdrive.openPresentation(req.id);
+    if (req.service === 'drive') {
+      const file = await gdrive.fetchImportable(req.id);              // (a .pptx / .odp: imported)
+      if (file) await openPresentation(file); else await gdrive.openPresentation(req.id);
+    }
     else { await oc.connect('dropbox'); await oc.openFromCloud('dropbox', req.id); }
     if (how === 'view') present({ fullscreen: true });
     return true;
