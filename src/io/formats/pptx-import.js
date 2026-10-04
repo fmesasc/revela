@@ -21,9 +21,12 @@
 import { parseCommentText } from '../../features/collab/comments.js';
 import { esc } from '../../core/text.js';
 import { uid } from '../../core/model.js';
-import { styled, masterStyles } from '../../features/document/master.js';
+import { styled, masterStyles, newSlideBlocks } from '../../features/document/master.js';
+import { customPalette, themeFontStacks } from '../../features/design/palettes.js';
 import { JSZIP_ESM } from '../../core/vendor.js';
 import { TRANSITION_DIRS, pathFromSVG, pushAnim } from '../../features/animation/transitions.js';
+import { colorMods, modsOf } from '../../features/design/colormods.js';
+import { officeStack } from '../../features/design/fonts.js';
 
 const CANVAS_W = 1280;            // slide width maps to this many px
 const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp', svg: 'image/svg+xml' };
@@ -105,52 +108,86 @@ function rels(xmlStr, base) {
   }
   return map;
 }
-function resolve(base, rel) {           // base: folder of the part, e.g. "ppt/slides"
+function resolve(base, rel) {           // base: folder of the part, e.g. "ppt/slides" ('' at the package's root)
   if (rel.startsWith('/')) return rel.slice(1);
-  const parts = base.split('/');
+  const parts = base ? base.split('/') : [];
   for (const seg of rel.split('/')) { if (seg === '..') parts.pop(); else if (seg !== '.') parts.push(seg); }
   return parts.join('/');
 }
 const relsPath = p => p.replace(/([^/]+)$/, '_rels/$1.rels');
 const dirOf = p => p.split('/').slice(0, -1).join('/');
 
-// ---- Colours ---------------------------------------------------------------
-function themeColours(themeDoc) {
-  const out = {};
-  const scheme = all(themeDoc, 'a:clrScheme')[0];
-  for (const c of scheme ? [...scheme.children] : []) {
-    const name = c.tagName.replace('a:', '');
-    const v = kid(c, 'a:srgbClr')?.getAttribute('val') || kid(c, 'a:sysClr')?.getAttribute('lastClr');
-    if (v) out[name] = '#' + v.toLowerCase();
+// ---- Theme ------------------------------------------------------------------
+// A theme part (ppt/theme/themeN.xml, one per master; a .thmx's own): its
+// name, colour scheme, fonts (Latin, East Asian and complex scripts) and
+// format scheme (the fills that p:bgRef / a:fillRef point to by number).
+const SCHEME = ['dk1', 'lt1', 'dk2', 'lt2', 'accent1', 'accent2', 'accent3', 'accent4', 'accent5', 'accent6', 'hlink', 'folHlink'];
+// Names that go through the master's colour map (p:clrMap) and its overrides.
+const MAPPED = ['bg1', 'tx1', 'bg2', 'tx2', 'accent1', 'accent2', 'accent3', 'accent4', 'accent5', 'accent6', 'hlink', 'folHlink'];
+const DEFAULT_MAP = { bg1: 'lt1', tx1: 'dk1', bg2: 'lt2', tx2: 'dk2', ...Object.fromEntries(MAPPED.slice(4).map(k => [k, k])) };
+const HEX6 = /^#[0-9a-f]{6}$/;
+const OFFICE_SCHEME = { dk1: '#000000', lt1: '#ffffff', dk2: '#0e2841', lt2: '#e8e8e8', accent1: '#156082', accent2: '#e97132', accent3: '#196b24',
+  accent4: '#0f9ed5', accent5: '#a02b93', accent6: '#4ea72e', hlink: '#467886', folHlink: '#96607d' };
+async function readTheme(zip, file) {
+  const doc = file && zip.file(file) ? parseXML(await zip.file(file).async('string')) : null;
+  const scheme = { ...OFFICE_SCHEME }, cs = all(doc, 'a:clrScheme')[0];
+  for (const c of cs ? [...cs.children] : []) {
+    const name = c.localName, el = c.children[0]; if (!SCHEME.includes(name) || !el) continue;
+    const v = (el.localName === 'sysClr' ? el.getAttribute('lastClr') || (el.getAttribute('val') === 'window' ? 'ffffff' : '000000') : el.getAttribute('val') || '').toLowerCase();
+    if (/^[0-9a-f]{6}$/.test(v)) scheme[name] = colorMods('#' + v, modsOf(el));
   }
-  // Scheme aliases used by shapes and text.
-  Object.assign(out, { tx1: out.dk1, bg1: out.lt1, tx2: out.dk2, bg2: out.lt2 });
+  const fs = all(doc, 'a:fontScheme')[0];
+  const face = (k, s) => all(all(fs, k)[0], s)[0]?.getAttribute('typeface') || '';
+  const fmt = all(doc, 'a:fmtScheme')[0];
+  return { file, doc, name: doc?.documentElement?.getAttribute('name') || '', colorsName: cs?.getAttribute('name') || '', fontsName: fs?.getAttribute('name') || '',
+    scheme, major: face('a:majorFont', 'a:latin'), minor: face('a:minorFont', 'a:latin'),
+    majorEa: face('a:majorFont', 'a:ea'), minorEa: face('a:minorFont', 'a:ea'), majorCs: face('a:majorFont', 'a:cs'), minorCs: face('a:minorFont', 'a:cs'),
+    fills: [...(all(fmt, 'a:fillStyleLst')[0]?.children || [])], bgFills: [...(all(fmt, 'a:bgFillStyleLst')[0]?.children || [])],
+    lns: [...(all(fmt, 'a:lnStyleLst')[0]?.children || [])],
+    rels: file ? rels(await zip.file(relsPath(file))?.async('string'), dirOf(file)) : {} };
+}
+// A colour map (p:clrMap, or a layout's or slide's p:clrMapOvr) over another.
+function clrMapOf(el, base = DEFAULT_MAP) {
+  if (!el) return base;
+  const ov = el.localName === 'clrMapOvr' ? kid(el, 'a:overrideClrMapping') : el;
+  if (!ov) return base;                                   // (a:masterClrMapping: the master's)
+  const out = { ...base };
+  for (const k of MAPPED) { const v = ov.getAttribute(k); if (v && SCHEME.includes(v)) out[k] = v; }
   return out;
 }
-const hex2rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
-const rgb2hex = a => '#' + a.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
-function mods(hex, el) {                 // lumMod/lumOff/tint/shade, approximately; alpha
-  let [r, g, b] = hex2rgb(hex), a = 1;
-  for (const m of el ? [...el.children] : []) {
-    const v = +m.getAttribute('val') / 100000;
-    if (m.tagName === 'a:alpha') a = v;
-    if (m.tagName === 'a:lumMod') { r *= v; g *= v; b *= v; }
-    else if (m.tagName === 'a:lumOff') { r += 255 * v; g += 255 * v; b += 255 * v; }
-    else if (m.tagName === 'a:shade') { r *= v; g *= v; b *= v; }
-    else if (m.tagName === 'a:tint') { r += (255 - r) * (1 - v); g += (255 - g) * (1 - v); b += (255 - b) * (1 - v); }
-  }
-  // Fully transparent → nothing; partly → #rrggbbaa.
-  if (a <= 0) return 'none';
-  return rgb2hex([r, g, b]) + (a < 1 ? Math.round(a * 255).toString(16).padStart(2, '0') : '');
-}
-// Colour of a fill-like element (a:solidFill, or the element holding a colour).
-function colourOf(el, theme) {
+
+// ---- Colours ---------------------------------------------------------------
+// `theme` holds the colours for the part being read: the scheme's slots and
+// the mapped names (bg1, tx1…) as its colour map says; _role tells the
+// deck's palette role of a name, so that a colour made from one ("Accent 1,
+// darker 25 %") is remembered as such (in _links) and follows a later change
+// of palette.
+const PRESET_COLOURS = { black: '#000000', white: '#ffffff', red: '#ff0000', blue: '#0000ff', green: '#008000', yellow: '#ffff00', gray: '#808080', grey: '#808080',
+  darkGray: '#a9a9a9', lightGray: '#d3d3d3', orange: '#ffa500', purple: '#800080', navy: '#000080', silver: '#c0c0c0', maroon: '#800000', teal: '#008080' };
+const toSRGB = x => (x <= 0.0031308 ? x * 12.92 : 1.055 * x ** (1 / 2.4) - 0.055);
+function colourInfo(el, theme) {
   if (!el) return null;
-  const s = kid(el, 'a:srgbClr'); if (s) return mods('#' + s.getAttribute('val').toLowerCase(), s);
-  const sc = kid(el, 'a:schemeClr'); if (sc && theme[sc.getAttribute('val')]) return mods(theme[sc.getAttribute('val')], sc);
-  const sy = kid(el, 'a:sysClr'); if (sy) return mods('#' + (sy.getAttribute('lastClr') || '000000').toLowerCase(), sy);
-  const pr = kid(el, 'a:prstClr'); if (pr) return { black: '#000000', white: '#ffffff', red: '#ff0000', blue: '#0000ff', green: '#008000' }[pr.getAttribute('val')] || null;
+  for (const c of el.children) {
+    const n = c.localName, m = modsOf(c), v = c.getAttribute('val');
+    if (n === 'srgbClr') return /^[0-9a-f]{6}$/i.test(v || '') ? { hex: '#' + v.toLowerCase(), mods: m } : null;
+    if (n === 'schemeClr') {
+      if (v === 'phClr') return theme._ph ? { ...theme._ph, mods: [...theme._ph.mods, ...m] } : null;
+      return theme[v] ? { hex: theme[v], role: theme._role?.(v), mods: m } : null;
+    }
+    if (n === 'sysClr') { const h = (c.getAttribute('lastClr') || (v === 'window' ? 'ffffff' : '000000')).toLowerCase(); return /^[0-9a-f]{6}$/.test(h) ? { hex: '#' + h, mods: m } : null; }
+    if (n === 'prstClr') return PRESET_COLOURS[v] ? { hex: PRESET_COLOURS[v], mods: m } : null;
+    if (n === 'scrgbClr') return { hex: '#' + ['r', 'g', 'b'].map(k => Math.round(255 * Math.max(0, Math.min(1, toSRGB(+(c.getAttribute(k) || 0) / 100000)))).toString(16).padStart(2, '0')).join(''), mods: m };
+    if (n === 'hslClr') return { hex: colorMods('#808080', [['hue', c.getAttribute('hue') || 0], ['sat', c.getAttribute('sat') || 0], ['lum', c.getAttribute('lum') || 0]]), mods: m };
+  }
   return null;
+}
+// Colour of a fill-like element (a:solidFill, or the element holding a colour):
+// '#rrggbb', '#rrggbbaa', 'none' (fully transparent) or null (none there).
+function colourOf(el, theme) {
+  const c = colourInfo(el, theme); if (!c) return null;
+  const out = colorMods(c.hex, c.mods);
+  if (c.role && c.mods.length && HEX6.test(out) && theme._links && !(out in theme._links)) theme._links[out] = [c.role, c.mods];
+  return out;
 }
 function fillOf(spPr, theme) {           // → colour, 'none' or null (not set)
   if (!spPr) return null;
@@ -163,12 +200,34 @@ function fillOf(spPr, theme) {           // → colour, 'none' or null (not set)
 
 // A gradient fill as CSS (for slide backgrounds; shapes use the first stop).
 function gradientCSS(el, theme) {
-  const gf = el && kid(el, 'a:gradFill'); if (!gf) return null;
-  const stops = all(gf, 'a:gs').map(gs => ({ pos: +(gs.getAttribute('pos') || 0) / 1000, c: colourOf(gs, theme) })).filter(x => x.c);
+  const gf = el && (el.localName === 'gradFill' ? el : kid(el, 'a:gradFill')); if (!gf) return null;
+  const stops = all(gf, 'a:gs').map(gs => ({ pos: +(gs.getAttribute('pos') || 0) / 1000, c: colourOf(gs, theme) })).filter(x => x.c && x.c !== 'none')
+    .sort((a, b) => a.pos - b.pos);
   if (stops.length < 2) return null;
+  const list = stops.map(x => `${x.c} ${Math.round(x.pos)}%`).join(', ');
+  const shape = kid(gf, 'a:path')?.getAttribute('path');
+  if (shape === 'circle' || shape === 'shape') return `radial-gradient(circle, ${list})`;
   const ang = kid(gf, 'a:lin')?.getAttribute('ang');
   const deg = ang != null ? Math.round(+ang / 60000 + 90) % 360 : 180;     // OOXML 0° = left→right; CSS 90deg
-  return `linear-gradient(${deg}deg, ${stops.map(x => `${x.c} ${Math.round(x.pos)}%`).join(', ')})`;
+  return `linear-gradient(${deg}deg, ${list})`;
+}
+// A reference to the theme's format scheme (p:bgRef, a:fillRef, a:lnRef): the
+// fill in that place (1–999 the fills, 1001… the background fills; 0 none),
+// drawn in the reference's colour (phClr) → { css, colour, blip } or null.
+function themeFill(ref, theme, list = null) {
+  const idx = +(ref?.getAttribute('idx') || 0), th = theme._th; if (!idx || !th) return null;
+  const el = list ? list[idx - 1] : idx >= 1001 ? th.bgFills[idx - 1001] : th.fills[idx - 1];
+  if (!el) return null;
+  theme._ph = colourInfo(ref, theme);
+  try {
+    const fill = el.localName === 'ln' ? kid(el, 'a:solidFill') || kid(el, 'a:gradFill') || kid(el, 'a:noFill') : el;
+    if (!fill) return null;
+    if (fill.localName === 'noFill') return { css: 'none', colour: 'none' };
+    if (fill.localName === 'solidFill') { const c = colourOf(fill, theme); return c ? { css: c, colour: c } : null; }
+    if (fill.localName === 'gradFill') { const first = colourOf(all(fill, 'a:gs')[0], theme); return { css: gradientCSS(fill, theme) || first, colour: first }; }
+    if (fill.localName === 'blipFill') return { blip: all(fill, 'a:blip')[0]?.getAttribute('r:embed'), colour: theme._ph ? colorMods(theme._ph.hex, theme._ph.mods) : null };
+    return null;
+  } finally { theme._ph = null; }
 }
 const TRANSITION = { fade: 'fade', dissolve: 'blur', push: 'push', cover: 'cover', pull: 'page', wipe: 'wipe', split: 'split', zoom: 'zoom', circle: 'circle', diamond: 'diamond', plus: 'diamond',
   newsflash: 'swirl', flip: 'flip', cube: 'cube', box: 'cube', rotate: 'flip', gallery: 'gallery', conveyor: 'slide', switch: 'flip',
@@ -243,7 +302,7 @@ function readRun(rPr, theme, fonts) {
     baseline: at('baseline') != null ? +at('baseline') / 1000 : undefined,
     color: (c => (c === 'none' ? 'transparent' : c))(colourOf(kid(rPr, 'a:solidFill'), theme)) || undefined,
     highlight: (c => (c === 'none' ? null : c))(colourOf(kid(rPr, 'a:highlight'), theme)) || undefined,
-    font: face === '+mj-lt' ? fonts.major : face === '+mn-lt' ? fonts.minor : (face || undefined),
+    font: /^\+mj-/.test(face || '') ? fonts.major || undefined : /^\+mn-/.test(face || '') ? fonts.minor || undefined : (face || undefined),
   };
 }
 function readPara(pPr, theme) {
@@ -292,6 +351,8 @@ function readBody(bodyPr) {
 }
 
 const cssFont = f => `'${String(f).replace(/['"<>;\\{}]/g, '')}'`;           // (a font name can't break out of the style)
+// A font's CSS stack: an Office font with its web equivalent (fonts.js), others as they are.
+const fontStack = f => officeStack(f) || `${cssFont(f)}, sans-serif`;
 // Paragraphs → HTML with the resolved formatting. Sizes are in px; the box
 // gets the first paragraph's size, family and colour, and runs only say where
 // they differ.
@@ -321,7 +382,7 @@ function paragraphsHTML(txBody, ctx, style) {
       const css = [];
       if (size !== first.size) css.push(`font-size:${size}px`);
       if (rp.color && rp.color !== first.color) css.push(`color:${rp.color}`);   // the box carries the first colour
-      if (rp.font && rp.font !== first.font) css.push(`font-family:${cssFont(rp.font)}`);
+      if (rp.font && rp.font !== first.font) css.push(`font-family:${fontStack(rp.font)}`);
       if (rp.cap === 'all') css.push('text-transform:uppercase'); else if (rp.cap === 'small') css.push('font-variant:small-caps');
       if (rp.spc) css.push(`letter-spacing:${ctx.pt(rp.spc)}px`);
       if (rp.highlight) css.push(`background:${rp.highlight}`);
@@ -377,9 +438,32 @@ function paragraphsHTML(txBody, ctx, style) {
 }
 
 // ---- Parts: layout and master (placeholders, decorations, background) ------
-async function partInfo(zip, file, theme, fonts) {
-  const doc = parseXML(await zip.file(file).async('string'));
-  const r = rels(await zip.file(relsPath(file))?.async('string'), dirOf(file));
+// A picture of the package as a CSS background (stretched, or tiled).
+async function pictureBg(zip, t, tile) {
+  if (!t || !zip.file(t.path)) return null;
+  const ext = t.path.split('.').pop().toLowerCase();
+  return `url(data:${MIME[ext] || 'image/png'};base64,${await zip.file(t.path).async('base64')}) ${tile ? 'repeat' : 'center/cover no-repeat'}`;
+}
+// The background of a slide, layout or master (p:cSld/p:bg): its own fill
+// (colour, gradient, picture) or a theme background style (p:bgRef) → CSS or null.
+async function backgroundOf(zip, doc, theme, partRels) {
+  const bg = kid(kid(doc.documentElement, 'p:cSld'), 'p:bg'); if (!bg) return null;
+  const bgPr = kid(bg, 'p:bgPr'), bgRef = kid(bg, 'p:bgRef');
+  if (bgPr) {
+    const bf = kid(bgPr, 'a:blipFill'), blip = all(bf, 'a:blip')[0];
+    if (blip) { const u = await pictureBg(zip, partRels[blip.getAttribute('r:embed')], !!kid(bf, 'a:tile')); if (u) return u; }
+    const c = gradientCSS(bgPr, theme) || fillOf(bgPr, theme);
+    return c && c !== 'none' ? c : null;
+  }
+  if (bgRef) {
+    const f = themeFill(bgRef, theme);
+    if (f?.blip) return (await pictureBg(zip, theme._th?.rels[f.blip], false)) || f.colour;
+    const c = f?.css || colourOf(bgRef, theme);
+    return c && c !== 'none' ? c : null;
+  }
+  return null;
+}
+async function partInfo(zip, file, doc, r, theme, fonts) {
   const phs = [];
   for (const sp of all(doc, 'p:sp')) {
     const ph = phOf(sp); if (!ph) continue;
@@ -392,9 +476,7 @@ async function partInfo(zip, file, theme, fonts) {
     body: readLevels(all(doc, 'p:bodyStyle')[0], theme, fonts),
     other: readLevels(all(doc, 'p:otherStyle')[0], theme, fonts),
   };
-  const bgPr = all(doc, 'p:bgPr')[0];
-  const bgRef = all(doc, 'p:bgRef')[0];
-  const bg = gradientCSS(bgPr, theme) || fillOf(bgPr, theme) || (bgRef ? colourOf(bgRef, theme) : null);
+  const bg = await backgroundOf(zip, doc, theme, r);
   const parent = Object.values(r).find(x => x.type === 'slideLayout' || x.type === 'slideMaster')?.path || null;
   const showMasterSp = doc.documentElement.getAttribute('showMasterSp') !== '0';
   return { file, doc, rels: r, phs, styles, bg, parent, showMasterSp };
@@ -454,41 +536,125 @@ function readAnimations(doc, spidOf, blocks, size) {
 }
 
 // ---- Import ----------------------------------------------------------------
+const EMPTY_SLIDE = '<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:spTree/></p:cSld></p:sld>';
+// The theme as Revela keeps it (deck.officeTheme; see features/design/officetheme.js):
+// its name, its colours as a palette (background and text as the master's
+// colour map says) and its heading and body fonts.
+function themeRecord(th, map, extra = {}) {
+  const name = (extra.name || th.name || th.colorsName || 'Office').trim().slice(0, 60);
+  const colors = customPalette({ name: (extra.name || th.colorsName || name).slice(0, 60), bg: extra.bg || th.scheme[map.bg1], fg: extra.fg || th.scheme[map.tx1],
+    accents: [1, 2, 3, 4, 5, 6].map(i => th.scheme[map['accent' + i]]), scheme: th.scheme, clrMap: map });
+  const fonts = { name: (extra.name || th.fontsName || name).slice(0, 60), major: extra.major || th.major, minor: extra.minor || th.minor,
+    ...Object.fromEntries(['majorEa', 'minorEa', 'majorCs', 'minorCs'].filter(k => th[k]).map(k => [k, th[k]])) };
+  return { name, colors, ...((fonts.major || fonts.minor) && { fonts }) };
+}
+// LibreOffice writes a generic theme ("Office Theme", Arial) and puts the real
+// fonts and colours on the master's placeholders: those, and the template's name.
+async function libreOfficeTheme(zip, master) {
+  const app = await zip.file('docProps/app.xml')?.async('string') || '';
+  if (!/<Application>[^<]*LibreOffice/i.test(app) || !master) return {};
+  const ph = t => all(master.doc, 'p:sp').find(sp => { const p = phOf(sp); return p && (t === 'title' ? TITLE_PH(p.type) : BODY_PH(p.type)); });
+  const face = sp => all(sp, 'a:latin')[0]?.getAttribute('typeface') || '';
+  const col = sp => { const c = colourOf(all(kid(sp, 'p:txBody'), 'a:solidFill')[0], {}); return c && HEX6.test(c) ? c : null; };
+  const tpl = /<Template>([^<]+)<\/Template>/.exec(app)?.[1]?.trim();
+  const out = { major: face(ph('title')), minor: face(ph('body')), fg: col(ph('body')) || col(ph('title')) };
+  if (tpl) out.name = tpl.replace(/_/g, ' ');
+  if (HEX6.test(master.bg || '')) out.bg = master.bg;
+  // (Text that wouldn't read on the background is a band's, not the body's.)
+  const lum = h => colorMods(h, [['gray', 0]]).slice(1, 3), far = (a, b) => Math.abs(parseInt(lum(a), 16) - parseInt(lum(b), 16)) > 90;
+  if (out.fg && !far(out.fg, out.bg || '#ffffff')) delete out.fg;
+  return def(out);
+}
+
+// A theme file (.thmx) with no presentation in it: its colours and fonts.
+async function themeOnlyPackage(zip, main, file) {
+  const tp = (main && zip.file(main) && /theme/i.test(main) && main) || Object.keys(zip.files).find(f => /theme\d*\.xml$/i.test(f) && !/_rels/.test(f));
+  if (!tp) throw new Error('No se encontraron diapositivas en el archivo.');
+  const th = await readTheme(zip, tp);
+  const officeTheme = themeRecord(th, DEFAULT_MAP);
+  return { officeTheme, name: (file.name || '').replace(/\.\w+$/, '') || officeTheme.name };
+}
+
+// .pptx, .potx (a template: maybe without slides) and .thmx (an Office theme).
 export async function importPPTX(file) {
   const JSZip = await loadJSZip();
   const zip = await JSZip.loadAsync(file);
 
-  const presFile = 'ppt/presentation.xml';
+  // The main part: the presentation (ppt/presentation.xml), or a theme file's theme.
+  const pkgRels = rels(await zip.file('_rels/.rels')?.async('string'), '');
+  const main = Object.values(pkgRels).find(r => r.type === 'officeDocument')?.path;
+  const presFile = [main, 'ppt/presentation.xml', ...Object.keys(zip.files).filter(f => /(^|\/)presentation\.xml$/.test(f))]
+    .find(f => f && /presentation\.xml$/.test(f) && zip.file(f));
+  if (!presFile) return themeOnlyPackage(zip, main, file);
   const pres = parseXML(await zip.file(presFile).async('string'));
   const sldSz = all(pres, 'p:sldSz')[0];
-  const cx = +sldSz.getAttribute('cx'), cy = +sldSz.getAttribute('cy');
+  const cx = +(sldSz?.getAttribute('cx') || 12192000), cy = +(sldSz?.getAttribute('cy') || 6858000);
   const scale = CANVAS_W / cx;
   const size = { w: CANVAS_W, h: Math.round(cy * scale) };
-  const presRels = rels(await zip.file(relsPath(presFile)).async('string'), 'ppt');
+  const presRels = rels(await zip.file(relsPath(presFile))?.async('string'), dirOf(presFile));
   const commentAuthors = await readCommentAuthors(zip);
 
-  // Theme: colours and fonts.
-  const themePath = Object.values(presRels).find(r => r.type === 'theme')?.path
-    || Object.keys(zip.files).find(f => /^ppt\/theme\/theme\d+\.xml$/.test(f));
-  const themeDoc = themePath && zip.file(themePath) ? parseXML(await zip.file(themePath).async('string')) : null;
-  const theme = themeDoc ? themeColours(themeDoc) : {};
-  const fonts = {
-    major: all(all(themeDoc, 'a:majorFont')[0], 'a:latin')[0]?.getAttribute('typeface') || '',
-    minor: all(all(themeDoc, 'a:minorFont')[0], 'a:latin')[0]?.getAttribute('typeface') || '',
+  // Themes: each master has its own (Google Slides writes one per master).
+  const themes = new Map();
+  const themeFor = async masterFile => {
+    const r = masterFile ? rels(await zip.file(relsPath(masterFile))?.async('string'), dirOf(masterFile)) : {};
+    const p = [Object.values(r).find(x => x.type === 'theme')?.path, Object.values(presRels).find(x => x.type === 'theme')?.path,
+      Object.keys(zip.files).find(f => /theme\/theme\d+\.xml$/.test(f))].find(x => x && zip.file(x)) || null;
+    if (!themes.has(p)) themes.set(p, await readTheme(zip, p));
+    return themes.get(p);
   };
-  // The master's colour map says which theme colour is text / background
-  // (dark masters swap them).
-  const masterPath = Object.values(presRels).find(r => r.type === 'slideMaster')?.path;
-  if (masterPath && zip.file(masterPath)) {
-    const cm = all(parseXML(await zip.file(masterPath).async('string')), 'p:clrMap')[0];
-    for (const k of ['bg1', 'tx1', 'bg2', 'tx2']) { const v = cm?.getAttribute(k); if (v && theme[v]) theme[k] = theme[v]; }
-  }
+  // `theme` and `fonts` are those of the part being read: its master's theme,
+  // through its colour map (the master's, and a layout's or slide's override).
+  const theme = { _links: {} }, fonts = { major: '', minor: '' };
+  let palMap = DEFAULT_MAP;                 // (the colour map of the master the palette comes from)
+  const use = (th, map) => {
+    for (const k of Object.keys(theme)) if (k !== '_links') delete theme[k];
+    Object.assign(theme, th.scheme);
+    for (const k of MAPPED) theme[k] = th.scheme[map[k]];
+    theme._th = th; theme._map = map;
+    theme._role = v => { const slot = MAPPED.includes(v) ? map[v] : v;
+      return slot === palMap.bg1 ? 'bg' : slot === palMap.tx1 ? 'fg' : /^accent[1-6]$/.test(slot) ? 'a' + (+slot.slice(6) - 1) : null; };
+    fonts.major = th.major; fonts.minor = th.minor;
+  };
+  const cache = new Map();
+  const info = async f => {
+    if (cache.has(f)) return cache.get(f);
+    const doc = parseXML(await zip.file(f).async('string'));
+    const r = rels(await zip.file(relsPath(f))?.async('string'), dirOf(f));
+    let th, map, master = null;
+    if (doc.documentElement.localName === 'sldMaster') { th = await themeFor(f); map = clrMapOf(all(doc, 'p:clrMap')[0]); }
+    else {
+      const mp = Object.values(r).find(x => x.type === 'slideMaster')?.path;
+      master = mp && zip.file(mp) ? await info(mp) : null;
+      th = master?.th || await themeFor(null);
+      map = clrMapOf(kid(doc.documentElement, 'p:clrMapOvr'), master?.map || DEFAULT_MAP);
+    }
+    use(th, map);
+    const part = Object.assign(await partInfo(zip, f, doc, r, theme, fonts), { th, map });
+    // A layout that changes the colour map (a light layout in a dark theme): the
+    // master's text styles as seen from it (its "text" is another colour).
+    if (master && JSON.stringify(map) !== JSON.stringify(master.map)) part.mview = await partInfo(zip, master.file, master.doc, master.rels, theme, fonts);
+    cache.set(f, part);
+    return part;
+  };
+  const relOf = async (part, type) => Object.values(rels(await zip.file(relsPath(part))?.async('string'), dirOf(part))).find(r => r.type === type)?.path;
+
+  const order = all(pres, 'p:sldId').map(n => presRels[n.getAttribute('r:id')]?.path).filter(p => p && zip.file(p));
+  const masterIds = all(pres, 'p:sldMasterId').map(n => presRels[n.getAttribute('r:id')]?.path).filter(p => p && zip.file(p));
+  // The palette is the theme of the first slide's master (else the first master's).
+  let palMaster = masterIds[0] || null;
+  if (order[0]) { const lp = await relOf(order[0], 'slideLayout'); const mp = lp && zip.file(lp) && await relOf(lp, 'slideMaster'); if (mp && zip.file(mp)) palMaster = mp; }
+  if (palMaster) palMap = clrMapOf(all(parseXML(await zip.file(palMaster).async('string')), 'p:clrMap')[0]);
+  const palInfo = palMaster ? await info(palMaster) : null;
+  const baseTheme = palInfo?.th || await themeFor(null);
+  use(baseTheme, palInfo?.map || DEFAULT_MAP);
+
   const ctx = { theme, fonts, pt: pt => Math.round(pt * 12700 * scale), emu: v => Math.round(v * scale) };
   // Text boxes that aren't placeholders start from the presentation's default text style.
   const defaultText = readLevels(all(pres, 'p:defaultTextStyle')[0], theme, fonts);
   // Table styles (ppt/tableStyles.xml): borders, text, header and band colours.
   const tableStyles = {};
-  const tsFile = zip.file('ppt/tableStyles.xml');
+  const tsFile = zip.file(Object.values(presRels).find(r => r.type === 'tableStyles')?.path || 'ppt/tableStyles.xml');
   if (tsFile) for (const ts of all(parseXML(await tsFile.async('string')), 'a:tblStyle')) {
     const part = n => kid(ts, n);
     const txt = el => { const t = kid(el, 'a:tcTxStyle'); if (!t) return null;
@@ -504,19 +670,19 @@ export async function importPPTX(file) {
   }
   const px = v => Math.round(v * scale);
 
-  const cache = new Map();
   const decorOf = new Map(), usedLayouts = new Map();   // part file → its objects; layout path → { layout, master }
-  const info = async f => { if (!cache.has(f)) cache.set(f, await partInfo(zip, f, theme, fonts)); return cache.get(f); };
 
-  const order = all(pres, 'p:sldId').map(n => presRels[n.getAttribute('r:id')]?.path).filter(Boolean);
   const slides = [];
-  for (const slidePath of order) {
-    const slFile = zip.file(slidePath); if (!slFile) continue;
-    const doc = parseXML(await slFile.async('string'));
-    const srels = rels(await zip.file(relsPath(slidePath))?.async('string'), dirOf(slidePath));
+  // A slide (or, with `ghost`, an empty one on that layout: to read a layout no slide uses).
+  const readSlide = async (slidePath, ghost = null) => {
+    const doc = parseXML(ghost ? EMPTY_SLIDE : await zip.file(slidePath).async('string'));
+    const srels = ghost ? { rIdLayout: { type: 'slideLayout', path: ghost } } : rels(await zip.file(relsPath(slidePath))?.async('string'), dirOf(slidePath));
     const layoutPath = Object.values(srels).find(r => r.type === 'slideLayout')?.path;
     const layout = layoutPath && zip.file(layoutPath) ? await info(layoutPath) : null;
     const master = layout?.parent && zip.file(layout.parent) ? await info(layout.parent) : null;
+    const slideMap = clrMapOf(kid(doc.documentElement, 'p:clrMapOvr'), layout?.map || master?.map || DEFAULT_MAP);
+    use(layout?.th || master?.th || baseTheme, slideMap);
+    const mview = layout?.mview || master;      // (the master's styles in this layout's colours)
 
     const blocks = [];
     const slideNo = slides.length + 1;
@@ -581,7 +747,10 @@ export async function importPPTX(file) {
       // p:style (fillRef / lnRef / fontRef), not in spPr.
       const pst = kid(sp, 'p:style');
       // (fill/line idx 0 means none; the font's idx is 'minor'/'major'.)
-      const ref = n => { const r = kid(pst, n), idx = r?.getAttribute('idx'); return r && (n === 'a:fontRef' || +(idx || 0) > 0) ? colourOf(r, theme) : null; };
+      // (Fill and line: the theme's style in that place, in the reference's colour.)
+      const ref = n => { const r = kid(pst, n), idx = r?.getAttribute('idx'); if (!r || (n !== 'a:fontRef' && !(+(idx || 0) > 0))) return null;
+        const f = n === 'a:fillRef' ? themeFill(r, theme) : n === 'a:lnRef' ? themeFill(r, theme, theme._th?.lns) : null;
+        return f?.colour || colourOf(r, theme); };
       const fill = fillOf(spPr, theme) ?? ref('a:fillRef');
       const ln = kid(spPr, 'a:ln');
       const lnFill = ln && (kid(ln, 'a:noFill') ? 'none' : colourOf(kid(ln, 'a:solidFill'), theme));
@@ -597,9 +766,9 @@ export async function importPPTX(file) {
       const isTitle = ph && TITLE_PH(ph.type);
       // The text formatting this shape inherits (see paragraphsHTML).
       const kind = !ph ? null : isTitle ? 'title' : BODY_PH(ph.type) ? 'body' : 'other';
-      const mph = ph && findPh(master?.phs || [], ph), lph = ph && findPh(layout?.phs || [], ph);
+      const mph = ph && findPh(mview?.phs || [], ph), lph = ph && findPh(layout?.phs || [], ph);
       const fontRefColour = ref('a:fontRef');
-      const levels = mergeLevels(ph ? [master?.styles[kind], mph?.levels, lph?.levels] : [defaultText, master?.styles.other,
+      const levels = mergeLevels(ph ? [mview?.styles[kind], mph?.levels, lph?.levels] : [defaultText, mview?.styles.other,
         fontRefColour && Array(9).fill({ p: null, r: { color: fontRefColour } })]);
       const body = merge({ l: 91440, r: 91440, t: 45720, b: 45720 }, mph?.body, lph?.body, readBody(kid(txBody, 'a:bodyPr')));
       const t = txBody ? paragraphsHTML(txBody, { ...ctx, slideNo, links }, { levels, body }) : null;
@@ -627,7 +796,7 @@ export async function importPPTX(file) {
         ...(body.vert && { vertical: true }),
         ...(first.color && first.color !== 'transparent' && { color: first.color }),
         ...(shadow && !((fill && fill !== 'none') || (stroke && stroke !== 'none')) && { shadow }), ...(body.fontScale && body.fontScale < 1 && { fit: body.fontScale }),
-        ...(REVELA_PH[ph?.type || ''] && { ph: REVELA_PH[ph.type || ''], pk: phKeyOf(ph) }), ...(font && { fontFamily: `${cssFont(font)}, sans-serif` }) });
+        ...(REVELA_PH[ph?.type || ''] && { ph: REVELA_PH[ph.type || ''], pk: phKeyOf(ph) }), ...(font && { fontFamily: fontStack(font) }) });
     };
     // A line or connector goes corner to corner of its box (flips choose which
     // corners), turned by its rotation. Revela draws a horizontal line through
@@ -747,7 +916,7 @@ export async function importPPTX(file) {
       if (!tbl || !geo) return;
       const tblPr = kid(tbl, 'a:tblPr');
       const st = tableStyles[kid(tblPr, 'a:tableStyleId')?.textContent] || {};
-      const levels = mergeLevels([defaultText, master?.styles.other, st.text]);
+      const levels = mergeLevels([defaultText, mview?.styles.other, st.text]);
       // The table's size: the one its cells use most (they usually all set it).
       const sizes = {}; for (const rp of all(tbl, 'a:rPr')) { const z = rp.getAttribute('sz'); if (z) sizes[z] = (sizes[z] || 0) + 1; }
       const common = Object.keys(sizes).sort((a, b) => sizes[b] - sizes[a])[0];
@@ -780,7 +949,7 @@ export async function importPPTX(file) {
       if (heights.some(Boolean)) b.rowH = heights;
       if (Object.keys(cellBg).length) b.cellBg = cellBg;
       if (pad) b.cellPad = pad;
-      if (levels[0].r.font) b.fontFamily = `${cssFont(levels[0].r.font)}, sans-serif`;
+      if (levels[0].r.font) b.fontFamily = fontStack(levels[0].r.font);
       if (merges.length) b.merges = merges;
       blocks.push(b);
     };
@@ -794,21 +963,19 @@ export async function importPPTX(file) {
     decorMode = true;
     for (const part of [master, layout].filter(Boolean)) {
       if (decorOf.has(part.file)) continue;
-      partRels = part.rels;
+      partRels = part.rels; use(part.th, part.map);
       const t = all(part.doc, 'p:spTree')[0]; if (t) await walk(t, g => g);
       decorOf.set(part.file, blocks.splice(0));
     }
-    decorMode = false; partRels = srels;
+    decorMode = false; partRels = srels; use(layout?.th || master?.th || baseTheme, slideMap);
     blocks.push(...content);
     const layoutInfo = layout && { layout, master };
     if (layoutInfo) usedLayouts.set(layoutPath, layoutInfo);
+    if (ghost) return null;
     const hideMaster = doc.documentElement.getAttribute('showMasterSp') === '0';
 
     // Background: the slide's own, else its layout's, else the master's.
-    const bgPr = all(doc, 'p:bgPr')[0], bgRef = all(doc, 'p:bgRef')[0];
-    let background = gradientCSS(bgPr, theme) || fillOf(bgPr, theme) || (bgRef ? colourOf(bgRef, theme) : null) || layout?.bg || master?.bg || theme.bg1 || '#ffffff';
-    const bgBlip = all(bgPr, 'a:blip')[0];
-    if (bgBlip) { const src = await media(bgBlip.getAttribute('r:embed')); if (src) background = `url(${src}) center/cover no-repeat`; }
+    const background = (await backgroundOf(zip, doc, theme, srels)) || layout?.bg || master?.bg || theme.bg1 || '#ffffff';
 
     // Speaker notes.
     let notes = '';
@@ -839,9 +1006,22 @@ export async function importPPTX(file) {
       if (m) { morph = { byWord: 'words', byChar: 'chars' }[m.getAttribute('option')] || 'objects'; transition = null; }
     }
     readAnimations(doc, spidOf, blocks, size);
-    slides.push({ _path: slidePath, id: uid(), sectionId: null, background, transition, ...(transitionDir && { transitionDir }), hidden, notes, autoSlide, blocks, _layout: layoutPath, ...(hideMaster && { hideMaster: true }),
-      ...(morph && { autoAnimate: true }), ...(morph && morph !== 'objects' && { morphBy: morph }), ...(comments.length && { comments }) });
+    return { _path: slidePath, id: uid(), sectionId: null, background, transition, ...(transitionDir && { transitionDir }), hidden, notes, autoSlide, blocks, _layout: layoutPath, ...(hideMaster && { hideMaster: true }),
+      ...(morph && { autoAnimate: true }), ...(morph && morph !== 'objects' && { morphBy: morph }), ...(comments.length && { comments }) };
+  };
+  for (const p of order) { const s = await readSlide(p); if (s) slides.push(s); }
+  // Every layout of the masters in use (all the masters' in a template without
+  // slides), in the masters' order, as PowerPoint's New Slide menu shows them.
+  const mastersUsed = [...new Set([...usedLayouts.values()].map(u => u.master?.file).filter(Boolean))];
+  const allLayouts = [];
+  for (const mp of mastersUsed.length ? mastersUsed : masterIds) {
+    const mi = await info(mp), r = mi.rels;
+    for (const id of all(mi.doc, 'p:sldLayoutId')) { const lp = r[id.getAttribute('r:id')]?.path; if (lp && zip.file(lp)) allLayouts.push(lp); }
   }
+  for (const lp of allLayouts) if (!usedLayouts.has(lp)) await readSlide(null, lp);
+  const rank = new Map(allLayouts.map((p, i) => [p, i]));
+  const sortedLayouts = new Map([...usedLayouts].sort((a, b) => (rank.get(a[0]) ?? 1e9) - (rank.get(b[0]) ?? 1e9)));
+  usedLayouts.clear(); for (const [k, v] of sortedLayouts) usedLayouts.set(k, v);
 
   // Links to a slide: from the slide's file to its id.
   const idOfPath = new Map(slides.map(sl => [sl._path, sl.id]));
@@ -854,7 +1034,7 @@ export async function importPPTX(file) {
   const lvl1 = (chain, i = 0) => mergeLevels(chain)[i];
   const styleFrom = lv => def({
     size: lv.r.sz ? ctx.pt(lv.r.sz) : undefined, color: lv.r.color && lv.r.color !== 'transparent' ? lv.r.color : undefined,
-    font: lv.r.font ? `${cssFont(lv.r.font)}, sans-serif` : undefined, bold: lv.r.b, italic: lv.r.i, align: ALIGN[lv.p.algn],
+    font: lv.r.font ? fontStack(lv.r.font) : undefined, bold: lv.r.b, italic: lv.r.i, align: ALIGN[lv.p.algn],
   });
   // Each PowerPoint master used becomes a Revela master (the first one the
   // main master, the others deck.masters) with its text styles and objects.
@@ -874,7 +1054,8 @@ export async function importPPTX(file) {
   for (const { master: mas } of usedLayouts.values()) {
     if (!mas || revMasters.has(mas.file)) continue;
     const first = !revMasters.size, nm = mas.doc.getElementsByTagName('p:cSld')[0]?.getAttribute('name');
-    revMasters.set(mas.file, { id: first ? 'master' : 'pptx-m' + revMasters.size, ...(nm && { name: nm.replace(/-/g, ' ') }), background: null,
+    // (Its background: its own, else the theme's background colour.)
+    revMasters.set(mas.file, { id: first ? 'master' : 'pptx-m' + revMasters.size, ...(nm && { name: nm.replace(/-/g, ' ') }), background: mas.bg || mas.th?.scheme[mas.map?.bg1] || null,
       blocks: decorOf.get(mas.file) || [], styles: stylesOf(mas) });
   }
   const styles = firstMaster ? revMasters.get(firstMaster.file).styles : {};
@@ -888,7 +1069,8 @@ export async function importPPTX(file) {
       if (media) { blocksL.push({ id: uid(), type: 'placeholder', ph: media, x: px(geo0.x), y: px(geo0.y), w: px(geo0.w), h: px(geo0.h), rotation: 0, animation: null }); continue; }
       if (!kind) continue;
       // The layout's own formatting where it differs from the master's.
-      const own = styleFrom(lvl1([mas?.styles[kind === 'title' ? 'title' : 'body'], findPh(mas?.phs || [], p)?.levels, p.levels]));
+      const mv = lay.mview || mas;
+      const own = styleFrom(lvl1([mv?.styles[kind === 'title' ? 'title' : 'body'], findPh(mv?.phs || [], p)?.levels, p.levels]));
       const base = (mas && revMasters.get(mas.file)?.styles[kind]) || {};
       const bp = { id: uid(), type: 'text', ph: kind, x: px(geo0.x), y: px(geo0.y), w: px(geo0.w), h: px(geo0.h), rotation: 0, animation: null, html: '' };
       if (own.size && own.size !== base.size) bp.fontSize = own.size;
@@ -899,7 +1081,10 @@ export async function importPPTX(file) {
       blocksL.push(bp);
     }
     const name = lay.doc.getElementsByTagName('p:cSld')[0]?.getAttribute('name') || `Diseño ${n}`;
-    layouts.push({ id, name: LAYOUT_NAMES[name.replace(/\s*\([^)]*\)\s*$/, '').trim().toUpperCase().replace(/[ _]+/g, '_')] || name.replace(/\s*\([^)]*\)\s*$/, '').replace(/_/g, ' '), background: null,
+    // A layout with a background of its own keeps it (else it shows its master's).
+    const masterBg = mas && revMasters.get(mas.file)?.background;
+    layouts.push({ id, name: LAYOUT_NAMES[name.replace(/\s*\([^)]*\)\s*$/, '').trim().toUpperCase().replace(/[ _]+/g, '_')] || name.replace(/\s*\([^)]*\)\s*$/, '').replace(/_/g, ' '),
+      background: lay.bg && lay.bg !== masterBg ? lay.bg : null,
       ...(lay.showMasterSp === false && { hideMaster: true }), ...(mas && revMasters.get(mas.file)?.id !== 'master' && { masterId: revMasters.get(mas.file).id }),
       blocks: [...(decorOf.get(lay.file) || []), ...blocksL] });
     layoutIdOf.set(path, id);
@@ -907,13 +1092,27 @@ export async function importPPTX(file) {
   const mainMaster = firstMaster ? revMasters.get(firstMaster.file) : { id: 'master', blocks: [], background: null };
   const extraMasters = [...revMasters.values()].filter(m => m.id !== 'master');
 
+  // A template without slides (.potx, a .thmx with its masters) starts with one on its first layout, as in PowerPoint.
+  if (!slides.length && layouts.length) {
+    const lay = layouts[0];
+    slides.push({ id: uid(), sectionId: null, background: lay.background || mainMaster.background || '#ffffff', transition: null, hidden: false, notes: '', autoSlide: 0,
+      blocks: newSlideBlocks(lay), layoutId: lay.id });
+  }
   if (!slides.length) throw new Error('No se encontraron diapositivas en el archivo.');
-  const deck = { version: 3, name: (file.name || '').replace(/\.pptx$/i, '') || 'Presentación importada', size, theme: 'white',
+  const deck = { version: 3, name: (file.name || '').replace(/\.(pptx|pptm|potx|potm|thmx)$/i, '') || 'Presentación importada', size, theme: 'white',
     defaultTransition: 'slide', transitionSpeed: 'default', sections: [], master: mainMaster, ...(extraMasters.length && { masters: extraMasters }),
     ...(layouts.length && { layouts }),
     slideNumber: { show: false, position: 'br', format: 'c' }, footer: { show: false, text: '', date: false },
     logo: { src: '', position: 'br', size: 120 }, loop: false, guides: { v: [], h: [] }, slides };
-  if (theme.tx1) deck.textColor = theme.tx1;           // default text colour = the theme's text colour
+  // The theme, as the deck's: its colours are the palette (Design ▸ Colours shows
+  // it by name), its fonts the theme fonts, and the colours made from its
+  // colours (tints and shades) follow a later change of palette.
+  const lo = await libreOfficeTheme(zip, firstMaster || palInfo);
+  const officeTheme = themeRecord(firstMaster?.th || baseTheme, firstMaster?.map || palInfo?.map || DEFAULT_MAP, lo);
+  deck.officeTheme = officeTheme;
+  deck.palette = 'custom'; deck.customPalette = officeTheme.colors;
+  if (officeTheme.fonts) { deck.fontPair = 'theme'; const st = themeFontStacks(officeTheme.fonts); if (st) deck.bodyFont = st.body; }
+  if (Object.keys(theme._links).length) deck.themeTints = theme._links;
   // Slides: their layout, and placeholders linked to the layout's; what they
   // only repeat from the master or layout is dropped, so editing the master's
   // styles later changes them too.

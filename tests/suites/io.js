@@ -812,4 +812,131 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(m && m.author === 'Rosa' && m.resolved && m.replies[0]?.text === 'Ya está', 'comentario moderno con su respuesta');
     assert(m.blockId && again.blocks.some(x => x.id === m.blockId), 'anclado a su objeto');
   });
+
+  // ---- Office themes (tests/fixtures/themes/, made by make.py there) ----
+  const TW = frame.contentWindow;
+  const fixture = async n => new TW.File([await (await fetch(new URL('fixtures/themes/' + n, location.href))).blob()], n);
+  const themeImport = async n => (/\.odp$/.test(n) ? R.odp.importODP : R.pptxImport.importPPTX)(await fixture(n));
+  const colorMods = async (...a) => (await TW.eval("import('/src/features/design/colormods.js')")).colorMods(...a);
+
+  await test('temas: un PowerPoint con el tema de Office se detecta (nombre, colores, fuentes) y los tonos del tema se resuelven como en PowerPoint', async () => {
+    const d = await themeImport('office.pptx');
+    eq(d.officeTheme?.name, 'Office Theme', 'nombre del tema');
+    eq(d.palette, 'custom', 'paleta propia'); eq(d.customPalette.name, 'Office', 'con el nombre de sus colores');
+    eq(d.customPalette.bg + d.customPalette.fg, '#ffffff#000000', 'fondo y texto (bg1 = lt1, tx1 = dk1)');
+    eq(d.customPalette.accents.join(), '#4f81bd,#c0504d,#9bbb59,#8064a2,#4bacc6,#f79646', 'los seis énfasis');
+    eq(d.officeTheme.fonts.major + '|' + d.officeTheme.fonts.minor, 'Calibri|Calibri', 'fuentes del tema');
+    eq(d.fontPair, 'theme', 'fuentes del tema en uso'); assert(/Carlito/.test(d.bodyFont), 'Calibri con su equivalente web (Carlito): ' + d.bodyFont);
+    const s2 = d.slides[1], rect = s2.blocks.find(b => b.type === 'shape');
+    eq(rect.fill, '#376092', 'Énfasis 1, oscuro 25 % (lumMod 75 %)');
+    const tx = s2.blocks.find(b => /Acento 2/.test(b.html || ''));
+    assert(/#d99694/.test((tx?.html || '') + (tx?.color || '')), 'Énfasis 2, claro 40 % (lumMod 60 % + lumOff 40 %)');
+    eq(d.layouts.length, 11, 'todos los diseños del patrón, no solo los usados');
+    eq(d.master.background, '#ffffff', 'el fondo del patrón (bgRef 1001 → bg1)');
+    // The tint stays linked to its theme colour: another palette recolours it.
+    R.store.replaceDeck(d); R.render();
+    R.palettes.applyPalette('ocean'); await sleep(10);
+    eq(R.state.deck.slides[1].blocks.find(b => b.type === 'shape').fill, await colorMods(R.palettes.PALETTES.ocean.accents[0], [['lumMod', '75000']]), 'el tono sigue a su color del tema');
+    R.store.undo(); await sleep(10);
+    eq(R.state.deck.slides[1].blocks.find(b => b.type === 'shape').fill, '#376092', 'deshacer');
+    reset();
+  });
+
+  await test('temas: tema oscuro (mapa de colores invertido), fondo con estilo del tema (bgRef), diseños con su fondo y un diseño claro (clrMapOvr)', async () => {
+    const d = await themeImport('noche.pptx');
+    eq(d.officeTheme.name, 'Noche');
+    eq(d.customPalette.bg + '|' + d.customPalette.fg, '#10172a|#ffffff', 'fondo dk1 y texto lt1 (p:clrMap bg1="dk1")');
+    eq(d.customPalette.clrMap.bg1, 'dk1', 'se guarda el mapa de colores');
+    assert(/^radial-gradient/.test(d.master.background), 'fondo del patrón: el degradado del estilo de fondo 3 del tema: ' + d.master.background);
+    eq(d.slides[0].background, d.master.background, 'la portada lo hereda');
+    const sec = d.layouts.find(l => l.name === 'Encabezado de sección');
+    eq(sec?.background, await colorMods('#f59e0b', [['lumMod', '50000']]), 'el diseño «Encabezado de sección» conserva su fondo (Énfasis 1 al 50 %)');
+    eq(d.slides[1].background, sec.background, 'y su diapositiva');
+    const only = d.layouts.find(l => l.name === 'Solo el título');
+    eq(only?.background, '#ffffff', 'diseño claro: bg1 = lt1 por su clrMapOvr');
+    eq(d.slides[2].background, '#ffffff', 'su diapositiva, clara');
+    const t3 = d.slides[2].blocks.find(b => /claro/.test(b.html || ''));
+    eq(R.master.styled(t3, d.slides[2], d).color, '#10172a', 'con el texto oscuro (tx1 = dk1 en ese diseño)');
+    eq(R.master.styled(d.slides[0].blocks.find(b => b.ph === 'title'), d.slides[0], d).color, '#ffffff', 'y claro en el resto');
+    assert(/Caladea/.test(d.master.styles.title.font) && /Open Sans/.test(d.bodyFont), 'Cambria → Caladea, Segoe UI → Open Sans: ' + d.master.styles.title.font);
+  });
+
+  await test('temas: Google Slides (descargado como .pptx), plantilla .potx sin diapositivas y LibreOffice (.pptx y .odp)', async () => {
+    const g = await themeImport('google.pptx');
+    eq(g.officeTheme.name, 'Streamline', 'tema de Google Slides');
+    eq(g.officeTheme.fonts.major + '|' + g.officeTheme.fonts.minor, 'Montserrat|Lato');
+    assert(['Montserrat', 'Lato'].every(f => R.fonts.googleFamiliesInDeck(g).includes(f)), 'sus fuentes de Google se cargan');
+    assert(g.layouts.some(l => l.name === 'Portada') && g.layouts.some(l => l.name === 'Título y cuerpo'), 'nombres de diseño de Google');
+    const f = await themeImport('faceta.potx');
+    eq(f.officeTheme.name, 'Faceta'); eq(f.customPalette.accents[0], '#90c226', 'colores de la plantilla');
+    eq(f.slides.length, 1, 'una plantilla sin diapositivas empieza con una'); assert(f.slides[0].layoutId === f.layouts[0].id, 'en su primer diseño');
+    eq(f.officeTheme.fonts.major, 'Trebuchet MS');
+    const lo = await themeImport('midnightblue.pptx');
+    eq(lo.officeTheme.name, 'Midnightblue', 'LibreOffice: el nombre de su plantilla');
+    eq(lo.customPalette.bg + '|' + lo.customPalette.fg, '#ffffff|#000000', 'LibreOffice: texto que se lee sobre su fondo (no el blanco de una franja)');
+    assert(/Source Sans Pro/.test(lo.officeTheme.fonts.major) && /Source Sans 3/.test(R.palettes.themeFontStacks(lo.officeTheme.fonts).heading), 'sus fuentes reales (no el Arial genérico): ' + lo.officeTheme.fonts.major);
+    const od = await themeImport('midnightblue.odp');
+    eq(od.officeTheme.name, 'Midnightblue', '.odp: el nombre de su patrón');
+    assert(/Source Sans Pro/.test(od.officeTheme.fonts.major), '.odp: sus fuentes'); eq(od.customPalette.fg, '#2c3e50', '.odp: el color del texto');
+  });
+
+  await test('temas: el tema detectado se ve en Diseño ▸ Temas, Colores y Fuentes', async () => {
+    R.store.replaceDeck(await themeImport('noche.pptx')); R.render(); await sleep(20);
+    eq(D.querySelector('[data-theme-now]').textContent, 'Noche', 'su nombre bajo «Temas»');
+    D.querySelector('#ribbon [data-palettes-open]').click(); await sleep(20);
+    const pal = D.querySelector('.popover [data-palette-theme]');
+    assert(pal && pal.classList.contains('on') && /Noche/.test(pal.textContent), 'Colores: el del tema, marcado');
+    D.querySelector('#ribbon [data-fontpairs-open]').click(); await sleep(20);
+    const fp = D.querySelector('.popover [data-fontpair-theme]');
+    assert(fp && fp.classList.contains('on') && /Cambria/.test(fp.textContent) && /Segoe UI/.test(fp.textContent), 'Fuentes: las del tema, marcadas');
+    D.querySelector('#ribbon [data-themes-open]').click(); await sleep(20);
+    eq(D.querySelector('.popover [data-theme-current]')?.textContent, 'Noche', 'Temas: el actual');
+    assert(D.querySelector('.popover [data-theme-from]') && D.querySelector('.popover [data-theme-thmx]'), 'y de dónde tomar otro');
+    D.querySelector('#ribbon [data-themes-open]').click(); await sleep(10);
+    // Back to the theme's colours after trying another palette.
+    R.palettes.applyPalette('forest'); await sleep(10);
+    D.querySelector('#ribbon [data-palettes-open]').click(); await sleep(20);
+    D.querySelector('.popover [data-palette-theme]').click(); await sleep(10);
+    eq(R.state.deck.customPalette?.bg, '#10172a', 'volver a los colores del tema');
+    reset();
+  });
+
+  await test('temas: abrir un tema de Office (.thmx) y usar el tema de otra presentación', async () => {
+    R.store.replaceDeck(R.model.emptyDeck()); R.render();
+    R.state.deck.slides[0].blocks[0].html = 'Mi título'; R.render();
+    assert(await R.openfile.useThemeOf(await fixture('brisa.thmx')), 'se aplica el .thmx');
+    let d = R.state.deck;
+    eq(d.officeTheme.name, 'Brisa'); eq(d.customPalette.accents[0], '#006d77', 'sus colores');
+    eq(d.slides[0].background, '#ffffff', 'el fondo de la paleta anterior pasa al del tema');
+    assert(/Questrial/.test(d.bodyFont) && /Century Gothic/.test(d.master.styles.title.font), 'Century Gothic (con Questrial en la web)');
+    R.store.undo(); eq(R.state.deck.officeTheme, undefined, 'un solo paso para deshacer');
+    assert(await R.openfile.useThemeOf(await fixture('noche.pptx')), 'el tema de otra presentación');
+    d = R.state.deck;
+    eq(d.officeTheme.name, 'Noche'); eq(d.layouts.length, 11, 'sus diseños');
+    const s = d.slides[0], lay = d.layouts.find(l => l.id === s.layoutId);
+    eq(lay?.name, 'Portada', 'la diapositiva pasa a su diseño equivalente');
+    assert(s.blocks.some(b => b.ph === 'title' && /Mi título/.test(b.html)), 'conservando lo escrito');
+    assert(/radial-gradient/.test(s.background), 'con el fondo del nuevo patrón');
+    eq(R.master.styled(s.blocks.find(b => b.ph === 'title'), s, d).color, '#ffffff', 'y sus estilos de texto');
+    reset();
+  });
+
+  await test('temas: exportar a PowerPoint escribe el tema (colores, mapa, fuentes) y al volver a importarlo es el mismo', async () => {
+    const d = await themeImport('noche.pptx'), blob = await R.pptx.buildPptxBlob(d);
+    const zip = await TW.JSZip.loadAsync(blob), th = await zip.file('ppt/theme/theme1.xml').async('string');
+    assert(/<a:theme [^>]*name="Noche"/.test(th) && /<a:latin typeface="Cambria"/.test(th) && /<a:latin typeface="Segoe UI"/.test(th) && /10172A/.test(th), 'tema escrito');
+    assert(/<p:clrMap bg1="dk1" tx1="lt1"/.test(await zip.file('ppt/slideMasters/slideMaster1.xml').async('string')), 'mapa de colores oscuro');
+    const back = await R.pptxImport.importPPTX(new TW.File([blob], 'n.pptx'));
+    eq(back.officeTheme.name, 'Noche', 'el mismo tema');
+    eq(back.customPalette.bg + back.customPalette.fg + back.customPalette.accents.join(), d.customPalette.bg + d.customPalette.fg + d.customPalette.accents.join(), 'los mismos colores');
+    eq(back.officeTheme.fonts.major + back.officeTheme.fonts.minor, 'CambriaSegoe UI', 'las mismas fuentes');
+    // A deck with a Revela palette: its colours become the theme; a dark one maps dk1 to the background.
+    reset(); R.palettes.applyPalette('midnight');
+    const x = await (await TW.JSZip.loadAsync(await R.pptx.buildPptxBlob())).file('ppt/theme/theme1.xml').async('string');
+    assert(/<a:dk1><a:srgbClr val="0B0F19"/.test(x) && /<a:accent1><a:srgbClr val="7AA2F7"/.test(x), 'paleta de Revela como tema');
+    const OT = await TW.eval("import('/src/io/formats/ooxml-theme.js')"), thmx = await OT.buildThmx(R.state.deck);
+    const t2 = await R.pptxImport.importPPTX(new TW.File([thmx], 't.thmx'));
+    eq(t2.officeTheme.colors.accents[0], '#7aa2f7', 'y como .thmx, que se vuelve a leer');
+    reset();
+  });
 }

@@ -156,7 +156,7 @@ export function applyLayout(id, index = state.ui.slideIndex) {
     state.ui.selection = null;
   });
 }
-function relayout(s, lay, deck = state.deck) {
+function relayout(s, lay, deck = state.deck, background = true) {
   const old = s.blocks, used = new Set();
   const texts = old.filter(b => b.type === 'text' && (b.html || '').replace(/<[^>]*>/g, '').trim());
   const take = test => { const b = texts.find(x => !used.has(x) && test(x)); if (b) used.add(b); return b; };
@@ -168,7 +168,7 @@ function relayout(s, lay, deck = state.deck) {
   }
   // The background follows the new layout's, unless the slide had its own.
   const was = layoutOf(s, deck), nb = layoutBackground(lay, deck);
-  if (nb && followsBackground(s, was ? layoutBackground(was, deck) : masterOf(s, deck).background, deck)) s.background = nb;
+  if (background && nb && followsBackground(s, was ? layoutBackground(was, deck) : masterOf(s, deck).background, deck)) s.background = nb;
   s.layoutId = lay.id;
   // Old empty placeholders go; connectors to moved text go with it.
   const keep = old.filter(b => !used.has(b) && !(b.ph && !(b.html || '').replace(/<[^>]*>/g, '').trim())
@@ -176,6 +176,8 @@ function relayout(s, lay, deck = state.deck) {
   s.blocks = [...fresh, ...keep];
 }
 export const newSlideBlocks = lay => freshPlaceholders(lay);
+// (Without touching the background: applying another theme decides it.)
+export const relayoutSlide = (s, lay, deck = state.deck) => relayout(s, lay, deck, false);
 // Back to the layout: placeholders return to its place and lose the formatting
 // set on the slide (PowerPoint's "Reset").
 export function resetSlide(index = state.ui.slideIndex) {

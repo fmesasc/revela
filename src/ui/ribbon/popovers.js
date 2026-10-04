@@ -12,6 +12,8 @@ import * as blocks from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
 import * as palettes from '../../features/design/palettes.js';
 import * as fontsMod from '../../features/design/fonts.js';
+import * as officeTheme from '../../features/design/officetheme.js';
+import { readFile, useThemeOf, saveTheme } from '../shell/openfile.js';
 import { ICON_NAMES, iconSVG, WORDART_KEYS, wordartCSS, SHAPE_CATALOG, shapeThumb } from '../../render/svg.js';
 import { t } from '../../i18n/index.js';
 import { ICON_GROUPS, BASIC_ICONS } from '../../render/icons.js';
@@ -62,15 +64,35 @@ export const POPS = {
   newslide: () => `<h4>${t('Nueva diapositiva')}</h4><div class="layout-grid">`
     + allMasters().map((m, i, ms) => (ms.length > 1 ? `<div class="layout-master">${esc(m.name || (i ? `${t('Patrón')} ${i + 1}` : t('Patrón')))}</div>` : '')
       + ensureLayouts().filter(l => masterOf(l) === m).map(l => `<button data-newslide="${l.id}" type="button">${t(l.name)}</button>`).join('')).join('') + `</div>`,
-  palettes: () => `<h4>${t('Colores del tema')}</h4><div class="pal-grid">`
+  // The imported theme's colours (an Office, Google Slides or LibreOffice theme) come first, by its name.
+  palettes: () => { const own = officeTheme.themeColours(), cur = palettes.currentPalette();
+    const sw = p => `<span class="pal-sw" style="background:${p.bg};color:${p.fg}">Aa${p.accents.map(c => `<i style="background:${c}"></i>`).join('')}</span>`;
+    return `<h4>${t('Colores del tema')}</h4><div class="pal-grid">`
+    + (own ? `<button data-palette-theme type="button" class="${officeTheme.isThemeColours() ? 'on' : ''}">${sw(own)}<span>${esc(own.name)}</span></button>` : '')
+    + (state.deck.palette === 'custom' && !officeTheme.isThemeColours() ? `<button type="button" class="on" disabled>${sw(cur)}<span>${esc(cur.name)}</span></button>` : '')
     + Object.entries(palettes.PALETTES).map(([k, p]) => `<button data-palette="${k}" type="button" class="${(state.deck.palette || 'revela') === k ? 'on' : ''}">`
-      + `<span class="pal-sw" style="background:${p.bg};color:${p.fg}">Aa${p.accents.map(c => `<i style="background:${c}"></i>`).join('')}</span>`
-      + `<span>${t(p.name)}</span></button>`).join('') + `</div>`,
-  fontpairs: () => `<h4>${t('Fuentes del tema')}</h4><div class="fp-list">`
+      + `${sw(p)}<span>${t(p.name)}</span></button>`).join('') + `</div>`; },
+  fontpairs: () => { const tf = state.deck.officeTheme?.fonts, ts = palettes.themeFontStacks(tf), q = s => esc(s.replace(/"/g, "'"));
+    return `<h4>${t('Fuentes del tema')}</h4><div class="fp-list">`
+    + (ts ? `<button data-fontpair-theme type="button" class="${state.deck.fontPair === 'theme' ? 'on' : ''}">`
+      + `<b style="font-family:${q(ts.heading)}">${esc(tf.major || tf.minor)}</b><span style="font-family:${q(ts.body)}">${esc(tf.minor || tf.major)}</span>`
+      + `<small>${esc(tf.name || state.deck.officeTheme.name || '')}</small></button>` : '')
     + Object.entries(palettes.FONT_PAIRS).map(([k, p]) => { const st = palettes.pairStacks(k);
       return `<button data-fontpair="${k}" type="button" class="${state.deck.fontPair === k ? 'on' : ''}">`
         + `<b style="font-family:${st.heading.replace(/"/g, "'")}">${p.heading}</b><span style="font-family:${st.body.replace(/"/g, "'")}">${p.body}</span>`
-        + `<small>${t(p.name)}</small></button>`; }).join('') + `</div>`,
+        + `<small>${t(p.name)}</small></button>`; }).join('') + `</div>`; },
+  // Design ▸ Themes: the document's theme (detected when importing), and another one from a file.
+  themes: () => { const d = state.deck, ot = d.officeTheme, p = palettes.currentPalette(), ts = palettes.themeFontStacks(ot?.fonts);
+    const fonts = d.fontPair === 'theme' && ot?.fonts ? `${ot.fonts.major || ot.fonts.minor} / ${ot.fonts.minor || ot.fonts.major}`
+      : palettes.FONT_PAIRS[d.fontPair] ? `${palettes.FONT_PAIRS[d.fontPair].heading} / ${palettes.FONT_PAIRS[d.fontPair].body}` : '';
+    return `<h4>${t('Tema actual')}</h4><div class="theme-card" style="background:${esc(p.bg)};color:${esc(p.fg)}">`
+      + `<b style="${ts && d.fontPair === 'theme' ? `font-family:${esc(ts.heading.replace(/"/g, "'"))}` : ''}" data-theme-current>${esc(ot?.name || t(p.name))}</b>`
+      + `<span class="pal-sw">${p.accents.map(c => `<i style="background:${esc(c)}"></i>`).join('')}</span>`
+      + (fonts ? `<small>${esc(fonts)}</small>` : '') + `</div>`
+      + `<p class="theme-hint">${t('Colores, fuentes, patrón y diseños de un PowerPoint (.pptx, .potx), de Google Slides (descargado como .pptx) o de LibreOffice (.odp)')}</p>`
+      + `<div class="theme-actions"><button type="button" class="mini2" data-theme-from>${t('Usar el tema de otra presentación…')}</button>`
+      + `<button type="button" class="mini2" data-theme-thmx>${t('Abrir un tema de Office (.thmx)…')}</button>`
+      + `<button type="button" class="mini2" data-theme-save>${t('Guardar el tema (.thmx)')}</button></div>`; },
   paragraph: () => {
     const b = selectedBlock(); const tb = b && b.type === 'text' ? b : {};
     return `<h4>${t('Párrafo')}</h4>
@@ -140,6 +162,11 @@ export function togglePopover(launcher, type, { replaceId = null } = {}) {
   });
   pop.querySelectorAll('[data-palette]').forEach(x =>
     x.addEventListener('click', () => { palettes.applyPalette(x.dataset.palette); closePopover(); }));
+  pop.querySelector('[data-palette-theme]')?.addEventListener('click', () => { const c = officeTheme.themeColours(); if (c) palettes.applyPalette('custom', state.deck, c); closePopover(); });
+  pop.querySelector('[data-fontpair-theme]')?.addEventListener('click', () => { palettes.applyThemeFonts(state.deck.officeTheme?.fonts); closePopover(); });
+  pop.querySelector('[data-theme-from]')?.addEventListener('click', () => { closePopover(); readFile('.pptx,.potx,.pptm,.odp,.otp,.thmx', useThemeOf, 'file'); });
+  pop.querySelector('[data-theme-thmx]')?.addEventListener('click', () => { closePopover(); readFile('.thmx', useThemeOf, 'file'); });
+  pop.querySelector('[data-theme-save]')?.addEventListener('click', () => { closePopover(); saveTheme(); });
   pop.querySelectorAll('[data-fontpair]').forEach(x => {
     const st = palettes.pairStacks(x.dataset.fontpair); fontsMod.ensureFont(st.heading); fontsMod.ensureFont(st.body);
     x.addEventListener('click', () => { palettes.applyFontPair(x.dataset.fontpair); closePopover(); });

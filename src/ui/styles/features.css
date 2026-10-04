@@ -29,6 +29,13 @@
 .fp-list{display:flex;flex-direction:column;gap:4px;min-width:220px}
 .fp-list button{text-align:left;color:var(--txt)}
 .fp-list b{font-size:17px}.fp-list span{font-size:13px}.fp-list small{color:var(--txt2)}
+/* Design ▸ Themes: the document's theme and where to take another from */
+.theme-card{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:8px;border:1px solid var(--line2);min-width:260px;max-width:320px}
+.theme-card b{font-size:18px;overflow-wrap:anywhere}.theme-card small{opacity:.8}
+.theme-card .pal-sw{height:16px;padding:0}.theme-card .pal-sw i:first-of-type{margin-left:0}
+.theme-hint{font-size:12px;color:var(--txt2);max-width:320px;margin:10px 0 6px}
+.theme-actions{display:flex;flex-direction:column;gap:6px}.theme-actions .mini2{text-align:left;padding:7px 10px}
+.theme-now{display:block;font-size:10px;line-height:1.1;max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--accent)}.theme-now[hidden]{display:none}
 @keyframes rvInOut{0%{opacity:0}30%,70%{opacity:1}100%{opacity:0}}
 @keyframes rvPath{to{translate:var(--dx,0) var(--dy,0)}}
 /* Motion path guide on the selected object */

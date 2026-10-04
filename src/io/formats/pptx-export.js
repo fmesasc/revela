@@ -20,6 +20,7 @@ import { masterBlocksFor, isEmptyPlaceholder, styled, styleKind } from '../../fe
 import { PPTXGEN, JSZIP, loadScript } from '../../core/vendor.js';
 import { animTimeline, animEntries, isEntrance, motionPoints } from '../../features/animation/transitions.js';
 import { download } from '../files.js';
+import { writeTheme } from './ooxml-theme.js';
 
 
 
@@ -548,6 +549,7 @@ function timingXML(s, spids, deck) {
 async function addMotion(blob, deck) {
   const JSZip = await loadScript(JSZIP, 'JSZip');
   const zip = await JSZip.loadAsync(blob);
+  await writeTheme(zip, deck);                            // (the deck's theme instead of PptxGenJS's Office one)
   for (let i = 0; i < deck.slides.length; i++) {
     const f = zip.file(`ppt/slides/slide${i + 1}.xml`); if (!f) continue;
     let xml = await f.async('string');

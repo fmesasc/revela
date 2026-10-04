@@ -14,6 +14,10 @@ import { stlToGLB } from '../../features/content/stl.js';
 import { importPPTX } from '../../io/formats/pptx-import.js';
 import { importODP } from '../../io/formats/odp.js';
 import { markdownToSlides } from '../../io/formats/markdown.js';
+import { buildThmx } from '../../io/formats/ooxml-theme.js';
+import { download, slug } from '../../io/files.js';
+import { applyThemeFrom } from '../../features/design/officetheme.js';
+import { sanitizeDeck } from '../../features/document/sanitize.js';
 import { factor } from '../canvas/interact.js';
 import { confirmDialog, promptDialog, alertDialog } from '../dialogs/dialog.js';
 import { t } from '../../i18n/index.js';
@@ -48,11 +52,29 @@ const isKeynote = f => /\.key$/i.test(f.name);
 function keynoteHelp() {
   alertDialog(t('Los archivos de Keynote (.key) usan un formato propio de Apple que no se puede leer aquí. En Keynote: Archivo ▸ Exportar a ▸ PowerPoint, y abre aquí el .pptx (conserva textos, imágenes, formas y diapositivas).'));
 }
-// A PowerPoint or LibreOffice presentation.
+// A PowerPoint or LibreOffice presentation, or a template (.potx, .otp).
+const isODF = f => /\.(odp|otp)$/i.test(f.name);
+const isThemeFile = f => /\.thmx$/i.test(f.name);
 export async function openPresentation(file) {
   if (isKeynote(file)) { keynoteHelp(); return false; }
-  try { replaceDeck(/\.odp$/i.test(file.name) ? await importODP(file) : await importPPTX(file)); return true; }
+  if (isThemeFile(file)) return useThemeOf(file);           // (a theme alone: applied to the open presentation)
+  try { replaceDeck(isODF(file) ? await importODP(file) : await importPPTX(file)); return true; }
   catch (e) { alertDialog(t('No se pudo importar la presentación: ') + e.message); return false; }
+}
+// Design ▸ Themes: the theme of another presentation or template (.pptx,
+// .potx, .odp — Google Slides' come as .pptx) or an Office theme (.thmx) on
+// the open one: colours, fonts, master styles, layouts and backgrounds.
+export async function useThemeOf(file) {
+  try {
+    const src = sanitizeDeck(isODF(file) ? await importODP(file) : await importPPTX(file));
+    if (!applyThemeFrom(src)) { alertDialog(t('Ese archivo no tiene un tema que se pueda usar.')); return false; }
+    return true;
+  } catch (e) { alertDialog(t('No se pudo leer el tema: ') + (e.message || e)); return false; }
+}
+// The presentation's theme as an Office theme file, for PowerPoint or another presentation.
+export async function saveTheme() {
+  try { download(await buildThmx(state.deck), slug(state.deck.officeTheme?.name || state.deck.name || 'tema') + '.thmx'); return true; }
+  catch (e) { alertDialog(t('No se pudo guardar el tema: ') + (e.message || e)); return false; }
 }
 // Markdown: its slides after the current one.
 export function insertMarkdown(md) {
@@ -67,7 +89,7 @@ export function insertMarkdown(md) {
 // What a file is, by its type or name.
 function kindOf(f) {
   const n = f.name.toLowerCase(), ty = f.type;
-  if (/\.(pptx|odp|key)$/.test(n)) return 'presentation';
+  if (/\.(pptx|pptm|potx|odp|otp|key|thmx)$/.test(n)) return 'presentation';
   if (/\.json$/.test(n)) return 'project';
   if (/\.(md|markdown)$/.test(n)) return 'markdown';
   if (/\.(glb|gltf)$/.test(n)) return 'model';
@@ -118,6 +140,7 @@ export async function dropFiles(files, at = null) {
   const list = [...files], doc = list.find(f => ['presentation', 'project'].includes(kindOf(f)));
   if (doc) {
     if (isKeynote(doc)) { keynoteHelp(); return 0; }
+    if (isThemeFile(doc)) return (await useThemeOf(doc)) ? 1 : 0;   // (a theme changes the open one: nothing to lose)
     if (!(await mayReplace())) return 0;
     return (kindOf(doc) === 'project' ? await openProject(await doc.text()) : await openPresentation(doc)) ? 1 : 0;
   }

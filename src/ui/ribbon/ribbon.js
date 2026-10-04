@@ -128,6 +128,8 @@ export function initRibbon() {
     if (rw) { aiRewrite(rw.dataset.aiRewrite); return; }
     const dr = e.target.closest('[data-draw]');
     if (dr) { dr.dataset.draw ? setDrawTool(dr.dataset.draw) : commit(() => (state.ui.drawTool = null), { history: false }); return; }
+    const th = e.target.closest('[data-themes-open]');
+    if (th) { e.stopPropagation(); togglePopover(th, 'themes'); return; }
     const po = e.target.closest('[data-palettes-open]');
     if (po) { e.stopPropagation(); togglePopover(po, 'palettes'); return; }
     const fo = e.target.closest('[data-fontpairs-open]');
@@ -359,6 +361,9 @@ export function renderRibbon() {
   syncValue('[data-morphby]', slide.morphBy || 'objects');
   syncValue('[data-theme]', state.deck.theme);
   syncValue('[data-deck-fg]', palettes.deckFg());
+  // The detected theme's name under Design ▸ Themes (an imported Office, Google Slides or LibreOffice theme).
+  { const el = $('[data-theme-now]'), nm = state.deck.officeTheme?.name || '';
+    if (el && el.textContent !== nm) { el.textContent = nm; el.hidden = !nm; } }
   { const v = $('[data-action="slide-vertical"]'); if (v) { v.classList.toggle('on', !!currentSlide()?.vertical); v.disabled = state.ui.slideIndex === 0 || !!state.ui.editMaster; } }
   // Buttons that need a (suitable) selection are disabled without one, instead of doing nothing.
   { const sel = selectedBlocks(), texts = sel.filter(b => b.type === 'text'), objs = sel.filter(b => b.type !== 'connector');
