@@ -8,6 +8,7 @@ import * as acc from '../../io/cloud/account.js';
 import { t, currentLang } from '../../i18n/index.js';
 import { alertDialog, confirmDialog, promptDialog } from './dialog.js';
 import { openTeam } from './team.js';
+import { openReport } from './report.js';
 
 const FEATURE_NAMES = { ai: 'IA incluida', 'share-people': 'Compartir con personas', 'cloud-save': 'Guardado en la nube', 'video-calls': 'Videollamadas en el editor', 'premium-templates': 'Plantillas premium' };
 const errorText = e => (e.message === 'CANCELLED' || e.message === 'TERMS' ? t('No se ha iniciado sesión.') : e.message === 'EXPIRED' ? t('Se acabó el tiempo para confirmar. Vuelve a intentarlo.') : `${t('Algo ha fallado:')} ${e.message}`);
@@ -65,7 +66,9 @@ export function openAccount({ buy } = {}) {
         ${termsBox()}
         <div class="acc-code" hidden></div>
         <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="fr-do acc-login"${acc.termsAccepted() ? '' : ' disabled'}>${t(EDITION === 'desktop' ? 'Iniciar sesión en el navegador' : 'Iniciar sesión con Google')}</button></div>
-        <p class="host-help" style="font-size:12px"><a href="${OFFICIAL_SITE}/pricing" target="_blank" rel="noopener">${t('Ver planes y precios')}</a></p>`;
+        <p class="host-help" style="font-size:12px"><a href="${OFFICIAL_SITE}/pricing" target="_blank" rel="noopener">${t('Ver planes y precios')}</a></p>
+        <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 acc-report"><i class="ms">bug_report</i> ${t('Informar de un problema')}</button></div>`;
+      body.querySelector('.acc-report').addEventListener('click', () => { close(); openReport(); });
       const termsOk = body.querySelector('.acc-terms-ok'), loginBtn = body.querySelector('.acc-login');
       termsOk.addEventListener('change', () => { loginBtn.disabled = !termsOk.checked; });
       loginBtn.addEventListener('click', async e => {
@@ -87,6 +90,7 @@ export function openAccount({ buy } = {}) {
     if (buy && BUYABLE.includes(buy) && me.billing && !(me.plan === 'pro' && buy.startsWith('pro'))) { const b = buy; buy = null; acc.buy(b).catch(e => alertDialog(errorText(e))); }
     const pro = me.plan === 'pro', until = me.until ? new Date(me.until).toLocaleDateString(currentLang(), { dateStyle: 'long' }) : '';
     body.innerHTML = `<div class="acc-who">${esc(me.email)}</div>
+      ${me.blocked ? `<p class="host-help acc-blocked" role="alert">${t('Tu cuenta está bloqueada: la IA y la nube no están disponibles. Si crees que es un error, usa «Informar de un problema».')}</p>` : ''}
       <div class="acc-plan"><span class="acc-badge${pro ? ' pro' : ''}">${t(pro ? 'Pro' : 'Gratis')}</span>${pro && until ? `<small>${t('Renovación:')} ${esc(until)}</small>` : ''}</div>
       <div class="acc-credits"><b>${Math.max(0, me.credits | 0)}</b> ${t('créditos')}${me.expiring?.[0] ? `<small>${t('{n} caducan el {d}').replace('{n}', me.expiring[0].n).replace('{d}', new Date(me.expiring[0].exp).toLocaleDateString(currentLang(), { day: 'numeric', month: 'long' }))}</small>` : ''}</div>
       <ul class="acc-features">${(me.features || []).map(f => `<li>✓ ${t(FEATURE_NAMES[f] || f)}</li>`).join('')}</ul>
@@ -99,7 +103,8 @@ export function openAccount({ buy } = {}) {
       <div class="fr-actions" style="justify-content:space-between">
         ${pro ? `<button type="button" class="mini2 acc-portal">${t('Gestionar la suscripción')}</button>` : '<span></span>'}
         <button type="button" class="mini2 acc-out">${t('Cerrar sesión')}</button></div>
-      <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 acc-team"><i class="ms">groups</i> ${me.team ? esc(me.team.name) : t('Equipos y centros')}</button></div>
+      <div class="fr-actions" style="justify-content:flex-start;flex-wrap:wrap"><button type="button" class="mini2 acc-team"><i class="ms">groups</i> ${me.team ? esc(me.team.name) : t('Equipos y centros')}</button>
+        <button type="button" class="mini2 acc-report"><i class="ms">bug_report</i> ${t('Informar de un problema')}</button></div>
       <details class="acc-mail"><summary>${t('Avisos por correo')}</summary>
         <p class="host-help">${t('Revela te escribe a {email} cuando te comparten una presentación, te invitan a un equipo o cambia tu plan.').replace('{email}', esc(me.email))}</p>
         <label class="fr-chk"><input type="checkbox" class="acc-mail-credits"> ${t('Avisarme cuando mis créditos estén a punto de caducar')}</label>
@@ -112,6 +117,7 @@ export function openAccount({ buy } = {}) {
     body.querySelector('.acc-portal')?.addEventListener('click', () => acc.manageBilling().catch(e => alertDialog(errorText(e))));
     body.querySelector('.acc-out').addEventListener('click', async () => { await acc.signOut(); render(); });
     body.querySelector('.acc-team').addEventListener('click', () => { close(); openTeam(); });
+    body.querySelector('.acc-report').addEventListener('click', () => { close(); openReport(); });
     // (Email notices: the optional ones can be switched off; a test email shows whether they arrive.)
     const credBox = body.querySelector('.acc-mail-credits');
     body.querySelector('.acc-mail').addEventListener('toggle', async e => {

@@ -38,6 +38,12 @@
 //   POST /api/account/delete   { confirm: email }       (deletes it all; from the website)
 //   …/api/docs/…               presentations in the cloud, shared with people or by link (docs.js)
 //   …/api/3d/…                 «Crear modelo 3D con IA»: jobs of rounds AI + Blender (model3d.js)
+//   POST /api/support          { message, category, email? (no session), version, browser, deckName?, attach? }
+//                              → { id } a support ticket, acknowledged by email (admin.js; limited per day)
+//   …/api/admin/…              administration, only on the admin host behind Cloudflare Access (admin.js)
+//
+// A blocked account (by an administrator, admin.js) can still sign in, see its account,
+// download or delete its data and report a problem; everything else answers 403 { error: 'blocked' }.
 //
 // Sessions: a cookie on the web (HttpOnly, Secure, SameSite=Strict, only for
 // /api), a bearer token in the desktop app. Only a hash of each is stored.
@@ -51,6 +57,7 @@ import { docsSettings } from './docs.js';
 import { mail, readUnsubToken, unsubPage, fmtDate, mailConfigured, OPTIONAL } from './mail.js';
 import { scheduleAt, dayOf } from './schedule.js';
 import { handle3d, configured3d } from './model3d.js';
+import { createTicket, directoryUpsert, directoryRemove, CHARGES } from './admin.js';
 
 const enc = new TextEncoder();
 const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -105,8 +112,20 @@ export class Account {
   json(o, status = 200) { return new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json' } }); }
   async get(k, d) { const v = await this.ctx.storage.get(k); return v === undefined ? d : v; }
   async put(o) { await this.ctx.storage.put(o); }
-  // The plan now: Pro while paid (and a few days' grace), else free.
-  async plan() { const p = await this.get('plan', null); return p && p.until > Date.now() ? p.name : 'free'; }
+  // The plan now: Pro while paid (and a few days' grace) or given by an administrator (proGift), else free.
+  async plan() { const p = await this.get('plan', null), g = await this.get('proGift', null), now = Date.now(); return g?.until > now ? 'pro' : p && p.until > now ? p.name : 'free'; }
+  async proUntil() { const p = await this.get('plan', null), g = await this.get('proGift', null); return Math.max(p?.name === 'pro' ? +p.until || 0 : 0, +g?.until || 0) || null; }
+  // What the administrators' directory knows of this account (admin.js), sent when it changes
+  // (only the balance changed: at most every 5 minutes).
+  async dirSync(force) {
+    if (!this.env.DIRECTORY) return;
+    const prof = await this.get('profile', null); if (!prof?.sub) return;
+    const own = await this.plan(), rec = { sub: prof.sub, email: prof.email, name: prof.name || null, plan: own, until: own === 'pro' ? await this.proUntil() : 0, credits: await this.get('credits', 0),
+      created: prof.created || null, lastSeen: await this.get('lastSeen', null), team: await this.get('team', null), blocked: !!(await this.get('blocked', null)) };
+    const last = await this.get('dirRec', null), now = Date.now(), same = x => JSON.stringify({ ...x, credits: 0 });
+    if (!force && last && same(last.rec) === same(rec) && (last.rec.credits === rec.credits || now - last.at < 5 * 60e3)) return;
+    if (await directoryUpsert(this.env, rec)) await this.put({ dirRec: { rec, at: now } });
+  }
   // Credits come in lots, each with its expiry ({ n, exp }); they are spent from the one that
   // expires first. What a request really cost beyond the balance is a debt, paid by the next
   // credits. 'credits' is always the balance: the lots minus the debt.
@@ -146,9 +165,9 @@ export class Account {
     await this.save(lots.filter(l => l.exp > now), await this.get('debt', 0));
     if (gone) await this.log(-gone, 'expired');
   }
-  async log(delta, reason, ref) {
+  async log(delta, reason, ref, extra) {
     const list = await this.get('ledger', []);
-    list.push({ at: Date.now(), delta, reason, ...(ref && { ref }), balance: await this.get('credits', 0) });
+    list.push({ at: Date.now(), delta, reason, ...(ref && { ref }), ...extra, balance: await this.get('credits', 0) });
     await this.put({ ledger: list.slice(-500) });
   }
   async entry(delta, reason, ref, days = 365) {
@@ -244,7 +263,7 @@ export class Account {
           const next = { ...prof, email: a.email, ...(a.name && { name: a.name }), ...(a.lang && { lang: a.lang }), ...(terms && prof.terms?.version !== s.termsVersion && { terms }) };
           if (JSON.stringify(next) !== JSON.stringify(prof)) await this.put({ profile: next });
         }
-        await this.seen();
+        await this.seen(); await this.dirSync();
         const secret = random(32), sessions = await this.get('sessions', {});
         const days = a.kind === 'desktop' ? 90 : 30;
         // (At most 20 sessions: the oldest go.)
@@ -255,7 +274,7 @@ export class Account {
       case 'check': {                                      // { secret } → ok?
         const sessions = await this.get('sessions', {}), v = sessions[await sha256(a.secret || '')], ok = !!v && v.expires > Date.now();
         if (ok) await this.seen();
-        return this.json({ ok });
+        return this.json({ ok, ...(ok && (await this.get('blocked', null)) && { blocked: true }) });
       }
       case 'logout': {
         const sessions = await this.get('sessions', {}); delete sessions[await sha256(a.secret || '')];
@@ -267,8 +286,8 @@ export class Account {
         const team = teamId ? await teamStatus(this.env, teamId, prof.email).catch(() => null) : null, byTeam = !!(team?.member && team.active);
         const plan = own === 'pro' || byTeam ? 'pro' : 'free';
         await this.expire(); await this.monthly(plan === 'pro', s);
-        const ds = await this.docState(plan === 'pro');
-        return this.json({ email: prof.email, name: prof.name || null, plan, until: own === 'pro' ? p.until : null, credits: await this.get('credits', 0), expiring: await this.soon(), features: FEATURES[plan] || FEATURES.free,
+        const ds = await this.docState(plan === 'pro'); await this.dirSync();
+        return this.json({ email: prof.email, name: prof.name || null, plan, until: own === 'pro' ? await this.proUntil() : null, ...((await this.get('blocked', null)) && { blocked: true }), credits: await this.get('credits', 0), expiring: await this.soon(), features: FEATURES[plan] || FEATURES.free,
           terms: prof.terms?.version === s.termsVersion, docs: { n: ds.docs.length, limit: ds.limit, readOnly: ds.locked.length },
           ...(team?.member && { team: { name: team.name, role: team.role, active: team.active } }) });
       }
@@ -354,11 +373,11 @@ export class Account {
         const done = await this.get('refs', []);
         if (a.ref && done.includes(a.ref)) return this.json({ ok: true, duplicate: true });
         await this.put({ refs: [...done, a.ref].filter(Boolean).slice(-300) });
-        const bal = await this.entry(Math.round(+a.credits || 0), a.reason || 'grant', a.ref, +a.days || s.packDays);
+        const bal = await this.entry(Math.round(+a.credits || 0), a.reason || 'grant', a.ref, +a.days || s.packDays); await this.dirSync();
         return this.json({ ok: true, credits: bal });
       }
       case 'setplan': {                                    // { name, until, customer? }
-        await this.put({ plan: { name: a.name, until: +a.until || 0 }, ...(a.customer && { customer: a.customer }) });
+        await this.put({ plan: { name: a.name, until: +a.until || 0 }, ...(a.customer && { customer: a.customer }) }); await this.dirSync();
         return this.json({ ok: true });
       }
       case 'customer': return this.json({ customer: await this.get('customer', null), email: (await this.get('profile', {})).email });
@@ -368,7 +387,7 @@ export class Account {
         ledger: await this.get('ledger', []), docs: await this.get('docs', []), sessions: Object.values(await this.get('sessions', {})).map(v => ({ created: v.created, expires: v.expires, kind: v.kind })) });
       case 'wipe': {
         const prof = await this.get('profile', {}), out = { docs: (await this.get('docs', [])).map(d => d.id), customer: await this.get('customer', null), email: prof.email || null, lang: prof.lang || null };
-        await this.ctx.storage.deleteAll(); return this.json(out);
+        await this.ctx.storage.deleteAll(); if (prof.sub) await directoryRemove(this.env, prof.sub); return this.json(out);
       }
       case 'docs-list': { const d = await this.docState(); return this.json({ docs: (await this.get('docs', [])).map(x => (d.locked.includes(x.id) ? { ...x, readOnly: true } : x)), limit: d.limit }); }
       case 'docs-locked': { const d = await this.docState(); return this.json({ locked: d.locked.includes(a.id), limit: d.limit }); }
@@ -388,6 +407,49 @@ export class Account {
         inbox.unshift({ id: a.id, name: a.name, owner: a.owner, role: a.role, at: Date.now() }); await this.put({ inbox: inbox.slice(0, 1000) }); return this.json({ ok: true, lang: await this.get('lang', null) });
       }
       case 'inbox-remove': await this.put({ inbox: (await this.get('inbox', [])).filter(x => x.id !== a.id) }); return this.json({ ok: true });
+      // ---- Administration (admin.js: checked there, and written to its audit log) ----
+      case 'admin-view': {
+        const prof = await this.get('profile', null); if (!prof) return this.json({});
+        await this.expire();
+        const sessions = Object.values(await this.get('sessions', {})).filter(v => v.expires > Date.now());
+        return this.json({ profile: prof, plan: await this.plan(), until: await this.proUntil(), stored: await this.get('plan', null), proGift: await this.get('proGift', null),
+          credits: await this.get('credits', 0), debt: await this.get('debt', 0), lots: await this.lots(), ledger: (await this.get('ledger', [])).slice(-50).reverse(),
+          sessions: { n: sessions.length, kinds: sessions.map(v => v.kind) }, docs: (await this.get('docs', [])).length, team: await this.get('team', null),
+          blocked: await this.get('blocked', null), lastSeen: await this.get('lastSeen', null), mailOff: await this.get('mailOff', []), customer: !!(await this.get('customer', null)), refunded: await this.get('refunded', []) });
+      }
+      case 'admin-credits': {                              // { delta, reason, days, by } → { before, after, delta, expires? }
+        await this.expire();
+        const before = await this.get('credits', 0), exp = Date.now() + (+a.days || 365) * DAY;
+        // (A debit takes at most the balance: an adjustment never leaves a debt.)
+        const delta = a.delta > 0 ? a.delta : -Math.min(-a.delta, Math.max(0, before));
+        if (delta > 0) await this.add(delta, exp); else if (delta < 0) await this.take(-delta);
+        await this.log(delta, 'admin', null, { note: a.reason, by: a.by }); await this.dirSync(true);
+        return this.json({ before, after: await this.get('credits', 0), delta, ...(delta > 0 && { expires: exp }) });
+      }
+      case 'admin-refund': {                               // { reason, by, days }: the last AI charge not refunded yet, given back
+        const done = await this.get('refunded', []), led = await this.get('ledger', []);
+        const charge = led.slice().reverse().find(x => x.delta < 0 && CHARGES.includes(x.reason) && !done.includes(x.at)); if (!charge) return this.json({ ok: false });
+        const before = await this.get('credits', 0), n = -charge.delta, exp = Date.now() + (+a.days || 365) * DAY;
+        await this.add(n, exp); await this.put({ refunded: [...done, charge.at].slice(-200) });
+        await this.log(n, 'admin', 'refund:' + charge.at, { note: a.reason, by: a.by }); await this.dirSync(true);
+        return this.json({ ok: true, before, after: await this.get('credits', 0), delta: n, expires: exp, charge: { at: charge.at, reason: charge.reason, delta: charge.delta, ...(charge.ref && { ref: charge.ref }) } });
+      }
+      case 'admin-plan': {                                 // { until (0: remove), reason, by }: Pro given by hand (Stripe's plan is untouched)
+        const before = { plan: await this.plan(), proGift: await this.get('proGift', null) };
+        if (+a.until) await this.put({ proGift: { until: +a.until, at: Date.now(), by: a.by, reason: a.reason } }); else await this.ctx.storage.delete('proGift');
+        await this.dirSync(true);
+        return this.json({ before, after: { plan: await this.plan(), proGift: await this.get('proGift', null) } });
+      }
+      case 'admin-block': {                                // { blocked, reason, by }
+        const before = await this.get('blocked', null);
+        if (a.blocked) await this.put({ blocked: { at: Date.now(), by: a.by, reason: a.reason } }); else await this.ctx.storage.delete('blocked');
+        await this.dirSync(true);
+        return this.json({ before: { blocked: before }, after: { blocked: await this.get('blocked', null) } });
+      }
+      case 'admin-mail': {                                 // { kind: 'creditsAdded', n, exp }: telling the person (a service email)
+        const lang = (await this.get('profile', {})).lang;
+        return this.json({ ok: !!(await this.mailMe(a.kind, { n: a.n, date: fmtDate(a.exp, lang) })) });
+      }
     }
     return this.json({ error: 'unknown' }, 404);
   }
@@ -450,7 +512,7 @@ async function sessionOf(req, env) {
   const bearer = (req.headers.get('Authorization') || '').replace(/^Bearer /, ''), fromCookie = cookieOf(req);
   const raw = bearer || fromCookie, t = parseToken(raw); if (!t) return null;
   const r = await call(acct(env, t.sub), 'check', { secret: t.secret });
-  return r.ok ? { sub: t.sub, secret: t.secret, via: bearer ? 'bearer' : 'cookie' } : null;
+  return r.ok ? { sub: t.sub, secret: t.secret, via: bearer ? 'bearer' : 'cookie', ...(r.blocked && { blocked: true }) } : null;
 }
 
 export async function handleApi(req, env, url) {
@@ -508,6 +570,15 @@ export async function handleApi(req, env, url) {
   }
 
   const me = await sessionOf(req, env);
+  // Reporting a problem: with a session or with an email address; only from Revela itself (admin.js).
+  if (path === '/support') {
+    if (req.method !== 'POST') return json({ error: 'method' }, 405);
+    if (!webOrigin && !desktopOrigin) return json({ error: 'origin' }, 403);
+    return createTicket(req, env, me, body, json);
+  }
+  // A blocked account: its data and its account, yes; the rest, no.
+  if (me?.blocked && !['/me', '/logout', '/terms', '/mail/prefs', '/account/export', '/account/delete'].includes(path))
+    return json({ error: 'blocked', message: 'Esta cuenta está bloqueada. Si crees que es un error, escríbenos desde Revela ▸ Vista ▸ Informar de un problema.' }, 403);
   // Cloud documents: a link may give access without a session (to read).
   if (isDocs) {
     const who = me && { ...me, ...(await call(acct(env, me.sub), 'me')) };

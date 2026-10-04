@@ -78,20 +78,21 @@ export class ShareBox {
 export class Limits {
   constructor(ctx, env) { this.ctx = ctx; this.env = env; }
   async fetch(req) {
-    const { who } = await req.json(), day = new Date().toISOString().slice(0, 10), st = this.ctx.storage;
-    const perUser = +this.env.DAILY_PER_USER || 30, total = +this.env.DAILY_TOTAL || 3000;
+    const { who, per, scope } = await req.json(), day = new Date().toISOString().slice(0, 10), st = this.ctx.storage;
+    // (scope: a counter of its own, e.g. support tickets, with its own per-day limit and total.)
+    const perUser = +per || +this.env.DAILY_PER_USER || 30, total = scope ? +this.env.SUPPORT_DAILY_TOTAL || 500 : +this.env.DAILY_TOTAL || 3000, all = scope ? '*' + scope : '*';
     const c = (await st.get('day')) === day ? (await st.get('counts')) || {} : {};
-    if ((c['*'] || 0) >= total) return new Response(JSON.stringify({ ok: false, reason: 'total' }));
+    if ((c[all] || 0) >= total) return new Response(JSON.stringify({ ok: false, reason: 'total' }));
     if ((c[who] || 0) >= perUser) return new Response(JSON.stringify({ ok: false, reason: 'user' }));
-    c[who] = (c[who] || 0) + 1; c['*'] = (c['*'] || 0) + 1;
+    c[who] = (c[who] || 0) + 1; c[all] = (c[all] || 0) + 1;
     await st.put({ day, counts: c });
     return new Response(JSON.stringify({ ok: true }));
   }
 }
-// true if `who` may create one more thing today.
-export async function takeQuota(env, who) {
+// true if `who` may create one more thing today ({ per, scope }: another counter and limit, see Limits).
+export async function takeQuota(env, who, { per, scope } = {}) {
   if (!env.LIMITS) return true;
-  const r = await env.LIMITS.get(env.LIMITS.idFromName('limits')).fetch('https://limits/take', { method: 'POST', body: JSON.stringify({ who }) });
+  const r = await env.LIMITS.get(env.LIMITS.idFromName('limits')).fetch('https://limits/take', { method: 'POST', body: JSON.stringify({ who, ...(per && { per }), ...(scope && { scope }) }) });
   return (await r.json()).ok;
 }
 

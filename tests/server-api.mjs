@@ -2,7 +2,8 @@
 // payments and the desktop sign-in — above all, that nothing can be skipped
 // from outside. In-memory Durable Objects; the AI provider, Google and Stripe
 // are simulated. Run by tests/run.sh when Node.js is available.
-import worker, { Account, Budget, DesktopLink, ShareBox, Limits, CloudDoc, Team, CallRoom, Schedule, ModelJob } from '../server/cloudflare/worker.js';
+import worker, { Account, Budget, DesktopLink, ShareBox, Limits, CloudDoc, Team, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit } from '../server/cloudflare/worker.js';
+import { verifyAccess, resetAccessCerts } from '../server/cloudflare/admin.js';
 import { verifyBody } from '../server/blender/gate.js';
 import { verifyStripe, sha256, shortCode, settings } from '../server/cloudflare/api.js';
 
@@ -10,7 +11,13 @@ function fakeStorage() {
   const m = new Map(); let alarm = null;
   return { m, async get(k) { if (Array.isArray(k)) return new Map(k.filter(x => m.has(x)).map(x => [x, structuredClone(m.get(x))])); return structuredClone(m.get(k)); },
     async put(k, v) { if (typeof k === 'object') { for (const [a, b] of Object.entries(k)) m.set(a, structuredClone(b)); } else m.set(k, structuredClone(v)); },
-    async delete(k) { for (const x of [].concat(k)) m.delete(x); }, async deleteAll() { m.clear(); }, async setAlarm(t) { alarm = t; }, async deleteAlarm() { alarm = null; } };
+    async delete(k) { for (const x of [].concat(k)) m.delete(x); }, async deleteAll() { m.clear(); }, async setAlarm(t) { alarm = t; }, async deleteAlarm() { alarm = null; },
+    // (As Durable Objects' list(): keys in order, or reversed; end and startAfter exclusive.)
+    async list({ prefix = '', start, startAfter, end, reverse, limit } = {}) {
+      let keys = [...m.keys()].filter(k => k.startsWith(prefix) && (start == null || k >= start) && (startAfter == null || k > startAfter) && (end == null || k < end)).sort();
+      if (reverse) keys.reverse(); if (limit) keys = keys.slice(0, limit);
+      return new Map(keys.map(k => [k, structuredClone(m.get(k))]));
+    } };
 }
 const namespace = (Cls, env) => { const inst = new Map();
   return { inst, idFromName: n => n, get: id => { if (!inst.has(id)) inst.set(id, new Cls({ storage: fakeStorage() }, env)); const o = inst.get(id);
@@ -25,7 +32,7 @@ env.FETCH = async (url, init = {}) => {
   const u = String(url);
   if (u.startsWith('https://oauth2.googleapis.com/tokeninfo')) {
     const t = new URL(u).searchParams.get('access_token');
-    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' }, 'tok-gil': { sub: '1212', email: 'gil@example.com' }, 'tok-noa': { sub: '1313', email: 'noa@example.com' } }[t];
+    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' }, 'tok-gil': { sub: '1212', email: 'gil@example.com' }, 'tok-noa': { sub: '1313', email: 'noa@example.com' }, 'tok-pia': { sub: '1414', email: 'pia@example.com' } }[t];
     if (t === 'tok-otraapp') return Response.json({ aud: 'otra-app', sub: '333', email: 'x@example.com', email_verified: 'true' });
     return who ? Response.json({ aud: CID, ...who, email_verified: 'true', expires_in: 3000 }) : new Response('bad', { status: 400 });
   }
@@ -49,6 +56,7 @@ env.SCHEDULE = namespace(Schedule, env);
 let sent = []; env.EMAIL = { send: async m => { sent.push(m); return { messageId: 'm' + sent.length }; } }; env.MAIL_SECRET = 'secreto-de-correo';
 const TERMS = '2026-10-01';
 env.SHAREBOX = namespace(ShareBox, env); env.DOCS = namespace(CloudDoc, env); env.TEAMS = namespace(Team, env); env.CALLS = namespace(CallRoom, env); env.LIMITS = namespace(Limits, env);
+env.DIRECTORY = namespace(Directory, env); env.TICKETS = namespace(Tickets, env); env.AUDIT = namespace(Audit, env);
 
 let fails = 0, n = 0;
 const ok = (c, m) => { n++; if (!c) { fails++; console.log('✗ api: ' + m); } };
@@ -704,6 +712,162 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   skew += 25 * 3600e3; await tick(id2);
   ok(!job(id2).ctx.storage.m.size, '3D: a las 24 h el trabajo se borra');
   Date.now = now0; aiReply = () => ({ status: 200, body: { choices: [{ message: { content: 'hola' } }], usage: { cost: 0.01 } } });
+}
+
+// ---- Administration (admin.js): Cloudflare Access, the directory, credits, plan, block, tickets, audit ----
+{
+  const ADMIN = 'https://admin.revelaslides.com', TEAM = 'revela-team', AUD = 'aud-revela-admin';
+  const alg = { name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' };
+  const good = await crypto.subtle.generateKey(alg, true, ['sign', 'verify']), other = await crypto.subtle.generateKey(alg, true, ['sign', 'verify']);
+  const jwk = { ...(await crypto.subtle.exportKey('jwk', good.publicKey)), kid: 'k1', alg: 'RS256', use: 'sig' };
+  let certFetches = 0; const prevFetch = env.FETCH;
+  env.FETCH = async (u, init) => (String(u) === `https://${TEAM}.cloudflareaccess.com/cdn-cgi/access/certs` ? (certFetches++, Response.json({ keys: [jwk] })) : prevFetch(u, init));
+  const b64 = o => Buffer.from(typeof o === 'string' ? o : JSON.stringify(o)).toString('base64url');
+  const now = () => Math.floor(Date.now() / 1000);
+  const jwt = async (claims = {}, { key = good.privateKey, kid = 'k1', alg: a = 'RS256' } = {}) => {
+    const h = b64({ alg: a, kid, typ: 'JWT' }), p = b64({ aud: [AUD], iss: `https://${TEAM}.cloudflareaccess.com`, email: 'jefe@example.com', exp: now() + 600, iat: now(), type: 'app', ...claims });
+    const sig = Buffer.from(await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(h + '.' + p))).toString('base64url');
+    return `${h}.${p}.${sig}`;
+  };
+  const tok = await jwt();
+  const adm = (method, path, { body, token = tok, host = ADMIN, origin = ADMIN, flag = true, headers = {} } = {}) => worker.fetch(new Request(host + '/api/admin' + path, { method,
+    headers: { ...(token && { 'Cf-Access-Jwt-Assertion': token }), ...(flag && { 'X-Revela-Admin': '1' }), ...(origin && method === 'POST' && { Origin: origin }), ...(body !== undefined && { 'Content-Type': 'application/json' }), ...headers },
+    ...(body !== undefined && { body: JSON.stringify(body) }) }), env);
+  const A = async (...x) => { const r = await adm(...x); return { status: r.status, j: await r.json().catch(() => null) }; };
+
+  // Off unless configured: 404, even with a good token.
+  ok((await adm('GET', '/whoami')).status === 404 && certFetches === 0, 'admin: sin ACCESS_TEAM/ACCESS_AUD/ADMIN_EMAILS → 404');
+  env.ACCESS_TEAM = TEAM; env.ACCESS_AUD = AUD;
+  ok((await adm('GET', '/whoami')).status === 404, 'admin: falta ADMIN_EMAILS → 404');
+  env.ADMIN_EMAILS = 'jefe@example.com, otra@example.com';
+  let x = await A('GET', '/whoami');
+  ok(x.status === 200 && x.j.email === 'jefe@example.com', 'admin: token de Access válido y correo permitido: ' + JSON.stringify(x));
+  ok((await adm('GET', '/whoami', { host: SITE })).status === 404, 'admin: en revelaslides.com (otro host) → 404');
+  ok((await worker.fetch(new Request(ADMIN + '/api/me', { headers: { Cookie: ana } }), env)).status === 404, 'admin: el resto de la API no responde en el host de administración');
+  ok((await adm('GET', '/whoami', { token: null })).status === 403, 'admin: sin token → 403');
+  ok((await adm('GET', '/whoami', { token: await jwt({ aud: ['otra-app'] }) })).status === 403, 'admin: token de otra aplicación (aud) → 403');
+  ok((await adm('GET', '/whoami', { token: await jwt({ exp: now() - 10 }) })).status === 403, 'admin: token caducado → 403');
+  ok((await adm('GET', '/whoami', { token: await jwt({}, { key: other.privateKey }) })).status === 403, 'admin: firma mala → 403');
+  ok((await adm('GET', '/whoami', { token: await jwt({ iss: 'https://otro-equipo.cloudflareaccess.com' }) })).status === 403, 'admin: emisor de otro equipo → 403');
+  ok((await adm('GET', '/whoami', { token: await jwt({ email: 'intruso@example.com' }) })).status === 403, 'admin: correo no permitido → 403');
+  ok((await adm('GET', '/whoami', { token: await jwt({ email: undefined, common_name: 'servicio' }) })).status === 403, 'admin: token de servicio sin correo → 403');
+  { const [h, p] = tok.split('.'); ok((await adm('GET', '/whoami', { token: `${b64({ alg: 'none', kid: 'k1' })}.${p}.` })).status === 403 && h, 'admin: alg none → 403'); }
+  ok((await adm('GET', '/whoami', { token: await jwt({}, { kid: 'desconocida' }) })).status === 403, 'admin: clave desconocida → 403');
+  ok((await adm('GET', '/whoami', { flag: false })).status === 403, 'admin: sin la cabecera X-Revela-Admin → 403');
+  ok((await adm('POST', '/credits', { origin: 'https://malo.example', body: { sub: '111', delta: 5, reason: 'x' } })).status === 403, 'admin: un cambio desde otra web (CSRF) → 403');
+  ok(certFetches <= 2, 'admin: las claves de Access se guardan un rato: ' + certFetches);
+  ok(await verifyAccess(tok, { ...env, ACCESS_AUD: '' }) === null, 'verifyAccess: sin configurar, nada');
+
+  // The directory: kept by the accounts themselves.
+  const pia = cookieFrom(await req('POST', '/api/login', { body: { accessToken: 'tok-pia', terms: TERMS, lang: 'es' } }));
+  x = await A('GET', '/users?q=pia');
+  ok(x.status === 200 && x.j.users.length === 1 && x.j.users[0].sub === '1414' && x.j.users[0].credits === 50 && x.j.users[0].plan === 'free' && x.j.users[0].lastSeen, 'directorio: buscar por correo: ' + JSON.stringify(x.j));
+  ok((await A('GET', '/users?q=1414')).j.users[0]?.email === 'pia@example.com', 'directorio: buscar por sub');
+  ok((await A('GET', '/users?q=nadie')).j.users.length === 0, 'directorio: sin resultados');
+  const all = (await A('GET', '/users')).j.users;
+  ok(all.length >= 5 && all.some(u => u.sub === '888') && !all.some(u => u.sub === '222'), 'directorio: recientes (y sin la cuenta borrada): ' + all.map(u => u.sub));
+  { const p1 = (await A('GET', '/users?limit=2')).j, p2 = (await A('GET', '/users?limit=2&cursor=' + encodeURIComponent(p1.cursor))).j;
+    ok(p1.users.length === 2 && p1.cursor && p2.users.length === 2 && !p2.users.some(u => p1.users.some(v => v.sub === u.sub)), 'directorio: por páginas'); }
+  x = await A('GET', '/users/1414');
+  ok(x.status === 200 && x.j.profile.email === 'pia@example.com' && x.j.credits === 50 && x.j.lots.length === 1 && x.j.ledger[0].reason === 'trial' && x.j.sessions.n === 1 && x.j.docs === 0 && x.j.directory.sub === '1414', 'ficha de la cuenta: ' + JSON.stringify(x.j).slice(0, 300));
+  ok((await A('GET', '/users/nadie')).status === 404, 'ficha de una cuenta que no existe: 404');
+
+  // Credits: added (with an email), taken (never below zero), audited.
+  sent = [];
+  ok((await A('POST', '/credits', { body: { sub: '1414', delta: 20 } })).status === 400, 'créditos: sin motivo → 400');
+  ok((await A('POST', '/credits', { body: { sub: '1414', delta: 0, reason: 'x' } })).status === 400, 'créditos: 0 → 400');
+  ok((await A('POST', '/credits', { body: { sub: '9999999', delta: 5, reason: 'x' } })).status === 404, 'créditos: cuenta inexistente → 404');
+  x = await A('POST', '/credits', { body: { sub: '1414', delta: 20, reason: 'Falló una imagen', expiresDays: 30, notify: true } });
+  const P = () => acc('1414').ctx.storage.m;
+  ok(x.status === 200 && x.j.before === 50 && x.j.after === 70 && P().get('credits') === 70, 'créditos: se añaden: ' + JSON.stringify(x.j));
+  { const e = P().get('ledger').at(-1); ok(e.reason === 'admin' && e.delta === 20 && e.note === 'Falló una imagen' && e.by === 'jefe@example.com', 'créditos: en el historial como «admin», con el motivo y quién: ' + JSON.stringify(e)); }
+  ok(P().get('lots').some(l => l.n === 20 && Math.abs(l.exp - (Date.now() + 30 * 864e5)) < 60e3), 'créditos: caducan cuando se dijo');
+  ok(x.j.mailed && sent.some(m => m.to === 'pia@example.com' && /20 créditos/.test(m.subject)), 'créditos: correo a la persona: ' + sent.map(m => m.subject));
+  ok((await A('GET', '/users?q=pia')).j.users[0].credits === 70, 'créditos: el directorio se entera');
+  x = await A('POST', '/credits', { body: { sub: '1414', delta: -1000, reason: 'prueba de cargo' } });
+  ok(x.j.delta === -70 && x.j.after === 0 && !P().get('debt'), 'créditos: un cargo no deja deuda: ' + JSON.stringify(x.j));
+  await A('POST', '/credits', { body: { sub: '1414', delta: 70, reason: 'devolver la prueba' } });
+
+  // Refund of the last AI charge.
+  aiReply = () => ({ status: 200, body: { choices: [{ message: { content: 'hola' } }], usage: { cost: 0.01 } } }); P().set('rate', []);
+  ok((await req('POST', '/api/ai/chat', { headers: { Cookie: pia }, body: { messages: [{ role: 'user', content: 'x' }] } })).status === 200 && P().get('credits') === 65, 'pia gasta 5 créditos de IA');
+  x = await A('POST', '/refund', { body: { sub: '1414', reason: 'La respuesta salió vacía' } });
+  ok(x.status === 200 && x.j.delta === 5 && x.j.after === 70 && x.j.charge.reason === 'ai' && P().get('ledger').at(-1).ref.startsWith('refund:'), 'reembolso del último cobro de IA: ' + JSON.stringify(x.j));
+  ok((await A('POST', '/refund', { body: { sub: '1414' } })).status === 409, 'reembolso: el mismo cobro no se devuelve dos veces');
+
+  // Plan given by hand.
+  const until = Date.now() + 10 * 864e5;
+  ok((await A('POST', '/plan', { body: { sub: '1414', until: Date.now() - 1000, reason: 'x' } })).status === 400, 'plan: fecha pasada → 400');
+  x = await A('POST', '/plan', { body: { sub: '1414', until, reason: 'Compensación por la caída' } });
+  me = await (await req('GET', '/api/me', { headers: { Cookie: pia } })).json();
+  ok(x.status === 200 && x.j.before.plan === 'free' && x.j.after.plan === 'pro' && me.plan === 'pro' && me.until === until && me.features.includes('share-people'), 'plan: Pro hasta una fecha: ' + JSON.stringify([x.j, me.plan, me.until]));
+  ok((await A('GET', '/stats')).j.pro >= 1, 'resumen: cuenta los Pro');
+  await A('POST', '/plan', { body: { sub: '1414', until: 0, reason: 'fin de la prueba' } });
+  ok((await (await req('GET', '/api/me', { headers: { Cookie: pia } })).json()).plan === 'free', 'plan: quitarlo');
+
+  // Blocking.
+  ok((await A('POST', '/block', { body: { sub: '1414', blocked: true } })).status === 400, 'bloquear: sin motivo → 400');
+  x = await A('POST', '/block', { body: { sub: '1414', blocked: true, reason: 'Abuso de la IA' } });
+  r = await req('POST', '/api/ai/chat', { headers: { Cookie: pia }, body: { messages: [{ role: 'user', content: 'x' }] } });
+  ok(x.status === 200 && r.status === 403 && (await r.json()).error === 'blocked', 'bloqueada: la IA responde 403');
+  ok((await req('GET', '/api/docs', { headers: { Cookie: pia } })).status === 403, 'bloqueada: la nube responde 403');
+  me = await (await req('GET', '/api/me', { headers: { Cookie: pia } })).json();
+  ok(me.blocked === true && me.email === 'pia@example.com', 'bloqueada: ve su cuenta, que dice que está bloqueada');
+  ok((await req('GET', '/api/account/export', { headers: { Cookie: pia } })).status === 200, 'bloqueada: puede descargar sus datos');
+  ok((await A('GET', '/stats')).j.blocked === 1 && (await A('GET', '/users?q=pia')).j.users[0].blocked, 'bloqueada: en el directorio');
+  await A('POST', '/block', { body: { sub: '1414', blocked: false, reason: 'Aclarado' } }); P().set('rate', []);
+  ok((await req('POST', '/api/ai/chat', { headers: { Cookie: pia }, body: { messages: [{ role: 'user', content: 'x' }] } })).status === 200, 'desbloqueada: vuelve la IA');
+
+  // Tickets: from the app, with an email address or signed in.
+  sent = []; env.SUPPORT_PER_DAY = '2';
+  const sup = (body, { ip = '10.0.0.1', origin = SITE, headers = {} } = {}) => req('POST', '/api/support', { origin, body, headers: { 'CF-Connecting-IP': ip, ...headers } });
+  ok((await sup({ message: 'No se abre mi archivo', email: 'no-es-correo' })).status === 400, 'consulta sin sesión: hace falta un correo válido');
+  ok((await sup({ message: 'No se abre mi archivo', email: 'eva2@example.com' }, { origin: 'https://malo.example' })).status === 403, 'consulta: solo desde Revela');
+  r = await sup({ message: 'No se abre mi archivo .pptx', category: 'bug', email: 'Eva2@Example.com', version: 'cloud 0.3.0', browser: 'Firefox 140', deckName: 'Clase 3', lang: 'en' });
+  j = await r.json();
+  ok(r.status === 200 && j.id === 1001 && j.mailed && sent.some(m => m.to === 'eva2@example.com' && /#1001/.test(m.subject) && /request/.test(m.subject)), 'consulta: número y acuse por correo (en su idioma): ' + JSON.stringify([j, sent.map(m => m.subject)]));
+  ok((await sup({ message: 'Compra ya barato', email: 'b@example.com', website: 'http://spam' }, { ip: '10.0.0.9' }).then(x => x.json())).id === 0, 'consulta: los bots (campo trampa) no crean nada');
+  ok((await sup({ message: 'Otra vez yo', email: 'eva2@example.com' })).status === 200 && (await sup({ message: 'Y otra más', email: 'eva2@example.com' })).status === 429, 'consulta: límite por dirección al día');
+  env.SUPPORT_ATTACH_KB = '1';
+  ok((await sup({ message: 'Con la presentación', attach: { slides: ['x'.repeat(3000)] } }, { headers: { Cookie: pia } })).status === 413, 'consulta: presentación adjunta demasiado grande → 413');
+  env.SUPPORT_ATTACH_KB = '';
+  r = await sup({ message: 'La IA no responde', category: 'ai', deckName: 'Mi charla', attach: { name: 'Mi charla', slides: [{ id: 's1' }] }, email: 'falso@example.com' }, { headers: { Cookie: pia } });
+  j = await r.json();
+  ok(r.status === 200 && j.id === 1003, 'consulta con sesión: ' + JSON.stringify(j));
+  x = await A('GET', '/tickets/' + j.id);
+  ok(x.j.ticket.email === 'pia@example.com' && x.j.ticket.sub === '1414' && x.j.ticket.category === 'ai' && x.j.ticket.attachment && x.j.ticket.deckName === 'Mi charla', 'consulta con sesión: el correo es el de la cuenta, con la presentación adjunta');
+  r = await adm('GET', `/tickets/${j.id}/attachment`);
+  ok(r.status === 200 && JSON.parse(await r.text()).slides[0].id === 's1', 'el adjunto se descarga');
+  x = await A('GET', '/tickets/1001');
+  ok(x.j.ticket.browser === 'Firefox 140' && x.j.ticket.version === 'cloud 0.3.0' && !x.j.ticket.attachment && x.j.ticket.deckName === 'Clase 3', 'consulta: versión, navegador y nombre de la presentación (sin su contenido)');
+  x = await A('GET', '/tickets?status=open');
+  ok(x.j.tickets.length === 3 && x.j.tickets[0].id === 1003, 'consultas abiertas, la más nueva primero: ' + x.j.tickets.map(t => t.id));
+  ok((await A('POST', '/tickets/1001/status', { body: { status: 'raro' } })).status === 400, 'estado inventado → 400');
+  ok((await A('POST', '/tickets/1002/status', { body: { status: 'closed' } })).j.after === 'closed' && (await A('GET', '/tickets?status=closed')).j.tickets.map(t => t.id).join() === '1002'
+    && (await A('GET', '/tickets?status=open')).j.tickets.length === 2, 'cambiar el estado mueve la consulta de lista');
+  ok((await A('POST', '/tickets/1001/note', { body: { text: 'Pedir el archivo' } })).j.ticket.notes[0].by === 'jefe@example.com', 'nota interna');
+  sent = [];
+  x = await A('POST', '/tickets/1001/reply', { body: { text: 'Hola:\nPrueba a abrirlo de nuevo.' } });
+  ok(x.status === 200 && x.j.mailed && x.j.after === 'pending' && x.j.ticket.thread.length === 2 && sent.length === 1 && sent[0].to === 'eva2@example.com' && /#1001/.test(sent[0].subject)
+    && /Prueba a abrirlo de nuevo/.test(sent[0].text) && !/Pedir el archivo/.test(sent[0].text), 'responder: correo a la persona, en el hilo, sin las notas internas');
+  ok((await A('GET', '/tickets/9999')).status === 404, 'consulta inexistente → 404');
+  env.SUPPORT_PER_DAY = '';
+
+  // The overview and the audit log.
+  x = await A('GET', '/stats');
+  ok(x.j.users >= 5 && x.j.tickets.open === 1 && x.j.tickets.pending === 1 && x.j.tickets.closed === 1 && typeof x.j.ai.usd === 'number' && x.j.ai.limit === 50, 'resumen: ' + JSON.stringify(x.j));
+  x = await A('GET', '/audit');
+  const acts = x.j.entries.map(e => e.action);
+  ok(['credits', 'refund', 'plan', 'block', 'unblock', 'ticket-status', 'ticket-note', 'ticket-reply'].every(a => acts.includes(a)) && x.j.entries[0].action === 'ticket-reply', 'auditoría: cada cambio, el último primero: ' + acts);
+  { const e = x.j.entries.find(e => e.action === 'credits'); ok(e.by === 'jefe@example.com' && e.target === '1414' && e.before.credits !== undefined && e.after.credits !== undefined && e.at > 0 && e.reason, 'auditoría: quién, cuándo, qué, antes y después'); }
+  ok((await A('GET', '/audit?target=1414')).j.entries.every(e => e.target === '1414'), 'auditoría: por cuenta');
+  ok((await A('POST', '/audit', { body: {} })).status === 404 && !(await env.AUDIT.get('audit').fetch('https://a/delete', { method: 'POST', body: '{}' })).ok, 'auditoría: no se puede borrar ni cambiar');
+
+  // Deleting the account takes it out of the directory.
+  ok((await req('POST', '/api/account/delete', { headers: { Cookie: pia }, body: { confirm: 'pia@example.com' } })).status === 200 && (await A('GET', '/users?q=pia')).j.users.length === 0, 'cuenta eliminada: fuera del directorio');
+  // Without the admin vars again: nothing.
+  env.ADMIN_EMAILS = ''; ok((await adm('GET', '/stats')).status === 404, 'admin: al quitar las variables vuelve a 404');
+  env.FETCH = prevFetch; resetAccessCerts();
 }
 
 console.log(fails ? `API FAIL ${n - fails}/${n}` : `API OK ${n}/${n}`);

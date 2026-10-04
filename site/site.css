@@ -130,6 +130,7 @@ section.tint{background:var(--paper2)}
 .closing{text-align:center;padding:130px 0}
 .closing h2{font-size:clamp(38px,5vw,68px);max-width:14ch;margin:0 auto}
 .closing p{color:var(--ink2);margin:22px auto 36px;max-width:34em}
+.closing .btn{margin:5px}
 
 /* Prices */
 .billing{display:inline-flex;margin-right:10px;border:1px solid var(--line);border-radius:999px;padding:4px;margin-top:36px;background:var(--card)}

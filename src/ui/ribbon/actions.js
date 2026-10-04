@@ -69,6 +69,7 @@ import { confirmDialog, promptDialog, alertDialog } from '../dialogs/dialog.js';
 import { renderRibbon } from './ribbon.js';
 import { toast, withProgress } from '../shell/toast.js';
 import { openShortcuts } from '../dialogs/shortcuts.js';
+import { openReport } from '../dialogs/report.js';
 import { openHeaderFooter } from '../dialogs/headerfooter.js';
 import { openAnimPanel } from '../panels/animation.js';
 import { setZoom, fitZoom } from './zoom.js';
@@ -241,6 +242,7 @@ export const ACTIONS = {
   'toggle-notes': () => commit(() => (state.ui.showNotes = !state.ui.showNotes), { history: false }),
   'connect-mobile': () => openHostPanel(),
   'shortcuts': () => openShortcuts(),
+  'report-problem': () => openReport(),
   'insert-hf': () => openHeaderFooter(),
   'anim-panel': () => openAnimPanel(),
   'anim-play': () => playAnimations(),

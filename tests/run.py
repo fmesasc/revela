@@ -296,6 +296,7 @@ def site_checks(send, recv):
             body = self.rfile.read(int(self.headers.get('Content-Length') or 0))
             if self.path == '/api/login': return self.reply(200, {'ok': True}, {'Set-Cookie': 'rv_session=ok; Path=/api; HttpOnly; SameSite=Strict'})
             if self.path == '/api/stock/used': seen.setdefault('used', []).append(json.loads(body or b'{}')); return self.reply(200, {'ok': True})
+            if self.path == '/api/support': seen.setdefault('support', []).append(json.loads(body or b'{}')); return self.reply(200, {'ok': True, 'id': 1001, 'mailed': True})
             if self.path == '/api/ai/chat':
                 if not self.signed(): return self.reply(401, {'error': 'no session'})
                 seen['ai'].append(json.loads(body or b'{}')); return self.reply(200, {'choices': [{'message': {'content': 'hola desde el servidor'}}], 'charged': 3})
@@ -351,7 +352,16 @@ def site_checks(send, recv):
         ev("document.getElementById('plan-btn').click();1"); time.sleep(0.4)
         check(ev("(m=>!!m&&/50/.test(m.querySelector('.acc-credits').textContent)&&m.querySelector('[data-buy]').disabled)(document.getElementById('account-modal'))"), '«Mi cuenta»: créditos, y pagos aún no disponibles')
         check(ev("!!document.querySelector('#account-modal .acc-team')&&!!document.querySelector('#account-modal .acc-export')&&!!document.querySelector('#account-modal .acc-delete')"), '«Mi cuenta»: equipos y tus datos')
+        check(ev("!!document.querySelector('#account-modal .acc-report')"), '«Mi cuenta»: informar de un problema')
         ev("document.querySelector('#account-modal .modal-close').click();1")
+        # «Informar de un problema», signed in: answered at the account's address; the deck only if ticked.
+        ev("document.querySelector('[data-action=\"report-problem\"]').click();1"); time.sleep(0.3)
+        check(ev("(m=>!!m&&!m.querySelector('.rp-email')&&/ana@example.com/.test(m.textContent))(document.getElementById('report-modal'))"), 'informar de un problema con sesión: se responde a su correo')
+        ev("(()=>{const m=document.getElementById('report-modal');m.querySelector('.rp-cat').value='ai';m.querySelector('.rp-msg').value='La IA no contesta';m.querySelector('.rp-attach').checked=true;m.querySelector('.rp-send').click();return 1})()"); time.sleep(0.6)
+        rep = (seen.get('support') or [{}])[-1]
+        check(rep.get('category') == 'ai' and rep.get('message') == 'La IA no contesta' and '"slides"' in (rep.get('attach') or '') and rep.get('version', '').startswith('cloud ') and 'email' not in rep, 'el informe llega con la versión y la presentación adjunta: ' + str({k: v for k, v in rep.items() if k != 'attach'}))
+        check(ev("/#1001/.test(document.querySelector('.modal-backdrop .dlg-msg')?.textContent||'')") and not ev("!!document.getElementById('report-modal')"), 'y dice su número')
+        ev("document.querySelector('.modal-backdrop .dlg-ok')?.click();1")
         # Revela's cloud: the group in File, my presentations, sharing with people (not saved yet)
         check(ev("getComputedStyle(document.querySelector('[data-action=\"cloud-docs\"]').closest('.group')).display!=='none'"), 'la nube de Revela en Archivo (solo en la edición oficial)')
         ev("document.querySelector('[data-action=\"cloud-docs\"]').click();1"); time.sleep(0.6)

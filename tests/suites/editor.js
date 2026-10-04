@@ -19,6 +19,14 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!D.getElementById('sc-modal'), 'se cierra');
   });
 
+  await test('informar de un problema: en la edición abierta, a GitHub', async () => {
+    reset(); D.querySelector('[data-action="report-problem"]').click(); await sleep(10);
+    const m = D.getElementById('report-modal');
+    assert(m && m.querySelector('a[href="https://github.com/fmesasc/revela/issues"]') && !m.querySelector('form'), 'sin servidor de Revela: el enlace a GitHub');
+    m.querySelector('.modal-close').click(); await sleep(10);
+    assert(!D.getElementById('report-modal'), 'se cierra');
+  });
+
   await test('diálogos propios: "Nuevo" confirma con modal (no nativo)', async () => {
     reset(); R.blocks.addText(); const n = slide().blocks.length;
     D.querySelector('[data-action="new"]').click(); await sleep(20);

@@ -28,6 +28,7 @@ Navegador / escritorio                         Cloudflare
                                                │  ├─ ShareBox / CollabRoom (compartir)   │
                                                │  ├─ Schedule (avisos por día) ← cron    │
                                                │  ├─ ModelJob (1 por modelo 3D con IA) ──┼──▶ revela-blender (Blender en Containers)
+                                               │  ├─ Directory, Tickets, Audit (admin.js)│
                                                │  └─ secretos: OPENROUTER_KEY, STRIPE_…  │
                                                └───────┬───────────────┬─────────────────┘
                                                        ▼               ▼
@@ -306,6 +307,30 @@ Si la entrada fuera mayor que lo previsto se cobra igualmente lo real (como en e
 
 Para apagarlo: quitar `BLENDER_URL` (la app oculta la opción) y, si se quiere, borrar revela-blender.
 
+## Administración y soporte
+
+La API de administración vive en este repositorio (`server/cloudflare/admin.js`) pero está
+**apagada** hasta que se configuran tres variables (no secretas): `ACCESS_TEAM`, `ACCESS_AUD` y
+`ADMIN_EMAILS`. Responde solo en `admin.revelaslides.com/api/admin/…`, protegido por una
+aplicación de Cloudflare Access (Zero Trust, plan gratuito); el Worker no se fía solo de Access y
+comprueba el token de cada petición. Las páginas de administración están en un repositorio
+privado aparte (un proyecto de Cloudflare Pages servido en admin.revelaslides.com).
+
+- **Directorio** (`Directory`): las cuentas son Durable Objects por `sub` de Google y no se pueden
+  listar, así que cada cuenta se apunta sola al iniciar sesión, al usarse, al cambiar de plan o
+  de créditos, y se quita al eliminarse. Las cuentas que no se usen desde que se activó no
+  aparecen hasta que vuelvan a entrar.
+- **Créditos, plan y bloqueo**: ajustes con motivo (entrada `admin` en el historial de la cuenta),
+  «devolver el último cobro de IA», Pro manual hasta una fecha (aparte del de Stripe, que no se
+  toca) y bloquear: una cuenta bloqueada puede entrar, ver su cuenta, descargar o borrar sus datos
+  e informar de un problema; lo demás responde 403 `{ error: 'blocked' }`.
+- **Tickets** (`Tickets`): «Informar de un problema» (Vista ▸ Ayuda, Mi cuenta, o
+  revelaslides.com/support → `/app/?report=1`) envía el mensaje, el tipo, la versión, el navegador
+  y el nombre de la presentación; su contenido solo si se marca la casilla (hasta
+  `SUPPORT_ATTACH_KB`). Sin sesión hace falta un correo. Acuse por correo con el número; las
+  respuestas del administrador se envían por correo y quedan en el hilo, con notas internas.
+- **Auditoría** (`Audit`): quién, cuándo, qué, antes y después de cada cambio; sin borrar.
+
 ## Qué impide saltarse las restricciones
 
 | Riesgo | Protección |
@@ -327,7 +352,10 @@ Para apagarlo: quitar `BLENDER_URL` (la app oculta la opción) y, si se quiere, 
 | Dar de baja de avisos a otra persona | El enlace va firmado (HMAC con `MAIL_SECRET`, solo en Cloudflare) para esa cuenta y ese tipo de aviso |
 | Colar HTML en un correo (nombre de una presentación, de un equipo o de una persona) | Todo lo que viene de personas se escapa en las plantillas |
 | Usar Blender sin pagar o ejecutar código fuera de su sitio | Solo revela-share puede pedir ejecuciones (firma con `BLENDER_SECRET`), cobra antes cada ronda y el contenedor no tiene red, ni permisos fuera de su carpeta, ni secretos |
-| Acceso de administrador | No hay ninguna API de administración; se administra desde la cuenta de Cloudflare (con verificación en dos pasos) |
+| Acceso de administrador | La API de administración (`admin.js`) está apagada (404) mientras no se configuren `ACCESS_TEAM`, `ACCESS_AUD` y `ADMIN_EMAILS`; solo responde en admin.revelaslides.com, detrás de Cloudflare Access, y el Worker comprueba él mismo el token de Access (firma RS256 con las claves del equipo, audiencia, emisor, caducidad) y que el correo esté en `ADMIN_EMAILS` |
+| Otra web usando la sesión de Access del administrador (CSRF) | Cada petición lleva la cabecera `X-Revela-Admin` (otra web no puede ponerla sin permiso CORS, que no hay) y los cambios solo se aceptan con `Origin` del propio host de administración |
+| Un cambio de administración sin rastro | Cada cambio (créditos, plan, bloqueo, tickets) se apunta antes en un registro (`Audit`) que no tiene forma de editarse ni borrarse |
+| Inundar el soporte o usarlo para mandar correos a terceros | Límite diario por dirección IP o cuenta, y por destinatario del acuse (`SUPPORT_PER_DAY`, por defecto 5), un tope diario total, un campo trampa para robots, solo desde Revela (Origin), y el acuse no copia el texto del mensaje |
 
 Los tests `tests/server-api.mjs` intentan cada uno de estos ataques y comprueban
 que el servidor los rechaza.
