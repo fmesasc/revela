@@ -211,5 +211,7 @@
   "Ayuda de Revela: primeros pasos, preguntas frecuentes y cómo contactar.": "Revela-Hilfe: erste Schritte, häufige Fragen und Kontakt.",
   "Una presentación de verdad, hecha con Revela: pasa sola, o pásala tú con las flechas y el ratón.": "Eine echte Präsentation, erstellt mit Revela: Sie läuft von selbst – oder Sie blättern mit den Pfeiltasten und der Maus.",
   "Una presentación hecha con Revela: el lanzamiento de un reloj inteligente, con el reloj en 3D": "Eine mit Revela erstellte Präsentation: die Vorstellung einer Smartwatch, mit der Uhr in 3D",
-  "<span aria-hidden=\"true\">▶</span> Ver en directo": "<span aria-hidden=\"true\">▶</span> Live ansehen"
+  "<span aria-hidden=\"true\">▶</span> Ver en directo": "<span aria-hidden=\"true\">▶</span> Live ansehen",
+  "¿Quién lee lo que envío a soporte?": "Wer liest, was ich an den Support schicke?",
+  "Una persona del equipo de Revela, que te responde por correo. Para ayudarla, tu mensaje y el resumen de tu cuenta pueden analizarse con un modelo de IA a través de OpenRouter, con proveedores que no los guardan ni entrenan con ellos; la IA solo sugiere y la presentación adjunta nunca se le envía. Más en la <a href=\"privacy\">política de privacidad</a>.": "Eine Person aus dem Revela-Team, die dir per E-Mail antwortet. Um ihr zu helfen, können deine Nachricht und die Zusammenfassung deines Kontos über OpenRouter von einem KI-Modell analysiert werden, nur bei Anbietern, die sie weder speichern noch damit trainieren; die KI macht nur Vorschläge, und die angehängte Präsentation wird ihr nie geschickt. Mehr in der <a href=\"privacy\">Datenschutzerklärung</a>."
 }

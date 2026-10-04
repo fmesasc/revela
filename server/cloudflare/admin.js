@@ -29,6 +29,8 @@
 //   POST /api/admin/tickets/:id/note       { text }   (internal)
 //   POST /api/admin/tickets/:id/reply      { text, status?: waiting (default) | closed | open }   (emailed to the person, with
 //                                          the signed link to answer in the same ticket; in the thread)
+//   POST /api/admin/tickets/:id/suggest    { force? } → { suggestion, cached }   (AI help: a summary, priority, likely cause,
+//                                          checks, proposed actions and a draft answer; it never acts by itself)
 //   GET  /api/admin/audit?cursor=&target=  → { entries, cursor }
 //
 // Every change is written first to the audit log (Audit: who, when, what, before and after),
@@ -46,7 +48,7 @@
 // the admin (SUPPORT_NOTIFY, else the first of ADMIN_EMAILS). The daily cron reminds once and then
 // closes tickets left waiting for the person (ticketsDue: SUPPORT_REMIND_DAYS, SUPPORT_AUTOCLOSE_DAYS).
 
-import { acct, call, settings } from './api.js';
+import { acct, call, settings, priceOf } from './api.js';
 import { mail, mailConfigured, ticketLink, readTicketToken, ticketPage, fmtDate, TICKET_LINK_DAYS } from './mail.js';
 import { fromB64url } from './auth.js';
 import { takeQuota, writeText, readParts } from './store.js';
@@ -276,6 +278,7 @@ export class Tickets {
       if (s !== before) turn(s);
       await this.save(t); return Response.json({ ok: true, before, after: t.status });
     }
+    if (op === 'suggestion') { t.suggestion = a.suggestion; await this.save(t, { keep: true }); return Response.json({ ok: true }); }
     if (op === 'note') { t.notes.push({ at: now, by: a.by, text: a.text }); await this.save(t); return Response.json({ ok: true, ticket: t }); }
     if (op === 'reply') {                                 // from the admin: { text, by, status (waiting | closed | open), mailed }
       t.thread.push({ at: now, from: 'admin', by: a.by, text: a.text, mailed: !!a.mailed });
@@ -375,6 +378,93 @@ export async function ticketsDue(env, now = Date.now()) {
   return { reminded, closed };
 }
 
+// ---- AI help for whoever answers a ticket ------------------------------------------------------------
+// POST /api/admin/tickets/:id/suggest { force? } → { suggestion, cached }. The Worker sends the ticket (its
+// conversation, internal notes, category, status, dates, version, browser) and, if it came from an account,
+// that account's summary (plan, credits and lots, the last ledger entries, blocked, team) — never the
+// attached presentation nor anyone else's data — to OpenRouter (providers that neither store nor train:
+// data_collection 'deny'), model SUPPORT_AI_MODEL. Paid from the global AI budget (Budget, MONTHLY_BUDGET_USD),
+// not from the person's credits. The answer is checked and clamped here and kept on the ticket (asking
+// again reuses it; force: a new one). The AI only suggests: every action stays with the admin.
+export const PRIORITIES = ['baja', 'media', 'alta', 'urgente'];
+export const SUGGEST_ACTIONS = ['refund', 'credits', 'plan', 'unblock', 'none'];
+const MAX_SUGGEST_CREDITS = 2000, MAX_SUGGEST_DAYS = 365;
+const iso = ts => (ts ? new Date(ts).toISOString() : null);
+const LANG_NAMES = { es: 'Spanish', en: 'English', ca: 'Catalan', fr: 'French', de: 'German', it: 'Italian', pt: 'Portuguese', gl: 'Galician', eu: 'Basque', nl: 'Dutch', ar: 'Arabic' };
+
+// What the AI sees (exported for the tests).
+export function ticketContext(t, v, team) {
+  const ticket = { id: t.id, category: t.category, status: statusOf(t.status), received: iso(t.at), lastActivity: iso(t.lastAt), lastFrom: t.last || null,
+    waitingSince: iso(t.waitingSince), appVersion: t.version || null, browser: t.browser || null, language: t.lang || null,
+    presentationAttached: !!t.attachment, signedIn: !!t.sub,
+    thread: t.thread.slice(-20).map(m => ({ from: m.from, at: iso(m.at), text: clip(m.text, 3000), ...(m.solved && { markedSolved: true }) })),
+    internalNotes: t.notes.slice(-10).map(n => ({ at: iso(n.at), by: n.by === 'system' ? 'system' : 'admin', text: clip(n.text, 1000) })) };
+  if (!v?.profile) return { ticket, account: null };
+  const refunded = new Set(v.refunded || []);
+  const account = { plan: v.plan, proUntil: iso(v.until), paidPro: v.stored?.name === 'pro' ? iso(v.stored.until) : null, manualProUntil: iso(v.proGift?.until),
+    credits: v.credits, debt: v.debt || 0, lots: (v.lots || []).slice(0, 10).map(l => ({ credits: l.n, expires: iso(l.exp) })),
+    ledger: (v.ledger || []).slice(0, 20).map(e => ({ at: iso(e.at), delta: e.delta, kind: e.reason, ...(e.note && { note: clip(e.note, 200) }), ...(CHARGES.includes(e.reason) && e.delta < 0 && { aiCharge: true, refunded: refunded.has(e.at) }) })),
+    blocked: v.blocked ? { since: iso(v.blocked.at), reason: clip(v.blocked.reason, 300) } : null, accountCreated: iso(v.profile.created), lastSeen: v.lastSeen || null,
+    team: v.team ? { role: team?.role || null, active: !!team?.active } : null, cloudPresentations: v.docs };
+  return { ticket, account };
+}
+const SYSTEM = lang => `You help the support team of Revela, a presentation editor (web and desktop) with optional accounts: a free plan and Pro, AI credits that expire (lots), cloud presentations, teams.
+You get a support ticket and, if the person was signed in, a summary of their account. Never invent facts that aren't in the data. Admin actions available: "refund" (give back the last AI charge not yet refunded), "credits" (add credits; amount = number of credits, at most ${MAX_SUGGEST_CREDITS}), "plan" (manual Pro; amount = days, at most ${MAX_SUGGEST_DAYS}), "unblock" (only if the account is blocked), "none". Suggest an action only when the data supports it (e.g. a failed AI charge the person complains about) and never if there is no account.
+Answer ONLY a JSON object: {"summary": "1-2 sentences in Spanish", "category": "bug|ai|billing|account|cloud|other", "priority": "baja|media|alta|urgente", "likelyCause": "in Spanish", "checks": ["what the admin should verify, in Spanish"], "actions": [{"type": "refund|credits|plan|unblock|none", "amount": number or omitted, "reason": "short reason for the audit log, in Spanish", "why": "in Spanish"}], "draftReply": "the answer to send to the person, in ${LANG_NAMES[lang] || 'Spanish'}, friendly, concrete, no promises the data doesn't support, signed \\"El equipo de Revela\\" (translated if not Spanish)", "statusAfter": "waiting|closed"}.
+statusAfter: "waiting" if the reply asks the person something or needs their confirmation, "closed" if it solves it.`;
+
+// The model's answer, checked: only known values, bounded sizes and amounts, actions that make sense for this account.
+export function cleanSuggestion(raw, { category, hasAccount, blocked } = {}) {
+  const o = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const str = (x, n) => clip(typeof x === 'string' ? x : x == null ? '' : String(x), n).trim();
+  const actions = [];
+  for (const a of Array.isArray(o.actions) ? o.actions.slice(0, 6) : []) {
+    const type = typeof a?.type === 'string' ? a.type.toLowerCase() : '';
+    if (!SUGGEST_ACTIONS.includes(type) || actions.length >= 4) continue;
+    if (type !== 'none' && (!hasAccount || (type === 'unblock' && !blocked))) continue;
+    const out = { type, reason: str(a.reason, 300), why: str(a.why, 400) };
+    if (type === 'credits' || type === 'plan') {
+      const n = Math.round(+a.amount), max = type === 'credits' ? MAX_SUGGEST_CREDITS : MAX_SUGGEST_DAYS;
+      if (!Number.isFinite(n) || n < 1) continue;
+      out.amount = Math.min(max, n);
+    }
+    actions.push(out);
+  }
+  return { summary: str(o.summary, 500), category: CATEGORIES.includes(o.category) ? o.category : category || 'other', priority: PRIORITIES.includes(o.priority) ? o.priority : 'media',
+    likelyCause: str(o.likelyCause, 800), checks: (Array.isArray(o.checks) ? o.checks : []).map(c => str(c, 240)).filter(Boolean).slice(0, 8),
+    actions, draftReply: str(o.draftReply, 5000), statusAfter: o.statusAfter === 'closed' ? 'closed' : 'waiting' };
+}
+const jsonOf = text => { const s = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, ''); try { return JSON.parse(s); } catch { const m = s.match(/\{[\s\S]*\}/); try { return m ? JSON.parse(m[0]) : null; } catch { return null; } } };
+
+// → { suggestion, cached } or { error, status }.
+export async function suggestTicket(env, t, { by, force } = {}) {
+  if (t.suggestion && !force) return { suggestion: t.suggestion, cached: true };
+  if (!env.OPENROUTER_KEY || !env.BUDGET) return { error: 'ai not configured', status: 503 };
+  const v = t.sub ? await call(acct(env, t.sub), 'admin-view').catch(() => null) : null, has = !!v?.profile?.sub;
+  const team = has && v.team ? await teamStatus(env, v.team, v.profile.email).catch(() => null) : null;
+  const s = settings(env), model = String(env.SUPPORT_AI_MODEL || 'google/gemini-2.5-flash'), maxTokens = 1800;
+  const messages = [{ role: 'system', content: SYSTEM(t.lang) }, { role: 'user', content: JSON.stringify(ticketContext(t, has ? v : null, team)) }];
+  const [pin, pout] = priceOf(s, model), inTok = JSON.stringify(messages).length / 3, estimate = (inTok * pin + maxTokens * pout) / 1e6;
+  const budget = stub(env.BUDGET, 'global');
+  if (!(await call(budget, 'check', { usd: estimate })).ok) return { error: 'ai paused', status: 503 };
+  let r, data;
+  try {
+    r = await (env.FETCH || fetch)('https://openrouter.ai/api/v1/chat/completions', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.OPENROUTER_KEY}`, 'HTTP-Referer': s.site, 'X-Title': 'Revela support' },
+      body: JSON.stringify({ model, messages, max_tokens: maxTokens, usage: { include: true }, provider: { data_collection: 'deny' }, response_format: { type: 'json_object' } }) });
+    data = await r.json().catch(() => null);
+  } catch { r = null; }
+  if (!r || !r.ok || !data) return { error: 'ai failed', status: 502 };
+  const u = data.usage || {}, usd = +u.cost > 0 ? +u.cost : ((+u.prompt_tokens || inTok) * pin + (+u.completion_tokens || maxTokens) * pout) / 1e6;
+  await call(budget, 'spend', { usd });
+  await audit(env, { by, action: 'ticket-suggest', target: 'ticket:' + t.id, after: { model, usd: Math.round(usd * 1e6) / 1e6 } });
+  const raw = jsonOf(data.choices?.[0]?.message?.content);
+  if (!raw) return { error: 'ai bad answer', status: 502 };
+  const suggestion = { ...cleanSuggestion(raw, { category: t.category, hasAccount: has, blocked: !!v?.blocked }), at: Date.now(), model, usd, by };
+  await call(stub(env.TICKETS, 'tickets'), 'suggestion', { id: t.id, suggestion });
+  return { suggestion, cached: false };
+}
+
 // ---- The admin API -------------------------------------------------------------------------------------
 export async function handleAdmin(req, env, url) {
   const headers = { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff' };
@@ -445,11 +535,12 @@ export async function handleAdmin(req, env, url) {
     return json({ ok: true, ...r });
   }
   if (GET && path === '/tickets') return json(await call(T, 'list', { status: q.get('status') || '', cursor: q.get('cursor') || null, limit: +q.get('limit') || 50 }));
-  m = path.match(/^\/tickets\/(\d{1,10})(?:\/(attachment|status|note|reply))?$/);
+  m = path.match(/^\/tickets\/(\d{1,10})(?:\/(attachment|status|note|reply|suggest))?$/);
   if (m) {
     const id = +m[1], op = m[2] || '', got = await call(T, 'get', { id }); if (!got.ticket) return json({ error: 'not found' }, 404);
     const t = got.ticket;
-    if (GET && !op) return json({ ticket: t });
+    // (SUPPORT_AI_AUTO=1: the page asks for the AI's help itself the first time the ticket is opened.)
+    if (GET && !op) return json({ ticket: t, ai: !!env.OPENROUTER_KEY, autoSuggest: env.SUPPORT_AI_AUTO === '1' && !!env.OPENROUTER_KEY && !t.suggestion });
     if (GET && op === 'attachment') {
       const r = await call(T, 'attachment', { id }); if (!r.text) return json({ error: 'not found' }, 404);
       return new Response(r.text, { headers: { ...headers, 'Content-Type': 'application/json', 'Content-Disposition': `attachment; filename="consulta-${id}.revela.json"` } });
@@ -463,6 +554,10 @@ export async function handleAdmin(req, env, url) {
       const text = clip(body.text, 5000).trim(); if (!text) return json({ error: 'bad request' }, 400);
       await audit(env, { by, action: 'ticket-note', target: 'ticket:' + id, after: { note: text } });
       return json(await call(T, 'note', { id, text, by }));
+    }
+    if (POST && op === 'suggest') {
+      const r = await suggestTicket(env, t, { by, force: body.force === true });
+      return r.error ? json({ error: r.error }, r.status) : json(r);
     }
     if (POST && op === 'reply') {
       const text = clip(body.text, 10000).trim(); if (!text) return json({ error: 'bad request' }, 400);

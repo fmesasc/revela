@@ -978,6 +978,62 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok(c.open + c.waiting + c.closed === L.length && c.waiting >= 1, 'resumen: cuántas en cada estado: ' + JSON.stringify(c));
   }
 
+  // AI help for whoever answers a ticket (mocked OpenRouter): context, budget, cache, validation, access.
+  {
+    const answerWith = (o, cost = 0.004) => { aiReply = () => ({ status: 200, body: { choices: [{ message: { content: typeof o === 'string' ? o : JSON.stringify(o) } }], usage: { cost, prompt_tokens: 900, completion_tokens: 300 } } }); };
+    const keep = aiReply, budgetUsd = () => env.BUDGET.inst.get('global').ctx.storage.m.get('m')?.usd || 0;
+    P().set('ledger', [...(P().get('ledger') || []), { at: Date.now() - 5000, delta: -12, reason: 'image', balance: 0 }]);
+    r = await sup({ message: 'La imagen salió en blanco y me cobró', category: 'ai', attach: { name: 'Secreta', slides: [{ id: 's1', text: 'SECRETO-DEL-ADJUNTO' }] } }, { headers: { Cookie: pia }, ip: '10.0.0.40' });
+    const tid = (await r.json()).id;
+    const good = { summary: 'Una imagen falló y se cobró.', category: 'ai', priority: 'alta', likelyCause: 'Fallo del proveedor de imágenes', checks: ['Ver el último cargo de imagen'],
+      actions: [{ type: 'refund', reason: 'Imagen en blanco', why: 'Cargo de imagen sin resultado' }], draftReply: 'Hola:\nTe hemos devuelto los créditos.\nEl equipo de Revela', statusAfter: 'closed' };
+    // Access: the same checks as the rest of the admin API.
+    ok((await adm('POST', `/tickets/${tid}/suggest`, { token: null, body: {} })).status === 403 && (await adm('POST', `/tickets/${tid}/suggest`, { origin: 'https://malo.example', body: {} })).status === 403
+      && (await adm('POST', `/tickets/${tid}/suggest`, { flag: false, body: {} })).status === 403 && (await adm('POST', `/tickets/${tid}/suggest`, { host: SITE, body: {} })).status === 404, 'IA: solo administración (Access, Origin, cabecera, host)');
+    // A suggestion: paid by the global budget, not by the person's credits.
+    answerWith(good); aiCalls = [];
+    const credits0 = P().get('credits'), ledger0 = P().get('ledger').length, usd0 = budgetUsd();
+    x = await A('POST', `/tickets/${tid}/suggest`, { body: {} });
+    const sent0 = aiCalls[0]?.body, ctx = sent0 ? sent0.messages.map(m => m.content).join('\n') : '';
+    ok(x.status === 200 && !x.j.cached && x.j.suggestion.priority === 'alta' && x.j.suggestion.actions[0].type === 'refund' && x.j.suggestion.statusAfter === 'closed' && x.j.suggestion.model === 'google/gemini-2.5-flash' && x.j.suggestion.usd === 0.004,
+      'IA: sugerencia con modelo y coste: ' + JSON.stringify(x.j));
+    ok(sent0?.model === 'google/gemini-2.5-flash' && sent0.provider?.data_collection === 'deny' && sent0.response_format?.type === 'json_object', 'IA: modelo barato, proveedores que no guardan ni entrenan, respuesta JSON');
+    ok(/La imagen salió en blanco/.test(ctx) && /"aiCharge":true/.test(ctx) && /"credits"/.test(ctx) && !/SECRETO-DEL-ADJUNTO/.test(ctx) && !/Secreta/.test(ctx) && /"presentationAttached":true/.test(ctx)
+      && !/pia@example\.com|ana@example\.com|luis@example\.com/.test(ctx), 'IA: el contexto lleva el ticket y la cuenta, nunca el adjunto ni correos (ni de otros)');
+    ok(P().get('credits') === credits0 && P().get('ledger').length === ledger0 && Math.abs(budgetUsd() - usd0 - 0.004) < 1e-9, 'IA: lo paga el presupuesto global, no los créditos de la persona');
+    ok((await A('GET', '/audit?target=ticket:' + tid)).j.entries.some(e => e.action === 'ticket-suggest' && e.by === 'jefe@example.com' && e.after.usd === 0.004), 'IA: en la auditoría (quién y coste)');
+    // Cached: opening again doesn't spend; «Regenerar» (force) does.
+    aiCalls = []; x = await A('POST', `/tickets/${tid}/suggest`, { body: {} });
+    ok(x.j.cached && !aiCalls.length && (await A('GET', '/tickets/' + tid)).j.ticket.suggestion?.summary === good.summary, 'IA: guardada en el ticket; volver a pedirla no gasta');
+    answerWith({ ...good, summary: 'Otra' }); x = await A('POST', `/tickets/${tid}/suggest`, { body: { force: true } });
+    ok(!x.j.cached && aiCalls.length === 1 && x.j.suggestion.summary === 'Otra', 'IA: «Regenerar» pide una nueva');
+    // Sloppy or abusive answers: only known values, bounded.
+    answerWith('```json\n' + JSON.stringify({ summary: 'x'.repeat(9000), category: 'hack', priority: 'URGENTÍSIMO', checks: Array.from({ length: 30 }, (_, i) => 'c' + i), statusAfter: 'borrar',
+      actions: [{ type: 'credits', amount: 999999, reason: 'r'.repeat(900) }, { type: 'delete-account' }, { type: 'plan', amount: -5 }, { type: 'plan', amount: '400' }, { type: 'unblock' }, { type: 'none' }, { type: 'credits', amount: 3 }],
+      draftReply: '<script>alert(1)</script>' }) + '\n```');
+    x = await A('POST', `/tickets/${tid}/suggest`, { body: { force: true } }); const sg = x.j.suggestion;
+    ok(x.status === 200 && sg.summary.length <= 500 && sg.category === 'ai' && sg.priority === 'media' && sg.checks.length === 8 && sg.statusAfter === 'waiting'
+      && sg.actions.map(a => a.type + (a.amount ?? '')).join() === 'credits2000,plan365,none' && sg.actions[0].reason.length <= 300 && sg.draftReply === '<script>alert(1)</script>',
+      'IA: respuesta descuidada o abusiva, recortada (importes, tipos, prioridad, estado): ' + JSON.stringify(sg.actions));
+    answerWith({ ...good, actions: [{ type: 'credits', amount: 50 }, { type: 'unblock' }, { type: 'none', why: 'nada' }] });
+    x = await A('POST', `/tickets/${1001}/suggest`, { body: {} });
+    ok(x.j.suggestion.actions.map(a => a.type).join() === 'none' && !/"account":\{/.test(aiCalls.at(-1).body.messages[1].content), 'IA: sin cuenta, ninguna acción sobre cuentas');
+    answerWith('esto no es JSON'); const u1 = budgetUsd();
+    x = await A('POST', `/tickets/${tid}/suggest`, { body: { force: true } });
+    ok(x.status === 502 && budgetUsd() > u1 && (await A('GET', '/tickets/' + tid)).j.ticket.suggestion.priority === 'media', 'IA: respuesta ilegible → 502 (gastado, la anterior se conserva)');
+    // Over the monthly budget: refused, nothing spent.
+    env.MONTHLY_BUDGET_USD = '0.0001'; aiCalls = [];
+    x = await A('POST', `/tickets/${tid}/suggest`, { body: { force: true } });
+    ok(x.status === 503 && x.j.error === 'ai paused' && !aiCalls.length, 'IA: sin presupuesto del mes → 503, sin llamar');
+    env.MONTHLY_BUDGET_USD = '50';
+    const key = env.OPENROUTER_KEY; delete env.OPENROUTER_KEY;
+    ok((await A('POST', `/tickets/${tid}/suggest`, { body: { force: true } })).status === 503 && (await A('GET', '/tickets/' + tid)).j.ai === false, 'IA: sin OPENROUTER_KEY → 503');
+    env.OPENROUTER_KEY = key;
+    env.SUPPORT_AI_AUTO = '1'; ok((await A('GET', '/tickets/' + 1001)).j.autoSuggest === false && (await A('GET', '/tickets/1002')).j.autoSuggest === true, 'IA: SUPPORT_AI_AUTO=1 → la página la pide al abrir un ticket sin sugerencia');
+    env.SUPPORT_AI_AUTO = '';
+    aiReply = keep; aiCalls = [];
+  }
+
   // Deleting the account takes it out of the directory.
   ok((await req('POST', '/api/account/delete', { headers: { Cookie: pia }, body: { confirm: 'pia@example.com' } })).status === 200 && (await A('GET', '/users?q=pia')).j.users.length === 0, 'cuenta eliminada: fuera del directorio');
   // Without the admin vars again: nothing.

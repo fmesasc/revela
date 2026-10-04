@@ -337,6 +337,13 @@ privado aparte (un proyecto de Cloudflare Pages servido en admin.revelaslides.co
   se cierra), se avisa al administrador (`SUPPORT_NOTIFY` o el primero de `ADMIN_EMAILS`) y un
   ticket cerrado se reabre con el enlace mientras valga. El cron diario manda un recordatorio a los
   `SUPPORT_REMIND_DAYS` (7) de esperar y lo cierra con una nota a los `SUPPORT_AUTOCLOSE_DAYS` (21); 0 lo apaga.
+  «Sugerencia de la IA» (`POST …/tickets/:id/suggest`): el Worker manda a OpenRouter (solo proveedores
+  que no guardan ni entrenan) el ticket y el resumen de la cuenta —nunca la presentación adjunta ni datos de
+  otras personas— con el modelo `SUPPORT_AI_MODEL`; responde un resumen, prioridad, causa probable, qué
+  comprobar, acciones propuestas (devolver, créditos ≤ 2000, Pro ≤ 365 días, desbloquear) y un borrador de
+  respuesta. Se comprueba y recorta en el servidor, se guarda en el ticket (volver a abrirlo no gasta) y lo
+  paga el presupuesto global de IA, no los créditos de la persona. La IA nunca actúa: las acciones solo
+  rellenan los formularios para que el administrador las confirme.
 - **Auditoría** (`Audit`): quién, cuándo, qué, antes y después de cada cambio; sin borrar.
 
 ## Qué impide saltarse las restricciones
@@ -365,6 +372,7 @@ privado aparte (un proyecto de Cloudflare Pages servido en admin.revelaslides.co
 | Un cambio de administración sin rastro | Cada cambio (créditos, plan, bloqueo, tickets) se apunta antes en un registro (`Audit`) que no tiene forma de editarse ni borrarse |
 | Inundar el soporte o usarlo para mandar correos a terceros | Límite diario por dirección IP o cuenta, y por destinatario del acuse (`SUPPORT_PER_DAY`, por defecto 5), un tope diario total, un campo trampa para robots, solo desde Revela (Origin), y el acuse no copia el texto del mensaje |
 | Responder en un ticket ajeno o con un enlace viejo | El enlace va firmado (HMAC con `MAIL_SECRET`) sobre el número, el correo de la consulta y la caducidad (30 días): uno cambiado, de otra consulta o caducado responde 403; las respuestas tienen límite por dirección y por consulta al día (`SUPPORT_REPLIES_PER_DAY`, 10) y de tamaño |
+| Que la IA de soporte haga cambios o gaste de más | Solo sugiere: el servidor filtra tipos de acción y recorta importes, y cualquier cambio lo hace el administrador con los formularios de siempre (y queda en la auditoría); cada sugerencia comprueba el presupuesto mensual de IA, se apunta en la auditoría con su coste y se reutiliza hasta pedir otra |
 
 Los tests `tests/server-api.mjs` intentan cada uno de estos ataques y comprueban
 que el servidor los rechaza.

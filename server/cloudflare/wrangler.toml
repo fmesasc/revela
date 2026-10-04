@@ -188,6 +188,8 @@ new_sqlite_classes = ["ModelJob"]
 # (per address and per ticket, default 10); who is told: SUPPORT_NOTIFY (default the first of ADMIN_EMAILS).
 # The daily cron reminds once about tickets waiting for the person after SUPPORT_REMIND_DAYS (default 7)
 # and closes them after SUPPORT_AUTOCLOSE_DAYS (default 21) since the answer; 0 turns either off.
+# AI help to answer a ticket (needs OPENROUTER_KEY; paid from MONTHLY_BUDGET_USD, not the person's credits):
+# SUPPORT_AI_MODEL (default google/gemini-2.5-flash); SUPPORT_AI_AUTO = "1" asks for it when a ticket is first opened.
 [[durable_objects.bindings]]
 name = "DIRECTORY"
 class_name = "Directory"
