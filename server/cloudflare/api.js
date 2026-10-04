@@ -685,6 +685,27 @@ async function sessionOf(req, env) {
   return r.ok ? { sub: t.sub, secret: t.secret, via: bearer ? 'bearer' : 'cookie', ...(r.blocked && { blocked: true }) } : null;
 }
 
+// ---- Relay servers (Cloudflare Realtime TURN) -----------------------------------------------------
+// Secrets TURN_KEY_ID and TURN_KEY_API_TOKEN (dashboard ▸ Realtime ▸ TURN Server). Credentials last a
+// day; the same ones are handed out for 6 hours (kept in the edge cache). Without the secrets: STUN only.
+export const STUN_ONLY = { iceServers: [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] }] };
+export async function iceServers(env, fetcher = env.FETCH || fetch) {
+  if (!env.TURN_KEY_ID || !env.TURN_KEY_API_TOKEN) return STUN_ONLY;
+  const cache = globalThis.caches?.default, key = new Request('https://revela.internal/ice/' + env.TURN_KEY_ID);
+  const hit = await cache?.match(key).catch(() => null); if (hit) return hit.json();
+  try {
+    const r = await fetcher(`https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(env.TURN_KEY_ID)}/credentials/generate-ice-servers`, {
+      method: 'POST', headers: { Authorization: 'Bearer ' + env.TURN_KEY_API_TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify({ ttl: 86400 }) });
+    if (!r.ok) throw new Error('turn ' + r.status);
+    const j = await r.json(), list = (Array.isArray(j.iceServers) ? j.iceServers : [j.iceServers]).filter(Boolean)
+      // (Port 53 is blocked by some browsers and networks: Cloudflare suggests leaving it out.)
+      .map(x => ({ ...x, urls: [].concat(x.urls || []).filter(u => !/:53(\?|$)/.test(u)) })).filter(x => x.urls.length);
+    const out = { iceServers: [...STUN_ONLY.iceServers, ...list.filter(x => x.username)] };
+    await cache?.put(key, new Response(JSON.stringify(out), { headers: { 'Cache-Control': 'max-age=21600' } })).catch(() => {});
+    return out;
+  } catch (e) { console.log(JSON.stringify({ ice: 'error', detail: String(e.message || e) })); return STUN_ONLY; }
+}
+
 export async function handleApi(req, env, url) {
   const s = settings(env), origin = req.headers.get('Origin') || '';
   const webOrigin = s.origins.includes(origin), desktopOrigin = s.desktopOrigins.includes(origin);
@@ -709,6 +730,12 @@ export async function handleApi(req, env, url) {
   }
   // Answering a ticket: the signed link in its emails is the proof (no session; a form, so before the JSON body).
   if (path === '/support/reply' && (req.method === 'GET' || req.method === 'POST')) return supportReply(req, env, url, s.site);
+  // Relay servers (TURN) for the phone remote, voting and live collaboration: a phone on mobile data
+  // often can't reach the computer directly. No session (the phone has none); only from Revela's pages.
+  if (path === '/ice' && req.method === 'GET') {
+    const same = req.headers.get('Sec-Fetch-Site') === 'same-origin' || webOrigin || desktopOrigin;
+    return same ? json(await iceServers(env), 200, { 'Cache-Control': 'private, max-age=3600' }) : json({ error: 'origin' }, 403);
+  }
   // Anything that changes something, sent with the cookie, must come from Revela's site (no cross-site requests).
   if (req.method === 'POST' && cookieOf(req) && !req.headers.get('Authorization') && !webOrigin) return json({ error: 'origin' }, 403);
   const isDocs = path === '/docs' || path.startsWith('/docs/');

@@ -30,6 +30,7 @@ let blenderCalls = [], blenderReply = () => Response.json({ ok: false }), resend
 const env = { GOOGLE_CLIENT_ID: CID, OPENROUTER_KEY: 'sk-or-secreta', TRIAL_CREDITS: '50', CREDIT_USD: '0.002', AI_PER_MINUTE: '100', MONTHLY_BUDGET_USD: '50',
   AI_MODELS: 'openai/gpt-4o-mini,google/gemini-2.5-flash', AI_PRICES: '{"openai/gpt-4o-mini":[0.15,0.6]}', STRIPE_SECRET_KEY: 'sk_test', STRIPE_WEBHOOK_SECRET: 'whsec_x',
   STRIPE_PRICE_PRO_MONTH: 'price_pm', STRIPE_PRICE_CREDITS_500: 'price_c500', STRIPE_PRICE_TEAM_SEAT: 'price_team' };
+const turnCalls = [];
 env.FETCH = async (url, init = {}) => {
   const u = String(url);
   if (u.startsWith('https://oauth2.googleapis.com/tokeninfo')) {
@@ -40,6 +41,8 @@ env.FETCH = async (url, init = {}) => {
   }
   if (u === 'https://openidconnect.googleapis.com/v1/userinfo') return init.headers.Authorization === 'Bearer tok-sol' ? Response.json({ sub: '888', name: 'Sol <García>' }) : new Response('no', { status: 401 });
   if (u === 'https://api.resend.com/emails') { resendCalls.push({ auth: init.headers.Authorization, body: JSON.parse(init.body) }); return Response.json({ id: 're_1' }); }
+  if (u.startsWith('https://rtc.live.cloudflare.com/v1/turn/keys/')) { turnCalls.push({ u, auth: init.headers.Authorization, body: JSON.parse(init.body) });
+    return Response.json({ iceServers: [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.cloudflare.com:53'] }, { urls: ['turn:turn.cloudflare.com:3478?transport=udp', 'turn:turn.cloudflare.com:53?transport=udp', 'turns:turn.cloudflare.com:443?transport=tcp'], username: 'u1', credential: 'c1' }] }); }
   if (u.startsWith('https://rtc.live.cloudflare.com/v1/apps/')) { rtCalls.push({ u, method: init.method, auth: init.headers.Authorization, body: init.body && JSON.parse(init.body) });
     if (u.endsWith('/sessions/new')) return Response.json({ sessionId: 'sess-' + rtCalls.length });
     return Response.json({ sessionDescription: { type: 'answer', sdp: 'v=0 fake' }, tracks: [], requiresImmediateRenegotiation: false }); }
@@ -70,6 +73,16 @@ const acc = sub => env.ACCOUNTS.inst.get('u:' + sub);
 // ---- Signing in ----
 let r0, r;
 ok((await req('GET', '/api/me')).status === 401, 'sin sesión: nada');
+// Relay servers for the phone remote: without the secrets, STUN only; with them, Cloudflare's TURN (no port 53); only for Revela's pages.
+{ let j = await (await req('GET', '/api/ice', { origin: null, headers: { 'Sec-Fetch-Site': 'same-origin' } })).json();
+  ok(j.iceServers?.length === 1 && !j.iceServers.some(x => x.username), 'ICE sin TURN configurado: solo STUN');
+  ok((await req('GET', '/api/ice', { origin: 'https://malo.example', headers: { 'Sec-Fetch-Site': 'cross-site' } })).status === 403, 'ICE desde otra web: no');
+  env.TURN_KEY_ID = 'clave-turn'; env.TURN_KEY_API_TOKEN = 'token-turn';
+  j = await (await req('GET', '/api/ice', { origin: null, headers: { 'Sec-Fetch-Site': 'same-origin' } })).json();
+  const turn = j.iceServers?.find(x => x.username);
+  ok(turn && turn.credential === 'c1' && turn.urls.length === 2 && !turn.urls.some(u => /:53\?/.test(u)), 'ICE con TURN, sin el puerto 53: ' + JSON.stringify(j));
+  ok(turnCalls.length === 1 && turnCalls[0].auth === 'Bearer token-turn' && /keys\/clave-turn\/credentials\/generate-ice-servers$/.test(turnCalls[0].u) && turnCalls[0].body.ttl === 86400, 'pide credenciales de un día con su token');
+  delete env.TURN_KEY_ID; delete env.TURN_KEY_API_TOKEN; }
 ok((await req('POST', '/api/login', { body: { accessToken: 'inventado' } })).status === 401, 'un token que Google no reconoce: no');
 ok((await req('POST', '/api/login', { body: { accessToken: 'tok-otraapp' } })).status === 401, 'un token de otra aplicación: no');
 // Accepting the terms (and being 14 or older) when the account is created

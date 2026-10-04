@@ -14,6 +14,7 @@ import { state, subscribe, snapshot, applyRemote, adoptDeck, setPersist, current
 import { diff, applyOps, allowed, ROLES } from './collabsync.js';
 import { cleanValue } from '../document/sanitize.js';
 import { PEERJS, loadScript } from '../../core/vendor.js';
+import { peerOptions } from '../../core/ice.js';
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const rand = n => Array.from(crypto.getRandomValues(new Uint8Array(n)), x => ALPHABET[x % ALPHABET.length]).join('');
@@ -151,14 +152,14 @@ export async function joinCollab({ name, token, connect, room = null }) {
 const wrap = c => ({ send: m => { try { if (c.open) c.send(m); } catch {} }, onData: f => c.on('data', f), onClose: f => { c.on('close', f); c.on('error', f); }, close: () => c.close() });
 export async function peerListen(code, onReady) {
   await loadScript(PEERJS, 'Peer');
-  const peer = new window.Peer('revela-c-' + code);
+  const peer = new window.Peer('revela-c-' + code, await peerOptions());
   await new Promise((res, rej) => { peer.on('open', res); peer.on('error', rej); });
   onReady?.();
   return onConn => { peer.on('connection', c => c.on('open', () => onConn(wrap(c)))); return () => peer.destroy(); };
 }
 export async function peerConnect(code) {
   await loadScript(PEERJS, 'Peer');
-  const peer = new window.Peer();
+  const peer = new window.Peer(await peerOptions());
   await new Promise((res, rej) => { peer.on('open', res); peer.on('error', rej); });
   const c = peer.connect('revela-c-' + code, { reliable: true });
   await new Promise((res, rej) => { c.on('open', res); c.on('error', rej); peer.on('error', rej); setTimeout(() => rej(new Error('timeout')), 20000); });

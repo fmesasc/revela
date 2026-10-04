@@ -2,6 +2,7 @@
 // ("revela-vote-CODE") and answers the poll on the current slide.
 
 import { PEERJS, loadScript } from '../../core/vendor.js';
+import { peerOptions } from '../../core/ice.js';
 
 const $ = s => document.querySelector(s);
 const show = id => ['join', 'poll', 'wait'].forEach(x => { $('#' + x).hidden = x !== id; });
@@ -14,7 +15,7 @@ async function join(code) {
   code = code.trim().toUpperCase(); if (code.length !== 5) { $('#err').textContent = 'El código tiene 5 caracteres.'; return; }
   $('#go').disabled = true; $('#err').textContent = ''; $('#status').textContent = 'Conectando…';
   try { await loadPeer(); } catch { $('#err').textContent = 'No se pudo cargar la conexión.'; $('#go').disabled = false; return; }
-  const me = new window.Peer();
+  const me = new window.Peer(await peerOptions());
   me.on('open', () => {
     conn = me.connect('revela-vote-' + code, { reliable: true });
     conn.on('open', () => { $('#status').textContent = 'Conectado'; $('#status').classList.add('on'); show('wait'); });

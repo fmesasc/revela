@@ -6,7 +6,7 @@
 import { QRCODE, loadScript } from '../../core/vendor.js';
 import { session } from '../../core/session.js';
 import { state } from '../../core/store.js';
-import { startHost, stopHost, disconnectRemote } from '../../features/live/remote.js';
+import { startHost, stopHost, disconnectRemote, hostRunning } from '../../features/live/remote.js';
 import { slideImageBlob } from '../../io/export/images.js';
 import { t } from '../../i18n/index.js';
 
@@ -21,7 +21,7 @@ async function thumb(s) {
   return await new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = ko; r.readAsDataURL(blob); });
 }
 
-let last = null;                                          // the latest status (for the chip)
+let last = null, chipWired = false;                       // the latest status (for the chip)
 
 export function openHostPanel(opts = {}) {
   if (document.getElementById('host-modal')) return;
@@ -38,19 +38,22 @@ export function openHostPanel(opts = {}) {
     <div class="host-ask" hidden><span>${t('Un móvil ha escrito el código y pide controlar la presentación.')}</span>
       <span class="host-ask-btns"><button class="fr-do host-allow">${t('Permitir')}</button><button class="host-deny">${t('Rechazar')}</button></span></div>
     <button class="host-cut" hidden>${t('Desconectar el móvil')}</button>
+    <p class="host-help host-keep">${t('Puedes cerrar esta ventana: el móvil sigue conectado mientras presentas.')} <button type="button" class="mini2 host-stop">${t('Apagar el mando')}</button></p>
     <a class="host-link" target="_blank" rel="noopener">${t('Abrir el mando')} ↗</a>
     <p class="host-help host-safe">${t('Solo un móvil a la vez puede controlar la presentación. El enlace del QR lleva una clave; quien escriba solo el código necesita tu permiso. Al desconectarlo, el enlace anterior deja de valer.')}</p>
   </div>`;
   document.body.appendChild(back);
   const q = sel => back.querySelector(sel);
-  const close = () => { stopHost(); back.remove(); syncChip(); window.removeEventListener('revela:present-slide', syncChip); };
+  // Closing the dialog keeps the phone connected (to present full screen with it); «Stop» switches it off.
+  const close = () => { back.remove(); syncChip(); };
   q('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
   q('.host-cut').addEventListener('click', () => disconnectRemote());
-  window.addEventListener('revela:present-slide', syncChip);   // (presenting starts or ends: the chip follows)
+  q('.host-stop').addEventListener('click', () => { stopHost(); last = null; close(); });
+  if (!chipWired) { chipWired = true; window.addEventListener('revela:present-slide', syncChip); }   // (presenting starts or ends: the chip follows)
 
   startHost(s => {
-    last = s;
+    last = s.state === 'off' ? null : s;
     const st = q('.host-status');
     if (s.state === 'loading') st.textContent = t('Cargando conexión…');
     if (s.code) q('.host-code').textContent = s.code;
@@ -72,7 +75,7 @@ export function openHostPanel(opts = {}) {
 
 // Over the presentation: "📱 Remote ✕" (cut it off), or the request to allow.
 function syncChip() {
-  const ov = session.present?.overlay, live = document.getElementById('host-modal') && last;
+  const ov = session.present?.overlay, live = hostRunning() && last;
   let chip = document.getElementById('remote-chip');
   const want = ov && live && (last.state === 'connected' || last.state === 'request') ? last.state : null;
   if (!want) { chip?.remove(); return; }

@@ -6,6 +6,7 @@
 // pinches on the slide (host side: features/live/remote.js and remotepad.js).
 
 import { PEERJS, loadScript } from '../../core/vendor.js';
+import { peerOptions } from '../../core/ice.js';
 import { t } from '../../i18n/index.js';
 
 const $ = id => document.getElementById(id);
@@ -15,6 +16,8 @@ let conn = null, peer = null, blackOn = false, startAt = null, timerInt = null, 
 let tool = store('tool') || 'laser', view = store('view') || 'notes', zoom = 1, wake = null, paired = false;
 const params = new URLSearchParams(location.search);
 let key = params.get('k') || '';
+// The token this phone got when it was let in (for coming back after a drop), for the code it was for.
+let resume = (() => { try { const [c, r] = (sessionStorage.getItem('revela.remote.resume') || '').split(':'); return c && c === (params.get('code') || '').toUpperCase() ? r : ''; } catch { return ''; } })();
 
 // ---- Interface text ------------------------------------------------------------
 document.documentElement.lang = document.documentElement.lang || 'es';
@@ -64,21 +67,50 @@ document.addEventListener('visibilitychange', () => { if (paired) keepAwake(true
 // ---- Connection ------------------------------------------------------------------
 const loadPeerJS = () => loadScript(PEERJS, 'Peer').catch(() => { throw new Error(t('No se pudo cargar la librería de conexión.')); });
 
+let slow = 0;
+// Coming back after a drop: a few tries, sooner while the phone is in use.
+let back = false, lastCode = '', tries = 0, retryT = 0;
+function retry() {
+  clearTimeout(retryT);
+  if (!back || paired) return;
+  if (tries++ >= 8) { back = false; setStatus(t('Desconectado')); show('connect'); $('go').disabled = false; err(t('Se ha perdido la conexión. Pulsa «Conectar» para volver.')); return; }
+  retryT = setTimeout(() => { if (document.visibilityState === 'visible') connect(lastCode); else retry(); }, Math.min(8000, 800 * tries));
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && back && !paired) { tries = 0; clearTimeout(retryT); connect(lastCode); } });
+
 async function connect(code) {
-  err(''); $('go').disabled = true; setStatus(t('Conectando…'));
+  lastCode = code;
+  err(''); $('go').disabled = true; setStatus(back ? t('Reconectando…') : t('Conectando…'));
   try { await loadPeerJS(); } catch (e) { err(e.message); $('go').disabled = false; return; }
   try { peer?.destroy(); } catch {}
-  peer = new window.Peer();
+  clearTimeout(slow);
+  peer = new window.Peer(await peerOptions());
+  const mine = peer;
+  // Never «Connecting…» for ever: after a while, say what to try.
+  slow = setTimeout(() => {
+    if (peer !== mine || paired || conn?.open) return;
+    try { mine.destroy(); } catch {}
+    if (back) { retry(); return; }
+    err(t('No se pudo conectar. Comprueba el código en el ordenador; si sigue sin ir, conecta el móvil a la misma wifi que el ordenador y vuelve a intentarlo.'));
+    $('go').disabled = false; setStatus(t('Sin conectar'));
+  }, 20000);
   peer.on('error', e => {
+    if (peer !== mine) return;
+    clearTimeout(slow);
+    if (back) { retry(); return; }                       // (still coming back: try again a little later)
     err(e.type === 'peer-unavailable' ? t('No hay ninguna presentación con ese código.') : (t('Error de conexión: ') + (e.type || e)));
     $('go').disabled = false; setStatus(t('Sin conectar'));
   });
   peer.on('open', () => {
     conn = peer.connect('revela-' + code, { reliable: true });
-    conn.on('open', () => { try { conn.send({ type: 'hello', key }); } catch {} });
+    conn.on('open', () => { clearTimeout(slow); try { conn.send({ type: 'hello', key, ...(resume && { resume }) }); } catch {} });
     conn.on('data', onMessage);
+    const mineConn = conn;
     conn.on('close', () => {
-      paired = false; keepAwake(false);
+      if (conn !== mineConn) return;                     // (an older connection, replaced)
+      const was = paired; paired = false; keepAwake(false);
+      // Dropped (the phone locked, the network changed…): back by itself, with its key.
+      if (was && back && resume) { setStatus(t('Reconectando…')); retry(); return; }
       setStatus(t('Desconectado')); show('connect'); $('go').disabled = false;
     });
   });
@@ -87,14 +119,21 @@ async function connect(code) {
 function onMessage(m) {
   if (!m || typeof m !== 'object') return;
   switch (m.kind) {
-    case 'welcome': paired = true; err(''); setStatus(t('Conectado'), true); show('control'); startTimer(); keepAwake(true); buzz(20); break;
+    case 'welcome': {
+      const again = back; paired = true; back = true; tries = 0; err(''); setStatus(t('Conectado'), true); show('control'); if (!again) startTimer(); keepAwake(true); buzz(20);
+      // Its own token to come back with (also when the code was typed): kept for this tab, reloads included.
+      if (typeof m.resume === 'string' && /^[A-Z0-9]{8,32}$/.test(m.resume)) { resume = m.resume; try { sessionStorage.setItem('revela.remote.resume', lastCode + ':' + resume); } catch {}
+        if (params.get('code') !== lastCode) { params.set('code', lastCode); history.replaceState(null, '', location.pathname + '?' + params); } }
+      break;
+    }
     case 'pending': err(t('Esperando a que quien presenta lo permita…'), true); setStatus(t('Esperando…')); break;
-    case 'busy': err(t('Ya hay otro móvil controlando esta presentación.')); break;
+    case 'busy': if (back) { retry(); break; } err(t('Ya hay otro móvil controlando esta presentación.')); break;
     case 'denied': err(t('Quien presenta no ha permitido la conexión.')); break;
     case 'revoked':
       // That link is spent: clear its key so a reconnection asks the presenter.
-      key = ''; params.delete('k'); history.replaceState(null, '', location.pathname + (params.toString() ? '?' + params : ''));
-      paired = false; show('connect'); err(t('Quien presenta ha desconectado este mando.')); buzz([30, 60, 30]); break;
+      key = ''; resume = ''; params.delete('k'); history.replaceState(null, '', location.pathname + (params.toString() ? '?' + params : ''));
+      try { sessionStorage.removeItem('revela.remote.resume'); } catch {}
+      back = false; paired = false; show('connect'); err(t('Quien presenta ha desconectado este mando.')); buzz([30, 60, 30]); break;
     case 'state': renderState(m); break;
     case 'thumb': if (m.index === cur.index && typeof m.src === 'string' && /^data:image\//.test(m.src)) { $('thumb').src = m.src; $('thumb').hidden = false; } break;
     case 'note': if (m.what === 'blocked') toast(t('Esa web es de otro sitio: el navegador no deja que el mando la toque ni la desplace.')); break;

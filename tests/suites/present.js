@@ -595,13 +595,22 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(a.has('pending') && last.state === 'request', 'solo con el código: espera el permiso de quien presenta');
       a.c.send({ type: 'next' }); await sleep(30); eq(idx(), 0, 'mientras espera, no manda');
       last.deny(); await sleep(30); assert(a.has('denied'), 'rechazado');
-      const b = phone(); await sleep(30); b.c.send({ type: 'hello', key }); await sleep(30);
+      let b = phone(); await sleep(30); b.c.send({ type: 'hello', key }); await sleep(30);
       assert(b.has('welcome') && last.state === 'connected', 'con la clave del QR entra directamente');
       assert(b.got.some(m => m.kind === 'state'), 'recibe el estado');
       b.c.send({ type: 'next' }); await sleep(30); eq(idx(), 1, 'el móvil emparejado pasa la diapositiva');
       const c = phone(); await sleep(30); c.c.send({ type: 'hello', key }); await sleep(30);
       assert(c.has('busy'), 'otro móvil (aunque tenga la clave): ocupado');
       c.c.send({ type: 'prev' }); await sleep(30); eq(idx(), 1, 'y no manda');
+      // The phone in control, coming back after a drop (its own token, not the QR's key): in again at once.
+      const resume = b.got.find(m => m.kind === 'welcome')?.resume;
+      assert(resume && resume !== key, 'al entrar recibe su propia clave para volver');
+      const b2 = phone(); await sleep(30); b2.c.send({ type: 'hello', key: 'OTRA', resume }); await sleep(30);
+      assert(b2.has('welcome') && last.state === 'connected', 'vuelve sin pedir permiso aunque la conexión vieja siga abierta');
+      b.c.send({ type: 'next' }); await sleep(30); eq(idx(), 1, 'la conexión vieja ya no manda');
+      b2.c.send({ type: 'next' }); await sleep(30); eq(idx(), 2, 'la nueva sí');
+      R.remote.applyCommand({ type: 'goto', index: 1 }); await sleep(10);
+      b = b2;
       // Rate limit: a burst of 30 is cut to the bucket's size.
       for (let i = 0; i < 30; i++) b.c.send({ type: 'next' });
       await sleep(80);
@@ -610,6 +619,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       R.remote.disconnectRemote(); await sleep(30);
       assert(b.has('revoked'), 'quien presenta lo desconecta');
       b.c.send({ type: 'prev' }); await sleep(30); eq(idx(), before, 'desconectado, ya no manda');
+      const z = phone(); await sleep(30); z.c.send({ type: 'hello', resume: b.got.find(m => m.kind === 'welcome')?.resume }); await sleep(30);
+      assert(!z.has('welcome') && z.has('pending'), 'desconectado por quien presenta, su clave para volver deja de valer (pide permiso)'); last.deny();
+      await sleep(350);
       const key2 = new URL(last.link).searchParams.get('k');
       assert(key2 && key2 !== key, 'la clave cambia: el enlace anterior deja de valer');
       await sleep(350);
@@ -618,6 +630,20 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       last.allow(); await sleep(30); assert(d.has('welcome'), 'permitido');
       d.c.send({ type: 'prev' }); await sleep(30); eq(idx(), before - 1, 'y entonces manda');
     } finally { R.remote.stopHost(); }
+  });
+
+  await test('mando: cerrar «Conectar móvil» no lo desconecta (para presentar a pantalla completa); «Apagar el mando» sí', async () => {
+    reset(); const { Peer } = fakeBroker(), W = frame.contentWindow, H = await W.eval("import('/src/ui/dialogs/remote.js')");
+    try {
+      H.openHostPanel({ Peer }); for (let i = 0; i < 40 && !/[A-Z2-9]{5}/.test(D.querySelector('#host-modal .host-code').textContent); i++) await sleep(25);
+      const code = D.querySelector('#host-modal .host-code').textContent;
+      D.querySelector('#host-modal .modal-close').click(); await sleep(20);
+      assert(!D.getElementById('host-modal') && R.remote.hostRunning(), 'cerrado el diálogo, el mando sigue');
+      H.openHostPanel({ Peer }); await sleep(30);
+      eq(D.querySelector('#host-modal .host-code').textContent, code, 'al abrirlo otra vez, el mismo código');
+      D.querySelector('#host-modal .host-stop').click(); await sleep(20);
+      assert(!R.remote.hostRunning() && !D.getElementById('host-modal'), 'apagado');
+    } finally { R.remote.stopHost(); D.getElementById('host-modal')?.remove(); }
   });
 
   await test('mando: una conexión de votación no puede mandar órdenes del mando', async () => {

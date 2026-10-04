@@ -21,11 +21,12 @@ import { state, subscribe } from '../../core/store.js';
 import * as slides from '../document/slides.js';
 import { session } from '../../core/session.js';
 import { PEERJS, loadScript } from '../../core/vendor.js';
+import { peerOptions } from '../../core/ice.js';
 import * as pad from './remotepad.js';
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous 0/O/1/I
 
-let peer = null, conn = null, code = null, key = null, statusCb = null, unsub = null, thumbFn = null, pending = null;
+let resume = null, peer = null, conn = null, code = null, key = null, statusCb = null, unsub = null, thumbFn = null, pending = null;
 
 const pick = n => Array.from(crypto.getRandomValues(new Uint32Array(n)), v => CODE_ALPHABET[v % CODE_ALPHABET.length]).join('');
 const genCode = () => pick(5);
@@ -35,23 +36,29 @@ export function remoteLink() {
   const base = location.href.replace(/[^/]*([?#].*)?$/, '');
   return `${base}remote.html?code=${code || ''}${key ? '&k=' + key : ''}`;
 }
-const status = (st, extra) => statusCb?.({ state: st, code, link: remoteLink(), ...extra });
+// (The last one said, to say it again to a dialog opened later.)
+let now = { st: 'off', extra: undefined };
+const status = (st, extra) => { now = { st, extra }; statusCb?.({ state: st, code, link: remoteLink(), ...extra }); };
+// Whether the phone remote is on (it stays on with its dialog closed, until it is switched off).
+export const hostRunning = () => !!(peer && !peer.destroyed);
 
 // opts.Peer: the PeerJS class (tests pass a stand-in); opts.thumb(slide) →
 // Promise<data URL>: a small picture of a slide for the phone's touchpad.
+// Already hosting (the dialog closed and opened again): the same code and phone, shown again.
 export async function startHost(onStatus, opts = {}) {
   statusCb = onStatus;
   thumbFn = opts.thumb || null;
+  if (peer && !peer.destroyed) { status(now.st, now.extra); return code; }
   onStatus?.({ state: 'loading' });
   const P = opts.Peer || await loadScript(PEERJS, 'Peer');
   key = genKey();
-  hostWithFreshCode(P, 0);
+  hostWithFreshCode(P, 0, opts.Peer ? {} : await peerOptions());
   return code;
 }
 
-function hostWithFreshCode(P, attempt) {
+function hostWithFreshCode(P, attempt, po = {}) {
   code = genCode();
-  peer = new P('revela-' + code);
+  peer = new P('revela-' + code, po);
   peer.on('open', () => status('waiting'));
   peer.on('connection', c => {
     const guard = { limit: { move: createLimiter(90, 90), act: createLimiter(12, 6) } };
@@ -62,7 +69,7 @@ function hostWithFreshCode(P, attempt) {
     });
   });
   peer.on('error', e => {
-    if (e.type === 'unavailable-id' && attempt < 5) { peer.destroy(); hostWithFreshCode(P, attempt + 1); return; }
+    if (e.type === 'unavailable-id' && attempt < 5) { peer.destroy(); hostWithFreshCode(P, attempt + 1, po); return; }
     status('error', { error: e.type || String(e) });
   });
   // Push fresh state to the phone on any document/slide change.
@@ -81,6 +88,9 @@ export function onData(c, d, guard) {
   if (!isController(c)) {
     if (d.type !== 'hello' || guard.hello) return;        // (nothing else counts before pairing; one hello each)
     guard.hello = true;
+    // The phone in control coming back (its token, known only to it): it takes its place again at once
+    // (its old connection may not have noticed it dropped yet).
+    if (typeof d.resume === 'string' && resume && d.resume === resume) { const old = conn; if (old && old !== c) { conn = null; try { old.close(); } catch {} } return admit(c); }
     if (conn && conn.open) { say(c, { kind: 'busy' }); setTimeout(() => c.close(), 300); return; }
     if (typeof d.key === 'string' && key && d.key === key) return admit(c);
     if (pending) { say(c, { kind: 'busy' }); setTimeout(() => c.close(), 300); return; }
@@ -97,7 +107,8 @@ export function onData(c, d, guard) {
 }
 function admit(c) {
   pending = null; conn = c;
-  say(c, { kind: 'welcome' });
+  resume ||= genKey();
+  say(c, { kind: 'welcome', resume });                   // (if its connection drops, it comes back with this without asking)
   status('connected');
   pushState(true);
 }
@@ -113,7 +124,7 @@ export function disconnectRemote() {
   const c = conn; conn = null;
   if (c) { say(c, { kind: 'revoked' }); setTimeout(() => { try { c.close(); } catch {} }, 300); }
   if (pending) { say(pending.c, { kind: 'denied' }); pending = null; }
-  key = genKey();
+  key = genKey(); resume = null;
   clearDrawing();
   status('waiting');
 }
@@ -124,7 +135,8 @@ export function stopHost() {
   try { peer?.destroy(); } catch {}
   clearDrawing();
   unsub?.(); window.removeEventListener('revela:present-slide', onSlide);
-  peer = conn = code = key = pending = null;
+  peer = conn = code = key = pending = resume = null;
+  now = { st: 'off', extra: undefined };
   statusCb?.({ state: 'off' });
 }
 
