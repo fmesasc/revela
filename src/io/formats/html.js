@@ -12,7 +12,7 @@ import { wordartSize } from '../../render/textfit.js';
 import { morphPlan, morphSig } from '../../features/animation/morph.js';
 export { morphPlan, morphSig };                // (for tests and older callers)
 import { state } from '../../core/store.js';
-import { REVEAL, KATEX, MODEL_VIEWER, GIFUCT, PDFJS, VISION, SELFIE_MODEL } from '../../core/vendor.js';
+import { REVEAL, KATEX, MODEL_VIEWER, GIFUCT, PDFJS, VISION, SELFIE_MODEL, POSE_MODEL, FACE_MODEL } from '../../core/vendor.js';
 import { download, slug } from '../files.js';
 import { TRIGGER_JS, pollJS, liveDataJS, LIGHTBOX_JS, overviewJS } from '../runtime/scripts.js';
 import { ACTIVITIES, publicActivity, gradeAnswer, gradeActivity } from '../../features/live/poll.js';
@@ -23,6 +23,7 @@ import { needsPlayer, mediaConfig, cameraSegment, cameraBoxCSS, cameraInnerHTML 
 import { createCameraEngine, revelaCameraRuntime } from '../runtime/camera.js';
 import { modelAttrsHTML, bleedBox, edgeCSS } from '../../features/content/model3d.js';
 import { model3dRuntime } from '../runtime/model3d.js';
+import { puppetBones, puppetMorph, puppetSolve, puppetMirror, createPuppet, revelaPuppetRuntime } from '../runtime/puppet.js';
 import { timerRuntime } from '../runtime/timer.js';
 import { soundRuntime } from '../runtime/sounds.js';
 import { safeURL } from '../../features/document/sanitize.js';
@@ -489,7 +490,8 @@ function buildHTMLRaw(deck, { inApp = false, selfPaced = false } = {}) {
   const hasZoomable = deck.slides.some(s => s.blocks.some(b => b.type === 'image' && b.zoomable));
   const hasMedia = deck.slides.some(s => !s.hidden && s.blocks.some(needsPlayer));
   const hasTimer = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'timer'));
-  const hasModel3d = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'model'));   // (also for a model that carries on to the next slide)
+  const hasModel3d = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'model'));
+  const hasPuppet = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'model' && b.puppet));   // (a model following the presenter: io/runtime/puppet.js)   // (also for a model that carries on to the next slide)
   const hasLive = deck.slides.some(s => s.blocks.some(b => (b.type === 'chart' && b.dataUrl) || (b.type === 'embed' && b.refreshMin)));
   const ft = deck.footer || { show: false };
   const footerText = ft.show
@@ -583,6 +585,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${hasInlineMath ? 'window.addEventListener("load",function(){window.renderMathInElement&&renderMathInElement(document.body,{delimiters:[{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}],throwOnError:false});});' : ''}
  ${hasTrig ? TRIGGER_JS : ''}
  ${hasCam ? `${createCameraEngine.toString()}\n${revelaCameraRuntime.toString()}\nrevelaCameraRuntime(${JSON.stringify(VISION)}, ${JSON.stringify(SELFIE_MODEL)});` : ''}
+ ${hasPuppet ? `${hasCam ? '' : createCameraEngine.toString()}\n${[puppetBones, puppetMorph, puppetSolve, puppetMirror, createPuppet, revelaPuppetRuntime].join('\n')}\nrevelaPuppetRuntime(${JSON.stringify(VISION)}, ${JSON.stringify(POSE_MODEL)}, ${JSON.stringify(FACE_MODEL)});` : ''}
  ${hasPoll && !selfPaced ? pollJS(currentPalette(deck).accents, { classroom: !!deck.classroom }) : ''}
  ${selfPaced && hasPoll ? `(${selfPacedRuntime})(${publicActivity}, (function () { var gradeActivity = ${gradeActivity}; return ${gradeAnswer}; })(), ${JSON.stringify({ check: t('Comprobar'), allRight: t('¡Todo bien!'), partly: t('{n} % de aciertos'),
    wrong: t('No es correcto'), sent: t('Nota enviada'), failed: t('No se pudo enviar la respuesta. Inténtalo otra vez.'), live: t('Esta votación es en directo, con quien presenta.') })});` : ''}

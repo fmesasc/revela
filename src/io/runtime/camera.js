@@ -7,19 +7,21 @@
 // from the video and a person mask (MediaPipe's selfie segmenter, loaded only
 // when such a box is shown). If that can't load or fails, the plain video stays.
 //
-// createCameraEngine({ vision, model, keep, load? }) → { show(boxes), release() }
+// createCameraEngine({ vision, model, keep, load? }) → { show(boxes), release(), hold(), drop() }
 // show: the boxes now on screen (the others pause; the drawing runs only for
 // these); keep: hold on to the camera when none is shown (presenting), else
-// let it go. load: a segmenter factory (tests).
+// let it go. load: a segmenter factory (tests). hold/drop: someone else uses
+// the same camera (a 3D model following the presenter, io/runtime/puppet.js):
+// hold → Promise<stream | null>; the camera stays on until they drop it.
 export function createCameraEngine(o) {
-  var st = null, asking = null, gen = 0, active = [], raf = 0, last = 0, segP = null, seg = null;
+  var st = null, asking = null, gen = 0, rel = 0, holds = 0, active = [], raf = 0, last = 0, segP = null, seg = null;
   var mask = null, mctx = null, img = null, tiny = null;
   function stream() {
     if (st) return Promise.resolve(st);
     if (!asking) {
-      var g = gen, md = navigator.mediaDevices;
+      var g = rel, md = navigator.mediaDevices;   // (only letting it go cancels the asking)
       asking = (md && md.getUserMedia ? md.getUserMedia({ video: true, audio: false }) : Promise.reject(new Error('camera')))
-        .then(function (s) { if (g !== gen) { s.getTracks().forEach(function (t) { t.stop(); }); return null; } st = s; return s; }, function () { return null; });
+        .then(function (s) { if (g !== rel) { s.getTracks().forEach(function (t) { t.stop(); }); return null; } st = s; return s; }, function () { return null; });
     }
     return asking;
   }
@@ -47,7 +49,7 @@ export function createCameraEngine(o) {
     boxes = [].slice.call(boxes || []);
     active.forEach(function (bx) { var v = vid(bx); if (v && boxes.indexOf(bx) < 0) v.pause(); });
     active = boxes;
-    if (!boxes.length) { stop(); if (!o.keep) release(); return Promise.resolve(); }
+    if (!boxes.length) { stop(); if (!o.keep && !holds) release(); return Promise.resolve(); }
     return stream().then(function (s) {
       if (!s || g !== gen) return;
       // (Leaving a slide pauses its videos: coming back must play them again.)
@@ -66,7 +68,7 @@ export function createCameraEngine(o) {
     });
   }
   function release() {
-    gen++; stop(); asking = null;
+    gen++; rel++; holds = 0; stop(); asking = null;
     active.forEach(function (bx) { var v = vid(bx); if (v) v.srcObject = null; });
     active = [];
     if (st) { st.getTracks().forEach(function (t) { t.stop(); }); st = null; }
@@ -117,12 +119,14 @@ export function createCameraEngine(o) {
     x.restore();
     if (c.style.visibility !== 'visible') { c.style.visibility = 'visible'; vid(bx).style.opacity = '0'; }
   }
-  return { show: show, release: release };
+  function hold() { holds++; return stream(); }
+  function drop() { holds = Math.max(0, holds - 1); if (!holds && !active.length && !o.keep) release(); }
+  return { show: show, release: release, hold: hold, drop: drop };
 }
 
 // In the presentation: the current slide's cameras, on every slide change.
 export function revelaCameraRuntime(vision, model) {
-  var cam = createCameraEngine({ vision: vision, model: model, keep: true });
+  var cam = window.__rvCam = createCameraEngine({ vision: vision, model: model, keep: true });   // (shared: see puppet.js)
   function shown(s) { cam.show(s ? s.querySelectorAll('[data-camera-box]') : []); }
   Reveal.on('ready', function (e) { shown(e.currentSlide); });
   Reveal.on('slidechanged', function (e) { shown(e.currentSlide); });

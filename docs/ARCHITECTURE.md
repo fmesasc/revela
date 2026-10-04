@@ -98,7 +98,8 @@ src/
     runtime/                   code that runs inside the exported presentation, embedded
                                as source: scripts (polls, live data, triggers, overview),
                                ink, media (video/GIF player), model3d (3D motion and
-                               walking), canvas (canvas mode camera), unseal
+                               walking), camera (Cameo), puppet (a 3D model following
+                               the presenter's camera), canvas (canvas mode camera), unseal
     share/                     seal (encrypt), publish (file, Drive, server), shares list
     cloud/                     gdrive.js (Google Drive), shareserver.js, collabserver.js
     files.js                   download(), file names, an object's own file (blockFile)

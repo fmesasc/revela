@@ -24,6 +24,7 @@ import { stageBackground } from '../../io/formats/html.js';
 import { styleRich, paintWebCard, paintMath, pollSig, renderSlideRef, figIndexHTML, connectorHTML, applyImgStyle, applyModelAttrs, content, hostOf, hasInlineMath, renderInlineMath, paintCode, setupCode, tableSig, fillTable, fileSig, paintFile, paintTabs, setupTable, setupText, setupMath, setupModel, setupEmbed } from './content.js';
 import { mediaViewCurrent } from './mediaview.js';
 import { cameraViewCurrent, syncCameras } from './cameraview.js';
+import { syncPuppet } from './puppetview.js';
 import { addGuideFromRuler, drawPGuides, startMarquee, startDrag, startRotate, startResize } from './interact.js';
 
 export const findBlock = id => currentSlide().blocks.find(x => x.id === id);
@@ -95,6 +96,7 @@ export function renderCanvas() {
   drawBgMedia(slide);
   sideHandles();
   syncCameras(stage);
+  syncPuppet(stage, slide);
   // Screen readers: name the slide and announce the selected object.
   stage.setAttribute('aria-label', `${t('Diapositiva')} ${state.ui.slideIndex + 1} / ${state.deck.slides.length}`);
   const sel = selectedBlock(), sr = document.getElementById('sr-status');

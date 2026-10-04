@@ -4,6 +4,7 @@
 // - turning by itself (autoRotate) at a speed and direction (spin, °/s);
 // - a camera movement when its slide appears (motion): swing, zoom in, a full
 //   turn, float up and down, or look from above.
+// - following the person in front of the camera (puppet), see PUPPET_MODES;
 // - walking (walk): while the object moves on the slide (its motion path, or
 //   any animation of it) one clip plays — "Walk" — and it turns towards where
 //   it goes; on arrival another clip (once, then back to rest, or for good)
@@ -26,13 +27,13 @@ const ORBITS = { front: '0deg 75deg auto', three: '35deg 70deg auto', side: '90d
 // robot waving or a dancer would put a hand outside its box and lose it. The 3D
 // view is drawn this many times bigger than the box, around the same centre,
 // with the camera as much further away: the model looks the same size, and
-// what goes out of the box still shows. By default, for models that move.
+// what goes out of the box still shows. By default, for models that move (or follow the camera).
 export const BLEEDS_3D = [['1', 'Ninguno'], ['1.3', 'Poco'], ['1.5', 'Normal'], ['2', 'Mucho']];
 // Its edges when the model reaches them (turning, zooming in): cut straight, faded
 // out, or no cut — the view takes much more room (three times the box) around it.
 export const EDGES_3D = [['hard', 'Corte recto'], ['fade', 'Difuminado'], ['free', 'Sin corte (más espacio)']];
 export const modelBleed = b => {
-  const k = b.bleed != null ? Math.max(1, Math.min(3, +b.bleed || 1)) : (b.clip || b.walk?.clip) ? 1.5 : 1;
+  const k = b.bleed != null ? Math.max(1, Math.min(3, +b.bleed || 1)) : (b.clip || b.walk?.clip || b.puppet) ? 1.5 : 1;   // (raised arms too)
   return b.edge === 'free' ? Math.max(k, 3) : k;
 };
 // A faded edge: the view fades out over its last 12 % on every side.
@@ -81,8 +82,19 @@ export function modelAttrs(b) {
   }
   if (b.motion && b.motion !== 'none') a.push(['data-motion', b.motion]);
   if (b.arrive && b.arrive !== 'keep') a.push(['data-arrive', b.arrive]);
+  if (b.puppet) {
+    a.push(['data-puppet', b.puppet.mode === 'head' ? 'head' : 'body']);
+    if (b.puppet.mirror === false) a.push(['data-puppet-mirror', '0']);
+    if (b.puppet.preview) a.push(['data-puppet-preview', '']);
+  }
   return a;
 }
+// "Controlar con la cámara" (b.puppet = { mode, mirror, preview }): the model
+// moves with the person in front of the camera — the whole upper body (arms,
+// torso, head) or only the head; like a mirror or not; the presenter's own
+// picture small in a corner or not. Runs with io/runtime/puppet.js, in the browser.
+export const PUPPET_MODES = [['body', 'Todo el cuerpo'], ['head', 'Solo la cabeza']];
+export const PUPPET_DEFAULT = { mode: 'body', mirror: true, preview: false };
 export const modelAttrsHTML = b => modelAttrs(b).map(([k, v]) => (v === '' ? ` ${k}` : ` ${k}="${String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"`)).join('');
 
 

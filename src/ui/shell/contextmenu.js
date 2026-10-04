@@ -28,6 +28,7 @@ import { masterMenu } from './masterview.js';
 import { playInEditor } from '../canvas/mediaview.js';
 import { isGif } from '../../features/live/media.js';
 import { cameraLive, setCameraLive, setCameraBackground } from '../canvas/cameraview.js';
+import { puppetTrying, tryPuppet, togglePuppet } from '../canvas/puppetview.js';
 import { openCameraEffects } from '../dialogs/media.js';
 import { openImageAdjust, openMath, openChartData, openOpacity, openIconColor, openBoxStyle, openSlidePicker, openCaption, openAlt, openImageCrop, removeBackground, openTableStyle } from '../dialogs/object.js';
 
@@ -163,6 +164,8 @@ function forBlock(b, cell = null) {
   } else if (b.type === 'model') {
     items.push(
       ['Movimiento 3D…', () => openModel3D(b)],
+      [b.puppet ? 'Dejar de controlar con la cámara' : 'Controlar con la cámara', () => togglePuppet(b)],
+      [puppetTrying() === b.id ? 'Detener la prueba con la cámara' : 'Probar con la cámara', () => tryPuppet(b)],
       ['Descargar el modelo 3D (.glb)', () => saveFile(b)],
       [b.autoRotate !== false ? 'Detener giro automático' : 'Girar automáticamente',
         () => commit(() => (b.autoRotate = !(b.autoRotate !== false)))],

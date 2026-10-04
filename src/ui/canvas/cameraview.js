@@ -13,7 +13,7 @@ let live = false, engine = null;
 export const cameraLive = () => live;
 export function setCameraLive(on) {
   live = !!on;
-  if (!live) engine?.release();
+  if (!live) engine?.show([]);   // (let go, unless a model following the camera is being tried)
   commit(() => {}, { history: false });
 }
 
@@ -45,10 +45,11 @@ export function cameraViewCurrent(el, b) {
 // After each drawing of the slide: the cameras on it, live or not.
 export function syncCameras(stage) {
   const boxes = live ? [...stage.querySelectorAll('.camera-blk[data-camera-box]')] : [];
-  if (!boxes.length) { engine?.release(); return; }
-  engine ||= createCameraEngine({ vision: VISION, model: SELFIE_MODEL, keep: false });
-  engine.show(boxes);
+  if (!boxes.length) { engine?.show([]); return; }
+  cameraEngine().show(boxes);
 }
+// The editor's one camera, also for trying a model that follows it (puppetview.js).
+export const cameraEngine = () => (engine ||= createCameraEngine({ vision: VISION, model: SELFIE_MODEL, keep: false }));
 
 // Choosing "Imagen de fondo" asks for the picture (if it has none yet).
 export function pickCameraImage(b) {
