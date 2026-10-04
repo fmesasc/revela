@@ -267,7 +267,7 @@ initFileDrop();
 // First visit (nothing saved in this browser, no shared link): start from the
 // templates, as PowerPoint and Canva do; closing it leaves the blank slide.
 { const q = new URLSearchParams(location.search), fresh = (() => { try { return !localStorage.getItem(model.STORAGE_KEY) && !localStorage.getItem('revela.welcomed'); } catch { return false; } })();
-  if (!testing && fresh && !['collab', 'open', 'u', 'd', 'state', 'dropbox'].some(k => q.has(k))) {
+  if (!testing && fresh && !['collab', 'open', 'u', 'd', 'state', 'dropbox', 'doc', 'lti', 'report', 'comprar', 'desktop'].some(k => q.has(k))) {
     try { localStorage.setItem('revela.welcomed', '1'); } catch {}
     import('../../ui/dialogs/gallery.js').then(g => g.openGallery());
   } }

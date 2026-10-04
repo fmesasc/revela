@@ -47,7 +47,7 @@ function paintBar() {
   const a = gd.account();
   if (btn) {
     btn.innerHTML = a ? (a.picture ? `<img src="${esc(a.picture)}" alt="" referrerpolicy="no-referrer">` : `<span class="acc-init">${initial(a)}</span>`)
-      : `<i class="ms">account_circle</i><span>${t('Iniciar sesión')}</span>`;
+      : `<i class="ms">add_to_drive</i><span>Google Drive</span>`;   // (named after what it connects: the Revela account has its own button)
     btn.title = a ? `${a.name} · ${a.email}` : t('Iniciar sesión con Google');
     btn.classList.toggle('signed', !!a);
   }

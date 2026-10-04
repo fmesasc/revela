@@ -1495,7 +1495,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     GD.setThumbnailMaker(async () => 'AAAA'); GD.setAutosaveDelay(50);
     try {
       const btn = D.getElementById('account-btn');
-      assert(/Iniciar sesión/.test(btn.textContent), 'botón de iniciar sesión');
+      assert(/Google Drive/.test(btn.textContent), 'botón para conectar Google Drive (no «Iniciar sesión»: la cuenta de Revela tiene el suyo)');
       btn.click(); await sleep(50);
       eq(GD.account()?.email, 'ana@example.org', 'sesión iniciada'); assert(btn.classList.contains('signed') && /A/.test(btn.textContent), 'la cuenta en la barra');
       // My presentations: the most recent first, with thumbnails.
