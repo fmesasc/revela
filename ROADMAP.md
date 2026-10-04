@@ -105,7 +105,7 @@ the origin of every requirement is traceable.
 - ✅ Online images (Openverse, openly licensed, attribution kept as caption, commercial-use filter) and 200 000+ online icons (Iconify), opt-in, embedded so they work offline `PP·GS`
 - ✅ Tables from CSV files and from cells pasted from a spreadsheet; paste images/text straight onto the slide `GS·OO`
 - ✅ Live data — dashboards (Power BI, Looker Studio, Tableau, Google Sheets, Grafana, Datawrapper, Flourish, Metabase) from their share link, with periodic reload; charts linked to a published CSV, refreshed in the editor and while presenting `GS·OO`
-- ✅ Screen / camera recording into a video object, live camera on the slide (Cameo: circle/rounded/rect, mirrored) `PP`
+- ✅ Screen / camera recording into a video object, live camera on the slide (Cameo: circle/rounded/rect, mirrored; colour filters and brightness; background blurred, removed, a colour or a picture, with in-browser person segmentation) `PP`
 - ✅ Freehand ink on the slide (Draw tab: pen, highlighter, stroke eraser, colour & thickness; strokes are movable objects) `PP·OO`
 - ✅ More than 70 shapes — pie, chord, block arc, cube, folded corner, smiley, sun, "no" sign, banners, thought bubble, arc, brackets and braces; action buttons; freeform `PP·GS·OO`
 - ✅ Formulas in table cells — `=SUM(ABOVE)`, cell references and ranges, SUM/AVERAGE/MIN/MAX/COUNT/PRODUCT/ROUND/ABS in Spanish or English, units kept, total row; results in the export, PowerPoint and ODP `PP·OO`

@@ -12,14 +12,15 @@ import { wordartSize } from '../../render/textfit.js';
 import { morphPlan, morphSig } from '../../features/animation/morph.js';
 export { morphPlan, morphSig };                // (for tests and older callers)
 import { state } from '../../core/store.js';
-import { REVEAL, KATEX, MODEL_VIEWER, GIFUCT, PDFJS } from '../../core/vendor.js';
+import { REVEAL, KATEX, MODEL_VIEWER, GIFUCT, PDFJS, VISION, SELFIE_MODEL } from '../../core/vendor.js';
 import { download, slug } from '../files.js';
-import { TRIGGER_JS, CAMERA_JS, pollJS, liveDataJS, LIGHTBOX_JS, overviewJS } from '../runtime/scripts.js';
+import { TRIGGER_JS, pollJS, liveDataJS, LIGHTBOX_JS, overviewJS } from '../runtime/scripts.js';
 import { ACTIVITIES, publicActivity, gradeAnswer, gradeActivity } from '../../features/live/poll.js';
 import { selfPacedRuntime } from '../runtime/selfpaced.js';
 import { slideTitle } from '../../features/document/a11y.js';
 import { createMediaPlayer, revelaMediaRuntime } from '../runtime/media.js';
-import { needsPlayer, mediaConfig } from '../../features/live/media.js';
+import { needsPlayer, mediaConfig, cameraSegment, cameraBoxCSS, cameraInnerHTML } from '../../features/live/media.js';
+import { createCameraEngine, revelaCameraRuntime } from '../runtime/camera.js';
 import { modelAttrsHTML, bleedBox, edgeCSS } from '../../features/content/model3d.js';
 import { model3dRuntime } from '../runtime/model3d.js';
 import { timerRuntime } from '../runtime/timer.js';
@@ -282,9 +283,8 @@ function blockHTMLRaw(b, slide) {
       + `<div class="rv-poll-res" style="flex:1;min-height:0"></div></div>`
       + `<div class="rv-poll-qr" style="text-align:center;font-size:18px;align-self:center"><canvas width="220" height="220" style="background:#fff;border-radius:8px"></canvas>`
       + `<div class="rv-poll-url" style="margin-top:6px;opacity:.8"></div><div>Código <b class="rv-poll-code" style="letter-spacing:3px">·····</b></div></div></div>`;
-  if (b.type === 'camera')   // Cameo: filled with the presenter's camera when the slide is shown
-    return `<video${a} data-camera autoplay muted playsinline style="${box(b)}object-fit:cover;background:#223;`
-      + `border-radius:${b.shape === 'circle' ? '50%' : b.shape === 'rounded' ? '14%' : '0'}${b.mirror !== false ? ';scale:-1 1' : ''}"></video>`;
+  if (b.type === 'camera')   // Cameo: filled with the presenter's camera when the slide is shown (io/runtime/camera.js)
+    return `<div${a} data-camera-box${cameraSegment(b) ? ` data-bg="${cameraSegment(b)}"` : ''} style="${box(b)}${esc(cameraBoxCSS(b))}">${cameraInnerHTML(b)}</div>`;
   // Sound: on its slide (reveal.js plays it on arrival with data-autoplay) or, if
   // it keeps playing over the next slides, a speaker button here and the sound
   // itself outside the slides (below: bgmHTML), so changing slide doesn't stop it.
@@ -574,7 +574,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${hasMath ? 'window.addEventListener("load",function(){window.katex&&document.querySelectorAll(".math[data-latex]").forEach(function(el){try{katex.render(el.getAttribute("data-latex"),el,{throwOnError:false,displayMode:true,strict:"ignore"});}catch(e){el.textContent=el.getAttribute("data-latex");}});});' : ''}
  ${hasInlineMath ? 'window.addEventListener("load",function(){window.renderMathInElement&&renderMathInElement(document.body,{delimiters:[{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}],throwOnError:false});});' : ''}
  ${hasTrig ? TRIGGER_JS : ''}
- ${hasCam ? CAMERA_JS : ''}
+ ${hasCam ? `${createCameraEngine.toString()}\n${revelaCameraRuntime.toString()}\nrevelaCameraRuntime(${JSON.stringify(VISION)}, ${JSON.stringify(SELFIE_MODEL)});` : ''}
  ${hasPoll && !selfPaced ? pollJS(currentPalette(deck).accents, { classroom: !!deck.classroom }) : ''}
  ${selfPaced && hasPoll ? `(${selfPacedRuntime})(${publicActivity}, (function () { var gradeActivity = ${gradeActivity}; return ${gradeAnswer}; })(), ${JSON.stringify({ check: t('Comprobar'), allRight: t('¡Todo bien!'), partly: t('{n} % de aciertos'),
    wrong: t('No es correcto'), sent: t('Nota enviada'), failed: t('No se pudo enviar la respuesta. Inténtalo otra vez.'), live: t('Esta votación es en directo, con quien presenta.') })});` : ''}

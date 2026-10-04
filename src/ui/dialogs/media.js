@@ -1,10 +1,11 @@
 // "Playback" of a video or an animated GIF: segments played one per click
 // (from second X to second Y), start by itself, loop, mute, and a colour made
 // transparent (chroma key) picked from the preview. GIFs can also have their
-// background removed with the AI, frame by frame.
+// background removed with the AI, frame by frame. And the live camera's look.
 
 import { createMediaPlayer } from '../../io/runtime/media.js';
-import { mediaKind, setMediaPlayback } from '../../features/live/media.js';
+import { mediaKind, setMediaPlayback, CAMERA_FILTERS, CAMERA_BACKGROUNDS, DEFAULT_CAMERA_COLOR, cameraBrightness, setCameraLook } from '../../features/live/media.js';
+import { cameraLive, setCameraLive, setCameraBackground, pickCameraImage } from '../canvas/cameraview.js';
 import { gifRemoveBackground } from '../../features/live/gifbg.js';
 import { commit, currentSlide } from '../../core/store.js';
 import { GIFUCT } from '../../core/vendor.js';
@@ -130,4 +131,36 @@ export function openMediaPlayback(b) {
     });
     close();
   });
+}
+
+// The live camera's look: filter, brightness and background (also in its ribbon tab).
+export function openCameraEffects(b) {
+  document.getElementById('cam-modal')?.remove();
+  const cur = () => currentSlide().blocks.find(x => x.id === b.id) || b;
+  const opts = (list, v) => list.map(([k, l]) => `<option value="${k}"${k === (v || '') ? ' selected' : ''}>${t(l)}</option>`).join('');
+  const back = document.createElement('div');
+  back.id = 'cam-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:300px">
+    <button class="modal-close">✕</button><h3>${t('Filtros y fondo')}</h3>
+    <label class="fr-l">${t('Filtro')} <select class="cam-filter">${opts(CAMERA_FILTERS, b.filter)}</select></label>
+    <label class="fr-l">${t('Brillo')} <span class="cam-bv">${cameraBrightness(b)}%</span> <input type="range" class="cam-bright" min="30" max="200" step="5" value="${cameraBrightness(b)}"></label>
+    <label class="fr-l">${t('Fondo')} <select class="cam-bg">${opts(CAMERA_BACKGROUNDS, b.bg)}</select></label>
+    <label class="fr-l cam-color-l">${t('Color del fondo')} <input type="color" class="cam-color" value="${/^#[0-9a-f]{6}$/i.test(b.bgColor || '') ? b.bgColor : DEFAULT_CAMERA_COLOR}"></label>
+    <div class="fr-l cam-img-l"><button type="button" class="fr-do cam-img">${t('Cambiar imagen')}</button></div>
+    <p style="opacity:.75;font-size:13px;max-width:340px">${t('El fondo se separa de la persona en el propio navegador: la imagen de la cámara no sale de tu equipo.')}</p>
+    <label class="fr-l"><input type="checkbox" class="cam-live"${cameraLive() ? ' checked' : ''}> ${t('Ver la cámara en el editor')}</label>
+  </div>`;
+  document.body.appendChild(back);
+  const $ = s => back.querySelector(s);
+  const sync = () => { const v = $('.cam-bg').value; $('.cam-color-l').hidden = v !== 'color'; $('.cam-img-l').hidden = v !== 'image'; };
+  sync();
+  const close = () => back.remove();
+  $('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  $('.cam-filter').addEventListener('change', e => setCameraLook(b.id, { filter: e.target.value }));
+  $('.cam-bright').addEventListener('input', e => { $('.cam-bv').textContent = e.target.value + '%'; setCameraLook(b.id, { brightness: e.target.value }); });
+  $('.cam-bg').addEventListener('change', e => { setCameraBackground(cur(), e.target.value); sync(); });
+  $('.cam-color').addEventListener('input', e => setCameraLook(b.id, { bgColor: e.target.value }));
+  $('.cam-img').addEventListener('click', () => pickCameraImage(cur()));
+  $('.cam-live').addEventListener('change', e => setCameraLive(e.target.checked));
 }

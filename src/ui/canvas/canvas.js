@@ -18,12 +18,12 @@ import { deckFg, deckBodyFont, currentPalette } from '../../features/design/pale
 import { motionPoints, motionFrames, pathTurns, animsOf, offsetBefore } from '../../features/animation/transitions.js';
 import { drawPathHandles } from './pathdraw.js';
 import { blockLabel } from '../../features/document/a11y.js';
-import { cameraRadius } from '../../features/live/media.js';
 import { pollEditorHTML } from '../../features/live/poll.js';
 import { masterBlocksFor, PH_PROMPT, styled, layoutInUse, masterInUse } from '../../features/document/master.js';
 import { stageBackground } from '../../io/formats/html.js';
 import { styleRich, paintWebCard, paintMath, pollSig, renderSlideRef, figIndexHTML, connectorHTML, applyImgStyle, applyModelAttrs, content, hostOf, hasInlineMath, renderInlineMath, paintCode, setupCode, tableSig, fillTable, fileSig, paintFile, paintTabs, setupTable, setupText, setupMath, setupModel, setupEmbed } from './content.js';
 import { mediaViewCurrent } from './mediaview.js';
+import { cameraViewCurrent, syncCameras } from './cameraview.js';
 import { addGuideFromRuler, drawPGuides, startMarquee, startDrag, startRotate, startResize } from './interact.js';
 
 export const findBlock = id => currentSlide().blocks.find(x => x.id === id);
@@ -92,6 +92,7 @@ export function renderCanvas() {
   drawMotionPath();
   drawMasterLayer();
   drawBgMedia(slide);
+  syncCameras(stage);
   const banner = document.getElementById('master-banner');
   if (banner) {
     banner.hidden = !state.ui.editMaster;
@@ -328,7 +329,7 @@ function reconcile(b) {
     const d = el.querySelector('.poll-blk'); const sig = pollSig(b);
     if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = pollEditorHTML(b, currentPalette().accents); }
   } else if (b.type === 'camera') {
-    const d = el.querySelector('.camera-blk'); if (d) d.style.borderRadius = cameraRadius(b);
+    if (!cameraViewCurrent(el, b)) el.firstElementChild.replaceWith(content(b));   // (its look changed, or live on/off)
   } else if (b.type === 'ink') {
     const d = el.querySelector('.ink-blk'); const sig = inkSig(b);
     if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = inkSVG(b); }

@@ -14,7 +14,8 @@ import { togglePopover } from './popovers.js';
 import * as format from '../../features/document/format.js';
 import * as shapeops from '../../features/document/shapeops.js';
 import { MOTIONS_3D, VIEWS_3D, BLEEDS_3D, EDGES_3D, ARRIVALS_3D, modelBleed } from '../../features/content/model3d.js';
-import { isGif } from '../../features/live/media.js';
+import { isGif, CAMERA_FILTERS, CAMERA_BACKGROUNDS, DEFAULT_CAMERA_COLOR, cameraBrightness, setCameraLook } from '../../features/live/media.js';
+import { cameraLive, setCameraLive, setCameraBackground, pickCameraImage } from '../canvas/cameraview.js';
 import { CURVES, DEVICES, SHAPE_NAMES, hasShapeText, CONNECTOR_ROUTES, isLineShape } from '../../render/svg.js';
 import { styled } from '../../features/document/master.js';
 import { saveBlockFile as saveFile } from '../shell/files.js';
@@ -201,7 +202,14 @@ function groupsFor(b) {
     ...(blocks.isVideoEmbed(b.src) ? [btn('content_cut', 'Fragmento del vídeo', () => askVideoClip(b))] : [])]]);
   else if (b.type === 'slideref') G.push(['Zoom', [btn('slideshow', 'Elegir diapositiva', () => openSlidePicker(b)), btn('undo', 'Volver aquí', () => blocks.toggleSlideRefReturn(), !!b.returnBack)]]);
   else if (b.type === 'camera') G.push(['Cámara', [btn('circle', 'Círculo', () => set(b, x => { x.shape = 'circle'; }), b.shape === 'circle'), btn('crop_square', 'Redondeada', () => set(b, x => { x.shape = 'rounded'; }), b.shape === 'rounded'),
-    btn('rectangle', 'Rectángulo', () => set(b, x => { x.shape = 'rect'; }), b.shape === 'rect'), btn('flip', 'Reflejar', () => set(b, x => { x.mirror = x.mirror === false; }), b.mirror !== false)]]);
+    btn('rectangle', 'Rectángulo', () => set(b, x => { x.shape = 'rect'; }), b.shape === 'rect'), btn('flip', 'Reflejar', () => set(b, x => { x.mirror = x.mirror === false; }), b.mirror !== false),
+    btn('videocam', 'Ver en directo', () => setCameraLive(!cameraLive()), cameraLive())]],
+    // Its look: a filter and the background behind the person (blurred, removed, a colour, a picture).
+    ['Efectos', [['select', 'Filtro', CAMERA_FILTERS, b.filter || '', v => setCameraLook(b.id, { filter: v })],
+      ['num', 'Brillo (%)', cameraBrightness(b), v => setCameraLook(b.id, { brightness: v }), 30, 200, 10]]],
+    ['Fondo', [['select', 'Fondo', CAMERA_BACKGROUNDS, b.bg || '', v => setCameraBackground(b, v)],
+      ...(b.bg === 'color' ? [['color', 'format_color_fill', 'Color del fondo', b.bgColor || DEFAULT_CAMERA_COLOR, v => setCameraLook(b.id, { bgColor: v })]] : []),
+      ...(b.bg === 'image' ? [btn('image', 'Cambiar imagen', () => pickCameraImage(b))] : [])]]);
   // Every object: its animations (several, one after another), description, accessibility and arrangement.
   const n = animsOf(b).length;
   G.push(['Animaciones', [btn('add_circle', n ? `${t('Añadir animación')} (${n})` : 'Añadir animación', () => openAddAnimation(document.querySelector('#ribbon [data-page="ctx"] [data-ctx="add"]')), false, 'add'),
@@ -270,7 +278,7 @@ export function renderContextual() {
   if (opened) tab.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });   // (with its name, so all of it shows)
   const names = b?.type === 'model' ? clipsOf(b) : [];
   // (Moving or resizing it doesn't change its options: no rebuild while nudging.)
-  const sig = shortSig([list.map(x => x.id), b && { ...b, x: 0, y: 0, w: 0, h: 0 }, names, b && styled(b, currentSlide()).fontSize]);
+  const sig = shortSig([list.map(x => x.id), b && { ...b, x: 0, y: 0, w: 0, h: 0 }, names, b && styled(b, currentSlide()).fontSize, b?.type === 'camera' && cameraLive()]);
   if (sig === lastSig) return;
   lastSig = sig;
   const groups = b ? groupsFor(b) : groupsForMany(list);

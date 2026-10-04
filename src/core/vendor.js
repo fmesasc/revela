@@ -20,6 +20,10 @@ export const JSZIP_ESM = NPM + 'jszip@3.10.1/+esm';
 export const PDFJS = NPM + 'pdfjs-dist@4.10.38/build';
 export const BG_REMOVAL = NPM + '@imgly/background-removal@1.5.5/+esm';
 export const GIFUCT = NPM + 'gifuct-js@2.1.2/+esm';
+// Live camera background (blur / remove): MediaPipe's person segmenter, run in
+// the browser (the camera's picture never leaves it); the model, a fixed version.
+export const VISION = NPM + '@mediapipe/tasks-vision@1.0.1';
+export const SELFIE_MODEL = 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite';
 
 // A classic script, once: resolves at once if `global` already exists, and
 // concurrent calls for the same URL share one request.

@@ -1,5 +1,5 @@
 // Scripts embedded in the exported presentation (they run inside it, not in
-// the editor): live camera, live polls, live data, image lightbox and
+// the editor): live polls, live data, image lightbox and
 // click-triggered animations. Functions shared with the editor (tallying
 // votes, drawing charts) are embedded with toString(), so both draw the same.
 
@@ -9,15 +9,6 @@ import { tallyVotes, pollResultsHTML, quizTotals, gradeActivity, publicActivity,
 import { parseChartGrid } from '../../features/document/blocks.js';
 import { QRCODE, PEERJS } from '../../core/vendor.js';
 
-// Live camera for Cameo objects: asked for only when a slide that has one is
-// shown, and shared by all of them.
-export const CAMERA_JS = `(function(){var st=null,asked=false;
- function fill(slide){var vs=slide&&slide.querySelectorAll('video[data-camera]');if(!vs||!vs.length)return;
-  function put(){vs.forEach(function(v){if(v.srcObject!==st){v.srcObject=st;v.play&&v.play().catch(function(){});}});}
-  if(st)return put();if(asked)return;asked=true;
-  navigator.mediaDevices&&navigator.mediaDevices.getUserMedia({video:true,audio:false}).then(function(s){st=s;put();}).catch(function(){});}
- Reveal.on('ready',function(e){fill(e.currentSlide);});Reveal.on('slidechanged',function(e){fill(e.currentSlide);});
- if(Reveal.isReady())fill(Reveal.getCurrentSlide());})();`;
 // Live polls: host a PeerJS peer, show the QR on every poll, tally votes and
 // repaint the results as they arrive; the current slide's poll is sent to the
 // phones. Loaded only when the deck has polls.
