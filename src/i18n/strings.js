@@ -5,6 +5,7 @@
 
 // es | en | fr | de | it | pt | ca
 export const ROWS = [
+  ['Abriendo la presentación…', 'Opening the presentation…', 'Ouverture de la présentation…', 'Präsentation wird geöffnet…', 'Apertura della presentazione…', 'A abrir a apresentação…', 'Obrint la presentació…'],
   ['Abriendo…', 'Opening…', 'Ouverture…', 'Wird geöffnet…', 'Apertura…', 'A abrir…', 'Obrint…'],
   ['Abrir la web', 'Open the website', 'Ouvrir le site', 'Website öffnen', 'Apri il sito', 'Abrir o site', 'Obre el web'],
   ['Algunas webs no permiten mostrarse dentro de otras páginas: se mostrará una tarjeta que la abre', 'Some websites can\'t be shown inside other pages: a card that opens it will be shown', 'Certains sites ne peuvent pas s\'afficher dans d\'autres pages : une carte qui l\'ouvre sera affichée', 'Manche Websites lassen sich nicht in andere Seiten einbetten: Es wird eine Karte angezeigt, die sie öffnet', 'Alcuni siti non si possono mostrare dentro altre pagine: verrà mostrata una scheda che lo apre', 'Alguns sites não podem ser mostrados dentro de outras páginas: será mostrado um cartão que o abre', 'Alguns webs no es poden mostrar dins d\'altres pàgines: es mostrarà una targeta que l\'obre'],

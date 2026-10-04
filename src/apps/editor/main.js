@@ -2,6 +2,7 @@
 
 import { hasAccounts, cloudAi, refreshAccount, onAccount, account } from '../../io/cloud/account.js';
 import { mountCloudStatus, openFromLink } from '../../ui/dialogs/cloud.js';
+import { docIdFrom } from '../../io/cloud/clouddocs.js';
 import * as clouddocs from '../../io/cloud/clouddocs.js';
 import { setCloudAi } from '../../features/ai/openrouter.js';
 import { openAccount, handleDesktopRequest, BUYABLE, watchTerms } from '../../ui/dialogs/account.js';
@@ -289,7 +290,11 @@ if (hasAccounts()) {
   btn.addEventListener('click', () => openAccount());
   window.addEventListener('revela:lang', () => paint(account()));
   if (!testing) {
-    refreshAccount().catch(() => {}).finally(() => { handleDesktopRequest(); openFromLink(); });
+    // (A shared link, ?doc=: asked for at once, alongside the account, under a loading screen —
+    // not the empty editor first and the presentation popping in later.)
+    const opening = docIdFrom() ? openingScreen() : null;
+    if (opening) openFromLink().finally(opening);
+    refreshAccount().catch(() => {}).finally(() => { handleDesktopRequest(); });
     if (new URLSearchParams(location.search).has('paid')) { history.replaceState(null, '', location.pathname); alertDialog(t('¡Gracias! Tu compra se ha registrado.')); }
     // From the prices page (revelaslides.com/pricing): the account, with the product chosen.
     const buy = new URLSearchParams(location.search).get('comprar');
@@ -306,3 +311,12 @@ if (!testing) finishOpenRouterLogin().then(ok => { if (ok) alertDialog(t('IA con
 // Offline support (PWA). Not for the test harness nor file:// pages.
 if (!testing && 'serviceWorker' in navigator && location.protocol !== 'file:')
   navigator.serviceWorker.register('sw.js').catch(() => {});
+
+// The loading screen while a shared presentation opens; returns what removes it.
+function openingScreen() {
+  const el = document.createElement('div');
+  el.id = 'opening-doc'; el.setAttribute('role', 'status');
+  el.innerHTML = `<div class="od-box"><span class="od-spin" aria-hidden="true"></span><span>${t('Abriendo la presentación…')}</span></div>`;
+  document.body.appendChild(el);
+  return () => { el.classList.add('done'); setTimeout(() => el.remove(), 250); };
+}

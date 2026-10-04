@@ -1,6 +1,7 @@
 // Galician interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Abriendo la presentación…": "Abrindo a presentación…",
   "Archivo": "Ficheiro",
   "Inicio": "Inicio",
   "Insertar": "Inserir",

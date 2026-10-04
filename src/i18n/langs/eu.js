@@ -1,6 +1,7 @@
 // Basque interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Abriendo la presentación…": "Aurkezpena irekitzen…",
   "Archivo": "Fitxategia",
   "Inicio": "Hasiera",
   "Insertar": "Txertatu",
