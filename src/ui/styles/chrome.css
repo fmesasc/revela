@@ -158,6 +158,8 @@
 .tb-play button{width:30px;height:28px;border:1px solid var(--line2);border-radius:7px;background:var(--panel);color:var(--accent);cursor:pointer;display:grid;place-items:center}
 .tb-play button:first-child{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .tb-play button:hover{filter:brightness(1.08)}.tb-play .ms{font-size:20px}
+/* The play triangle: drawn, so its weight sits in the middle (the font's glyph leans right). */
+.tb-tri{width:16px;height:16px;fill:currentColor;display:block}
 #zoom-slider{width:110px;vertical-align:middle;accent-color:var(--accent)}
 /* (Phones: "Present" stays, the one way there in sight; the second button goes.) */
 @media (max-width:600px){#zoom-slider,.tb-play button+button{display:none}.tb-play{margin-inline-start:2px;flex-shrink:0}}
