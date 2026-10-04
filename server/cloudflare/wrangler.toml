@@ -7,10 +7,8 @@ preview_urls = false
 # Variables set in Cloudflare's dashboard stay through deploys (the business's numbers live there).
 keep_vars = true
 # The official site (Cloudflare Pages) sends its /api/… here; the rest of the domain stays with the site.
-routes = [{ pattern = "revelaslides.com/api/*", zone_name = "revelaslides.com" }]
-# Administration (admin.js), once Cloudflare Access protects admin.revelaslides.com (see the
-# admin vars below): replace the line above with
-# routes = [{ pattern = "revelaslides.com/api/*", zone_name = "revelaslides.com" }, { pattern = "admin.revelaslides.com/api/*", zone_name = "revelaslides.com" }]
+routes = [{ pattern = "revelaslides.com/api/*", zone_name = "revelaslides.com" }, { pattern = "admin.revelaslides.com/api/*", zone_name = "revelaslides.com" }]
+# admin.revelaslides.com/api/*: the administration (admin.js), behind Cloudflare Access.
 
 # Everything is stored in Durable Objects (store.js), not R2: on the Workers Free
 # plan they have hard limits (it stops for the day, it never bills).
@@ -69,6 +67,10 @@ BLENDER_USD_PER_SECOND = "0.0001"
 # Revela with Google can share and open collaboration rooms. To limit it to
 # some accounts: `npx wrangler secret put ALLOWED` with e.g. "ana@x.org, @school.example".
 GOOGLE_CLIENT_ID = "960102070599-jahg4mdj304k5ftb9b6p2ck9hp5gtbc9.apps.googleusercontent.com"
+# Administration (admin.js): the Cloudflare Access application that protects admin.revelaslides.com
+# (public identifiers: its team and audience tag). Who may use it, ADMIN_EMAILS, is set in Cloudflare.
+ACCESS_TEAM = "fmesasc"
+ACCESS_AUD = "fc9aec28ca0051d675aa082759b71159082d80e463840d6fdaa8d1eb647d8aa7"
 
 # Live collaboration rooms (collab.js): one Durable Object per shared session.
 [[durable_objects.bindings]]
@@ -178,9 +180,7 @@ new_sqlite_classes = ["ModelJob"]
 # is OFF (404) until these three plain vars are set — in Cloudflare (Workers ▸ revela-share ▸
 # Settings ▸ Variables) or here — and it only answers on admin.revelaslides.com, behind a
 # Cloudflare Access application whose token this Worker checks itself on every request:
-# ACCESS_TEAM = "<team>"                 (Zero Trust team name: <team>.cloudflareaccess.com)
-# ACCESS_AUD = "<the application's AUD tag>"
-# ADMIN_EMAILS = "admin@example.com"
+# ACCESS_TEAM, ACCESS_AUD: in [vars] above. ADMIN_EMAILS = "admin@example.com" (set in Cloudflare)
 # ADMIN_HOST = "admin.revelaslides.com"  (optional; that is the default)
 # Support tickets per day: SUPPORT_PER_DAY (per address or account, default 5), SUPPORT_DAILY_TOTAL
 # (default 500), SUPPORT_ATTACH_KB (largest attached presentation, default 1500).
