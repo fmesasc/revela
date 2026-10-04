@@ -270,6 +270,18 @@ def site_checks(send, recv):
         check(bad == '', 'enlaces rotos en la portada: ' + str(bad))
         for page in ('pricing.html', 'support.html', 'privacy.html', 'terms.html'):
             check(ev(f"fetch('{page}').then(r=>r.ok)"), 'página ' + page)
+        # In other languages: each its own address, with links between them for search engines.
+        check(ev("[...document.querySelectorAll('link[rel=alternate][hreflang]')].map(l=>l.hreflang).join()") == 'es,en,fr,de,it,pt,ca,x-default', 'hreflang en la portada')
+        check(ev("fetch('sitemap.xml').then(r=>r.text()).then(t=>(t.match(/<loc>/g)||[]).length)") == 25, 'sitemap: 3 páginas × 7 idiomas + 4 legales')
+        recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/en/pricing.html')); time.sleep(1.5)
+        check(ev("document.documentElement.lang") == 'en' and 'Pric' in (ev('document.title') or ''), 'precios en inglés: ' + str(ev('document.title')))
+        check(ev("document.querySelector('link[rel=canonical]').href") == 'https://revelaslides.com/en/pricing', 'su dirección canónica')
+        check(ev("[...document.querySelectorAll('a[href^=\"/app/\"]')].every(a=>/[?&]lang=en/.test(a.href))"), 'abre la aplicación en inglés')
+        check(ev("document.querySelector('.site-langs a[aria-current]').lang") == 'en', 'menú de idiomas')
+        check(not ev("/IVA|Precios|Gratis para/.test(document.body.innerText)"), 'sin restos en español')
+        bad = ev("""(async()=>{const hrefs=[...new Set([...document.querySelectorAll('a[href],link[href],img[src],script[src]')].map(a=>a.getAttribute('href')||a.getAttribute('src')).filter(h=>h.startsWith('/')&&!h.startsWith('/app/')).map(h=>h.split('#')[0]))];
+          const bad=[];for(const h of hrefs){const u=/\/$/.test(h)||/\.\w+$/.test(h)?h:h+'.html';const r=await fetch(u);if(!r.ok)bad.push(h);}return bad.join(',')})()""")
+        check(bad == '', 'enlaces rotos en /en/: ' + str(bad))
         # The app in /app/: the official edition, and working.
         recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/app/index.html?test')); time.sleep(3)
         check(ev("!!window.__revela"), 'la aplicación arranca en /app/')
@@ -307,6 +319,10 @@ def site_checks(send, recv):
         ev("(()=>{const it=document.querySelector('#elements-panel .el-grid .el-item, #elements-panel .el-grid button');it&&it.click();return 1})()"); time.sleep(0.5)
         check(ev("(b=>!!b&&b.caption==='Ana Foto / Unsplash')(window.__revela.state.deck.slides[window.__revela.state.ui.slideIndex].blocks.at(-1))"), 'una foto añadida, con su autor')
         check(seen.get('used') and seen['used'][-1].get('id') == 'f1', 'y se avisa a Unsplash de que se usa')
+        # From the website in English, the app starts in English (and keeps it).
+        recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/app/index.html?test&lang=en')); time.sleep(3)
+        check(ev("document.documentElement.lang") == 'en' and ev("localStorage.getItem('revela.lang')") == 'en', 'la aplicación con ?lang=en, en inglés')
+        ev("localStorage.removeItem('revela.lang');1")
         recv(send('Target.closeTarget', targetId=tid))
     finally:
         srv.shutdown(); shutil.rmtree(out, ignore_errors=True)
@@ -329,7 +345,7 @@ def main():
         os.dup2(r_in, 3); os.dup2(w_out, 4)
 
     proc = subprocess.Popen([chrome, '--headless=new', '--no-sandbox', '--disable-gpu', '--remote-debugging-pipe',
-                             '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream',
+                             '--lang=es-ES', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream',
                              '--autoplay-policy=no-user-gesture-required', '--window-size=1400,900',
                              '--user-data-dir=' + prof, 'about:blank'],
                             pass_fds=(r_in, w_out, 3, 4), preexec_fn=child,

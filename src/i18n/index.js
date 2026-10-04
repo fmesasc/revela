@@ -35,8 +35,18 @@ async function ensureLang(code) {
 }
 
 const KEY = 'revela.lang';
+// The language: the one chosen before; else the link's (?lang=, from the website in that
+// language: kept as chosen); else the browser's, if Revela has it (English if not). The tests
+// (?test) always start in Spanish.
 let lang = 'es';
-try { lang = localStorage.getItem(KEY) || 'es'; } catch {}
+{
+  const q = globalThis.location ? new URLSearchParams(location.search) : new URLSearchParams(), has = c => LANGS.some(l => l.code === c);
+  let saved = null; try { saved = localStorage.getItem(KEY); } catch {}
+  const asked = q.get('lang'), nav = (globalThis.navigator?.languages?.[0] || globalThis.navigator?.language || '').slice(0, 2).toLowerCase();
+  if (has(asked)) { lang = asked; try { localStorage.setItem(KEY, asked); } catch {} }
+  else if (has(saved)) lang = saved;
+  else if (!q.has('test') && nav) lang = has(nav) ? nav : 'en';
+}
 let fb = LANGS.find(l => l.code === lang)?.fallback || null;
 await ensureLang(lang);                                    // the chosen language, before anything is drawn
 

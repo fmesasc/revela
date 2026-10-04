@@ -3,12 +3,14 @@
 // same repository, without changing the app:
 //
 //   dist/            the site: home, plans, support (site/), privacy and terms
+//   dist/en/, fr/…   the site in each other language (tools/site-i18n.mjs, site/i18n/)
 //   dist/app/        the app, exactly as GitHub Pages serves it, marked as the
 //                    official edition (<meta name="revela-edition" content="cloud">)
 //
 //   node tools/build-site.mjs [out]              → the site (default: dist)
 //   node tools/build-site.mjs out --app-only     → only the app, marked "desktop" (the desktop app)
 //   node tools/build-site.mjs out --open         → only the app, unmarked: the open edition (GitHub Pages)
+//   node tools/build-site.mjs --missing          → the website's texts still untranslated, by language
 //
 // Nothing is compiled: files are copied. GitHub Pages keeps publishing the
 // repository as it is (the open edition at fmesasc.github.io/revela).
@@ -16,6 +18,7 @@
 import { cpSync, rmSync, mkdirSync, readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { SITE_LANGS, pageTexts, translatePage, sitemap } from './site-i18n.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // The app: every file and folder it needs, and nothing else (no tests, tools, server…).
@@ -40,8 +43,10 @@ export async function build(out = join(ROOT, 'dist'), { appOnly = false, open = 
   if (open) { copyApp(out); return out; }    // (GitHub Pages: the app and its legal pages, not the site nor the repository's other files)
   if (appOnly) { copyApp(out); markEdition(join(out, 'index.html'), 'desktop'); return out; }   // (the desktop app: an account on the official server)
   // The site's own pages and files.
-  cpSync(join(ROOT, 'site'), out, { recursive: true });
+  cpSync(join(ROOT, 'site'), out, { recursive: true, filter: f => !f.includes(join('site', 'i18n')) });
+  localize(out);
   await inlineIcons(out);
+  for (const l of SITE_LANGS.slice(1)) await inlineIcons(join(out, l));
   // The app under /app/, marked as the official edition.
   copyApp(join(out, 'app'));
   markEdition(join(out, 'app', 'index.html'), 'cloud');
@@ -54,6 +59,29 @@ export async function build(out = join(ROOT, 'dist'), { appOnly = false, open = 
   cpSync(join(ROOT, 'icons', 'icon.svg'), join(out, 'icons', 'icon.svg'));
   cpSync(join(ROOT, 'assets', 'fonts'), join(out, 'assets', 'fonts'), { recursive: true });
   return out;
+}
+
+// The website's pages in each language (the Spanish ones at the top, the others in /en/…),
+// and the sitemap with all of them. A text missing from a language stops the build.
+export const PAGES = [['index', '1.0'], ['pricing', '0.8'], ['support', '0.6']];
+const dictOf = l => JSON.parse(readFileSync(join(ROOT, 'site', 'i18n', l + '.json'), 'utf8'));
+export function missingTexts() {
+  const all = PAGES.flatMap(([p]) => pageTexts(readFileSync(join(ROOT, 'site', p + '.html'), 'utf8')));
+  return Object.fromEntries(SITE_LANGS.slice(1).map(l => { let d = {}; try { d = dictOf(l); } catch {} return [l, [...new Set(all)].filter(k => !(k in d))]; }));
+}
+function localize(out) {
+  const missing = [];
+  for (const l of SITE_LANGS) {
+    const dict = l === 'es' ? {} : dictOf(l), dir = l === 'es' ? out : join(out, l);
+    mkdirSync(dir, { recursive: true });
+    for (const [p] of PAGES) {
+      const r = translatePage(readFileSync(join(ROOT, 'site', p + '.html'), 'utf8'), l, dict, p);
+      writeFileSync(join(dir, p + '.html'), r.html);
+      for (const k of r.missing) missing.push(`${l}/${p}: ${k}`);
+    }
+  }
+  if (missing.length) throw new Error(`Untranslated texts on the website (site/i18n/):\n${missing.slice(0, 20).join('\n')}${missing.length > 20 ? `\n… and ${missing.length - 20} more` : ''}`);
+  writeFileSync(join(out, 'sitemap.xml'), sitemap(PAGES, ['legal', 'privacy', 'terms', 'dpa'], new Date().toISOString().slice(0, 10)));
 }
 
 // The pages' icons, <i data-icon="name" class="…"></i>: drawn in place with the app's own (render/svg.js).
@@ -71,6 +99,10 @@ async function inlineIcons(dir) {
 
 // Run from the command line.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  if (process.argv.includes('--missing')) {
+    const m = missingTexts(); for (const [l, ks] of Object.entries(m)) console.log(`${l}: ${ks.length} sin traducir${ks.length ? '\n  ' + ks.join('\n  ') : ''}`);
+    process.exit(0);
+  }
   const args = process.argv.slice(2), appOnly = args.includes('--app-only'), open = args.includes('--open'), outArg = args.find(a => !a.startsWith('--'));
   const out = await build(outArg ? resolve(outArg) : undefined, { appOnly, open });
   const count = d => readdirSync(d, { withFileTypes: true }).reduce((n, e) => n + (e.isDirectory() ? count(join(d, e.name)) : 1), 0);
