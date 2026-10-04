@@ -263,6 +263,18 @@ body.master-view #navigator{display:flex}
 .as-mark{position:absolute;border:solid var(--accent);border-radius:12px;box-sizing:border-box;pointer-events:none}
 .as-op{display:flex;align-items:flex-start;gap:6px;font-size:12px;line-height:1.35;padding-inline-start:22px;cursor:pointer}.as-op input{margin:2px 0 0}
 .as-op .ms{font-size:15px;color:var(--go)}
+/* A change that removes or replaces what was there: the old words struck through, «Conservar lo que había», edited by the user */
+.as-oprow{display:flex;flex-direction:column;gap:3px}.as-oprow.off .as-opdesc{opacity:.7}
+.as-opmore{display:flex;flex-wrap:wrap;align-items:center;gap:3px 10px;padding-inline-start:44px;font-size:11.5px}.as-opmore:empty{display:none}
+.as-tag{display:inline-block;font-size:10.5px;font-weight:700;color:#fff;background:var(--danger);border-radius:4px;padding:0 5px;text-transform:uppercase;letter-spacing:.03em}
+.as-badge{display:inline-block;font-size:10.5px;color:var(--accent);border:1px solid currentColor;border-radius:9px;padding:0 6px;white-space:nowrap}.as-badge.as-kept{color:var(--go)}
+.as-diff{flex-basis:100%;max-height:9em;overflow-y:auto;overflow-wrap:anywhere;background:var(--panel);border-radius:6px;padding:4px 7px;line-height:1.45;color:var(--txt2)}
+.as-diff del{color:var(--danger);text-decoration:line-through;text-decoration-thickness:2px;background:color-mix(in srgb,var(--danger) 10%,transparent)}
+.as-diff ins{color:var(--go);text-decoration:underline;background:color-mix(in srgb,var(--go) 10%,transparent)}
+.as-keep{display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-weight:600}
+.as-protect{font-size:12px;font-weight:600}
+.as-mark.as-lose{border-color:var(--danger);border-style:dashed}.as-mark.as-lose span{position:absolute;left:0;top:0;transform:translateY(-100%);background:var(--danger);color:#fff;padding:.1em .45em;border-radius:.3em;white-space:nowrap;font-family:system-ui,sans-serif}
+.as-th.as-loseall{box-shadow:0 0 0 3px var(--danger)!important}
 .as-sw{display:inline-block;width:10px;height:10px;border-radius:2px;box-shadow:0 0 0 1px var(--line2);vertical-align:-1px;margin-inline-end:1px}
 .as-warn{font-size:11.5px;color:var(--txt2);background:var(--panel);border-radius:6px;padding:6px 8px}.as-warn ul{margin:2px 0 4px;padding-inline-start:16px}
 .as-actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.as-actions .as-note{flex:1}
@@ -286,6 +298,14 @@ body.master-view #navigator{display:flex}
 .asv-a figcaption{color:var(--accent)}.asv-fig .as-th{box-shadow:0 2px 14px #0003,0 0 0 1px var(--line2);border-radius:6px}.asv-fig .as-th.as-gone{width:min(40vw,640px);height:min(22vw,360px);font-size:16px}
 .asv-arrow{font-size:28px;color:var(--txt2);width:28px;overflow:hidden;flex-shrink:0}
 .asv-ops{display:flex;flex-direction:column;gap:3px;max-height:22vh;overflow-y:auto;padding:6px 8px;background:var(--ribbon);border-radius:8px}.asv-ops .as-op{padding-inline-start:0;font-size:13px}
+.asv:focus{outline:none}
+.asv-ed{cursor:text;outline:2px dashed color-mix(in srgb,var(--accent) 55%,transparent);outline-offset:4px}.asv-ed:hover{outline-color:var(--accent)}
+.asv-ed:focus{outline:4px solid var(--accent);outline-offset:4px;background:color-mix(in srgb,var(--accent) 6%,transparent)}
+.asv-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.asv-bar[hidden]{display:none}
+.asv-tools{display:flex;gap:2px}.asv-tools button{border:1px solid var(--line2);background:var(--ribbon);color:var(--txt);border-radius:6px;padding:3px 6px;cursor:pointer;display:grid}.asv-tools .ms{font-size:18px}
+.asv-field{margin-inline-start:22px;font:inherit;font-size:12.5px;color:var(--txt);background:var(--panel);border:1px solid var(--line2);border-radius:6px;padding:5px 7px;resize:vertical}
+.asv-field:focus-visible,.asv-ops input:focus-visible,.asv-ops button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.asv-ops .as-opmore{padding-inline-start:22px}
 .asv-foot{display:flex;align-items:center;justify-content:space-between;gap:8px}.asv-foot .mini2{display:inline-flex;align-items:center;gap:2px}.asv-foot .ms{font-size:18px}
 @media (max-width:860px){ #assistant-panel{width:auto;max-height:50vh;border-inline-start:none;border-top:1px solid var(--line2)} .ad-grid{grid-template-columns:1fr} }
 /* Online images & icons */

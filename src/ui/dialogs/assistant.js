@@ -5,11 +5,14 @@
 // scope (whole deck, this slide, the selection, slides N–M) and permissions.
 // Quick actions start it; «Completar la presentación» (features/ai/complete.js)
 // writes a half-made deck from its pictures, after a short brief and an estimate.
-// Any proposed slide opens large, before and after (the viewer), to tick there.
+// Any proposed slide opens large, before and after (the viewer), to tick there and
+// rewrite the proposed texts in place. What a change removes or replaces is shown
+// (features/ai/review.js) and can be kept instead («Conservar lo que había»).
 
 import { state, commit, undo, snapshot } from '../../core/store.js';
 import * as agent from '../../features/ai/agent.js';
 import * as cmp from '../../features/ai/complete.js';
+import * as rv from '../../features/ai/review.js';
 import { STYLES } from '../../features/ai/fromspec.js';
 import { PALETTES, FONT_PAIRS, deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled } from '../../features/document/master.js';
@@ -226,7 +229,10 @@ async function ask(panel, text) {
 }
 function showProposal(res) {
   pending = { ...res, base: snapshot(state.deck), done: null };
-  if (opts.auto && res.ops.length) applyPending(res.ops);
+  // («Mejorar también lo escrito»: what the author wrote is protected at first.)
+  pending.review = { protect: false, on: new Set(res.ops.map((_, i) => i)), keep: new Set(), edits: new Map() };
+  if (res.mode === 'improve') protect(pending, true);
+  if (opts.auto && res.ops.length) applyPending(chosenOf(pending));
   const lg = curPanel()?.querySelector('.as-log'); if (lg) put(lg, proposalCard(pending));
 }
 
@@ -323,6 +329,21 @@ async function runComplete(scope) {
 }
 
 // ---- The proposal ------------------------------------------------------------------
+// The user's review of it (pending.review): which changes are ticked (`on`), kept
+// («Conservar lo que había»: `keep`) and edited (`edits`: index → { html | notes | alt }).
+const effective = (p, i) => rv.effectiveOp(p.ops[i], { keep: p.review.keep.has(i), edit: p.review.edits.get(i) }, p.base);
+const chosenOf = p => p.ops.map((_, i) => i).filter(i => p.review.on.has(i)).map(i => effective(p, i)).filter(Boolean);
+// «Proteger mi contenido»: what removes the author's content starts unticked, what replaces it kept and added to.
+function protect(p, on) {
+  const r = p.review, d = rv.protectDefaults(p.ops, p.base);
+  r.protect = on;
+  p.ops.forEach((o, i) => {
+    if (!rv.lossOf(o, p.base)) return;
+    const x = on ? d[i] : { on: true, keep: false };
+    if (x.on) r.on.add(i); else r.on.delete(i);
+    if (x.keep !== r.keep.has(i)) { r.edits.delete(i); if (x.keep) r.keep.add(i); else r.keep.delete(i); }
+  });
+}
 function applyPending(ops) {
   const n = agent.applyOps(ops);
   pending.done = 'applied'; pending.applied = ops; pending.count = n;
@@ -386,27 +407,93 @@ const OP_LABEL = { set_text: 'Cambiar un texto', set_notes: 'Cambiar las notas',
   set_table: 'Cambiar una tabla', set_animation: 'Cambiar una animación', set_transition: 'Cambiar la transición' };
 const PROBLEM = { overflow: 'no cabe en su cuadro', offslide: 'se sale de la diapositiva', overlap: 'textos encimados', over: 'texto encima de otro objeto', contrast: 'poco contraste' };
 
-// A slide's picture (as in the slide navigator), with the changed objects outlined.
-function thumb(slide, deck, mark = new Set(), w = THUMB) {
+// A slide's picture (as in the slide navigator), with the changed objects outlined; `lose`:
+// what a change removes or replaces there (id → 'remove' | 'replace'; '*' the whole slide), in red.
+function thumb(slide, deck, mark = new Set(), w = THUMB, lose = null) {
   const { w: W, h: H } = deck.size, k = w / W;
-  const box = document.createElement('div'); box.className = 'as-th';
+  const box = document.createElement('div'); box.className = 'as-th' + (lose?.has('*') ? ' as-loseall' : '');
   box.style.cssText = `width:${w}px;height:${Math.round(H * k)}px;background:${slide.background || currentPalette(deck).bg}`;
   const inner = document.createElement('div');
   inner.style.cssText = `position:absolute;left:0;top:0;width:${W}px;height:${H}px;transform:scale(${k});transform-origin:0 0;color:${deckFg(deck)};font-family:${deckBodyFont(deck) || 'inherit'}`;
+  const outline = (b, cls) => { const m = document.createElement('div'); m.className = cls; m.style.cssText = `left:${b.x - 6}px;top:${b.y - 6}px;width:${b.w + 12}px;height:${b.h + 12}px;border-width:${Math.round(2 / k)}px`; inner.appendChild(m); return m; };
   for (const b of [...masterBlocksFor(slide, deck), ...slide.blocks.map(x => styled(x, slide, deck))]) {
     if (isEmptyPlaceholder(b)) continue;
-    try { inner.appendChild(blockPreview(b, slide)); } catch {}
-    if (mark.has(b.id)) { const m = document.createElement('div'); m.className = 'as-mark'; m.style.cssText = `left:${b.x - 6}px;top:${b.y - 6}px;width:${b.w + 12}px;height:${b.h + 12}px;border-width:${Math.round(2 / k)}px`; inner.appendChild(m); }
+    try { const el = blockPreview(b, slide); el.dataset.bid = b.id; inner.appendChild(el); } catch {}
+    if (mark.has(b.id)) outline(b, 'as-mark');
+    if (lose?.has(b.id)) {
+      const m = outline(b, 'as-mark as-lose');
+      if (w >= 300) m.innerHTML = `<span style="font-size:${Math.round(12 / k)}px">${escHTML(lose.get(b.id) === 'remove' ? t('Se quita') : t('Se sustituye'))}</span>`;
+    }
   }
   box.appendChild(inner);
   return box;
 }
 const THUMB = 146;
 
+// ---- One change in the list: what it does, what it takes away (struck through), «Conservar lo que había»,
+// «Editado por ti» / «Restaurar la propuesta»; in the viewer, the proposed notes and descriptions to edit.
+const badges = (edited, kept) => (kept ? ` <span class="as-badge as-kept">${t('Se conserva lo que había')}</span>` : '') + (edited ? ` <span class="as-badge">${t('Editado por ti')}</span>` : '');
+function rowDesc(p, i) {
+  const r = p.review, o = p.ops[i], eff = effective(p, i), loss = !r.keep.has(i) && rv.lossOf(eff || o, p.base);
+  return (loss ? `<span class="as-tag">${escHTML(loss.kind === 'remove' ? t('Quita') : t('Sustituye'))}</span> ` : '') + describe(eff || o, p.base) + badges(r.edits.has(i) && !!eff, r.keep.has(i));
+}
+// The text after the change (as kept or edited), to compare with what there was.
+const afterOf = (eff, loss) => (!eff || eff.op === 'add_slide' ? loss.before : eff.op === 'set_text' ? agent.textOf(eff.html ?? agent.toHTML(eff.text))
+  : eff.op === 'set_notes' ? eff.notes : eff.op === 'set_props' ? (eff.props.alt ?? loss.before) : loss.after);
+// Removed words struck through, added ones underlined; lines kept, "- " as bullets.
+function diffHTML(a, b) {
+  const parts = rv.diffWords(a, b);
+  if (!parts.some(x => x.k !== 'same')) return '';
+  let out = '', dash = 0, n = 0;
+  for (const x of parts) {
+    if (++n > 160) { out += '…'; break; }
+    if (x.t === '\n') { if (!out.endsWith('<br>')) out += '<br>'; dash = 0; continue; }
+    if (dash >= 0 && x.t === '-') { dash++; continue; }
+    if (dash > 0) out += ' '.repeat(dash - 1) + '• ';              // (a sub-point: indented, one bullet)
+    const w = escHTML(x.t); dash = -1;
+    out += x.k === 'del' ? `<del>${w}</del> ` : x.k === 'ins' ? `<ins>${w}</ins> ` : w + ' ';
+  }
+  return out;
+}
+function rowMore(p, i) {
+  const r = p.review, o = p.ops[i], loss = r.on.has(i) && rv.lossOf(o, p.base);
+  let h = '';
+  if (loss) {
+    const d = loss.before.trim() && diffHTML(loss.before, afterOf(effective(p, i), loss));
+    if (d) h += `<div class="as-diff">${d}</div>`;
+    h += `<label class="as-keep"><input type="checkbox" data-keep="${i}"${r.keep.has(i) ? ' checked' : ''}> ${t('Conservar lo que había')}</label>`;
+  }
+  if (r.edits.has(i)) h += `<button type="button" class="as-link as-restore" data-restore="${i}">${t('Restaurar la propuesta')}</button>`;
+  return h;
+}
+function rowEdit(p, i) {
+  const ed = p.review.on.has(i) && rv.editable(effective(p, i));
+  if (!ed || ed.field === 'html') return '';
+  return ed.field === 'notes' ? `<textarea class="asv-field" data-edit="${i}" rows="3" aria-label="${t('Notas del orador')}">${escHTML(ed.value)}</textarea>`
+    : `<input class="asv-field" data-edit="${i}" aria-label="${t('Texto alternativo')}" value="${escHTML(ed.value)}">`;
+}
+function opRow(p, i, viewer = false) {
+  if (p.done === 'applied') { const o = p.applied[i]; return `<div class="as-oprow"><label class="as-op"><i class="ms">check</i><span>${describe(o, p.base)}${badges(o.edited, o.kept)}</span></label></div>`; }
+  return `<div class="as-oprow${p.review.on.has(i) ? '' : ' off'}" data-row="${i}"><label class="as-op"><input type="checkbox" ${viewer ? 'data-k' : 'data-i'}="${i}"${p.review.on.has(i) ? ' checked' : ''}><span class="as-opdesc">${rowDesc(p, i)}</span></label>`
+    + `<div class="as-opmore">${rowMore(p, i)}</div>${viewer ? rowEdit(p, i) : ''}</div>`;
+}
+// The rows again after a change of the review (the field being typed in stays; focus stays where it was).
+function syncRows(box, p, viewer = false) {
+  const act = document.activeElement, key = act && box.contains(act) && [...act.attributes].find(a => /^data-(i|k|keep|restore)$/.test(a.name));
+  for (const row of [...box.querySelectorAll('.as-oprow[data-row]')]) {
+    const i = +row.dataset.row, f = row.querySelector('.asv-field');
+    if (f && f === act) { row.querySelector('.as-opdesc').innerHTML = rowDesc(p, i); row.querySelector('.as-opmore').innerHTML = rowMore(p, i); continue; }
+    row.outerHTML = opRow(p, i, viewer);
+  }
+  if (key) box.querySelector(`[${key.name}="${CSS.escape(key.value)}"]`)?.focus();
+}
+const toggleOn = (p, i, on) => { if (on) p.review.on.add(i); else p.review.on.delete(i); };
+const toggleKeep = (p, i, on) => { p.review.edits.delete(i); if (on) p.review.keep.add(i); else p.review.keep.delete(i); };
+
 function proposalCard(p) {
   const card = document.createElement('div'); card.className = 'as-prop' + (p.done ? ' settled' : '');
-  const base = p.base, ops = p.done === 'applied' ? p.applied : p.ops;
-  if (p.done && p.done !== 'applied') { card.innerHTML = `<p class="as-note">${p.done === 'replaced' ? t('Propuesta sustituida por la nueva petición.') : t('Propuesta descartada.')}</p>`; return card; }
+  const base = p.base, ro = p.done === 'applied', ops = ro ? p.applied : p.ops, r = p.review;
+  if (p.done && !ro) { card.innerHTML = `<p class="as-note">${p.done === 'replaced' ? t('Propuesta sustituida por la nueva petición.') : t('Propuesta descartada.')}</p>`; return card; }
   // Groups: the whole deck first, then each slide in order (new slides after the one they follow).
   const order = s => base.slides.findIndex(x => x.id === s);
   const groups = new Map();
@@ -416,8 +503,10 @@ function proposalCard(p) {
     groups.get(key).items.push(i);
   });
   const list = [...groups.values()].sort((a, b) => a.pos - b.pos);
-  const ro = p.done === 'applied';
-  card.innerHTML = `<div class="as-ptitle">${ro ? t('Cambios aplicados') : t('Cambios propuestos')}${list.length > 1 ? ` <span class="as-pcount">${list.length} ${t('diapositivas')}</span>` : ''}</div><div class="as-groups"></div>`;
+  const lossy = !ro && ops.some(o => rv.lossOf(o, base));
+  card.innerHTML = `<div class="as-ptitle">${ro ? t('Cambios aplicados') : t('Cambios propuestos')}${list.length > 1 ? ` <span class="as-pcount">${list.length} ${t('diapositivas')}</span>` : ''}</div>`
+    + (lossy ? `<label class="as-chk as-protect" title="${t('Lo que borra contenido tuyo empieza sin marcar; lo que lo sustituye se añade a lo que había.')}"><input type="checkbox" class="as-protectchk"${r.protect ? ' checked' : ''}> ${t('Proteger mi contenido')}</label>` : '')
+    + '<div class="as-groups"></div>';
   const wrap = card.querySelector('.as-groups');
   const titleOf = g => { const s = g.key.startsWith('new:') ? null : base.slides.find(x => x.id === g.key);
     return { s, title: g.key === 'deck' ? t('Toda la presentación') : s ? `${t('Diapositiva')} ${order(s.id) + 1}` : t('Diapositiva nueva') }; };
@@ -427,7 +516,7 @@ function proposalCard(p) {
     sec.innerHTML = `<div class="as-ghead"><label>${ro ? '' : '<input type="checkbox" class="as-gchk" checked>'} <b>${title}</b>${s ? ` <span>${escHTML(snip(slideName(s), 34))}</span>` : ''}</label>
       <button type="button" class="as-zoom" title="${t('Ver en grande')}" aria-label="${t('Ver en grande')}"><i class="ms">open_in_full</i></button></div>
       <div class="as-thumbs" role="button" tabindex="0" title="${t('Ver en grande')}"></div>
-      ${g.items.map(i => `<label class="as-op">${ro ? '<i class="ms">check</i>' : `<input type="checkbox" data-i="${i}" checked>`}<span>${describe(ops[i], base)}</span></label>`).join('')}`;
+      ${g.items.map(i => opRow(p, i)).join('')}`;
     wrap.appendChild(sec);
   }
   {
@@ -444,11 +533,22 @@ function proposalCard(p) {
   } else card.insertAdjacentHTML('beforeend', `<div class="as-actions"><span class="as-note">${t('Ctrl+Z para deshacer')}</span><button type="button" class="mini2 as-undo">${t('Deshacer')}</button></div>`);
   const info = [p.steps > 1 ? `${p.steps} ${t('pasos')}` : '', costText(p.cost || {})].filter(Boolean).join(' · ');
   if (info) card.insertAdjacentHTML('beforeend', `<div class="as-meta">${info}</div>`);
-  const chosen = () => [...card.querySelectorAll('input[data-i]')].filter(c => c.checked).map(c => ops[+c.dataset.i]);
+  const chosen = () => (ro ? ops : chosenOf(p));
+  // What the ticked changes remove or replace on a slide (outlined in red in the «before»).
+  const loseOf = g => {
+    if (ro) return null;
+    const m = new Map();
+    for (const i of g.items) {
+      const e = r.on.has(i) && !r.keep.has(i) && effective(p, i), l = e && rv.lossOf(e, base);
+      if (l) m.set(l.what === 'slide' ? '*' : e.id, l.kind);
+    }
+    return m;
+  };
   // Before and after, for what is ticked. (Pictures drawn only when in view: a long proposal stays light.)
   const shown = new Set(), io = 'IntersectionObserver' in window ? new IntersectionObserver(es => { for (const en of es) if (en.isIntersecting) { shown.add(en.target.dataset.key); io.unobserve(en.target); repaint(); } }, { rootMargin: '200px' }) : null;
   const paint = () => {
-    const sel = ro ? ops : chosen(), after = agent.previewDeck(sel, base), marks = new Set(sel.flatMap(o => [o.id, o.object?.id]).filter(Boolean));
+    cancelAnimationFrame(raf);
+    const sel = chosen(), after = agent.previewDeck(sel, base), marks = new Set(sel.flatMap(o => [o.id, o.object?.id]).filter(Boolean));
     card._after = after; card._marks = marks;
     for (const g of list) {
       if (io && list.length > 4 && !shown.has(g.key)) continue;
@@ -462,16 +562,26 @@ function proposalCard(p) {
       if (g) { g.checked = cs.every(c => c.checked); g.indeterminate = !g.checked && cs.some(c => c.checked); } });
     card.dispatchEvent(new Event('as-painted'));
   };
-  // The slide before (none for a new one) and after (or "deleted").
+  // The slide before (none for a new one; what goes, in red) and after (or "deleted").
   const pair = (g, after, marks, w) => {
     const id = g.key === 'deck' ? (base.slides[state.ui.slideIndex] || base.slides[0]).id : g.key.startsWith('new:') ? g.key.slice(4) : g.key;
     const b0 = base.slides.find(x => x.id === id), a0 = after.slides.find(x => x.id === id);
-    return { b: b0 ? thumb(b0, base, new Set(), w) : null,
+    return { b: b0 ? thumb(b0, base, new Set(), w, loseOf(g)) : null,
       a: a0 ? thumb(a0, after, marks, w) : Object.assign(document.createElement('div'), { className: 'as-th as-gone', textContent: t('Se borra') }) };
   };
   let raf = 0; const repaint = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(paint); };
-  card.querySelectorAll('input[data-i]').forEach(c => c.addEventListener('change', repaint));
-  card.querySelectorAll('.as-gchk').forEach(g => g.addEventListener('change', () => { g.closest('.as-group').querySelectorAll('input[data-i]').forEach(c => { c.checked = g.checked; }); repaint(); }));
+  // A change of the review (here or in the viewer): the rows and the pictures again.
+  const sync = (now = false) => { if (!ro) syncRows(card, p); if (now) paint(); else repaint(); };
+  card.addEventListener('change', e => {
+    const el = e.target;
+    if (el.matches('input[data-i]')) toggleOn(p, +el.dataset.i, el.checked);
+    else if (el.matches('input[data-keep]')) toggleKeep(p, +el.dataset.keep, el.checked);
+    else if (el.matches('.as-gchk')) el.closest('.as-group').querySelectorAll('input[data-i]').forEach(c => toggleOn(p, +c.dataset.i, el.checked));
+    else if (el.matches('.as-protectchk')) protect(p, el.checked);
+    else return;
+    sync();
+  });
+  card.addEventListener('click', e => { const b = e.target.closest('[data-restore]'); if (b) { r.edits.delete(+b.dataset.restore); sync(); } });
   card.querySelector('.as-apply')?.addEventListener('click', () => { const sel = chosen(); if (!sel.length) return; applyPending(sel); settle('applied'); });
   card.querySelector('.as-discard')?.addEventListener('click', () => settle('discarded'));
   card.querySelector('.as-more')?.addEventListener('click', () => {
@@ -479,7 +589,7 @@ function proposalCard(p) {
     if (ta) { ta.placeholder = t('¿Qué quieres cambiar de la propuesta?'); ta.focus(); }
   });
   card.querySelector('.as-undo')?.addEventListener('click', e => { undo(); e.target.disabled = true; card.querySelector('.as-ptitle').textContent = t('Cambios deshechos'); });
-  card._view = { list, ops, ro, base, pair, titleOf, paint, describe: o => describe(o, base) };
+  card._view = { p, list, ops, ro, base, pair, titleOf, paint, sync };
   card.querySelectorAll('.as-group').forEach(sec => {
     const open = () => openViewer(card, list.findIndex(g => g.key === sec.dataset.key));
     sec.querySelector('.as-zoom').addEventListener('click', open);
@@ -492,48 +602,92 @@ function proposalCard(p) {
 }
 const slideName = s => agent.textOf((s.blocks.find(b => b.ph === 'title' && b.type === 'text') || s.blocks.find(b => b.type === 'text' && agent.textOf(b.html)))?.html || '').split('\n')[0];
 
-// ---- The viewer: a proposed slide large, before and after; prev/next; tick there ------------------
+// ---- The viewer: a proposed slide large, before and after; prev/next; tick there; the proposed
+// texts edited in place in the «after» (Tab to the next, Esc to stop editing, then to close) -----
+const TOOLS = [['bold', 'format_bold', 'Negrita', 'Ctrl+B'], ['italic', 'format_italic', 'Cursiva', 'Ctrl+I'],
+  ['insertUnorderedList', 'format_list_bulleted', 'Viñetas', 'Ctrl+Mayús+8'], ['insertOrderedList', 'format_list_numbered', 'Lista numerada', 'Ctrl+Mayús+7']];
 export function openViewer(card, at = 0) {
   const v = card._view; if (!v || !v.list.length) return;
   document.getElementById('as-viewer')?.remove();
   const back = document.createElement('div'); back.id = 'as-viewer'; back.className = 'asv-back';
   back.setAttribute('role', 'dialog'); back.setAttribute('aria-modal', 'true'); back.setAttribute('aria-label', t('Antes y después'));
   let i = Math.max(0, Math.min(v.list.length - 1, at)), mode = innerWidth < 900 ? 'after' : 'both';
-  back.innerHTML = `<div class="asv">
+  back.innerHTML = `<div class="asv" tabindex="-1">
     <header class="asv-head"><b class="asv-title"></b><span class="asv-pos"></span>
       <div class="asv-tog" role="tablist">${['both', 'before', 'after'].map(m => `<button type="button" role="tab" data-v="${m}">${t({ both: 'Lado a lado', before: 'Antes', after: 'Después' }[m])}</button>`).join('')}</div>
       <button type="button" class="asv-close" title="${t('Cerrar')} (Esc)" aria-label="${t('Cerrar')}">✕</button></header>
     <div class="asv-stage"></div>
+    <div class="asv-bar" hidden><span class="as-note">${t('Pulsa un texto del «Después» para cambiarlo · Tab: el siguiente · Esc: terminar')}</span>
+      <span class="asv-tools" role="toolbar" aria-label="${t('Formato del texto')}">${TOOLS.map(([cmd, icon, label, keys]) => `<button type="button" tabindex="-1" data-cmd="${cmd}" title="${t(label)} (${keys})" aria-label="${t(label)}"><i class="ms">${icon}</i></button>`).join('')}</span></div>
     <div class="asv-ops"></div>
     <footer class="asv-foot"><button type="button" class="mini2 asv-prev"><i class="ms">chevron_left</i> ${t('Anterior')}</button>
       <span class="as-note">${t('← → para moverte · Esc para cerrar')}</span>
       <button type="button" class="mini2 asv-next">${t('Siguiente')} <i class="ms">chevron_right</i></button></footer></div>`;
   document.body.appendChild(back);
-  const q = s => back.querySelector(s), stage = q('.asv-stage');
-  const draw = () => {
-    const g = v.list[i], { title, s } = v.titleOf(g);
-    q('.asv-title').textContent = title + (s && slideName(s) ? ' · ' + snip(slideName(s), 60) : '');
-    q('.asv-pos').textContent = `${i + 1} / ${v.list.length}`;
-    back.querySelectorAll('.asv-tog button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.v === mode)));
+  const q = s => back.querySelector(s), stage = q('.asv-stage'), opsBox = q('.asv-ops');
+  const drawStage = () => {
+    const g = v.list[i];
     // As large as the stage allows, at the slide's proportions.
     const { w: W, h: H } = v.base.size, sw = stage.clientWidth - 24, sh = stage.clientHeight - 40, two = mode === 'both';
     const w = Math.max(160, Math.floor(Math.min(two ? (sw - 84) / 2 : sw, sh * W / H)));
     const { b, a } = v.pair(g, card._after || v.base, card._marks || new Set(), w), arrow = b && Object.assign(document.createElement('i'), { className: 'ms asv-arrow', textContent: 'arrow_forward' });
     const fig = (el, label, cls) => { const f = document.createElement('figure'); f.className = 'asv-fig ' + cls; f.innerHTML = `<figcaption>${label}</figcaption>`; if (el) f.appendChild(el); return f; };
     stage.replaceChildren(...[mode !== 'after' && b && fig(b, t('Antes'), 'asv-b'), two && arrow, mode !== 'before' && a && fig(a, t('Después'), 'asv-a')].filter(Boolean));
-    q('.asv-ops').innerHTML = g.items.map(k => `<label class="as-op">${v.ro ? '<i class="ms">check</i>' : `<input type="checkbox" data-k="${k}"${card.querySelector(`input[data-i="${k}"]`)?.checked ? ' checked' : ''}>`}<span>${v.describe(v.ops[k])}</span></label>`).join('');
-    q('.asv-ops').querySelectorAll('input[data-k]').forEach(c => c.addEventListener('change', () => {
-      const src = card.querySelector(`input[data-i="${c.dataset.k}"]`); if (!src) return;
-      src.checked = c.checked; card._view.paint(); draw();
-    }));
+    // The proposed texts, editable where they are.
+    let n = 0;
+    if (!v.ro && mode !== 'before') for (const k of g.items) {
+      const e = v.p.review.on.has(k) && effective(v.p, k), ed = rv.editable(e);
+      const el = ed?.field === 'html' && stage.querySelector(`.asv-a [data-bid="${CSS.escape(e.id || e.object.id)}"] > div`);
+      if (!el) continue;
+      el.contentEditable = 'true'; el.spellcheck = true; el.tabIndex = 0; el.classList.add('asv-ed'); el.dataset.k = k;
+      el.setAttribute('role', 'textbox'); el.setAttribute('aria-multiline', 'true');
+      el.setAttribute('aria-label', `${t('Texto propuesto')}: ${snip(agent.textOf(ed.value), 40)}`);
+      n++;
+    }
+    q('.asv-bar').hidden = !n;
+  };
+  const drawOps = () => { const g = v.list[i]; opsBox.innerHTML = g.items.map(k => opRow(v.p, k, true)).join(''); };
+  const draw = () => {
+    const g = v.list[i], { title, s } = v.titleOf(g);
+    q('.asv-title').textContent = title + (s && slideName(s) ? ' · ' + snip(slideName(s), 60) : '');
+    q('.asv-pos').textContent = `${i + 1} / ${v.list.length}`;
+    back.querySelectorAll('.asv-tog button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.v === mode)));
+    drawStage(); drawOps();
     q('.asv-prev').disabled = i === 0; q('.asv-next').disabled = i === v.list.length - 1;
   };
+  // Typing in a text of the «after»: the proposal takes it at once (the list and the panel's pictures);
+  // the slide is drawn again (fitted) when the editing leaves it.
+  stage.addEventListener('input', e => {
+    const el = e.target.closest?.('.asv-ed'); if (!el) return;
+    v.p.review.edits.set(+el.dataset.k, { html: el.innerHTML }); v.sync(); syncRows(opsBox, v.p, true);
+  });
+  stage.addEventListener('focusout', e => { if (e.target.closest?.('.asv-ed') && !stage.contains(e.relatedTarget) && back.isConnected) { v.paint(); drawStage(); } });
+  q('.asv-tools').addEventListener('mousedown', e => e.preventDefault());              // (the text keeps the focus)
+  q('.asv-tools').addEventListener('click', e => { const b = e.target.closest('[data-cmd]'); if (b && document.activeElement?.classList.contains('asv-ed')) document.execCommand(b.dataset.cmd); });
+  // Ticking, keeping, restoring, and the proposed notes and descriptions, in the list.
+  const changed = () => { v.sync(true); drawStage(); drawOps(); };
+  opsBox.addEventListener('change', e => {
+    const el = e.target, attr = el.matches('input[data-k]') ? 'k' : el.matches('input[data-keep]') ? 'keep' : null;
+    if (!attr) return;
+    if (attr === 'k') toggleOn(v.p, +el.dataset.k, el.checked); else toggleKeep(v.p, +el.dataset.keep, el.checked);
+    const val = el.dataset[attr]; changed(); opsBox.querySelector(`[data-${attr}="${val}"]`)?.focus();
+  });
+  opsBox.addEventListener('input', e => {
+    const el = e.target; if (!el.matches('.asv-field')) return;
+    const k = +el.dataset.edit, ed = rv.editable(v.p.ops[k]);
+    v.p.review.edits.set(k, ed?.field === 'notes' ? { notes: el.value } : { alt: el.value }); v.sync(); syncRows(opsBox, v.p, true);
+  });
+  opsBox.addEventListener('click', e => { const b = e.target.closest('[data-restore]'); if (b) { v.p.review.edits.delete(+b.dataset.restore); changed(); } });
   const go = d => { const j = Math.max(0, Math.min(v.list.length - 1, i + d)); if (j !== i) { i = j; draw(); } };
   const close = () => { back.remove(); removeEventListener('keydown', key, true); removeEventListener('resize', draw); };
   const key = e => {
     if (!document.body.contains(back)) { removeEventListener('keydown', key, true); return; }
-    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
-    else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && e.target.type !== 'checkbox') return; e.preventDefault(); e.stopPropagation(); go(e.key === 'ArrowRight' ? (document.dir === 'rtl' ? -1 : 1) : (document.dir === 'rtl' ? 1 : -1)); }
+    const a = document.activeElement, typing = !!a && back.contains(a) && (a.isContentEditable || a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && a.type !== 'checkbox'));
+    // Esc: first out of the text being edited, then the viewer closes.
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (typing) { a.blur(); q('.asv').focus(); } else close(); }
+    else if (typing && a.isContentEditable && (e.ctrlKey || e.metaKey) && e.shiftKey && (e.code === 'Digit7' || e.code === 'Digit8')) {
+      e.preventDefault(); e.stopPropagation(); document.execCommand(e.code === 'Digit8' ? 'insertUnorderedList' : 'insertOrderedList');
+    } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { if (typing || e.target.tagName === 'SELECT') return; e.preventDefault(); e.stopPropagation(); go(e.key === 'ArrowRight' ? (document.dir === 'rtl' ? -1 : 1) : (document.dir === 'rtl' ? 1 : -1)); }
   };
   addEventListener('keydown', key, true); addEventListener('resize', draw);
   q('.asv-close').addEventListener('click', close);
