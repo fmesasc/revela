@@ -858,7 +858,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const t3 = d.slides[2].blocks.find(b => /claro/.test(b.html || ''));
     eq(R.master.styled(t3, d.slides[2], d).color, '#10172a', 'con el texto oscuro (tx1 = dk1 en ese diseño)');
     eq(R.master.styled(d.slides[0].blocks.find(b => b.ph === 'title'), d.slides[0], d).color, '#ffffff', 'y claro en el resto');
-    assert(/Caladea/.test(d.master.styles.title.font) && /Open Sans/.test(d.bodyFont), 'Cambria → Caladea, Segoe UI → Open Sans: ' + d.master.styles.title.font);
+    eq(d.master.styles.title.font, 'theme:major', 'el título usa la fuente de títulos del tema (enlazada)');
+    assert(/Caladea/.test(R.palettes.styleFont(d.master.styles.title.font, d)) && /Open Sans/.test(d.bodyFont), 'Cambria → Caladea, Segoe UI → Open Sans');
   });
 
   await test('temas: Google Slides (descargado como .pptx), plantilla .potx sin diapositivas y LibreOffice (.pptx y .odp)', async () => {
@@ -908,7 +909,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     let d = R.state.deck;
     eq(d.officeTheme.name, 'Brisa'); eq(d.customPalette.accents[0], '#006d77', 'sus colores');
     eq(d.slides[0].background, '#ffffff', 'el fondo de la paleta anterior pasa al del tema');
-    assert(/Questrial/.test(d.bodyFont) && /Century Gothic/.test(d.master.styles.title.font), 'Century Gothic (con Questrial en la web)');
+    assert(/Questrial/.test(d.bodyFont) && /Century Gothic/.test(R.palettes.styleFont(d.master.styles.title.font, d)), 'Century Gothic (con Questrial en la web)');
     R.store.undo(); eq(R.state.deck.officeTheme, undefined, 'un solo paso para deshacer');
     assert(await R.openfile.useThemeOf(await fixture('noche.pptx')), 'el tema de otra presentación');
     d = R.state.deck;

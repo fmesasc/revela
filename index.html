@@ -159,7 +159,6 @@
         <div class="group">
           <div class="row">
             <select class="mb-lay mb-ph" title="Insertar un marcador en el diseño"><option value="">Insertar marcador…</option><option value="title">Título</option><option value="subtitle">Subtítulo</option><option value="body">Texto</option><option value="picture">Imagen</option><option value="table">Tabla</option><option value="chart">Gráfico</option></select>
-            <button data-action="master-styles" title="Tipo de letra, tamaño, color y viñetas de títulos y texto (5 niveles), para el patrón y todos sus diseños"><i class="ms">format_size</i><span>Estilos de texto</span></button>
             <button data-action="layout-hide-graphics" class="mb-lay" title="Este diseño no muestra los objetos del patrón (logos, decoraciones)"><i class="ms">layers_clear</i><span>Ocultar gráficos del patrón</span></button>
             <button data-action="layout-master-bg" class="mb-lay" title="Este diseño usa el fondo del patrón (desactívalo para darle uno propio)"><i class="ms">wallpaper</i><span>Usar fondo del patrón</span></button>
           </div><label>Diseño del patrón</label>
@@ -173,9 +172,10 @@
         </div>
         <div class="group">
           <div class="row">
-            <button data-palettes-open title="Colores del tema"><i class="ms">palette</i><span>Colores</span></button>
-            <button data-fontpairs-open title="Fuentes del tema"><i class="ms">text_fields</i><span>Fuentes</span></button>
-          </div><label>Tema</label>
+            <button data-palettes-open title="Colores del tema: la base de los estilos de texto que usan un color del tema"><i class="ms">palette</i><span>Colores</span></button>
+            <button data-fontpairs-open title="Fuentes del tema: la de los títulos y la del cuerpo, que usan los estilos de texto"><i class="ms">text_fields</i><span>Fuentes</span></button>
+            <button data-action="master-styles" title="Los colores y fuentes del tema son la base; los estilos de texto deciden qué usa cada nivel (título, subtítulo y 5 niveles de texto) en el patrón y todos sus diseños"><i class="ms">format_size</i><span>Estilos de texto</span></button>
+          </div><label>Tema y estilos de texto</label>
         </div>
         <div class="group">
           <div class="row">

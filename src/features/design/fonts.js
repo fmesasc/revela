@@ -2,6 +2,8 @@
 // fetched on demand (only when actually used) so the editor stays light, and
 // the export embeds just the families the deck really uses.
 
+import { styleFont } from './palettes.js';          // (each imports the other: used only when called)
+
 export const FONTS = [
   { name: 'Predeterminada', stack: '' },
   // Web‑safe
@@ -141,8 +143,8 @@ export function googleFamiliesInDeck(deck) {
   // The masters' text styles: the headings' font (and any other the styles name).
   const masters = [deck.master, ...(deck.masters || [])].filter(Boolean);
   for (const m of masters) for (const st of Object.values(m.styles || {})) {
-    if (st?.font) add(st.font);
-    for (const lv of st?.levels || []) if (lv?.font) add(lv.font);
+    if (st?.font) add(styleFont(st.font, deck));                 // (a theme font named by reference: the one it is now)
+    for (const lv of st?.levels || []) if (lv?.font) add(styleFont(lv.font, deck));
   }
   // Named by the box, or inside the text (imported decks: 'Roboto', sans-serif…); layouts' boxes too.
   for (const b of [...masters.flatMap(m => m.blocks || []), ...(deck.layouts || []).flatMap(l => l.blocks || []), ...deck.slides.flatMap(s => s.blocks)]) for (const g of familiesOf(b)) used.add(g);

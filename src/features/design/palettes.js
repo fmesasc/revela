@@ -64,6 +64,47 @@ export function customPalette(p, base = PALETTES.revela) {
   return out;
 }
 export const currentPalette = (deck = state.deck) => (deck.palette === 'custom' && customPalette(deck.customPalette)) || PALETTES[deck.palette] || PALETTES.revela;
+// The theme's colour slots, as PowerPoint names them (Texto 1, Fondo 1, Texto 2,
+// Fondo 2, Énfasis 1–6): the palette's, and an Office theme's second text and
+// background when it has them (else a shade of the first ones).
+export const THEME_SLOTS = ['tx1', 'bg1', 'tx2', 'bg2', 'accent1', 'accent2', 'accent3', 'accent4', 'accent5', 'accent6'];
+export function themeSlots(deck = state.deck) {
+  const p = currentPalette(deck), sc = p.scheme, m = p.clrMap;
+  const dark = HEX6.test(p.bg) && (x => 0.2126 * x[0] + 0.7152 * x[1] + 0.0722 * x[2])([1, 3, 5].map(i => parseInt(p.bg.slice(i, i + 2), 16) / 255)) < 0.45;
+  return { tx1: p.fg, bg1: p.bg,
+    tx2: (sc && m && sc[m.tx2]) || colorMods(p.fg, dark ? [['lumMod', '75000']] : [['lumMod', '75000'], ['lumOff', '25000']]),
+    bg2: (sc && m && sc[m.bg2]) || colorMods(p.bg, dark ? [['lumMod', '85000'], ['lumOff', '15000']] : [['lumMod', '90000']]),
+    ...Object.fromEntries(p.accents.map((c, i) => ['accent' + (i + 1), c])) };
+}
+// A text style's colour or font may name the theme's ('theme:accent1',
+// 'theme:major' for headings, 'theme:minor' for body text): it then follows
+// Design ▸ Colours / Fonts. These give what it is now.
+export const isThemeRef = v => typeof v === 'string' && /^theme:/.test(v);
+export const styleColour = (c, deck = state.deck) => (isThemeRef(c) ? themeSlots(deck)[c.slice(6)] || null : c);
+export function deckFontStacks(deck = state.deck) {
+  const own = deck.fontPair === 'theme' ? themeFontStacks(deck.officeTheme?.fonts) : pairStacks(deck.fontPair);
+  return own || { heading: deck.bodyFont || '', body: deck.bodyFont || '' };
+}
+export const styleFont = (f, deck = state.deck) => (f === 'theme:major' ? deckFontStacks(deck).heading || null : f === 'theme:minor' ? deckFontStacks(deck).body || null : f);
+// Old decks: a style colour that is exactly one theme slot's colour (or a font
+// that is the theme's heading or body font) becomes a reference to it — it
+// looks the same, and now follows the theme. Ambiguous ones stay as they are.
+export function linkStyleRefs(styles, deck = state.deck) {
+  if (!styles) return;
+  const slots = themeSlots(deck), byHex = new Map();
+  for (const k of THEME_SLOTS) { const h = String(slots[k] || '').toLowerCase(); byHex.set(h, byHex.has(h) ? null : k); }
+  const fonts = deckFontStacks(deck);
+  const link = (o, title) => {
+    if (!o) return;
+    if (typeof o.color === 'string' && HEX6.test(o.color) && byHex.get(o.color.toLowerCase())) o.color = 'theme:' + byHex.get(o.color.toLowerCase());
+    if (o.font && !isThemeRef(o.font)) {
+      // (Same font for both: a title takes the headings', the rest the body's.)
+      if (o.font === fonts.heading && (title || fonts.heading !== fonts.body)) o.font = 'theme:major';
+      else if (o.font === fonts.body) o.font = 'theme:minor';
+    }
+  };
+  for (const [k, st] of Object.entries(styles)) { link(st, k === 'title'); for (const lv of st?.levels || []) link(lv, false); }
+}
 // The deck's default text colour (editor, thumbnails and every export use it).
 export const deckFg = (deck = state.deck) => deck.textColor || currentPalette(deck).fg;
 export const deckBodyFont = (deck = state.deck) => deck.bodyFont || '';
@@ -149,7 +190,7 @@ export function themeFontStacks(fonts) {
 function currentStacks(deck) {
   if (deck.fontPair === 'theme') return themeFontStacks(deck.officeTheme?.fonts);
   if (deck.fontPair && pairStacks(deck.fontPair)) return pairStacks(deck.fontPair);
-  const t = deck.master?.styles?.title?.font, b = deck.bodyFont;
+  const t = styleFont(deck.master?.styles?.title?.font, deck), b = deck.bodyFont;
   return t || b ? { heading: t || b, body: b || t } : null;
 }
 // Another theme's fonts on the whole deck, the way PowerPoint changes them:
@@ -171,7 +212,7 @@ export function swapThemeFonts(fonts, deck) {
     blocks(m.blocks);
     for (const [k, st] of Object.entries(m.styles || {})) {
       if (!st) continue;
-      st.font = k === 'title' ? to.heading : to.body;
+      st.font = k === 'title' ? 'theme:major' : 'theme:minor';            // (linked: they follow the theme's fonts)
       for (const lv of st.levels || []) if (lv?.font) lv.font = swap(lv.font);
     }
   }
@@ -195,6 +236,6 @@ export function swapFontPair(key, deck) {
   ensureFont(st.heading); ensureFont(st.body);
   for (const s of deck.slides) for (const b of s.blocks)
     if (b.type === 'text' && !b.wordart) b.fontFamily = isHeading(b) ? st.heading : st.body;
-  deck.fontPair = key; deck.bodyFont = st.body; styleFonts(deck, st);
+  deck.fontPair = key; deck.bodyFont = st.body; styleFonts(deck, { heading: 'theme:major', body: 'theme:minor' });
   return true;
 }

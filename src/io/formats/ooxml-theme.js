@@ -6,7 +6,7 @@
 // An imported theme comes back as it was (its scheme, colour map and Office
 // font names); otherwise it is made from the palette and the fonts in use.
 
-import { currentPalette, FONT_PAIRS } from '../../features/design/palettes.js';
+import { currentPalette, FONT_PAIRS, styleFont } from '../../features/design/palettes.js';
 import { JSZIP, loadScript } from '../../core/vendor.js';
 
 const XE = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -29,7 +29,7 @@ export function deckTheme(deck) {
       ...Object.fromEntries(p.accents.map((c, i) => ['accent' + (i + 1), c])), hlink: p.accents[4] || '#467886', folHlink: p.accents[5] || '#96607d' };
   }
   const tf = deck.fontPair === 'theme' && ot.fonts ? ot.fonts : null, pair = FONT_PAIRS[deck.fontPair];
-  const major = tf?.major || pair?.heading || firstFamily(deck.master?.styles?.title?.font) || firstFamily(deck.bodyFont) || 'Calibri Light';
+  const major = tf?.major || pair?.heading || firstFamily(styleFont(deck.master?.styles?.title?.font, deck)) || firstFamily(deck.bodyFont) || 'Calibri Light';
   const minor = tf?.minor || pair?.body || firstFamily(deck.bodyFont) || 'Calibri';
   const name = (deck.palette === 'custom' && ot.name) || ot.name || p.name || 'Revela';
   return { name, colorsName: p.name || name, fontsName: tf?.name || (pair && pair.name) || name, scheme, map, major, minor,

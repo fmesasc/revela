@@ -452,7 +452,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(W.getComputedStyle(lis[1]).fontSize, '20px', 'nivel 2');
     assert(/–/.test(W.getComputedStyle(lis[1]).listStyleType), 'viñeta del nivel 2: ' + W.getComputedStyle(lis[1]).listStyleType);
     const html = R.io.buildHTML();
-    assert(/class="lv"/.test(html) && /--l2:20px/.test(html) && /\.reveal \.lv :is\(ul,ol\) :is\(ul,ol\) li\{font-size:var\(--l2\)\}/.test(html), 'niveles en la presentación');
+    assert(/class="lv"/.test(html) && /--l2:20px/.test(html) && /\.reveal \.lv :is\(ul,ol\) :is\(ul,ol\) li\{font-size:var\(--l2\)[;}]/.test(html), 'niveles en la presentación');
   });
 
   await test('diseños: nueva diapositiva con el diseño, mover un marcador del diseño mueve el de las diapositivas, deshacer', async () => {
@@ -867,5 +867,87 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(F.googleFamiliesInDeck(d).some(f => f.startsWith(fam)), `${key}: carga ${fam}`);
       assert(new RegExp(fam.replace(' ', '\\+')).test(R.io.buildHTML(d)), `${key}: ${fam} en la presentación`);
     }
+  });
+
+  // ---- Master text styles and the theme (one model, as in PowerPoint) ----
+  const officeDeck = async () => R.pptxImport.importPPTX(new frame.contentWindow.File([await (await fetch(new URL('fixtures/themes/office.pptx', location.href))).blob()], 'office.pptx'));
+  const bodyOf = s => s.blocks.find(b => b.ph === 'body');
+
+  await test('patrón: cambiar el nivel 1 del texto cambia todos los marcadores que lo heredan (diseños y diapositivas); el formato propio se queda y se puede quitar', async () => {
+    R.store.replaceDeck(await officeDeck()); R.render();
+    const d = R.state.deck, s = d.slides[1], lay = d.layouts.find(l => l.id === s.layoutId), lb = bodyOf(lay);
+    R.master.toggleMasterEdit(true); await sleep(10);
+    R.master.setMasterStyle('body', { color: '#c00000', size: 40 }, 0); await sleep(10);
+    eq(R.master.styled(bodyOf(s), s).color, '#c00000', 'la diapositiva toma el color del nivel 1');
+    eq(R.master.styled(bodyOf(s), s).fontSize, 40, 'y su tamaño');
+    eq(R.master.styled(lb, lay).color, '#c00000', 'el diseño también');
+    eq(d.master.styles.body.color, '#c00000', 'el nivel 1 es el color del cuadro de texto');
+    // Own formatting set by hand wins, says so, and can be dropped.
+    const own0 = R.master.styleOverrides('body', 'color').length;          // (layouts with a grey text of their own, as Office's «Section Header»)
+    R.master.toggleMasterEdit(false); bodyOf(s).color = '#00aa00'; R.master.toggleMasterEdit(true);
+    R.master.setMasterStyle('body', { color: '#0000ff' }, 0);
+    eq(R.master.styled(bodyOf(s), s).color, '#00aa00', 'el color puesto a mano se queda');
+    eq(R.master.styleOverrides('body', 'color').length, own0 + 1, 'y se cuenta como formato propio');
+    R.master.clearStyleOverrides('body', 'color');
+    eq(R.master.styled(bodyOf(s), s).color, '#0000ff', 'al quitarlo, sigue al estilo');
+    // The other levels' colours reach the text (levelVars → levelCSS).
+    R.master.setMasterStyle('body', { color: '#ff8800' }, 1);
+    assert(/--c2:#ff8800/.test(R.master.levelVars(R.master.styled(bodyOf(s), s))), 'el color del nivel 2 llega al texto');
+    R.master.toggleMasterEdit(false); R.state.ui.slideIndex = 1; R.render(); await sleep(30);
+    const box = D.querySelector(`#stage .block[data-id="${bodyOf(s).id}"]`), li = box?.querySelector('li');
+    eq(li && getComputedStyle(li).color, 'rgb(0, 0, 255)', 'en el lienzo, el primer nivel con el color del estilo');
+    reset();
+  });
+
+  await test('patrón: los colores y fuentes de los estilos de texto pueden ser los del tema, y cambian con Colores y Fuentes del tema', async () => {
+    reset(); R.state.ui.slideIndex = 0;
+    R.master.toggleMasterEdit(true);
+    R.master.setMasterStyle('title', { color: 'theme:accent2', font: 'theme:major' });
+    R.master.setMasterStyle('body', { color: 'theme:accent1' }, 2);
+    const t = () => R.master.styled({ id: 'x', type: 'text', ph: 'title', html: '' }, R.state.deck.master);
+    eq(t().color, R.palettes.PALETTES.revela.accents[1], 'Énfasis 2 de la paleta');
+    R.palettes.applyPalette('ocean'); R.palettes.applyFontPair('classic');
+    eq(t().color, R.palettes.PALETTES.ocean.accents[1], 'cambia con los colores del tema');
+    assert(/Playfair Display/.test(t().fontFamily), 'la fuente de títulos del tema: ' + t().fontFamily);
+    R.palettes.applyFontPair('modern');
+    assert(/Montserrat/.test(t().fontFamily), 'y cambia con las fuentes del tema');
+    const lv = R.master.styled({ id: 'y', type: 'text', ph: 'body', html: '' }, R.state.deck.master).levels;
+    eq(lv[2].color, R.palettes.PALETTES.ocean.accents[0], 'un nivel con un color del tema');
+    eq(R.state.deck.master.styles.title.color, 'theme:accent2', 'guardado como referencia al tema');
+    R.master.toggleMasterEdit(false); reset();
+  });
+
+  await test('patrón: las presentaciones de antes se ven igual (sus colores que son del tema pasan a seguirlo; los ambiguos no)', async () => {
+    const d = R.model.emptyDeck();
+    d.master.styles = { title: { size: 48, color: '#3f6497' }, subtitle: { size: 30, color: '#123456' }, body: { size: 30, color: '#ffffff', levels: [{ size: 30 }, { size: 26, color: '#e0873b' }] } };
+    R.store.replaceDeck(d); R.render();
+    const st = R.master.masterStyles();
+    eq(st.title.color, 'theme:accent1', 'el color del título era Énfasis 1');
+    eq(st.body.color, 'theme:tx1', 'el del texto, Texto 1'); eq(st.body.levels[1].color, 'theme:accent2', 'y un nivel, Énfasis 2');
+    eq(st.subtitle.color, '#123456', 'uno propio se queda');
+    eq(R.master.styled({ id: 'x', type: 'text', ph: 'title', html: '' }, R.state.deck.master).color, '#3f6497', 'el mismo aspecto');
+    // Ambiguous: the text colour is also an accent.
+    const e = R.model.emptyDeck(); e.palette = 'custom'; e.customPalette = { name: 'X', bg: '#000000', fg: '#3366ff', accents: ['#3366ff', '#aa0000', '#00aa00', '#0000aa', '#aaaa00', '#00aaaa'] };
+    e.master.styles = { title: { color: '#3366ff' }, subtitle: {}, body: { levels: [] } };
+    R.store.replaceDeck(e);
+    eq(R.master.masterStyles().title.color, '#3366ff', 'si es de dos huecos del tema, se queda como está');
+    reset();
+  });
+
+  await test('patrón: la cinta junta Colores, Fuentes y Estilos de texto; el diálogo ofrece los colores y fuentes del tema y muestra una vista previa', async () => {
+    reset(); R.master.toggleMasterEdit(true); R.state.ui.activeTab = 'master'; R.render(); await sleep(20);
+    const grp = D.querySelector('#ribbon [data-page="master"] [data-action="master-styles"]').closest('.group');
+    assert(grp.querySelector('[data-palettes-open]') && grp.querySelector('[data-fontpairs-open]'), 'en el mismo grupo que Colores y Fuentes');
+    eq(grp.querySelector(':scope > label').textContent, 'Tema y estilos de texto');
+    D.querySelector('#ribbon [data-page="master"] [data-action="master-styles"]').click(); await sleep(30);
+    const m = D.getElementById('ts2-modal'), tr = m.querySelector('tr[data-kind="title"]');
+    assert(/fuente del tema/.test(m.querySelector('select[data-k="font"]').textContent), 'fuentes del tema en la lista');
+    const sel = tr.querySelector('[data-k="cref"]'); assert([...sel.options].some(o => o.value === 'accent1'), 'colores del tema en la lista');
+    sel.value = 'accent2'; sel.dispatchEvent(new Event('change', { bubbles: true })); await sleep(20);
+    eq(R.state.deck.master.styles.title.color, 'theme:accent2', 'se guarda la referencia');
+    const prev = m.querySelector('.ts2-slide > div');
+    eq(getComputedStyle(prev).color, (h => `rgb(${[1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)).join(', ')})`)(R.palettes.PALETTES.revela.accents[1]), 'la vista previa lo muestra');
+    eq(m.querySelectorAll('.ts2-slide li').length, 5, 'con los cinco niveles');
+    m.remove(); R.master.toggleMasterEdit(false); reset();
   });
 }
