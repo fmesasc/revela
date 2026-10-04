@@ -25,6 +25,7 @@ import { styleRich, paintWebCard, paintMath, pollSig, renderSlideRef, figIndexHT
 import { mediaViewCurrent } from './mediaview.js';
 import { cameraViewCurrent, syncCameras } from './cameraview.js';
 import { syncPuppet } from './puppetview.js';
+import { paintMagnify, setupMagnify } from './magnifyview.js';
 import { addGuideFromRuler, drawPGuides, startMarquee, startDrag, startRotate, startResize } from './interact.js';
 
 export const findBlock = id => currentSlide().blocks.find(x => x.id === id);
@@ -85,6 +86,8 @@ export function renderCanvas() {
     stage.innerHTML = '';
     for (const b of slide.blocks) stage.appendChild(blockEl(b));
     lastSignature = sig;
+    // (Magnifiers again, now that what they show of the canvas — equations, code — is on it.)
+    for (const b of slide.blocks) if (b.type === 'magnify') paintMagnify(stage.querySelector(`.block[data-id="${b.id}"]`), b);
   } else {
     for (const b of slide.blocks) reconcile(b);
   }
@@ -357,13 +360,13 @@ function reconcile(b) {
     const d = el.querySelector('.figindex'); if (d) { d.style.fontSize = (b.fontSize || 28) + 'px'; d.innerHTML = figIndexHTML(b); }
   } else if (b.type === 'slideref') {
     const d = el.querySelector('.slideref'); if (d) renderSlideRef(d, b);
-  }
+  } else if (b.type === 'magnify') paintMagnify(el, b);
 }
 
 function blockEl(b) {
   const el = document.createElement('div');
   el.className = 'block' + (isSelected(b.id) ? ' selected' : '')
-    + (b.animation ? ' animated' : '') + (b.locked ? ' locked' : '') + (b.hidden ? ' is-hidden' : '') + (b.type === 'connector' ? ' __conn' : '');
+    + (b.animation ? ' animated' : '') + (b.locked ? ' locked' : '') + (b.hidden ? ' is-hidden' : '') + (b.type === 'connector' ? ' __conn' : '') + (b.type === 'magnify' ? ' __mag' : '');
   el.dataset.id = b.id; el._b = b;
   el.setAttribute('role', 'group'); el.setAttribute('aria-label', blockLabel(b, t));
   el.style.cssText = `left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px`;
@@ -401,5 +404,6 @@ function blockEl(b) {
   else if (b.type === 'table') setupTable(el, b);
   else if (b.type === 'code') setupCode(el, b);
   else if (b.type === 'math') setupMath(el, b);
+  else if (b.type === 'magnify') setupMagnify(el, b);
   return el;
 }

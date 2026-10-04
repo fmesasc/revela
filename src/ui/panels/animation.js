@@ -39,7 +39,7 @@ export function objLabel(b) {
   return t(ANIM_NAMES[b.type] || b.type) + (txt ? ` «${txt}»` : '');
 }
 export const ANIM_NAMES = { diagram: 'Diagrama', file: 'Archivo', poll: 'Votación', camera: 'Cámara en directo', ink: 'Tinta', text: 'Texto', image: 'Imagen', shape: 'Forma', chart: 'Gráfico', table: 'Tabla',
-  icon: 'Icono', math: 'Ecuación', model: '3D', video: 'Vídeo', embed: 'Web', code: 'Código', figindex: 'Índice de figuras', slideref: 'Diapositiva' };
+  icon: 'Icono', math: 'Ecuación', model: '3D', video: 'Vídeo', embed: 'Web', code: 'Código', figindex: 'Índice de figuras', slideref: 'Diapositiva', magnify: 'Lupa' };
 export function openAnimPanel() {
   if (document.getElementById('anim-modal')) return;
   const back = document.createElement('div');

@@ -129,6 +129,7 @@ the origin of every requirement is traceable.
 - ✅ Speaker notes (editor panel + presenter view) `PP·GS·OO`
 - ✅ Slide numbers, date/time field, header & footer, deck logo/branding `PP·GS·OO`
 - ✅ Slide zoom & summary zoom (embed a slide, link, choose return/stay) `PP`
+- ✅ Magnifier (lupa) — draw an area of the slide and it shows enlarged (×2 by default) in a box placed by itself in free space, live (pictures from their own pixels, any other object as a scaled copy); frame on both (colour, width, dashed, rounded), tangent lines from the corners or from the centre, proportion kept; same in the presentation, images and PDF; in PowerPoint a cropped picture (or a picture of the area) plus native frames and lines `—`
 - ✅ Slide master — text styles (title, subtitle, body in five levels: font, size, colour, bold, italic, alignment, bullet), objects on every slide, hide per slide `PP·GS·OO`
 - ✅ Layouts that belong to the deck — create, duplicate, rename, delete, add placeholders and objects; slides follow their layout (formatting inherited master → layout → slide, moved placeholders follow, reset slide) `PP·GS·OO`
 - ✅ Placeholders — title/subtitle/body prompts, not exported while empty `PP·OO`

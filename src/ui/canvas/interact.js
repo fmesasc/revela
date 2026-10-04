@@ -5,6 +5,8 @@ import { state, commit, mutate, currentSlide, selectedBlocks, selectedIds, isSel
 import { t } from '../../i18n/index.js';
 import { exitEdit } from './content.js';
 import { readOnly, stage, transformOf } from './canvas.js';
+import { paintMagnify } from './magnifyview.js';
+import { sourceToBox } from '../../features/document/magnify.js';
 
 export const SNAP = 7; // snapping threshold, in canvas pixels
 export function addGuideFromRuler(e, axis) {
@@ -76,7 +78,7 @@ export function startDrag(ev, b, el) {
   if (b.locked || b.type === 'connector' || readOnly()) return;   // selected but not movable
 
   const movers = selectedBlocks().filter(m => m.type !== 'connector');
-  const origins = new Map(movers.map(m => [m.id, { x: m.x, y: m.y }]));
+  const origins = new Map(movers.map(m => [m.id, { x: m.x, y: m.y, s: m.source && { ...m.source } }]));
   const f = factor(), sx = ev.clientX, sy = ev.clientY, ox = b.x, oy = b.y;
   try { el.setPointerCapture(ev.pointerId); } catch {} el.classList.add('dragging');
   const onMove = e => {
@@ -88,6 +90,8 @@ export function startDrag(ev, b, el) {
       const o = origins.get(m.id); m.x = o.x + dx; m.y = o.y + dy;
       const mel = stage.querySelector(`.block[data-id="${m.id}"]`);
       if (mel) { mel.style.left = m.x + 'px'; mel.style.top = m.y + 'px'; }
+      // A magnifier: moved with others, its area goes with them; alone, only its box (the lines follow).
+      if (m.type === 'magnify') { if (movers.length > 1 && o.s) m.source = { ...o.s, x: o.s.x + dx, y: o.s.y + dy }; if (mel) paintMagnify(mel, m); }
     }
   };
   const onUp = () => {
@@ -124,7 +128,7 @@ export function startResize(ev, b, el, corner) {
   if (b.locked || readOnly()) return;
   const f = factor(), sx = ev.clientX, sy = ev.clientY, o = { x: b.x, y: b.y, w: b.w, h: b.h };
   try { el.setPointerCapture?.(ev.pointerId); } catch {}
-  const ratio = o.w / o.h, pic = b.type === 'image' && !b.device;
+  const ratio = o.w / o.h, pic = b.type === 'image' && !b.device, mag = b.type === 'magnify';
   // A rotated object is resized along its own sides, and the opposite corner
   // stays where it is on screen (the rotation is about the centre).
   const a = (b.rotation || 0) * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
@@ -140,7 +144,8 @@ export function startResize(ev, b, el, corner) {
     // Keeping the proportion: Shift; for a picture, its corners do it (Shift frees them), as
     // in PowerPoint. A picture's side handle stretches it: a whole one ("contain") is
     // drawn deformed then ("fill"), so the box and the picture stay the same.
-    if (pic && sxg && syg ? !e.shiftKey : e.shiftKey) {
+    // A magnifier keeps the proportion of its area from any handle (Shift: the area takes the box's).
+    if (mag ? !e.shiftKey : pic && sxg && syg ? !e.shiftKey : e.shiftKey) {
       if (!syg) h = Math.max(20, w / ratio); else if (!sxg) w = Math.max(30, h * ratio);
       else if (Math.abs(w / o.w) >= Math.abs(h / o.h)) h = Math.max(20, w / ratio); else w = Math.max(30, h * ratio);
     } else if (pic && (b.fit || 'contain') === 'contain' && Math.abs(w / h - ratio) > 0.01) {
@@ -150,6 +155,7 @@ export function startResize(ev, b, el, corner) {
     const cx = ax + (sxg * w / 2) * cos - (syg * h / 2) * sin, cy = ay + (sxg * w / 2) * sin + (syg * h / 2) * cos;
     Object.assign(b, { w, h, x: Math.round(cx - w / 2), y: Math.round(cy - h / 2) });
     Object.assign(el.style, { left: b.x + 'px', top: b.y + 'px', width: b.w + 'px', height: b.h + 'px' });   // keep rotation/opacity
+    if (mag) { if (e.shiftKey) sourceToBox(b); paintMagnify(el, b); }
   };
   const onUp = () => {
     document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp);
@@ -240,5 +246,5 @@ export function clearGuides() { stage.querySelectorAll('.guide').forEach(g => g.
 // ---- Keyboard nudging ------------------------------------------------------
 export function nudge(dx, dy) {
   const bs = selectedBlocks().filter(b => b.type !== 'connector'); if (!bs.length) return;
-  commit(() => { for (const b of bs) { b.x += dx; b.y += dy; } });
+  commit(() => { for (const b of bs) { b.x += dx; b.y += dy; if (b.type === 'magnify' && bs.length > 1) { b.source.x += dx; b.source.y += dy; } } });
 }

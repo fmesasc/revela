@@ -9,7 +9,9 @@ import { pollEditorHTML } from '../../features/live/poll.js';
 import { cameraBoxCSS } from '../../features/live/media.js';
 import { safeURL } from '../../features/document/sanitize.js';
 import { currentPalette } from '../../features/design/palettes.js';
-import { levelVars } from '../../features/document/master.js';
+import { levelVars, masterBlocksFor, styled } from '../../features/document/master.js';
+import { state } from '../../core/store.js';
+import { magOverlaySVG, magFrameSVG, magViewCSS, magInsetCSS, underArea, viewOf, MAG_SKIP } from '../../features/document/magnify.js';
 import { shadowCSS, borderCSS, levelCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, curvedTextSVG, shapeTextHTML, hasShapeText, deviceCSS, tableClass, tableVars, tableCSS } from '../../render/svg.js';
 
 // Table look for thumbnails (same rules as the exports), injected once.
@@ -83,6 +85,8 @@ export function blockPreview(b, slide) {
     ensurePreviewCSS();
     el.innerHTML = `<div class="pv" style="width:100%;height:100%"><table class="${tableClass(b)}" style="${tableVars(b)}">`
       + tableRowsHTML(b) + `</table></div>`;
+  } else if (b.type === 'magnify') {
+    el.appendChild(magnifyView(b, slide));
   } else if (b.type === 'code') {
     const pre = document.createElement('pre');
     pre.style.cssText = `margin:0;width:100%;height:100%;overflow:hidden;background:#0b0e14;color:#e6e6e6;`
@@ -90,4 +94,26 @@ export function blockPreview(b, slide) {
     pre.textContent = b.code || ''; el.appendChild(pre);
   }
   return el;
+}
+
+// A magnifier: the lines and the area's frame over the slide, the box with the
+// slide's objects under the area enlarged in it (each drawn by `clone`), its frame.
+export function magnifyView(b, slide, clone = null) {
+  slide ||= state.deck.slides.find(s => s.blocks.some(x => x.id === b.id)) || { blocks: [] };
+  const { w: W, h: H } = state.deck.size, accent = currentPalette().accents[0];
+  const root = document.createElement('div'); root.className = 'rv-mag'; root.style.cssText = 'position:absolute;inset:0';
+  const ovl = document.createElement('div'); ovl.className = 'rv-mag-lines';
+  ovl.style.cssText = `position:absolute;left:${-b.x}px;top:${-b.y}px;width:${W}px;height:${H}px;pointer-events:none`;
+  ovl.innerHTML = magOverlaySVG(b, W, H, accent);
+  const inset = document.createElement('div'); inset.className = 'rv-mag-in'; inset.style.cssText = magInsetCSS(b);
+  const view = document.createElement('div'); view.className = 'rv-mag-view';
+  view.style.cssText = `${magViewCSS(b)};width:${W}px;height:${H}px;background:${slide.background || 'transparent'}`;
+  const all = [...(slide.id ? masterBlocksFor(slide) : []), ...slide.blocks.map(x => (slide.id ? styled(x, slide) : x))];
+  // (As in the presentation: no copies of live objects — web pages, polls, cameras, timers, sounds, zooms.)
+  for (const o of underArea(all, viewOf(b)).filter(x => !MAG_SKIP.includes(x.type))) view.appendChild(clone ? clone(o, slide) : blockPreview(o, slide));
+  inset.appendChild(view);
+  const frame = document.createElement('div'); frame.className = 'rv-mag-fr'; frame.style.cssText = 'position:absolute;inset:0;pointer-events:none';
+  frame.innerHTML = magFrameSVG(b, accent);
+  root.append(ovl, inset, frame);
+  return root;
 }

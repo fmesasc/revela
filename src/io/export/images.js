@@ -8,7 +8,7 @@ import { tableCSS, levelCSS } from '../../render/svg.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
 import { tallyVotes, pollResultsHTML, savedVotes } from '../../features/live/poll.js';
 import { t } from '../../i18n/index.js';
-import { blockHTML, slideInnerHTML } from '../formats/html.js';
+import { blockHTML, slideInnerHTML, magnifyInsetHTML } from '../formats/html.js';
 import { download, slug } from '../files.js';
 
 
@@ -91,6 +91,20 @@ export async function blockImage(b, slide, deck = state.deck) {
   const holder = document.createElement('div');
   holder.style.cssText = `position:fixed;left:-99999px;top:0;width:${b.w}px;height:${b.h}px;overflow:hidden;color:${deckFg(deck)};font-family:${deckBodyFont(deck) || 'inherit'}`;
   holder.innerHTML = `<style>*{box-sizing:border-box}${tableCSS()}${levelCSS()}</style>` + blockHTML({ ...b, x: 0, y: 0, rotation: 0, animation: null }, { ...slide, blocks: [b] });
+  document.body.appendChild(holder);
+  try {
+    await hydrateStatic(holder, deck);
+    const c = await rasterize(holder, { width: b.w, height: b.h, scale: 2, useCORS: true, logging: false, backgroundColor: null });
+    return c.toDataURL('image/png');
+  } finally { holder.remove(); }
+}
+
+// What a magnifier's box shows (the slide under its area, enlarged), as a PNG
+// data URL: for formats that draw its frame and lines themselves.
+export async function magnifyImage(b, slide, deck = state.deck) {
+  const holder = document.createElement('div');
+  holder.style.cssText = `position:fixed;left:-99999px;top:0;width:${b.w}px;height:${b.h}px;overflow:hidden;color:${deckFg(deck)};font-family:${deckBodyFont(deck) || 'inherit'}`;
+  holder.innerHTML = `<style>*{box-sizing:border-box}${tableCSS()}${levelCSS()}</style>` + magnifyInsetHTML({ ...b, insetShadow: false, border: { ...b.border, radius: 0 } }, slide, deck);
   document.body.appendChild(holder);
   try {
     await hydrateStatic(holder, deck);

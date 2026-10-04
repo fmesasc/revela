@@ -38,6 +38,7 @@ import { INK_CSS, inkJS } from '../runtime/ink.js';
 import { deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
 import { animTimeline, animEntries, EFFECT_KF, EFFECT_KF_CSS, EMPHASIS_FX, isEntrance, customTransitionCSS, transitionName, isShapeTransition, pathKeyframesCSS, pathTurns, animsOf, animKey, offsetBefore } from '../../features/animation/transitions.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, levelVars } from '../../features/document/master.js';
+import { magOverlaySVG, magFrameSVG, magViewCSS, magInsetCSS, magOrigin, underArea, viewOf, MAG_SKIP } from '../../features/document/magnify.js';
 
 
 const tf = b => `rotate(${b.rotation || 0}deg)${b.flipH ? ' scaleX(-1)' : ''}${b.flipV ? ' scaleY(-1)' : ''}`;
@@ -242,6 +243,7 @@ function blockHTMLRaw(b, slide) {
     const to = slide && slide.blocks.find(x => x.id === b.to);
     return `<div${a} style="${box(b)}pointer-events:none">${connectorSVG(b, from, to, w, h)}</div>`;
   }
+  if (b.type === 'magnify') return magnifyHTML(b, slide, a);
   if (b.type === 'text') {
     const wr = wrapFor(b, slide);
     const tabbed = !b.curve && /\t/.test(b.html || '');         // (tab stops laid out by tabRuntime)
@@ -353,6 +355,38 @@ function blockHTMLRaw(b, slide) {
       + `<code class="language-${b.lang || 'plaintext'}" data-trim${ln}${start}>${esc(b.code || '')}</code></pre></div>`;
   }
   return '';
+}
+
+// A magnifier: the lines and the area's frame over the slide, under its box;
+// the box with the slide's objects under the area, enlarged; its frame. An
+// entrance grows it out of the area.
+function magnifyHTML(b, slide, a = '', deck = state.deck) {
+  const { w: W, h: H } = deck.size, accent = currentPalette(deck).accents[0];
+  return `<div${a} class="rv-mag" style="${box(b)}transform-origin:${magOrigin(b)}">`
+    + `<div style="position:absolute;left:${-b.x}px;top:${-b.y}px;width:${W}px;height:${H}px;pointer-events:none">${magOverlaySVG(b, W, H, accent)}</div>`
+    + magnifyInsetHTML(b, slide, deck)
+    + `<div style="position:absolute;inset:0;pointer-events:none">${magFrameSVG(b, accent)}</div></div>`;
+}
+// What the box shows: a copy of the objects under the area (still: no
+// animations, links or live parts), scaled. Web pages, polls, cameras, timers,
+// sounds and slide zooms are left out; 3D models and videos show their picture.
+const STILL = { animation: null, anims: null, morphId: null, href: null, goto: null, decorative: true, zoomable: false, dataUrl: null, refreshMin: null, oneByOne: false, lineSteps: null };
+function magCloneHTML(o, slide) {
+  if (MAG_SKIP.includes(o.type)) return '';
+  const pic = src => (src && safeURL(src) ? `<img src="${esc(src)}" alt="" style="${box({ ...o, ...STILL })}object-fit:contain">` : '');
+  if (o.type === 'model') return pic(o.poster);
+  if (o.type === 'video') return pic(o.poster) || `<div style="${box({ ...o, ...STILL })}background:#000"></div>`;
+  if (o.type === 'file' && o.display === 'viewer') return pic(o.poster);
+  if (o.type === 'image' && needsPlayer(o))
+    return `<img src="${esc(o.src || '')}" alt="" style="${box({ ...o, ...STILL })}object-fit:${o.fit || 'contain'};filter:${imgFilter(o)};opacity:${imgOpacity(o)};clip-path:${imgClip(o)};${deviceCSS(o)}">`;
+  if (needsPlayer(o)) return '';
+  return blockHTML({ ...o, ...STILL }, slide).replace(/ data-bid="[^"]*"/g, '');
+}
+export function magnifyInsetHTML(b, slide, deck = state.deck) {
+  const { w: W, h: H } = deck.size;
+  const under = slide ? underArea(blocksOf(slide, deck), viewOf(b)) : [];
+  return `<div class="rv-mag-in" style="${magInsetCSS(b)}"><div aria-hidden="true" style="${magViewCSS(b)};width:${W}px;height:${H}px;background:${slide ? stageBackground(slide) : 'transparent'}">`
+    + `${slide ? bgLayer(slide) : ''}${under.map(o => magCloneHTML(o, slide)).join('')}</div></div>`;
 }
 
 function figIndexExport(b, deck) {

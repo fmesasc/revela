@@ -6,6 +6,7 @@
 // block  = { id, type, x, y, w, h, rotation, animation|null, ...payload }
 //   text  -> { html, fontSize }        model -> { src, autoRotate }
 //   image -> { src, fit }              video -> { src }
+//   magnify -> { source:{x,y,w,h}, target, border, sourceFrame, lines, … }
 // A slide's `transition` overrides the deck's `defaultTransition`; an object's
 // `animation` describes its entrance (effect + order).
 
@@ -77,6 +78,16 @@ export function slideRefBlock(props = {}) {
   return Object.assign({
     id: uid(), type: 'slideref', target: null, returnBack: false,
     x: 360, y: 180, w: 420, h: 236, rotation: 0, animation: null,
+  }, props);
+}
+
+// A magnifier: the area (source, slide coordinates) shown enlarged in this
+// box, with a frame round both and lines joining them (features/document/magnify.js).
+export function magnifyBlock(props = {}) {
+  return Object.assign({
+    id: uid(), type: 'magnify', x: 760, y: 120, w: 400, h: 225, rotation: 0, animation: null,
+    source: { x: 120, y: 120, w: 200, h: 112 }, target: null,
+    border: { color: '#e53935', width: 4, style: 'solid', radius: 0 }, sourceFrame: true, lines: 'corners',
   }, props);
 }
 

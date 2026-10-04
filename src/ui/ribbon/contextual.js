@@ -30,6 +30,9 @@ import { openLinkChart, refreshChart } from '../dialogs/data.js';
 import { openImageAdjust, openMath, openChartData, openOpacity, openIconColor, openBoxStyle, openSlidePicker, openCaption, openAlt, openImageCrop, removeBackground, openTableStyle } from '../dialogs/object.js';
 import { alertDialog, promptDialog } from '../dialogs/dialog.js';
 import { startPathDraw } from '../canvas/pathdraw.js';
+import { startMagnifyDraw } from '../canvas/magnifyview.js';
+import * as mag from '../../features/document/magnify.js';
+import { currentPalette } from '../../features/design/palettes.js';
 import { openAddAnimation } from './animadd.js';
 import { openAnimPanel } from '../panels/animation.js';
 import { animsOf, setAnimation, clearAnimation } from '../../features/animation/transitions.js';
@@ -42,7 +45,7 @@ import { openObjectLink } from '../dialogs/objlink.js';
 import { t } from '../../i18n/index.js';
 
 const TITLES = { diagram: 'Diagrama', file: 'Archivo', shape: 'Forma', image: 'Imagen', model: 'Modelo 3D', video: 'Vídeo', audio: 'Audio', text: 'Cuadro de texto', table: 'Tabla', chart: 'Gráfico',
-  math: 'Ecuación', code: 'Código', poll: 'Votación', embed: 'Web', icon: 'Icono', camera: 'Cámara', slideref: 'Zoom', figindex: 'Índice', ink: 'Dibujo', connector: 'Conector', timer: 'Cuenta atrás' };
+  math: 'Ecuación', code: 'Código', poll: 'Votación', embed: 'Web', icon: 'Icono', camera: 'Cámara', slideref: 'Zoom', magnify: 'Lupa', figindex: 'Índice', ink: 'Dibujo', connector: 'Conector', timer: 'Cuenta atrás' };
 // Every shape once (the catalogue's first name for each).
 const SHAPES = Object.entries(SHAPE_NAMES).filter(([k]) => !isLineShape(k) && k !== 'freeform');
 const CHARTS = [['bar', 'Barras'], ['stacked', 'Barras apiladas'], ['stacked100', 'Barras apiladas al 100 %'], ['hbar', 'Barras horizontales'], ['histogram', 'Histograma'], ['line', 'Líneas'], ['area', 'Área'], ['stackedArea', 'Áreas apiladas'], ['pie', 'Circular'], ['doughnut', 'Dona'], ['scatter', 'Dispersión'], ['radar', 'Radar'], ['bubble', 'Burbujas'], ['treemap', 'Rectángulos (treemap)'], ['waterfall', 'Cascada'], ['funnel', 'Embudo'], ['map', 'Mapa']];
@@ -103,7 +106,9 @@ function groupsFor(b) {
     ['Organizar texto', [wrapBtn(b)]],
     ['Al presentar', [btn('zoom_in', 'Ampliar al clic', () => set(b, x => { if (x.zoomable) delete x.zoomable; else x.zoomable = true; }), !!b.zoomable),
       ...(isGif(b) ? [btn('slow_motion_video', 'Reproducción', () => openMediaPlayback(b))] : [])]],
-    ['Archivo', [btn('download', 'Descargar', () => saveFile(b)), btn('photo_camera', 'Guardar como imagen', () => openSaveAsPicture())]]);
+    ['Archivo', [btn('download', 'Descargar', () => saveFile(b)), btn('photo_camera', 'Guardar como imagen', () => openSaveAsPicture())]],
+    ['Lupa', [btn('loupe', 'Ampliar una zona de la imagen', () => startMagnifyDraw({ within: b }), false, 'magnify-image')]]);
+  else if (b.type === 'magnify') G.push(...magnifyGroups(b));
   else if (b.type === 'model') {
     const names = clipsOf(b), opts = [['', 'Ninguna'], ...(names.length ? names : ['*']).map(n => [n, n === '*' ? 'La primera' : n])];
     G.push(
@@ -230,11 +235,33 @@ function groupsFor(b) {
   G.push(['Animaciones', [btn('add_circle', n ? `${t('Añadir animación')} (${n})` : 'Añadir animación', () => openAddAnimation(document.querySelector('#ribbon [data-page="ctx"] [data-ctx="add"]')), false, 'add'),
     btn('gesture', 'Dibujar recorrido', () => startPathDraw({ append: true })), btn('tune', 'Panel de animación', () => openAnimPanel())]]);
   // (The link with the alt text and description: one group, not a column for a single button.)
-  const linkable = !['text', 'connector'].includes(b.type), described = !['text', 'connector', 'figindex', 'slideref'].includes(b.type);
+  const linkable = !['text', 'connector'].includes(b.type), described = !['text', 'connector', 'figindex', 'slideref', 'magnify'].includes(b.type);
   G.push([linkable ? 'Vínculo y accesibilidad' : 'Accesibilidad', [...(linkable ? [btn('link', b.href || b.goto ? 'Cambiar vínculo' : 'Vínculo', () => openObjectLink(b), !!(b.href || b.goto), 'link')] : []),
     btn('accessibility', 'Texto alternativo', () => openAlt(b)), ...(described ? [btn('short_text', b.caption ? 'Editar descripción' : 'Descripción', () => openCaption(b), !!b.caption)] : [])]]);
   G.push(arrange(b));
   return G;
+}
+// A magnifier: its frame (quick colours, width, dashed, rounded), the lines and
+// the area's frame, how much it enlarges and where its box goes.
+function magnifyGroups(b) {
+  const st = mag.magStyle(b), on = v => set(b, x => Object.assign(x, v)), style = v => mag.setMagStyle(b.id, v);
+  const accent = currentPalette().accents[0], k = Math.round(mag.zoomOf(b) * 10) / 10;
+  const DASHES = [['solid', '━ Continua'], ['dashed', '╍ Guiones'], ['dotted', '┈ Puntos']];
+  return [
+    ['Borde', [...mag.MAG_COLORS.map(([c, l]) => { const col = c === 'accent' ? accent : c; return ['swatch', col, l, () => style({ color: col }), st.color.toLowerCase() === col.toLowerCase()]; }),
+      ['color', 'border_color', 'Otro color', st.color, v => style({ color: v })],
+      ['num', 'Grosor', st.width, v => style({ width: Math.max(0, Math.min(30, +v || 0)) }), 0, 30, 1],
+      btn('line_style', 'Discontinuo', () => style({ style: st.style === 'dashed' ? 'solid' : 'dashed' }), st.style === 'dashed'),
+      ['num', 'Esquinas redondeadas', st.radius, v => style({ radius: Math.max(0, Math.min(200, +v || 0)) }), 0, 200, 2]]],
+    ['Líneas', [['select', 'Líneas', mag.MAG_LINES, st.lines, v => on({ lines: v })],
+      ['select', 'Estilo de línea', DASHES, st.lineDash, v => on({ lineDash: v })],
+      ['color', 'timeline', 'Color de las líneas', st.lineColor, v => on({ lineColor: v })],
+      btn('crop_free', 'Marco en la zona', () => on({ sourceFrame: !st.sourceFrame }), st.sourceFrame),
+      btn('shadow', 'Sombra del recuadro', () => on({ insetShadow: !st.shadow }), st.shadow)]],
+    ['Ampliación', [['num', 'Aumento (×)', k, v => mag.setZoom(b.id, v), 1, 12, 0.5],
+      btn('auto_awesome_mosaic', 'Colocar automáticamente', () => mag.placeAgain(b.id)),
+      btn('swap_horiz', 'Al otro lado', () => mag.swapSide(b.id)),
+      btn('zoom_in', 'Aparecer con zoom', () => (b.animation?.effect === 'zoom-in' ? clearAnimation() : setAnimation('zoom-in')), b.animation?.effect === 'zoom-in')]]];
 }
 function arrange(b) {
   return ['Organizar', [ico('flip_to_front', 'Traer al frente', () => blocks.bringToFront()), ico('flip_to_back', 'Enviar al fondo', () => blocks.sendToBack()),
@@ -293,7 +320,7 @@ export function renderContextual() {
   if (opened) tab.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });   // (with its name, so all of it shows)
   const names = b?.type === 'model' ? clipsOf(b) : [];
   // (Moving or resizing it doesn't change its options: no rebuild while nudging.)
-  const sig = shortSig([list.map(x => x.id), b && { ...b, x: 0, y: 0, w: 0, h: 0 }, names, b && styled(b, currentSlide()).fontSize, b?.type === 'camera' && cameraLive(), b?.type === 'model' && puppetTrying()]);
+  const sig = shortSig([list.map(x => x.id), b && { ...b, x: 0, y: 0, w: 0, h: 0 }, names, b && styled(b, currentSlide()).fontSize, b?.type === 'camera' && cameraLive(), b?.type === 'model' && puppetTrying(), b?.type === 'magnify' && Math.round(mag.zoomOf(b) * 10)]);
   if (sig === lastSig) return;
   lastSig = sig;
   const groups = b ? groupsFor(b) : groupsForMany(list);
@@ -324,6 +351,12 @@ function control(c) {
     const [, icon, label, fn, on, key] = c, el = document.createElement('button'); el.type = 'button';
     el.innerHTML = `<i class="ms">${icon}</i><span>${t(label)}</span>`; el.classList.toggle('on', !!on);
     if (key) el.dataset.ctx = key;
+    el.addEventListener('click', e => { e.stopPropagation(); fn(); });
+    return el;
+  }
+  if (c[0] === 'swatch') {                                   // a quick colour: a dot, named in its tooltip
+    const [, col, label, fn, on] = c, el = document.createElement('button'); el.type = 'button'; el.className = 'ctx-swatch'; el.title = t(label); el.setAttribute('aria-label', t(label));
+    el.innerHTML = `<span style="background:${col}"></span>`; el.classList.toggle('on', !!on);
     el.addEventListener('click', e => { e.stopPropagation(); fn(); });
     return el;
   }

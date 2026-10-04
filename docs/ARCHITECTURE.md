@@ -76,6 +76,7 @@ src/
   features/
     document/                  slides, blocks, format, master, templates, captions,
                                clipboard, shape operations, search, autocorrect, a11y,
+                               magnify (the magnifier: lines, placement, picture crop),
                                sanitize (what comes from outside can't run code)
     design/                    palettes, fonts, designer (design ideas), gallery,
                                canvasmode + canvasdesigns (Prezi-like canvas and its pictures)
@@ -112,7 +113,8 @@ src/
                                sorter (slide sorter: the navigator as a grid), openfile
     canvas/                    canvas (render/reconcile), content (per object type),
                                interact (drag/resize/guides/snap), preview (animations),
-                               pathdraw (drawn motion paths), mediaview (video/GIF/3D)
+                               pathdraw (drawn motion paths), mediaview (video/GIF/3D),
+                               magnifyview (the magnifier: drawing it, its area's handles)
     ribbon/                    ribbon (build/sync), actions (what each button does),
                                popovers (group galleries), zoom, contextual (the selected
                                object's tab), animadd (Add animation palette)
@@ -156,7 +158,7 @@ slide = { id, layoutId, sectionId, background, transition, transitionOut, hidden
 
 block = { id, type, x, y, w, h, rotation, opacity, animation, anims, alt, … }
         type: text, shape, image, video, audio, model, embed, chart, table,
-              icon, math, code, poll, camera, ink, slideref, connector, …
+              icon, math, code, poll, camera, ink, slideref, connector, magnify, …
 
 animation = { effect, order (click), seq (play order), start, duration, delay,
               dx, dy, pathShape, points, turn, spin, clip, once, trigger }
@@ -165,6 +167,11 @@ animation = { effect, order (click), seq (play order), start, duration, delay,
 
 model (3D) block: src (GLB data URL), clip (rest animation), walk:{clip, end,
         endOnce, face, look} (what it does while moving), view, motion, autoRotate
+
+magnify block: source:{x,y,w,h} (the area, in slide coordinates; the block's own
+        box shows it enlarged, same proportion), target (the picture under it),
+        border:{color,width,style,radius}, sourceFrame, lines (corners|center|none),
+        lineColor, lineWidth, lineDash, insetShadow
 
 deck.canvas = { on, bg, image:{src,x,y,w,h} }   slide.frame = { x, y, s, r }   (canvas mode)
 slide.autoAnimate, morphBy, morphHint (Morph and its suggestion)

@@ -139,3 +139,17 @@
 #text-ruler .tr-stop{position:absolute;bottom:-1px;transform:translateX(-50%);font:700 13px/1 system-ui,sans-serif;color:#1e2a3a;cursor:ew-resize;padding:0 2px}
 #text-ruler .tr-stop.off{opacity:.3}
 .block .diagram-blk{width:100%;height:100%}
+/* Magnifier: the box is the block; its lines and the area's frame reach out over the slide */
+.block .magnify{position:absolute;inset:0}
+.block.__mag .handle-rot{display:none}
+.block .rv-mag-src{pointer-events:stroke;cursor:move}
+.block .mag-src{position:absolute;display:none;cursor:move;outline:1.5px dashed var(--accent);outline-offset:2px;touch-action:none}
+.block.selected .mag-src{display:block}
+.block.locked .mag-src{display:none}
+.mag-h{position:absolute;width:11px;height:11px;background:#fff;border:1.5px solid var(--accent);border-radius:50%;transform:scale(var(--hz,1));touch-action:none}
+.mag-h.nw{left:-6px;top:-6px;cursor:nwse-resize}.mag-h.ne{right:-6px;top:-6px;cursor:nesw-resize}
+.mag-h.sw{left:-6px;bottom:-6px;cursor:nesw-resize}.mag-h.se{right:-6px;bottom:-6px;cursor:nwse-resize}
+.block .mag-k{position:absolute;left:6px;top:6px;display:none;background:#1f2328e6;color:#fff;border-radius:10px;padding:1px 8px;font:600 13px system-ui,sans-serif;transform:scale(var(--hz,1));transform-origin:0 0;pointer-events:none}
+.block.selected .mag-k{display:block}
+.mag-rubber{position:absolute;border:2px dashed #e53935;background:#e5393514;pointer-events:none}
+@media (pointer:coarse){.mag-h{width:22px;height:22px}.mag-h.nw{left:-12px;top:-12px}.mag-h.ne{right:-12px;top:-12px}.mag-h.sw{left:-12px;bottom:-12px}.mag-h.se{right:-12px;bottom:-12px}}
