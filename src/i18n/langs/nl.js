@@ -2606,4 +2606,6 @@ export default {
   "Enviado. Tu consulta es la número #{n}.": "Verstuurd. Je verzoek heeft nummer #{n}.",
   "Has enviado muchos informes hoy. Vuelve a intentarlo mañana.": "Je hebt vandaag veel meldingen verstuurd. Probeer het morgen opnieuw.",
   "Tu cuenta está bloqueada: la IA y la nube no están disponibles. Si crees que es un error, usa «Informar de un problema».": "Je account is geblokkeerd: de AI en de cloud zijn niet beschikbaar. Denk je dat dit een fout is, gebruik dan „Een probleem melden”.",
+  "Se abre la ventana de impresión: elige «Guardar como PDF» como destino.": "Het afdrukvenster wordt geopend: kies «Opslaan als pdf» als bestemming.",
+  "El navegador ha bloqueado la ventana emergente: se imprime desde aquí. Elige «Guardar como PDF» como destino.": "De browser heeft het pop-upvenster geblokkeerd: er wordt vanaf hier afgedrukt. Kies «Opslaan als pdf» als bestemming.",
 };

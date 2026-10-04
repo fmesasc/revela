@@ -83,16 +83,28 @@ ${pages.join('\n')}
 </body></html>`;
 }
 
-export function exportHandout(layout) {
+// Prints a document: in a window of its own, or, if the browser blocks pop-ups, from a hidden frame in
+// this page (no window needed). Returns 'window', 'frame' or null (neither worked).
+function printDocument(html) {
   const win = window.open('', '_blank');
-  if (!win) { alertUser(t('Permite las ventanas emergentes para exportar a PDF.')); return; }
-  win.document.write(buildHandoutHTML(state.deck, layout));
-  win.document.close();
+  if (win) { win.document.write(html); win.document.close(); return 'window'; }
+  try {
+    document.getElementById('print-frame')?.remove();
+    const f = document.createElement('iframe'); f.id = 'print-frame'; f.setAttribute('aria-hidden', 'true');
+    f.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none';
+    document.body.appendChild(f);
+    f.contentWindow.addEventListener('afterprint', () => setTimeout(() => f.remove(), 500));
+    f.contentDocument.open(); f.contentDocument.write(html); f.contentDocument.close();
+    return 'frame';
+  } catch { return null; }
 }
-
-export function exportPDF() {
-  const win = window.open('', '_blank');
-  if (!win) { alertUser(t('Permite las ventanas emergentes para exportar a PDF.')); return; }
-  win.document.write(buildPrintHTML());
-  win.document.close();
+// The user hears at once what is happening (and, if the pop-up was blocked, what was done instead).
+function printWithNotice(html, notify) {
+  const how = printDocument(html);
+  if (how === 'window') notify?.(t('Se abre la ventana de impresión: elige «Guardar como PDF» como destino.'));
+  else if (how === 'frame') notify?.(t('El navegador ha bloqueado la ventana emergente: se imprime desde aquí. Elige «Guardar como PDF» como destino.'));
+  else alertUser(t('Permite las ventanas emergentes para exportar a PDF.'));
 }
+// notify(msg): a short message shown right away (the interface's toast).
+export function exportHandout(layout, notify) { printWithNotice(buildHandoutHTML(state.deck, layout), notify); }
+export function exportPDF(notify) { printWithNotice(buildPrintHTML(), notify); }

@@ -116,7 +116,7 @@ export const ACTIONS = {
   // (A download alone is easy to miss: each one says what it was and what next.)
   'export': () => { exportHTML(); toast(t('Página web descargada: se abre con cualquier navegador.')); },
   'export-pptx': () => withProgress(t('Creando el archivo de PowerPoint…'), exportPPTX, t('PowerPoint descargado.')),
-  'export-pdf': exportPDF,
+  'export-pdf': () => exportPDF(msg => toast(msg, { ms: 9000 })),
   'export-png': () => openImageDialog(),
   'share': () => openShare(),
   'collab': () => openCollab(),

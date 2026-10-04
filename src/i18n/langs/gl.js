@@ -2606,4 +2606,6 @@ export default {
   "Enviado. Tu consulta es la número #{n}.": "Enviado. A túa consulta é a número #{n}.",
   "Has enviado muchos informes hoy. Vuelve a intentarlo mañana.": "Enviaches moitos informes hoxe. Téntao de novo mañá.",
   "Tu cuenta está bloqueada: la IA y la nube no están disponibles. Si crees que es un error, usa «Informar de un problema».": "A túa conta está bloqueada: a IA e a nube non están dispoñibles. Se cres que é un erro, usa «Informar dun problema».",
+  "Se abre la ventana de impresión: elige «Guardar como PDF» como destino.": "Ábrese a xanela de impresión: elixe «Gardar como PDF» como destino.",
+  "El navegador ha bloqueado la ventana emergente: se imprime desde aquí. Elige «Guardar como PDF» como destino.": "O navegador bloqueou a xanela emerxente: imprímese desde aquí. Elixe «Gardar como PDF» como destino.",
 };

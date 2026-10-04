@@ -2606,4 +2606,6 @@ export default {
   "Enviado. Tu consulta es la número #{n}.": "Bidalita. Zure kontsulta #{n} zenbakia da.",
   "Has enviado muchos informes hoy. Vuelve a intentarlo mañana.": "Gaur txosten asko bidali dituzu. Saiatu berriro bihar.",
   "Tu cuenta está bloqueada: la IA y la nube no están disponibles. Si crees que es un error, usa «Informar de un problema».": "Zure kontua blokeatuta dago: AA eta hodeia ez daude erabilgarri. Akats bat dela uste baduzu, erabili «Arazo baten berri eman».",
+  "Se abre la ventana de impresión: elige «Guardar como PDF» como destino.": "Inprimatzeko leihoa irekitzen da: aukeratu «Gorde PDF gisa» helburu gisa.",
+  "El navegador ha bloqueado la ventana emergente: se imprime desde aquí. Elige «Guardar como PDF» como destino.": "Nabigatzaileak leiho gainerakorra blokeatu du: hemendik inprimatzen da. Aukeratu «Gorde PDF gisa» helburu gisa.",
 };

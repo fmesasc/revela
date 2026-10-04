@@ -2606,4 +2606,6 @@ export default {
   "Enviado. Tu consulta es la número #{n}.": "تم الإرسال. رقم بلاغك هو #{n}.",
   "Has enviado muchos informes hoy. Vuelve a intentarlo mañana.": "لقد أرسلت بلاغات كثيرة اليوم. حاول مرة أخرى غدًا.",
   "Tu cuenta está bloqueada: la IA y la nube no están disponibles. Si crees que es un error, usa «Informar de un problema».": "حسابك محظور: الذكاء الاصطناعي والسحابة غير متاحين. إذا كنت تعتقد أن هذا خطأ، فاستخدم «الإبلاغ عن مشكلة».",
+  "Se abre la ventana de impresión: elige «Guardar como PDF» como destino.": "تُفتح نافذة الطباعة: اختر «حفظ بتنسيق PDF» وجهةً.",
+  "El navegador ha bloqueado la ventana emergente: se imprime desde aquí. Elige «Guardar como PDF» como destino.": "حجب المتصفح النافذة المنبثقة: ستتم الطباعة من هنا. اختر «حفظ بتنسيق PDF» وجهةً.",
 };
