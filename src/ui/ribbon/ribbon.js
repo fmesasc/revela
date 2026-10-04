@@ -244,6 +244,13 @@ export function initRibbon() {
     e.preventDefault(); page.scrollLeft += e.deltaY;
   }, { passive: false });
   pages?.addEventListener('scroll', e => markOverflow(e.target), true);
+  // Arrows over the faded edges: it's plain that there is more, and a click shows it.
+  for (const dir of [-1, 1]) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'rb-more ' + (dir > 0 ? 'right' : 'left');
+    b.tabIndex = -1; b.setAttribute('aria-hidden', 'true'); b.innerHTML = '<i class="ms">' + (dir > 0 ? 'chevron_right' : 'chevron_left') + '</i>';
+    b.addEventListener('click', () => { const pg = pages.querySelector('.ribbon-page.active'); pg?.scrollBy({ left: dir * pg.clientWidth * 0.7, behavior: 'smooth' }); });
+    pages?.appendChild(b);
+  }
   window.addEventListener('resize', () => document.querySelectorAll('#ribbon .ribbon-page.active').forEach(markOverflow));
 
   // Editable document title.
@@ -333,6 +340,10 @@ export function markOverflow(page) {
   const more = page.scrollWidth - page.clientWidth > 2;
   page.classList.toggle('more-right', more && page.scrollLeft + page.clientWidth < page.scrollWidth - 2);
   page.classList.toggle('more-left', more && page.scrollLeft > 2);
+  if (page.classList.contains('active')) {                 // (the arrows over the edges)
+    const pg = page.parentElement;
+    pg.classList.toggle('has-right', page.classList.contains('more-right')); pg.classList.toggle('has-left', page.classList.contains('more-left'));
+  }
 }
 export function renderRibbon() {
   populateFonts(); syncCustomFonts(state.deck);
