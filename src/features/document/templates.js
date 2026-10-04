@@ -65,7 +65,8 @@ export function applyTemplate(tpl) {
     const texts = old.filter(b => b.type === 'text' && b.html && b.html.replace(/<[^>]*>/g, '').trim());
     const title = texts.find(b => b.ph === 'title') || texts[0];
     const rest = texts.filter(b => b !== title);
-    const fresh = structuredClone(tpl.blocks).map(b => Object.assign({ id: uid(), rotation: 0, animation: null }, b));
+    // (New ids: a saved template keeps those of the slide it came from.)
+    const fresh = structuredClone(tpl.blocks).map(b => Object.assign({ rotation: 0, animation: null }, b, { id: uid() }));
     for (const b of fresh) {
       if (!b.ph) continue;
       const src = b.ph === 'title' ? title : rest.shift();

@@ -131,6 +131,12 @@ body.master-view #navigator{display:flex}
 .titlebar .premium{display:inline-flex;align-items:center;gap:4px;margin-inline-end:8px;padding:3px 10px;border-radius:14px;text-decoration:none;font-size:13px;font-weight:600;color:#fff;background:linear-gradient(90deg,#6d5dfc,#3f6497);white-space:nowrap}
 .titlebar .premium:hover{filter:brightness(1.1)}
 .titlebar .premium .ms{font-size:17px}
+/* A narrow desktop window: these two show only their icon (their name in the tooltip), so the document's name and the language fit. */
+@media (max-width:1240px){
+  .titlebar .donate span,.titlebar .premium span{display:none}
+  .titlebar .donate,.titlebar .premium{padding:3px 7px;margin-inline-end:4px}
+  .titlebar .doc-name{min-width:60px}
+}
 /* Version history */
 .vs-list{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;max-height:55vh;overflow:auto}
 .vs-item{display:flex;align-items:center;gap:6px;border:1px solid var(--line2);border-radius:8px;padding:6px 8px}
@@ -346,7 +352,7 @@ body.master-view #navigator{display:flex}
 .sg-item>.ms{font-size:22px}.sg-valid>.ms,.sg-valid .sg-st{color:#1a7f37}.sg-modified>.ms,.sg-modified .sg-st{color:#b35900}.sg-invalid>.ms,.sg-invalid .sg-st{color:#c92a2a}
 .sg-item code,.sg-fp{font-size:11px;word-break:break-all}
 /* Google account, Drive status, "My presentations" */
-.account-btn{display:flex;align-items:center;gap:4px;background:none;border:1px solid var(--line2);border-radius:999px;padding:3px 10px 3px 4px;cursor:pointer;color:var(--txt);font:inherit;font-size:12px;margin-inline-end:6px}
+.account-btn{display:flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0;background:none;border:1px solid var(--line2);border-radius:999px;padding:3px 10px 3px 4px;cursor:pointer;color:var(--txt);font:inherit;font-size:12px;margin-inline-end:6px}
 .account-btn.signed{padding:2px;border-color:transparent}.account-btn img,.account-menu img{width:28px;height:28px;border-radius:50%;display:block}
 .acc-init{width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-weight:600}
 .drive-status{background:none;border:none;cursor:pointer;color:var(--txt2);padding:2px 6px}.drive-status[hidden]{display:none}

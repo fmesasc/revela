@@ -81,14 +81,18 @@
         <div class="group">
           <div class="row">
             <button data-action="new"><i class="ms">note_add</i><span>Nuevo</span></button>
-            <button data-action="gallery"><i class="ms">auto_awesome_mosaic</i><span>Plantillas</span></button>
-            <button data-action="versions" title="Historial de versiones"><i class="ms">history</i><span>Versiones</span></button>
+            <button data-action="gallery" title="Nueva presentación desde plantilla"><i class="ms">auto_awesome_mosaic</i><span>Plantillas</span></button>
             <button data-action="open"><i class="ms">folder_open</i><span>Abrir</span></button>
             <button data-action="save"><i class="ms">save</i><span>Guardar</span></button>
-            <button data-action="save-protected" title="Guardar el proyecto cifrado con contraseña"><i class="ms">lock</i><span>Proteger</span></button>
-            <button data-action="mark-final" title="Marcar como final: solo lectura"><i class="ms">verified</i><span>Final</span></button>
-            <button data-action="signatures" title="Firmar la presentación y comprobar sus firmas"><i class="ms">draw</i><span>Firmas</span></button>
+            <button data-action="versions" title="Historial de versiones"><i class="ms">history</i><span>Versiones</span></button>
           </div><label>Proyecto</label>
+        </div>
+        <div class="group">
+          <div class="row">
+            <button data-action="save-protected" title="Guardar el proyecto cifrado con contraseña"><i class="ms">lock</i><span>Contraseña</span></button>
+            <button data-action="mark-final" title="Marcar como final: solo lectura"><i class="ms">verified</i><span>Marcar como final</span></button>
+            <button data-action="signatures" title="Firmar la presentación y comprobar sus firmas"><i class="ms">draw</i><span>Firmas</span></button>
+          </div><label>Proteger</label>
         </div>
         <div class="group accounts-only">
           <div class="row">
@@ -124,6 +128,10 @@
           <div class="row">
             <button data-action="collab" class="lg" title="Editar a la vez con otras personas: enlaces para ver, comentar o editar, y chat"><i class="ms">group_add</i><span>Colaborar</span></button>
             <button data-action="share" class="lg" title="Enlace privado o archivo con contraseña, para compartir o insertar en un iframe"><i class="ms">share</i><span>Compartir</span></button>
+          </div><label>Compartir</label>
+        </div>
+        <div class="group">
+          <div class="row">
             <button data-action="export" class="lg"><i class="ms">download</i><span>Exportar<br>HTML</span></button>
             <button data-action="export-pptx" class="lg"><i class="ms">slideshow</i><span>Exportar<br>PowerPoint</span></button>
             <button data-action="export-odp" class="lg" title="OpenDocument: LibreOffice, OnlyOffice"><i class="ms">slideshow</i><span>Exportar<br>ODP</span></button>
@@ -221,11 +229,7 @@
             </select>
             <button data-fontdelta="4" title="Aumentar tamaño"><i class="ms">text_increase</i></button>
             <button data-fontdelta="-4" title="Reducir tamaño"><i class="ms">text_decrease</i></button>
-          </div><label>Tipo de letra</label>
-        </div>
-        <div class="group">
-          <div class="row">
-            <button data-fmt="bold" title="Negrita"><i class="ms">format_bold</i></button>
+            <button data-fmt="bold" title="Negrita" class="row-break"><i class="ms">format_bold</i></button>
             <button data-fmt="italic" title="Cursiva"><i class="ms">format_italic</i></button>
             <button data-fmt="underline" title="Subrayado"><i class="ms">format_underlined</i></button>
             <button data-fmt="strikeThrough" title="Tachado"><i class="ms">format_strikethrough</i></button>
@@ -291,9 +295,9 @@
             <button data-action="back" title="Enviar al fondo"><i class="ms">flip_to_back</i></button>
             <button data-action="forward" title="Adelantar"><i class="ms">keyboard_arrow_up</i></button>
             <button data-action="backward" title="Atrasar"><i class="ms">keyboard_arrow_down</i></button>
-            <button data-action="group" title="Agrupar (Ctrl+G)"><i class="ms">join_inner</i></button>
-            <button data-action="ungroup" title="Desagrupar (Ctrl+Mayús+G)"><i class="ms">join_full</i></button>
-            <button data-action="connect-blocks" title="Conectar los dos objetos seleccionados"><i class="ms">timeline</i></button>
+            <button data-action="group" title="Agrupar (Ctrl+G)"><i class="ms">group_work</i></button>
+            <button data-action="ungroup" title="Desagrupar (Ctrl+Mayús+G)"><i class="ms">workspaces</i></button>
+            <button data-action="connect-blocks" title="Conectar los dos objetos seleccionados"><i class="ms">conversion_path</i></button>
             <button data-action="selection-pane" title="Panel de selección: ocultar, bloquear, renombrar y ordenar los objetos"><i class="ms">layers</i></button>
           </div><label>Organizar</label>
         </div>
@@ -312,21 +316,33 @@
         <div class="group">
           <div class="row">
             <button data-action="insert-text" class="lg"><i class="ms">title</i><span>Cuadro<br>de texto</span></button>
-            <button data-action="insert-stock" class="lg" title="Imágenes con licencia libre (Openverse)"><i class="ms">travel_explore</i><span>Imágenes<br>en línea</span></button>
-            <button data-action="resources" class="lg go" title="GIF animados, stickers animados y modelos 3D gratis"><i class="ms">interests</i><span>Recursos</span></button>
+            <button data-wordart class="lg" title="Texto con efectos: contorno, sombra, degradado, neón…"><i class="ms">gradient</i><span>Text Art</span></button>
+            <button data-action="insert-math" class="lg"><i class="ms">functions</i><span>Ecuación</span></button>
+            <button data-action="insert-code" class="lg"><i class="ms">code</i><span>Código</span></button>
+          </div><label>Texto</label>
+        </div>
+        <div class="group">
+          <div class="row">
             <button data-action="insert-image" class="lg"><i class="ms">image</i><span>Imagen</span></button>
+            <button data-action="insert-stock" class="lg" title="Imágenes con licencia libre (Openverse)"><i class="ms">travel_explore</i><span>Imágenes<br>en línea</span></button>
+            <button data-action="resources" class="lg go" title="GIF animados, stickers animados y modelos 3D gratis"><i class="ms">gif_box</i><span>GIF y<br>stickers</span></button>
+            <button data-icons class="lg"><i class="ms">interests</i><span>Iconos</span></button>
+            <button data-action="insert-online-icon" class="lg" title="Más de 200 000 iconos (Iconify)"><i class="ms">search</i><span>Iconos<br>en línea</span></button>
+          </div><label>Imágenes</label>
+        </div>
+        <div class="group">
+          <div class="row">
+            <div class="shape-gallery" data-shape-gallery></div>
+            <button data-shapes-open class="shape-more" title="Todas las formas: básicas, flechas, estrellas, bocadillos, diagrama de flujo y matemáticas"><i class="ms">category</i><span>Más<br>formas</span></button>
+          </div><label>Formas</label>
+        </div>
+        <div class="group">
+          <div class="row">
             <button data-action="insert-table" class="lg"><i class="ms">table</i><span>Tabla</span></button>
             <button data-action="insert-table-csv" class="lg" title="Crear una tabla a partir de un archivo CSV"><i class="ms">csv</i><span>Tabla<br>desde CSV</span></button>
             <button data-action="insert-chart" class="lg"><i class="ms">bar_chart</i><span>Gráfico</span></button>
-            <button data-action="insert-timer" class="lg" title="Cuenta atrás para actividades o descansos: empieza al llegar a la diapositiva y suena al acabar"><i class="ms">timer</i><span>Cuenta<br>atrás</span></button>
-            <button data-action="insert-math" class="lg"><i class="ms">functions</i><span>Ecuación</span></button>
-            <button data-action="insert-slideref" class="lg"><i class="ms">zoom_in_map</i><span>Zoom de<br>diapositiva</span></button>
-            <button data-action="insert-summary" class="lg"><i class="ms">grid_view</i><span>Zoom de<br>resumen</span></button>
-            <button data-icons class="lg"><i class="ms">interests</i><span>Iconos</span></button>
-            <button data-action="insert-online-icon" class="lg" title="Más de 200 000 iconos (Iconify)"><i class="ms">search</i><span>Iconos<br>en línea</span></button>
-            <button data-wordart class="lg"><i class="ms">gradient</i><span>Text Art</span></button>
-            <button data-action="insert-file" class="lg" title="Un PDF (una página, el documento para hojearlo o una diapositiva por página) u otro archivo para descargar"><i class="ms">attach_file</i><span>PDF o<br>archivo</span></button>
-          </div><label>Básico</label>
+            <button data-action="insert-dashboard" class="lg" title="Power BI, Looker Studio, Tableau, Google Sheets, Grafana…"><i class="ms">monitoring</i><span>Panel de<br>datos</span></button>
+          </div><label>Tablas y gráficos</label>
         </div>
         <div class="group">
           <div class="row">
@@ -341,46 +357,59 @@
             <button data-action="insert-model" class="lg go"><i class="ms">view_in_ar</i><span>Modelo 3D<br>(.glb)</span></button>
             <button data-action="resources-3d" class="lg" title="Modelos 3D gratis, muchos con movimiento"><i class="ms">deployed_code</i><span>Buscar<br>en 3D</span></button>
             <button data-action="model-ai" class="lg accounts-only" title="Describe un objeto y la IA lo modela en 3D con Blender, revisando el resultado"><i class="ms">view_in_ar</i><span>Crear 3D<br>con IA</span></button>
+          </div><label>3D</label>
+        </div>
+        <div class="group">
+          <div class="row">
             <button data-action="insert-video" class="lg"><i class="ms">movie</i><span>Vídeo</span></button>
             <button data-action="insert-audio" class="lg"><i class="ms">music_note</i><span>Audio</span></button>
-            <button data-action="insert-poll" class="lg go" title="Pregunta al público: votan con el móvil escaneando un QR y los resultados se ven en directo"><i class="ms">how_to_vote</i><span>Votación<br>en directo</span></button>
-            <button data-action="insert-camera" class="lg" title="Imagen en directo de la cámara durante la presentación"><i class="ms">videocam</i><span>Cámara en<br>directo</span></button>
             <button data-action="record-screen" class="lg" title="Grabar la pantalla e insertar el vídeo"><i class="ms">screen_record</i><span>Grabar<br>pantalla</span></button>
             <button data-action="record-camera" class="lg" title="Grabar con la cámara e insertar el vídeo"><i class="ms">video_camera_front</i><span>Grabar<br>cámara</span></button>
-            <button data-action="insert-embed" class="lg"><i class="ms">public</i><span>Página<br>web</span></button>
-            <button data-action="insert-dashboard" class="lg" title="Power BI, Looker Studio, Tableau, Google Sheets, Grafana…"><i class="ms">monitoring</i><span>Panel de<br>datos</span></button>
-            <button data-action="insert-code" class="lg"><i class="ms">code</i><span>Código</span></button>
+            <button data-action="insert-camera" class="lg" title="Imagen en directo de la cámara durante la presentación"><i class="ms">videocam</i><span>Cámara en<br>directo</span></button>
           </div><label>Multimedia</label>
         </div>
         <div class="group">
           <div class="row">
-            <div class="shape-gallery" data-shape-gallery></div>
-            <button data-shapes-open class="shape-more" title="Todas las formas: básicas, flechas, estrellas, bocadillos, diagrama de flujo y matemáticas"><i class="ms">category</i><span>Más<br>formas</span></button>
-          </div><label>Formas</label>
+            <button data-action="insert-poll" class="lg go" title="Pregunta al público: votan con el móvil escaneando un QR y los resultados se ven en directo"><i class="ms">how_to_vote</i><span>Votación<br>en directo</span></button>
+            <button data-action="insert-timer" class="lg" title="Cuenta atrás para actividades o descansos: empieza al llegar a la diapositiva y suena al acabar"><i class="ms">timer</i><span>Cuenta<br>atrás</span></button>
+            <button data-action="insert-embed" class="lg" title="Una página web en vivo dentro de la diapositiva (o como tarjeta)"><i class="ms">public</i><span>Página<br>web</span></button>
+            <button data-action="insert-file" class="lg" title="Un PDF (una página, el documento para hojearlo o una diapositiva por página) u otro archivo para descargar"><i class="ms">attach_file</i><span>PDF o<br>archivo</span></button>
+          </div><label>Interactivo</label>
         </div>
         <div class="group">
           <div class="row">
-            <button data-template="title"><i class="ms">web</i><span>Portada</span></button>
-            <button data-template="titleContent"><i class="ms">article</i><span>Título y<br>contenido</span></button>
-            <button data-template="twoContent"><i class="ms">vertical_split</i><span>Dos<br>contenidos</span></button>
-            <button data-template="comparison"><i class="ms">compare</i><span>Comparación</span></button>
-            <button data-template="sectionHeader"><i class="ms">title</i><span>Encabezado<br>sección</span></button>
-            <button data-template="showcase3D"><i class="ms">deployed_code</i><span>Escaparate<br>3D</span></button>
-            <button data-template="blank"><i class="ms">crop_portrait</i><span>En blanco</span></button>
-            <button data-action="template-save"><i class="ms">bookmark_add</i><span>Guardar<br>plantilla</span></button>
-          </div><label>Plantillas</label>
+            <button data-action="insert-slideref" class="lg" title="Una miniatura de otra diapositiva: al hacer clic al presentar, salta a ella"><i class="ms">zoom_in_map</i><span>Zoom de<br>diapositiva</span></button>
+            <button data-action="insert-summary" class="lg" title="Miniaturas de las secciones (o de todas las diapositivas) para saltar a cada una"><i class="ms">grid_view</i><span>Zoom de<br>resumen</span></button>
+          </div><label>Zoom</label>
         </div>
         <div class="group">
           <div class="row">
-            <button data-action="insert-hf" class="lg"><i class="ms">web_asset</i><span>Encabezado<br>y pie</span></button>
+            <button data-action="insert-hf" class="lg" title="Pie de página, fecha y número de diapositiva"><i class="ms">web_asset</i><span>Encabezado<br>y pie</span></button>
             <button data-action="insert-date" class="lg"><i class="ms">event</i><span>Fecha y<br>hora</span></button>
             <button data-action="insert-figindex" class="lg"><i class="ms">format_list_numbered</i><span>Índice de<br>figuras</span></button>
           </div><label>Campos</label>
+        </div>
+        <div class="group">
+          <div class="row">
+            <button data-template="title" title="Aplicar este diseño a la diapositiva actual (lo escrito se conserva)"><i class="ms">web</i><span>Portada</span></button>
+            <button data-template="titleContent" title="Aplicar este diseño a la diapositiva actual (lo escrito se conserva)"><i class="ms">article</i><span>Título y<br>contenido</span></button>
+            <button data-template="twoContent" title="Aplicar este diseño a la diapositiva actual (lo escrito se conserva)"><i class="ms">vertical_split</i><span>Dos<br>contenidos</span></button>
+            <button data-template="comparison" title="Aplicar este diseño a la diapositiva actual (lo escrito se conserva)"><i class="ms">compare</i><span>Comparación</span></button>
+            <button data-template="sectionHeader" title="Aplicar este diseño a la diapositiva actual (lo escrito se conserva)"><i class="ms">title</i><span>Encabezado<br>sección</span></button>
+            <button data-template="showcase3D" title="Aplicar este diseño a la diapositiva actual (lo escrito se conserva)"><i class="ms">deployed_code</i><span>Escaparate<br>3D</span></button>
+            <button data-template="blank" title="Aplicar este diseño a la diapositiva actual (lo escrito se conserva)"><i class="ms">crop_portrait</i><span>En blanco</span></button>
+            <button data-action="template-save" title="Guardar esta diapositiva como plantilla: aparece en Inicio ▸ Diseño"><i class="ms">bookmark_add</i><span>Guardar<br>plantilla</span></button>
+          </div><label>Diseño de esta diapositiva</label>
         </div>
       </section>
 
       <!-- IA -->
       <section class="ribbon-page" data-page="ai">
+        <div class="group">
+          <div class="row">
+            <button data-action="ai-assistant" class="lg go" title="Pide cambios con tus palabras: la IA los propone diapositiva a diapositiva y eliges cuáles aplicar"><i class="ms">forum</i><span>Asistente</span></button>
+          </div><label>Asistente</label>
+        </div>
         <div class="group">
           <div class="row">
             <button data-action="ai-deck" class="lg go"><i class="ms">auto_awesome</i><span>Crear<br>presentación</span></button>
@@ -408,12 +437,11 @@
             <button data-action="ai-notes-all" class="lg"><i class="ms">library_books</i><span>Notas de<br>todas</span></button>
             <button data-action="ai-alt" class="lg"><i class="ms">image_search</i><span>Texto<br>alternativo</span></button>
             <button data-action="ai-translate-deck" class="lg"><i class="ms">g_translate</i><span>Traducir<br>presentación</span></button>
-          </div><label>Ayuda</label>
+          </div><label>Mejorar la presentación</label>
         </div>
         <div class="group">
           <div class="row">
-            <button data-action="ai-assistant" class="lg go"><i class="ms">forum</i><span>Asistente</span></button>
-            <button data-action="ai-settings" class="lg"><i class="ms">key</i><span>Conectar<br>IA</span></button>
+            <button data-action="ai-settings" class="lg" title="Conectar con OpenRouter (o con tu propia clave) y elegir el modelo"><i class="ms">key</i><span>Conectar<br>IA</span></button>
           </div><label>Ajustes</label>
         </div>
       </section>
@@ -430,7 +458,7 @@
         </div>
         <div class="group">
           <div class="row">
-            <label class="color" title="Color de la tinta"><i class="ms">palette</i><input type="color" data-ink-color value="#ff2d2d"></label>
+            <label class="color" title="Color de la tinta"><i class="ms">palette</i><span>Color</span><input type="color" data-ink-color value="#ff2d2d"></label>
             <select data-ink-width title="Grosor">
               <option value="2">Fino</option><option value="4" selected>Medio</option><option value="8">Grueso</option><option value="14">Muy grueso</option>
             </select>
@@ -442,8 +470,20 @@
       <section class="ribbon-page" data-page="design">
         <div class="group">
           <div class="row">
-            <button data-action="canvas-mode" class="lg" title="Opcional: las diapositivas como marcos en un lienzo grande; al presentar, la cámara vuela de uno a otro (como Prezi)"><i class="ms">zoom_out_map</i><span>Lienzo<br>(tipo Prezi)</span></button>
-          </div><label>Lienzo</label>
+            <button data-action="design-ideas" title="Propuestas de composición para esta diapositiva"><i class="ms">auto_awesome</i><span>Ideas de<br>diseño</span></button>
+            <button data-palettes-open title="Colores del tema"><i class="ms">palette</i><span>Colores</span></button>
+            <button data-fontpairs-open title="Fuentes del tema"><i class="ms">text_fields</i><span>Fuentes</span></button>
+            <button data-action="master-edit" title="Fondo, objetos, estilos de texto y diseños comunes a todas las diapositivas"><i class="ms">dashboard_customize</i><span>Patrón de<br>diapositivas</span></button>
+            <label class="color" title="Color del texto del tema"><i class="ms">format_color_text</i><input type="color" data-deck-fg value="#ffffff"></label>
+            <select data-theme title="Tema">
+              <option value="black">Oscuro</option><option value="white">Claro</option>
+              <option value="league">League</option><option value="night">Night</option>
+              <option value="serif">Serif</option><option value="solarized">Solarized</option>
+              <option value="moon">Moon</option><option value="dracula">Dracula</option>
+              <option value="beige">Beige</option><option value="sky">Sky</option><option value="simple">Simple</option>
+              <option value="blood">Blood</option><option value="black-contrast">Alto contraste oscuro</option><option value="white-contrast">Alto contraste claro</option>
+            </select>
+          </div><label>Tema</label>
         </div>
         <div class="group">
           <div class="row">
@@ -467,23 +507,6 @@
             <input data-logo-size type="number" min="20" max="400" class="size-input" style="width:60px" value="120" title="Altura del logo (px)">
             <button data-action="clear-logo" title="Quitar logo"><i class="ms">hide_image</i></button>
           </div><label>Marca</label>
-        </div>
-        <div class="group">
-          <div class="row">
-            <button data-action="design-ideas" title="Propuestas de composición para esta diapositiva"><i class="ms">auto_awesome</i><span>Ideas de<br>diseño</span></button>
-            <button data-palettes-open title="Colores del tema"><i class="ms">palette</i><span>Colores</span></button>
-            <button data-fontpairs-open title="Fuentes del tema"><i class="ms">text_fields</i><span>Fuentes</span></button>
-            <button data-action="master-edit" title="Fondo, objetos, estilos de texto y diseños comunes a todas las diapositivas"><i class="ms">dashboard_customize</i><span>Patrón de<br>diapositivas</span></button>
-            <label class="color" title="Color del texto del tema"><i class="ms">format_color_text</i><input type="color" data-deck-fg value="#ffffff"></label>
-            <select data-theme title="Tema">
-              <option value="black">Oscuro</option><option value="white">Claro</option>
-              <option value="league">League</option><option value="night">Night</option>
-              <option value="serif">Serif</option><option value="solarized">Solarized</option>
-              <option value="moon">Moon</option><option value="dracula">Dracula</option>
-              <option value="beige">Beige</option><option value="sky">Sky</option><option value="simple">Simple</option>
-              <option value="blood">Blood</option><option value="black-contrast">Alto contraste oscuro</option><option value="white-contrast">Alto contraste claro</option>
-            </select>
-          </div><label>Tema</label>
         </div>
         <div class="group">
           <div class="row">
@@ -514,18 +537,23 @@
             <button data-action="toggle-footerdate" title="Incluir la fecha"><i class="ms">event</i><span>Fecha</span></button>
           </div><label>Pie de página</label>
         </div>
+        <div class="group">
+          <div class="row">
+            <button data-action="canvas-mode" class="lg" title="Opcional: las diapositivas como marcos en un lienzo grande; al presentar, la cámara vuela de uno a otro (como Prezi)"><i class="ms">zoom_out_map</i><span>Lienzo<br>(tipo Prezi)</span></button>
+          </div><label>Lienzo</label>
+        </div>
       </section>
 
       <!-- TRANSICIONES -->
       <section class="ribbon-page" data-page="transitions">
         <div class="group wide">
           <div class="row">
-            <button data-slide-transition="inherit" title="Usar la de la presentación"><i class="ms">settings_backup_restore</i><span>Heredar</span></button>
+            <button data-slide-transition="inherit" title="Usar la transición de toda la presentación"><i class="ms">settings_backup_restore</i><span>Heredar</span></button>
             <button data-slide-transition="none"><i class="ms">block</i><span>Ninguna</span></button>
             <button data-slide-transition="fade"><i class="ms">gradient</i><span>Fundido</span></button>
             <button data-slide-transition="slide"><i class="ms">swipe_left</i><span>Deslizar</span></button>
-            <button data-slide-transition="convex"><i class="ms">chevron_right</i><span>Convex</span></button>
-            <button data-slide-transition="concave"><i class="ms">chevron_left</i><span>Concave</span></button>
+            <button data-slide-transition="convex"><i class="ms">chevron_right</i><span>Convexa</span></button>
+            <button data-slide-transition="concave"><i class="ms">chevron_left</i><span>Cóncava</span></button>
             <button data-slide-transition="zoom"><i class="ms">zoom_in</i><span>Zoom</span></button>
             <button data-slide-transition="flip"><i class="ms">flip</i><span>Voltear</span></button>
             <button data-slide-transition="push"><i class="ms">vertical_align_top</i><span>Empujar</span></button>
@@ -555,8 +583,8 @@
             </select>
             <select data-slide-trans-out title="Salida de esta diapositiva">
               <option value="">Salida: igual</option><option value="none">Salida: ninguna</option><option value="fade">Salida: fundido</option>
-              <option value="slide">Salida: deslizar</option><option value="convex">Salida: convex</option>
-              <option value="concave">Salida: concave</option><option value="zoom">Salida: zoom</option>
+              <option value="slide">Salida: deslizar</option><option value="convex">Salida: convexa</option>
+              <option value="concave">Salida: cóncava</option><option value="zoom">Salida: zoom</option>
               <option value="flip">Salida: voltear</option><option value="push">Salida: empujar</option><option value="wipe">Salida: barrido</option><option value="rise">Salida: elevar</option>
               <option value="split">Salida: dividir</option><option value="circle">Salida: círculo</option><option value="diamond">Salida: rombo</option>
               <option value="cube">Salida: cubo</option><option value="page">Salida: página</option><option value="gallery">Salida: galería</option><option value="fall">Salida: caer</option>
@@ -572,8 +600,8 @@
           <div class="row">
             <select data-deck-transition title="Transición por defecto">
               <option value="none">Ninguna</option><option value="fade">Fundido</option>
-              <option value="slide">Deslizar</option><option value="convex">Convex</option>
-              <option value="concave">Concave</option><option value="zoom">Zoom</option>
+              <option value="slide">Deslizar</option><option value="convex">Convexa</option>
+              <option value="concave">Cóncava</option><option value="zoom">Zoom</option>
               <option value="flip">Voltear</option><option value="push">Empujar</option><option value="wipe">Barrido</option><option value="rise">Elevar</option>
               <option value="split">Dividir</option><option value="circle">Círculo</option><option value="diamond">Rombo</option>
               <option value="cube">Cubo</option><option value="cover">Cubrir</option><option value="page">Página</option><option value="gallery">Galería</option><option value="fall">Caer</option>
@@ -584,7 +612,7 @@
             </select>
             <button data-action="toggle-loop" title="Repetir en bucle (kiosco)"><i class="ms">repeat</i></button>
             <button data-action="deck-settings" title="Configuración de la presentación: flechas, progreso, navegación, vista de desplazamiento, rueda del ratón, parallax, Morph…"><i class="ms">settings</i><span>Configuración</span></button>
-          </div><label>Por defecto</label>
+          </div><label>Toda la presentación</label>
         </div>
         <div class="group">
           <div class="row">
@@ -609,8 +637,8 @@
             <button data-animation="fade-in"><i class="ms">gradient</i><span>Aparecer</span></button>
             <button data-animation="fade-up"><i class="ms">arrow_upward</i><span>Subir</span></button>
             <button data-animation="fade-down"><i class="ms">arrow_downward</i><span>Bajar</span></button>
-            <button data-animation="fade-left"><i class="ms">arrow_back</i><span>Izquierda</span></button>
-            <button data-animation="fade-right"><i class="ms">arrow_forward</i><span>Derecha</span></button>
+            <button data-animation="fade-left"><i class="ms">arrow_back</i><span>Desde la derecha</span></button>
+            <button data-animation="fade-right"><i class="ms">arrow_forward</i><span>Desde la izquierda</span></button>
             <button data-animation="zoom-in"><i class="ms">zoom_in</i><span>Zoom</span></button>
             <button data-animation="draw" title="Traza el dibujo, la forma o la tinta como si se estuviera dibujando"><i class="ms">draw</i><span>Dibujar</span></button>
           </div><label>Entrada del objeto seleccionado</label>
@@ -621,7 +649,7 @@
             <button data-animation="shrink"><i class="ms">close_fullscreen</i><span>Encoger</span></button>
             <button data-animation="strike"><i class="ms">strikethrough_s</i><span>Tachar</span></button>
             <button data-animation="fade-out"><i class="ms">visibility_off</i><span>Desaparecer</span></button>
-            <button data-animation="highlight-red"><i class="ms">ink_highlighter</i><span>Resaltar</span></button>
+            <button data-animation="highlight-red"><i class="ms">ink_highlighter</i><span>Resaltar en rojo</span></button>
             <button data-animation="path" title="Trayectoria de movimiento (ajústala en el panel)"><i class="ms">conversion_path</i><span>Trayectoria</span></button>
             <button data-action="draw-path" title="Dibuja con el ratón o el dedo por dónde se moverá el objeto seleccionado"><i class="ms">gesture</i><span>Dibujar<br>recorrido</span></button>
           </div><label>Énfasis y salida</label>
@@ -630,7 +658,7 @@
           <div class="row">
             <button data-action="anim-add" class="go" title="Añadir otra animación al objeto, después de las que tiene (moverse a un sitio, luego a otro, girar…)"><i class="ms">add_circle</i><span>Añadir<br>animación</span></button>
             <button data-action="anim-play"><i class="ms">play_circle</i><span>Reproducir</span></button>
-            <button data-action="anim-panel"><i class="ms">tune</i><span>Panel</span></button>
+            <button data-action="anim-panel" title="Orden, inicio, duración y retraso de las animaciones de la diapositiva"><i class="ms">tune</i><span>Panel de animación</span></button>
             <button data-action="anim-paint" title="Copiar la animación: haz clic y luego en otro objeto"><i class="ms">format_paint</i><span>Copiar<br>animación</span></button>
             <button data-action="obj-anim-clear"><i class="ms">animation</i><span>Sin<br>animación</span></button>
           </div><label>Animación avanzada</label>
@@ -668,12 +696,12 @@
         </div>
         <div class="group">
           <div class="row">
-            <button data-action="toggle-guides"><i class="ms">grid_on</i><span>Guías</span></button>
-            <button data-action="toggle-ruler"><i class="ms">straighten</i><span>Regla</span></button>
-            <button data-action="toggle-snap"><i class="ms">grid_goldenratio</i><span>Ajustar</span></button>
-            <button data-action="toggle-notes"><i class="ms">sticky_note_2</i><span>Notas</span></button>
-            <button data-action="shortcuts"><i class="ms">keyboard</i><span>Atajos</span></button>
-            <button data-action="appearance"><i class="ms">contrast</i><span>Apariencia</span></button>
+            <button data-action="toggle-guides" title="Mostrar la cuadrícula y las guías"><i class="ms">grid_on</i><span>Guías</span></button>
+            <button data-action="toggle-ruler" title="Mostrar las reglas"><i class="ms">straighten</i><span>Regla</span></button>
+            <button data-action="toggle-snap" title="Al mover un objeto, se ajusta a los bordes y al centro de la diapositiva, a las guías y a los demás objetos"><i class="ms">grid_goldenratio</i><span>Ajustar</span></button>
+            <button data-action="toggle-notes" title="Mostrar las notas del orador"><i class="ms">sticky_note_2</i><span>Notas</span></button>
+            <button data-action="shortcuts" title="Atajos de teclado"><i class="ms">keyboard</i><span>Atajos</span></button>
+            <button data-action="appearance" title="Apariencia: claro, oscuro, automático o personalizado"><i class="ms">contrast</i><span>Apariencia</span></button>
           </div><label>Mostrar</label>
         </div>
         <div class="group">
