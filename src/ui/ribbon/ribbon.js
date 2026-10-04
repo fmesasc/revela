@@ -3,7 +3,7 @@
 import { author, tasksOf } from '../../features/collab/comments.js';
 import { renderMorphHint } from '../shell/morphhint.js';
 import { renderContextual } from './contextual.js';
-import { state, commit, currentSlide, selectedBlock, selectedBlocks, canUndo, canRedo, docVersion } from '../../core/store.js';
+import { state, commit, currentSlide, selectedBlock, selectedBlocks, canUndo, canRedo, docVersion, targetSlides, slideSelCount } from '../../core/store.js';
 import { savedHere, onSavedHere } from '../../core/model.js';
 import { MATH_SIZE } from '../../render/svg.js';
 import { styled, addPlaceholder } from '../../features/document/master.js';
@@ -31,7 +31,7 @@ import { setDrawTool, drawOpts } from '../shell/draw.js';
 import { FONTS, ensureDeckFonts, customFonts, customStack, syncCustomFonts, fontDataURL } from '../../features/design/fonts.js';
 import { t } from '../../i18n/index.js';
 import { readFile } from '../shell/openfile.js';
-import { animPaint, endAnimPaint, ACTIONS } from './actions.js';
+import { animPaint, endAnimPaint, ACTIONS, slidesFocused } from './actions.js';
 import { applyZoom, fitZoom, zoomFitting, wireZoom } from './zoom.js';
 import { compactGroups } from './compact.js';
 import { wireTransitionPreview } from './transpreview.js';
@@ -191,7 +191,7 @@ export function initRibbon() {
   bindInput('[data-highlight]', v => format.highlight(v), true);
   bindInput('[data-shape-fill]', v => blocks.setShapeStyle('fill', v), true);
   bindInput('[data-shape-stroke]', v => blocks.setShapeStyle('stroke', v), true);
-  bindInput('[data-bg]', v => commit(() => (currentSlide().background = v)));
+  bindInput('[data-bg]', v => commit(() => targetSlides().forEach(s => { s.background = v; })));        // (the selected slides)
   bindInput('[data-master-bg]', v => commit(() => (currentSlide().background = v)));      // (the master's or the layout's, in the master view)
   bindInput('[data-deck-fg]', v => palettes.setDeckTextColor(v));
   bindInput('[data-ink-color]', v => { drawOpts.color = v; });
@@ -219,7 +219,7 @@ export function initRibbon() {
   bindChange('[data-textstyle]', v => { if (v) format.applyTextStyle(v); });
   bindChange('[data-logo-pos]', v => commit(() => (state.deck.logo.position = v)));
   bindChange('[data-logo-size]', v => commit(() => (state.deck.logo.size = Math.max(20, parseInt(v, 10) || 120))));
-  bindChange('[data-autoslide]', v => commit(() => { currentSlide().autoSlide = Math.max(0, (parseFloat(v) || 0)) * 1000; }));
+  bindChange('[data-autoslide]', v => commit(() => targetSlides().forEach(s => { s.autoSlide = Math.max(0, (parseFloat(v) || 0)) * 1000; })));
 
   // Reflect the active character formatting on the toolbar as the caret moves.
   document.addEventListener('selectionchange', updateFormatState);
@@ -341,8 +341,25 @@ export function markOverflow(page) {
     pg.classList.toggle('has-right', page.classList.contains('more-right')); pg.classList.toggle('has-left', page.classList.contains('more-left'));
   }
 }
+// Slide-level controls: with several slides selected in the panel they act on
+// all of them, and their tooltips say so ("Aplicar a todas" stays as it is).
+const SLIDE_LEVEL = ['[data-action="slide-duplicate"]', '[data-action="slide-delete"]', '[data-action="slide-vertical"]', '[data-layout-open]',
+  '[data-page="design"] label.color:has([data-bg])', '[data-action="bg-gradient"]', '[data-page="design"] [data-action="bg-image"]', '[data-page="design"] [data-action="bg-advanced"]',
+  '[data-slide-transition]', '[data-slide-trans-dir]', '[data-slide-trans-out]', '[data-slide-speed]', '[data-autoslide]',
+  '[data-action="toggle-autoanimate"]', '[data-morphby]'].join(',');
+function syncSelectionTips() {
+  const n = slideSelCount(), more = n > 1 ? t('Se aplica a las {n} diapositivas seleccionadas').replace('{n}', n) : '';
+  document.querySelectorAll(SLIDE_LEVEL).forEach(el => {
+    if (el.dataset.selTip === undefined) el.dataset.selTip = el.dataset.i18nt ?? el.getAttribute('title') ?? '';
+    const base = el.dataset.selTip ? t(el.dataset.selTip) : '', tip = [base, more].filter(Boolean).join(' · ');
+    if (tip) el.title = tip; else el.removeAttribute('title');
+    el.classList.toggle('for-sel', n > 1);
+  });
+}
+
 export function renderRibbon() {
   populateFonts(); syncCustomFonts(state.deck);
+  syncSelectionTips();
   syncMasterRibbon();            // (before the tabs: entering the master view opens its tab)
   ensureDeckFonts(state.deck);   // load any Google fonts the deck uses
   document.querySelectorAll('[data-tab]').forEach(t => t.classList.toggle('active', t.dataset.tab === state.ui.activeTab));
@@ -367,8 +384,9 @@ export function renderRibbon() {
       'copy-style': sel.length === 1, 'paste-style': sel.length && format.hasStyleClip(),
       'obj-anim-clear': sel.some(b => b.animation), 'anim-play': (currentSlide()?.blocks || []).some(b => b.animation) };
     for (const [a, ok] of Object.entries(need)) document.querySelectorAll(`[data-action="${a}"]`).forEach(el => { el.disabled = !ok; }); }
-  { const has = !!selectedBlock(); ['clip-copy', 'clip-cut', 'obj-duplicate'].forEach(a => { const el = $(`[data-action="${a}"]`); if (el) el.disabled = !has; });
-    const p = $('[data-action="clip-paste"]'); if (p) p.disabled = !clip.hasClipboard(); }
+  // (From the slides panel: the selected slides.)
+  { const has = !!selectedBlock() || slidesFocused(); ['clip-copy', 'clip-cut', 'obj-duplicate'].forEach(a => { const el = $(`[data-action="${a}"]`); if (el) el.disabled = !has; });
+    const p = $('[data-action="clip-paste"]'); if (p) p.disabled = !clip.hasClipboard() && !(state.ui.navFocus && slides.hasSlideClip()); }
   $('[data-action="mark-final"]')?.classList.toggle('on', protect.isFinal());
   $('[data-action="classroom"]')?.classList.toggle('on', !!state.deck.classroom);
   document.querySelectorAll('[data-action="selection-pane"]').forEach(b => b.classList.toggle('on', !!state.ui.showSelection));

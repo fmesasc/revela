@@ -35,7 +35,8 @@ const NEEDS = { delete_slide: 'delete', set_background: 'design', apply_palette:
 const DECK_WIDE = ['apply_palette', 'set_fonts'];
 const BLOCK_OPS = ['set_text', 'set_props', 'delete_object', 'set_chart_data', 'set_table', 'set_animation'];
 
-// scope: { kind: 'all' | 'current' | 'selection' | 'range', from, to } (slide numbers from 1).
+// scope: { kind: 'all' | 'current' | 'selection' | 'range' | 'slides', from, to } (slide numbers from 1;
+// 'slides': the ones selected in the slides panel, ui.slideSel).
 export function scopeOf(scope = { kind: 'all' }, deck = state.deck, ui = state.ui) {
   const n = deck.slides.length, cur = Math.max(0, Math.min(ui.slideIndex || 0, n - 1)), kind = scope?.kind || 'all';
   const clamp = v => Math.max(1, Math.min(n, Math.round(+v) || 1));
@@ -43,11 +44,12 @@ export function scopeOf(scope = { kind: 'all' }, deck = state.deck, ui = state.u
   if (kind === 'current' || kind === 'selection') idx = [cur];
   if (kind === 'selection') blocks = new Set(ui.multi?.length ? ui.multi : ui.selection ? [ui.selection] : []);
   if (kind === 'range') { const a = clamp(scope.from), b = clamp(scope.to ?? scope.from); idx = idx.filter(i => i + 1 >= Math.min(a, b) && i + 1 <= Math.max(a, b)); }
+  if (kind === 'slides') { const sel = new Set(ui.slideSel || []); idx = idx.filter(i => sel.has(deck.slides[i].id)); if (!idx.length) idx = [cur]; }
   return { kind, idx, ids: new Set(idx.map(i => deck.slides[i].id)), blocks, all: kind === 'all' };
 }
 const scopeText = (sc, deck) => sc.all ? 'the whole deck'
   : sc.kind === 'selection' ? `only the selected objects (ids ${[...sc.blocks].join(', ') || 'none'}) on slide ${sc.idx[0] + 1}`
-  : sc.idx.length === 1 ? `only slide ${sc.idx[0] + 1}` : `only slides ${sc.idx[0] + 1} to ${sc.idx.at(-1) + 1} (of ${deck.slides.length})`;
+  : sc.idx.length === 1 ? `only slide ${sc.idx[0] + 1}` : sc.idx.at(-1) - sc.idx[0] + 1 !== sc.idx.length ? `only slides ${sc.idx.map(i => i + 1).join(', ')} (of ${deck.slides.length})` : `only slides ${sc.idx[0] + 1} to ${sc.idx.at(-1) + 1} (of ${deck.slides.length})`;
 
 // ---- What the model sees -----------------------------------------------------------
 // A text's lines, bullets as "- ".

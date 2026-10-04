@@ -21,7 +21,10 @@ export const state = {
   deck: loadDeck() || emptyDeck(),
   // `selection` is the primary (last‑clicked) block; `multi` is the full set of
   // selected block ids (includes the primary). Single selection keeps both in sync.
-  ui: { slideIndex: 0, selection: null, multi: [], showGuides: false, activeTab: 'home', zoom: 1, snap: true },
+  // `slideSel` is the set of slide ids selected in the slides panel (the current
+  // slide, the one on the canvas, is among them); `slideAnchor` is where a
+  // Shift+click range starts. One slide or none: just the current one.
+  ui: { slideIndex: 0, selection: null, multi: [], slideSel: [], slideAnchor: null, showGuides: false, activeTab: 'home', zoom: 1, snap: true },
 };
 
 export function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
@@ -68,7 +71,39 @@ export function selectWithGroup(id) {
 }
 export const clampSlide = () => {
   state.ui.slideIndex = Math.max(0, Math.min(state.ui.slideIndex, state.deck.slides.length - 1));
+  pruneSlideSel();
 };
+
+// ---- Slides selected in the panel (PowerPoint: Ctrl/Shift+click on thumbnails) ----
+// Ids that no longer exist (deleted, undone, removed by a co-author) are dropped;
+// if the current slide is not among the rest, the selection collapses to it.
+function pruneSlideSel() {
+  const u = state.ui, sel = u.slideSel; if (!sel?.length) return;
+  const have = new Set(state.deck.slides.map(s => s.id)), cur = state.deck.slides[u.slideIndex]?.id;
+  const kept = sel.filter(id => have.has(id));
+  u.slideSel = kept.length > 1 && kept.includes(cur) ? kept : [];
+  if (u.slideAnchor && !have.has(u.slideAnchor)) u.slideAnchor = null;
+}
+// The selected slides' indices, in deck order; just the current one when
+// fewer than two are selected (or in the master view).
+export function selectedSlideIndices() {
+  const u = state.ui;
+  if (u.editMaster || !(u.slideSel?.length > 1)) return state.deck.slides[u.slideIndex] ? [u.slideIndex] : [];
+  const ids = new Set(u.slideSel);
+  return state.deck.slides.map((s, i) => (ids.has(s.id) ? i : -1)).filter(i => i >= 0);
+}
+// What slide-level commands act on: the selected slides, or the current one
+// (in the master view: the master or layout being edited).
+export const targetSlides = () => (state.ui.editMaster ? [currentSlide()].filter(Boolean) : selectedSlideIndices().map(i => state.deck.slides[i]));
+export const slideSelCount = () => selectedSlideIndices().length;
+export const isSlideSelected = id => (state.ui.slideSel?.length > 1 ? state.ui.slideSel.includes(id) : state.deck.slides[state.ui.slideIndex]?.id === id);
+// Select these slides (ids); `current` (an index) is the one shown on the canvas.
+export function setSlideSel(ids, current = null) {
+  const u = state.ui;
+  if (current != null) u.slideIndex = current;
+  const cur = state.deck.slides[u.slideIndex]?.id;
+  u.slideSel = ids.length > 1 ? [...new Set([...ids, ...(ids.includes(cur) ? [] : [cur])])] : [];
+}
 
 // `commit` records history, persists, and re-renders. `mutate` is for tiny,
 // high-frequency changes (dragging) that should persist and render but not spam
@@ -163,7 +198,10 @@ function save() {
 // Changes made by someone else (co-editing): applied to the document and to
 // the undo history, so undoing only undoes one's own changes. No undo step.
 export function applyRemote(fn) {
+  const cur = state.deck.slides[state.ui.slideIndex]?.id;
   fn(state.deck); fn(base); past.forEach(fn); future.forEach(fn);
+  // (The slide on the canvas stays the same one, wherever their change moved it.)
+  const i = state.deck.slides.findIndex(s => s.id === cur); if (i >= 0) state.ui.slideIndex = i;
   clampSlide(); save(); notify();
 }
 // A newer copy of the same document (from another tab or the disk): no undo step.
@@ -179,7 +217,7 @@ export const setDeckFilter = fn => { deckFilter = fn; };
 export function adoptDeck(deck, { sameDocument = false } = {}) {
   if (!sameDocument) epoch++;
   deck = deckFilter(deck);
-  state.deck = deck; state.ui.slideIndex = 0; base = snapshot(deck); past.length = 0; future.length = 0;
+  state.deck = deck; state.ui.slideIndex = 0; state.ui.slideSel = []; base = snapshot(deck); past.length = 0; future.length = 0;
   version++; persisted = snapshot(deck);                 // (already saved where it came from)
   notify();
 }
@@ -188,5 +226,5 @@ export function replaceDeck(deck) {
   epoch++;
   // (Also from a presentation marked as final: that protects it, not the app.)
   deck = deckFilter(deck);
-  commit(() => { state.deck = deck; state.ui.slideIndex = 0; state.ui.selection = null; state.ui.multi = []; state.ui.editMaster = false; }, { force: true });
+  commit(() => { state.deck = deck; state.ui.slideIndex = 0; state.ui.selection = null; state.ui.multi = []; state.ui.slideSel = []; state.ui.slidePick = false; state.ui.navFocus = false; state.ui.editMaster = false; }, { force: true });
 }

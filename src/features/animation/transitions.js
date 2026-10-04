@@ -1,6 +1,6 @@
 // Per‑slide transitions and per‑object entrance animations.
 
-import { state, commit, currentSlide, selectedBlock } from '../../core/store.js';
+import { state, commit, currentSlide, selectedBlock, targetSlides } from '../../core/store.js';
 
 // Effect options (as in PowerPoint): where the new slide comes from, or how
 // it opens. The first one is the default.
@@ -71,11 +71,12 @@ export function customTransitionCSS(names, size = { w: 1280, h: 720 }) {
 }
 
 // A slide's own transition overrides the deck default. `null` = inherit.
+// (The selected slides, or the current one.)
 export function setSlideTransition(value) {
-  commit(() => { currentSlide().transition = value === 'inherit' ? null : value; });
+  commit(() => targetSlides().forEach(s => { s.transition = value === 'inherit' ? null : value; }));
 }
 export function setSlideTransOptions(props) {
-  commit(() => { const s = currentSlide(); for (const [k, v] of Object.entries(props)) { if (v) s[k] = v; else delete s[k]; } });
+  commit(() => targetSlides().forEach(s => { for (const [k, v] of Object.entries(props)) { if (v) s[k] = v; else delete s[k]; } }));
 }
 // Copy this slide's transition, exit, speed and auto-advance to every slide.
 export function applyTransitionToAll() {

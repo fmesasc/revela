@@ -8,7 +8,7 @@ import { toggleDictation } from '../shell/dictate.js';
 import { toggleSelectionPane } from '../panels/selection.js';
 import { openGdriveSetup } from '../dialogs/gdrive.js';
 import { openCloud } from '../dialogs/othercloud.js';
-import { state, commit, undo, redo, replaceDeck, currentSlide, selectedBlock, selectedBlocks } from '../../core/store.js';
+import { state, commit, undo, redo, replaceDeck, currentSlide, selectedBlock, selectedBlocks, targetSlides } from '../../core/store.js';
 import { isBlankDeck, emptyDeck } from '../../core/model.js';
 import * as slides from '../../features/document/slides.js';
 import * as blocks from '../../features/document/blocks.js';
@@ -81,6 +81,8 @@ import { toggleAssistant } from '../dialogs/assistant.js';
 const $ = s => document.querySelector(s);
 
 export { readFile };                                        // (it lives in ui/shell/openfile.js)
+// The slides panel (or the sorter) was the last place clicked, with no object selected.
+export const slidesFocused = () => (state.ui.navFocus || document.body.classList.contains('sorter')) && !selectedBlocks().length;
 export let animPaint = null;       // animation being copied with the painter
 export function endAnimPaint() { animPaint = null; document.body.classList.remove('anim-painting'); $('[data-action="anim-paint"]')?.classList.remove('on'); }
 export const ACTIONS = {
@@ -212,10 +214,11 @@ export const ACTIONS = {
     blocks.addEmbed(url);
   }),
   'obj-delete': () => blocks.deleteSelected(),
-  'clip-copy': () => clip.copySelected(),
-  'clip-cut': () => clip.cutSelected(),
-  'clip-paste': () => clip.paste(),
-  'obj-duplicate': () => blocks.duplicateSelected(),
+  // (From the slides panel, with no object selected: the selected slides.)
+  'clip-copy': () => (slidesFocused() ? slides.copySlides() : clip.copySelected()),
+  'clip-cut': () => (slidesFocused() ? slides.cutSlides() : clip.cutSelected()),
+  'clip-paste': () => (state.ui.navFocus && slides.hasSlideClip() ? slides.pasteSlides() : clip.paste()),
+  'obj-duplicate': () => (slidesFocused() ? slides.duplicateSlide() : blocks.duplicateSelected()),
   'group': () => blocks.groupSelected(),
   'ungroup': () => blocks.ungroupSelected(),
   'connect-blocks': () => blocks.addConnector(),
@@ -256,9 +259,9 @@ export const ACTIONS = {
   'paste-style': () => format.pasteStyle(),
   'bg-gradient': () => {
     const a = $('[data-grad1]')?.value || '#3f6497', b = $('[data-grad2]')?.value || '#101317';
-    commit(() => { currentSlide().background = `linear-gradient(135deg, ${a}, ${b})`; });
+    commit(() => targetSlides().forEach(s => { s.background = `linear-gradient(135deg, ${a}, ${b})`; }));
   },
-  'bg-image': () => readFile('image/*', src => commit(() => { currentSlide().background = `#000 url(${src}) center/cover no-repeat`; })),
+  'bg-image': () => readFile('image/*', src => commit(() => targetSlides().forEach(s => { s.background = `#000 url(${src}) center/cover no-repeat`; }))),
   'bg-all': () => { const bg = currentSlide().background; commit(() => { for (const s of state.deck.slides) s.background = bg; }); },
   'set-logo': () => readFile('image/*', src => commit(() => { state.deck.logo.src = src; })),
   'clear-logo': () => commit(() => { state.deck.logo.src = ''; }),
