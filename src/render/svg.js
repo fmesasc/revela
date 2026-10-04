@@ -101,45 +101,45 @@ export function applyWordart(el, key, tint) {
   for (const p of WORDART_PROPS) el.style[p] = w[p] ? tinted(w[p], tint) : '';
 }
 
-// Point on a box's border in the direction of (tx,ty), so a connector meets the
-// edge instead of the centre (leaving room for the arrowhead).
-function borderPoint(box, tx, ty) {
-  const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
-  const dx = tx - cx, dy = ty - cy;
-  if (!dx && !dy) return [cx, cy];
-  const s = Math.min((box.w / 2) / Math.abs(dx || 1e-6), (box.h / 2) / Math.abs(dy || 1e-6));
-  return [cx + dx * s, cy + dy * s];
-}
-
 // A connector line/arrow between two blocks, in slide coordinates (W×H):
 // straight (between the edges facing each other), elbow (out of the facing
 // sides, square turns half way) or curved (a smooth S between them); an arrow
 // at the end, at the start, at both or none (arrow false).
 export const CONNECTOR_ROUTES = [['straight', 'Recto'], ['elbow', 'De codo'], ['curve', 'Curvo']];
-export function connectorSVG(b, fromB, toB, W, H) {
-  if (!fromB || !toB) return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%"></svg>`;
+// Its path (also redrawn inside the presentation when the slide adapts to the
+// screen: embedded with toString(), so it uses nothing from outside).
+export function connectorPath(route, fromB, toB) {
+  // (a straight one meets each box's edge, not its centre: room for the arrowhead)
+  const borderPoint = (box, tx, ty) => {
+    const cx = box.x + box.w / 2, cy = box.y + box.h / 2, dx = tx - cx, dy = ty - cy;
+    if (!dx && !dy) return [cx, cy];
+    const s = Math.min((box.w / 2) / Math.abs(dx || 1e-6), (box.h / 2) / Math.abs(dy || 1e-6));
+    return [cx + dx * s, cy + dy * s];
+  };
   const fc = [fromB.x + fromB.w / 2, fromB.y + fromB.h / 2];
   const tc = [toB.x + toB.w / 2, toB.y + toB.h / 2];
-  const color = b.color || '#8a8a8a', end = b.arrow !== false, start = !!b.arrowStart, f = v => v.toFixed(1);
-  let d;
-  if (b.route === 'elbow' || b.route === 'curve') {
+  const f = v => v.toFixed(1);
+  if (route === 'elbow' || route === 'curve') {
     // Out of the sides that face each other (left/right if they are more apart across, else top/bottom).
     const across = Math.abs(tc[0] - fc[0]) >= Math.abs(tc[1] - fc[1]);
     const side = (bx, c, other) => (across ? [c[0] + Math.sign(other[0] - c[0] || 1) * bx.w / 2, c[1]] : [c[0], c[1] + Math.sign(other[1] - c[1] || 1) * bx.h / 2]);
     const [x1, y1] = side(fromB, fc, tc), [x2, y2] = side(toB, tc, fc);
-    if (b.route === 'elbow') {
-      if (across) { const xm = (x1 + x2) / 2; d = `M${f(x1)},${f(y1)} H${f(xm)} V${f(y2)} H${f(x2)}`; }
-      else { const ym = (y1 + y2) / 2; d = `M${f(x1)},${f(y1)} V${f(ym)} H${f(x2)} V${f(y2)}`; }
-    } else {
-      const k = across ? Math.abs(x2 - x1) / 2 : Math.abs(y2 - y1) / 2;
-      const c1 = across ? [x1 + Math.sign(x2 - x1) * k, y1] : [x1, y1 + Math.sign(y2 - y1) * k];
-      const c2 = across ? [x2 - Math.sign(x2 - x1) * k, y2] : [x2, y2 - Math.sign(y2 - y1) * k];
-      d = `M${f(x1)},${f(y1)} C${f(c1[0])},${f(c1[1])} ${f(c2[0])},${f(c2[1])} ${f(x2)},${f(y2)}`;
+    if (route === 'elbow') {
+      if (across) { const xm = (x1 + x2) / 2; return `M${f(x1)},${f(y1)} H${f(xm)} V${f(y2)} H${f(x2)}`; }
+      const ym = (y1 + y2) / 2; return `M${f(x1)},${f(y1)} V${f(ym)} H${f(x2)} V${f(y2)}`;
     }
-  } else {
-    const [x1, y1] = borderPoint(fromB, tc[0], tc[1]), [x2, y2] = borderPoint(toB, fc[0], fc[1]);
-    d = `M${f(x1)},${f(y1)} L${f(x2)},${f(y2)}`;
+    const k = across ? Math.abs(x2 - x1) / 2 : Math.abs(y2 - y1) / 2;
+    const c1 = across ? [x1 + Math.sign(x2 - x1) * k, y1] : [x1, y1 + Math.sign(y2 - y1) * k];
+    const c2 = across ? [x2 - Math.sign(x2 - x1) * k, y2] : [x2, y2 - Math.sign(y2 - y1) * k];
+    return `M${f(x1)},${f(y1)} C${f(c1[0])},${f(c1[1])} ${f(c2[0])},${f(c2[1])} ${f(x2)},${f(y2)}`;
   }
+  const [x1, y1] = borderPoint(fromB, tc[0], tc[1]), [x2, y2] = borderPoint(toB, fc[0], fc[1]);
+  return `M${f(x1)},${f(y1)} L${f(x2)},${f(y2)}`;
+}
+export function connectorSVG(b, fromB, toB, W, H) {
+  if (!fromB || !toB) return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%"></svg>`;
+  const color = b.color || '#8a8a8a', end = b.arrow !== false, start = !!b.arrowStart;
+  const d = connectorPath(b.route, fromB, toB);
   const mk = (id, back) => `<marker id="${id}" markerWidth="8" markerHeight="8" refX="${back ? 1 : 6}" refY="3" orient="auto"><path d="${back ? 'M7,0 L0,3 L7,6 z' : 'M0,0 L7,3 L0,6 z'}" fill="${color}"/></marker>`;
   const marker = end || start ? `<defs>${end ? mk(`cm-${b.id}`) : ''}${start ? mk(`cs-${b.id}`, true) : ''}</defs>` : '';
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" style="pointer-events:none;overflow:visible">${marker}`

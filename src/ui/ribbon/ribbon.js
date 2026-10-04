@@ -17,6 +17,7 @@ import { autocorrectOn } from '../../features/document/autocorrect.js';
 import { aiRewrite } from '../dialogs/ai.js';
 import { DONATE_URL, EDITION, OFFICIAL_SITE } from '../../core/config.js';
 import { canvasOn } from '../../features/design/canvasmode.js';
+import { fitChoice, setFitMode } from '../../features/design/screenfit.js';
 import { canvasViewOpen } from '../shell/canvasview.js';
 import { editAnyway } from '../dialogs/signature.js';
 import * as protect from '../../features/collab/protect.js';
@@ -206,6 +207,7 @@ export function initRibbon() {
   bindChange('[data-theme]', v => commit(() => (state.deck.theme = v)));
   bindChange('[data-speed]', v => trans.setTransitionSpeed(v));
   bindChange('[data-deck-transition]', v => trans.setDeckTransition(v));
+  bindChange('[data-fit]', v => setFitMode(v));
   bindChange('[data-font]', v => {
     if (v !== '__upload') { format.fontFamily(v); return; }
     $('[data-font]').value = '';
@@ -410,6 +412,7 @@ export function renderRibbon() {
   syncSwatches();
   syncValue('[data-speed]', state.deck.transitionSpeed);
   syncValue('[data-deck-transition]', state.deck.defaultTransition);
+  syncValue('[data-fit]', fitChoice());
   document.body.classList.toggle('show-ruler', !!state.ui.showRuler);
   document.querySelector('[data-action="toggle-guides"]')?.classList.toggle('on', !!state.ui.showGuides);
   document.querySelector('[data-action="toggle-ruler"]')?.classList.toggle('on', !!state.ui.showRuler);

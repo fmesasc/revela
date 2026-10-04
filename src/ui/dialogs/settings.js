@@ -1,11 +1,29 @@
 // Presentation settings: the reveal.js options people use in its demos
 // (controls, progress bar, navigation, scroll view, mouse wheel, shuffle,
 // cursor, jump to slide, link previews, right-to-left, Morph timing,
-// parallax background, zoom and search) plus this slide's Morph timing.
+// parallax background, zoom and search) plus this slide's Morph timing, and
+// how slides fit a screen of another proportion (with a live preview).
 
 import { state, commit, currentSlide } from '../../core/store.js';
-import { REVEAL_DEFAULTS } from '../../io/formats/html.js';
+import { REVEAL_DEFAULTS, buildHTML } from '../../io/formats/html.js';
+import { FIT_MODES, FIT_LABELS } from '../../features/design/screenfit.js';
 import { t } from '../../i18n/index.js';
+
+// The current slide presented on three common screens with a fit mode: the real
+// presentation page, without its live parts (polls, cameras, 3D, videos…).
+const STILL = new Set(['text', 'shape', 'image', 'icon', 'chart', 'table', 'math', 'ink', 'connector', 'diagram', 'code']);
+export const FIT_SCREENS = [['16:9', 16, 9], ['16:10', 16, 10], ['4:3', 4, 3]];
+export function fitPreviewHTML(mode, deck = state.deck, slide = currentSlide()) {
+  const s = { ...slide, hidden: false, blocks: (slide.blocks || []).filter(b => STILL.has(b.type)), autoSlide: 0, notes: '', transition: 'none' };
+  const d = { ...deck, slides: [s], reveal: { ...(deck.reveal || {}), fit: mode, controls: false, progress: false, view: 'slides' }, slideNumber: { show: false } };
+  // (So small, reveal.js would turn into its scrolling view for phones.)
+  return buildHTML(d, { inApp: true }).replace('Reveal.initialize({', 'Reveal.initialize({ scrollActivationWidth: null,').replace('</head>',
+    '<style>.reveal .controls,.reveal .progress,.reveal .slide-number,#ink-bar,#rv-class{display:none!important}</style></head>');
+}
+function showFitPreview(box, mode) {
+  const html = fitPreviewHTML(mode);
+  box.querySelectorAll('iframe').forEach(f => { f.srcdoc = html; });
+}
 
 export function openSettings() {
   document.getElementById('set-modal')?.remove();
@@ -16,6 +34,11 @@ export function openSettings() {
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(640px,94vw);max-width:94vw;max-height:88vh;overflow:auto">
     <button class="modal-close">✕</button><h3>${t('Configuración de la presentación')}</h3>
     <div class="set-grid">
+      <fieldset class="bgf set-fit"><legend>${t('Pantalla')}</legend>
+        ${sel('fit', 'Ajuste a la pantalla', FIT_MODES.map(m => [m, FIT_LABELS[m]]))}
+        <p class="host-help">${t('Cuando la pantalla no tiene la proporción de las diapositivas (por ejemplo, un portátil 16:10 con diapositivas 16:9):')}</p>
+        <div class="fit-prev">${FIT_SCREENS.map(([n, a, b]) => `<figure><iframe tabindex="-1" aria-hidden="true" style="aspect-ratio:${a}/${b}"></iframe><figcaption>${t('Pantalla')} ${n}</figcaption></figure>`).join('')}</div>
+      </fieldset>
       <fieldset class="bgf"><legend>${t('Navegación')}</legend>
         ${ck('controls', 'Flechas de navegación')}
         ${sel('controlsLayout', 'Posición de las flechas', [['bottom-right', 'Abajo a la derecha'], ['edges', 'En los bordes']])}
@@ -47,6 +70,9 @@ export function openSettings() {
     </div>
     <div class="fr-actions"><button class="fr-do set-ok">${t('Aplicar')}</button></div></div>`;
   document.body.appendChild(back);
+  const fitSel = back.querySelector('[data-k="fit"]'), prev = back.querySelector('.fit-prev');
+  showFitPreview(prev, fitSel.value);
+  fitSel.addEventListener('change', () => showFitPreview(prev, fitSel.value));
   const close = () => back.remove();
   back.querySelector('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });

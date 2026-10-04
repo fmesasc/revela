@@ -767,4 +767,121 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(!f.contentDocument.querySelector('.rv-ov'), 'Esc la cierra');
     } finally { f.remove(); }
   });
+
+  // ---- Fit to the screen (deck.reveal.fit) ---------------------------------
+  const fitDeck = () => {
+    const d = R.model.emptyDeck(), s0 = d.slides[0];
+    const box = (id, x, y, w, h, o = {}) => ({ id, type: 'shape', shape: 'rect', x, y, w, h, rotation: 0, animation: null, fill: '#e33', ...o });
+    const mk = (id, background, blocks) => ({ ...JSON.parse(JSON.stringify(s0)), id, background, blocks });
+    d.slides = [mk('fs', '#123456', [box('a', 100, 300, 150, 100), box('b', 1000, 300, 150, 100, { fill: '#3a3' }),
+      { id: 'k', type: 'connector', x: 0, y: 0, w: 1280, h: 720, rotation: 0, animation: null, from: 'a', to: 'b', color: '#fff', arrow: true },
+      box('g1', 500, 450, 100, 100, { groupId: 'G' }), box('g2', 620, 470, 100, 60, { groupId: 'G' }), box('bar', 0, 600, 1280, 50, { fill: '#fc0' }),
+      { id: 'tt', type: 'text', x: 80, y: 60, w: 600, h: 90, rotation: 0, animation: null, html: '<p>Título</p>', fontSize: 48 }]),
+      mk('fg', 'linear-gradient(135deg,#1e3c72,#ff7e5f)', [box('c', 600, 300, 80, 80)])];
+    return d;
+  };
+
+  await test('ajuste a la pantalla: «Adaptar» reparte los objetos por su centro, estira lo que ocupa ≥ 90 %, no crea solapes y no se sale', async () => {
+    const F = await frame.contentWindow.eval("import('/src/features/design/screenfit.js')");
+    eq(JSON.stringify(F.fitSize(1280, 720, 1920, 1200)), '{"w":1280,"h":800}', '16:10: el mismo ancho, más alto');
+    eq(JSON.stringify(F.fitSize(1280, 720, 1024, 768)), '{"w":1280,"h":960}', '4:3');
+    eq(JSON.stringify(F.fitSize(1280, 720, 2560, 1080)), '{"w":1707,"h":720}', 'panorámica: la misma altura, más ancho');
+    eq(JSON.stringify(F.fitSize(1280, 720, 1920, 1080)), '{"w":1280,"h":720}', '16:9: como está');
+    const items = [
+      { id: 'title', x: 80, y: 60, w: 700, h: 90, kind: 'text' }, { id: 'a', x: 100, y: 300, w: 150, h: 100 }, { id: 'b', x: 1000, y: 300, w: 150, h: 100 },
+      { id: 'bar', x: 0, y: 600, w: 1280, h: 50 }, { id: 'bg', x: 0, y: 0, w: 1280, h: 720 }, { id: 'foot', x: 300, y: 690, w: 400, h: 30 },
+      { id: 'g1', x: 500, y: 450, w: 100, h: 100, group: 'G' }, { id: 'g2', x: 620, y: 470, w: 100, h: 60, group: 'G' },
+      { id: 'card', x: 900, y: 480, w: 340, h: 120 }, { id: 'inner', x: 920, y: 500, w: 300, h: 60, kind: 'text' },
+      { id: 'k', x: 0, y: 0, w: 1280, h: 720, kind: 'conn' }];
+    const hit = (p, q) => Math.min(p.x + p.w, q.x + q.w) - Math.max(p.x, q.x) > 0.5 && Math.min(p.y + p.h, q.y + q.h) - Math.max(p.y, q.y) > 0.5;
+    for (const [W2, H2] of [[1280, 800], [1280, 960], [1707, 720]]) {
+      const o = F.adaptLayout(items, 1280, 720, W2, H2), at = `${W2}×${H2}`, near = (x, y, m) => assert(Math.abs(x - y) < 0.6, `${at}: ${m} (${x} ≠ ${y})`);
+      near(o.a.x + o.a.w / 2, 175 * W2 / 1280, 'el centro va a la misma fracción (x)'); near(o.a.y + o.a.h / 2, 350 * H2 / 720, 'y en vertical');
+      eq(`${o.a.w}×${o.a.h}`, '150×100', `${at}: conserva su tamaño`);
+      eq(`${o.bar.x},${o.bar.w},${o.bar.h}`, `0,${W2},50`, `${at}: una barra de lado a lado se estira a lo ancho, no a lo alto`);
+      eq(`${o.bg.w}×${o.bg.h}`, `${W2}×${H2}`, `${at}: un fondo, a toda la diapositiva`);
+      eq(`${o.k.w}×${o.k.h}`, `${W2}×${H2}`, `${at}: un conector abarca la diapositiva (se redibuja)`);
+      near(o.foot.y + o.foot.h, H2, 'pegado al borde de abajo, sigue pegado');
+      eq(`${Math.round(o.g2.x - o.g1.x)},${Math.round(o.g2.y - o.g1.y)}`, '120,20', `${at}: el grupo se mueve entero`);
+      eq(o.inner.w, 300, `${at}: un texto sobre una tarjeta no se ensancha fuera de ella`);
+      near(o.title.w, W2 > 1280 ? 700 * W2 / 1280 : 700, 'el título se ensancha con la diapositiva si hay sitio');
+      for (const p of items) for (const q of items) if (p !== q && p.kind !== 'conn' && q.kind !== 'conn' && !hit(p, q))
+        assert(!hit(o[p.id], o[q.id]), `${at}: ${p.id} y ${q.id} no se solapaban y ahora sí`);
+      for (const p of items) { const r = o[p.id]; assert(r.x >= -0.01 && r.y >= -0.01 && r.x + r.w <= W2 + 0.01 && r.y + r.h <= H2 + 0.01, `${at}: ${p.id} dentro`); }
+    }
+    const big = F.adaptLayout([{ id: 'x', x: 0, y: 10, w: 1100, h: 700 }], 1280, 720, 1280, 720);
+    eq(JSON.stringify(big.x), '{"x":0,"y":10,"w":1100,"h":700}', 'en la misma proporción no cambia nada');
+    eq(F.fitMode({ reveal: { fit: 'adapt' }, canvas: { on: true }, slides: [] }), 'fill', 'el modo lienzo rellena en lugar de adaptar');
+    eq(F.fitMode({ slides: [] }), 'fill', 'por defecto, rellenar con el fondo');
+  });
+
+  await test('ajuste a la pantalla: el HTML lleva el modo; la cinta y la configuración lo cambian, con vista previa en tres pantallas', async () => {
+    const d = fitDeck(); R.store.replaceDeck(d); R.render();
+    let html = R.io.buildHTML();
+    assert(/<div class="reveal" data-fit="fill">/.test(html), 'por defecto, rellenar');
+    assert(/data-rv-id="fg"/.test(html) && /<section[^>]*data-fill="g"[^>]*data-rv-id="fg"/.test(html), 'el degradado se lleva a las franjas');
+    assert(/section\[data-fill=g\]>\.stage\{background:transparent!important\}/.test(html), 'una sola capa de degradado, sin costuras');
+    assert(/function screenFitRuntime/.test(html) && /\}\)\("fill", 1280, 720, function fitSize/.test(html), 'con su código');
+    assert(!/data-fid=/.test(html), 'sin datos de reparto si no adapta');
+    D.querySelector('#ribbon [data-fit]').value = 'bands'; D.querySelector('#ribbon [data-fit]').dispatchEvent(new Event('change'));
+    eq(R.state.deck.reveal?.fit, 'bands', 'la lista de la cinta lo guarda');
+    html = R.io.buildHTML();
+    assert(/data-fit="bands"/.test(html) && /\.reveal-viewport\{background:#000!important\}/.test(html) && !/data-fill=/.test(html), 'franjas negras');
+    R.store.commit(() => { R.state.deck.reveal = { fit: 'adapt' }; }); html = R.io.buildHTML();
+    assert(/data-fid="tt" data-fb="80,60,600,90" data-fx="text"/.test(html), 'adaptar: cada objeto dice qué es y dónde');
+    assert(/data-fid="g1"[^>]*data-fg="G"/.test(html) && /data-fid="k"[^>]*data-fx="conn"[^>]*data-fc="a b "/.test(html), 'grupos y conectores');
+    D.querySelector('[data-action="deck-settings"]').click(); await sleep(10);
+    const m = D.getElementById('set-modal'), sel = m.querySelector('[data-k="fit"]'), frames = m.querySelectorAll('.fit-prev iframe');
+    eq(sel.value, 'adapt', 'la configuración muestra el modo');
+    eq([...m.querySelectorAll('.fit-prev figcaption')].map(x => x.textContent).join(), 'Pantalla 16:9,Pantalla 16:10,Pantalla 4:3', 'tres pantallas');
+    assert(frames.length === 3 && [...frames].every(f => /data-fit="adapt"/.test(f.srcdoc)), 'vista previa con el modo elegido');
+    sel.value = 'fill'; sel.dispatchEvent(new Event('change'));
+    assert([...frames].every(f => /data-fit="fill"/.test(f.srcdoc)), 'cambia al elegir otro');
+    for (let i = 0; i < 80 && !frames[2].contentWindow?.Reveal?.isReady?.(); i++) await sleep(100);
+    const fw = frames[2].contentWindow;
+    assert(fw.Reveal?.isReady?.() && !fw.Reveal.isScrollView?.(), 'la vista previa es la presentación (no la vista para móviles)');
+    m.querySelector('.set-ok').click(); await sleep(10);
+    assert(!R.state.deck.reveal?.fit, 'rellenar es lo de siempre: no se guarda');
+    eq(D.querySelector('#ribbon [data-fit]').value, 'fill', 'y la cinta lo refleja');
+  });
+
+  await test('ajuste a la pantalla medido en Chrome: 16:9 en 1920×1200, 1440×900 y 1024×768 (negro, relleno, adaptado)', async () => {
+    const near = (a, b, d, m) => assert(Math.abs(a - b) <= d, `${m} (${a.toFixed?.(1) ?? a} ≠ ${b.toFixed?.(1) ?? b})`);
+    for (const [vw, vh] of [[1920, 1200], [1440, 900], [1024, 768]]) for (const mode of ['bands', 'fill', 'adapt']) {
+      const d = fitDeck(); d.reveal = { fit: mode };
+      const f = D.createElement('iframe'); f.style.cssText = `position:fixed;left:0;top:0;width:${vw}px;height:${vh}px;visibility:hidden;border:0`; D.body.appendChild(f);
+      try {
+        f.srcdoc = R.io.buildHTML(d, { inApp: true });
+        for (let i = 0; i < 100 && !f.contentWindow.Reveal?.isReady?.(); i++) await sleep(100);
+        await sleep(200);
+        const w = f.contentWindow, Rv = w.Reveal, at = `${vw}×${vh} ${mode}`, cs = el => w.getComputedStyle(el);
+        const bg = Rv.getSlideBackground(0).getBoundingClientRect(), k = Math.min(vw / 1280, vh / 720), top = (vh - 720 * k) / 2;
+        if (mode === 'bands') {
+          near(bg.top, top, 1.5, `${at}: el fondo de la diapositiva, solo en ella`); near(bg.height, 720 * k, 1.5, `${at}: alto de la diapositiva`);
+          assert(/rgb\(0, 0, 0\)/.test(cs(Rv.getSlideBackground(0)).boxShadow), `${at}: franjas negras alrededor`);
+          eq(cs(w.document.querySelector('.reveal-viewport')).backgroundColor, 'rgb(0, 0, 0)', `${at}: y la página, negra`);
+        } else if (mode === 'fill') {
+          eq([bg.left, bg.top, bg.width, bg.height].map(Math.round).join(), `0,0,${vw},${vh}`, `${at}: el color de la diapositiva llena la pantalla`);
+          eq(cs(Rv.getSlideBackground(0)).backgroundColor, 'rgb(18, 52, 86)', `${at}: con su color`);
+          assert(/linear-gradient/.test(cs(Rv.getSlideBackground(1).querySelector('.slide-background-content')).backgroundImage), `${at}: el degradado, también`);
+          near(w.document.querySelector('[data-rv-id="fs"] .stage').getBoundingClientRect().top, top, 1.5, `${at}: el contenido sigue centrado en su caja`);
+        } else {
+          const c = Rv.getConfig();
+          near(c.width / c.height, vw / vh, 0.01, `${at}: la diapositiva toma la proporción de la pantalla`);
+          const st = w.document.querySelector('[data-rv-id="fs"] .stage').getBoundingClientRect();
+          eq([st.left, st.top, st.width, st.height].map(Math.round).join(), `0,0,${vw},${vh}`, `${at}: sin franjas`);
+          for (const el of w.document.querySelectorAll('[data-rv-id="fs"] [data-fid]')) {
+            const r = el.getBoundingClientRect();
+            assert(r.left >= -1 && r.top >= -1 && r.right <= vw + 1 && r.bottom <= vh + 1, `${at}: ${el.dataset.fid} dentro de la pantalla`);
+          }
+          const a = w.document.querySelector('[data-fid="a"]').getBoundingClientRect(), s = vw / c.width;
+          near((a.left + a.width / 2) / vw, 175 / 1280, 0.004, `${at}: posición proporcional (x)`); near((a.top + a.height / 2) / vh, 350 / 720, 0.004, `${at}: (y)`);
+          near(a.width, 150 * s, 1, `${at}: sin deformar`); near(a.height, 100 * s, 1, `${at}: sin deformar (alto)`);
+          const bar = w.document.querySelector('[data-fid="bar"]').getBoundingClientRect(); near(bar.width, vw, 1.5, `${at}: la barra, de lado a lado`);
+          const path = w.document.querySelector('[data-fid="k"] svg > path:last-of-type').getAttribute('d'), x1 = +/^M([\d.]+)/.exec(path)[1];
+          near(x1, (175 * c.width / 1280) + 75, 1, `${at}: el conector sale del borde de su objeto: ${path}`);
+        }
+      } finally { f.remove(); }
+    }
+  });
 }

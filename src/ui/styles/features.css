@@ -365,6 +365,11 @@ body.master-view #navigator{display:flex}
 @keyframes rvSemi{from{opacity:1}to{opacity:.5}}
 @keyframes rvInSemi{0%{opacity:0}30%,70%{opacity:1}100%{opacity:.5}}
 .set-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.set-grid fieldset:last-child{grid-column:1/-1}@media (max-width:860px){.set-grid{grid-template-columns:1fr}}
+/* Fit to the screen: the current slide on three screens */
+.set-grid .set-fit{grid-column:1/-1}.set-fit .fr-l{max-width:340px}
+.fit-prev{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin:6px 0 2px}
+.fit-prev figure{margin:0;text-align:center;font-size:11px;color:var(--txt2)}
+.fit-prev iframe{display:block;height:96px;border:1px solid var(--line2);border-radius:4px;background:#000;pointer-events:none}
 /* Master text styles */
 .ts2-wrap{overflow-x:auto}
 .ts2{border-collapse:collapse;font-size:13px}
