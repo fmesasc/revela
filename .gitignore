@@ -18,3 +18,6 @@ tmp/
 __pycache__/
 node_modules/
 .claude/
+
+# Presentations saved while working (personal: never in the repository)
+/*.revela*.json

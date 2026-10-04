@@ -612,8 +612,10 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(Math.max(...line) < 32, `${lang}: la barra de estado en una línea`);
     }
     await R.i18n.setLang('es');
+  });
+
   // ---- Dialogs and menus with the keyboard (ui/dialogs/modalkeys.js) ----
-  const W = frame.contentWindow, frameTick = () => new Promise(r => W.requestAnimationFrame(() => setTimeout(r, 0)));
+  const frameTick = () => new Promise(r => W.requestAnimationFrame(() => setTimeout(r, 0)));
   const press = (key, o = {}) => { const e = new W.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...o }); (D.activeElement || D.body).dispatchEvent(e); return e; };
 
   await test('diálogos: se anuncian como tales, el foco entra, Esc los cierra y el foco vuelve', async () => {
