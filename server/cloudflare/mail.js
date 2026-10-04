@@ -1,12 +1,13 @@
 // Transactional emails (revelaslides.com): someone shared a presentation with
 // you, a team invitation, the end of Pro, credits about to expire, an account
-// unused for almost two years, and the confirmation of a deleted account.
+// unused for almost two years, the confirmation of a deleted account, and support:
+// a problem reported (its number), the answer to it, credits added by hand (admin.js).
 //
 // Sent with Cloudflare Email Service (the binding env.EMAIL: `[[send_email]]` in
 // wrangler.toml) or, if not there, with Resend (secret RESEND_KEY). With neither,
 // nothing is sent. From MAIL_FROM (default 'Revela <avisos@revelaslides.com>').
 //
-// Service emails (sharing, invitations, the end of Pro, inactivity, deletion) are
+// Service emails (sharing, invitations, the end of Pro, inactivity, deletion, support) are
 // always sent. Optional notices (credits that expire) carry a link to stop them:
 // a token signed with HMAC (secret MAIL_SECRET), checked by
 //   GET|POST /api/mail/unsubscribe?t=…   (POST: one-click, RFC 8058)
@@ -79,6 +80,12 @@ const T = {
     deleted: v => ({ subject: 'Tu cuenta de Revela se ha eliminado', title: 'Tu cuenta se ha eliminado',
       paras: [v.idle ? 'Como llevaba dos años sin usarse, hemos eliminado tu cuenta de Revela, con sus presentaciones en la nube y sus créditos.' : 'Hemos eliminado tu cuenta de Revela, como pediste, con sus presentaciones en la nube y sus créditos.',
         'Si tenías una suscripción, está cancelada. Las facturas las conserva Stripe, como exige la ley. Puedes volver cuando quieras con una cuenta nueva.'], cta: ['Ir a Revela', v.url] }),
+    ticket: v => ({ subject: `Hemos recibido tu consulta #${v.n}`, title: 'Hemos recibido tu consulta',
+      paras: [`Gracias por escribirnos. Tu mensaje ha quedado registrado con el número #${v.n}.`, 'Te responderemos a esta dirección lo antes posible. Si necesitas añadir algo, envía otro informe desde Revela indicando ese número.'], cta: ['Abrir Revela', v.url] }),
+    ticketReply: v => ({ subject: `Respuesta a tu consulta #${v.n}`, title: `Respuesta a tu consulta #${v.n}`,
+      paras: [...lines(v.text), `Si necesitas añadir algo, envía otro informe desde Revela indicando el número #${v.n}.`], cta: ['Abrir Revela', v.url] }),
+    creditsAdded: v => ({ subject: `Te hemos añadido ${v.n} créditos`, title: 'Tienes créditos nuevos',
+      paras: [`Hemos añadido ${v.n} créditos de IA a tu cuenta de Revela. Caducan el ${v.date}.`, 'Gracias por tu paciencia.'], cta: ['Abrir Revela', v.url] }),
     page: { ok: 'Hecho: ya no recibirás avisos de créditos que caducan.', bad: 'Este enlace no es válido o ha caducado.', back: 'Volver a Revela' },
   },
   en: {
@@ -103,6 +110,12 @@ const T = {
     deleted: v => ({ subject: 'Your Revela account has been deleted', title: 'Your account has been deleted',
       paras: [v.idle ? 'As it had not been used for two years, we have deleted your Revela account, with its presentations in the cloud and its credits.' : 'We have deleted your Revela account, as you asked, with its presentations in the cloud and its credits.',
         'If you had a subscription, it is cancelled. Stripe keeps the invoices, as the law requires. You can come back any time with a new account.'], cta: ['Go to Revela', v.url] }),
+    ticket: v => ({ subject: `We received your request #${v.n}`, title: 'We received your request',
+      paras: [`Thank you for writing to us. Your message has been registered with the number #${v.n}.`, 'We will answer to this address as soon as possible. If you need to add something, send another report from Revela mentioning that number.'], cta: ['Open Revela', v.url] }),
+    ticketReply: v => ({ subject: `Answer to your request #${v.n}`, title: `Answer to your request #${v.n}`,
+      paras: [...lines(v.text), `If you need to add something, send another report from Revela mentioning the number #${v.n}.`], cta: ['Open Revela', v.url] }),
+    creditsAdded: v => ({ subject: `We added ${v.n} credits to your account`, title: 'You have new credits',
+      paras: [`We have added ${v.n} AI credits to your Revela account. They expire on ${v.date}.`, 'Thank you for your patience.'], cta: ['Open Revela', v.url] }),
     page: { ok: 'Done: you will no longer get notices about expiring credits.', bad: 'This link is not valid or has expired.', back: 'Back to Revela' },
   },
   ca: {
@@ -127,9 +140,17 @@ const T = {
     deleted: v => ({ subject: 'El teu compte de Revela s’ha eliminat', title: 'El teu compte s’ha eliminat',
       paras: [v.idle ? 'Com que feia dos anys que no es feia servir, hem eliminat el teu compte de Revela, amb les seves presentacions al núvol i els seus crèdits.' : 'Hem eliminat el teu compte de Revela, tal com vas demanar, amb les seves presentacions al núvol i els seus crèdits.',
         'Si tenies una subscripció, està cancel·lada. Les factures les conserva Stripe, com exigeix la llei. Pots tornar quan vulguis amb un compte nou.'], cta: ['Vés a Revela', v.url] }),
+    ticket: v => ({ subject: `Hem rebut la teva consulta #${v.n}`, title: 'Hem rebut la teva consulta',
+      paras: [`Gràcies per escriure’ns. El teu missatge ha quedat registrat amb el número #${v.n}.`, 'Et respondrem a aquesta adreça tan aviat com puguem. Si necessites afegir-hi alguna cosa, envia un altre informe des de Revela indicant aquest número.'], cta: ['Obre Revela', v.url] }),
+    ticketReply: v => ({ subject: `Resposta a la teva consulta #${v.n}`, title: `Resposta a la teva consulta #${v.n}`,
+      paras: [...lines(v.text), `Si necessites afegir-hi alguna cosa, envia un altre informe des de Revela indicant el número #${v.n}.`], cta: ['Obre Revela', v.url] }),
+    creditsAdded: v => ({ subject: `T’hem afegit ${v.n} crèdits`, title: 'Tens crèdits nous',
+      paras: [`Hem afegit ${v.n} crèdits d’IA al teu compte de Revela. Caduquen el ${v.date}.`, 'Gràcies per la teva paciència.'], cta: ['Obre Revela', v.url] }),
     page: { ok: 'Fet: ja no rebràs avisos de crèdits que caduquen.', bad: 'Aquest enllaç no és vàlid o ha caducat.', back: 'Torna a Revela' },
   },
 };
+// A text written by someone (an answer to a ticket): one paragraph per line.
+const lines = text => String(text || '').split(/\n+/).map(x => x.trim()).filter(Boolean);
 // What happens after Pro: nothing is deleted; the presentations beyond the free plan's, read-only; credits kept.
 const proAfter = {
   es: v => [v.locked ? `No se borra nada. Con el plan gratuito puedes editar tus ${v.free} presentaciones en la nube editadas más recientemente; las otras ${v.locked} quedarán en solo lectura (se pueden abrir, presentar, exportar y borrar) hasta que vuelvas a Pro o borres alguna.` : 'No se borra nada y todas tus presentaciones en la nube seguirán siendo editables.',

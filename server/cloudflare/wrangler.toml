@@ -8,6 +8,9 @@ preview_urls = false
 keep_vars = true
 # The official site (Cloudflare Pages) sends its /api/… here; the rest of the domain stays with the site.
 routes = [{ pattern = "revelaslides.com/api/*", zone_name = "revelaslides.com" }]
+# Administration (admin.js), once Cloudflare Access protects admin.revelaslides.com (see the
+# admin vars below): replace the line above with
+# routes = [{ pattern = "revelaslides.com/api/*", zone_name = "revelaslides.com" }, { pattern = "admin.revelaslides.com/api/*", zone_name = "revelaslides.com" }]
 
 # Everything is stored in Durable Objects (store.js), not R2: on the Workers Free
 # plan they have hard limits (it stops for the day, it never bills).
@@ -170,3 +173,29 @@ new_sqlite_classes = ["ModelJob"]
 # without it (and without RESEND_KEY) no email is sent.
 # [[send_email]]
 # name = "EMAIL"
+
+# Administration (admin.js): the users directory, support tickets and the audit log. The API
+# is OFF (404) until these three plain vars are set — in Cloudflare (Workers ▸ revela-share ▸
+# Settings ▸ Variables) or here — and it only answers on admin.revelaslides.com, behind a
+# Cloudflare Access application whose token this Worker checks itself on every request:
+# ACCESS_TEAM = "<team>"                 (Zero Trust team name: <team>.cloudflareaccess.com)
+# ACCESS_AUD = "<the application's AUD tag>"
+# ADMIN_EMAILS = "admin@example.com"
+# ADMIN_HOST = "admin.revelaslides.com"  (optional; that is the default)
+# Support tickets per day: SUPPORT_PER_DAY (per address or account, default 5), SUPPORT_DAILY_TOTAL
+# (default 500), SUPPORT_ATTACH_KB (largest attached presentation, default 1500).
+[[durable_objects.bindings]]
+name = "DIRECTORY"
+class_name = "Directory"
+
+[[durable_objects.bindings]]
+name = "TICKETS"
+class_name = "Tickets"
+
+[[durable_objects.bindings]]
+name = "AUDIT"
+class_name = "Audit"
+
+[[migrations]]
+tag = "v10"
+new_sqlite_classes = ["Directory", "Tickets", "Audit"]

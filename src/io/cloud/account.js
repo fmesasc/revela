@@ -13,7 +13,7 @@
 
 import { EDITION, OFFICIAL_SITE, GOOGLE } from '../../core/config.js';
 import { loadScript } from '../../core/vendor.js';
-import { currentLang } from '../../i18n/index.js';
+import { currentLang, t } from '../../i18n/index.js';
 
 const GIS = 'https://accounts.google.com/gsi/client';
 
@@ -37,7 +37,12 @@ export async function api(path, body) {
     ...(body !== undefined && { body: JSON.stringify(body) }) });
   const data = await r.json().catch(() => ({}));
   if (r.status === 401 && path !== 'login') { me = null; if (EDITION === 'desktop') setBearer(''); changed(); }
-  if (!r.ok) { if (r.status === 402) spent(0); throw Object.assign(new Error(data.error || 'HTTP ' + r.status), { status: r.status, data }); }
+  if (!r.ok) {
+    if (r.status === 402) spent(0);
+    // (An account blocked by Revela's administrators: said plainly, wherever the error is shown.)
+    const msg = r.status === 403 && data.error === 'blocked' ? t('Tu cuenta está bloqueada: la IA y la nube no están disponibles. Si crees que es un error, usa «Informar de un problema».') : data.error || 'HTTP ' + r.status;
+    throw Object.assign(new Error(msg), { status: r.status, data });
+  }
   if (+data.charged > 0) spent(path.startsWith('ai/') ? +data.charged : 0);   // (a 3D job reports its running total: only re-asked)
   return data;
 }

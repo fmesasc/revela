@@ -6,6 +6,7 @@ import * as clouddocs from '../../io/cloud/clouddocs.js';
 import { setCloudAi } from '../../features/ai/openrouter.js';
 import { openAccount, handleDesktopRequest, BUYABLE, watchTerms } from '../../ui/dialogs/account.js';
 import { initModelAi } from '../../ui/dialogs/model3dai.js';
+import { openReport } from '../../ui/dialogs/report.js';
 import { handleOpenWith } from '../../ui/shell/openwith.js';
 import { editText } from '../../ui/canvas/content.js';
 import { ACTIONS } from '../../ui/ribbon/actions.js';
@@ -279,6 +280,8 @@ if (hasAccounts()) {
     if (BUYABLE.includes(buy)) { history.replaceState(null, '', location.pathname); refreshAccount().catch(() => {}).finally(() => openAccount({ buy })); }
   }
 }
+// From the website's support page (revelaslides.com/support): «Informar de un problema».
+if (!testing && new URLSearchParams(location.search).has('report')) { history.replaceState(null, '', location.pathname); (hasAccounts() ? refreshAccount().catch(() => {}) : Promise.resolve()).finally(() => openReport()); }
 // Opened from Drive's or Dropbox's "Open with ▸ Revela" (or Drive's "New ▸ Revela").
 if (!testing) handleOpenWith();
 if (!testing) finishOpenRouterLogin().then(ok => { if (ok) alertDialog(t('IA conectada con OpenRouter.')); })

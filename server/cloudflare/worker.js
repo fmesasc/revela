@@ -22,6 +22,8 @@
 //
 // Also live collaboration rooms under /c (collab.js), and, once a day (cron in
 // wrangler.toml), the scheduled notices of the accounts (schedule.js, mail.js).
+// Administration: /api/admin/… only on the admin host, off unless configured (admin.js);
+// nothing else is answered on that host.
 //
 // Bindings (wrangler.toml): SHAREBOX, ROOMS, LIMITS (Durable Objects). Optional
 // vars: UPLOAD_KEY and/or GOOGLE_CLIENT_ID + ALLOWED (who can upload or open
@@ -37,7 +39,8 @@ import { LtiStore } from './lti.js';
 import { CallRoom } from './calls.js';
 import { Schedule, runSchedule } from './schedule.js';
 import { ModelJob } from './model3d.js';
-export { CollabRoom, ShareBox, Limits, Account, Budget, DesktopLink, CloudDoc, Team, LtiStore, CallRoom, Schedule, ModelJob, verifyGoogleToken, resetCerts };
+import { handleAdmin, adminHost, Directory, Tickets, Audit } from './admin.js';
+export { CollabRoom, ShareBox, Limits, Account, Budget, DesktopLink, CloudDoc, Team, LtiStore, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, verifyGoogleToken, resetCerts };
 
 const box = (env, id) => env.SHAREBOX.get(env.SHAREBOX.idFromName(id));
 // Who counts for the daily limits: the Google account, else the key, else the address.
@@ -89,6 +92,9 @@ export default {
       'Referrer-Policy': 'no-referrer',
     };
     const json = (obj, status = 200, extra = {}) => new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json', ...extra } });
+    // Administration (admin.js): its own host, its own checks.
+    if (url.pathname === '/api/admin' || url.pathname.startsWith('/api/admin/')) return handleAdmin(req, env, url);
+    if (url.hostname.toLowerCase() === adminHost(env)) return new Response('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
     // The accounts API (api.js), and the same share and collaboration routes under /api (revelaslides.com/api/…).
     if (/^\/api\/(?!s(\/|$)|c(\/|$))/.test(url.pathname)) return handleApi(req, env, url);
     if (/^\/api\/(s|c)(\/|$)/.test(url.pathname)) url.pathname = url.pathname.slice(4);
