@@ -71,13 +71,13 @@ GOOGLE_CLIENT_ID = "960102070599-jahg4mdj304k5ftb9b6p2ck9hp5gtbc9.apps.googleuse
 # (public identifiers: its team and audience tag). Who may use it, ADMIN_EMAILS, is set in Cloudflare.
 ACCESS_TEAM = "fmesasc"
 ACCESS_AUD = "fc9aec28ca0051d675aa082759b71159082d80e463840d6fdaa8d1eb647d8aa7"
-# Stripe prices (public identifiers; the keys are secrets in Cloudflare). Live: empty until the live
-# products exist (an empty one = that product can't be bought yet).
-STRIPE_PRICE_PRO_MONTH = ""
-STRIPE_PRICE_PRO_YEAR = ""
-STRIPE_PRICE_CREDITS_500 = ""
+# Stripe prices (public identifiers; the keys are secrets in Cloudflare). Live (an empty one = that
+# product can't be bought yet):
+STRIPE_PRICE_PRO_MONTH = "price_1UMtlaRl48v6ZHv1voX3BPL4"
+STRIPE_PRICE_PRO_YEAR = "price_1UMtmeRl48v6ZHv1Zc8LVySv"
+STRIPE_PRICE_CREDITS_500 = "price_1UMto2Rl48v6ZHv1d4WPv1rB"
 STRIPE_PRICE_CREDITS_1500 = ""
-STRIPE_PRICE_TEAM_SEAT = ""
+STRIPE_PRICE_TEAM_SEAT = "price_1UMtrORl48v6ZHv1FzeMstm8"
 # Test (the sandbox):
 STRIPE_TEST_PRICE_PRO_MONTH = "price_1UMtT0Dp2aJKxbrm4VXXI2AL"
 STRIPE_TEST_PRICE_PRO_YEAR = "price_1UMtUUDp2aJKxbrmE3VSTZ3w"
