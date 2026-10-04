@@ -23,6 +23,7 @@ export function present({ rehearse = false, fullscreen = true, onEnd = null, onR
   window.__revelaAnswer = selfPaced && answer ? answer : undefined;
   const url = URL.createObjectURL(new Blob([buildHTML(deck, { inApp: true, selfPaced })], { type: 'text/html' }));
 
+  const opener = document.activeElement;                  // (where the focus goes back to)
   const overlay = document.createElement('div');
   overlay.id = 'present-overlay';
   const frame = document.createElement('iframe');
@@ -54,6 +55,10 @@ export function present({ rehearse = false, fullscreen = true, onEnd = null, onR
     if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
     overlay.remove();
     URL.revokeObjectURL(url);
+    // Back to the editor: the button that started it, else the Present button, else the stage.
+    const back = [opener, document.querySelector('.tb-play [data-action="present"]'), document.getElementById('stage')]
+      .find(el => el && el !== document.body && el.isConnected && el.offsetParent !== null);
+    if (back) { if (!back.matches('button, input, select, textarea, a[href], [tabindex]')) back.tabIndex = -1; back.focus({ preventScroll: true }); }
     session.present = null; notifySlide();
   };
   const onFs = () => { if (!document.fullscreenElement) end(); };
