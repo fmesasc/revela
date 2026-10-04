@@ -27,13 +27,13 @@ export function openRequest(search = location.search) {
   return null;
 }
 // Ask how to open it; resolves to 'view' | 'edit' | null.
-function askHow(from) {
+function askHow(from, copy = false) {
   return new Promise(resolve => {
     const back = document.createElement('div'); back.id = 'openwith-modal'; back.className = 'modal-backdrop';
     back.innerHTML = `<div class="modal" style="text-align:start;min-width:min(380px,94vw)"><button class="modal-close">✕</button>
       <h3>${t('Abrir desde {s}').replace('{s}', from)}</h3><p class="host-help">${t('¿Quieres ver la presentación o editarla?')}</p>
       <div class="pdf-modes"><button type="button" class="pdf-mode" data-how="view"><i class="ms">slideshow</i><span><b>${t('Ver la presentación')}</b><small>${t('A pantalla completa, como una vista previa. Esc para salir.')}</small></span></button>
-      <button type="button" class="pdf-mode" data-how="edit"><i class="ms">edit</i><span><b>${t('Editar')}</b><small>${from === 'Google Drive' ? t('Los cambios se guardan en el mismo archivo de Drive.') : t('Para guardar los cambios, vuelve a guardarla en Dropbox.')}</small></span></button></div></div>`;
+      <button type="button" class="pdf-mode" data-how="edit"><i class="ms">edit</i><span><b>${t('Editar')}</b><small>${copy ? t('Se abre una copia: para guardar los cambios, guárdala en Drive.') : from === 'Google Drive' ? t('Los cambios se guardan en el mismo archivo de Drive.') : t('Para guardar los cambios, vuelve a guardarla en Dropbox.')}</small></span></button></div></div>`;
     document.body.appendChild(back);
     const done = v => { back.remove(); resolve(v); };
     back.querySelector('.modal-close').addEventListener('click', () => done(null));
@@ -50,11 +50,10 @@ export async function handleOpenWith(req = openRequest()) {
       await gdrive.savePresentation({ asNew: true });                   // (so it is in that folder from now on)
       return true;
     }
-    const how = await askHow(req.service === 'drive' ? 'Google Drive' : 'Dropbox'); if (!how) return false;
-    if (req.service === 'drive') {
-      const file = await gdrive.fetchImportable(req.id);              // (a .pptx / .odp: imported)
-      if (file) await openPresentation(file); else await gdrive.openPresentation(req.id);
-    }
+    // (A .pptx / .odp from Drive is imported: a copy, which the question says.)
+    const file = req.service === 'drive' ? await gdrive.fetchImportable(req.id) : null;
+    const how = await askHow(req.service === 'drive' ? 'Google Drive' : 'Dropbox', !!file); if (!how) return false;
+    if (req.service === 'drive') { if (file) await openPresentation(file); else await gdrive.openPresentation(req.id); }
     else { await oc.connect('dropbox'); await oc.openFromCloud('dropbox', req.id); }
     if (how === 'view') present({ fullscreen: true });
     return true;

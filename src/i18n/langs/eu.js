@@ -2,6 +2,7 @@
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
   "Abriendo la presentación…": "Aurkezpena irekitzen…",
+  "Se abre una copia: para guardar los cambios, guárdala en Drive.": "Kopia bat irekitzen da: aldaketak gordetzeko, gorde ezazu Driven.",
   "Archivo": "Fitxategia",
   "Inicio": "Hasiera",
   "Insertar": "Txertatu",

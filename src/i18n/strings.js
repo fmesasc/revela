@@ -5,6 +5,7 @@
 
 // es | en | fr | de | it | pt | ca
 export const ROWS = [
+  ['Se abre una copia: para guardar los cambios, guárdala en Drive.', 'This opens a copy: to keep your changes, save it to Drive.', 'Une copie s’ouvre : pour conserver vos modifications, enregistrez-la dans Drive.', 'Es wird eine Kopie geöffnet: Um die Änderungen zu behalten, speichern Sie sie in Drive.', 'Si apre una copia: per salvare le modifiche, salvala su Drive.', 'Abre-se uma cópia: para guardar as alterações, guarde-a no Drive.', 'S’obre una còpia: per desar els canvis, desa-la a Drive.'],
   ['Abriendo la presentación…', 'Opening the presentation…', 'Ouverture de la présentation…', 'Präsentation wird geöffnet…', 'Apertura della presentazione…', 'A abrir a apresentação…', 'Obrint la presentació…'],
   ['Abriendo…', 'Opening…', 'Ouverture…', 'Wird geöffnet…', 'Apertura…', 'A abrir…', 'Obrint…'],
   ['Abrir la web', 'Open the website', 'Ouvrir le site', 'Website öffnen', 'Apri il sito', 'Abrir o site', 'Obre el web'],

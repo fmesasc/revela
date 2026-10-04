@@ -2,6 +2,7 @@
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
   "Abriendo la presentación…": "جارٍ فتح العرض التقديمي…",
+  "Se abre una copia: para guardar los cambios, guárdala en Drive.": "تُفتح نسخة: لحفظ التغييرات، احفظها في Drive.",
   "Archivo": "ملف",
   "Inicio": "الصفحة الرئيسية",
   "Insertar": "إدراج",

@@ -2,6 +2,7 @@
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
   "Abriendo la presentación…": "De presentatie wordt geopend…",
+  "Se abre una copia: para guardar los cambios, guárdala en Drive.": "Er wordt een kopie geopend: sla die op in Drive om je wijzigingen te bewaren.",
   "Archivo": "Bestand",
   "Inicio": "Start",
   "Insertar": "Invoegen",

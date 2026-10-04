@@ -2,6 +2,7 @@
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
   "Abriendo la presentación…": "Abrindo a presentación…",
+  "Se abre una copia: para guardar los cambios, guárdala en Drive.": "Ábrese unha copia: para gardar os cambios, gárdaa en Drive.",
   "Archivo": "Ficheiro",
   "Inicio": "Inicio",
   "Insertar": "Inserir",
