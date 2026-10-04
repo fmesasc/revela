@@ -2706,4 +2706,8 @@ export default {
   "Quitar las líneas": "Kendu lerroak",
   "Zona ampliada: arrástrala para ampliar otra parte": "Eremu handitua: arrastatu beste zati bat handitzeko",
   "Dibuja un rectángulo sobre la zona que quieres ampliar · Esc: cancelar": "Marraztu laukizuzen bat handitu nahi duzun eremuaren gainean · Esc: utzi",
+  "Prueba Pro {n} días gratis": "Probatu Pro {n} egunez doan",
+  "Prueba gratis hasta:": "Doako proba noiz arte:",
+  "Se pide una tarjeta, pero no se cobra nada hasta que acabe la prueba. Puedes cancelarla antes en «Gestionar la suscripción».": "Txartel bat eskatzen da, baina ez da ezer kobratzen proba amaitu arte. Aurretik ezezta dezakezu «Kudeatu harpidetza» atalean.",
+  "Avisarme antes de que acabe mi prueba de Pro": "Abisatu Pro proba amaitu aurretik",
 };

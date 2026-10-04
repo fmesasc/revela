@@ -14,7 +14,8 @@
 //   POST /api/login            { accessToken, terms?, lang? } (Google, issued to Revela's client) → session
 //                              (a new account needs terms: the version of the terms accepted; else 400 { error: 'terms' })
 //   POST /api/logout
-//   GET  /api/me               → { email, plan, credits, features, billing, billingTest, terms (accepted the current ones?), docs }
+//   GET  /api/me               → { email, plan, credits, features, billing, billingTest, terms (accepted the current ones?), docs,
+//                              trialDays (Pro's free trial on offer to this account; 0: none), trial? ({ until }: in a trial now) }
 //   POST /api/terms            { version, lang? }       (accepting the current terms, once; accounts from before)
 //   POST /api/mail/test                                 (a test email to my own address, once an hour)
 //   GET|POST /api/mail/prefs   { off: [kinds] }         (the optional notices I stopped)
@@ -25,7 +26,8 @@
 //   POST /api/ai/speech        { input, voice?, speed? } → { audio (base64 mp3) }  (credits per character)
 //   GET  /api/stock/search     ?provider=unsplash|pexels&q=&page= → { results }   (Revela's keys; per-minute limit)
 //   POST /api/stock/used       { provider, id }        (Unsplash asks to be told when a photo is used)
-//   POST /api/billing/checkout { product } → { url }   (Stripe Checkout)
+//   POST /api/billing/checkout { product } → { url, trialDays? }   (Stripe Checkout; promotion codes allowed; Pro's free trial
+//                              when the admin turned it on and the account never had a trial or a paid Pro: trialConfig)
 //   POST /api/billing/portal   → { url }                (Stripe customer portal)
 //   POST /api/billing/webhook  Stripe's events (signed)
 //   POST /api/billing/webhook-test  Stripe's test-mode events (signed with STRIPE_TEST_WEBHOOK_SECRET; see stripeConf)
@@ -121,6 +123,25 @@ export function stripeConf(env, mode = 'live') {
 }
 export const globalTest = env => String(env.STRIPE_MODE || '').trim().toLowerCase() === 'test';
 export const billingMode = (env, accountTest) => (accountTest || globalTest(env) ? 'test' : 'live');
+// Pro's free trial, set from the admin (admin.js «Promociones»; kept in the Budget object, not in vars):
+//   trialDays (0 = off), trialCredits (granted when the trial starts, instead of the month's Pro credits; the first
+//   paid invoice brings the normal month), trialOncePerAccount. Only for an account that never had a paid Pro (and,
+//   if once, never a trial) in that Stripe mode. Checkout still asks for a card; the portal lets people cancel.
+export const TRIAL_DEFAULT = { trialDays: 0, trialCredits: 100, trialOncePerAccount: true };
+let trialCache = { at: 0, v: null };
+export const resetTrialCache = () => { trialCache = { at: 0, v: null }; };
+export async function trialConfig(env, fresh) {
+  if (!env.BUDGET) return { ...TRIAL_DEFAULT };
+  if (!fresh && trialCache.v && Date.now() - trialCache.at < 30e3) return trialCache.v;
+  const r = await call(env.BUDGET.get(env.BUDGET.idFromName('global')), 'config-get').catch(() => null);
+  const v = { ...TRIAL_DEFAULT, ...(r?.trial || {}) }; trialCache = { at: Date.now(), v }; return v;
+}
+// The admin's trial settings, checked (null: not valid).
+export function cleanTrial(b) {
+  const days = +b?.trialDays, cr = +b?.trialCredits;
+  if (!Number.isInteger(days) || days < 0 || days > 90 || !Number.isInteger(cr) || cr < 0 || cr > 10000 || typeof b.trialOncePerAccount !== 'boolean') return null;
+  return { trialDays: days, trialCredits: cr, trialOncePerAccount: b.trialOncePerAccount };
+}
 export const FEATURES ={ free: ['ai', 'cloud-save'], pro: ['ai', 'cloud-save', 'share-people', 'analytics', 'video-calls', 'premium-templates'] };
 
 // ---- One account ------------------------------------------------------------------------
@@ -204,9 +225,11 @@ export class Account {
   async monthly(pro, s) {
     const last = await this.get('monthly', 0);
     if (!pro || Date.now() - last < 30 * DAY || s.proCredits <= 0) return;
-    await this.put({ monthly: Date.now() });
-    // (Pro only from a test-mode plan: its month's credits are test ones too.)
+    // (Pro only from a test-mode plan: its month's credits are test ones too. In a free trial: only the trial's credits,
+    // given when it started; the month's come with the first paid invoice.)
     const p = await this.get('plan', null), g = await this.get('proGift', null), now = Date.now(), test = !!(p?.test && p.until > now && !(g?.until > now));
+    if (p?.trial && p.until > now && !(g?.until > now)) return;
+    await this.put({ monthly: Date.now() });
     await this.entry(s.proCredits, 'pro', null, s.monthDays, test && { test: true });
   }
   async isPro() {
@@ -214,6 +237,15 @@ export class Account {
     const teamId = await this.get('team', null); if (!teamId) return false;
     const t = await teamStatus(this.env, teamId, (await this.get('profile', {})).email).catch(() => null);
     return !!(t?.member && t.active);
+  }
+  // May this account get Pro's free trial in this Stripe mode? Never after a paid Pro; once: never after a trial.
+  // (A plan stored without trialUsed is from before trials existed: it was paid.)
+  async trialOk(test, once) {
+    const T = test ? 'Test' : '';
+    if (await this.get('proPaid' + T, null)) return false;
+    const used = await this.get('trialUsed' + T, null), p = await this.get('plan', null);
+    if (!used && p && !!p.test === !!test) return false;
+    return !(once && used);
   }
   // The lots that expire next (to show them): [{ n, exp }], the soonest first.
   async soon() { return (await this.lots()).filter(l => l.exp > Date.now()).slice(0, 3); }
@@ -317,6 +349,7 @@ export class Account {
         const ds = await this.docState(plan === 'pro'); await this.dirSync();
         return this.json({ email: prof.email, name: prof.name || null, plan, until: own === 'pro' ? await this.proUntil() : null, ...((await this.get('blocked', null)) && { blocked: true }), credits: await this.get('credits', 0), expiring: await this.soon(), features: FEATURES[plan] || FEATURES.free,
           terms: prof.terms?.version === s.termsVersion, docs: { n: ds.docs.length, limit: ds.limit, readOnly: ds.locked.length }, ...((await this.get('billingTest', null)) && { billingTest: true }),
+          ...(p?.trial && p.until > Date.now() && own === 'pro' && !((await this.get('proGift', null))?.until > Date.now()) && { trial: { until: p.until } }),
           ...(team?.member && { team: { name: team.name, role: team.role, active: team.active } }) });
       }
       case 'terms': {                                      // { version, lang? }: the current terms, accepted
@@ -351,6 +384,12 @@ export class Account {
         const lang = (await this.get('profile', {})).lang; await this.put({ cancelAt: null });
         await this.mailMe('proEnded', await this.proVars(lang), 'pro-ended:' + a.ref); return this.json({ ok: true });
       }
+      case 'trial-ending': {                               // { end, ref }: Stripe says the free trial ends soon (3 days before)
+        const lang = (await this.get('profile', {})).lang, end = +a.end;
+        if (!(end > Date.now())) return this.json({ ok: false });
+        return this.json({ ok: !!(await this.mailMe('trialEnding', { date: fmtDate(end, lang), credits: s.proCredits }, `trial-end:${a.ref}:${end}`)) });
+      }
+      case 'trial-ok': return this.json({ ok: await this.trialOk(!!a.test, a.once !== false) });
       case 'due': return this.json(await this.due(a));
       // ('e:' + email objects: the language of whoever has that address, for emails sent to it.)
       case 'set-lang': await this.put({ lang: a.lang }); return this.json({ ok: true });
@@ -409,11 +448,17 @@ export class Account {
         const bal = await this.entry(Math.round(+a.credits || 0), a.reason || 'grant', a.ref, +a.days || s.packDays, a.test && { test: true }); await this.dirSync();
         return this.json({ ok: true, credits: bal });
       }
-      case 'setplan': {                                    // { name, until, customer?, test? }
+      case 'setplan': {                                    // { name, until, customer?, test?, trial?, trialCredits? }
         // (Test mode never replaces a real plan still running.)
-        const cur = await this.get('plan', null);
+        const cur = await this.get('plan', null), T = a.test ? 'Test' : '';
         if (a.test && cur && !cur.test && cur.until > Date.now()) return this.json({ ok: true, ignored: true });
-        await this.put({ plan: { name: a.name, until: +a.until || 0, ...(a.test && { test: true }) }, ...(a.customer && { [a.test ? 'customerTest' : 'customer']: a.customer }) }); await this.dirSync();
+        const put = { plan: { name: a.name, until: +a.until || 0, ...(a.test && { test: true }), ...(a.trial && { trial: true }) }, ...(a.customer && { [a.test ? 'customerTest' : 'customer']: a.customer }) };
+        // (A free trial: marked used, its credits once. Its first paid invoice: a paid Pro, and the month's credits now.)
+        if (a.trial) put['trialUsed' + T] = true;
+        else if (a.name === 'pro') { put['proPaid' + T] = true; if (cur?.trial) put.monthly = 0; }
+        await this.put(put);
+        if (a.trial && !cur?.trial && +a.trialCredits > 0) await this.entry(Math.round(+a.trialCredits), 'pro-trial', null, s.monthDays, a.test && { test: true });
+        await this.dirSync();
         return this.json({ ok: true });
       }
       // Stripe's customer: its ids differ between live and test mode, so each is kept apart.
@@ -456,7 +501,8 @@ export class Account {
           credits: await this.get('credits', 0), debt: await this.get('debt', 0), lots: await this.lots(), ledger: (await this.get('ledger', [])).slice(-50).reverse(),
           sessions: { n: sessions.length, kinds: sessions.map(v => v.kind) }, docs: (await this.get('docs', [])).length, team: await this.get('team', null),
           blocked: await this.get('blocked', null), lastSeen: await this.get('lastSeen', null), mailOff: await this.get('mailOff', []), customer: !!(await this.get('customer', null)), refunded: await this.get('refunded', []),
-          billingTest: await this.get('billingTest', null), customerTest: !!(await this.get('customerTest', null)) });
+          billingTest: await this.get('billingTest', null), customerTest: !!(await this.get('customerTest', null)),
+          trial: { used: !!(await this.get('trialUsed', null)), usedTest: !!(await this.get('trialUsedTest', null)), paid: !!(await this.get('proPaid', null)), paidTest: !!(await this.get('proPaidTest', null)) } });
       }
       case 'admin-credits': {                              // { delta, reason, days, by } → { before, after, delta, expires? }
         await this.expire();
@@ -498,9 +544,10 @@ export class Account {
         const lots = await this.lots(), n = lots.filter(l => l.test).reduce((t, l) => t + l.n, 0), p = await this.get('plan', null);
         const before = { credits: await this.get('credits', 0), testCredits: n, plan: p };
         if (n) { await this.save(lots.filter(l => !l.test), await this.get('debt', 0)); await this.log(-n, 'admin', null, { note: a.reason, by: a.by, test: true }); }
-        if (p?.test) await this.put({ plan: { name: 'free', until: 0 }, monthly: 0, cancelAt: null });   // (a real Pro later gets its month's credits at once)
+        if (p?.test) await this.put({ plan: { name: 'free', until: 0, test: true }, monthly: 0, cancelAt: null });   // (a real Pro later gets its month's credits at once)
+        await this.ctx.storage.delete(['trialUsedTest', 'proPaidTest']);                                            // (test trials can be tried again)
         await this.dirSync(true);
-        return this.json({ before, after: { credits: await this.get('credits', 0), testCredits: 0, plan: await this.get('plan', null) }, removed: { credits: n, pro: !!p?.test },
+        return this.json({ before, after: { credits: await this.get('credits', 0), testCredits: 0, plan: await this.get('plan', null) }, removed: { credits: n, pro: !!(p?.test && p.name === 'pro') },
           team: await this.get('team', null), email: (await this.get('profile', {})).email });
       }
       case 'admin-mail': {                                 // { kind: 'creditsAdded', n, exp }: telling the person (a service email)
@@ -517,6 +564,9 @@ export class Budget {
   constructor(ctx, env) { this.ctx = ctx; this.env = env; }
   async fetch(req) {
     const op = new URL(req.url).pathname.split('/').pop(), a = req.method === 'POST' ? await req.json() : {};
+    // (Also the settings the admin changes without a deploy: Pro's free trial, trialConfig.)
+    if (op === 'config-get') return Response.json({ trial: (await this.ctx.storage.get('trial')) || null });
+    if (op === 'config-set') { await this.ctx.storage.put('trial', a.trial); return Response.json({ ok: true }); }
     const month = new Date().toISOString().slice(0, 7), cur = (await this.ctx.storage.get('m')) || { month, usd: 0 };
     const m = cur.month === month ? cur : { month, usd: 0 }, limit = settings(this.env).monthlyBudget;
     if (op === 'check') return Response.json({ ok: m.usd + (+a.usd || 0) <= limit, usd: m.usd, limit });
@@ -591,7 +641,7 @@ export async function handleApi(req, env, url) {
   // The link to stop optional emails (signed; no session: it's opened from the email, or posted by the mail app).
   if (path === '/mail/unsubscribe' && (req.method === 'GET' || req.method === 'POST')) {
     const t = await readUnsubToken(env, url.searchParams.get('t')), r = t ? await call(acct(env, t.sub), 'mail-off', { kind: t.kind }) : { ok: false };
-    return new Response(unsubPage(r.lang, r.ok, s.site), { status: r.ok ? 200 : 400, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex',
+    return new Response(unsubPage(r.lang, r.ok, s.site, t?.kind), { status: r.ok ? 200 : 400, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex',
       'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'", 'Referrer-Policy': 'no-referrer' } });
   }
   // Answering a ticket: the signed link in its emails is the proof (no session; a form, so before the JSON body).
@@ -652,8 +702,10 @@ export async function handleApi(req, env, url) {
   switch (path) {
     case '/me': {
       // (billing: payments set up for this account's mode; billingTest: it pays in Stripe's test mode — the app says so.)
-      const r = await call(A, 'me'), mode = billingMode(env, r.billingTest);
-      return json({ ...r, billing: stripeConf(env, mode).ok, billingTest: mode === 'test', photos: photoProviders(env), model3d: configured3d(env) && !!env.MODELJOBS });
+      const r = await call(A, 'me'), mode = billingMode(env, r.billingTest), billing = stripeConf(env, mode).ok;
+      // (Pro's free trial on offer: for the Pro buttons — «Prueba Pro 7 días gratis».)
+      const trialDays = billing && r.plan !== 'pro' ? await trialOffer(env, A, mode) : 0;
+      return json({ ...r, billing, billingTest: mode === 'test', trialDays, photos: photoProviders(env), model3d: configured3d(env) && !!env.MODELJOBS });
     }
     case '/mail/test': {                                  // «Send me a test email» (only to the account's own address)
       if (req.method !== 'POST') return json({ error: 'method' }, 405);
@@ -887,6 +939,11 @@ export const photoProviders = env => Object.keys(PHOTO_PROVIDERS).filter(k => PH
 // Live or test (stripeConf, billingMode): the key, the prices and the account's customer of that mode.
 const stripe = (env, key, path, params) => (env.FETCH || fetch)('https://api.stripe.com/v1/' + path, { method: 'POST',
   headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(params) });
+// The days of Pro's free trial this account may get now (0: none).
+async function trialOffer(env, A, mode) {
+  const tc = await trialConfig(env);
+  return tc.trialDays > 0 && (await call(A, 'trial-ok', { test: mode === 'test', once: tc.trialOncePerAccount })).ok ? tc.trialDays : 0;
+}
 async function checkout(env, s, me, A, body, json) {
   const p = s.products[body.product], c = await call(A, 'customer'), mode = billingMode(env, c.billingTest), conf = stripeConf(env, mode);
   if (mode === 'test' && !conf.ok) return json({ error: 'billing test not configured' }, 503);
@@ -899,10 +956,16 @@ async function checkout(env, s, me, A, body, json) {
     if (!tc.admin) return json({ error: 'forbidden' }, 403);
     seats = Math.max(3, Math.min(1000, Math.round(+body.seats || 3)));   // (3 seats at least)
   }
+  // (Pro's free trial: a card is still asked for — payment_method_collection — and without one at its end it's cancelled.)
+  const trial = p.mode === 'subscription' && !p.team && /^pro-/.test(body.product) ? await trialOffer(env, A, mode) : 0;
   const params = { mode: p.mode, 'line_items[0][price]': price, 'line_items[0][quantity]': String(seats), client_reference_id: me.sub,
     success_url: `${s.site}/app/?paid=1`, cancel_url: `${s.site}/pricing`, 'metadata[sub]': me.sub, 'metadata[product]': body.product,
     ...(customer ? { customer } : { customer_email: c.email }),
     ...(p.mode === 'subscription' && { 'subscription_data[metadata][sub]': me.sub }),
+    ...(trial && { 'subscription_data[trial_period_days]': String(trial), 'subscription_data[metadata][trial]': String(trial), payment_method_collection: 'always',
+      'subscription_data[trial_settings][end_behavior][missing_payment_method]': 'cancel' }),
+    // (Promotion codes made in the admin, «Promociones»: Checkout shows «Añadir código promocional».)
+    allow_promotion_codes: 'true',
     ...(team && { 'metadata[team]': team, 'subscription_data[metadata][team]': team }),
     // (An invoice for one-off purchases too; and, by the pay button, the request for immediate
     // activation that waives the 14-day withdrawal right — Art. 103 m) of the Spanish consumer law.)
@@ -915,7 +978,7 @@ async function checkout(env, s, me, A, body, json) {
     locale: 'auto' };
   const r = await stripe(env, conf.key, 'checkout/sessions', params);
   const d = await r.json().catch(() => ({}));
-  return d.url ? json({ url: d.url, ...(mode === 'test' && { test: true }) }) : json({ error: 'billing failed' }, 502);
+  return d.url ? json({ url: d.url, ...(mode === 'test' && { test: true }), ...(trial && { trialDays: trial }) }) : json({ error: 'billing failed' }, 502);
 }
 async function portal(env, s, A, json) {
   const c = await call(A, 'customer'), mode = billingMode(env, c.billingTest), conf = stripeConf(env, mode), customer = mode === 'test' ? c.customerTest : c.customer;
@@ -936,6 +999,8 @@ export async function verifyStripe(body, header, secret, now = Date.now()) {
 // /api/billing/webhook (live) and /api/billing/webhook-test (test: STRIPE_TEST_WEBHOOK_SECRET). A test event
 // grants the same (Pro, credits, seats) marked test, and only to an account in test mode (billingTest) — or
 // to anyone with STRIPE_MODE = 'test'; any other is logged and ignored.
+// Events: checkout.session.completed, invoice.paid, customer.subscription.updated, customer.subscription.deleted,
+// charge.refunded and customer.subscription.trial_will_end (Pro's free trial ends in 3 days: an optional email).
 async function stripeWebhook(req, env, json, mode) {
   const conf = stripeConf(env, mode), body = await req.text(), test = mode === 'test';
   if (test && !conf.webhook) return json({ error: 'billing test not configured' }, 503);
@@ -964,10 +1029,15 @@ async function stripeWebhook(req, env, json, mode) {
     await env.TEAMS.get(env.TEAMS.idFromName('team:' + teamOf(o))).fetch('https://team/billing', { method: 'POST', body: JSON.stringify({ until: 0, ...T }) });
   } else if (ev.type === 'invoice.paid') {
     const sub = subOf(o); if (!sub) return json({ ok: true });
-    const end = (+o.lines?.data?.[0]?.period?.end || (Date.now() / 1000 + 31 * 86400)) * 1000 + 3 * DAY;   // (3 days' grace)
-    const A = acct(env, sub);
-    await call(A, 'setplan', { name: 'pro', until: end, customer: o.customer, ...T });
+    const A = acct(env, sub), trial = trialStart(o);
+    // (3 days' grace; a free trial's invoice — 0, at the start — until its end and one day.)
+    const end = (+o.lines?.data?.[0]?.period?.end || (Date.now() / 1000 + 31 * 86400)) * 1000 + (trial ? DAY : 3 * DAY);
+    await call(A, 'setplan', { name: 'pro', until: end, customer: o.customer, ...T, ...(trial && { trial: true, trialCredits: (await trialConfig(env)).trialCredits }) });
     await call(A, 'me');                                   // (its month of credits now, if due: Account.monthly)
+  } else if (ev.type === 'customer.subscription.trial_will_end' && !teamOf(o)) {
+    // Three days before a free trial ends (Stripe's default): what will be charged, and how to cancel (optional notice).
+    const sub = subOf(o); if (!sub || o.cancel_at_period_end || o.cancel_at || (o.status && o.status !== 'trialing')) return json({ ok: true });
+    await call(acct(env, sub), 'trial-ending', { end: +o.trial_end * 1000, ref: o.id || ev.id });
   } else if (ev.type === 'customer.subscription.updated' && !teamOf(o)) {
     // Cancelled (it ends at the end of the period), or renewed again: told now, and reminded a week before.
     const sub = subOf(o); if (!sub) return json({ ok: true });
@@ -997,28 +1067,54 @@ export async function stripeFee(env, { charge, intent, gross, cur }, key = env.S
   const f = financeSettings(env);
   return { fee: gross > 0 ? Math.round((gross * f.feePct) / 100 + f.feeFixed * 100) : 0, feeCur: cur, feeEstimated: true };
 }
+// A subscription's metadata, as an invoice carries it (old and new API shapes).
+const subMeta = o => o?.parent?.subscription_details?.metadata || o?.subscription_details?.metadata || {};
+// The invoice that starts a free trial (nothing to pay; checkout() marks the subscription with trial).
+export const trialStart = o => !!subMeta(o).trial && !(+o.amount_paid > 0) && o.billing_reason === 'subscription_create';
+// The promotion code used (its text: «LANZAMIENTO30»), from a Checkout Session or an invoice: read from Stripe
+// when the event only carries ids (best effort; else the id).
+async function promoOf(env, key, o) {
+  const objs = x => [].concat(x || []).filter(d => d && typeof d === 'object');
+  let d = objs(o.discounts).concat(objs(o.discount)).find(x => x.promotion_code);
+  if (!d && key && o.object === 'invoice' && /^in_[\w]+$/.test(o.id || '') && [].concat(o.discounts || []).some(x => typeof x === 'string'))
+    d = objs((await stripeGet(env, key, 'invoices/' + o.id, { 'expand[]': 'discounts' }))?.discounts).find(x => x.promotion_code);
+  const pc = d?.promotion_code; if (!pc) return null;
+  if (typeof pc === 'object') return pc.code || pc.id || null;
+  if (!/^promo_[\w]+$/.test(pc)) return null;
+  return (key && (await stripeGet(env, key, 'promotion_codes/' + pc, {}))?.code) || pc;
+}
 async function moneyEvent(env, s, conf, ev, o, sub, team) {
   if (!env.FINANCE) return;
   const cur = String(o.currency || 'eur').toLowerCase(), ref = ev.id, T = conf.mode === 'test' ? { test: true } : {};
   if (ev.type === 'checkout.session.completed' && o.mode === 'payment' && o.payment_status === 'paid') {
-    const gross = +o.amount_total || 0, p = s.products[o.metadata?.product];
+    const gross = +o.amount_total || 0, p = s.products[o.metadata?.product], discount = +o.total_details?.amount_discount || 0;
     await record(env, { kind: 'payment', product: o.metadata?.product || 'other', cur, gross, tax: +o.total_details?.amount_tax || 0, ...(p?.credits && { credits: p.credits }),
+      ...(discount > 0 && { discount, promo: await promoOf(env, conf.key, o) }),
       sub, ref, ...T, ...(await stripeFee(env, { intent: o.payment_intent, gross, cur }, conf.key)) });
   } else if (ev.type === 'invoice.paid') {
     const line = o.lines?.data?.[0] || {}, pay = o.payments?.data?.[0]?.payment || {};
     const subscription = o.subscription || o.parent?.subscription_details?.subscription || line.subscription || line.parent?.subscription_item_details?.subscription
       || ((o.subscription_details || o.parent?.subscription_details || /^subscription/.test(o.billing_reason || '')) && o.customer ? 'cus:' + o.customer : null);
-    const gross = +o.amount_paid || 0; if (!subscription || gross <= 0) return;
     const price = line.price?.id || line.pricing?.price_details?.price || line.plan?.id;
     const product = team ? 'team-seat' : Object.keys(conf.prices).find(k => conf.prices[k] && conf.prices[k] === price) || 'pro';
+    // Free trials: started (the 0 invoice at the start), converted (its first invoice after), each once (finance.js).
+    if (subscription && subMeta(o).trial && !team) {
+      const stage = trialStart(o) ? 'start' : o.billing_reason !== 'subscription_create' ? 'convert' : null;
+      if (stage) await record(env, { kind: 'trial', stage, subscription, product, sub: sub || null, ref: ref + ':trial', ...T });
+    }
+    const gross = +o.amount_paid || 0; if (!subscription || gross <= 0) return;
     const span = (+line.period?.end - +line.period?.start) * 1000, months = span > 0 ? Math.max(1, Math.round(span / (30.44 * DAY))) : 1;
     const tax = +o.tax || (o.total_taxes || []).reduce((t, x) => t + (+x.amount || 0), 0) || (o.total_tax_amounts || []).reduce((t, x) => t + (+x.amount || 0), 0);
+    const discount = (o.total_discount_amounts || []).reduce((t, x) => t + (+x.amount || 0), 0);
     await record(env, { kind: 'payment', product, cur, gross, tax, subscription, months, sub: sub || null, ref, ...T,
+      ...(discount > 0 && { discount, promo: await promoOf(env, conf.key, o) }),
       ...(await stripeFee(env, { charge: o.charge || pay.charge, intent: o.payment_intent || pay.payment_intent, gross, cur }, conf.key)) });
   } else if (ev.type === 'charge.refunded') {
     const before = +ev.data?.previous_attributes?.amount_refunded || 0, amount = (+o.amount_refunded || 0) - before;
     if (amount > 0) await record(env, { kind: 'refund', cur, amount, sub: o.metadata?.sub || null, ref, ...T });
   } else if (ev.type === 'customer.subscription.deleted') {
     await record(env, { kind: 'sub-end', subscription: o.id || ('cus:' + o.customer), sub: sub || null, ref, ...T, ...(team && { product: 'team-seat' }) });
+    // (A trial that ends without its first payment: cancelled. finance.js ignores it after a conversion.)
+    if (o.metadata?.trial && !team) await record(env, { kind: 'trial', stage: 'cancel', subscription: o.id || ('cus:' + o.customer), sub: sub || null, ref: ref + ':trial', ...T });
   }
 }

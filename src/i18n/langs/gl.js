@@ -2706,4 +2706,8 @@ export default {
   "Quitar las líneas": "Quitar as liñas",
   "Zona ampliada: arrástrala para ampliar otra parte": "Zona ampliada: arrástraa para ampliar outra parte",
   "Dibuja un rectángulo sobre la zona que quieres ampliar · Esc: cancelar": "Debuxa un rectángulo sobre a zona que queres ampliar · Esc: cancelar",
+  "Prueba Pro {n} días gratis": "Proba Pro {n} días gratis",
+  "Prueba gratis hasta:": "Proba gratuíta ata:",
+  "Se pide una tarjeta, pero no se cobra nada hasta que acabe la prueba. Puedes cancelarla antes en «Gestionar la suscripción».": "Pídese unha tarxeta, pero non se cobra nada ata que remate a proba. Podes cancelala antes en «Xestionar a subscrición».",
+  "Avisarme antes de que acabe mi prueba de Pro": "Avisarme antes de que remate a miña proba de Pro",
 };

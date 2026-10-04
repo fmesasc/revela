@@ -129,6 +129,7 @@ el pie «Revela · un proyecto de FM Lab»:
 | Tu Pro termina | Stripe avisa de la cancelación (`customer.subscription.updated` con `cancel_at_period_end`) y otra vez unos 7 días antes del fin: cuántas quedarán en solo lectura, créditos que se conservan | No (servicio) |
 | Tu Pro ha terminado | `customer.subscription.deleted` | No (servicio) |
 | Créditos que caducan | 7 días antes de que caduque un lote con créditos (uno por lote) | **Sí** |
+| Tu prueba de Pro termina | `customer.subscription.trial_will_end` (3 días antes del fin de la prueba gratis): la fecha del primer cobro, los créditos del mes y cómo cancelar en «Gestionar la suscripción». No se envía si ya la canceló | **Sí** |
 | Cuenta inactiva | ~23 meses sin usarla: a 30 y a 7 días del borrado | No (obligatorio) |
 | Cuenta eliminada | Al eliminarla la persona, o a los 24 meses sin uso | No (servicio) |
 
@@ -185,6 +186,23 @@ créditos solo cambian cuando llega el aviso **firmado** de Stripe
 pone en **modo de prueba** pagan con la configuración de prueba de Stripe (sin dinero real; sus
 avisos llegan a `/api/billing/webhook-test`) y lo que reciben va marcado de prueba, fuera de las
 cifras del negocio (ver «Modo de prueba de Stripe» en la puesta en marcha).
+
+**Códigos promocionales y prueba gratis de Pro.** Checkout se crea siempre con
+`allow_promotion_codes`, así que la página de pago muestra «Añadir código promocional». Los códigos
+(p. ej. `LANZAMIENTO30`) se crean desde la administración, página «Promociones»: un cupón de Stripe
+(porcentaje o importe fijo en EUR/USD; una vez, N meses o siempre; para todo o solo Pro, créditos o
+equipos —los productos se sacan de los precios `STRIPE_PRICE_*`—) y su código (máximo de usos,
+caducidad, solo clientes nuevos). Stripe no tiene límite «por cliente»: se guarda en el código y la
+página marca los usos que lo superan. Se pueden desactivar y reactivar; todo queda en la auditoría,
+en modo real o de prueba (los de prueba con la etiqueta «prueba»). La **prueba gratis de Pro** se
+configura también ahí, sin variables ni despliegue (se guarda en el objeto `Budget`): días (0 = sin
+prueba), créditos de la prueba (p. ej. 100) y «una vez por cuenta». Checkout de Pro mensual o anual
+añade `trial_period_days` solo si la cuenta nunca pagó Pro (ni, con «una vez», tuvo una prueba) en
+ese modo de Stripe; pide tarjeta igualmente, y si al final no hay tarjeta la suscripción se cancela.
+Durante la prueba la cuenta tiene Pro, pero solo los créditos de la prueba; los del mes de Pro llegan
+con la primera factura pagada. «Mi cuenta» muestra «Prueba Pro 7 días gratis» en el botón de Pro y,
+durante la prueba, hasta cuándo dura. Por qué así: el dueño ajusta las ofertas sin tocar código ni
+Cloudflare, y Stripe sigue siendo quien cobra y aplica los descuentos.
 
 ## Modelos 3D con IA
 
@@ -363,6 +381,10 @@ privado aparte (un proyecto de Cloudflare Pages servido en admin.revelaslides.co
     transaction* con `STRIPE_SECRET_KEY`; si no se puede, estimada con `STRIPE_FEE_PCT` % + `STRIPE_FEE_FIXED`,
     por defecto 1,5 % + 0,25) y neto; los créditos vendidos; los reembolsos (`charge.refunded`) y las bajas
     (`customer.subscription.deleted`). Cada evento de Stripe una sola vez (los reintentos no cuentan doble).
+    Con un código promocional, también el descuento y el código: Negocio muestra el bruto antes del
+    descuento, los descuentos y lo cobrado, y las cifras de cada código (usos, descuento, cobrado).
+  - **Pruebas gratis de Pro**: empezadas (la factura de 0 al empezar), convertidas (su primera factura
+    pagada) y canceladas (baja antes de pagar); la conversión es convertidas / (convertidas + canceladas).
   - **Créditos**: regalados (bienvenida, mes de Pro, administración, devoluciones), gastados (con su
     petición de IA) y caducados (los lotes de la cuenta).
   - **Cuentas nuevas y activas**: un contador por día (DAU) y la primera vez de cada mes (MAU), sin guardar quién.
@@ -427,7 +449,15 @@ que el servidor los rechaza.
    `STRIPE_PRICE_*` y el webhook `https://revelaslides.com/api/billing/webhook`
    con los eventos `checkout.session.completed`, `invoice.paid`,
    `customer.subscription.updated` (avisos de cancelación),
-   `customer.subscription.deleted` y `charge.refunded` (reembolsos, para la contabilidad).
+   `customer.subscription.deleted`, `charge.refunded` (reembolsos, para la contabilidad) y
+   `customer.subscription.trial_will_end` (aviso del fin de la prueba gratis de Pro).
+   **Clave restringida** (Developers ▸ API keys ▸ *Create restricted key*), con estos permisos:
+   *Checkout Sessions* — escritura; *Customer portal* — escritura; *Subscriptions* — escritura;
+   *Charges* — lectura; *PaymentIntents* — lectura; *Balance* — lectura (y *Balance transactions* si
+   aparece aparte); y, para «Promociones» en la administración, *Coupons* — escritura; *Promotion
+   Codes* — escritura; *Products* — lectura; *Prices* — lectura (sin ellos la página lo dice y nombra
+   los que faltan). **Portal de cliente** (Settings ▸ Billing ▸ Customer portal): permitir cancelar la
+   suscripción (también durante la prueba gratis).
    **Impuestos (Stripe Tax):** categoría de producto *Software as a service (SaaS) – personal use*;
    en cada precio, *Include tax in price* = **No** (los precios son sin impuestos); añadir el registro
    de IVA de España en Stripe ▸ Tax ▸ Registrations; y la variable `STRIPE_AUTOMATIC_TAX = 1` en el
@@ -448,14 +478,16 @@ que el servidor los rechaza.
 
    Pasos, en Stripe con el interruptor **Modo de prueba** (Test mode) activado:
    1. **Clave restringida de prueba** (Developers ▸ API keys ▸ *Create restricted key*), con los
-      mismos 6 permisos que la real: *Checkout Sessions* — escritura; *Customer portal* — escritura;
+      mismos permisos que la real: *Checkout Sessions* — escritura; *Customer portal* — escritura;
       *Subscriptions* — escritura; *Charges* — lectura; *PaymentIntents* — lectura; *Balance* — lectura
-      (las comisiones; también *Balance transactions* si aparece aparte).
+      (las comisiones; también *Balance transactions* si aparece aparte); *Coupons* — escritura;
+      *Promotion Codes* — escritura; *Products* — lectura; *Prices* — lectura (códigos promocionales).
    2. **Productos y precios de prueba**, los mismos que los reales (Pro mensual, Pro anual, 500 y 1500
       créditos, puesto de equipo); en modo de prueba sus ids son otros.
    3. **Webhook de prueba**: endpoint `https://revelaslides.com/api/billing/webhook-test` con los
       eventos `checkout.session.completed`, `invoice.paid`, `customer.subscription.updated`,
-      `customer.subscription.deleted` y `charge.refunded` (el real sigue en `…/api/billing/webhook`).
+      `customer.subscription.deleted`, `charge.refunded` y `customer.subscription.trial_will_end`
+      (el real sigue en `…/api/billing/webhook`).
    4. **Secretos** (nunca en el repositorio): `npx wrangler secret put STRIPE_TEST_SECRET_KEY` (la clave
       `rk_test_…`) y `npx wrangler secret put STRIPE_TEST_WEBHOOK_SECRET` (el `whsec_…` del webhook de prueba).
    5. **Variables** (Workers ▸ revela-share ▸ Settings ▸ Variables), con los ids de prueba:
