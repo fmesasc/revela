@@ -615,15 +615,36 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
 // a slide and its Morph twin) is written once: a table read before the slides
 // start gives each element its source. The file stays self-contained.
 function dedupeMedia(html) {
-  const RE = / (src|data-poster)="(data:[^"]{2000,})"/g, count = new Map();
-  for (const m of html.matchAll(RE)) count.set(m[2], (count.get(m[2]) || 0) + 1);
+  // (Found by hand, not with a regular expression: a picture of several MB inside a pattern
+  // overflows the regex engine's stack — "Maximum call stack size exceeded".)
+  const hits = [];
+  for (const at of ['src', 'data-poster']) {
+    const key = ` ${at}="data:`;
+    for (let i = html.indexOf(key); i >= 0; i = html.indexOf(key, i + 1)) {
+      const from = i + at.length + 3, to = html.indexOf('"', from);
+      if (to < 0) break;
+      if (to - from >= 2000) hits.push({ at, i, from, to });
+      i = to;
+    }
+  }
+  const count = new Map();
+  for (const h of hits) { h.u = html.slice(h.from, h.to); count.set(h.u, (count.get(h.u) || 0) + 1); }
   const ids = new Map([...count].filter(([, n]) => n > 1).map(([u], i) => [u, 'm' + i]));
   if (!ids.size) return html;
-  const out = html.replace(RE, (m, at, u) => (ids.has(u) ? ` data-rv-${at === 'src' ? 'src' : 'poster'}="${ids.get(u)}"` : m));
+  hits.sort((a, b) => a.i - b.i);
+  const parts = []; let last = 0;
+  for (const h of hits) {
+    if (!ids.has(h.u)) continue;
+    parts.push(html.slice(last, h.i), ` data-rv-${h.at === 'src' ? 'src' : 'poster'}="${ids.get(h.u)}"`);
+    last = h.to + 1;
+  }
+  parts.push(html.slice(last));
+  const out = parts.join('');
   const table = `<script>(function(){var M=${jsData(Object.fromEntries([...ids].map(([u, k]) => [k, u])))};`
     + `document.querySelectorAll('[data-rv-src]').forEach(function(el){el.setAttribute('src',M[el.getAttribute('data-rv-src')]);});`
     + `document.querySelectorAll('[data-rv-poster]').forEach(function(el){el.setAttribute('data-poster',M[el.getAttribute('data-rv-poster')]);});})();</script>\n`;
-  return out.replace(/<script src="[^"]*\/dist\/reveal\.js"><\/script>/, x => table + x);
+  const r = out.search(/<script src="[^"]*\/dist\/reveal\.js"><\/script>/);
+  return r < 0 ? out : out.slice(0, r) + table + out.slice(r);
 }
 
 export function exportHTML() {

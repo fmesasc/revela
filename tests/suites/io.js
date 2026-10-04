@@ -293,6 +293,17 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(t0.animation.order < rc.animation.order && rc.animation.order < by(b => /Cuerpo/.test(b.html || '')).animation.order, 'orden');
   });
 
+  await test('HTML: una imagen repetida va una sola vez (también con imágenes enormes)', async () => {
+    reset();
+    const pic = 'data:image/png;base64,' + 'A'.repeat(3000), huge = 'data:image/png;base64,' + 'B'.repeat(6e6);
+    R.store.commit(() => { slide().blocks.push({ id: 'p1', type: 'image', src: pic, x: 0, y: 0, w: 10, h: 10 }, { id: 'p2', type: 'image', src: pic, x: 20, y: 0, w: 10, h: 10 },
+      { id: 'p3', type: 'image', src: huge, x: 40, y: 0, w: 10, h: 10 }, { id: 'p4', type: 'image', src: huge, x: 60, y: 0, w: 10, h: 10 }); });
+    const h = R.io.buildHTML();
+    eq(h.split(pic).length - 1, 1, 'la pequeña, una vez'); eq(h.split(huge).length - 1, 1, 'la enorme, una vez');
+    eq((h.match(/data-rv-src="m\d+"/g) || []).length, 4, 'las cuatro apuntan a la tabla');
+    assert(h.indexOf('var M=') < h.indexOf('/dist/reveal.js"></script>'), 'la tabla antes de reveal.js');
+  });
+
   await test('PowerPoint y ODP: texto con formato y todos los objetos', async () => {
     reset();
     const { htmlToRuns } = await frame.contentWindow.eval("import('/src/io/formats/pptx-export.js')");
