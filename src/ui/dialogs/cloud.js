@@ -1,4 +1,4 @@
-// Revela's cloud (official edition and desktop app): my presentations, sharing
+// Revela's cloud (official edition and desktop app): sharing
 // one with people or by link (view / comment / edit), its statistics and its
 // versions. Everything is decided by the server (server/cloudflare/docs.js):
 // these dialogs only ask it and show what it says.
@@ -11,6 +11,7 @@ import { alertDialog, confirmDialog } from './dialog.js';
 import { openAccount, signInWithTerms } from './account.js';
 import { present } from '../shell/present.js';
 import { saveProject } from '../../io/formats/project.js';
+import { openCloudDocs } from './cloudlibrary.js';
 
 const ROLE_NAMES = { view: 'Puede ver', comment: 'Puede comentar', edit: 'Puede editar', owner: 'Propietario' };
 const LINK_NAMES = { none: 'Solo las personas añadidas', view: 'Cualquiera con el enlace puede ver', comment: 'Cualquiera con el enlace puede comentar', edit: 'Cualquiera con el enlace puede editar' };
@@ -18,7 +19,7 @@ const fmt = ts => (ts ? new Date(ts).toLocaleString(currentLang(), { dateStyle: 
 // Read-only beyond the plan (server/cloudflare/docs.js): friendly, and what to do.
 const readOnlyText = (limit, mine = true) => (mine ? t('Esta presentación está en solo lectura porque tu plan gratuito permite editar {n}. Pasa a Pro o borra alguna para editarla.').replace('{n}', limit)
   : t('Esta presentación está en solo lectura porque su propietario ha superado el límite de su plan.'));
-const errorText = e => (e.status === 402 && e.data?.error === 'read only' ? readOnlyText(e.data.limit) : e.status === 402 && e.data?.error === 'doc limit' ? t('Has llegado al máximo de presentaciones en la nube de tu plan ({n}). Borra alguna o pásate a Pro.').replace('{n}', e.data.limit)
+export const errorText = e => (e.status === 402 && e.data?.error === 'read only' ? readOnlyText(e.data.limit) : e.status === 402 && e.data?.error === 'doc limit' ? t('Has llegado al máximo de presentaciones en la nube de tu plan ({n}). Borra alguna o pásate a Pro.').replace('{n}', e.data.limit)
   : e.status === 402 ? t('Esto es del plan Pro.') : e.status === 401 ? t('Inicia sesión primero.') : e.status === 403 ? t('No tienes permiso para esto.')
   : e.status === 413 ? t('La presentación es demasiado grande para la nube.') : `${t('Algo ha fallado:')} ${e.message}`);
 
@@ -33,44 +34,15 @@ function modal(id, title, width = 520) {
   return { back, body: back.querySelector('.cl-body'), close };
 }
 // Signed in, or asks to (and returns false).
-async function signedIn() {
+export async function signedIn() {
   if (acc.account()) return true;
   await acc.refreshAccount().catch(() => null);
   if (acc.account()) return true;
   openAccount(); return false;
 }
 
-// ---- My presentations -------------------------------------------------------------------------
-export async function openCloudDocs() {
-  if (!(await signedIn())) return;
-  const { body, close } = modal('cloud-docs-modal', 'Mi nube de Revela', 600);
-  body.innerHTML = `<p class="host-help">${t('Cargando…')}</p>`;
-  let r; try { r = await cd.listDocs(); } catch (e) { body.innerHTML = `<p class="host-help">${esc(errorText(e))}</p>`; return; }
-  const open = cd.cloudDoc();
-  const row = (d, mine) => `<div class="sh-item cl-doc" data-id="${esc(d.id)}"><span><b>${esc(d.name || t('Presentación sin título'))}</b><br><small>${mine ? fmt(d.updated) : `${esc(d.owner || '')} · ${t(ROLE_NAMES[d.role] || '')}`}${d.readOnly ? ` · <i class="ms" style="font-size:13px;vertical-align:-2px">lock</i> ${t('Solo lectura')}` : ''}</small></span>
-    ${open?.id === d.id ? `<em class="cl-here">${t('Abierta')}</em>` : `<button type="button" class="mini2" data-a="open">${t('Abrir')}</button>`}
-    ${mine ? `<button type="button" class="mini2" data-a="del" title="${t('Eliminar')}">✕</button>` : ''}</div>`;
-  body.innerHTML = `<div class="fr-actions" style="justify-content:space-between;flex-wrap:wrap">
-      <button type="button" class="fr-do cl-save"${open ? ' disabled' : ''}>${t('Guardar esta presentación en la nube')}</button>
-      <small class="host-help" style="margin:0">${r.mine.length} / ${r.limit}</small></div>
-    ${r.mine.some(d => d.readOnly) ? `<p class="host-help cl-ro-note">${t('Tienes más presentaciones de las que permite tu plan gratuito ({n}): las más recientes se pueden editar y las demás quedan en solo lectura. No se borra ninguna. Pasa a Pro o borra alguna para editarlas.').replace('{n}', r.limit)}</p>` : ''}
-    <h4>${t('Mis presentaciones')}</h4>${r.mine.length ? r.mine.map(d => row(d, true)).join('') : `<p class="host-help">${t('Aún no tienes ninguna en la nube.')}</p>`}
-    <h4>${t('Compartidas conmigo')}</h4>${r.shared.length ? r.shared.map(d => row(d, false)).join('') : `<p class="host-help">${t('Nadie ha compartido nada contigo todavía.')}</p>`}`;
-  body.querySelector('.cl-save').addEventListener('click', async e => {
-    e.target.disabled = true;
-    try { await cd.saveToCloud(); close(); openCloudShare(); } catch (err) { e.target.disabled = false; alertDialog(errorText(err)); }
-  });
-  body.querySelectorAll('.cl-doc').forEach(el => {
-    const id = el.dataset.id;
-    el.querySelector('[data-a="open"]')?.addEventListener('click', async () => {
-      try { await cd.flushCloud(); await cd.openDoc(id); history.replaceState(null, '', '?doc=' + id); close(); } catch (e) { alertDialog(errorText(e)); }
-    });
-    el.querySelector('[data-a="del"]')?.addEventListener('click', async () => {
-      if (!(await confirmDialog(t('¿Eliminar esta presentación de la nube? Quien la tenga compartida dejará de verla. No se puede deshacer.')))) return;
-      try { await cd.deleteDoc(id); if (cd.cloudDoc()?.id === id) cd.closeDoc(); openCloudDocs(); } catch (e) { alertDialog(errorText(e)); }
-    });
-  });
-}
+// ---- My presentations: a page of their own (cloudlibrary.js) -------------------------------------
+export { openCloudDocs };
 
 // ---- Sharing the open one --------------------------------------------------------------------
 export async function openCloudShare() {

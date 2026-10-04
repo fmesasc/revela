@@ -57,7 +57,7 @@ import { handleDocs } from './docs.js';
 import { handleTeams, teamStatus } from './teams.js';
 import { handleLti } from './lti.js';
 import { handleCalls } from './calls.js';
-import { docsSettings } from './docs.js';
+import { docsSettings, TRASH_DAYS, FOLDERS } from './docs.js';
 import { mail, readUnsubToken, unsubPage, fmtDate, mailConfigured, OPTIONAL } from './mail.js';
 import { scheduleAt, dayOf } from './schedule.js';
 import { handle3d, configured3d } from './model3d.js';
@@ -253,7 +253,8 @@ export class Account {
   // (N = the plan's limit). Nothing is deleted; going back to Pro or deleting some unlocks them.
   async docState(pro) {
     const ds = docsSettings(this.env), limit = (pro ?? (await this.isPro())) ? ds.proDocs : ds.freeDocs;
-    const docs = (await this.get('docs', [])).slice().sort((x, y) => y.updated - x.updated);
+    // (Those in the trash count, and are the first to be read-only.)
+    const docs = (await this.get('docs', [])).slice().sort((x, y) => !y.trashed - !x.trashed || y.updated - x.updated);
     return { limit, docs, locked: docs.slice(limit).map(d => d.id) };
   }
   // ---- Emails (mail.js) and what the daily run looks at (schedule.js) ----
@@ -305,6 +306,11 @@ export class Account {
         const next = stage === 'w30' ? 'w7:' + seen : 'del:' + seen; await this.put({ idleNext: next });
         await scheduleAt(this.env, stage === 'w30' ? end - 7 * DAY : end, prof.sub, 'idle', next);
       } else if (stage === 'del') return { delete: true };
+    } else if (a.kind === 'trash') {                      // in the trash for TRASH_DAYS: deleted for good (schedule.js); the rest, later
+      const docs = await this.get('docs', []), end = d => d.trashed + TRASH_DAYS * DAY;
+      const purge = docs.filter(d => d.trashed && end(d) <= now).map(d => d.id), rest = docs.filter(d => d.trashed && end(d) > now);
+      if (rest.length) await scheduleAt(this.env, Math.min(...rest.map(end)), prof.sub, 'trash', '');
+      return { purge };
     }
     return {};
   }
@@ -469,29 +475,86 @@ export class Account {
       // Cloud documents: the owner's list (with the plan's limit), and "shared with me" (in the 'e:' + email objects).
       // Everything this account holds (to hand over), and wiping it (the account is closed).
       case 'export': return this.json({ profile: await this.get('profile', {}), plan: await this.get('plan', null), credits: await this.get('credits', 0), lastSeen: await this.get('lastSeen', null), mailOff: await this.get('mailOff', []),
-        ledger: await this.get('ledger', []), docs: await this.get('docs', []), sessions: Object.values(await this.get('sessions', {})).map(v => ({ created: v.created, expires: v.expires, kind: v.kind })) });
+        ledger: await this.get('ledger', []), docs: await this.get('docs', []), folders: await this.get('folders', []), sessions: Object.values(await this.get('sessions', {})).map(v => ({ created: v.created, expires: v.expires, kind: v.kind })) });
       case 'wipe': {
         const prof = await this.get('profile', {}), out = { docs: (await this.get('docs', [])).map(d => d.id), customer: await this.get('customer', null), customerTest: await this.get('customerTest', null), email: prof.email || null, lang: prof.lang || null };
         await this.ctx.storage.deleteAll(); if (prof.sub) await directoryRemove(this.env, prof.sub); return this.json(out);
       }
       case 'docs-list': { const d = await this.docState(); return this.json({ docs: (await this.get('docs', [])).map(x => (d.locked.includes(x.id) ? { ...x, readOnly: true } : x)), limit: d.limit }); }
       case 'docs-locked': { const d = await this.docState(); return this.json({ locked: d.locked.includes(a.id), limit: d.limit }); }
-      case 'docs-add': {
-        const docs = await this.get('docs', []);
+      case 'docs-add': {                                   // { id, name, limit, folder?, slides, text } (folder: one of mine, else the top)
+        const docs = await this.get('docs', []), folders = await this.get('folders', []);
         if (docs.length >= +a.limit) return this.json({ ok: false, limit: +a.limit });
-        docs.unshift({ id: a.id, name: a.name, updated: Date.now() }); await this.put({ docs }); return this.json({ ok: true });
+        const folder = folders.some(f => f.id === a.folder) ? a.folder : null, now = Date.now();
+        docs.unshift({ id: a.id, name: a.name, updated: now, created: now, folder, slides: +a.slides || 0, text: String(a.text || '').slice(0, 400) });
+        await this.put({ docs }); return this.json({ ok: true, folder });
       }
       case 'docs-touch': {
         const docs = await this.get('docs', []), d = docs.find(x => x.id === a.id); if (!d) return this.json({ ok: false });
-        Object.assign(d, { name: a.name, updated: Date.now() }); docs.sort((x, y) => y.updated - x.updated); await this.put({ docs }); return this.json({ ok: true });
+        Object.assign(d, { name: a.name, updated: Date.now() }, a.slides !== undefined && { slides: +a.slides || 0, text: String(a.text || '').slice(0, 400) });
+        docs.sort((x, y) => y.updated - x.updated); await this.put({ docs }); return this.json({ ok: true });
       }
+      // Organising my list: folders (at most FOLDERS.max, names of FOLDERS.name characters, FOLDERS.depth deep),
+      // which folder each one is in, stars, the picture of the first slide (when) and the trash.
+      case 'docs-meta': {                                  // { id, folder?, starred?, thumbAt?, trashed? } → { ok: false } when not mine
+        const docs = await this.get('docs', []), d = docs.find(x => x.id === a.id); if (!d) return this.json({ ok: false });
+        if (a.folder !== undefined) {
+          if (a.folder !== null && !(await this.get('folders', [])).some(f => f.id === a.folder)) return this.json({ ok: false, error: 'no folder' });
+          d.folder = a.folder;
+        }
+        if (a.starred !== undefined) d.starred = !!a.starred;
+        if (a.thumbAt !== undefined) d.thumbAt = +a.thumbAt || null;
+        if (a.trashed !== undefined) {
+          d.trashed = a.trashed ? Date.now() : null;
+          if (d.trashed) await scheduleAt(this.env, d.trashed + TRASH_DAYS * DAY, (await this.get('profile', {})).sub, 'trash', '');
+        }
+        await this.put({ docs }); return this.json({ ok: true, doc: d });
+      }
+      case 'folder-add': case 'folder-edit': case 'folder-remove': {
+        const folders = await this.get('folders', []), byId = new Map(folders.map(f => [f.id, f]));
+        const depth = id => { let n = 0; for (let f = byId.get(id); f && n <= FOLDERS.depth; f = byId.get(f.parent)) n++; return n; };
+        const height = id => 1 + Math.max(0, ...folders.filter(f => f.parent === id).map(f => height(f.id)));
+        const name = a.name === undefined ? undefined : String(a.name ?? '').replace(/[\u0000-\u001f]/g, '').trim();
+        if (name !== undefined && (!name || name.length > FOLDERS.name)) return this.json({ ok: false, error: 'bad name' });
+        const parent = a.parent === undefined ? undefined : a.parent || null;
+        if (parent && !byId.has(parent)) return this.json({ ok: false, error: 'no folder' });
+        if (op === 'folder-add') {
+          if (name === undefined) return this.json({ ok: false, error: 'bad name' });
+          if (folders.length >= FOLDERS.max) return this.json({ ok: false, error: 'folder limit', limit: FOLDERS.max });
+          if (parent && depth(parent) >= FOLDERS.depth) return this.json({ ok: false, error: 'too deep', depth: FOLDERS.depth });
+          const f = { id: random(6), name, parent: parent || null, created: Date.now() };
+          folders.push(f); await this.put({ folders }); return this.json({ ok: true, folder: f, folders });
+        }
+        const f = byId.get(a.id); if (!f) return this.json({ ok: false, error: 'not found' });
+        if (op === 'folder-remove') {                      // (what it held goes up one level: nothing is deleted)
+          const docs = await this.get('docs', []);
+          for (const x of folders) if (x.parent === f.id) x.parent = f.parent;
+          for (const d of docs) if (d.folder === f.id) d.folder = f.parent;
+          await this.put({ folders: folders.filter(x => x !== f), docs }); return this.json({ ok: true, folders: folders.filter(x => x !== f) });
+        }
+        if (parent !== undefined) {
+          for (let p = parent; p; p = byId.get(p)?.parent) if (p === f.id) return this.json({ ok: false, error: 'cycle' });
+          if ((parent ? depth(parent) : 0) + height(f.id) > FOLDERS.depth) return this.json({ ok: false, error: 'too deep', depth: FOLDERS.depth });
+          f.parent = parent;
+        }
+        if (name !== undefined) f.name = name;
+        await this.put({ folders }); return this.json({ ok: true, folder: f, folders });
+      }
+      case 'folders-list': return this.json({ folders: await this.get('folders', []) });
       case 'docs-remove': await this.put({ docs: (await this.get('docs', [])).filter(x => x.id !== a.id) }); return this.json({ ok: true });
-      case 'inbox-list': return this.json({ docs: await this.get('inbox', []) });
+      case 'inbox-list': return this.json({ docs: (await this.get('inbox', [])).filter(x => !x.away) });
       case 'inbox-add': {
-        const inbox = (await this.get('inbox', [])).filter(x => x.id !== a.id);
-        inbox.unshift({ id: a.id, name: a.name, owner: a.owner, role: a.role, at: Date.now() }); await this.put({ inbox: inbox.slice(0, 1000) }); return this.json({ ok: true, lang: await this.get('lang', null) });
+        const all = await this.get('inbox', []), was = all.find(x => x.id === a.id), inbox = all.filter(x => x !== was);
+        inbox.unshift({ id: a.id, name: a.name, owner: a.owner, role: a.role, at: Date.now(), ...(was?.starred && { starred: true }) }); await this.put({ inbox: inbox.slice(0, 1000) }); return this.json({ ok: true, lang: await this.get('lang', null) });
       }
       case 'inbox-remove': await this.put({ inbox: (await this.get('inbox', [])).filter(x => x.id !== a.id) }); return this.json({ ok: true });
+      case 'inbox-away': {                                 // { id }: in its owner's trash (kept, with its star, until it's back or deleted)
+        const inbox = await this.get('inbox', []), d = inbox.find(x => x.id === a.id); if (d) { d.away = true; await this.put({ inbox }); } return this.json({ ok: true });
+      }
+      case 'inbox-star': {                                 // { id, on }: a star on one shared with me
+        const inbox = await this.get('inbox', []), d = inbox.find(x => x.id === a.id); if (!d) return this.json({ ok: false });
+        d.starred = !!a.on; await this.put({ inbox }); return this.json({ ok: true });
+      }
       // ---- Administration (admin.js: checked there, and written to its audit log) ----
       case 'admin-view': {
         const prof = await this.get('profile', null); if (!prof) return this.json({});
@@ -692,7 +755,7 @@ export async function handleApi(req, env, url) {
   // Cloud documents: a link may give access without a session (to read).
   if (isDocs) {
     const who = me && { ...me, ...(await call(acct(env, me.sub), 'me')) };
-    return handleDocs(path, req, body, url, env, who && { sub: me.sub, email: who.email, name: who.name, plan: who.plan, features: who.features }, acct, call, json);
+    return handleDocs(path, req, body, url, env, who && { sub: me.sub, email: who.email, name: who.name, plan: who.plan, features: who.features }, json);
   }
   if (!me) return json({ error: 'no session' }, 401);
   const A = acct(env, me.sub);

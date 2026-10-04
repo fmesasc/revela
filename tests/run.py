@@ -302,6 +302,7 @@ def site_checks(send, recv):
         def do_POST(self):
             body = self.rfile.read(int(self.headers.get('Content-Length') or 0))
             if self.path == '/api/login': return self.reply(200, {'ok': True}, {'Set-Cookie': 'rv_session=ok; Path=/api; HttpOnly; SameSite=Strict'})
+            if self.path == '/api/docs/thumbs': return self.reply(200, {'thumbs': {}}) if self.signed() else self.reply(401, {'error': 'no session'})
             if self.path == '/api/stock/used': seen.setdefault('used', []).append(json.loads(body or b'{}')); return self.reply(200, {'ok': True})
             if self.path == '/api/support': seen.setdefault('support', []).append(json.loads(body or b'{}')); return self.reply(200, {'ok': True, 'id': 1001, 'mailed': True})
             if self.path == '/api/ai/chat':
@@ -372,7 +373,9 @@ def site_checks(send, recv):
         # Revela's cloud: the group in File, my presentations, sharing with people (not saved yet)
         check(ev("getComputedStyle(document.querySelector('[data-action=\"cloud-docs\"]').closest('.group')).display!=='none'"), 'la nube de Revela en Archivo (solo en la edición oficial)')
         ev("document.querySelector('[data-action=\"cloud-docs\"]').click();1"); time.sleep(0.6)
-        check(ev("(m=>!!m&&/Charla de otoño/.test(m.textContent)&&/De Luis/.test(m.textContent)&&/1 \\/ 3/.test(m.textContent))(document.getElementById('cloud-docs-modal'))"), '«Mi nube»: las mías (con el límite) y las compartidas')
+        check(ev("(m=>!!m&&/Charla de otoño/.test(m.textContent)&&/1 de 3 presentaciones/.test(m.textContent))(document.getElementById('cloud-docs-modal'))"), '«Mi nube»: las mías (con el límite)')
+        ev("document.querySelector('#cloud-docs-modal [data-sec=\"shared\"]').click();1"); time.sleep(0.3)
+        check(ev("(m=>/De Luis/.test(m.textContent)&&/luis@example.com/.test(m.textContent))(document.getElementById('cloud-docs-modal'))"), '«Mi nube»: y las compartidas conmigo, aparte')
         ev("document.querySelector('#cloud-docs-modal .modal-close').click();document.querySelector('[data-action=\"cloud-share\"]').click();1"); time.sleep(0.5)
         check(ev("!!document.querySelector('#cloud-share-modal .cl-save')"), '«Personas»: primero, guardarla en la nube')
         ev("document.querySelector('#cloud-share-modal .modal-close').click();1")
