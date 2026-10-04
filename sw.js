@@ -7,7 +7,7 @@
 // - Everything else (Google Drive API, sign-in, the phone remote's signalling)
 //   is not touched: it goes straight to the network.
 
-const CACHE = 'revela-v3';
+const CACHE = 'revela-v4';
 const SHELL = ['./', 'index.html', 'src/ui/styles/tokens.css', 'src/ui/styles/ribbon.css', 'src/ui/styles/layout.css', 'src/ui/styles/canvas.css', 'src/ui/styles/chrome.css', 'src/ui/styles/responsive.css', 'src/ui/styles/features.css', 'src/apps/editor/main.js', 'manifest.webmanifest', 'icons/icon.svg'];
 const CDN = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com', 'storage.googleapis.com'];   // (the last: MediaPipe's models, by version)
 
@@ -27,7 +27,9 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   if (url.origin === location.origin) {
     if (url.searchParams.has('test') || url.pathname.includes('/tests/')) return;   // never cache the test harness
-    e.respondWith(fetch(req).then(res => {
+    // (cache: 'no-cache' — always asks the server whether there's a newer version (a cheap 304 if not):
+    // the browser's own HTTP cache kept old code for hours after a deploy.)
+    e.respondWith(fetch(req, { cache: 'no-cache' }).then(res => {
       if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
       return res;
     }).catch(() => caches.match(req, { ignoreSearch: req.mode === 'navigate' })
