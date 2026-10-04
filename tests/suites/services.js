@@ -526,6 +526,183 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     }
   });
 
+  // «Completar la presentación»: a half-made deck of screenshots, written from what they show.
+  // The AI is simulated: captions for the vision model, slides for the writing model.
+  const pictureOf = (W, w, h, hue) => { const c = W.document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d');
+    g.fillStyle = `hsl(${hue},60%,85%)`; g.fillRect(0, 0, w, h); g.fillStyle = '#222'; g.font = '40px sans-serif';
+    for (let y = 60; y < h; y += 70) g.fillText('Menú · Datos · Informe ' + y, 30, y);
+    for (let k = 0; k < 4000; k++) { g.fillStyle = `hsl(${(k * 37) % 360},70%,50%)`; g.fillRect((k * 97) % w, (k * 61) % h, 3, 3); }
+    return c.toDataURL('image/png'); };
+  // Cover, then 7 slides with empty title and body and a picture over them; slide 3 has the author's title,
+  // slide 4 the author's text and notes (beside its picture), slide 5 two pictures.
+  const halfDeck = W => {
+    const ph = (kind, html = '', [x, y, w, h] = kind === 'title' ? [100, 60, 1080, 100] : [100, 180, 1080, 480]) => ({ id: R.model.uid(), type: 'text', ph: kind, html, x, y, w, h, fontSize: kind === 'title' ? 44 : 28, rotation: 0, animation: null });
+    const img = (src, x, y, w, h) => ({ id: R.model.uid(), type: 'image', src, x, y, w, h, fit: 'contain', rotation: 0, animation: null, alt: '' });
+    const pics = [0, 1, 2, 3, 4, 5, 6, 7].map(k => pictureOf(W, 1600, 900, k * 40));
+    const slides = [{ id: 's1', background: '#101317', notes: '', blocks: [ph('title', 'Curso de Power BI', [120, 250, 1040, 130]), ph('subtitle', 'Introducción para empezar', [120, 390, 1040, 70])] }];
+    for (let k = 0; k < 7; k++) {
+      const blocks = k === 2 ? [ph('title'), ph('body', 'Texto mío', [520, 180, 660, 480]), img(pics[2], 100, 182, 396, 223)]
+        : [ph('title', k === 1 ? 'Mi título' : ''), ph('body'), ...(k === 3 ? [img(pics[3], 60, 200, 560, 400), img(pics[7], 660, 200, 560, 400)] : [img(pics[k], 280, 120 + k * 4, 720, 470)])];
+      slides.push({ id: 's' + (k + 2), background: '#101317', notes: k === 2 ? 'Mis notas' : '', blocks });
+    }
+    R.store.replaceDeck({ ...R.model.emptyDeck(), slides }); R.slides.goToSlide(0); R.render();
+    return R.state.deck;
+  };
+  // fetch for OpenRouter: the vision model describes the pictures it gets, the writing model writes the slides asked.
+  const completeMock = (W, log, { layout = () => 'image-right' } = {}) => async (url, opts) => {
+    const body = JSON.parse(opts.body); log.push(body);
+    const user = body.messages.find(m => m.role === 'user').content;
+    let answer;
+    if (Array.isArray(user)) {
+      const n = user.filter(p => p.type === 'image_url').length;
+      answer = { images: Array.from({ length: n }, (_, i) => ({ n: i + 1, caption: `Pantalla ${log.length}.${i + 1}: el panel de datos con sus menús. Enseña dónde se cargan los datos.`, visibleText: 'Inicio, Obtener datos', title: `Paso ${i + 1}` })) };
+    } else {
+      const asked = JSON.parse(user.slice(user.indexOf('Slides to write now:') + 20));
+      answer = { slides: asked.map(s => ({ slide: s.slide, title: `Título ${s.slide}`, points: ['1. Cargar los datos', '• Elegir el origen', 'Revisar la vista previa'], notes: `Aquí explico la ${s.slide}.`, layout: layout(s.slide) })) };
+    }
+    return new W.Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(answer) } }], usage: { cost: 0.0005 } }));
+  };
+  const rectsHit = (a, b) => Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x) > 1 && Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) > 1;
+
+  await test('completar la presentación: contexto, imágenes descritas una vez y por lotes, solo lo vacío, sin solapes, coste', async () => {
+    reset();
+    const W = frame.contentWindow, real = W.fetch, log = [], P = await W.eval("import('/src/ui/dialogs/assistant.js')"), C = await W.eval("import('/src/features/ai/complete.js')"),
+      V = await W.eval("import('/src/features/ai/vision.js')");
+    P.resetAssistant(); W.localStorage.removeItem('revela.assistant.v1');
+    R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    const deck = halfDeck(W);
+    const panelOf = () => D.getElementById('assistant-panel');
+    const idle = async () => { await sleep(30); for (let i = 0; i < 300 && P.assistantState().busy; i++) await sleep(20); await sleep(30); };
+    W.fetch = completeMock(W, log, { layout: n => (n === 8 ? 'image-full-caption' : 'image-right') });
+    try {
+      D.querySelector('[data-action="ai-assistant"]').click(); await sleep(20);
+      // The brief: asked once, with a guess from the deck.
+      eq(deck.aiBrief, undefined, 'sin contexto aún');
+      const qa = [...panelOf().querySelectorAll('.as-qa')]; assert(qa.length === 3 && /Completar la presentación/.test(qa[0].textContent), 'acciones rápidas');
+      qa[0].click(); await sleep(20);
+      const form = panelOf().querySelector('.as-cmp .as-bform'); assert(form, 'las tres preguntas');
+      assert(/Curso de Power BI/.test(form.topic.value), 'con una propuesta sacada de la presentación: ' + form.topic.value);
+      form.audience.value = 'Analistas que empiezan'; form.takeaway.value = 'Hacer su primer informe';
+      form.querySelector('[type=submit]').click(); await sleep(30);
+      eq(R.state.deck.aiBrief.audience, 'Analistas que empiezan', 'guardado con la presentación'); assert(/Curso de Power BI/.test(R.state.deck.aiBrief.topic), 'y el tema');
+      assert(!panelOf().querySelector('.as-bform') && /Analistas/.test(panelOf().querySelector('.as-brief').textContent), 'no se vuelve a preguntar: se resume y se puede editar');
+      // The estimate, before anything is sent.
+      const est = panelOf().querySelector('.as-est').textContent, e = C.estimateCompletion({ scope: { kind: 'all' }, mode: 'empty' });
+      eq(e.images, 8, 'ocho imágenes por describir'); eq(e.slides, 8, 'ocho diapositivas con algo vacío'); eq(e.calls, 3, 'dos lotes de imágenes y una escritura');
+      assert(/8 imágenes por describir/.test(est) && /8 diapositivas por escribir/.test(est) && /US\$/.test(est), 'la estimación a la vista: ' + est);
+      eq(log.length, 0, 'nada enviado aún');
+      const json0 = JSON.stringify(R.state.deck.slides.map(s => s.blocks.map(b => b.html || '')));
+      panelOf().querySelector('.as-go').click(); await idle();
+      // Pictures: made small, in batches, to the cheap vision model; then one text-only request.
+      const vis = log.filter(b => b.model === V.VISION_MODEL), wr = log.filter(b => b.model === R.aiAgent.AGENT_MODEL);
+      eq(vis.length, 2, 'dos peticiones de imágenes (6 + 2)'); eq(wr.length, 1, 'una de escritura');
+      const parts = vis.flatMap(b => b.messages[1].content.filter(p => p.type === 'image_url'));
+      eq(parts.length, 8, 'las ocho imágenes'); assert(vis.every(b => b.messages[1].content.filter(p => p.type === 'image_url').length <= 6), 'como mucho 6 por petición');
+      assert(parts.every(p => /^data:image\/jpeg;base64,/.test(p.image_url.url) && V.bytesOf(p.image_url.url) < 300 * 1024), 'en JPEG y pequeñas');
+      const sizes = await Promise.all(parts.slice(0, 2).map(p => new Promise(ok => { const i = new W.Image(); i.onload = () => ok([i.naturalWidth, i.naturalHeight]); i.src = p.image_url.url; })));
+      assert(sizes.every(([w, h]) => Math.max(w, h) === 768 && Math.abs(w / h - 16 / 9) < 0.01), 'reducidas a 768 px manteniendo la proporción: ' + JSON.stringify(sizes));
+      const text = wr[0].messages[1].content;
+      assert(typeof text === 'string' && !/data:image/.test(text) && /Pantalla/.test(text) && /Analistas que empiezan/.test(text), 'la escritura lleva las descripciones y el contexto, no las imágenes');
+      const imgs = R.state.deck.slides.flatMap(s => s.blocks.filter(b => b.type === 'image'));
+      assert(imgs.every(b => b.aiCaption && b.aiCaption.hash === V.srcHash(b.src) && /Pantalla/.test(b.aiCaption.text) && b.aiCaption.model === V.VISION_MODEL), 'cada descripción guardada en su imagen');
+      eq(JSON.stringify(R.state.deck.slides.map(s => s.blocks.map(b => b.html || ''))), json0, 'nada cambia hasta aplicar');
+      // The proposal: per slide, then applied.
+      const card = panelOf().querySelector('.as-prop:not(.settled)'); assert(card, 'propuesta');
+      eq(card.querySelectorAll('.as-group').length, 8, 'una por diapositiva');
+      assert(/imagen a la derecha/.test(card.textContent) && /texto alternativo/.test(card.textContent), 'dice que recoloca la imagen y añade el texto alternativo');
+      assert(/US\$/.test(panelOf().querySelector('.as-cost').textContent) && panelOf().querySelector('.as-msg.ai .as-mcost'), 'lo gastado, también en el mensaje');
+      card.querySelector('.as-apply').click(); await sleep(30);
+      const [s1, s2, s3, s4, s5, , , s8] = R.state.deck.slides, txt = b => R.aiAgent.textOf(b.html);
+      eq(txt(s2.blocks[0]), 'Título 2', 'título escrito'); assert(/<li>Cargar los datos<\/li><li>Elegir el origen<\/li>/.test(s2.blocks[1].html), 'puntos sin numeración ni viñetas a mano: ' + s2.blocks[1].html);
+      eq(s2.notes, 'Aquí explico la 2.', 'notas'); eq(s1.notes, 'Aquí explico la 1.', 'también las de la portada');
+      eq(txt(s1.blocks[0]), 'Curso de Power BI', 'solo lo vacío: la portada sigue igual');
+      eq(txt(s3.blocks[0]), 'Mi título', 'solo lo vacío: el título del autor se queda'); eq(txt(s4.blocks[1]), 'Texto mío', 'su texto también'); eq(s4.notes, 'Mis notas', 'y sus notas');
+      eq(txt(s4.blocks[0]), 'Título 4', 'pero lo vacío de esa diapositiva se completa');
+      assert(imgs.every(b => /el panel de datos/.test(b.alt)), 'texto alternativo desde la descripción');
+      // Nothing overlaps, everything inside the slide, the pictures keep their proportions.
+      for (const s of R.state.deck.slides.slice(1)) {
+        const texts = s.blocks.filter(b => b.type === 'text' && txt(b)), pics = s.blocks.filter(b => b.type === 'image');
+        for (const tb of texts) for (const p of pics) assert(!rectsHit(tb, p), `diapositiva ${R.state.deck.slides.indexOf(s) + 1}: texto sobre la imagen ${JSON.stringify([tb.x, tb.y, tb.w, tb.h, p.x, p.y, p.w, p.h])}`);
+        for (const b of s.blocks) assert(b.x >= 0 && b.y >= 0 && b.x + b.w <= 1280 && b.y + b.h <= 720, 'dentro de la diapositiva');
+        for (const p of pics) assert(Math.abs(p.w / p.h - 16 / 9) < 0.02, 'proporción de la imagen: ' + (p.w / p.h).toFixed(2));
+      }
+      assert(s2.blocks[1].x + s2.blocks[1].w < s2.blocks[2].x, 'texto a la izquierda, imagen a la derecha');
+      assert(s8.blocks[2].w > 760 && s8.blocks[1].y > s8.blocks[2].y + s8.blocks[2].h - 1 && !/<li>/.test(s8.blocks[1].html), 'imagen grande con una línea de pie: ' + JSON.stringify(s8.blocks.map(b => [b.type, b.x, b.y, b.w, b.h, b.html])));
+      assert(s5.blocks.filter(b => b.type === 'image').every(p => p.x > s5.blocks[1].x + s5.blocks[1].w), 'dos imágenes, juntas al lado del texto');
+      eq(C.estimateCompletion({ scope: { kind: 'all' }, mode: 'empty' }).slides, 0, 'ya no queda nada vacío');
+      // Again ("improve"): the descriptions are reused, nothing is described again.
+      log.length = 0;
+      let res = await C.completeDeck({ scope: { kind: 'all' }, mode: 'improve' });
+      eq(log.filter(b => b.model === V.VISION_MODEL).length, 0, 'las imágenes no se vuelven a describir'); eq(res.stats.cached, 8, 'ocho ya descritas');
+      eq(log.length, 1, 'solo la escritura'); eq(C.estimateCompletion({ scope: { kind: 'all' }, mode: 'improve' }).images, 0, 'y la estimación lo sabe');
+      // A picture changed: only that one is described again; "this slide only" is one small request.
+      R.store.commit(() => { s2.blocks[2].src = pictureOf(W, 800, 600, 200); });
+      log.length = 0; R.slides.goToSlide(1);
+      res = await C.completeDeck({ scope: { kind: 'current' }, mode: 'improve' });
+      eq(log.length, 2, 'una descripción y una escritura'); eq(log[0].messages[1].content.filter(p => p.type === 'image_url').length, 1, 'solo la imagen cambiada');
+      assert(JSON.parse(log[1].messages[1].content.split('Slides to write now:\n')[1]).length === 1, 'una sola diapositiva');
+    } finally {
+      W.fetch = real; R.ai.disconnectAi(); W.localStorage.removeItem('revela.assistant.v1'); P.resetAssistant();
+      if (panelOf()) D.querySelector('[data-action="ai-assistant"]').click();
+    }
+  });
+
+  await test('asistente (chat): mensajes con formato, coste, reintentar tras un error, entrada que crece y vista grande del antes y el después', async () => {
+    reset(); R.slides.addSlide(); R.slides.goToSlide(0);
+    const W = frame.contentWindow, real = W.fetch, calls = [], P = await W.eval("import('/src/ui/dialogs/assistant.js')");
+    P.resetAssistant(); W.localStorage.removeItem('revela.assistant.v1');
+    R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    const [s1, s2] = R.state.deck.slides, t1 = s1.blocks[0].id;
+    const panelOf = () => D.getElementById('assistant-panel');
+    const send = async text => { panelOf().querySelector('textarea').value = text; panelOf().querySelector('.as-send').click(); await sleep(30); for (let i = 0; i < 100 && P.assistantState().busy; i++) await sleep(20); await sleep(30); };
+    try {
+      D.querySelector('[data-action="ai-assistant"]').click(); await sleep(20);
+      const panel = panelOf();
+      assert(panel.querySelector('.as-empty') && getComputedStyle(panel.querySelector('.as-empty')).display !== 'none', 'vacío: una bienvenida');
+      eq([...panel.querySelectorAll('.as-qa')].map(b => b.lastChild.textContent.trim()).join('|'), 'Completar la presentación|Completar esta diapositiva|Revisar ortografía', 'acciones rápidas');
+      // The input grows with the text.
+      const ta = panel.querySelector('textarea'), h0 = ta.offsetHeight;
+      ta.value = 'una\ndos\ntres\ncuatro\ncinco'; ta.dispatchEvent(new W.Event('input')); assert(ta.offsetHeight > h0, 'la entrada crece: ' + h0 + ' → ' + ta.offsetHeight);
+      // A failure: said in the chat, with "try again".
+      let fail = true;
+      W.fetch = async (url, o) => { if (fail) return new W.Response('caído', { status: 500 }); return agentMock(W, [{ message: '**Hecho**: te propongo\n- un título\n- unas notas', done: true,
+        ops: [{ op: 'set_text', slide: 1, id: t1, text: 'Título nuevo' }, { op: 'set_notes', slide: 1, notes: 'Notas' }, { op: 'set_background', slide: 2, color: '#334455' }] }], calls)(url, o); };
+      await send('Mejora la portada');
+      const err = panel.querySelector('.as-msg.err'); assert(err && /500/.test(err.textContent) && err.querySelector('.as-retry'), 'el error en el chat, con reintentar: ' + err?.textContent);
+      fail = false; err.querySelector('.as-retry').click(); await sleep(30); for (let i = 0; i < 100 && P.assistantState().busy; i++) await sleep(20); await sleep(30);
+      assert(!panel.querySelector('.as-msg.err'), 'reintentado: el error se va');
+      const msg = [...panel.querySelectorAll('.as-msg.ai')].at(-1);
+      assert(msg.querySelector('b')?.textContent === 'Hecho' && msg.querySelectorAll('li').length === 2, 'negrita y lista: ' + msg.innerHTML);
+      assert(/US\$/.test(msg.querySelector('.as-mcost')?.textContent || ''), 'coste del mensaje');
+      eq(calls.at(-1).messages.at(-1).content.includes('Mejora la portada'), true, 'reintenta lo mismo');
+      // Inline pictures bigger; the large viewer.
+      const card = panel.querySelector('.as-prop:not(.settled)');
+      assert(card.querySelector('.as-th').offsetWidth >= 140, 'miniaturas más grandes: ' + card.querySelector('.as-th').offsetWidth);
+      card.querySelector('.as-group .as-zoom').click(); await sleep(30);
+      const v = D.getElementById('as-viewer'); assert(v, 'vista grande');
+      const figs = v.querySelectorAll('.asv-fig'); eq(figs.length, 2, 'antes y después, lado a lado');
+      const big = figs[1].querySelector('.as-th'); assert(big.offsetWidth > 300 && Math.abs(big.offsetWidth / big.offsetHeight - 16 / 9) < 0.02, 'grande y con sus proporciones: ' + big.offsetWidth + '×' + big.offsetHeight);
+      assert(/Título nuevo/.test(figs[1].textContent) && !/Título nuevo/.test(figs[0].textContent), 'el después lleva el cambio');
+      eq(v.querySelector('.asv-pos').textContent, '1 / 2', 'posición');
+      W.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); await sleep(20);
+      eq(v.querySelector('.asv-pos').textContent, '2 / 2', 'flecha: la siguiente');
+      W.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true })); await sleep(20);
+      const notesBox = [...v.querySelectorAll('.asv-ops .as-op')].find(l => /Notas del orador/.test(l.textContent)).querySelector('input');
+      notesBox.click(); await sleep(40);
+      const inCard = [...card.querySelectorAll('.as-op')].find(l => /Notas del orador/.test(l.textContent)).querySelector('input');
+      eq(inCard.checked, false, 'desmarcar en la vista grande desmarca en la propuesta');
+      v.querySelector('[data-v="after"]').click(); await sleep(20); eq(v.querySelectorAll('.asv-fig').length, 1, 'o solo el después');
+      W.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(20);
+      assert(!D.getElementById('as-viewer'), 'Esc cierra');
+      card.querySelector('.as-apply').click(); await sleep(20);
+      eq(s1.blocks[0].html, 'Título nuevo', 'aplicado'); eq(s1.notes || '', '', 'sin las notas desmarcadas'); eq(s2.background, '#334455', 'y lo demás');
+      R.store.undo();
+    } finally {
+      W.fetch = real; R.ai.disconnectAi(); W.localStorage.removeItem('revela.assistant.v1'); P.resetAssistant(); D.getElementById('as-viewer')?.remove();
+      if (panelOf()) D.querySelector('[data-action="ai-assistant"]').click();
+    }
+  });
+
   // New slides in a deck made from a template: its layouts, master styles, background, decorations and transition.
   const fromTemplate = async key => { const d = await R.examples.loadExample(key); R.store.replaceDeck(d); R.slides.goToSlide(0); return R.state.deck; };
   const addOp = (spec, after, style = 'same') => R.aiAgent.validateOps([{ op: 'add_slide', after, spec }], { perms: ALL, style }).ops;

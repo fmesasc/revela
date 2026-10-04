@@ -85,6 +85,9 @@ async function openVoiceover() {
 }
 
 // Tell the user what went wrong (out of credits: the account, to get more).
+// The failure in a line (for the assistant's chat).
+export const aiErrorText = e => (e?.message === 'NO_CREDIT' && ai.usingCloudAi() ? t('No te quedan créditos. Consigue más desde tu cuenta.')
+  : t(MSG[e?.message] || 'No se pudo completar: ') + (MSG[e?.message] ? '' : (e?.message || e)));
 export function aiFailed(e) {
   if (e.message === 'NO_CREDIT' && ai.usingCloudAi()) { alertDialog(t('No te quedan créditos. Consigue más desde tu cuenta.')); openAccount(); return; }
   alertDialog(t(MSG[e.message] || 'No se pudo completar: ') + (MSG[e.message] ? '' : (e.message || e)));

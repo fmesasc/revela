@@ -4,7 +4,7 @@
 // are simulated. Run by tests/run.sh when Node.js is available.
 import worker, { Account, Budget, DesktopLink, ShareBox, Limits, CloudDoc, Team, CallRoom, Schedule, ModelJob } from '../server/cloudflare/worker.js';
 import { verifyBody } from '../server/blender/gate.js';
-import { verifyStripe, sha256, shortCode } from '../server/cloudflare/api.js';
+import { verifyStripe, sha256, shortCode, settings } from '../server/cloudflare/api.js';
 
 function fakeStorage() {
   const m = new Map(); let alarm = null;
@@ -110,6 +110,38 @@ me = await (await req('GET', '/api/me', { headers: { Cookie: ana } })).json();
 ok(j.charged === 5 && me.credits === 45, 'cobra lo que costó de verdad (0,01 $ = 5 créditos): ' + JSON.stringify([j.charged, me.credits]));
 ok((await req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { messages: 'no' } })).status === 400, 'petición mal formada: 400');
 ok((await req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { messages: [{ role: 'tool', content: 'x' }] } })).status === 400, 'papeles no permitidos: 400');
+// Pictures in the messages (describing screenshots): data: JPEG/PNG/WebP, limited; the estimate counts them as fixed tokens.
+{
+  const pic = kb => 'data:image/jpeg;base64,' + 'A'.repeat(Math.ceil(kb * 1024 / 3) * 4);
+  const parts = (...urls) => [{ role: 'user', content: [{ type: 'text', text: 'Describe' }, ...urls.map(url => ({ type: 'image_url', image_url: { url } }))] }];
+  const ask = (messages, extra = {}) => req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { model: 'google/gemini-2.5-flash-lite', max_tokens: 100, messages, ...extra } });
+  ok(settings({}).models.includes('google/gemini-2.5-flash-lite'), 'flash-lite entre los modelos por defecto');
+  const toml = await (await import('node:fs/promises')).readFile(new URL('../server/cloudflare/wrangler.toml', import.meta.url), 'utf8');
+  ok(/^AI_MODELS = ".*google\/gemini-2\.5-flash-lite/m.test(toml) && /"google\/gemini-2\.5-flash-lite":\[0\.1,0\.4\]/.test(toml), 'flash-lite en wrangler.toml, con su precio');
+  const models0 = env.AI_MODELS, prices0 = env.AI_PRICES;
+  env.AI_MODELS = 'openai/gpt-4o-mini,google/gemini-2.5-flash,google/gemini-2.5-flash-lite';
+  // (A price where counting the base64 would ask for ~170 credits: Ana has 45.)
+  env.AI_PRICES = '{"google/gemini-2.5-flash-lite":[1,1]}';
+  aiCalls = []; aiReply = () => ({ status: 200, body: { choices: [{ message: { content: '{}' } }], usage: { cost: 0.002 } } });
+  r = await ask(parts(pic(250), pic(250), pic(250)));
+  ok(r.status === 200 && aiCalls.length === 1 && aiCalls[0].body.model === 'google/gemini-2.5-flash-lite', 'imágenes en el mensaje: aceptadas, con flash-lite: ' + r.status);
+  ok(aiCalls[0].body.messages[0].content[1].image_url.url.startsWith('data:image/jpeg;base64,'), 'y llegan tal cual al proveedor');
+  ok((await r.json()).charged === 1, 'se cobra lo que informa el proveedor');
+  ok((await ask(parts('data:image/png;base64,iVBORw0KGgo='))).status === 200 && (await ask(parts('data:image/webp;base64,UklGRg=='))).status === 200, 'PNG y WebP también');
+  const bad = async (messages, why) => { aiCalls = []; const x = await ask(messages); ok(x.status === 400 && !aiCalls.length, why + ': ' + x.status); };
+  await bad(parts(pic(320)), 'una imagen de más de ~300 KB: 400');
+  await bad(parts(...Array(9).fill(pic(5))), 'más de 8 imágenes: 400');
+  await bad(parts('https://example.com/a.jpg'), 'una dirección para que la descargue el proveedor: 400');
+  await bad(parts('data:image/svg+xml;base64,PHN2Zz4='), 'otro tipo (SVG): 400');
+  await bad(parts('data:image/gif;base64,R0lGOD=='), 'otro tipo (GIF): 400');
+  await bad(parts('data:image/jpeg;base64,<script>'), 'base64 que no lo es: 400');
+  await bad([{ role: 'assistant', content: [{ type: 'image_url', image_url: { url: pic(1) } }] }], 'imágenes solo en mensajes del usuario');
+  await bad([{ role: 'user', content: [{ type: 'file', file: {} }] }], 'otras partes: 400');
+  // (7 × 280 KB: each under its limit, but the request is over the 2 MB a request may be.)
+  ok((await req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { messages: parts(...Array(7).fill(pic(280))) } })).status === 413, 'demasiado en total: 413');
+  env.AI_MODELS = models0; env.AI_PRICES = prices0;
+  const S = acc('111').ctx.storage.m; S.set('lots', [{ n: 45, exp: Date.now() + 9e8 }]); S.set('credits', 45); S.set('debt', 0);
+}
 // Failed provider: nothing charged.
 aiReply = () => ({ status: 500, body: { error: 'caído' } });
 r = await req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { messages: [{ role: 'user', content: 'x' }] } });

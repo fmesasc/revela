@@ -351,7 +351,10 @@ export function applyTo(deck, ops) {
     if (o.sid && !s) continue;
     if (o.id && !b && o.op !== 'add_object') continue;
     switch (o.op) {
-      case 'set_text': b.html = toHTML(o.text); fitBody(b, s, deck); break;
+      case 'set_text':
+        // (Text that would cover a picture comes with the slide rearranged: features/ai/complete.js.)
+        if (o.arrange) for (const [id, box] of Object.entries(o.arrange.boxes || {})) { const x = s.blocks.find(y => y.id === id); if (x) Object.assign(x, box); }
+        b.html = toHTML(o.text); fitBody(b, s, deck); break;
       case 'set_notes': s.notes = o.notes; break;
       case 'set_hidden': s.hidden = o.hidden; break;
       case 'delete_slide': if (slides.length < 2) continue; slides.splice(slides.indexOf(s), 1); break;
