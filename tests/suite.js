@@ -31,7 +31,13 @@ export async function run(frame, only = null, grep = '') {
 
   // Helpers that mirror what the UI does.
   // Each test starts clean: no dialog left open by the previous one (the editor ignores keys while one is open).
-  const reset = () => { D.querySelectorAll('.modal-backdrop, #canvas-view').forEach(m => m.remove()); R.store.replaceDeck(R.model.emptyDeck()); R.render(); };
+  // The blank deck has empty title and subtitle placeholders; most tests want the two texts (plain boxes) that it had before.
+  const sampleDeck = () => {
+    const d = R.model.emptyDeck(), [a, b] = d.slides[0].blocks;
+    delete a.ph; delete a.fontWeight; a.html = '<b>Título</b>'; delete b.ph; b.html = 'Subtítulo — doble clic para editar';
+    return d;
+  };
+  const reset = () => { D.querySelectorAll('.modal-backdrop, #canvas-view').forEach(m => m.remove()); R.store.replaceDeck(sampleDeck()); R.render(); };
   const slide = () => R.store.currentSlide();
   const last = () => slide().blocks.at(-1);
   const select = b => { R.state.ui.selection = b.id; R.render(); };
