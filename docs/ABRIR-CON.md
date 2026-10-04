@@ -11,16 +11,54 @@ Qué permite cada servicio (comprobado en su documentación, septiembre de 2026)
 
 | Servicio | Abrir con | Nuevo archivo | Miniatura | Vista previa integrada |
 | --- | --- | --- | --- | --- |
-| Google Drive | Sí | Sí («Nuevo ▸ Revela») | Sí (la primera diapositiva, la sube Revela al guardar) | No: Drive no admite visores de terceros en su vista previa |
+| Google Drive | Sí (también `.pptx` y `.odp`, que se importan) | Sí («Nuevo ▸ Revela») | Sí (la primera diapositiva, la sube Revela al guardar) | No para `.revela.json` (Drive no admite visores de terceros); sí para la copia en PowerPoint (`.pptx`) que Revela puede guardar al lado |
 | Dropbox | Sí («Abrir» ▸ Revela), con una app con acceso a todo Dropbox | No | No | No |
 | OneDrive personal | No existe para terceros | No | No | No |
 | OneDrive de empresa / SharePoint | Sí, con *file handlers* (necesitan servidor y consentimiento del administrador) | Sí | Icono propio | Sí |
 
 ## Google Drive
 
-Todo se hace en [Google Cloud Console](https://console.cloud.google.com/), en el
-proyecto que ya usa Revela (el de su ID de cliente). Los nombres de los menús
-pueden salir en inglés o en español según el idioma de la consola.
+### Qué hace Revela al guardar en Drive (ya hecho en el código)
+
+- **Dónde**: la primera vez que se guarda una presentación (Archivo ▸ **Guardar
+  en Drive**), y siempre con **Guardar en Drive como…**, Revela pregunta el
+  nombre, la carpeta (botón «Elegir carpeta…», que abre el selector de Google
+  empezando en *Mi unidad*) y el formato. Recuerda la última carpeta. Después,
+  el guardado automático sigue escribiendo en el mismo archivo. Al terminar
+  dice dónde está («Guardado en Drive ▸ Carpeta/archivo») con un enlace
+  **Abrir en Drive**; lo mismo al pulsar el icono de la nube junto al nombre.
+  Elegir la carpeta con el selector es lo que da acceso a ella con el permiso
+  `drive.file`: no hace falta ningún permiso nuevo.
+- **Formato**:
+  - **Revela (editable, todo)**: el `.revela.json` con el tipo
+    `application/vnd.revela+json`. Drive no puede mostrar sus diapositivas
+    (solo la miniatura de la primera, que sube Revela), pero sí lo encuentra
+    al buscar por sus textos: Revela le envía todos los textos de las
+    diapositivas y las notas (`contentHints.indexableText`).
+  - **PowerPoint (.pptx) — se ve en Drive con todas sus diapositivas**: una
+    copia hecha con el exportador de PowerPoint. Es una copia: los cambios
+    posteriores no se guardan en ella (se vuelve a guardar otra si hace falta).
+    Abrirla luego en Revela («Abrir con ▸ Revela», o «Desde Google Slides») la
+    importa.
+  - No hay opción de PDF: Revela hace el PDF con la ventana de imprimir del
+    navegador, y eso no se puede generar ni subir sin que la persona lo guarde.
+
+### Qué se ve en Drive (y qué no se puede cambiar)
+
+- **El icono de cada archivo**: Google ha retirado los «iconos de documento»
+  de la integración con Drive (salen como *obsoletos* en su documentación), así
+  que una aplicación externa ya no puede poner su icono a sus archivos en la
+  lista de Drive. Lo que sí se ve: en la vista de **cuadrícula**, la miniatura
+  de la primera diapositiva; el **icono de Revela** en «Abrir con», en
+  «Nuevo ▸ Más» y en «Administrar aplicaciones» (los iconos de la aplicación,
+  paso 1). Los `.pptx` llevan el icono y la vista previa de PowerPoint de Drive.
+- **Ver todas las diapositivas** dentro de Drive: solo con la copia `.pptx`.
+
+Todo lo que sigue se hace en [Google Cloud Console](https://console.cloud.google.com/), en el
+proyecto que ya usa Revela (el de su ID de cliente, `960102070599`). Los nombres de los menús
+pueden salir en inglés o en español según el idioma de la consola. **Hasta que
+no se haga, «Abrir con ▸ Revela», «Nuevo ▸ Revela» y el icono en Drive no
+aparecen.**
 
 ### 1. Integración con la IU de Drive
 
@@ -31,18 +69,26 @@ pueden salir en inglés o en español según el idioma de la consola.
 | --- | --- |
 | Nombre de la aplicación | `Revela` |
 | Descripción breve | `Editor de presentaciones` |
-| Descripción larga | Una frase: qué es Revela y qué abre (presentaciones `.revela.json`) |
-| Iconos de la aplicación | Los PNG de `icons/drive/` del tamaño que pida cada casilla (16, 32, 48, 64, 96, 128, 256) |
-| URL de apertura (*Open URL*) | `https://fmesasc.github.io/revela/` |
-| Tipos MIME predeterminados | `application/vnd.revela+json` |
-| Extensiones predeterminadas | vacío (poner `json` haría a Revela la aplicación de todos los JSON) |
-| Tipos MIME secundarios | `application/json` (presentaciones guardadas antes de este cambio) |
-| Extensiones secundarias | vacío, o `json` si se quiere ver Revela también para cualquier `.json` |
-| Creación de archivos | marcado · URL nueva: `https://fmesasc.github.io/revela/` · nombre del documento: `Presentación de Revela` |
+| Descripción larga | Una frase: qué es Revela y qué abre (presentaciones `.revela.json`; también importa `.pptx` y `.odp`) |
+| Iconos de la aplicación (*Application icons*) | Los PNG de `icons/drive/` (fondo transparente), el del tamaño que pida cada casilla: `icon-16.png`, `icon-32.png`, `icon-48.png`, `icon-64.png`, `icon-96.png`, `icon-128.png`, `icon-256.png` |
+| Iconos de documento (*Document icons*) | nada: Google los da por obsoletos (ver arriba) |
+| URL de apertura (*Open URL*) | `https://revelaslides.com/app/` — tal cual, sin variables: Drive le añade `?state={"ids":[…],"action":"open","userId":…}`, que es lo que lee Revela (`openRequest` en `src/ui/shell/openwith.js`) |
+| Tipos MIME predeterminados | `application/vnd.revela+json` (el que pone Revela a todo lo que guarda en Drive) |
+| Extensiones predeterminadas | vacío. Para Drive la extensión de `Clase.revela.json` es `json` (la última), no `revela`; el tipo MIME de arriba ya basta. Poner `json` haría a Revela la aplicación de todos los JSON |
+| Tipos MIME secundarios | `application/json` (presentaciones guardadas antes del tipo propio), `application/vnd.openxmlformats-officedocument.presentationml.presentation` (PowerPoint) y `application/vnd.oasis.opendocument.presentation` (LibreOffice) |
+| Extensiones secundarias | `pptx` y `odp` |
+| Creación de archivos | marcado · URL nueva (*New URL*): `https://revelaslides.com/app/` (Drive añade `?state={"action":"create","folderId":…}`; la presentación nueva se crea en esa carpeta) · nombre del documento: `Presentación de Revela` (Google dice que ya no se usa) |
 | Importación | sin marcar |
 | Compatibilidad con unidades compartidas | marcado |
 
-Y **Enviar** (*Submit*). Los iconos pueden tardar hasta 24 horas en verse.
+Y **Enviar** (*Submit*). Los iconos y el «Abrir con» pueden tardar desde un rato
+hasta 24 horas en verse.
+
+Antes, comprobar en **APIs y servicios ▸ Credenciales ▸** el ID de cliente de
+OAuth de Revela ▸ **Orígenes de JavaScript autorizados** que esté
+`https://revelaslides.com` (además de `https://fmesasc.github.io`): Revela pide
+el acceso a Google desde la página que abre Drive. Si se prefiere la edición de
+GitHub Pages, poner `https://fmesasc.github.io/revela/` en las dos URL.
 
 ### 2. Permiso `drive.install`
 
@@ -60,9 +106,11 @@ verificación.
 
 1. En Revela, iniciar sesión con Google otra vez: la ventana de permisos pide
    ahora también «conectarse a Google Drive».
-2. Guardar una presentación en Drive (se guarda con el tipo nuevo).
+2. Guardar una presentación en Drive (se guarda con el tipo nuevo), eligiendo
+   la carpeta; y otra vez con **Guardar en Drive como…** ▸ PowerPoint.
 3. En Drive: botón derecho sobre el `.revela.json` ▸ **Abrir con ▸ Revela**, y
-   **Nuevo ▸ Más ▸ Revela** para crear una.
+   **Nuevo ▸ Más ▸ Revela** para crear una. Abrir el `.pptx` con doble clic:
+   Drive muestra todas sus diapositivas; con **Abrir con ▸ Revela** se importa.
 4. Si no aparece: Drive ▸ ⚙ Configuración ▸ **Administrar aplicaciones** debe
    mostrar Revela; los cambios pueden tardar un rato.
 

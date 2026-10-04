@@ -11,6 +11,7 @@ import { slideImageBlob } from '../../io/export/images.js';
 import { isEmptyPlaceholder } from '../../features/document/master.js';
 import { t } from '../../i18n/index.js';
 import { alertDialog, confirmDialog } from '../dialogs/dialog.js';
+import { savedDialog } from '../dialogs/gdrive.js';
 
 const friendly = e => alertDialog(e.message === 'NO_TOKEN' ? t('Vuelve a iniciar sesión con Google.') : (e.message || String(e)));
 const initial = a => esc((a?.name || a?.email || '?').trim()[0].toUpperCase());
@@ -54,7 +55,7 @@ function paintBar() {
   if (st) {
     const s = gd.linkedFile() && a ? gd.driveStatus() : 'idle', info = STATUS[s];
     st.hidden = !info;
-    if (info) { st.innerHTML = `<i class="ms">${info[0]}</i>`; st.title = t(info[1]); st.dataset.state = s; }
+    if (info) { st.innerHTML = `<i class="ms">${info[0]}</i>`; st.title = t(info[1]) + (s === 'saved' ? ' ▸ ' + gd.whereLabel(gd.linkedFile()) : ''); st.dataset.state = s; }
   }
   const cf = document.getElementById('drive-conflict'); if (cf) cf.hidden = gd.driveStatus() !== 'conflict';
 }
@@ -148,6 +149,7 @@ export function initHome() {
   document.getElementById('drive-status')?.addEventListener('click', async () => {
     const s = gd.driveStatus();
     if (s === 'offline' || s === 'error' || s === 'pending') { try { await gd.reconnect(); } catch (e) { friendly(e); } paintBar(); }
+    else if (s === 'saved') savedDialog(gd.linkedFile());           // (where it is, and a link to it)
   });
   document.getElementById('drive-conflict')?.addEventListener('click', async e => {
     const b = e.target.closest('[data-cf]'); if (!b) return;

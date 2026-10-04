@@ -6,7 +6,7 @@ import { readFile, openProject, openPresentation, insertMarkdown, insertFiles } 
 import { openFindPanel } from '../dialogs/find.js';
 import { toggleDictation } from '../shell/dictate.js';
 import { toggleSelectionPane } from '../panels/selection.js';
-import { openGdriveSetup } from '../dialogs/gdrive.js';
+import { openGdriveSetup, driveSaveUI, driveSaveAsUI } from '../dialogs/gdrive.js';
 import { openCloud } from '../dialogs/othercloud.js';
 import { state, commit, undo, redo, replaceDeck, currentSlide, selectedBlock, selectedBlocks, targetSlides } from '../../core/store.js';
 import { isBlankDeck, emptyDeck } from '../../core/model.js';
@@ -111,7 +111,8 @@ export const ACTIONS = {
   'design-ideas': () => openDesignIdeas(),
   'gdrive-open': () => gdrive.openWithUI(),
   'gslides-import': () => gdrive.pickSlidesFile().then(f => f && openPresentation(f)).catch(e => alertDialog(e.message === 'NO_TOKEN' ? t('Vuelve a iniciar sesión con Google.') : e.message)),
-  'gdrive-save': () => gdrive.saveWithUI(),
+  'gdrive-save': () => driveSaveUI(),
+  'gdrive-save-as': () => driveSaveAsUI(),
   'gdrive-html': () => gdrive.saveHtmlWithUI(),
   'gdrive-config': () => openGdriveSetup(),
   'cloud-onedrive': () => openCloud('onedrive'),

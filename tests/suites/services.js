@@ -1693,6 +1693,92 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.google = realGoogle; W.gapi = realGapi; W.fetch = realFetch; await GD.signOut(); }
   });
 
+  await test('Guardar en Drive: elegir carpeta con el selector de Google, recordarla, «Guardar como» y copia PowerPoint que Drive previsualiza', async () => {
+    reset(); const W = frame.contentWindow, GD = await W.eval("import('/src/io/cloud/gdrive.js')");
+    GD.unlinkFile(); W.localStorage.removeItem('revela.gdrive.folder');
+    R.blocks.addText('Texto que busca Drive'); await sleep(10);
+    const realGoogle = W.google, realGapi = W.gapi, realFetch = W.fetch, ups = [], views = [];
+    let n = 0;
+    W.google = { accounts: { oauth2: { initTokenClient: () => ({ requestAccessToken() { this.callback({ access_token: 'tok', expires_in: 3600 }); } }), revoke: () => {} } },
+      picker: { ViewId: { DOCS: 'docs' }, Action: { PICKED: 'picked', CANCEL: 'cancel' },
+        DocsView: class { constructor() { views.push(this); } setIncludeFolders(v) { this.folders = v; return this; } setSelectFolderEnabled(v) { this.selectFolder = v; return this; }
+          setMimeTypes(m) { this.mimes = m; return this; } setParent(p) { this.parent = p; return this; } },
+        PickerBuilder: class { setOAuthToken() { return this; } setDeveloperKey() { return this; } addView() { return this; } setAppId(a) { this.app = a; return this; } setTitle() { return this; }
+          setCallback(cb) { this.cb = cb; return this; } build() { return { setVisible: () => this.cb({ action: 'picked', docs: [{ id: 'F9', name: 'Clases', mimeType: 'application/vnd.google-apps.folder' }] }) }; } } } };
+    W.gapi = { load: (_, cb) => cb() };
+    W.fetch = async (url, o = {}) => {
+      url = String(url); if (!url.startsWith('https://www.googleapis.com')) return realFetch(url, o);
+      const ok = b => new W.Response(JSON.stringify(b), { status: 200 }), m = url.match(/\/files\/([^/?]+)/), id = m && decodeURIComponent(m[1]);
+      if (url.includes('/upload/drive/v3/files')) {
+        const body = typeof o.body === 'string' ? o.body : await o.body.text();
+        const parts = body.split(/--revela\w+/).filter(x => x.includes('\r\n\r\n'));
+        const meta = JSON.parse(parts[0].split('\r\n\r\n')[1]), type = parts[1].match(/Content-Type: ([^\r]+)/)[1];
+        ups.push({ method: o.method, id, meta, type });
+        const fid = id || 'n' + (++n);
+        return ok({ id: fid, name: meta.name || 'x', version: id ? '2' : '1', webViewLink: `https://drive.google.com/file/d/${fid}/view` });
+      }
+      if (id) return ok({ version: '1', trashed: false });
+      return new W.Response('{}', { status: 404 });
+    };
+    GD.setThumbnailMaker(async () => 'AAAA');
+    const until = async f => { for (let i = 0; i < 250 && !f(); i++) await sleep(20); };
+    const act = a => D.querySelector(`[data-action="${a}"]`).click();
+    try {
+      // First save: asks where, starting at My Drive.
+      act('gdrive-save'); await sleep(20);
+      const dlg = D.getElementById('gs-modal'); assert(dlg, 'la primera vez pregunta dónde guardarla');
+      eq(dlg.querySelector('.gs-folder').textContent, 'Mi unidad', 'empieza en Mi unidad');
+      dlg.querySelector('.gs-pick').click(); await sleep(30);
+      const v = views.at(-1);
+      assert(v.folders && v.selectFolder, 'el selector de Google en modo carpeta'); eq(v.mimes, 'application/vnd.google-apps.folder'); eq(v.parent, 'root', 'abre en Mi unidad');
+      eq(dlg.querySelector('.gs-folder').textContent, 'Clases', 'la carpeta elegida');
+      dlg.querySelector('.gs-name').value = 'Mi charla';
+      dlg.querySelector('.gs-ok').click(); await until(() => D.getElementById('gs-done'));
+      let u = ups.at(-1);
+      eq(u.method, 'POST'); eq(JSON.stringify(u.meta.parents), '["F9"]', 'se sube a la carpeta elegida'); eq(u.meta.name, 'Mi charla.revela.json');
+      eq(u.meta.mimeType, 'application/vnd.revela+json', 'con el tipo propio de Revela');
+      assert(/Texto que busca Drive/.test(u.meta.contentHints?.indexableText || ''), 'Drive encuentra sus textos (indexableText)');
+      assert(u.meta.contentHints.thumbnail?.image, 'y muestra su primera diapositiva');
+      eq(D.querySelector('#gs-done .gs-path').textContent, 'Guardado en Drive ▸ Clases/Mi charla.revela.json', 'dice dónde está');
+      eq(D.querySelector('#gs-done .gs-open').href, 'https://drive.google.com/file/d/n1/view', 'con un enlace para abrirla en Drive');
+      D.querySelector('#gs-done .gs-close').click();
+      eq(GD.lastFolder()?.id, 'F9', 'recuerda la carpeta'); eq(GD.linkedFile()?.id, 'n1');
+      // Later saves: the same file, without asking.
+      R.store.commit(() => { R.state.deck.slides[0].notes = 'nota'; });
+      act('gdrive-save'); await until(() => D.getElementById('gs-done'));
+      assert(!D.getElementById('gs-modal'), 'ya no pregunta'); u = ups.at(-1);
+      eq(u.method, 'PATCH'); eq(u.id, 'n1', 'actualiza el mismo archivo'); assert(u.meta.contentHints?.indexableText, 'con sus textos');
+      D.querySelector('#gs-done .gs-close').click();
+      // «Guardar en Drive como…»: a new file, in the remembered folder.
+      act('gdrive-save-as'); await sleep(20);
+      eq(D.querySelector('#gs-modal .gs-folder').textContent, 'Clases', 'propone la última carpeta');
+      D.querySelector('#gs-modal .gs-ok').click(); await until(() => D.getElementById('gs-done'));
+      u = ups.at(-1); eq(u.method, 'POST', 'un archivo nuevo'); eq(JSON.stringify(u.meta.parents), '["F9"]'); eq(GD.linkedFile()?.id, 'n2', 'y sigue guardando en ese');
+      D.querySelector('#gs-done .gs-close').click();
+      // PowerPoint: a copy that Drive previews with all its slides.
+      act('gdrive-save-as'); await sleep(20);
+      D.querySelector('#gs-modal [name="gs-fmt"][value="pptx"]').checked = true;
+      D.querySelector('#gs-modal .gs-ok').click(); await until(() => D.getElementById('gs-done'));
+      u = ups.at(-1); const PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      eq(u.meta.mimeType, PPTX, 'se sube como PowerPoint'); eq(u.type, PPTX); assert(/\.pptx$/.test(u.meta.name), 'con extensión .pptx');
+      assert(!u.meta.appProperties, 'no sale en «Mis presentaciones» (no es un proyecto de Revela)'); eq(JSON.stringify(u.meta.parents), '["F9"]');
+      eq(GD.linkedFile()?.id, 'n2', 'la presentación sigue vinculada a su archivo de Revela');
+      D.querySelector('#gs-done .gs-close').click();
+      // «Abrir con ▸ Revela» on that .pptx in Drive: imported.
+      const slidesN = R.state.deck.slides.length, blob = await R.pptx.buildPptxBlob(), OW = await W.eval("import('/src/ui/shell/openwith.js')");
+      const mockFetch = W.fetch;
+      W.fetch = async (url, o) => (/\/files\/n3\?fields=id,name,mimeType/.test(url) ? new W.Response(JSON.stringify({ id: 'n3', name: 'Mi charla.pptx', mimeType: PPTX }))
+        : /\/files\/n3\?alt=media/.test(url) ? new W.Response(blob) : mockFetch(url, o));
+      R.store.replaceDeck(R.model.emptyDeck());
+      const p = OW.handleOpenWith({ service: 'drive', action: 'open', id: 'n3' }); await sleep(20);
+      D.querySelector('#openwith-modal [data-how="edit"]').click();
+      eq(await p, true); eq(R.state.deck.slides.length, slidesN, 'un .pptx de Drive se abre con «Abrir con» (importado)'); eq(GD.linkedFile(), null, 'sin escribir encima del .pptx');
+    } finally {
+      W.google = realGoogle; W.gapi = realGapi; W.fetch = realFetch; W.localStorage.removeItem('revela.gdrive.folder');
+      D.getElementById('gs-modal')?.remove(); D.getElementById('gs-done')?.remove(); await GD.signOut();
+    }
+  });
+
   await test('ideas de diseño con IA: los mismos objetos recolocados, comprobados antes de aplicarlos', async () => {
     reset(); const W = frame.contentWindow, A = R.aiDeck, realFetch = W.fetch; let sent = null;
     R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();

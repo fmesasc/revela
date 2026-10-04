@@ -8,6 +8,9 @@
 // - Autosave: a presentation opened from (or saved to) Drive is saved there a
 //   few seconds after each change; if it changed in Drive meanwhile (another
 //   device), it asks before overwriting.
+// - Where: the first save goes to a folder chosen with the Picker (drive.file
+//   then covers that folder); the last one is remembered. A PowerPoint copy
+//   (Drive previews every slide of it) can be saved there too.
 // The project's public identifiers are in core/config.js; a browser can use
 // its own Google Cloud project instead (setup dialog below).
 
@@ -17,15 +20,18 @@ import { GOOGLE } from '../../core/config.js';
 import { t } from '../../i18n/index.js';
 import { buildHTML } from '../formats/html.js';
 import { loadScript } from '../../core/vendor.js';
+import { plainText } from '../../core/text.js';
 
 const GIS = 'https://accounts.google.com/gsi/client';
 const GAPI = 'https://apis.google.com/js/api.js';
 const API = 'https://www.googleapis.com';
 // (drive.install: Revela in Drive's "Open with" and "New" menus for .revela.json files — see docs/ABRIR-CON.md.)
 const SCOPE = 'openid email profile https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.install';
-const LS = 'revela.gdrive', LS_ACCOUNT = 'revela.gaccount', LS_FILE = 'revela.gdrive.file';
+const LS = 'revela.gdrive', LS_ACCOUNT = 'revela.gaccount', LS_FILE = 'revela.gdrive.file', LS_FOLDER = 'revela.gdrive.folder';
 // Revela's own type, so Drive offers Revela to open them (older files are application/json).
 const PROJECT_MIME = 'application/vnd.revela+json';
+const FOLDER_MIME = 'application/vnd.google-apps.folder';
+const GSLIDES = 'application/vnd.google-apps.presentation', PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 // Drive's "New ▸ Revela" in a folder: the new presentation goes there.
 let newFolder = null;
 // The setup dialog (it lives in the interface; the editor passes it in).
@@ -105,16 +111,38 @@ export const linkedFile = () => (currentFile && linkedEpoch === docEpoch() ? cur
 const setLinked = f => { currentFile = f; linkedEpoch = docEpoch(); writeLS(LS_FILE, f); };
 export const unlinkFile = () => { setLinked(null); setStatus('idle'); };
 
-const safeName = () => (state.deck.name || 'presentacion').replace(/[^\p{L}\p{N} _-]/gu, '').trim() || 'presentacion';
+export const safeName = () => (state.deck.name || 'presentacion').replace(/[^\p{L}\p{N} _-]/gu, '').trim() || 'presentacion';
+const cleanName = s => String(s || '').replace(/\.(revela\.json|pptx)$/i, '').replace(/[\\/:*?"<>|]/g, '').trim();
 const b64url = s => s.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-async function upload({ id, name, mimeType, body, thumbnail }) {
+// The last folder saved to: { id, name }; null = My Drive.
+export const lastFolder = () => readLS(LS_FOLDER);
+const rememberFolder = f => writeLS(LS_FOLDER, f && f.id && f.id !== 'root' ? { id: f.id, name: f.name || '' } : null);
+// Where a file is, for people: "Folder/name". (A linked file's folder: { id, name },
+// id 'root' = My Drive; unknown for files opened from Drive.)
+const ROOT = { id: 'root', name: '' };
+export const whereLabel = f => (!f?.folder ? '' : f.folder.id === 'root' ? t('Mi unidad') + '/' : f.folder.name ? f.folder.name + '/' : '') + (f?.name || '');
+export const driveLink = f => f?.link || (f?.id ? `https://drive.google.com/file/d/${encodeURIComponent(f.id)}/view` : '');
+
+// Every text of the deck (slides and notes), so Drive's search finds it (Drive caps it at 128 KB).
+export function deckIndexText(deck = state.deck) {
+  const texts = [deck.name];
+  for (const s of deck.slides || []) {
+    texts.push(s.title);
+    for (const b of s.blocks || []) texts.push(plainText(b.html || ''));
+    texts.push(plainText(s.notes || ''));
+  }
+  return texts.filter(Boolean).join('\n').slice(0, 100000);
+}
+
+// parent: a folder id ('root' = My Drive); by default Drive's "New" folder, if any.
+async function upload({ id, name, mimeType, body, thumbnail, text, parent = newFolder }) {
   const boundary = 'revela' + Math.random().toString(36).slice(2);
-  const meta = id ? {} : { name, mimeType, appProperties: { revela: '1' }, ...(newFolder && { parents: [newFolder] }) };
-  if (thumbnail) meta.contentHints = { thumbnail: { image: b64url(thumbnail), mimeType: 'image/jpeg' } };
-  const multipart = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n`
-    + `--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n${body}\r\n--${boundary}--`;
-  const r = await api(`/upload/drive/v3/files${id ? '/' + encodeURIComponent(id) : ''}?uploadType=multipart&fields=id,name,version,modifiedTime`,
+  const meta = id ? {} : { name, mimeType, ...(mimeType === PROJECT_MIME && { appProperties: { revela: '1' } }), ...(parent && parent !== 'root' && { parents: [parent] }) };
+  if (thumbnail || text) meta.contentHints = { ...(thumbnail && { thumbnail: { image: b64url(thumbnail), mimeType: 'image/jpeg' } }), ...(text && { indexableText: text }) };
+  const head = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`, tail = `\r\n--${boundary}--`;
+  const multipart = typeof body === 'string' ? head + body + tail : new Blob([head, body, tail]);   // (a .pptx is binary)
+  const r = await api(`/upload/drive/v3/files${id ? '/' + encodeURIComponent(id) : ''}?uploadType=multipart&fields=id,name,version,modifiedTime,webViewLink`,
     { method: id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + boundary }, body: multipart }, !id);
   if (!r.ok) throw new Error(t('No se pudo guardar.'));
   return r.json();
@@ -136,6 +164,16 @@ export async function openPresentation(id) {
   replaceDeck(deck); setLinked({ id: meta.id, name: meta.name, version: meta.version });
   lastSaved = docVersion(); setStatus('saved');
 }
+// A PowerPoint or OpenDocument file opened from Drive ("Open with ▸ Revela"):
+// as a File to import (not linked: Revela doesn't write over it); null for Revela's own.
+const IMPORTABLE = { [PPTX]: '.pptx', 'application/vnd.oasis.opendocument.presentation': '.odp' };
+export async function fetchImportable(id) {
+  const meta = await (await api(`/drive/v3/files/${encodeURIComponent(id)}?fields=id,name,mimeType`)).json();
+  const ext = IMPORTABLE[meta.mimeType]; if (!ext) return null;
+  const r = await api(`/drive/v3/files/${encodeURIComponent(id)}?alt=media`);
+  if (!r.ok) throw new Error(t('No se pudo abrir el archivo.'));
+  return new File([await r.blob()], String(meta.name || 'presentacion').replace(/\.(pptx|odp)$/i, '') + ext, { type: meta.mimeType });
+}
 export async function deletePresentation(id) {
   const r = await api(`/drive/v3/files/${encodeURIComponent(id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true }) });
   if (!r.ok) throw new Error(t('No se pudo borrar el archivo de Drive.'));
@@ -147,10 +185,12 @@ export let makeThumbnail = async () => null;
 export const setThumbnailMaker = fn => { makeThumbnail = fn; };
 
 // Save the presentation to Drive (a new file the first time, then the same one).
-// force: overwrite even if it changed in Drive meanwhile.
-export async function savePresentation({ interactive = true, force = false, asNew = false } = {}) {
+// force: overwrite even if it changed in Drive meanwhile. A new file (first
+// save, asNew) goes to `folder` ({ id, name }; null = My Drive) if given, else
+// to Drive's "New" folder or the last one used; named `name`.
+export async function savePresentation({ interactive = true, force = false, asNew = false, name, folder } = {}) {
   if (!gdriveReady()) { openGdriveSetup(); return false; }
-  const body = JSON.stringify(state.deck);
+  const body = JSON.stringify(state.deck), text = deckIndexText();
   const savedVersion = docVersion();                     // (what this upload contains)
   let thumbnail = null; try { thumbnail = await makeThumbnail(); } catch {}
   setStatus('saving');
@@ -162,11 +202,13 @@ export async function savePresentation({ interactive = true, force = false, asNe
         if (m.trashed) { setLinked(null); return savePresentation({ interactive, force, asNew }); }
         if (cur.version && m.version && +m.version > +cur.version) { setStatus('conflict'); return 'conflict'; }
       }
-      const f = await upload({ id: cur.id, mimeType: PROJECT_MIME, body, thumbnail });
+      const f = await upload({ id: cur.id, mimeType: PROJECT_MIME, body, thumbnail, text });
       setLinked({ ...cur, version: f.version, name: f.name, dirty: false });
     } else {
-      const f = await upload({ name: safeName() + '.revela.json', mimeType: PROJECT_MIME, body, thumbnail });
-      setLinked({ id: f.id, name: f.name, version: f.version });
+      const where = folder !== undefined ? folder || ROOT : newFolder ? { id: newFolder, name: '' } : lastFolder() || ROOT;
+      const f = await upload({ name: (cleanName(name) || safeName()) + '.revela.json', mimeType: PROJECT_MIME, body, thumbnail, text, parent: where.id });
+      setLinked({ id: f.id, name: f.name, version: f.version, folder: where, link: f.webViewLink || '' });
+      if (folder !== undefined) rememberFolder(folder);
     }
     lastSaved = savedVersion; setStatus('saved');
     return true;
@@ -211,24 +253,45 @@ export const needsReconnect = () => !!(linkedFile() && account() && !hasToken())
 export const keepMine = () => savePresentation({ force: true });
 export const loadTheirs = () => openPresentation(linkedFile().id);
 
-// ---- Older entry points (Archivo ▸ Google Drive) -------------------------------------
-async function pickFile(mimeTypes = 'application/vnd.revela+json,application/json,text/html,application/octet-stream') {
+// A PowerPoint copy in Drive, which Drive previews with all its slides; not
+// linked (later changes go to the Revela file, if any). Returns { id, name, folder, link }.
+export async function savePptxCopy({ name, folder = lastFolder() } = {}) {
+  if (!gdriveReady()) { openGdriveSetup(); return null; }
+  const { buildPptxBlob } = await import('../formats/pptx-export.js');
+  const body = await buildPptxBlob();
+  const f = await upload({ name: (cleanName(name) || safeName()) + '.pptx', mimeType: PPTX, body, parent: (folder || ROOT).id });
+  rememberFolder(folder);
+  return { id: f.id, name: f.name, folder: folder || ROOT, link: f.webViewLink || '' };
+}
+
+// ---- Google Picker -----------------------------------------------------------------
+async function picker(makeView, title) {
   const { apiKey, appId } = gdriveConfig();
   const token = await ensureToken(true);
   if (!window.gapi) await loadScript(GAPI);
   await new Promise(res => window.gapi.load('picker', res));
   const g = window.google;
   return new Promise(resolve => {
-    const view = new g.picker.DocsView(g.picker.ViewId.DOCS).setMimeTypes(mimeTypes);
-    const builder = new g.picker.PickerBuilder().setOAuthToken(token).setDeveloperKey(apiKey).addView(view)
+    const builder = new g.picker.PickerBuilder().setOAuthToken(token).setDeveloperKey(apiKey).addView(makeView(g.picker))
       .setCallback(data => {
         if (data.action === g.picker.Action.PICKED) resolve(data.docs[0]);
         else if (data.action === g.picker.Action.CANCEL) resolve(null);
       });
-    if (appId) builder.setAppId(appId);                     // so drive.file covers the chosen file
+    if (title) builder.setTitle(title);
+    if (appId) builder.setAppId(appId);                     // so drive.file covers the chosen file (or folder)
     builder.build().setVisible(true);
   });
 }
+const pickFile = (mimeTypes = 'application/vnd.revela+json,application/json,text/html,application/octet-stream') =>
+  picker(p => new p.DocsView(p.ViewId.DOCS).setMimeTypes(mimeTypes));
+// A folder to save in, starting at My Drive: { id, name }, or null if cancelled.
+export async function pickFolder() {
+  const doc = await picker(p => new p.DocsView(p.ViewId.DOCS).setIncludeFolders(true).setSelectFolderEnabled(true).setMimeTypes(FOLDER_MIME).setParent('root'),
+    t('Elige la carpeta de Drive'));
+  return doc ? { id: doc.id, name: doc.name || '' } : null;
+}
+
+// ---- Older entry points (Archivo ▸ Google Drive) -------------------------------------
 export async function driveOpen() {
   if (!gdriveReady()) return openGdriveSetup();
   const doc = await pickFile(); if (!doc) return;
@@ -237,7 +300,6 @@ export async function driveOpen() {
 
 // A presentation from Google Slides (or a PowerPoint file in Drive), as a .pptx file to import:
 // Drive converts Google's own format itself. null if none was chosen.
-const GSLIDES = 'application/vnd.google-apps.presentation', PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 export async function pickSlidesFile() {
   if (!gdriveReady()) { openGdriveSetup(); return null; }
   const doc = await pickFile(`${GSLIDES},${PPTX}`); if (!doc) return null;
@@ -250,7 +312,7 @@ export async function pickSlidesFile() {
 // Export the reveal.js HTML presentation to Drive (a new file each time).
 export async function driveSaveHtml() {
   if (!gdriveReady()) return openGdriveSetup();
-  await upload({ name: safeName() + '.html', mimeType: 'text/html', body: buildHTML() });
+  await upload({ name: safeName() + '.html', mimeType: 'text/html', body: buildHTML(), parent: newFolder || lastFolder()?.id });
   return true;
 }
 
@@ -282,8 +344,5 @@ export function setOwnProject(own) {
 // Wrappers that surface errors as friendly dialogs.
 const friendly = e => alertUser(e.message === 'NO_TOKEN' ? t('Vuelve a iniciar sesión con Google.') : e.message);
 export const openWithUI = () => driveOpen().catch(friendly);
-export const saveWithUI = () => savePresentation().then(ok => {
-  if (ok === 'conflict') alertUser(t('La presentación ha cambiado en Drive desde otro dispositivo. Elige qué versión quedarse en el aviso de arriba.'));
-  else if (ok) alertUser(t('Guardado en Google Drive.'));
-}).catch(friendly);
+// (Saving the presentation asks where first: ui/dialogs/gdrive.js.)
 export const saveHtmlWithUI = () => driveSaveHtml().then(ok => { if (ok) alertUser(t('Guardado en Google Drive.')); }).catch(friendly);
