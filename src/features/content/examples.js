@@ -8,6 +8,8 @@
 
 import { A, anim, appScreen, bar, base, big, build, card, dg, glow, icon, lib3d, model, numbered, path, shape, slide, text, timer, ul, withAnims, emptyDeck, uid, chartBlock, tableBlock, codeBlock, mathBlock, PALETTES, pairStacks, ensureLayouts, masterStyles, newSlideBlocks, pollBlock, placeOnDesign, canvasDesign, LIBRARY_3D, normalizeAnim } from './templates/kit.js';
 import { CATALOG, LOADERS } from './templates/catalog.js';
+import { translateDeck, textsFor } from './tplang.js';
+import { currentLang } from '../../i18n/index.js';
 
 // ---- The ten examples --------------------------------------------------------------
 const EXAMPLES_DEF = {
@@ -505,7 +507,11 @@ export async function exampleNames(lang) {
   if (!NAME_LANGS.includes(lang)) return {};
   try { return (await import(`./templates/names/${lang}.js`)).default; } catch { return {}; }
 }
-export async function loadExample(key) {
+// In the interface's language (tplang.js), or the one asked for ('es': as written).
+export async function loadExample(key, lang = currentLang()) {
   if (!loaded[key]) { const f = CATALOG[key]?.file; if (!f || !LOADERS[f]) return null; Object.assign(loaded, (await LOADERS[f]()).default); }
-  return loaded[key]?.make() || null;
+  const deck = loaded[key]?.make() || null;
+  return deck && lang !== 'es' ? translateDeck(deck, await textsFor(lang, exampleFile(key))) : deck;
 }
+// The file an example is written in (the first twenty: this one).
+export const exampleFile = key => CATALOG[key]?.file || 'examples';

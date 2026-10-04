@@ -39,3 +39,6 @@ export function wordartSize(b) {
   for (let fs = base; fs > 8; fs -= Math.max(1, Math.round(fs * 0.04))) if (fits(fs)) return fs;
   return 8;
 }
+
+// How many lines a text takes at this size in a box this wide (the same estimate).
+export const linesAt = (html, fs, w, ls = 0) => paragraphs(html).reduce((a, p) => a + lines(p, fs, w * 0.95, ls), 0);

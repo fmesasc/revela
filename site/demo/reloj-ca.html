@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="es"><head>
+<meta name="robots" content="noindex"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AURA · rellotge intel·ligent</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css">
+<style>/* latin-ext */
+@font-face {
+  font-family: 'Lato';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(fonts/lato_v25_S6uyw4BMUTPHjxAwXjeu.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* latin */
+@font-face {
+  font-family: 'Lato';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(fonts/lato_v25_S6uyw4BMUTPHjx4wXg.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* latin-ext */
+@font-face {
+  font-family: 'Lato';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(fonts/lato_v25_S6u9w4BMUTPHh6UVSwaPGR_p.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* latin */
+@font-face {
+  font-family: 'Lato';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(fonts/lato_v25_S6u9w4BMUTPHh6UVSwiPGQ.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+</style>
+<style>/* latin-ext */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(fonts/playfairdisplay_v40_nuFiD-vYSZviVYUb_rj3ij__anPXDTLYgFE_.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* latin */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(fonts/playfairdisplay_v40_nuFiD-vYSZviVYUb_rj3ij__anPXDTzYgA.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* latin-ext */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(fonts/playfairdisplay_v40_nuFiD-vYSZviVYUb_rj3ij__anPXDTLYgFE_.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* latin */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(fonts/playfairdisplay_v40_nuFiD-vYSZviVYUb_rj3ij__anPXDTzYgA.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+</style>
+
+
+<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
+
+
+<style>
+ .reveal .stage{position:relative;width:1280px;height:720px;margin:0 auto;color:#fff4ec;font-family:'Lato', sans-serif;}
+ .reveal .stage>*{overflow-wrap:anywhere}
+ /* What the slide shows must match the editor: reveal.js themes give images a
+    margin, border and white background, text a 1.3 line height and lists an
+    inline-block box. Not inside Revela's objects. */
+ .reveal .stage{line-height:normal}
+ .reveal .stage img,.reveal .stage video,.reveal .stage iframe{margin:0;border:0;background:none;box-shadow:none;max-width:none;max-height:none}
+ .reveal .stage ul,.reveal .stage ol{display:block;text-align:inherit;margin:1em 0;padding-left:40px}
+ .reveal .stage table.tbl{line-height:normal}
+ .reveal .stage .rv-m{display:inline-block}
+ .reveal .lv :is(ul,ol) li{font-size:var(--l1)}.reveal .lv ul li{list-style-type:var(--b1)}.reveal .lv :is(ul,ol) :is(ul,ol) li{font-size:var(--l2)}.reveal .lv ul ul li{list-style-type:var(--b2)}.reveal .lv :is(ul,ol) :is(ul,ol) :is(ul,ol) li{font-size:var(--l3)}.reveal .lv ul ul ul li{list-style-type:var(--b3)}.reveal .lv :is(ul,ol) :is(ul,ol) :is(ul,ol) :is(ul,ol) li{font-size:var(--l4)}.reveal .lv ul ul ul ul li{list-style-type:var(--b4)}.reveal .lv :is(ul,ol) :is(ul,ol) :is(ul,ol) :is(ul,ol) :is(ul,ol) li{font-size:var(--l5)}.reveal .lv ul ul ul ul ul li{list-style-type:var(--b5)}
+ .reveal .stage ul{list-style-type:var(--bullet,disc)}
+ .reveal .stage ol{list-style-type:var(--num,decimal)}
+ .reveal section{height:100%}
+ .reveal .slide-number{right:8px;bottom:8px;top:auto;left:auto}
+ .reveal table.tbl{border-collapse:collapse;width:100%;height:100%;margin:0}.reveal table.tbl td{border:1px solid var(--stroke,#fff);padding:var(--cell-pad,.15em .4em);vertical-align:top}.reveal table.tbl.lines td{border-width:0 0 1px 0}.reveal table.tbl.banded:not(.has-header) tr:nth-child(odd) td,.reveal table.tbl.banded.has-header tr:nth-child(even) td{background:var(--band,rgba(127,127,127,.18))}.reveal table.tbl.first-col td:first-child{font-weight:700}.reveal table.tbl.has-header tr:first-child td{font-weight:700;background:var(--th-bg,rgba(127,127,127,.25));color:var(--th-fg,inherit)}
+ .reveal .stage.pass{pointer-events:none} .reveal .stage.pass>*{pointer-events:auto}
+ .reveal .math .katex-display{margin:0}
+ model-viewer::part(default-progress-bar){display:none}
+ .reveal .rv-code pre{box-shadow:none}
+ .reveal .rv-code pre code{max-height:100%;height:100%;box-sizing:border-box;overflow:auto;scrollbar-width:thin;scrollbar-color:#6668 transparent}
+ .reveal .rv-code.no-scroll pre code{overflow:hidden}
+ .deck-footer{position:fixed;left:12px;bottom:8px;z-index:30;font-size:14px;opacity:.7;color:#fff;mix-blend-mode:difference}
+ 
+ 
+ .reveal .slides section .fragment.rv-path{opacity:1;visibility:inherit}
+ .reveal .slides section .fragment.rv-path.visible{translate:var(--dx) var(--dy)}
+ .reveal .slides section .fragment.spin360,.reveal .slides section .fragment.clip3d,.reveal .slides section .fragment.pdfview,.reveal .slides section .fragment.draw{opacity:1;visibility:inherit}
+ .reveal .fragment.draw .rvd{stroke-dasharray:1;stroke-dashoffset:1;fill-opacity:0}
+ .reveal .fragment.draw.visible .rvd{animation:rvDraw var(--anim-dur,1500ms) ease-in-out var(--anim-del,0ms) forwards}
+ @keyframes rvDraw{70%{fill-opacity:0}to{stroke-dashoffset:0;fill-opacity:1}}
+ [data-goto],[data-href]{cursor:pointer}
+ [data-timer].rv-t-low .rv-t-txt,[data-timer].rv-t-low .rv-t-bar{fill:#ff5252} [data-timer].rv-t-low .rv-t-arc{stroke:#ff5252}
+ [data-timer].rv-t-done svg{animation:rvBlink 1s ease-in-out 3} @keyframes rvBlink{50%{opacity:.25}}
+ [data-wrap]::before{content:"";height:var(--wh);width:var(--ww);shape-outside:inset(var(--wt) 0 0 0)}[data-wrap=l]::before{float:left}[data-wrap=r]::before{float:right}
+ .reveal .slides section .fragment.spin360.visible{animation:rvTurn var(--anim-dur,600ms) ease-in-out var(--anim-del,0ms) both}
+ @keyframes rvTurn{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+ 
+ .reveal .slides section .rv-step{pointer-events:none}.reveal .slides section .rv-step>*{pointer-events:auto}
+ .reveal .slides section .fragment.rv-pathc{opacity:1;visibility:inherit}
+ .reveal .slides section .fragment.rv-pathc.visible{animation:var(--pk) var(--anim-dur,600ms) ease-in-out var(--anim-del,0ms) both}
+ 
+ 
+ 
+ 
+ #ink-canvas{position:fixed;inset:0;width:100vw;height:100vh;z-index:40;pointer-events:none;touch-action:none}
+ #ink-canvas.on{pointer-events:auto;cursor:crosshair}
+ #ink-canvas.laser{cursor:none}
+ #ink-bar{position:fixed;left:12px;bottom:12px;z-index:41;display:flex;gap:4px;padding:4px;border-radius:8px;
+   background:rgba(20,20,20,.72);opacity:0;transition:opacity .25s}
+ #ink-bar{pointer-events:none}
+ #ink-bar.show{opacity:1;pointer-events:auto}
+ #ink-bar button{width:32px;height:32px;border:0;border-radius:6px;background:none;color:#fff;font:16px/1 sans-serif;cursor:pointer}
+ #ink-bar button:hover{background:rgba(255,255,255,.15)}
+ #ink-bar button.on{background:rgba(255,255,255,.28)}
+ #ink-bar input{width:28px;height:28px;margin:2px;border:0;padding:0;background:none;cursor:pointer}
+ #rv-cm{position:fixed;z-index:60;min-width:230px;max-height:calc(100vh - 8px);overflow:auto;padding:5px;border-radius:9px;background:rgba(28,30,36,.97);color:#eef1f5;font:14px/1.2 system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.5);user-select:none}
+ #rv-cm button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;color:inherit;font:inherit;text-align:left;padding:7px 10px;border-radius:6px;cursor:pointer}
+ #rv-cm button:hover,#rv-cm button:focus{background:rgba(134,169,232,.25);outline:none}
+ #rv-cm button.on::after{content:'✓';margin-left:8px}
+ #rv-cm i{width:18px;text-align:center;font-style:normal;opacity:.85}#rv-cm kbd{margin-left:auto;font:12px system-ui;opacity:.55}
+ #rv-cm hr{border:0;border-top:1px solid rgba(255,255,255,.12);margin:4px 2px}
+ #rv-cm .rv-cm-list{max-height:40vh;overflow:auto}#rv-cm .rv-cm-list button{padding:5px 10px 5px 38px;font-size:13px}
+ #rv-white{position:fixed;inset:0;z-index:55;background:#fff;display:none}
+ #captions{position:fixed;left:50%;bottom:6%;transform:translateX(-50%);z-index:42;max-width:80vw;padding:.3em .7em;border-radius:.3em;background:rgba(0,0,0,.72);color:#fff;font:600 clamp(18px,2.6vw,38px)/1.3 system-ui,sans-serif;text-align:center;display:none}
+ 
+</style></head><body>
+<div class="reveal"><div class="slides">
+<section data-transition="fade" data-transition-speed="slow" data-autoslide="6000" data-background-color="#0c0a09" data-auto-animate data-rv-id="xeor9mmcgu"><div class="stage" style="background:#0c0a09"><div aria-hidden="true" style="position:absolute;left:60px;top:686px;width:1160px;height:1px;transform:rotate(0deg);opacity:0.5;"><svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" style="display:block;overflow:visible"><rect x="2" y="2" width="96" height="96" fill="#d4a857" stroke="#d4a857" stroke-width="0" vector-effect="non-scaling-stroke" pathLength="1" class="rvd"/></svg></div>
+<div data-id="3tg8l6fcgt" style="position:absolute;left:640px;top:20px;width:700px;height:700px;transform:rotate(0deg);opacity:0.6;"><svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" style="display:block;overflow:visible"><defs><radialGradient id="sg51" cx=".5" cy=".5" r=".6"><stop offset="0" stop-color="#6b4a1f"/><stop offset="1" stop-color="#0c0a09"/></radialGradient></defs><ellipse cx="50" cy="50" rx="48" ry="48" fill="url(#sg51)" stroke="#6b4a1f" stroke-width="0" vector-effect="non-scaling-stroke" pathLength="1" class="rvd"/></svg></div>
+<div style="position:absolute;left:90px;top:190px;width:560px;height:40px;transform:rotate(0deg);font-size:20px;color:#d4a857;text-align:left;letter-spacing:8px;padding:6px 6px 6px 6px;box-sizing:border-box;"><div class="rv-mt" data-id="vucpp10cgt" style="display:inline-block;max-width:100%;vertical-align:top;">NOVA COL·LECCIÓ · TARDOR 2026</div></div>
+<div style="position:absolute;left:80px;top:230px;width:600px;height:200px;transform:rotate(0deg);font-size:156px;text-align:left;font-family:'Playfair Display', serif;letter-spacing:6px;padding:6px 6px 6px 6px;box-sizing:border-box;background-image:linear-gradient(180deg,#f9d976,#b8860b);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800;"><div class="rv-mt" data-id="or4fvy3cgs" style="display:inline-block;max-width:100%;vertical-align:top;">AURA</div></div>
+<div style="position:absolute;left:90px;top:440px;width:560px;height:60px;transform:rotate(0deg);font-size:40px;color:#f5ecdf;text-align:left;padding:6px 6px 6px 6px;box-sizing:border-box;font-style:italic;"><div class="rv-mt" data-id="6szdph1cgt" style="display:inline-block;max-width:100%;vertical-align:top;">El temps, a la teva mida</div></div>
+<div style="position:absolute;left:90px;top:510px;width:560px;height:40px;transform:rotate(0deg);font-size:24px;color:#a8998a;text-align:left;padding:6px 6px 6px 6px;box-sizing:border-box;"><div class="rv-mt" data-id="cov67ldcgt" style="display:inline-block;max-width:100%;vertical-align:top;">Titani, safir i catorze dies de bateria</div></div>
+<model-viewer data-id="lzsezzocgs" alt="Rellotge" src="https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Assets@main/Models/ChronographWatch/glTF-Binary/ChronographWatch.glb" camera-controls shadow-intensity="1" interaction-prompt="none" max-camera-orbit="auto auto 320%" camera-orbit="35deg 70deg auto" auto-rotate auto-rotate-delay="0" rotation-per-second="18deg" style="position:absolute;left:680px;top:80px;width:520px;height:560px;transform:rotate(0deg);background:transparent;-webkit-mask-image:linear-gradient(to right,transparent,#000 12%,#000 88%,transparent),linear-gradient(to bottom,transparent,#000 12%,#000 88%,transparent);-webkit-mask-composite:source-in;mask-image:linear-gradient(to right,transparent,#000 12%,#000 88%,transparent),linear-gradient(to bottom,transparent,#000 12%,#000 88%,transparent);mask-composite:intersect;"></model-viewer></div><aside class="notes">Portada: el rellotge 3D gira a poc a poc (Model 3D ▸ Girar sol, 18°/s) amb vores difuminades. El títol és Text Art «Or». Deixa uns segons de silenci abans de començar.</aside></section>
+<section data-autoslide="6000" data-background-color="#0c0a09" data-auto-animate data-rv-id="znfzh9wcgu"><div class="stage" style="background:#0c0a09"><div aria-hidden="true" style="position:absolute;left:60px;top:686px;width:1160px;height:1px;transform:rotate(0deg);opacity:0.5;"><svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" style="display:block;overflow:visible"><rect x="2" y="2" width="96" height="96" fill="#d4a857" stroke="#d4a857" stroke-width="0" vector-effect="non-scaling-stroke" pathLength="1" class="rvd"/></svg></div>
+<model-viewer data-id="lzsezzocgs" alt="Rellotge" src="https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Assets@main/Models/ChronographWatch/glTF-Binary/ChronographWatch.glb" camera-controls shadow-intensity="1" interaction-prompt="none" max-camera-orbit="auto auto 320%" camera-orbit="0deg 75deg auto" data-arrive="turn" style="position:absolute;left:40px;top:100px;width:500px;height:540px;transform:rotate(0deg);background:transparent;"></model-viewer>
+<div style="position:absolute;left:600px;top:70px;width:400px;height:110px;transform:rotate(0deg);font-size:80px;text-align:left;font-family:'Playfair Display', serif;letter-spacing:6px;padding:6px 6px 6px 6px;box-sizing:border-box;background-image:linear-gradient(180deg,#f9d976,#b8860b);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800;"><div class="rv-mt" data-id="or4fvy3cgs" style="display:inline-block;max-width:100%;vertical-align:top;">AURA</div></div>
+<div style="position:absolute;left:604px;top:180px;width:600px;height:50px;transform:rotate(0deg);font-size:30px;color:#f5ecdf;text-align:left;padding:6px 6px 6px 6px;box-sizing:border-box;"><div class="rv-mt" data-id="hmtft3bcgt" style="display:inline-block;max-width:100%;vertical-align:top;">Dissenyat per durar</div></div>
+<div class="fragment fade-left" data-fragment-index="1" data-id="53shvricgt" style="position:absolute;left:604px;top:270px;width:600px;height:110px;transition-duration:500ms;transition-delay:0ms;--anim-dur:500ms;--anim-del:0ms;font-size:24px;text-align:left;padding:14px 20px 14px 20px;border:2px solid #d4a85755;border-radius:12px;box-sizing:border-box;"><div style="font-size:30px;color:#d4a857;font-weight:700">Caixa de titani de 42 mm</div><div style="color:#f5ecdf;opacity:.85">Un 40 % més lleugera que l'acer.</div></div>
+<div class="fragment fade-left" data-fragment-index="1" data-id="0mi8aggcgt" style="position:absolute;left:604px;top:400px;width:600px;height:110px;transition-duration:500ms;transition-delay:500ms;--anim-dur:500ms;--anim-del:500ms;font-size:24px;text-align:left;padding:14px 20px 14px 20px;border:2px solid #d4a85755;border-radius:12px;box-sizing:border-box;"><div style="font-size:30px;color:#d4a857;font-weight:700">Vidre de safir</div><div style="color:#f5ecdf;opacity:.85">Només el diamant el ratlla.</div></div>
+<div class="fragment fade-left" data-fragment-index="1" data-id="rg13zwhcgt" style="position:absolute;left:604px;top:530px;width:600px;height:110px;transition-duration:500ms;transition-delay:1000ms;--anim-dur:500ms;--anim-del:1000ms;font-size:24px;text-align:left;padding:14px 20px 14px 20px;border:2px solid #d4a85755;border-radius:12px;box-sizing:border-box;"><div style="font-size:30px;color:#d4a857;font-weight:700">Submergible a 100 metres</div><div style="color:#f5ecdf;opacity:.85">Per nedar, bussejar o dutxar-se.</div></div></div><aside class="notes">Transforma: el rellotge i el nom viatgen des de la portada. El rellotge arriba «fent una volta fins a la seva vista» (Model 3D ▸ En arribar). Les tres targetes entren seguides amb un clic.</aside></section>
+<section data-autoslide="6000" data-background-color="#0c0a09" data-auto-animate data-rv-id="pr8nnx5cgu"><div class="stage" style="background:#0c0a09"><div aria-hidden="true" style="position:absolute;left:60px;top:686px;width:1160px;height:1px;transform:rotate(0deg);opacity:0.5;"><svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" style="display:block;overflow:visible"><rect x="2" y="2" width="96" height="96" fill="#d4a857" stroke="#d4a857" stroke-width="0" vector-effect="non-scaling-stroke" pathLength="1" class="rvd"/></svg></div>
+<div style="position:absolute;left:90px;top:60px;width:400px;height:110px;transform:rotate(0deg);font-size:80px;text-align:left;font-family:'Playfair Display', serif;letter-spacing:6px;padding:6px 6px 6px 6px;box-sizing:border-box;background-image:linear-gradient(180deg,#f9d976,#b8860b);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800;"><div class="rv-mt" data-id="or4fvy3cgs" style="display:inline-block;max-width:100%;vertical-align:top;">AURA</div></div>
+<model-viewer data-id="lzsezzocgs" alt="Rellotge" src="https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Assets@main/Models/ChronographWatch/glTF-Binary/ChronographWatch.glb" camera-controls shadow-intensity="1" interaction-prompt="none" max-camera-orbit="auto auto 320%" camera-orbit="90deg 75deg auto" data-arrive="view" style="position:absolute;left:700px;top:80px;width:500px;height:560px;transform:rotate(0deg);background:transparent;"></model-viewer>
+<div class="fragment fade-up" data-fragment-index="1" style="position:absolute;left:90px;top:200px;width:560px;height:182px;transition-duration:500ms;transition-delay:0ms;--anim-dur:500ms;--anim-del:0ms;font-size:24px;color:#f5ecdf;text-align:left;padding:6px 6px 6px 6px;box-sizing:border-box;"><div class="rv-mt" data-id="8uztoyhcgt" style="display:inline-block;max-width:100%;vertical-align:top;"><div style="font-size:80px;font-weight:800;line-height:1.05;color:#d4a857">14 dies</div><div style="margin-top:8px">de bateria en ús normal</div></div></div>
+<div class="fragment fade-up" data-fragment-index="2" style="position:absolute;left:90px;top:400px;width:270px;height:164px;transition-duration:500ms;transition-delay:0ms;--anim-dur:500ms;--anim-del:0ms;font-size:24px;color:#f5ecdf;text-align:left;padding:6px 6px 6px 6px;box-sizing:border-box;"><div class="rv-mt" data-id="q5162fucgt" style="display:inline-block;max-width:100%;vertical-align:top;"><div style="font-size:64px;font-weight:800;line-height:1.05;color:#d4a857">38 g</div><div style="margin-top:8px">amb la corretja de titani</div></div></div>
+<div class="fragment fade-up" data-fragment-index="3" style="position:absolute;left:380px;top:400px;width:270px;height:164px;transition-duration:500ms;transition-delay:0ms;--anim-dur:500ms;--anim-del:0ms;font-size:24px;color:#f5ecdf;text-align:left;padding:6px 6px 6px 6px;box-sizing:border-box;"><div class="rv-mt" data-id="gs5amd6cgt" style="display:inline-block;max-width:100%;vertical-align:top;"><div style="font-size:64px;font-weight:800;line-height:1.05;color:#d4a857">5 ATM</div><div style="margin-top:8px">resistència a l'aigua</div></div></div></div><aside class="notes">Segon Transforma: ara el rellotge va a la vista de costat d'aquesta diapositiva (En arribar ▸ Ves a la vista). Xifres d'exemple, inventades per a la plantilla.</aside></section>
+<section data-autoslide="6000" data-background-color="#0c0a09" data-auto-animate data-rv-id="9an506rcgu"><div class="stage" style="background:#0c0a09"><div aria-hidden="true" style="position:absolute;left:60px;top:686px;width:1160px;height:1px;transform:rotate(0deg);opacity:0.5;"><svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" style="display:block;overflow:visible"><rect x="2" y="2" width="96" height="96" fill="#d4a857" stroke="#d4a857" stroke-width="0" vector-effect="non-scaling-stroke" pathLength="1" class="rvd"/></svg></div>
+<div style="position:absolute;left:100px;top:60px;width:1080px;height:100px;transform:rotate(0deg);font-size:50px;color:#d4a857;text-align:left;font-family:'Playfair Display', serif;padding:6px 6px 6px 6px;box-sizing:border-box;font-weight:700;"><div class="rv-mt" data-id="iooe3y3cgu" style="display:inline-block;max-width:100%;vertical-align:top;">Autonomia segons l'ús</div></div>
+<model-viewer data-id="lzsezzocgs" alt="Rellotge" src="https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Assets@main/Models/ChronographWatch/glTF-Binary/ChronographWatch.glb" camera-controls shadow-intensity="1" interaction-prompt="none" max-camera-orbit="auto auto 320%" camera-orbit="0deg 75deg auto" auto-rotate auto-rotate-delay="0" rotation-per-second="40deg" data-arrive="front" style="position:absolute;left:1030px;top:30px;width:190px;height:190px;transform:rotate(0deg);background:transparent;"></model-viewer>
+<div data-id="j7qv2pzcgt" style="position:absolute;left:90px;top:190px;width:760px;height:450px;transform:rotate(0deg);"><svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible"><line x1="25.9" y1="3" x2="25.9" y2="48.5" stroke="#8a8a8a" stroke-opacity="0.3" stroke-width="0.3" vector-effect="non-scaling-stroke"/><text x="25.9" y="53.0" font-size="3" text-anchor="middle" fill="#8a8a8a" transform="matrix(0.9868 0 0 1 0.341 0)">0</text><line x1="48.5" y1="3" x2="48.5" y2="48.5" stroke="#8a8a8a" stroke-opacity="0.3" stroke-width="0.3" vector-effect="non-scaling-stroke"/><text x="48.5" y="53.0" font-size="3" text-anchor="middle" fill="#8a8a8a" transform="matrix(0.9868 0 0 1 0.638 0)">20</text><line x1="71.1" y1="3" x2="71.1" y2="48.5" stroke="#8a8a8a" stroke-opacity="0.3" stroke-width="0.3" vector-effect="non-scaling-stroke"/><text x="71.1" y="53.0" font-size="3" text-anchor="middle" fill="#8a8a8a" transform="matrix(0.9868 0 0 1 0.936 0)">40</text><line x1="93.7" y1="3" x2="93.7" y2="48.5" stroke="#8a8a8a" stroke-opacity="0.3" stroke-width="0.3" vector-effect="non-scaling-stroke"/><text x="93.7" y="53.0" font-size="3" text-anchor="middle" fill="#8a8a8a" transform="matrix(0.9868 0 0 1 1.233 0)">60</text><rect x="25.9" y="5.2" width="50.8" height="7.1" fill="#d4a857"/><text x="77.8" y="9.8" font-size="3" text-anchor="start" fill="#d4a857" transform="matrix(0.9868 0 0 1 1.024 0)">45</text><rect x="25.9" y="16.5" width="15.8" height="7.1" fill="#d4a857"/><text x="42.8" y="21.2" font-size="3" text-anchor="start" fill="#d4a857" transform="matrix(0.9868 0 0 1 0.563 0)">14</text><rect x="25.9" y="27.9" width="9.0" height="7.1" fill="#d4a857"/><text x="36.0" y="32.5" font-size="3" text-anchor="start" fill="#d4a857" transform="matrix(0.9868 0 0 1 0.474 0)">8</text><rect x="25.9" y="39.3" width="2.3" height="7.1" fill="#d4a857"/><text x="29.2" y="43.9" font-size="3" text-anchor="start" fill="#d4a857" transform="matrix(0.9868 0 0 1 0.384 0)">2</text><line x1="25.9" y1="3" x2="25.9" y2="48.5" stroke="#8a8a8a" stroke-width="0.4" vector-effect="non-scaling-stroke"/><text x="24.4" y="10.0" font-size="3.6" text-anchor="end" fill="#8a8a8a" transform="matrix(0.9868 0 0 1 0.321 0)">Només hora</text><text x="24.4" y="21.4" font-size="3.6" text-anchor="end" fill="#8a8a8a" transform="matrix(0.9868 0 0 1 0.321 0)">Ús normal</text><text x="24.4" y="32.7" font-size="3.6" text-anchor="end" fill="#8a8a8a" transform="matrix(0.9868 0 0 1 0.321 0)">Esport diari</text><text x="24.4" y="44.1" font-size="3.6" text-anchor="end" fill="#8a8a8a" transform="matrix(0.9868 0 0 1 0.321 0)">GPS continu</text><text x="59.8" y="59" font-size="3.6" text-anchor="middle" fill="#8a8a8a" transform="matrix(0.9868 0 0 1 0.787 0)">Dies</text></svg></div>
+<div style="position:absolute;left:890px;top:300px;width:330px;height:200px;transform:rotate(0deg);font-size:28px;color:#f5ecdf;text-align:left;padding:6px 6px 6px 6px;box-sizing:border-box;"><div class="rv-mt" data-id="272egb9cgt" style="display:inline-block;max-width:100%;vertical-align:top;">Càrrega completa en <b style="color:#d4a857">55 minuts</b> amb la base magnètica.</div></div></div><aside class="notes">Tercer Transforma: el rellotge s'encongeix a la cantonada i arriba girant fins a quedar de cara (En arribar ▸ Gira fins a quedar de cara). Dades d'autonomia inventades.</aside></section>
+<section data-transition="fade" data-autoslide="6000" data-background-color="#0c0a09" data-rv-id="wsk0077cgu"><div class="stage" style="background:#0c0a09"><div aria-hidden="true" style="position:absolute;left:60px;top:686px;width:1160px;height:1px;transform:rotate(0deg);opacity:0.5;"><svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" style="display:block;overflow:visible"><rect x="2" y="2" width="96" height="96" fill="#d4a857" stroke="#d4a857" stroke-width="0" vector-effect="non-scaling-stroke" pathLength="1" class="rvd"/></svg></div>
+<div style="position:absolute;left:100px;top:60px;width:1080px;height:100px;transform:rotate(0deg);font-size:50px;color:#d4a857;text-align:left;font-family:'Playfair Display', serif;padding:6px 6px 6px 6px;box-sizing:border-box;font-weight:700;">La teva salut, d'un cop d'ull</div>
+<div style="position:absolute;left:90px;top:170px;width:520px;height:490px;transform:rotate(0deg);"><svg viewBox="-12.4 0 113.9 100" width="100%" height="100%"><polygon points="50.0,40.0 58.7,45.0 58.7,55.0 50.0,60.0 41.3,55.0 41.3,45.0" fill="none" stroke="#8a8a8a55" stroke-width="0.4"/><polygon points="50.0,30.0 67.3,40.0 67.3,60.0 50.0,70.0 32.7,60.0 32.7,40.0" fill="none" stroke="#8a8a8a55" stroke-width="0.4"/><polygon points="50.0,20.0 76.0,35.0 76.0,65.0 50.0,80.0 24.0,65.0 24.0,35.0" fill="none" stroke="#8a8a8a55" stroke-width="0.4"/><polygon points="50.0,10.0 84.6,30.0 84.6,70.0 50.0,90.0 15.4,70.0 15.4,30.0" fill="none" stroke="#8a8a8a55" stroke-width="0.4"/><line x1="50" y1="50" x2="50.0" y2="10.0" stroke="#8a8a8a55" stroke-width="0.4"/><line x1="50" y1="50" x2="84.6" y2="30.0" stroke="#8a8a8a55" stroke-width="0.4"/><line x1="50" y1="50" x2="84.6" y2="70.0" stroke="#8a8a8a55" stroke-width="0.4"/><line x1="50" y1="50" x2="50.0" y2="90.0" stroke="#8a8a8a55" stroke-width="0.4"/><line x1="50" y1="50" x2="15.4" y2="70.0" stroke="#8a8a8a55" stroke-width="0.4"/><line x1="50" y1="50" x2="15.4" y2="30.0" stroke="#8a8a8a55" stroke-width="0.4"/><polygon points="50.0,11.2 81.8,31.6 80.0,67.3 50.0,78.6 23.5,65.3 15.4,30.0" fill="#d4a857" fill-opacity="0.35" stroke="#d4a857" stroke-width="1"/><text x="50.0" y="6.0" font-size="4" text-anchor="middle" fill="#8a8a8a">Pols</text><text x="87.2" y="27.5" font-size="4" text-anchor="start" fill="#8a8a8a">Oxigen</text><text x="87.2" y="75.0" font-size="4" text-anchor="start" fill="#8a8a8a">Son</text><text x="50.0" y="96.5" font-size="4" text-anchor="middle" fill="#8a8a8a">Estrès</text><text x="12.8" y="75.0" font-size="4" text-anchor="end" fill="#8a8a8a">Temperatura</text><text x="12.8" y="27.5" font-size="4" text-anchor="end" fill="#8a8a8a">Activitat</text></svg></div>
+<div style="position:absolute;left:660px;top:200px;width:560px;height:400px;transform:rotate(0deg);font-size:28px;color:#f5ecdf;text-align:left;line-height:1.5;padding:6px 6px 6px 6px;box-sizing:border-box;"><ul><li>Electrocardiograma en 30 segons</li><li>Fases del son i puntuació diària</li><li>Avís si el pols surt del teu rang</li><li>Tot xifrat i només al teu mòbil</li></ul></div></div><aside class="notes">El radar mostra la precisió de cada sensor davant d'un equip mèdic de referència (percentatges d'exemple).</aside></section>
+<section data-transition="convex" data-autoslide="6000" data-background-color="#0c0a09" data-rv-id="420of2pcgu"><div class="stage" style="background:#0c0a09"><div aria-hidden="true" style="position:absolute;left:60px;top:686px;width:1160px;height:1px;transform:rotate(0deg);opacity:0.5;"><svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" style="display:block;overflow:visible"><rect x="2" y="2" width="96" height="96" fill="#d4a857" stroke="#d4a857" stroke-width="0" vector-effect="non-scaling-stroke" pathLength="1" class="rvd"/></svg></div>
+<div style="position:absolute;left:100px;top:60px;width:1080px;height:100px;transform:rotate(0deg);font-size:50px;color:#d4a857;text-align:left;font-family:'Playfair Display', serif;padding:6px 6px 6px 6px;box-sizing:border-box;font-weight:700;">Tres acabats</div>
+<div class="fragment zoom-in" data-fragment-index="1" style="position:absolute;left:180px;top:180px;width:160px;height:160px;transition-duration:500ms;transition-delay:0ms;--anim-dur:500ms;--anim-del:0ms;"><svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" style="display:block;overflow:visible"><defs><radialGradient id="sg57" cx=".5" cy=".5" r=".6"><stop offset="0" stop-color="#e8e2d6"/><stop offset="1" stop-color="#9c9486"/></radialGradient></defs><ellipse cx="50" cy="50" rx="48" ry="48" fill="url(#sg57)" stroke="#d4a857" stroke-width="2" vector-effect="non-scaling-stroke" pathLength="1" class="rvd"/></svg></div>
+<div class="fragment fade-up" data-fragment-index="2" style="position:absolute;left:90px;top:370px;width:340px;height:220px;transition-duration:500ms;transition-delay:0ms;--anim-dur:500ms;--anim-del:0ms;font-size:22px;text-align:center;padding:6px 6px 6px 6px;box-sizing:border-box;"><div style="font-size:30px;color:#f5ecdf">Titani natural</div><div style="font-size:64px;font-weight:700;color:#d4a857">449 €</div><div style="color:#a8998a">Corretja de pell inclosa</div></div>
+<div class="fragment zoom-in" data-fragment-index="3" style="position:absolute;left:560px;top:180px;width:160px;height:160px;transition-duration:500ms;transition-delay:0ms;--anim-dur:500ms;--anim-del:0ms;"><svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" style="display:block;overflow:visible"><defs><radialGradient id="sg58" cx=".5" cy=".5" r=".6"><stop offset="0" stop-color="#f1d9a0"/><stop offset="1" stop-color="#b8860b"/></radialGradient></defs><ellipse cx="50" cy="50" rx="48" ry="48" fill="url(#sg58)" stroke="#d4a857" stroke-width="2" vector-effect="non-scaling-stroke" pathLength="1" class="rvd"/></svg></div>
+<div class="fragment fade-up" data-fragment-index="4" style="position:absolute;left:470px;top:370px;width:340px;height:220px;transition-duration:500ms;transition-delay:0ms;--anim-dur:500ms;--anim-del:0ms;font-size:22px;text-align:center;padding:6px 6px 6px 6px;box-sizing:border-box;"><div style="font-size:30px;color:#f5ecdf">Or xampany</div><div style="font-size:64px;font-weight:700;color:#d4a857">549 €</div><div style="color:#a8998a">Corretja de pell inclosa</div></div>
+<div class="fragment zoom-in" data-fragment-index="5" style="position:absolute;left:940px;top:180px;width:160px;height:160px;transition-duration:500ms;transition-delay:0ms;--anim-dur:500ms;--anim-del:0ms;"><svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" style="display:block;overflow:visible"><defs><radialGradient id="sg59" cx=".5" cy=".5" r=".6"><stop offset="0" stop-color="#5a5550"/><stop offset="1" stop-color="#15120f"/></radialGradient></defs><ellipse cx="50" cy="50" rx="48" ry="48" fill="url(#sg59)" stroke="#d4a857" stroke-width="2" vector-effect="non-scaling-stroke" pathLength="1" class="rvd"/></svg></div>
+<div class="fragment fade-up" data-fragment-index="6" style="position:absolute;left:850px;top:370px;width:340px;height:220px;transition-duration:500ms;transition-delay:0ms;--anim-dur:500ms;--anim-del:0ms;font-size:22px;text-align:center;padding:6px 6px 6px 6px;box-sizing:border-box;"><div style="font-size:30px;color:#f5ecdf">Negre carboni</div><div style="font-size:64px;font-weight:700;color:#d4a857">499 €</div><div style="color:#a8998a">Corretja de pell inclosa</div></div></div><aside class="notes">Cada acabat apareix amb un clic: l'esfera és una el·lipse amb degradat radial. Preus d'exemple.</aside></section>
+<section data-transition="zoom" data-autoslide="6000" data-background-color="#0c0a09" data-rv-id="tftgv2icgu"><div class="stage" style="background:#0c0a09"><div aria-hidden="true" style="position:absolute;left:60px;top:686px;width:1160px;height:1px;transform:rotate(0deg);opacity:0.5;"><svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" style="display:block;overflow:visible"><rect x="2" y="2" width="96" height="96" fill="#d4a857" stroke="#d4a857" stroke-width="0" vector-effect="non-scaling-stroke" pathLength="1" class="rvd"/></svg></div>
+<div style="position:absolute;left:-200px;top:200px;width:700px;height:700px;transform:rotate(0deg);opacity:0.55;"><svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" style="display:block;overflow:visible"><defs><radialGradient id="sg61" cx=".5" cy=".5" r=".6"><stop offset="0" stop-color="#6b4a1f"/><stop offset="1" stop-color="#0c0a09"/></radialGradient></defs><ellipse cx="50" cy="50" rx="48" ry="48" fill="url(#sg61)" stroke="#6b4a1f" stroke-width="0" vector-effect="non-scaling-stroke" pathLength="1" class="rvd"/></svg></div>
+<div style="position:absolute;left:90px;top:170px;width:600px;height:60px;transform:rotate(0deg);font-size:36px;color:#f5ecdf;text-align:left;padding:6px 6px 6px 6px;box-sizing:border-box;font-style:italic;">A la venda el</div>
+<div style="position:absolute;left:90px;top:230px;width:660px;height:120px;transform:rotate(0deg);font-size:69px;text-align:left;font-family:'Playfair Display', serif;padding:6px 6px 6px 6px;box-sizing:border-box;background-image:linear-gradient(180deg,#f9d976,#b8860b);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800;">15 de novembre</div>
+<div style="position:absolute;left:90px;top:380px;width:600px;height:80px;transform:rotate(0deg);font-size:26px;color:#a8998a;text-align:left;padding:6px 6px 6px 6px;box-sizing:border-box;">Reserves obertes avui · enviament gratuït · 30 dies de prova</div>
+<model-viewer alt="Rellotge" src="https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Assets@main/Models/ChronographWatch/glTF-Binary/ChronographWatch.glb" camera-controls shadow-intensity="1" interaction-prompt="none" max-camera-orbit="auto auto 320%" camera-orbit="35deg 70deg auto" data-motion="float" style="position:absolute;left:760px;top:110px;width:440px;height:480px;transform:rotate(0deg);background:transparent;-webkit-mask-image:linear-gradient(to right,transparent,#000 12%,#000 88%,transparent),linear-gradient(to bottom,transparent,#000 12%,#000 88%,transparent);-webkit-mask-composite:source-in;mask-image:linear-gradient(to right,transparent,#000 12%,#000 88%,transparent),linear-gradient(to bottom,transparent,#000 12%,#000 88%,transparent);mask-composite:intersect;"></model-viewer>
+<div style="position:absolute;left:90px;top:640px;width:1100px;height:40px;transform:rotate(0deg);font-size:12px;color:#6f6356;text-align:left;padding:6px 6px 6px 6px;box-sizing:border-box;">Models 3D: Rellotge — Model and textures: Eric Chadwick (CC-BY-4.0); Khronos logo: Non-copyrightable logo (LicenseRef-LegalMark-Khronos); 3D Commerce logo: Non-copyrightable logo (LicenseRef-LegalMark-Khronos); DGG logo: Copyrightable logo (LicenseRef-LegalMark-DGG)</div></div><aside class="notes">Tancament: el rellotge sura (Model 3D ▸ En arribar a la diapositiva ▸ Flotar). La transició «Zoom» hi posa el punt final.</aside></section>
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/zoom/zoom.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/search/search.js"></script>
+
+<script>
+ Reveal.initialize({ width:1280, height:720, margin:0.03, hash:true, respondToHashChanges:true, loop:true,
+   slideNumber:false,
+   transition:"slide", transitionSpeed:"default",
+   controls:true, controlsLayout:"bottom-right", progress:true, navigationMode:"default",
+   mouseWheel:false, shuffle:false, hideInactiveCursor:true, jumpToSlide:true,
+   previewLinks:false, rtl:false, autoAnimateDuration:1, autoAnimateEasing:"ease",
+   autoAnimateStyles:['opacity','color','background-color','padding','border-width','border-color','border-radius','outline','outline-offset'],
+   autoSlideStoppable:true, fragmentInURL:true,
+   
+   plugins:[ RevealNotes, RevealZoom, RevealSearch ] });
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ (function model3dRuntime() {
+  var timers = new WeakMap();
+  function setup(mv) {
+    if (mv.__rv) return; mv.__rv = true;
+    mv.addEventListener('load', function () {
+      var sp = parseFloat(mv.getAttribute('data-speed')); if (sp) mv.timeScale = sp;
+      if (mv.hasAttribute('data-once') && mv.hasAttribute('autoplay')) { mv.pause(); mv.play({ repetitions: 1 }); }
+    });
+  }
+  // Walking: the clip while it moves, turning towards where it goes (by
+  // turning the camera round it: model-viewer eases that), then the arrival.
+  var walks = new WeakMap();
+  function clipName(mv, n) { var list = mv.availableAnimations || []; return n === '*' ? list[0] : (list.indexOf(n) >= 0 ? n : null); }
+  function playClip(mv, n, once) { n = clipName(mv, n); if (!n) { mv.pause(); return; } mv.animationName = n; mv.play(once ? { repetitions: 1 } : undefined); }
+  function rest(mv) { var idle = mv.hasAttribute('autoplay') ? (mv.getAttribute('animation-name') || '*') : null; if (idle) playClip(mv, idle); else mv.pause(); }
+  // The camera's distance: further away when the view has room around the model (data-bleed).
+  function R(mv, pct) { var k = parseFloat(mv.getAttribute('data-bleed')) || 1; return pct ? Math.round(pct * k) + '%' : (k === 1 ? 'auto' : Math.round(105 * k) + '%'); }
+  function turn(mv, yaw) { var o = (mv.getAttribute('camera-orbit') || '0deg 75deg auto').split(' '); mv.cameraOrbit = (parseFloat(o[0]) - yaw).toFixed(1) + 'deg ' + (o[1] || '75deg') + ' ' + R(mv); }
+  function offset(el) { var v = getComputedStyle(el).translate; if (!v || v === 'none') return [0, 0]; var p = v.split(' '); return [parseFloat(p[0]) || 0, parseFloat(p[1]) || 0]; }
+  function move(mv, dur, el) {
+    var clip = mv.getAttribute('data-move-clip'); if (!clip) return;
+    var w = walks.get(mv), now0 = performance.now();
+    if (w && now0 - w.t0 < 80) return;                   // (several properties start together)
+    if (w) cancelAnimationFrame(w.raf);
+    w = { t0: now0 }; walks.set(mv, w); el = el || mv;
+    playClip(mv, clip);
+    var last = null, face = mv.hasAttribute('data-face'), yaw = null;
+    (function step(now) {
+      var p = offset(el);
+      if (face && last) { var dx = p[0] - last[0], dy = p[1] - last[1];
+        if (Math.hypot(dx, dy) > 0.4) { var y = Math.atan2(dx, dy) * 180 / Math.PI; if (yaw === null || Math.abs(((y - yaw + 540) % 360) - 180) > 2) { yaw = y; turn(mv, y); } } }
+      last = p;
+      if (now - w.t0 < dur) w.raf = requestAnimationFrame(step); else arrive(mv);
+    })(now0);
+  }
+  function arrive(mv) {
+    walks.delete(mv);
+    if (mv.hasAttribute('data-look')) turn(mv, 0);
+    var end = mv.getAttribute('data-end-clip');
+    if (!end) { rest(mv); return; }
+    var once = mv.hasAttribute('data-end-once');
+    playClip(mv, end, once);
+    if (once) mv.addEventListener('finished', function () { rest(mv); }, { once: true });
+  }
+  function secs(v) { v = String(v || '').split(',')[0].trim(); return v.slice(-2) === 'ms' ? parseFloat(v) : parseFloat(v) * 1000 || 0; }
+  // In the presentation it moves by CSS (a transition of its position, or the
+  // keyframes of a curved path): it walks from when that starts, for as long.
+  // (Or a layer around it, for its next animations.)
+  function walker(el) { if (el.tagName === 'MODEL-VIEWER') return el.hasAttribute('data-move-clip') ? el : null;
+    return el.classList && el.classList.contains('rv-step') && !el.hasAttribute('data-clip') ? el.querySelector('model-viewer[data-move-clip]') : null; }
+  document.addEventListener('transitionstart', function (e) {
+    var mv = walker(e.target); if (!mv) return;
+    if (['translate', 'opacity', 'transform'].indexOf(e.propertyName) < 0) return;
+    move(mv, secs(getComputedStyle(e.target).transitionDuration), e.target);
+  }, true);
+  document.addEventListener('animationstart', function (e) {
+    var mv = walker(e.target); if (!mv || !/^rvP/.test(e.animationName)) return;
+    move(mv, secs(getComputedStyle(e.target).animationDuration), e.target);
+  }, true);
+  // A step that plays one of the model's own animations (once, then back to rest, or on).
+  function clipStep(f, show) {
+    var name = f.getAttribute('data-clip'); if (!name) return;
+    var mv = f.tagName === 'MODEL-VIEWER' ? f : f.querySelector('model-viewer'); if (!mv) return;
+    if (!show) { rest(mv); return; }
+    setTimeout(function () {
+      var once = f.hasAttribute('data-clip-once'); playClip(mv, name, once);
+      if (once) mv.addEventListener('finished', function () { rest(mv); }, { once: true });
+    }, secs(getComputedStyle(f).getPropertyValue('--anim-del')));
+  }
+  function stop(mv) { var t = timers.get(mv); if (t) { cancelAnimationFrame(t.raf); clearInterval(t.iv); clearTimeout(t.iv); } timers.delete(mv); mv.style.transform = ''; }
+  // smooth: the model came from the slide before (Morph) and has just arrived —
+  // the movement starts from where it is, with no jump of the camera.
+  // delay: a slide still coming in — the camera takes its starting place now
+  // (far, or above) and the movement plays once the slide is in.
+  function start(mv, smooth, delay) {
+    stop(mv);
+    var m = mv.getAttribute('data-motion'), t = {}, t0 = performance.now(), o = smooth && orbitOf(mv), th = o ? o.t : 0;
+    timers.set(mv, t);
+    if (m === 'swing') { var side = 1; mv.cameraOrbit = '-35deg 75deg ' + R(mv); t.iv = setInterval(function () { side = -side; mv.cameraOrbit = (35 * side) + 'deg 75deg ' + R(mv); }, 2200); }
+    else if (m === 'zoom') { mv.interpolationDecay = 200; if (!smooth) { mv.cameraOrbit = '0deg 75deg ' + R(mv, 300); mv.jumpCameraToGoal && mv.jumpCameraToGoal(); }
+      t.iv = setTimeout(function () { mv.cameraOrbit = (smooth ? th.toFixed(1) : '0') + 'deg 75deg ' + R(mv); }, Math.max(20, delay || 0)); }
+    else if (m === 'top') {
+      mv.interpolationDecay = 300;
+      if (smooth) { mv.cameraOrbit = th.toFixed(1) + 'deg 5deg ' + R(mv); t.iv = setTimeout(function () { mv.cameraOrbit = '30deg 75deg ' + R(mv); }, 900); }
+      else { mv.cameraOrbit = '0deg 5deg ' + R(mv); mv.jumpCameraToGoal && mv.jumpCameraToGoal(); t.iv = setTimeout(function () { mv.cameraOrbit = '30deg 75deg ' + R(mv); }, Math.max(20, delay || 0)); }
+    }
+    else if (m === 'orbit') {
+      (function step(now) { var k = Math.min(1, (now - t0) / 4000), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+        mv.cameraOrbit = (th + e * 360) + 'deg 75deg ' + R(mv); mv.jumpCameraToGoal && mv.jumpCameraToGoal(); if (k < 1) t.raf = requestAnimationFrame(step); })(t0);
+    } else if (m === 'float') {
+      (function step(now) { mv.style.transform = 'translateY(' + (Math.sin((now - t0) / 700) * 14).toFixed(1) + 'px)'; t.raf = requestAnimationFrame(step); })(t0);
+    }
+  }
+  // handed: models that came from the slide before → how long until they arrive.
+  // While they travel, a "zoom in on arrival" first takes the camera back (the
+  // model shrinks as it moves), then zooms in once it is there; the other
+  // movements start when it has arrived.
+  function enter(slide, handed) {
+    document.querySelectorAll('model-viewer').forEach(function (mv) {
+      setup(mv);
+      if (!mv.hasAttribute('data-motion')) return;
+      if (!(slide && slide.contains(mv))) { stop(mv); return; }
+      var wait = handed && handed.get(mv);
+      if (wait == null) {                                   // (a slide coming in with a transition: once it's in)
+        var tw = handed ? slideIn(slide) : 0, m = mv.getAttribute('data-motion');
+        if (!tw || m === 'zoom' || m === 'top') { start(mv, false, tw); return; }
+        stop(mv); timers.set(mv, { iv: setTimeout(function () { start(mv); }, tw) }); return;
+      }
+      stop(mv);
+      if (mv.getAttribute('data-motion') === 'zoom' && ['front', 'view', 'turn'].indexOf(mv.getAttribute('data-arrive')) < 0) {   // (those take it back themselves)
+        var go = function () { var o = orbitOf(mv); mv.interpolationDecay = wait * 0.45; mv.cameraOrbit = (o ? o.t.toFixed(1) + 'deg ' + o.p.toFixed(1) + 'deg ' : '0deg 75deg ') + R(mv, 300); };
+        // (After the camera has been put where the model was — that jump happens on the next frame.)
+        var later = function () { setTimeout(go, 80); };
+        if (mv.loaded) later(); else mv.addEventListener('load', later, { once: true });
+      }
+      var t = { iv: setTimeout(function () { start(mv, true); }, wait) }; timers.set(mv, t);
+    });
+  }
+  // With room around it, only the model's own box (the middle of the view) takes the
+  // pointer to turn it; around, clicks reach what is under (a link, a button).
+  if (window.Reveal) document.addEventListener('pointermove', function (e) {
+    document.querySelectorAll('model-viewer[data-bleed]').forEach(function (mv) {
+      var k = parseFloat(mv.getAttribute('data-bleed')) || 1, r = mv.getBoundingClientRect(), mx = r.width * (1 - 1 / k) / 2, my = r.height * (1 - 1 / k) / 2;
+      var inside = e.clientX > r.left + mx && e.clientX < r.right - mx && e.clientY > r.top + my && e.clientY < r.bottom - my;
+      mv.style.pointerEvents = inside ? 'auto' : 'none';
+    });
+  }, { passive: true });
+  // The same model on the slide before (Morph pairs them by data-id; else the same
+  // file): it arrives with the angle and turning it had, and then, as chosen
+  // (data-arrive), stays so, turns to face the audience, goes to this slide's
+  // view, or takes a full turn on the way ('reset': starts afresh).
+  function orbitOf(mv) { try { var o = mv.getCameraOrbit(); return { t: o.theta * 180 / Math.PI, p: o.phi * 180 / Math.PI }; } catch (e) { return null; } }
+  function partner(mv, prev) {
+    var id = mv.getAttribute('data-id'), src = mv.getAttribute('src');
+    if (id) { var byId = prev.querySelector('model-viewer[data-id="' + id.replace(/"/g, '') + '"]'); if (byId) return byId; }
+    return [].slice.call(prev.querySelectorAll('model-viewer')).filter(function (x) { return x.getAttribute('src') === src; })[0] || null;
+  }
+  // How long a slide takes to come in (its transition; reveal.js's speeds).
+  function slideIn(sec) {
+    var tr = (sec.getAttribute('data-transition') || (window.Reveal && Reveal.getConfig().transition) || 'slide').split(' ')[0].replace(/-in$/, '');
+    if (tr === 'none' || sec.hasAttribute('data-auto-animate')) return 0;
+    var sp = sec.getAttribute('data-transition-speed') || (window.Reveal && Reveal.getConfig().transitionSpeed) || 'default';
+    return { fast: 400, slow: 1200 }[sp] || 800;
+  }
+  function travel(cur) {
+    if (!cur.hasAttribute('data-auto-animate')) return 0;
+    var d = parseFloat(cur.getAttribute('data-auto-animate-duration')) || (window.Reveal && Reveal.getConfig().autoAnimateDuration) || 1;
+    return d * 1000;
+  }
+  function handoff(prev, cur) {
+    var handed = new Map();
+    if (!prev || !cur || prev === cur) return handed;
+    [].slice.call(cur.querySelectorAll('model-viewer')).forEach(function (mv) {
+      var how = mv.getAttribute('data-arrive') || 'keep'; if (how === 'reset') return;
+      var old = partner(mv, prev); if (!old || !old.loaded) return;
+      handed.set(mv, Math.max(travel(cur), how === 'turn' ? 2400 + 150 : how === 'keep' ? 0 : 1400 + 150));   // (its own movement starts once the arrival is over)
+      var o = orbitOf(old), spin = typeof old.turntableRotation === 'number' ? old.turntableRotation : 0;
+      var own = (mv.getAttribute('camera-orbit') || '0deg 75deg auto').split(' '), ownT = parseFloat(own[0]) || 0, ownP = own[1] || '75deg';
+      var zoomIn = mv.getAttribute('data-motion') === 'zoom';
+      function apply() {
+        mv.interpolationDecay = 180;
+        if (o) { mv.cameraOrbit = o.t.toFixed(1) + 'deg ' + o.p.toFixed(1) + 'deg ' + R(mv); if (mv.jumpCameraToGoal) mv.jumpCameraToGoal(); }
+        if (mv.resetTurntableRotation) mv.resetTurntableRotation(spin);
+        if (how === 'keep') return;
+        var t0 = performance.now(), dur = how === 'turn' ? 2400 : 1400, from = o ? o.t : ownT, to = how === 'front' ? 0 : ownT;
+        if (how === 'turn') to += to >= from ? 360 : -360;
+        (function step(now) {
+          var k = Math.min(1, (now - t0) / dur), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+          if (mv.resetTurntableRotation) mv.resetTurntableRotation(spin * (1 - e));
+          // (With "zoom in on arrival", the camera also goes back while it travels: then it zooms in.)
+          mv.cameraOrbit = (from + (to - from) * e).toFixed(1) + 'deg ' + (how === 'front' ? '75deg' : ownP) + ' ' + (zoomIn ? R(mv, 105 + 195 * e) : R(mv));
+          if (mv.jumpCameraToGoal) mv.jumpCameraToGoal();
+          if (k < 1) requestAnimationFrame(step);
+          else if (how === 'front') { mv.removeAttribute('auto-rotate'); mv.autoRotate = false; }   // (and it stays facing the audience)
+        })(t0);
+      }
+      if (mv.loaded) apply(); else mv.addEventListener('load', apply, { once: true });
+    });
+    return handed;
+  }
+  if (window.Reveal) { Reveal.on('ready', function (e) { enter(e.currentSlide); }); Reveal.on('slidechanged', function (e) { enter(e.currentSlide, handoff(e.previousSlide, e.currentSlide)); }); if (Reveal.isReady()) enter(Reveal.getCurrentSlide());
+    Reveal.on('fragmentshown', function (e) { (e.fragments || [e.fragment]).forEach(function (f) { clipStep(f, true); }); });
+    Reveal.on('fragmenthidden', function (e) { (e.fragments || [e.fragment]).forEach(function (f) { clipStep(f, false); }); }); }
+  return { enter: enter, handoff: handoff, start: start, stop: stop, move: move, clip: function (mv, name, once) { playClip(mv, name, once); if (once) mv.addEventListener('finished', function () { rest(mv); }, { once: true }); } };
+})();
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ (function(){
+ var W=1280,H=720,L={"pen":"Lápiz","hl":"Resaltador","laser":"Puntero láser","color":"Color de la tinta","erase":"Borrar la tinta de la diapositiva","cc":"Subtítulos en directo","zin":"Acercar","zout":"Alejar","zreset":"Tamaño normal","next":"Siguiente","prev":"Anterior","go":"Ir a la diapositiva","overview":"Vista general","titles":["NOVA COL·LECCIÓ · TARDOR 2026","AURA","AURA","Autonomia segons l'ús","La teva salut, d'un cop d'ull","Tres acabats","A la venda el"],"arrow":"Puntero normal","black":"Pantalla en negro","white":"Pantalla en blanco","full":"Pantalla completa","end":"Terminar la presentación","lang":"es-ES","ccWarn":"Los subtítulos usan el reconocimiento de voz del navegador: en Chrome y Edge el audio se envía a su servicio de voz. ¿Activarlos?"};
+ var cv=document.createElement('canvas');cv.id='ink-canvas';document.body.appendChild(cv);
+ var cx=cv.getContext('2d'),ink={},tool=null,cur=null,laser=null,color='#ff2d2d';
+ var bar=document.createElement('div');bar.id='ink-bar';
+ bar.innerHTML='<button data-t="pen" title="'+L.pen+' (Ctrl+P)">\u270E</button>'
+  +'<button data-t="hl" title="'+L.hl+' (Ctrl+I)">\u2592</button>'
+  +'<button data-t="laser" title="'+L.laser+' (Ctrl+L)">\u25CF</button>'
+  +'<input type="color" value="#ff2d2d" title="'+L.color+'">'
+  +'<button data-t="erase" title="'+L.erase+' (E)">\u232B</button>'
+  +'<button data-t="cc" title="'+L.cc+' (C)" style="font-weight:700;font-size:12px">CC</button>'
+  +'<button data-z="-1" title="'+L.zout+' (−)" style="font-size:20px">−</button>'
+  +'<button data-z="0" title="'+L.zreset+' (0)" style="font-size:11px;width:auto;padding:0 6px" class="rv-zl">100%</button>'
+  +'<button data-z="1" title="'+L.zin+' (+ · Ctrl + rueda)" style="font-size:20px">+</button>';
+ document.body.appendChild(bar);
+ function key(){var i=Reveal.getIndices();return i.h+'/'+(i.v||0);}
+ function rect(){return document.querySelector('.reveal .slides').getBoundingClientRect();}
+ function toDeck(e){var r=rect();return[(e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*H];}
+ function size(){var d=window.devicePixelRatio||1;cv.width=innerWidth*d;cv.height=innerHeight*d;draw();}
+ function stroke(s,r){if(!s.p.length)return;var k=r.width/W;cx.save();cx.lineCap='round';cx.lineJoin='round';
+  cx.strokeStyle=s.c;cx.globalAlpha=s.hl?.35:1;cx.lineWidth=(s.hl?22:4)*k;cx.beginPath();
+  s.p.forEach(function(q,i){var x=r.left+q[0]*k,y=r.top+q[1]*r.height/H;i?cx.lineTo(x,y):cx.moveTo(x,y);});
+  if(s.p.length===1){var q=s.p[0];cx.lineTo(r.left+q[0]*k+.1,r.top+q[1]*r.height/H);}cx.stroke();cx.restore();}
+ function draw(){var d=window.devicePixelRatio||1;cx.setTransform(d,0,0,d,0,0);cx.clearRect(0,0,innerWidth,innerHeight);
+  var r=rect();(ink[key()]||[]).forEach(function(s){stroke(s,r);});
+  if(laser){var k=r.width/W;cx.save();cx.fillStyle=color;cx.shadowColor=color;cx.shadowBlur=14;cx.beginPath();
+   cx.arc(r.left+laser[0]*k,r.top+laser[1]*r.height/H,7,0,7);cx.fill();cx.restore();}}
+ function setTool(t){tool=(t===tool)?null:t;laser=null;cv.className=tool?('on'+(tool==='laser'?' laser':'')):'';
+  bar.querySelectorAll('button[data-t]').forEach(function(b){b.classList.toggle('on',b.dataset.t===tool);});draw();}
+ function erase(){delete ink[key()];draw();}
+ bar.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;
+  if(b.dataset.z!=null){var d=+b.dataset.z;d?zoomBy(d>0?1.25:0.8):zoomTo(1);return;}
+  if(b.dataset.t==='erase')erase();else if(b.dataset.t==='cc')captions();else setTool(b.dataset.t);});
+ // Zoom into the slide being shown (the whole view, around the pointer or the
+ // centre); drag to move around while zoomed; back to normal on the next slide.
+ var zoom=1,tx=0,ty=0,drag=null,rv=document.querySelector('.reveal');
+ function paintZoom(){if(!rv)return;rv.style.transformOrigin='0 0';rv.style.translate=zoom===1?'':(tx.toFixed(1)+'px '+ty.toFixed(1)+'px');rv.style.scale=zoom===1?'':String(zoom);
+  document.body.style.cursor=zoom>1&&!tool?'grab':'';var l=bar.querySelector('.rv-zl');if(l)l.textContent=Math.round(zoom*100)+'%';draw();}
+ function zoomTo(z,qx,qy){z=Math.max(1,Math.min(6,z));if(qx==null){qx=innerWidth/2;qy=innerHeight/2;}
+  tx=qx-(qx-tx)*z/zoom;ty=qy-(qy-ty)*z/zoom;zoom=z;if(zoom===1){tx=ty=0;}
+  tx=Math.min(0,Math.max(innerWidth*(1-zoom),tx));ty=Math.min(0,Math.max(innerHeight*(1-zoom),ty));paintZoom();}
+ function zoomBy(f,qx,qy){zoomTo(zoom*f,qx,qy);}
+ window.addEventListener('wheel',function(e){if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();zoomBy(Math.exp(-e.deltaY*0.003),e.clientX,e.clientY);},{passive:false});
+ document.addEventListener('pointerdown',function(e){if(zoom===1||tool||e.button!==0)return;
+  if(e.target.closest&&e.target.closest('model-viewer,button,a,input,select,textarea,video,iframe,#ink-bar,.rv-poll,.controls'))return;
+  drag={x:e.clientX,y:e.clientY,tx:tx,ty:ty};document.body.style.cursor='grabbing';e.preventDefault();},true);
+ document.addEventListener('pointermove',function(e){if(!drag)return;tx=drag.tx+e.clientX-drag.x;ty=drag.ty+e.clientY-drag.y;zoomTo(zoom);});
+ document.addEventListener('pointerup',function(){if(drag){drag=null;paintZoom();}});
+ Reveal.on('slidechanged',function(){if(zoom!==1)zoomTo(1);});
+ bar.querySelector('input').addEventListener('input',function(e){color=e.target.value;});
+ cv.addEventListener('pointerdown',function(e){if(!tool||tool==='laser')return;try{cv.setPointerCapture(e.pointerId);}catch(_){}
+  cur={c:color,hl:tool==='hl',p:[toDeck(e)]};(ink[key()]=ink[key()]||[]).push(cur);draw();});
+ cv.addEventListener('pointermove',function(e){if(tool==='laser'){laser=toDeck(e);draw();return;}
+  if(cur){cur.p.push(toDeck(e));draw();}});
+ cv.addEventListener('pointerup',function(){cur=null;});
+ cv.addEventListener('pointerleave',function(){if(laser){laser=null;draw();}});
+ window.addEventListener('keydown',function(e){var k=e.key.toLowerCase(),c=e.ctrlKey||e.metaKey,t=null;
+  if(c&&k==='p')t='pen';else if(c&&k==='i')t='hl';else if(c&&k==='l')t='laser';
+  else if(c&&k==='a'&&tool){setTool(tool);}
+  else if(k==='e'&&!c&&!e.altKey){erase();}
+  else if(k==='c'&&!c&&!e.altKey){captions();}
+  else if(k==='escape'&&tool){setTool(tool);}
+  else if(!c&&!e.altKey&&(k==='+'||k==='=')){zoomBy(1.25);}
+  else if(!c&&!e.altKey&&k==='-'){zoomBy(0.8);}
+  else if(!c&&!e.altKey&&k==='0'){zoomTo(1);}
+  else if(k==='escape'&&zoom!==1){zoomTo(1);}
+  else return;
+  if(t)setTool(t);e.preventDefault();e.stopImmediatePropagation();},true);
+ // The bar appears only when the pointer rests a moment in the bottom-left corner
+ // (not with every move: a presenter's remote pointer moves all the time), and
+ // goes when it leaves that corner.
+ var hide,dwell;document.addEventListener('mousemove',function(e){
+  var near=e.clientX<Math.max(260,bar.offsetWidth+40)&&e.clientY>innerHeight-110;
+  if(near){clearTimeout(hide);if(!bar.classList.contains('show')&&!dwell)dwell=setTimeout(function(){dwell=null;bar.classList.add('show');},350);}
+  else{clearTimeout(dwell);dwell=null;if(bar.classList.contains('show')){clearTimeout(hide);hide=setTimeout(function(){bar.classList.remove('show');},600);}}});
+ // Right-click while presenting: what makes sense there (PowerPoint's menu):
+ // next, previous, go to a slide, overview; pen, highlighter, laser, erase;
+ // captions; zoom; black or white screen; full screen; end the show.
+ var menu=null,white=document.createElement('div');white.id='rv-white';document.body.appendChild(white);
+ white.addEventListener('click',function(){white.style.display='none';});
+ function closeMenu(){if(menu){menu.remove();menu=null;}}
+ function titleOf(sec,i){var t=(L.titles&&L.titles[i])||'';return (i+1)+'. '+(String(t).replace(/\s+/g,' ').trim().slice(0,52)||'—');}
+ function endShow(){try{var b=window.parent!==window&&window.parent.document.getElementById('present-close');if(b){b.click();return;}}catch(_){}
+  if(document.fullscreenElement)document.exitFullscreen();}
+ function fullscreen(){if(document.fullscreenElement)document.exitFullscreen();else if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(function(){});}
+ function openMenu(x,y){closeMenu();menu=document.createElement('div');menu.id='rv-cm';menu.setAttribute('role','menu');
+  var items=[['next','❯',L.next,'→'],['prev','❮',L.prev,'←'],['goto','#',L.go],['ov','▦',L.overview,'O'],'-',
+   ['pen','✎',L.pen,'Ctrl+P',tool==='pen'],['hl','▒',L.hl,'Ctrl+I',tool==='hl'],['laser','●',L.laser,'Ctrl+L',tool==='laser'],['arrow','↖',L.arrow,'Esc',!tool],['erase','⌫',L.erase,'E'],'-',
+   ['cc','CC',L.cc,'C',capOn],['zin','+',L.zin,'+'],['zout','−',L.zout,'−'],['z0','1:1',L.zreset,'0'],'-',
+   ['black','■',L.black,'B',Reveal.isPaused()],['white','□',L.white,'W',white.style.display==='block'],['full','⛶',L.full,'F',!!document.fullscreenElement],'-',['end','✕',L.end,'Esc']];
+  menu.innerHTML=items.map(function(it){return it==='-'?'<hr>':'<button role="menuitem" data-m="'+it[0]+'"'+(it[4]?' class="on"':'')+'><i>'+it[1]+'</i>'+it[2]+(it[3]?'<kbd>'+it[3]+'</kbd>':'')+'</button>';}).join('');
+  document.body.appendChild(menu);
+  var r=menu.getBoundingClientRect();menu.style.left=Math.max(4,Math.min(x,innerWidth-r.width-4))+'px';menu.style.top=Math.max(4,Math.min(y,innerHeight-r.height-4))+'px';
+  var first=menu.querySelector('button');if(first)first.focus();}
+ function act(m,btn){
+  if(m==='goto'){var list=menu.querySelector('.rv-cm-list');if(list){list.remove();return;}list=document.createElement('div');list.className='rv-cm-list';
+   Reveal.getSlides().forEach(function(sec,i){var b=document.createElement('button');b.textContent=titleOf(sec,i);b.onclick=function(){closeMenu();var ix=Reveal.getIndices(sec);Reveal.slide(ix.h,ix.v);};list.appendChild(b);});
+   btn.after(list);var r=menu.getBoundingClientRect();if(r.bottom>innerHeight)menu.style.top=Math.max(4,innerHeight-r.height-4)+'px';return;}
+  closeMenu();
+  if(m==='next')Reveal.next();else if(m==='prev')Reveal.prev();
+  else if(m==='ov')window.dispatchEvent(new KeyboardEvent('keydown',{key:'o',bubbles:true}));
+  else if(m==='pen'||m==='hl'||m==='laser'){if(tool!==m)setTool(m);}
+  else if(m==='arrow'){if(tool)setTool(tool);}
+  else if(m==='erase')erase();else if(m==='cc')captions();
+  else if(m==='zin')zoomBy(1.25);else if(m==='zout')zoomBy(0.8);else if(m==='z0')zoomTo(1);
+  else if(m==='black'){white.style.display='none';Reveal.togglePause();}
+  else if(m==='white'){if(Reveal.isPaused())Reveal.togglePause(false);white.style.display=white.style.display==='block'?'none':'block';}
+  else if(m==='full')fullscreen();else if(m==='end')endShow();}
+ document.addEventListener('contextmenu',function(e){
+  if(e.target.closest&&e.target.closest('model-viewer,input,textarea,select,iframe,video'))return;   // (theirs: turning a 3D model, editing…)
+  e.preventDefault();openMenu(e.clientX,e.clientY);});
+ document.addEventListener('pointerdown',function(e){if(menu&&!menu.contains(e.target))closeMenu();},true);
+ document.addEventListener('click',function(e){var b=menu&&e.target.closest&&e.target.closest('#rv-cm button[data-m]');if(b){e.stopPropagation();act(b.dataset.m,b);}},true);
+ window.addEventListener('keydown',function(e){if(!menu)return;
+  var bs=[].slice.call(menu.querySelectorAll('button')),i=bs.indexOf(document.activeElement);
+  if(e.key==='Escape'){closeMenu();}else if(e.key==='ArrowDown'){(bs[i+1]||bs[0]).focus();}else if(e.key==='ArrowUp'){(bs[i-1]||bs[bs.length-1]).focus();}
+  else if(e.key==='Enter'&&bs[i]){bs[i].click();}else return;
+  e.preventDefault();e.stopImmediatePropagation();},true);
+ window.addEventListener('keydown',function(e){var k=e.key;if(e.ctrlKey||e.metaKey||e.altKey||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
+  if(k==='w'||k==='W'){white.style.display=white.style.display==='block'?'none':'block';e.preventDefault();e.stopImmediatePropagation();}
+  else if(white.style.display==='block'&&k!=='w'){white.style.display='none';}},true);
+ Reveal.on('slidechanged',closeMenu);
+ window.addEventListener('resize',size);Reveal.on('slidechanged',draw);Reveal.on('resize',draw);Reveal.on('ready',size);size();
+ // Live captions with the browser's speech recognition (Chrome/Edge send the
+ // audio to their speech service, so the presenter is asked first).
+ var SR=window.SpeechRecognition||window.webkitSpeechRecognition,rec=null,capOn=false,capEl=null,finalTxt='';
+ if(!SR){var ccb=bar.querySelector('[data-t="cc"]');if(ccb)ccb.hidden=true;}
+ // (Each phrase also goes out as an event: the audience's devices show it, see pollJS.)
+ function cap(text,final){try{window.dispatchEvent(new CustomEvent('rv-caption',{detail:{text:String(text).trim(),final:final,lang:L.lang}}));}catch(_){}}
+ function captions(){if(!SR)return;
+  if(capOn){capOn=false;try{rec.stop();}catch(_){}if(capEl)capEl.style.display='none';bar.querySelector('[data-t="cc"]').classList.remove('on');return;}
+  var ok;try{ok=sessionStorage.getItem('revela-cc-ok');}catch(e){}
+  if(!ok){if(!confirm(L.ccWarn))return;try{sessionStorage.setItem('revela-cc-ok','1');}catch(e){}}
+  if(!capEl){capEl=document.createElement('div');capEl.id='captions';document.body.appendChild(capEl);}
+  capEl.style.display='block';capEl.textContent='…';capOn=true;bar.querySelector('[data-t="cc"]').classList.add('on');
+  rec=new SR();rec.lang=L.lang;rec.continuous=true;rec.interimResults=true;
+  rec.onresult=function(ev){var interim='';for(var i=ev.resultIndex;i<ev.results.length;i++){var r=ev.results[i];
+    if(r.isFinal){finalTxt=(finalTxt+' '+r[0].transcript).trim().slice(-220);cap(r[0].transcript,true);}else interim+=r[0].transcript;}
+   if(interim)cap(interim,false);
+   capEl.textContent=(finalTxt+' '+interim).trim().slice(-160);};
+  rec.onend=function(){if(capOn){try{rec.start();}catch(_){}}};
+  rec.onerror=function(e){if(e.error==='not-allowed'){capOn=false;capEl.style.display='none';}};
+  try{rec.start();}catch(_){}}
+ window.__ink={captions:captions,get captionsOn(){return capOn;},get tool(){return tool;},strokes:function(){return ink[key()]||[];},erase:erase,setTool:setTool};
+})();
+ (function(){
+ var SEC=["","","","","","",""], T={"title":"Vista general","help":"Flechas e Intro, o clic, para ir · Esc para cerrar"}, box=null, items=[], sel=0;
+ var st=document.createElement('style');
+ st.textContent='.rv-ov{position:fixed;inset:0;z-index:1000;text-align:start;line-height:normal;background:rgba(10,12,16,.97);overflow:auto;padding:18px 22px 28px;box-sizing:border-box;font-family:system-ui,sans-serif;color:#e6e9ef}'
+  +'.rv-ov-top{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#9aa3ae;margin:0 0 10px}'
+  +'.rv-ov h2{font-family:system-ui,sans-serif;font-size:15px;font-weight:600;margin:16px 0 8px;color:#e6e9ef;letter-spacing:.3px;text-transform:none}'
+  +'.rv-ov-grid{display:grid;gap:14px}'
+  +'.rv-ov-it{position:relative;cursor:pointer;border-radius:6px;overflow:hidden;outline:2px solid transparent;outline-offset:2px;background:#222;box-shadow:0 2px 8px #0008}'
+  +'.rv-ov-it:hover,.rv-ov-it.sel{outline-color:#86a9e8}.rv-ov-it.cur{outline-color:#f5a623}'
+  +'.rv-ov-it .rv-ov-in{position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:none}'
+  +'.rv-ov-it .rv-ov-n{position:absolute;left:6px;bottom:4px;font-size:12px;background:#000a;color:#fff;border-radius:4px;padding:1px 6px}'
+  +'.rv-ov .fragment{opacity:1!important;visibility:visible!important;transform:none!important}'
+  +'.rv-ov .rv-ov-ph{background:#0004;width:100%;height:100%}';
+ document.head.appendChild(st);
+ function leaves(){return Reveal.getSlides().filter(function(s){return !s.querySelector('section');});}
+ function thumb(sec,W,H,tw,n){
+  var it=document.createElement('div');it.className='rv-ov-it';it.style.aspectRatio=W+'/'+H;
+  it.style.background=sec.getAttribute('data-background-color')||'#fff';
+  var inner=document.createElement('div');inner.className='rv-ov-in';inner.style.width=W+'px';inner.style.height=H+'px';
+  [].forEach.call(sec.children,function(c){if(c.tagName==='ASIDE')return;inner.appendChild(c.cloneNode(true));});
+  // No live media in thumbnails (pages, videos and 3D would load again).
+  inner.querySelectorAll('iframe,video,audio,model-viewer').forEach(function(m){var d=document.createElement('div');d.className='rv-ov-ph';d.style.cssText=m.style.cssText;m.replaceWith(d);});
+  inner.querySelectorAll('[id]').forEach(function(e){e.removeAttribute('id');});
+  it.appendChild(inner);var num=document.createElement('span');num.className='rv-ov-n';num.textContent=n;it.appendChild(num);
+  return {el:it,inner:inner};
+ }
+ // Columns so that every slide fits on screen when possible (bigger is better).
+ // groups: how many slides each section has (each section starts a new row).
+ function layout(groups,W,H){
+  var count=groups.reduce(function(a,b){return a+b.n;},0), aw=box.clientWidth-44, ah=window.innerHeight-70;
+  for(var c=1;c<=count;c++){var tw=(aw-14*(c-1))/c, th=tw*H/W, need=0;
+   groups.forEach(function(g){var r=Math.ceil(g.n/c);need+=r*th+14*(r-1)+(g.name?40:12);});
+   if(need<=ah)return c;}
+  return Math.max(1,Math.floor((aw+14)/(220+14)));
+ }
+ function open(){
+  if(box)return;
+  var slides=leaves(), W=Reveal.getConfig().width, H=Reveal.getConfig().height, cur=Reveal.getCurrentSlide();
+  box=document.createElement('div');box.className='rv-ov';box.setAttribute('role','dialog');box.setAttribute('aria-label',T.title);
+  box.innerHTML='<div class="rv-ov-top"><span>'+T.title+'</span><span>'+T.help+'</span></div>';
+  // Inside .reveal, so the thumbnails get the presentation's own styles.
+  (document.querySelector('.reveal')||document.body).appendChild(box);
+  var groups=[];slides.forEach(function(s){var n=SEC[Reveal.getIndices(s).h]||'';var g=groups[groups.length-1];if(g&&g.name===n)g.n++;else groups.push({name:n,n:1});});
+  var cols=layout(groups,W,H), grid=null, last=null; items=[];
+  slides.forEach(function(s,i){
+   var ix=Reveal.getIndices(s), name=SEC[ix.h]||'';
+   if(!grid||name!==last){
+    if(name){var h=document.createElement('h2');h.textContent=name;box.appendChild(h);}
+    grid=document.createElement('div');grid.className='rv-ov-grid';grid.style.gridTemplateColumns='repeat('+cols+',minmax(0,1fr))';box.appendChild(grid);last=name;
+   }
+   var t=thumb(s,W,H,0,i+1);if(s===cur){t.el.classList.add('cur');sel=i;}
+   t.el.addEventListener('click',function(){go(i);});
+   grid.appendChild(t.el);items.push({el:t.el,inner:t.inner,h:ix.h,v:ix.v||0});
+  });
+  requestAnimationFrame(function(){items.forEach(function(x){x.inner.style.transform='scale('+(x.el.clientWidth/W)+')';});mark();});
+ }
+ function close(){if(box){box.remove();box=null;}}
+ function go(i){var x=items[i];close();Reveal.slide(x.h,x.v);}
+ function mark(){items.forEach(function(x,i){x.el.classList.toggle('sel',i===sel);});var e=items[sel]&&items[sel].el;if(e)e.scrollIntoView({block:'nearest'});}
+ function cols(){var g=items[0]&&items[0].el.parentNode;return g?getComputedStyle(g).gridTemplateColumns.split(' ').length:1;}
+ window.addEventListener('keydown',function(e){
+  var k=e.key;
+  if(!box){ if(k==='Escape'||((k==='o'||k==='O')&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!/INPUT|TEXTAREA/.test(e.target.tagName))){e.preventDefault();e.stopImmediatePropagation();open();} return; }
+  e.preventDefault();e.stopImmediatePropagation();
+  if(k==='Escape'||k==='o'||k==='O')close();
+  else if(k==='Enter'||k===' ')go(sel);
+  else if(k==='ArrowRight'){sel=Math.min(items.length-1,sel+1);mark();}
+  else if(k==='ArrowLeft'){sel=Math.max(0,sel-1);mark();}
+  else if(k==='ArrowDown'){sel=Math.min(items.length-1,sel+cols());mark();}
+  else if(k==='ArrowUp'){sel=Math.max(0,sel-cols());mark();}
+  else if(k==='Home'){sel=0;mark();}else if(k==='End'){sel=items.length-1;mark();}
+ },true);
+ window.addEventListener('resize',function(){if(box){close();open();}});
+ window.RevelaOverview={open:open,close:close,isOpen:function(){return !!box;}};
+})();
+ 
+</script></body></html>

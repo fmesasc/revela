@@ -106,6 +106,7 @@ function relink(url, lang) {
   if (path === '' || path === './') return base + h;
   if (/^app\//.test(path)) { const q = new URLSearchParams(path.split('?')[1] || ''); if (lang !== 'es') q.set('lang', lang); const s = q.toString(); return '/app/' + (s ? '?' + s : '') + h; }
   if (LEGAL.includes(path)) return '/' + path + (hash ? h : LEGAL_LANGS.includes(lang) && lang !== 'es' ? '#' + lang : '');
+  if (/^demo\/[\w-]+\.html$/.test(path) && lang !== 'es') return '/' + path.replace(/\.html$/, `-${lang}.html`) + h;   // (the live presentation, in this language)
   if (/^[\w-]+$/.test(path)) return base + path + h;                              // another page of the site
   return '/' + path + h;                                                         // pictures, styles, scripts, fonts
 }

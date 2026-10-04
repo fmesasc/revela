@@ -2,7 +2,7 @@
 """Checks how the example presentations look in the editor, slide by slide: text that
    doesn't fit its box, objects out of the slide, text over other text or over a chart,
    table or picture, and text with little contrast against a plain background.
-   python3 tools/audit-templates.py [GROUP_OR_FILE …] [--json OUT]   (needs Chrome)
+   python3 tools/audit-templates.py [GROUP_OR_FILE …] [--json OUT] [--lang XX]   (needs Chrome)
    Prints one line per problem: key, slide, kind, what. Exits with 1 if there are any."""
 import base64, http.server, json, os, shutil, socketserver, subprocess, sys, threading, time, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -68,11 +68,12 @@ def main():
         if ev('!!window.__revela'): break
         time.sleep(0.25)
     keys = ev("(()=>{const E=window.__revela.examples.EXAMPLES;return Object.entries(E).map(([k,v])=>[k,v.cat,v.file||''])})()")
-    only = [a for a in sys.argv[1:] if not a.startswith('--') and a != json_out]
+    lang = next((sys.argv[i + 1] for i, a in enumerate(sys.argv) if a == '--lang'), 'es')   # (--lang en: in that language)
+    only = [a for a in sys.argv[1:] if not a.startswith('--') and a not in (json_out, lang)]
     keys = [k for k, c, f in keys if not only or c in only or f in only or k in only]
     found = []
     for key in keys:
-        cnt = ev(f"window.__revela.examples.loadExample({json.dumps(key)}).then(d=>{{window.__revela.store.replaceDeck(d);return d.slides.length}})")
+        cnt = ev(f"window.__revela.examples.loadExample({json.dumps(key)}, {json.dumps(lang)}).then(d=>{{window.__revela.store.replaceDeck(d);return d.slides.length}})")
         ev("document.fonts.ready.then(()=>1)"); time.sleep(0.4)
         for i in range(cnt or 0):
             ev(f"(()=>{{const R=window.__revela;R.slides.goToSlide({i});R.render();return 1}})()"); time.sleep(0.35)
