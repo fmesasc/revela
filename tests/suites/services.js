@@ -709,6 +709,137 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     }
   });
 
+  // Reviewing a proposal: the user's own version of what it writes, and nothing the author made lost silently.
+  await test('asistente (revisión): editar en la vista grande, restaurar, conservar lo que había, proteger mi contenido y deshacer de una vez', async () => {
+    reset(); R.slides.addSlide('blank'); R.slides.goToSlide(0);
+    const W = frame.contentWindow, real = W.fetch, calls = [], P = await W.eval("import('/src/ui/dialogs/assistant.js')");
+    P.resetAssistant(); W.localStorage.removeItem('revela.assistant.v1');
+    R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    R.slides.goToSlide(1); R.blocks.addText('Conservar esto'); const keepMe = last();
+    R.slides.goToSlide(0);
+    // (Undo brings back copies: always the deck's current objects.)
+    const s1 = () => R.state.deck.slides[0], s2 = () => R.state.deck.slides[1], b1 = () => s1().blocks[0], b2 = () => s1().blocks[1];
+    R.store.commit(() => { b2().html = '<ul><li>Uno</li><li>Dos</li></ul>'; s1().notes = 'Mis notas'; });
+    const proposal = { message: 'Propuesta', done: true, ops: [
+      { op: 'set_text', slide: 1, id: b1().id, text: 'Portada nueva' }, { op: 'set_text', slide: 1, id: b2().id, text: '- Uno\n- Tres' },
+      { op: 'set_notes', slide: 1, notes: 'Notas nuevas' }, { op: 'delete_object', slide: 2, id: keepMe.id }] };
+    W.fetch = agentMock(W, [proposal], calls);
+    const panelOf = () => D.getElementById('assistant-panel');
+    const send = async text => { panelOf().querySelector('textarea').value = text; panelOf().querySelector('.as-send').click(); await sleep(30); for (let i = 0; i < 100 && P.assistantState().busy; i++) await sleep(20); await sleep(30); };
+    const key = k => W.dispatchEvent(new W.KeyboardEvent('keydown', { key: k, bubbles: true }));
+    const rowOf = (box, i) => box.querySelector(`.as-oprow[data-row="${i}"]`);
+    try {
+      D.querySelector('[data-action="ai-assistant"]').click(); await sleep(20);
+      await send('Mejora la portada');
+      let card = panelOf().querySelector('.as-prop:not(.settled)');
+      // What goes is said, and shown struck through.
+      assert(/Sustituye/.test(rowOf(card, 0).textContent) && /Quita/.test(rowOf(card, 3).querySelector('.as-tag')?.textContent || ''), 'marcados «Sustituye» y «Quita»');
+      const del = [...rowOf(card, 1).querySelectorAll('.as-diff del')].map(d => d.textContent);
+      assert(del.includes('Dos') && !del.includes('Uno') && /Tres/.test(rowOf(card, 1).querySelector('.as-diff ins')?.textContent || ''), 'tachado lo que se quita, subrayado lo nuevo: ' + rowOf(card, 1).innerHTML);
+      assert(/Conservar esto/.test(rowOf(card, 3).querySelector('.as-diff').textContent), 'lo que se borra, a la vista');
+      const prot = card.querySelector('.as-protectchk'); assert(prot && !prot.checked, '«Proteger mi contenido», desactivado en una petición normal');
+      assert(card.querySelector('.as-group .as-th .as-mark.as-lose'), 'en el antes, lo que desaparece en rojo');
+      // The large viewer: the proposed texts editable in the «after».
+      card.querySelector('.as-group .as-zoom').click(); await sleep(30);
+      let v = D.getElementById('as-viewer');
+      const eds = v.querySelectorAll('.asv-a .asv-ed'); eq(eds.length, 2, 'título y cuerpo editables');
+      assert([...eds].every(e => e.isContentEditable && e.tabIndex === 0 && e.getAttribute('role') === 'textbox'), 'se llega con Tab y se anuncian como cuadros de texto');
+      assert(v.querySelector('.asv-b .as-mark.as-lose span'), 'el antes dice qué se quita');
+      assert(!v.querySelector('.asv-bar').hidden && v.querySelectorAll('.asv-tools [data-cmd]').length === 4, 'negrita, cursiva y listas');
+      const ed = eds[0]; ed.focus(); ed.innerHTML = 'Mi <b>título</b> editado'; ed.dispatchEvent(new W.InputEvent('input', { bubbles: true })); await sleep(40);
+      assert(/Editado por ti/.test(rowOf(v.querySelector('.asv-ops'), 0).textContent) && /Editado por ti/.test(rowOf(card, 0).textContent), 'marcado «editado por ti», aquí y en la propuesta');
+      assert(/Mi título editado/.test(card.querySelector('.as-group .as-thumbs .as-th:last-child').textContent), 'la miniatura del después lo lleva');
+      // Esc: first out of the text, then closes.
+      key('Escape'); await sleep(20);
+      assert(D.getElementById('as-viewer') && D.activeElement !== ed, 'Esc sale de la edición sin cerrar');
+      v = D.getElementById('as-viewer');
+      assert(/Mi título editado/.test(v.querySelector('.asv-a').textContent), 'el después redibujado con lo editado');
+      // The notes, edited in the list; then restored.
+      let notes = v.querySelector('.asv-field[data-edit="2"]'); assert(notes && notes.value === 'Notas nuevas', 'las notas propuestas, para editar');
+      notes.focus(); notes.value = 'Notas mías'; notes.dispatchEvent(new W.Event('input', { bubbles: true })); await sleep(30);
+      assert(/Notas mías/.test(rowOf(card, 2).textContent) && /Editado por ti/.test(rowOf(card, 2).textContent), 'las notas editadas, en la propuesta');
+      key('Escape'); await sleep(20); assert(D.getElementById('as-viewer'), 'Esc en las notas tampoco cierra');
+      v.querySelector('[data-restore="2"]').click(); await sleep(30);
+      eq(v.querySelector('.asv-field[data-edit="2"]').value, 'Notas nuevas', 'restaurada la propuesta');
+      assert(!/Editado por ti/.test(rowOf(card, 2).textContent), 'sin la marca');
+      key('Escape'); await sleep(20); assert(!D.getElementById('as-viewer'), 'y Esc cierra');
+      // «Conservar lo que había»: the list keeps its points and gets the new one; the object isn't deleted.
+      rowOf(card, 1).querySelector('[data-keep]').click(); await sleep(30);
+      assert(/Se conserva lo que había/.test(rowOf(card, 1).textContent) && !rowOf(card, 1).querySelector('.as-diff del'), 'conservado: nada tachado');
+      rowOf(card, 3).querySelector('[data-keep]').click(); await sleep(30);
+      card.querySelector('.as-apply').click(); await sleep(30);
+      eq(b1().html, 'Mi <b>título</b> editado', 'se aplica lo editado'); eq(b2().html, '<ul><li>Uno</li><li>Dos</li><li>Tres</li></ul>', 'lo de antes y lo nuevo, sin repetir');
+      eq(s1().notes, 'Notas nuevas', 'las notas restauradas: las propuestas'); assert(s2().blocks.some(b => b.id === keepMe.id), 'no se borra');
+      assert(/Editado por ti/.test(panelOf().querySelector('.as-prop.settled').textContent), 'aplicado, dice qué editaste');
+      R.store.undo();
+      eq(b1().html, '<b>Título</b>', 'un solo deshacer: el título'); eq(b2().html, '<ul><li>Uno</li><li>Dos</li></ul>', 'la lista'); eq(s1().notes, 'Mis notas', 'y las notas');
+      // «Proteger mi contenido»: deletions unticked, replacements kept and added to.
+      await send('Otra vez'); card = panelOf().querySelector('.as-prop:not(.settled)');
+      card.querySelector('.as-protectchk').click(); await sleep(40);
+      eq(rowOf(card, 3).querySelector('[data-i]').checked, false, 'borrar lo tuyo: sin marcar');
+      assert(rowOf(card, 1).querySelector('[data-keep]').checked && rowOf(card, 2).querySelector('[data-keep]').checked, 'sustituir: conservando');
+      card.querySelector('.as-apply').click(); await sleep(30);
+      assert(b1().html.startsWith('<b>Título</b>') && /Portada nueva/.test(b1().html), 'lo de antes primero, lo nuevo después: ' + b1().html);
+      eq(s1().notes, 'Mis notas\n\nNotas nuevas', 'las notas, añadidas'); assert(s2().blocks.some(b => b.id === keepMe.id), 'nada borrado');
+      R.store.undo();
+    } finally {
+      W.fetch = real; R.ai.disconnectAi(); W.localStorage.removeItem('revela.assistant.v1'); P.resetAssistant(); D.getElementById('as-viewer')?.remove();
+      if (panelOf()) D.querySelector('[data-action="ai-assistant"]').click();
+    }
+  });
+
+  await test('completar (revisión): «Mejorar también lo escrito» protege lo del autor; «Solo lo vacío» nunca borra ni sustituye al aplicar', async () => {
+    reset();
+    const W = frame.contentWindow, real = W.fetch, log = [], P = await W.eval("import('/src/ui/dialogs/assistant.js')"), C = await W.eval("import('/src/features/ai/complete.js')"),
+      RV = await W.eval("import('/src/features/ai/review.js')"), AG = R.aiAgent;
+    P.resetAssistant(); W.localStorage.removeItem('revela.assistant.v1');
+    R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    const deck = halfDeck(W); C.saveBrief({ topic: 'Curso de Power BI' });
+    const panelOf = () => D.getElementById('assistant-panel');
+    const idle = async () => { await sleep(30); for (let i = 0; i < 300 && P.assistantState().busy; i++) await sleep(20); await sleep(30); };
+    W.fetch = completeMock(W, log);
+    try {
+      // The pure pieces.
+      const S = i => R.state.deck.slides[i], s4 = S(3), [t4, b4] = s4.blocks;
+      const k = RV.keepOp({ op: 'set_text', sid: s4.id, id: b4.id, text: '- Punto nuevo\n- Texto', ok: true }, deck);
+      assert(/^Texto mío/.test(k.html) && /Punto nuevo/.test(k.html) && (k.html.match(/Texto mío/g) || []).length === 1, 'conservar: lo de antes primero, lo nuevo después, sin repetir: ' + k.html);
+      eq(RV.keepOp({ op: 'delete_object', sid: s4.id, id: b4.id, ok: true }, deck), null, 'conservar un borrado: no se borra');
+      eq(RV.keepOp({ op: 'set_notes', sid: s4.id, notes: 'Otra cosa', ok: true }, deck).notes, 'Mis notas\n\nOtra cosa', 'notas: se añaden');
+      eq(RV.lossOf({ op: 'set_text', sid: s4.id, id: b4.id, text: 'Texto mío y más', ok: true }, deck), null, 'añadir sin quitar no es pérdida');
+      // Safety net: in «Solo lo vacío» nothing that isn't empty is ever deleted or replaced, whatever the operations say.
+      const s7 = deck.slides[6], ph2 = s7.blocks[2], title7 = s7.blocks[0];
+      eq(R.master.isEmptyPlaceholder(ph2), true, 'el segundo cuadro está vacío');
+      const n = AG.applyOps([{ op: 'delete_object', sid: s4.id, id: b4.id, ok: true, onlyEmpty: true }, { op: 'set_text', sid: s4.id, id: t4.id, text: 'X', ok: true, onlyEmpty: true },
+        { op: 'set_text', sid: s4.id, id: b4.id, text: 'Pisado', ok: true, onlyEmpty: true }, { op: 'set_notes', sid: s4.id, notes: 'Pisadas', ok: true, onlyEmpty: true },
+        { op: 'delete_object', sid: s7.id, id: ph2.id, ok: true, onlyEmpty: true }, { op: 'set_text', sid: s7.id, id: title7.id, text: 'Nuevo', ok: true, onlyEmpty: true }]);
+      eq(n, 3, 'solo lo vacío se aplica');
+      assert(s4.blocks.includes(b4) && AG.textOf(b4.html) === 'Texto mío' && s4.notes === 'Mis notas', 'lo del autor intacto');
+      eq(AG.textOf(s4.blocks[0].html), 'X', 'su título vacío sí'); assert(!s7.blocks.includes(ph2), 'un marcador vacío sí se puede quitar'); eq(AG.textOf(title7.html), 'Nuevo', 'y lo vacío se escribe');
+      R.store.undo(); eq(AG.textOf(S(3).blocks[0].html), '', 'un paso');
+      // From the panel, «Solo lo vacío»: every change carries the guard.
+      const res = await C.completeDeck({ scope: { kind: 'all' }, mode: 'empty' });
+      assert(res.ops.length && res.ops.every(o => o.onlyEmpty), 'cada cambio marcado «solo lo vacío»'); eq(res.ops.filter(o => RV.lossOf(o, R.state.deck)).length, 0, 'ninguno quita nada');
+      // «Mejorar también lo escrito»: «Proteger mi contenido» on, the author's text kept and added to.
+      D.querySelector('[data-action="ai-assistant"]').click(); await sleep(20);
+      panelOf().querySelector('.as-qa').click(); await sleep(20);
+      panelOf().querySelector('input[name="as-mode"][value="improve"]').click(); await sleep(10);
+      panelOf().querySelector('.as-go').click(); await idle();
+      const card = panelOf().querySelector('.as-prop:not(.settled)');
+      assert(card.querySelector('.as-protectchk')?.checked, 'proteger, activado');
+      const g4 = card.querySelector(`.as-group[data-key="${S(3).id}"]`);
+      assert(/Se conserva lo que había/.test(g4.textContent), 'lo del autor, conservado: ' + g4.textContent);
+      card.querySelector('.as-apply').click(); await sleep(30);
+      const body4 = () => S(3).blocks.find(b => b.ph === 'body');
+      eq(AG.textOf(S(2).blocks[0].html), 'Mi título', 'su título se queda');
+      assert(/^Texto mío/.test(AG.textOf(body4().html)) && /Cargar los datos/.test(AG.textOf(body4().html)), 'su texto primero y los puntos nuevos después: ' + body4().html);
+      eq(S(3).notes, 'Mis notas\n\nAquí explico la 4.', 'sus notas, con las nuevas al final');
+      R.store.undo(); eq(AG.textOf(body4().html), 'Texto mío', 'y se deshace de una vez'); eq(S(3).notes, 'Mis notas', 'también las notas');
+    } finally {
+      W.fetch = real; R.ai.disconnectAi(); W.localStorage.removeItem('revela.assistant.v1'); P.resetAssistant();
+      if (panelOf()) D.querySelector('[data-action="ai-assistant"]').click();
+    }
+  });
+
   // New slides in a deck made from a template: its layouts, master styles, background, decorations and transition.
   const fromTemplate = async key => { const d = await R.examples.loadExample(key); R.store.replaceDeck(d); R.slides.goToSlide(0); return R.state.deck; };
   const addOp = (spec, after, style = 'same') => R.aiAgent.validateOps([{ op: 'add_slide', after, spec }], { perms: ALL, style }).ops;

@@ -340,6 +340,24 @@ export function validateOps(raw, { scope = { kind: 'all' }, perms = DEFAULT_PERM
   }
 }
 
+// Whether a change would replace or remove something already there (text, notes,
+// an object that is not an empty placeholder, a table's cells, a chart's data, a slide,
+// a picture's description). Changes marked `onlyEmpty` («Solo lo vacío») that would
+// are skipped when applied, whatever made them: a safety net under the proposal.
+export function touchesContent(o, deck = state.deck) {
+  const s = o.sid ? deck.slides.find(x => x.id === o.sid) : null, b = s && o.id ? s.blocks.find(x => x.id === o.id) : null;
+  switch (o.op) {
+    case 'set_text': return !!b && !!plain(b.html || '');
+    case 'set_notes': { const old = String(s?.notes || '').trim(); return !!old && !String(o.notes || '').trim().startsWith(old); }
+    case 'delete_object': return !!b && !isEmptyPlaceholder(b);
+    case 'set_props': return !!b && 'alt' in (o.props || {}) && !!String(b.alt || '').trim() && o.props.alt !== b.alt;
+    case 'set_table': return !!b && (b.rows || []).some(r => r.some(c => plain(c || '')));
+    case 'set_chart_data': return !!b && (b.data || []).length > 0;
+    case 'replace_slide': case 'delete_slide': return !!s && s.blocks.some(x => !isEmptyPlaceholder(x) && !x.decorative);
+  }
+  return false;
+}
+
 // Apply clean operations to a deck (the real one inside a commit, or a copy).
 // Returns how many changed something.
 export function applyTo(deck, ops) {
@@ -350,11 +368,13 @@ export function applyTo(deck, ops) {
     const s = o.sid ? byId(o.sid) : null, b = s && o.id ? s.blocks.find(x => x.id === o.id) : null;
     if (o.sid && !s) continue;
     if (o.id && !b && o.op !== 'add_object') continue;
+    if (o.onlyEmpty && touchesContent(o, deck)) continue;
     switch (o.op) {
       case 'set_text':
         // (Text that would cover a picture comes with the slide rearranged: features/ai/complete.js.)
         if (o.arrange) for (const [id, box] of Object.entries(o.arrange.boxes || {})) { const x = s.blocks.find(y => y.id === id); if (x) Object.assign(x, box); }
-        b.html = toHTML(o.text); fitBody(b, s, deck); break;
+        // (`html`: the user's own version, edited in the proposal.)
+        b.html = o.html != null ? o.html : toHTML(o.text); fitBody(b, s, deck); break;
       case 'set_notes': s.notes = o.notes; break;
       case 'set_hidden': s.hidden = o.hidden; break;
       case 'delete_slide': if (slides.length < 2) continue; slides.splice(slides.indexOf(s), 1); break;

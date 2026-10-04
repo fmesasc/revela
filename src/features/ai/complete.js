@@ -5,7 +5,7 @@
 // written in one text-only request per ~12 slides, from those descriptions and a
 // short brief (deck.aiBrief: what it is about, for whom, what to take away). The
 // result is a proposal — operations for the assistant panel, applied only if picked.
-// "Only the empty": never overwrites what the author wrote. When text goes next to a
+// "Only the empty": never overwrites what the author wrote (also checked when applied). When text goes next to a
 // picture the slide is rearranged so nothing overlaps (part of that text's change).
 
 import { state, commit } from '../../core/store.js';
@@ -178,7 +178,8 @@ async function writeChunk(chunk, { deck, brief, mode, done, language, signal, on
 
 // The operations for one slide from what the model wrote.
 function opsFor(x, w, deck, mode) {
-  const { s, p, want } = x, base = { sid: s.id, slide: x.i + 1, ok: true }, ops = [];
+  // («Solo lo vacío»: each change says so, and is skipped when applied if it would overwrite anything: agent.js touchesContent.)
+  const { s, p, want } = x, base = { sid: s.id, slide: x.i + 1, ok: true, ...(mode === 'empty' && { onlyEmpty: true }) }, ops = [];
   const title = want.title && cleanTitle(cleanLine(w.title || '')).replace(/[.:;]$/, '').slice(0, 140);
   const points = (Array.isArray(w.points) ? w.points : typeof w.points === 'string' ? w.points.split('\n') : []).map(cleanLine).filter(Boolean).slice(0, 5);
   const titleOp = title && title !== p.titleText ? { op: 'set_text', ...base, id: p.title.id, text: title } : null;
@@ -250,6 +251,6 @@ export async function completeDeck({ scope = { kind: 'all' }, mode = 'empty', de
   for (let k = 0; k < targets.length; k += CHUNK) await run(targets.slice(k, k + CHUNK));
   stopped();
   const ops = [...written.values()].flatMap(({ x, w }) => opsFor(x, w, deck, mode));
-  return { ops, dropped: [], problems: ops.length ? checkOps(ops, deck) : [], cost, steps: cost.calls, raw: [],
+  return { ops, mode, dropped: [], problems: ops.length ? checkOps(ops, deck) : [], cost, steps: cost.calls, raw: [],
     stats: { described, cached, slides: written.size, targets: targets.length, failed: need.length - described } };
 }
