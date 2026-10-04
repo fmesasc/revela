@@ -713,4 +713,141 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!ss.classList.contains('failed'), 'al volver a poder guardar, vuelve «Guardado»');
     eq(ss.querySelector('span').textContent, 'Guardado', 'texto de vuelta');
   });
+
+  // ---- Command search (ui/shell/palette.js) ----
+  const P = () => R.palette, pal = () => D.getElementById('cmd-palette'), pin = () => pal()?.querySelector('input');
+  const keyOn = (el, key, o = {}) => el.dispatchEvent(new W.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...o }));
+  const typeIn = async q => { pin().value = q; pin().dispatchEvent(new W.Event('input')); await sleep(10); };
+  const ids = q => P().search(P().buildIndex(), q).map(e => e.id);
+  const top = q => P().search(P().buildIndex(), q)[0];
+  const freshUse = () => { try { W.localStorage.removeItem('revela.palette.v1'); } catch {} };
+
+  await test('paleta de comandos: Ctrl+K, Alt+Q y «/» la abren; Esc la cierra y devuelve el foco', async () => {
+    reset(); const st = D.getElementById('stage'); st.focus();
+    keyOn(st, 'k', { ctrlKey: true }); await sleep(10);
+    assert(pal() && D.activeElement === pin(), 'Ctrl+K: abierta, escribiendo en ella');
+    eq(pin().getAttribute('role'), 'combobox', 'combobox'); eq(pal().querySelector('[role=listbox]').id, pin().getAttribute('aria-controls'), 'con su lista');
+    assert(pin().getAttribute('aria-activedescendant') === pal().querySelector('[role=option][aria-selected=true]').id, 'aria-activedescendant: la opción activa');
+    keyOn(pin(), 'ArrowDown'); assert(pal().querySelector('#cmdp-o1').getAttribute('aria-selected') === 'true', '↓ baja');
+    keyOn(pin(), 'Escape'); await sleep(10);
+    assert(!pal() && D.activeElement === st, 'Esc: cerrada y el foco donde estaba');
+    keyOn(st, 'q', { altKey: true, code: 'KeyQ' }); await sleep(10); assert(pal(), 'Alt+Q (como Office)');
+    keyOn(pin(), 'k', { metaKey: true }); await sleep(10); assert(!pal(), 'Ctrl/⌘+K otra vez: se cierra');
+    keyOn(st, '/'); await sleep(10); assert(pal(), '«/» fuera de un campo'); keyOn(pin(), 'Escape'); await sleep(10);
+    const notes = D.getElementById('notes'); keyOn(notes, '/'); await sleep(10); assert(!pal(), '«/» escribiendo: es una barra');
+    D.getElementById('cmd-search').click(); await sleep(10); assert(pal(), 'el buscador de la barra de título la abre');
+    keyOn(pin(), 'Escape'); await sleep(10);
+  });
+
+  await test('paleta de comandos: «codigo», «poner código» y sinónimos, sin acentos ni mayúsculas', async () => {
+    reset(); freshUse();
+    eq(top('codigo').id, 'a:insert-code', 'sin acento'); eq(top('CÓDIGO').id, 'a:insert-code', 'mayúsculas');
+    eq(top('poner código').id, 'a:insert-code', 'con un verbo'); eq(top('codgo').id, 'a:insert-code', 'con una errata');
+    for (const [q, id] of [['formula', 'a:insert-math'], ['latex', 'a:insert-math'], ['pie de pagina', 'a:insert-hf'], ['numerar diapositivas', 'a:insert-hf'], ['lupa', 'a:insert-magnify'],
+      ['mando', 'a:connect-mobile'], ['narracion', 'a:ai-voiceover'], ['compartir', 'a:share']]) eq(top(q)?.id, id, q);
+    assert(ids('imagen 3d').slice(0, 3).some(x => ['a:insert-model', 'a:resources-3d'].includes(x)), 'imagen 3D: los modelos 3D');
+    assert(['a:insert-model', 'a:resources-3d'].every(x => ids('objeto 3d').slice(0, 4).includes(x)), 'objeto 3D: Modelo 3D y Buscar en 3D');
+    assert(ids('pdf').slice(0, 3).includes('a:export-pdf') && ids('powerpoint').slice(0, 3).includes('a:export-pptx'), 'pdf y powerpoint');
+    eq(top('transparencia').id, 'ctx:Opacidad', 'transparencia: la opacidad');
+    const e = top('codigo'); eq(e.path.join(' ▸ '), 'Insertar ▸ Texto', 'dice dónde está en la cinta');
+    eq(top('deshacer').keys, 'Ctrl+Z', 'y su atajo');
+  });
+
+  await test('paleta de comandos: el idioma no importa (se busca en es, en, fr…; se muestra en el de la interfaz)', async () => {
+    reset();
+    eq(top('insert code').id, 'a:insert-code', 'en español, «insert code»'); eq(top('insérer image').id, 'a:insert-image', '«insérer image»');
+    eq(top('einfügen tabelle')?.id, 'a:insert-table', '«einfügen tabelle»'); eq(top('remove background').id, 'ctx:Quitar fondo', '«remove background»');
+    try {
+      await R.i18n.setLang('en'); await sleep(20);
+      const e = top('código'); eq(e.id, 'a:insert-code', 'en inglés, «código»'); eq(e.label, 'Code', 'mostrado en inglés'); eq(e.path[0], 'Insert', 'con su sitio en inglés');
+      eq(top('pie de página').id, 'a:insert-hf', 'sinónimo en español con la interfaz en inglés');
+      eq(top('footer').id, 'a:insert-hf', 'y en inglés');
+      await R.i18n.setLang('fr'); await sleep(20);
+      eq(top('tabla').id, 'a:insert-table', 'en francés, «tabla»'); eq(top('tabla').label, 'Tableau', 'mostrado en francés');
+    } finally { await R.i18n.setLang('es'); }
+  });
+
+  await test('paleta de comandos: ejecutar hace lo mismo que la cinta (y se deshace), abriendo su pestaña y señalando el botón', async () => {
+    reset(); freshUse(); const n = slide().blocks.length;
+    P().openPalette(); await typeIn('insertar tabla');
+    eq(pal().querySelector('[role=option][aria-selected=true]').dataset.id, 'a:insert-table', 'la primera: Insertar ▸ Tabla');
+    keyOn(pin(), 'Enter'); await sleep(30);
+    assert(!pal(), 'se cierra'); eq(slide().blocks.length, n + 1, 'tabla insertada'); eq(last().type, 'table', 'una tabla');
+    R.store.undo(); eq(slide().blocks.length, n, 'se deshace como siempre');
+    R.store.setSelection(null); R.render();
+    P().openPalette(); await typeIn('transicion fundido'); keyOn(pin(), 'Enter'); await sleep(40);
+    eq(slide().transition, 'fade', 'transición de la diapositiva'); eq(R.state.ui.activeTab, 'transitions', 'con su pestaña abierta');
+    assert(D.querySelector('[data-slide-transition="fade"]').classList.contains('cmdp-flash'), 'y el botón señalado');
+    P().openPalette(); await typeIn('estrella'); keyOn(pin(), 'Enter'); await sleep(30);
+    eq(last().shape, 'star', 'una forma de la galería');
+    P().openPalette(); await typeIn('velocidad lenta'); const sel = pal().querySelector('[role=option][aria-selected=true]').dataset.id;
+    keyOn(pin(), 'Enter'); await sleep(30);
+    assert(/^s:/.test(sel) && (R.state.deck.transitionSpeed === 'slow' || slide().transitionSpeed === 'slow'), 'una opción de una lista (' + sel + ')');
+  });
+
+  await test('paleta de comandos: escribiendo, el texto seleccionado sigue seleccionado para darle formato', async () => {
+    reset(); const b = newText(); b.html = 'hola mundo'; R.render(); await sleep(20);
+    D.querySelector(`#stage .block[data-id="${b.id}"]`).dispatchEvent(new W.MouseEvent('dblclick', { bubbles: true })); const rich = richOf(b);
+    const r = D.createRange(); r.selectNodeContents(rich); const s = D.getSelection(); s.removeAllRanges(); s.addRange(r);
+    keyOn(rich, 'k', { ctrlKey: true }); await sleep(10); assert(pal(), 'Ctrl+K también escribiendo');
+    await typeIn('negrita'); keyOn(pin(), 'Enter'); await sleep(30);
+    assert(D.activeElement === rich, 'el foco vuelve al texto');
+    rich.blur(); await sleep(20);
+    assert(/<b>|font-weight/.test(b.html), 'negrita aplicada a lo seleccionado: ' + b.html);
+  });
+
+  await test('paleta de comandos: recientes primero, el último arriba', async () => {
+    reset(); freshUse();
+    P().runQuery('guías'); P().runQuery('guías'); P().runQuery('regla');
+    P().openPalette(); await sleep(10);
+    eq(pal().querySelector('.cmdp-head').textContent, 'Recientes', 'sección de recientes');
+    const opts = [...pal().querySelectorAll('[role=option]')].map(o => o.dataset.id);
+    eq(opts.slice(0, 2).join(), 'a:toggle-ruler,a:toggle-guides', 'el último usado primero');
+    assert(pal().querySelectorAll('.cmdp-head')[1]?.textContent === 'Sugerencias' && opts.includes('a:insert-image'), 'y sugerencias');
+    keyOn(pin(), 'Escape'); await sleep(10);
+    R.state.ui.showGuides = false; R.state.ui.showRuler = false; R.render(); freshUse();
+    const at = (q, id) => P().search(P().buildIndex(), q).findIndex(e => e.id === id);
+    const before = at('notas', 'a:toggle-notes'); P().runQuery('notas del orador'); P().runQuery('notas del orador'); P().runQuery('notas del orador');
+    assert(at('notas', 'a:toggle-notes') < before || before === 0, `lo que más se usa sube (${before} → ${at('notas', 'a:toggle-notes')})`);
+    R.state.ui.showNotes = false; R.render(); freshUse();
+  });
+
+  await test('paleta de comandos: con un objeto seleccionado, sus comandos primero; sin él, en gris y con el motivo', async () => {
+    reset(); freshUse();
+    let e = top('quitar fondo'); eq(e.id, 'ctx:Quitar fondo', 'se encuentra sin imagen'); eq(e.why, 'Selecciona una imagen', 'con el motivo');
+    P().openPalette(); await typeIn('quitar fondo');
+    const o = pal().querySelector('[role=option]'); eq(o.getAttribute('aria-disabled'), 'true', 'en gris'); assert(/Selecciona una imagen/.test(o.textContent), 'se lee el motivo');
+    keyOn(pin(), 'Enter'); await sleep(10); assert(pal(), 'Intro no hace nada'); keyOn(pin(), 'Escape'); await sleep(10);
+    eq(top('agrupar').why, 'Selecciona dos o más objetos', 'botón de la cinta desactivado: su motivo');
+    R.blocks.addImage('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAIAAADwyuo0AAAAEElEQVR4nGP4z8AARwzIHABvqgf5gNwAKAAAAABJRU5ErkJggg=='); select(last()); await sleep(30);
+    e = top('quitar fondo'); eq(e.id, 'ctx:Quitar fondo', 'con la imagen'); eq(e.why, '', 'ya disponible'); eq(e.path[0], 'Imagen', 'en la pestaña de la imagen');
+    eq(top('sombra').ctx, true, 'sombra: la del objeto seleccionado primero');
+    assert(P().search(P().buildIndex(), 'ajustar contener').some(x => x.ctx), 'también lo del menú contextual');
+  });
+
+  await test('paleta de comandos: ir a una diapositiva, plantillas por nombre, ayuda y preguntar al asistente', async () => {
+    reset(); R.slides.addSlide(); R.slides.addSlide(); R.slides.goToSlide(0); await sleep(10);
+    P().openPalette(); await typeIn('3'); keyOn(pin(), 'Enter'); await sleep(20);
+    eq(R.state.ui.slideIndex, 2, 'a la diapositiva 3');
+    const tpl = Object.values(R.examples.EXAMPLES)[0].name;
+    eq(top(tpl)?.kind, 'template', 'una plantilla por su nombre (' + tpl + ')');
+    eq(top('ayuda sin conexion')?.id, 'h:offline', 'ayuda');
+    P().openPalette(); await typeIn('hazlo más bonito');
+    const opts = pal().querySelectorAll('[role=option]'), ask = opts[opts.length - 1];
+    eq(ask.dataset.id, 'x:ask', 'lo último: preguntar al asistente'); assert(/hazlo más bonito/.test(ask.textContent), 'con lo escrito');
+    ask.click(); await sleep(40);
+    const ta = D.querySelector('#assistant-panel textarea'); assert(ta && ta.value === 'hazlo más bonito', 'abre el asistente con la pregunta');
+    R.store.commit(() => { R.state.ui.showAssistant = false; }, { history: false });
+  });
+
+  await test('paleta de comandos: el buscador de la barra de título no la desborda', async () => {
+    reset();
+    for (const lang of ['es', 'en', 'de']) {
+      await R.i18n.setLang(lang); await sleep(20);
+      const bar = D.querySelector('.titlebar'), b = D.getElementById('cmd-search').getBoundingClientRect(), name = D.querySelector('.doc-name').getBoundingClientRect();
+      assert(bar.scrollWidth <= bar.clientWidth + 1, `${lang}: la barra cabe (${W.innerWidth}px)`);
+      assert(b.width >= 24 && b.right <= W.innerWidth && (b.left >= name.right || b.right <= name.left), `${lang}: el buscador se ve, sin tapar el nombre`);
+    }
+    await R.i18n.setLang('es');
+  });
 }

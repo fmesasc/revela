@@ -84,4 +84,8 @@
     };
     if (document.readyState === 'complete') start(); else window.addEventListener('load', start);
   }
+
+  // A link to a question (support#offline, from the editor's command search): it opens.
+  var openAsked = function () { var d = location.hash && document.getElementById(location.hash.slice(1)); if (d && d.tagName === 'DETAILS') d.open = true; };
+  openAsked(); window.addEventListener('hashchange', openAsked);
 })();

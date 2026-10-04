@@ -352,6 +352,8 @@ function editText(b) {
   const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
 }
 
+// What the menu offers for the selection now, [label, fn] (the command search lists it too).
+export function contextItems() { const b = selectedBlocks().length === 1 ? selectedBlock() : null; return (b ? forBlock(b) : forCanvas()).filter(it => it?.[1]); }
 function forCanvas() {
   return [
     ['Pegar', clip.hasClipboard() ? () => clip.paste() : null],

@@ -56,6 +56,15 @@ export const speechLang = () => ({ es: 'es-ES', en: 'en-US', fr: 'fr-FR', de: 'd
 // Missing strings fall back to the language's fallback (English for the
 // languages whose speakers are unlikely to read Spanish), then to Spanish.
 export function t(es) { return (DICT[lang] && DICT[lang][es]) || (fb && DICT[fb][es]) || es; }
+// A Spanish string in every language loaded (es, en, fr, de, it, pt, ca and the chosen one): searching in any of them.
+export function translations(es) { const out = [es]; for (const d of Object.values(DICT)) if (d?.[es] && !out.includes(d[es])) out.push(d[es]); return out; }
+// Back to Spanish: the source of a text shown in the current language (itself when unknown).
+let rev = null, revLang = '';
+export function untranslate(s) {
+  if (lang === 'es') return s;
+  if (revLang !== lang) { rev = new Map(); for (const d of [fb && DICT[fb], DICT[lang]]) if (d) for (const [k, v] of Object.entries(d)) rev.set(v, k); revLang = lang; }
+  return rev.get(s) || s;
+}
 
 export function applyI18n() {
   const scope = ['#ribbon', '#statusbar', '.titlebar'];
