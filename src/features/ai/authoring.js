@@ -142,7 +142,7 @@ export async function createDeck(opts = {}) {
   const out = await chat([
     { role: 'system', content: `You are an expert presentation designer. Write a complete, well-structured slide deck. Answer only JSON: {"title":"…","slides":[{"kind":"…",…}]}.\n${SPEC_DOC}\nStart with a "title" slide, use "section" slides to separate parts in longer decks, vary the kinds, end with a "closing" slide. ${opts.images ? 'Use 1-3 "image" slides.' : 'Do not use "image" slides.'} Write everything in ${opts.language || lang()}.` },
     { role: 'user', content: brief + source },
-  ], { json: true, maxTokens: 8000 });
+  ], { json: true, maxTokens: 8000, feature: 'create' });
   const res = parseJSON(out);
   // (Cleaned, and what is too much for one slide in two.)
   const specs = (res.slides || []).filter(s => s && typeof s === 'object').slice(0, 40).flatMap(s => splitSpec(prepareSpec(s)));
@@ -202,7 +202,7 @@ export async function improveSlide(slide = currentSlide()) {
   const out = await chat([
     { role: 'system', content: `Improve this slide: clearer, shorter, better structured, and choose the best kind. Keep the facts and the language of the slide. Answer only one slide as JSON {"kind":…}.\n${SPEC_DOC}\nDo not use "image".` },
     { role: 'user', content: `Current slide:\n${slideText(slide)}\n\nNotes: ${slide.notes || ''}` },
-  ], { json: true, maxTokens: 2000 });
+  ], { json: true, maxTokens: 2000, feature: 'improve' });
   const spec = parseJSON(out); if (!spec || !spec.kind) throw new Error('EMPTY');
   commit(() => { rebuildSlide(slide, spec, state.deck); state.ui.selection = null; });
   return spec.kind;
@@ -242,7 +242,7 @@ export async function redesignIdeas(slide = currentSlide(), deck = state.deck) {
   const out = await chat([
     { role: 'system', content: `You are a presentation designer. Propose 3 clearly different, professional layouts for this ${W}x${H} slide, using ONLY its existing objects (move and resize them; do not add or remove any). Principles: strong visual hierarchy (the title prominent), generous margins (at least 48 px), aligned edges on a grid, consistent spacing, no overlapping texts, a picture may fill a whole side or the background. Texts may get "fontSize", "textAlign" ("left"|"center"|"right") and "bg" (a #rrggbbaa backing colour, for text over pictures). Give each layout a short name in ${lang()}. Answer JSON only: {"ideas":[{"name":"…","blocks":{"<id>":{"x":0,"y":0,"w":0,"h":0,"fontSize":40,"textAlign":"left","bg":"#00000099"}}}]}` },
     { role: 'user', content: `Background: ${slide.background || deck.background || '?'}\nObjects:\n${JSON.stringify(list)}` },
-  ], { json: true, maxTokens: 2500 });
+  ], { json: true, maxTokens: 2500, feature: 'redesign' });
   const ideas = checkIdeas(parseJSON(out), slide, W, H);
   if (!ideas.length) throw new Error('EMPTY');
   return ideas;
@@ -253,7 +253,7 @@ const TO = { es: 'Spanish', en: 'English', fr: 'French', de: 'German', it: 'Ital
 export async function translateLine(text, to) {
   if (!TO[to] || !String(text || '').trim()) return null;
   const out = await chat([{ role: 'system', content: `Translate the user's text (spoken, live captions) into ${TO[to]}. Answer with the translation only.` },
-    { role: 'user', content: String(text).slice(0, 600) }], { maxTokens: 300 });
+    { role: 'user', content: String(text).slice(0, 600) }], { maxTokens: 300, feature: 'translate' });
   return String(out || '').trim().slice(0, 800) || null;
 }
 
@@ -263,7 +263,7 @@ export async function addAgenda() {
   const out = await chat([
     { role: 'system', content: `Write an agenda slide for a talk with these slide titles: group them into 3-6 agenda items. Answer only JSON {"kind":"agenda","title":…,"items":[…],"notes":…} in ${lang()}.` },
     { role: 'user', content: titles.join('\n') },
-  ], { json: true, maxTokens: 800 });
+  ], { json: true, maxTokens: 800, feature: 'agenda' });
   const spec = parseJSON(out);
   commit(() => { state.deck.slides.splice(1, 0, slideFromSpec({ ...spec, kind: 'agenda' }, undefined, state.deck, { at: 1 })); state.ui.slideIndex = 1; });
 }
@@ -272,7 +272,7 @@ export async function addQuiz(n = 3) {
   const out = await chat([
     { role: 'system', content: `Write ${n} multiple-choice review questions about this presentation, in ${lang()}. Answer only JSON {"questions":[{"question":…,"options":[4 strings],"answer":index,"explanation":…}]}.` },
     { role: 'user', content: text },
-  ], { json: true, maxTokens: 2500 });
+  ], { json: true, maxTokens: 2500, feature: 'quiz' });
   const qs = (parseJSON(out).questions || []).slice(0, 10);
   if (!qs.length) throw new Error('EMPTY');
   const { w: W, h: H } = state.deck.size, pal = currentPalette();

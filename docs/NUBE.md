@@ -29,6 +29,7 @@ Navegador / escritorio                         Cloudflare
                                                │  ├─ Schedule (avisos por día) ← cron    │
                                                │  ├─ ModelJob (1 por modelo 3D con IA) ──┼──▶ revela-blender (Blender en Containers)
                                                │  ├─ Directory, Tickets, Audit (admin.js)│
+                                               │  ├─ Finance (cuentas del negocio)       │
                                                │  └─ secretos: OPENROUTER_KEY, STRIPE_…  │
                                                └───────┬───────────────┬─────────────────┘
                                                        ▼               ▼
@@ -345,6 +346,37 @@ privado aparte (un proyecto de Cloudflare Pages servido en admin.revelaslides.co
   paga el presupuesto global de IA, no los créditos de la persona. La IA nunca actúa: las acciones solo
   rellenan los formularios para que el administrador las confirme.
 - **Auditoría** (`Audit`): quién, cuándo, qué, antes y después de cada cambio; sin borrar.
+- **Negocio** (`Finance`, `server/cloudflare/finance.js`): las cuentas de la empresa, solo para la
+  administración. Se apunta cada hecho económico:
+  - **IA** (cada petición con la clave de Revela: asistente, completar, visión, imágenes, voz, 3D,
+    sugerencias de tickets, detección de esqueleto…): función (la app la indica; el servidor solo acepta
+    las conocidas, si no `other`), modelo, tokens de entrada y salida, lo que cobró el proveedor
+    (`usage.cost`, en USD), los créditos cobrados y la cuenta.
+  - **Blender**: segundos de cada ronda de «Crear modelo 3D» y su coste (`BLENDER_USD_PER_SECOND`), también
+    cuando la ejecución falla (Revela la paga igual, aunque a la persona no se le cobre).
+  - **Correos** enviados (cuántos y de qué tipo) a `EMAIL_USD` cada uno (por defecto 0: Resend gratis).
+  - **Stripe**: cada pago (paquetes en `checkout.session.completed`; Pro y puestos de equipo en cada
+    `invoice.paid`): producto, importe bruto, IVA, moneda, comisión de Stripe (leída de su *balance
+    transaction* con `STRIPE_SECRET_KEY`; si no se puede, estimada con `STRIPE_FEE_PCT` % + `STRIPE_FEE_FIXED`,
+    por defecto 1,5 % + 0,25) y neto; los créditos vendidos; los reembolsos (`charge.refunded`) y las bajas
+    (`customer.subscription.deleted`). Cada evento de Stripe una sola vez (los reintentos no cuentan doble).
+  - **Créditos**: regalados (bienvenida, mes de Pro, administración, devoluciones), gastados (con su
+    petición de IA) y caducados (los lotes de la cuenta).
+  - **Cuentas nuevas y activas**: un contador por día (DAU) y la primera vez de cada mes (MAU), sin guardar quién.
+  - **A mano** (página «Negocio»): gastos fijos (nombre, importe, moneda, fecha, mensual o no, categoría) y
+    horas de trabajo (fecha, horas, categoría, nota); cada alta, cambio o borrado en la auditoría.
+
+  Se guardan las sumas de cada día para siempre y los eventos sueltos 90 días (los pagos, reembolsos y bajas,
+  siempre: son la contabilidad). El dinero se guarda en la moneda en que llega (EUR, USD) y los informes lo
+  pasan a EUR con `USD_EUR` (por defecto 0,86; el informe dice qué tipo usó). No hay almacenamiento R2 que
+  medir (todo son Durable Objects), así que no se apunta. Con eso, `GET /api/admin/finance/summary?from&to&group=day|month`
+  da ingresos brutos y netos, IVA, comisiones y reembolsos; costes de IA por función y modelo, Blender, correo
+  y fijos; margen bruto y neto; MRR, suscriptores, altas y bajas, churn; usuarios activos, conversión de
+  gratis a Pro, ARPU y coste por usuario activo; créditos vendidos, gastados, caducados y pendientes (pasivo);
+  las cuentas que más cuestan con lo que pagan; horas por categoría y beneficio por hora; punto de equilibrio
+  frente a los fijos y el presupuesto de IA del mes. También `…/finance/events` (eventos sueltos),
+  `…/finance/export.csv` (para la gestoría: `;`, coma decimal, UTF-8) y `…/finance/entries` (los apuntes a mano).
+  Las cifras por persona solo se ven en la administración protegida.
 
 ## Qué impide saltarse las restricciones
 
@@ -406,7 +438,11 @@ que el servidor los rechaza.
    los enlaces de baja) y, si se quiere otro remitente, la variable `MAIL_FROM` (por defecto
    `Revela <avisos@revelaslides.com>`; la dirección debe ser del dominio verificado). Sin
    `EMAIL` ni `RESEND_KEY` no se envía nada y todo lo demás funciona igual.
-8. **Plan de pago de Workers** (5 $/mes) al abrirlo al público, y una alerta de
+8. **Cuentas del negocio** (opcional; los valores por defecto sirven): en Workers ▸ revela-share ▸
+   Settings ▸ Variables, `USD_EUR` (cuántos euros es un dólar, para los informes), `EMAIL_USD` (lo que cuesta
+   un correo) y, solo si la clave de Stripe no puede leer las comisiones, `STRIPE_FEE_PCT` y `STRIPE_FEE_FIXED`.
+   En el webhook de Stripe añadir también el evento `charge.refunded` (reembolsos).
+9. **Plan de pago de Workers** (5 $/mes) al abrirlo al público, y una alerta de
    gasto en Facturación ▸ Notificaciones.
 
 ## Textos legales

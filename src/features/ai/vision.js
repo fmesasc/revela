@@ -80,7 +80,7 @@ export async function describeImages(items, { context = '', language = lang(), o
     const content = [{ type: 'text', text: `${context ? `Presentation: ${context}\n` : ''}${group.length} pictures:` }];
     group.forEach((x, i) => content.push({ type: 'text', text: `Picture ${i + 1} (slide ${x.slide})` }, { type: 'image_url', image_url: { url: x.url } }));
     const res = await chat([{ role: 'system', content: PROMPT(language) }, { role: 'user', content }],
-      { json: true, maxTokens: 120 + 170 * group.length, force: model, onUsage, signal });
+      { json: true, maxTokens: 120 + 170 * group.length, force: model, onUsage, signal, feature: 'vision' });
     let list = [];
     try { const j = parseJSON(res); list = Array.isArray(j) ? j : Array.isArray(j.images) ? j.images : []; } catch {}
     group.forEach((x, i) => {

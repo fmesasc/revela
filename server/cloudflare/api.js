@@ -59,6 +59,7 @@ import { mail, readUnsubToken, unsubPage, fmtDate, mailConfigured, OPTIONAL } fr
 import { scheduleAt, dayOf } from './schedule.js';
 import { handle3d, configured3d } from './model3d.js';
 import { createTicket, supportReply, directoryUpsert, directoryRemove, CHARGES } from './admin.js';
+import { record, active, featureOf, financeSettings } from './finance.js';
 
 const enc = new TextEncoder();
 const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -170,6 +171,8 @@ export class Account {
     const list = await this.get('ledger', []);
     list.push({ at: Date.now(), delta, reason, ...(ref && { ref }), ...extra, balance: await this.get('credits', 0) });
     await this.put({ ledger: list.slice(-500) });
+    // (The business's accounts, finance.js: credits granted, expired or taken; AI charges go with their request, see 'settle'.)
+    if (delta && !CHARGES.includes(reason)) await record(this.env, { kind: 'credits', reason: String(ref || '').startsWith('refund:') ? 'refund' : reason, delta, sub: (await this.get('profile', {})).sub });
   }
   async entry(delta, reason, ref, days = 365) {
     const bal = delta >= 0 ? await this.add(delta, Date.now() + days * DAY) : (await this.take(-delta)).credits;
@@ -216,7 +219,9 @@ export class Account {
   // Used today (signing in, or any request with a session): kept to the day, written once a day.
   async seen() {
     const today = dayOf(Date.now()); if ((await this.get('lastSeen', null)) === today) return;
-    await this.put({ lastSeen: today });
+    const month = await this.get('seenMonth', null);
+    await this.put({ lastSeen: today, seenMonth: today.slice(0, 7) });
+    await active(this.env, { mau: month !== today.slice(0, 7) });            // (daily and monthly active users: finance.js)
     if (!(await this.get('idleNext', null))) await this.idleFrom(today);
   }
   async idleFrom(day) {
@@ -259,7 +264,7 @@ export class Account {
       case 'login': {                                      // { sub, email, name?, kind, terms?, lang? } → { token }
         const prof = await this.get('profile', null), terms = a.terms === s.termsVersion ? { version: s.termsVersion, at: Date.now() } : null;
         if (!prof && !terms) return this.json({ error: 'terms', version: s.termsVersion });   // (a new account accepts the terms first)
-        if (!prof) { await this.put({ profile: { sub: a.sub, email: a.email, ...(a.name && { name: a.name }), ...(a.lang && { lang: a.lang }), created: Date.now(), terms } }); if (s.trial > 0) await this.entry(s.trial, 'trial', null, s.trialDays); }
+        if (!prof) { await this.put({ profile: { sub: a.sub, email: a.email, ...(a.name && { name: a.name }), ...(a.lang && { lang: a.lang }), created: Date.now(), terms } }); await record(this.env, { kind: 'signup', sub: a.sub }); if (s.trial > 0) await this.entry(s.trial, 'trial', null, s.trialDays); }
         else {
           const next = { ...prof, email: a.email, ...(a.name && { name: a.name }), ...(a.lang && { lang: a.lang }), ...(terms && prof.terms?.version !== s.termsVersion && { terms }) };
           if (JSON.stringify(next) !== JSON.stringify(prof)) await this.put({ profile: next });
@@ -368,7 +373,11 @@ export class Account {
         delete holds[a.id]; await this.put({ holds });
         const used = Math.max(0, Math.ceil(+a.credits || 0));
         await this.giveBack(h.taken || [{ n: h.n, exp: Date.now() + DAY }]);   // (back where they were, then the real charge as an entry)
-        await this.entry(-used, a.reason || 'ai', a.ref); return this.json({ ok: true, used });
+        await this.entry(-used, a.reason || 'ai', a.ref);
+        // (What the request cost Revela and what it charged, for the business's accounts: finance.js.)
+        if (a.ai) await record(this.env, { kind: 'ai', ...a.ai, credits: used, sub: (await this.get('profile', {})).sub });
+        else if (used) await record(this.env, { kind: 'credits', reason: a.reason || 'ai', delta: -used, sub: (await this.get('profile', {})).sub });
+        return this.json({ ok: true, used });
       }
       case 'grant': {                                      // { credits, reason, ref } — once per ref (payments)
         const done = await this.get('refs', []);
@@ -714,7 +723,8 @@ async function aiChat(env, s, A, body, json) {
   if (!r || !r.ok || !data) { await call(A, 'settle', { id: g.hold, credits: 0 }); return json(aiFailure('chat', r, data), 502); }
   const u = data.usage || {}, usd = +u.cost > 0 ? +u.cost : ((+u.prompt_tokens || inTok) * pin + (+u.completion_tokens || maxTokens) * pout) / 1e6;
   await call(g.budget, 'spend', { usd });
-  const st = await call(A, 'settle', { id: g.hold, credits: credits(usd, s), reason: 'ai' });
+  const st = await call(A, 'settle', { id: g.hold, credits: credits(usd, s), reason: 'ai',
+    ai: { feature: featureOf(body.feature), model: data.model || model, tin: +u.prompt_tokens || 0, tout: +u.completion_tokens || 0, usd } });
   return json({ choices: data.choices, charged: st.used });
 }
 async function aiImage(env, s, A, body, json) {
@@ -729,8 +739,9 @@ async function aiImage(env, s, A, body, json) {
     data = await r.json().catch(() => null);
   } catch { r = null; }
   if (!r || !r.ok || !data?.data?.[0]?.b64_json) { await call(A, 'settle', { id: g.hold, credits: 0 }); return json(aiFailure('image', r, data), 502); }
-  await call(g.budget, 'spend', { usd: +data.usage?.cost || s.imageCredits * s.creditUsd });
-  const st = await call(A, 'settle', { id: g.hold, credits: s.imageCredits, reason: 'image' });
+  const usd = +data.usage?.cost || s.imageCredits * s.creditUsd;
+  await call(g.budget, 'spend', { usd });
+  const st = await call(A, 'settle', { id: g.hold, credits: s.imageCredits, reason: 'image', ai: { feature: 'image', model: s.imageModel, usd } });
   return json({ data: [{ b64_json: data.data[0].b64_json, media_type: data.data[0].media_type || 'image/png' }], charged: st.used });
 }
 
@@ -749,7 +760,7 @@ async function aiSpeech(env, s, A, body, json) {
   } catch { r = null; }
   if (!r || !r.ok || !buf || !buf.byteLength) { await call(A, 'settle', { id: g.hold, credits: 0 }); return json({ error: 'ai failed' }, 502); }
   await call(g.budget, 'spend', { usd });
-  const st = await call(A, 'settle', { id: g.hold, credits: cr, reason: 'speech' });
+  const st = await call(A, 'settle', { id: g.hold, credits: cr, reason: 'speech', ai: { feature: 'speech', model: s.ttsModel, usd } });
   let bin = ''; const bytes = new Uint8Array(buf); for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return json({ audio: btoa(bin), media_type: 'audio/mpeg', charged: st.used });
 }
@@ -871,6 +882,7 @@ async function stripeWebhook(req, env, json) {
   const ev = JSON.parse(body), o = ev.data?.object || {}, s = settings(env);
   const teamOf = x => x?.metadata?.team || x?.subscription_details?.metadata?.team || x?.parent?.subscription_details?.metadata?.team || null;
   const subOf = x => x?.metadata?.sub || x?.client_reference_id || x?.subscription_details?.metadata?.sub || x?.parent?.subscription_details?.metadata?.sub;
+  await moneyEvent(env, s, ev, o, subOf(o), teamOf(o));
   if (ev.type === 'checkout.session.completed') {
     const sub = subOf(o); if (!sub) return json({ ok: true });
     const p = s.products[o.metadata?.product];
@@ -899,4 +911,46 @@ async function stripeWebhook(req, env, json) {
     const sub = subOf(o); if (sub) { const A = acct(env, sub); await call(A, 'setplan', { name: 'free', until: 0 }); await call(A, 'plan-ended', { ref: o.id || ev.id }); }
   }
   return json({ ok: true });
+}
+
+// ---- The business's accounts (finance.js): what each Stripe event brought in or gave back ----------
+// Payments: one-off purchases at checkout; subscriptions (Pro, team seats) at each paid invoice (an invoice
+// of a one-off purchase is already counted at its checkout). Amounts in minor units, as Stripe sends them.
+// Stripe's fee comes from the payment's balance transaction (read with STRIPE_SECRET_KEY); if that fails,
+// it is estimated with STRIPE_FEE_PCT and STRIPE_FEE_FIXED. Each event once (finance.js keeps its id).
+const stripeGet = (env, path, params) => (env.FETCH || fetch)('https://api.stripe.com/v1/' + path + '?' + new URLSearchParams(params), { headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}` } })
+  .then(r => (r.ok ? r.json() : null)).catch(() => null);
+export async function stripeFee(env, { charge, intent, gross, cur }) {
+  const id = x => (typeof x === 'string' && /^[\w-]{3,100}$/.test(x) ? x : null);
+  let bt = null;
+  if (env.STRIPE_SECRET_KEY && id(charge)) bt = (await stripeGet(env, 'charges/' + id(charge), { 'expand[]': 'balance_transaction' }))?.balance_transaction;
+  else if (env.STRIPE_SECRET_KEY && id(intent)) bt = (await stripeGet(env, 'payment_intents/' + id(intent), { 'expand[]': 'latest_charge.balance_transaction' }))?.latest_charge?.balance_transaction;
+  if (bt && typeof bt === 'object' && Number.isFinite(+bt.fee)) return { fee: +bt.fee, feeCur: String(bt.currency || cur).toLowerCase() };
+  const f = financeSettings(env);
+  return { fee: gross > 0 ? Math.round((gross * f.feePct) / 100 + f.feeFixed * 100) : 0, feeCur: cur, feeEstimated: true };
+}
+async function moneyEvent(env, s, ev, o, sub, team) {
+  if (!env.FINANCE) return;
+  const cur = String(o.currency || 'eur').toLowerCase(), ref = ev.id;
+  if (ev.type === 'checkout.session.completed' && o.mode === 'payment' && o.payment_status === 'paid') {
+    const gross = +o.amount_total || 0, p = s.products[o.metadata?.product];
+    await record(env, { kind: 'payment', product: o.metadata?.product || 'other', cur, gross, tax: +o.total_details?.amount_tax || 0, ...(p?.credits && { credits: p.credits }),
+      sub, ref, ...(await stripeFee(env, { intent: o.payment_intent, gross, cur })) });
+  } else if (ev.type === 'invoice.paid') {
+    const line = o.lines?.data?.[0] || {}, pay = o.payments?.data?.[0]?.payment || {};
+    const subscription = o.subscription || o.parent?.subscription_details?.subscription || line.subscription || line.parent?.subscription_item_details?.subscription
+      || ((o.subscription_details || o.parent?.subscription_details || /^subscription/.test(o.billing_reason || '')) && o.customer ? 'cus:' + o.customer : null);
+    const gross = +o.amount_paid || 0; if (!subscription || gross <= 0) return;
+    const price = line.price?.id || line.pricing?.price_details?.price || line.plan?.id;
+    const product = team ? 'team-seat' : Object.keys(s.products).find(k => s.products[k].price && s.products[k].price === price) || 'pro';
+    const span = (+line.period?.end - +line.period?.start) * 1000, months = span > 0 ? Math.max(1, Math.round(span / (30.44 * DAY))) : 1;
+    const tax = +o.tax || (o.total_taxes || []).reduce((t, x) => t + (+x.amount || 0), 0) || (o.total_tax_amounts || []).reduce((t, x) => t + (+x.amount || 0), 0);
+    await record(env, { kind: 'payment', product, cur, gross, tax, subscription, months, sub: sub || null, ref,
+      ...(await stripeFee(env, { charge: o.charge || pay.charge, intent: o.payment_intent || pay.payment_intent, gross, cur })) });
+  } else if (ev.type === 'charge.refunded') {
+    const before = +ev.data?.previous_attributes?.amount_refunded || 0, amount = (+o.amount_refunded || 0) - before;
+    if (amount > 0) await record(env, { kind: 'refund', cur, amount, sub: o.metadata?.sub || null, ref });
+  } else if (ev.type === 'customer.subscription.deleted') {
+    await record(env, { kind: 'sub-end', subscription: o.id || ('cus:' + o.customer), sub: sub || null, ref, ...(team && { product: 'team-seat' }) });
+  }
 }

@@ -578,7 +578,7 @@ export async function runAgent(request, { history = [], scope = { kind: 'all' },
     const last = steps >= maxSteps || cost.credits >= maxCredits || cost.usd >= maxUsd;
     if (last && steps > 1) msgs.push({ role: 'user', content: 'That was your last tool call: answer now with the final {"message","ops","done":true}.' });
     onStep({ kind: 'think', step: steps });
-    const out = await chat(msgs, { json: true, maxTokens: 4000, signal, prefer: AGENT_MODEL,
+    const out = await chat(msgs, { json: true, maxTokens: 4000, signal, feature: 'assistant', prefer: AGENT_MODEL,
       onUsage: u => { cost.usd += u.usd || 0; cost.credits += u.credits || 0; } });
     cost.calls++; onCost({ ...cost });
     stopped();

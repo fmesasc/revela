@@ -72,11 +72,12 @@ export async function finishOpenRouterLogin(loc = location) {
 // prefer: the model a task works best with, used unless the person chose one (with the account,
 // the server only takes the models it allows); force (or model): that model whatever was chosen
 // (a cheap one for a cheap task, one that sees images…). A message's content may be parts: text and
-// pictures (data: URLs), both ways.
-export async function chat(messages, { json = false, maxTokens = 2000, onUsage = null, signal = null, prefer = null, force = null, model: only = null } = {}) {
+// pictures (data: URLs), both ways. feature: what it is for ('assistant', 'complete'…), for Revela's own
+// accounts of what the AI costs (only with the account; the server takes known ones, else 'other').
+export async function chat(messages, { json = false, maxTokens = 2000, onUsage = null, signal = null, prefer = null, force = null, model: only = null, feature = null } = {}) {
   const set = aiSettings(), key = set.key, model = force || only || (prefer && set.model === DEFAULT_MODEL ? prefer : set.model);
   if (!key && usingCloudAi()) {
-    const data = await cloud.chat({ messages, max_tokens: maxTokens, json, ...(model !== DEFAULT_MODEL && { model }) }).catch(e => { throw cloudError(e); });
+    const data = await cloud.chat({ messages, max_tokens: maxTokens, json, ...(model !== DEFAULT_MODEL && { model }), ...(feature && { feature }) }).catch(e => { throw cloudError(e); });
     if (signal?.aborted) throw new Error('STOPPED');
     if (onUsage && +data.charged > 0) onUsage({ credits: +data.charged });
     return data.choices?.[0]?.message?.content?.trim() || '';
@@ -130,7 +131,7 @@ export async function generateSlides(topic, count = 6) {
   const out = await chat([
     { role: 'system', content: `You write presentation outlines. Answer only JSON: {"slides":[{"title":"…","bullets":["…"],"notes":"…"}]}. Language: ${lang()}. 3–5 short bullets per slide, speaker notes of 2–3 sentences.` },
     { role: 'user', content: `Topic: ${topic}\nNumber of slides: ${count}` },
-  ], { json: true, maxTokens: 3000 });
+  ], { json: true, maxTokens: 3000, feature: 'outline' });
   const slides = (parseJSON(out).slides || []).slice(0, 30);
   if (!slides.length) throw new Error('EMPTY');
   const bg = currentSlide()?.background || '#101317', sec = currentSlide()?.sectionId || null;
@@ -162,7 +163,7 @@ export async function rewriteSelected(kind, targetLang = null) {
   const out = await chat([
     { role: 'system', content: `You edit slide text. ${task} Reply with the new text only. Use "- " at the start of each line for bullet points. ${targetLang ? '' : `Keep the language of the text.`}` },
     { role: 'user', content: plain(b.html) },
-  ], { maxTokens: 800 });
+  ], { maxTokens: 800, feature: 'rewrite' });
   const lines = out.split('\n').map(l => l.trim()).filter(Boolean);
   const html = lines.every(l => /^[-•*]\s/.test(l))
     ? `<ul>${lines.map(l => `<li>${esc(l.replace(/^[-•*]\s+/, ''))}</li>`).join('')}</ul>`
@@ -181,7 +182,7 @@ export async function writeNotes({ all = false } = {}) {
     const notes = await chat([
       { role: 'system', content: `You write speaker notes: what the presenter should say for this slide, 3–5 natural sentences, in ${lang()}. Plain text only.` },
       { role: 'user', content: text },
-    ], { maxTokens: 500 });
+    ], { maxTokens: 500, feature: 'notes' });
     commit(() => { s.notes = notes; }); n++;
   }
   return n;
@@ -196,7 +197,7 @@ export async function describeImage() {
   const alt = await chat([
     { role: 'system', content: `Write alt text for this image for a screen reader: one sentence, max 125 characters, in ${lang()}, no "image of".` },
     { role: 'user', content: [{ type: 'text', text: 'Describe the image.' }, { type: 'image_url', image_url: { url: shot.url } }] },
-  ], { maxTokens: 120 });
+  ], { maxTokens: 120, feature: 'alt-text' });
   commit(() => { b.alt = alt.replace(/^["']|["']$/g, ''); delete b.decorative; });
   return b.alt;
 }
@@ -250,7 +251,7 @@ export async function translateDeck(targetLang, onProgress) {
     const res = await chat([
       { role: 'system', content: `Translate every value of this JSON object into ${targetLang}. Keep the keys, keep all HTML tags and attributes exactly, translate only the human text. Answer only the JSON object.` },
       { role: 'user', content: JSON.stringify(items) },
-    ], { json: true, maxTokens: 4000 });
+    ], { json: true, maxTokens: 4000, feature: 'translate' });
     const tr = parseJSON(res);
     for (const [k, v] of Object.entries(tr)) if (typeof v === 'string' && k in items) out.set(k, v);
     onProgress?.((i + 1) / slides.length);

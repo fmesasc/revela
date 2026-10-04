@@ -18,6 +18,8 @@
 //   GET|POST /api/support/reply?t=…
 // Without MAIL_SECRET there is no link and the old advice (send another report) is given.
 
+import { record, financeSettings } from './finance.js';
+
 const enc = new TextEncoder();
 const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const unb64 = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0)));
@@ -29,8 +31,14 @@ export const mailLang = l => (['es', 'en', 'ca'].includes(l) ? l : ['gl', 'eu'].
 
 // ---- Sending ----------------------------------------------------------------------------------
 const fromOf = env => { const f = String(env.MAIL_FROM || 'Revela <avisos@revelaslides.com>'), m = f.match(/^\s*(.*?)\s*<([^>]+)>\s*$/); return m ? { name: m[1], email: m[2] } : { email: f.trim() }; };
-// → true if handed over. Never throws (an email that fails must not break what caused it).
-export async function sendMail(env, { to, subject, html, text, unsubscribe }) {
+// → true if handed over (and counted for the business's accounts: EMAIL_USD each, finance.js). Never throws
+// (an email that fails must not break what caused it).
+export async function sendMail(env, o) {
+  const ok = await deliver(env, o);
+  if (ok) await record(env, { kind: 'email', mail: o.kind || 'other', usd: financeSettings(env).emailUsd });
+  return ok;
+}
+async function deliver(env, { to, subject, html, text, unsubscribe }) {
   if (!to) return false;
   const from = fromOf(env), headers = unsubscribe ? { 'List-Unsubscribe': `<${unsubscribe}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } : undefined;
   try {
@@ -246,7 +254,7 @@ ${cta ? `<p style="margin:24px 0"><a href="${escHtml(cta[1])}" style="display:in
 export async function mail(env, { to, kind, lang, vars, sub, site = env.SITE_URL || 'https://revelaslides.com' }) {
   let unsub = null;
   if (OPTIONAL.includes(kind)) { const t = sub && await unsubToken(env, sub, kind); if (!t) return false; unsub = `${site}/api/mail/unsubscribe?t=${encodeURIComponent(t)}`; }
-  return sendMail(env, { to, ...render(kind, lang, { url: site + '/app/', ...vars }, unsub), ...(unsub && { unsubscribe: unsub }) });
+  return sendMail(env, { to, kind, ...render(kind, lang, { url: site + '/app/', ...vars }, unsub), ...(unsub && { unsubscribe: unsub }) });
 }
 
 // The page to answer a ticket (state: 'form' | 'bad' | 'done' | 'thanks' | 'limit' | 'empty'; t: the ticket, without notes).

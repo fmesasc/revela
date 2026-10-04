@@ -223,14 +223,14 @@ export class ModelJob {
     const u = data.usage || {}, llmUsd = +u.cost > 0 ? +u.cost : ((+u.prompt_tokens || inTok) * pin + (+u.completion_tokens || k.maxTokens) * pout) / 1e6;
     const answer = parseAnswer(data.choices[0]?.message?.content);
     const n = job.rounds.length + 1, cur0 = await st.get('job');
-    let outcome, blenderUsd = 0, res = null;
+    let outcome, blenderUsd = 0, res = null, secs = 0;
     if (!cur0 || cur0.run !== run || cur0.status !== 'running') outcome = { gone: true };
     else if (!answer) outcome = { round: { n, ok: false, note: '', error: 'invalid answer' }, last: { bad: true, note: '', script: job.last?.script || '' } };
     else if (answer.done && job.glb && !job.pending && job.last?.ok) outcome = { done: true, note: answer.note };
     else if (!answer.script.trim()) outcome = { round: { n, ok: false, note: answer.note, error: 'no script' }, last: { ok: false, note: answer.note, script: '', error: 'You sent no script.' } };
     else if (forbidden(answer.script)) { const f = forbidden(answer.script); outcome = { round: { n, ok: false, note: answer.note, error: 'not allowed: ' + f }, last: { ok: false, note: answer.note, script: answer.script, error: `Not allowed in Revela: ${f}. Use only bpy, bmesh, mathutils, math and random, with no files.` } }; }
     else {
-      const t0 = Date.now(); res = await this.blender(answer.script); const secs = Math.min(Math.round((Date.now() - t0) / 100) / 10, k.timeout + k.startup);   // (to the tenth of a second)
+      const t0 = Date.now(); res = await this.blender(answer.script); secs = Math.min(Math.round((Date.now() - t0) / 100) / 10, k.timeout + k.startup);   // (to the tenth of a second)
       if (res.unavailable) outcome = { unavailable: true };
       else if (res.ok && typeof res.glb === 'string' && res.glb.length <= 15 * 1024 * 1024 * 4 / 3 + 4) {
         blenderUsd = secs * k.usdPerSecond;                                          // (only a run that worked is charged)
@@ -242,7 +242,10 @@ export class ModelJob {
     }
     const usd = llmUsd + blenderUsd;
     await call(budget, 'spend', { usd });
-    const st1 = await call(A, 'settle', { id: hold, credits: credits(usd, s), reason: 'model3d', ref: job.id });
+    // (For the business's accounts, finance.js: what the round cost Revela — Blender's seconds even when the run failed.)
+    const ran = secs > 0 && !outcome.unavailable;
+    const st1 = await call(A, 'settle', { id: hold, credits: credits(usd, s), reason: 'model3d', ref: job.id,
+      ai: { feature: '3d', model: data.model || k.model, tin: +u.prompt_tokens || 0, tout: +u.completion_tokens || 0, usd: llmUsd, ...(ran && { blenderSecs: secs, blenderUsd: secs * k.usdPerSecond }) } });
     const cur = await st.get('job');
     if (outcome.gone || !cur || cur.run !== run || cur.status !== 'running') return;   // (cancelled meanwhile: what it cost is charged, nothing kept)
     cur.charged += st1.used || 0; cur.pending = null;

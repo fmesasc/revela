@@ -205,3 +205,17 @@ class_name = "Audit"
 [[migrations]]
 tag = "v10"
 new_sqlite_classes = ["Directory", "Tickets", "Audit"]
+
+# The business's accounts (finance.js), for the admin's «Negocio» page: every economic event (AI and its
+# provider's cost, Blender seconds, emails, Stripe payments with their fee, refunds, cancellations, credits
+# granted / used / expired, new and active accounts) as daily sums kept forever, the raw events of the last
+# 90 days (payments and refunds always), and the fixed costs and hours entered by hand. Plain vars (set in
+# Cloudflare, see docs/NUBE.md): USD_EUR (default 0.86), EMAIL_USD (default 0), STRIPE_FEE_PCT (1.5) and
+# STRIPE_FEE_FIXED (0.25), used only when Stripe's balance transaction can't be read.
+[[durable_objects.bindings]]
+name = "FINANCE"
+class_name = "Finance"
+
+[[migrations]]
+tag = "v11"
+new_sqlite_classes = ["Finance"]

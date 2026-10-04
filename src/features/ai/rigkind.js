@@ -82,10 +82,10 @@ export async function detectWithAI(images, { onUsage = null } = {}) {
   for (const v of VIEW_NAMES) if (images[v]) content.push({ type: 'text', text: v.toUpperCase() + ':' }, { type: 'image_url', image_url: { url: images[v] } });
   const messages = [{ role: 'system', content: PROMPT }, { role: 'user', content }];
   let out;
-  try { out = await chat(messages, { json: true, maxTokens: 600, onUsage, model: RIG_AI_MODEL }); }
+  try { out = await chat(messages, { json: true, maxTokens: 600, onUsage, model: RIG_AI_MODEL, feature: 'rig-detect' }); }
   catch (e) {
     if (/^(NO_KEY|BAD_KEY|NO_CREDIT|TOO_MANY|AI_PAUSED|STOPPED)$/.test(e.message)) throw e;
-    out = await chat(messages, { json: true, maxTokens: 600, onUsage });
+    out = await chat(messages, { json: true, maxTokens: 600, onUsage, feature: 'rig-detect' });
   }
   return readAnswer(out);
 }

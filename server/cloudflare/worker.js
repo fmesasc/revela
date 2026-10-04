@@ -40,7 +40,8 @@ import { CallRoom } from './calls.js';
 import { Schedule, runSchedule } from './schedule.js';
 import { ModelJob } from './model3d.js';
 import { handleAdmin, adminHost, Directory, Tickets, Audit, ticketsDue } from './admin.js';
-export { CollabRoom, ShareBox, Limits, Account, Budget, DesktopLink, CloudDoc, Team, LtiStore, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, verifyGoogleToken, resetCerts };
+import { Finance } from './finance.js';
+export { CollabRoom, ShareBox, Limits, Account, Budget, DesktopLink, CloudDoc, Team, LtiStore, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance, verifyGoogleToken, resetCerts };
 
 const box = (env, id) => env.SHAREBOX.get(env.SHAREBOX.idFromName(id));
 // Who counts for the daily limits: the Google account, else the key, else the address.

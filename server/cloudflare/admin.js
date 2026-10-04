@@ -32,6 +32,14 @@
 //   POST /api/admin/tickets/:id/suggest    { force? } → { suggestion, cached }   (AI help: a summary, priority, likely cause,
 //                                          checks, proposed actions and a draft answer; it never acts by itself)
 //   GET  /api/admin/audit?cursor=&target=  → { entries, cursor }
+//   GET  /api/admin/finance/summary?from=&to=&group=day|month   → the business's figures (finance.js summarize(),
+//                                          plus the directory's users and credits outstanding, and the AI budget)
+//   GET  /api/admin/finance/events?cursor=&kind=&limit=          → { events, cursor }   (raw: 90 days; money: always)
+//   GET  /api/admin/finance/export.csv?from=&to=                 → CSV for the accountant
+//   GET  /api/admin/finance/entries                              → { entries }   (fixed costs and hours, by hand)
+//   POST /api/admin/finance/entries        { type: 'fixed', name, amount, currency, date, recurring, until?, category }
+//                                          or { type: 'time', date, hours, category, note }; with id: changes it
+//   DELETE /api/admin/finance/entries/:id
 //
 // Every change is written first to the audit log (Audit: who, when, what, before and after),
 // which has no way to edit or delete entries.
@@ -53,6 +61,7 @@ import { mail, mailConfigured, ticketLink, readTicketToken, ticketPage, fmtDate,
 import { fromB64url } from './auth.js';
 import { takeQuota, writeText, readParts } from './store.js';
 import { teamStatus } from './teams.js';
+import { record, financeCall, financeSettings, cleanEntry, periodOk, dayOf } from './finance.js';
 
 const enc = new TextEncoder(), dec = new TextDecoder();
 const pad = n => String(n).padStart(10, '0');
@@ -145,9 +154,13 @@ export class Directory {
       return Response.json({ users, cursor: keys.length > limit ? keys[limit - 1][0] : null });
     }
     if (op === 'stats') {                                 // (a scan of every record: fine for thousands of accounts)
-      const now = Date.now(); let users = 0, pro = 0, blocked = 0;
-      for (const [, r] of await st.list({ prefix: 'u:' })) { users++; if (r.plan === 'pro' && r.until > now) pro++; if (r.blocked) blocked++; }
-      return Response.json({ users, pro, blocked });
+      const now = Date.now(), d1 = new Date(now).toISOString().slice(0, 10), d30 = new Date(now - 29 * 864e5).toISOString().slice(0, 10);
+      let users = 0, pro = 0, blocked = 0, active1 = 0, active30 = 0, credits = 0;
+      for (const [, r] of await st.list({ prefix: 'u:' })) {
+        users++; if (r.plan === 'pro' && r.until > now) pro++; if (r.blocked) blocked++;
+        if (r.lastSeen >= d1) active1++; if (r.lastSeen >= d30) active30++; if (r.credits > 0) credits += r.credits;
+      }
+      return Response.json({ users, pro, blocked, active1, active30, credits });
     }
     return Response.json({ error: 'unknown' }, { status: 404 });
   }
@@ -457,6 +470,7 @@ export async function suggestTicket(env, t, { by, force } = {}) {
   if (!r || !r.ok || !data) return { error: 'ai failed', status: 502 };
   const u = data.usage || {}, usd = +u.cost > 0 ? +u.cost : ((+u.prompt_tokens || inTok) * pin + (+u.completion_tokens || maxTokens) * pout) / 1e6;
   await call(budget, 'spend', { usd });
+  await record(env, { kind: 'ai', feature: 'ticket-suggest', model: data.model || model, tin: +u.prompt_tokens || 0, tout: +u.completion_tokens || 0, usd, credits: 0 });
   await audit(env, { by, action: 'ticket-suggest', target: 'ticket:' + t.id, after: { model, usd: Math.round(usd * 1e6) / 1e6 } });
   const raw = jsonOf(data.choices?.[0]?.message?.content);
   if (!raw) return { error: 'ai bad answer', status: 502 };
@@ -471,9 +485,9 @@ export async function handleAdmin(req, env, url) {
   const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...headers, 'Content-Type': 'application/json' } });
   const host = adminHost(env);
   if (!adminConfigured(env) || url.hostname.toLowerCase() !== host) return new Response('Not found', { status: 404, headers });
-  if (req.method !== 'GET' && req.method !== 'POST') return json({ error: 'method' }, 405);
+  if (!['GET', 'POST', 'DELETE'].includes(req.method)) return json({ error: 'method' }, 405);
   if (req.headers.get('X-Revela-Admin') !== '1') return json({ error: 'forbidden' }, 403);
-  if (req.method === 'POST' && req.headers.get('Origin') !== 'https://' + host) return json({ error: 'origin' }, 403);
+  if (req.method !== 'GET' && req.headers.get('Origin') !== 'https://' + host) return json({ error: 'origin' }, 403);
   const who = await verifyAccess(req.headers.get('Cf-Access-Jwt-Assertion'), env, env.FETCH || fetch);
   if (!who) return json({ error: 'forbidden' }, 403);
   let body = {};
@@ -484,7 +498,7 @@ export async function handleAdmin(req, env, url) {
   }
   const path = url.pathname.replace(/^\/api\/admin/, '') || '/', q = url.searchParams, by = who.email;
   const D = stub(env.DIRECTORY, 'directory'), T = stub(env.TICKETS, 'tickets'), L = stub(env.AUDIT, 'audit');
-  const GET = req.method === 'GET', POST = !GET;
+  const GET = req.method === 'GET', POST = req.method === 'POST', DELETE = req.method === 'DELETE';
   const subOk = s => typeof s === 'string' && /^[\w.-]{1,100}$/.test(s);
   // An account that exists (has a profile), or a 404.
   const account = async sub => { if (!subOk(sub)) return null; const v = await call(acct(env, sub), 'admin-view'); return v.profile?.sub ? v : null; };
@@ -568,6 +582,46 @@ export async function handleAdmin(req, env, url) {
       return json({ ...(await call(T, 'reply', { id, text, by, status, mailed })), mailed });
     }
   }
+  if (path.startsWith('/finance/')) return financeApi(env, path, q, body, { GET, POST, DELETE, by, json, headers, D });
   if (GET && path === '/audit') return json(await call(L, 'list', { cursor: q.get('cursor') || null, target: clip(q.get('target'), 100) || null, limit: +q.get('limit') || 50 }));
+  return json({ error: 'not found' }, 404);
+}
+
+// ---- The business's figures (finance.js) ------------------------------------------------------------
+async function financeApi(env, path, q, body, { GET, POST, DELETE, by, json, headers, D }) {
+  if (!env.FINANCE) return json({ error: 'finance not configured' }, 503);
+  const F = (op, a) => financeCall(env, op, a);
+  // The period: from/to (YYYY-MM-DD, UTC), at most 3 years; by default this month so far.
+  const today = dayOf(Date.now()), from = q.get('from') || today.slice(0, 8) + '01', to = q.get('to') || today;
+  if (GET && path === '/finance/summary') {
+    if (!periodOk(from, to)) return json({ error: 'bad period' }, 400);
+    const group = q.get('group') === 'day' ? 'day' : 'month', fs = financeSettings(env);
+    const [sum, dir, budget] = await Promise.all([F('summary', { from, to, group }), call(D, 'stats'), env.BUDGET ? call(stub(env.BUDGET, 'global'), 'check', { usd: 0 }) : null]);
+    // (Who the most costly accounts are: their address from the directory, only here.)
+    for (const u of sum.topUsers) u.email = (await call(D, 'get', { sub: u.sub })).user?.email || null;
+    return json({ ...sum, directory: { users: dir.users, pro: dir.pro, active1: dir.active1, active30: dir.active30, payingShare: dir.users ? Math.round((dir.pro / dir.users) * 1e4) / 1e4 : null },
+      liability: { credits: dir.credits || 0, usd: Math.round((dir.credits || 0) * fs.creditUsd * 100) / 100, eur: Math.round((dir.credits || 0) * fs.creditUsd * fs.usdEur * 100) / 100 },
+      budget: budget && { month: today.slice(0, 7), usd: budget.usd, limit: budget.limit, share: budget.limit ? Math.round((budget.usd / budget.limit) * 1e4) / 1e4 : null } });
+  }
+  if (GET && path === '/finance/events') return json(await F('events', { cursor: q.get('cursor') || null, kind: q.get('kind') || null, limit: +q.get('limit') || 50 }));
+  if (GET && path === '/finance/export.csv') {
+    if (!periodOk(from, to)) return json({ error: 'bad period' }, 400);
+    const r = await env.FINANCE.get(env.FINANCE.idFromName('global')).fetch('https://fin/csv', { method: 'POST', body: JSON.stringify({ from, to }) });
+    return new Response(r.body, { headers: { ...headers, 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="revela-contabilidad-${from}-${to}.csv"` } });
+  }
+  if (GET && path === '/finance/entries') return json(await F('entries'));
+  if (POST && path === '/finance/entries') {
+    const e = cleanEntry(body); if (!e) return json({ error: 'bad request' }, 400);
+    const before = body.id ? (await F('entry-get', { id: e.id })).entry : null;
+    if (body.id && (!before || before.type !== e.type)) return json({ error: 'not found' }, 404);
+    await audit(env, { by, action: before ? 'finance-edit' : 'finance-add', target: 'finance:' + e.id, reason: e.type === 'fixed' ? e.name : e.note, before, after: e });
+    return json(await F('entry-put', { entry: e }));
+  }
+  const m = path.match(/^\/finance\/entries\/([a-f0-9]{12})$/);
+  if (DELETE && m) {
+    const before = (await F('entry-get', { id: m[1] })).entry; if (!before) return json({ error: 'not found' }, 404);
+    await audit(env, { by, action: 'finance-delete', target: 'finance:' + m[1], reason: before.type === 'fixed' ? before.name : before.note, before, after: null });
+    return json(await F('entry-del', { id: m[1] }));
+  }
   return json({ error: 'not found' }, 404);
 }

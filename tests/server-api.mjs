@@ -2,7 +2,8 @@
 // payments and the desktop sign-in — above all, that nothing can be skipped
 // from outside. In-memory Durable Objects; the AI provider, Google and Stripe
 // are simulated. Run by tests/run.sh when Node.js is available.
-import worker, { Account, Budget, DesktopLink, ShareBox, Limits, CloudDoc, Team, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit } from '../server/cloudflare/worker.js';
+import worker, { Account, Budget, DesktopLink, ShareBox, Limits, CloudDoc, Team, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance } from '../server/cloudflare/worker.js';
+import { summarize, bump, toCsv, cleanEntry, featureOf } from '../server/cloudflare/finance.js';
 import { verifyAccess, resetAccessCerts } from '../server/cloudflare/admin.js';
 import { ticketToken } from '../server/cloudflare/mail.js';
 import { verifyBody } from '../server/blender/gate.js';
@@ -57,7 +58,7 @@ env.SCHEDULE = namespace(Schedule, env);
 let sent = []; env.EMAIL = { send: async m => { sent.push(m); return { messageId: 'm' + sent.length }; } }; env.MAIL_SECRET = 'secreto-de-correo';
 const TERMS = '2026-10-01';
 env.SHAREBOX = namespace(ShareBox, env); env.DOCS = namespace(CloudDoc, env); env.TEAMS = namespace(Team, env); env.CALLS = namespace(CallRoom, env); env.LIMITS = namespace(Limits, env);
-env.DIRECTORY = namespace(Directory, env); env.TICKETS = namespace(Tickets, env); env.AUDIT = namespace(Audit, env);
+env.DIRECTORY = namespace(Directory, env); env.TICKETS = namespace(Tickets, env); env.AUDIT = namespace(Audit, env); env.FINANCE = namespace(Finance, env);
 
 let fails = 0, n = 0;
 const ok = (c, m) => { n++; if (!c) { fails++; console.log('✗ api: ' + m); } };
@@ -1034,11 +1035,143 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     aiReply = keep; aiCalls = [];
   }
 
+  // ---- The business's accounts (finance.js) and the «Negocio» API ----
+  {
+    const FS = () => env.FINANCE.inst.get('global').ctx.storage.m, today = new Date().toISOString().slice(0, 10);
+    const D = () => FS().get('d:' + today) || {}, raw = () => [...FS()].filter(([k]) => /^[ep]:/.test(k)).map(([, v]) => v);
+    // AI: each request with its feature (whitelisted), model, tokens, the provider's cost, the credits charged and who.
+    ok(raw().some(e => e.kind === 'ai' && e.sub === '1414' && e.usd === 0.01 && e.credits === 5 && e.feature === 'other'), 'finanzas: la IA de pia queda registrada (coste, créditos, cuenta)');
+    P().set('rate', []);
+    aiReply = () => ({ status: 200, body: { model: 'openai/gpt-4o-mini', choices: [{ message: { content: 'hola' } }], usage: { cost: 0.02, prompt_tokens: 300, completion_tokens: 40 } } });
+    const n0 = D()['ai.f.assistant.n'] || 0;
+    await req('POST', '/api/ai/chat', { headers: { Cookie: pia }, body: { feature: 'assistant', messages: [{ role: 'user', content: 'x' }] } });
+    await req('POST', '/api/ai/chat', { headers: { Cookie: pia }, body: { feature: '<script>', messages: [{ role: 'user', content: 'x' }] } });
+    { const e = raw().filter(x => x.kind === 'ai').at(-2);
+      ok(e.feature === 'assistant' && e.model === 'openai/gpt-4o-mini' && e.tin === 300 && e.tout === 40 && e.usd === 0.02 && e.credits === 10 && e.fx > 0, 'finanzas: función, modelo, tokens, coste y créditos: ' + JSON.stringify(e)); }
+    ok(raw().filter(x => x.kind === 'ai').at(-1).feature === 'other' && D()['ai.f.assistant.n'] === n0 + 1 && D()['ai.m.openai/gpt-4o-mini.usd'] > 0, 'finanzas: una función desconocida cuenta como «other»; sumas del día por función y modelo');
+    ok(D()['users.new'] >= 1 && D()['act.dau'] >= 1 && D()['act.mau'] >= 1 && D()['cr.in.trial'] >= 50, 'finanzas: altas, usuarios activos del día y del mes, créditos de bienvenida: ' + JSON.stringify([D()['users.new'], D()['act.dau'], D()['act.mau'], D()['cr.in.trial']]));
+    ok(D()['cr.in.admin'] >= 90 && D()['cr.out.admin'] >= 70 && D()['cr.in.refund'] === 5, 'finanzas: ajustes de administración (dar, quitar, devolver): ' + JSON.stringify([D()['cr.in.admin'], D()['cr.out.admin'], D()['cr.in.refund']]));
+    ok(D()['mail.n'] >= 1, 'finanzas: correos enviados contados');
+    ok(raw().some(e => e.kind === 'ai' && e.feature === '3d' && e.blenderSecs > 0 && e.blenderUsd > 0) && raw().some(e => e.kind === 'ai' && e.feature === 'ticket-suggest' && e.usd > 0), 'finanzas: rondas 3D (IA + segundos de Blender) y sugerencias de tickets');
+    // Credits that expire: from the account's lots.
+    { const before = D()['cr.out.expired'] || 0; P().set('lots', [{ n: 7, exp: Date.now() - 1000 }, ...P().get('lots')]);
+      await req('GET', '/api/me', { headers: { Cookie: pia } });
+      ok(D()['cr.out.expired'] === before + 7 && raw().some(e => e.kind === 'credits' && e.reason === 'expired' && e.delta === -7 && e.sub === '1414'), 'finanzas: créditos caducados'); }
+    // Stripe: a pack (fee from the balance transaction), a subscription (fee estimated: Stripe doesn't answer), a refund, a cancellation.
+    const prev = env.FETCH, btCalls = [];
+    env.FETCH = async (u, init) => { const s = String(u);
+      if (s.startsWith('https://api.stripe.com/v1/payment_intents/pi_1')) { btCalls.push(s); return Response.json({ id: 'pi_1', latest_charge: { id: 'ch_1', balance_transaction: { fee: 40, currency: 'eur', net: 1170 } } }); }
+      if (s.startsWith('https://api.stripe.com/v1/charges/')) { btCalls.push(s); return new Response('no', { status: 500 }); }
+      return prev(u, init); };
+    const pack = { id: 'evt_f1', type: 'checkout.session.completed', data: { object: { mode: 'payment', payment_status: 'paid', currency: 'eur', amount_total: 1210, total_details: { amount_tax: 210 }, payment_intent: 'pi_1', customer: 'cus_p', metadata: { sub: '1414', product: 'credits-500' } } } };
+    ok((await hook(pack)).status === 200 && (await hook(pack)).status === 200, 'finanzas: pago de un paquete (y el mismo aviso repetido)');
+    { const e = raw().filter(x => x.kind === 'payment' && x.ref === 'evt_f1'); ok(e.length === 1 && e[0].gross === 1210 && e[0].tax === 210 && e[0].fee === 40 && !e[0].feeEstimated && e[0].credits === 500 && e[0].product === 'credits-500' && e[0].sub === '1414',
+      'finanzas: el pago con su comisión real (balance transaction), una sola vez: ' + JSON.stringify(e)); }
+    ok(/payment_intents\/pi_1\?expand%5B%5D=latest_charge.balance_transaction/.test(btCalls[0] || ''), 'finanzas: la comisión se lee de Stripe: ' + btCalls[0]);
+    const end = Math.floor(Date.now() / 1000) + 30 * 86400, start = end - 30 * 86400;
+    await hook({ id: 'evt_f2', type: 'invoice.paid', data: { object: { customer: 'cus_p', currency: 'eur', amount_paid: 1210, tax: 210, charge: 'ch_9', billing_reason: 'subscription_create', parent: { subscription_details: { subscription: 'sub_9', metadata: { sub: '1414' } } },
+      lines: { data: [{ period: { start, end }, price: { id: 'price_pm' } }] } } } });
+    { const e = raw().filter(x => x.kind === 'payment').at(-1), s9 = FS().get('s:sub_9');
+      ok(e.product === 'pro-month' && e.subscription === 'sub_9' && e.feeEstimated && e.fee === 43 && e.months === 1, 'finanzas: suscripción, comisión estimada (1,5 % + 0,25 €) si Stripe no responde: ' + JSON.stringify(e));
+      ok(s9 && s9.monthly === 1000 && !s9.end && D()['sub.new'] === 1, 'finanzas: la suscripción cuenta para el MRR (sin IVA): ' + JSON.stringify(s9)); }
+    await hook({ id: 'evt_f3', type: 'charge.refunded', data: { object: { currency: 'eur', amount_refunded: 500, metadata: { sub: '1414' } }, previous_attributes: { amount_refunded: 0 } } });
+    await hook({ id: 'evt_f4', type: 'customer.subscription.deleted', data: { object: { id: 'sub_9', metadata: { sub: '1414' } } } });
+    ok(D()['ref.eur'] === 500 && D()['sub.cancel'] === 1 && FS().get('s:sub_9').end > 0, 'finanzas: reembolso y baja registrados');
+    env.FETCH = prev;
+    // The summary, with the directory's figures and the budget.
+    x = await A('GET', `/finance/summary?from=${today}&to=${today}&group=day`);
+    { const t = x.j.totals;
+      ok(x.status === 200 && t.gross === 24.2 && t.tax === 4.2 && t.fees === 0.83 && t.refunds === 5 && t.net === 14.17 && x.j.series.length === 1, 'resumen: ingresos, impuestos, comisiones, reembolsos, neto: ' + JSON.stringify(t));
+      ok(x.j.subscriptions.new === 1 && x.j.subscriptions.cancelled === 1 && x.j.credits.sold === 1500 && x.j.ai.byFeature.assistant?.n >= 1 && x.j.directory.users >= 1 && x.j.liability.credits > 0 && x.j.budget.limit === 50,
+        'resumen: suscripciones, créditos, IA por función, directorio, pasivo y presupuesto: ' + JSON.stringify([x.j.subscriptions, x.j.credits, x.j.directory, x.j.liability, x.j.budget]));
+      const pu = x.j.topUsers.find(u => u.sub === '1414'); ok(pu && pu.email === 'pia@example.com' && pu.revenue === 15 && pu.costUsd >= 0.05 && Math.abs(pu.profit - (15 - pu.costUsd * 0.86)) < 0.01, 'resumen: usuarios más costosos con su ingreso y su beneficio: ' + JSON.stringify(pu));
+      ok(x.j.topUsers.every((u, i, l) => !i || l[i - 1].cost >= u.cost), 'resumen: ordenados por coste'); }
+    ok((await A('GET', '/finance/summary?from=2026-13-01&to=2026-01-01')).status === 400 && (await A('GET', '/finance/summary?from=2020-01-01&to=2026-01-01')).status === 400, 'resumen: periodo inválido o de más de 3 años → 400');
+    // Access: the same checks as the rest of the admin API.
+    ok((await adm('GET', '/finance/summary', { token: null })).status === 403 && (await adm('GET', '/finance/summary', { flag: false })).status === 403
+      && (await adm('GET', '/finance/summary', { host: SITE })).status === 404 && (await adm('GET', '/finance/export.csv', { token: await jwt({ email: 'intruso@example.com' }) })).status === 403, 'finanzas: solo administración');
+    ok((await adm('DELETE', '/finance/entries/aaaaaaaaaaaa', { headers: { Origin: 'https://malo.example' } })).status === 403 && (await adm('PUT', '/finance/entries')).status === 405, 'finanzas: borrar desde otra web → 403; otros métodos → 405');
+    // Manual entries: fixed costs and hours, each change in the audit log.
+    ok((await A('POST', '/finance/entries', { body: { type: 'fixed', name: 'x', amount: -5, currency: 'eur', date: today, category: 'software' } })).status === 400
+      && (await A('POST', '/finance/entries', { body: { type: 'time', hours: 30, date: today, category: 'desarrollo' } })).status === 400
+      && (await A('POST', '/finance/entries', { body: { type: 'fixed', name: 'x', amount: 5, currency: 'eur', date: today, category: 'inventada' } })).status === 400, 'entradas: importes, horas o categorías inválidos → 400');
+    x = await A('POST', '/finance/entries', { body: { type: 'fixed', name: 'Servidor', amount: 31, currency: 'eur', date: today, recurring: true, category: 'infraestructura' } });
+    const fid = x.j.entry?.id;
+    ok(x.status === 200 && /^[a-f0-9]{12}$/.test(fid) && x.j.entry.recurring, 'entradas: gasto fijo mensual');
+    x = await A('POST', '/finance/entries', { body: { id: fid, type: 'fixed', name: 'Cloudflare Workers', amount: 5, currency: 'usd', date: today, recurring: true, category: 'infraestructura' } });
+    ok(x.status === 200 && (await A('GET', '/finance/entries')).j.entries.find(e => e.id === fid).amount === 5, 'entradas: editar');
+    ok((await A('POST', '/finance/entries', { body: { id: 'ffffffffffff', type: 'fixed', name: 'y', amount: 1, currency: 'eur', date: today, category: 'otros' } })).status === 404, 'entradas: editar una que no existe → 404');
+    const inj = (await A('POST', '/finance/entries', { body: { type: 'fixed', name: '=HYPERLINK("http://malo")', amount: 12, currency: 'eur', date: today, category: 'software' } })).j.entry.id;
+    await A('POST', '/finance/entries', { body: { type: 'time', hours: 2.5, date: today, category: 'soporte', note: 'Tickets' } });
+    { const l = (await A('GET', '/audit?target=finance:' + fid)).j.entries;
+      ok(l.length === 2 && l[0].action === 'finance-edit' && l[0].before.amount === 31 && l[0].after.amount === 5 && l[1].action === 'finance-add' && l[0].by === 'jefe@example.com', 'entradas: auditoría (alta y cambio, antes y después)'); }
+    x = await A('GET', `/finance/summary?from=${today}&to=${today}&group=day`);
+    ok(x.j.time.hours === 2.5 && x.j.time.byCategory.soporte === 2.5 && x.j.time.profitPerHour === Math.round((x.j.totals.profit / 2.5) * 100) / 100 && x.j.totals.fixed > 12 && x.j.fixed.monthly === Math.round(5 * 0.86 * 100) / 100,
+      'resumen: horas, beneficio por hora y gastos fijos: ' + JSON.stringify([x.j.time, x.j.fixed]));
+    // CSV for the accountant.
+    { const r = await adm('GET', `/finance/export.csv?from=${today}&to=${today}`), r2 = await adm('GET', `/finance/export.csv?from=${today}&to=${today}`), t = await r.text(), lines = t.split('\r\n');
+      ok(r.status === 200 && /text\/csv/.test(r.headers.get('Content-Type')) && /attachment; filename="revela-contabilidad-/.test(r.headers.get('Content-Disposition')) && new Uint8Array(await r2.arrayBuffer())[0] === 0xef && t.startsWith('fecha;tipo;concepto;categoría;importe;moneda;impuestos;comisión;neto;importe_eur'), 'CSV: cabecera (con BOM, para Excel) y descarga');
+      ok(lines.some(l => /^\d{4}-\d\d-\d\d;ingreso;credits-500;;12,1;EUR;2,1;0,4;9,6;12,1;;;1414;evt_f1$/.test(l)), 'CSV: el pago con impuestos, comisión y neto: ' + lines.find(l => /ingreso/.test(l)));
+      ok(lines.some(l => /;reembolso;/.test(l)) && lines.some(l => /;coste;IA \(\d+ peticiones\);ia;-0,\d+;USD;/.test(l)) && lines.some(l => /;horas;Tickets;soporte;.*;2,5;/.test(l)), 'CSV: reembolso, coste de IA del día y horas');
+      ok(t.includes(`"'=HYPERLINK(""http://malo"")"`) && !/;=HYPERLINK/.test(t), 'CSV: sin fórmulas inyectadas'); }
+    // Raw events, by pages; the money ones by kind.
+    { const p1 = (await A('GET', '/finance/events?limit=3')).j, p2 = (await A('GET', '/finance/events?limit=3&cursor=' + encodeURIComponent(p1.cursor))).j;
+      ok(p1.events.length === 3 && p1.cursor && p2.events.length === 3 && p1.events[0].at >= p1.events[2].at && p1.events[2].at >= p2.events[0].at && p1.events.every(e => /^\d{15}:\d{9}$/.test(e.id)) && !p2.events.some(e => p1.events.some(f => f.id === e.id)), 'eventos: por páginas, los más recientes primero');
+      const pays = (await A('GET', '/finance/events?kind=payment')).j.events; ok(pays.length >= 2 && pays.every(e => e.kind === 'payment') && pays[0].ref === 'evt_f2' && pays[1].ref === 'evt_f1', 'eventos: filtrar por tipo'); }
+    ok((await adm('DELETE', '/finance/entries/' + inj, { headers: { Origin: ADMIN } })).status === 200 && (await adm('DELETE', '/finance/entries/' + inj, { headers: { Origin: ADMIN } })).status === 404
+      && (await A('GET', '/audit?target=finance:' + inj)).j.entries[0].action === 'finance-delete' && !(await A('GET', '/finance/entries')).j.entries.some(e => e.id === inj), 'entradas: borrar (auditado)');
+  }
+
   // Deleting the account takes it out of the directory.
   ok((await req('POST', '/api/account/delete', { headers: { Cookie: pia }, body: { confirm: 'pia@example.com' } })).status === 200 && (await A('GET', '/users?q=pia')).j.users.length === 0, 'cuenta eliminada: fuera del directorio');
   // Without the admin vars again: nothing.
   env.ADMIN_EMAILS = ''; ok((await adm('GET', '/stats')).status === 404, 'admin: al quitar las variables vuelve a 404');
   env.FETCH = prevFetch; resetAccessCerts();
+}
+
+// ---- The business's figures on a synthetic dataset (finance.js summarize(): pure) ----
+{
+  const s = { usdEur: 0.5, emailUsd: 0, feePct: 1.5, feeFixed: 0.25, creditUsd: 0.002, budget: 50 }, at = d => Date.parse(d);
+  const days = {
+    '2026-01-10': { 'pay.n': 1, 'pay.eur.gross': 12100, 'pay.eur.tax': 2100, 'pay.eur.fee': 100, 'pay.p.pro-month.n': 1, 'pay.p.pro-month.eur.gross': 12100, 'sub.new': 1, 'users.new': 4, 'act.dau': 3, 'act.mau': 3,
+      'ai.n': 4, 'ai.usd': 2, 'ai.f.assistant.usd': 2, 'ai.f.assistant.n': 4, 'ai.m.google/gemini-2.5-flash.usd': 2, 'ai.m.google/gemini-2.5-flash.n': 4, 'cr.sold': 500, 'cr.used': 1000, 'cr.in.trial': 200 },
+    '2026-02-05': { 'pay.n': 1, 'pay.usd.gross': 2000, 'pay.usd.fee': 100, 'ref.n': 1, 'ref.eur': 1000, 'act.dau': 1, 'act.mau': 2, 'bl.n': 1, 'bl.secs': 40, 'bl.usd': 4, 'mail.n': 3, 'mail.usd': 2, 'sub.cancel': 1, 'cr.out.expired': 30 },
+  };
+  const entries = [
+    { id: 'a1', type: 'fixed', name: 'Servidor', amount: 31, currency: 'eur', date: '2026-01-01', recurring: true, category: 'infraestructura' },
+    { id: 'a2', type: 'fixed', name: 'Logo', amount: 50, currency: 'usd', date: '2026-02-10', recurring: false, category: 'marketing' },
+    { id: 'a3', type: 'fixed', name: 'Antes', amount: 99, currency: 'eur', date: '2025-06-01', recurring: true, until: '2025-12-31', category: 'software' },
+    { id: 't1', type: 'time', date: '2026-01-15', hours: 10, category: 'desarrollo', note: '' },
+    { id: 't2', type: 'time', date: '2026-02-01', hours: 5, category: 'soporte', note: '' },
+    { id: 't3', type: 'time', date: '2026-03-01', hours: 99, category: 'soporte', note: 'fuera del periodo' },
+  ];
+  const subs = [{ id: 'sa', product: 'pro-month', cur: 'eur', monthly: 1000, start: at('2026-01-10'), periodEnd: at('2026-03-10'), end: null },
+    { id: 'sb', product: 'pro-year', cur: 'eur', monthly: 800, start: at('2025-12-01'), periodEnd: at('2026-12-01'), end: at('2026-02-05') }];
+  const users = { u1: { usd: 4, cr: 2000, n: 10, rev: { eur: 10000 } }, u2: { usd: 10, cr: 0, n: 3, rev: {} } };
+  const r = summarize({ days, entries, subs, users, from: '2026-01-01', to: '2026-02-28', group: 'month', s, now: at('2026-03-15') });
+  const [jan, feb] = r.series, t = r.totals;
+  ok(r.series.length === 2 && jan.key === '2026-01' && feb.key === '2026-02', 'sintético: dos meses');
+  ok(jan.gross === 121 && jan.tax === 21 && jan.revenue === 100 && jan.fees === 1 && jan.net === 99 && jan.ai === 1 && jan.fixed === 31 && jan.grossProfit === 98 && jan.profit === 67, 'sintético: enero: ' + JSON.stringify(jan));
+  ok(feb.gross === 10 && feb.fees === 0.5 && feb.refunds === 10 && feb.net === -0.5 && feb.blender === 2 && feb.email === 1 && feb.fixed === 56 && feb.profit === -59.5, 'sintético: febrero (USD a EUR, gasto puntual, reembolso): ' + JSON.stringify(feb));
+  ok(t.net === 98.5 && t.variable === 4 && t.grossProfit === 94.5 && t.fixed === 87 && t.profit === 7.5 && r.margins.gross === 0.9594 && r.margins.net === 0.0761, 'sintético: márgenes bruto y neto: ' + JSON.stringify([t, r.margins]));
+  ok(jan.mrr === 18 && jan.subs === 2 && feb.mrr === 10 && feb.subs === 1 && feb.pro === 1 && r.subscriptions.mrr === 10 && r.subscriptions.atStart === 1 && r.subscriptions.churn === 0.5159 && r.subscriptions.new === 1, 'sintético: MRR, suscriptores y churn: ' + JSON.stringify(r.subscriptions));
+  ok(r.users.conversion === 0.25 && r.users.userMonths === 5 && r.users.arpu === 19.7 && r.users.costPerActive === 0.8 && r.users.mau === 2 && r.users.signups === 4, 'sintético: conversión, ARPU y coste por usuario activo: ' + JSON.stringify(r.users));
+  ok(r.time.hours === 15 && r.time.byCategory.desarrollo === 10 && r.time.byMonth['2026-02'].soporte === 5 && r.time.profitPerHour === 0.5, 'sintético: horas y beneficio por hora: ' + JSON.stringify(r.time));
+  ok(r.credits.sold === 500 && r.credits.used === 1000 && r.credits.expired === 30 && r.credits.granted.trial === 200, 'sintético: créditos');
+  ok(r.ai.byFeature.assistant.eur === 1 && r.ai.byModel['google/gemini-2.5-flash'].n === 4 && r.blender.seconds === 40 && r.email.sent === 3 && r.revenue.products['pro-month'].gross === 121, 'sintético: IA por función y modelo, Blender, correo, productos');
+  ok(r.breakEven.fixedMonthly === 31 && r.breakEven.reached && r.breakEven.subsNeeded === 4 && r.fixed.byCategory.marketing === 25 && !r.fixed.byCategory.software, 'sintético: punto de equilibrio: ' + JSON.stringify(r.breakEven));
+  ok(r.topUsers[0].sub === 'u2' && r.topUsers[0].profit === -5 && r.topUsers[1].revenue === 100 && r.topUsers[1].profit === 98 && r.fx.USD_EUR === 0.5, 'sintético: beneficio por usuario y tipo de cambio usado');
+  const d = summarize({ days, entries, subs, users: {}, from: '2026-02-01', to: '2026-02-03', group: 'day', s, now: at('2026-03-15') });
+  ok(d.series.length === 3 && d.series.every(b => b.fixed === 1.11) && d.series[0].hours === 5, 'sintético: por días, el gasto mensual repartido entre los días del mes');
+  // Day sums from events, and manual entries checked.
+  const b = bump(bump({}, { kind: 'ai', feature: 'image', model: 'x/y-1.5', usd: 0.5, credits: 15, blenderSecs: 2, blenderUsd: 0.1 }), { kind: 'credits', reason: 'expired', delta: -9 });
+  ok(b['ai.f.image.n'] === 1 && b['ai.m.x/y-1.5.usd'] === 0.5 && b['cr.used'] === 15 && b['bl.secs'] === 2 && b['cr.out.expired'] === 9, 'bump: sumas del día');
+  ok(featureOf('assistant') === 'assistant' && featureOf('__proto__') === 'other', 'funciones de IA: solo las conocidas');
+  ok(cleanEntry({ type: 'fixed', name: ' Dominio ', amount: '12.345', currency: 'EUR', date: '2026-02-30', category: 'dominio' }) === null
+    && cleanEntry({ type: 'fixed', name: ' Dominio ', amount: '12.345', currency: 'EUR', date: '2026-02-28', category: 'dominio' }).amount === 12.35
+    && cleanEntry({ type: 'time', hours: 1, date: '2026-01-01', category: 'soporte', note: 'x'.repeat(900) }).note.length === 500, 'entradas: fechas, importes y notas comprobados');
+  const csv = toCsv({ days, entries, money: [], from: '2026-01-01', to: '2026-02-28', s }).split('\r\n');
+  ok(csv.filter(l => /;gasto fijo;Servidor \(mensual\);/.test(l)).length === 2 && csv.some(l => /^2026-02-10;gasto fijo;Logo;marketing;-50;USD;;;;-25;0,5;/.test(l)) && !csv.some(l => /Antes/.test(l)), 'CSV: gastos fijos por mes y puntuales, en su moneda y en EUR');
 }
 
 console.log(fails ? `API FAIL ${n - fails}/${n}` : `API OK ${n}/${n}`);

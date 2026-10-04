@@ -170,7 +170,7 @@ const briefText = b => [`About: ${b?.topic || '(not given)'}`, b?.audience && `A
 async function writeChunk(chunk, { deck, brief, mode, done, language, signal, onUsage }) {
   const user = `${briefText(brief)}\n\nThe whole deck (${deck.slides.length} slides):\n${outlineOf(deck, done)}\n\nSlides to write now:\n${JSON.stringify(chunk.map(slideLine))}`;
   const out = await chat([{ role: 'system', content: SYSTEM({ language, mode }) }, { role: 'user', content: user }],
-    { json: true, maxTokens: Math.min(4000, 300 + 280 * chunk.length), force: AGENT_MODEL, signal, onUsage });
+    { json: true, maxTokens: Math.min(4000, 300 + 280 * chunk.length), force: AGENT_MODEL, signal, onUsage, feature: 'complete' });
   let j = null; try { j = parseJSON(out); } catch {}
   const list = Array.isArray(j) ? j : Array.isArray(j?.slides) ? j.slides : [];
   return new Map(list.filter(x => x && typeof x === 'object').map((x, k) => [+x.slide || chunk[k]?.i + 1, x]));
