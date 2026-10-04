@@ -167,7 +167,6 @@
   "¿Puedo cancelar cuando quiera?": "Puc cancel·lar quan vulgui?",
   "Sí, desde Mi cuenta ▸ Gestionar la suscripción. Sigues con Pro hasta el final del periodo que has pagado.": "Sí, des d’El meu compte ▸ Gestiona la subscripció. Continues amb Pro fins al final del període que has pagat.",
   "Inicio": "Inici",
-  "Revela es gratis para empezar. Pro: 10 € + IVA (o 10 $) al mes, o 96 € + IVA al año, con IA incluida. Equipos y centros: 6 € + IVA por persona y mes. Créditos de IA sin suscripción.": "Revela és gratis per començar. Pro: 10 € + IVA (o 10 $) al mes, o 96 € + IVA l’any, amb IA inclosa. Equips i centres: 6 € + IVA per persona i mes. Crèdits d’IA sense subscripció.",
   "Periodo de pago": "Període de pagament",
   "Moneda": "Moneda",
   "al mes": "al mes",
@@ -213,5 +212,6 @@
   "Una presentación hecha con Revela: el lanzamiento de un reloj inteligente, con el reloj en 3D": "Una presentació feta amb Revela: el llançament d’un rellotge intel·ligent, amb el rellotge en 3D",
   "<span aria-hidden=\"true\">▶</span> Ver en directo": "<span aria-hidden=\"true\">▶</span> Veure-la en directe",
   "¿Quién lee lo que envío a soporte?": "Qui llegeix el que envio a suport?",
-  "Una persona del equipo de Revela, que te responde por correo. Para ayudarla, tu mensaje y el resumen de tu cuenta pueden analizarse con un modelo de IA a través de OpenRouter, con proveedores que no los guardan ni entrenan con ellos; la IA solo sugiere y la presentación adjunta nunca se le envía. Más en la <a href=\"privacy\">política de privacidad</a>.": "Una persona de l’equip de Revela, que et respon per correu. Per ajudar-la, el teu missatge i el resum del teu compte es poden analitzar amb un model d’IA a través d’OpenRouter, amb proveïdors que no els desen ni entrenen amb ells; la IA només suggereix i la presentació adjunta no se li envia mai. Més a la <a href=\"privacy\">política de privadesa</a>."
+  "Una persona del equipo de Revela, que te responde por correo. Para ayudarla, tu mensaje y el resumen de tu cuenta pueden analizarse con un modelo de IA a través de OpenRouter, con proveedores que no los guardan ni entrenan con ellos; la IA solo sugiere y la presentación adjunta nunca se le envía. Más en la <a href=\"privacy\">política de privacidad</a>.": "Una persona de l’equip de Revela, que et respon per correu. Per ajudar-la, el teu missatge i el resum del teu compte es poden analitzar amb un model d’IA a través d’OpenRouter, amb proveïdors que no els desen ni entrenen amb ells; la IA només suggereix i la presentació adjunta no se li envia mai. Més a la <a href=\"privacy\">política de privadesa</a>.",
+  "Revela es gratis para empezar. Pro: 10 € + IVA al mes, o 96 € + IVA al año, con IA incluida. Equipos y centros: 6 € + IVA por persona y mes. Créditos de IA sin suscripción.": "Revela és gratis per començar. Pro: 10 € + IVA al mes, o 96 € + IVA l’any, amb IA inclosa. Equips i centres: 6 € + IVA per persona i mes. Crèdits d’IA sense subscripció."
 }

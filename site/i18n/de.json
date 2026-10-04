@@ -167,7 +167,6 @@
   "¿Puedo cancelar cuando quiera?": "Kann ich jederzeit kündigen?",
   "Sí, desde Mi cuenta ▸ Gestionar la suscripción. Sigues con Pro hasta el final del periodo que has pagado.": "Ja, unter Mein Konto ▸ Abo verwalten. Pro bleibt Ihnen bis zum Ende des bezahlten Zeitraums erhalten.",
   "Inicio": "Startseite",
-  "Revela es gratis para empezar. Pro: 10 € + IVA (o 10 $) al mes, o 96 € + IVA al año, con IA incluida. Equipos y centros: 6 € + IVA por persona y mes. Créditos de IA sin suscripción.": "Revela ist zum Einstieg kostenlos. Pro: 10 € zzgl. MwSt. (oder 10 $) pro Monat oder 96 € zzgl. MwSt. pro Jahr, KI inklusive. Teams und Schulen: 6 € zzgl. MwSt. pro Person und Monat. KI-Credits ohne Abo.",
   "Periodo de pago": "Abrechnungszeitraum",
   "Moneda": "Währung",
   "al mes": "pro Monat",
@@ -213,5 +212,6 @@
   "Una presentación hecha con Revela: el lanzamiento de un reloj inteligente, con el reloj en 3D": "Eine mit Revela erstellte Präsentation: die Vorstellung einer Smartwatch, mit der Uhr in 3D",
   "<span aria-hidden=\"true\">▶</span> Ver en directo": "<span aria-hidden=\"true\">▶</span> Live ansehen",
   "¿Quién lee lo que envío a soporte?": "Wer liest, was ich an den Support schicke?",
-  "Una persona del equipo de Revela, que te responde por correo. Para ayudarla, tu mensaje y el resumen de tu cuenta pueden analizarse con un modelo de IA a través de OpenRouter, con proveedores que no los guardan ni entrenan con ellos; la IA solo sugiere y la presentación adjunta nunca se le envía. Más en la <a href=\"privacy\">política de privacidad</a>.": "Eine Person aus dem Revela-Team, die dir per E-Mail antwortet. Um ihr zu helfen, können deine Nachricht und die Zusammenfassung deines Kontos über OpenRouter von einem KI-Modell analysiert werden, nur bei Anbietern, die sie weder speichern noch damit trainieren; die KI macht nur Vorschläge, und die angehängte Präsentation wird ihr nie geschickt. Mehr in der <a href=\"privacy\">Datenschutzerklärung</a>."
+  "Una persona del equipo de Revela, que te responde por correo. Para ayudarla, tu mensaje y el resumen de tu cuenta pueden analizarse con un modelo de IA a través de OpenRouter, con proveedores que no los guardan ni entrenan con ellos; la IA solo sugiere y la presentación adjunta nunca se le envía. Más en la <a href=\"privacy\">política de privacidad</a>.": "Eine Person aus dem Revela-Team, die dir per E-Mail antwortet. Um ihr zu helfen, können deine Nachricht und die Zusammenfassung deines Kontos über OpenRouter von einem KI-Modell analysiert werden, nur bei Anbietern, die sie weder speichern noch damit trainieren; die KI macht nur Vorschläge, und die angehängte Präsentation wird ihr nie geschickt. Mehr in der <a href=\"privacy\">Datenschutzerklärung</a>.",
+  "Revela es gratis para empezar. Pro: 10 € + IVA al mes, o 96 € + IVA al año, con IA incluida. Equipos y centros: 6 € + IVA por persona y mes. Créditos de IA sin suscripción.": "Revela ist zum Einstieg kostenlos. Pro: 10 € zzgl. MwSt. pro Monat oder 96 € zzgl. MwSt. pro Jahr, KI inklusive. Teams und Schulen: 6 € zzgl. MwSt. pro Person und Monat. KI-Credits ohne Abo."
 }
