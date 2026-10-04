@@ -464,6 +464,123 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.fetch = real; R.ai.disconnectAi(); }
   });
 
+  // A screenshot with a DAX measure and an equation on slide 1 (the owner's case: code asked for, formula kept).
+  const DAX = 'Generacion_Año_Anterior =\nVAR AnioActual = MAX(owid_energy[year])\nRETURN\n    CALCULATE(SUM(owid_energy[Generacion_TWh]), owid_energy[year] = AnioActual - 1)';
+  const LATEX = '\\text{Contribución al Total} = \\frac{\\text{Generación por Fuente}}{\\text{Generación Total}} \\times 100\\%';
+  const codeScene = W => {
+    const c = W.document.createElement('canvas'); c.width = 640; c.height = 360;
+    const g = c.getContext('2d'); g.fillStyle = '#f3f3f3'; g.fillRect(0, 0, 640, 360); g.fillStyle = '#222'; g.font = '16px monospace';
+    DAX.split('\n').forEach((l, i) => g.fillText(l, 12, 40 + i * 24));
+    const img = { id: 'shot1', type: 'image', src: c.toDataURL('image/png'), alt: 'Captura de Power BI', x: 660, y: 150, w: 560, h: 315, rotation: 0, animation: null };
+    const eqb = { id: 'eq1', type: 'math', latex: LATEX, x: 80, y: 520, w: 900, h: 120, rotation: 0, animation: null };
+    R.store.commit(() => R.store.currentSlide().blocks.push(img, eqb));
+    return { img, eqb };
+  };
+  // The model and the vision model, simulated: the transcription is counted apart.
+  const codeMock = (W, answers, calls, seen) => {
+    const agentCall = agentMock(W, answers, calls);
+    return async (url, opts) => {
+      const body = JSON.parse(opts.body);
+      if (/You transcribe code/.test(body.messages[0].content)) {
+        seen.vision.push(body);
+        return new W.Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ language: 'DAX', code: DAX, confidence: 0.93 }) } }], usage: { cost: 0.0004 } }));
+      }
+      return agentCall(url, opts);
+    };
+  };
+
+  await test('asistente: el código de una captura en un bloque de código (leído una vez), código y ecuaciones validados', async () => {
+    reset(); const W = frame.contentWindow, real = W.fetch, calls = [], seen = { vision: [] }, AG = R.aiAgent, V = await W.eval("import('/src/features/ai/vision.js')");
+    R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    const { img } = codeScene(W);
+    const proposal = { message: 'Aquí tienes la diapositiva con el código', done: true,
+      ops: [{ op: 'add_slide', after: 1, spec: { kind: 'code', title: 'La medida en DAX', code: { language: 'dax', from_image: 'shot1' }, bullets: ['VAR guarda el año actual', 'CALCULATE suma el año anterior'] } }] };
+    W.fetch = codeMock(W, [proposal], calls, seen);
+    try {
+      const steps = [];
+      let res = await AG.runAgent('pon el código de la captura en una diapositiva', { perms: ALL, onStep: s => steps.push(s.kind) });
+      eq(seen.vision.length, 1, 'la imagen se lee una vez');
+      const part = seen.vision[0].messages[1].content.find(p => p.type === 'image_url');
+      assert(/^data:image\/jpeg;base64,/.test(part.image_url.url) && V.bytesOf(part.image_url.url) < 450 * 1024, 'en JPEG y reducida');
+      assert(steps.includes('read'), 'se dice que lee el código: ' + steps);
+      eq(img.aiCode?.hash, V.srcHash(img.src), 'la lectura se guarda en la imagen'); eq(img.aiCode.code, DAX, 'tal cual');
+      assert(calls[0].messages.at(-1).content.includes('owid_energy[Generacion_TWh]') && /"codeRead"/.test(calls[0].messages.at(-1).content), 'el modelo recibe el código leído');
+      const sys = calls[0].messages[0].content;
+      assert(/"code"/.test(sys) && /type "math"/.test(sys) && /read_code/.test(sys) && /dax/.test(sys) && /NEVER code in a text box/.test(sys) && /"code": title, code/.test(sys), 'el prompt describe código y ecuaciones');
+      assert(/"math": title, latex/.test(sys), 'y la clase de diapositiva «math»');
+      eq(res.ops.length, 1, 'propuesta'); eq(res.ops[0].spec.code.language, 'dax', 'lenguaje DAX'); eq(res.ops[0].spec.code.code, DAX, 'el código literal');
+      AG.applyOps(res.ops);
+      const ns = R.state.deck.slides[1], cb = ns.blocks.find(b => b.type === 'code');
+      assert(cb && cb.lang === 'dax' && cb.code === DAX, 'un bloque de código DAX con el código literal: ' + JSON.stringify(cb));
+      assert(!ns.blocks.some(b => b.type === 'text' && /CALCULATE\(SUM/.test(b.html || '')), 'no en un cuadro de texto');
+      assert(ns.blocks.some(b => b.type === 'text' && /VAR guarda/.test(b.html || '') && b.x >= cb.x + cb.w - 1), 'la explicación al lado');
+      assert(R.state.deck.slides[0].blocks.some(b => b.id === 'shot1'), 'la captura se queda');
+      // Otra vez: ya leída, gratis.
+      calls.length = 0; W.fetch = codeMock(W, [proposal], calls, seen);
+      res = await AG.runAgent('pon el código de la captura en una diapositiva', { perms: ALL });
+      eq(seen.vision.length, 1, 'la segunda vez no se paga otra lectura'); eq(res.ops[0].spec.code.code, DAX, 'y vale igual');
+      // read_code como herramienta, también desde la caché.
+      calls.length = 0; W.fetch = codeMock(W, [{ tool: 'read_code', args: { slide: 1, id: 'shot1' } }, { message: 'Hecho', ops: [{ op: 'add_object', slide: 1, object: { type: 'code', from_image: 'shot1', x: 80, y: 150, w: 560, h: 300 } }], done: true }], calls, seen);
+      res = await AG.runAgent('añade el bloque', { perms: ALL });
+      assert(/Result of read_code/.test(calls[1].messages.at(-1).content) && calls[1].messages.at(-1).content.includes('AnioActual'), 'read_code devuelve el código');
+      eq(seen.vision.length, 1, 'sin otra lectura'); eq(res.ops[0].object.lang, 'dax', 'objeto de código'); eq(res.ops[0].object.code, DAX, 'literal');
+    } finally { W.fetch = real; R.ai.disconnectAi(); }
+    // Validación: lenguajes permitidos, tamaño, LaTeX.
+    const v = ops => AG.validateOps(ops, { perms: ALL });
+    let r = v([{ op: 'add_object', slide: 1, object: { type: 'code', language: 'm', code: '```m\nlet\n\tx = 1\nin\n    x\n```', caption: 'Un paso de Power Query', x: 80, y: 100, w: 500, h: 200 } },
+      { op: 'add_object', slide: 1, object: { type: 'code', language: 'cobol', code: 'MOVE A TO B', x: 80, y: 100, w: 500, h: 200 } },
+      { op: 'add_object', slide: 1, object: { type: 'code', language: 'sql', code: Array.from({ length: 70 }, (_, i) => `SELECT ${i};`).join('\n'), x: 80, y: 100, w: 500, h: 200 } },
+      { op: 'add_object', slide: 1, object: { type: 'math', latex: '$$E = mc^2$$', x: 80, y: 400, w: 400, h: 100 } },
+      { op: 'add_object', slide: 1, object: { type: 'math', latex: '\\frac{a}{b', x: 80, y: 400, w: 400, h: 100 } },
+      { op: 'add_object', slide: 1, object: { type: 'code', from_image: 'no-existe', x: 80, y: 100, w: 500, h: 200 } }]);
+    eq(r.dropped.map(d => d.code).join(), 'value,value,value,value', 'lenguaje, tamaño, LaTeX roto y captura sin leer: fuera');
+    const code = r.ops.find(o => o.object.type === 'code').object;
+    eq(code.lang, 'powerquery', 'M → powerquery'); eq(code.code, 'let\n    x = 1\nin\n    x', 'sin la valla de Markdown, tabuladores como espacios');
+    assert(r.ops.some(o => o.object.type === 'text' && /Un paso de Power Query/.test(o.object.html)), 'con su pie');
+    eq(r.ops.find(o => o.object.type === 'math').object.latex, 'E = mc^2', 'ecuación sin los $$');
+  });
+
+  await test('asistente: rehacer conserva ecuaciones, código e imágenes; nunca sustituye una ecuación por su texto', async () => {
+    reset(); const W = frame.contentWindow, AG = R.aiAgent, RV = await W.eval("import('/src/features/ai/review.js')");
+    const { eqb } = codeScene(W), s1 = slide();
+    const v = ops => AG.validateOps(ops, { perms: ALL });
+    // Rehacer la diapositiva: la ecuación y la captura se quedan, con sitio para ellas.
+    let r = v([{ op: 'replace_slide', slide: 1, spec: { kind: 'bullets', title: 'Generación por fuente', bullets: ['Qué parte aporta cada fuente', 'Se compara con el total', 'En porcentaje'] } }]);
+    eq(r.ops.length, 1, 'rehacer'); eq(RV.lossOf(r.ops[0]).before.includes('Contribución'), false, 'la ecuación no figura entre lo que se pierde');
+    AG.applyOps(r.ops);
+    const m = s1.blocks.find(b => b.id === 'eq1'), shot = s1.blocks.find(b => b.id === 'shot1');
+    assert(m && m.latex === LATEX, 'la ecuación sigue, igual'); assert(shot, 'y la captura');
+    const over = (a, b) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+    const body = s1.blocks.filter(b => b.type === 'text' && /Qué parte/.test(b.html || ''));
+    assert(body.length && body.every(b => over(b, m) < 400 && over(b, shot) < 400), 'con sitio: el texto no las tapa ' + JSON.stringify(s1.blocks.map(b => [b.type, b.x, b.y, b.w, b.h])));
+    R.store.undo();
+    // Un modelo que intenta cambiar la ecuación por texto: rebajado y avisado.
+    const bodyId = slide().blocks[1].id;
+    r = v([{ op: 'replace_slide', slide: 1, spec: { kind: 'bullets', title: 'La fórmula', bullets: ['Contribución al Total = Generación por Fuente / Generación Total × 100%', 'Mide el peso de cada fuente en el total'] }, remove: ['eq1'] },
+      { op: 'set_text', slide: 1, id: bodyId, text: 'Contribución al Total = Generación por Fuente / Generación Total × 100%' },
+      { op: 'add_object', slide: 1, object: { type: 'text', text: '$$\\text{Contribución al Total} = \\frac{\\text{Generación por Fuente}}{\\text{Generación Total}} \\times 100\\%$$', x: 80, y: 200, w: 900, h: 100 } }]);
+    eq(r.dropped.filter(d => d.code === 'native').length, 2, 'el texto que la repite y su borrado, fuera: ' + JSON.stringify(r.dropped.map(d => [d.op.op, d.code])));
+    const rs = r.ops.find(o => o.op === 'replace_slide');
+    eq(JSON.stringify(rs.spec.bullets), JSON.stringify(['Mide el peso de cada fuente en el total']), 'la línea que copia la fórmula, quitada');
+    assert(!r.ops.some(o => o.op === 'delete_object'), 'la ecuación no se borra');
+    eq(r.ops.find(o => o.op === 'add_object').object.type, 'math', '«$$…$$» como texto: una ecuación de verdad');
+    // Quitar una ecuación, una imagen…: «Quita» y empieza sin marcar.
+    r = v([{ op: 'replace_slide', slide: 1, spec: { kind: 'bullets', title: 'Otra', bullets: ['Uno', 'Dos', 'Tres'] }, remove: ['shot1'] }, { op: 'delete_object', slide: 1, id: 'eq1' }]);
+    const dels = r.ops.filter(o => o.op === 'delete_object');
+    eq(dels.length, 2, 'cada objeto que se quita, un cambio aparte');
+    assert(dels.every(o => RV.removesNative(o) && RV.lossOf(o).kind === 'remove'), '«Quita»');
+    eq(RV.protectDefaults(dels).map(x => x.on).join(), 'false,false', 'protegido: sin marcar');
+    // Texto «$$…$$» → ecuación en su sitio.
+    const tb = slide().blocks[1]; R.store.commit(() => { tb.html = '$$a^2 + b^2 = c^2$$'; });
+    r = v([{ op: 'text_to_math', slide: 1, id: tb.id }]); eq(r.ops.length, 1, 'convertir en ecuación');
+    eq(RV.lossOf(r.ops[0]), null, 'no se pierde nada');
+    AG.applyOps(r.ops);
+    const nm = slide().blocks.find(b => b.type === 'math' && b.latex === 'a^2 + b^2 = c^2');
+    assert(nm && nm.x === tb.x && nm.y === tb.y && !slide().blocks.includes(tb), 'una ecuación en el lugar del texto');
+    r = v([{ op: 'set_math', slide: 1, id: 'eq1', latex: 'x^2' }, { op: 'text_to_math', slide: 1, id: slide().blocks[0].id }]);
+    eq(r.ops.length, 1, 'set_math vale; un texto que no es una fórmula no se convierte'); eq(RV.lossOf(r.ops[0]).what, 'math', 'cambiar la ecuación se ve como sustitución');
+  });
+
   await test('asistente (panel): propone con miniaturas, aplica solo lo marcado, descarta, detiene y aplica sin preguntar', async () => {
     reset(); R.slides.addSlide(); R.slides.goToSlide(0);
     const W = frame.contentWindow, real = W.fetch, calls = [], P = await W.eval("import('/src/ui/dialogs/assistant.js')");

@@ -202,7 +202,7 @@ function endJob() {
 }
 
 const STEP = { think: s => (s.step > 1 ? t('Pensando…') : t('Leyendo la presentación…')), look: s => t('Mirando la diapositiva {n}…').replace('{n}', s.slide),
-  check: () => t('Comprobando que todo cabe…'), search: () => t('Buscando imágenes…') };
+  check: () => t('Comprobando que todo cabe…'), search: () => t('Buscando imágenes…'), read: () => t('Leyendo el código de la imagen…') };
 
 async function ask(panel, text) {
   if (!(await ready())) return;
@@ -234,7 +234,8 @@ async function ask(panel, text) {
 function showProposal(res) {
   pending = { ...res, base: snapshot(state.deck), done: null };
   // («Mejorar también lo escrito»: what the author wrote is protected at first.)
-  pending.review = { protect: false, on: new Set(res.ops.map((_, i) => i)), keep: new Set(), edits: new Map() };
+  // (Removing a picture, an equation, code, a chart, a table… starts unticked: never lost by default.)
+  pending.review = { protect: false, on: new Set(res.ops.map((_, i) => i).filter(i => !rv.removesNative(res.ops[i], pending.base))), keep: new Set(), edits: new Map() };
   if (res.mode === 'improve') protect(pending, true);
   if (opts.auto && res.ops.length) applyPending(chosenOf(pending));
   const lg = curPanel()?.querySelector('.as-log'); if (lg) put(lg, proposalCard(pending));
@@ -343,7 +344,7 @@ function protect(p, on) {
   r.protect = on;
   p.ops.forEach((o, i) => {
     if (!rv.lossOf(o, p.base)) return;
-    const x = on ? d[i] : { on: true, keep: false };
+    const x = on ? d[i] : { on: !rv.removesNative(o, p.base), keep: false };
     if (x.on) r.on.add(i); else r.on.delete(i);
     if (x.keep !== r.keep.has(i)) { r.edits.delete(i); if (x.keep) r.keep.add(i); else r.keep.delete(i); }
   });
@@ -371,7 +372,7 @@ const PROP = { x: 'posición', y: 'posición', w: 'tamaño', h: 'tamaño', rotat
   fontFamily: 'tipo de letra', textAlign: 'alineación', fontWeight: 'negrita', fontStyle: 'cursiva', bg: 'fondo', vAlign: 'alineación vertical', lineHeight: 'interlineado',
   wordart: 'WordArt', fill: 'relleno', stroke: 'borde', strokeWidth: 'grosor del borde', shape: 'forma', icon: 'icono', alt: 'texto alternativo', fit: 'ajuste',
   chartType: 'tipo de gráfico', seriesName: 'nombre de la serie', headBg: 'colores de la tabla', headFg: 'colores de la tabla', band: 'colores de la tabla',
-  autoRotate: 'giro automático', spin: 'velocidad de giro' };
+  autoRotate: 'giro automático', spin: 'velocidad de giro', lang: 'Lenguaje' };
 const ARRANGE = { 'image-right': 'imagen a la derecha', 'image-left': 'imagen a la izquierda', 'image-full-caption': 'imagen grande con pie', 'image-full': 'imagen bajo el título' };
 export function describe(o, deck) {
   const s = o.sid && deck.slides.find(x => x.id === o.sid), b = s && o.id ? s.blocks.find(x => x.id === o.id) : null;
@@ -393,7 +394,11 @@ export function describe(o, deck) {
     case 'set_props': return e(`${objName(b)}: ${[...new Set(Object.keys(o.props).map(k => t(PROP[k] || k)))].join(', ')}`)
       + (o.props.color || o.props.fill ? ' ' + sw(o.props.color || o.props.fill) : '') + (o.props.alt ? ` <span class="as-arr">«${e(snip(o.props.alt, 60))}»</span>` : '');
     case 'add_object': { const x = o.object;
-      return e(t('Añadir: {a}').replace('{a}', `${t(TYPE[x.type])}${x.type === 'text' ? ` «${snip(agent.textOf(x.html), 40)}»` : x.type === 'icon' ? ` (${x.icon})` : x.type === 'image' ? ` «${snip(x.alt, 40)}»` : x.type === 'table' ? ` ${x.rows.length}×${x.rows[0].length}` : ''}`)); }
+      return e(t('Añadir: {a}').replace('{a}', `${t(TYPE[x.type])}${x.type === 'text' ? ` «${snip(agent.textOf(x.html), 40)}»` : x.type === 'icon' ? ` (${x.icon})` : x.type === 'image' ? ` «${snip(x.alt, 40)}»` : x.type === 'table' ? ` ${x.rows.length}×${x.rows[0].length}`
+        : x.type === 'code' ? ` (${x.lang}) «${snip(x.code, 40)}»` : x.type === 'math' ? ` «${snip(x.latex, 40)}»` : ''}`)); }
+    case 'set_code': return e(t('Código nuevo en {a}').replace('{a}', objName(b))) + (o.code != null ? ` <span class="as-arr">«${e(snip(o.code, 60))}»</span>` : '') + (o.lang ? ` (${e(o.lang)})` : '');
+    case 'set_math': return e(t('Ecuación nueva: «{a}»').replace('{a}', snip(o.latex, 50)));
+    case 'text_to_math': return e(t('Convertir en ecuación: «{a}»').replace('{a}', snip(o.latex, 50)));
     case 'delete_object': return e(t('Quitar {a}').replace('{a}', objName(b)));
     case 'set_chart_data': return e(t('Datos del gráfico: {a}').replace('{a}', snip(o.data.map(d => `${d.label} ${d.value}`).join(', '), 60)));
     case 'set_table': return e(t('Contenido de la tabla ({n})').replace('{n}', `${o.rows.length}×${o.rows[0].length}`));
@@ -404,11 +409,11 @@ export function describe(o, deck) {
 }
 const WHY = { scope: 'fuera del alcance', 'perm:delete': 'sin permiso para borrar diapositivas', 'perm:design': 'sin permiso para cambiar el diseño',
   'perm:objects': 'sin permiso para añadir o quitar objetos', 'perm:animation': 'sin permiso para animaciones y transiciones', slide: 'la diapositiva no existe',
-  id: 'el objeto no existe', type: 'tipo de objeto no permitido', range: 'se saldría de la diapositiva', value: 'valor no válido', prop: 'propiedad no permitida', op: 'operación desconocida' };
+  native: 'sustituiría una ecuación o un código por texto', id: 'el objeto no existe', type: 'tipo de objeto no permitido', range: 'se saldría de la diapositiva', value: 'valor no válido', prop: 'propiedad no permitida', op: 'operación desconocida' };
 const OP_LABEL = { set_text: 'Cambiar un texto', set_notes: 'Cambiar las notas', set_hidden: 'Ocultar o mostrar', delete_slide: 'Borrar una diapositiva', move_slide: 'Mover una diapositiva',
   add_slide: 'Añadir una diapositiva', replace_slide: 'Rehacer una diapositiva', set_background: 'Cambiar el fondo', apply_palette: 'Cambiar la paleta', set_fonts: 'Cambiar la tipografía',
   set_layout: 'Reorganizar la diapositiva', set_props: 'Cambiar un objeto', add_object: 'Añadir un objeto', delete_object: 'Quitar un objeto', set_chart_data: 'Cambiar los datos de un gráfico',
-  set_table: 'Cambiar una tabla', set_animation: 'Cambiar una animación', set_transition: 'Cambiar la transición' };
+  set_code: 'Cambiar un código', set_math: 'Cambiar una ecuación', text_to_math: 'Convertir un texto en ecuación', set_table: 'Cambiar una tabla', set_animation: 'Cambiar una animación', set_transition: 'Cambiar la transición' };
 const PROBLEM = { overflow: 'no cabe en su cuadro', offslide: 'se sale de la diapositiva', overlap: 'textos encimados', over: 'texto encima de otro objeto', contrast: 'poco contraste' };
 
 // A slide's picture (as in the slide navigator), with the changed objects outlined; `lose`:

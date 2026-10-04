@@ -9,6 +9,7 @@ import { state } from '../../core/store.js';
 import { plain } from './openrouter.js';
 import { textOf, toHTML, touchesContent } from './agent.js';
 import { isEmptyPlaceholder } from '../document/master.js';
+import { isNative } from './authoring.js';
 import { cleanHTML } from '../document/sanitize.js';
 
 const find = (o, deck) => { const s = o.sid ? deck.slides.find(x => x.id === o.sid) : null; return { s, b: s && o.id ? s.blocks.find(x => x.id === o.id) : null }; };
@@ -16,8 +17,9 @@ const find = (o, deck) => { const s = o.sid ? deck.slides.find(x => x.id === o.s
 export const norm = l => String(l || '').toLowerCase().replace(/^\s*(?:[-•*]|\d{1,2}[.)])\s+/, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 const linesOf = t => String(t || '').split('\n').map(l => l.replace(/\s+$/, '')).filter(l => l.trim());
 const objText = b => (!b ? '' : b.type === 'text' || b.html ? textOf(b.html) : b.type === 'table' ? (b.rows || []).map(r => r.map(c => plain(c || '')).join(' | ')).join('\n')
-  : b.type === 'chart' ? (b.data || []).map(d => `${d.label} ${d.value}`).join(', ') : b.alt || '');
-const slideText = s => s.blocks.filter(b => !isEmptyPlaceholder(b) && !b.decorative).map(objText).filter(Boolean).join('\n');
+  : b.type === 'chart' ? (b.data || []).map(d => `${d.label} ${d.value}`).join(', ') : b.type === 'math' ? String(b.latex || '') : b.type === 'code' ? String(b.code || '') : b.alt || '');
+// (A slide made again keeps its pictures, equations, code, charts…: only the rest is replaced.)
+const slideText = (s, remade = false) => s.blocks.filter(b => !isEmptyPlaceholder(b) && !b.decorative && !(remade && isNative(b))).map(objText).filter(Boolean).join('\n');
 const opText = o => (o.html != null ? textOf(o.html) : o.text != null ? textOf(toHTML(o.text)) : '');
 
 // Longest common subsequence of two lists → matching index pairs [[i, j]…].
@@ -79,7 +81,9 @@ export function lossOf(o, deck = state.deck) {
     case 'set_props': return { kind: 'replace', what: 'alt', before: String(b.alt || ''), after: String(o.props.alt || '') };
     case 'set_table': return { kind: 'replace', what: 'table', before: objText(b), after: o.rows.map(r => r.map(c => plain(c || '')).join(' | ')).join('\n') };
     case 'set_chart_data': return { kind: 'replace', what: 'chart', before: objText(b), after: o.data.map(d => `${d.label} ${d.value}`).join(', ') };
-    case 'replace_slide': return { kind: 'replace', what: 'slide', before: slideText(s), after: [o.spec.title, ...(o.spec.bullets || o.spec.points || [])].filter(x => typeof x === 'string').join('\n') };
+    case 'set_code': return { kind: 'replace', what: 'code', before: String(b.code || ''), after: o.code };
+    case 'set_math': return { kind: 'replace', what: 'math', before: String(b.latex || ''), after: o.latex };
+    case 'replace_slide': return { kind: 'replace', what: 'slide', before: slideText(s, true), after: [o.spec.title, ...(o.spec.bullets || o.spec.points || [])].filter(x => typeof x === 'string').join('\n') };
     case 'delete_slide': return { kind: 'remove', what: 'slide', before: slideText(s), after: '' };
   }
   return null;
@@ -148,4 +152,11 @@ export function effectiveOp(o, { keep = false, edit = null } = {}, deck = state.
 // the author made starts unticked; replacing it starts as «conservar + añadir».
 export function protectDefaults(ops, deck = state.deck) {
   return ops.map(o => { const l = lossOf(o, deck); return !l ? { on: true, keep: false } : o.op === 'delete_object' || o.op === 'delete_slide' ? { on: false, keep: false } : { on: true, keep: true }; });
+}
+// Whether a change removes a picture, equation, code block, chart, table, diagram or 3D model:
+// such a change always starts unticked (the user ticks it if that is what they asked for).
+export function removesNative(o, deck = state.deck) {
+  if (o?.op !== 'delete_object') return false;
+  const { b } = find(o, deck);
+  return isNative(b);
 }

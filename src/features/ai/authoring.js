@@ -11,8 +11,9 @@ import { uid } from '../../core/model.js';
 import { chat, lang, parseJSON, esc, plain, generateImage } from './openrouter.js';
 import { currentPalette } from '../design/palettes.js';
 import { PDFJS } from '../../core/vendor.js';
-import { styledSlide, hasLayouts, pictureBox, compose, contrast } from './fromspec.js';
+import { styledSlide, hasLayouts, pictureBox, compose, contrast, codeCard, fitBody } from './fromspec.js';
 import { KINDS, prepareSpec, splitSpec } from './specs.js';
+import { codeFontSize, codeHeight, mathFontSize } from './codeobj.js';
 import { richHTML } from './richtext.js';
 import { ICON_NAMES } from '../../render/svg.js';
 
@@ -34,6 +35,8 @@ export const SPEC_DOC = `Slide kinds and their fields — choose the kind that f
 - "chart": title, chart {type: "bar"|"line"|"pie"|"doughnut"|"area", labels [..], values [numbers], series_name}, bullets (0-2)
 - "table": title, header [..], rows [[..]] (max 6 rows, max 5 columns)
 - "image": title, bullets (2-4), image_prompt (a detailed description for an image generator)
+- "code": title, code {language: "dax"|"powerquery"|"sql"|"python"|"javascript"|"excel"|"r"|"json"|"plaintext", code (VERBATIM, with its line breaks and indentation) — or from_image: the id of a picture whose code was read}, caption (optional), bullets (0-4, what it does: shown in a column at its side). A real code block with highlighting — for code, queries, DAX measures, M steps, Excel formulas; never code in "bullets"
+- "math": title, latex (the formula in LaTeX, no $ signs), caption (optional), bullets (0-4, what each term means). A real equation — for mathematical formulas; never a formula in "bullets"
 - "closing": title, subtitle
 One idea per slide: when there is more, make two slides. Text is plain (no markdown, no HTML); "Label: text" items are shown with the label in bold.
 Any slide may have "icon": one icon name that fits it (${ICON_NAMES.filter((_, i) => i % 3 === 0).slice(0, 45).join(', ')}, …).
@@ -107,6 +110,10 @@ export function layoutSlide(spec, W = 1280, H = 720, pal = currentPalette()) {
       b.push(title());
       b.push(T(80, 170, W * 0.45, H - 230, 26, list(spec.bullets), { ph: 'body' }));
       break;
+    case 'code': case 'math':
+      b.push(title());
+      b.push(...codeCard(spec, { x: 80, y: 170, w: W - 160, h: H - 220 }, { fg: pal.fg, accent: a1, bodySize: 30, body: '' }));
+      break;
     default:
       b.push(title());
       b.push(T(80, 170, W - 160, H - 220, 28, list(spec.bullets), { ph: 'body' }));
@@ -119,16 +126,54 @@ export const slideFromSpec = (spec, bg = currentPalette().bg, deck = state.deck,
   id: uid(), sectionId: null, background: bg, transition: null, hidden: false, autoSlide: 0,
   notes: str(spec.notes), blocks: layoutSlide(spec, deck.size.w, deck.size.h),
 });
-// The same slide made again from a spec (its pictures, 3D models, videos stay).
-// opts: { style, seed }
+// What a slide made again keeps: pictures, 3D models, videos, embeds, the camera, and the
+// objects made with care — equations, code, charts, tables, diagrams (unless `remove`
+// names them: the user asked for that). Never silently lost.
+export const NATIVE = ['image', 'model', 'video', 'embed', 'camera', 'math', 'code', 'chart', 'table', 'diagram'];
+export const isNative = b => !!b && NATIVE.includes(b.type) && !b.decorative;
+// (Code and equations sized again for their new box.)
+const resize = b => { if (b.type === 'code') b.fontSize = codeFontSize(b.code, b.w, b.h); if (b.type === 'math') b.fontSize = mathFontSize(b.latex, b.w, b.h); };
+const hit = (a, b) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+// The kept objects over the new content: the content in a left column, those stacked on the right.
+function makeRoom(s, made, kept, deck) {
+  // (A picture over the whole slide is its background: it stays.)
+  const keep = kept.filter(b => b.w * b.h < deck.size.w * deck.size.h * 0.8);
+  const content = made.filter(b => !b.decorative && !['title', 'subtitle'].includes(b.ph) && b.type !== 'placeholder');
+  if (!content.length || !keep.some(k => content.some(c => hit(k, c) > 400))) return;
+  const x0 = Math.min(...content.map(b => b.x)), y0 = Math.min(...content.map(b => b.y));
+  const x1 = Math.max(...content.map(b => b.x + b.w)), y1 = Math.max(deck.size.h - 56, ...content.map(b => b.y + b.h)), W = x1 - x0, gap = 32;
+  const lw = Math.round(W * 0.55), k = lw / W;
+  for (const b of content) { b.x = Math.round(x0 + (b.x - x0) * k); b.w = Math.max(40, Math.round(b.w * k)); if (b.type === 'text') fitBody(b, s, deck); }
+  // (A code block made smaller takes the caption right under it along.)
+  for (const b of content.filter(x => x.type === 'code')) {
+    const end = b.y + b.h; resize(b); b.h = Math.min(b.h, codeHeight(b.code, b.fontSize));
+    for (const c of content) if (c.type === 'text' && c.y >= end - 2 && c.y <= end + 40 && c.x < b.x + b.w && c.x + c.w > b.x) c.y = b.y + b.h + (c.y - end);
+  }
+  const rx = x0 + lw + gap, rw = x1 - rx, each = (y1 - y0 - gap * (keep.length - 1)) / keep.length;
+  let y = y0;
+  for (const b of keep) {
+    const ar = b.w && b.h ? b.w / b.h : 16 / 9, keepShape = ['image', 'model', 'video', 'embed', 'camera'].includes(b.type);
+    let w = rw, h = keepShape ? w / ar : Math.min(each, b.h);
+    if (h > each) { h = each; if (keepShape) w = h * ar; }
+    Object.assign(b, { x: Math.round(rx + (rw - w) / 2), y: Math.round(y), w: Math.round(w), h: Math.round(h) });
+    resize(b);
+    y += h + gap;
+  }
+}
+// The same slide made again from a spec (what isNative keeps stays, made room for).
+// opts: { style, seed, remove (ids the user asked to remove) }
 export function rebuildSlide(s, spec, deck = state.deck, opts = {}) {
-  const keep = s.blocks.filter(b => ['image', 'model', 'video', 'embed', 'camera'].includes(b.type));
+  const drop = new Set(opts.remove || []), keep = s.blocks.filter(b => isNative(b) && !drop.has(b.id));
+  let made;
   if (hasLayouts(deck)) {
     const ns = styledSlide(spec, deck, { ...opts, at: deck.slides.indexOf(s), self: s });
-    Object.assign(s, { layoutId: ns.layoutId, background: ns.background, blocks: [...ns.blocks, ...keep] });
+    made = ns.blocks;
+    Object.assign(s, { layoutId: ns.layoutId, background: ns.background });
     if (opts.style && opts.style !== 'same' && ns.transition) s.transition = ns.transition;
     if (ns.hideMaster) s.hideMaster = true; else delete s.hideMaster;
-  } else s.blocks = [...layoutSlide(spec, deck.size.w, deck.size.h, currentPalette(deck)), ...keep];
+  } else made = layoutSlide(spec, deck.size.w, deck.size.h, currentPalette(deck));
+  s.blocks = [...made, ...keep];
+  makeRoom(s, made, keep, deck);
   if (spec.notes) s.notes = str(spec.notes);
 }
 

@@ -2,6 +2,7 @@
 // equations (KaTeX), code (highlight.js), tables, embeds, 3D models, slide links.
 
 import { diagramHTML, diagramSig } from '../../render/diagrams.js';
+import { registerCodeLangs } from '../../render/codelangs.js';
 import { wordartSize } from '../../render/textfit.js';
 import { diagramOpts } from '../../features/document/blocks.js';
 import { showTextRuler, hideTextRuler } from './textruler.js';
@@ -327,7 +328,7 @@ export function paintWebCard(card, b) {
 // Syntax colouring in the editor (highlight.js, loaded on first use).
 export function loadHljs() {
   loadStyle(`${HIGHLIGHT}/styles/atom-one-dark.min.css`);
-  return loadScript(`${HIGHLIGHT}/highlight.min.js`, 'hljs');
+  return loadScript(`${HIGHLIGHT}/highlight.min.js`, 'hljs').then(registerCodeLangs);
 }
 export function paintCode(c, b) {
   const src = b.code || '';

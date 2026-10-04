@@ -18,6 +18,7 @@ import { normalizeAnim } from '../animation/transitions.js';
 import { ICON_NAMES } from '../../render/svg.js';
 import { richHTML, inline } from './richtext.js';
 import { prepareSpec, RICH } from './specs.js';
+import { codeBlockAt, mathBlockAt } from './codeobj.js';
 
 export const STYLES = ['same', 'visual', 'minimal', 'animated', 'surprise'];
 export const hasLayouts = deck => Array.isArray(deck?.layouts) && deck.layouts.length > 0;
@@ -52,7 +53,7 @@ const areaOf = rects => rects.reduce((s, r) => s + r.w * r.h, 0) || 1;
 
 // ---- Which layout, which slide to follow --------------------------------------------
 const WANT = { title: 'title', closing: 'title', section: 'section', quote: 'section', bullets: 'titleContent', two_columns: 'twoContent', image: 'twoContent',
-  chart: 'titleOnly', table: 'titleOnly', ...Object.fromEntries(RICH.map(k => [k, 'titleOnly'])) };
+  chart: 'titleOnly', table: 'titleOnly', code: 'titleOnly', math: 'titleOnly', ...Object.fromEntries(RICH.map(k => [k, 'titleOnly'])) };
 const FALLBACK = { title: ['section', 'titleOnly', 'titleContent'], section: ['title', 'titleOnly', 'titleContent'], titleContent: ['twoContent', 'titleOnly'],
   twoContent: ['titleContent', 'titleOnly'], titleOnly: ['titleContent', 'twoContent'] };
 const sig = l => { const k = l.blocks.filter(b => b.ph).map(b => styleKind(b) || b.ph); const n = x => k.filter(y => y === x).length;
@@ -304,6 +305,7 @@ export function styledSlide(spec, deck, { at = deck.slides.length, self = null, 
         stroke: hex2(look.fg) + '40', fontSize: fs, x: area.x, y: R(area.y + (minimal ? (area.h - h) / 2 : 0)), w: area.w, h: R(h), rotation: 0, animation: null });
       break;
     }
+    case 'code': case 'math': extra.push(...codeCard(spec, area, look)); break;
     default: extra.push(...compose(kind, spec, area, look, { minimal, style }));
   }
   // Empty placeholders go (as in the templates).
@@ -324,6 +326,29 @@ export function styledSlide(spec, deck, { at = deck.slides.length, self = null, 
   slide.blocks = [...decor, ...phs, ...extra];
   applyStyle(slide, spec, deck, { kind, style, seed: seed || slide.id, look, decor: new Set(decor.map(d => d.id)) });
   return slide;
+}
+
+// Code or a formula under the title: a native code block (highlighted) or equation, with its
+// explanation in a column at its side when there is one, and a caption under it.
+// area: the free box under the title; look: { fg, accent, bodySize, body } (lookOf, or the palette's).
+export function codeCard(spec, area, look) {
+  const out = [], pts = (spec.bullets || []).filter(Boolean), side = pts.length > 0, gap = 36;
+  const cw = side ? Math.round(area.w * (spec.kind === 'math' ? 0.5 : 0.6)) : area.w, capH = spec.caption ? 50 : 0;
+  const box = { x: area.x, y: area.y, w: cw, h: area.h - capH };
+  let main;
+  if (spec.kind === 'math') {
+    main = mathBlockAt(spec.latex, { ...box, h: Math.min(box.h, side ? 220 : 200), y: area.y + (side ? 0 : Math.max(0, (box.h - 200) / 3)) }, { color: look.fg, ...(side && { textAlign: 'left' }) });
+  } else {
+    const c = spec.code || {};
+    main = codeBlockAt(c.code || '', c.language, box);
+  }
+  out.push(main);
+  if (spec.caption) out.push(X(area.x, main.y + main.h + 10, cw, 40, `<i>${esc(str(spec.caption))}</i>`, { fontSize: Math.max(16, Math.round((look.bodySize || 30) * 0.6)), color: look.fg }));
+  if (side) {
+    const fs = fitSize(list(pts, look.accent), Math.round((look.bodySize || 30) * 0.8), area.w - cw - gap, area.h, 1.25, 16);
+    out.push(X(area.x + cw + gap, area.y, area.w - cw - gap, area.h, list(pts, look.accent), { fontSize: fs, color: look.fg, ...(look.body && { fontFamily: look.body }) }));
+  }
+  return out;
 }
 
 // ---- Compositions: what goes under the title for the richer kinds --------------------

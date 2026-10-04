@@ -8,13 +8,15 @@
 //
 // Protocol: one JSON object per answer, through the account or an own key alike
 // (the account's server only passes plain chat messages, so no native tool calls):
-//   {"thoughts","tool":"get_slide"|"check"|"search_images","args":{…}}  or
+//   {"thoughts","tool":"get_slide"|"check"|"search_images"|"read_code","args":{…}}  or
 //   {"message","ops":[…],"done":true}   (also {"tool":"propose","args":{message, ops}}).
 
 import { state, commit, snapshot } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 import { chat, lang, parseJSON, esc, plain } from './openrouter.js';
-import { slideFromSpec, rebuildSlide, SPEC_DOC } from './authoring.js';
+import { slideFromSpec, rebuildSlide, SPEC_DOC, isNative } from './authoring.js';
+import { AI_LANGS, codeLang, cleanCode, cleanLatex, formulaOf, codeBlockAt, mathBlockAt, codeFontSize, mathFontSize, repeats, wantsCode } from './codeobj.js';
+import { transcribeImage, codeOf } from './vision.js';
 import { STYLES, fitBody } from './fromspec.js';
 import { prepareSpec, splitSpec, specFromText } from './specs.js';
 import { richHTML } from './richtext.js';
@@ -31,9 +33,9 @@ import { wordartSize, paragraphs } from '../../render/textfit.js';
 export const PERMS = ['delete', 'design', 'objects', 'animation'];
 export const DEFAULT_PERMS = { delete: false, design: true, objects: true, animation: true };
 const NEEDS = { delete_slide: 'delete', set_background: 'design', apply_palette: 'design', set_fonts: 'design', set_layout: 'design', set_props: 'design',
-  add_object: 'objects', delete_object: 'objects', replace_slide: 'objects', set_animation: 'animation', set_transition: 'animation' };
+  add_object: 'objects', delete_object: 'objects', replace_slide: 'objects', text_to_math: 'objects', set_animation: 'animation', set_transition: 'animation' };
 const DECK_WIDE = ['apply_palette', 'set_fonts'];
-const BLOCK_OPS = ['set_text', 'set_props', 'delete_object', 'set_chart_data', 'set_table', 'set_animation'];
+const BLOCK_OPS = ['set_text', 'set_props', 'delete_object', 'set_chart_data', 'set_table', 'set_animation', 'set_code', 'set_math', 'text_to_math'];
 
 // scope: { kind: 'all' | 'current' | 'selection' | 'range' | 'slides', from, to } (slide numbers from 1;
 // 'slides': the ones selected in the slides panel, ui.slideSel).
@@ -76,7 +78,9 @@ function objectInfo(b, full = false) {
     }
     case 'shape': o.shape = b.shape; if (b.fill) o.fill = b.fill; if (b.stroke && b.strokeWidth) o.stroke = b.stroke;
       if (full && b.strokeWidth) o.strokeWidth = b.strokeWidth; if (b.html) o.text = textOf(b.html).slice(0, 200); if (b.decorative) o.decorative = true; break;
-    case 'image': o.alt = String(b.alt || '').slice(0, 125); if (full) { o.fit = b.fit || 'contain'; if (b.caption) o.caption = String(b.caption).slice(0, 120); } break;
+    case 'image': { o.alt = String(b.alt || '').slice(0, 125); if (full) { o.fit = b.fit || 'contain'; if (b.caption) o.caption = String(b.caption).slice(0, 120); }
+      // (Code already read from it: the model can use it, from_image, without paying again.)
+      const rc = codeOf(b); if (rc?.code) o.codeRead = { language: codeLang(rc.language) || 'plaintext', code: rc.code.slice(0, full ? 1500 : 200) }; break; }
     case 'chart': o.chartType = b.chartType || 'bar'; o.data = (b.data || []).slice(0, full ? 60 : 12).map(d => [String(d.label ?? ''), d.value]);
       if (b.seriesName) o.seriesName = b.seriesName;
       if (b.series?.length) o.series = b.series.slice(0, 6).map(x => ({ name: x.name, values: (x.values || []).slice(0, full ? 60 : 12) }));
@@ -87,8 +91,8 @@ function objectInfo(b, full = false) {
     case 'icon': o.icon = b.icon; if (b.color) o.color = b.color; break;
     case 'model': o.alt = String(b.alt || '').slice(0, 125); o.autoRotate = b.autoRotate !== false;
       for (const k of ['view', 'spin', 'clip', 'motion']) if (b[k]) o[k] = b[k]; break;
-    case 'code': o.code = String(b.code || '').slice(0, full ? 800 : 120); break;
-    case 'math': o.latex = String(b.latex || '').slice(0, 200); break;
+    case 'code': o.language = b.lang || 'plaintext'; o.code = String(b.code || '').slice(0, full ? 800 : 120); if (full && b.fontSize) o.fontSize = b.fontSize; break;
+    case 'math': o.latex = String(b.latex || '').slice(0, full ? 1000 : 200); if (full && b.fontSize) o.fontSize = b.fontSize; break;
     case 'diagram': o.layout = b.layout; if (full) o.items = JSON.stringify(b.items || b.nodes || '').slice(0, 600); break;
     case 'connector': return full ? { id: b.id, type: 'connector', from: b.from, to: b.to } : null;
     default: if (b.alt) o.alt = String(b.alt).slice(0, 125);
@@ -122,7 +126,7 @@ export function slideDetail(n, deck = state.deck) {
 const CHART_TYPES = ['bar', 'hbar', 'line', 'area', 'pie', 'doughnut', 'stacked', 'stacked100', 'stackedArea', 'radar', 'scatter', 'funnel', 'waterfall', 'treemap'];
 export const TRANSITIONS = ['none', 'fade', 'slide', 'convex', 'concave', 'zoom', 'push', 'wipe', 'split', 'circle', 'diamond', 'flip', 'rise', 'cube', 'cover', 'fall', 'blur', 'swirl', 'shrink', 'drop', 'flash', 'page', 'gallery'];
 export const EFFECTS = Object.keys(EFFECT_KF).filter(e => !['path', 'current-visible'].includes(e));
-const OBJECT_TYPES = ['text', 'shape', 'chart', 'table', 'icon', 'image'];
+const OBJECT_TYPES = ['text', 'shape', 'chart', 'table', 'icon', 'image', 'code', 'math'];
 
 export const OPS_DOC = () => `Operations ("slide" numbers are 1-based and refer to the deck BEFORE your changes; ids are the objects' ids; coordinates in px inside the slide, x+w and y+h within its size):
 {"op":"set_text","slide":N,"id":"…","text":"…"}   (plain text, no markdown or HTML; "- " at line starts for bullets, two more spaces before "- " for a sub-point; never type "1." or "•" yourself — a list of steps is "1. " lines; a subheading is a line ending in ":" before its bullets; at most ~6 short lines in a box: for more, or for steps, numbers, a comparison, use replace_slide/add_slide with a fitting kind)
@@ -130,9 +134,14 @@ export const OPS_DOC = () => `Operations ("slide" numbers are 1-based and refer 
    text: fontSize (8..200), color "#rrggbb", fontFamily, textAlign left|center|right|justify, fontWeight "400"|"700", fontStyle normal|italic, bg "#rrggbb[aa]"|null, vAlign top|middle|bottom, lineHeight (0.8..3), wordart ${WORDART_KEYS.slice(0, 6).join('|')}…|null;
    shape: fill, stroke ("#rrggbb"|"none"), strokeWidth (0..40), shape (e.g. rect|rounded|ellipse|arrow|chevron|star); icon: color, icon; image: alt, fit contain|cover;
    chart: chartType ${CHART_TYPES.join('|')}, color, seriesName; table: stroke, headBg, headFg, band; model (3D): autoRotate true|false, spin (1..360 degrees per second), alt
-{"op":"add_object","slide":N,"object":{"type":"text"|"shape"|"chart"|"table"|"icon"|"image","x":…,"y":…,"w":…,"h":…, …}}
+{"op":"add_object","slide":N,"object":{"type":"text"|"shape"|"chart"|"table"|"icon"|"image"|"code"|"math","x":…,"y":…,"w":…,"h":…, …}}
    text: text, and text props above; shape: shape, fill, stroke, strokeWidth; chart: chartType, data [{"label":"…","value":0}], seriesName, series [{"name":"…","values":[…]}];
-   table: rows [["…"]], header true|false; icon: icon (one of: ${ICON_NAMES.slice(0, 40).join(', ')}, …), color; image: src (ONLY a url from search_images), alt
+   table: rows [["…"]], header true|false; icon: icon (one of: ${ICON_NAMES.slice(0, 40).join(', ')}, …), color; image: src (ONLY a url from search_images), alt;
+   code: language (${AI_LANGS.join('|')}), code (VERBATIM, "\\n" between lines, at most 60 lines) or from_image (the id of a picture whose code was read), caption (optional, a line under it), fontSize;
+   math: latex (LaTeX, no $ signs), fontSize, color
+{"op":"set_code","slide":N,"id":"…","code":"…","language":"…"}   (a code block's code and/or language)
+{"op":"set_math","slide":N,"id":"…","latex":"…"}   (an equation's LaTeX)
+{"op":"text_to_math","slide":N,"id":"…","latex":"…"}   (a text box that only holds a formula, e.g. "$$…$$", made a real equation in its place; latex optional)
 {"op":"delete_object","slide":N,"id":"…"}
 {"op":"set_chart_data","slide":N,"id":"…","data":[{"label":"…","value":0}],"series":[{"name":"…","values":[…]}],"seriesName":"…"}
 {"op":"set_table","slide":N,"id":"…","rows":[["…","…"]],"header":true}
@@ -140,7 +149,7 @@ export const OPS_DOC = () => `Operations ("slide" numbers are 1-based and refer 
 {"op":"set_transition","slide":N|"all","transition":"${TRANSITIONS.join('"|"')}"|null}
 {"op":"set_layout","slide":N,"layout":"<one of the slide's layouts given by get_slide>"}   (rearranges the slide's own objects)
 {"op":"add_slide","after":N,"spec":{"kind":…}}     (spec as described below; after 0 = at the start)
-{"op":"replace_slide","slide":N,"spec":{"kind":…}}
+{"op":"replace_slide","slide":N,"spec":{"kind":…},"remove":["id",…]}   (remakes the slide's texts; its pictures, equations, code, charts, tables, diagrams and 3D models STAY and are made room for — "remove" only the ones the user asked to remove)
 {"op":"delete_slide","slide":N}
 {"op":"move_slide","slide":N,"to":M}
 {"op":"set_notes","slide":N,"notes":"…"}
@@ -170,6 +179,8 @@ const PROPS = {
   chart: { chartType: oneOf(CHART_TYPES), color: hex, seriesName: text(80) },
   table: { stroke: hex, headBg: hex, headFg: hex, band: hex },
   model: { autoRotate: bool, spin: num(1, 360), alt: text(250) },
+  code: { fontSize: num(10, 60), lang: v => codeLang(v) ?? BAD },
+  math: { fontSize: num(14, 140), color: hex, textAlign: oneOf(['left', 'center', 'right']) },
 };
 // The model's text → HTML: "- " lines a list, "1." lines a numbered one, nesting by
 // indentation, "Heading:" lines over their items, "Label:" in bold (features/ai/richtext.js).
@@ -207,7 +218,49 @@ export function validateOps(raw, { scope = { kind: 'all' }, perms = DEFAULT_PERM
     try { ops.push(...[].concat(one(o)).map(x => ({ ...x, ok: true }))); }
     catch (e) { if (!(e instanceof Rejected)) throw e; dropped.push({ op: o, code: e.code, detail: e.detail }); }
   }
+  guardNative();
   return { ops, dropped };
+
+  // An equation or a code block is never replaced by a text that repeats it: such a text (set_text,
+  // a new text box, a remade slide's point) is left out — flagged 'native' — and so is the
+  // deletion of the equation or code it would stand for.
+  function guardNative() {
+    const natives = sid => (deck.slides.find(x => x.id === sid)?.blocks || []).filter(b => b.type === 'math' || b.type === 'code');
+    const texts = o => (o.op === 'set_text' ? [o.text] : o.op === 'add_object' && o.object.type === 'text' ? [textOf(o.object.html)] : []);
+    const flat = v => (Array.isArray(v) ? v.flatMap(flat) : typeof v === 'string' ? [v] : []);
+    const saved = new Set(), out = [];
+    for (const o of ops) {
+      const nb = natives(o.sid); if (!nb.length) { out.push(o); continue; }
+      const hit = texts(o).flatMap(t => nb.filter(b => repeats(t, b)));
+      if (hit.length) { hit.forEach(b => saved.add(b.id)); dropped.push({ op: o, code: 'native', detail: hit.map(b => b.type).join(', ') }); continue; }
+      if (o.op === 'replace_slide' && Array.isArray(o.spec.bullets)) {
+        const keepLine = l => !nb.some(b => repeats(l, b) && saved.add(b.id));
+        const bullets = o.spec.bullets.map(x => (Array.isArray(x) ? x.filter(keepLine) : x)).filter(x => (Array.isArray(x) ? x.length : keepLine(x)));
+        if (flat(bullets).length !== flat(o.spec.bullets).length) { out.push({ ...o, spec: { ...o.spec, bullets }, guarded: true }); continue; }
+      }
+      out.push(o);
+    }
+    ops.length = 0;
+    for (const o of out) {
+      if (o.op === 'delete_object' && saved.has(o.id)) { dropped.push({ op: o, code: 'native', detail: 'delete' }); continue; }
+      ops.push(o);
+    }
+  }
+  // Code read from a picture (its transcription, kept on it): { language, code }.
+  function readCode(id) {
+    const b = deck.slides.flatMap(x => x.blocks).find(x => x.id === id && x.type === 'image'), rc = codeOf(b), code = rc && cleanCode(rc.code);
+    if (!code) no('value', `from_image ${String(id).slice(0, 40)}`);
+    return { language: codeLang(rc.language) || 'plaintext', code };
+  }
+  // A spec with its code taken from a picture when it says so.
+  function specOf(raw) {
+    const sp = prepareSpec(raw);
+    if (sp.kind === 'code' && sp.code?.from_image) {
+      const r = sp.code.code ? null : readCode(sp.code.from_image);
+      sp.code = { language: sp.code.language !== 'plaintext' ? sp.code.language : r?.language || 'plaintext', code: sp.code.code || r.code };
+    }
+    return sp;
+  }
 
   // A body placeholder rewritten with a long, structured text (numbered points,
   // labelled points, lists under headings) on a slide with nothing else: the slide
@@ -253,6 +306,9 @@ export function validateOps(raw, { scope = { kind: 'all' }, perms = DEFAULT_PERM
     switch (o.op) {
       case 'set_text': {
         const b = blockOf(s, o.id); if (b.type !== 'text') no('type', b.type); if (typeof o.text !== 'string') no('value', 'text');
+        // (A text that is only a formula: a real equation in its place.)
+        const tex = perms.objects && formulaOf(o.text);
+        if (tex) return { ...base, op: 'text_to_math', id: b.id, latex: tex, newBlockId: uid() };
         const text = o.text.slice(0, 4000), rich = asComposition(s, b, text);
         return rich ? { ...base, op: 'replace_slide', spec: rich, fromText: true, ...look } : { ...base, id: b.id, text };
       }
@@ -267,12 +323,15 @@ export function validateOps(raw, { scope = { kind: 'all' }, perms = DEFAULT_PERM
         const ref = after ? deck.slides[after - 1] : null;
         if (ref) inScope(ref); else if (!sc.all) no('scope', 'after 0');
         // (Too much for one slide: two, one after the other.)
-        return splitSpec(prepareSpec(o.spec)).map(spec => ({ op: 'add_slide', after, afterId: ref?.id || null, spec, newId: uid(), ...look }));
+        return splitSpec(specOf(o.spec)).map(spec => ({ op: 'add_slide', after, afterId: ref?.id || null, spec, newId: uid(), ...look }));
       }
       case 'replace_slide': {
         if (!o.spec || typeof o.spec !== 'object') no('value', 'spec');
-        const [spec, ...more] = splitSpec(prepareSpec(o.spec));
-        return [{ ...base, spec, ...look }, ...more.map(sp => ({ op: 'add_slide', after: base.slide, afterId: s.id, spec: sp, newId: uid(), ...look }))];
+        const [spec, ...more] = splitSpec(specOf(o.spec));
+        // (Its pictures, equations, code, charts, tables… stay: rebuildSlide. Removing one is a change of its own.)
+        const rm = [...new Set(Array.isArray(o.remove) ? o.remove : [])].filter(id => s.blocks.some(b => b.id === id && isNative(b)));
+        return [{ ...base, spec, ...look }, ...rm.map(id => ({ ...base, op: 'delete_object', id })),
+          ...more.map(sp => ({ op: 'add_slide', after: base.slide, afterId: s.id, spec: sp, newId: uid(), ...look }))];
       }
       // ("all": every slide, also the ones this list adds; with a narrower scope, the scope's slides.)
       case 'set_background': if (!HEX6.test(o.color || '')) no('value', 'color');
@@ -290,6 +349,24 @@ export function validateOps(raw, { scope = { kind: 'all' }, perms = DEFAULT_PERM
         return { ...base, id: b.id, props: p };
       }
       case 'delete_object': { const b = blockOf(s, o.id); return { ...base, id: b.id }; }
+      case 'set_code': {
+        const b = blockOf(s, o.id); if (b.type !== 'code') no('type', b.type);
+        const code = o.code == null ? null : cleanCode(o.code), lang = o.language == null && o.lang == null ? null : codeLang(o.language ?? o.lang);
+        if ((o.code != null && !code) || ((o.language != null || o.lang != null) && !lang) || (code == null && !lang)) no('value', 'code');
+        return { ...base, id: b.id, ...(code != null && { code, fontSize: codeFontSize(code, b.w, b.h) }), ...(lang && { lang }) };
+      }
+      case 'set_math': {
+        const b = blockOf(s, o.id); if (b.type !== 'math') no('type', b.type);
+        const latex = cleanLatex(o.latex); if (!latex) no('value', 'latex');
+        return { ...base, id: b.id, latex };
+      }
+      case 'text_to_math': {
+        const b = blockOf(s, o.id); if (b.type !== 'text') no('type', b.type);
+        const own = formulaOf(textOf(b.html)), latex = (o.latex != null && cleanLatex(o.latex)) || own;
+        // (Only a text that is a formula: what else it says would be lost.)
+        if (!latex || (!own && !repeats(textOf(b.html), { type: 'math', latex }))) no('value', 'latex');
+        return { ...base, id: b.id, latex, newBlockId: uid() };
+      }
       case 'set_chart_data': {
         const b = blockOf(s, o.id); if (b.type !== 'chart') no('type', b.type);
         const data = chartData(o.data); if (data === BAD) no('value', 'data');
@@ -313,7 +390,9 @@ export function validateOps(raw, { scope = { kind: 'all' }, perms = DEFAULT_PERM
       case 'add_object': {
         const x = o.object; if (!x || typeof x !== 'object') no('value', 'object');
         if (!OBJECT_TYPES.includes(x.type)) no('type', String(x.type));
-        const { type, id: _id, text: tx, data, series, rows, header, src, x: bx, y: by, w: bw, h: bh, ...rest } = x;
+        const { type: type0, id: _id, text: tx, data, series, rows, header, src, x: bx, y: by, w: bw, h: bh, language, lang, code, latex, caption, from_image: fromImage, ...rest } = x;
+        // (A text that is only a formula: an equation.)
+        const tex = type0 === 'text' && formulaOf(tx), type = tex ? 'math' : type0;
         const g = props(type, { x: bx, y: by, w: bw, h: bh }, PROPS.any);
         if (['x', 'y', 'w', 'h'].some(k => g[k] == null)) no('value', 'x, y, w, h');
         box(g, g);
@@ -335,6 +414,18 @@ export function validateOps(raw, { scope = { kind: 'all' }, perms = DEFAULT_PERM
           if (!p.alt) no('value', 'alt');
           b = { ...b, src, fit: 'contain', ...p };
         }
+        if (type === 'math') {
+          const l = tex || cleanLatex(latex); if (!l) no('value', 'latex');
+          b = { ...mathBlockAt(l, g, { color: deckFg(deck) }), ...p };
+        }
+        if (type === 'code') {
+          const read = typeof fromImage === 'string' ? readCode(fromImage) : null, c = read ? read.code : cleanCode(code);
+          if (!c) no('value', 'code');
+          const l = language ?? lang ?? read?.language ?? 'plaintext', cl = codeLang(read && codeLang(l) === 'plaintext' ? read.language : l); if (!cl) no('value', 'language');
+          b = { ...codeBlockAt(c, cl, g), ...p };
+          const cap = typeof caption === 'string' && caption.trim() ? caption.trim().slice(0, 200) : '';
+          if (cap && b.y + b.h + 48 <= H) return [{ ...base, object: b }, { ...base, object: { id: uid(), type: 'text', x: b.x, y: b.y + b.h + 8, w: b.w, h: 40, fontSize: 18, rotation: 0, animation: null, html: `<p><i>${esc(cap)}</i></p>` } }];
+        }
         return { ...base, object: b };
       }
       default: no('op', String(o.op));
@@ -355,6 +446,8 @@ export function touchesContent(o, deck = state.deck) {
     case 'set_props': return !!b && 'alt' in (o.props || {}) && !!String(b.alt || '').trim() && o.props.alt !== b.alt;
     case 'set_table': return !!b && (b.rows || []).some(r => r.some(c => plain(c || '')));
     case 'set_chart_data': return !!b && (b.data || []).length > 0;
+    case 'set_code': return !!b && o.code != null && !!String(b.code || '').trim() && o.code !== b.code;
+    case 'set_math': return !!b && !!String(b.latex || '').trim() && o.latex !== b.latex;
     case 'replace_slide': case 'delete_slide': return !!s && s.blocks.some(x => !isEmptyPlaceholder(x) && !x.decorative);
   }
   return false;
@@ -403,6 +496,12 @@ export function applyTo(deck, ops) {
       case 'set_props': for (const [k, v] of Object.entries(o.props)) { if (v === null) delete b[k]; else b[k] = v; } break;
       case 'delete_object': s.blocks = s.blocks.filter(x => x !== b && !(x.type === 'connector' && (x.from === b.id || x.to === b.id))); break;
       case 'add_object': s.blocks.push(structuredClone(o.object)); break;
+      case 'set_code': if (o.code != null) { b.code = o.code; b.fontSize = o.fontSize; } if (o.lang) b.lang = o.lang; break;
+      case 'set_math': b.latex = o.latex; break;
+      case 'text_to_math': {
+        const m = mathBlockAt(o.latex, b, { id: o.newBlockId, color: b.color || deckFg(deck), ...(b.animation && { animation: b.animation }) });
+        s.blocks.splice(s.blocks.indexOf(b), 1, m); break;
+      }
       case 'set_chart_data': b.data = o.data.map(d => ({ ...d })); if (o.series) b.series = o.series.map(x => ({ ...x, values: [...x.values] }));
         if (o.chartType) b.chartType = o.chartType; if (o.seriesName) b.seriesName = o.seriesName; break;
       case 'set_table': b.rows = o.rows.map(r => [...r]); if (o.header != null) b.header = o.header; break;
@@ -559,13 +658,17 @@ Answer with ONE JSON object each time, either a tool call:
 {"thoughts":"…","tool":"get_slide","args":{"slide":N}}   → every object of slide N with all its properties, and the layouts set_layout accepts there
 {"thoughts":"…","tool":"check","args":{"ops":[…]}}   → applies the operations to a copy and returns the problems they leave (text that doesn't fit its box, objects off the slide, overlapping texts, text over a chart or table, low contrast) and the rejected operations, with why${images ? `
 {"thoughts":"…","tool":"search_images","args":{"query":"few English words"}}   → openly licensed pictures (url, title, size) you can add with add_object type "image"` : ''}
+{"thoughts":"…","tool":"read_code","args":{"slide":N,"id":"<a picture's id>"}}   → the code or formula visible in that picture (a screenshot), transcribed verbatim with its language; then use it with "from_image":"<id>"
 or the final answer, which ends your turn:
 {"message":"…","ops":[…],"done":true}
 You have at most ${maxSteps} answers in all. When you move, resize or add objects, or change text sizes, use "check" first and fix what it reports. A question gets an answer in "message" and no ops. Never invent facts or figures. Keep the deck's style (its colours and fonts) unless asked.
 ${STYLE_TEXT[style] || STYLE_TEXT.same}
+${CODE_TEXT}
 ${OPS_DOC()}
 ${SPEC_DOC}`;
 }
+// Code and formulas: native objects, never text boxes; what is there is never lost.
+const CODE_TEXT = `Code and formulas are objects of their own: a code block ("code": highlighted, with its language — ${AI_LANGS.join(', ')}) and an equation ("math": LaTeX). When the user asks for code, a query, a DAX measure, an M step, an Excel formula or a script, or the content is code, use a code block (add_object type "code", or a slide of kind "code") — NEVER code in a text box or in bullets. For a mathematical formula use an equation (type "math", kind "math"). Code is copied VERBATIM: never reformat, translate, fix or invent it. Code in a picture (a screenshot): use the code already read from it (its "codeRead"), or read_code, and then "from_image" with the picture's id; keep the picture unless the user asks to remove it. Equations and code blocks already on a slide stay as they are: to change them use set_math / set_code; never replace them with text that repeats them (that is rejected). If the user asks for "the formula" and the slide has an equation, keep that equation. A text box holding only a formula ("$$…$$") can become a real equation with text_to_math. replace_slide keeps the slide's pictures, equations, code, charts, tables and 3D models and makes room for them; list in "remove" only the ones the user asked to remove.`;
 // The model's answer: a tool call, or the proposal. (Smaller models wander from the format: the
 // usual variants are read too — operations/changes/actions for ops, reply/answer for message, a
 // proposal nested under final/result/propose, or the tool's arguments next to it.)
@@ -589,11 +692,18 @@ export async function runAgent(request, { history = [], scope = { kind: 'all' },
   const sc = scopeOf(scope, deck, ui), images = new Set(), canSearch = perms.objects && consented('openverse');
   if (!STYLES.includes(style)) style = 'same';
   const cost = { usd: 0, credits: 0, calls: 0 }, ctx = { scope: sc, perms, images, style, deck, ui };
+  const stopped = () => { if (signal?.aborted) throw new Error('STOPPED'); };
+  let steps = 0;
+  const read = (b, slide) => readCodeIn(b, { hint: request, deck, signal, onUsage: u => { cost.usd += u.usd || 0; cost.credits += u.credits || 0; },
+    onRead: () => onStep({ kind: 'read', slide, step: steps }), onPaid: () => { cost.calls++; onCost({ ...cost }); } });
+  // A request about code on a slide with a screenshot: its code read first (once: kept on the picture).
+  const cur = deck.slides[Math.min(ui.slideIndex || 0, deck.slides.length - 1)];
+  if (wantsCode(request) && cur && sc.ids.has(cur.id) && perms.objects)
+    for (const b of cur.blocks.filter(x => x.type === 'image' && x.src && !x.decorative).slice(0, 2)) { await read(b, deck.slides.indexOf(cur) + 1); stopped(); }
   const msgs = [{ role: 'system', content: systemPrompt({ sc, perms, deck, maxSteps, images: canSearch, style }) },
     ...history.slice(-6).map(({ role, content }) => ({ role, content: String(content).slice(0, 12000) })),
     { role: 'user', content: `Deck:\n${JSON.stringify(deckOutline(deck, sc))}\n\nCurrent slide: ${(ui.slideIndex || 0) + 1}\n\nRequest: ${request}` }];
-  let final = null, lastChecked = null, steps = 0, asked = false;
-  const stopped = () => { if (signal?.aborted) throw new Error('STOPPED'); };
+  let final = null, lastChecked = null, asked = false;
   while (!final) {
     stopped();
     steps++;
@@ -637,11 +747,28 @@ export async function runAgent(request, { history = [], scope = { kind: 'all' },
         found.forEach(x => images.add(x.url));
         result = found.map(x => ({ url: x.url, title: x.title.slice(0, 80), width: x.width, height: x.height, license: x.license }));
       } catch (e) { result = { error: String(e.message || e).slice(0, 100) }; }
+    } else if (tool === 'read_code') {
+      const s = deck.slides[(+args.slide | 0) - 1], b = s?.blocks.find(x => x.id === args.id && x.type === 'image')
+        || (s && !args.id ? s.blocks.find(x => x.type === 'image') : null);
+      if (!b) result = { error: 'no such picture' };
+      else { const r = await read(b, +args.slide | 0); result = r?.code ? { id: b.id, language: codeLang(r.language) || 'plaintext', code: r.code, confidence: r.confidence, use: `"from_image":"${b.id}"` } : { error: 'no code could be read in it' }; }
     } else result = { error: `unknown tool "${tool}"` };
     msgs.push({ role: 'user', content: `Result of ${tool}:\n${JSON.stringify(result).slice(0, 30000)}` });
   }
   const v = validateOps(final.ops, ctx);
   return { message: String(final.message ?? ''), ops: v.ops, dropped: v.dropped, problems: checkOps(v.ops, deck), cost, steps, raw: Array.isArray(final.ops) ? final.ops : [] };
+}
+
+// The code in a picture, read once and kept on it (b.aiCode, on the deck's block without an
+// undo step: it was paid for, even if the proposal is discarded). → the transcription, or null.
+export async function readCodeIn(b, { hint = '', deck = state.deck, signal = null, onUsage = null, onRead = () => {}, onPaid = () => {} } = {}) {
+  const had = codeOf(b); if (had) return had;
+  onRead();
+  let r; try { r = await transcribeImage(b, { hint, signal, onUsage }); } catch (e) { if (e.message === 'STOPPED' || signal?.aborted) throw new Error('STOPPED'); return null; }
+  onPaid();
+  const { cached, ...keep } = r;
+  if (deck === state.deck) commit(() => { b.aiCode = keep; }, { history: false }); else b.aiCode = keep;
+  return keep;
 }
 
 // The one-step assistant of before, as a proposal (the panel applies what the user picks).

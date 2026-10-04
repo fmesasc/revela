@@ -93,3 +93,25 @@ export async function describeImages(items, { context = '', language = lang(), o
   }
   return out;
 }
+
+// ---- Reading code from a picture ---------------------------------------------------------
+// A screenshot with code or a formula (a DAX measure in Power BI's formula bar, an M query,
+// SQL, Python, an Excel formula…) transcribed verbatim, with its language. Kept on the image
+// block (b.aiCode, with the picture's hash) like its description: read once, then free.
+export const CODE_SHOT = { max: 1280, quality: 0.75, maxBytes: 420 * 1024 };
+export const codeOf = b => (b?.aiCode && b.aiCode.hash === srcHash(b.src) ? b.aiCode : null);
+const LANGS = 'dax | powerquery (Power Query M) | sql | python | javascript | typescript | excel (a worksheet formula) | r | json | plaintext';
+const TRANSCRIBE = `You transcribe code from a picture (often a screenshot of Power BI, Excel, an editor or a notebook). Copy the code or formula you see EXACTLY as written — same names, accents, symbols, line breaks and indentation; do not fix, complete, translate or explain it; leave out line numbers, the editor's buttons and anything that is not the code. If there are several, take the main one. "language": one of ${LANGS}. "confidence": 0..1, how sure you are that the transcription is exact. No code in the picture: "code":"". Answer only JSON: {"language":"…","code":"…","confidence":0.0}`;
+// Transcribe one image block → { hash, language, code, confidence, model, date } (code '' if none);
+// the cached one when there is. hint: a line about what is wanted (the user's request).
+export async function transcribeImage(b, { hint = '', onUsage = null, signal = null, model = VISION_MODEL } = {}) {
+  const had = codeOf(b); if (had) return { ...had, cached: true };
+  const shot = await downscale(b.src, CODE_SHOT);
+  if (signal?.aborted) throw new Error('STOPPED');
+  const content = [{ type: 'text', text: hint ? `Wanted: ${String(hint).slice(0, 300)}` : 'Transcribe the code.' }, { type: 'image_url', image_url: { url: shot.url } }];
+  const res = await chat([{ role: 'system', content: TRANSCRIBE }, { role: 'user', content }], { json: true, maxTokens: 1600, force: model, onUsage, signal, feature: 'vision' });
+  let j = {}; try { j = parseJSON(res) || {}; } catch {}
+  const code = typeof j.code === 'string' ? j.code.replace(/\r\n?/g, '\n').replace(/^\n+|\s+$/g, '').slice(0, 4000) : '';
+  return { hash: srcHash(b.src), language: String(j.language || '').toLowerCase().trim().slice(0, 20) || 'plaintext', code,
+    confidence: Math.max(0, Math.min(1, Number.isFinite(+j.confidence) ? +j.confidence : 0.5)), model, date: new Date().toISOString().slice(0, 10) };
+}

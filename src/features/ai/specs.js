@@ -6,8 +6,9 @@
 // with headings, an agenda…), or two slides when it is too much for one.
 
 import { outline, shapeOf, splitLabel, cleanLine, cleanTitle, itemsToBullets } from './richtext.js';
+import { codeLang, cleanCode, cleanLatex } from './codeobj.js';
 
-export const KINDS = ['title', 'section', 'bullets', 'two_columns', 'comparison', 'quote', 'key_idea', 'stats', 'steps', 'timeline', 'features', 'agenda', 'chart', 'table', 'image', 'closing'];
+export const KINDS = ['title', 'section', 'bullets', 'two_columns', 'comparison', 'quote', 'key_idea', 'stats', 'steps', 'timeline', 'features', 'agenda', 'chart', 'table', 'image', 'code', 'math', 'closing'];
 // Kinds laid out as a composition of their own under the title (not the layout's body placeholder).
 export const RICH = ['comparison', 'key_idea', 'stats', 'steps', 'timeline', 'features', 'agenda'];
 
@@ -23,6 +24,8 @@ const ALIAS = {
   cards: 'features', icons: 'features', icon_list: 'features', grid: 'features', benefits: 'features', feature: 'features', icon_cards: 'features', tarjetas: 'features',
   roadmap: 'timeline', history: 'timeline', milestones: 'timeline', chronology: 'timeline', cronologia: 'timeline',
   toc: 'agenda', contents: 'agenda', table_of_contents: 'agenda', index: 'agenda', indice: 'agenda',
+  snippet: 'code', code_block: 'code', codigo: 'code', source: 'code', query: 'code', dax: 'code', sql: 'code',
+  formula: 'math', equation: 'math', ecuacion: 'math', latex: 'math', maths: 'math',
   graph: 'chart', bar_chart: 'chart', picture: 'image', photo: 'image', image_text: 'image', quotation: 'quote', citation: 'quote', cita: 'quote',
 };
 const kindOf = k => { const s = String(k ?? '').toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[\s-]+/g, '_');
@@ -57,7 +60,9 @@ const column = c => (!c ? null : typeof c === 'string' || Array.isArray(c) ? { h
 // The spec cleaned: a known kind and the fields it needs (else a plainer kind).
 export function normalizeSpec(raw) {
   const sp = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : { kind: 'bullets', bullets: arr(raw) };
-  let kind = kindOf(sp.kind ?? sp.type ?? sp.layout) || (sp.stats ? 'stats' : sp.steps ? 'steps' : sp.quote ? 'quote' : sp.chart ? 'chart' : sp.rows ? 'table' : 'bullets');
+  let kind = kindOf(sp.kind ?? sp.type ?? sp.layout) || (sp.stats ? 'stats' : sp.steps ? 'steps' : sp.quote ? 'quote' : sp.chart ? 'chart' : sp.rows ? 'table' : sp.code ? 'code' : sp.latex ? 'math' : 'bullets');
+  // ("formula" with code and no LaTeX: an Excel or DAX formula, as code.)
+  if (kind === 'math' && !sp.latex && (sp.code || sp.from_image)) kind = 'code';
   const out = { kind, title: cleanLine(str(first(sp, ['title', 'heading', 'headline', 'name']))) };
   const sub = cleanLine(str(first(sp, ['subtitle', 'subheading', 'tagline', 'kicker']))); if (sub) out.subtitle = sub;
   for (const k of ['notes', 'icon', 'image_prompt', 'author']) if (sp[k] != null && typeof sp[k] !== 'object') out[k] = String(sp[k]);
@@ -128,6 +133,23 @@ export function normalizeSpec(raw) {
       break;
     }
     case 'image': if (!out.bullets) out.bullets = []; break;
+    // Code as it is (verbatim, a known language) or taken from a picture's transcription (from_image: its id); a formula in LaTeX.
+    case 'code': {
+      const c = sp.code && typeof sp.code === 'object' ? sp.code : sp;
+      const language = codeLang(first(c, ['language', 'lang'])) || 'plaintext', code = cleanCode(typeof c.code === 'string' ? c.code : typeof sp.code === 'string' ? sp.code : '');
+      const from = str(first(c, ['from_image', 'fromImage', 'image'])) || str(sp.from_image);
+      if (!code && !from) { out.kind = 'bullets'; break; }
+      out.code = { language, code: code || '', ...(from && { from_image: from }) };
+      const cap = cleanLine(str(first(sp, ['caption']) ?? c.caption)); if (cap) out.caption = cap;
+      break;
+    }
+    case 'math': {
+      const latex = cleanLatex(str(first(sp, ['latex', 'formula', 'equation', 'math'])));
+      if (!latex) { out.kind = 'bullets'; break; }
+      out.latex = latex;
+      const cap = cleanLine(str(sp.caption)); if (cap) out.caption = cap;
+      break;
+    }
     case 'title': case 'section': case 'closing': if (!out.subtitle && bullets.length === 1) out.subtitle = cleanLine(String(bullets[0])); break;
   }
   if (!out.title && out.kind !== 'quote' && out.kind !== 'key_idea') out.title = '';

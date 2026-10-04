@@ -9,7 +9,7 @@ import { t } from '../../i18n/index.js';
 
 export const CODE_LANGS = ['plaintext', 'javascript', 'typescript', 'python', 'java', 'kotlin', 'c', 'cpp', 'csharp', 'go', 'rust', 'swift',
   'php', 'ruby', 'r', 'matlab', 'scala', 'dart', 'lua', 'haskell', 'perl', 'bash', 'powershell', 'sql', 'html', 'xml', 'css', 'scss',
-  'json', 'yaml', 'markdown', 'dockerfile', 'latex', 'makefile', 'diff'];
+  'json', 'yaml', 'markdown', 'dockerfile', 'latex', 'makefile', 'diff', 'dax', 'powerquery', 'excel'];
 
 // "1,3-4|5|" ⇄ [[1,3,4],[5],[]]
 export function parseSteps(str) {
