@@ -9,7 +9,7 @@
 // rewrite the proposed texts in place. What a change removes or replaces is shown
 // (features/ai/review.js) and can be kept instead («Conservar lo que había»).
 
-import { state, commit, undo, snapshot } from '../../core/store.js';
+import { state, commit, undo, snapshot, slideSelCount } from '../../core/store.js';
 import * as agent from '../../features/ai/agent.js';
 import * as cmp from '../../features/ai/complete.js';
 import * as rv from '../../features/ai/review.js';
@@ -23,7 +23,7 @@ import { t } from '../../i18n/index.js';
 // Remembered: permissions, scope kind, "apply without asking", the style of new slides, the completion's mode.
 const KEY = 'revela.assistant.v1';
 const prefs = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } })();
-const opts = { auto: !!prefs.auto, scope: ['all', 'current', 'selection', 'range'].includes(prefs.scope) ? prefs.scope : 'all',
+const opts = { auto: !!prefs.auto, scope: ['all', 'current', 'slides', 'selection', 'range'].includes(prefs.scope) ? prefs.scope : 'all',
   perms: { ...agent.DEFAULT_PERMS, ...(prefs.perms || {}) }, style: STYLES.includes(prefs.style) ? prefs.style : 'same', from: 0, to: 0,
   mode: cmp.MODES.includes(prefs.mode) ? prefs.mode : 'empty' };
 const keep = () => { try { localStorage.setItem(KEY, JSON.stringify({ auto: opts.auto, scope: opts.scope, perms: opts.perms, style: opts.style, mode: opts.mode })); } catch {} };
@@ -54,7 +54,7 @@ export function renderAssistant() {
   panel.innerHTML = `<div class="cm-head"><b><i class="ms">auto_awesome</i> ${t('Asistente')}</b><button type="button" class="cm-close" title="${t('Cerrar')}">✕</button></div>
     <div class="as-opts">
       <label class="as-row"><span>${t('Alcance')}</span><select class="as-scope">
-        <option value="all">${t('Toda la presentación')}</option><option value="current">${t('Diapositiva actual')}</option>
+        <option value="all">${t('Toda la presentación')}</option><option value="current">${t('Diapositiva actual')}</option><option value="slides">${t('Diapositivas seleccionadas')}</option>
         <option value="selection">${t('Objetos seleccionados')}</option><option value="range">${t('De la diapositiva…')}</option></select></label>
       <div class="as-range" hidden><input type="number" class="as-from" min="1" aria-label="${t('Desde')}"> – <input type="number" class="as-to" min="1" aria-label="${t('Hasta')}"></div>
       <label class="as-row"><span>${t('Estilo de lo nuevo')}</span><select class="as-style">
@@ -167,6 +167,10 @@ function syncScope(panel, init = false) {
   }
   from.max = to.max = n;
   panel.querySelector('.as-range').hidden = opts.scope !== 'range';
+  // «Diapositivas seleccionadas»: only while several are selected in the slides panel.
+  const many = slideSelCount() > 1, sl = panel.querySelector('.as-scope option[value="slides"]');
+  sl.hidden = sl.disabled = !many;
+  if (!many && opts.scope === 'slides') { opts.scope = 'current'; panel.querySelector('.as-scope').value = 'current'; }
 }
 function showCost(panel) {
   const el = panel?.querySelector('.as-cost'); if (!el) return;

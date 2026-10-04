@@ -20,6 +20,7 @@ export const SHORTCUTS = [
   ['', 'Diapositivas'],
   ['Ctrl/⌘ + M', 'Nueva diapositiva'], ['Re Pág · Av Pág', 'Diapositiva anterior · siguiente'], ['Inicio · Fin', 'Primera · última diapositiva'],
   ['Flechas (sin nada seleccionado)', 'Cambiar de diapositiva'], ['F5', 'Presentar desde el principio'], ['Mayús + F5', 'Presentar desde esta diapositiva'],
+  ['Panel: Ctrl/⌘ + clic · Mayús + clic', 'Seleccionar varias diapositivas'], ['Panel: Mayús + ↑/↓ · Ctrl/⌘ + A', 'Ampliar la selección · todas las diapositivas'],
   ['Clasificador: flechas · Supr · Ctrl/⌘ + D', 'Moverse · borrar · duplicar diapositivas'], ['Clasificador: Intro / doble clic', 'Editar esa diapositiva'],
   ['', 'Al presentar'],
   ['→ / Espacio · ←', 'Siguiente · anterior'], ['Ctrl/⌘ + P', 'Lápiz'], ['Ctrl/⌘ + I', 'Resaltador'], ['Ctrl/⌘ + L', 'Puntero láser'],

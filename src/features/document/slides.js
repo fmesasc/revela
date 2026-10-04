@@ -1,6 +1,6 @@
 // Slide and section operations.
 
-import { state, commit, currentSlide, clampSlide } from '../../core/store.js';
+import { state, commit, currentSlide, clampSlide, selectedSlideIndices, targetSlides, setSlideSel } from '../../core/store.js';
 import { blankSlide, uid } from '../../core/model.js';
 import { ensureLayouts, newSlideBlocks, layoutBackground } from './master.js';
 
@@ -33,20 +33,31 @@ export function cloneSlide(src) {
   return copy;
 }
 
+// The selected slides (or the current one), copied in order right after the
+// last of them; the copies become the selection.
 export function duplicateSlide() {
+  const idx = selectedSlideIndices(); if (!idx.length) return;
   commit(() => {
-    const copy = cloneSlide(currentSlide());
-    state.deck.slides.splice(state.ui.slideIndex + 1, 0, copy);
-    state.ui.slideIndex++;
+    const copies = idx.map(i => cloneSlide(state.deck.slides[i])), at = idx.at(-1) + 1;
+    state.deck.slides.splice(at, 0, ...copies);
     state.ui.selection = null;
+    setSlideSel(copies.map(c => c.id), at + copies.length - 1);
   });
 }
 
-export function deleteSlide(index = state.ui.slideIndex) {
+// One slide (index), or the selected ones: one undo step. The last one left is
+// emptied instead (a deck always has a slide).
+export function deleteSlide(index = null) { deleteSlides(index == null ? selectedSlideIndices() : [index]); }
+export function deleteSlides(indices = selectedSlideIndices()) {
+  const d = state.deck, gone = new Set(indices.map(i => d.slides[i]?.id).filter(Boolean)); if (!gone.size) return;
   commit(() => {
-    if (state.deck.slides.length === 1) state.deck.slides[0].blocks = [];
-    else state.deck.slides.splice(index, 1);
-    state.ui.selection = null;
+    const cur = d.slides[state.ui.slideIndex]?.id, first = Math.min(...indices);
+    if (gone.size >= d.slides.length) { d.slides.splice(1); d.slides[0].blocks = []; }
+    else d.slides.splice(0, d.slides.length, ...d.slides.filter(s => !gone.has(s.id)));
+    // (The slide on the canvas stays if it was not deleted; else the one after.)
+    const keep = gone.has(cur) ? -1 : d.slides.findIndex(s => s.id === cur);
+    state.ui.slideIndex = keep >= 0 ? keep : Math.min(first, d.slides.length - 1);
+    state.ui.selection = null; state.ui.slideSel = [];
     clampSlide();
   });
 }
@@ -60,12 +71,75 @@ export function moveSlide(from, to) {
     state.ui.slideIndex = to;
   });
 }
-
-export function goToSlide(index) {
-  commit(() => { state.ui.slideIndex = index; state.ui.selection = null; }, { history: false });
+// Several slides (ids) dropped on the slide at `to`: they go together, in their
+// order, after it when moving down and before it when moving up.
+export function moveSlides(ids, to) {
+  const d = state.deck, set = new Set(ids), group = d.slides.filter(s => set.has(s.id)), target = d.slides[to];
+  if (!group.length || !target || set.has(target.id)) return;
+  const down = to > d.slides.indexOf(group[0]);
+  commit(() => {
+    const cur = d.slides[state.ui.slideIndex]?.id, rest = d.slides.filter(s => !set.has(s.id));
+    rest.splice(rest.indexOf(target) + (down ? 1 : 0), 0, ...group);
+    d.slides.splice(0, d.slides.length, ...rest);
+    state.ui.slideIndex = Math.max(0, rest.findIndex(s => s.id === cur));
+  });
 }
 
-// Hidden slides stay in the editor but are skipped during the presentation.
+export function goToSlide(index) {
+  commit(() => { state.ui.slideIndex = index; state.ui.selection = null; state.ui.slideSel = []; state.ui.slideAnchor = state.deck.slides[index]?.id || null; }, { history: false });
+}
+
+// ---- Selecting slides in the panel (PowerPoint) ----------------------------------
+// Click: just that one; Ctrl/Cmd+click (or a tap while picking): add or remove it;
+// Shift+click: from the anchor to it. The one clicked is shown on the canvas.
+export function selectSlide(index, { toggle = false, range = false } = {}) {
+  const d = state.deck, s = d.slides[index]; if (!s) return;
+  const u = state.ui, cur = d.slides[u.slideIndex]?.id, now = u.slideSel?.length > 1 ? u.slideSel : [cur];
+  if (!toggle && !range) { goToSlide(index); return; }
+  commit(() => {
+    u.selection = null; u.multi = [];
+    if (range) {
+      const a = Math.max(0, d.slides.findIndex(x => x.id === (u.slideAnchor || cur)));
+      const ids = d.slides.slice(Math.min(a, index), Math.max(a, index) + 1).map(x => x.id);
+      if (!u.slideAnchor) u.slideAnchor = cur;
+      setSlideSel(toggle ? [...new Set([...now, ...ids])] : ids, index);
+      return;
+    }
+    u.slideAnchor = s.id;
+    if (!now.includes(s.id)) { setSlideSel([...now, s.id], index); return; }
+    // Off: the canvas shows the last one still selected.
+    const left = now.filter(id => id !== s.id); if (!left.length) return;
+    const show = s.id === cur ? d.slides.findIndex(x => x.id === left.at(-1)) : u.slideIndex;
+    setSlideSel(left, show);
+  }, { history: false });
+}
+export function selectAllSlides() {
+  commit(() => { state.ui.selection = null; state.ui.multi = []; setSlideSel(state.deck.slides.map(s => s.id)); }, { history: false });
+}
+// Shift+↑/↓: grow or shrink the range from the anchor by one slide.
+export function extendSlideSel(dir) {
+  const i = Math.max(0, Math.min(state.deck.slides.length - 1, state.ui.slideIndex + dir));
+  if (i !== state.ui.slideIndex) selectSlide(i, { range: true });
+}
+export function collapseSlideSel() {
+  if (state.ui.slideSel?.length || state.ui.slidePick) commit(() => { state.ui.slideSel = []; state.ui.slidePick = false; }, { history: false });
+}
+
+// ---- Cut, copy and paste slides --------------------------------------------------
+let slideClip = null;                 // { size, slides } copied in this tab
+export const hasSlideClip = () => !!slideClip?.slides.length;
+export function copySlides(indices = selectedSlideIndices()) {
+  const list = indices.map(i => state.deck.slides[i]).filter(Boolean);
+  if (list.length) slideClip = { size: { ...state.deck.size }, slides: structuredClone(list) };
+  return list.length;
+}
+export function cutSlides() { const idx = selectedSlideIndices(); if (copySlides(idx)) deleteSlides(idx); }
+// After the last selected slide; the pasted ones become the selection.
+export function pasteSlides() {
+  if (!hasSlideClip()) return 0;
+  return importSlides(slideClip, null, selectedSlideIndices().at(-1) ?? state.ui.slideIndex);
+}
+
 // Advanced background: fit of the image (cover / contain / tile), opacity,
 // video or web page behind the slide, and the background's own transition.
 export function setBackgroundOptions(props, all = false) {
@@ -77,25 +151,31 @@ export function setBackgroundOptions(props, all = false) {
         s.background = props.bgFit === 'tile' ? `${u} top left / auto repeat` : `${u} center / ${props.bgFit} no-repeat`;
       }
     };
-    (all ? state.deck.slides : [currentSlide()]).forEach(apply);
+    (all ? state.deck.slides : targetSlides()).forEach(apply);
   });
 }
 // Vertical stack (reveal.js vertical slides): below the previous slide.
-export function toggleVertical(index = state.ui.slideIndex) {
-  if (index <= 0) return;
-  commit(() => { const s = state.deck.slides[index]; if (s) { if (s.vertical) delete s.vertical; else s.vertical = true; } });
+// (Without an index: the selected slides, following the current one.)
+const slidesAt = index => (index == null ? selectedSlideIndices() : [index]).map(i => state.deck.slides[i]).filter(Boolean);
+export function toggleVertical(index = null) {
+  const ss = slidesAt(index).filter(s => state.deck.slides.indexOf(s) > 0); if (!ss.length) return;
+  const on = !state.deck.slides[index ?? state.ui.slideIndex]?.vertical;
+  commit(() => ss.forEach(s => { if (on) s.vertical = true; else delete s.vertical; }));
 }
-export function toggleSlideHidden(index = state.ui.slideIndex) {
-  commit(() => { const s = state.deck.slides[index]; if (s) s.hidden = !s.hidden; });
+// Hidden slides stay in the editor but are skipped during the presentation.
+// Several: all hidden, unless all already are (then all shown).
+export function toggleSlideHidden(index = null) {
+  const ss = slidesAt(index), hide = ss.some(s => !s.hidden);
+  commit(() => ss.forEach(s => { s.hidden = hide; }));
 }
 
 // Reuse slides: insert (copies of) slides from another deck after the current one.
 // Sections of the other deck are not imported; the slides join the current section.
-export function importSlides(deck, indices = null) {
+export function importSlides(deck, indices = null, after = state.ui.slideIndex) {
   const src = (deck && Array.isArray(deck.slides)) ? deck.slides : [];
   const pick = indices ? indices.map(i => src[i]).filter(Boolean) : src;
   if (!pick.length) return 0;
-  const sec = currentSlide()?.sectionId || null;
+  const sec = state.deck.slides[after]?.sectionId || null;
   commit(() => {
     // A deck of another size (4:3 vs 16:9) is scaled to fit this one.
     const from = deck.size || state.deck.size, to = state.deck.size;
@@ -108,23 +188,25 @@ export function importSlides(deck, indices = null) {
       }
       return c;
     });
-    state.deck.slides.splice(state.ui.slideIndex + 1, 0, ...copies);
-    state.ui.slideIndex += 1; state.ui.selection = null; state.ui.multi = [];
+    state.deck.slides.splice(after + 1, 0, ...copies);
+    state.ui.selection = null; state.ui.multi = [];
+    setSlideSel(copies.map(c => c.id), after + 1);
   });
   return pick.length;
 }
 
 // Auto‑Animate (Morph): reveal morphs matching objects between two adjacent
 // slides that both have it on. `toggle` flips the flag on the current slide.
-export function toggleAutoAnimate(index = state.ui.slideIndex) {
-  commit(() => { const s = state.deck.slides[index]; if (s) s.autoAnimate = !s.autoAnimate; });
+export function toggleAutoAnimate(index = null) {
+  const ss = slidesAt(index), on = !state.deck.slides[index ?? state.ui.slideIndex]?.autoAnimate;
+  commit(() => ss.forEach(s => { s.autoAnimate = on; }));
 }
 // Morph by objects (default), words or characters (PowerPoint's Morph options):
 // with words/characters, the same word or letter moves from its place on the
 // previous slide to its place on this one.
-export function setMorphBy(by, index = state.ui.slideIndex) {
-  commit(() => { const s = state.deck.slides[index]; if (!s) return;
-    if (by === 'words' || by === 'chars') { s.morphBy = by; s.autoAnimate = true; } else delete s.morphBy; });
+export function setMorphBy(by, index = null) {
+  const ss = slidesAt(index);
+  commit(() => ss.forEach(s => { if (by === 'words' || by === 'chars') { s.morphBy = by; s.autoAnimate = true; } else delete s.morphBy; }));
 }
 // Duplicate the slide KEEPING block ids so the copy morphs from the original,
 // and turn Auto‑Animate on for both. Then the user tweaks the copy.
@@ -176,4 +258,25 @@ export function removeSection(id) {
 
 export function setSlideSection(slideId, sectionId) {
   commit(() => { const s = state.deck.slides.find(x => x.id === slideId); if (s) s.sectionId = sectionId; });
+}
+// Several slides into a section (null: out of any): they join the end of the
+// section's slides (or gather where the first one is), so it stays in one piece.
+export function moveSlidesToSection(ids, sectionId) {
+  commit(() => regroup(ids, sectionId));
+}
+// A new section made of the selected slides (PowerPoint: Add Section on a selection).
+export function sectionFromSlides(ids, name = 'Sección sin título') {
+  const id = uid();
+  commit(() => { state.deck.sections.push({ id, name }); regroup(ids, id); state.ui.editingSection = id; });
+  return id;
+}
+function regroup(ids, sectionId) {
+  const d = state.deck, set = new Set(ids), group = d.slides.filter(s => set.has(s.id)); if (!group.length) return;
+  const cur = d.slides[state.ui.slideIndex]?.id;
+  group.forEach(s => { s.sectionId = sectionId; });
+  if (!sectionId) return;
+  const rest = d.slides.filter(s => !set.has(s.id)), lastIn = rest.findLastIndex(s => s.sectionId === sectionId);
+  rest.splice(lastIn >= 0 ? lastIn + 1 : d.slides.indexOf(group[0]), 0, ...group);
+  d.slides.splice(0, d.slides.length, ...rest);
+  state.ui.slideIndex = Math.max(0, d.slides.findIndex(s => s.id === cur));
 }

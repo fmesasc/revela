@@ -56,6 +56,13 @@ def touch_checks(send, recv, port):
     t0 = rect(f'#stage .block[data-id="{ev("window.__revela.store.currentSlide().blocks[0].id")}"]')
     for _ in range(2): touch('touchStart', t0['x'], t0['y']); touch('touchEnd'); time.sleep(0.12)
     time.sleep(0.3); check(ev("!!document.querySelector('#stage .block.editing')"), 'doble toque para escribir')
+    # A long press on a thumbnail starts picking slides (checkboxes); a tap adds another.
+    ev("(()=>{document.activeElement?.blur?.();const R=window.__revela;R.slides.addSlide();R.slides.goToSlide(0);R.render();return 1})()"); time.sleep(0.3)
+    a = rect('#navigator .thumb[data-index="0"]'); touch('touchStart', a['x'], a['y']); time.sleep(0.8); touch('touchEnd'); time.sleep(0.3)
+    a = rect('#navigator .thumb[data-index="1"]'); touch('touchStart', a['x'], a['y']); touch('touchEnd'); time.sleep(0.4)
+    check(ev("(()=>{const R=window.__revela,c=document.querySelector('#navigator .thumb[data-index=\"1\"] .thumb-check');return R.state.ui.slidePick&&R.store.slideSelCount()===2&&!!c&&getComputedStyle(c).display!=='none'&&!!document.querySelector('.nav-pick')})()"),
+      'pulsación larga en una miniatura: elegir varias diapositivas con casillas')
+    ev("document.querySelector('.nav-pick .np-done')?.click();document.getElementById('context-menu').hidden=true;1"); time.sleep(0.2)
     # Turned on its side: the slide is fitted and seen whole; the title bar fits upright too.
     ev("document.activeElement?.blur?.();1")
     fits = "(()=>{const w=document.getElementById('canvas-wrap').getBoundingClientRect(),s=document.getElementById('stage').getBoundingClientRect();return s.width>100&&s.left>=w.left-1&&s.right<=w.right+1&&s.top>=w.top-1&&s.bottom<=w.bottom+1})()"
@@ -459,7 +466,7 @@ def main():
         touch_fail = touch_checks(send, recv, port) if out.startswith('REVELATEST PASS') else []
         if touch_fail:
             print('REVELATEST FAIL touch'); print('\n'.join(touch_fail)); return 1
-        if out.startswith('REVELATEST PASS'): out += ' + táctil 13/13'
+        if out.startswith('REVELATEST PASS'): out += ' + táctil 15/15'
         math_fail = math_keyboard_check(send, recv, port) if out.startswith('REVELATEST PASS') else []
         if math_fail:
             print('REVELATEST FAIL ecuación'); print('\n'.join(math_fail)); return 1

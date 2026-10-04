@@ -59,6 +59,7 @@ export function targetsOf({ scope = { kind: 'all' }, mode = 'empty', deck = stat
   let idx = deck.slides.map((_, i) => i);
   if (scope.kind === 'current' || scope.kind === 'selection') idx = [cur];
   if (scope.kind === 'range') { const a = Math.max(1, Math.min(n, +scope.from || 1)), b = Math.max(1, Math.min(n, +(scope.to ?? scope.from) || 1)); idx = idx.filter(i => i + 1 >= Math.min(a, b) && i + 1 <= Math.max(a, b)); }
+  if (scope.kind === 'slides') { const sel = new Set(ui.slideSel || []); idx = idx.filter(i => sel.has(deck.slides[i].id)); if (!idx.length) idx = [cur]; }
   const out = [];
   for (const i of idx) {
     const s = deck.slides[i]; if (s.hidden && scope.kind === 'all') continue;

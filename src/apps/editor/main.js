@@ -113,7 +113,8 @@ function render() {
   renderSelectionPane();
   renderAssistant();
   const s = document.getElementById('status-slide');
-  if (s) s.textContent = `${t('Diapositiva')} ${state.ui.slideIndex + 1} ${t('de')} ${state.deck.slides.length}`;
+  const ns = store.slideSelCount();
+  if (s) s.textContent = `${t('Diapositiva')} ${state.ui.slideIndex + 1} ${t('de')} ${state.deck.slides.length}` + (ns > 1 ? ' · ' + t('{n} diapositivas seleccionadas').replace('{n}', ns) : '');
 }
 
 // Keys typed into a field (a dialog's input, the equation editor…) are the
@@ -155,9 +156,22 @@ function keyboard(e) {
   if (e.key === 'F5') { e.preventDefault(); ACTIONS[e.shiftKey ? 'present-current' : 'present'](); return; }
   if (meta && e.key.toLowerCase() === 'm') { e.preventDefault(); slides.addSlide(); return; }
   if (meta && e.key.toLowerCase() === 's') { e.preventDefault(); ACTIONS.save(); return; }
-  if (meta && e.key.toLowerCase() === 'a') {                     // every object of the slide
+  if (meta && e.key.toLowerCase() === 'a' && !((sorterOn() || state.ui.navFocus) && !state.ui.selection)) {   // every object of the slide (from the panel: below)
     e.preventDefault(); const ids = (store.currentSlide()?.blocks || []).filter(b => !b.locked).map(b => b.id);
     store.commit(() => { store.setMulti(ids); }, { history: false }); return;
+  }
+  // The slides panel (or the sorter) was clicked last and no object is selected: keys act on
+  // the selected slides, as in PowerPoint (Ctrl+A all, Shift+arrows extend, Esc just the current one).
+  if ((sorterOn() || state.ui.navFocus) && !state.ui.selection) {
+    const k = e.key.toLowerCase(), back = e.key === 'ArrowUp' || (sorterOn() && e.key === 'ArrowLeft'), fwd = e.key === 'ArrowDown' || (sorterOn() && e.key === 'ArrowRight');
+    const shown = () => document.querySelector('#navigator .thumb.active')?.scrollIntoView?.({ block: 'nearest' });
+    if (meta && k === 'a') { e.preventDefault(); slides.selectAllSlides(); return; }
+    if (e.shiftKey && !meta && (back || fwd)) { e.preventDefault(); const by = sorterOn() && /Up|Down/.test(e.key) ? sorterColumns() : 1; slides.extendSlideSel(back ? -by : by); shown(); return; }
+    if (e.key === 'Escape' && (store.slideSelCount() > 1 || state.ui.slidePick)) { e.preventDefault(); slides.collapseSlideSel(); return; }
+    if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); slides.deleteSlides(); return; }
+    if (meta && k === 'd') { e.preventDefault(); slides.duplicateSlide(); return; }
+    if (meta && !e.shiftKey && k === 'c') { e.preventDefault(); slides.copySlides(); return; }
+    if (meta && !e.shiftKey && k === 'x') { e.preventDefault(); slides.cutSlides(); return; }
   }
   // The slide sorter: arrows through the grid, Enter/Esc to edit the slide, Delete, Ctrl+D.
   if (sorterOn()) {
@@ -211,6 +225,8 @@ document.addEventListener('paste', e => {
   const a = document.activeElement;
   if (a?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a?.tagName || '') || document.querySelector('.modal-backdrop')) return;
   const cd = e.clipboardData; if (!cd) return;
+  // Slides copied in the panel, pasted there.
+  if (state.ui.navFocus && slides.hasSlideClip() && ![...cd.files].length) { e.preventDefault(); slides.pasteSlides(); return; }
   // Objects copied in Revela (this tab or another one).
   const own = clip.fromSystemText(cd.getData('text/plain'));
   if (own || (!cd.getData('text/plain') && ![...cd.files].length && clip.hasClipboard())) { e.preventDefault(); clip.paste(own && !clip.isCurrent(own) ? own : undefined); return; }

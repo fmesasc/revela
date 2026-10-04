@@ -1,7 +1,7 @@
 // Right‑click context menu. Actions adapt to what was clicked: a block, an
 // image (extra processing options) or the empty canvas.
 
-import { state, commit, currentSlide, selectedBlock, selectedBlocks, isSelected, setSelection, setMulti } from '../../core/store.js';
+import { state, commit, currentSlide, selectedBlock, selectedBlocks, isSelected, setSelection, setMulti, isSlideSelected, selectedSlideIndices } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 import * as blocks from '../../features/document/blocks.js';
 import * as shapeops from '../../features/document/shapeops.js';
@@ -14,7 +14,7 @@ import { fitTextToBox } from '../canvas/canvas.js';
 import { openLinkChart, refreshChart } from '../dialogs/data.js';
 import { addText } from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
-import { addSlide, duplicateSlide, deleteSlide, goToSlide, toggleSlideHidden, addSectionAt, removeSection, setSlideSection } from '../../features/document/slides.js';
+import { addSlide, duplicateSlide, deleteSlide, deleteSlides, selectSlide, toggleSlideHidden, addSectionAt, removeSection, setSlideSection, copySlides, cutSlides, pasteSlides, hasSlideClip, moveSlidesToSection, sectionFromSlides } from '../../features/document/slides.js';
 import { t } from '../../i18n/index.js';
 import { alertDialog, promptDialog } from '../dialogs/dialog.js';
 import { openSaveAsPicture } from '../dialogs/picture.js';
@@ -59,7 +59,7 @@ export function initContextMenu() {
   stage.addEventListener('contextmenu', e => { e.preventDefault(); openStageMenu(e.clientX, e.clientY, e.target); });
 
   const nav = document.getElementById('navigator');
-  const openNavMenu = (x, y, target) => {
+  const openNavMenu = (x, y, target, touch = false) => {
     const head = target && target.closest('.section-head');
     if (head) { open(x, y, forSection(head.dataset.sectionId)); return; }
     // (The master view: its masters and layouts.)
@@ -67,10 +67,18 @@ export function initContextMenu() {
     if (lt) { open(x, y, masterMenu(lt.dataset.edit)); return; }
     if (state.ui.editMaster) { open(x, y, masterMenu(state.ui.editMaster === true ? 'master' : state.ui.editMaster)); return; }
     const th = target && target.closest('.thumb');
-    if (th) { const i = +th.dataset.index; goToSlide(i); open(x, y, forThumb(i)); return; }
+    if (th) {
+      const i = +th.dataset.index; state.ui.navFocus = true;
+      // A long press on a touch screen starts picking slides (checkboxes); while picking, it opens the menu.
+      if (touch && !state.ui.slidePick) { commit(() => { state.ui.slidePick = true; state.ui.slideIndex = i; state.ui.slideSel = []; state.ui.slideAnchor = state.deck.slides[i]?.id; state.ui.selection = null; }, { history: false }); return; }
+      // (On one of the selected slides: the menu is for all of them.)
+      if (!isSlideSelected(state.deck.slides[i]?.id)) selectSlide(i);
+      open(x, y, forThumb(i)); return;
+    }
     open(x, y, [['Nueva diapositiva', () => addSlide()]]);
   };
-  nav.addEventListener('contextmenu', e => { e.preventDefault(); openNavMenu(e.clientX, e.clientY, e.target); });
+  // (A touch long press is handled below, as on iOS, which fires no `contextmenu`.)
+  nav.addEventListener('contextmenu', e => { e.preventDefault(); if (e.pointerType !== 'touch') openNavMenu(e.clientX, e.clientY, e.target); });
 
   // Touch: a long‑press opens the same menu (iOS doesn't fire `contextmenu`, and
   // it also avoids the native text‑selection popup taking over).
@@ -84,7 +92,7 @@ function longPress(el, handler) {
   el.addEventListener('touchstart', e => {
     if (e.touches.length !== 1) return;
     const t = e.touches[0]; sx = t.clientX; sy = t.clientY; tgt = t.target; fired = false;
-    timer = setTimeout(() => { fired = true; menuOpenedAt = Date.now(); handler(sx, sy, document.elementFromPoint(sx, sy) || tgt); }, 500);
+    timer = setTimeout(() => { fired = true; menuOpenedAt = Date.now(); handler(sx, sy, document.elementFromPoint(sx, sy) || tgt, true); }, 500);
   }, { passive: true });
   el.addEventListener('touchmove', e => {
     const t = e.touches[0]; if (t && (Math.abs(t.clientX - sx) > 12 || Math.abs(t.clientY - sy) > 12)) cancel();
@@ -95,12 +103,46 @@ function longPress(el, handler) {
   el.addEventListener('touchcancel', cancel);
 }
 
+// Several selected: what can be done to all of them, with how many.
+const counted = (es, n) => t(es).replace('{n}', n);
+function forSlides(idx) {
+  const d = state.deck, ss = idx.map(i => d.slides[i]), ids = ss.map(s => s.id), n = ss.length;
+  const allHidden = ss.every(s => s.hidden), allUncounted = ss.every(s => s.uncounted);
+  return [
+    ['Nueva diapositiva', () => addSlide()],
+    [counted('Duplicar {n} diapositivas', n), () => duplicateSlide()],
+    [counted('Eliminar {n} diapositivas', n), () => deleteSlides(idx)],
+    null,
+    [counted('Cortar {n} diapositivas', n), () => cutSlides()],
+    [counted('Copiar {n} diapositivas', n), () => copySlides()],
+    ['Pegar diapositivas', hasSlideClip() ? () => pasteSlides() : null],
+    null,
+    [counted('Formato del fondo de {n} diapositivas…', n), () => openBackgroundDialog()],
+    ss.some(s => master.layoutOf(s)) ? [counted('Restablecer {n} diapositivas', n), () => master.resetSlide()] : null,
+    null,
+    [counted(allHidden ? 'Mostrar {n} diapositivas' : 'Ocultar {n} diapositivas', n), () => toggleSlideHidden()],
+    [counted(allUncounted ? 'Contar {n} diapositivas en la numeración' : 'No contar {n} diapositivas en la numeración', n),
+      () => commit(() => ss.forEach(s => { if (allUncounted) delete s.uncounted; else s.uncounted = true; }))],
+    null,
+    [counted('Crear una sección con las {n} diapositivas', n), () => sectionFromSlides(ids)],
+    ...d.sections.filter(sec => !ss.every(s => s.sectionId === sec.id))
+      .map(sec => [t('Mover a la sección «{s}»').replace('{s}', sec.name), () => moveSlidesToSection(ids, sec.id)]),
+    ss.some(s => s.sectionId) ? ['Quitar de la sección', () => moveSlidesToSection(ids, null)] : null,
+  ];
+}
+
 function forThumb(i) {
+  const idx = selectedSlideIndices();
+  if (idx.length > 1) return forSlides(idx);
   const slide = state.deck.slides[i];
   return [
     ['Nueva diapositiva', () => addSlide()],
     ['Duplicar diapositiva', () => duplicateSlide()],
     ['Eliminar diapositiva', () => deleteSlide(i)],
+    null,
+    ['Cortar diapositiva', () => cutSlides()],
+    ['Copiar diapositiva', () => copySlides()],
+    ['Pegar diapositivas', hasSlideClip() ? () => pasteSlides() : null],
     null,
     ['Presentar desde aquí', () => present({ fromCurrent: true })],
     ['Formato del fondo…', () => openBackgroundDialog()],

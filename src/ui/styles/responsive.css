@@ -22,6 +22,10 @@
     padding:8px 10px;border-right:none;border-bottom:1px solid var(--line2);overflow-x:auto;overflow-y:hidden}
   #navigator .section-head{display:none}
   .thumb{flex:0 0 128px}
+  /* (Picking slides: the bar sits at the start of the strip.) */
+  .nav-pick{left:-10px;top:auto;margin:0 0 0 -10px;align-self:stretch;flex-direction:column;justify-content:center;padding:4px 8px;
+    border-bottom:none;border-right:1px solid var(--line2);font-size:11px;max-width:96px;text-align:center}
+  .nav-pick span{flex:none}
   #canvas-wrap{padding:10px}
 
   /* Compact panels */

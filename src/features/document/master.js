@@ -15,7 +15,7 @@
 // While editing the master (state.ui.editMaster = true) or a layout (= its
 // id), the canvas edits that instead of the current slide (store.currentSlide).
 
-import { state, commit, amend, subscribe, currentSlide } from '../../core/store.js';
+import { state, commit, amend, subscribe, currentSlide, selectedSlideIndices } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 import { canvasBackdrop } from '../design/canvasmode.js';
 
@@ -149,10 +149,11 @@ const freshPlaceholders = lay => lay.blocks.filter(b => b.ph).map(p => (p.type =
 // Give a slide a layout. Like PowerPoint, what was written moves into the new
 // placeholders (the title into the title, the rest in order) and nothing is
 // lost: text that doesn't fit any placeholder, pictures, charts… stay.
-export function applyLayout(id, index = state.ui.slideIndex) {
+// Without an index: every selected slide (one undo step).
+export function applyLayout(id, index = null) {
   commit(() => {
-    const lay = ensureLayouts().find(l => l.id === id); const s = state.deck.slides[index]; if (!lay || !s) return;
-    relayout(s, lay);
+    const lay = ensureLayouts().find(l => l.id === id); if (!lay) return;
+    for (const i of index == null ? selectedSlideIndices() : [index]) { const s = state.deck.slides[i]; if (s) relayout(s, lay); }
     state.ui.selection = null;
   });
 }
@@ -178,14 +179,16 @@ function relayout(s, lay, deck = state.deck) {
 export const newSlideBlocks = lay => freshPlaceholders(lay);
 // Back to the layout: placeholders return to its place and lose the formatting
 // set on the slide (PowerPoint's "Reset").
-export function resetSlide(index = state.ui.slideIndex) {
+export function resetSlide(index = null) {
   commit(() => {
-    const s = state.deck.slides[index]; if (!s) return;
-    for (const b of s.blocks) {
-      const lp = styleKind(b) && layoutPlaceholder(b, s); if (!lp) continue;
-      Object.assign(b, { x: lp.x, y: lp.y, w: lp.w, h: lp.h, lp: lp.id });
-      for (const k of OWN) delete b[k];
-      delete b.fit;
+    for (const i of index == null ? selectedSlideIndices() : [index]) {     // (without an index: the selected slides)
+      const s = state.deck.slides[i]; if (!s) continue;
+      for (const b of s.blocks) {
+        const lp = styleKind(b) && layoutPlaceholder(b, s); if (!lp) continue;
+        Object.assign(b, { x: lp.x, y: lp.y, w: lp.w, h: lp.h, lp: lp.id });
+        for (const k of OWN) delete b[k];
+        delete b.fit;
+      }
     }
   });
 }

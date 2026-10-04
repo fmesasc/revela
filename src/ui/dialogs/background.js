@@ -1,8 +1,8 @@
 // Format background dialog (reveal.js backgrounds): image fit and opacity,
 // video (file or address, loop, muted), web page (interactive or not) and the
-// background transition; for this slide or all.
+// background transition; for this slide (or the selected ones) or all.
 
-import { currentSlide } from '../../core/store.js';
+import { currentSlide, slideSelCount } from '../../core/store.js';
 import { setBackgroundOptions } from '../../features/document/slides.js';
 import { alertDialog } from './dialog.js';
 import { t } from '../../i18n/index.js';
@@ -14,7 +14,7 @@ export function openBackgroundDialog() {
   const back = document.createElement('div'); back.id = 'bg-modal'; back.className = 'modal-backdrop';
   const opt = (v, l, cur) => `<option value="${v}"${cur === v ? ' selected' : ''}>${t(l)}</option>`;
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(520px,94vw);max-width:94vw">
-    <button class="modal-close">✕</button><h3>${t('Formato del fondo')}</h3>
+    <button class="modal-close">✕</button><h3>${t('Formato del fondo')}${slideSelCount() > 1 ? ' · ' + t('{n} diapositivas seleccionadas').replace('{n}', slideSelCount()) : ''}</h3>
     <fieldset class="bgf"><legend>${t('Imagen de fondo')}</legend>
       <label class="fr-l">${t('Ajuste')}<select class="bg-fit"${hasImg ? '' : ' disabled'}>${opt('cover', 'Cubrir', fit)}${opt('contain', 'Contener', fit)}${opt('tile', 'Mosaico', fit)}</select></label>
       <label class="fr-l">${t('Opacidad del fondo')} <input type="range" class="bg-op" min="10" max="100" step="5" value="${s.bgOpacity ?? 100}"></label></fieldset>

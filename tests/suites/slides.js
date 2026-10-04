@@ -36,6 +36,165 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!D.body.classList.contains('sorter'), 'Esc vuelve a la diapositiva');
   });
 
+  // ---- Several slides selected in the panel (PowerPoint: Ctrl/Cmd+click, Shift+click) ----
+  const multiSetup = async (n = 6) => {
+    reset(); for (let i = 1; i < n; i++) R.slides.addSlide('blank');
+    R.store.commit(() => R.state.deck.slides.forEach((s, i) => { s.notes = 'n' + i; }));
+    R.slides.goToSlide(0); await sleep(20);
+    const W = frame.contentWindow, th = () => [...D.querySelectorAll('#navigator .thumb')];
+    const click = async (i, o = {}) => { th()[i].dispatchEvent(new W.PointerEvent('pointerdown', { bubbles: true })); th()[i].dispatchEvent(new W.MouseEvent('click', { bubbles: true, cancelable: true, ...o })); await sleep(10); };
+    const key = async (k, o = {}) => { D.dispatchEvent(new W.KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true, ...o })); await sleep(10); };
+    const order = () => R.state.deck.slides.map(s => s.notes).join();
+    const sel = () => R.store.selectedSlideIndices().join();
+    return { W, th, click, key, order, sel };
+  };
+
+  await test('varias diapositivas: Ctrl+clic, Mayús+clic, Mayús+flechas, Ctrl+A, Esc y barra de estado', async () => {
+    const { W, th, click, key, sel } = await multiSetup();
+    await click(1); await click(3, { ctrlKey: true });
+    eq(sel(), '1,3', 'Ctrl+clic añade');
+    eq(D.querySelector('[data-action="clip-copy"]').disabled, false, 'Copiar en la cinta, para las diapositivas'); eq(R.state.ui.slideIndex, 3, 'la última pulsada se ve en el lienzo');
+    assert(th()[1].classList.contains('selected') && th()[3].classList.contains('selected') && !th()[2].classList.contains('selected'), 'se marcan las seleccionadas');
+    assert(th()[3].classList.contains('active') && !th()[1].classList.contains('active'), 'la actual se distingue de las demás seleccionadas');
+    assert(/2 diapositivas seleccionadas/.test(D.getElementById('status-slide').textContent), 'la barra de estado lo dice: ' + D.getElementById('status-slide').textContent);
+    await click(4, { metaKey: true }); eq(sel(), '1,3,4', 'Cmd+clic (Mac) también');
+    await click(4, { ctrlKey: true }); eq(sel(), '1,3', 'Ctrl+clic otra vez la quita'); eq(R.state.ui.slideIndex, 3, 'y se ve la última que queda');
+    await click(1); eq(sel(), '1', 'un clic: solo esa');
+    await click(4, { shiftKey: true }); eq(sel(), '1,2,3,4', 'Mayús+clic: el intervalo desde la anterior');
+    await key('ArrowDown', { shiftKey: true }); eq(sel(), '1,2,3,4,5', 'Mayús+↓ lo amplía');
+    await key('ArrowUp', { shiftKey: true }); await key('ArrowUp', { shiftKey: true }); eq(sel(), '1,2,3', 'Mayús+↑ lo reduce desde el ancla');
+    await key('Escape'); eq(sel(), '3', 'Esc deja solo la actual');
+    await key('a', { ctrlKey: true }); eq(sel(), '0,1,2,3,4,5', 'Ctrl+A en el panel: todas');
+    eq(R.state.ui.multi.length, 0, '(no los objetos de la diapositiva)');
+    D.getElementById('stage').dispatchEvent(new W.PointerEvent('pointerdown', { bubbles: true })); await sleep(10);
+    eq(sel(), '3', 'un clic en la diapositiva deja solo la actual');
+    // Without the panel clicked last, Ctrl+A is still the slide's objects.
+    await key('a', { ctrlKey: true }); eq(R.store.slideSelCount(), 1, 'Ctrl+A en la diapositiva no selecciona diapositivas');
+  });
+
+  await test('varias diapositivas: duplicar, eliminar, mover en grupo, cortar y pegar, ocultar; cada acción se deshace de una vez', async () => {
+    const { W, th, click, key, order, sel } = await multiSetup();
+    const base = 'n0,n1,n2,n3,n4,n5';
+    await click(1); await click(3, { ctrlKey: true }); await click(4, { ctrlKey: true });
+    D.querySelector('[data-action="slide-duplicate"]').click(); await sleep(10);
+    eq(order(), 'n0,n1,n2,n3,n4,n1,n3,n4,n5', 'copias en orden, tras la última seleccionada');
+    eq(sel(), '5,6,7', 'las copias quedan seleccionadas');
+    R.store.undo(); await sleep(10); eq(order(), base, 'un solo paso para deshacer');
+    await click(1); await click(3, { ctrlKey: true }); await click(4, { ctrlKey: true });
+    await key('Delete'); eq(order(), 'n0,n2,n5', 'Supr en el panel borra las seleccionadas');
+    eq(R.store.slideSelCount(), 1, 'queda solo la actual');
+    R.store.undo(); await sleep(10); eq(order(), base, 'deshacer las recupera de una vez');
+    // Drag the group: they keep their order.
+    await click(0); await click(2, { ctrlKey: true });
+    const dt = new W.DataTransfer();
+    th()[2].dispatchEvent(new W.DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+    assert(th()[0].classList.contains('dragging') && th()[2].classList.contains('dragging'), 'se arrastran todas las seleccionadas');
+    th()[4].dispatchEvent(new W.DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt }));
+    th()[4].dispatchEvent(new W.DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }));
+    th()[2]?.dispatchEvent(new W.DragEvent('dragend', { bubbles: true, dataTransfer: dt })); await sleep(10);
+    eq(order(), 'n1,n3,n4,n0,n2,n5', 'arrastrar mueve el grupo tras la de destino');
+    eq(R.state.deck.slides[R.state.ui.slideIndex].notes, 'n2', 'la actual sigue siendo la misma');
+    R.store.undo(); await sleep(10); eq(order(), base, 'mover: un solo paso');
+    R.slides.goToSlide(4); R.slides.selectSlide(5, { toggle: true }); R.slides.moveSlides(R.state.ui.slideSel, 1); eq(order(), 'n0,n4,n5,n1,n2,n3', 'hacia arriba: delante de la de destino');
+    R.store.undo(); await sleep(10);
+    // Cut and paste.
+    await click(1); await click(2, { shiftKey: true });
+    await key('x', { ctrlKey: true }); eq(order(), 'n0,n3,n4,n5', 'Ctrl+X corta las seleccionadas');
+    await click(2);
+    D.dispatchEvent(new W.ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: new W.DataTransfer() })); await sleep(10);
+    eq(order(), 'n0,n3,n4,n1,n2,n5', 'Ctrl+V las pega tras la seleccionada'); eq(sel(), '3,4', 'y quedan seleccionadas');
+    await key('c', { ctrlKey: true }); R.slides.goToSlide(0); R.slides.pasteSlides(); eq(order(), 'n0,n1,n2,n3,n4,n1,n2,n5', 'copiar y pegar');
+    R.store.undo(); R.store.undo(); R.store.undo(); await sleep(10); eq(order(), base, 'cortar y pegar se deshacen paso a paso');
+    // Hide / show.
+    R.slides.goToSlide(1); R.slides.selectSlide(3, { toggle: true });
+    R.slides.toggleSlideHidden(); assert(R.state.deck.slides[1].hidden && R.state.deck.slides[3].hidden && !R.state.deck.slides[2].hidden, 'ocultar las seleccionadas');
+    R.slides.toggleSlideHidden(); assert(!R.state.deck.slides[1].hidden && !R.state.deck.slides[3].hidden, 'y mostrarlas');
+    R.store.undo(); assert(R.state.deck.slides[1].hidden && R.state.deck.slides[3].hidden, 'deshacer: las dos a la vez');
+    // Into a section.
+    R.slides.goToSlide(1); R.slides.selectSlide(4, { toggle: true }); const sec = R.slides.sectionFromSlides(R.state.ui.slideSel);
+    eq(R.state.deck.slides.filter(s => s.sectionId === sec).map(s => s.notes).join(), 'n1,n4', 'sección con las seleccionadas'); eq(order(), 'n0,n1,n4,n2,n3,n5', 'juntas, donde estaba la primera');
+  });
+
+  await test('varias diapositivas: diseño, restablecer, fondo, formato del fondo, transición, velocidad y avance automático a todas las seleccionadas', async () => {
+    const { W, click } = await multiSetup(5);
+    await click(1); await click(3, { shiftKey: true });
+    eq(D.querySelector('[data-action="slide-delete"]').title.includes('3 diapositivas seleccionadas'), true, 'la cinta avisa de que se aplica a la selección');
+    assert(!/seleccionadas/.test(D.querySelector('[data-action="trans-apply-all"]').title), '«Aplicar a todas» sigue igual');
+    D.querySelector('[data-layout-open]').click(); await sleep(10);
+    D.querySelector('.popover [data-layout="titleContent"]').click(); await sleep(10);
+    const lays = () => R.state.deck.slides.slice(1).map(s => s.layoutId).join(), l0 = R.state.deck.slides[0].layoutId;
+    eq(lays(), 'titleContent,titleContent,titleContent,blank', 'diseño en las tres'); eq(R.state.deck.slides[0].layoutId, l0, 'no en las demás');
+    // Reset (Inicio ▸ Diseño ▸ Restablecer) on two of them.
+    R.store.commit(() => R.state.deck.slides.forEach(s => s.blocks.forEach(b => { b.x += 33; })));
+    const lp = R.state.deck.layouts.find(l => l.id === 'titleContent').blocks.find(b => b.ph === 'title');
+    const tx = i => R.state.deck.slides[i].blocks.find(b => b.ph === 'title').x;
+    R.slides.goToSlide(1); R.slides.selectSlide(2, { range: true }); R.master.resetSlide();
+    assert(tx(1) === lp.x && tx(2) === lp.x && tx(3) === lp.x + 33, 'restablecer: las seleccionadas, no las demás');
+    R.store.undo(); R.store.undo(); R.store.undo(); await sleep(10); eq(lays(), 'blank,blank,blank,blank', 'el diseño se deshace en un solo paso');
+    eq(R.store.slideSelCount(), 2, 'deshacer no pierde la selección');
+    R.slides.goToSlide(1); R.slides.selectSlide(3, { range: true }); await sleep(10);
+    const bg = D.querySelector('[data-bg]'); bg.value = '#123456'; bg.dispatchEvent(new W.Event('input', { bubbles: true })); await sleep(10);
+    eq(R.state.deck.slides.map(s => s.background === '#123456').join(), 'false,true,true,true,false', 'color de fondo en las seleccionadas');
+    D.querySelector('[data-action="bg-gradient"]').click(); await sleep(10);
+    assert(R.state.deck.slides.slice(1, 4).every(s => /gradient/.test(s.background)) && !/gradient/.test(R.state.deck.slides[0].background), 'degradado en las seleccionadas');
+    D.querySelector('[data-page="design"] [data-action="bg-advanced"]').click(); await sleep(10);
+    assert(/3 diapositivas seleccionadas/.test(D.querySelector('#bg-modal h3').textContent), 'el diálogo dice a cuántas se aplica');
+    D.querySelector('#bg-modal .bg-op').value = '50'; D.querySelector('#bg-modal .bg-ok').click(); await sleep(10);
+    eq(R.state.deck.slides.map(s => s.bgOpacity || '').join(), ',50,50,50,', 'formato del fondo en las seleccionadas');
+    D.querySelector('[data-slide-transition="fade"]').click(); await sleep(10);
+    eq(R.state.deck.slides.map(s => s.transition || '').join(), ',fade,fade,fade,', 'transición en las tres');
+    const sp = D.querySelector('[data-slide-speed]'); sp.value = 'slow'; sp.dispatchEvent(new W.Event('change', { bubbles: true })); await sleep(10);
+    eq(R.state.deck.slides.map(s => s.transitionSpeed || '').join(), ',slow,slow,slow,', 'velocidad en las tres');
+    const au = D.querySelector('[data-autoslide]'); au.value = '4'; au.dispatchEvent(new W.Event('change', { bubbles: true })); await sleep(10);
+    eq(R.state.deck.slides.map(s => s.autoSlide || 0).join(), '0,4000,4000,4000,0', 'avance automático en las tres');
+    R.store.undo(); await sleep(10); eq(R.state.deck.slides.map(s => s.autoSlide || 0).join(), '0,0,0,0,0', 'cada cambio, un paso');
+    // Context menu on a selected thumbnail: the multi actions, with how many.
+    R.slides.goToSlide(1); R.slides.selectSlide(3, { range: true });
+    D.querySelectorAll('#navigator .thumb')[2].dispatchEvent(new W.MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 50, clientY: 200 })); await sleep(10);
+    const items = [...D.querySelectorAll('#context-menu .ctx-item')].map(x => x.textContent);
+    assert(items.includes('Eliminar 3 diapositivas') && items.includes('Duplicar 3 diapositivas') && items.includes('Ocultar 3 diapositivas'), 'menú con las acciones y cuántas: ' + items.join('|'));
+    eq(R.store.slideSelCount(), 3, 'el clic derecho en una seleccionada no deshace la selección');
+    [...D.querySelectorAll('#context-menu .ctx-item')].find(x => x.textContent === 'Eliminar 3 diapositivas').click(); await sleep(10);
+    eq(R.state.deck.slides.length, 2, 'eliminadas desde el menú');
+    R.store.undo(); D.getElementById('context-menu').hidden = true;
+  });
+
+  await test('varias diapositivas: en el clasificador, con Ctrl+clic, Mayús+flechas y Supr', async () => {
+    const { W, th, click, key, order, sel } = await multiSetup();
+    D.querySelector('#statusbar [data-action="slide-sorter"]').click(); await sleep(60);
+    try {
+      await click(0); await click(2, { ctrlKey: true });
+      assert(th()[0].classList.contains('selected') && th()[2].classList.contains('selected'), 'se marcan en la cuadrícula');
+      await key('ArrowRight', { shiftKey: true }); eq(sel(), '2,3', 'Mayús+→ amplía desde el ancla');
+      await key('Escape'); eq(sel(), '3', 'Esc: solo la actual'); assert(D.body.classList.contains('sorter'), 'y sigue en el clasificador');
+      await key('a', { ctrlKey: true }); eq(R.store.slideSelCount(), 6, 'Ctrl+A: todas');
+      await click(1); await click(4, { shiftKey: true }); await key('Delete');
+      eq(order(), 'n0,n5', 'Supr borra las seleccionadas');
+      R.store.undo(); await sleep(10); eq(order(), 'n0,n1,n2,n3,n4,n5', 'un paso');
+    } finally { D.body.classList.contains('sorter') && D.querySelector('[data-action="slide-sorter"]').click(); await sleep(20); }
+  });
+
+  await test('varias diapositivas: cambios de otro (coedición) quitan las que desaparecen; el asistente ofrece «Diapositivas seleccionadas»', async () => {
+    const { click, sel } = await multiSetup(5);
+    await click(1); await click(2, { ctrlKey: true }); await click(4, { ctrlKey: true });
+    const gone = R.state.deck.slides[2].id;
+    R.store.applyRemote(d => { d.slides = d.slides.filter(s => s.id !== gone); }); await sleep(10);
+    eq(sel(), '1,3', 'la borrada por otro sale de la selección; las demás siguen');
+    R.store.applyRemote(d => { d.slides.splice(0, 0, { ...structuredClone(d.slides[0]), id: 'remota' }); }); await sleep(10);
+    eq(R.store.targetSlides().map(s => s.notes).join(), 'n1,n4', 'una añadida por otro no cambia qué está seleccionado');
+    // The assistant's scope.
+    D.querySelector('[data-action="ai-assistant"]').click(); await sleep(20);
+    try {
+      const opt = D.querySelector('#assistant-panel .as-scope option[value="slides"]'); assert(opt, 'opción en el alcance');
+      eq(opt.hidden, false, 'visible con varias seleccionadas');
+      eq(R.aiAgent.scopeOf({ kind: 'slides' }).idx.map(i => R.state.deck.slides[i].notes).join(), 'n1,n4', 'el alcance son las seleccionadas');
+      const C = await frame.contentWindow.eval("import('/src/features/ai/complete.js')");
+      eq(C.targetsOf({ scope: { kind: 'slides' }, mode: 'improve' }).map(x => x.s.notes).join(), 'n1,n4', 'también al completar');
+      R.slides.goToSlide(0); await sleep(10);
+      eq(D.querySelector('#assistant-panel .as-scope option[value="slides"]').hidden, true, 'oculta con una sola');
+    } finally { D.getElementById('assistant-panel') && D.querySelector('[data-action="ai-assistant"]').click(); }
+  });
+
   await test('kit de marca: colores, fuentes y logotipo guardados, aplicados con un clic y compartidos como archivo', async () => {
     reset(); const W = frame.contentWindow, K = await W.eval("import('/src/features/design/brandkit.js')"), P = await W.eval("import('/src/features/design/palettes.js')");
     W.localStorage.removeItem('revela.brandKits');
