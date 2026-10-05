@@ -9,11 +9,19 @@
 // kind with the same content (text, picture, shape and colour…), else the same
 // placeholder, else the only one of its kind on both slides. Paired objects
 // share a morph id; the chain carries on to the next slide.
+import { animsOf, isEntrance } from './transitions.js';
+
+// An object that has its own way in (an entrance effect) on the slide it goes into, or its own way out
+// (its last effect an exit) on the one before, doesn't glide: it enters or leaves as its animation says.
+// (Gliding too would make it visible before its entrance, or bring back what just left.) Said in the
+// Animation pane (morphConflict).
+const entersByItself = b => { const a = animsOf(b)[0]; return !!a && isEntrance(a.effect) && !['current-visible'].includes(a.effect); };
+const leavesByItself = b => { const a = animsOf(b).at(-1); return !!a && ['fade-out', 'semi-fade-out', 'fade-in-then-out'].includes(a.effect); };
 const plainOf = h => String(h || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
 export const morphSig = b => b.type + '|' + ({ text: plainOf(b.html), image: b.src, shape: `${b.shape}|${b.fill}`, icon: b.icon, math: b.latex, code: b.code,
   chart: b.chartType, table: JSON.stringify(b.rows), video: b.src }[b.type] ?? '');
 export function morphPlan(deck) {
-  const vis = deck.slides.filter(s => !s.hidden), marked = new Set(), keys = new Map(), textMode = new Map();
+  const vis = deck.slides.filter(s => !s.hidden), marked = new Set(), keys = new Map(), textMode = new Map(), blocked = new Map();
   const k = (s, b) => `${s.id}:${b.id}`;
   vis.forEach((s, i) => {
     if (!s.autoAnimate) return;
@@ -26,7 +34,12 @@ export function morphPlan(deck) {
     for (const b of s.blocks) keys.set(k(s, b), b.id);
     const prev = vis[i - 1];
     if (!s.autoAnimate || !prev) return;
-    const free = new Set(prev.blocks), take = (b, p) => { keys.set(k(s, b), keys.get(k(prev, p)) || p.id); free.delete(p); };
+    const free = new Set(prev.blocks), take = (b, p) => {
+      free.delete(p);
+      const why = entersByItself(b) ? 'entrance' : leavesByItself(p) ? 'exit' : null;
+      if (!why) { keys.set(k(s, b), keys.get(k(prev, p)) || p.id); return; }
+      blocked.set(k(s, b), why); keys.set(k(s, b), `${b.id}-${s.id}`);   // (its own id here: not the one before's)
+    };
     const pending = [];
     for (const b of s.blocks) { const p = prev.blocks.find(x => x.id === b.id); if (p) take(b, p); else pending.push(b); }
     const rules = [(b, p) => morphSig(b) === morphSig(p), (b, p) => b.type === p.type && b.ph && b.ph === p.ph,
@@ -35,7 +48,7 @@ export function morphPlan(deck) {
       const p = [...free].find(x => rule(b, x)); if (p) { take(b, p); pending.splice(pending.indexOf(b), 1); }
     }
   });
-  return { marked, key: (s, b) => keys.get(k(s, b)), textMode: s => textMode.get(s.id) || null };
+  return { marked, key: (s, b) => keys.get(k(s, b)), textMode: s => textMode.get(s.id) || null, blocked: (s, b) => blocked.get(k(s, b)) || null };
 }
 
 // Objects of a slide that are also on the previous visible one, and changed
@@ -48,4 +61,11 @@ export function sharedChanges(deck, index) {
   let n = 0;
   for (const b of s.blocks) { const p = prev.blocks.find(x => x.id === b.id) || bySig.get(morphSig(b)); if (p && look(p) !== look(b)) n++; }
   return n;
+}
+
+// Why an object of a slide with Morph doesn't glide from the one before, though it is there too:
+// 'entrance' (it has an entrance effect here), 'exit' (it leaves with an exit effect there), or null.
+export function morphConflict(deck, slide, b) {
+  if (!slide?.autoAnimate || !b) return null;
+  return morphPlan(deck).blocked(slide, b);
 }

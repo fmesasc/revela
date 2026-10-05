@@ -199,14 +199,15 @@ export function importSlides(deck, indices = null, after = state.ui.slideIndex) 
 // slides that both have it on. `toggle` flips the flag on the current slide.
 export function toggleAutoAnimate(index = null) {
   const ss = slidesAt(index), on = !state.deck.slides[index ?? state.ui.slideIndex]?.autoAnimate;
-  commit(() => ss.forEach(s => { s.autoAnimate = on; }));
+  // (Morph is the slide's transition: on, it replaces the one it had, whose direction and speed no longer apply.)
+  commit(() => ss.forEach(s => { s.autoAnimate = on; if (on) { s.transition = null; delete s.transitionDir; delete s.transitionSpeed; } else delete s.morphBy; }));
 }
 // Morph by objects (default), words or characters (PowerPoint's Morph options):
 // with words/characters, the same word or letter moves from its place on the
 // previous slide to its place on this one.
 export function setMorphBy(by, index = null) {
   const ss = slidesAt(index);
-  commit(() => ss.forEach(s => { if (by === 'words' || by === 'chars') { s.morphBy = by; s.autoAnimate = true; } else delete s.morphBy; }));
+  commit(() => ss.forEach(s => { if (by === 'words' || by === 'chars') { s.morphBy = by; s.autoAnimate = true; s.transition = null; delete s.transitionDir; delete s.transitionSpeed; } else delete s.morphBy; }));
 }
 // Duplicate the slide KEEPING block ids so the copy morphs from the original,
 // and turn Auto‑Animate on for both. Then the user tweaks the copy.

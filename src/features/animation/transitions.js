@@ -72,8 +72,10 @@ export function customTransitionCSS(names, size = { w: 1280, h: 720 }) {
 
 // A slide's own transition overrides the deck default. `null` = inherit.
 // (The selected slides, or the current one.)
+// Morph is a transition too (as in PowerPoint): choosing another one takes it off — between two
+// morphing slides reveal.js plays no other transition, so both chosen would show one that never plays.
 export function setSlideTransition(value) {
-  commit(() => targetSlides().forEach(s => { s.transition = value === 'inherit' ? null : value; }));
+  commit(() => targetSlides().forEach(s => { s.transition = value === 'inherit' ? null : value; delete s.autoAnimate; delete s.morphBy; }));
 }
 export function setSlideTransOptions(props) {
   commit(() => targetSlides().forEach(s => { for (const [k, v] of Object.entries(props)) { if (v) s[k] = v; else delete s[k]; } }));

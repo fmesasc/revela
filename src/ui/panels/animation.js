@@ -16,6 +16,7 @@ import { modelClips } from '../canvas/mediaview.js';
 import { t } from '../../i18n/index.js';
 import { ANIM_SOUNDS, soundRuntime } from '../../io/runtime/sounds.js';
 import { readFile } from '../shell/openfile.js';
+import { morphConflict } from '../../features/animation/morph.js';
 
 let snd = null;
 const sounds = () => (snd ||= soundRuntime());
@@ -148,11 +149,12 @@ function renderList(panel, list) {
 function renderDetail(panel, list) {
   const box = panel.querySelector('.an-detail'), chosen = list.filter(e => picked.includes(e.a));
   const one = chosen.length === 1 ? chosen[0] : null;
-  const key = JSON.stringify(one ? [one.key, one.a, state.ui.slideIndex] : [chosen.map(e => e.key), chosen.map(e => [e.a.effect, e.a.start, e.a.duration, e.a.delay, e.a.sound])]);
+  const clash = one ? morphConflict(state.deck, currentSlide(), one.b) : null;
+  const key = JSON.stringify(one ? [one.key, one.a, state.ui.slideIndex, clash] : [chosen.map(e => e.key), chosen.map(e => [e.a.effect, e.a.start, e.a.duration, e.a.delay, e.a.sound])]);
   if (box.dataset.key === key || (box.contains(document.activeElement) && box.dataset.for === (one?.key || chosen.map(e => e.key).join()))) return;
   box.dataset.key = key; box.dataset.for = one?.key || chosen.map(e => e.key).join();
   if (!chosen.length) { box.innerHTML = list.length ? `<p class="host-help">${t('Elige una animación para ver sus opciones. Ctrl o Mayús: varias a la vez.')}</p>` : ''; return; }
-  if (one) { detailOne(box, one); return; }
+  if (one) { detailOne(box, one, clash); return; }
   const anims = chosen.map(e => e.a), same = p => (anims.every(a => (a[p] ?? '') === (anims[0][p] ?? '')) ? anims[0][p] ?? '' : null);
   const opt = (v, l, cur) => `<option value="${v}"${cur === v ? ' selected' : ''}>${l}</option>`, mixed = cur => (cur === null ? `<option value="" selected disabled>${t('(varios)')}</option>` : '');
   const fx = same('effect'), st = same('start') || (anims.every(a => !a.start) ? 'click' : null), du = same('duration'), de = same('delay'), so = same('sound');
@@ -165,9 +167,12 @@ function renderDetail(panel, list) {
   box.querySelectorAll('[data-p]').forEach(x => x.addEventListener('change', () => { if (x.value !== '') trans.setAnimsProp(anims, x.dataset.p, x.value); }));
 }
 
-function detailOne(box, { b, a, i }) {
+function detailOne(box, { b, a, i }, clash = null) {
   const id = b.id, set = (p, v) => trans.setAnimPropForId(id, p, v, i);
-  box.innerHTML = `<div class="an-title">${esc(objLabel(b))} · ${esc(EFFECT_LABEL(a.effect))}</div>
+  // With Morph, an object with its own entrance (or that left the slide before) doesn't glide: said, so nothing seems lost.
+  const note = clash === 'entrance' ? t('Esta diapositiva usa Transformar, pero este objeto entra con su animación: no se desliza desde la anterior. Quita su animación de entrada para que se deslice.')
+    : clash === 'exit' ? t('Este objeto sale con su animación en la diapositiva anterior: aquí aparece sin deslizarse.') : '';
+  box.innerHTML = `<div class="an-title">${esc(objLabel(b))} · ${esc(EFFECT_LABEL(a.effect))}</div>${note ? `<p class="an-clash"><i class="ms">info</i> ${esc(note)}</p>` : ''}
     <div class="an-grid">
       <label>${t('Efecto')}<select data-p="effect">${[...ANIM_EFFECTS, ...(b.type === 'model' ? ['clip3d'] : []), ...(isPdf(b) ? ['pdfview'] : [])].map(e => `<option value="${e}"${a.effect === e ? ' selected' : ''}>${EFFECT_LABEL(e)}</option>`).join('')}</select></label>
       <label>${t('Comienzo')}<select data-p="start">${Object.entries(START_NAME).map(([v, l]) => `<option value="${v}"${(a.start || 'click') === v ? ' selected' : ''}>${t(l)}</option>`).join('')}</select></label>

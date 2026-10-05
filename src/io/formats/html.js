@@ -256,7 +256,10 @@ function blockHTMLRaw(b, slide) {
     // change of alignment would make it jump).
     const tight = b.morphId && !byText && !b.bg && !b.borderColor && !b.curve && !(b.columns > 1) && !b.vertical && !tabbed;
     const ta = { center: 'center', right: 'flex-end', justify: 'stretch' }[b.textAlign] || 'flex-start';
-    const inner = html => (tight ? `<div class="rv-mt" data-id="${esc(b.morphId)}" style="display:inline-block;max-width:100%;vertical-align:top;${b.vAlign ? `align-self:${ta};` : ''}">${html}</div>` : html);
+    // (Text Art goes on the moving text, not on the still frame: painted on the frame, clipped to the
+    // letters, it would show at once where the text ends up while the text itself glides there unseen.)
+    const art = b.wordart ? wordartCSS(b.wordart, b.wordartColor) : '';
+    const inner = html => (tight ? `<div class="rv-mt" data-id="${esc(b.morphId)}" style="display:inline-block;max-width:100%;vertical-align:top;${b.vAlign ? `align-self:${ta};` : ''}${art}">${html}</div>` : html);
     return `<div${tight ? a.replace(/ data-id="[^"]*"/, '') : a}${b.levels ? ' class="lv"' : ''}${wrapAttrs(wr)}${tabbed ? ` data-tabs="${esc(JSON.stringify(b.tabs || []))}"` : ''} style="${box(b)}${wrapVars(wr)}${tabbed ? 'white-space:pre-wrap;tab-size:96px;' : ''}font-size:${wordartSize(b)}px;${b.color ? `color:${b.color};` : ''}${b.levels ? levelVars(b) : ''}`
       + `text-align:${b.textAlign || 'left'};${b.fontFamily ? `font-family:${b.fontFamily};` : ''}`
       + `${b.lineHeight ? `line-height:${b.lineHeight};` : ''}`
@@ -271,7 +274,7 @@ function blockHTMLRaw(b, slide) {
       + `${b.vAlign ? `align-content:${{ top: 'start', middle: 'center', bottom: 'end' }[b.vAlign]};` : ''}`   // (on the block itself: bold words stay in their line)
       + `${b.fontWeight ? `font-weight:${b.fontWeight};` : ''}${b.fontStyle ? `font-style:${b.fontStyle};` : ''}`
       + `${b.columns > 1 ? `column-count:${b.columns};column-gap:32px;` : ''}`
-      + `${b.wordart ? wordartCSS(b.wordart, b.wordartColor) : ''}">`
+      + `${tight ? '' : art}">`
       + `${b.curve ? curvedTextSVG(b) : inner(b.html || '')}</div>`;
   }
   if (b.type === 'model')

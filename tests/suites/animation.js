@@ -505,6 +505,34 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!slide().morphBy, 'volver a objetos desde la cinta');
   });
 
+  await test('Transformar coherente: es una transición más, el texto artístico viaja con su degradado, y un objeto con su propia entrada no se desliza (y se dice)', async () => {
+    // AURA: its gold title glides from the cover — the gold on the text that moves, not on its still frame.
+    const d = await R.examples.loadExample('product_watch', 'es'); R.store.replaceDeck(d); await sleep(30);
+    const doc = new DOMParser().parseFromString(R.io.buildHTML(), 'text/html');
+    const s2 = doc.querySelectorAll('.slides > section')[1], mt = [...s2.querySelectorAll('.rv-mt')].find(e => /AURA/.test(e.textContent));
+    assert(mt && /background-clip:\s*text/.test(mt.getAttribute('style')) && !/background-clip/.test(mt.parentElement.getAttribute('style')), 'el degradado va en el texto que se desliza');
+    // Morph and the other transitions: choosing one takes the other off; its options off while Morph is on.
+    reset(); R.slides.addSlide(); R.slides.goToSlide(1); R.render(); await sleep(10);
+    R.trans.setSlideTransition('convex'); R.slides.toggleAutoAnimate(); await sleep(10);
+    assert(slide().autoAnimate && !slide().transition, 'Transformar sustituye a la transición que tenía');
+    D.querySelector('[data-tab="transitions"]')?.click(); await sleep(20);
+    assert(!D.querySelector('#ribbon [data-slide-transition="convex"]').classList.contains('on') && D.querySelector('[data-slide-speed]').disabled, 'ninguna otra transición marcada, y su velocidad no se usa');
+    R.trans.setSlideTransition('fade'); await sleep(10);
+    assert(!slide().autoAnimate && slide().transition === 'fade', 'elegir otra transición quita Transformar');
+    D.querySelector('[data-tab="home"]')?.click();
+    // An object that is on both slides but enters by itself: it doesn't glide (it would show before its entrance), and the pane says why.
+    reset(); const t1 = slide().blocks[0]; R.store.commit(() => { t1.html = 'Mismo'; });
+    R.slides.duplicateForAnimate(); await sleep(10);
+    const t2 = slide().blocks.find(b => b.id === t1.id); select(t2); R.trans.setAnimation('fade-in'); await sleep(10);
+    const M = await frame.contentWindow.eval("import('/src/features/animation/morph.js')");
+    eq(M.morphConflict(R.state.deck, slide(), t2), 'entrance', 'no se desliza: entra con su animación');
+    const plan = R.io.morphPlan(R.state.deck); assert(plan.key(slide(), t2) !== plan.key(R.state.deck.slides[0], t1), 'con otro id que la de antes (no se emparejan)');
+    D.querySelector('[data-action="anim-panel"]').click(); await sleep(30);
+    assert(/entra con su animación/.test(D.querySelector('#anim-pane .an-clash')?.textContent || ''), 'el panel lo explica');
+    D.querySelector('#anim-pane .cm-close').click();
+    R.trans.clearAnimationForId(t2.id); eq(M.morphConflict(R.state.deck, slide(), t2), null, 'sin la animación, se desliza');
+  });
+
   await test('panel de animación: al lado de la diapositiva, varias a la vez, se arrastran juntas y se cambian juntas', async () => {
     reset(); R.slides.addSlide('blank'); await sleep(10);
     for (let k = 0; k < 4; k++) R.blocks.addShape('rect');

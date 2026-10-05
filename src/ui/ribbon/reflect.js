@@ -5,6 +5,7 @@
 
 import { currentSlide, selectedBlocks, targetSlides } from '../../core/store.js';
 import { shortSig } from '../../core/text.js';
+import { t } from '../../i18n/index.js';
 import { styled } from '../../features/document/master.js';
 import * as trans from '../../features/animation/transitions.js';
 import { MATH_SIZE, hasShapeText } from '../../render/svg.js';
@@ -122,7 +123,8 @@ export function syncBoxFormat() {
 // ---- Transitions and the slide's background (the selected slides) --------
 export function syncSlideState() {
   const ss = targetSlides().filter(Boolean); if (!ss.length) return;
-  const tr = common(ss, s => s.transition || 'inherit');
+  // (With Morph, Morph is the transition: no other one shown as chosen, and its options off.)
+  const tr = common(ss, s => (s.autoAnimate ? 'morph' : s.transition || 'inherit'));
   document.querySelectorAll('#ribbon [data-slide-transition]').forEach(b => {
     const k = b.dataset.slideTransition;
     press(b, tr === k ? true : tr === MIXED && ss.some(s => (s.transition || 'inherit') === k) ? MIXED : false);
@@ -132,10 +134,11 @@ export function syncSlideState() {
   showValue($('[data-morphby]'), common(ss, s => s.morphBy || 'objects'));
   showValue($('[data-slide-trans-out]'), common(ss, s => s.transitionOut || ''));
   showValue($('[data-slide-speed]'), common(ss, s => s.transitionSpeed || ''));
+  { const sp = $('[data-slide-speed]'); if (sp) { sp.disabled = am === true; sp.title = am === true ? t('Con Transformar, su duración se cambia en Configuración de la presentación') : ''; } }
   // Effect options: only those of this transition (wipe, push, split); none while they differ.
   const dsel = $('[data-slide-trans-dir]');
   if (dsel) {
-    const dirs = tr === MIXED ? [] : trans.TRANSITION_DIRS[tr] || [];
+    const dirs = tr === MIXED || tr === 'morph' ? [] : trans.TRANSITION_DIRS[tr] || [];
     dsel.disabled = !dirs.length;
     [...dsel.options].forEach(o => (o.hidden = o.value ? !dirs.includes(o.value) : dirs.length > 0));
     showValue(dsel, dirs.length ? common(ss, s => (dirs.includes(s.transitionDir) ? s.transitionDir : dirs[0])) : '');
