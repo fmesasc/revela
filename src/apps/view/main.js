@@ -24,7 +24,17 @@ const texts = { locked: t('Presentación protegida'), ask: t('Escribe la contras
 const doc = docIdFrom();
 if (doc) openCloud(doc);
 else if (src) { document.open(); document.write(openerPageHTML({ src, lang: currentLang(), texts })); document.close(); }
-else document.getElementById('m').textContent = texts.failed;
+else fail(texts.failed);
+
+// It can't be opened: said in the middle of the page, with what to do and a way somewhere (not a dead end).
+function fail(msg) {
+  const m = document.getElementById('m'); m.className = 'fail'; m.replaceChildren();
+  const b = document.createElement('b'); b.textContent = 'Revela';
+  const p1 = document.createElement('span'); p1.textContent = msg;
+  const p2 = document.createElement('small'); p2.textContent = t('Pide a quien te la envió un enlace nuevo.');
+  const a = document.createElement('a'); a.href = 'https://revelaslides.com/'; a.textContent = 'revelaslides.com';
+  m.append(b, p1, p2, a);
+}
 
 async function openCloud(id) {
   const m = document.getElementById('m'); m.textContent = texts.loading;
@@ -35,7 +45,7 @@ async function openCloud(id) {
     document.open(); document.write(html); document.close();
     if (name) document.title = name;
   } catch (e) {
-    m.textContent = e.status === 401 || e.status === 403 ? t('Esta presentación no es pública. Quien la comparte debe elegir «Cualquiera con el enlace puede ver».')
-      : e.status === 404 ? t('Esta presentación ya no está en la nube.') : texts.failed;
+    fail(e.status === 401 || e.status === 403 ? t('Esta presentación no es pública. Quien la comparte debe elegir «Cualquiera con el enlace puede ver».')
+      : e.status === 404 ? t('Esta presentación ya no está en la nube.') : texts.failed);
   }
 }

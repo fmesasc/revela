@@ -33,7 +33,7 @@ export function openGallery() {
   const grid = back.querySelector('.gal-grid');
   galleryNotice(back.querySelector('.gal-notice'));   // (Revela's own notice for here, if any: io/cloud/notices.js)
   // Asked only when there is something to lose.
-  const replaceWith = (deck, question) => (isBlankDeck(state.deck) ? Promise.resolve(true) : confirmDialog(question))
+  const replaceWith = (deck, question) => (isBlankDeck(state.deck) ? Promise.resolve(true) : confirmDialog(question, { ok: t('Descartar la actual'), danger: true }))
     .then(ok => { if (ok) { replaceDeck(deck); back.remove(); } });
   // The three ways to start, first: blank, made by the AI, or a file one already has.
   back.querySelector('[data-path="blank"]').addEventListener('click', () => replaceWith(emptyDeck(), t('¿Nueva presentación? Se perderá la actual si no la has guardado.')));

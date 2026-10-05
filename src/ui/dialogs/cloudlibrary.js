@@ -395,7 +395,7 @@ async function saveHere() {
 // A blank one in the cloud (in this folder), open in the editor.
 async function newDeck() {
   const folder = S.section === 'mine' && !S.q ? S.folder : null;
-  if (!cd.cloudDoc() && !isBlankDeck(state.deck) && !(await confirmDialog(t('¿Nueva presentación? Se perderá la actual si no la has guardado.')))) return;
+  if (!cd.cloudDoc() && !isBlankDeck(state.deck) && !(await confirmDialog(t('¿Nueva presentación? Se perderá la actual si no la has guardado.'), { ok: t('Descartar la actual'), danger: true }))) return;
   try {
     await cd.flushCloud(); cd.closeDoc();
     const deck = emptyDeck(); deck.name = UNTITLED;

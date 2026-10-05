@@ -209,11 +209,14 @@ export function overviewJS(sections, texts) {
   requestAnimationFrame(function(){items.forEach(function(x){x.inner.style.transform='scale('+(x.el.clientWidth/W)+')';});mark();});
  }
  function close(){if(box){box.remove();box=null;}}
+ function inEditor(){try{return window.parent!==window&&!!window.parent.document.getElementById('present-overlay');}catch(e){return false;}}
  function go(i){var x=items[i];close();Reveal.slide(x.h,x.v);}
  function mark(){items.forEach(function(x,i){x.el.classList.toggle('sel',i===sel);});var e=items[sel]&&items[sel].el;if(e)e.scrollIntoView({block:'nearest'});}
  function cols(){var g=items[0]&&items[0].el.parentNode;return g?getComputedStyle(g).gridTemplateColumns.split(' ').length:1;}
  window.addEventListener('keydown',function(e){
   var k=e.key;
+  // (Presenting inside the editor, Esc is the way out — the editor takes it —; O still opens the overview.)
+  if(!box&&k==='Escape'&&inEditor())return;
   if(!box){ if(k==='Escape'||((k==='o'||k==='O')&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!/INPUT|TEXTAREA/.test(e.target.tagName))){e.preventDefault();e.stopImmediatePropagation();open();} return; }
   e.preventDefault();e.stopImmediatePropagation();
   if(k==='Escape'||k==='o'||k==='O')close();

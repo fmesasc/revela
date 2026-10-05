@@ -114,9 +114,16 @@ export function renderAssistant() {
   // (Photos and documents for the AI: the paperclip, dropped on the panel or pasted into the text.)
   const att = attachments({ zone: panel, input: ta });
   q('.cm-new').insertBefore(att.chips, ta); q('.as-send').before(att.button);
-  const send = () => {
+  // (What is being written is kept — also across a reload, or the trip to connect the AI — and only cleared
+  // once the AI is ready to take it.)
+  const DRAFT = 'revela.assistant.draft';
+  try { if (!ta.value) ta.value = sessionStorage.getItem(DRAFT) || ''; grow(ta); } catch {}
+  ta.addEventListener('input', () => { try { sessionStorage.setItem(DRAFT, ta.value); } catch {} });
+  const send = async () => {
     const text = ta.value.trim(), atts = att.list();
-    if ((text || atts.length) && !job && !att.busy()) { ta.value = ''; grow(ta); att.clear(); ask(panel, text || t('Usa lo que te adjunto.'), atts); }
+    if (!(text || atts.length) || job || att.busy() || !(await ready())) return;
+    ta.value = ''; grow(ta); att.clear(); try { sessionStorage.removeItem(DRAFT); } catch {}
+    ask(panel, text || t('Usa lo que te adjunto.'), atts);
   };
   q('.as-send').addEventListener('click', send);
   ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); } });

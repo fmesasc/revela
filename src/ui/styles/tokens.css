@@ -2,7 +2,7 @@
 
 :root{
   --bg:#eef0f3; --canvas-bg:#c7cad1; --panel:#fff; --ribbon:#f7f8fa;
-  --line:#e2e4e9; --line2:#d2d5dc; --txt:#2f333a; --txt2:#797f89;
+  --line:#e2e4e9; --line2:#d2d5dc; --txt:#2f333a; --txt2:#5f6670;
   --accent:#3f6497; --accent-bg:#e8eef6; --go:#2b7a3b; --go-bg:#e6f4ea; --danger:#c0392b; --on-accent:#fff;
   color-scheme:light;
 }

@@ -13,22 +13,29 @@ import * as vo from '../../features/ai/voiceover.js';
 import { alertDialog, confirmDialog, promptDialog } from './dialog.js';
 import { t } from '../../i18n/index.js';
 
-export function openAiSettings() {
+// needed: opened because something asked for the AI (it says so first).
+export function openAiSettings({ needed = false } = {}) {
   document.getElementById('ai-modal')?.remove();
-  const s = ai.aiSettings();
+  const s = ai.aiSettings(), cloud = hasAccounts();
   const back = document.createElement('div'); back.id = 'ai-modal'; back.className = 'modal-backdrop';
+  // (The official edition: the AI comes with the Revela account; one's own OpenRouter key is the advanced way.)
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(560px,94vw);max-width:94vw">
-    <button class="modal-close">✕</button><h3>${t('Inteligencia artificial')}</h3>
-    <p class="host-help">${t('Revela usa OpenRouter, que da acceso a muchos modelos (Claude, GPT, Gemini, Llama…). Pagas tu uso directamente en OpenRouter; Revela no tiene servidor y no ve tus datos.')}</p>
+    <button class="modal-close" aria-label="${t('Cerrar')}">✕</button><h3>${t('Inteligencia artificial')}</h3>
+    ${needed ? `<p class="ai-needed"><b>${t('Para usar la IA, conéctala (solo una vez).')}</b></p>` : ''}
+    ${cloud ? `<p class="host-help">${t('La IA viene incluida con tu cuenta de Revela, sin claves: inicia sesión y listo.')}</p>
+      <div class="fr-actions" style="justify-content:flex-start"><button class="fr-do ai-account"><i class="ms">account_circle</i> ${t('Mi cuenta de Revela')}</button></div>`
+    : `<p class="host-help">${t('Revela usa OpenRouter, que da acceso a muchos modelos (Claude, GPT, Gemini, Llama…). Entras con tu cuenta de OpenRouter y pagas allí lo que uses.')}</p>`}
     <p class="ai-status"></p>
-    <div class="fr-actions" style="justify-content:flex-start"><button class="fr-do ai-login">${t('Entrar con OpenRouter')}</button><button class="ai-out mini2">${t('Desconectar')}</button></div>
-    <details class="ai-adv"><summary>${t('Usar mi propia clave de OpenRouter')}</summary>
-      <label class="fr-l"><input type="password" class="ai-key" placeholder="sk-or-…" autocomplete="off"></label>
-      <div class="fr-actions" style="justify-content:flex-start"><button class="ai-save mini2">${t('Guardar clave')}</button></div></details>
-    <label class="fr-l">${t('Modelo')} <input type="text" class="ai-model" list="ai-models" value="${s.model}">
-      <datalist id="ai-models"><option value="openrouter/auto"></option></datalist></label>
-    <label class="fr-l">${t('Modelo de imágenes')} <input type="text" class="ai-imodel" value="${ai.imageModel()}"></label>
-    <p class="host-help">${t('«openrouter/auto» elige un modelo adecuado. Otros modelos:')} <a href="https://openrouter.ai/models" target="_blank" rel="noopener">openrouter.ai/models</a></p>
+    <div class="fr-actions" style="justify-content:flex-start">${cloud ? '' : `<button class="fr-do ai-login">${t('Entrar con OpenRouter')}</button>`}<button class="ai-out mini2">${t('Desconectar')}</button></div>
+    <details class="ai-adv"><summary>${t('Opciones avanzadas')}</summary>
+      ${cloud ? `<p class="host-help">${t('En lugar de la IA incluida, tu propia cuenta de OpenRouter:')}</p><div class="fr-actions" style="justify-content:flex-start"><button class="mini2 ai-login">${t('Entrar con OpenRouter')}</button></div>` : ''}
+      <label class="fr-l">${t('Usar mi propia clave de OpenRouter')}<input type="password" class="ai-key" placeholder="sk-or-…" autocomplete="off"></label>
+      <div class="fr-actions" style="justify-content:flex-start"><button class="ai-save mini2">${t('Guardar clave')}</button></div>
+      <label class="fr-l">${t('Modelo')} <input type="text" class="ai-model" list="ai-models" value="${s.model}">
+        <datalist id="ai-models"><option value="openrouter/auto"></option></datalist></label>
+      <label class="fr-l">${t('Modelo de imágenes')} <input type="text" class="ai-imodel" value="${ai.imageModel()}"></label>
+      <p class="host-help">${t('«openrouter/auto» elige un modelo adecuado. Otros modelos:')} <a href="https://openrouter.ai/models" target="_blank" rel="noopener">openrouter.ai/models</a></p>
+    </details>
     <p class="host-help ai-privacy">${t('Al usar la IA, el texto de tus diapositivas (y la imagen, para el texto alternativo) se envía a OpenRouter y al proveedor del modelo elegido.')}</p></div>`;
   document.body.appendChild(back);
   const sync = () => {
@@ -39,6 +46,7 @@ export function openAiSettings() {
   back.querySelector('.modal-close').addEventListener('click', () => back.remove());
   back.addEventListener('click', e => { if (e.target === back) back.remove(); });
   back.querySelector('.ai-login').addEventListener('click', () => ai.startOpenRouterLogin());
+  back.querySelector('.ai-account')?.addEventListener('click', () => { back.remove(); openAccount(); });
   back.querySelector('.ai-out').addEventListener('click', () => { ai.disconnectAi(); sync(); });
   back.querySelector('.ai-save').addEventListener('click', () => { const k = back.querySelector('.ai-key').value; if (k) { ai.setAiKey(k); back.querySelector('.ai-key').value = ''; sync(); } });
   back.querySelector('.ai-model').addEventListener('change', e => ai.setAiModel(e.target.value));
@@ -50,7 +58,7 @@ export function openAiSettings() {
 export async function ready() {
   // The official edition: the AI comes with the account (sign in first).
   if (!ai.aiConnected() && hasAccounts()) { openAccount(); return false; }
-  if (!ai.aiConnected()) { openAiSettings(); return false; }
+  if (!ai.aiConnected()) { openAiSettings({ needed: true }); return false; }
   if (!ai.privacyAccepted()) {
     const ok = await confirmDialog(t('Al usar la IA, el texto de tus diapositivas (y la imagen, para el texto alternativo) se envía a OpenRouter y al proveedor del modelo elegido.') + ' ' + t('¿Continuar?'));
     if (!ok) return false; ai.acceptPrivacy();
@@ -118,6 +126,12 @@ export const aiRewrite = kind => run(() => ai.rewriteSelected(kind));
 
 // ---- Advanced authoring --------------------------------------------------------
 const TONES = ['profesional', 'didáctico', 'persuasivo', 'cercano', 'académico', 'inspirador'];
+const DECK_DRAFT = 'revela.aideck.draft', DECK_REOPEN = 'revela.aideck.reopen';
+// Back from connecting the AI with the form left half-way: open it again (once).
+export function reopenCreateDeck() {
+  let again = false; try { again = sessionStorage.getItem(DECK_REOPEN) === '1'; sessionStorage.removeItem(DECK_REOPEN); } catch {}
+  if (again) openCreateDeck();
+}
 export function openCreateDeck() {
   document.getElementById('aideck-modal')?.remove();
   const back = document.createElement('div'); back.id = 'aideck-modal'; back.className = 'modal-backdrop';
@@ -141,11 +155,19 @@ export function openCreateDeck() {
   const q = s => back.querySelector(s), close = () => back.remove();
   q('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
+  // (What was written is kept: connecting the AI may take the page to OpenRouter and back — the
+  // form opens again, filled in, when it comes back: apps/editor/main.js.)
+  const FIELDS = ['.ad-topic', '.ad-source', '.ad-count', '.ad-aud', '.ad-tone', '.ad-pal'];
+  try { const d = JSON.parse(sessionStorage.getItem(DECK_DRAFT) || 'null'); if (d) FIELDS.forEach((s, i) => { if (d[i] != null) q(s).value = d[i]; }); } catch {}
+  back.addEventListener('input', () => { try { sessionStorage.setItem(DECK_DRAFT, JSON.stringify(FIELDS.map(s => q(s).value))); } catch {} });
+  back.addEventListener('change', () => { try { sessionStorage.setItem(DECK_DRAFT, JSON.stringify(FIELDS.map(s => q(s).value))); } catch {} });
   q('.ad-go').addEventListener('click', async () => {
     const topic = q('.ad-topic').value.trim(), files = [...q('.ad-file').files].slice(0, ATTACH.count);
     let source = q('.ad-source').value.trim(), pics = [];
     if (!topic && !source && !files.length) { alertDialog(t('Escribe un tema o aporta un documento.')); return; }
+    try { sessionStorage.setItem(DECK_REOPEN, '1'); } catch {}
     if (!(await ready())) return;
+    try { sessionStorage.removeItem(DECK_REOPEN); } catch {}
     q('.ad-go').disabled = true; q('.ad-prog').hidden = false;
     try {
       // (Documents: their text; pictures — or a scanned PDF's pages —: shown to the AI.)
@@ -170,6 +192,7 @@ export function openCreateDeck() {
         // (The design's sample slides go: only the new presentation's own.)
         if (starter) commit(() => { state.deck.slides = state.deck.slides.filter(s => !starter.has(s.id)); state.ui.slideIndex = 0; });
       });
+      try { sessionStorage.removeItem(DECK_DRAFT); } catch {}
       close();
     } catch (e) { alertDialog(t('No se pudo completar: ') + (e.message || e)); }
     finally { if (document.body.contains(back)) { q('.ad-go').disabled = false; q('.ad-prog').hidden = true; } }

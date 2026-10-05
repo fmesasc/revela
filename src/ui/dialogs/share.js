@@ -39,14 +39,14 @@ ${hasAccounts() ? `<div class="sh-cloud"><div><b>${t('Con personas concretas')}<
       <label class="fr-chk"><input type="radio" name="sh-w" value="drive"> ${t('Mi Google Drive')} ${gdriveReady() ? '' : `<button type="button" class="mini2 sh-gd">${t('Configurar')}</button>`}</label>
       <label class="fr-chk"><input type="radio" name="sh-w" value="server"> ${t('Servidor de Revela (con tu cuenta de Google)')}</label>
       <div class="sh-srv" hidden>
-        <details class="sh-other"${sc.builtIn ? '' : ' open'}><summary>${t('Usar otro servidor')}</summary>
-          <input type="url" class="sh-url" placeholder="${esc(SERVER_URL)}" value="${esc(sc.builtIn ? '' : sc.url)}">
-          <input type="password" class="sh-up" placeholder="${t('Clave de subida')}" value="${esc(sc.uploadKey)}">
-        </details>
-        <label class="fr-l">${t('Solo cuentas de Google de este dominio (opcional)')} <input type="text" class="sh-domain" placeholder="escuela.example"></label>
         <label class="fr-l">${t('Caduca')} <select class="sh-days"><option value="0">${t('Nunca')}</option><option value="7">7 ${t('días')}</option>
           <option value="30">30 ${t('días')}</option><option value="90">90 ${t('días')}</option></select></label>
-        <p class="host-help">${t('Cómo montarlo gratis en Cloudflare: server/cloudflare/README.md del repositorio.')}</p>
+        <details class="sh-other"${sc.builtIn ? '' : ' open'}><summary>${t('Opciones avanzadas (administradores)')}</summary>
+          <label class="fr-l">${t('Solo cuentas de Google de este dominio (opcional)')} <input type="text" class="sh-domain" placeholder="${t('micentro.edu')}"></label>
+          <label class="fr-l">${t('Usar otro servidor')}<input type="url" class="sh-url" placeholder="${esc(SERVER_URL)}" value="${esc(sc.builtIn ? '' : sc.url)}"></label>
+          <input type="password" class="sh-up" placeholder="${t('Clave de subida')}" value="${esc(sc.uploadKey)}">
+          <p class="host-help">${t('Cómo montarlo gratis en Cloudflare: server/cloudflare/README.md del repositorio.')}</p>
+        </details>
       </div>
     </fieldset>
     <div class="fr-actions"><button class="fr-do sh-go">${t('Compartir')}</button></div>

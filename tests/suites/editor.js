@@ -654,10 +654,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.querySelector('[data-tab="home"]').click();
   });
 
-  await test('confirmación: Aceptar con el foco (Intro), Esc cancela; Tab no sale del diálogo', async () => {
+  await test('confirmación: si se pierde algo, el foco en Cancelar y el botón dice qué hace; Esc cancela; Tab no sale del diálogo', async () => {
     reset(); R.blocks.addText('Algo'); const n = slide().blocks.length;
     D.querySelector('[data-action="new"]').click(); await frameTick();
-    assert(D.activeElement?.classList.contains('dlg-ok'), 'el foco en Aceptar (Intro confirma)');
+    assert(D.activeElement?.classList.contains('dlg-cancel'), 'el foco en Cancelar (Intro no descarta el trabajo)');
+    eq(D.querySelector('.modal-backdrop .dlg-ok').textContent, 'Descartar la actual', 'el botón dice qué hace');
     press('Tab'); assert(D.querySelector('.modal-backdrop').contains(D.activeElement), 'Tab desde el último botón vuelve al primero');
     press('Tab', { shiftKey: true }); assert(D.querySelector('.modal-backdrop').contains(D.activeElement), 'y Mayús+Tab al revés');
     press('Escape'); await sleep(20);

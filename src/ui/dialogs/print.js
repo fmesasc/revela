@@ -64,29 +64,40 @@ export function openVideoDialog() {
   back.innerHTML = `<div class="modal" style="text-align:start;min-width:300px">
     <button class="modal-close">✕</button><h3>${t('Exportar vídeo')}</h3>
     <label class="fr-l">${t('Formato')}
-      <select class="vd-type"><option value="mp4">MP4 (H.264)</option><option value="gif">GIF ${t('animado')}</option></select></label>
+      <select class="vd-type"><option value="mp4">MP4 (H.264)</option><option value="gif">${t('GIF animado')}</option></select></label>
     <label class="fr-l">${t('Segundos por diapositiva (si no tiene avance automático)')}
       <input type="number" class="vd-hold" min="1" max="60" step="1" value="5"></label>
+    <p class="host-help vd-est"></p>
     <progress class="vd-prog" max="1" value="0" hidden style="width:100%"></progress>
-    <div class="fr-actions"><button class="fr-do vd-go">${t('Exportar')}</button></div></div>`;
+    <div class="fr-actions"><button class="mini2 vd-stop" hidden>${t('Cancelar')}</button><button class="fr-do vd-go">${t('Exportar')}</button></div></div>`;
   document.body.appendChild(back);
-  const close = () => back.remove();
+  // (Closing or «Cancelar» while it is being made stops it: no file turning up later out of nowhere.)
+  let running = false, cancelled = false;
+  const close = () => { if (running) cancelled = true; back.remove(); };
+  // (How long the video will be, before making it.)
+  const est = () => { const vis = state.deck.slides.filter(x => !x.hidden), hold = Math.max(1, +back.querySelector('.vd-hold').value || 5);
+    const secs = Math.round(vis.reduce((a, x) => a + (x.autoSlide > 0 ? x.autoSlide / 1000 : hold), 0));
+    back.querySelector('.vd-est').textContent = t('≈ {s} s de vídeo ({n} diapositivas); hacerlo tarda unos minutos.').replace('{s}', secs).replace('{n}', vis.length); };
+  back.querySelector('.vd-hold').addEventListener('input', est); est();
+  back.querySelector('.vd-stop').addEventListener('click', () => { cancelled = true; });
   back.querySelector('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
   back.querySelector('.vd-go').addEventListener('click', async () => {
     const type = back.querySelector('.vd-type').value, holdMs = Math.max(1, +back.querySelector('.vd-hold').value || 5) * 1000;
     const prog = back.querySelector('.vd-prog'), go = back.querySelector('.vd-go');
-    prog.hidden = false; go.disabled = true;
+    prog.hidden = false; go.disabled = true; running = true; cancelled = false; back.querySelector('.vd-stop').hidden = false;
+    const onProgress = p => { if (cancelled) throw new Error('STOPPED'); prog.value = p; };
     try {
       const v = await import('../../io/export/video.js');
-      const blob = type === 'gif' ? await v.buildGIF(undefined, { holdMs, onProgress: p => (prog.value = p) })
-        : await v.buildMP4(undefined, { holdMs, onProgress: p => (prog.value = p) });
+      const blob = type === 'gif' ? await v.buildGIF(undefined, { holdMs, onProgress }) : await v.buildMP4(undefined, { holdMs, onProgress });
+      if (cancelled) throw new Error('STOPPED');
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
       a.download = (state.deck.name || 'presentacion').replace(/[^\p{L}\p{N}]+/gu, '-') + '.' + type; a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-      close();
+      running = false; close(); toast(t('Vídeo descargado.'));
     } catch (e) {
-      go.disabled = false; prog.hidden = true;
+      running = false; go.disabled = false; prog.hidden = true; back.querySelector('.vd-stop').hidden = true;
+      if (e.message === 'STOPPED') return;
       alertDialog(t('No se pudo exportar: ') + (e.message === 'WebCodecs' || e.message === 'H.264' ? t('este navegador no puede codificar MP4; prueba GIF o Chrome/Edge.') : (e.message || e)));
     }
   });

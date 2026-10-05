@@ -1947,7 +1947,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     try {
       await GD.signOut();
       D.querySelector('[data-action="collab"]').click(); await sleep(20);
-      assert(/tu servidor/.test(D.querySelector('.dlg-msg').textContent), 'avisa de que va por el servidor'); D.querySelector('.dlg-ok').click(); await sleep(150);
+      assert(/servidor de Revela|tu servidor/.test(D.querySelector('.dlg-msg').textContent), 'avisa de que va por el servidor'); D.querySelector('.dlg-ok').click(); await sleep(150);
       const c = sent.find(x => x.url === 'https://revela-share.fmesasc.workers.dev/c');
       assert(c && c.o.headers.Authorization === 'Bearer tokG', 'crea la sala con la sesión de Google');
       eq(GD.account()?.email, 'ana@example.org', 'e inicia sesión si no la había');

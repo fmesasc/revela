@@ -7,6 +7,26 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(ov && ov.querySelector('iframe'), 'no se creó la capa de presentación');
     ov.querySelector('#present-close').click(); await sleep(20);
     assert(!D.getElementById('present-overlay'), 'la capa no se cerró');
+    // Esc inside the slides, without full screen: out (the overview first, if it is open).
+    R.store.commit(() => { slide().notes = 'Mis notas'; }); R.io.present({ fullscreen: false }); await sleep(40);
+    const f = D.querySelector('#present-overlay iframe'); let Rv = null;
+    for (let i = 0; i < 80 && !(Rv = f.contentWindow?.Reveal)?.isReady?.(); i++) await sleep(50);
+    assert(D.querySelector('#present-bar #present-notes'), 'la vista del moderador, a la vista (no solo la tecla S)');
+    // (reveal.js's speaker view, in the interface's language.)
+    let opened = 0; const np = Rv.getPlugin('notes'), open0 = np.open; np.open = () => { opened++; };
+    D.querySelector('#present-notes').click(); np.open = open0; eq(opened, 1, 'el botón abre la vista del moderador');
+    // (reveal.js's speaker view speaks English: its words, in the interface's language.)
+    const PS = await frame.contentWindow.eval("import('/src/ui/shell/present.js')"), sv = D.createElement('iframe'); D.body.appendChild(sv);
+    sv.contentDocument.write('<title>reveal.js - Speaker View</title><div id="upcoming-slide"><span>Upcoming</span></div><h4>Time <span>Click to Reset</span></h4><h4>Notes</h4><label>Layout: Default</label>'); sv.contentDocument.close();
+    PS.translateSpeakerView(sv.contentWindow); await sleep(500);
+    const txt = sv.contentDocument.body.textContent;
+    assert(sv.contentDocument.title === 'Vista del moderador' && /Siguiente/.test(txt) && /Notas/.test(txt) && /Disposición: Predeterminada/.test(txt) && !/Upcoming|Layout/.test(txt), 'la vista del moderador, en español: ' + txt);
+    sv.remove();
+    const esc = () => f.contentWindow.document.dispatchEvent(new f.contentWindow.KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true, cancelable: true }));
+    Rv.toggleOverview(true); await sleep(50); esc(); await sleep(80);
+    assert(D.getElementById('present-overlay'), 'con la vista general abierta, Esc es de reveal.js (la cierra), no sale');
+    Rv.toggleOverview(false); await sleep(50); esc(); await sleep(80);
+    assert(!D.getElementById('present-overlay'), 'y luego sale de la presentación');
   });
 
   await test('cuestionario tipo Kahoot: respuesta correcta, puntos por rapidez, resultados y clasificación', async () => {

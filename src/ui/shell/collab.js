@@ -9,6 +9,7 @@ import { saveProject } from '../../io/formats/project.js';
 import { session, onCollab, hostCollab, joinCollab, peerListen, peerConnect, collabLink, newCode } from '../../features/live/collab.js';
 import { ROLES } from '../../features/live/collabsync.js';
 import { collabServerReady, createRoom, roomConnect } from '../../io/cloud/collabserver.js';
+import { serverConfig } from '../../io/cloud/shareserver.js';
 import { author, setAuthor } from '../../features/collab/comments.js';
 import * as slides from '../../features/document/slides.js';
 import { t } from '../../i18n/index.js';
@@ -30,8 +31,9 @@ export async function openCollab() {
   if (!session) {
     const viaServer = collabServerReady();
     if (!(await confirmDialog(viaServer
-      ? t('Colaborar en directo con tu servidor: quien tenga un enlace verá los cambios al momento y, según el enlace, podrá comentar o editar. La presentación se guarda en tu servidor mientras dure la sesión (aunque cierres esta pestaña) y se borra al terminarla. ¿Empezar?')
-      : t('Colaborar en directo: quien tenga un enlace verá los cambios al momento y, según el enlace, podrá comentar o editar. Los datos van directamente entre los navegadores (cifrados); esta pestaña debe seguir abierta mientras dure la sesión. ¿Empezar?')))) return;
+      ? (serverConfig().builtIn ? t('Colaborar en directo con el servidor de Revela: quien tenga un enlace verá los cambios al momento y, según el enlace, podrá comentar o editar. La presentación se guarda allí mientras dure la sesión (aunque cierres esta pestaña) y se borra al terminarla.')
+        : t('Colaborar en directo con tu servidor: quien tenga un enlace verá los cambios al momento y, según el enlace, podrá comentar o editar. La presentación se guarda en tu servidor mientras dure la sesión (aunque cierres esta pestaña) y se borra al terminarla. ¿Empezar?'))
+      : t('Colaborar en directo: quien tenga un enlace verá los cambios al momento y, según el enlace, podrá comentar o editar. Los datos van directamente entre los navegadores (cifrados); esta pestaña debe seguir abierta mientras dure la sesión. ¿Empezar?'), { ok: t('Empezar a colaborar') }))) return;
     const name = await askName(); if (!name) return;
     const direct = async () => { const code = newCode(); hostCollab({ name, listen: await peerListen(code), code }); };
     try {

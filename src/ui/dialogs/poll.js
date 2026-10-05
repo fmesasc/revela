@@ -1,10 +1,11 @@
 // Poll editor dialog (question, type, options, display) and results tools.
 
-import { setPoll, clearVotes, votesCSV, savedVotes, tallyVotes, ACTIVITIES } from '../../features/live/poll.js';
+import { setPoll, removePoll, clearVotes, votesCSV, savedVotes, tallyVotes, ACTIVITIES } from '../../features/live/poll.js';
 import { confirmDialog } from './dialog.js';
 import { t } from '../../i18n/index.js';
 
-export function openPollEditor(b) {
+// fresh: a poll just inserted — closed without «Aplicar», it goes again (Cancel cancels).
+export function openPollEditor(b, { fresh = false } = {}) {
   document.getElementById('poll-modal')?.remove();
   const back = document.createElement('div'); back.id = 'poll-modal'; back.className = 'modal-backdrop';
   const opt = (v, l, cur) => `<option value="${v}"${cur === v ? ' selected' : ''}>${t(l)}</option>`;
@@ -21,11 +22,12 @@ export function openPollEditor(b) {
     <p class="host-help pl-quiz">${t('Cuestionario: pon un asterisco (*) delante de la respuesta correcta. Acertar da de 500 a 1000 puntos, más cuanto antes; al acabar el tiempo (o con un clic) se ve la respuesta y quién va ganando.')}</p>
     <label class="fr-l pl-quiz">${t('Tiempo para responder')}<select class="pl-time">${[10, 20, 30, 45, 60, 90].map(n => `<option value="${n}"${(b.time || 20) === n ? ' selected' : ''}>${n} s</option>`).join('')}</select></label>
     <label class="fr-l">${t('Mostrar resultados como')}<select class="pl-disp">${opt('bar', 'Barras', b.display)}${opt('pie', 'Circular', b.display)}${opt('numbers', 'Cifras', b.display)}</select></label>
-    <p class="host-help">${t('Al presentar aparece un QR: el público vota desde el móvil y los resultados se actualizan al instante. Conexión directa entre navegadores (WebRTC); funciona bien con decenas de personas.')}</p>
+    <p class="host-help">${t('Al presentar aparece un QR: el público vota desde el móvil y los resultados se actualizan al instante. Los móviles se conectan directamente a este ordenador, sin servidor; funciona bien con decenas de personas.')}</p>
     <p class="host-help pl-count"></p>
     <div class="fr-actions"><button class="pl-clear mini2">${t('Borrar resultados')}</button><button class="pl-csv mini2">${t('Descargar resultados (CSV)')}</button><button class="fr-do pl-ok">${t('Aplicar')}</button></div></div>`;
   document.body.appendChild(back);
-  const q = s => back.querySelector(s), close = () => back.remove();
+  let applied = false;
+  const q = s => back.querySelector(s), close = () => { back.remove(); if (fresh && !applied) removePoll(b.id); };
   q('.pl-q').value = b.question || ''; q('.pl-opts').value = (b.options || []).map((o, i) => (b.kind === 'quiz' && (b.correct || []).includes(i) ? '*' : '') + o).join('\n');
   const HELP = { order: 'Escribe los elementos en el orden correcto, uno por línea: en los móviles salen desordenados.',
     match: 'Una pareja por línea: «izquierda = derecha». En los móviles, la columna derecha sale desordenada.',
@@ -73,7 +75,7 @@ export function openPollEditor(b) {
       ...(kind === 'quiz' && { correct: correct.length ? correct : [0], time: +q('.pl-time').value }),
       ...(kind === 'gaps' && { text: q('.pl-text').value.trim() }),
       ...(kind === 'label' && { image, points: options.map((_, i) => points[i] || { x: 50, y: 50 }) }) });
-    close();
+    applied = true; close();
   });
   q('.pl-clear').addEventListener('click', async () => {
     if (!(await confirmDialog(t('¿Borrar los votos recibidos en esta votación?')))) return;

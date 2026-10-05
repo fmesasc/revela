@@ -86,6 +86,7 @@ import { loadNewerDeck } from '../../core/model.js';
 import { startAutoVersions } from '../../features/collab/versions.js';
 import * as versions from '../../features/collab/versions.js';
 import { finishOpenRouterLogin } from '../../features/ai/openrouter.js';
+import { reopenCreateDeck } from '../../ui/dialogs/ai.js';
 import { alertDialog, confirmDialog, promptDialog } from '../../ui/dialogs/dialog.js';
 import { initModalKeys } from '../../ui/dialogs/modalkeys.js';
 import * as notify from '../../core/notify.js';
@@ -330,7 +331,7 @@ if (!testing) handleOpenWith();
     history.replaceState(null, '', location.pathname);
     examples.loadExample(k, i18n.currentLang()).then(d => { if (d) store.replaceDeck(d); }).catch(() => {});
   } }
-if (!testing) finishOpenRouterLogin().then(ok => { if (ok) alertDialog(t('IA conectada con OpenRouter.')); })
+if (!testing) finishOpenRouterLogin().then(ok => { if (ok) { alertDialog(t('IA conectada con OpenRouter.')); reopenCreateDeck(); } })
   .catch(e => alertDialog(t('No se pudo conectar con OpenRouter: ') + e.message));
 
 // Offline support (PWA). Not for the test harness nor file:// pages.

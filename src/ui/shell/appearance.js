@@ -26,7 +26,7 @@ export function derive(base, accent) {
     '--go': '#6fd18c', '--go-bg': mix('#2b7a3b', base, .7), '--danger': '#f07167', 'color-scheme': 'dark',
   } : {
     '--panel': base, '--ribbon': mix(base, k, .03), '--bg': mix(base, k, .06), '--canvas-bg': mix(base, k, .22),
-    '--line': mix(base, k, .10), '--line2': mix(base, k, .17), '--txt': '#2f333a', '--txt2': '#6f7680',
+    '--line': mix(base, k, .10), '--line2': mix(base, k, .17), '--txt': '#2f333a', '--txt2': '#5f6670',
     '--accent': acc, '--accent-bg': mix(accent, base, .88), '--on-accent': on, '--go': '#2b7a3b', '--go-bg': '#e6f4ea', '--danger': '#c0392b', 'color-scheme': 'light',
   };
 }

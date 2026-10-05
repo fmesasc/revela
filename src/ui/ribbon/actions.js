@@ -89,7 +89,7 @@ export const slidesFocused = () => (state.ui.navFocus || document.body.classList
 export let animPaint = null;       // animation being copied with the painter
 export function endAnimPaint() { animPaint = null; document.body.classList.remove('anim-painting'); $('[data-action="anim-paint"]')?.classList.remove('on'); }
 export const ACTIONS = {
-  'new': () => (isBlankDeck(state.deck) ? Promise.resolve(true) : confirmDialog(t('¿Nueva presentación? Se perderá la actual si no la has guardado.')))
+  'new': () => (isBlankDeck(state.deck) ? Promise.resolve(true) : confirmDialog(t('¿Nueva presentación? Se perderá la actual si no la has guardado.'), { ok: t('Descartar la actual'), danger: true }))
     .then(ok => { if (ok) replaceDeck(emptyDeck()); }),
   'open': () => openAnyPresentation(),
   'save-protected': async () => {
@@ -156,7 +156,7 @@ export const ACTIONS = {
   'record-screen': () => recorder.recordToSlide('screen'),
   'record-camera': () => recorder.recordToSlide('camera'),
   'insert-camera': () => media.addCamera('circle'),
-  'insert-poll': () => openPollEditor(poll.addPoll()),
+  'insert-poll': () => openPollEditor(poll.addPoll(), { fresh: true }),
   'insert-dashboard': () => openDashboardDialog(),
   'insert-stock': () => openElements('images'),
   'insert-online-icon': () => openElements('icons'),

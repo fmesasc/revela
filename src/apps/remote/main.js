@@ -81,7 +81,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 async function connect(code, again = false) {
   lastCode = code;
   err(''); $('go').disabled = true; setStatus(back || again ? t('Reconectando…') : t('Conectando…'));
-  try { await loadPeerJS(); } catch (e) { err(e.message); $('go').disabled = false; return; }
+  try { await loadPeerJS(); } catch { err(t('No se puede conectar: comprueba la conexión a internet del móvil y vuelve a intentarlo.')); $('go').disabled = false; setStatus(t('Sin conectar')); return; }
   try { peer?.destroy(); } catch {}
   clearTimeout(slow);
   peer = new window.Peer(await peerOptions());

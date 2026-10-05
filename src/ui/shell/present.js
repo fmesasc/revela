@@ -31,9 +31,13 @@ export function present({ rehearse = false, fullscreen = true, onEnd = null, onR
   frame.allow = 'fullscreen; autoplay; xr-spatial-tracking; clipboard-write; camera; microphone';
   overlay.appendChild(frame);
 
-  const close = document.createElement('button');
-  close.id = 'present-close'; close.title = t('Salir (Esc)'); close.textContent = '✕';
-  overlay.appendChild(close);
+  // (Top right, always findable: the speaker view — notes, the next slide, the time — and the way out.)
+  const bar = document.createElement('div'); bar.id = 'present-bar';
+  bar.innerHTML = `<button type="button" id="present-notes" title="${t('Vista del moderador: notas, siguiente diapositiva y tiempo (S)')}"><i class="ms">co_present</i><span>${t('Vista del moderador')}</span></button>`
+    + `<button type="button" id="present-close" title="${t('Salir (Esc)')}"><i class="ms">close</i><span>${t('Salir')}</span></button>`;
+  const close = bar.querySelector('#present-close');
+  bar.querySelector('#present-notes').addEventListener('click', () => { frame.contentWindow?.Reveal?.getPlugin?.('notes')?.open?.(); frame.focus(); });
+  overlay.appendChild(bar);
   document.body.appendChild(overlay);
 
   // Rehearsal clock: time on the current slide and total.
@@ -74,6 +78,15 @@ export function present({ rehearse = false, fullscreen = true, onEnd = null, onR
     const Rv = frame.contentWindow?.Reveal;
     if (Rv && Rv.isReady?.()) {
       clearInterval(hook); Rv.on('slidechanged', notifySlide);
+      // (reveal.js's speaker view, which only speaks English: its words in the interface's language.)
+      const W = frame.contentWindow, open0 = W.open.bind(W);
+      W.open = (...args) => { const w = open0(...args); if (w) { translateSpeakerView(w); if (session.present) session.present.speaker = w; } return w; };
+      // (Esc inside the slides — where the keys go —: out of the overview first, then out of the presentation,
+      // also without full screen, where the browser doesn't take it.)
+      frame.contentWindow.addEventListener('keydown', e => {
+        if (e.key !== 'Escape' || document.fullscreenElement || Rv.isOverview?.()) return;
+        e.preventDefault(); e.stopImmediatePropagation(); end();
+      }, true);
       if (startAt) { const [h, v] = startAt.split('/').map(Number); Rv.slide(h, v); }
       notifySlide();
       if (rehearse) Rv.on('slidechanged', () => lap(Rv.getSlidePastCount()));
@@ -85,6 +98,36 @@ export function present({ rehearse = false, fullscreen = true, onEnd = null, onR
   // the whole viewport so the presentation fills the window either way.
   if (fullscreen) Promise.resolve(overlay.requestFullscreen?.()).catch(() => {});
   frame.focus();
+}
+
+// reveal.js's speaker view (plugin/notes) in the interface's language: its fixed words, and the layout
+// label it rewrites when the layout changes.
+export function translateSpeakerView(w) {
+  const words = { 'Upcoming': t('Siguiente'), 'Time ': t('Tiempo') + ' ', 'Click to Reset': t('Clic para reiniciar'), 'Notes': t('Notas'),
+    'Pacing – Time to finish current slide': t('Ritmo: tiempo para acabar esta diapositiva'), 'Default': t('Predeterminada'), 'Wide': t('Ancha'),
+    'Tall': t('Alta'), 'Notes only': t('Solo notas') };
+  const run = () => {
+    const d = w.document; if (!d?.getElementById('upcoming-slide')) return false;     // (still blank: the plugin writes it after opening)
+    if (/Speaker View/.test(d.title)) d.title = t('Vista del moderador');
+    const walk = d.createTreeWalker(d.body, NodeFilter.SHOW_TEXT);
+    for (let n; (n = walk.nextNode());) {
+      const v = n.nodeValue, k = v.trim();
+      if (words[k] || words[k + ' ']) n.nodeValue = v.replace(k, (words[k] || words[k + ' ']).trim());
+      else if (/^Layout(: .*)?$/.test(k)) n.nodeValue = v.replace(/^(\s*)Layout(: (.*))?/, (m, sp, x, name) => `${sp}${t('Disposición')}${name ? ': ' + (words[name] || name) : ''}`);
+    }
+    return true;
+  };
+  // (Once its page is there; then again whenever the plugin writes the layout's name anew.)
+  let tries = 0;
+  const wait = setInterval(() => {
+    try {
+      if (!run()) { if (++tries > 50) clearInterval(wait); return; }
+      clearInterval(wait);
+      const opts = { subtree: true, childList: true, characterData: true };
+      const o = new w.MutationObserver(() => { o.disconnect(); run(); o.observe(w.document.body, opts); });
+      o.observe(w.document.body, opts);
+    } catch { clearInterval(wait); }
+  }, 200);
 }
 
 // Save rehearsed times (visible slides, in order) as each slide's auto-advance.

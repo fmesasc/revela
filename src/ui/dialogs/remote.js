@@ -64,13 +64,22 @@ export function openHostPanel(opts = {}) {
     }
     if (s.state === 'waiting') st.textContent = t('Esperando al móvil…');
     if (s.state === 'connected') st.textContent = '📱 ' + t('Móvil conectado');
-    if (s.state === 'error') st.textContent = t('Error: ') + s.error;
+    if (s.state === 'error') { fail(s.error); return; }
     st.classList.toggle('on', s.state === 'connected');
     q('.host-cut').hidden = s.state !== 'connected';
     const ask = q('.host-ask'); ask.hidden = s.state !== 'request';
     if (s.state === 'request') { q('.host-allow').onclick = s.allow; q('.host-deny').onclick = s.deny; }
     syncChip();
-  }, { thumb, ...opts }).catch(e => { q('.host-status').textContent = t('Error: ') + (e?.message || e); });
+  }, { thumb, ...opts }).catch(e => fail(e?.message || e));
+  // (It couldn't connect: said plainly, with a way to try again — not a code, a blank QR and «still connected».)
+  function fail(detail) {
+    for (const k of ['.host-code', '.host-qr', '.host-keep', '.host-link', '.host-safe', '.host-ask', '.host-cut']) q(k).hidden = true;
+    q('.host-url').closest('p').hidden = true;
+    const st = q('.host-status'); st.classList.remove('on'); st.classList.add('err'); st.title = String(detail || '');
+    st.innerHTML = `${t('No se puede conectar el móvil: comprueba la conexión a internet.')} <button type="button" class="mini2 host-retry">${t('Reintentar')}</button>`;
+    st.querySelector('.host-retry').addEventListener('click', () => { stopHost(); last = null; back.remove(); openHostPanel(opts); });
+    syncChip();
+  }
 }
 
 // Over the presentation: "📱 Remote ✕" (cut it off), or the request to allow.

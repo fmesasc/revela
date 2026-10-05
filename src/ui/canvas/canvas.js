@@ -400,7 +400,10 @@ function blockEl(b) {
   else if (b.type === 'model') setupModel(el);
   else if (b.type === 'embed') setupEmbed(el);
   else if (b.type === 'file') el.addEventListener('dblclick', () => openFile(el._b));
-  else if (b.type === 'diagram') el.addEventListener('dblclick', () => openDiagramText(el._b));   // (double-click: its text)   // (double-click: open or download it)
+  else if (b.type === 'diagram') el.addEventListener('dblclick', () => openDiagramText(el._b));
+  // (As in PowerPoint and Slides: double-click a chart for its data, a poll for its question and options.)
+  else if (b.type === 'chart') el.addEventListener('dblclick', () => { if (!state.deck.final && !state.ui.lock) import('../dialogs/object.js').then(m => m.openChartData(el._b)); });
+  else if (b.type === 'poll') el.addEventListener('dblclick', () => { if (!state.deck.final && !state.ui.lock) import('../dialogs/poll.js').then(m => m.openPollEditor(el._b)); });   // (double-click: its text)   // (double-click: open or download it)
   else if (b.type === 'table') setupTable(el, b);
   else if (b.type === 'code') setupCode(el, b);
   else if (b.type === 'math') setupMath(el, b);

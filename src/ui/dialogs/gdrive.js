@@ -11,7 +11,7 @@ export function openGdriveSetup() {
   const back = document.createElement('div');
   back.id = 'gd-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:left;width:min(520px,94vw);max-width:none">
-    <button class="modal-close">✕</button><h3>${t('Conectar con Google Drive')}</h3>
+    <button class="modal-close">✕</button><h3>${t('Mi propio proyecto de Google Cloud (avanzado)')}</h3>
     <p class="host-help">${t('Revela ya viene preparado para Google Drive. Solo si quieres usar tu propio proyecto de Google Cloud (permiso drive.file), escribe aquí su ID de cliente, su clave de API y su número de proyecto; se guardan solo en este navegador. Déjalo vacío para usar el de Revela.')}</p>
     <label class="fr-l">Client ID<input type="text" class="gd-cid" value="${(c.clientId || '').replace(/"/g, '&quot;')}" placeholder="xxxx.apps.googleusercontent.com"></label>
     <label class="fr-l">API key<input type="text" class="gd-key" value="${(c.apiKey || '').replace(/"/g, '&quot;')}" placeholder="AIza..."></label>

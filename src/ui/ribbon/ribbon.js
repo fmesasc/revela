@@ -379,7 +379,9 @@ export function renderRibbon() {
     for (const [a, ok] of Object.entries(need)) document.querySelectorAll(`[data-action="${a}"]`).forEach(el => { el.disabled = !ok; }); }
   // (From the slides panel: the selected slides.)
   { const has = !!selectedBlock() || slidesFocused(); ['clip-copy', 'clip-cut', 'obj-duplicate'].forEach(a => { const el = $(`[data-action="${a}"]`); if (el) el.disabled = !has; });
-    const p = $('[data-action="clip-paste"]'); if (p) p.disabled = !clip.hasClipboard() && !(state.ui.navFocus && slides.hasSlideClip()); }
+    const p = $('[data-action="clip-paste"]'); if (p) p.disabled = !clip.hasClipboard() && !(state.ui.navFocus && slides.hasSlideClip());
+    // (Selection as a picture: like Copy, off without anything selected — not a button that answers with an alert.)
+    const sp = $('[data-action="save-picture"]'); if (sp) sp.disabled = !selectedBlock() && !(state.ui.multi || []).length; }
   $('[data-action="mark-final"]')?.classList.toggle('on', protect.isFinal());
   $('[data-action="classroom"]')?.classList.toggle('on', !!state.deck.classroom);
   document.querySelectorAll('[data-action="selection-pane"]').forEach(b => b.classList.toggle('on', !!state.ui.showSelection));

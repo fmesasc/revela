@@ -1,6 +1,23 @@
 // Objects: shapes, icons, charts, diagrams, tables, images, equations, code, media, grouping, clipboard.
 
 export default async function ({ R, D, frame, test, sleep, assert, eq, reset, slide, last, select, richOf, newText }) {
+  await test('votación y gráfico: cancelar una votación nueva la quita; doble clic abre sus datos', async () => {
+    reset(); const n = slide().blocks.length;
+    D.querySelector('[data-action="insert-poll"]').click(); await sleep(20);
+    assert(D.getElementById('poll-modal') && slide().blocks.length === n + 1, 'se abre el editor');
+    D.querySelector('#poll-modal .modal-close').click(); await sleep(20);
+    eq(slide().blocks.length, n, 'cancelada, la votación no se queda en la diapositiva');
+    D.querySelector('[data-action="insert-poll"]').click(); await sleep(20);
+    D.querySelector('#poll-modal .pl-q').value = '¿Café o té?'; D.querySelector('#poll-modal .pl-ok').click(); await sleep(20);
+    const p = slide().blocks.find(b => b.type === 'poll'); assert(p && p.question === '¿Café o té?', 'aplicada, se queda');
+    D.querySelector(`#stage .block[data-id="${p.id}"]`).dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); await sleep(80);
+    assert(D.getElementById('poll-modal'), 'doble clic en la votación: su editor'); D.querySelector('#poll-modal .modal-close').click(); await sleep(20);
+    assert(slide().blocks.some(b => b.id === p.id), 'cerrar el editor de una que ya existía no la quita');
+    R.blocks.addChart(); await sleep(20); const c = slide().blocks.find(b => b.type === 'chart');
+    D.querySelector(`#stage .block[data-id="${c.id}"]`).dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); await sleep(80);
+    assert(D.getElementById('chart-modal'), 'doble clic en el gráfico: sus datos'); D.querySelector('#chart-modal .modal-close')?.click();
+  });
+
   await test('formas: elipse en lienzo y export', async () => {
     reset(); R.blocks.addShape('ellipse'); const b = last(); select(b); await sleep(20);
     assert(D.querySelector(`.block[data-id="${b.id}"] .shape svg ellipse`), 'no hay elipse SVG');

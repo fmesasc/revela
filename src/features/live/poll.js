@@ -25,6 +25,11 @@ export function addPoll(props) {
   commit(() => { currentSlide().blocks.push(b); state.ui.selection = b.id; state.ui.multi = [b.id]; });
   return b;
 }
+// A poll inserted and then cancelled: gone, as if it hadn't been inserted (its insertion undone).
+export function removePoll(id) {
+  const s = currentSlide(); if (!s?.blocks.some(x => x.id === id)) return;
+  commit(() => { s.blocks = s.blocks.filter(x => x.id !== id); if (state.ui.selection === id) state.ui.selection = null; state.ui.multi = (state.ui.multi || []).filter(x => x !== id); });
+}
 export function setPoll(id, props) {
   const b = currentSlide().blocks.find(x => x.id === id && x.type === 'poll'); if (!b) return;
   commit(() => Object.assign(b, props));

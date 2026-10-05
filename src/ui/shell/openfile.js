@@ -34,7 +34,7 @@ export const readFile = (accept, cb, as = 'DataURL') => {
 };
 const dataURL = f => new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = ko; r.readAsDataURL(f); });
 // Replacing the open presentation asks first, unless there is nothing to lose.
-const mayReplace = () => (isBlankDeck(state.deck) ? Promise.resolve(true) : confirmDialog(t('¿Abrir otra presentación? Se perderá la actual si no la has guardado.')));
+const mayReplace = () => (isBlankDeck(state.deck) ? Promise.resolve(true) : confirmDialog(t('¿Abrir otra presentación? Se perderá la actual si no la has guardado.'), { ok: t('Descartar la actual'), danger: true }));
 
 // A Revela project (.json), possibly protected with a password.
 export async function openProject(txt) {
