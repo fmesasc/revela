@@ -1,15 +1,15 @@
 // AI tab: connection settings (OpenRouter sign-in or own key), privacy notice,
 // and the actions. A small overlay shows while the model is working.
 
-import { readAttachment, ATTACH, ATTACH_ACCEPT } from '../../features/ai/attach.js';
+import { readAttachment, pdfFigures, ATTACH, ATTACH_ACCEPT } from '../../features/ai/attach.js';
+import { GALLERY, buildFromGallery } from '../../features/design/gallery.js';
+import { ensureLayouts } from '../../features/document/master.js';
 import { hasAccounts } from '../../io/cloud/account.js';
 import { openAccount } from './account.js';
 import * as ai from '../../features/ai/openrouter.js';
 import { state, commit, replaceDeck } from '../../core/store.js';
-import { emptyDeck } from '../../core/model.js';
 import * as deck from '../../features/ai/authoring.js';
 import * as vo from '../../features/ai/voiceover.js';
-import * as palettes from '../../features/design/palettes.js';
 import { alertDialog, confirmDialog, promptDialog } from './dialog.js';
 import { t } from '../../i18n/index.js';
 
@@ -131,7 +131,7 @@ export function openCreateDeck() {
       <label class="fr-l">${t('Diapositivas')}<input type="number" class="ad-count" min="3" max="30" value="8"></label>
       <label class="fr-l">${t('Público')}<input type="text" class="ad-aud" placeholder="${t('p. ej.: directivos')}"></label>
       <label class="fr-l">${t('Tono')}<select class="ad-tone">${TONES.map(x => `<option value="${x}">${t(x)}</option>`).join('')}</select></label>
-      <label class="fr-l">${t('Diseño')}<select class="ad-pal"><option value="">${t('El actual')}</option>${Object.entries(palettes.PALETTES).map(([k, p]) => `<option value="${k}">${t(p.name)}</option>`).join('')}</select></label>
+      <label class="fr-l">${t('Diseño')}<select class="ad-pal"><option value="">${t('Automático (según el contenido)')}</option>${Object.keys(deck.DECK_DESIGNS).map(k => `<option value="${k}">${t(GALLERY[k].name)}</option>`).join('')}</select></label>
     </div>
     <label class="fr-chk"><input type="checkbox" class="ad-img"> ${t('Generar imágenes con IA (coste extra en OpenRouter)')}</label>
     <label class="fr-chk"><input type="checkbox" class="ad-new" checked> ${t('Empezar una presentación nueva (si no, se añade a la actual)')}</label>
@@ -150,18 +150,25 @@ export function openCreateDeck() {
     try {
       // (Documents: their text; pictures — or a scanned PDF's pages —: shown to the AI.)
       const read = (await Promise.all(files.map(f => readAttachment(f).catch(e => { throw new Error(t(e.message === 'ATTACH_TYPE' ? 'Ese tipo de archivo no se puede adjuntar: fotos, PDF o textos.' : e.message === 'ATTACH_BIG' ? 'El archivo es demasiado grande (25 MB como mucho).' : 'No se pudo leer «{n}».').replace('{n}', f.name)); })))).flat();
-      const docs = read.filter(a => a.kind === 'text'); pics = read.filter(a => a.kind === 'image').slice(0, ATTACH.count);
+      // (A PDF's own figures — a paper's diagrams —: shown to the AI and put on their slides.)
+      const figs = (await Promise.all(files.filter(f => /\.pdf$/i.test(f.name) || f.type === 'application/pdf').map(f => pdfFigures(f).catch(() => [])))).flat();
+      const docs = read.filter(a => a.kind === 'text'); pics = [...figs, ...read.filter(a => a.kind === 'image')].slice(0, ATTACH.count);
       if (docs.length) source = docs.map(d => d.text).join('\n\n') + (source ? '\n\n' + source : '');
       const opts = { topic, source, count: +q('.ad-count').value, audience: q('.ad-aud').value.trim(), tone: q('.ad-tone').value,
-        palette: q('.ad-pal').value, images: q('.ad-img').checked, attachments: pics };
+        images: q('.ad-img').checked, attachments: pics };
       await run(async () => {
         const specs = await deck.createDeck(opts);
-        if (q('.ad-new').checked) replaceDeck(emptyDeck());
-        if (opts.palette) palettes.applyPalette(opts.palette);
-        await deck.insertSpecs(specs, { images: opts.images, onProgress: p => (q('.ad-prog').value = p) });
-        if (q('.ad-new').checked && state.deck.slides.length > specs.length) {   // drop the empty starter slide
-          commit(() => { state.deck.slides.shift(); state.ui.slideIndex = 0; });
+        // (A new one starts from a design with its layouts — the one chosen, or the AI's for the content —: its
+        // slides are composed like the templates', not plain lists on an empty background.)
+        if (q('.ad-new').checked) {
+          const d = buildFromGallery(q('.ad-pal').value || specs.design || 'minimal'); ensureLayouts(d);
+          if (specs.title) d.name = specs.title;
+          replaceDeck(d);
         }
+        const starter = q('.ad-new').checked ? new Set(state.deck.slides.map(s => s.id)) : null;
+        await deck.insertSpecs(specs, { images: opts.images, figures: pics, onProgress: p => (q('.ad-prog').value = p) });
+        // (The design's sample slides go: only the new presentation's own.)
+        if (starter) commit(() => { state.deck.slides = state.deck.slides.filter(s => !starter.has(s.id)); state.ui.slideIndex = 0; });
       });
       close();
     } catch (e) { alertDialog(t('No se pudo completar: ') + (e.message || e)); }

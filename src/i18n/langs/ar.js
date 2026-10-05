@@ -1,6 +1,7 @@
 // Arabic interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Automático (según el contenido)": "تلقائي (حسب المحتوى)",
   "Guardado en la nube de Revela.": "حُفظ في سحابة Revela.",
   "Descargar una copia (.revela.json) que guardas tú": "نزّل نسخة (.revela.json) تحتفظ بها بنفسك",
   "Guardar (Ctrl+S)": "حفظ (Ctrl+S)",

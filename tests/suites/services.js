@@ -297,7 +297,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       answer = { title: 'Energía solar', slides: specs };
       reset(); const n0 = R.state.deck.slides.length;
       const got = await A.createDeck({ topic: 'Energía solar', count: 11, audience: 'estudiantes', tone: 'didáctico', images: true });
-      assert(/Audience: estudiantes/.test(calls.at(-1).body.messages[1].content), 'envía el encargo');
+      const ask = calls.find(c => /Audience: estudiantes/.test(c.body.messages[1].content)); assert(ask, 'envía el encargo');
+      assert(/PRESENT out loud/.test(ask.body.messages[0].content) && /"design"/.test(ask.body.messages[0].content), 'para presentarla en voz alta, y con su diseño');
+      assert(/speaker notes/.test(calls.at(-1).body.messages[0].content), 'las notas que faltaban, pedidas aparte');
       await A.insertSpecs(got, { images: true });
       eq(R.state.deck.slides.length, n0 + 11, 'once diapositivas');
       const S = R.state.deck.slides.slice(1), types = s => s.blocks.map(b => b.type).join(',');
@@ -769,6 +771,62 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       W.fetch = real; R.ai.disconnectAi(); W.localStorage.removeItem('revela.assistant.v1'); P.resetAssistant();
       if (D.getElementById('assistant-panel')) D.querySelector('[data-action="ai-assistant"]').click();
     }
+  });
+
+  await test('crear con IA desde un PDF: sus figuras recortadas (por su pie) en sus diapositivas, con diseño y notas', async () => {
+    reset(); const W = frame.contentWindow, real = W.fetch, calls = [];
+    const AT = await W.eval("import('/src/features/ai/attach.js')");
+    // A page: a paragraph, a figure (two boxes and a label), its caption, and «see Fig. 2» inside a line.
+    const pdfText = (() => {
+      const line = (y, x, s) => `BT /F1 10 Tf ${x} ${y} Td (${s}) Tj ET`;
+      const content = [line(650, 40, 'Agents perceive the environment and make decisions at every step of the simulation.'),
+        line(637, 40, 'Each agent keeps its own state, and the behaviour of the system emerges from them all.'),
+        line(624, 40, 'The figure below shows the blocks of one agent'), line(624, 300, 'see'), line(624, 320, 'Fig. 2'),
+        '0 0.6 0 rg 80 520 120 60 re f', '1 0 0 rg 260 450 160 60 re f', '0 0 0 rg', line(545, 100, 'Inputs'),
+        line(425, 160, 'Fig. 1. A test diagram')].join('\n');
+      const objs = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 500 700] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
+        `<< /Length ${content.length} >>\nstream\n${content}\nendstream`, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'];
+      let out = '%PDF-1.4\n'; const offs = [];
+      objs.forEach((o, k) => { offs.push(out.length); out += `${k + 1} 0 obj\n${o}\nendobj\n`; });
+      const x = out.length;
+      out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + offs.map(o => String(o).padStart(10, '0') + ' 00000 n \n').join('');
+      return out + `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${x}\n%%EOF`;
+    })();
+    const pdf = new W.File([pdfText], 'paper.pdf', { type: 'application/pdf' });
+    const figs = await AT.pdfFigures(pdf);
+    eq(figs.length, 1, 'una figura (la referencia «see Fig. 2» dentro del texto, no)');
+    eq(figs[0].caption, 'Fig. 1. A test diagram', 'con su pie');
+    const fw = figs[0].w / 2, fh = figs[0].h / 2;                                  // (drawn at twice the size)
+    assert(fw > 330 && fw < 380 && fh > 135 && fh < 175, `solo la figura, sin el párrafo de encima: ${fw}×${fh} pt`);
+    // «Crear presentación con IA»: the figure shown to the AI and put on its slide; a design; the sample slides gone.
+    R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    const notes = 'Esto es lo que digo en voz alta en esta diapositiva, con detalle y una transición.';
+    W.fetch = agentMock(W, [{ title: 'Agentes', design: 'academic', slides: [
+      { kind: 'title', title: 'Agentes que se especifican', subtitle: 'Un ejemplo', notes },
+      { kind: 'image', figure: 1, title: 'Seis bloques describen un agente', bullets: ['Todo pasa por el centro de mensajes'], notes },
+      { kind: 'image', figure: 5, title: 'Una figura que no existe', bullets: ['Nada'], notes },
+      { kind: 'closing', title: 'Gracias', notes }] }], calls);
+    try {
+      R.store.commit(() => { slide().blocks[0].html = 'Algo mío'; });
+      const AI = await W.eval("import('/src/ui/dialogs/ai.js')"); AI.openCreateDeck(); await sleep(20);
+      const m = D.getElementById('aideck-modal'), dt = new W.DataTransfer(); dt.items.add(pdf);
+      m.querySelector('.ad-file').files = dt.files; m.querySelector('.ad-topic').value = 'Charla de 10 minutos';
+      m.querySelector('.ad-go').click();
+      for (let i = 0; i < 150 && D.getElementById('aideck-modal'); i++) await sleep(50);
+      assert(!D.getElementById('aideck-modal'), 'creada');
+      const sent = calls[0].messages[1].content;
+      assert(Array.isArray(sent) && sent.some(x => x.type === 'image_url'), 'la figura va a la IA');
+      assert(/"figure": N/.test(calls[0].messages[0].content), 'y se le dice cómo ponerla');
+      const S = R.state.deck.slides;
+      eq(S.length, 4, 'solo sus diapositivas (las de muestra del diseño, fuera)'); eq(R.state.deck.name, 'Agentes', 'con su título');
+      assert(R.state.deck.layouts?.length > 0, 'con diseños (compuesta como las plantillas)');
+      const img = S[1].blocks.find(b => b.type === 'image');
+      assert(img && img.src === figs[0].full || img?.src?.startsWith('data:image/png'), 'la figura, en su diapositiva');
+      assert(img.w >= 700 && Math.abs(img.x + img.w / 2 - 640) < 20 && /Fig\. 1/.test(img.alt), `apaisada: grande y centrada bajo el título (${img.w} px), con su pie como texto alternativo`);
+      assert(!S[2].blocks.some(b => b.type === 'image'), 'una figura que no existe, no');
+      assert(S.every(s => s.notes === notes), 'cada una con sus notas');
+    } finally { W.fetch = real; R.ai.disconnectAi(); D.getElementById('aideck-modal')?.remove(); }
   });
 
   await test('asistente (panel): propone con miniaturas, aplica solo lo marcado, descarta, detiene y aplica sin preguntar', async () => {

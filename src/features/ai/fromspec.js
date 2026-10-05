@@ -284,6 +284,16 @@ export function styledSlide(spec, deck, { at = deck.slides.length, self = null, 
       break;
     }
     case 'image':
+      // (A wide figure — a diagram from a paper —: across the slide under the title, its point under it.)
+      if (spec.figureRatio > 1.8) {
+        const a = { ...free };                              // (the whole width under the title, whatever the layout's columns)
+        const text = (spec.bullets || []).filter(Boolean).length, fh = R(Math.min(a.h * (text ? 0.66 : 0.92), a.w / spec.figureRatio)), fw = R(Math.min(a.w, fh * spec.figureRatio));
+        extra.push({ id: uid(), type: 'placeholder', ph: 'picture', x: R(a.x + (a.w - fw) / 2), y: a.y, w: fw, h: fh, rotation: 0, animation: null });
+        if (bodies[1]) drop.add(bodies[1]);
+        if (text && bodies[0]) { set(bodies[0], list(spec.bullets)); Object.assign(bodies[0], { x: a.x, y: R(a.y + fh + 24), w: a.w, h: R(Math.max(60, a.y + a.h - (a.y + fh + 24))) }); }
+        else if (bodies[0]) drop.add(bodies[0]);
+        break;
+      }
       set(bodies[0], list(spec.bullets));
       if (bodies[1]) { const r = boxOf(bodies[1]); drop.add(bodies[1]); extra.push({ id: uid(), type: 'placeholder', ph: 'picture', ...r, rotation: 0, animation: null }); }
       break;
@@ -372,7 +382,7 @@ export function compose(kind, spec, area, look, { minimal = false, style = 'same
       if (n === 1) {
         // One figure: big on the left, what it means on the right.
         const s = st[0], v = `<b>${esc(str(s.value))}</b>`, vw = area.w * 0.5;
-        const big = Math.min(200, area.h * 0.62, (vw - 24) / Math.max(2, str(s.value).length * 0.6)), vh = big * 1.2, y = area.y + (area.h - vh) * 0.45;
+        const big = Math.min(200, area.h * 0.62, (vw - 24) / Math.max(2, str(s.value).length * 0.68)), vh = big * 1.2, y = area.y + (area.h - vh) * 0.45;
         push(T(area.x, y, vw, vh, v, { fontSize: R(big), fontFamily: look.head, color: acc(0), vAlign: 'middle', lineHeight: 1 }));
         if (!minimal) push(S('rect', area.x + vw + 12, y + vh * 0.1, 6, vh * 0.8, acc(0)));
         const lab = esc(str(s.label)), lw = area.w - vw - 60;
@@ -381,7 +391,8 @@ export function compose(kind, spec, area, look, { minimal = false, style = 'same
       }
       const gap = minimal ? 48 : 32, gw = (area.w - (n - 1) * gap) / n;
       const ch = Math.min(area.h, minimal ? 260 : 300), y0 = area.y + (area.h - ch) / 2;
-      const big = Math.min(style === 'visual' ? 132 : 104, ...st.map(s => (gw - 24) / Math.max(2, str(s.value).length * 0.58)));
+      // (Wide enough for the figure on one line: bold digits are about two thirds of the size wide.)
+      const big = Math.min(style === 'visual' ? 132 : 104, ...st.map(s => (gw - 40) / Math.max(2, str(s.value).length * 0.68)));
       st.forEach((s, i) => {
         const x = area.x + i * (gw + gap), c = minimal ? look.accent : acc(i);
         push(card(x, y0, gw, ch), !minimal && S('rect', x + 24, y0 + 22, 56, 6, c));

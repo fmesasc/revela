@@ -69,6 +69,8 @@ export function normalizeSpec(raw) {
   if (out.notes == null && sp.speaker_notes) out.notes = String(sp.speaker_notes);
   const bullets = bulletsOf(first(sp, ['bullets', 'points', 'list', 'content', 'body', 'items'])); if (bullets.length) out.bullets = bullets;
   if (sp.plain) out.plain = true;
+  if (Number.isInteger(+sp.figure) && +sp.figure > 0) out.figure = +sp.figure;      // (a figure of the source document: attach.js pdfFigures)
+  if (+sp.figureRatio > 0) out.figureRatio = +sp.figureRatio;                        // (its width / height: authoring.js insertSpecs)
   if (sp.columns === 2) out.columns = 2;
   switch (kind) {
     case 'two_columns': case 'comparison': {

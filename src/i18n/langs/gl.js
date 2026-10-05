@@ -1,6 +1,7 @@
 // Galician interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Automático (según el contenido)": "Automático (segundo o contido)",
   "Guardado en la nube de Revela.": "Gardado na nube de Revela.",
   "Descargar una copia (.revela.json) que guardas tú": "Descargar unha copia (.revela.json) para gardala ti",
   "Guardar (Ctrl+S)": "Gardar (Ctrl+S)",

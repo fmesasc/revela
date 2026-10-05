@@ -179,26 +179,70 @@ export function rebuildSlide(s, spec, deck = state.deck, opts = {}) {
 }
 
 // ---- Whole decks -----------------------------------------------------------------
-// opts: { topic, source (document text), count, audience, tone, language, images, palette, attachments (pictures: attach.js) }
+// The designs (features/design/gallery.js) the AI may choose for a new deck: key → what it suits.
+export const DECK_DESIGNS = { corporate: 'business, reports, clean and neutral', academic: 'research, papers, conferences, sober and editorial',
+  minimal: 'any topic, very clean, lots of white', tech: 'technology, software, data, dark', education: 'school lessons, friendly',
+  pitch: 'startups, products, bold', warm: 'humanities, stories, culture', ocean: 'science, health, calm blue', night: 'keynotes, dark and elegant',
+  mono: 'magazine style, editorial, strong typography' };
+// opts: { topic, source (document text), count, audience, tone, language, images, palette,
+//   attachments (pictures: attach.js — a PDF's figures among them, marked figure: true) }
+// → specs (with .title and .design: one of DECK_DESIGNS, for a new deck).
 export async function createDeck(opts = {}) {
   const count = Math.max(3, Math.min(30, +opts.count || 8));
-  const brief = [opts.topic && `Topic: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`,
-    `Number of slides: ${count}`].filter(Boolean).join('\n');
-  const source = opts.source ? `\n\nBase the content ONLY on this document (summarise and structure it, keep its facts and figures):\n"""\n${String(opts.source).slice(0, 60000)}\n"""` : '';
+  const brief = [opts.topic && `Topic and purpose: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`,
+    `Number of slides: about ${count}`].filter(Boolean).join('\n');
+  const source = opts.source ? `\n\nBase the content ONLY on this document (keep its real facts, figures and terms; leave out references and acknowledgements):\n"""\n${String(opts.source).slice(0, 60000)}\n"""` : '';
+  const pics = (opts.attachments || []).filter(a => a.kind === 'image'), figs = pics.map((a, i) => (a.figure ? i + 1 : 0)).filter(Boolean);
   const out = await chat([
-    { role: 'system', content: `You are an expert presentation designer. Write a complete, well-structured slide deck. Answer only JSON: {"title":"…","slides":[{"kind":"…",…}]}.\n${SPEC_DOC}\nStart with a "title" slide, use "section" slides to separate parts in longer decks, vary the kinds, end with a "closing" slide. ${opts.images ? 'Use 1-3 "image" slides.' : 'Do not use "image" slides.'} Write everything in ${opts.language || lang()}.` },
-    { role: 'user', content: withAttachments(brief + source + (opts.attachments?.some(a => a.kind === 'image')
+    { role: 'system', content: `You are an expert presentation designer and speechwriter. Write a deck that someone will PRESENT out loud: few words on the slides, the speech in the notes. Answer only JSON: {"title":"…","design":"<one of: ${Object.entries(DECK_DESIGNS).map(([k, v]) => `${k} (${v})`).join('; ')}>","slides":[{"kind":"…",…}]}.
+${SPEC_DOC}
+How to make it good:
+- Titles say the slide's message, as a short statement (max ~9 words): "Monolithic simulators are hard to adapt", not "Limitations".
+- Start with a "title" slide (subtitle: who / where, if the document says), end with a "closing" slide. At most one "section" slide every 6 slides, and none in decks under 12 slides.
+- Vary the kinds; a "bullets" slide at most every third slide, with 3-4 short points. Use "key_idea" for the central claims, "steps" for processes, "comparison" for before/after, "features" for components.
+- "stats" and "chart" ONLY with real, meaningful numbers from the source (never counts like "1 scenario"); otherwise another kind.
+- "notes" on EVERY slide: what the speaker says, 3-6 natural spoken sentences (60-110 words) in first person, with the details and transitions that are not on the slide.
+${figs.length ? `- The document's own figures are attached (${figs.map(n => `attachment:${n}`).join(', ')}): show each important one on its own slide, kind "image" with "figure": N (the attachment's number) — its title says what it shows, bullets (0-2) the key point; no image_prompt.` : ''}
+${opts.images ? '- Use 1-3 "image" slides with an image_prompt for generated pictures.' : figs.length ? '' : '- Do not use "image" slides.'}
+Write everything in ${opts.language || lang()}.` },
+    { role: 'user', content: withAttachments(brief + source + (pics.some(a => !a.figure)
       ? '\n\nThe attached pictures (notes, a whiteboard, slides, a document\'s pages, photos): base the deck on what they show — read their text and figures — together with the rest.' : ''), opts.attachments || []) },
-  ], { json: true, maxTokens: 8000, feature: 'create' });
+  ], { json: true, maxTokens: 12000, feature: 'create' });
   const res = parseJSON(out);
   // (Cleaned, and what is too much for one slide in two.)
   const specs = (res.slides || []).filter(s => s && typeof s === 'object').slice(0, 40).flatMap(s => splitSpec(prepareSpec(s)));
   if (!specs.length) throw new Error('EMPTY');
+  // (A figure only where there is one; a model that forgot the notes of many slides is asked for them once.)
+  for (const sp of specs) { const n = +sp.figure; if (!(n >= 1 && n <= pics.length && pics[n - 1]?.figure)) delete sp.figure; else sp.figure = n; }
+  const missing = specs.filter(sp => !str(sp.notes).trim());
+  if (missing.length > specs.length * 0.3) await speakerNotes(specs, opts).catch(() => {});
+  specs.title = str(res.title); specs.design = DECK_DESIGNS[res.design] ? res.design : null;
   return specs;
 }
+// Notes for the slides that have none: what the speaker says (one request for all of them).
+async function speakerNotes(specs, opts = {}) {
+  const want = specs.map((sp, i) => (str(sp.notes).trim() ? null : { i, kind: sp.kind, title: sp.title || sp.statement || sp.quote || '', text: JSON.stringify(sp).slice(0, 700) })).filter(Boolean);
+  const out = await chat([
+    { role: 'system', content: `Write the speaker notes of these slides of a talk: what the presenter says out loud, 3-6 natural sentences (60-110 words) each, first person, with transitions between slides. Only facts from the slides and the source. Answer only JSON {"notes":[{"i":N,"notes":"…"}]}. Write in ${opts.language || lang()}.` },
+    { role: 'user', content: `Talk: ${str(opts.topic).slice(0, 300)}\n${opts.source ? `Source (excerpt):\n${String(opts.source).slice(0, 20000)}\n` : ''}\nSlides: ${JSON.stringify(want)}` },
+  ], { json: true, maxTokens: 6000, feature: 'notes' });
+  for (const n of parseJSON(out)?.notes || []) if (specs[+n.i] && str(n.notes).trim()) specs[+n.i].notes = str(n.notes).trim();
+}
 // Insert generated specs after the current slide (images are generated after).
-export async function insertSpecs(specs, { images = false, onProgress } = {}) {
+// figures: the source document's figures (attach.js pdfFigures), for the specs that name one ("figure": N).
+export async function insertSpecs(specs, { images = false, onProgress, figures = [] } = {}) {
+  const fig = sp => (sp.figure ? figures[sp.figure - 1] : null);
+  for (const sp of specs) if (fig(sp)) sp.figureRatio = fig(sp).w / fig(sp).h;
   const at0 = state.ui.slideIndex + 1, made = specs.map(sp => slideFromSpec(sp, undefined, state.deck, { at: at0 }));
+  // (Each figure in its place: the slide's picture box, the whole figure seen.)
+  made.forEach((slide, i) => {
+    const f = fig(specs[i]); if (!f) return;
+    const box = pictureBox(slide) || { x: Math.round(state.deck.size.w * 0.52), y: 170, w: Math.round(state.deck.size.w * 0.42), h: state.deck.size.h - 230 };
+    const k = Math.min(box.w / f.w, box.h / f.h), w = Math.round(f.w * k), h = Math.round(f.h * k);
+    slide.blocks = slide.blocks.filter(b => !(b.type === 'placeholder' && b.ph === 'picture'));
+    slide.blocks.push({ id: uid(), type: 'image', src: f.full, alt: str(f.caption || f.name), fit: 'contain', rotation: 0, animation: null,
+      x: Math.round(box.x + (box.w - w) / 2), y: Math.round(box.y + (box.h - h) / 2), w, h });
+  });
   commit(() => {
     const at = state.ui.slideIndex + 1, sec = currentSlide()?.sectionId || null;
     made.forEach(s => (s.sectionId = sec));
@@ -206,7 +250,7 @@ export async function insertSpecs(specs, { images = false, onProgress } = {}) {
     state.ui.slideIndex = at; state.ui.selection = null;
   });
   if (images) {
-    const withImg = specs.map((s, i) => [s, made[i]]).filter(([s]) => s.kind === 'image' && s.image_prompt);
+    const withImg = specs.map((s, i) => [s, made[i]]).filter(([s]) => s.kind === 'image' && s.image_prompt && !fig(s));
     for (let k = 0; k < withImg.length; k++) {
       const [sp, slide] = withImg[k];
       const idx = state.deck.slides.indexOf(slide); if (idx < 0) continue;

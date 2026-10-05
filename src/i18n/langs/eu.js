@@ -1,6 +1,7 @@
 // Basque interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Automático (según el contenido)": "Automatikoa (edukiaren arabera)",
   "Guardado en la nube de Revela.": "Revelaren hodeian gordeta.",
   "Descargar una copia (.revela.json) que guardas tú": "Deskargatu kopia bat (.revela.json) zuk gordetzeko",
   "Guardar (Ctrl+S)": "Gorde (Ctrl+S)",

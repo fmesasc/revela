@@ -5,6 +5,7 @@
 
 // es | en | fr | de | it | pt | ca
 export const ROWS = [
+  ['Automático (según el contenido)', 'Automatic (to suit the content)', 'Automatique (selon le contenu)', 'Automatisch (passend zum Inhalt)', 'Automatico (in base al contenuto)', 'Automático (conforme o conteúdo)', 'Automàtic (segons el contingut)'],
   ['Guardado en la nube de Revela.', 'Saved in the Revela cloud.', 'Enregistré dans le cloud de Revela.', 'In der Revela-Cloud gespeichert.', 'Salvato nel cloud di Revela.', 'Guardado na nuvem do Revela.', 'Desat al núvol de Revela.'],
   ['Descargar una copia (.revela.json) que guardas tú', 'Download a copy (.revela.json) to keep yourself', 'Télécharger une copie (.revela.json) à garder vous-même', 'Eine Kopie (.revela.json) zum Selbstaufbewahren herunterladen', 'Scarica una copia (.revela.json) da conservare tu', 'Transferir uma cópia (.revela.json) para guardar', 'Baixa una còpia (.revela.json) per guardar-la tu'],
   ['Guardar (Ctrl+S)', 'Save (Ctrl+S)', 'Enregistrer (Ctrl+S)', 'Speichern (Strg+S)', 'Salva (Ctrl+S)', 'Guardar (Ctrl+S)', 'Desa (Ctrl+S)'],
