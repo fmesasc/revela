@@ -5,6 +5,7 @@
 import { esc } from '../../core/text.js';
 import { EDITION, OFFICIAL_SITE } from '../../core/config.js';
 import * as acc from '../../io/cloud/account.js';
+import * as gd from '../../io/cloud/gdrive.js';
 import { t, currentLang } from '../../i18n/index.js';
 import { alertDialog, confirmDialog, promptDialog } from './dialog.js';
 import { openTeam } from './team.js';
@@ -115,6 +116,7 @@ export function openAccount({ buy } = {}) {
         <button type="button" class="mini2 acc-out">${t('Cerrar sesión')}</button></div>
       <div class="fr-actions" style="justify-content:flex-start;flex-wrap:wrap"><button type="button" class="mini2 acc-team"><i class="ms">groups</i> ${me.team ? esc(me.team.name) : t('Equipos y centros')}</button>
         <button type="button" class="mini2 acc-report"><i class="ms">bug_report</i> ${t('Informar de un problema')}</button></div>
+      <div class="acc-drive"></div>
       <details class="acc-mail"><summary>${t('Avisos por correo')}</summary>
         <p class="host-help">${t('Revela te escribe a {email} cuando te comparten una presentación, te invitan a un equipo o cambia tu plan.').replace('{email}', esc(me.email))}</p>
         <label class="fr-chk"><input type="checkbox" class="acc-mail-opt" data-kind="credits"> ${t('Avisarme cuando mis créditos estén a punto de caducar')}</label>
@@ -128,6 +130,18 @@ export function openAccount({ buy } = {}) {
     body.querySelector('.acc-portal')?.addEventListener('click', () => acc.manageBilling().catch(e => alertDialog(errorText(e))));
     body.querySelector('.acc-out').addEventListener('click', async () => { await acc.signOut(); render(); });
     body.querySelector('.acc-team').addEventListener('click', () => { close(); openTeam(); });
+    // Google Drive, part of the account (one sign-in in the bar): where the presentations are kept.
+    const drive = body.querySelector('.acc-drive'), paintDrive = () => {
+      const d = gd.account();
+      drive.innerHTML = `<i class="ms">add_to_drive</i><span>${d ? t('Google Drive: conectado como {e}').replace('{e}', esc(d.email)) : t('Google Drive: guarda tus presentaciones en tu Drive y ábrelas desde cualquier dispositivo.')}</span>`
+        + `<button type="button" class="mini2 acc-drive-btn">${d ? t('Desconectar Drive') : t('Conectar Google Drive')}</button>`;
+      drive.querySelector('.acc-drive-btn').addEventListener('click', async () => {
+        if (gd.account()) { if (await confirmDialog(t('¿Desconectar Google Drive? Tus presentaciones siguen en tu Drive.'), { ok: t('Desconectar Drive') })) await gd.signOut(); }
+        else await (await import('../shell/home.js')).signInFlow();
+        paintDrive();
+      });
+    };
+    paintDrive();
     body.querySelector('.acc-report').addEventListener('click', () => { close(); openReport(); });
     // (Email notices: the optional ones can be switched off; a test email shows whether they arrive.)
     const optBoxes = [...body.querySelectorAll('.acc-mail-opt')];

@@ -654,6 +654,22 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.querySelector('[data-tab="home"]').click();
   });
 
+  await test('Archivo: una página con secciones y tarjetas (no una cinta de 35 botones), Esc vuelve', async () => {
+    reset(); D.querySelector('#ribbon [data-tab="file"]').click(); await sleep(20);
+    const bs = D.getElementById('backstage'); assert(bs, 'se abre la página de Archivo');
+    eq([...bs.querySelectorAll('.bs-tab')].map(b => b.dataset.sec).join(), 'new,open,save,share,export,print,protect', 'sus secciones');
+    eq(R.state.ui.activeTab !== 'file', true, 'la cinta no cambia de pestaña');
+    bs.querySelector('[data-sec="export"]').click(); await sleep(10);
+    assert(bs.querySelector('[data-bs-action="export-pdf"] small').textContent.length > 10, 'cada tarjeta dice qué hace');
+    bs.querySelector('[data-sec="save"]').click(); await sleep(10);
+    bs.querySelector('[data-bs-action="versions"]').click(); await sleep(40);
+    assert(!D.getElementById('backstage') && D.querySelector('.modal-backdrop'), 'una tarjeta hace lo suyo (Versiones) y la página se cierra');
+    D.querySelectorAll('.modal-backdrop').forEach(m => m.remove());
+    D.querySelector('#ribbon [data-tab="file"]').click(); await sleep(20);
+    D.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(20);
+    assert(!D.getElementById('backstage'), 'Esc vuelve a la presentación');
+  });
+
   await test('confirmación: si se pierde algo, el foco en Cancelar y el botón dice qué hace; Esc cancela; Tab no sale del diálogo', async () => {
     reset(); R.blocks.addText('Algo'); const n = slide().blocks.length;
     D.querySelector('[data-action="new"]').click(); await frameTick();

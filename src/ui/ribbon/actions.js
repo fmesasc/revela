@@ -20,6 +20,7 @@ import * as templates from '../../features/document/templates.js';
 import { exportHTML } from '../../io/formats/html.js';
 import { saveProject } from '../../io/formats/project.js';
 import { exportPDF } from '../../io/export/print.js';
+import { exportPDFFile } from '../../io/export/pdf.js';
 import { present, openCallPresent } from '../shell/present.js';
 import { sorterOn, setSorter } from '../shell/sorter.js';
 import { startCoach } from '../shell/coach.js';
@@ -135,7 +136,9 @@ export const ACTIONS = {
       : t('Página web descargada: para verla hace falta conexión a internet.'));
   },
   'export-pptx': () => withProgress(t('Creando el archivo de PowerPoint…'), exportPPTX, t('PowerPoint descargado.')),
-  'export-pdf': () => exportPDF(msg => toast(msg, { ms: 9000 })),
+  // (The file itself, made here; printing — or the browser's «Save as PDF», with selectable text — is «Imprimir».)
+  'export-pdf': () => withProgress(t('Creando el PDF…'), () => exportPDFFile(), t('PDF descargado.')),
+  'print': () => exportPDF(msg => toast(msg, { ms: 9000 })),
   'export-png': () => openImageDialog(),
   'share': () => openShare(),
   'collab': () => openCollab(),

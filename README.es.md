@@ -67,8 +67,10 @@ reveal.js, de modo que el resultado es una página web estándar y autónoma.
   algo no está claro), mejorar diapositivas, notas, traducir, texto
   alternativo e imágenes.
 - **Importar y exportar:** PowerPoint (.pptx) y OpenDocument (.odp) en ambos
-  sentidos, HTML autónomo, PDF, documentos y notas, imágenes, vídeo MP4/GIF, y
-  Google Drive, OneDrive y Dropbox.
+  sentidos, HTML autónomo (funciona sin conexión), PDF (generado directamente),
+  documentos y notas, imágenes, vídeo MP4/GIF, y Google Drive, OneDrive y
+  Dropbox; todo desde la página Archivo (Nuevo, Abrir, Guardar, Compartir,
+  Exportar, Imprimir, Proteger).
 - **Recursos libres** en un panel lateral: imágenes (con filtros y fondo
   transparente), iconos, GIF, vídeos, sonidos y música, stickers y modelos 3D
   (Openverse, Iconify, Wikimedia Commons, Poly Haven, NASA, Sketchfab).

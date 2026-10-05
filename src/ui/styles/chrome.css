@@ -111,6 +111,8 @@
 .modal .fr-chk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2);margin-bottom:12px}
 .modal .fr-actions{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .modal .fr-count{font-size:12px;color:var(--txt2)}
+/* The main button of anything (dialogs, panels, the home screen): the accent; the places that need it smaller say so. */
+.fr-do{background:var(--accent);color:var(--on-accent);border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font:inherit;font-size:13px;display:inline-flex;align-items:center;gap:6px}
 .modal .fr-do{background:var(--accent);color:var(--on-accent);border:none;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px}
 
 /* ---------- Status bar ---------- */
@@ -208,3 +210,24 @@ body.assistant-open .tb-ai{background:var(--accent);color:var(--on-accent)}
 @keyframes accNeed{50%{outline-color:transparent}}
 .modal .fr-do.dlg-danger{background:var(--danger);color:#fff}
 .modal .host-status.err{color:var(--danger);font-weight:600}
+/* File (ui/shell/backstage.js): a page of its own, sections on the left, cards on the right. */
+#backstage{position:fixed;inset:0;z-index:900;display:grid;grid-template-columns:230px 1fr;background:var(--bg)}
+#backstage .bs-nav{background:var(--accent);color:var(--on-accent);display:flex;flex-direction:column;gap:2px;padding:14px 10px;overflow:auto}
+#backstage .bs-nav button{display:flex;align-items:center;gap:12px;padding:11px 14px;border:0;border-radius:8px;background:none;color:inherit;font:inherit;font-size:15px;text-align:start;cursor:pointer}
+#backstage .bs-nav button:hover,#backstage .bs-nav button:focus-visible{background:#ffffff26}
+#backstage .bs-nav .bs-tab.on{background:#ffffff38;font-weight:600}
+#backstage .bs-nav .ms{font-size:21px}
+#backstage .bs-cards{align-items:start}
+#backstage .bs-back{margin-bottom:10px;opacity:.9}
+#backstage .bs-main{overflow:auto;padding:34px 42px}
+#backstage h2{margin:0 0 22px;font-size:26px;font-weight:600;color:var(--txt)}
+#backstage .bs-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;max-width:1100px}
+#backstage .bs-card{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:14px;row-gap:3px;align-items:start;text-align:start;padding:16px 18px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--txt);font:inherit;cursor:pointer}
+#backstage .bs-card:hover,#backstage .bs-card:focus-visible{border-color:var(--accent);background:var(--accent-bg)}
+#backstage .bs-card .ms{grid-row:1/3;font-size:28px;color:var(--accent);margin-top:2px}
+#backstage .bs-card b{font-size:15px}#backstage .bs-card small{font-size:13px;color:var(--txt2);line-height:1.4}
+@media (max-width:700px){
+  #backstage{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  #backstage .bs-nav{flex-direction:row;overflow-x:auto;padding:8px;gap:4px}#backstage .bs-nav button{padding:8px 10px;font-size:13px;white-space:nowrap;gap:6px}
+  #backstage .bs-back{margin:0}#backstage .bs-main{padding:18px 16px}#backstage h2{font-size:21px;margin-bottom:14px}
+}

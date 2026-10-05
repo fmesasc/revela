@@ -64,8 +64,9 @@ standard, self-contained web page.
   deck and reads what you attach (photos, PDFs, text; it asks when something
   is unclear), improve slides, notes, translation, alt text and images.
 - **Import & export:** PowerPoint (.pptx) and OpenDocument (.odp) both ways,
-  self-contained HTML, PDF, handouts and notes, images, MP4/GIF video, and
-  Google Drive, OneDrive and Dropbox.
+  self-contained HTML (works offline), PDF (made directly), handouts and
+  notes, images, MP4/GIF video, and Google Drive, OneDrive and Dropbox; all
+  from the File page (New, Open, Save, Share, Export, Print, Protect).
 - **Free resources** in a side panel: pictures (with filters and transparent
   background), icons, GIFs, videos, sounds and music, stickers and 3D models
   (Openverse, Iconify, Wikimedia Commons, Poly Haven, NASA, Sketchfab).

@@ -7,6 +7,7 @@ import { popupMenu } from './menu.js';
 import { state, replaceDeck } from '../../core/store.js';
 import { emptyDeck } from '../../core/model.js';
 import * as gd from '../../io/cloud/gdrive.js';
+import { hasAccounts } from '../../io/cloud/account.js';
 import { slideImageBlob } from '../../io/export/images.js';
 import { isEmptyPlaceholder } from '../../features/document/master.js';
 import { t } from '../../i18n/index.js';
@@ -55,6 +56,8 @@ function paintBar() {
       : `<i class="ms">add_to_drive</i><span>Google Drive</span>`;   // (named after what it connects: the Revela account has its own button)
     btn.title = a ? `${a.name} · ${a.email}` : t('Iniciar sesión con Google');
     btn.classList.toggle('signed', !!a);
+    // (With Revela accounts, one sign-in in the bar: the account's. Drive is part of it — «Mi cuenta» —, its state chip stays.)
+    btn.hidden = hasAccounts();
   }
   if (st) {
     const s = gd.linkedFile() && a ? gd.driveStatus() : 'idle', info = STATUS[s];

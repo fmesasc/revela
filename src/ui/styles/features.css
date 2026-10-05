@@ -982,3 +982,4 @@ body:not([data-edition="cloud"]):not([data-edition="desktop"]) .accounts-only{di
 .gal-path:hover,.gal-path:focus-visible{border-color:var(--accent);background:var(--accent-bg)}
 .gal-path.ai{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
 @media (max-width:640px){.gal-start{grid-template-columns:1fr}}
+.acc-drive{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px}.acc-drive .ms{color:var(--accent)}.acc-drive span{flex:1;min-width:180px}

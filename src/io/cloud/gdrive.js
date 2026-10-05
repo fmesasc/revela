@@ -21,6 +21,7 @@ import { t } from '../../i18n/index.js';
 import { buildHTML } from '../formats/html.js';
 import { loadScript } from '../../core/vendor.js';
 import { plainText } from '../../core/text.js';
+import { account as revelaAccount } from './account.js';
 
 const GIS = 'https://accounts.google.com/gsi/client';
 const GAPI = 'https://apis.google.com/js/api.js';
@@ -84,8 +85,9 @@ export async function ensureToken(interactive = true, { silent = false } = {}) {
       accessToken = resp.access_token; tokenExp = Date.now() + (resp.expires_in || 3600) * 1000; keepToken(); resolve(accessToken);
     };
     tokenClient.error_callback = e => reject(new Error(e?.type === 'popup_closed' ? t('Has cerrado la ventana de Google.') : (e?.message || e?.type || 'error')));
-    const acc = account();
-    tokenClient.requestAccessToken({ prompt: silent ? 'none' : acc ? '' : 'consent', ...(acc?.email && { hint: acc.email }) });
+    // (The Google account already known — Drive's, else the Revela account's —: Google offers that one, no choosing again.)
+    const acc = account(), hint = acc?.email || revelaAccount()?.email;
+    tokenClient.requestAccessToken({ prompt: silent ? 'none' : acc ? '' : 'consent', ...(hint && { hint }) });
   });
 }
 // Renewed quietly before it ends (from a click or key: the only moment Google may be asked), and right

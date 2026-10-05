@@ -3,8 +3,9 @@
 import { author, tasksOf } from '../../features/collab/comments.js';
 import { renderMorphHint } from '../shell/morphhint.js';
 import { openSaveWhere } from '../shell/where.js';
+import { openBackstage } from '../shell/backstage.js';
 import { renderContextual } from './contextual.js';
-import { state, commit, currentSlide, selectedBlock, selectedBlocks, canUndo, canRedo, docVersion, targetSlides, slideSelCount } from '../../core/store.js';
+import { state, commit, currentSlide, selectedBlock, selectedBlocks, canUndo, canRedo, targetSlides, slideSelCount } from '../../core/store.js';
 import { savedHere, onSavedHere, UNTITLED, isUntitled } from '../../core/model.js';
 import { addPlaceholder } from '../../features/document/master.js';
 import * as blocks from '../../features/document/blocks.js';
@@ -143,6 +144,9 @@ export function initRibbon() {
     const lo = e.target.closest('[data-layout-open]');
     if (lo) { e.stopPropagation(); togglePopover(lo, 'layout'); return; }
     const tab = e.target.closest('[data-tab]');
+    // (File: its own page — New, Open, Save, Share, Export… — not a ribbon of thirty buttons. In the master view the
+    // tab keeps its ribbon: the master's own tools are there.)
+    if (tab?.dataset.tab === 'file' && !state.ui.editMaster) { openBackstage(); return; }
     if (tab) { commit(() => (state.ui.activeTab = tab.dataset.tab), { history: false }); return; }
     const act = e.target.closest('[data-action]');
     if (act) { ACTIONS[act.dataset.action]?.(); return; }
@@ -397,7 +401,8 @@ export function renderRibbon() {
   // Saved here after a change (unless Drive shows its own state); if this browser
   // can't keep it, that shows instead, and a click downloads a copy.
   { const ss = $('#save-state'); if (ss) { const ok = savedHere();
-    ss.hidden = (ok && !docVersion()) || !$('#drive-status')?.hidden || !$('#cloud-status')?.hidden || !!state.ui.lock;
+    // (Always said — where it lives — not only after the first change: Drive's or the cloud's own state stands in for it.)
+    ss.hidden = !$('#drive-status')?.hidden || !$('#cloud-status')?.hidden || !!state.ui.lock;
     if (ss.classList.contains('failed') !== !ok) {
       const [icon, text, tip] = ok ? SAVE_OK : SAVE_FAILED, sp = ss.querySelector('span');
       ss.classList.toggle('failed', !ok); ss.querySelector('.ms').textContent = icon;

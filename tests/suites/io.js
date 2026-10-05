@@ -571,6 +571,22 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(S.shareId().length === 22 && S.shareId() !== S.shareId(), 'identificadores aleatorios de 128 bits');
   });
 
+  await test('exportar PDF: el archivo, hecho aquí (una página por diapositiva visible, del tamaño de la diapositiva)', async () => {
+    reset(); const W = frame.contentWindow;
+    R.store.commit(() => { slide().background = '#c1121f'; }); R.slides.addSlide(); R.slides.addSlide();
+    R.store.commit(() => { R.state.deck.slides[2].hidden = true; R.state.deck.slides[1].background = '#003049'; });
+    const P = await W.eval("import('/src/io/export/pdf.js')"), F = await W.eval("import('/src/features/content/files.js')");
+    const blob = await P.buildPDF(); eq(blob.type, 'application/pdf', 'un PDF');
+    const url = await new Promise(ok => { const r = new W.FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(blob); });
+    const pdf = await F.openPdf(url); eq(pdf.numPages, 2, 'dos páginas (la oculta, no)');
+    const page = await pdf.getPage(1), vp = page.getViewport({ scale: 1 });
+    eq(`${Math.round(vp.width)}×${Math.round(vp.height)}`, '960×540', 'del tamaño de la diapositiva (1280×720 px = 960×540 pt)');
+    const img = await F.pageImage(pdf, 2, 200), im = new W.Image(); im.src = img.src; await im.decode();
+    const c = D.createElement('canvas'); c.width = 200; c.height = 112; c.getContext('2d').drawImage(im, 0, 0, 200, 112);
+    const [r, g, b] = c.getContext('2d').getImageData(100, 100, 1, 1).data;
+    assert(r < 30 && g < 70 && g > 25 && b > 50 && b < 100, `la segunda página es la segunda diapositiva (su fondo): ${r},${g},${b}`);
+  });
+
   await test('compartir: archivo HTML con contraseña o enlace secreto, que se abre en un iframe', async () => {
     reset(); slide().blocks[0].html = '<b>Hola compartida</b>';
     const saved = []; const W = W_share(), urls = W.URL.createObjectURL;
