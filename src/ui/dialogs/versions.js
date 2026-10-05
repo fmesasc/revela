@@ -9,7 +9,7 @@ export async function openVersions() {
   const back = document.createElement('div'); back.id = 'versions-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(600px,94vw);max-width:94vw">
     <button class="modal-close">✕</button><h3>${t('Historial de versiones')}</h3>
-    <p class="host-help">${t('Se guardan en este navegador: automáticamente cada pocos minutos mientras editas, y cuando guardas una versión con nombre.')}</p>
+    <p class="host-help">${t('Se guardan en este navegador: automáticamente cada pocos minutos mientras editas, al abrir otra presentación (la que tenías, si había cambios) y cuando guardas una versión con nombre.')}</p>
     <div class="fr-actions" style="justify-content:flex-start"><button class="fr-do vs-save">${t('Guardar versión…')}</button></div>
     <ol class="vs-list"></ol></div>`;
   document.body.appendChild(back);
@@ -27,7 +27,7 @@ export async function openVersions() {
       li.innerHTML = `<div class="vs-meta"><b></b><span></span></div>`
         + `<button type="button" data-a="restore">${t('Restaurar')}</button><button type="button" data-a="dl" title="${t('Descargar')}"><i class="ms">download</i></button>`
         + `<button type="button" data-a="del" title="${t('Eliminar')}">✕</button>`;
-      li.querySelector('b').textContent = v.name || (v.auto ? t('Automática') : t('Versión'));
+      li.querySelector('b').textContent = v.name || (v.kind === 'before' ? t('Antes de abrir otra presentación') : v.auto ? t('Automática') : t('Versión'));
       li.querySelector('span').textContent = `${fmt(v.time)} · ${v.slides} ${t('diapositivas')}${v.title ? ' · ' + v.title : ''}`;
       li.querySelector('[data-a="restore"]').addEventListener('click', async () => {
         if (!(await confirmDialog(t('¿Restaurar esta versión? La actual se guardará antes en el historial.')))) return;

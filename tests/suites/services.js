@@ -1707,6 +1707,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       // Back after a reload: newer in Drive and nothing changed here → brings it.
       drive.get('old2').version = '9'; drive.get('old2').content = JSON.stringify({ ...R.model.emptyDeck(), name: 'Desde el móvil' });
       eq(await GD.reconnect(), 'loaded', 'al volver, trae la versión nueva'); eq(R.state.deck.name, 'Desde el móvil');
+      // Opening another one a moment after a change (before the autosave): that change still reaches its file.
+      R.store.commit(() => { R.state.deck.slides[0].notes = 'justo antes de abrir otra'; });
+      R.store.replaceDeck(R.model.emptyDeck()); await sleep(250);
+      assert(drive.get('old2').content.includes('justo antes de abrir otra'), 'el último cambio llega a Drive aunque se abra otra enseguida');
+      eq(GD.linkedFile(), null, 'y la otra no queda vinculada a ese archivo');
+      await GD.openPresentation('old2'); await sleep(50);
       // Another presentation replacing it (Nuevo, abrir archivo…) never writes over the Drive file.
       const before = drive.get('old2').content;
       R.store.replaceDeck(R.model.emptyDeck()); R.store.commit(() => { R.state.deck.name = 'Otra cosa'; }); await sleep(250);
@@ -1875,6 +1881,32 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       let m; for (let i = 0; i < 60 && !/nube|cloud|abrir|open|pública|public/i.test((m = f.contentDocument?.getElementById('m'))?.textContent || ''); i++) await sleep(100);
       assert(/nube|cloud|abrir|open|pública|public/i.test(m?.textContent || ''), 'el visor dice qué pasa: ' + (m?.textContent || ''));
     } finally { f.remove(); }
+  });
+
+  await test('abrir otra presentación no pierde nada: la de la nube manda sus últimos cambios y se cierra (nunca recibe la otra); sin guardar en ningún sitio, queda una copia que se recupera', async () => {
+    reset(); const W = frame.contentWindow, CD = R.clouddocs, { fakeCloud } = await W.eval("import('/tests/fixtures/fakecloud.js')");
+    const C = fakeCloud({ docs: [{ id: 'docnube00000000001', name: 'En la nube' }] }); CD.setTransport(C.io);
+    try {
+      await CD.openDoc('docnube00000000001', { io: C.io, pollMs: 100000, debounceMs: 5000 });
+      R.store.commit(() => { R.state.deck.slides[0].notes = 'cambio en la nube'; });
+      R.store.replaceDeck(R.model.emptyDeck()); R.store.commit(() => { R.state.deck.name = 'OTRA'; R.state.deck.slides[0].notes = 'de la otra'; });
+      await sleep(300);
+      const sent = JSON.stringify(C.db.calls.filter(c => /\/ops$/.test(c.path)));
+      assert(/cambio en la nube/.test(sent), 'sus últimos cambios llegan a la nube');
+      assert(!/OTRA|de la otra/.test(sent), 'y la otra presentación nunca se escribe encima');
+      eq(CD.cloudDoc(), null, 'ya no está abierta en la nube');
+    } finally { CD.closeDoc(); CD.setTransport(null); }
+    // Only in this browser: a copy before replacing it, offered back.
+    const V = await W.eval("import('/src/features/collab/versions.js')");
+    R.store.commit(() => { R.state.deck.name = 'Mi borrador'; R.state.deck.slides[0].notes = 'trabajo sin guardar'; R.state.deck.slides[0].blocks[0].html = 'Mi título'; });
+    R.store.replaceDeck(R.model.emptyDeck()); await sleep(200);
+    const kept = (await V.listVersions()).find(v => v.kind === 'before' && v.title === 'Mi borrador');
+    assert(kept, 'una copia de la anterior en Versiones');
+    const btn = [...D.querySelectorAll('#toasts .toast-act')].at(-1);
+    assert(btn && /Mi borrador/.test(btn.parentElement.textContent), 'un aviso con «Recuperar»');
+    btn.click(); await sleep(100);
+    eq(R.state.deck.name, 'Mi borrador', 'recuperada'); eq(R.state.deck.slides[0].notes, 'trabajo sin guardar');
+    await V.deleteVersion(kept.id);
   });
 
   await test('abrir un enlace compartido que falla: la pantalla de carga se quita antes del aviso (no tapa la pregunta)', async () => {

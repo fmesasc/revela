@@ -214,8 +214,14 @@ export const docEpoch = () => epoch;
 let deckFilter = d => d;
 export const setDeckFilter = fn => { deckFilter = fn; };
 // sameDocument: a newer copy of this very document (not another one).
+// Before another document replaces this one (not a newer copy of the same): what keeps it — Drive,
+// Revela's cloud, this browser's copies — gets the chance to keep its last changes first (the deck
+// given is the outgoing one, untouched). first: run before the others (to see where it was saved).
+const beforeReplace = [];
+export function onBeforeReplace(fn, { first = false } = {}) { first ? beforeReplace.unshift(fn) : beforeReplace.push(fn); return () => { const i = beforeReplace.indexOf(fn); if (i >= 0) beforeReplace.splice(i, 1); }; }
+const leaving = () => { const old = state.deck; for (const fn of [...beforeReplace]) { try { fn(old); } catch (e) { console.error(e); } } };
 export function adoptDeck(deck, { sameDocument = false } = {}) {
-  if (!sameDocument) epoch++;
+  if (!sameDocument) { leaving(); epoch++; }
   deck = deckFilter(deck);
   state.deck = deck; state.ui.slideIndex = 0; state.ui.slideSel = []; base = snapshot(deck); past.length = 0; future.length = 0;
   version++; persisted = snapshot(deck);                 // (already saved where it came from)
@@ -223,7 +229,7 @@ export function adoptDeck(deck, { sameDocument = false } = {}) {
 }
 export function replaceDeck(deck) {
   // Another deck: leave the master view too (it would edit a master that isn't there).
-  epoch++;
+  leaving(); epoch++;
   // (Also from a presentation marked as final: that protects it, not the app.)
   deck = deckFilter(deck);
   commit(() => { state.deck = deck; state.ui.slideIndex = 0; state.ui.selection = null; state.ui.multi = []; state.ui.slideSel = []; state.ui.slidePick = false; state.ui.navFocus = false; state.ui.editMaster = false; }, { force: true });

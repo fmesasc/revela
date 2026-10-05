@@ -48,6 +48,7 @@ import { openFindPanel } from '../../ui/dialogs/find.js';
 import { initHome } from '../../ui/shell/home.js';
 import { initCollabUI } from '../../ui/shell/collab.js';
 import * as store from '../../core/store.js';
+import { toast } from '../../ui/shell/toast.js';
 import * as model from '../../core/model.js';
 import * as blocks from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
@@ -280,6 +281,18 @@ initFileDrop();
 // Leaving the page: what is still waiting to be written is written now.
 window.addEventListener('pagehide', () => model.flushSave());
 startAutoVersions();
+// Opening another presentation over one with changes: a copy of it stays in this browser (Versions).
+// If it wasn't saved anywhere else (Drive, Revela's cloud), a note offers it back at once.
+{
+  versions.keepBeforeReplacing();
+  let onlyHere = false;
+  store.onBeforeReplace(() => { onlyHere = !gdrive.linkedFile() && !clouddocs.cloudDoc(); }, { first: true });
+  versions.onKept(({ id, title }) => {
+    if (!onlyHere) return;
+    toast(t('«{n}» tenía cambios: se ha guardado una copia en este navegador (Archivo ▸ Versiones).').replace('{n}', title || t('Presentación sin título')),
+      { action: { label: t('Recuperar'), run: () => versions.restoreVersion(id) } });
+  });
+}
 if (!testing) loadPlugins();
 // Charts linked to a CSV load fresh data when the editor opens.
 if (!testing) refreshLinkedCharts().catch(() => {});

@@ -14,7 +14,7 @@
 // The project's public identifiers are in core/config.js; a browser can use
 // its own Google Cloud project instead (setup dialog below).
 
-import { state, replaceDeck, subscribe, docEpoch, docVersion } from '../../core/store.js';
+import { state, replaceDeck, subscribe, docEpoch, docVersion, onBeforeReplace } from '../../core/store.js';
 import { alertUser } from '../../core/notify.js';
 import { GOOGLE } from '../../core/config.js';
 import { t } from '../../i18n/index.js';
@@ -274,6 +274,25 @@ export function startAutosave() {
     timer = setTimeout(() => { if (status !== 'conflict') savePresentation({ interactive: false }).catch(() => {}); }, delay);
   });
 }
+// Another document replacing the linked one before its last changes reached Drive (they wait a few
+// seconds): they go now, to its file — unless it changed there meanwhile, or can't be reached without
+// asking (then they stay in this browser's copies: features/collab/versions.js).
+onBeforeReplace(old => {
+  const f = linkedFile();
+  if (!f || !account() || !hasToken() || docVersion() === lastSaved || status === 'conflict') return;
+  clearTimeout(timer);
+  const body = JSON.stringify(old), text = deckIndexText(old);
+  saving = saving.catch(() => {}).then(async () => {
+    try {
+      // (A plain look, not fileState: by now another document is open, and the link must not follow this file.)
+      const r = await api(`/drive/v3/files/${encodeURIComponent(f.id)}?fields=version,md5Checksum,trashed`, {}, false);
+      const m = r.ok ? await r.json() : null;
+      if (!m || m.trashed || changedThere(f, m)) return;
+      await upload({ id: f.id, mimeType: PROJECT_MIME, body, text });
+    } catch {}
+  });
+});
+
 // Back after a reload or another device: newer in Drive and nothing changed
 // here → load it; changed in both → ask (conflict); only here → save.
 export async function reconnect() {

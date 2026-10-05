@@ -16,7 +16,7 @@
 
 import { api, hasAccounts } from './account.js';
 import { OFFICIAL_SITE } from '../../core/config.js';
-import { state, subscribe, snapshot, applyRemote, adoptDeck, replaceDeck, setPersist, mutate } from '../../core/store.js';
+import { state, subscribe, snapshot, applyRemote, adoptDeck, replaceDeck, setPersist, mutate, onBeforeReplace } from '../../core/store.js';
 import { diff, applyOps } from '../../features/live/collabsync.js';
 import { cleanValue } from '../../features/document/sanitize.js';
 
@@ -140,8 +140,11 @@ export async function saveToCloud({ io = send, pollMs = 5000, debounceMs = 1200,
   sendThumb(cur, true);
   return cloudDoc();
 }
+// Closing it (another one opens, or it stops being in the cloud): what changed here and isn't
+// sent yet goes now (its last edits would be lost otherwise), then it is let go.
 export function closeDoc() {
   if (!cur) return;
+  { const me = cur; if (me.role !== 'view' && !me.readOnly) { const ops = diff(me.base, state.deck); if (ops.length) me.io(path(me.id, 'ops'), { ops }).catch(() => {}); } }
   cur.stop?.(); cur = null; state.ui.lock = null; setPersist(true); emit('close');
 }
 // Read-only (beyond the plan): keep what's in the editor as a presentation of this browser, apart from the cloud's.
@@ -226,3 +229,7 @@ function watchViews(me) {
   check();
   return () => { unsub(); clearInterval(tick); document.removeEventListener('visibilitychange', leave); if (slide) send({ slide, ms: Date.now() - since }); };
 }
+
+// Another document replacing this one in the editor: this one is closed first (its last changes sent)
+// — never left syncing, which would write the new document over it.
+onBeforeReplace(() => { if (cur) closeDoc(); });

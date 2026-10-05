@@ -164,6 +164,8 @@
 .toast.out{opacity:0;transform:translateY(8px)}
 .toast-spin{width:14px;height:14px;flex:0 0 14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:rvTurn .8s linear infinite}
 @keyframes toastIn{from{opacity:0;transform:translateY(8px)}}
+/* A note's button (Recover…). */
+.toast-act{margin-inline-start:6px;border:1px solid #ffffff55;background:transparent;color:#fff;border-radius:6px;padding:3px 10px;cursor:pointer;font:600 12.5px inherit;white-space:nowrap}.toast-act:hover{background:#ffffff1f}
 @media (prefers-reduced-motion:reduce){.toast{animation:none;transition:none}}
 
 /* Quick presenting buttons in the title bar */

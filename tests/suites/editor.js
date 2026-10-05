@@ -691,7 +691,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   });
 
   await test('Guardar y exportar dicen qué ha pasado (avisos abajo)', async () => {
-    reset(); D.getElementById('toasts')?.remove();
+    reset(); await sleep(150); D.getElementById('toasts')?.remove();   // (the previous test's copy kept on reset may have said so)
     D.querySelector('#ribbon [data-action="save"].mini').click(); await sleep(20);
     const box = D.getElementById('toasts');
     assert(box && box.getAttribute('aria-live') === 'polite', 'una zona de avisos que se lee en voz alta');

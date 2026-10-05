@@ -210,7 +210,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const v = list.find(x => x.id === id); assert(v && v.name === 'Primera' && !v.deck, 'listada sin cargar el contenido');
     assert(await V.restoreVersion(id), 'restaurada'); await sleep(10);
     eq(slide().blocks[0].html, 'Versión A', 'contenido de la versión');
-    const after = await V.listVersions(); assert(after.length >= list.length + 1, 'la anterior se guardó antes de restaurar');
+    const after = await V.listVersions(); assert(after.some(v => v.kind === 'before' && !list.some(x => x.id === v.id)), 'la anterior se guardó antes de restaurar');
     const back = (await Promise.all(after.filter(x => x.auto).map(x => V.versionDeck(x.id)))).some(d => d.slides[0].blocks[0].html === 'Versión B');
     assert(back, 'la versión B sigue en el historial');
     for (const x of after) await V.deleteVersion(x.id);
