@@ -16,6 +16,18 @@ const errorText = e => (e.data?.error === 'no customer' ? t('Esta cuenta no tien
   : /^billing (not available|failed)$/.test(e.message) ? t('Los pagos no están disponibles ahora mismo. Inténtalo más tarde.')
   : e.message === 'CANCELLED' || e.message === 'TERMS' ? t('No se ha iniciado sesión.') : e.message === 'EXPIRED' ? t('Se acabó el tiempo para confirmar. Vuelve a intentarlo.') : `${t('Algo ha fallado:')} ${e.message}`);
 
+// Just signed in, without Google Drive: offer it once (here, where the click lets Google's window open). The
+// Revela account's sign-in only asks Google for the email: Drive is its own permission, never sent to the server.
+async function offerDrive() {
+  if (EDITION !== 'cloud' || gd.account()) return;
+  try { if (localStorage.getItem('revela.driveOffered')) return; localStorage.setItem('revela.driveOffered', '1'); } catch {}
+  if (await confirmDialog(t('¿Guardar también tus presentaciones en Google Drive? Se guardan solas mientras trabajas y las abres desde cualquier dispositivo.'),
+    { ok: t('Conectar Google Drive'), cancel: t('Ahora no') })) {
+    await (await import('../shell/home.js')).signInFlow();
+    if (document.getElementById('account-modal')) openAccount();          // (its Drive section, connected)
+  }
+}
+
 // ---- The terms of service: accepted (and being 14 or older confirmed) before the first sign-in ----
 const termsText = () => t('Al continuar aceptas las {terms} y la {privacy}, y confirmas que tienes 14 años o más.')
   .replace('{terms}', `<a href="${acc.TERMS_URL}" target="_blank" rel="noopener">${t('condiciones del servicio')}</a>`)
@@ -90,7 +102,7 @@ export function openAccount({ buy } = {}) {
               box.innerHTML = `${t('Se ha abierto tu navegador. Inicia sesión allí y confirma este código:')}<b>${esc(code)}</b>`; } });
             if (acc.account()?.terms === false) await acc.acceptTerms();   // (the box was ticked here)
           } else await acc.signIn();
-          render();
+          render(); offerDrive();
         } catch (err) { e.target.disabled = false; if (err.message !== 'CANCELLED' || EDITION !== 'desktop') alertDialog(errorText(err)); }
       });
       return;

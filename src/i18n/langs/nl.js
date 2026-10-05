@@ -1,6 +1,8 @@
 // Dutch interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Ahora no": "Niet nu",
+  "¿Guardar también tus presentaciones en Google Drive? Se guardan solas mientras trabajas y las abres desde cualquier dispositivo.": "Je presentaties ook in Google Drive bewaren? Ze slaan vanzelf op terwijl je werkt en openen op elk apparaat.",
   "PDF — se ve en Drive con todas sus diapositivas, tal cual": "PDF — Drive toont alle dia’s, precies zoals ze zijn",
   "Una copia para verla o compartirla, con el texto buscable: los cambios que hagas después no se guardan en ella.": "Een kopie om te bekijken of te delen, met doorzoekbare tekst: latere wijzigingen worden er niet in opgeslagen.",
   "Exportar PDF": "Pdf exporteren",

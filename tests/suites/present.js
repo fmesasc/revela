@@ -2,6 +2,7 @@
 
 export default async function ({ R, D, frame, test, sleep, assert, eq, reset, slide, last, select, richOf, newText }) {
   await test('presentar: crea una capa a pantalla completa y se cierra', async () => {
+    const W_op = el => frame.contentWindow.getComputedStyle(el).opacity;
     reset(); R.io.present(); await sleep(40);
     const ov = D.getElementById('present-overlay');
     assert(ov && ov.querySelector('iframe'), 'no se creó la capa de presentación');
@@ -11,7 +12,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     R.store.commit(() => { slide().notes = 'Mis notas'; }); R.io.present({ fullscreen: false }); await sleep(40);
     const f = D.querySelector('#present-overlay iframe'); let Rv = null;
     for (let i = 0; i < 80 && !(Rv = f.contentWindow?.Reveal)?.isReady?.(); i++) await sleep(50);
-    assert(D.querySelector('#present-bar #present-notes'), 'la vista del moderador, a la vista (no solo la tecla S)');
+    const bar = D.getElementById('present-bar');
+    assert(bar.querySelector('#present-notes'), 'la vista del moderador, a mano (no solo la tecla S)');
+    eq(W_op(bar), '0', 'mientras se presenta, la barra no se ve');
+    await sleep(250); f.contentWindow.dispatchEvent(new f.contentWindow.MouseEvent('mousemove', { clientX: f.contentWindow.innerWidth - 40, clientY: 30 })); await sleep(20);
+    assert(bar.classList.contains('show'), 'con el puntero en la esquina de arriba a la derecha, aparece');
     // (reveal.js's speaker view, in the interface's language.)
     let opened = 0; const np = Rv.getPlugin('notes'), open0 = np.open; np.open = () => { opened++; };
     D.querySelector('#present-notes').click(); np.open = open0; eq(opened, 1, 'el botón abre la vista del moderador');

@@ -1,6 +1,8 @@
 // Basque interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Ahora no": "Orain ez",
+  "¿Guardar también tus presentaciones en Google Drive? Se guardan solas mientras trabajas y las abres desde cualquier dispositivo.": "Zure aurkezpenak Google Driven ere gorde? Lanean ari zaren bitartean berez gordetzen dira eta edozein gailutatik irekitzen dituzu.",
   "PDF — se ve en Drive con todas sus diapositivas, tal cual": "PDF — Driven diapositiba guztiekin ikusten da, dauden bezala",
   "Una copia para verla o compartirla, con el texto buscable: los cambios que hagas después no se guardan en ella.": "Ikusteko edo partekatzeko kopia bat, testu bilagarriarekin: geroago egiten dituzun aldaketak ez dira bertan gordetzen.",
   "Exportar PDF": "Esportatu PDFa",

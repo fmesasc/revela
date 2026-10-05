@@ -5,7 +5,7 @@
 import { esc } from '../../core/text.js';
 import { popupMenu } from './menu.js';
 import { state, replaceDeck } from '../../core/store.js';
-import { emptyDeck } from '../../core/model.js';
+import { emptyDeck, isUntitled, UNTITLED } from '../../core/model.js';
 import * as gd from '../../io/cloud/gdrive.js';
 import { hasAccounts } from '../../io/cloud/account.js';
 import { slideImageBlob } from '../../io/export/images.js';
@@ -37,12 +37,21 @@ export async function driveThumbnail(now = false) {
   const vis = state.deck.slides.filter(s => !s.hidden), first = vis[0] || state.deck.slides[0];
   const blob = await slideImageBlob(first, 'jpg', state.deck, { scale: 1600 / state.deck.size.w });
   if (!blob) return null;
-  const img = await createImageBitmap(blob), W = 1600, H = Math.round(W * img.height / img.width);
-  const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'); g.drawImage(img, 0, 0, W, H);
-  const label = `Revela · ${t('{n} diapositivas').replace('{n}', vis.length)}`;
-  g.font = '600 30px system-ui, sans-serif'; const tw = g.measureText(label).width, pw = tw + 48, ph = 54, x = W - pw - 28, y = H - ph - 28;
-  g.fillStyle = 'rgba(15,22,36,.78)'; g.beginPath(); g.roundRect?.(x, y, pw, ph, 27) ?? g.rect(x, y, pw, ph); g.fill();
-  g.fillStyle = '#fff'; g.textBaseline = 'middle'; g.fillText(label, x + 24, y + ph / 2 + 1);
+  // (Under the slide — never over it —, a slim band: Revela's icon, the presentation's name and how many slides.)
+  const img = await createImageBitmap(blob), W = 1600, SH = Math.round(W * img.height / img.width), BAND = 76, H = SH + BAND;
+  const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+  g.drawImage(img, 0, 0, W, SH);
+  g.fillStyle = '#141922'; g.fillRect(0, SH, W, BAND); g.fillStyle = 'rgba(255,255,255,.08)'; g.fillRect(0, SH, W, 1);
+  const font = 'system-ui, -apple-system, "Segoe UI", sans-serif', mid = SH + BAND / 2 + 1;
+  const ic = await new Promise(ok => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = new URL('../../../icons/drive/icon-64.png', import.meta.url).href; });
+  let x = 36; if (ic) { g.drawImage(ic, x, SH + (BAND - 36) / 2, 36, 36); x += 36 + 16; }
+  const count = t('{n} diapositivas').replace('{n}', vis.length);
+  g.textBaseline = 'middle'; g.font = `400 26px ${font}`; const cw = g.measureText(count).width;
+  g.fillStyle = 'rgba(255,255,255,.6)'; g.fillText(count, W - 36 - cw, mid);
+  // (The name, cut with «…» if it doesn't fit before the count.)
+  let name = isUntitled(state.deck.name) ? t(UNTITLED) : state.deck.name; g.font = `600 27px ${font}`;
+  const room = W - 36 - cw - 40 - x; while (name.length > 3 && g.measureText(name).width > room) name = name.slice(0, -2).trimEnd() + '…';
+  g.fillStyle = '#ffffff'; g.fillText(name, x, mid);
   lastThumb = Date.now();
   return c.toDataURL('image/jpeg', 0.82).split(',')[1];
 }

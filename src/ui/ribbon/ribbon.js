@@ -116,6 +116,11 @@ export function initRibbon() {
     const fb = document.getElementById('final-banner'); if (!fb) return;
     fb.classList.remove('flash'); void fb.offsetWidth; fb.classList.add('flash');
   });
+  // (The phones' quick bar, outside the ribbon: the same actions.)
+  document.getElementById('m-quick')?.addEventListener('click', e => {
+    const act = e.target.closest('[data-action]');
+    if (act) ACTIONS[act.dataset.action]?.();
+  });
   document.getElementById('master-banner')?.addEventListener('click', e => {
     const act = e.target.closest('[data-action]');
     if (act) ACTIONS[act.dataset.action]?.();

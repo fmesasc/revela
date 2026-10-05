@@ -654,6 +654,15 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.querySelector('[data-tab="home"]').click();
   });
 
+  await test('móvil: la barra rápida de abajo hace lo suyo (diapositiva nueva, texto, asistente)', async () => {
+    reset(); const n = R.state.deck.slides.length, q = D.getElementById('m-quick');
+    q.querySelector('[data-action="slide-add"]').click(); await sleep(20); eq(R.state.deck.slides.length, n + 1, 'una diapositiva nueva');
+    const b = slide().blocks.length; q.querySelector('[data-action="insert-text"]').click(); await sleep(20); eq(slide().blocks.length, b + 1, 'un cuadro de texto');
+    D.activeElement?.blur?.();
+    q.querySelector('[data-action="ai-assistant"]').click(); await sleep(20); assert(D.getElementById('assistant-panel'), 'el asistente');
+    q.querySelector('[data-action="ai-assistant"]').click(); await sleep(20);
+  });
+
   await test('Archivo: una página con secciones y tarjetas (no una cinta de 35 botones), Esc vuelve', async () => {
     reset(); D.querySelector('#ribbon [data-tab="file"]').click(); await sleep(20);
     const bs = D.getElementById('backstage'); assert(bs, 'se abre la página de Archivo');

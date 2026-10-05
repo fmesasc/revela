@@ -1,6 +1,8 @@
 // Arabic interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Ahora no": "ليس الآن",
+  "¿Guardar también tus presentaciones en Google Drive? Se guardan solas mientras trabajas y las abres desde cualquier dispositivo.": "هل تريد حفظ عروضك التقديمية في Google Drive أيضًا؟ تُحفظ تلقائيًا أثناء العمل وتفتحها من أي جهاز.",
   "PDF — se ve en Drive con todas sus diapositivas, tal cual": "PDF — يعرض Drive جميع الشرائح كما هي",
   "Una copia para verla o compartirla, con el texto buscable: los cambios que hagas después no se guardan en ella.": "نسخة للعرض أو المشاركة مع نص قابل للبحث: لا تُحفظ فيها التغييرات اللاحقة.",
   "Exportar PDF": "تصدير PDF",

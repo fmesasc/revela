@@ -287,7 +287,10 @@ export function styledSlide(spec, deck, { at = deck.slides.length, self = null, 
       // (A wide figure — a diagram from a paper —: across the slide under the title, its point under it.)
       if (spec.figureRatio > 1.8) {
         const a = { ...free };                              // (the whole width under the title, whatever the layout's columns)
-        const text = (spec.bullets || []).filter(Boolean).length, fh = R(Math.min(a.h * (text ? 0.66 : 0.92), a.w / spec.figureRatio)), fw = R(Math.min(a.w, fh * spec.figureRatio));
+        // (The text measured at the theme's size first: the figure gives up the height it needs — never the
+        // text shrunk to half to fit under a figure that took everything.)
+        const text = (spec.bullets || []).filter(Boolean).length, need = text ? needHeight(list(spec.bullets), look.bodySize || 30, a.w, 1.4) + 30 : 0;
+        const fh = R(Math.max(a.h * 0.4, Math.min(a.h * (text ? 0.7 : 0.92), a.w / spec.figureRatio, a.h - need - 24))), fw = R(Math.min(a.w, fh * spec.figureRatio));
         extra.push({ id: uid(), type: 'placeholder', ph: 'picture', x: R(a.x + (a.w - fw) / 2), y: a.y, w: fw, h: fh, rotation: 0, animation: null });
         if (bodies[1]) drop.add(bodies[1]);
         if (text && bodies[0]) { set(bodies[0], list(spec.bullets)); Object.assign(bodies[0], { x: a.x, y: R(a.y + fh + 24), w: a.w, h: R(Math.max(60, a.y + a.h - (a.y + fh + 24))) }); }

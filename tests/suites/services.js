@@ -293,7 +293,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
         { kind: 'chart', title: 'Producción', chart: { type: 'line', labels: ['2020', '2021'], values: [1, 2], series_name: 'TWh' }, bullets: ['Sube'] },
         { kind: 'table', title: 'Tabla', header: ['País', 'GW'], rows: [['China', '600'], ['EE. UU.', '140']] },
         { kind: 'image', title: 'Paneles', bullets: ['Tejados'], image_prompt: 'solar panels on roofs' },
-        { kind: 'closing', title: 'Gracias' }];
+        { kind: 'closing', title: 'Gracias' }, { kind: 'bullets', title: 'Anexo', bullets: ['Fuentes'] }];   // (12: a deck long enough to keep its section slide)
       answer = { title: 'Energía solar', slides: specs };
       reset(); const n0 = R.state.deck.slides.length;
       const got = await A.createDeck({ topic: 'Energía solar', count: 11, audience: 'estudiantes', tone: 'didáctico', images: true });
@@ -301,7 +301,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(/PRESENT out loud/.test(ask.body.messages[0].content) && /"design"/.test(ask.body.messages[0].content), 'para presentarla en voz alta, y con su diseño');
       assert(/speaker notes/.test(calls.at(-1).body.messages[0].content), 'las notas que faltaban, pedidas aparte');
       await A.insertSpecs(got, { images: true });
-      eq(R.state.deck.slides.length, n0 + 11, 'once diapositivas');
+      eq(R.state.deck.slides.length, n0 + 12, 'doce diapositivas (con su portadilla: es larga)');
       const S = R.state.deck.slides.slice(1), types = s => s.blocks.map(b => b.type).join(',');
       assert(S[5].blocks.some(b => /<b>42%<\/b>/.test(b.html || '')), 'cifras destacadas');
       eq(S[6].blocks.filter(b => b.type === 'shape' && b.shape === 'ellipse' && b.opacity == null).length, 3, 'línea de tiempo: un punto por momento');
@@ -806,6 +806,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       { kind: 'title', title: 'Agentes que se especifican', subtitle: 'Un ejemplo', notes },
       { kind: 'image', figure: 1, title: 'Seis bloques describen un agente', bullets: ['Todo pasa por el centro de mensajes'], notes },
       { kind: 'image', figure: 5, title: 'Una figura que no existe', bullets: ['Nada'], notes },
+      { kind: 'section', title: 'Una portadilla de más', notes },
+      { kind: 'image', figure: 1, title: 'La misma figura, con tres ideas', bullets: ['Define el ciclo de vida, el estado y las entradas', 'Hace explícitas las decisiones', 'Permite auditar cada acción'], notes },
       { kind: 'closing', title: 'Gracias', notes }] }], calls);
     try {
       R.store.commit(() => { slide().blocks[0].html = 'Algo mío'; });
@@ -819,7 +821,10 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(Array.isArray(sent) && sent.some(x => x.type === 'image_url'), 'la figura va a la IA');
       assert(/"figure": N/.test(calls[0].messages[0].content), 'y se le dice cómo ponerla');
       const S = R.state.deck.slides;
-      eq(S.length, 4, 'solo sus diapositivas (las de muestra del diseño, fuera)'); eq(R.state.deck.name, 'Agentes', 'con su título');
+      eq(S.length, 5, 'solo sus diapositivas (las de muestra del diseño, fuera; y la portadilla de más en una presentación corta)');
+      assert(!S.some(x => x.layoutId === 'section'), 'sin portadillas en una presentación de menos de 12');
+      const three = S.find(x => x.blocks.some(b => /tres ideas/.test(b.html || ''))), body = three.blocks.find(b => b.ph === 'body');
+      assert((body.fit ?? 1) >= 0.85, `con la figura, el texto a su tamaño (no encogido: ${body.fit ?? 1})`); eq(R.state.deck.name, 'Agentes', 'con su título');
       assert(R.state.deck.layouts?.length > 0, 'con diseños (compuesta como las plantillas)');
       const img = S[1].blocks.find(b => b.type === 'image');
       assert(img && img.src === figs[0].full || img?.src?.startsWith('data:image/png'), 'la figura, en su diapositiva');

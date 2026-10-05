@@ -212,6 +212,11 @@ Write everything in ${opts.language || lang()}.` },
   // (Cleaned, and what is too much for one slide in two.)
   const specs = (res.slides || []).filter(s => s && typeof s === 'object').slice(0, 40).flatMap(s => splitSpec(prepareSpec(s)));
   if (!specs.length) throw new Error('EMPTY');
+  // (Section slides as the instructions say, whatever the model did: none in a short deck, at most one every six.)
+  for (let i = specs.length - 1, last = Infinity; i >= 0; i--) {
+    if (specs[i].kind !== 'section') continue;
+    if (specs.length < 12 || last - i < 6) specs.splice(i, 1); else last = i;
+  }
   // (A figure only where there is one; a model that forgot the notes of many slides is asked for them once.)
   for (const sp of specs) { const n = +sp.figure; if (!(n >= 1 && n <= pics.length && pics[n - 1]?.figure)) delete sp.figure; else sp.figure = n; }
   const missing = specs.filter(sp => !str(sp.notes).trim());

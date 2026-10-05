@@ -59,8 +59,27 @@ function alone(holder, el) {
   document.body.appendChild(copy);
   return { copy, target: node };
 }
+// html2canvas ignores object-fit: a picture «contain» or «cover» in a box of another shape came out the wrong
+// size (taller than its box, over the text). Each one is given here the size and place the browser draws it at.
+async function fitPictures(holder) {
+  for (const img of holder.querySelectorAll('img')) {
+    const fit = getComputedStyle(img).objectFit; if (!['contain', 'cover', 'scale-down'].includes(fit)) continue;
+    try { await img.decode(); } catch {}
+    const nw = img.naturalWidth, nh = img.naturalHeight, bw = img.clientWidth, bh = img.clientHeight; if (!nw || !nh || !bw || !bh) continue;
+    let k = fit === 'cover' ? Math.max(bw / nw, bh / nh) : Math.min(bw / nw, bh / nh);
+    if (fit === 'scale-down') k = Math.min(1, k);
+    const w = nw * k, h = nh * k, pos = getComputedStyle(img).objectPosition.split(' ').map(v => (v.endsWith('%') ? parseFloat(v) / 100 : null));
+    const fx = pos[0] ?? 0.5, fy = pos[1] ?? 0.5;
+    const abs = getComputedStyle(img).position === 'absolute', ol = img.offsetLeft, ot = img.offsetTop, box = document.createElement('div');
+    box.style.cssText = `${abs ? `position:absolute;left:${ol}px;top:${ot}px` : 'position:relative;display:inline-block;vertical-align:top'};overflow:hidden;width:${bw}px;height:${bh}px`;
+    const cs = img.getAttribute('style') || '';
+    img.parentNode.insertBefore(box, img); box.appendChild(img);
+    img.setAttribute('style', cs + `;position:absolute;left:${(bw - w) * fx}px;top:${(bh - h) * fy}px;width:${w}px;height:${h}px;max-width:none;max-height:none;object-fit:fill`);
+  }
+}
 export async function rasterize(holder, opts) {
   await loadScript(HTML2CANVAS, 'html2canvas');
+  await fitPictures(holder);
   const clipped = [...holder.querySelectorAll('[style]')].filter(isClipped);
   if (!clipped.length) return window.html2canvas(holder, opts);
   const saved = clipped.map(el => el.style.cssText);

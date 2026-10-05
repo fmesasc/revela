@@ -83,6 +83,14 @@ export function present({ rehearse = false, fullscreen = true, onEnd = null, onR
       W.open = (...args) => { const w = open0(...args); if (w) { translateSpeakerView(w); if (session.present) session.present.speaker = w; } return w; };
       // (Esc inside the slides — where the keys go —: out of the overview first, then out of the presentation,
       // also without full screen, where the browser doesn't take it.)
+      // (The top bar stays out of sight while presenting: it shows only with the pointer brought to the top
+      // right corner on purpose — or a tap there, or the keyboard —, and goes again two seconds later.)
+      let hideT = 0;
+      const near = (x, y) => y < 110 && x > W.innerWidth - 460;
+      const showBar = on => { clearTimeout(hideT); bar.classList.toggle('show', on); if (on) hideT = setTimeout(() => bar.matches(':hover, :focus-within') || bar.classList.remove('show'), 2000); };
+      W.addEventListener('mousemove', e => { if (near(e.clientX, e.clientY)) showBar(true); }, { passive: true });
+      W.addEventListener('touchstart', e => { const p = e.touches[0]; if (p && near(p.clientX, p.clientY)) showBar(true); }, { passive: true });
+      bar.addEventListener('mouseleave', () => showBar(false));
       frame.contentWindow.addEventListener('keydown', e => {
         if (e.key !== 'Escape' || document.fullscreenElement || Rv.isOverview?.()) return;
         e.preventDefault(); e.stopImmediatePropagation(); end();
