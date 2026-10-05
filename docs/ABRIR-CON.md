@@ -139,6 +139,28 @@ Dropbox (no «carpeta de la app»).
 
 ## OneDrive
 
+### Guardar y abrir (hecho)
+
+Revela guarda la presentación en la carpeta `Revela` del OneDrive de cada persona y la abre desde ahí
+(Microsoft Graph, permiso delegado `Files.ReadWrite`, inicio de sesión PKCE sin secretos). La aplicación
+está registrada en Microsoft Entra, en el directorio propio de FM Lab (no en el de ningún centro):
+
+| Apartado | Valor |
+| --- | --- |
+| Id. de aplicación (cliente) | `bfa11a43-8888-4806-ab47-bec0a60e0569` (público; en `src/core/config.js`, `CLOUD_KEYS.onedrive`) |
+| Tipos de cuenta | cualquier directorio organizativo y cuentas personales de Microsoft |
+| URI de redirección | plataforma **SPA**: `https://revelaslides.com/app/auth.html` (Pages la sirve como `/app/auth` con los parámetros intactos) |
+| Permisos | Microsoft Graph, delegados: `Files.ReadWrite` |
+
+Sin la «verificación de editor» de Microsoft, al dar permiso sale «editor no verificado»: en cuentas
+personales es solo un aviso; en organizaciones, su administración puede tener que aprobar la app.
+
+Una cuenta personal de Microsoft no puede registrar aplicaciones sin un directorio propio (en el de un
+centro solo se es invitado, sin permisos): se crea uno con portal.azure.com ▸ crear un inquilino de
+Microsoft Entra ID, o con la cuenta gratuita de Azure.
+
+### Abrir con
+
 - **OneDrive personal** no tiene ninguna forma de que una aplicación externa
   aparezca en «Abrir con» ni en su vista previa.
 - **OneDrive de empresa y SharePoint** sí, con *file handlers* de Microsoft 365:
