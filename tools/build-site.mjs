@@ -2,7 +2,7 @@
 // Builds the official site (revelaslides.com, on Cloudflare Pages) from this
 // same repository, without changing the app:
 //
-//   dist/            the site: home, plans, support (site/), privacy and terms
+//   dist/            the site: home, plans, support (site/: the private fmesasc/revela-site), privacy and terms
 //   dist/en/, fr/…   the site in each other language (tools/site-i18n.mjs, site/i18n/)
 //   dist/app/        the app, exactly as GitHub Pages serves it, marked as the
 //                    official edition (<meta name="revela-edition" content="cloud">)
@@ -15,7 +15,9 @@
 // Nothing is compiled: files are copied. GitHub Pages keeps publishing the
 // repository as it is (the open edition at fmesasc.github.io/revela).
 
-import { cpSync, rmSync, mkdirSync, readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
+import { cpSync, rmSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { SITE_LANGS, pageTexts, translatePage, sitemap } from './site-i18n.mjs';
@@ -43,6 +45,7 @@ export async function build(out = join(ROOT, 'dist'), { appOnly = false, open = 
   if (open) { copyApp(out); return out; }    // (GitHub Pages: the app and its legal pages, not the site nor the repository's other files)
   if (appOnly) { copyApp(out); markEdition(join(out, 'index.html'), 'desktop'); return out; }   // (the desktop app: an account on the official server)
   // The site's own pages and files.
+  ensureSite();
   cpSync(join(ROOT, 'site'), out, { recursive: true, filter: f => !f.includes(join('site', 'i18n')) });
   localize(out);
   await inlineIcons(out);
@@ -61,11 +64,30 @@ export async function build(out = join(ROOT, 'dist'), { appOnly = false, open = 
   return out;
 }
 
+// The website's own pages (site/) are not in this repository: they are the private
+// fmesasc/revela-site (marketing, prices, SEO). Locally, a clone of it in site/ (ignored here):
+//   git clone https://github.com/fmesasc/revela-site.git site
+// On Cloudflare Pages, fetched at build time with that repository's read-only deploy key
+// (the project's secret SITE_DEPLOY_KEY_B64). The app, GitHub Pages and the desktop app don't need it.
+function ensureSite() {
+  if (existsSync(join(ROOT, 'site', 'index.html'))) return;
+  const k = process.env.SITE_DEPLOY_KEY_B64;
+  if (!k) throw new Error('The website (site/) is the private repository fmesasc/revela-site: git clone https://github.com/fmesasc/revela-site.git site');
+  const dir = mkdtempSync(join(tmpdir(), 'revela-site-')), key = join(dir, 'key');
+  try {
+    writeFileSync(key, Buffer.from(k, 'base64'), { mode: 0o600 });
+    rmSync(join(ROOT, 'site'), { recursive: true, force: true });
+    execFileSync('git', ['clone', '--depth', '1', 'git@github.com:fmesasc/revela-site.git', join(ROOT, 'site')], { stdio: 'inherit',
+      env: { ...process.env, GIT_SSH_COMMAND: `ssh -i ${key} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new` } });
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+}
+
 // The website's pages in each language (the Spanish ones at the top, the others in /en/…),
 // and the sitemap with all of them. A text missing from a language stops the build.
 export const PAGES = [['index', '1.0'], ['pricing', '0.8'], ['support', '0.6']];
 const dictOf = l => JSON.parse(readFileSync(join(ROOT, 'site', 'i18n', l + '.json'), 'utf8'));
 export function missingTexts() {
+  ensureSite();
   const all = PAGES.flatMap(([p]) => pageTexts(readFileSync(join(ROOT, 'site', p + '.html'), 'utf8')));
   return Object.fromEntries(SITE_LANGS.slice(1).map(l => { let d = {}; try { d = dictOf(l); } catch {} return [l, [...new Set(all)].filter(k => !(k in d))]; }));
 }

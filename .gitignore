@@ -21,3 +21,6 @@ node_modules/
 
 # Presentations saved while working (personal: never in the repository)
 /*.revela*.json
+
+# The website (revelaslides.com) is the private repository fmesasc/revela-site, cloned here (tools/build-site.mjs)
+/site/

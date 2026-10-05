@@ -495,7 +495,10 @@ def main():
         if mouse_fail:
             print('REVELATEST FAIL ratón'); print('\n'.join(mouse_fail)); return 1
         if out.startswith('REVELATEST PASS'): out += ' + ratón'
-        site_fail = site_checks(send, recv) if out.startswith('REVELATEST PASS') else []
+        # (The website is the private fmesasc/revela-site, cloned in site/: without it, its checks are skipped.)
+        has_site = os.path.exists(os.path.join(ROOT, 'site', 'index.html'))
+        if not has_site: print('WEB: sin site/ (repositorio privado fmesasc/revela-site): comprobaciones de la web omitidas')
+        site_fail = site_checks(send, recv) if out.startswith('REVELATEST PASS') and has_site else []
         if site_fail:
             print('REVELATEST FAIL web'); print('\n'.join(site_fail)); return 1
         if out.startswith('REVELATEST PASS') and shutil.which('node'): out += ' + web'

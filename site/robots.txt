@@ -1,5 +1,0 @@
-# revelaslides.com: the website is for search engines. The app (/app/) says
-# "noindex" in its pages (it has to be crawlable for search engines to read it).
-User-agent: *
-Disallow: /api/
-Sitemap: https://revelaslides.com/sitemap.xml
