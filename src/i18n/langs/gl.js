@@ -26,6 +26,7 @@ export default {
   "La presentación se ha movido a otra carpeta de Drive: se sigue guardando ahí.": "A presentación moveuse a outro cartafol de Drive: segue gardándose aí.",
   "En Drive ahora se llama «{n}».": "En Drive agora chámase «{n}».",
   "No encuentro «{n}» en Drive: se ha borrado o ya no tienes acceso. ¿La guardas de nuevo en Drive?": "Non atopo «{n}» en Drive: borrouse ou xa non tes acceso. Gárdala de novo en Drive?",
+  "Patrocinado": "Patrocinado",
   "Archivo": "Ficheiro",
   "Inicio": "Inicio",
   "Insertar": "Inserir",

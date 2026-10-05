@@ -26,6 +26,7 @@ export default {
   "La presentación se ha movido a otra carpeta de Drive: se sigue guardando ahí.": "Aurkezpena Driveko beste karpeta batera eraman da: bertan gordetzen jarraitzen du.",
   "En Drive ahora se llama «{n}».": "Driven orain «{n}» du izena.",
   "No encuentro «{n}» en Drive: se ha borrado o ya no tienes acceso. ¿La guardas de nuevo en Drive?": "Ez dut «{n}» aurkitzen Driven: ezabatu egin da edo ez duzu sarbiderik. Berriro gorde nahi duzu Driven?",
+  "Patrocinado": "Babestua",
   "Archivo": "Fitxategia",
   "Inicio": "Hasiera",
   "Insertar": "Txertatu",

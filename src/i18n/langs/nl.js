@@ -26,6 +26,7 @@ export default {
   "La presentación se ha movido a otra carpeta de Drive: se sigue guardando ahí.": "De presentatie is naar een andere Drive-map verplaatst: hij wordt daar verder opgeslagen.",
   "En Drive ahora se llama «{n}».": "In Drive heet hij nu «{n}».",
   "No encuentro «{n}» en Drive: se ha borrado o ya no tienes acceso. ¿La guardas de nuevo en Drive?": "Ik kan «{n}» niet vinden in Drive: verwijderd of je hebt geen toegang meer. Opnieuw in Drive opslaan?",
+  "Patrocinado": "Gesponsord",
   "Archivo": "Bestand",
   "Inicio": "Start",
   "Insertar": "Invoegen",

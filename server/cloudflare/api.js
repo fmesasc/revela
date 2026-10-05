@@ -63,6 +63,7 @@ import { scheduleAt, dayOf } from './schedule.js';
 import { handle3d, configured3d } from './model3d.js';
 import { createTicket, supportReply, directoryUpsert, directoryRemove, CHARGES } from './admin.js';
 import { record, active, featureOf, financeSettings } from './finance.js';
+import { NOTICE_PLACES, noticesFor, noticesOp } from './notices.js';
 
 const enc = new TextEncoder();
 const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -141,6 +142,14 @@ export function cleanTrial(b) {
   const days = +b?.trialDays, cr = +b?.trialCredits;
   if (!Number.isInteger(days) || days < 0 || days > 90 || !Number.isInteger(cr) || cr < 0 || cr > 10000 || typeof b.trialOncePerAccount !== 'boolean') return null;
   return { trialDays: days, trialCredits: cr, trialOncePerAccount: b.trialOncePerAccount };
+}
+// The notices (notices.js), read again at most once a minute per Worker instance (the admin's changes reset it here).
+let noticeCache = { at: 0, list: null };
+export const resetNoticeCache = () => { noticeCache = { at: 0, list: null }; };
+async function noticeList(env) {
+  if (noticeCache.list && Date.now() - noticeCache.at < 60e3) return noticeCache.list;
+  const r = await call(env.BUDGET.get(env.BUDGET.idFromName('global')), 'notices-get').catch(() => null);
+  noticeCache = { at: Date.now(), list: r?.notices || [] }; return noticeCache.list;
 }
 export const FEATURES ={ free: ['ai', 'cloud-save'], pro: ['ai', 'cloud-save', 'share-people', 'analytics', 'video-calls', 'premium-templates'] };
 
@@ -630,6 +639,8 @@ export class Budget {
     // (Also the settings the admin changes without a deploy: Pro's free trial, trialConfig.)
     if (op === 'config-get') return Response.json({ trial: (await this.ctx.storage.get('trial')) || null });
     if (op === 'config-set') { await this.ctx.storage.put('trial', a.trial); return Response.json({ ok: true }); }
+    // (And the notices, notices.js.)
+    const n = await noticesOp(this.ctx.storage, op, a); if (n) return Response.json(n);
     const month = new Date().toISOString().slice(0, 7), cur = (await this.ctx.storage.get('m')) || { month, usd: 0 };
     const m = cur.month === month ? cur : { month, usd: 0 }, limit = settings(this.env).monthlyBudget;
     if (op === 'check') return Response.json({ ok: m.usd + (+a.usd || 0) <= limit, usd: m.usd, limit });
@@ -783,6 +794,17 @@ export async function handleApi(req, env, url) {
   if (isDocs) {
     const who = me && { ...me, ...(await call(acct(env, me.sub), 'me')) };
     return handleDocs(path, req, body, url, env, who && { sub: me.sub, email: who.email, name: who.name, plan: who.plan, features: who.features }, json);
+  }
+  // Notices (notices.js): no session needed; with one, chosen by its plan.
+  if (path === '/notices' && req.method === 'GET') {
+    const where = url.searchParams.get('where');
+    if (!NOTICE_PLACES.includes(where) || !env.BUDGET) return json({ notices: [] });
+    const plan = me ? ((await call(acct(env, me.sub), 'me')).plan === 'pro' ? 'pro' : 'free') : 'anon';
+    return json({ notices: noticesFor(await noticeList(env), { where, lang: url.searchParams.get('lang'), plan }) });
+  }
+  if (path === '/notices/hit' && req.method === 'POST') {
+    if (env.BUDGET && typeof body.id === 'string' && body.id.length <= 20) await call(env.BUDGET.get(env.BUDGET.idFromName('global')), 'notice-hit', { id: body.id, kind: body.kind }).catch(() => null);
+    return json({ ok: true });
   }
   if (!me) return json({ error: 'no session' }, 401);
   const A = acct(env, me.sub);

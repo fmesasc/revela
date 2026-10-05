@@ -935,3 +935,15 @@ body:not([data-edition="cloud"]):not([data-edition="desktop"]) .accounts-only{di
 /* Where the command lives: it flashes a moment. */
 .cmdp-flash{animation:cmdpFlash .6s 3;border-radius:6px}
 @keyframes cmdpFlash{50%{box-shadow:0 0 0 3px var(--accent);background:var(--accent-bg)}}
+
+/* Revela's own notices (ui/shell/notices.js): a slim bar over the slide, a card in the gallery. */
+.notice{display:flex;align-items:center;gap:10px;padding:8px 10px 8px 12px;border-radius:10px;background:color-mix(in srgb,var(--accent) 9%,var(--panel));border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line2));color:var(--txt);font-size:13px}
+#notice-bar{margin:0 0 8px}
+.notice.tone-offer{background:color-mix(in srgb,#e0a100 12%,var(--panel));border-color:color-mix(in srgb,#e0a100 40%,var(--line2))}
+.notice-ic{font-size:18px;color:var(--accent)}.notice.tone-offer .notice-ic{color:#b07c00}
+.notice-body{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline}.notice-body span{color:var(--txt2)}
+.notice-sponsor{color:var(--txt2);opacity:.8}
+.notice-go{border:0;background:var(--accent);color:var(--on-accent);border-radius:999px;padding:5px 12px;cursor:pointer;font:600 12.5px var(--font,inherit);white-space:nowrap}
+.notice-x{border:0;background:none;color:var(--txt2);cursor:pointer;padding:2px 4px;font-size:13px;opacity:.7}.notice-x:hover{opacity:1}
+.gal-notice:empty{display:none}.gal-notice{margin:4px 0 10px}.notice-card{padding:12px 14px}
+@media (max-width:640px){.notice{flex-wrap:wrap}.notice-body{flex-basis:calc(100% - 60px)}}

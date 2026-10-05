@@ -1843,6 +1843,22 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { CD.closeDoc(); }
   });
 
+  await test('avisos propios: barra con su texto (como texto), patrocinador, botón y cerrar (y no vuelve a salir)', async () => {
+    reset(); const W = frame.contentWindow, NT = await W.eval("import('/src/ui/shell/notices.js')"), NC = await W.eval("import('/src/io/cloud/notices.js')");
+    W.localStorage.removeItem('revela.notices.closed');
+    const n = { id: 'aviso123', title: 'Pásate a <b>Pro</b>', text: 'Un mes con IA', cta: 'Ver plantillas', url: '#templates', sponsor: 'Acme', tone: 'offer' };
+    const el = NT.noticeElement(n); D.body.appendChild(el);
+    try {
+      assert(!el.querySelector('b b') && /<b>Pro<\/b>/.test(el.querySelector('.notice-body b').textContent), 'el texto va como texto, no como HTML');
+      assert(/Patrocinado · Acme/.test(el.textContent), 'dice que es patrocinado y por quién');
+      el.querySelector('.notice-go').click(); for (let i = 0; i < 20 && !D.getElementById('gallery-modal'); i++) await sleep(25);
+      assert(D.getElementById('gallery-modal'), 'su botón abre la galería'); D.querySelector('#gallery-modal .modal-close').click();
+      el.querySelector('.notice-x').click();
+      assert(!el.isConnected && NC.isClosed('aviso123'), 'cerrado: se quita y se recuerda');
+      eq((await NC.fetchNotices('editor', 'es')).length, 0, 'en la edición abierta no hay avisos');
+    } finally { el.remove(); W.localStorage.removeItem('revela.notices.closed'); }
+  });
+
   await test('insertar en una web: iframe del visor con la presentación de la nube (pública por enlace); si no lo es, lo dice', async () => {
     reset(); const W = frame.contentWindow, CD = R.clouddocs;
     const code = CD.embedCode('docpublica00000001', 'Mi "charla" <b>');

@@ -1429,6 +1429,29 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     env.FETCH = prev;
   }
 
+  // Notices (notices.js): set from the admin, chosen by place, plan, language and dates; counted, nobody tracked.
+  {
+    const N = p => req('GET', '/api/notices?' + p).then(r => r.json());
+    ok((await N('where=editor&lang=es')).notices.length === 0, 'avisos: ninguno al principio');
+    ok((await A('POST', '/notices', { body: { notice: { title: 'x', where: ['editor'], url: 'javascript:alert(1)', cta: 'Ir' } } })).status === 400, 'avisos: un enlace que no es https → 400');
+    ok((await A('POST', '/notices', { body: { notice: { title: 'x', where: [] } } })).status === 400, 'avisos: sin sitio → 400');
+    let x = await A('POST', '/notices', { body: { notice: { title: 'Pásate a Pro', text: 'Un mes con IA', cta: 'Ver Pro', url: '#pro', where: ['editor', 'gallery'], who: 'free', langs: ['es'], tone: 'offer' }, reason: 'campaña' } });
+    const id = x.j.notice.id;
+    const others = [(await A('POST', '/notices', { body: { notice: { title: 'Solo Pro', where: ['editor'], who: 'pro' } } })).j.notice.id,
+      (await A('POST', '/notices', { body: { notice: { title: 'Futuro', where: ['editor'], who: 'all', from: '2099-01-01' } } })).j.notice.id];
+    const r = await N('where=editor&lang=es');
+    ok(r.notices.length === 1 && r.notices[0].id === id && r.notices[0].url === '#pro' && !('who' in r.notices[0]), 'avisos: sin cuenta, el de cuentas gratis (no el de Pro ni el de más adelante): ' + JSON.stringify(r));
+    ok((await N('where=editor&lang=en')).notices.length === 0 && (await N('where=web&lang=es')).notices.length === 0, 'avisos: por idioma y por sitio');
+    for (const kind of ['view', 'click', 'nada']) await req('POST', '/api/notices/hit', { body: { id, kind } });
+    const st = (await A('GET', '/notices')).j;
+    ok(st.notices.length === 3 && st.stats[id].view === 1 && st.stats[id].click === 1 && st.stats[id].close === 0, 'avisos: vistas y clics contados: ' + JSON.stringify(st.stats[id]));
+    ok((await A('GET', '/audit?target=notice:' + id)).j.entries.some(e => e.action === 'notice-create' && e.reason === 'campaña'), 'avisos: en la auditoría');
+    x = await A('POST', '/notices', { body: { notice: { ...st.notices.find(n => n.id === id), active: false } } });
+    ok((await N('where=editor&lang=es')).notices.length === 0, 'avisos: desactivado, ya no sale');
+    for (const n of [id, ...others]) ok((await A('POST', `/notices/${n}/delete`, { body: {} })).status === 200, 'avisos: borrado');
+    ok((await A('GET', '/notices')).j.notices.length === 0, 'avisos: ninguno al final');
+  }
+
   // Deleting the account takes it out of the directory.
   ok((await req('POST', '/api/account/delete', { headers: { Cookie: pia }, body: { confirm: 'pia@example.com' } })).status === 200 && (await A('GET', '/users?q=pia')).j.users.length === 0, 'cuenta eliminada: fuera del directorio');
   // Without the admin vars again: nothing.

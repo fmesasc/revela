@@ -26,6 +26,7 @@ export default {
   "La presentación se ha movido a otra carpeta de Drive: se sigue guardando ahí.": "نُقل العرض إلى مجلد آخر في Drive: ويستمر الحفظ هناك.",
   "En Drive ahora se llama «{n}».": "اسمه الآن في Drive «{n}».",
   "No encuentro «{n}» en Drive: se ha borrado o ya no tienes acceso. ¿La guardas de nuevo en Drive?": "لا أجد «{n}» في Drive: حُذف أو لم يعد لديك وصول إليه. هل تحفظه في Drive من جديد؟",
+  "Patrocinado": "برعاية",
   "Archivo": "ملف",
   "Inicio": "الصفحة الرئيسية",
   "Insertar": "إدراج",

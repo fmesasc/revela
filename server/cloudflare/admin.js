@@ -52,6 +52,9 @@
 //   GET  /api/admin/promos/trial           → { config, stats: { live, test } }   (Pro's free trial: api.js trialConfig)
 //   POST /api/admin/promos/trial           { trialDays, trialCredits, trialOncePerAccount, reason? }
 //   (Stripe errors for want of permission: 502 { error: 'stripe permissions', message } naming what to add to the restricted key.)
+//   GET  /api/admin/notices                → { notices, stats }   (Revela's own notices: notices.js; stats per notice and day)
+//   POST /api/admin/notices                { notice: { id?, active, title, text, cta, url, where, who, langs, from, until, sponsor, tone, priority }, reason? }
+//   POST /api/admin/notices/:id/delete     { reason? }
 //
 // Every change is written first to the audit log (Audit: who, when, what, before and after),
 // which has no way to edit or delete entries.
@@ -68,7 +71,8 @@
 // the admin (SUPPORT_NOTIFY, else the first of ADMIN_EMAILS). The daily cron reminds once and then
 // closes tickets left waiting for the person (ticketsDue: SUPPORT_REMIND_DAYS, SUPPORT_AUTOCLOSE_DAYS).
 
-import { acct, call, settings, priceOf, stripeConf, trialConfig, cleanTrial, resetTrialCache } from './api.js';
+import { acct, call, settings, priceOf, stripeConf, trialConfig, cleanTrial, resetTrialCache, resetNoticeCache } from './api.js';
+import { cleanNotice } from './notices.js';
 import { mail, mailConfigured, ticketLink, readTicketToken, ticketPage, fmtDate, TICKET_LINK_DAYS } from './mail.js';
 import { fromB64url } from './auth.js';
 import { takeQuota, writeText, readParts } from './store.js';
@@ -625,6 +629,7 @@ export async function handleAdmin(req, env, url) {
     }
   }
   if (path === '/promos' || path.startsWith('/promos/')) return promosApi(env, path, q, body, { GET, POST, by, json });
+  if (path === '/notices' || path.startsWith('/notices/')) return noticesApi(env, path, body, { GET, POST, by, json });
   if (path.startsWith('/finance/')) return financeApi(env, path, q, body, { GET, POST, DELETE, by, json, headers, D });
   if (GET && path === '/audit') return json(await call(L, 'list', { cursor: q.get('cursor') || null, target: clip(q.get('target'), 100) || null, limit: +q.get('limit') || 50 }));
   return json({ error: 'not found' }, 404);
@@ -665,6 +670,26 @@ async function financeApi(env, path, q, body, { GET, POST, DELETE, by, json, hea
     const before = (await F('entry-get', { id: m[1] })).entry; if (!before) return json({ error: 'not found' }, 404);
     await audit(env, { by, action: 'finance-delete', target: 'finance:' + m[1], reason: before.type === 'fixed' ? before.name : before.note, before, after: null });
     return json(await F('entry-del', { id: m[1] }));
+  }
+  return json({ error: 'not found' }, 404);
+}
+
+// ---- Notices: Revela's own announcements (notices.js), kept in the Budget object ------------------------------
+async function noticesApi(env, path, body, { GET, POST, by, json }) {
+  const B = stub(env.BUDGET, 'global');
+  if (GET && path === '/notices') return json(await call(B, 'notices-get', { stats: true }));
+  if (POST && path === '/notices') {
+    const n = cleanNotice(body.notice); if (n.error) return json({ error: 'bad request', field: n.error }, 400);
+    const before = ((await call(B, 'notices-get')).notices || []).find(x => x.id === n.id) || null;
+    await audit(env, { by, action: before ? 'notice-update' : 'notice-create', target: 'notice:' + n.id, reason: clip(body.reason, 500).trim(), before, after: n });
+    const r = await call(B, 'notices-put', { notice: n }); if (r.error) return json({ error: r.error, message: 'Hay demasiados avisos: borra alguno antiguo.' }, 409);
+    resetNoticeCache(); return json({ ok: true, notice: n });
+  }
+  const m = path.match(/^\/notices\/([a-z0-9]{6,20})\/delete$/);
+  if (POST && m) {
+    const before = ((await call(B, 'notices-get')).notices || []).find(x => x.id === m[1]) || null; if (!before) return json({ error: 'not found' }, 404);
+    await audit(env, { by, action: 'notice-delete', target: 'notice:' + m[1], reason: clip(body.reason, 500).trim(), before, after: null });
+    await call(B, 'notices-delete', { id: m[1] }); resetNoticeCache(); return json({ ok: true });
   }
   return json({ error: 'not found' }, 404);
 }

@@ -1,5 +1,6 @@
 // "New from template" dialog: thumbnails of each gallery deck's cover.
 
+import { galleryNotice } from '../shell/notices.js';
 import { isBlankDeck, emptyDeck } from '../../core/model.js';
 import { state, replaceDeck, currentSlide } from '../../core/store.js';
 import { designIdeas, previewBlocks, applyIdea } from '../../features/design/designer.js';
@@ -21,8 +22,9 @@ export function openGallery() {
   back.id = 'gallery-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(820px,94vw);max-width:94vw">
     <button class="modal-close">✕</button><h3>${t('Nueva presentación desde plantilla')}</h3>
-    <h4>${t('Plantillas')}</h4><div class="gal-grid"></div></div>`;
+    <div class="gal-notice"></div><h4>${t('Plantillas')}</h4><div class="gal-grid"></div></div>`;
   const grid = back.querySelector('.gal-grid');
+  galleryNotice(back.querySelector('.gal-notice'));   // (Revela's own notice for here, if any: io/cloud/notices.js)
   // Asked only when there is something to lose.
   const replaceWith = (deck, question) => (isBlankDeck(state.deck) ? Promise.resolve(true) : confirmDialog(question))
     .then(ok => { if (ok) { replaceDeck(deck); back.remove(); } });
