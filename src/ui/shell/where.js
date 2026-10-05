@@ -8,6 +8,7 @@ import { hasAccounts } from '../../io/cloud/account.js';
 import { saveProject } from '../../io/formats/project.js';
 import * as gd from '../../io/cloud/gdrive.js';
 import * as cd from '../../io/cloud/clouddocs.js';
+import { onedriveReady } from '../../io/cloud/onedrive.js';
 
 // One place at a time (never two copies saving each their own way): kept in Revela's cloud from now on,
 // it stops saving to its Drive file; kept in Drive, it leaves Revela's cloud. The other copy stays as it was.
@@ -27,10 +28,12 @@ export function openSaveWhere(anchor) {
     html: `<div class="sw-head">${t('Ahora solo está en este navegador. ¿Dónde la guardas?')}</div>`
       + item('drive', 'add_to_drive', 'Google Drive', t('Recomendado: se guarda sola y la abres desde cualquier dispositivo.'))
       + (cloud ? item('cloud', 'cloud', t('Nube de Revela'), t('Para compartirla con personas concretas y ver sus estadísticas.')) : '')
+      + (onedriveReady() ? item('onedrive', 'cloud_circle', 'OneDrive', t('Se guarda sola en tu OneDrive personal, de trabajo o de tu centro.')) : '')
       + item('file', 'download', t('Descargar un archivo'), t('Una copia (.revela.json) que guardas tú.')),
     onPick: async k => {
       if (k === 'drive') (await import('../dialogs/gdrive.js')).driveSaveAsUI();
       else if (k === 'cloud') (await import('../dialogs/cloud.js')).openCloudShare();
+      else if (k === 'onedrive') (await import('../dialogs/onedrive.js')).openOneDrive({ mode: 'save' });
       else { saveProject(); toast(t('Proyecto descargado (.revela.json). Para seguir con él otro día: Archivo ▸ Abrir.')); }
     } });
 }

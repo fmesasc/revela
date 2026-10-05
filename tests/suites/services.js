@@ -134,6 +134,78 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.querySelector('[data-action="comments"]').click();
   });
 
+  await test('OneDrive como Drive: carpetas, guardar (y que se guarde solo), cambios en otro sitio, copias PDF y abrir', async () => {
+    reset(); const W = frame.contentWindow, realFetch = W.fetch, realOpen = W.open, calls = [];
+    const OC = await W.eval("import('/src/io/cloud/othercloud.js')"), OD = await W.eval("import('/src/io/cloud/onedrive.js')");
+    const G = 'https://graph.microsoft.com/v1.0/me/drive';
+    const files = { f1: { name: 'Vieja.revela.json', eTag: '"v1"', parent: 'root', body: JSON.stringify({ slides: [{ id: 'o1', blocks: [] }, { id: 'o2', blocks: [] }], size: { w: 1280, h: 720 } }) } };
+    let n = 0;
+    const popup = { location: { href: '' }, closed: false }; W.open = () => popup;
+    W.fetch = async (url, o = {}) => {
+      const u = decodeURIComponent(String(url)), h = o.headers || {}, m = o.method || 'GET'; calls.push({ u, m, h });
+      const json = (v, st = 200) => new W.Response(JSON.stringify(v), { status: st, headers: { 'Content-Type': 'application/json' } });
+      if (u.endsWith('/oauth2/v2.0/token')) return json({ access_token: 'tokOD', expires_in: 3600 });
+      if (h.Authorization !== 'Bearer tokOD') return json({}, 401);
+      if (u.startsWith(G + '/root?')) return json({ id: 'root', name: 'root' });
+      if (u.startsWith(G + '/items/fC?')) return json({ id: 'fC', name: 'Clases', parentReference: { path: '/drive/root:' } });
+      if (u.startsWith(G + '/items/root/children')) return json({ value: [{ id: 'fC', name: 'Clases', folder: {} }, { id: 'f1', name: 'Vieja.revela.json', file: {}, eTag: files.f1.eTag }, { id: 'x', name: 'notas.txt', file: {} }] });
+      if (u.startsWith(G + '/items/fC/children')) return json({ value: [{ id: 'p1', name: 'Charla.pptx', file: {} }] });
+      let mm = /\/items\/(\w+):\/(.+):\/content$/.exec(u);
+      if (mm && m === 'PUT') { const id = 'n' + (++n); files[id] = { name: mm[2], eTag: '"e1"', parent: mm[1], body: await new W.Response(o.body).text(), type: h['Content-Type'] }; return json({ id, name: mm[2], eTag: '"e1"', parentReference: { id: mm[1] } }); }
+      mm = /\/items\/(\w+)\/content$/.exec(u);
+      if (mm && m === 'PUT') { const f = files[mm[1]]; if (h['If-Match'] && h['If-Match'] !== f.eTag) return json({}, 412); f.body = await new W.Response(o.body).text(); f.eTag = '"e' + (+f.eTag.replace(/\D/g, '') + 1) + '"'; return json({ id: mm[1], name: f.name, eTag: f.eTag }); }
+      if (mm) return new W.Response(files[mm[1]].body);
+      mm = /\/items\/(\w+)\?\$select=id,name,eTag/.exec(u);
+      if (mm) return json({ id: mm[1], name: files[mm[1]].name, eTag: files[mm[1]].eTag, parentReference: { id: files[mm[1]].parent } });
+      return json({}, 404);
+    };
+    const act = a => R.ribbon?.ACTIONS?.[a]?.() ?? (W.eval(`import('/src/ui/ribbon/actions.js')`).then(x => x.ACTIONS[a]()));
+    const until = async (f, ms = 3000) => { for (let i = 0; i < ms / 20 && !f(); i++) await sleep(20); };
+    try {
+      OD.setOneDriveDelay(60);
+      // Save: connect, choose a folder, the presentation itself.
+      await act('onedrive-save'); await sleep(30);
+      const modal = () => D.getElementById('od-modal');
+      modal().querySelector('.od-connect').click();
+      for (let i = 0; i < 50 && !popup.location.href; i++) await sleep(10);
+      const q = new URL(popup.location.href);
+      W.localStorage.setItem('revela.auth', JSON.stringify({ query: '?code=C9&state=' + q.searchParams.get('state') }));
+      await until(() => modal()?.querySelector('.od-item'));
+      eq([...modal().querySelectorAll('.od-item b')].map(b => b.textContent).join(), 'Clases,Vieja', 'carpetas primero; solo lo que se puede usar (no el .txt)');
+      modal().querySelector('.od-item').click(); await until(() => /Clases/.test(modal().querySelector('.od-trail').textContent));
+      assert(/OneDrive.*Clases/.test(modal().querySelector('.od-trail').textContent), 'dentro de la carpeta, con el camino');
+      modal().querySelector('.od-name').value = 'Mi charla'; modal().querySelector('.od-go').click();
+      await until(() => !modal());
+      const n1 = files.n1; assert(n1 && n1.name === 'Mi charla.revela.json' && n1.parent === 'fC' && JSON.parse(n1.body).slides, 'guardada en esa carpeta');
+      eq(OD.linkedOneDrive()?.id, 'n1', 'y enlazada');
+      await until(() => !D.getElementById('onedrive-status').hidden);
+      assert(/OneDrive · Guardado/.test(D.getElementById('onedrive-status').textContent) && D.getElementById('save-state').hidden, 'su estado junto al nombre (en lugar de «En este navegador»)');
+      // It saves itself a moment after each change, without stepping on a change made elsewhere.
+      R.store.commit(() => { slide().blocks[0].html = 'Cambio 1'; });
+      await until(() => calls.some(c => c.m === 'PUT' && c.u.endsWith('/items/n1/content')));
+      const put1 = calls.find(c => c.m === 'PUT' && c.u.endsWith('/items/n1/content'));
+      eq(put1.h['If-Match'], '"e1"', 'con la versión que tenía'); await until(() => OD.oneDriveStatus() === 'saved');
+      assert(/Cambio 1/.test(files.n1.body), 'se ha guardado solo');
+      files.n1.eTag = '"e9"';                                        // (someone changed it on another device)
+      R.store.commit(() => { slide().blocks[0].html = 'Cambio 2'; });
+      await until(() => OD.oneDriveStatus() === 'conflict');
+      eq(OD.oneDriveStatus(), 'conflict', 'cambió en otro sitio: no se pisa'); assert(!/Cambio 2/.test(files.n1.body), 'lo de allí sigue');
+      assert(/Cambió en otro sitio/.test(D.getElementById('onedrive-status').textContent), 'y lo dice');
+      await OD.saveOneDriveNow({ force: true }); assert(/Cambio 2/.test(files.n1.body), '«Guardar la mía», si se elige');
+      // A PDF copy, which OneDrive shows with all its pages: the presentation stays linked to its file.
+      await act('onedrive-save'); await until(() => modal()?.querySelector('.od-item'));
+      modal().querySelector('[name="od-fmt"][value="pdf"]').checked = true; modal().querySelector('.od-go').click();
+      await until(() => !modal(), 20000);
+      const pdf = Object.values(files).find(f => /\.pdf$/.test(f.name)); assert(pdf && pdf.type === 'application/pdf', 'copia en PDF');
+      eq(OD.linkedOneDrive()?.id, 'n1', 'la presentación sigue enlazada a su archivo');
+      // Open: any folder; a Revela file opens linked.
+      await act('cloud-onedrive'); await until(() => modal()?.querySelector('.od-item'));
+      [...modal().querySelectorAll('.od-item')].find(b => /Vieja/.test(b.textContent)).click(); await sleep(30);
+      D.querySelector('.modal-backdrop .dlg-ok')?.click(); await until(() => !modal());
+      eq(R.state.deck.slides.length, 2, 'abierta desde OneDrive'); eq(OD.linkedOneDrive()?.id, 'f1', 'y enlazada a su archivo');
+    } finally { W.fetch = realFetch; W.open = realOpen; OC.signOutCloud('onedrive'); OD.unlinkOneDrive(); OD.setOneDriveDelay(4000); D.getElementById('od-modal')?.remove(); D.querySelectorAll('.modal-backdrop').forEach(x => x.remove()); }
+  });
+
   await test('Dropbox y OneDrive: configurar la app, iniciar sesión (PKCE), guardar, listar y abrir (servicios simulados)', async () => {
     reset(); const W = frame.contentWindow, OC = await W.eval("import('/src/io/cloud/othercloud.js')"), realFetch = W.fetch, realOpen = W.open, calls = [];
     W.localStorage.removeItem('revela.cloudKeys');

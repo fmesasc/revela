@@ -81,24 +81,27 @@ export const PROVIDERS = {
   },
 };
 
-const tokens = new Map();                                        // provider → { token, until }
+// provider → { token, until }: kept for this tab (sessionStorage, as Drive's), so a reload doesn't sign out.
+const TK = 'revela.cloudTokens';
+const tokens = new Map(Object.entries((() => { try { return JSON.parse(sessionStorage.getItem(TK)) || {}; } catch { return {}; } })()));
+const keepTokens = () => { try { sessionStorage.setItem(TK, JSON.stringify(Object.fromEntries(tokens))); } catch {} };
 export const signedIn = id => (tokens.get(id)?.until || 0) > Date.now();
-export const signOutCloud = id => tokens.delete(id);
+export const signOutCloud = id => { tokens.delete(id); keepTokens(); };
 export async function connect(id) {
   if (signedIn(id)) return true;
   const p = PROVIDERS[id];
   const r = await pkceLogin({ ...p.auth, clientId: cloudKey(id) });
-  tokens.set(id, { token: r.access_token, until: Date.now() + ((r.expires_in || 3600) - 60) * 1000 });
+  tokens.set(id, { token: r.access_token, until: Date.now() + ((r.expires_in || 3600) - 60) * 1000 }); keepTokens();
   return true;
 }
 // A call to the service with the token (JSON back, or text).
-function apiFor(id) {
+export function apiFor(id) {
   return async (url, opts = {}, as = 'json') => {
     const tk = tokens.get(id); if (!tk || !signedIn(id)) throw new Error('NO_TOKEN');
     const r = await fetch(url, { ...opts, headers: { ...(opts.headers || {}), Authorization: 'Bearer ' + tk.token } });
-    if (r.status === 401) { tokens.delete(id); throw new Error('NO_TOKEN'); }
+    if (r.status === 401) { tokens.delete(id); keepTokens(); throw new Error('NO_TOKEN'); }
     if (!r.ok) throw Object.assign(new Error('HTTP ' + r.status), { status: r.status });
-    return as === 'text' ? r.text() : r.json();
+    return as === 'text' ? r.text() : as === 'blob' ? r.blob() : r.json();
   };
 }
 

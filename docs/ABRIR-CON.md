@@ -141,7 +141,19 @@ Dropbox (no «carpeta de la app»).
 
 ### Guardar y abrir (hecho)
 
-Revela guarda la presentación en la carpeta `Revela` del OneDrive de cada persona y la abre desde ahí
+Como con Google Drive (`io/cloud/onedrive.js`, diálogo en `ui/dialogs/onedrive.js`):
+
+- **Abrir** desde cualquier carpeta: un `.revela.json` se abre enlazado a su archivo; un `.pptx` o `.odp`
+  se importa (no se enlaza: el original no se toca).
+- **Guardar en OneDrive** en la carpeta que se elija: la presentación (queda enlazada y se guarda sola
+  unos segundos después de cada cambio), o una **copia en PDF** (OneDrive la muestra con todas sus
+  diapositivas y el texto buscable) o en **PowerPoint**.
+- El estado junto al nombre («OneDrive · Guardado»…). Cada guardado comprueba la versión del archivo
+  (`eTag`, `If-Match`): si cambió desde otro dispositivo no se pisa y se pregunta cuál quedarse.
+  Archivos de más de 4 MB, por sesiones de subida.
+- Mi cuenta muestra el OneDrive conectado y permite desconectarlo. La sesión dura lo que la pestaña
+  (`sessionStorage`); al volver, el estado pide «Volver a conectar».
+
 (Microsoft Graph, permiso delegado `Files.ReadWrite`, inicio de sesión PKCE sin secretos). La aplicación
 está registrada en Microsoft Entra, en el directorio propio de FM Lab (no en el de ningún centro):
 

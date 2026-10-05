@@ -6,6 +6,8 @@ import { esc } from '../../core/text.js';
 import { EDITION, OFFICIAL_SITE } from '../../core/config.js';
 import * as acc from '../../io/cloud/account.js';
 import * as gd from '../../io/cloud/gdrive.js';
+import * as od from '../../io/cloud/onedrive.js';
+import { connect, signOutCloud } from '../../io/cloud/othercloud.js';
 import { t, currentLang } from '../../i18n/index.js';
 import { alertDialog, confirmDialog, promptDialog } from './dialog.js';
 import { openTeam } from './team.js';
@@ -128,7 +130,7 @@ export function openAccount({ buy } = {}) {
         <button type="button" class="mini2 acc-out">${t('Cerrar sesión')}</button></div>
       <div class="fr-actions" style="justify-content:flex-start;flex-wrap:wrap"><button type="button" class="mini2 acc-team"><i class="ms">groups</i> ${me.team ? esc(me.team.name) : t('Equipos y centros')}</button>
         <button type="button" class="mini2 acc-report"><i class="ms">bug_report</i> ${t('Informar de un problema')}</button></div>
-      <div class="acc-drive"></div>
+      <div class="acc-drive"></div><div class="acc-drive acc-od" hidden></div>
       <details class="acc-mail"><summary>${t('Avisos por correo')}</summary>
         <p class="host-help">${t('Revela te escribe a {email} cuando te comparten una presentación, te invitan a un equipo o cambia tu plan.').replace('{email}', esc(me.email))}</p>
         <label class="fr-chk"><input type="checkbox" class="acc-mail-opt" data-kind="credits"> ${t('Avisarme cuando mis créditos estén a punto de caducar')}</label>
@@ -154,6 +156,19 @@ export function openAccount({ buy } = {}) {
       });
     };
     paintDrive();
+    // OneDrive, the same way (personal, work or school accounts).
+    const odBox = body.querySelector('.acc-od'), paintOD = async () => {
+      if (!od.onedriveReady()) return; odBox.hidden = false;
+      const on = od.onedriveSignedIn(), who = on ? await od.oneDriveOwner() : '';
+      odBox.innerHTML = `<i class="ms">cloud_circle</i><span>${on ? t('OneDrive: conectado{w}').replace('{w}', who ? ' (' + esc(who) + ')' : '') : t('OneDrive: guarda ahí tus presentaciones, con una cuenta personal, de trabajo o de tu centro.')}</span>`
+        + `<button type="button" class="mini2 acc-od-btn">${on ? t('Desconectar OneDrive') : t('Conectar OneDrive')}</button>`;
+      odBox.querySelector('.acc-od-btn').addEventListener('click', async () => {
+        if (od.onedriveSignedIn()) signOutCloud('onedrive');
+        else { try { await connect('onedrive'); } catch (e) { if (e.message !== 'CANCELLED') alertDialog(e.message); } }
+        paintOD();
+      });
+    };
+    paintOD();
     body.querySelector('.acc-report').addEventListener('click', () => { close(); openReport(); });
     // (Email notices: the optional ones can be switched off; a test email shows whether they arrive.)
     const optBoxes = [...body.querySelectorAll('.acc-mail-opt')];

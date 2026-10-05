@@ -5,6 +5,8 @@ import { editText } from '../canvas/content.js';
 import { readFile, openProject, openPresentation, insertMarkdown, insertFiles, openAnyPresentation } from '../shell/openfile.js';
 import { openSaveWhere } from '../shell/where.js';
 import * as clouddocs from '../../io/cloud/clouddocs.js';
+import * as onedrive from '../../io/cloud/onedrive.js';
+import { openOneDrive } from '../dialogs/onedrive.js';
 import { openFindPanel } from '../dialogs/find.js';
 import { toggleDictation } from '../shell/dictate.js';
 import { toggleSelectionPane } from '../panels/selection.js';
@@ -106,6 +108,7 @@ export const ACTIONS = {
   // this browser, the choice of where. (A file to keep oneself: «Descargar».)
   'save': () => {
     if (gdrive.linkedFile()) return driveSaveUI();
+    if (onedrive.linkedOneDrive()) return onedrive.saveOneDriveNow().then(r => toast(r === true ? t('Guardado en OneDrive.') : r === 'conflict' ? t('Ha cambiado en OneDrive desde otro dispositivo: pulsa su estado, junto al nombre, para elegir.') : t('No se pudo guardar en OneDrive: pulsa su estado, junto al nombre.')));
     if (clouddocs.cloudDoc()) return clouddocs.flushCloud().then(() => toast(t('Guardado en la nube de Revela.')));
     const at = [document.getElementById('save-state'), document.querySelector('.qat [data-action="save"]')].find(x => x && x.offsetParent);
     if (savedHere() && at) return openSaveWhere(at);
@@ -126,7 +129,8 @@ export const ACTIONS = {
   'gdrive-save-as': () => driveSaveAsUI(),
   'gdrive-html': () => gdrive.saveHtmlWithUI(),
   'gdrive-config': () => openGdriveSetup(),
-  'cloud-onedrive': () => openCloud('onedrive'),
+  'cloud-onedrive': () => openOneDrive({ mode: 'open' }),
+  'onedrive-save': () => openOneDrive({ mode: 'save' }),
   'cloud-dropbox': () => openCloud('dropbox'),
   // (A download alone is easy to miss: each one says what it was and what next.)
   'export': async () => {

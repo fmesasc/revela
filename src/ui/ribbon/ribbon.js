@@ -116,6 +116,7 @@ export function initRibbon() {
     const fb = document.getElementById('final-banner'); if (!fb) return;
     fb.classList.remove('flash'); void fb.offsetWidth; fb.classList.add('flash');
   });
+  window.addEventListener('revela:cloud-status', () => renderRibbon());   // (OneDrive's chip stands for «In this browser»)
   // (The phones' quick bar, outside the ribbon: the same actions.)
   document.getElementById('m-quick')?.addEventListener('click', e => {
     const act = e.target.closest('[data-action]');
@@ -407,7 +408,7 @@ export function renderRibbon() {
   // can't keep it, that shows instead, and a click downloads a copy.
   { const ss = $('#save-state'); if (ss) { const ok = savedHere();
     // (Always said — where it lives — not only after the first change: Drive's or the cloud's own state stands in for it.)
-    ss.hidden = !$('#drive-status')?.hidden || !$('#cloud-status')?.hidden || !!state.ui.lock;
+    ss.hidden = !$('#drive-status')?.hidden || !$('#cloud-status')?.hidden || !$('#onedrive-status')?.hidden || !!state.ui.lock;
     if (ss.classList.contains('failed') !== !ok) {
       const [icon, text, tip] = ok ? SAVE_OK : SAVE_FAILED, sp = ss.querySelector('span');
       ss.classList.toggle('failed', !ok); ss.querySelector('.ms').textContent = icon;

@@ -8,6 +8,7 @@ import { state, replaceDeck } from '../../core/store.js';
 import { emptyDeck, isUntitled, UNTITLED } from '../../core/model.js';
 import * as gd from '../../io/cloud/gdrive.js';
 import { hasAccounts } from '../../io/cloud/account.js';
+import { initOneDrive } from '../dialogs/onedrive.js';
 import { slideImageBlob } from '../../io/export/images.js';
 import { isEmptyPlaceholder } from '../../features/document/master.js';
 import { t } from '../../i18n/index.js';
@@ -165,7 +166,8 @@ export async function openHome() {
 
 export function initHome() {
   gd.setThumbnailMaker(() => driveThumbnail());
-  gd.startAutosave(); gd.renewOnGesture();   // (Drive's hour-long access renewed quietly on a click before it ends)
+  gd.startAutosave(); gd.renewOnGesture();
+  initOneDrive();                                             // (OneDrive: its chip, and saving itself while one edits)   // (Drive's hour-long access renewed quietly on a click before it ends)
   gd.onDrive(paintBar);
   // Moved or renamed in Drive: it keeps saving there, and says where; gone: asks where to keep it now.
   gd.onDriveNote(async n => {

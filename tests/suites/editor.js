@@ -723,7 +723,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     // Kept only in this browser, Save asks where (never a download every time); a file is one of the choices.
     D.querySelector('#ribbon [data-action="save"].mini').click(); await sleep(20);
     const where = D.getElementById('save-where'); assert(where, 'Guardar pregunta dónde');
-    eq([...where.querySelectorAll('[data-w]')].map(b => b.dataset.w).filter(w => w !== 'cloud').join(), 'drive,file', 'Drive o un archivo');
+    eq([...where.querySelectorAll('[data-w]')].map(b => b.dataset.w).filter(w => w !== 'cloud').join(), 'drive,onedrive,file', 'Drive, OneDrive o un archivo');
     where.querySelector('[data-w="file"]').click(); await sleep(20);
     const box = D.getElementById('toasts');
     assert(box && box.getAttribute('aria-live') === 'polite', 'una zona de avisos que se lee en voz alta');
