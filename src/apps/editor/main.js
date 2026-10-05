@@ -274,7 +274,7 @@ initFileDrop();
 // First visit (nothing saved in this browser, no shared link): start from the
 // templates, as PowerPoint and Canva do; closing it leaves the blank slide.
 { const q = new URLSearchParams(location.search), fresh = (() => { try { return !localStorage.getItem(model.STORAGE_KEY) && !localStorage.getItem('revela.welcomed'); } catch { return false; } })();
-  if (!testing && fresh && !['collab', 'open', 'u', 'd', 'state', 'dropbox', 'doc', 'lti', 'report', 'comprar', 'desktop'].some(k => q.has(k))) {
+  if (!testing && fresh && !['collab', 'open', 'u', 'd', 'state', 'dropbox', 'doc', 'lti', 'report', 'comprar', 'desktop', 'plantilla'].some(k => q.has(k))) {
     try { localStorage.setItem('revela.welcomed', '1'); } catch {}
     import('../../ui/dialogs/gallery.js').then(g => g.openGallery());
   } }
@@ -323,6 +323,13 @@ if (hasAccounts()) {
 if (!testing && new URLSearchParams(location.search).has('report')) { history.replaceState(null, '', location.pathname); (hasAccounts() ? refreshAccount().catch(() => {}) : Promise.resolve()).finally(() => openReport()); }
 // Opened from Drive's or Dropbox's "Open with ▸ Revela" (or Drive's "New ▸ Revela").
 if (!testing) handleOpenWith();
+// From a demo (revelaslides.com, fmesasc.com/revela): ?plantilla=<name> opens that sample presentation,
+// in the interface's language, ready to change (whatever was open stays in Versions, as always).
+{ const k = new URLSearchParams(location.search).get('plantilla');
+  if (!testing && k && Object.hasOwn(examples.EXAMPLES, k)) {
+    history.replaceState(null, '', location.pathname);
+    examples.loadExample(k, i18n.currentLang()).then(d => { if (d) store.replaceDeck(d); }).catch(() => {});
+  } }
 if (!testing) finishOpenRouterLogin().then(ok => { if (ok) alertDialog(t('IA conectada con OpenRouter.')); })
   .catch(e => alertDialog(t('No se pudo conectar con OpenRouter: ') + e.message));
 
