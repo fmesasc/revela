@@ -697,10 +697,11 @@ export default {
       { title: 'El sistema nervioso', layout: 'titleOnly', bg: BG, transition: 'concave', extra: [dg('hierarchy', 'Sistema nervioso\n  Central\n    Encéfalo\n    Médula espinal\n  Periférico\n    Somático\n    Autónomo', 90, 180, 1100, 460, { colors: 'accent', oneByOne: true })],
         notes: 'Organigrama uno a uno. El autónomo controla lo que no decidimos: latido, digestión, sudor.' },
       { title: 'Andar sin pensar', layout: 'titleOnly', bg: BG, extra: [
-        withAnims(model('kh-CesiumMan', 60, 290, 300, 300, { clip: '*', view: 'side', bleed: 1.3 }), path([[600, 0]], { duration: 6000, ease: 'linear' })),
         line(60, 592, 1220, 592, '#3a4250', 3),
         text('El <b style="color:#ff6fa8">cerebelo</b> coordina cada paso: corrige el equilibrio decenas de veces por segundo sin que lo notemos.', 440, 170, 760, 130, { fontSize: 28, color: FG }),
-        dg('chevrons', 'Sentir\nCalcular\nCorregir', 440, 310, 760, 110, { colors: 'colorful' })],
+        dg('chevrons', 'Sentir\nCalcular\nCorregir', 440, 310, 760, 110, { colors: 'colorful' }),
+        // (last: it walks in front of the text and the diagram, not behind them)
+        withAnims(model('kh-CesiumMan', 60, 290, 300, 300, { clip: '*', view: 'side', bleed: 1.3 }), path([[600, 0]], { duration: 6000, ease: 'linear' }))],
         notes: 'Figura 3D animada que camina en bucle; con un clic recorre la diapositiva (trayectoria recta).' },
       { title: '¿Qué rápido va un impulso?', layout: 'titleOnly', bg: BG, extra: [
         chartBlock({ x: 90, y: 170, w: 680, h: 450, chartType: 'hbar', color: CYAN, dataLabels: true,

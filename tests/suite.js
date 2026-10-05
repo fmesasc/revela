@@ -25,6 +25,7 @@ export async function run(frame, only = null, grep = '') {
   let area = '';
   async function test(name, fn) {
     if (grep && !name.includes(grep)) return;
+    window.__now = `[${area}] ${name} (${results.length} hechas)`;   // (run.py says it if time runs out)
     try { await fn(); results.push({ area, name, ok: true }); }
     catch (e) { results.push({ area, name, ok: false, err: e.message || String(e) }); }
   }

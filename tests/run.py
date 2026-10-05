@@ -515,7 +515,11 @@ def main():
             print(out)
             if errs: print('Errores de la página:\n' + errs)
             print(detail[:4000]); return 1
-        print(out or 'REVELATEST FAIL (sin resultado)')
+        if not out:
+            r = recv(send('Runtime.evaluate', sid, returnByValue=True, expression="window.__now||''"))
+            print(f'REVELATEST FAIL (sin resultado en {TIMEOUT:.0f} s; en curso: ' + (r.get('result', {}).get('result', {}).get('value') or '?') + ')')
+            return 1
+        print(out)
         return 0 if out.startswith('REVELATEST PASS') else 1
     finally:
         proc.kill(); srv.shutdown(); shutil.rmtree(prof, ignore_errors=True)

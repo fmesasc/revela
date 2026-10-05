@@ -484,6 +484,24 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     win.Reveal.getCurrentSlide().querySelector('.stage').appendChild(el); return el;
   };
 
+  await test('3D entre diapositivas: activo desde que se abre (precarga la siguiente) y sin un fotograma con la vista por defecto al cambiar', async () => {
+    const d = await R.examples.loadExample('product_car', 'es'); R.store.replaceDeck(d); await sleep(30);
+    const { f, win, doc } = await deckFrame(R.io.buildHTML(), 1280, 720);
+    try {
+      win.Reveal.configure({ hash: false, history: false });
+      const mvs = () => [...doc.querySelectorAll('model-viewer')];
+      for (let i = 0; i < 40 && !mvs()[0].__rv; i++) await sleep(50);
+      assert(mvs().every(m => m.__rv), 'el 3D se activa al abrir la presentación (no en el primer cambio)');
+      eq(mvs()[1].getAttribute('loading'), 'eager', 'el modelo de la siguiente se carga por adelantado');
+      for (let i = 0; i < 150 && !mvs().slice(0, 2).every(m => m.loaded); i++) await sleep(100);
+      let bridged = null; win.Reveal.on('slidechanged', e => { bridged = e.currentSlide.querySelector('model-viewer .rv-bridge'); });
+      win.Reveal.next(); await sleep(20);
+      assert(bridged && bridged.width > 0, 'en el cambio, encima, el último fotograma del de antes (no la vista por defecto que guardaba)');
+      for (let i = 0; i < 20 && bridged.isConnected; i++) await sleep(50);
+      assert(!bridged.isConnected, 'y se quita en cuanto el nuevo se ha dibujado');
+    } finally { f.remove(); }
+  });
+
   await test('mando: las coordenadas del móvil caen en la diapositiva (franjas, otra proporción, zoom)', async () => {
     reset(); const W = frame.contentWindow, P = await W.eval("import('/src/features/live/remotepad.js')");
     const { f, win, doc } = await deckFrame(R.io.buildHTML(), 800, 600);

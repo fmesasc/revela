@@ -187,6 +187,20 @@ export function model3dRuntime() {
     var d = parseFloat(cur.getAttribute('data-auto-animate-duration')) || (window.Reveal && Reveal.getConfig().autoAnimateDuration) || 1;
     return d * 1000;
   }
+  // The moment of the change: the model on the new slide still shows whatever it last drew (its default
+  // view, drawn while it waited hidden) until it draws again, a frame or two later — a flash of the
+  // wrong pose before it takes over. Over it, a copy of the other one's last picture (which is exactly
+  // what should be there), inside it (so Morph's movement carries it), until it has drawn itself.
+  function bridge(mv, old) {
+    var src = old.shadowRoot && old.shadowRoot.querySelector('canvas'); if (!src || !src.width || !src.height) return;
+    var c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
+    try { c.getContext('2d').drawImage(src, 0, 0); } catch (e) { return; }
+    c.setAttribute('aria-hidden', 'true'); c.className = 'rv-bridge';
+    c.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:5';
+    mv.appendChild(c);
+    var gone = function () { var n = 0; (function tick() { if (++n < 4) requestAnimationFrame(tick); else c.remove(); })(); };
+    if (mv.loaded) gone(); else { mv.addEventListener('load', gone, { once: true }); setTimeout(function () { c.remove(); }, 8000); }
+  }
   function handoff(prev, cur) {
     var handed = new Map();
     if (!prev || !cur || prev === cur) return handed;
@@ -194,6 +208,7 @@ export function model3dRuntime() {
       var how = mv.getAttribute('data-arrive') || 'keep'; if (how === 'reset') return;
       var old = partner(mv, prev); if (!old || !old.loaded) return;
       handed.set(mv, Math.max(travel(prev, cur), how === 'turn' ? 2400 + 150 : how === 'keep' ? 0 : 1400 + 150));   // (its own movement starts once the arrival is over)
+      bridge(mv, old);
       var o = orbitOf(old), spin = typeof old.turntableRotation === 'number' ? old.turntableRotation : 0;
       var own = (mv.getAttribute('camera-orbit') || '0deg 75deg auto').split(' '), ownT = parseFloat(own[0]) || 0, ownP = own[1] || '75deg';
       var zoomIn = mv.getAttribute('data-motion') === 'zoom';
@@ -214,11 +229,18 @@ export function model3dRuntime() {
           else if (how === 'front') { mv.removeAttribute('auto-rotate'); mv.autoRotate = false; }   // (and it stays facing the audience)
         })(t0);
       }
+      // (Not loaded yet: its camera goes where the other one was right now, so its first picture is already that one.)
+      if (!mv.loaded && o) mv.cameraOrbit = o.t.toFixed(1) + 'deg ' + o.p.toFixed(1) + 'deg ' + R(mv);
       if (mv.loaded) apply(); else mv.addEventListener('load', apply, { once: true });
     });
     return handed;
   }
-  if (window.Reveal) { Reveal.on('ready', function (e) { enter(e.currentSlide); }); Reveal.on('slidechanged', function (e) { enter(e.currentSlide, handoff(e.previousSlide, e.currentSlide), e.previousSlide); }); if (Reveal.isReady()) enter(Reveal.getCurrentSlide());
+  // (The first slide too, once reveal.js is ready: its «ready» may already have gone by, or come before
+  // this listens — then nothing ran until the first change, so nothing was loaded ahead nor moving.)
+  var begun = false;
+  function begin() { if (begun) return; begun = true; enter(Reveal.getCurrentSlide()); }
+  if (window.Reveal) { Reveal.on('ready', begin); Reveal.on('slidechanged', function (e) { begun = true; enter(e.currentSlide, handoff(e.previousSlide, e.currentSlide), e.previousSlide); });
+    (function wait(n) { if (begun) return; if (Reveal.isReady && Reveal.isReady()) begin(); else if (n < 300) setTimeout(function () { wait(n + 1); }, 50); })(0);
     Reveal.on('fragmentshown', function (e) { (e.fragments || [e.fragment]).forEach(function (f) { clipStep(f, true); }); });
     Reveal.on('fragmenthidden', function (e) { (e.fragments || [e.fragment]).forEach(function (f) { clipStep(f, false); }); }); }
   return { enter: enter, handoff: handoff, start: start, stop: stop, move: move, step: clipStep, clip: function (mv, name, once) { playClip(mv, name, once); if (once) mv.addEventListener('finished', function () { rest(mv); }, { once: true }); } };
