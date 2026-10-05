@@ -2,14 +2,16 @@
 // shortcuts, the context menu and the tests).
 
 import { editText } from '../canvas/content.js';
-import { readFile, openProject, openPresentation, insertMarkdown, insertFiles } from '../shell/openfile.js';
+import { readFile, openProject, openPresentation, insertMarkdown, insertFiles, openAnyPresentation } from '../shell/openfile.js';
+import { openSaveWhere } from '../shell/where.js';
+import * as clouddocs from '../../io/cloud/clouddocs.js';
 import { openFindPanel } from '../dialogs/find.js';
 import { toggleDictation } from '../shell/dictate.js';
 import { toggleSelectionPane } from '../panels/selection.js';
 import { openGdriveSetup, driveSaveUI, driveSaveAsUI } from '../dialogs/gdrive.js';
 import { openCloud } from '../dialogs/othercloud.js';
 import { state, commit, undo, redo, replaceDeck, currentSlide, selectedBlock, selectedBlocks, targetSlides } from '../../core/store.js';
-import { isBlankDeck, emptyDeck } from '../../core/model.js';
+import { isBlankDeck, emptyDeck, savedHere } from '../../core/model.js';
 import * as slides from '../../features/document/slides.js';
 import * as blocks from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
@@ -89,7 +91,7 @@ export function endAnimPaint() { animPaint = null; document.body.classList.remov
 export const ACTIONS = {
   'new': () => (isBlankDeck(state.deck) ? Promise.resolve(true) : confirmDialog(t('¿Nueva presentación? Se perderá la actual si no la has guardado.')))
     .then(ok => { if (ok) replaceDeck(emptyDeck()); }),
-  'open': () => readFile('.json,application/json', openProject, 'text'),
+  'open': () => openAnyPresentation(),
   'save-protected': async () => {
     const pw = await promptDialog(t('Contraseña para cifrar el proyecto (no se puede recuperar si la olvidas):'), ''); if (!pw) return;
     const pw2 = await promptDialog(t('Repite la contraseña:'), ''); if (pw2 !== pw) { alertDialog(t('Las contraseñas no coinciden.')); return; }
@@ -100,7 +102,16 @@ export const ACTIONS = {
   },
   'mark-final': () => toggleFinal(),
   'signatures': () => openSignatures(),
-  'save': () => { saveProject(); toast(t('Proyecto descargado (.revela.json). Para seguir con él otro día: Archivo ▸ Abrir.')); },
+  // Save (Ctrl+S, the disk): where it is kept — its Drive file now, its cloud copy now —; kept only in
+  // this browser, the choice of where. (A file to keep oneself: «Descargar».)
+  'save': () => {
+    if (gdrive.linkedFile()) return driveSaveUI();
+    if (clouddocs.cloudDoc()) return clouddocs.flushCloud().then(() => toast(t('Guardado en la nube de Revela.')));
+    const at = [document.getElementById('save-state'), document.querySelector('.qat [data-action="save"]')].find(x => x && x.offsetParent);
+    if (savedHere() && at) return openSaveWhere(at);
+    ACTIONS['download-project']();
+  },
+  'download-project': () => { saveProject(); toast(t('Proyecto descargado (.revela.json). Para seguir con él otro día: Archivo ▸ Abrir.')); },
   'gallery': () => openGallery(),
   'home': () => openHome(),
   'versions': () => openVersions(),
@@ -118,7 +129,11 @@ export const ACTIONS = {
   'cloud-onedrive': () => openCloud('onedrive'),
   'cloud-dropbox': () => openCloud('dropbox'),
   // (A download alone is easy to miss: each one says what it was and what next.)
-  'export': () => { exportHTML(); toast(t('Página web descargada: se abre con cualquier navegador.')); },
+  'export': async () => {
+    const offline = await exportHTML();
+    toast(offline ? t('Página web descargada: se abre con cualquier navegador, también sin conexión (los modelos 3D, mapas y vídeos de internet sí la necesitan).')
+      : t('Página web descargada: para verla hace falta conexión a internet.'));
+  },
   'export-pptx': () => withProgress(t('Creando el archivo de PowerPoint…'), exportPPTX, t('PowerPoint descargado.')),
   'export-pdf': () => exportPDF(msg => toast(msg, { ms: 9000 })),
   'export-png': () => openImageDialog(),

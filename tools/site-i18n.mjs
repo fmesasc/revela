@@ -9,6 +9,11 @@
 // description…) are texts too. A text missing from a language stops the build:
 // `node tools/build-site.mjs --missing` lists them.
 
+import { existsSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const SITE_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'site');
 export const SITE = 'https://revelaslides.com';
 export const SITE_LANGS = ['es', 'en', 'fr', 'de', 'it', 'pt', 'ca'];        // (es: at the root)
 export const LOCALE = { es: 'es_ES', en: 'en_US', fr: 'fr_FR', de: 'de_DE', it: 'it_IT', pt: 'pt_PT', ca: 'ca_ES' };
@@ -107,6 +112,10 @@ function relink(url, lang) {
   if (/^app\//.test(path)) { const q = new URLSearchParams(path.split('?')[1] || ''); if (lang !== 'es') q.set('lang', lang); const s = q.toString(); return '/app/' + (s ? '?' + s : '') + h; }
   if (LEGAL.includes(path)) return '/' + path + (hash ? h : LEGAL_LANGS.includes(lang) && lang !== 'es' ? '#' + lang : '');
   if (/^demo\/[\w-]+\.html$/.test(path) && lang !== 'es') return '/' + path.replace(/\.html$/, `-${lang}.html`) + h;   // (the live presentation, in this language)
+  // (A picture with its own version in this language — img/editor-reloj-en.webp —: that one; the editor's
+  // screenshots are taken in each language with tools/shot-template.py --lang.)
+  const own = /^img\/[\w-]+\.(webp|png|jpe?g)$/.test(path) && lang !== 'es' && path.replace(/\.(\w+)$/, `-${lang}.$1`);
+  if (own && existsSync(join(SITE_DIR, own))) return '/' + own + h;
   if (/^[\w-]+$/.test(path)) return base + path + h;                              // another page of the site
   return '/' + path + h;                                                         // pictures, styles, scripts, fonts
 }

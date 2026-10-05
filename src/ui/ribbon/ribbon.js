@@ -75,7 +75,7 @@ export function initRibbon() {
   fillShapeGallery();
   onSavedHere(() => renderRibbon());
   // (Only in this browser: a click asks where to keep it; if this browser can't even keep it, it downloads a copy.)
-  { const ss = $('#save-state'), copy = e => { if (e.type === 'click' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (savedHere()) openSaveWhere(ss); else ACTIONS.save(); } };
+  { const ss = $('#save-state'), copy = e => { if (e.type === 'click' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (savedHere()) openSaveWhere(ss); else ACTIONS['download-project'](); } };
     ss?.addEventListener('click', copy); ss?.addEventListener('keydown', copy); }
   // Master view: insert a placeholder into the layout being edited.
   document.querySelector('#ribbon .mb-ph')?.addEventListener('change', e => {

@@ -3,7 +3,7 @@
 // it is password-protected) and the code to embed it in an iframe.
 
 import { state } from '../../core/store.js';
-import { buildHTML } from '../formats/html.js';
+import { buildHTML, offlineHTML } from '../formats/html.js';
 import { download, slug } from '../files.js';
 import { seal, openerPageHTML } from './seal.js';
 import { addShare, viewLink, iframeCode } from './shares.js';
@@ -18,8 +18,15 @@ const OPENER_TEXTS = () => ({ locked: t('Presentación protegida'), ask: t('Escr
 
 // where: 'file' | 'drive' | 'server'. password: null → secret link.
 export async function publish({ where = 'file', password = null, days = 0, domain = '', deck = state.deck } = {}) {
-  const { env, key } = await seal(buildHTML(deck), { password });
   const name = deck.name || t('Presentación');
+  // A file without a password: the presentation itself, which opens anywhere (also offline). (Sealed with a
+  // key in its address, it wouldn't open from where it is uploaded — Moodle, a school site — without it.)
+  if (where === 'file' && !password) {
+    const { html } = await offlineHTML(buildHTML(deck)), file = `${slug(name)}.html`;
+    download(new Blob([html], { type: 'text/html' }), file);
+    return { where, file, key: null, suffix: '' };
+  }
+  const { env, key } = await seal(buildHTML(deck), { password });
   if (where === 'file') {
     // A single page that opens itself: upload it anywhere (a school site, Moodle…).
     const page = openerPageHTML({ env, lang: currentLang(), texts: OPENER_TEXTS() });

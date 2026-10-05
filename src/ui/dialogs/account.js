@@ -67,14 +67,19 @@ export function openAccount({ buy } = {}) {
       body.innerHTML = `<p class="host-help">${t('Inicia sesión para usar la IA incluida, sin claves. Las cuentas nuevas reciben créditos de regalo para probarla.')}</p>
         ${termsBox()}
         <div class="acc-code" hidden></div>
-        <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="fr-do acc-login"${acc.termsAccepted() ? '' : ' disabled'}>${t(EDITION === 'desktop' ? 'Iniciar sesión en el navegador' : 'Iniciar sesión con Google')}</button></div>
+        <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="fr-do acc-login">${t(EDITION === 'desktop' ? 'Iniciar sesión en el navegador' : 'Iniciar sesión con Google')}</button></div>
         <p class="host-help" style="font-size:12px"><a href="${OFFICIAL_SITE}/pricing" target="_blank" rel="noopener">${t('Ver planes y precios')}</a></p>
         <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 acc-report"><i class="ms">bug_report</i> ${t('Informar de un problema')}</button></div>`;
       body.querySelector('.acc-report').addEventListener('click', () => { close(); openReport(); });
       const termsOk = body.querySelector('.acc-terms-ok'), loginBtn = body.querySelector('.acc-login');
-      termsOk.addEventListener('change', () => { loginBtn.disabled = !termsOk.checked; });
+      // (Not a button that looks ready and does nothing: pressed before the box is ticked, the box says so.)
+      termsOk.addEventListener('change', () => { body.querySelector('.acc-terms').classList.remove('acc-terms-need'); });
       loginBtn.addEventListener('click', async e => {
-        if (!termsOk.checked) return;
+        if (!termsOk.checked) {
+          const box = body.querySelector('.acc-terms'); box.classList.add('acc-terms-need'); termsOk.focus();
+          if (!box.querySelector('.acc-need')) box.querySelector('span').insertAdjacentHTML('beforeend', `<small class="acc-need">${t('Marca la casilla para continuar.')}</small>`);
+          return;
+        }
         e.target.disabled = true; acc.rememberTerms();
         try {
           if (EDITION === 'desktop') {

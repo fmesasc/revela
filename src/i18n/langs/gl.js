@@ -1,6 +1,13 @@
 // Galician interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Guardado en la nube de Revela.": "Gardado na nube de Revela.",
+  "Descargar una copia (.revela.json) que guardas tú": "Descargar unha copia (.revela.json) para gardala ti",
+  "Guardar (Ctrl+S)": "Gardar (Ctrl+S)",
+  "Página web descargada: se abre con cualquier navegador, también sin conexión (los modelos 3D, mapas y vídeos de internet sí la necesitan).": "Páxina web descargada: ábrese con calquera navegador, tamén sen conexión (os modelos 3D, mapas e vídeos de internet si a precisan).",
+  "Página web descargada: para verla hace falta conexión a internet.": "Páxina web descargada: para vela cómpre conexión a internet.",
+  "Cualquiera que tenga el enlace o el archivo (sin contraseña)": "Calquera que teña a ligazón ou o ficheiro (sen contrasinal)",
+  "Marca la casilla para continuar.": "Marca a caixa para continuar.",
   "Acciones rápidas": "Accións rápidas",
   "Asistente de IA: pide cambios con tus palabras, adjunta fotos o documentos": "Asistente de IA: pide cambios coas túas palabras, anexa fotos ou documentos",
   "Crear con IA": "Crear con IA",

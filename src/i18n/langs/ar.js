@@ -1,6 +1,13 @@
 // Arabic interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Guardado en la nube de Revela.": "حُفظ في سحابة Revela.",
+  "Descargar una copia (.revela.json) que guardas tú": "نزّل نسخة (.revela.json) تحتفظ بها بنفسك",
+  "Guardar (Ctrl+S)": "حفظ (Ctrl+S)",
+  "Página web descargada: se abre con cualquier navegador, también sin conexión (los modelos 3D, mapas y vídeos de internet sí la necesitan).": "نُزّلت صفحة الويب: تُفتح في أي متصفح، حتى دون اتصال (تحتاج النماذج ثلاثية الأبعاد والخرائط ومقاطع الفيديو عبر الإنترنت إلى اتصال).",
+  "Página web descargada: para verla hace falta conexión a internet.": "نُزّلت صفحة الويب: يلزم اتصال بالإنترنت لعرضها.",
+  "Cualquiera que tenga el enlace o el archivo (sin contraseña)": "أي شخص لديه الرابط أو الملف (دون كلمة مرور)",
+  "Marca la casilla para continuar.": "حدّد المربع للمتابعة.",
   "Acciones rápidas": "إجراءات سريعة",
   "Asistente de IA: pide cambios con tus palabras, adjunta fotos o documentos": "مساعد الذكاء الاصطناعي: اطلب التغييرات بكلماتك وأرفق صورًا أو مستندات",
   "Crear con IA": "إنشاء بالذكاء الاصطناعي",

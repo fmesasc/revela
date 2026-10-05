@@ -573,6 +573,7 @@ function buildHTMLRaw(deck, { inApp = false, selfPaced = false } = {}) {
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(deck.name || 'Presentación')}</title>
+<style>aside.notes{display:none}</style>
 <link rel="stylesheet" href="${REVEAL}/dist/reveal.css">
 <link rel="stylesheet" href="${REVEAL}/dist/theme/${deck.theme}.css">
 ${googleFontLinks(deck)}
@@ -718,8 +719,31 @@ function dedupeMedia(html) {
   return r < 0 ? out : out.slice(0, r) + table + out.slice(r);
 }
 
-export function exportHTML() {
-  download(new Blob([buildHTML()], { type: 'text/html' }), slug(state.deck.name) + '.html');
+// The page to keep and open anywhere — a USB stick in a classroom without internet —: reveal.js, its
+// plugins and styles inside it (fetched now). → whether it could be made so (else it needs a connection;
+// 3D models, maps, fonts and videos from the internet always do).
+export async function exportHTML() {
+  const { html, offline } = await offlineHTML(buildHTML());
+  download(new Blob([html], { type: 'text/html' }), slug(state.deck.name) + '.html');
+  return offline;
+}
+const inlined = new Map();
+async function fetchText(url) {
+  if (!inlined.has(url)) inlined.set(url, fetch(url).then(r => (r.ok ? r.text() : Promise.reject(new Error(r.status)))));
+  return inlined.get(url);
+}
+// A page's reveal.js scripts and styles, put inside it (relative addresses in the styles made absolute).
+export async function offlineHTML(html) {
+  const esc$ = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const tags = [...html.matchAll(new RegExp(`<script src="(${esc$(REVEAL)}[^"]+)"></script>|<link rel="stylesheet" href="(${esc$(REVEAL)}[^"]+)">`, 'g'))];
+  try {
+    const parts = await Promise.all(tags.map(async m => {
+      const url = m[1] || m[2], text = await fetchText(url);
+      if (m[1]) return `<script>${text.replace(/<\/script/gi, '<\\/script')}</script>`;
+      return `<style>${text.replace(/url\((['"]?)(?!data:|https?:|#)([^'")]+)\1\)/g, (x, q, u) => `url(${new URL(u, url).href})`).replace(/<\/style/gi, '<\\/style')}</style>`;
+    }));
+    let i = 0; return { html: html.replace(new RegExp(tags.map(m => esc$(m[0])).join('|') || '$^', 'g'), () => parts[i++]), offline: true };
+  } catch { return { html, offline: false }; }
 }
 
 // The inline‑styled blocks of a slide (self‑contained, no external CSS).

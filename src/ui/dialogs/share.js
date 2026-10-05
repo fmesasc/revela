@@ -26,7 +26,7 @@ ${hasAccounts() ? `<div class="sh-cloud"><div><b>${t('Con personas concretas')}<
       <button type="button" class="fr-do sh-people"><i class="ms">person_add</i> ${t('Personas')}</button></div><h4>${t('O un enlace o archivo protegido')}</h4>` : ''}
     <p class="host-help">${t('La presentación sale de tu navegador ya protegida: ni el servidor ni quien guarde el archivo pueden leerla sin el enlace completo o la contraseña, y no aparece en buscadores.')}</p>
     <fieldset><legend>${t('¿Quién puede abrirla?')}</legend>
-      <label class="fr-chk"><input type="radio" name="sh-p" value="key" checked> ${t('Cualquiera que tenga el enlace (sin contraseña)')}</label>
+      <label class="fr-chk"><input type="radio" name="sh-p" value="key" checked> ${t('Cualquiera que tenga el enlace o el archivo (sin contraseña)')}</label>
       <label class="fr-chk"><input type="radio" name="sh-p" value="password"> ${t('Solo quien sepa la contraseña (se pide al abrirla)')}</label>
       <div class="sh-pw" hidden>
         <input type="password" class="sh-pw1" placeholder="${t('Contraseña')}" autocomplete="new-password">

@@ -1,6 +1,13 @@
 // Basque interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Guardado en la nube de Revela.": "Revelaren hodeian gordeta.",
+  "Descargar una copia (.revela.json) que guardas tú": "Deskargatu kopia bat (.revela.json) zuk gordetzeko",
+  "Guardar (Ctrl+S)": "Gorde (Ctrl+S)",
+  "Página web descargada: se abre con cualquier navegador, también sin conexión (los modelos 3D, mapas y vídeos de internet sí la necesitan).": "Web orria deskargatuta: edozein nabigatzailetan irekitzen da, konexiorik gabe ere bai (3D ereduek, mapek eta interneteko bideoek konexioa behar dute).",
+  "Página web descargada: para verla hace falta conexión a internet.": "Web orria deskargatuta: ikusteko interneteko konexioa behar da.",
+  "Cualquiera que tenga el enlace o el archivo (sin contraseña)": "Esteka edo fitxategia duen edonork (pasahitzik gabe)",
+  "Marca la casilla para continuar.": "Markatu laukia jarraitzeko.",
   "Acciones rápidas": "Ekintza azkarrak",
   "Asistente de IA: pide cambios con tus palabras, adjunta fotos o documentos": "AA laguntzailea: eskatu aldaketak zure hitzekin, erantsi argazkiak edo dokumentuak",
   "Crear con IA": "Sortu AArekin",

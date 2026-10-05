@@ -5,7 +5,7 @@
          --editor N   the whole editor window on slide N (for the website's pictures); --gallery: the gallery open.
          --size WxH   the window's size (default 1600x1000); --dark: the editor in dark mode.
          --export     OUT is the presentation exported as a web page (File ▸ Export ▸ HTML), not a picture.
-         --lang XX    the presentation in that language (its translation, src/features/content/tplang.js)
+         --lang XX    the presentation and the interface in that language (its translation, src/features/content/tplang.js)
          --demo       with --export: for the website (site/demo/): it moves on by itself (Ns, --every N, default 6)
                       and loops until touched, not indexed, and its Google fonts copied next to it (no visits to Google)."""
 import base64, http.server, json, os, shutil, socketserver, subprocess, sys, threading, time, tempfile
@@ -68,6 +68,8 @@ def main():
     if '--dark' in sys.argv:                                  # (the editor's own setting: it doesn't follow the system by default)
         ev("import('/src/ui/shell/appearance.js').then(m=>{const a={mode:'dark'};localStorage.setItem('revela.appearance',JSON.stringify(a));m.applyAppearance(a);return 1})")
     lang = next((sys.argv[i + 1] for i, a in enumerate(sys.argv) if a == '--lang'), 'es')
+    if lang != 'es':                                          # (the interface in that language too: the website's pictures per language)
+        ev(f"window.__revela.i18n.setLang({json.dumps(lang)}).then(()=>{{window.__revela.render();return 1}})")
     count = ev(f"(()=>{{const R=window.__revela;return R.examples.loadExample({json.dumps(key)}, {json.dumps(lang)}).then(d=>d&&import('/src/ui/canvas/fittext.js').then(m=>m.fitTranslated(d))).then(d=>{{if(!d)return -1;R.store.replaceDeck(d);return d.slides.length}})}})()")
     if count is None or count < 0: print('No existe', key); sys.exit(1)
     ev("document.fonts.ready.then(()=>1)"); time.sleep(1.5)

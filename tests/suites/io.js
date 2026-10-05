@@ -236,6 +236,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     W.document.createElement = tag => { const el = orig(tag); if (tag === 'input') { el.click = () => { Object.defineProperty(el, 'files', { value: input.files }); el.onchange(); }; } return el; };
     slide().blocks[0].html = 'Cambiado'; R.render();
     try { D.querySelector('[data-action="open"]').click(); await sleep(50); } finally { W.document.createElement = orig; }
+    assert(D.querySelector('.modal-backdrop .dlg-ok'), 'con cambios, Abrir pregunta antes de sustituirla'); D.querySelector('.modal-backdrop .dlg-ok').click(); await sleep(50);
     eq(slide().blocks[0].html, 'Secreto', 'abrir proyecto .revela.json funciona');
     P.setFinal(true); await sleep(10);
     assert(!D.getElementById('final-banner').hidden, 'aviso de final');
@@ -600,12 +601,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(ok, 'con la contraseña se ve la presentación');
       assert(!/allow-same-origin/.test(inner().getAttribute('sandbox')), 'aislada del sitio de Revela');
     } finally { a.f.remove(); }
-    // Secret link: the key after # opens it straight away; without it, a message.
-    assert(/^#k=[\w-]{43}$/.test(r2.suffix), 'clave para añadir a la dirección');
-    const b = await loadPage(saved[1].href + r2.suffix, f => /Hola compartida/.test(f.contentDocument.querySelector('iframe[sandbox]')?.srcdoc || ''));
-    b.f.remove(); assert(b.ok, 'con #k= se abre sola');
-    const c = await loadPage(saved[1].href, f => /Falta la clave/.test(f.contentDocument.getElementById('m')?.textContent || ''), 8000);
-    c.f.remove(); assert(c.ok, 'sin la clave no se abre y lo explica');
+    // Without a password: the presentation itself, that opens from wherever it is uploaded (no key to add).
+    assert(!r2.key && !r2.suffix && !/protegida/.test(r2.file), 'sin contraseña: un archivo normal, sin clave');
+    const plain = await (await W.fetch(saved[1].href)).text();
+    assert(/Hola compartida/.test(plain) && /aside\.notes\{display:none\}/.test(plain), 'que se abre tal cual (y sin enseñar las notas)');
+    assert(!/<script src="[^"]*\/dist\/reveal\.js"><\/script>/.test(plain) && /Reveal\.initialize/.test(plain) && /<style>[^<]*\.reveal/.test(plain), 'con reveal.js dentro: se abre sin conexión');
   });
 
   await test('compartir: servidor propio y visor (view.html) con enlace secreto', async () => {

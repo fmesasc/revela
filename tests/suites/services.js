@@ -2180,9 +2180,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     try {
       AD.openAccount(); await sleep(30);
       const box = D.querySelector('#account-modal .acc-terms-ok'), btn = D.querySelector('#account-modal .acc-login'), label = D.querySelector('#account-modal .acc-terms');
-      assert(box && !box.checked && btn.disabled, 'casilla sin marcar y el botón desactivado');
+      assert(box && !box.checked, 'casilla sin marcar');
+      btn.click(); await sleep(10);
+      assert(label.classList.contains('acc-terms-need') && /Marca la casilla/.test(label.textContent) && D.activeElement === box, 'pulsar sin marcarla: la casilla lo dice (no un botón que no hace nada)');
       assert(/14 años o más/.test(label.textContent) && label.querySelector('a[href$="/terms.html"]') && label.querySelector('a[href$="/privacy.html"]'), 'texto con enlaces a las condiciones y a la privacidad');
-      box.checked = true; box.dispatchEvent(new W.Event('change')); eq(btn.disabled, false, 'al marcarla se puede iniciar sesión');
+      box.checked = true; box.dispatchEvent(new W.Event('change')); assert(!label.classList.contains('acc-terms-need'), 'al marcarla, el aviso se va');
       D.querySelector('#account-modal .modal-close').click();
       const p = AD.askTerms(); await sleep(10);
       const ok = D.querySelector('#terms-modal .tm-ok'); assert(ok.disabled, 'el aviso: hay que marcar la casilla');

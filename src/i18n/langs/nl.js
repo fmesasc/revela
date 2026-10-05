@@ -1,6 +1,13 @@
 // Dutch interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Guardado en la nube de Revela.": "Opgeslagen in de Revela-cloud.",
+  "Descargar una copia (.revela.json) que guardas tú": "Een kopie (.revela.json) downloaden om zelf te bewaren",
+  "Guardar (Ctrl+S)": "Opslaan (Ctrl+S)",
+  "Página web descargada: se abre con cualquier navegador, también sin conexión (los modelos 3D, mapas y vídeos de internet sí la necesitan).": "Webpagina gedownload: ze opent in elke browser, ook offline (3D-modellen, kaarten en online video’s hebben wel een verbinding nodig).",
+  "Página web descargada: para verla hace falta conexión a internet.": "Webpagina gedownload: je hebt internet nodig om ze te bekijken.",
+  "Cualquiera que tenga el enlace o el archivo (sin contraseña)": "Iedereen met de link of het bestand (zonder wachtwoord)",
+  "Marca la casilla para continuar.": "Vink het vakje aan om verder te gaan.",
   "Acciones rápidas": "Snelle acties",
   "Asistente de IA: pide cambios con tus palabras, adjunta fotos o documentos": "AI-assistent: vraag wijzigingen in je eigen woorden, voeg foto’s of documenten toe",
   "Crear con IA": "Maken met AI",

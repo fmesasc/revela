@@ -692,7 +692,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
 
   await test('Guardar y exportar dicen qué ha pasado (avisos abajo)', async () => {
     reset(); await sleep(150); D.getElementById('toasts')?.remove();   // (the previous test's copy kept on reset may have said so)
+    // Kept only in this browser, Save asks where (never a download every time); a file is one of the choices.
     D.querySelector('#ribbon [data-action="save"].mini').click(); await sleep(20);
+    const where = D.getElementById('save-where'); assert(where, 'Guardar pregunta dónde');
+    eq([...where.querySelectorAll('[data-w]')].map(b => b.dataset.w).filter(w => w !== 'cloud').join(), 'drive,file', 'Drive o un archivo');
+    where.querySelector('[data-w="file"]').click(); await sleep(20);
     const box = D.getElementById('toasts');
     assert(box && box.getAttribute('aria-live') === 'polite', 'una zona de avisos que se lee en voz alta');
     assert(/revela\.json/.test(box.textContent) && /Abrir/.test(box.textContent), 'dice qué se descargó y cómo seguir: ' + box.textContent);
