@@ -77,8 +77,10 @@ function ensureSite() {
   try {
     writeFileSync(key, Buffer.from(k, 'base64'), { mode: 0o600 });
     rmSync(join(ROOT, 'site'), { recursive: true, force: true });
-    execFileSync('git', ['clone', '--depth', '1', 'git@github.com:fmesasc/revela-site.git', join(ROOT, 'site')], { stdio: 'inherit',
-      env: { ...process.env, GIT_SSH_COMMAND: `ssh -i ${key} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new` } });
+    // (Without the machine's git settings: Cloudflare's rewrite GitHub addresses to its own https access, which only reaches this repository.)
+    execFileSync('git', ['clone', '--depth', '1', 'ssh://git@github.com/fmesasc/revela-site.git', join(ROOT, 'site')], { stdio: 'inherit',
+      env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_TERMINAL_PROMPT: '0',
+        GIT_SSH_COMMAND: `ssh -i ${key} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new` } });
   } finally { rmSync(dir, { recursive: true, force: true }); }
 }
 
