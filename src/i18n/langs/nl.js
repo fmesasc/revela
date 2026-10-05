@@ -1,6 +1,13 @@
 // Dutch interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Exportar PDF": "Pdf exporteren",
+  "Una página por diapositiva, exactamente como se ven (3D, fórmulas y efectos incluidos).": "Eén pagina per dia, precies zoals ze eruitzien (3D, formules en effecten inbegrepen).",
+  "Con el texto seleccionable": "Met selecteerbare tekst",
+  "Se puede buscar, copiar y leer en voz alta. Recomendado.": "Doorzoekbaar, kopieerbaar en voor te lezen. Aanbevolen.",
+  "Solo imágenes": "Alleen afbeeldingen",
+  "Nadie puede copiar el texto.": "Niemand kan de tekst kopiëren.",
+  "Para imprimir, o con varias diapositivas o notas por página:": "Om af te drukken, of met meerdere dia’s of notities per pagina:",
   "Google Drive: conectado como {e}": "Google Drive: verbonden als {e}",
   "Google Drive: guarda tus presentaciones en tu Drive y ábrelas desde cualquier dispositivo.": "Google Drive: bewaar je presentaties in je Drive en open ze op elk apparaat.",
   "Desconectar Drive": "Drive ontkoppelen",

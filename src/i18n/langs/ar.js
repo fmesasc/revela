@@ -1,6 +1,13 @@
 // Arabic interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Exportar PDF": "تصدير PDF",
+  "Una página por diapositiva, exactamente como se ven (3D, fórmulas y efectos incluidos).": "صفحة لكل شريحة، كما تظهر تمامًا (بما في ذلك ثلاثي الأبعاد والصيغ والتأثيرات).",
+  "Con el texto seleccionable": "مع نص قابل للتحديد",
+  "Se puede buscar, copiar y leer en voz alta. Recomendado.": "يمكن البحث فيه ونسخه وقراءته بصوت عالٍ. موصى به.",
+  "Solo imágenes": "صور فقط",
+  "Nadie puede copiar el texto.": "لا يمكن لأحد نسخ النص.",
+  "Para imprimir, o con varias diapositivas o notas por página:": "للطباعة، أو مع عدة شرائح أو ملاحظات في الصفحة:",
   "Google Drive: conectado como {e}": "Google Drive: متصل باسم {e}",
   "Google Drive: guarda tus presentaciones en tu Drive y ábrelas desde cualquier dispositivo.": "Google Drive: احفظ عروضك التقديمية في Drive وافتحها من أي جهاز.",
   "Desconectar Drive": "فصل Drive",

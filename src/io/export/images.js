@@ -116,7 +116,30 @@ export async function magnifyImage(b, slide, deck = state.deck) {
 // Rasterise one slide with html2canvas. Web embeds can't be rasterised (they
 // come out blank), 3D models come out as their picture; everything else does.
 // scale: pixels per slide pixel (2 for export; small for previews); quality: JPG's.
-export async function slideImageBlob(s, type = 'png', deck = state.deck, { scale = 2, quality = 0.92 } = {}) {
+export async function slideImageBlob(s, type = 'png', deck = state.deck, opts = {}) { return (await slidePicture(s, type, deck, opts)).blob; }
+// The slide's lines of text where they are drawn (slide pixels), for a PDF whose text can be selected and
+// searched over the picture: [{ text, x, y, w, h }]. Words on one line make one run.
+function textRuns(holder) {
+  const o = holder.getBoundingClientRect(), runs = [], walk = document.createTreeWalker(holder, NodeFilter.SHOW_TEXT);
+  for (let n; (n = walk.nextNode());) {
+    if (!n.textContent.trim() || n.parentElement.closest('style, script, .katex-mathml')) continue;
+    const cs = getComputedStyle(n.parentElement); if (cs.visibility === 'hidden' || +cs.opacity === 0) continue;
+    const r = document.createRange();
+    for (const m of n.textContent.matchAll(/\S+/g)) {
+      r.setStart(n, m.index); r.setEnd(n, m.index + m[0].length);
+      const b = r.getBoundingClientRect(); if (b.width < 1 || b.height < 1) continue;
+      const w = { text: m[0], x: b.left - o.left, y: b.top - o.top, w: b.width, h: b.height };
+      const last = runs.at(-1);
+      // (Same line: about the same top and height, and right after the previous word.)
+      if (last && Math.abs(last.y - w.y) < w.h * 0.3 && Math.abs(last.h - w.h) < w.h * 0.3 && w.x >= last.x + last.w - 2 && w.x - (last.x + last.w) < w.h * 1.5) {
+        last.text += ' ' + w.text; last.w = w.x + w.w - last.x;
+      } else runs.push(w);
+    }
+  }
+  return runs.filter(t => t.x + t.w > 0 && t.y + t.h > 0 && t.x < o.width && t.y < o.height);
+}
+// → { blob, runs (with text: true) }.
+export async function slidePicture(s, type = 'png', deck = state.deck, { scale = 2, quality = 0.92, text = false } = {}) {
   const { w, h } = deck.size;
   const holder = document.createElement('div'); holder.className = 'rst';   // (.rst: the images' size rule below must not reach html2canvas's own iframe)
   holder.style.cssText = `position:fixed;left:-99999px;top:0;width:${w}px;height:${h}px;overflow:hidden;color:${deckFg(deck)};font-family:${deckBodyFont(deck) || 'inherit'};background:${s.background}`;
@@ -127,9 +150,10 @@ export async function slideImageBlob(s, type = 'png', deck = state.deck, { scale
   try {
     await hydrateStatic(holder, deck);
     // JPG has no transparency: paint the page colour underneath.
+    const runs = text ? textRuns(holder) : null;
     const canvas = await rasterize(holder, { width: w, height: h, scale, useCORS: true, logging: false,
       backgroundColor: type === 'jpg' ? '#ffffff' : null });
-    return await new Promise(res => canvas.toBlob(res, type === 'jpg' ? 'image/jpeg' : 'image/png', quality));
+    return { blob: await new Promise(res => canvas.toBlob(res, type === 'jpg' ? 'image/jpeg' : 'image/png', quality)), runs };
   } finally { holder.remove(); }
 }
 

@@ -20,7 +20,6 @@ import * as templates from '../../features/document/templates.js';
 import { exportHTML } from '../../io/formats/html.js';
 import { saveProject } from '../../io/formats/project.js';
 import { exportPDF } from '../../io/export/print.js';
-import { exportPDFFile } from '../../io/export/pdf.js';
 import { present, openCallPresent } from '../shell/present.js';
 import { sorterOn, setSorter } from '../shell/sorter.js';
 import { startCoach } from '../shell/coach.js';
@@ -35,7 +34,7 @@ import { exportPPTX } from '../../io/formats/pptx-export.js';
 import * as odp from '../../io/formats/odp.js';
 import { pickReuseFile } from '../dialogs/reuse.js';
 import { openA11yCheck, openReadingOrder } from '../panels/a11y.js';
-import { openHandoutDialog, openImageDialog, openVideoDialog } from '../dialogs/print.js';
+import { openHandoutDialog, openImageDialog, openVideoDialog, openPdfDialog } from '../dialogs/print.js';
 import { openSaveAsPicture } from '../dialogs/picture.js';
 import { openShare } from '../dialogs/share.js';
 import { openTextStyles } from '../dialogs/textstyles.js';
@@ -137,7 +136,7 @@ export const ACTIONS = {
   },
   'export-pptx': () => withProgress(t('Creando el archivo de PowerPoint…'), exportPPTX, t('PowerPoint descargado.')),
   // (The file itself, made here; printing — or the browser's «Save as PDF», with selectable text — is «Imprimir».)
-  'export-pdf': () => withProgress(t('Creando el PDF…'), () => exportPDFFile(), t('PDF descargado.')),
+  'export-pdf': () => openPdfDialog(),
   'print': () => exportPDF(msg => toast(msg, { ms: 9000 })),
   'export-png': () => openImageDialog(),
   'share': () => openShare(),

@@ -585,6 +585,16 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const c = D.createElement('canvas'); c.width = 200; c.height = 112; c.getContext('2d').drawImage(im, 0, 0, 200, 112);
     const [r, g, b] = c.getContext('2d').getImageData(100, 100, 1, 1).data;
     assert(r < 30 && g < 70 && g > 25 && b > 50 && b < 100, `la segunda página es la segunda diapositiva (su fondo): ${r},${g},${b}`);
+    eq((await page.getTextContent()).items.length, 0, 'solo imágenes: sin texto');
+    // With the text selectable: the same pictures, and the text where it is (searchable, with its accents).
+    R.store.commit(() => { R.state.deck.slides[0].blocks = [{ id: 'tx1', type: 'text', x: 100, y: 200, w: 900, h: 120, fontSize: 60, rotation: 0, animation: null, html: 'Energía solar — 2026' }]; });
+    const url2 = await new Promise(async ok => { const r2 = new W.FileReader(); r2.onload = () => ok(r2.result); r2.readAsDataURL(await P.buildPDF(undefined, { text: true })); });
+    const pdf2 = await F.openPdf(url2), items = (await (await pdf2.getPage(1)).getTextContent()).items.filter(i => i.str.trim());
+    const all = items.map(i => i.str).join(' ');
+    assert(/Energía solar — 2026/.test(all), 'con el texto seleccionable y buscable: ' + all);
+    const x = items[0].transform[4], y = items[0].transform[5];
+    assert(Math.abs(x - 100 * 0.75) < 20 && y > 300 && y < 400, `en su sitio de la página: ${x.toFixed(0)}, ${y.toFixed(0)} pt`);
+    eq(pdf2.numPages, 2, 'las mismas páginas');
   });
 
   await test('compartir: archivo HTML con contraseña o enlace secreto, que se abre en un iframe', async () => {

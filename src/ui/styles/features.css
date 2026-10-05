@@ -983,3 +983,9 @@ body:not([data-edition="cloud"]):not([data-edition="desktop"]) .accounts-only{di
 .gal-path.ai{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
 @media (max-width:640px){.gal-start{grid-template-columns:1fr}}
 .acc-drive{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px}.acc-drive .ms{color:var(--accent)}.acc-drive span{flex:1;min-width:180px}
+/* Export PDF: the two ways (ui/dialogs/print.js). */
+.pdf-ways{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pdf-way{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:10px;text-align:start;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--txt);font:inherit;cursor:pointer}
+.pdf-way:hover,.pdf-way:focus-visible{border-color:var(--accent);background:var(--accent-bg)}
+.pdf-way .ms{grid-row:1/3;font-size:26px;color:var(--accent)}.pdf-way b{font-size:14px}.pdf-way small{font-size:12px;color:var(--txt2)}
+@media (max-width:520px){.pdf-ways{grid-template-columns:1fr}}

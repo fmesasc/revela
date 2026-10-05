@@ -1,7 +1,8 @@
 // "Print handouts / notes pages" dialog: pick the layout, then the browser's
 // print window opens (choose "Save as PDF" there).
 
-import { exportHandout } from '../../io/export/print.js';
+import { exportHandout, exportPDF } from '../../io/export/print.js';
+import { exportPDFFile } from '../../io/export/pdf.js';
 import { exportImages } from '../../io/export/images.js';
 import { t } from '../../i18n/index.js';
 import { state } from '../../core/store.js';
@@ -101,4 +102,33 @@ export function openVideoDialog() {
       alertDialog(t('No se pudo exportar: ') + (e.message === 'WebCodecs' || e.message === 'H.264' ? t('este navegador no puede codificar MP4; prueba GIF o Chrome/Edge.') : (e.message || e)));
     }
   });
+}
+
+// Export PDF: the two ways — the pictures only, or with the text selectable and searchable — and printing.
+export function openPdfDialog() {
+  document.getElementById('pdf-modal')?.remove();
+  const back = document.createElement('div'); back.id = 'pdf-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:start;width:min(520px,94vw);max-width:94vw">
+    <button class="modal-close" aria-label="${t('Cerrar')}">✕</button><h3>${t('Exportar PDF')}</h3>
+    <p class="host-help">${t('Una página por diapositiva, exactamente como se ven (3D, fórmulas y efectos incluidos).')}</p>
+    <div class="pdf-ways">
+      <button type="button" class="pdf-way" data-pdf="text"><i class="ms">text_select_start</i><b>${t('Con el texto seleccionable')}</b>
+        <small>${t('Se puede buscar, copiar y leer en voz alta. Recomendado.')}</small></button>
+      <button type="button" class="pdf-way" data-pdf="image"><i class="ms">image</i><b>${t('Solo imágenes')}</b>
+        <small>${t('Nadie puede copiar el texto.')}</small></button>
+    </div>
+    <p class="host-help" style="margin-top:12px">${t('Para imprimir, o con varias diapositivas o notas por página:')} <button type="button" class="mini2 pdf-print">${t('Imprimir')}</button> <button type="button" class="mini2 pdf-handout">${t('Documentos y notas')}</button></p></div>`;
+  document.body.appendChild(back);
+  const close = () => back.remove();
+  back.querySelector('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  back.querySelector('.pdf-print').addEventListener('click', () => { close(); exportPDF(msg => toast(msg, { ms: 9000 })); });
+  back.querySelector('.pdf-handout').addEventListener('click', () => { close(); openHandoutDialog(); });
+  back.querySelectorAll('[data-pdf]').forEach(b => b.addEventListener('click', async () => {
+    const text = b.dataset.pdf === 'text'; close();
+    const note = toast(t('Creando el PDF…'), { busy: true });
+    try { await exportPDFFile(undefined, { text }); note.close(); toast(t('PDF descargado.')); }
+    catch (e) { note.close(); alertDialog(t('No se pudo exportar: ') + (e.message || e)); }
+  }));
+  back.querySelector('[data-pdf="text"]').focus();
 }

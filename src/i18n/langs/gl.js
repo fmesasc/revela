@@ -1,6 +1,13 @@
 // Galician interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Exportar PDF": "Exportar PDF",
+  "Una página por diapositiva, exactamente como se ven (3D, fórmulas y efectos incluidos).": "Unha páxina por diapositiva, exactamente como se ven (3D, fórmulas e efectos incluídos).",
+  "Con el texto seleccionable": "Co texto seleccionable",
+  "Se puede buscar, copiar y leer en voz alta. Recomendado.": "Pódese buscar, copiar e ler en voz alta. Recomendado.",
+  "Solo imágenes": "Só imaxes",
+  "Nadie puede copiar el texto.": "Ninguén pode copiar o texto.",
+  "Para imprimir, o con varias diapositivas o notas por página:": "Para imprimir, ou con varias diapositivas ou notas por páxina:",
   "Google Drive: conectado como {e}": "Google Drive: conectado como {e}",
   "Google Drive: guarda tus presentaciones en tu Drive y ábrelas desde cualquier dispositivo.": "Google Drive: garda as túas presentacións no teu Drive e ábreas desde calquera dispositivo.",
   "Desconectar Drive": "Desconectar Drive",

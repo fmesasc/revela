@@ -1,6 +1,13 @@
 // Basque interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Exportar PDF": "Esportatu PDFa",
+  "Una página por diapositiva, exactamente como se ven (3D, fórmulas y efectos incluidos).": "Orrialde bat diapositiba bakoitzeko, ikusten diren bezala (3D, formulak eta efektuak barne).",
+  "Con el texto seleccionable": "Testu hautagarriarekin",
+  "Se puede buscar, copiar y leer en voz alta. Recomendado.": "Bilatu, kopiatu eta ozen irakur daiteke. Gomendatua.",
+  "Solo imágenes": "Irudiak soilik",
+  "Nadie puede copiar el texto.": "Inork ezin du testua kopiatu.",
+  "Para imprimir, o con varias diapositivas o notas por página:": "Inprimatzeko, edo orrialde bakoitzeko hainbat diapositiba edo oharrekin:",
   "Google Drive: conectado como {e}": "Google Drive: honela konektatuta: {e}",
   "Google Drive: guarda tus presentaciones en tu Drive y ábrelas desde cualquier dispositivo.": "Google Drive: gorde zure aurkezpenak zure Driven eta ireki edozein gailutatik.",
   "Desconectar Drive": "Deskonektatu Drive",
