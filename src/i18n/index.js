@@ -74,7 +74,7 @@ export function applyI18n() {
       el.setAttribute('title', t(el.dataset.i18nt));
     });
   }
-  document.querySelectorAll('#ribbon .tabs button, #ribbon .group>label, #ribbon .row button span, #ribbon select option, #statusbar .hint, #master-banner span, #master-banner button, #master-banner option, #final-banner span, #final-banner button, #donate span, #premium span, #save-state span, #ribbon label.color>span, #ribbon label.rb-field>span, #statusbar .legal-link, #drive-conflict span, #drive-conflict button')
+  document.querySelectorAll('#ribbon .tabs button, #ribbon .group>label, #ribbon .row button span, #ribbon select option, #statusbar .hint, #master-banner span, #master-banner button, #master-banner option, #final-banner span, #final-banner button, #donate span, #premium span, .tb-ai span, #m-quick span, #save-state span, #ribbon label.color>span, #ribbon label.rb-field>span, #statusbar .legal-link, #drive-conflict span, #drive-conflict button')
     .forEach(el => {
       if (el.dataset.i18n === undefined) el.dataset.i18n = el.innerHTML.trim();
       el.innerHTML = t(el.dataset.i18n);
@@ -99,6 +99,11 @@ export function initI18n() {
   if (sel) {
     sel.innerHTML = LANGS.map(l => `<option value="${l.code}">${l.name}</option>`).join('');
     sel.value = lang;
+    // (Closed, just the code — ES, EN… — to leave room in the title bar; open, every name.)
+    const names = on => { for (const o of sel.options) o.textContent = on ? LANGS.find(l => l.code === o.value).name : o.value.toUpperCase(); };
+    for (const ev of ['mousedown', 'focus', 'keydown']) sel.addEventListener(ev, () => names(true));
+    for (const ev of ['change', 'blur']) sel.addEventListener(ev, () => names(false));
+    sel.setAttribute('aria-label', 'Idioma / Language'); names(false);
     sel.addEventListener('change', () => setLang(sel.value));
   }
   applyI18n();

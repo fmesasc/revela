@@ -5,7 +5,7 @@ import { renderMorphHint } from '../shell/morphhint.js';
 import { openSaveWhere } from '../shell/where.js';
 import { renderContextual } from './contextual.js';
 import { state, commit, currentSlide, selectedBlock, selectedBlocks, canUndo, canRedo, docVersion, targetSlides, slideSelCount } from '../../core/store.js';
-import { savedHere, onSavedHere } from '../../core/model.js';
+import { savedHere, onSavedHere, UNTITLED, isUntitled } from '../../core/model.js';
 import { addPlaceholder } from '../../features/document/master.js';
 import * as blocks from '../../features/document/blocks.js';
 import * as slides from '../../features/document/slides.js';
@@ -261,7 +261,7 @@ export function initRibbon() {
   if (docName) {
     docName.addEventListener('input', () => { state.deck.name = docName.textContent.trim(); });
     docName.addEventListener('blur', () => {
-      const name = docName.textContent.trim() || 'Presentación sin título';
+      const typed = docName.textContent.trim(), name = !typed || typed === t(UNTITLED) ? UNTITLED : typed;
       commit(() => { state.deck.name = name; }, { history: false });
     });
     docName.addEventListener('keydown', e => {
@@ -362,8 +362,8 @@ export function renderRibbon() {
   { const at = document.querySelector('#ribbon .tabs .active'); if (at && at !== lastActiveTab) { lastActiveTab = at; at.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); } }
   document.querySelectorAll('.ribbon-page').forEach(p => p.classList.toggle('active', p.dataset.page === state.ui.activeTab));
   const docName = $('.doc-name');
-  if (docName && document.activeElement !== docName && docName.textContent !== state.deck.name)
-    docName.textContent = state.deck.name || 'Presentación sin título';
+  const shownName = isUntitled(state.deck.name) ? t(UNTITLED) : state.deck.name;
+  if (docName && document.activeElement !== docName && docName.textContent !== shownName) docName.textContent = shownName;
   syncValue('[data-theme]', state.deck.theme);
   syncValue('[data-deck-fg]', palettes.deckFg());
   // The detected theme's name under Design ▸ Themes (an imported Office, Google Slides or LibreOffice theme).

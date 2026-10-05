@@ -5,6 +5,13 @@
 
 // es | en | fr | de | it | pt | ca
 export const ROWS = [
+  ['Acciones rápidas', 'Quick actions', 'Actions rapides', 'Schnellaktionen', 'Azioni rapide', 'Ações rápidas', 'Accions ràpides'],
+  ['Asistente de IA: pide cambios con tus palabras, adjunta fotos o documentos', 'AI assistant: ask for changes in your own words, attach photos or documents', 'Assistant IA : demandez des modifications avec vos mots, joignez des photos ou des documents', 'KI-Assistent: Änderungen in eigenen Worten anfordern, Fotos oder Dokumente anhängen', 'Assistente IA: chiedi modifiche con parole tue, allega foto o documenti', 'Assistente de IA: peça alterações por palavras suas, anexe fotos ou documentos', 'Assistent d’IA: demana canvis amb les teves paraules, adjunta fotos o documents'],
+  ['Crear con IA', 'Create with AI', 'Créer avec l’IA', 'Mit KI erstellen', 'Crea con l’IA', 'Criar com IA', 'Crea amb IA'],
+  ['Desde un tema, documentos o fotos', 'From a topic, documents or photos', 'À partir d’un sujet, de documents ou de photos', 'Aus einem Thema, Dokumenten oder Fotos', 'Da un argomento, documenti o foto', 'A partir de um tema, documentos ou fotos', 'A partir d’un tema, documents o fotos'],
+  ['Abrir un archivo', 'Open a file', 'Ouvrir un fichier', 'Datei öffnen', 'Apri un file', 'Abrir um ficheiro', 'Obre un fitxer'],
+  ['PowerPoint, LibreOffice o Revela', 'PowerPoint, LibreOffice or Revela', 'PowerPoint, LibreOffice ou Revela', 'PowerPoint, LibreOffice oder Revela', 'PowerPoint, LibreOffice o Revela', 'PowerPoint, LibreOffice ou Revela', 'PowerPoint, LibreOffice o Revela'],
+  ['Temas vacíos', 'Blank themes', 'Thèmes vides', 'Leere Designs', 'Temi vuoti', 'Temas vazios', 'Temes buits'],
   ['Adjuntar fotos o documentos (PDF, textos): la IA los lee', 'Attach photos or documents (PDF, text): the AI reads them', 'Joindre des photos ou des documents (PDF, textes) : l’IA les lit', 'Fotos oder Dokumente anhängen (PDF, Texte): Die KI liest sie', 'Allega foto o documenti (PDF, testi): l’IA li legge', 'Anexar fotos ou documentos (PDF, textos): a IA lê-os', 'Adjunta fotos o documents (PDF, textos): la IA els llegeix'],
   ['Adjuntar fotos o documentos', 'Attach photos or documents', 'Joindre des photos ou des documents', 'Fotos oder Dokumente anhängen', 'Allega foto o documenti', 'Anexar fotos ou documentos', 'Adjunta fotos o documents'],
   ['Leyendo…', 'Reading…', 'Lecture…', 'Wird gelesen…', 'Lettura…', 'A ler…', 'Llegint…'],

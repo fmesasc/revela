@@ -122,8 +122,8 @@ body.master-view #navigator{display:flex}
 /* (The prompt on one line, smaller if the box is narrow for it: in a big title font
    it would spill over the box below. Ellipsis if it still doesn't fit.) */
 .block .rich[data-ph]:empty{container-type:inline-size}
-.block .rich[data-ph]:empty::before{content:attr(data-ph);opacity:.45;font-style:italic;pointer-events:none;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:min(1em,5.4cqi)}
-.block:not(.selected):has(.rich[data-ph]:empty){outline:1px dashed #8a8a8a88}
+.block .rich[data-ph]:empty::before{content:attr(data-ph);opacity:.62;font-style:italic;pointer-events:none;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:min(1em,5.4cqi)}
+.block:not(.selected):has(.rich[data-ph]:empty){outline:1px dashed #9a9a9acc}
 /* Template gallery */
 .gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;max-height:65vh;overflow:auto;padding:2px}
 .gal-item{display:flex;flex-direction:column;gap:6px;padding:0 0 6px;border:1px solid var(--line2);border-radius:8px;background:none;cursor:pointer;overflow:hidden;color:var(--txt);font-size:13px}
@@ -152,7 +152,7 @@ body.master-view #navigator{display:flex}
 .titlebar .premium:hover{filter:brightness(1.1)}
 .titlebar .premium .ms{font-size:17px}
 /* A narrow desktop window: these two show only their icon (their name in the tooltip), so the document's name and the language fit. */
-@media (max-width:1240px){
+@media (max-width:1440px){
   .titlebar .donate span,.titlebar .premium span{display:none}
   .titlebar .donate,.titlebar .premium{padding:3px 7px;margin-inline-end:4px}
   .titlebar .doc-name{min-width:60px}
@@ -975,3 +975,10 @@ body:not([data-edition="cloud"]):not([data-edition="desktop"]) .accounts-only{di
 .att-clip{display:inline-grid;place-items:center;border:1px solid var(--line);background:var(--panel);color:var(--txt);border-radius:8px;width:32px;height:32px;cursor:pointer;flex:none}
 .att-clip .ms{font-size:19px}
 .att-over{outline:2px dashed var(--accent);outline-offset:-4px}
+/* The gallery's three ways to start (ui/dialogs/gallery.js). */
+.gal-start{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:6px 0 4px}
+.gal-path{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:10px;align-items:center;text-align:start;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--txt);cursor:pointer;font:inherit}
+.gal-path .ms{grid-row:1/3;font-size:28px;color:var(--accent)}.gal-path b{font-size:14px}.gal-path small{font-size:12px;color:var(--txt2)}
+.gal-path:hover,.gal-path:focus-visible{border-color:var(--accent);background:var(--accent-bg)}
+.gal-path.ai{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+@media (max-width:640px){.gal-start{grid-template-columns:1fr}}

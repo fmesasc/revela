@@ -69,6 +69,7 @@ const PERM_LABEL = { delete: 'Borrar diapositivas', design: 'Cambiar diseño, co
 
 export function renderAssistant() {
   let panel = document.getElementById('assistant-panel');
+  document.body.classList.toggle('assistant-open', !!state.ui.showAssistant);      // (its button in the title bar, lit)
   if (!state.ui.showAssistant) { panel?.remove(); document.getElementById('as-viewer')?.remove(); return; }
   if (panel && chatFor !== CHAT_KEY() && !job) { panel.remove(); panel = null; }   // (another presentation: its own conversation)
   if (panel) { syncScope(panel); return; }

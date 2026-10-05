@@ -1,6 +1,13 @@
 // Galician interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Acciones rápidas": "Accións rápidas",
+  "Asistente de IA: pide cambios con tus palabras, adjunta fotos o documentos": "Asistente de IA: pide cambios coas túas palabras, anexa fotos ou documentos",
+  "Crear con IA": "Crear con IA",
+  "Desde un tema, documentos o fotos": "Desde un tema, documentos ou fotos",
+  "Abrir un archivo": "Abrir un ficheiro",
+  "PowerPoint, LibreOffice o Revela": "PowerPoint, LibreOffice ou Revela",
+  "Temas vacíos": "Temas baleiros",
   "Adjuntar fotos o documentos (PDF, textos): la IA los lee": "Anexar fotos ou documentos (PDF, textos): a IA leos",
   "Adjuntar fotos o documentos": "Anexar fotos ou documentos",
   "Leyendo…": "Lendo…",

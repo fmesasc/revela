@@ -455,6 +455,21 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.querySelector('.modal-backdrop .dlg-ok').click(); await sleep(20);
     assert(R.model.isBlankDeck(R.state.deck), '«En blanco»: una presentación vacía');
     D.querySelector('#gallery-modal .modal-close')?.click();
+    // The three ways to start, first: blank, made by the AI, or a file one has.
+    D.querySelector('[data-action="gallery"]').click(); await sleep(20);
+    const paths = [...D.querySelectorAll('#gallery-modal .gal-start .gal-path')];
+    eq(paths.map(b => b.dataset.path).join(), 'blank,ai,open', 'tres caminos arriba');
+    assert(paths[0].compareDocumentPosition(D.querySelector('#gallery-modal .gal-examples')) & 4, 'antes que los ejemplos');
+    paths[1].click(); await sleep(20);
+    assert(!D.getElementById('gallery-modal') && D.getElementById('aideck-modal'), '«Crear con IA» abre su ventana');
+    D.querySelector('#aideck-modal .modal-close').click();
+    // The untitled name, in the interface's language (the deck keeps one name for all of them).
+    eq(R.state.deck.name, R.model.UNTITLED, 'sin título'); const L = await frame.contentWindow.eval("import('/src/i18n/index.js')");
+    await L.setLang('en'); R.render(); await sleep(20);
+    eq(D.querySelector('.doc-name').textContent, 'Untitled presentation', 'en inglés, «Untitled presentation»');
+    assert(/Assistant/.test(D.querySelector('.tb-ai').textContent), 'el botón del asistente, también');
+    await L.setLang('es'); R.render(); await sleep(20);
+    eq(D.querySelector('.doc-name').textContent, 'Presentación sin título', 'y de vuelta');
     // The slide fits the window until one chooses a zoom.
     const Z = await frame.contentWindow.eval("import('/src/ui/ribbon/zoom.js')");
     Z.fitZoom(); assert(Z.zoomFitting(), 'ajustada a la ventana');

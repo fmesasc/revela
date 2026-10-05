@@ -1,6 +1,13 @@
 // Basque interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Acciones rápidas": "Ekintza azkarrak",
+  "Asistente de IA: pide cambios con tus palabras, adjunta fotos o documentos": "AA laguntzailea: eskatu aldaketak zure hitzekin, erantsi argazkiak edo dokumentuak",
+  "Crear con IA": "Sortu AArekin",
+  "Desde un tema, documentos o fotos": "Gai, dokumentu edo argazkietatik",
+  "Abrir un archivo": "Ireki fitxategi bat",
+  "PowerPoint, LibreOffice o Revela": "PowerPoint, LibreOffice edo Revela",
+  "Temas vacíos": "Gai hutsak",
   "Adjuntar fotos o documentos (PDF, textos): la IA los lee": "Erantsi argazkiak edo dokumentuak (PDF, testuak): AAk irakurtzen ditu",
   "Adjuntar fotos o documentos": "Erantsi argazkiak edo dokumentuak",
   "Leyendo…": "Irakurtzen…",

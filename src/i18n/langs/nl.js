@@ -1,6 +1,13 @@
 // Dutch interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Acciones rápidas": "Snelle acties",
+  "Asistente de IA: pide cambios con tus palabras, adjunta fotos o documentos": "AI-assistent: vraag wijzigingen in je eigen woorden, voeg foto’s of documenten toe",
+  "Crear con IA": "Maken met AI",
+  "Desde un tema, documentos o fotos": "Vanuit een onderwerp, documenten of foto’s",
+  "Abrir un archivo": "Een bestand openen",
+  "PowerPoint, LibreOffice o Revela": "PowerPoint, LibreOffice of Revela",
+  "Temas vacíos": "Lege thema’s",
   "Adjuntar fotos o documentos (PDF, textos): la IA los lee": "Foto’s of documenten bijvoegen (pdf, tekst): de AI leest ze",
   "Adjuntar fotos o documentos": "Foto’s of documenten bijvoegen",
   "Leyendo…": "Lezen…",

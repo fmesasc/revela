@@ -184,6 +184,11 @@ export async function loadNewerDeck(current) {
   return null;
 }
 
+// A presentation without a name keeps this one (the same in every language: the interface shows it
+// translated — isUntitled — so a deck made in Spanish doesn't say «sin título» in English).
+export const UNTITLED = 'Presentación sin título';
+export const isUntitled = name => !String(name ?? '').trim() || name === UNTITLED;
+
 // Keep older stored decks loadable as the schema evolves.
 function migrate(deck) {
   if (!deck || typeof deck !== 'object') return null;

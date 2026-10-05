@@ -7,7 +7,7 @@
 
 import { esc } from '../../core/text.js';
 import { state, replaceDeck } from '../../core/store.js';
-import { isBlankDeck, emptyDeck } from '../../core/model.js';
+import { isBlankDeck, emptyDeck, UNTITLED, isUntitled } from '../../core/model.js';
 import * as cd from '../../io/cloud/clouddocs.js';
 import { nowInCloud } from '../shell/where.js';
 import { download, slug } from '../../io/files.js';
@@ -179,7 +179,7 @@ function folderHTML(f) {
 }
 function placeholder(d) {
   const h = hue(d.id);
-  return `<div class="nb-ph" style="--h1:${h};--h2:${(h + 40) % 360}"><span>${esc(d.name || t('Presentación sin título'))}</span></div>`;
+  return `<div class="nb-ph" style="--h1:${h};--h2:${(h + 40) % 360}"><span>${esc(isUntitled(d.name) ? t(UNTITLED) : d.name)}</span></div>`;
 }
 function avatar(email) {
   return `<span class="nb-av" style="--h:${hue(email || '?')}" aria-hidden="true">${esc((email || '?')[0].toUpperCase())}</span>`;
@@ -192,7 +192,7 @@ function docHTML(d, view) {
   const owner = d.kind === 'shared' ? `${avatar(d.owner)}<span>${esc(d.owner || '')}</span>` : `<span class="nb-me">${t('Yo')}</span>`;
   const where = S.q && d.kind === 'mine' ? pathOf(d.folder).map(x => x.name).join(' › ') : '';
   const label = [d.name, d.kind === 'shared' ? t('de {owner}').replace('{owner}', d.owner || '') : '', when].filter(Boolean).join(', ');
-  const name = `<span class="nb-name"><b>${esc(d.name || t('Presentación sin título'))}</b>${where ? `<small>${esc(where)}</small>` : ''}</span>`;
+  const name = `<span class="nb-name"><b>${esc(isUntitled(d.name) ? t(UNTITLED) : d.name)}</b>${where ? `<small>${esc(where)}</small>` : ''}</span>`;
   const more = `<button type="button" class="nb-more" tabindex="-1" aria-label="${t('Más acciones')}" aria-haspopup="menu"><i class="ms">more_vert</i></button>`;
   const attrs = `class="nb-item nb-doc${open ? ' is-open' : ''}" role="listitem" tabindex="-1" data-kind="${d.kind}" data-id="${esc(d.id)}" aria-label="${esc(label)}"${d.kind === 'mine' && !d.trashed ? ' draggable="true"' : ''}`;
   if (view === 'list') return `<div ${attrs}>${thumb}${name}<small class="nb-when">${esc(when)}</small><small class="nb-owner">${owner}</small><small class="nb-slides">${esc(slides)}</small>${more}</div>`;
@@ -398,7 +398,7 @@ async function newDeck() {
   if (!cd.cloudDoc() && !isBlankDeck(state.deck) && !(await confirmDialog(t('¿Nueva presentación? Se perderá la actual si no la has guardado.')))) return;
   try {
     await cd.flushCloud(); cd.closeDoc();
-    const deck = emptyDeck(); deck.name = t('Presentación sin título');
+    const deck = emptyDeck(); deck.name = UNTITLED;
     replaceDeck(deck); const r = await cd.saveToCloud({ folder });
     history.replaceState(null, '', '?doc=' + r.id); closePage();
   } catch (e) { alertDialog(errorText(e)); }

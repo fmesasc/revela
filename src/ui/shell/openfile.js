@@ -150,6 +150,10 @@ export async function dropFiles(files, at = null) {
   return n;
 }
 
+// File ▸ Open, for anything that is a presentation: Revela's own, PowerPoint, LibreOffice (asks before
+// replacing the open one, as dropping it does).
+export function openAnyPresentation() { readFile('.pptx,.pptm,.potx,.odp,.otp,.key,.json,application/json', f => dropFiles([f]), 'file'); }
+
 // Files dragged from the computer onto the editor.
 export function initFileDrop() {
   const area = document.getElementById('canvas-wrap'), stage = document.getElementById('stage');

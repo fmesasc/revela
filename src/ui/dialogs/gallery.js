@@ -12,7 +12,8 @@ import { ensureDeckFonts } from '../../features/design/fonts.js';
 import { blockPreview } from '../shell/preview.js';
 import { fitTranslated } from '../canvas/fittext.js';
 import { confirmDialog } from './dialog.js';
-import { run as runAi } from './ai.js';
+import { run as runAi, openCreateDeck } from './ai.js';
+import { openAnyPresentation } from '../shell/openfile.js';
 import * as aiDeck from '../../features/ai/authoring.js';
 import { t, currentLang } from '../../i18n/index.js';
 
@@ -21,14 +22,24 @@ export function openGallery() {
   const back = document.createElement('div');
   back.id = 'gallery-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(820px,94vw);max-width:94vw">
-    <button class="modal-close">✕</button><h3>${t('Nueva presentación desde plantilla')}</h3>
-    <div class="gal-notice"></div><h4>${t('Plantillas')}</h4><div class="gal-grid"></div></div>`;
+    <button class="modal-close" aria-label="${t('Cerrar')}">✕</button><h3>${t('Nueva presentación')}</h3>
+    <div class="gal-notice"></div>
+    <div class="gal-start">
+      <button type="button" class="gal-path" data-path="blank"><i class="ms">note_add</i><b>${t('En blanco')}</b><small>${t('Empezar de cero')}</small></button>
+      <button type="button" class="gal-path ai" data-path="ai"><i class="ms">auto_awesome</i><b>${t('Crear con IA')}</b><small>${t('Desde un tema, documentos o fotos')}</small></button>
+      <button type="button" class="gal-path" data-path="open"><i class="ms">folder_open</i><b>${t('Abrir un archivo')}</b><small>${t('PowerPoint, LibreOffice o Revela')}</small></button>
+    </div>
+    <h4>${t('Temas vacíos')}</h4><div class="gal-grid"></div></div>`;
   const grid = back.querySelector('.gal-grid');
   galleryNotice(back.querySelector('.gal-notice'));   // (Revela's own notice for here, if any: io/cloud/notices.js)
   // Asked only when there is something to lose.
   const replaceWith = (deck, question) => (isBlankDeck(state.deck) ? Promise.resolve(true) : confirmDialog(question))
     .then(ok => { if (ok) { replaceDeck(deck); back.remove(); } });
-  // First, a blank presentation.
+  // The three ways to start, first: blank, made by the AI, or a file one already has.
+  back.querySelector('[data-path="blank"]').addEventListener('click', () => replaceWith(emptyDeck(), t('¿Nueva presentación? Se perderá la actual si no la has guardado.')));
+  back.querySelector('[data-path="ai"]').addEventListener('click', () => { back.remove(); openCreateDeck(); });
+  back.querySelector('[data-path="open"]').addEventListener('click', () => { back.remove(); openAnyPresentation(); });
+  // The themes, starting with a blank presentation.
   const blank = document.createElement('button'); blank.type = 'button'; blank.className = 'gal-item gal-blank'; blank.dataset.gallery = 'blank';
   blank.innerHTML = `<div class="thumb-canvas"><i class="ms">add</i></div><span>${t('En blanco')}</span>`;
   blank.addEventListener('click', () => replaceWith(emptyDeck(), t('¿Nueva presentación? Se perderá la actual si no la has guardado.')));

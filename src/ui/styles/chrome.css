@@ -195,3 +195,9 @@
 .save-where button{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:start;padding:8px;border:0;background:none;border-radius:8px;cursor:pointer;color:var(--txt);font:inherit}
 .save-where button:hover{background:var(--accent-bg)}.save-where button .ms{font-size:20px;color:var(--accent);margin-top:1px}
 .save-where button span{display:flex;flex-direction:column;gap:2px}.save-where small{color:var(--txt2);font-size:12px}
+/* The assistant, always at hand in the title bar (also Home ▸ Assistant). */
+.tb-ai{display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 11px;margin-inline-start:6px;border:1px solid color-mix(in srgb,var(--accent) 40%,var(--line));border-radius:15px;background:var(--accent-bg);color:var(--accent);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.tb-ai .ms{font-size:18px}.tb-ai:hover{border-color:var(--accent)}
+body.assistant-open .tb-ai{background:var(--accent);color:var(--on-accent)}
+@media (max-width:1100px){.tb-ai span{display:none}.tb-ai{padding:0 7px}}
+@media (max-width:520px){.tb-ai{display:none}}

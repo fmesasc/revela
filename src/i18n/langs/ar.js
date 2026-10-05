@@ -1,6 +1,13 @@
 // Arabic interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Acciones rápidas": "إجراءات سريعة",
+  "Asistente de IA: pide cambios con tus palabras, adjunta fotos o documentos": "مساعد الذكاء الاصطناعي: اطلب التغييرات بكلماتك وأرفق صورًا أو مستندات",
+  "Crear con IA": "إنشاء بالذكاء الاصطناعي",
+  "Desde un tema, documentos o fotos": "من موضوع أو مستندات أو صور",
+  "Abrir un archivo": "فتح ملف",
+  "PowerPoint, LibreOffice o Revela": "PowerPoint أو LibreOffice أو Revela",
+  "Temas vacíos": "سمات فارغة",
   "Adjuntar fotos o documentos (PDF, textos): la IA los lee": "أرفق صورًا أو مستندات (PDF، نصوص): يقرؤها الذكاء الاصطناعي",
   "Adjuntar fotos o documentos": "أرفق صورًا أو مستندات",
   "Leyendo…": "جارٍ القراءة…",
