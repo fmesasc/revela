@@ -1,5 +1,6 @@
 // Block insertion and manipulation.
 
+import { shrinkImage } from './imgshrink.js';
 import { diagramLayout, DIAGRAM_SAMPLES, DEFAULT_DIAGRAM_TEXT } from '../../render/diagrams.js';
 import { cellNumber } from '../../core/formulas.js';
 import { plainText, esc } from '../../core/text.js';
@@ -73,6 +74,8 @@ export function addImage(src) {
     commit(() => { Object.assign(b, { x: Math.round(b.x + (b.w - w) / 2), y: Math.round(b.y + (b.h - h) / 2), w, h }); }, { history: false });
   };
   i.src = src;
+  // (A big one gets smaller in a moment — as each person chose: imgshrink.js —, without an undo step of its own.)
+  shrinkImage(src).then(small => { if (small && b.src === src) commit(() => { b.src = small; }, { history: false }); }).catch(() => {});
 }
 
 export function addVideo(src) {

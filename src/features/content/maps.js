@@ -51,6 +51,8 @@ const pathOf = rings => rings.map(r => { const out = []; let last = '';
   return out.length > 2 ? 'M' + out.join('L') + 'Z' : ''; }).join('');
 
 const cache = new Map();
+// (For the tests: forget what was downloaded, so a test's own outlines are the ones used.)
+export const clearMapCache = () => cache.clear();
 export async function loadMap(scope) {
   if (cache.has(scope)) return cache.get(scope);
   const src = SOURCES[scope]; if (!src) throw new Error('mapa desconocido');

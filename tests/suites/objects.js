@@ -2370,6 +2370,32 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(D.querySelector(`#stage .block[data-id="${b.id}"] .rich`).style.fontSize, '80px', 'si cabe, su tamaño');
   });
 
+  await test('imágenes grandes: se reducen al insertarlas (como cada uno elija), conservan la transparencia y «Reducir ahora» las de la presentación', async () => {
+    reset(); const W = frame.contentWindow, K = await W.eval("import('/src/features/document/imgshrink.js')");
+    const photo = (w, h, alpha = false) => { const c = D.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d');
+      const im = g.createImageData(w, h); for (let i = 0; i < im.data.length; i += 4) { im.data[i] = (i * 7) % 255; im.data[i + 1] = (i * 13) % 255; im.data[i + 2] = (i * 3) % 255; im.data[i + 3] = alpha && i % 8 === 0 ? 0 : 255; }
+      g.putImageData(im, 0, 0); return alpha ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.95); };
+    const size = src => new Promise(ok => { const i = new W.Image(); i.onload = () => ok([i.naturalWidth, i.naturalHeight]); i.src = src; });
+    try {
+      K.setShrinkPrefs({ max: 1920, quality: 0.85 });
+      const big = photo(4000, 3000); R.blocks.addImage(big); const b = last();
+      for (let i = 0; i < 60 && b.src === big; i++) await sleep(50);
+      const [w, h] = await size(b.src); eq(w, 1920, 'a lo sumo 1920 px'); eq(h, 1440, 'con su proporción');
+      assert(b.src.length < big.length * 0.6, 'pesa bastante menos');
+      R.store.undo(); await sleep(10); assert(!slide().blocks.includes(b), 'insertarla es un solo paso de deshacer (la reducción no añade otro)');
+      // With transparency: kept (not a JPEG).
+      const png = photo(3000, 2000, true); R.blocks.addImage(png); const p = last();
+      for (let i = 0; i < 60 && p.src === png; i++) await sleep(50);
+      assert(!/^data:image\/jpeg/.test(p.src) && (await size(p.src))[0] === 1920, 'con transparencia, en WebP o PNG');
+      // «No reducir»: as it is.
+      K.setShrinkPrefs({ max: 0 }); const raw = photo(3000, 2000); R.blocks.addImage(raw); await sleep(600); eq(last().src, raw, 'sin reducir, tal cual');
+      // Now, for all of them, in one step.
+      const r = await K.shrinkDeckImages({ max: 1280, quality: 0.8 });
+      assert(r.done >= 2 && r.saved > 0, 'reducidas ahora: ' + JSON.stringify(r)); eq((await size(last().src))[0], 1280);
+      R.store.undo(); await sleep(10); eq(last().src, raw, 'y se deshacen de una vez');
+    } finally { K.setShrinkPrefs({ max: 1920, quality: 0.85 }); }
+  });
+
   // ---- Magnifier (lupa) ------------------------------------------------------------
   const PIC = (() => { const c = D.createElement('canvas'); c.width = 1280; c.height = 720; const g = c.getContext('2d');
     g.fillStyle = '#ffffff'; g.fillRect(0, 0, 1280, 720); g.fillStyle = '#ff0000'; g.fillRect(0, 0, 640, 360); g.fillStyle = '#0000ff'; g.fillRect(640, 360, 640, 360); return c.toDataURL('image/png'); })();

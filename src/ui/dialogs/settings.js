@@ -8,6 +8,8 @@ import { state, commit, currentSlide } from '../../core/store.js';
 import { REVEAL_DEFAULTS, buildHTML } from '../../io/formats/html.js';
 import { FIT_MODES, FIT_LABELS } from '../../features/design/screenfit.js';
 import { t } from '../../i18n/index.js';
+import { SHRINK_SIZES, shrinkPrefs, setShrinkPrefs, shrinkDeckImages } from '../../features/document/imgshrink.js';
+import { toast } from '../shell/toast.js';
 
 // The current slide presented on three common screens with a fit mode: the real
 // presentation page, without its live parts (polls, cameras, 3D, videos…).
@@ -67,6 +69,12 @@ export function openSettings() {
         <label class="fr-l">${t('Duración (s)')}<input type="number" class="sl-dur" min="0.1" max="10" step="0.1" value="${s.aaDuration ?? ''}"></label>
         <label class="fr-l">${t('Retardo (s)')}<input type="number" class="sl-del" min="0" max="10" step="0.1" value="${s.aaDelay ?? ''}"></label>
       </fieldset>
+      <fieldset class="bgf"><legend>${t('Imágenes (en este navegador)')}</legend>
+        <label class="fr-l">${t('Reducir las imágenes grandes al insertarlas')}<select class="img-max">${SHRINK_SIZES.map(v => `<option value="${v}"${shrinkPrefs().max === v ? ' selected' : ''}>${v ? t('Como máximo {n} px').replace('{n}', v) + (v === 1920 ? ' · ' + t('recomendado') : '') : t('No reducir')}</option>`).join('')}</select></label>
+        <label class="fr-l">${t('Calidad')} <span class="img-q-val">${Math.round(shrinkPrefs().quality * 100)} %</span><input type="range" class="img-q" min="0.5" max="0.95" step="0.05" value="${shrinkPrefs().quality}"></label>
+        <p class="host-help">${t('Una foto del móvil pesa varios MB; en una diapositiva se ve igual a 1920 px y la presentación se guarda, abre y comparte mucho más rápido. Las transparencias se conservan; los dibujos (SVG) y las animaciones (GIF) no se tocan.')}</p>
+        <button type="button" class="mini2 img-now"><i class="ms">compress</i> ${t('Reducir ahora las imágenes de esta presentación')}</button>
+      </fieldset>
     </div>
     <div class="fr-actions"><button class="fr-do set-ok">${t('Aplicar')}</button></div></div>`;
   document.body.appendChild(back);
@@ -75,6 +83,20 @@ export function openSettings() {
   fitSel.addEventListener('change', () => showFitPreview(prev, fitSel.value));
   const close = () => back.remove();
   back.querySelector('.modal-close').addEventListener('click', close);
+  // Pictures: a choice of this browser (not of the presentation), kept at once.
+  const imgMax = back.querySelector('.img-max'), imgQ = back.querySelector('.img-q');
+  const keepImg = () => setShrinkPrefs({ max: +imgMax.value, quality: +imgQ.value });
+  imgMax.addEventListener('change', keepImg);
+  imgQ.addEventListener('input', () => { back.querySelector('.img-q-val').textContent = Math.round(imgQ.value * 100) + ' %'; keepImg(); });
+  back.querySelector('.img-now').addEventListener('click', async e => {
+    const btn = e.currentTarget; btn.disabled = true;
+    const note = toast(t('Reduciendo las imágenes…'), { busy: true });
+    try {
+      const r = await shrinkDeckImages({ max: +imgMax.value || 1920, quality: +imgQ.value });
+      note.close();
+      toast(r.done ? t('{n} imágenes reducidas: {mb} MB menos.').replace('{n}', r.done).replace('{mb}', (r.saved / 1048576).toLocaleString(undefined, { maximumFractionDigits: 1 })) : t('No hay imágenes que reducir: ya son pequeñas.'));
+    } catch { note.close(); } finally { btn.disabled = false; }
+  });
   back.addEventListener('click', e => { if (e.target === back) close(); });
   back.querySelector('.set-ok').addEventListener('click', () => {
     const r = {};

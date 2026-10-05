@@ -1394,6 +1394,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       objects: { countries: { type: 'GeometryCollection', geometries: [{ type: 'Polygon', id: '724', properties: { name: 'Spain' }, arcs: [[0]] },
         { type: 'Polygon', id: '250', properties: { name: 'France' }, arcs: [[1]] }, { type: 'Polygon', id: '010', properties: { name: 'Antarctica' }, arcs: [[2]] }] } } };
     W.fetch = async url => { url = String(url); calls.push(url); if (/world-atlas/.test(url)) return new W.Response(JSON.stringify(topo)); return real(url); };
+    (await W.eval("import('/src/features/content/maps.js')")).clearMapCache();   // (another test may have loaded the real one: these outlines, not those)
     try {
       R.blocks.addChart(); await sleep(10); const id = last().id;
       await R.blocks.setChartMap(id, 'world'); await sleep(20);
