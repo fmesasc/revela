@@ -9,6 +9,7 @@ import { esc } from '../../core/text.js';
 import { state, replaceDeck } from '../../core/store.js';
 import { isBlankDeck, emptyDeck } from '../../core/model.js';
 import * as cd from '../../io/cloud/clouddocs.js';
+import { nowInCloud } from '../shell/where.js';
 import { download, slug } from '../../io/files.js';
 import { t, currentLang } from '../../i18n/index.js';
 import { alertDialog, confirmDialog, promptDialog } from './dialog.js';
@@ -389,7 +390,7 @@ async function newFolder() {
 // The presentation in the editor, into the cloud (into this folder).
 async function saveHere() {
   const folder = S.section === 'mine' && !S.q ? S.folder : null;
-  try { await cd.saveToCloud({ folder }); closePage(); openCloudShare(); } catch (e) { alertDialog(errorText(e)); }
+  try { await cd.saveToCloud({ folder }); nowInCloud(); closePage(); openCloudShare(); } catch (e) { alertDialog(errorText(e)); }
 }
 // A blank one in the cloud (in this folder), open in the editor.
 async function newDeck() {

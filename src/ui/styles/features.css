@@ -450,7 +450,7 @@ body.master-view #navigator{display:flex}
 .account-btn{display:flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0;background:none;border:1px solid var(--line2);border-radius:999px;padding:3px 10px 3px 4px;cursor:pointer;color:var(--txt);font:inherit;font-size:12px;margin-inline-end:6px}
 .account-btn.signed{padding:2px;border-color:transparent}.account-btn img,.account-menu img{width:28px;height:28px;border-radius:50%;display:block}
 .acc-init{width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-weight:600}
-.drive-status{background:none;border:none;cursor:pointer;color:var(--txt2);padding:2px 6px}.drive-status[hidden]{display:none}
+.drive-status{background:none;border:none;cursor:pointer;color:var(--txt2);padding:2px 6px;display:inline-flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;border-radius:6px}.drive-status:hover{background:var(--bg)}.drive-status .ms{font-size:17px}.drive-status[hidden]{display:none}
 .drive-status[data-state=saved]{color:#2f9e44}.drive-status[data-state=offline],.drive-status[data-state=error],.drive-status[data-state=conflict]{color:#e8590c}
 .account-menu,.popup-menu{position:fixed;z-index:3200;background:var(--panel);border:1px solid var(--line2);border-radius:12px;box-shadow:0 12px 40px #0003;padding:8px;min-width:240px}
 .account-menu .am-who{display:flex;gap:10px;align-items:center;padding:6px 8px 10px;border-bottom:1px solid var(--line2);margin-bottom:6px;font-size:12px;color:var(--txt2)}.account-menu .am-who b{color:var(--txt);font-size:14px}
@@ -948,3 +948,4 @@ body:not([data-edition="cloud"]):not([data-edition="desktop"]) .accounts-only{di
 .gal-notice:empty{display:none}.gal-notice{margin:4px 0 10px}.notice-card{padding:12px 14px}
 @media (max-width:640px){.notice{flex-wrap:wrap}.notice-body{flex-basis:calc(100% - 60px)}}
 .an-clash{display:flex;gap:6px;align-items:flex-start;margin:0 0 8px;padding:6px 8px;border-radius:6px;background:color-mix(in srgb,#e0a100 14%,var(--panel));font-size:12px;color:var(--txt)}.an-clash .ms{font-size:16px;color:#b07c00}
+@media (max-width:860px){.drive-status span,.cloud-status span{display:none}}

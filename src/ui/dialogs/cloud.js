@@ -13,6 +13,7 @@ import { openAccount, signInWithTerms } from './account.js';
 import { present } from '../shell/present.js';
 import { saveProject } from '../../io/formats/project.js';
 import { openCloudDocs } from './cloudlibrary.js';
+import { nowInCloud } from '../shell/where.js';
 
 const ROLE_NAMES = { view: 'Puede ver', comment: 'Puede comentar', edit: 'Puede editar', owner: 'Propietario' };
 const LINK_NAMES = { none: 'Solo las personas añadidas', view: 'Cualquiera con el enlace puede ver', comment: 'Cualquiera con el enlace puede comentar', edit: 'Cualquiera con el enlace puede editar' };
@@ -56,7 +57,7 @@ export async function openCloudShare() {
     body.querySelector('.cl-save').addEventListener('click', async e => {
       const btn = e.currentTarget, was = btn.innerHTML;
       btn.disabled = true; btn.innerHTML = `<span class="btn-spin" aria-hidden="true"></span> ${t('Guardando…')}`; btn.setAttribute('aria-busy', 'true');
-      try { await cd.saveToCloud(); close(); openCloudShare(); } catch (err) { btn.disabled = false; btn.innerHTML = was; btn.removeAttribute('aria-busy'); alertDialog(errorText(err)); }
+      try { await cd.saveToCloud(); nowInCloud(); close(); openCloudShare(); } catch (err) { btn.disabled = false; btn.innerHTML = was; btn.removeAttribute('aria-busy'); alertDialog(errorText(err)); }
     });
     return;
   }
@@ -151,7 +152,7 @@ export async function openCloudVersions() {
 }
 
 // ---- The status in the title bar ---------------------------------------------------------------------
-const STATUS = { readonly: ['lock', 'Solo lectura'], saved: ['cloud_done', 'Guardado en la nube'], pending: ['cloud_sync', 'Cambios sin guardar'], saving: ['cloud_upload', 'Guardando…'],
+const STATUS = { readonly: ['lock', 'Solo lectura'], saved: ['cloud_done', 'Nube de Revela · Guardado'], pending: ['cloud_sync', 'Cambios sin guardar'], saving: ['cloud_upload', 'Guardando…'],
   offline: ['cloud_off', 'Sin conexión: se guardará al volver'], forbidden: ['block', 'Sin permiso para guardar cambios'], 'too-large': ['error', 'Demasiado grande para la nube'], gone: ['cloud_off', 'Ya no está en la nube'] };
 export function mountCloudStatus() {
   const el = document.getElementById('cloud-status'); if (!el) return;
@@ -159,6 +160,7 @@ export function mountCloudStatus() {
     const d = cd.cloudDoc(); el.hidden = !d; if (!d) return;
     const [icon, text] = d.role === 'view' ? ['visibility', 'Solo lectura'] : d.readOnly ? STATUS.readonly : STATUS[d.status] || STATUS.saved;
     el.innerHTML = `<i class="ms">${icon}</i><span>${t(text)}</span>`; el.dataset.status = d.status;
+    el.title = t('Nube de Revela') + ' · ' + t(text) + ' — ' + t('Compartir y permisos');
     const ss = document.getElementById('save-state'); if (ss) ss.hidden = true;
   };
   const paintAll = () => { paint(); paintReadOnly(); };

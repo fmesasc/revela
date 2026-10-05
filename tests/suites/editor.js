@@ -449,7 +449,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     reset(); const u = () => D.querySelector('.qat [data-action="undo"]'), r = () => D.querySelector('.qat [data-action="redo"]');
     R.store.commit(() => { slide().blocks[0].x += 5; }); await sleep(10);
     assert(!u().disabled && r().disabled, 'tras un cambio: se puede deshacer, no rehacer');
-    assert(!D.getElementById('save-state').hidden, '«Guardado» a la vista');
+    assert(!D.getElementById('save-state').hidden, '«En este navegador» a la vista');
     R.store.undo(); await sleep(10); assert(!r().disabled, 'tras deshacer, se puede rehacer');
   });
 
@@ -478,7 +478,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     await I.setLang('fr'); eq(a.querySelector('span').textContent, 'Version premium');
     // (And the other texts outside the ribbon's buttons: saved, colour labels, thumbnails' hint.)
     await I.setLang('en');
-    eq(D.querySelector('#save-state span').textContent, 'Saved');
+    eq(D.querySelector('#save-state span').textContent, 'In this browser');
     assert(/^Drag/.test(D.querySelector('#navigator .thumb').title), 'miniaturas: ' + D.querySelector('#navigator .thumb').title);
     assert([...D.querySelectorAll('#ribbon label.color>span')].every(s => !/^Color$/.test(s.textContent) || s.textContent === 'Colour' || s.textContent === 'Color'), 'etiquetas de color');
     await I.setLang('fr'); eq(D.querySelector('#ribbon label.color>span')?.textContent, 'Couleur');
@@ -710,8 +710,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       eq(ss.querySelector('span').textContent, 'Sin guardar', 'con texto'); assert(/descargar una copia/.test(ss.title), 'y qué hacer');
     } finally { S.setItem = set; P.put = put; }
     R.blocks.addText('Otra'); await sleep(700);
-    assert(!ss.classList.contains('failed'), 'al volver a poder guardar, vuelve «Guardado»');
-    eq(ss.querySelector('span').textContent, 'Guardado', 'texto de vuelta');
+    assert(!ss.classList.contains('failed'), 'al volver a poder guardar, vuelve «En este navegador»');
+    eq(ss.querySelector('span').textContent, 'En este navegador', 'texto de vuelta');
+    // A click: where to keep it (Drive first; a file too).
+    ss.click(); await sleep(20); const sw = D.getElementById('save-where');
+    assert(sw && sw.querySelector('[data-w="drive"]') && sw.querySelector('[data-w="file"]'), 'pregunta dónde guardarla: Drive primero, o un archivo'); sw.remove();
   });
 
   // ---- Command search (ui/shell/palette.js) ----

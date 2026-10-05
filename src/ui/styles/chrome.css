@@ -152,7 +152,7 @@
 /* (A narrow window: the hint is cut short, never wrapped over the bar.) */
 #statusbar .hint{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#status-slide{white-space:nowrap}#statusbar .legal-link:hover{text-decoration:underline}
 @media (max-width:760px){#statusbar .legal-link{display:none}}
-.save-state{display:inline-flex;align-items:center;gap:3px;font-size:12px;color:var(--txt2);margin-inline-start:8px;white-space:nowrap}.save-state .ms{font-size:16px;color:#2f9e44}
+.save-state{display:inline-flex;align-items:center;gap:3px;font-size:12px;color:var(--txt2);margin-inline-start:8px;white-space:nowrap;cursor:pointer;padding:2px 6px;border-radius:6px}.save-state:hover{background:var(--bg)}.save-state .ms{font-size:16px;color:var(--txt2)}
 .save-state.failed{color:var(--danger);font-weight:600;cursor:pointer;padding:2px 6px;border-radius:6px;background:color-mix(in srgb,var(--danger) 10%,transparent)}.save-state.failed .ms{color:var(--danger)}
 @media (max-width:860px){.save-state span{display:none}}
 
@@ -189,3 +189,9 @@
 #opening-doc .od-spin{width:22px;height:22px;border-radius:50%;border:3px solid var(--line2,#ccd);border-top-color:var(--accent,#3f6497);animation:od-spin .8s linear infinite}
 @keyframes od-spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){#opening-doc .od-spin{animation:none}}
+
+/* Where to keep it (ui/shell/where.js). */
+.save-where{width:min(340px,92vw);padding:6px}.save-where .sw-head{font-size:12px;color:var(--txt2);padding:6px 8px 8px}
+.save-where button{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:start;padding:8px;border:0;background:none;border-radius:8px;cursor:pointer;color:var(--txt);font:inherit}
+.save-where button:hover{background:var(--accent-bg)}.save-where button .ms{font-size:20px;color:var(--accent);margin-top:1px}
+.save-where button span{display:flex;flex-direction:column;gap:2px}.save-where small{color:var(--txt2);font-size:12px}

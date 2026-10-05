@@ -2,6 +2,7 @@
 
 import { author, tasksOf } from '../../features/collab/comments.js';
 import { renderMorphHint } from '../shell/morphhint.js';
+import { openSaveWhere } from '../shell/where.js';
 import { renderContextual } from './contextual.js';
 import { state, commit, currentSlide, selectedBlock, selectedBlocks, canUndo, canRedo, docVersion, targetSlides, slideSelCount } from '../../core/store.js';
 import { savedHere, onSavedHere } from '../../core/model.js';
@@ -45,7 +46,7 @@ const TEMPLATE_LAYOUT = { title: 'title', titleContent: 'titleContent', twoConte
 
 const $ = s => document.querySelector(s);
 // The title bar's save state: [icon, text, tooltip] (Spanish, translated when shown).
-const SAVE_OK = ['check_circle', 'Guardado', 'Se guarda solo en este navegador, con cada cambio. Para llevártelo: Archivo ▸ Guardar, o Google Drive.'];
+const SAVE_OK = ['computer', 'En este navegador', 'Solo está en este navegador (se guarda con cada cambio). Haz clic para guardarla en Google Drive o en tu nube.'];
 const SAVE_FAILED = ['error', 'Sin guardar', 'Este navegador no deja guardar la presentación (¿ventana privada o disco lleno?). Haz clic para descargar una copia.'];
 
 // Fill the font picker from the catalogue (each option shown in its own font
@@ -73,7 +74,8 @@ function fillShapeGallery() {
 export function initRibbon() {
   fillShapeGallery();
   onSavedHere(() => renderRibbon());
-  { const ss = $('#save-state'), copy = e => { if (!savedHere() && (e.type === 'click' || e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); ACTIONS.save(); } };
+  // (Only in this browser: a click asks where to keep it; if this browser can't even keep it, it downloads a copy.)
+  { const ss = $('#save-state'), copy = e => { if (e.type === 'click' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (savedHere()) openSaveWhere(ss); else ACTIONS.save(); } };
     ss?.addEventListener('click', copy); ss?.addEventListener('keydown', copy); }
   // Master view: insert a placeholder into the layout being edited.
   document.querySelector('#ribbon .mb-ph')?.addEventListener('change', e => {
@@ -398,7 +400,7 @@ export function renderRibbon() {
       const [icon, text, tip] = ok ? SAVE_OK : SAVE_FAILED, sp = ss.querySelector('span');
       ss.classList.toggle('failed', !ok); ss.querySelector('.ms').textContent = icon;
       sp.dataset.i18n = text; sp.textContent = t(text); ss.dataset.i18nt = tip; ss.title = t(tip);
-      ss.setAttribute('role', ok ? 'status' : 'button'); ss.tabIndex = ok ? -1 : 0;
+      ss.setAttribute('role', 'button'); ss.tabIndex = 0;
     } } }
   document.querySelector('[data-action="canvas-mode"]')?.classList.toggle('on', canvasOn());
   document.querySelectorAll('[data-action="canvas-view"]').forEach(b => b.classList.toggle('on', canvasViewOpen()));

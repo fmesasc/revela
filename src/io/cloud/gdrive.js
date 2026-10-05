@@ -54,14 +54,22 @@ let status = 'idle';                                        // idle | saving | s
 export const driveStatus = () => status;
 const setStatus = s => { status = s; listeners.forEach(f => { try { f(s); } catch {} }); };
 
+// The access token Google gives lasts an hour. Kept for this tab (sessionStorage: a reload keeps it,
+// closing the tab forgets it), and renewed without asking (silent) on the next click or key when it is
+// about to end — Google gives it without a word once the account agreed. Only if Google needs the person
+// (signed out of Google, access removed) does the bar ask: «Drive · Volver a conectar».
+const LS_TOKEN = 'revela.gdrive.token';
 let tokenClient = null, accessToken = null, tokenExp = 0;
-const hasToken = () => !!accessToken && Date.now() < tokenExp - 60000;
+try { const k = JSON.parse(sessionStorage.getItem(LS_TOKEN) || 'null'); if (k?.t && k.e > Date.now() + 120000) { accessToken = k.t; tokenExp = k.e; } } catch {}
+const hasToken = (margin = 60000) => !!accessToken && Date.now() < tokenExp - margin;
+const keepToken = () => { try { sessionStorage.setItem(LS_TOKEN, JSON.stringify({ t: accessToken, e: tokenExp })); } catch {} };
+const forgetToken = () => { accessToken = null; tokenExp = 0; try { sessionStorage.removeItem(LS_TOKEN); } catch {} };
 async function gis() {
   if (!window.google?.accounts?.oauth2) await loadScript(GIS);
   return window.google.accounts.oauth2;
 }
 // A token needs the Google window when there is none yet; call it from a click.
-export async function ensureToken(interactive = true) {
+export async function ensureToken(interactive = true, { silent = false } = {}) {
   if (hasToken()) return accessToken;
   if (!interactive) throw new Error('NO_TOKEN');
   const { clientId } = gdriveConfig();
@@ -73,17 +81,28 @@ export async function ensureToken(interactive = true) {
   return new Promise((resolve, reject) => {
     tokenClient.callback = resp => {
       if (resp.error) return reject(new Error(resp.error === 'access_denied' ? t('Has cancelado el acceso a Google.') : resp.error));
-      accessToken = resp.access_token; tokenExp = Date.now() + (resp.expires_in || 3600) * 1000; resolve(accessToken);
+      accessToken = resp.access_token; tokenExp = Date.now() + (resp.expires_in || 3600) * 1000; keepToken(); resolve(accessToken);
     };
     tokenClient.error_callback = e => reject(new Error(e?.type === 'popup_closed' ? t('Has cerrado la ventana de Google.') : (e?.message || e?.type || 'error')));
     const acc = account();
-    tokenClient.requestAccessToken({ prompt: acc ? '' : 'consent', ...(acc?.email && { hint: acc.email }) });
+    tokenClient.requestAccessToken({ prompt: silent ? 'none' : acc ? '' : 'consent', ...(acc?.email && { hint: acc.email }) });
   });
+}
+// Renewed quietly before it ends (from a click or key: the only moment Google may be asked), and right
+// away when the bar was waiting for it. At most once every two minutes; failing, nothing changes.
+let lastRenew = 0;
+export function renewOnGesture(target = window) {
+  const go = () => {
+    if (!account() || !linkedFile() || hasToken(5 * 60000) || Date.now() - lastRenew < 120000) return;
+    lastRenew = Date.now();
+    ensureToken(true, { silent: true }).then(() => { if (status === 'offline' || status === 'error') reconnect().catch(() => {}); }).catch(() => {});
+  };
+  target.addEventListener('pointerdown', go, true); target.addEventListener('keydown', go, true);
 }
 async function api(path, opts = {}, interactive = true) {
   const token = await ensureToken(interactive);
   const r = await fetch(path.startsWith('http') ? path : API + path, { ...opts, headers: { Authorization: 'Bearer ' + token, ...(opts.headers || {}) } });
-  if (r.status === 401) { accessToken = null; throw new Error('NO_TOKEN'); }
+  if (r.status === 401) { forgetToken(); throw new Error('NO_TOKEN'); }
   return r;
 }
 
@@ -98,7 +117,7 @@ export async function signIn() {
 }
 export async function signOut() {
   try { if (accessToken) (await gis()).revoke(accessToken, () => {}); } catch {}
-  accessToken = null; tokenExp = 0; tokenClient = null; writeLS(LS_ACCOUNT, null); writeLS(LS_FILE, null); currentFile = null;
+  forgetToken(); tokenClient = null; writeLS(LS_ACCOUNT, null); writeLS(LS_FILE, null); currentFile = null;
   setStatus('idle');
 }
 
@@ -398,7 +417,7 @@ export async function driveUnshare(id) {
 export const ownProject = () => readLS(LS) || {};
 export function setOwnProject(own) {
   writeLS(LS, own && own.clientId && own.apiKey ? own : null);
-  tokenClient = null; accessToken = null;                   // (sign in again with it)
+  tokenClient = null; forgetToken();                   // (sign in again with it)
 }
 
 // Wrappers that surface errors as friendly dialogs.

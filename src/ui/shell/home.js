@@ -40,9 +40,12 @@ async function thumbnail() {
 }
 
 // ---- Title bar: account and save status -------------------------------------------
+// [icon, what it says in the bar, its tip]: where it is (Drive) and how it is, in words.
 const STATUS = {
-  pending: ['cloud_queue', 'Cambios sin guardar en Drive'], saving: ['cloud_sync', 'Guardando en Drive…'], saved: ['cloud_done', 'Guardado en Drive'],
-  offline: ['cloud_off', 'Conecta con Google para guardar en Drive'], error: ['error', 'No se pudo guardar en Drive'], conflict: ['sync_problem', 'Ha cambiado en otro dispositivo'],
+  pending: ['cloud_queue', 'Drive · Sin guardar', 'Cambios sin guardar en Drive'], saving: ['cloud_sync', 'Drive · Guardando…', 'Guardando en Drive…'],
+  saved: ['cloud_done', 'Drive · Guardado', 'Guardado en Drive'],
+  offline: ['cloud_off', 'Drive · Volver a conectar', 'Google pide confirmar el acceso a Drive de nuevo: haz clic. Mientras, los cambios se guardan en este navegador.'],
+  error: ['error', 'Drive · No se pudo guardar', 'No se pudo guardar en Drive: haz clic para reintentar'], conflict: ['sync_problem', 'Drive · Cambió en otro sitio', 'Ha cambiado en otro dispositivo'],
 };
 function paintBar() {
   const btn = document.getElementById('account-btn'), st = document.getElementById('drive-status');
@@ -56,7 +59,7 @@ function paintBar() {
   if (st) {
     const s = gd.linkedFile() && a ? gd.driveStatus() : 'idle', info = STATUS[s];
     st.hidden = !info;
-    if (info) { st.innerHTML = `<i class="ms">${info[0]}</i>`; st.title = t(info[1]) + (s === 'saved' ? ' ▸ ' + gd.whereLabel(gd.linkedFile()) : ''); st.dataset.state = s; }
+    if (info) { st.innerHTML = `<i class="ms">${info[0]}</i><span>${esc(t(info[1]))}</span>`; st.title = t(info[2]) + (s === 'saved' ? ' ▸ ' + gd.whereLabel(gd.linkedFile()) : ''); st.dataset.state = s; }
   }
   const cf = document.getElementById('drive-conflict'); if (cf) cf.hidden = gd.driveStatus() !== 'conflict';
 }
@@ -143,7 +146,7 @@ export async function openHome() {
 
 export function initHome() {
   gd.setThumbnailMaker(thumbnail);
-  gd.startAutosave();
+  gd.startAutosave(); gd.renewOnGesture();   // (Drive's hour-long access renewed quietly on a click before it ends)
   gd.onDrive(paintBar);
   // Moved or renamed in Drive: it keeps saving there, and says where; gone: asks where to keep it now.
   gd.onDriveNote(async n => {

@@ -2,6 +2,7 @@ import { ownProject, setOwnProject } from '../../io/cloud/gdrive.js';
 import * as gd from '../../io/cloud/gdrive.js';
 import { t } from '../../i18n/index.js';
 import { alertDialog } from './dialog.js';
+import { nowInDrive } from '../shell/where.js';
 
 // Optional: use one's own Google Cloud project instead of Revela's.
 export function openGdriveSetup() {
@@ -72,7 +73,7 @@ export function driveSaveAsUI() {
     $('.gs-ok').disabled = true; $('.gs-ok').textContent = t('Guardando…');
     try {
       if (fmt === 'pptx') { const f = await gd.savePptxCopy({ name, folder }); close(); savedDialog(f); }
-      else { const ok = await gd.savePresentation({ asNew: true, name, folder }); close(); if (ok) savedDialog(gd.linkedFile()); }
+      else { await nowInDrive(); const ok = await gd.savePresentation({ asNew: true, name, folder }); close(); if (ok) savedDialog(gd.linkedFile()); }
     } catch (e) { close(); friendly(e); }
   });
   $('.gs-name').focus(); $('.gs-name').select();
