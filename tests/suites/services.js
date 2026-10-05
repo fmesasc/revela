@@ -2274,6 +2274,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.google = realGoogle; W.gapi = realGapi; W.fetch = realFetch; await GD.signOut(); }
   });
 
+  await test('Drive: la vista previa del archivo es la primera diapositiva, nítida (1600 px) y con lo que es', async () => {
+    reset(); const W = frame.contentWindow, H = await W.eval("import('/src/ui/shell/home.js')");
+    const b64 = await H.driveThumbnail(true), im = new W.Image(); im.src = 'data:image/jpeg;base64,' + b64; await im.decode();
+    eq(im.naturalWidth, 1600, '1600 px de ancho'); assert(b64.length < 2e6, 'dentro del límite de Drive para las miniaturas');
+  });
+
   await test('Guardar en Drive: elegir carpeta con el selector de Google, recordarla, «Guardar como» y copia PowerPoint que Drive previsualiza', async () => {
     reset(); const W = frame.contentWindow, GD = await W.eval("import('/src/io/cloud/gdrive.js')");
     GD.unlinkFile(); W.localStorage.removeItem('revela.gdrive.folder');

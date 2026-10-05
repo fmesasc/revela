@@ -30,14 +30,21 @@ async function keepCurrent() {
 
 // ---- Thumbnails for Drive (first slide, small JPEG), at most every 2 minutes ----
 let lastThumb = 0;
-async function thumbnail() {
-  if (Date.now() - lastThumb < 120000) return null;
-  const blob = await slideImageBlob(state.deck.slides.find(s => !s.hidden) || state.deck.slides[0], 'jpg');
+export async function driveThumbnail(now = false) {
+  if (!now && Date.now() - lastThumb < 120000) return null;
+  // (Drive shows it as the file's preview and in its lists: the first slide, sharp at 1600 px — Drive can't
+  // leaf through a .revela.json — with a discreet label: what it is and how many slides it has.)
+  const vis = state.deck.slides.filter(s => !s.hidden), first = vis[0] || state.deck.slides[0];
+  const blob = await slideImageBlob(first, 'jpg', state.deck, { scale: 1600 / state.deck.size.w });
   if (!blob) return null;
-  const img = await createImageBitmap(blob), W = 480, H = Math.round(W * img.height / img.width);
-  const c = document.createElement('canvas'); c.width = W; c.height = H; c.getContext('2d').drawImage(img, 0, 0, W, H);
+  const img = await createImageBitmap(blob), W = 1600, H = Math.round(W * img.height / img.width);
+  const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'); g.drawImage(img, 0, 0, W, H);
+  const label = `Revela · ${t('{n} diapositivas').replace('{n}', vis.length)}`;
+  g.font = '600 30px system-ui, sans-serif'; const tw = g.measureText(label).width, pw = tw + 48, ph = 54, x = W - pw - 28, y = H - ph - 28;
+  g.fillStyle = 'rgba(15,22,36,.78)'; g.beginPath(); g.roundRect?.(x, y, pw, ph, 27) ?? g.rect(x, y, pw, ph); g.fill();
+  g.fillStyle = '#fff'; g.textBaseline = 'middle'; g.fillText(label, x + 24, y + ph / 2 + 1);
   lastThumb = Date.now();
-  return c.toDataURL('image/jpeg', 0.8).split(',')[1];
+  return c.toDataURL('image/jpeg', 0.82).split(',')[1];
 }
 
 // ---- Title bar: account and save status -------------------------------------------
@@ -148,7 +155,7 @@ export async function openHome() {
 }
 
 export function initHome() {
-  gd.setThumbnailMaker(thumbnail);
+  gd.setThumbnailMaker(() => driveThumbnail());
   gd.startAutosave(); gd.renewOnGesture();   // (Drive's hour-long access renewed quietly on a click before it ends)
   gd.onDrive(paintBar);
   // Moved or renamed in Drive: it keeps saving there, and says where; gone: asks where to keep it now.
