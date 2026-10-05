@@ -15,6 +15,13 @@ aplicación de escritorio y el servidor de cuentas, y de qué protege cada pieza
 `cloud` en `/app/`, `desktop` en la aplicación de escritorio); la edición
 abierta no lleva marca. `src/core/config.js` lee esa marca (`EDITION`).
 
+La web comercial de revelaslides.com (portada, precios, soporte) no está en este
+repositorio: es el repositorio privado `fmesasc/revela-site`. En local va clonado en
+`site/` (ignorado aquí). Cloudflare Pages construye la web con `tools/build-site.mjs`:
+si falta `site/`, lo descarga con una clave de despliegue de solo lectura (variable
+secreta `SITE_DEPLOY_KEY_B64` del proyecto). Un push a `revela-site` vuelve a publicar
+la web por un *deploy hook*. Sin `site/`, los tests omiten las comprobaciones de la web.
+
 ## Piezas
 
 ```
