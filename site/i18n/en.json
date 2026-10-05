@@ -135,7 +135,7 @@
   "Créditos de IA, cuando los necesites.": "AI credits, whenever you need them.",
   "Cada acción de la IA gasta lo que cuesta de verdad: un texto corto, poco; una presentación completa con imágenes, más. Valen un año desde la compra y se suman a los que ya tengas.": "Each AI action uses what it really costs: a short text, very little; a full presentation with images, more. Credits are valid for a year from purchase and add to any you already have.",
   "créditos": "credits",
-  "<span class=\"cent\" data-v=\"1\">1 céntimo</span> por crédito": "<span class=\"cent\" data-v=\"1\">1 cent</span> per credit",
+  "<span class=\"cent\" data-v=\"2\">2 céntimos</span> por crédito": "<span class=\"cent\" data-v=\"2\">2 cents</span> per credit",
   "Comprar": "Buy",
   "Comparar los planes": "Compare the plans",
   "Editor completo, plantillas y exportación": "Full editor, templates and export",
@@ -223,5 +223,14 @@
   "6 € + IVA al mes · desde 3 personas": "€6 + VAT a month · from 3 people",
   "Pro para todo el equipo, con kit de marca, plantillas comunes y Moodle.": "Pro for the whole team, with a brand kit, shared templates and Moodle.",
   "Ver Equipos": "See Teams",
-  "Precios con el 21 % de IVA de España. Créditos de IA sueltos, sin suscripción, desde <span class=\"amt\" data-v=\"5\">5 €</span>. <a href=\"pricing\">Todos los detalles</a>": "Prices with Spain’s 21% VAT. AI credits on their own, no subscription, from <span class=\"amt\" data-v=\"5\">5 €</span>. <a href=\"pricing\">All the details</a>"
+  "Precios con el 21 % de IVA de España. Créditos de IA sueltos, sin suscripción, desde <span class=\"amt\" data-v=\"10\">10 €</span>. <a href=\"pricing\">Todos los detalles</a>": "Prices with Spain’s 21% VAT. AI credits on their own, no subscription, from <span class=\"amt\" data-v=\"10\">10 €</span>. <a href=\"pricing\">All the details</a>",
+  "Revela — Editor de presentaciones online con 3D y animaciones": "Revela — Online presentation editor with 3D and animations",
+  "Editor de presentaciones en el navegador: 3D que se mueve, animaciones, votaciones del público y PowerPoint. Más de cien plantillas. Gratis para empezar.": "A presentation editor in your browser: 3D that moves, animations, audience polls and PowerPoint. Over a hundred templates. Free to start.",
+  "Precios de Revela: gratis, Pro y Equipos": "Revela Pricing: Free, Pro and Teams",
+  "Revela es gratis. Pro: 10 € + IVA al mes o 96 € + IVA al año, con IA incluida. Equipos: 6 € + IVA por persona. Créditos de IA sin suscripción.": "Revela is free. Pro: €10 + VAT a month or €96 + VAT a year, with AI included. Teams: €6 + VAT per person. AI credits without a subscription.",
+  "Ayuda y preguntas frecuentes — Revela": "Help and frequently asked questions — Revela",
+  "Ayuda de Revela: primeros pasos, PowerPoint, compartir, el móvil como mando, votaciones del público y privacidad. Y cómo contactar con soporte.": "Revela help: getting started, PowerPoint, sharing, your phone as a remote, audience polls and privacy. And how to contact support.",
+  "Equipos, por persona y mes": "Teams, per person per month",
+  "500 créditos de IA": "500 AI credits",
+  "1500 créditos de IA": "1500 AI credits"
 }

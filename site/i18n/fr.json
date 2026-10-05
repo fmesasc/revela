@@ -135,7 +135,7 @@
   "Créditos de IA, cuando los necesites.": "Des crédits d’IA, quand vous en avez besoin.",
   "Cada acción de la IA gasta lo que cuesta de verdad: un texto corto, poco; una presentación completa con imágenes, más. Valen un año desde la compra y se suman a los que ya tengas.": "Chaque action de l’IA coûte ce qu’elle coûte vraiment : un texte court, peu ; une présentation complète avec images, davantage. Ils sont valables un an à compter de l’achat et s’ajoutent à ceux que vous avez déjà.",
   "créditos": "crédits",
-  "<span class=\"cent\" data-v=\"1\">1 céntimo</span> por crédito": "<span class=\"cent\" data-v=\"1\">1 centime</span> par crédit",
+  "<span class=\"cent\" data-v=\"2\">2 céntimos</span> por crédito": "<span class=\"cent\" data-v=\"2\">2 centimes</span> par crédit",
   "Comprar": "Acheter",
   "Comparar los planes": "Comparer les forfaits",
   "Editor completo, plantillas y exportación": "Éditeur complet, modèles et exportation",
@@ -223,5 +223,14 @@
   "6 € + IVA al mes · desde 3 personas": "6 € HT par mois · à partir de 3 personnes",
   "Pro para todo el equipo, con kit de marca, plantillas comunes y Moodle.": "Pro pour toute l’équipe, avec kit de marque, modèles communs et Moodle.",
   "Ver Equipos": "Voir Équipes",
-  "Precios con el 21 % de IVA de España. Créditos de IA sueltos, sin suscripción, desde <span class=\"amt\" data-v=\"5\">5 €</span>. <a href=\"pricing\">Todos los detalles</a>": "Prix avec la TVA espagnole de 21 %. Crédits d’IA à l’unité, sans abonnement, dès <span class=\"amt\" data-v=\"5\">5 €</span>. <a href=\"pricing\">Tous les détails</a>"
+  "Precios con el 21 % de IVA de España. Créditos de IA sueltos, sin suscripción, desde <span class=\"amt\" data-v=\"10\">10 €</span>. <a href=\"pricing\">Todos los detalles</a>": "Prix avec la TVA espagnole de 21 %. Crédits d’IA à l’unité, sans abonnement, dès <span class=\"amt\" data-v=\"10\">10 €</span>. <a href=\"pricing\">Tous les détails</a>",
+  "Revela — Editor de presentaciones online con 3D y animaciones": "Revela — Éditeur de présentations en ligne avec 3D et animations",
+  "Editor de presentaciones en el navegador: 3D que se mueve, animaciones, votaciones del público y PowerPoint. Más de cien plantillas. Gratis para empezar.": "Un éditeur de présentations dans le navigateur : 3D qui bouge, animations, votes du public et PowerPoint. Plus de cent modèles. Gratuit pour commencer.",
+  "Precios de Revela: gratis, Pro y Equipos": "Tarifs de Revela : Gratuit, Pro et Équipes",
+  "Revela es gratis. Pro: 10 € + IVA al mes o 96 € + IVA al año, con IA incluida. Equipos: 6 € + IVA por persona. Créditos de IA sin suscripción.": "Revela est gratuit. Pro : 10 € HT par mois ou 96 € HT par an, IA incluse. Équipes : 6 € HT par personne. Crédits d’IA sans abonnement.",
+  "Ayuda y preguntas frecuentes — Revela": "Aide et questions fréquentes — Revela",
+  "Ayuda de Revela: primeros pasos, PowerPoint, compartir, el móvil como mando, votaciones del público y privacidad. Y cómo contactar con soporte.": "Aide de Revela : premiers pas, PowerPoint, partage, le téléphone comme télécommande, votes du public et confidentialité. Et comment contacter le support.",
+  "Equipos, por persona y mes": "Équipes, par personne et par mois",
+  "500 créditos de IA": "500 crédits d’IA",
+  "1500 créditos de IA": "1500 crédits d’IA"
 }

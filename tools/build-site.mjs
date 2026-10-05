@@ -76,12 +76,22 @@ function localize(out) {
     mkdirSync(dir, { recursive: true });
     for (const [p] of PAGES) {
       const r = translatePage(readFileSync(join(ROOT, 'site', p + '.html'), 'utf8'), l, dict, p);
-      writeFileSync(join(dir, p + '.html'), r.html);
+      writeFileSync(join(dir, p + '.html'), withFaq(r.html));
       for (const k of r.missing) missing.push(`${l}/${p}: ${k}`);
     }
   }
   if (missing.length) throw new Error(`Untranslated texts on the website (site/i18n/):\n${missing.slice(0, 20).join('\n')}${missing.length > 20 ? `\n… and ${missing.length - 20} more` : ''}`);
   writeFileSync(join(out, 'sitemap.xml'), sitemap(PAGES, ['legal', 'privacy', 'terms', 'dpa'], new Date().toISOString().slice(0, 10)));
+}
+
+// A page's frequently asked questions (<details><summary>), also as FAQPage structured data, in
+// the page's own language (taken from it once translated: nothing more to translate).
+const plain = h => h.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+export function withFaq(html) {
+  const qa = [...html.matchAll(/<details[^>]*>\s*<summary>([\s\S]*?)<\/summary>([\s\S]*?)<\/details>/g)].map(m => [plain(m[1]), plain(m[2])]).filter(([q, a]) => q && a);
+  if (!qa.length) return html;
+  const ld = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: qa.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) };
+  return html.replace('</head>', `  <script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>\n</head>`);
 }
 
 // The pages' icons, <i data-icon="name" class="…"></i>: drawn in place with the app's own (render/svg.js).
