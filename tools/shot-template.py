@@ -65,6 +65,8 @@ def main():
     for _ in range(80):
         if ev('!!window.__revela'): break
         time.sleep(0.25)
+    if '--dark' in sys.argv:                                  # (the editor's own setting: it doesn't follow the system by default)
+        ev("import('/src/ui/shell/appearance.js').then(m=>{const a={mode:'dark'};localStorage.setItem('revela.appearance',JSON.stringify(a));m.applyAppearance(a);return 1})")
     lang = next((sys.argv[i + 1] for i, a in enumerate(sys.argv) if a == '--lang'), 'es')
     count = ev(f"(()=>{{const R=window.__revela;return R.examples.loadExample({json.dumps(key)}, {json.dumps(lang)}).then(d=>d&&import('/src/ui/canvas/fittext.js').then(m=>m.fitTranslated(d))).then(d=>{{if(!d)return -1;R.store.replaceDeck(d);return d.slides.length}})}})()")
     if count is None or count < 0: print('No existe', key); sys.exit(1)
