@@ -141,8 +141,8 @@ The same code is published twice, with no duplicated project:
 
 - **Open edition** — [fmesasc.github.io/revela](https://fmesasc.github.io/revela/): the repository as it
   is, free, with AI through your own OpenRouter key.
-- **Official site** — [revelaslides.com](https://revelaslides.com): the pages in `site/` (home, plans,
-  support) and the app in `/app/`, built by `node tools/build-site.mjs` (Cloudflare Pages). The app there
+- **Official site** — [revelaslides.com](https://revelaslides.com): its own pages (home, plans, support;
+  a private repository, not this one) and the app in `/app/`, built by `node tools/build-site.mjs` (Cloudflare Pages). The app there
   is marked as the official edition; paid features depend on its server, which checks accounts, plans and
   credits itself (secrets never go in this repository).
 
