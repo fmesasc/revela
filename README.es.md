@@ -62,8 +62,10 @@ reveal.js, de modo que el resultado es una página web estándar y autónoma.
 - **Datos en vivo:** paneles de Power BI, Looker Studio, Tableau, Google
   Sheets, Grafana… y gráficos enlazados a un CSV.
 - **IA con OpenRouter** (tu cuenta): crear presentaciones completas desde un
-  tema o un documento, asistente que edita la presentación, mejorar
-  diapositivas, notas, traducir, texto alternativo e imágenes.
+  tema, documentos o fotos (de apuntes, de una pizarra), asistente que edita
+  la presentación y lee lo que le adjuntas (fotos, PDF, textos; pregunta si
+  algo no está claro), mejorar diapositivas, notas, traducir, texto
+  alternativo e imágenes.
 - **Importar y exportar:** PowerPoint (.pptx) y OpenDocument (.odp) en ambos
   sentidos, HTML autónomo, PDF, documentos y notas, imágenes, vídeo MP4/GIF, y
   Google Drive, OneDrive y Dropbox.

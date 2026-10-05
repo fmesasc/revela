@@ -19,6 +19,7 @@ import { masterBlocksFor, isEmptyPlaceholder, styled } from '../../features/docu
 import { blockPreview } from '../shell/preview.js';
 import { ready, aiFailed, aiErrorText } from './ai.js';
 import { openThemeEditor } from './theme.js';
+import { attachments } from '../shell/attachments.js';
 import { cleanTheme, themeOf } from '../../features/design/theme.js';
 import { FONTS } from '../../features/design/fonts.js';
 import { confirmDialog } from './dialog.js';
@@ -109,7 +110,13 @@ export function renderAssistant() {
   panel.querySelectorAll('[data-perm]').forEach(c => c.addEventListener('change', () => { opts.perms[c.dataset.perm] = c.checked; keep(); permSummary(panel); }));
   q('.as-autochk').addEventListener('change', e => { opts.auto = e.target.checked; keep(); });
   permSummary(panel); syncScope(panel, true);
-  const send = () => { const text = ta.value.trim(); if (text && !job) { ta.value = ''; grow(ta); ask(panel, text); } };
+  // (Photos and documents for the AI: the paperclip, dropped on the panel or pasted into the text.)
+  const att = attachments({ zone: panel, input: ta });
+  q('.cm-new').insertBefore(att.chips, ta); q('.as-send').before(att.button);
+  const send = () => {
+    const text = ta.value.trim(), atts = att.list();
+    if ((text || atts.length) && !job && !att.busy()) { ta.value = ''; grow(ta); att.clear(); ask(panel, text || t('Usa lo que te adjunto.'), atts); }
+  };
   q('.as-send').addEventListener('click', send);
   ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); } });
   ta.addEventListener('input', () => grow(ta));
@@ -264,7 +271,8 @@ function endJob() {
 const STEP = { think: s => (s.step > 1 ? t('Pensando…') : t('Leyendo la presentación…')), look: s => t('Mirando la diapositiva {n}…').replace('{n}', s.slide),
   check: () => t('Comprobando que todo cabe…'), search: () => t('Buscando imágenes…'), read: () => t('Leyendo el código de la imagen…') };
 
-async function ask(panel, text) {
+// atts: what was attached (features/ai/attach.js), only for this request.
+async function ask(panel, text, atts = []) {
   if (!(await ready())) return;
   const scope = { kind: opts.scope, from: opts.from, to: opts.to };
   const lg0 = () => curPanel()?.querySelector('.as-log');
@@ -273,12 +281,13 @@ async function ask(panel, text) {
   if (pending && !pending.done) settle('replaced');
   revising = false; curPanel()?.querySelector('textarea')?.setAttribute('placeholder', t('Pide un cambio o haz una pregunta…'));
   curPanel()?.querySelectorAll('.as-choices').forEach(x => x.remove());
-  addMsg(lg0(), 'me', text);
-  const me = { role: 'user', content: request, shown: text, display: true }; chatLog.push(me);
+  const shown = atts.length ? `${text}\n📎 ${atts.map(a => a.name).join(' · ')}` : text;
+  addMsg(lg0(), 'me', shown);
+  const me = { role: 'user', content: request + (atts.length ? `\n[attached: ${atts.map(a => a.name).join(', ')}]` : ''), shown, display: true }; chatLog.push(me);
   startJob(t('Leyendo la presentación…'));
   const before = { ...spent }, ctrl = job.ctrl;
   try {
-    const res = await agent.runAgent(request, { history: chatLog.filter(m => !m.error && m.content && m !== me).map(({ role, content }) => ({ role, content })), scope, perms: { ...opts.perms }, style: opts.style, signal: ctrl.signal,
+    const res = await agent.runAgent(request, { history: chatLog.filter(m => !m.error && m.content && m !== me).map(({ role, content }) => ({ role, content })), scope, perms: { ...opts.perms }, style: opts.style, signal: ctrl.signal, attachments: atts,
       onStep: s => stepJob(STEP[s.kind]?.(s) || t('Pensando…')),
       onCost: c => { spent.credits = before.credits + c.credits; spent.usd = before.usd + c.usd; showCost(curPanel()); } });
     const reply = { role: 'assistant', content: JSON.stringify({ message: res.message, ops: res.raw, ...(res.theme && { theme: res.theme }), ...(res.ask && { ask: res.ask }) }).slice(0, 12000),
@@ -293,7 +302,7 @@ async function ask(panel, text) {
     if (res.ops.length || res.dropped.length) showProposal(res);
   } catch (e) {
     chatLog.splice(chatLog.indexOf(me), 1);
-    failed(e, () => ask(curPanel(), text));
+    failed(e, () => ask(curPanel(), text, atts));
   } finally { endJob(); }
 }
 function showProposal(res) {

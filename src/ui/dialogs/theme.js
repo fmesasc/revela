@@ -6,6 +6,7 @@
 import { esc } from '../../core/text.js';
 import { themeOf, cleanTheme, themeChanges, applyTheme, themeFonts, contrast } from '../../features/design/theme.js';
 import { proposeTheme } from '../../features/ai/themeai.js';
+import { attachments } from '../shell/attachments.js';
 import { saveKit } from '../../features/design/brandkit.js';
 import { FONTS, ensureFont } from '../../features/design/fonts.js';
 import { ready, aiFailed, aiErrorText } from './ai.js';
@@ -26,7 +27,7 @@ export function openThemeEditor(proposal = null) {
   back.innerHTML = `<div class="modal th-ed" role="dialog" aria-labelledby="th-title" style="text-align:start;width:min(720px,94vw);max-width:none;box-sizing:border-box">
     <button class="modal-close" aria-label="${t('Cerrar')}">✕</button><h3 id="th-title">${t('Tema de la presentación')}</h3>
     <p class="host-help">${t('Los colores y las fuentes de todas las diapositivas, en un solo sitio. Nada cambia hasta que pulses «Aplicar»; se deshace con Ctrl+Z.')}</p>
-    <div class="th-ai"><input type="text" class="th-ask" maxlength="600" placeholder="${t('Descríbelo y la IA te lo propone: «sobrio, azul marino y dorado»…')}" aria-label="${t('Describe el tema')}">
+    <div class="th-ai"><input type="text" class="th-ask" maxlength="600" placeholder="${t('Descríbelo o adjunta tu logo y la IA te lo propone: «sobrio, azul marino y dorado»…')}" aria-label="${t('Describe el tema')}">
       <button type="button" class="mini2 th-go"><i class="ms">auto_awesome</i> ${t('Proponer')}</button></div>
     <p class="th-why" hidden></p>
     <div class="th-body">
@@ -46,6 +47,9 @@ export function openThemeEditor(proposal = null) {
       <button type="button" class="fr-do th-apply">${t('Aplicar a la presentación')}</button></div></div>`;
   document.body.appendChild(back);
   const q = s => back.querySelector(s), cols = [...back.querySelectorAll('.th-cols input')];
+  // (A logo or a photo to take the colours from: the paperclip, dropped on the window or pasted.)
+  const att = attachments({ zone: q('.th-ed'), input: q('.th-ask') });
+  q('.th-go').before(att.button); q('.th-ai').after(att.chips);
   const close = () => { busy?.abort(); back.remove(); };
   q('.modal-close').addEventListener('click', close); q('.th-cancel').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
@@ -87,11 +91,11 @@ export function openThemeEditor(proposal = null) {
 
   // The AI's proposal: fills the form (nothing applied).
   async function ask() {
-    const text = q('.th-ask').value.trim(); if (!text || busy) return;
+    const text = q('.th-ask').value.trim(), atts = att.list(); if ((!text && !atts.length) || busy || att.busy()) return;
     if (!(await ready())) return;
     const go = q('.th-go'); busy = new AbortController(); go.disabled = true; go.innerHTML = `<span class="btn-spin"></span> ${t('Pensando…')}`;
     try {
-      const r = await proposeTheme(text, { signal: busy.signal });
+      const r = await proposeTheme(text, { signal: busy.signal, attachments: atts });
       if (!back.isConnected) return;
       th = r; why = r.why || ''; fill();
     } catch (e) {

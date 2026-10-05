@@ -10,6 +10,7 @@ import { state, commit, currentSlide } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 import { chat, lang, parseJSON, esc, plain, generateImage } from './openrouter.js';
 import { currentPalette } from '../design/palettes.js';
+import { withAttachments } from './attach.js';
 import { PDFJS } from '../../core/vendor.js';
 import { styledSlide, hasLayouts, pictureBox, compose, contrast, codeCard, fitBody } from './fromspec.js';
 import { KINDS, prepareSpec, splitSpec } from './specs.js';
@@ -178,7 +179,7 @@ export function rebuildSlide(s, spec, deck = state.deck, opts = {}) {
 }
 
 // ---- Whole decks -----------------------------------------------------------------
-// opts: { topic, source (document text), count, audience, tone, language, images, palette }
+// opts: { topic, source (document text), count, audience, tone, language, images, palette, attachments (pictures: attach.js) }
 export async function createDeck(opts = {}) {
   const count = Math.max(3, Math.min(30, +opts.count || 8));
   const brief = [opts.topic && `Topic: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`,
@@ -186,7 +187,8 @@ export async function createDeck(opts = {}) {
   const source = opts.source ? `\n\nBase the content ONLY on this document (summarise and structure it, keep its facts and figures):\n"""\n${String(opts.source).slice(0, 60000)}\n"""` : '';
   const out = await chat([
     { role: 'system', content: `You are an expert presentation designer. Write a complete, well-structured slide deck. Answer only JSON: {"title":"…","slides":[{"kind":"…",…}]}.\n${SPEC_DOC}\nStart with a "title" slide, use "section" slides to separate parts in longer decks, vary the kinds, end with a "closing" slide. ${opts.images ? 'Use 1-3 "image" slides.' : 'Do not use "image" slides.'} Write everything in ${opts.language || lang()}.` },
-    { role: 'user', content: brief + source },
+    { role: 'user', content: withAttachments(brief + source + (opts.attachments?.some(a => a.kind === 'image')
+      ? '\n\nThe attached pictures (notes, a whiteboard, slides, a document\'s pages, photos): base the deck on what they show — read their text and figures — together with the rest.' : ''), opts.attachments || []) },
   ], { json: true, maxTokens: 8000, feature: 'create' });
   const res = parseJSON(out);
   // (Cleaned, and what is too much for one slide in two.)

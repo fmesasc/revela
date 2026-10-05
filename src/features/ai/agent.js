@@ -21,6 +21,7 @@ import { STYLES, fitBody } from './fromspec.js';
 import { prepareSpec, splitSpec, specFromText } from './specs.js';
 import { richHTML } from './richtext.js';
 import { THEME_DOC } from './themeai.js';
+import { withAttachments } from './attach.js';
 import { cleanTheme, themeOf } from '../design/theme.js';
 import { PALETTES, FONT_PAIRS, swapPalette, swapFontPair, currentPalette, deckFg, deckBodyFont } from '../design/palettes.js';
 import { designIdeas, applyIdeaTo } from '../design/designer.js';
@@ -128,6 +129,8 @@ export function slideDetail(n, deck = state.deck) {
 const CHART_TYPES = ['bar', 'hbar', 'line', 'area', 'pie', 'doughnut', 'stacked', 'stacked100', 'stackedArea', 'radar', 'scatter', 'funnel', 'waterfall', 'treemap'];
 export const TRANSITIONS = ['none', 'fade', 'slide', 'convex', 'concave', 'zoom', 'push', 'wipe', 'split', 'circle', 'diamond', 'flip', 'rise', 'cube', 'cover', 'fall', 'blur', 'swirl', 'shrink', 'drop', 'flash', 'page', 'gallery'];
 export const EFFECTS = Object.keys(EFFECT_KF).filter(e => !['path', 'current-visible'].includes(e));
+// What the user attached: read and used (a photo of notes or a whiteboard: its content; a logo or a photo: its colours for a theme).
+const ATTACH_TEXT = 'The user may attach documents (their text follows the request) and pictures ("attachment:N", shown after it): use what they contain — the content of notes, a whiteboard, a document or a chart for slides; the colours of a logo or a photo for a theme — and put a picture on a slide with add_object type "image", src "attachment:N", when it belongs there.';
 const OBJECT_TYPES = ['text', 'shape', 'chart', 'table', 'icon', 'image', 'code', 'math'];
 
 export const OPS_DOC = () => `Operations ("slide" numbers are 1-based and refer to the deck BEFORE your changes; ids are the objects' ids; coordinates in px inside the slide, x+w and y+h within its size):
@@ -138,7 +141,7 @@ export const OPS_DOC = () => `Operations ("slide" numbers are 1-based and refer 
    chart: chartType ${CHART_TYPES.join('|')}, color, seriesName; table: stroke, headBg, headFg, band; model (3D): autoRotate true|false, spin (1..360 degrees per second), alt
 {"op":"add_object","slide":N,"object":{"type":"text"|"shape"|"chart"|"table"|"icon"|"image"|"code"|"math","x":…,"y":…,"w":…,"h":…, …}}
    text: text, and text props above; shape: shape, fill, stroke, strokeWidth; chart: chartType, data [{"label":"…","value":0}], seriesName, series [{"name":"…","values":[…]}];
-   table: rows [["…"]], header true|false; icon: icon (one of: ${ICON_NAMES.slice(0, 40).join(', ')}, …), color; image: src (ONLY a url from search_images), alt;
+   table: rows [["…"]], header true|false; icon: icon (one of: ${ICON_NAMES.slice(0, 40).join(', ')}, …), color; image: src (ONLY a url from search_images, or "attachment:N" for a picture the user attached), alt;
    code: language (${AI_LANGS.join('|')}), code (VERBATIM, "\\n" between lines, at most 60 lines) or from_image (the id of a picture whose code was read), caption (optional, a line under it), fontSize;
    math: latex (LaTeX, no $ signs), fontSize, color
 {"op":"set_code","slide":N,"id":"…","code":"…","language":"…"}   (a code block's code and/or language)
@@ -209,8 +212,8 @@ const no = (code, detail) => { throw new Rejected(code, detail); };
 
 // Checks the model's operations against the deck (as it is now), the scope and the
 // permissions. → { ops (clean, with the slide's id in `sid`), dropped: [{ op, code, detail }] }
-// ctx: { scope, perms, images (urls search_images gave), style (of the slides it makes: STYLES) }
-export function validateOps(raw, { scope = { kind: 'all' }, perms = DEFAULT_PERMS, images = new Set(), style = 'same', deck = state.deck, ui = state.ui } = {}) {
+// ctx: { scope, perms, images (urls search_images gave), attachments (the user's pictures: "attachment:N"), style (of the slides it makes: STYLES) }
+export function validateOps(raw, { scope = { kind: 'all' }, perms = DEFAULT_PERMS, images = new Set(), attachments = [], style = 'same', deck = state.deck, ui = state.ui } = {}) {
   const look = STYLES.includes(style) && style !== 'same' ? { style } : {};
   const sc = scope.idx ? scope : scopeOf(scope, deck, ui), { w: W, h: H } = deck.size;
   const ops = [], dropped = [], list = Array.isArray(raw) ? raw.slice(0, 200) : [];
@@ -410,9 +413,11 @@ export function validateOps(raw, { scope = { kind: 'all' }, perms = DEFAULT_PERM
         if (type === 'table') { const rr = tableRows(rows); if (rr === BAD) no('value', 'rows');
           b = { ...b, rows: rr, header: header !== false, banded: true, band: a1, headBg: a1, headFg: '#ffffff', stroke: a1, ...p }; }
         if (type === 'image') {
-          if (typeof src !== 'string' || !/^https:\/\//.test(src) || !images.has(src)) no('value', 'src');
+          // (The user's own picture: at slide size, from the attachment — never anything the model writes.)
+          const att = /^attachment:(\d+)$/.exec(String(src || '').trim()), pic = att && attachments.filter(a => a.kind === 'image')[+att[1] - 1];
+          if (!pic && (typeof src !== 'string' || !/^https:\/\//.test(src) || !images.has(src))) no('value', 'src');
           if (!p.alt) no('value', 'alt');
-          b = { ...b, src, fit: 'contain', ...p };
+          b = { ...b, src: pic ? pic.full : src, fit: 'contain', ...p };
         }
         if (type === 'math') {
           const l = tex || cleanLatex(latex); if (!l) no('value', 'latex');
@@ -665,6 +670,7 @@ The presentation's THEME — the colours or the fonts of the whole deck (a palet
 When the request is unclear or needs something only the user knows (their brand's colours, which slides, the tone, the audience), ASK instead of guessing: {"message":"<your question>","ops":[],"ask":["option","option"],"done":true} — 2 to 5 short answers they can click (they may also answer in their own words). Ask only what you need, once; if it is clear enough, just do it.
 You have at most ${maxSteps} answers in all. When you move, resize or add objects, or change text sizes, use "check" first and fix what it reports. A question gets an answer in "message" and no ops. Never invent facts or figures. Keep the deck's style (its colours and fonts) unless asked.
 ${STYLE_TEXT[style] || STYLE_TEXT.same}
+${ATTACH_TEXT}
 ${CODE_TEXT}
 ${OPS_DOC()}
 ${SPEC_DOC}`;
@@ -690,10 +696,10 @@ export const AGENT_MODEL = 'google/gemini-2.5-flash';
 // onStep({ kind: 'think'|'look'|'check'|'search', slide?, step }), onCost(cost); signal: stops (Error 'STOPPED').
 // style: how the slides it adds or remakes look (STYLES: 'same' | 'visual' | 'minimal' | 'animated' | 'surprise').
 export async function runAgent(request, { history = [], scope = { kind: 'all' }, perms = DEFAULT_PERMS, style = 'same', maxSteps = 6, maxCredits = 60, maxUsd = 0.12,
-  onStep = () => {}, onCost = () => {}, signal = null, deck = state.deck, ui = state.ui } = {}) {
+  onStep = () => {}, onCost = () => {}, signal = null, deck = state.deck, ui = state.ui, attachments = [] } = {}) {
   const sc = scopeOf(scope, deck, ui), images = new Set(), canSearch = perms.objects && consented('openverse');
   if (!STYLES.includes(style)) style = 'same';
-  const cost = { usd: 0, credits: 0, calls: 0 }, ctx = { scope: sc, perms, images, style, deck, ui };
+  const cost = { usd: 0, credits: 0, calls: 0 }, ctx = { scope: sc, perms, images, attachments, style, deck, ui };
   const stopped = () => { if (signal?.aborted) throw new Error('STOPPED'); };
   let steps = 0;
   const read = (b, slide) => readCodeIn(b, { hint: request, deck, signal, onUsage: u => { cost.usd += u.usd || 0; cost.credits += u.credits || 0; },
@@ -705,7 +711,7 @@ export async function runAgent(request, { history = [], scope = { kind: 'all' },
   const msgs = [{ role: 'system', content: systemPrompt({ sc, perms, deck, maxSteps, images: canSearch, style }) },
     // (The last messages only, and short: the presentation goes whole each time anyway.)
     ...history.slice(-6).map(({ role, content }) => ({ role, content: String(content).slice(0, role === 'user' ? 2000 : 1500) })),
-    { role: 'user', content: `Deck:\n${JSON.stringify(deckOutline(deck, sc))}\n\nCurrent slide: ${(ui.slideIndex || 0) + 1}\n\nRequest: ${request}` }];
+    { role: 'user', content: withAttachments(`Deck:\n${JSON.stringify(deckOutline(deck, sc))}\n\nCurrent slide: ${(ui.slideIndex || 0) + 1}\n\nRequest: ${request}`, attachments) }];
   let final = null, lastChecked = null, asked = false;
   while (!final) {
     stopped();

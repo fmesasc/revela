@@ -1,6 +1,7 @@
 // AI tab: connection settings (OpenRouter sign-in or own key), privacy notice,
 // and the actions. A small overlay shows while the model is working.
 
+import { readAttachment, ATTACH, ATTACH_ACCEPT } from '../../features/ai/attach.js';
 import { hasAccounts } from '../../io/cloud/account.js';
 import { openAccount } from './account.js';
 import * as ai from '../../features/ai/openrouter.js';
@@ -123,8 +124,8 @@ export function openCreateDeck() {
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(620px,94vw);max-width:94vw">
     <button class="modal-close">✕</button><h3>${t('Crear presentación con IA')}</h3>
     <label class="fr-l">${t('Tema o instrucciones')}<textarea class="ad-topic" rows="3" placeholder="${t('p. ej.: Introducción a la energía solar para estudiantes de secundaria')}"></textarea></label>
-    <label class="fr-l">${t('O basarla en un documento (.txt, .md, .pdf) o texto pegado')}
-      <input type="file" class="ad-file" accept=".txt,.md,.markdown,.pdf,text/plain,application/pdf">
+    <label class="fr-l">${t('O basarla en documentos o fotos (PDF, textos, fotos de apuntes o de una pizarra) o en texto pegado')}
+      <input type="file" class="ad-file" multiple accept="${ATTACH_ACCEPT},.markdown">
       <textarea class="ad-source" rows="3" placeholder="${t('Pega aquí un texto (opcional)')}"></textarea></label>
     <div class="ad-grid">
       <label class="fr-l">${t('Diapositivas')}<input type="number" class="ad-count" min="3" max="30" value="8"></label>
@@ -141,15 +142,18 @@ export function openCreateDeck() {
   q('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
   q('.ad-go').addEventListener('click', async () => {
-    const topic = q('.ad-topic').value.trim(), file = q('.ad-file').files[0];
-    let source = q('.ad-source').value.trim();
-    if (!topic && !source && !file) { alertDialog(t('Escribe un tema o aporta un documento.')); return; }
+    const topic = q('.ad-topic').value.trim(), files = [...q('.ad-file').files].slice(0, ATTACH.count);
+    let source = q('.ad-source').value.trim(), pics = [];
+    if (!topic && !source && !files.length) { alertDialog(t('Escribe un tema o aporta un documento.')); return; }
     if (!(await ready())) return;
     q('.ad-go').disabled = true; q('.ad-prog').hidden = false;
     try {
-      if (file) source = (await deck.readDocument(file)) + (source ? '\n\n' + source : '');
+      // (Documents: their text; pictures — or a scanned PDF's pages —: shown to the AI.)
+      const read = (await Promise.all(files.map(f => readAttachment(f).catch(e => { throw new Error(t(e.message === 'ATTACH_TYPE' ? 'Ese tipo de archivo no se puede adjuntar: fotos, PDF o textos.' : e.message === 'ATTACH_BIG' ? 'El archivo es demasiado grande (25 MB como mucho).' : 'No se pudo leer «{n}».').replace('{n}', f.name)); })))).flat();
+      const docs = read.filter(a => a.kind === 'text'); pics = read.filter(a => a.kind === 'image').slice(0, ATTACH.count);
+      if (docs.length) source = docs.map(d => d.text).join('\n\n') + (source ? '\n\n' + source : '');
       const opts = { topic, source, count: +q('.ad-count').value, audience: q('.ad-aud').value.trim(), tone: q('.ad-tone').value,
-        palette: q('.ad-pal').value, images: q('.ad-img').checked };
+        palette: q('.ad-pal').value, images: q('.ad-img').checked, attachments: pics };
       await run(async () => {
         const specs = await deck.createDeck(opts);
         if (q('.ad-new').checked) replaceDeck(emptyDeck());

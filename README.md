@@ -60,8 +60,9 @@ standard, self-contained web page.
 - **Live data:** Power BI, Looker Studio, Tableau, Google Sheets, Grafana…
   dashboards, and charts linked to a CSV.
 - **AI via OpenRouter** (your own account): whole decks from a topic or a
-  document, an assistant that edits the deck, improve slides, notes,
-  translation, alt text and images.
+  documents or photos (of notes, a whiteboard), an assistant that edits the
+  deck and reads what you attach (photos, PDFs, text; it asks when something
+  is unclear), improve slides, notes, translation, alt text and images.
 - **Import & export:** PowerPoint (.pptx) and OpenDocument (.odp) both ways,
   self-contained HTML, PDF, handouts and notes, images, MP4/GIF video, and
   Google Drive, OneDrive and Dropbox.

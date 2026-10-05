@@ -713,6 +713,64 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     }
   });
 
+  await test('adjuntos para la IA: fotos y documentos leídos, enviados con la petición y una foto puesta en una diapositiva', async () => {
+    reset();
+    const W = frame.contentWindow, real = W.fetch, calls = [], AG = R.aiAgent, P = await W.eval("import('/src/ui/dialogs/assistant.js')");
+    const AT = await W.eval("import('/src/features/ai/attach.js')"), TA = await W.eval("import('/src/features/ai/themeai.js')");
+    P.resetAssistant(); W.localStorage.removeItem('revela.assistant.v1');
+    R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    // A photo (made here) and a text file, as the browser gives them.
+    const c = D.createElement('canvas'); c.width = 1600; c.height = 1200; const g = c.getContext('2d'); g.fillStyle = '#c1121f'; g.fillRect(0, 0, 1600, 1200); g.fillStyle = '#003049'; g.fillRect(400, 300, 800, 600);
+    const png = await new Promise(ok => c.toBlob(ok, 'image/png'));
+    const photo = new W.File([png], 'pizarra.png', { type: 'image/png' }), notes = new W.File(['Ideas: energía solar, baterías y redes'], 'notas.txt', { type: 'text/plain' });
+    const [pic] = await AT.readAttachment(photo), [doc] = await AT.readAttachment(notes);
+    eq(pic.kind, 'image', 'una foto'); assert(/^data:image\/jpeg;base64,/.test(pic.url) && pic.url.length < 400 * 1024, 'pequeña para la IA');
+    eq(`${pic.w}×${pic.h}`, '1600×1200', 'con su tamaño'); assert(/^data:image\//.test(pic.full), 'y otra para la diapositiva');
+    eq(doc.kind + '|' + doc.text, 'text|Ideas: energía solar, baterías y redes', 'un texto');
+    let err = null; try { await AT.readAttachment(new W.File(['x'], 'informe.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })); } catch (e) { err = e.message; }
+    eq(err, 'ATTACH_TYPE', 'lo que no sabe leer, lo dice');
+    try {
+      // The assistant: they go with the request; "attachment:1" puts the photo on a slide (never another src).
+      W.fetch = agentMock(W, [{ message: 'Pongo tu foto', done: true, ops: [
+        { op: 'add_object', slide: 1, object: { type: 'image', src: 'attachment:1', alt: 'La pizarra', x: 100, y: 100, w: 400, h: 300 } },
+        { op: 'add_object', slide: 1, object: { type: 'image', src: 'attachment:7', alt: 'Otra', x: 100, y: 100, w: 400, h: 300 } }] }], calls);
+      const res = await AG.runAgent('Pon mi foto y usa mis notas', { perms: ALL, attachments: [pic, doc] });
+      const sent = calls[0].messages.at(-1).content;
+      assert(Array.isArray(sent) && sent.some(x => x.type === 'image_url' && x.image_url.url === pic.url), 'la foto va con la petición');
+      assert(/Attached document «notas\.txt»:\nIdeas: energía solar/.test(sent[0].text) && /attachment:1 «pizarra\.png» \(1600×1200\)/.test(sent[0].text), 'y el texto de las notas, y qué es cada foto');
+      assert(/attach documents/.test(calls[0].messages[0].content), 'se le explica');
+      eq(res.ops.length, 1, 'la foto adjunta, sí'); eq(res.ops[0].object.src, pic.full, 'a tamaño de diapositiva'); eq(res.dropped[0].code, 'value', 'un adjunto que no existe, no');
+      calls.length = 0; W.fetch = agentMock(W, [{ message: 'Hola', ops: [], done: true }], calls);
+      await AG.runAgent('Hola', { perms: ALL }); eq(typeof calls[0].messages.at(-1).content, 'string', 'sin adjuntos, como siempre');
+      // The theme editor's AI: the colours from a logo.
+      calls.length = 0; W.fetch = agentMock(W, [{ name: 'Marca', bg: '#ffffff', fg: '#003049', accents: ['#c1121f'], heading: 'Montserrat', body: 'Lato' }], calls);
+      const th = await TA.proposeTheme('', { attachments: [pic] });
+      assert(calls[0].messages[1].content.some(x => x.type === 'image_url'), 'el logo va con la petición del tema'); eq(th.accents[0], '#c1121f', 'y sus colores');
+      // «Crear presentación con IA»: photos of notes to build it from.
+      const AU = await W.eval("import('/src/features/ai/authoring.js')");
+      calls.length = 0; W.fetch = agentMock(W, [{ title: 'Energía', slides: [{ kind: 'title', title: 'Energía solar' }] }], calls);
+      await AU.createDeck({ topic: 'Mis apuntes', attachments: [pic] });
+      const cd = calls[0].messages[1].content;
+      assert(Array.isArray(cd) && cd.some(x => x.type === 'image_url') && /base the deck on what they show/.test(cd[0].text), 'crear una presentación a partir de fotos');
+      // The panel: dropped on it, shown as chips, sent and cleared.
+      calls.length = 0; W.fetch = agentMock(W, [{ message: 'Visto', ops: [], done: true }], calls);
+      D.querySelector('[data-action="ai-assistant"]').click(); await sleep(20);
+      const panel = D.getElementById('assistant-panel'), dt = new W.DataTransfer(); dt.items.add(photo); dt.items.add(notes);
+      panel.dispatchEvent(new W.DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+      for (let i = 0; i < 100 && panel.querySelectorAll('.att-chip b').length < 2; i++) await sleep(20);
+      eq([...panel.querySelectorAll('.att-chip b')].map(b => b.textContent).join(), 'pizarra.png,notas.txt', 'los adjuntos, a la vista');
+      panel.querySelector('.att-chip [data-rm="1"]').click(); eq(panel.querySelectorAll('.att-chip').length, 1, 'se pueden quitar');
+      panel.querySelector('.as-send').click(); await sleep(30); for (let i = 0; i < 100 && P.assistantState().busy; i++) await sleep(20);
+      assert(Array.isArray(calls[0].messages.at(-1).content), 'enviados aunque no se escriba nada');
+      assert(/📎 pizarra\.png/.test(panel.querySelector('.as-msg.me').textContent), 'el mensaje dice qué se adjuntó');
+      assert(panel.querySelector('.att-chips').hidden, 'y se vacían');
+      assert(panel.querySelector('.att-clip'), 'el clip para elegirlos');
+    } finally {
+      W.fetch = real; R.ai.disconnectAi(); W.localStorage.removeItem('revela.assistant.v1'); P.resetAssistant();
+      if (D.getElementById('assistant-panel')) D.querySelector('[data-action="ai-assistant"]').click();
+    }
+  });
+
   await test('asistente (panel): propone con miniaturas, aplica solo lo marcado, descarta, detiene y aplica sin preguntar', async () => {
     reset(); R.slides.addSlide(); R.slides.goToSlide(0);
     const W = frame.contentWindow, real = W.fetch, calls = [], P = await W.eval("import('/src/ui/dialogs/assistant.js')");

@@ -5,6 +5,7 @@
 import { state } from '../../core/store.js';
 import { chat, lang, parseJSON, plain } from './openrouter.js';
 import { themeOf, cleanTheme, themeFonts, contrast } from '../design/theme.js';
+import { withAttachments } from './attach.js';
 
 // The theme's description for the model: the colours and fonts it may give, and how.
 export const THEME_DOC = () => `A theme is {"name":"2-4 words","bg":"#rrggbb","fg":"#rrggbb","accents":["#rrggbb", …six],"heading":"<font>","body":"<font>"}:
@@ -12,14 +13,16 @@ bg is the slides' background and fg the text on it (contrast at least 7:1); the 
 Fonts only from this list: ${themeFonts().join(', ')}. A heading font with character, a very readable body font (they may be the same).`;
 
 // → { name, bg, fg, accents, heading, body, why } ; Error 'BAD_ANSWER' if the answer isn't a theme.
-export async function proposeTheme(description, { deck = state.deck, signal = null, onUsage = null } = {}) {
+// attachments (attach.js): a logo or a photo to take the colours from, a document to read the subject from.
+export async function proposeTheme(description, { deck = state.deck, signal = null, onUsage = null, attachments = [] } = {}) {
   const now = themeOf(deck);
   const titles = deck.slides.slice(0, 8).map(s => plain(s.blocks.find(b => b.ph === 'title' && b.type === 'text')?.html || '').slice(0, 60)).filter(Boolean);
   const msgs = [
     { role: 'system', content: `You design themes for presentations. Answer with ONE JSON object: a theme plus "why" (one short sentence in ${lang()} saying what you chose).
 ${THEME_DOC()}
-Keep from the current theme whatever the request doesn't ask to change. The theme's "name" in ${lang()}.` },
-    { role: 'user', content: `Current theme: ${JSON.stringify(now)}\nThe presentation's titles: ${JSON.stringify(titles)}\n\nRequest: ${String(description).slice(0, 600)}` }];
+Keep from the current theme whatever the request doesn't ask to change. The theme's "name" in ${lang()}.
+Attached pictures (a logo, a photo, a brand's material): take the colours from them — their real colours, the logo's first — unless the request says otherwise.` },
+    { role: 'user', content: withAttachments(`Current theme: ${JSON.stringify(now)}\nThe presentation's titles: ${JSON.stringify(titles)}\n\nRequest: ${String(description || (attachments.length ? 'A theme from the attached pictures.' : '')).slice(0, 600)}`, attachments) }];
   const out = await chat(msgs, { json: true, maxTokens: 600, signal, feature: 'theme', onUsage });
   let r; try { r = parseJSON(out); } catch { r = null; }
   const th = r && cleanTheme(r.theme && typeof r.theme === 'object' ? { ...r.theme, why: r.why } : r, now);
