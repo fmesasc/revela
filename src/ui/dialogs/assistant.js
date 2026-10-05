@@ -18,6 +18,9 @@ import { PALETTES, FONT_PAIRS, deckFg, deckBodyFont, currentPalette } from '../.
 import { masterBlocksFor, isEmptyPlaceholder, styled } from '../../features/document/master.js';
 import { blockPreview } from '../shell/preview.js';
 import { ready, aiFailed, aiErrorText } from './ai.js';
+import { openThemeEditor } from './theme.js';
+import { cleanTheme, themeOf } from '../../features/design/theme.js';
+import { FONTS } from '../../features/design/fonts.js';
 import { confirmDialog } from './dialog.js';
 import { t } from '../../i18n/index.js';
 
@@ -36,7 +39,7 @@ const CHAT_KEY = () => 'revela.chat.' + (state.deck.slides[0]?.id || 'none');
 let chatFor = null;
 function persistChat() {
   try {
-    const keep = chatLog.filter(m => !m.error && (m.content || m.shown)).slice(-60).map(({ role, content, shown, cost }) => ({ role, content, shown, ...(cost && { cost }) }));
+    const keep = chatLog.filter(m => !m.error && (m.content || m.shown)).slice(-60).map(({ role, content, shown, cost, theme }) => ({ role, content, shown, ...(cost && { cost }), ...(theme && { theme }) }));
     const json = JSON.stringify(keep);
     if (!keep.length) localStorage.removeItem(CHAT_KEY()); else if (json.length < 300000) localStorage.setItem(CHAT_KEY(), json);
   } catch {}
@@ -91,7 +94,7 @@ export function renderAssistant() {
       <div class="as-foot"><span class="as-cost"></span><span class="as-mem" hidden></span><span class="as-keys">${t('Intro para enviar · Mayús+Intro, nueva línea')}</span><button type="button" class="as-send">${t('Enviar')}</button></div></div>`;
   document.querySelector('main').appendChild(panel);
   const q = s => panel.querySelector(s), log = q('.as-log'), ta = q('textarea');
-  for (const m of chatLog) if (m.shown !== '') addMsg(log, m.role === 'user' ? 'me' : 'ai', m.shown ?? m.content, m);
+  for (const m of chatLog) { if (m.shown !== '') addMsg(log, m.role === 'user' ? 'me' : 'ai', m.shown ?? m.content, m); if (m.theme) put(log, themeCard(m.theme)); }
   if (pending) put(log, proposalCard(pending));
   if (completing) put(log, completeCard(completing));
   if (job) put(log, job.el);
@@ -165,6 +168,18 @@ function addMsg(log, who, text, m = {}) {
     d.appendChild(b);
   }
   return put(log, d);
+}
+// A theme the assistant proposes (colours and fonts of the whole presentation): not applied from here —
+// it opens in the theme editor, to review, adjust and apply there.
+function themeCard(proposed) {
+  const d = document.createElement('div'); d.className = 'as-theme';
+  const th = cleanTheme(proposed, themeOf()); if (!th) return d;          // (kept in the browser: checked again)
+  const font = n => FONTS.find(f => f.name === n)?.stack.replace(/"/g, "'") || '';
+  d.innerHTML = `<div class="as-theme-sw" style="background:${th.bg};color:${th.fg}"><b style="font-family:${font(th.heading)};color:${th.accents[0]}">${escHTML(th.name || t('Tema propuesto'))}</b>`
+    + `<span>${th.accents.map(c => `<i style="background:${c}"></i>`).join('')}</span><small style="font-family:${font(th.body)}">${escHTML([th.heading, th.body].filter(Boolean).join(' · '))}</small></div>`
+    + `<button type="button" class="fr-do"><i class="ms">tune</i> ${t('Abrir en el editor del tema')}</button>`;
+  d.querySelector('button').addEventListener('click', () => openThemeEditor(th));
+  return d;
 }
 function failed(e, again) {
   const lg = curPanel()?.querySelector('.as-log');
@@ -253,11 +268,14 @@ async function ask(panel, text) {
     const res = await agent.runAgent(request, { history: chatLog.filter(m => !m.error && m.content && m !== me).map(({ role, content }) => ({ role, content })), scope, perms: { ...opts.perms }, style: opts.style, signal: ctrl.signal,
       onStep: s => stepJob(STEP[s.kind]?.(s) || t('Pensando…')),
       onCost: c => { spent.credits = before.credits + c.credits; spent.usd = before.usd + c.usd; showCost(curPanel()); } });
-    const reply = { role: 'assistant', content: JSON.stringify({ message: res.message, ops: res.raw }).slice(0, 12000), shown: res.message || (res.ops.length ? '' : t('Hecho.')), cost: res.cost };
+    const reply = { role: 'assistant', content: JSON.stringify({ message: res.message, ops: res.raw, ...(res.theme && { theme: res.theme }) }).slice(0, 12000),
+      shown: res.message || (res.ops.length ? '' : t('Hecho.')), cost: res.cost, ...(res.theme && { theme: res.theme }) };
     chatLog.push(reply); persistChat(); showCost(curPanel());
     const lg = lg0();
-    if (res.message || !res.ops.length) { reply.shown = res.message || t('No hay cambios que proponer.'); lg && addMsg(lg, 'ai', reply.shown, reply); }
-    else reply.shown = '';
+    if (res.message || !res.ops.length) {
+      reply.shown = res.message || (res.theme ? t('Te propongo este tema: ábrelo para revisarlo y aplicarlo.') : t('No hay cambios que proponer.')); lg && addMsg(lg, 'ai', reply.shown, reply);
+    } else reply.shown = '';
+    if (res.theme && lg) put(lg, themeCard(res.theme));
     if (res.ops.length || res.dropped.length) showProposal(res);
   } catch (e) {
     chatLog.splice(chatLog.indexOf(me), 1);

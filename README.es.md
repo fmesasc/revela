@@ -36,7 +36,9 @@ reveal.js, de modo que el resultado es una página web estándar y autónoma.
   con pulsación larga en el móvil), deshacer/rehacer, alineación con guías y
   espaciado inteligente, agrupar, bloquear, panel de selección (ocultar,
   renombrar, reordenar), copiar formato de cualquier objeto y orden de lectura.
-- **Diseño:** paletas y fuentes del tema, kit de marca (colores, fuentes y
+- **Diseño:** paletas y fuentes del tema, editor del tema (fondo, texto, seis
+  acentos y dos fuentes, con vista previa; la IA lo propone a partir de una
+  descripción y no se aplica hasta que lo apruebas), kit de marca (colores, fuentes y
   logotipos), cambiar tamaño recolocando el contenido (A4, cuadrado, 9:16…),
   patrón de diapositivas, marcadores de posición, galería de plantillas e
   ideas de diseño.

@@ -10,6 +10,7 @@ import * as templates from '../../features/document/templates.js';
 import { startFreeform } from '../canvas/freeform.js';
 import * as blocks from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
+import { openThemeEditor } from '../dialogs/theme.js';
 import * as palettes from '../../features/design/palettes.js';
 import * as fontsMod from '../../features/design/fonts.js';
 import * as officeTheme from '../../features/design/officetheme.js';
@@ -71,7 +72,8 @@ export const POPS = {
     + (own ? `<button data-palette-theme type="button" class="${officeTheme.isThemeColours() ? 'on' : ''}">${sw(own)}<span>${esc(own.name)}</span></button>` : '')
     + (state.deck.palette === 'custom' && !officeTheme.isThemeColours() ? `<button type="button" class="on" disabled>${sw(cur)}<span>${esc(cur.name)}</span></button>` : '')
     + Object.entries(palettes.PALETTES).map(([k, p]) => `<button data-palette="${k}" type="button" class="${(state.deck.palette || 'revela') === k ? 'on' : ''}">`
-      + `${sw(p)}<span>${t(p.name)}</span></button>`).join('') + `</div>`; },
+      + `${sw(p)}<span>${t(p.name)}</span></button>`).join('') + `</div>`
+    + `<button type="button" class="mini2 pop-more" data-theme-custom><i class="ms">tune</i> ${t('Colores propios…')}</button>`; },
   fontpairs: () => { const tf = state.deck.officeTheme?.fonts, ts = palettes.themeFontStacks(tf), q = s => esc(s.replace(/"/g, "'"));
     return `<h4>${t('Fuentes del tema')}</h4><div class="fp-list">`
     + (ts ? `<button data-fontpair-theme type="button" class="${state.deck.fontPair === 'theme' ? 'on' : ''}">`
@@ -80,7 +82,8 @@ export const POPS = {
     + Object.entries(palettes.FONT_PAIRS).map(([k, p]) => { const st = palettes.pairStacks(k);
       return `<button data-fontpair="${k}" type="button" class="${state.deck.fontPair === k ? 'on' : ''}">`
         + `<b style="font-family:${st.heading.replace(/"/g, "'")}">${p.heading}</b><span style="font-family:${st.body.replace(/"/g, "'")}">${p.body}</span>`
-        + `<small>${t(p.name)}</small></button>`; }).join('') + `</div>`; },
+        + `<small>${t(p.name)}</small></button>`; }).join('') + `</div>`
+    + `<button type="button" class="mini2 pop-more" data-theme-custom><i class="ms">tune</i> ${t('Otras fuentes…')}</button>`; },
   // Design ▸ Themes: the document's theme (detected when importing), and another one from a file.
   themes: () => { const d = state.deck, ot = d.officeTheme, p = palettes.currentPalette(), ts = palettes.themeFontStacks(ot?.fonts);
     const fonts = d.fontPair === 'theme' && ot?.fonts ? `${ot.fonts.major || ot.fonts.minor} / ${ot.fonts.minor || ot.fonts.major}`
@@ -90,7 +93,7 @@ export const POPS = {
       + `<span class="pal-sw">${p.accents.map(c => `<i style="background:${esc(c)}"></i>`).join('')}</span>`
       + (fonts ? `<small>${esc(fonts)}</small>` : '') + `</div>`
       + `<p class="theme-hint">${t('Colores, fuentes, patrón y diseños de un PowerPoint (.pptx, .potx), de Google Slides (descargado como .pptx) o de LibreOffice (.odp)')}</p>`
-      + `<div class="theme-actions"><button type="button" class="mini2" data-theme-from>${t('Usar el tema de otra presentación…')}</button>`
+      + `<div class="theme-actions"><button type="button" class="fr-do" data-theme-custom><i class="ms">tune</i> ${t('Personalizar el tema…')}</button><button type="button" class="mini2" data-theme-from>${t('Usar el tema de otra presentación…')}</button>`
       + `<button type="button" class="mini2" data-theme-thmx>${t('Abrir un tema de Office (.thmx)…')}</button>`
       + `<button type="button" class="mini2" data-theme-save>${t('Guardar el tema (.thmx)')}</button></div>`; },
   paragraph: () => {
@@ -166,6 +169,7 @@ export function togglePopover(launcher, type, { replaceId = null } = {}) {
     x.addEventListener('click', () => { palettes.applyPalette(x.dataset.palette); closePopover(); }));
   pop.querySelector('[data-palette-theme]')?.addEventListener('click', () => { const c = officeTheme.themeColours(); if (c) palettes.applyPalette('custom', state.deck, c); closePopover(); });
   pop.querySelector('[data-fontpair-theme]')?.addEventListener('click', () => { palettes.applyThemeFonts(state.deck.officeTheme?.fonts); closePopover(); });
+  pop.querySelector('[data-theme-custom]')?.addEventListener('click', () => { closePopover(); openThemeEditor(); });
   pop.querySelector('[data-theme-from]')?.addEventListener('click', () => { closePopover(); readFile('.pptx,.potx,.pptm,.odp,.otp,.thmx', useThemeOf, 'file'); });
   pop.querySelector('[data-theme-thmx]')?.addEventListener('click', () => { closePopover(); readFile('.thmx', useThemeOf, 'file'); });
   pop.querySelector('[data-theme-save]')?.addEventListener('click', () => { closePopover(); saveTheme(); });

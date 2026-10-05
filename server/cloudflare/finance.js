@@ -41,7 +41,7 @@
 const DAY = 864e5;
 export const RAW_DAYS = 90;
 export const AI_FEATURES = ['assistant', 'complete', 'vision', 'alt-text', 'image', 'speech', '3d', 'ticket-suggest', 'rig-detect',
-  'create', 'improve', 'redesign', 'outline', 'rewrite', 'notes', 'translate', 'agenda', 'quiz', 'other'];
+  'create', 'improve', 'redesign', 'outline', 'rewrite', 'notes', 'translate', 'agenda', 'quiz', 'theme', 'other'];
 export const featureOf = f => (AI_FEATURES.includes(f) ? f : 'other');
 export const FIXED_CATS = ['infraestructura', 'software', 'dominio', 'legal', 'gestoría', 'marketing', 'hardware', 'impuestos', 'otros'];
 export const TIME_CATS = ['desarrollo', 'soporte', 'marketing', 'administración', 'diseño', 'contenido', 'otros'];

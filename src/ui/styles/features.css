@@ -606,6 +606,15 @@ body.file-drag::after{content:attr(data-drop-hint);position:fixed;left:50%;botto
 .bk-kit small{grid-column:1;color:var(--txt2)}.bk-kit .bk-acts{grid-row:2/span 2;grid-column:2;display:flex;gap:4px}
 .bk-cols{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-size:11px;color:var(--txt2);margin:6px 0}.bk-cols label{display:flex;flex-direction:column;gap:2px}
 .bk-cols input{width:100%;height:30px}
+/* The theme editor (ui/dialogs/theme.js): the AI's field, a preview and the fields side by side. */
+.th-ai{display:flex;gap:6px;margin:8px 0 4px}.th-ai input{flex:1;min-width:0}
+.th-why{font-size:12px;color:var(--txt2);margin:4px 0 0}
+.th-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:14px;margin-top:10px;align-items:start}
+.th-prev{aspect-ratio:16/9;border-radius:8px;border:1px solid var(--line);padding:7% 8%;box-sizing:border-box;display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.th-prev b{font-size:20px;line-height:1.15}.th-prev span{font-size:12px;line-height:1.35}
+.th-bars{flex:1;display:flex;align-items:flex-end;gap:5px;min-height:30px}.th-bars i{flex:1;border-radius:3px 3px 0 0}
+.th-warn{font-size:12px;color:var(--danger);margin:6px 0 0}
+@media (max-width:560px){.th-body{grid-template-columns:1fr}}
 .bk-logos{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}.bk-logos span{position:relative}.bk-logos img{height:40px;max-width:120px;object-fit:contain;border:1px solid var(--line2);border-radius:6px;padding:2px}
 .bk-logos button{position:absolute;top:-6px;right:-6px;border:0;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer}
 /* Resize dialog: each size with a little outline of its shape. */
@@ -949,3 +958,9 @@ body:not([data-edition="cloud"]):not([data-edition="desktop"]) .accounts-only{di
 @media (max-width:640px){.notice{flex-wrap:wrap}.notice-body{flex-basis:calc(100% - 60px)}}
 .an-clash{display:flex;gap:6px;align-items:flex-start;margin:0 0 8px;padding:6px 8px;border-radius:6px;background:color-mix(in srgb,#e0a100 14%,var(--panel));font-size:12px;color:var(--txt)}.an-clash .ms{font-size:16px;color:#b07c00}
 @media (max-width:860px){.drive-status span,.cloud-status span{display:none}}
+.pop-more{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;margin-top:8px}
+.as-theme{display:flex;flex-direction:column;gap:6px;margin:4px 0 8px;align-self:flex-start;width:min(100%,280px)}
+.as-theme-sw{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:5px}
+.as-theme-sw b{font-size:16px}.as-theme-sw span{display:flex;gap:4px}.as-theme-sw i{width:18px;height:18px;border-radius:50%;border:1px solid #0002}.as-theme-sw small{font-size:11px;opacity:.85}
+.as-theme .fr-do{display:flex;align-items:center;justify-content:center;gap:4px}
+.th-ed .fr-actions{justify-content:flex-end;row-gap:8px}

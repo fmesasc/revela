@@ -20,6 +20,8 @@ import { transcribeImage, codeOf } from './vision.js';
 import { STYLES, fitBody } from './fromspec.js';
 import { prepareSpec, splitSpec, specFromText } from './specs.js';
 import { richHTML } from './richtext.js';
+import { THEME_DOC } from './themeai.js';
+import { cleanTheme, themeOf } from '../design/theme.js';
 import { PALETTES, FONT_PAIRS, swapPalette, swapFontPair, currentPalette, deckFg, deckBodyFont } from '../design/palettes.js';
 import { designIdeas, applyIdeaTo } from '../design/designer.js';
 import { EFFECT_KF } from '../animation/transitions.js';
@@ -154,9 +156,7 @@ export const OPS_DOC = () => `Operations ("slide" numbers are 1-based and refer 
 {"op":"move_slide","slide":N,"to":M}
 {"op":"set_notes","slide":N,"notes":"…"}
 {"op":"set_hidden","slide":N,"hidden":true|false}
-{"op":"set_background","slide":N|"all","color":"#rrggbb"}
-{"op":"apply_palette","name":"${Object.keys(PALETTES).join('"|"')}"}   (colours of the whole deck)
-{"op":"set_fonts","pair":"${Object.keys(FONT_PAIRS).join('"|"')}"}   (fonts of the whole deck)`;
+{"op":"set_background","slide":N|"all","color":"#rrggbb"}`;
 
 // Value checkers: the value, or BAD.
 const BAD = Symbol('bad');
@@ -638,7 +638,7 @@ export function checkOps(ops, deck = state.deck) {
 }
 
 // ---- The agent loop -----------------------------------------------------------------
-const PERM_TEXT = { delete: 'delete slides', design: 'change layout, positions, sizes, colours and fonts (set_props, set_layout, set_background, apply_palette, set_fonts)',
+const PERM_TEXT = { delete: 'delete slides', design: 'change layout, positions, sizes, colours and fonts of objects (set_props, set_layout, set_background)',
   objects: 'add or remove objects (add_object, delete_object, replace_slide)', animation: 'change animations and transitions (set_animation, set_transition)' };
 // The style the user picked for new slides, as told to the model (the slides are built in that style too: features/ai/fromspec.js).
 const STYLE_TEXT = {
@@ -661,6 +661,7 @@ Answer with ONE JSON object each time, either a tool call:
 {"thoughts":"…","tool":"read_code","args":{"slide":N,"id":"<a picture's id>"}}   → the code or formula visible in that picture (a screenshot), transcribed verbatim with its language; then use it with "from_image":"<id>"
 or the final answer, which ends your turn:
 {"message":"…","ops":[…],"done":true}
+The presentation's THEME — the colours or the fonts of the whole deck (a palette, «corporate colours», «warmer», «another font everywhere») — is not changed with ops (never recolour or refont every object for it): add "theme" to the final answer, {"message":"…","ops":[],"theme":{…},"done":true}, and say in "message" that it opens in the theme editor to review and apply. ${THEME_DOC()}
 You have at most ${maxSteps} answers in all. When you move, resize or add objects, or change text sizes, use "check" first and fix what it reports. A question gets an answer in "message" and no ops. Never invent facts or figures. Keep the deck's style (its colours and fonts) unless asked.
 ${STYLE_TEXT[style] || STYLE_TEXT.same}
 ${CODE_TEXT}
@@ -679,7 +680,7 @@ const outOf = r => {
   const ops = pick(r, OPS_KEYS), message = pick(r, MSG_KEYS);
   const t = r.tool || r.name || (r.done || Array.isArray(ops) || message != null ? 'propose' : null);
   const args = r.args || r.arguments || r.parameters || (r.tool || r.name ? Object.fromEntries(Object.entries(r).filter(([k]) => !['tool', 'name', 'thoughts'].includes(k))) : {});
-  return { tool: t, args: t === 'propose' && !r.tool && !r.name ? { message, ops: Array.isArray(ops) ? ops : [] } : { ...args, ops: pick(args, OPS_KEYS) ?? args.ops, message: pick(args, MSG_KEYS) ?? args.message } };
+  return { tool: t, args: t === 'propose' && !r.tool && !r.name ? { message, ops: Array.isArray(ops) ? ops : [], theme: r.theme } : { ...args, ops: pick(args, OPS_KEYS) ?? args.ops, message: pick(args, MSG_KEYS) ?? args.message } };
 };
 // The model the agent works best with (tool use, long JSON), if the person didn't choose one.
 export const AGENT_MODEL = 'google/gemini-2.5-flash';
@@ -726,7 +727,7 @@ export async function runAgent(request, { history = [], scope = { kind: 'all' },
       const ops = Array.isArray(args.ops) ? args.ops : [], message = args.message ?? '';
       // (Nothing at all — no changes and no words — is a misunderstood format: once, ask again.)
       if (!ops.length && !String(message).trim() && !asked && !last) { asked = true; msgs.push({ role: 'user', content: 'Your answer had neither "ops" nor "message". Answer with ONE JSON object: a tool call, or {"message":"…","ops":[…],"done":true}.' }); continue; }
-      final = { message, ops }; break;
+      final = { message, ops, theme: args.theme }; break;
     }
     if (last) { final = { message: res.thoughts || res.message || '', ops: lastChecked || [] }; break; }
     let result;
@@ -756,8 +757,23 @@ export async function runAgent(request, { history = [], scope = { kind: 'all' },
     } else result = { error: `unknown tool "${tool}"` };
     msgs.push({ role: 'user', content: `Result of ${tool}:\n${JSON.stringify(result).slice(0, 30000)}` });
   }
-  const v = validateOps(final.ops, ctx);
-  return { message: String(final.message ?? ''), ops: v.ops, dropped: v.dropped, problems: checkOps(v.ops, deck), cost, steps, raw: Array.isArray(final.ops) ? final.ops : [] };
+  const { ops: rest, theme } = themeProposal(final, deck);
+  const v = validateOps(rest, ctx);
+  return { message: String(final.message ?? ''), ops: v.ops, dropped: v.dropped, problems: checkOps(v.ops, deck), cost, steps, raw: Array.isArray(final.ops) ? final.ops : [], theme };
+}
+
+// The theme the answer proposes (its "theme", or the deck-wide apply_palette / set_fonts a model may
+// still give, taken as one): only proposed — the theme editor shows it — never among the ops.
+// → { ops (the rest), theme (or null) }
+export function themeProposal(final, deck = state.deck) {
+  const raw = Array.isArray(final?.ops) ? final.ops : [], isTheme = o => o && (o.op === 'apply_palette' || o.op === 'set_fonts');
+  let th = final?.theme && typeof final.theme === 'object' ? { ...final.theme } : null;
+  for (const o of raw.filter(isTheme)) {
+    const p = o.op === 'apply_palette' && PALETTES[o.name], f = o.op === 'set_fonts' && FONT_PAIRS[o.pair];
+    if (p) th = { name: p.name, bg: p.bg, fg: p.fg, accents: p.accents, ...th };
+    if (f) th = { heading: f.heading, body: f.body, ...th };
+  }
+  return { ops: raw.filter(o => !isTheme(o)), theme: th ? cleanTheme(th, themeOf(deck)) : null };
 }
 
 // The code in a picture, read once and kept on it (b.aiCode, on the deck's block without an

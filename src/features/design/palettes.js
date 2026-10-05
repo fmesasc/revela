@@ -171,14 +171,18 @@ function styleFonts(deck, st) {
 }
 // Two fonts of the catalogue by name (a brand kit's): headings and body text.
 export function applyFonts(heading, body, deck = state.deck) {
-  const h = stackOf(heading), b0 = stackOf(body); if (!h && !b0) return;
+  if (!stackOf(heading) && !stackOf(body)) return;
+  commit(() => swapFonts(heading, body, deck));
+}
+// The same change, without recording it (inside another commit: features/design/theme.js).
+export function swapFonts(heading, body, deck) {
+  const h = stackOf(heading), b0 = stackOf(body); if (!h && !b0) return false;
   const st = { heading: h || stackOf(body), body: b0 || h };
   ensureFont(st.heading); ensureFont(st.body);
-  commit(() => {
-    for (const s of deck.slides) for (const b of s.blocks)
-      if (b.type === 'text' && !b.wordart) b.fontFamily = isHeading(b) ? st.heading : st.body;
-    delete deck.fontPair; deck.bodyFont = st.body; styleFonts(deck, st);
-  });
+  for (const s of deck.slides) for (const b of s.blocks)
+    if (b.type === 'text' && !b.wordart) b.fontFamily = isHeading(b) ? st.heading : st.body;
+  delete deck.fontPair; deck.bodyFont = st.body; styleFonts(deck, st);
+  return true;
 }
 // An imported theme's fonts (Office names: { name, major, minor }) as CSS stacks.
 export function themeFontStacks(fonts) {

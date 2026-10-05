@@ -36,7 +36,9 @@ standard, self-contained web page.
   phones), undo/redo, alignment guides and smart spacing, grouping, locking,
   selection pane (hide, rename, reorder), format painter for any object,
   reading order.
-- **Design:** theme colours and fonts, brand kit (colours, fonts and logos),
+- **Design:** theme colours and fonts, theme editor (background, text, six
+  accents and two fonts, with a preview; the AI suggests one from a description
+  and nothing changes until you apply it), brand kit (colours, fonts and logos),
   resize with the content rearranged (A4, square, 9:16…), slide master,
   placeholders, template gallery and design ideas.
 - **Objects:** gradient or sketched shapes, links on any object, straight,

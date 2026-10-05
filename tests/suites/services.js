@@ -464,6 +464,55 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.fetch = real; R.ai.disconnectAi(); }
   });
 
+  await test('tema: el asistente lo propone sin aplicarlo y el editor del tema lo aplica en un paso; su IA solo rellena', async () => {
+    reset(); const W = frame.contentWindow, real = W.fetch, calls = [], AG = R.aiAgent, D = W.document;
+    const TH = await W.eval("import('/src/features/design/theme.js')"), P = await W.eval("import('/src/features/design/palettes.js')"), E = await W.eval("import('/src/ui/dialogs/theme.js')");
+    R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    const t1 = slide().blocks[0].id, json0 = () => JSON.stringify(R.state.deck), start = json0(), bg0 = P.currentPalette().bg;
+    try {
+      // The assistant: a theme in its answer is a proposal, never an operation.
+      W.fetch = agentMock(W, [{ message: 'Te propongo un tema marino', ops: [], done: true,
+        theme: { name: 'Marino', bg: '#0B1D3A', fg: '#ffffff', accents: ['#d4a017', '#4fa3d1', 'rojo', '#12'], heading: 'montserrat', body: 'Comic Neue' } }], calls);
+      let res = await AG.runAgent('Pon colores marinos y dorados', { perms: ALL });
+      eq(res.ops.length, 0, 'ninguna operación'); eq(json0(), start, 'nada cambia');
+      eq(res.theme.bg, '#0b1d3a', 'colores válidos'); eq(res.theme.accents.length, 6, 'seis acentos');
+      eq(res.theme.accents[2], P.currentPalette().accents[2].toLowerCase(), 'lo que no vale se queda como estaba');
+      eq(res.theme.heading, 'Montserrat', 'fuente del catálogo'); assert(res.theme.body !== 'Comic Neue', 'una que no está, no');
+      assert(/theme editor/.test(calls[0].messages[0].content) && !/apply_palette/.test(calls[0].messages[0].content), 'se le explica el tema; ya no las operaciones de paleta');
+      // A model that still gives apply_palette / set_fonts: taken as the proposal, out of the ops.
+      W.fetch = agentMock(W, [{ message: 'Hecho', ops: [{ op: 'apply_palette', name: 'ocean' }, { op: 'set_fonts', pair: 'classic' }, { op: 'set_notes', slide: 1, notes: 'n' }], done: true }], calls);
+      res = await AG.runAgent('Cambia la paleta', { perms: ALL });
+      eq(res.ops.map(o => o.op).join(), 'set_notes', 'solo lo demás'); eq(res.theme.bg, P.PALETTES.ocean.bg.toLowerCase(), 'la paleta, como propuesta');
+      eq(res.theme.heading, P.FONT_PAIRS.classic.heading, 'y sus fuentes');
+      // The theme editor, from Design ▸ Themes, opened with the proposal.
+      D.querySelector('[data-themes-open]').click(); await sleep(20);
+      D.querySelector('[data-theme-custom]').click(); await sleep(20);
+      let m = D.getElementById('theme-modal'); assert(m, 'Diseño ▸ Temas ▸ Personalizar el tema');
+      assert(m.querySelector('.th-apply').disabled, 'sin cambios, no hay nada que aplicar');
+      E.openThemeEditor({ name: 'Marino', bg: '#0b1d3a', fg: '#ffffff', accents: ['#d4a017'], heading: 'Montserrat', body: 'Lato' }); await sleep(20);
+      m = D.getElementById('theme-modal'); eq(m.querySelector('.th-cols input').value, '#0b1d3a', 'la propuesta, en el formulario');
+      eq(json0(), start, 'abrirlo no cambia nada');
+      R.blocks.addShape('rect'); const sh = last(); await sleep(10); const acc0 = P.currentPalette().accents[0].toLowerCase();
+      eq(sh.fill.toLowerCase(), acc0, '(la forma usa el acento 1)');
+      m.querySelector('.th-apply').click(); await sleep(30);
+      assert(!D.getElementById('theme-modal'), 'se cierra');
+      eq(P.currentPalette().bg, '#0b1d3a', 'fondo'); eq(slide().blocks.find(b => b.id === sh.id).fill, '#d4a017', 'lo que usaba el tema toma el nuevo acento');
+      assert(/Montserrat/.test(slide().blocks.find(b => b.id === t1).fontFamily || '') && /Lato/.test(R.state.deck.bodyFont), 'las fuentes');
+      R.store.undo(); await sleep(10);
+      eq(P.currentPalette().bg.toLowerCase(), bg0.toLowerCase(), 'colores y fuentes: un solo paso de deshacer'); eq(slide().blocks.find(b => b.id === sh.id).fill.toLowerCase(), acc0, 'la forma, como antes');
+      // Its AI fills the form (unreadable text corrected), and nothing is applied.
+      W.fetch = agentMock(W, [{ name: 'Otoño', bg: '#f4e9d8', fg: '#f4e9d8', accents: ['#b5542a', '#7a8b3c', '#d9a441', '#5b3a29', '#a33b20', '#c98b5a'], heading: 'Playfair Display', body: 'Lato', why: 'Tonos cálidos' }], calls);
+      E.openThemeEditor(); await sleep(20); m = D.getElementById('theme-modal'); const before = json0();
+      m.querySelector('.th-ask').value = 'otoñal'; m.querySelector('.th-go').click();
+      for (let i = 0; i < 50 && m.querySelector('.th-cols input').value !== '#f4e9d8'; i++) await sleep(20);
+      eq(m.querySelector('.th-cols input').value, '#f4e9d8', 'la propuesta en el formulario'); eq(m.querySelector('.th-fh').value, 'Playfair Display', 'con sus fuentes');
+      assert(TH.contrast(m.querySelectorAll('.th-cols input')[1].value, '#f4e9d8') >= 4.5, 'texto ilegible corregido');
+      eq(m.querySelector('.th-why').textContent, 'Tonos cálidos', 'dice qué eligió'); eq(calls.at(-1).messages.length, 2, 'una sola llamada');
+      eq(json0(), before, 'nada aplicado todavía');
+      m.querySelector('.th-cancel').click(); eq(json0(), before, 'cancelar no cambia nada');
+    } finally { W.fetch = real; R.ai.disconnectAi(); D.getElementById('theme-modal')?.remove(); }
+  });
+
   // A screenshot with a DAX measure and an equation on slide 1 (the owner's case: code asked for, formula kept).
   const DAX = 'Generacion_Año_Anterior =\nVAR AnioActual = MAX(owid_energy[year])\nRETURN\n    CALCULATE(SUM(owid_energy[Generacion_TWh]), owid_energy[year] = AnioActual - 1)';
   const LATEX = '\\text{Contribución al Total} = \\frac{\\text{Generación por Fuente}}{\\text{Generación Total}} \\times 100\\%';
