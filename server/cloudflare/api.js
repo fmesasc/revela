@@ -819,11 +819,13 @@ export async function handleApi(req, env, url) {
     case '/me': {
       // (billing: payments set up for this account's mode; billingTest: it pays in Stripe's test mode — the app says so.)
       const r = await call(A, 'me'), mode = billingMode(env, r.billingTest), billing = stripeConf(env, mode).ok;
+      // (portal: there is something paid in this mode to manage — «Gestionar la suscripción».)
+      const cu = await call(A, 'customer'), portal = billing && !!(mode === 'test' ? cu.customerTest : cu.customer);
       // (Pro's free trial on offer: for the Pro buttons — «Prueba Pro 7 días gratis».)
       const trialDays = billing && r.plan !== 'pro' ? await trialOffer(env, A, mode) : 0;
       // (A renewed session: its cookie lasts as long again — the app asks /me when it opens.)
       const renew = me.renewed && me.via === 'cookie' ? { 'Set-Cookie': `${COOKIE}=${me.raw}; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=${me.renewed * 86400}` } : {};
-      return json({ ...r, billing, billingTest: mode === 'test', trialDays, photos: photoProviders(env), model3d: configured3d(env) && !!env.MODELJOBS }, 200, renew);
+      return json({ ...r, billing, billingTest: mode === 'test', portal, trialDays, photos: photoProviders(env), model3d: configured3d(env) && !!env.MODELJOBS }, 200, renew);
     }
     case '/mail/test': {                                  // «Send me a test email» (only to the account's own address)
       if (req.method !== 'POST') return json({ error: 'method' }, 405);
@@ -1101,7 +1103,9 @@ async function checkout(env, s, me, A, body, json) {
 async function portal(env, s, A, json) {
   const c = await call(A, 'customer'), mode = billingMode(env, c.billingTest), conf = stripeConf(env, mode), customer = mode === 'test' ? c.customerTest : c.customer;
   if (mode === 'test' && !conf.ok) return json({ error: 'billing test not configured' }, 503);
-  if (!conf.key || !customer) return json({ error: 'billing not available' }, 503);
+  if (!conf.key) return json({ error: 'billing not available' }, 503);
+  // (Nothing paid in this mode — a Pro from test mode, a gift or a team —: no Stripe customer to manage.)
+  if (!customer) return json({ error: 'no customer' }, 404);
   const d = await (await stripe(env, conf.key, 'billing_portal/sessions', { customer, return_url: `${s.site}/app/` })).json().catch(() => ({}));
   return d.url ? json({ url: d.url }) : json({ error: 'billing failed' }, 502);
 }

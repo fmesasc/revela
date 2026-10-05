@@ -962,5 +962,7 @@ body:not([data-edition="cloud"]):not([data-edition="desktop"]) .accounts-only{di
 .as-theme{display:flex;flex-direction:column;gap:6px;margin:4px 0 8px;align-self:flex-start;width:min(100%,280px)}
 .as-theme-sw{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:5px}
 .as-theme-sw b{font-size:16px}.as-theme-sw span{display:flex;gap:4px}.as-theme-sw i{width:18px;height:18px;border-radius:50%;border:1px solid #0002}.as-theme-sw small{font-size:11px;opacity:.85}
-.as-theme .fr-do{display:flex;align-items:center;justify-content:center;gap:4px}
+.as-theme .fr-do{display:flex;align-items:center;justify-content:center;gap:4px;background:var(--accent);color:var(--on-accent);border:none;border-radius:8px;padding:7px 12px;cursor:pointer;font:inherit;font-size:12px}
 .th-ed .fr-actions{justify-content:flex-end;row-gap:8px}
+.as-choices{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 8px;align-self:flex-start}.as-choices .mini2{white-space:normal;text-align:start}
+.theme-actions .fr-do{display:flex;align-items:center;gap:6px;background:var(--accent);color:var(--on-accent);border:none;border-radius:8px;padding:8px 10px;cursor:pointer;font:inherit;font-size:13px}.theme-actions .fr-do .ms{font-size:18px}

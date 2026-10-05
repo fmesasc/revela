@@ -662,6 +662,7 @@ Answer with ONE JSON object each time, either a tool call:
 or the final answer, which ends your turn:
 {"message":"…","ops":[…],"done":true}
 The presentation's THEME — the colours or the fonts of the whole deck (a palette, «corporate colours», «warmer», «another font everywhere») — is not changed with ops (never recolour or refont every object for it): add "theme" to the final answer, {"message":"…","ops":[],"theme":{…},"done":true}, and say in "message" that it opens in the theme editor to review and apply. ${THEME_DOC()}
+When the request is unclear or needs something only the user knows (their brand's colours, which slides, the tone, the audience), ASK instead of guessing: {"message":"<your question>","ops":[],"ask":["option","option"],"done":true} — 2 to 5 short answers they can click (they may also answer in their own words). Ask only what you need, once; if it is clear enough, just do it.
 You have at most ${maxSteps} answers in all. When you move, resize or add objects, or change text sizes, use "check" first and fix what it reports. A question gets an answer in "message" and no ops. Never invent facts or figures. Keep the deck's style (its colours and fonts) unless asked.
 ${STYLE_TEXT[style] || STYLE_TEXT.same}
 ${CODE_TEXT}
@@ -680,7 +681,7 @@ const outOf = r => {
   const ops = pick(r, OPS_KEYS), message = pick(r, MSG_KEYS);
   const t = r.tool || r.name || (r.done || Array.isArray(ops) || message != null ? 'propose' : null);
   const args = r.args || r.arguments || r.parameters || (r.tool || r.name ? Object.fromEntries(Object.entries(r).filter(([k]) => !['tool', 'name', 'thoughts'].includes(k))) : {});
-  return { tool: t, args: t === 'propose' && !r.tool && !r.name ? { message, ops: Array.isArray(ops) ? ops : [], theme: r.theme } : { ...args, ops: pick(args, OPS_KEYS) ?? args.ops, message: pick(args, MSG_KEYS) ?? args.message } };
+  return { tool: t, args: t === 'propose' && !r.tool && !r.name ? { message, ops: Array.isArray(ops) ? ops : [], theme: r.theme, ask: r.ask } : { ...args, ops: pick(args, OPS_KEYS) ?? args.ops, message: pick(args, MSG_KEYS) ?? args.message } };
 };
 // The model the agent works best with (tool use, long JSON), if the person didn't choose one.
 export const AGENT_MODEL = 'google/gemini-2.5-flash';
@@ -727,7 +728,7 @@ export async function runAgent(request, { history = [], scope = { kind: 'all' },
       const ops = Array.isArray(args.ops) ? args.ops : [], message = args.message ?? '';
       // (Nothing at all — no changes and no words — is a misunderstood format: once, ask again.)
       if (!ops.length && !String(message).trim() && !asked && !last) { asked = true; msgs.push({ role: 'user', content: 'Your answer had neither "ops" nor "message". Answer with ONE JSON object: a tool call, or {"message":"…","ops":[…],"done":true}.' }); continue; }
-      final = { message, ops, theme: args.theme }; break;
+      final = { message, ops, theme: args.theme, ask: args.ask }; break;
     }
     if (last) { final = { message: res.thoughts || res.message || '', ops: lastChecked || [] }; break; }
     let result;
@@ -759,7 +760,14 @@ export async function runAgent(request, { history = [], scope = { kind: 'all' },
   }
   const { ops: rest, theme } = themeProposal(final, deck);
   const v = validateOps(rest, ctx);
-  return { message: String(final.message ?? ''), ops: v.ops, dropped: v.dropped, problems: checkOps(v.ops, deck), cost, steps, raw: Array.isArray(final.ops) ? final.ops : [], theme };
+  return { message: String(final.message ?? ''), ops: v.ops, dropped: v.dropped, problems: checkOps(v.ops, deck), cost, steps, raw: Array.isArray(final.ops) ? final.ops : [], theme, ask: askOptions(final.ask) };
+}
+
+// The answers the assistant offers to its question (a list, or { options }): 2–5 short, distinct texts, or null.
+export function askOptions(a) {
+  const list = Array.isArray(a) ? a : Array.isArray(a?.options) ? a.options : [];
+  const out = [...new Set(list.filter(x => typeof x === 'string' || typeof x === 'number').map(x => String(x).replace(/\s+/g, ' ').trim().slice(0, 80)).filter(Boolean))].slice(0, 5);
+  return out.length >= 2 ? out : null;
 }
 
 // The theme the answer proposes (its "theme", or the deck-wide apply_palette / set_fonts a model may

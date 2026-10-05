@@ -679,6 +679,40 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     }
   });
 
+  await test('asistente: si no está claro, pregunta con respuestas para pulsar (y la tarjeta del tema)', async () => {
+    reset();
+    const W = frame.contentWindow, real = W.fetch, calls = [], P = await W.eval("import('/src/ui/dialogs/assistant.js')"), AG = R.aiAgent;
+    P.resetAssistant(); W.localStorage.removeItem('revela.assistant.v1');
+    R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    eq(AG.askOptions(['A', ' A ', 'B', '', 7]).join(), 'A,B,7', 'respuestas limpias y sin repetir'); eq(AG.askOptions(['Solo una']), null, 'una sola no es elegir');
+    eq(AG.askOptions({ options: ['x', 'y'] }).join(), 'x,y', 'también como { options }');
+    W.fetch = agentMock(W, [{ message: '¿Cuáles son los colores de tu marca?', ops: [], ask: ['Azul y blanco', 'Verde y gris', 'Te los digo yo'], done: true },
+      { message: 'Te propongo este tema', ops: [], theme: { bg: '#ffffff', fg: '#10233f', accents: ['#1f5fbf'] }, done: true }], calls);
+    const panelOf = () => D.getElementById('assistant-panel'), json0 = JSON.stringify(R.state.deck);
+    const wait = async () => { await sleep(30); for (let i = 0; i < 100 && P.assistantState().busy; i++) await sleep(20); await sleep(20); };
+    try {
+      D.querySelector('[data-action="ai-assistant"]').click(); await sleep(20);
+      await AG.runAgent('x', { perms: ALL }); assert(/ASK instead of guessing/.test(calls[0].messages[0].content), 'se le dice que pregunte');
+      calls.length = 0; W.fetch = agentMock(W, [{ message: '¿Cuáles son los colores de tu marca?', ops: [], ask: ['Azul y blanco', 'Verde y gris', 'Te los digo yo'], done: true },
+        { message: 'Te propongo este tema', ops: [], theme: { bg: '#ffffff', fg: '#10233f', accents: ['#1f5fbf'] }, done: true }], calls);
+      panelOf().querySelector('textarea').value = 'Pon los colores de mi marca'; panelOf().querySelector('.as-send').click(); await wait();
+      const ch = panelOf().querySelectorAll('.as-choices button');
+      eq([...ch].map(b => b.textContent).join('|'), 'Azul y blanco|Verde y gris|Te los digo yo', 'las respuestas, para pulsar');
+      eq(JSON.stringify(R.state.deck), json0, 'preguntar no cambia nada');
+      ch[0].click(); await wait();
+      eq(calls.at(-1).messages.at(-1).content.split('Request: ').at(-1), 'Azul y blanco', 'la respuesta pulsada es el siguiente mensaje');
+      assert(calls.at(-1).messages.some(m => m.role === 'assistant' && /colores de tu marca/.test(m.content)), 'con la pregunta en la conversación');
+      eq(panelOf().querySelectorAll('.as-choices').length, 0, 'contestada, las respuestas se van');
+      const card = panelOf().querySelector('.as-theme'); assert(card, 'la tarjeta del tema');
+      eq(JSON.stringify(R.state.deck), json0, 'la tarjeta no aplica nada');
+      card.querySelector('button').click(); await sleep(20);
+      eq(D.querySelector('#theme-modal .th-cols input').value, '#ffffff', 'abre el editor del tema con la propuesta');
+    } finally {
+      W.fetch = real; R.ai.disconnectAi(); D.getElementById('theme-modal')?.remove(); W.localStorage.removeItem('revela.assistant.v1'); P.resetAssistant();
+      if (panelOf()) D.querySelector('[data-action="ai-assistant"]').click();
+    }
+  });
+
   await test('asistente (panel): propone con miniaturas, aplica solo lo marcado, descarta, detiene y aplica sin preguntar', async () => {
     reset(); R.slides.addSlide(); R.slides.goToSlide(0);
     const W = frame.contentWindow, real = W.fetch, calls = [], P = await W.eval("import('/src/ui/dialogs/assistant.js')");

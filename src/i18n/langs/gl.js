@@ -1,6 +1,8 @@
 // Galician interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Esta cuenta no tiene ninguna suscripción de pago que gestionar: su Pro viene del modo de prueba, de un regalo o de un equipo.": "Esta conta non ten ningunha subscrición de pago que xestionar: o seu Pro vén do modo de proba, dun agasallo ou dun equipo.",
+  "Los pagos no están disponibles ahora mismo. Inténtalo más tarde.": "Os pagamentos non están dispoñibles agora mesmo. Téntao máis tarde.",
   "Tema de la presentación": "Tema da presentación",
   "Los colores y las fuentes de todas las diapositivas, en un solo sitio. Nada cambia hasta que pulses «Aplicar»; se deshace con Ctrl+Z.": "As cores e as fontes de todas as diapositivas, nun só sitio. Nada cambia ata que premas «Aplicar»; desfaise con Ctrl+Z.",
   "Descríbelo y la IA te lo propone: «sobrio, azul marino y dorado»…": "Descríbeo e a IA proponcho: «sobrio, azul mariño e dourado»…",

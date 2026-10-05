@@ -11,7 +11,9 @@ import { openTeam } from './team.js';
 import { openReport } from './report.js';
 
 const FEATURE_NAMES = { ai: 'IA incluida', 'share-people': 'Compartir con personas', 'cloud-save': 'Guardado en la nube', 'video-calls': 'Videollamadas en el editor', 'premium-templates': 'Plantillas premium' };
-const errorText = e => (e.message === 'CANCELLED' || e.message === 'TERMS' ? t('No se ha iniciado sesión.') : e.message === 'EXPIRED' ? t('Se acabó el tiempo para confirmar. Vuelve a intentarlo.') : `${t('Algo ha fallado:')} ${e.message}`);
+const errorText = e => (e.data?.error === 'no customer' ? t('Esta cuenta no tiene ninguna suscripción de pago que gestionar: su Pro viene del modo de prueba, de un regalo o de un equipo.')
+  : /^billing (not available|failed)$/.test(e.message) ? t('Los pagos no están disponibles ahora mismo. Inténtalo más tarde.')
+  : e.message === 'CANCELLED' || e.message === 'TERMS' ? t('No se ha iniciado sesión.') : e.message === 'EXPIRED' ? t('Se acabó el tiempo para confirmar. Vuelve a intentarlo.') : `${t('Algo ha fallado:')} ${e.message}`);
 
 // ---- The terms of service: accepted (and being 14 or older confirmed) before the first sign-in ----
 const termsText = () => t('Al continuar aceptas las {terms} y la {privacy}, y confirmas que tienes 14 años o más.')
@@ -104,7 +106,7 @@ export function openAccount({ buy } = {}) {
       ${me.billing ? '' : `<p class="host-help" style="font-size:12px">${t('Los pagos estarán disponibles muy pronto.')}</p>`}
       ${trialDays ? `<p class="host-help acc-trial" style="font-size:12px">${t('Se pide una tarjeta, pero no se cobra nada hasta que acabe la prueba. Puedes cancelarla antes en «Gestionar la suscripción».')}</p>` : ''}
       <div class="fr-actions" style="justify-content:space-between">
-        ${pro ? `<button type="button" class="mini2 acc-portal">${t('Gestionar la suscripción')}</button>` : '<span></span>'}
+        ${pro && me.portal !== false ? `<button type="button" class="mini2 acc-portal">${t('Gestionar la suscripción')}</button>` : '<span></span>'}
         <button type="button" class="mini2 acc-out">${t('Cerrar sesión')}</button></div>
       <div class="fr-actions" style="justify-content:flex-start;flex-wrap:wrap"><button type="button" class="mini2 acc-team"><i class="ms">groups</i> ${me.team ? esc(me.team.name) : t('Equipos y centros')}</button>
         <button type="button" class="mini2 acc-report"><i class="ms">bug_report</i> ${t('Informar de un problema')}</button></div>

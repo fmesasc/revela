@@ -1165,6 +1165,10 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
         'stripeConf: claves, secreto del webhook y precios de cada modo: ' + JSON.stringify(c)); }
     ok(billingMode({}, false) === 'live' && billingMode({}, true) === 'test' && billingMode({ STRIPE_MODE: 'test' }, false) === 'test' && billingMode({ STRIPE_MODE: 'live' }, false) === 'live', 'modo: la marca de la cuenta o STRIPE_MODE=test; por defecto, real');
     me = await meOf(tess); ok(me.billingTest === false && me.billing === true, '/api/me: sin marca, pagos reales: ' + JSON.stringify([me.billingTest, me.billing]));
+    // Nothing paid yet (or a Pro from test mode, a gift): no «manage the subscription», and the portal says why.
+    ok(me.portal === false, '/api/me: sin cliente de Stripe, sin portal: ' + me.portal);
+    r = await req('POST', '/api/billing/portal', { headers: { Cookie: tess } });
+    ok(r.status === 404 && (await r.json()).error === 'no customer', 'portal sin nada pagado: 404 «no customer» (antes «billing not available»)');
 
     // The admin marks the account (audited); without the test configuration: a clear 503.
     ok((await A('POST', '/billing-test', { body: { sub: '1515', on: true } })).status === 400 && (await A('POST', '/billing-test', { body: { sub: '1515', on: 'sí', reason: 'x' } })).status === 400, 'modo de prueba: sin motivo o sin on → 400');
@@ -1195,6 +1199,7 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     { const e = TS().get('ledger').at(-1);
       ok(TS().get('credits') === c0 + 500 && e.reason === 'purchase' && e.test === true && e.delta === 500, 'compra de prueba: los créditos, marcados de prueba en el historial (una sola vez): ' + JSON.stringify(e));
       ok(TS().get('lots').some(l => l.test && l.n === 500) && TS().get('customerTest') === 'cus_test_tess' && !TS().get('customer'), 'lote de prueba aparte; cliente de Stripe de prueba guardado aparte'); }
+    me = await meOf(tess); ok(me.portal === true, '/api/me: con algo pagado en su modo (prueba), «Gestionar la suscripción»');
     const end = Math.floor(Date.now() / 1000) + 30 * 86400, start = end - 30 * 86400;
     await hookT({ id: 'evt_t2', type: 'invoice.paid', livemode: false, data: { object: { customer: 'cus_test_tess', currency: 'eur', amount_paid: 1210, tax: 210, billing_reason: 'subscription_create',
       parent: { subscription_details: { subscription: 'sub_t1', metadata: { sub: '1515' } } }, lines: { data: [{ period: { start, end }, price: { id: 'price_t_pm' } }] } } } });

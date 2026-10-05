@@ -1,6 +1,8 @@
 // Arabic interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Esta cuenta no tiene ninguna suscripción de pago que gestionar: su Pro viene del modo de prueba, de un regalo o de un equipo.": "لا يوجد في هذا الحساب اشتراك مدفوع لإدارته: اشتراك Pro فيه من وضع الاختبار أو هدية أو فريق.",
+  "Los pagos no están disponibles ahora mismo. Inténtalo más tarde.": "المدفوعات غير متاحة الآن. حاول لاحقًا.",
   "Tema de la presentación": "سمة العرض التقديمي",
   "Los colores y las fuentes de todas las diapositivas, en un solo sitio. Nada cambia hasta que pulses «Aplicar»; se deshace con Ctrl+Z.": "ألوان وخطوط جميع الشرائح في مكان واحد. لا يتغير شيء حتى تضغط «تطبيق»؛ ويمكن التراجع بـ Ctrl+Z.",
   "Descríbelo y la IA te lo propone: «sobrio, azul marino y dorado»…": "صِفها وسيقترح الذكاء الاصطناعي سمة: «رصينة، أزرق كحلي وذهبي»…",

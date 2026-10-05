@@ -1,6 +1,8 @@
 // Basque interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Esta cuenta no tiene ninguna suscripción de pago que gestionar: su Pro viene del modo de prueba, de un regalo o de un equipo.": "Kontu honek ez du kudeatzeko ordainpeko harpidetzarik: bere Pro proba-modutik, opari batetik edo talde batetik dator.",
+  "Los pagos no están disponibles ahora mismo. Inténtalo más tarde.": "Ordainketak ez daude erabilgarri une honetan. Saiatu geroago.",
   "Tema de la presentación": "Aurkezpenaren gaia",
   "Los colores y las fuentes de todas las diapositivas, en un solo sitio. Nada cambia hasta que pulses «Aplicar»; se deshace con Ctrl+Z.": "Diapositiba guztien koloreak eta letra-tipoak, leku bakarrean. Ez da ezer aldatzen «Aplikatu» sakatu arte; Ctrl+Z desegiten du.",
   "Descríbelo y la IA te lo propone: «sobrio, azul marino y dorado»…": "Deskribatu eta AAk proposatuko dizu: «soila, itsas urdina eta urrea»…",

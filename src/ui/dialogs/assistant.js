@@ -39,7 +39,7 @@ const CHAT_KEY = () => 'revela.chat.' + (state.deck.slides[0]?.id || 'none');
 let chatFor = null;
 function persistChat() {
   try {
-    const keep = chatLog.filter(m => !m.error && (m.content || m.shown)).slice(-60).map(({ role, content, shown, cost, theme }) => ({ role, content, shown, ...(cost && { cost }), ...(theme && { theme }) }));
+    const keep = chatLog.filter(m => !m.error && (m.content || m.shown)).slice(-60).map(({ role, content, shown, cost, theme, ask }) => ({ role, content, shown, ...(cost && { cost }), ...(theme && { theme }), ...(ask && { ask }) }));
     const json = JSON.stringify(keep);
     if (!keep.length) localStorage.removeItem(CHAT_KEY()); else if (json.length < 300000) localStorage.setItem(CHAT_KEY(), json);
   } catch {}
@@ -95,6 +95,8 @@ export function renderAssistant() {
   document.querySelector('main').appendChild(panel);
   const q = s => panel.querySelector(s), log = q('.as-log'), ta = q('textarea');
   for (const m of chatLog) { if (m.shown !== '') addMsg(log, m.role === 'user' ? 'me' : 'ai', m.shown ?? m.content, m); if (m.theme) put(log, themeCard(m.theme)); }
+  // (Its question's answers, while it is the last thing said.)
+  const lastMsg = chatLog.at(-1); if (lastMsg?.ask && !job) put(log, choicesRow(lastMsg.ask));
   if (pending) put(log, proposalCard(pending));
   if (completing) put(log, completeCard(completing));
   if (job) put(log, job.el);
@@ -181,6 +183,16 @@ function themeCard(proposed) {
   d.querySelector('button').addEventListener('click', () => openThemeEditor(th));
   return d;
 }
+// The answers to the assistant's question, to click (or the person writes their own): gone once answered.
+function choicesRow(options) {
+  const d = document.createElement('div'); d.className = 'as-choices';
+  for (const o of options) {
+    const b = Object.assign(document.createElement('button'), { type: 'button', className: 'mini2', textContent: o });
+    b.addEventListener('click', () => { const p = curPanel(); if (job || !p) return; d.remove(); ask(p, o); });
+    d.appendChild(b);
+  }
+  return d;
+}
 function failed(e, again) {
   const lg = curPanel()?.querySelector('.as-log');
   if (e.message === 'STOPPED') { const m = { role: 'assistant', content: t('Detenido.'), shown: t('Detenido.'), display: true }; chatLog.push(m); persistChat(); showCost(curPanel()); if (lg) addMsg(lg, 'ai', m.shown, m); return; }
@@ -260,6 +272,7 @@ async function ask(panel, text) {
   const request = revising && pending ? `About your last proposal: ${text}` : text;
   if (pending && !pending.done) settle('replaced');
   revising = false; curPanel()?.querySelector('textarea')?.setAttribute('placeholder', t('Pide un cambio o haz una pregunta…'));
+  curPanel()?.querySelectorAll('.as-choices').forEach(x => x.remove());
   addMsg(lg0(), 'me', text);
   const me = { role: 'user', content: request, shown: text, display: true }; chatLog.push(me);
   startJob(t('Leyendo la presentación…'));
@@ -268,14 +281,15 @@ async function ask(panel, text) {
     const res = await agent.runAgent(request, { history: chatLog.filter(m => !m.error && m.content && m !== me).map(({ role, content }) => ({ role, content })), scope, perms: { ...opts.perms }, style: opts.style, signal: ctrl.signal,
       onStep: s => stepJob(STEP[s.kind]?.(s) || t('Pensando…')),
       onCost: c => { spent.credits = before.credits + c.credits; spent.usd = before.usd + c.usd; showCost(curPanel()); } });
-    const reply = { role: 'assistant', content: JSON.stringify({ message: res.message, ops: res.raw, ...(res.theme && { theme: res.theme }) }).slice(0, 12000),
-      shown: res.message || (res.ops.length ? '' : t('Hecho.')), cost: res.cost, ...(res.theme && { theme: res.theme }) };
+    const reply = { role: 'assistant', content: JSON.stringify({ message: res.message, ops: res.raw, ...(res.theme && { theme: res.theme }), ...(res.ask && { ask: res.ask }) }).slice(0, 12000),
+      shown: res.message || (res.ops.length ? '' : t('Hecho.')), cost: res.cost, ...(res.theme && { theme: res.theme }), ...(res.ask && { ask: res.ask }) };
     chatLog.push(reply); persistChat(); showCost(curPanel());
     const lg = lg0();
     if (res.message || !res.ops.length) {
       reply.shown = res.message || (res.theme ? t('Te propongo este tema: ábrelo para revisarlo y aplicarlo.') : t('No hay cambios que proponer.')); lg && addMsg(lg, 'ai', reply.shown, reply);
     } else reply.shown = '';
     if (res.theme && lg) put(lg, themeCard(res.theme));
+    if (res.ask && lg) put(lg, choicesRow(res.ask));
     if (res.ops.length || res.dropped.length) showProposal(res);
   } catch (e) {
     chatLog.splice(chatLog.indexOf(me), 1);

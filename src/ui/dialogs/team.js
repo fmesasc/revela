@@ -13,6 +13,8 @@ import { openAccount } from './account.js';
 
 const errorText = e => (e.status === 402 && e.data?.error === 'no seats' ? t('No quedan puestos libres ({n}). Compra más puestos para invitar a más personas.').replace('{n}', e.data.seats)
   : e.status === 403 ? t('Solo la administración del equipo puede hacer esto.') : e.data?.error === 'last admin' ? t('El equipo necesita al menos una persona que lo administre.')
+  : e.data?.error === 'no customer' ? t('Esta cuenta no tiene ninguna suscripción de pago que gestionar: su Pro viene del modo de prueba, de un regalo o de un equipo.')
+  : /^billing (not available|failed)$/.test(e.message) ? t('Los pagos no están disponibles ahora mismo. Inténtalo más tarde.')
   : `${t('Algo ha fallado:')} ${e.message}`);
 
 export async function openTeam() {

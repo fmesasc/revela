@@ -1,6 +1,8 @@
 // Dutch interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Esta cuenta no tiene ninguna suscripción de pago que gestionar: su Pro viene del modo de prueba, de un regalo o de un equipo.": "Dit account heeft geen betaald abonnement om te beheren: de Pro komt uit de testmodus, een cadeau of een team.",
+  "Los pagos no están disponibles ahora mismo. Inténtalo más tarde.": "Betalingen zijn nu niet beschikbaar. Probeer het later opnieuw.",
   "Tema de la presentación": "Thema van de presentatie",
   "Los colores y las fuentes de todas las diapositivas, en un solo sitio. Nada cambia hasta que pulses «Aplicar»; se deshace con Ctrl+Z.": "De kleuren en lettertypen van alle dia’s op één plek. Er verandert niets tot je op ‘Toepassen’ drukt; Ctrl+Z maakt het ongedaan.",
   "Descríbelo y la IA te lo propone: «sobrio, azul marino y dorado»…": "Beschrijf het en de AI stelt er een voor: ‘sober, marineblauw en goud’…",
