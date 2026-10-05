@@ -1,6 +1,7 @@
 // Dutch interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Plantillas y presentaciones de ejemplo": "Sjablonen en voorbeeldpresentaties",
   "Ahora no": "Niet nu",
   "¿Guardar también tus presentaciones en Google Drive? Se guardan solas mientras trabajas y las abres desde cualquier dispositivo.": "Je presentaties ook in Google Drive bewaren? Ze slaan vanzelf op terwijl je werkt en openen op elk apparaat.",
   "PDF — se ve en Drive con todas sus diapositivas, tal cual": "PDF — Drive toont alle dia’s, precies zoals ze zijn",

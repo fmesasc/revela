@@ -22,23 +22,36 @@ export function openGallery() {
   const back = document.createElement('div');
   back.id = 'gallery-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(820px,94vw);max-width:94vw">
-    <button class="modal-close" aria-label="${t('Cerrar')}">✕</button><h3>${t('Nueva presentación')}</h3>
-    <div class="gal-notice"></div>
-    <div class="gal-start">
+    <button class="modal-close" aria-label="${t('Cerrar')}">✕</button><h3>${t('Nueva presentación')}</h3><div class="gal-body"></div></div>`;
+  const close = () => back.remove();
+  galleryInto(back.querySelector('.gal-body'), { close, scroller: back.querySelector('.modal') });
+  document.body.appendChild(back);
+  back.querySelector('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+}
+
+// The gallery's content inside `host` (the dialog above, or File ▸ New): the three ways to start (unless
+// paths: false), the example presentations — searchable, by group — and the blank themes. close(): what
+// choosing one closes; scroller: the element that scrolls (the covers are drawn as they come into view).
+export function galleryInto(host, { close = () => {}, scroller = null, paths = true } = {}) {
+  host.innerHTML = `<div class="gal-notice"></div>
+    ${paths ? `<div class="gal-start">
       <button type="button" class="gal-path" data-path="blank"><i class="ms">note_add</i><b>${t('En blanco')}</b><small>${t('Empezar de cero')}</small></button>
       <button type="button" class="gal-path ai" data-path="ai"><i class="ms">auto_awesome</i><b>${t('Crear con IA')}</b><small>${t('Desde un tema, documentos o fotos')}</small></button>
       <button type="button" class="gal-path" data-path="open"><i class="ms">folder_open</i><b>${t('Abrir un archivo')}</b><small>${t('PowerPoint, LibreOffice o Revela')}</small></button>
-    </div>
-    <h4>${t('Temas vacíos')}</h4><div class="gal-grid"></div></div>`;
-  const grid = back.querySelector('.gal-grid');
-  galleryNotice(back.querySelector('.gal-notice'));   // (Revela's own notice for here, if any: io/cloud/notices.js)
+    </div>` : ''}
+    <h4 class="gal-themes-h">${t('Temas vacíos')}</h4><div class="gal-grid"></div>`;
+  const grid = host.querySelector('.gal-grid');
+  galleryNotice(host.querySelector('.gal-notice'));   // (Revela's own notice for here, if any: io/cloud/notices.js)
   // Asked only when there is something to lose.
   const replaceWith = (deck, question) => (isBlankDeck(state.deck) ? Promise.resolve(true) : confirmDialog(question, { ok: t('Descartar la actual'), danger: true }))
-    .then(ok => { if (ok) { replaceDeck(deck); back.remove(); } });
-  // The three ways to start, first: blank, made by the AI, or a file one already has.
-  back.querySelector('[data-path="blank"]').addEventListener('click', () => replaceWith(emptyDeck(), t('¿Nueva presentación? Se perderá la actual si no la has guardado.')));
-  back.querySelector('[data-path="ai"]').addEventListener('click', () => { back.remove(); openCreateDeck(); });
-  back.querySelector('[data-path="open"]').addEventListener('click', () => { back.remove(); openAnyPresentation(); });
+    .then(ok => { if (ok) { replaceDeck(deck); close(); } });
+  if (paths) {
+    // The three ways to start, first: blank, made by the AI, or a file one already has.
+    host.querySelector('[data-path="blank"]').addEventListener('click', () => replaceWith(emptyDeck(), t('¿Nueva presentación? Se perderá la actual si no la has guardado.')));
+    host.querySelector('[data-path="ai"]').addEventListener('click', () => { close(); openCreateDeck(); });
+    host.querySelector('[data-path="open"]').addEventListener('click', () => { close(); openAnyPresentation(); });
+  }
   // The themes, starting with a blank presentation.
   const blank = document.createElement('button'); blank.type = 'button'; blank.className = 'gal-item gal-blank'; blank.dataset.gallery = 'blank';
   blank.innerHTML = `<div class="thumb-canvas"><i class="ms">add</i></div><span>${t('En blanco')}</span>`;
@@ -71,7 +84,7 @@ export function openGallery() {
     + CATEGORIES.filter(([c]) => counts[c]).map(([c, l]) => `<button type="button" class="gal-cat" data-cat="${c}">${t(l)} <small>${counts[c]}</small></button>`).join('') + '</div>';
   const ex = document.createElement('div'); ex.className = 'gal-grid gal-examples';
   const none = document.createElement('p'); none.className = 'host-help'; none.hidden = true; none.textContent = t('Ninguna presentación coincide.');
-  back.querySelector('.modal > h4').before(h, bar, ex, none);   // (the examples first, the blank themes after)
+  host.querySelector('.gal-themes-h').before(h, bar, ex, none);   // (the examples first, the blank themes after)
   const cover = (btn, deck) => {
     const c = deck.slides[0], cv = btn.querySelector('.thumb-canvas'); cv.style.background = c.background;
     const inner = document.createElement('div'); inner.className = 'thumb-inner';
@@ -83,7 +96,7 @@ export function openGallery() {
     if (!en.isIntersecting) return; seen.unobserve(en.target);
     const deck = await loadExample(en.target.dataset.example).catch(() => null);
     if (deck) { ensureDeckFonts(deck); cover(en.target, deck); }
-  }), { root: back.querySelector('.modal'), rootMargin: '300px' });
+  }), { root: scroller, rootMargin: '300px' });
   const items = Object.entries(EXAMPLES).map(([key, e]) => {
     const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'gal-item'; btn.dataset.example = key; btn.dataset.cat = e.cat || '';
     btn.title = t(e.summary); btn.dataset.text = (t(e.name) + ' ' + t(e.summary)).toLowerCase();
@@ -105,11 +118,8 @@ export function openGallery() {
   };
   bar.querySelector('.gal-q').addEventListener('input', filter);
   bar.querySelectorAll('.gal-cat').forEach(b => b.addEventListener('click', () => { cat = b.dataset.cat; bar.querySelectorAll('.gal-cat').forEach(x => x.classList.toggle('on', x === b)); filter(); }));
-  document.body.appendChild(back);
-  const close = () => back.remove();
-  back.querySelector('.modal-close').addEventListener('click', close);
-  back.addEventListener('click', e => { if (e.target === back) close(); });
 }
+
 
 // Design ideas for the current slide.
 export function openDesignIdeas() {

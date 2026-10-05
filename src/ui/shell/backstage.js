@@ -4,14 +4,15 @@
 // edition (its button in the ribbon's File page isn't hidden: no cloud, no accounts…).
 
 import { ACTIONS } from '../ribbon/actions.js';
+import { galleryInto } from '../dialogs/gallery.js';
 import { t } from '../../i18n/index.js';
 
 const C = (action, icon, title, text) => ({ action, icon, title, text });
 const SECTIONS = [
   { id: 'new', icon: 'note_add', title: 'Nuevo', cards: [
     C('new', 'note_add', 'En blanco', 'Una presentación vacía.'),
-    C('gallery', 'auto_awesome_mosaic', 'Plantillas y ejemplos', 'Temas vacíos y 170 presentaciones de ejemplo para empezar.'),
-    C('ai-deck', 'auto_awesome', 'Crear con IA', 'A partir de un tema, documentos o fotos.')] },
+    C('ai-deck', 'auto_awesome', 'Crear con IA', 'A partir de un tema, documentos o fotos.'),
+    C('open', 'upload_file', 'Abrir un archivo', 'PowerPoint, LibreOffice o Revela.')], gallery: true },
   { id: 'open', icon: 'folder_open', title: 'Abrir', cards: [
     C('open', 'upload_file', 'Desde el ordenador', 'PowerPoint, LibreOffice o Revela.'),
     C('home', 'history', 'Mis presentaciones', 'Las recientes, las de Drive y las de tu nube.'),
@@ -78,6 +79,13 @@ export function openBackstage(sectionId = 'new') {
     el.querySelectorAll('.bs-tab').forEach(b => { const on = b.dataset.sec === s.id; b.classList.toggle('on', on); b.setAttribute('aria-current', on ? 'page' : 'false'); });
     el.querySelector('.bs-main').innerHTML = `<h2>${t(s.title)}</h2><div class="bs-cards">${s.cards.map(c => `<button type="button" class="bs-card" data-bs-action="${c.action}">
       <i class="ms">${c.icon}</i><b>${t(c.title)}</b><small>${t(c.text)}</small></button>`).join('')}</div>`;
+    // (New: the templates and example presentations right there, under the ways to start — not an empty page.)
+    if (s.gallery) {
+      const g = document.createElement('section'); g.className = 'bs-gallery';
+      g.innerHTML = `<h3>${t('Plantillas y presentaciones de ejemplo')}</h3><div class="bs-gal"></div>`;
+      el.querySelector('.bs-main').appendChild(g);
+      galleryInto(g.querySelector('.bs-gal'), { close, scroller: el.querySelector('.bs-main'), paths: false });
+    }
   };
   el.querySelector('.bs-back').addEventListener('click', close);
   el.querySelector('.bs-nav').addEventListener('click', e => { const b = e.target.closest('.bs-tab'); if (b) show(b.dataset.sec); });

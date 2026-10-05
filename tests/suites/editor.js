@@ -668,6 +668,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const bs = D.getElementById('backstage'); assert(bs, 'se abre la página de Archivo');
     eq([...bs.querySelectorAll('.bs-tab')].map(b => b.dataset.sec).join(), 'new,open,save,share,export,print,protect', 'sus secciones');
     eq(R.state.ui.activeTab !== 'file', true, 'la cinta no cambia de pestaña');
+    assert(bs.querySelectorAll('.bs-gal .gal-examples .gal-item').length > 100 && bs.querySelector('.bs-gal .gal-q'), 'Nuevo: las plantillas y los ejemplos ahí mismo, con su buscador');
+    const hs = [...bs.querySelectorAll('.bs-cards .bs-card')].map(c => c.offsetHeight); assert(Math.max(...hs) - Math.min(...hs) <= 1, 'tarjetas iguales: ' + hs.join(','));
     bs.querySelector('[data-sec="export"]').click(); await sleep(10);
     assert(bs.querySelector('[data-bs-action="export-pdf"] small').textContent.length > 10, 'cada tarjeta dice qué hace');
     bs.querySelector('[data-sec="save"]').click(); await sleep(10);

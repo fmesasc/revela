@@ -1,6 +1,7 @@
 // Galician interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Plantillas y presentaciones de ejemplo": "Modelos e presentacións de exemplo",
   "Ahora no": "Agora non",
   "¿Guardar también tus presentaciones en Google Drive? Se guardan solas mientras trabajas y las abres desde cualquier dispositivo.": "Gardar tamén as túas presentacións en Google Drive? Gárdanse soas mentres traballas e ábrelas desde calquera dispositivo.",
   "PDF — se ve en Drive con todas sus diapositivas, tal cual": "PDF — vese en Drive con todas as diapositivas, tal cal",

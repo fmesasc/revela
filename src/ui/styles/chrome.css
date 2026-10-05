@@ -217,7 +217,7 @@ body.assistant-open .tb-ai{background:var(--accent);color:var(--on-accent)}
 #backstage .bs-nav button:hover,#backstage .bs-nav button:focus-visible{background:#ffffff26}
 #backstage .bs-nav .bs-tab.on{background:#ffffff38;font-weight:600}
 #backstage .bs-nav .ms{font-size:21px}
-#backstage .bs-cards{align-items:start}
+#backstage .bs-cards{grid-auto-rows:1fr}
 #backstage .bs-back{margin-bottom:10px;opacity:.9}
 #backstage .bs-main{overflow:auto;padding:34px 42px}
 #backstage h2{margin:0 0 22px;font-size:26px;font-weight:600;color:var(--txt)}
@@ -231,3 +231,9 @@ body.assistant-open .tb-ai{background:var(--accent);color:var(--on-accent)}
   #backstage .bs-nav{flex-direction:row;overflow-x:auto;padding:8px;gap:4px}#backstage .bs-nav button{padding:8px 10px;font-size:13px;white-space:nowrap;gap:6px}
   #backstage .bs-back{margin:0}#backstage .bs-main{padding:18px 16px}#backstage h2{font-size:21px;margin-bottom:14px}
 }
+#backstage .bs-gallery{margin-top:34px;max-width:1100px}
+#backstage .bs-gallery h3{margin:0 0 6px;font-size:19px;font-weight:600;color:var(--txt)}
+#backstage .bs-gal h4{margin:22px 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--txt2)}
+#backstage .bs-gal .gal-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+#backstage .bs-gal .gal-grid{max-height:none;overflow:visible}
+#backstage .bs-gal h4:first-of-type{display:none}
