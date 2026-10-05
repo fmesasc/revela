@@ -16,7 +16,7 @@ import { QRCODE, PEERJS } from '../../core/vendor.js';
 // presenter's pace (the current slide's markup, fragments as shown, with the
 // page's styles, drawn without scripts on the phone); a corner badge with the
 // code and QR to join (A shows or hides it).
-export function pollJS(accents, { classroom = false } = {}) {
+export function pollJS(accents, { classroom = false, labels = null } = {}) {
   return `(function(){
  var CLASS=${classroom ? 'true' : 'false'};
  var gradeActivity=${gradeActivity.toString()}, publicActivity=${publicActivity.toString()};
@@ -25,7 +25,7 @@ export function pollJS(accents, { classroom = false } = {}) {
  var render=${pollResultsHTML.toString()};
  var tallyVotes=tally, totals=${quizTotals.toString()};         // (quizTotals counts with tallyVotes)
  var started={},revealed={},timer=null;
- var VOTE=${JSON.stringify(VOTE_URL)}, ACC=${JSON.stringify(accents)}, votes={}, conns=[], peer=null, code='';
+ var VOTE=${JSON.stringify(VOTE_URL)}, ACC=${JSON.stringify(accents)}, LBL=${jsData(labels)}, votes={}, conns=[], peer=null, code='';
  var AB='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
  function all(){return [].slice.call(document.querySelectorAll('.rv-poll'));}
  function def(el){try{return JSON.parse(el.getAttribute('data-poll'));}catch(e){return null;}}
@@ -38,7 +38,7 @@ export function pollJS(accents, { classroom = false } = {}) {
  function paint(el){var p=def(el);if(!p)return;var r=p.kind==='board'?{board:totals(quizzes())}:tally(p,V(p.pollId));
   if(p.kind==='quiz'){r.revealed=!!revealed[p.pollId];r.left=left(p);if(r.revealed)r.board=totals(quizzes());}
   if(ACT.indexOf(p.kind)>=0)r.revealed=!!revealed[p.pollId];
-  el.querySelector('.rv-poll-res').innerHTML=render(p,r,ACC);}
+  el.querySelector('.rv-poll-res').innerHTML=render(p,r,ACC,LBL);}
  function reveal(p){if(revealed[p.pollId])return;revealed[p.pollId]=true;all().forEach(paint);
   var board=totals(quizzes()),mine=tally(p,V(p.pollId)).board;
   conns.forEach(function(c){if(!c.voter)return;var m=mine.filter(function(x){return x.id===c.voter;})[0],k=board.map(function(x){return x.id;}).indexOf(c.voter);

@@ -16,7 +16,7 @@ import { state } from '../../core/store.js';
 import { REVEAL, KATEX, MODEL_VIEWER, GIFUCT, PDFJS, VISION, SELFIE_MODEL, POSE_MODEL, FACE_MODEL } from '../../core/vendor.js';
 import { download, slug } from '../files.js';
 import { TRIGGER_JS, pollJS, liveDataJS, LIGHTBOX_JS, overviewJS } from '../runtime/scripts.js';
-import { ACTIVITIES, publicActivity, gradeAnswer, gradeActivity } from '../../features/live/poll.js';
+import { ACTIVITIES, publicActivity, gradeAnswer, gradeActivity, pollLabels } from '../../features/live/poll.js';
 import { selfPacedRuntime } from '../runtime/selfpaced.js';
 import { slideTitle } from '../../features/document/a11y.js';
 import { createMediaPlayer, revelaMediaRuntime } from '../runtime/media.js';
@@ -657,7 +657,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${hasTrig ? TRIGGER_JS : ''}
  ${hasCam ? `${createCameraEngine.toString()}\n${revelaCameraRuntime.toString()}\nrevelaCameraRuntime(${JSON.stringify(VISION)}, ${JSON.stringify(SELFIE_MODEL)});` : ''}
  ${hasPuppet ? `${hasCam ? '' : createCameraEngine.toString()}\n${[puppetBones, puppetMorph, puppetSolve, puppetMirror, createPuppet, revelaPuppetRuntime].join('\n')}\nrevelaPuppetRuntime(${JSON.stringify(VISION)}, ${JSON.stringify(POSE_MODEL)}, ${JSON.stringify(FACE_MODEL)});` : ''}
- ${hasPoll && !selfPaced ? pollJS(currentPalette(deck).accents, { classroom: !!deck.classroom }) : ''}
+ ${hasPoll && !selfPaced ? pollJS(currentPalette(deck).accents, { classroom: !!deck.classroom, labels: pollLabels() }) : ''}
  ${selfPaced && hasPoll ? `(${selfPacedRuntime})(${publicActivity}, (function () { var gradeActivity = ${gradeActivity}; return ${gradeAnswer}; })(), ${JSON.stringify({ check: t('Comprobar'), allRight: t('¡Todo bien!'), partly: t('{n} % de aciertos'),
    wrong: t('No es correcto'), sent: t('Nota enviada'), failed: t('No se pudo enviar la respuesta. Inténtalo otra vez.'), live: t('Esta votación es en directo, con quien presenta.') })});` : ''}
  ${hasLive ? liveDataJS() : ''}

@@ -13,6 +13,7 @@
 import { esc } from '../../core/text.js';
 import { state, commit, currentSlide } from '../../core/store.js';
 import { uid } from '../../core/model.js';
+import { t } from '../../i18n/index.js';
 
 export const VOTE_URL = 'https://fmesasc.github.io/revela/vote.html';
 
@@ -94,26 +95,28 @@ export function quizTotals(list) {
   return Object.keys(tot).map(function (k) { return tot[k]; }).sort(function (a, b) { return b.pts - a.pts; });
 }
 
-// HTML (inline styles) for the results area. accent: colours to use.
-export function pollResultsHTML(poll, res, accent) {
+// HTML (inline styles) for the results area. accent: colours to use. L: its words in the interface's
+// language ({ Spanish: translation }, pollLabels(); none: Spanish).
+export function pollResultsHTML(poll, res, accent, L) {
+  var T = function (s) { return (L && L[s]) || s; };
   var esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
   var cols = accent && accent.length ? accent : ['#3f6497', '#e0873b', '#4caf7d', '#c94f4f', '#8e6cc9', '#3bb3c3'];
   var kind = poll.kind || 'choice', display = poll.display || 'bar';
   var labels = kind === 'rating' ? ['1', '2', '3', '4', '5'] : (poll.options || []);
   var counts = res.counts || [], total = counts.reduce(function (a, b) { return a + b; }, 0), max = Math.max.apply(null, counts.concat([1]));
-  var foot = '<div style="margin-top:.6em;font-size:.55em;opacity:.7">' + res.voters + ' ' + (res.voters === 1 ? 'voto' : 'votos') + '</div>';
-  var nick = function (r, i) { return esc(r.n || ('Jugador ' + (i + 1))); };
+  var foot = '<div style="margin-top:.6em;font-size:.55em;opacity:.7">' + res.voters + ' ' + T(res.voters === 1 ? 'voto' : 'votos') + '</div>';
+  var nick = function (r, i) { return esc(r.n || (T('Jugador') + ' ' + (i + 1))); };
   var ranking = function (list, top) { return '<ol style="margin:.4em 0 0;padding:0;list-style:none;text-align:left;font-size:.6em">' + list.slice(0, top).map(function (r, i) {
     return '<li style="margin:.15em 0"><b>' + (['🥇 ', '🥈 ', '🥉 '][i] || (i + 1) + '. ') + '</b>' + nick(r, i) + ' — <b>' + r.pts + '</b></li>'; }).join('') + '</ol>'; };
   if (kind === 'board') {
     var bl = res.board || [];
-    return bl.length ? ranking(bl, 10).replace('font-size:.6em', 'font-size:.8em') : '<div style="opacity:.6">Aún no hay puntos: juega los cuestionarios.</div>';
+    return bl.length ? ranking(bl, 10).replace('font-size:.6em', 'font-size:.8em') : '<div style="opacity:.6">' + T('Aún no hay puntos: juega los cuestionarios.') + '</div>';
   }
   if (kind === 'quiz') {
     var right = poll.correct || [], tiles = ['#e21b3c', '#1368ce', '#d89e00', '#26890c', '#864cbf', '#0aa3a3'];
     if (!res.revealed) return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.4em;font-size:.7em">' + labels.map(function (l, i) {
       return '<div style="padding:.5em .6em;border-radius:.3em;background:' + tiles[i % tiles.length] + ';color:#fff;font-weight:700">' + esc(l) + (res.showRight && right.indexOf(i) >= 0 ? ' ✓' : '') + '</div>'; }).join('') + '</div>'
-      + '<div style="display:flex;justify-content:space-between;margin-top:.6em;font-size:.6em;opacity:.85"><span>' + res.voters + ' ' + (res.voters === 1 ? 'respuesta' : 'respuestas') + '</span>'
+      + '<div style="display:flex;justify-content:space-between;margin-top:.6em;font-size:.6em;opacity:.85"><span>' + res.voters + ' ' + T(res.voters === 1 ? 'respuesta' : 'respuestas') + '</span>'
       + (res.left != null ? '<b style="font-size:1.6em">' + Math.max(0, Math.ceil(res.left)) + ' s</b>' : '') + '</div>';
     return '<div style="display:flex;flex-direction:column;gap:.3em">' + labels.map(function (l, i) { var ok = right.indexOf(i) >= 0;
       return '<div style="display:flex;align-items:center;gap:.5em;font-size:.65em;opacity:' + (ok ? 1 : .55) + '"><div style="flex:0 0 32%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (ok ? '✓ ' : '') + esc(l) + '</div>'
@@ -131,11 +134,11 @@ export function pollResultsHTML(poll, res, accent) {
         + (i + 1) + (res.revealed ? ' ' + esc(labels[i] || '') : '') + '</b>'; }).join('') + '</div>' : '';
     var body = !res.revealed
       ? '<div style="display:flex;flex-direction:column;justify-content:center;align-items:center;height:100%;gap:.2em"><div style="font-size:2.2em;font-weight:800">' + nv + '</div><div style="font-size:.6em;opacity:.8">'
-        + (nv === 1 ? 'respuesta' : 'respuestas') + (nv ? ' · ' + avg + ' % de aciertos' : '') + '</div><div style="font-size:.45em;opacity:.6;margin-top:.4em">Clic para ver las soluciones</div></div>'
+        + T(nv === 1 ? 'respuesta' : 'respuestas') + (nv ? ' · ' + avg + ' ' + T('% de aciertos') : '') + '</div><div style="font-size:.45em;opacity:.6;margin-top:.4em">' + T('Clic para ver las soluciones') + '</div></div>'
       : '<div style="display:flex;flex-direction:column;gap:.25em">' + gl.map(function (l, i) { var pc = nv ? Math.round((counts[i] || 0) * 100 / nv) : 0;
           return '<div style="display:flex;align-items:center;gap:.5em;font-size:.6em"><div style="flex:0 0 45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(l) + '</div>'
             + '<div style="flex:1;background:#8882;border-radius:.2em;height:1.2em"><div style="height:100%;width:' + pc + '%;background:#26890c;border-radius:.2em"></div></div><div style="flex:0 0 3em;font-weight:700">' + pc + ' %</div></div>'; }).join('')
-        + '</div><div style="margin-top:.4em;font-size:.55em;opacity:.8">' + nv + ' ' + (nv === 1 ? 'respuesta' : 'respuestas') + ' · ' + avg + ' % de aciertos</div>' + ((res.board || []).length ? ranking(res.board, 3) : '');
+        + '</div><div style="margin-top:.4em;font-size:.55em;opacity:.8">' + nv + ' ' + T(nv === 1 ? 'respuesta' : 'respuestas') + ' · ' + avg + ' ' + T('% de aciertos') + '</div>' + ((res.board || []).length ? ranking(res.board, 3) : '');
     return pic ? '<div style="display:flex;gap:.8em;height:100%">' + pic + '<div style="flex:1;min-width:0">' + body + '</div></div>' : body;
   }
   if (kind === 'qa') {
@@ -143,8 +146,8 @@ export function pollResultsHTML(poll, res, accent) {
     return '<div style="display:flex;flex-direction:column;gap:.3em;font-size:.7em">' + (list.length ? list.map(function (q, i) {
       return '<div style="display:flex;gap:.6em;align-items:center;padding:.3em .5em;border-radius:.3em;background:' + (i ? '#8882' : cols[0]) + (i ? '' : ';color:#fff') + '">'
         + '<b style="flex:0 0 2.2em;text-align:center">▲ ' + q.up + '</b><span>' + esc(q.text) + '</span></div>';
-    }).join('') : '<div style="opacity:.6">Escanea el QR y envía tu pregunta…</div>') + '</div>'
-      + '<div style="margin-top:.6em;font-size:.55em;opacity:.7">' + (res.questions || []).length + ' preguntas</div>';
+    }).join('') : '<div style="opacity:.6">' + T('Escanea el QR y envía tu pregunta…') + '</div>') + '</div>'
+      + '<div style="margin-top:.6em;font-size:.55em;opacity:.7">' + (res.questions || []).length + ' ' + T('preguntas') + '</div>';
   }
   if (kind === 'word') {
     var ws = Object.keys(res.words || {}).sort(function (a, b) { return res.words[b] - res.words[a]; }).slice(0, 40);
@@ -175,6 +178,10 @@ export function pollResultsHTML(poll, res, accent) {
   }).join('') + '</div>' + foot;
 }
 
+// The results' words in the interface's language (for pollResultsHTML, also in exported pages).
+const POLL_WORDS = ['voto', 'votos', 'respuesta', 'respuestas', 'Jugador', 'Aún no hay puntos: juega los cuestionarios.', '% de aciertos', 'Clic para ver las soluciones', 'Escanea el QR y envía tu pregunta…', 'preguntas'];
+export const pollLabels = () => Object.fromEntries(POLL_WORDS.map(w => [w, t(w)]));
+
 // Markup of a poll in the editor and thumbnails: question, current results
 // (last saved votes) and a QR placeholder (the real code exists only while presenting).
 export const GRADED = ['quiz', ...ACTIVITIES];
@@ -183,7 +190,7 @@ export function pollEditorHTML(b, accents) {
     : (r => ({ ...r, showRight: true, revealed: (b.kind === 'quiz' && r.voters > 0) || ACTIVITIES.includes(b.kind) }))(tallyVotes(b, savedVotes(b.pollId)));
   return `<div style="width:100%;height:100%;display:grid;grid-template-columns:1fr auto;gap:1em;font-size:${b.fontSize || 32}px">`
     + `<div style="display:flex;flex-direction:column;min-width:0"><div style="font-weight:700;margin-bottom:.5em">${esc(b.question || '')}</div>`
-    + `<div style="flex:1;min-height:0">${pollResultsHTML(b, res, accents)}</div></div>`
+    + `<div style="flex:1;min-height:0">${pollResultsHTML(b, res, accents, pollLabels())}</div></div>`
     + `<div style="align-self:center;text-align:center;font-size:18px"><div style="width:220px;height:220px;border-radius:8px;background:#fff;color:#223;display:grid;place-items:center">`
     + `<div><div style="font-size:64px;line-height:1">▦</div><div>QR</div></div></div><div style="margin-top:6px;opacity:.8">vote.html</div></div></div>`;
 }

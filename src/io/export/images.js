@@ -6,7 +6,7 @@ import { KATEX, HTML2CANVAS, JSZIP, loadScript } from '../../core/vendor.js';
 import { alertUser } from '../../core/notify.js';
 import { tableCSS, levelCSS } from '../../render/svg.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
-import { tallyVotes, pollResultsHTML, savedVotes } from '../../features/live/poll.js';
+import { tallyVotes, pollResultsHTML, savedVotes, pollLabels } from '../../features/live/poll.js';
 import { t } from '../../i18n/index.js';
 import { blockHTML, slideInnerHTML, magnifyInsetHTML } from '../formats/html.js';
 import { download, slug } from '../files.js';
@@ -37,7 +37,7 @@ export async function hydrateStatic(root, deck) {
   });
   await Promise.all(posters);
   root.querySelectorAll('.rv-poll').forEach(el => {
-    try { const p = JSON.parse(el.getAttribute('data-poll')); el.querySelector('.rv-poll-res').innerHTML = pollResultsHTML(p, tallyVotes(p, savedVotes(p.pollId)), currentPalette(deck).accents); } catch {}
+    try { const p = JSON.parse(el.getAttribute('data-poll')); el.querySelector('.rv-poll-res').innerHTML = pollResultsHTML(p, tallyVotes(p, savedVotes(p.pollId)), currentPalette(deck).accents, pollLabels()); } catch {}
   });
 }
 

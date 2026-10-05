@@ -22,6 +22,11 @@ const [s] = deck.slides, b = id => s.blocks.find(x => x.id === id);
 ok(deck.name === 'Class' && deck.layouts[0].name === 'Title slide' && s.notes === 'Say hello' && b('a').html === '<b>Hello</b> world', 'plantillas: nombre, diseños, notas y texto traducidos');
 ok(b('b').rows[0][0] === 'Month' && b('b').rows[0][1] === 'Total' && b('b').rows[1][0] === 'January' && b('b').rows[1][1] === '=SUMA(B2:B3)', 'plantillas: tabla (lo que falta y las fórmulas, como estaban)');
 ok(b('e').question === 'Which one?' && b('e').options.join() === 'Yes,No' && b('a').fontFamily === "'Lato', sans-serif" && s.layoutId === 'title', 'plantillas: votación; lo demás, igual');
-ok(templateLang('nl') === 'en' && templateLang('gl') === null && templateLang('de') === 'de', 'plantillas: idiomas sin traducción propia');
+ok(templateLang('nl') === 'nl' && templateLang('ar') === 'ar' && templateLang('es') === null && templateLang('xx') === null, 'plantillas: todos los idiomas, con traducción propia');
+// Arabic: from right to left; left-aligned texts to the right, centred ones as they were.
+const ar = { layouts: [], slides: [{ id: 's', blocks: [{ id: 'l', type: 'text', html: '<span style="float:left">H</span>ola', w: 400, h: 60 }, { id: 'c', type: 'text', html: 'Adiós', textAlign: 'center', w: 400, h: 60 }, { id: 'n', type: 'text', html: 'Sin traducir', w: 400, h: 60 }, { id: 't', type: 'table', rows: [['Hola']] }] }] };
+translateDeck(ar, { '<span style="float:left">H</span>ola': '<span style="float:left">م</span>رحبا', 'Adiós': 'وداعا' }, { rtl: true });
+const [l, c, u, tb] = ar.slides[0].blocks;
+ok(l.dir === 'rtl' && l.textAlign === 'right' && /float:right/.test(l.html) && c.dir === 'rtl' && c.textAlign === 'center' && !u.dir && !u.textAlign && tb.dir === 'rtl', 'plantillas: árabe de derecha a izquierda');
 console.log(fails ? `PLANTILLAS-IDIOMA FAIL ${n - fails}/${n}` : `PLANTILLAS-IDIOMA OK ${n}/${n}`);
 process.exit(fails ? 1 : 0);

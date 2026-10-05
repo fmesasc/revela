@@ -2,14 +2,18 @@
 // (templates/*.js); templates/i18n/<lang>/<file>.js says how each of their texts reads in
 // that language ({ Spanish: translation }); their names and summaries are in templates/names/.
 // Opening an example applies its language's texts; a text without a
-// translation stays as it is. Galician and Basque keep Spanish; Dutch and Arabic, English.
+// translation stays as it is. Every language of the interface has its own; a file not yet
+// translated into Dutch or Arabic shows its English, and into Galician or Basque, its Spanish.
+// Arabic reads from right to left: its texts too (see translateDeck).
 // `node tools/template-texts.mjs` lists the texts and checks every language has them all.
 
 import { styled } from '../document/master.js';
 import { linesAt } from '../../render/textfit.js';
 
-export const TEMPLATE_LANGS = ['en', 'fr', 'de', 'it', 'pt', 'ca'];
-export const templateLang = lang => (TEMPLATE_LANGS.includes(lang) ? lang : lang === 'nl' || lang === 'ar' ? 'en' : null);
+export const TEMPLATE_LANGS = ['en', 'fr', 'de', 'it', 'pt', 'ca', 'gl', 'nl', 'eu', 'ar'];
+export const templateLang = lang => (TEMPLATE_LANGS.includes(lang) ? lang : null);
+const FALLBACK = { nl: 'en', ar: 'en' };
+export const RTL_LANGS = ['ar'];
 
 // Where an example's texts are: these properties of the deck, its slides, layouts and
 // objects (text, notes, table cells, chart labels and titles, poll questions and options,
@@ -31,8 +35,10 @@ export function textsOf(deck) {
 
 // The deck with its texts in another language (changed in place, and returned). A text that
 // now needs more lines than the original is made smaller (down to 70 %) so it keeps the
-// original's lines: the slide was designed around them.
-export function translateDeck(deck, dict) {
+// original's lines: the slide was designed around them. rtl (Arabic): the translated texts
+// read from right to left, and what was aligned to the left is aligned to the right (centred
+// and right-aligned texts stay: they were placed for it).
+export function translateDeck(deck, dict, { rtl = false } = {}) {
   if (!dict) return deck;
   const was = new Map();                                          // object → its text before
   const walk = o => {
@@ -44,7 +50,15 @@ export function translateDeck(deck, dict) {
     }
   };
   walk(deck);
-  for (const slide of deck.slides || []) for (const b of slide.blocks || []) if (was.has(b)) { ORIGINAL.set(b, was.get(b)); keepLines(b, was.get(b), slide, deck); }
+  // (Right to left: tables too — the first column on the right.)
+  if (rtl) for (const slide of deck.slides || []) for (const b of slide.blocks || []) if (b.type === 'table') b.dir = 'rtl';
+  for (const slide of deck.slides || []) for (const b of slide.blocks || []) if (was.has(b)) {
+    ORIGINAL.set(b, was.get(b)); keepLines(b, was.get(b), slide, deck);
+    if (rtl && b.type === 'text' && !b.vertical) {
+      b.dir = 'rtl'; if ((styled(b, slide, deck).textAlign || 'left') === 'left') b.textAlign = 'right';
+      b.html = b.html.replace(/float:\s*left/g, 'float:right');                  // (a drop cap: at the start of the line, its right)
+    }
+  }
   return deck;
 }
 // A translated text object's Spanish text (to compare how much room each takes: ui/canvas/fittext.js).
@@ -81,4 +95,11 @@ const load = path => {
   if (!cache.has(path)) cache.set(path, import(path).then(m => m.default).catch(() => null));
   return cache.get(path);
 };
-export const textsFor = (lang, file) => (templateLang(lang) ? load(`./templates/i18n/${templateLang(lang)}/${file}.js`) : Promise.resolve(null));
+// → { dict, lang } (the language they are in: its own, or the one it falls back to).
+export async function textsIn(lang, file) {
+  const own = templateLang(lang) && await load(`./templates/i18n/${lang}/${file}.js`);
+  if (own) return { dict: own, lang };
+  const fb = FALLBACK[lang], dict = fb ? await load(`./templates/i18n/${fb}/${file}.js`) : null;
+  return { dict, lang: dict ? fb : 'es' };
+}
+export const textsFor = (lang, file) => textsIn(lang, file).then(r => r.dict);

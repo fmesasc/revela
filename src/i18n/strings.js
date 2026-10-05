@@ -5,6 +5,16 @@
 
 // es | en | fr | de | it | pt | ca
 export const ROWS = [
+  ['voto', 'vote', 'vote', 'Stimme', 'voto', 'voto', 'vot'],
+  ['votos', 'votes', 'votes', 'Stimmen', 'voti', 'votos', 'vots'],
+  ['respuesta', 'answer', 'réponse', 'Antwort', 'risposta', 'resposta', 'resposta'],
+  ['respuestas', 'answers', 'réponses', 'Antworten', 'risposte', 'respostas', 'respostes'],
+  ['Jugador', 'Player', 'Joueur', 'Spieler', 'Giocatore', 'Jogador', 'Jugador'],
+  ['Aún no hay puntos: juega los cuestionarios.', 'No points yet: play the quizzes.', 'Pas encore de points : jouez aux quiz.', 'Noch keine Punkte: Spiele die Quizze.', 'Ancora nessun punto: gioca ai quiz.', 'Ainda não há pontos: jogue os questionários.', 'Encara no hi ha punts: juga als qüestionaris.'],
+  ['% de aciertos', '% correct', '% de bonnes réponses', '% richtig', '% di risposte esatte', '% de acertos', '% d\'encerts'],
+  ['Clic para ver las soluciones', 'Click to see the answers', 'Cliquez pour voir les solutions', 'Klicken, um die Lösungen zu sehen', 'Clic per vedere le soluzioni', 'Clique para ver as soluções', 'Clic per veure les solucions'],
+  ['Escanea el QR y envía tu pregunta…', 'Scan the QR code and send your question…', 'Scannez le QR code et envoyez votre question…', 'Scanne den QR-Code und sende deine Frage…', 'Scansiona il QR e invia la tua domanda…', 'Leia o QR e envie a sua pergunta…', 'Escaneja el QR i envia la teva pregunta…'],
+  ['preguntas', 'questions', 'questions', 'Fragen', 'domande', 'perguntas', 'preguntes'],
   ['Vuelve a conectar con OneDrive.', 'Reconnect to OneDrive.', 'Reconnectez-vous à OneDrive.', 'Verbinde dich erneut mit OneDrive.', 'Ricollegati a OneDrive.', 'Volte a ligar ao OneDrive.', 'Torna a connectar-te amb OneDrive.'],
   ['Conecta tu OneDrive (cuenta personal, de trabajo o de un centro) para abrir y guardar ahí tus presentaciones.', 'Connect your OneDrive (personal, work or school account) to open and save your presentations there.', 'Connectez votre OneDrive (compte personnel, professionnel ou scolaire) pour y ouvrir et enregistrer vos présentations.', 'Verbinde dein OneDrive (privates, Arbeits- oder Schulkonto), um deine Präsentationen dort zu öffnen und zu speichern.', 'Collega il tuo OneDrive (account personale, di lavoro o scolastico) per aprire e salvare lì le tue presentazioni.', 'Ligue o seu OneDrive (conta pessoal, profissional ou escolar) para abrir e guardar lá as suas apresentações.', 'Connecta el teu OneDrive (compte personal, de feina o d\'un centre) per obrir-hi i desar-hi les teves presentacions.'],
   ['Conectar con OneDrive', 'Connect to OneDrive', 'Se connecter à OneDrive', 'Mit OneDrive verbinden', 'Collega a OneDrive', 'Ligar ao OneDrive', 'Connectar amb OneDrive'],

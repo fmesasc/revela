@@ -29,6 +29,7 @@ export const tableClass = b => 'tbl' + (b.header ? ' has-header' : '') + (b.band
 export const tableVars = b => `--stroke:${b.stroke || '#fff'};font-size:${b.fontSize || 16}px;`
   + (b.fontFamily ? `font-family:${b.fontFamily};` : '')
   + (b.cellPad ? `--cell-pad:${b.cellPad.map(v => v + 'px').join(' ')};` : '') + (b.colW ? 'table-layout:fixed;' : '')
+  + (b.dir === 'rtl' ? 'direction:rtl;' : '')
   + (b.headBg ? `--th-bg:${b.headBg};` : '') + (b.headFg ? `--th-fg:${b.headFg};` : '')
   + (b.band ? `--band:${rgba(b.band, b.bandAlpha ?? 0.18)};` : '');
 export const tableCSS = (pre = '') => `${pre}table.tbl{border-collapse:collapse;width:100%;height:100%;margin:0}`
@@ -357,7 +358,7 @@ function mapSVG(b) {
 // Waterfall (PowerPoint's): each bar starts where the one before ended — ups in
 // the chart's colour, downs in red; a point called "Total" (or "Subtotal", in
 // any language set out in TOTAL_WORDS) is a bar from zero to the running sum.
-const TOTAL_WORDS = /^\s*(sub)?(total|totale|totaal|summe|guztira|المجموع)\b/i;
+const TOTAL_WORDS = /^\s*(sub)?(total|totale|totaal|summe|gesamt|guztira|المجموع)(?![\p{L}\p{N}])/iu;   // (not \b: it doesn't see Arabic letters as a word)
 export const isTotalLabel = s => TOTAL_WORDS.test(String(s || ''));
 function waterfallSVG(b) {
   const data = b.data || [], n = data.length || 1, up = b.color || '#3f6497', down = '#c0392b', tot = '#7f8c8d';
