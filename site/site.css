@@ -38,6 +38,8 @@ header.top .wrap{display:flex;align-items:center;gap:28px;height:68px}
 nav.links{margin-left:auto;display:flex;align-items:center;gap:26px}
 nav.links a{text-decoration:none;color:var(--ink2);font-size:15px}
 nav.links a:hover,nav.links a[aria-current]{color:var(--ink)}
+/* (The «Open Revela» button keeps its own colours: the links’ hover colour made it dark on dark.) */
+nav.links a.btn.primary,nav.links a.btn.primary:hover{color:var(--paper)}
 .theme{appearance:none;border:1px solid var(--line);background:transparent;color:var(--ink2);width:36px;height:36px;border-radius:50%;display:grid;place-items:center;cursor:pointer}
 .theme:hover{color:var(--ink);border-color:var(--ink3)}
 .theme svg{width:17px;height:17px}
