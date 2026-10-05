@@ -34,6 +34,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!D.body.classList.contains('sorter') && R.state.ui.slideIndex === 2, 'doble clic: a editar esa diapositiva');
     D.querySelector('[data-action="slide-sorter"]').click(); await sleep(20); key('Escape'); await sleep(20);
     assert(!D.body.classList.contains('sorter'), 'Esc vuelve a la diapositiva');
+    // Many slides: each one whole (16:9), the grid scrolls — not rows squashed to fit the window.
+    for (let i = 0; i < 40; i++) R.slides.addSlide('blank');
+    D.querySelector('[data-action="slide-sorter"]').click(); await sleep(60);
+    const th = [...nav.querySelectorAll('.thumb .thumb-canvas')], bad = th.filter(c => Math.abs(c.offsetHeight - c.offsetWidth * 9 / 16) > 3);
+    assert(th.length > 40 && !bad.length && nav.scrollHeight > nav.clientHeight, `todas enteras, con desplazamiento (${bad.length} cortadas)`);
+    key('Escape'); await sleep(20);
   });
 
   // ---- Several slides selected in the panel (PowerPoint: Ctrl/Cmd+click, Shift+click) ----
