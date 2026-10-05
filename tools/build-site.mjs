@@ -46,7 +46,9 @@ export async function build(out = join(ROOT, 'dist'), { appOnly = false, open = 
   if (appOnly) { copyApp(out); markEdition(join(out, 'index.html'), 'desktop'); return out; }   // (the desktop app: an account on the official server)
   // The site's own pages and files.
   ensureSite();
-  cpSync(join(ROOT, 'site'), out, { recursive: true, filter: f => !f.includes(join('site', 'i18n')) });
+  // (Not its translations, nor its repository's own files: .git, .github, README.)
+  const own = new Set(['.git', '.github', 'README.md', '.gitignore'].map(f => join(ROOT, 'site', f)));
+  cpSync(join(ROOT, 'site'), out, { recursive: true, filter: f => !f.includes(join('site', 'i18n')) && ![...own].some(o => f === o || f.startsWith(o + '/')) });
   localize(out);
   await inlineIcons(out);
   for (const l of SITE_LANGS.slice(1)) await inlineIcons(join(out, l));
