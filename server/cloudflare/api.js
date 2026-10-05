@@ -347,9 +347,13 @@ export class Account {
         return this.json({ secret, days });
       }
       case 'check': {                                      // { secret } → ok?
-        const sessions = await this.get('sessions', {}), v = sessions[await sha256(a.secret || '')], ok = !!v && v.expires > Date.now();
+        const sessions = await this.get('sessions', {}), h = await sha256(a.secret || ''), v = sessions[h], ok = !!v && v.expires > Date.now();
         if (ok) await this.seen();
-        return this.json({ ok, ...(ok && (await this.get('blocked', null)) && { blocked: true }) });
+        // A session in use doesn't end: with less than two thirds of its time left, it gets its full time again
+        // (30 days on the web, 90 in the desktop app, from now). Only an unused one runs out.
+        let renewed = 0;
+        if (ok) { const days = v.kind === 'desktop' ? 90 : 30; if (v.expires - Date.now() < days * DAY * 2 / 3) { sessions[h] = { ...v, expires: Date.now() + days * DAY }; await this.put({ sessions }); renewed = days; } }
+        return this.json({ ok, ...(renewed && { renewed }), ...(ok && (await this.get('blocked', null)) && { blocked: true }) });
       }
       case 'logout': {
         const sessions = await this.get('sessions', {}); delete sessions[await sha256(a.secret || '')];
@@ -693,7 +697,7 @@ async function sessionOf(req, env) {
   const bearer = (req.headers.get('Authorization') || '').replace(/^Bearer /, ''), fromCookie = cookieOf(req);
   const raw = bearer || fromCookie, t = parseToken(raw); if (!t) return null;
   const r = await call(acct(env, t.sub), 'check', { secret: t.secret });
-  return r.ok ? { sub: t.sub, secret: t.secret, via: bearer ? 'bearer' : 'cookie', ...(r.blocked && { blocked: true }) } : null;
+  return r.ok ? { sub: t.sub, secret: t.secret, via: bearer ? 'bearer' : 'cookie', ...(r.blocked && { blocked: true }), ...(r.renewed && { renewed: r.renewed, raw }) } : null;
 }
 
 // ---- Relay servers (Cloudflare Realtime TURN) -----------------------------------------------------
@@ -817,7 +821,9 @@ export async function handleApi(req, env, url) {
       const r = await call(A, 'me'), mode = billingMode(env, r.billingTest), billing = stripeConf(env, mode).ok;
       // (Pro's free trial on offer: for the Pro buttons — «Prueba Pro 7 días gratis».)
       const trialDays = billing && r.plan !== 'pro' ? await trialOffer(env, A, mode) : 0;
-      return json({ ...r, billing, billingTest: mode === 'test', trialDays, photos: photoProviders(env), model3d: configured3d(env) && !!env.MODELJOBS });
+      // (A renewed session: its cookie lasts as long again — the app asks /me when it opens.)
+      const renew = me.renewed && me.via === 'cookie' ? { 'Set-Cookie': `${COOKIE}=${me.raw}; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=${me.renewed * 86400}` } : {};
+      return json({ ...r, billing, billingTest: mode === 'test', trialDays, photos: photoProviders(env), model3d: configured3d(env) && !!env.MODELJOBS }, 200, renew);
     }
     case '/mail/test': {                                  // «Send me a test email» (only to the account's own address)
       if (req.method !== 'POST') return json({ error: 'method' }, 405);

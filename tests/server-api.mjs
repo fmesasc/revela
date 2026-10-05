@@ -95,6 +95,12 @@ const ana = cookieFrom(lr);
 ok(acc('111').ctx.storage.m.get('profile').terms?.version === TERMS && acc('111').ctx.storage.m.get('profile').lang === 'en', 'se registran la aceptación (fecha y versión) y el idioma');
 ok(!JSON.stringify([...acc('111').ctx.storage.m.get('sessions') ? Object.keys(acc('111').ctx.storage.m.get('sessions')) : []]).includes(ana.split('.')[1]), 'solo se guarda un resumen (hash) de la sesión');
 let me = await (await req('GET', '/api/me', { headers: { Cookie: ana } })).json();
+// A session in use doesn't run out: with 5 days left, opening the app gives it its 30 days again (and its cookie).
+{ const st = acc('111').ctx.storage, ss = await st.get('sessions'), k = Object.keys(ss)[0];
+  ss[k] = { ...ss[k], expires: Date.now() + 5 * 864e5 }; await st.put('sessions', ss);
+  const r = await req('GET', '/api/me', { headers: { Cookie: ana } }), after = (await st.get('sessions'))[k].expires;
+  ok(r.status === 200 && after > Date.now() + 29 * 864e5 && /Max-Age=2592000/.test(r.headers.get('Set-Cookie') || ''), 'sesión en uso: se alarga sola (30 días más, con su cookie)');
+  ok(!(await req('GET', '/api/me', { headers: { Cookie: ana } })).headers.get('Set-Cookie'), 'recién alargada: no se toca en cada petición'); }
 ok(me.email === 'ana@example.com' && me.plan === 'free' && me.credits === 50 && me.features.join() === 'ai,cloud-save', 'cuenta nueva: plan gratis y 50 créditos de regalo: ' + JSON.stringify(me));
 await req('POST', '/api/login', { body: { accessToken: 'tok-ana', terms: TERMS } });
 me = await (await req('GET', '/api/me', { headers: { Cookie: ana } })).json();
