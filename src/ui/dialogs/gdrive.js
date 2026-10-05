@@ -53,6 +53,7 @@ export function driveSaveAsUI() {
     <div class="gs-where"><i class="ms">folder</i><span>${t('Carpeta')}: <b class="gs-folder"></b></span><button type="button" class="mini2 gs-pick">${t('Elegir carpeta…')}</button></div>
     <div class="pdf-modes">
       <label class="pdf-mode"><input type="radio" name="gs-fmt" value="revela" checked><i class="ms">edit_document</i><span><b>${t('Revela (editable, todo)')}</b><small>${t('Se sigue guardando sola mientras trabajas. En Drive se ve su primera diapositiva y se encuentra por sus textos.')}</small></span></label>
+      <label class="pdf-mode"><input type="radio" name="gs-fmt" value="pdf"><i class="ms">picture_as_pdf</i><span><b>${t('PDF — se ve en Drive con todas sus diapositivas, tal cual')}</b><small>${t('Una copia para verla o compartirla, con el texto buscable: los cambios que hagas después no se guardan en ella.')}</small></span></label>
       <label class="pdf-mode"><input type="radio" name="gs-fmt" value="pptx"><i class="ms">slideshow</i><span><b>${t('PowerPoint (.pptx) — se ve en Drive con todas sus diapositivas')}</b><small>${t('Una copia para verla o compartirla: los cambios que hagas después no se guardan en ella.')}</small></span></label>
     </div>
     <div class="fr-actions"><button class="fr-do gs-ok">${t('Guardar')}</button></div></div>`;
@@ -73,6 +74,7 @@ export function driveSaveAsUI() {
     $('.gs-ok').disabled = true; $('.gs-ok').textContent = t('Guardando…');
     try {
       if (fmt === 'pptx') { const f = await gd.savePptxCopy({ name, folder }); close(); savedDialog(f); }
+      else if (fmt === 'pdf') { const f = await gd.savePdfCopy({ name, folder }); close(); savedDialog(f); }
       else { await nowInDrive(); const ok = await gd.savePresentation({ asNew: true, name, folder }); close(); if (ok) savedDialog(gd.linkedFile()); }
     } catch (e) { close(); friendly(e); }
   });

@@ -345,6 +345,16 @@ export async function savePptxCopy({ name, folder = lastFolder() } = {}) {
   return { id: f.id, name: f.name, folder: folder || ROOT, link: f.webViewLink || '' };
 }
 
+// A PDF copy in Drive (with the text selectable: Drive leafs through it and finds its words), not linked.
+export async function savePdfCopy({ name, folder = lastFolder() } = {}) {
+  if (!gdriveReady()) { openGdriveSetup(); return null; }
+  const { buildPDF } = await import('../export/pdf.js');
+  const body = await buildPDF(undefined, { text: true });
+  const f = await upload({ name: (cleanName(name) || safeName()) + '.pdf', mimeType: 'application/pdf', body, parent: (folder || ROOT).id });
+  rememberFolder(folder);
+  return { id: f.id, name: f.name, folder: folder || ROOT, link: f.webViewLink || '' };
+}
+
 // ---- Google Picker -----------------------------------------------------------------
 async function picker(makeView, title) {
   const { apiKey, appId } = gdriveConfig();

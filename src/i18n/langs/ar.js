@@ -1,6 +1,8 @@
 // Arabic interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "PDF — se ve en Drive con todas sus diapositivas, tal cual": "PDF — يعرض Drive جميع الشرائح كما هي",
+  "Una copia para verla o compartirla, con el texto buscable: los cambios que hagas después no se guardan en ella.": "نسخة للعرض أو المشاركة مع نص قابل للبحث: لا تُحفظ فيها التغييرات اللاحقة.",
   "Exportar PDF": "تصدير PDF",
   "Una página por diapositiva, exactamente como se ven (3D, fórmulas y efectos incluidos).": "صفحة لكل شريحة، كما تظهر تمامًا (بما في ذلك ثلاثي الأبعاد والصيغ والتأثيرات).",
   "Con el texto seleccionable": "مع نص قابل للتحديد",

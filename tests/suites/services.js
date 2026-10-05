@@ -2308,7 +2308,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       return new W.Response('{}', { status: 404 });
     };
     GD.setThumbnailMaker(async () => 'AAAA');
-    const until = async f => { for (let i = 0; i < 250 && !f(); i++) await sleep(20); };
+    const until = async (f, ms = 5000) => { for (let i = 0; i < ms / 20 && !f(); i++) await sleep(20); };
     const act = a => D.querySelector(`[data-action="${a}"]`).click();
     try {
       // First save: asks where, starting at My Drive.
@@ -2350,6 +2350,13 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       eq(u.meta.mimeType, PPTX, 'se sube como PowerPoint'); eq(u.type, PPTX); assert(/\.pptx$/.test(u.meta.name), 'con extensión .pptx');
       assert(!u.meta.appProperties, 'no sale en «Mis presentaciones» (no es un proyecto de Revela)'); eq(JSON.stringify(u.meta.parents), '["F9"]');
       eq(GD.linkedFile()?.id, 'n2', 'la presentación sigue vinculada a su archivo de Revela');
+      D.querySelector('#gs-done .gs-close').click();
+      // PDF: a copy Drive leafs through, page by page, with its text searchable.
+      act('gdrive-save-as'); await sleep(20);
+      D.querySelector('#gs-modal [name="gs-fmt"][value="pdf"]').checked = true;
+      D.querySelector('#gs-modal .gs-ok').click(); await until(() => D.getElementById('gs-done'), 20000);
+      u = ups.at(-1); eq(u.meta.mimeType, 'application/pdf', 'se sube como PDF'); assert(/\.pdf$/.test(u.meta.name), 'con extensión .pdf');
+      eq(GD.linkedFile()?.id, 'n2', 'y la presentación sigue vinculada a su archivo de Revela');
       D.querySelector('#gs-done .gs-close').click();
       // «Abrir con ▸ Revela» on that .pptx in Drive: imported.
       const slidesN = R.state.deck.slides.length, blob = await R.pptx.buildPptxBlob(), OW = await W.eval("import('/src/ui/shell/openwith.js')");

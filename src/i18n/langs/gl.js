@@ -1,6 +1,8 @@
 // Galician interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "PDF — se ve en Drive con todas sus diapositivas, tal cual": "PDF — vese en Drive con todas as diapositivas, tal cal",
+  "Una copia para verla o compartirla, con el texto buscable: los cambios que hagas después no se guardan en ella.": "Unha copia para vela ou compartila, co texto buscable: os cambios que fagas despois non se gardan nela.",
   "Exportar PDF": "Exportar PDF",
   "Una página por diapositiva, exactamente como se ven (3D, fórmulas y efectos incluidos).": "Unha páxina por diapositiva, exactamente como se ven (3D, fórmulas e efectos incluídos).",
   "Con el texto seleccionable": "Co texto seleccionable",

@@ -11,7 +11,7 @@ Qué permite cada servicio (comprobado en su documentación, septiembre de 2026)
 
 | Servicio | Abrir con | Nuevo archivo | Miniatura | Vista previa integrada |
 | --- | --- | --- | --- | --- |
-| Google Drive | Sí (también `.pptx` y `.odp`, que se importan) | Sí («Nuevo ▸ Revela») | Sí (la primera diapositiva, la sube Revela al guardar) | No para `.revela.json` (Drive no admite visores de terceros); sí para la copia en PowerPoint (`.pptx`) que Revela puede guardar al lado |
+| Google Drive | Sí (también `.pptx` y `.odp`, que se importan) | Sí («Nuevo ▸ Revela») | Sí (la primera diapositiva a 1600 px con «Revela · N diapositivas», la sube Revela al guardar) | No para `.revela.json` (Drive no admite visores de terceros); sí para las copias en PDF o PowerPoint que Revela puede guardar al lado |
 | Dropbox | Sí («Abrir» ▸ Revela), con una app con acceso a todo Dropbox | No | No | No |
 | OneDrive personal | No existe para terceros | No | No | No |
 | OneDrive de empresa / SharePoint | Sí, con *file handlers* (necesitan servidor y consentimiento del administrador) | Sí | Icono propio | Sí |
@@ -40,8 +40,10 @@ Qué permite cada servicio (comprobado en su documentación, septiembre de 2026)
     posteriores no se guardan en ella (se vuelve a guardar otra si hace falta).
     Abrirla luego en Revela («Abrir con ▸ Revela», o «Desde Google Slides») la
     importa.
-  - No hay opción de PDF: Revela hace el PDF con la ventana de imprimir del
-    navegador, y eso no se puede generar ni subir sin que la persona lo guarde.
+  - **PDF — se ve en Drive con todas sus diapositivas, tal cual**: una copia
+    hecha por Revela (cada página, la diapositiva como se ve) con el texto en
+    una capa seleccionable: Drive la hojea entera y encuentra sus palabras.
+    Como el `.pptx`, es una copia: los cambios posteriores no se guardan en ella.
 
 ### Qué se ve en Drive (y qué no se puede cambiar)
 
@@ -52,7 +54,7 @@ Qué permite cada servicio (comprobado en su documentación, septiembre de 2026)
   de la primera diapositiva; el **icono de Revela** en «Abrir con», en
   «Nuevo ▸ Más» y en «Administrar aplicaciones» (los iconos de la aplicación,
   paso 1). Los `.pptx` llevan el icono y la vista previa de PowerPoint de Drive.
-- **Ver todas las diapositivas** dentro de Drive: solo con la copia `.pptx`.
+- **Ver todas las diapositivas** dentro de Drive: con la copia en PDF o en `.pptx`; o «Abrir con ▸ Revela ▸ Ver la presentación», a pantalla completa.
 
 Todo lo que sigue se hace en [Google Cloud Console](https://console.cloud.google.com/), en el
 proyecto que ya usa Revela (el de su ID de cliente, `960102070599`). Los nombres de los menús

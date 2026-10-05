@@ -1,6 +1,8 @@
 // Dutch interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "PDF — se ve en Drive con todas sus diapositivas, tal cual": "PDF — Drive toont alle dia’s, precies zoals ze zijn",
+  "Una copia para verla o compartirla, con el texto buscable: los cambios que hagas después no se guardan en ella.": "Een kopie om te bekijken of te delen, met doorzoekbare tekst: latere wijzigingen worden er niet in opgeslagen.",
   "Exportar PDF": "Pdf exporteren",
   "Una página por diapositiva, exactamente como se ven (3D, fórmulas y efectos incluidos).": "Eén pagina per dia, precies zoals ze eruitzien (3D, formules en effecten inbegrepen).",
   "Con el texto seleccionable": "Met selecteerbare tekst",
