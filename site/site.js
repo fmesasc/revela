@@ -20,7 +20,8 @@
   // the product. The currency starts from where the browser is (dollars outside Europe).
   // (Everything is charged in euros; a currency switch, if a page still has one, is honoured.)
   var billing = document.querySelector('.billing:not(.currency)'), money = document.querySelector('.billing.currency');
-  if (billing) {
+  // (Also on pages with prices but no switch, as the home page: the yearly figures, in euros.)
+  if (billing || document.querySelector('.amt, [data-month]')) {
     var period = 'year', cur = 'EUR';
     if (money) { try { cur = localStorage.getItem('currency') || 'EUR'; } catch (e) {} if (cur !== 'USD') cur = 'EUR'; }
     // (Prices are before taxes. In euros the page shows the final price with Spain's VAT — the
@@ -37,7 +38,7 @@
     var amt = function (v) { return cur === 'EUR' ? eur(v) : fmt(+v, 'USD'); };
     var cents = function (v) { var one = +v === 1, w = cur === 'EUR' ? (one ? WORDS[0] : WORDS[1]) + ' ' + WORDS[4] : (one ? WORDS[2] : WORDS[3]); return plain(+v) + ' ' + w; };
     var paint = function () {
-      billing.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.period === period)); });
+      if (billing) billing.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.period === period)); });
       if (money) money.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.currency === cur)); });
       document.querySelectorAll('[data-month]').forEach(function (el) { el.textContent = el.dataset[period].replace(/\[([\d.]+)\]/g, function (m, v) { return amt(v); }); });
       document.querySelectorAll('.amt').forEach(function (el) { el.textContent = amt(el.dataset.v); });
@@ -46,7 +47,7 @@
       document.querySelectorAll('[data-tax-eur]').forEach(function (el) { el.textContent = el.dataset[cur === 'EUR' ? 'taxEur' : 'taxUsd']; });
       document.querySelectorAll('[data-buy-month]').forEach(function (a) { a.href = a.dataset[period === 'month' ? 'buyMonth' : 'buyYear']; });
     };
-    billing.addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { period = b.dataset.period; paint(); } });
+    if (billing) billing.addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { period = b.dataset.period; paint(); } });
     if (money) money.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; cur = b.dataset.currency; try { localStorage.setItem('currency', cur); } catch (x) {} paint(); });
     paint();
   }

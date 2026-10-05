@@ -213,5 +213,15 @@
   "¿Quién lee lo que envío a soporte?": "Qui llegeix el que envio a suport?",
   "Una persona del equipo de Revela, que te responde por correo. Para ayudarla, tu mensaje y el resumen de tu cuenta pueden analizarse con un modelo de IA a través de OpenRouter, con proveedores que no los guardan ni entrenan con ellos; la IA solo sugiere y la presentación adjunta nunca se le envía. Más en la <a href=\"privacy\">política de privacidad</a>.": "Una persona de l’equip de Revela, que et respon per correu. Per ajudar-la, el teu missatge i el resum del teu compte es poden analitzar amb un model d’IA a través d’OpenRouter, amb proveïdors que no els desen ni entrenen amb ells; la IA només suggereix i la presentació adjunta no se li envia mai. Més a la <a href=\"privacy\">política de privadesa</a>.",
   "Revela es gratis para empezar. Pro: 10 € + IVA al mes, o 96 € + IVA al año, con IA incluida. Equipos y centros: 6 € + IVA por persona y mes. Créditos de IA sin suscripción.": "Revela és gratis per començar. Pro: 10 € + IVA al mes, o 96 € + IVA l’any, amb IA inclosa. Equips i centres: 6 € + IVA per persona i mes. Crèdits d’IA sense subscripció.",
-  "<span class=\"cent\" data-v=\"1.33\">1,33 céntimos</span> por crédito": "<span class=\"cent\" data-v=\"1.33\">1,33 cèntims</span> per crèdit"
+  "<span class=\"cent\" data-v=\"1.33\">1,33 céntimos</span> por crédito": "<span class=\"cent\" data-v=\"1.33\">1,33 cèntims</span> per crèdit",
+  "Gratis para empezar. <em>Pro</em> cuando lo necesites.": "Gratis per començar. <em>Pro</em> quan el necessitis.",
+  "El editor entero es gratis, sin límite de tiempo. Pro añade la IA incluida cada mes, la nube y compartir con personas concretas.": "Tot l’editor és gratis, sense límit de temps. Pro hi afegeix la IA inclosa cada mes, el núvol i compartir amb persones concretes.",
+  "Todo el editor, plantillas, votaciones y PowerPoint. 50 créditos de IA de regalo.": "Tot l’editor, plantilles, votacions i PowerPoint. 50 crèdits d’IA de regal.",
+  "10 € + IVA al mes · o 96 € + IVA al año, dos meses gratis": "10 € + IVA al mes · o 96 € + IVA l’any, dos mesos gratis",
+  "1000 créditos de IA al mes, 500 presentaciones en la nube, compartir con permisos y videollamadas.": "1000 crèdits d’IA al mes, 500 presentacions al núvol, compartir amb permisos i videotrucades.",
+  "Ver Pro": "Veure Pro",
+  "6 € + IVA al mes · desde 3 personas": "6 € + IVA al mes · a partir de 3 persones",
+  "Pro para todo el equipo, con kit de marca, plantillas comunes y Moodle.": "Pro per a tot l’equip, amb kit de marca, plantilles comunes i Moodle.",
+  "Ver Equipos": "Veure Equips",
+  "Precios con el 21 % de IVA de España. Créditos de IA sueltos, sin suscripción, desde <span class=\"amt\" data-v=\"5\">5 €</span>. <a href=\"pricing\">Todos los detalles</a>": "Preus amb l’IVA espanyol del 21 %. Crèdits d’IA solts, sense subscripció, des de <span class=\"amt\" data-v=\"5\">5 €</span>. <a href=\"pricing\">Tots els detalls</a>"
 }

@@ -213,5 +213,15 @@
   "¿Quién lee lo que envío a soporte?": "Who reads what I send to support?",
   "Una persona del equipo de Revela, que te responde por correo. Para ayudarla, tu mensaje y el resumen de tu cuenta pueden analizarse con un modelo de IA a través de OpenRouter, con proveedores que no los guardan ni entrenan con ellos; la IA solo sugiere y la presentación adjunta nunca se le envía. Más en la <a href=\"privacy\">política de privacidad</a>.": "A person on the Revela team, who answers you by email. To help them, your message and your account summary may be analysed by an AI model through OpenRouter, with providers that neither store nor train on them; the AI only suggests and the attached presentation is never sent to it. More in the <a href=\"privacy\">privacy policy</a>.",
   "Revela es gratis para empezar. Pro: 10 € + IVA al mes, o 96 € + IVA al año, con IA incluida. Equipos y centros: 6 € + IVA por persona y mes. Créditos de IA sin suscripción.": "Revela is free to start. Pro: €10 + VAT a month, or €96 + VAT a year, with AI included. Teams and schools: €6 + VAT per person per month. AI credits with no subscription.",
-  "<span class=\"cent\" data-v=\"1.33\">1,33 céntimos</span> por crédito": "<span class=\"cent\" data-v=\"1.33\">1.33 cents</span> per credit"
+  "<span class=\"cent\" data-v=\"1.33\">1,33 céntimos</span> por crédito": "<span class=\"cent\" data-v=\"1.33\">1.33 cents</span> per credit",
+  "Gratis para empezar. <em>Pro</em> cuando lo necesites.": "Free to start. <em>Pro</em> when you need it.",
+  "El editor entero es gratis, sin límite de tiempo. Pro añade la IA incluida cada mes, la nube y compartir con personas concretas.": "The whole editor is free, with no time limit. Pro adds AI included every month, the cloud and sharing with specific people.",
+  "Todo el editor, plantillas, votaciones y PowerPoint. 50 créditos de IA de regalo.": "The whole editor, templates, polls and PowerPoint. 50 AI credits as a gift.",
+  "10 € + IVA al mes · o 96 € + IVA al año, dos meses gratis": "€10 + VAT a month · or €96 + VAT a year, two months free",
+  "1000 créditos de IA al mes, 500 presentaciones en la nube, compartir con permisos y videollamadas.": "1000 AI credits a month, 500 presentations in the cloud, sharing with permissions and video calls.",
+  "Ver Pro": "See Pro",
+  "6 € + IVA al mes · desde 3 personas": "€6 + VAT a month · from 3 people",
+  "Pro para todo el equipo, con kit de marca, plantillas comunes y Moodle.": "Pro for the whole team, with a brand kit, shared templates and Moodle.",
+  "Ver Equipos": "See Teams",
+  "Precios con el 21 % de IVA de España. Créditos de IA sueltos, sin suscripción, desde <span class=\"amt\" data-v=\"5\">5 €</span>. <a href=\"pricing\">Todos los detalles</a>": "Prices with Spain’s 21% VAT. AI credits on their own, no subscription, from <span class=\"amt\" data-v=\"5\">5 €</span>. <a href=\"pricing\">All the details</a>"
 }
