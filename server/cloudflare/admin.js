@@ -27,7 +27,8 @@
 //                                          addresses; visited pages the sitemap leaves out (visits.js)
 //   POST /api/admin/web/extra              { extra: [paths] } → { extra }   (added to /comunidad/sitemap.xml)
 //   POST /api/admin/web/notfound           { path, status: ignored | redirect | new, to? } → { item }
-//   POST /api/admin/web/check              → { checked, bad: [{ url, status }] }   (every address of the sitemaps answers?)
+//   POST /api/admin/web/check              { offset } → { checked, total, bad: [{ url, status }], next }   (do the sitemap's
+//                                          addresses answer? 30 at a time: Cloudflare limits a request's own requests)
 //   GET  /api/admin/releases               → what's on pruebas and in production (releases.js)
 //   POST /api/admin/releases/promote       { reason? } → { ok }   (runs «Publicar en producción»; needs GITHUB_TOKEN)
 //   POST /api/admin/releases/settings      { autoDays } → { settings }   (0: never by itself)
@@ -946,9 +947,9 @@ async function webApi(env, path, q, body, { GET, POST, by, json }) {
   }
   if (POST && path === '/web/check') {
     // (Not the community's own pages: made from what's published, and asking our own route from here isn't reliable.)
-    const urls = (await sitemapUrls(env)).filter(u => !/\/comunidad(\/|$)/.test(u)).slice(0, 400), f = env.FETCH || fetch, bad = [];
-    for (let i = 0; i < urls.length; i += 8) await Promise.all(urls.slice(i, i + 8).map(async u => { const st = await f(u, { method: 'HEAD', redirect: 'manual' }).then(r => r.status).catch(() => 0); if (st !== 200) bad.push({ url: u, status: st }); }));
-    return json({ checked: urls.length, bad });
+    const all = (await sitemapUrls(env)).filter(u => !/\/comunidad(\/|$)/.test(u)), from = Math.max(0, Math.round(+body.offset || 0)), urls = all.slice(from, from + 30), f = env.FETCH || fetch, bad = [];
+    for (let i = 0; i < urls.length; i += 6) await Promise.all(urls.slice(i, i + 6).map(async u => { const st = await f(u, { method: 'HEAD', redirect: 'manual' }).then(r => r.status).catch(() => 0); if (st !== 200) bad.push({ url: u, status: st }); }));
+    return json({ checked: urls.length, total: all.length, bad, next: from + urls.length < all.length ? from + urls.length : null });
   }
   return json({ error: 'not found' }, 404);
 }

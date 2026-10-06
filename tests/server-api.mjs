@@ -2040,6 +2040,7 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     x = await A('GET', '/web'); ok(!x.j.missing.some(p => p.k === '/pricing'), 'sitemap: ya no falta');
     x = await A('POST', '/web/check', { body: {} });
     ok(x.j.checked >= 4 && x.j.bad.some(b => b.url === 'https://revelaslides.com/pricing' && b.status === 404) && !x.j.bad.some(b => b.url === 'https://revelaslides.com/'), 'sitemap: «Comprobar» dice qué dirección no responde');
+    ok(x.j.total === x.j.checked && x.j.next === null && (await A('POST', '/web/check', { body: { offset: 1 } })).j.checked === x.j.total - 1, 'sitemap: por tandas (Cloudflare limita las peticiones de cada llamada)');
     env.FETCH = prevF4;
   }
 
