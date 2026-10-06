@@ -38,3 +38,25 @@ export async function storageWatch(env, { sendMail, adminEmails }) {
   for (const to of adminEmails) sent = (await sendMail(env, { to, subject: `Revela: la nube ocupa ${fmtBytes(bytes)}`, text, html: `<pre style="font:14px system-ui">${text.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</pre>` }).catch(() => false)) || sent;
   return { sent, bytes };
 }
+
+// Documents saved before space was counted have no measure until they're opened: measured here, a batch at a time
+// (the daily run, and «Medir ahora» in the administration) → { accounts, measured, more }.
+export async function storageBackfill(env, { max = 300 } = {}) {
+  if (!env.DIRECTORY || !env.ACCOUNTS || !env.DOCS) return { accounts: 0, measured: 0, more: false };
+  const dir = env.DIRECTORY.get(env.DIRECTORY.idFromName('directory')), ask = async (op, b) => (await dir.fetch('https://dir/' + op, { method: 'POST', body: JSON.stringify(b) })).json();
+  let cursor = null, accounts = 0, measured = 0;
+  do {
+    const page = await ask('search', { cursor, limit: 100 }); cursor = page.cursor;
+    for (const u of page.users || []) {
+      const A = env.ACCOUNTS.get(env.ACCOUNTS.idFromName('u:' + u.sub));
+      const { ids = [] } = await call(A, 'docs-unmeasured'); if (!ids.length) continue; accounts++;
+      for (const id of ids) {
+        if (measured >= max) return { accounts, measured, more: true };
+        const r = await (await env.DOCS.get(env.DOCS.idFromName('doc:' + id)).fetch('https://doc/measure', { method: 'POST', body: JSON.stringify({ who: null, id }) })).json().catch(() => ({}));
+        await call(A, 'docs-bytes', { id, bytes: Number.isFinite(+r.bytes) ? +r.bytes : 0 }); measured++;
+      }
+      await call(A, 'dir-sync').catch(() => {});
+    }
+  } while (cursor);
+  return { accounts, measured, more: false };
+}

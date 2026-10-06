@@ -931,6 +931,11 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     const usedBefore = (await (await req('GET', '/api/docs', { headers: { Cookie: sto } })).json()).storage.used;
     await req('POST', `/api/docs/${d2}/delete`, { headers: { Cookie: sto } });
     L = await (await req('GET', '/api/docs', { headers: { Cookie: sto } })).json(); ok(Math.abs(usedBefore - L.storage.used - 0.6 * MBc) < 5000, 'espacio: borrar libera lo que ocupaba: ' + (usedBefore - L.storage.used));
+    // Documents from before space was counted: measured by the daily run or «Medir ahora».
+    { const m = acc('2424').ctx.storage.m, docs = m.get('docs'), was = docs.find(d => d.id === d1).bytes; delete docs.find(d => d.id === d1).bytes; m.set('docs', docs);
+      y = await A('POST', '/storage/measure', { body: {} });
+      ok(y.status === 200 && y.j.measured >= 1 && !y.j.more && m.get('docs').find(d => d.id === d1).bytes === was, 'espacio: «Medir ahora» mide las presentaciones de antes: ' + JSON.stringify(y.j));
+      ok((await A('POST', '/storage/measure', { body: {} })).j.measured === 0, 'espacio: y no vuelve a medir lo ya medido'); }
     // The admins are told when the whole cloud passes the alert.
     await acc('2424').dirSync(true);
     y = await A('GET', '/storage'); ok(y.j.bytes > 0 && y.j.top.some(u => u.email === 'sto@example.com'), 'espacio: el total y quién ocupa más');

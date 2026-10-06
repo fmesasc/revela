@@ -123,6 +123,7 @@ export class CloudDoc {
     }
     const doc = await this.load(); if (!doc) return this.json({ error: 'not found' }, 404);
     const { meta } = doc, role = this.roleOf(meta, a.who);
+    if (op === 'measure') return this.json({ bytes: await this.bytes(meta) });   // (storage.js: never routed from outside; the trash counts too)
     if (meta.trashed && role !== 'owner') return op === 'role' ? this.json({ role: null }) : this.json({ error: 'not found' }, 404);   // (in the trash: only for its owner)
     if (op === 'role') return this.json({ role });                 // (for the video calls: only who may open it)
     if (!role) return this.json({ error: a.who?.sub ? 'forbidden' : 'sign in' }, a.who?.sub ? 403 : 401);

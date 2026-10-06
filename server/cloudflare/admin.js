@@ -25,6 +25,7 @@
 //   POST /api/admin/block                  { sub, blocked, reason }   (blocked: 403 on AI, cloud documents, calls…)
 //   GET  /api/admin/storage                → { config: { freeMb, proMb, alertGb }, bytes, top }   (the cloud's space: storage.js)
 //   POST /api/admin/storage                { freeMb, proMb, alertGb } → { config }
+//   POST /api/admin/storage/measure        → { accounts, measured, more }   (documents from before space was counted)
 //   POST /api/admin/storage-quota          { sub, mb (0: the plan's), reason } → { before, after }   (one account's own quota)
 //   POST /api/admin/sessions-end           { sub, id?, reason } → { ended }   (one session, or all: a stolen account signed out
 //                                          everywhere; the person signs in again with Google)
@@ -79,7 +80,7 @@
 import { acct, call, settings, trialConfig, cleanTrial, resetTrialCache, resetNoticeCache } from './api.js';
 import { stripeConf } from './billing.js';
 import { priceOf } from './ai.js';
-import { storageConfig, cleanStorage, resetStorageCache } from './storage.js';
+import { storageConfig, cleanStorage, resetStorageCache, storageBackfill } from './storage.js';
 import { cleanNotice } from './notices.js';
 import { mail, mailConfigured, ticketLink, readTicketToken, ticketPage, fmtDate, TICKET_LINK_DAYS } from './mail.js';
 import { fromB64url } from './util.js';
@@ -594,6 +595,7 @@ export async function handleAdmin(req, env, url) {
     await audit(env, { by, action: 'storage-config', target: 'storage', before, after: conf });
     return json({ config: conf });
   }
+  if (POST && path === '/storage/measure') { const r = await storageBackfill(env); await audit(env, { by, action: 'storage-measure', target: 'storage', after: r }); return json(r); }
   if (POST && path === '/storage-quota') {
     const reason = clip(body.reason, 500).trim(), mb = Math.round(+body.mb);
     if (!reason || !Number.isInteger(mb) || mb < 0 || mb > 1048576) return json({ error: 'bad request' }, 400);

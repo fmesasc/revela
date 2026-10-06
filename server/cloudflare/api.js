@@ -579,6 +579,13 @@ export class Account {
         await this.put({ folders }); return this.json({ ok: true, folder: f, folders });
       }
       case 'folders-list': return this.json({ folders: await this.get('folders', []) });
+      // (storage.js: the documents not measured yet — saved before space was counted — and their measure.)
+      case 'dir-sync': await this.dirSync(true); return this.json({ ok: true });
+      case 'docs-unmeasured': return this.json({ ids: (await this.get('docs', [])).filter(d => d.bytes === undefined).map(d => d.id) });
+      case 'docs-bytes': {
+        const docs = await this.get('docs', []), d = docs.find(x => x.id === a.id); if (!d || !Number.isFinite(+a.bytes)) return this.json({ ok: false });
+        d.bytes = +a.bytes; await this.put({ docs }); return this.json({ ok: true });
+      }
       case 'docs-remove': await this.put({ docs: (await this.get('docs', [])).filter(x => x.id !== a.id) }); await this.dirSync(); return this.json({ ok: true });
       case 'inbox-list': return this.json({ docs: (await this.get('inbox', [])).filter(x => !x.away) });
       case 'inbox-add': {
