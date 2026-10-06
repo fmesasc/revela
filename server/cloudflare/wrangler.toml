@@ -237,3 +237,16 @@ class_name = "Finance"
 [[migrations]]
 tag = "v11"
 new_sqlite_classes = ["Finance"]
+
+# Captación (crm.js), for the admin's «Captación» page: schools and businesses (found in OpenStreetMap,
+# imported or from the website's form), follow-ups and reminders, email sequences — only to who gave
+# consent, never to one who unsubscribed — and the campaigns' links (/api/go/<slug>) with their visits,
+# sign-ups, requests and purchases. The daily cron above sends what is due and a summary to the admin.
+# Optional plain var: LEADS_PER_DAY (requests from the form per address and day; default 5).
+[[durable_objects.bindings]]
+name = "CRM"
+class_name = "Crm"
+
+[[migrations]]
+tag = "v12"
+new_sqlite_classes = ["Crm"]

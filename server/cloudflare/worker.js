@@ -39,9 +39,11 @@ import { LtiStore } from './lti.js';
 import { CallRoom } from './calls.js';
 import { Schedule, runSchedule } from './schedule.js';
 import { ModelJob } from './model3d.js';
-import { handleAdmin, adminHost, Directory, Tickets, Audit, ticketsDue } from './admin.js';
+import { handleAdmin, adminHost, Directory, Tickets, Audit, ticketsDue, emails as adminEmails } from './admin.js';
+import { Crm, runCrm } from './crm.js';
+import { sendMail, mailConfigured } from './mail.js';
 import { Finance } from './finance.js';
-export { CollabRoom, ShareBox, Limits, Account, Budget, DesktopLink, CloudDoc, Team, LtiStore, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance, verifyGoogleToken, resetCerts };
+export { CollabRoom, ShareBox, Limits, Account, Budget, DesktopLink, CloudDoc, Team, LtiStore, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance, Crm, verifyGoogleToken, resetCerts };
 
 const box = (env, id) => env.SHAREBOX.get(env.SHAREBOX.idFromName(id));
 // Who counts for the daily limits: the Google account, else the key, else the address.
@@ -87,6 +89,7 @@ export default {
     const now = event.scheduledTime || Date.now();
     ctx.waitUntil(runSchedule(env, now).catch(e => console.log('schedule', e?.message)));
     ctx.waitUntil(ticketsDue(env, now).catch(e => console.log('tickets', e?.message)));
+    ctx.waitUntil(runCrm(env, { sendMail, mailConfigured, adminEmails: adminEmails(env) }, now).catch(e => console.log('crm', e?.message)));
   },
   async fetch(req, env) {
     const url = new URL(req.url);

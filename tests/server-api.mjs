@@ -2,7 +2,7 @@
 // payments and the desktop sign-in — above all, that nothing can be skipped
 // from outside. In-memory Durable Objects; the AI provider, Google and Stripe
 // are simulated. Run by tests/run.sh when Node.js is available.
-import worker, { Account, Budget, DesktopLink, ShareBox, Limits, CloudDoc, Team, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance } from '../server/cloudflare/worker.js';
+import worker, { Account, Budget, DesktopLink, ShareBox, Limits, CloudDoc, Team, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance, Crm } from '../server/cloudflare/worker.js';
 import { summarize, bump, toCsv, cleanEntry, featureOf } from '../server/cloudflare/finance.js';
 import { verifyAccess, resetAccessCerts, resetPromoCache } from '../server/cloudflare/admin.js';
 import { ticketToken, render } from '../server/cloudflare/mail.js';
@@ -1461,6 +1461,126 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok((await N('where=editor&lang=es')).notices.length === 0, 'avisos: desactivado, ya no sale');
     for (const n of [id, ...others]) ok((await A('POST', `/notices/${n}/delete`, { body: {} })).status === 200, 'avisos: borrado');
     ok((await A('GET', '/notices')).j.notices.length === 0, 'avisos: ninguno al final');
+  }
+
+  // Captación (crm.js): the website's form, contacts found in OpenStreetMap (never emailed by themselves), sequences only to
+  // who gave consent, the way out and the links of their emails, reminders, messages for calls, campaigns (visits, sign-ups, purchases).
+  {
+    env.CRM = namespace(Crm, env);
+    const prevF = env.FETCH, osmCalls = [];
+    env.FETCH = async (u, init = {}) => { const s = String(u);
+      if (s.startsWith('https://oauth2.googleapis.com/tokeninfo') && s.includes('access_token=tok-crm')) return Response.json({ aud: CID, sub: '3131', email: 'crm@example.com', email_verified: 'true', expires_in: 3000 });
+      if (s.startsWith('https://nominatim.openstreetmap.org/')) { osmCalls.push({ s, ua: init.headers?.['User-Agent'] }); return Response.json([{ osm_type: 'relation', osm_id: 345, lat: '41.6', lon: '-0.9', display_name: 'Zaragoza, Aragón, España', address: { city: 'Zaragoza', state: 'Aragón', country_code: 'es' } }]); }
+      if (s === 'https://overpass-api.de/api/interpreter') { osmCalls.push({ s, q: decodeURIComponent(String(init.body)) }); return Response.json({ elements: [
+        { type: 'node', id: 1, lat: 41.6, lon: -0.9, tags: { name: 'CEIP Los Olivos', amenity: 'school', email: 'info@olivos.example', website: 'olivos.example', 'addr:street': 'Calle Mayor', 'addr:housenumber': '3' } },
+        { type: 'way', id: 2, center: { lat: 41.7, lon: -0.8 }, tags: { name: 'IES Ebro', amenity: 'school', phone: '+34 976 000 000' } },
+        { type: 'node', id: 3, tags: { amenity: 'school' } }] }); }
+      return prevF(u, init); };
+    const C = (m, p, o) => A(m, '/crm' + p, o);
+    const lead = (b, o = {}) => req('POST', '/api/leads', { body: { name: 'Colegio Sol', person: 'Ana Ruiz', email: 'ana@sol.example', kind: 'school', city: 'Huesca', lang: 'es', privacy: true, ...b }, ...o });
+    ok((await lead({ privacy: false })).status === 400, 'captación: el formulario sin aceptar la privacidad → 400');
+    ok((await lead({}, { origin: 'https://malo.example' })).status === 403, 'captación: el formulario desde otra web → 403');
+    ok((await lead({ email: 'nada' })).status === 400, 'captación: correo no válido → 400');
+    sent = [];
+    ok((await lead({ website: 'bot' })).status === 200 && !sent.length && (await C('GET', '/contacts')).j.all === 0, 'captación: un bot (campo trampa): nada guardado ni enviado');
+    // Settings and a sequence started by requests.
+    x = await C('POST', '/settings', { body: { settings: { identity: 'FM Lab · Zaragoza · revelaslides.com', replyTo: 'hola@fmlab.example', dailyMax: 10 } } });
+    ok(x.status === 200 && x.j.settings.dailyMax === 10, 'captación: ajustes');
+    x = await C('POST', '/sequences', { body: { seq: { name: 'Bienvenida a centros', trigger: 'lead', steps: [{ days: 0, subject: 'Hola, {nombre}', body: 'Gracias por tu interés en {centro}.\n\nMira https://revelaslides.com/centros' }, { days: 3, subject: '¿Qué tal?', body: 'Seguimos aquí.' }] } } });
+    ok(x.status === 200 && x.j.seq.trigger === 'lead', 'captación: secuencia creada');
+    const seqId = x.j.seq.id;
+    ok((await C('POST', '/sequences', { body: { seq: { name: 'Sin pasos', steps: [] } } })).status === 400, 'captación: una secuencia sin pasos → 400');
+    // A request without marketing consent: answered, never in a sequence.
+    sent = [];
+    ok((await lead({ marketing: false, message: 'Queremos una demo para el claustro' })).status === 200, 'captación: solicitud recibida');
+    ok(sent.length === 1 && sent[0].to === 'ana@sol.example' && !sent[0].headers?.['List-Unsubscribe'] && sent[0].replyTo === 'hola@fmlab.example' && /FM Lab/.test(sent[0].text), 'captación: sin permiso comercial, solo el acuse (con la identidad y la respuesta a tu buzón)');
+    let list = (await C('GET', '/contacts')).j, ana = list.items.find(c => c.name === 'Colegio Sol');
+    ok(ana && ana.source === 'form' && !ana.consent && !ana.seq && ana.nextAt, 'captación: en la lista, sin consentimiento ni secuencia, con un recordatorio para responder');
+    // With it: in the sequence, and the acknowledgement already has a way out.
+    sent = [];
+    ok((await lead({ name: 'Academia Luna', person: 'Luis', email: 'luis@luna.example', kind: 'academy', marketing: true, campaign: 'no-existe' })).status === 200, 'captación: solicitud con permiso');
+    ok(sent.length === 1 && /\/api\/crm\/unsub\?t=/.test(sent[0].headers?.['List-Unsubscribe'] || ''), 'captación: el acuse lleva la baja en un clic');
+    list = (await C('GET', '/contacts')).j; const luis = list.items.find(c => c.name === 'Academia Luna');
+    ok(luis.consent && luis.seq?.id === seqId, 'captación: con permiso entra en la secuencia de solicitudes');
+    // Searching OpenStreetMap; importing; never emailed by themselves.
+    x = await C('GET', '/search?area=Zaragoza&kind=school');
+    ok(x.status === 200 && x.j.items.length === 2 && x.j.items[0].name === 'CEIP Los Olivos' && x.j.items[0].web === 'https://olivos.example/' && x.j.items[0].address === 'Calle Mayor 3' && x.j.items[1].city === 'Zaragoza', 'captación: búsqueda en OpenStreetMap (los que no tienen nombre, fuera): ' + JSON.stringify(x.j.items[0]));
+    ok(/area\(id:3600000345\)/.test(osmCalls.find(c => c.q)?.q || '') && /Revela/.test(osmCalls[0].ua || ''), 'captación: busca dentro de la zona, identificándose');
+    ok((await C('GET', '/search?area=Zaragoza&kind=otra')).status === 400, 'captación: tipo desconocido → 400');
+    x = await C('POST', '/import', { body: { source: 'osm', rows: x.j.items.map(i => ({ contact: i, osm: i.osm })) } });
+    ok(x.j.added === 2, 'captación: importados');
+    ok((await C('POST', '/import', { body: { source: 'osm', rows: [{ contact: { name: 'CEIP Los Olivos', email: 'info@olivos.example' }, osm: 'node/1' }] } })).j.updated === 1, 'captación: sin duplicados (mismo lugar o correo)');
+    x = await C('GET', '/search?area=Zaragoza&kind=school');
+    ok(x.j.items.every(i => i.known), 'captación: la búsqueda marca los que ya están');
+    const olivos = (await C('GET', '/contacts?q=olivos')).j.items[0];
+    ok((await C('POST', `/contacts/${olivos.id}/enroll`, { body: { seq: seqId } })).status === 409, 'captación: sin consentimiento no se puede meter en una secuencia');
+    ok((await C('POST', `/contacts/${olivos.id}/consent`, { body: { how: 'x' } })).status === 400, 'captación: el consentimiento a mano necesita decir cómo');
+    // The daily run: only Luis gets the sequence's email; the admin a summary.
+    sent = []; await runCron(Date.now());
+    const toLuis = sent.filter(m => m.to === 'luis@luna.example');
+    ok(toLuis.length === 1 && toLuis[0].subject === 'Hola, Luis' && /Academia Luna/.test(toLuis[0].text) && /FM Lab/.test(toLuis[0].text) && toLuis[0].headers?.['List-Unsubscribe'] && toLuis[0].replyTo === 'hola@fmlab.example', 'captación: el correo de la secuencia, rellenado, con identidad, baja y respuesta: ' + JSON.stringify(toLuis[0]?.subject));
+    ok(!sent.some(m => m.to === 'ana@sol.example' || m.to === 'info@olivos.example'), 'captación: nada a quien no dio permiso');
+    const digest = sent.find(m => m.to === 'jefe@example.com');
+    ok(digest && /Solicitudes nuevas/.test(digest.text) && /Colegio Sol/.test(digest.text) && /enviados hoy: 1/.test(digest.text), 'captación: resumen diario para la administración');
+    ok(/\/api\/crm\/click\?t=/.test(toLuis[0].html) && !/href="https:\/\/revelaslides\.com\/centros"/.test(toLuis[0].html), 'captación: los enlaces del correo pasan por el contador');
+    // A click: counted, and on to its address.
+    const click = toLuis[0].html.match(/href="([^"]*\/api\/crm\/click\?t=[^"]+)"/)[1].replace(/&amp;/g, '&');
+    r = await worker.fetch(new Request(click), env);
+    ok(r.status === 302 && r.headers.get('Location') === 'https://revelaslides.com/centros', 'captación: el enlace lleva a su dirección');
+    ok((await worker.fetch(new Request(SITE + '/api/crm/click?t=falso'), env)).headers.get('Location') === SITE + '/', 'captación: un enlace falsificado no lleva a ningún otro sitio');
+    let sq = (await C('GET', '/sequences')).j;
+    ok(sq.stats[seqId][0].sent === 1 && sq.stats[seqId][0].click === 1, 'captación: enviados y clics por paso');
+    // The same day again: nothing twice. The second step 3 days later; but Luis leaves first (one click).
+    sent = []; await runCron(Date.now()); ok(!sent.some(m => m.to === 'luis@luna.example'), 'captación: nada dos veces');
+    const unsub = toLuis[0].headers['List-Unsubscribe'].slice(1, -1);
+    r = await worker.fetch(new Request(unsub, { method: 'POST', body: 'List-Unsubscribe=One-Click', headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }), env);
+    ok(r.status === 200, 'captación: baja en un clic');
+    ok((await worker.fetch(new Request(unsub.replace(/t=.{6}/, 't=xxxxxx')), env)).status === 400, 'captación: una baja falsificada no hace nada');
+    const realNow0 = Date.now; Date.now = () => realNow0() + 4 * DAYms;
+    sent = []; await runCron(Date.now()); Date.now = realNow0;
+    ok(!sent.some(m => m.to === 'luis@luna.example'), 'captación: tras la baja, ni un correo más');
+    x = await C('GET', `/contacts/${luis.id}`);
+    ok(x.j.contact.unsub && !x.j.contact.seq && x.j.contact.history.some(h => h.what === 'unsub'), 'captación: la baja queda en su ficha');
+    ok((await C('POST', `/contacts/${luis.id}/consent`, { body: { how: 'Me lo pidió por teléfono' } })).status === 409, 'captación: tras una baja, solo la propia persona puede volver a pedirlo');
+    // Consent written down by the admin (when and how): then a sequence may write.
+    ok((await C('POST', `/contacts/${olivos.id}/consent`, { body: { how: 'Lo pidió la jefa de estudios en la feria Didacta' } })).status === 200, 'captación: consentimiento anotado');
+    ok((await C('POST', `/contacts/${olivos.id}/enroll`, { body: { seq: seqId } })).status === 200, 'captación: ahora sí entra en la secuencia');
+    sent = []; await runCron(Date.now()); ok(sent.some(m => m.to === 'info@olivos.example'), 'captación: y recibe el primer paso');
+    ok((await A('GET', '/audit?target=crm:' + olivos.id)).j.entries.some(e => e.action === 'crm-consent'), 'captación: el consentimiento queda en la auditoría');
+    // By hand: a call logged, its follow-up; a message ready for the call.
+    x = await C('POST', `/contacts/${ana.id}/log`, { body: { channel: 'phone', text: 'Hablé con la jefa de estudios', nextDays: 7, nextWhat: 'Enviar la propuesta' } });
+    ok(x.j.contact.status === 'contacted' && x.j.contact.nextWhat === 'Enviar la propuesta' && x.j.contact.nextAt > Date.now() + 6 * DAYms, 'captación: contacto anotado con su seguimiento');
+    x = await C('POST', `/contacts/${olivos.id}/message`, { body: { tpl: 'tplcall1', me: 'Francisco' } });
+    ok(/CEIP Los Olivos/.test(x.j.body) && /Francisco/.test(x.j.body) && x.j.channel === 'phone', 'captación: guion de llamada rellenado');
+    x = await C('POST', `/contacts/${olivos.id}/status`, { body: { status: 'demo' } });
+    ok(x.j.contact.status === 'demo' && !x.j.contact.seq, 'captación: al pasar a «demo», la secuencia se detiene');
+    x = await C('POST', '/preview', { body: { seq: seqId, i: 1 } });
+    ok(x.status === 200 && /Seguimos aquí/.test(x.j.html) && /FM Lab/.test(x.j.html), 'captación: vista previa de un paso');
+    // Campaigns: the link, its visits; a new account through it, and its purchase.
+    x = await C('POST', '/campaigns', { body: { camp: { name: 'Feria Didacta', slug: 'didacta-26', url: '/centros', channel: 'feria', code: 'didacta' } } });
+    ok(x.status === 200 && x.j.camp.code === 'DIDACTA', 'captación: campaña creada');
+    ok((await C('POST', '/campaigns', { body: { camp: { name: 'Otra', slug: 'didacta-26', url: '/' } } })).status === 409, 'captación: nombre de enlace repetido → 409');
+    ok((await C('POST', '/campaigns', { body: { camp: { name: 'Mala', slug: 'mala', url: 'javascript:alert(1)' } } })).status === 400, 'captación: dirección no válida → 400');
+    r = await worker.fetch(new Request(SITE + '/api/go/didacta-26'), env);
+    const loc = new URL(r.headers.get('Location'));
+    ok(r.status === 302 && loc.pathname === '/centros' && loc.searchParams.get('rv') === 'didacta-26' && loc.searchParams.get('utm_source') === 'feria', 'captación: el enlace de campaña lleva a su página con rv y utm');
+    ok((await worker.fetch(new Request(SITE + '/api/go/no-existe'), env)).headers.get('Location') === SITE + '/', 'captación: un enlace desconocido, a la portada');
+    await req('POST', '/api/login', { body: { accessToken: 'tok-crm', terms: TERMS, lang: 'es', campaign: 'didacta-26' } });
+    await req('POST', '/api/login', { body: { accessToken: 'tok-crm', terms: TERMS, lang: 'es', campaign: 'didacta-26' } });
+    ok((await hook({ id: 'evt_crm1', type: 'checkout.session.completed', data: { object: { mode: 'payment', payment_status: 'paid', amount_total: 1210, currency: 'eur', total_details: { amount_tax: 210 }, client_reference_id: '3131', metadata: { sub: '3131', product: 'credits-500' } } } }, 'whsec_x')).status === 200, 'captación: compra de quien vino por la campaña');
+    await lead({ name: 'Colegio Mar', email: 'mar@mar.example', campaign: 'didacta-26' });
+    x = await C('GET', '/campaigns');
+    const cs = x.j.stats[x.j.camps[0].id];
+    ok(cs.visit === 1 && cs.signup === 1 && cs.purchase === 1 && cs.revenue === 1000 && cs.leads === 1, 'captación: visitas, altas (una vez), solicitudes y compras (sin IVA) por campaña: ' + JSON.stringify(cs));
+    ok(x.j.base === SITE + '/api/go/', 'captación: la dirección base de los enlaces');
+    // Three years untouched and come to nothing: deleted by the daily run (the ones in conversation, kept).
+    const before = (await C('GET', '/contacts')).j.all;
+    Date.now = () => realNow0() + 3 * 366 * DAYms; await runCron(Date.now()); Date.now = realNow0;
+    x = (await C('GET', '/contacts')).j;
+    ok(x.all < before && x.items.every(c => ['talking', 'demo', 'proposal', 'customer'].includes(c.status)) && x.items.some(c => c.status === 'demo'), 'captación: a los 3 años sin actividad se borran los que no llegaron a nada: ' + before + ' → ' + x.all);
+    // Off without its object; and the admin only.
+    ok((await req('GET', '/api/admin/crm/contacts')).status === 404, 'captación: la API de administración no responde fuera de su host');
+    env.FETCH = prevF;
   }
 
   // Deleting the account takes it out of the directory.

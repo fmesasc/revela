@@ -58,12 +58,14 @@ import { handleTeams, teamStatus } from './teams.js';
 import { handleLti } from './lti.js';
 import { handleCalls } from './calls.js';
 import { docsSettings, TRASH_DAYS, FOLDERS } from './docs.js';
-import { mail, readUnsubToken, unsubPage, fmtDate, mailConfigured, OPTIONAL } from './mail.js';
+import { mail, sendMail, readUnsubToken, unsubPage, fmtDate, mailConfigured, OPTIONAL } from './mail.js';
 import { scheduleAt, dayOf } from './schedule.js';
 import { handle3d, configured3d } from './model3d.js';
 import { createTicket, supportReply, directoryUpsert, directoryRemove, CHARGES } from './admin.js';
 import { record, active, featureOf, financeSettings } from './finance.js';
 import { NOTICE_PLACES, noticesFor, noticesOp } from './notices.js';
+import { takeQuota } from './store.js';
+import { handleLead, goLink, crmUnsub, crmClick, campaignSignup, campaignPurchase } from './crm.js';
 
 const enc = new TextEncoder();
 const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -330,10 +332,11 @@ export class Account {
     const op = new URL(req.url).pathname.split('/').pop(), a = req.method === 'POST' ? await req.json() : {};
     const s = settings(this.env);
     switch (op) {
-      case 'login': {                                      // { sub, email, name?, kind, terms?, lang? } → { token }
+      case 'login': {                                      // { sub, email, name?, kind, terms?, lang? } → { secret, days, fresh (a new account) }
+        let fresh = false;
         const prof = await this.get('profile', null), terms = a.terms === s.termsVersion ? { version: s.termsVersion, at: Date.now() } : null;
         if (!prof && !terms) return this.json({ error: 'terms', version: s.termsVersion });   // (a new account accepts the terms first)
-        if (!prof) { await this.put({ profile: { sub: a.sub, email: a.email, ...(a.name && { name: a.name }), ...(a.lang && { lang: a.lang }), created: Date.now(), terms } }); await record(this.env, { kind: 'signup', sub: a.sub }); if (s.trial > 0) await this.entry(s.trial, 'trial', null, s.trialDays); }
+        if (!prof) { await this.put({ profile: { sub: a.sub, email: a.email, ...(a.name && { name: a.name }), ...(a.lang && { lang: a.lang }), created: Date.now(), terms } }); await record(this.env, { kind: 'signup', sub: a.sub }); if (s.trial > 0) await this.entry(s.trial, 'trial', null, s.trialDays); fresh = true; }
         else {
           const next = { ...prof, email: a.email, ...(a.name && { name: a.name }), ...(a.lang && { lang: a.lang }), ...(terms && prof.terms?.version !== s.termsVersion && { terms }) };
           if (JSON.stringify(next) !== JSON.stringify(prof)) await this.put({ profile: next });
@@ -344,7 +347,7 @@ export class Account {
         // (At most 20 sessions: the oldest go.)
         const kept = Object.entries(sessions).filter(([, v]) => v.expires > Date.now()).sort((x, y) => y[1].created - x[1].created).slice(0, 19);
         await this.put({ sessions: { ...Object.fromEntries(kept), [await sha256(secret)]: { created: Date.now(), expires: Date.now() + days * DAY, kind: a.kind || 'web' } } });
-        return this.json({ secret, days });
+        return this.json({ secret, days, ...(fresh && { fresh }) });
       }
       case 'check': {                                      // { secret } → ok?
         const sessions = await this.get('sessions', {}), h = await sha256(a.secret || ''), v = sessions[h], ok = !!v && v.expires > Date.now();
@@ -745,6 +748,11 @@ export async function handleApi(req, env, url) {
   }
   // Answering a ticket: the signed link in its emails is the proof (no session; a form, so before the JSON body).
   if (path === '/support/reply' && (req.method === 'GET' || req.method === 'POST')) return supportReply(req, env, url, s.site);
+  // Captación (crm.js): a campaign's link, and the way out / the links of its emails (signed; no session).
+  let go = path.match(/^\/go\/([\w-]{1,40})$/);
+  if (go && req.method === 'GET') return goLink(env, go[1]);
+  if (path === '/crm/unsub' && (req.method === 'GET' || req.method === 'POST')) return crmUnsub(req, env, url);
+  if (path === '/crm/click' && req.method === 'GET') return crmClick(env, url);
   // Relay servers (TURN) for the phone remote, voting and live collaboration: a phone on mobile data
   // often can't reach the computer directly. No session (the phone has none); only from Revela's pages.
   if (path === '/ice' && req.method === 'GET') {
@@ -761,12 +769,19 @@ export async function handleApi(req, env, url) {
   let body = {}; if (text) { try { body = JSON.parse(text); } catch { body = null; } }
   if (req.method === 'POST' && (!body || typeof body !== 'object' || Array.isArray(body))) return json({ error: 'bad request' }, 400);
 
+  // The website's form «Revela para centros» (crm.js): only from the site itself.
+  if (path === '/leads') {
+    if (req.method !== 'POST') return json({ error: 'method' }, 405);
+    if (!webOrigin) return json({ error: 'origin' }, 403);
+    return handleLead(req, env, body, json, { takeQuota, sendMail });
+  }
   if (path === '/login' && req.method === 'POST') {
     const who = await googleUser(body.accessToken, body.idToken, s.clientId, env.FETCH || fetch);
     if (!who) return json({ error: 'not signed in with Google' }, 401);
     const kind = body.kind === 'desktop' && !webOrigin ? 'desktop' : 'web', lang = langOf(body.lang);
     const r = await call(acct(env, who.sub), 'login', { sub: who.sub, email: who.email, name: who.name, kind, lang, terms: body.terms });
     if (r.error === 'terms') return json(r, 400);
+    if (r.fresh && body.campaign) await campaignSignup(env, who.sub, String(body.campaign));   // (the campaign that brought a new account: crm.js)
     if (lang) await call(acct(env, 'e:' + who.email), 'set-lang', { lang });   // (for emails to this address: shares, invitations)
     const token = tokenOf(who.sub, r.secret);
     if (kind === 'desktop') return json({ ok: true, token });
@@ -1210,6 +1225,7 @@ async function moneyEvent(env, s, conf, ev, o, sub, team) {
   const cur = String(o.currency || 'eur').toLowerCase(), ref = ev.id, T = conf.mode === 'test' ? { test: true } : {};
   if (ev.type === 'checkout.session.completed' && o.mode === 'payment' && o.payment_status === 'paid') {
     const gross = +o.amount_total || 0, p = s.products[o.metadata?.product], discount = +o.total_details?.amount_discount || 0;
+    if (!T.test && sub) await campaignPurchase(env, sub, gross - (+o.total_details?.amount_tax || 0));   // (crm.js: the campaign that brought them)
     await record(env, { kind: 'payment', product: o.metadata?.product || 'other', cur, gross, tax: +o.total_details?.amount_tax || 0, ...(p?.credits && { credits: p.credits }),
       ...(discount > 0 && { discount, promo: await promoOf(env, conf.key, o) }),
       sub, ref, ...T, ...(await stripeFee(env, { intent: o.payment_intent, gross, cur }, conf.key)) });
@@ -1228,6 +1244,7 @@ async function moneyEvent(env, s, conf, ev, o, sub, team) {
     const span = (+line.period?.end - +line.period?.start) * 1000, months = span > 0 ? Math.max(1, Math.round(span / (30.44 * DAY))) : 1;
     const tax = +o.tax || (o.total_taxes || []).reduce((t, x) => t + (+x.amount || 0), 0) || (o.total_tax_amounts || []).reduce((t, x) => t + (+x.amount || 0), 0);
     const discount = (o.total_discount_amounts || []).reduce((t, x) => t + (+x.amount || 0), 0);
+    if (!T.test && sub) await campaignPurchase(env, sub, gross - tax);
     await record(env, { kind: 'payment', product, cur, gross, tax, subscription, months, sub: sub || null, ref, ...T,
       ...(discount > 0 && { discount, promo: await promoOf(env, conf.key, o) }),
       ...(await stripeFee(env, { charge: o.charge || pay.charge, intent: o.payment_intent || pay.payment_intent, gross, cur }, conf.key)) });

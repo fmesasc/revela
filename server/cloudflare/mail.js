@@ -38,15 +38,16 @@ export async function sendMail(env, o) {
   if (ok) await record(env, { kind: 'email', mail: o.kind || 'other', usd: financeSettings(env).emailUsd });
   return ok;
 }
-async function deliver(env, { to, subject, html, text, unsubscribe }) {
+// (replyTo: where answers go — Captación's emails: the admin's mailbox, not the no-reply sender.)
+async function deliver(env, { to, subject, html, text, unsubscribe, replyTo }) {
   if (!to) return false;
   const from = fromOf(env), headers = unsubscribe ? { 'List-Unsubscribe': `<${unsubscribe}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } : undefined;
   try {
-    if (env.EMAIL?.send) { await env.EMAIL.send({ from, to, subject, html, text, ...(headers && { headers }) }); return true; }
+    if (env.EMAIL?.send) { await env.EMAIL.send({ from, to, subject, html, text, ...(replyTo && { replyTo }), ...(headers && { headers }) }); return true; }
     if (env.RESEND_KEY) {
       const r = await (env.FETCH || fetch)('https://api.resend.com/emails', { method: 'POST',
         headers: { Authorization: `Bearer ${env.RESEND_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from: from.name ? `${from.name} <${from.email}>` : from.email, to, subject, html, text, ...(headers && { headers }) }) });
+        body: JSON.stringify({ from: from.name ? `${from.name} <${from.email}>` : from.email, to, subject, html, text, ...(replyTo && { reply_to: replyTo }), ...(headers && { headers }) }) });
       return r.ok;
     }
   } catch (e) { console.log('mail failed', e?.code || e?.message); }

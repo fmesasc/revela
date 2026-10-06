@@ -77,6 +77,7 @@ import { mail, mailConfigured, ticketLink, readTicketToken, ticketPage, fmtDate,
 import { fromB64url } from './auth.js';
 import { takeQuota, writeText, readParts } from './store.js';
 import { teamStatus } from './teams.js';
+import { crmApi } from './crm.js';
 import { record, financeCall, financeSettings, cleanEntry, periodOk, dayOf, promoKey } from './finance.js';
 
 const enc = new TextEncoder(), dec = new TextDecoder();
@@ -93,7 +94,7 @@ const getMany = async (st, keys) => { if (!keys.length) return []; const m = awa
 
 // ---- Configuration ---------------------------------------------------------------------------
 export const adminHost = env => String(env.ADMIN_HOST || 'admin.revelaslides.com').toLowerCase();
-const emails = env => String(env.ADMIN_EMAILS || '').toLowerCase().split(/[\s,;]+/).filter(Boolean);
+export const emails = env => String(env.ADMIN_EMAILS || '').toLowerCase().split(/[\s,;]+/).filter(Boolean);
 export const adminConfigured = env => !!(env.ACCESS_TEAM && env.ACCESS_AUD && emails(env).length && /^[a-z0-9-]{1,63}$/i.test(env.ACCESS_TEAM)
   && env.DIRECTORY && env.TICKETS && env.AUDIT);
 
@@ -630,6 +631,7 @@ export async function handleAdmin(req, env, url) {
   }
   if (path === '/promos' || path.startsWith('/promos/')) return promosApi(env, path, q, body, { GET, POST, by, json });
   if (path === '/notices' || path.startsWith('/notices/')) return noticesApi(env, path, body, { GET, POST, by, json });
+  if (path === '/crm' || path.startsWith('/crm/')) return crmApi(env, path, q, body, { GET, POST, by, json, audit: e => audit(env, { by, ...e }) });
   if (path.startsWith('/finance/')) return financeApi(env, path, q, body, { GET, POST, DELETE, by, json, headers, D });
   if (GET && path === '/audit') return json(await call(L, 'list', { cursor: q.get('cursor') || null, target: clip(q.get('target'), 100) || null, limit: +q.get('limit') || 50 }));
   return json({ error: 'not found' }, 404);

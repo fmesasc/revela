@@ -81,11 +81,18 @@ export const rememberTerms = () => { try { localStorage.setItem(TERMS_KEY, TERMS
 // An account from before (the server says terms: false): accepted once.
 export async function acceptTerms() { await api('terms', { version: TERMS_VERSION, lang: currentLang() }); rememberTerms(); return refreshAccount(); }
 
+// The campaign one came from (a campaign's link, /api/go/<slug> → ?rv=<slug>, carried on by the website's links): told
+// to the server when an account is created, so the admin sees which campaigns bring accounts (server/cloudflare/crm.js).
+// Kept in memory only, while this page is open: nothing stored on the device for it.
+let rv = null;
+try { rv = new URLSearchParams(location.search).get('rv'); if (!/^[a-z0-9][a-z0-9-]{1,39}$/.test(rv || '')) rv = null; } catch {}
+export const campaign = () => rv;
+
 // (Throws Error('TERMS') when the server needs the terms accepted first: a new account.)
 export async function signIn() {
   if (EDITION === 'desktop') return desktopSignIn();
   if (!window.google?.accounts?.oauth2) await loadScript(GIS);
-  try { await api('login', { accessToken: await googleToken(), lang: currentLang(), ...(termsAccepted() && { terms: TERMS_VERSION }) }); }
+  try { await api('login', { accessToken: await googleToken(), lang: currentLang(), ...(termsAccepted() && { terms: TERMS_VERSION }), ...(campaign() && { campaign: campaign() }) }); }
   catch (e) { if (e.status === 400 && e.data?.error === 'terms') throw new Error('TERMS'); throw e; }
   return refreshAccount();
 }

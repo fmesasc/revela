@@ -493,8 +493,14 @@ que el servidor los rechaza.
    suscripción (también durante la prueba gratis).
    **Impuestos (Stripe Tax):** categoría de producto *Software as a service (SaaS) – personal use*;
    en cada precio, *Include tax in price* = **No** (los precios son sin impuestos); añadir el registro
-   de IVA de España en Stripe ▸ Tax ▸ Registrations; y la variable `STRIPE_AUTOMATIC_TAX = 1` en el
-   Worker: Checkout sumará el impuesto de cada país y pedirá el NIF-IVA a las empresas.
+   de IVA de España en Stripe ▸ Tax ▸ Registrations y, para el resto de la UE, el registro **OSS**
+   (ventanilla única: alta en Hacienda con el modelo 036/035; en Stripe, *Add registration* ▸ Unión
+   Europea ▸ *One Stop Shop (OSS) – Union scheme*); y la variable `STRIPE_AUTOMATIC_TAX = 1` en el
+   Worker (Cloudflare ▸ Variables, sin commit: `keep_vars`). Checkout sumará el IVA del país de
+   cada cliente de la UE (la web muestra el de España), pedirá el NIF-IVA a las empresas (sin IVA,
+   inversión del sujeto pasivo) y el informe de Stripe Tax da las cifras de la declaración OSS
+   trimestral (modelo 369). Fuera de la UE solo se cobra donde se añada un registro (Stripe Tax
+   avisa al acercarse a los umbrales de cada país).
 
    **Modo de prueba de Stripe (comprar sin dinero real, en producción).** Revela guarda las dos
    configuraciones de Stripe a la vez, la real y la de prueba, y la administración elige quién

@@ -1,0 +1,653 @@
+// Captación («Captación» in the admin): finding schools and businesses, keeping track of each one, the
+// emails that follow up with those who asked for them, and the campaigns that bring people to Revela.
+//
+// The law sets the shape (Spain's LSSI, art. 21; the GDPR): commercial email only to whom asked for it or
+// agreed to it. So:
+// - Contacts found in public data (OpenStreetMap) or imported are a list to work by hand: a call, a letter,
+//   LinkedIn, a visit — the admin gets a message ready to adapt and a reminder to follow up. Never an
+//   automatic email.
+// - Automatic emails (sequences) go only to contacts with a recorded consent (when and how: the website's
+//   form, or what the admin writes down — «me lo pidió en la feria X»), never to one who unsubscribed, and
+//   every one carries the sender's identity and a one-click way out (List-Unsubscribe).
+// - A request from the website's form («Revela para centros») is always answered (that is what it asks
+//   for); sequences only if its marketing box was ticked (never pre-ticked).
+//
+// Storage (Durable Object Crm, one: 'crm'):
+//   'c:<id>' a contact · 's:<id>' its summary (lists) · 'k:e:<email>' / 'k:o:<osm>' → id (no duplicates)
+//   'seqs' sequences · 'tpls' message templates · 'camps' campaigns · 'settings'
+//   'st:<seq>:<step>' { sent, click, unsub } · 'cs:<camp>' { visit, signup, purchase, revenue } · 'cd:<camp>:<day>' per day
+//   'u:<sub>' → the campaign that brought that account (the first one) · 'sent:<day>' emails sent that day
+//
+// Public routes (api.js): POST /api/leads (the form) · GET /api/go/<slug> (a campaign's link) ·
+//   GET|POST /api/crm/unsub?t= (one-click way out) · GET /api/crm/click?t= (a link in a sequence email).
+// Admin routes (admin.js → crmApi): /api/admin/crm/…  · Daily (worker.js scheduled → runCrm): the sequences'
+//   emails due and a summary for the admin (follow-ups due today, new requests).
+
+const enc = new TextEncoder();
+const DAY = 864e5;
+const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const unb64 = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0)));
+const escHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const str = (v, n) => String(v ?? '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, ' ').trim().slice(0, n);
+const text = (v, n) => String(v ?? '').replace(/\r/g, '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, ' ').trim().slice(0, n);
+export const EMAIL = /^[^\s@<>"]{1,64}@[a-z0-9.-]{1,190}\.[a-z]{2,}$/;
+const mailOf = v => { const e = String(v || '').trim().toLowerCase(); return EMAIL.test(e) ? e : ''; };
+const webOf = v => { const s = str(v, 300); if (!s) return ''; try { const u = new URL(/^https?:\/\//i.test(s) ? s : 'https://' + s); return /^https?:$/.test(u.protocol) ? u.href : ''; } catch { return ''; } };
+export const dayKey = ts => new Date(ts).toISOString().slice(0, 10);
+const pad = n => String(n).padStart(8, '0');
+
+export const KINDS = ['school', 'academy', 'university', 'company', 'public', 'other'];
+export const STATUSES = ['new', 'contacted', 'talking', 'demo', 'proposal', 'customer', 'lost'];
+export const CHANNELS = ['phone', 'linkedin', 'letter', 'visit', 'email', 'other'];
+export const SOURCES = ['osm', 'import', 'form', 'manual'];
+const LANGS = ['es', 'en', 'fr', 'de', 'it', 'pt', 'ca', 'gl', 'nl', 'eu', 'ar'];
+// What the search looks for in OpenStreetMap, per kind (Overpass filters).
+export const SEARCH = {
+  school: ['nwr["amenity"~"^(school|kindergarten)$"]["name"]'],
+  academy: ['nwr["amenity"~"^(language_school|music_school|training|prep_school)$"]["name"]', 'nwr["office"="educational_institution"]["name"]'],
+  university: ['nwr["amenity"~"^(university|college)$"]["name"]'],
+  company: ['nwr["office"~"^(company|it|consulting|marketing|advertising_agency|financial|insurance|architect|coworking)$"]["name"]'],
+  public: ['nwr["office"="government"]["name"]', 'nwr["amenity"="townhall"]["name"]'],
+};
+export const DEFAULT_SETTINGS = { identity: '', replyTo: '', dailyMax: 40, digest: true, digestTo: '', followDays: 5 };
+
+// ---- Checking what the admin sends -------------------------------------------------------------
+export function cleanContact(b, old = {}) {
+  if (!b || typeof b !== 'object') return { error: 'body' };
+  const c = { ...old };
+  const set = (k, v) => { if (b[k] !== undefined) c[k] = v; };
+  set('name', str(b.name, 160)); set('person', str(b.person, 120)); set('role', str(b.role, 80));
+  set('kind', KINDS.includes(b.kind) ? b.kind : 'other');
+  set('email', mailOf(b.email)); set('phone', str(b.phone, 40)); set('web', webOf(b.web));
+  set('address', str(b.address, 200)); set('city', str(b.city, 80)); set('region', str(b.region, 80)); set('country', str(b.country, 2).toUpperCase());
+  set('lang', LANGS.includes(b.lang) ? b.lang : 'es');
+  set('tags', Array.isArray(b.tags) ? [...new Set(b.tags.map(t => str(t, 30).toLowerCase()).filter(Boolean))].slice(0, 12) : []);
+  set('size', str(b.size, 40)); set('linkedin', webOf(b.linkedin));
+  if (!c.name) return { error: 'name' };
+  if (b.email !== undefined && b.email && !c.email) return { error: 'email' };
+  return { contact: c };
+}
+export function cleanSequence(s) {
+  if (!s || typeof s !== 'object') return { error: 'body' };
+  const name = str(s.name, 80); if (!name) return { error: 'name' };
+  const steps = (Array.isArray(s.steps) ? s.steps : []).slice(0, 10).map(x => ({ days: Math.min(120, Math.max(0, Math.round(+x.days || 0))), subject: str(x.subject, 140), body: text(x.body, 6000) }));
+  if (!steps.length || steps.some(x => !x.subject || !x.body)) return { error: 'steps' };
+  const stopOn = (Array.isArray(s.stopOn) ? s.stopOn : ['talking', 'demo', 'proposal', 'customer', 'lost']).filter(x => STATUSES.includes(x));
+  return { seq: { id: /^[a-z0-9]{6,12}$/.test(s.id || '') ? s.id : rid(), name, active: s.active !== false, trigger: s.trigger === 'lead' ? 'lead' : 'manual',
+    lang: LANGS.includes(s.lang) ? s.lang : '', steps, stopOn } };
+}
+export function cleanTemplate(t) {
+  if (!t || typeof t !== 'object') return { error: 'body' };
+  const name = str(t.name, 80), body = text(t.body, 5000); if (!name || !body) return { error: 'name' };
+  return { tpl: { id: /^[a-z0-9]{6,12}$/.test(t.id || '') ? t.id : rid(), name, channel: CHANNELS.includes(t.channel) ? t.channel : 'other', subject: str(t.subject, 140), body } };
+}
+export function cleanCampaign(c) {
+  if (!c || typeof c !== 'object') return { error: 'body' };
+  const name = str(c.name, 80), slug = String(c.slug || '').toLowerCase().trim();
+  if (!name) return { error: 'name' };
+  if (!/^[a-z0-9][a-z0-9-]{1,39}$/.test(slug)) return { error: 'slug' };
+  const url = String(c.url || '/').trim(), okUrl = /^\/(?!\/)[\w\-./?=&%#]*$/.test(url) || (() => { try { return new URL(url).protocol === 'https:'; } catch { return false; } })();
+  if (!okUrl) return { error: 'url' };
+  return { camp: { id: /^[a-z0-9]{6,12}$/.test(c.id || '') ? c.id : rid(), name, slug, url, channel: str(c.channel, 40), code: str(c.code, 40).toUpperCase(),
+    budget: Math.max(0, Math.round(+c.budget || 0)), from: /^\d{4}-\d\d-\d\d$/.test(c.from || '') ? c.from : null, until: /^\d{4}-\d\d-\d\d$/.test(c.until || '') ? c.until : null,
+    notes: text(c.notes, 1000), active: c.active !== false } };
+}
+export function cleanSettings(b, old = DEFAULT_SETTINGS) {
+  const s = { ...DEFAULT_SETTINGS, ...old };
+  if (b.identity !== undefined) s.identity = text(b.identity, 400);
+  if (b.replyTo !== undefined) s.replyTo = mailOf(b.replyTo);
+  if (b.dailyMax !== undefined) s.dailyMax = Math.min(500, Math.max(0, Math.round(+b.dailyMax || 0)));
+  if (b.digest !== undefined) s.digest = !!b.digest;
+  if (b.digestTo !== undefined) s.digestTo = mailOf(b.digestTo);
+  if (b.followDays !== undefined) s.followDays = Math.min(90, Math.max(1, Math.round(+b.followDays || 5)));
+  return s;
+}
+const rid = () => b64url(crypto.getRandomValues(new Uint8Array(6))).toLowerCase().replace(/[^a-z0-9]/g, '').padEnd(8, '0').slice(0, 8);
+// The words to fill in a message: {nombre} the person (or «equipo de …»), {centro} the organisation, {ciudad}.
+export function fill(tpl, c, extra = {}) {
+  const v = { nombre: c.person || '', centro: c.name || '', ciudad: c.city || '', cargo: c.role || '', web: c.web || '', ...extra };
+  return String(tpl || '').replace(/\{(\w+)\}/g, (m, k) => (k in v ? v[k] : m));
+}
+const summary = c => ({ id: c.id, name: c.name, kind: c.kind, city: c.city || '', region: c.region || '', country: c.country || '', status: c.status, email: !!c.email,
+  consent: !!(c.consent && !c.unsub), unsub: c.unsub || null, nextAt: c.nextAt || null, nextWhat: c.nextWhat || '', updated: c.updated, created: c.created, source: c.source,
+  tags: c.tags || [], campaign: c.campaign || null, seq: c.seq ? { id: c.seq.id, step: c.seq.step, nextAt: c.seq.nextAt } : null, person: c.person || '' });
+// May a sequence write to this contact now? (consent recorded, no way-out taken, an address, not stopped by its status)
+export const mailable = (c, seq) => !!(c && c.email && c.consent?.at && !c.unsub && (!seq || !(seq.stopOn || []).includes(c.status)));
+
+// ---- The object ----------------------------------------------------------------------------------
+export class Crm {
+  constructor(ctx, env) { this.ctx = ctx; this.env = env; }
+  fetch(req) { const run = () => this.handle(req); const p = (this.queue || Promise.resolve()).then(run, run); this.queue = p.catch(() => {}); return p; }
+  async save(c) {
+    c.updated = Date.now();
+    await this.ctx.storage.put({ ['c:' + pad(c.id)]: c, ['s:' + pad(c.id)]: summary(c) });
+  }
+  async getC(id) { return this.ctx.storage.get('c:' + pad(+id || 0)); }
+  async keys(c) {
+    const k = {}; if (c.email) k['k:e:' + c.email] = c.id; if (c.osm) k['k:o:' + c.osm] = c.id;
+    if (Object.keys(k).length) await this.ctx.storage.put(k);
+  }
+  async existing(c) {
+    const st = this.ctx.storage;
+    return (c.osm && await st.get('k:o:' + c.osm)) || (c.email && await st.get('k:e:' + c.email)) || null;
+  }
+  // A new contact (or the one it already is: same address or same OpenStreetMap place) → { id, created }.
+  async add(fields, { source, by, consent = null, campaign = null, osm = null, history = null } = {}) {
+    const st = this.ctx.storage, now = Date.now();
+    const known = await this.existing({ email: fields.email, osm });
+    if (known) {
+      const c = await this.getC(known);
+      if (c) {
+        // (Filled where empty; a consent given now is kept — it is newer.)
+        for (const [k, v] of Object.entries(fields)) if (v && (c[k] == null || c[k] === '' || (Array.isArray(c[k]) && !c[k].length))) c[k] = v;
+        if (consent && !c.unsub) c.consent = consent;
+        if (consent && c.unsub && consent.how === 'form') { c.consent = consent; c.unsub = null; }   // (asked again, by themselves)
+        if (history) c.history.push({ at: now, by, ...history });
+        await this.save(c); await this.keys(c);
+        return { id: c.id, created: false };
+      }
+    }
+    const id = ((await st.get('n')) || 0) + 1;
+    const c = { id, ...fields, status: 'new', source, osm, consent, unsub: null, campaign, notes: [], history: [{ at: now, by, what: 'created', source }, ...(history ? [{ at: now, by, ...history }] : [])],
+      nextAt: null, nextWhat: '', seq: null, created: now };
+    await st.put('n', id); await this.save(c); await this.keys(c);
+    return { id, created: true };
+  }
+  async list(o) {
+    const all = [...(await this.ctx.storage.list({ prefix: 's:' })).values()];
+    const q = String(o.q || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''), now = Date.now();
+    const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    let items = all.filter(c => (!o.status || c.status === o.status) && (!o.kind || c.kind === o.kind) && (!o.source || c.source === o.source)
+      && (!o.consent || c.consent) && (!o.due || (c.nextAt && c.nextAt <= now + DAY)) && (!o.tag || c.tags.includes(o.tag))
+      && (!q || [c.name, c.city, c.region, c.person, ...c.tags].some(x => norm(x).includes(q))));
+    items.sort(o.due ? (a, b) => (a.nextAt || 0) - (b.nextAt || 0) : (a, b) => b.updated - a.updated);
+    const counts = Object.fromEntries(STATUSES.map(s => [s, 0])); for (const c of all) counts[c.status] = (counts[c.status] || 0) + 1;
+    const offset = Math.max(0, +o.offset || 0), limit = Math.min(500, Math.max(1, +o.limit || 100));
+    return { items: items.slice(offset, offset + limit), total: items.length, all: all.length, counts, due: all.filter(c => c.nextAt && c.nextAt <= now + DAY).length,
+      tags: [...new Set(all.flatMap(c => c.tags))].sort() };
+  }
+  async handle(req) {
+    const op = new URL(req.url).pathname.split('/').pop(), a = await req.json().catch(() => ({})), st = this.ctx.storage, now = Date.now();
+    const settings = async () => ({ ...DEFAULT_SETTINGS, ...((await st.get('settings')) || {}) });
+    const seqs = async () => (await st.get('seqs')) || [];
+    if (op === 'list') return Response.json(await this.list(a));
+    if (op === 'add') {                                   // { contact, source, by, consent?, osm?, campaign? }
+      const { contact, error } = cleanContact(a.contact); if (error) return Response.json({ error }, { status: 400 });
+      return Response.json(await this.add(contact, { source: SOURCES.includes(a.source) ? a.source : 'manual', by: a.by, consent: a.consent || null, osm: a.osm || null, campaign: a.campaign || null }));
+    }
+    if (op === 'import') {                                // { rows: [{ contact, osm? }], source, by } → { added, updated, bad }
+      let added = 0, updated = 0, bad = 0;
+      for (const r of (a.rows || []).slice(0, 1000)) {
+        const { contact, error } = cleanContact(r.contact || r); if (error) { bad++; continue; }
+        const osm = typeof r.osm === 'string' && /^(node|way|relation)\/\d{1,15}$/.test(r.osm) ? r.osm : null;
+        const x = await this.add(contact, { source: SOURCES.includes(a.source) ? a.source : 'import', by: a.by, osm });
+        if (x.created) added++; else updated++;
+      }
+      return Response.json({ added, updated, bad });
+    }
+    if (op === 'known') {                                 // { osm: [ids] } → the ones already in (search results)
+      const out = {}; for (const o of (a.osm || []).slice(0, 1000)) { const id = await st.get('k:o:' + o); if (id) out[o] = id; }
+      return Response.json({ known: out });
+    }
+    if (op === 'lead') {                                  // the website's form (api.js checked it) → { id, created, seq }
+      const { contact } = cleanContact(a.contact);
+      const consent = a.marketing ? { at: now, how: 'form', note: a.consentText || '' } : null;
+      const r = await this.add(contact, { source: 'form', by: 'form', consent, campaign: a.campaign || null, history: { what: 'request', text: a.message || '' } });
+      const c = await this.getC(r.id); c.request = { at: now, message: a.message || '', marketing: !!a.marketing };
+      if (c.status === 'lost') c.status = 'new';
+      if (!c.nextAt) { c.nextAt = now; c.nextWhat = 'Responder a la solicitud de la web'; }
+      // (Auto-enrolled in the active sequence started by requests, if it may write to them.)
+      const seq = (await seqs()).find(s => s.active && s.trigger === 'lead');
+      if (seq && !c.seq && mailable(c, seq)) c.seq = { id: seq.id, step: 0, nextAt: now + (seq.steps[0].days || 0) * DAY, started: now };
+      await this.save(c);
+      return Response.json({ ...r, seq: c.seq?.id || null });
+    }
+    if (op === 'settings') return Response.json({ settings: await settings() });
+    if (op === 'settings-put') { const s = cleanSettings(a.settings || {}, await settings()); await st.put('settings', s); return Response.json({ settings: s }); }
+    if (op === 'seqs') {
+      const list = await seqs(), stats = {};
+      for (const s of list) stats[s.id] = await Promise.all(s.steps.map(async (_, i) => (await st.get(`st:${s.id}:${i}`)) || { sent: 0, click: 0, unsub: 0 }));
+      const enrolled = {}; for (const c of (await st.list({ prefix: 's:' })).values()) if (c.seq) enrolled[c.seq.id] = (enrolled[c.seq.id] || 0) + 1;
+      return Response.json({ seqs: list, stats, enrolled });
+    }
+    if (op === 'seq-put') {
+      const { seq, error } = cleanSequence(a.seq); if (error) return Response.json({ error }, { status: 400 });
+      let list = await seqs(); list = list.some(s => s.id === seq.id) ? list.map(s => (s.id === seq.id ? seq : s)) : [...list, seq];
+      if (seq.trigger === 'lead' && seq.active) list = list.map(s => (s.id !== seq.id && s.trigger === 'lead' ? { ...s, active: false } : s));   // (one starts with requests)
+      await st.put('seqs', list.slice(0, 30)); return Response.json({ seq });
+    }
+    if (op === 'seq-del') {
+      await st.put('seqs', (await seqs()).filter(s => s.id !== a.id));
+      for (const c of (await st.list({ prefix: 's:' })).values()) if (c.seq?.id === a.id) { const full = await this.getC(c.id); full.seq = null; await this.save(full); }
+      return Response.json({ ok: true });
+    }
+    if (op === 'tpls') return Response.json({ tpls: (await st.get('tpls')) || defaultTemplates() });
+    if (op === 'tpl-put') {
+      const { tpl, error } = cleanTemplate(a.tpl); if (error) return Response.json({ error }, { status: 400 });
+      const list = (await st.get('tpls')) || defaultTemplates();
+      await st.put('tpls', (list.some(t => t.id === tpl.id) ? list.map(t => (t.id === tpl.id ? tpl : t)) : [...list, tpl]).slice(0, 40)); return Response.json({ tpl });
+    }
+    if (op === 'tpl-del') { await st.put('tpls', ((await st.get('tpls')) || defaultTemplates()).filter(t => t.id !== a.id)); return Response.json({ ok: true }); }
+    if (op === 'camps') {
+      const list = (await st.get('camps')) || [], stats = {}, days = {};
+      for (const c of list) {
+        stats[c.id] = (await st.get('cs:' + c.id)) || { visit: 0, signup: 0, purchase: 0, revenue: 0, leads: 0 };
+        days[c.id] = [...(await st.list({ prefix: `cd:${c.id}:`, reverse: true, limit: 60 })).entries()].map(([k, v]) => ({ day: k.slice(-10), ...v })).reverse();
+      }
+      return Response.json({ camps: list, stats, days });
+    }
+    if (op === 'camp-put') {
+      const { camp, error } = cleanCampaign(a.camp); if (error) return Response.json({ error }, { status: 400 });
+      const list = (await st.get('camps')) || [];
+      if (list.some(c => c.slug === camp.slug && c.id !== camp.id)) return Response.json({ error: 'slug taken' }, { status: 409 });
+      await st.put('camps', (list.some(c => c.id === camp.id) ? list.map(c => (c.id === camp.id ? camp : c)) : [...list, camp]).slice(0, 200)); return Response.json({ camp });
+    }
+    if (op === 'camp-del') { await st.put('camps', ((await st.get('camps')) || []).filter(c => c.id !== a.id)); return Response.json({ ok: true }); }
+    if (op === 'camp-of') {                               // { slug } → the active campaign (for /api/go)
+      const c = ((await st.get('camps')) || []).find(x => x.slug === a.slug); return Response.json({ camp: c || null });
+    }
+    if (op === 'camp-hit') {                              // { slug, kind: visit | signup | purchase | lead, sub?, amount? }
+      const camp = ((await st.get('camps')) || []).find(x => x.slug === a.slug || x.id === a.id); if (!camp) return Response.json({ ok: false });
+      if (a.kind === 'signup' && a.sub) { if (await st.get('u:' + a.sub)) return Response.json({ ok: false }); await st.put('u:' + a.sub, camp.id); }
+      const k = ['visit', 'signup', 'purchase', 'lead'].includes(a.kind) ? a.kind : null; if (!k) return Response.json({ ok: false });
+      const tot = (await st.get('cs:' + camp.id)) || { visit: 0, signup: 0, purchase: 0, revenue: 0, leads: 0 }, dk = `cd:${camp.id}:${dayKey(now)}`, d = (await st.get(dk)) || {};
+      if (k === 'lead') tot.leads = (tot.leads || 0) + 1; else tot[k]++;
+      d[k] = (d[k] || 0) + 1;
+      if (k === 'purchase') tot.revenue += Math.max(0, Math.round(+a.amount || 0));
+      await st.put({ ['cs:' + camp.id]: tot, [dk]: d }); return Response.json({ ok: true });
+    }
+    if (op === 'camp-sub') {                              // { sub } → the campaign that brought that account
+      const id = await st.get('u:' + a.sub); const c = id && ((await st.get('camps')) || []).find(x => x.id === id);
+      return Response.json({ slug: c?.slug || null });
+    }
+    if (op === 'purge') {                                 // { before }: contacts that came to nothing, untouched since then, go (privacy.html)
+      let n = 0;
+      for (const sm of (await st.list({ prefix: 's:' })).values()) {
+        if (sm.updated >= a.before || ['talking', 'demo', 'proposal', 'customer'].includes(sm.status)) continue;
+        const c = await this.getC(sm.id);
+        await st.delete(['c:' + pad(c.id), 's:' + pad(c.id), ...(c.email ? ['k:e:' + c.email] : []), ...(c.osm ? ['k:o:' + c.osm] : [])]); n++;
+      }
+      return Response.json({ purged: n });
+    }
+    if (op === 'stats') {
+      const l = await this.list({ limit: 1 }); return Response.json({ counts: l.counts, all: l.all, due: l.due, sentToday: (await st.get('sent:' + dayKey(now))) || 0 });
+    }
+    // ---- The daily run (runCrm): sequences' emails due, and what to tell the admin
+    if (op === 'due') {                                   // { now, max } → { mails: [{ contact, seq, step, i }], followups, leads, settings }
+      const s = await settings(), list = await seqs(), mails = [], followups = [], leads = [];
+      const max = Math.max(0, s.dailyMax - ((await st.get('sent:' + dayKey(a.now))) || 0));
+      for (const sm of (await st.list({ prefix: 's:' })).values()) {
+        if (sm.nextAt && sm.nextAt <= a.now + DAY / 2) followups.push(sm);
+        if (sm.source === 'form' && sm.created > a.now - DAY) leads.push(sm);
+        if (!sm.seq || sm.seq.nextAt > a.now || mails.length >= max) continue;
+        const c = await this.getC(sm.id), seq = list.find(x => x.id === c.seq?.id);
+        if (!seq || !mailable(c, seq) || !seq.steps[c.seq.step]) { c.seq = null; await this.save(c); continue; }   // (gone, or may not write any more)
+        if (!seq.active) continue;                                                                           // (paused: waits)
+        mails.push({ contact: c, seq: { id: seq.id, name: seq.name, lang: seq.lang }, step: seq.steps[c.seq.step], i: c.seq.step });
+      }
+      return Response.json({ mails, followups, leads, settings: s });
+    }
+    if (op === 'sent') {                                  // { id, seq, i, ok } → the next step, or the end
+      const c = await this.getC(a.id); if (!c || c.seq?.id !== a.seq || c.seq.step !== a.i) return Response.json({ ok: false });
+      const seq = (await seqs()).find(x => x.id === a.seq);
+      if (a.ok) {
+        c.history.push({ at: now, by: 'system', what: 'mail', seq: a.seq, step: a.i, subject: a.subject || '' });
+        const k = `st:${a.seq}:${a.i}`, sx = (await st.get(k)) || { sent: 0, click: 0, unsub: 0 }; sx.sent++;
+        const dk = 'sent:' + dayKey(now); await st.put({ [k]: sx, [dk]: ((await st.get(dk)) || 0) + 1 });
+        const next = seq?.steps[a.i + 1];
+        c.seq = next ? { ...c.seq, step: a.i + 1, nextAt: now + Math.max(1, next.days) * DAY } : null;
+        if (!next) c.history.push({ at: now, by: 'system', what: 'seq-end', seq: a.seq });
+        if (c.status === 'new') c.status = 'contacted';
+      } else c.seq = { ...c.seq, nextAt: now + DAY, fails: (c.seq.fails || 0) + 1 };
+      if (c.seq?.fails >= 3) { c.history.push({ at: now, by: 'system', what: 'seq-fail', seq: a.seq }); c.seq = null; }
+      await this.save(c); return Response.json({ ok: true });
+    }
+    if (op === 'click') {                                 // { id, seq, i } (from a link in an email)
+      const k = `st:${a.seq}:${a.i}`, sx = (await st.get(k)) || { sent: 0, click: 0, unsub: 0 }; sx.click++; await st.put(k, sx);
+      const c = await this.getC(a.id); if (c) { c.history.push({ at: now, by: 'contact', what: 'click', seq: a.seq, step: a.i, url: a.url || '' }); await this.save(c); }
+      return Response.json({ ok: true });
+    }
+    if (op === 'unsub') {                                 // { id, email, seq?, i? } (the way out in an email)
+      const c = await this.getC(a.id); if (!c || c.email !== a.email) return Response.json({ ok: false });
+      if (!c.unsub) {
+        c.unsub = now; c.seq = null; c.history.push({ at: now, by: 'contact', what: 'unsub' });
+        if (a.seq != null) { const k = `st:${a.seq}:${a.i}`, sx = (await st.get(k)) || { sent: 0, click: 0, unsub: 0 }; sx.unsub++; await st.put(k, sx); }
+        await this.save(c);
+      }
+      return Response.json({ ok: true, lang: c.lang });
+    }
+    // ---- One contact
+    const c = await this.getC(a.id); if (!c) return Response.json({ error: 'not found' }, { status: 404 });
+    if (op === 'get') {
+      const camp = c.campaign && ((await st.get('camps')) || []).find(x => x.id === c.campaign || x.slug === c.campaign);
+      return Response.json({ contact: c, seqs: (await seqs()).map(s => ({ id: s.id, name: s.name, active: s.active })), campaign: camp ? { name: camp.name, slug: camp.slug } : null });
+    }
+    if (op === 'update') {
+      const { contact, error } = cleanContact(a.contact, c); if (error) return Response.json({ error }, { status: 400 });
+      if (contact.email !== c.email) { if (c.email) await st.delete('k:e:' + c.email); if (contact.email && await st.get('k:e:' + contact.email)) return Response.json({ error: 'email taken' }, { status: 409 }); }
+      Object.assign(c, contact); await this.save(c); await this.keys(c); return Response.json({ contact: c });
+    }
+    if (op === 'status') {
+      if (!STATUSES.includes(a.status)) return Response.json({ error: 'status' }, { status: 400 });
+      c.history.push({ at: now, by: a.by, what: 'status', from: c.status, to: a.status }); c.status = a.status;
+      if (c.seq) { const seq = (await seqs()).find(s => s.id === c.seq.id); if (seq && (seq.stopOn || []).includes(c.status)) { c.seq = null; c.history.push({ at: now, by: 'system', what: 'seq-stop', why: 'status' }); } }
+      await this.save(c); return Response.json({ contact: c });
+    }
+    if (op === 'note') { const t = text(a.text, 5000); if (!t) return Response.json({ error: 'text' }, { status: 400 }); c.notes.push({ at: now, by: a.by, text: t }); await this.save(c); return Response.json({ contact: c }); }
+    if (op === 'log') {                                   // { channel, text, by, status?, nextDays? }: a contact made by hand
+      const ch = CHANNELS.includes(a.channel) ? a.channel : 'other';
+      c.history.push({ at: now, by: a.by, what: 'touch', channel: ch, text: text(a.text, 3000) });
+      if (STATUSES.includes(a.status) && a.status !== c.status) { c.history.push({ at: now, by: a.by, what: 'status', from: c.status, to: a.status }); c.status = a.status; }
+      else if (c.status === 'new') c.status = 'contacted';
+      const days = a.nextDays === 0 ? 0 : Math.min(365, Math.max(1, Math.round(+a.nextDays || (await settings()).followDays)));
+      c.nextAt = days ? now + days * DAY : null; c.nextWhat = days ? str(a.nextWhat, 160) || 'Seguimiento' : '';
+      await this.save(c); return Response.json({ contact: c });
+    }
+    if (op === 'next') {                                  // { at (ms, 0: none), what }
+      c.nextAt = +a.at > 0 ? +a.at : null; c.nextWhat = c.nextAt ? str(a.what, 160) || 'Seguimiento' : ''; await this.save(c); return Response.json({ contact: c });
+    }
+    if (op === 'consent') {                               // { how (what happened, in the admin's words), by } | { revoke: true }
+      if (a.revoke) { c.consent = null; c.seq = null; c.history.push({ at: now, by: a.by, what: 'consent-revoked' }); }
+      else {
+        const how = text(a.how, 300); if (how.length < 5) return Response.json({ error: 'how' }, { status: 400 });
+        if (c.unsub) return Response.json({ error: 'unsubscribed' }, { status: 409 });       // (only they can ask again: the form)
+        c.consent = { at: now, how: 'admin', note: how, by: a.by }; c.history.push({ at: now, by: a.by, what: 'consent', note: how });
+      }
+      await this.save(c); return Response.json({ contact: c });
+    }
+    if (op === 'enroll') {                                // { seq } | { stop: true }
+      if (a.stop) { if (c.seq) c.history.push({ at: now, by: a.by, what: 'seq-stop', why: 'admin' }); c.seq = null; await this.save(c); return Response.json({ contact: c }); }
+      const seq = (await seqs()).find(s => s.id === a.seq); if (!seq) return Response.json({ error: 'seq' }, { status: 404 });
+      if (!mailable(c, seq)) return Response.json({ error: c.unsub ? 'unsubscribed' : !c.email ? 'no email' : !c.consent ? 'no consent' : 'status' }, { status: 409 });
+      c.seq = { id: seq.id, step: 0, nextAt: now + (seq.steps[0].days || 0) * DAY, started: now };
+      c.history.push({ at: now, by: a.by, what: 'seq-start', seq: seq.id }); await this.save(c); return Response.json({ contact: c });
+    }
+    if (op === 'delete') {
+      await st.delete(['c:' + pad(c.id), 's:' + pad(c.id), ...(c.email ? ['k:e:' + c.email] : []), ...(c.osm ? ['k:o:' + c.osm] : [])]);
+      return Response.json({ ok: true });
+    }
+    return Response.json({ error: 'unknown' }, { status: 404 });
+  }
+}
+
+// The first message templates (for calls, LinkedIn and letters): the admin edits them.
+export function defaultTemplates() {
+  return [
+    { id: 'tplcall1', name: 'Llamada a un centro', channel: 'phone', subject: '', body: 'Hola, soy {yo}, de Revela. Llamo porque ayudamos a centros como {centro} a preparar clases con presentaciones interactivas: diapositivas, votaciones y cuestionarios en directo en una sola herramienta, compatible con PowerPoint y con Moodle.\n\n¿Con quién podría hablar sobre los recursos digitales del profesorado?\n\nSi le interesa, le envío información por correo (solo si me lo pide) o preparamos una demostración de 20 minutos.' },
+    { id: 'tpllink1', name: 'LinkedIn: primer mensaje', channel: 'linkedin', subject: '', body: 'Hola, {nombre}: vi que trabajas en {centro}. Estoy detrás de Revela, un editor de presentaciones para el aula (votaciones y cuestionarios en directo, compatible con PowerPoint y Moodle). ¿Te parecería bien que te enseñara en 15 minutos cómo lo usan otros docentes?' },
+    { id: 'tplcarta1', name: 'Carta a la dirección', channel: 'letter', subject: 'Revela para {centro}', body: 'A la atención de la dirección de {centro}\n{ciudad}\n\nEstimado equipo:\n\nLes escribo para presentarles Revela, una herramienta para crear presentaciones de clase con votaciones, cuestionarios y actividades en directo, compatible con PowerPoint y con Moodle, con los datos en Europa y en castellano, catalán, gallego y euskera.\n\nSi les interesa, pueden pedir una demostración o una prueba para su claustro en revelaslides.com/centros.\n\nUn saludo,\n{yo}' },
+  ];
+}
+
+// ---- Signed links in the emails (MAIL_SECRET) -----------------------------------------------------
+const hmac = async (secret, s) => b64url(new Uint8Array(await crypto.subtle.sign('HMAC', await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']), enc.encode(s))));
+const same = (a, b) => a.length === b.length && ![...a].reduce((d, ch, i) => d | (ch.charCodeAt(0) ^ b.charCodeAt(i)), 0);
+export async function crmToken(env, kind, payload) {
+  if (!env.MAIL_SECRET) return null;
+  const body = b64url(enc.encode(JSON.stringify(payload)));
+  return `${body}.${await hmac(env.MAIL_SECRET, `crm:${kind}:${body}`)}`;
+}
+export async function readCrmToken(env, kind, t) {
+  const [body, sig] = String(t || '').split('.');
+  if (!env.MAIL_SECRET || !body || !sig || !same(await hmac(env.MAIL_SECRET, `crm:${kind}:${body}`), sig)) return null;
+  try { return JSON.parse(unb64(body)); } catch { return null; }
+}
+
+// ---- Searching OpenStreetMap (Nominatim for the place, Overpass for what is in it) -------------------
+// → { area, items: [{ osm, name, kind, email, phone, web, address, city, region, country, lat, lon }] }. Public data
+// (© OpenStreetMap contributors, ODbL). Polite: a User-Agent that says who asks, one search at a time.
+export async function searchPlaces(env, { area, kind, limit = 200 }) {
+  const f = env.FETCH || fetch, ua = { 'User-Agent': 'Revela-admin/1.0 (https://revelaslides.com)', Accept: 'application/json' };
+  const filters = SEARCH[kind]; if (!filters) return { error: 'kind' };
+  const q = str(area, 120); if (q.length < 2) return { error: 'area' };
+  const geo = await f('https://nominatim.openstreetmap.org/search?' + new URLSearchParams({ q, format: 'jsonv2', limit: '5', addressdetails: '1' }), { headers: ua }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  if (!Array.isArray(geo)) return { error: 'geocode' };
+  const place = geo.find(g => g.osm_type === 'relation') || geo[0]; if (!place) return { error: 'not found' };
+  const where = place.osm_type === 'relation' ? `area(id:${3600000000 + +place.osm_id})->.a;` : place.osm_type === 'way' ? `area(id:${2400000000 + +place.osm_id})->.a;` : null;
+  const scope = where ? '(area.a)' : `(around:8000,${+place.lat},${+place.lon})`;
+  const n = Math.min(500, Math.max(1, Math.round(+limit || 200)));
+  const query = `[out:json][timeout:25];${where || ''}(${filters.map(x => x + scope + ';').join('')});out center tags ${n};`;
+  const data = await f('https://overpass-api.de/api/interpreter', { method: 'POST', headers: { ...ua, 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(query) })
+    .then(r => (r.ok ? r.json() : null)).catch(() => null);
+  if (!data || !Array.isArray(data.elements)) return { error: 'overpass' };
+  const cc = String(place.address?.country_code || '').toUpperCase(), region = place.address?.state || place.address?.province || '';
+  const items = data.elements.map(e => {
+    const t = e.tags || {};
+    return { osm: `${e.type}/${e.id}`, name: str(t.name, 160), kind, email: mailOf(t.email || t['contact:email']), phone: str(t.phone || t['contact:phone'], 40),
+      web: webOf(t.website || t['contact:website'] || t.url), address: str([t['addr:street'], t['addr:housenumber']].filter(Boolean).join(' '), 200),
+      city: str(t['addr:city'] || place.address?.city || place.address?.town || place.address?.village || '', 80), region: str(region, 80), country: str(t['addr:country'] || cc, 2).toUpperCase(),
+      postcode: str(t['addr:postcode'], 12), lat: e.lat ?? e.center?.lat ?? null, lon: e.lon ?? e.center?.lon ?? null, op: str(t['operator:type'] || t['school:type'] || '', 40) };
+  }).filter(x => x.name).sort((x, y) => x.name.localeCompare(y.name, 'es'));
+  return { area: place.display_name, items };
+}
+
+// ---- The emails ------------------------------------------------------------------------------------
+const L10N = {
+  es: { why: d => `Recibes este correo porque nos diste permiso el ${d}.`, unsub: 'No quiero recibir más correos', ackSubject: 'Hemos recibido tu solicitud', ackTitle: 'Gracias, hemos recibido tu solicitud',
+    ack: (n, d) => [`Hola${n ? ', ' + n : ''}:`, 'Te escribiremos en uno o dos días laborables para responderte.', d ? 'Nos diste permiso para enviarte información sobre Revela: puedes retirarlo cuando quieras con el enlace de abajo.' : 'Solo usaremos tus datos para responder a esta solicitud.'],
+    page: { ok: 'Hecho: no volverás a recibir correos comerciales de Revela.', bad: 'El enlace no es válido.', back: 'Ir a revelaslides.com' } },
+  en: { why: d => `You receive this email because you gave us permission on ${d}.`, unsub: "I don't want more emails", ackSubject: 'We have received your request', ackTitle: 'Thank you, we have received your request',
+    ack: (n, d) => [`Hello${n ? ' ' + n : ''},`, 'We will write back within one or two working days.', d ? 'You gave us permission to send you information about Revela: you can withdraw it at any time with the link below.' : 'We will only use your details to answer this request.'],
+    page: { ok: 'Done: you will not receive any more commercial emails from Revela.', bad: 'The link is not valid.', back: 'Go to revelaslides.com' } },
+  fr: { why: d => `Vous recevez cet e-mail car vous nous avez donné votre accord le ${d}.`, unsub: 'Je ne veux plus recevoir d’e-mails', ackSubject: 'Nous avons reçu votre demande', ackTitle: 'Merci, nous avons reçu votre demande',
+    ack: (n, d) => [`Bonjour${n ? ' ' + n : ''},`, 'Nous vous répondrons sous un ou deux jours ouvrés.', d ? 'Vous avez accepté de recevoir des informations sur Revela : vous pouvez retirer votre accord à tout moment avec le lien ci-dessous.' : 'Nous n’utiliserons vos données que pour répondre à cette demande.'],
+    page: { ok: 'C’est fait : vous ne recevrez plus d’e-mails commerciaux de Revela.', bad: 'Le lien n’est pas valide.', back: 'Aller sur revelaslides.com' } },
+  de: { why: d => `Du erhältst diese E-Mail, weil du uns am ${d} deine Zustimmung gegeben hast.`, unsub: 'Ich möchte keine E-Mails mehr', ackSubject: 'Wir haben deine Anfrage erhalten', ackTitle: 'Danke, wir haben deine Anfrage erhalten',
+    ack: (n, d) => [`Hallo${n ? ' ' + n : ''},`, 'Wir antworten dir innerhalb von ein bis zwei Werktagen.', d ? 'Du hast zugestimmt, Informationen über Revela zu erhalten: Du kannst das jederzeit über den Link unten widerrufen.' : 'Wir verwenden deine Daten nur, um diese Anfrage zu beantworten.'],
+    page: { ok: 'Erledigt: Du erhältst keine Werbe-E-Mails von Revela mehr.', bad: 'Der Link ist ungültig.', back: 'Zu revelaslides.com' } },
+  it: { why: d => `Ricevi questa email perché ci hai dato il consenso il ${d}.`, unsub: 'Non voglio ricevere altre email', ackSubject: 'Abbiamo ricevuto la tua richiesta', ackTitle: 'Grazie, abbiamo ricevuto la tua richiesta',
+    ack: (n, d) => [`Ciao${n ? ' ' + n : ''},`, 'Ti risponderemo entro uno o due giorni lavorativi.', d ? 'Hai acconsentito a ricevere informazioni su Revela: puoi revocare il consenso in qualsiasi momento con il link qui sotto.' : 'Useremo i tuoi dati solo per rispondere a questa richiesta.'],
+    page: { ok: 'Fatto: non riceverai più email commerciali da Revela.', bad: 'Il link non è valido.', back: 'Vai a revelaslides.com' } },
+  pt: { why: d => `Recebe este e-mail porque nos deu autorização em ${d}.`, unsub: 'Não quero receber mais e-mails', ackSubject: 'Recebemos o seu pedido', ackTitle: 'Obrigado, recebemos o seu pedido',
+    ack: (n, d) => [`Olá${n ? ', ' + n : ''}:`, 'Responderemos dentro de um ou dois dias úteis.', d ? 'Autorizou-nos a enviar-lhe informação sobre o Revela: pode retirar a autorização quando quiser com a ligação abaixo.' : 'Só usaremos os seus dados para responder a este pedido.'],
+    page: { ok: 'Feito: não voltará a receber e-mails comerciais do Revela.', bad: 'A ligação não é válida.', back: 'Ir para revelaslides.com' } },
+  ca: { why: d => `Reps aquest correu perquè ens vas donar permís el ${d}.`, unsub: 'No vull rebre més correus', ackSubject: 'Hem rebut la teva sol·licitud', ackTitle: 'Gràcies, hem rebut la teva sol·licitud',
+    ack: (n, d) => [`Hola${n ? ', ' + n : ''}:`, 'T’escriurem en un o dos dies laborables per respondre’t.', d ? 'Ens vas donar permís per enviar-te informació sobre Revela: pots retirar-lo quan vulguis amb l’enllaç de sota.' : 'Només farem servir les teves dades per respondre aquesta sol·licitud.'],
+    page: { ok: 'Fet: no tornaràs a rebre correus comercials de Revela.', bad: 'L’enllaç no és vàlid.', back: 'Anar a revelaslides.com' } },
+};
+const L = lang => L10N[lang] || (['gl', 'eu'].includes(lang) || !lang ? L10N.es : L10N.en);
+const fmtDay = (ts, lang) => { try { return new Date(ts).toLocaleDateString(lang || 'es', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }); } catch { return dayKey(ts); } };
+// Text with blank lines between paragraphs → paragraphs; addresses (https://…) → links (tracked: track(url) → its link).
+export function mailBody(body, track = u => u) {
+  const paras = String(body).split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+  const html = paras.map(p => '<p style="margin:0 0 16px">' + escHtml(p).replace(/(https:\/\/[^\s<]+[^\s<.,;:!?)»"'])/g, (m) => `<a href="${escHtml(track(m.replace(/&amp;/g, '&')))}" style="color:#2f5a8f">${m}</a>`).replace(/\n/g, '<br>') + '</p>').join('\n');
+  return { html, text: paras.join('\n\n') };
+}
+export function crmMail({ subject, body, lang, identity, unsub, consentAt, track }) {
+  const T = L(lang), b = mailBody(body, track);
+  const foot = [identity, consentAt ? T.why(fmtDay(consentAt, lang)) : ''].filter(Boolean);
+  const html = `<!doctype html><html lang="${escHtml(lang || 'es')}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escHtml(subject)}</title></head>
+<body style="margin:0;padding:0;background:#faf8f4;color:#17181c;font:16px/1.6 system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:32px 24px">
+<p style="margin:0 0 28px;font:500 22px/1 Georgia,'Times New Roman',serif">Revela</p>
+${b.html}
+<hr style="border:0;border-top:1px solid #e3ded4;margin:32px 0 16px">
+<p style="margin:0;font-size:13px;color:#5d5f66">${foot.map(escHtml).join('<br>')}${unsub ? `<br><a href="${escHtml(unsub)}" style="color:#5d5f66">${escHtml(T.unsub)}</a>` : ''}</p>
+</div></body></html>`;
+  const textOut = [b.text, '', '—', ...foot, ...(unsub ? [`${T.unsub}: ${unsub}`] : [])].join('\n');
+  return { subject, html, text: textOut };
+}
+export function unsubPageCrm(lang, ok, site) {
+  const T = L(lang);
+  return `<!doctype html><html lang="${escHtml(lang || 'es')}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Revela</title></head>
+<body style="margin:0;background:#faf8f4;color:#17181c;font:17px/1.6 system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif"><main style="max-width:520px;margin:12vh auto;padding:0 24px">
+<p style="font:500 24px/1 Georgia,serif;margin:0 0 24px">Revela</p><p>${escHtml(ok ? T.page.ok : T.page.bad)}</p><p><a href="${escHtml(site)}/" style="color:#2f5a8f">${escHtml(T.page.back)}</a></p></main></body></html>`;
+}
+export const ackMail = (lang, name, marketing, identity) => { const T = L(lang); return crmMail({ subject: T.ackSubject, body: [T.ackTitle, ...T.ack(name, marketing)].join('\n\n'), lang, identity }); };
+
+// ---- From the Worker -------------------------------------------------------------------------------
+const crm = env => env.CRM.get(env.CRM.idFromName('crm'));
+export const crmCall = async (env, op, body) => (await crm(env).fetch('https://crm/' + op, { method: 'POST', body: JSON.stringify(body || {}) })).json();
+const site = env => env.SITE_URL || 'https://revelaslides.com';
+const noStore = { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' };
+const htmlHeaders = { 'Content-Type': 'text/html; charset=utf-8', ...noStore, 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY',
+  'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'" };
+
+// POST /api/leads — the website's form «Revela para centros» (only from the site: api.js checks the origin).
+//   { name (organisation), person, role?, email, phone?, kind, city?, country?, size?, message?, lang, privacy: true,
+//     marketing?: true (its own box, never pre-ticked), campaign? (the slug that brought them), website? (a trap for bots) }
+// → { ok }. Always answered (an email that it arrived, a line in the admin's summary); sequences only with marketing.
+export async function handleLead(req, env, body, json, { takeQuota, sendMail }) {
+  if (!env.CRM) return json({ error: 'not configured' }, 503);
+  if (body.website) return json({ ok: true });                              // (a bot filled the hidden field)
+  if (body.privacy !== true) return json({ error: 'privacy' }, 400);
+  const email = mailOf(body.email); if (!email) return json({ error: 'email' }, 400);
+  const lang = LANGS.includes(body.lang) ? body.lang : 'es';
+  const { contact, error } = cleanContact({ name: body.name || body.person, person: body.person, role: body.role, email, phone: body.phone, kind: body.kind,
+    city: body.city, country: body.country, size: body.size, lang }); if (error) return json({ error }, 400);
+  const ip = req.headers.get('CF-Connecting-IP') || '?';
+  if (!(await takeQuota(env, 'lead:ip:' + ip, { per: +env.LEADS_PER_DAY || 5, scope: 'leads' })) || !(await takeQuota(env, 'lead:to:' + email, { per: 3, scope: 'leads-to' }))) return json({ error: 'daily limit' }, 429);
+  const slug = /^[a-z0-9][a-z0-9-]{1,39}$/.test(body.campaign || '') ? body.campaign : null;
+  const camp = slug ? (await crmCall(env, 'camp-of', { slug })).camp : null;
+  const marketing = body.marketing === true;
+  const r = await crmCall(env, 'lead', { contact, message: text(body.message, 3000), marketing, campaign: camp?.id || null,
+    consentText: marketing ? str(body.consentText, 300) || 'Formulario «Revela para centros»' : '' });
+  if (camp && r.created) await crmCall(env, 'camp-hit', { id: camp.id, kind: 'lead' });
+  const s = (await crmCall(env, 'settings')).settings;
+  let unsub = null;
+  if (marketing) { const t = await crmToken(env, 'unsub', { id: r.id, e: email }); if (t) unsub = `${site(env)}/api/crm/unsub?t=${encodeURIComponent(t)}`; }
+  await sendMail(env, { to: email, kind: 'crm-ack', ...ackMail(lang, contact.person, marketing && !!unsub, s.identity), ...(unsub && { unsubscribe: unsub }), ...(s.replyTo && { replyTo: s.replyTo }) });
+  return json({ ok: true });
+}
+
+// GET /api/go/<slug> — a campaign's link: counted (a visit that day; nobody recorded) and on to its address, with
+// rv=<slug> and utm_*. rv travels in the addresses only (nothing stored on the device): the site's links carry it on,
+// and a new account or a request made in that visit counts for the campaign — and that account's purchases after.
+export async function goLink(env, slug) {
+  const s = String(slug || '').toLowerCase(), camp = env.CRM && /^[a-z0-9][a-z0-9-]{1,39}$/.test(s) ? (await crmCall(env, 'camp-of', { slug: s })).camp : null;
+  const today = dayKey(Date.now());
+  const live = camp && camp.active && (!camp.from || camp.from <= today) && (!camp.until || camp.until >= today);
+  if (live) await crmCall(env, 'camp-hit', { id: camp.id, kind: 'visit' });
+  const to = new URL(camp?.url || '/', site(env) + '/');
+  if (camp) { to.searchParams.set('rv', camp.slug); if (!to.searchParams.has('utm_source')) { to.searchParams.set('utm_source', camp.channel || 'revela'); to.searchParams.set('utm_campaign', camp.slug); } }
+  return new Response(null, { status: 302, headers: { Location: to.href, ...noStore } });
+}
+
+// GET|POST /api/crm/unsub?t= — the way out (POST: one click, RFC 8058; GET: the page, which also does it).
+export async function crmUnsub(req, env, url) {
+  let t = url.searchParams.get('t') || '';
+  if (req.method === 'POST' && !t) { const f = new URLSearchParams(await req.text().catch(() => '')); t = f.get('t') || ''; }
+  const tok = await readCrmToken(env, 'unsub', t);
+  const r = tok && env.CRM ? await crmCall(env, 'unsub', { id: tok.id, email: tok.e, seq: tok.s ?? null, i: tok.i ?? null }) : { ok: false };
+  if (req.method === 'POST') return Response.json({ ok: !!r.ok }, { status: r.ok ? 200 : 400, headers: noStore });
+  return new Response(unsubPageCrm(r.lang || (req.headers.get('Accept-Language') || '').slice(0, 2), !!r.ok, site(env)), { status: r.ok ? 200 : 400, headers: htmlHeaders });
+}
+// GET /api/crm/click?t= — a link in a sequence's email: counted, and on (only to the address signed in the token).
+export async function crmClick(env, url) {
+  const tok = await readCrmToken(env, 'click', url.searchParams.get('t'));
+  if (!tok || !/^https:\/\//.test(tok.u || '')) return new Response(null, { status: 302, headers: { Location: site(env) + '/', ...noStore } });
+  if (env.CRM) await crmCall(env, 'click', { id: tok.id, seq: tok.s, i: tok.i, url: tok.u }).catch(() => {});
+  return new Response(null, { status: 302, headers: { Location: tok.u, ...noStore } });
+}
+
+// The campaign that brought an account: at its first sign-in (api.js login), and its purchases after (moneyEvent).
+export async function campaignSignup(env, sub, slug) {
+  if (!env.CRM || !sub || !/^[a-z0-9][a-z0-9-]{1,39}$/.test(slug || '')) return;
+  await crmCall(env, 'camp-hit', { slug, kind: 'signup', sub }).catch(() => {});
+}
+export async function campaignPurchase(env, sub, amount) {
+  if (!env.CRM || !sub) return;
+  const { slug } = await crmCall(env, 'camp-sub', { sub }).catch(() => ({}));
+  if (slug) await crmCall(env, 'camp-hit', { slug, kind: 'purchase', amount }).catch(() => {});
+}
+
+// The daily run (worker.js scheduled): each sequence email due (up to the day's maximum), then a summary for the admin.
+export async function runCrm(env, { sendMail, mailConfigured, adminEmails = [] }, now = Date.now()) {
+  if (!env.CRM) return { sent: 0 };
+  // (Privacy: a contact that came to nothing — new, contacted or discarded — and untouched for 3 years is deleted.)
+  await crmCall(env, 'purge', { before: now - 3 * 365 * DAY }).catch(() => {});
+  const due = await crmCall(env, 'due', { now }), s = due.settings;
+  let sent = 0, failed = 0;
+  // (Without MAIL_SECRET there is no way out to put in them, and without a sender's identity they can't go: none is sent.)
+  const canSend = env.MAIL_SECRET && mailConfigured(env) && s.identity;
+  for (const m of canSend ? due.mails : []) {
+    const c = m.contact, lang = m.seq.lang || c.lang || 'es';
+    const unsubT = await crmToken(env, 'unsub', { id: c.id, e: c.email, s: m.seq.id, i: m.i }), unsub = `${site(env)}/api/crm/unsub?t=${encodeURIComponent(unsubT)}`;
+    const links = new Map();
+    for (const u of String(m.step.body).match(/https:\/\/[^\s<]+[^\s<.,;:!?)»"']/g) || []) links.set(u, `${site(env)}/api/crm/click?t=${encodeURIComponent(await crmToken(env, 'click', { id: c.id, s: m.seq.id, i: m.i, u }))}`);
+    const msg = crmMail({ subject: fill(m.step.subject, c), body: fill(m.step.body, c), lang, identity: s.identity, unsub, consentAt: c.consent?.at, track: u => links.get(u) || u });
+    const ok = await sendMail(env, { to: c.email, kind: 'crm', ...msg, unsubscribe: unsub, ...(s.replyTo && { replyTo: s.replyTo }) });
+    await crmCall(env, 'sent', { id: c.id, seq: m.seq.id, i: m.i, ok, subject: msg.subject });
+    if (ok) sent++; else failed++;
+  }
+  // The admin's summary: follow-ups due today, new requests, what went out (only if there is something).
+  const to = s.digestTo || adminEmails[0];
+  if (s.digest && to && mailConfigured(env) && (due.followups.length || due.leads.length || sent || failed || (!canSend && due.mails.length))) {
+    const line = c => `· ${c.name}${c.city ? ' (' + c.city + ')' : ''}${c.nextWhat ? ' — ' + c.nextWhat : ''}`;
+    const body = [
+      due.leads.length ? `Solicitudes nuevas desde la web (${due.leads.length}):\n${due.leads.map(line).join('\n')}` : '',
+      due.followups.length ? `Seguimientos para hoy (${due.followups.length}):\n${due.followups.slice(0, 40).map(line).join('\n')}` : '',
+      sent || failed ? `Correos de secuencias enviados hoy: ${sent}${failed ? ` (${failed} no se pudieron enviar: se reintentan mañana)` : ''}.` : '',
+      !canSend && due.mails.length ? `Hay ${due.mails.length} correos de secuencias esperando, pero no se envían: falta ${!s.identity ? 'la identidad del remitente (Captación ▸ Ajustes)' : !env.MAIL_SECRET ? 'MAIL_SECRET' : 'un servicio de correo'}.` : '',
+      `Abrir Captación: https://${env.ADMIN_HOST || 'admin.revelaslides.com'}/#captacion`,
+    ].filter(Boolean).join('\n\n');
+    await sendMail(env, { to, kind: 'crm-digest', ...crmMail({ subject: `Captación: ${due.followups.length} seguimientos, ${due.leads.length} solicitudes`, body, lang: 'es', identity: '' }) });
+  }
+  return { sent, failed };
+}
+
+// /api/admin/crm/… (admin.js has checked who it is). by: the admin's address; audit(e): the record.
+export async function crmApi(env, path, q, body, { GET, POST, by, json, audit }) {
+  if (!env.CRM) return json({ error: 'crm not configured' }, 503);
+  const C = (op, b) => crmCall(env, op, { ...b, by });
+  const sub = path.replace(/^\/crm/, '') || '/';
+  const send = r => json(r, r.error ? (r.error === 'not found' ? 404 : /taken|unsubscribed|no email|no consent|status/.test(r.error) ? 409 : 400) : 200);
+  if (GET && sub === '/stats') return json({ ...(await C('stats')), mail: !!(env.MAIL_SECRET && (env.EMAIL?.send || env.RESEND_KEY)) });
+  if (GET && sub === '/contacts') return json(await C('list', { q: q.get('q') || '', status: q.get('status') || '', kind: q.get('kind') || '', source: q.get('source') || '', tag: q.get('tag') || '',
+    consent: q.get('consent') === '1', due: q.get('due') === '1', offset: +q.get('offset') || 0, limit: +q.get('limit') || 100 }));
+  if (POST && sub === '/contacts') { const r = await C('add', { contact: body.contact, source: 'manual' }); if (!r.error) await audit({ action: 'crm-add', target: 'crm:' + r.id }); return send(r); }
+  if (POST && sub === '/import') {
+    const r = await C('import', { rows: Array.isArray(body.rows) ? body.rows.slice(0, 1000) : [], source: body.source === 'osm' ? 'osm' : 'import' });
+    await audit({ action: 'crm-import', target: 'crm', after: r }); return json(r);
+  }
+  if (GET && sub === '/search') {
+    const r = await searchPlaces(env, { area: q.get('area'), kind: q.get('kind'), limit: +q.get('limit') || 200 }); if (r.error) return json(r, r.error === 'kind' || r.error === 'area' ? 400 : 502);
+    const { known } = await C('known', { osm: r.items.map(x => x.osm) });
+    return json({ ...r, items: r.items.map(x => ({ ...x, known: known[x.osm] || null })) });
+  }
+  if (GET && sub === '/settings') return json(await C('settings'));
+  if (POST && sub === '/settings') { const r = await C('settings-put', { settings: body.settings }); await audit({ action: 'crm-settings', target: 'crm', after: r.settings }); return json(r); }
+  if (GET && sub === '/sequences') return json(await C('seqs'));
+  if (POST && sub === '/sequences') { const r = await C('seq-put', { seq: body.seq }); if (!r.error) await audit({ action: 'crm-sequence', target: 'crm:seq:' + r.seq.id, after: { name: r.seq.name, active: r.seq.active, steps: r.seq.steps.length } }); return send(r); }
+  let m = sub.match(/^\/sequences\/([a-z0-9]{6,12})\/delete$/);
+  if (POST && m) { await audit({ action: 'crm-sequence-delete', target: 'crm:seq:' + m[1] }); return json(await C('seq-del', { id: m[1] })); }
+  if (GET && sub === '/templates') return json(await C('tpls'));
+  if (POST && sub === '/templates') return send(await C('tpl-put', { tpl: body.tpl }));
+  m = sub.match(/^\/templates\/([a-z0-9]{6,12})\/delete$/);
+  if (POST && m) return json(await C('tpl-del', { id: m[1] }));
+  if (GET && sub === '/campaigns') return json({ ...(await C('camps')), base: `${site(env)}/api/go/` });
+  if (POST && sub === '/campaigns') { const r = await C('camp-put', { camp: body.camp }); if (!r.error) await audit({ action: 'crm-campaign', target: 'crm:camp:' + r.camp.slug, after: r.camp }); return send(r); }
+  m = sub.match(/^\/campaigns\/([a-z0-9]{6,12})\/delete$/);
+  if (POST && m) { await audit({ action: 'crm-campaign-delete', target: 'crm:camp:' + m[1] }); return json(await C('camp-del', { id: m[1] })); }
+  // A sequence's email as it will look, to see it or try it on oneself (POST …/preview { seq, i, id?, send? }).
+  if (POST && sub === '/preview') {
+    const seqs = (await C('seqs')).seqs, seq = seqs.find(x => x.id === body.seq) || cleanSequence(body.draft || {}).seq, step = seq?.steps[+body.i || 0];
+    if (!step) return json({ error: 'steps' }, 400);
+    const c = body.id ? (await C('get', { id: body.id })).contact : { name: 'Colegio Ejemplo', person: 'Ana', city: 'Zaragoza', consent: { at: Date.now() } };
+    const s = (await C('settings')).settings;
+    const msg = crmMail({ subject: fill(step.subject, c || {}), body: fill(step.body, c || {}), lang: seq.lang || c?.lang || 'es', identity: s.identity, unsub: `${site(env)}/api/crm/unsub?t=…`, consentAt: c?.consent?.at });
+    if (body.send) {
+      const { sendMail } = await import('./mail.js');
+      const ok = await sendMail(env, { to: by, kind: 'crm-test', ...msg, subject: '[Prueba] ' + msg.subject });
+      return json({ ok, to: by });
+    }
+    return json({ subject: msg.subject, html: msg.html, missing: !s.identity ? 'identity' : null });
+  }
+  m = sub.match(/^\/contacts\/(\d{1,9})(?:\/(status|note|log|next|consent|enroll|delete|message))?$/);
+  if (m) {
+    const id = +m[1], op = m[2] || '';
+    if (GET && !op) return send(await C('get', { id }));
+    if (POST && !op) { const r = await C('update', { id, contact: body.contact }); if (!r.error) await audit({ action: 'crm-update', target: 'crm:' + id }); return send(r); }
+    if (POST && op === 'message') {                       // a template filled for this contact (to copy: calls, LinkedIn, letters)
+      const [{ tpls }, got] = await Promise.all([C('tpls'), C('get', { id })]); const t = tpls.find(x => x.id === body.tpl); if (!t || !got.contact) return json({ error: 'not found' }, 404);
+      const me = { yo: str(body.me, 80) || by };
+      return json({ subject: fill(t.subject, got.contact, me), body: fill(t.body, got.contact, me), channel: t.channel });
+    }
+    if (POST && ['status', 'note', 'log', 'next', 'consent', 'enroll', 'delete'].includes(op)) {
+      const r = await C(op, { id, ...body });
+      if (!r.error && ['status', 'consent', 'enroll', 'delete'].includes(op)) await audit({ action: 'crm-' + op, target: 'crm:' + id, after: op === 'consent' ? { how: body.how, revoke: !!body.revoke } : op === 'delete' ? null : { status: body.status, seq: body.seq, stop: body.stop } });
+      return send(r);
+    }
+  }
+  return json({ error: 'not found' }, 404);
+}
