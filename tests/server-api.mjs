@@ -1594,7 +1594,7 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok((await sign({ person: 'Tercera', email: 'tercera@x.example' })).status === 409, 'seminarios: lleno → 409');
     x = await C('GET', '/events/' + evId);
     ok(x.j.signups.length === 2, 'seminarios: lista de inscritos');
-    const eva = (await C('GET', '/contacts?q=moncayo')).j.items[0], rafa = (await C('GET', '/contacts?q=rafa')).j.items[0];
+    const evs = (await C('GET', '/contacts?q=moncayo')).j.items, eva = evs.find(c => c.person === 'Eva'), rafa = evs.find(c => c.person === 'Rafa');
     ok(eva && !eva.consent && eva.tags.includes('seminario') && rafa?.consent, 'seminarios: en Contactos; permiso comercial solo con su casilla');
     sent = []; await runCron(Date.now()); ok(!sent.some(m => m.to === 'eva@moncayo.example'), 'seminarios: a 5 días, aún sin recordatorio');
     Date.now = () => realNow0() + 4.2 * DAYms; sent = []; await runCron(Date.now());
