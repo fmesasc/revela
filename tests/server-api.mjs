@@ -1467,6 +1467,7 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   // who gave consent, the way out and the links of their emails, reminders, messages for calls, campaigns (visits, sign-ups, purchases).
   {
     env.CRM = namespace(Crm, env);
+    env.LEADS_PER_DAY = '100';                             // (the tests send many from the same address)
     const prevF = env.FETCH, osmCalls = [];
     env.FETCH = async (u, init = {}) => { const s = String(u);
       if (s.startsWith('https://oauth2.googleapis.com/tokeninfo') && s.includes('access_token=tok-crm')) return Response.json({ aud: CID, sub: '3131', email: 'crm@example.com', email_verified: 'true', expires_in: 3000 });
@@ -1573,6 +1574,51 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     const cs = x.j.stats[x.j.camps[0].id];
     ok(cs.visit === 1 && cs.signup === 1 && cs.purchase === 1 && cs.revenue === 1000 && cs.leads === 1, 'captación: visitas, altas (una vez), solicitudes y compras (sin IVA) por campaña: ' + JSON.stringify(cs));
     ok(x.j.base === SITE + '/api/go/', 'captación: la dirección base de los enlaces');
+    // Webinars: created in the admin, listed on the site, signing up (confirmation with the link; consent only with its box),
+    // the reminder the day before, an email to everyone signed up after.
+    const starts = Date.now() + 5 * DAYms;
+    x = await C('POST', '/events', { body: { event: { title: 'Clases interactivas en 30 minutos', starts, minutes: 30, link: 'https://meet.example/abc', lang: 'es', capacity: 2, description: 'Con ejemplos reales.' } } });
+    ok(x.status === 200 && x.j.event.id, 'seminarios: creado'); const evId = x.j.event.id;
+    ok((await C('POST', '/events', { body: { event: { title: 'Sin fecha' } } })).status === 400, 'seminarios: sin fecha → 400');
+    let pub = await (await req('GET', '/api/events?lang=es')).json();
+    ok(pub.events.length === 1 && pub.events[0].title === 'Clases interactivas en 30 minutos' && !pub.events[0].link, 'seminarios: en la web, sin el enlace (ese va en el correo)');
+    ok((await (await req('GET', '/api/events?lang=de')).json()).events.length === 0, 'seminarios: por idioma');
+    const sign = (b, o) => req('POST', '/api/events/signup', { body: { event: evId, person: 'Eva', name: 'IES Moncayo', email: 'eva@moncayo.example', privacy: true, lang: 'es', ...b }, ...o });
+    ok((await sign({}, { origin: 'https://malo.example' })).status === 403, 'seminarios: inscripción desde otra web → 403');
+    ok((await sign({ privacy: false })).status === 400, 'seminarios: sin aceptar la privacidad → 400');
+    sent = [];
+    ok((await sign({})).status === 200, 'seminarios: inscrita');
+    ok(sent.length === 1 && sent[0].to === 'eva@moncayo.example' && /meet\.example\/abc/.test(sent[0].text) && /Clases interactivas/.test(sent[0].subject), 'seminarios: confirmación con el enlace');
+    sent = []; ok((await sign({})).status === 200 && !sent.length, 'seminarios: apuntarse dos veces no repite nada');
+    await sign({ person: 'Rafa', email: 'rafa@x.example', marketing: true });
+    ok((await sign({ person: 'Tercera', email: 'tercera@x.example' })).status === 409, 'seminarios: lleno → 409');
+    x = await C('GET', '/events/' + evId);
+    ok(x.j.signups.length === 2, 'seminarios: lista de inscritos');
+    const eva = (await C('GET', '/contacts?q=moncayo')).j.items[0], rafa = (await C('GET', '/contacts?q=rafa')).j.items[0];
+    ok(eva && !eva.consent && eva.tags.includes('seminario') && rafa?.consent, 'seminarios: en Contactos; permiso comercial solo con su casilla');
+    sent = []; await runCron(Date.now()); ok(!sent.some(m => m.to === 'eva@moncayo.example'), 'seminarios: a 5 días, aún sin recordatorio');
+    Date.now = () => realNow0() + 4.2 * DAYms; sent = []; await runCron(Date.now());
+    ok(sent.filter(m => m.to === 'eva@moncayo.example' && /^Mañana/.test(m.subject)).length === 1, 'seminarios: recordatorio el día antes');
+    sent = []; await runCron(Date.now()); Date.now = realNow0;
+    ok(!sent.some(m => /^Mañana/.test(m.subject)), 'seminarios: el recordatorio, una vez');
+    sent = []; x = await C('POST', `/events/${evId}/mail`, { body: { subject: 'La grabación', body: 'Hola, {nombre}: aquí la tienes https://revelaslides.com/x' } });
+    ok(x.j.sent === 2 && sent.some(m => m.to === 'eva@moncayo.example' && /Hola, Eva/.test(m.text)), 'seminarios: correo a los inscritos (la grabación)');
+    // Recommendations: my link (an account), a request through it, counted for me; a customer, too.
+    const crmCookie = cookieFrom(await req('POST', '/api/login', { body: { accessToken: 'tok-crm', terms: TERMS, lang: 'es' } }));
+    await C('POST', '/settings', { body: { settings: { referralReward: '3 meses de Pro' } } });
+    x = await (await req('GET', '/api/referral', { headers: { Cookie: crmCookie } })).json();
+    ok(x.on && /^[a-z0-9]{10}$/.test(x.code) && x.link === SITE + '/centros?ref=' + x.code && x.reward === '3 meses de Pro', 'recomendaciones: mi enlace: ' + JSON.stringify(x));
+    ok((await (await req('GET', '/api/referral', { headers: { Cookie: crmCookie } })).json()).code === x.code, 'recomendaciones: siempre el mismo código');
+    ok((await req('GET', '/api/referral')).status === 401, 'recomendaciones: sin sesión, nada');
+    await lead({ name: 'CEIP Recomendado', email: 'dir@recomendado.example', ref: x.code });
+    await lead({ name: 'Colegio Inventado', email: 'dir@inventado.example', ref: 'noexiste00' });
+    const refd = (await C('GET', '/contacts?q=recomendado')).j.items[0], inv = (await C('GET', '/contacts?q=inventado')).j.items[0];
+    ok(refd.referrer === x.code && !inv.referrer, 'recomendaciones: la solicitud queda atribuida (un código inventado, no)');
+    await C('POST', `/contacts/${refd.id}/status`, { body: { status: 'customer' } }); await C('POST', `/contacts/${refd.id}/status`, { body: { status: 'customer' } });
+    const refs = (await C('GET', '/referrals')).j, mine = refs.refs.find(r => r.code === x.code);
+    ok(mine && mine.email === 'crm@example.com' && mine.leads === 1 && mine.customers === 1 && refs.contacts[x.code].length === 1, 'recomendaciones: quién trae centros y cuántos acaban siendo clientes (una vez): ' + JSON.stringify(mine));
+    ok((await C('GET', `/contacts/${refd.id}`)).j.referrer?.email === 'crm@example.com', 'recomendaciones: la ficha dice quién lo recomendó');
+    ok((await (await req('GET', '/api/referral', { headers: { Cookie: crmCookie } })).json()).stats.customers === 1, 'recomendaciones: y la persona lo ve en su cuenta');
     // Three years untouched and come to nothing: deleted by the daily run (the ones in conversation, kept).
     const before = (await C('GET', '/contacts')).j.all;
     Date.now = () => realNow0() + 3 * 366 * DAYms; await runCron(Date.now()); Date.now = realNow0;

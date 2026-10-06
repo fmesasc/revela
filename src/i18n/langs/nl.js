@@ -1,6 +1,14 @@
 // Dutch interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Recomienda Revela a tu centro": "Raad Revela aan bij je school",
+  "Si te gusta Revela, pásale este enlace a la dirección de tu centro o empresa. Lo envías tú: Revela no escribe a nadie.": "Vind je Revela goed? Geef deze link door aan de directie van je school of bedrijf. Je stuurt hem zelf: Revela schrijft niemand aan.",
+  "Copiar el enlace": "Link kopiëren",
+  "Hola: uso Revela para preparar mis clases (presentaciones con votaciones y cuestionarios en directo, compatible con PowerPoint y Moodle) y creo que nos vendría bien a todo el claustro. Podéis pedir una demostración aquí: {link}": "Hoi! Ik gebruik Revela om mijn lessen voor te bereiden (presentaties met live peilingen en quizzen, compatibel met PowerPoint en Moodle) en ik denk dat het voor het hele team handig zou zijn. Hier kunnen jullie een demo aanvragen: {link}",
+  "Revela para nuestro centro": "Revela voor onze school",
+  "Si tu centro contrata Revela gracias a ti: {r}.": "Als je school dankzij jou voor Revela kiest: {r}.",
+  "Solicitudes gracias a ti: {n} · Ya son clientes: {m}": "Aanvragen dankzij jou: {n} · Al klant: {m}",
+  "Enlace copiado": "Link gekopieerd",
   "voto": "stem",
   "votos": "stemmen",
   "respuesta": "antwoord",

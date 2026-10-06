@@ -85,7 +85,19 @@ export function openAccount({ buy } = {}) {
         <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="fr-do acc-login">${t(EDITION === 'desktop' ? 'Iniciar sesión en el navegador' : 'Iniciar sesión con Google')}</button></div>
         <p class="host-help" style="font-size:12px"><a href="${OFFICIAL_SITE}/pricing" target="_blank" rel="noopener">${t('Ver planes y precios')}</a></p>
         <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 acc-report"><i class="ms">bug_report</i> ${t('Informar de un problema')}</button></div>`;
-      body.querySelector('.acc-report').addEventListener('click', () => { close(); openReport(); });
+      // «Recomienda Revela a tu centro»: my link, a message ready to send myself, and what it has brought (crm.js).
+    acc.api('referral').then(r => {
+      if (!r?.on) return;
+      const box = body.querySelector('.acc-ref'); if (!box) return; box.hidden = false;
+      const msg = t('Hola: uso Revela para preparar mis clases (presentaciones con votaciones y cuestionarios en directo, compatible con PowerPoint y Moodle) y creo que nos vendría bien a todo el claustro. Podéis pedir una demostración aquí: {link}').replace('{link}', r.link);
+      box.querySelector('.acc-ref-link').value = r.link;
+      box.querySelector('.acc-ref-mail').href = 'mailto:?subject=' + encodeURIComponent(t('Revela para nuestro centro')) + '&body=' + encodeURIComponent(msg);
+      box.querySelector('.acc-ref-wa').href = 'https://wa.me/?text=' + encodeURIComponent(msg);
+      if (r.reward) { const rw = box.querySelector('.acc-ref-reward'); rw.hidden = false; rw.textContent = t('Si tu centro contrata Revela gracias a ti: {r}.').replace('{r}', r.reward); }
+      box.querySelector('.acc-ref-stats').textContent = r.stats?.leads ? t('Solicitudes gracias a ti: {n} · Ya son clientes: {m}').replace('{n}', r.stats.leads).replace('{m}', r.stats.customers || 0) : '';
+      box.querySelector('.acc-ref-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText(r.link); } catch { box.querySelector('.acc-ref-link').select(); } (await import('../shell/toast.js')).toast(t('Enlace copiado')); });
+    }).catch(() => {});
+    body.querySelector('.acc-report').addEventListener('click', () => { close(); openReport(); });
       const termsOk = body.querySelector('.acc-terms-ok'), loginBtn = body.querySelector('.acc-login');
       // (Not a button that looks ready and does nothing: pressed before the box is ticked, the box says so.)
       termsOk.addEventListener('change', () => { body.querySelector('.acc-terms').classList.remove('acc-terms-need'); });
@@ -131,6 +143,14 @@ export function openAccount({ buy } = {}) {
       <div class="fr-actions" style="justify-content:flex-start;flex-wrap:wrap"><button type="button" class="mini2 acc-team"><i class="ms">groups</i> ${me.team ? esc(me.team.name) : t('Equipos y centros')}</button>
         <button type="button" class="mini2 acc-report"><i class="ms">bug_report</i> ${t('Informar de un problema')}</button></div>
       <div class="acc-drive"></div><div class="acc-drive acc-od" hidden></div>
+      <details class="acc-ref" hidden><summary>${t('Recomienda Revela a tu centro')}</summary>
+        <p class="host-help">${t('Si te gusta Revela, pásale este enlace a la dirección de tu centro o empresa. Lo envías tú: Revela no escribe a nadie.')}</p>
+        <p class="host-help acc-ref-reward" hidden></p>
+        <div class="fr-actions" style="justify-content:flex-start;flex-wrap:wrap"><input type="text" class="acc-ref-link" readonly style="flex:1 1 220px;min-width:0">
+          <button type="button" class="mini2 acc-ref-copy">${t('Copiar el enlace')}</button>
+          <a class="mini2 acc-ref-mail" target="_blank" rel="noopener"><i class="ms">mail</i> ${t('Correo')}</a>
+          <a class="mini2 acc-ref-wa" target="_blank" rel="noopener">WhatsApp</a></div>
+        <p class="host-help acc-ref-stats"></p></details>
       <details class="acc-mail"><summary>${t('Avisos por correo')}</summary>
         <p class="host-help">${t('Revela te escribe a {email} cuando te comparten una presentación, te invitan a un equipo o cambia tu plan.').replace('{email}', esc(me.email))}</p>
         <label class="fr-chk"><input type="checkbox" class="acc-mail-opt" data-kind="credits"> ${t('Avisarme cuando mis créditos estén a punto de caducar')}</label>

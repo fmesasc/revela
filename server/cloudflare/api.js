@@ -65,7 +65,7 @@ import { createTicket, supportReply, directoryUpsert, directoryRemove, CHARGES }
 import { record, active, featureOf, financeSettings } from './finance.js';
 import { NOTICE_PLACES, noticesFor, noticesOp } from './notices.js';
 import { takeQuota } from './store.js';
-import { handleLead, goLink, crmUnsub, crmClick, campaignSignup, campaignPurchase } from './crm.js';
+import { handleLead, goLink, crmUnsub, crmClick, campaignSignup, campaignPurchase, eventsPublic, eventSignup, referralInfo } from './crm.js';
 
 const enc = new TextEncoder();
 const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -769,6 +769,13 @@ export async function handleApi(req, env, url) {
   let body = {}; if (text) { try { body = JSON.parse(text); } catch { body = null; } }
   if (req.method === 'POST' && (!body || typeof body !== 'object' || Array.isArray(body))) return json({ error: 'bad request' }, 400);
 
+  // Webinars (crm.js): the upcoming ones, and signing up (only from the site).
+  if (path === '/events' && req.method === 'GET') return eventsPublic(env, url, json);
+  if (path === '/events/signup') {
+    if (req.method !== 'POST') return json({ error: 'method' }, 405);
+    if (!webOrigin) return json({ error: 'origin' }, 403);
+    return eventSignup(req, env, body, json, { takeQuota, sendMail });
+  }
   // The website's form «Revela para centros» (crm.js): only from the site itself.
   if (path === '/leads') {
     if (req.method !== 'POST') return json({ error: 'method' }, 405);
@@ -829,6 +836,8 @@ export async function handleApi(req, env, url) {
   const A = acct(env, me.sub);
   if (path.startsWith('/call/') && req.method === 'POST') { const prof = await call(A, 'me'); return handleCalls(path, body, env, { sub: me.sub, email: prof.email, features: prof.features }, A, call, json); }
   if (path === '/3d' || path.startsWith('/3d/')) return handle3d(path, req, body, env, me, A, json);
+  // «Recomienda Revela a tu centro» (crm.js): my link and what it has brought.
+  if (path === '/referral' && req.method === 'GET') { const prof = await call(A, 'me'); return referralInfo(env, { sub: me.sub, email: prof.email }, json); }
   if (path === '/team' || path.startsWith('/team/')) { const prof = await call(A, 'me'); return handleTeams(path, req, body, url, env, { sub: me.sub, email: prof.email, name: prof.name }, A, acct, call, json); }
   switch (path) {
     case '/me': {

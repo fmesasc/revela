@@ -49,7 +49,7 @@ export const SEARCH = {
   company: ['nwr["office"~"^(company|it|consulting|marketing|advertising_agency|financial|insurance|architect|coworking)$"]["name"]'],
   public: ['nwr["office"="government"]["name"]', 'nwr["amenity"="townhall"]["name"]'],
 };
-export const DEFAULT_SETTINGS = { identity: '', replyTo: '', dailyMax: 40, digest: true, digestTo: '', followDays: 5 };
+export const DEFAULT_SETTINGS = { identity: '', replyTo: '', dailyMax: 40, digest: true, digestTo: '', followDays: 5, referral: true, referralReward: '' };
 
 // ---- Checking what the admin sends -------------------------------------------------------------
 export function cleanContact(b, old = {}) {
@@ -92,6 +92,14 @@ export function cleanCampaign(c) {
     budget: Math.max(0, Math.round(+c.budget || 0)), from: /^\d{4}-\d\d-\d\d$/.test(c.from || '') ? c.from : null, until: /^\d{4}-\d\d-\d\d$/.test(c.until || '') ? c.until : null,
     notes: text(c.notes, 1000), active: c.active !== false } };
 }
+export function cleanEvent(e) {
+  if (!e || typeof e !== 'object') return { error: 'body' };
+  const title = str(e.title, 120); if (!title) return { error: 'title' };
+  const starts = Math.round(+e.starts || 0); if (!(starts > Date.UTC(2020, 0, 1)) || starts > Date.UTC(2100, 0, 1)) return { error: 'starts' };
+  const link = webOf(e.link); if (e.link && !link) return { error: 'link' };
+  return { event: { id: /^[a-z0-9]{6,12}$/.test(e.id || '') ? e.id : rid(), title, starts, minutes: Math.min(600, Math.max(10, Math.round(+e.minutes || 45))), link,
+    description: text(e.description, 1500), lang: LANGS.includes(e.lang) ? e.lang : 'es', capacity: Math.min(5000, Math.max(0, Math.round(+e.capacity || 0))), active: e.active !== false } };
+}
 export function cleanSettings(b, old = DEFAULT_SETTINGS) {
   const s = { ...DEFAULT_SETTINGS, ...old };
   if (b.identity !== undefined) s.identity = text(b.identity, 400);
@@ -100,6 +108,8 @@ export function cleanSettings(b, old = DEFAULT_SETTINGS) {
   if (b.digest !== undefined) s.digest = !!b.digest;
   if (b.digestTo !== undefined) s.digestTo = mailOf(b.digestTo);
   if (b.followDays !== undefined) s.followDays = Math.min(90, Math.max(1, Math.round(+b.followDays || 5)));
+  if (b.referral !== undefined) s.referral = !!b.referral;
+  if (b.referralReward !== undefined) s.referralReward = str(b.referralReward, 160);
   return s;
 }
 const rid = () => b64url(crypto.getRandomValues(new Uint8Array(6))).toLowerCase().replace(/[^a-z0-9]/g, '').padEnd(8, '0').slice(0, 8);
@@ -110,7 +120,7 @@ export function fill(tpl, c, extra = {}) {
 }
 const summary = c => ({ id: c.id, name: c.name, kind: c.kind, city: c.city || '', region: c.region || '', country: c.country || '', status: c.status, email: !!c.email,
   consent: !!(c.consent && !c.unsub), unsub: c.unsub || null, nextAt: c.nextAt || null, nextWhat: c.nextWhat || '', updated: c.updated, created: c.created, source: c.source,
-  tags: c.tags || [], campaign: c.campaign || null, seq: c.seq ? { id: c.seq.id, step: c.seq.step, nextAt: c.seq.nextAt } : null, person: c.person || '' });
+  tags: c.tags || [], campaign: c.campaign || null, referrer: c.referrer || null, seq: c.seq ? { id: c.seq.id, step: c.seq.step, nextAt: c.seq.nextAt } : null, person: c.person || '' });
 // May a sequence write to this contact now? (consent recorded, no way-out taken, an address, not stopped by its status)
 export const mailable = (c, seq) => !!(c && c.email && c.consent?.at && !c.unsub && (!seq || !(seq.stopOn || []).includes(c.status)));
 
@@ -148,7 +158,7 @@ export class Crm {
       }
     }
     const id = ((await st.get('n')) || 0) + 1;
-    const c = { id, ...fields, status: 'new', source, osm, consent, unsub: null, campaign, notes: [], history: [{ at: now, by, what: 'created', source }, ...(history ? [{ at: now, by, ...history }] : [])],
+    const c = { id, tags: [], ...fields, status: 'new', source, osm, consent, unsub: null, campaign, notes: [], history: [{ at: now, by, what: 'created', source }, ...(history ? [{ at: now, by, ...history }] : [])],
       nextAt: null, nextWhat: '', seq: null, created: now };
     await st.put('n', id); await this.save(c); await this.keys(c);
     return { id, created: true };
@@ -194,6 +204,7 @@ export class Crm {
       const consent = a.marketing ? { at: now, how: 'form', note: a.consentText || '' } : null;
       const r = await this.add(contact, { source: 'form', by: 'form', consent, campaign: a.campaign || null, history: { what: 'request', text: a.message || '' } });
       const c = await this.getC(r.id); c.request = { at: now, message: a.message || '', marketing: !!a.marketing };
+      if (a.referrer && !c.referrer) { c.referrer = a.referrer; c.history.push({ at: now, by: 'form', what: 'referred', code: a.referrer }); }
       if (c.status === 'lost') c.status = 'new';
       if (!c.nextAt) { c.nextAt = now; c.nextWhat = 'Responder a la solicitud de la web'; }
       // (Auto-enrolled in the active sequence started by requests, if it may write to them.)
@@ -316,11 +327,76 @@ export class Crm {
       }
       return Response.json({ ok: true, lang: c.lang });
     }
+    // ---- Webinars ('events'; their sign-ups 'ev:<id>')
+    if (op === 'events') {
+      const list = (await st.get('events')) || [], counts = {};
+      for (const e of list) counts[e.id] = ((await st.get('ev:' + e.id)) || []).length;
+      return Response.json({ events: list.sort((x, y) => y.starts - x.starts), counts });
+    }
+    if (op === 'events-public') {                         // { now, lang } → the upcoming active ones (no sign-ups, no link)
+      const list = ((await st.get('events')) || []).filter(e => e.active && e.starts > a.now && (!a.lang || e.lang === a.lang || (a.lang !== 'es' && e.lang === 'en')));
+      const out = [];
+      for (const e of list.sort((x, y) => x.starts - y.starts).slice(0, 6)) { const n = ((await st.get('ev:' + e.id)) || []).length;
+        out.push({ id: e.id, title: e.title, starts: e.starts, minutes: e.minutes, description: e.description, lang: e.lang, full: !!e.capacity && n >= e.capacity }); }
+      return Response.json({ events: out });
+    }
+    if (op === 'event-put') {
+      const { event, error } = cleanEvent(a.event); if (error) return Response.json({ error }, { status: 400 });
+      const list = (await st.get('events')) || [];
+      await st.put('events', (list.some(e => e.id === event.id) ? list.map(e => (e.id === event.id ? event : e)) : [...list, event]).slice(-100)); return Response.json({ event });
+    }
+    if (op === 'event-del') { await st.put('events', ((await st.get('events')) || []).filter(e => e.id !== a.id)); await st.delete('ev:' + a.id); return Response.json({ ok: true }); }
+    if (op === 'event-signups') {
+      const e = ((await st.get('events')) || []).find(x => x.id === a.id); if (!e) return Response.json({ error: 'not found' }, { status: 404 });
+      return Response.json({ event: e, signups: (await st.get('ev:' + a.id)) || [] });
+    }
+    if (op === 'event-signup') {                          // { id, contact, marketing, consentText, campaign, referrer } → { ok, event, contact, already }
+      const e = ((await st.get('events')) || []).find(x => x.id === a.id && x.active && x.starts > now);
+      if (!e) return Response.json({ error: 'event' }, { status: 404 });
+      const list = (await st.get('ev:' + e.id)) || [];
+      if (list.some(x => x.email === a.contact.email)) return Response.json({ ok: true, event: e, already: true });
+      if (e.capacity && list.length >= e.capacity) return Response.json({ error: 'full' }, { status: 409 });
+      const consent = a.marketing ? { at: now, how: 'form', note: a.consentText || 'Inscripción a un seminario' } : null;
+      const r = await this.add(a.contact, { source: 'form', by: 'form', consent, campaign: a.campaign || null, history: { what: 'event', text: e.title } });
+      const c = await this.getC(r.id);
+      c.tags = c.tags || []; if (!c.tags.includes('seminario')) c.tags = [...c.tags, 'seminario'].slice(0, 12);
+      if (a.referrer && !c.referrer) c.referrer = a.referrer;
+      await this.save(c);
+      list.push({ id: c.id, email: c.email, person: c.person || '', name: c.name, lang: c.lang, at: now });
+      await st.put('ev:' + e.id, list);
+      return Response.json({ ok: true, event: e, contact: c.id, created: r.created });
+    }
+    if (op === 'events-due') {                            // { now } → reminders for the ones starting in the next ~36 h (each sign-up once)
+      const out = [];
+      for (const e of ((await st.get('events')) || []).filter(x => x.active && x.starts > a.now && x.starts - a.now < 36 * 3600e3)) {
+        const list = (await st.get('ev:' + e.id)) || []; let changed = false;
+        for (const x of list) if (!x.reminded) { x.reminded = a.now; changed = true; out.push({ event: e, to: x }); }
+        if (changed) await st.put('ev:' + e.id, list);
+      }
+      return Response.json({ items: out });
+    }
+    // ---- Recommendations: a code per account ('r:<code>' → { sub, email }, 'rs:<code>' its numbers)
+    if (op === 'ref-code') {                              // { code, sub, email } (the code made by the Worker, signed) → { stats }
+      if (!/^[a-z0-9]{6,16}$/.test(a.code || '')) return Response.json({ error: 'code' }, { status: 400 });
+      const cur = await st.get('r:' + a.code); if (!cur || cur.email !== a.email) await st.put('r:' + a.code, { sub: a.sub, email: a.email, at: cur?.at || now });
+      return Response.json({ stats: (await st.get('rs:' + a.code)) || { leads: 0, customers: 0 }, settings: await settings() });
+    }
+    if (op === 'ref-of') return Response.json({ ref: /^[a-z0-9]{6,16}$/.test(a.code || '') ? (await st.get('r:' + a.code)) || null : null });
+    if (op === 'ref-hit') {                               // { code, kind: 'leads' | 'customers' }
+      const k = 'rs:' + a.code, x = (await st.get(k)) || { leads: 0, customers: 0 }; x[a.kind] = (x[a.kind] || 0) + 1; await st.put(k, x); return Response.json({ ok: true });
+    }
+    if (op === 'refs') {                                  // admin: who recommends, and what it brought
+      const out = [];
+      for (const [k, v] of await st.list({ prefix: 'r:' })) { const code = k.slice(2); out.push({ code, ...v, ...((await st.get('rs:' + code)) || { leads: 0, customers: 0 }) }); }
+      const by = {}; for (const c of (await st.list({ prefix: 's:' })).values()) if (c.referrer) (by[c.referrer] ||= []).push({ id: c.id, name: c.name, status: c.status });
+      return Response.json({ refs: out.sort((x, y) => y.customers - x.customers || y.leads - x.leads), contacts: by });
+    }
     // ---- One contact
     const c = await this.getC(a.id); if (!c) return Response.json({ error: 'not found' }, { status: 404 });
     if (op === 'get') {
       const camp = c.campaign && ((await st.get('camps')) || []).find(x => x.id === c.campaign || x.slug === c.campaign);
-      return Response.json({ contact: c, seqs: (await seqs()).map(s => ({ id: s.id, name: s.name, active: s.active })), campaign: camp ? { name: camp.name, slug: camp.slug } : null });
+      const ref = c.referrer ? (await st.get('r:' + c.referrer)) || null : null;
+      return Response.json({ contact: c, seqs: (await seqs()).map(s => ({ id: s.id, name: s.name, active: s.active })), campaign: camp ? { name: camp.name, slug: camp.slug } : null, referrer: ref && { code: c.referrer, sub: ref.sub, email: ref.email } });
     }
     if (op === 'update') {
       const { contact, error } = cleanContact(a.contact, c); if (error) return Response.json({ error }, { status: 400 });
@@ -330,6 +406,9 @@ export class Crm {
     if (op === 'status') {
       if (!STATUSES.includes(a.status)) return Response.json({ error: 'status' }, { status: 400 });
       c.history.push({ at: now, by: a.by, what: 'status', from: c.status, to: a.status }); c.status = a.status;
+      if (a.status === 'customer' && c.referrer && !c.referredCustomer) {
+        c.referredCustomer = now; const k = 'rs:' + c.referrer, x = (await st.get(k)) || { leads: 0, customers: 0 }; x.customers++; await st.put(k, x);
+      }
       if (c.seq) { const seq = (await seqs()).find(s => s.id === c.seq.id); if (seq && (seq.stopOn || []).includes(c.status)) { c.seq = null; c.history.push({ at: now, by: 'system', what: 'seq-stop', why: 'status' }); } }
       await this.save(c); return Response.json({ contact: c });
     }
@@ -445,6 +524,21 @@ const L10N = {
     ack: (n, d) => [`Hola${n ? ', ' + n : ''}:`, 'T’escriurem en un o dos dies laborables per respondre’t.', d ? 'Ens vas donar permís per enviar-te informació sobre Revela: pots retirar-lo quan vulguis amb l’enllaç de sota.' : 'Només farem servir les teves dades per respondre aquesta sol·licitud.'],
     page: { ok: 'Fet: no tornaràs a rebre correus comercials de Revela.', bad: 'L’enllaç no és vàlid.', back: 'Anar a revelaslides.com' } },
 };
+// Webinars' emails: confirmation (with the link) and the reminder the day before. when: the date and time, already written.
+const EVT = {
+  es: { ok: t => `Te has apuntado: ${t}`, rem: t => `Mañana: ${t}`, body: (t, w, l, d) => [`Te esperamos en «${t}».`, `Cuándo: ${w}.`, l ? `Para entrar: ${l}` : 'Te enviaremos el enlace para entrar antes de empezar.', d, 'Si al final no puedes venir, no hace falta que nos avises.'] },
+  en: { ok: t => `You're signed up: ${t}`, rem: t => `Tomorrow: ${t}`, body: (t, w, l, d) => [`See you at “${t}”.`, `When: ${w}.`, l ? `To join: ${l}` : 'We will send you the link to join before it starts.', d, "If you can't make it in the end, there's no need to tell us."] },
+  fr: { ok: t => `Vous êtes inscrit : ${t}`, rem: t => `Demain : ${t}`, body: (t, w, l, d) => [`Nous vous attendons à « ${t} ».`, `Quand : ${w}.`, l ? `Pour participer : ${l}` : 'Nous vous enverrons le lien avant le début.', d, 'Si finalement vous ne pouvez pas venir, inutile de nous prévenir.'] },
+  de: { ok: t => `Du bist angemeldet: ${t}`, rem: t => `Morgen: ${t}`, body: (t, w, l, d) => [`Wir sehen uns bei „${t}“.`, `Wann: ${w}.`, l ? `Teilnehmen: ${l}` : 'Den Link zum Teilnehmen schicken wir dir vor Beginn.', d, 'Falls du doch nicht kannst, musst du uns nicht Bescheid geben.'] },
+  it: { ok: t => `Sei iscritto: ${t}`, rem: t => `Domani: ${t}`, body: (t, w, l, d) => [`Ti aspettiamo a «${t}».`, `Quando: ${w}.`, l ? `Per partecipare: ${l}` : 'Ti invieremo il link prima dell’inizio.', d, 'Se alla fine non puoi venire, non serve avvisarci.'] },
+  pt: { ok: t => `Está inscrito: ${t}`, rem: t => `Amanhã: ${t}`, body: (t, w, l, d) => [`Esperamos por si em «${t}».`, `Quando: ${w}.`, l ? `Para entrar: ${l}` : 'Enviaremos a ligação para entrar antes de começar.', d, 'Se afinal não puder vir, não precisa de nos avisar.'] },
+  ca: { ok: t => `T'hi has apuntat: ${t}`, rem: t => `Demà: ${t}`, body: (t, w, l, d) => [`T'esperem a «${t}».`, `Quan: ${w}.`, l ? `Per entrar-hi: ${l}` : "T'enviarem l'enllaç per entrar-hi abans de començar.", d, 'Si al final no pots venir, no cal que ens avisis.'] },
+};
+const whenOf = (ts, lang) => { try { return new Date(ts).toLocaleString(lang || 'es', { timeZone: 'Europe/Madrid', weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }); } catch { return new Date(ts).toISOString(); } };
+export function eventMail(kind, e, lang, identity) {
+  const T = EVT[lang] || (['gl', 'eu'].includes(lang) ? EVT.es : EVT.en), l = EVT[lang] ? lang : ['gl', 'eu'].includes(lang) ? 'es' : 'en';
+  return crmMail({ subject: (kind === 'reminder' ? T.rem : T.ok)(e.title), body: T.body(e.title, whenOf(e.starts, l), e.link, e.description).filter(Boolean).join('\n\n'), lang: l, identity });
+}
 const L = lang => L10N[lang] || (['gl', 'eu'].includes(lang) || !lang ? L10N.es : L10N.en);
 const fmtDay = (ts, lang) => { try { return new Date(ts).toLocaleDateString(lang || 'es', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }); } catch { return dayKey(ts); } };
 // Text with blank lines between paragraphs → paragraphs; addresses (https://…) → links (tracked: track(url) → its link).
@@ -499,15 +593,61 @@ export async function handleLead(req, env, body, json, { takeQuota, sendMail }) 
   if (!(await takeQuota(env, 'lead:ip:' + ip, { per: +env.LEADS_PER_DAY || 5, scope: 'leads' })) || !(await takeQuota(env, 'lead:to:' + email, { per: 3, scope: 'leads-to' }))) return json({ error: 'daily limit' }, 429);
   const slug = /^[a-z0-9][a-z0-9-]{1,39}$/.test(body.campaign || '') ? body.campaign : null;
   const camp = slug ? (await crmCall(env, 'camp-of', { slug })).camp : null;
-  const marketing = body.marketing === true;
-  const r = await crmCall(env, 'lead', { contact, message: text(body.message, 3000), marketing, campaign: camp?.id || null,
+  const marketing = body.marketing === true, referrer = await refOf(env, body.ref);
+  const r = await crmCall(env, 'lead', { contact, message: text(body.message, 3000), marketing, campaign: camp?.id || null, referrer,
     consentText: marketing ? str(body.consentText, 300) || 'Formulario «Revela para centros»' : '' });
   if (camp && r.created) await crmCall(env, 'camp-hit', { id: camp.id, kind: 'lead' });
+  if (referrer && r.created) await crmCall(env, 'ref-hit', { code: referrer, kind: 'leads' });
   const s = (await crmCall(env, 'settings')).settings;
   let unsub = null;
   if (marketing) { const t = await crmToken(env, 'unsub', { id: r.id, e: email }); if (t) unsub = `${site(env)}/api/crm/unsub?t=${encodeURIComponent(t)}`; }
   await sendMail(env, { to: email, kind: 'crm-ack', ...ackMail(lang, contact.person, marketing && !!unsub, s.identity), ...(unsub && { unsubscribe: unsub }), ...(s.replyTo && { replyTo: s.replyTo }) });
   return json({ ok: true });
+}
+
+// A recommendation's code, if it exists (from ?ref= on the site's links) → the code, or null.
+async function refOf(env, code) {
+  const c = String(code || '').toLowerCase();
+  return /^[a-z0-9]{6,16}$/.test(c) && (await crmCall(env, 'ref-of', { code: c })).ref ? c : null;
+}
+
+// GET /api/events?lang= — the upcoming webinars (the centres' page shows them, with their sign-up).
+export async function eventsPublic(env, url, json) {
+  if (!env.CRM) return json({ events: [] });
+  const lang = /^[a-z]{2}$/.test(url.searchParams.get('lang') || '') ? url.searchParams.get('lang') : '';
+  return json(await crmCall(env, 'events-public', { now: Date.now(), lang }), 200, { 'Cache-Control': 'public, max-age=60' });
+}
+// POST /api/events/signup — { event, person, name (organisation)?, email, privacy: true, marketing?, lang, campaign?, ref?, website? }
+// → { ok }. The person gets the confirmation with the link; a contact in Captación (consent only with marketing).
+export async function eventSignup(req, env, body, json, { takeQuota, sendMail }) {
+  if (!env.CRM) return json({ error: 'not configured' }, 503);
+  if (body.website) return json({ ok: true });
+  if (body.privacy !== true) return json({ error: 'privacy' }, 400);
+  const email = mailOf(body.email); if (!email) return json({ error: 'email' }, 400);
+  if (!/^[a-z0-9]{6,12}$/.test(body.event || '')) return json({ error: 'event' }, 400);
+  const lang = LANGS.includes(body.lang) ? body.lang : 'es';
+  const { contact, error } = cleanContact({ name: body.name || body.person, person: body.person, email, kind: body.kind, lang }); if (error) return json({ error }, 400);
+  const ip = req.headers.get('CF-Connecting-IP') || '?';
+  if (!(await takeQuota(env, 'lead:ip:' + ip, { per: +env.LEADS_PER_DAY || 5, scope: 'leads' }))) return json({ error: 'daily limit' }, 429);
+  const slug = /^[a-z0-9][a-z0-9-]{1,39}$/.test(body.campaign || '') ? body.campaign : null, camp = slug ? (await crmCall(env, 'camp-of', { slug })).camp : null;
+  const r = await crmCall(env, 'event-signup', { id: body.event, contact, marketing: body.marketing === true, consentText: str(body.consentText, 300), campaign: camp?.id || null, referrer: await refOf(env, body.ref) });
+  if (r.error) return json({ error: r.error }, r.error === 'full' ? 409 : 404);
+  if (!r.already) {
+    if (camp && r.created) await crmCall(env, 'camp-hit', { id: camp.id, kind: 'lead' });
+    const s = (await crmCall(env, 'settings')).settings;
+    await sendMail(env, { to: email, kind: 'crm-event', ...eventMail('ok', r.event, lang, s.identity), ...(s.replyTo && { replyTo: s.replyTo }) });
+  }
+  return json({ ok: true });
+}
+
+// GET /api/referral (with a session) — my code to recommend Revela to my school or company → { on, code, link, reward, stats }.
+// The code is the account's, signed (MAIL_SECRET): the same every time, and nobody can make another's.
+export async function referralInfo(env, me, json) {
+  if (!env.CRM || !env.MAIL_SECRET) return json({ on: false });
+  const code = (await hmac(env.MAIL_SECRET, 'ref:' + me.sub)).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10);
+  const r = await crmCall(env, 'ref-code', { code, sub: me.sub, email: me.email || '' });
+  if (!r.settings?.referral) return json({ on: false });
+  return json({ on: true, code, link: `${site(env)}/centros?ref=${code}`, reward: r.settings.referralReward || '', stats: r.stats });
 }
 
 // GET /api/go/<slug> — a campaign's link: counted (a visit that day; nobody recorded) and on to its address, with
@@ -570,20 +710,26 @@ export async function runCrm(env, { sendMail, mailConfigured, adminEmails = [] }
     await crmCall(env, 'sent', { id: c.id, seq: m.seq.id, i: m.i, ok, subject: msg.subject });
     if (ok) sent++; else failed++;
   }
+  // Webinars tomorrow: a reminder to each one signed up (part of what they asked for: no consent needed, but only that).
+  let reminded = 0;
+  if (mailConfigured(env)) for (const x of (await crmCall(env, 'events-due', { now })).items || []) {
+    if (await sendMail(env, { to: x.to.email, kind: 'crm-event', ...eventMail('reminder', x.event, x.to.lang || x.event.lang, s.identity), ...(s.replyTo && { replyTo: s.replyTo }) })) reminded++;
+  }
   // The admin's summary: follow-ups due today, new requests, what went out (only if there is something).
   const to = s.digestTo || adminEmails[0];
-  if (s.digest && to && mailConfigured(env) && (due.followups.length || due.leads.length || sent || failed || (!canSend && due.mails.length))) {
+  if (s.digest && to && mailConfigured(env) && (due.followups.length || due.leads.length || sent || failed || reminded || (!canSend && due.mails.length))) {
     const line = c => `· ${c.name}${c.city ? ' (' + c.city + ')' : ''}${c.nextWhat ? ' — ' + c.nextWhat : ''}`;
     const body = [
       due.leads.length ? `Solicitudes nuevas desde la web (${due.leads.length}):\n${due.leads.map(line).join('\n')}` : '',
       due.followups.length ? `Seguimientos para hoy (${due.followups.length}):\n${due.followups.slice(0, 40).map(line).join('\n')}` : '',
+      reminded ? `Recordatorios de seminarios enviados: ${reminded}.` : '',
       sent || failed ? `Correos de secuencias enviados hoy: ${sent}${failed ? ` (${failed} no se pudieron enviar: se reintentan mañana)` : ''}.` : '',
       !canSend && due.mails.length ? `Hay ${due.mails.length} correos de secuencias esperando, pero no se envían: falta ${!s.identity ? 'la identidad del remitente (Captación ▸ Ajustes)' : !env.MAIL_SECRET ? 'MAIL_SECRET' : 'un servicio de correo'}.` : '',
       `Abrir Captación: https://${env.ADMIN_HOST || 'admin.revelaslides.com'}/#captacion`,
     ].filter(Boolean).join('\n\n');
     await sendMail(env, { to, kind: 'crm-digest', ...crmMail({ subject: `Captación: ${due.followups.length} seguimientos, ${due.leads.length} solicitudes`, body, lang: 'es', identity: '' }) });
   }
-  return { sent, failed };
+  return { sent, failed, reminded };
 }
 
 // /api/admin/crm/… (admin.js has checked who it is). by: the admin's address; audit(e): the record.
@@ -633,6 +779,24 @@ export async function crmApi(env, path, q, body, { GET, POST, by, json, audit })
     }
     return json({ subject: msg.subject, html: msg.html, missing: !s.identity ? 'identity' : null });
   }
+  if (GET && sub === '/events') return json(await C('events'));
+  if (POST && sub === '/events') { const r = await C('event-put', { event: body.event }); if (!r.error) await audit({ action: 'crm-event', target: 'crm:event:' + r.event.id, after: { title: r.event.title, starts: r.event.starts } }); return send(r); }
+  m = sub.match(/^\/events\/([a-z0-9]{6,12})(?:\/(delete|mail))?$/);
+  if (m) {
+    if (GET && !m[2]) return send(await C('event-signups', { id: m[1] }));
+    if (POST && m[2] === 'delete') { await audit({ action: 'crm-event-delete', target: 'crm:event:' + m[1] }); return json(await C('event-del', { id: m[1] })); }
+    // An email to everyone signed up (the link, the recording, the materials: what they signed up for).
+    if (POST && m[2] === 'mail') {
+      const subject = str(body.subject, 140), msgBody = text(body.body, 6000); if (!subject || !msgBody) return json({ error: 'text' }, 400);
+      const { signups, event, error } = await C('event-signups', { id: m[1] }); if (error) return json({ error }, 404);
+      const s = (await C('settings')).settings; let ok = 0;
+      const { sendMail } = await import('./mail.js');
+      for (const x of signups) if (await sendMail(env, { to: x.email, kind: 'crm-event', ...crmMail({ subject, body: fill(msgBody, { person: x.person, name: x.name }), lang: x.lang || event.lang, identity: s.identity }), ...(s.replyTo && { replyTo: s.replyTo }) })) ok++;
+      await audit({ action: 'crm-event-mail', target: 'crm:event:' + m[1], after: { subject, sent: ok } });
+      return json({ sent: ok, of: signups.length });
+    }
+  }
+  if (GET && sub === '/referrals') return json(await C('refs'));
   m = sub.match(/^\/contacts\/(\d{1,9})(?:\/(status|note|log|next|consent|enroll|delete|message))?$/);
   if (m) {
     const id = +m[1], op = m[2] || '';

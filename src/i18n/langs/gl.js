@@ -1,6 +1,14 @@
 // Galician interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Recomienda Revela a tu centro": "Recomenda Revela ao teu centro",
+  "Si te gusta Revela, pásale este enlace a la dirección de tu centro o empresa. Lo envías tú: Revela no escribe a nadie.": "Se che gusta Revela, pásalle esta ligazón á dirección do teu centro ou empresa. Envíala ti: Revela non lle escribe a ninguén.",
+  "Copiar el enlace": "Copiar a ligazón",
+  "Hola: uso Revela para preparar mis clases (presentaciones con votaciones y cuestionarios en directo, compatible con PowerPoint y Moodle) y creo que nos vendría bien a todo el claustro. Podéis pedir una demostración aquí: {link}": "Ola: uso Revela para preparar as miñas clases (presentacións con votacións e cuestionarios en directo, compatibles con PowerPoint e Moodle) e creo que nos viría ben a todo o claustro. Podedes pedir unha demostración aquí: {link}",
+  "Revela para nuestro centro": "Revela para o noso centro",
+  "Si tu centro contrata Revela gracias a ti: {r}.": "Se o teu centro contrata Revela grazas a ti: {r}.",
+  "Solicitudes gracias a ti: {n} · Ya son clientes: {m}": "Solicitudes grazas a ti: {n} · Xa son clientes: {m}",
+  "Enlace copiado": "Ligazón copiada",
   "voto": "voto",
   "votos": "votos",
   "respuesta": "resposta",

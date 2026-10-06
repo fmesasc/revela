@@ -1,6 +1,14 @@
 // Arabic interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Recomienda Revela a tu centro": "أوصِ مدرستك بـ Revela",
+  "Si te gusta Revela, pásale este enlace a la dirección de tu centro o empresa. Lo envías tú: Revela no escribe a nadie.": "إن أعجبك Revela، فأرسل هذا الرابط إلى إدارة مدرستك أو شركتك. أنت من يرسله: لا يراسل Revela أحدًا.",
+  "Copiar el enlace": "نسخ الرابط",
+  "Hola: uso Revela para preparar mis clases (presentaciones con votaciones y cuestionarios en directo, compatible con PowerPoint y Moodle) y creo que nos vendría bien a todo el claustro. Podéis pedir una demostración aquí: {link}": "مرحبًا: أستخدم Revela لتحضير دروسي (عروض تقديمية مع تصويت واختبارات مباشرة، متوافقة مع PowerPoint وMoodle)، وأظن أنه سيفيد جميع المعلمين. يمكنكم طلب عرض توضيحي من هنا: {link}",
+  "Revela para nuestro centro": "Revela لمدرستنا",
+  "Si tu centro contrata Revela gracias a ti: {r}.": "إذا اشتركت مدرستك في Revela بفضلك: {r}.",
+  "Solicitudes gracias a ti: {n} · Ya son clientes: {m}": "طلبات بفضلك: {n} · أصبحوا عملاء: {m}",
+  "Enlace copiado": "تم نسخ الرابط",
   "voto": "صوت",
   "votos": "أصوات",
   "respuesta": "إجابة",
