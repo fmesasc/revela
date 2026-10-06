@@ -1,6 +1,16 @@
 // Basque interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Uso y gastos del equipo": "Taldearen erabilera eta gastuak",
+  "{used} de {seats} puestos ocupados · {inv} invitaciones pendientes": "{seats} postuetatik {used} beteta · {inv} gonbidapen zain",
+  "Último uso": "Azken erabilera",
+  "IA este mes": "AA hilabete honetan",
+  "IA, 30 días": "AA, 30 egun",
+  "Espacio ocupado": "Erabilitako biltegia",
+  "Aún no ha entrado en Revela": "Oraindik ez da Revelan sartu",
+  "Créditos de IA: los que trae cada plaza Pro cada mes; no se cobran aparte. Ves cuánto se usa cada plaza, nunca el contenido de las presentaciones.": "AA kredituak: Pro postu bakoitzak hilero dakartzanak; ez dira aparte kobratzen. Postu bakoitza zenbat erabiltzen den ikusten duzu, inoiz ez aurkezpenen edukia.",
+  "Función": "Funtzioa",
+  "Espacio (MB)": "Biltegia (MB)",
   "Espacio en la nube": "Hodeiko biltegia",
   "{used} de {quota} de espacio": "{used} / {quota} erabilita",
   "lleno": "beteta",

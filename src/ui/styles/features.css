@@ -1032,3 +1032,10 @@ body.no-copy img{-webkit-user-drag:none}
 #cloud-share-modal .cl-until input{width:132px;font-size:12px;padding:3px 4px}
 #cloud-share-modal .sh-row select.cl-linkrole{flex:1;min-width:0}
 #cloud-share-modal .cl-perms{margin:10px 0 4px}#cloud-share-modal .cl-perms summary{cursor:pointer;font-weight:600}
+/* The team's use (admins): one row per person, scrolling sideways on a phone */
+#team-modal .tm-usage{margin:12px 0}#team-modal .tm-usage summary{cursor:pointer;font-weight:600}
+#team-modal .tm-table{overflow-x:auto;margin:6px 0}
+#team-modal .tm-table table{width:100%;border-collapse:collapse;font-size:13px}
+#team-modal .tm-table th,#team-modal .tm-table td{padding:5px 6px;border-bottom:1px solid var(--line2);text-align:start;white-space:nowrap}
+#team-modal .tm-table .num{text-align:end;font-variant-numeric:tabular-nums}
+#team-modal .tm-table tfoot th{border-top:2px solid var(--line2)}

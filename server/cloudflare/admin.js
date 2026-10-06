@@ -169,6 +169,11 @@ export class Directory {
       return Response.json({ ok: true });
     }
     if (op === 'get') return Response.json({ user: (await st.get('u:' + a.sub)) || null });
+    if (op === 'subs') {                                  // { emails } → { subs: { email: sub } } (teams.js: a team's members)
+      const subs = {};
+      for (const e of (Array.isArray(a.emails) ? a.emails : []).slice(0, 1000)) { const m = await st.list({ prefix: `e:${String(e).toLowerCase()}|`, limit: 1 }); for (const [, sub] of m) subs[e] = sub; }
+      return Response.json({ subs });
+    }
     if (op === 'search') {                                // { q, cursor, limit } → { users, cursor }
       const limit = Math.min(100, Math.max(1, +a.limit || 50)), q = String(a.q || '').trim().toLowerCase();
       let keys;

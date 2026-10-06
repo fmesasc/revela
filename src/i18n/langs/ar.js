@@ -1,6 +1,16 @@
 // Arabic interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Uso y gastos del equipo": "استخدام الفريق ونفقاته",
+  "{used} de {seats} puestos ocupados · {inv} invitaciones pendientes": "{used} من {seats} مقاعد مشغولة · {inv} دعوات معلّقة",
+  "Último uso": "آخر استخدام",
+  "IA este mes": "الذكاء الاصطناعي هذا الشهر",
+  "IA, 30 días": "الذكاء الاصطناعي، 30 يومًا",
+  "Espacio ocupado": "المساحة المستخدمة",
+  "Aún no ha entrado en Revela": "لم يسجّل الدخول إلى Revela بعد",
+  "Créditos de IA: los que trae cada plaza Pro cada mes; no se cobran aparte. Ves cuánto se usa cada plaza, nunca el contenido de las presentaciones.": "أرصدة الذكاء الاصطناعي: المضمّنة في كل مقعد Pro شهريًا، ولا تُحتسب بشكل منفصل. ترى مقدار استخدام كل مقعد، ولا ترى أبدًا محتوى العروض.",
+  "Función": "الدور",
+  "Espacio (MB)": "المساحة (ميغابايت)",
   "Espacio en la nube": "المساحة في السحابة",
   "{used} de {quota} de espacio": "{used} من {quota} مستخدمة",
   "lleno": "ممتلئة",

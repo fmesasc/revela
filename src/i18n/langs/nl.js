@@ -1,6 +1,16 @@
 // Dutch interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Uso y gastos del equipo": "Gebruik en uitgaven van het team",
+  "{used} de {seats} puestos ocupados · {inv} invitaciones pendientes": "{used} van {seats} plaatsen bezet · {inv} openstaande uitnodigingen",
+  "Último uso": "Laatst gebruikt",
+  "IA este mes": "AI deze maand",
+  "IA, 30 días": "AI, 30 dagen",
+  "Espacio ocupado": "Gebruikte opslag",
+  "Aún no ha entrado en Revela": "Heeft nog niet ingelogd bij Revela",
+  "Créditos de IA: los que trae cada plaza Pro cada mes; no se cobran aparte. Ves cuánto se usa cada plaza, nunca el contenido de las presentaciones.": "AI-tegoed: het tegoed dat elke Pro-plaats elke maand bevat; het wordt niet apart gerekend. Je ziet hoeveel elke plaats wordt gebruikt, nooit de inhoud van de presentaties.",
+  "Función": "Rol",
+  "Espacio (MB)": "Opslag (MB)",
   "Espacio en la nube": "Cloudopslag",
   "{used} de {quota} de espacio": "{used} van {quota} gebruikt",
   "lleno": "vol",

@@ -11,6 +11,7 @@
 //   POST /api/team/template            { name, deck }          (admin: add a template)
 //   POST /api/team/template/delete     { id }                  (admin)
 //   GET  /api/team/template?id=…       → { deck }              (members)
+//   GET  /api/team/usage               → { seats, used, invited, members: [{ email, role, lastSeen, spentMonth, spent30, storage }], totals }   (admins)
 //   POST /api/billing/checkout         { product: 'team', seats } (see api.js)
 //
 // Storage: one Durable Object per team (Team); each Account keeps its team's id,
@@ -96,7 +97,7 @@ export class Team {
         await st.put('team', t); return this.json({ ok: true, members: t.members });
       }
       case 'clear-test': { const was = !!t.test && t.until > Date.now(); if (t.test) { t.until = 0; t.test = false; await st.put('team', t); } return this.json({ ok: true, cleared: was }); }
-      case 'customer': return this.json({ customer: t.customer, admin });
+      case 'customer': return this.json({ customer: admin ? t.customer : null, customerTest: admin ? t.customerTest || null : null, admin });
     }
     return this.json({ error: 'unknown' }, 404);
   }
@@ -133,6 +134,23 @@ export async function handleTeams(path, req, body, url, env, me, A, acct, call, 
   }
   if (path === '/team/template' && req.method === 'GET') { if (!mine) return json({ error: 'no team' }, 404); return pass(await ask(env, mine, 'template-get', { email: me.email, id: url.searchParams.get('id') })); }
   if (!mine) return json({ error: 'no team' }, 404);
+  // The team's use, for its admins: each person's last day of use, AI credits spent and space (Account 'usage'), and
+  // the totals — so a school or a company sees what its seats are used for. Nothing about what anyone's presentations say.
+  if (path === '/team/usage' && req.method === 'GET') {
+    const r = await ask(env, mine, 'get', { email: me.email }); if (r.status !== 200) return pass(r);
+    if (r.data.role !== 'admin') return json({ error: 'forbidden' }, 403);
+    const T = r.data.team, emails = Object.keys(T.members).slice(0, 1000), month = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1);
+    const known = Object.fromEntries(emails.filter(e => T.members[e].sub).map(e => [e, T.members[e].sub]));
+    const missing = emails.filter(e => !known[e]);
+    if (missing.length && env.DIRECTORY) Object.assign(known, (await (await env.DIRECTORY.get(env.DIRECTORY.idFromName('directory')).fetch('https://dir/subs', { method: 'POST', body: JSON.stringify({ emails: missing }) })).json()).subs || {});
+    const members = await Promise.all(emails.map(async e => {
+      const u = known[e] ? await call(acct(env, known[e]), 'usage', { month }).catch(() => null) : null;
+      return { email: e, role: T.members[e].role, joined: T.members[e].joined || null, ...(u ? { lastSeen: u.lastSeen, spentMonth: u.spentMonth, spent30: u.spent30, storage: u.storage, docs: u.docs } : { account: false }) };
+    }));
+    const sum = k => members.reduce((t, m) => t + (+m[k] || 0), 0);
+    return json({ name: T.name, seats: T.seats, used: emails.length, invited: Object.keys(T.invited).length, active: T.active, until: T.until, month,
+      members, totals: { spentMonth: sum('spentMonth'), spent30: sum('spent30'), storage: members.reduce((t, m) => t + (m.storage?.used || 0), 0) } });
+  }
   const ops = { '/team/invite': 'invite', '/team/remove': 'remove', '/team/brand': 'brand', '/team/template': 'template', '/team/template/delete': 'template-delete' };
   const op = ops[path]; if (!op || req.method !== 'POST') return json({ error: 'not found' }, 404);
   const r = await ask(env, mine, op, { ...body, email: me.email, invite: body.email, remove: body.email });

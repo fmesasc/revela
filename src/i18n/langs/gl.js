@@ -1,6 +1,16 @@
 // Galician interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Uso y gastos del equipo": "Uso e gastos do equipo",
+  "{used} de {seats} puestos ocupados · {inv} invitaciones pendientes": "{used} de {seats} postos ocupados · {inv} convites pendentes",
+  "Último uso": "Último uso",
+  "IA este mes": "IA este mes",
+  "IA, 30 días": "IA, 30 días",
+  "Espacio ocupado": "Espazo ocupado",
+  "Aún no ha entrado en Revela": "Aínda non entrou en Revela",
+  "Créditos de IA: los que trae cada plaza Pro cada mes; no se cobran aparte. Ves cuánto se usa cada plaza, nunca el contenido de las presentaciones.": "Créditos de IA: os que trae cada posto Pro cada mes; non se cobran á parte. Ves canto se usa cada posto, nunca o contido das presentacións.",
+  "Función": "Función",
+  "Espacio (MB)": "Espazo (MB)",
   "Espacio en la nube": "Espazo na nube",
   "{used} de {quota} de espacio": "{used} de {quota} de espazo",
   "lleno": "cheo",

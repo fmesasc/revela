@@ -21,7 +21,7 @@ export async function openTeam() {
   if (!acc.account()) { await acc.refreshAccount().catch(() => null); if (!acc.account()) return openAccount(); }
   document.getElementById('team-modal')?.remove();
   const back = document.createElement('div'); back.id = 'team-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal cloud" style="text-align:start;width:min(560px,94vw);max-width:none"><button class="modal-close">✕</button><h3>${t('Mi equipo')}</h3><div class="tm-body"><p class="host-help">${t('Cargando…')}</p></div></div>`;
+  back.innerHTML = `<div class="modal cloud" style="text-align:start;width:min(720px,94vw);max-width:none"><button class="modal-close">✕</button><h3>${t('Mi equipo')}</h3><div class="tm-body"><p class="host-help">${t('Cargando…')}</p></div></div>`;
   document.body.appendChild(back);
   const body = back.querySelector('.tm-body'), close = () => back.remove();
   back.querySelector('.modal-close').addEventListener('click', close);
@@ -48,7 +48,8 @@ export async function openTeam() {
       ${admin && acc.account()?.billingTest ? `<p class="host-help acc-test" role="note">${t('Modo de prueba: no se cobra nada (tarjeta de prueba 4242 4242 4242 4242)')}</p>` : ''}
       ${admin ? `<div class="sh-row"><input type="email" class="tm-email" placeholder="${t('correo@ejemplo.com')}"><select class="tm-role"><option value="member">${t('Miembro')}</option><option value="admin">${t('Administración')}</option></select><button type="button" class="mini2 tm-invite">${t('Invitar')}</button></div>
         <div class="sh-row"><label class="fr-chk" style="margin:0">${t('Puestos')} <input type="number" class="tm-seats" min="3" max="1000" value="${Math.max(3, T.seats, used)}" style="width:6em"></label><button type="button" class="fr-do tm-buy">${t('Pagar los puestos')}</button>
-          ${T.active ? `<button type="button" class="mini2 tm-portal">${t('Gestionar la suscripción')}</button>` : ''}</div>` : ''}
+          ${T.active ? `<button type="button" class="mini2 tm-portal">${t('Gestionar la suscripción')}</button>` : ''}</div>
+        <details class="tm-usage"><summary>${t('Uso y gastos del equipo')}</summary><div class="tm-usage-body"><p class="host-help">${t('Cargando…')}</p></div></details>` : ''}
       <h4>${t('Kit de marca del equipo')}</h4>
       ${T.brand ? `<div class="sh-item"><span>${esc(T.brand.name || '')} ${(T.brand.colors || []).map(c => `<i class="tm-sw" style="background:${esc(c)}"></i>`).join('')}</span><button type="button" class="mini2 tm-use-brand">${t('Aplicar a esta presentación')}</button></div>` : `<p class="host-help">${t('Aún no hay kit de marca.')}</p>`}
       ${admin ? `<button type="button" class="mini2 tm-set-brand">${t('Compartir un kit de marca con el equipo')}</button>` : ''}
@@ -64,6 +65,29 @@ export async function openTeam() {
     q('.tm-invite')?.addEventListener('click', act(async () => { const e = q('.tm-email').value.trim(); if (!e) return; await acc.api('team/invite', { email: e, role: q('.tm-role').value }); }));
     q('.tm-buy')?.addEventListener('click', act(() => acc.buy('team-seat', { seats: Math.max(3, +q('.tm-seats').value || 3) })));
     q('.tm-portal')?.addEventListener('click', act(() => acc.manageBilling()));
+    // The team's use (admins): how each seat is used — last use, AI credits spent, space —, never what anyone's
+    // presentations say; the totals and a CSV. (server/cloudflare/teams.js /team/usage)
+    q('.tm-usage')?.addEventListener('toggle', async e => {
+      const box = q('.tm-usage-body'); if (!e.target.open || box.dataset.loaded) return;
+      let u; try { u = await acc.api('team/usage'); } catch (err) { box.innerHTML = `<p class="host-help">${esc(errorText(err))}</p>`; return; }
+      box.dataset.loaded = '1';
+      const L = currentLang(), num = n => (+n || 0).toLocaleString(L), day = d => (d ? new Date(d + 'T12:00:00').toLocaleDateString(L, { day: 'numeric', month: 'short' }) : '—');
+      const size = b => (b >= 1024 ** 3 ? (b / 1024 ** 3).toLocaleString(L, { maximumFractionDigits: 1 }) + ' GB' : (b / 1024 ** 2).toLocaleString(L, { maximumFractionDigits: 1 }) + ' MB');
+      const rows = u.members.slice().sort((a, b) => (b.spentMonth || 0) - (a.spentMonth || 0));
+      box.innerHTML = `<p class="host-help">${t('{used} de {seats} puestos ocupados · {inv} invitaciones pendientes').replace('{used}', u.used).replace('{seats}', u.seats).replace('{inv}', u.invited)}</p>
+        <div class="tm-table"><table><thead><tr><th>${t('Persona')}</th><th>${t('Último uso')}</th><th>${t('IA este mes')}</th><th>${t('IA, 30 días')}</th><th>${t('Espacio ocupado')}</th></tr></thead><tbody>
+        ${rows.map(m => `<tr><td>${esc(m.email)}${m.role === 'admin' ? ` <small>(${t('Administración')})</small>` : ''}</td>${m.account === false ? `<td colspan="4"><small>${t('Aún no ha entrado en Revela')}</small></td>`
+          : `<td>${day(m.lastSeen)}</td><td class="num">${num(m.spentMonth)}</td><td class="num">${num(m.spent30)}</td><td class="num">${m.storage ? size(m.storage.used) : '—'}</td>`}</tr>`).join('')}
+        </tbody><tfoot><tr><th>${t('Total')}</th><th></th><th class="num">${num(u.totals.spentMonth)}</th><th class="num">${num(u.totals.spent30)}</th><th class="num">${size(u.totals.storage)}</th></tr></tfoot></table></div>
+        <p class="host-help">${t('Créditos de IA: los que trae cada plaza Pro cada mes; no se cobran aparte. Ves cuánto se usa cada plaza, nunca el contenido de las presentaciones.')}</p>
+        <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 tm-csv"><i class="ms">download</i> ${t('Descargar CSV')}</button></div>`;
+      box.querySelector('.tm-csv').addEventListener('click', () => {
+        const cell = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+        const csv = [[t('Persona'), t('Función'), t('Último uso'), t('IA este mes'), t('IA, 30 días'), t('Espacio (MB)')].map(cell).join(','),
+          ...rows.map(m => [m.email, m.role, m.lastSeen || '', m.spentMonth ?? '', m.spent30 ?? '', m.storage ? (m.storage.used / 1024 ** 2).toFixed(1) : ''].map(cell).join(','))].join('\r\n');
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv' })); a.download = 'revela-equipo-uso.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+      });
+    });
     q('.tm-use-brand')?.addEventListener('click', () => { const k = cleanKit(T.brand); if (k) { saveKit({ ...k, id: 'team-' + T.id }); applyKit(k); close(); } });
     q('.tm-set-brand')?.addEventListener('click', act(async () => {
       const kits = [kitFromDeck(), ...listKits()], names = kits.map((k, i) => `${i + 1}. ${k.name}${i ? '' : ' (' + t('esta presentación') + ')'}`).join('\n');

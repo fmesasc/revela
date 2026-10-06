@@ -68,7 +68,13 @@ export async function checkout(env, s, me, A, body, json) {
   return d.url ? json({ url: d.url, ...(mode === 'test' && { test: true }), ...(trial && { trialDays: trial }) }) : json({ error: 'billing failed' }, 502);
 }
 export async function portal(env, s, A, json) {
-  const c = await call(A, 'customer'), mode = billingMode(env, c.billingTest), conf = stripeConf(env, mode), customer = mode === 'test' ? c.customerTest : c.customer;
+  const c = await call(A, 'customer'), mode = billingMode(env, c.billingTest), conf = stripeConf(env, mode);
+  let customer = mode === 'test' ? c.customerTest : c.customer;
+  // (An admin of a team who didn't pay it themselves: the team's subscription and invoices.)
+  if (!customer && env.TEAMS) {
+    const id = (await call(A, 'team-id')).id;
+    if (id) { const t = await (await env.TEAMS.get(env.TEAMS.idFromName('team:' + id)).fetch('https://team/customer', { method: 'POST', body: JSON.stringify({ email: c.email }) })).json(); customer = mode === 'test' ? t.customerTest : t.customer; }
+  }
   if (mode === 'test' && !conf.ok) return json({ error: 'billing test not configured' }, 503);
   if (!conf.key) return json({ error: 'billing not available' }, 503);
   // (Nothing paid in this mode — a Pro from test mode, a gift or a team —: no Stripe customer to manage.)

@@ -581,6 +581,15 @@ export class Account {
       case 'folders-list': return this.json({ folders: await this.get('folders', []) });
       // (storage.js: the documents not measured yet — saved before space was counted — and their measure.)
       case 'dir-sync': await this.dirSync(true); return this.json({ ok: true });
+      // For the admins of my team (teams.js /team/usage): my last day of use, the AI credits I spent (from a.month and in
+      // the last 30 days) and my space — nothing about what my presentations say.
+      case 'usage': {
+        const ledger = await this.get('ledger', []), since30 = Date.now() - 30 * DAY;
+        const spent = from => ledger.filter(e => e.at >= from).reduce((t, e) => t + (CHARGES.includes(e.reason) && e.delta < 0 ? -e.delta : String(e.ref || '').startsWith('refund:') && e.delta > 0 ? -e.delta : 0), 0);
+        const sto = await this.storage();
+        return this.json({ lastSeen: await this.get('lastSeen', null), spentMonth: Math.max(0, spent(+a.month || 0)), spent30: Math.max(0, spent(since30)), credits: await this.get('credits', 0),
+          storage: { used: sto.used, quota: sto.quota }, docs: (await this.get('docs', [])).length });
+      }
       case 'docs-unmeasured': return this.json({ ids: (await this.get('docs', [])).filter(d => d.bytes === undefined).map(d => d.id) });
       case 'docs-bytes': {
         const docs = await this.get('docs', []), d = docs.find(x => x.id === a.id); if (!d || !Number.isFinite(+a.bytes)) return this.json({ ok: false });

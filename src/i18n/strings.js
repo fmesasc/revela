@@ -5,6 +5,16 @@
 
 // es | en | fr | de | it | pt | ca
 export const ROWS = [
+  ['Uso y gastos del equipo', 'Team usage and spending', 'Utilisation et dépenses de l\'équipe', 'Nutzung und Ausgaben des Teams', 'Uso e spese del team', 'Utilização e gastos da equipa', 'Ús i despeses de l\'equip'],
+  ['{used} de {seats} puestos ocupados · {inv} invitaciones pendientes', '{used} of {seats} seats taken · {inv} pending invitations', '{used} places occupées sur {seats} · {inv} invitations en attente', '{used} von {seats} Plätzen belegt · {inv} ausstehende Einladungen', '{used} posti occupati su {seats} · {inv} inviti in attesa', '{used} de {seats} lugares ocupados · {inv} convites pendentes', '{used} de {seats} places ocupades · {inv} invitacions pendents'],
+  ['Último uso', 'Last used', 'Dernière utilisation', 'Zuletzt genutzt', 'Ultimo uso', 'Última utilização', 'Darrer ús'],
+  ['IA este mes', 'AI this month', 'IA ce mois-ci', 'KI diesen Monat', 'IA questo mese', 'IA este mês', 'IA aquest mes'],
+  ['IA, 30 días', 'AI, 30 days', 'IA, 30 jours', 'KI, 30 Tage', 'IA, 30 giorni', 'IA, 30 dias', 'IA, 30 dies'],
+  ['Espacio ocupado', 'Storage used', 'Espace utilisé', 'Belegter Speicher', 'Spazio occupato', 'Espaço ocupado', 'Espai ocupat'],
+  ['Aún no ha entrado en Revela', 'Hasn\'t signed in to Revela yet', 'Ne s\'est pas encore connecté à Revela', 'Hat sich noch nicht bei Revela angemeldet', 'Non ha ancora effettuato l\'accesso a Revela', 'Ainda não entrou no Revela', 'Encara no ha entrat a Revela'],
+  ['Créditos de IA: los que trae cada plaza Pro cada mes; no se cobran aparte. Ves cuánto se usa cada plaza, nunca el contenido de las presentaciones.', 'AI credits: those each Pro seat includes every month; they aren\'t charged separately. You see how much each seat is used, never what the presentations say.', 'Crédits d\'IA : ceux inclus chaque mois dans chaque place Pro ; ils ne sont pas facturés à part. Vous voyez l\'utilisation de chaque place, jamais le contenu des présentations.', 'KI-Guthaben: das in jedem Pro-Platz monatlich enthaltene; es wird nicht gesondert berechnet. Sie sehen, wie viel jeder Platz genutzt wird, nie den Inhalt der Präsentationen.', 'Crediti IA: quelli inclusi ogni mese in ogni posto Pro; non si pagano a parte. Vedi quanto si usa ogni posto, mai il contenuto delle presentazioni.', 'Créditos de IA: os que cada lugar Pro inclui todos os meses; não são cobrados à parte. Vê quanto se usa cada lugar, nunca o conteúdo das apresentações.', 'Crèdits d\'IA: els que porta cada plaça Pro cada mes; no es cobren a part. Veus quant s\'usa cada plaça, mai el contingut de les presentacions.'],
+  ['Función', 'Role', 'Rôle', 'Rolle', 'Ruolo', 'Função', 'Funció'],
+  ['Espacio (MB)', 'Storage (MB)', 'Espace (Mo)', 'Speicher (MB)', 'Spazio (MB)', 'Espaço (MB)', 'Espai (MB)'],
   ['Espacio en la nube', 'Cloud storage', 'Espace dans le cloud', 'Cloud-Speicher', 'Spazio nel cloud', 'Espaço na nuvem', 'Espai al núvol'],
   ['{used} de {quota} de espacio', '{used} of {quota} used', '{used} sur {quota} utilisés', '{used} von {quota} belegt', '{used} di {quota} usati', '{used} de {quota} usados', '{used} de {quota} d\'espai'],
   ['lleno', 'full', 'plein', 'voll', 'pieno', 'cheio', 'ple'],

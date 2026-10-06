@@ -471,6 +471,26 @@ ok((await req('POST', '/api/desktop/claim', { origin: 'tauri://localhost', body:
   pepeStore.set('monthly', Date.now() - 31 * 86400e3);                    // (a month later)
   await hook({ id: 'evt_team2', type: 'invoice.paid', data: { object: { customer: 'cus_team', lines: { data: [{ quantity: 3, period: { end: Math.floor(Date.now() / 1000) + 60 * 86400 } }] }, parent: { subscription_details: { metadata: { team: id } } } } } });
   ok((await (await req('GET', '/api/me', { headers: { Cookie: pepe } })).json()).credits === before + 1000, 'equipo: créditos del mes para cada miembro');
+  // The team's use, for its admins: each person's last use, AI credits spent, space; billing for any admin.
+  {
+    pepeStore.set('ledger', [...(pepeStore.get('ledger') || []), { at: Date.now() - 1000, delta: -40, reason: 'ai', balance: 0 }, { at: Date.now() - 900, delta: -12, reason: 'image', balance: 0 },
+      { at: Date.now() - 800, delta: 12, reason: 'admin', ref: 'refund:x', balance: 0 }, { at: Date.now() - 40 * 86400e3, delta: -500, reason: 'ai', balance: 0 }]);
+    await req('POST', '/api/docs', { headers: { Cookie: pepe }, body: { deck: { name: 'De Pepe', slides: [{ id: 's1', blocks: [] }] } } });
+    ok((await T(pepe, '/usage')).status === 403, 'uso del equipo: solo para su administración');
+    j = await (await T(rosa, '/usage')).json();
+    const p = j.members.find(m => m.email === 'pepe@escuela.example'), ro = j.members.find(m => m.email === 'rosa@escuela.example');
+    ok(j.seats === 3 && j.used === 2 && p && ro && p.role === 'member' && ro.role === 'admin', 'uso del equipo: plazas y personas: ' + JSON.stringify({ seats: j.seats, used: j.used }));
+    ok(p.spentMonth === 40 && p.spent30 === 40 && p.lastSeen && p.storage.used > 0 && p.docs === 1, 'uso del equipo: créditos de IA gastados (descontando devoluciones) y espacio: ' + JSON.stringify(p));
+    ok(j.totals.spentMonth === 40 + (ro.spentMonth || 0) && j.totals.storage >= p.storage.used, 'uso del equipo: totales');
+    ok(!JSON.stringify(j).includes('De Pepe'), 'uso del equipo: nada de lo que dicen sus presentaciones');
+    // Another admin, who didn't pay: the team's invoices all the same.
+    const eva = await login('tok-eva');
+    await T(rosa, '/invite', { email: 'eva@example.com', role: 'admin' }); await T(eva, '/accept', { id });
+    r = await req('POST', '/api/billing/portal', { headers: { Cookie: eva } });
+    ok(r.status === 200 && /customer=cus_team/.test(stripeCalls.at(-1).body), 'equipo: otra administradora abre el portal del equipo');
+    ok((await req('POST', '/api/billing/portal', { headers: { Cookie: pepe } })).status === 404, 'equipo: un miembro, no');
+    await T(rosa, '/remove', { email: 'eva@example.com' });
+  }
   // Leaving, the last admin, the end of the subscription
   ok((await T(rosa, '/remove', { email: 'rosa@escuela.example' })).status === 400, 'equipo: la última administradora no puede irse');
   ok((await T(rosa, '/remove', { email: 'pepe@escuela.example' })).status === 200, 'equipo: quitar a alguien');
