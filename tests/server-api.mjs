@@ -1658,6 +1658,8 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok(pg.status === 200 && html.includes('<link rel="canonical" href="https://revelaslides.com/comunidad/' + r1.id + '-las-fracciones">') && html.includes('¿Cuánto es 1/2 + 1/4?') && html.includes('/app/?community=' + r1.id) && html.includes('CC BY 4.0'), 'comunidad: su página, para buscadores, con sus palabras, la licencia y «usar»');
     ok(!/<b>fracción/.test(html) && !html.includes('pia@example.com'), 'comunidad: el texto como texto, sin el correo de la autora');
     ok((await worker.fetch(new Request(SITE + '/comunidad/zzzzzz'), env)).status === 404, 'comunidad: una que no existe → 404');
+    pg = await worker.fetch(new Request(SITE + '/comunidad/sitemap.xml'), env); html = await pg.text();
+    ok(pg.status === 200 && /xml/.test(pg.headers.get('Content-Type')) && html.includes(`<loc>https://revelaslides.com/comunidad/${r1.id}-las-fracciones</loc>`) && html.includes('<loc>https://revelaslides.com/comunidad</loc>'), 'comunidad: su sitemap para los buscadores');
     ok((await req('POST', `/api/community/${r1.id}/report`, { body: { reason: 'No es apropiada' } })).status === 200, 'comunidad: denunciar');
     ok((await A('GET', '/community?status=reported')).j.items.length === 1 && (await A('GET', `/community/${r1.id}/reports`)).j.reports[0].reason === 'No es apropiada', 'comunidad: las denuncias, en la administración');
     await A('POST', `/community/${r1.id}/status`, { body: { status: 'hidden', reason: 'revisar' } });

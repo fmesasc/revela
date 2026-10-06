@@ -85,20 +85,6 @@ export function openAccount({ buy } = {}) {
         <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="fr-do acc-login">${t(EDITION === 'desktop' ? 'Iniciar sesión en el navegador' : 'Iniciar sesión con Google')}</button></div>
         <p class="host-help" style="font-size:12px"><a href="${OFFICIAL_SITE}/pricing" target="_blank" rel="noopener">${t('Ver planes y precios')}</a></p>
         <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 acc-report"><i class="ms">bug_report</i> ${t('Informar de un problema')}</button></div>`;
-      // Ambassadors: apply, the application's status, the badge (dialogs/ambassador.js).
-    import('./ambassador.js').then(m => m.paintAmbassador(body.querySelector('.acc-amb'))).catch(() => {});
-    // «Recomienda Revela a tu centro»: my link, a message ready to send myself, and what it has brought (crm.js).
-    acc.api('referral').then(r => {
-      if (!r?.on) return;
-      const box = body.querySelector('.acc-ref'); if (!box) return; box.hidden = false;
-      const msg = t('Hola: uso Revela para preparar mis clases (presentaciones con votaciones y cuestionarios en directo, compatible con PowerPoint y Moodle) y creo que nos vendría bien a todo el claustro. Podéis pedir una demostración aquí: {link}').replace('{link}', r.link);
-      box.querySelector('.acc-ref-link').value = r.link;
-      box.querySelector('.acc-ref-mail').href = 'mailto:?subject=' + encodeURIComponent(t('Revela para nuestro centro')) + '&body=' + encodeURIComponent(msg);
-      box.querySelector('.acc-ref-wa').href = 'https://wa.me/?text=' + encodeURIComponent(msg);
-      if (r.reward) { const rw = box.querySelector('.acc-ref-reward'); rw.hidden = false; rw.textContent = t('Si tu centro contrata Revela gracias a ti: {r}.').replace('{r}', r.reward); }
-      box.querySelector('.acc-ref-stats').textContent = r.stats?.leads ? t('Solicitudes gracias a ti: {n} · Ya son clientes: {m}').replace('{n}', r.stats.leads).replace('{m}', r.stats.customers || 0) : '';
-      box.querySelector('.acc-ref-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText(r.link); } catch { box.querySelector('.acc-ref-link').select(); } (await import('../shell/toast.js')).toast(t('Enlace copiado')); });
-    }).catch(() => {});
     body.querySelector('.acc-report').addEventListener('click', () => { close(); openReport(); });
       const termsOk = body.querySelector('.acc-terms-ok'), loginBtn = body.querySelector('.acc-login');
       // (Not a button that looks ready and does nothing: pressed before the box is ticked, the box says so.)
@@ -192,6 +178,20 @@ export function openAccount({ buy } = {}) {
       });
     };
     paintOD();
+    // Ambassadors: apply, the application's status, the badge (dialogs/ambassador.js).
+    import('./ambassador.js').then(m => m.paintAmbassador(body.querySelector('.acc-amb'))).catch(() => {});
+    // «Recomienda Revela a tu centro»: my link, a message ready to send myself, and what it has brought (crm.js).
+    acc.api('referral').then(r => {
+      if (!r?.on) return;
+      const box = body.querySelector('.acc-ref'); if (!box) return; box.hidden = false;
+      const msg = t('Hola: uso Revela para preparar mis clases (presentaciones con votaciones y cuestionarios en directo, compatible con PowerPoint y Moodle) y creo que nos vendría bien a todo el claustro. Podéis pedir una demostración aquí: {link}').replace('{link}', r.link);
+      box.querySelector('.acc-ref-link').value = r.link;
+      box.querySelector('.acc-ref-mail').href = 'mailto:?subject=' + encodeURIComponent(t('Revela para nuestro centro')) + '&body=' + encodeURIComponent(msg);
+      box.querySelector('.acc-ref-wa').href = 'https://wa.me/?text=' + encodeURIComponent(msg);
+      if (r.reward) { const rw = box.querySelector('.acc-ref-reward'); rw.hidden = false; rw.textContent = t('Si tu centro contrata Revela gracias a ti: {r}.').replace('{r}', r.reward); }
+      box.querySelector('.acc-ref-stats').textContent = r.stats?.leads ? t('Solicitudes gracias a ti: {n} · Ya son clientes: {m}').replace('{n}', r.stats.leads).replace('{m}', r.stats.customers || 0) : '';
+      box.querySelector('.acc-ref-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText(r.link); } catch { box.querySelector('.acc-ref-link').select(); } (await import('../shell/toast.js')).toast(t('Enlace copiado')); });
+    }).catch(() => {});
     body.querySelector('.acc-report').addEventListener('click', () => { close(); openReport(); });
     // (Email notices: the optional ones can be switched off; a test email shows whether they arrive.)
     const optBoxes = [...body.querySelectorAll('.acc-mail-opt')];

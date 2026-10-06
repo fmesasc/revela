@@ -207,6 +207,14 @@ const pageHeaders = { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control
 export async function communityPage(env, url) {
   const site = env.SITE_URL || 'https://revelaslides.com', lang = ['en', 'ca'].includes(url.searchParams.get('lang')) ? url.searchParams.get('lang') : 'es', L = PAGE[lang];
   if (!env.COMMUNITY) return new Response('Not found', { status: 404 });
+  // (For search engines: every published presentation's page, with when it changed — robots.txt points here.)
+  if (url.pathname === '/comunidad/sitemap.xml') {
+    const all = []; for (let off = 0; off < 5000; off += 60) { const r = await communityCall(env, 'list', { sort: 'new', offset: off, limit: 60 }); all.push(...r.items); if (r.items.length < 60) break; }
+    const day = ts => new Date(ts).toISOString().slice(0, 10);
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${site}/comunidad</loc>${all[0] ? `<lastmod>${day(all[0].published || all[0].updated)}</lastmod>` : ''}</url>\n`
+      + all.map(it => `  <url><loc>${escHtml(`${site}/comunidad/${it.id}-${slugOf(it.title)}`)}</loc><lastmod>${day(it.updated || it.published)}</lastmod></url>`).join('\n') + (all.length ? '\n' : '') + '</urlset>\n';
+    return new Response(xml, { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600' } });
+  }
   const m = url.pathname.match(/^\/comunidad\/([a-z2-9]{6})(?:-[a-z0-9-]*)?\/?$/);
   if (m) {
     const r = await communityCall(env, 'get', { id: m[1], count: true });

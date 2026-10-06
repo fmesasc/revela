@@ -1009,5 +1009,5 @@ body:not([data-edition="cloud"]):not([data-edition="desktop"]) .accounts-only{di
 .gb-rtable td{vertical-align:top;min-width:120px}
 
 /* Community (dialogs/community.js) */
-.gal-community{margin-top:18px}.gal-community .gal-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.gal-community .gal-bar input{flex:1 1 220px}
+.gal-community{margin-top:18px}.gal-community .gal-bar{flex-direction:row;flex-wrap:wrap;align-items:center;position:static}.gal-community .gal-bar input{flex:1 1 220px;min-width:0;padding:8px 10px;font-size:14px}
 .cm-lic{border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:8px 0}.cm-lic label{display:block;margin:4px 0;font-size:13px}

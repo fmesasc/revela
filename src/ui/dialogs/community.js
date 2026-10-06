@@ -93,7 +93,7 @@ export function communityInto(host, { close = () => {} } = {}) {
   sec.innerHTML = `<h4>${t('De la comunidad')}</h4><div class="gal-bar"><input type="search" class="cm-q" placeholder="${t('Buscar presentaciones de otros docentes…')}">
     <select class="cm-sub"><option value="">${t('Todas las materias')}</option>${Object.entries(SUBJECT_NAMES).map(([k, l]) => `<option value="${k}">${t(l)}</option>`).join('')}</select>
     <select class="cm-sort"><option value="new">${t('Las más nuevas')}</option><option value="popular">${t('Las más usadas')}</option></select></div>
-    <div class="gal-grid cm-grid"></div><p class="host-help cm-empty" hidden></p>`;
+    <div class="gal-grid gal-examples cm-grid"></div><p class="host-help cm-empty" hidden></p>`;
   host.appendChild(sec);
   const grid = sec.querySelector('.cm-grid'), empty = sec.querySelector('.cm-empty');
   let timer = null;

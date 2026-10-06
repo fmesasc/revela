@@ -36,7 +36,7 @@ async function run(rate) {
   if (rate > 1) await send('Network.emulateNetworkConditions', { offline: false, latency: 40, downloadThroughput: 10e6 / 8, uploadThroughput: 5e6 / 8 }, sid);
   const out = { rate };
   let t = Date.now(); await send('Page.navigate', { url: `http://127.0.0.1:${port}/index.html?test` }, sid);
-  for (let i = 0; i < 600 && !(await ev('!!(window.__revela && document.querySelector("#stage-grid .stage"))')); i++) await sleep(100);
+  for (let i = 0; i < 600 && !(await ev(`!!(window.__revela && document.querySelector("#stage-grid .stage, #stage"))`)); i++) await sleep(100);
   out.editor = Date.now() - t;
   t = Date.now();
   out.slides = await ev(`window.__revela.examples.loadExample(${JSON.stringify(EXAMPLE)}, 'es').then(d => { window.__revela.store.replaceDeck(d); return d.slides.length; })`);
