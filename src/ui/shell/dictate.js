@@ -32,7 +32,6 @@ export function spokenText(s, lang = currentLang()) {
 }
 
 let rec = null, target = null, bar = null;
-export const dictating = () => !!rec;
 
 // Where the words go: the text being written in, the selected text box, or a new one.
 function findTarget() {

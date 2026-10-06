@@ -45,7 +45,6 @@ export function objLabel(b) {
 export const ANIM_NAMES = { diagram: 'Diagrama', file: 'Archivo', poll: 'Votación', camera: 'Cámara en directo', ink: 'Tinta', text: 'Texto', image: 'Imagen', shape: 'Forma', chart: 'Gráfico', table: 'Tabla',
   icon: 'Icono', math: 'Ecuación', model: '3D', video: 'Vídeo', embed: 'Web', code: 'Código', figindex: 'Índice de figuras', slideref: 'Diapositiva', magnify: 'Lupa' };
 export function toggleAnimPane(on = !state.ui.showAnim) { commit(() => { state.ui.showAnim = on; }, { history: false }); }
-export const openAnimPanel = () => toggleAnimPane(true);
 
 const START_ICON = { click: 'ads_click', withPrev: 'link', afterPrev: 'schedule' };
 const START_NAME = { click: 'Al hacer clic', withPrev: 'Con la anterior', afterPrev: 'Después de la anterior' };

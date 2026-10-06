@@ -10,8 +10,8 @@
 import { deleteAccount } from './api.js';
 import { mail } from './mail.js';
 import { purgeDoc } from './docs.js';
+import { DAY } from './util.js';
 
-const DAY = 864e5;
 export const dayOf = ts => new Date(ts).toISOString().slice(0, 10);
 
 export class Schedule {

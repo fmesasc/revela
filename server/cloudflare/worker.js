@@ -44,15 +44,13 @@ import { Crm, runCrm } from './crm.js';
 import { Community, communityPage } from './community.js';
 import { sendMail, mailConfigured } from './mail.js';
 import { Finance } from './finance.js';
+import { b64url, random, sha256 } from './util.js';
 export { CollabRoom, ShareBox, Limits, Account, Budget, DesktopLink, CloudDoc, Team, LtiStore, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance, Crm, Community, verifyGoogleToken, resetCerts };
 
 const box = (env, id) => env.SHAREBOX.get(env.SHAREBOX.idFromName(id));
 // Who counts for the daily limits: the Google account, else the key, else the address.
 export const whoKey = (who, req) => who.email || (who.key ? 'key' : 'ip:' + (req.headers.get('CF-Connecting-IP') || '?'));
 
-const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-const random = n => b64url(crypto.getRandomValues(new Uint8Array(n)));
-const sha256 = async s => b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))));
 
 
 // Who may upload a share or open a collaboration room:

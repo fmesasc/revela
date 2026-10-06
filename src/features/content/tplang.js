@@ -102,4 +102,3 @@ export async function textsIn(lang, file) {
   const fb = FALLBACK[lang], dict = fb ? await load(`./templates/i18n/${fb}/${file}.js`) : null;
   return { dict, lang: dict ? fb : 'es' };
 }
-export const textsFor = (lang, file) => textsIn(lang, file).then(r => r.dict);

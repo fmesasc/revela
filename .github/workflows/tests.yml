@@ -28,3 +28,5 @@ jobs:
           python-version: '3.12'
       - name: Tests
         run: ./tests/run.sh
+        env:
+          REVELA_TEST_TIMEOUT: '600'     # (the runners are slower than a desk computer: the browser suite gets more time)

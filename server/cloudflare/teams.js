@@ -18,10 +18,8 @@
 
 import { writeText, readParts } from './store.js';
 import { mail } from './mail.js';
+import { b64url, random, EMAIL } from './util.js';
 
-const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-const random = n => b64url(crypto.getRandomValues(new Uint8Array(n)));
-const EMAIL = /^[^\s@<>"]{1,64}@[a-z0-9.-]{1,190}\.[a-z]{2,}$/;
 const MAX_TEMPLATES = 50, MAX_TEMPLATE_MB = 20;
 
 export class Team {

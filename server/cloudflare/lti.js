@@ -19,14 +19,10 @@
 // each login's state (10 minutes) and each student's session (a day).
 
 import { gradeAnswer } from '../../src/features/live/grading.js';
+import { enc, dec, b64url, fromB64url, random, escHtml as esc } from './util.js';
 
-const enc = new TextEncoder(), dec = new TextDecoder();
-const b64url = bytes => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-const fromB64url = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0));
-const random = n => b64url(crypto.getRandomValues(new Uint8Array(n)));
 const LTI = 'https://purl.imsglobal.org/spec/lti/claim/', DL = 'https://purl.imsglobal.org/spec/lti-dl/claim/', AGS = 'https://purl.imsglobal.org/spec/lti-ags/claim/endpoint';
 const SCORE_SCOPE = 'https://purl.imsglobal.org/spec/lti-ags/scope/score', LINEITEM_SCOPE = 'https://purl.imsglobal.org/spec/lti-ags/scope/lineitem';
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // ---- Storage: a small key-value object with expiry ------------------------------------------------
 export class LtiStore {
@@ -71,7 +67,6 @@ async function platformKey(url, kid, fetchImpl) {
   }
   return c.keys.find(k => k.kid === kid) || (c.keys.length === 1 ? c.keys[0] : null);
 }
-export const resetLtiKeys = () => jwksCache.clear();
 // The platform's id_token: signed by it (its JWKS), for us, not expired.
 async function verifyPlatformJwt(token, platform, fetchImpl) {
   const [h, p, sig] = String(token || '').split('.'); if (!sig) return null;

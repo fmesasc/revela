@@ -18,6 +18,7 @@
 // picture (data URL) · 'r:<id>' its reports · 'u:<sub>' my ids · 'day:<sub>:<day>' publications that day.
 
 import { writeText, readParts } from './store.js';
+import { escHtml } from './util.js';
 
 export const SUBJECTS = ['math', 'lang', 'science', 'social', 'arts', 'music', 'pe', 'tech', 'languages', 'values', 'vocational', 'business', 'other'];
 export const LEVELS = ['infant', 'primary', 'secondary', 'upper', 'vocational', 'university', 'adults', 'business'];
@@ -26,7 +27,6 @@ const LANGS = ['es', 'en', 'fr', 'de', 'it', 'pt', 'ca', 'gl', 'nl', 'eu', 'ar']
 const STATUSES = ['pending', 'published', 'hidden'];
 const PER_DAY = 5, PER_USER = 50;
 const str = (v, n) => String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, n);
-const escHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const rid = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), b => 'abcdefghijkmnpqrstuvwxyz23456789'[b % 32]).join('');
 export const slugOf = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
 const plain = h => String(h || '').replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim();

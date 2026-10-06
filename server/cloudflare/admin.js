@@ -83,10 +83,9 @@ import { crmApi } from './crm.js';
 import { communityAdmin } from './community.js';
 import { ltiAdmin } from './lti.js';
 import { record, financeCall, financeSettings, cleanEntry, periodOk, dayOf, promoKey } from './finance.js';
+import { enc, dec, EMAIL, DAY } from './util.js';
 
-const enc = new TextEncoder(), dec = new TextDecoder();
 const pad = n => String(n).padStart(10, '0');
-const EMAIL = /^[^\s@<>"]{1,64}@[a-z0-9.-]{1,190}\.[a-z]{2,}$/;
 export const STATUSES = ['open', 'waiting', 'closed'];   // (see Tickets)
 export const statusOf = s => (s === 'pending' ? 'waiting' : STATUSES.includes(s) ? s : null);
 // (The first ones come from the app's «Informar de un problema»; press … partner, from the website's «Contacto».)
@@ -239,7 +238,6 @@ const audit = (env, e) => call(stub(env.AUDIT, 'audit'), 'add', e);
 //   'v' → storage version (2: that index)
 // A ticket: { id, at, updated, status, email, sub, name, lang, category, message, …, thread: [{ at, from: 'user' | 'admin', text, by?, mailed?, solved? }],
 //   notes: [{ at, by, text }], last: who wrote last ('user' | 'admin'), lastAt, waitingSince, reminded, ix: its index key }
-const DAY = 864e5;
 const tsKey = n => String(Math.floor(+n || 0)).padStart(15, '0');
 const summary = t => ({ id: t.id, at: t.at, updated: t.updated, status: t.status, email: t.email, sub: t.sub || null, category: t.category,
   subject: clip(t.message, 120).replace(/\s+/g, ' '), deckName: t.deckName || null, attachment: !!t.attachment, replies: t.thread.filter(x => x.from === 'admin').length,

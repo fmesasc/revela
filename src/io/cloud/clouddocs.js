@@ -14,20 +14,18 @@
 // Then nothing is sent: what is changed here stays here (status 'readonly') and can
 // be kept as a copy (keepCopy) or exported; it's checked again when the account changes.
 
-import { api, hasAccounts } from './account.js';
+import { api } from './account.js';
 import { OFFICIAL_SITE, EDITION } from '../../core/config.js';
 import { state, subscribe, snapshot, applyRemote, adoptDeck, replaceDeck, setPersist, mutate, onBeforeReplace } from '../../core/store.js';
 import { diff, applyOps } from '../../features/live/collabsync.js';
 import { cleanValue } from '../../features/document/sanitize.js';
 
-export const cloudAvailable = hasAccounts;
 // How requests reach the server: the account's API (the tests put a stand-in here).
 let transport = api;
 const send = (...a) => transport(...a);
 export const setTransport = fn => { transport = fn || api; };
 export const customTransport = () => transport !== api;
 export const listDocs = () => send('docs');
-export const createDoc = (deck, folder = null) => send('docs', { deck, ...(folder && { folder }) });
 export const docLink = id => `${OFFICIAL_SITE}/app/?doc=${encodeURIComponent(id)}`;
 // Embedding one shared by link in another site (an iframe): the viewer page, in presentation mode.
 export const embedLink = id => `${OFFICIAL_SITE}/app/view.html?doc=${encodeURIComponent(id)}`;

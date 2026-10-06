@@ -1,3 +1,4 @@
+import { enc, DAY, b64url, unb64, escHtml, EMAIL, hmac } from './util.js';
 // Captación («Captación» in the admin): finding schools and businesses, keeping track of each one, the
 // emails that follow up with those who asked for them, and the campaigns that bring people to Revela.
 //
@@ -23,14 +24,8 @@
 // Admin routes (admin.js → crmApi): /api/admin/crm/…  · Daily (worker.js scheduled → runCrm): the sequences'
 //   emails due and a summary for the admin (follow-ups due today, new requests).
 
-const enc = new TextEncoder();
-const DAY = 864e5;
-const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-const unb64 = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0)));
-const escHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const str = (v, n) => String(v ?? '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, ' ').trim().slice(0, n);
 const text = (v, n) => String(v ?? '').replace(/\r/g, '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, ' ').trim().slice(0, n);
-export const EMAIL = /^[^\s@<>"]{1,64}@[a-z0-9.-]{1,190}\.[a-z]{2,}$/;
 const mailOf = v => { const e = String(v || '').trim().toLowerCase(); return EMAIL.test(e) ? e : ''; };
 const webOf = v => { const s = str(v, 300); if (!s) return ''; try { const u = new URL(/^https?:\/\//i.test(s) ? s : 'https://' + s); return /^https?:$/.test(u.protocol) ? u.href : ''; } catch { return ''; } };
 export const dayKey = ts => new Date(ts).toISOString().slice(0, 10);
@@ -483,7 +478,6 @@ export function defaultTemplates() {
 }
 
 // ---- Signed links in the emails (MAIL_SECRET) -----------------------------------------------------
-const hmac = async (secret, s) => b64url(new Uint8Array(await crypto.subtle.sign('HMAC', await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']), enc.encode(s))));
 const same = (a, b) => a.length === b.length && ![...a].reduce((d, ch, i) => d | (ch.charCodeAt(0) ^ b.charCodeAt(i)), 0);
 export async function crmToken(env, kind, payload) {
   if (!env.MAIL_SECRET) return null;

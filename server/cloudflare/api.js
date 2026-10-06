@@ -69,13 +69,9 @@ import { NOTICE_PLACES, noticesFor, noticesOp } from './notices.js';
 import { takeQuota } from './store.js';
 import { handleCommunity } from './community.js';
 import { handleLead, goLink, crmUnsub, crmClick, campaignSignup, campaignPurchase, eventsPublic, eventSignup, referralInfo, handleAmbassadors } from './crm.js';
+import { enc, b64url, random, sha256, DAY, HOUR } from './util.js';
 
-const enc = new TextEncoder();
-const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-const random = n => b64url(crypto.getRandomValues(new Uint8Array(n)));
-export const sha256 = async s => b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(s))));
 const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
-const DAY = 864e5, HOUR = 36e5;
 
 // ---- Settings (wrangler.toml [vars]; secrets with `wrangler secret put`) -----------------
 export function settings(env) {

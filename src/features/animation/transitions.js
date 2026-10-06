@@ -357,15 +357,6 @@ function scalePoints(a) {
   const ang = Math.atan2(ny, nx) - Math.atan2(ey, ex), k = Math.hypot(nx, ny) / (Math.hypot(ex, ey) || 1), c = Math.cos(ang) * k, s = Math.sin(ang) * k;
   a.points = P.map(([x, y]) => [Math.round(x * c - y * s), Math.round(x * s + y * c)]); a.points[a.points.length - 1] = [nx, ny];
 }
-export function moveAnimForId(id, dir, i = 0) {
-  commit(() => {
-    const list = animEntries(), at = list.findIndex(e => e.b.id === id && e.i === i), to = at + dir;
-    if (at < 0 || to < 0 || to >= list.length) return;
-    list.forEach((e, n) => { e.a.seq = n + 1; });
-    [list[at].a.seq, list[to].a.seq] = [list[to].a.seq, list[at].a.seq];
-    normalizeAnim();
-  });
-}
 // Several animations (the objects themselves, as animEntries gives them) moved together, in their
 // order, to a place among the others: to = how many of the others go before them (the Animation pane's drag).
 export function moveAnims(anims, to) {

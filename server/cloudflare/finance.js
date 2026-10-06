@@ -1,3 +1,4 @@
+import { DAY } from './util.js';
 // Business accounting (the admin's «Negocio» page): every economic event, in one Durable Object
 // (Finance). Internal business data: only the protected admin API (admin.js) reads it.
 //
@@ -38,7 +39,6 @@
 // STRIPE_FEE_PCT (default 1.5) and STRIPE_FEE_FIXED (default 0.25, in the payment's currency) to estimate
 // Stripe's fee when its balance transaction can't be read; CREDIT_USD and MONTHLY_BUDGET_USD as in api.js.
 
-const DAY = 864e5;
 export const RAW_DAYS = 90;
 export const AI_FEATURES = ['assistant', 'complete', 'vision', 'alt-text', 'image', 'speech', '3d', 'ticket-suggest', 'rig-detect',
   'create', 'improve', 'redesign', 'outline', 'rewrite', 'notes', 'translate', 'agenda', 'quiz', 'theme', 'other'];

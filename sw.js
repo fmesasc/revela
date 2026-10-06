@@ -5,9 +5,11 @@
 // - Versioned libraries and fonts from the CDNs: cache first (their URLs never
 //   change content), stored the first time the app uses them.
 // - Everything else (Google Drive API, sign-in, the phone remote's signalling)
-//   is not touched: it goes straight to the network.
+//   is not touched: it goes straight to the network. Above all Revela's own API
+//   (revelaslides.com/api/…: the account, cloud documents, sessions): it is
+//   private and never kept here — only what lies inside the app's own folder.
 
-const CACHE = 'revela-v4';
+const CACHE = 'revela-v5';                             // (v5: the old caches, which could hold /api/ answers, are deleted)
 const SHELL = ['./', 'index.html', 'src/ui/styles/tokens.css', 'src/ui/styles/ribbon.css', 'src/ui/styles/layout.css', 'src/ui/styles/canvas.css', 'src/ui/styles/chrome.css', 'src/ui/styles/responsive.css', 'src/ui/styles/features.css', 'src/apps/editor/main.js', 'manifest.webmanifest', 'icons/icon.svg'];
 const CDN = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com', 'storage.googleapis.com'];   // (the last: MediaPipe's models, by version)
 
@@ -26,6 +28,7 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin === location.origin) {
+    if (!url.href.startsWith(self.registration.scope) || url.pathname.startsWith('/api/')) return;   // (the app's files only)
     if (url.searchParams.has('test') || url.pathname.includes('/tests/')) return;   // never cache the test harness
     // (cache: 'no-cache' — always asks the server whether there's a newer version (a cheap 304 if not):
     // the browser's own HTTP cache kept old code for hours after a deploy.)

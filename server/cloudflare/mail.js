@@ -19,11 +19,8 @@
 // Without MAIL_SECRET there is no link and the old advice (send another report) is given.
 
 import { record, financeSettings } from './finance.js';
+import { enc, b64url, unb64, escHtml, hmac } from './util.js';
 
-const enc = new TextEncoder();
-const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-const unb64 = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0)));
-const escHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const OPTIONAL = ['credits', 'trialEnding'];        // (kinds one can stop receiving)
 
 // The person's language, among those with texts (the others: Spanish, or English for most).
@@ -56,7 +53,6 @@ async function deliver(env, { to, subject, html, text, unsubscribe, replyTo }) {
 export const mailConfigured = env => !!(env.EMAIL?.send || env.RESEND_KEY);
 
 // ---- Unsubscribing: a token for (account, kind), signed ------------------------------------
-const hmac = async (secret, s) => b64url(new Uint8Array(await crypto.subtle.sign('HMAC', await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']), enc.encode(s))));
 export async function unsubToken(env, sub, kind) {
   if (!env.MAIL_SECRET) return null;
   const body = `${b64url(enc.encode(sub))}.${kind}`; return `${body}.${await hmac(env.MAIL_SECRET, 'unsub:' + body)}`;

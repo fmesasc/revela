@@ -20,10 +20,8 @@
 
 import { settings, credits, priceOf, acct, call } from './api.js';
 import { writeText, readParts } from './store.js';
+import { DAY, enc, b64url, random } from './util.js';
 
-const DAY = 864e5, enc = new TextEncoder();
-const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-const random = n => b64url(crypto.getRandomValues(new Uint8Array(n)));
 const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
 
 export function settings3d(env) {

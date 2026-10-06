@@ -55,6 +55,7 @@ import { applyOps, allowed } from '../../src/features/live/collabsync.js';
 import { writeDeck, readDeck, writeText, readParts } from './store.js';
 import { mail } from './mail.js';
 import { acct, call } from './api.js';
+import { b64url, random, EMAIL } from './util.js';
 
 const ROLE_RANK = { present: 1, view: 2, comment: 3, edit: 4, owner: 5 };
 const ROLES = ['present', 'view', 'comment', 'edit'], LINK_ROLES = ['none', ...ROLES];
@@ -62,9 +63,6 @@ const ROLES = ['present', 'view', 'comment', 'edit'], LINK_ROLES = ['none', ...R
 export const forAudience = deck => ({ ...deck, slides: (deck.slides || []).filter(s => !s.hidden).map(({ notes, comments, ...s }) => s) });
 // An end date: a time in the future (at most 5 years ahead), or none.
 const untilOf = v => { const n = Math.round(+v); return Number.isFinite(n) && n > Date.now() && n < Date.now() + 5 * 365 * 864e5 ? n : null; };
-const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-const random = n => b64url(crypto.getRandomValues(new Uint8Array(n)));
-const EMAIL = /^[^\s@<>"]{1,64}@[a-z0-9.-]{1,190}\.[a-z]{2,}$/;
 const LOG_CHARS = 1.5e6, LOG_MAX = 200, VERSIONS = 10, VERSION_EVERY = 30 * 60e3;
 
 export const docsSettings = env => ({
