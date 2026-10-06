@@ -15,14 +15,17 @@ import { fileURLToPath } from 'node:url';
 
 const SITE_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'site');
 export const SITE = 'https://revelaslides.com';
-export const SITE_LANGS = ['es', 'en', 'fr', 'de', 'it', 'pt', 'ca'];        // (es: at the root)
-export const LOCALE = { es: 'es_ES', en: 'en_US', fr: 'fr_FR', de: 'de_DE', it: 'it_IT', pt: 'pt_PT', ca: 'ca_ES' };
-export const LANG_NAME = { es: 'Español', en: 'English', fr: 'Français', de: 'Deutsch', it: 'Italiano', pt: 'Português', ca: 'Català' };
+export const SITE_LANGS = ['es', 'en', 'fr', 'de', 'it', 'pt', 'ca', 'gl', 'nl', 'eu', 'ar'];   // (es: at the root; the app's eleven)
+export const RTL = ['ar'];                                                       // (written right to left)
+export const LOCALE = { es: 'es_ES', en: 'en_US', fr: 'fr_FR', de: 'de_DE', it: 'it_IT', pt: 'pt_PT', ca: 'ca_ES', gl: 'gl_ES', nl: 'nl_NL', eu: 'eu_ES', ar: 'ar_AR' };
+export const LANG_NAME = { es: 'Español', en: 'English', fr: 'Français', de: 'Deutsch', it: 'Italiano', pt: 'Português', ca: 'Català', gl: 'Galego', nl: 'Nederlands', eu: 'Euskara', ar: 'العربية' };
 // The suggestion shown to someone whose browser is in another language (site.js), in that language.
 const SUGGEST = { es: ['Esta página está también en español.', 'Ver en español'], en: ['This page is also available in English.', 'View in English'],
   fr: ['Cette page existe aussi en français.', 'Voir en français'], de: ['Diese Seite gibt es auch auf Deutsch.', 'Auf Deutsch ansehen'],
   it: ['Questa pagina è disponibile anche in italiano.', 'Vedi in italiano'], pt: ['Esta página também está em português.', 'Ver em português'],
-  ca: ['Aquesta pàgina també és en català.', 'Veure-la en català'] };
+  ca: ['Aquesta pàgina també és en català.', 'Veure-la en català'], gl: ['Esta páxina tamén está en galego.', 'Vela en galego'],
+  nl: ['Deze pagina is ook in het Nederlands beschikbaar.', 'Bekijk in het Nederlands'], eu: ['Orri hau euskaraz ere badago.', 'Ikusi euskaraz'],
+  ar: ['هذه الصفحة متوفرة أيضًا بالعربية.', 'عرض بالعربية'] };
 const LEGAL = ['privacy', 'terms', 'legal', 'dpa'], LEGAL_LANGS = ['es', 'ca', 'en'];   // (the legal pages: one address, three languages inside)
 
 const INLINE = new Set(['a', 'em', 'strong', 'b', 'i', 'small', 'span', 'br', 'kbd', 'code', 'abbr', 'img', 'sup', 'sub']);
@@ -148,7 +151,7 @@ export function translatePage(html, lang, dict, page) {
     return a + JSON.stringify(data) + c;
   });
   // The language, the address and the other languages.
-  res = res.replace(/<html lang="[^"]*"/, `<html lang="${lang}"`);
+  res = res.replace(/<html lang="[^"]*"/, `<html lang="${lang}"${RTL.includes(lang) ? ' dir="rtl"' : ''}`);
   res = res.replace(/<link rel="canonical" href="[^"]*">/, `<link rel="canonical" href="${pageUrl(page, lang)}">\n  `
     + SITE_LANGS.map(l => `<link rel="alternate" hreflang="${l}" href="${pageUrl(page, l)}">`).join('\n  ')
     + `\n  <link rel="alternate" hreflang="x-default" href="${pageUrl(page, 'es')}">`);

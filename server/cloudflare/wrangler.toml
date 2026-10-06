@@ -273,6 +273,15 @@ class_name = "Crawler"
 tag = "v14"
 new_sqlite_classes = ["Crawler"]
 
+# The website's visits, counted without cookies (visits.js), its 404s and the sitemap's extra addresses.
+[[durable_objects.bindings]]
+name = "VISITS"
+class_name = "Visits"
+
+[[migrations]]
+tag = "v15"
+new_sqlite_classes = ["Visits"]
+
 # ---- Pruebas (staging): pruebas.revelaslides.com ------------------------------------------------------------
 # The same Worker as «revela-share-staging», with its own Durable Objects (its own accounts, documents and the
 # rest: nothing is shared with production), deployed from main by server.yml after the tests; production comes from
@@ -370,3 +379,6 @@ class_name = "Community"
 [[env.staging.durable_objects.bindings]]
 name = "CRAWLER"
 class_name = "Crawler"
+[[env.staging.durable_objects.bindings]]
+name = "VISITS"
+class_name = "Visits"

@@ -54,10 +54,11 @@ import { storageWatch, storageBackfill } from './storage.js';
 import { releasesAuto } from './releases.js';
 import { Community, communityPage } from './community.js';
 import { Crawler } from './crawler.js';
+import { Visits } from './visits.js';
 import { sendMail, mailConfigured } from './mail.js';
 import { Finance } from './finance.js';
 import { random, sha256 } from './util.js';
-export { CollabRoom, ShareBox, Limits, Account, Budget, DesktopLink, CloudDoc, Team, LtiStore, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance, Crm, Community, Crawler, verifyGoogleToken, resetCerts };
+export { CollabRoom, ShareBox, Limits, Account, Budget, DesktopLink, CloudDoc, Team, LtiStore, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance, Crm, Community, Crawler, Visits, verifyGoogleToken, resetCerts };
 
 const box = (env, id) => env.SHAREBOX.get(env.SHAREBOX.idFromName(id));
 // Who counts for the daily limits: the Google account, else the key, else the address.

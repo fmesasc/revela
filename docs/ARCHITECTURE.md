@@ -324,6 +324,7 @@ server/
     stock.js                   stock photo search (Unsplash, Pexels)
     storage.js                 the cloud's space: quotas per plan, what each account takes, the daily alert
     releases.js                Versiones: pruebas vs production, «Publicar en producción» (docs/PUBLICAR.md)
+    visits.js                  the website's visits without cookies, its 404s and redirects, the sitemap's extras (Visits)
     docs.js                    cloud documents with roles and permission settings (CloudDoc)
     collab.js                  co-editing rooms (CollabRoom)
     teams.js                   teams: seats, members, brand kit, templates (Team)

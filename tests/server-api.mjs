@@ -1995,6 +1995,54 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     await A('POST', '/releases/settings', { body: { autoDays: 0 } }); delete env.GITHUB_TOKEN; env.FETCH = prevF3;
   }
 
+  // The website's visits (visits.js): no cookies, unique per day without keeping anyone; 404s; the sitemap's extras.
+  {
+    const V = await import('../server/cloudflare/visits.js'); env.VISITS = namespace(V.Visits, env);
+    const hit = (b, { ip = '10.9.0.1', ua = 'Mozilla/5.0 Firefox', origin = SITE } = {}) => req('POST', '/api/visit', { origin, body: b, headers: { 'CF-Connecting-IP': ip, 'User-Agent': ua } });
+    ok((await hit({ path: '/pricing' }, { origin: 'https://malo.example' })).status === 403, 'visitas: solo desde la propia web');
+    await hit({ path: '/pricing.html', ref: 'https://www.google.com/search?q=revela+precios', lang: 'es' });
+    await hit({ path: '/en/', ref: 'https://revelaslides.com/pricing', lang: 'en' });
+    await hit({ path: '/pricing', ref: '', lang: 'es' }, { ip: '10.9.0.2' });
+    await hit({ path: '/precios-viejos', ref: 'https://blog.example/post?id=7', kind: '404' }, { ip: '10.9.0.3' });
+    await hit({ path: '/precios-viejos/', ref: 'https://revelaslides.com/guias', kind: '404' }, { ip: '10.9.0.3' });
+    let x = await A('GET', '/web?days=7');
+    const today = x.j.days.at(-1);
+    ok(x.status === 200 && today.views === 3 && today.uniques === 3 && today.nf === 2, 'visitas: 3 vistas de 3 visitantes y 2 páginas que no existen: ' + JSON.stringify(today));
+    ok(x.j.pages.find(p => p.k === '/pricing')?.n === 2 && x.j.refs.some(r => r.k === 'www.google.com') && !JSON.stringify(x.j).includes('q=revela'), 'visitas: páginas y de dónde vienen (sin la búsqueda ni otros parámetros)');
+    ok(x.j.langs.find(l => l.k === 'es')?.n === 2, 'visitas: idiomas');
+    const nf = x.j.notfound.find(n => n.path === '/precios-viejos');
+    ok(nf && nf.n === 2 && nf.refs['blog.example/post'] === 1 && nf.refs['internal:/guias'] === 1, 'visitas: la página que no existe, con desde dónde (otra web, o una página nuestra con el enlace roto)');
+    const raw = JSON.stringify([...env.VISITS.inst.get('visits').ctx.storage.m.entries()]);
+    ok(!raw.includes('10.9.0') && !raw.includes('Firefox'), 'visitas: ni la dirección IP ni el navegador se guardan');
+    // A new day: a new salt; yesterday's visitors can't be told apart from new ones.
+    const salt0 = env.VISITS.inst.get('visits').ctx.storage.m.get('salt').value;
+    at(realNow() + 864e5); await hit({ path: '/pricing' }); Date.now = realNow;
+    const m = env.VISITS.inst.get('visits').ctx.storage.m;
+    ok(m.get('salt').value !== salt0 && [...m.keys()].filter(k => k.startsWith('v:')).length === 1, 'visitas: cada día otra sal, y los visitantes del día anterior olvidados');
+    // Redirecting a 404; the 404 page asks.
+    ok((await A('POST', '/web/notfound', { body: { path: '/precios-viejos', status: 'redirect', to: 'javascript:alert(1)' } })).status === 400, 'visitas: redirigir solo a una dirección nuestra o https');
+    await A('POST', '/web/notfound', { body: { path: '/precios-viejos', status: 'redirect', to: '/pricing' } });
+    ok((await (await req('GET', '/api/redirect?path=/precios-viejos.html')).json()).to === '/pricing', 'visitas: la página 404 sabe adónde llevar');
+    ok(!(await A('GET', '/web')).j.notfound.some(n => n.path === '/precios-viejos'), 'visitas: ya resuelta, fuera de la lista (con «all», sí)');
+    // The sitemap: visited pages it leaves out, and the extras (in /comunidad/sitemap.xml).
+    const prevF4 = env.FETCH;
+    env.FETCH = async (u, init = {}) => { const s = String(u);
+      if (s === 'https://revelaslides.com/sitemap.xml') return new Response('<urlset><url><loc>https://revelaslides.com/</loc></url><url><loc>https://revelaslides.com/en/</loc></url></urlset>');
+      if (/^https:\/\/revelaslides\.com\/(en\/)?$/.test(s) && init.method === 'HEAD') return new Response(null, { status: 200 });
+      if (s.startsWith('https://revelaslides.com/') && init.method === 'HEAD') return new Response(null, { status: 404 });
+      return prevF4(u, init); };
+    if (!env.COMMUNITY) env.COMMUNITY = namespace((await import('../server/cloudflare/community.js')).Community, env);
+    x = await A('GET', '/web'); ok(x.j.missing.some(p => p.k === '/pricing') && !x.j.missing.some(p => p.k === '/en'), 'visitas: «/pricing» se visita y no está en el sitemap');
+    x = await A('POST', '/web/extra', { body: { extra: ['/pricing.html', '/app/', '/api/x', 'guias'] } });
+    ok(x.j.extra.join() === '/pricing,/guias', 'sitemap: direcciones extra limpias (ni la app ni la API)');
+    const sm = await (await worker.fetch(new Request(SITE + '/comunidad/sitemap.xml'), env)).text();
+    ok(sm.includes('<loc>https://revelaslides.com/pricing</loc>') && sm.includes('<loc>https://revelaslides.com/guias</loc>'), 'sitemap: las extra, en el sitemap dinámico');
+    x = await A('GET', '/web'); ok(!x.j.missing.some(p => p.k === '/pricing'), 'sitemap: ya no falta');
+    x = await A('POST', '/web/check', { body: {} });
+    ok(x.j.checked >= 4 && x.j.bad.some(b => b.url === 'https://revelaslides.com/pricing' && b.status === 404) && !x.j.bad.some(b => b.url === 'https://revelaslides.com/'), 'sitemap: «Comprobar» dice qué dirección no responde');
+    env.FETCH = prevF4;
+  }
+
   // Deleting the account takes it out of the directory.
   ok((await req('POST', '/api/account/delete', { headers: { Cookie: pia }, body: { confirm: 'pia@example.com' } })).status === 200 && (await A('GET', '/users?q=pia')).j.users.length === 0, 'cuenta eliminada: fuera del directorio');
   // Without the admin vars again: nothing.

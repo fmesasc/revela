@@ -23,6 +23,11 @@
 //   POST /api/admin/refund                 { sub, reason? , notify? }   (gives back the last AI charge not refunded yet)
 //   POST /api/admin/plan                   { sub, until (ms, 0 = remove), reason }   (Pro given by hand; Stripe's untouched)
 //   POST /api/admin/block                  { sub, blocked, reason }   (blocked: 403 on AI, cloud documents, calls…)
+//   GET  /api/admin/web?days=              → visits per day, pages, referrers, languages; 404s; the sitemap's extra
+//                                          addresses; visited pages the sitemap leaves out (visits.js)
+//   POST /api/admin/web/extra              { extra: [paths] } → { extra }   (added to /comunidad/sitemap.xml)
+//   POST /api/admin/web/notfound           { path, status: ignored | redirect | new, to? } → { item }
+//   POST /api/admin/web/check              → { checked, bad: [{ url, status }] }   (every address of the sitemaps answers?)
 //   GET  /api/admin/releases               → what's on pruebas and in production (releases.js)
 //   POST /api/admin/releases/promote       { reason? } → { ok }   (runs «Publicar en producción»; needs GITHUB_TOKEN)
 //   POST /api/admin/releases/settings      { autoDays } → { settings }   (0: never by itself)
@@ -85,6 +90,8 @@ import { stripeConf } from './billing.js';
 import { priceOf } from './ai.js';
 import { storageConfig, cleanStorage, resetStorageCache, storageBackfill } from './storage.js';
 import { releasesState, releasesPromote, releasesSettings } from './releases.js';
+import { visitsCall, cleanPath } from './visits.js';
+import { communityPage } from './community.js';
 import { cleanNotice } from './notices.js';
 import { mail, mailConfigured, ticketLink, readTicketToken, ticketPage, fmtDate, TICKET_LINK_DAYS } from './mail.js';
 import { fromB64url } from './util.js';
@@ -596,6 +603,7 @@ export async function handleAdmin(req, env, url) {
     await audit(env, { by, action: 'plan', target: body.sub, reason, before: r.before, after: r.after });
     return json({ ok: true, ...r });
   }
+  if (path === '/web' || path.startsWith('/web/')) return webApi(env, path, q, body, { GET, POST, by, json });
   if (GET && path === '/releases') { try { return json(await releasesState(env)); } catch (e) { return json({ error: 'github', detail: e.message }, 502); } }
   if (POST && path === '/releases/promote') {
     const r = await releasesPromote(env, clip(body.reason, 200)).catch(e => ({ error: 'github', detail: e.message }));
@@ -897,6 +905,50 @@ async function promosApi(env, path, q, body, { GET, POST, by, json }) {
       before: { mode, id: m[1], active: !body.active }, after: { mode, id: m[1], active: !!x.d.active } });
     promoCache.delete(mode);
     return json({ ok: true, mode, code: promoView(x.d, new Map()) });
+  }
+  return json({ error: 'not found' }, 404);
+}
+
+// ---- The website (visits.js): its visits, the addresses that don't exist, the sitemap ---------------------------
+// The sitemap's addresses: the one the build makes (every page in every language: tools/build-site.mjs) and the
+// community's, which also carries the extra ones added here.
+async function sitemapUrls(env) {
+  const site = env.SITE_URL || 'https://revelaslides.com', f = env.FETCH || fetch, locs = [];
+  // (The built one from the site; the community's made here — a Worker asking its own route isn't reliable.)
+  const texts = [await f(site + '/sitemap.xml').then(r => (r.ok ? r.text() : '')).catch(() => ''),
+    env.COMMUNITY ? await (await communityPage(env, new URL(site + '/comunidad/sitemap.xml'))).text().catch(() => '') : ''];
+  for (const t of texts) {
+    for (const m of t.matchAll(/<loc>([^<]+)<\/loc>/g)) locs.push(m[1].replace(/&amp;/g, '&'));
+  }
+  return locs;
+}
+async function webApi(env, path, q, body, { GET, POST, by, json }) {
+  if (!env.VISITS) return json({ error: 'not configured' }, 503);
+  const site = env.SITE_URL || 'https://revelaslides.com';
+  if (GET && path === '/web') {
+    const [stats, nf, { extra }, locs] = await Promise.all([visitsCall(env, 'stats', { days: +q.get('days') || 30 }), visitsCall(env, 'notfound', { all: q.get('all') === '1' }), visitsCall(env, 'extra'), sitemapUrls(env)]);
+    const inMap = new Set(locs.map(u => { try { return cleanPath(new URL(u).pathname); } catch { return ''; } }));
+    // (Visited, yet search engines aren't told: not the app, nor the API, nor the community's pages — those it lists itself.)
+    const missing = stats.pages.filter(p => !inMap.has(p.k) && !/^\/(app|api|comunidad)(\/|$)/.test(p.k) && p.k !== '/404');
+    return json({ ...stats, notfound: nf.items, extra, sitemap: { count: locs.length, site }, missing });
+  }
+  if (POST && path === '/web/extra') {
+    const extra = [...new Set((Array.isArray(body.extra) ? body.extra : []).map(x => cleanPath(x)).filter(x => x.length > 1 && !/^\/(api|app)(\/|$)/.test(x)))].slice(0, 500);
+    const r = await visitsCall(env, 'extra-set', { extra });
+    await audit(env, { by, action: 'web-sitemap', target: 'web', after: { extra: extra.length } }); return json(r);
+  }
+  if (POST && path === '/web/notfound') {
+    const status = ['ignored', 'redirect', 'new'].includes(body.status) ? body.status : null, to = status === 'redirect' ? String(body.to || '') : '';
+    if (!status || (status === 'redirect' && !/^(\/[^\s]*|https:\/\/[^\s]+)$/.test(to))) return json({ error: 'bad request' }, 400);
+    const r = await visitsCall(env, 'nf-set', { path: cleanPath(body.path), status, ...(to && { to: to.startsWith('/') ? cleanPath(to) : to.slice(0, 300) }) });
+    if (!r.error) await audit(env, { by, action: 'web-404', target: 'web:' + cleanPath(body.path), after: { status, to } });
+    return json(r, r.error ? 404 : 200);
+  }
+  if (POST && path === '/web/check') {
+    // (Not the community's own pages: made from what's published, and asking our own route from here isn't reliable.)
+    const urls = (await sitemapUrls(env)).filter(u => !/\/comunidad(\/|$)/.test(u)).slice(0, 400), f = env.FETCH || fetch, bad = [];
+    for (let i = 0; i < urls.length; i += 8) await Promise.all(urls.slice(i, i + 8).map(async u => { const st = await f(u, { method: 'HEAD', redirect: 'manual' }).then(r => r.status).catch(() => 0); if (st !== 200) bad.push({ url: u, status: st }); }));
+    return json({ checked: urls.length, bad });
   }
   return json({ error: 'not found' }, 404);
 }

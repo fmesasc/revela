@@ -14,6 +14,8 @@
 //   POST /api/login            { accessToken, terms?, lang? } (Google, issued to Revela's client) → session
 //                              (a new account needs terms: the version of the terms accepted; else 400 { error: 'terms' })
 //   POST /api/logout
+//   POST /api/visit            { path, ref, lang, kind: view | 404 }   (the website's pages: visits.js; no cookies)
+//   GET  /api/redirect?path=   → { to }   (where an address that doesn't exist goes: the 404 page asks)
 //   GET  /api/sessions         → { sessions: [{ id, kind, device, where, created, last, expires, current? }] }   (my open sessions)
 //   POST /api/sessions         { id } | { others: true } → { ended }   (closing one, or all but this one)
 //   GET  /api/me               → { email, plan, credits, features, billing, billingTest, terms (accepted the current ones?), docs,
@@ -73,6 +75,7 @@ import { handleAmbassadors } from './ambassadors.js';
 import { enc, b64url, random, sha256, DAY, HOUR } from './util.js';
 import { stockSearch, stockUsed, photoProviders } from './stock.js';
 import { storageConfig, MB } from './storage.js';
+import { handleVisit, visitsCall, cleanPath } from './visits.js';
 import { credits, aiChat, aiImage, aiSpeech } from './ai.js';
 import { stripeConf, billingMode, trialOffer, checkout, portal, stripeWebhook } from './billing.js';
 
@@ -839,6 +842,18 @@ export async function handleApi(req, env, url) {
     if (req.method !== 'POST') return json({ error: 'method' }, 405);
     if (!webOrigin) return json({ error: 'origin' }, 403);
     return eventSignup(req, env, body, json, { takeQuota, sendMail });
+  }
+  // The website's visits, counted without cookies (visits.js): only from the site's own pages; and where an address
+  // that doesn't exist now goes (the 404 page asks).
+  if (path === '/visit') {
+    if (req.method !== 'POST') return json({ error: 'method' }, 405);
+    if (!webOrigin) return json({ error: 'origin' }, 403);
+    return handleVisit(req, env, body, json);
+  }
+  if (path === '/redirect' && req.method === 'GET') {
+    if (!env.VISITS) return json({ to: null });
+    const r = await visitsCall(env, 'redirect', { path: cleanPath(url.searchParams.get('path')) });
+    return json(r, 200, { 'Cache-Control': 'no-store' });   // (only asked by 404 pages: a redirect just set works at once)
   }
   // The website's form «Revela para centros» (crm.js): only from the site itself.
   if (path === '/leads') {
