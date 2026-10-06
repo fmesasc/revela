@@ -289,6 +289,10 @@ def site_checks(send, recv):
     home, plans and support at the top, the app in /app/ as the official edition,
     working like the open one."""
     if not shutil.which('node'): return []
+    # (The website is the private repository fmesasc/revela-site, cloned in site/: without it — as in GitHub Actions —
+    # these checks are left out, and said so; Cloudflare Pages builds the site with it.)
+    if not os.path.exists(os.path.join(ROOT, 'site', 'index.html')) and not os.environ.get('SITE_DEPLOY_KEY_B64'):
+        print('web: sin site/ (repositorio privado), comprobaciones de la web omitidas', file=sys.stderr); return []
     out = tempfile.mkdtemp(prefix='revela-site-')
     subprocess.run(['node', os.path.join(ROOT, 'tools', 'build-site.mjs'), out], check=True, stdout=subprocess.DEVNULL)
 

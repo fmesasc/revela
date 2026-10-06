@@ -1,0 +1,30 @@
+# All of Revela's tests (tests/run.sh): the module layers, the server's and the Node.js checks, then the app in
+# headless Chrome (ubuntu-latest has it). The website's checks need the private site/ and are left out here.
+# Run for every pull request and branch, and called first by the workflows that publish (pages, server, desktop):
+# nothing is published that doesn't pass.
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]          # (on main, the publishing workflows call it)
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Tests
+        run: ./tests/run.sh

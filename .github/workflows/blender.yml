@@ -1,13 +1,13 @@
-# Despliega revela-blender (server/blender: Blender en Cloudflare Containers, para «Crear modelo 3D
-# con IA») cuando cambia, después de pasar sus pruebas. SOLO despliega si el repositorio tiene
-# BLENDER_DEPLOY = 1 (variable o secreto en Settings ▸ Secrets and variables ▸ Actions): Containers
-# necesita el plan de pago de Workers, y sin activarlo el despliegue fallaría.
+# Deploys revela-blender (server/blender: Blender on Cloudflare Containers, for «Crear modelo 3D con IA») when it
+# changes, after its tests pass. It ONLY deploys if the repository has BLENDER_DEPLOY = 1 (a variable or secret in
+# Settings ▸ Secrets and variables ▸ Actions): Containers needs the Workers paid plan, and without it the deploy fails.
 #
-# Usa los mismos secretos que server.yml (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID); el token
-# necesita además permiso de Containers (plantilla «Edit Cloudflare Workers» + Account ▸ Containers ▸
-# Edit). El secreto del propio Worker (BLENDER_SECRET) se pone una vez en Cloudflare y no se toca.
-# `wrangler deploy` construye la imagen (Dockerfile: Blender LTS oficial, versión y SHA-256 fijas) con
-# el Docker del ejecutor y la sube al registro de Cloudflare.
+# The same secrets as server.yml (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID); the token also needs the Containers
+# permission (the «Edit Cloudflare Workers» template + Account ▸ Containers ▸ Edit). The Worker's own secret
+# (BLENDER_SECRET) is set once in Cloudflare and never touched here.
+# `wrangler deploy` builds the image (Dockerfile: official Blender LTS, version and SHA-256 pinned) with the runner's
+# Docker and uploads it to Cloudflare's registry.
+
 name: Blender
 
 on:

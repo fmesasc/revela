@@ -1,32 +1,34 @@
-# Aplicación de escritorio (Tauri 2) para Windows, macOS y Linux.
+# The desktop app (Tauri 2) for Windows, macOS and Linux, after all the tests pass (tests.yml).
 #
-# - Cada push a main: compila y publica los instaladores en la release
-#   «latest» (Revela · última versión), que se sustituye en cada subida.
-# - Una etiqueta vX.Y.Z: además, una release fija con ese número.
-# - También a mano: Actions ▸ Desktop app ▸ Run workflow.
-# Los instaladores no están firmados con certificado (Windows y macOS avisan
-# al abrirlos la primera vez), pero las actualizaciones sí van firmadas con la
-# clave de Revela (secretos TAURI_SIGNING_PRIVATE_KEY[_PASSWORD]): la app
-# instalada comprueba latest.json al abrirse y solo acepta paquetes firmados.
+# - Each push to main: builds and publishes the installers in the «latest» release (Revela · latest version),
+#   replaced each time.
+# - A vX.Y.Z tag: also a fixed release with that number.
+# - By hand too: Actions ▸ Desktop app ▸ Run workflow.
+# The installers aren't signed with a certificate (Windows and macOS warn the first time they're opened), but the
+# updates are signed with Revela's key (secrets TAURI_SIGNING_PRIVATE_KEY[_PASSWORD]): the installed app checks
+# latest.json when it opens and only accepts signed packages.
 name: Desktop app
 
 on:
   push:
     branches: [main]
     tags: ['v*']
-    paths-ignore: ['**.md', 'docs/**', 'tests/**', 'tools/**', 'examples/**']
+    paths-ignore: ['**.md', 'docs/**', 'tests/**', 'examples/**']   # (not tools/: build-site.mjs makes the bundle)
   workflow_dispatch:
 
 permissions:
   contents: write
 
-# Si se sube otra vez mientras compila, la compilación anterior se cancela.
+# A new push while it builds cancels the previous build.
 concurrency:
   group: desktop-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  tests:
+    uses: ./.github/workflows/tests.yml
   build:
+    needs: tests
     strategy:
       fail-fast: false
       matrix:

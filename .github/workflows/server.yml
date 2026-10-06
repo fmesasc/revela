@@ -1,11 +1,11 @@
-# Despliega el servidor de Revela (server/cloudflare: compartir, salas de
-# colaboración y cuentas) en Cloudflare cuando cambia, después de pasar sus pruebas.
+# Deploys Revela's server (server/cloudflare: accounts, cloud documents, sharing, co-editing, LTI, the administration's
+# API…) to Cloudflare when it changes, after all the tests pass (tests.yml).
 #
-# Secretos del repositorio (Settings ▸ Secrets and variables ▸ Actions):
-#   CLOUDFLARE_API_TOKEN   token con la plantilla «Edit Cloudflare Workers»
-#   CLOUDFLARE_ACCOUNT_ID  el ID de la cuenta de Cloudflare
-# Sin ellos, solo pasa las pruebas. Los secretos del propio Worker
-# (UPLOAD_KEY, ALLOWED) se quedan en Cloudflare y no se tocan.
+# Repository secrets (Settings ▸ Secrets and variables ▸ Actions):
+#   CLOUDFLARE_API_TOKEN   a token from the «Edit Cloudflare Workers» template
+#   CLOUDFLARE_ACCOUNT_ID  the Cloudflare account's ID
+# Without them, only the tests run. The Worker's own secrets (Google, Stripe, OpenRouter, mail, LTI…: see
+# server/cloudflare/README.md) stay in Cloudflare and are never touched here (wrangler.toml keep_vars).
 name: Server
 
 on:
@@ -22,7 +22,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  tests:
+    uses: ./.github/workflows/tests.yml
   deploy:
+    needs: tests
     runs-on: ubuntu-latest
     env:
       HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
@@ -31,8 +34,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Tests
-        run: node tests/server.mjs && node tests/server-api.mjs && node tests/server-lti.mjs && node tests/server-blender.mjs
       - name: Deploy to Cloudflare
         if: env.HAS_TOKEN == 'true'
         uses: cloudflare/wrangler-action@v3
@@ -43,4 +44,4 @@ jobs:
           command: deploy
       - name: No token yet
         if: env.HAS_TOKEN != 'true'
-        run: echo '::notice::Falta el secreto CLOUDFLARE_API_TOKEN (pruebas pasadas, sin desplegar).'
+        run: echo '::notice::No CLOUDFLARE_API_TOKEN secret (tests passed, nothing deployed).'

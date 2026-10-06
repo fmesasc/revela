@@ -1,5 +1,5 @@
-# Publica la edición abierta (la aplicación, sin la web de revelaslides.com) en GitHub Pages en cada push a main.
-# No hay build: Revela es HTML/CSS/JS puro, así que se sube tal cual.
+# Publishes the open edition (the app, without the revelaslides.com website) on GitHub Pages on each push to main,
+# after all the tests pass (tests.yml). No bundler: tools/build-site.mjs --open copies the app as it is.
 name: Deploy to GitHub Pages
 
 on:
@@ -17,7 +17,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  tests:
+    uses: ./.github/workflows/tests.yml
   deploy:
+    needs: tests
     runs-on: ubuntu-latest
     environment:
       name: github-pages
