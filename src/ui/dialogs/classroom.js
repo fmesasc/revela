@@ -10,12 +10,13 @@ import { alertDialog } from './dialog.js';
 import { hasAccounts } from '../../io/cloud/account.js';
 import { cloudDoc, docLink } from '../../io/cloud/clouddocs.js';
 import { openCloudShare } from './cloud.js';
+import { openGradebook, saveToGradebook } from './gradebook.js';
 
 export function classResults(deck = state.deck) {
   const polls = deck.slides.flatMap((s, i) => s.blocks.filter(b => b.type === 'poll' && GRADED.includes(b.kind)).map(b => ({ b, slide: i + 1 })));
   const people = new Map();
   polls.forEach(({ b }, k) => (tallyVotes(b, savedVotes(b.pollId)).board || []).forEach(r => {
-    const p = people.get(r.id) || { name: '', pts: polls.map(() => null), total: 0 };
+    const p = people.get(r.id) || { id: r.id, name: '', pts: polls.map(() => null), total: 0 };
     if (r.n) p.name = r.n; p.pts[k] = r.pts; p.total += r.pts; people.set(r.id, p);
   }));
   return { polls, rows: [...people.values()].sort((a, b) => b.total - a.total) };
@@ -35,11 +36,17 @@ export function openClassResults() {
     ${!polls.length ? `<p class="host-help">${t('Esta presentación no tiene cuestionarios ni actividades con nota.')}</p>` : !rows.length ? `<p class="host-help">${t('Aún no hay respuestas: presenta y deja que el alumnado responda.')}</p>`
       : `<div class="cr-wrap"><table class="cr-table"><thead><tr><th>${t('Alumno')}</th>${polls.map(({ b, slide }) => `<th title="${esc(b.question || '')}">${slide}</th>`).join('')}<th>${t('Total')}</th></tr></thead>
         <tbody>${rows.map(r => `<tr><td>${esc(r.name || t('Sin apodo'))}</td>${r.pts.map(v => `<td>${v == null ? '—' : v}</td>`).join('')}<td><b>${r.total}</b></td></tr>`).join('')}</tbody></table></div>`}
-    <div class="fr-actions"><span class="host-help" style="margin:0">${rows.length} ${t('alumnos')}</span><button class="fr-do cr-csv"${rows.length ? '' : ' disabled'}>${t('Descargar CSV')}</button></div></div>`;
+    <div class="fr-actions"><span class="host-help" style="margin:0">${rows.length} ${t('alumnos')}</span><button class="mini2 cr-book">${t('Cuaderno de clase')}</button>
+      <button class="mini2 cr-save"${rows.length ? '' : ' disabled'}>${t('Guardar en el cuaderno')}</button><button class="fr-do cr-csv"${rows.length ? '' : ' disabled'}>${t('Descargar CSV')}</button></div></div>`;
   document.body.appendChild(back);
   const close = () => back.remove();
   back.querySelector('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
+  // (Into the class gradebook: this session, with today's date, for the term's report.)
+  back.querySelector('.cr-book').addEventListener('click', () => { close(); openGradebook({ tab: 'report' }); });
+  back.querySelector('.cr-save').addEventListener('click', async () => {
+    if (await saveToGradebook({ title: state.deck.name || t('Sesión'), polls: polls.map(({ b, slide }) => ({ label: `${slide}. ${b.question || ''}` })), rows })) close();
+  });
   back.querySelector('.cr-csv').addEventListener('click', () => {
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + classResultsCSV()], { type: 'text/csv' }));
     a.download = 'resultados-aula.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);

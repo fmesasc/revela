@@ -65,6 +65,7 @@ import { createTicket, supportReply, directoryUpsert, directoryRemove, CHARGES }
 import { record, active, featureOf, financeSettings } from './finance.js';
 import { NOTICE_PLACES, noticesFor, noticesOp } from './notices.js';
 import { takeQuota } from './store.js';
+import { handleCommunity } from './community.js';
 import { handleLead, goLink, crmUnsub, crmClick, campaignSignup, campaignPurchase, eventsPublic, eventSignup, referralInfo } from './crm.js';
 
 const enc = new TextEncoder();
@@ -812,6 +813,11 @@ export async function handleApi(req, env, url) {
     if (req.method !== 'POST') return json({ error: 'method' }, 405);
     if (!webOrigin && !desktopOrigin) return json({ error: 'origin' }, 403);
     return createTicket(req, env, me, body, json);
+  }
+  // The community gallery (community.js): reading needs no session; publishing does.
+  if (path === '/community' || path.startsWith('/community/')) {
+    const who = me && { sub: me.sub };
+    return handleCommunity(path, req, body, url, env, who, json, { webOrigin, takeQuota });
   }
   // A blocked account: its data and its account, yes; the rest, no.
   if (me?.blocked && !['/me', '/logout', '/terms', '/mail/prefs', '/account/export', '/account/delete'].includes(path))

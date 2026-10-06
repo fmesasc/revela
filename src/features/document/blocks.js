@@ -272,6 +272,15 @@ export function addTableFromText(text) {
   insert(tb);
   return tb;
 }
+// Insert a table from rows of plain text (a rubric, for instance; first row as header).
+export function addTableRows(rows) {
+  const r = rows.slice(0, 60).map(x => x.slice(0, 12).map(c => escCell(String(c ?? ''))));
+  if (!r.length) return null;
+  const { w, h } = state.deck.size;
+  const tb = tableBlock({ rows: r, header: true, x: 60, y: 110, w: w - 120, h: Math.min(h - 160, 70 * r.length), fontSize: r.length > 5 ? 14 : 16 });
+  insert(tb);
+  return tb;
+}
 export function addCode() { insert(codeBlock()); }
 export function setCode(props) {
   const b = selectedBlock(); if (!b || b.type !== 'code') return;

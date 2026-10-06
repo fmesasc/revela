@@ -118,6 +118,8 @@ export function galleryInto(host, { close = () => {}, scroller = null, paths = t
   };
   bar.querySelector('.gal-q').addEventListener('input', filter);
   bar.querySelectorAll('.gal-cat').forEach(b => b.addEventListener('click', () => { cat = b.dataset.cat; bar.querySelectorAll('.gal-cat').forEach(x => x.classList.toggle('on', x === b)); filter(); }));
+  // Presentations other teachers published (revelaslides.com: the community, after the examples).
+  import('./community.js').then(m => m.communityInto(host, { close })).catch(() => {});
 }
 
 

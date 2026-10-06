@@ -41,9 +41,10 @@ import { Schedule, runSchedule } from './schedule.js';
 import { ModelJob } from './model3d.js';
 import { handleAdmin, adminHost, Directory, Tickets, Audit, ticketsDue, emails as adminEmails } from './admin.js';
 import { Crm, runCrm } from './crm.js';
+import { Community, communityPage } from './community.js';
 import { sendMail, mailConfigured } from './mail.js';
 import { Finance } from './finance.js';
-export { CollabRoom, ShareBox, Limits, Account, Budget, DesktopLink, CloudDoc, Team, LtiStore, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance, Crm, verifyGoogleToken, resetCerts };
+export { CollabRoom, ShareBox, Limits, Account, Budget, DesktopLink, CloudDoc, Team, LtiStore, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance, Crm, Community, verifyGoogleToken, resetCerts };
 
 const box = (env, id) => env.SHAREBOX.get(env.SHAREBOX.idFromName(id));
 // Who counts for the daily limits: the Google account, else the key, else the address.
@@ -104,6 +105,8 @@ export default {
     // Administration (admin.js): its own host, its own checks.
     if (url.pathname === '/api/admin' || url.pathname.startsWith('/api/admin/')) return handleAdmin(req, env, url);
     if (url.hostname.toLowerCase() === adminHost(env)) return new Response('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
+    // The community's public pages (revelaslides.com/comunidad…: community.js).
+    if (/^\/comunidad(\/|$)/.test(url.pathname) && req.method === 'GET') return communityPage(env, url);
     // The accounts API (api.js), and the same share and collaboration routes under /api (revelaslides.com/api/…).
     if (/^\/api\/(?!s(\/|$)|c(\/|$))/.test(url.pathname)) return handleApi(req, env, url);
     if (/^\/api\/(s|c)(\/|$)/.test(url.pathname)) url.pathname = url.pathname.slice(4);

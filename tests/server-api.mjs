@@ -2,7 +2,7 @@
 // payments and the desktop sign-in — above all, that nothing can be skipped
 // from outside. In-memory Durable Objects; the AI provider, Google and Stripe
 // are simulated. Run by tests/run.sh when Node.js is available.
-import worker, { Account, Budget, DesktopLink, ShareBox, Limits, CloudDoc, Team, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance, Crm } from '../server/cloudflare/worker.js';
+import worker, { Account, Budget, DesktopLink, ShareBox, Limits, CloudDoc, Team, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance, Crm, Community } from '../server/cloudflare/worker.js';
 import { summarize, bump, toCsv, cleanEntry, featureOf } from '../server/cloudflare/finance.js';
 import { verifyAccess, resetAccessCerts, resetPromoCache } from '../server/cloudflare/admin.js';
 import { ticketToken, render } from '../server/cloudflare/mail.js';
@@ -1627,6 +1627,45 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     // Off without its object; and the admin only.
     ok((await req('GET', '/api/admin/crm/contacts')).status === 404, 'captación: la API de administración no responde fuera de su host');
     env.FETCH = prevF;
+  }
+
+  // The community gallery (community.js): publishing (pending until the admin approves it), the list and search,
+  // its public page, the picture, reuses counted, reports, hidden again; and only the author may delete it.
+  {
+    env.COMMUNITY = namespace(Community, env);
+    const pub = (cookie, b = {}) => req('POST', '/api/community', { headers: cookie ? { Cookie: cookie } : {}, body: { title: 'Las fracciones', description: 'Para 5.º de primaria, con un cuestionario.', subject: 'math', level: 'primary', lang: 'es',
+      license: 'cc-by', author: 'Pía G.', rights: true, thumb: 'data:image/jpeg;base64,/9j/4AAQ', deck: { size: { w: 1280, h: 720 }, slides: [{ id: 's1', blocks: [{ id: 'a', type: 'text', html: '¿Qué es una <b>fracción</b>?' }] }, { id: 's2', blocks: [{ id: 'q', type: 'poll', question: '¿Cuánto es 1/2 + 1/4?' }] }] }, ...b } });
+    ok((await pub(null)).status === 401, 'comunidad: publicar sin sesión → 401');
+    ok((await pub(pia, { rights: false })).status === 400, 'comunidad: sin confirmar los derechos → 400');
+    ok((await pub(pia, { license: 'todos' })).status === 400, 'comunidad: licencia desconocida → 400');
+    let r1 = await (await pub(pia)).json(); ok(/^[a-z2-9]{6}$/.test(r1.id), 'comunidad: publicada (en revisión)');
+    const L = async (p = '') => (await req('GET', '/api/community' + p)).json();
+    ok((await L()).items.length === 0, 'comunidad: en revisión, no sale en la lista');
+    ok((await req('GET', '/api/community/' + r1.id)).status === 404, 'comunidad: ni se puede abrir');
+    ok((await (await req('GET', '/api/community/mine', { headers: { Cookie: pia } })).json()).items[0]?.status === 'pending', 'comunidad: la autora la ve «en revisión»');
+    x = await A('GET', '/community?status=pending'); ok(x.j.items.length === 1 && /fracción/.test(x.j.items[0].text), 'comunidad: en la cola de moderación, con su texto');
+    { const d = await adm('GET', `/community/${r1.id}/deck`); ok(d.status === 200 && (await d.json()).slides.length === 2, 'comunidad: la administración la descarga para revisarla');
+      ok((await adm('GET', `/community/${r1.id}/thumb`)).headers.get('Content-Type') === 'image/jpeg', 'comunidad: y ve su imagen antes de aprobarla'); }
+    ok((await A('POST', `/community/${r1.id}/status`, { body: { status: 'published' } })).status === 200, 'comunidad: aprobada');
+    let l = await L(); ok(l.items.length === 1 && l.items[0].title === 'Las fracciones' && !l.items[0].sub && !l.items[0].text, 'comunidad: en la lista (sin datos de la cuenta)');
+    ok((await L('?q=FRACCION')).items.length === 1 && (await L('?q=volcanes')).items.length === 0 && (await L('?subject=lang')).items.length === 0, 'comunidad: búsqueda en sus palabras y filtros');
+    const got = await (await req('GET', `/api/community/${r1.id}?use=1`)).json();
+    ok(got.deck?.slides?.length === 2 && got.item.uses === 1 && !got.item.sub, 'comunidad: abrirla para usarla cuenta un uso');
+    const th = await req('GET', `/api/community/${r1.id}/thumb`); ok(th.status === 200 && th.headers.get('Content-Type') === 'image/jpeg', 'comunidad: su imagen');
+    let pg = await worker.fetch(new Request(SITE + '/comunidad'), env), html = await pg.text();
+    ok(pg.status === 200 && html.includes('Las fracciones') && html.includes(`/comunidad/${r1.id}-las-fracciones`), 'comunidad: la página de la lista');
+    pg = await worker.fetch(new Request(`${SITE}/comunidad/${r1.id}-las-fracciones`), env); html = await pg.text();
+    ok(pg.status === 200 && html.includes('<link rel="canonical" href="https://revelaslides.com/comunidad/' + r1.id + '-las-fracciones">') && html.includes('¿Cuánto es 1/2 + 1/4?') && html.includes('/app/?community=' + r1.id) && html.includes('CC BY 4.0'), 'comunidad: su página, para buscadores, con sus palabras, la licencia y «usar»');
+    ok(!/<b>fracción/.test(html) && !html.includes('pia@example.com'), 'comunidad: el texto como texto, sin el correo de la autora');
+    ok((await worker.fetch(new Request(SITE + '/comunidad/zzzzzz'), env)).status === 404, 'comunidad: una que no existe → 404');
+    ok((await req('POST', `/api/community/${r1.id}/report`, { body: { reason: 'No es apropiada' } })).status === 200, 'comunidad: denunciar');
+    ok((await A('GET', '/community?status=reported')).j.items.length === 1 && (await A('GET', `/community/${r1.id}/reports`)).j.reports[0].reason === 'No es apropiada', 'comunidad: las denuncias, en la administración');
+    await A('POST', `/community/${r1.id}/status`, { body: { status: 'hidden', reason: 'revisar' } });
+    ok((await L()).items.length === 0 && (await req('GET', '/api/community/' + r1.id)).status === 404, 'comunidad: oculta, fuera de la lista y de su página');
+    ok([401, 403].includes((await req('POST', `/api/community/${r1.id}/delete`, { headers: { Cookie: ana } })).status) && (await A('GET', '/community?status=hidden')).j.items.length === 1, 'comunidad: otra persona no puede borrarla');
+    ok((await req('POST', `/api/community/${r1.id}/delete`, { headers: { Cookie: pia } })).status === 200 && (await A('GET', '/community?status=hidden')).j.items.length === 0, 'comunidad: la autora la borra');
+    for (let i = 0; i < 5; i++) await pub(pia);
+    ok((await pub(pia)).status === 429, 'comunidad: como mucho 5 al día por cuenta');
   }
 
   // Deleting the account takes it out of the directory.

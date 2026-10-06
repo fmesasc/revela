@@ -21,6 +21,7 @@ const SECTIONS = [
     C('gslides-import', 'slideshow', 'Desde Google Slides', 'Traer una presentación de Google.'),
     C('cloud-onedrive', 'cloud_circle', 'OneDrive', 'De cualquier carpeta: presentaciones de Revela, PowerPoint o LibreOffice.'),
     C('cloud-dropbox', 'inventory_2', 'Dropbox', 'Abrir desde Dropbox.'),
+    C('community-browse', 'diversity_3', 'Comunidad', 'Presentaciones que publican otros docentes.'),
     C('reuse-slides', 'library_add', 'Reutilizar diapositivas', 'Añadir diapositivas de otra presentación a esta.'),
     C('import-md', 'article', 'Importar Markdown', 'Un texto con títulos y listas, en diapositivas.')] },
   { id: 'save', icon: 'save', title: 'Guardar', cards: [
@@ -34,7 +35,8 @@ const SECTIONS = [
     C('cloud-share', 'person_add', 'Con personas', 'Cada una con su permiso: ver, comentar o editar.'),
     C('share', 'link', 'Un enlace o un archivo', 'Para quien lo tenga, con contraseña si quieres; también para insertar en una web.'),
     C('collab', 'group', 'Colaborar en directo', 'Varias personas editando a la vez.'),
-    C('cloud-call', 'videocam', 'Llamada', 'Presentar y hablar en una videollamada de Revela.')] },
+    C('cloud-call', 'videocam', 'Llamada', 'Presentar y hablar en una videollamada de Revela.'),
+    C('community-publish', 'diversity_3', 'Publicar en la comunidad', 'Para que otros docentes la encuentren y la reutilicen.')] },
   { id: 'export', icon: 'ios_share', title: 'Exportar', cards: [
     C('export-pdf', 'picture_as_pdf', 'PDF', 'Una página por diapositiva, tal como se ven.'),
     C('export-pptx', 'co_present', 'PowerPoint (.pptx)', 'Para abrirla y editarla en PowerPoint o Keynote.'),

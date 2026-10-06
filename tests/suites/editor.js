@@ -326,6 +326,39 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(A.fixContrast(dp, 0, 'tx') && A.contrast(dp.slides[0].blocks[1].color, '#ffffff') >= 3, 'y se corrige contra la forma');
   });
 
+  await test('cuaderno de clase: sesiones de cuestionarios y rúbricas, informe por trimestre, unir alumnos, CSV', async () => {
+    reset(); const W = frame.contentWindow, G = await W.eval("import('/src/io/gradebook.js')");
+    W.localStorage.removeItem('revela.gradebook');
+    const g = G.addGroup('3.º A');
+    const T = G.terms(new Date(2026, 9, 15)); eq(new Date(T[0].from).getMonth(), 8, '1.er trimestre: desde septiembre'); eq(new Date(T[1].from).getFullYear(), 2027, '2.º: enero del año siguiente');
+    const d1 = new Date(2026, 9, 6).getTime(), d2 = new Date(2026, 10, 3).getTime(), d3 = new Date(2027, 1, 2).getTime();
+    G.saveQuizSession(g.id, { title: 'Fracciones', date: d1, polls: [{ label: '1. ¿Cuánto es 1/2 + 1/4?' }, { label: '2. Ordena' }], rows: [{ id: 'dev-ana', name: 'Ana', pts: [800, 1000] }, { id: 'dev-leo', name: 'Leo', pts: [500, null] }] });
+    G.saveQuizSession(g.id, { title: 'Decimales', date: d2, polls: [{ label: '1.' }], rows: [{ id: 'dev-ana2', name: 'Ana R.', pts: [600] }, { id: 'dev-leo', name: 'Leo', pts: [1000] }] });
+    const rub = G.saveRubric(G.defaultRubric('Exposición'));
+    eq(rub.criteria.length, 3, 'rúbrica por defecto: tres criterios'); eq(rub.criteria[0].levels.map(l => l.pts).join(), '4,3,2,1', 'cuatro niveles');
+    const pablo = G.newStudentKey('Pablo');
+    G.saveRubricSession(g.id, rub, { title: 'Exposición oral', date: d3, marks: { 'dev-leo': [0, 1, 2], [pablo]: [0, 0, 0] }, newNames: { [pablo]: 'Pablo' } });
+    let rep = G.report(g.id, T[0]);
+    eq(rep.sessions.length, 2, '1.er trimestre: dos sesiones');
+    const leo = rep.students.find(x => x.name === 'Leo');
+    eq(leo.mark, 6.3, 'nota media sobre 10: (500 de 2000 → 25 %) y 100 % → 6,3 (lo que no respondió cuenta como 0)');
+    eq(leo.done + '/' + leo.of, '2/2', 'participación');
+    G.mergeStudents(g.id, 'dev-ana2', 'dev-ana'); rep = G.report(g.id, T[0]);
+    const ana = rep.students.find(x => x.name === 'Ana');
+    assert(ana && ana.done === 2 && !rep.students.some(x => x.name === 'Ana R.'), 'unir: el mismo alumno en otro dispositivo');
+    const rep2 = G.report(g.id, T[1]); eq(rep2.students.find(x => x.name === 'Pablo').mark, 10, 'rúbrica: Pablo, excelente en todo → 10');
+    eq(rep2.students.find(x => x.name === 'Leo').mark, Math.round((4 + 3 + 2) / 12 * 100) / 10, 'rúbrica: puntos de cada nivel sobre el máximo');
+    const csv = G.reportCSV(G.report(g.id, T[3])); assert(/^"Alumno",.*"Nota \(0-10\)","Participación"/.test(csv) && /"Pablo"/.test(csv), 'CSV del curso');
+    eq(JSON.stringify(G.rubricRows(rub)[0]), JSON.stringify(['', 'Excelente (4)', 'Bien (3)', 'Suficiente (2)', 'Insuficiente (1)']), 'rúbrica como tabla: niveles arriba');
+    // The dialog: the report, the rubrics, a rubric on a slide.
+    D.querySelector('[data-action="gradebook"]').click(); await sleep(60);
+    const m = D.getElementById('gb-modal'); assert(m && m.querySelectorAll('.gb-table tbody tr').length >= 2, 'el informe en el diálogo');
+    m.querySelector('[data-tab="rubrics"]').click(); await sleep(20);
+    const n = slide().blocks.length; m.querySelector('[data-i]').click(); await sleep(20);
+    assert(slide().blocks.length === n + 1 && slide().blocks.at(-1).type === 'table' && slide().blocks.at(-1).header, 'insertar la rúbrica en la diapositiva');
+    W.localStorage.removeItem('revela.gradebook');
+  });
+
   await test('zoom: acercar y restablecer', async () => {
     reset(); D.querySelector('[data-action="zoom-reset"]').click();
     const z0 = R.state.ui.zoom;

@@ -321,6 +321,9 @@ if (hasAccounts()) {
   }
 }
 // From the website's support page (revelaslides.com/support): «Informar de un problema».
+// A presentation of the community, from its page (revelaslides.com/comunidad/<id> ▸ «Usar esta presentación»): a copy.
+{ const cid = new URLSearchParams(location.search).get('community');
+  if (!testing && cid && /^[a-z2-9]{6}$/.test(cid)) { history.replaceState(null, '', location.pathname); import('../../ui/dialogs/community.js').then(m => m.openCommunity(cid)); } }
 if (!testing && new URLSearchParams(location.search).has('report')) { history.replaceState(null, '', location.pathname); (hasAccounts() ? refreshAccount().catch(() => {}) : Promise.resolve()).finally(() => openReport()); }
 // Opened from Drive's or Dropbox's "Open with ▸ Revela" (or Drive's "New ▸ Revela").
 if (!testing) handleOpenWith();

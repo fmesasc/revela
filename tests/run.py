@@ -192,7 +192,7 @@ def mouse_checks(send, recv, port):
     else: check(False, 'texto de prueba en la diapositiva')
     ev("document.activeElement?.blur?.();1"); time.sleep(0.2)
     # A dialog opened from a button: focus goes in; Esc closes it and focus goes back to the button.
-    b = _j.loads(ev("(()=>{document.querySelector('#ribbon [data-tab=view]').click();const b=document.querySelector('#ribbon [data-action=shortcuts]'),r=b.getBoundingClientRect();return JSON.stringify({x:r.left+r.width/2,y:r.top+r.height/2,w:r.width})})()") or 'null')
+    b = _j.loads(ev("(()=>{document.querySelector('#ribbon [data-tab=view]').click();const b=document.querySelector('#ribbon [data-action=shortcuts]');b.scrollIntoView({block:'nearest',inline:'center'});const r=b.getBoundingClientRect();return JSON.stringify({x:r.left+r.width/2,y:r.top+r.height/2,w:r.width})})()") or 'null')
     time.sleep(0.3)
     if b and b['w'] > 0:
         click(b['x'], b['y']); time.sleep(0.4)

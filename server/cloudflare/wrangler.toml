@@ -7,7 +7,7 @@ preview_urls = false
 # Variables set in Cloudflare's dashboard stay through deploys (the business's numbers live there).
 keep_vars = true
 # The official site (Cloudflare Pages) sends its /api/… here; the rest of the domain stays with the site.
-routes = [{ pattern = "revelaslides.com/api/*", zone_name = "revelaslides.com" }, { pattern = "admin.revelaslides.com/api/*", zone_name = "revelaslides.com" }]
+routes = [{ pattern = "revelaslides.com/api/*", zone_name = "revelaslides.com" }, { pattern = "admin.revelaslides.com/api/*", zone_name = "revelaslides.com" }, { pattern = "revelaslides.com/comunidad*", zone_name = "revelaslides.com" }]
 # admin.revelaslides.com/api/*: the administration (admin.js), behind Cloudflare Access.
 
 # Everything is stored in Durable Objects (store.js), not R2: on the Workers Free
@@ -250,3 +250,14 @@ class_name = "Crm"
 [[migrations]]
 tag = "v12"
 new_sqlite_classes = ["Crm"]
+
+# The community gallery (community.js): presentations teachers publish (after the admin approves them), their
+# pages at revelaslides.com/comunidad (the route above) and «Usar esta presentación». Optional plain var:
+# COMMUNITY_MAX_MB (largest presentation, default 15).
+[[durable_objects.bindings]]
+name = "COMMUNITY"
+class_name = "Community"
+
+[[migrations]]
+tag = "v13"
+new_sqlite_classes = ["Community"]

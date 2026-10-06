@@ -997,3 +997,17 @@ body:not([data-edition="cloud"]):not([data-edition="desktop"]) .accounts-only{di
 .od-item:hover,.od-item:focus-visible{background:var(--accent-bg)}.od-item .ms{color:var(--accent);font-size:22px}
 .od-item span{display:flex;flex-direction:column;min-width:0}.od-item b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.od-item small{font-size:12px;color:var(--txt2)}
 .od-save{margin-top:12px}
+
+/* Class gradebook (dialogs/gradebook.js) */
+.gb-tabs{display:flex;gap:6px;margin:0 0 12px}.gb-tabs [aria-selected="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.gb-table th{vertical-align:bottom;position:relative}.gb-table th small{display:block;font-weight:400;color:var(--txt2);white-space:nowrap}
+.gb-table .gb-del{position:absolute;top:2px;right:2px;border:0;background:none;color:var(--txt2);cursor:pointer;font-size:11px;opacity:0}.gb-table th:hover .gb-del,.gb-table .gb-del:focus{opacity:1}
+.gb-st{border:0;background:none;color:var(--accent);cursor:pointer;font:inherit;text-align:start;padding:0}
+.gb-list{list-style:none;padding:0;margin:0 0 10px}.gb-list li{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.gb-list li small{color:var(--txt2)}.gb-list li span{margin-inline-start:auto;display:flex;gap:6px}
+.gb-rtable input,.gb-rtable textarea{width:100%;box-sizing:border-box;font:inherit;font-size:12px}.gb-rtable .gb-pts{width:60px;margin-top:4px}
+.gb-rtable td{vertical-align:top;min-width:120px}
+
+/* Community (dialogs/community.js) */
+.gal-community{margin-top:18px}.gal-community .gal-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.gal-community .gal-bar input{flex:1 1 220px}
+.cm-lic{border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:8px 0}.cm-lic label{display:block;margin:4px 0;font-size:13px}
