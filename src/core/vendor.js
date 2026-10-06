@@ -2,6 +2,8 @@
 // Every version is pinned here, in one place, so upgrading one is a one-line
 // change (and the service worker caches them as immutable).
 
+import { whileBusy } from './busy.js';
+
 const NPM = 'https://cdn.jsdelivr.net/npm/';
 export const REVEAL = NPM + 'reveal.js@5.1.0';
 export const KATEX = NPM + 'katex@0.16.11/dist';
@@ -39,12 +41,12 @@ export const FACE_MODEL = 'https://storage.googleapis.com/mediapipe-models/face_
 const pending = new Map();
 export function loadScript(src, global, module = false) {
   if (global && window[global]) return Promise.resolve(window[global]);
-  if (!pending.has(src)) pending.set(src, new Promise((res, rej) => {
+  if (!pending.has(src)) pending.set(src, whileBusy(new Promise((res, rej) => {
     const s = document.createElement('script'); s.src = src; s.async = true; if (module) s.type = 'module';
     s.onload = () => res(global ? window[global] : undefined);
     s.onerror = () => { pending.delete(src); s.remove(); rej(new Error('No se pudo cargar ' + (src.split('/npm/')[1] || src))); };
     document.head.appendChild(s);
-  }));
+  })));                                                   // (counted: someone waits for it — core/busy.js)
   return pending.get(src);
 }
 // <model-viewer>, unless the page has it already (it is an ES module: as a classic script it fails).

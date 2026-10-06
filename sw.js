@@ -9,7 +9,7 @@
 //   (revelaslides.com/api/…: the account, cloud documents, sessions): it is
 //   private and never kept here — only what lies inside the app's own folder.
 
-const CACHE = 'revela-v5';                             // (v5: the old caches, which could hold /api/ answers, are deleted)
+const CACHE = 'revela-v6';                             // (v5: old caches, which could hold /api/ answers, deleted; v6: tells the page what's loading)
 const SHELL = ['./', 'index.html', 'src/ui/styles/tokens.css', 'src/ui/styles/ribbon.css', 'src/ui/styles/layout.css', 'src/ui/styles/canvas.css', 'src/ui/styles/chrome.css', 'src/ui/styles/responsive.css', 'src/ui/styles/features.css', 'src/apps/editor/main.js', 'manifest.webmanifest', 'icons/icon.svg'];
 const CDN = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com', 'storage.googleapis.com'];   // (the last: MediaPipe's models, by version)
 
@@ -32,11 +32,15 @@ self.addEventListener('fetch', e => {
     if (url.searchParams.has('test') || url.pathname.includes('/tests/')) return;   // never cache the test harness
     // (cache: 'no-cache' — always asks the server whether there's a newer version (a cheap 304 if not):
     // the browser's own HTTP cache kept old code for hours after a deploy.)
+    // (The page is told while one of its own scripts or styles is on its way — a module loaded when a feature is
+    // first used —: on a slow connection it shows «loading», ui/shell/busy.js.)
+    const tell = /^(script|style)$/.test(req.destination) && e.clientId ? kind => self.clients.get(e.clientId).then(c => c?.postMessage({ revelaBusy: kind, id: req.url })).catch(() => {}) : () => {};
+    tell('start');
     e.respondWith(fetch(req, { cache: 'no-cache' }).then(res => {
       if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
       return res;
     }).catch(() => caches.match(req, { ignoreSearch: req.mode === 'navigate' })
-      .then(r => r || (req.mode === 'navigate' ? caches.match('index.html') : Response.error()))));
+      .then(r => r || (req.mode === 'navigate' ? caches.match('index.html') : Response.error()))).finally(() => tell('end')));
   } else if (CDN.includes(url.hostname)) {
     // A fixed version (…@1.2.3/…) or a font never changes: cache first. A branch
     // (…@main/…, 3D models from GitHub) can: network first, the copy offline.

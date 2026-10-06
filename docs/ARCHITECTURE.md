@@ -110,6 +110,7 @@ src/
                                the filter every outside deck goes through (sanitizer)
     text.js                    esc, plainText, jsData (data inside <script>), shortSig
     idb.js                     minimal IndexedDB: the autosaved deck (large decks) and versions
+    busy.js                    what someone is waiting for (requests, downloads), counted for «loading»
     config.js                  settings outside any deck: EDITION, the official site, Google's public ids
     formulas.js                formulas in table cells (=SUM(ABOVE), spreadsheet-style)
     ice.js                     STUN, plus TURN relays from Revela's server (/api/ice) when there is one
@@ -262,7 +263,8 @@ src/
       community.js             the community gallery
       notices.js               Revela's own notices for this account's plan and language
   ui/
-    shell/                     navigator, contextmenu, present, preview (thumbnails), draw,
+    shell/                     busy (the «loading» bar and the pressed button's spinner on slow connections),
+                               navigator, contextmenu, present, preview (thumbnails), draw,
                                recorder, appearance, elements (resources side panel), home
                                (Google account, «My presentations»), canvasview (canvas mode),
                                masterview (slide master view), backstage (the File page), coach,

@@ -39,6 +39,7 @@ import * as comments from '../../features/collab/comments.js';
 import * as protect from '../../features/collab/protect.js';
 import { initRibbon, renderRibbon } from '../../ui/ribbon/ribbon.js';
 import { initContextMenu } from '../../ui/shell/contextmenu.js';
+import { initBusy } from '../../ui/shell/busy.js';
 import * as palette from '../../ui/shell/palette.js';
 import { initDraw } from '../../ui/shell/draw.js';
 import { initI18n, t } from '../../i18n/index.js';
@@ -224,6 +225,7 @@ function keyboard(e) {
 initCanvas();
 initPanel();
 initRibbon();
+initBusy();                                             // (first: the «loading» bar sees every request)
 initContextMenu();
 initDraw();
 initModalKeys();
