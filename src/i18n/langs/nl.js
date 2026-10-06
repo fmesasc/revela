@@ -1,6 +1,11 @@
 // Dutch interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Modo lectura": "Leesmodus",
+  "Leer en voz alta": "Voorlezen",
+  "Parar": "Stoppen",
+  "Esta diapositiva no tiene texto.": "Deze dia heeft geen tekst.",
+  "Avanza sola demasiado rápido": "Gaat te snel automatisch verder",
   "Recomienda Revela a tu centro": "Raad Revela aan bij je school",
   "Si te gusta Revela, pásale este enlace a la dirección de tu centro o empresa. Lo envías tú: Revela no escribe a nadie.": "Vind je Revela goed? Geef deze link door aan de directie van je school of bedrijf. Je stuurt hem zelf: Revela schrijft niemand aan.",
   "Copiar el enlace": "Link kopiëren",

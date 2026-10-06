@@ -316,6 +316,14 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(kinds.includes('small') && kinds.includes('offslide') && kinds.includes('nearalign') && kinds.includes('titlesize'), 'guía de estilo: ' + kinds.join());
     const na = st.find(i => i.kind === 'nearalign'); A.fixAlign(dk, 0, na.blockId, na.extra);
     eq(dk.slides[0].blocks[1].x, 100, 'casi alineado: se alinea');
+    // What is under the text counts (a light shape on a dark slide); slides that move on too fast.
+    const dp = { palette: 'midnight', size: { w: 1280, h: 720 }, autoSlide: 2000, slides: [{ layoutId: 'content', background: '#101317', blocks: [
+      { id: 'sh', type: 'shape', x: 0, y: 0, w: 600, h: 300, fill: '#ffffff' }, { id: 'tx', type: 'text', ph: 'title', x: 50, y: 50, w: 400, h: 100, fontSize: 40, html: 'Sobre blanco', color: '#f2f2f2' },
+      { id: 'ok', type: 'text', x: 700, y: 400, w: 400, h: 100, fontSize: 40, html: 'Sobre el fondo', color: '#f2f2f2' }] }] };
+    const ip = A.checkAccessibility(dp);
+    assert(ip.some(i => i.kind === 'contrast' && i.blockId === 'tx') && !ip.some(i => i.kind === 'contrast' && i.blockId === 'ok'), 'contraste: cuenta la forma clara de debajo, no solo el fondo');
+    assert(ip.some(i => i.kind === 'fast'), 'avanza sola demasiado rápido');
+    assert(A.fixContrast(dp, 0, 'tx') && A.contrast(dp.slides[0].blocks[1].color, '#ffffff') >= 3, 'y se corrige contra la forma');
   });
 
   await test('zoom: acercar y restablecer', async () => {

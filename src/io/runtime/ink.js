@@ -5,7 +5,7 @@
 // exported reveal.js page (no plugin, no network).
 //
 // Keys (as in PowerPoint): Ctrl+P pen · Ctrl+I highlighter · Ctrl+L laser ·
-// E erase the slide's ink · Esc / Ctrl+A back to the normal pointer.
+// E erase the slide's ink · Esc / Ctrl+A back to the normal pointer · R reading mode (reading.js).
 
 export const INK_CSS = `
  #ink-canvas{position:fixed;inset:0;width:100vw;height:100vh;z-index:40;pointer-events:none;touch-action:none}
@@ -41,6 +41,7 @@ export function inkJS(W, H, labels) {
   +'<input type="color" value="#ff2d2d" title="'+L.color+'">'
   +'<button data-t="erase" title="'+L.erase+' (E)">\\u232B</button>'
   +'<button data-t="cc" title="'+L.cc+' (C)" style="font-weight:700;font-size:12px">CC</button>'
+  +'<button data-t="read" title="'+L.read+' (R)" style="font-weight:700;font-size:13px">Aa</button>'
   +'<button data-z="-1" title="'+L.zout+' (\u2212)" style="font-size:20px">\u2212</button>'
   +'<button data-z="0" title="'+L.zreset+' (0)" style="font-size:11px;width:auto;padding:0 6px" class="rv-zl">100%</button>'
   +'<button data-z="1" title="'+L.zin+' (+ \u00b7 Ctrl + rueda)" style="font-size:20px">+</button>';
@@ -62,7 +63,7 @@ export function inkJS(W, H, labels) {
  function erase(){delete ink[key()];draw();}
  bar.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;
   if(b.dataset.z!=null){var d=+b.dataset.z;d?zoomBy(d>0?1.25:0.8):zoomTo(1);return;}
-  if(b.dataset.t==='erase')erase();else if(b.dataset.t==='cc')captions();else setTool(b.dataset.t);});
+  if(b.dataset.t==='erase')erase();else if(b.dataset.t==='cc')captions();else if(b.dataset.t==='read'){if(window.rvReading)window.rvReading();}else setTool(b.dataset.t);});
  // Zoom into the slide being shown (the whole view, around the pointer or the
  // centre); drag to move around while zoomed; back to normal on the next slide.
  var zoom=1,tx=0,ty=0,drag=null,rv=document.querySelector('.reveal');
@@ -91,6 +92,7 @@ export function inkJS(W, H, labels) {
   else if(c&&k==='a'&&tool){setTool(tool);}
   else if(k==='e'&&!c&&!e.altKey){erase();}
   else if(k==='c'&&!c&&!e.altKey){captions();}
+  else if(k==='r'&&!c&&!e.altKey&&window.rvReading&&!(e.target.closest&&e.target.closest('input,textarea,select,[contenteditable]'))){window.rvReading();}
   else if(k==='escape'&&tool){setTool(tool);}
   else if(!c&&!e.altKey&&(k==='+'||k==='=')){zoomBy(1.25);}
   else if(!c&&!e.altKey&&k==='-'){zoomBy(0.8);}
@@ -118,7 +120,7 @@ export function inkJS(W, H, labels) {
  function openMenu(x,y){closeMenu();menu=document.createElement('div');menu.id='rv-cm';menu.setAttribute('role','menu');
   var items=[['next','\u276F',L.next,'\u2192'],['prev','\u276E',L.prev,'\u2190'],['goto','#',L.go],['ov','\u25A6',L.overview,'O'],'-',
    ['pen','\u270E',L.pen,'Ctrl+P',tool==='pen'],['hl','\u2592',L.hl,'Ctrl+I',tool==='hl'],['laser','\u25CF',L.laser,'Ctrl+L',tool==='laser'],['arrow','\u2196',L.arrow,'Esc',!tool],['erase','\u232B',L.erase,'E'],'-',
-   ['cc','CC',L.cc,'C',capOn],['zin','+',L.zin,'+'],['zout','\u2212',L.zout,'\u2212'],['z0','1:1',L.zreset,'0'],'-',
+   ['cc','CC',L.cc,'C',capOn],['read','Aa',L.read,'R',!!document.querySelector('#rv-read.on')],['zin','+',L.zin,'+'],['zout','\u2212',L.zout,'\u2212'],['z0','1:1',L.zreset,'0'],'-',
    ['black','\u25A0',L.black,'B',Reveal.isPaused()],['white','\u25A1',L.white,'W',white.style.display==='block'],['full','\u26F6',L.full,'F',!!document.fullscreenElement],'-',['end','\u2715',L.end,'Esc']];
   menu.innerHTML=items.map(function(it){return it==='-'?'<hr>':'<button role="menuitem" data-m="'+it[0]+'"'+(it[4]?' class="on"':'')+'><i>'+it[1]+'</i>'+it[2]+(it[3]?'<kbd>'+it[3]+'</kbd>':'')+'</button>';}).join('');
   document.body.appendChild(menu);
@@ -133,7 +135,7 @@ export function inkJS(W, H, labels) {
   else if(m==='ov')window.dispatchEvent(new KeyboardEvent('keydown',{key:'o',bubbles:true}));
   else if(m==='pen'||m==='hl'||m==='laser'){if(tool!==m)setTool(m);}
   else if(m==='arrow'){if(tool)setTool(tool);}
-  else if(m==='erase')erase();else if(m==='cc')captions();
+  else if(m==='erase')erase();else if(m==='cc')captions();else if(m==='read'){if(window.rvReading)window.rvReading();}
   else if(m==='zin')zoomBy(1.25);else if(m==='zout')zoomBy(0.8);else if(m==='z0')zoomTo(1);
   else if(m==='black'){white.style.display='none';Reveal.togglePause();}
   else if(m==='white'){if(Reveal.isPaused())Reveal.togglePause(false);white.style.display=white.style.display==='block'?'none':'block';}

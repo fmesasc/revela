@@ -8,7 +8,7 @@ import { t } from '../../i18n/index.js';
 
 const ICON = { empty: 'crop_square', notitle: 'title', duptitle: 'content_copy', alt: 'image_not_supported',
   tablehead: 'table_rows', contrast: 'contrast', fonts: 'font_download', wordy: 'subject', small: 'text_decrease', offslide: 'open_in_new_off',
-  nearalign: 'align_horizontal_left', titlesize: 'format_size' };
+  nearalign: 'align_horizontal_left', titlesize: 'format_size', fast: 'timer' };
 
 export function openA11yCheck() {
   document.getElementById('a11y-modal')?.remove();

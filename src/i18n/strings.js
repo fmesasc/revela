@@ -5,6 +5,11 @@
 
 // es | en | fr | de | it | pt | ca
 export const ROWS = [
+  ['Modo lectura', 'Reading mode', 'Mode lecture', 'Lesemodus', 'Modalità lettura', 'Modo de leitura', 'Mode lectura'],
+  ['Leer en voz alta', 'Read aloud', 'Lire à voix haute', 'Vorlesen', 'Leggi ad alta voce', 'Ler em voz alta', 'Llegir en veu alta'],
+  ['Parar', 'Stop', 'Arrêter', 'Stopp', 'Ferma', 'Parar', 'Atura'],
+  ['Esta diapositiva no tiene texto.', 'This slide has no text.', 'Cette diapositive n\'a pas de texte.', 'Diese Folie hat keinen Text.', 'Questa diapositiva non ha testo.', 'Este diapositivo não tem texto.', 'Aquesta diapositiva no té text.'],
+  ['Avanza sola demasiado rápido', 'Advances by itself too quickly', 'Avance automatiquement trop vite', 'Schaltet zu schnell automatisch weiter', 'Avanza da sola troppo in fretta', 'Avança sozinho demasiado depressa', 'Avança sola massa de pressa'],
   ['Recomienda Revela a tu centro', 'Recommend Revela to your school', 'Recommandez Revela à votre établissement', 'Empfiehl Revela deiner Schule', 'Consiglia Revela alla tua scuola', 'Recomende o Revela à sua escola', 'Recomana Revela al teu centre'],
   ['Si te gusta Revela, pásale este enlace a la dirección de tu centro o empresa. Lo envías tú: Revela no escribe a nadie.', 'If you like Revela, pass this link on to your school\'s or company\'s management. You send it yourself: Revela doesn\'t write to anyone.', 'Si Revela vous plaît, transmettez ce lien à la direction de votre établissement ou entreprise. C\'est vous qui l\'envoyez : Revela n\'écrit à personne.', 'Wenn dir Revela gefällt, gib diesen Link an die Leitung deiner Schule oder Firma weiter. Du schickst ihn selbst: Revela schreibt niemandem.', 'Se Revela ti piace, passa questo link alla direzione della tua scuola o azienda. Lo invii tu: Revela non scrive a nessuno.', 'Se gosta do Revela, passe esta ligação à direção da sua escola ou empresa. É você quem a envia: o Revela não escreve a ninguém.', 'Si t\'agrada Revela, passa aquest enllaç a la direcció del teu centre o empresa. L\'envies tu: Revela no escriu a ningú.'],
   ['Copiar el enlace', 'Copy the link', 'Copier le lien', 'Link kopieren', 'Copia il link', 'Copiar a ligação', 'Copia l\'enllaç'],

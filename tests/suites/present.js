@@ -215,7 +215,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       const cm = (x = 200, y = 150) => { w.document.body.dispatchEvent(new w.MouseEvent('contextmenu', { clientX: x, clientY: y, bubbles: true, cancelable: true })); return w.document.getElementById('rv-cm'); };
       let m = cm(); assert(m, 'clic derecho: menú de presentación');
       const acts = [...m.querySelectorAll('[data-m]')].map(b => b.dataset.m).join();
-      eq(acts, 'next,prev,goto,ov,pen,hl,laser,arrow,erase,cc,zin,zout,z0,black,white,full,end', 'con lo que tiene sentido al presentar');
+      eq(acts, 'next,prev,goto,ov,pen,hl,laser,arrow,erase,cc,read,zin,zout,z0,black,white,full,end', 'con lo que tiene sentido al presentar');
       m.querySelector('[data-m="pen"]').click(); assert(w.document.getElementById('ink-canvas').classList.contains('on') && !w.document.getElementById('rv-cm'), 'elegir el lápiz (y se cierra)');
       m = cm(); assert(m.querySelector('[data-m="pen"]').classList.contains('on'), 'marca lo que está activo'); m.querySelector('[data-m="arrow"]').click();
       m = cm(); m.querySelector('[data-m="goto"]').click(); const list = m.querySelectorAll('.rv-cm-list button');
@@ -235,6 +235,34 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(D.querySelector('.titlebar .tb-play [data-action="present"]') && D.querySelector('.titlebar .tb-play [data-action="present-current"]'), 'presentar desde el principio o desde aquí, en la barra de título');
     const sl = D.getElementById('zoom-slider'); sl.value = '150'; sl.dispatchEvent(new W.Event('input')); eq(R.state.ui.zoom, 1.5, 'deslizador de zoom del editor');
     D.querySelector('[data-action="zoom-fit"]').click();
+  });
+
+  await test('modo lectura: el texto de la diapositiva en orden, con las imágenes descritas y la pregunta; tecla R, barra y menú', async () => {
+    reset();
+    R.store.commit(() => { slide().blocks = [
+      { id: 'pic', type: 'image', src: 'data:,', alt: 'Un faro al atardecer', x: 700, y: 200, w: 400, h: 300, rotation: 0, animation: null },
+      { id: 'lst', type: 'text', html: '<ul><li>Primero</li><li>Segundo<ul><li>Detalle</li></ul></li></ul>', fontSize: 28, x: 80, y: 200, w: 560, h: 300, rotation: 0, animation: null },
+      { id: 'ttl', type: 'text', html: 'El <i>faro</i> de Hércules', fontSize: 54, x: 80, y: 40, w: 1000, h: 100, rotation: 0, animation: null },
+      { id: 'pl', type: 'poll', pollId: 'p1', kind: 'choice', question: '¿Lo has visitado?', options: ['Sí', 'No'], x: 80, y: 560, w: 900, h: 140, rotation: 0, animation: null }]; });
+    const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:900px;height:506px;opacity:0';
+    f.src = URL.createObjectURL(new Blob([R.io.buildHTML(R.state.deck, { inApp: true })], { type: 'text/html' })); document.body.appendChild(f);
+    let w; for (let i = 0; i < 80 && !((w = f.contentWindow).Reveal?.isReady?.() && w.rvReading); i++) await sleep(100);
+    try {
+      w.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'r', bubbles: true }));
+      const box = w.document.getElementById('rv-read'); assert(box?.classList.contains('on'), 'R abre el modo lectura');
+      const txt = box.querySelector('.rv-rt').innerText.replace(/\s+/g, ' ');
+      assert(/^El faro de Hércules Primero Segundo Detalle .*Un faro al atardecer.*¿Lo has visitado\? Sí No$/.test(txt), 'en orden de lectura (arriba abajo, izquierda derecha), sin cursivas: ' + txt);
+      assert(box.querySelector('h2')?.textContent === 'El faro de Hércules' && box.querySelectorAll('li.l2').length === 1, 'el título como título; la lista con su nivel');
+      assert(w.getComputedStyle(box).fontFamily.includes('Verdana') && parseFloat(w.getComputedStyle(box).wordSpacing) > 0, 'letra clara y espaciada');
+      box.querySelector('[data-r="lg"]').click(); assert(box.style.getPropertyValue('--rv-rs') === '24px', 'letra más grande');
+      box.querySelector('[data-r="x"]').click(); assert(!box.classList.contains('on'), 'se cierra');
+      w.document.querySelector('#ink-bar [data-t="read"]').click(); assert(box.classList.contains('on'), 'también desde la barra');
+    } finally { f.remove(); }
+    // The students' page parses the slide it receives: the same words.
+    const RD = await frame.contentWindow.eval("import('/src/io/runtime/reading.js')");
+    const doc = new DOMParser().parseFromString('<div class="slides"><section class="present"><p style="left:10px;top:300px;position:absolute">Abajo</p><h1 style="left:10px;top:20px;position:absolute;font-size:60px">Arriba</h1><div class="fragment" style="top:400px">Aún no</div></section></div>', 'text/html');
+    const it = RD.readingItems(doc.querySelector('section'));
+    eq(it.map(x => x.t + ':' + x.text).join('|'), 'h:Arriba|p:Abajo', 'página del alumnado: en orden y sin lo que aún no ha salido');
   });
 
   await test('3D al presentar: con transiciones, al volver, al saltar, y sus imágenes donde no se dibuja', async () => {

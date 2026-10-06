@@ -44,6 +44,11 @@
     textarea{font:17px system-ui,sans-serif;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--txt);width:100%;resize:vertical}
     .qa-item{display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
     .qa-up{flex:0 0 auto;padding:8px 12px;font-size:15px}
+    #read-bar{display:flex;justify-content:flex-end}#read-bar button{padding:8px 14px;font-size:15px}#read-bar button[aria-pressed="true"]{outline:3px solid #7fa6d8}
+    #read-box{border-radius:12px;padding:16px 18px;background:#fbf6e9;color:#1d1d1f;font:var(--rs,21px)/1.7 Verdana,Tahoma,Arial,sans-serif;letter-spacing:.04em;word-spacing:.16em;text-align:left}
+    #read-box *{font-style:normal!important}#read-box h2{font-size:1.2em;line-height:1.4;margin:0 0 .6em}#read-box p{margin:0 0 .7em}#read-box ul{margin:0 0 .7em;padding-left:1.3em}
+    #read-box li{margin:0 0 .3em}#read-box li.l2{margin-left:1.2em}#read-box li.l3{margin-left:2.4em}#read-box .rv-ri{border-left:5px solid #c9b88a;padding-left:.7em;color:#4a4436}#read-box .rv-rq{font-weight:700}
+    #read-box .rv-rb{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}#read-box .rv-rb button{font:15px/1 Verdana,Tahoma,Arial,sans-serif;letter-spacing:0;padding:9px 13px;background:#fff;color:#1d1d1f;border:1px solid #d8ccb0}
     [hidden]{display:none!important}
   </style>
 </head>
@@ -51,6 +56,8 @@
   <header><b>Revela</b> <span>· Votar</span><span id="status">Sin conectar</span></header>
   <main>
     <div id="slide-view" hidden><iframe title="Diapositiva" sandbox="" scrolling="no"></iframe><small id="slide-n"></small></div>
+    <div id="read-bar" hidden><button id="read-go" type="button" aria-pressed="false">Aa · Lectura fácil</button></div>
+    <div id="read-box" hidden><div class="rv-rb"><button id="read-say" type="button">▶ Leer en voz alta</button><button id="read-sm" type="button" aria-label="Letra más pequeña">A−</button><button id="read-lg" type="button" aria-label="Letra más grande">A+</button></div><div id="read-text" aria-live="polite"></div></div>
     <div id="cc" hidden><div id="cc-text" aria-live="polite"></div>
       <label>Subtítulos: <select id="cc-lang"><option value="">Original</option><option value="es">Español</option><option value="en">English</option><option value="fr">Français</option>
         <option value="de">Deutsch</option><option value="it">Italiano</option><option value="pt">Português</option><option value="ca">Català</option><option value="gl">Galego</option>

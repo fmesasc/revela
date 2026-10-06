@@ -1,6 +1,11 @@
 // Basque interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Modo lectura": "Irakurketa modua",
+  "Leer en voz alta": "Ozen irakurri",
+  "Parar": "Gelditu",
+  "Esta diapositiva no tiene texto.": "Diapositiba honek ez du testurik.",
+  "Avanza sola demasiado rápido": "Bere kabuz azkarregi aurreratzen da",
   "Recomienda Revela a tu centro": "Gomendatu Revela zure ikastetxeari",
   "Si te gusta Revela, pásale este enlace a la dirección de tu centro o empresa. Lo envías tú: Revela no escribe a nadie.": "Revela gustatzen bazaizu, pasatu esteka hau zure ikastetxeko edo enpresako zuzendaritzari. Zuk bidaltzen duzu: Revelak ez dio inori idazten.",
   "Copiar el enlace": "Kopiatu esteka",

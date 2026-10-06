@@ -1,6 +1,11 @@
 // Galician interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Modo lectura": "Modo lectura",
+  "Leer en voz alta": "Ler en voz alta",
+  "Parar": "Parar",
+  "Esta diapositiva no tiene texto.": "Esta diapositiva non ten texto.",
+  "Avanza sola demasiado rápido": "Avanza soa demasiado rápido",
   "Recomienda Revela a tu centro": "Recomenda Revela ao teu centro",
   "Si te gusta Revela, pásale este enlace a la dirección de tu centro o empresa. Lo envías tú: Revela no escribe a nadie.": "Se che gusta Revela, pásalle esta ligazón á dirección do teu centro ou empresa. Envíala ti: Revela non lle escribe a ninguén.",
   "Copiar el enlace": "Copiar a ligazón",

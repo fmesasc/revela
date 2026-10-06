@@ -1,6 +1,11 @@
 // Arabic interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Modo lectura": "وضع القراءة",
+  "Leer en voz alta": "القراءة بصوت عالٍ",
+  "Parar": "إيقاف",
+  "Esta diapositiva no tiene texto.": "لا تحتوي هذه الشريحة على نص.",
+  "Avanza sola demasiado rápido": "تتقدم تلقائيًا بسرعة كبيرة",
   "Recomienda Revela a tu centro": "أوصِ مدرستك بـ Revela",
   "Si te gusta Revela, pásale este enlace a la dirección de tu centro o empresa. Lo envías tú: Revela no escribe a nadie.": "إن أعجبك Revela، فأرسل هذا الرابط إلى إدارة مدرستك أو شركتك. أنت من يرسله: لا يراسل Revela أحدًا.",
   "Copiar el enlace": "نسخ الرابط",

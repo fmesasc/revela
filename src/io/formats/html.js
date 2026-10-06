@@ -38,6 +38,7 @@ import { t, speechLang, currentLang } from '../../i18n/index.js';
 import { sizeText } from '../../features/content/files.js';
 import { collectFigures, figuresMap, captionLine, figIndexTitle, slidePaths } from '../../features/document/captions.js';
 import { INK_CSS, inkJS } from '../runtime/ink.js';
+import { READING_CSS, readingJS } from '../runtime/reading.js';
 import { deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
 import { animTimeline, animEntries, EFFECT_KF, EFFECT_KF_CSS, EMPHASIS_FX, isEntrance, customTransitionCSS, transitionName, isShapeTransition, pathKeyframesCSS, pathTurns, animsOf, animKey, offsetBefore } from '../../features/animation/transitions.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, levelVars } from '../../features/document/master.js';
@@ -628,6 +629,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  ${/ data-pdf[ >]/.test(slides) ? PDF_CSS : ''}
  ${hasTrig ? `[data-bid]{cursor:pointer} .rv-trig.rv-in:not(.on){opacity:0} ${EFFECT_KF_CSS.replace(/\n/g, ' ')}` : ''}
  ${INK_CSS}
+ ${READING_CSS}
  ${canvas ? '' : fit === 'bands' ? '.reveal-viewport{background:#000!important} .reveal .slides section>.stage{clip-path:inset(0)}'
     : '.reveal .slides section[data-fill=g]>.stage{background:transparent!important}'}
  ${canvas ? `.reveal.rv-canvas{background:${deck.canvas.bg || '#0d1117'}} .reveal.rv-canvas .backgrounds{display:none}
@@ -675,8 +677,10 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${/ data-file(-view)?[ >]/.test(slides) ? FILE_JS : ''}
  ${hasMedia ? `${createMediaPlayer.toString()}\n${revelaMediaRuntime.toString()}\nrevelaMediaRuntime(${JSON.stringify(GIFUCT)});` : ''}
  ${inkJS(w, h, { pen: t('Lápiz'), hl: t('Resaltador'), laser: t('Puntero láser'), color: t('Color de la tinta'), erase: t('Borrar la tinta de la diapositiva'),
-   cc: t('Subtítulos en directo'), zin: t('Acercar'), zout: t('Alejar'), zreset: t('Tamaño normal'), next: t('Siguiente'), prev: t('Anterior'), go: t('Ir a la diapositiva'), overview: t('Vista general'),
+   cc: t('Subtítulos en directo'), read: t('Modo lectura'), zin: t('Acercar'), zout: t('Alejar'), zreset: t('Tamaño normal'), next: t('Siguiente'), prev: t('Anterior'), go: t('Ir a la diapositiva'), overview: t('Vista general'),
    titles: deck.slides.filter(s => !s.hidden).map(s => slideTitle(s)), arrow: t('Puntero normal'), black: t('Pantalla en negro'), white: t('Pantalla en blanco'), full: t('Pantalla completa'), end: t('Terminar la presentación'), lang: speechLang(), ccWarn: t('Los subtítulos usan el reconocimiento de voz del navegador: en Chrome y Edge el audio se envía a su servicio de voz. ¿Activarlos?') })}
+ ${readingJS({ read: t('Modo lectura'), listen: t('Leer en voz alta'), stop: t('Parar'), bigger: t('Letra más grande'), smaller: t('Letra más pequeña'), close: t('Cerrar'),
+   img: t('Imagen'), q: t('Pregunta'), slide: t('Diapositiva'), empty: t('Esta diapositiva no tiene texto.') })}
  ${overviewJS(groups.map(g => (deck.sections || []).find(x => x.id === g[0].sectionId)?.name || ''),
    { title: t('Vista general'), help: t('Flechas e Intro, o clic, para ir · Esc para cerrar') })}
  ${hasZoomReturn ? '(function(){var p=null;document.addEventListener("click",function(e){var a=e.target.closest("a.slide-zoom[data-zoom-return]");if(a){p={t:a.dataset.target,o:a.dataset.origin.split("/"),arrived:false};}});Reveal.on("slidechanged",function(ev){if(!p)return;if(ev.indexh+"/"+(ev.indexv||0)===p.t){p.arrived=true;return;}if(p.arrived){var o=p.o;p=null;setTimeout(function(){Reveal.slide(+o[0],+o[1]);},0);}});})();' : ''}

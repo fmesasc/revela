@@ -4,12 +4,9 @@
 
 import { plainText } from '../../core/text.js';
 import { state } from '../../core/store.js';
+import { styled, layoutBackground } from './master.js';
+import { currentPalette, deckFg } from '../design/palettes.js';
 
-// Default text / background colour of each reveal.js theme (what the export uses
-// when a text box has no explicit colour).
-const THEME_FG = { black: '#ffffff', white: '#222222', league: '#eeeeee', night: '#eeeeee',
-  serif: '#000000', solarized: '#657b83', moon: '#93a1a1', dracula: '#f8f8f2', beige: '#333333', sky: '#333333',
-  simple: '#000000', blood: '#eeeeee', 'black-contrast': '#ffffff', 'white-contrast': '#000000' };
 
 function rgb(c) {
   c = String(c || '').trim();
@@ -45,6 +42,26 @@ function textColours(html, themeFg) {
   return cols;
 }
 
+// What a text box's words are read against, and their own colour: its box's fill, else the topmost filled
+// shape or box under its middle, else the slide's background (its own, its layout's or the theme's). null: a
+// picture, a gradient or a video under it — it can't be judged from here.
+function textBack(deck, s, b) {
+  if (b.bg && rgb(b.bg)) return b.bg;
+  const bs = s.blocks || [], j = bs.indexOf(b), mx = b.x + b.w / 2, my = b.y + b.h / 2;
+  const below = bs.slice(0, Math.max(0, j)).reverse().find(x => !x.hidden && mx >= x.x && mx <= x.x + x.w && my >= x.y && my <= x.y + x.h
+    && (['shape', 'image', 'video', 'model', 'chart', 'embed', 'camera'].includes(x.type) || (x.type === 'text' && x.bg)));
+  if (below) return below.type === 'shape' && !below.fill2 && rgb(below.fill) && !(below.fillOpacity < 0.9) ? below.fill : below.type === 'text' && rgb(below.bg) ? below.bg : null;
+  let bg = s.background; try { bg = bg || layoutBackground(s, deck); } catch {}
+  bg = bg || currentPalette(deck).bg;
+  return rgb(bg) ? bg : null;
+}
+// (Old presentations with a reveal.js theme and no palette: that theme's text colour.)
+const THEME_FG = { black: '#ffffff', white: '#222222', league: '#eeeeee', night: '#eeeeee', serif: '#000000', solarized: '#657b83', moon: '#93a1a1', dracula: '#f8f8f2',
+  beige: '#333333', sky: '#333333', simple: '#000000', blood: '#eeeeee', 'black-contrast': '#ffffff', 'white-contrast': '#000000' };
+const styledOf = (deck, s, b) => { try { return styled(b, s, deck) || b; } catch { return b; } };
+const textBase = (deck, s, b) => b.color || (!deck.palette && THEME_FG[deck.theme]) || styledOf(deck, s, b).color || deckFg(deck);
+const textSize = (deck, s, b) => +styledOf(deck, s, b).fontSize || b.fontSize || 40;
+
 // Objects that need a text alternative (unless marked decorative).
 const NEEDS_ALT = { image: 'Imagen sin texto alternativo', chart: 'Gráfico sin texto alternativo',
   model: 'Modelo 3D sin texto alternativo', video: 'Vídeo sin texto alternativo', icon: 'Icono sin texto alternativo' };
@@ -66,6 +83,7 @@ export function checkAccessibility(deck = state.deck) {
   const issues = [];
   const add = (kind, slide, msg, blockId = null, extra = '') => issues.push({ kind, slide, blockId, msg, extra });
   const titles = new Map();
+  if (deck.autoSlide && deck.autoSlide < 5000) add('fast', 0, 'Avanza sola demasiado rápido', null, (deck.autoSlide / 1000).toLocaleString() + ' s');
   deck.slides.forEach((s, i) => {
     const bs = s.blocks || [];
     if (!bs.length) { add('empty', i, 'Diapositiva vacía'); return; }
@@ -76,15 +94,15 @@ export function checkAccessibility(deck = state.deck) {
       if (titles.has(k)) add('duptitle', i, 'Título duplicado', null, titles.get(k) + 1);
       else titles.set(k, i);
     }
-    const bg = rgb(s.background) ? s.background : null;       // gradients/images: can't judge
+    if (s.autoSlide && s.autoSlide < 5000 && !s.hidden) add('fast', i, 'Avanza sola demasiado rápido', null, (s.autoSlide / 1000).toLocaleString() + ' s');
     for (const b of bs) {
       if (NEEDS_ALT[b.type] && !b.decorative && !(b.alt || '').trim()) add('alt', i, NEEDS_ALT[b.type], b.id);
       if (b.type === 'table' && !b.header) add('tablehead', i, 'Tabla sin fila de encabezado', b.id);
-      if (b.type === 'text' && bg && plain(b.html) && !b.wordart) {
-        const back = b.bg && rgb(b.bg) ? b.bg : bg;
-        const fg = textColours(b.html, b.color || THEME_FG[deck.theme] || '#ffffff');
+      const back = b.type === 'text' && plain(b.html) && !b.wordart ? textBack(deck, s, b) : null;
+      if (back) {
+        const fg = textColours(b.html, textBase(deck, s, b));
         const worst = Math.min(...fg.map(c => contrast(c, back) ?? 21));
-        const need = (b.fontSize || 40) >= 24 ? 3 : 4.5;          // WCAG: large text needs 3:1
+        const need = textSize(deck, s, b) >= 24 ? 3 : 4.5;          // WCAG: large text needs 3:1
         if (worst < need) add('contrast', i, 'Contraste de texto bajo', b.id, worst.toFixed(1) + ':1');
       }
     }
@@ -104,8 +122,8 @@ export function readableColour(c, back, need = 4.5) {
 // Give a text box's colours enough contrast against what's behind it. true if something changed.
 export function fixContrast(deck, slideIndex, blockId) {
   const s = deck.slides[slideIndex], b = s?.blocks.find(x => x.id === blockId); if (!b || b.type !== 'text') return false;
-  const back = b.bg && rgb(b.bg) ? b.bg : s.background; if (!rgb(back)) return false;
-  const need = (b.fontSize || 40) >= 24 ? 3 : 4.5;
+  const back = textBack(deck, s, b); if (!back) return false;
+  const need = textSize(deck, s, b) >= 24 ? 3 : 4.5;
   let changed = false;
   const d = new DOMParser().parseFromString(b.html || '', 'text/html').body;
   d.querySelectorAll('[style*="color"], font[color]').forEach(el => {
@@ -116,7 +134,7 @@ export function fixContrast(deck, slideIndex, blockId) {
     changed = true;
   });
   if (changed) b.html = d.innerHTML;
-  const base = b.color || THEME_FG[deck.theme] || '#ffffff';
+  const base = textBase(deck, s, b);
   if ((contrast(base, back) ?? 21) < need) { b.color = readableColour(base, back, need); changed = true; }
   return changed;
 }

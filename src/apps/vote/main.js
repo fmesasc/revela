@@ -3,6 +3,7 @@
 
 import { PEERJS, loadScript } from '../../core/vendor.js';
 import { peerOptions } from '../../core/ice.js';
+import { readingItems, readingHTML } from '../../io/runtime/reading.js';
 
 const $ = s => document.querySelector(s);
 const show = id => ['join', 'poll', 'wait'].forEach(x => { $('#' + x).hidden = x !== id; });
@@ -85,9 +86,34 @@ function showSlide(d) {
     .reveal .slide-background.present{display:block!important;visibility:visible!important;opacity:1!important}</style></head>
     <body><div class="${String(d.cls || 'reveal').replace(/"/g, '')}">${d.bg ? `<div class="backgrounds">${d.bg}</div>` : ''}<div class="slides">${d.html}</div></div></body></html>`;
   $('#slide-n').textContent = d.n && d.of ? `${d.n} / ${d.of}` : '';
+  $('#read-bar').hidden = !d.html; paintReading();
   $('#wait h1').textContent = 'Sigue la presentación'; $('#wait p').textContent = 'Cuando haya una pregunta o una actividad, aparecerá aquí.';
   fit();
 }
+// Easy reading: the slide's words in a calm column (reading.js), larger, spaced, read aloud if wanted.
+let readOn = false, readSize = 21;
+try { readOn = localStorage.getItem('revela.read') === '1'; readSize = +localStorage.getItem('revela.read.size') || 21; } catch {}
+function paintReading() {
+  const box = $('#read-box'); $('#read-go').setAttribute('aria-pressed', String(readOn)); box.hidden = !readOn || !lastSlide?.html;
+  if (box.hidden) return;
+  box.style.setProperty('--rs', readSize + 'px');
+  const doc = new DOMParser().parseFromString(`<div class="slides">${lastSlide.html}</div>`, 'text/html');
+  const sec = doc.querySelector('section.present') || doc.querySelector('section');
+  const items = readingItems(sec);
+  $('#read-text').innerHTML = items.length ? readingHTML(items, { img: 'Imagen', q: 'Pregunta' }) : '<p>Esta diapositiva no tiene texto.</p>';
+  stopSpeech();
+}
+function stopSpeech() { try { speechSynthesis.cancel(); } catch {} $('#read-say').textContent = '▶ Leer en voz alta'; }
+$('#read-go').addEventListener('click', () => { readOn = !readOn; try { localStorage.setItem('revela.read', readOn ? '1' : '0'); } catch {} paintReading(); });
+$('#read-sm').addEventListener('click', () => { readSize = Math.max(16, readSize - 2); try { localStorage.setItem('revela.read.size', readSize); } catch {} paintReading(); });
+$('#read-lg').addEventListener('click', () => { readSize = Math.min(40, readSize + 2); try { localStorage.setItem('revela.read.size', readSize); } catch {} paintReading(); });
+$('#read-say').addEventListener('click', () => {
+  if (!window.speechSynthesis) return;
+  if (speechSynthesis.speaking) { stopSpeech(); return; }
+  const u = new SpeechSynthesisUtterance($('#read-text').innerText); u.lang = lastSlide?.lang || document.documentElement.lang || 'es'; u.rate = 0.95; u.onend = stopSpeech;
+  speechSynthesis.speak(u); $('#read-say').textContent = '■ Parar';
+});
+
 function fit() {
   const view = $('#slide-view'), f = view.querySelector('iframe'); if (view.hidden || !lastSlide) return;
   const w = +lastSlide.w || 1280, h = +lastSlide.h || 720, k = view.clientWidth / w;
