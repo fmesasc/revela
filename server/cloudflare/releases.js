@@ -22,7 +22,7 @@ const settingsOf = async env => ({ ...RELEASES_DEFAULT, ...((await call(env.BUDG
 
 // The state: production, what's waiting in main (each commit), main's tests, the last publications.
 export async function releasesState(env) {
-  const [cmp, tests, runs, settings] = await Promise.all([gh(env, '/compare/produccion...main'), gh(env, '/actions/workflows/tests.yml/runs?branch=main&per_page=5'),
+  const [cmp, tests, runs, settings] = await Promise.all([gh(env, '/compare/production...main'), gh(env, '/actions/workflows/tests.yml/runs?branch=main&per_page=5'),
     gh(env, '/actions/workflows/promote.yml/runs?per_page=5').catch(() => ({ workflow_runs: [] })), settingsOf(env)]);
   const main = cmp.commits?.at(-1)?.sha || cmp.base_commit?.sha, mainTests = (tests.workflow_runs || []).find(r => r.head_sha === main);
   return {

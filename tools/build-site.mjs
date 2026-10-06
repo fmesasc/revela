@@ -103,8 +103,8 @@ function ensureSite() {
     writeFileSync(key, Buffer.from(k, 'base64'), { mode: 0o600 });
     rmSync(join(ROOT, 'site'), { recursive: true, force: true });
     // (Without the machine's git settings: Cloudflare's rewrite GitHub addresses to its own https access, which only reaches this repository.)
-    // (A build of the branch produccion takes the website's produccion; any other, its main — what's being tried.)
-    execFileSync('git', ['clone', '--depth', '1', '--branch', process.env.CF_PAGES_BRANCH === 'produccion' ? 'produccion' : 'main', 'ssh://git@github.com/fmesasc/revela-site.git', join(ROOT, 'site')], { stdio: 'inherit',
+    // (A build of the branch production takes the website's production; any other, its main — what's being tried.)
+    execFileSync('git', ['clone', '--depth', '1', '--branch', process.env.CF_PAGES_BRANCH === 'production' ? 'production' : 'main', 'ssh://git@github.com/fmesasc/revela-site.git', join(ROOT, 'site')], { stdio: 'inherit',
       env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_TERMINAL_PROMPT: '0',
         GIT_SSH_COMMAND: `ssh -i ${key} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new` } });
   } finally { rmSync(dir, { recursive: true, force: true }); }

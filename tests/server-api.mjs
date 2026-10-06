@@ -1965,7 +1965,7 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     env.FETCH = async (u, init = {}) => { const s = String(u);
       if (!s.startsWith('https://api.github.com/repos/fmesasc/revela/')) return prevF3(u, init);
       ghCalls.push({ s, method: init.method || 'GET', auth: init.headers?.Authorization, body: init.body && JSON.parse(init.body) });
-      if (s.endsWith('/compare/produccion...main')) return Response.json({ base_commit: { sha: 'p1', commit: { message: 'En producción\nmás', committer: { date: '2026-10-01T10:00:00Z' } } },
+      if (s.endsWith('/compare/production...main')) return Response.json({ base_commit: { sha: 'p1', commit: { message: 'En producción\nmás', committer: { date: '2026-10-01T10:00:00Z' } } },
         commits: [{ sha: 'm1', commit: { message: 'Primero', committer: { date: '2026-10-02T10:00:00Z' } } }, { sha: 'm2', commit: { message: 'Último cambio', committer: { date: mainDate } } }] });
       if (s.includes('/actions/workflows/tests.yml/runs')) return Response.json({ workflow_runs: [{ head_sha: 'm2', status: 'completed', conclusion: testsOk, html_url: 'https://github.com/x/1' }] });
       if (s.includes('/actions/workflows/promote.yml/runs')) return Response.json({ workflow_runs: [] });

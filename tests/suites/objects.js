@@ -606,7 +606,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       mv.animate([{ translate: '0px 0px' }, { translate: '300px 0px' }], { duration: 1500 });
       mv.dispatchEvent(new W.TransitionEvent('transitionstart', { propertyName: 'translate', bubbles: true }));
       mv.dispatchEvent(new W.TransitionEvent('transitionstart', { propertyName: 'opacity', bubbles: true }));
-      await sleep(150);
+      for (let i = 0; i < 20 && !(log.length && /^-90(\.0)?deg/.test(mv.cameraOrbit)); i++) await sleep(50);   // (as soon as it's turned: a slow machine takes longer)
       eq(log.join(), 'Walk', 'anda mientras se mueve (una vez, aunque empiecen varias propiedades)');
       assert(/^-90(\.0)?deg/.test(mv.cameraOrbit), 'hacia la derecha: se ve de perfil mirando a la derecha');
       for (let i = 0; i < 100 && log.length < 2; i++) await sleep(50);
@@ -616,7 +616,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       // Moving up the slide it shows its back; with a curved path (keyframes) too.
       log.length = 0; mv.style.animationDuration = '300ms';
       mv.animate([{ translate: '0px 0px' }, { translate: '0px -200px' }], { duration: 300 });
-      mv.dispatchEvent(new W.AnimationEvent('animationstart', { animationName: 'rvPm1', bubbles: true })); await sleep(120);
+      mv.dispatchEvent(new W.AnimationEvent('animationstart', { animationName: 'rvPm1', bubbles: true }));
+      for (let i = 0; i < 20 && !/^-?180(\.0)?deg/.test(mv.cameraOrbit); i++) await sleep(50);
       assert(/^-?180(\.0)?deg/.test(mv.cameraOrbit) && log[0] === 'Walk', 'hacia arriba: de espaldas');
       await sleep(300);
     } finally { mv.remove(); }

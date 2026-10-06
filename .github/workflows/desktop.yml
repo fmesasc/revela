@@ -1,6 +1,6 @@
 # The desktop app (Tauri 2) for Windows, macOS and Linux, after all the tests pass (tests.yml).
 #
-# - Each change of production (the branch produccion: promote.yml): builds and publishes the installers in the
+# - Each change of production (the branch production: promote.yml): builds and publishes the installers in the
 #   «latest» release (Revela · latest version), replaced each time.
 # - A vX.Y.Z tag: also a fixed release with that number.
 # - By hand too: Actions ▸ Desktop app ▸ Run workflow.
@@ -11,7 +11,7 @@ name: Desktop app
 
 on:
   push:
-    branches: [produccion]          # (installed apps update only to what's in production: promote.yml)
+    branches: [production]          # (installed apps update only to what's in production: promote.yml)
     tags: ['v*']
     paths-ignore: ['**.md', 'docs/**', 'tests/**', 'examples/**']   # (not tools/: build-site.mjs makes the bundle)
   workflow_dispatch:
