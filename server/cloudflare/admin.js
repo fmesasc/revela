@@ -89,7 +89,8 @@ const pad = n => String(n).padStart(10, '0');
 const EMAIL = /^[^\s@<>"]{1,64}@[a-z0-9.-]{1,190}\.[a-z]{2,}$/;
 export const STATUSES = ['open', 'waiting', 'closed'];   // (see Tickets)
 export const statusOf = s => (s === 'pending' ? 'waiting' : STATUSES.includes(s) ? s : null);
-export const CATEGORIES = ['bug', 'ai', 'billing', 'account', 'cloud', 'other'];
+// (The first ones come from the app's «Informar de un problema»; press … partner, from the website's «Contacto».)
+export const CATEGORIES = ['bug', 'ai', 'billing', 'account', 'cloud', 'other', 'press', 'privacy', 'legal', 'partner'];
 export const CHARGES = ['ai', 'image', 'speech', 'model3d'];           // (ledger kinds that are AI charges: refundable)
 const clip = (s, n) => String(s ?? '').replace(/\r/g, '').slice(0, n);
 const stub = (ns, name) => ns.get(ns.idFromName(name));
@@ -306,6 +307,13 @@ export class Tickets {
           t.reminded = a.now; await this.save(t, { keep: true }); items.push({ kind: 'remind', ...item });
         }
       }
+      // Closed ones without activity for a.purge ms (3 years by default) are deleted, attachment and all: nothing is kept
+      // longer than needed (privacy.html, «Cuánto tiempo se guardan los datos»).
+      if (a.purge) for (const [k, n] of await st.list({ prefix: 'i:closed|', end: `i:closed|${tsKey(a.now - a.purge)}`, limit: 200 })) {
+        const old = [...(await st.list({ prefix: `a:${pad(n)}:` })).keys()];
+        for (let i = 0; i < old.length; i += 128) await st.delete(old.slice(i, i + 128));
+        await st.delete([k, 't:' + pad(n), 'x:' + pad(n)]); items.push({ kind: 'purge', id: n });
+      }
       return Response.json({ items });
     }
     const t = await st.get('t:' + pad(+a.id || 0)); if (!t) return Response.json({ error: 'not found' }, { status: 404 });
@@ -344,7 +352,7 @@ export async function createTicket(req, env, me, body, json) {
   if (body.website) return json({ ok: true, id: 0 });                       // (a bot filled the hidden field: nothing is stored)
   let email, name = null, lang = /^[a-z]{2}$/.test(body.lang || '') ? body.lang : null;
   if (me) { const p = await call(acct(env, me.sub), 'me'); email = p.email; name = p.name || null; }
-  else { email = String(body.email || '').trim().toLowerCase(); if (!EMAIL.test(email)) return json({ error: 'email' }, 400); }
+  else { email = String(body.email || '').trim().toLowerCase(); if (!EMAIL.test(email)) return json({ error: 'email' }, 400); name = clip(body.name, 120).trim() || null; }
   let attach = null;
   if (body.attach != null) {
     attach = typeof body.attach === 'string' ? body.attach : JSON.stringify(body.attach);
@@ -402,12 +410,13 @@ export async function supportReply(req, env, url, site) {
 // (No reminder without MAIL_SECRET and a way to send email: it carries the link to answer.)
 const daysVar = (v, d) => (v === undefined || v === null || String(v).trim() === '' ? d : Math.max(0, +v || 0));
 export async function ticketsDue(env, now = Date.now()) {
-  if (!env.TICKETS) return { reminded: 0, closed: 0 };
+  if (!env.TICKETS) return { reminded: 0, closed: 0, purged: 0 };
   const remind = env.MAIL_SECRET && mailConfigured(env) ? daysVar(env.SUPPORT_REMIND_DAYS, 7) * DAY : 0, close = daysVar(env.SUPPORT_AUTOCLOSE_DAYS, 21) * DAY;
-  if (!remind && !close) return { reminded: 0, closed: 0 };
-  const { items = [] } = await call(stub(env.TICKETS, 'tickets'), 'due', { now, remind, close });
-  let reminded = 0, closed = 0;
+  const purge = daysVar(env.SUPPORT_KEEP_DAYS, 1095) * DAY;
+  const { items = [] } = await call(stub(env.TICKETS, 'tickets'), 'due', { now, remind, close, purge });
+  let reminded = 0, closed = 0, purged = 0;
   for (const x of items) {
+    if (x.kind === 'purge') { purged++; continue; }
     if (x.kind === 'remind') {
       const link = await ticketLink(env, x.id, x.email);
       if (link && await mail(env, { to: x.email, kind: 'ticketRemind', lang: x.lang, vars: { n: x.id, link, days: TICKET_LINK_DAYS, date: fmtDate(x.since, x.lang), close: x.closeAt && fmtDate(x.closeAt, x.lang) } })) reminded++;
@@ -415,7 +424,8 @@ export async function ticketsDue(env, now = Date.now()) {
     if (env.AUDIT) await audit(env, { by: 'system', action: x.kind === 'close' ? 'ticket-autoclose' : 'ticket-remind', target: 'ticket:' + x.id,
       before: { status: 'waiting' }, after: { status: x.kind === 'close' ? 'closed' : 'waiting' } }).catch(() => {});
   }
-  return { reminded, closed };
+  if (purged && env.AUDIT) await audit(env, { by: 'system', action: 'ticket-purge', target: 'tickets', after: { purged } }).catch(() => {});
+  return { reminded, closed, purged };
 }
 
 // ---- AI help for whoever answers a ticket ------------------------------------------------------------
@@ -450,7 +460,7 @@ export function ticketContext(t, v, team) {
 }
 const SYSTEM = lang => `You help the support team of Revela, a presentation editor (web and desktop) with optional accounts: a free plan and Pro, AI credits that expire (lots), cloud presentations, teams.
 You get a support ticket and, if the person was signed in, a summary of their account. Never invent facts that aren't in the data. Admin actions available: "refund" (give back the last AI charge not yet refunded), "credits" (add credits; amount = number of credits, at most ${MAX_SUGGEST_CREDITS}), "plan" (manual Pro; amount = days, at most ${MAX_SUGGEST_DAYS}), "unblock" (only if the account is blocked), "none". Suggest an action only when the data supports it (e.g. a failed AI charge the person complains about) and never if there is no account.
-Answer ONLY a JSON object: {"summary": "1-2 sentences in Spanish", "category": "bug|ai|billing|account|cloud|other", "priority": "baja|media|alta|urgente", "likelyCause": "in Spanish", "checks": ["what the admin should verify, in Spanish"], "actions": [{"type": "refund|credits|plan|unblock|none", "amount": number or omitted, "reason": "short reason for the audit log, in Spanish", "why": "in Spanish"}], "draftReply": "the answer to send to the person, in ${LANG_NAMES[lang] || 'Spanish'}, friendly, concrete, no promises the data doesn't support, signed \\"El equipo de Revela\\" (translated if not Spanish)", "statusAfter": "waiting|closed"}.
+Answer ONLY a JSON object: {"summary": "1-2 sentences in Spanish", "category": "bug|ai|billing|account|cloud|other|press|privacy|legal|partner", "priority": "baja|media|alta|urgente", "likelyCause": "in Spanish", "checks": ["what the admin should verify, in Spanish"], "actions": [{"type": "refund|credits|plan|unblock|none", "amount": number or omitted, "reason": "short reason for the audit log, in Spanish", "why": "in Spanish"}], "draftReply": "the answer to send to the person, in ${LANG_NAMES[lang] || 'Spanish'}, friendly, concrete, no promises the data doesn't support, signed \\"El equipo de Revela\\" (translated if not Spanish)", "statusAfter": "waiting|closed"}.
 statusAfter: "waiting" if the reply asks the person something or needs their confirmation, "closed" if it solves it.`;
 
 // The model's answer, checked: only known values, bounded sizes and amounts, actions that make sense for this account.

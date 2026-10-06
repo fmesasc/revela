@@ -4,7 +4,7 @@
 // are simulated. Run by tests/run.sh when Node.js is available.
 import worker, { Account, Budget, DesktopLink, ShareBox, Limits, CloudDoc, Team, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance, Crm, Community } from '../server/cloudflare/worker.js';
 import { summarize, bump, toCsv, cleanEntry, featureOf } from '../server/cloudflare/finance.js';
-import { verifyAccess, resetAccessCerts, resetPromoCache } from '../server/cloudflare/admin.js';
+import { verifyAccess, resetAccessCerts, resetPromoCache, ticketsDue } from '../server/cloudflare/admin.js';
 import { ticketToken, render } from '../server/cloudflare/mail.js';
 import { verifyBody } from '../server/blender/gate.js';
 import { verifyStripe, sha256, shortCode, settings, stripeConf, billingMode, deviceOf } from '../server/cloudflare/api.js';
@@ -1055,6 +1055,28 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
       ok([...a1.j.tickets, ...a2.j.tickets, ...a3.j.tickets].map(t => t.id).join() === L.map(t => t.id).join() && !a3.j.cursor, 'lista: paginada de un estado al siguiente'); }
     x = await A('GET', '/stats'); const c = x.j.tickets;
     ok(c.open + c.waiting + c.closed === L.length && c.waiting >= 1, 'resumen: cuántas en cada estado: ' + JSON.stringify(c));
+
+    // The website's «Contacto» (revelaslides.com/contacto): the same tickets, without a session — the name and the topic too.
+    sent = []; r = await sup({ name: '  Marta Ruiz  ', email: 'marta@periodico.example', category: 'press', message: 'Escribo un reportaje sobre herramientas educativas.', lang: 'es', source: 'web' }, { ip: '10.3.0.1' });
+    const tc = (await r.json()).id; t = await get(tc);
+    ok(r.status === 200 && t.name === 'Marta Ruiz' && t.category === 'press' && t.email === 'marta@periodico.example' && !t.sub && sent.some(y => y.to === 'marta@periodico.example' && new RegExp('#' + tc).test(y.subject)), 'contacto: un ticket con nombre y tema, y el acuse');
+    for (const cat of ['privacy', 'legal', 'partner']) ok((await get((await (await sup({ email: `x-${cat}@example.com`, category: cat, message: 'Hola, una consulta.' }, { ip: '10.3.0.' + cat.length })).json()).id)).category === cat, 'contacto: tema ' + cat);
+    ok((await get((await (await sup({ email: 'y@example.com', category: 'inventado', message: 'Hola, otra.' }, { ip: '10.3.0.99' })).json()).id)).category === 'other', 'contacto: un tema inventado queda en «other»');
+    ok((await get((await (await sup({ email: 'z@example.com', name: 'n'.repeat(500), message: 'Nombre largo.' }, { ip: '10.3.0.98' })).json()).id)).name.length === 120, 'contacto: el nombre, recortado');
+
+    // Kept no longer than needed: closed tickets 3 years without activity are deleted (attachment too); open ones stay.
+    { const tz = (await (await sup({ email: 'vieja@example.com', message: 'Una consulta antigua', attach: { slides: [{ id: 'a' }] } }, { ip: '10.4.0.1' })).json()).id;
+      await A('POST', `/tickets/${tz}/status`, { body: { status: 'closed' } }); const closedAt = (await get(tz)).lastAt;
+      // (Only the tickets' part of the daily run: the rest of it, years ahead, would delete the test accounts.)
+      env.SUPPORT_REMIND_DAYS = '0'; env.SUPPORT_AUTOCLOSE_DAYS = '0';
+      await ticketsDue(env, closedAt + 1094 * DAYms);
+      ok(!!(await get(tz)), 'conservación: a los 2 años y pico, sigue');
+      await ticketsDue(env, closedAt + 1096 * DAYms);
+      env.SUPPORT_REMIND_DAYS = ''; env.SUPPORT_AUTOCLOSE_DAYS = '';
+      const T = env.TICKETS.inst.get('tickets').ctx.storage.m, pid = String(tz).padStart(10, '0');
+      ok(!(await get(tz)) && ![...T.keys()].some(k => k.includes(pid) || k.startsWith('a:' + pid)), 'conservación: a los 3 años cerrada, se borra (con su adjunto y su índice)');
+      ok(!!(await get(tc)), 'conservación: las abiertas no se borran');
+      ok((await real(async () => (await A('GET', '/audit?target=tickets')).j.entries)).some(e => e.action === 'ticket-purge' && e.by === 'system' && e.after.purged >= 1), 'conservación: en la auditoría'); }
   }
 
   // AI help for whoever answers a ticket (mocked OpenRouter): context, budget, cache, validation, access.
@@ -1095,7 +1117,8 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
       && sg.actions.map(a => a.type + (a.amount ?? '')).join() === 'credits2000,plan365,none' && sg.actions[0].reason.length <= 300 && sg.draftReply === '<script>alert(1)</script>',
       'IA: respuesta descuidada o abusiva, recortada (importes, tipos, prioridad, estado): ' + JSON.stringify(sg.actions));
     answerWith({ ...good, actions: [{ type: 'credits', amount: 50 }, { type: 'unblock' }, { type: 'none', why: 'nada' }] });
-    x = await A('POST', `/tickets/${1001}/suggest`, { body: {} });
+    const anon = (await (await sup({ email: 'sin-cuenta@example.com', message: 'Me cobraron de más' }, { ip: '10.5.0.1' })).json()).id;
+    x = await A('POST', `/tickets/${anon}/suggest`, { body: {} });
     ok(x.j.suggestion.actions.map(a => a.type).join() === 'none' && !/"account":\{/.test(aiCalls.at(-1).body.messages[1].content), 'IA: sin cuenta, ninguna acción sobre cuentas');
     answerWith('esto no es JSON'); const u1 = budgetUsd();
     x = await A('POST', `/tickets/${tid}/suggest`, { body: { force: true } });
@@ -1108,7 +1131,9 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     const key = env.OPENROUTER_KEY; delete env.OPENROUTER_KEY;
     ok((await A('POST', `/tickets/${tid}/suggest`, { body: { force: true } })).status === 503 && (await A('GET', '/tickets/' + tid)).j.ai === false, 'IA: sin OPENROUTER_KEY → 503');
     env.OPENROUTER_KEY = key;
-    env.SUPPORT_AI_AUTO = '1'; ok((await A('GET', '/tickets/' + 1001)).j.autoSuggest === false && (await A('GET', '/tickets/1002')).j.autoSuggest === true, 'IA: SUPPORT_AI_AUTO=1 → la página la pide al abrir un ticket sin sugerencia');
+    env.SUPPORT_AI_AUTO = '1';
+    const fresh = (await (await sup({ email: 'nueva@example.com', message: 'Otra consulta' }, { ip: '10.5.0.2' })).json()).id;
+    ok((await A('GET', '/tickets/' + anon)).j.autoSuggest === false && (await A('GET', '/tickets/' + fresh)).j.autoSuggest === true, 'IA: SUPPORT_AI_AUTO=1 → la página la pide al abrir un ticket sin sugerencia');
     env.SUPPORT_AI_AUTO = '';
     aiReply = keep; aiCalls = [];
   }
