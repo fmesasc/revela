@@ -17,7 +17,7 @@
 //   GET  /api/admin/whoami                 → { email }
 //   GET  /api/admin/stats                  → { users, pro, blocked, ai: { month, usd, limit }, tickets: { open, waiting, closed },
 //                                          test: { accounts (billingTest), pro (Pro only from test mode), credits } }
-//   GET  /api/admin/users?q=&cursor=       → { users, cursor }   (q: email prefix or Google sub; none: most recently seen)
+//   GET  /api/admin/users?q=&cursor=       → { users, cursor }   (q: words in any field; none: most recently seen)
 //   GET  /api/admin/users/:sub             → the account: profile, plan, credits and lots, ledger, sessions, docs, team
 //   POST /api/admin/credits                { sub, delta, reason, expiresDays?, notify? }   (ledger kind 'admin')
 //   POST /api/admin/refund                 { sub, reason? , notify? }   (gives back the last AI charge not refunded yet)
@@ -155,10 +155,20 @@ export async function verifyAccess(jwt, env, fetchImpl = fetch, now = Date.now()
   return email && emails(env).includes(email) ? { email } : null;
 }
 
+// The directory's search (any field): text without accents nor case, and everything an account can be found by —
+// also the words the admin's table shows (Pro, Gratis, Bloqueada, prueba, equipo).
+const fold = x => String(x ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+const dayOfTs = t => (t ? new Date(t).toISOString().slice(0, 10) : '');
+function haystack(r) {
+  const pro = r.plan === 'pro' && r.until > Date.now();
+  return fold([r.sub, r.email, r.name, r.plan, pro ? 'pro' : 'gratis free', r.until && 'hasta ' + dayOfTs(r.until), r.lastSeen, dayOfTs(r.created), r.created && 'alta ' + dayOfTs(r.created),
+    r.team && 'equipo team ' + r.team, r.blocked && 'bloqueada blocked', r.test && 'pro de prueba', r.billingTest && 'pagos de prueba test', r.credits + ' creditos'].filter(Boolean).join(' | '));
+}
+
 // ---- Directory: one object for all accounts --------------------------------------------------------
 //   'u:' + sub → { sub, email, name, plan, until, credits, created, lastSeen, team, blocked, billingTest, test (Pro only from
 //                 Stripe's test mode), testCredits, updated }
-//   'e:' + email + '|' + sub → sub          (search by email prefix)
+//   'e:' + email + '|' + sub → sub          (a team's members by email: subs)
 //   's:' + lastSeen + '|' + sub → sub       (the most recently seen first)
 export class Directory {
   constructor(ctx, env) { this.ctx = ctx; this.env = env; }
@@ -187,14 +197,18 @@ export class Directory {
       return Response.json({ subs });
     }
     if (op === 'search') {                                // { q, cursor, limit } → { users, cursor }
-      const limit = Math.min(100, Math.max(1, +a.limit || 50)), q = String(a.q || '').trim().toLowerCase();
+      const limit = Math.min(100, Math.max(1, +a.limit || 50)), q = fold(a.q);
       let keys;
       if (q) {
-        const exact = (await st.get('u:' + q)) ? [q] : [];
-        const m = await st.list({ prefix: 'e:' + q, limit: limit + 1, ...(a.cursor && { startAfter: a.cursor }) });
-        keys = [...m]; const subs = [...new Set([...(a.cursor ? [] : exact), ...keys.slice(0, limit).map(([, v]) => v)])];
-        const users = await getMany(st, subs.map(s => 'u:' + s));
-        return Response.json({ users, cursor: keys.length > limit ? keys[limit - 1][0] : null });
+        // Any field: every word must be somewhere in the account (email, name, sub, plan, team, dates, state), without
+        // caring about accents or case. A scan of every record, like stats: fine for thousands of accounts. Those whose
+        // email or name starts with what's searched first, then the most recently seen; the cursor is where to go on.
+        const words = q.split(/\s+/), found = [];
+        for (const [, r] of await st.list({ prefix: 'u:' })) { const text = haystack(r); if (words.every(w => text.includes(w))) found.push(r); }
+        const first = r => (r.sub === q ? 0 : fold(r.email).startsWith(q) || fold(r.name).startsWith(q) ? 1 : 2);
+        found.sort((x, y) => first(x) - first(y) || String(y.lastSeen || '').localeCompare(String(x.lastSeen || '')) || x.sub.localeCompare(y.sub));
+        const from = Math.max(0, parseInt(a.cursor, 10) || 0);
+        return Response.json({ users: found.slice(from, from + limit), cursor: found.length > from + limit ? String(from + limit) : null, total: found.length });
       }
       const m = await st.list({ prefix: 's:', reverse: true, limit: limit + 1, ...(a.cursor && { end: a.cursor }) });
       keys = [...m]; const users = await getMany(st, keys.slice(0, limit).map(([, v]) => 'u:' + v));

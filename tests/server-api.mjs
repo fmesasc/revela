@@ -896,6 +896,13 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   ok(x.status === 200 && x.j.users.length === 1 && x.j.users[0].sub === '1414' && x.j.users[0].credits === 50 && x.j.users[0].plan === 'free' && x.j.users[0].lastSeen, 'directorio: buscar por correo: ' + JSON.stringify(x.j));
   ok((await A('GET', '/users?q=1414')).j.users[0]?.email === 'pia@example.com', 'directorio: buscar por sub');
   ok((await A('GET', '/users?q=nadie')).j.users.length === 0, 'directorio: sin resultados');
+  { // Any field, not only the email's start: the middle of the email, several words, accents and case, the plan, by pages.
+    const mid = (await A('GET', '/users?q=' + encodeURIComponent('a@example'))).j.users, both = (await A('GET', '/users?q=' + encodeURIComponent('PÍA gratis 1414'))).j.users;
+    ok(mid.length >= 1 && mid.every(u => u.email.includes('a@example')) && mid.some(u => u.sub === '1414'), 'directorio: buscar por cualquier parte del correo: ' + mid.map(u => u.email));
+    ok(both.length === 1 && both[0].sub === '1414', 'directorio: varias palabras, sin acentos ni mayúsculas, y el plan');
+    ok((await A('GET', '/users?q=pia%20pro')).j.users.length === 0, 'directorio: todas las palabras cuentan');
+    const p1 = (await A('GET', '/users?q=example&limit=2')).j, p2 = (await A('GET', '/users?q=example&limit=2&cursor=' + p1.cursor)).j;
+    ok(p1.users.length === 2 && p1.cursor && p1.total > 2 && p2.users.length && !p2.users.some(u => p1.users.some(v => v.sub === u.sub)), 'directorio: búsqueda por páginas'); }
   const all = (await A('GET', '/users')).j.users;
   ok(all.length >= 5 && all.some(u => u.sub === '888') && !all.some(u => u.sub === '222'), 'directorio: recientes (y sin la cuenta borrada): ' + all.map(u => u.sub));
   { const p1 = (await A('GET', '/users?limit=2')).j, p2 = (await A('GET', '/users?limit=2&cursor=' + encodeURIComponent(p1.cursor))).j;
