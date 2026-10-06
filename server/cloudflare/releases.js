@@ -1,4 +1,4 @@
-// Versiones (the administration): what's being tried on pruebas.revelaslides.com and what's in production, and
+// Versiones (the administration): what's being tried on test.revelaslides.com and what's in production, and
 // publishing it — the button runs GitHub's «Publicar en producción» (.github/workflows/promote.yml). Optionally by
 // itself: when main has had no changes for the days the admin chose and its tests passed (the daily run).
 //

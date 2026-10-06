@@ -1,12 +1,12 @@
 # Pruebas y producción
 
-Nada nuevo llega directamente a quien usa Revela. Primero se prueba en **pruebas.revelaslides.com**, y llega a
+Nada nuevo llega directamente a quien usa Revela. Primero se prueba en **test.revelaslides.com**, y llega a
 **revelaslides.com** cuando la administración lo decide.
 
 | | Pruebas | Producción |
 |---|---|---|
 | Rama | `main` | `produccion` |
-| Web y aplicación | pruebas.revelaslides.com (Cloudflare Pages, vista previa de `main`) | revelaslides.com (rama de producción de Pages) |
+| Web y aplicación | test.revelaslides.com (Cloudflare Pages, vista previa de `main`) | revelaslides.com (rama de producción de Pages) |
 | Servidor | Worker `revela-share-staging` (`wrangler.toml [env.staging]`), con sus propios datos | Worker `revela-share` |
 | Pagos | Stripe en modo de prueba | Stripe real |
 | Web pública (repositorio privado) | rama `main` de fmesasc/revela-site | rama `produccion` de fmesasc/revela-site |
@@ -18,7 +18,7 @@ aplicación muestra el distintivo «Pruebas» (`tools/build-site.mjs`, `src/ui/s
 ## El recorrido de un cambio
 
 1. Se sube a `main`. Pasan las pruebas (`tests.yml`) y el servidor de pruebas se actualiza (`server.yml`); Cloudflare
-   Pages construye pruebas.revelaslides.com.
+   Pages construye test.revelaslides.com.
 2. Se prueba allí.
 3. **Publicar en producción**: desde la administración (**Versiones**) o en GitHub (Actions ▸ *Publicar en
    producción* ▸ *Run workflow*). El flujo `promote.yml` comprueba que las pruebas del último `main` pasaron y mueve
@@ -40,15 +40,15 @@ En GitHub (hecho):
 En Cloudflare Pages, proyecto `revelaslides`:
 1. *Settings ▸ Builds ▸ Branch control*: rama de producción **`produccion`**; vistas previas de `main` activadas.
 2. *Settings ▸ Variables and secrets*: `SITE_DEPLOY_KEY_B64` también en **Preview**, y solo en **Preview** la
-   variable `REVELA_STAGE` = `pruebas` (marca la web de pruebas: nunca en Production, o revelaslides.com dejaría de
+   variable `REVELA_STAGE` = `test` (marca la web de pruebas: nunca en Production, o revelaslides.com dejaría de
    aparecer en los buscadores).
-3. *Custom domains*: añadir `pruebas.revelaslides.com`; después, en el DNS de revelaslides.com, cambiar el destino
+3. *Custom domains*: añadir `test.revelaslides.com`; después, en el DNS de revelaslides.com, cambiar el destino
    de ese CNAME a **`main.revelaslides.pages.dev`** (con el proxy de Cloudflare activado).
 4. *Settings ▸ Builds ▸ Deploy hooks*: el gancho que usa fmesasc/revela-site (`CF_DEPLOY_HOOK`) debe ser de la rama
    `main`; crear otro de `produccion` y guardarlo en fmesasc/revela como secreto `CF_DEPLOY_HOOK_PROD` (para cuando
    solo cambia la web).
 
-En Google Cloud (cliente OAuth de Revela): añadir `https://pruebas.revelaslides.com` como origen de JavaScript
+En Google Cloud (cliente OAuth de Revela): añadir `https://test.revelaslides.com` como origen de JavaScript
 autorizado.
 
 Secretos del servidor de pruebas (cada uno con `npx wrangler secret put NOMBRE --env staging` en

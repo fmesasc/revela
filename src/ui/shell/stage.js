@@ -1,4 +1,4 @@
-// The test site (pruebas.revelaslides.com, tools/build-site.mjs STAGE): a badge in the title bar says so, so no one
+// The test site (test.revelaslides.com, tools/build-site.mjs STAGE): a badge in the title bar says so, so no one
 // mistakes it for the real one — its accounts and presentations are apart, and payments are Stripe's test ones.
 import { t } from '../../i18n/index.js';
 

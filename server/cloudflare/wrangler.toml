@@ -282,19 +282,19 @@ class_name = "Visits"
 tag = "v15"
 new_sqlite_classes = ["Visits"]
 
-# ---- Pruebas (staging): pruebas.revelaslides.com ------------------------------------------------------------
+# ---- Pruebas (staging): test.revelaslides.com ------------------------------------------------------------
 # The same Worker as «revela-share-staging», with its own Durable Objects (its own accounts, documents and the
 # rest: nothing is shared with production), deployed from main by server.yml after the tests; production comes from
 # the branch produccion, when the admin says so (promote.yml). Bindings and vars aren't inherited, so they are all
 # here again (tests/layers.py checks the same objects are bound in both). Stripe in test mode; no administration
 # (no ACCESS_*: admin.revelaslides.com is production's). Its secrets are its own: npx wrangler secret put NAME --env staging.
 [env.staging]
-routes = [{ pattern = "pruebas.revelaslides.com/api/*", zone_name = "revelaslides.com" }, { pattern = "pruebas.revelaslides.com/comunidad*", zone_name = "revelaslides.com" }]
+routes = [{ pattern = "test.revelaslides.com/api/*", zone_name = "revelaslides.com" }, { pattern = "test.revelaslides.com/comunidad*", zone_name = "revelaslides.com" }]
 
 [env.staging.vars]
-STAGE = "pruebas"
-API_ORIGINS = "https://pruebas.revelaslides.com"
-SITE_URL = "https://pruebas.revelaslides.com"
+STAGE = "test"
+API_ORIGINS = "https://test.revelaslides.com"
+SITE_URL = "https://test.revelaslides.com"
 STRIPE_MODE = "test"
 MONTHLY_BUDGET_USD = "5"
 MAX_MB = "30"

@@ -23,11 +23,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { SITE_LANGS, pageTexts, translatePage, sitemap } from './site-i18n.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-// Pruebas (pruebas.revelaslides.com) or production: only the variable REVELA_STAGE=pruebas makes the test site (set in
+// Pruebas (test.revelaslides.com) or production: only the variable REVELA_STAGE=test makes the test site (set in
 // Cloudflare Pages for Preview builds only — never inferred: a mistake would hide revelaslides.com from search
 // engines). The test site isn't for search engines (robots.txt, noindex, no sitemap), says what it is on every page,
 // and its app knows (meta revela-stage). Which branch of the website is used: see ensureSite.
-export const STAGE = process.env.REVELA_STAGE === 'pruebas' ? 'pruebas' : '';
+export const STAGE = process.env.REVELA_STAGE === 'test' ? 'test' : '';
 // The app: every file and folder it needs, and nothing else (no tests, tools, server…).
 export const APP_FILES = ['index.html', 'remote.html', 'view.html', 'vote.html', 'auth.html', 'dropbox.html', 'privacy.html', 'terms.html', 'legal.html', 'dpa.html',
   'legal.css', 'legal.js', 'manifest.webmanifest', 'remote.webmanifest', 'sw.js', 'icons', 'assets', 'src'];
@@ -74,7 +74,7 @@ export async function build(out = join(ROOT, 'dist'), { appOnly = false, open = 
 
 // The test site: no indexing, a strip on every page saying so, and the app told (src/ui/shell/stage.js).
 function markStage(out) {
-  writeFileSync(join(out, 'robots.txt'), '# pruebas.revelaslides.com: the test site, not for search engines (revelaslides.com is the real one)\nUser-agent: *\nDisallow: /\n');
+  writeFileSync(join(out, 'robots.txt'), '# test.revelaslides.com: the test site, not for search engines (revelaslides.com is the real one)\nUser-agent: *\nDisallow: /\n');
   rmSync(join(out, 'sitemap.xml'), { force: true });
   const headers = join(out, '_headers');
   writeFileSync(headers, (existsSync(headers) ? readFileSync(headers, 'utf8') + '\n' : '') + '/*\n  X-Robots-Tag: noindex, nofollow\n');

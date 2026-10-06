@@ -87,7 +87,7 @@ def main():
         for ref in refs:
             if not (ROOT / ref).exists():
                 errors.append(f'{page}: {ref} no existe')
-    # the server's test environment (pruebas.revelaslides.com) binds the same Durable Objects as production
+    # the server's test environment (test.revelaslides.com) binds the same Durable Objects as production
     toml = (ROOT / 'server' / 'cloudflare' / 'wrangler.toml').read_text(encoding='utf-8')
     top = toml.split('[env.')[0]
     prod = set(re.findall(r'\[\[durable_objects\.bindings\]\]\nname = "(\w+)"\nclass_name = "(\w+)"', top))

@@ -1,4 +1,4 @@
-# Publicar en producción: what has been tried on pruebas.revelaslides.com goes to revelaslides.com, when the admin says
+# Publicar en producción: what has been tried on test.revelaslides.com goes to revelaslides.com, when the admin says
 # so — here (Actions ▸ Publicar en producción ▸ Run workflow) or from the administration (Versiones), which also runs it
 # by itself after the days without changes the admin chose (server/cloudflare/releases.js).
 #

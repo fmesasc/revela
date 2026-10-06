@@ -224,5 +224,5 @@ signature on the ID token, and the key or password is still needed to open it.
 ## Pruebas y producción
 
 The same Worker runs twice: `revela-share` (production, from the branch `produccion`) and `revela-share-staging`
-(`[env.staging]`: pruebas.revelaslides.com, from `main`, with its own Durable Objects and data). See
+(`[env.staging]`: test.revelaslides.com, from `main`, with its own Durable Objects and data). See
 [docs/PUBLICAR.md](../../docs/PUBLICAR.md).

@@ -8,7 +8,7 @@
 # server/cloudflare/README.md) stay in Cloudflare and are never touched here (wrangler.toml keep_vars).
 name: Server
 
-# main → the test server (pruebas.revelaslides.com, wrangler.toml [env.staging]); produccion → production (promote.yml).
+# main → the test server (test.revelaslides.com, wrangler.toml [env.staging]); produccion → production (promote.yml).
 on:
   push:
     branches: [main, produccion]

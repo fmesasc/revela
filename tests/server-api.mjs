@@ -1991,7 +1991,7 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok(!(await releasesAuto(env)).done && !ghCalls.some(c => c.method === 'POST'), 'versiones: con un cambio reciente, espera');
     mainDate = new Date(old).toISOString(); testsOk = 'failure';
     ok(!(await releasesAuto(env)).done, 'versiones: con las pruebas mal, no');
-    env.STAGE = 'pruebas'; testsOk = 'success'; ok(!(await releasesAuto(env)).done, 'versiones: el servidor de pruebas nunca publica'); delete env.STAGE;
+    env.STAGE = 'test'; testsOk = 'success'; ok(!(await releasesAuto(env)).done, 'versiones: el servidor de pruebas nunca publica'); delete env.STAGE;
     await A('POST', '/releases/settings', { body: { autoDays: 0 } }); delete env.GITHUB_TOKEN; env.FETCH = prevF3;
   }
 

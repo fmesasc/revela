@@ -264,7 +264,7 @@ src/
       notices.js               Revela's own notices for this account's plan and language
   ui/
     shell/                     busy (the «loading» bar and the pressed button's spinner on slow connections), stage (the
-                               «Pruebas» badge on pruebas.revelaslides.com),
+                               «Pruebas» badge on test.revelaslides.com),
                                navigator, contextmenu, present, preview (thumbnails), draw,
                                recorder, appearance, elements (resources side panel), home
                                (Google account, «My presentations»), canvasview (canvas mode),
