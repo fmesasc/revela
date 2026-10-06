@@ -89,7 +89,7 @@ export class CloudDoc {
     if (this.doc) return this.doc;
     const st = this.ctx.storage, meta = await st.get('meta'); if (!meta) return null;
     const r = await readDeck(st); if (!r) return null;
-    this.parts = r.state; this.doc = { meta, deck: r.deck }; return this.doc;
+    this.parts = r.state; this.doc = { meta, deck: r.deck }; this.size = null; return this.doc;
   }
   // Role of { sub, email } (either may be missing): owner, a person's, or the link's.
   roleOf(meta, who) {
@@ -98,10 +98,18 @@ export class CloudDoc {
     const person = who?.email && !over(meta.until?.[who.email]) && meta.people[who.email], link = meta.link !== 'none' && !over(meta.linkUntil) ? meta.link : null;
     return [person, link].filter(Boolean).sort((a, b) => ROLE_RANK[b] - ROLE_RANK[a])[0] || null;
   }
-  // Whether its owner's plan leaves it read-only (id: given by the worker, never by the body).
+  // What it takes in the cloud, in characters (≈ bytes; storage.js): the deck, its saved versions, its picture and the
+  // log of recent changes.
+  async bytes(meta) {
+    this.size ??= JSON.stringify(this.doc.deck).length;
+    const versions = ((await this.ctx.storage.get('versions')) || []).reduce((t, v) => t + (+v.bytes || 0), 0);
+    return this.size + versions + (+meta.thumbChars || 0) + (+meta.logChars || 0);
+  }
+  // Whether its owner's plan leaves it read-only, and the owner's space (id: given by the worker, never by the body).
+  // (It tells the owner's account what it takes now.)
   async locked(meta, id) {
     if (!id || !this.env.ACCOUNTS) return { locked: false };
-    const r = await this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName('u:' + meta.owner)).fetch('https://do/docs-locked', { method: 'POST', body: JSON.stringify({ id }) });
+    const r = await this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName('u:' + meta.owner)).fetch('https://do/docs-locked', { method: 'POST', body: JSON.stringify({ id, bytes: await this.bytes(meta) }) });
     return r.ok ? r.json() : { locked: false };
   }
   // One request at a time (see Account.fetch).
@@ -110,7 +118,7 @@ export class CloudDoc {
     const op = new URL(req.url).pathname.split('/').pop(), a = await req.json(), st = this.ctx.storage;
     if (op === 'init') {
       const meta = { owner: a.owner, ownerEmail: a.ownerEmail, name: nameOf(a.deck), link: 'none', people: {}, rev: 1, created: Date.now(), updated: Date.now() };
-      this.parts = await writeDeck(st, a.deck); this.doc = { meta, deck: a.deck };
+      this.parts = await writeDeck(st, a.deck); this.doc = { meta, deck: a.deck }; this.size = null;
       await st.put({ meta, log: [], versions: [] }); return this.json({ ok: true, rev: 1 });
     }
     const doc = await this.load(); if (!doc) return this.json({ error: 'not found' }, 404);
@@ -146,18 +154,27 @@ export class CloudDoc {
         if (!ok.length) return this.json({ rev: meta.rev });
         const lk = await this.locked(meta, a.id);
         if (lk.locked) return this.json({ error: 'read only', reason: 'over limit', limit: lk.limit }, 402);
+        await this.bytes(meta); const oldSize = this.size;
         const before = at('edit') && Date.now() - (((await st.get('versions')) || []).slice(-1)[0]?.at || 0) > VERSION_EVERY ? JSON.stringify(doc.deck) : null;
         applyOps(doc.deck, ok);
         const size = JSON.stringify(doc.deck).length;
         if (size > docsSettings(this.env).maxMb * 1024 * 1024) { this.doc = null; return this.json({ error: 'too large' }, 413); }   // (reloaded as it was)
-        if (before) await this.snapshot(before, meta.rev);
+        // The owner's space full: nothing that makes it bigger (what makes it smaller, yes — that frees space; then
+        // without the saved version, which would take more).
+        let keep = before;
+        if (lk.storage && keep && size <= oldSize && lk.storage.used + size - oldSize + keep.length > lk.storage.quota) keep = null;
+        const grows = size - oldSize + (keep ? keep.length : 0);
+        if (lk.storage && grows > 0 && lk.storage.used + grows > lk.storage.quota) { this.doc = null; return this.json({ error: 'storage full', used: lk.storage.used, quota: lk.storage.quota }, 402); }
+        this.size = size;
+        if (keep) await this.snapshot(keep, meta.rev);
         meta.rev++; meta.updated = Date.now(); meta.name = nameOf(doc.deck);
         this.parts = await writeDeck(st, doc.deck, this.parts);
         let log = (await st.get('log')) || []; log.push({ rev: meta.rev, ops: ok });
         let chars = log.reduce((t, e) => t + JSON.stringify(e.ops).length, 0);
         while (log.length > LOG_MAX || (chars > LOG_CHARS && log.length > 1)) chars -= JSON.stringify(log.shift().ops).length;
+        meta.logChars = chars;
         await st.put({ meta, log });
-        return this.json({ rev: meta.rev, name: meta.name, owner: meta.owner, ...indexOf(doc.deck) });
+        return this.json({ rev: meta.rev, name: meta.name, owner: meta.owner, bytes: await this.bytes(meta), ...indexOf(doc.deck) });
       }
       case 'share': {
         if (!manages) return this.json({ error: 'forbidden' }, 403);
@@ -205,7 +222,7 @@ export class CloudDoc {
         if (!at('edit')) return this.json({ error: 'forbidden' }, 403);
         const th = String(a.thumb || '');
         if (th.length > THUMB_CHARS || !THUMB.test(th)) return this.json({ error: 'bad thumb' }, 400);
-        meta.thumbAt = Date.now(); await st.put({ thumb: th, meta });
+        meta.thumbAt = Date.now(); meta.thumbChars = th.length; await st.put({ thumb: th, meta });
         return this.json({ at: meta.thumbAt, owner: meta.owner });
       }
       case 'thumb-get': return this.json({ thumb: (await st.get('thumb')) || null, at: meta.thumbAt || null });
@@ -238,7 +255,7 @@ export class CloudDoc {
   // A version of the whole deck (before a change, at most one every half hour; the last ten).
   async snapshot(text, rev) {
     const st = this.ctx.storage, list = (await st.get('versions')) || [], at = Date.now();
-    await writeText(st, `v:${at}:`, text); list.push({ at, rev });
+    await writeText(st, `v:${at}:`, text); list.push({ at, rev, bytes: text.length });
     while (list.length > VERSIONS) {
       const old = list.shift(), n = (await st.get(`v:${old.at}:n`)) || 0;
       await st.delete([`v:${old.at}:n`, ...Array.from({ length: n }, (_, i) => `v:${old.at}:${i}`)]);
@@ -264,8 +281,8 @@ export async function purgeDoc(env, sub, id) {
 // A new one in my list (and in a folder of mine, if given), within the plan's limit.
 async function create(env, me, deck, folder) {
   const s = docsSettings(env), id = random(16);
-  const room = await call(acct(env, me.sub), 'docs-add', { id, name: nameOf(deck), limit: me.plan === 'pro' ? s.proDocs : s.freeDocs, folder: folder || null, ...indexOf(deck) });
-  if (!room.ok) return { status: 402, data: { error: 'doc limit', limit: room.limit } };
+  const room = await call(acct(env, me.sub), 'docs-add', { id, name: nameOf(deck), limit: me.plan === 'pro' ? s.proDocs : s.freeDocs, folder: folder || null, bytes: JSON.stringify(deck).length, ...indexOf(deck) });
+  if (!room.ok) return { status: 402, data: room.storage ? { error: 'storage full', used: room.storage.used, quota: room.storage.quota } : { error: 'doc limit', limit: room.limit } };
   const r = await ask(env, id, 'init', { owner: me.sub, ownerEmail: me.email, deck });
   return { status: 200, data: { id, rev: r.data.rev } };
 }
@@ -280,7 +297,7 @@ export async function handleDocs(path, req, body, url, env, me, json) {
     const A = acct(env, me.sub);
     if (req.method === 'GET') {
       const mine = await call(A, 'docs-list'), inbox = await call(acct(env, 'e:' + me.email), 'inbox-list'), { folders } = await call(A, 'folders-list');
-      return json({ mine: mine.docs, shared: inbox.docs, folders, limit: mine.limit ?? (me.plan === 'pro' ? s.proDocs : s.freeDocs), trashDays: TRASH_DAYS });
+      return json({ mine: mine.docs, shared: inbox.docs, folders, limit: mine.limit ?? (me.plan === 'pro' ? s.proDocs : s.freeDocs), trashDays: TRASH_DAYS, storage: mine.storage || null });
     }
     const deck = body.deck;
     if (!deck || typeof deck !== 'object' || !Array.isArray(deck.slides)) return json({ error: 'bad request' }, 400);
@@ -381,8 +398,8 @@ export async function handleDocs(path, req, body, url, env, me, json) {
     }
     delete r.data.before; delete r.data.ownerEmail;
   } else if (op === 'ops') {
-    if (r.data.owner) await call(acct(env, r.data.owner), 'docs-touch', { id, name: r.data.name, slides: r.data.slides, text: r.data.text });
-    delete r.data.owner; delete r.data.slides; delete r.data.text;
+    if (r.data.owner) await call(acct(env, r.data.owner), 'docs-touch', { id, name: r.data.name, slides: r.data.slides, text: r.data.text, bytes: r.data.bytes });
+    delete r.data.owner; delete r.data.slides; delete r.data.text; delete r.data.bytes;
   }
   return json(r.data);
 }

@@ -1,6 +1,11 @@
 // Galician interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Espacio en la nube": "Espazo na nube",
+  "{used} de {quota} de espacio": "{used} de {quota} de espazo",
+  "lleno": "cheo",
+  "Tu espacio en la nube está lleno ({used} de {quota}). Borra presentaciones que no uses y vacía la papelera, o pasa a Pro para tener más.": "O teu espazo na nube está cheo ({used} de {quota}). Borra presentacións que non uses e baleira o lixo, ou pasa a Pro para ter máis.",
+  "Nube llena: los cambios no se guardan": "Nube chea: os cambios non se gardan",
   "Solo presentar": "Só presentar",
   "Cualquiera con el enlace puede verla como presentación": "Calquera persoa coa ligazón pode vela como presentación",
   "Acceso hasta (vacío: sin fecha de fin)": "Acceso ata (baleiro: sen data de fin)",

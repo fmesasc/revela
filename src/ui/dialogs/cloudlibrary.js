@@ -21,6 +21,15 @@ const keep = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 const fold = s => String(s || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 const hue = s => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const phone = () => matchMedia('(max-width: 700px)').matches;
+// The space in the cloud: used of the quota, as a bar (red from 90 %); the trash counts until it's emptied.
+export const fmtSize = b => (b >= 1024 ** 3 ? (b / 1024 ** 3).toLocaleString(currentLang(), { maximumFractionDigits: 1 }) + ' GB'
+  : (b / 1024 ** 2).toLocaleString(currentLang(), { maximumFractionDigits: b < 10 * 1024 ** 2 ? 1 : 0 }) + ' MB');
+function spaceBar(st) {
+  if (!st?.quota) return '';
+  const pc = Math.min(100, st.used / st.quota * 100);
+  return `<div class="nb-bar nb-space" role="progressbar" aria-label="${t('Espacio en la nube')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pc)}"><i style="width:${pc.toFixed(1)}%"${pc >= 90 ? ' class="full"' : ''}></i></div>
+    <small>${t('{used} de {quota} de espacio').replace('{used}', fmtSize(st.used)).replace('{quota}', fmtSize(st.quota))}${pc >= 100 ? ` · <b>${t('lleno')}</b>` : ''}</small>`;
+}
 const SECTIONS = [['mine', 'cloud', 'Mi nube'], ['shared', 'group', 'Compartidas conmigo'], ['starred', 'star', 'Destacadas'], ['recent', 'schedule', 'Recientes'], ['trash', 'delete', 'Papelera']];
 
 // "2 hours ago"; a date beyond a month.
@@ -123,10 +132,10 @@ function render() {
     .map(f => `<button type="button" class="nb-sec nb-tree${!S.q && S.section === 'mine' && S.folder === f.id ? ' on' : ''}" data-go="${esc(f.id)}" data-folder="${esc(f.id)}" style="--d:${depth}"><i class="ms">folder</i><span>${esc(f.name)}</span></button>${tree(f.id, depth + 1)}`).join('');
   el.querySelector('.nb-secs').innerHTML = SECTIONS.map(([k, icon, label]) => `<button type="button" class="nb-sec${!S.q && S.section === k && !(k === 'mine' && S.folder) ? ' on' : ''}" data-sec="${k}"${k === 'mine' ? ' data-folder=""' : ''}>
       <i class="ms">${icon}</i><span>${t(label)}</span>${k === 'trash' && mine.some(d => d.trashed) ? `<em>${mine.filter(d => d.trashed).length}</em>` : ''}</button>${k === 'mine' && !phone() ? `<div class="nb-treebox">${tree(null, 1)}</div>` : ''}`).join('');
-  // How many of the plan's.
+  // How many of the plan's, and the space they take (server/cloudflare/storage.js).
   const n = mine.length, lim = S.data.limit || 0, trashed = mine.filter(d => d.trashed).length;
   el.querySelector('.nb-quota').innerHTML = `<div class="nb-bar" role="progressbar" aria-valuemin="0" aria-valuemax="${lim}" aria-valuenow="${n}"><i style="width:${lim ? Math.min(100, n / lim * 100).toFixed(1) : 0}%"${n >= lim ? ' class="full"' : ''}></i></div>
-    <small>${t('{n} de {limit} presentaciones').replace('{n}', n).replace('{limit}', lim)}${trashed ? ` · ${t('{n} en la papelera').replace('{n}', trashed)}` : ''}</small>`;
+    <small>${t('{n} de {limit} presentaciones').replace('{n}', n).replace('{limit}', lim)}${trashed ? ` · ${t('{n} en la papelera').replace('{n}', trashed)}` : ''}</small>${spaceBar(S.data.storage)}`;
   // Breadcrumbs (also where to drop).
   const crumbs = el.querySelector('.nb-crumbs');
   if (S.q) crumbs.innerHTML = `<span class="nb-crumb cur">${t('Resultados de «{q}»').replace('{q}', esc(S.q.trim()))}</span>`;

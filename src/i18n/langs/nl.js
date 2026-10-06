@@ -1,6 +1,11 @@
 // Dutch interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Espacio en la nube": "Cloudopslag",
+  "{used} de {quota} de espacio": "{used} van {quota} gebruikt",
+  "lleno": "vol",
+  "Tu espacio en la nube está lleno ({used} de {quota}). Borra presentaciones que no uses y vacía la papelera, o pasa a Pro para tener más.": "Je cloudopslag is vol ({used} van {quota}). Verwijder presentaties die je niet gebruikt en leeg de prullenbak, of stap over op Pro voor meer ruimte.",
+  "Nube llena: los cambios no se guardan": "Cloud vol: wijzigingen worden niet opgeslagen",
   "Solo presentar": "Alleen presenteren",
   "Cualquiera con el enlace puede verla como presentación": "Iedereen met de link kan hem als diavoorstelling bekijken",
   "Acceso hasta (vacío: sin fecha de fin)": "Toegang tot (leeg: geen einddatum)",

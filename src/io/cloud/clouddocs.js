@@ -208,6 +208,8 @@ async function push(me) {
 }
 function fail(me, e) {
   if (cur !== me) return;
+  // (The owner's space is full: what's changed stays here and goes when there's room — the next change tries again.)
+  if (e.status === 402 && e.data?.error === 'storage full') { setStatus('full'); emit('full', e.data); return; }
   if (e.status === 402 && e.data?.error === 'read only') { me.readOnly = { limit: e.data.limit }; setStatus('readonly'); emit('readonly', me.readOnly); return; }   // (kept here, not sent)
   setStatus(e.status === 403 ? 'forbidden' : e.status === 413 ? 'too-large' : e.status === 404 ? 'gone' : 'offline');
 }

@@ -1,6 +1,11 @@
 // Basque interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Espacio en la nube": "Hodeiko biltegia",
+  "{used} de {quota} de espacio": "{used} / {quota} erabilita",
+  "lleno": "beteta",
+  "Tu espacio en la nube está lleno ({used} de {quota}). Borra presentaciones que no uses y vacía la papelera, o pasa a Pro para tener más.": "Hodeiko biltegia beteta dago ({used} / {quota}). Ezabatu erabiltzen ez dituzun aurkezpenak eta hustu zakarrontzia, edo pasa Pro-ra gehiago izateko.",
+  "Nube llena: los cambios no se guardan": "Hodeia beteta: aldaketak ez dira gordetzen",
   "Solo presentar": "Aurkeztu soilik",
   "Cualquiera con el enlace puede verla como presentación": "Esteka duen edonork aurkezpen gisa ikus dezake",
   "Acceso hasta (vacío: sin fecha de fin)": "Sarbidea noiz arte (hutsik: amaiera-datarik gabe)",

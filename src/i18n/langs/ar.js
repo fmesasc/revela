@@ -1,6 +1,11 @@
 // Arabic interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Espacio en la nube": "المساحة في السحابة",
+  "{used} de {quota} de espacio": "{used} من {quota} مستخدمة",
+  "lleno": "ممتلئة",
+  "Tu espacio en la nube está lleno ({used} de {quota}). Borra presentaciones que no uses y vacía la papelera, o pasa a Pro para tener más.": "مساحتك في السحابة ممتلئة ({used} من {quota}). احذف العروض التي لا تستخدمها وأفرغ سلة المهملات، أو انتقل إلى Pro للحصول على مساحة أكبر.",
+  "Nube llena: los cambios no se guardan": "السحابة ممتلئة: لا تُحفظ التغييرات",
   "Solo presentar": "العرض فقط",
   "Cualquiera con el enlace puede verla como presentación": "يمكن لأي شخص لديه الرابط مشاهدته كعرض تقديمي",
   "Acceso hasta (vacío: sin fecha de fin)": "الوصول حتى (فارغ: بلا تاريخ انتهاء)",

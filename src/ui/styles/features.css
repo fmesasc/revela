@@ -808,6 +808,7 @@ body:not([data-edition="cloud"]):not([data-edition="desktop"]) .accounts-only{di
 .nb-tree{padding-top:5px;padding-bottom:5px;font-size:12.5px}.nb-tree .ms{font-size:18px}
 .nb-quota{margin-top:auto;padding:14px 12px 4px;color:var(--txt2)}
 .nb-bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-bottom:6px}
+.nb-space{margin-top:10px}
 .nb-bar i{display:block;height:100%;background:var(--accent);border-radius:3px}.nb-bar i.full{background:var(--danger)}
 .nb-main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:auto;padding:6px 24px 32px}
 .nb-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:52px;position:sticky;top:-6px;z-index:1;background:var(--bg);padding-top:6px}

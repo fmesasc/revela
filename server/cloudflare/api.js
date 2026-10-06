@@ -72,6 +72,7 @@ import { handleLead, goLink, crmUnsub, crmClick, campaignSignup, eventsPublic, e
 import { handleAmbassadors } from './ambassadors.js';
 import { enc, b64url, random, sha256, DAY, HOUR } from './util.js';
 import { stockSearch, stockUsed, photoProviders } from './stock.js';
+import { storageConfig, MB } from './storage.js';
 import { credits, aiChat, aiImage, aiSpeech } from './ai.js';
 import { stripeConf, billingMode, trialOffer, checkout, portal, stripeWebhook } from './billing.js';
 
@@ -159,12 +160,14 @@ export class Account {
     if (!this.env.DIRECTORY) return;
     const prof = await this.get('profile', null); if (!prof?.sub) return;
     const own = await this.plan(), rec = { sub: prof.sub, email: prof.email, name: prof.name || null, plan: own, until: own === 'pro' ? await this.proUntil() : 0, credits: await this.get('credits', 0),
-      created: prof.created || null, lastSeen: await this.get('lastSeen', null), team: await this.get('team', null), blocked: !!(await this.get('blocked', null)),
+      created: prof.created || null, lastSeen: await this.get('lastSeen', null), team: await this.get('team', null), blocked: !!(await this.get('blocked', null)), bytes: (await this.storage()).used,
       // (Test mode, apart: the flag, a Pro only from test mode, and the test credits — kept out of the real counts.)
       billingTest: !!(await this.get('billingTest', null)), test: own === 'pro' && !!(await this.get('plan', null))?.test && !((await this.get('proGift', null))?.until > Date.now()),
       testCredits: (await this.lots()).filter(l => l.test && l.exp > Date.now()).reduce((t, l) => t + l.n, 0) };
-    const last = await this.get('dirRec', null), now = Date.now(), same = x => JSON.stringify({ ...x, credits: 0, testCredits: 0 });
-    if (!force && last && same(last.rec) === same(rec) && ((last.rec.credits === rec.credits && last.rec.testCredits === rec.testCredits) || now - last.at < 5 * 60e3)) return;
+    const last = await this.get('dirRec', null), now = Date.now(), same = x => JSON.stringify({ ...x, credits: 0, testCredits: 0, bytes: 0 });
+    // (Credits and space change often: written again at most every five minutes — at once if the space moved 100 KB.)
+    const moved = Math.abs((last?.rec.bytes || 0) - (rec.bytes || 0));
+    if (!force && last && same(last.rec) === same(rec) && moved < MB / 10 && ((last.rec.credits === rec.credits && last.rec.testCredits === rec.testCredits && !moved) || now - last.at < 5 * 60e3)) return;
     if (await directoryUpsert(this.env, rec)) await this.put({ dirRec: { rec, at: now } });
   }
   // Credits come in lots, each with its expiry ({ n, exp }); they are spent from the one that
@@ -256,6 +259,13 @@ export class Account {
     // (Those in the trash count, and are the first to be read-only.)
     const docs = (await this.get('docs', [])).slice().sort((x, y) => !y.trashed - !x.trashed || y.updated - x.updated);
     return { limit, docs, locked: docs.slice(limit).map(d => d.id) };
+  }
+  // Space in the cloud (storage.js): what my documents take, against my quota (the plan's, or one the admin set).
+  async storage(pro) {
+    const conf = await storageConfig(this.env), own = await this.get('storageQuota', null);
+    const quota = (own?.mb || ((pro ?? (await this.isPro())) ? conf.proMb : conf.freeMb)) * MB;
+    const used = (await this.get('docs', [])).reduce((t, d) => t + (+d.bytes || 0), 0);
+    return { used, quota, full: used >= quota, ...(own?.mb && { custom: true }) };
   }
   // ---- Emails (mail.js) and what the daily run looks at (schedule.js) ----
   // One email to this account, at most once per ref; optional kinds not if stopped.
@@ -503,19 +513,24 @@ export class Account {
         const prof = await this.get('profile', {}), out = { docs: (await this.get('docs', [])).map(d => d.id), customer: await this.get('customer', null), customerTest: await this.get('customerTest', null), email: prof.email || null, lang: prof.lang || null };
         await this.ctx.storage.deleteAll(); if (prof.sub) await directoryRemove(this.env, prof.sub); return this.json(out);
       }
-      case 'docs-list': { const d = await this.docState(); return this.json({ docs: (await this.get('docs', [])).map(x => (d.locked.includes(x.id) ? { ...x, readOnly: true } : x)), limit: d.limit }); }
-      case 'docs-locked': { const d = await this.docState(); return this.json({ locked: d.locked.includes(a.id), limit: d.limit }); }
-      case 'docs-add': {                                   // { id, name, limit, folder?, slides, text } (folder: one of mine, else the top)
+      case 'docs-list': { const d = await this.docState(); return this.json({ docs: (await this.get('docs', [])).map(x => (d.locked.includes(x.id) ? { ...x, readOnly: true } : x)), limit: d.limit, storage: await this.storage() }); }
+      // (Asked by the document on every read and change: it also says what it takes now — bytes.)
+      case 'docs-locked': {
+        if (Number.isFinite(+a.bytes)) { const docs = await this.get('docs', []), d = docs.find(x => x.id === a.id); if (d && d.bytes !== +a.bytes) { d.bytes = +a.bytes; await this.put({ docs }); } }
+        const d = await this.docState(); return this.json({ locked: d.locked.includes(a.id), limit: d.limit, storage: await this.storage() });
+      }
+      case 'docs-add': {                                   // { id, name, limit, bytes, folder?, slides, text } (folder: one of mine, else the top)
         const docs = await this.get('docs', []), folders = await this.get('folders', []);
         if (docs.length >= +a.limit) return this.json({ ok: false, limit: +a.limit });
+        const sto = await this.storage(); if (sto.used + (+a.bytes || 0) > sto.quota) return this.json({ ok: false, storage: sto });
         const folder = folders.some(f => f.id === a.folder) ? a.folder : null, now = Date.now();
-        docs.unshift({ id: a.id, name: a.name, updated: now, created: now, folder, slides: +a.slides || 0, text: String(a.text || '').slice(0, 400) });
-        await this.put({ docs }); return this.json({ ok: true, folder });
+        docs.unshift({ id: a.id, name: a.name, updated: now, created: now, folder, slides: +a.slides || 0, text: String(a.text || '').slice(0, 400), bytes: +a.bytes || 0 });
+        await this.put({ docs }); await this.dirSync(); return this.json({ ok: true, folder });
       }
       case 'docs-touch': {
         const docs = await this.get('docs', []), d = docs.find(x => x.id === a.id); if (!d) return this.json({ ok: false });
-        Object.assign(d, { name: a.name, updated: Date.now() }, a.slides !== undefined && { slides: +a.slides || 0, text: String(a.text || '').slice(0, 400) });
-        docs.sort((x, y) => y.updated - x.updated); await this.put({ docs }); return this.json({ ok: true });
+        Object.assign(d, { name: a.name, updated: Date.now() }, a.slides !== undefined && { slides: +a.slides || 0, text: String(a.text || '').slice(0, 400) }, Number.isFinite(+a.bytes) && a.bytes !== undefined && { bytes: +a.bytes });
+        docs.sort((x, y) => y.updated - x.updated); await this.put({ docs }); if (a.bytes !== undefined) await this.dirSync(); return this.json({ ok: true });
       }
       // Organising my list: folders (at most FOLDERS.max, names of FOLDERS.name characters, FOLDERS.depth deep),
       // which folder each one is in, stars, the picture of the first slide (when) and the trash.
@@ -564,7 +579,7 @@ export class Account {
         await this.put({ folders }); return this.json({ ok: true, folder: f, folders });
       }
       case 'folders-list': return this.json({ folders: await this.get('folders', []) });
-      case 'docs-remove': await this.put({ docs: (await this.get('docs', [])).filter(x => x.id !== a.id) }); return this.json({ ok: true });
+      case 'docs-remove': await this.put({ docs: (await this.get('docs', [])).filter(x => x.id !== a.id) }); await this.dirSync(); return this.json({ ok: true });
       case 'inbox-list': return this.json({ docs: (await this.get('inbox', [])).filter(x => !x.away) });
       case 'inbox-add': {
         const all = await this.get('inbox', []), was = all.find(x => x.id === a.id), inbox = all.filter(x => x !== was);
@@ -585,10 +600,15 @@ export class Account {
         const sessions = Object.values(await this.get('sessions', {})).filter(v => v.expires > Date.now());
         return this.json({ profile: prof, plan: await this.plan(), until: await this.proUntil(), stored: await this.get('plan', null), proGift: await this.get('proGift', null),
           credits: await this.get('credits', 0), debt: await this.get('debt', 0), lots: await this.lots(), ledger: (await this.get('ledger', [])).slice(-50).reverse(),
-          sessions: { n: sessions.length, kinds: sessions.map(v => v.kind), list: sessionList(await this.get('sessions', {})) }, docs: (await this.get('docs', [])).length, team: await this.get('team', null),
+          sessions: { n: sessions.length, kinds: sessions.map(v => v.kind), list: sessionList(await this.get('sessions', {})) }, storage: await this.storage(), storageQuota: await this.get('storageQuota', null), docs: (await this.get('docs', [])).length, team: await this.get('team', null),
           blocked: await this.get('blocked', null), lastSeen: await this.get('lastSeen', null), mailOff: await this.get('mailOff', []), customer: !!(await this.get('customer', null)), refunded: await this.get('refunded', []),
           billingTest: await this.get('billingTest', null), customerTest: !!(await this.get('customerTest', null)),
           trial: { used: !!(await this.get('trialUsed', null)), usedTest: !!(await this.get('trialUsedTest', null)), paid: !!(await this.get('proPaid', null)), paidTest: !!(await this.get('proPaidTest', null)) } });
+      }
+      case 'admin-storage': {                              // { mb (0: the plan's), reason, by } → { before, after }
+        const before = (await this.get('storageQuota', null))?.mb || 0, mb = Math.max(0, Math.round(+a.mb || 0));
+        await this.put({ storageQuota: mb ? { mb, by: a.by, reason: a.reason, at: Date.now() } : null });
+        return this.json({ before: { mb: before }, after: { mb } });
       }
       case 'admin-credits': {                              // { delta, reason, days, by } → { before, after, delta, expires? }
         await this.expire();
@@ -653,6 +673,9 @@ export class Budget {
     // (Also the settings the admin changes without a deploy: Pro's free trial, trialConfig.)
     if (op === 'config-get') return Response.json({ trial: (await this.ctx.storage.get('trial')) || null });
     if (op === 'config-set') { await this.ctx.storage.put('trial', a.trial); return Response.json({ ok: true }); }
+    // (And the cloud's quotas, storage.js.)
+    if (op === 'storage-get') return Response.json({ storage: (await this.ctx.storage.get('storage')) || null });
+    if (op === 'storage-set') { await this.ctx.storage.put('storage', a.storage); return Response.json({ ok: true }); }
     // (And the notices, notices.js.)
     const n = await noticesOp(this.ctx.storage, op, a); if (n) return Response.json(n);
     const month = new Date().toISOString().slice(0, 7), cur = (await this.ctx.storage.get('m')) || { month, usd: 0 };

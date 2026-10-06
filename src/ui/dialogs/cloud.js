@@ -13,7 +13,7 @@ import { alertDialog, confirmDialog } from './dialog.js';
 import { openAccount, signInWithTerms } from './account.js';
 import { present } from '../shell/present.js';
 import { saveProject } from '../../io/formats/project.js';
-import { openCloudDocs } from './cloudlibrary.js';
+import { openCloudDocs, fmtSize } from './cloudlibrary.js';
 import { nowInCloud } from '../shell/where.js';
 
 const ROLE_NAMES = { present: 'Solo presentar', view: 'Puede ver', comment: 'Puede comentar', edit: 'Puede editar', owner: 'Propietario' };
@@ -26,7 +26,9 @@ const fmt = ts => (ts ? new Date(ts).toLocaleString(currentLang(), { dateStyle: 
 // Read-only beyond the plan (server/cloudflare/docs.js): friendly, and what to do.
 const readOnlyText = (limit, mine = true) => (mine ? t('Esta presentación está en solo lectura porque tu plan gratuito permite editar {n}. Pasa a Pro o borra alguna para editarla.').replace('{n}', limit)
   : t('Esta presentación está en solo lectura porque su propietario ha superado el límite de su plan.'));
+const storageFullText = d => t('Tu espacio en la nube está lleno ({used} de {quota}). Borra presentaciones que no uses y vacía la papelera, o pasa a Pro para tener más.').replace('{used}', fmtSize(d.used || 0)).replace('{quota}', fmtSize(d.quota || 0));
 export const errorText = e => (e.status === 402 && e.data?.error === 'read only' ? readOnlyText(e.data.limit) : e.status === 402 && e.data?.error === 'doc limit' ? t('Has llegado al máximo de presentaciones en la nube de tu plan ({n}). Borra alguna o pásate a Pro.').replace('{n}', e.data.limit)
+  : e.status === 402 && e.data?.error === 'storage full' ? storageFullText(e.data)
   : e.status === 402 ? t('Esto es del plan Pro.') : e.status === 401 ? t('Inicia sesión primero.') : e.status === 403 ? t('No tienes permiso para esto.')
   : e.status === 413 ? t('La presentación es demasiado grande para la nube.') : `${t('Algo ha fallado:')} ${e.message}`);
 
@@ -170,7 +172,7 @@ export async function openCloudVersions() {
 }
 
 // ---- The status in the title bar ---------------------------------------------------------------------
-const STATUS = { readonly: ['lock', 'Solo lectura'], saved: ['cloud_done', 'Nube de Revela · Guardado'], pending: ['cloud_sync', 'Cambios sin guardar'], saving: ['cloud_upload', 'Guardando…'],
+const STATUS = { readonly: ['lock', 'Solo lectura'], full: ['cloud_off', 'Nube llena: los cambios no se guardan'], saved: ['cloud_done', 'Nube de Revela · Guardado'], pending: ['cloud_sync', 'Cambios sin guardar'], saving: ['cloud_upload', 'Guardando…'],
   offline: ['cloud_off', 'Sin conexión: se guardará al volver'], forbidden: ['block', 'Sin permiso para guardar cambios'], 'too-large': ['error', 'Demasiado grande para la nube'], gone: ['cloud_off', 'Ya no está en la nube'] };
 export function mountCloudStatus() {
   const el = document.getElementById('cloud-status'); if (!el) return;
@@ -183,6 +185,8 @@ export function mountCloudStatus() {
   };
   const paintAll = () => { paint(); paintReadOnly(); };
   cd.onCloud(paintAll); window.addEventListener('revela:lang', paintAll);
+  // (The space full: said once, with what to do — the status beside the name keeps saying it.)
+  let told = false; cd.onCloud((what, data) => { if (what === 'full' && !told) { told = true; alertDialog(storageFullText(data)); } });
   acc.onAccount(() => { cd.recheckReadOnly().catch(() => {}); });   // (back to Pro: editable again)
   el.addEventListener('click', () => openCloudShare());
   paint();

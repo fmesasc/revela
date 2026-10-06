@@ -37,7 +37,7 @@ env.FETCH = async (url, init = {}) => {
   const u = String(url);
   if (u.startsWith('https://oauth2.googleapis.com/tokeninfo')) {
     const t = new URL(u).searchParams.get('access_token');
-    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' }, 'tok-gil': { sub: '1212', email: 'gil@example.com' }, 'tok-noa': { sub: '1313', email: 'noa@example.com' }, 'tok-pia': { sub: '1414', email: 'pia@example.com' }, 'tok-tess': { sub: '1515', email: 'tess@example.com' }, 'tok-ivo': { sub: '1616', email: 'ivo@example.com' }, 'tok-ada': { sub: '1717', email: 'ada@example.com' }, 'tok-bea': { sub: '1818', email: 'bea@example.com' }, 'tok-cid': { sub: '1919', email: 'cid@example.com' }, 'tok-dan': { sub: '2020', email: 'dan@example.com' }, 'tok-zoe': { sub: '2121', email: 'zoe@example.com' }, 'tok-kai': { sub: '2222', email: 'kai@example.com' }, 'tok-lia': { sub: '2323', email: 'lia@example.com' } }[t];
+    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' }, 'tok-gil': { sub: '1212', email: 'gil@example.com' }, 'tok-noa': { sub: '1313', email: 'noa@example.com' }, 'tok-pia': { sub: '1414', email: 'pia@example.com' }, 'tok-tess': { sub: '1515', email: 'tess@example.com' }, 'tok-ivo': { sub: '1616', email: 'ivo@example.com' }, 'tok-ada': { sub: '1717', email: 'ada@example.com' }, 'tok-bea': { sub: '1818', email: 'bea@example.com' }, 'tok-cid': { sub: '1919', email: 'cid@example.com' }, 'tok-dan': { sub: '2020', email: 'dan@example.com' }, 'tok-zoe': { sub: '2121', email: 'zoe@example.com' }, 'tok-kai': { sub: '2222', email: 'kai@example.com' }, 'tok-lia': { sub: '2323', email: 'lia@example.com' }, 'tok-sto': { sub: '2424', email: 'sto@example.com' } }[t];
     if (t === 'tok-otraapp') return Response.json({ aud: 'otra-app', sub: '333', email: 'x@example.com', email_verified: 'true' });
     return who ? Response.json({ aud: CID, ...who, email_verified: 'true', expires_in: 3000 }) : new Response('bad', { status: 400 });
   }
@@ -895,6 +895,50 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok(y.j.ended === 1 && (await req('GET', '/api/me', { headers: { Cookie: l1 } })).status === 401 && (await req('GET', '/api/me', { headers: { Cookie: l2 } })).status === 401, 'cerrar sesiones: todas; ya no vale ninguna');
     const au = (await A('GET', '/audit?target=2323')).j.entries;
     ok(au.filter(e => e.action === 'sessions-end').length === 2 && au.some(e => e.reason === 'Cuenta robada' && e.by === 'jefe@example.com'), 'cerrar sesiones: en el registro de auditoría');
+  }
+  // Space in the cloud (storage.js): measured per account, a quota per plan (the admin's), nothing grows beyond it.
+  {
+    const MBc = 1024 * 1024, sto = cookieFrom(await req('POST', '/api/login', { body: { accessToken: 'tok-sto', terms: TERMS } }));
+    let y = await A('GET', '/storage');
+    ok(y.status === 200 && y.j.config.freeMb === 100 && y.j.config.proMb === 2048 && y.j.config.alertGb === 4, 'espacio: cuotas de partida (100 MB gratis, 2 GB Pro, aviso a 4 GB): ' + JSON.stringify(y.j.config));
+    ok((await A('POST', '/storage', { body: { freeMb: 0, proMb: 1, alertGb: 1 } })).status === 400, 'espacio: cuotas imposibles → 400');
+    y = await A('POST', '/storage', { body: { freeMb: 1, proMb: 3, alertGb: 0.0005 } });
+    ok(y.status === 200 && (await A('GET', '/storage')).j.config.freeMb === 1, 'espacio: el administrador cambia las cuotas');
+    ok((await A('GET', '/audit?target=storage')).j.entries.some(e => e.action === 'storage-config'), 'espacio: el cambio queda en la auditoría');
+    const big = n => ({ name: 'Grande', slides: [{ id: 's1', blocks: [{ id: 'b1', type: 'image', src: 'data:image/png;base64,' + 'A'.repeat(n) }] }] });
+    const doc = body => req('POST', '/api/docs', { headers: { Cookie: sto }, body });
+    let r = await doc({ deck: big(0.6 * MBc) }); const d1 = (await r.json()).id;
+    ok(r.status === 200 && d1, 'espacio: una presentación de 0,6 MB cabe en 1 MB');
+    let L = await (await req('GET', '/api/docs', { headers: { Cookie: sto } })).json();
+    ok(L.storage && Math.abs(L.storage.used - 0.6 * MBc) < 2000 && L.storage.quota === MBc && L.mine[0].bytes > 0, 'espacio: «Mi nube» dice lo ocupado y la cuota: ' + JSON.stringify(L.storage));
+    r = await doc({ deck: big(0.6 * MBc) }); j = await r.json();
+    ok(r.status === 402 && j.error === 'storage full' && j.quota === MBc, 'espacio: otra de 0,6 MB ya no cabe → 402 «storage full»');
+    const ops = o => req('POST', `/api/docs/${d1}/ops`, { headers: { Cookie: sto }, body: { ops: o } });
+    r = await ops([{ p: ['slides', 's1', 'blocks', 'b1', 'src'], v: 'data:image/png;base64,' + 'B'.repeat(0.5 * MBc) }]);
+    ok(r.status === 200, 'espacio: cambiar por algo más pequeño, sí');
+    r = await ops([{ p: ['slides', 's1', 'blocks', 'b2'], v: { id: 'b2', type: 'image', src: 'data:image/png;base64,' + 'C'.repeat(0.6 * MBc) } }]);
+    ok(r.status === 402 && (await r.json()).error === 'storage full', 'espacio: lo que haría crecer la presentación por encima de la cuota, no');
+    ok(!JSON.stringify((await (await req('GET', `/api/docs/${d1}`, { headers: { Cookie: sto } })).json()).deck).includes('CCCC'), 'espacio: y no queda a medias en el servidor');
+    // One account's own quota, from the administration.
+    ok((await A('POST', '/storage-quota', { body: { sub: '2424', mb: 5 } })).status === 400, 'espacio: cuota a medida sin motivo → 400');
+    y = await A('POST', '/storage-quota', { body: { sub: '2424', mb: 5, reason: 'Centro piloto' } });
+    ok(y.status === 200 && y.j.after.mb === 5, 'espacio: cuota a medida para una cuenta');
+    r = await doc({ deck: big(0.6 * MBc) }); const d2 = (await r.json()).id; ok(r.status === 200, 'espacio: con su cuota, ya cabe');
+    y = await A('GET', '/users/2424'); ok(y.j.storage.quota === 5 * MBc && y.j.storage.custom && y.j.storage.used > MBc, 'espacio: la ficha muestra lo ocupado y su cuota: ' + JSON.stringify(y.j.storage));
+    await A('POST', '/storage-quota', { body: { sub: '2424', mb: 0, reason: 'Fin del piloto' } });
+    ok((await (await req('GET', '/api/docs', { headers: { Cookie: sto } })).json()).storage.quota === MBc, 'espacio: 0 vuelve a la cuota del plan');
+    // Deleting frees it.
+    const usedBefore = (await (await req('GET', '/api/docs', { headers: { Cookie: sto } })).json()).storage.used;
+    await req('POST', `/api/docs/${d2}/delete`, { headers: { Cookie: sto } });
+    L = await (await req('GET', '/api/docs', { headers: { Cookie: sto } })).json(); ok(Math.abs(usedBefore - L.storage.used - 0.6 * MBc) < 5000, 'espacio: borrar libera lo que ocupaba: ' + (usedBefore - L.storage.used));
+    // The admins are told when the whole cloud passes the alert.
+    await acc('2424').dirSync(true);
+    y = await A('GET', '/storage'); ok(y.j.bytes > 0 && y.j.top.some(u => u.email === 'sto@example.com'), 'espacio: el total y quién ocupa más');
+    const { storageWatch } = await import('../server/cloudflare/storage.js'); const told = [];
+    const w = await storageWatch(env, { sendMail: async (e, m) => { told.push(m); return true; }, adminEmails: ['jefe@example.com'] });
+    ok(w.sent && told[0].to === 'jefe@example.com' && /ocupa/.test(told[0].subject) && /sto@example.com/.test(told[0].text), 'espacio: aviso a los administradores al pasar el umbral');
+    await A('POST', '/storage', { body: { freeMb: 100, proMb: 2048, alertGb: 4 } });
+    ok(!(await storageWatch(env, { sendMail: async () => true, adminEmails: ['jefe@example.com'] })).sent, 'espacio: por debajo, ningún aviso');
   }
   ok((await A('GET', '/users/nadie')).status === 404, 'ficha de una cuenta que no existe: 404');
 

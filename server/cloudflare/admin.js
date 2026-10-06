@@ -23,6 +23,9 @@
 //   POST /api/admin/refund                 { sub, reason? , notify? }   (gives back the last AI charge not refunded yet)
 //   POST /api/admin/plan                   { sub, until (ms, 0 = remove), reason }   (Pro given by hand; Stripe's untouched)
 //   POST /api/admin/block                  { sub, blocked, reason }   (blocked: 403 on AI, cloud documents, calls…)
+//   GET  /api/admin/storage                → { config: { freeMb, proMb, alertGb }, bytes, top }   (the cloud's space: storage.js)
+//   POST /api/admin/storage                { freeMb, proMb, alertGb } → { config }
+//   POST /api/admin/storage-quota          { sub, mb (0: the plan's), reason } → { before, after }   (one account's own quota)
 //   POST /api/admin/sessions-end           { sub, id?, reason } → { ended }   (one session, or all: a stolen account signed out
 //                                          everywhere; the person signs in again with Google)
 //   POST /api/admin/billing-test           { sub, on, reason }   (this account pays in Stripe's test mode: api.js stripeConf)
@@ -76,6 +79,7 @@
 import { acct, call, settings, trialConfig, cleanTrial, resetTrialCache, resetNoticeCache } from './api.js';
 import { stripeConf } from './billing.js';
 import { priceOf } from './ai.js';
+import { storageConfig, cleanStorage, resetStorageCache } from './storage.js';
 import { cleanNotice } from './notices.js';
 import { mail, mailConfigured, ticketLink, readTicketToken, ticketPage, fmtDate, TICKET_LINK_DAYS } from './mail.js';
 import { fromB64url } from './util.js';
@@ -153,7 +157,7 @@ export class Directory {
       if (!a.sub) return Response.json({ error: 'bad request' }, { status: 400 });
       const old = await st.get('u:' + a.sub), rec = { sub: String(a.sub), email: String(a.email || '').toLowerCase(), name: a.name || null, plan: a.plan || 'free', until: +a.until || 0,
         credits: +a.credits || 0, created: +a.created || null, lastSeen: a.lastSeen || null, team: a.team || null, blocked: !!a.blocked,
-        billingTest: !!a.billingTest, test: !!a.test, testCredits: Math.max(0, +a.testCredits || 0), updated: Date.now() };
+        billingTest: !!a.billingTest, test: !!a.test, testCredits: Math.max(0, +a.testCredits || 0), bytes: Math.max(0, +a.bytes || 0), updated: Date.now() };
       const gone = old ? [emailKey(old), seenKey(old)].filter(k => k !== emailKey(rec) && k !== seenKey(rec)) : [];
       if (gone.length) await st.delete(gone);
       await st.put({ ['u:' + rec.sub]: rec, [emailKey(rec)]: rec.sub, [seenKey(rec)]: rec.sub });
@@ -181,15 +185,18 @@ export class Directory {
     if (op === 'stats') {                                 // (a scan of every record: fine for thousands of accounts)
       const now = Date.now(), d1 = new Date(now).toISOString().slice(0, 10), d30 = new Date(now - 29 * 864e5).toISOString().slice(0, 10);
       // (Stripe's test mode apart: a Pro only from it and test credits are not counted as real.)
-      let users = 0, pro = 0, blocked = 0, active1 = 0, active30 = 0, credits = 0;
+      let users = 0, pro = 0, blocked = 0, active1 = 0, active30 = 0, credits = 0, bytes = 0; const top = [];
       const test = { accounts: 0, pro: 0, credits: 0 };
       for (const [, r] of await st.list({ prefix: 'u:' })) {
         users++; if (r.plan === 'pro' && r.until > now) { if (r.test) test.pro++; else pro++; } if (r.blocked) blocked++;
         if (r.lastSeen >= d1) active1++; if (r.lastSeen >= d30) active30++;
         const tc = Math.min(Math.max(0, r.credits), r.testCredits || 0); if (r.credits > 0) credits += r.credits - tc; test.credits += tc;
         if (r.billingTest) test.accounts++;
+        if (r.bytes > 0) { bytes += r.bytes; top.push({ sub: r.sub, email: r.email, plan: r.plan, bytes: r.bytes }); }
       }
-      return Response.json({ users, pro, blocked, active1, active30, credits, test });
+      // (Space in the cloud: the total, and who takes most — storage.js.)
+      top.sort((x, y) => y.bytes - x.bytes);
+      return Response.json({ users, pro, blocked, active1, active30, credits, test, storage: { bytes, top: top.slice(0, 20) } });
     }
     return Response.json({ error: 'unknown' }, { status: 404 });
   }
@@ -577,6 +584,22 @@ export async function handleAdmin(req, env, url) {
     if (!(await account(body.sub))) return json({ error: 'not found' }, 404);
     const r = await call(acct(env, body.sub), 'admin-plan', { until, reason, by });
     await audit(env, { by, action: 'plan', target: body.sub, reason, before: r.before, after: r.after });
+    return json({ ok: true, ...r });
+  }
+  if (GET && path === '/storage') { const st = (await call(D, 'stats')).storage; return json({ config: await storageConfig(env, true), ...st }); }
+  if (POST && path === '/storage') {
+    const conf = cleanStorage(body); if (!conf) return json({ error: 'bad request' }, 400);
+    const before = await storageConfig(env, true);
+    await call(stub(env.BUDGET, 'global'), 'storage-set', { storage: conf }); resetStorageCache();
+    await audit(env, { by, action: 'storage-config', target: 'storage', before, after: conf });
+    return json({ config: conf });
+  }
+  if (POST && path === '/storage-quota') {
+    const reason = clip(body.reason, 500).trim(), mb = Math.round(+body.mb);
+    if (!reason || !Number.isInteger(mb) || mb < 0 || mb > 1048576) return json({ error: 'bad request' }, 400);
+    if (!(await account(body.sub))) return json({ error: 'not found' }, 404);
+    const r = await call(acct(env, body.sub), 'admin-storage', { mb, reason, by });
+    await audit(env, { by, action: 'storage-quota', target: body.sub, reason, before: r.before, after: r.after });
     return json({ ok: true, ...r });
   }
   if (POST && path === '/block') {

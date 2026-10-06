@@ -319,6 +319,7 @@ server/
     ai.js                      AI chat, images and speech, paid with credits within the monthly budget
     billing.js                 Stripe: prices, live/test mode, Pro's trial, Checkout, portal, webhook
     stock.js                   stock photo search (Unsplash, Pexels)
+    storage.js                 the cloud's space: quotas per plan, what each account takes, the daily alert
     docs.js                    cloud documents with roles and permission settings (CloudDoc)
     collab.js                  co-editing rooms (CollabRoom)
     teams.js                   teams: seats, members, brand kit, templates (Team)
