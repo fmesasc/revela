@@ -6,9 +6,13 @@ export function popupMenu(anchor, { id, html, attr = 'key', className = '', alig
   document.getElementById(id)?.remove();
   const m = document.createElement('div'); m.id = id; m.className = `popup-menu ${className}`.trim(); m.innerHTML = html;
   document.body.appendChild(m);
-  const r = anchor.getBoundingClientRect(); m.style.top = r.bottom + 6 + 'px';
-  if (align === 'right') m.style.right = Math.max(8, innerWidth - r.right) + 'px';
-  else m.style.left = Math.max(8, Math.min(r.left, innerWidth - m.offsetWidth - 8)) + 'px';
+  // Under its button, aligned to one side — and always whole on the screen (a phone's is narrow): no wider or taller
+  // than the window, moved in from either edge, scrolling inside if it must.
+  m.style.maxWidth = `calc(100vw - 16px)`;
+  const r = anchor.getBoundingClientRect(), w = m.offsetWidth, top = r.bottom + 6;
+  const left = align === 'right' ? r.right - w : r.left;
+  m.style.left = Math.max(8, Math.min(left, innerWidth - w - 8)) + 'px'; m.style.right = 'auto';
+  m.style.top = top + 'px'; m.style.maxHeight = Math.max(160, innerHeight - top - 8) + 'px'; m.style.overflowY = 'auto';
   const close = () => { m.remove(); document.removeEventListener('pointerdown', off, true); };
   const off = e => { if (!m.contains(e.target)) close(); };
   setTimeout(() => document.addEventListener('pointerdown', off, true));

@@ -127,9 +127,11 @@ export function togglePopover(launcher, type, { replaceId = null } = {}) {
   // (The gallery's current choice — layout, colours, fonts, Text Art — is pressed.)
   pop.querySelectorAll('[data-layout],[data-palette],[data-palette-theme],[data-fontpair],[data-fontpair-theme],[data-wa]').forEach(x => x.setAttribute('aria-pressed', String(x.classList.contains('on'))));
   document.body.appendChild(pop);
+  // (Whole on the screen, a phone's too: no wider or taller than the window, scrolling inside if it must.)
+  pop.style.maxWidth = 'calc(100vw - 16px)';
   const r = launcher.getBoundingClientRect();
-  pop.style.left = Math.min(r.left, innerWidth - pop.offsetWidth - 10) + 'px';
-  pop.style.top = (r.bottom + 4) + 'px';
+  pop.style.left = Math.max(8, Math.min(r.left, innerWidth - pop.offsetWidth - 8)) + 'px';
+  pop.style.top = (r.bottom + 4) + 'px'; pop.style.maxHeight = Math.max(160, innerHeight - r.bottom - 12) + 'px'; pop.style.overflowY = 'auto';
   pop.addEventListener('click', e => e.stopPropagation());
   pop.querySelector('[data-pop="linespacing"]')?.addEventListener('input', e => format.lineSpacing(e.target.value));
   pop.querySelector('[data-pop="letterspacing"]')?.addEventListener('input', e => format.letterSpacing(e.target.value));

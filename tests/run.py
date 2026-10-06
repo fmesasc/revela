@@ -80,6 +80,14 @@ def touch_checks(send, recv, port):
     # Insert ▸ Shapes: its three rows of small shapes, not stretched over the group's name.
     shapes = ev("(async()=>{document.querySelector('#ribbon [data-tab=insert]').click();await new Promise(r=>setTimeout(r,200));const g=document.querySelector('[data-shape-gallery]'),b=g.querySelector('button').getBoundingClientRect(),l=g.closest('.group').querySelector(':scope>label').getBoundingClientRect(),gr=g.getBoundingClientRect();document.querySelector('#ribbon [data-tab=home]').click();return b.height<32&&gr.bottom<=l.top+1})()")
     check(shapes, 'Insertar ▸ Formas: las formas no se estiran sobre el nombre del grupo')
+    # Menus and the ribbon's small windows, opened from a button at either edge: whole on a phone's screen.
+    out = ev("""(async()=>{const bad=[],W=innerWidth,H=innerHeight,inside=(el,n)=>{const r=el.getBoundingClientRect();if(r.left<-1||r.right>W+1||r.top<-1||r.bottom>H+1)bad.push(n+' '+[r.left,r.right,r.bottom].map(Math.round).join('/'));};
+      const P=await import('/src/ui/ribbon/popovers.js'),S=await import('/src/ui/shell/where.js'),types=[...new Set([...document.querySelectorAll('[data-more]')].map(x=>x.dataset.more)),'symbols','icons','wordart'];
+      for(const side of ['left','right']){const a=document.createElement('button');a.textContent='x';a.style.cssText=`position:fixed;top:120px;${side}:4px;width:30px;height:30px`;document.body.appendChild(a);
+        for(const t of types){P.closePopover();P.togglePopover(a,t);await new Promise(r=>setTimeout(r,30));const p=document.querySelector('.popover');if(p)inside(p,t+'@'+side);}
+        P.closePopover();S.openSaveWhere(a);await new Promise(r=>setTimeout(r,30));const m=document.getElementById('save-where');if(m){inside(m,'guardar@'+side);m.remove();}a.remove();}
+      return bad.join(', ');})()""")
+    check(out == '', 'los menús y ventanitas caben enteros en el móvil (' + str(out) + ')')
     recv(send('Emulation.setDeviceMetricsOverride', sid, width=844, height=390, deviceScaleFactor=2, mobile=True)); time.sleep(0.8)
     check(ev(fits), 'en horizontal (móvil tumbado) la diapositiva se ve entera')
     return fails
@@ -487,7 +495,7 @@ def main():
         touch_fail = touch_checks(send, recv, port) if out.startswith('REVELATEST PASS') else []
         if touch_fail:
             print('REVELATEST FAIL touch'); print('\n'.join(touch_fail)); return 1
-        if out.startswith('REVELATEST PASS'): out += ' + táctil 15/15'
+        if out.startswith('REVELATEST PASS'): out += ' + táctil 16/16'
         math_fail = math_keyboard_check(send, recv, port) if out.startswith('REVELATEST PASS') else []
         if math_fail:
             print('REVELATEST FAIL ecuación'); print('\n'.join(math_fail)); return 1
