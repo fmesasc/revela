@@ -334,6 +334,7 @@ server/
     crm.js                     «Captación»: contacts, consented sequences, campaigns, webinars, referrals (Crm)
     crm-mail.js                «Captación»'s emails in each language and their signed links
     ambassadors.js             ambassadors: applying, the public directory, the badge
+    crawler.js                 the «Rastreador»: reads the CRM's websites politely (robots.txt), facts and a score (Crawler)
     community.js               the community gallery and its pages (Community)
     notices.js                 Revela's own notices
   blender/                     revela-blender: Blender in Cloudflare Containers for

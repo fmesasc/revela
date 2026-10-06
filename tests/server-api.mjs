@@ -15,7 +15,7 @@ function fakeStorage() {
   const m = new Map(); let alarm = null;
   return { m, async get(k) { if (Array.isArray(k)) return new Map(k.filter(x => m.has(x)).map(x => [x, structuredClone(m.get(x))])); return structuredClone(m.get(k)); },
     async put(k, v) { if (typeof k === 'object') { for (const [a, b] of Object.entries(k)) m.set(a, structuredClone(b)); } else m.set(k, structuredClone(v)); },
-    async delete(k) { for (const x of [].concat(k)) m.delete(x); }, async deleteAll() { m.clear(); }, async setAlarm(t) { alarm = t; }, async deleteAlarm() { alarm = null; },
+    async delete(k) { for (const x of [].concat(k)) m.delete(x); }, async deleteAll() { m.clear(); }, async setAlarm(t) { alarm = t; }, async getAlarm() { return alarm; }, async deleteAlarm() { alarm = null; },
     // (As Durable Objects' list(): keys in order, or reversed; end and startAfter exclusive.)
     async list({ prefix = '', start, startAfter, end, reverse, limit } = {}) {
       let keys = [...m.keys()].filter(k => k.startsWith(prefix) && (start == null || k >= start) && (startAfter == null || k > startAfter) && (end == null || k < end)).sort();
@@ -1883,6 +1883,79 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     const pubL = await (await req('GET', '/api/ambassadors')).json(); ok(pubL.items.length === 1 && pubL.items[0].city === 'Zaragoza' && !pubL.items[0].email, 'embajadores: el directorio público (sin correos)');
     await A('POST', `/crm/ambassadors/${list[0].sub}/status`, { body: { status: 'ended' } });
     ok((await (await req('GET', '/api/ambassadors')).json()).items.length === 0 && (await req('GET', `/api/ambassadors/badge/${code}.svg`)).status === 404, 'embajadores: al terminar, fuera del directorio y sin insignia válida');
+  }
+
+  // The «Rastreador» (crawler.js): websites read slowly and politely, facts with their evidence, a score from them.
+  {
+    const K = await import('../server/cloudflare/crawler.js');
+    env.CRAWLER = namespace(K.Crawler, env); env.CRAWL_SLEEP = '0';
+    // robots.txt, read as search engines do.
+    let R = K.robotsRules('User-agent: *\nDisallow: /privado\n\nUser-agent: RevelaBot\nDisallow: /intranet\nAllow: /intranet/publico\n');
+    ok(!K.robotsAllow(R, '/intranet/notas') && K.robotsAllow(R, '/intranet/publico/x') && K.robotsAllow(R, '/privado'), 'rastreador: robots.txt — su grupo manda, la regla más larga gana');
+    R = K.robotsRules('User-agent: *\nDisallow: /\n'); ok(!K.robotsAllow(R, '/') && !K.robotsAllow(R, '/contacto'), 'rastreador: «Disallow: /» lo cierra todo');
+    ok(K.robotsAllow(K.robotsRules(''), '/'), 'rastreador: sin robots.txt, se puede');
+    ok(K.personal('juan.perez') && K.personal('maria_lopez') && !K.personal('secretaria') && !K.personal('info') && !K.personal('50001234') && !K.personal('ies.ebro'), 'rastreador: correos de persona y genéricos');
+    // A school's website (simulated), one that says no, one that doesn't answer.
+    const visits = [], ua = [];
+    const SITE = {
+      'https://olivos.example/robots.txt': 'User-agent: *\nDisallow: /intranet\n',
+      'https://olivos.example/': `<html lang="es"><head><title>CEIP Los Olivos</title><meta name="generator" content="WordPress 6.6"></head><body>
+        <a href="/contacto">Contacto</a> <a href="/intranet/notas">Notas</a> <a href="https://aeducar.es/course/view.php?id=7">Aula virtual (Aeducar)</a>
+        <p>Plan Digital de Centro: trabajamos la competencia digital y la robótica.</p><footer>© 2026 CEIP Los Olivos</footer></body></html>`,
+      'https://olivos.example/contacto': `<html><body><p>Secretaría: <a href="mailto:secretaria@olivos.example">secretaria@olivos.example</a>. Dirección: juan.perez@olivos.example</p>
+        <p>Teléfono: 976 123 456</p><p>También info [at] olivos.example</p></body></html>`,
+      'https://cerrado.example/robots.txt': 'User-agent: *\nDisallow: /\n',
+    };
+    const prevF2 = env.FETCH;
+    env.FETCH = async (u, init = {}) => { const s = String(u);
+      if (s.startsWith('https://cloudflare-dns.com/dns-query')) { const name = new URL(s).searchParams.get('name'); return Response.json(name === 'olivos.example' ? { Answer: [{ data: '1 aspmx.l.google.com.' }] } : { Answer: [] }); }
+      if (/olivos\.example|cerrado\.example|caido\.example/.test(s)) {
+        visits.push(s); ua.push(init.headers?.['User-Agent']);
+        if (s.includes('caido.example')) throw new TypeError('fetch failed');
+        if (s in SITE) return new Response(SITE[s], { headers: { 'Content-Type': s.endsWith('robots.txt') ? 'text/plain' : 'text/html; charset=utf-8' } });
+        return new Response('no', { status: 404, headers: { 'Content-Type': 'text/html' } });
+      }
+      return prevF2(u, init); };
+    const C = (m, p, o) => A(m, '/crm' + p, o);
+    const mk = async (name, web) => (await C('POST', '/contacts', { body: { contact: { name, kind: 'school', web } } })).j.id;
+    const olivos = await mk('CEIP Los Olivos', 'https://olivos.example/'), cerrado = await mk('Colegio Cerrado', 'cerrado.example'), caido = await mk('IES Caído', 'https://caido.example');
+    // Off until it's turned on; the settings checked.
+    let x = await C('GET', '/crawler'); ok(x.status === 200 && x.j.settings.on === false && x.j.score.moodle.pts === 20, 'rastreador: apagado de entrada, con sus reglas de puntos');
+    x = await C('POST', '/crawler', { body: { settings: { on: true, everyMin: 1, pagesPerSite: 3, blocked: ['https://www.Bloqueado.example/x'] } } });
+    ok(x.status === 200 && x.j.settings.on && x.j.settings.everyMin === 2 && x.j.settings.blocked[0] === 'bloqueado.example', 'rastreador: encendido (como mucho uno cada 2 min) y dominios bloqueados normalizados');
+    ok((await C('GET', '/crawler')).j.nextAt > Date.now(), 'rastreador: con su alarma, que lo mantiene en marcha');
+    // Step by step, as the alarm would.
+    const done = [];
+    for (let i = 0; i < 6; i++) { const r = (await C('POST', '/crawler/step', { body: {} })).j; done.push(r.kind === 'site' ? r.id : r.kind); }
+    ok([olivos, cerrado, caido].every(id => done.filter(d => d === id).length === 1) && done.at(-1) === 'idle', 'rastreador: cada web una vez, luego nada que hacer: ' + done);
+    ok(ua.every(u => /RevelaBot\/1\.0; \+https:\/\/revelaslides\.com\/bot/.test(u)), 'rastreador: siempre dice quién es');
+    ok(!visits.some(v => v.includes('/intranet')) && !visits.some(v => /cerrado\.example\/(?!robots)/.test(v)), 'rastreador: obedece robots.txt (ni /intranet ni el sitio cerrado)');
+    let c = (await C('GET', '/contacts/' + olivos)).j.contact.webFacts;
+    ok(c.ok && c.emails.map(e => e.email).sort().join() === 'info@olivos.example,secretaria@olivos.example' && c.hidden === 1, 'rastreador: correos genéricos sí; el de una persona, solo contado: ' + JSON.stringify(c.emails.map(e => e.email)));
+    ok(c.phones[0]?.phone === '976123456' && c.platforms.some(p => p.k === 'moodle' && /aeducar/i.test(p.snippet)) && c.platforms.some(p => p.k === 'google' && /aspmx/.test(p.snippet)), 'rastreador: teléfono, Moodle (Aeducar) y Google (por su MX), con su prueba');
+    ok(c.score === 100 && c.reasons.length === 8 && c.reasons.every(r => r.pts && r.label) && c.lang === 'es' && c.latestYear === 2026 && c.generator.startsWith('WordPress'), 'rastreador: puntuación de los hechos, con sus razones: ' + c.score);
+    const cc = (await C('GET', '/contacts/' + cerrado)).j.contact.webFacts, cd = (await C('GET', '/contacts/' + caido)).j.contact.webFacts;
+    ok(!cc.ok && cc.robots === 'blocked' && cc.score === 0 && !cd.ok && cd.score === 0, 'rastreador: la web que dice no y la que no responde quedan anotadas, sin puntos');
+    x = await C('GET', '/contacts?sort=score'); ok(x.j.items[0].id === olivos && x.j.items[0].score === 100, 'rastreador: la lista por puntuación');
+    // Again only after recrawlDays; one by hand now.
+    visits.length = 0; await C('POST', '/crawler/step', { body: {} }); ok(!visits.length, 'rastreador: no vuelve antes de tiempo');
+    x = await C('POST', `/contacts/${olivos}/crawl`, { body: {} }); ok(x.status === 200 && x.j.facts.score === 100 && visits.length, 'rastreador: «Mirar ahora» una ficha');
+    // An address its website publishes, as the contact's (still no email without consent).
+    ok((await C('POST', `/contacts/${olivos}/use-email`, { body: { email: 'otro@x.example' } })).status === 400, 'rastreador: solo un correo que publica su web');
+    x = await C('POST', `/contacts/${olivos}/use-email`, { body: { email: 'secretaria@olivos.example' } });
+    ok(x.status === 200 && x.j.contact.email === 'secretaria@olivos.example' && !x.j.contact.consent, 'rastreador: usar el correo de su web (sin permiso: ningún envío automático)');
+    // A blocked domain is never visited.
+    const bl = await mk('Bloqueado', 'https://www.bloqueado.example'); visits.length = 0;
+    await C('POST', '/crawler/step', { body: {} }); ok(!visits.some(v => v.includes('bloqueado')) && !(await C('GET', '/contacts/' + bl)).j.contact.webFacts, 'rastreador: un dominio bloqueado no se visita');
+    // Finding new places in the areas set (OpenStreetMap), when there's nothing to visit.
+    await C('POST', '/crawler', { body: { settings: { discover: true, areas: ['Zaragoza'], kinds: ['school'] } } });
+    x = (await C('POST', '/crawler/step', { body: {} })).j;
+    ok(x.kind === 'area' && x.area === 'Zaragoza' && (await C('GET', '/crawler')).j.log[0].kind === 'area', 'rastreador: busca centros nuevos en las zonas elegidas: ' + JSON.stringify(x));
+    ok((await A('GET', '/audit?target=crm:crawler')).j.entries.some(e => e.action === 'crm-crawler'), 'rastreador: los cambios de ajustes, en la auditoría');
+    { const o = env.CRAWLER.inst.get('crawler'), before = (await C('GET', '/crawler')).j; await mk('CEIP Nuevo', 'https://olivos.example/'); await o.alarm(); const after = (await C('GET', '/crawler')).j;
+      ok(after.log.length === before.log.length + 1 && after.log[0].name === 'CEIP Nuevo' && after.nextAt > Date.now() + 60e3, 'rastreador: la alarma da un paso y se vuelve a programar sola'); }
+    await C('POST', '/crawler', { body: { settings: { on: false } } }); ok(!(await C('GET', '/crawler')).j.nextAt, 'rastreador: apagado, sin alarma');
+    env.FETCH = prevF2; delete env.CRAWL_SLEEP;
   }
 
   // Deleting the account takes it out of the directory.

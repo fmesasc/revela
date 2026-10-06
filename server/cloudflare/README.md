@@ -83,6 +83,7 @@ Durable Objects (each with a `new_sqlite_classes` migration):
 | `AUDIT`     | `Audit`       | `admin.js`     | the administration's audit log |
 | `FINANCE`   | `Finance`     | `finance.js`   | the business's economic events and daily sums |
 | `CRM`       | `Crm`         | `crm.js`       | contacts, sequences, campaigns |
+| `CRAWLER`   | `Crawler`     | `crawler.js`   | the «Rastreador»: visits the contacts' websites (its alarm keeps it going), robots.txt cache, log |
 | `COMMUNITY` | `Community`   | `community.js` | the community gallery |
 
 Optional: `EMAIL` (`[[send_email]]`, Cloudflare Email Service; commented out in

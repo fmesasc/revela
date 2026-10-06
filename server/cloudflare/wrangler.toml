@@ -262,3 +262,13 @@ class_name = "Community"
 [[migrations]]
 tag = "v13"
 new_sqlite_classes = ["Community"]
+
+# The «Rastreador» of Captación (crawler.js): visits the websites of the CRM's schools and businesses, slowly and
+# obeying robots.txt, and notes what they say with a score. Off until the admin turns it on (Captación ▸ Rastreador).
+[[durable_objects.bindings]]
+name = "CRAWLER"
+class_name = "Crawler"
+
+[[migrations]]
+tag = "v14"
+new_sqlite_classes = ["Crawler"]

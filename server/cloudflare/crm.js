@@ -26,6 +26,7 @@
 import { DAY, b64url, EMAIL, hmac } from './util.js';
 import { crmToken, readCrmToken, eventMail, crmMail, unsubPageCrm, ackMail } from './crm-mail.js';
 import { ambassadorMail } from './ambassadors.js';
+import { crawlSite, crawlerCall, SCORE, CRAWL_DEFAULT } from './crawler.js';
 
 export const str = (v, n) => String(v ?? '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, ' ').trim().slice(0, n);
 export const text = (v, n) => String(v ?? '').replace(/\r/g, '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, ' ').trim().slice(0, n);
@@ -118,7 +119,8 @@ export function fill(tpl, c, extra = {}) {
 }
 const summary = c => ({ id: c.id, name: c.name, kind: c.kind, city: c.city || '', region: c.region || '', country: c.country || '', status: c.status, email: !!c.email,
   consent: !!(c.consent && !c.unsub), unsub: c.unsub || null, nextAt: c.nextAt || null, nextWhat: c.nextWhat || '', updated: c.updated, created: c.created, source: c.source,
-  tags: c.tags || [], campaign: c.campaign || null, referrer: c.referrer || null, seq: c.seq ? { id: c.seq.id, step: c.seq.step, nextAt: c.seq.nextAt } : null, person: c.person || '' });
+  tags: c.tags || [], campaign: c.campaign || null, referrer: c.referrer || null, seq: c.seq ? { id: c.seq.id, step: c.seq.step, nextAt: c.seq.nextAt } : null, person: c.person || '',
+  web: !!c.web, webAt: c.webFacts?.at || null, score: c.webFacts?.ok ? c.webFacts.score : null });
 // May a sequence write to this contact now? (consent recorded, no way-out taken, an address, not stopped by its status)
 export const mailable = (c, seq) => !!(c && c.email && c.consent?.at && !c.unsub && (!seq || !(seq.stopOn || []).includes(c.status)));
 
@@ -168,7 +170,7 @@ export class Crm {
     let items = all.filter(c => (!o.status || c.status === o.status) && (!o.kind || c.kind === o.kind) && (!o.source || c.source === o.source)
       && (!o.consent || c.consent) && (!o.due || (c.nextAt && c.nextAt <= now + DAY)) && (!o.tag || c.tags.includes(o.tag))
       && (!q || [c.name, c.city, c.region, c.person, ...c.tags].some(x => norm(x).includes(q))));
-    items.sort(o.due ? (a, b) => (a.nextAt || 0) - (b.nextAt || 0) : (a, b) => b.updated - a.updated);
+    items.sort(o.due ? (a, b) => (a.nextAt || 0) - (b.nextAt || 0) : o.sort === 'score' ? (a, b) => (b.score ?? -1) - (a.score ?? -1) || b.updated - a.updated : (a, b) => b.updated - a.updated);
     const counts = Object.fromEntries(STATUSES.map(s => [s, 0])); for (const c of all) counts[c.status] = (counts[c.status] || 0) + 1;
     const offset = Math.max(0, +o.offset || 0), limit = Math.min(500, Math.max(1, +o.limit || 100));
     return { items: items.slice(offset, offset + limit), total: items.length, all: all.length, counts, due: all.filter(c => c.nextAt && c.nextAt <= now + DAY).length,
@@ -192,6 +194,22 @@ export class Crm {
         if (x.created) added++; else updated++;
       }
       return Response.json({ added, updated, bad });
+    }
+    // The «Rastreador» (crawler.js): whose website is due (never visited, or before a.before; not a blocked domain), and
+    // what was found — kept with the contact, with its date; the history says when it changed.
+    if (op === 'crawl-next') {
+      const host = w => String(w || '').toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '');
+      // (x.web undefined: a summary from before it said so — the contact itself is looked at.)
+      const blocked = new Set((a.blocked || []).map(host)), due = [...(await st.list({ prefix: 's:' })).values()]
+        .filter(x => (x.web || x.web === undefined) && !['lost', 'customer'].includes(x.status) && !(x.webAt > (+a.before || 0))).sort((x, y) => (x.webAt || 0) - (y.webAt || 0) || x.id - y.id);
+      for (const x of due) { const c = await this.getC(x.id); if (c?.web && !blocked.has(host(c.web))) return Response.json({ id: c.id, web: c.web, name: c.name, kind: c.kind }); }
+      return Response.json({ id: null });
+    }
+    if (op === 'web-facts') {
+      const c = await this.getC(a.id); if (!c) return Response.json({ error: 'not found' }, { status: 404 });
+      const was = c.webFacts?.score ?? null; c.webFacts = a.facts;
+      if (a.facts?.ok && was !== a.facts.score) c.history.push({ at: now, by: 'rastreador', what: 'web', score: a.facts.score });
+      await this.save(c); return Response.json({ ok: true });
     }
     if (op === 'known') {                                 // { osm: [ids] } → the ones already in (search results)
       const out = {}; for (const o of (a.osm || []).slice(0, 1000)) { const id = await st.get('k:o:' + o); if (id) out[o] = id; }
@@ -679,7 +697,14 @@ export async function crmApi(env, path, q, body, { GET, POST, by, json, audit })
   const send = r => json(r, r.error ? (r.error === 'not found' ? 404 : /taken|unsubscribed|no email|no consent|status/.test(r.error) ? 409 : 400) : 200);
   if (GET && sub === '/stats') return json({ ...(await C('stats')), mail: !!(env.MAIL_SECRET && (env.EMAIL?.send || env.RESEND_KEY)) });
   if (GET && sub === '/contacts') return json(await C('list', { q: q.get('q') || '', status: q.get('status') || '', kind: q.get('kind') || '', source: q.get('source') || '', tag: q.get('tag') || '',
-    consent: q.get('consent') === '1', due: q.get('due') === '1', offset: +q.get('offset') || 0, limit: +q.get('limit') || 100 }));
+    consent: q.get('consent') === '1', due: q.get('due') === '1', sort: q.get('sort') === 'score' ? 'score' : '', offset: +q.get('offset') || 0, limit: +q.get('limit') || 100 }));
+  // The «Rastreador» (crawler.js): its state and settings, a step by hand, one contact's website now.
+  if (sub === '/crawler' || sub === '/crawler/step') {
+    if (!env.CRAWLER) return json({ error: 'crawler not configured' }, 503);
+    if (GET && sub === '/crawler') return json({ ...(await crawlerCall(env, 'status')), score: SCORE });
+    if (POST && sub === '/crawler') { const r = await crawlerCall(env, 'settings', { settings: body.settings }); if (!r.error) await audit({ action: 'crm-crawler', target: 'crm:crawler', after: r.settings }); return send(r); }
+    if (POST && sub === '/crawler/step') return json(await crawlerCall(env, 'step'));
+  }
   if (POST && sub === '/contacts') { const r = await C('add', { contact: body.contact, source: 'manual' }); if (!r.error) await audit({ action: 'crm-add', target: 'crm:' + r.id }); return send(r); }
   if (POST && sub === '/import') {
     const r = await C('import', { rows: Array.isArray(body.rows) ? body.rows.slice(0, 1000) : [], source: body.source === 'osm' ? 'osm' : 'import' });
@@ -752,9 +777,19 @@ export async function crmApi(env, path, q, body, { GET, POST, by, json, audit })
     await audit({ action: 'ambassador-' + body.status, target: m[1], after: { proUntil: proUntil || null } });
     return json({ amb: r.amb, proUntil });
   }
-  m = sub.match(/^\/contacts\/(\d{1,9})(?:\/(status|note|log|next|consent|enroll|delete|message))?$/);
+  m = sub.match(/^\/contacts\/(\d{1,9})(?:\/(status|note|log|next|consent|enroll|delete|message|crawl|use-email))?$/);
   if (m) {
     const id = +m[1], op = m[2] || '';
+    if (POST && op === 'crawl') {                         // its website, now (the same visit as the crawler's)
+      const { contact } = await C('get', { id }); if (!contact) return json({ error: 'not found' }, 404); if (!contact.web) return json({ error: 'no web' }, 400);
+      const facts = await crawlSite(contact.web, { f: env.FETCH || fetch, pages: CRAWL_DEFAULT.pagesPerSite, sleep: env.CRAWL_SLEEP === '0' ? async () => {} : undefined });
+      await C('web-facts', { id, facts }); return json({ facts });
+    }
+    if (POST && op === 'use-email') {                     // an address its website publishes, as the contact's (no email is sent for it)
+      const { contact } = await C('get', { id }); if (!contact) return json({ error: 'not found' }, 404);
+      const e = String(body.email || '').toLowerCase(); if (!(contact.webFacts?.emails || []).some(x => x.email === e)) return json({ error: 'email' }, 400);
+      return send(await C('update', { id, contact: { email: e } }));
+    }
     if (GET && !op) return send(await C('get', { id }));
     if (POST && !op) { const r = await C('update', { id, contact: body.contact }); if (!r.error) await audit({ action: 'crm-update', target: 'crm:' + id }); return send(r); }
     if (POST && op === 'message') {                       // a template filled for this contact (to copy: calls, LinkedIn, letters)
