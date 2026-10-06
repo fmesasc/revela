@@ -5,7 +5,7 @@ Exit 1 and list the offending imports otherwise. Run by tests/run.sh before the 
 
     apps  →  ui  →  api  →  io  →  features  →  render · i18n  →  core
 """
-import pathlib, re, subprocess, sys
+import json, pathlib, re, subprocess, sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = ROOT / 'src'
@@ -29,11 +29,15 @@ EXPORT = re.compile(r"^export\s+(?:async\s+)?(?:function\*?|const|let|var|class)
 def exports_of(path, cache={}):
     if path not in cache:
         names = set()
-        for m in EXPORT.finditer(path.read_text(encoding='utf-8')):
+        text = path.read_text(encoding='utf-8')
+        for m in EXPORT.finditer(text):
             if m.group(1):
                 names.add(m.group(1))
             else:
                 names.update(x.split(' as ')[-1].strip() for x in m.group(2).split(',') if x.strip())
+        # (and the others of one line: export const DAY = 864e5, HOUR = 36e5;)
+        for m in re.finditer(r'^export\s+(?:const|let|var)\s+(.+)$', text, re.M):
+            names.update(re.findall(r',\s*([\w$]+)\s*=(?!=|>)', m.group(1)))
         cache[path] = names
     return cache[path]
 
@@ -63,9 +67,11 @@ def main():
             a, b = layer(f), layer(target)
             if RANK[b] > RANK[a] or (a, b) in APART:
                 errors.append(f'{rel} ({a}) → {target.relative_to(SRC).as_posix()} ({b})')
-    # every name imported with { … } must be exported by its module
-    for f in sorted(SRC.rglob('*.js')):
-        rel = f.relative_to(SRC).as_posix()
+    # every name imported with { … } must be exported by its module (the app's and the server's)
+    for f in sorted([*SRC.rglob('*.js'), *(ROOT / 'server').rglob('*.js')]):
+        if 'node_modules' in f.parts:
+            continue
+        rel = f.relative_to(ROOT).as_posix()
         for m in NAMED.finditer(f.read_text(encoding='utf-8')):
             target = (f.parent / m.group(2)).resolve()
             if not target.exists():
@@ -81,6 +87,11 @@ def main():
         for ref in refs:
             if not (ROOT / ref).exists():
                 errors.append(f'{page}: {ref} no existe')
+    # one version: package.json's and the app's (src/core/config.js; the desktop builds take package.json's)
+    pkg = json.loads((ROOT / 'package.json').read_text(encoding='utf-8'))['version']
+    app = re.search(r"APP_VERSION = '([^']+)'", (SRC / 'core' / 'config.js').read_text(encoding='utf-8'))
+    if not app or app.group(1) != pkg:
+        errors.append(f'versión: package.json dice {pkg} y src/core/config.js {app and app.group(1)}')
     # every file of the app must be committable: an ignored one works locally
     # but is missing (404) once published
     ignored = subprocess.run(['git', 'check-ignore', '--no-index', '--stdin'], cwd=ROOT, capture_output=True, text=True,
