@@ -763,7 +763,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     let who = person({ armL: 'up', armR: 'up', headYaw: 0.6 });
     const pp = P.createPuppet({ track: () => ({ pose: who && { world: who }, face: null }) });
     try {
-      for (let i = 0; i < 300 && !mv.loaded; i++) await sleep(50);
+      for (let i = 0; i < 1200 && !mv.loaded; i++) await sleep(50);   // (from the internet: up to a minute on a slow runner)
       assert(mv.loaded, 'el robot se carga');
       const sc = mv[Object.getOwnPropertySymbols(mv).find(s => s.description === 'scene')], root = sc.model;
       const bone = n => { let x = null; root.traverse(o => { if (o.isBone && o.name === n) x = o; }); return x; };
