@@ -12,8 +12,8 @@
 //   node tools/build-site.mjs out --open         → only the app, unmarked: the open edition (GitHub Pages)
 //   node tools/build-site.mjs --missing          → the website's texts still untranslated, by language
 //
-// Nothing is compiled: files are copied. GitHub Pages keeps publishing the
-// repository as it is (the open edition at fmesasc.github.io/revela).
+// Nothing is compiled: files are copied. GitHub Pages publishes the open edition (fmesasc.github.io/revela) with
+// --open, after the tests (.github/workflows/pages.yml).
 
 import { cpSync, rmSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';

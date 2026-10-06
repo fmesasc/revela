@@ -73,10 +73,12 @@
 // the admin (SUPPORT_NOTIFY, else the first of ADMIN_EMAILS). The daily cron reminds once and then
 // closes tickets left waiting for the person (ticketsDue: SUPPORT_REMIND_DAYS, SUPPORT_AUTOCLOSE_DAYS).
 
-import { acct, call, settings, priceOf, stripeConf, trialConfig, cleanTrial, resetTrialCache, resetNoticeCache } from './api.js';
+import { acct, call, settings, trialConfig, cleanTrial, resetTrialCache, resetNoticeCache } from './api.js';
+import { stripeConf } from './billing.js';
+import { priceOf } from './ai.js';
 import { cleanNotice } from './notices.js';
 import { mail, mailConfigured, ticketLink, readTicketToken, ticketPage, fmtDate, TICKET_LINK_DAYS } from './mail.js';
-import { fromB64url } from './auth.js';
+import { fromB64url } from './util.js';
 import { takeQuota, writeText, readParts } from './store.js';
 import { teamStatus } from './teams.js';
 import { crmApi } from './crm.js';

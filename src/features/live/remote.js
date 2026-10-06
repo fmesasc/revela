@@ -1,9 +1,10 @@
 // Phone companion (host side, runs in the editor/presenter).
 //
-// The site is static, so pairing uses WebRTC through PeerJS's public broker: the
-// presenter hosts a peer whose id embeds a short CODE, the phone (remote.html)
-// connects to that id, and a data channel carries slide state one way and
-// commands (next/prev, touchpad, blackout) the other. No backend of our own.
+// Pairing uses WebRTC through PeerJS's public broker: the presenter hosts a peer
+// whose id embeds a short CODE, the phone (remote.html) connects to that id, and a
+// data channel carries slide state one way and commands (next/prev, touchpad,
+// blackout) the other. Revela's server only lends its relays (TURN, core/ice.js)
+// when a phone can't reach the computer directly; the slides never go through it.
 //
 // Pairing: the QR/link carries a secret KEY besides the code. The phone's first
 // message is { type: 'hello', key }; with the right key it is the controller at

@@ -1,8 +1,9 @@
 // Real-time co-editing, chat and permissions (view / comment / edit).
 //
-// Like the phone remote, it needs no server of our own: the person who shares
-// ("host") keeps the document; the others connect to them over WebRTC (PeerJS's
-// public broker only introduces them; the data goes directly, encrypted).
+// Two ways, the same messages: a room on Revela's server (io/cloud/collabserver.js: the session doesn't depend on
+// the tab of whoever shared it), or directly between browsers — the person who shares ("host") keeps the document
+// and the others connect to them over WebRTC (PeerJS's public broker only introduces them; the data goes directly,
+// encrypted).
 // Each shared link carries a secret for one role; the host checks every change
 // against the sender's role, applies it and passes it on to the rest.
 //

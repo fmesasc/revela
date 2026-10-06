@@ -74,10 +74,13 @@ reveal.js, de modo que el resultado es una página web estándar y autónoma.
 - **Recursos libres** en un panel lateral: imágenes (con filtros y fondo
   transparente), iconos, GIF, vídeos, sonidos y música, stickers y modelos 3D
   (Openverse, Iconify, Wikimedia Commons, Poly Haven, NASA, Sketchfab).
-- **Colaboración local:** comentarios (también con PowerPoint y LibreOffice)
-  con tareas asignadas a personas (con
-  fecha límite), historial de versiones, proteger con contraseña y marcar
-  como final.
+- **Colaboración:** coedición en directo con chat y enlaces para ver,
+  comentar o editar, comentarios (también con PowerPoint y LibreOffice) con
+  tareas asignadas a personas (con fecha límite), control de cambios,
+  historial de versiones, firmas digitales, proteger con contraseña y marcar
+  como final. En la edición oficial y la app de escritorio, presentaciones
+  guardadas en la nube de Revela y compartidas con personas o por enlace
+  (presentar, ver, comentar o editar), y videollamadas (Pro).
 - **Accesibilidad e idiomas:** comprobador, texto alternativo, lector de
   pantalla; 11 idiomas, incluida interfaz de derecha a izquierda.
 - **Apariencia del editor:** clara, oscura, automática o con tus colores.
@@ -90,17 +93,18 @@ Consulta la [hoja de ruta](ROADMAP.md) para el detalle y lo que viene después.
 
 **App de escritorio** (Windows, macOS, Linux): instaladores en la [última versión](https://github.com/fmesasc/revela/releases/latest), que se genera sola con cada cambio (aún sin firmar: Windows y macOS avisan la primera vez). Una vez instalada se actualiza sola: al abrirla ofrece la versión nueva, comprobada con la clave de actualizaciones de Revela.
 
-Revela es una aplicación estática sin compilación.
+La aplicación son archivos estáticos, sin compilación.
 
 ```bash
 git clone https://github.com/fmesasc/revela.git
 cd revela
-python3 -m http.server 8000
-# abre http://localhost:8000
+npm start            # = python3 -m http.server 8000; abre http://localhost:8000
+npm test             # todos los tests (python3, Node.js 22+ y Chrome/Chromium)
 ```
 
 Sirve con cualquier servidor estático; es preferible a abrir `index.html`
-directamente para que el navegador cargue bien los módulos ES.
+directamente para que el navegador cargue bien los módulos ES. Para usar la
+aplicación no hay que instalar nada; los tests necesitan Node.js 22 o posterior.
 
 ## API, complementos y macros
 
@@ -126,18 +130,21 @@ export default Revela => Revela.ui.addButton({
 
 ## Arquitectura
 
-Módulos ES estándar, sin framework ni empaquetador, sin servidor propio. Un
+Módulos ES estándar, sin framework ni empaquetador. La aplicación funciona por
+sí sola en el navegador; la edición oficial añade el servidor de Revela
+(`server/cloudflare`, un Worker de Cloudflare) para cuentas, documentos en la
+nube, compartir y salas de coedición, que lo comprueba todo por sí mismo. Un
 store central mantiene el documento y el estado de la interfaz y avisa a las
 vistas en cada cambio. El código está organizado en capas, y cada una importa
 solo de las inferiores (lo comprueban los tests):
 
 ```
 src/
-  apps/      puntos de entrada: editor, mando del móvil, página de votación
+  apps/      puntos de entrada: editor, mando del móvil, página de votación, visor
   ui/        estructura, lienzo, cinta, diálogos, paneles, estilos
   api/       window.Revela para complementos y macros
   io/        formatos (reveal.js, PowerPoint, OpenDocument, Markdown), exportación, nube
-  features/  operaciones sobre el documento por dominio: documento, diseño, animación, IA, colaboración, en directo
+  features/  operaciones sobre el documento por dominio: documento, diseño, animación, IA, colaboración, en directo, contenido
   render/    dibujo a SVG · i18n/  idiomas de la interfaz
   core/      modelo, store con deshacer/rehacer, persistencia, librerías del CDN
 ```
@@ -146,14 +153,19 @@ Más detalles en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Ediciones y web oficial
 
-El mismo código se publica dos veces, sin proyectos duplicados:
+El mismo código se publica de tres formas, sin proyectos duplicados
+(`tools/build-site.mjs` copia archivos; no se compila nada):
 
-- **Edición abierta** — [fmesasc.github.io/revela](https://fmesasc.github.io/revela/): el repositorio tal
-  cual, gratis, con IA mediante tu propia clave de OpenRouter.
+- **Edición abierta** — [fmesasc.github.io/revela](https://fmesasc.github.io/revela/): solo la aplicación
+  (`npm run build:open`), gratis, con IA mediante tu propia clave de OpenRouter.
 - **Web oficial** — [revelaslides.com](https://revelaslides.com): sus propias páginas (portada, precios,
   soporte; en un repositorio privado, no en este) y la aplicación en `/app/`, montadas con `node tools/build-site.mjs` (Cloudflare Pages). Allí la
   aplicación va marcada como edición oficial; las funciones de pago dependen de su servidor, que comprueba
   por sí mismo cuentas, planes y créditos (los secretos nunca van en este repositorio).
+- **App de escritorio** — la misma aplicación en Tauri (`npm run build:desktop`), que usa el servidor
+  oficial para las cuentas.
+
+No se publica nada si no pasan todos los tests (GitHub Actions).
 
 ## Marca
 

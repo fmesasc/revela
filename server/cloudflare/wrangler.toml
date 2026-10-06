@@ -21,8 +21,7 @@ name = "LIMITS"
 class_name = "Limits"
 
 [vars]
-# Only who knows this key (set it in Revela ▸ Compartir ▸ Servidor) can upload.
-# Better as a secret: `npx wrangler secret put UPLOAD_KEY` and remove it here.
+# The largest presentation, in MB, that can be saved in Revela's cloud (docs.js).
 MAX_MB = "30"
 # Per Google account (or address) and in total, per day: shares + rooms created.
 DAILY_PER_USER = "30"
@@ -180,6 +179,8 @@ crons = ["0 8 * * *"]
 # «Crear modelo 3D con IA» (model3d.js): one object per job (its rounds, the GLB; deleted after 24 h).
 # Blender runs in another Worker, revela-blender (server/blender), reached at BLENDER_URL with the
 # secret BLENDER_SECRET (`npx wrangler secret put BLENDER_SECRET`, the same value in both Workers).
+# Optionally, a service binding to it (BLENDER_SVC: [[services]] binding = "BLENDER_SVC", service = "revela-blender"):
+# then model3d.js calls it directly instead of over the internet; without it, BLENDER_URL is fetched.
 [[durable_objects.bindings]]
 name = "MODELJOBS"
 class_name = "ModelJob"

@@ -1,4 +1,3 @@
-import { enc, DAY, b64url, unb64, escHtml, EMAIL, hmac } from './util.js';
 // Captación («Captación» in the admin): finding schools and businesses, keeping track of each one, the
 // emails that follow up with those who asked for them, and the campaigns that bring people to Revela.
 //
@@ -24,8 +23,12 @@ import { enc, DAY, b64url, unb64, escHtml, EMAIL, hmac } from './util.js';
 // Admin routes (admin.js → crmApi): /api/admin/crm/…  · Daily (worker.js scheduled → runCrm): the sequences'
 //   emails due and a summary for the admin (follow-ups due today, new requests).
 
-const str = (v, n) => String(v ?? '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, ' ').trim().slice(0, n);
-const text = (v, n) => String(v ?? '').replace(/\r/g, '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, ' ').trim().slice(0, n);
+import { DAY, b64url, EMAIL, hmac } from './util.js';
+import { crmToken, readCrmToken, eventMail, crmMail, unsubPageCrm, ackMail } from './crm-mail.js';
+import { ambassadorMail } from './ambassadors.js';
+
+export const str = (v, n) => String(v ?? '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, ' ').trim().slice(0, n);
+export const text = (v, n) => String(v ?? '').replace(/\r/g, '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, ' ').trim().slice(0, n);
 const mailOf = v => { const e = String(v || '').trim().toLowerCase(); return EMAIL.test(e) ? e : ''; };
 const webOf = v => { const s = str(v, 300); if (!s) return ''; try { const u = new URL(/^https?:\/\//i.test(s) ? s : 'https://' + s); return /^https?:$/.test(u.protocol) ? u.href : ''; } catch { return ''; } };
 export const dayKey = ts => new Date(ts).toISOString().slice(0, 10);
@@ -35,7 +38,7 @@ export const KINDS = ['school', 'academy', 'university', 'company', 'public', 'o
 export const STATUSES = ['new', 'contacted', 'talking', 'demo', 'proposal', 'customer', 'lost'];
 export const CHANNELS = ['phone', 'linkedin', 'letter', 'visit', 'email', 'other'];
 export const SOURCES = ['osm', 'import', 'form', 'manual'];
-const LANGS = ['es', 'en', 'fr', 'de', 'it', 'pt', 'ca', 'gl', 'nl', 'eu', 'ar'];
+export const LANGS = ['es', 'en', 'fr', 'de', 'it', 'pt', 'ca', 'gl', 'nl', 'eu', 'ar'];
 // What the search looks for in OpenStreetMap, per kind (Overpass filters).
 export const SEARCH = {
   school: ['nwr["amenity"~"^(school|kindergarten)$"]["name"]'],
@@ -477,19 +480,6 @@ export function defaultTemplates() {
   ];
 }
 
-// ---- Signed links in the emails (MAIL_SECRET) -----------------------------------------------------
-const same = (a, b) => a.length === b.length && ![...a].reduce((d, ch, i) => d | (ch.charCodeAt(0) ^ b.charCodeAt(i)), 0);
-export async function crmToken(env, kind, payload) {
-  if (!env.MAIL_SECRET) return null;
-  const body = b64url(enc.encode(JSON.stringify(payload)));
-  return `${body}.${await hmac(env.MAIL_SECRET, `crm:${kind}:${body}`)}`;
-}
-export async function readCrmToken(env, kind, t) {
-  const [body, sig] = String(t || '').split('.');
-  if (!env.MAIL_SECRET || !body || !sig || !same(await hmac(env.MAIL_SECRET, `crm:${kind}:${body}`), sig)) return null;
-  try { return JSON.parse(unb64(body)); } catch { return null; }
-}
-
 // ---- Searching OpenStreetMap (Nominatim for the place, Overpass for what is in it) -------------------
 // → { area, items: [{ osm, name, kind, email, phone, web, address, city, region, country, lat, lon }] }. Public data
 // (© OpenStreetMap contributors, ODbL). Polite: a User-Agent that says who asks, one search at a time.
@@ -518,79 +508,10 @@ export async function searchPlaces(env, { area, kind, limit = 200 }) {
   return { area: place.display_name, items };
 }
 
-// ---- The emails ------------------------------------------------------------------------------------
-const L10N = {
-  es: { why: d => `Recibes este correo porque nos diste permiso el ${d}.`, unsub: 'No quiero recibir más correos', ackSubject: 'Hemos recibido tu solicitud', ackTitle: 'Gracias, hemos recibido tu solicitud',
-    ack: (n, d) => [`Hola${n ? ', ' + n : ''}:`, 'Te escribiremos en uno o dos días laborables para responderte.', d ? 'Nos diste permiso para enviarte información sobre Revela: puedes retirarlo cuando quieras con el enlace de abajo.' : 'Solo usaremos tus datos para responder a esta solicitud.'],
-    page: { ok: 'Hecho: no volverás a recibir correos comerciales de Revela.', bad: 'El enlace no es válido.', back: 'Ir a revelaslides.com' } },
-  en: { why: d => `You receive this email because you gave us permission on ${d}.`, unsub: "I don't want more emails", ackSubject: 'We have received your request', ackTitle: 'Thank you, we have received your request',
-    ack: (n, d) => [`Hello${n ? ' ' + n : ''},`, 'We will write back within one or two working days.', d ? 'You gave us permission to send you information about Revela: you can withdraw it at any time with the link below.' : 'We will only use your details to answer this request.'],
-    page: { ok: 'Done: you will not receive any more commercial emails from Revela.', bad: 'The link is not valid.', back: 'Go to revelaslides.com' } },
-  fr: { why: d => `Vous recevez cet e-mail car vous nous avez donné votre accord le ${d}.`, unsub: 'Je ne veux plus recevoir d’e-mails', ackSubject: 'Nous avons reçu votre demande', ackTitle: 'Merci, nous avons reçu votre demande',
-    ack: (n, d) => [`Bonjour${n ? ' ' + n : ''},`, 'Nous vous répondrons sous un ou deux jours ouvrés.', d ? 'Vous avez accepté de recevoir des informations sur Revela : vous pouvez retirer votre accord à tout moment avec le lien ci-dessous.' : 'Nous n’utiliserons vos données que pour répondre à cette demande.'],
-    page: { ok: 'C’est fait : vous ne recevrez plus d’e-mails commerciaux de Revela.', bad: 'Le lien n’est pas valide.', back: 'Aller sur revelaslides.com' } },
-  de: { why: d => `Du erhältst diese E-Mail, weil du uns am ${d} deine Zustimmung gegeben hast.`, unsub: 'Ich möchte keine E-Mails mehr', ackSubject: 'Wir haben deine Anfrage erhalten', ackTitle: 'Danke, wir haben deine Anfrage erhalten',
-    ack: (n, d) => [`Hallo${n ? ' ' + n : ''},`, 'Wir antworten dir innerhalb von ein bis zwei Werktagen.', d ? 'Du hast zugestimmt, Informationen über Revela zu erhalten: Du kannst das jederzeit über den Link unten widerrufen.' : 'Wir verwenden deine Daten nur, um diese Anfrage zu beantworten.'],
-    page: { ok: 'Erledigt: Du erhältst keine Werbe-E-Mails von Revela mehr.', bad: 'Der Link ist ungültig.', back: 'Zu revelaslides.com' } },
-  it: { why: d => `Ricevi questa email perché ci hai dato il consenso il ${d}.`, unsub: 'Non voglio ricevere altre email', ackSubject: 'Abbiamo ricevuto la tua richiesta', ackTitle: 'Grazie, abbiamo ricevuto la tua richiesta',
-    ack: (n, d) => [`Ciao${n ? ' ' + n : ''},`, 'Ti risponderemo entro uno o due giorni lavorativi.', d ? 'Hai acconsentito a ricevere informazioni su Revela: puoi revocare il consenso in qualsiasi momento con il link qui sotto.' : 'Useremo i tuoi dati solo per rispondere a questa richiesta.'],
-    page: { ok: 'Fatto: non riceverai più email commerciali da Revela.', bad: 'Il link non è valido.', back: 'Vai a revelaslides.com' } },
-  pt: { why: d => `Recebe este e-mail porque nos deu autorização em ${d}.`, unsub: 'Não quero receber mais e-mails', ackSubject: 'Recebemos o seu pedido', ackTitle: 'Obrigado, recebemos o seu pedido',
-    ack: (n, d) => [`Olá${n ? ', ' + n : ''}:`, 'Responderemos dentro de um ou dois dias úteis.', d ? 'Autorizou-nos a enviar-lhe informação sobre o Revela: pode retirar a autorização quando quiser com a ligação abaixo.' : 'Só usaremos os seus dados para responder a este pedido.'],
-    page: { ok: 'Feito: não voltará a receber e-mails comerciais do Revela.', bad: 'A ligação não é válida.', back: 'Ir para revelaslides.com' } },
-  ca: { why: d => `Reps aquest correu perquè ens vas donar permís el ${d}.`, unsub: 'No vull rebre més correus', ackSubject: 'Hem rebut la teva sol·licitud', ackTitle: 'Gràcies, hem rebut la teva sol·licitud',
-    ack: (n, d) => [`Hola${n ? ', ' + n : ''}:`, 'T’escriurem en un o dos dies laborables per respondre’t.', d ? 'Ens vas donar permís per enviar-te informació sobre Revela: pots retirar-lo quan vulguis amb l’enllaç de sota.' : 'Només farem servir les teves dades per respondre aquesta sol·licitud.'],
-    page: { ok: 'Fet: no tornaràs a rebre correus comercials de Revela.', bad: 'L’enllaç no és vàlid.', back: 'Anar a revelaslides.com' } },
-};
-// Webinars' emails: confirmation (with the link) and the reminder the day before. when: the date and time, already written.
-const EVT = {
-  es: { ok: t => `Te has apuntado: ${t}`, rem: t => `Mañana: ${t}`, body: (t, w, l, d) => [`Te esperamos en «${t}».`, `Cuándo: ${w}.`, l ? `Para entrar: ${l}` : 'Te enviaremos el enlace para entrar antes de empezar.', d, 'Si al final no puedes venir, no hace falta que nos avises.'] },
-  en: { ok: t => `You're signed up: ${t}`, rem: t => `Tomorrow: ${t}`, body: (t, w, l, d) => [`See you at “${t}”.`, `When: ${w}.`, l ? `To join: ${l}` : 'We will send you the link to join before it starts.', d, "If you can't make it in the end, there's no need to tell us."] },
-  fr: { ok: t => `Vous êtes inscrit : ${t}`, rem: t => `Demain : ${t}`, body: (t, w, l, d) => [`Nous vous attendons à « ${t} ».`, `Quand : ${w}.`, l ? `Pour participer : ${l}` : 'Nous vous enverrons le lien avant le début.', d, 'Si finalement vous ne pouvez pas venir, inutile de nous prévenir.'] },
-  de: { ok: t => `Du bist angemeldet: ${t}`, rem: t => `Morgen: ${t}`, body: (t, w, l, d) => [`Wir sehen uns bei „${t}“.`, `Wann: ${w}.`, l ? `Teilnehmen: ${l}` : 'Den Link zum Teilnehmen schicken wir dir vor Beginn.', d, 'Falls du doch nicht kannst, musst du uns nicht Bescheid geben.'] },
-  it: { ok: t => `Sei iscritto: ${t}`, rem: t => `Domani: ${t}`, body: (t, w, l, d) => [`Ti aspettiamo a «${t}».`, `Quando: ${w}.`, l ? `Per partecipare: ${l}` : 'Ti invieremo il link prima dell’inizio.', d, 'Se alla fine non puoi venire, non serve avvisarci.'] },
-  pt: { ok: t => `Está inscrito: ${t}`, rem: t => `Amanhã: ${t}`, body: (t, w, l, d) => [`Esperamos por si em «${t}».`, `Quando: ${w}.`, l ? `Para entrar: ${l}` : 'Enviaremos a ligação para entrar antes de começar.', d, 'Se afinal não puder vir, não precisa de nos avisar.'] },
-  ca: { ok: t => `T'hi has apuntat: ${t}`, rem: t => `Demà: ${t}`, body: (t, w, l, d) => [`T'esperem a «${t}».`, `Quan: ${w}.`, l ? `Per entrar-hi: ${l}` : "T'enviarem l'enllaç per entrar-hi abans de començar.", d, 'Si al final no pots venir, no cal que ens avisis.'] },
-};
-const whenOf = (ts, lang) => { try { return new Date(ts).toLocaleString(lang || 'es', { timeZone: 'Europe/Madrid', weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }); } catch { return new Date(ts).toISOString(); } };
-export function eventMail(kind, e, lang, identity) {
-  const T = EVT[lang] || (['gl', 'eu'].includes(lang) ? EVT.es : EVT.en), l = EVT[lang] ? lang : ['gl', 'eu'].includes(lang) ? 'es' : 'en';
-  return crmMail({ subject: (kind === 'reminder' ? T.rem : T.ok)(e.title), body: T.body(e.title, whenOf(e.starts, l), e.link, e.description).filter(Boolean).join('\n\n'), lang: l, identity });
-}
-const L = lang => L10N[lang] || (['gl', 'eu'].includes(lang) || !lang ? L10N.es : L10N.en);
-const fmtDay = (ts, lang) => { try { return new Date(ts).toLocaleDateString(lang || 'es', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }); } catch { return dayKey(ts); } };
-// Text with blank lines between paragraphs → paragraphs; addresses (https://…) → links (tracked: track(url) → its link).
-export function mailBody(body, track = u => u) {
-  const paras = String(body).split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
-  const html = paras.map(p => '<p style="margin:0 0 16px">' + escHtml(p).replace(/(https:\/\/[^\s<]+[^\s<.,;:!?)»"'])/g, (m) => `<a href="${escHtml(track(m.replace(/&amp;/g, '&')))}" style="color:#2f5a8f">${m}</a>`).replace(/\n/g, '<br>') + '</p>').join('\n');
-  return { html, text: paras.join('\n\n') };
-}
-export function crmMail({ subject, body, lang, identity, unsub, consentAt, track }) {
-  const T = L(lang), b = mailBody(body, track);
-  const foot = [identity, consentAt ? T.why(fmtDay(consentAt, lang)) : ''].filter(Boolean);
-  const html = `<!doctype html><html lang="${escHtml(lang || 'es')}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escHtml(subject)}</title></head>
-<body style="margin:0;padding:0;background:#faf8f4;color:#17181c;font:16px/1.6 system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif">
-<div style="max-width:560px;margin:0 auto;padding:32px 24px">
-<p style="margin:0 0 28px;font:500 22px/1 Georgia,'Times New Roman',serif">Revela</p>
-${b.html}
-<hr style="border:0;border-top:1px solid #e3ded4;margin:32px 0 16px">
-<p style="margin:0;font-size:13px;color:#5d5f66">${foot.map(escHtml).join('<br>')}${unsub ? `<br><a href="${escHtml(unsub)}" style="color:#5d5f66">${escHtml(T.unsub)}</a>` : ''}</p>
-</div></body></html>`;
-  const textOut = [b.text, '', '—', ...foot, ...(unsub ? [`${T.unsub}: ${unsub}`] : [])].join('\n');
-  return { subject, html, text: textOut };
-}
-export function unsubPageCrm(lang, ok, site) {
-  const T = L(lang);
-  return `<!doctype html><html lang="${escHtml(lang || 'es')}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Revela</title></head>
-<body style="margin:0;background:#faf8f4;color:#17181c;font:17px/1.6 system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif"><main style="max-width:520px;margin:12vh auto;padding:0 24px">
-<p style="font:500 24px/1 Georgia,serif;margin:0 0 24px">Revela</p><p>${escHtml(ok ? T.page.ok : T.page.bad)}</p><p><a href="${escHtml(site)}/" style="color:#2f5a8f">${escHtml(T.page.back)}</a></p></main></body></html>`;
-}
-export const ackMail = (lang, name, marketing, identity) => { const T = L(lang); return crmMail({ subject: T.ackSubject, body: [T.ackTitle, ...T.ack(name, marketing)].join('\n\n'), lang, identity }); };
-
 // ---- From the Worker -------------------------------------------------------------------------------
 const crm = env => env.CRM.get(env.CRM.idFromName('crm'));
 export const crmCall = async (env, op, body) => (await crm(env).fetch('https://crm/' + op, { method: 'POST', body: JSON.stringify(body || {}) })).json();
-const site = env => env.SITE_URL || 'https://revelaslides.com';
+export const site = env => env.SITE_URL || 'https://revelaslides.com';
 const noStore = { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' };
 const htmlHeaders = { 'Content-Type': 'text/html; charset=utf-8', ...noStore, 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY',
   'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'" };
@@ -748,56 +669,6 @@ export async function runCrm(env, { sendMail, mailConfigured, adminEmails = [] }
     await sendMail(env, { to, kind: 'crm-digest', ...crmMail({ subject: `Captación: ${due.followups.length} seguimientos, ${due.leads.length} solicitudes`, body, lang: 'es', identity: '' }) });
   }
   return { sent, failed, reminded };
-}
-
-// ---- Ambassadors (teachers who show Revela to their colleagues) -------------------------------------------
-export const AMB_SUBJECTS = ['math', 'lang', 'science', 'social', 'arts', 'music', 'pe', 'tech', 'languages', 'values', 'vocational', 'business', 'other'];
-export function cleanAmbassador(b) {
-  const f = { name: str(b.name, 80), center: str(b.center, 120), city: str(b.city, 80), role: str(b.role, 80), subject: AMB_SUBJECTS.includes(b.subject) ? b.subject : 'other',
-    plan: text(b.plan, 1200), listed: b.listed === true, lang: LANGS.includes(b.lang) ? b.lang : 'es' };
-  if (f.name.length < 2) return { error: 'name' }; if (f.center.length < 2) return { error: 'center' }; if (f.plan.length < 20) return { error: 'plan' };
-  return { form: f };
-}
-// /api/ambassadors…: me — the session with its account's email (or null).
-export async function handleAmbassadors(path, req, body, env, me, json) {
-  if (!env.CRM) return json({ error: 'not configured' }, 503);
-  const sub = path.replace(/^\/ambassadors/, '') || '/';
-  if (req.method === 'GET' && sub === '/') return json(await crmCall(env, 'amb-public', {}), 200, { 'Cache-Control': 'public, max-age=300' });
-  let m = sub.match(/^\/verify\/([a-z0-9]{8,16})$/);
-  if (req.method === 'GET' && m) return json(await crmCall(env, 'amb-code', { code: m[1] }));
-  m = sub.match(/^\/badge\/([a-z0-9]{8,16})\.svg$/);
-  if (req.method === 'GET' && m) {
-    const { amb } = await crmCall(env, 'amb-code', { code: m[1] }); if (!amb) return new Response('Not found', { status: 404 });
-    return new Response(badgeSVG(amb), { headers: { 'Content-Type': 'image/svg+xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600', 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'" } });
-  }
-  if (!me) return json({ error: 'no session' }, 401);
-  if (req.method === 'GET' && sub === '/me') { const { amb } = await crmCall(env, 'amb-me', { sub: me.sub }); return json({ amb: amb && { status: amb.status, at: amb.at, since: amb.since || null, code: amb.status === 'approved' ? amb.code : null, name: amb.name, center: amb.center } }); }
-  if (req.method === 'POST' && sub === '/apply') {
-    const c = cleanAmbassador(body); if (c.error) return json({ error: c.error }, 400);
-    const r = await crmCall(env, 'amb-apply', { sub: me.sub, email: me.email, form: c.form });
-    return json({ status: r.amb.status });
-  }
-  return json({ error: 'not found' }, 404);
-}
-// The badge: an image with the name, to put in a CV, an email signature or a blog — and its link checks it is real.
-export function badgeSVG(a) {
-  const year = new Date(a.since || Date.now()).getFullYear(), name = escHtml(String(a.name).slice(0, 34)), center = escHtml(String(a.center || '').slice(0, 44));
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="200" viewBox="0 0 600 200" role="img" aria-label="Embajador/a de Revela: ${name}">
-<rect width="600" height="200" rx="22" fill="#17181c"/><rect x="10" y="10" width="580" height="180" rx="16" fill="none" stroke="#e0b65a" stroke-width="2"/>
-<circle cx="100" cy="100" r="58" fill="#2f5a8f"/><path d="M78 72h30a18 18 0 0 1 4 35l14 21h-16l-12-19H92v19H78z M92 84v14h15a7 7 0 0 0 0-14z" fill="#fff"/>
-<text x="180" y="70" font-family="Georgia,serif" font-size="20" fill="#e0b65a" letter-spacing="3">EMBAJADOR/A · ${year}</text>
-<text x="180" y="112" font-family="Georgia,serif" font-size="34" fill="#ffffff">${name}</text>
-<text x="180" y="146" font-family="system-ui,Arial,sans-serif" font-size="17" fill="#c9cbd1">${center}</text>
-<text x="180" y="174" font-family="system-ui,Arial,sans-serif" font-size="14" fill="#8a8d96">Revela · revelaslides.com/embajadores</text></svg>`;
-}
-// The email when approved (to the ambassador): what changes, the badge and its check.
-function ambassadorMail(env, amb, proUntil, identity) {
-  const site0 = site(env), verify = `${site0}/embajadores?v=${amb.code}`, badge = `${site0}/api/ambassadors/badge/${amb.code}.svg`;
-  const body = [`¡Hola, ${amb.name}!`, 'Ya eres embajador/a de Revela. Gracias por enseñarlo a tus compañeros.',
-    proUntil ? `Tienes Pro gratis hasta el ${fmtDay(proUntil, 'es')}.` : '',
-    `Tu insignia (para tu currículum, tu firma o tu blog): ${badge}`, `Y el enlace que demuestra que es real: ${verify}`,
-    'En Revela, «Mi cuenta» te muestra la insignia y tu enlace para recomendarlo a tu centro.'].filter(Boolean).join('\n\n');
-  return crmMail({ subject: 'Ya eres embajador/a de Revela', body, lang: 'es', identity });
 }
 
 // /api/admin/crm/… (admin.js has checked who it is). by: the admin's address; audit(e): the record.

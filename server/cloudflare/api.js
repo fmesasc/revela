@@ -64,14 +64,18 @@ import { mail, sendMail, readUnsubToken, unsubPage, fmtDate, mailConfigured, OPT
 import { scheduleAt, dayOf } from './schedule.js';
 import { handle3d, configured3d } from './model3d.js';
 import { createTicket, supportReply, directoryUpsert, directoryRemove, CHARGES } from './admin.js';
-import { record, active, featureOf, financeSettings } from './finance.js';
+import { record, active } from './finance.js';
 import { NOTICE_PLACES, noticesFor, noticesOp } from './notices.js';
 import { takeQuota } from './store.js';
 import { handleCommunity } from './community.js';
-import { handleLead, goLink, crmUnsub, crmClick, campaignSignup, campaignPurchase, eventsPublic, eventSignup, referralInfo, handleAmbassadors } from './crm.js';
+import { handleLead, goLink, crmUnsub, crmClick, campaignSignup, eventsPublic, eventSignup, referralInfo } from './crm.js';
+import { handleAmbassadors } from './ambassadors.js';
 import { enc, b64url, random, sha256, DAY, HOUR } from './util.js';
+import { stockSearch, stockUsed, photoProviders } from './stock.js';
+import { credits, aiChat, aiImage, aiSpeech } from './ai.js';
+import { stripeConf, billingMode, trialOffer, checkout, portal, stripeWebhook } from './billing.js';
 
-const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+export const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
 
 // ---- Settings (wrangler.toml [vars]; secrets with `wrangler secret put`) -----------------
 export function settings(env) {
@@ -111,20 +115,6 @@ export function settings(env) {
     },
   };
 }
-// Stripe has two configurations: live (real money) and test (Stripe's test mode: test cards, nothing charged).
-//   live: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_{PRO_MONTH,PRO_YEAR,CREDITS_500,CREDITS_1500,TEAM_SEAT}
-//   test: STRIPE_TEST_SECRET_KEY, STRIPE_TEST_WEBHOOK_SECRET, STRIPE_TEST_PRICE_{…the same}
-// An account pays in test mode when an admin marked it (Account 'billingTest', admin.js) or when the
-// plain var STRIPE_MODE = 'test' (everyone; default live). What test mode grants is marked test: true
-// (plan, credit lots, ledger, finance) and kept out of the business's figures.
-const PRICE_VARS = { 'pro-month': 'PRO_MONTH', 'pro-year': 'PRO_YEAR', 'credits-500': 'CREDITS_500', 'credits-1500': 'CREDITS_1500', 'team-seat': 'TEAM_SEAT' };
-export function stripeConf(env, mode = 'live') {
-  const P = mode === 'test' ? 'STRIPE_TEST_' : 'STRIPE_', key = env[P + 'SECRET_KEY'] || '', webhook = env[P + 'WEBHOOK_SECRET'] || '';
-  return { mode: mode === 'test' ? 'test' : 'live', key, webhook, ok: !!(key && webhook),
-    prices: Object.fromEntries(Object.entries(PRICE_VARS).map(([k, v]) => [k, env[P + 'PRICE_' + v] || ''])) };
-}
-export const globalTest = env => String(env.STRIPE_MODE || '').trim().toLowerCase() === 'test';
-export const billingMode = (env, accountTest) => (accountTest || globalTest(env) ? 'test' : 'live');
 // Pro's free trial, set from the admin (admin.js «Promociones»; kept in the Budget object, not in vars):
 //   trialDays (0 = off), trialCredits (granted when the trial starts, instead of the month's Pro credits; the first
 //   paid invoice brings the normal month), trialOncePerAccount. Only for an account that never had a paid Pro (and,
@@ -776,7 +766,7 @@ export async function handleApi(req, env, url) {
   if (path === '/mail/unsubscribe' && (req.method === 'GET' || req.method === 'POST')) {
     const t = await readUnsubToken(env, url.searchParams.get('t')), r = t ? await call(acct(env, t.sub), 'mail-off', { kind: t.kind }) : { ok: false };
     return new Response(unsubPage(r.lang, r.ok, s.site, t?.kind), { status: r.ok ? 200 : 400, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex',
-      'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'", 'Referrer-Policy': 'no-referrer' } });
+      'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'", 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'no-referrer' } });
   }
   // Answering a ticket: the signed link in its emails is the proof (no session; a form, so before the JSON body).
   if (path === '/support/reply' && (req.method === 'GET' || req.method === 'POST')) return supportReply(req, env, url, s.site);
@@ -955,110 +945,6 @@ async function googleUser(accessToken, idToken, clientId, fetchImpl) {
 
 const nameOf = n => (typeof n === 'string' && n.trim() ? n.replace(/[<>\r\n]/g, '').trim().slice(0, 80) : null);
 
-// ---- AI --------------------------------------------------------------------------------------------
-export const credits = (usd, s) => Math.max(1, Math.ceil((usd * s.markup) / s.creditUsd));
-export const priceOf = (s, model) => s.prices[model] || [1, 4];                  // (unknown: a cautious guess per million tokens)
-async function guard(env, s, A, holdCredits, estimateUsd, json) {
-  if (!env.OPENROUTER_KEY) return { stop: json({ error: 'ai not configured' }, 503) };
-  if (!(await call(A, 'rate')).ok) return { stop: json({ error: 'too many requests' }, 429) };
-  const budget = env.BUDGET.get(env.BUDGET.idFromName('global'));
-  if (!(await call(budget, 'check', { usd: estimateUsd })).ok) return { stop: json({ error: 'ai paused' }, 503) };
-  const h = await call(A, 'hold', { credits: holdCredits });
-  if (!h.ok) return { stop: json({ error: 'no credits', credits: h.credits }, 402) };
-  return { hold: h.id, budget };
-}
-// Why the AI provider said no (its status and message: no key, prompt or answer), in the
-// Worker's logs and for the app to show — so a failure can be told apart (no credit, no model…).
-function aiFailure(what, r, data) {
-  const status = r?.status || 0, detail = String(data?.error?.message || data?.error || '').slice(0, 300);
-  console.log(JSON.stringify({ ai: what, status, detail }));
-  return { error: 'ai failed', status, ...(detail && { detail }) };
-}
-// Pictures a chat request may carry: data: URLs only (no addresses for the provider to fetch), JPEG, PNG
-// or WebP, each up to ~300 KB, at most 8 and ~2 MB per request. Counted as a fixed number of tokens
-// each for the estimate (not by their base64 length, which would inflate the hold).
-export const IMAGE_LIMITS = { each: 300 * 1024, total: 2 * 1024 * 1024, count: 8, tokens: 1100 };
-const IMAGE_URL = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/;
-// The messages' content: → { text (characters besides the pictures), images }, or null when a part isn't allowed.
-export function contentOf(messages) {
-  let text = 0, images = 0, bytes = 0;
-  for (const m of messages) {
-    if (!m || !['system', 'user', 'assistant'].includes(m.role)) return null;
-    if (typeof m.content === 'string') { text += m.content.length; continue; }
-    if (!Array.isArray(m.content) || !m.content.length || m.content.length > 40) return null;
-    for (const p of m.content) {
-      if (p?.type === 'text' && typeof p.text === 'string') { text += p.text.length; continue; }
-      const url = p?.type === 'image_url' && typeof p.image_url?.url === 'string' ? p.image_url.url : null;
-      if (!url || m.role !== 'user' || !IMAGE_URL.test(url)) return null;
-      const size = Math.floor((url.length - url.indexOf(',') - 1) * 3 / 4);
-      if (size > IMAGE_LIMITS.each || ++images > IMAGE_LIMITS.count || (bytes += size) > IMAGE_LIMITS.total) return null;
-    }
-  }
-  return { text, images };
-}
-async function aiChat(env, s, A, body, json) {
-  const messages = Array.isArray(body.messages) ? body.messages : null;
-  if (!messages || !messages.length || messages.length > 60) return json({ error: 'bad request' }, 400);
-  const c = contentOf(messages);
-  if (!c || c.text > 1.5e6) return json({ error: 'bad request' }, 400);
-  const model = s.models.includes(body.model) ? body.model : s.models[0];
-  const maxTokens = Math.min(s.maxTokens, Math.max(16, Math.round(+body.max_tokens || 1000)));
-  const [pin, pout] = priceOf(s, model), inTok = c.text / 3 + c.images * IMAGE_LIMITS.tokens;
-  const estimate = (inTok * pin + maxTokens * pout) / 1e6;
-  const g = await guard(env, s, A, credits(estimate, s), estimate, json); if (g.stop) return g.stop;
-  let r, data;
-  try {
-    r = await (env.FETCH || fetch)('https://openrouter.ai/api/v1/chat/completions', { method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.OPENROUTER_KEY}`, 'HTTP-Referer': s.site, 'X-Title': 'Revela' },
-      // (provider.data_collection 'deny': only providers that neither store nor train on the request.)
-      body: JSON.stringify({ model, messages, max_tokens: maxTokens, usage: { include: true }, provider: { data_collection: 'deny' }, ...(body.json && { response_format: { type: 'json_object' } }) }) });
-    data = await r.json().catch(() => null);
-  } catch { r = null; }
-  if (!r || !r.ok || !data) { await call(A, 'settle', { id: g.hold, credits: 0 }); return json(aiFailure('chat', r, data), 502); }
-  const u = data.usage || {}, usd = +u.cost > 0 ? +u.cost : ((+u.prompt_tokens || inTok) * pin + (+u.completion_tokens || maxTokens) * pout) / 1e6;
-  await call(g.budget, 'spend', { usd });
-  const st = await call(A, 'settle', { id: g.hold, credits: credits(usd, s), reason: 'ai',
-    ai: { feature: featureOf(body.feature), model: data.model || model, tin: +u.prompt_tokens || 0, tout: +u.completion_tokens || 0, usd } });
-  return json({ choices: data.choices, charged: st.used });
-}
-async function aiImage(env, s, A, body, json) {
-  const prompt = String(body.prompt || '').slice(0, 2000); if (!prompt) return json({ error: 'bad request' }, 400);
-  const aspect = /^\d{1,2}:\d{1,2}$/.test(body.aspect_ratio || '') ? body.aspect_ratio : '16:9';
-  const g = await guard(env, s, A, s.imageCredits, s.imageCredits * s.creditUsd, json); if (g.stop) return g.stop;
-  let r, data;
-  try {
-    r = await (env.FETCH || fetch)('https://openrouter.ai/api/v1/images', { method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.OPENROUTER_KEY}`, 'HTTP-Referer': s.site, 'X-Title': 'Revela' },
-      body: JSON.stringify({ model: s.imageModel, prompt, aspect_ratio: aspect, n: 1 }) });
-    data = await r.json().catch(() => null);
-  } catch { r = null; }
-  if (!r || !r.ok || !data?.data?.[0]?.b64_json) { await call(A, 'settle', { id: g.hold, credits: 0 }); return json(aiFailure('image', r, data), 502); }
-  const usd = +data.usage?.cost || s.imageCredits * s.creditUsd;
-  await call(g.budget, 'spend', { usd });
-  const st = await call(A, 'settle', { id: g.hold, credits: s.imageCredits, reason: 'image', ai: { feature: 'image', model: s.imageModel, usd } });
-  return json({ data: [{ b64_json: data.data[0].b64_json, media_type: data.data[0].media_type || 'image/png' }], charged: st.used });
-}
-
-// Speech (voice-over from the speaker notes): mp3, charged per character.
-async function aiSpeech(env, s, A, body, json) {
-  const text = String(body.input || '').trim(); if (!text || text.length > 4000) return json({ error: 'bad request' }, 400);
-  const voice = s.ttsVoices.includes(body.voice) ? body.voice : s.ttsVoices[0], speed = Math.min(2, Math.max(0.5, +body.speed || 1));
-  const usd = text.length * s.ttsUsdPerChar, cr = credits(usd, s);
-  const g = await guard(env, s, A, cr, usd, json); if (g.stop) return g.stop;
-  let r, buf;
-  try {
-    r = await (env.FETCH || fetch)('https://openrouter.ai/api/v1/audio/speech', { method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.OPENROUTER_KEY}`, 'HTTP-Referer': s.site, 'X-Title': 'Revela' },
-      body: JSON.stringify({ model: s.ttsModel, input: text, voice, speed, response_format: 'mp3' }) });
-    buf = r.ok ? await r.arrayBuffer() : null;
-  } catch { r = null; }
-  if (!r || !r.ok || !buf || !buf.byteLength) { await call(A, 'settle', { id: g.hold, credits: 0 }); return json({ error: 'ai failed' }, 502); }
-  await call(g.budget, 'spend', { usd });
-  const st = await call(A, 'settle', { id: g.hold, credits: cr, reason: 'speech', ai: { feature: 'speech', model: s.ttsModel, usd } });
-  let bin = ''; const bytes = new Uint8Array(buf); for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return json({ audio: btoa(bin), media_type: 'audio/mpeg', charged: st.used });
-}
-
 // ---- Your data (GDPR): a copy of everything, or delete it all -----------------------------------
 async function accountExport(env, me, A, json) {
   const data = await call(A, 'export'), inbox = data.profile.email ? (await call(acct(env, 'e:' + data.profile.email), 'inbox-list')).docs : [];
@@ -1095,223 +981,4 @@ export async function deleteAccount(env, sub) {
     for (const x of subs?.data || []) await (env.FETCH || fetch)('https://api.stripe.com/v1/subscriptions/' + encodeURIComponent(x.id), { method: 'DELETE', headers: { Authorization: `Bearer ${key}` } }).catch(() => null);
   }
   return { email: w.email, lang: w.lang };
-}
-
-// ---- Photos (Unsplash, Pexels): searched with Revela's keys, which stay here ----
-// The pictures are used from their own servers, with the photographer's credit
-// (as both services ask); Unsplash is also told when one is used.
-const PHOTO_PROVIDERS = {
-  unsplash: { key: env => env.UNSPLASH_ACCESS_KEY, search: (env, q, page) => ['https://api.unsplash.com/search/photos?' + new URLSearchParams({ query: q, page, per_page: 20, content_filter: 'high' }), { Authorization: 'Client-ID ' + env.UNSPLASH_ACCESS_KEY, 'Accept-Version': 'v1' }],
-    list: d => (d.results || []).map(x => ({ id: String(x.id), width: x.width, height: x.height, alt: x.alt_description || x.description || '', thumb: x.urls?.small, src: x.urls?.regular,
-      author: x.user?.name || '', authorUrl: (x.user?.links?.html || '') + '?utm_source=revela&utm_medium=referral', source: 'Unsplash', sourceUrl: 'https://unsplash.com/?utm_source=revela&utm_medium=referral' })) },
-  pexels: { key: env => env.PEXELS_API_KEY, search: (env, q, page) => ['https://api.pexels.com/v1/search?' + new URLSearchParams({ query: q, page, per_page: 20 }), { Authorization: env.PEXELS_API_KEY }],
-    list: d => (d.photos || []).map(x => ({ id: String(x.id), width: x.width, height: x.height, alt: x.alt || '', thumb: x.src?.medium, src: x.src?.large2x || x.src?.large,
-      author: x.photographer || '', authorUrl: x.photographer_url || '', source: 'Pexels', sourceUrl: x.url || 'https://www.pexels.com' })) },
-};
-const httpsOnly = u => (/^https:\/\//.test(u || '') ? u : '');
-async function stockSearch(env, A, url, json) {
-  const provider = url.searchParams.get('provider'), q = String(url.searchParams.get('q') || '').trim().slice(0, 100), page = Math.min(50, Math.max(1, +url.searchParams.get('page') || 1));
-  const P = PHOTO_PROVIDERS[provider]; if (!P || !q) return json({ error: 'bad request' }, 400);
-  if (!P.key(env)) return json({ error: 'not configured' }, 503);
-  if (!(await call(A, 'ratek', { key: 'stock', per: 30 })).ok) return json({ error: 'too many requests' }, 429);
-  const [u, headers] = P.search(env, q, page);
-  const r = await (env.FETCH || fetch)(u, { headers }).catch(() => null);
-  if (!r || !r.ok) return json({ error: 'provider failed' }, 502);
-  const list = P.list(await r.json().catch(() => ({}))).map(x => ({ ...x, thumb: httpsOnly(x.thumb), src: httpsOnly(x.src), authorUrl: httpsOnly(x.authorUrl), sourceUrl: httpsOnly(x.sourceUrl) })).filter(x => x.thumb && x.src);
-  return json({ results: list });
-}
-async function stockUsed(env, body, json) {
-  if (body.provider === 'unsplash' && env.UNSPLASH_ACCESS_KEY && /^[\w-]{4,40}$/.test(body.id || ''))
-    await (env.FETCH || fetch)(`https://api.unsplash.com/photos/${body.id}/download`, { headers: { Authorization: 'Client-ID ' + env.UNSPLASH_ACCESS_KEY } }).catch(() => null);
-  return json({ ok: true });
-}
-// Which photo services are set up (for the app to show them).
-export const photoProviders = env => Object.keys(PHOTO_PROVIDERS).filter(k => PHOTO_PROVIDERS[k].key(env));
-
-// ---- Payments (Stripe) ------------------------------------------------------------------------------------
-// Live or test (stripeConf, billingMode): the key, the prices and the account's customer of that mode.
-const stripe = (env, key, path, params) => (env.FETCH || fetch)('https://api.stripe.com/v1/' + path, { method: 'POST',
-  headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(params) });
-// The days of Pro's free trial this account may get now (0: none).
-async function trialOffer(env, A, mode) {
-  const tc = await trialConfig(env);
-  return tc.trialDays > 0 && (await call(A, 'trial-ok', { test: mode === 'test', once: tc.trialOncePerAccount })).ok ? tc.trialDays : 0;
-}
-async function checkout(env, s, me, A, body, json) {
-  const p = s.products[body.product], c = await call(A, 'customer'), mode = billingMode(env, c.billingTest), conf = stripeConf(env, mode);
-  if (mode === 'test' && !conf.ok) return json({ error: 'billing test not configured' }, 503);
-  const price = conf.prices[body.product], customer = mode === 'test' ? c.customerTest : c.customer;
-  if (!conf.key || !p || !price) return json({ error: 'billing not available' }, 503);
-  let team = null, seats = 1;
-  if (p.team) {                                            // (a team's seats: its admin buys them)
-    team = (await call(A, 'team-id')).id; if (!team) return json({ error: 'no team' }, 400);
-    const tc = await (await env.TEAMS.get(env.TEAMS.idFromName('team:' + team)).fetch('https://team/customer', { method: 'POST', body: JSON.stringify({ email: c.email }) })).json();
-    if (!tc.admin) return json({ error: 'forbidden' }, 403);
-    seats = Math.max(3, Math.min(1000, Math.round(+body.seats || 3)));   // (3 seats at least)
-  }
-  // (Pro's free trial: a card is still asked for — payment_method_collection — and without one at its end it's cancelled.)
-  const trial = p.mode === 'subscription' && !p.team && /^pro-/.test(body.product) ? await trialOffer(env, A, mode) : 0;
-  const params = { mode: p.mode, 'line_items[0][price]': price, 'line_items[0][quantity]': String(seats), client_reference_id: me.sub,
-    success_url: `${s.site}/app/?paid=1`, cancel_url: `${s.site}/pricing`, 'metadata[sub]': me.sub, 'metadata[product]': body.product,
-    ...(customer ? { customer } : { customer_email: c.email }),
-    ...(p.mode === 'subscription' && { 'subscription_data[metadata][sub]': me.sub }),
-    ...(trial && { 'subscription_data[trial_period_days]': String(trial), 'subscription_data[metadata][trial]': String(trial), payment_method_collection: 'always',
-      'subscription_data[trial_settings][end_behavior][missing_payment_method]': 'cancel' }),
-    // (Promotion codes made in the admin, «Promociones»: Checkout shows «Añadir código promocional».)
-    allow_promotion_codes: 'true',
-    ...(team && { 'metadata[team]': team, 'subscription_data[metadata][team]': team }),
-    // (An invoice for one-off purchases too; and, by the pay button, the request for immediate
-    // activation that waives the 14-day withdrawal right — Art. 103 m) of the Spanish consumer law.)
-    ...(p.mode === 'payment' && { 'invoice_creation[enabled]': 'true' }),
-    // (With Stripe Tax on — STRIPE_AUTOMATIC_TAX=1 — Stripe adds each country's tax to the price
-    // and asks for the address it needs; a business can give its VAT number.)
-    ...(env.STRIPE_AUTOMATIC_TAX === '1' && { 'automatic_tax[enabled]': 'true', 'tax_id_collection[enabled]': 'true',
-      ...(customer && { 'customer_update[address]': 'auto', 'customer_update[name]': 'auto' }) }),
-    'custom_text[submit][message]': 'Al pagar pides que se active ya y aceptas que, una vez activado, pierdes el derecho de desistimiento de 14 días (art. 103 LGDCU). Condiciones: ' + s.site + '/terms.html',
-    locale: 'auto' };
-  const r = await stripe(env, conf.key, 'checkout/sessions', params);
-  const d = await r.json().catch(() => ({}));
-  return d.url ? json({ url: d.url, ...(mode === 'test' && { test: true }), ...(trial && { trialDays: trial }) }) : json({ error: 'billing failed' }, 502);
-}
-async function portal(env, s, A, json) {
-  const c = await call(A, 'customer'), mode = billingMode(env, c.billingTest), conf = stripeConf(env, mode), customer = mode === 'test' ? c.customerTest : c.customer;
-  if (mode === 'test' && !conf.ok) return json({ error: 'billing test not configured' }, 503);
-  if (!conf.key) return json({ error: 'billing not available' }, 503);
-  // (Nothing paid in this mode — a Pro from test mode, a gift or a team —: no Stripe customer to manage.)
-  if (!customer) return json({ error: 'no customer' }, 404);
-  const d = await (await stripe(env, conf.key, 'billing_portal/sessions', { customer, return_url: `${s.site}/app/` })).json().catch(() => ({}));
-  return d.url ? json({ url: d.url }) : json({ error: 'billing failed' }, 502);
-}
-// Stripe's signature: HMAC-SHA256 of "timestamp.body" with the webhook secret, at most 5 minutes old.
-export async function verifyStripe(body, header, secret, now = Date.now()) {
-  const parts = Object.fromEntries(String(header || '').split(',').map(x => x.split('=')).filter(x => x.length === 2).map(([k, v]) => [k, v]));
-  const t = +parts.t; if (!t || !parts.v1 || Math.abs(now / 1000 - t) > 300 || !secret) return false;
-  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const sig = hex(await crypto.subtle.sign('HMAC', key, enc.encode(`${t}.${body}`)));
-  const all = String(header).split(',').filter(x => x.startsWith('v1=')).map(x => x.slice(3));
-  return all.some(v => v.length === sig.length && [...v].reduce((d, ch, i) => d | (ch.charCodeAt(0) ^ sig.charCodeAt(i)), 0) === 0);
-}
-// /api/billing/webhook (live) and /api/billing/webhook-test (test: STRIPE_TEST_WEBHOOK_SECRET). A test event
-// grants the same (Pro, credits, seats) marked test, and only to an account in test mode (billingTest) — or
-// to anyone with STRIPE_MODE = 'test'; any other is logged and ignored.
-// Events: checkout.session.completed, invoice.paid, customer.subscription.updated, customer.subscription.deleted,
-// charge.refunded and customer.subscription.trial_will_end (Pro's free trial ends in 3 days: an optional email).
-async function stripeWebhook(req, env, json, mode) {
-  const conf = stripeConf(env, mode), body = await req.text(), test = mode === 'test';
-  if (test && !conf.webhook) return json({ error: 'billing test not configured' }, 503);
-  if (!(await verifyStripe(body, req.headers.get('Stripe-Signature'), conf.webhook))) return json({ error: 'signature' }, 400);
-  const ev = JSON.parse(body), o = ev.data?.object || {}, s = settings(env);
-  const teamOf = x => x?.metadata?.team || x?.subscription_details?.metadata?.team || x?.parent?.subscription_details?.metadata?.team || null;
-  const subOf = x => x?.metadata?.sub || x?.client_reference_id || x?.subscription_details?.metadata?.sub || x?.parent?.subscription_details?.metadata?.sub;
-  if (test && !globalTest(env)) {
-    const sub = subOf(o), ok = sub ? (await call(acct(env, sub), 'billing-test')).test : false;
-    if (!ok) { console.log(JSON.stringify({ stripe: 'test event ignored', type: ev.type, id: ev.id, sub: sub || null })); return json({ ok: true, ignored: true }); }
-  }
-  const T = test ? { test: true } : {};
-  await moneyEvent(env, s, conf, ev, o, subOf(o), teamOf(o));
-  if (ev.type === 'checkout.session.completed') {
-    const sub = subOf(o); if (!sub) return json({ ok: true });
-    const p = s.products[o.metadata?.product];
-    if (o.mode === 'payment' && p?.credits && o.payment_status === 'paid') await call(acct(env, sub), 'grant', { credits: p.credits, reason: 'purchase', ref: ev.id, days: s.packDays, ...T });
-    if (o.customer) await call(acct(env, sub), 'set-customer', { customer: o.customer, ...T });
-  } else if (ev.type === 'invoice.paid' && teamOf(o)) {
-    // A team's month: its seats and until when; each member gets the month's credits.
-    const id = teamOf(o), line = o.lines?.data?.[0] || {}, end = (+line.period?.end || (Date.now() / 1000 + 31 * 86400)) * 1000 + 3 * DAY;
-    const r = await (await env.TEAMS.get(env.TEAMS.idFromName('team:' + id)).fetch('https://team/billing', { method: 'POST', body: JSON.stringify({ seats: +line.quantity || 1, until: end, customer: o.customer, ...T }) })).json();
-    // (Each member's month of credits comes with their account's next request: see Account.monthly.)
-    void r;
-  } else if (ev.type === 'customer.subscription.deleted' && teamOf(o)) {
-    await env.TEAMS.get(env.TEAMS.idFromName('team:' + teamOf(o))).fetch('https://team/billing', { method: 'POST', body: JSON.stringify({ until: 0, ...T }) });
-  } else if (ev.type === 'invoice.paid') {
-    const sub = subOf(o); if (!sub) return json({ ok: true });
-    const A = acct(env, sub), trial = trialStart(o);
-    // (3 days' grace; a free trial's invoice — 0, at the start — until its end and one day.)
-    const end = (+o.lines?.data?.[0]?.period?.end || (Date.now() / 1000 + 31 * 86400)) * 1000 + (trial ? DAY : 3 * DAY);
-    await call(A, 'setplan', { name: 'pro', until: end, customer: o.customer, ...T, ...(trial && { trial: true, trialCredits: (await trialConfig(env)).trialCredits }) });
-    await call(A, 'me');                                   // (its month of credits now, if due: Account.monthly)
-  } else if (ev.type === 'customer.subscription.trial_will_end' && !teamOf(o)) {
-    // Three days before a free trial ends (Stripe's default): what will be charged, and how to cancel (optional notice).
-    const sub = subOf(o); if (!sub || o.cancel_at_period_end || o.cancel_at || (o.status && o.status !== 'trialing')) return json({ ok: true });
-    await call(acct(env, sub), 'trial-ending', { end: +o.trial_end * 1000, ref: o.id || ev.id });
-  } else if (ev.type === 'customer.subscription.updated' && !teamOf(o)) {
-    // Cancelled (it ends at the end of the period), or renewed again: told now, and reminded a week before.
-    const sub = subOf(o); if (!sub) return json({ ok: true });
-    const end = (+o.cancel_at || +o.current_period_end || +o.items?.data?.[0]?.current_period_end || 0) * 1000;
-    await call(acct(env, sub), 'plan-ending', { end: (o.cancel_at_period_end || o.cancel_at) && end > Date.now() ? end : 0 });
-  } else if (ev.type === 'customer.subscription.deleted') {
-    const sub = subOf(o);
-    if (sub) { const A = acct(env, sub), r = await call(A, 'setplan', { name: 'free', until: 0, ...T }); if (!r.ignored) await call(A, 'plan-ended', { ref: o.id || ev.id }); }
-  }
-  return json({ ok: true });
-}
-
-// ---- The business's accounts (finance.js): what each Stripe event brought in or gave back ----------
-// Payments: one-off purchases at checkout; subscriptions (Pro, team seats) at each paid invoice (an invoice
-// of a one-off purchase is already counted at its checkout). Amounts in minor units, as Stripe sends them.
-// Stripe's fee comes from the payment's balance transaction (read with the mode's key); if that fails,
-// it is estimated with STRIPE_FEE_PCT and STRIPE_FEE_FIXED. Each event once (finance.js keeps its id).
-// Test-mode events are recorded with test: true (finance.js keeps them out of every total).
-const stripeGet = (env, key, path, params) => (env.FETCH || fetch)('https://api.stripe.com/v1/' + path + '?' + new URLSearchParams(params), { headers: { Authorization: `Bearer ${key}` } })
-  .then(r => (r.ok ? r.json() : null)).catch(() => null);
-export async function stripeFee(env, { charge, intent, gross, cur }, key = env.STRIPE_SECRET_KEY) {
-  const id = x => (typeof x === 'string' && /^[\w-]{3,100}$/.test(x) ? x : null);
-  let bt = null;
-  if (key && id(charge)) bt = (await stripeGet(env, key, 'charges/' + id(charge), { 'expand[]': 'balance_transaction' }))?.balance_transaction;
-  else if (key && id(intent)) bt = (await stripeGet(env, key, 'payment_intents/' + id(intent), { 'expand[]': 'latest_charge.balance_transaction' }))?.latest_charge?.balance_transaction;
-  if (bt && typeof bt === 'object' && Number.isFinite(+bt.fee)) return { fee: +bt.fee, feeCur: String(bt.currency || cur).toLowerCase() };
-  const f = financeSettings(env);
-  return { fee: gross > 0 ? Math.round((gross * f.feePct) / 100 + f.feeFixed * 100) : 0, feeCur: cur, feeEstimated: true };
-}
-// A subscription's metadata, as an invoice carries it (old and new API shapes).
-const subMeta = o => o?.parent?.subscription_details?.metadata || o?.subscription_details?.metadata || {};
-// The invoice that starts a free trial (nothing to pay; checkout() marks the subscription with trial).
-export const trialStart = o => !!subMeta(o).trial && !(+o.amount_paid > 0) && o.billing_reason === 'subscription_create';
-// The promotion code used (its text: «LANZAMIENTO30»), from a Checkout Session or an invoice: read from Stripe
-// when the event only carries ids (best effort; else the id).
-async function promoOf(env, key, o) {
-  const objs = x => [].concat(x || []).filter(d => d && typeof d === 'object');
-  let d = objs(o.discounts).concat(objs(o.discount)).find(x => x.promotion_code);
-  if (!d && key && o.object === 'invoice' && /^in_[\w]+$/.test(o.id || '') && [].concat(o.discounts || []).some(x => typeof x === 'string'))
-    d = objs((await stripeGet(env, key, 'invoices/' + o.id, { 'expand[]': 'discounts' }))?.discounts).find(x => x.promotion_code);
-  const pc = d?.promotion_code; if (!pc) return null;
-  if (typeof pc === 'object') return pc.code || pc.id || null;
-  if (!/^promo_[\w]+$/.test(pc)) return null;
-  return (key && (await stripeGet(env, key, 'promotion_codes/' + pc, {}))?.code) || pc;
-}
-async function moneyEvent(env, s, conf, ev, o, sub, team) {
-  if (!env.FINANCE) return;
-  const cur = String(o.currency || 'eur').toLowerCase(), ref = ev.id, T = conf.mode === 'test' ? { test: true } : {};
-  if (ev.type === 'checkout.session.completed' && o.mode === 'payment' && o.payment_status === 'paid') {
-    const gross = +o.amount_total || 0, p = s.products[o.metadata?.product], discount = +o.total_details?.amount_discount || 0;
-    if (!T.test && sub) await campaignPurchase(env, sub, gross - (+o.total_details?.amount_tax || 0));   // (crm.js: the campaign that brought them)
-    await record(env, { kind: 'payment', product: o.metadata?.product || 'other', cur, gross, tax: +o.total_details?.amount_tax || 0, ...(p?.credits && { credits: p.credits }),
-      ...(discount > 0 && { discount, promo: await promoOf(env, conf.key, o) }),
-      sub, ref, ...T, ...(await stripeFee(env, { intent: o.payment_intent, gross, cur }, conf.key)) });
-  } else if (ev.type === 'invoice.paid') {
-    const line = o.lines?.data?.[0] || {}, pay = o.payments?.data?.[0]?.payment || {};
-    const subscription = o.subscription || o.parent?.subscription_details?.subscription || line.subscription || line.parent?.subscription_item_details?.subscription
-      || ((o.subscription_details || o.parent?.subscription_details || /^subscription/.test(o.billing_reason || '')) && o.customer ? 'cus:' + o.customer : null);
-    const price = line.price?.id || line.pricing?.price_details?.price || line.plan?.id;
-    const product = team ? 'team-seat' : Object.keys(conf.prices).find(k => conf.prices[k] && conf.prices[k] === price) || 'pro';
-    // Free trials: started (the 0 invoice at the start), converted (its first invoice after), each once (finance.js).
-    if (subscription && subMeta(o).trial && !team) {
-      const stage = trialStart(o) ? 'start' : o.billing_reason !== 'subscription_create' ? 'convert' : null;
-      if (stage) await record(env, { kind: 'trial', stage, subscription, product, sub: sub || null, ref: ref + ':trial', ...T });
-    }
-    const gross = +o.amount_paid || 0; if (!subscription || gross <= 0) return;
-    const span = (+line.period?.end - +line.period?.start) * 1000, months = span > 0 ? Math.max(1, Math.round(span / (30.44 * DAY))) : 1;
-    const tax = +o.tax || (o.total_taxes || []).reduce((t, x) => t + (+x.amount || 0), 0) || (o.total_tax_amounts || []).reduce((t, x) => t + (+x.amount || 0), 0);
-    const discount = (o.total_discount_amounts || []).reduce((t, x) => t + (+x.amount || 0), 0);
-    if (!T.test && sub) await campaignPurchase(env, sub, gross - tax);
-    await record(env, { kind: 'payment', product, cur, gross, tax, subscription, months, sub: sub || null, ref, ...T,
-      ...(discount > 0 && { discount, promo: await promoOf(env, conf.key, o) }),
-      ...(await stripeFee(env, { charge: o.charge || pay.charge, intent: o.payment_intent || pay.payment_intent, gross, cur }, conf.key)) });
-  } else if (ev.type === 'charge.refunded') {
-    const before = +ev.data?.previous_attributes?.amount_refunded || 0, amount = (+o.amount_refunded || 0) - before;
-    if (amount > 0) await record(env, { kind: 'refund', cur, amount, sub: o.metadata?.sub || null, ref, ...T });
-  } else if (ev.type === 'customer.subscription.deleted') {
-    await record(env, { kind: 'sub-end', subscription: o.id || ('cus:' + o.customer), sub: sub || null, ref, ...T, ...(team && { product: 'team-seat' }) });
-    // (A trial that ends without its first payment: cancelled. finance.js ignores it after a conversion.)
-    if (o.metadata?.trial && !team) await record(env, { kind: 'trial', stage: 'cancel', subscription: o.id || ('cus:' + o.customer), sub: sub || null, ref: ref + ':trial', ...T });
-  }
 }

@@ -1,6 +1,6 @@
 // Google sign-in checks shared by the share server and the accounts API.
 
-export const fromB64url = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0));
+import { fromB64url } from './util.js';
 
 // Google ID token (JWT, RS256) → its claims, if the signature, issuer,
 // audience and expiry are right. Google's public keys are cached for an hour.

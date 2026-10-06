@@ -4,28 +4,31 @@ Thanks for your interest in improving Revela.
 
 ## Development setup
 
-No build step or dependencies are required.
+No build step and no packages to install. You need `python3`, **Node.js 22 or
+later** and Chrome or Chromium (the last two for the tests).
 
 ```bash
 git clone https://github.com/fmesasc/revela.git
 cd revela
-python3 -m http.server 8000   # or any static server
+npm start                     # = python3 -m http.server 8000 (or any static server)
 ```
 
 Open `http://localhost:8000` and edit the files under `src/`; refresh to see
-changes.
+changes. The server (`server/cloudflare`) is optional for working on the app;
+see its [README](server/cloudflare/README.md).
 
 ## Project layout
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full map. In short:
 
-- `src/apps/` — the entry points of the three pages: editor, phone remote, voting.
+- `src/apps/` — the entry points of the four pages: editor, phone remote, voting, viewer.
 - `src/core/` — data model, store (undo/redo), persistence and the ports
   (`notify`, `session`, `vendor`) that let lower layers reach the interface.
 - `src/features/<domain>/` — what can be done to a document, as store changes.
-- `src/io/` — formats, exports, cloud and the code embedded in presentations.
+- `src/io/` — formats, exports, sharing, cloud services and the code embedded in presentations.
 - `src/ui/` — everything on screen: shell, canvas, ribbon, dialogs, panels, styles.
 - `src/api/` — the public `window.Revela` API for add-ins and macros.
+- `server/cloudflare/` — Revela's server (Cloudflare Worker); `tests/` and `tools/`.
 
 Each layer imports only from itself or the layers below
 (apps → ui → api → io → features → render · i18n → core); the tests fail
@@ -35,19 +38,33 @@ consistent.
 
 ## Tests
 
-Everything runs in headless Chrome and needs only `python3` and Chrome/Chromium:
+The tests need `python3`, Node.js 22+ and Chrome/Chromium:
 
 ```bash
-./tests/run.sh              # architecture check + the whole suite + real touch checks on a phone-sized page
-./tests/run.sh --only=io    # just some areas (text, objects, slides, animation, present, io, editor, services)
+npm test                    # = ./tests/run.sh: everything (below)
+npm run test:server         # only the server's tests (Node.js, no browser)
+./tests/run.sh --only=io    # the browser suite for some areas (text, objects, slides, animation, present, io, editor, services)
 ./tests/run.sh --e2e        # also two real pages over WebRTC: phone remote, live poll, audience Q&A (needs network)
 ```
+
+`tests/run.sh` runs, in order: the architecture check (`tests/layers.py`); the
+Node.js tests — the server (`server.mjs`, `server-api.mjs`, `server-lti.mjs`,
+`server-blender.mjs`), the account client, the example presentations'
+translations and `tools/template-texts.mjs --check`; then `tests/run.py`, which
+drives the real app in headless Chrome: the suite in `tests/suites/*.js`, real
+touch checks on a phone-sized page, the equation keyboard and mouse checks (and
+the website's checks when the private `site/` is cloned).
+
+On GitHub, `.github/workflows/tests.yml` runs the whole suite for every pull
+request and branch, and the publishing workflows (GitHub Pages, the server, the
+desktop app) call it first: nothing is published unless it passes.
 
 Add a test to the matching `tests/suites/<area>.js` for every feature and every
 bug fixed; the suite drives the real app through `window.__revela` (loaded with
 `?test`). Each test starts from `reset()` and must not depend on the others.
-Services that need an account (OpenRouter, Google Drive) are tested with
-simulated responses. `tests/index.html` also runs in a normal browser
+Services that need an account (OpenRouter, Google Drive, Revela's cloud) are
+tested with simulated responses; the server's tests use in-memory Durable
+Objects. `tests/index.html` also runs in a normal browser
 (`?only=io` works there too).
 
 To move a file or split a module without breaking imports, use
@@ -69,5 +86,6 @@ To move a file or split a module without breaking imports, use
 
 ## Reporting bugs and ideas
 
-Use GitHub issues. For bugs, include steps to reproduce and your browser.
+Use GitHub issues. Security problems: please don't open a public issue; see
+[SECURITY.md](SECURITY.md). For bugs, include steps to reproduce and your browser.
 Feature ideas and design feedback are equally welcome.

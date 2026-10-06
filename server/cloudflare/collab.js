@@ -20,7 +20,7 @@
 import { applyOps, allowed, ROLES, pack, unpacker } from '../../src/features/live/collabsync.js';
 import { authorize, whoKey } from './worker.js';
 import { writeDeck, readDeck, takeQuota } from './store.js';
-import { b64url, random } from './util.js';
+import { random } from './util.js';
 
 const COLORS = ['#e8590c', '#1c7ed6', '#2f9e44', '#ae3ec9', '#f08c00', '#0c8599', '#e03131', '#5c7cfa'];
 const SAVE_DELAY = 5000, IDLE = 7 * 864e5;

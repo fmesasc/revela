@@ -1,4 +1,3 @@
-import { DAY } from './util.js';
 // Business accounting (the admin's «Negocio» page): every economic event, in one Durable Object
 // (Finance). Internal business data: only the protected admin API (admin.js) reads it.
 //
@@ -38,6 +37,8 @@ import { DAY } from './util.js';
 // Vars (plain, set in Cloudflare): USD_EUR (default 0.86), EMAIL_USD (cost of one email, default 0),
 // STRIPE_FEE_PCT (default 1.5) and STRIPE_FEE_FIXED (default 0.25, in the payment's currency) to estimate
 // Stripe's fee when its balance transaction can't be read; CREDIT_USD and MONTHLY_BUDGET_USD as in api.js.
+
+import { DAY } from './util.js';
 
 export const RAW_DAYS = 90;
 export const AI_FEATURES = ['assistant', 'complete', 'vision', 'alt-text', 'image', 'speech', '3d', 'ticket-suggest', 'rig-detect',

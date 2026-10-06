@@ -70,9 +70,12 @@ standard, self-contained web page.
 - **Free resources** in a side panel: pictures (with filters and transparent
   background), icons, GIFs, videos, sounds and music, stickers and 3D models
   (Openverse, Iconify, Wikimedia Commons, Poly Haven, NASA, Sketchfab).
-- **Local collaboration:** comments (also to and from PowerPoint and
-  LibreOffice) with tasks assigned to people (with due
-  dates), version history, password protection and mark as final.
+- **Collaboration:** live co-editing with chat and view / comment / edit
+  links, comments (also to and from PowerPoint and LibreOffice) with tasks
+  assigned to people (with due dates), track changes, version history,
+  digital signatures, password protection and mark as final. In the official
+  edition and the desktop app, presentations kept in Revela's cloud and shared with people or by link
+  (present, view, comment or edit), and video calls (Pro).
 - **Accessibility & languages:** checker, alt text, screen reader support;
   11 languages including a right-to-left interface.
 - **Editor appearance:** light, dark, automatic or your own colours.
@@ -85,17 +88,18 @@ See the [roadmap](ROADMAP.md) for details and what comes next.
 
 **Desktop app** (Windows, macOS, Linux): installers in the [latest release](https://github.com/fmesasc/revela/releases/latest), built automatically on every change (not code-signed yet: Windows/macOS warn the first time). Once installed it updates itself: on start it offers the new version, verified with Revela's update key.
 
-Revela is a static application with no build step.
+The app is static files with no build step.
 
 ```bash
 git clone https://github.com/fmesasc/revela.git
 cd revela
-python3 -m http.server 8000
-# open http://localhost:8000
+npm start            # = python3 -m http.server 8000; open http://localhost:8000
+npm test             # all the tests (python3, Node.js 22+ and Chrome/Chromium)
 ```
 
 Any static file server works; a server is preferred over opening `index.html`
-directly so the browser loads the ES modules correctly.
+directly so the browser loads the ES modules correctly. Nothing needs
+installing to run the app; the tests need Node.js 22 or later.
 
 ## Scripting API, add-ins and macros
 
@@ -121,18 +125,21 @@ export default Revela => Revela.ui.addButton({
 
 ## Architecture
 
-Plain ES modules, no framework or bundler, no server of its own. A central
+Plain ES modules, no framework or bundler. The app runs on its own in the
+browser; the official edition adds Revela's server (`server/cloudflare`, a
+Cloudflare Worker) for accounts, cloud documents, sharing and co-editing rooms,
+checked by the server itself. A central
 store holds the document and UI state and notifies the views on every committed
 change. The code is organised in layers, each importing only from the ones
 below (checked by the tests):
 
 ```
 src/
-  apps/      entry points: editor, phone remote, voting page
+  apps/      entry points: editor, phone remote, voting page, viewer
   ui/        shell, canvas, ribbon, dialogs, panels, styles
   api/       window.Revela for plugins and macros
   io/        formats (reveal.js, PowerPoint, OpenDocument, Markdown), exports, cloud
-  features/  document operations by domain: document, design, animation, ai, collab, live
+  features/  document operations by domain: document, design, animation, ai, collab, live, content
   render/    drawing to SVG · i18n/  interface languages
   core/      model, store with undo/redo, persistence, CDN libraries
 ```
@@ -141,14 +148,18 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
 
 ## Editions and official site
 
-The same code is published twice, with no duplicated project:
+The same code is published three ways, with no duplicated project
+(`tools/build-site.mjs` copies files; nothing is compiled):
 
-- **Open edition** — [fmesasc.github.io/revela](https://fmesasc.github.io/revela/): the repository as it
-  is, free, with AI through your own OpenRouter key.
+- **Open edition** — [fmesasc.github.io/revela](https://fmesasc.github.io/revela/): the app only
+  (`npm run build:open`), free, with AI through your own OpenRouter key.
 - **Official site** — [revelaslides.com](https://revelaslides.com): its own pages (home, plans, support;
   a private repository, not this one) and the app in `/app/`, built by `node tools/build-site.mjs` (Cloudflare Pages). The app there
   is marked as the official edition; paid features depend on its server, which checks accounts, plans and
   credits itself (secrets never go in this repository).
+- **Desktop app** — the same app in Tauri (`npm run build:desktop`), which uses the official server for accounts.
+
+Nothing is published unless the whole test suite passes (GitHub Actions).
 
 ## Trademark
 

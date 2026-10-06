@@ -1,8 +1,8 @@
-// Revela's server (Cloudflare Worker + Durable Objects): sealed shared
-// presentations and live collaboration rooms. No R2: see store.js (free plan,
-// hard limits, never billed).
+// Revela's server (Cloudflare Worker + Durable Objects): the entry point that
+// routes every request — sealed shared presentations (here), live collaboration
+// rooms, the accounts API and the administration. No R2: see store.js.
 //
-// It only ever receives encrypted data: presentations are sealed in the
+// Shares: it only ever receives encrypted data: presentations are sealed in the
 // browser and the key stays in the link after "#", which never reaches this
 // server. So it holds noise it cannot read. Identifiers are 128-bit random
 // values, nothing is listed, and every response says noindex.
@@ -25,9 +25,18 @@
 // Administration: /api/admin/… only on the admin host, off unless configured (admin.js);
 // nothing else is answered on that host.
 //
-// Bindings (wrangler.toml): SHAREBOX, ROOMS, LIMITS (Durable Objects). Optional
-// vars: UPLOAD_KEY and/or GOOGLE_CLIENT_ID + ALLOWED (who can upload or open
-// rooms, see authorize()), MAX_MB (default 30), ALLOW_ORIGIN (default *).
+// The accounts API and everything under /api (api.js and the modules it calls),
+// and the community's pages at /comunidad (community.js).
+//
+// Bindings (wrangler.toml), all Durable Objects: SHAREBOX, LIMITS (store.js),
+// ROOMS (collab.js), ACCOUNTS, BUDGET, DESKTOP (api.js), DOCS (docs.js),
+// TEAMS (teams.js), LTI (lti.js), CALLS (calls.js), SCHEDULE (schedule.js),
+// MODELJOBS (model3d.js), DIRECTORY, TICKETS, AUDIT (admin.js), FINANCE
+// (finance.js), CRM (crm.js), COMMUNITY (community.js). Optional: EMAIL
+// (send_email, mail.js) and BLENDER_SVC (service binding, model3d.js). This
+// file's own vars: UPLOAD_KEY and/or GOOGLE_CLIENT_ID + ALLOWED (who can upload
+// or open rooms, see authorize()), MAX_MB (default 30), ALLOW_ORIGIN (default *).
+// Every secret and var: README.md.
 
 import { handleCollab, CollabRoom } from './collab.js';
 import { ShareBox, Limits, takeQuota } from './store.js';
@@ -44,7 +53,7 @@ import { Crm, runCrm } from './crm.js';
 import { Community, communityPage } from './community.js';
 import { sendMail, mailConfigured } from './mail.js';
 import { Finance } from './finance.js';
-import { b64url, random, sha256 } from './util.js';
+import { random, sha256 } from './util.js';
 export { CollabRoom, ShareBox, Limits, Account, Budget, DesktopLink, CloudDoc, Team, LtiStore, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance, Crm, Community, verifyGoogleToken, resetCerts };
 
 const box = (env, id) => env.SHAREBOX.get(env.SHAREBOX.idFromName(id));

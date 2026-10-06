@@ -7,7 +7,8 @@ import { summarize, bump, toCsv, cleanEntry, featureOf } from '../server/cloudfl
 import { verifyAccess, resetAccessCerts, resetPromoCache, ticketsDue } from '../server/cloudflare/admin.js';
 import { ticketToken, render } from '../server/cloudflare/mail.js';
 import { verifyBody } from '../server/blender/gate.js';
-import { verifyStripe, shortCode, settings, stripeConf, billingMode, deviceOf } from '../server/cloudflare/api.js';
+import { shortCode, settings, deviceOf } from '../server/cloudflare/api.js';
+import { verifyStripe, stripeConf, billingMode } from '../server/cloudflare/billing.js';
 import { sha256 } from '../server/cloudflare/util.js';
 
 function fakeStorage() {

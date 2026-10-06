@@ -79,7 +79,8 @@ export class Limits {
   constructor(ctx, env) { this.ctx = ctx; this.env = env; }
   async fetch(req) {
     const { who, per, scope } = await req.json(), day = new Date().toISOString().slice(0, 10), st = this.ctx.storage;
-    // (scope: a counter of its own, e.g. support tickets, with its own per-day limit and total.)
+    // (scope: a counter of its own — support tickets, leads, community reports… —, with its own per-day limit and its
+    // own total: SUPPORT_DAILY_TOTAL, 500 by default, for each scope; named after the first one, kept for compatibility.)
     const perUser = +per || +this.env.DAILY_PER_USER || 30, total = scope ? +this.env.SUPPORT_DAILY_TOTAL || 500 : +this.env.DAILY_TOTAL || 3000, all = scope ? '*' + scope : '*';
     const c = (await st.get('day')) === day ? (await st.get('counts')) || {} : {};
     if ((c[all] || 0) >= total) return new Response(JSON.stringify({ ok: false, reason: 'total' }));

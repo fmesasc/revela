@@ -1,24 +1,51 @@
 # Architecture
 
 Revela is a client-side application written as plain ES modules: no build step,
-no framework, no server of its own. The repository root is the website
-(GitHub Pages). Third-party libraries (reveal.js, KaTeX, PeerJS, html2canvas…)
-are loaded from a CDN only when a feature needs them, at versions pinned in
+no bundler, no framework. The app works on its own in the browser (documents in
+the browser, Google Drive, OneDrive or Dropbox; the phone remote and live polls
+peer to peer). The official edition adds **Revela's server** (`server/cloudflare`:
+a Cloudflare Worker with Durable Objects) for accounts, cloud documents, sharing,
+co-editing rooms and the paid features; it is optional for anyone running their
+own copy. Third-party libraries (reveal.js, KaTeX, PeerJS, html2canvas…) are
+loaded from a CDN only when a feature needs them, at versions pinned in
 `src/core/vendor.js`.
+
+## Editions
+
+The same code is published three ways; `tools/build-site.mjs` copies files and
+compiles nothing, and `src/core/config.js` (`EDITION`) reads which one it is
+from `<meta name="revela-edition">`:
+
+| Edition   | Where                                   | Built with                                        |
+|-----------|-----------------------------------------|---------------------------------------------------|
+| `open`    | GitHub Pages (fmesasc.github.io/revela) | `node tools/build-site.mjs _site --open`: only the app, unmarked |
+| `cloud`   | revelaslides.com (the app in `/app/`)   | `node tools/build-site.mjs` on Cloudflare Pages: the website (the private `fmesasc/revela-site`, cloned in `site/`) plus the app marked `cloud` |
+| `desktop` | the Tauri app (`desktop/`)              | `node tools/build-site.mjs desktop/dist --app-only`: the app marked `desktop`, using the official server |
+
+The app is exactly the files listed in `APP_FILES` (`tools/build-site.mjs`):
+the root pages below, `icons/`, `assets/` and `src/` — no tests, tools or server
+code. Every publishing workflow (`pages.yml`, `server.yml`, `desktop.yml`) first
+calls `tests.yml`, which runs the whole suite, so nothing is published without
+passing.
 
 ## Applications
 
-Four pages, four entry points. The page URLs stay at the root because QR codes
-and links already printed point to them.
+Four pages have their own entry point in `src/apps/`; a few more small pages
+complete the app. They all stay at the root of the app, because each address
+is fixed somewhere outside this repository:
 
-| Page          | Entry point                 | What it is                                   |
-|---------------|-----------------------------|----------------------------------------------|
-| `index.html`  | `src/apps/editor/main.js`   | The editor (installable PWA, works offline)  |
-| `remote.html` | `src/apps/remote/main.js`   | Phone remote: notes, next/previous, touchpad (pointer, spotlight, taps) |
-| `vote.html`   | `src/apps/vote/main.js`     | Audience page for live polls and Q&A         |
-| `view.html`   | `src/apps/view/main.js`     | Viewer of shared (sealed) presentations      |
+| Page          | Entry point                 | What it is                                   | Why it stays at the root |
+|---------------|-----------------------------|----------------------------------------------|--------------------------|
+| `index.html`  | `src/apps/editor/main.js`   | The editor (installable PWA, works offline)  | The PWA's start URL and scope (`manifest.webmanifest`: `./`) |
+| `remote.html` | `src/apps/remote/main.js`   | Phone remote: notes, next/previous, touchpad (pointer, spotlight, taps) | Installed on phones with its own `remote.webmanifest` (start URL and scope `./remote.html`), and in QR codes |
+| `vote.html`   | `src/apps/vote/main.js`     | Audience page for live polls and Q&A         | `VOTE_URL` (`features/live/poll.js`) is hard-coded in exported presentations and their QR codes |
+| `view.html`   | `src/apps/view/main.js`     | Viewer: sealed shares (`?d=` Drive, `?u=` address), a cloud document shared by link (`?doc=`), «Solo presentar» and the «Insert in a web page» iframe | Links and embeds already handed out |
+| `auth.html`   | inline script               | End of a Dropbox/OneDrive sign-in (`io/cloud/oauth.js`): hands the one-time code back to the window that asked | Registered as the OAuth redirect URI |
+| `dropbox.html`| inline script               | Dropbox's «Open with ▸ Revela»: on to the editor with `?dropbox&file_id=…` | Registered as the Dropbox app's Extension URI (`docs/ABRIR-CON.md`) |
+| `privacy.html`, `terms.html`, `legal.html`, `dpa.html` | `legal.js`, `legal.css` | Privacy policy, terms, legal notice, data processing agreement | Linked from Google's consent screen, Stripe and the app (`io/cloud/account.js`); the site build copies them to its top too |
+| `sw.js`       | —                           | Service worker: offline app; never touches `/api/` | A service worker only controls its own folder and below, so it must sit beside `index.html` |
 
-The exported presentation is a fourth, standalone "application": a single HTML
+The exported presentation is one more standalone "application": a single HTML
 file with reveal.js plus the scripts in `src/io/runtime/`.
 
 ## Layers
@@ -31,8 +58,10 @@ ui        the only layer that builds interface: shell, canvas, ribbon, dialogs, 
 api       window.Revela: the public API for plugins and macros (no interface)
   ↓
 io        formats (HTML/reveal.js, PowerPoint, OpenDocument, Markdown, project),
-          exports (print, images, video), cloud (Drive), runtime (code that runs
-          inside the exported presentation)
+          exports (print, PDF, images, video), share (sealing), cloud (Google
+          Drive, OneDrive, Dropbox, the Revela account, cloud documents, calls,
+          the share and collaboration servers, community, notices), runtime
+          (code that runs inside the exported presentation)
   ↓
 features  what can be done to a document, by domain: document, design,
           animation, ai, collab, live, content
@@ -43,9 +72,13 @@ core      data model, store (undo/redo), persistence, and the ports below
 ```
 
 **Rule: a module imports only from its own layer or the layers below.**
-`tests/layers.py` enforces it (and that every imported name exists, and that
-every file the pages link to exists); `tests/run.sh` runs it first and fails on
-any violation. `render` and `i18n` share a rank but do not know each other.
+`tests/layers.py` enforces it, and also that every imported name exists, that
+every file the pages and `sw.js` link to exists, and that no file in `src/` is
+ignored by `.gitignore` (it would be missing once published); `tests/run.sh`
+runs it first and fails on any violation. `render` and `i18n` share a rank but
+do not know each other. The runtime scripts that are embedded in the exported
+presentation as source (`io/runtime/ink.js`, `camera.js`, `puppet.js`) may not
+import at all.
 
 When a lower layer needs something only a higher one can provide, it goes
 through a small **port** in `core`, which the editor fills in at start-up:
@@ -58,84 +91,265 @@ through a small **port** in `core`, which the editor fills in at start-up:
   remote (`features/live/remote.js`).
 - `core/vendor.js` — every CDN library with its version, and one `loadScript`
   that loads each once (concurrent calls share the request).
+- `core/store.js` `setDeckFilter` — what every deck from outside goes through;
+  the editor sets the sanitizer (`features/document/sanitize.js`).
 
 ## Source map
 
 ```
 src/
-  apps/{editor,remote,vote,view}/main.js
-  api/index.js                 window.Revela, plugins and macros
+  apps/
+    editor/main.js             the editor: wires the modules together, subscribes the render, registers sw.js
+    remote/main.js             phone remote (runs in remote.html): pairs with the presenter's peer over WebRTC
+    vote/main.js               audience page: answers the poll on the presenter's current slide
+    view/main.js               viewer: opens a sealed share, or a cloud document shared by link
+  api/index.js                 window.Revela, the public API for plugins and macros
   core/
-    model.js                   deck/slide/block factories, load/save, IndexedDB for big decks
+    model.js                   deck/slide/block factories, defaults, load/save
     store.js                   state, commit/mutate, undo/redo, subscribers, document version,
                                the filter every outside deck goes through (sanitizer)
     text.js                    esc, plainText, jsData (data inside <script>), shortSig
-    idb.js  config.js  notify.js  session.js  vendor.js
-  i18n/index.js  strings.js    t(), languages; the string tables (+ langs/ loaded on demand)
-  render/svg.js                shapes, charts, icons, ink, tables → SVG/HTML strings
+    idb.js                     minimal IndexedDB: the autosaved deck (large decks) and versions
+    config.js                  settings outside any deck: EDITION, the official site, Google's public ids
+    formulas.js                formulas in table cells (=SUM(ABOVE), spreadsheet-style)
+    ice.js                     STUN, plus TURN relays from Revela's server (/api/ice) when there is one
+    notify.js  session.js  vendor.js   the ports (above)
+  i18n/
+    index.js                   t(), languages, Spanish as the source and fallback
+    strings.js                 the string tables: es, en, fr, de, it, pt, ca
+    langs/                     gl, nl, eu, ar (loaded only when chosen)
+  render/
+    svg.js                     shapes, charts, icons, ink, tables, WordArt, connectors, timers,
+                               devices, image filters → SVG/HTML strings
+    icons.js                   more built-in icons for the picker (Lucide)
+    diagrams.js                SmartArt-style diagrams from an outline, by layout
+    codelangs.js               DAX, Power Query M and worksheet formulas for highlight.js
+    textfit.js                 Text Art shrunk until it fits its box
   features/
-    document/                  slides, blocks, format, master, templates, captions,
-                               clipboard, shape operations, search, autocorrect, a11y,
-                               magnify (the magnifier: lines, placement, picture crop),
-                               sanitize (what comes from outside can't run code)
-    design/                    palettes, fonts, designer (design ideas), gallery,
-                               canvasmode + canvasdesigns (Prezi-like canvas and its pictures)
-    animation/                 transitions.js (effects, several per object, timeline,
-                               transitions, motion paths), morph.js (Morph pairing)
-    ai/                        openrouter.js (sign-in, calls), authoring.js (decks, rewriting), agent.js (the assistant: proposals, scope, permissions, checks), rigkind.js (what a 3D model is, seen by a vision model)
-    collab/                    comments, versions, protect (password, mark as final), signature
-    live/                      remote (phone), poll, dashboards (live data), media (camera,
-                               video/GIF playback), gifbg (GIF background removal), coach,
-                               collab + collabsync (co-editing: ops, roles, messages)
-    content/                   stock (Openverse, Iconify), resources (GIFs, stickers, 3D search:
-                               library3d, nasa3d, Poly Haven, Wikimedia STL, Sketchfab),
-                               model3d (3D attributes, views, walking), gltf (read/write GLB),
-                               gltfunpack (Draco/meshopt/quantized models and .gltf with separate files → plain GLB),
-                               stl (STL → glTF), autorig (automatic skeleton and animations: people, animals, birds, dragons, fish, snakes, spiders, octopuses, objects; guesses the kind from the shape),
-                               examples (templates)
+    document/
+      blocks.js                inserting and manipulating objects
+      slides.js                slide and section operations, slide selection, copying slides
+      format.js                text formatting (character and box level)
+      master.js                slide master, layouts, styled() (master → layout → own properties)
+      templates.js             built-in and user templates (blocks applied to the current slide)
+      captions.js              figure/table captions and the list of figures
+      clipboard.js             copy / cut / paste objects, across slides and tabs
+      shapeops.js              merge shapes (union, combine, intersect, subtract)
+      search.js                find and replace across the deck's text
+      autocorrect.js           typographic replacements while typing
+      a11y.js                  accessibility checker (pure analysis)
+      magnify.js               the magnifier: lines, placement, picture crop
+      imgshrink.js             big pictures made smaller (compress pictures)
+      sanitize.js              what comes from outside can't run code
+    design/
+      palettes.js              theme colours and theme fonts
+      theme.js                 the theme as one thing to edit (colours, two fonts), one undo step
+      fonts.js                 font catalogue; Google fonts loaded on demand
+      gallery.js               starter decks from a palette, fonts, masters and layouts
+      designer.js              design ideas for the current slide
+      brandkit.js              brand kits kept in this browser (colours, fonts, logos)
+      officetheme.js           Office themes (.potx/.thmx) detected on import
+      colormods.js             DrawingML colour transforms (lumMod, tint, shade…)
+      resize.js                resize the presentation with its content rearranged
+      screenfit.js             fitting slides to a screen of another proportion
+      canvasmode.js            canvas mode (Prezi-like): frames on one canvas
+      canvasdesigns.js         ready-made vector pictures for the canvas
+    animation/
+      transitions.js           transitions and object effects (several per object, timeline,
+                               motion paths, custom transitions)
+      morph.js                 Morph: which objects are the same as on the slide before
+    ai/
+      openrouter.js            AI calls through OpenRouter (the user's key) or the Revela account
+      authoring.js             whole decks from a brief or a document, rewriting
+      specs.js                 slide specs as the model writes them, read loosely
+      fromspec.js              slides from a spec that follow the deck's own layouts
+      agent.js                 the assistant: proposals, scope, permissions, checks on a copy
+      review.js                reviewing a proposal before applying it («Conservar lo que había»)
+      complete.js              «Completar la presentación» from its pictures
+      richtext.js              AI text made into proper slide text (lists, levels)
+      codeobj.js               code blocks and equations instead of code typed into text
+      attach.js                files given to the AI with a request (pictures, PDFs, text)
+      vision.js                pictures made small and described once by a cheap vision model
+      themeai.js               a theme proposed from a description
+      voiceover.js             speaker notes read aloud by an AI voice
+      rigkind.js               what a 3D model is, seen by a vision model
+    collab/
+      comments.js              comments with replies, resolve, @mentions
+      review.js                track changes
+      versions.js              version history in IndexedDB
+      protect.js               password-encrypted project, mark as final
+      signature.js             digital signatures (ECDSA P-256, WebCrypto)
+    live/
+      remote.js                phone remote, presenter side (pairing, commands)
+      remotepad.js             what the phone's touchpad does on screen (laser, spotlight…)
+      poll.js                  live polls, quizzes and Q&A objects (VOTE_URL)
+      grading.js               marking quizzes and activities (also embedded, and used by the server's LTI)
+      collab.js                co-editing, chat and roles, browser to browser (or through a room)
+      collabsync.js            co-editing operations: diff, apply, which role may do what
+                               (shared with server/cloudflare/collab.js and docs.js)
+      dashboards.js            live data: embedded dashboards, charts linked to a CSV
+      media.js                 screen/camera recording and live camera, in the browser
+      gifbg.js                 background removal for animated GIFs
+      coach.js                 speaker coach: pace, filler words, slides read aloud
+    content/
+      stock.js                 online media libraries (Openverse, Iconify…), opt-in
+      resources.js             free GIFs, stickers and 3D models (library, Poly Haven, NASA,
+                               Wikimedia STL, Sketchfab)
+      stickers.js              Noto animated emoji
+      library3d.js             curated 3D models with their licences
+      nasa3d.js                NASA's 3D models (made by tools/nasa3d.py)
+      maps.js                  map charts (world, Spain's communities and provinces)
+      files.js                 attached files and PDFs inside the presentation
+      model3d.js               3D attributes, views, walking
+      gltf.js                  read/write glTF and GLB without a library
+      gltfunpack.js            Draco/meshopt/quantized models and .gltf with separate files → plain GLB
+      stl.js                   STL → glTF
+      autorig.js               automatic skeleton and animations, guessing the kind from the shape
+      examples.js              example presentations (File ▸ Examples)
+      tplang.js                the example presentations in the interface's language
+      templates/               the example presentations: kit.js (the builders), one file per group
+                               (biz*, creative*, data*, edu*, life*, prod*/product, sci*, showcase),
+                               catalog.js (made by tools/build-catalog.mjs), names/<lang>.js (names
+                               and summaries), i18n/<lang>/ (their texts per language)
   io/
-    formats/                   html (reveal.js), project (.revela.json), pptx-import,
-                               pptx-export, odp + odp-anim, markdown
-    export/                    print (PDF, handouts), images (PNG/JPG/zip), video (MP4/GIF), objects
-    runtime/                   code that runs inside the exported presentation, embedded
-                               as source: scripts (polls, live data, triggers, overview),
-                               ink, media (video/GIF player), model3d (3D motion and
-                               walking), camera (Cameo), puppet (a 3D model following
-                               the presenter's camera), canvas (canvas mode camera), unseal
-    share/                     seal (encrypt), publish (file, Drive, server), shares list
-    cloud/                     gdrive.js (Google Drive), shareserver.js, collabserver.js
     files.js                   download(), file names, an object's own file (blockFile)
+    gradebook.js               the class gradebook, kept in this browser
+    formats/
+      html.js                  the deck as a self-contained reveal.js page (export and Present)
+      project.js               Revela's own format (.revela.json)
+      pptx-import.js           PowerPoint import
+      pptx-export.js           PowerPoint export (PptxGenJS)
+      ooxml-theme.js           the deck's theme as an Office theme part
+      odp.js  odp-anim.js      OpenDocument export and import, and its animations
+      markdown.js              Markdown → slides (reveal.js conventions)
+    export/
+      print.js                 print, handouts and notes pages
+      pdf.js                   «Exportar PDF» made here, one page per slide
+      images.js                slides and objects as PNG/JPG, a zip of all slides
+      objects.js               selected objects as image files (PNG, WebP, JPG, SVG, original)
+      video.js                 the slideshow as MP4 (WebCodecs) or animated GIF
+    runtime/                   code that runs inside the exported presentation, embedded as source:
+      scripts.js               polls, live data, lightbox, triggers
+      ink.js                   pen, highlighter, laser, eraser while presenting
+      media.js                 video/GIF player (segments, chroma key)
+      model3d.js               3D objects: motion and walking
+      camera.js                live camera (Cameo)
+      puppet.js                a 3D model following the presenter's camera
+      canvas.js                canvas mode camera
+      screenfit.js             slides on a screen of another proportion
+      pdf.js                   PDFs to leaf through (pdf.js)
+      selfpaced.js             quizzes and activities answered inside the presentation (also LTI)
+      reading.js               reading mode
+      tabs.js                  tab stops
+      timer.js                 countdown timers
+      sounds.js                animation sounds (Web Audio)
+      unseal.js                opens a sealed presentation (the only decryption code)
+    share/
+      seal.js                  sealing (gzip + AES-GCM-256) and the page that opens a sealed copy
+      publish.js               share: seal and put it where the user chose; link and embed code
+      shares.js                the presentations shared from this browser
+    cloud/
+      gdrive.js                Google Drive and «Sign in with Google», client-side
+      oauth.js                 OAuth 2.0 with PKCE for Dropbox and Microsoft (back through auth.html)
+      othercloud.js            Dropbox and OneDrive: save and open
+      onedrive.js              OneDrive as Drive is: linked file, autosave, copies as PDF/PowerPoint
+      account.js               the Revela account (official and desktop editions): sign-in, plan,
+                               credits, AI through the account, payments
+      clouddocs.js             presentations in Revela's cloud: list, open, sync, share, statistics
+      call.js                  video calls through Cloudflare Realtime's SFU
+      shareserver.js           client of the share server (/s)
+      collabserver.js          client of the co-editing rooms (/c)
+      community.js             the community gallery
+      notices.js               Revela's own notices for this account's plan and language
   ui/
-    shell/                     navigator, context menu, present, draw, preview (thumbnails),
-                               recorder, appearance, elements (resources side panel), home,
-                               canvasview (canvas mode), coach, collab, morphhint,
-                               menu (popup menus), files (saving an object's file),
-                               sorter (slide sorter: the navigator as a grid), openfile,
-                               palette (command search, Ctrl+K: indexes the ribbon itself)
+    shell/                     navigator, contextmenu, present, preview (thumbnails), draw,
+                               recorder, appearance, elements (resources side panel), home
+                               (Google account, «My presentations»), canvasview (canvas mode),
+                               masterview (slide master view), backstage (the File page), coach,
+                               collab (co-editing in the interface), morphhint, menu (popup menus),
+                               files (saving an object's file), sorter (slide sorter), openfile
+                               (opening and dropping files), openwith (Drive/Dropbox «Open with»),
+                               palette (command search, Ctrl+K), dictate, attachments (files for
+                               the AI), notices, toast (short notes), where (where the presentation
+                               is kept)
     canvas/                    canvas (render/reconcile), content (per object type),
                                interact (drag/resize/guides/snap), preview (animations),
-                               pathdraw (drawn motion paths), mediaview (video/GIF/3D),
-                               magnifyview (the magnifier: drawing it, its area's handles)
+                               pathdraw (drawn motion paths), mediaview (video/GIF), cameraview
+                               (Cameo), puppetview (3D following the camera), magnifyview,
+                               freeform (freeform shapes), textruler (ruler and tab stops),
+                               fittext (translated examples measured until they fit)
     ribbon/                    ribbon (build/sync), actions (what each button does),
                                popovers (group galleries), zoom, contextual (the selected
-                               object's tab), animadd (Add animation palette)
-    dialogs/                   one module per dialog (find, gdrive, autorig, model3d…)
-    panels/                    accessibility, comments, animation pane
+                               object's tab), animadd (Add animation palette), animribbon
+                               (the Animations tab mirrors the selection), reflect (the ribbon
+                               shows the selection's formatting), compact (two-row groups),
+                               transpreview (transition preview on hover)
+    dialogs/                   one module per dialog: dialog (styled alert/confirm/prompt),
+                               modalkeys (Esc, focus, Tab for every dialog), account, team,
+                               cloud (sharing a cloud document), cloudlibrary («Mi nube»),
+                               community, ambassador, report (support), share, gdrive, onedrive,
+                               othercloud, ai, assistant, theme, model3dai, autorig, model3d, …
+    panels/                    a11y, comments, review (track changes), selection pane,
+                               animation pane, call (video call window)
     styles/                    CSS in cascade order: tokens, ribbon, layout, canvas,
                                chrome, responsive, features
-assets/                        small files served with the app: 3D thumbnails (library3d/, nasa3d/)
+assets/                        files served with the app: fonts/, 3D thumbnails (library3d/, nasa3d/)
 tests/
-  run.sh  run.py               headless Chrome runner (+ touch and two-device checks)
-  layers.py                    architecture check
-  suite.js  suites/*.js        the browser test suite, one file per area
-  server.mjs                   the collaboration/share server, with fake Durable Objects
+  run.sh                       everything: layers.py, the Node.js tests, then run.py
+  run.py                       headless Chrome runner: the suite, touch, equation keyboard,
+                               mouse checks, --e2e two-device checks, the website's checks if site/ exists
+  layers.py                    architecture check (layers, imported names, linked files, .gitignore)
+  suite.js  suites/*.js        the browser test suite, one file per area (animation, editor, io,
+                               objects, present, services, slides, text); index.html runs it
+  fixtures/                    test files: Office themes, 3D models for autorig, a CSV, a fake cloud API
+  server.mjs                   the share/collaboration server, with in-memory Durable Objects
+  server-api.mjs               the accounts API: sessions, credits, AI, payments, desktop sign-in
+  server-lti.mjs               LTI 1.3 against a simulated platform
+  server-blender.mjs           revela-blender's signed door (gate.js)
+  client-account.mjs           the account client against a simulated server
+  templates-i18n.mjs           the example presentations in other languages
 server/
-  cloudflare/                  optional server (Worker + Durable Objects with SQLite storage):
-                               sealed shares and co-editing rooms, daily quotas
+  cloudflare/                  Revela's server (Worker + Durable Objects): see its README
+    worker.js                  entry point: routes, sealed shares (/s), the daily cron
+    util.js                    shared helpers: b64url, random, sha256, hmac, EMAIL, escHtml, DAY/HOUR
+    auth.js                    Google ID token verification
+    store.js                   ShareBox, Limits (daily quotas), storage in parts
+    api.js                     the /api routes; accounts, sessions, credits, desktop sign-in (Account,
+                               Budget, DesktopLink)
+    ai.js                      AI chat, images and speech, paid with credits within the monthly budget
+    billing.js                 Stripe: prices, live/test mode, Pro's trial, Checkout, portal, webhook
+    stock.js                   stock photo search (Unsplash, Pexels)
+    docs.js                    cloud documents with roles and permission settings (CloudDoc)
+    collab.js                  co-editing rooms (CollabRoom)
+    teams.js                   teams: seats, members, brand kit, templates (Team)
+    lti.js                     LTI 1.3 tool (LtiStore)
+    calls.js                   video calls on Cloudflare Realtime (CallRoom)
+    schedule.js                scheduled notices for the daily cron (Schedule)
+    mail.js                    transactional emails (Cloudflare Email Service or Resend)
+    model3d.js                 «Crear modelo 3D con IA» jobs (ModelJob)
+    admin.js                   administration API behind Cloudflare Access; support tickets
+                               (Directory, Tickets, Audit)
+    finance.js                 the business's accounts (Finance)
+    crm.js                     «Captación»: contacts, consented sequences, campaigns, webinars, referrals (Crm)
+    crm-mail.js                «Captación»'s emails in each language and their signed links
+    ambassadors.js             ambassadors: applying, the public directory, the badge
+    community.js               the community gallery and its pages (Community)
+    notices.js                 Revela's own notices
   blender/                     revela-blender: Blender in Cloudflare Containers for
-                               «Crear modelo 3D con IA» (signed requests only; docs/NUBE.md)
+                               «Crear modelo 3D con IA» (signed requests only; docs/NUBE.md):
+                               worker.js, gate.js (signature check), runner.py, run.py, Dockerfile
 desktop/                       Tauri app (Windows, macOS, Linux) with self-update
 tools/
+  build-site.mjs               builds the site, the open edition or the desktop app's files
+  site-i18n.mjs                the website's pages in each language
+  build-catalog.mjs            writes templates/catalog.js
+  template-names.mjs           adds translated names and summaries of the examples
+  template-texts.mjs           the examples' texts for translating (--check runs in the tests)
+  check-templates.mjs          every example builds and uses what exists
+  audit-templates.py           how the examples look: overflow, overlaps, contrast
+  shot-template.py             pictures of an example's slides
+  perf.mjs                     how Revela runs on a slow computer
+  lti-key.mjs                  makes the LTI signing key (a server secret)
   move.py  extract.py          move files / declarations and rewrite imports
   shot.py  embeddable.py       screenshots; which web pages can be embedded
   pptx-compare.py              compare a PowerPoint file with Revela's rendering
@@ -224,13 +438,34 @@ lightbox, ink and live captions). The same page is what *Present* shows
 (`ui/shell/present.js`, in a full-screen overlay from a blob URL) and what
 *Export* downloads. Print, handouts and images reuse each object's inline HTML.
 
-## Live features without a backend
+## Live features
 
 The phone remote and live polls connect the presenter and the phones directly
 over WebRTC (PeerJS; its public broker only introduces the peers). The
 presenter hosts a peer `revela-CODE` (remote) or `revela-vote-CODE` (polls);
-the phone pages connect to it. Nothing is stored on a server: votes are kept in
-the presenter's browser.
+the phone pages connect to it. To find their way, connections use STUN and,
+when Revela's server is there, its TURN relays (`core/ice.js` asks `/api/ice`),
+for phones behind a carrier's NAT. Votes are kept in the presenter's browser,
+not on a server.
+
+Co-editing (`features/live/collab.js`) works the same way by default: the
+person who shares keeps the document and checks every change against the
+sender's role (view / comment / edit, a secret in each link). With a server
+configured, the session runs in a room instead (`io/cloud/collabserver.js` →
+`server/cloudflare/collab.js`, one Durable Object per room), which checks each
+change with the same rules (`features/live/collabsync.js`) and survives the
+owner closing the tab.
+
+**Cloud documents** (official and desktop editions: `io/cloud/clouddocs.js` →
+`server/cloudflare/docs.js`) are presentations kept on Revela's server and
+shared with people (by their Google account's email) or by link, each with a
+role: present, view, comment or edit, plus permission settings (no copies for
+viewers and commenters, editors who may share, access that ends). The server
+checks every read and every change against the role of whoever sends it, so the
+app's code cannot give anyone more than they were given; the present role gets
+a deck without speaker notes, comments or hidden slides. People in a cloud
+document can also join a video call (Pro; `io/cloud/call.js` → Cloudflare
+Realtime through `server/cloudflare/calls.js`).
 
 ## Sharing privately
 
@@ -239,24 +474,38 @@ A shared presentation is **sealed** in the browser before it leaves it
 travels in the link after `#` (never sent to any server) or a key derived from
 a password (PBKDF2-SHA-256, 600 000 rounds). The sealed copy can then be a
 single self-opening HTML file, a file in the user's Google Drive readable by
-link, or an object on the optional share server; none of them can read it.
-`view.html` fetches a sealed copy and opens it; `io/runtime/unseal.js` is the
-only decryption code, embedded as source in the self-opening file. Pages and
-the server say `noindex`, identifiers are 128-bit random values.
+link, or an object on Revela's share server (`/s`, or a server of one's own);
+none of them can read it. `view.html` fetches a sealed copy and opens it;
+`io/runtime/unseal.js` is the only decryption code, embedded as source in the
+self-opening file. Pages and the server say `noindex`, identifiers are 128-bit
+random values. (Cloud documents are not sealed: the server needs to read them
+to check roles and merge changes.)
 
 ## Security
 
 Anything that comes from outside — a file, Drive, an import, a paste from
-another site, a co-editor's changes — goes through `features/document/
-sanitize.js` before it is used (the store's deck filter, the clipboard and
-co-editing apply it): HTML without scripts, frames or event handlers; links
-and sources only to safe addresses; style and script-bound values that can't
-break out. Data written inside the exported page's scripts uses `jsData`.
-Shared presentations open in a sandboxed frame without Revela's origin
-(`view.html`); embedded web pages only keep their own origin when they are
-from another site. Co-editing operations never walk `__proto__`-like paths, a
-commenter can only touch comments, and long messages have limits (also on
-the server).
+another site, a co-editor's changes, a cloud document — goes through
+`features/document/sanitize.js` before it is used (the store's deck filter, the
+clipboard, co-editing and `io/cloud/clouddocs.js` apply it): HTML without
+scripts, frames or event handlers; links and sources only to safe addresses;
+style and script-bound values that can't break out. Data written inside the
+exported page's scripts uses `jsData`. Sealed presentations open in a sandboxed
+frame without Revela's origin (`view.html`); embedded web pages only keep their
+own origin when they are from another site. Co-editing operations never walk
+`__proto__`-like paths, a commenter can only touch comments, and long messages
+have limits (also on the server).
+
+On the server (`server/cloudflare`), the browser only asks and the server
+decides: sessions, plan, credits, limits and document roles are checked on
+every request against state only the server holds. Sessions are an `HttpOnly`,
+`Secure`, `SameSite=Strict` cookie limited to `/api` (a bearer token in the
+desktop app); only a hash of each is stored, and people can see and end their
+open sessions (`/api/sessions`). Requests with the cookie that change something
+must come from an allowed origin (`API_ORIGINS`). The administration API only
+answers on its own host, behind Cloudflare Access, and checks the Access token
+itself. Secrets live in Cloudflare, never in this repository. The service
+worker never caches `/api/` answers. See [SECURITY.md](../SECURITY.md) to report
+a vulnerability.
 
 ## Adding a feature
 
@@ -275,4 +524,7 @@ the server).
    through `t()` with translations in `i18n/strings.js` (and `i18n/langs/`).
    Text into HTML goes through `esc` (`core/text.js`).
 4. A library from a CDN: add its pinned URL to `core/vendor.js`.
-5. Tests in the matching `tests/suites/<area>.js`; run `./tests/run.sh`.
+5. If it needs the server, the route goes in `server/cloudflare/` and its
+   checks there (never trust the app); tests in `tests/server*.mjs`.
+6. Tests in the matching `tests/suites/<area>.js`; run `npm test`
+   (`./tests/run.sh`).

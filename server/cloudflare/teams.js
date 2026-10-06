@@ -18,7 +18,7 @@
 
 import { writeText, readParts } from './store.js';
 import { mail } from './mail.js';
-import { b64url, random, EMAIL } from './util.js';
+import { random, EMAIL } from './util.js';
 
 const MAX_TEMPLATES = 50, MAX_TEMPLATE_MB = 20;
 

@@ -55,7 +55,7 @@ import { applyOps, allowed } from '../../src/features/live/collabsync.js';
 import { writeDeck, readDeck, writeText, readParts } from './store.js';
 import { mail } from './mail.js';
 import { acct, call } from './api.js';
-import { b64url, random, EMAIL } from './util.js';
+import { random, EMAIL } from './util.js';
 
 const ROLE_RANK = { present: 1, view: 2, comment: 3, edit: 4, owner: 5 };
 const ROLES = ['present', 'view', 'comment', 'edit'], LINK_ROLES = ['none', ...ROLES];

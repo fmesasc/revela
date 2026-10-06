@@ -18,9 +18,10 @@
 // One running job per account; at most 4 rounds per request and AI_3D_MAX_ROUNDS (12) per job.
 // Everything is deleted 24 hours after the job was created.
 
-import { settings, credits, priceOf, acct, call } from './api.js';
+import { settings, acct, call } from './api.js';
+import { credits, priceOf } from './ai.js';
 import { writeText, readParts } from './store.js';
-import { DAY, enc, b64url, random } from './util.js';
+import { DAY, enc, random } from './util.js';
 
 const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
 
