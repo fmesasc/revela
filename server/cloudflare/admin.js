@@ -23,6 +23,9 @@
 //   POST /api/admin/refund                 { sub, reason? , notify? }   (gives back the last AI charge not refunded yet)
 //   POST /api/admin/plan                   { sub, until (ms, 0 = remove), reason }   (Pro given by hand; Stripe's untouched)
 //   POST /api/admin/block                  { sub, blocked, reason }   (blocked: 403 on AI, cloud documents, calls…)
+//   GET  /api/admin/releases               → what's on pruebas and in production (releases.js)
+//   POST /api/admin/releases/promote       { reason? } → { ok }   (runs «Publicar en producción»; needs GITHUB_TOKEN)
+//   POST /api/admin/releases/settings      { autoDays } → { settings }   (0: never by itself)
 //   GET  /api/admin/storage                → { config: { freeMb, proMb, alertGb }, bytes, top }   (the cloud's space: storage.js)
 //   POST /api/admin/storage                { freeMb, proMb, alertGb } → { config }
 //   POST /api/admin/storage/measure        → { accounts, measured, more }   (documents from before space was counted)
@@ -81,6 +84,7 @@ import { acct, call, settings, trialConfig, cleanTrial, resetTrialCache, resetNo
 import { stripeConf } from './billing.js';
 import { priceOf } from './ai.js';
 import { storageConfig, cleanStorage, resetStorageCache, storageBackfill } from './storage.js';
+import { releasesState, releasesPromote, releasesSettings } from './releases.js';
 import { cleanNotice } from './notices.js';
 import { mail, mailConfigured, ticketLink, readTicketToken, ticketPage, fmtDate, TICKET_LINK_DAYS } from './mail.js';
 import { fromB64url } from './util.js';
@@ -591,6 +595,16 @@ export async function handleAdmin(req, env, url) {
     const r = await call(acct(env, body.sub), 'admin-plan', { until, reason, by });
     await audit(env, { by, action: 'plan', target: body.sub, reason, before: r.before, after: r.after });
     return json({ ok: true, ...r });
+  }
+  if (GET && path === '/releases') { try { return json(await releasesState(env)); } catch (e) { return json({ error: 'github', detail: e.message }, 502); } }
+  if (POST && path === '/releases/promote') {
+    const r = await releasesPromote(env, clip(body.reason, 200)).catch(e => ({ error: 'github', detail: e.message }));
+    await audit(env, { by, action: 'release-promote', target: 'releases', reason: clip(body.reason, 200), after: r });
+    return json(r, r.error === 'no token' ? 409 : r.error ? 502 : 200);
+  }
+  if (POST && path === '/releases/settings') {
+    const r = await releasesSettings(env, body); if (r.error) return json(r, 400);
+    await audit(env, { by, action: 'release-settings', target: 'releases', after: r.settings }); return json(r);
   }
   if (GET && path === '/storage') { const st = (await call(D, 'stats')).storage; return json({ config: await storageConfig(env, true), ...st }); }
   if (POST && path === '/storage') {

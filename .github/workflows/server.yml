@@ -8,9 +8,10 @@
 # server/cloudflare/README.md) stay in Cloudflare and are never touched here (wrangler.toml keep_vars).
 name: Server
 
+# main → the test server (pruebas.revelaslides.com, wrangler.toml [env.staging]); produccion → production (promote.yml).
 on:
   push:
-    branches: [main]
+    branches: [main, produccion]
     paths: ['server/cloudflare/**', 'src/features/live/collabsync.js', 'tests/server.mjs', 'tests/server-api.mjs', 'tests/server-lti.mjs', 'tests/server-blender.mjs', 'src/features/live/grading.js', '.github/workflows/server.yml']
   workflow_dispatch:
 
@@ -18,7 +19,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: server
+  group: server-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -41,7 +42,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: server/cloudflare
-          command: deploy
+          command: ${{ github.ref_name == 'produccion' && 'deploy' || 'deploy --env staging' }}
       - name: No token yet
         if: env.HAS_TOKEN != 'true'
         run: echo '::notice::No CLOUDFLARE_API_TOKEN secret (tests passed, nothing deployed).'

@@ -263,7 +263,8 @@ src/
       community.js             the community gallery
       notices.js               Revela's own notices for this account's plan and language
   ui/
-    shell/                     busy (the «loading» bar and the pressed button's spinner on slow connections),
+    shell/                     busy (the «loading» bar and the pressed button's spinner on slow connections), stage (the
+                               «Pruebas» badge on pruebas.revelaslides.com),
                                navigator, contextmenu, present, preview (thumbnails), draw,
                                recorder, appearance, elements (resources side panel), home
                                (Google account, «My presentations»), canvasview (canvas mode),
@@ -322,6 +323,7 @@ server/
     billing.js                 Stripe: prices, live/test mode, Pro's trial, Checkout, portal, webhook
     stock.js                   stock photo search (Unsplash, Pexels)
     storage.js                 the cloud's space: quotas per plan, what each account takes, the daily alert
+    releases.js                Versiones: pruebas vs production, «Publicar en producción» (docs/PUBLICAR.md)
     docs.js                    cloud documents with roles and permission settings (CloudDoc)
     collab.js                  co-editing rooms (CollabRoom)
     teams.js                   teams: seats, members, brand kit, templates (Team)

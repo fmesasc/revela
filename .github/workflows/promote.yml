@@ -1,0 +1,83 @@
+# Publicar en producción: what has been tried on pruebas.revelaslides.com goes to revelaslides.com, when the admin says
+# so — here (Actions ▸ Publicar en producción ▸ Run workflow) or from the administration (Versiones), which also runs it
+# by itself after the days without changes the admin chose (server/cloudflare/releases.js).
+#
+# It moves the branch produccion — this repository's and the website's (fmesasc/revela-site) — to their main. That
+# publishes everything else: the server (server.yml), revelaslides.com (Cloudflare Pages' production branch), GitHub
+# Pages and the desktop app. Only a main whose tests passed, and only forward (never over something else). It pushes
+# with deploy keys (secrets PROMOTE_KEY and SITE_PROMOTE_KEY): pushes made with Actions' own token start no workflows.
+name: Publicar en producción
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Motivo (queda en el resumen)'
+        required: false
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: promote
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: What goes to production
+        id: what
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REASON: ${{ inputs.reason }}
+        run: |
+          main=$(git rev-parse origin/main); prod=$(git rev-parse origin/produccion)
+          if ! git merge-base --is-ancestor "$prod" "$main"; then
+            echo "::error::produccion has changes that aren't in main: nothing is moved (bring them to main first)."; exit 1; fi
+          # (The tests of that exact main must have passed.)
+          ok=$(gh run list --workflow tests.yml --branch main -L 50 --json headSha,conclusion -q "[.[] | select(.headSha == \"$main\" and .conclusion == \"success\")] | length")
+          if [ "$main" != "$prod" ] && [ "${ok:-0}" = 0 ]; then
+            echo "::error::The tests of main ($main) haven't passed (or are still running): nothing is published."; exit 1; fi
+          echo "main=$main" >> "$GITHUB_OUTPUT"; echo "prod=$prod" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Publicar en producción"
+            [ -n "$REASON" ] && echo "Motivo: $REASON"
+            if [ "$main" = "$prod" ]; then echo "La aplicación y el servidor ya estaban al día."; else
+              echo "### Cambios"; git log --format='- %s (%h)' "$prod..$main"; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: The website (fmesasc/revela-site)
+        env:
+          KEY: ${{ secrets.SITE_PROMOTE_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then echo "::warning::No SITE_PROMOTE_KEY: the website's produccion branch is left as it was."; exit 0; fi
+          mkdir -p ~/.ssh && printf '%s\n' "$KEY" > ~/.ssh/site && chmod 600 ~/.ssh/site
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/site -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          git clone -q --bare git@github.com:fmesasc/revela-site.git /tmp/site
+          cd /tmp/site && smain=$(git rev-parse main) && sprod=$(git rev-parse produccion)
+          if [ "$smain" = "$sprod" ]; then echo "La web ya estaba al día." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          git merge-base --is-ancestor "$sprod" "$smain" || { echo "::error::The website's produccion has changes that aren't in its main."; exit 1; }
+          { echo "### Web"; git log --format='- %s (%h)' "$sprod..$smain"; } >> "$GITHUB_STEP_SUMMARY"
+          git push -q origin "$smain:refs/heads/produccion"
+          echo "SITE_MOVED=1" >> "$GITHUB_ENV"
+      - name: The app and the server
+        if: steps.what.outputs.main != steps.what.outputs.prod
+        env:
+          KEY: ${{ secrets.PROMOTE_KEY }}
+        run: |
+          [ -n "$KEY" ] || { echo "::error::No PROMOTE_KEY secret (a deploy key with write access): see docs/PUBLICAR.md."; exit 1; }
+          mkdir -p ~/.ssh && printf '%s\n' "$KEY" > ~/.ssh/app && chmod 600 ~/.ssh/app
+          git remote set-url origin git@github.com:${{ github.repository }}.git
+          GIT_SSH_COMMAND="ssh -i ~/.ssh/app -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" git push -q origin "${{ steps.what.outputs.main }}:refs/heads/produccion"
+      - name: Only the website changed
+        if: steps.what.outputs.main == steps.what.outputs.prod && env.SITE_MOVED == '1'
+        env:
+          HOOK: ${{ secrets.CF_DEPLOY_HOOK_PROD }}
+        run: |
+          # (No push here starts Cloudflare Pages: its production deploy hook does.)
+          if [ -n "$HOOK" ]; then curl -fsS -X POST "$HOOK" > /dev/null && echo "Web de producción, reconstruyéndose." >> "$GITHUB_STEP_SUMMARY";
+          else echo "::warning::No CF_DEPLOY_HOOK_PROD: revelaslides.com will take the website's changes with the next publication."; fi

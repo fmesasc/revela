@@ -1,6 +1,8 @@
 // Galician interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Pruebas": "Probas",
+  "Entorno de pruebas: las cuentas y presentaciones de aquí no son las reales, y los pagos son de prueba. La versión real está en revelaslides.com.": "Contorno de probas: as contas e presentacións de aquí non son as reais, e os pagamentos son de proba. A versión real está en revelaslides.com.",
   "Uso y gastos del equipo": "Uso e gastos do equipo",
   "{used} de {seats} puestos ocupados · {inv} invitaciones pendientes": "{used} de {seats} postos ocupados · {inv} convites pendentes",
   "Último uso": "Último uso",

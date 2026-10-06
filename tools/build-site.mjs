@@ -23,6 +23,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { SITE_LANGS, pageTexts, translatePage, sitemap } from './site-i18n.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+// Pruebas (pruebas.revelaslides.com) or production: only the variable REVELA_STAGE=pruebas makes the test site (set in
+// Cloudflare Pages for Preview builds only — never inferred: a mistake would hide revelaslides.com from search
+// engines). The test site isn't for search engines (robots.txt, noindex, no sitemap), says what it is on every page,
+// and its app knows (meta revela-stage). Which branch of the website is used: see ensureSite.
+export const STAGE = process.env.REVELA_STAGE === 'pruebas' ? 'pruebas' : '';
 // The app: every file and folder it needs, and nothing else (no tests, tools, server…).
 export const APP_FILES = ['index.html', 'remote.html', 'view.html', 'vote.html', 'auth.html', 'dropbox.html', 'privacy.html', 'terms.html', 'legal.html', 'dpa.html',
   'legal.css', 'legal.js', 'manifest.webmanifest', 'remote.webmanifest', 'sw.js', 'icons', 'assets', 'src'];
@@ -63,7 +68,25 @@ export async function build(out = join(ROOT, 'dist'), { appOnly = false, open = 
   mkdirSync(join(out, 'icons'), { recursive: true });
   cpSync(join(ROOT, 'icons', 'icon.svg'), join(out, 'icons', 'icon.svg'));
   cpSync(join(ROOT, 'assets', 'fonts'), join(out, 'assets', 'fonts'), { recursive: true });
+  if (STAGE) markStage(out);                              // (last: every page is marked)
   return out;
+}
+
+// The test site: no indexing, a strip on every page saying so, and the app told (src/ui/shell/stage.js).
+function markStage(out) {
+  writeFileSync(join(out, 'robots.txt'), '# pruebas.revelaslides.com: the test site, not for search engines (revelaslides.com is the real one)\nUser-agent: *\nDisallow: /\n');
+  rmSync(join(out, 'sitemap.xml'), { force: true });
+  const headers = join(out, '_headers');
+  writeFileSync(headers, (existsSync(headers) ? readFileSync(headers, 'utf8') + '\n' : '') + '/*\n  X-Robots-Tag: noindex, nofollow\n');
+  const strip = '<div style="position:sticky;top:0;z-index:99999;background:#b7791f;color:#fff;font:600 13px/1.4 system-ui,sans-serif;text-align:center;padding:4px 8px">Entorno de pruebas · Test site — <a href="https://revelaslides.com" style="color:#fff">revelaslides.com</a></div>';
+  const walk = dir => { for (const e of readdirSync(dir, { withFileTypes: true })) { const f = join(dir, e.name);
+    if (e.isDirectory()) { if (e.name !== 'app') walk(f); continue; }
+    if (!e.name.endsWith('.html')) continue;
+    const html = readFileSync(f, 'utf8').replace('<head>', '<head>\n  <meta name="robots" content="noindex, nofollow">').replace(/<body([^>]*)>/, `<body$1>${strip}`);
+    writeFileSync(f, html); } };
+  walk(out);
+  const app = join(out, 'app', 'index.html');
+  writeFileSync(app, readFileSync(app, 'utf8').replace('<head>', `<head>\n  <meta name="revela-stage" content="${STAGE}">\n  <meta name="robots" content="noindex, nofollow">`));
 }
 
 // The website's own pages (site/) are not in this repository: they are the private
@@ -80,7 +103,8 @@ function ensureSite() {
     writeFileSync(key, Buffer.from(k, 'base64'), { mode: 0o600 });
     rmSync(join(ROOT, 'site'), { recursive: true, force: true });
     // (Without the machine's git settings: Cloudflare's rewrite GitHub addresses to its own https access, which only reaches this repository.)
-    execFileSync('git', ['clone', '--depth', '1', 'ssh://git@github.com/fmesasc/revela-site.git', join(ROOT, 'site')], { stdio: 'inherit',
+    // (A build of the branch produccion takes the website's produccion; any other, its main — what's being tried.)
+    execFileSync('git', ['clone', '--depth', '1', '--branch', process.env.CF_PAGES_BRANCH === 'produccion' ? 'produccion' : 'main', 'ssh://git@github.com/fmesasc/revela-site.git', join(ROOT, 'site')], { stdio: 'inherit',
       env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_TERMINAL_PROMPT: '0',
         GIT_SSH_COMMAND: `ssh -i ${key} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new` } });
   } finally { rmSync(dir, { recursive: true, force: true }); }

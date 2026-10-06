@@ -51,6 +51,7 @@ import { ModelJob } from './model3d.js';
 import { handleAdmin, adminHost, Directory, Tickets, Audit, ticketsDue, emails as adminEmails } from './admin.js';
 import { Crm, runCrm } from './crm.js';
 import { storageWatch, storageBackfill } from './storage.js';
+import { releasesAuto } from './releases.js';
 import { Community, communityPage } from './community.js';
 import { Crawler } from './crawler.js';
 import { sendMail, mailConfigured } from './mail.js';
@@ -100,6 +101,7 @@ export default {
     ctx.waitUntil(runSchedule(env, now).catch(e => console.log('schedule', e?.message)));
     ctx.waitUntil(ticketsDue(env, now).catch(e => console.log('tickets', e?.message)));
     ctx.waitUntil(runCrm(env, { sendMail, mailConfigured, adminEmails: adminEmails(env) }, now).catch(e => console.log('crm', e?.message)));
+    ctx.waitUntil(releasesAuto(env, now).catch(e => console.log('releases', e?.message)));
     ctx.waitUntil(storageBackfill(env).then(() => storageWatch(env, { sendMail, adminEmails: adminEmails(env) })).catch(e => console.log('storage', e?.message)));
   },
   async fetch(req, env) {

@@ -272,3 +272,101 @@ class_name = "Crawler"
 [[migrations]]
 tag = "v14"
 new_sqlite_classes = ["Crawler"]
+
+# ---- Pruebas (staging): pruebas.revelaslides.com ------------------------------------------------------------
+# The same Worker as «revela-share-staging», with its own Durable Objects (its own accounts, documents and the
+# rest: nothing is shared with production), deployed from main by server.yml after the tests; production comes from
+# the branch produccion, when the admin says so (promote.yml). Bindings and vars aren't inherited, so they are all
+# here again (tests/layers.py checks the same objects are bound in both). Stripe in test mode; no administration
+# (no ACCESS_*: admin.revelaslides.com is production's). Its secrets are its own: npx wrangler secret put NAME --env staging.
+[env.staging]
+routes = [{ pattern = "pruebas.revelaslides.com/api/*", zone_name = "revelaslides.com" }, { pattern = "pruebas.revelaslides.com/comunidad*", zone_name = "revelaslides.com" }]
+
+[env.staging.vars]
+STAGE = "pruebas"
+API_ORIGINS = "https://pruebas.revelaslides.com"
+SITE_URL = "https://pruebas.revelaslides.com"
+STRIPE_MODE = "test"
+MONTHLY_BUDGET_USD = "5"
+MAX_MB = "30"
+DAILY_PER_USER = "30"
+DAILY_TOTAL = "3000"
+FREE_DOCS = "3"
+PRO_DOCS = "500"
+MAX_PEOPLE = "50"
+AI_PER_MINUTE = "20"
+AI_MODELS = "openai/gpt-4o-mini,google/gemini-2.5-flash,anthropic/claude-haiku-4.5,google/gemini-2.5-flash-lite"
+AI_TTS_MODEL = "openai/gpt-4o-mini-tts-2025-12-15"
+AI_TTS_USD_PER_CHAR = "0.00002"
+AI_PRICES = '{"openai/gpt-4o-mini":[0.15,0.6],"google/gemini-2.5-flash":[0.3,2.5],"google/gemini-2.5-flash-lite":[0.1,0.4],"anthropic/claude-haiku-4.5":[1,5],"google/gemini-3.8-flash":[0.75,3.75]}'
+AI_3D_MODEL = "google/gemini-3.8-flash"
+BLENDER_USD_PER_SECOND = "0.0001"
+GOOGLE_CLIENT_ID = "960102070599-jahg4mdj304k5ftb9b6p2ck9hp5gtbc9.apps.googleusercontent.com"
+STRIPE_PRICE_PRO_MONTH = "price_1UMtlaRl48v6ZHv1voX3BPL4"
+STRIPE_PRICE_PRO_YEAR = "price_1UMtmeRl48v6ZHv1Zc8LVySv"
+STRIPE_PRICE_CREDITS_500 = "price_1UMto2Rl48v6ZHv1d4WPv1rB"
+STRIPE_PRICE_CREDITS_1500 = "price_1UMtpURl48v6ZHv1fMWf7uk7"
+STRIPE_PRICE_TEAM_SEAT = "price_1UMtrORl48v6ZHv1FzeMstm8"
+STRIPE_TEST_PRICE_PRO_MONTH = "price_1UMtT0Dp2aJKxbrm4VXXI2AL"
+STRIPE_TEST_PRICE_PRO_YEAR = "price_1UMtUUDp2aJKxbrmE3VSTZ3w"
+STRIPE_TEST_PRICE_CREDITS_500 = "price_1UMtW5Dp2aJKxbrmIkglvXQN"
+STRIPE_TEST_PRICE_CREDITS_1500 = "price_1UMtWlDp2aJKxbrmaAhEy7JR"
+STRIPE_TEST_PRICE_TEAM_SEAT = "price_1UMtYiDp2aJKxbrmqE97zQHu"
+
+[[env.staging.durable_objects.bindings]]
+name = "SHAREBOX"
+class_name = "ShareBox"
+[[env.staging.durable_objects.bindings]]
+name = "LIMITS"
+class_name = "Limits"
+[[env.staging.durable_objects.bindings]]
+name = "ROOMS"
+class_name = "CollabRoom"
+[[env.staging.durable_objects.bindings]]
+name = "ACCOUNTS"
+class_name = "Account"
+[[env.staging.durable_objects.bindings]]
+name = "BUDGET"
+class_name = "Budget"
+[[env.staging.durable_objects.bindings]]
+name = "DESKTOP"
+class_name = "DesktopLink"
+[[env.staging.durable_objects.bindings]]
+name = "DOCS"
+class_name = "CloudDoc"
+[[env.staging.durable_objects.bindings]]
+name = "TEAMS"
+class_name = "Team"
+[[env.staging.durable_objects.bindings]]
+name = "LTI"
+class_name = "LtiStore"
+[[env.staging.durable_objects.bindings]]
+name = "CALLS"
+class_name = "CallRoom"
+[[env.staging.durable_objects.bindings]]
+name = "SCHEDULE"
+class_name = "Schedule"
+[[env.staging.durable_objects.bindings]]
+name = "MODELJOBS"
+class_name = "ModelJob"
+[[env.staging.durable_objects.bindings]]
+name = "DIRECTORY"
+class_name = "Directory"
+[[env.staging.durable_objects.bindings]]
+name = "TICKETS"
+class_name = "Tickets"
+[[env.staging.durable_objects.bindings]]
+name = "AUDIT"
+class_name = "Audit"
+[[env.staging.durable_objects.bindings]]
+name = "FINANCE"
+class_name = "Finance"
+[[env.staging.durable_objects.bindings]]
+name = "CRM"
+class_name = "Crm"
+[[env.staging.durable_objects.bindings]]
+name = "COMMUNITY"
+class_name = "Community"
+[[env.staging.durable_objects.bindings]]
+name = "CRAWLER"
+class_name = "Crawler"

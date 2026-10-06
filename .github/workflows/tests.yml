@@ -7,7 +7,8 @@ name: Tests
 on:
   pull_request:
   push:
-    branches-ignore: [main]          # (on main, the publishing workflows call it)
+    branches-ignore: [produccion]   # (there, the publishing workflows call it; on main they run too: promote.yml
+                                    # only takes a main whose tests passed)
   workflow_call:
   workflow_dispatch:
 

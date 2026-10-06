@@ -1,6 +1,8 @@
 // Dutch interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Pruebas": "Test",
+  "Entorno de pruebas: las cuentas y presentaciones de aquí no son las reales, y los pagos son de prueba. La versión real está en revelaslides.com.": "Testomgeving: de accounts en presentaties hier zijn niet de echte, en betalingen zijn testbetalingen. De echte versie staat op revelaslides.com.",
   "Uso y gastos del equipo": "Gebruik en uitgaven van het team",
   "{used} de {seats} puestos ocupados · {inv} invitaciones pendientes": "{used} van {seats} plaatsen bezet · {inv} openstaande uitnodigingen",
   "Último uso": "Laatst gebruikt",

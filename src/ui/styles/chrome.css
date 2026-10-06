@@ -248,3 +248,5 @@ body.assistant-open .tb-ai{background:var(--accent);color:var(--on-accent)}
 .is-busy>*{opacity:.35}
 @keyframes busy-spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){#busy-bar::before{animation:none;left:0;width:100%;opacity:.7}.is-busy::after{animation-duration:2s}}
+/* The test site's badge (ui/shell/stage.js) */
+.stage-badge{align-self:center;margin-inline-end:8px;padding:2px 8px;border-radius:10px;background:#b7791f;color:#fff!important;font:700 11px system-ui,sans-serif;text-transform:uppercase;letter-spacing:.05em;text-decoration:none;white-space:nowrap}

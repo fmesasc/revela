@@ -1958,6 +1958,43 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     env.FETCH = prevF2; delete env.CRAWL_SLEEP;
   }
 
+  // Versiones (releases.js): what's on pruebas and in production; publishing runs GitHub's workflow; by itself after N days.
+  {
+    const ghCalls = [], prevF3 = env.FETCH, old = Date.now() - 5 * 864e5;
+    let mainDate = new Date(old).toISOString(), testsOk = 'success';
+    env.FETCH = async (u, init = {}) => { const s = String(u);
+      if (!s.startsWith('https://api.github.com/repos/fmesasc/revela/')) return prevF3(u, init);
+      ghCalls.push({ s, method: init.method || 'GET', auth: init.headers?.Authorization, body: init.body && JSON.parse(init.body) });
+      if (s.endsWith('/compare/produccion...main')) return Response.json({ base_commit: { sha: 'p1', commit: { message: 'En producción\nmás', committer: { date: '2026-10-01T10:00:00Z' } } },
+        commits: [{ sha: 'm1', commit: { message: 'Primero', committer: { date: '2026-10-02T10:00:00Z' } } }, { sha: 'm2', commit: { message: 'Último cambio', committer: { date: mainDate } } }] });
+      if (s.includes('/actions/workflows/tests.yml/runs')) return Response.json({ workflow_runs: [{ head_sha: 'm2', status: 'completed', conclusion: testsOk, html_url: 'https://github.com/x/1' }] });
+      if (s.includes('/actions/workflows/promote.yml/runs')) return Response.json({ workflow_runs: [] });
+      if (s.endsWith('/actions/workflows/promote.yml/dispatches')) return new Response(null, { status: 204 });
+      return new Response('{}', { status: 404 }); };
+    let x = await A('GET', '/releases');
+    ok(x.status === 200 && x.j.production.sha === 'p1' && x.j.production.message === 'En producción' && x.j.pending.map(c => c.sha).join() === 'm2,m1' && x.j.tests.conclusion === 'success' && !x.j.token,
+      'versiones: producción, lo que espera en pruebas (lo último primero) y sus pruebas: ' + JSON.stringify(x.j).slice(0, 200));
+    x = await A('POST', '/releases/promote', { body: { reason: 'Probado' } });
+    ok(x.status === 409 && x.j.error === 'no token' && !ghCalls.some(c => c.method === 'POST'), 'versiones: sin GITHUB_TOKEN no se publica (el panel enlaza al flujo)');
+    env.GITHUB_TOKEN = 'ghp_prueba';
+    x = await A('POST', '/releases/promote', { body: { reason: 'Probado en el centro' } });
+    const d = ghCalls.find(c => c.method === 'POST');
+    ok(x.status === 200 && d && d.body.ref === 'main' && d.body.inputs.reason === 'Probado en el centro' && d.auth === 'Bearer ghp_prueba', 'versiones: «Publicar en producción» lanza el flujo, con el motivo');
+    ok((await A('GET', '/audit?target=releases')).j.entries.some(e => e.action === 'release-promote' && e.reason === 'Probado en el centro'), 'versiones: en la auditoría');
+    ok((await A('POST', '/releases/settings', { body: { autoDays: 99 } })).status === 400, 'versiones: días imposibles → 400');
+    // By itself: main without changes for N days, tests passed.
+    const { releasesAuto } = await import('../server/cloudflare/releases.js'); ghCalls.length = 0;
+    ok(!(await releasesAuto(env)).done && !ghCalls.length, 'versiones: sin días elegidos, nunca sola');
+    await A('POST', '/releases/settings', { body: { autoDays: 3 } });
+    ok((await releasesAuto(env)).done && ghCalls.some(c => c.method === 'POST' && /Automático: 3 días/.test(c.body.inputs.reason)), 'versiones: con 5 días sin cambios (≥ 3) y las pruebas bien, se publica sola');
+    mainDate = new Date().toISOString(); ghCalls.length = 0;
+    ok(!(await releasesAuto(env)).done && !ghCalls.some(c => c.method === 'POST'), 'versiones: con un cambio reciente, espera');
+    mainDate = new Date(old).toISOString(); testsOk = 'failure';
+    ok(!(await releasesAuto(env)).done, 'versiones: con las pruebas mal, no');
+    env.STAGE = 'pruebas'; testsOk = 'success'; ok(!(await releasesAuto(env)).done, 'versiones: el servidor de pruebas nunca publica'); delete env.STAGE;
+    await A('POST', '/releases/settings', { body: { autoDays: 0 } }); delete env.GITHUB_TOKEN; env.FETCH = prevF3;
+  }
+
   // Deleting the account takes it out of the directory.
   ok((await req('POST', '/api/account/delete', { headers: { Cookie: pia }, body: { confirm: 'pia@example.com' } })).status === 200 && (await A('GET', '/users?q=pia')).j.users.length === 0, 'cuenta eliminada: fuera del directorio');
   // Without the admin vars again: nothing.

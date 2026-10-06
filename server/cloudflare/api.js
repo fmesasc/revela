@@ -692,6 +692,9 @@ export class Budget {
     // (And the cloud's quotas, storage.js.)
     if (op === 'storage-get') return Response.json({ storage: (await this.ctx.storage.get('storage')) || null });
     if (op === 'storage-set') { await this.ctx.storage.put('storage', a.storage); return Response.json({ ok: true }); }
+    // (And publishing to production, releases.js.)
+    if (op === 'releases-get') return Response.json({ releases: (await this.ctx.storage.get('releases')) || null });
+    if (op === 'releases-set') { await this.ctx.storage.put('releases', a.releases); return Response.json({ ok: true }); }
     // (And the notices, notices.js.)
     const n = await noticesOp(this.ctx.storage, op, a); if (n) return Response.json(n);
     const month = new Date().toISOString().slice(0, 7), cur = (await this.ctx.storage.get('m')) || { month, usd: 0 };

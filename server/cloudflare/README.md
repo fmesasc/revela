@@ -220,3 +220,9 @@ signature on the ID token, and the key or password is still needed to open it.
   documents themselves, which are not encrypted (the server checks roles and
   merges changes). Everything an account holds can be exported
   (`/api/account/export`) or deleted (`/api/account/delete`).
+
+## Pruebas y producción
+
+The same Worker runs twice: `revela-share` (production, from the branch `produccion`) and `revela-share-staging`
+(`[env.staging]`: pruebas.revelaslides.com, from `main`, with its own Durable Objects and data). See
+[docs/PUBLICAR.md](../../docs/PUBLICAR.md).

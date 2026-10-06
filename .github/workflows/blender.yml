@@ -12,7 +12,7 @@ name: Blender
 
 on:
   push:
-    branches: [main]
+    branches: [produccion]          # (one Blender service, production's: promote.yml)
     paths: ['server/blender/**', 'tests/server-blender.mjs', '.github/workflows/blender.yml']
   workflow_dispatch:
 

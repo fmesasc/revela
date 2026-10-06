@@ -1,6 +1,8 @@
 // Arabic interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Pruebas": "تجريبي",
+  "Entorno de pruebas: las cuentas y presentaciones de aquí no son las reales, y los pagos son de prueba. La versión real está en revelaslides.com.": "بيئة تجريبية: الحسابات والعروض هنا ليست الحقيقية، والمدفوعات تجريبية. النسخة الحقيقية على revelaslides.com.",
   "Uso y gastos del equipo": "استخدام الفريق ونفقاته",
   "{used} de {seats} puestos ocupados · {inv} invitaciones pendientes": "{used} من {seats} مقاعد مشغولة · {inv} دعوات معلّقة",
   "Último uso": "آخر استخدام",

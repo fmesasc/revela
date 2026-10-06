@@ -87,6 +87,13 @@ def main():
         for ref in refs:
             if not (ROOT / ref).exists():
                 errors.append(f'{page}: {ref} no existe')
+    # the server's test environment (pruebas.revelaslides.com) binds the same Durable Objects as production
+    toml = (ROOT / 'server' / 'cloudflare' / 'wrangler.toml').read_text(encoding='utf-8')
+    top = toml.split('[env.')[0]
+    prod = set(re.findall(r'\[\[durable_objects\.bindings\]\]\nname = "(\w+)"\nclass_name = "(\w+)"', top))
+    stage = set(re.findall(r'\[\[env\.staging\.durable_objects\.bindings\]\]\nname = "(\w+)"\nclass_name = "(\w+)"', toml))
+    if prod != stage:
+        errors.append(f'wrangler.toml: [env.staging] no tiene los mismos objetos que producción: faltan {sorted(prod - stage)}, sobran {sorted(stage - prod)}')
     # one version: package.json's and the app's (src/core/config.js; the desktop builds take package.json's)
     pkg = json.loads((ROOT / 'package.json').read_text(encoding='utf-8'))['version']
     app = re.search(r"APP_VERSION = '([^']+)'", (SRC / 'core' / 'config.js').read_text(encoding='utf-8'))

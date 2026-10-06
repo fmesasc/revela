@@ -1,10 +1,10 @@
-# Publishes the open edition (the app, without the revelaslides.com website) on GitHub Pages on each push to main,
-# after all the tests pass (tests.yml). No bundler: tools/build-site.mjs --open copies the app as it is.
+# Publishes the open edition (the app, without the revelaslides.com website) on GitHub Pages when production
+# changes (the branch produccion: promote.yml), after all the tests pass (tests.yml). No bundler: tools/build-site.mjs --open copies the app as it is.
 name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [produccion]          # (what's in production: promote.yml)
   workflow_dispatch:
 
 permissions:
