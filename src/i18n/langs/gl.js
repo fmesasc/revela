@@ -1,6 +1,16 @@
 // Galician interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Solo presentar": "Só presentar",
+  "Cualquiera con el enlace puede verla como presentación": "Calquera persoa coa ligazón pode vela como presentación",
+  "Acceso hasta (vacío: sin fecha de fin)": "Acceso ata (baleiro: sen data de fin)",
+  "Te la ha compartido {owner}. Puedes compartirla y cambiar los permisos de los demás.": "Compartiuna contigo {owner}. Podes compartila e cambiar os permisos dos demais.",
+  "Ajustes de permisos": "Axustes de permisos",
+  "Quien puede ver o comentar no puede descargarla, imprimirla ni copiarla": "Quen pode ver ou comentar non pode descargala, imprimila nin copiala",
+  "Revela quita esas opciones y no entrega copias; lo que se ve en una pantalla siempre se puede fotografiar. «Solo presentar» nunca permite copiar ni ve las notas del orador.": "Revela quita esas opcións e non entrega copias; o que se ve nunha pantalla sempre se pode fotografar. «Só presentar» nunca permite copiar nin ve as notas do orador.",
+  "Quien puede editar también puede compartirla y cambiar permisos": "Quen pode editar tamén pode compartila e cambiar permisos",
+  "Quien la comparte no permite descargarla, imprimirla ni copiarla.": "Quen a comparte non permite descargala, imprimila nin copiala.",
+  "Solo lectura, sin copias": "Só lectura, sen copias",
   "Sesiones abiertas": "Sesións abertas",
   "Dónde está abierta tu cuenta. Si ves una sesión que no reconoces, ciérrala y revisa la seguridad de tu cuenta de Google.": "Onde está aberta a túa conta. Se ves unha sesión que non recoñeces, péchaa e revisa a seguridade da túa conta de Google.",
   "Cerrar las demás sesiones": "Pechar as demais sesións",

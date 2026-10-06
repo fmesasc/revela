@@ -3,7 +3,8 @@
 // do. The actions are the ribbon's (ui/ribbon/actions.js); a card shows only when its action exists in this
 // edition (its button in the ribbon's File page isn't hidden: no cloud, no accounts…).
 
-import { ACTIONS } from '../ribbon/actions.js';
+import { ACTIONS, TAKES_OUT } from '../ribbon/actions.js';
+import { state } from '../../core/store.js';
 import { galleryInto } from '../dialogs/gallery.js';
 import { t } from '../../i18n/index.js';
 
@@ -55,8 +56,9 @@ const SECTIONS = [
     C('gdrive-config', 'settings', 'Google Cloud propio (avanzado)', 'Usar tu propio proyecto de Google para Drive. No hace falta para usar Drive.')] },
 ];
 
-// Whether this edition has the action (its ribbon button exists and isn't hidden).
-const available = a => { if (!ACTIONS[a]) return false; const b = document.querySelector(`#ribbon [data-action="${a}"]`); return !b || (!b.hidden && !b.closest('[hidden]:not(.ribbon-page)')); };
+// Whether this edition has the action (its ribbon button exists and isn't hidden); not what takes it out, when
+// it's shared without copies.
+const available = a => { if (!ACTIONS[a] || (state.ui.noCopy && TAKES_OUT.includes(a))) return false; const b = document.querySelector(`#ribbon [data-action="${a}"]`); return !b || (!b.hidden && !b.closest('[hidden]:not(.ribbon-page)')); };
 
 export function openBackstage(sectionId = 'new') {
   document.getElementById('backstage')?.remove();

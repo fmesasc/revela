@@ -298,3 +298,11 @@ export const ACTIONS = {
   'zoom-reset': () => setZoom(1),
   'zoom-fit': () => fitZoom(),
 };
+
+// Shared without copies (Compartir ▸ Ajustes de permisos; the server says so: io/cloud/clouddocs.js state.ui.noCopy):
+// whatever takes the presentation out — downloads, exports, printing, saving it elsewhere, sharing it on — says why
+// instead, wherever it is started from (ribbon, File, palette, shortcuts). Copying objects: features/document/clipboard.js.
+export const TAKES_OUT = ['save-protected', 'download-project', 'export', 'export-pptx', 'export-pdf', 'print', 'export-png', 'export-video', 'export-odp',
+  'export-handout', 'save-picture', 'gdrive-save', 'gdrive-save-as', 'gdrive-html', 'onedrive-save', 'share', 'collab', 'share-classroom', 'community-publish', 'record-show'];
+export const noCopyNotice = () => toast(t('Quien la comparte no permite descargarla, imprimirla ni copiarla.'));
+for (const id of TAKES_OUT) { const run = ACTIONS[id]; ACTIONS[id] = (...a) => (state.ui.noCopy ? noCopyNotice() : run(...a)); }

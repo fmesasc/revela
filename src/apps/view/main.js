@@ -2,7 +2,7 @@
 // or view.html?u=<https URL of a sealed copy>#k=<key>. The page fetches the
 // sealed copy and opens it with the key in the link or a password.
 // view.html?doc=<id>: one in Revela's cloud that anyone with the link can view, presented
-// (what the «Insert in a web page» iframe shows).
+// (what the «Insert in a web page» iframe shows), and where «Solo presentar» opens one; without copies when so shared.
 
 import { openerPageHTML } from '../../io/share/seal.js';
 import { driveSealedURL } from '../../io/cloud/gdrive.js';
@@ -39,9 +39,9 @@ function fail(msg) {
 async function openCloud(id) {
   const m = document.getElementById('m'); m.textContent = texts.loading;
   try {
-    const { deck, name } = await publicDeck(id);
+    const { deck, name, noCopy } = await publicDeck(id);
     adoptDeck(deck);
-    const html = buildHTML(state.deck);
+    const html = buildHTML(state.deck, { noCopy });
     document.open(); document.write(html); document.close();
     if (name) document.title = name;
   } catch (e) {

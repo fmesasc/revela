@@ -1017,3 +1017,17 @@ body:not([data-edition="cloud"]):not([data-edition="desktop"]) .accounts-only{di
 /* Community (dialogs/community.js) */
 .gal-community{margin-top:18px}.gal-community .gal-bar{flex-direction:row;flex-wrap:wrap;align-items:center;position:static}.gal-community .gal-bar input{flex:1 1 220px;min-width:0;padding:8px 10px;font-size:14px}
 .cm-lic{border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:8px 0}.cm-lic label{display:block;margin:4px 0;font-size:13px}
+/* Shared without copies (Compartir ▸ Ajustes de permisos; ui/ribbon/actions.js TAKES_OUT): what takes the presentation
+   out isn't offered, its text and pictures can't be selected or dragged out, and a printout is blank but for why. */
+body.no-copy :is([data-action="export"],[data-action="export-pptx"],[data-action="export-pdf"],[data-action="print"],[data-action="export-png"],[data-action="export-video"],[data-action="export-odp"],[data-action="export-handout"],[data-action="save-picture"],[data-action="download-project"],[data-action="save-protected"],[data-action="gdrive-save"],[data-action="gdrive-save-as"],[data-action="gdrive-html"],[data-action="onedrive-save"],[data-action="share"],[data-action="collab"],[data-action="share-classroom"],[data-action="community-publish"],[data-action="record-show"]){display:none!important}
+body.no-copy :is(#stage,#navigator,#notes) {-webkit-user-select:none;user-select:none}
+body.no-copy img{-webkit-user-drag:none}
+@media print{body.no-copy>*{display:none!important}body.no-copy::before{content:"Revela";display:block;font:600 18px system-ui,sans-serif;padding:40px}}
+/* Sharing: each person on one line — email, until when (optional), role */
+#cloud-share-modal .sh-item>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#cloud-share-modal .sh-item select{flex:none;width:auto}
+#cloud-share-modal .cl-until{display:inline-flex;align-items:center;gap:3px;flex:none;color:var(--txt2)}
+#cloud-share-modal .cl-until .ms{font-size:16px}
+#cloud-share-modal .cl-until input{width:132px;font-size:12px;padding:3px 4px}
+#cloud-share-modal .sh-row select.cl-linkrole{flex:1;min-width:0}
+#cloud-share-modal .cl-perms{margin:10px 0 4px}#cloud-share-modal .cl-perms summary{cursor:pointer;font-weight:600}

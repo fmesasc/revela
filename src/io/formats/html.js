@@ -524,7 +524,9 @@ export function buildHTML(deck = state.deck, opts = {}) {
 }
 // (Reveal is set to fill the screen as the editor shows the slide: no margin, and no cap on how far it
 // grows — reveal.js stops at 2× by default, which left wide borders on large or high-resolution screens.)
-function buildHTMLRaw(deck, { inApp = false, selfPaced = false } = {}) {
+// noCopy: the viewer of one shared without copies (apps/view: «solo presentar», or the owner's setting) — nothing to
+// select, drag out, copy or print. (What a screen shows can always be photographed.)
+function buildHTMLRaw(deck, { inApp = false, selfPaced = false, noCopy = false } = {}) {
   const { w, h } = deck.size;
   const figMap = figuresMap(deck);
   // Vertical stacks: a slide marked `vertical` goes below the previous visible one.
@@ -637,7 +639,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
    transition:transform var(--rv-fly,1.4s) cubic-bezier(.65,0,.35,1)!important;pointer-events:none}
  .reveal.rv-canvas .slides>section.present{pointer-events:auto}
  html.rv-canvas-overview .reveal.rv-canvas .slides>section{pointer-events:auto;cursor:zoom-in}
- .reveal.rv-canvas .rv-world{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0;z-index:1;pointer-events:none;transition:transform var(--rv-fly,1.4s) cubic-bezier(.65,0,.35,1)}` : ''}
+ .reveal.rv-canvas .rv-world{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0;z-index:1;pointer-events:none;transition:transform var(--rv-fly,1.4s) cubic-bezier(.65,0,.35,1)}` : ''}${noCopy ? '\n .reveal{-webkit-user-select:none;user-select:none} .reveal img{-webkit-user-drag:none} @media print{body{display:none!important}}' : ''}
 </style></head><body>
 <div class="reveal${canvas ? ' rv-canvas' : ''}" data-fit="${fit}"><div class="slides">${canvas && deck.canvas.image?.src ? `<div class="rv-world"><img alt="" src="${esc(deck.canvas.image.src)}" style="max-width:none;max-height:none;margin:0;position:absolute;left:${deck.canvas.image.x}px;top:${deck.canvas.image.y}px;width:${deck.canvas.image.w}px;height:${deck.canvas.image.h}px"></div>` : ''}
 ${slides}
@@ -684,6 +686,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${overviewJS(groups.map(g => (deck.sections || []).find(x => x.id === g[0].sectionId)?.name || ''),
    { title: t('Vista general'), help: t('Flechas e Intro, o clic, para ir · Esc para cerrar') })}
  ${hasZoomReturn ? '(function(){var p=null;document.addEventListener("click",function(e){var a=e.target.closest("a.slide-zoom[data-zoom-return]");if(a){p={t:a.dataset.target,o:a.dataset.origin.split("/"),arrived:false};}});Reveal.on("slidechanged",function(ev){if(!p)return;if(ev.indexh+"/"+(ev.indexv||0)===p.t){p.arrived=true;return;}if(p.arrived){var o=p.o;p=null;setTimeout(function(){Reveal.slide(+o[0],+o[1]);},0);}});})();' : ''}
+ ${noCopy ? "['copy','cut','contextmenu','dragstart'].forEach(function(n){document.addEventListener(n,function(e){e.preventDefault();});});document.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&/^[psc]$/i.test(e.key))e.preventDefault();});" : ''}
 </script></body></html>`;
 }
 

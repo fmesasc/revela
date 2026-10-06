@@ -15,7 +15,7 @@
 // be kept as a copy (keepCopy) or exported; it's checked again when the account changes.
 
 import { api, hasAccounts } from './account.js';
-import { OFFICIAL_SITE } from '../../core/config.js';
+import { OFFICIAL_SITE, EDITION } from '../../core/config.js';
 import { state, subscribe, snapshot, applyRemote, adoptDeck, replaceDeck, setPersist, mutate, onBeforeReplace } from '../../core/store.js';
 import { diff, applyOps } from '../../features/live/collabsync.js';
 import { cleanValue } from '../../features/document/sanitize.js';
@@ -37,7 +37,7 @@ export async function publicDeck(id, fetcher = fetch) {
   const r = await fetcher(new URL('/api/docs/' + encodeURIComponent(id), location.origin).href, { credentials: 'include' });
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j?.deck?.slides) throw Object.assign(new Error('DOC'), { status: r.ok ? 500 : r.status });
-  return { deck: cleanValue(j.deck), name: j.name || '' };
+  return { deck: cleanValue(j.deck), name: j.name || '', noCopy: !!j.noCopy };
 }
 export const docIdFrom = (search = location.search) => { const id = new URLSearchParams(search).get('doc'); return id && /^[\w-]{16,40}$/.test(id) ? id : null; };
 const path = (id, op = '') => `docs/${encodeURIComponent(id)}${op ? '/' + op : ''}`;
@@ -106,7 +106,7 @@ let cur = null;                  // { id, role, rev, base, sharing, owner, readO
 const listeners = new Set();
 export const onCloud = fn => { listeners.add(fn); return () => listeners.delete(fn); };
 const emit = (what, data) => listeners.forEach(fn => { try { fn(what, data); } catch {} });
-export const cloudDoc = () => (cur ? { id: cur.id, role: cur.role, sharing: cur.sharing, owner: cur.owner, status: cur.status, readOnly: cur.readOnly } : null);
+export const cloudDoc = () => (cur ? { id: cur.id, role: cur.role, sharing: cur.sharing, owner: cur.owner, status: cur.status, readOnly: cur.readOnly, noCopy: cur.noCopy } : null);
 export const setSharing = sharing => { if (cur) { cur.sharing = sharing; emit('sharing', sharing); } };
 // A version from the cloud becomes the current document (and is sent like any change).
 export const restoreVersion = deck => replaceDeck(deck);
@@ -119,11 +119,18 @@ const clean = ops => ops.map(op => (op && 'v' in op ? { ...op, v: cleanValue(op.
 // io: the transport (the tests pass a fake); pollMs: how often to look for others' changes.
 export async function openDoc(id, { io = send, pollMs = 5000, debounceMs = 1200 } = {}) {
   const r = await io(path(id));
+  // «Solo presentar»: not the editor but the viewer, as a slideshow (the server sent only what an audience sees).
+  if (r.role === 'present') {
+    if (EDITION === 'desktop') window.__TAURI__?.opener?.openUrl?.(embedLink(id)); else location.assign('view.html?doc=' + encodeURIComponent(id));
+    return { id, role: 'present' };
+  }
   closeDoc();
+  // (Shared without copies: the app offers no download, print or copy — ui/ribbon/actions.js TAKES_OUT.)
+  state.ui.noCopy = !!r.noCopy;
   adoptDeck(r.deck);
   state.ui.lock = r.role === 'view' ? 'view' : r.role === 'comment' ? 'comment' : null;
   setPersist(r.role === 'owner');                        // (someone else's: this browser keeps no copy)
-  cur = { id, role: r.role, rev: r.rev, base: snapshot(state.deck), sharing: r.sharing || null, owner: r.owner || null, readOnly: r.readOnly ? { limit: r.limit } : null, status: r.readOnly ? 'readonly' : 'saved', io };
+  cur = { id, role: r.role, rev: r.rev, base: snapshot(state.deck), sharing: r.sharing || null, owner: r.owner || null, readOnly: r.readOnly ? { limit: r.limit } : null, status: r.readOnly ? 'readonly' : 'saved', noCopy: !!r.noCopy, io };
   if (r.thumbAt) cur.thumbKey = firstSlideKey(state.deck);   // (it has its picture: a new one only when the first slide changes)
   startSync(pollMs, debounceMs);
   emit('open', cloudDoc());
@@ -145,11 +152,11 @@ export async function saveToCloud({ io = send, pollMs = 5000, debounceMs = 1200,
 export function closeDoc() {
   if (!cur) return;
   { const me = cur; if (me.role !== 'view' && !me.readOnly) { const ops = diff(me.base, state.deck); if (ops.length) me.io(path(me.id, 'ops'), { ops }).catch(() => {}); } }
-  cur.stop?.(); cur = null; state.ui.lock = null; setPersist(true); emit('close');
+  cur.stop?.(); cur = null; state.ui.lock = null; state.ui.noCopy = false; setPersist(true); emit('close');
 }
 // Read-only (beyond the plan): keep what's in the editor as a presentation of this browser, apart from the cloud's.
 export function keepCopy() {
-  if (!cur) return;
+  if (!cur || cur.noCopy) return;                        // (shared without copies: none here either)
   closeDoc(); mutate(() => {});                          // (saved here from now on, like any local presentation)
 }
 // Still read-only? (After the plan changed or some were deleted.) If not, what was changed here is sent.

@@ -341,6 +341,50 @@ ok((await req('POST', '/api/desktop/claim', { origin: 'tauri://localhost', body:
   j = await (await get(null)).json(); ok(j.role === 'view' && j.deck, 'nube: con enlace para leer, se lee sin sesión');
   ok((await req('POST', `/api/docs/${id}/ops`, { body: { ops: [comment] } })).status === 401, 'nube: el enlace para leer no deja cambiar nada');
   ok((await req('POST', `/api/docs/${id}/share`, { headers: { Cookie: ana }, body: { link: 'admin' } })).status === 400, 'nube: roles de enlace inventados no');
+  // Permissions: «only present», no copies, editors who share, access that ends.
+  {
+    const share = (c, body) => req('POST', `/api/docs/${id}/share`, { headers: { Cookie: c }, body });
+    await ops(ana, [{ p: ['slides', 's1', 'notes'], v: 'NOTA-SECRETA del orador' }, { p: ['slides', 's2', 'hidden'], v: true }]);
+    r = await share(ana, { link: 'none', people: { 'eva@example.com': 'edit', 'luis@example.com': 'present' } });   // (the highest role wins: no link for now)
+    ok(r.status === 200, 'permisos: «solo presentar» es un rol válido');
+    j = await (await get(luis)).json();
+    ok(j.role === 'present' && j.noCopy === true && j.deck.slides.length === 1 && !JSON.stringify(j.deck).includes('NOTA-SECRETA') && !JSON.stringify(j.deck).includes('"comments"'),
+      'permisos: «solo presentar» recibe las diapositivas del público: sin notas, comentarios ni ocultas: ' + JSON.stringify(j.deck).slice(0, 200));
+    j = await (await get(luis, '/since?rev=1')).json(); ok(j.deck && !j.ops && !JSON.stringify(j).includes('NOTA-SECRETA'), 'permisos: ni en los cambios se cuelan las notas');
+    ok((await ops(luis, [comment])).status === 403 && (await get(luis, '/versions')).status === 403, 'permisos: «solo presentar» no comenta ni ve versiones');
+    ok((await req('POST', `/api/docs/${id}/duplicate`, { headers: { Cookie: luis }, body: {} })).status === 403, 'permisos: ni se hace una copia');
+    j = await (await get(eva)).json(); ok(j.deck.slides.length === 2 && JSON.stringify(j.deck).includes('NOTA-SECRETA') && !j.noCopy, 'permisos: quien edita lo ve todo');
+    // No copies for who can only view or comment; editors unaffected; only the owner decides.
+    await share(ana, { link: 'view' });
+    ok(!(await (await get(null)).json()).noCopy, 'sin copias: apagado de entrada');
+    ok((await share(ana, { noCopy: true })).status === 200 && (await (await get(null)).json()).noCopy === true, 'sin copias: el enlace para ver lo recibe');
+    ok(!(await (await get(eva)).json()).noCopy && (await (await get(ana)).json()).sharing.noCopy === true, 'sin copias: no afecta a quien edita; la dueña lo ve en sus ajustes');
+    ok((await share(eva, { noCopy: false })).status === 403, 'sin copias: solo la dueña lo cambia');
+    // Editors who share (off unless the owner allows it); never the settings.
+    ok((await share(eva, { link: 'edit' })).status === 403 && !(await (await get(eva)).json()).sharing, 'editores: de entrada no comparten');
+    await share(ana, { editorsShare: true });
+    await env.ACCOUNTS.get('u:444').fetch('https://do/setplan', { method: 'POST', body: JSON.stringify({ name: 'pro', until: Date.now() + 864e5 }) });
+    j = await (await get(eva)).json(); ok(j.sharing && j.sharing.editorsShare === true, 'editores: con el permiso, ven y gestionan con quién se comparte');
+    r = await share(eva, { people: { ...j.sharing.people, 'teo@example.com': 'view' } });
+    ok(r.status === 200, 'editores: comparten con otra persona');
+    const teo = await login('tok-teo'); j = await (await req('GET', '/api/docs', { headers: { Cookie: teo } })).json();
+    ok(j.shared.some(x => x.id === id && x.owner === 'ana@example.com' && x.role === 'view'), 'editores: en su lista figura la dueña, no quien la compartió');
+    ok((await share(eva, { editorsShare: false })).status === 403 && (await share(eva, { people: { 'eva@example.com': 'edit' }, noCopy: false })).status === 403, 'editores: los ajustes, nunca');
+    // Access that ends: a person's and the link's.
+    const soon = Date.now() + 60e3;
+    ok((await share(ana, { until: { 'luis@example.com': Date.now() - 1000 } })).status === 400 && (await share(ana, { until: { 'nadie@example.com': soon } })).status === 400, 'caducidad: ni en el pasado ni para quien no está');
+    ok((await share(ana, { until: { 'luis@example.com': soon }, linkUntil: soon })).status === 200 && (await get(luis)).status === 200, 'caducidad: hasta entonces, entra');
+    const fake = Date.now; Date.now = () => fake() + 120e3;
+    ok((await get(luis)).status === 403 && (await get(null)).status === 401 && (await get(teo)).status === 200, 'caducidad: después, ni la persona ni el enlace (los demás, sí)');
+    Date.now = fake;
+    j = await (await get(ana)).json(); ok(j.sharing.until['luis@example.com'] === soon && j.sharing.linkUntil === soon, 'caducidad: la dueña ve las fechas');
+    await share(ana, { people: { 'eva@example.com': 'edit', 'teo@example.com': 'view' } });
+    ok(!(await (await get(ana)).json()).sharing.until['luis@example.com'], 'caducidad: se va con la persona');
+    await share(ana, { linkUntil: null, link: 'present' });
+    j = await (await get(null)).json(); ok(j.role === 'present' && j.deck.slides.length === 1 && j.noCopy, 'enlace «solo presentar»: sin sesión, solo el pase: ' + JSON.stringify(j).slice(0, 200));
+    await share(ana, { link: 'view', noCopy: false, editorsShare: false });
+    await env.ACCOUNTS.get('u:444').fetch('https://do/setplan', { method: 'POST', body: JSON.stringify({ name: 'pro', until: Date.now() - 1000 }) });   // (Eva, free again)
+  }
   // Statistics (the owner, Pro)
   const view = (slide, ms, enter) => req('POST', `/api/docs/${id}/view`, { body: { visitor: 'visitante-123', slide, ms, enter } });
   await view('s1', 0, true); await view('s1', 12000); await view('s2', 0, true); await view('s2', 5000);

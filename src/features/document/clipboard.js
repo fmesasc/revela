@@ -13,6 +13,7 @@ const KEY = 'revela.clipboard.v1', MARK = 'revela-objects:';
 let mem = null;
 
 export function copySelected() {
+  if (state.ui.noCopy) return 0;                         // (shared without copies: io/cloud/clouddocs.js)
   const bs = selectedBlocks(); if (!bs.length) return 0;
   const ids = new Set(bs.map(b => b.id));
   // Include connectors whose two ends are copied.

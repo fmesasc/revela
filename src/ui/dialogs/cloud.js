@@ -1,5 +1,6 @@
 // Revela's cloud (official edition and desktop app): sharing
-// one with people or by link (view / comment / edit), its statistics and its
+// one with people or by link (present / view / comment / edit; with an end date; without copies; editors who
+// share too), its statistics and its
 // versions. Everything is decided by the server (server/cloudflare/docs.js):
 // these dialogs only ask it and show what it says.
 
@@ -15,8 +16,12 @@ import { saveProject } from '../../io/formats/project.js';
 import { openCloudDocs } from './cloudlibrary.js';
 import { nowInCloud } from '../shell/where.js';
 
-const ROLE_NAMES = { view: 'Puede ver', comment: 'Puede comentar', edit: 'Puede editar', owner: 'Propietario' };
-const LINK_NAMES = { none: 'Solo las personas añadidas', view: 'Cualquiera con el enlace puede ver', comment: 'Cualquiera con el enlace puede comentar', edit: 'Cualquiera con el enlace puede editar' };
+const ROLE_NAMES = { present: 'Solo presentar', view: 'Puede ver', comment: 'Puede comentar', edit: 'Puede editar', owner: 'Propietario' };
+const LINK_NAMES = { none: 'Solo las personas añadidas', present: 'Cualquiera con el enlace puede verla como presentación', view: 'Cualquiera con el enlace puede ver', comment: 'Cualquiera con el enlace puede comentar', edit: 'Cualquiera con el enlace puede editar' };
+// An end date: a day chosen (access ends when it ends, here) ⇄ the server's time.
+const dayOf = ms => { if (!ms) return ''; const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const endOf = day => (day ? new Date(day + 'T23:59:59').getTime() : null);
+const tomorrow = () => dayOf(Date.now() + 864e5);
 const fmt = ts => (ts ? new Date(ts).toLocaleString(currentLang(), { dateStyle: 'medium', timeStyle: 'short' }) : '');
 // Read-only beyond the plan (server/cloudflare/docs.js): friendly, and what to do.
 const readOnlyText = (limit, mine = true) => (mine ? t('Esta presentación está en solo lectura porque tu plan gratuito permite editar {n}. Pasa a Pro o borra alguna para editarla.').replace('{n}', limit)
@@ -61,24 +66,28 @@ export async function openCloudShare() {
     });
     return;
   }
-  if (doc.role !== 'owner') {
+  // (Who can manage it: its owner, or an editor when the owner allows it — the server sends them «sharing».)
+  if (!doc.sharing) {
     body.innerHTML = `<p class="host-help">${t('Te la ha compartido {owner}. Tu permiso:').replace('{owner}', esc(doc.owner || ''))} <b>${t(ROLE_NAMES[doc.role])}</b></p>
       <div class="sh-row"><input readonly class="cl-link" value="${esc(cd.docLink(doc.id))}"><button type="button" class="mini2 cl-copy">${t('Copiar')}</button></div>`;
     body.querySelector('.cl-copy').addEventListener('click', e => { navigator.clipboard?.writeText(cd.docLink(doc.id)); e.target.textContent = t('Copiado'); });
     return;
   }
-  const me = acc.account(), pro = (me?.features || []).includes('share-people'), analytics = (me?.features || []).includes('analytics');
-  let people = { ...(doc.sharing?.people || {}) }, link = doc.sharing?.link || 'none';
-  const roleSel = (cls, v, withOff) => `<select class="${cls}">${['view', 'comment', 'edit'].map(r => `<option value="${r}"${r === v ? ' selected' : ''}>${t(ROLE_NAMES[r])}</option>`).join('')}${withOff ? `<option value="">${t('Quitar')}</option>` : ''}</select>`;
+  const me = acc.account(), pro = (me?.features || []).includes('share-people'), analytics = (me?.features || []).includes('analytics'), owner = doc.role === 'owner';
+  const sh = doc.sharing;
+  let people = { ...(sh.people || {}) }, link = sh.link || 'none', until = { ...(sh.until || {}) }, linkUntil = sh.linkUntil || null, noCopy = !!sh.noCopy, editorsShare = !!sh.editorsShare;
+  const roleSel = (cls, v, withOff) => `<select class="${cls}">${['present', 'view', 'comment', 'edit'].map(r => `<option value="${r}"${r === v ? ' selected' : ''}>${t(ROLE_NAMES[r])}</option>`).join('')}${withOff ? `<option value="">${t('Quitar')}</option>` : ''}</select>`;
+  const untilIn = (cls, v) => `<label class="cl-until" title="${t('Acceso hasta (vacío: sin fecha de fin)')}"><i class="ms" aria-hidden="true">event</i><input type="date" class="${cls}" min="${tomorrow()}" value="${dayOf(v)}" aria-label="${t('Acceso hasta (vacío: sin fecha de fin)')}"></label>`;
   const render = () => {
-    body.innerHTML = `<fieldset><legend>${t('Personas')}</legend>
+    body.innerHTML = `${owner ? '' : `<p class="host-help">${t('Te la ha compartido {owner}. Puedes compartirla y cambiar los permisos de los demás.').replace('{owner}', esc(doc.owner || ''))}</p>`}
+      <fieldset><legend>${t('Personas')}</legend>
         ${pro ? '' : `<p class="host-help">${t('Compartir con personas concretas es del plan Pro. El enlace funciona en todos los planes.')}</p>`}
-        <div class="cl-people">${Object.entries(people).map(([e, r]) => `<div class="sh-item" data-email="${esc(e)}"><span>${esc(e)}</span>${roleSel('cl-role', r, true)}</div>`).join('')
+        <div class="cl-people">${Object.entries(people).map(([e, r]) => `<div class="sh-item" data-email="${esc(e)}"><span>${esc(e)}</span>${untilIn('cl-p-until', until[e])}${roleSel('cl-role', r, true)}</div>`).join('')
           || `<p class="host-help">${t('Solo tú.')}</p>`}</div>
         <div class="sh-row"><input type="email" class="cl-email" placeholder="${t('correo@ejemplo.com')}"${pro ? '' : ' disabled'}>${roleSel('cl-new-role', 'edit')}<button type="button" class="mini2 cl-add"${pro ? '' : ' disabled'}>${t('Añadir')}</button></div>
       </fieldset>
       <fieldset><legend>${t('Enlace')}</legend>
-        <select class="cl-linkrole">${Object.entries(LINK_NAMES).map(([k, v]) => `<option value="${k}"${k === link ? ' selected' : ''}>${t(v)}</option>`).join('')}</select>
+        <div class="sh-row"><select class="cl-linkrole">${Object.entries(LINK_NAMES).map(([k, v]) => `<option value="${k}"${k === link ? ' selected' : ''}>${t(v)}</option>`).join('')}</select>${link === 'none' ? '' : untilIn('cl-l-until', linkUntil)}</div>
         <div class="sh-row"><input readonly class="cl-link" value="${esc(cd.docLink(doc.id))}"><button type="button" class="mini2 cl-copy">${t('Copiar')}</button></div>
         <div class="cl-embed"${link === 'none' ? ' hidden' : ''}><label class="fr-l">${t('Insertar en una web (iframe)')}</label>
           <div class="sh-row"><textarea readonly class="cl-ifr" rows="3">${esc(cd.embedCode(doc.id, doc.name || state.deck.name || ''))}</textarea><button type="button" class="mini2 cl-copy-ifr">${t('Copiar')}</button></div>
@@ -86,6 +95,10 @@ export async function openCloudShare() {
         <p class="host-help cl-linkhint" hidden><i class="ms">lock</i> ${t('Con «Solo las personas añadidas», el enlace solo lo abren las personas de arriba. Para que lo abra cualquiera, elige «Cualquiera con el enlace puede ver».')}</p>
         <p class="host-help">${t('Las personas añadidas entran con su cuenta de Google. Con el enlace para ver no hace falta cuenta.')}</p>
       </fieldset>
+      ${owner ? `<details class="cl-perms"${noCopy || editorsShare ? ' open' : ''}><summary>${t('Ajustes de permisos')}</summary>
+        <label class="fr-chk"><input type="checkbox" class="cl-nocopy"${noCopy ? ' checked' : ''}> ${t('Quien puede ver o comentar no puede descargarla, imprimirla ni copiarla')}</label>
+        <p class="host-help">${t('Revela quita esas opciones y no entrega copias; lo que se ve en una pantalla siempre se puede fotografiar. «Solo presentar» nunca permite copiar ni ve las notas del orador.')}</p>
+        <label class="fr-chk"><input type="checkbox" class="cl-edshare"${editorsShare ? ' checked' : ''}> ${t('Quien puede editar también puede compartirla y cambiar permisos')}</label></details>` : ''}
       <div class="fr-actions"><span>${analytics ? `<button type="button" class="mini2 cl-stats"><i class="ms">insights</i> ${t('Estadísticas')}</button>` : ''}
         <button type="button" class="mini2 cl-versions"><i class="ms">history</i> ${t('Versiones')}</button></span>
         <span class="cl-status" role="status" aria-live="polite"></span><button type="button" class="fr-do cl-apply">${t('Listo')}</button></div>`;
@@ -99,7 +112,11 @@ export async function openCloudShare() {
       people[e] = q('.cl-new-role').value; render(); apply();
     });
     q('.cl-email').addEventListener('keydown', e => { if (e.key === 'Enter') q('.cl-add').click(); });
-    q('.cl-linkrole').addEventListener('change', e => { link = e.target.value; linkHint(); apply(); });
+    q('.cl-linkrole').addEventListener('change', e => { link = e.target.value; if (link === 'none') linkUntil = null; render(); apply(); });
+    body.querySelectorAll('.cl-p-until').forEach(i => i.addEventListener('change', () => { const e = i.closest('[data-email]').dataset.email; if (i.value) until[e] = endOf(i.value); else delete until[e]; apply(); }));
+    q('.cl-l-until')?.addEventListener('change', e => { linkUntil = endOf(e.target.value); apply(); });
+    q('.cl-nocopy')?.addEventListener('change', e => { noCopy = e.target.checked; apply(); });
+    q('.cl-edshare')?.addEventListener('change', e => { editorsShare = e.target.checked; apply(); });
     q('.cl-copy').addEventListener('click', e => { navigator.clipboard?.writeText(cd.docLink(doc.id)); e.target.textContent = t('Copiado'); linkHint(); });
     linkHint(); status(shareSt);
     q('.cl-copy-ifr').addEventListener('click', e => { navigator.clipboard?.writeText(q('.cl-ifr').value); e.target.textContent = t('Copiado'); });
@@ -113,7 +130,8 @@ export async function openCloudShare() {
     el.dataset.st = st; el.innerHTML = st === 'saving' ? `<span class="btn-spin" aria-hidden="true"></span> ${t('Guardando…')}` : st === 'error' ? `<i class="ms">error</i> ${t('No se pudo guardar')}` : `<i class="ms">check</i> ${t('Guardado')}`; };
   const linkHint = () => { const el = body.querySelector('.cl-linkhint'); if (el) el.hidden = link !== 'none'; const em = body.querySelector('.cl-embed'); if (em) em.hidden = link === 'none'; };
   const apply = () => {
-    const want = { link, ...(pro && { people: { ...people } }) };
+    for (const e of Object.keys(until)) if (!people[e]) delete until[e];
+    const want = { link, linkUntil, ...(pro && { people: { ...people }, until: { ...until } }), ...(owner && { noCopy, editorsShare }) };
     status('saving');
     saving = saving.then(async () => {
       try { const r = await cd.shareDoc(doc.id, want); cd.setSharing(r.sharing); doc = cd.cloudDoc() || doc; status('saved'); }
@@ -158,7 +176,7 @@ export function mountCloudStatus() {
   const el = document.getElementById('cloud-status'); if (!el) return;
   const paint = () => {
     const d = cd.cloudDoc(); el.hidden = !d; if (!d) return;
-    const [icon, text] = d.role === 'view' ? ['visibility', 'Solo lectura'] : d.readOnly ? STATUS.readonly : STATUS[d.status] || STATUS.saved;
+    const [icon, text] = d.role === 'view' ? (d.noCopy ? ['lock', 'Solo lectura, sin copias'] : ['visibility', 'Solo lectura']) : d.readOnly ? STATUS.readonly : STATUS[d.status] || STATUS.saved;
     el.innerHTML = `<i class="ms">${icon}</i><span>${t(text)}</span>`; el.dataset.status = d.status;
     el.title = t('Nube de Revela') + ' · ' + t(text) + ' — ' + t('Compartir y permisos');
     const ss = document.getElementById('save-state'); if (ss) ss.hidden = true;
@@ -189,7 +207,7 @@ function paintReadOnly() {
   const mine = d.role === 'owner', b = (a, label) => `<button type="button" class="mini2" data-ro="${a}">${t(label)}</button>`;
   el.style.display = 'flex';
   el.innerHTML = `<i class="ms">lock</i><span style="flex:1 1 260px">${esc(readOnlyText(d.readOnly.limit, mine))} ${t('Lo que cambies aquí no se guarda en la nube: guarda una copia o descárgala para conservarlo.')}</span>
-    ${mine ? b('pro', 'Pasar a Pro') + b('list', 'Mis presentaciones') : ''}${b('copy', 'Guardar una copia')}${b('download', 'Descargar')}`;
+    ${mine ? b('pro', 'Pasar a Pro') + b('list', 'Mis presentaciones') : ''}${d.noCopy ? '' : b('copy', 'Guardar una copia') + b('download', 'Descargar')}`;
 }
 
 // Opened with ?doc=… : sign in if needed, then open it. With &lti=… (an activity

@@ -129,6 +129,7 @@ export function collapseSlideSel() {
 let slideClip = null;                 // { size, slides } copied in this tab
 export const hasSlideClip = () => !!slideClip?.slides.length;
 export function copySlides(indices = selectedSlideIndices()) {
+  if (state.ui.noCopy) return 0;                         // (shared without copies)
   const list = indices.map(i => state.deck.slides[i]).filter(Boolean);
   if (list.length) slideClip = { size: { ...state.deck.size }, slides: structuredClone(list) };
   return list.length;

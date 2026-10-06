@@ -1,6 +1,16 @@
 // Dutch interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Solo presentar": "Alleen presenteren",
+  "Cualquiera con el enlace puede verla como presentación": "Iedereen met de link kan hem als diavoorstelling bekijken",
+  "Acceso hasta (vacío: sin fecha de fin)": "Toegang tot (leeg: geen einddatum)",
+  "Te la ha compartido {owner}. Puedes compartirla y cambiar los permisos de los demás.": "{owner} heeft hem met je gedeeld. Je kunt hem delen en de rechten van anderen wijzigen.",
+  "Ajustes de permisos": "Instellingen voor rechten",
+  "Quien puede ver o comentar no puede descargarla, imprimirla ni copiarla": "Wie alleen kan bekijken of reageren, kan hem niet downloaden, afdrukken of kopiëren",
+  "Revela quita esas opciones y no entrega copias; lo que se ve en una pantalla siempre se puede fotografiar. «Solo presentar» nunca permite copiar ni ve las notas del orador.": "Revela verwijdert die opties en geeft geen kopieën; wat op een scherm staat, kan altijd worden gefotografeerd. ‘Alleen presenteren’ staat nooit kopiëren toe en toont geen sprekersnotities.",
+  "Quien puede editar también puede compartirla y cambiar permisos": "Wie kan bewerken, kan hem ook delen en rechten wijzigen",
+  "Quien la comparte no permite descargarla, imprimirla ni copiarla.": "Wie hem deelt, staat downloaden, afdrukken en kopiëren niet toe.",
+  "Solo lectura, sin copias": "Alleen lezen, geen kopieën",
   "Sesiones abiertas": "Actieve sessies",
   "Dónde está abierta tu cuenta. Si ves una sesión que no reconoces, ciérrala y revisa la seguridad de tu cuenta de Google.": "Waar je account is aangemeld. Zie je een sessie die je niet herkent, sluit die dan af en controleer de beveiliging van je Google-account.",
   "Cerrar las demás sesiones": "Andere sessies afmelden",

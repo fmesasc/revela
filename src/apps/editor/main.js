@@ -11,7 +11,7 @@ import { initModelAi } from '../../ui/dialogs/model3dai.js';
 import { openReport } from '../../ui/dialogs/report.js';
 import { handleOpenWith } from '../../ui/shell/openwith.js';
 import { editText } from '../../ui/canvas/content.js';
-import { ACTIONS } from '../../ui/ribbon/actions.js';
+import { ACTIONS, noCopyNotice } from '../../ui/ribbon/actions.js';
 import { initFileDrop } from '../../ui/shell/openfile.js';
 import * as openfile from '../../ui/shell/openfile.js';
 import * as files from '../../features/content/files.js';
@@ -134,6 +134,8 @@ function inField(e) {
 }
 function keyboard(e) {
   const editing = document.activeElement?.isContentEditable;
+  // Shared without copies: not the browser's printing either (its pages are blank anyway: ui/styles).
+  if (state.ui.noCopy && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') { e.preventDefault(); noCopyNotice(); return; }
   // Esc leaves text edit mode (the block stays selected and can be moved).
   if (e.key === 'Escape' && editing) { e.preventDefault(); document.activeElement.blur(); return; }
   // Find & replace works anywhere, including while editing text.
@@ -251,6 +253,13 @@ document.addEventListener('paste', e => {
   else addText(txt.trim().split(/\n/).map(l => l.replace(/&/g, '&amp;').replace(/</g, '&lt;')).join('<br>'));
 });
 subscribe(render);
+// Shared without copies (io/cloud/clouddocs.js): the page knows (no selecting or dragging out, blank printouts), and
+// copying the slide's text or objects says why instead.
+subscribe(() => document.body.classList.toggle('no-copy', !!state.ui.noCopy));
+for (const ev of ['copy', 'cut']) document.addEventListener(ev, e => {
+  if (!state.ui.noCopy || /^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName || '')) return;
+  e.preventDefault(); noCopyNotice();
+});
 // What an object's text was when editing began (for Ctrl+Z while typing).
 document.addEventListener('focusin', e => { const el = e.target; if (el.isContentEditable && el.closest?.('.block')) el.dataset.start = el.innerHTML; });
 window.addEventListener('revela:lang', render);

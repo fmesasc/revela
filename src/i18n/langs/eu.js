@@ -1,6 +1,16 @@
 // Basque interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Solo presentar": "Aurkeztu soilik",
+  "Cualquiera con el enlace puede verla como presentación": "Esteka duen edonork aurkezpen gisa ikus dezake",
+  "Acceso hasta (vacío: sin fecha de fin)": "Sarbidea noiz arte (hutsik: amaiera-datarik gabe)",
+  "Te la ha compartido {owner}. Puedes compartirla y cambiar los permisos de los demás.": "{owner}(e)k partekatu dizu. Partekatu eta besteen baimenak alda ditzakezu.",
+  "Ajustes de permisos": "Baimenen ezarpenak",
+  "Quien puede ver o comentar no puede descargarla, imprimirla ni copiarla": "Ikusi edo iruzkindu dezakeenak ezin du deskargatu, inprimatu edo kopiatu",
+  "Revela quita esas opciones y no entrega copias; lo que se ve en una pantalla siempre se puede fotografiar. «Solo presentar» nunca permite copiar ni ve las notas del orador.": "Revelak aukera horiek kentzen ditu eta ez du kopiarik ematen; pantailan ikusten dena beti atera daiteke argazkian. «Aurkeztu soilik» aukerak ez du inoiz kopiatzen uzten, ez eta hizlariaren oharrak erakusten ere.",
+  "Quien puede editar también puede compartirla y cambiar permisos": "Editatu dezakeenak partekatu eta baimenak ere alda ditzake",
+  "Quien la comparte no permite descargarla, imprimirla ni copiarla.": "Partekatu duenak ez du uzten deskargatzen, inprimatzen edo kopiatzen.",
+  "Solo lectura, sin copias": "Irakurtzeko soilik, kopiarik gabe",
   "Sesiones abiertas": "Saio irekiak",
   "Dónde está abierta tu cuenta. Si ves una sesión que no reconoces, ciérrala y revisa la seguridad de tu cuenta de Google.": "Non dagoen irekita zure kontua. Ezagutzen ez duzun saio bat ikusten baduzu, itxi ezazu eta berrikusi zure Google kontuaren segurtasuna.",
   "Cerrar las demás sesiones": "Itxi gainerako saioak",

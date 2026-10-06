@@ -1,6 +1,16 @@
 // Arabic interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Solo presentar": "العرض فقط",
+  "Cualquiera con el enlace puede verla como presentación": "يمكن لأي شخص لديه الرابط مشاهدته كعرض تقديمي",
+  "Acceso hasta (vacío: sin fecha de fin)": "الوصول حتى (فارغ: بلا تاريخ انتهاء)",
+  "Te la ha compartido {owner}. Puedes compartirla y cambiar los permisos de los demás.": "شاركه معك {owner}. يمكنك مشاركته وتغيير أذونات الآخرين.",
+  "Ajustes de permisos": "إعدادات الأذونات",
+  "Quien puede ver o comentar no puede descargarla, imprimirla ni copiarla": "لا يمكن لمن يملك صلاحية العرض أو التعليق تنزيله أو طباعته أو نسخه",
+  "Revela quita esas opciones y no entrega copias; lo que se ve en una pantalla siempre se puede fotografiar. «Solo presentar» nunca permite copiar ni ve las notas del orador.": "يزيل Revela هذه الخيارات ولا يسلّم نسخًا؛ ما يظهر على الشاشة يمكن تصويره دائمًا. «العرض فقط» لا يسمح بالنسخ أبدًا ولا يُظهر ملاحظات المقدّم.",
+  "Quien puede editar también puede compartirla y cambiar permisos": "يمكن لمن يملك صلاحية التحرير أيضًا مشاركته وتغيير الأذونات",
+  "Quien la comparte no permite descargarla, imprimirla ni copiarla.": "لا يسمح من شاركه بتنزيله أو طباعته أو نسخه.",
+  "Solo lectura, sin copias": "للقراءة فقط، بلا نسخ",
   "Sesiones abiertas": "الجلسات النشطة",
   "Dónde está abierta tu cuenta. Si ves una sesión que no reconoces, ciérrala y revisa la seguridad de tu cuenta de Google.": "الأماكن التي سُجّل فيها الدخول إلى حسابك. إذا رأيت جلسة لا تعرفها، فأغلقها وراجع أمان حسابك في Google.",
   "Cerrar las demás sesiones": "تسجيل الخروج من الجلسات الأخرى",

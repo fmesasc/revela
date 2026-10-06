@@ -1,8 +1,16 @@
 // Presentations saved in Revela's cloud (revelaslides.com/api/docs/…), shared
 // with people (by their Google account's email) and/or by link, each with a
-// role: view, comment or edit. The owner decides; this server checks every
+// role: present, view, comment or edit. The owner decides; this server checks every
 // read and every change against the role of whoever sends it, so the app's
 // code can't give anyone more than they were given.
+//
+// Permissions (Compartir ▸ Ajustes de permisos), as in other office suites:
+// - present: only the slideshow (the viewer, view.html): no editor, and the deck it gets has no speaker notes,
+//   comments or hidden slides — they never leave the server.
+// - noCopy: who can only view or comment gets no download, print, copy or «keep a copy» in the app. (Whoever
+//   sees a slide can always photograph it: this is what an honest app can promise.) Editors are not affected.
+// - editorsShare: editors may also share and change roles (not these settings, nor the owner).
+// - until: access that ends — per person ({ email: ms }) and for the link (linkUntil).
 //
 //   GET  /api/docs                    → { mine: [...], shared: [...], folders: [...], limit, trashDays }
 //                                     (mine: { id, name, created, updated, folder, starred, trashed, slides, text, thumbAt,
@@ -23,7 +31,8 @@
 //   GET  /api/docs/:id/since?rev=N    → { rev, ops } (what changed since), or { rev, deck } when too old
 //   POST /api/docs/:id/ops            { ops } → { rev }  (each op checked against the role; 402 { error: 'read only',
 //                                     reason: 'over limit', limit } when its owner has more than the plan allows)
-//   POST /api/docs/:id/share          { link, people: { email: role } }  (owner; people need Pro; new people get an email)
+//   POST /api/docs/:id/share          { link, people: { email: role }, until?: { email: ms }, linkUntil?, noCopy?, editorsShare? }
+//                                     (owner, or editors with editorsShare — not noCopy/editorsShare; people need Pro; new people get an email)
 //   POST /api/docs/:id/delete         (owner: deleted for good at once)
 //   GET  /api/docs/:id/versions       → [{ at, rev }]      (edit role)
 //   GET  /api/docs/:id/version?at=T   → { deck }           (edit role)
@@ -47,8 +56,12 @@ import { writeDeck, readDeck, writeText, readParts } from './store.js';
 import { mail } from './mail.js';
 import { acct, call } from './api.js';
 
-const ROLE_RANK = { view: 1, comment: 2, edit: 3, owner: 4 };
-const LINK_ROLES = ['none', 'view', 'comment', 'edit'];
+const ROLE_RANK = { present: 1, view: 2, comment: 3, edit: 4, owner: 5 };
+const ROLES = ['present', 'view', 'comment', 'edit'], LINK_ROLES = ['none', ...ROLES];
+// What «present» receives: the slides an audience sees, without speaker notes, comments or hidden slides.
+export const forAudience = deck => ({ ...deck, slides: (deck.slides || []).filter(s => !s.hidden).map(({ notes, comments, ...s }) => s) });
+// An end date: a time in the future (at most 5 years ahead), or none.
+const untilOf = v => { const n = Math.round(+v); return Number.isFinite(n) && n > Date.now() && n < Date.now() + 5 * 365 * 864e5 ? n : null; };
 const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const random = n => b64url(crypto.getRandomValues(new Uint8Array(n)));
 const EMAIL = /^[^\s@<>"]{1,64}@[a-z0-9.-]{1,190}\.[a-z]{2,}$/;
@@ -83,7 +96,8 @@ export class CloudDoc {
   // Role of { sub, email } (either may be missing): owner, a person's, or the link's.
   roleOf(meta, who) {
     if (who?.sub && who.sub === meta.owner) return 'owner';
-    const person = who?.email && meta.people[who.email], link = meta.link !== 'none' ? meta.link : null;
+    const now = Date.now(), over = t => !!t && t <= now;   // (no date: no end)
+    const person = who?.email && !over(meta.until?.[who.email]) && meta.people[who.email], link = meta.link !== 'none' && !over(meta.linkUntil) ? meta.link : null;
     return [person, link].filter(Boolean).sort((a, b) => ROLE_RANK[b] - ROLE_RANK[a])[0] || null;
   }
   // Whether its owner's plan leaves it read-only (id: given by the worker, never by the body).
@@ -107,16 +121,20 @@ export class CloudDoc {
     if (op === 'role') return this.json({ role });                 // (for the video calls: only who may open it)
     if (!role) return this.json({ error: a.who?.sub ? 'forbidden' : 'sign in' }, a.who?.sub ? 403 : 401);
     const at = r => ROLE_RANK[role] >= ROLE_RANK[r];
-    const sharing = () => ({ link: meta.link, people: meta.people });
+    const sharing = () => ({ link: meta.link, people: meta.people, until: meta.until || {}, linkUntil: meta.linkUntil || null, noCopy: !!meta.noCopy, editorsShare: !!meta.editorsShare });
+    const manages = role === 'owner' || (role === 'edit' && !!meta.editorsShare);
+    // (Copying stopped: for who can only present, view or comment, when the owner says so.)
+    const noCopy = !at('edit') && (role === 'present' || !!meta.noCopy);
     switch (op) {
       case 'get': {
         const lk = await this.locked(meta, a.id);
-        return this.json({ deck: doc.deck, rev: meta.rev, role, name: meta.name, updated: meta.updated, thumbAt: meta.thumbAt || null, ...(lk.locked && { readOnly: true, reason: 'over limit', limit: lk.limit }),
-          ...(role === 'owner' ? { sharing: sharing() } : { owner: meta.ownerEmail }) });
+        return this.json({ deck: role === 'present' ? forAudience(doc.deck) : doc.deck, rev: meta.rev, role, name: meta.name, updated: meta.updated, thumbAt: meta.thumbAt || null, ...(lk.locked && { readOnly: true, reason: 'over limit', limit: lk.limit }),
+          ...(noCopy && { noCopy: true }), ...(manages && { sharing: sharing() }), ...(role !== 'owner' && { owner: meta.ownerEmail }) });
       }
       case 'since': {
         const log = (await st.get('log')) || [], from = +a.rev || 0;
         if (from === meta.rev) return this.json({ rev: meta.rev, ops: [] });
+        if (role === 'present') return this.json({ rev: meta.rev, deck: forAudience(doc.deck) });   // (the changes could carry notes: the whole, cleaned)
         const first = log[0]?.rev;
         if (first == null || from < first - 1 || from > meta.rev) return this.json({ rev: meta.rev, deck: doc.deck });
         return this.json({ rev: meta.rev, ops: log.filter(e => e.rev > from).flatMap(e => e.ops) });
@@ -144,21 +162,36 @@ export class CloudDoc {
         return this.json({ rev: meta.rev, name: meta.name, owner: meta.owner, ...indexOf(doc.deck) });
       }
       case 'share': {
-        if (role !== 'owner') return this.json({ error: 'forbidden' }, 403);
+        if (!manages) return this.json({ error: 'forbidden' }, 403);
+        // (The settings themselves are the owner's alone.)
+        if (role !== 'owner' && (a.noCopy !== undefined || a.editorsShare !== undefined)) return this.json({ error: 'forbidden' }, 403);
         const before = { ...meta.people };
         if (a.link !== undefined) { if (!LINK_ROLES.includes(a.link)) return this.json({ error: 'bad request' }, 400); meta.link = a.link; }
+        if (a.linkUntil !== undefined) { if (a.linkUntil && !untilOf(a.linkUntil)) return this.json({ error: 'bad request' }, 400); meta.linkUntil = untilOf(a.linkUntil); }
         if (a.people !== undefined) {
           const people = {};
           for (const [e, r] of Object.entries(a.people || {})) {
             const email = String(e).trim().toLowerCase();
-            if (!EMAIL.test(email) || !['view', 'comment', 'edit'].includes(r)) return this.json({ error: 'bad request' }, 400);
+            if (!EMAIL.test(email) || !ROLES.includes(r)) return this.json({ error: 'bad request' }, 400);
             if (email !== meta.ownerEmail) people[email] = r;
           }
           if (Object.keys(people).length > docsSettings(this.env).maxPeople) return this.json({ error: 'too many people' }, 400);
           meta.people = people;
         }
+        if (a.until !== undefined) {
+          const until = {};
+          for (const [e, v] of Object.entries(a.until && typeof a.until === 'object' ? a.until : {})) {
+            const email = String(e).trim().toLowerCase(); if (!v) continue;
+            if (!meta.people[email] || !untilOf(v)) return this.json({ error: 'bad request' }, 400);
+            until[email] = untilOf(v);
+          }
+          meta.until = until;
+        }
+        for (const e of Object.keys(meta.until || {})) if (!meta.people[e]) delete meta.until[e];   // (gone with the person)
+        if (a.noCopy !== undefined) meta.noCopy = !!a.noCopy;
+        if (a.editorsShare !== undefined) meta.editorsShare = !!a.editorsShare;
         await st.put('meta', meta);
-        return this.json({ ok: true, sharing: sharing(), before, name: meta.name });
+        return this.json({ ok: true, sharing: sharing(), before, name: meta.name, ownerEmail: meta.ownerEmail });
       }
       case 'delete': {
         if (role !== 'owner') return this.json({ error: 'forbidden' }, 403);
@@ -344,11 +377,11 @@ export async function handleDocs(path, req, body, url, env, me, json) {
     const now = r.data.sharing.people, was = r.data.before;
     for (const e of Object.keys(was)) if (!now[e]) await call(acct(env, 'e:' + e), 'inbox-remove', { id });
     for (const [e, role] of Object.entries(now)) {
-      const x = await call(acct(env, 'e:' + e), 'inbox-add', { id, name: r.data.name, owner: me.email, role });
+      const x = await call(acct(env, 'e:' + e), 'inbox-add', { id, name: r.data.name, owner: r.data.ownerEmail || me.email, role });
       // (Someone new: an email with the link — a service email, no opt-out.)
       if (!was[e]) await mail(env, { to: e, kind: 'share', lang: x.lang, vars: { by: me.name ? `${me.name} (${me.email})` : me.email, name: r.data.name, role, url: `${env.SITE_URL || 'https://revelaslides.com'}/app/?doc=${encodeURIComponent(id)}` } });
     }
-    delete r.data.before;
+    delete r.data.before; delete r.data.ownerEmail;
   } else if (op === 'ops') {
     if (r.data.owner) await call(acct(env, r.data.owner), 'docs-touch', { id, name: r.data.name, slides: r.data.slides, text: r.data.text });
     delete r.data.owner; delete r.data.slides; delete r.data.text;
