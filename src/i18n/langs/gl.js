@@ -62,7 +62,7 @@ export default {
   "La comunidad está en revelaslides.com.": "A comunidade está en revelaslides.com.",
   "Para publicar en la comunidad, inicia sesión con tu cuenta de Revela.": "Para publicar na comunidade, inicia sesión coa túa conta de Revela.",
   "Publicar en la comunidad": "Publicar na comunidade",
-  "Otros docentes podrán encontrarla en revelaslides.com/comunidad y usar una copia. La revisamos antes de publicarla.": "Outros docentes poderán atopala en revelaslides.com/comunidad e usar unha copia. Revisámola antes de publicala.",
+  "Otros docentes podrán encontrarla en revelaslides.com/community y usar una copia. La revisamos antes de publicarla.": "Outros docentes poderán atopala en revelaslides.com/community e usar unha copia. Revisámola antes de publicala.",
   "Descripción (para quién es y qué incluye)": "Descrición (para quen é e que inclúe)",
   "Materia": "Materia",
   "Nombre que se mostrará (opcional)": "Nome que se mostrará (opcional)",

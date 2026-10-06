@@ -158,7 +158,7 @@ export const ACTIONS = {
   gradebook: () => import('../dialogs/gradebook.js').then(m => m.openGradebook()),
   'community-publish': () => import('../dialogs/community.js').then(m => m.openPublish()),
   'community-mine': () => import('../dialogs/community.js').then(m => m.openMine()),
-  'community-browse': () => import('../../core/config.js').then(c => window.open(c.OFFICIAL_SITE + '/comunidad', '_blank', 'noopener')),
+  'community-browse': () => import('../../core/config.js').then(c => window.open(c.OFFICIAL_SITE + '/community', '_blank', 'noopener')),
   'present-self': () => present({ selfPaced: true }),
   'share-classroom': () => shareToClassroom(),
   'coach': () => startCoach(),

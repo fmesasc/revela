@@ -31,7 +31,7 @@ export async function openPublish() {
   const opt = (o, names, cur) => Object.entries(names).map(([k, l]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${t(l)}</option>`).join('');
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(620px,96vw);max-width:none"><button class="modal-close" aria-label="${t('Cerrar')}">✕</button>
     <h3>${t('Publicar en la comunidad')}</h3>
-    <p class="host-help">${t('Otros docentes podrán encontrarla en revelaslides.com/comunidad y usar una copia. La revisamos antes de publicarla.')}</p>
+    <p class="host-help">${t('Otros docentes podrán encontrarla en revelaslides.com/community y usar una copia. La revisamos antes de publicarla.')}</p>
     <label class="fr-l">${t('Título')}<input type="text" class="cm-title" maxlength="120" value="${esc(state.deck.name || '')}"></label>
     <label class="fr-l">${t('Descripción (para quién es y qué incluye)')}<textarea class="cm-desc" rows="3" maxlength="600"></textarea></label>
     <div class="fr-row"><label class="fr-l">${t('Materia')}<select class="cm-subject">${opt(0, SUBJECT_NAMES, 'other')}</select></label>

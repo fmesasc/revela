@@ -43,11 +43,11 @@ export function badgeSVG(a) {
 <text x="180" y="70" font-family="Georgia,serif" font-size="20" fill="#e0b65a" letter-spacing="3">EMBAJADOR/A · ${year}</text>
 <text x="180" y="112" font-family="Georgia,serif" font-size="34" fill="#ffffff">${name}</text>
 <text x="180" y="146" font-family="system-ui,Arial,sans-serif" font-size="17" fill="#c9cbd1">${center}</text>
-<text x="180" y="174" font-family="system-ui,Arial,sans-serif" font-size="14" fill="#8a8d96">Revela · revelaslides.com/embajadores</text></svg>`;
+<text x="180" y="174" font-family="system-ui,Arial,sans-serif" font-size="14" fill="#8a8d96">Revela · revelaslides.com/ambassadors</text></svg>`;
 }
 // The email when approved (to the ambassador): what changes, the badge and its check.
 export function ambassadorMail(env, amb, proUntil, identity) {
-  const site0 = site(env), verify = `${site0}/embajadores?v=${amb.code}`, badge = `${site0}/api/ambassadors/badge/${amb.code}.svg`;
+  const site0 = site(env), verify = `${site0}/ambassadors?v=${amb.code}`, badge = `${site0}/api/ambassadors/badge/${amb.code}.svg`;
   const body = [`¡Hola, ${amb.name}!`, 'Ya eres embajador/a de Revela. Gracias por enseñarlo a tus compañeros.',
     proUntil ? `Tienes Pro gratis hasta el ${fmtDay(proUntil, 'es')}.` : '',
     `Tu insignia (para tu currículum, tu firma o tu blog): ${badge}`, `Y el enlace que demuestra que es real: ${verify}`,

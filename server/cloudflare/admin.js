@@ -25,7 +25,7 @@
 //   POST /api/admin/block                  { sub, blocked, reason }   (blocked: 403 on AI, cloud documents, calls…)
 //   GET  /api/admin/web?days=              → visits per day, pages, referrers, languages; 404s; the sitemap's extra
 //                                          addresses; visited pages the sitemap leaves out (visits.js)
-//   POST /api/admin/web/extra              { extra: [paths] } → { extra }   (added to /comunidad/sitemap.xml)
+//   POST /api/admin/web/extra              { extra: [paths] } → { extra }   (added to /community/sitemap.xml)
 //   POST /api/admin/web/notfound           { path, status: ignored | redirect | new, to? } → { item }
 //   POST /api/admin/web/check              { offset } → { checked, total, bad: [{ url, status }], next }   (do the sitemap's
 //                                          addresses answer? 30 at a time: Cloudflare limits a request's own requests)
@@ -917,7 +917,7 @@ async function sitemapUrls(env) {
   const site = env.SITE_URL || 'https://revelaslides.com', f = env.FETCH || fetch, locs = [];
   // (The built one from the site; the community's made here — a Worker asking its own route isn't reliable.)
   const texts = [await f(site + '/sitemap.xml').then(r => (r.ok ? r.text() : '')).catch(() => ''),
-    env.COMMUNITY ? await (await communityPage(env, new URL(site + '/comunidad/sitemap.xml'))).text().catch(() => '') : ''];
+    env.COMMUNITY ? await (await communityPage(env, new URL(site + '/community/sitemap.xml'))).text().catch(() => '') : ''];
   for (const t of texts) {
     for (const m of t.matchAll(/<loc>([^<]+)<\/loc>/g)) locs.push(m[1].replace(/&amp;/g, '&'));
   }
@@ -930,7 +930,7 @@ async function webApi(env, path, q, body, { GET, POST, by, json }) {
     const [stats, nf, { extra }, locs] = await Promise.all([visitsCall(env, 'stats', { days: +q.get('days') || 30 }), visitsCall(env, 'notfound', { all: q.get('all') === '1' }), visitsCall(env, 'extra'), sitemapUrls(env)]);
     const inMap = new Set(locs.map(u => { try { return cleanPath(new URL(u).pathname); } catch { return ''; } }));
     // (Visited, yet search engines aren't told: not the app, nor the API, nor the community's pages — those it lists itself.)
-    const missing = stats.pages.filter(p => !inMap.has(p.k) && !/^\/(app|api|comunidad)(\/|$)/.test(p.k) && p.k !== '/404');
+    const missing = stats.pages.filter(p => !inMap.has(p.k) && !/^\/(app|api|community|comunidad)(\/|$)/.test(p.k) && p.k !== '/404');
     return json({ ...stats, notfound: nf.items, extra, sitemap: { count: locs.length, site }, missing });
   }
   if (POST && path === '/web/extra') {
@@ -947,7 +947,7 @@ async function webApi(env, path, q, body, { GET, POST, by, json }) {
   }
   if (POST && path === '/web/check') {
     // (Not the community's own pages: made from what's published, and asking our own route from here isn't reliable.)
-    const all = (await sitemapUrls(env)).filter(u => !/\/comunidad(\/|$)/.test(u)), from = Math.max(0, Math.round(+body.offset || 0)), urls = all.slice(from, from + 30), f = env.FETCH || fetch, bad = [];
+    const all = (await sitemapUrls(env)).filter(u => !/\/community(\/|$)/.test(u)), from = Math.max(0, Math.round(+body.offset || 0)), urls = all.slice(from, from + 30), f = env.FETCH || fetch, bad = [];
     for (let i = 0; i < urls.length; i += 6) await Promise.all(urls.slice(i, i + 6).map(async u => { const st = await f(u, { method: 'HEAD', redirect: 'manual' }).then(r => r.status).catch(() => 0); if (st !== 200) bad.push({ url: u, status: st }); }));
     return json({ checked: urls.length, total: all.length, bad, next: from + urls.length < all.length ? from + urls.length : null });
   }

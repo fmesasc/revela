@@ -119,7 +119,7 @@ function relink(url, lang) {
   // screenshots are taken in each language with tools/shot-template.py --lang.)
   const own = /^img\/[\w-]+\.(webp|png|jpe?g)$/.test(path) && lang !== 'es' && path.replace(/\.(\w+)$/, `-${lang}.$1`);
   if (own && existsSync(join(SITE_DIR, own))) return '/' + own + h;
-  if (path === 'comunidad') return '/comunidad' + (['en', 'ca'].includes(lang) ? '?lang=' + lang : '') + h;   // (made by the Worker, one address: community.js)
+  if (path === 'community') return '/community' + (['en', 'ca'].includes(lang) ? '?lang=' + lang : '') + h;   // (made by the Worker, one address: community.js)
   if (/^[\w-]+$/.test(path)) return base + path + h;                              // another page of the site
   return '/' + path + h;                                                         // pictures, styles, scripts, fonts
 }

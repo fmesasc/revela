@@ -1171,7 +1171,7 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     x = await A('GET', '/stats'); const c = x.j.tickets;
     ok(c.open + c.waiting + c.closed === L.length && c.waiting >= 1, 'resumen: cuántas en cada estado: ' + JSON.stringify(c));
 
-    // The website's «Contacto» (revelaslides.com/contacto): the same tickets, without a session — the name and the topic too.
+    // The website's «Contacto» (revelaslides.com/contact): the same tickets, without a session — the name and the topic too.
     sent = []; r = await sup({ name: '  Marta Ruiz  ', email: 'marta@periodico.example', category: 'press', message: 'Escribo un reportaje sobre herramientas educativas.', lang: 'es', source: 'web' }, { ip: '10.3.0.1' });
     const tc = (await r.json()).id; t = await get(tc);
     ok(r.status === 200 && t.name === 'Marta Ruiz' && t.category === 'press' && t.email === 'marta@periodico.example' && !t.sub && sent.some(y => y.to === 'marta@periodico.example' && new RegExp('#' + tc).test(y.subject)), 'contacto: un ticket con nombre y tema, y el acuse');
@@ -1679,7 +1679,7 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     // Settings and a sequence started by requests.
     x = await C('POST', '/settings', { body: { settings: { identity: 'FM Lab · Zaragoza · revelaslides.com', replyTo: 'hola@fmlab.example', dailyMax: 10 } } });
     ok(x.status === 200 && x.j.settings.dailyMax === 10, 'captación: ajustes');
-    x = await C('POST', '/sequences', { body: { seq: { name: 'Bienvenida a centros', trigger: 'lead', steps: [{ days: 0, subject: 'Hola, {nombre}', body: 'Gracias por tu interés en {centro}.\n\nMira https://revelaslides.com/centros' }, { days: 3, subject: '¿Qué tal?', body: 'Seguimos aquí.' }] } } });
+    x = await C('POST', '/sequences', { body: { seq: { name: 'Bienvenida a centros', trigger: 'lead', steps: [{ days: 0, subject: 'Hola, {nombre}', body: 'Gracias por tu interés en {centro}.\n\nMira https://revelaslides.com/schools' }, { days: 3, subject: '¿Qué tal?', body: 'Seguimos aquí.' }] } } });
     ok(x.status === 200 && x.j.seq.trigger === 'lead', 'captación: secuencia creada');
     const seqId = x.j.seq.id;
     ok((await C('POST', '/sequences', { body: { seq: { name: 'Sin pasos', steps: [] } } })).status === 400, 'captación: una secuencia sin pasos → 400');
@@ -1719,7 +1719,7 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     // A click: counted, and on to its address.
     const click = toLuis[0].html.match(/href="([^"]*\/api\/crm\/click\?t=[^"]+)"/)[1].replace(/&amp;/g, '&');
     r = await worker.fetch(new Request(click), env);
-    ok(r.status === 302 && r.headers.get('Location') === 'https://revelaslides.com/centros', 'captación: el enlace lleva a su dirección');
+    ok(r.status === 302 && r.headers.get('Location') === 'https://revelaslides.com/schools', 'captación: el enlace lleva a su dirección');
     ok((await worker.fetch(new Request(SITE + '/api/crm/click?t=falso'), env)).headers.get('Location') === SITE + '/', 'captación: un enlace falsificado no lleva a ningún otro sitio');
     let sq = (await C('GET', '/sequences')).j;
     ok(sq.stats[seqId][0].sent === 1 && sq.stats[seqId][0].click === 1, 'captación: enviados y clics por paso');
@@ -1750,13 +1750,13 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     x = await C('POST', '/preview', { body: { seq: seqId, i: 1 } });
     ok(x.status === 200 && /Seguimos aquí/.test(x.j.html) && /FM Lab/.test(x.j.html), 'captación: vista previa de un paso');
     // Campaigns: the link, its visits; a new account through it, and its purchase.
-    x = await C('POST', '/campaigns', { body: { camp: { name: 'Feria Didacta', slug: 'didacta-26', url: '/centros', channel: 'feria', code: 'didacta' } } });
+    x = await C('POST', '/campaigns', { body: { camp: { name: 'Feria Didacta', slug: 'didacta-26', url: '/schools', channel: 'feria', code: 'didacta' } } });
     ok(x.status === 200 && x.j.camp.code === 'DIDACTA', 'captación: campaña creada');
     ok((await C('POST', '/campaigns', { body: { camp: { name: 'Otra', slug: 'didacta-26', url: '/' } } })).status === 409, 'captación: nombre de enlace repetido → 409');
     ok((await C('POST', '/campaigns', { body: { camp: { name: 'Mala', slug: 'mala', url: 'javascript:alert(1)' } } })).status === 400, 'captación: dirección no válida → 400');
     r = await worker.fetch(new Request(SITE + '/api/go/didacta-26'), env);
     const loc = new URL(r.headers.get('Location'));
-    ok(r.status === 302 && loc.pathname === '/centros' && loc.searchParams.get('rv') === 'didacta-26' && loc.searchParams.get('utm_source') === 'feria', 'captación: el enlace de campaña lleva a su página con rv y utm');
+    ok(r.status === 302 && loc.pathname === '/schools' && loc.searchParams.get('rv') === 'didacta-26' && loc.searchParams.get('utm_source') === 'feria', 'captación: el enlace de campaña lleva a su página con rv y utm');
     ok((await worker.fetch(new Request(SITE + '/api/go/no-existe'), env)).headers.get('Location') === SITE + '/', 'captación: un enlace desconocido, a la portada');
     await req('POST', '/api/login', { body: { accessToken: 'tok-crm', terms: TERMS, lang: 'es', campaign: 'didacta-26' } });
     await req('POST', '/api/login', { body: { accessToken: 'tok-crm', terms: TERMS, lang: 'es', campaign: 'didacta-26' } });
@@ -1799,7 +1799,7 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     const crmCookie = cookieFrom(await req('POST', '/api/login', { body: { accessToken: 'tok-crm', terms: TERMS, lang: 'es' } }));
     await C('POST', '/settings', { body: { settings: { referralReward: '3 meses de Pro' } } });
     x = await (await req('GET', '/api/referral', { headers: { Cookie: crmCookie } })).json();
-    ok(x.on && /^[a-z0-9]{10}$/.test(x.code) && x.link === SITE + '/centros?ref=' + x.code && x.reward === '3 meses de Pro', 'recomendaciones: mi enlace: ' + JSON.stringify(x));
+    ok(x.on && /^[a-z0-9]{10}$/.test(x.code) && x.link === SITE + '/schools?ref=' + x.code && x.reward === '3 meses de Pro', 'recomendaciones: mi enlace: ' + JSON.stringify(x));
     ok((await (await req('GET', '/api/referral', { headers: { Cookie: crmCookie } })).json()).code === x.code, 'recomendaciones: siempre el mismo código');
     ok((await req('GET', '/api/referral')).status === 401, 'recomendaciones: sin sesión, nada');
     await lead({ name: 'CEIP Recomendado', email: 'dir@recomendado.example', ref: x.code });
@@ -1844,14 +1844,16 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     const got = await (await req('GET', `/api/community/${r1.id}?use=1`)).json();
     ok(got.deck?.slides?.length === 2 && got.item.uses === 1 && !got.item.sub, 'comunidad: abrirla para usarla cuenta un uso');
     const th = await req('GET', `/api/community/${r1.id}/thumb`); ok(th.status === 200 && th.headers.get('Content-Type') === 'image/jpeg', 'comunidad: su imagen');
-    let pg = await worker.fetch(new Request(SITE + '/comunidad'), env), html = await pg.text();
-    ok(pg.status === 200 && html.includes('Las fracciones') && html.includes(`/comunidad/${r1.id}-las-fracciones`), 'comunidad: la página de la lista');
-    pg = await worker.fetch(new Request(`${SITE}/comunidad/${r1.id}-las-fracciones`), env); html = await pg.text();
-    ok(pg.status === 200 && html.includes('<link rel="canonical" href="https://revelaslides.com/comunidad/' + r1.id + '-las-fracciones">') && html.includes('¿Cuánto es 1/2 + 1/4?') && html.includes('/app/?community=' + r1.id) && html.includes('CC BY 4.0'), 'comunidad: su página, para buscadores, con sus palabras, la licencia y «usar»');
+    let pg = await worker.fetch(new Request(SITE + '/community'), env), html = await pg.text();
+    ok(pg.status === 200 && html.includes('Las fracciones') && html.includes(`/community/${r1.id}-las-fracciones`), 'comunidad: la página de la lista');
+    pg = await worker.fetch(new Request(`${SITE}/community/${r1.id}-las-fracciones`), env); html = await pg.text();
+    ok(pg.status === 200 && html.includes('<link rel="canonical" href="https://revelaslides.com/community/' + r1.id + '-las-fracciones">') && html.includes('¿Cuánto es 1/2 + 1/4?') && html.includes('/app/?community=' + r1.id) && html.includes('CC BY 4.0'), 'comunidad: su página, para buscadores, con sus palabras, la licencia y «usar»');
     ok(!/<b>fracción/.test(html) && !html.includes('pia@example.com'), 'comunidad: el texto como texto, sin el correo de la autora');
-    ok((await worker.fetch(new Request(SITE + '/comunidad/zzzzzz'), env)).status === 404, 'comunidad: una que no existe → 404');
-    pg = await worker.fetch(new Request(SITE + '/comunidad/sitemap.xml'), env); html = await pg.text();
-    ok(pg.status === 200 && /xml/.test(pg.headers.get('Content-Type')) && html.includes(`<loc>https://revelaslides.com/comunidad/${r1.id}-las-fracciones</loc>`) && html.includes('<loc>https://revelaslides.com/comunidad</loc>'), 'comunidad: su sitemap para los buscadores');
+    ok((await worker.fetch(new Request(SITE + '/community/zzzzzz'), env)).status === 404, 'comunidad: una que no existe → 404');
+    { const r = await worker.fetch(new Request(SITE + '/comunidad/' + r1.id + '-las-fracciones?lang=en'), env);
+      ok(r.status === 301 && r.headers.get('Location') === SITE + '/community/' + r1.id + '-las-fracciones?lang=en', 'comunidad: su antigua dirección en español lleva para siempre a /community (con la ruta y los parámetros)'); }
+    pg = await worker.fetch(new Request(SITE + '/community/sitemap.xml'), env); html = await pg.text();
+    ok(pg.status === 200 && /xml/.test(pg.headers.get('Content-Type')) && html.includes(`<loc>https://revelaslides.com/community/${r1.id}-las-fracciones</loc>`) && html.includes('<loc>https://revelaslides.com/community</loc>'), 'comunidad: su sitemap para los buscadores');
     ok((await req('POST', `/api/community/${r1.id}/report`, { body: { reason: 'No es apropiada' } })).status === 200, 'comunidad: denunciar');
     ok((await A('GET', '/community?status=reported')).j.items.length === 1 && (await A('GET', `/community/${r1.id}/reports`)).j.reports[0].reason === 'No es apropiada', 'comunidad: las denuncias, en la administración');
     await A('POST', `/community/${r1.id}/status`, { body: { status: 'hidden', reason: 'revisar' } });
@@ -2004,14 +2006,14 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     await hit({ path: '/en/', ref: 'https://revelaslides.com/pricing', lang: 'en' });
     await hit({ path: '/pricing', ref: '', lang: 'es' }, { ip: '10.9.0.2' });
     await hit({ path: '/precios-viejos', ref: 'https://blog.example/post?id=7', kind: '404' }, { ip: '10.9.0.3' });
-    await hit({ path: '/precios-viejos/', ref: 'https://revelaslides.com/guias', kind: '404' }, { ip: '10.9.0.3' });
+    await hit({ path: '/precios-viejos/', ref: 'https://revelaslides.com/guides', kind: '404' }, { ip: '10.9.0.3' });
     let x = await A('GET', '/web?days=7');
     const today = x.j.days.at(-1);
     ok(x.status === 200 && today.views === 3 && today.uniques === 3 && today.nf === 2, 'visitas: 3 vistas de 3 visitantes y 2 páginas que no existen: ' + JSON.stringify(today));
     ok(x.j.pages.find(p => p.k === '/pricing')?.n === 2 && x.j.refs.some(r => r.k === 'www.google.com') && !JSON.stringify(x.j).includes('q=revela'), 'visitas: páginas y de dónde vienen (sin la búsqueda ni otros parámetros)');
     ok(x.j.langs.find(l => l.k === 'es')?.n === 2, 'visitas: idiomas');
     const nf = x.j.notfound.find(n => n.path === '/precios-viejos');
-    ok(nf && nf.n === 2 && nf.refs['blog.example/post'] === 1 && nf.refs['internal:/guias'] === 1, 'visitas: la página que no existe, con desde dónde (otra web, o una página nuestra con el enlace roto)');
+    ok(nf && nf.n === 2 && nf.refs['blog.example/post'] === 1 && nf.refs['internal:/guides'] === 1, 'visitas: la página que no existe, con desde dónde (otra web, o una página nuestra con el enlace roto)');
     const raw = JSON.stringify([...env.VISITS.inst.get('visits').ctx.storage.m.entries()]);
     ok(!raw.includes('10.9.0') && !raw.includes('Firefox'), 'visitas: ni la dirección IP ni el navegador se guardan');
     // A new day: a new salt; yesterday's visitors can't be told apart from new ones.
@@ -2024,7 +2026,7 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     await A('POST', '/web/notfound', { body: { path: '/precios-viejos', status: 'redirect', to: '/pricing' } });
     ok((await (await req('GET', '/api/redirect?path=/precios-viejos.html')).json()).to === '/pricing', 'visitas: la página 404 sabe adónde llevar');
     ok(!(await A('GET', '/web')).j.notfound.some(n => n.path === '/precios-viejos'), 'visitas: ya resuelta, fuera de la lista (con «all», sí)');
-    // The sitemap: visited pages it leaves out, and the extras (in /comunidad/sitemap.xml).
+    // The sitemap: visited pages it leaves out, and the extras (in /community/sitemap.xml).
     const prevF4 = env.FETCH;
     env.FETCH = async (u, init = {}) => { const s = String(u);
       if (s === 'https://revelaslides.com/sitemap.xml') return new Response('<urlset><url><loc>https://revelaslides.com/</loc></url><url><loc>https://revelaslides.com/en/</loc></url></urlset>');
@@ -2033,10 +2035,10 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
       return prevF4(u, init); };
     if (!env.COMMUNITY) env.COMMUNITY = namespace((await import('../server/cloudflare/community.js')).Community, env);
     x = await A('GET', '/web'); ok(x.j.missing.some(p => p.k === '/pricing') && !x.j.missing.some(p => p.k === '/en'), 'visitas: «/pricing» se visita y no está en el sitemap');
-    x = await A('POST', '/web/extra', { body: { extra: ['/pricing.html', '/app/', '/api/x', 'guias'] } });
-    ok(x.j.extra.join() === '/pricing,/guias', 'sitemap: direcciones extra limpias (ni la app ni la API)');
-    const sm = await (await worker.fetch(new Request(SITE + '/comunidad/sitemap.xml'), env)).text();
-    ok(sm.includes('<loc>https://revelaslides.com/pricing</loc>') && sm.includes('<loc>https://revelaslides.com/guias</loc>'), 'sitemap: las extra, en el sitemap dinámico');
+    x = await A('POST', '/web/extra', { body: { extra: ['/pricing.html', '/app/', '/api/x', 'guides'] } });
+    ok(x.j.extra.join() === '/pricing,/guides', 'sitemap: direcciones extra limpias (ni la app ni la API)');
+    const sm = await (await worker.fetch(new Request(SITE + '/community/sitemap.xml'), env)).text();
+    ok(sm.includes('<loc>https://revelaslides.com/pricing</loc>') && sm.includes('<loc>https://revelaslides.com/guides</loc>'), 'sitemap: las extra, en el sitemap dinámico');
     x = await A('GET', '/web'); ok(!x.j.missing.some(p => p.k === '/pricing'), 'sitemap: ya no falta');
     x = await A('POST', '/web/check', { body: {} });
     ok(x.j.checked >= 4 && x.j.bad.some(b => b.url === 'https://revelaslides.com/pricing' && b.status === 404) && !x.j.bad.some(b => b.url === 'https://revelaslides.com/'), 'sitemap: «Comprobar» dice qué dirección no responde');

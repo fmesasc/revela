@@ -7,7 +7,7 @@ Please report security problems **privately**, not in a public issue:
 - **GitHub:** on [fmesasc/revela](https://github.com/fmesasc/revela), open the
   **Security** tab ▸ **Report a vulnerability** (a private security advisory,
   seen only by the maintainers).
-- **Or** the contact form at <https://revelaslides.com/contacto>: choose
+- **Or** the contact form at <https://revelaslides.com/contact>: choose
   «Privacidad» (or another topic) and say that it is a security report.
 
 Include what is affected (the app, which page, or which `/api/…` route), the

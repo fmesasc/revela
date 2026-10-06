@@ -62,7 +62,7 @@ export default {
   "La comunidad está en revelaslides.com.": "Komunitatea revelaslides.com webgunean dago.",
   "Para publicar en la comunidad, inicia sesión con tu cuenta de Revela.": "Komunitatean argitaratzeko, hasi saioa zure Revela kontuarekin.",
   "Publicar en la comunidad": "Argitaratu komunitatean",
-  "Otros docentes podrán encontrarla en revelaslides.com/comunidad y usar una copia. La revisamos antes de publicarla.": "Beste irakasle batzuek revelaslides.com/comunidad helbidean aurkitu eta kopia bat erabili ahal izango dute. Argitaratu aurretik berrikusten dugu.",
+  "Otros docentes podrán encontrarla en revelaslides.com/community y usar una copia. La revisamos antes de publicarla.": "Beste irakasle batzuek revelaslides.com/community helbidean aurkitu eta kopia bat erabili ahal izango dute. Argitaratu aurretik berrikusten dugu.",
   "Descripción (para quién es y qué incluye)": "Deskribapena (norentzat den eta zer duen)",
   "Materia": "Ikasgaia",
   "Nombre que se mostrará (opcional)": "Erakutsiko den izena (aukerakoa)",

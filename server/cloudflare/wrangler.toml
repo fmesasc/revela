@@ -7,7 +7,7 @@ preview_urls = false
 # Variables set in Cloudflare's dashboard stay through deploys (the business's numbers live there).
 keep_vars = true
 # The official site (Cloudflare Pages) sends its /api/… here; the rest of the domain stays with the site.
-routes = [{ pattern = "revelaslides.com/api/*", zone_name = "revelaslides.com" }, { pattern = "admin.revelaslides.com/api/*", zone_name = "revelaslides.com" }, { pattern = "revelaslides.com/comunidad*", zone_name = "revelaslides.com" }]
+routes = [{ pattern = "revelaslides.com/api/*", zone_name = "revelaslides.com" }, { pattern = "admin.revelaslides.com/api/*", zone_name = "revelaslides.com" }, { pattern = "revelaslides.com/community*", zone_name = "revelaslides.com" }, { pattern = "revelaslides.com/comunidad*", zone_name = "revelaslides.com" }]
 # admin.revelaslides.com/api/*: the administration (admin.js), behind Cloudflare Access.
 
 # Everything is stored in Durable Objects (store.js), not R2: on the Workers Free
@@ -289,7 +289,7 @@ new_sqlite_classes = ["Visits"]
 # here again (tests/layers.py checks the same objects are bound in both). Stripe in test mode; no administration
 # (no ACCESS_*: admin.revelaslides.com is production's). Its secrets are its own: npx wrangler secret put NAME --env staging.
 [env.staging]
-routes = [{ pattern = "test.revelaslides.com/api/*", zone_name = "revelaslides.com" }, { pattern = "test.revelaslides.com/comunidad*", zone_name = "revelaslides.com" }]
+routes = [{ pattern = "test.revelaslides.com/api/*", zone_name = "revelaslides.com" }, { pattern = "test.revelaslides.com/community*", zone_name = "revelaslides.com" }, { pattern = "test.revelaslides.com/comunidad*", zone_name = "revelaslides.com" }]
 
 [env.staging.vars]
 STAGE = "test"

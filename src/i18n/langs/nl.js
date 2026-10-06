@@ -62,7 +62,7 @@ export default {
   "La comunidad está en revelaslides.com.": "De community staat op revelaslides.com.",
   "Para publicar en la comunidad, inicia sesión con tu cuenta de Revela.": "Om in de community te publiceren, meld je aan met je Revela-account.",
   "Publicar en la comunidad": "Publiceren in de community",
-  "Otros docentes podrán encontrarla en revelaslides.com/comunidad y usar una copia. La revisamos antes de publicarla.": "Andere docenten kunnen hem vinden op revelaslides.com/comunidad en een kopie gebruiken. We bekijken hem voordat hij verschijnt.",
+  "Otros docentes podrán encontrarla en revelaslides.com/community y usar una copia. La revisamos antes de publicarla.": "Andere docenten kunnen hem vinden op revelaslides.com/community en een kopie gebruiken. We bekijken hem voordat hij verschijnt.",
   "Descripción (para quién es y qué incluye)": "Beschrijving (voor wie het is en wat erin zit)",
   "Materia": "Vak",
   "Nombre que se mostrará (opcional)": "Weergegeven naam (optioneel)",

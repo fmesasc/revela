@@ -494,7 +494,7 @@ export function defaultTemplates() {
   return [
     { id: 'tplcall1', name: 'Llamada a un centro', channel: 'phone', subject: '', body: 'Hola, soy {yo}, de Revela. Llamo porque ayudamos a centros como {centro} a preparar clases con presentaciones interactivas: diapositivas, votaciones y cuestionarios en directo en una sola herramienta, compatible con PowerPoint y con Moodle.\n\n¿Con quién podría hablar sobre los recursos digitales del profesorado?\n\nSi le interesa, le envío información por correo (solo si me lo pide) o preparamos una demostración de 20 minutos.' },
     { id: 'tpllink1', name: 'LinkedIn: primer mensaje', channel: 'linkedin', subject: '', body: 'Hola, {nombre}: vi que trabajas en {centro}. Estoy detrás de Revela, un editor de presentaciones para el aula (votaciones y cuestionarios en directo, compatible con PowerPoint y Moodle). ¿Te parecería bien que te enseñara en 15 minutos cómo lo usan otros docentes?' },
-    { id: 'tplcarta1', name: 'Carta a la dirección', channel: 'letter', subject: 'Revela para {centro}', body: 'A la atención de la dirección de {centro}\n{ciudad}\n\nEstimado equipo:\n\nLes escribo para presentarles Revela, una herramienta para crear presentaciones de clase con votaciones, cuestionarios y actividades en directo, compatible con PowerPoint y con Moodle, con los datos en Europa y en castellano, catalán, gallego y euskera.\n\nSi les interesa, pueden pedir una demostración o una prueba para su claustro en revelaslides.com/centros.\n\nUn saludo,\n{yo}' },
+    { id: 'tplcarta1', name: 'Carta a la dirección', channel: 'letter', subject: 'Revela para {centro}', body: 'A la atención de la dirección de {centro}\n{ciudad}\n\nEstimado equipo:\n\nLes escribo para presentarles Revela, una herramienta para crear presentaciones de clase con votaciones, cuestionarios y actividades en directo, compatible con PowerPoint y con Moodle, con los datos en Europa y en castellano, catalán, gallego y euskera.\n\nSi les interesa, pueden pedir una demostración o una prueba para su claustro en revelaslides.com/schools.\n\nUn saludo,\n{yo}' },
   ];
 }
 
@@ -604,7 +604,7 @@ export async function referralInfo(env, me, json) {
   const code = (await hmac(env.MAIL_SECRET, 'ref:' + me.sub)).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10);
   const r = await crmCall(env, 'ref-code', { code, sub: me.sub, email: me.email || '' });
   if (!r.settings?.referral) return json({ on: false });
-  return json({ on: true, code, link: `${site(env)}/centros?ref=${code}`, reward: r.settings.referralReward || '', stats: r.stats });
+  return json({ on: true, code, link: `${site(env)}/schools?ref=${code}`, reward: r.settings.referralReward || '', stats: r.stats });
 }
 
 // GET /api/go/<slug> — a campaign's link: counted (a visit that day; nobody recorded) and on to its address, with

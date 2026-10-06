@@ -26,7 +26,7 @@
 // nothing else is answered on that host.
 //
 // The accounts API and everything under /api (api.js and the modules it calls),
-// and the community's pages at /comunidad (community.js).
+// and the community's pages at /community (community.js; /comunidad redirects there).
 //
 // Bindings (wrangler.toml), all Durable Objects: SHAREBOX, LIMITS (store.js),
 // ROOMS (collab.js), ACCOUNTS, BUDGET, DESKTOP (api.js), DOCS (docs.js),
@@ -118,8 +118,10 @@ export default {
     // Administration (admin.js): its own host, its own checks.
     if (url.pathname === '/api/admin' || url.pathname.startsWith('/api/admin/')) return handleAdmin(req, env, url);
     if (url.hostname.toLowerCase() === adminHost(env)) return new Response('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
-    // The community's public pages (revelaslides.com/comunidad…: community.js).
-    if (/^\/comunidad(\/|$)/.test(url.pathname) && req.method === 'GET') return communityPage(env, url);
+    // The community's public pages (revelaslides.com/community…: community.js).
+    if (/^\/community(\/|$)/.test(url.pathname) && req.method === 'GET') return communityPage(env, url);
+    // (Its old Spanish address, /comunidad…: for good to the English one, with the rest of the path and the query.)
+    if (/^\/comunidad(\/|$)/.test(url.pathname)) return Response.redirect(new URL(url.pathname.replace(/^\/comunidad/, '/community') + url.search, env.SITE_URL || url.origin).href, 301);
     // The accounts API (api.js), and the same share and collaboration routes under /api (revelaslides.com/api/…).
     if (/^\/api\/(?!s(\/|$)|c(\/|$))/.test(url.pathname)) return handleApi(req, env, url);
     if (/^\/api\/(s|c)(\/|$)/.test(url.pathname)) url.pathname = url.pathname.slice(4);

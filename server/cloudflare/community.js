@@ -1,7 +1,7 @@
 // The community gallery («Comunidad»): presentations that teachers publish for others to reuse — with their
 // name if they want, a subject, a level, a language and a Creative Commons licence. Nothing is public until
 // the admin approves it (they are seen by students: a person checks first); anyone can report one after.
-// Each one has its own page at revelaslides.com/comunidad/<id> (made here, for search engines: title,
+// Each one has its own page at revelaslides.com/community/<id> (made here, for search engines: title,
 // description, picture and the slides' words), with «Usar esta presentación» (a copy in the editor).
 //
 //   GET  /api/community?q=&subject=&level=&lang=&sort=new|popular&offset= → { items, total }      (published only)
@@ -11,7 +11,7 @@
 //   POST /api/community                            { title, description, subject, level, lang, license, author, deck, thumb } → { id } (session)
 //   POST /api/community/<id>/delete                (mine)
 //   POST /api/community/<id>/report                { reason } (anyone; limited per address)
-//   Pages: GET /comunidad (the list) · GET /comunidad/<id>(-slug) (one).
+//   Pages: GET /community (the list) · GET /community/<id>(-slug) (one).
 // Admin (admin.js): GET /api/admin/community?status=pending|published|hidden|reported · POST …/<id>/status { status } · POST …/<id>/delete.
 //
 // Storage (Durable Object Community, one): 'i:<id>' its summary · 'd:<id>:' the deck (in parts) · 't:<id>' the
@@ -172,7 +172,7 @@ export async function communityAdmin(env, path, q, body, { GET, POST, json, audi
   }
   if (GET && m[2] === 'deck') {
     const r = await communityCall(env, 'get', { id: m[1], admin: true }); if (!r.deck) return json({ error: 'not found' }, 404);
-    return new Response(JSON.stringify(r.deck), { headers: { 'Content-Type': 'application/json', 'Content-Disposition': `attachment; filename="comunidad-${m[1]}.revela.json"`, 'Cache-Control': 'no-store' } });
+    return new Response(JSON.stringify(r.deck), { headers: { 'Content-Type': 'application/json', 'Content-Disposition': `attachment; filename="community-${m[1]}.revela.json"`, 'Cache-Control': 'no-store' } });
   }
   if (GET && !m[2]) return json(await communityCall(env, 'get', { id: m[1], admin: true, meta: true }));
   if (POST && m[2] === 'status') { const r = await communityCall(env, 'status', { id: m[1], status: body.status }); if (!r.error) await audit({ action: 'community-' + body.status, target: 'community:' + m[1], reason: str(body.reason, 300) }); return json(r, r.error ? 400 : 200); }
@@ -180,7 +180,7 @@ export async function communityAdmin(env, path, q, body, { GET, POST, json, audi
   return json({ error: 'not found' }, 404);
 }
 
-// ---- The public pages (revelaslides.com/comunidad…) -------------------------------------------------------
+// ---- The public pages (revelaslides.com/community…) -------------------------------------------------------
 const PAGE = {
   es: { title: 'Comunidad de Revela: presentaciones de docentes para reutilizar', h1: 'Presentaciones de la <em>comunidad</em>', lead: 'Hechas por docentes y publicadas para que las uses en tus clases. Ábrelas en Revela, cámbialas a tu gusto y preséntalas.',
     use: 'Usar esta presentación', by: 'Por', slides: 'diapositivas', license: 'Licencia', back: 'Todas las presentaciones', none: 'Todavía no hay presentaciones publicadas.', report: 'Denunciar', publish: 'Publica la tuya desde Revela: Archivo ▸ Compartir ▸ Publicar en la comunidad.', more: 'Comunidad', search: 'Buscar', words: 'Lo que dicen sus diapositivas' },
@@ -200,7 +200,7 @@ ${image ? `<meta property="og:image" content="${escHtml(image)}"><meta name="twi
 .cm-card img,.cm-card .cm-ph{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;background:var(--paper2)}.cm-card .cm-ph{display:grid;place-items:center;padding:0 24px;box-sizing:border-box;font:500 24px/1.2 var(--serif,Georgia),serif;text-align:center;color:var(--ink2)}.cm-card div{padding:14px 16px}.cm-card h3{margin:0 0 6px;font-size:20px}.cm-card p{margin:0;color:var(--ink2);font-size:14px}
 .cm-meta{color:var(--ink2);font-size:15px}.cm-hero img{width:100%;max-width:900px;border-radius:14px;border:1px solid var(--line);display:block;margin:28px 0}.cm-words li{margin:0 0 .5em;color:var(--ink2)}
 .cm-search{display:flex;gap:10px;margin:0 0 28px}.cm-search input{flex:1;font:16px var(--sans);padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}</style></head>
-<body><header class="top"><div class="wrap"><a class="logo" href="/"><img src="/img/icon.svg" alt="">Revela</a><nav class="links" aria-label="Principal"><a href="/comunidad" aria-current="page">Comunidad</a><a href="/pricing">Precios</a><a class="btn primary small" href="/app/">Abrir Revela</a></nav></div></header>
+<body><header class="top"><div class="wrap"><a class="logo" href="/"><img src="/img/icon.svg" alt="">Revela</a><nav class="links" aria-label="Principal"><a href="/community" aria-current="page">Comunidad</a><a href="/pricing">Precios</a><a class="btn primary small" href="/app/">Abrir Revela</a></nav></div></header>
 <main>${body}</main><footer><div class="wrap"><a class="logo" href="/"><img src="/img/icon.svg" alt="">Revela</a><nav aria-label="Pie"><a href="/privacy">Privacidad</a><a href="/terms">Condiciones</a><a href="/legal">Aviso legal</a></nav><span>© Revela · un proyecto de FM Lab</span></div></footer></body></html>`;
 const pageHeaders = { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Content-Security-Policy': "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'" };
@@ -209,32 +209,32 @@ export async function communityPage(env, url) {
   const site = env.SITE_URL || 'https://revelaslides.com', lang = ['en', 'ca'].includes(url.searchParams.get('lang')) ? url.searchParams.get('lang') : 'es', L = PAGE[lang];
   if (!env.COMMUNITY) return new Response('Not found', { status: 404 });
   // (For search engines: every published presentation's page, with when it changed — robots.txt points here.)
-  if (url.pathname === '/comunidad/sitemap.xml') {
+  if (url.pathname === '/community/sitemap.xml') {
     const all = []; for (let off = 0; off < 5000; off += 60) { const r = await communityCall(env, 'list', { sort: 'new', offset: off, limit: 60 }); all.push(...r.items); if (r.items.length < 60) break; }
     const day = ts => new Date(ts).toISOString().slice(0, 10), extra = env.VISITS ? (await visitsCall(env, 'extra').catch(() => ({}))).extra || [] : [];
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${site}/comunidad</loc>${all[0] ? `<lastmod>${day(all[0].published || all[0].updated)}</lastmod>` : ''}</url>\n`
-      + all.map(it => `  <url><loc>${escHtml(`${site}/comunidad/${it.id}-${slugOf(it.title)}`)}</loc><lastmod>${day(it.updated || it.published)}</lastmod></url>`).join('\n') + (all.length ? '\n' : '')
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${site}/community</loc>${all[0] ? `<lastmod>${day(all[0].published || all[0].updated)}</lastmod>` : ''}</url>\n`
+      + all.map(it => `  <url><loc>${escHtml(`${site}/community/${it.id}-${slugOf(it.title)}`)}</loc><lastmod>${day(it.updated || it.published)}</lastmod></url>`).join('\n') + (all.length ? '\n' : '')
       // (And the addresses the administration added — visited pages the built sitemap leaves out: visits.js.)
       + (extra.length ? extra.map(u => `  <url><loc>${escHtml(site + u)}</loc></url>`).join('\n') + '\n' : '') + '</urlset>\n';
     return new Response(xml, { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600' } });
   }
-  const m = url.pathname.match(/^\/comunidad\/([a-z2-9]{6})(?:-[a-z0-9-]*)?\/?$/);
+  const m = url.pathname.match(/^\/community\/([a-z2-9]{6})(?:-[a-z0-9-]*)?\/?$/);
   if (m) {
     const r = await communityCall(env, 'get', { id: m[1], count: true });
-    if (!r.item) return new Response(frame(lang, { title: 'Revela', description: '', canonical: site + '/comunidad', body: `<section><div class="wrap"><p>${L.none}</p><p><a href="/comunidad">${L.back}</a></p></div></section>` }), { status: 404, headers: pageHeaders });
-    const it = r.item, words = deckText(r.deck || {}).slice(0, 30), canonical = `${site}/comunidad/${it.id}-${slugOf(it.title)}`, lic = LIC[it.license];
+    if (!r.item) return new Response(frame(lang, { title: 'Revela', description: '', canonical: site + '/community', body: `<section><div class="wrap"><p>${L.none}</p><p><a href="/community">${L.back}</a></p></div></section>` }), { status: 404, headers: pageHeaders });
+    const it = r.item, words = deckText(r.deck || {}).slice(0, 30), canonical = `${site}/community/${it.id}-${slugOf(it.title)}`, lic = LIC[it.license];
     const body = `<div class="hero"><div class="wrap cm-hero"><p class="eyebrow">${escHtml(it.slides)} ${L.slides}${it.author ? ` · ${L.by} ${escHtml(it.author)}` : ''}</p><h1>${escHtml(it.title)}</h1>
-      ${it.description ? `<p class="lead">${escHtml(it.description)}</p>` : ''}<p><a class="btn primary" href="/app/?community=${it.id}">${L.use}</a> <a class="btn line" href="/comunidad">${L.back}</a></p>
+      ${it.description ? `<p class="lead">${escHtml(it.description)}</p>` : ''}<p><a class="btn primary" href="/app/?community=${it.id}">${L.use}</a> <a class="btn line" href="/community">${L.back}</a></p>
       ${it.thumb ? `<img src="/api/community/${it.id}/thumb" alt="${escHtml(it.title)}" width="1280" height="720">` : ''}
       <p class="cm-meta">${L.license}: <a href="${lic[1]}" rel="license">${lic[0]}</a></p></div></div>
       ${words.length ? `<section style="padding-top:20px"><div class="wrap"><h2 style="font-size:28px">${L.words}</h2><ol class="cm-words">${words.map(w => `<li>${escHtml(w.slice(0, 400))}</li>`).join('')}</ol></div></section>` : ''}`;
     return new Response(frame(lang, { title: `${it.title} — Revela`, description: it.description || words.slice(0, 3).join(' · ').slice(0, 160), canonical, image: it.thumb ? `${site}/api/community/${it.id}/thumb` : `${site}/img/og.png`, body }), { headers: pageHeaders });
   }
-  if (!/^\/comunidad\/?$/.test(url.pathname)) return new Response('Not found', { status: 404 });
+  if (!/^\/community\/?$/.test(url.pathname)) return new Response('Not found', { status: 404 });
   const q = str(url.searchParams.get('q'), 100), list = await communityCall(env, 'list', { q, sort: url.searchParams.get('sort') === 'popular' ? 'popular' : 'new', limit: 48 });
   const body = `<div class="hero"><div class="wrap"><p class="eyebrow">${L.more}</p><h1>${L.h1}</h1><p class="lead">${L.lead}</p></div></div>
-    <section style="padding-top:40px"><div class="wrap"><form class="cm-search" action="/comunidad"><input name="q" value="${escHtml(q)}" aria-label="${L.search}" placeholder="${L.search}…"><button class="btn primary" type="submit">${L.search}</button></form>
-    ${list.items.length ? `<div class="cm-grid">${list.items.map(it => `<a class="cm-card" href="/comunidad/${it.id}-${slugOf(it.title)}">${it.thumb ? `<img src="/api/community/${it.id}/thumb" alt="" loading="lazy" width="640" height="360">` : `<span class="cm-ph">${escHtml(it.title)}</span>`}<div><h3>${escHtml(it.title)}</h3><p>${escHtml(it.slides)} ${L.slides}${it.author ? ` · ${escHtml(it.author)}` : ''}</p></div></a>`).join('')}</div>` : `<p>${L.none}</p>`}
+    <section style="padding-top:40px"><div class="wrap"><form class="cm-search" action="/community"><input name="q" value="${escHtml(q)}" aria-label="${L.search}" placeholder="${L.search}…"><button class="btn primary" type="submit">${L.search}</button></form>
+    ${list.items.length ? `<div class="cm-grid">${list.items.map(it => `<a class="cm-card" href="/community/${it.id}-${slugOf(it.title)}">${it.thumb ? `<img src="/api/community/${it.id}/thumb" alt="" loading="lazy" width="640" height="360">` : `<span class="cm-ph">${escHtml(it.title)}</span>`}<div><h3>${escHtml(it.title)}</h3><p>${escHtml(it.slides)} ${L.slides}${it.author ? ` · ${escHtml(it.author)}` : ''}</p></div></a>`).join('')}</div>` : `<p>${L.none}</p>`}
     <p class="cm-meta" style="margin-top:28px">${L.publish}</p></div></section>`;
-  return new Response(frame(lang, { title: L.title, description: L.lead, canonical: site + '/comunidad', body }), { headers: pageHeaders });
+  return new Response(frame(lang, { title: L.title, description: L.lead, canonical: site + '/community', body }), { headers: pageHeaders });
 }

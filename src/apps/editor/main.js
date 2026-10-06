@@ -288,7 +288,7 @@ initFileDrop();
 // First visit (nothing saved in this browser, no shared link): start from the
 // templates, as PowerPoint and Canva do; closing it leaves the blank slide.
 { const q = new URLSearchParams(location.search), fresh = (() => { try { return !localStorage.getItem(model.STORAGE_KEY) && !localStorage.getItem('revela.welcomed'); } catch { return false; } })();
-  if (!testing && fresh && !['collab', 'open', 'u', 'd', 'state', 'dropbox', 'doc', 'lti', 'report', 'comprar', 'desktop', 'plantilla'].some(k => q.has(k))) {
+  if (!testing && fresh && !['collab', 'open', 'u', 'd', 'state', 'dropbox', 'doc', 'lti', 'report', 'buy', 'comprar', 'desktop', 'template', 'plantilla'].some(k => q.has(k))) {
     try { localStorage.setItem('revela.welcomed', '1'); } catch {}
     import('../../ui/dialogs/gallery.js').then(g => g.openGallery());
   } }
@@ -329,24 +329,25 @@ if (hasAccounts()) {
     refreshAccount().catch(() => {}).finally(() => { handleDesktopRequest(); });
     if (new URLSearchParams(location.search).has('paid')) { history.replaceState(null, '', location.pathname); alertDialog(t('¡Gracias! Tu compra se ha registrado.')); }
     // From the prices page (revelaslides.com/pricing): the account, with the product chosen.
-    const buy = new URLSearchParams(location.search).get('comprar');
+    // (?buy=; ?comprar=, its old Spanish name, still works: links already out there.)
+    const buy = new URLSearchParams(location.search).get('buy') || new URLSearchParams(location.search).get('comprar');
     if (BUYABLE.includes(buy)) { history.replaceState(null, '', location.pathname); refreshAccount().catch(() => {}).finally(() => openAccount({ buy })); }
   }
 }
 // From the website's support page (revelaslides.com/support): «Informar de un problema».
-// «Hazte embajador» from revelaslides.com/embajadores: My account, with its form (after signing in, if needed).
-if (!testing && new URLSearchParams(location.search).has('embajador') && hasAccounts()) {
+// «Hazte embajador» from revelaslides.com/ambassadors: My account, with its form (after signing in, if needed).
+if (!testing && ['ambassador', 'embajador'].some(k => new URLSearchParams(location.search).has(k)) && hasAccounts()) {   // (?embajador: its old name)
   refreshAccount().catch(() => {}).finally(() => import('../../ui/dialogs/account.js').then(m => m.openAccount()));
 }
-// A presentation of the community, from its page (revelaslides.com/comunidad/<id> ▸ «Usar esta presentación»): a copy.
+// A presentation of the community, from its page (revelaslides.com/community/<id> ▸ «Usar esta presentación»): a copy.
 { const cid = new URLSearchParams(location.search).get('community');
   if (!testing && cid && /^[a-z2-9]{6}$/.test(cid)) { history.replaceState(null, '', location.pathname); import('../../ui/dialogs/community.js').then(m => m.openCommunity(cid)); } }
 if (!testing && new URLSearchParams(location.search).has('report')) { history.replaceState(null, '', location.pathname); (hasAccounts() ? refreshAccount().catch(() => {}) : Promise.resolve()).finally(() => openReport()); }
 // Opened from Drive's or Dropbox's "Open with ▸ Revela" (or Drive's "New ▸ Revela").
 if (!testing) handleOpenWith();
-// From a demo (revelaslides.com, fmesasc.com/revela): ?plantilla=<name> opens that sample presentation,
+// From a demo (revelaslides.com, fmesasc.com/revela): ?template=<name> (or the old ?plantilla=) opens that sample presentation,
 // in the interface's language, ready to change (whatever was open stays in Versions, as always).
-{ const k = new URLSearchParams(location.search).get('plantilla');
+{ const k = new URLSearchParams(location.search).get('template') || new URLSearchParams(location.search).get('plantilla');   // (?plantilla: its old name)
   if (!testing && k && Object.hasOwn(examples.EXAMPLES, k)) {
     history.replaceState(null, '', location.pathname);
     examples.loadExample(k, i18n.currentLang()).then(d => { if (d) store.replaceDeck(d); }).catch(() => {});

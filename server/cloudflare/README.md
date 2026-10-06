@@ -33,7 +33,7 @@ design, and [SECURITY.md](../../SECURITY.md).
   `calls.js`, Cloudflare Realtime), **LTI 1.3** for Moodle, Canvas and other
   platforms (`/api/lti/…`, `lti.js`), **«Crear modelo 3D con IA»**
   (`/api/3d/…`, `model3d.js`, with `server/blender`), the **community gallery**
-  (`/api/community/…` and the pages `/comunidad…`, `community.js`), Revela's
+  (`/api/community/…` and the pages `/community…` (`/comunidad…` redirects there), `community.js`), Revela's
   own **notices** (`/api/notices`, `notices.js`), **support** tickets
   (`/api/support`, `admin.js`), the website's requests and campaign links
   (`/api/leads`, `/api/go/…`, `crm.js`) and **emails** (`mail.js`).
@@ -57,7 +57,7 @@ From `wrangler.toml`:
 |---------------------------------|------------------------------------------------------|
 | `revelaslides.com/api/*`        | the accounts API; `/api/s` and `/api/c` are the share and room routes |
 | `admin.revelaslides.com/api/*`  | only the administration (`/api/admin/…`); anything else is 404 |
-| `revelaslides.com/comunidad*`   | the community gallery's public pages                 |
+| `revelaslides.com/community*`   | the community gallery's public pages                 |
 | `revela-share.<account>.workers.dev` | the same Worker (`workers_dev = true`): `/s`, `/c`, `/api/…` |
 
 ## Bindings

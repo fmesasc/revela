@@ -17,18 +17,18 @@ export async function paintAmbassador(box) {
   box.hidden = false;
   if (!amb || amb.status === 'rejected' || amb.status === 'ended') {
     box.innerHTML = `<summary>${t('Embajadores de Revela')}</summary><p class="host-help">${t('¿Enseñas Revela a tus compañeros? Como embajador o embajadora tienes Pro gratis, una insignia verificable y materiales para formar a tu claustro.')}</p>
-      <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 amb-go">${t('Hazte embajador')}</button><a class="mini2" href="${site()}/embajadores" target="_blank" rel="noopener">${t('Saber más')}</a></div>`;
+      <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 amb-go">${t('Hazte embajador')}</button><a class="mini2" href="${site()}/ambassadors" target="_blank" rel="noopener">${t('Saber más')}</a></div>`;
     box.querySelector('.amb-go').addEventListener('click', () => openAmbassadorForm(() => paintAmbassador(box)));
   } else if (amb.status === 'pending') {
     box.innerHTML = `<summary>${t('Embajadores de Revela')}</summary><p class="host-help">${t('Tu solicitud está en revisión. Te escribiremos en unos días.')}</p>`;
   } else {
-    const verify = `${site()}/embajadores?v=${amb.code}`, badge = `${site()}/api/ambassadors/badge/${amb.code}.svg`;
+    const verify = `${site()}/ambassadors?v=${amb.code}`, badge = `${site()}/api/ambassadors/badge/${amb.code}.svg`;
     box.innerHTML = `<summary>${t('Embajadores de Revela')}</summary><img src="${esc(badge)}" alt="${esc(t('Insignia de embajador de Revela'))}" style="width:100%;max-width:360px;display:block;margin:6px 0;border-radius:10px">
       <p class="host-help">${t('Ponla en tu currículum, tu firma o tu blog: su enlace demuestra que es real.')}</p>
       <div class="fr-actions" style="justify-content:flex-start;flex-wrap:wrap"><button type="button" class="mini2 amb-copy">${t('Copiar el enlace de verificación')}</button><a class="mini2" href="${esc(badge)}" download="insignia-revela.svg">${t('Descargar la insignia')}</a></div>`;
     box.querySelector('.amb-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText(verify); toast(t('Enlace copiado')); } catch { alertDialog(verify); } });
   }
-  // (Come from revelaslides.com/embajadores: the section open, and the form if not applied yet.)
+  // (Come from revelaslides.com/ambassadors: the section open, and the form if not applied yet.)
   if (new URLSearchParams(location.search).has('embajador')) {
     history.replaceState(null, '', location.pathname); box.open = true;
     if (!amb || amb.status === 'rejected' || amb.status === 'ended') openAmbassadorForm(() => paintAmbassador(box));

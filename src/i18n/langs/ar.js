@@ -62,7 +62,7 @@ export default {
   "La comunidad está en revelaslides.com.": "المجتمع على revelaslides.com.",
   "Para publicar en la comunidad, inicia sesión con tu cuenta de Revela.": "للنشر في المجتمع، سجّل الدخول بحسابك في Revela.",
   "Publicar en la comunidad": "النشر في المجتمع",
-  "Otros docentes podrán encontrarla en revelaslides.com/comunidad y usar una copia. La revisamos antes de publicarla.": "سيتمكن معلمون آخرون من العثور عليه في revelaslides.com/comunidad واستخدام نسخة منه. نراجعه قبل نشره.",
+  "Otros docentes podrán encontrarla en revelaslides.com/community y usar una copia. La revisamos antes de publicarla.": "سيتمكن معلمون آخرون من العثور عليه في revelaslides.com/community واستخدام نسخة منه. نراجعه قبل نشره.",
   "Descripción (para quién es y qué incluye)": "الوصف (لمن هو وماذا يتضمن)",
   "Materia": "المادة",
   "Nombre que se mostrará (opcional)": "الاسم الظاهر (اختياري)",

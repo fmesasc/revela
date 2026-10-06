@@ -64,7 +64,7 @@ export function watchTerms() {
   });
 }
 
-// (buy: a product chosen on the prices page — ?comprar=pro-year —, paid for as soon as there is a session.)
+// (buy: a product chosen on the prices page — ?buy=pro-year —, paid for as soon as there is a session.)
 export const BUYABLE = ['pro-month', 'pro-year', 'credits-500', 'credits-1500'];
 export function openAccount({ buy } = {}) {
   document.getElementById('account-modal')?.remove();

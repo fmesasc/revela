@@ -7,7 +7,7 @@
 // and impossible to recognise tomorrow. A browser that asks not to be followed (Global Privacy Control) isn't counted.
 //
 // For the administration (admin.js /web): visitors and views per day, the pages, where they come from, languages; the
-// pages visited that the sitemap leaves out (to add them: «extra», also in /comunidad/sitemap.xml) and the addresses
+// pages visited that the sitemap leaves out (to add them: «extra», also in /community/sitemap.xml) and the addresses
 // that don't exist, with where from (to redirect them — the 404 page asks /api/redirect — or ignore them).
 //
 //   Visits (one Durable Object, 'visits'): 'salt' { day, value } · 'v:<vid>' (today's visitors; gone tomorrow) ·
