@@ -79,6 +79,7 @@ import { takeQuota, writeText, readParts } from './store.js';
 import { teamStatus } from './teams.js';
 import { crmApi } from './crm.js';
 import { communityAdmin } from './community.js';
+import { ltiAdmin } from './lti.js';
 import { record, financeCall, financeSettings, cleanEntry, periodOk, dayOf, promoKey } from './finance.js';
 
 const enc = new TextEncoder(), dec = new TextDecoder();
@@ -632,6 +633,7 @@ export async function handleAdmin(req, env, url) {
   }
   if (path === '/promos' || path.startsWith('/promos/')) return promosApi(env, path, q, body, { GET, POST, by, json });
   if (path === '/notices' || path.startsWith('/notices/')) return noticesApi(env, path, body, { GET, POST, by, json });
+  if (path === '/lti' || path.startsWith('/lti/')) return ltiAdmin(env, path, body, { GET, POST, json, audit: e => audit(env, { by, ...e }), site: env.SITE_URL || 'https://revelaslides.com' });
   if (path === '/community' || path.startsWith('/community/')) return communityAdmin(env, path, q, body, { GET, POST, json, audit: e => audit(env, { by, ...e }) });
   if (path === '/crm' || path.startsWith('/crm/')) return crmApi(env, path, q, body, { GET, POST, by, json, audit: e => audit(env, { by, ...e }) });
   if (path.startsWith('/finance/')) return financeApi(env, path, q, body, { GET, POST, DELETE, by, json, headers, D });

@@ -85,7 +85,9 @@ export function openAccount({ buy } = {}) {
         <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="fr-do acc-login">${t(EDITION === 'desktop' ? 'Iniciar sesión en el navegador' : 'Iniciar sesión con Google')}</button></div>
         <p class="host-help" style="font-size:12px"><a href="${OFFICIAL_SITE}/pricing" target="_blank" rel="noopener">${t('Ver planes y precios')}</a></p>
         <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 acc-report"><i class="ms">bug_report</i> ${t('Informar de un problema')}</button></div>`;
-      // «Recomienda Revela a tu centro»: my link, a message ready to send myself, and what it has brought (crm.js).
+      // Ambassadors: apply, the application's status, the badge (dialogs/ambassador.js).
+    import('./ambassador.js').then(m => m.paintAmbassador(body.querySelector('.acc-amb'))).catch(() => {});
+    // «Recomienda Revela a tu centro»: my link, a message ready to send myself, and what it has brought (crm.js).
     acc.api('referral').then(r => {
       if (!r?.on) return;
       const box = body.querySelector('.acc-ref'); if (!box) return; box.hidden = false;
@@ -143,6 +145,7 @@ export function openAccount({ buy } = {}) {
       <div class="fr-actions" style="justify-content:flex-start;flex-wrap:wrap"><button type="button" class="mini2 acc-team"><i class="ms">groups</i> ${me.team ? esc(me.team.name) : t('Equipos y centros')}</button>
         <button type="button" class="mini2 acc-report"><i class="ms">bug_report</i> ${t('Informar de un problema')}</button></div>
       <div class="acc-drive"></div><div class="acc-drive acc-od" hidden></div>
+      <details class="acc-amb" hidden></details>
       <details class="acc-ref" hidden><summary>${t('Recomienda Revela a tu centro')}</summary>
         <p class="host-help">${t('Si te gusta Revela, pásale este enlace a la dirección de tu centro o empresa. Lo envías tú: Revela no escribe a nadie.')}</p>
         <p class="host-help acc-ref-reward" hidden></p>

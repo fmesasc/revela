@@ -4,6 +4,7 @@
 // student's answers marked by the server and the grade sent back — and that
 // forged or replayed launches are refused.
 import worker, { CloudDoc, LtiStore, Account, Budget, DesktopLink, Team } from '../server/cloudflare/worker.js';
+import { ltiAdmin } from '../server/cloudflare/lti.js';
 
 function fakeStorage() {
   const m = new Map();
@@ -114,6 +115,26 @@ j = await (await answer('p-order', ['Primavera', 'Verano', 'Invierno', 'Otoño']
 ok(j.score === 0.5 && sent.scores.at(-1).body.scoreGiven === 75 && sent.scores.at(-1).body.gradingProgress === 'FullyGraded' && sent.scores.at(-1).body.activityProgress === 'Completed', 'todo hecho: nota final 75');
 ok((await answer('p-word', 'x')).status === 400, 'las votaciones sin nota no cuentan');
 ok((await answer('p-quiz', 1, 'inventado')).status === 401, 'sin sesión de la plataforma: no');
+
+// ---- A platform registered by hand (Google Classroom, Microsoft Teams…: no dynamic registration) ----
+const ISS2 = 'https://aula.example', CID2 = 'cid-aula', aula = await keys(), aulaPub = { ...(await crypto.subtle.exportKey('jwk', aula.publicKey)), kid: 'a1' };
+const prevF = env.FETCH; env.FETCH = async (u, init) => (String(u) === ISS2 + '/keys' ? Response.json({ keys: [aulaPub] }) : prevF(u, init));
+const audits = [], adminJson = (o, status = 200) => Response.json(o, { status }), A2 = (GET, path, body = {}) => ltiAdmin(env, path, body, { GET, POST: !GET, json: adminJson, audit: async e => audits.push(e), site: SITE });
+j = await (await A2(true, '/lti')).json();
+ok(j.ready && j.tool.login === SITE + '/api/lti/login' && j.tool.launch === SITE + '/api/lti/launch' && j.tool.jwks === SITE + '/api/lti/jwks' && j.platforms.some(p => p.issuer === ISS), 'admin: las direcciones de Revela para la plataforma, y las plataformas (la de registro dinámico también)');
+ok((await A2(false, '/lti/platforms', { name: 'Aula', issuer: ISS2, clientId: CID2, auth: 'http://inseguro.example/auth', token: ISS2 + '/token', jwks: ISS2 + '/keys' })).status === 400, 'admin: solo direcciones https');
+ok((await A2(false, '/lti/platforms', { name: 'Aula', issuer: ISS2, clientId: CID2, auth: ISS2 + '/auth', token: ISS2 + '/token', jwks: ISS2 + '/keys', deployment: 'dep-1' })).status === 200 && audits.length === 1, 'admin: plataforma registrada a mano (y en la auditoría)');
+r = await call('POST', '/api/lti/login', { iss: ISS2, login_hint: 'al1', target_link_uri: SITE + '/api/lti/launch', client_id: CID2 });
+const to2 = new URL(loc(r));
+ok(to2.origin + to2.pathname === ISS2 + '/auth' && to2.searchParams.get('client_id') === CID2, 'a mano: el inicio va a su autorización');
+const tok2 = await sign({ iss: ISS2, aud: CID2, sub: 'al1', name: 'Ana', nonce: to2.searchParams.get('nonce'), iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 300,
+  'https://purl.imsglobal.org/spec/lti/claim/deployment_id': 'dep-1', 'https://purl.imsglobal.org/spec/lti/claim/version': '1.3.0', 'https://purl.imsglobal.org/spec/lti/claim/message_type': 'LtiResourceLinkRequest',
+  'https://purl.imsglobal.org/spec/lti/claim/custom': { doc: docId } }, aula.privateKey, 'a1');
+r = await call('POST', '/api/lti/launch', { id_token: tok2, state: to2.searchParams.get('state') });
+ok(new URL(loc(r) || 'https://x/').searchParams.get('doc') === docId, 'a mano: el alumno abre la presentación');
+ok((await A2(false, '/lti/platforms/delete', { issuer: ISS2, clientId: CID2 })).status === 200 && !(await (await A2(true, '/lti')).json()).platforms.some(p => p.issuer === ISS2), 'admin: se quita');
+r = await call('POST', '/api/lti/login', { iss: ISS2, login_hint: 'al1', target_link_uri: SITE + '/api/lti/launch', client_id: CID2 });
+ok(r.status >= 400, 'quitada: ya no puede lanzar');
 
 console.log(fails ? `LTI FAIL ${n - fails}/${n}` : `LTI OK ${n}/${n}`);
 process.exit(fails ? 1 : 0);

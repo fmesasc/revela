@@ -391,6 +391,30 @@ export class Crm {
       const by = {}; for (const c of (await st.list({ prefix: 's:' })).values()) if (c.referrer) (by[c.referrer] ||= []).push({ id: c.id, name: c.name, status: c.status });
       return Response.json({ refs: out.sort((x, y) => y.customers - x.customers || y.leads - x.leads), contacts: by });
     }
+    // ---- Ambassadors ('amb:<sub>' the application and its status; 'ambc:<code>' → sub, for the badge and its check)
+    if (op === 'amb-apply') {                             // { sub, email, form } → { amb }
+      const cur = await st.get('amb:' + a.sub);
+      if (cur && ['pending', 'approved'].includes(cur.status)) return Response.json({ amb: cur });
+      const amb = { sub: a.sub, email: a.email, ...a.form, status: 'pending', at: now, history: [...(cur?.history || []), { at: now, what: 'apply' }] };
+      await st.put('amb:' + a.sub, amb);
+      // (In Captación too: a teacher who wants to spread Revela is a good contact.)
+      const r = await this.add({ name: a.form.center || a.form.name, person: a.form.name, role: a.form.role, email: a.email, city: a.form.city, kind: 'school', lang: a.form.lang || 'es', tags: ['embajador'] }, { source: 'form', by: 'form', history: { what: 'request', text: 'Solicitud de embajador: ' + (a.form.plan || '') } });
+      amb.contact = r.id; await st.put('amb:' + a.sub, amb);
+      return Response.json({ amb });
+    }
+    if (op === 'amb-me') return Response.json({ amb: (await st.get('amb:' + a.sub)) || null });
+    if (op === 'amb-list') return Response.json({ items: [...(await st.list({ prefix: 'amb:' })).values()].filter(x => !a.status || x.status === a.status).sort((x, y) => y.at - x.at) });
+    if (op === 'amb-status') {                            // { sub, status: approved | rejected | ended, note, by } → { amb }
+      const amb = await st.get('amb:' + a.sub); if (!amb) return Response.json({ error: 'not found' }, { status: 404 });
+      if (!['approved', 'rejected', 'ended'].includes(a.status)) return Response.json({ error: 'status' }, { status: 400 });
+      amb.status = a.status; amb.history.push({ at: now, what: a.status, by: a.by, note: a.note || '' });
+      if (a.status === 'approved') { amb.since ||= now; if (!amb.code) { amb.code = rid() + rid().slice(0, 4); await st.put('ambc:' + amb.code, amb.sub); } }
+      await st.put('amb:' + a.sub, amb); return Response.json({ amb });
+    }
+    if (op === 'amb-public') return Response.json({ items: [...(await st.list({ prefix: 'amb:' })).values()].filter(x => x.status === 'approved' && x.listed)
+      .map(x => ({ name: x.name, center: x.center, city: x.city, subject: x.subject, code: x.code, since: x.since })).sort((x, y) => x.since - y.since) });
+    if (op === 'amb-code') { const sub = /^[a-z0-9]{8,16}$/.test(a.code || '') && await st.get('ambc:' + a.code), amb = sub && await st.get('amb:' + sub);
+      return Response.json({ amb: amb && amb.status === 'approved' ? { name: amb.name, center: amb.center, city: amb.city, since: amb.since, code: amb.code } : null }); }
     // ---- One contact
     const c = await this.getC(a.id); if (!c) return Response.json({ error: 'not found' }, { status: 404 });
     if (op === 'get') {
@@ -732,6 +756,56 @@ export async function runCrm(env, { sendMail, mailConfigured, adminEmails = [] }
   return { sent, failed, reminded };
 }
 
+// ---- Ambassadors (teachers who show Revela to their colleagues) -------------------------------------------
+export const AMB_SUBJECTS = ['math', 'lang', 'science', 'social', 'arts', 'music', 'pe', 'tech', 'languages', 'values', 'vocational', 'business', 'other'];
+export function cleanAmbassador(b) {
+  const f = { name: str(b.name, 80), center: str(b.center, 120), city: str(b.city, 80), role: str(b.role, 80), subject: AMB_SUBJECTS.includes(b.subject) ? b.subject : 'other',
+    plan: text(b.plan, 1200), listed: b.listed === true, lang: LANGS.includes(b.lang) ? b.lang : 'es' };
+  if (f.name.length < 2) return { error: 'name' }; if (f.center.length < 2) return { error: 'center' }; if (f.plan.length < 20) return { error: 'plan' };
+  return { form: f };
+}
+// /api/ambassadors…: me — the session with its account's email (or null).
+export async function handleAmbassadors(path, req, body, env, me, json) {
+  if (!env.CRM) return json({ error: 'not configured' }, 503);
+  const sub = path.replace(/^\/ambassadors/, '') || '/';
+  if (req.method === 'GET' && sub === '/') return json(await crmCall(env, 'amb-public', {}), 200, { 'Cache-Control': 'public, max-age=300' });
+  let m = sub.match(/^\/verify\/([a-z0-9]{8,16})$/);
+  if (req.method === 'GET' && m) return json(await crmCall(env, 'amb-code', { code: m[1] }));
+  m = sub.match(/^\/badge\/([a-z0-9]{8,16})\.svg$/);
+  if (req.method === 'GET' && m) {
+    const { amb } = await crmCall(env, 'amb-code', { code: m[1] }); if (!amb) return new Response('Not found', { status: 404 });
+    return new Response(badgeSVG(amb), { headers: { 'Content-Type': 'image/svg+xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600', 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'" } });
+  }
+  if (!me) return json({ error: 'no session' }, 401);
+  if (req.method === 'GET' && sub === '/me') { const { amb } = await crmCall(env, 'amb-me', { sub: me.sub }); return json({ amb: amb && { status: amb.status, at: amb.at, since: amb.since || null, code: amb.status === 'approved' ? amb.code : null, name: amb.name, center: amb.center } }); }
+  if (req.method === 'POST' && sub === '/apply') {
+    const c = cleanAmbassador(body); if (c.error) return json({ error: c.error }, 400);
+    const r = await crmCall(env, 'amb-apply', { sub: me.sub, email: me.email, form: c.form });
+    return json({ status: r.amb.status });
+  }
+  return json({ error: 'not found' }, 404);
+}
+// The badge: an image with the name, to put in a CV, an email signature or a blog — and its link checks it is real.
+export function badgeSVG(a) {
+  const year = new Date(a.since || Date.now()).getFullYear(), name = escHtml(String(a.name).slice(0, 34)), center = escHtml(String(a.center || '').slice(0, 44));
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="200" viewBox="0 0 600 200" role="img" aria-label="Embajador/a de Revela: ${name}">
+<rect width="600" height="200" rx="22" fill="#17181c"/><rect x="10" y="10" width="580" height="180" rx="16" fill="none" stroke="#e0b65a" stroke-width="2"/>
+<circle cx="100" cy="100" r="58" fill="#2f5a8f"/><path d="M78 72h30a18 18 0 0 1 4 35l14 21h-16l-12-19H92v19H78z M92 84v14h15a7 7 0 0 0 0-14z" fill="#fff"/>
+<text x="180" y="70" font-family="Georgia,serif" font-size="20" fill="#e0b65a" letter-spacing="3">EMBAJADOR/A · ${year}</text>
+<text x="180" y="112" font-family="Georgia,serif" font-size="34" fill="#ffffff">${name}</text>
+<text x="180" y="146" font-family="system-ui,Arial,sans-serif" font-size="17" fill="#c9cbd1">${center}</text>
+<text x="180" y="174" font-family="system-ui,Arial,sans-serif" font-size="14" fill="#8a8d96">Revela · revelaslides.com/embajadores</text></svg>`;
+}
+// The email when approved (to the ambassador): what changes, the badge and its check.
+function ambassadorMail(env, amb, proUntil, identity) {
+  const site0 = site(env), verify = `${site0}/embajadores?v=${amb.code}`, badge = `${site0}/api/ambassadors/badge/${amb.code}.svg`;
+  const body = [`¡Hola, ${amb.name}!`, 'Ya eres embajador/a de Revela. Gracias por enseñarlo a tus compañeros.',
+    proUntil ? `Tienes Pro gratis hasta el ${fmtDay(proUntil, 'es')}.` : '',
+    `Tu insignia (para tu currículum, tu firma o tu blog): ${badge}`, `Y el enlace que demuestra que es real: ${verify}`,
+    'En Revela, «Mi cuenta» te muestra la insignia y tu enlace para recomendarlo a tu centro.'].filter(Boolean).join('\n\n');
+  return crmMail({ subject: 'Ya eres embajador/a de Revela', body, lang: 'es', identity });
+}
+
 // /api/admin/crm/… (admin.js has checked who it is). by: the admin's address; audit(e): the record.
 export async function crmApi(env, path, q, body, { GET, POST, by, json, audit }) {
   if (!env.CRM) return json({ error: 'crm not configured' }, 503);
@@ -797,6 +871,22 @@ export async function crmApi(env, path, q, body, { GET, POST, by, json, audit })
     }
   }
   if (GET && sub === '/referrals') return json(await C('refs'));
+  if (GET && sub === '/ambassadors') return json(await C('amb-list', { status: q.get('status') || '' }));
+  m = sub.match(/^\/ambassadors\/([\w.-]{1,100})\/status$/);
+  if (POST && m) {
+    const r = await C('amb-status', { sub: m[1], status: body.status, note: str(body.note, 300) }); if (r.error) return send(r);
+    let proUntil = 0;
+    if (body.status === 'approved' && +body.proDays > 0 && env.ACCOUNTS) {
+      proUntil = Date.now() + Math.min(730, +body.proDays) * DAY;
+      await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('u:' + m[1])).fetch('https://do/admin-plan', { method: 'POST', body: JSON.stringify({ until: proUntil, reason: 'Embajador/a de Revela', by }) });
+    }
+    if (body.status === 'approved' && body.mail !== false) {
+      const { sendMail } = await import('./mail.js'), s = (await C('settings')).settings;
+      await sendMail(env, { to: r.amb.email, kind: 'crm-ambassador', ...ambassadorMail(env, r.amb, proUntil, s.identity), ...(s.replyTo && { replyTo: s.replyTo }) });
+    }
+    await audit({ action: 'ambassador-' + body.status, target: m[1], after: { proUntil: proUntil || null } });
+    return json({ amb: r.amb, proUntil });
+  }
   m = sub.match(/^\/contacts\/(\d{1,9})(?:\/(status|note|log|next|consent|enroll|delete|message))?$/);
   if (m) {
     const id = +m[1], op = m[2] || '';

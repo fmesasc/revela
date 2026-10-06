@@ -335,12 +335,13 @@ def site_checks(send, recv):
         tid = recv(send('Target.createTarget', url='about:blank'))['result']['targetId']
         sid = recv(send('Target.attachToTarget', targetId=tid, flatten=True))['result']['sessionId']
         ev = lambda e: recv(send('Runtime.evaluate', sid, expression=e, awaitPromise=True, returnByValue=True)).get('result', {}).get('result', {}).get('value')
-        # The home page: its pictures load, its own links lead somewhere (Pages serves /pricing as pricing.html).
+        # The home page: its pictures load, its own links lead somewhere (Pages serves /pricing as pricing.html;
+        # /comunidad is the Worker's: tests/server-api.mjs checks it).
         recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/index.html')); time.sleep(1.5)
         check('Revela' in (ev('document.title') or ''), 'portada')
         # (Pictures further down load when scrolled to: those are checked by fetching them.)
         check(ev("Promise.all([...document.images].map(i=>i.loading==='lazy'?fetch(i.src).then(r=>r.ok):i.complete&&i.naturalWidth>0)).then(a=>a.every(Boolean))"), 'las imágenes de la portada cargan')
-        bad = ev("""(async()=>{const hrefs=[...new Set([...document.querySelectorAll('a[href]')].map(a=>a.getAttribute('href')).filter(h=>!/^(https?:|#|mailto:)/.test(h)).map(h=>h.split('#')[0]).filter(Boolean))];
+        bad = ev("""(async()=>{const hrefs=[...new Set([...document.querySelectorAll('a[href]')].map(a=>a.getAttribute('href')).filter(h=>!/^(https?:|#|mailto:)/.test(h)&&!/^\/comunidad/.test(h)).map(h=>h.split('#')[0]).filter(Boolean))];
           const bad=[];for(const h of hrefs){const u=/[.\/]$/.test(h)||/\.html$/.test(h)?h:h+'.html';const r=await fetch(u);if(!r.ok)bad.push(h);}return bad.join(',')})()""")
         check(bad == '', 'enlaces rotos en la portada: ' + str(bad))
         for page in ('pricing.html', 'support.html', 'privacy.html', 'terms.html'):
@@ -349,14 +350,14 @@ def site_checks(send, recv):
         check(ev("(f=>!!f&&/\\/demo\\/reloj\\.html$/.test(f.src))(document.querySelector('.live iframe'))") and ev("fetch('/demo/reloj.html').then(r=>r.text()).then(t=>/Reveal\\.initialize/.test(t)&&/noindex/.test(t)&&!/fonts\\.googleapis/.test(t))"), 'la presentación en directo de la portada')
         # In other languages: each its own address, with links between them for search engines.
         check(ev("[...document.querySelectorAll('link[rel=alternate][hreflang]')].map(l=>l.hreflang).join()") == 'es,en,fr,de,it,pt,ca,x-default', 'hreflang en la portada')
-        check(ev("fetch('sitemap.xml').then(r=>r.text()).then(t=>(t.match(/<loc>/g)||[]).length)") == 32, 'sitemap: 4 páginas × 7 idiomas + 4 legales')
+        check(ev("fetch('sitemap.xml').then(r=>r.text()).then(t=>(t.match(/<loc>/g)||[]).length)") == 46, 'sitemap: 6 páginas × 7 idiomas + 4 legales')
         recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/en/pricing.html')); time.sleep(1.5)
         check(ev("document.documentElement.lang") == 'en' and 'Pric' in (ev('document.title') or ''), 'precios en inglés: ' + str(ev('document.title')))
         check(ev("document.querySelector('link[rel=canonical]').href") == 'https://revelaslides.com/en/pricing', 'su dirección canónica')
         check(ev("[...document.querySelectorAll('a[href^=\"/app/\"]')].every(a=>/[?&]lang=en/.test(a.href))"), 'abre la aplicación en inglés')
         check(ev("document.querySelector('.site-langs a[aria-current]').lang") == 'en', 'menú de idiomas')
         check(not ev("/IVA|Precios|Gratis para/.test(document.body.innerText)"), 'sin restos en español')
-        bad = ev("""(async()=>{const hrefs=[...new Set([...document.querySelectorAll('a[href],link[href],img[src],script[src]')].map(a=>a.getAttribute('href')||a.getAttribute('src')).filter(h=>h.startsWith('/')&&!h.startsWith('/app/')).map(h=>h.split('#')[0]))];
+        bad = ev("""(async()=>{const hrefs=[...new Set([...document.querySelectorAll('a[href],link[href],img[src],script[src]')].map(a=>a.getAttribute('href')||a.getAttribute('src')).filter(h=>h.startsWith('/')&&!h.startsWith('/app/')&&!h.startsWith('/comunidad')).map(h=>h.split('#')[0]))];
           const bad=[];for(const h of hrefs){const u=/\/$/.test(h)||/\.\w+$/.test(h)?h:h+'.html';const r=await fetch(u);if(!r.ok)bad.push(h);}return bad.join(',')})()""")
         check(bad == '', 'enlaces rotos en /en/: ' + str(bad))
         # The app in /app/: the official edition, and working.

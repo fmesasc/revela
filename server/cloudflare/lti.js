@@ -96,6 +96,40 @@ async function savePlatform(env, pl) {
   await kvDo(env, platformName(pl.issuer, pl.clientId), 'put', { value: pl });
   const ids = (await kvDo(env, 'issuer:' + pl.issuer, 'get')) || [];
   if (!ids.includes(pl.clientId)) await kvDo(env, 'issuer:' + pl.issuer, 'put', { value: [...ids, pl.clientId] });
+  // (The list, for the admin: every platform, registered by itself or by hand.)
+  const list = ((await kvDo(env, 'platforms', 'get')) || []).filter(x => !(x.issuer === pl.issuer && x.clientId === pl.clientId));
+  await kvDo(env, 'platforms', 'put', { value: [...list, { issuer: pl.issuer, clientId: pl.clientId, name: pl.name || '', manual: !!pl.manual, registered: pl.registered || Date.now() }] });
+}
+
+// ---- Platforms registered by hand (the admin: Google Classroom, Microsoft Teams, Canvas, Blackboard…) ----------------
+// Those that don't do dynamic registration: the admin gives Revela's addresses to the platform and pastes the platform's
+// (its issuer, the client id it gave Revela, its login, token and key addresses, and its deployment id if any).
+//   GET  /api/admin/lti                       → { ready, tool: { login, launch, jwks, register, domain }, platforms }
+//   POST /api/admin/lti/platforms             { name, issuer, clientId, auth, token, jwks, deployment? }
+//   POST /api/admin/lti/platforms/delete      { issuer, clientId }
+const httpsUrl = v => { try { const u = new URL(String(v || '').trim()); return u.protocol === 'https:' ? u.href.replace(/\/$/, u.pathname === '/' ? '' : '/') : null; } catch { return null; } };
+export async function ltiAdmin(env, path, body, { GET, POST, json, audit, site }) {
+  const base = site.replace(/\/$/, '') + '/api/lti', sub = path.replace(/^\/lti/, '') || '/';
+  if (GET && sub === '/') return json({ ready: !!(env.LTI && toolKey(env)), tool: { login: base + '/login', launch: base + '/launch', jwks: base + '/jwks', register: base + '/register', domain: new URL(site).host },
+    platforms: env.LTI ? (await kvDo(env, 'platforms', 'get')) || [] : [] });
+  if (!env.LTI) return json({ error: 'lti not configured' }, 503);
+  if (POST && sub === '/platforms') {
+    const issuer = String(body.issuer || '').trim().replace(/\/$/, ''), clientId = String(body.clientId || '').trim().slice(0, 200);
+    const auth = httpsUrl(body.auth), token = httpsUrl(body.token), jwks = httpsUrl(body.jwks);
+    if (!/^https:\/\/[^\s]+$/.test(issuer) || !clientId || !auth || !token || !jwks) return json({ error: 'fields' }, 400);
+    const pl = { name: String(body.name || '').trim().slice(0, 80), issuer, clientId, auth, token, jwks, deployments: [String(body.deployment || '').trim()].filter(Boolean).slice(0, 1), manual: true, registered: Date.now() };
+    await savePlatform(env, pl); await audit({ action: 'lti-platform', target: 'lti:' + issuer, after: { name: pl.name, clientId } });
+    return json({ ok: true });
+  }
+  if (POST && sub === '/platforms/delete') {
+    const issuer = String(body.issuer || ''), clientId = String(body.clientId || '');
+    await kvDo(env, platformName(issuer, clientId), 'put', { value: null, ttl: 1 });
+    await kvDo(env, 'issuer:' + issuer, 'put', { value: ((await kvDo(env, 'issuer:' + issuer, 'get')) || []).filter(x => x !== clientId) });
+    await kvDo(env, 'platforms', 'put', { value: ((await kvDo(env, 'platforms', 'get')) || []).filter(x => !(x.issuer === issuer && x.clientId === clientId)) });
+    await audit({ action: 'lti-platform-delete', target: 'lti:' + issuer, after: { clientId } });
+    return json({ ok: true });
+  }
+  return json({ error: 'not found' }, 404);
 }
 
 // ---- Requests ------------------------------------------------------------------------------------------------------

@@ -66,7 +66,7 @@ import { record, active, featureOf, financeSettings } from './finance.js';
 import { NOTICE_PLACES, noticesFor, noticesOp } from './notices.js';
 import { takeQuota } from './store.js';
 import { handleCommunity } from './community.js';
-import { handleLead, goLink, crmUnsub, crmClick, campaignSignup, campaignPurchase, eventsPublic, eventSignup, referralInfo } from './crm.js';
+import { handleLead, goLink, crmUnsub, crmClick, campaignSignup, campaignPurchase, eventsPublic, eventSignup, referralInfo, handleAmbassadors } from './crm.js';
 
 const enc = new TextEncoder();
 const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -813,6 +813,11 @@ export async function handleApi(req, env, url) {
     if (req.method !== 'POST') return json({ error: 'method' }, 405);
     if (!webOrigin && !desktopOrigin) return json({ error: 'origin' }, 403);
     return createTicket(req, env, me, body, json);
+  }
+  // Ambassadors (crm.js): the public list, a badge and its check need no session; applying does.
+  if (path === '/ambassadors' || path.startsWith('/ambassadors/')) {
+    const who = me && { sub: me.sub, email: (await call(acct(env, me.sub), 'me')).email };
+    return handleAmbassadors(path, req, body, env, who, json);
   }
   // The community gallery (community.js): reading needs no session; publishing does.
   if (path === '/community' || path.startsWith('/community/')) {

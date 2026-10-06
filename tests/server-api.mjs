@@ -1668,6 +1668,29 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok((await pub(pia)).status === 429, 'comunidad: como mucho 5 al día por cuenta');
   }
 
+  // Ambassadors (crm.js): apply from one's account, the admin approves (Pro until a date, an email), the badge and its check, the public list.
+  {
+    const ap = (cookie, b = {}) => req('POST', '/api/ambassadors/apply', { headers: cookie ? { Cookie: cookie } : {}, body: { name: 'Pía García', center: 'IES Ebro', city: 'Zaragoza', role: 'Jefa de estudios', subject: 'math', plan: 'Una sesión de formación al trimestre con el claustro y compartir materiales.', listed: true, lang: 'es', ...b } });
+    ok((await ap(null)).status === 401, 'embajadores: solicitar sin sesión → 401');
+    ok((await ap(pia, { plan: 'poco' })).status === 400, 'embajadores: sin decir cómo lo difundirá → 400');
+    x = await (await ap(pia)).json(); ok(x.status === 'pending', 'embajadores: solicitud en revisión');
+    let me1 = await (await req('GET', '/api/ambassadors/me', { headers: { Cookie: pia } })).json(); ok(me1.amb.status === 'pending' && !me1.amb.code, 'embajadores: la persona ve su solicitud');
+    const list = (await A('GET', '/crm/ambassadors?status=pending')).j.items; ok(list.length === 1 && list[0].email === 'pia@example.com' && list[0].center === 'IES Ebro', 'embajadores: en la administración');
+    ok((await A('GET', '/crm/contacts?tag=embajador')).j.items.length === 1, 'embajadores: y en Captación');
+    sent = [];
+    x = await A('POST', `/crm/ambassadors/${list[0].sub}/status`, { body: { status: 'approved', proDays: 365 } });
+    ok(x.status === 200 && x.j.amb.code && x.j.proUntil > Date.now() + 360 * DAYms, 'embajadores: aprobado, con Pro un año');
+    ok(sent.some(m => m.to === 'pia@example.com' && /embajador/.test(m.subject) && /badge\/[a-z0-9]+\.svg/.test(m.text)), 'embajadores: le llega el correo con su insignia');
+    ok((await (await req('GET', '/api/me', { headers: { Cookie: pia } })).json()).plan === 'pro', 'embajadores: tiene Pro');
+    me1 = await (await req('GET', '/api/ambassadors/me', { headers: { Cookie: pia } })).json(); const code = me1.amb.code;
+    const badge = await req('GET', `/api/ambassadors/badge/${code}.svg`); const svg = await badge.text();
+    ok(badge.status === 200 && /image\/svg/.test(badge.headers.get('Content-Type')) && svg.includes('Pía García') && svg.includes('IES Ebro'), 'embajadores: la insignia con su nombre');
+    ok((await (await req('GET', `/api/ambassadors/verify/${code}`)).json()).amb?.name === 'Pía García' && !(await (await req('GET', '/api/ambassadors/verify/inventado123')).json()).amb, 'embajadores: la comprobación (y una inventada, no)');
+    const pubL = await (await req('GET', '/api/ambassadors')).json(); ok(pubL.items.length === 1 && pubL.items[0].city === 'Zaragoza' && !pubL.items[0].email, 'embajadores: el directorio público (sin correos)');
+    await A('POST', `/crm/ambassadors/${list[0].sub}/status`, { body: { status: 'ended' } });
+    ok((await (await req('GET', '/api/ambassadors')).json()).items.length === 0 && (await req('GET', `/api/ambassadors/badge/${code}.svg`)).status === 404, 'embajadores: al terminar, fuera del directorio y sin insignia válida');
+  }
+
   // Deleting the account takes it out of the directory.
   ok((await req('POST', '/api/account/delete', { headers: { Cookie: pia }, body: { confirm: 'pia@example.com' } })).status === 200 && (await A('GET', '/users?q=pia')).j.users.length === 0, 'cuenta eliminada: fuera del directorio');
   // Without the admin vars again: nothing.
