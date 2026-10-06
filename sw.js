@@ -42,11 +42,11 @@ self.addEventListener('fetch', e => {
     }).catch(() => caches.match(req, { ignoreSearch: req.mode === 'navigate' })
       .then(r => r || (req.mode === 'navigate' ? caches.match('index.html') : Response.error()))).finally(() => tell('end')));
   } else if (CDN.includes(url.hostname)) {
-    // A fixed version (…@1.2.3/…) or a font never changes: cache first. A branch
-    // (…@main/…, 3D models from GitHub) can: network first, the copy offline.
+    // A fixed version (…@1.2.3/…, or a commit: the 3D models from GitHub) or a font never changes: cache first.
+    // A branch (…@main/…) can: network first, the copy offline.
     // Only good answers are kept (not errors, not opaque ones).
     const keep = res => { if (res.ok && res.type !== 'opaque') { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); } return res; };
-    const fixed = url.hostname !== 'cdn.jsdelivr.net' || /@\d[\w.-]*\//.test(url.pathname);
+    const fixed = url.hostname !== 'cdn.jsdelivr.net' || /@\d[\w.-]*\//.test(url.pathname) || /@[0-9a-f]{40}\//.test(url.pathname);   // (a version, or a commit)
     e.respondWith(fixed ? caches.match(req).then(hit => hit || fetch(req).then(keep))
       : fetch(req).then(keep).catch(() => caches.match(req).then(r => r || Response.error())));
   }

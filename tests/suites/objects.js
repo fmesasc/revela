@@ -599,16 +599,17 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     Object.defineProperties(mv, { availableAnimations: { value: ['Survey', 'Walk', 'Wave'] }, animationName: { get: () => name, set: v => { name = v; } },
       cameraOrbit: { get: () => orbit, set: v => { orbit = v; } },
       play: { value: o => { const e = name + (o ? ' una vez' : ''); if (log.at(-1) !== e) log.push(e); } }, pause: { value: () => log.push('pausa') } });
-    mv.style.cssText = 'position:fixed;left:0;top:0;width:10px;height:10px;transition-duration:400ms';
+    // (A movement long enough that a slow machine still sees it walking; its end, waited for, not guessed.)
+    mv.style.cssText = 'position:fixed;left:0;top:0;width:10px;height:10px;transition-duration:1500ms';
     D.body.appendChild(mv);
     try {
-      mv.animate([{ translate: '0px 0px' }, { translate: '300px 0px' }], { duration: 400 });
+      mv.animate([{ translate: '0px 0px' }, { translate: '300px 0px' }], { duration: 1500 });
       mv.dispatchEvent(new W.TransitionEvent('transitionstart', { propertyName: 'translate', bubbles: true }));
       mv.dispatchEvent(new W.TransitionEvent('transitionstart', { propertyName: 'opacity', bubbles: true }));
       await sleep(150);
       eq(log.join(), 'Walk', 'anda mientras se mueve (una vez, aunque empiecen varias propiedades)');
       assert(/^-90(\.0)?deg/.test(mv.cameraOrbit), 'hacia la derecha: se ve de perfil mirando a la derecha');
-      await sleep(450);
+      for (let i = 0; i < 100 && log.length < 2; i++) await sleep(50);
       eq(log.join(), 'Walk,Wave una vez', 'al llegar, la otra animación');
       assert(/^0(\.0)?deg/.test(mv.cameraOrbit), 'y mira al público');
       mv.dispatchEvent(new W.Event('finished')); await sleep(20); eq(log.at(-1), 'Survey', 'y vuelve al reposo');
