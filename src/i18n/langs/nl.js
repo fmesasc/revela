@@ -1,6 +1,15 @@
 // Dutch interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Sesiones abiertas": "Actieve sessies",
+  "Dónde está abierta tu cuenta. Si ves una sesión que no reconoces, ciérrala y revisa la seguridad de tu cuenta de Google.": "Waar je account is aangemeld. Zie je een sessie die je niet herkent, sluit die dan af en controleer de beveiliging van je Google-account.",
+  "Cerrar las demás sesiones": "Andere sessies afmelden",
+  "Aplicación de escritorio": "Desktopapp",
+  "Este dispositivo": "Dit apparaat",
+  "Última actividad: {d}": "Laatst actief: {d}",
+  "Inicio: {d}": "Aangemeld: {d}",
+  "¿Cerrar la sesión en todos los demás dispositivos? Tendrán que volver a iniciar sesión.": "Afmelden op alle andere apparaten? Daar moet je dan opnieuw inloggen.",
+  "Sesiones cerradas: {n}": "Afgemelde sessies: {n}",
   "Embajadores de Revela": "Revela-ambassadeurs",
   "¿Enseñas Revela a tus compañeros? Como embajador o embajadora tienes Pro gratis, una insignia verificable y materiales para formar a tu claustro.": "Laat je Revela zien aan je collega's? Als ambassadeur krijg je Pro gratis, een verifieerbare badge en materiaal om je team te trainen.",
   "Hazte embajador": "Word ambassadeur",

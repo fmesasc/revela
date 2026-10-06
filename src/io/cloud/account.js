@@ -96,6 +96,10 @@ export async function signIn() {
   catch (e) { if (e.status === 400 && e.data?.error === 'terms') throw new Error('TERMS'); throw e; }
   return refreshAccount();
 }
+// My open sessions (/api/sessions): where this account is signed in; closing one, or all the others.
+export const sessions = () => api('sessions').then(r => r.sessions);
+export const endSession = id => api('sessions', { id });
+export const endOtherSessions = () => api('sessions', { others: true });
 export async function signOut() {
   try { await api('logout', {}); } catch {}
   setBearer(''); me = null; changed();

@@ -1,6 +1,15 @@
 // Galician interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Sesiones abiertas": "Sesións abertas",
+  "Dónde está abierta tu cuenta. Si ves una sesión que no reconoces, ciérrala y revisa la seguridad de tu cuenta de Google.": "Onde está aberta a túa conta. Se ves unha sesión que non recoñeces, péchaa e revisa a seguridade da túa conta de Google.",
+  "Cerrar las demás sesiones": "Pechar as demais sesións",
+  "Aplicación de escritorio": "Aplicación de escritorio",
+  "Este dispositivo": "Este dispositivo",
+  "Última actividad: {d}": "Última actividade: {d}",
+  "Inicio: {d}": "Inicio: {d}",
+  "¿Cerrar la sesión en todos los demás dispositivos? Tendrán que volver a iniciar sesión.": "Pechar a sesión en todos os demais dispositivos? Haberá que iniciar sesión de novo.",
+  "Sesiones cerradas: {n}": "Sesións pechadas: {n}",
   "Embajadores de Revela": "Embaixadores de Revela",
   "¿Enseñas Revela a tus compañeros? Como embajador o embajadora tienes Pro gratis, una insignia verificable y materiales para formar a tu claustro.": "Ensinas Revela aos teus compañeiros? Como embaixador ou embaixadora tes Pro gratis, unha insignia verificable e materiais para formar o claustro.",
   "Hazte embajador": "Faite embaixador",

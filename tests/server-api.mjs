@@ -7,7 +7,7 @@ import { summarize, bump, toCsv, cleanEntry, featureOf } from '../server/cloudfl
 import { verifyAccess, resetAccessCerts, resetPromoCache } from '../server/cloudflare/admin.js';
 import { ticketToken, render } from '../server/cloudflare/mail.js';
 import { verifyBody } from '../server/blender/gate.js';
-import { verifyStripe, sha256, shortCode, settings, stripeConf, billingMode } from '../server/cloudflare/api.js';
+import { verifyStripe, sha256, shortCode, settings, stripeConf, billingMode, deviceOf } from '../server/cloudflare/api.js';
 
 function fakeStorage() {
   const m = new Map(); let alarm = null;
@@ -35,7 +35,7 @@ env.FETCH = async (url, init = {}) => {
   const u = String(url);
   if (u.startsWith('https://oauth2.googleapis.com/tokeninfo')) {
     const t = new URL(u).searchParams.get('access_token');
-    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' }, 'tok-gil': { sub: '1212', email: 'gil@example.com' }, 'tok-noa': { sub: '1313', email: 'noa@example.com' }, 'tok-pia': { sub: '1414', email: 'pia@example.com' }, 'tok-tess': { sub: '1515', email: 'tess@example.com' }, 'tok-ivo': { sub: '1616', email: 'ivo@example.com' }, 'tok-ada': { sub: '1717', email: 'ada@example.com' }, 'tok-bea': { sub: '1818', email: 'bea@example.com' }, 'tok-cid': { sub: '1919', email: 'cid@example.com' }, 'tok-dan': { sub: '2020', email: 'dan@example.com' }, 'tok-zoe': { sub: '2121', email: 'zoe@example.com' }, 'tok-kai': { sub: '2222', email: 'kai@example.com' } }[t];
+    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' }, 'tok-gil': { sub: '1212', email: 'gil@example.com' }, 'tok-noa': { sub: '1313', email: 'noa@example.com' }, 'tok-pia': { sub: '1414', email: 'pia@example.com' }, 'tok-tess': { sub: '1515', email: 'tess@example.com' }, 'tok-ivo': { sub: '1616', email: 'ivo@example.com' }, 'tok-ada': { sub: '1717', email: 'ada@example.com' }, 'tok-bea': { sub: '1818', email: 'bea@example.com' }, 'tok-cid': { sub: '1919', email: 'cid@example.com' }, 'tok-dan': { sub: '2020', email: 'dan@example.com' }, 'tok-zoe': { sub: '2121', email: 'zoe@example.com' }, 'tok-kai': { sub: '2222', email: 'kai@example.com' }, 'tok-lia': { sub: '2323', email: 'lia@example.com' } }[t];
     if (t === 'tok-otraapp') return Response.json({ aud: 'otra-app', sub: '333', email: 'x@example.com', email_verified: 'true' });
     return who ? Response.json({ aud: CID, ...who, email_verified: 'true', expires_in: 3000 }) : new Response('bad', { status: 400 });
   }
@@ -609,6 +609,44 @@ ok((await req('GET', '/api/me', { headers: { Cookie: ana } })).status === 401, '
 ok((await req('GET', '/api/me', { origin: 'tauri://localhost', headers: { Authorization: 'Bearer ' + desk } })).status === 200, 'la de escritorio sigue (cada sesión por separado)');
 ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir también en /api/s');
 
+// ---- My open sessions: seeing them (device, place, last use) and closing one or all the others ----
+{
+  const UA = { win: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36',
+    iphone: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1',
+    edge: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36 Edg/129.0',
+    android: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36',
+    mac: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) Gecko/20100101 Firefox/131.0', cros: 'Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36' };
+  ok(deviceOf(UA.win) === 'Chrome · Windows' && deviceOf(UA.iphone) === 'Safari · iPhone' && deviceOf(UA.edge) === 'Edge · Windows' && deviceOf(UA.android) === 'Chrome · Android'
+    && deviceOf(UA.mac) === 'Firefox · macOS' && deviceOf(UA.cros) === 'Chrome · ChromeOS' && deviceOf('') === '', 'sesiones: el dispositivo, en claro');
+  const lia = ua => req('POST', '/api/login', { body: { accessToken: 'tok-lia', terms: TERMS }, headers: { 'User-Agent': UA[ua] } }).then(cookieFrom);
+  const s1 = await lia('win'), s2 = await lia('iphone');
+  const list = async c => (await (await req('GET', '/api/sessions', { headers: { Cookie: c } })).json()).sessions;
+  let L = await list(s1);
+  ok(L.length === 2 && L.filter(x => x.current).length === 1 && L.find(x => x.current).device === 'Chrome · Windows' && L.some(x => x.device === 'Safari · iPhone')
+    && L.every(x => /^[\w-]{16}$/.test(x.id) && x.last && x.expires > Date.now() && x.kind === 'web'), 'sesiones: las dos, y cuál es esta: ' + JSON.stringify(L));
+  ok(!JSON.stringify(L).includes(s1.split('=')[1].split('.').pop()), 'sesiones: la lista no deja ver el secreto');
+  // (Its last use is noted, at most once an hour.)
+  { const m = acc('2323').ctx.storage.m, all = m.get('sessions'); for (const v of Object.values(all)) v.last = Date.now() - 2 * 3600e3; m.set('sessions', all);
+    await req('GET', '/api/me', { headers: { Cookie: s2, 'User-Agent': UA.iphone } });
+    const last = Object.values(m.get('sessions')).map(v => [v.device, Date.now() - v.last]);
+    ok(last.find(x => x[0] === 'Safari · iPhone')[1] < 60e3 && last.find(x => x[0] === 'Chrome · Windows')[1] > 3600e3, 'sesiones: el último uso se anota (solo el de la que se usa): ' + JSON.stringify(last));
+    L = await list(s1); }
+  let r = await req('POST', '/api/sessions', { headers: { Cookie: s1 }, body: { id: L.find(x => !x.current).id } });
+  ok(r.status === 200 && (await r.json()).ended === 1, 'sesiones: cerrar la del móvil');
+  ok((await req('GET', '/api/me', { headers: { Cookie: s2 } })).status === 401 && (await req('GET', '/api/me', { headers: { Cookie: s1 } })).status === 200, 'sesiones: la cerrada ya no vale; esta, sí');
+  r = await req('POST', '/api/sessions', { headers: { Cookie: s1 }, body: { id: L.find(x => x.current).id } });
+  ok((await r.json()).ended === 0 && (await req('GET', '/api/me', { headers: { Cookie: s1 } })).status === 200, 'sesiones: esta no se cierra así (para eso, «Cerrar sesión»)');
+  const s3 = await lia('android'), s4 = await lia('edge');
+  r = await req('POST', '/api/sessions', { headers: { Cookie: s1 }, body: { others: true } });
+  ok((await r.json()).ended === 2 && (await list(s1)).length === 1, 'sesiones: cerrar todas las demás');
+  ok((await req('GET', '/api/me', { headers: { Cookie: s3 } })).status === 401 && (await req('GET', '/api/me', { headers: { Cookie: s4 } })).status === 401, 'sesiones: las demás ya no valen');
+  ok((await req('POST', '/api/sessions', { headers: { Cookie: s1 }, body: { id: 'corto' } })).status === 400 && (await req('POST', '/api/sessions', { headers: { Cookie: s1 }, body: {} })).status === 400, 'sesiones: petición mala → 400');
+  ok((await req('GET', '/api/sessions')).status === 401 && (await req('POST', '/api/sessions', { body: { others: true } })).status === 401, 'sesiones: sin sesión, nada');
+  ok((await req('POST', '/api/sessions', { headers: { Cookie: s1 }, body: { others: true }, origin: 'https://malo.example' })).status >= 400, 'sesiones: desde otra web, no');
+  const ex = await (await req('GET', '/api/account/export', { headers: { Cookie: s1 } })).json();
+  ok(ex.sessions?.[0]?.device === 'Chrome · Windows', 'sesiones: también en «Descargar mis datos»');
+}
+
 // ---- Unused accounts: warned 30 and 7 days before; deleted at 24 months (the date simulated) ----
 {
   const S = acc('888').ctx.storage.m, T = acc('999').ctx.storage.m, day0 = Date.parse(T.get('lastSeen'));
@@ -798,6 +836,20 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok(p1.users.length === 2 && p1.cursor && p2.users.length === 2 && !p2.users.some(u => p1.users.some(v => v.sub === u.sub)), 'directorio: por páginas'); }
   x = await A('GET', '/users/1414');
   ok(x.status === 200 && x.j.profile.email === 'pia@example.com' && x.j.credits === 50 && x.j.lots.length === 1 && x.j.ledger[0].reason === 'trial' && x.j.sessions.n === 1 && x.j.docs === 0 && x.j.directory.sub === '1414', 'ficha de la cuenta: ' + JSON.stringify(x.j).slice(0, 300));
+  // Closing a person's sessions (a stolen account): one, or all; always with a reason, in the audit log.
+  {
+    const lia = () => req('POST', '/api/login', { body: { accessToken: 'tok-lia', terms: TERMS } }).then(cookieFrom), l1 = await lia(), l2 = await lia(), L = (await A('GET', '/users/2323')).j.sessions.list;
+    ok(L.length === 2 && L.every(s => /^[\w-]{16}$/.test(s.id) && s.kind === 'web' && 'device' in s && 'where' in s && s.last), 'ficha: las sesiones, una a una: ' + L.length);
+    ok((await A('POST', '/sessions-end', { body: { sub: '2323' } })).status === 400, 'cerrar sesiones: sin motivo, no');
+    ok((await A('POST', '/sessions-end', { body: { sub: '2323', reason: 'x', id: 'mal' } })).status === 400, 'cerrar sesiones: id malo → 400');
+    ok((await A('POST', '/sessions-end', { body: { sub: 'nadie', reason: 'x' } })).status === 404, 'cerrar sesiones: cuenta que no existe → 404');
+    let y = await A('POST', '/sessions-end', { body: { sub: '2323', id: L[0].id, reason: 'Un inicio de sesión que no reconoce' } });
+    ok(y.status === 200 && y.j.ended === 1 && (await A('GET', '/users/2323')).j.sessions.n === 1, 'cerrar sesiones: una');
+    y = await A('POST', '/sessions-end', { body: { sub: '2323', reason: 'Cuenta robada' } });
+    ok(y.j.ended === 1 && (await req('GET', '/api/me', { headers: { Cookie: l1 } })).status === 401 && (await req('GET', '/api/me', { headers: { Cookie: l2 } })).status === 401, 'cerrar sesiones: todas; ya no vale ninguna');
+    const au = (await A('GET', '/audit?target=2323')).j.entries;
+    ok(au.filter(e => e.action === 'sessions-end').length === 2 && au.some(e => e.reason === 'Cuenta robada' && e.by === 'jefe@example.com'), 'cerrar sesiones: en el registro de auditoría');
+  }
   ok((await A('GET', '/users/nadie')).status === 404, 'ficha de una cuenta que no existe: 404');
 
   // Credits: added (with an email), taken (never below zero), audited.

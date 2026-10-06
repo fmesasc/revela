@@ -14,6 +14,8 @@
 //   POST /api/login            { accessToken, terms?, lang? } (Google, issued to Revela's client) → session
 //                              (a new account needs terms: the version of the terms accepted; else 400 { error: 'terms' })
 //   POST /api/logout
+//   GET  /api/sessions         → { sessions: [{ id, kind, device, where, created, last, expires, current? }] }   (my open sessions)
+//   POST /api/sessions         { id } | { others: true } → { ended }   (closing one, or all but this one)
 //   GET  /api/me               → { email, plan, credits, features, billing, billingTest, terms (accepted the current ones?), docs,
 //                              trialDays (Pro's free trial on offer to this account; 0: none), trial? ({ until }: in a trial now) }
 //   POST /api/terms            { version, lang? }       (accepting the current terms, once; accounts from before)
@@ -73,7 +75,7 @@ const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').
 const random = n => b64url(crypto.getRandomValues(new Uint8Array(n)));
 export const sha256 = async s => b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(s))));
 const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
-const DAY = 864e5;
+const DAY = 864e5, HOUR = 36e5;
 
 // ---- Settings (wrangler.toml [vars]; secrets with `wrangler secret put`) -----------------
 export function settings(env) {
@@ -333,7 +335,7 @@ export class Account {
     const op = new URL(req.url).pathname.split('/').pop(), a = req.method === 'POST' ? await req.json() : {};
     const s = settings(this.env);
     switch (op) {
-      case 'login': {                                      // { sub, email, name?, kind, terms?, lang? } → { secret, days, fresh (a new account) }
+      case 'login': {                                      // { sub, email, name?, kind, device?, where?, terms?, lang? } → { secret, days, fresh (a new account) }
         let fresh = false;
         const prof = await this.get('profile', null), terms = a.terms === s.termsVersion ? { version: s.termsVersion, at: Date.now() } : null;
         if (!prof && !terms) return this.json({ error: 'terms', version: s.termsVersion });   // (a new account accepts the terms first)
@@ -347,21 +349,39 @@ export class Account {
         const days = a.kind === 'desktop' ? 90 : 30;
         // (At most 20 sessions: the oldest go.)
         const kept = Object.entries(sessions).filter(([, v]) => v.expires > Date.now()).sort((x, y) => y[1].created - x[1].created).slice(0, 19);
-        await this.put({ sessions: { ...Object.fromEntries(kept), [await sha256(secret)]: { created: Date.now(), expires: Date.now() + days * DAY, kind: a.kind || 'web' } } });
+        // (device and where: for «Sesiones abiertas», so its owner can tell a session that isn't theirs — sessionPlace().)
+        await this.put({ sessions: { ...Object.fromEntries(kept), [await sha256(secret)]: { created: Date.now(), last: Date.now(), expires: Date.now() + days * DAY, kind: a.kind || 'web', ...sessionPlace(a) } } });
         return this.json({ secret, days, ...(fresh && { fresh }) });
       }
-      case 'check': {                                      // { secret } → ok?
+      case 'check': {                                      // { secret, device?, where? } → ok?
         const sessions = await this.get('sessions', {}), h = await sha256(a.secret || ''), v = sessions[h], ok = !!v && v.expires > Date.now();
         if (ok) await this.seen();
         // A session in use doesn't end: with less than two thirds of its time left, it gets its full time again
         // (30 days on the web, 90 in the desktop app, from now). Only an unused one runs out.
+        // Its last use (and where from) is noted at most once an hour, to spare the storage.
         let renewed = 0;
-        if (ok) { const days = v.kind === 'desktop' ? 90 : 30; if (v.expires - Date.now() < days * DAY * 2 / 3) { sessions[h] = { ...v, expires: Date.now() + days * DAY }; await this.put({ sessions }); renewed = days; } }
+        if (ok) {
+          const days = v.kind === 'desktop' ? 90 : 30, renew = v.expires - Date.now() < days * DAY * 2 / 3, stale = Date.now() - (v.last || v.created) > HOUR;
+          if (renew || stale) { sessions[h] = { ...v, last: Date.now(), ...sessionPlace(a, v), ...(renew && { expires: Date.now() + days * DAY }) }; await this.put({ sessions }); if (renew) renewed = days; }
+        }
         return this.json({ ok, ...(renewed && { renewed }), ...(ok && (await this.get('blocked', null)) && { blocked: true }) });
       }
       case 'logout': {
         const sessions = await this.get('sessions', {}); delete sessions[await sha256(a.secret || '')];
         await this.put({ sessions }); return this.json({ ok: true });
+      }
+      // «Sesiones abiertas» in My account and in the administration: each one by a short id (the start of its
+      // hash: it can't sign anyone in), the newest use first; 'current' is the one asking.
+      case 'sessions': {                                   // { secret? } → { sessions: [{ id, kind, device, where, created, last, expires, current? }] }
+        const mine = a.secret ? await sha256(a.secret) : '';
+        return this.json({ sessions: sessionList(await this.get('sessions', {}), mine) });
+      }
+      case 'sessions-end': {                               // { ids?, keep? } → { ended }   (ids: those; none: all of them; never keep's)
+        const sessions = await this.get('sessions', {}), keep = a.keep ? await sha256(a.keep) : '', ids = Array.isArray(a.ids) ? a.ids.map(String) : null;
+        let ended = 0;
+        for (const h of Object.keys(sessions)) if (h !== keep && (!ids || ids.includes(h.slice(0, 16)))) { delete sessions[h]; ended++; }
+        if (ended) await this.put({ sessions });
+        return this.json({ ended });
       }
       case 'me': {
         const prof = await this.get('profile', {}), own = await this.plan(), p = await this.get('plan', null), teamId = await this.get('team', null);
@@ -492,7 +512,7 @@ export class Account {
       // Cloud documents: the owner's list (with the plan's limit), and "shared with me" (in the 'e:' + email objects).
       // Everything this account holds (to hand over), and wiping it (the account is closed).
       case 'export': return this.json({ profile: await this.get('profile', {}), plan: await this.get('plan', null), credits: await this.get('credits', 0), lastSeen: await this.get('lastSeen', null), mailOff: await this.get('mailOff', []),
-        ledger: await this.get('ledger', []), docs: await this.get('docs', []), folders: await this.get('folders', []), sessions: Object.values(await this.get('sessions', {})).map(v => ({ created: v.created, expires: v.expires, kind: v.kind })) });
+        ledger: await this.get('ledger', []), docs: await this.get('docs', []), folders: await this.get('folders', []), sessions: Object.values(await this.get('sessions', {})).map(v => ({ created: v.created, last: v.last || v.created, expires: v.expires, kind: v.kind, device: v.device || '', where: v.where || '' })) });
       case 'wipe': {
         const prof = await this.get('profile', {}), out = { docs: (await this.get('docs', [])).map(d => d.id), customer: await this.get('customer', null), customerTest: await this.get('customerTest', null), email: prof.email || null, lang: prof.lang || null };
         await this.ctx.storage.deleteAll(); if (prof.sub) await directoryRemove(this.env, prof.sub); return this.json(out);
@@ -579,7 +599,7 @@ export class Account {
         const sessions = Object.values(await this.get('sessions', {})).filter(v => v.expires > Date.now());
         return this.json({ profile: prof, plan: await this.plan(), until: await this.proUntil(), stored: await this.get('plan', null), proGift: await this.get('proGift', null),
           credits: await this.get('credits', 0), debt: await this.get('debt', 0), lots: await this.lots(), ledger: (await this.get('ledger', [])).slice(-50).reverse(),
-          sessions: { n: sessions.length, kinds: sessions.map(v => v.kind) }, docs: (await this.get('docs', [])).length, team: await this.get('team', null),
+          sessions: { n: sessions.length, kinds: sessions.map(v => v.kind), list: sessionList(await this.get('sessions', {})) }, docs: (await this.get('docs', [])).length, team: await this.get('team', null),
           blocked: await this.get('blocked', null), lastSeen: await this.get('lastSeen', null), mailOff: await this.get('mailOff', []), customer: !!(await this.get('customer', null)), refunded: await this.get('refunded', []),
           billingTest: await this.get('billingTest', null), customerTest: !!(await this.get('customerTest', null)),
           trial: { used: !!(await this.get('trialUsed', null)), usedTest: !!(await this.get('trialUsedTest', null)), paid: !!(await this.get('proPaid', null)), paidTest: !!(await this.get('proPaidTest', null)) } });
@@ -697,10 +717,25 @@ const parseToken = t => { const [a, b] = String(t || '').split('.'); if (!a || !
 const cookieOf = req => (req.headers.get('Cookie') || '').split(/;\s*/).map(c => c.split('=')).find(([k]) => k === COOKIE)?.[1] || '';
 
 // Who is asking: a valid session (cookie on the web, bearer in the desktop app), or null.
+// The device and the place a session is used from, said plainly (for «Sesiones abiertas»): the browser and the system
+// from the User-Agent, and the city and country Cloudflare reads from the IP address (approximate; the address
+// itself isn't kept). Kept with the session and gone with it.
+export function deviceOf(ua = '') {
+  const os = /iPad/.test(ua) ? 'iPad' : /iPhone|iPod/.test(ua) ? 'iPhone' : /Android/.test(ua) ? 'Android' : /CrOS/.test(ua) ? 'ChromeOS' : /Windows/.test(ua) ? 'Windows'
+    : /Macintosh|Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : '';
+  const br = /Edg\//.test(ua) ? 'Edge' : /OPR\/|Opera/.test(ua) ? 'Opera' : /SamsungBrowser/.test(ua) ? 'Samsung Internet' : /Firefox\/|FxiOS/.test(ua) ? 'Firefox'
+    : /Chrome\/|CriOS/.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : '';
+  return [br, os].filter(Boolean).join(' · ');
+}
+export const sessionClient = req => ({ device: deviceOf(req.headers.get('User-Agent') || ''), where: [req.cf?.city, req.cf?.country].filter(Boolean).join(', ') });
+const sessionList = (all, mine = '') => Object.entries(all).filter(([, v]) => v.expires > Date.now()).sort((x, y) => (y[1].last || y[1].created) - (x[1].last || x[1].created))
+  .map(([h, v]) => ({ id: h.slice(0, 16), kind: v.kind, device: v.device || '', where: v.where || '', created: v.created, last: v.last || v.created, expires: v.expires, ...(h === mine && { current: true }) }));
+const sessionPlace = (a, before = {}) => ({ device: String(a.device || before.device || '').slice(0, 60), where: String(a.where || before.where || '').slice(0, 80) });
+
 async function sessionOf(req, env) {
   const bearer = (req.headers.get('Authorization') || '').replace(/^Bearer /, ''), fromCookie = cookieOf(req);
   const raw = bearer || fromCookie, t = parseToken(raw); if (!t) return null;
-  const r = await call(acct(env, t.sub), 'check', { secret: t.secret });
+  const r = await call(acct(env, t.sub), 'check', { secret: t.secret, ...sessionClient(req) });
   return r.ok ? { sub: t.sub, secret: t.secret, via: bearer ? 'bearer' : 'cookie', ...(r.blocked && { blocked: true }), ...(r.renewed && { renewed: r.renewed, raw }) } : null;
 }
 
@@ -787,7 +822,7 @@ export async function handleApi(req, env, url) {
     const who = await googleUser(body.accessToken, body.idToken, s.clientId, env.FETCH || fetch);
     if (!who) return json({ error: 'not signed in with Google' }, 401);
     const kind = body.kind === 'desktop' && !webOrigin ? 'desktop' : 'web', lang = langOf(body.lang);
-    const r = await call(acct(env, who.sub), 'login', { sub: who.sub, email: who.email, name: who.name, kind, lang, terms: body.terms });
+    const r = await call(acct(env, who.sub), 'login', { sub: who.sub, email: who.email, name: who.name, kind, lang, terms: body.terms, ...sessionClient(req) });
     if (r.error === 'terms') return json(r, 400);
     if (r.fresh && body.campaign) await campaignSignup(env, who.sub, String(body.campaign));   // (the campaign that brought a new account: crm.js)
     if (lang) await call(acct(env, 'e:' + who.email), 'set-lang', { lang });   // (for emails to this address: shares, invitations)
@@ -825,7 +860,7 @@ export async function handleApi(req, env, url) {
     return handleCommunity(path, req, body, url, env, who, json, { webOrigin, takeQuota });
   }
   // A blocked account: its data and its account, yes; the rest, no.
-  if (me?.blocked && !['/me', '/logout', '/terms', '/mail/prefs', '/account/export', '/account/delete'].includes(path))
+  if (me?.blocked && !['/me', '/logout', '/sessions', '/terms', '/mail/prefs', '/account/export', '/account/delete'].includes(path))
     return json({ error: 'blocked', message: 'Esta cuenta está bloqueada. Si crees que es un error, escríbenos desde Revela ▸ Vista ▸ Informar de un problema.' }, 403);
   // Cloud documents: a link may give access without a session (to read).
   if (isDocs) {
@@ -877,6 +912,13 @@ export async function handleApi(req, env, url) {
     case '/logout': {
       await call(A, 'logout', { secret: me.secret });
       return json({ ok: true }, 200, me.via === 'cookie' ? { 'Set-Cookie': `${COOKIE}=; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=0` } : {});
+    }
+    // My open sessions: the list, and closing one (id) or all the others (others: true) — never this one: that's /logout.
+    case '/sessions': {
+      if (req.method === 'GET') return json(await call(A, 'sessions', { secret: me.secret }));
+      if (req.method !== 'POST') return json({ error: 'method' }, 405);
+      if (!body.others && !/^[\w-]{16}$/.test(body.id || '')) return json({ error: 'bad request' }, 400);
+      return json(await call(A, 'sessions-end', { ...(!body.others && { ids: [body.id] }), keep: me.secret }));
     }
     case '/desktop/approve': {                             // the signed-in browser gives the desktop app its own session
       if (me.via !== 'cookie' || !/^[\w-]{20,64}$/.test(body.nonce || '')) return json({ error: 'bad request' }, 400);

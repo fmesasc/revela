@@ -1,6 +1,15 @@
 // Basque interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Sesiones abiertas": "Saio irekiak",
+  "Dónde está abierta tu cuenta. Si ves una sesión que no reconoces, ciérrala y revisa la seguridad de tu cuenta de Google.": "Non dagoen irekita zure kontua. Ezagutzen ez duzun saio bat ikusten baduzu, itxi ezazu eta berrikusi zure Google kontuaren segurtasuna.",
+  "Cerrar las demás sesiones": "Itxi gainerako saioak",
+  "Aplicación de escritorio": "Mahaigaineko aplikazioa",
+  "Este dispositivo": "Gailu hau",
+  "Última actividad: {d}": "Azken jarduera: {d}",
+  "Inicio: {d}": "Hasiera: {d}",
+  "¿Cerrar la sesión en todos los demás dispositivos? Tendrán que volver a iniciar sesión.": "Saioa itxi gainerako gailu guztietan? Berriro hasi beharko da saioa.",
+  "Sesiones cerradas: {n}": "Itxitako saioak: {n}",
   "Embajadores de Revela": "Revelaren enbaxadoreak",
   "¿Enseñas Revela a tus compañeros? Como embajador o embajadora tienes Pro gratis, una insignia verificable y materiales para formar a tu claustro.": "Revela erakusten diezu lankideei? Enbaxadore gisa Pro doan, insignia egiaztagarria eta klaustroa prestatzeko materialak dituzu.",
   "Hazte embajador": "Egin zaitez enbaxadore",

@@ -725,6 +725,12 @@ body.file-drag::after{content:attr(data-drop-hint);position:fixed;left:50%;botto
 #account-modal .acc-buy{display:flex;gap:6px;flex-wrap:wrap}
 /* Stripe's test mode (the server says so): nothing is charged */
 #account-modal .acc-test,#team-modal .acc-test{margin:8px 0;padding:8px 10px;border-radius:8px;border:1px dashed #b7791f;background:rgba(214,158,46,.12);color:inherit;font-size:13px}
+/* Open sessions: one per line — device, place and times; «Cerrar» at the end */
+#account-modal .acc-sess-list{list-style:none;padding:0;margin:6px 0}
+#account-modal .acc-sess-list li{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line2)}
+#account-modal .acc-sess-list li>span{flex:1;min-width:0}#account-modal .acc-sess-list small{display:block;color:var(--txt2);font-size:12px}
+#account-modal .acc-sess-list .ms{font-size:22px;color:var(--txt2)}
+#account-modal .acc-sess-here{font-style:normal;font-size:11px;padding:1px 7px;border-radius:10px;background:rgba(109,93,252,.15);color:#6d5dfc;font-weight:600}
 #account-modal .acc-code{margin:10px 0;padding:10px;border-radius:8px;background:var(--bg);font-size:14px}
 #account-modal .acc-code b{display:block;font:700 28px ui-monospace,monospace;letter-spacing:6px;margin-top:6px}
 @media (max-width:600px){.titlebar .plan-btn span{display:none}}

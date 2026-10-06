@@ -112,6 +112,8 @@ export function openAccount({ buy } = {}) {
     if (buy && BUYABLE.includes(buy) && me.billing && !(me.plan === 'pro' && buy.startsWith('pro'))) { const b = buy; buy = null; acc.buy(b).catch(e => alertDialog(errorText(e))); }
     // (trialDays: Pro's free trial on offer to this account — the server decides; 0: none.)
     const pro = me.plan === 'pro', trialDays = !pro && me.billing && me.trialDays > 0 ? me.trialDays | 0 : 0, until = me.until ? new Date(me.until).toLocaleDateString(currentLang(), { dateStyle: 'long' }) : '';
+    // (Drawn again when the account is refreshed: the sections the person had open stay open.)
+    const opened = [...body.querySelectorAll('details[open]')].map(d => d.className);
     body.innerHTML = `<div class="acc-who">${esc(me.email)}</div>
       ${me.blocked ? `<p class="host-help acc-blocked" role="alert">${t('Tu cuenta está bloqueada: la IA y la nube no están disponibles. Si crees que es un error, usa «Informar de un problema».')}</p>` : ''}
       <div class="acc-plan"><span class="acc-badge${pro ? ' pro' : ''}">${t(pro ? 'Pro' : 'Gratis')}</span>${pro && until ? `<small>${t(me.trial ? 'Prueba gratis hasta:' : 'Renovación:')} ${esc(until)}</small>` : ''}</div>
@@ -145,10 +147,15 @@ export function openAccount({ buy } = {}) {
         <label class="fr-chk"><input type="checkbox" class="acc-mail-opt" data-kind="credits"> ${t('Avisarme cuando mis créditos estén a punto de caducar')}</label>
         <label class="fr-chk"><input type="checkbox" class="acc-mail-opt" data-kind="trialEnding"> ${t('Avisarme antes de que acabe mi prueba de Pro')}</label>
         <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 acc-mail-test">${t('Enviarme un correo de prueba')}</button></div></details>
+      <details class="acc-sess"><summary>${t('Sesiones abiertas')}</summary>
+        <p class="host-help">${t('Dónde está abierta tu cuenta. Si ves una sesión que no reconoces, ciérrala y revisa la seguridad de tu cuenta de Google.')}</p>
+        <ul class="acc-sess-list"></ul>
+        <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 acc-sess-others" hidden>${t('Cerrar las demás sesiones')}</button></div></details>
       <details class="acc-data"><summary>${t('Tus datos')}</summary>
         <p class="host-help">${t('Descarga una copia de todo lo que guarda tu cuenta, o elimínala con todas tus presentaciones en la nube. Las facturas las conserva Stripe, como exige la ley.')}</p>
         <div class="fr-actions" style="justify-content:flex-start;flex-wrap:wrap"><button type="button" class="mini2 acc-export">${t('Descargar mis datos')}</button>
           <button type="button" class="mini2 acc-delete">${t('Eliminar mi cuenta')}</button></div></details>`;
+    for (const c of opened) { const d = body.querySelector(`details[class="${c}"]`); if (d) d.open = true; }
     body.querySelectorAll('[data-buy]').forEach(b => b.addEventListener('click', () => acc.buy(b.dataset.buy).catch(e => alertDialog(errorText(e)))));
     body.querySelector('.acc-portal')?.addEventListener('click', () => acc.manageBilling().catch(e => alertDialog(errorText(e))));
     body.querySelector('.acc-out').addEventListener('click', async () => { await acc.signOut(); render(); });
@@ -208,6 +215,29 @@ export function openAccount({ buy } = {}) {
       e.target.disabled = true;
       try { await acc.api('mail/test', {}); alertDialog(t('Enviado a {email}. Si no te llega en unos minutos, mira en «Spam».').replace('{email}', me.email)); }
       catch (err) { alertDialog(err.status === 429 ? t('Ya has pedido uno hace poco: espera una hora para pedir otro.') : err.status === 503 ? t('Los correos aún no están activados en este servidor.') : errorText(err)); }
+    });
+    // Open sessions: where the account is signed in (device, approximate place, last use); closing one, or all the
+    // others — a lost phone, a shared computer, a session that isn't mine. (This one closes with «Cerrar sesión».)
+    const sess = body.querySelector('.acc-sess'), paintSessions = async () => {
+      const list = sess.querySelector('.acc-sess-list'), when = ms => new Date(ms).toLocaleString(currentLang(), { dateStyle: 'medium', timeStyle: 'short' });
+      let all; try { all = await acc.sessions(); } catch (e) { list.innerHTML = `<li>${esc(errorText(e))}</li>`; return; }
+      list.innerHTML = all.map(s => {
+        const os = s.device.split(' · ').pop(), name = s.kind === 'desktop' ? t('Aplicación de escritorio') + (os ? ' · ' + os : '') : s.device || t('Navegador');
+        const icon = s.kind === 'desktop' ? 'desktop_windows' : /iPhone|Android/.test(s.device) ? 'smartphone' : /iPad/.test(s.device) ? 'tablet' : 'computer';
+        return `<li data-id="${esc(s.id)}"><i class="ms">${icon}</i><span><b>${esc(name)}</b>${s.current ? ` <em class="acc-sess-here">${t('Este dispositivo')}</em>` : ''}
+          <small>${[s.where, t('Última actividad: {d}').replace('{d}', when(s.last)), t('Inicio: {d}').replace('{d}', when(s.created))].filter(Boolean).map(esc).join(' · ')}</small></span>
+          ${s.current ? '' : `<button type="button" class="mini2 acc-sess-end">${t('Cerrar')}</button>`}</li>`;
+      }).join('');
+      sess.querySelector('.acc-sess-others').hidden = !all.some(s => !s.current);
+      list.querySelectorAll('.acc-sess-end').forEach(b => b.addEventListener('click', async () => {
+        b.disabled = true; try { await acc.endSession(b.closest('li').dataset.id); } catch (e) { alertDialog(errorText(e)); } paintSessions();
+      }));
+    };
+    sess.addEventListener('toggle', () => { if (sess.open) paintSessions(); });
+    sess.querySelector('.acc-sess-others').addEventListener('click', async () => {
+      if (!(await confirmDialog(t('¿Cerrar la sesión en todos los demás dispositivos? Tendrán que volver a iniciar sesión.'), { ok: t('Cerrar las demás sesiones') }))) return;
+      try { const r = await acc.endOtherSessions(); (await import('../shell/toast.js')).toast(t('Sesiones cerradas: {n}').replace('{n}', r.ended)); } catch (e) { alertDialog(errorText(e)); }
+      paintSessions();
     });
     body.querySelector('.acc-export').addEventListener('click', async () => {
       try { const d = await acc.api('account/export'); const a = document.createElement('a');

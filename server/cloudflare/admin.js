@@ -23,6 +23,8 @@
 //   POST /api/admin/refund                 { sub, reason? , notify? }   (gives back the last AI charge not refunded yet)
 //   POST /api/admin/plan                   { sub, until (ms, 0 = remove), reason }   (Pro given by hand; Stripe's untouched)
 //   POST /api/admin/block                  { sub, blocked, reason }   (blocked: 403 on AI, cloud documents, calls…)
+//   POST /api/admin/sessions-end           { sub, id?, reason } → { ended }   (one session, or all: a stolen account signed out
+//                                          everywhere; the person signs in again with Google)
 //   POST /api/admin/billing-test           { sub, on, reason }   (this account pays in Stripe's test mode: api.js stripeConf)
 //   POST /api/admin/clear-test             { sub, reason? }   (removes what test mode gave: test Pro, test credits, a test-paid team; the real stays)
 //   GET  /api/admin/tickets?status=&cursor= → { tickets, cursor }   (open, waiting, closed; in each, the latest activity first)
@@ -572,6 +574,13 @@ export async function handleAdmin(req, env, url) {
     if (!(await account(body.sub))) return json({ error: 'not found' }, 404);
     const r = await call(acct(env, body.sub), 'admin-block', { blocked: body.blocked, reason, by });
     await audit(env, { by, action: body.blocked ? 'block' : 'unblock', target: body.sub, reason, before: r.before, after: r.after });
+    return json({ ok: true, ...r });
+  }
+  if (POST && path === '/sessions-end') {
+    const reason = clip(body.reason, 500).trim(); if (!reason || (body.id !== undefined && !/^[\w-]{16}$/.test(body.id))) return json({ error: 'bad request' }, 400);
+    if (!(await account(body.sub))) return json({ error: 'not found' }, 404);
+    const r = await call(acct(env, body.sub), 'sessions-end', body.id ? { ids: [body.id] } : {});
+    await audit(env, { by, action: 'sessions-end', target: body.sub, reason, after: { ended: r.ended, ...(body.id && { id: body.id }) } });
     return json({ ok: true, ...r });
   }
   // Stripe's test mode for one account (api.js stripeConf): its purchases use the test keys and prices; what they

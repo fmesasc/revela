@@ -1,6 +1,15 @@
 // Arabic interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Sesiones abiertas": "الجلسات النشطة",
+  "Dónde está abierta tu cuenta. Si ves una sesión que no reconoces, ciérrala y revisa la seguridad de tu cuenta de Google.": "الأماكن التي سُجّل فيها الدخول إلى حسابك. إذا رأيت جلسة لا تعرفها، فأغلقها وراجع أمان حسابك في Google.",
+  "Cerrar las demás sesiones": "تسجيل الخروج من الجلسات الأخرى",
+  "Aplicación de escritorio": "تطبيق سطح المكتب",
+  "Este dispositivo": "هذا الجهاز",
+  "Última actividad: {d}": "آخر نشاط: {d}",
+  "Inicio: {d}": "تسجيل الدخول: {d}",
+  "¿Cerrar la sesión en todos los demás dispositivos? Tendrán que volver a iniciar sesión.": "تسجيل الخروج على جميع الأجهزة الأخرى؟ سيلزم تسجيل الدخول مرة أخرى.",
+  "Sesiones cerradas: {n}": "الجلسات المغلقة: {n}",
   "Embajadores de Revela": "سفراء Revela",
   "¿Enseñas Revela a tus compañeros? Como embajador o embajadora tienes Pro gratis, una insignia verificable y materiales para formar a tu claustro.": "هل تعرّف زملاءك على Revela؟ بصفتك سفيرًا أو سفيرة تحصل على Pro مجانًا وشارة يمكن التحقق منها ومواد لتدريب زملائك.",
   "Hazte embajador": "كن سفيرًا",
