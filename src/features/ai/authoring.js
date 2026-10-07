@@ -223,6 +223,7 @@ export const RICH = `Use the richest kind that fits each slide — a list ("bull
 - History, evolution: "timeline". Processes: "steps". Parts, benefits, reasons: "features". One central claim: "key_idea". A famous phrase: "quote".
 - Every slide teaches something concrete: facts, examples, names — never "Inclou millores" or "Fàcil d'usar" alone.
 - Numbers ("stats", "chart", figures in a table or a text) ONLY from the person's data, the document or the research given. Never invent a figure: use another kind; and when the deck needs the person's own figures (their sales, their results), put placeholders in brackets for them to fill in, like "[ventas del trimestre]".
+- The figures of the person's own organisation (its sales, budget, results, staff, targets) can only come from them: unless they were given, ALWAYS placeholders — never a figure with a "source" like "internal data", which you don't have.
 - A "chart" only for a real series of numbers to compare — never to illustrate an idea. "code" only when the audience writes or reads code — never as decoration on another topic.`;
 // The model for writing whole decks (unless the person chose one): a capable one, not the cheapest of the list.
 const DECK_MODEL = 'google/gemini-2.5-flash';

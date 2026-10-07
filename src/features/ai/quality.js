@@ -37,7 +37,9 @@ export function deckQuality(specs, { topic = '', sourced = false, images = false
   // Figures with no data behind them (none given) and no source said: invented. A placeholder for the person's own
 // («[ventas]») is fine, and so are figures that say where they come from (or that they are an example).
   const hasFigure = v => /\d/.test(str(v)) && !/\[[^\]]+\]/.test(str(v));
-  const invented = sourced ? [] : body.filter(x => !str(x.sp.source) && (x.sp.kind === 'stats' && (x.sp.stats || []).some(s => hasFigure(s.value))) || (x.sp.kind === 'chart' && (x.sp.chart?.values || []).length));
+  // («Internal data», «company figures»: a source the model can't have when none was given — the figure is invented.)
+  const ownData = /intern|interno|propi|compañ|company|empresa|organi[sz]a|corporat|nuestr|\bour\b|objetivo|target|meta/i;
+  const invented = sourced ? [] : body.filter(x => (!str(x.sp.source) || ownData.test(x.sp.source)) && (x.sp.kind === 'stats' && (x.sp.stats || []).some(s => hasFigure(s.value))) || (x.sp.kind === 'chart' && (x.sp.chart?.values || []).length));
   const noPicture = images ? [] : body.filter(x => x.sp.kind === 'image' && !x.sp.figure);
   const offCode = tech ? [] : code;
   const problems = [];
