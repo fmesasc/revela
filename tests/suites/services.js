@@ -427,6 +427,28 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
         { notes: [{ i: 0, title: 'Uno', notes: 'Nota de uno' }, { i: 1, title: 'Tres', notes: 'Nota de tres' }] }];
       const sp3 = await A.createDeck({ topic: 'T', count: 3 }); seq = null;
       eq(sp3.map(x => x.notes || '-').join('|'), 'Nota de uno|-|Nota de tres', 'cada nota en su diapositiva');
+      // Measured: a deck like the mediocre one on Swift scores low, for its reasons; a good one passes.
+      const Q = await W.eval("import('/src/features/ai/quality.js')");
+      const flat = [{ kind: 'title', title: 'Introducció a Swift', notes: 'Benvinguts' },
+        ...['Llenguatge dissenyat per Apple', 'Presentat el 2014', 'Última versió estable', 'Multiparadigma', 'Elimina codi perillós', 'Compatibilitat amb C'].map((t, i, a) =>
+          ({ kind: 'bullets', title: t, bullets: ['Inclou millores', 'Fàcil'], notes: 'Ara parlarem de ' + (a[i + 1] || 'tancament').toLowerCase() })),
+        { kind: 'closing', title: 'Gràcies', notes: 'Gràcies' }];
+      const q1 = Q.deckQuality(flat, { topic: 'Lenguaje de programación Swift' });
+      eq(q1.problems.map(p => p.code).sort().join(), 'all-lists,few-kinds,no-code,notes-off,thin-lists', 'la mediocre: listas, pobres, sin código, pocos tipos, notas desplazadas: ' + JSON.stringify(q1.problems));
+      assert(q1.score < 40 && Q.isTechnical('Llenguatge de programació Swift') && !Q.isTechnical('La Revolución francesa'), 'nota baja (' + q1.score + '); técnico, lo es');
+      const good = [{ kind: 'title', title: 'Swift', notes: 'Hola, hoy Swift' },
+        { kind: 'code', title: 'Constantes y variables', code: { language: 'swift', code: 'let pi = 3.14\nvar n = 0' }, notes: 'Las constantes con let y las variables con var' },
+        { kind: 'comparison', title: 'Swift frente a Objective-C', columns: [{ heading: 'Swift', bullets: ['Seguro'] }, { heading: 'ObjC', bullets: ['Antiguo'] }], notes: 'Comparamos Swift con Objective-C' },
+        { kind: 'code', title: 'Opcionales', code: { language: 'swift', code: 'if let n = Int("4") { print(n) }' }, notes: 'Los opcionales evitan el nil' },
+        { kind: 'timeline', title: 'Historia de Swift', steps: [{ label: '2014', text: 'Nace' }, { label: '2015', text: 'Abierto' }, { label: '2019', text: 'ABI' }], notes: 'La historia de Swift en tres fechas' },
+        { kind: 'closing', title: 'Gracias', notes: 'Gracias' }];
+      const q2 = Q.deckQuality(good, { topic: 'Swift' }); eq(q2.problems.length + '|' + q2.score, '0|100', 'la buena: sin problemas');
+      // Creating one that comes out weak: its weak slides made again, once, before it's shown.
+      seq = [{ title: 'Swift', slides: flat }, { slides: [1, 2, 3].map(i => ({ i, kind: 'code', title: flat[i].title, code: { language: 'swift', code: 'let x = ' + i + '\nprint(x)' } })) }];
+      calls.length = 0; const sp4 = await A.createDeck({ topic: 'Lenguaje de programación Swift', count: 8 }); seq = null;
+      eq(calls.length, 2, 'una sola petición más'); assert(/These slides of a presentation are weak/.test(calls[1].body.messages[0].content), 'pidiendo rehacer las flojas');
+      eq(sp4.slice(1, 4).map(x => x.kind + ':' + x.code?.language).join(), 'code:swift,code:swift,code:swift', 'las flojas, ahora con código');
+      eq(sp4[1].notes, flat[1].notes, 'conservando sus notas'); assert(sp4.quality.score > q1.score, 'y mejor nota (' + q1.score + ' → ' + sp4.quality.score + ')');
       // Research on the web first: the brief goes to the slides, its pages become a «Fuentes» slide.
       { const real = W.fetch; let body = null;
         W.fetch = async (url, opts) => { body = JSON.parse(opts.body); return new W.Response(JSON.stringify({ choices: [{ message: { content: 'El 30 % [1] de la electricidad…',

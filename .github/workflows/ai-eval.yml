@@ -1,0 +1,37 @@
+# «Evaluar la IA» (Actions ▸ Evaluar la IA ▸ Run workflow): the AI's decks on a set of topics, made with the real model
+# and scored (tools/ai-eval.py, src/features/ai/quality.js); the table in the run's summary and every deck to download.
+# Needs the repository secret OPENROUTER_API_KEY (an OpenRouter key; a few cents a run). Only when asked: never on push.
+name: Evaluar la IA
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: 'Modelo (vacío: el de crear presentaciones)'
+        required: false
+      only:
+        description: 'Temas (vacío: todos; p. ej. swift,roma)'
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Evaluate
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          MODEL: ${{ inputs.model }}
+          ONLY: ${{ inputs.only }}
+        run: |
+          [ -n "$OPENROUTER_API_KEY" ] || { echo "::error::Falta el secreto OPENROUTER_API_KEY (Settings ▸ Secrets and variables ▸ Actions)."; exit 1; }
+          python3 tools/ai-eval.py ${MODEL:+--model "$MODEL"} ${ONLY:+--only "$ONLY"} --out ai-eval
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ai-eval
+          path: ai-eval

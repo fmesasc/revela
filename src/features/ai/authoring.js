@@ -14,6 +14,7 @@ import { withAttachments } from './attach.js';
 import { PDFJS } from '../../core/vendor.js';
 import { styledSlide, hasLayouts, pictureBox, compose, contrast, codeCard, fitBody } from './fromspec.js';
 import { KINDS, prepareSpec, splitSpec } from './specs.js';
+import { deckQuality, weakSlides } from './quality.js';
 import { codeFontSize, codeHeight, mathFontSize, AI_LANGS } from './codeobj.js';
 import { richHTML } from './richtext.js';
 import { pollBlock } from '../live/poll.js';
@@ -206,7 +207,7 @@ export const sourcesSpec = (sources, title) => ({ kind: 'bullets', title, bullet
 // What every deck needs said, for the outline and for the slides: what Revela can put on a slide, so that the model
 // doesn't make every slide a list. A deck made by gpt-4o-mini from an outline — title and two copied points on every
 // slide, on «Swift» without one line of code — is what this is against.
-const RICH = `Use the richest kind that fits each slide — a list ("bullets") only when nothing else does, and then 3-5 real points with substance, never 2 vague ones:
+export const RICH = `Use the richest kind that fits each slide — a list ("bullets") only when nothing else does, and then 3-5 real points with substance, never 2 vague ones:
 - A programming language, a library, a tool, a query language or any technical topic: show REAL CODE on "code" slides — correct, idiomatic, compilable, 4-15 lines, with a comment or two —, at least one slide in three; each concept with its code (declare, use, a common mistake and its fix…), "comparison" for "this vs that", "steps" for how to set it up.
 - Maths or science: "math" for the formulas; data you are given: "chart", "table" or "stats".
 - History, evolution: "timeline". Processes: "steps". Parts, benefits, reasons: "features". One central claim: "key_idea". A famous phrase: "quote".
@@ -270,8 +271,30 @@ Write everything in ${opts.language || lang()}.` },
   for (const sp of specs) { const n = +sp.figure; if (!(n >= 1 && n <= pics.length && pics[n - 1]?.figure)) delete sp.figure; else sp.figure = n; }
   const missing = specs.filter(sp => !str(sp.notes).trim());
   if (missing.length > specs.length * 0.3) await speakerNotes(specs, opts).catch(() => {});
-  specs.title = str(res.title); specs.design = DECK_DESIGNS[res.design] ? res.design : null;
+  // Measured (quality.js): a weak deck — mostly lists, thin ones, no code on a technical topic — gets its weak slides
+  // made again, once, before anyone sees it.
+  let q = deckQuality(specs, { topic: opts.topic || str(res.title) });
+  if (q.score < 75) { await richer(specs, weakSlides(q, specs), opts).catch(() => {}); q = deckQuality(specs, { topic: opts.topic || str(res.title) }); }
+  specs.title = str(res.title); specs.design = DECK_DESIGNS[res.design] ? res.design : null; specs.quality = q;
   return specs;
+}
+// The weak slides made again (one request for all): the same message and place, a richer kind, real content.
+async function richer(specs, idx, opts = {}) {
+  if (!idx.length) return;
+  const want = idx.map(i => ({ i, ...specs[i] }));
+  const out = await chat([
+    { role: 'system', content: `These slides of a presentation are weak: mostly lists, thin, or without the code a technical topic needs. Make each one again — the same message (its title may be sharpened), in the richest kind that fits, with real, concrete content. Answer only JSON {"slides":[{"i":N,"kind":"…",…,"notes":"…"}]}, one per slide given, with its own i.
+${SPEC_DOC}
+${RICH}
+Do not use "image". Write in ${opts.language || lang()}.` },
+    { role: 'user', content: `Presentation: ${str(opts.topic).slice(0, 400)}\nAll its titles, in order: ${JSON.stringify(specs.map(sp => sp.title || sp.statement || ''))}\n\nSlides to make again: ${JSON.stringify(want).slice(0, 30000)}` },
+  ], { json: true, maxTokens: 12000, feature: 'create', prefer: DECK_MODEL });
+  for (const s of parseJSON(out)?.slides || []) {
+    const i = +s.i; if (!idx.includes(i) || !s || typeof s !== 'object') continue;
+    const [sp] = splitSpec(prepareSpec(s)); if (!sp || sp.kind === 'image') continue;
+    if (!str(sp.notes)) sp.notes = specs[i].notes;
+    specs[i] = sp;
+  }
 }
 // Notes for the slides that have none: what the speaker says (one request for all of them).
 async function speakerNotes(specs, opts = {}) {
@@ -353,9 +376,9 @@ const slideText = s => s.blocks.map(b => (b.type === 'text' ? plain(b.html) : b.
 
 export async function improveSlide(slide = currentSlide()) {
   const out = await chat([
-    { role: 'system', content: `Improve this slide: clearer, shorter, better structured, and choose the best kind. Keep the facts and the language of the slide. Answer only one slide as JSON {"kind":…}.\n${SPEC_DOC}\nDo not use "image".` },
-    { role: 'user', content: `Current slide:\n${slideText(slide)}\n\nNotes: ${slide.notes || ''}` },
-  ], { json: true, maxTokens: 2000, feature: 'improve' });
+    { role: 'system', content: `Improve this slide: clearer, better structured, richer, and choose the best kind. Keep the facts and the language of the slide. Answer only one slide as JSON {"kind":…}.\n${SPEC_DOC}\n${RICH}\nDo not use "image".` },
+    { role: 'user', content: `Presentation: ${str(state.deck.name).slice(0, 200)}\nCurrent slide:\n${slideText(slide)}\n\nNotes: ${slide.notes || ''}` },
+  ], { json: true, maxTokens: 3000, feature: 'improve', prefer: DECK_MODEL });
   const spec = parseJSON(out); if (!spec || !spec.kind) throw new Error('EMPTY');
   commit(() => { rebuildSlide(slide, spec, state.deck); state.ui.selection = null; });
   return spec.kind;

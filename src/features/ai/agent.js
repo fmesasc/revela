@@ -14,7 +14,7 @@
 import { state, commit, snapshot } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 import { chat, lang, parseJSON, esc, plain } from './openrouter.js';
-import { slideFromSpec, rebuildSlide, SPEC_DOC, isNative } from './authoring.js';
+import { slideFromSpec, rebuildSlide, SPEC_DOC, RICH, isNative } from './authoring.js';
 import { AI_LANGS, codeLang, cleanCode, cleanLatex, formulaOf, codeBlockAt, mathBlockAt, codeFontSize, mathFontSize, repeats, wantsCode } from './codeobj.js';
 import { transcribeImage, codeOf } from './vision.js';
 import { STYLES, fitBody } from './fromspec.js';
@@ -670,6 +670,7 @@ The presentation's THEME — the colours or the fonts of the whole deck (a palet
 When the request is unclear or needs something only the user knows (their brand's colours, which slides, the tone, the audience), ASK instead of guessing: {"message":"<your question>","ops":[],"ask":["option","option"],"done":true} — 2 to 5 short answers they can click (they may also answer in their own words). Ask only what you need, once; if it is clear enough, just do it.
 You have at most ${maxSteps} answers in all. When you move, resize or add objects, or change text sizes, use "check" first and fix what it reports. A question gets an answer in "message" and no ops. Never invent facts or figures. Keep the deck's style (its colours and fonts) unless asked.
 ${STYLE_TEXT[style] || STYLE_TEXT.same}
+What new and remade slides contain (add_slide, replace_slide): ${RICH}
 ${ATTACH_TEXT}
 ${CODE_TEXT}
 ${OPS_DOC()}
