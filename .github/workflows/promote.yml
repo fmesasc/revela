@@ -48,7 +48,8 @@ jobs:
           mkdir -p ~/.ssh && printf '%s\n' "$KEY" > ~/.ssh/app && chmod 600 ~/.ssh/app
           if [ -n "$SITE_KEY" ]; then printf '%s\n' "$SITE_KEY" > ~/.ssh/site && chmod 600 ~/.ssh/site; fi
           git remote set-url origin git@github.com:${{ github.repository }}.git
-          git config user.name 'Revela' && git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          # (For everything it signs: the «Versión» commit and the tags, here and in the website's copy, /tmp/site.)
+          git config --global user.name 'Revela' && git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
