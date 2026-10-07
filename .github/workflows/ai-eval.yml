@@ -1,6 +1,6 @@
 # «Evaluar la IA» (Actions ▸ Evaluar la IA ▸ Run workflow): the AI's decks on a set of topics, made with the real model
 # and scored (tools/ai-eval.py, src/features/ai/quality.js); the table in the run's summary and every deck to download.
-# Needs the repository secret OPENROUTER_API_KEY (an OpenRouter key; a few cents a run). Only when asked: never on push.
+# Needs the secret OPENROUTER_API_KEY (of the repository, or of the github-pages environment, as now) (an OpenRouter key; a few cents a run). Only when asked: never on push.
 name: Evaluar la IA
 
 on:
@@ -19,6 +19,9 @@ permissions:
 jobs:
   eval:
     runs-on: ubuntu-latest
+    # (The key is a secret of the github-pages environment: used from here, nothing is deployed. As a repository
+    # secret instead, this line can go.)
+    environment: github-pages
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
