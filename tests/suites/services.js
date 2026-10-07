@@ -826,6 +826,51 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     }
   });
 
+  await test('diseñar la plantilla con IA: tres diseños dibujados, uno aplicado (tema, fondo, títulos, adornos y portadas) y se deshace de una vez', async () => {
+    reset(); R.slides.addSlide('titleContent');
+    const W = frame.contentWindow, real = W.fetch, calls = [];
+    R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    const d1 = { name: 'Marino', why: 'Sobrio, para un congreso', theme: { name: 'Marino', bg: '#0b1d3a', fg: '#0c0c0c', accents: ['#d4a017', '#4cc9f0'], heading: 'Montserrat', body: 'Lato' },
+      background: { color: 'bg', to: '#13294f', angle: 160 }, title: { align: 'center', color: 'accent1' },
+      decor: [{ shape: 'rect', x: 0, y: 690, w: 1280, h: 30, color: 'accent1' }, { shape: 'ellipse', x: 300, y: 200, w: 700, h: 400, color: 'accent2', opacity: 90 },
+        { shape: 'rect', x: 2000, y: 0, w: 10, h: 10, color: 'accent1' }, { shape: 'nope', x: 1200, y: 20, w: 60, h: 60, color: '#zzzzzz' }],
+      cover: { decor: [{ shape: 'ellipse', x: -200, y: -200, w: 600, h: 600, color: 'accent1', to: 'accent2' }] } };
+    const d2 = { ...d1, name: 'Claro', theme: { ...d1.theme, bg: '#ffffff', fg: '#222222' }, background: { color: '#ffffff' }, cover: null };
+    try {
+      W.fetch = agentMock(W, [{ designs: [d1, d2, { nothing: true }, d1] }], calls);
+      const json0 = JSON.stringify(R.state.deck);
+      D.querySelector('.ribbon-page[data-page="design"] [data-action="master-ai"]').click();
+      let m; for (let i = 0; i < 40 && !(m = D.getElementById('mai-modal')); i++) await sleep(25);
+      m.querySelector('.mai-ask').value = 'congreso médico, sobrio, azul marino'; m.querySelector('.mai-go').click();
+      for (let i = 0; i < 100 && m.querySelectorAll('.mai-card').length < 3; i++) await sleep(20);
+      eq(m.querySelectorAll('.mai-card').length, 3, 'tres diseños (los que vinieron bien)');
+      eq(m.querySelectorAll('.mai-card')[0].querySelectorAll('.mai-thumb').length, 2, 'cada uno, su portada y una diapositiva');
+      assert(/Marino/.test(m.querySelector('.mai-info b').textContent) && /congreso/.test(m.querySelector('.mai-info span').textContent), 'con su nombre y por qué');
+      assert(/template designer/.test(calls[0].messages[0].content) && /congreso médico/.test(calls[0].messages[1].content), 'la petición a la IA');
+      eq(JSON.stringify(R.state.deck), json0, 'proponer no cambia nada');
+      m.querySelector('[data-apply="0"]').click(); await sleep(30);
+      const dk = R.state.deck, ma = dk.master, deco = ma.blocks.filter(b => b.aiDecor);
+      eq(dk.customPalette?.bg || '', '#0b1d3a', 'el tema: su fondo');
+      assert(/linear-gradient\(160deg, #0b1d3a, #13294f\)/.test(ma.background) && dk.slides.every(s => s.background === ma.background), 'el fondo degradado, en el patrón y en las diapositivas');
+      eq(deco.length, 3, 'los adornos válidos (el que cae fuera, no)');
+      eq(deco[0].fill, '#d4a017', 'con los colores del tema'); assert(deco[1].opacity <= 15, 'el que tapa el texto, tenue: ' + deco[1].opacity);
+      assert(deco.every(b => b.decorative), 'decorativos (no los lee el lector de pantalla)');
+      eq(deco[2].shape + deco[2].fill, 'rect#d4a017', 'una forma o un color que no existen: los de siempre');
+      const cover = dk.layouts.find(l => l.id === 'title');
+      assert(cover.hideMaster && cover.blocks.some(b => b.aiDecor && b.fill2 === '#4cc9f0'), 'la portada, con sus propios adornos');
+      assert(!dk.layouts.find(l => l.id === 'titleContent').hideMaster, 'las demás, con los del patrón');
+      eq(ma.styles.title.align + ma.styles.title.color, 'center#d4a017', 'los títulos: centrados y del color principal');
+      assert(R.render() !== false && D.querySelector('#stage'), 'se dibuja');
+      const bare = j => JSON.stringify({ ...JSON.parse(j), savedAt: 0 });
+      R.store.undo(); eq(bare(JSON.stringify(R.state.deck)), bare(json0), 'se deshace de una vez');
+      // The text is always readable: a text colour lost on the background becomes white or black.
+      const MA = await W.eval("import('/src/features/ai/masterai.js')");
+      eq(MA.cleanDesign(d1).theme.fg, '#ffffff', 'texto ilegible sobre el fondo: blanco');
+      const cv = MA.cleanDesign({ ...d2, cover: { background: { color: 'accent1' }, decor: [] } });
+      eq(cv.cover.title, '#222222', 'una portada con fondo del color del título (dorado): el título, en el texto oscuro, que se lee');
+    } finally { W.fetch = real; R.ai.disconnectAi(); D.getElementById('mai-modal')?.remove(); }
+  });
+
   await test('adjuntos para la IA: fotos y documentos leídos, enviados con la petición y una foto puesta en una diapositiva', async () => {
     reset();
     const W = frame.contentWindow, real = W.fetch, calls = [], AG = R.aiAgent, P = await W.eval("import('/src/ui/dialogs/assistant.js')");

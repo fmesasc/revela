@@ -125,6 +125,7 @@ export const ACTIONS = {
   'cloud-share': () => openCloudShare(),
   'cloud-call': () => toggleCall(),
   'design-ideas': () => openDesignIdeas(),
+  'master-ai': () => import('../dialogs/masterai.js').then(m => m.openMasterDesign()),
   'gdrive-open': () => gdrive.openWithUI(),
   'gslides-import': () => gdrive.pickSlidesFile().then(f => f && openPresentation(f)).catch(e => alertDialog(e.message === 'NO_TOKEN' ? t('Vuelve a iniciar sesión con Google.') : e.message)),
   'gdrive-save': () => driveSaveUI(),

@@ -1039,3 +1039,11 @@ body.no-copy img{-webkit-user-drag:none}
 #team-modal .tm-table th,#team-modal .tm-table td{padding:5px 6px;border-bottom:1px solid var(--line2);text-align:start;white-space:nowrap}
 #team-modal .tm-table .num{text-align:end;font-variant-numeric:tabular-nums}
 #team-modal .tm-table tfoot th{border-top:2px solid var(--line2)}
+
+/* «Diseñar la plantilla con IA» (ui/dialogs/masterai.js): three designs, each its cover and a content slide. */
+.mai-list{display:flex;flex-direction:column;gap:12px;margin-top:10px;max-height:62vh;overflow:auto}
+.mai-card{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:10px;border:1px solid var(--line,#8884);border-radius:10px}
+.mai-pics{display:flex;gap:8px;flex-wrap:wrap}
+.mai-thumb{overflow:hidden;border-radius:6px;box-shadow:0 1px 4px #0003;flex:0 0 auto}
+.mai-info{display:flex;flex-direction:column;gap:4px;flex:1;min-width:180px}
+.mai-info small{opacity:.7}.mai-info .fr-do{align-self:flex-start;margin-top:4px}
