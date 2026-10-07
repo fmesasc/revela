@@ -386,7 +386,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     W.fetch = async (url, opts) => {
       const body = JSON.parse(opts.body); calls.push({ url, body });
       if (url.endsWith('/images')) return new W.Response(JSON.stringify({ data: [{ b64_json: 'R0lGODlhAQABAAAAACw=', media_type: 'image/gif' }] }));
-      return new W.Response(JSON.stringify({ choices: [{ message: { content: '```json\n' + JSON.stringify(seq?.length ? seq.shift() : answer) + '\n```' } }] }));
+      const a = seq?.length ? seq.shift() : answer; return new W.Response(JSON.stringify({ choices: [{ message: { content: typeof a === 'string' ? a : '```json\n' + JSON.stringify(a) + '\n```' } }] }));
     };
     try {
       const specs = [
@@ -509,6 +509,18 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       const bl3 = FS.compose('steps', { steps: [1, 2, 3].map(i => ({ title: 'Acción ' + i, text: long })) }, { x: 80, y: 180, w: 1120, h: 460 }, { fg: '#222222', accent: '#0a6', accents: ['#0a6'], bodySize: 30, title: '#111111' });
       assert(new Set(bl3.filter(b => b.type === 'shape' && b.shape === 'rounded').map(b => b.x)).size > 1, 'en columnas, no en franjas de una columna');
       assert(bl3.filter(b => b.type === 'text').every(b => b.fontSize >= 18), 'ningún texto de menos de 18 px: ' + bl3.filter(b => b.type === 'text').map(b => b.fontSize).join());
+      // A long key sentence in a wide bold font: measured, it never runs over the line under it.
+      const ki = FS.compose('key_idea', { statement: 'Para sumar o restar fracciones necesitan tener el mismo denominador: el mínimo común múltiplo nos ayuda a encontrar ese denominador común más pequeño', text: 'Es nuestro puente para que los denominadores sean iguales.' },
+        { x: 80, y: 180, w: 1120, h: 460 }, { fg: '#222222', accent: '#0a6', accents: ['#0a6'], bodySize: 30, title: '#111111', head: "'Poppins', sans-serif", titleSize: 48 });
+      const [stB, txB] = ki.filter(b => b.type === 'text');
+      assert(txB.y >= stB.y + stB.h, 'la frase y su texto, uno debajo del otro');
+      const box = D.createElement('div'); box.style.cssText = `position:absolute;left:-9999px;width:${stB.w - 28}px;font:700 ${stB.fontSize}px Poppins, sans-serif;line-height:1.15`; box.textContent = stB.html.replace(/<[^>]+>/g, ''); D.body.appendChild(box);
+      const real = box.getBoundingClientRect().height; box.remove();
+      assert(real <= stB.h + 4, `la frase cabe en su sitio (${Math.round(real)} px de ${stB.h})`);
+      // A model's answer that isn't JSON: asked once more, not lost.
+      seq = ['Lo siento, aquí tienes la presentación…', { title: 'Bien', slides: [{ kind: 'title', title: 'Bien', notes: 'a' }, { kind: 'closing', title: 'Fin', notes: 'b' }] }];
+      calls.length = 0; const sp7 = await A.createDeck({ topic: 'Algo', count: 2 }); seq = null;
+      eq(calls.length + '|' + sp7.length, '2|2', 'pedida otra vez, y hecha');
       eq(sp6[1].kind + ':' + sp6[1].bullets.join('|'), 'bullets:Múltiplos de 6: 6, 12, 18, 24|Múltiplos de 8: 8, 16, 24|MCM(6, 8) = 24', 'el código fuera de lugar, sus líneas en una lista');
       eq(Q.deckQuality([{ kind: 'title', title: 'x' }, { kind: 'chart', title: 'P', chart: { type: 'line', labels: ['a', 'b'], values: [1, 2] }, source: 'Fuente: IEA 2023' }], { topic: 'Energía' }).problems.filter(p => p.code === 'invented-figures').length, 0, 'un gráfico con su fuente no es inventado'); assert(sp4.quality.score > q1.score, 'y mejor nota (' + q1.score + ' → ' + sp4.quality.score + ')');
       // Research on the web first: the brief goes to the slides, its pages become a «Fuentes» slide.

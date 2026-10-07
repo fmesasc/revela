@@ -214,6 +214,15 @@ export async function research(opts = {}) {
 // The «Fuentes» slide: the pages the research used (title and address), for whoever wants to check them.
 export const sourcesSpec = (sources, title) => ({ kind: 'bullets', title, bullets: sources.slice(0, 8).map((x, i) => `[${i + 1}] ${x.title ? x.title + ' — ' : ''}${x.url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 90)}`),
   notes: sources.map((x, i) => `[${i + 1}] ${x.title} ${x.url}`).join('\n') });
+// The model's JSON answer: asked once more if it doesn't come as JSON (now and then a model answers with something
+// else, and the whole deck failed with «EMPTY»).
+async function chatJSON(msgs, opts) {
+  for (let i = 0; ; i++) {
+    const out = await chat(msgs, { ...opts, json: true });
+    try { const r = parseJSON(out); if (r && typeof r === 'object') return r; } catch (e) { if (i) throw e; }
+    if (i) throw new Error('EMPTY');
+  }
+}
 // What every deck needs said, for the outline and for the slides: what Revela can put on a slide, so that the model
 // doesn't make every slide a list. A deck made by gpt-4o-mini from an outline — title and two copied points on every
 // slide, on «Swift» without one line of code — is what this is against.
@@ -252,13 +261,13 @@ const TAILOR = ctx => (ctx ? `\n\nAbout this presentation, from the presenter �
 export async function createOutline(opts = {}) {
   const count = Math.max(3, Math.min(30, +opts.count || 8)), src = withResearch(opts.source, opts.research);
   const source = src ? `\n\nBase it ONLY on this document:\n"""\n${String(src).slice(0, 60000)}\n"""` : '';
-  const out = await chat([
+  const out = await chatJSON([
     { role: 'system', content: `Plan a presentation that someone will present out loud. Answer only JSON {"title":"…","slides":[{"title":"…","kind":"…","points":["…"]}]}: about ${count} slides, in order, the first a title slide ("title") and the last a closing one ("closing"). Each title states the slide's message (max ~9 words); "kind" is the kind of slide that will show it best — one of: ${KINDS.filter(k => opts.images || k !== 'image').join(', ')}; 1-4 points with WHAT it will show, concretely (the facts, figures and examples; for a "code" slide, what the code does and in which language). Not a list of short phrases: a plan for rich slides.
 ${RICH}
 Write in ${opts.language || lang()}.` },
     { role: 'user', content: withAttachments([opts.topic && `Topic and purpose: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`].filter(Boolean).join('\n') + TAILOR(opts.context) + source, opts.attachments || []) },
-  ], { json: true, maxTokens: 3000, feature: 'outline', prefer: DECK_MODEL });
-  const res = parseJSON(out), slides = (res.slides || []).filter(x => x && str(x.title).trim()).slice(0, 40)
+  ], { maxTokens: 3000, feature: 'outline', prefer: DECK_MODEL });
+  const res = out, slides = (res.slides || []).filter(x => x && str(x.title).trim()).slice(0, 40)
     .map(x => ({ title: str(x.title).trim(), ...(KINDS.includes(x.kind) && (opts.images || x.kind !== 'image') && { kind: x.kind }), points: (Array.isArray(x.points) ? x.points : []).map(str).map(p => p.trim()).filter(Boolean).slice(0, 6) }));
   if (!slides.length) throw new Error('EMPTY');
   return { title: str(res.title), slides };
@@ -272,7 +281,7 @@ export async function createDeck(opts = {}) {
   const src = withResearch(opts.source, opts.research);
   const source = src ? `\n\nBase the content ONLY on this document (keep its real facts, figures and terms; leave out references and acknowledgements):\n"""\n${String(src).slice(0, 60000)}\n"""` : '';
   const pics = (opts.attachments || []).filter(a => a.kind === 'image'), figs = pics.map((a, i) => (a.figure ? i + 1 : 0)).filter(Boolean);
-  const out = await chat([
+  const out = await chatJSON([
     { role: 'system', content: `You are an expert presentation designer and speechwriter. Write a deck that someone will PRESENT out loud: few words on the slides, the speech in the notes. Answer only JSON: {"title":"…","design":"<one of: ${Object.entries(DECK_DESIGNS).map(([k, v]) => `${k} (${v})`).join('; ')}>","slides":[{"kind":"…",…}]}.
 ${SPEC_DOC}
 How to make it good:
@@ -287,8 +296,8 @@ ${opts.images ? '- Use 1-3 "image" slides with an image_prompt for generated pic
 Write everything in ${opts.language || lang()}.` },
     { role: 'user', content: withAttachments(brief + source + (pics.some(a => !a.figure)
       ? '\n\nThe attached pictures (notes, a whiteboard, slides, a document\'s pages, photos): base the deck on what they show — read their text and figures — together with the rest.' : ''), opts.attachments || []) },
-  ], { json: true, maxTokens: 16000, feature: 'create', prefer: DECK_MODEL });
-  const res = parseJSON(out);
+  ], { maxTokens: 16000, feature: 'create', prefer: DECK_MODEL });
+  const res = out;
   // (Cleaned, and what is too much for one slide in two.)
   const specs = (res.slides || []).filter(s => s && typeof s === 'object').slice(0, 40).flatMap(s => splitSpec(prepareSpec(s)));
   if (!specs.length) throw new Error('EMPTY');

@@ -141,6 +141,25 @@ const isMotif = (b, W, H) => isGlow(b, W) || (Math.min(b.w, b.h) <= 12 && (b.w >
   || ((b.w >= W * 0.8 && (b.y <= 1 || b.y + b.h >= H - 1)) || (b.h >= H * 0.8 && (b.x <= 1 || b.x + b.w >= W - 1)));
 
 // ---- Text that has to fit: an estimate (the master's size, shrunk with `fit`) ------
+// Lines a text takes, measured with the font itself (a canvas's measureText) where there is a page: the estimate by an
+// average letter came out short for wide bold fonts (Poppins, Montserrat) — a big statement ran over the text under
+// it, a long cover title over its rule. (Not loaded yet, the browser measures a fallback face, usually wider: safe.)
+let measureCtx = null;
+function measuredHeight(html, fs, w, lh, family = '', bold = false) {
+  if (typeof document === 'undefined') return null;
+  try { measureCtx ||= document.createElement('canvas').getContext('2d'); } catch { return null; }
+  if (!measureCtx) return null;
+  measureCtx.font = `${bold ? '700 ' : ''}${fs}px ${family || 'sans-serif'}`;
+  const room = Math.max(fs * 3, w - 28), space = measureCtx.measureText(' ').width;
+  const paras = str(html).replace(/<\/(li|p|div)>|<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&[#\w]+;/g, 'x').split('\n').map(s => s.trim()).filter(Boolean);
+  let lines = 0;
+  for (const p of paras) {
+    let x = 0, n = 1;
+    for (const word of p.split(/\s+/)) { const ww = measureCtx.measureText(word).width * 1.04; if (x && x + space + ww > room) { n++; x = ww; } else x += (x ? space : 0) + ww; }
+    lines += n;
+  }
+  return lines * fs * lh + 20;
+}
 // cw: a letter's average width in em — 0.54 for running text; a bold heading's is wider (0.62): measured as text it
 // came out taller than thought, and a big statement ran over the line under it.
 function needHeight(html, fs, w, lh, cw = 0.54) {
@@ -159,6 +178,14 @@ function needHeight(html, fs, w, lh, cw = 0.54) {
 // The factor (≤ 1, or `want` when it fits) for a placeholder's text in its box.
 function fitPlaceholder(b, slide, deck, want = 1) {
   const sb = styled({ ...b, fit: undefined }, slide, deck), fs = sb.fontSize || 40, lh = styleKind(b) === 'body' ? 1.32 : 1.18;
+  // (A title or subtitle: measured with its own font — a long cover title wrapped to a third line past its box.)
+  if (styleKind(b) !== 'body' && !(b.columns > 1)) {
+    const bold = sb.fontWeight === '700' || sb.fontWeight === 'bold' || styleKind(b) === 'title';
+    if (measuredHeight(b.html, fs, b.w, lh, sb.fontFamily, bold) != null) {
+      let f = want; while (f > 0.45 && measuredHeight(b.html, fs * f, b.w, lh, sb.fontFamily, bold) > b.h) f -= 0.05;
+      f = Math.round(f * 100) / 100; if (f !== 1) b.fit = f; else delete b.fit; return;
+    }
+  }
   // (In columns: each as wide as a column, the text shared between them.)
   const c = b.columns > 1 ? b.columns : 1, w = (b.w - 32 * (c - 1)) / c, need = f => needHeight(b.html, fs * f, w, lh) / c + (c > 1 ? fs * f : 0);
   let f = want;
@@ -446,7 +473,7 @@ export function compose(kind, spec, area, look, { minimal = false, style = 'same
       const rows = Math.ceil(n / cols);
       const cw = (area.w - (cols - 1) * gap) / cols, side = kind === 'features' && cw >= 440, pad = minimal ? 0 : 26, d = rows > 1 ? 54 : 68;
       const iw = side ? cw - 2 * pad - d - 22 : cw - 2 * pad, hasT = it.some(s => s.title);
-      const ts = R(bs * (rows > 1 ? 0.78 : 0.86)), xs = short ? R(bs * 1.2) : R(bs * (hasT ? (rows > 1 ? 0.76 : 0.82) : 0.88));
+      const ts = R(bs * (rows > 1 ? 0.84 : 0.9)), xs = short ? R(bs * 1.2) : R(bs * (hasT ? (rows > 1 ? 0.8 : 0.86) : 0.92));
       const tH = hasT ? Math.max(...it.map(s => (s.title ? needHeight(inline(s.title), ts, iw, 1.15, 0.6) : 0))) : 0;
       const xH = Math.max(0, ...it.map(s => (s.text ? needHeight(inline(s.text), xs, iw, 1.3) : 0)));
       const maxH = (area.h - (rows - 1) * gap) / rows, inner = tH + (hasT ? 6 : 0) + xH;
@@ -509,8 +536,11 @@ export function compose(kind, spec, area, look, { minimal = false, style = 'same
     case 'key_idea': {
       // One sentence, big, in the heading font, with an accent bar; a line of support under it.
       const st = inline(spec.statement || ''), tx = spec.text ? inline(spec.text) : '', x = area.x + (minimal ? 0 : 52), w = area.w - (minimal ? 0 : 52);
-      const maxS = area.h * (tx ? 0.66 : 0.9), big = fitSize(st, R(Math.max(40, Math.min((look.titleSize || 48) * 1.2, 76))), w, maxS, 1.15, 24, 0.62);
-      const sh = Math.min(maxS, needHeight(st, big, w, 1.15, 0.62)), ts = R(bs * 0.74), th = tx ? Math.min(area.h - sh - 24, needHeight(tx, ts, w, 1.3)) : 0;
+      // (Measured with its own bold heading font where there is a page.)
+      const hNeed = fs => measuredHeight(st, fs, w, 1.15, look.head, true) ?? needHeight(st, fs, w, 1.15, 0.62);
+      const maxS = area.h * (tx ? 0.62 : 0.9);
+      let big = R(Math.max(40, Math.min((look.titleSize || 48) * 1.2, 76))); while (big > 26 && hNeed(big) > maxS) big = Math.max(26, big - 2);
+      const sh = Math.min(maxS, hNeed(big)), ts = R(bs * 0.74), th = tx ? Math.min(area.h - sh - 24, needHeight(tx, ts, w, 1.3)) : 0;
       const y = area.y + Math.max(0, (area.h - sh - (tx ? th + 24 : 0)) * 0.42), al = minimal ? 'center' : 'left';
       if (!minimal) push(S('rect', area.x, y + 8, 10, sh - 16, look.accent));
       push(T(x, y, w, sh, `<b>${st}</b>`, { fontSize: big, fontFamily: look.head, color: look.title, lineHeight: 1.15, textAlign: al, vAlign: 'middle' }));
