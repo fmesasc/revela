@@ -14,7 +14,7 @@ import { togglePopover } from './popovers.js';
 import * as format from '../../features/document/format.js';
 import * as shapeops from '../../features/document/shapeops.js';
 import { MOTIONS_3D, VIEWS_3D, BLEEDS_3D, EDGES_3D, ARRIVALS_3D, PUPPET_MODES, PUPPET_DEFAULT, modelBleed } from '../../features/content/model3d.js';
-import { isGif, mediaKind, MEDIA_SPEEDS, CAMERA_FILTERS, CAMERA_BACKGROUNDS, DEFAULT_CAMERA_COLOR, cameraBrightness, setCameraLook } from '../../features/live/media.js';
+import { isGif, mediaKind, needsPlayer, MEDIA_SPEEDS, CAMERA_FILTERS, CAMERA_BACKGROUNDS, DEFAULT_CAMERA_COLOR, cameraBrightness, setCameraLook } from '../../features/live/media.js';
 import { cameraLive, setCameraLive, setCameraBackground, pickCameraImage } from '../canvas/cameraview.js';
 import { puppetTrying, tryPuppet, togglePuppet } from '../canvas/puppetview.js';
 import { CURVES, DEVICES, SHAPE_NAMES, hasShapeText, CONNECTOR_ROUTES, isLineShape } from '../../render/svg.js';
@@ -85,6 +85,27 @@ function puppetControls(b) {
 // Text round it (PowerPoint's "Wrap text: Square"): the text boxes it overlaps leave it a gap.
 const wrapBtn = b => btn('wrap_text', 'Texto alrededor', () => set(b, x => { if (x.wrap) delete x.wrap; else x.wrap = true; }), !!b.wrap);
 
+// How a video or an animated GIF plays, in sight (before, only in the Opciones dialog): by itself, looped, muted (a
+// video), its speed, and when it starts — a click, or when another video or GIF of the slide ends. Its own steps,
+// with the clicks, are animations (Con un clic). The others by their number on the slide — «Vídeo 2», «GIF 1» —; one
+// that loops never ends, so it isn't offered.
+// A GIF as it comes plays by itself, over and over: it shows so, and any change starts from there.
+function playbackGroups(b, set0) {
+  const plain = mediaKind(b) === 'gif' && !needsPlayer(b), set = (x0, fn) => set0(x0, x => { if (plain) { x.autoplay = true; x.loop = true; } fn(x); });
+  const media = currentSlide().blocks.filter(x => mediaKind(x)), nth = x => media.filter(y => mediaKind(y) === mediaKind(x)).indexOf(x) + 1;
+  const others = media.filter(x => x.id !== b.id && !(x.loop && !x.segments?.length) && !(mediaKind(x) === 'gif' && !needsPlayer(x)));
+  const when = plain || b.autoplay ? 'auto' : b.afterVideo && others.some(x => x.id === b.afterVideo) ? b.afterVideo : '';
+  return [['Reproducción', [btn('play_circle', 'Probar', () => playInEditor(b.id)),
+    ['select', 'Empieza', [['', 'Con un clic'], ['auto', 'Solo, al llegar'], ...others.map(x => [x.id, `${t('Al acabar')} «${mediaKind(x) === 'gif' ? 'GIF' : t('Vídeo')} ${nth(x)}»`])], when,
+      v => set(b, x => { delete x.autoplay; delete x.afterVideo; if (v === 'auto') x.autoplay = true; else if (v) x.afterVideo = v; })],
+    btn('repeat', 'Repetir', () => set(b, x => { if (x.loop) delete x.loop; else x.loop = true; }), plain || !!b.loop),
+    ...(b.type === 'video' ? [btn('volume_off', 'Sin sonido', () => set(b, x => { if (x.muted) delete x.muted; else x.muted = true; }), !!b.muted)] : []),
+    ['select', 'Velocidad', MEDIA_SPEEDS.map(s => [String(s), `${String(s).replace('.', ',')}×`]), String(b.speed || 1), v => set(b, x => { if (+v !== 1) x.speed = +v; else delete x.speed; })],
+    btn('tune', 'Tramos y croma…', () => openMediaPlayback(b))]],
+    // (Added after its animations, as Animaciones ▸ Añadir animación ▸ Vídeo.)
+    ['Con un clic', [btn('play_arrow', 'Reproducir', () => addAnimation('media-play', { start: 'click' })), btn('pause', 'Pausar', () => addAnimation('media-pause', { start: 'click' })),
+      btn('stop', 'Detener', () => addAnimation('media-stop', { start: 'click' }))]]];
+}
 function groupsFor(b) {
   const G = [];
   if (b.type === 'shape') G.push(
@@ -112,7 +133,9 @@ function groupsFor(b) {
     ['Organizar texto', [wrapBtn(b)]],
     ['Al presentar', [btn('zoom_in', 'Ampliar al clic', () => set(b, x => { if (x.zoomable) delete x.zoomable; else x.zoomable = true; }), !!b.zoomable),
       btn('panorama_photosphere', 'Foto de 360°', () => set(b, x => { if (x.pano) delete x.pano; else x.pano = true; }), !!b.pano),
-      ...(isGif(b) ? [btn('slow_motion_video', 'Reproducción', () => openMediaPlayback(b))] : [])]],
+      ]],
+    // (An animated GIF plays as a video does: the same options.)
+    ...(isGif(b) ? playbackGroups(b, set) : []),
     ['Archivo', [btn('download', 'Descargar', () => saveFile(b)), btn('photo_camera', 'Guardar como imagen', () => openSaveAsPicture())]],
     ['Lupa', [btn('loupe', 'Ampliar una zona de la imagen', () => startMagnifyDraw({ within: b }), null, 'magnify-image')]]);
   else if (b.type === 'magnify') G.push(...magnifyGroups(b));
@@ -137,25 +160,7 @@ function groupsFor(b) {
         ['select', 'Bordes', EDGES_3D, b.edge || 'hard', v => set(b, x => { if (v !== 'hard') x.edge = v; else delete x.edge; })]]],
       ['Esqueleto', [btn('accessibility_new', 'Esqueleto automático', () => openAutoRig(b))]],
       ['Archivo', [btn('download', 'Descargar (.glb)', () => saveFile(b)), btn('swap_horiz', 'Reemplazar', () => replaceModel(b))]]);
-  } else if (b.type === 'video') {
-    // How it plays, in sight (before, only in the Opciones dialog): by itself, looped, muted, its speed, and when it
-    // starts — a click, or when another video (or GIF) of the slide ends. Its own steps are animations (Animar).
-    // (The others by their number on the slide — «Vídeo 2», «GIF 1» —; one that loops never ends, so it isn't offered.)
-    const media = currentSlide().blocks.filter(x => mediaKind(x)), nth = x => media.filter(y => mediaKind(y) === mediaKind(x)).indexOf(x) + 1;
-    const others = media.filter(x => x.id !== b.id && !(x.loop && !x.segments?.length));
-    const when = b.autoplay ? 'auto' : b.afterVideo && others.some(x => x.id === b.afterVideo) ? b.afterVideo : '';
-    G.push(['Reproducción', [btn('play_circle', 'Probar', () => playInEditor(b.id)),
-      ['select', 'Empieza', [['', 'Con un clic'], ['auto', 'Solo, al llegar'], ...others.map(x => [x.id, `${t('Al acabar')} «${mediaKind(x) === 'gif' ? 'GIF' : t('Vídeo')} ${nth(x)}»`])], when,
-        v => set(b, x => { delete x.autoplay; delete x.afterVideo; if (v === 'auto') x.autoplay = true; else if (v) x.afterVideo = v; })],
-      btn('repeat', 'Repetir', () => set(b, x => { if (x.loop) delete x.loop; else x.loop = true; }), !!b.loop),
-      btn('volume_off', 'Sin sonido', () => set(b, x => { if (x.muted) delete x.muted; else x.muted = true; }), !!b.muted),
-      ['select', 'Velocidad', MEDIA_SPEEDS.map(s => [String(s), `${String(s).replace('.', ',')}×`]), String(b.speed || 1), v => set(b, x => { if (+v !== 1) x.speed = +v; else delete x.speed; })],
-      btn('tune', 'Tramos y croma…', () => openMediaPlayback(b))]],
-      // Its steps with the clicks, while presenting (added after its animations, as Animaciones ▸ Añadir animación ▸ Vídeo).
-      ['Con un clic', [btn('play_arrow', 'Reproducir', () => addAnimation('media-play', { start: 'click' })), btn('pause', 'Pausar', () => addAnimation('media-pause', { start: 'click' })),
-        btn('stop', 'Detener', () => addAnimation('media-stop', { start: 'click' }))]],
-      ['Archivo', [btn('download', 'Descargar', () => saveFile(b))]]);
-  }
+  } else if (b.type === 'video') G.push(...playbackGroups(b, set), ['Archivo', [btn('download', 'Descargar', () => saveFile(b))]]);
   else if (b.type === 'audio') {
     // PowerPoint's "Play in background": it starts by itself, keeps playing over
     // the next slides (up to one, or to the end), loops, and hides its icon.

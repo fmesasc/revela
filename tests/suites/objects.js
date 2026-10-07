@@ -697,6 +697,18 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { f.remove(); }
   });
 
+  await test('GIF: las mismas opciones de reproducción que el vídeo en su cinta; uno normal, solo y en bucle', async () => {
+    reset(); const W = frame.contentWindow, { encodeGif } = await W.eval("import('/src/features/live/gifbg.js')");
+    R.blocks.addImage(await encodeGif({ width: 4, height: 4, frames: [0, 1].map(i => ({ delay: 100, rgba: new W.Uint8ClampedArray(Array.from({ length: 16 }, () => [i * 255, 0, 0, 255]).flat()) })) }));
+    const b = last(); R.store.setSelection(b.id); R.render(); await sleep(40);
+    const page = D.querySelector('#ribbon [data-page="ctx"]'), groups = [...page.querySelectorAll('.group > label, .group label:last-child')].map(x => x.textContent);
+    assert(groups.some(g => /Reproducción/.test(g)) && groups.some(g => /Con un clic/.test(g)), 'sus grupos: ' + groups.join('|'));
+    const sels = [...page.querySelectorAll('select')], start = sels.find(x => [...x.options].some(o => o.value === 'auto')), speed = sels.find(x => [...x.options].some(o => o.value === '2'));
+    eq(start.value, 'auto', 'un GIF normal: empieza solo'); assert(!/Sin sonido/.test(page.textContent), 'sin «Sin sonido» (no tiene)');
+    speed.value = '2'; speed.dispatchEvent(new W.Event('change', { bubbles: true })); await sleep(20);
+    const g = last(); assert(g.speed === 2 && g.autoplay && g.loop, 'a 2×, y sigue solo y en bucle: ' + JSON.stringify({ speed: g.speed, autoplay: g.autoplay, loop: g.loop }));
+  });
+
   await test('vídeo: opciones de reproducción en el export y en el diálogo', async () => {
     reset();
     R.blocks.addVideo('data:video/mp4;base64,AAAA'); const v = last();
