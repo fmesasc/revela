@@ -2073,6 +2073,29 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     await A('POST', '/releases/settings', { body: { autoDays: 0 } }); delete env.GITHUB_TOKEN; env.FETCH = prevF3;
   }
 
+  // The test site: only invited people (the admin's list, and the admins) have an account there — asked to production.
+  {
+    env.INTERNAL_KEY = 'clave-interna';
+    let x = await A('POST', '/testers', { body: { testers: ['Eva@Example.com', 'no-es-un-correo'] } });
+    ok(x.status === 200 && x.j.testers.join() === 'eva@example.com', 'pruebas: la lista de invitados, limpia');
+    ok((await A('GET', '/testers')).j.testers[0] === 'eva@example.com', 'pruebas: la lista se guarda');
+    const asks = (email, key = 'clave-interna') => req('POST', '/api/internal/tester', { body: { email }, headers: { 'X-Internal-Key': key } });
+    ok((await (await asks('eva@example.com')).json()).ok && !(await (await asks('gil@example.com')).json()).ok, 'pruebas: producción dice quién está invitado');
+    ok((await asks('eva@example.com', 'otra')).status === 403, 'pruebas: solo con la clave interna');
+    const { forgetTesters } = await import('../server/cloudflare/api.js'); forgetTesters();
+    const stage = { ...env, STAGE: 'test', PROD: { fetch: (u, init) => worker.fetch(new Request(u, init), env) } };
+    const sreq = (method, path, body, headers = {}) => worker.fetch(new Request(SITE + path, { method, headers: { Origin: SITE, ...(body && { 'Content-Type': 'application/json' }), ...headers }, ...(body && { body: JSON.stringify(body) }) }), stage);
+    const evaT = await sreq('POST', '/api/login', { accessToken: 'tok-eva', terms: TERMS });
+    ok(evaT.status === 200, 'pruebas: una invitada entra');
+    const gilT = await sreq('POST', '/api/login', { accessToken: 'tok-gil', terms: TERMS });
+    ok(gilT.status === 403 && (await gilT.json()).error === 'not a tester', 'pruebas: quien no está invitado, no');
+    const ck = cookieFrom(evaT), me0 = await sreq('GET', '/api/me', null, { Cookie: ck }); ok(me0.status === 200, 'pruebas: con su sesión, todo normal: ' + me0.status + ' ' + (await me0.text()).slice(0, 120));
+    await A('POST', '/testers', { body: { testers: [] } }); forgetTesters();
+    ok((await sreq('GET', '/api/me', null, { Cookie: ck })).status === 401, 'pruebas: quitada de la lista, como si cerrara sesión');
+    ok((await (await asks('jefe@example.com')).json()).ok, 'pruebas: los administradores, siempre');
+    delete env.INTERNAL_KEY; forgetTesters();
+  }
+
   // The website's visits (visits.js): no cookies, unique per day without keeping anyone; 404s; the sitemap's extras.
   {
     const V = await import('../server/cloudflare/visits.js'); env.VISITS = namespace(V.Visits, env);

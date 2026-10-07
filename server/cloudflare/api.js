@@ -66,7 +66,7 @@ import { docsSettings, TRASH_DAYS, FOLDERS } from './docs.js';
 import { mail, sendMail, readUnsubToken, unsubPage, fmtDate, mailConfigured, OPTIONAL } from './mail.js';
 import { scheduleAt, dayOf } from './schedule.js';
 import { handle3d, configured3d } from './model3d.js';
-import { createTicket, supportReply, directoryUpsert, directoryRemove, CHARGES } from './admin.js';
+import { createTicket, supportReply, directoryUpsert, directoryRemove, CHARGES, emails as adminEmails } from './admin.js';
 import { record, active } from './finance.js';
 import { NOTICE_PLACES, noticesFor, noticesOp } from './notices.js';
 import { takeQuota } from './store.js';
@@ -82,6 +82,21 @@ import { credits, aiChat, aiImage, aiSpeech } from './ai.js';
 import { stripeConf, billingMode, trialOffer, checkout, portal, stripeWebhook } from './billing.js';
 
 export const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+
+// The test site (env.STAGE): only the people the admin invited have an account there — its AI, cloud and test
+// payments are real costs anyone could otherwise use. Asked to production (service binding PROD) and kept a minute.
+const testerCache = new Map();
+export async function testerOK(env, email) {
+  if (!env.STAGE) return true;
+  email = String(email || '').toLowerCase(); if (!email) return false;
+  const c = testerCache.get(email); if (c && Date.now() - c.at < 60e3) return c.ok;
+  let ok = false;
+  try { const r = await env.PROD.fetch('https://revelaslides.com/api/internal/tester', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Internal-Key': env.INTERNAL_KEY || '' }, body: JSON.stringify({ email }) });
+    // (Production without this yet — 404, until it's published —: open as before; any other failure: closed.)
+    ok = r.status === 404 || (r.ok && !!(await r.json()).ok); } catch { ok = false; }
+  testerCache.set(email, { ok, at: Date.now() }); return ok;
+}
+export const forgetTesters = () => testerCache.clear();
 
 // ---- Settings (wrangler.toml [vars]; secrets with `wrangler secret put`) -----------------
 export function settings(env) {
@@ -365,7 +380,7 @@ export class Account {
           const days = v.kind === 'desktop' ? 90 : 30, renew = v.expires - Date.now() < days * DAY * 2 / 3, stale = Date.now() - (v.last || v.created) > HOUR;
           if (renew || stale) { sessions[h] = { ...v, last: Date.now(), ...sessionPlace(a, v), ...(renew && { expires: Date.now() + days * DAY }) }; await this.put({ sessions }); if (renew) renewed = days; }
         }
-        return this.json({ ok, ...(renewed && { renewed }), ...(ok && (await this.get('blocked', null)) && { blocked: true }) });
+        return this.json({ ok, ...(renewed && { renewed }), ...(ok && (await this.get('blocked', null)) && { blocked: true }), ...(ok && a.email && { email: (await this.get('profile', {})).email || '' }) });
       }
       case 'logout': {
         const sessions = await this.get('sessions', {}); delete sessions[await sha256(a.secret || '')];
@@ -698,6 +713,8 @@ export class Budget {
     if (op === 'storage-get') return Response.json({ storage: (await this.ctx.storage.get('storage')) || null });
     if (op === 'storage-set') { await this.ctx.storage.put('storage', a.storage); return Response.json({ ok: true }); }
     // (And publishing to production, releases.js.)
+    if (op === 'testers-get') return Response.json({ testers: (await this.ctx.storage.get('testers')) || [] });
+    if (op === 'testers-set') { await this.ctx.storage.put('testers', a.testers); return Response.json({ ok: true }); }
     if (op === 'releases-get') return Response.json({ releases: (await this.ctx.storage.get('releases')) || null });
     if (op === 'releases-set') { await this.ctx.storage.put('releases', a.releases); return Response.json({ ok: true }); }
     // (And the notices, notices.js.)
@@ -768,8 +785,8 @@ const sessionPlace = (a, before = {}) => ({ device: String(a.device || before.de
 async function sessionOf(req, env) {
   const bearer = (req.headers.get('Authorization') || '').replace(/^Bearer /, ''), fromCookie = cookieOf(req);
   const raw = bearer || fromCookie, t = parseToken(raw); if (!t) return null;
-  const r = await call(acct(env, t.sub), 'check', { secret: t.secret, ...sessionClient(req) });
-  return r.ok ? { sub: t.sub, secret: t.secret, via: bearer ? 'bearer' : 'cookie', ...(r.blocked && { blocked: true }), ...(r.renewed && { renewed: r.renewed, raw }) } : null;
+  const r = await call(acct(env, t.sub), 'check', { secret: t.secret, ...sessionClient(req), ...(env.STAGE && { email: true }) });   // (the test site: whose, to check the invited list)
+  return r.ok ? { sub: t.sub, secret: t.secret, via: bearer ? 'bearer' : 'cookie', ...(r.blocked && { blocked: true }), ...(r.renewed && { renewed: r.renewed, raw }), ...(r.email && { email: r.email }) } : null;
 }
 
 // ---- Relay servers (Cloudflare Realtime TURN) -----------------------------------------------------
@@ -864,9 +881,17 @@ export async function handleApi(req, env, url) {
     if (!webOrigin) return json({ error: 'origin' }, 403);
     return handleLead(req, env, body, json, { takeQuota, sendMail });
   }
+  // Production answers the test site: whether an email may have an account there (server-to-server, with the key
+  // both share: INTERNAL_KEY; the list is the admin's, plus the admins).
+  if (path === '/internal/tester' && req.method === 'POST') {
+    if (env.STAGE || !env.INTERNAL_KEY || req.headers.get('X-Internal-Key') !== env.INTERNAL_KEY) return json({ error: 'forbidden' }, 403);
+    const email = String(body.email || '').toLowerCase(), list = (await call(env.BUDGET.get(env.BUDGET.idFromName('global')), 'testers-get')).testers || [];
+    return json({ ok: list.includes(email) || adminEmails(env).includes(email) });
+  }
   if (path === '/login' && req.method === 'POST') {
     const who = await googleUser(body.accessToken, body.idToken, s.clientId, env.FETCH || fetch);
     if (!who) return json({ error: 'not signed in with Google' }, 401);
+    if (!(await testerOK(env, who.email))) return json({ error: 'not a tester' }, 403);   // (the test site: invited people only)
     const kind = body.kind === 'desktop' && !webOrigin ? 'desktop' : 'web', lang = langOf(body.lang);
     const r = await call(acct(env, who.sub), 'login', { sub: who.sub, email: who.email, name: who.name, kind, lang, terms: body.terms, ...sessionClient(req) });
     if (r.error === 'terms') return json(r, 400);
@@ -888,7 +913,8 @@ export async function handleApi(req, env, url) {
     return json(await res.json(), res.status);
   }
 
-  const me = await sessionOf(req, env);
+  let me = await sessionOf(req, env);
+  if (me && !(await testerOK(env, me.email))) me = null;   // (taken off the test list: as if signed out)
   // Reporting a problem: with a session or with an email address; only from Revela itself (admin.js).
   if (path === '/support') {
     if (req.method !== 'POST') return json({ error: 'method' }, 405);

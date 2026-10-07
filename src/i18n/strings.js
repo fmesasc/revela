@@ -3546,5 +3546,6 @@ export const ROWS = [
   ['ahora', 'now', 'maintenant', 'jetzt', 'ora', 'agora', 'ara'],
   ['Tu nombre (lo verá tu profesor)', 'Your name (your teacher will see it)', 'Ton nom (ton professeur le verra)', 'Dein Name (deine Lehrkraft sieht ihn)', 'Il tuo nome (lo vedrà il tuo insegnante)', 'O teu nome (o teu professor vai vê-lo)', 'El teu nom (el veurà el teu professor)'],
   ['Empezar', 'Start', 'Commencer', 'Starten', 'Inizia', 'Começar', 'Comença'],
+  ['Esta es la web de pruebas de Revela: solo pueden entrar las personas invitadas. La de verdad está en revelaslides.com.', 'This is Revela\'s test site: only invited people can sign in. The real one is at revelaslides.com.', 'Ceci est le site de test de Revela : seules les personnes invitées peuvent se connecter. Le vrai est sur revelaslides.com.', 'Das ist die Testseite von Revela: Nur eingeladene Personen können sich anmelden. Die echte ist revelaslides.com.', 'Questo è il sito di prova di Revela: possono entrare solo le persone invitate. Quello vero è revelaslides.com.', 'Este é o site de testes do Revela: só podem entrar as pessoas convidadas. O verdadeiro está em revelaslides.com.', 'Aquesta és la web de proves de Revela: només hi poden entrar les persones convidades. La de veritat és a revelaslides.com.'],
 ];
 // Additional languages (partial; anything missing falls back to Spanish).

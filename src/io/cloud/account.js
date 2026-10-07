@@ -88,12 +88,13 @@ let rv = null;
 try { rv = new URLSearchParams(location.search).get('rv'); if (!/^[a-z0-9][a-z0-9-]{1,39}$/.test(rv || '')) rv = null; } catch {}
 export const campaign = () => rv;
 
-// (Throws Error('TERMS') when the server needs the terms accepted first: a new account.)
+// (Throws Error('TERMS') when the server needs the terms accepted first: a new account; Error('NOT_TESTER') on the
+// test site for someone not invited to it.)
 export async function signIn() {
   if (EDITION === 'desktop') return desktopSignIn();
   if (!window.google?.accounts?.oauth2) await loadScript(GIS);
   try { await api('login', { accessToken: await googleToken(), lang: currentLang(), ...(termsAccepted() && { terms: TERMS_VERSION }), ...(campaign() && { campaign: campaign() }) }); }
-  catch (e) { if (e.status === 400 && e.data?.error === 'terms') throw new Error('TERMS'); throw e; }
+  catch (e) { if (e.status === 400 && e.data?.error === 'terms') throw new Error('TERMS'); if (e.status === 403 && e.data?.error === 'not a tester') throw new Error('NOT_TESTER'); throw e; }
   return refreshAccount();
 }
 // My open sessions (/api/sessions): where this account is signed in; closing one, or all the others.

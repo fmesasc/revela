@@ -3524,4 +3524,5 @@ export default {
   "ahora": "nu",
   "Tu nombre (lo verá tu profesor)": "Je naam (je leraar ziet die)",
   "Empezar": "Beginnen",
+  "Esta es la web de pruebas de Revela: solo pueden entrar las personas invitadas. La de verdad está en revelaslides.com.": "Dit is de testsite van Revela: alleen uitgenodigde mensen kunnen inloggen. De echte staat op revelaslides.com.",
 };

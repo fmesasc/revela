@@ -33,6 +33,8 @@
 //   POST /api/admin/releases/promote       { reason? } → { ok }   (runs «Publicar en producción»; needs GITHUB_TOKEN)
 //   POST /api/admin/releases/rollback      { version, reason } → { ok, from, to }   (runs «Volver a una versión»; an older one)
 //   POST /api/admin/releases/settings      { autoDays } → { settings }   (0: never by itself)
+//   GET  /api/admin/testers                → { testers: [emails] }   (who may have an account on test.revelaslides.com; the admins always)
+//   POST /api/admin/testers                { testers: [emails] } → { testers }
 //   GET  /api/admin/storage                → { config: { freeMb, proMb, alertGb }, bytes, top }   (the cloud's space: storage.js)
 //   POST /api/admin/storage                { freeMb, proMb, alertGb } → { config }
 //   POST /api/admin/storage/measure        → { accounts, measured, more }   (documents from before space was counted)
@@ -630,6 +632,16 @@ export async function handleAdmin(req, env, url) {
     const reason = clip(body.reason, 200).trim(), r = await releasesRollback(env, clip(body.version, 20), reason).catch(e => ({ error: 'github', detail: e.message }));
     await audit(env, { by, action: 'release-rollback', target: 'releases', reason, after: r });
     return json(r, { 'no token': 409, 'bad request': 400, 'not found': 404, 'not older': 409 }[r.error] || (r.error ? 502 : 200));
+  }
+  if (path === '/testers') {
+    const B = env.BUDGET.get(env.BUDGET.idFromName('global'));
+    if (GET) return json({ testers: (await call(B, 'testers-get')).testers || [], admins: emails(env) });
+    if (!POST) return json({ error: 'method' }, 405);
+    const list = [...new Set((Array.isArray(body.testers) ? body.testers : []).map(x => String(x).trim().toLowerCase()).filter(x => EMAIL.test(x)))].slice(0, 200);
+    const before = (await call(B, 'testers-get')).testers || [];
+    await call(B, 'testers-set', { testers: list });
+    await audit(env, { by, action: 'testers', target: 'testers', before, after: list });
+    return json({ testers: list });
   }
   if (POST && path === '/releases/settings') {
     const r = await releasesSettings(env, body); if (r.error) return json(r, 400);

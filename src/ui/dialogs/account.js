@@ -16,6 +16,7 @@ import { openReport } from './report.js';
 const FEATURE_NAMES = { ai: 'IA incluida', 'share-people': 'Compartir con personas', 'cloud-save': 'Guardado en la nube', 'video-calls': 'Videollamadas en el editor', 'premium-templates': 'Plantillas premium' };
 const errorText = e => (e.data?.error === 'no customer' ? t('Esta cuenta no tiene ninguna suscripción de pago que gestionar: su Pro viene del modo de prueba, de un regalo o de un equipo.')
   : /^billing (not available|failed)$/.test(e.message) ? t('Los pagos no están disponibles ahora mismo. Inténtalo más tarde.')
+  : e.message === 'NOT_TESTER' ? t('Esta es la web de pruebas de Revela: solo pueden entrar las personas invitadas. La de verdad está en revelaslides.com.')
   : e.message === 'CANCELLED' || e.message === 'TERMS' ? t('No se ha iniciado sesión.') : e.message === 'EXPIRED' ? t('Se acabó el tiempo para confirmar. Vuelve a intentarlo.') : `${t('Algo ha fallado:')} ${e.message}`);
 
 // Just signed in, without Google Drive: offer it once (here, where the click lets Google's window open). The

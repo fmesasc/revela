@@ -12,6 +12,12 @@ Nada nuevo llega directamente a quien usa Revela. Primero se prueba en **test.re
 | Web pública (repositorio privado) | rama `main` de fmesasc/revela-site | rama `production` de fmesasc/revela-site |
 | GitHub Pages y aplicación de escritorio | — | se publican desde `production` |
 
+**Solo personas invitadas en pruebas.** En test.revelaslides.com solo pueden iniciar sesión los correos de la lista
+de la administración (Versiones ▸ Personas invitadas a pruebas) y los administradores: allí la IA, la nube y los pagos
+de prueba son costes reales. El servidor de pruebas lo pregunta al de producción por un enlace interno entre los dos
+Workers (service binding `PROD`, con el secreto `INTERNAL_KEY` en los dos); quitar a alguien de la lista le cierra
+la sesión en menos de un minuto.
+
 La web de pruebas no se indexa (`robots.txt`, `noindex`, sin sitemap), lleva una franja «Entorno de pruebas» y la
 aplicación muestra el distintivo «Pruebas» (`tools/build-site.mjs`, `src/ui/shell/stage.js`).
 

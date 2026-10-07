@@ -3524,4 +3524,5 @@ export default {
   "ahora": "الآن",
   "Tu nombre (lo verá tu profesor)": "اسمك (سيراه معلّمك)",
   "Empezar": "ابدأ",
+  "Esta es la web de pruebas de Revela: solo pueden entrar las personas invitadas. La de verdad está en revelaslides.com.": "هذا موقع الاختبار الخاص بـ Revela: لا يمكن الدخول إلا للمدعوين. الموقع الحقيقي هو revelaslides.com.",
 };

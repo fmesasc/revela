@@ -3524,4 +3524,5 @@ export default {
   "ahora": "agora",
   "Tu nombre (lo verá tu profesor)": "O teu nome (verao o teu profesor)",
   "Empezar": "Comezar",
+  "Esta es la web de pruebas de Revela: solo pueden entrar las personas invitadas. La de verdad está en revelaslides.com.": "Esta é a web de probas de Revela: só poden entrar as persoas convidadas. A de verdade está en revelaslides.com.",
 };

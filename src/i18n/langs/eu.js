@@ -3524,4 +3524,5 @@ export default {
   "ahora": "orain",
   "Tu nombre (lo verá tu profesor)": "Zure izena (zure irakasleak ikusiko du)",
   "Empezar": "Hasi",
+  "Esta es la web de pruebas de Revela: solo pueden entrar las personas invitadas. La de verdad está en revelaslides.com.": "Hau Revelaren proba-webgunea da: gonbidatutako pertsonak bakarrik sar daitezke. Benetakoa revelaslides.com-en dago.",
 };

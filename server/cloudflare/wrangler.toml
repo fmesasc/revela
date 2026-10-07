@@ -382,3 +382,9 @@ class_name = "Crawler"
 [[env.staging.durable_objects.bindings]]
 name = "VISITS"
 class_name = "Visits"
+
+# The test site asks production whether an email is invited (api.js testerOK): a service binding, Worker to Worker,
+# never through the internet; with the key both share (secret INTERNAL_KEY, on both Workers).
+[[env.staging.services]]
+binding = "PROD"
+service = "revela-share"
