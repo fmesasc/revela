@@ -34,7 +34,7 @@ import { startMagnifyDraw } from '../canvas/magnifyview.js';
 import * as mag from '../../features/document/magnify.js';
 import { currentPalette } from '../../features/design/palettes.js';
 import { openAddAnimation } from './animadd.js';
-import { toggleAnimPane, objLabel } from '../panels/animation.js';
+import { toggleAnimPane } from '../panels/animation.js';
 import { animsOf, setAnimation, clearAnimation, addAnimation } from '../../features/animation/transitions.js';
 import { playAnimations } from '../canvas/preview.js';
 import { playInEditor } from '../canvas/mediaview.js';
@@ -137,18 +137,20 @@ function groupsFor(b) {
   } else if (b.type === 'video') {
     // How it plays, in sight (before, only in the Opciones dialog): by itself, looped, muted, its speed, and when it
     // starts — a click, or when another video (or GIF) of the slide ends. Its own steps are animations (Animar).
-    const others = currentSlide().blocks.filter(x => x.id !== b.id && mediaKind(x));
+    // (The others by their number on the slide — «Vídeo 2», «GIF 1» —; one that loops never ends, so it isn't offered.)
+    const media = currentSlide().blocks.filter(x => mediaKind(x)), nth = x => media.filter(y => mediaKind(y) === mediaKind(x)).indexOf(x) + 1;
+    const others = media.filter(x => x.id !== b.id && !(x.loop && !x.segments?.length));
     const when = b.autoplay ? 'auto' : b.afterVideo && others.some(x => x.id === b.afterVideo) ? b.afterVideo : '';
-    G.push(['Reproducción', [btn('play_arrow', 'Reproducir', () => playInEditor(b.id)),
-      ['select', 'Empieza', [['', 'Con un clic'], ['auto', 'Solo, al llegar'], ...others.map(x => [x.id, `${t('Al acabar')} ${objLabel(x)}`])], when,
+    G.push(['Reproducción', [btn('play_circle', 'Probar', () => playInEditor(b.id)),
+      ['select', 'Empieza', [['', 'Con un clic'], ['auto', 'Solo, al llegar'], ...others.map(x => [x.id, `${t('Al acabar')} «${mediaKind(x) === 'gif' ? 'GIF' : t('Vídeo')} ${nth(x)}»`])], when,
         v => set(b, x => { delete x.autoplay; delete x.afterVideo; if (v === 'auto') x.autoplay = true; else if (v) x.afterVideo = v; })],
       btn('repeat', 'Repetir', () => set(b, x => { if (x.loop) delete x.loop; else x.loop = true; }), !!b.loop),
       btn('volume_off', 'Sin sonido', () => set(b, x => { if (x.muted) delete x.muted; else x.muted = true; }), !!b.muted),
       ['select', 'Velocidad', MEDIA_SPEEDS.map(s => [String(s), `${String(s).replace('.', ',')}×`]), String(b.speed || 1), v => set(b, x => { if (+v !== 1) x.speed = +v; else delete x.speed; })],
       btn('tune', 'Tramos y croma…', () => openMediaPlayback(b))]],
-      // (Added after its animations, as Animaciones ▸ Añadir animación ▸ Vídeo.)
-      ['Animar', [btn('play_arrow', 'Reproducir con un clic', () => addAnimation('media-play', { start: 'click' })), btn('pause', 'Pausar con un clic', () => addAnimation('media-pause', { start: 'click' })),
-        btn('stop', 'Detener con un clic', () => addAnimation('media-stop', { start: 'click' }))]],
+      // Its steps with the clicks, while presenting (added after its animations, as Animaciones ▸ Añadir animación ▸ Vídeo).
+      ['Con un clic', [btn('play_arrow', 'Reproducir', () => addAnimation('media-play', { start: 'click' })), btn('pause', 'Pausar', () => addAnimation('media-pause', { start: 'click' })),
+        btn('stop', 'Detener', () => addAnimation('media-stop', { start: 'click' }))]],
       ['Archivo', [btn('download', 'Descargar', () => saveFile(b))]]);
   }
   else if (b.type === 'audio') {

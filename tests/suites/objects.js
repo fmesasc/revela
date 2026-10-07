@@ -579,6 +579,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     setMediaPlayback(a.id, {}); R.store.commit(() => { R.state.deck.slides[R.state.ui.slideIndex].blocks = R.state.deck.slides[R.state.ui.slideIndex].blocks.filter(x => x.id !== a.id); });
     eq((R.io.buildHTML().match(/class="fragment rv-seg"/g) || []).length, 1, 'si el otro ya no está, empieza con un clic');
     R.store.undo();
+    // Nor when it would never start: the other one loops, or each one waits for the other.
+    setMediaPlayback(a.id, { loop: true });
+    eq((R.io.buildHTML().match(/class="fragment rv-seg"/g) || []).length, 2, 'si el otro va en bucle, empieza con un clic (y el otro, con el suyo)');
+    setMediaPlayback(a.id, { loop: null, afterVideo: b.id });
+    eq((R.io.buildHTML().match(/class="fragment rv-seg"/g) || []).length, 2, 'si se esperan el uno al otro, los dos con un clic');
+    setMediaPlayback(a.id, { afterVideo: null });
 
     const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
     f.srcdoc = R.io.buildHTML(R.state.deck, { inApp: true });

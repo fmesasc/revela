@@ -271,6 +271,18 @@ const linkAttrs = b => (b.type === 'text' || b.type === 'connector' ? '' : (b.hr
   + (b.popup && (b.popup.title || b.popup.text) ? ` data-popup="${esc(JSON.stringify({ title: String(b.popup.title || '').slice(0, 200), text: String(b.popup.text || '').slice(0, 4000) }))}"` : '')
   + (b.tip ? ` data-tip="${esc(String(b.tip).slice(0, 300))}"` : '')
   + (b.href || b.goto || b.popup ? ` role="${b.popup ? 'button' : 'link'}" tabindex="0"` : b.tip ? ' tabindex="0"' : ''));
+// «Start when another ends», if that can happen: the other one is still on the slide, it ends (it doesn't loop
+// without segments) and it doesn't wait — itself, or along a chain — for this one. Else it's a click, as before.
+function waitsFor(b, slide) {
+  const seen = new Set([b.id]);
+  for (let id = b.afterVideo; id; ) {
+    const o = slide?.blocks.find(x => x.id === id);
+    if (!o || seen.has(id) || (o.loop && !o.segments?.length)) return false;
+    if (o.autoplay || !o.afterVideo) return true;
+    seen.add(id); id = o.afterVideo;
+  }
+  return false;
+}
 function blockHTMLRaw(b, slide) {
   // When the slide uses Auto‑Animate, a stable data-id lets reveal.js match and
   // morph the same object between consecutive slides (PowerPoint's "Morph").
@@ -321,7 +333,7 @@ function blockHTMLRaw(b, slide) {
   // player draws it; each segment after the first automatic one is a click.
   if (needsPlayer(b)) {
     const cfg = mediaConfig(b);
-    if (cfg.after && !slide?.blocks.some(x => x.id === cfg.after && x.id !== b.id)) delete cfg.after;   // (that video isn't here any more: a click)
+    if (cfg.after && !waitsFor(b, slide)) delete cfg.after;
     // (It starts by itself, or when the other one ends: its first segment is that, not a click.)
     const first = cfg.autoplay || cfg.after ? 1 : 0;
     // No segments, not automatic and no steps of its own: one click plays it all (data-seg -1).
