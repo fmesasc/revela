@@ -2,10 +2,17 @@
 # so — here (Actions ▸ Publicar en producción ▸ Run workflow) or from the administration (Versiones), which also runs it
 # by itself after the days without changes the admin chose (server/cloudflare/releases.js).
 #
-# It moves the branch production — this repository's and the website's (fmesasc/revela-site) — to their main. That
-# publishes everything else: the server (server.yml), revelaslides.com (Cloudflare Pages' production branch), GitHub
-# Pages and the desktop app. Only a main whose tests passed, and only forward (never over something else). It pushes
-# with deploy keys (secrets PROMOTE_KEY and SITE_PROMOTE_KEY): pushes made with Actions' own token start no workflows.
+# Each publication is a version with its own number (vX.Y.Z), kept: a tag in this repository and the same tag in the
+# website's (fmesasc/revela-site), so «Volver a una versión» (rollback.yml) can go back to any of them, and the desktop
+# app's release with that number (desktop.yml, started by the tag). The number is package.json's version: if that
+# one was already published, the patch goes up by one in a commit «Versión X.Y.Z» on main (package.json and
+# src/core/config.js APP_VERSION, which the app and the server show). For a bigger step, raise package.json's minor
+# version (and APP_VERSION) by hand before publishing.
+#
+# Then it moves the branch production — this repository's and the website's — to that version. That publishes
+# everything else: the server (server.yml), revelaslides.com (Cloudflare Pages' production branch) and GitHub Pages.
+# Only a main whose tests passed, and only forward (never over something else). It pushes with deploy keys (secrets
+# PROMOTE_KEY and SITE_PROMOTE_KEY): pushes made with Actions' own token start no workflows.
 name: Publicar en producción
 
 on:
@@ -29,13 +36,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
-      - name: What goes to production
-        id: what
+          fetch-tags: true
+      - name: Keys
+        env:
+          KEY: ${{ secrets.PROMOTE_KEY }}
+          SITE_KEY: ${{ secrets.SITE_PROMOTE_KEY }}
+        run: |
+          [ -n "$KEY" ] || { echo "::error::No PROMOTE_KEY secret (a deploy key with write access): see docs/PUBLICAR.md."; exit 1; }
+          mkdir -p ~/.ssh && printf '%s\n' "$KEY" > ~/.ssh/app && chmod 600 ~/.ssh/app
+          if [ -n "$SITE_KEY" ]; then printf '%s\n' "$SITE_KEY" > ~/.ssh/site && chmod 600 ~/.ssh/site; fi
+          git remote set-url origin git@github.com:${{ github.repository }}.git
+          git config user.name 'Revela' && git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+      - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
           REASON: ${{ inputs.reason }}
         run: |
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/app -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          SITE_SSH="ssh -i ~/.ssh/site -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
           main=$(git rev-parse origin/main); prod=$(git rev-parse origin/production)
           if ! git merge-base --is-ancestor "$prod" "$main"; then
             echo "::error::production has changes that aren't in main: nothing is moved (bring them to main first)."; exit 1; fi
@@ -43,41 +63,42 @@ jobs:
           ok=$(gh run list --workflow tests.yml --branch main -L 50 --json headSha,conclusion -q "[.[] | select(.headSha == \"$main\" and .conclusion == \"success\")] | length")
           if [ "$main" != "$prod" ] && [ "${ok:-0}" = 0 ]; then
             echo "::error::The tests of main ($main) haven't passed (or are still running): nothing is published."; exit 1; fi
-          echo "main=$main" >> "$GITHUB_OUTPUT"; echo "prod=$prod" >> "$GITHUB_OUTPUT"
+          # The website: its main and production.
+          smain=''; sprod=''
+          if [ -f ~/.ssh/site ]; then
+            GIT_SSH_COMMAND="$SITE_SSH" git clone -q --bare git@github.com:fmesasc/revela-site.git /tmp/site
+            smain=$(git -C /tmp/site rev-parse main); sprod=$(git -C /tmp/site rev-parse production)
+            git -C /tmp/site merge-base --is-ancestor "$sprod" "$smain" || { echo "::error::The website's production has changes that aren't in its main."; exit 1; }
+          else echo "::warning::No SITE_PROMOTE_KEY: the website's production branch is left as it was."; fi
+          if [ "$main" = "$prod" ] && [ "$smain" = "$sprod" ]; then echo "## Publicar en producción
+          Todo estaba ya al día: no hay versión nueva." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+
+          # The version: package.json's, or the next one if it was already published (a commit on main).
+          V=$(node -p "require('./package.json').version")
+          if git rev-parse -q --verify "refs/tags/v$V" > /dev/null && [ "$(git rev-list -n1 "v$V")" != "$main" ]; then
+            IFS=. read -r a b c <<< "$V"; c=$((c + 1)); while git rev-parse -q --verify "refs/tags/v$a.$b.$c" > /dev/null; do c=$((c + 1)); done; V="$a.$b.$c"
+            node -e "const fs=require('fs'),f='package.json',j=JSON.parse(fs.readFileSync(f));j.version=process.argv[1];fs.writeFileSync(f,JSON.stringify(j,null,2)+'\n')" "$V"
+            sed -i "s/^export const APP_VERSION = '[^']*';/export const APP_VERSION = '$V';/" src/core/config.js
+            grep -q "APP_VERSION = '$V'" src/core/config.js || { echo "::error::APP_VERSION not found in src/core/config.js"; exit 1; }
+            git commit -q -am "Versión $V"
+            git push -q origin HEAD:refs/heads/main || { echo "::error::main changed meanwhile: run it again."; exit 1; }
+            main=$(git rev-parse HEAD)
+          fi
+          # What it brings (since the version in production), for the tag, the release and this summary.
+          prev=$(git describe --tags --abbrev=0 --match 'v[0-9]*' "$prod" 2>/dev/null || true)
           {
-            echo "## Publicar en producción"
-            [ -n "$REASON" ] && echo "Motivo: $REASON"
-            if [ "$main" = "$prod" ]; then echo "La aplicación y el servidor ya estaban al día."; else
-              echo "### Cambios"; git log --format='- %s (%h)' "$prod..$main"; fi
-          } >> "$GITHUB_STEP_SUMMARY"
-      - name: The website (fmesasc/revela-site)
-        env:
-          KEY: ${{ secrets.SITE_PROMOTE_KEY }}
-        run: |
-          if [ -z "$KEY" ]; then echo "::warning::No SITE_PROMOTE_KEY: the website's production branch is left as it was."; exit 0; fi
-          mkdir -p ~/.ssh && printf '%s\n' "$KEY" > ~/.ssh/site && chmod 600 ~/.ssh/site
-          export GIT_SSH_COMMAND="ssh -i ~/.ssh/site -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
-          git clone -q --bare git@github.com:fmesasc/revela-site.git /tmp/site
-          cd /tmp/site && smain=$(git rev-parse main) && sprod=$(git rev-parse production)
-          if [ "$smain" = "$sprod" ]; then echo "La web ya estaba al día." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
-          git merge-base --is-ancestor "$sprod" "$smain" || { echo "::error::The website's production has changes that aren't in its main."; exit 1; }
-          { echo "### Web"; git log --format='- %s (%h)' "$sprod..$smain"; } >> "$GITHUB_STEP_SUMMARY"
-          git push -q origin "$smain:refs/heads/production"
-          echo "SITE_MOVED=1" >> "$GITHUB_ENV"
-      - name: The app and the server
-        if: steps.what.outputs.main != steps.what.outputs.prod
-        env:
-          KEY: ${{ secrets.PROMOTE_KEY }}
-        run: |
-          [ -n "$KEY" ] || { echo "::error::No PROMOTE_KEY secret (a deploy key with write access): see docs/PUBLICAR.md."; exit 1; }
-          mkdir -p ~/.ssh && printf '%s\n' "$KEY" > ~/.ssh/app && chmod 600 ~/.ssh/app
-          git remote set-url origin git@github.com:${{ github.repository }}.git
-          GIT_SSH_COMMAND="ssh -i ~/.ssh/app -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" git push -q origin "${{ steps.what.outputs.main }}:refs/heads/production"
-      - name: Only the website changed
-        if: steps.what.outputs.main == steps.what.outputs.prod && env.SITE_MOVED == '1'
-        env:
-          HOOK: ${{ secrets.CF_DEPLOY_HOOK_PROD }}
-        run: |
-          # (No push here starts Cloudflare Pages: its production deploy hook does.)
-          if [ -n "$HOOK" ]; then curl -fsS -X POST "$HOOK" > /dev/null && echo "Web de producción, reconstruyéndose." >> "$GITHUB_STEP_SUMMARY";
-          else echo "::warning::No CF_DEPLOY_HOOK_PROD: revelaslides.com will take the website's changes with the next publication."; fi
+            echo "Revela $V"; echo
+            if [ -n "$REASON" ]; then echo "Motivo: $REASON"; echo; fi
+            if [ "$main" != "$prod" ]; then echo "Cambios:"; git log --no-merges --format='- %s (%h)' "$prod..$main" | grep -v '^- Versión [0-9.]* (' || true; echo; fi
+            if [ -n "$smain" ] && [ "$smain" != "$sprod" ]; then echo "Web:"; git -C /tmp/site log --no-merges --format='- %s (%h)' "$sprod..$smain"; echo; fi
+            if [ -n "$prev" ]; then echo "Versión anterior: $prev"; fi
+          } > /tmp/notes
+          git tag -a "v$V" -F /tmp/notes "$main"
+          # The website first (its tag and production), then the app (its production and the tag: it starts the desktop app).
+          if [ -n "$smain" ]; then
+            git -C /tmp/site tag -a "v$V" -m "Revela $V" "$smain"
+            GIT_SSH_COMMAND="$SITE_SSH" git -C /tmp/site push -q origin "$smain:refs/heads/production" "refs/tags/v$V"
+          fi
+          git push -q origin "$main:refs/heads/production"
+          git push -q origin "refs/tags/v$V"
+          { echo "## Publicada la versión $V"; echo; sed 's/^Revela .*//' /tmp/notes; } >> "$GITHUB_STEP_SUMMARY"

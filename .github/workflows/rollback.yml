@@ -1,0 +1,78 @@
+# Volver a una versión: when a published version turns out to have a fault, production goes back to an earlier one —
+# here (Actions ▸ Volver a una versión ▸ Run workflow) or from the administration (Versiones ▸ Volver a esta).
+#
+# It moves the branch production of this repository and of the website (fmesasc/revela-site) back to that version's
+# tag (promote.yml makes them). That redeploys the server (server.yml), revelaslides.com (Cloudflare Pages) and GitHub
+# Pages with the old code. main keeps everything: the fault is fixed there and published again as a new version.
+#
+# What it doesn't undo:
+# - The desktop app: an installed app doesn't go back to an older number. It gets the fix with the next version.
+# - Data: what the newer version saved stays. A version that changes how something is saved must be readable by the
+#   one before (that's how changes are made here). And one that added a Durable Object (wrangler.toml migrations)
+#   can't be undone this way: the server step fails and the server stays as it was — then use Cloudflare's own
+#   rollback (Workers & Pages ▸ revela-share ▸ Deployments) for the server.
+# The administration doesn't publish by itself again what was rolled back (releases.js): only a new change does.
+name: Volver a una versión
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versión a la que volver (p. ej. 0.4.2)'
+        required: true
+      reason:
+        description: 'Motivo (queda en el resumen)'
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: promote
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Back to the version
+        env:
+          KEY: ${{ secrets.PROMOTE_KEY }}
+          SITE_KEY: ${{ secrets.SITE_PROMOTE_KEY }}
+          VERSION: ${{ inputs.version }}
+          REASON: ${{ inputs.reason }}
+        run: |
+          V="${VERSION#v}"
+          [[ "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::«$VERSION» isn't a version number (like 0.4.2)."; exit 1; }
+          git rev-parse -q --verify "refs/tags/v$V" > /dev/null || { echo "::error::There's no version $V (Versiones lists them)."; exit 1; }
+          to=$(git rev-list -n1 "v$V"); prod=$(git rev-parse origin/production)
+          if [ "$to" = "$prod" ]; then echo "Production already is version $V." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          git merge-base --is-ancestor "$to" "$prod" || { echo "::error::Version $V isn't older than production's: to go forward, publish (Publicar en producción)."; exit 1; }
+          [ -n "$KEY" ] || { echo "::error::No PROMOTE_KEY secret: see docs/PUBLICAR.md."; exit 1; }
+          mkdir -p ~/.ssh && printf '%s\n' "$KEY" > ~/.ssh/app && chmod 600 ~/.ssh/app
+          from=$(git describe --tags --exact-match --match 'v[0-9]*' "$prod" 2>/dev/null || echo "${prod::7}")
+          # The website first: its tag of that version.
+          if [ -n "$SITE_KEY" ]; then
+            printf '%s\n' "$SITE_KEY" > ~/.ssh/site && chmod 600 ~/.ssh/site
+            export GIT_SSH_COMMAND="ssh -i ~/.ssh/site -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+            git clone -q --bare git@github.com:fmesasc/revela-site.git /tmp/site
+            if git -C /tmp/site rev-parse -q --verify "refs/tags/v$V" > /dev/null; then
+              git -C /tmp/site push -q --force origin "$(git -C /tmp/site rev-list -n1 "v$V"):refs/heads/production"
+            else echo "::warning::The website has no tag v$V: its production is left as it was."; fi
+          else echo "::warning::No SITE_PROMOTE_KEY: the website's production is left as it was."; fi
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/app -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          git remote set-url origin git@github.com:${{ github.repository }}.git
+          git push -q --force origin "$to:refs/heads/production"
+          {
+            echo "## Vuelta a la versión $V"
+            echo "Desde: $from · Motivo: $REASON"
+            echo
+            echo "Lo que deja de estar en producción:"; git log --no-merges --format='- %s (%h)' "$to..$prod" | grep -v '^- Versión [0-9.]* (' || true
+            echo
+            echo "El servidor, revelaslides.com y GitHub Pages se vuelven a desplegar ahora (Actions: Server, Deploy to GitHub Pages)."
+            echo "La aplicación de escritorio no vuelve atrás: el arreglo le llegará con la próxima versión."
+          } >> "$GITHUB_STEP_SUMMARY"

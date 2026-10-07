@@ -16,6 +16,7 @@
 //   POST /api/logout
 //   POST /api/visit            { path, ref, lang, kind: view | 404 }   (the website's pages: visits.js; no cookies)
 //   GET  /api/redirect?path=   → { to }   (where an address that doesn't exist goes: the 404 page asks)
+//   GET  /api/version          → { version, stage }   (the version this server is: src/core/config.js APP_VERSION)
 //   GET  /api/sessions         → { sessions: [{ id, kind, device, where, created, last, expires, current? }] }   (my open sessions)
 //   POST /api/sessions         { id } | { others: true } → { ended }   (closing one, or all but this one)
 //   GET  /api/me               → { email, plan, credits, features, billing, billingTest, terms (accepted the current ones?), docs,
@@ -76,6 +77,7 @@ import { enc, b64url, random, sha256, DAY, HOUR } from './util.js';
 import { stockSearch, stockUsed, photoProviders } from './stock.js';
 import { storageConfig, MB } from './storage.js';
 import { handleVisit, visitsCall, cleanPath } from './visits.js';
+import { APP_VERSION } from '../../src/core/config.js';
 import { credits, aiChat, aiImage, aiSpeech } from './ai.js';
 import { stripeConf, billingMode, trialOffer, checkout, portal, stripeWebhook } from './billing.js';
 
@@ -850,6 +852,7 @@ export async function handleApi(req, env, url) {
     if (!webOrigin) return json({ error: 'origin' }, 403);
     return handleVisit(req, env, body, json);
   }
+  if (path === '/version' && req.method === 'GET') return json({ version: APP_VERSION, stage: env.STAGE || 'production' }, 200, { 'Cache-Control': 'no-store' });
   if (path === '/redirect' && req.method === 'GET') {
     if (!env.VISITS) return json({ to: null });
     const r = await visitsCall(env, 'redirect', { path: cleanPath(url.searchParams.get('path')) });

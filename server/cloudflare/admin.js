@@ -29,8 +29,9 @@
 //   POST /api/admin/web/notfound           { path, status: ignored | redirect | new, to? } → { item }
 //   POST /api/admin/web/check              { offset } → { checked, total, bad: [{ url, status }], next }   (do the sitemap's
 //                                          addresses answer? 30 at a time: Cloudflare limits a request's own requests)
-//   GET  /api/admin/releases               → what's on pruebas and in production (releases.js)
+//   GET  /api/admin/releases               → what's on pruebas and in production, and the versions kept (releases.js)
 //   POST /api/admin/releases/promote       { reason? } → { ok }   (runs «Publicar en producción»; needs GITHUB_TOKEN)
+//   POST /api/admin/releases/rollback      { version, reason } → { ok, from, to }   (runs «Volver a una versión»; an older one)
 //   POST /api/admin/releases/settings      { autoDays } → { settings }   (0: never by itself)
 //   GET  /api/admin/storage                → { config: { freeMb, proMb, alertGb }, bytes, top }   (the cloud's space: storage.js)
 //   POST /api/admin/storage                { freeMb, proMb, alertGb } → { config }
@@ -90,7 +91,7 @@ import { acct, call, settings, trialConfig, cleanTrial, resetTrialCache, resetNo
 import { stripeConf } from './billing.js';
 import { priceOf } from './ai.js';
 import { storageConfig, cleanStorage, resetStorageCache, storageBackfill } from './storage.js';
-import { releasesState, releasesPromote, releasesSettings } from './releases.js';
+import { releasesState, releasesPromote, releasesRollback, releasesSettings } from './releases.js';
 import { visitsCall, cleanPath } from './visits.js';
 import { communityPage } from './community.js';
 import { cleanNotice } from './notices.js';
@@ -624,6 +625,11 @@ export async function handleAdmin(req, env, url) {
     const r = await releasesPromote(env, clip(body.reason, 200)).catch(e => ({ error: 'github', detail: e.message }));
     await audit(env, { by, action: 'release-promote', target: 'releases', reason: clip(body.reason, 200), after: r });
     return json(r, r.error === 'no token' ? 409 : r.error ? 502 : 200);
+  }
+  if (POST && path === '/releases/rollback') {
+    const reason = clip(body.reason, 200).trim(), r = await releasesRollback(env, clip(body.version, 20), reason).catch(e => ({ error: 'github', detail: e.message }));
+    await audit(env, { by, action: 'release-rollback', target: 'releases', reason, after: r });
+    return json(r, { 'no token': 409, 'bad request': 400, 'not found': 404, 'not older': 409 }[r.error] || (r.error ? 502 : 200));
   }
   if (POST && path === '/releases/settings') {
     const r = await releasesSettings(env, body); if (r.error) return json(r, 400);

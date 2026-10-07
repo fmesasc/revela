@@ -1970,7 +1970,7 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   // Versiones (releases.js): what's on pruebas and in production; publishing runs GitHub's workflow; by itself after N days.
   {
     const ghCalls = [], prevF3 = env.FETCH, old = Date.now() - 5 * 864e5;
-    let mainDate = new Date(old).toISOString(), testsOk = 'success';
+    let mainDate = new Date(old).toISOString(), testsOk = 'success', backs = [];
     env.FETCH = async (u, init = {}) => { const s = String(u);
       if (!s.startsWith('https://api.github.com/repos/fmesasc/revela/')) return prevF3(u, init);
       ghCalls.push({ s, method: init.method || 'GET', auth: init.headers?.Authorization, body: init.body && JSON.parse(init.body) });
@@ -1978,11 +1978,16 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
         commits: [{ sha: 'm1', commit: { message: 'Primero', committer: { date: '2026-10-02T10:00:00Z' } } }, { sha: 'm2', commit: { message: 'Último cambio', committer: { date: mainDate } } }] });
       if (s.includes('/actions/workflows/tests.yml/runs')) return Response.json({ workflow_runs: [{ head_sha: 'm2', status: 'completed', conclusion: testsOk, html_url: 'https://github.com/x/1' }] });
       if (s.includes('/actions/workflows/promote.yml/runs')) return Response.json({ workflow_runs: [] });
-      if (s.endsWith('/actions/workflows/promote.yml/dispatches')) return new Response(null, { status: 204 });
+      if (s.includes('/actions/workflows/rollback.yml/runs')) return Response.json({ workflow_runs: backs });
+      if (s.includes('/tags?')) return Response.json([{ name: 'v0.4.9', commit: { sha: 'a9' } }, { name: 'latest', commit: { sha: 'zz' } }, { name: 'v0.4.10', commit: { sha: 'p1' } }, { name: 'v0.4.2', commit: { sha: 'a2' } }]);
+      if (/\/actions\/workflows\/(promote|rollback)\.yml\/dispatches$/.test(s)) return new Response(null, { status: 204 });
       return new Response('{}', { status: 404 }); };
     let x = await A('GET', '/releases');
     ok(x.status === 200 && x.j.production.sha === 'p1' && x.j.production.message === 'En producción' && x.j.pending.map(c => c.sha).join() === 'm2,m1' && x.j.tests.conclusion === 'success' && !x.j.token,
       'versiones: producción, lo que espera en pruebas (lo último primero) y sus pruebas: ' + JSON.stringify(x.j).slice(0, 200));
+    ok(x.j.versions.map(v => v.version).join() === '0.4.10,0.4.9,0.4.2' && x.j.production.version === '0.4.10' && x.j.versions[0].current && !x.j.held,
+      'versiones: las publicadas, por número (0.4.10 después de 0.4.9), y cuál está en producción: ' + JSON.stringify(x.j.versions));
+    ok((await A('POST', '/releases/rollback', { body: { version: '0.4.9', reason: 'Fallo' } })).status === 409, 'volver atrás: sin GITHUB_TOKEN no');
     x = await A('POST', '/releases/promote', { body: { reason: 'Probado' } });
     ok(x.status === 409 && x.j.error === 'no token' && !ghCalls.some(c => c.method === 'POST'), 'versiones: sin GITHUB_TOKEN no se publica (el panel enlaza al flujo)');
     env.GITHUB_TOKEN = 'ghp_prueba';
@@ -1991,6 +1996,16 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok(x.status === 200 && d && d.body.ref === 'main' && d.body.inputs.reason === 'Probado en el centro' && d.auth === 'Bearer ghp_prueba', 'versiones: «Publicar en producción» lanza el flujo, con el motivo');
     ok((await A('GET', '/audit?target=releases')).j.entries.some(e => e.action === 'release-promote' && e.reason === 'Probado en el centro'), 'versiones: en la auditoría');
     ok((await A('POST', '/releases/settings', { body: { autoDays: 99 } })).status === 400, 'versiones: días imposibles → 400');
+    // Going back to a version kept: only an older one, with a reason.
+    ghCalls.length = 0;
+    x = await A('POST', '/releases/rollback', { body: { version: 'v0.4.9', reason: 'Falla el guardado' } });
+    const rb = ghCalls.find(c => c.method === 'POST');
+    ok(x.status === 200 && x.j.from === '0.4.10' && x.j.to === '0.4.9' && /rollback\.yml\/dispatches$/.test(rb?.s) && rb.body.inputs.version === '0.4.9' && rb.body.inputs.reason === 'Falla el guardado',
+      'volver atrás: lanza «Volver a una versión» con la versión y el motivo: ' + JSON.stringify(x.j));
+    ok((await A('POST', '/releases/rollback', { body: { version: '0.4.10', reason: 'x' } })).status === 409, 'volver atrás: no a la que ya está (ni a una más nueva)');
+    ok((await A('POST', '/releases/rollback', { body: { version: '0.3.1', reason: 'x' } })).status === 404, 'volver atrás: solo a una versión publicada');
+    ok((await A('POST', '/releases/rollback', { body: { version: '0.4.2', reason: ' ' } })).status === 400, 'volver atrás: con motivo');
+    ok((await A('GET', '/audit?target=releases')).j.entries.some(e => e.action === 'release-rollback' && e.reason === 'Falla el guardado'), 'volver atrás: en la auditoría');
     // By itself: main without changes for N days, tests passed.
     const { releasesAuto } = await import('../server/cloudflare/releases.js'); ghCalls.length = 0;
     ok(!(await releasesAuto(env)).done && !ghCalls.length, 'versiones: sin días elegidos, nunca sola');
@@ -2001,6 +2016,12 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     mainDate = new Date(old).toISOString(); testsOk = 'failure';
     ok(!(await releasesAuto(env)).done, 'versiones: con las pruebas mal, no');
     env.STAGE = 'test'; testsOk = 'success'; ok(!(await releasesAuto(env)).done, 'versiones: el servidor de pruebas nunca publica'); delete env.STAGE;
+    // After going back, what was rolled back isn't published by itself again: only once main changes.
+    backs = [{ conclusion: 'success', status: 'completed', created_at: new Date(Date.now() - 864e5).toISOString(), html_url: 'https://github.com/x/2' }];
+    ok((await A('GET', '/releases')).j.held && (await releasesAuto(env)).held, 'volver atrás: después, no se vuelve a publicar solo');
+    backs[0].created_at = new Date(Date.parse(mainDate) - 864e5).toISOString();
+    ok(!(await A('GET', '/releases')).j.held && (await releasesAuto(env)).done, 'volver atrás: con un cambio nuevo en pruebas, sí');
+    backs = [];
     await A('POST', '/releases/settings', { body: { autoDays: 0 } }); delete env.GITHUB_TOKEN; env.FETCH = prevF3;
   }
 
@@ -2032,6 +2053,8 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok((await A('POST', '/web/notfound', { body: { path: '/precios-viejos', status: 'redirect', to: 'javascript:alert(1)' } })).status === 400, 'visitas: redirigir solo a una dirección nuestra o https');
     await A('POST', '/web/notfound', { body: { path: '/precios-viejos', status: 'redirect', to: '/pricing' } });
     ok((await (await req('GET', '/api/redirect?path=/precios-viejos.html')).json()).to === '/pricing', 'visitas: la página 404 sabe adónde llevar');
+    { const { APP_VERSION } = await import('../src/core/config.js'), v = await (await req('GET', '/api/version')).json();
+      ok(v.version === APP_VERSION && /^\d+\.\d+\.\d+$/.test(v.version), 'versión: el servidor dice cuál es: ' + JSON.stringify(v)); }
     ok(!(await A('GET', '/web')).j.notfound.some(n => n.path === '/precios-viejos'), 'visitas: ya resuelta, fuera de la lista (con «all», sí)');
     // The sitemap: visited pages it leaves out, and the extras (in /community/sitemap.xml).
     const prevF4 = env.FETCH;

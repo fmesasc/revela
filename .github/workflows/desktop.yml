@@ -1,9 +1,10 @@
 # The desktop app (Tauri 2) for Windows, macOS and Linux, after all the tests pass (tests.yml).
 #
-# - Each change of production (the branch production: promote.yml): builds and publishes the installers in the
-#   «latest» release (Revela · latest version), replaced each time.
-# - A vX.Y.Z tag: also a fixed release with that number.
-# - By hand too: Actions ▸ Desktop app ▸ Run workflow.
+# - Each version published (its tag vX.Y.Z, made by promote.yml): builds the installers and publishes them in a release
+#   with that number, kept (Revela 0.4.2…), marked as the latest one — the installed apps update from it.
+# - By hand: Actions ▸ Desktop app ▸ Run workflow, on a tag (the same) or a branch (only builds: the installers stay in
+#   the run's artifacts, no release).
+# Going back to an older version (rollback.yml) doesn't touch it: an installed app doesn't go back to an older number.
 # The installers aren't signed with a certificate (Windows and macOS warn the first time they're opened), but the
 # updates are signed with Revela's key (secrets TAURI_SIGNING_PRIVATE_KEY[_PASSWORD]): the installed app checks
 # latest.json when it opens and only accepts signed packages.
@@ -11,9 +12,7 @@ name: Desktop app
 
 on:
   push:
-    branches: [production]          # (installed apps update only to what's in production: promote.yml)
-    tags: ['v*']
-    paths-ignore: ['**.md', 'docs/**', 'tests/**', 'examples/**']   # (not tools/: build-site.mjs makes the bundle)
+    tags: ['v*']                    # (only published versions: promote.yml)
   workflow_dispatch:
 
 permissions:
@@ -57,13 +56,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-      # Version: the tag's (v1.2.3 → 1.2.3), else package.json's major.minor and the run number (0.3.<run>), so each
-      # build is newer than the last (Windows installers need that to update). Before tagging a release, raise
-      # package.json's minor version (and src/core/config.js APP_VERSION: tests/layers.py checks they match).
+      # Version: the tag's (v1.2.3 → 1.2.3), which is package.json's in that commit; built from a branch, package.json's.
       - name: Version
         shell: bash
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then V="${GITHUB_REF_NAME#v}"; else V="$(node -p "require('./package.json').version.split('.').slice(0, 2).join('.')").${GITHUB_RUN_NUMBER}"; fi
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then V="${GITHUB_REF_NAME#v}"; else V="$(node -p "require('./package.json').version")"; fi
           node -e "const f='desktop/src-tauri/tauri.conf.json',fs=require('fs'),c=JSON.parse(fs.readFileSync(f));c.version=process.argv[1];fs.writeFileSync(f,JSON.stringify(c,null,2))" "$V"
           echo "Version $V"
       - name: Web app into the bundle
@@ -96,10 +93,16 @@ jobs:
 
   release:
     needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          path: src
       - uses: actions/download-artifact@v4
         with:
           path: out
@@ -107,7 +110,7 @@ jobs:
       - name: Update manifest
         shell: bash
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then V="${GITHUB_REF_NAME#v}"; TAG="$GITHUB_REF_NAME"; else V="0.1.${GITHUB_RUN_NUMBER}"; TAG=latest; fi
+          V="${GITHUB_REF_NAME#v}"; TAG="$GITHUB_REF_NAME"
           node - "$V" "$TAG" "$GITHUB_REPOSITORY" <<'JS'
           const fs = require('fs'), path = require('path');
           const [version, tag, repo] = process.argv.slice(2);
@@ -115,7 +118,7 @@ jobs:
           const entry = re => { const f = all.find(x => re.test(x) && !x.endsWith('.sig')); if (!f || !fs.existsSync(f + '.sig')) throw new Error('missing ' + re);
             return { signature: fs.readFileSync(f + '.sig', 'utf8').trim(), url: `https://github.com/${repo}/releases/download/${tag}/${encodeURIComponent(path.basename(f))}` }; };
           const mac = entry(/\.app\.tar\.gz$/);
-          const manifest = { version, notes: 'Nueva versión de Revela.', pub_date: new Date().toISOString(),
+          const manifest = { version, notes: `Revela ${version}`, pub_date: new Date().toISOString(),
             platforms: { 'windows-x86_64': entry(/-setup\.exe$/), 'linux-x86_64': entry(/\.AppImage$/), 'darwin-aarch64': mac, 'darwin-x86_64': mac } };
           fs.writeFileSync('out/latest.json', JSON.stringify(manifest, null, 2));
           console.log(JSON.stringify(manifest, null, 2));
@@ -125,19 +128,17 @@ jobs:
         run: |
           mapfile -t FILES < <(find out -type f)
           printf '%s\n' "${FILES[@]}"
-          NOTES="Instaladores de Revela para escritorio.
+          # What the version brings: its tag's message (promote.yml), then how to install.
+          git -C src tag -l --format='%(contents)' "$GITHUB_REF_NAME" | sed '1{/^Revela /d}' > notes.md
+          cat >> notes.md <<'MD'
 
-          - **Windows:** \`.msi\` o \`…-setup.exe\` (Windows puede avisar de que no está firmado: «Más información ▸ Ejecutar de todos modos»).
-          - **macOS:** \`.dmg\` (la primera vez: clic derecho ▸ Abrir).
-          - **Linux:** \`.AppImage\` (dale permiso de ejecución), \`.deb\` o \`.rpm\`.
+          ### Instalar
+          - **Windows:** `.msi` o `…-setup.exe` (Windows puede avisar de que no está firmado: «Más información ▸ Ejecutar de todos modos»).
+          - **macOS:** `.dmg` (la primera vez: clic derecho ▸ Abrir).
+          - **Linux:** `.AppImage` (dale permiso de ejecución), `.deb` o `.rpm`.
 
-          La versión web siempre está en https://fmesasc.github.io/revela/"
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            gh release create "$GITHUB_REF_NAME" "${FILES[@]}" -R "$GITHUB_REPOSITORY" --title "Revela $GITHUB_REF_NAME" --notes "$NOTES" --latest
-          else
-            gh release delete latest -R "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
-            gh release create latest "${FILES[@]}" -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-              --title "Revela · última versión" --notes "$NOTES
-
-          Compilada desde ${GITHUB_SHA::7}." --latest
-          fi
+          Las aplicaciones ya instaladas se actualizan solas. La versión web siempre está en https://revelaslides.com/app/
+          MD
+          gh release create "$GITHUB_REF_NAME" "${FILES[@]}" -R "$GITHUB_REPOSITORY" --verify-tag --title "Revela ${GITHUB_REF_NAME#v}" --notes-file notes.md --latest
+          # (The old «latest» release, replaced each time until versions were kept: gone.)
+          gh release delete latest -R "$GITHUB_REPOSITORY" --yes --cleanup-tag 2>/dev/null || true

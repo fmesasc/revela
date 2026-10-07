@@ -10,8 +10,9 @@ export const EDITION = (e => (e === 'cloud' || e === 'desktop' ? e : 'open'))(gl
 
 // Donations link (PayPal.me, Ko-fi, GitHub Sponsors…). Empty = no button.
 export const DONATE_URL = 'https://paypal.me/fmesasc';
-// The app's version (package.json's), sent with «Informar de un problema».
-export const APP_VERSION = '0.3.0';
+// The app's version (package.json's): the published one (vX.Y.Z, promote.yml raises it), shown in «Informar de un
+// problema» and sent with it, and the server's (/api/version).
+export const APP_VERSION = '0.4.0';
 
 // Revela's Google Cloud project (Drive, Picker, "Sign in with Google").
 //

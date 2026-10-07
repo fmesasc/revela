@@ -20,12 +20,12 @@ export function openReport() {
   const back = document.createElement('div'); back.id = 'report-modal'; back.className = 'modal-backdrop';
   const close = () => back.remove();
   if (!acc.hasAccounts()) {
-    back.innerHTML = `<div class="modal" style="text-align:start;width:min(460px,94vw)"><button class="modal-close">✕</button><h3>${t('Informar de un problema')}</h3>
+    back.innerHTML = `<div class="modal" style="text-align:start;width:min(460px,94vw)"><button class="modal-close">✕</button><h3>${t('Informar de un problema')}</h3><p class="host-help rp-ver">Revela ${APP_VERSION}</p>
       <p class="host-help">${t('Cuéntanos qué hacías, qué esperabas y qué pasó en GitHub. Una captura ayuda mucho.')}</p>
       <div class="fr-actions"><a class="fr-do" href="${ISSUES}" target="_blank" rel="noopener">${t('Abrir una consulta en GitHub')}</a></div></div>`;
   } else {
     const me = acc.account(), deckName = String(state.deck?.name || '').trim();
-    back.innerHTML = `<div class="modal" style="text-align:start;width:min(500px,94vw)"><button class="modal-close">✕</button><h3>${t('Informar de un problema')}</h3>
+    back.innerHTML = `<div class="modal" style="text-align:start;width:min(500px,94vw)"><button class="modal-close">✕</button><h3>${t('Informar de un problema')}</h3><p class="host-help rp-ver">Revela ${APP_VERSION}</p>
       <form class="rp-form" novalidate>
         <p class="host-help">${t('Cuéntanos qué hacías, qué esperabas y qué pasó. Te responderemos por correo.')}</p>
         <label class="fr-l">${t('Tipo de problema')}<select class="rp-cat">${Object.entries(REPORT_CATEGORIES).map(([k, v]) => `<option value="${k}">${t(v)}</option>`).join('')}</select></label>

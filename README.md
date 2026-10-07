@@ -86,7 +86,7 @@ See the [roadmap](ROADMAP.md) for details and what comes next.
 
 ## Getting started
 
-**Desktop app** (Windows, macOS, Linux): installers in the [latest release](https://github.com/fmesasc/revela/releases/latest), built automatically on every change (not code-signed yet: Windows/macOS warn the first time). Once installed it updates itself: on start it offers the new version, verified with Revela's update key.
+**Desktop app** (Windows, macOS, Linux): installers in the [latest release](https://github.com/fmesasc/revela/releases/latest), built for every published version (each one kept, with its number) (not code-signed yet: Windows/macOS warn the first time). Once installed it updates itself: on start it offers the new version, verified with Revela's update key.
 
 The app is static files with no build step.
 
