@@ -40,7 +40,7 @@ import { collectFigures, figuresMap, captionLine, figIndexTitle, slidePaths } fr
 import { INK_CSS, inkJS } from '../runtime/ink.js';
 import { READING_CSS, readingJS } from '../runtime/reading.js';
 import { deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
-import { animTimeline, animEntries, EFFECT_KF, EFFECT_KF_CSS, EMPHASIS_FX, isEntrance, customTransitionCSS, transitionName, isShapeTransition, pathKeyframesCSS, pathTurns, animsOf, animKey, offsetBefore } from '../../features/animation/transitions.js';
+import { animTimeline, animEntries, EFFECT_KF, EFFECT_KF_CSS, EMPHASIS_FX, SIZE_FX, animScale, isEntrance, customTransitionCSS, transitionName, isShapeTransition, pathKeyframesCSS, pathTurns, animsOf, animKey, offsetBefore } from '../../features/animation/transitions.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, levelVars } from '../../features/document/master.js';
 import { magOverlaySVG, magFrameSVG, magViewCSS, magInsetCSS, magOrigin, underArea, viewOf, MAG_SKIP } from '../../features/document/magnify.js';
 
@@ -61,7 +61,7 @@ const box = b => `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;`
 // default), also for its caption and for the layers of the next ones.
 const cssKey = key => String(key).replace(/[^\w-]/g, '_');
 const animVars = (b, a = b.animation, key = b.id) => (a ? `transition-duration:${a.duration ?? 500}ms;transition-delay:${a.delay ?? 0}ms;`
-    + `--anim-dur:${a.duration ?? 500}ms;--anim-del:${a.delay ?? 0}ms;`
+    + `--anim-dur:${a.duration ?? 500}ms;--anim-del:${a.delay ?? 0}ms;` + (SIZE_FX.includes(a.effect) ? `--anim-scale:${animScale(a)};` : '')
     + (a.effect === 'path' ? `--dx:${a.dx || 0}px;--dy:${a.dy || 0}px;--pk:rvP${cssKey(key)};` : '') : '');
 
 // Custom entrance effects that reveal.js doesn't provide (used only if present).
@@ -296,9 +296,9 @@ function blockHTMLRaw(b, slide) {
     return `<video${a} src="${esc(b.src || '')}" controls style="${box(b)}object-fit:contain"></video>`;
   if (b.type === 'poll')     // live poll: question, live results and the QR to vote
     return `<div${a} class="rv-poll" data-poll="${esc(JSON.stringify({ pollId: b.pollId, kind: b.kind, display: b.display, question: b.question, options: b.options, ...(b.kind === 'quiz' && { correct: b.correct || [0], time: b.time || 20 }), ...(ACTIVITIES.includes(b.kind) && { text: b.text, points: b.points, image: b.image }) }))}" `
-      + `style="${box(b)}display:grid;grid-template-columns:1fr auto;gap:1em;font-size:${b.fontSize || 32}px">`
+      + `style="${box(b)}display:grid;grid-template-columns:1fr auto;gap:1em;font-size:${b.fontSize || 32}px${/^#[0-9a-f]{3,8}$/i.test(b.color || '') ? ';color:' + b.color : ''}">`
       + `<div style="display:flex;flex-direction:column;min-width:0"><div style="font-weight:700;margin-bottom:.5em">${esc(b.question || '')}</div>`
-      + `<div class="rv-poll-res" style="flex:1;min-height:0"></div></div>`
+      + `<div class="rv-poll-res" style="flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center"></div></div>`
       + `<div class="rv-poll-qr" style="text-align:center;font-size:18px;align-self:center"><canvas width="220" height="220" style="background:#fff;border-radius:8px"></canvas>`
       + `<div class="rv-poll-url" style="margin-top:6px;opacity:.8"></div><div>Código <b class="rv-poll-code" style="letter-spacing:3px">·····</b></div></div></div>`;
   if (b.type === 'camera')   // Cameo: filled with the presenter's camera when the slide is shown (io/runtime/camera.js)

@@ -190,6 +190,7 @@ function detailOne(box, { b, a, i }, clash = null) {
       <label>${t('Vueltas (grados)')}<input type="number" data-p="spin" value="${a.spin || 0}" step="90" title="${t('360 = una vuelta entera; negativo: al revés')}"></label>`}
       <label>${t('Mover X')} (px)<input type="number" data-p="dx" value="${a.dx || 0}" step="10"></label>
       <label>${t('Mover Y')} (px)<input type="number" data-p="dy" value="${a.dy || 0}" step="10"></label>` : ''}
+      ${a.effect === 'grow' || a.effect === 'shrink' ? `<label title="${t('Agrandar 130 % y después Encoger 77 % lo deja como estaba')}">${t('Tamaño')} (%)<input type="number" data-p="size" value="${a.size || (a.effect === 'grow' ? 130 : 70)}" step="5" min="5" max="500"></label>` : ''}
       <label>${t('Duración')} (ms)<input type="number" data-p="duration" value="${a.duration ?? 500}" step="100" min="0"></label>
       <label>${t('Retardo')} (ms)<input type="number" data-p="delay" value="${a.delay ?? 0}" step="100" min="0"></label>
       <label class="an-wide">${t('Sonido')}<span class="an-snd"><select data-p="sound">${ANIM_SOUNDS.map(([v, l]) => `<option value="${v}"${(a.sound || '') === v ? ' selected' : ''}>${t(l)}</option>`).join('')}</select>

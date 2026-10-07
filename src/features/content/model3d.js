@@ -20,8 +20,11 @@ export const MOTIONS_3D = [
 ];
 
 // Where the camera looks from (PowerPoint's "3D model views").
-export const VIEWS_3D = [['', 'Libre'], ['front', 'De frente'], ['three', 'Tres cuartos'], ['side', 'De lado'], ['back', 'Por detrás'], ['top', 'Desde arriba'], ['low', 'Desde abajo']];
-const ORBITS = { front: '0deg 75deg auto', three: '35deg 70deg auto', side: '90deg 75deg auto', back: '180deg 75deg auto', top: '0deg 8deg auto', low: '20deg 115deg auto' };
+// (Each side: «De lado» looks at its left side — it faces left —, «Del otro lado» at its right: it faces right. The
+// same for three quarters.)
+export const VIEWS_3D = [['', 'Libre'], ['front', 'De frente'], ['three', 'Tres cuartos'], ['three2', 'Tres cuartos (al otro lado)'], ['side', 'De lado'], ['side2', 'Del otro lado'],
+  ['back', 'Por detrás'], ['top', 'Desde arriba'], ['low', 'Desde abajo']];
+const ORBITS = { front: '0deg 75deg auto', three: '35deg 70deg auto', three2: '-35deg 70deg auto', side: '90deg 75deg auto', side2: '-90deg 75deg auto', back: '180deg 75deg auto', top: '0deg 8deg auto', low: '20deg 115deg auto' };
 
 // Room around the model (bleed): model-viewer frames it standing still, so a
 // robot waving or a dancer would put a hand outside its box and lose it. The 3D

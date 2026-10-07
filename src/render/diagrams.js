@@ -99,6 +99,10 @@ export function diagramLayout(b, { accents = ['#3f6497', '#e0873b', '#4caf7d', '
   const rect = (x, y, w, h, i, text, sub, o = {}) => { const c = P(i, o.m); out.push({ type: 'rect', x, y, w, h, r: o.r ?? Math.min(w, h) * 0.12, fill: c.fill, stroke: c.stroke, i: o.item ?? i });
     if (text != null) out.push(textBox(x, y, w, h, text, sub, c.text, o)); };
   const textBox = (x, y, w, h, text, sub, color, o = {}) => {
+    // (Bigger letters asked for — fontScale over 1 — also get more room: the text may spill a little past its shape,
+    // up to 25 % each way, within the diagram. Without it a small shape kept them small whatever the scale.)
+    if (scale > 1 && !o.fs) { const k = Math.min(1.5, scale), nw = Math.min(W, w * k), nh = Math.min(H, h * Math.sqrt(k));
+      x = Math.max(0, Math.min(W - nw, x - (nw - w) / 2)); y = Math.max(0, Math.min(H - nh, y - (nh - h) / 2)); w = nw; h = nh; }
     const pad = Math.min(w, h) * 0.08, max = (o.max || 30) * roomy * Math.max(1, scale);
     // (Bigger: up to what fits the box; smaller: always.)
     const fs = Math.max(8, Math.round((o.fs || (sub ? fitBoth(w - 2 * pad, h - 2 * pad, text, sub, max) : fitFont(w - 2 * pad, h - 2 * pad, text, max))) * Math.min(1, scale)));
@@ -193,7 +197,8 @@ export function diagramLayout(b, { accents = ['#3f6497', '#e0873b', '#4caf7d', '
     }
     case 'cycle': {
       // Items round an ellipse that fills the box; arcs with heads between them.
-      const nw = Math.min(W * 0.3, W * 0.95 / Math.max(2, n / 2 + 1)), nh = Math.min(H * 0.26, nw * 0.6), Rx = W / 2 - nw / 2 - 4, Ry = H / 2 - nh / 2 - 4, cx = W / 2, cy = H / 2;
+      // (Nodes as big as the ring allows: their words were tiny in the smaller ones.)
+      const nw = Math.min(W * 0.36, W * 0.98 / Math.max(2, n / 2 + 0.8)), nh = Math.min(H * 0.34, nw * 0.7), Rx = W / 2 - nw / 2 - 4, Ry = H / 2 - nh / 2 - 4, cx = W / 2, cy = H / 2;
       const pos = i => { const a = -Math.PI / 2 + i * 2 * Math.PI / n; return [cx + Rx * Math.cos(a), cy + Ry * Math.sin(a), a]; };
       // (Where the arc leaves a node: the angle past the node's edge, found by walking out along the ellipse.)
       const clear = (a0, dir) => { let a = a0; const x0 = cx + Rx * Math.cos(a0), y0 = cy + Ry * Math.sin(a0);
@@ -208,7 +213,7 @@ export function diagramLayout(b, { accents = ['#3f6497', '#e0873b', '#4caf7d', '
       }
       items.forEach((it, i) => { const [x, y] = pos(i), c = P(i);
         out.push({ type: 'ellipse', x: x - nw / 2, y: y - nh / 2, w: nw, h: nh, fill: c.fill, stroke: c.stroke, i });
-        out.push(textBox(x - nw * 0.4, y - nh * 0.4, nw * 0.8, nh * 0.8, it.text, subText(it), c.fill === 'none' ? fg : c.text, { max: 26, item: i })); });
+        out.push(textBox(x - nw * 0.43, y - nh * 0.4, nw * 0.86, nh * 0.8, it.text, subText(it), c.fill === 'none' ? fg : c.text, { max: 26, item: i })); });
       break;
     }
     case 'radial': {
@@ -255,7 +260,7 @@ export function diagramLayout(b, { accents = ['#3f6497', '#e0873b', '#4caf7d', '
       items.slice(0, m).forEach((it, i) => { const [x, y] = centres[i], c = P(i, m);
         out.push({ type: 'ellipse', x: x - R, y: y - R, w: 2 * R, h: 2 * R, fill: c.fill === 'none' ? 'none' : (scheme === 'light' ? c.fill : accents[i % accents.length]), stroke: c.stroke === 'none' ? '#ffffff' : c.stroke, opacity: scheme === 'outline' ? 1 : 0.6, i }); });
       items.slice(0, m).forEach((it, i) => { const [x, y] = centres[i], [ox, oy] = tOff[i];
-        out.push(textBox(x + ox * R - R * 0.55, y + oy * R - R * 0.35, R * 1.1, R * 0.7, it.text, subText(it), scheme === 'light' || scheme === 'outline' ? (scheme === 'outline' ? fg : '#1e2a3a') : '#ffffff', { max: 26, item: i })); });
+        out.push(textBox(x + ox * R - R * 0.6, y + oy * R - R * 0.4, R * 1.2, R * 0.8, it.text, subText(it), scheme === 'light' || scheme === 'outline' ? (scheme === 'outline' ? fg : '#1e2a3a') : '#ffffff', { max: 26, item: i })); });
       break;
     }
     case 'matrix': {
@@ -296,6 +301,8 @@ export function diagramLayout(b, { accents = ['#3f6497', '#e0873b', '#4caf7d', '
   return out;
 }
 
+// A hyphen that starts a word (endings: «-n o -s») kept with it: browsers may break the line right after it.
+const glue = h => h.replace(/(^|[\s(«"'])(-[\p{L}\p{N}]+)/gu, '$1<span style="white-space:nowrap">$2</span>');
 // As HTML: the shapes in an SVG, the text over it (so it wraps and takes the
 // presentation's font). `step` marks each item's parts for "one by one".
 export function diagramHTML(b, opts = {}) {
@@ -308,8 +315,8 @@ export function diagramHTML(b, opts = {}) {
   }).join('');
   const texts = parts.filter(p => p.type === 'text').map(p => `<div${opts.step ? ` data-dg="${p.i}"` : ''} style="position:absolute;left:${f(p.x)}px;top:${f(p.y)}px;width:${f(p.w)}px;height:${f(p.h)}px;display:flex;flex-direction:column;`
     + `justify-content:${{ top: 'flex-start', bottom: 'flex-end' }[p.valign] || 'center'};text-align:${p.align};color:${p.color};font-size:${p.fs}px;line-height:1.15;overflow:hidden;overflow-wrap:break-word">`
-    + `<div style="font-weight:${p.bold ? 700 : 400};white-space:pre-line">${escSvg(p.text)}</div>`
-    + (p.sub ? `<div style="font-size:${Math.max(10, Math.round(p.fs * 0.72))}px;opacity:.9;margin-top:.25em;white-space:pre-line">${escSvg(p.sub)}</div>` : '') + `</div>`).join('');
+    + `<div style="font-weight:${p.bold ? 700 : 400};white-space:pre-line">${glue(escSvg(p.text))}</div>`
+    + (p.sub ? `<div style="font-size:${Math.max(10, Math.round(p.fs * 0.72))}px;opacity:.9;margin-top:.25em;white-space:pre-line">${glue(escSvg(p.sub))}</div>` : '') + `</div>`).join('');
   return `<div class="rv-diagram" style="position:relative;width:100%;height:100%"><svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" preserveAspectRatio="none" style="position:absolute;inset:0;overflow:visible">${svg}</svg>${texts}</div>`;
 }
 export const diagramSig = b => JSON.stringify([b.layout, b.colors, b.text, b.w, b.h, b.fontScale, b.textColor]);

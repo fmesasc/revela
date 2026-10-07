@@ -76,8 +76,8 @@ const U = {
 
 // A number shown as Spanish spreadsheets do (and the charts): thousands grouped
 // from 1000 on ("4.215", not "4215") and at most two decimals, in the given language.
-export function formatNumber(v, locale, maxFrac = 2) {
-  const o = { maximumFractionDigits: maxFrac };
+export function formatNumber(v, locale, maxFrac = 2, minFrac = 0) {
+  const o = { maximumFractionDigits: maxFrac, minimumFractionDigits: Math.min(minFrac, maxFrac) };
   try { return v.toLocaleString(locale, { ...o, useGrouping: 'always' }); } catch { /* older browsers */ }
   const s = v.toLocaleString(locale, o);
   if (Math.abs(v) < 1000 || Math.abs(v) >= 10000) return s;
@@ -95,7 +95,9 @@ export function tableValues(rows, locale, { header = false } = {}) {
   const fmt = (v, unit) => {
     if (!Number.isFinite(v)) return '#¡ERROR!';
     if (isPct(unit)) return formatNumber(v * 100, locale) + ' %';     // (a percentage is kept as a fraction: 21 % = 0,21)
-    const s = formatNumber(v, locale);
+    // (Money with cents shows both digits, as a price does: 5,70 €, not 5,7 €; whole amounts stay whole: 12 €.)
+    const money = unit && /[$£€¥]/.test(unit[0] + unit[1]) && Math.round(v * 100) % 100 !== 0;
+    const s = formatNumber(v, locale, 2, money ? 2 : 0);
     return unit ? `${unit[0]}${unit[0] && !/[$£€¥]$/.test(unit[0]) ? ' ' : ''}${s}${unit[1] ? ' ' + unit[1] : ''}`.trim() : s;
   };
   // A cell as { v, u } (a formula's result, or the number written in it), or null.

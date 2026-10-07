@@ -21,6 +21,8 @@ export function openPollEditor(b, { fresh = false } = {}) {
     <label class="fr-l pl-opts-l">${t('Opciones (una por línea)')}<textarea class="pl-opts" rows="5"></textarea></label>
     <p class="host-help pl-quiz">${t('Cuestionario: pon un asterisco (*) delante de la respuesta correcta. Acertar da de 500 a 1000 puntos, más cuanto antes; al acabar el tiempo (o con un clic) se ve la respuesta y quién va ganando.')}</p>
     <label class="fr-l pl-quiz">${t('Tiempo para responder')}<select class="pl-time">${[10, 20, 30, 45, 60, 90].map(n => `<option value="${n}"${(b.time || 20) === n ? ' selected' : ''}>${n} s</option>`).join('')}</select></label>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label class="fr-l">${t('Color del texto')} <input type="color" class="pl-ink" value="${b.color || '#222222'}"></label>
+      <label class="fr-chk"><input type="checkbox" class="pl-ink-auto"${b.color ? '' : ' checked'}> ${t('El de la paleta')}</label></div>
     <label class="fr-l">${t('Mostrar resultados como')}<select class="pl-disp">${opt('bar', 'Barras', b.display)}${opt('pie', 'Circular', b.display)}${opt('numbers', 'Cifras', b.display)}</select></label>
     <p class="host-help">${t('Al presentar aparece un QR: el público vota desde el móvil y los resultados se actualizan al instante. Los móviles se conectan directamente a este ordenador, sin servidor; funciona bien con decenas de personas.')}</p>
     <p class="host-help pl-count"></p>
@@ -64,6 +66,7 @@ export function openPollEditor(b, { fresh = false } = {}) {
   });
   const count = () => { q('.pl-count').textContent = t('Votos guardados: ') + tallyVotes(b, savedVotes(b.pollId)).voters; };
   q('.pl-kind').addEventListener('change', sync); sync(); count();
+  q('.pl-ink').addEventListener('input', () => { q('.pl-ink-auto').checked = false; });
   q('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
   q('.pl-ok').addEventListener('click', () => {
@@ -72,6 +75,7 @@ export function openPollEditor(b, { fresh = false } = {}) {
     const correct = lines.map((l, i) => (l.startsWith('*') ? i : -1)).filter(i => i >= 0), options = lines.map(l => l.replace(/^\*\s*/, ''));
     const kind = q('.pl-kind').value;
     setPoll(b.id, { question: q('.pl-q').value.trim(), kind, display: q('.pl-disp').value, options: options.length ? options : b.options,
+      color: q('.pl-ink-auto').checked ? null : q('.pl-ink').value,
       ...(kind === 'quiz' && { correct: correct.length ? correct : [0], time: +q('.pl-time').value }),
       ...(kind === 'gaps' && { text: q('.pl-text').value.trim() }),
       ...(kind === 'label' && { image, points: options.map((_, i) => points[i] || { x: 50, y: 50 }) }) });

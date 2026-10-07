@@ -384,6 +384,26 @@ ok((await req('POST', '/api/desktop/claim', { origin: 'tauri://localhost', body:
     ok(!(await (await get(ana)).json()).sharing.until['luis@example.com'], 'caducidad: se va con la persona');
     await share(ana, { linkUntil: null, link: 'present' });
     j = await (await get(null)).json(); ok(j.role === 'present' && j.deck.slides.length === 1 && j.noCopy, 'enlace «solo presentar»: sin sesión, solo el pase: ' + JSON.stringify(j).slice(0, 200));
+    // Only some slides: per person and for the link; the others never leave the server; editors, always all.
+    {
+      const ids = j => (j.deck?.slides || []).map(x => x.id).join();
+      ok((await share(ana, { link: 'none', people: { 'eva@example.com': 'edit', 'teo@example.com': 'comment' }, slidesOf: { 'teo@example.com': ['s2'] } })).status === 200, 'solo unas: se guarda');
+      j = await (await get(teo)).json(); ok(ids(j) === 's2' && j.only === true && !JSON.stringify(j).includes('Hola, mundo'), 'solo unas: recibe solo las suyas (nada de las otras): ' + ids(j));
+      j = await (await get(teo, '/since?rev=1')).json(); ok(ids(j) === 's2' && !j.ops, 'solo unas: ni en los cambios');
+      ok((await ops(teo, [{ p: ['slides', 's1', 'comments'], v: [{ id: 'cx', text: 'aquí no' }] }])).status === 403, 'solo unas: no comenta en las que no ve');
+      ok((await ops(teo, [{ p: ['slides', 's2', 'comments'], v: [{ id: 'cy', text: 'aquí sí' }] }])).status === 200, 'solo unas: comenta en las suyas');
+      ok(!(await (await get(teo, '/thumb')).json()).thumb, 'solo unas: ni la miniatura de la primera');
+      ok(ids(await (await get(eva)).json()) === 's1,s2', 'solo unas: quien edita, todas');
+      j = await (await get(ana)).json(); ok(j.sharing.slidesOf['teo@example.com'].join() === 's2' && j.sharing.linkSlides === null, 'solo unas: la dueña ve la elección');
+      // Widened later: «so they get more».
+      await share(ana, { slidesOf: { 'teo@example.com': ['s2', 's1'] } }); ok(ids(await (await get(teo)).json()) === 's1,s2', 'solo unas: se amplía cuando quiera (en el orden de la presentación)');
+      await share(ana, { slidesOf: { 'teo@example.com': ['s2'] }, link: 'view', linkSlides: ['s1'] });
+      j = await (await get(null)).json(); ok(ids(j) === 's1' && j.only, 'solo unas: también el enlace');
+      ok(ids(await (await get(teo)).json()) === 's1,s2', 'solo unas: por la persona y por el enlace, las de los dos');
+      await share(ana, { slidesOf: { 'eva@example.com': ['s1'] } }); ok(ids(await (await get(eva)).json()) === 's1,s2' && !(await (await get(ana)).json()).sharing.slidesOf['eva@example.com'], 'solo unas: a quien edita no se le aplica');
+      ok((await share(ana, { linkSlides: ['nada'] })).status === 400 && (await share(ana, { slidesOf: { 'nadie@example.com': ['s1'] } })).status === 400, 'solo unas: diapositivas que existen, para quien está');
+      await share(ana, { slidesOf: {}, linkSlides: null }); ok(ids(await (await get(null)).json()) === 's1,s2', 'solo unas: y vuelta a todas');
+    }
     await share(ana, { link: 'view', noCopy: false, editorsShare: false });
     await env.ACCOUNTS.get('u:444').fetch('https://do/setplan', { method: 'POST', body: JSON.stringify({ name: 'pro', until: Date.now() - 1000 }) });   // (Eva, free again)
   }

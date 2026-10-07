@@ -121,9 +121,14 @@ export function setCameraLook(id, props) {
 // (chroma key). Those need the media player (io/runtime/media.js).
 export const isGif = b => b?.type === 'image' && /^data:image\/gif|\.gif(\?|$)/i.test(b.src || '');
 export const mediaKind = b => (b?.type === 'video' ? 'video' : isGif(b) ? 'gif' : null);
-export const needsPlayer = b => !!(mediaKind(b) && (b.segments?.length || b.key?.color || b.autoplay || b.loop || b.muted));
-export const mediaConfig = b => ({ kind: mediaKind(b), src: b.src, fit: b.fit || 'contain', segments: (b.segments || []).filter(s => s.to > s.from),
-  autoplay: !!b.autoplay, loop: !!b.loop, muted: !!b.muted, ...(b.key?.color && { key: b.key }) });
+// Speed: the whole video's (b.speed) and each segment's own (s.speed) — to go quickly through what's between the
+// parts that matter: 1.5×, 2×, 4×, 8× (0.5×: slow motion).
+export const MEDIA_SPEEDS = [0.5, 1, 1.5, 2, 4, 8];
+const speedOf = v => (MEDIA_SPEEDS.includes(+v) && +v !== 1 ? +v : undefined);
+export const needsPlayer = b => !!(mediaKind(b) && (b.segments?.length || b.key?.color || b.autoplay || b.loop || b.muted || speedOf(b.speed)));
+export const mediaConfig = b => ({ kind: mediaKind(b), src: b.src, fit: b.fit || 'contain',
+  segments: (b.segments || []).filter(s => s.to > s.from).map(s => ({ from: s.from, to: s.to, ...(speedOf(s.speed) && { speed: speedOf(s.speed) }) })),
+  autoplay: !!b.autoplay, loop: !!b.loop, muted: !!b.muted, ...(speedOf(b.speed) && { speed: speedOf(b.speed) }), ...(b.key?.color && { key: b.key }) });
 export function setMediaPlayback(id, props) {
   commit(() => {
     const b = currentSlide().blocks.find(x => x.id === id); if (!b) return;

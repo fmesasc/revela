@@ -71,6 +71,7 @@ export async function openCloudShare() {
   // (Who can manage it: its owner, or an editor when the owner allows it — the server sends them «sharing».)
   if (!doc.sharing) {
     body.innerHTML = `<p class="host-help">${t('Te la ha compartido {owner}. Tu permiso:').replace('{owner}', esc(doc.owner || ''))} <b>${t(ROLE_NAMES[doc.role])}</b></p>
+      ${doc.only ? `<p class="host-help"><i class="ms" aria-hidden="true">filter_none</i> ${t('Te ha compartido solo algunas diapositivas: puede añadir más cuando quiera.')}</p>` : ''}
       <div class="sh-row"><input readonly class="cl-link" value="${esc(cd.docLink(doc.id))}"><button type="button" class="mini2 cl-copy">${t('Copiar')}</button></div>`;
     body.querySelector('.cl-copy').addEventListener('click', e => { navigator.clipboard?.writeText(cd.docLink(doc.id)); e.target.textContent = t('Copiado'); });
     return;
@@ -78,18 +79,23 @@ export async function openCloudShare() {
   const me = acc.account(), pro = (me?.features || []).includes('share-people'), analytics = (me?.features || []).includes('analytics'), owner = doc.role === 'owner';
   const sh = doc.sharing;
   let people = { ...(sh.people || {}) }, link = sh.link || 'none', until = { ...(sh.until || {}) }, linkUntil = sh.linkUntil || null, noCopy = !!sh.noCopy, editorsShare = !!sh.editorsShare;
+  // Only some slides (who presents, views or comments): per person and for the link — null: all.
+  let slidesOf = { ...(sh.slidesOf || {}) }, linkSlides = sh.linkSlides || null;
+  const allIds = () => state.deck.slides.map(x => x.id), kept = ids => (ids ? ids.filter(id => allIds().includes(id)) : null);
+  const slidesBtn = (cls, ids, role) => (role === 'edit' || role === 'none' ? '' : `<button type="button" class="mini2 cl-only ${cls}" title="${t('Qué diapositivas ve')}"><i class="ms" aria-hidden="true">filter_none</i> ${kept(ids)
+    ? t('{n} de {m} diapositivas').replace('{n}', kept(ids).length).replace('{m}', allIds().length) : t('Todas las diapositivas')}</button>`);
   const roleSel = (cls, v, withOff) => `<select class="${cls}">${['present', 'view', 'comment', 'edit'].map(r => `<option value="${r}"${r === v ? ' selected' : ''}>${t(ROLE_NAMES[r])}</option>`).join('')}${withOff ? `<option value="">${t('Quitar')}</option>` : ''}</select>`;
   const untilIn = (cls, v) => `<label class="cl-until" title="${t('Acceso hasta (vacío: sin fecha de fin)')}"><i class="ms" aria-hidden="true">event</i><input type="date" class="${cls}" min="${tomorrow()}" value="${dayOf(v)}" aria-label="${t('Acceso hasta (vacío: sin fecha de fin)')}"></label>`;
   const render = () => {
     body.innerHTML = `${owner ? '' : `<p class="host-help">${t('Te la ha compartido {owner}. Puedes compartirla y cambiar los permisos de los demás.').replace('{owner}', esc(doc.owner || ''))}</p>`}
       <fieldset><legend>${t('Personas')}</legend>
         ${pro ? '' : `<p class="host-help">${t('Compartir con personas concretas es del plan Pro. El enlace funciona en todos los planes.')}</p>`}
-        <div class="cl-people">${Object.entries(people).map(([e, r]) => `<div class="sh-item" data-email="${esc(e)}"><span>${esc(e)}</span>${untilIn('cl-p-until', until[e])}${roleSel('cl-role', r, true)}</div>`).join('')
+        <div class="cl-people">${Object.entries(people).map(([e, r]) => `<div class="sh-item" data-email="${esc(e)}"><span>${esc(e)}</span>${slidesBtn('cl-p-only', slidesOf[e], r)}${untilIn('cl-p-until', until[e])}${roleSel('cl-role', r, true)}</div>`).join('')
           || `<p class="host-help">${t('Solo tú.')}</p>`}</div>
         <div class="sh-row"><input type="email" class="cl-email" placeholder="${t('correo@ejemplo.com')}"${pro ? '' : ' disabled'}>${roleSel('cl-new-role', 'edit')}<button type="button" class="mini2 cl-add"${pro ? '' : ' disabled'}>${t('Añadir')}</button></div>
       </fieldset>
       <fieldset><legend>${t('Enlace')}</legend>
-        <div class="sh-row"><select class="cl-linkrole">${Object.entries(LINK_NAMES).map(([k, v]) => `<option value="${k}"${k === link ? ' selected' : ''}>${t(v)}</option>`).join('')}</select>${link === 'none' ? '' : untilIn('cl-l-until', linkUntil)}</div>
+        <div class="sh-row"><select class="cl-linkrole">${Object.entries(LINK_NAMES).map(([k, v]) => `<option value="${k}"${k === link ? ' selected' : ''}>${t(v)}</option>`).join('')}</select>${link === 'none' ? '' : untilIn('cl-l-until', linkUntil)}${slidesBtn('cl-l-only', linkSlides, link)}</div>
         <div class="sh-row"><input readonly class="cl-link" value="${esc(cd.docLink(doc.id))}"><button type="button" class="mini2 cl-copy">${t('Copiar')}</button></div>
         <div class="cl-embed"${link === 'none' ? ' hidden' : ''}><label class="fr-l">${t('Insertar en una web (iframe)')}</label>
           <div class="sh-row"><textarea readonly class="cl-ifr" rows="3">${esc(cd.embedCode(doc.id, doc.name || state.deck.name || ''))}</textarea><button type="button" class="mini2 cl-copy-ifr">${t('Copiar')}</button></div>
@@ -118,6 +124,10 @@ export async function openCloudShare() {
     body.querySelectorAll('.cl-p-until').forEach(i => i.addEventListener('change', () => { const e = i.closest('[data-email]').dataset.email; if (i.value) until[e] = endOf(i.value); else delete until[e]; apply(); }));
     q('.cl-l-until')?.addEventListener('change', e => { linkUntil = endOf(e.target.value); apply(); });
     q('.cl-nocopy')?.addEventListener('change', e => { noCopy = e.target.checked; apply(); });
+    body.querySelectorAll('.cl-p-only').forEach(b => b.addEventListener('click', async () => {
+      const e = b.closest('[data-email]').dataset.email, ids = await pickSlides(kept(slidesOf[e]), e); if (ids === undefined) return;
+      if (ids) slidesOf[e] = ids; else delete slidesOf[e]; render(); apply(); }));
+    q('.cl-l-only')?.addEventListener('click', async () => { const ids = await pickSlides(kept(linkSlides), t('El enlace')); if (ids === undefined) return; linkSlides = ids; render(); apply(); });
     q('.cl-edshare')?.addEventListener('change', e => { editorsShare = e.target.checked; apply(); });
     q('.cl-copy').addEventListener('click', e => { navigator.clipboard?.writeText(cd.docLink(doc.id)); e.target.textContent = t('Copiado'); linkHint(); });
     linkHint(); status(shareSt);
@@ -133,7 +143,10 @@ export async function openCloudShare() {
   const linkHint = () => { const el = body.querySelector('.cl-linkhint'); if (el) el.hidden = link !== 'none'; const em = body.querySelector('.cl-embed'); if (em) em.hidden = link === 'none'; };
   const apply = () => {
     for (const e of Object.keys(until)) if (!people[e]) delete until[e];
-    const want = { link, linkUntil, ...(pro && { people: { ...people }, until: { ...until } }), ...(owner && { noCopy, editorsShare }) };
+    for (const e of Object.keys(slidesOf)) if (!people[e] || people[e] === 'edit' || !kept(slidesOf[e])?.length) delete slidesOf[e];
+    if (link === 'none' || link === 'edit' || !kept(linkSlides)?.length) linkSlides = null;
+    const only = Object.fromEntries(Object.entries(slidesOf).map(([e, v]) => [e, kept(v)]));
+    const want = { link, linkUntil, linkSlides: kept(linkSlides), ...(pro && { people: { ...people }, until: { ...until }, slidesOf: only }), ...(owner && { noCopy, editorsShare }) };
     status('saving');
     saving = saving.then(async () => {
       try { const r = await cd.shareDoc(doc.id, want); cd.setSharing(r.sharing); doc = cd.cloudDoc() || doc; status('saved'); }
@@ -142,6 +155,32 @@ export async function openCloudShare() {
     return saving;
   };
   render();
+}
+
+// Which slides someone sees: ticks on the deck's slides (number and title). → the ids, null for all, undefined: cancelled.
+// (Slides added later aren't in a choice: they're added here when wanted — «so they get more or fewer».)
+function pickSlides(current, who) {
+  return new Promise(done => {
+    const { back, body, close } = modal('cloud-only-modal', 'Qué diapositivas ve', 460);
+    const plain = h => { const d = document.createElement('div'); d.innerHTML = h || ''; return (d.textContent || '').replace(/\s+/g, ' ').trim(); };
+    const title = sl => { const b = sl.blocks.find(x => x.ph === 'title' && plain(x.html)) || sl.blocks.find(x => x.type === 'text' && plain(x.html)); return plain(sl.title) || (b ? plain(b.html) : '') || t('(sin título)'); };
+    const on = new Set(current || state.deck.slides.map(x => x.id));
+    body.innerHTML = `<p class="host-help">${esc(who)} · ${t('Las demás no le llegan: ni su contenido ni su título. Puedes ampliar o reducir la elección cuando quieras; las diapositivas nuevas no se añaden solas.')}</p>
+      <div class="sh-row"><button type="button" class="mini2 co-all">${t('Todas')}</button><button type="button" class="mini2 co-none">${t('Ninguna')}</button></div>
+      <div class="co-list" style="max-height:min(50vh,420px);overflow:auto;margin:6px 0">${state.deck.slides.map((sl, i) => `<label class="fr-chk"><input type="checkbox" value="${esc(sl.id)}"${on.has(sl.id) ? ' checked' : ''}> <b>${i + 1}</b> · ${esc(title(sl).slice(0, 70))}${sl.hidden ? ` <small>(${t('oculta')})</small>` : ''}</label>`).join('')}</div>
+      <p class="host-help co-n"></p>
+      <div class="fr-actions"><button type="button" class="mini2 co-cancel">${t('Cancelar')}</button><button type="button" class="fr-do co-ok">${t('Aplicar')}</button></div>`;
+    const boxes = [...body.querySelectorAll('.co-list input')], count = () => { const n = boxes.filter(x => x.checked).length;
+      body.querySelector('.co-n').textContent = t('{n} de {m} diapositivas').replace('{n}', n).replace('{m}', boxes.length); body.querySelector('.co-ok').disabled = !n; };
+    boxes.forEach(x => x.addEventListener('change', count)); count();
+    body.querySelector('.co-all').addEventListener('click', () => { boxes.forEach(x => { x.checked = true; }); count(); });
+    body.querySelector('.co-none').addEventListener('click', () => { boxes.forEach(x => { x.checked = false; }); count(); });
+    let result;
+    const end = v => { result = v; close(); };
+    body.querySelector('.co-cancel').addEventListener('click', () => end(undefined));
+    body.querySelector('.co-ok').addEventListener('click', () => { const ids = boxes.filter(x => x.checked).map(x => x.value); end(ids.length === boxes.length ? null : ids); });
+    new MutationObserver((_, o) => { if (!back.isConnected) { o.disconnect(); done(result); } }).observe(document.body, { childList: true });
+  });
 }
 
 // ---- Statistics (owner, Pro) ---------------------------------------------------------------------

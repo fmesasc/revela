@@ -7,14 +7,16 @@
 // - GIFs are decoded frame by frame (gifuct-js, loaded from `gifLib`) so they
 //   can be paused and sought like a video.
 //
+// - Speed: a segment (or the whole) played faster or slower — play(from, to, rate).
+//
 // createMediaPlayer(host, { kind: 'video'|'gif', src, fit, muted, loop, key, gifLib })
-// → { ready, duration(), time(), play(from, to), pause(), seek(t), onframe }
+// → { ready, duration(), time(), play(from, to, rate), pause(), seek(t), onframe }
 export function createMediaPlayer(host, o) {
   const canvas = document.createElement('canvas');
   canvas.style.cssText = 'width:100%;height:100%;display:block';
   host.appendChild(canvas);
   const ctx = canvas.getContext('2d', { willReadFrequently: !!o.key });
-  let video = null, gif = null, stopAt = null, playing = false, t0 = 0, tStart = 0, cur = 0, raf = 0;
+  let video = null, gif = null, stopAt = null, playing = false, t0 = 0, tStart = 0, cur = 0, raf = 0, rate = 1;
   const api = { onframe: null };
 
   // The drawing: source → canvas at the element's size (object-fit), then the key.
@@ -88,7 +90,7 @@ export function createMediaPlayer(host, o) {
   function tick() {
     raf = 0;
     if (!playing) return;
-    let t = gif ? tStart + (performance.now() - t0) / 1000 : video.currentTime;
+    let t = gif ? tStart + (performance.now() - t0) / 1000 * rate : video.currentTime;
     if (stopAt != null && t >= stopAt) { t = stopAt; playing = false; if (video) { video.pause(); video.currentTime = stopAt; } }
     else if (gif && !o.loop && stopAt == null && t >= api.duration()) { t = api.duration(); playing = false; }
     renderAt(gif ? (o.loop && stopAt == null ? t % api.duration() : t) : t);
@@ -98,14 +100,14 @@ export function createMediaPlayer(host, o) {
   api.duration = () => (gif ? (gif.total || 0) / 1000 : (video && isFinite(video.duration) ? video.duration : 0));
   api.time = () => (video && !gif ? video.currentTime : cur);
   api.playing = () => playing;
-  api.resume = () => api.play(null, stopAt != null && api.time() < stopAt - 0.01 ? stopAt : null);
+  api.resume = () => api.play(null, stopAt != null && api.time() < stopAt - 0.01 ? stopAt : null, rate);
   api.pause = () => { playing = false; if (video) video.pause(); };
   api.seek = t => { api.pause(); if (video) { video.currentTime = t; video.addEventListener('seeked', () => renderAt(t), { once: true }); } else renderAt(t); };
-  api.play = (from, to) => {
-    stopAt = to == null ? null : to;
+  api.play = (from, to, speed) => {
+    stopAt = to == null ? null : to; rate = speed > 0 ? speed : 1;
     if (from != null) { if (video) video.currentTime = from; cur = from; }
     playing = true; t0 = performance.now(); tStart = cur;
-    if (video) { video.loop = !!o.loop && stopAt == null; video.play().catch(() => {}); }
+    if (video) { video.loop = !!o.loop && stopAt == null; video.playbackRate = rate; video.play().catch(() => {}); }
     if (!raf) raf = requestAnimationFrame(tick);
   };
 
@@ -148,7 +150,7 @@ export function revelaMediaRuntime(gifLib) {
       if (!slide.contains(el)) { p.ready.then(() => p.pause()); return; }
       const s = cfg.segments && cfg.segments.length ? cfg.segments : null;
       p.ready.then(() => {
-        if (cfg.autoplay) s ? p.play(s[0].from, s[0].to) : p.play(0, null);
+        if (cfg.autoplay) s ? p.play(s[0].from, s[0].to, s[0].speed || cfg.speed) : p.play(0, null, cfg.speed);
         else p.seek(s ? s[0].from : 0);
       });
     });
@@ -158,7 +160,7 @@ export function revelaMediaRuntime(gifLib) {
   Reveal.on('fragmentshown', e => (e.fragments || [e.fragment]).forEach(f => {
     const m = players.get(f.getAttribute('data-seg-of')); if (!m) return;
     const k = +f.getAttribute('data-seg'), s = k < 0 ? { from: 0, to: null } : m.cfg.segments[k];
-    if (s) m.p.ready.then(() => m.p.play(s.from, s.to));
+    if (s) m.p.ready.then(() => m.p.play(s.from, s.to, s.speed || m.cfg.speed));
   }));
   Reveal.on('fragmenthidden', e => (e.fragments || [e.fragment]).forEach(f => {
     const m = players.get(f.getAttribute('data-seg-of')); if (!m) return;

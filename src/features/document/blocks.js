@@ -453,10 +453,14 @@ export function chartGridText(b) {
   const head = extra.length || b.seriesName ? [['', b.seriesName || 'Serie 1', ...extra.map((x, i) => x.name || `Serie ${i + 2}`)].join(',')] : [];
   return head.concat((b.data || []).map((d, i) => [d.label, d.value, ...extra.map(x => (x.values || [])[i] ?? 0)].join(','))).join('\n');
 }
+// props.colors: each item's own colour (a bar, a slice, a step), by position — null: the chart's. Without it, the
+// colours each item had stay with it (the same name).
 export function setChartGrid(text, props = {}) {
   const { data, series, names } = parseChartGrid(text);
   const b = selectedBlock(); if (!b || b.type !== 'chart') return;
-  const old = b.series || [];
+  const old = b.series || [], { colors, ...rest } = props, before = new Map((b.data || []).filter(d => d.color).map(d => [d.label, d.color]));
+  data.forEach((d, i) => { const c = colors ? colors[i] : before.get(d.label); if (c) d.color = c; });
+  props = rest;
   commit(() => {
     Object.assign(b, props, { data });
     for (const k in props) if (props[k] === undefined) delete b[k];   // (an option left empty: automatic again)

@@ -104,7 +104,7 @@ let cur = null;                  // { id, role, rev, base, sharing, owner, readO
 const listeners = new Set();
 export const onCloud = fn => { listeners.add(fn); return () => listeners.delete(fn); };
 const emit = (what, data) => listeners.forEach(fn => { try { fn(what, data); } catch {} });
-export const cloudDoc = () => (cur ? { id: cur.id, role: cur.role, sharing: cur.sharing, owner: cur.owner, status: cur.status, readOnly: cur.readOnly, noCopy: cur.noCopy } : null);
+export const cloudDoc = () => (cur ? { id: cur.id, role: cur.role, sharing: cur.sharing, owner: cur.owner, status: cur.status, readOnly: cur.readOnly, noCopy: cur.noCopy, only: cur.only } : null);
 export const setSharing = sharing => { if (cur) { cur.sharing = sharing; emit('sharing', sharing); } };
 // A version from the cloud becomes the current document (and is sent like any change).
 export const restoreVersion = deck => replaceDeck(deck);
@@ -128,7 +128,7 @@ export async function openDoc(id, { io = send, pollMs = 5000, debounceMs = 1200 
   adoptDeck(r.deck);
   state.ui.lock = r.role === 'view' ? 'view' : r.role === 'comment' ? 'comment' : null;
   setPersist(r.role === 'owner');                        // (someone else's: this browser keeps no copy)
-  cur = { id, role: r.role, rev: r.rev, base: snapshot(state.deck), sharing: r.sharing || null, owner: r.owner || null, readOnly: r.readOnly ? { limit: r.limit } : null, status: r.readOnly ? 'readonly' : 'saved', noCopy: !!r.noCopy, io };
+  cur = { id, role: r.role, rev: r.rev, base: snapshot(state.deck), sharing: r.sharing || null, owner: r.owner || null, readOnly: r.readOnly ? { limit: r.limit } : null, status: r.readOnly ? 'readonly' : 'saved', noCopy: !!r.noCopy, only: !!r.only, io };
   if (r.thumbAt) cur.thumbKey = firstSlideKey(state.deck);   // (it has its picture: a new one only when the first slide changes)
   startSync(pollMs, debounceMs);
   emit('open', cloudDoc());

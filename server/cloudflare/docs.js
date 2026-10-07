@@ -11,6 +11,10 @@
 //   sees a slide can always photograph it: this is what an honest app can promise.) Editors are not affected.
 // - editorsShare: editors may also share and change roles (not these settings, nor the owner).
 // - until: access that ends — per person ({ email: ms }) and for the link (linkUntil).
+// - only some slides: who can present, view or comment may get just some of them — per person (slidesOf:
+//   { email: [slide ids] }) and for the link (linkSlides) —; the others never leave the server, not even their titles
+//   or the first slide's picture. The owner widens or narrows it whenever: «so they get more or fewer». (Not for
+//   editors: editing half a deck would leave the other half to be broken unseen.) Slides added later aren't in it.
 //
 //   GET  /api/docs                    → { mine: [...], shared: [...], folders: [...], limit, trashDays }
 //                                     (mine: { id, name, created, updated, folder, starred, trashed, slides, text, thumbAt,
@@ -31,7 +35,8 @@
 //   GET  /api/docs/:id/since?rev=N    → { rev, ops } (what changed since), or { rev, deck } when too old
 //   POST /api/docs/:id/ops            { ops } → { rev }  (each op checked against the role; 402 { error: 'read only',
 //                                     reason: 'over limit', limit } when its owner has more than the plan allows)
-//   POST /api/docs/:id/share          { link, people: { email: role }, until?: { email: ms }, linkUntil?, noCopy?, editorsShare? }
+//   POST /api/docs/:id/share          { link, people: { email: role }, until?: { email: ms }, linkUntil?, noCopy?, editorsShare?,
+//                                     slidesOf?: { email: [ids] }, linkSlides?: [ids] | null }
 //                                     (owner, or editors with editorsShare — not noCopy/editorsShare; people need Pro; new people get an email)
 //   POST /api/docs/:id/delete         (owner: deleted for good at once)
 //   GET  /api/docs/:id/versions       → [{ at, rev }]      (edit role)
@@ -61,6 +66,9 @@ const ROLE_RANK = { present: 1, view: 2, comment: 3, edit: 4, owner: 5 };
 const ROLES = ['present', 'view', 'comment', 'edit'], LINK_ROLES = ['none', ...ROLES];
 // What «present» receives: the slides an audience sees, without speaker notes, comments or hidden slides.
 export const forAudience = deck => ({ ...deck, slides: (deck.slides || []).filter(s => !s.hidden).map(({ notes, comments, ...s }) => s) });
+// Only some slides (the ids given, in the deck's order; the audience's when presenting).
+export const onlySlides = (deck, ids) => (ids ? { ...deck, slides: (deck.slides || []).filter(s => ids.includes(s.id)) } : deck);
+const MAX_SLIDE_IDS = 1000;
 // An end date: a time in the future (at most 5 years ahead), or none.
 const untilOf = v => { const n = Math.round(+v); return Number.isFinite(n) && n > Date.now() && n < Date.now() + 5 * 365 * 864e5 ? n : null; };
 const LOG_CHARS = 1.5e6, LOG_MAX = 200, VERSIONS = 10, VERSION_EVERY = 30 * 60e3;
@@ -98,6 +106,16 @@ export class CloudDoc {
     const person = who?.email && !over(meta.until?.[who.email]) && meta.people[who.email], link = meta.link !== 'none' && !over(meta.linkUntil) ? meta.link : null;
     return [person, link].filter(Boolean).sort((a, b) => ROLE_RANK[b] - ROLE_RANK[a])[0] || null;
   }
+  // The slides { sub, email } may see: null for all; else the ids (all the ways they have in — as a person, by the
+  // link — put together; any of them without a choice: all).
+  scopeOf(meta, who, role) {
+    if (!role || ROLE_RANK[role] >= ROLE_RANK.edit) return null;
+    const now = Date.now(), over = t => !!t && t <= now, ways = [];
+    if (who?.email && meta.people[who.email] && !over(meta.until?.[who.email])) ways.push(meta.slidesOf?.[who.email] || null);
+    if (meta.link !== 'none' && !over(meta.linkUntil)) ways.push(meta.linkSlides || null);
+    if (!ways.length || ways.includes(null)) return null;
+    return [...new Set(ways.flat())];
+  }
   // What it takes in the cloud, in characters (≈ bytes; storage.js): the deck, its saved versions, its picture and the
   // log of recent changes.
   async bytes(meta) {
@@ -127,21 +145,24 @@ export class CloudDoc {
     if (meta.trashed && role !== 'owner') return op === 'role' ? this.json({ role: null }) : this.json({ error: 'not found' }, 404);   // (in the trash: only for its owner)
     if (op === 'role') return this.json({ role });                 // (for the video calls: only who may open it)
     if (!role) return this.json({ error: a.who?.sub ? 'forbidden' : 'sign in' }, a.who?.sub ? 403 : 401);
-    const at = r => ROLE_RANK[role] >= ROLE_RANK[r];
-    const sharing = () => ({ link: meta.link, people: meta.people, until: meta.until || {}, linkUntil: meta.linkUntil || null, noCopy: !!meta.noCopy, editorsShare: !!meta.editorsShare });
+    const at = r => ROLE_RANK[role] >= ROLE_RANK[r], only = this.scopeOf(meta, a.who, role);
+    const sharing = () => ({ link: meta.link, people: meta.people, until: meta.until || {}, linkUntil: meta.linkUntil || null, noCopy: !!meta.noCopy, editorsShare: !!meta.editorsShare,
+      slidesOf: meta.slidesOf || {}, linkSlides: meta.linkSlides || null });
+    // (What this person gets: for «present», the audience's slides; with a choice of slides, only those.)
+    const seen = () => onlySlides(role === 'present' ? forAudience(doc.deck) : doc.deck, only);
     const manages = role === 'owner' || (role === 'edit' && !!meta.editorsShare);
     // (Copying stopped: for who can only present, view or comment, when the owner says so.)
     const noCopy = !at('edit') && (role === 'present' || !!meta.noCopy);
     switch (op) {
       case 'get': {
         const lk = await this.locked(meta, a.id);
-        return this.json({ deck: role === 'present' ? forAudience(doc.deck) : doc.deck, rev: meta.rev, role, name: meta.name, updated: meta.updated, thumbAt: meta.thumbAt || null, ...(lk.locked && { readOnly: true, reason: 'over limit', limit: lk.limit }),
+        return this.json({ deck: seen(), rev: meta.rev, role, ...(only && { only: true }), name: meta.name, updated: meta.updated, thumbAt: meta.thumbAt || null, ...(lk.locked && { readOnly: true, reason: 'over limit', limit: lk.limit }),
           ...(noCopy && { noCopy: true }), ...(manages && { sharing: sharing() }), ...(role !== 'owner' && { owner: meta.ownerEmail }) });
       }
       case 'since': {
         const log = (await st.get('log')) || [], from = +a.rev || 0;
         if (from === meta.rev) return this.json({ rev: meta.rev, ops: [] });
-        if (role === 'present') return this.json({ rev: meta.rev, deck: forAudience(doc.deck) });   // (the changes could carry notes: the whole, cleaned)
+        if (role === 'present' || only) return this.json({ rev: meta.rev, deck: seen() });   // (the changes could carry notes, or other slides: the whole, cleaned)
         const first = log[0]?.rev;
         if (first == null || from < first - 1 || from > meta.rev) return this.json({ rev: meta.rev, deck: doc.deck });
         return this.json({ rev: meta.rev, ops: log.filter(e => e.rev > from).flatMap(e => e.ops) });
@@ -152,6 +173,7 @@ export class CloudDoc {
         const roleForOps = role === 'owner' ? 'edit' : role;
         const ok = ops.filter(o => o && Array.isArray(o.p) && o.p.length && o.p.length < 40 && allowed(o, roleForOps));
         if (ok.length !== ops.length) return this.json({ error: 'forbidden' }, 403);   // (all or nothing: nothing half-applied)
+        if (only && ok.some(o => !only.includes(o.p[1]))) return this.json({ error: 'forbidden' }, 403);   // (comments only on the slides they see)
         if (!ok.length) return this.json({ rev: meta.rev });
         const lk = await this.locked(meta, a.id);
         if (lk.locked) return this.json({ error: 'read only', reason: 'over limit', limit: lk.limit }, 402);
@@ -204,6 +226,23 @@ export class CloudDoc {
           meta.until = until;
         }
         for (const e of Object.keys(meta.until || {})) if (!meta.people[e]) delete meta.until[e];   // (gone with the person)
+        // Only some slides: ids of this deck (in any order; kept in the deck's), none for editors.
+        const ids = v => { if (v == null) return null; if (!Array.isArray(v) || v.length > MAX_SLIDE_IDS) throw 0;
+          const have = new Set(doc.deck.slides.map(x => x.id)), out = [...new Set(v.map(String))].filter(x => have.has(x)); if (!out.length) throw 0; return out; };
+        try {
+          if (a.linkSlides !== undefined) meta.linkSlides = ids(a.linkSlides);
+          if (a.slidesOf !== undefined) {
+            const of = {};
+            for (const [e, v] of Object.entries(a.slidesOf && typeof a.slidesOf === 'object' ? a.slidesOf : {})) {
+              const email = String(e).trim().toLowerCase(); if (v == null) continue;
+              if (!meta.people[email]) throw 0;
+              of[email] = ids(v);
+            }
+            meta.slidesOf = of;
+          }
+        } catch { return this.json({ error: 'bad request' }, 400); }
+        for (const e of Object.keys(meta.slidesOf || {})) if (!meta.people[e] || meta.people[e] === 'edit') delete meta.slidesOf[e];
+        if (meta.link === 'edit' || meta.link === 'none') meta.linkSlides = null;
         if (a.noCopy !== undefined) meta.noCopy = !!a.noCopy;
         if (a.editorsShare !== undefined) meta.editorsShare = !!a.editorsShare;
         await st.put('meta', meta);
@@ -226,7 +265,8 @@ export class CloudDoc {
         meta.thumbAt = Date.now(); meta.thumbChars = th.length; await st.put({ thumb: th, meta });
         return this.json({ at: meta.thumbAt, owner: meta.owner });
       }
-      case 'thumb-get': return this.json({ thumb: (await st.get('thumb')) || null, at: meta.thumbAt || null });
+      // (With only some slides, not even the first one's picture: it may not be among them.)
+      case 'thumb-get': return this.json(only ? { thumb: null, at: null } : { thumb: (await st.get('thumb')) || null, at: meta.thumbAt || null });
       case 'versions': return at('edit') ? this.json({ versions: (await st.get('versions')) || [] }) : this.json({ error: 'forbidden' }, 403);
       case 'version': {
         if (!at('edit')) return this.json({ error: 'forbidden' }, 403);

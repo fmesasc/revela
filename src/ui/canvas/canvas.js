@@ -46,6 +46,8 @@ export function initCanvas() {
   document.getElementById('ruler-v')?.addEventListener('pointerdown', e => addGuideFromRuler(e, 'h'));
 }
 
+// The text of a flipped shape, flipped back: the shape mirrors, its words don't.
+export const unflip = b => (b.flipH || b.flipV ? `scale(${b.flipH ? -1 : 1},${b.flipV ? -1 : 1})` : '');
 // CSS transform for a block: rotation plus optional mirror flips.
 export function transformOf(b) {
   let t = `rotate(${b.rotation || 0}deg)`;
@@ -246,6 +248,7 @@ function paintShapeText(el, b) {
   let rich = el.querySelector(':scope > .shape-text');
   if (!rich) { rich = document.createElement('div'); rich.className = 'rich shape-text'; rich.spellcheck = true; el.insertBefore(rich, el.firstElementChild?.nextSibling || null); }
   styleRich(rich, shapeTextStyle(b));
+  rich.style.transform = unflip(b);                          // (a flipped shape — a speech bubble pointing the other way —: its text reads as before)
   if (!el.classList.contains('editing') && rich.dataset.msrc !== (b.html || '')) { rich.innerHTML = b.html || ''; rich.dataset.msrc = b.html || ''; }
 }
 // Text wrapping round a picture marked "text around": a gap in its lines (see wrapFor).

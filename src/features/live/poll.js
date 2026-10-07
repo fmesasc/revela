@@ -33,7 +33,7 @@ export function removePoll(id) {
 }
 export function setPoll(id, props) {
   const b = currentSlide().blocks.find(x => x.id === id && x.type === 'poll'); if (!b) return;
-  commit(() => Object.assign(b, props));
+  commit(() => { Object.assign(b, props); for (const k in props) if (props[k] == null) delete b[k]; });   // (null: back to the default — the palette's colour)
 }
 
 // votes: { voterId: answer } where answer is an option index, an array of
@@ -118,8 +118,8 @@ export function pollResultsHTML(poll, res, accent, L) {
       return '<div style="padding:.5em .6em;border-radius:.3em;background:' + tiles[i % tiles.length] + ';color:#fff;font-weight:700">' + esc(l) + (res.showRight && right.indexOf(i) >= 0 ? ' ✓' : '') + '</div>'; }).join('') + '</div>'
       + '<div style="display:flex;justify-content:space-between;margin-top:.6em;font-size:.6em;opacity:.85"><span>' + res.voters + ' ' + T(res.voters === 1 ? 'respuesta' : 'respuestas') + '</span>'
       + (res.left != null ? '<b style="font-size:1.6em">' + Math.max(0, Math.ceil(res.left)) + ' s</b>' : '') + '</div>';
-    return '<div style="display:flex;flex-direction:column;gap:.3em">' + labels.map(function (l, i) { var ok = right.indexOf(i) >= 0;
-      return '<div style="display:flex;align-items:center;gap:.5em;font-size:.65em;opacity:' + (ok ? 1 : .55) + '"><div style="flex:0 0 32%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (ok ? '✓ ' : '') + esc(l) + '</div>'
+    return '<div style="display:flex;flex-direction:column;justify-content:center;gap:.4em;min-height:80%">' + labels.map(function (l, i) { var ok = right.indexOf(i) >= 0;
+      return '<div style="display:flex;align-items:center;gap:.5em;font-size:.7em;opacity:' + (ok ? 1 : .55) + '"><div style="flex:0 1 40%;min-width:22%;text-align:right;overflow-wrap:anywhere;line-height:1.15">' + (ok ? '✓ ' : '') + esc(l) + '</div>'
         + '<div style="flex:1;background:#8882;border-radius:.2em;height:1.3em"><div style="height:100%;width:' + (counts[i] * 100 / max) + '%;background:' + (ok ? '#26890c' : tiles[i % tiles.length]) + ';border-radius:.2em"></div></div>'
         + '<div style="flex:0 0 2em;font-weight:700">' + counts[i] + '</div></div>'; }).join('') + '</div>' + ((res.board || []).length ? ranking(res.board, 5) : '');
   }
@@ -129,14 +129,15 @@ export function pollResultsHTML(poll, res, accent, L) {
       : kind === 'label' ? labels.map(function (l, i) { return (i + 1) + '. ' + l; })
       : (String(poll.text || '').match(/\[([^\]]+)\]/g) || []).map(function (g, i) { return (i + 1) + '. ' + g.slice(1, -1).split('|')[0]; });
     var avg = Math.round((res.average || 0) * 100), nv = res.voters || 0;
-    var pic = kind === 'label' && poll.image ? '<div style="position:relative;flex:0 0 42%;align-self:center"><img src="' + esc(poll.image) + '" alt="" style="width:100%;display:block;border-radius:.2em">'
+    var pic = kind === 'label' && poll.image ? '<div style="position:relative;flex:0 0 58%;align-self:center"><img src="' + esc(poll.image) + '" alt="" style="width:100%;display:block;border-radius:.2em">'
       + (poll.points || []).map(function (pt, i) { return '<b style="position:absolute;left:' + pt.x + '%;top:' + pt.y + '%;transform:translate(-50%,-50%);background:' + cols[0] + ';color:#fff;border-radius:1em;padding:0 .35em;font-size:.55em;white-space:nowrap">'
         + (i + 1) + (res.revealed ? ' ' + esc(labels[i] || '') : '') + '</b>'; }).join('') + '</div>' : '';
+    // (The solutions fill the box's height, centred; long ones in two lines rather than cut with «…».)
     var body = !res.revealed
       ? '<div style="display:flex;flex-direction:column;justify-content:center;align-items:center;height:100%;gap:.2em"><div style="font-size:2.2em;font-weight:800">' + nv + '</div><div style="font-size:.6em;opacity:.8">'
         + T(nv === 1 ? 'respuesta' : 'respuestas') + (nv ? ' · ' + avg + ' ' + T('% de aciertos') : '') + '</div><div style="font-size:.45em;opacity:.6;margin-top:.4em">' + T('Clic para ver las soluciones') + '</div></div>'
-      : '<div style="display:flex;flex-direction:column;gap:.25em">' + gl.map(function (l, i) { var pc = nv ? Math.round((counts[i] || 0) * 100 / nv) : 0;
-          return '<div style="display:flex;align-items:center;gap:.5em;font-size:.6em"><div style="flex:0 0 45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(l) + '</div>'
+      : '<div style="display:flex;flex-direction:column;justify-content:center;gap:.35em;min-height:80%">' + gl.map(function (l, i) { var pc = nv ? Math.round((counts[i] || 0) * 100 / nv) : 0;
+          return '<div style="display:flex;align-items:center;gap:.5em;font-size:.7em"><div style="flex:0 1 55%;min-width:30%;overflow-wrap:anywhere;line-height:1.15">' + esc(l) + '</div>'
             + '<div style="flex:1;background:#8882;border-radius:.2em;height:1.2em"><div style="height:100%;width:' + pc + '%;background:#26890c;border-radius:.2em"></div></div><div style="flex:0 0 3em;font-weight:700">' + pc + ' %</div></div>'; }).join('')
         + '</div><div style="margin-top:.4em;font-size:.55em;opacity:.8">' + nv + ' ' + T(nv === 1 ? 'respuesta' : 'respuestas') + ' · ' + avg + ' ' + T('% de aciertos') + '</div>' + ((res.board || []).length ? ranking(res.board, 3) : '');
     return pic ? '<div style="display:flex;gap:.8em;height:100%">' + pic + '<div style="flex:1;min-width:0">' + body + '</div></div>' : body;
@@ -154,7 +155,7 @@ export function pollResultsHTML(poll, res, accent, L) {
     var wmax = ws.length ? res.words[ws[0]] : 1;
     return '<div style="display:flex;flex-wrap:wrap;gap:.2em .6em;justify-content:center;align-items:center;height:100%;align-content:center">'
       + (ws.length ? ws.map(function (w, i) { return '<span style="font-size:' + (0.6 + 1.6 * res.words[w] / wmax).toFixed(2) + 'em;color:' + cols[i % cols.length] + ';font-weight:700;transition:font-size .4s">' + esc(w) + '</span>'; }).join('')
-        : '<span style="opacity:.5;font-size:.7em">…</span>') + '</div>' + foot;
+        : '<span style="opacity:.5;font-size:.7em">' + T('Las palabras del público aparecerán aquí') + '</span>') + '</div>' + foot;
   }
   if (kind === 'rating' && display === 'numbers') {
     return '<div style="text-align:center;font-size:3em;font-weight:800">' + (res.average ? res.average.toFixed(1) : '–') + '<span style="font-size:.35em;opacity:.7"> / 5</span></div>' + foot;
@@ -171,15 +172,15 @@ export function pollResultsHTML(poll, res, accent, L) {
     return '<div style="display:flex;align-items:center;gap:1em;height:100%"><div style="flex:0 0 auto;width:8em;height:8em;border-radius:50%;background:conic-gradient(' + stops + ')"></div>'
       + '<div style="font-size:.7em">' + labels.map(function (l, i) { return '<div><span style="display:inline-block;width:.8em;height:.8em;background:' + cols[i % cols.length] + ';margin-right:.4em"></span>' + esc(l) + ' — ' + (total ? Math.round(counts[i] * 100 / total) : 0) + '%</div>'; }).join('') + '</div></div>' + foot;
   }
-  return '<div style="display:flex;flex-direction:column;gap:.35em">' + labels.map(function (l, i) {
-    return '<div style="display:flex;align-items:center;gap:.5em;font-size:.7em"><div style="flex:0 0 30%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(l) + '</div>'
-      + '<div style="flex:1;background:#8882;border-radius:.2em;height:1.4em"><div style="height:100%;width:' + (counts[i] * 100 / max) + '%;background:' + cols[i % cols.length] + ';border-radius:.2em;transition:width .5s"></div></div>'
+  return '<div style="display:flex;flex-direction:column;justify-content:center;gap:.5em;min-height:80%">' + labels.map(function (l, i) {
+    return '<div style="display:flex;align-items:center;gap:.5em;font-size:.75em"><div style="flex:0 1 40%;min-width:22%;text-align:right;overflow-wrap:anywhere;line-height:1.15">' + esc(l) + '</div>'
+      + '<div style="flex:1;background:#8882;border-radius:.2em;height:1.5em"><div style="height:100%;width:' + (counts[i] * 100 / max) + '%;background:' + cols[i % cols.length] + ';border-radius:.2em;transition:width .5s"></div></div>'
       + '<div style="flex:0 0 3em;font-weight:700">' + counts[i] + '</div></div>';
   }).join('') + '</div>' + foot;
 }
 
 // The results' words in the interface's language (for pollResultsHTML, also in exported pages).
-const POLL_WORDS = ['voto', 'votos', 'respuesta', 'respuestas', 'Jugador', 'Aún no hay puntos: juega los cuestionarios.', '% de aciertos', 'Clic para ver las soluciones', 'Escanea el QR y envía tu pregunta…', 'preguntas'];
+const POLL_WORDS = ['Las palabras del público aparecerán aquí', 'voto', 'votos', 'respuesta', 'respuestas', 'Jugador', 'Aún no hay puntos: juega los cuestionarios.', '% de aciertos', 'Clic para ver las soluciones', 'Escanea el QR y envía tu pregunta…', 'preguntas'];
 export const pollLabels = () => Object.fromEntries(POLL_WORDS.map(w => [w, t(w)]));
 
 // Markup of a poll in the editor and thumbnails: question, current results
@@ -188,9 +189,9 @@ export const GRADED = ['quiz', ...ACTIVITIES];
 export function pollEditorHTML(b, accents) {
   const res = b.kind === 'board' ? { board: quizTotals(state.deck.slides.flatMap(s => s.blocks).filter(x => x.type === 'poll' && GRADED.includes(x.kind)).map(p => ({ poll: p, votes: savedVotes(p.pollId) }))) }
     : (r => ({ ...r, showRight: true, revealed: (b.kind === 'quiz' && r.voters > 0) || ACTIVITIES.includes(b.kind) }))(tallyVotes(b, savedVotes(b.pollId)));
-  return `<div style="width:100%;height:100%;display:grid;grid-template-columns:1fr auto;gap:1em;font-size:${b.fontSize || 32}px">`
+  return `<div style="width:100%;height:100%;display:grid;grid-template-columns:1fr auto;gap:1em;font-size:${b.fontSize || 32}px${/^#[0-9a-f]{3,8}$/i.test(b.color || '') ? ';color:' + b.color : ''}">`
     + `<div style="display:flex;flex-direction:column;min-width:0"><div style="font-weight:700;margin-bottom:.5em">${esc(b.question || '')}</div>`
-    + `<div style="flex:1;min-height:0">${pollResultsHTML(b, res, accents, pollLabels())}</div></div>`
+    + `<div style="flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center">${pollResultsHTML(b, res, accents, pollLabels())}</div></div>`
     + `<div style="align-self:center;text-align:center;font-size:18px"><div style="width:220px;height:220px;border-radius:8px;background:#fff;color:#223;display:grid;place-items:center">`
     + `<div><div style="font-size:64px;line-height:1">▦</div><div>QR</div></div></div><div style="margin-top:6px;opacity:.8">vote.html</div></div></div>`;
 }

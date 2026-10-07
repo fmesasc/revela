@@ -3,7 +3,7 @@
 
 import { openPdf, pageImage, pdfTransform } from '../../features/content/files.js';
 import { currentSlide } from '../../core/store.js';
-import { animTimeline, animEntries, EFFECT_KF, motionFrames } from '../../features/animation/transitions.js';
+import { animTimeline, animEntries, EFFECT_KF, motionFrames, SIZE_FX, animScale } from '../../features/animation/transitions.js';
 import { stage } from './canvas.js';
 import { model3dRuntime } from '../../io/runtime/model3d.js';
 import { soundRuntime } from '../../io/runtime/sounds.js';
@@ -58,6 +58,7 @@ export function animateEl(el, anim, dur, delay) {
     return;
   }
   const kf = KEYFRAME[effect] || 'rvIn';
+  if (SIZE_FX.includes(effect)) el.style.setProperty('--anim-scale', animScale(anim));
   el.style.animation = 'none'; void el.offsetWidth;
   el.style.animation = `${kf} ${dur}ms ease ${delay}ms both`;
   walkIn(el, dur, delay);
@@ -99,6 +100,7 @@ export function playAnimations() {
     }
     const model = !!el.querySelector('model-viewer');
     const frames = a.effect === 'path' ? motionFrames(a).map(([x, y, r]) => ({ translate: `${x}px ${y}px`, rotate: model ? '0deg' : `${r}deg` }))
+      : SIZE_FX.includes(a.effect) ? [{ transform: 'none' }, { transform: `scale(${animScale(a)})` }]
       : keyframesOf(KEYFRAME[a.effect] || 'rvIn');
     played.push(el.animate(frames, opts));
     walkIn(el, at.dur, when);

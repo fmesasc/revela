@@ -160,6 +160,11 @@ export function openChartData(b) {
       <option value="pie">${t('Circular')}</option><option value="doughnut">${t('Dona')}</option>
       <option value="scatter">${t('Dispersión')}</option><option value="radar">${t('Radar')}</option><option value="bubble">${t('Burbujas')}</option><option value="treemap">${t('Rectángulos (treemap)')}</option><option value="waterfall">${t('Cascada')}</option><option value="funnel">${t('Embudo')}</option><option value="map">${t('Mapa')}</option></select></label>
     <label class="fr-l">${t('Color (barras)')} <input type="color" class="ch-color" value="${b.color || '#3f6497'}"></label>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label class="fr-l">${t('Color del texto')} <input type="color" class="ch-ink" value="${b.labelColor || '#8a8a8a'}"></label>
+      <label class="fr-chk"><input type="checkbox" class="ch-ink-auto"${b.labelColor ? '' : ' checked'}> ${t('Automático (gris)')}</label></div>
+    <details class="ch-own"><summary>${t('Un color para cada barra, porción o paso')}</summary>
+      ${(b.data || []).map((d, i) => `<label class="fr-chk"><input type="checkbox" class="ch-own-on" data-i="${i}"${d.color ? ' checked' : ''}> <input type="color" class="ch-own-c" data-i="${i}" value="${d.color || b.color || '#3f6497'}"> ${String(d.label ?? '').replace(/</g, '&lt;')}</label>`).join('')}
+      <p class="host-help">${t('Para la primera serie. Si cambias las filas de datos, aplica primero y vuelve a abrir para elegir los colores.')}</p></details>
     <label class="fr-chk"><input type="checkbox" class="ch-combo"${b.combo ? ' checked' : ''}> ${t('Combinado: series extra como líneas')}</label>
     <label class="fr-chk"><input type="checkbox" class="ch-grid"${b.grid ? ' checked' : ''}> ${t('Líneas de cuadrícula con la escala')}</label>
     <label class="fr-chk"><input type="checkbox" class="ch-labels"${b.dataLabels ? ' checked' : ''}> ${t('Etiquetas de datos (valores)')}</label>
@@ -185,6 +190,10 @@ export function openChartData(b) {
     back.querySelector('.ch-hist').style.display = v === 'histogram' ? '' : 'none';
     back.querySelector('.ch-pie').style.display = ['pie', 'doughnut'].includes(v) ? '' : 'none'; };
   back.querySelector('.ch-type').addEventListener('change', showFor); showFor();
+  let ownTouched = false;   // (the items' colours sent only if changed here: else each keeps its own, by name)
+  back.querySelectorAll('.ch-own-c').forEach(c => c.addEventListener('input', () => { ownTouched = true; back.querySelector(`.ch-own-on[data-i="${c.dataset.i}"]`).checked = true; }));
+  back.querySelectorAll('.ch-own-on').forEach(c => c.addEventListener('change', () => { ownTouched = true; }));
+  back.querySelector('.ch-ink').addEventListener('input', () => { back.querySelector('.ch-ink-auto').checked = false; });
   const numOf = sel => { const v = back.querySelector(sel).value.trim().replace(',', '.'); return v === '' || !isFinite(+v) ? undefined : +v; };
   const close = () => back.remove();
   back.querySelector('.modal-close').addEventListener('click', close);
@@ -195,7 +204,9 @@ export function openChartData(b) {
       grid: back.querySelector('.ch-grid').checked, dataLabels: back.querySelector('.ch-labels').checked,
       xTitle: back.querySelector('.ch-xt').value.trim(), yTitle: back.querySelector('.ch-yt').value.trim(),
       yMin: numOf('.ch-ymin'), yMax: numOf('.ch-ymax'), xMin: numOf('.ch-xmin'), xMax: numOf('.ch-xmax'),
-      bins: numOf('.ch-bins') > 0 ? Math.round(numOf('.ch-bins')) : undefined, legend: back.querySelector('.ch-legend').checked ? undefined : false });
+      bins: numOf('.ch-bins') > 0 ? Math.round(numOf('.ch-bins')) : undefined, legend: back.querySelector('.ch-legend').checked ? undefined : false,
+      labelColor: back.querySelector('.ch-ink-auto').checked ? undefined : back.querySelector('.ch-ink').value,
+      colors: !ownTouched ? undefined : [...back.querySelectorAll('.ch-own-on')].map(c => (c.checked ? back.querySelector(`.ch-own-c[data-i="${c.dataset.i}"]`).value : null)) });
     // (A map needs its outlines: loaded once, from the internet.)
     if (back.querySelector('.ch-type').value === 'map' && !b.map) blocks.setChartMap(b.id, b.mapScope || 'world').catch(e => alertDialog(t('No se pudo cargar el mapa:') + ' ' + (e.message || e)));
     close();
@@ -377,7 +388,9 @@ export function openTableStyle(b) {
       <label><input type="checkbox" data-o="banded"> ${t('Filas con bandas')}</label>
       <label><input type="checkbox" data-o="firstCol"> ${t('Primera columna')}</label>
       <label><input type="checkbox" data-o="lines"> ${t('Solo líneas horizontales')}</label>
-    </div></div>`;
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px"><label class="fr-l">${t('Color del texto')} <input type="color" class="ts-ink" value="${b.color || deckFg()}"></label>
+      <label class="fr-chk"><input type="checkbox" class="ts-ink-auto"${b.color ? '' : ' checked'}> ${t('El de la paleta')}</label></div></div>`;
   document.body.appendChild(back);
   const close = () => back.remove();
   back.querySelector('.modal-close').addEventListener('click', close);
@@ -387,5 +400,8 @@ export function openTableStyle(b) {
     const { name, ...p } = presets[x.dataset.ts]; blocks.setTableStyle(p); sync();
   }));
   back.querySelectorAll('[data-o]').forEach(c => c.addEventListener('change', () => blocks.setTableStyle({ [c.dataset.o]: c.checked })));
+  const ink = back.querySelector('.ts-ink'), auto = back.querySelector('.ts-ink-auto');
+  ink.addEventListener('input', () => { auto.checked = false; blocks.setTableStyle({ color: ink.value }); });
+  auto.addEventListener('change', () => blocks.setTableStyle({ color: auto.checked ? null : ink.value }));
   sync();
 }

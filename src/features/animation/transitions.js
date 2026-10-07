@@ -110,14 +110,18 @@ export const EFFECT_KF = {
 // Pulse, Teeter, a jump on the spot, Color pulse): they hide nothing.
 // (Grow and shrink are emphasis too: bigger or smaller, and so they stay.)
 export const EMPHASIS_FX = ['pulse', 'teeter', 'jump', 'color-pulse'];
+// Grow and shrink by how much (a.size, in %: 130 and 70 by default). One after the other they add up — 130 % and then
+// 77 % is back to the original size, smoothly —: what «Crecer» then «Encoger» needs to come back.
+export const SIZE_FX = ['grow', 'shrink'];
+export const animScale = a => (a.effect === 'grow' ? (+a.size || 130) / 100 : a.effect === 'shrink' ? (+a.size || 70) / 100 : 1);
 export const EFFECT_KF_CSS = `@keyframes rvIn{from{opacity:0}to{opacity:1}}
 @keyframes rvUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:none}}
 @keyframes rvDown{from{opacity:0;transform:translateY(-40px)}to{opacity:1;transform:none}}
 @keyframes rvLeft{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}
 @keyframes rvRight{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:none}}
 @keyframes rvZoom{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
-@keyframes rvGrow{from{transform:none}to{transform:scale(1.3)}}
-@keyframes rvShrink{from{transform:none}to{transform:scale(.7)}}
+@keyframes rvGrow{from{transform:none}to{transform:scale(var(--anim-scale,1.3))}}
+@keyframes rvShrink{from{transform:none}to{transform:scale(var(--anim-scale,.7))}}
 @keyframes rvSpin{from{opacity:0;transform:rotate(-200deg) scale(.6)}to{opacity:1;transform:none}}
 @keyframes rvFlip{from{opacity:0;transform:perspective(600px) rotateY(90deg)}to{opacity:1;transform:none}}
 @keyframes rvBounce{0%{opacity:0;transform:translateY(-60px)}60%{opacity:1;transform:translateY(12px)}80%{transform:translateY(-6px)}100%{opacity:1;transform:none}}
@@ -343,6 +347,7 @@ function applyAnimProp(a, prop, value) {
   if (prop === 'duration' || prop === 'delay') a[prop] = Math.max(0, +value || 0);
   else if (prop === 'dx' || prop === 'dy') { a[prop] = Math.round(+value || 0); if (a.pathShape === 'custom') scalePoints(a); }
   else if (prop === 'spin') { if (+value) a.spin = Math.round(+value); else delete a.spin; }
+  else if (prop === 'size') { const v = Math.round(+value); if (v >= 5 && v <= 500 && v !== (a.effect === 'grow' ? 130 : 70)) a.size = v; else delete a.size; }
   else if (prop === 'turn' && !value) delete a.turn;
   else if (prop === 'points') { a.points = value; [a.dx, a.dy] = value.at(-1); }
   else if (prop === 'trigger' && !value) delete a.trigger;

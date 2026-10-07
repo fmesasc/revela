@@ -26,7 +26,8 @@ export const tableClass = b => 'tbl' + (b.header ? ' has-header' : '') + (b.band
 // Tables keep their own text size (the editor and reveal.js would otherwise
 // give different ones), and optionally column widths, row heights, cell
 // fills and cell margins (imported from PowerPoint).
-export const tableVars = b => `--stroke:${b.stroke || '#fff'};font-size:${b.fontSize || 16}px;`
+// (b.color: the text's own colour — a dark table on a light slide, or the other way round —; else the palette's.)
+export const tableVars = b => `--stroke:${b.stroke || '#fff'};font-size:${b.fontSize || 16}px;` + (/^#[0-9a-f]{3,8}$/i.test(b.color || '') ? `color:${b.color};` : '')
   + (b.fontFamily ? `font-family:${b.fontFamily};` : '')
   + (b.cellPad ? `--cell-pad:${b.cellPad.map(v => v + 'px').join(' ')};` : '') + (b.colW ? 'table-layout:fixed;' : '')
   + (b.dir === 'rtl' ? 'direction:rtl;' : '')
@@ -149,7 +150,7 @@ export function connectorSVG(b, fromB, toB, W, H) {
 }
 
 // Chart as inline SVG (no library, self‑contained on export). Bar or pie.
-export function chartSig(b) { return (b.chartType || 'bar') + '|' + (b.chartType === 'bubble' ? b.w + 'x' + b.h : (b.w / b.h).toFixed(2)) + '|' + (b.color || '') + '|' + (b.map ? b.map.scope + b.map.regions.length : '') + '|' + JSON.stringify([b.data || [], b.series || [], b.combo || 0, b.seriesName || '', b.grid, b.dataLabels, b.xTitle, b.yTitle, b.yMin, b.yMax, b.xMin, b.xMax, b.bins, b.legend, b.labelWidth]); }
+export function chartSig(b) { return (b.chartType || 'bar') + '|' + (b.chartType === 'bubble' ? b.w + 'x' + b.h : (b.w / b.h).toFixed(2)) + '|' + (b.color || '') + '|' + (b.map ? b.map.scope + b.map.regions.length : '') + '|' + JSON.stringify([b.data || [], b.series || [], b.combo || 0, b.seriesName || '', b.grid, b.dataLabels, b.xTitle, b.yTitle, b.yMin, b.yMax, b.xMin, b.xMax, b.bins, b.legend, b.labelWidth, b.labelColor || b.textColor || '']); }
 // A histogram: the values (labels don't matter) grouped into ranges (Sturges' rule), counted.
 export function histogramBins(values, k = 0, edges = false) {
   const v = values.filter(Number.isFinite); if (!v.length) return [];
@@ -166,7 +167,12 @@ export function histogramBins(values, k = 0, edges = false) {
 // The charts are drawn on a 100×60 canvas stretched to the box (so bars and
 // lines fill it whatever its shape); the texts and dots are squeezed back so
 // they keep their proportions instead of looking stretched.
-export function chartSVG(b) { return unstretchChart(drawChart(b), b); }
+// The texts' colour (names, scale, titles, legends): grey, which reads on light and dark slides alike, or b.labelColor
+// (textColor too: the name the other blocks use) — white on a dark slide, the ink of a paper one.
+export function chartSVG(b) {
+  const ink = /^#[0-9a-f]{3,8}$/i.test(b.labelColor || b.textColor || '') ? (b.labelColor || b.textColor) : '', svg = drawChart(b);
+  return unstretchChart(ink ? svg.replaceAll('fill="#8a8a8a"', `fill="${ink}"`) : svg, b);
+}
 export function unstretchChart(svg, b) {
   const w = +b.w, h = +b.h;
   if (!(w > 0 && h > 0) || !/^<svg viewBox="0 0 100 60" preserveAspectRatio="none"/.test(svg)) return svg;
@@ -214,12 +220,15 @@ function drawChart(b) {
     }).join('');
     if (!legend) return `<svg viewBox="0 0 100 100" width="100%" height="100%">${arcs}</svg>`;
     // (The shares with one decimal when they need it — 97,5 % —; the drawing wider for long names.)
+    // (Long names in two lines — the share on the second —: else the legend took the room and the pie shrank.)
     const texts = data.map(d => `${d.label || ''} · ${fmtNum((+d.value || 0) / total * 100, 1)} %`);
-    const rows = data.length, lh = Math.min(16, 88 / rows), widest = Math.max(1, ...texts.map(s => textWidth(s, 1)));
-    const fs = Math.min(10, lh * 0.68, 130 / widest), y0 = 50 - (rows * lh) / 2 + lh / 2, sw = fs * 0.8, vbW = Math.max(180, Math.ceil(104 + sw + fs * 0.6 + widest * fs + 2));
-    const keys = data.map((d, i) => { const y = y0 + i * lh;
-      return `<rect x="104" y="${(y - sw / 2).toFixed(1)}" width="${sw.toFixed(1)}" height="${sw.toFixed(1)}" rx="1" fill="${fills[i]}"/>`
-        + `<text x="${(104 + sw + fs * 0.6).toFixed(1)}" y="${(y + fs * 0.36).toFixed(1)}" font-size="${fs.toFixed(1)}" fill="${b.labelColor || '#8a8a8a'}">${escSvg(texts[i])}</text>`; }).join('');
+    const lines = texts.map(s => (textWidth(s, 1) > 16 ? twoLines(s) : [s]));
+    const rows = lines.reduce((a, l) => a + l.length, 0) + (data.length - 1) * 0.35, lh = Math.min(16, 88 / rows), widest = Math.max(1, ...lines.flat().map(s => textWidth(s, 1)));
+    const fs = Math.min(10, lh * 0.68, 130 / widest), sw = fs * 0.8, vbW = Math.max(180, Math.ceil(104 + sw + fs * 0.6 + widest * fs + 2));
+    let y = 50 - (rows * lh) / 2 + lh / 2;
+    const keys = data.map((d, i) => { const y1 = y; y += lh * (lines[i].length + 0.35);
+      return `<rect x="104" y="${(y1 - sw / 2).toFixed(1)}" width="${sw.toFixed(1)}" height="${sw.toFixed(1)}" rx="1" fill="${fills[i]}"/>`
+        + lines[i].map((l, k) => `<text x="${(104 + sw + fs * 0.6).toFixed(1)}" y="${(y1 + k * lh + fs * 0.36).toFixed(1)}" font-size="${fs.toFixed(1)}" fill="${b.labelColor || '#8a8a8a'}">${escSvg(l)}</text>`).join(''); }).join('');
     return `<svg viewBox="0 0 ${vbW} 100" width="100%" height="100%">${arcs}${keys}</svg>`;
   }
   if (b.chartType === 'radar') {
@@ -287,11 +296,11 @@ function drawChart(b) {
   const bars = stacked ? barSer.map(x => x.values.map((v, i) => {
     const bot = v >= 0 ? up[i] : down[i], top = bot + v; if (v >= 0) up[i] = top; else down[i] = top;
     const bx = L + gap * i + (gap - bw) / 2, y = Math.min(Yc(top), Yc(bot)), h = Math.abs(Yc(top) - Yc(bot));
-    return `<rect x="${bx.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${x.color}"/>`
+    return `<rect x="${bx.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${x.colors?.[i] || x.color}"/>`
       + (b.dataLabels && h > 4 ? `<text x="${(bx + bw / 2).toFixed(1)}" y="${(y + h / 2 + 1.1).toFixed(1)}" font-size="3" text-anchor="middle" fill="#fff">${escSvg(num(v))}</text>` : '');
   }).join('')).join('') : barSer.map((x, k) => x.values.map((v, i) => {
-    const bx = L + gap * i + (gap - bw * barSer.length) / 2 + k * bw, y = Math.min(Yc(v), Y0), h = Math.abs(Yc(v) - Y0);
-    return `<rect x="${bx.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${x.color}"/>` + dl(bx + bw / 2, Yc(v), v, x.color);
+    const bx = L + gap * i + (gap - bw * barSer.length) / 2 + k * bw, y = Math.min(Yc(v), Y0), h = Math.abs(Yc(v) - Y0), c = x.colors?.[i] || x.color;
+    return `<rect x="${bx.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${c}"/>` + dl(bx + bw / 2, Yc(v), v, c);
   }).join('')).join('');
   // Lines: across the full width for line/area charts, centred on the bars in a combo.
   const lx = i => (barSer.length ? X(i) : (n > 1 ? L + i * W / (n - 1) : L + W / 2));
@@ -364,14 +373,16 @@ function waterfallSVG(b) {
   const data = b.data || [], n = data.length || 1, up = b.color || '#3f6497', down = '#c0392b', tot = '#7f8c8d';
   let run = 0;
   const steps = data.map(d => { const total = isTotalLabel(d.label), v = +d.value || 0, from = total ? 0 : run, to = total ? run : run + v; run = to; return { from, to, total, v: total ? to : v }; });
-  const all = steps.flatMap(s => [s.from, s.to]), lo = Math.min(0, ...all), hi = Math.max(0, ...all) || 1;
+  // (The value axis' ends: b.yMin / b.yMax, so a large start — 21,10 € — doesn't flatten the small steps; the bars cut there.)
+  const all = steps.flatMap(s => [s.from, s.to]), fin = v => v != null && v !== '' && isFinite(+v);
+  const lo = fin(b.yMin) ? +b.yMin : Math.min(0, ...all), hi = fin(b.yMax) && +b.yMax > lo ? +b.yMax : (Math.max(0, ...all) || 1);
   const L = 8, R = 98, T = 4, gap = (R - L) / n, bw = gap * 0.62, [, sy] = chartSqueeze(b);
   // (The names all in one size: long ones in two lines, and smaller only as much as the longest needs.)
   const fit = fitLabels(data.map(d => d.label || ''), gap * 0.95, 3.4, b, 2.2, 3), lh = fit.fs * 1.1 * sy;
-  const B = 52 - (Math.max(...fit.lines.map(l => l.length)) - 1) * lh * 0.6, Y = v => B - (v - lo) / ((hi - lo) || 1) * (B - T);
+  const B = 52 - (Math.max(...fit.lines.map(l => l.length)) - 1) * lh * 0.6, Y = v => B - (Math.min(hi, Math.max(lo, v)) - lo) / ((hi - lo) || 1) * (B - T);
   const bars = steps.map((s, i) => {
     const x = L + gap * i + (gap - bw) / 2, y = Math.min(Y(s.from), Y(s.to)), h = Math.max(0.3, Math.abs(Y(s.to) - Y(s.from)));
-    const fill = s.total ? tot : s.to >= s.from ? up : down;
+    const own = data[i].color, fill = /^#[0-9a-f]{3,8}$/i.test(own || '') ? own : s.total ? tot : s.to >= s.from ? up : down;
     const link = i < steps.length - 1 ? `<line x1="${(x + bw).toFixed(1)}" y1="${Y(s.to).toFixed(1)}" x2="${(x + gap).toFixed(1)}" y2="${Y(s.to).toFixed(1)}" stroke="#8a8a8a" stroke-width="0.3" stroke-dasharray="1 1" vector-effect="non-scaling-stroke"/>` : '';
     return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${fill}"/>${link}`
       + (b.dataLabels !== false ? `<text x="${(x + bw / 2).toFixed(1)}" y="${(y - 1).toFixed(1)}" font-size="3" text-anchor="middle" fill="#8a8a8a">${escSvg((s.v > 0 && !s.total ? '+' : '') + fmtNum(s.v))}</text>` : '')
@@ -481,7 +492,8 @@ function funnelSVG(b) {
   const T = 2, H = 56 / n, bh = H * 0.8, num = v => fmtNum(v);
   const bars = data.map((d, i) => {
     const w = Math.max(1, (+d.value || 0) / max * 70), x = 50 - w / 2, y = T + i * H, op = (1 - i / (n + 1) * 0.55).toFixed(2);
-    return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${bh.toFixed(1)}" fill="${color}" fill-opacity="${op}"/>`
+    const own = /^#[0-9a-f]{3,8}$/i.test(d.color || '');         // (a step its own colour: solid; else the chart's, fading)
+    return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${bh.toFixed(1)}" fill="${own ? d.color : color}" fill-opacity="${own ? 1 : op}"/>`
       + `<text x="${(x - 1.5).toFixed(1)}" y="${(y + bh / 2 + 1.2).toFixed(1)}" font-size="3.4" text-anchor="end" fill="#8a8a8a">${escSvg(d.label || '')}</text>`
       // (The value inside the bar if it fits, else just after it.)
       + (w > String(num(d.value || 0)).length * 2.4 + 2
@@ -505,9 +517,9 @@ function hbarSVG(b) {
   const dlw = b.dataLabels ? Math.max(0, ...all.filter(v => v > 0).map(v => textWidth(fmtNum(v), 3, b))) : 0, R = 98 - (dlw ? dlw + 1 : 2);
   const X = v => L + (Math.min(hi, Math.max(lo, v)) - lo) / ((hi - lo) || 1) * (R - L), X0 = X(0);
   const bars = ser.map((x, k) => x.values.map((v, i) => {
-    const y = T + gap * i + (gap - bh * ser.length) / 2 + k * bh, x0 = Math.min(X(v), X0), w = Math.abs(X(v) - X0);
-    return `<rect x="${x0.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${bh.toFixed(1)}" fill="${x.color}"/>`
-      + (b.dataLabels ? `<text x="${(X(v) + (v < 0 ? -1 : 1)).toFixed(1)}" y="${(y + bh / 2 + 1.1 * sy).toFixed(1)}" font-size="3" text-anchor="${v < 0 ? 'end' : 'start'}" fill="${x.color}">${escSvg(fmtNum(v))}</text>` : '');
+    const y = T + gap * i + (gap - bh * ser.length) / 2 + k * bh, x0 = Math.min(X(v), X0), w = Math.abs(X(v) - X0), c = x.colors?.[i] || x.color;
+    return `<rect x="${x0.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${bh.toFixed(1)}" fill="${c}"/>`
+      + (b.dataLabels ? `<text x="${(X(v) + (v < 0 ? -1 : 1)).toFixed(1)}" y="${(y + bh / 2 + 1.1 * sy).toFixed(1)}" font-size="3" text-anchor="${v < 0 ? 'end' : 'start'}" fill="${c}">${escSvg(fmtNum(v))}</text>` : '');
   }).join('')).join('');
   const labels = data.map((d, i) => { const ls = fit.lines[i], y = T + gap * i + gap / 2 - (ls.length - 1) * lh / 2 + fit.fs * 0.36 * sy;
     return ls.map((l, k) => `<text x="${+(L - 1.5).toFixed(1)}" y="${(y + k * lh).toFixed(1)}" font-size="${+fit.fs.toFixed(2)}" text-anchor="end" fill="#8a8a8a">${escSvg(l)}</text>`).join(''); }).join('');
@@ -593,7 +605,9 @@ export function chartSeries(b) {
   const data = b.data || [], bar = ['bar', 'stacked', 'stacked100', 'hbar', 'histogram'].includes(b.chartType || 'bar');
   // (In lines an empty value — null or '' — is a gap, not a zero: years still to come…)
   const val = (v, line) => (line && (v == null || v === '') ? null : +v || 0);
-  return [{ name: b.seriesName || 'Serie 1', color: b.color || '#3f6497', values: data.map(d => val(d.value, !bar)), type: bar ? 'bar' : 'line' }]
+  // (Each bar of the first series its own colour if given — d.color, as the slices of a pie.)
+  return [{ name: b.seriesName || 'Serie 1', color: b.color || '#3f6497', values: data.map(d => val(d.value, !bar)), type: bar ? 'bar' : 'line',
+    colors: data.map(d => (/^#[0-9a-f]{3,8}$/i.test(d.color || '') ? d.color : null)) }]
     .concat((b.series || []).map((x, i) => ({
       name: x.name || `Serie ${i + 2}`, color: x.color || SERIES_COLOURS[i % SERIES_COLOURS.length],
       values: data.map((_, k) => val((x.values || [])[k], !(bar && !b.combo))), type: bar && !b.combo ? 'bar' : 'line',
@@ -1031,7 +1045,8 @@ export function shapeTextHTML(b) {
   const st = shapeTextStyle(b), j = { top: 'start', middle: 'center', bottom: 'end' }[st.vAlign];
   return `<div class="rv-shape-text" style="position:absolute;inset:0;box-sizing:border-box;padding:${textPadding(st)};font-size:${st.fontSize}px;text-align:${st.textAlign};`
     + `${st.color ? `color:${st.color};` : ''}${st.fontFamily ? `font-family:${st.fontFamily};` : ''}${st.fontWeight ? `font-weight:${st.fontWeight};` : ''}${st.fontStyle ? `font-style:${st.fontStyle};` : ''}`
-    + `${st.lineHeight ? `line-height:${st.lineHeight};` : ''}align-content:${j};overflow:hidden">${b.html}</div>`;
+    + `${st.lineHeight ? `line-height:${st.lineHeight};` : ''}align-content:${j};overflow:hidden`
+    + `${b.flipH || b.flipV ? `;transform:scale(${b.flipH ? -1 : 1},${b.flipV ? -1 : 1})` : ''}">${b.html}</div>`;   // (a flipped shape's words read as before)
 }
 
 // An attached file as an icon (Insert ▸ Object "as icon"): a page with its

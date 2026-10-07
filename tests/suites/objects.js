@@ -520,8 +520,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     R.blocks.addImage(clean); const b = last();
     const { isGif, needsPlayer, setMediaPlayback } = await imp('/src/features/live/media.js');
     assert(isGif(b) && !needsPlayer(b), 'un GIF sin ajustes se exporta como imagen');
-    setMediaPlayback(b.id, { segments: [{ from: 0, to: 1 }, { from: 1, to: 2 }], key: { color: '#ff0000', tol: 0.1, soft: 0 }, loop: false });
-    eq(JSON.stringify(last().segments), '[{"from":0,"to":1},{"from":1,"to":2}]', 'tramos guardados'); assert(!('loop' in last()), 'lo desactivado no se guarda');
+    // (The second at 4×: what's between two parts that matter goes by quickly.)
+    setMediaPlayback(b.id, { segments: [{ from: 0, to: 1 }, { from: 1, to: 2, speed: 4 }], key: { color: '#ff0000', tol: 0.1, soft: 0 }, loop: false });
+    eq(JSON.stringify(last().segments), '[{"from":0,"to":1},{"from":1,"to":2,"speed":4}]', 'tramos guardados, con su velocidad'); assert(!('loop' in last()), 'lo desactivado no se guarda');
     await sleep(50);
     assert(D.querySelector(`.block[data-id="${b.id}"] .media-player canvas`), 'en el editor se ve con el croma');
     const html = R.io.buildHTML();
@@ -544,10 +545,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       eq(JSON.stringify(count()), '{"red":0,"blue":0}', 'en el segundo 1 (fotograma rojo) el croma quita el rojo');
       p.seek(0.6); await sleep(30);
       assert(count().blue > 0 && !count().red, 'en el 0,6 se ve el azul');
-      f.contentWindow.Reveal.next(); await sleep(150);
+      const t0 = performance.now(); f.contentWindow.Reveal.next(); await sleep(50);
       assert(p.playing(), 'el siguiente clic, el segundo tramo');
-      for (let i = 0; i < 30 && p.playing(); i++) await sleep(100);
+      for (let i = 0; i < 60 && p.playing(); i++) await sleep(25);
       assert(Math.abs(p.time() - 2) < 0.05, 'se para en el segundo 2: ' + p.time());
+      assert(performance.now() - t0 < 700, 'a 4×: un segundo de GIF en un cuarto: ' + Math.round(performance.now() - t0) + ' ms');
       f.contentWindow.Reveal.prev(); await sleep(100);
       assert(Math.abs(p.time() - 1) < 0.05, 'volver atrás deja el final del tramo anterior');
     } finally { f.remove(); }
@@ -1930,7 +1932,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     reset(); const W = frame.contentWindow, F = await W.eval("import('/src/core/formulas.js')");
     const rows = [['Producto', '2024', 'Precio'], ['A', '3', '10 €'], ['B', '4', '12,5 €'], ['Total', '=SUMA(ARRIBA)', '=SUM(ABOVE)'], ['Media', '=PROMEDIO(B2:B3)', '=C4/2'], ['x', '=B6', '=(1+2']];
     const v = F.tableValues(rows, 'es', { header: true }).map(r => r.map(c => c.text));
-    eq(v[3][1], '7', 'suma de lo de arriba, sin el encabezado «2024»'); eq(v[3][2], '22,5 €', 'con su unidad');
+    eq(v[3][1], '7', 'suma de lo de arriba, sin el encabezado «2024»'); eq(v[3][2], '22,50 €', 'con su unidad (dinero con céntimos: los dos)');
     eq(v[4][1], '3,5', 'promedio de un rango'); eq(v[4][2], '11,25 €', 'usando otra fórmula');
     eq(v[5][1], '#¡ERROR!', 'una que se usa a sí misma'); eq(v[5][2], '#¡ERROR!', 'mal escrita');
     eq(F.cellNumber('1.234,5').v, 1234.5); eq(F.cellNumber('1,234.5').v, 1234.5); assert(!F.cellNumber('Año 2024'), 'texto con número: texto');
@@ -2289,9 +2291,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const rows = [['Concepto', 'Uds', 'Precio', 'Importe'], ['A', '3', '10 €', '=B2*C2'], ['B', '4', '12,5 €', '=B3*C3'], ['IVA', '', '21 %', '=D2*C4'],
       ['x', '=B2*0,21', '=REDONDEAR(D2/C2;2)', '=SUMA(D2:D3)'], ['Total', '4215', '=MAX(3,5)', '=D2*21%'], ['', '=1,5+1', '=REDONDEAR(B6/C6;2)', '=C4+C4']];
     const v = F.tableValues(rows, 'es', { header: true }).map(r => r.map(c => c.text));
-    eq(v[1][3], '30 €', 'cantidad × precio: el € del precio'); eq(v[3][3], '6,3 €', '€ × %: euros (el % como fracción)');
+    eq(v[1][3], '30 €', 'cantidad × precio: el € del precio'); eq(v[3][3], '6,30 €', '€ × %: euros (el % como fracción)');
     eq(v[4][1], '0,63', 'coma decimal en la fórmula'); eq(v[4][2], '3', '€ / €: un número, sin unidad'); eq(v[4][3], '80 €', 'suma de euros');
-    eq(v[5][2], '5', 'en inglés, la coma separa argumentos'); eq(v[5][3], '6,3 €', 'B2*21%');
+    eq(v[5][2], '5', 'en inglés, la coma separa argumentos'); eq(v[5][3], '6,30 €', 'B2*21%');
     eq(v[6][1], '2,5', 'coma decimal fuera de paréntesis'); eq(v[6][2], '843', 'REDONDEAR(4215/5;2)'); eq(v[6][3], '42 %', 'porcentajes que se suman');
     eq(F.formatNumber(4215, 'es'), '4.215', 'miles desde 1000'); eq(F.formatNumber(1234.567, 'es'), '1.234,57', 'y decimales con coma');
     eq(F.tableValues([['=4000+215']], 'es')[0][0].text, '4.215', 'también en la tabla');

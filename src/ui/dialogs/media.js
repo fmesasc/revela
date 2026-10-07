@@ -4,7 +4,7 @@
 // background removed with the AI, frame by frame. And the live camera's look.
 
 import { createMediaPlayer } from '../../io/runtime/media.js';
-import { mediaKind, setMediaPlayback, CAMERA_FILTERS, CAMERA_BACKGROUNDS, DEFAULT_CAMERA_COLOR, cameraBrightness, setCameraLook } from '../../features/live/media.js';
+import { mediaKind, setMediaPlayback, MEDIA_SPEEDS, CAMERA_FILTERS, CAMERA_BACKGROUNDS, DEFAULT_CAMERA_COLOR, cameraBrightness, setCameraLook } from '../../features/live/media.js';
 import { cameraLive, setCameraLive, setCameraBackground, pickCameraImage } from '../canvas/cameraview.js';
 import { gifRemoveBackground } from '../../features/live/gifbg.js';
 import { commit, currentSlide } from '../../core/store.js';
@@ -13,6 +13,8 @@ import { t } from '../../i18n/index.js';
 import { alertDialog, confirmDialog } from './dialog.js';
 
 const fmt = s => (Math.round(s * 10) / 10).toFixed(1);
+// A speed list: 1× (or «the video's», for a segment) and the others.
+const speedSel = (cls, v, same = false) => `<select class="${cls}">${same ? `<option value="">${t('Igual')}</option>` : ''}${MEDIA_SPEEDS.map(x => `<option value="${x}"${(+v || (same ? 0 : 1)) === x ? ' selected' : ''}>${String(x).replace('.', ',')}×</option>`).join('')}</select>`;
 
 export function openMediaPlayback(b) {
   const kind = mediaKind(b); if (!kind) return;
@@ -30,9 +32,11 @@ export function openMediaPlayback(b) {
       <label class="fr-chk"><input type="checkbox" class="mp-auto"${b.autoplay ? ' checked' : ''}> ${t('Empezar solo al llegar a la diapositiva')}</label>
       <label class="fr-chk"><input type="checkbox" class="mp-loop"${b.loop ? ' checked' : ''}> ${t('Repetir en bucle')}</label>
       ${kind === 'video' ? `<label class="fr-chk"><input type="checkbox" class="mp-muted"${b.muted ? ' checked' : ''}> ${t('Sin sonido')}</label>` : ''}
+      <label class="fr-l">${t('Velocidad')} ${speedSel('mp-speed', b.speed)}</label>
     </fieldset>
     <fieldset><legend>${t('Tramos (uno por clic)')}</legend>
       <p class="host-help">${t('Cada clic de «siguiente» reproduce el tramo siguiente y se para al final. Si empieza solo, el primer tramo se reproduce al llegar. Sin tramos, un clic lo reproduce entero.')}</p>
+      <p class="host-help">${t('Cada tramo puede ir a su velocidad: pasa deprisa (2×, 4×…) por lo que hay entre las partes que interesan y vuelve a la normal en ellas. «Igual» usa la velocidad de arriba.')}</p>
       <div class="mp-segs"></div>
       <button type="button" class="mini2 mp-add">${t('Añadir tramo')}</button>
     </fieldset>
@@ -61,7 +65,7 @@ export function openMediaPlayback(b) {
   p.onframe = s => { if (document.activeElement !== time) time.value = s; now.textContent = fmt(s) + ' s'; q('.mp-play i').textContent = p.playing() ? 'pause' : 'play_arrow'; };
   p.ready.then(() => { time.max = p.duration() || 1; renderSegs(); if (p.error) alertDialog(t('No se pudo abrir el archivo.')); });
   time.addEventListener('input', () => p.seek(+time.value));
-  q('.mp-play').addEventListener('click', () => (p.playing() ? p.pause() : p.play(p.time() >= p.duration() - 0.05 ? 0 : null, null)));
+  q('.mp-play').addEventListener('click', () => (p.playing() ? p.pause() : p.play(p.time() >= p.duration() - 0.05 ? 0 : null, null, +q('.mp-speed').value)));
   const redraw = () => p.ready.then(() => { if (!p.playing()) p.seek(p.time()); });
 
   // Segments.
@@ -71,6 +75,7 @@ export function openMediaPlayback(b) {
       <button type="button" class="mini2" data-now="from" title="${t('Usar el momento actual')}"><i class="ms">schedule</i></button>
       <label>${t('Hasta')} <input type="number" data-k="to" min="0" step="0.1" value="${fmt(s.to)}"></label>
       <button type="button" class="mini2" data-now="to" title="${t('Usar el momento actual')}"><i class="ms">schedule</i></button>
+      <label title="${t('Velocidad')}"><i class="ms" aria-hidden="true">speed</i> ${speedSel('mp-seg-speed', s.speed, true)}</label>
       <button type="button" class="mini2" data-test title="${t('Probar')}"><i class="ms">play_arrow</i></button>
       <button type="button" class="mini2" data-rm title="${t('Quitar')}"><i class="ms">close</i></button></div>`).join('');
   }
@@ -78,11 +83,15 @@ export function openMediaPlayback(b) {
     const i = +e.target.closest('.mp-seg')?.dataset.i, k = e.target.dataset.k;
     if (k) segs[i][k] = Math.max(0, +e.target.value || 0);
   });
+  q('.mp-segs').addEventListener('change', e => {
+    if (!e.target.classList.contains('mp-seg-speed')) return;
+    const i = +e.target.closest('.mp-seg').dataset.i; if (+e.target.value) segs[i].speed = +e.target.value; else delete segs[i].speed;
+  });
   q('.mp-segs').addEventListener('click', e => {
     const btn = e.target.closest('button'); if (!btn) return;
     const i = +btn.closest('.mp-seg').dataset.i;
     if (btn.dataset.now) { segs[i][btn.dataset.now] = Math.round(p.time() * 10) / 10; renderSegs(); }
-    else if (btn.hasAttribute('data-test')) p.play(segs[i].from, segs[i].to);
+    else if (btn.hasAttribute('data-test')) p.play(segs[i].from, segs[i].to, segs[i].speed || +q('.mp-speed').value);
     else if (btn.hasAttribute('data-rm')) { segs.splice(i, 1); renderSegs(); }
   });
   q('.mp-add').addEventListener('click', () => {
@@ -126,7 +135,8 @@ export function openMediaPlayback(b) {
   q('.mp-ok').addEventListener('click', () => {
     setMediaPlayback(b.id, {
       autoplay: q('.mp-auto').checked, loop: q('.mp-loop').checked, muted: kind === 'video' && q('.mp-muted').checked,
-      segments: segs.filter(s => s.to > s.from).map(s => ({ from: s.from, to: s.to })),
+      segments: segs.filter(s => s.to > s.from).map(s => ({ from: s.from, to: s.to, ...(s.speed && s.speed !== 1 && { speed: s.speed }) })),
+      speed: +q('.mp-speed').value !== 1 ? +q('.mp-speed').value : null,
       key: q('.mp-key').checked ? { ...key } : null,
     });
     close();
