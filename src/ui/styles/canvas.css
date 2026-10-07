@@ -153,3 +153,8 @@
 .block.selected .mag-k{display:block}
 .mag-rubber{position:absolute;border:2px dashed #e53935;background:#e5393514;pointer-events:none}
 @media (pointer:coarse){.mag-h{width:22px;height:22px}.mag-h.nw{left:-12px;top:-12px}.mag-h.ne{right:-12px;top:-12px}.mag-h.sw{left:-12px;bottom:-12px}.mag-h.se{right:-12px;bottom:-12px}}
+
+/* A 360° photo and an object moved while presenting: a mark in the editor (never in the presentation). */
+.block.is-pano:not(.processing)::after,.block.is-drag:not(.animated)::before{position:absolute;top:4px;z-index:5;padding:1px 6px;border-radius:8px;background:#000a;color:#fff;font:700 11px/1.5 system-ui,sans-serif;pointer-events:none}
+.block.is-pano:not(.processing)::after{content:'360°';left:4px}
+.block.is-drag:not(.animated)::before{content:'✥';right:4px}

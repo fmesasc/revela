@@ -291,6 +291,7 @@ function reconcile(b) {
   el.classList.toggle('locked', !!b.locked);
   el.classList.toggle('is-hidden', !!b.hidden);
   el.classList.toggle('linked', !!(b.href || b.goto || b.popup || b.tip) && b.type !== 'text');
+  el.classList.toggle('is-pano', !!b.pano && b.type === 'image'); el.classList.toggle('is-drag', !!b.dragLive);
   // A colour key switched on or off, or a new source for a keyed one: new view.
   if ((b.type === 'image' || b.type === 'video') && !mediaViewCurrent(el, b)) el.firstElementChild.replaceWith(content(b));
   if (b.type === 'text') {

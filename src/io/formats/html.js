@@ -13,7 +13,7 @@ import { wordartSize } from '../../render/textfit.js';
 import { morphPlan, morphSig } from '../../features/animation/morph.js';
 export { morphPlan, morphSig };                // (for tests and older callers)
 import { state } from '../../core/store.js';
-import { REVEAL, KATEX, MODEL_VIEWER, GIFUCT, PDFJS, VISION, SELFIE_MODEL, POSE_MODEL, FACE_MODEL } from '../../core/vendor.js';
+import { REVEAL, KATEX, MODEL_VIEWER, GIFUCT, PDFJS, VISION, SELFIE_MODEL, POSE_MODEL, FACE_MODEL, PANNELLUM } from '../../core/vendor.js';
 import { download, slug } from '../files.js';
 import { TRIGGER_JS, pollJS, liveDataJS, LIGHTBOX_JS, overviewJS } from '../runtime/scripts.js';
 import { ACTIVITIES, publicActivity, gradeAnswer, gradeActivity, pollLabels } from '../../features/live/poll.js';
@@ -108,6 +108,19 @@ function act(el){var u=blob(el);if(el.hasAttribute('data-open')){window.open(u,'
 document.addEventListener('click',function(e){var el=e.target.closest&&e.target.closest('[data-file]');if(el){e.stopPropagation();act(el);}},true);
 document.addEventListener('keydown',function(e){var el=e.target.closest&&e.target.closest('[data-file]');if(el&&(e.key==='Enter'||e.key===' ')){e.preventDefault();act(el);}});
 document.querySelectorAll('[data-file-view]').forEach(function(el){el.querySelector('iframe').src=blob(el)+'#view=FitH';});})();`;
+// Objects moved by hand while presenting (b.dragLive: ClassPoint's draggable objects — sort, place, match on the board).
+const DRAG_JS = `(function(){var cur=null,sx=0,sy=0,ox=0,oy=0,k=1,moved=false;
+document.addEventListener('pointerdown',function(e){var el=e.target.closest&&e.target.closest('.slides section.present [data-drag]');if(!el||e.button>0)return;
+ e.preventDefault();e.stopPropagation();cur=el;moved=false;k=Reveal.getScale()||1;sx=e.clientX;sy=e.clientY;ox=parseFloat(el.style.left)||0;oy=parseFloat(el.style.top)||0;el.style.zIndex=50;el.style.cursor='grabbing';},true);
+document.addEventListener('pointermove',function(e){if(!cur)return;e.preventDefault();moved=true;cur.style.left=(ox+(e.clientX-sx)/k)+'px';cur.style.top=(oy+(e.clientY-sy)/k)+'px';},true);
+document.addEventListener('pointerup',function(){if(cur)cur.style.cursor='';cur=null;},true);
+document.addEventListener('click',function(e){if(moved&&e.target.closest&&e.target.closest('[data-drag]')){e.stopPropagation();e.preventDefault();moved=false;}},true);})();`;
+// 360° photos: Pannellum, loaded the first time a slide with one is shown; each one started when its slide is.
+const PANO_JS = `(function(){var lib=null;function load(){if(lib)return lib;var l=document.createElement('link');l.rel='stylesheet';l.href=${JSON.stringify(PANNELLUM + '.css')};document.head.appendChild(l);
+lib=new Promise(function(ok,ko){var s=document.createElement('script');s.src=${JSON.stringify(PANNELLUM + '.js')};s.onload=ok;s.onerror=ko;document.head.appendChild(s);});return lib;}
+function show(sec){if(!sec)return;[].slice.call(sec.querySelectorAll('[data-pano]:not([data-on])')).forEach(function(el){el.setAttribute('data-on','');
+ load().then(function(){window.pannellum.viewer(el,{type:'equirectangular',panorama:el.getAttribute('data-pano'),autoLoad:true,showFullscreenCtrl:false,keyboardZoom:false,disableKeyboardCtrl:true,compass:false});}).catch(function(){});});}
+Reveal.on('ready',function(e){show(e.currentSlide);});Reveal.on('slidechanged',function(e){show(e.currentSlide);});if(Reveal.isReady())show(Reveal.getCurrentSlide());})();`;
 const LINK_JS = `(function(){var hist=[],cur=null;
 function seen(){var c=Reveal.getCurrentSlide();if(cur&&cur!==c&&!back){hist.push(cur);if(hist.length>50)hist.shift();}back=false;cur=c;}var back=false;
 Reveal.on('ready',seen);Reveal.on('slidechanged',seen);if(Reveal.isReady())seen();
@@ -263,7 +276,7 @@ function blockHTMLRaw(b, slide) {
   // Morph: the object matches its twin on the next slide by id — except text
   // morphing by words/characters, where the words themselves match (morphText).
   const byText = !!b.byText;
-  const a = animAttrs(b, slide) + (b.morphId && !byText ? ` data-id="${esc(b.morphId)}"` : '') + ariaAttrs(b) + linkAttrs(b);
+  const a = animAttrs(b, slide) + (b.morphId && !byText ? ` data-id="${esc(b.morphId)}"` : '') + ariaAttrs(b) + linkAttrs(b) + (b.dragLive && !b.locked ? ' data-drag data-prevent-swipe' : '');
   if (b.type === 'connector') {
     const { w, h } = state.deck.size;
     const from = slide && slide.blocks.find(x => x.id === b.from);
@@ -312,6 +325,9 @@ function blockHTMLRaw(b, slide) {
     const clicks = segs.map((n, k) => `<span class="fragment rv-seg" data-seg-of="rvm-${b.id}" data-seg="${n}"${b.animation && !b.animation.trigger ? ` data-fragment-index="${b.animation.order + k + 1}"` : ''} style="display:none"></span>`).join('');
     return `<div${a} id="rvm-${b.id}" data-media="${esc(JSON.stringify(cfg))}" style="${box(b)}${b.type === 'image' ? `filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)};${deviceCSS(b)}` : ''}"></div>${clicks}`;
   }
+  // A 360° photo: walked through by dragging, while presenting (PANO_JS); its flat picture until it loads.
+  if (b.type === 'image' && b.pano && b.src)
+    return `<div${a} data-pano="${esc(b.src)}" data-prevent-swipe role="img" aria-label="${esc(b.alt || '')}" style="${box(b)}overflow:hidden;background:#000 url('${esc(b.src)}') center/cover"></div>`;
   if (b.type === 'image')
     return `<img${a} src="${esc(b.src || '')}"${b.zoomable ? ' data-lightbox' : ''} alt="${b.decorative ? '' : esc(b.alt || '')}" style="${box(b)}object-fit:${b.fit || 'contain'};${b.fit === 'cover' && (b.focusX != null || b.focusY != null) ? `object-position:${imgFocus(b)};` : ''}`
       + `filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)};${deviceCSS(b)}">`;
@@ -642,6 +658,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  .reveal .fragment.draw.visible .rvd{animation:rvDraw var(--anim-dur,1500ms) ease-in-out var(--anim-del,0ms) forwards}
  @keyframes rvDraw{70%{fill-opacity:0}to{stroke-dashoffset:0;fill-opacity:1}}
  [data-goto],[data-href],[data-popup]{cursor:pointer}
+ [data-drag]{cursor:grab;touch-action:none}
  .rv-pop{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(0,0,0,.45);animation:rvPopIn .2s ease both} @keyframes rvPopIn{from{opacity:0}to{opacity:1}}
  .rv-pop-box{position:relative;max-width:min(680px,88vw);max-height:80vh;overflow:auto;background:#fff;color:#1d1f24;border-radius:14px;padding:28px 32px;box-shadow:0 18px 60px rgba(0,0,0,.35);text-align:start;font:400 22px/1.45 system-ui,sans-serif}
  .rv-pop-box h2{font-size:30px;margin:0 0 12px;color:inherit;text-transform:none;line-height:1.2}
@@ -706,6 +723,8 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${bgmHTML ? BGM_JS : ''}
  ${/ data-rv-start[ >]/.test(slides) ? START_JS : ''}
  ${/ data-(goto|href|popup|tip)="/.test(slides) ? LINK_JS : ''}
+ ${/ data-drag[ >]/.test(slides) ? DRAG_JS : ''}
+ ${/ data-pano="/.test(slides) ? PANO_JS : ''}
  ${/ data-file(-view)?[ >]/.test(slides) ? FILE_JS : ''}
  ${hasMedia ? `${createMediaPlayer.toString()}\n${revelaMediaRuntime.toString()}\nrevelaMediaRuntime(${JSON.stringify(GIFUCT)});` : ''}
  ${inkJS(w, h, { pen: t('Lápiz'), hl: t('Resaltador'), laser: t('Puntero láser'), color: t('Color de la tinta'), erase: t('Borrar la tinta de la diapositiva'),

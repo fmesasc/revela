@@ -475,6 +475,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       v.__vote.onData({ type: 'poll', poll: { pollId: 'o5', kind: 'open', question: 'Q', options: [] } });
       v.__vote.onData({ type: 'feedback', pollId: 'o5', score: 8, text: 'Muy bien' }); assert(/8\/10[\s\S]*Muy bien/.test(Q('#answers .fb')?.textContent || ''), 'la nota de la IA y su comentario');
       v.__vote.onData({ type: 'picked' }); assert(!Q('#picked').hidden, '«te ha tocado»');
+      // My summary: what I answered and how it went.
+      assert(!Q('#mine').hidden, 'el resumen se ofrece al responder');
+      let saved = null; const realURL = v.URL.createObjectURL; v.URL.createObjectURL = blob => { saved = blob; return 'blob:x'; };
+      Q('#mine').click(); v.URL.createObjectURL = realURL;
+      const txt = await saved.text();
+      assert(/Mi resumen/.test(txt) && /¿Cuántos\?/.test(txt) && /33 kg/.test(txt) && /<img src="data:image\/png/.test(txt), 'mi resumen: las preguntas, mis respuestas (y mi dibujo)');
     } finally { f.remove(); }
   });
 
@@ -796,6 +802,28 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(!sent.some(m => m.kind === 'welcome' || m.kind === 'state'), 'no se le trata como mando');
       eq(R.remote.remoteConnected(), false, 'el mando del editor sigue sin nadie');
     } finally { f.remove(); URL.revokeObjectURL(fake); URL.revokeObjectURL(noqr); }
+  });
+
+  await test('clase a su ritmo: sin nube, el panel dice qué hace falta', async () => {
+    reset(); D.querySelector('[data-action="class-pace"]').click(); await sleep(30);
+    const m = D.getElementById('pace-modal'); assert(m && /nube de Revela/.test(m.textContent), 'pide guardarla en la nube'); m.querySelector('.modal-close').click();
+  });
+
+  await test('aula: objetos que se mueven al presentar y fotos de 360°', async () => {
+    reset(); R.blocks.addShape('rect'); await sleep(10); const sh = last();
+    R.store.commit(() => { slide().blocks.find(x => x.id === sh.id).dragLive = true; });
+    R.blocks.addImage('data:image/gif;base64,R0lGODlhAQABAAAAACw='); await sleep(10); const im = last();
+    R.store.commit(() => { slide().blocks.find(x => x.id === im.id).pano = true; }); await sleep(20);
+    assert(D.querySelector(`#stage .block[data-id="${im.id}"]`).classList.contains('is-pano') && D.querySelector(`#stage .block[data-id="${sh.id}"]`).classList.contains('is-drag'), 'en el editor se ve que lo son');
+    const html = R.io.buildHTML(R.state.deck, { inApp: true });
+    assert(/data-pano="data:image\/gif/.test(html) && /pannellum@2\.5\.6/.test(html), '360°: en la presentación, con su visor');
+    const { f, win, doc } = await deckFrame(html, 800, 450);
+    try {
+      const el = doc.querySelector('.present [data-drag]'), x0 = parseFloat(el.style.left), r = el.getBoundingClientRect(), k = win.Reveal.getScale();
+      const PE = (type, dx) => el.dispatchEvent(new win.PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 1, button: 0, clientX: r.left + 5 + dx, clientY: r.top + 5 }));
+      PE('pointerdown', 0); PE('pointermove', 40); PE('pointerup', 40);
+      near(parseFloat(el.style.left) - x0, 40 / k, 'se arrastra con el ratón o el dedo', 1);
+    } finally { f.remove(); }
   });
 
   await test('aula: dibujo y foto, modos de cuestionario, equipos, estrellas y alguien al azar', async () => {

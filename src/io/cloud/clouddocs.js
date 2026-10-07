@@ -45,6 +45,10 @@ export const docStats = id => send(path(id, 'stats'));
 // A poll opened to be answered later: its link, and the answers kept in the cloud (server/cloudflare/docs.js).
 export const pollLink = (id, pid) => `${OFFICIAL_SITE}/app/vote.html?doc=${encodeURIComponent(id)}&poll=${encodeURIComponent(pid)}`;
 export const pollVotes = (id, pid) => send(path(id, 'pollvotes/' + encodeURIComponent(pid)));
+// The class at its own pace: the students' link, where each one is (the teacher's panel) and a new class.
+export const paceLink = id => `${OFFICIAL_SITE}/app/view.html?doc=${encodeURIComponent(id)}&self=1`;
+export const classProgress = id => send(path(id, 'progress'));
+export const clearProgress = id => send(path(id, 'progress/clear'), {});
 export const docVersions = id => send(path(id, 'versions'));
 export const docVersion = (id, at) => send(path(id, 'version') + '?at=' + encodeURIComponent(at));
 // Organising them (the manager, ui/dialogs/cloudlibrary.js): folders, name, folder, star, trash, copies.

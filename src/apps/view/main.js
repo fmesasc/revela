@@ -3,6 +3,8 @@
 // sealed copy and opens it with the key in the link or a password.
 // view.html?doc=<id>: one in Revela's cloud that anyone with the link can view, presented
 // (what the «Insert in a web page» iframe shows), and where «Solo presentar» opens one; without copies when so shared.
+// &self=1: the class at its own pace — the name first, then each one goes through it and answers; where they are
+// and their marks go to the teacher's panel (server/cloudflare/docs.js progress; ui/dialogs/classpace.js).
 // &scorm=1: inside a dynamic SCORM package's launcher (io/export/scorm.js): answered at one's own pace, its marks and
 // its slide told to the launcher (&at=N: the slide to come back to).
 
@@ -39,14 +41,36 @@ function fail(msg) {
   m.append(b, p1, p2, a);
 }
 
+// The class at its own pace: the name (kept on this device) and an id of this device, for the teacher's panel.
+function askName(m) {
+  return new Promise(done => {
+    let v = ''; try { v = localStorage.getItem('revela.nick') || ''; } catch {}
+    let voter = ''; try { voter = localStorage.getItem('revela.voter') || ''; if (!voter) { voter = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('revela.voter', voter); } } catch { voter = Math.random().toString(36).slice(2) + Date.now().toString(36); }
+    m.className = ''; m.replaceChildren();
+    const f = document.createElement('form'); f.style.cssText = 'display:flex;flex-direction:column;gap:10px;max-width:320px;margin:0 auto;font:17px system-ui,sans-serif';
+    const l = document.createElement('label'); l.textContent = t('Tu nombre (lo verá tu profesor)');
+    const i = Object.assign(document.createElement('input'), { value: v, required: true, maxLength: 40, autocomplete: 'name', style: 'font-size:18px;padding:10px;border-radius:8px;border:1px solid #888' });
+    const b = Object.assign(document.createElement('button'), { type: 'submit', textContent: t('Empezar'), style: 'font-size:18px;padding:10px;border-radius:8px;border:0;background:#3f6497;color:#fff' });
+    l.append(i); f.append(l, b); m.append(f); i.focus();
+    f.addEventListener('submit', e => { e.preventDefault(); const name = i.value.trim(); if (!name) return; try { localStorage.setItem('revela.nick', name); } catch {} m.textContent = texts.loading; done({ name, voter }); });
+  });
+}
+
 async function openCloud(id) {
   const m = document.getElementById('m'); m.textContent = texts.loading;
   try {
     const { deck, name, noCopy } = await publicDeck(id);
     adoptDeck(deck);
-    const scorm = p.get('scorm') === '1';
-    let html = buildHTML(state.deck, { noCopy, ...(scorm && { selfPaced: true }) });
-    if (scorm) { const at = html.toLowerCase().lastIndexOf('</body>'); html = html.slice(0, at) + `<script>${scormPage}</script>` + html.slice(at); }
+    const scorm = p.get('scorm') === '1', self = !scorm && p.get('self') === '1';
+    const who = self ? await askName(m) : null;
+    let html = buildHTML(state.deck, { noCopy, ...((scorm || self) && { selfPaced: true }) });
+    if (scorm || self) {
+      const at = html.toLowerCase().lastIndexOf('</body>');
+      const report = self ? `<script>(function(){var U=${JSON.stringify(`/api/docs/${encodeURIComponent(id)}/progress`)},W=${JSON.stringify(who)};
+window.__revelaScormSend=function(m){var b={voter:W.voter,name:W.name};if(m.t==='init'){b.graded=m.graded;b.of=Reveal.getTotalSlides();}else if(m.t==='slide')b.slide=m.i+1;else if(m.t==='score')b.score={id:m.id,s:m.s};else return;
+try{fetch(U,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(b),keepalive:true});}catch(e){}};})();</script>` : '';
+      html = html.slice(0, at) + report + `<script>${scormPage}</script>` + html.slice(at);
+    }
     document.open(); document.write(html); document.close();
     if (name) document.title = name;
   } catch (e) {

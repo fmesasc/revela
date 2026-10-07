@@ -13,6 +13,8 @@ export const JSZIP = NPM + 'jszip@3.10.1/dist/jszip.min.js';
 export const PPTXGEN = NPM + 'pptxgenjs@3.12.0/dist/pptxgen.bundle.js';
 export const PEERJS = NPM + 'peerjs@1.5.4/dist/peerjs.min.js';
 export const QRCODE = NPM + 'qrcode@1.5.1/build/qrcode.min.js';
+// 360° photos (equirectangular) walked through while presenting: Pannellum (MIT). + '.js' / '.css'.
+export const PANNELLUM = NPM + 'pannellum@2.5.6/build/pannellum';
 export const POLYGON_CLIPPING = NPM + 'polygon-clipping@0.15.7/dist/polygon-clipping.umd.min.js';
 export const MATHLIVE = NPM + 'mathlive@0.100.0/dist/mathlive.min.js';
 export const HIGHLIGHT = NPM + '@highlightjs/cdn-assets@11.9.0';

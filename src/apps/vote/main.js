@@ -58,7 +58,7 @@ function renderQuiz(box) {
     b.addEventListener('click', () => {
       if (!conn?.open || answer != null) return;
       answer = i; grid.querySelectorAll('button').forEach(x => { x.disabled = x !== b; x.classList.toggle('on', x === b); });
-      const go = sure => conn.send({ type: 'vote', pollId: poll.pollId, voter, answer: i, name: name.value.trim(), ...(sure != null && { sure }) });
+      const go = sure => { conn.send({ type: 'vote', pollId: poll.pollId, voter, answer: i, name: name.value.trim(), ...(sure != null && { sure }) }); remember(poll, i, { sure }); };
       if (poll.mode !== 'confidence') { go(null); return; }
       // (Confidence mode: how sure — sure and right scores most, sure and wrong loses some.)
       const ask = el('div', { style: 'display:flex;gap:10px;margin-top:10px' },
@@ -76,6 +76,7 @@ function renderQuiz(box) {
   if (poll.revealed) grid.querySelectorAll('button').forEach(x => { x.disabled = true; });
 }
 function quizResult(d) {
+  resultOf(d.pollId, !d.answered ? 'Sin respuesta' : `${d.ok ? 'Correcto' : d.pts > 0 ? Math.round(d.pts / 10) + ' % de aciertos' : 'Fallado'} · ${d.pts} puntos`);
   const box = $('#quiz-res'); if (!box || poll?.pollId !== d.pollId) return;
   clearInterval(quizTimer); $('#answers').querySelectorAll('button').forEach(x => { x.disabled = true; });
   const part = poll?.pub && d.answered && !d.ok && d.pts > 0;       // (activities: some right)
@@ -178,6 +179,7 @@ function chooseTeam(teams, then) {
 function onData(d) {
   if (d?.type === 'stars') { showStars(d); return; }
   if (d?.type === 'feedback') {                         // (the AI's mark of my open answer, and its comment)
+    resultOf(d.pollId, `${d.score}/10 · ${d.text || ''}`);
     const box = $('#answers'); box.querySelector('.fb')?.remove();
     box.append(el('div', { className: 'quiz-res fb', style: `background:${d.score >= 5 ? '#26890c' : '#b07d00'}` }, el('b', { textContent: `${d.score}/10` }), String(d.text || ''))); return; }
   if (d?.type === 'picked') { const p = $('#picked'); p.hidden = false; navigator.vibrate?.(200); setTimeout(() => { p.hidden = true; }, 8000); return; }
@@ -339,16 +341,42 @@ function renderAnswers() {
   });
 }
 
+// My summary (as Pear Deck's takeaways): each question, what I answered and how it went, kept on this phone and saved
+// as a page to keep — nothing of it goes anywhere else.
+const mine = new Map();
+const escH = x => String(x ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function myAnswer(p, a, extra = {}) {
+  const o = p.options || [];
+  if (a && typeof a === 'object' && a.img) return { img: a.img };
+  if (p.kind === 'multi') return { text: (a || []).map(i => o[i]).join(' · ') };
+  if (p.kind === 'rating') return { text: '★'.repeat(+a || 0) };
+  if (p.kind === 'number') return { text: `${a}${p.unit ? ' ' + p.unit : ''}` };
+  if (p.kind === 'rank') return { text: (a || []).map((i, k) => `${k + 1}. ${o[i]}`).join('  ') };
+  if (p.kind === 'point') return { text: 'Un punto de la imagen' };
+  if (p.pub) return { text: (Array.isArray(a) ? a : []).filter(Boolean).join(' · ') };
+  if (Number.isInteger(a) && o[a] != null) return { text: o[a] + (extra.sure != null ? (extra.sure ? ' (seguro)' : ' (sin estar seguro)') : '') };
+  return { text: String(a ?? '') };
+}
+function remember(p, a, extra) { mine.set(p.pollId, { q: p.question, ...myAnswer(p, a, extra), res: mine.get(p.pollId)?.res || '' }); $('#mine').hidden = false; }
+function resultOf(pollId, txt) { const m = mine.get(pollId); if (m) m.res = txt; }
+$('#mine').addEventListener('click', () => {
+  const when = new Date().toLocaleString();
+  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mi resumen</title>
+<style>body{font:17px/1.5 system-ui,sans-serif;max-width:720px;margin:24px auto;padding:0 16px;color:#1d1f24}h1{font-size:24px}li{margin:0 0 18px}b{display:block}small{color:#666}img{max-width:100%;border-radius:8px;border:1px solid #ddd}.r{color:#26890c}</style></head>
+<body><h1>Mi resumen</h1><p><small>${escH(nick() || '')} · ${escH(when)} · Revela</small></p><ol>${[...mine.values()].map(m => `<li><b>${escH(m.q)}</b>${m.img ? `<img src="${escH(m.img)}" alt="">` : `<div>${escH(m.text)}</div>`}${m.res ? `<div class="r">${escH(m.res)}</div>` : ''}</li>`).join('')}</ol></body></html>`;
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([html], { type: 'text/html' })), download: 'mi-resumen.html' });
+  document.body.append(a); a.click(); a.remove();
+});
 $('#send').addEventListener('click', () => {
   if (!conn?.open || !poll) return;
   if (answer == null || answer === '' || (Array.isArray(answer) && !answer.length)) return;
   if (poll.pub) {                                         // (an activity: sent once, with the nickname)
-    conn.send({ type: 'vote', pollId: poll.pollId, voter, answer, name: $('#answers').nameField?.value.trim() || '' });
+    conn.send({ type: 'vote', pollId: poll.pollId, voter, answer, name: $('#answers').nameField?.value.trim() || '' }); remember(poll, answer);
     $('#send').hidden = true; $('#answers').querySelectorAll('input,select,button').forEach(x => { x.disabled = true; });
     const r = $('#quiz-res'); if (r) r.textContent = '✔ Respuesta enviada. Espera a la corrección…';
     return;
   }
-  conn.send({ type: 'vote', pollId: poll.pollId, voter, answer });
+  conn.send({ type: 'vote', pollId: poll.pollId, voter, answer }); remember(poll, answer);
 });
 $('#go').addEventListener('click', () => join($('#code').value));
 $('#code').addEventListener('keydown', e => { if (e.key === 'Enter') join($('#code').value); });

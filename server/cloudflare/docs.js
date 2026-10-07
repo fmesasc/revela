@@ -46,6 +46,10 @@
 //   GET  /api/docs/:id/poll/:pid      → the poll, to answer it later by a link (no session; only one opened so: async)
 //   POST /api/docs/:id/poll/:pid      { voter, answer } → { ok }   (one answer per voter, changeable; at most POLL_MAX voters)
 //   GET  /api/docs/:id/pollvotes/:pid → { votes: { voter: answer } }  (edit role: brought into the editor's results)
+//   POST /api/docs/:id/progress       { voter, name?, slide?, of?, graded?, score?: { id, s } } (anyone who can read it:
+//                                     the class at its own pace — view.html?doc=…&self=1 —, at most PROGRESS_MAX people)
+//   GET  /api/docs/:id/progress       → { people: [{ voter, name, slide, of, graded, scores, at }] }  (edit role: the teacher's panel)
+//   POST /api/docs/:id/progress/clear → { ok }  (edit role: a new class)
 //
 // Storage: one Durable Object per document (CloudDoc: the deck slide by slide,
 // store.js, so a change rewrites only what it touched; the picture of its first
@@ -75,7 +79,7 @@ export const onlySlides = (deck, ids) => (ids ? { ...deck, slides: (deck.slides 
 const MAX_SLIDE_IDS = 1000;
 // An end date: a time in the future (at most 5 years ahead), or none.
 const untilOf = v => { const n = Math.round(+v); return Number.isFinite(n) && n > Date.now() && n < Date.now() + 5 * 365 * 864e5 ? n : null; };
-const POLL_MAX = 5000;   // (voters of a poll answered by a link)
+const POLL_MAX = 5000, PROGRESS_MAX = 500;   // (voters of a poll answered by a link)
 const LOG_CHARS = 1.5e6, LOG_MAX = 200, VERSIONS = 10, VERSION_EVERY = 30 * 60e3;
 
 export const docsSettings = env => ({
@@ -283,6 +287,22 @@ export class CloudDoc {
         return this.json({ at: meta.thumbAt, owner: meta.owner });
       }
       // (With only some slides, not even the first one's picture: it may not be among them.)
+      // The class at its own pace (as Pear Deck's teacher dashboard): where each one is and their marks.
+      case 'progress': {
+        const st2 = (await st.get('sp')) || {}, voter = String(a.voter || '').slice(0, 40);
+        if (!/^[\w-]{8,40}$/.test(voter)) return this.json({ error: 'bad request' }, 400);
+        if (!(voter in st2) && Object.keys(st2).length >= PROGRESS_MAX) return this.json({ error: 'full' }, 409);
+        const me2 = st2[voter] || { name: '', slide: 0, of: 0, graded: 0, scores: {}, first: Date.now() };
+        if (a.name != null) me2.name = String(a.name).trim().slice(0, 40);
+        if (Number.isFinite(+a.slide)) me2.slide = Math.max(0, Math.min(999, Math.round(+a.slide)));
+        if (Number.isFinite(+a.of)) me2.of = Math.max(0, Math.min(999, Math.round(+a.of)));
+        if (Number.isFinite(+a.graded)) me2.graded = Math.max(0, Math.min(200, Math.round(+a.graded)));
+        if (a.score && typeof a.score === 'object' && Object.keys(me2.scores).length < 200) me2.scores[String(a.score.id).slice(0, 60)] = Math.max(0, Math.min(1, +a.score.s || 0));
+        me2.at = Date.now(); st2[voter] = me2; await st.put('sp', st2);
+        return this.json({ ok: true });
+      }
+      case 'progress-get': return at('edit') ? this.json({ people: Object.entries((await st.get('sp')) || {}).map(([voter, x]) => ({ voter, ...x })) }) : this.json({ error: 'forbidden' }, 403);
+      case 'progress-clear': if (!at('edit')) return this.json({ error: 'forbidden' }, 403); await st.delete('sp'); return this.json({ ok: true });
       case 'poll-votes': return at('edit') ? this.json({ votes: (await st.get('pv:' + String(a.pid))) || {} }) : this.json({ error: 'forbidden' }, 403);
       case 'thumb-get': return this.json(only ? { thumb: null, at: null } : { thumb: (await st.get('thumb')) || null, at: meta.thumbAt || null });
       case 'versions': return at('edit') ? this.json({ versions: (await st.get('versions')) || [] }) : this.json({ error: 'forbidden' }, 403);
@@ -393,6 +413,14 @@ export async function handleDocs(path, req, body, url, env, me, json) {
     if (req.method === 'GET') return reply(await ask(env, pid, 'poll-public', { who: null, id: pid, pid: poll }));
     if (req.method !== 'POST') return json({ error: 'method' }, 405);
     return reply(await ask(env, pid, 'poll-vote', { who: null, id: pid, pid: poll, voter: body.voter, answer: body.answer }));
+  }
+  const pg = path.match(/^\/docs\/([\w-]{16,40})\/progress(\/clear)?$/);
+  if (pg) {
+    const [, pid, clear] = pg;
+    if (clear) { if (req.method !== 'POST') return json({ error: 'method' }, 405); if (!me) return json({ error: 'no session' }, 401); return reply(await ask(env, pid, 'progress-clear', { who, id: pid })); }
+    if (req.method === 'GET') { if (!me) return json({ error: 'no session' }, 401); return reply(await ask(env, pid, 'progress-get', { who, id: pid })); }
+    if (req.method !== 'POST') return json({ error: 'method' }, 405);
+    return reply(await ask(env, pid, 'progress', { who, id: pid, voter: body.voter, name: body.name, slide: body.slide, of: body.of, graded: body.graded, score: body.score }));
   }
   const m = path.match(/^\/docs\/([\w-]{16,40})(?:\/(since|ops|share|delete|versions|version|view|stats|meta|trash|restore|duplicate|thumb))?$/);
   if (!m) return json({ error: 'not found' }, 404);

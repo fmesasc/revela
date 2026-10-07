@@ -21,6 +21,7 @@ import * as trans from '../../features/animation/transitions.js';
 import * as templates from '../../features/document/templates.js';
 import { exportHTML } from '../../io/formats/html.js';
 import { openScormExport } from '../dialogs/scorm.js';
+import { openClassPace } from '../dialogs/classpace.js';
 import { saveProject } from '../../io/formats/project.js';
 import { exportPDF } from '../../io/export/print.js';
 import { present, openCallPresent } from '../shell/present.js';
@@ -163,6 +164,7 @@ export const ACTIONS = {
   'community-mine': () => import('../dialogs/community.js').then(m => m.openMine()),
   'community-browse': () => import('../../core/config.js').then(c => window.open(c.OFFICIAL_SITE + '/community', '_blank', 'noopener')),
   'present-self': () => present({ selfPaced: true }),
+  'class-pace': () => openClassPace(),
   'share-classroom': () => shareToClassroom(),
   'coach': () => startCoach(),
   'record-show': () => recorder.recordSlideshow(),

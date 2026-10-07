@@ -422,6 +422,16 @@ ok((await req('POST', '/api/desktop/claim', { origin: 'tauri://localhost', body:
       j = await (await req('GET', `/api/docs/${id}/pollvotes/pollnum1`, { headers: { Cookie: ana } })).json();
       ok(JSON.stringify(j.votes) === '{"votante-123456":6}', 'más tarde: las respuestas, una por persona: ' + JSON.stringify(j));
     }
+    // The class at its own pace: where each one is and their marks, for the teacher's panel.
+    {
+      const G = (m, path = '', b, c) => req(m, `/api/docs/${id}/progress${path}`, { ...(b && { body: b }), ...(c && { headers: { Cookie: c } }) });
+      ok((await G('POST', '', { voter: 'alumno-123456', name: 'Lucía', of: 2, graded: 1 })).status === 200 && (await G('POST', '', { voter: 'alumno-123456', slide: 2, score: { id: 'q1', s: 0.5 } })).status === 200, 'a su ritmo: cada uno cuenta por dónde va (con el enlace)');
+      ok((await G('POST', '', { voter: 'x', slide: 1 })).status === 400, 'a su ritmo: alumnos raros, no');
+      ok((await G('GET')).status === 401 && (await G('GET', '', null, teo)).status === 403, 'a su ritmo: el panel, solo para quien edita');
+      j = await (await G('GET', '', null, ana)).json(); const lu = j.people?.[0];
+      ok(lu && lu.name === 'Lucía' && lu.slide === 2 && lu.of === 2 && lu.graded === 1 && lu.scores.q1 === 0.5, 'a su ritmo: el panel lo ve todo: ' + JSON.stringify(j));
+      ok((await G('POST', '/clear', {}, teo)).status === 403 && (await G('POST', '/clear', {}, ana)).status === 200 && !(await (await G('GET', '', null, ana)).json()).people.length, 'a su ritmo: otra clase, desde cero');
+    }
     await share(ana, { link: 'view', noCopy: false, editorsShare: false });
     await env.ACCOUNTS.get('u:444').fetch('https://do/setplan', { method: 'POST', body: JSON.stringify({ name: 'pro', until: Date.now() - 1000 }) });   // (Eva, free again)
   }

@@ -108,6 +108,7 @@ function groupsFor(b) {
     ['Dispositivo', [['select', 'Dentro de un dispositivo', DEVICES, b.device || '', v => set(b, x => { if (v) { x.device = v; x.fit = 'cover'; } else delete x.device; })]]],
     ['Organizar texto', [wrapBtn(b)]],
     ['Al presentar', [btn('zoom_in', 'Ampliar al clic', () => set(b, x => { if (x.zoomable) delete x.zoomable; else x.zoomable = true; }), !!b.zoomable),
+      btn('panorama_photosphere', 'Foto de 360°', () => set(b, x => { if (x.pano) delete x.pano; else x.pano = true; }), !!b.pano),
       ...(isGif(b) ? [btn('slow_motion_video', 'Reproducción', () => openMediaPlayback(b))] : [])]],
     ['Archivo', [btn('download', 'Descargar', () => saveFile(b)), btn('photo_camera', 'Guardar como imagen', () => openSaveAsPicture())]],
     ['Lupa', [btn('loupe', 'Ampliar una zona de la imagen', () => startMagnifyDraw({ within: b }), null, 'magnify-image')]]);
