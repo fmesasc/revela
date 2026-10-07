@@ -3,6 +3,7 @@
 // videos, sounds and 3D models (glTF, GLB, STL) are inserted where they are
 // dropped; a presentation (.json, .pptx, .odp) is opened; Markdown adds slides.
 
+import { reportError } from './errors.js';
 import { whileOpening } from './opening.js';
 import { fileBlock, pdfToSlides, FILE_LIMIT } from '../../features/content/files.js';
 import { choosePdfMode } from '../dialogs/pdfmode.js';
@@ -60,7 +61,7 @@ export async function openPresentation(file) {
   if (isKeynote(file)) { keynoteHelp(); return false; }
   if (isThemeFile(file)) return useThemeOf(file);           // (a theme alone: applied to the open presentation)
   try { replaceDeck(await whileOpening(() => (isODF(file) ? importODP(file) : importPPTX(file)), file.name)); return true; }
-  catch (e) { alertDialog(t('No se pudo importar la presentación: ') + e.message); return false; }
+  catch (e) { reportError(e, 'handled'); alertDialog(t('No se pudo importar la presentación: ') + e.message); return false; }
 }
 // Design ▸ Themes: the theme of another presentation or template (.pptx,
 // .potx, .odp — Google Slides' come as .pptx) or an Office theme (.thmx) on
@@ -70,7 +71,7 @@ export async function useThemeOf(file) {
     const src = sanitizeDeck(isODF(file) ? await importODP(file) : await importPPTX(file));
     if (!applyThemeFrom(src)) { alertDialog(t('Ese archivo no tiene un tema que se pueda usar.')); return false; }
     return true;
-  } catch (e) { alertDialog(t('No se pudo leer el tema: ') + (e.message || e)); return false; }
+  } catch (e) { reportError(e, 'handled'); alertDialog(t('No se pudo leer el tema: ') + (e.message || e)); return false; }
 }
 // A template to start from (ui/dialogs/masterai.js): the file read as a presentation, nothing applied. Throws.
 export async function readTemplate(file) {

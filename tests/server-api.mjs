@@ -2145,6 +2145,34 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok(x.j.checked >= 4 && x.j.bad.some(b => b.url === 'https://revelaslides.com/pricing' && b.status === 404) && !x.j.bad.some(b => b.url === 'https://revelaslides.com/'), 'sitemap: «Comprobar» dice qué dirección no responde');
     ok(x.j.total === x.j.checked && x.j.next === null && (await A('POST', '/web/check', { body: { offset: 1 } })).j.checked === x.j.total - 1, 'sitemap: por tandas (Cloudflare limita las peticiones de cada llamada)');
     env.FETCH = prevF4;
+
+    // The app's errors (errors.js): sent by the app, grouped, counted, without anyone's text or who; solved or back.
+    const { APP_VERSION: V0 } = await import('../src/core/config.js');
+    const err = (b, { ip = '10.8.0.1', ua = 'Mozilla/5.0 Chrome/141', origin = SITE } = {}) => req('POST', '/api/errors', { origin, body: b, headers: { 'CF-Connecting-IP': ip, 'User-Agent': ua } });
+    const rep = (line, extra = {}) => ({ msg: 'Invalid string length en "' + 'mi presentación secreta'.repeat(2) + '"', kind: 'error', version: V0, browser: 'Chrome 141 · Windows', lang: 'es',
+      where: '/app/?doc=abc', actions: ['present', 'a b<script>'], stack: `RangeError: Invalid string length\n    at buildHTMLRaw (https://revelaslides.com/app/src/io/formats/html.js?v=7:${line}:174)\n    at present (blob:https://revelaslides.com/1234:1:2)`, ...extra });
+    ok((await err(rep(603), { origin: 'https://malo.example' })).status === 403, 'errores: solo desde la app');
+    await err(rep(603)); await err(rep(611)); await err(rep(603), { ip: '10.8.0.2' });
+    await err({ ...rep(1), msg: 'Otra cosa', stack: 'TypeError: x\n    at f (https://revelaslides.com/app/src/ui/canvas/canvas.js:9:1)' });
+    x = await A('GET', '/errors');
+    const big = x.j.items.find(g => /Invalid string length/.test(g.msg));
+    ok(x.status === 200 && x.j.items.length === 2 && big?.n === 3 && big.people === 2, 'errores: el mismo error (en otra línea) es uno, 3 veces de 2 personas: ' + JSON.stringify(x.j.items.map(g => [g.msg, g.n, g.people])));
+    ok(!/secreta/.test(big.msg) && /"…"/.test(big.msg) && !/\?v=7|blob:https/.test(big.stack) && big.where === '/app/' && big.actions.present && big.actions.abscript === 3,
+      'errores: sin el texto entre comillas, ni consultas, ni blob:, ni la dirección del documento, ni acciones raras: ' + JSON.stringify(big));
+    const raw2 = JSON.stringify([...env.VISITS.inst.get('visits').ctx.storage.m.entries()]);
+    ok(!raw2.includes('10.8.0') && !raw2.includes('Chrome/141'), 'errores: ni la IP ni el navegador completo se guardan');
+    const L = 'abcdefghijklmnopqrstuvwxyz'; for (let i = 0; i < 40; i++) await err({ ...rep(1), msg: 'Bucle ' + L[i % 26] + L[Math.floor(i / 26)], stack: '' }, { ip: '10.8.0.9' });   // (numbers don't tell errors apart)
+    x = await A('GET', '/errors?all=1'); ok(x.j.items.filter(g => /^Bucle/.test(g.msg)).length === 30, 'errores: como mucho 30 avisos por persona y día');
+    ok((await A('GET', '/stats')).j.errors?.open >= 2, 'errores: en el resumen del admin');
+    // Solved: still happening in the same version (people who haven't updated) stays solved; in a newer one, back.
+    ok((await A('POST', '/errors', { body: { sig: big.sig, status: 'solved' } })).j.item.solvedIn === V0, 'errores: resuelto en la versión publicada');
+    await err(rep(603), { ip: '10.8.0.3' });
+    ok((await A('GET', '/errors?all=1')).j.items.find(g => g.sig === big.sig).status === 'solved', 'errores: en la misma versión, sigue resuelto');
+    const [a1, b1, c1] = V0.split('.').map(Number);
+    await err(rep(603, { version: `${a1}.${b1}.${c1 + 1}` }), { ip: '10.8.0.3' });
+    const back = (await A('GET', '/errors')).j.items.find(g => g.sig === big.sig);
+    ok(back?.status === 'new' && back.reopened, 'errores: en una versión más nueva, vuelve a «sin resolver»');
+    ok((await A('POST', '/errors', { body: { sig: big.sig, status: 'raro' } })).status === 400, 'errores: solo estados conocidos');
   }
 
   // Deleting the account takes it out of the directory.

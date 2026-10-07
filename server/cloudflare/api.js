@@ -15,6 +15,7 @@
 //                              (a new account needs terms: the version of the terms accepted; else 400 { error: 'terms' })
 //   POST /api/logout
 //   POST /api/visit            { path, ref, lang, kind: view | 404 }   (the website's pages: visits.js; no cookies)
+//   POST /api/errors           { msg, stack, where, version, browser, lang, actions, kind }   (the app's errors: errors.js)
 //   GET  /api/redirect?path=   → { to }   (where an address that doesn't exist goes: the 404 page asks)
 //   GET  /api/version          → { version, stage }   (the version this server is: src/core/config.js APP_VERSION)
 //   GET  /api/sessions         → { sessions: [{ id, kind, device, where, created, last, expires, current? }] }   (my open sessions)
@@ -870,6 +871,15 @@ export async function handleApi(req, env, url) {
     if (req.method !== 'POST') return json({ error: 'method' }, 405);
     if (!webOrigin) return json({ error: 'origin' }, 403);
     return handleVisit(req, env, body, json);
+  }
+  // The app's own errors (errors.js): from the app (the website's origin or the desktop app), small, capped per person.
+  if (path === '/errors') {
+    if (req.method !== 'POST') return json({ error: 'method' }, 405);
+    if (!webOrigin && !desktopOrigin) return json({ error: 'origin' }, 403);
+    if (!env.VISITS || !body || typeof body !== 'object') return json({ ok: true });
+    const who = (await sha256((req.headers.get('CF-Connecting-IP') || '') + '|' + (req.headers.get('User-Agent') || ''))).slice(0, 22);
+    await visitsCall(env, 'err-hit', { who, report: body });
+    return json({ ok: true });
   }
   if (path === '/version' && req.method === 'GET') return json({ version: APP_VERSION, stage: env.STAGE || 'production' }, 200, { 'Cache-Control': 'no-store' });
   if (path === '/redirect' && req.method === 'GET') {

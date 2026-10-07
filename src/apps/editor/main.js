@@ -40,6 +40,7 @@ import * as protect from '../../features/collab/protect.js';
 import { initRibbon, renderRibbon } from '../../ui/ribbon/ribbon.js';
 import { initContextMenu } from '../../ui/shell/contextmenu.js';
 import { initBusy } from '../../ui/shell/busy.js';
+import { initErrorReports } from '../../ui/shell/errors.js';
 import { openingScreen, whileOpening } from '../../ui/shell/opening.js';
 import { mountStage } from '../../ui/shell/stage.js';
 import * as palette from '../../ui/shell/palette.js';
@@ -230,6 +231,7 @@ initCanvas();
 initPanel();
 initRibbon();
 initBusy();                                             // (first: the «loading» bar sees every request)
+initErrorReports({ testing: new URLSearchParams(location.search).has('test') });   // (the app's errors, to Revela: ui/shell/errors.js)
 mountStage();
 initContextMenu();
 initDraw();

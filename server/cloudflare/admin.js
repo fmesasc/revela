@@ -94,6 +94,7 @@ import { stripeConf } from './billing.js';
 import { priceOf } from './ai.js';
 import { storageConfig, cleanStorage, resetStorageCache, storageBackfill } from './storage.js';
 import { releasesState, releasesPromote, releasesRollback, releasesSettings } from './releases.js';
+import { APP_VERSION } from '../../src/core/config.js';
 import { visitsCall, cleanPath } from './visits.js';
 import { communityPage } from './community.js';
 import { cleanNotice } from './notices.js';
@@ -584,8 +585,9 @@ export async function handleAdmin(req, env, url) {
 
   if (GET && path === '/whoami') return json({ email: by });
   if (GET && path === '/stats') {
-    const [u, ai, tickets] = await Promise.all([call(D, 'stats'), env.BUDGET ? call(stub(env.BUDGET, 'global'), 'check', { usd: 0 }) : null, call(T, 'counts')]);
-    return json({ ...u, ai: ai && { month: new Date().toISOString().slice(0, 7), usd: ai.usd, limit: ai.limit }, tickets });
+    const [u, ai, tickets, errors] = await Promise.all([call(D, 'stats'), env.BUDGET ? call(stub(env.BUDGET, 'global'), 'check', { usd: 0 }) : null, call(T, 'counts'),
+      env.VISITS ? visitsCall(env, 'err-summary').catch(() => null) : null]);
+    return json({ ...u, ai: ai && { month: new Date().toISOString().slice(0, 7), usd: ai.usd, limit: ai.limit }, tickets, errors });
   }
   if (GET && path === '/users') return json(await call(D, 'search', { q: clip(q.get('q'), 200), cursor: q.get('cursor') || null, limit: +q.get('limit') || 50 }));
   let m = path.match(/^\/users\/([\w.-]{1,100})$/);
@@ -622,6 +624,18 @@ export async function handleAdmin(req, env, url) {
     return json({ ok: true, ...r });
   }
   if (path === '/web' || path.startsWith('/web/')) return webApi(env, path, q, body, { GET, POST, by, json });
+  // The app's errors (errors.js): the list, and each one solved, ignored or new again. Solved «in» the version
+  // published now: it comes back if it happens in a newer one.
+  if (path === '/errors') {
+    if (!env.VISITS) return json({ error: 'not configured' }, 503);
+    if (GET) return json({ ...(await visitsCall(env, 'errs', { all: q.get('all') === '1' })), version: APP_VERSION });
+    if (POST) {
+      const status = ['new', 'solved', 'ignored'].includes(body.status) ? body.status : null; if (!status) return json({ error: 'bad request' }, 400);
+      const r = await visitsCall(env, 'err-set', { sig: clip(body.sig, 40), status, version: APP_VERSION });
+      if (!r.error) await audit(env, { by, action: 'error-status', target: 'error:' + clip(body.sig, 40), after: { status, version: APP_VERSION } });
+      return json(r, r.error ? 404 : 200);
+    }
+  }
   if (GET && path === '/releases') { try { return json(await releasesState(env)); } catch (e) { return json({ error: 'github', detail: e.message }, 502); } }
   if (POST && path === '/releases/promote') {
     const r = await releasesPromote(env, clip(body.reason, 200)).catch(e => ({ error: 'github', detail: e.message }));

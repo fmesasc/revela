@@ -346,6 +346,16 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.fetch = realFetch; AI.disconnectAi(); }
   });
 
+  await test('errores de la aplicación: el navegador en pocas palabras, y nada se envía sin cuenta (edición abierta) ni en pruebas', async () => {
+    const W = frame.contentWindow, E = await W.eval("import('/src/ui/shell/errors.js')"), real = W.fetch; let sent = 0;
+    eq(E.browserName('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'), 'Chrome 141 · Windows', 'Chrome en Windows');
+    eq(E.browserName('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15'), 'Safari 18 · macOS', 'Safari en macOS');
+    eq(E.browserName('Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0'), 'Firefox 131 · Linux', 'Firefox en Linux');
+    W.fetch = async () => { sent++; return new W.Response('{}'); };
+    try { E.initErrorReports({ testing: true }); E.reportError(new W.Error('prueba')); await sleep(10); eq(sent, 0, 'en pruebas, nada'); }
+    finally { W.fetch = real; }
+  });
+
   await test('IA avanzada: presentación completa, mejorar, agenda, preguntas y asistente', async () => {
     reset(); const W = frame.contentWindow, A = R.aiDeck, realFetch = W.fetch, calls = []; let answer = {}, seq = null;
     R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
