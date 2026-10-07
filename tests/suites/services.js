@@ -381,7 +381,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       const got = await A.createDeck({ topic: 'Energía solar', count: 11, audience: 'estudiantes', tone: 'didáctico', images: true });
       const ask = calls.find(c => /Audience: estudiantes/.test(c.body.messages[1].content)); assert(ask, 'envía el encargo');
       assert(/PRESENT out loud/.test(ask.body.messages[0].content) && /"design"/.test(ask.body.messages[0].content), 'para presentarla en voz alta, y con su diseño');
-      assert(/speaker notes/.test(calls.at(-1).body.messages[0].content), 'las notas que faltaban, pedidas aparte');
+      assert(calls.some(c => /speaker notes/.test(c.body.messages[0].content)), 'las notas que faltaban, pedidas aparte');
       await A.insertSpecs(got, { images: true });
       eq(R.state.deck.slides.length, n0 + 12, 'doce diapositivas (con su portadilla: es larga)');
       const S = R.state.deck.slides.slice(1), types = s => s.blocks.map(b => b.type).join(',');
@@ -443,6 +443,13 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
         { kind: 'timeline', title: 'Historia de Swift', steps: [{ label: '2014', text: 'Nace' }, { label: '2015', text: 'Abierto' }, { label: '2019', text: 'ABI' }], notes: 'La historia de Swift en tres fechas' },
         { kind: 'closing', title: 'Gracias', notes: 'Gracias' }];
       const q2 = Q.deckQuality(good, { topic: 'Swift' }); eq(q2.problems.length + '|' + q2.score, '0|100', 'la buena: sin problemas');
+      // Figures without data (invented), a picture slide with no picture, code where it doesn't belong.
+      const sales = [{ kind: 'title', title: 'Ventas', notes: 'n' }, { kind: 'stats', title: 'Resultados', stats: [{ value: '$15.2M', label: 'Ventas' }], notes: 'Resultados' },
+        { kind: 'stats', title: 'Tus cifras', stats: [{ value: '[ventas del trimestre]', label: 'Ventas' }], notes: 'Tus cifras' },
+        { kind: 'image', title: 'Equipo', bullets: ['a'], notes: 'Equipo' }, { kind: 'code', title: 'Instalar', code: { language: 'bash', code: 'npm install\nyarn dev' }, notes: 'Instalar' }];
+      eq(Q.deckQuality(sales, { topic: 'Bienvenida a nuevos empleados' }).problems.filter(p => ['invented-figures', 'no-picture', 'off-code'].includes(p.code)).map(p => p.code + ':' + p.slides.join('+')).join(),
+        'invented-figures:1,no-picture:3,off-code:4', 'cifras inventadas (no los huecos para rellenar), imagen sin imagen, código fuera de lugar');
+      assert(!Q.deckQuality(sales, { topic: 'Bienvenida', sourced: true, images: true }).problems.some(p => ['invented-figures', 'no-picture'].includes(p.code)), 'con datos y con imágenes pedidas, no');
       // Creating one that comes out weak: its weak slides made again, once, before it's shown.
       seq = [{ title: 'Swift', slides: flat }, { slides: [1, 2, 3].map(i => ({ i, kind: 'code', title: flat[i].title, code: { language: 'swift', code: 'let x = ' + i + '\nprint(x)' } })) }];
       calls.length = 0; const sp4 = await A.createDeck({ topic: 'Lenguaje de programación Swift', count: 8 }); seq = null;

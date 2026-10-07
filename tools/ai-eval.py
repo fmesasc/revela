@@ -71,16 +71,16 @@ def main():
             r = ev(f"""(async()=>{{const A=window.__revela.aiDeck,Q=await import('/src/features/ai/quality.js');
               const o={{topic:{json.dumps(topic)},language:{json.dumps(lang)},count:10}};
               const ol=await A.createOutline(o); const sp=await A.createDeck({{...o,outline:ol.slides}});
-              return {{outline:ol, specs:JSON.parse(JSON.stringify(sp)), quality:sp.quality||Q.deckQuality(sp,{{topic:o.topic}})}}}})()""")
+              return {{outline:ol, specs:JSON.parse(JSON.stringify(sp)), quality:sp.quality||Q.deckQuality(sp,{{topic:o.topic}}), first:(sp.qualityFirst||sp.quality||{{}}).score}}}})()""")
             q = r['quality']; json.dump(r, open(os.path.join(out, k + '.json'), 'w'), ensure_ascii=False, indent=1)
-            rows.append((k, q['score'], len(r['specs']), q['stats']['code'], ', '.join(sorted(set(s.get('kind', '?') for s in r['specs']))), '; '.join(p['detail'] for p in q['problems']) or '—', round(time.time() - t0)))
+            rows.append((k, q['score'], len(r['specs']), q['stats']['code'], ', '.join(sorted(set(s.get('kind', '?') for s in r['specs']))), '; '.join(p['detail'] for p in q['problems']) or '—', round(time.time() - t0), r.get('first', q['score'])))
         except Exception as e:
-            rows.append((k, 0, 0, 0, '', 'ERROR: ' + (str(e).splitlines() or [''])[0][:200], round(time.time() - t0)))
+            rows.append((k, 0, 0, 0, '', 'ERROR: ' + (str(e).splitlines() or [''])[0][:200], round(time.time() - t0), 0))
         print(f'{rows[-1][0]:<12} {rows[-1][1]:>3}  {rows[-1][5]}', flush=True)
     proc.kill()
     avg = sum(r[1] for r in rows) / max(1, len(rows))
-    md = [f'## La IA, medida{f" ({model})" if model else ""}: media {avg:.0f}/100', '', '| Tema | Nota | Diapositivas | Código | Tipos | Problemas | s |', '|---|---:|---:|---:|---|---|---:|']
-    md += [f'| {r[0]} | {r[1]} | {r[2]} | {r[3]} | {r[4]} | {r[5]} | {r[6]} |' for r in rows]
+    md = [f'## La IA, medida{f" ({model})" if model else ""}: media {avg:.0f}/100 (a la primera: {sum(r[7] for r in rows) / max(1, len(rows)):.0f})', '', '| Tema | Nota | A la primera | Diapositivas | Código | Tipos | Problemas | s |', '|---|---:|---:|---:|---:|---|---|---:|']
+    md += [f'| {r[0]} | {r[1]} | {r[7]} | {r[2]} | {r[3]} | {r[4]} | {r[5]} | {r[6]} |' for r in rows]
     open(os.path.join(out, 'resumen.md'), 'w').write('\n'.join(md) + '\n'); print('\n'.join(md))
     if os.environ.get('GITHUB_STEP_SUMMARY'): open(os.environ['GITHUB_STEP_SUMMARY'], 'a').write('\n'.join(md) + '\n')
     return 0 if avg >= least else 1

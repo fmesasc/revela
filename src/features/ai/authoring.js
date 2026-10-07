@@ -211,7 +211,9 @@ export const RICH = `Use the richest kind that fits each slide — a list ("bull
 - A programming language, a library, a tool, a query language or any technical topic: show REAL CODE on "code" slides — correct, idiomatic, compilable, 4-15 lines, with a comment or two —, at least one slide in three; each concept with its code (declare, use, a common mistake and its fix…), "comparison" for "this vs that", "steps" for how to set it up.
 - Maths or science: "math" for the formulas; data you are given: "chart", "table" or "stats".
 - History, evolution: "timeline". Processes: "steps". Parts, benefits, reasons: "features". One central claim: "key_idea". A famous phrase: "quote".
-- Every slide teaches something concrete: facts, examples, numbers, names — never "Inclou millores" or "Fàcil d'usar" alone.`;
+- Every slide teaches something concrete: facts, examples, names — never "Inclou millores" or "Fàcil d'usar" alone.
+- Numbers ("stats", "chart", figures in a table or a text) ONLY from the person's data, the document or the research given. Never invent a figure: use another kind; and when the deck needs the person's own figures (their sales, their results), put placeholders in brackets for them to fill in, like "[ventas del trimestre]".
+- A "chart" only for a real series of numbers to compare — never to illustrate an idea. "code" only when the audience writes or reads code — never as decoration on another topic.`;
 // The model for writing whole decks (unless the person chose one): a capable one, not the cheapest of the list.
 const DECK_MODEL = 'google/gemini-2.5-flash';
 const withResearch = (source, r) => (r ? `${source ? source + '\n\n' : ''}Research brief from the web (current facts; keep their [n] marks in the notes when you use them):\n${r.brief}` : source);
@@ -223,13 +225,13 @@ export async function createOutline(opts = {}) {
   const count = Math.max(3, Math.min(30, +opts.count || 8)), src = withResearch(opts.source, opts.research);
   const source = src ? `\n\nBase it ONLY on this document:\n"""\n${String(src).slice(0, 60000)}\n"""` : '';
   const out = await chat([
-    { role: 'system', content: `Plan a presentation that someone will present out loud. Answer only JSON {"title":"…","slides":[{"title":"…","kind":"…","points":["…"]}]}: about ${count} slides, in order, the first a title slide ("title") and the last a closing one ("closing"). Each title states the slide's message (max ~9 words); "kind" is the kind of slide that will show it best — one of: ${KINDS.join(', ')}; 1-4 points with WHAT it will show, concretely (the facts, figures and examples; for a "code" slide, what the code does and in which language). Not a list of short phrases: a plan for rich slides.
+    { role: 'system', content: `Plan a presentation that someone will present out loud. Answer only JSON {"title":"…","slides":[{"title":"…","kind":"…","points":["…"]}]}: about ${count} slides, in order, the first a title slide ("title") and the last a closing one ("closing"). Each title states the slide's message (max ~9 words); "kind" is the kind of slide that will show it best — one of: ${KINDS.filter(k => opts.images || k !== 'image').join(', ')}; 1-4 points with WHAT it will show, concretely (the facts, figures and examples; for a "code" slide, what the code does and in which language). Not a list of short phrases: a plan for rich slides.
 ${RICH}
 Write in ${opts.language || lang()}.` },
     { role: 'user', content: withAttachments([opts.topic && `Topic and purpose: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`].filter(Boolean).join('\n') + source, opts.attachments || []) },
   ], { json: true, maxTokens: 3000, feature: 'outline', prefer: DECK_MODEL });
   const res = parseJSON(out), slides = (res.slides || []).filter(x => x && str(x.title).trim()).slice(0, 40)
-    .map(x => ({ title: str(x.title).trim(), ...(KINDS.includes(x.kind) && { kind: x.kind }), points: (Array.isArray(x.points) ? x.points : []).map(str).map(p => p.trim()).filter(Boolean).slice(0, 6) }));
+    .map(x => ({ title: str(x.title).trim(), ...(KINDS.includes(x.kind) && (opts.images || x.kind !== 'image') && { kind: x.kind }), points: (Array.isArray(x.points) ? x.points : []).map(str).map(p => p.trim()).filter(Boolean).slice(0, 6) }));
   if (!slides.length) throw new Error('EMPTY');
   return { title: str(res.title), slides };
 }
@@ -269,21 +271,26 @@ Write everything in ${opts.language || lang()}.` },
   }
   // (A figure only where there is one; a model that forgot the notes of many slides is asked for them once.)
   for (const sp of specs) { const n = +sp.figure; if (!(n >= 1 && n <= pics.length && pics[n - 1]?.figure)) delete sp.figure; else sp.figure = n; }
+  // (A picture slide with no picture to come — none asked for, no figure of the document —: its points, as a list.)
+  for (const sp of specs) if (sp.kind === 'image' && !sp.figure && !opts.images) { sp.kind = 'bullets'; delete sp.image_prompt; }
   const missing = specs.filter(sp => !str(sp.notes).trim());
   if (missing.length > specs.length * 0.3) await speakerNotes(specs, opts).catch(() => {});
   // Measured (quality.js): a weak deck — mostly lists, thin ones, no code on a technical topic — gets its weak slides
   // made again, once, before anyone sees it.
-  let q = deckQuality(specs, { topic: opts.topic || str(res.title) });
-  if (q.score < 75) { await richer(specs, weakSlides(q, specs), opts).catch(() => {}); q = deckQuality(specs, { topic: opts.topic || str(res.title) }); }
+  const how = { topic: opts.topic || str(res.title), sourced: !!(str(opts.source) || opts.research), images: !!opts.images };
+  let q = deckQuality(specs, how); specs.qualityFirst = q;
+  if (q.score < 75) { await richer(specs, weakSlides(q, specs), opts, q).catch(() => {}); q = deckQuality(specs, how); }
   specs.title = str(res.title); specs.design = DECK_DESIGNS[res.design] ? res.design : null; specs.quality = q;
   return specs;
 }
 // The weak slides made again (one request for all): the same message and place, a richer kind, real content.
-async function richer(specs, idx, opts = {}) {
+async function richer(specs, idx, opts = {}, q = null) {
   if (!idx.length) return;
-  const want = idx.map(i => ({ i, ...specs[i] }));
+  // (Each with what's wrong with it, as the measure says.)
+  const why = i => (q?.problems || []).filter(p => p.slides?.includes(i)).map(p => p.detail).join('; ');
+  const want = idx.map(i => ({ i, ...(why(i) && { problem: why(i) }), ...specs[i] }));
   const out = await chat([
-    { role: 'system', content: `These slides of a presentation are weak: mostly lists, thin, or without the code a technical topic needs. Make each one again — the same message (its title may be sharpened), in the richest kind that fits, with real, concrete content. Answer only JSON {"slides":[{"i":N,"kind":"…",…,"notes":"…"}]}, one per slide given, with its own i.
+    { role: 'system', content: `These slides of a presentation are weak (each one says why in "problem"): mostly lists, thin, without the code a technical topic needs, with invented figures, or code where it doesn't belong. Make each one again — the same message (its title may be sharpened), in the richest kind that fits, with real, concrete content. Answer only JSON {"slides":[{"i":N,"kind":"…",…,"notes":"…"}]}, one per slide given, with its own i.
 ${SPEC_DOC}
 ${RICH}
 Do not use "image". Write in ${opts.language || lang()}.` },
