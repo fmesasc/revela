@@ -450,6 +450,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       eq(Q.deckQuality(sales, { topic: 'Bienvenida a nuevos empleados' }).problems.filter(p => ['invented-figures', 'no-picture', 'off-code'].includes(p.code)).map(p => p.code + ':' + p.slides.join('+')).join(),
         'invented-figures:1,no-picture:3,off-code:4', 'cifras inventadas (no los huecos para rellenar), imagen sin imagen, código fuera de lugar');
       assert(!Q.deckQuality(sales, { topic: 'Bienvenida', sourced: true, images: true }).problems.some(p => ['invented-figures', 'no-picture'].includes(p.code)), 'con datos y con imágenes pedidas, no');
+      sales[1].source = 'Fuente: informe anual 2024';
+      assert(!Q.deckQuality(sales, { topic: 'Bienvenida' }).problems.some(p => p.code === 'invented-figures'), 'con su fuente, no son inventadas');
+      // The source, under the figures on the slide.
+      const sl = A.slideFromSpec(A.normalizeSpec ? A.normalizeSpec(sales[1]) : { ...sales[1] }, '#000', R.state.deck);
+      assert(sl.blocks.some(b => b.aiSource && b.html === 'Fuente: informe anual 2024' && b.y > R.state.deck.size.h - 60), 'la fuente, abajo, en la diapositiva');
       // Creating one that comes out weak: its weak slides made again, once, before it's shown.
       seq = [{ title: 'Swift', slides: flat }, { slides: [1, 2, 3].map(i => ({ i, kind: 'code', title: flat[i].title, code: { language: 'swift', code: 'let x = ' + i + '\nprint(x)' } })) }];
       calls.length = 0; const sp4 = await A.createDeck({ topic: 'Lenguaje de programación Swift', count: 8 }); seq = null;

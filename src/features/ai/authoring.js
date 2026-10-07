@@ -41,6 +41,7 @@ export const SPEC_DOC = `Slide kinds and their fields — choose the kind that f
 - "code": title, code {language: ${AI_LANGS.map(l => `"${l}"`).join('|')}, code (VERBATIM, with its line breaks and indentation) — or from_image: the id of a picture whose code was read}, caption (optional), bullets (0-4, what it does: shown in a column at its side). A real code block with highlighting — for code, queries, DAX measures, M steps, Excel formulas; never code in "bullets"
 - "math": title, latex (the formula in LaTeX, no $ signs), caption (optional), bullets (0-4, what each term means). A real equation — for mathematical formulas; never a formula in "bullets"
 - "closing": title, subtitle
+"stats", "chart" and "table" with figures also have "source": where they come from — the research's [n] or the document, or a well-established reference you are sure of ("IPCC AR6, 2021", "INE 2023"); figures made up to illustrate (an example dataset in a tutorial) say so. It is shown under them as you write it, in the deck's language: "Fuente: IPCC AR6, 2021", "Source: …", "Datos de ejemplo".
 One idea per slide: when there is more, make two slides. Text is plain (no markdown, no HTML); "Label: text" items are shown with the label in bold.
 Any slide may have "icon": one icon name that fits it (${ICON_NAMES.filter((_, i) => i % 3 === 0).slice(0, 45).join(', ')}, …).
 Every slide also has "notes": 2-4 sentences the presenter would say. Only use real data you are given or well-known facts; never invent statistics — if unsure, use another kind instead of stats/chart.`;
@@ -125,10 +126,18 @@ export function layoutSlide(spec, W = 1280, H = 720, pal = currentPalette()) {
 }
 // A slide from a spec. In a deck with layouts it looks like the rest (features/ai/fromspec.js):
 // opts { at: the index it will have, style, seed }; otherwise the objects above on `bg`.
-export const slideFromSpec = (spec, bg = currentPalette().bg, deck = state.deck, opts = {}) => (hasLayouts(deck) ? styledSlide(spec, deck, opts) : {
+export const slideFromSpec = (spec, bg = currentPalette().bg, deck = state.deck, opts = {}) => withSource(hasLayouts(deck) ? styledSlide(spec, deck, opts) : {
   id: uid(), sectionId: null, background: bg, transition: null, hidden: false, autoSlide: 0,
   notes: str(spec.notes), blocks: layoutSlide(spec, deck.size.w, deck.size.h),
-});
+}, spec, deck);
+// «Fuente: …» under a slide's figures (spec.source): small, at the bottom left, in the text's colour, faint — so
+// whoever sees the slide knows where the numbers come from, or that they are an example.
+const sourceBlock = (spec, deck) => ({ id: uid(), type: 'text', x: Math.round(deck.size.w * 0.06), y: deck.size.h - 46, w: Math.round(deck.size.w * 0.7), h: 32, rotation: 0, animation: null,
+  fontSize: 15, opacity: 70, html: esc(spec.source), aiSource: true });
+function withSource(slide, spec, deck) {
+  if (spec.source && ['stats', 'chart', 'table'].includes(spec.kind)) slide.blocks.push(sourceBlock(spec, deck));
+  return slide;
+}
 // What a slide made again keeps: pictures, 3D models, videos, embeds, the camera, and the
 // objects made with care — equations, code, charts, tables, diagrams (unless `remove`
 // names them: the user asked for that). Never silently lost.
@@ -175,8 +184,9 @@ export function rebuildSlide(s, spec, deck = state.deck, opts = {}) {
     if (opts.style && opts.style !== 'same' && ns.transition) s.transition = ns.transition;
     if (ns.hideMaster) s.hideMaster = true; else delete s.hideMaster;
   } else made = layoutSlide(spec, deck.size.w, deck.size.h, currentPalette(deck));
-  s.blocks = [...made, ...keep];
+  s.blocks = [...made.filter(b => !b.aiSource), ...keep.filter(b => !b.aiSource)];
   makeRoom(s, made, keep, deck);
+  withSource(s, spec, deck);
   if (spec.notes) s.notes = str(spec.notes);
 }
 
@@ -279,7 +289,7 @@ Write everything in ${opts.language || lang()}.` },
   // made again, once, before anyone sees it.
   const how = { topic: opts.topic || str(res.title), sourced: !!(str(opts.source) || opts.research), images: !!opts.images };
   let q = deckQuality(specs, how); specs.qualityFirst = q;
-  if (q.score < 75) { await richer(specs, weakSlides(q, specs), opts, q).catch(() => {}); q = deckQuality(specs, how); }
+  if (q.score < 75 || q.problems.some(p => ['invented-figures', 'off-code', 'no-picture'].includes(p.code))) { await richer(specs, weakSlides(q, specs), opts, q).catch(() => {}); q = deckQuality(specs, how); }
   specs.title = str(res.title); specs.design = DECK_DESIGNS[res.design] ? res.design : null; specs.quality = q;
   return specs;
 }

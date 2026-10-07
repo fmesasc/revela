@@ -34,9 +34,10 @@ export function deckQuality(specs, { topic = '', sourced = false, images = false
     return own.length && next.length && !own.some(w => note.includes(w)) && next.some(w => note.includes(w)) ? i : -1;
   }).filter(i => i >= 0);
   const empty = body.filter(x => { const sp = x.sp; return sp.kind === 'bullets' ? !bulletsOf(sp).length : sp.kind === 'code' ? !str(sp.code?.code || sp.code) : sp.kind === 'steps' || sp.kind === 'timeline' ? !(sp.steps || []).length : sp.kind === 'features' ? !(sp.items || []).length : false; });
-  // Figures with no data behind them (none given): invented. A placeholder for the person's own («[ventas]») is fine.
+  // Figures with no data behind them (none given) and no source said: invented. A placeholder for the person's own
+// («[ventas]») is fine, and so are figures that say where they come from (or that they are an example).
   const hasFigure = v => /\d/.test(str(v)) && !/\[[^\]]+\]/.test(str(v));
-  const invented = sourced ? [] : body.filter(x => (x.sp.kind === 'stats' && (x.sp.stats || []).some(s => hasFigure(s.value))) || (x.sp.kind === 'chart' && (x.sp.chart?.values || []).length));
+  const invented = sourced ? [] : body.filter(x => !str(x.sp.source) && (x.sp.kind === 'stats' && (x.sp.stats || []).some(s => hasFigure(s.value))) || (x.sp.kind === 'chart' && (x.sp.chart?.values || []).length));
   const noPicture = images ? [] : body.filter(x => x.sp.kind === 'image' && !x.sp.figure);
   const offCode = tech ? [] : code;
   const problems = [];
