@@ -798,7 +798,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       const ns = R.state.deck.slides[1], cb = ns.blocks.find(b => b.type === 'code');
       assert(cb && cb.lang === 'dax' && cb.code === DAX, 'un bloque de código DAX con el código literal: ' + JSON.stringify(cb));
       assert(!ns.blocks.some(b => b.type === 'text' && /CALCULATE\(SUM/.test(b.html || '')), 'no en un cuadro de texto');
-      assert(ns.blocks.some(b => b.type === 'text' && /VAR guarda/.test(b.html || '') && b.x >= cb.x + cb.w - 1), 'la explicación al lado');
+      assert(ns.blocks.some(b => b.type === 'text' && /VAR guarda/.test(b.html || '') && (b.x >= cb.x + cb.w - 1 || b.y >= cb.y + cb.h - 1)), 'la explicación al lado, o debajo si el código no se leería a 18 px con ella al lado');
+      assert(cb.fontSize >= 18, 'el código, legible: ' + cb.fontSize + ' px');
       assert(R.state.deck.slides[0].blocks.some(b => b.id === 'shot1'), 'la captura se queda');
       // Otra vez: ya leída, gratis.
       calls.length = 0; W.fetch = codeMock(W, [proposal], calls, seen);

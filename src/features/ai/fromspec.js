@@ -18,7 +18,7 @@ import { normalizeAnim } from '../animation/transitions.js';
 import { ICON_NAMES } from '../../render/svg.js';
 import { richHTML, inline } from './richtext.js';
 import { prepareSpec, RICH } from './specs.js';
-import { codeBlockAt, mathBlockAt } from './codeobj.js';
+import { codeBlockAt, mathBlockAt, codeFontSize } from './codeobj.js';
 
 export const STYLES = ['same', 'visual', 'minimal', 'animated', 'surprise'];
 export const hasLayouts = deck => Array.isArray(deck?.layouts) && deck.layouts.length > 0;
@@ -141,11 +141,13 @@ const isMotif = (b, W, H) => isGlow(b, W) || (Math.min(b.w, b.h) <= 12 && (b.w >
   || ((b.w >= W * 0.8 && (b.y <= 1 || b.y + b.h >= H - 1)) || (b.h >= H * 0.8 && (b.x <= 1 || b.x + b.w >= W - 1)));
 
 // ---- Text that has to fit: an estimate (the master's size, shrunk with `fit`) ------
-function needHeight(html, fs, w, lh) {
+// cw: a letter's average width in em — 0.54 for running text; a bold heading's is wider (0.62): measured as text it
+// came out taller than thought, and a big statement ran over the line under it.
+function needHeight(html, fs, w, lh, cw = 0.54) {
   const isList = /<li/i.test(html);
   const paras = str(html).replace(/<\/(li|p|div)>|<br\s*\/?>|<(ul|ol)\b[^>]*>/gi, '\n').replace(/<[^>]*>/g, '').replace(/&[#\w]+;/g, 'x')
     .split('\n').map(s => s.trim()).filter(Boolean);
-  const perLine = Math.max(4, Math.floor((w - 28 - (isList ? fs * 1.3 : 0)) / (fs * 0.54)));
+  const perLine = Math.max(4, Math.floor((w - 28 - (isList ? fs * 1.3 : 0)) / (fs * cw)));
   // (Paragraphs and lists at the top keep 1em above and below them, shared between neighbours.)
   let depth = 0, blocks = 0;
   for (const [, close, tag] of str(html).matchAll(/<(\/?)(ul|ol|p)\b/gi)) {
@@ -174,8 +176,11 @@ export function fitBody(b, slide, deck) {
   if ((b.fit ?? 1) < one + 0.1) { delete b.columns; fitPlaceholder(b, slide, deck); }
 }
 // A free text: the size that fits.
-function fitSize(html, size, w, h, lh = 1.25, min = 14) {
-  let fs = size; while (fs > min && needHeight(html, fs, w, lh) > h) fs -= 2;
+// (Never under 18 px — what still reads on a projected slide from the back; text that doesn't fit at 18 goes to more
+// rows or columns where it is laid out, not smaller.)
+function fitSize(html, size, w, h, lh = 1.25, min = 18, cw = 0.54) {
+  min = Math.max(18, min);
+  let fs = size; while (fs > min && needHeight(html, fs, w, lh, cw) > h) fs -= 2;
   return fs;
 }
 
@@ -345,9 +350,13 @@ export function styledSlide(spec, deck, { at = deck.slides.length, self = null, 
 // explanation in a column at its side when there is one, and a caption under it.
 // area: the free box under the title; look: { fg, accent, bodySize, body } (lookOf, or the palette's).
 export function codeCard(spec, area, look) {
-  const out = [], pts = (spec.bullets || []).filter(Boolean), side = pts.length > 0, gap = 36;
+  const out = [], pts = (spec.bullets || []).filter(Boolean), gap = 36, code = spec.code?.code || '';
+  // (The explanation at its side only if the code still reads there, at 18 px or more; else the code takes the whole
+  // width and the explanation goes under it.)
+  const under = pts.length > 0 && spec.kind !== 'math' && codeFontSize(code, area.w * 0.6, area.h, { min: 1 }) < 18;
+  const side = pts.length > 0 && !under, ptsH = under ? Math.min(area.h * 0.34, 34 * Math.min(4, pts.length) + 30) : 0;
   const cw = side ? Math.round(area.w * (spec.kind === 'math' ? 0.5 : 0.6)) : area.w, capH = spec.caption ? 50 : 0;
-  const box = { x: area.x, y: area.y, w: cw, h: area.h - capH };
+  const box = { x: area.x, y: area.y, w: cw, h: area.h - capH - ptsH };
   let main;
   if (spec.kind === 'math') {
     main = mathBlockAt(spec.latex, { ...box, h: Math.min(box.h, side ? 220 : 200), y: area.y + (side ? 0 : Math.max(0, (box.h - 200) / 3)) }, { color: look.fg, ...(side && { textAlign: 'left' }) });
@@ -357,8 +366,12 @@ export function codeCard(spec, area, look) {
   }
   out.push(main);
   if (spec.caption) out.push(X(area.x, main.y + main.h + 10, cw, 40, `<i>${esc(str(spec.caption))}</i>`, { fontSize: Math.max(16, Math.round((look.bodySize || 30) * 0.6)), color: look.fg }));
+  if (under) {
+    const y = main.y + main.h + (spec.caption ? 60 : 20), h = area.y + area.h - y, html = list(pts, look.accent);
+    out.push(X(area.x, y, area.w, h, html, { fontSize: fitSize(html, Math.round((look.bodySize || 30) * 0.75), area.w, h, 1.25, 18), color: look.fg, ...(look.body && { fontFamily: look.body }), ...(pts.length > 2 && { columns: 2 }) }));
+  }
   if (side) {
-    const fs = fitSize(list(pts, look.accent), Math.round((look.bodySize || 30) * 0.8), area.w - cw - gap, area.h, 1.25, 16);
+    const fs = fitSize(list(pts, look.accent), Math.round((look.bodySize || 30) * 0.8), area.w - cw - gap, area.h, 1.25, 18);
     out.push(X(area.x + cw + gap, area.y, area.w - cw - gap, area.h, list(pts, look.accent), { fontSize: fs, color: look.fg, ...(look.body && { fontFamily: look.body }) }));
   }
   return out;
@@ -423,11 +436,18 @@ export function compose(kind, spec, area, look, { minimal = false, style = 'same
     case 'steps': case 'features': {
       // Numbered cards (steps) or cards with an icon (features): a row, or two.
       const it = ((kind === 'steps' ? spec.steps : spec.items) || []).slice(0, 6), n = Math.max(1, it.length);
-      const cols = kind === 'steps' ? (n <= 4 ? n : 3) : (n <= 3 ? n : n === 4 ? 2 : 3), rows = Math.ceil(n / cols), gap = minimal ? 40 : 28;
+      // (Columns as many as leave each card room to be read: a card with a sentence needs some 300 px — four in a row
+      // made 12-px text. Texts of a few characters — an exercise, «2/5 + 1/2» — go big.)
+      const longest = Math.max(0, ...it.map(s => str(s.text).length)), short = longest > 0 && longest <= 18;
+      const needW = longest > 90 ? 360 : longest > 45 ? 290 : 210, gap = minimal ? 40 : 28;
+      let cols = kind === 'steps' ? (n <= 4 ? n : 3) : (n <= 3 ? n : n === 4 ? 2 : 3);
+      while (cols > 1 && (area.w - (cols - 1) * gap) / cols < needW) cols--;
+      if (cols < n && cols > 1 && n % cols && n % (cols - 1) === 0 && (area.w - (cols - 2) * gap) / (cols - 1) >= needW) cols--;   // (no last row of one)
+      const rows = Math.ceil(n / cols);
       const cw = (area.w - (cols - 1) * gap) / cols, side = kind === 'features' && cw >= 440, pad = minimal ? 0 : 26, d = rows > 1 ? 54 : 68;
       const iw = side ? cw - 2 * pad - d - 22 : cw - 2 * pad, hasT = it.some(s => s.title);
-      const ts = R(bs * (rows > 1 ? 0.76 : 0.82)), xs = R(bs * (hasT ? (rows > 1 ? 0.66 : 0.7) : 0.78));
-      const tH = hasT ? Math.max(...it.map(s => (s.title ? needHeight(inline(s.title), ts, iw, 1.15) : 0))) : 0;
+      const ts = R(bs * (rows > 1 ? 0.76 : 0.82)), xs = short ? R(bs * 1.2) : R(bs * (hasT ? (rows > 1 ? 0.7 : 0.74) : 0.8));
+      const tH = hasT ? Math.max(...it.map(s => (s.title ? needHeight(inline(s.title), ts, iw, 1.15, 0.6) : 0))) : 0;
       const xH = Math.max(0, ...it.map(s => (s.text ? needHeight(inline(s.text), xs, iw, 1.3) : 0)));
       const maxH = (area.h - (rows - 1) * gap) / rows, inner = tH + (hasT ? 6 : 0) + xH;
       const ch = Math.min(maxH, side ? 2 * pad + Math.max(d, inner) : 2 * pad + d + 18 + inner);
@@ -445,9 +465,9 @@ export function compose(kind, spec, area, look, { minimal = false, style = 'same
         const tx = side ? x + pad + d + 22 : x + pad, room = y + ch - pad - (side ? y + pad : y + pad + d + 18), th = Math.min(tH, room * 0.55);
         let ty = side ? y + pad : y + pad + d + 18;
         if (s.title) { const ht = `<b>${inline(s.title)}</b>`;
-          push(T(tx, ty, iw, th, ht, { fontSize: fitSize(ht, ts, iw, th, 1.15, 14), fontFamily: look.head, color: kind === 'features' && !minimal ? c : look.title, lineHeight: 1.15 })); }
+          push(T(tx, ty, iw, th, ht, { fontSize: fitSize(ht, ts, iw, th, 1.15, 18, 0.6), fontFamily: look.head, color: kind === 'features' && !minimal ? c : look.title, lineHeight: 1.15 })); }
         if (hasT) ty += th + 6;
-        if (s.text) { const h = y + ch - pad - ty, ht = inline(s.text); push(T(tx, ty, iw, h, ht, { fontSize: fitSize(ht, xs, iw, h, 1.3, 14), lineHeight: 1.3 })); }
+        if (s.text) { const h = y + ch - pad - ty, ht = short ? `<b>${inline(s.text)}</b>` : inline(s.text); push(T(tx, ty, iw, h, ht, { fontSize: fitSize(ht, xs, iw, h, 1.3, 18), lineHeight: 1.3, ...(short && { fontFamily: look.head }) })); }
         // (One row of steps: a chevron between the cards.)
         if (kind === 'steps' && rows === 1 && i < n - 1 && !minimal) push(S('chevron', x + cw + gap / 2 - 7, y + pad + d / 2 - 10, 14, 20, look.fg, { opacity: 40, decorative: true }));
       });
@@ -489,12 +509,12 @@ export function compose(kind, spec, area, look, { minimal = false, style = 'same
     case 'key_idea': {
       // One sentence, big, in the heading font, with an accent bar; a line of support under it.
       const st = inline(spec.statement || ''), tx = spec.text ? inline(spec.text) : '', x = area.x + (minimal ? 0 : 52), w = area.w - (minimal ? 0 : 52);
-      const maxS = area.h * (tx ? 0.66 : 0.9), big = fitSize(st, R(Math.max(40, Math.min((look.titleSize || 48) * 1.2, 76))), w, maxS, 1.15, 24);
-      const sh = Math.min(maxS, needHeight(st, big, w, 1.15)), ts = R(bs * 0.74), th = tx ? Math.min(area.h - sh - 24, needHeight(tx, ts, w, 1.3)) : 0;
+      const maxS = area.h * (tx ? 0.66 : 0.9), big = fitSize(st, R(Math.max(40, Math.min((look.titleSize || 48) * 1.2, 76))), w, maxS, 1.15, 24, 0.62);
+      const sh = Math.min(maxS, needHeight(st, big, w, 1.15, 0.62)), ts = R(bs * 0.74), th = tx ? Math.min(area.h - sh - 24, needHeight(tx, ts, w, 1.3)) : 0;
       const y = area.y + Math.max(0, (area.h - sh - (tx ? th + 24 : 0)) * 0.42), al = minimal ? 'center' : 'left';
       if (!minimal) push(S('rect', area.x, y + 8, 10, sh - 16, look.accent));
       push(T(x, y, w, sh, `<b>${st}</b>`, { fontSize: big, fontFamily: look.head, color: look.title, lineHeight: 1.15, textAlign: al, vAlign: 'middle' }));
-      if (tx) push(T(x, y + sh + 24, w, th, tx, { fontSize: fitSize(tx, ts, w, th, 1.3, 14), textAlign: al, lineHeight: 1.3 }));
+      if (tx) push(T(x, y + sh + 24, w, th, tx, { fontSize: fitSize(tx, ts, w, th, 1.3, 18), textAlign: al, lineHeight: 1.3 }));
       break;
     }
     default: { const h = list(spec.bullets);
