@@ -350,6 +350,7 @@ function readBody(bodyPr) {
     t: at('tIns') != null ? +at('tIns') : undefined, b: at('bIns') != null ? +at('bIns') : undefined,
     fontScale: fit?.getAttribute('fontScale') ? +fit.getAttribute('fontScale') / 100000 : undefined,
     lnReduce: fit?.getAttribute('lnSpcReduction') ? +fit.getAttribute('lnSpcReduction') / 100000 : undefined,
+    shrink: fit ? true : undefined,                       // («Shrink text on overflow»: ui/canvas/fittext.js fitImported measures it)
     vert: at('vert') && at('vert') !== 'horz' ? at('vert') : undefined,
   };
 }
@@ -374,6 +375,12 @@ function paragraphsHTML(txBody, ctx, style) {
     const base = lv[l].r;
     const endR = merge(base, readRun(kid(p, 'a:endParaRPr'), ctx.theme, ctx.fonts));
     const runs = []; let paraSize = null;
+    // Lines of different sizes in one paragraph (a big title, a line break, a smaller subtitle): PowerPoint makes each
+    // line as tall as its own letters. In HTML every line is at least as tall as the paragraph's own size: so the
+    // paragraph takes the smallest, and each run its own (else the small lines stood apart, more with a big spacing).
+    const sizeOf = r => ctx.pt((merge(base, readRun(kid(r, 'a:rPr'), ctx.theme, ctx.fonts)).sz || 18) * fs);
+    const textRuns = [...p.children].filter(r => (r.tagName === 'a:r' || r.tagName === 'a:fld') && kid(r, 'a:t')?.textContent);
+    const sizes = textRuns.map(sizeOf), mixed = new Set(sizes).size > 1 && [...p.children].some(r => r.tagName === 'a:br'), least = Math.min(...sizes);
     for (const r of [...p.children]) {
       if (r.tagName === 'a:br') { runs.push('<br>'); continue; }
       if (r.tagName !== 'a:r' && r.tagName !== 'a:fld') continue;
@@ -384,7 +391,7 @@ function paragraphsHTML(txBody, ctx, style) {
       paraSize ??= size;
       if (!first) first = boxBase || { size, font: rp.font, color: rp.color };
       const css = [];
-      if (size !== first.size) css.push(`font-size:${size}px`);
+      if (mixed ? size !== least : size !== first.size) css.push(`font-size:${size}px`);
       if (rp.color && rp.color !== first.color) css.push(`color:${rp.color}`);   // the box carries the first colour
       if (rp.font && rp.font !== first.font) css.push(`font-family:${fontStack(rp.font)}`);
       if (rp.cap === 'all') css.push('text-transform:uppercase'); else if (rp.cap === 'small') css.push('font-variant:small-caps');
@@ -404,6 +411,7 @@ function paragraphsHTML(txBody, ctx, style) {
       runs.push(h);
     }
     const html = runs.join('');
+    if (mixed) paraSize = least;
     paraSize ??= ctx.pt((endR.sz || 18) * fs);
     align ??= ALIGN[pp.algn] || null;
     // Paragraph box: margins, first-line indent, spacing and line height.
@@ -805,7 +813,7 @@ export async function importPPTX(file) {
         ...(t.align && { textAlign: t.align }), ...(anchor && { vAlign: { t: 'top', ctr: 'middle', b: 'bottom' }[anchor] }),
         ...(body.vert && { vertical: true }),
         ...(first.color && first.color !== 'transparent' && { color: first.color }),
-        ...(shadow && !((fill && fill !== 'none') || (stroke && stroke !== 'none')) && { shadow }), ...(body.fontScale && body.fontScale < 1 && { fit: body.fontScale }),
+        ...(shadow && !((fill && fill !== 'none') || (stroke && stroke !== 'none')) && { shadow }), ...(body.fontScale && body.fontScale < 1 && { fit: body.fontScale }), ...(body.shrink && { autofit: true }),
         ...(REVELA_PH[ph?.type || ''] && { ph: REVELA_PH[ph.type || ''], pk: phKeyOf(ph) }), ...(font && { fontFamily: fontStack(font) }) });
     };
     // A line or connector goes corner to corner of its box (flips choose which

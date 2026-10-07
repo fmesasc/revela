@@ -816,6 +816,32 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/poster="/.test(R.io.buildHTML(d)), 'al presentar, con su portada');
   });
 
+  await test('importar PowerPoint: cada línea, de la altura de su letra; y «reducir al desbordar», medido', async () => {
+    await R.vendor.loadScript(R.vendor.JSZIP, 'JSZip');
+    const W = frame.contentWindow, zip = new W.JSZip();
+    const NS = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"';
+    const rels = (...r) => `<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${r.join('')}</Relationships>`;
+    const sp = (n, cy, autofit, paras) => `<p:sp><p:nvSpPr><p:cNvPr id="${n}" name="T${n}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="600000" y="${n * 1500000}"/><a:ext cx="9000000" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"/></p:spPr>`
+      + `<p:txBody><a:bodyPr>${autofit ? '<a:normAutofit/>' : ''}</a:bodyPr><a:lstStyle/>${paras}</p:txBody></p:sp>`;
+    // A big title and, after a line break, a smaller line, in one paragraph; and a box too small for its text.
+    const title = `<a:p><a:pPr><a:lnSpc><a:spcPct val="90000"/></a:lnSpc></a:pPr><a:r><a:rPr sz="5400"/><a:t>Título grande</a:t></a:r><a:br/><a:r><a:rPr sz="2800"/><a:t>Una línea más pequeña</a:t></a:r></a:p>`;
+    const long = `<a:p><a:r><a:rPr sz="4000"/><a:t>${'Un texto que en PowerPoint se reduce para caber en su cuadro. '.repeat(3)}</a:t></a:r></a:p>`;
+    zip.file('ppt/presentation.xml', `<p:presentation ${NS}><p:sldIdLst><p:sldId id="256" r:id="rId2"/></p:sldIdLst><p:sldSz cx="12192000" cy="6858000"/></p:presentation>`);
+    zip.file('ppt/_rels/presentation.xml.rels', rels('<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/>'));
+    zip.file('ppt/slides/slide1.xml', `<p:sld ${NS}><p:cSld><p:spTree>${sp(1, 1300000, false, title)}${sp(2, 900000, true, long)}${sp(3, 900000, false, long)}</p:spTree></p:cSld></p:sld>`);
+    const OF = await W.eval("import('/src/ui/shell/openfile.js')");
+    await OF.openPresentation(new W.File([await zip.generateAsync({ type: 'blob' })], 'lineas.pptx')); await sleep(30);
+    const [t, a, n] = R.state.deck.slides[0].blocks.filter(b => b.type === 'text');
+    assert(/^<div style="[^"]*font-size:37px/.test(t.html) && /<span style="font-size:72px">Título grande/.test(t.html), 'el párrafo, con la letra menor; la grande, en su texto: ' + t.html);
+    // (Where each line's text is: the small line starts right under the big one, not a big line's height lower.)
+    const el = D.querySelector(`#stage .block[data-id="${t.id}"] .rich`), k = 1280 / D.getElementById('stage').getBoundingClientRect().width;
+    const rectOf = txt => { const w = D.createTreeWalker(el, 4); for (let x; (x = w.nextNode());) if (x.textContent.includes(txt)) { const r = D.createRange(); r.selectNodeContents(x); return r.getBoundingClientRect(); } };
+    const gap = (rectOf('Una línea').top - rectOf('Título grande').bottom) * k;
+    assert(gap < 12, 'la línea pequeña, pegada a la grande (' + Math.round(gap) + ' px entre ellas)');
+    assert(a.fontSize < n.fontSize && !('autofit' in a), `el cuadro que reduce al desbordar, reducido hasta caber (${a.fontSize} px; el otro, ${n.fontSize})`);
+    assert(n.fontSize === 53 && !('autofit' in n), 'el que no, como estaba (40 pt)');
+  });
+
   await test('importar PowerPoint: formas con el estilo del tema, sombras y SmartArt', async () => {
     await R.vendor.loadScript(R.vendor.JSZIP, 'JSZip');
     const W = frame.contentWindow, zip = new W.JSZip();

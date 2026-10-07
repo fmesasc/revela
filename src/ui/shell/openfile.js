@@ -3,6 +3,7 @@
 // videos, sounds and 3D models (glTF, GLB, STL) are inserted where they are
 // dropped; a presentation (.json, .pptx, .odp) is opened; Markdown adds slides.
 
+import { fitImported } from '../canvas/fittext.js';
 import { reportError } from './errors.js';
 import { whileOpening } from './opening.js';
 import { fileBlock, pdfToSlides, FILE_LIMIT } from '../../features/content/files.js';
@@ -60,7 +61,8 @@ const isThemeFile = f => /\.thmx$/i.test(f.name);
 export async function openPresentation(file) {
   if (isKeynote(file)) { keynoteHelp(); return false; }
   if (isThemeFile(file)) return useThemeOf(file);           // (a theme alone: applied to the open presentation)
-  try { replaceDeck(await whileOpening(() => (isODF(file) ? importODP(file) : importPPTX(file)), file.name)); return true; }
+  // (Its «Shrink text on overflow» boxes measured as Revela draws them: ui/canvas/fittext.js.)
+  try { replaceDeck(await whileOpening(async () => fitImported(await (isODF(file) ? importODP(file) : importPPTX(file))), file.name)); return true; }
   catch (e) { reportError(e, 'handled'); alertDialog(t('No se pudo importar la presentación: ') + e.message); return false; }
 }
 // Design ▸ Themes: the theme of another presentation or template (.pptx,

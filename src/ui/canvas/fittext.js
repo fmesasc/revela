@@ -7,10 +7,9 @@ import { originalText } from '../../features/content/tplang.js';
 import { styleRich } from './content.js';
 import { ensureDeckFonts } from '../../features/design/fonts.js';
 
-export async function fitTranslated(deck) {
-  const todo = [];
-  for (const slide of deck.slides || []) for (const b of slide.blocks || []) if (b.type === 'text' && !b.curve && originalText(b) != null) todo.push([b, slide]);
-  if (!todo.length || typeof document === 'undefined') return deck;
+// Text objects measured as the editor draws them (with the presentation's own letters): → { spills(b, slide, html),
+// shrink(b, slide), done() }. shrink: smaller in 5 % steps, down to 55 %, until it fits (its size and the sizes in it).
+async function measurer(deck, todo) {
   // (Measured with the presentation's own letters: their styles and faces loaded first, 4 s at most.)
   ensureDeckFonts(deck);
   const wait = (p, ms) => Promise.race([p, new Promise(r => setTimeout(r, ms))]);
@@ -38,16 +37,36 @@ export async function fitTranslated(deck) {
     }
     return false;
   };
-  try {
-    for (const [b, slide] of todo) {
-      if (!spills(b, slide, b.html) || spills(b, slide, originalText(b))) continue;
-      const own = b.fontSize != null, base = own ? b.fontSize : (b.fit || 1), html = b.html;
-      for (let k = 0.95; k >= 0.55; k -= 0.05) {
-        if (own) b.fontSize = Math.round(base * k); else b.fit = Math.round(base * k * 100) / 100;
-        b.html = html.replace(/font-size:\s*([\d.]+)px/g, (m, v) => `font-size:${Math.round(v * k)}px`);
-        if (!spills(b, slide, b.html)) break;
-      }
+  const shrink = (b, slide) => {
+    const own = b.fontSize != null, base = own ? b.fontSize : (b.fit || 1), html = b.html;
+    for (let k = 0.95; k >= 0.55; k -= 0.05) {
+      if (own) b.fontSize = Math.round(base * k); else b.fit = Math.round(base * k * 100) / 100;
+      b.html = html.replace(/font-size:\s*([\d.]+)px/g, (m, v) => `font-size:${Math.round(v * k)}px`);
+      if (!spills(b, slide, b.html)) break;
     }
-  } finally { stage.remove(); }
+  };
+  return { spills, shrink, done: () => stage.remove() };
+}
+
+export async function fitTranslated(deck) {
+  const todo = [];
+  for (const slide of deck.slides || []) for (const b of slide.blocks || []) if (b.type === 'text' && !b.curve && originalText(b) != null) todo.push([b, slide]);
+  if (!todo.length || typeof document === 'undefined') return deck;
+  const m = await measurer(deck, todo);
+  try { for (const [b, slide] of todo) if (m.spills(b, slide, b.html) && !m.spills(b, slide, originalText(b))) m.shrink(b, slide); }
+  finally { m.done(); }
+  return deck;
+}
+
+// A presentation from PowerPoint: its boxes set to «Shrink text on overflow» (b.autofit, io/formats/pptx-import.js)
+// that don't fit as Revela draws them — other letters than PowerPoint's, a bit wider — made smaller until they do,
+// as PowerPoint does when it draws them. The mark goes afterwards.
+export async function fitImported(deck) {
+  const todo = [];
+  for (const slide of [...(deck.slides || []), ...(deck.layouts || []), deck.master].filter(Boolean)) for (const b of slide.blocks || []) if (b.autofit) { if (b.type === 'text' && b.html && !b.curve) todo.push([b, slide]); else delete b.autofit; }
+  if (!todo.length || typeof document === 'undefined') { todo.forEach(([b]) => delete b.autofit); return deck; }
+  const m = await measurer(deck, todo);
+  try { for (const [b, slide] of todo) { if (m.spills(b, slide, b.html)) m.shrink(b, slide); delete b.autofit; } }
+  finally { m.done(); }
   return deck;
 }
