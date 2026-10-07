@@ -239,7 +239,7 @@ function groupsFor(b) {
     btn('gesture', 'Dibujar recorrido', () => startPathDraw({ append: true })), btn('tune', 'Panel de animación', () => toggleAnimPane())]]);
   // (The link with the alt text and description: one group, not a column for a single button.)
   const linkable = !['text', 'connector'].includes(b.type), described = !['text', 'connector', 'figindex', 'slideref', 'magnify'].includes(b.type);
-  G.push([linkable ? 'Vínculo y accesibilidad' : 'Accesibilidad', [...(linkable ? [btn('link', b.href || b.goto ? 'Cambiar vínculo' : 'Vínculo', () => openObjectLink(b), !!(b.href || b.goto), 'link')] : []),
+  G.push([linkable ? 'Vínculo y accesibilidad' : 'Accesibilidad', [...(linkable ? [btn('link', b.href || b.goto || b.popup || b.tip ? 'Cambiar vínculo' : 'Vínculo', () => openObjectLink(b), !!(b.href || b.goto || b.popup || b.tip), 'link')] : []),
     btn('accessibility', 'Texto alternativo', () => openAlt(b)), ...(described ? [btn('short_text', b.caption ? 'Editar descripción' : 'Descripción', () => openCaption(b), !!b.caption)] : [])]]);
   G.push(arrange(b));
   return G;

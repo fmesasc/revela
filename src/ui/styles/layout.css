@@ -39,6 +39,8 @@ body.sorter .nav-pick{grid-column:1/-1;margin:-24px -24px 0;padding:10px 24px;to
   border-radius:4px;cursor:pointer;font-size:11px;line-height:1;padding:2px 5px;display:none}
 .thumb:hover .thumb-del{display:block}
 .thumb.is-hidden .thumb-canvas{opacity:.38}
+.thumb-work{position:absolute;bottom:4px;right:4px;z-index:3;display:flex;align-items:center;gap:3px;padding:1px 4px;border-radius:9px;background:#000a;color:#fff;font:700 10px/1.4 system-ui,sans-serif}
+.thumb-work i{width:9px;height:9px;border-radius:50%;display:inline-block}
 .thumb-hidden{position:absolute;top:2px;right:24px;z-index:3;color:#fff;background:#0008;border-radius:4px;
   display:grid;place-items:center;padding:1px 3px}
 .thumb-hidden .ms{font-size:14px}

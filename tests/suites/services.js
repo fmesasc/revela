@@ -392,6 +392,29 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       const total = R.state.deck.slides.length; eq(await A.addQuiz(1), 1, 'una pregunta');
       eq(R.state.deck.slides.length, total + 2, 'pregunta y respuesta');
       const ans = R.state.deck.slides.at(-1).blocks; eq(ans[3].opacity, undefined, 'correcta resaltada'); eq(ans[1].opacity, 30, 'incorrectas atenuadas');
+      // First the outline (to review), then the slides follow it.
+      answer = { title: 'Energía solar', slides: [{ title: 'Portada', points: [] }, { title: 'Por qué el sol', points: ['Gratis', 'Limpio'] }, { title: '' }, { title: 'Gracias' }] };
+      const ol = await A.createOutline({ topic: 'Energía solar', count: 4 });
+      eq(ol.slides.map(x => x.title).join('|'), 'Portada|Por qué el sol|Gracias', 'esquema: títulos, sin los vacíos'); eq(ol.slides[1].points.join(), 'Gratis,Limpio', 'esquema: sus puntos');
+      answer = { title: 'Energía solar', slides: [{ kind: 'title', title: 'Portada', notes: 'n' }, { kind: 'closing', title: 'Gracias', notes: 'n' }] }; calls.length = 0;
+      await A.createDeck({ topic: 'Energía solar', outline: [{ title: 'Portada', points: [] }, { title: 'Gracias', points: ['Contacto'] }] });
+      assert(/Follow THIS outline[\s\S]*exactly 2 slides[\s\S]*2\. Gracias\n   - Contacto/.test(calls[0].body.messages[1].content), 'las diapositivas siguen el esquema revisado');
+      // A live quiz from the content: real polls (questions with their answer, activities), where they belong.
+      reset(); R.slides.addSlide(); R.slides.addSlide(); const before = R.state.deck.slides.length;
+      answer = { items: [{ kind: 'quiz', question: '¿Cuánto es 2+2?', options: ['3', '4'], answer: 1, after: 1 },
+        { kind: 'match', question: 'Une', pairs: [['Sol', 'Estrella'], ['Luna', 'Satélite']], after: 2 },
+        { kind: 'order', question: 'Ordena', steps: ['a', 'b', 'c'], after: 3 }, { kind: 'gaps', question: 'Completa', text: 'El [sol] calienta', after: 2 },
+        { kind: 'quiz', question: 'Mal', options: ['solo una'] }] };
+      eq(await A.addLiveQuiz({ count: 5, kinds: ['quiz', 'match', 'order', 'gaps'], where: 'spread' }), 4, 'cuestionario en directo: 4 (la que no tiene opciones, fuera)');
+      const polls = R.state.deck.slides.map(x => x.blocks.find(b => b.type === 'poll')?.kind || '-');
+      eq(polls.join(), '-,quiz,-,match,gaps,-,order', 'cada una tras su diapositiva: ' + polls.join());
+      const qz = R.state.deck.slides[1].blocks[0]; eq(JSON.stringify(qz.correct), '[1]', 'con su respuesta correcta'); eq(qz.time, 20, 'y su tiempo');
+      eq(R.state.deck.slides.length, before + 4, 'una diapositiva cada una');
+      // A review of the deck: what to change, each point with its slide.
+      answer = { summary: 'Bien, pero larga', items: [{ slide: 2, kind: 'text', issue: 'Demasiado texto', fix: 'Divídela' }, { slide: 99, kind: 'raro', issue: 'x' }, { slide: 1, issue: '' }] };
+      const rv = await A.reviewDeck();
+      eq(rv.summary, 'Bien, pero larga', 'revisión: resumen'); eq(rv.items.length, 2, 'revisión: los puntos con algo que decir');
+      eq(rv.items[0].slide + rv.items[0].kind, '2text', 'revisión: su diapositiva y tipo'); eq(rv.items[1].slide + rv.items[1].kind, R.state.deck.slides.length + 'message', 'revisión: números y tipos imposibles, acotados');
       // Asistente: propone (no cambia nada) y se aplica lo propuesto en un paso de deshacer
       reset(); R.slides.addSlide();
       const [s1, s2] = R.state.deck.slides, tid = s1.blocks[0].id, AG = R.aiAgent;

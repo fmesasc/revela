@@ -944,6 +944,78 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(bs.some(b => b.href === 'https://ejemplo.org/clase'), 'la imagen, a la web');
   });
 
+  await test('SCORM: paquete para plataformas, con la nota de sus actividades y dónde se quedó', async () => {
+    reset(); const W = frame.contentWindow;
+    const P = await W.eval("import('/src/features/live/poll.js')"), SC = await W.eval("import('/src/io/export/scorm.js')");
+    R.slides.addSlide('blank'); P.addPoll({ kind: 'quiz', question: '¿2+2?', options: ['3', '4'], correct: [1] }); R.slides.addSlide('blank');
+    const { blob } = await SC.buildScorm(R.state.deck, { pass: 60 });
+    const JSZip = await R.vendor.loadScript(R.vendor.JSZIP, 'JSZip'), zip = await JSZip.loadAsync(blob);
+    const man = await zip.file('imsmanifest.xml').async('string'), page = await zip.file('index.html').async('string');
+    assert(/<schemaversion>1\.2<\/schemaversion>/.test(man) && /adlcp:scormtype="sco" href="index\.html"/.test(man) && /<adlcp:masteryscore>60</.test(man), 'manifiesto SCORM 1.2 con su nota para aprobar');
+    assert(/__revelaScored/.test(page) && /LMSInitialize/.test(page) && /class="rv-poll"/.test(page), 'la página, con sus actividades y lo que habla con la plataforma');
+    // In a platform: its API in the window above (as Moodle's player).
+    const got = {}; let fin = 0;
+    W.API = { LMSInitialize: () => 'true', LMSGetValue: k => (k === 'cmi.core.lesson_location' ? '2' : ''), LMSSetValue: (k, v) => { got[k] = v; return 'true'; }, LMSCommit: () => 'true', LMSFinish: () => { fin++; return 'true'; } };
+    // (Opened by its own address, as a platform does: a srcdoc page can't keep the slide in its address.)
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f); f.src = W.URL.createObjectURL(new W.Blob([page], { type: 'text/html' }));
+    try {
+      for (let i = 0; i < 100 && !f.contentWindow?.Reveal?.isReady?.(); i++) await sleep(100);
+      await sleep(200);
+      eq(f.contentWindow.Reveal.getIndices().h, 2, 'vuelve a la diapositiva donde se quedó');
+      eq(got['cmi.core.lesson_status'], 'incomplete', 'empezada');
+      f.contentWindow.__revelaScored('q1', 1); await sleep(20);
+      eq(got['cmi.core.score.raw'], '100', 'su nota, sobre 100'); eq(got['cmi.core.lesson_status'], 'passed', 'aprobada (todas respondidas)');
+      eq(JSON.parse(got['cmi.suspend_data']).q1, 1, 'las notas guardadas para volver');
+      f.contentWindow.__revelaScored('q1', 0.5); eq(got['cmi.core.lesson_status'], 'failed', 'por debajo de la nota para aprobar');
+      f.contentWindow.dispatchEvent(new f.contentWindow.Event('pagehide')); eq(fin, 1, 'al salir, se despide de la plataforma');
+    } finally { f.remove(); delete W.API; }
+  });
+
+  await test('estado de cada diapositiva y a quién está asignada (solo en el editor)', async () => {
+    reset(); const SL = await frame.contentWindow.eval("import('/src/features/document/slides.js')");
+    R.slides.addSlide('blank'); await sleep(10); const [a, b] = R.state.deck.slides;
+    SL.setSlideStatus([a.id], 'review'); SL.setSlideOwner([a.id, b.id], 'Ana Gil'); SL.setSlideStatus([b.id], 'inventado'); await sleep(30);
+    eq(a.status + '|' + a.owner, 'review|Ana Gil', 'guardado'); assert(!b.status && b.owner === 'Ana Gil', 'solo estados conocidos');
+    const w = D.querySelector('#slide-nav .thumb .thumb-work') || D.querySelector('.thumb .thumb-work');
+    assert(w && /AG/.test(w.textContent) && /Para revisar/.test(w.title) && /Ana Gil/.test(w.title), 'en su miniatura: el estado y sus iniciales');
+    assert(!/Para revisar|Ana Gil/.test(R.io.buildHTML()), 'nunca en la presentación');
+    SL.setSlideStatus([a.id], null); SL.setSlideOwner([a.id], ''); assert(!a.status && !a.owner, 'se quita');
+  });
+
+  await test('interactividad: ventana con información, texto al pasar el ratón y volver a la diapositiva de la que se vino', async () => {
+    reset(); const W = frame.contentWindow;
+    R.slides.addSlide('blank'); R.slides.addSlide('blank'); R.slides.goToSlide(0); await sleep(10);
+    const S = R.state.deck.slides;
+    R.blocks.addShape('rect'); await sleep(10); const info = last();
+    D.querySelector('#ribbon [data-page="ctx"] [data-ctx="link"]').click(); await sleep(20);
+    let m = D.getElementById('ol-modal'); m.querySelector('input[value="popup"]').checked = true; m.querySelector('input[value="popup"]').dispatchEvent(new W.Event('change'));
+    assert(!m.querySelector('.ol-pop').hidden && m.querySelector('.ol-web').hidden, 'el diálogo pide el título y el texto');
+    m.querySelector('.ol-pt').value = 'La pista'; m.querySelector('.ol-px').value = 'Mira <debajo> del cuadro.\n\nSegunda línea'; m.querySelector('.ol-tip').value = 'Pulsa para la pista'; m.querySelector('.ol-ok').click(); await sleep(20);
+    const got = slide().blocks.find(b => b.id === info.id);
+    eq(got.popup.title, 'La pista', 'ventana guardada'); eq(got.tip, 'Pulsa para la pista', 'y el texto al pasar');
+    R.blocks.addShape('star'); await sleep(10); R.blocks.setObjectLink(last().id, { goto: S[2].id });
+    R.slides.goToSlide(2); R.blocks.addShape('ellipse'); await sleep(10); R.blocks.setObjectLink(last().id, { goto: 'back' });
+    const html = R.io.buildHTML(R.state.deck, { inApp: true });
+    assert(/data-popup="\{&quot;title&quot;:&quot;La pista&quot;/.test(html) && /data-tip="Pulsa para la pista"/.test(html) && /data-goto="back"/.test(html), 'en la presentación');
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f); f.srcdoc = html;
+    try {
+      for (let i = 0; i < 100 && !f.contentWindow?.Reveal?.isReady?.(); i++) await sleep(100);
+      const FW = f.contentWindow, FD = f.contentDocument;
+      FW.Reveal.slide(0); await sleep(100);
+      const el = FD.querySelector('.present [data-popup]'); el.click(); await sleep(50);
+      const pop = FD.querySelector('.rv-pop');
+      assert(pop && /La pista/.test(pop.textContent) && pop.querySelectorAll('p').length === 2 && !pop.querySelector('debajo'), 'el clic abre la ventana, con su texto escapado y en párrafos');
+      FD.activeElement.dispatchEvent(new FW.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(20);
+      assert(!FD.querySelector('.rv-pop'), 'Esc la cierra'); eq(FW.Reveal.getIndices().h, 0, 'y no cambia de diapositiva');
+      el.dispatchEvent(new FW.MouseEvent('mouseover', { bubbles: true })); await sleep(20);
+      eq(FD.querySelector('.rv-tip')?.textContent, 'Pulsa para la pista', 'al pasar el ratón, su texto');
+      FD.querySelector('.present [data-goto^="slide:"]').click(); await sleep(150);
+      eq(FW.Reveal.getIndices().h, 2, 'el vínculo lleva a la tercera');
+      FD.querySelector('.present [data-goto="back"]').click(); await sleep(150);
+      eq(FW.Reveal.getIndices().h, 0, '«volver» regresa a la diapositiva de la que se vino');
+    } finally { f.remove(); }
+  });
+
   await test('conectores: rectos, de codo o curvos, con flecha en uno o los dos extremos', async () => {
     reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
     const a = { x: 0, y: 0, w: 100, h: 100 }, b = { x: 400, y: 300, w: 100, h: 100 }, c = { id: 'k', type: 'connector' };

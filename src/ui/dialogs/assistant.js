@@ -58,6 +58,12 @@ let retry = null;                    // what the last failed request was, to try
 const spent = { usd: 0, credits: 0 };
 
 export function toggleAssistant(on = !state.ui.showAssistant) { commit(() => { state.ui.showAssistant = on; }, { history: false }); }
+// The assistant open with a request written in its box, to send as it is or change first (Revisar presentación).
+export function askAssistant(text) {
+  try { sessionStorage.setItem('revela.assistant.draft', text); } catch {}
+  toggleAssistant(true);
+  setTimeout(() => { const ta = document.querySelector('#assistant-panel textarea'); if (ta) { ta.value = text; ta.dispatchEvent(new Event('input')); ta.focus(); } }, 60);
+}
 
 const HINTS = ['Añade una diapositiva de conclusiones', 'Acorta todos los títulos', 'Escribe notas para todas las diapositivas', 'Convierte la diapositiva actual en una línea de tiempo',
   'Revisa que todos los textos quepan y no se solapen'];

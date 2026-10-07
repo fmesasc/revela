@@ -282,3 +282,14 @@ function regroup(ids, sectionId) {
   d.slides.splice(0, d.slides.length, ...rest);
   state.ui.slideIndex = Math.max(0, d.slides.findIndex(s => s.id === cur));
 }
+
+// Where each slide is (as Pitch's workflow status): in progress, to review, done — and who it's assigned to, for a
+// deck made by several people. Only in the editor (its thumbnail): never in the presentation.
+export const SLIDE_STATUS = { doing: 'En curso', review: 'Para revisar', done: 'Terminada' };
+export function setSlideStatus(ids, status) {
+  commit(() => { for (const s of state.deck.slides) if (ids.includes(s.id)) { if (SLIDE_STATUS[status]) s.status = status; else delete s.status; } });
+}
+export function setSlideOwner(ids, who) {
+  const v = String(who || '').trim().slice(0, 80);
+  commit(() => { for (const s of state.deck.slides) if (ids.includes(s.id)) { if (v) s.owner = v; else delete s.owner; } });
+}

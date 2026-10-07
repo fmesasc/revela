@@ -20,6 +20,7 @@ import * as format from '../../features/document/format.js';
 import * as trans from '../../features/animation/transitions.js';
 import * as templates from '../../features/document/templates.js';
 import { exportHTML } from '../../io/formats/html.js';
+import { exportScorm } from '../../io/export/scorm.js';
 import { saveProject } from '../../io/formats/project.js';
 import { exportPDF } from '../../io/export/print.js';
 import { present, openCallPresent } from '../shell/present.js';
@@ -137,6 +138,14 @@ export const ACTIONS = {
     const offline = await exportHTML();
     toast(offline ? t('Página web descargada: se abre con cualquier navegador, también sin conexión (los modelos 3D, mapas y vídeos de internet sí la necesitan).')
       : t('Página web descargada: para verla hace falta conexión a internet.'));
+  },
+  // SCORM: for learning platforms (Moodle, Canvas…); the pass mark asked for (the quizzes' and activities' average).
+  'export-scorm': async () => {
+    const v = await promptDialog(t('Paquete SCORM para Moodle, Canvas u otra plataforma: cada alumno la recorre a su ritmo, responde sus cuestionarios y actividades, y la plataforma recibe su nota (la media, sobre 100) y dónde se quedó. Nota para aprobar (de 0 a 100):'), '50');
+    if (v == null) return;
+    const pass = Math.max(0, Math.min(100, Math.round(+String(v).replace(',', '.')) || 0));
+    const offline = await exportScorm({ pass });
+    toast(offline ? t('Paquete SCORM descargado: súbelo a tu plataforma como «Paquete SCORM».') : t('Paquete SCORM descargado, pero para abrirlo hará falta conexión a internet.'), { ms: 9000 });
   },
   'export-pptx': () => withProgress(t('Creando el archivo de PowerPoint…'), exportPPTX, t('PowerPoint descargado.')),
   // (The file itself, made here; printing — or the browser's «Save as PDF», with selectable text — is «Imprimir».)

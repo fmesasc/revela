@@ -16,7 +16,7 @@ import { fitTextToBox } from '../canvas/canvas.js';
 import { openLinkChart, refreshChart } from '../dialogs/data.js';
 import { addText } from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
-import { addSlide, duplicateSlide, deleteSlide, deleteSlides, selectSlide, toggleSlideHidden, addSectionAt, removeSection, setSlideSection, copySlides, cutSlides, pasteSlides, hasSlideClip, moveSlidesToSection, sectionFromSlides } from '../../features/document/slides.js';
+import { addSlide, duplicateSlide, deleteSlide, deleteSlides, selectSlide, toggleSlideHidden, addSectionAt, removeSection, setSlideSection, copySlides, cutSlides, pasteSlides, hasSlideClip, moveSlidesToSection, sectionFromSlides, SLIDE_STATUS, setSlideStatus, setSlideOwner } from '../../features/document/slides.js';
 import { t } from '../../i18n/index.js';
 import { alertDialog, promptDialog } from '../dialogs/dialog.js';
 import { openSaveAsPicture } from '../dialogs/picture.js';
@@ -130,7 +130,18 @@ function forSlides(idx) {
     ...d.sections.filter(sec => !ss.every(s => s.sectionId === sec.id))
       .map(sec => [t('Mover a la sección «{s}»').replace('{s}', sec.name), () => moveSlidesToSection(ids, sec.id)]),
     ss.some(s => s.sectionId) ? ['Quitar de la sección', () => moveSlidesToSection(ids, null)] : null,
+    ...workItems(ss),
   ];
+}
+
+// Its status and who it's assigned to (one slide or several).
+function workItems(ss) {
+  const ids = ss.map(s => s.id), one = ss.length === 1 ? ss[0] : null;
+  return [null,
+    ...Object.entries(SLIDE_STATUS).map(([k, l]) => [`${ss.every(s => s.status === k) ? '✓ ' : ''}${t('Estado:')} ${t(l)}`, () => setSlideStatus(ids, k)]),
+    ss.some(s => s.status) ? ['Quitar el estado', () => setSlideStatus(ids, null)] : null,
+    [one?.owner ? t('Asignada a {who}…').replace('{who}', one.owner) : 'Asignar a alguien…', async () => {
+      const v = await promptDialog(t('¿A quién se le asigna? (un nombre o un correo; vacío: a nadie)'), one?.owner || ''); if (v != null) setSlideOwner(ids, v); }]];
 }
 
 function forThumb(i) {
@@ -156,6 +167,7 @@ function forThumb(i) {
     null,
     ['Crear sección aquí', () => addSectionAt(i)],
     slide.sectionId ? ['Quitar de la sección', () => setSlideSection(slide.id, null)] : null,
+    ...workItems([slide]),
   ];
 }
 

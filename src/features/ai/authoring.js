@@ -16,6 +16,7 @@ import { styledSlide, hasLayouts, pictureBox, compose, contrast, codeCard, fitBo
 import { KINDS, prepareSpec, splitSpec } from './specs.js';
 import { codeFontSize, codeHeight, mathFontSize } from './codeobj.js';
 import { richHTML } from './richtext.js';
+import { pollBlock } from '../live/poll.js';
 import { ICON_NAMES } from '../../render/svg.js';
 
 // ---- Slide kinds → objects ------------------------------------------------------
@@ -187,10 +188,27 @@ export const DECK_DESIGNS = { corporate: 'business, reports, clean and neutral',
 // opts: { topic, source (document text), count, audience, tone, language, images, palette,
 //   attachments (pictures: attach.js — a PDF's figures among them, marked figure: true) }
 // → specs (with .title and .design: one of DECK_DESIGNS, for a new deck).
-export async function createDeck(opts = {}) {
+// First the outline (as Gemini, Gamma or Copilot do): one line per slide — its title and its key points —, for the
+// person to read, change, reorder or cut before the slides are made (createDeck with opts.outline). Cheap and quick.
+// → { title, slides: [{ title, points: [] }] }
+export async function createOutline(opts = {}) {
   const count = Math.max(3, Math.min(30, +opts.count || 8));
+  const source = opts.source ? `\n\nBase it ONLY on this document:\n"""\n${String(opts.source).slice(0, 60000)}\n"""` : '';
+  const out = await chat([
+    { role: 'system', content: `Plan a presentation that someone will present out loud. Answer only JSON {"title":"…","slides":[{"title":"…","points":["…"]}]}: about ${count} slides, in order, the first a title slide and the last a closing one. Each title states the slide's message (max ~9 words); 0-4 short points with what it will show (facts, figures, examples from the source). Write in ${opts.language || lang()}.` },
+    { role: 'user', content: withAttachments([opts.topic && `Topic and purpose: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`].filter(Boolean).join('\n') + source, opts.attachments || []) },
+  ], { json: true, maxTokens: 3000, feature: 'outline' });
+  const res = parseJSON(out), slides = (res.slides || []).filter(x => x && str(x.title).trim()).slice(0, 40)
+    .map(x => ({ title: str(x.title).trim(), points: (Array.isArray(x.points) ? x.points : []).map(str).map(p => p.trim()).filter(Boolean).slice(0, 6) }));
+  if (!slides.length) throw new Error('EMPTY');
+  return { title: str(res.title), slides };
+}
+export async function createDeck(opts = {}) {
+  const plan = Array.isArray(opts.outline) && opts.outline.length ? opts.outline : null;
+  const count = plan ? plan.length : Math.max(3, Math.min(30, +opts.count || 8));
   const brief = [opts.topic && `Topic and purpose: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`,
-    `Number of slides: about ${count}`].filter(Boolean).join('\n');
+    plan ? `Follow THIS outline, reviewed by the presenter: exactly ${plan.length} slides, in this order, one per item, each with its title (shortened only if too long) and showing its points:\n${plan.map((x, i) => `${i + 1}. ${x.title}${x.points?.length ? '\n' + x.points.map(p => `   - ${p}`).join('\n') : ''}`).join('\n')}`
+      : `Number of slides: about ${count}`].filter(Boolean).join('\n');
   const source = opts.source ? `\n\nBase the content ONLY on this document (keep its real facts, figures and terms; leave out references and acknowledgements):\n"""\n${String(opts.source).slice(0, 60000)}\n"""` : '';
   const pics = (opts.attachments || []).filter(a => a.kind === 'image'), figs = pics.map((a, i) => (a.figure ? i + 1 : 0)).filter(Boolean);
   const out = await chat([
@@ -386,6 +404,63 @@ export async function addQuiz(n = 3) {
   });
   commit(() => { state.deck.slides.push(...slides); state.ui.slideIndex = state.deck.slides.length - slides.length; });
   return qs.length;
+}
+
+// A quiz the audience answers from their phones (as Prezi's, from the deck's content): real polls — questions with
+// their right answer and points, and activities (match, order, fill the gaps) —, each on its own slide, at the end
+// or after each part. opts: { count, kinds: ['quiz', 'match', 'order', 'gaps'], where: 'end' | 'spread' } → how many.
+export async function addLiveQuiz(opts = {}) {
+  const n = Math.max(1, Math.min(15, +opts.count || 5)), kinds = (opts.kinds || ['quiz']).filter(k => ['quiz', 'match', 'order', 'gaps'].includes(k));
+  const shown = state.deck.slides.map((s, i) => [s, i]).filter(([s]) => !s.hidden);
+  const text = shown.map(([s, i]) => `[slide ${i + 1}]\n${slideText(s)}`).join('\n---\n').slice(0, 40000);
+  const out = await chat([
+    { role: 'system', content: `Make ${n} items to check what an audience understood of this presentation, in ${lang()}, answered live from their phones. Kinds allowed: ${kinds.join(', ')} (mix them). Only facts from the slides.
+Answer only JSON {"items":[…]}, each one of:
+- {"kind":"quiz","question":"…","options":["…"(2-4, short)],"answer":index of the right one,"after":slide number it is about}
+- {"kind":"match","question":"…","pairs":[["left","right"],…(3-5)],"after":N}
+- {"kind":"order","question":"…","steps":["first","second",…(3-6, in the right order)],"after":N}
+- {"kind":"gaps","question":"…","text":"A sentence with the [missing] [words] in brackets","after":N}` },
+    { role: 'user', content: text },
+  ], { json: true, maxTokens: 4000, feature: 'quiz' });
+  const items = (parseJSON(out).items || []).filter(x => x && kinds.includes(x.kind)).slice(0, n);
+  const { w: W, h: H } = state.deck.size, pal = currentPalette();
+  const poll = x => {
+    const base = { question: str(x.question).slice(0, 200) || '?', x: 80, y: 60, w: W - 160, h: H - 120, fontSize: 30 };
+    if (x.kind === 'quiz') { const o = (x.options || []).map(str).filter(Boolean).slice(0, 4); if (o.length < 2) return null;
+      return pollBlock({ ...base, kind: 'quiz', options: o, correct: [Math.max(0, Math.min(o.length - 1, +x.answer || 0))], time: 20 }); }
+    if (x.kind === 'match') { const o = (x.pairs || []).filter(p => Array.isArray(p) && p.length === 2).map(([a, b]) => `${str(a).replace(/=/g, '-')} = ${str(b).replace(/=/g, '-')}`).slice(0, 6); return o.length > 1 ? pollBlock({ ...base, kind: 'match', options: o }) : null; }
+    if (x.kind === 'order') { const o = (x.steps || []).map(str).filter(Boolean).slice(0, 8); return o.length > 2 ? pollBlock({ ...base, kind: 'order', options: o }) : null; }
+    const tx = str(x.text); return /\[[^\]]+\]/.test(tx) ? pollBlock({ ...base, kind: 'gaps', text: tx.slice(0, 600), options: [] }) : null;
+  };
+  const made = items.map(x => [x, poll(x)]).filter(([, b]) => b)
+    .map(([x, b]) => [Math.max(1, Math.min(state.deck.slides.length, Math.round(+x.after) || state.deck.slides.length)),
+      { id: uid(), sectionId: null, background: pal.bg, transition: 'fade', hidden: false, autoSlide: 0, blocks: [b],
+        notes: x.kind === 'quiz' ? `${str(x.question)} → ${str((x.options || [])[+x.answer || 0])}` : str(x.question) }]);
+  if (!made.length) throw new Error('EMPTY');
+  commit(() => {
+    if (opts.where === 'spread') {                     // (each after the slide it asks about: from the last, so the places hold)
+      for (const [after, s] of made.map((m, k) => [...m, k]).sort((a, b) => b[0] - a[0] || b[2] - a[2])) { const at = Math.min(state.deck.slides.length, after); s.sectionId = state.deck.slides[at - 1]?.sectionId || null; state.deck.slides.splice(at, 0, s); }
+      state.ui.slideIndex = Math.min(...made.map(([a]) => a));
+    } else { state.deck.slides.push(...made.map(([, s]) => s)); state.ui.slideIndex = state.deck.slides.length - made.length; }
+  });
+  return made.length;
+}
+
+// A review of the whole deck (as Copilot's «Review presentation»): what a good editor would point out, slide by
+// slide — the message not clear, too much text, a title that says nothing, inconsistent terms or figures, spelling,
+// pictures without alternative text, a missing ending… → [{ slide, kind, issue, fix }] (slide: its number).
+export const REVIEW_KINDS = ['message', 'text', 'structure', 'consistency', 'spelling', 'accessibility', 'design'];
+export async function reviewDeck() {
+  const shown = state.deck.slides.map((s, i) => [s, i]).filter(([s]) => !s.hidden);
+  const alt = s => s.blocks.filter(b => ['image', 'model', 'video'].includes(b.type) && !b.decorative && !str(b.alt).trim()).length;
+  const text = shown.map(([s, i]) => `[slide ${i + 1}] ${s.blocks.length} objects${alt(s) ? `, ${alt(s)} picture(s) without alternative text` : ''}\n${slideText(s)}${s.notes ? `\n(notes: ${plain(s.notes).slice(0, 400)})` : ''}`).join('\n---\n').slice(0, 50000);
+  const out = await chat([
+    { role: 'system', content: `You review a presentation before it is given, as a demanding but kind editor. Point out only what is worth changing (at most 15), the most important first: a slide whose message isn't clear, too much text to read while listening, titles that say nothing ("Introduction", "Results") instead of the message, inconsistent terms, names or figures between slides, spelling and grammar, missing structure (no opening, no ending, no agenda in a long talk), pictures without alternative text, slides that should be split or merged. Answer only JSON {"summary":"one or two sentences on the whole","items":[{"slide":N or 0 for the whole deck,"kind":"${REVIEW_KINDS.join('|')}","issue":"what's wrong, short","fix":"what to do, concrete (the new title or wording when it applies)"}]}, in ${lang()}.` },
+    { role: 'user', content: text },
+  ], { json: true, maxTokens: 4000, feature: 'review' });
+  const res = parseJSON(out);
+  return { summary: str(res.summary), items: (res.items || []).filter(x => x && str(x.issue).trim()).slice(0, 20)
+    .map(x => ({ slide: Math.max(0, Math.min(state.deck.slides.length, Math.round(+x.slide) || 0)), kind: REVIEW_KINDS.includes(x.kind) ? x.kind : 'message', issue: str(x.issue), fix: str(x.fix) })) };
 }
 
 // The assistant (proposals, scope, permissions, its operations): features/ai/agent.js.

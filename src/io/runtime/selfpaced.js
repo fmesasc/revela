@@ -17,7 +17,9 @@ export function selfPacedRuntime(publicActivity, gradeAnswer, L) {
   };
   var KEY = 'revela.self.';
   var done = function (id) { try { return JSON.parse(sessionStorage.getItem(KEY + id)); } catch (e) { return null; } };
-  var remember = function (id, r) { try { sessionStorage.setItem(KEY + id, JSON.stringify(r)); } catch (e) {} };
+  // (And told to whoever holds the page and wants to know — a SCORM package's script: io/export/scorm.js.)
+  var scored = function (id, r) { try { if (typeof window.__revelaScored === 'function') window.__revelaScored(id, r.score || 0); } catch (e) {} };
+  var remember = function (id, r) { try { sessionStorage.setItem(KEY + id, JSON.stringify(r)); } catch (e) {} scored(id, r); };
   var feedback = function (box, r) {
     var pc = Math.round((r.score || 0) * 100), ok = pc === 100;
     var f = mk('div', 'margin-top:.4em;padding:.3em .6em;border-radius:.3em;font-size:.6em;font-weight:700;color:#fff;background:' + (ok ? '#26890c' : pc ? '#b07d00' : '#b3261e'),
@@ -82,6 +84,6 @@ export function selfPacedRuntime(publicActivity, gradeAnswer, L) {
       box.appendChild(para);
     }
     if (check) { check.onclick = function () { submit(answer); }; box.appendChild(check); }
-    var prev = done(p.pollId); if (prev) feedback(box, prev);
+    var prev = done(p.pollId); if (prev) { feedback(box, prev); scored(p.pollId, prev); }
   });
 }

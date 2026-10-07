@@ -290,7 +290,7 @@ function reconcile(b) {
   el.classList.toggle('animated', !!b.animation || !!b.anims?.length);
   el.classList.toggle('locked', !!b.locked);
   el.classList.toggle('is-hidden', !!b.hidden);
-  el.classList.toggle('linked', !!(b.href || b.goto) && b.type !== 'text');
+  el.classList.toggle('linked', !!(b.href || b.goto || b.popup || b.tip) && b.type !== 'text');
   // A colour key switched on or off, or a new source for a keyed one: new view.
   if ((b.type === 'image' || b.type === 'video') && !mediaViewCurrent(el, b)) el.firstElementChild.replaceWith(content(b));
   if (b.type === 'text') {

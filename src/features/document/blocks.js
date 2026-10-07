@@ -308,11 +308,14 @@ export function addFigIndex(kind = 'all') { insert(figindexBlock({ kind })); }
 // Slide zoom: an embedded thumbnail of another slide, clickable in the show.
 // An object as a link (PowerPoint's "Link"): to a web page (href) or to a slide (goto: next,
 // prev, first, last or a slide's id). Neither: no link.
-export function setObjectLink(id, { href = '', goto = '' } = {}) {
+// (One of: href, goto, popup { title, text }; and tip, the words on hovering it, apart: undefined leaves it as it is.)
+export function setObjectLink(id, { href = '', goto = '', popup = null, tip } = {}) {
   commit(() => {
     const b = currentSlide().blocks.find(x => x.id === id); if (!b) return;
     if (href) b.href = href; else delete b.href;
     if (goto) b.goto = goto; else delete b.goto;
+    if (popup && (popup.title || popup.text)) b.popup = { title: String(popup.title || '').slice(0, 200), text: String(popup.text || '').slice(0, 4000) }; else delete b.popup;
+    if (tip !== undefined) { if (String(tip).trim()) b.tip = String(tip).trim().slice(0, 300); else delete b.tip; }
   });
 }
 // A chart becomes a map (or another map): its outlines are loaded once and kept in

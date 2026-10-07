@@ -2,7 +2,7 @@
 // quick delete, and selecting several slides (Ctrl/Cmd+click, Shift+click; on a
 // touch screen, a long press starts picking them with checkboxes).
 
-import { shortSig } from '../../core/text.js';
+import { shortSig, esc } from '../../core/text.js';
 import { state } from '../../core/store.js';
 import { moveSlide, moveSlides, deleteSlide, renameSection, selectSlide, collapseSlideSel } from '../../features/document/slides.js';
 import { blockPreview } from './preview.js';
@@ -160,6 +160,15 @@ function thumb(slide) {
   del.addEventListener('click', e => { e.stopPropagation(); deleteSlide(index()); });
 
   el.append(num, canvas, check, del);
+  // Its status and who it's assigned to (Pitch's workflow): a coloured mark and their initials.
+  const STATUS = { doing: ['En curso', '#d98b00'], review: ['Para revisar', '#2f6fd6'], done: ['Terminada', '#2f9e44'] };
+  if (STATUS[slide.status] || slide.owner) {
+    const w = document.createElement('span'); w.className = 'thumb-work';
+    const st = STATUS[slide.status], initials = String(slide.owner || '').split(/[\s@.]+/).filter(Boolean).slice(0, 2).map(x => x[0].toUpperCase()).join('');
+    w.title = [st && t(st[0]), slide.owner && t('Asignada a {who}').replace('{who}', slide.owner)].filter(Boolean).join(' · ');
+    w.innerHTML = (st ? `<i style="background:${st[1]}"></i>` : '') + (initials ? `<b>${esc(initials)}</b>` : '');
+    el.appendChild(w);
+  }
   const nc = (slide.comments || []).filter(c => !c.resolved).length;
   if (nc) { const c = document.createElement('span'); c.className = 'thumb-cm'; c.textContent = '💬 ' + nc; el.appendChild(c); }
   // Click: this one; Ctrl/Cmd+click: add or remove it; Shift+click: the range (PowerPoint).

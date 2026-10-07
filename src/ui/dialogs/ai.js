@@ -12,6 +12,8 @@ import * as deck from '../../features/ai/authoring.js';
 import * as vo from '../../features/ai/voiceover.js';
 import { alertDialog, confirmDialog, promptDialog } from './dialog.js';
 import { t } from '../../i18n/index.js';
+import { esc } from '../../core/text.js';
+import { askAssistant } from './assistant.js';
 
 // needed: opened because something asked for the AI (it says so first).
 export function openAiSettings({ needed = false } = {}) {
@@ -149,8 +151,12 @@ export function openCreateDeck() {
     </div>
     <label class="fr-chk"><input type="checkbox" class="ad-img"> ${t('Generar imágenes con IA (coste extra en OpenRouter)')}</label>
     <label class="fr-chk"><input type="checkbox" class="ad-new" checked> ${t('Empezar una presentación nueva (si no, se añade a la actual)')}</label>
+    <div class="ad-outline" hidden><h4 style="margin:10px 0 4px">${t('Esquema')}</h4>
+      <p class="host-help">${t('Revísalo antes de crear: cambia los títulos y los puntos, quita o añade diapositivas y ordénalas. Las diapositivas seguirán este esquema.')}</p>
+      <ol class="ad-ol" style="padding-inline-start:22px;max-height:min(46vh,420px);overflow:auto;margin:6px 0"></ol>
+      <button type="button" class="mini2 ad-ol-add"><i class="ms">add</i> ${t('Añadir diapositiva')}</button></div>
     <progress class="ad-prog" hidden style="width:100%"></progress>
-    <div class="fr-actions"><button class="fr-do ad-go">✨ ${t('Crear')}</button></div></div>`;
+    <div class="fr-actions"><button type="button" class="mini2 ad-go">${t('Crear sin esquema')}</button><button type="button" class="fr-do ad-plan">✨ ${t('Ver el esquema')}</button></div></div>`;
   document.body.appendChild(back);
   const q = s => back.querySelector(s), close = () => back.remove();
   q('.modal-close').addEventListener('click', close);
@@ -161,6 +167,50 @@ export function openCreateDeck() {
   try { const d = JSON.parse(sessionStorage.getItem(DECK_DRAFT) || 'null'); if (d) FIELDS.forEach((s, i) => { if (d[i] != null) q(s).value = d[i]; }); } catch {}
   back.addEventListener('input', () => { try { sessionStorage.setItem(DECK_DRAFT, JSON.stringify(FIELDS.map(s => q(s).value))); } catch {} });
   back.addEventListener('change', () => { try { sessionStorage.setItem(DECK_DRAFT, JSON.stringify(FIELDS.map(s => q(s).value))); } catch {} });
+  // The outline: one item per slide (its title and points), to change before the slides are made.
+  let outline = null;
+  const drawOutline = () => {
+    q('.ad-outline').hidden = !outline;
+    if (!outline) return;
+    q('.ad-ol').innerHTML = outline.slides.map((x, i) => `<li data-i="${i}" style="margin:6px 0"><div style="display:flex;gap:4px;align-items:center">
+      <input type="text" class="ad-ol-t" value="${esc(x.title)}" aria-label="${t('Título')}" style="flex:1;font-weight:600">
+      <button type="button" class="mini2" data-mv="-1" title="${t('Subir')}"${i ? '' : ' disabled'}><i class="ms">arrow_upward</i></button>
+      <button type="button" class="mini2" data-mv="1" title="${t('Bajar')}"${i < outline.slides.length - 1 ? '' : ' disabled'}><i class="ms">arrow_downward</i></button>
+      <button type="button" class="mini2" data-rm title="${t('Quitar')}"><i class="ms">close</i></button></div>
+      <textarea class="ad-ol-p" rows="${Math.max(1, x.points.length)}" aria-label="${t('Puntos (uno por línea)')}" placeholder="${t('Puntos (uno por línea)')}" style="width:100%;font-size:13px">${esc(x.points.join('\n'))}</textarea></li>`).join('');
+    q('.ad-plan').innerHTML = `✨ ${t('Crear {n} diapositivas').replace('{n}', outline.slides.length)}`;
+    q('.ad-go').hidden = true;
+  };
+  const readOutline = () => { if (!outline) return;
+    q('.ad-ol').querySelectorAll('li').forEach((li, i) => { outline.slides[i] = { title: li.querySelector('.ad-ol-t').value.trim(), points: li.querySelector('.ad-ol-p').value.split('\n').map(x => x.trim()).filter(Boolean) }; });
+    outline.slides = outline.slides.filter(x => x.title); };
+  q('.ad-ol').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return; readOutline();
+    const i = +b.closest('li').dataset.i, L = outline.slides;
+    if (b.dataset.mv) { const j = i + +b.dataset.mv; [L[i], L[j]] = [L[j], L[i]]; } else if (b.hasAttribute('data-rm')) L.splice(i, 1);
+    drawOutline();
+  });
+  q('.ad-ol-add').addEventListener('click', () => { readOutline(); outline.slides.push({ title: t('Nueva diapositiva'), points: [] }); drawOutline(); q('.ad-ol li:last-child .ad-ol-t')?.select(); });
+  q('.ad-plan').addEventListener('click', () => (outline ? make(true) : plan()));
+  // (What the form asks for, with the documents read: for the outline and for the slides.)
+  const gather = async () => {
+    const topic = q('.ad-topic').value.trim(), files = [...q('.ad-file').files].slice(0, ATTACH.count);
+    let source = q('.ad-source').value.trim();
+    if (!topic && !source && !files.length) { alertDialog(t('Escribe un tema o aporta un documento.')); return null; }
+    const read = (await Promise.all(files.map(f => readAttachment(f)))).filter(Boolean);
+    const figs = (await Promise.all(files.filter(f => /\.pdf$/i.test(f.name) || f.type === 'application/pdf').map(f => pdfFigures(f).catch(() => [])))).flat();
+    const docs = read.filter(a => a.kind === 'text'), pics = [...figs, ...read.filter(a => a.kind === 'image')].slice(0, ATTACH.count);
+    if (docs.length) source = docs.map(d => d.text).join('\n\n') + (source ? '\n\n' + source : '');
+    return { topic, source, count: +q('.ad-count').value, audience: q('.ad-aud').value.trim(), tone: q('.ad-tone').value, images: q('.ad-img').checked, attachments: pics };
+  };
+  const plan = async () => {
+    if (!(await ready())) return;
+    q('.ad-plan').disabled = true; q('.ad-prog').hidden = false; q('.ad-prog').removeAttribute('value');
+    try { const o = await gather(); if (!o) return; outline = await run(() => deck.createOutline(o)) || null; drawOutline(); }
+    catch (e) { alertDialog(t('No se pudo completar: ') + (e.message || e)); }
+    finally { q('.ad-plan').disabled = false; q('.ad-prog').hidden = true; }
+  };
+  const make = async () => { readOutline(); if (outline && !outline.slides.length) return; q('.ad-go').click(); };
   q('.ad-go').addEventListener('click', async () => {
     const topic = q('.ad-topic').value.trim(), files = [...q('.ad-file').files].slice(0, ATTACH.count);
     let source = q('.ad-source').value.trim(), pics = [];
@@ -168,7 +218,7 @@ export function openCreateDeck() {
     try { sessionStorage.setItem(DECK_REOPEN, '1'); } catch {}
     if (!(await ready())) return;
     try { sessionStorage.removeItem(DECK_REOPEN); } catch {}
-    q('.ad-go').disabled = true; q('.ad-prog').hidden = false;
+    q('.ad-go').disabled = true; q('.ad-plan').disabled = true; q('.ad-prog').hidden = false;
     try {
       // (Documents: their text; pictures — or a scanned PDF's pages —: shown to the AI.)
       const read = (await Promise.all(files.map(f => readAttachment(f).catch(e => { throw new Error(t(e.message === 'ATTACH_TYPE' ? 'Ese tipo de archivo no se puede adjuntar: fotos, PDF o textos.' : e.message === 'ATTACH_BIG' ? 'El archivo es demasiado grande (25 MB como mucho).' : 'No se pudo leer «{n}».').replace('{n}', f.name)); })))).flat();
@@ -177,7 +227,7 @@ export function openCreateDeck() {
       const docs = read.filter(a => a.kind === 'text'); pics = [...figs, ...read.filter(a => a.kind === 'image')].slice(0, ATTACH.count);
       if (docs.length) source = docs.map(d => d.text).join('\n\n') + (source ? '\n\n' + source : '');
       const opts = { topic, source, count: +q('.ad-count').value, audience: q('.ad-aud').value.trim(), tone: q('.ad-tone').value,
-        images: q('.ad-img').checked, attachments: pics };
+        images: q('.ad-img').checked, attachments: pics, ...(outline && { outline: outline.slides }) };
       await run(async () => {
         const specs = await deck.createDeck(opts);
         // (A new one starts from a design with its layouts — the one chosen, or the AI's for the content —: its
@@ -195,8 +245,57 @@ export function openCreateDeck() {
       try { sessionStorage.removeItem(DECK_DRAFT); } catch {}
       close();
     } catch (e) { alertDialog(t('No se pudo completar: ') + (e.message || e)); }
-    finally { if (document.body.contains(back)) { q('.ad-go').disabled = false; q('.ad-prog').hidden = true; } }
+    finally { if (document.body.contains(back)) { q('.ad-go').disabled = false; q('.ad-plan').disabled = false; q('.ad-prog').hidden = true; } }
   });
+}
+
+// A quiz answered live from the phones, from the deck's content (features/ai/authoring.js addLiveQuiz).
+async function openLiveQuiz() {
+  if (!(await ready())) return;
+  document.getElementById('lq-modal')?.remove();
+  const back = document.createElement('div'); back.id = 'lq-modal'; back.className = 'modal-backdrop';
+  const KIND = [['quiz', 'Preguntas con respuesta correcta y puntos'], ['match', 'Unir parejas'], ['order', 'Ordenar'], ['gaps', 'Completar huecos']];
+  back.innerHTML = `<div class="modal" style="text-align:start;width:min(480px,94vw);max-width:none"><button class="modal-close">✕</button><h3>${t('Cuestionario en directo')}</h3>
+    <p class="host-help">${t('La IA lee la presentación y prepara preguntas y actividades que el público responde desde el móvil, con puntos y clasificación. Puedes editarlas después como cualquier votación.')}</p>
+    <label class="fr-l">${t('Cuántas')}<input type="number" class="lq-n" min="1" max="15" value="5"></label>
+    <fieldset><legend>${t('Tipos')}</legend>${KIND.map(([k, l], i) => `<label class="fr-chk"><input type="checkbox" value="${k}"${i < 2 ? ' checked' : ''}> ${t(l)}</label>`).join('')}</fieldset>
+    <label class="fr-l">${t('Dónde')}<select class="lq-where"><option value="end">${t('Al final')}</option><option value="spread">${t('Cada una tras la diapositiva de la que trata')}</option></select></label>
+    <div class="fr-actions"><span></span><button type="button" class="fr-do lq-go">✨ ${t('Crear')}</button></div></div>`;
+  document.body.appendChild(back);
+  const q = s => back.querySelector(s), close = () => back.remove();
+  q('.modal-close').addEventListener('click', close); back.addEventListener('click', e => { if (e.target === back) close(); });
+  q('.lq-go').addEventListener('click', async () => {
+    const kinds = [...back.querySelectorAll('fieldset input:checked')].map(x => x.value); if (!kinds.length) return;
+    close();
+    const n = await run(() => deck.addLiveQuiz({ count: +q('.lq-n').value, kinds, where: q('.lq-where').value }));
+    if (n) alertDialog(t('{n} diapositivas de cuestionario añadidas. Al presentar, el público responde desde el móvil.').replace('{n}', n));
+  });
+}
+
+// A review of the whole deck: what to change, slide by slide; each point goes to its slide or to the assistant.
+const REVIEW_NAMES = { message: 'Mensaje', text: 'Demasiado texto', structure: 'Estructura', consistency: 'Coherencia', spelling: 'Ortografía', accessibility: 'Accesibilidad', design: 'Diseño' };
+async function openReview() {
+  const r = await run(() => deck.reviewDeck()); if (!r) return;
+  document.getElementById('rv-modal')?.remove();
+  const back = document.createElement('div'); back.id = 'rv-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:start;width:min(620px,94vw);max-width:none"><button class="modal-close">✕</button><h3>${t('Revisar presentación')}</h3>
+    ${r.summary ? `<p>${esc(r.summary)}</p>` : ''}
+    ${r.items.length ? `<ol class="rv-list" style="padding-inline-start:22px;max-height:min(60vh,520px);overflow:auto">${r.items.map((x, i) => `<li style="margin:10px 0">
+      <b>${x.slide ? `${t('Diapositiva')} ${x.slide}` : t('Toda la presentación')}</b> · <small>${t(REVIEW_NAMES[x.kind])}</small><br>${esc(x.issue)}
+      ${x.fix ? `<div class="host-help" style="margin:2px 0 4px">→ ${esc(x.fix)}</div>` : ''}
+      <span style="display:inline-flex;gap:6px">${x.slide ? `<button type="button" class="mini2" data-go="${x.slide}">${t('Ir a la diapositiva')}</button>` : ''}
+        <button type="button" class="mini2" data-fix="${i}"><i class="ms">auto_awesome</i> ${t('Pedírselo al asistente')}</button></span></li>`).join('')}</ol>`
+      : `<p>${t('No hay nada importante que cambiar.')}</p>`}</div>`;
+  document.body.appendChild(back);
+  const close = () => back.remove();
+  back.querySelector('.modal-close').addEventListener('click', close); back.addEventListener('click', e => { if (e.target === back) close(); });
+  back.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => { commit(() => { state.ui.slideIndex = +b.dataset.go - 1; state.ui.selection = null; }, { history: false }); close(); }));
+  back.querySelectorAll('[data-fix]').forEach(b => b.addEventListener('click', () => {
+    const x = r.items[+b.dataset.fix];
+    if (x.slide) commit(() => { state.ui.slideIndex = x.slide - 1; state.ui.selection = null; }, { history: false });
+    askAssistant(`${x.slide ? `${t('En la diapositiva')} ${x.slide}: ` : ''}${x.issue}${x.fix ? ' — ' + x.fix : ''}`);
+    close();
+  }));
 }
 
 // (The assistant panel: assistant.js.)
@@ -206,5 +305,7 @@ Object.assign(AI_ACTIONS, {
   'ai-improve': () => run(() => deck.improveSlide()),
   'ai-agenda': () => run(() => deck.addAgenda()),
   'ai-quiz': () => run(async () => { const n = await deck.addQuiz(3); alertDialog(t('Preguntas añadidas al final: ') + n); }),
+  'ai-livequiz': () => openLiveQuiz(),
+  'ai-review': () => openReview(),
   'ai-voiceover': () => openVoiceover(),
 });

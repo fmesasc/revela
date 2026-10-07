@@ -108,14 +108,32 @@ function act(el){var u=blob(el);if(el.hasAttribute('data-open')){window.open(u,'
 document.addEventListener('click',function(e){var el=e.target.closest&&e.target.closest('[data-file]');if(el){e.stopPropagation();act(el);}},true);
 document.addEventListener('keydown',function(e){var el=e.target.closest&&e.target.closest('[data-file]');if(el&&(e.key==='Enter'||e.key===' ')){e.preventDefault();act(el);}});
 document.querySelectorAll('[data-file-view]').forEach(function(el){el.querySelector('iframe').src=blob(el)+'#view=FitH';});})();`;
-const LINK_JS = `(function(){function go(el){var g=el.getAttribute('data-goto'),h=el.getAttribute('data-href');
+const LINK_JS = `(function(){var hist=[],cur=null;
+function seen(){var c=Reveal.getCurrentSlide();if(cur&&cur!==c&&!back){hist.push(cur);if(hist.length>50)hist.shift();}back=false;cur=c;}var back=false;
+Reveal.on('ready',seen);Reveal.on('slidechanged',seen);if(Reveal.isReady())seen();
+function esc(x){return String(x).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+var pop=null,from=null;function shut(){if(!pop)return;pop.remove();pop=null;if(from&&from.focus)from.focus();from=null;}
+function popup(el){var d;try{d=JSON.parse(el.getAttribute('data-popup'));}catch(e){return;}shut();from=el;
+pop=document.createElement('div');pop.className='rv-pop';pop.innerHTML='<div class="rv-pop-box" role="dialog" aria-modal="true"'+(d.title?' aria-label="'+esc(d.title)+'"':'')+'><button type="button" class="rv-pop-x" aria-label="✕">✕</button>'+(d.title?'<h2>'+esc(d.title)+'</h2>':'')+String(d.text||'').split(/\\n{2,}/).map(function(p){return '<p>'+esc(p).replace(/\\n/g,'<br>')+'</p>';}).join('')+'</div>';
+pop.addEventListener('click',function(e){e.stopPropagation();if(e.target===pop||e.target.closest('.rv-pop-x'))shut();});(document.querySelector('.reveal')||document.body).appendChild(pop);pop.querySelector('.rv-pop-x').focus();}
+function go(el){if(el.hasAttribute('data-popup')){popup(el);return;}var g=el.getAttribute('data-goto'),h=el.getAttribute('data-href');
 if(h){window.open(h,'_blank','noopener');return;}
 var s=Reveal.getSlides(),i=s.indexOf(Reveal.getCurrentSlide()),t=null;
 if(g==='next')t=s[i+1];else if(g==='prev')t=s[i-1];else if(g==='first')t=s[0];else if(g==='last')t=s[s.length-1];
+else if(g==='back'){t=hist.pop()||null;back=!!t;}
 else if(g&&g.indexOf('slide:')===0){var id=g.slice(6);for(var k=0;k<s.length;k++)if(s[k].getAttribute('data-rv-id')===id)t=s[k];}
 if(t){var x=Reveal.getIndices(t);Reveal.slide(x.h,x.v,0);}}
-document.addEventListener('click',function(e){var el=e.target.closest&&e.target.closest('.slides [data-goto],.slides [data-href]');if(el){e.preventDefault();e.stopPropagation();go(el);}},true);
-document.addEventListener('keydown',function(e){if(e.key==='Enter'&&document.activeElement&&document.activeElement.matches&&document.activeElement.matches('[data-goto],[data-href]')){e.preventDefault();go(document.activeElement);}},true);})();`;
+var tip=null;function hide(){if(tip){tip.remove();tip=null;}}
+function show(el){hide();tip=document.createElement('div');tip.className='rv-tip';tip.setAttribute('role','tooltip');tip.textContent=el.getAttribute('data-tip');document.body.appendChild(tip);
+var r=el.getBoundingClientRect(),w=tip.offsetWidth,h=tip.offsetHeight,x=Math.max(8,Math.min(innerWidth-w-8,r.left+r.width/2-w/2)),y=r.top-h-10<8?r.bottom+10:r.top-h-10;tip.style.left=x+'px';tip.style.top=y+'px';}
+document.addEventListener('mouseover',function(e){var el=e.target.closest&&e.target.closest('.slides [data-tip]');if(el)show(el);else hide();});
+document.addEventListener('focusin',function(e){var el=e.target.closest&&e.target.closest('.slides [data-tip]');if(el)show(el);else hide();});
+Reveal.on('slidechanged',function(){hide();shut();});
+document.addEventListener('click',function(e){var el=e.target.closest&&e.target.closest('.slides [data-goto],.slides [data-href],.slides [data-popup]');
+if(el){e.preventDefault();e.stopPropagation();hide();go(el);return;}
+var t=e.target.closest&&e.target.closest('.slides [data-tip]');if(t&&matchMedia('(hover: none)').matches){e.stopPropagation();tip?hide():show(t);}},true);
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&pop){e.preventDefault();e.stopImmediatePropagation();shut();return;}
+if(e.key==='Enter'&&document.activeElement&&document.activeElement.matches&&document.activeElement.matches('[data-goto],[data-href],[data-popup]')){e.preventDefault();go(document.activeElement);}},true);})();`;
 
 // Background sound over several slides: it plays while the current slide is in
 // its range and stops (back to the start) outside it; its button pauses and resumes it.
@@ -230,10 +248,15 @@ export function morphText(html, by, counts) {
   return tpl.innerHTML;
 }
 // An object that is a link (PowerPoint's "Link" / action settings): to a web
-// page, or to a slide — next, previous, first, last or one of them (by its id).
-const GOTO = new Set(['next', 'prev', 'first', 'last']);
+// page, or to a slide — next, previous, first, last, back to the one before (a menu, a branching path, an escape
+// room) or one of them (by its id) —, or that opens a window with information (b.popup: { title, text }). And words
+// shown on hovering or touching it (b.tip), as Genially's interactive elements.
+const GOTO = new Set(['next', 'prev', 'first', 'last', 'back']);
 const linkAttrs = b => (b.type === 'text' || b.type === 'connector' ? '' : (b.href && safeURL(b.href) && /^(https?|mailto):/i.test(b.href) ? ` data-href="${esc(b.href)}"` : '')
-  + (b.goto ? ` data-goto="${esc(GOTO.has(b.goto) ? b.goto : 'slide:' + b.goto)}"` : '') + (b.href || b.goto ? ' role="link" tabindex="0"' : ''));
+  + (b.goto ? ` data-goto="${esc(GOTO.has(b.goto) ? b.goto : 'slide:' + b.goto)}"` : '')
+  + (b.popup && (b.popup.title || b.popup.text) ? ` data-popup="${esc(JSON.stringify({ title: String(b.popup.title || '').slice(0, 200), text: String(b.popup.text || '').slice(0, 4000) }))}"` : '')
+  + (b.tip ? ` data-tip="${esc(String(b.tip).slice(0, 300))}"` : '')
+  + (b.href || b.goto || b.popup ? ` role="${b.popup ? 'button' : 'link'}" tabindex="0"` : b.tip ? ' tabindex="0"' : ''));
 function blockHTMLRaw(b, slide) {
   // When the slide uses Auto‑Animate, a stable data-id lets reveal.js match and
   // morph the same object between consecutive slides (PowerPoint's "Morph").
@@ -617,7 +640,13 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  .reveal .fragment.draw .rvd{stroke-dasharray:1;stroke-dashoffset:1;fill-opacity:0}
  .reveal .fragment.draw.visible .rvd{animation:rvDraw var(--anim-dur,1500ms) ease-in-out var(--anim-del,0ms) forwards}
  @keyframes rvDraw{70%{fill-opacity:0}to{stroke-dashoffset:0;fill-opacity:1}}
- [data-goto],[data-href]{cursor:pointer}
+ [data-goto],[data-href],[data-popup]{cursor:pointer}
+ .rv-pop{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(0,0,0,.45);animation:rvPopIn .2s ease both} @keyframes rvPopIn{from{opacity:0}to{opacity:1}}
+ .rv-pop-box{position:relative;max-width:min(680px,88vw);max-height:80vh;overflow:auto;background:#fff;color:#1d1f24;border-radius:14px;padding:28px 32px;box-shadow:0 18px 60px rgba(0,0,0,.35);text-align:start;font:400 22px/1.45 system-ui,sans-serif}
+ .rv-pop-box h2{font-size:30px;margin:0 0 12px;color:inherit;text-transform:none;line-height:1.2}
+ .rv-pop-box p{margin:0 0 .7em}
+ .rv-pop-x{position:absolute;top:10px;inset-inline-end:12px;border:0;background:none;font-size:22px;cursor:pointer;color:#555}
+ .rv-tip{position:fixed;z-index:61;max-width:320px;padding:8px 12px;border-radius:8px;background:#1d1f24;color:#fff;font:400 15px/1.35 system-ui,sans-serif;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.3)}
  [data-timer].rv-t-low .rv-t-txt,[data-timer].rv-t-low .rv-t-bar{fill:#ff5252} [data-timer].rv-t-low .rv-t-arc{stroke:#ff5252}
  [data-timer].rv-t-done svg{animation:rvBlink 1s ease-in-out 3} @keyframes rvBlink{50%{opacity:.25}}
  ${WRAP_CSS}
@@ -675,7 +704,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${/ data-pdf[ >]/.test(slides) ? `(${pdfRuntime.toString()})(${JSON.stringify(PDFJS)});` : ''}
  ${bgmHTML ? BGM_JS : ''}
  ${/ data-rv-start[ >]/.test(slides) ? START_JS : ''}
- ${/ data-(goto|href)="/.test(slides) ? LINK_JS : ''}
+ ${/ data-(goto|href|popup|tip)="/.test(slides) ? LINK_JS : ''}
  ${/ data-file(-view)?[ >]/.test(slides) ? FILE_JS : ''}
  ${hasMedia ? `${createMediaPlayer.toString()}\n${revelaMediaRuntime.toString()}\nrevelaMediaRuntime(${JSON.stringify(GIFUCT)});` : ''}
  ${inkJS(w, h, { pen: t('Lápiz'), hl: t('Resaltador'), laser: t('Puntero láser'), color: t('Color de la tinta'), erase: t('Borrar la tinta de la diapositiva'),
