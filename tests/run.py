@@ -312,6 +312,10 @@ def site_checks(send, recv):
             self.send_header('Content-Length', str(len(b))); self.end_headers(); self.wfile.write(b)
         def signed(self): return 'rv_session=ok' in (self.headers.get('Cookie') or '')
         def do_GET(self):
+            # A poll answered later by a link (public: server/cloudflare/docs.js has its own tests).
+            if self.path == '/api/docs/abcdefghijklmnop1234/poll/pollx1':
+                return self.reply(200, {'poll': {'pollId': 'pollx1', 'kind': 'number', 'question': '¿Cuántos kilos?', 'options': [], 'min': 0, 'max': 10, 'unit': 'kg'}, 'name': 'Charla de otoño'})
+            if self.path.startswith('/api/docs/abcdefghijklmnop1234/poll/'): return self.reply(404, {'error': 'not found'})
             if self.path.startswith('/api/me'):
                 return self.reply(200, {'email': 'ana@example.com', 'plan': 'free', 'credits': 50, 'features': ['ai', 'cloud-save'], 'billing': False, 'photos': ['unsplash']}) if self.signed() else self.reply(401, {'error': 'no session'})
             if self.path.startswith('/api/') and not self.signed(): return self.reply(401, {'error': 'no session'})
@@ -326,6 +330,7 @@ def site_checks(send, recv):
             return super().do_GET()
         def do_POST(self):
             body = self.rfile.read(int(self.headers.get('Content-Length') or 0))
+            if self.path == '/api/docs/abcdefghijklmnop1234/poll/pollx1': seen.setdefault('later', []).append(json.loads(body or b'{}')); return self.reply(200, {'ok': True})
             if self.path == '/api/login': return self.reply(200, {'ok': True}, {'Set-Cookie': 'rv_session=ok; Path=/api; HttpOnly; SameSite=Strict'})
             if self.path == '/api/docs/thumbs': return self.reply(200, {'thumbs': {}}) if self.signed() else self.reply(401, {'error': 'no session'})
             if self.path == '/api/stock/used': seen.setdefault('used', []).append(json.loads(body or b'{}')); return self.reply(200, {'ok': True})
@@ -355,6 +360,15 @@ def site_checks(send, recv):
         for page in ('pricing.html', 'support.html', 'privacy.html', 'terms.html'):
             check(ev(f"fetch('{page}').then(r=>r.ok)"), 'página ' + page)
         # The live presentation on the home page: loaded after the page, a real exported one.
+        # A poll answered later, by its link: the poll from the cloud, the answer back to it.
+        recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/app/vote.html?doc=abcdefghijklmnop1234&poll=pollx1')); time.sleep(1.5)
+        check(ev("document.getElementById('q').textContent") == '¿Cuántos kilos?' and ev("!document.getElementById('poll').hidden"), 'responder más tarde: la votación por su enlace')
+        ev("(()=>{const n=document.querySelector('#answers input[type=number]');n.value='7';n.dispatchEvent(new Event('input'));document.getElementById('send').click();return 1})()"); time.sleep(0.8)
+        later = seen.get('later') or [{}]
+        check(later[-1].get('answer') == 7 and len(str(later[-1].get('voter', ''))) >= 8 and ev("!document.getElementById('done').hidden"), 'responder más tarde: se envía y se confirma: ' + str(later))
+        recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/app/vote.html?doc=abcdefghijklmnop1234&poll=otra1')); time.sleep(1.2)
+        check('ya no está abierta' in (ev("document.body.innerText") or ''), 'responder más tarde: una cerrada lo dice')
+        recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/index.html')); time.sleep(1.5)
         check(ev("(f=>!!f&&/\\/demo\\/reloj\\.html$/.test(f.src))(document.querySelector('.live iframe'))") and ev("fetch('/demo/reloj.html').then(r=>r.text()).then(t=>/Reveal\\.initialize/.test(t)&&/noindex/.test(t)&&!/fonts\\.googleapis/.test(t))"), 'la presentación en directo de la portada')
         # In other languages: each its own address, with links between them for search engines.
         check(ev("[...document.querySelectorAll('link[rel=alternate][hreflang]')].map(l=>l.hreflang).join()") == 'es,en,fr,de,it,pt,ca,gl,nl,eu,ar,x-default', 'hreflang en la portada')

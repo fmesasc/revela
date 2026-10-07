@@ -782,6 +782,44 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { f.remove(); URL.revokeObjectURL(fake); URL.revokeObjectURL(noqr); }
   });
 
+  await test('votaciones nuevas en directo: el móvil recibe lo que necesita y la presentación acepta solo respuestas válidas', async () => {
+    reset();
+    const G = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+    R.poll.addPoll({ kind: 'number', question: 'N', options: [], min: 0, max: 10, unit: 'kg', answer: 7 }); const pn = last();
+    R.slides.addSlide('blank'); R.poll.addPoll({ kind: 'rank', question: 'R', options: ['A', 'B', 'C'] }); const pr = last();
+    R.slides.addSlide('blank'); R.poll.addPoll({ kind: 'point', question: 'P', options: [], image: G }); const pp = last();
+    R.slides.addSlide('blank'); R.poll.addPoll({ kind: 'open', question: 'O', options: [] }); const po = last();
+    R.slides.addSlide('blank'); R.poll.addPoll({ kind: 'image', question: 'I', options: ['x', 'y'], images: [G, G] }); const pi = last();
+    for (const p of [pn, pr, pp, po, pi]) R.poll.clearVotes(p.pollId);
+    R.slides.goToSlide(0);
+    const fake = URL.createObjectURL(new Blob(['window.Peer=function(id){var s=this;s.h={};s.on=function(e,f){(s.h[e]=s.h[e]||[]).push(f);};s.destroy=function(){};window.__votePeer=s;setTimeout(function(){(s.h.open||[]).forEach(function(f){f(id);});},0);};'], { type: 'text/javascript' }));
+    const noqr = URL.createObjectURL(new Blob(['window.QRCode=null;'], { type: 'text/javascript' }));
+    const html = R.io.buildHTML(R.state.deck, { inApp: true }).split(R.vendor.PEERJS).join(fake).split(R.vendor.QRCODE).join(noqr);
+    const { f, win } = await deckFrame(html, 800, 450);
+    try {
+      for (let i = 0; i < 40 && !win.__votePeer?.h.connection; i++) await sleep(50);
+      const sent = [], c = { open: true, h: {}, on(e, fn) { (this.h[e] = this.h[e] || []).push(fn); }, send(m) { sent.push(m); }, close() {} };
+      win.__votePeer.h.connection.forEach(fn => fn(c)); c.h.open.forEach(fn => fn());
+      const pollMsg = () => sent.filter(m => m.type === 'poll').at(-1)?.poll, vote = (p, answer, voter = 'v1') => c.h.data.forEach(fn => fn({ type: 'vote', pollId: p.pollId, voter, answer }));
+      const stored = p => JSON.parse(win.localStorage.getItem('revela.poll.' + p.pollId) || '{}');
+      let m = pollMsg(); eq(m.kind + '|' + m.min + '|' + m.max + '|' + m.unit, 'number|0|10|kg', 'número: el móvil recibe su rango y su unidad'); assert(!('answer' in m) || m.answer === undefined, 'número: pero no la respuesta');
+      vote(pn, 4); vote(pn, 11, 'v2'); vote(pn, 'x', 'v3');
+      eq(JSON.stringify(stored(pn)), '{"v1":4}', 'número: solo los válidos');
+      win.Reveal.slide(1); await sleep(50); eq(pollMsg().kind, 'rank', 'pasa a la siguiente');
+      vote(pr, [2, 0, 1]); vote(pr, [0, 0, 1], 'v2'); vote(pr, [0, 1], 'v3');
+      eq(JSON.stringify(stored(pr)), '{"v1":[2,0,1]}', 'preferencia: solo órdenes completos');
+      win.Reveal.slide(2); await sleep(50); eq(pollMsg().image, G, 'punto: el móvil recibe la imagen');
+      vote(pp, { x: 12.34, y: 99 }); vote(pp, { x: 140, y: 5 }, 'v2');
+      eq(JSON.stringify(stored(pp)), '{"v1":{"x":12.3,"y":99}}', 'punto: dentro de la imagen');
+      win.Reveal.slide(3); await sleep(50);
+      vote(po, '  Una idea  '); vote(po, '   ', 'v2'); vote(po, 'x'.repeat(500), 'v3');
+      const o = stored(po); eq(Object.keys(o).join() + '|' + o.v1.t + '|' + o.v3.t.length, 'v1,v3|Una idea|200', 'abierta: sin vacías y recortadas');
+      assert(/Una idea/.test(win.document.querySelector('.present .rv-poll-res').innerHTML), 'abierta: sale en el muro de la presentación');
+      win.Reveal.slide(4); await sleep(50); eq(pollMsg().images.length, 2, 'imágenes: el móvil recibe las imágenes');
+      vote(pi, 1); vote(pi, 5, 'v2'); eq(JSON.stringify(stored(pi)), '{"v1":1}', 'imágenes: una opción que existe');
+    } finally { f.remove(); URL.revokeObjectURL(fake); URL.revokeObjectURL(noqr); }
+  });
+
   await test('mando: el panel táctil del móvil (390×844) maneja la presentación de punta a punta', async () => {
     reset(); R.slides.addSlide(); R.slides.goToSlide(0); R.render();
     const { Peer } = fakeBroker(); let last = null;
