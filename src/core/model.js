@@ -10,7 +10,8 @@
 // A slide's `transition` overrides the deck's `defaultTransition`; an object's
 // `animation` describes its entrance (effect + order).
 
-import { kvGet, kvSet } from './idb.js';
+import { kvGet, kvSet, verAll } from './idb.js';
+import { dehydrate, hydrate, hasRefs, collectGarbage } from './mediastore.js';
 
 export const STORAGE_KEY = 'revela.deck.v1';
 
@@ -161,7 +162,16 @@ function writeLocal(deck, size = approxSize(deck)) {
   } catch {}
   return false;
 }
-const writeIdb = (deck, local) => kvSet('deck', deck).then(() => setKept(true), () => { if (!local) setKept(false); });
+// IndexedDB: the deck with its big files as references (core/mediastore.js: each file once, as bytes), one write after
+// another; now and then, the files nothing refers to any more are deleted.
+let idbQueue = Promise.resolve(), lastGc = 0;
+const writeIdb = (deck, local) => (idbQueue = idbQueue.then(async () => {
+  try {
+    const light = await dehydrate(deck).catch(() => deck);         // (no media database: as before, whole)
+    await kvSet('deck', light); setKept(true);
+    if (Date.now() - lastGc > 5 * 60e3) { lastGc = Date.now(); collectGarbage([light, ...(await verAll().catch(() => [])).map(v => v.deck)]).catch(() => {}); }
+  } catch { if (!local) setKept(false); }
+}));
 export function saveDeck(deck) {
   deck.savedAt = Date.now(); pending = deck;
   const size = approxSize(deck), local = writeLocal(deck, size);
@@ -183,7 +193,7 @@ export function bigDeckWaiting() {
 export async function loadNewerDeck(current) {
   try {
     const d = await kvGet('deck');
-    if (d && d.slides && (!current || (d.savedAt || 0) > (current.savedAt || 0))) return migrate(d);
+    if (d && d.slides && (!current || (d.savedAt || 0) > (current.savedAt || 0))) return migrate(hasRefs(d) ? await hydrate(d) : d);
   } catch {}
   return null;
 }

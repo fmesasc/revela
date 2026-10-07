@@ -223,6 +223,34 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     R.store.commit(() => {});                                  // vuelve a guardar el estado actual
   });
 
+  await test('fotos y vídeos guardados aparte en el navegador: una vez cada uno, en la presentación y en las versiones', async () => {
+    reset(); const W = frame.contentWindow, MS = await W.eval("import('/src/core/mediastore.js')"), I = await W.eval("import('/src/core/idb.js')"), M = R.model;
+    // A real picture (bytes that are an image), the same one in two places, and a small one that stays inside.
+    const c = D.createElement('canvas'); c.width = 300; c.height = 200; const g = c.getContext('2d');
+    for (let i = 0; i < 3000; i++) { g.fillStyle = `hsl(${i % 360},70%,50%)`; g.fillRect(Math.random() * 300, Math.random() * 200, 7, 7); }
+    const photo = c.toDataURL('image/png'), small = 'data:image/png;base64,iVBORw0KGgo=';
+    assert(photo.length > 64 * 1024, 'foto de prueba de más de 64 KB');
+    const deck = M.emptyDeck(); deck.slides[0].blocks.push({ id: 'a', type: 'image', src: photo, x: 0, y: 0, w: 10, h: 10 }, { id: 'b', type: 'image', src: photo, x: 0, y: 0, w: 10, h: 10 }, { id: 'c', type: 'image', src: small, x: 0, y: 0, w: 10, h: 10 });
+    const light = await MS.dehydrate(deck), [ra, rb, rc] = ['a', 'b', 'c'].map(k => light.slides[0].blocks.find(b => b.id === k).src);
+    assert(/^rvmedia:[0-9a-f]{32}$/.test(ra) && ra === rb && rc === small, 'la grande, una referencia (la misma en los dos sitios); la pequeña, dentro');
+    assert(JSON.stringify(light).length < 5000 && deck.slides[0].blocks.find(b => b.id === 'a').src === photo, 'lo guardado, pequeño; la presentación en memoria, intacta');
+    const back = await MS.hydrate(light); eq(back.slides[0].blocks.find(b => b.id === 'b').src, photo, 'al leerla, la foto entera otra vez');
+    // Autosave and versions keep references; restoring a version brings the photo back.
+    R.store.replaceDeck(deck); await M.flushSave(R.state.deck);
+    assert(MS.hasRefs(await I.kvGet('deck')), 'el autoguardado, con referencias');
+    const id = await R.versions.saveVersion('Con foto', false);
+    assert(MS.hasRefs((await I.verGet(id)).deck) && JSON.stringify((await I.verGet(id)).deck).length < 20000, 'la versión, sin otra copia de la foto');
+    R.store.commit(() => { R.state.deck.slides[0].blocks = R.state.deck.slides[0].blocks.filter(b => b.type !== 'image'); });
+    assert(await R.versions.restoreVersion(id), 'restaurada'); await sleep(20);
+    eq(R.state.deck.slides[0].blocks.find(b => b.id === 'a')?.src, photo, 'con su foto');
+    // A file nothing refers to: deleted (not one stored just now, whose deck may be on its way).
+    const fresh = await MS.dehydrate({ x: 'data:image/png;base64,' + 'B'.repeat(70000) });
+    eq(await MS.collectGarbage([]), 0, 'lo recién guardado no se borra');
+    for (const v of await R.versions.listVersions()) await R.versions.deleteVersion(v.id);
+    assert(MS.isRef(fresh.x), 'referencia');
+    reset();
+  });
+
   await test('abrir proyecto, cifrado con contraseña y marcar como final', async () => {
     reset(); const P = R.protect;
     slide().blocks[0].html = 'Secreto';
