@@ -90,7 +90,7 @@ def main():
                 m = ev(f"""(async()=>{{const R=window.__revela;R.slides.goToSlide({i});R.store.setSelection(null);R.render();await new Promise(x=>setTimeout(x,450));
                   const st=document.getElementById('stage'),k=1280/st.getBoundingClientRect().width;let small=0,spill=0,min=999;
                   for(const b of st.querySelectorAll('.block')){{const box=b.getBoundingClientRect(),w=document.createTreeWalker(b,NodeFilter.SHOW_TEXT),rg=document.createRange();
-                    if(b.querySelector('pre,code,.katex'))continue;for(let n;(n=w.nextNode());){{if(!n.textContent.trim())continue;const fs=parseFloat(getComputedStyle(n.parentElement).fontSize)*k;min=Math.min(min,fs);if(fs<18)small++;
+                    if(b.querySelector('pre,code,.katex'))continue;for(let n;(n=w.nextNode());){{if(!n.textContent.trim())continue;const fs=parseFloat(getComputedStyle(n.parentElement).fontSize);   /* (slide pixels: the stage is scaled as a whole) */min=Math.min(min,fs);if(fs<18)small++;
                       rg.selectNodeContents(n);for(const q of rg.getClientRects())if(q.bottom>box.bottom+3||q.right>box.right+3){{spill++;break}}}}}}
                   const r=st.getBoundingClientRect();return [r.x,r.y,r.width,r.height,small,spill,Math.round(min)]}})()""")
                 small += m[4]; spill += m[5]
