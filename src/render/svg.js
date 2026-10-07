@@ -698,6 +698,15 @@ const ring = (n, r1, r2 = r1, turn = -90) => Array.from({ length: n * (r2 === r1
   return `${(50 + r * Math.cos(a)).toFixed(1)},${(50 + r * Math.sin(a)).toFixed(1)}`; }).join(' ');
 Object.assign(SHAPE_POINTS, { heptagon: ring(7, 48), octagon: ring(8, 48, 48, -112.5), decagon: ring(10, 48),
   star6: ring(6, 48, 27), star8: ring(8, 48, 34), seal: ring(12, 48, 38) });
+// Every shape fills its box, as in PowerPoint: an axis drawn with a small margin (up to 10 of 100) is stretched to the
+// edges — a rectangle 1120 px wide used to show 22 px short on each side, and its handles stood off it. One with a
+// shape of its own in the box (the minus sign, the parallelogram's height) keeps it.
+const fills = pts => [0, 1].map(i => { const a = pts.map(p => p[i]), lo = Math.min(...a), hi = Math.max(...a);
+  return lo <= 10 && hi >= 90 && (lo > 0 || hi < 100) ? v => (v - lo) * 100 / (hi - lo) : v => v; });
+for (const [k, v] of Object.entries(SHAPE_POINTS)) {
+  const pts = v.trim().split(/\s+/).map(p => p.split(',').map(Number)), [fx, fy] = fills(pts);
+  SHAPE_POINTS[k] = pts.map(([x, y]) => `${+fx(x).toFixed(2)},${+fy(y).toFixed(2)}`).join(' ');
+}
 const BTN = 'M12 4H88A8 8 0 0 1 96 12V88A8 8 0 0 1 88 96H12A8 8 0 0 1 4 88V12A8 8 0 0 1 12 4Z';
 // Curved shapes (SVG paths in the 100×100 box; even-odd, so rings have their hole).
 const SHAPE_PATHS = {
@@ -768,14 +777,14 @@ export const shapeThumb = (kind, fill = 'currentColor') => kind === 'freeform'
 // Outline of a closed shape as [[x,y]…] in the 100×100 box, or null (lines).
 export function shapeOutline100(shape) {
   if (SHAPE_POINTS[shape]) return SHAPE_POINTS[shape].split(' ').map(p => p.split(',').map(Number));
-  if (shape === 'ellipse') return Array.from({ length: 72 }, (_, i) => { const a = i / 72 * 2 * Math.PI; return [50 + 48 * Math.cos(a), 50 + 48 * Math.sin(a)]; });
+  if (shape === 'ellipse') return Array.from({ length: 72 }, (_, i) => { const a = i / 72 * 2 * Math.PI; return [50 + 50 * Math.cos(a), 50 + 50 * Math.sin(a)]; });
   if (shape === 'rounded') {
     const r = 12, pts = [], arc = (cx, cy, a0) => { for (let k = 0; k <= 8; k++) { const a = a0 + k / 8 * Math.PI / 2; pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); } };
-    arc(98 - r, 2 + r, -Math.PI / 2); arc(98 - r, 98 - r, 0); arc(2 + r, 98 - r, Math.PI / 2); arc(2 + r, 2 + r, Math.PI);
+    arc(100 - r, r, -Math.PI / 2); arc(100 - r, 100 - r, 0); arc(r, 100 - r, Math.PI / 2); arc(r, r, Math.PI);
     return pts;
   }
   if (['line', 'arrow', 'doublearrow', 'curve', 'custom'].includes(shape) || SHAPE_PATHS[shape]) return null;
-  return [[2, 2], [98, 2], [98, 98], [2, 98]];
+  return [[0, 0], [100, 0], [100, 100], [0, 100]];
 }
 
 // Line styles (PowerPoint's dash types: solid, dash, dot, dashDot): SVG dash patterns
@@ -810,9 +819,9 @@ export function shapeDefs(b) {
 function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t ^= t + Math.imul(t ^ (t >>> 7), 61 | t); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function outlineOf(b) {
   if (SHAPE_POINTS[b.shape]) return SHAPE_POINTS[b.shape].trim().split(/\s+/).map(p => p.split(',').map(Number));
-  if (b.shape === 'ellipse') return Array.from({ length: 28 }, (_, i) => [50 + 48 * Math.cos(i * Math.PI / 14), 50 + 48 * Math.sin(i * Math.PI / 14)]);
+  if (b.shape === 'ellipse') return Array.from({ length: 28 }, (_, i) => [50 + 50 * Math.cos(i * Math.PI / 14), 50 + 50 * Math.sin(i * Math.PI / 14)]);
   if (['line', 'arrow', 'doublearrow', 'curve', 'custom'].includes(b.shape) || SHAPE_PATHS[b.shape]) return null;       // (curves: drawn as they are)
-  return [[2, 2], [98, 2], [98, 98], [2, 98]];
+  return [[0, 0], [100, 0], [100, 100], [0, 100]];
 }
 function sketchPath(pts, rnd, amp, closed = true) {
   // Each side a slightly bowed stroke from near one corner to near the next: the
@@ -847,7 +856,7 @@ export function shapeSVG(b) {
   if (b.shape === 'rounded' && b.w && b.h) {
     const r = Math.min(b.radius ?? Math.min(b.w, b.h) * 0.12, Math.min(b.w, b.h) / 2);
     return `<svg viewBox="0 0 ${b.w} ${b.h}" preserveAspectRatio="none" width="100%" height="100%" style="display:block;overflow:visible">`
-      + `${d.defs}<rect x="1" y="1" width="${Math.max(0, b.w - 2)}" height="${Math.max(0, b.h - 2)}" rx="${r}" ry="${r}" ${paint}/></svg>`;
+      + `${d.defs}<rect x="0" y="0" width="${b.w}" height="${b.h}" rx="${r}" ry="${r}" ${paint}/></svg>`;
   }
   let inner;
   if (SHAPE_POINTS[b.shape]) inner = `<polygon points="${SHAPE_POINTS[b.shape]}" ${paint}/>`;
@@ -855,8 +864,8 @@ export function shapeSVG(b) {
   else if (SHAPE_PATHS[b.shape]) inner = `<path d="${SHAPE_PATHS[b.shape]}" fill-rule="evenodd" ${paint}/>`
     + (SHAPE_SHADES[b.shape] || []).map(([dd, c, o]) => `<path d="${dd}" fill="${c}" fill-opacity="${o}" stroke="${stroke}" stroke-width="${sw}" vector-effect="non-scaling-stroke"/>`).join('');
   else switch (b.shape) {
-    case 'ellipse':  inner = `<ellipse cx="50" cy="50" rx="48" ry="48" ${paint}/>`; break;
-    case 'rounded':  inner = `<rect x="2" y="2" width="96" height="96" rx="12" ry="12" ${paint}/>`; break;
+    case 'ellipse':  inner = `<ellipse cx="50" cy="50" rx="50" ry="50" ${paint}/>`; break;
+    case 'rounded':  inner = `<rect x="0" y="0" width="100" height="100" rx="12" ry="12" ${paint}/>`; break;
     case 'custom':   inner = `<path d="${b.path || ''}" fill-rule="evenodd" ${paint}/>`; break;   // merged shapes
     case 'line':     inner = `<line x1="3" y1="50" x2="97" y2="50" ${strokeOnly}/>`; break;
     case 'curve':    inner = `<path d="M3 82C28 -8 72 -8 97 82" ${strokeOnly}/>`; break;
@@ -865,7 +874,7 @@ export function shapeSVG(b) {
     case 'arrow':    inner = `<defs><marker id="ah-${b.id}" markerWidth="5" markerHeight="5" refX="4" refY="2.5" `
       + `orient="auto"><path d="M0,0 L5,2.5 L0,5 z" fill="${stroke}"/></marker></defs>`
       + `<line x1="3" y1="50" x2="88" y2="50" ${strokeOnly} marker-end="url(#ah-${b.id})"/>`; break;
-    default:         inner = `<rect x="2" y="2" width="96" height="96" ${paint}/>`;  // rectangle
+    default:         inner = `<rect x="0" y="0" width="100" height="100" ${paint}/>`;  // rectangle
   }
   return `<svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" `
     + `style="display:block;overflow:visible">${d.defs}${inner}</svg>`;

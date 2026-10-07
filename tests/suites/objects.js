@@ -36,7 +36,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     reset(); R.blocks.addShape('star'); const b = last(); select(b); await sleep(20);
     assert(D.querySelector(`.block[data-id="${b.id}"] .shape svg polygon`), 'estrella en el lienzo');
     reset(); R.blocks.addShape('hexagon'); const h = last();
-    assert(/<polygon points="25,4 75,4 98,50/.test(R.io.buildHTML()), 'hexágono en el export');
+    assert(/<polygon points="23.96,0 76.04,0 100,50/.test(R.io.buildHTML()), 'hexágono en el export, ocupando su caja');
   });
 
   await test('gráfico de barras: render y export SVG', async () => {
@@ -364,6 +364,17 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.querySelector('#ts-modal .modal-close').click();
   });
 
+  await test('las formas ocupan su caja entera (los tiradores, en su borde), como en PowerPoint', async () => {
+    reset();
+    for (const k of ['rect', 'ellipse', 'rounded', 'triangle', 'diamond', 'hexagon', 'star', 'speech', 'minus']) {
+      R.blocks.addShape(k); const b = last(); R.store.commit(() => Object.assign(b, { x: 80, y: 40, w: 1120, h: 640, strokeWidth: 0 })); await sleep(20);
+      const el = D.querySelector(`.block[data-id="${b.id}"]`), box = el.getBoundingClientRect(), g = el.querySelector('svg :is(rect,ellipse,polygon)').getBoundingClientRect();
+      const gap = [g.left - box.left, g.top - box.top, box.right - g.right, box.bottom - g.bottom].map(v => Math.round(v * 1280 / D.getElementById('stage').getBoundingClientRect().width));
+      if (k === 'minus') assert(gap[1] > 100, 'el signo menos conserva su forma (no ocupa todo el alto)');
+      else eq(gap.join(), '0,0,0,0', k + ': sin margen dentro de su caja');
+    }
+  });
+
   await test('combinar formas: unión, intersección, resta', async () => {
     reset(); const S = R.shapeops;
     R.blocks.addShape('rect'); const a = last(); Object.assign(a, { x: 100, y: 100, w: 200, h: 200, fill: '#ff0000' });
@@ -371,7 +382,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     R.store.setMulti([a.id, c.id]);
     const u = await S.mergeShapes('union', S.selectedShapesInOrder()); await sleep(10);
     assert(u && u.shape === 'custom', 'forma personalizada');
-    eq([u.x, u.y, u.w, u.h].join(','), '104,104,292,192', 'caja de la unión (contornos 2..98)');
+    eq([u.x, u.y, u.w, u.h].join(','), '100,100,300,200', 'caja de la unión: las formas ocupan su caja entera');
     eq(u.fill, '#ff0000', 'toma el aspecto de la primera');
     assert(!slide().blocks.some(b => b.id === a.id || b.id === c.id), 'originales sustituidas');
     assert(D.querySelector(`.block[data-id="${u.id}"] svg path[fill-rule="evenodd"]`), 'dibujada en el lienzo');
@@ -379,10 +390,10 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const a2 = slide().blocks.find(b => b.id === a.id), c2 = slide().blocks.find(b => b.id === c.id);
     assert(a2 && c2, 'deshacer recupera las originales');
     const i = await S.mergeShapes('intersection', [a2, c2]);
-    eq(i.x + i.w, 296, 'intersección acotada al rectángulo');
+    eq(i.x + i.w, 300, 'intersección acotada al rectángulo (su borde, 300)');
     R.store.undo(); await sleep(10);
     const d = await S.mergeShapes('difference', [slide().blocks.find(b => b.id === a.id), slide().blocks.find(b => b.id === c.id)]);
-    eq(d.rings.length, 1, 'resta: un contorno con mordisco'); eq(d.w, 192, 'misma anchura que el rectángulo');
+    eq(d.rings.length, 1, 'resta: un contorno con mordisco'); eq(d.w, 200, 'misma anchura que el rectángulo');
     R.blocks.addShape('rect'); const far = last(); Object.assign(far, { x: 900, y: 500, w: 50, h: 50 });
     eq(await S.mergeShapes('intersection', [d, far]), null, 'sin solape → nada');
     const blob = await R.pptx.buildPptxBlob(); assert(blob.size > 1000, 'pptx con geometría personalizada');
