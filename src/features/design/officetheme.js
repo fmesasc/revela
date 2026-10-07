@@ -41,34 +41,39 @@ function matchLayout(s, oldLay, lays) {
 // Another presentation's theme (`src`: a deck as the importers return it, or
 // { officeTheme } alone, from a .thmx) on this deck, as one change.
 export function applyThemeFrom(src, deck = state.deck) {
+  if (!cleanTheme(src?.officeTheme)) return false;
+  commit(() => themeFromInto(src, deck));
+  return true;
+}
+// The same, inside a change already under way (features/ai/masterai.js: a template and the AI's changes on it, one
+// undo step). → whether it had a theme.
+export function themeFromInto(src, deck = state.deck) {
   const theme = cleanTheme(src?.officeTheme); if (!theme) return false;
-  commit(() => {
-    // Which slides keep the usual background of their layout (they take the new one).
-    const before = new Map(deck.slides.map(s => {
-      const lay = layoutOf(s, deck), usual = (lay && layoutBackground(lay, deck)) || commonBackground(masterOf(s, deck), deck);
-      return [s, { lay: lay && clone(lay), follows: !s.background || s.background === usual }];
-    }));
-    if (theme.colors) swapPalette('custom', deck, theme.colors);
-    if (theme.fonts) swapThemeFonts(theme.fonts, deck);
-    if (src.master && src.layouts?.length) {
-      deck.master = { ...clone(src.master), id: 'master' };
-      if (src.masters?.length) deck.masters = clone(src.masters); else delete deck.masters;
-      deck.layouts = clone(src.layouts);
-      const lays = ensureLayouts(deck);
-      for (const s of deck.slides) {
-        const { lay: old, follows } = before.get(s);
-        const hasPh = s.blocks.some(b => b.ph);
-        if (old || hasPh) relayoutSlide(s, matchLayout(s, old, lays), deck);
-        if (!follows) continue;
-        // The new layout's background, else the one its slides had in the other file.
-        const nl = layoutOf(s, deck), mine = src.slides?.find(x => x.layoutId === nl?.id)?.background;
-        s.background = (nl && layoutBackground(nl, deck)) || mine || src.master.background || theme.colors?.bg || s.background;
-      }
-    } else if (theme.colors) {
-      for (const s of deck.slides) if (before.get(s).follows && !s.background) s.background = theme.colors.bg;
+  // Which slides keep the usual background of their layout (they take the new one).
+  const before = new Map(deck.slides.map(s => {
+    const lay = layoutOf(s, deck), usual = (lay && layoutBackground(lay, deck)) || commonBackground(masterOf(s, deck), deck);
+    return [s, { lay: lay && clone(lay), follows: !s.background || s.background === usual }];
+  }));
+  if (theme.colors) swapPalette('custom', deck, theme.colors);
+  if (theme.fonts) swapThemeFonts(theme.fonts, deck);
+  if (src.master && src.layouts?.length) {
+    deck.master = { ...clone(src.master), id: 'master' };
+    if (src.masters?.length) deck.masters = clone(src.masters); else delete deck.masters;
+    deck.layouts = clone(src.layouts);
+    const lays = ensureLayouts(deck);
+    for (const s of deck.slides) {
+      const { lay: old, follows } = before.get(s);
+      const hasPh = s.blocks.some(b => b.ph);
+      if (old || hasPh) relayoutSlide(s, matchLayout(s, old, lays), deck);
+      if (!follows) continue;
+      // The new layout's background, else the one its slides had in the other file.
+      const nl = layoutOf(s, deck), mine = src.slides?.find(x => x.layoutId === nl?.id)?.background;
+      s.background = (nl && layoutBackground(nl, deck)) || mine || src.master.background || theme.colors?.bg || s.background;
     }
-    deck.officeTheme = theme;
-  });
+  } else if (theme.colors) {
+    for (const s of deck.slides) if (before.get(s).follows && !s.background) s.background = theme.colors.bg;
+  }
+  deck.officeTheme = theme;
   return true;
 }
 

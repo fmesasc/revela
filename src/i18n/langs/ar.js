@@ -3556,4 +3556,9 @@ export default {
   "Y los colores del tema": "وألوان السمة",
   "Diseñar plantilla<br>con IA": "تصميم القالب<br>بالذكاء الاصطناعي",
   "Diseñar<br>plantilla": "تصميم<br>القالب",
+  "Partir de una plantilla (.pptx, .potx, .odp)…": "البدء من قالب (‎.pptx، ‎.potx، ‎.odp)…",
+  "No se pudo leer la plantilla:": "تعذّرت قراءة القالب:",
+  "Pide los cambios que quieras sobre ella, o aplícala tal cual.": "اطلب ما تريد من تغييرات عليه، أو طبّقه كما هو.",
+  "«Más moderna», «con mis colores», «el título centrado»…": "«أكثر حداثة»، «بألواني»، «العنوان في المنتصف»…",
+  "La plantilla tal cual.": "القالب كما هو.",
 };

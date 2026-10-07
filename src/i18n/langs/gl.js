@@ -3556,4 +3556,9 @@ export default {
   "Y los colores del tema": "E as cores do tema",
   "Diseñar plantilla<br>con IA": "Modelo<br>con IA",
   "Diseñar<br>plantilla": "Deseñar<br>modelo",
+  "Partir de una plantilla (.pptx, .potx, .odp)…": "Partir dun modelo (.pptx, .potx, .odp)…",
+  "No se pudo leer la plantilla:": "Non se puido ler o modelo:",
+  "Pide los cambios que quieras sobre ella, o aplícala tal cual.": "Pide os cambios que queiras sobre el, ou aplícao tal cal.",
+  "«Más moderna», «con mis colores», «el título centrado»…": "«Máis moderna», «coas miñas cores», «o título centrado»…",
+  "La plantilla tal cual.": "O modelo tal cal.",
 };

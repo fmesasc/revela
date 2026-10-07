@@ -3556,4 +3556,9 @@ export default {
   "Y los colores del tema": "Eta gaiaren koloreak",
   "Diseñar plantilla<br>con IA": "Txantiloia<br>IArekin",
   "Diseñar<br>plantilla": "Diseinatu<br>txantiloia",
+  "Partir de una plantilla (.pptx, .potx, .odp)…": "Txantiloi batetik abiatu (.pptx, .potx, .odp)…",
+  "No se pudo leer la plantilla:": "Ezin izan da txantiloia irakurri:",
+  "Pide los cambios que quieras sobre ella, o aplícala tal cual.": "Eskatu nahi dituzun aldaketak, edo aplikatu dagoen bezala.",
+  "«Más moderna», «con mis colores», «el título centrado»…": "«Modernoagoa», «nire koloreekin», «izenburua erdian»…",
+  "La plantilla tal cual.": "Txantiloia dagoen bezala.",
 };

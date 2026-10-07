@@ -871,6 +871,41 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.fetch = real; R.ai.disconnectAi(); D.getElementById('mai-modal')?.remove(); }
   });
 
+  await test('diseñar con IA partiendo de una plantilla de PowerPoint: tal cual, o con los cambios pedidos, en un solo paso', async () => {
+    reset();
+    const W = frame.contentWindow, real = W.fetch, calls = [];
+    // The template: «Faceta» (.potx: its theme, its 11 layouts, titles centred).
+    const file = new W.File([await (await fetch(new URL('fixtures/themes/faceta.potx', location.href))).blob()], 'Faceta.potx');
+    R.slides.addSlide('titleContent');
+    R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    try {
+      const M = await W.eval("import('/src/ui/dialogs/masterai.js')"), dlg = M.openMasterDesign(), m = D.getElementById('mai-modal');
+      assert(m.querySelector('.mai-tpl'), 'el botón para partir de una plantilla');
+      assert(await dlg.useTemplate(file), 'se lee la plantilla');
+      eq(m.querySelectorAll('.mai-card').length, 1, 'aparece tal cual, para aplicarla así');
+      assert(/Faceta/.test(m.querySelector('.mai-tpl-name').textContent) && m.querySelectorAll('.mai-card .mai-thumb').length === 2, 'con su nombre y dibujada');
+      // Changes asked on it: the title to the left, red as the main colour, a band below; the rest, the template's.
+      W.fetch = agentMock(W, [{ designs: [{ name: 'Faceta roja', why: 'Con el rojo y el título a la izquierda', title: { align: 'left' }, theme: { accents: ['#e63946'] },
+        decor: [{ shape: 'rect', x: 0, y: 700, w: 1280, h: 20, color: 'accent1' }] }] }], calls);
+      m.querySelector('.mai-ask').value = 'el título a la izquierda, el rojo como color principal y una franja abajo'; await dlg.ask();
+      eq(m.querySelectorAll('.mai-card').length, 2, 'la plantilla tal cual y la propuesta');
+      assert(/START FROM THE TEMPLATE/.test(calls[0].messages[0].content) && /"layouts":\["Portada"/.test(calls[0].messages[1].content), 'a la IA se le da la plantilla y se le pide partir de ella');
+      const json0 = JSON.stringify({ ...R.state.deck, savedAt: 0 });
+      m.querySelector('[data-apply="1"]').click(); await sleep(30);
+      const dk = R.state.deck;
+      eq(dk.layouts.length, 11, 'los diseños de la plantilla'); eq(dk.officeTheme?.name, 'Faceta', 'su tema');
+      assert(dk.slides[1].layoutId?.startsWith('pptx-'), 'las diapositivas, con el suyo');
+      eq(dk.master.styles.title.align, 'left', 'el cambio pedido: el título a la izquierda');
+      eq(dk.customPalette?.accents?.[0], '#e63946', 'y el rojo');
+      eq(dk.master.blocks.filter(b => b.aiDecor).map(b => b.fill).join(), '#e63946', 'y la franja');
+      R.store.undo(); eq(JSON.stringify({ ...R.state.deck, savedAt: 0 }), json0, 'se deshace de una vez');
+      // As it is: the template on the presentation, nothing else.
+      dlg.close(); const d2 = M.openMasterDesign(); await d2.useTemplate(file);
+      D.querySelector('#mai-modal [data-apply="0"]').click(); await sleep(30);
+      eq(R.state.deck.layouts.length + '|' + R.state.deck.master.styles.title.align, '11|center', 'tal cual: la plantilla, con su título centrado');
+    } finally { W.fetch = real; R.ai.disconnectAi(); D.getElementById('mai-modal')?.remove(); }
+  });
+
   await test('adjuntos para la IA: fotos y documentos leídos, enviados con la petición y una foto puesta en una diapositiva', async () => {
     reset();
     const W = frame.contentWindow, real = W.fetch, calls = [], AG = R.aiAgent, P = await W.eval("import('/src/ui/dialogs/assistant.js')");

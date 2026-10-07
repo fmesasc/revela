@@ -71,6 +71,11 @@ export async function useThemeOf(file) {
     return true;
   } catch (e) { alertDialog(t('No se pudo leer el tema: ') + (e.message || e)); return false; }
 }
+// A template to start from (ui/dialogs/masterai.js): the file read as a presentation, nothing applied. Throws.
+export async function readTemplate(file) {
+  if (isKeynote(file)) { keynoteHelp(); throw new Error('STOPPED'); }
+  return sanitizeDeck(isODF(file) ? await importODP(file) : await importPPTX(file));
+}
 // The presentation's theme as an Office theme file, for PowerPoint or another presentation.
 export async function saveTheme() {
   try { download(await buildThmx(state.deck), slug(state.deck.officeTheme?.name || state.deck.name || 'tema') + '.thmx'); return true; }

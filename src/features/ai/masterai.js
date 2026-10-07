@@ -15,6 +15,7 @@ import { withAttachments } from './attach.js';
 import { themeOf, cleanTheme, contrast, themeChanges } from '../design/theme.js';
 import { swapPalette, swapFonts } from '../design/palettes.js';
 import { ensureMaster, ensureLayouts, masterStyles } from '../document/master.js';
+import { themeFromInto, cleanTheme as officeTheme } from '../design/officetheme.js';
 
 const HEX6 = /^#[0-9a-f]{6}$/i;
 export const DECOR_SHAPES = ['rect', 'rounded', 'ellipse', 'triangle', 'rtriangle', 'diamond', 'hexagon', 'donut', 'frame', 'line'];
@@ -65,38 +66,64 @@ export function cleanShape(x, th) {
 }
 
 // A design from the model, checked: → { name, why, theme, background, title, decor, cover } or null.
-export function cleanDesign(d, base = themeOf()) {
+// keep (a template to start from, its background `bg`): what the design leaves out stays as the template has it
+// (null), instead of the usual defaults.
+export function cleanDesign(d, base = themeOf(), { keep = false, bg = null } = {}) {
   if (!d || typeof d !== 'object') return null;
   const th = cleanTheme(d.theme && typeof d.theme === 'object' ? d.theme : d, base); if (!th) return null;
-  const background = cleanBackground(d.background, th);
+  const background = keep && !(d.background && typeof d.background === 'object') ? null : cleanBackground(d.background, th);
   // (Text that can't be read on its background: black or white, whichever reads better.)
-  const under = bgColour(background); if (contrast(th.fg, under) < 4.5) th.fg = contrast('#111111', under) >= contrast('#ffffff', under) ? '#111111' : '#ffffff';
+  const under = bgColour(background || bg || th.bg); if (contrast(th.fg, under) < 4.5) th.fg = contrast('#111111', under) >= contrast('#ffffff', under) ? '#111111' : '#ffffff';
   const shapes = list => (Array.isArray(list) ? list : []).slice(0, MAX_DECOR).map(x => cleanShape(x, th)).filter(Boolean);
-  const t = d.title && typeof d.title === 'object' ? d.title : {}, tc = colourOf(t.color, th);
-  const cover = d.cover && typeof d.cover === 'object' ? { background: d.cover.background ? cleanBackground(d.cover.background, th) : null, decor: shapes(d.cover.decor) } : null;
+  const t = d.title && typeof d.title === 'object' ? d.title : null, tc = colourOf(t?.color, th);
+  const cover = d.cover && typeof d.cover === 'object' ? { background: d.cover.background ? cleanBackground(d.cover.background, th) : null,
+    decor: keep && !Array.isArray(d.cover.decor) ? null : shapes(d.cover.decor) } : null;
   // (A cover with a background of its own: its texts in a colour that reads on it — the title's if it does.)
   if (cover?.background) {
     const cb = bgColour(cover.background), readable = c => [c, '#ffffff', '#111111'].filter(Boolean).sort((a, b) => contrast(b, cb) - contrast(a, cb))[0];
     cover.fg = contrast(th.fg, cb) >= 4.5 ? th.fg : readable(null);
     cover.title = tc && contrast(tc, cb) >= 3 ? tc : cover.fg;
   }
-  return { name: String(d.name || th.name || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 60), why: String(d.why || '').slice(0, 300),
-    theme: th, background, title: { align: t.align === 'center' ? 'center' : 'left', color: tc && contrast(tc, under) >= 3 ? tc : null }, decor: shapes(d.decor), cover: cover && (cover.background || cover.decor.length) ? cover : null };
+  return { name: String(d.name || th.name || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 60), why: String(d.why || '').slice(0, 300), theme: th, background,
+    title: keep && !t ? null : { align: t?.align === 'center' ? 'center' : 'left', color: tc && contrast(tc, under) >= 3 ? tc : null },
+    decor: keep && !Array.isArray(d.decor) ? null : shapes(d.decor), cover: cover && (cover.background || cover.decor?.length || (keep && cover.decor)) ? cover : null };
+}
+
+// A template (a presentation read from a .pptx, .potx, .odp or .thmx: ui/shell/openfile.js readTemplate) as a
+// design that changes nothing on it: «tal cual».
+const docSize = x => x.size || { w: 1280, h: 720 };
+export function templateTheme(src) {
+  const th = themeOf(src), c = officeTheme(src.officeTheme)?.colors;
+  return c ? { ...th, bg: c.bg, fg: c.fg, accents: c.accents.slice(0, 6) } : th;
+}
+export const templateBackground = src => src.master?.background || src.layouts?.find(l => l.background)?.background || src.slides?.[0]?.background || templateTheme(src).bg;
+export const asIs = (src, name = '') => ({ name: name || templateTheme(src).name || 'Plantilla', why: '', theme: templateTheme(src), background: null, title: null, decor: null, cover: null, base: src });
+// What the model is told of the template: its theme, background, and the shapes and pictures of its master (1280×720).
+function templateSummary(src) {
+  const k = { x: 1280 / docSize(src).w, y: 720 / docSize(src).h }, bg = String(templateBackground(src));
+  const objs = (src.master?.blocks || []).filter(b => !b.ph).slice(0, 12).map(b => ({ type: b.type === 'shape' ? b.shape || 'rect' : b.type, x: Math.round(b.x * k.x), y: Math.round(b.y * k.y), w: Math.round(b.w * k.x), h: Math.round(b.h * k.y), ...(b.fill && { color: b.fill }) }));
+  return { theme: templateTheme(src), background: /^data:|url\(/.test(bg) ? 'a picture' : bg, decorations: objs, layouts: (src.layouts || []).map(l => l.name).slice(0, 12) };
 }
 
 // → [design, design, design] ; Error 'BAD_ANSWER' if none came right.
-export async function proposeMasterDesigns(description, { deck = state.deck, signal = null, onUsage = null, attachments = [] } = {}) {
-  const now = themeOf(deck);
+// base: a template to start from — the designs are changes on it, and keep whatever the request doesn't touch.
+export async function proposeMasterDesigns(description, { deck = state.deck, signal = null, onUsage = null, attachments = [], base = null } = {}) {
+  const now = base ? templateTheme(base) : themeOf(deck);
   const titles = deck.slides.slice(0, 8).map(s => plain(s.blocks.find(b => b.ph === 'title' && b.type === 'text')?.html || '').slice(0, 60)).filter(Boolean);
   const msgs = [
     { role: 'system', content: `You are a presentation template designer. Propose 3 CLEARLY DIFFERENT, professional designs for the presentation's template (its master), following the request. Answer ONE JSON object: {"designs":[design, design, design]}.
 ${MASTER_DOC()}
 Each design's "name" and "why" in ${lang()}. Good design: restraint, two or three accents at most in the decoration, strong contrast for the text, consistent shapes (all straight, or all round).
-Attached pictures (a logo, a photo, a brand's material): take the colours from them — their real colours, the logo's first — unless the request says otherwise.` },
-    { role: 'user', content: withAttachments(`Current theme: ${JSON.stringify(now)}\nThe presentation's titles: ${JSON.stringify(titles)}\n\nRequest: ${String(description || (attachments.length ? 'A template from the attached pictures.' : 'Three good templates for this presentation.')).slice(0, 800)}`, attachments) }];
+Attached pictures (a logo, a photo, a brand's material): take the colours from them — their real colours, the logo's first — unless the request says otherwise.${base ? `
+START FROM THE TEMPLATE given below (the person's own, from PowerPoint): the 3 designs are variations of it that do what the request asks and keep the rest.
+Leave out a part ("background", "title", "decor", "cover") to keep the template's as it is; give "decor" only to replace the template's shapes (its pictures, like a logo, always stay).
+The "theme" is the template's unless the request changes colours or fonts.` : ''}` },
+    { role: 'user', content: withAttachments(`${base ? `The template: ${JSON.stringify(templateSummary(base))}\n` : `Current theme: ${JSON.stringify(now)}`}\nThe presentation's titles: ${JSON.stringify(titles)}\n\nRequest: ${String(description || (attachments.length ? 'A template from the attached pictures.' : 'Three good templates for this presentation.')).slice(0, 800)}`, attachments) }];
   const out = await chat(msgs, { json: true, maxTokens: 4000, signal, feature: 'theme', onUsage });
   let r; try { r = parseJSON(out); } catch { r = null; }
-  const list = (Array.isArray(r?.designs) ? r.designs : Array.isArray(r) ? r : r ? [r] : []).map(d => cleanDesign(d, now)).filter(Boolean).slice(0, 3);
+  const opts = base ? { keep: true, bg: bgColour(templateBackground(base)) } : {};
+  const list = (Array.isArray(r?.designs) ? r.designs : Array.isArray(r) ? r : r ? [r] : []).map(d => cleanDesign(d, now, opts)).filter(Boolean).slice(0, 3)
+    .map(d => (base ? { ...d, base } : d));
   if (!list.length) throw new Error('BAD_ANSWER');
   return list;
 }
@@ -104,39 +131,46 @@ Attached pictures (a logo, a photo, a brand's material): take the colours from t
 // The layouts that are covers: title and subtitle, nothing else (Portada, Encabezado de sección).
 export const isCover = l => l.id === 'title' || l.id === 'section' || (l.blocks.some(b => b.ph === 'title') && l.blocks.some(b => b.ph === 'subtitle') && !l.blocks.some(b => b.ph && !['title', 'subtitle'].includes(b.ph)));
 const scaled = (b, k) => ({ ...b, id: uid(), x: Math.round(b.x * k.x), y: Math.round(b.y * k.y), w: Math.max(1, Math.round(b.w * k.x)), h: Math.max(1, Math.round(b.h * k.y)) });
-const isOurs = b => b.aiDecor || (b.decorative && b.type === 'shape');
+// The decorations a design replaces: the earlier decorative shapes (on a template, all its shapes: its pictures — a
+// logo — and its placeholders stay).
+const isOurs = (b, base) => b.aiDecor || (b.type === 'shape' && !b.ph && (base || b.decorative));
 
-// Apply it to the presentation, in one undo step: the theme everywhere, the background (where slides had the usual
-// one), the titles' alignment and colour in the master's styles, and the decorations — the earlier decorative shapes
-// of the master and the covers go, pictures (a logo) and the rest stay.
+// Apply it to the presentation, in one undo step: the template first (if it starts from one: its colours, fonts,
+// master, layouts and backgrounds, features/design/officetheme.js), then the theme, the background (where slides had
+// the usual one), the titles' alignment and colour in the master's styles, and the decorations. What the design
+// leaves out (null) stays as it was.
 export function applyMasterDesign(d, deck = state.deck) {
-  const k = { x: deck.size.w / 1280, y: deck.size.h / 720 };
+  const k = { x: deck.size.w / 1280, y: deck.size.h / 720 }, base = !!d.base;
   commit(() => {
+    if (d.base) themeFromInto(d.base, deck);
     const m = ensureMaster(deck), lays = ensureLayouts(deck), usual = new Set([m.background, themeOf(deck).bg, d.theme.bg].filter(Boolean));
     // (As features/design/theme.js applyTheme, inside this same step.)
     const ch = themeChanges(d.theme, deck);
     if (ch.colours) swapPalette('custom', deck, { name: d.theme.name || d.name || 'Personalizada', bg: d.theme.bg, fg: d.theme.fg, accents: d.theme.accents });
     if (ch.fonts) swapFonts(d.theme.heading, d.theme.body, deck);
     // (The slides and layouts that showed the usual background take the new one; ones with their own keep it.)
-    for (const s of deck.slides) if (!s.background || usual.has(s.background)) s.background = d.background;
-    m.background = d.background;
+    if (d.background) {
+      for (const s of deck.slides) if (!s.background || usual.has(s.background)) s.background = d.background;
+      m.background = d.background;
+    }
     for (const l of lays) {
-      if (l.background && usual.has(l.background)) l.background = null;
-      if (!isCover(l)) continue;
-      l.blocks = l.blocks.filter(b => !isOurs(b));
+      if (d.background && l.background && usual.has(l.background)) l.background = null;
+      if (!isCover(l) || !(d.cover || (!base && d.decor))) continue;
+      if (d.cover?.decor || !base) l.blocks = l.blocks.filter(b => !isOurs(b, base));
       if (d.cover) {
-        l.hideMaster = d.cover.decor.length > 0 || undefined; if (!l.hideMaster) delete l.hideMaster;
-        l.blocks.unshift(...d.cover.decor.map(b => scaled(b, k)));
+        if (d.cover.decor) { if (d.cover.decor.length) l.hideMaster = true; else delete l.hideMaster; l.blocks.unshift(...d.cover.decor.map(b => scaled(b, k))); }
         if (d.cover.background) {
           l.background = d.cover.background; for (const s of deck.slides) if (s.layoutId === l.id) s.background = d.cover.background;
           for (const b of l.blocks) if (b.ph === 'title') b.color = d.cover.title; else if (b.ph === 'subtitle') b.color = d.cover.fg;
         }
       } else delete l.hideMaster;
     }
-    m.blocks = [...d.decor.map(b => scaled(b, k)), ...m.blocks.filter(b => !isOurs(b))];
+    if (d.decor) m.blocks = [...d.decor.map(b => scaled(b, k)), ...m.blocks.filter(b => !isOurs(b, base))];
     // Titles: alignment and colour in the master's styles (the title placeholders follow them; one with its own
     // alignment — the section's, centred — keeps it).
-    const ts = masterStyles(deck, m).title; ts.align = d.title.align;
-    if (d.title.color) ts.color = d.title.color; else delete ts.color;
+    if (d.title) {
+      const ts = masterStyles(deck, m).title; ts.align = d.title.align;
+      if (d.title.color) ts.color = d.title.color; else delete ts.color;
+    }
   });
 }

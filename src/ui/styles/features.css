@@ -1047,3 +1047,5 @@ body.no-copy img{-webkit-user-drag:none}
 .mai-thumb{overflow:hidden;border-radius:6px;box-shadow:0 1px 4px #0003;flex:0 0 auto}
 .mai-info{display:flex;flex-direction:column;gap:4px;flex:1;min-width:180px}
 .mai-info small{opacity:.7}.mai-info .fr-do{align-self:flex-start;margin-top:4px}
+.mai-base{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0}
+.mai-tpl-name{flex:1;min-width:220px}.mai-tpl-name .mini2{margin-inline-start:6px}

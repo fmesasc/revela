@@ -3556,4 +3556,9 @@ export default {
   "Y los colores del tema": "En de kleuren van het thema",
   "Diseñar plantilla<br>con IA": "Sjabloon<br>met AI",
   "Diseñar<br>plantilla": "Sjabloon<br>ontwerpen",
+  "Partir de una plantilla (.pptx, .potx, .odp)…": "Uitgaan van een sjabloon (.pptx, .potx, .odp)…",
+  "No se pudo leer la plantilla:": "Kan het sjabloon niet lezen:",
+  "Pide los cambios que quieras sobre ella, o aplícala tal cual.": "Vraag de wijzigingen die je wilt, of pas het toe zoals het is.",
+  "«Más moderna», «con mis colores», «el título centrado»…": "„Moderner”, „met mijn kleuren”, „de titel gecentreerd”…",
+  "La plantilla tal cual.": "Het sjabloon zoals het is.",
 };
