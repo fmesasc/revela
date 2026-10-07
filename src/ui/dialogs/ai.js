@@ -14,6 +14,10 @@ import { alertDialog, confirmDialog, promptDialog } from './dialog.js';
 import { t } from '../../i18n/index.js';
 import { esc } from '../../core/text.js';
 import { askAssistant } from './assistant.js';
+// The kinds of slide the outline may choose (features/ai/specs.js KINDS), to see and change before the slides are made.
+const OUTLINE_KINDS = [['', 'Automático'], ['title', 'Portada'], ['section', 'Sección'], ['bullets', 'Lista'], ['code', 'Código'], ['steps', 'Pasos'], ['features', 'Características'],
+  ['comparison', 'Comparación'], ['two_columns', 'Dos columnas'], ['key_idea', 'Idea clave'], ['timeline', 'Línea de tiempo'], ['stats', 'Cifras'], ['chart', 'Gráfico'],
+  ['table', 'Tabla'], ['quote', 'Cita'], ['math', 'Ecuación'], ['image', 'Imagen'], ['agenda', 'Agenda'], ['closing', 'Cierre']];
 
 // needed: opened because something asked for the AI (it says so first).
 export function openAiSettings({ needed = false } = {}) {
@@ -175,6 +179,7 @@ export function openCreateDeck() {
     if (!outline) return;
     q('.ad-ol').innerHTML = outline.slides.map((x, i) => `<li data-i="${i}" style="margin:6px 0"><div style="display:flex;gap:4px;align-items:center">
       <input type="text" class="ad-ol-t" value="${esc(x.title)}" aria-label="${t('Título')}" style="flex:1;font-weight:600">
+      <select class="ad-ol-k" aria-label="${t('Tipo de diapositiva')}" title="${t('Tipo de diapositiva')}" style="max-width:9.5em">${OUTLINE_KINDS.map(([k, l]) => `<option value="${k}"${(x.kind || '') === k ? ' selected' : ''}>${esc(t(l))}</option>`).join('')}</select>
       <button type="button" class="mini2" data-mv="-1" title="${t('Subir')}"${i ? '' : ' disabled'}><i class="ms">arrow_upward</i></button>
       <button type="button" class="mini2" data-mv="1" title="${t('Bajar')}"${i < outline.slides.length - 1 ? '' : ' disabled'}><i class="ms">arrow_downward</i></button>
       <button type="button" class="mini2" data-rm title="${t('Quitar')}"><i class="ms">close</i></button></div>
@@ -183,7 +188,8 @@ export function openCreateDeck() {
     q('.ad-go').hidden = true;
   };
   const readOutline = () => { if (!outline) return;
-    q('.ad-ol').querySelectorAll('li').forEach((li, i) => { outline.slides[i] = { title: li.querySelector('.ad-ol-t').value.trim(), points: li.querySelector('.ad-ol-p').value.split('\n').map(x => x.trim()).filter(Boolean) }; });
+    q('.ad-ol').querySelectorAll('li').forEach((li, i) => { const kind = li.querySelector('.ad-ol-k').value;
+      outline.slides[i] = { title: li.querySelector('.ad-ol-t').value.trim(), ...(kind && { kind }), points: li.querySelector('.ad-ol-p').value.split('\n').map(x => x.trim()).filter(Boolean) }; });
     outline.slides = outline.slides.filter(x => x.title); };
   q('.ad-ol').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return; readOutline();
@@ -240,7 +246,7 @@ export function openCreateDeck() {
       await run(async () => {
         const r = await researched(opts); if (r) opts.research = r;
         const specs = await deck.createDeck(opts);
-        if (r?.sources.length) specs.push(deck.sourcesSpec(r.sources, t('Fuentes')));
+        if (r?.sources.length) specs.push(deck.sourcesSpec(r.sources, t('Fuentes consultadas')));   // (not «Fuentes»: in other languages, the fonts)
         // (A new one starts from a design with its layouts — the one chosen, or the AI's for the content —: its
         // slides are composed like the templates', not plain lists on an empty background.)
         if (q('.ad-new').checked) {

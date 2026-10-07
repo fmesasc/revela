@@ -3584,5 +3584,13 @@ export const ROWS = [
   ['«Más moderna», «con mis colores», «el título centrado»…', '«More modern», «with my colours», «the title centred»…', '« Plus moderne », « avec mes couleurs », « le titre centré »…', '„Moderner“, „mit meinen Farben“, „Titel zentriert“…', '«Più moderno», «con i miei colori», «il titolo centrato»…', '«Mais moderno», «com as minhas cores», «o título centrado»…', '«Més moderna», «amb els meus colors», «el títol centrat»…'],
   ['La plantilla tal cual.', 'The template as it is.', 'Le modèle tel quel.', 'Die Vorlage, wie sie ist.', 'Il modello così com\'è.', 'O modelo tal como está.', 'La plantilla tal qual.'],
   ['Abriendo «{n}»…', 'Opening «{n}»…', 'Ouverture de « {n} »…', '„{n}“ wird geöffnet…', 'Apertura di «{n}»…', 'A abrir «{n}»…', 'Obrint «{n}»…'],
+  ['Pasos', 'Steps', 'Étapes', 'Schritte', 'Passaggi', 'Passos', 'Passos'],
+  ['Características', 'Features', 'Caractéristiques', 'Merkmale', 'Caratteristiche', 'Características', 'Característiques'],
+  ['Dos columnas', 'Two columns', 'Deux colonnes', 'Zwei Spalten', 'Due colonne', 'Duas colunas', 'Dues columnes'],
+  ['Idea clave', 'Key idea', 'Idée clé', 'Kernidee', 'Idea chiave', 'Ideia-chave', 'Idea clau'],
+  ['Línea de tiempo', 'Timeline', 'Chronologie', 'Zeitleiste', 'Linea del tempo', 'Linha do tempo', 'Línia de temps'],
+  ['Cierre', 'Closing', 'Clôture', 'Abschluss', 'Chiusura', 'Encerramento', 'Tancament'],
+  ['Fuentes consultadas', 'Sources', 'Sources consultées', 'Quellen', 'Fonti consultate', 'Fontes consultadas', 'Fonts consultades'],
+  ['Tipo de diapositiva', 'Slide type', 'Type de diapositive', 'Folientyp', 'Tipo di diapositiva', 'Tipo de diapositivo', 'Tipus de diapositiva'],
 ];
 // Additional languages (partial; anything missing falls back to Spanish).

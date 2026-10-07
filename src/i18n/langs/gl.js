@@ -3562,4 +3562,12 @@ export default {
   "«Más moderna», «con mis colores», «el título centrado»…": "«Máis moderna», «coas miñas cores», «o título centrado»…",
   "La plantilla tal cual.": "O modelo tal cal.",
   "Abriendo «{n}»…": "Abrindo «{n}»…",
+  "Pasos": "Pasos",
+  "Características": "Características",
+  "Dos columnas": "Dúas columnas",
+  "Idea clave": "Idea clave",
+  "Línea de tiempo": "Liña do tempo",
+  "Cierre": "Peche",
+  "Fuentes consultadas": "Fontes consultadas",
+  "Tipo de diapositiva": "Tipo de diapositiva",
 };

@@ -347,12 +347,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   });
 
   await test('IA avanzada: presentación completa, mejorar, agenda, preguntas y asistente', async () => {
-    reset(); const W = frame.contentWindow, A = R.aiDeck, realFetch = W.fetch, calls = []; let answer = {};
+    reset(); const W = frame.contentWindow, A = R.aiDeck, realFetch = W.fetch, calls = []; let answer = {}, seq = null;
     R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
     W.fetch = async (url, opts) => {
       const body = JSON.parse(opts.body); calls.push({ url, body });
       if (url.endsWith('/images')) return new W.Response(JSON.stringify({ data: [{ b64_json: 'R0lGODlhAQABAAAAACw=', media_type: 'image/gif' }] }));
-      return new W.Response(JSON.stringify({ choices: [{ message: { content: '```json\n' + JSON.stringify(answer) + '\n```' } }] }));
+      return new W.Response(JSON.stringify({ choices: [{ message: { content: '```json\n' + JSON.stringify(seq?.length ? seq.shift() : answer) + '\n```' } }] }));
     };
     try {
       const specs = [
@@ -399,6 +399,24 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       answer = { title: 'Energía solar', slides: [{ kind: 'title', title: 'Portada', notes: 'n' }, { kind: 'closing', title: 'Gracias', notes: 'n' }] }; calls.length = 0;
       await A.createDeck({ topic: 'Energía solar', outline: [{ title: 'Portada', points: [] }, { title: 'Gracias', points: ['Contacto'] }] });
       assert(/Follow THIS outline[\s\S]*exactly 2 slides[\s\S]*2\. Gracias\n   - Contacto/.test(calls[0].body.messages[1].content), 'las diapositivas siguen el esquema revisado');
+      // The outline knows what a slide can be: each item with its kind (code for a programming language), and the deck
+      // develops its points into that kind — not every slide a list of the points copied.
+      answer = { title: 'Swift', slides: [{ title: 'Swift', kind: 'title' }, { title: 'Variables y constantes', kind: 'code', points: ['let y var en Swift'] }, { title: 'X', kind: 'nada' }] }; calls.length = 0;
+      const ol2 = await A.createOutline({ topic: 'Lenguaje de programación Swift', count: 3 });
+      eq(ol2.slides.map(x => x.kind || '-').join(), 'title,code,-', 'esquema: el tipo de cada diapositiva (uno que no existe, fuera)');
+      const sys = calls[0].body.messages[0].content;
+      assert(/"kind"/.test(sys) && /code, math, closing/.test(sys) && /REAL CODE on "code" slides/.test(sys), 'al esquema se le explica qué puede tener cada diapositiva');
+      eq(calls[0].body.model, 'google/gemini-2.5-flash', 'con un modelo capaz, no el más barato');
+      answer = { title: 'Swift', slides: [{ kind: 'code', title: 'Variables y constantes', code: { language: 'swift', code: 'let pi = 3.14\nvar n = 0' }, notes: 'n' }] }; calls.length = 0;
+      const sp2 = await A.createDeck({ topic: 'Swift', outline: ol2.slides.slice(1, 2) });
+      assert(/1\. \[code\] Variables y constantes/.test(calls[0].body.messages[1].content) && /DEVELOPING its points/.test(calls[0].body.messages[1].content), 'la presentación: el tipo de cada una y desarrollar sus puntos');
+      assert(/"swift"/.test(calls[0].body.messages[0].content), 'Swift entre los lenguajes del código');
+      eq(sp2[0].code.language, 'swift', 'código en Swift (con sus colores)');
+      // Notes asked afterwards, matched by title: a model that skips one doesn't move the rest onto the next slides.
+      seq = [{ title: 'T', slides: [{ kind: 'key_idea', title: 'Uno', statement: 'a' }, { kind: 'key_idea', title: 'Dos', statement: 'b' }, { kind: 'key_idea', title: 'Tres', statement: 'c' }] },
+        { notes: [{ i: 0, title: 'Uno', notes: 'Nota de uno' }, { i: 1, title: 'Tres', notes: 'Nota de tres' }] }];
+      const sp3 = await A.createDeck({ topic: 'T', count: 3 }); seq = null;
+      eq(sp3.map(x => x.notes || '-').join('|'), 'Nota de uno|-|Nota de tres', 'cada nota en su diapositiva');
       // Research on the web first: the brief goes to the slides, its pages become a «Fuentes» slide.
       { const real = W.fetch; let body = null;
         W.fetch = async (url, opts) => { body = JSON.parse(opts.body); return new W.Response(JSON.stringify({ choices: [{ message: { content: 'El 30 % [1] de la electricidad…',

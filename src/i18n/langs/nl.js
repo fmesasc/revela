@@ -3562,4 +3562,12 @@ export default {
   "«Más moderna», «con mis colores», «el título centrado»…": "„Moderner”, „met mijn kleuren”, „de titel gecentreerd”…",
   "La plantilla tal cual.": "Het sjabloon zoals het is.",
   "Abriendo «{n}»…": "„{n}” wordt geopend…",
+  "Pasos": "Stappen",
+  "Características": "Kenmerken",
+  "Dos columnas": "Twee kolommen",
+  "Idea clave": "Kernidee",
+  "Línea de tiempo": "Tijdlijn",
+  "Cierre": "Afsluiting",
+  "Fuentes consultadas": "Geraadpleegde bronnen",
+  "Tipo de diapositiva": "Diatype",
 };

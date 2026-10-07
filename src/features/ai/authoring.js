@@ -14,7 +14,7 @@ import { withAttachments } from './attach.js';
 import { PDFJS } from '../../core/vendor.js';
 import { styledSlide, hasLayouts, pictureBox, compose, contrast, codeCard, fitBody } from './fromspec.js';
 import { KINDS, prepareSpec, splitSpec } from './specs.js';
-import { codeFontSize, codeHeight, mathFontSize } from './codeobj.js';
+import { codeFontSize, codeHeight, mathFontSize, AI_LANGS } from './codeobj.js';
 import { richHTML } from './richtext.js';
 import { pollBlock } from '../live/poll.js';
 import { ICON_NAMES } from '../../render/svg.js';
@@ -37,7 +37,7 @@ export const SPEC_DOC = `Slide kinds and their fields — choose the kind that f
 - "chart": title, chart {type: "bar"|"line"|"pie"|"doughnut"|"area", labels [..], values [numbers], series_name}, bullets (0-2)
 - "table": title, header [..], rows [[..]] (max 6 rows, max 5 columns)
 - "image": title, bullets (2-4), image_prompt (a detailed description for an image generator)
-- "code": title, code {language: "dax"|"powerquery"|"sql"|"python"|"javascript"|"excel"|"r"|"json"|"plaintext", code (VERBATIM, with its line breaks and indentation) — or from_image: the id of a picture whose code was read}, caption (optional), bullets (0-4, what it does: shown in a column at its side). A real code block with highlighting — for code, queries, DAX measures, M steps, Excel formulas; never code in "bullets"
+- "code": title, code {language: ${AI_LANGS.map(l => `"${l}"`).join('|')}, code (VERBATIM, with its line breaks and indentation) — or from_image: the id of a picture whose code was read}, caption (optional), bullets (0-4, what it does: shown in a column at its side). A real code block with highlighting — for code, queries, DAX measures, M steps, Excel formulas; never code in "bullets"
 - "math": title, latex (the formula in LaTeX, no $ signs), caption (optional), bullets (0-4, what each term means). A real equation — for mathematical formulas; never a formula in "bullets"
 - "closing": title, subtitle
 One idea per slide: when there is more, make two slides. Text is plain (no markdown, no HTML); "Label: text" items are shown with the label in bold.
@@ -203,6 +203,16 @@ export async function research(opts = {}) {
 // The «Fuentes» slide: the pages the research used (title and address), for whoever wants to check them.
 export const sourcesSpec = (sources, title) => ({ kind: 'bullets', title, bullets: sources.slice(0, 8).map((x, i) => `[${i + 1}] ${x.title ? x.title + ' — ' : ''}${x.url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 90)}`),
   notes: sources.map((x, i) => `[${i + 1}] ${x.title} ${x.url}`).join('\n') });
+// What every deck needs said, for the outline and for the slides: what Revela can put on a slide, so that the model
+// doesn't make every slide a list. A deck made by gpt-4o-mini from an outline — title and two copied points on every
+// slide, on «Swift» without one line of code — is what this is against.
+const RICH = `Use the richest kind that fits each slide — a list ("bullets") only when nothing else does, and then 3-5 real points with substance, never 2 vague ones:
+- A programming language, a library, a tool, a query language or any technical topic: show REAL CODE on "code" slides — correct, idiomatic, compilable, 4-15 lines, with a comment or two —, at least one slide in three; each concept with its code (declare, use, a common mistake and its fix…), "comparison" for "this vs that", "steps" for how to set it up.
+- Maths or science: "math" for the formulas; data you are given: "chart", "table" or "stats".
+- History, evolution: "timeline". Processes: "steps". Parts, benefits, reasons: "features". One central claim: "key_idea". A famous phrase: "quote".
+- Every slide teaches something concrete: facts, examples, numbers, names — never "Inclou millores" or "Fàcil d'usar" alone.`;
+// The model for writing whole decks (unless the person chose one): a capable one, not the cheapest of the list.
+const DECK_MODEL = 'google/gemini-2.5-flash';
 const withResearch = (source, r) => (r ? `${source ? source + '\n\n' : ''}Research brief from the web (current facts; keep their [n] marks in the notes when you use them):\n${r.brief}` : source);
 
 // First the outline (as Gemini, Gamma or Copilot do): one line per slide — its title and its key points —, for the
@@ -212,11 +222,13 @@ export async function createOutline(opts = {}) {
   const count = Math.max(3, Math.min(30, +opts.count || 8)), src = withResearch(opts.source, opts.research);
   const source = src ? `\n\nBase it ONLY on this document:\n"""\n${String(src).slice(0, 60000)}\n"""` : '';
   const out = await chat([
-    { role: 'system', content: `Plan a presentation that someone will present out loud. Answer only JSON {"title":"…","slides":[{"title":"…","points":["…"]}]}: about ${count} slides, in order, the first a title slide and the last a closing one. Each title states the slide's message (max ~9 words); 0-4 short points with what it will show (facts, figures, examples from the source). Write in ${opts.language || lang()}.` },
+    { role: 'system', content: `Plan a presentation that someone will present out loud. Answer only JSON {"title":"…","slides":[{"title":"…","kind":"…","points":["…"]}]}: about ${count} slides, in order, the first a title slide ("title") and the last a closing one ("closing"). Each title states the slide's message (max ~9 words); "kind" is the kind of slide that will show it best — one of: ${KINDS.join(', ')}; 1-4 points with WHAT it will show, concretely (the facts, figures and examples; for a "code" slide, what the code does and in which language). Not a list of short phrases: a plan for rich slides.
+${RICH}
+Write in ${opts.language || lang()}.` },
     { role: 'user', content: withAttachments([opts.topic && `Topic and purpose: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`].filter(Boolean).join('\n') + source, opts.attachments || []) },
-  ], { json: true, maxTokens: 3000, feature: 'outline' });
+  ], { json: true, maxTokens: 3000, feature: 'outline', prefer: DECK_MODEL });
   const res = parseJSON(out), slides = (res.slides || []).filter(x => x && str(x.title).trim()).slice(0, 40)
-    .map(x => ({ title: str(x.title).trim(), points: (Array.isArray(x.points) ? x.points : []).map(str).map(p => p.trim()).filter(Boolean).slice(0, 6) }));
+    .map(x => ({ title: str(x.title).trim(), ...(KINDS.includes(x.kind) && { kind: x.kind }), points: (Array.isArray(x.points) ? x.points : []).map(str).map(p => p.trim()).filter(Boolean).slice(0, 6) }));
   if (!slides.length) throw new Error('EMPTY');
   return { title: str(res.title), slides };
 }
@@ -224,7 +236,7 @@ export async function createDeck(opts = {}) {
   const plan = Array.isArray(opts.outline) && opts.outline.length ? opts.outline : null;
   const count = plan ? plan.length : Math.max(3, Math.min(30, +opts.count || 8));
   const brief = [opts.topic && `Topic and purpose: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`,
-    plan ? `Follow THIS outline, reviewed by the presenter: exactly ${plan.length} slides, in this order, one per item, each with its title (shortened only if too long) and showing its points:\n${plan.map((x, i) => `${i + 1}. ${x.title}${x.points?.length ? '\n' + x.points.map(p => `   - ${p}`).join('\n') : ''}`).join('\n')}`
+    plan ? `Follow THIS outline, reviewed by the presenter: exactly ${plan.length} slides, in this order, one per item, each with its title (shortened only if too long), of the kind in [brackets] when there is one, and DEVELOPING its points — they say what the slide shows, they are not its text: turn them into full content (the code itself, the steps, the comparison, real examples):\n${plan.map((x, i) => `${i + 1}. ${x.kind ? `[${x.kind}] ` : ''}${x.title}${x.points?.length ? '\n' + x.points.map(p => `   - ${p}`).join('\n') : ''}`).join('\n')}`
       : `Number of slides: about ${count}`].filter(Boolean).join('\n');
   const src = withResearch(opts.source, opts.research);
   const source = src ? `\n\nBase the content ONLY on this document (keep its real facts, figures and terms; leave out references and acknowledgements):\n"""\n${String(src).slice(0, 60000)}\n"""` : '';
@@ -235,7 +247,8 @@ ${SPEC_DOC}
 How to make it good:
 - Titles say the slide's message, as a short statement (max ~9 words): "Monolithic simulators are hard to adapt", not "Limitations".
 - Start with a "title" slide (subtitle: who / where, if the document says), end with a "closing" slide. At most one "section" slide every 6 slides, and none in decks under 12 slides.
-- Vary the kinds; a "bullets" slide at most every third slide, with 3-4 short points. Use "key_idea" for the central claims, "steps" for processes, "comparison" for before/after, "features" for components.
+- Vary the kinds; a "bullets" slide at most every third slide, with 3-5 points. Use "key_idea" for the central claims, "steps" for processes, "comparison" for before/after, "features" for components.
+${RICH}
 - "stats" and "chart" ONLY with real, meaningful numbers from the source (never counts like "1 scenario"); otherwise another kind.
 - "notes" on EVERY slide: what the speaker says, 3-6 natural spoken sentences (60-110 words) in first person, with the details and transitions that are not on the slide.
 ${figs.length ? `- The document's own figures are attached (${figs.map(n => `attachment:${n}`).join(', ')}): show each important one on its own slide, kind "image" with "figure": N (the attachment's number) — its title says what it shows, bullets (0-2) the key point; no image_prompt.` : ''}
@@ -243,7 +256,7 @@ ${opts.images ? '- Use 1-3 "image" slides with an image_prompt for generated pic
 Write everything in ${opts.language || lang()}.` },
     { role: 'user', content: withAttachments(brief + source + (pics.some(a => !a.figure)
       ? '\n\nThe attached pictures (notes, a whiteboard, slides, a document\'s pages, photos): base the deck on what they show — read their text and figures — together with the rest.' : ''), opts.attachments || []) },
-  ], { json: true, maxTokens: 12000, feature: 'create' });
+  ], { json: true, maxTokens: 16000, feature: 'create', prefer: DECK_MODEL });
   const res = parseJSON(out);
   // (Cleaned, and what is too much for one slide in two.)
   const specs = (res.slides || []).filter(s => s && typeof s === 'object').slice(0, 40).flatMap(s => splitSpec(prepareSpec(s)));
@@ -264,10 +277,18 @@ Write everything in ${opts.language || lang()}.` },
 async function speakerNotes(specs, opts = {}) {
   const want = specs.map((sp, i) => (str(sp.notes).trim() ? null : { i, kind: sp.kind, title: sp.title || sp.statement || sp.quote || '', text: JSON.stringify(sp).slice(0, 700) })).filter(Boolean);
   const out = await chat([
-    { role: 'system', content: `Write the speaker notes of these slides of a talk: what the presenter says out loud, 3-6 natural sentences (60-110 words) each, first person, with transitions between slides. Only facts from the slides and the source. Answer only JSON {"notes":[{"i":N,"notes":"…"}]}. Write in ${opts.language || lang()}.` },
+    { role: 'system', content: `Write the speaker notes of these slides of a talk: what the presenter says out loud, 3-6 natural sentences (60-110 words) each, first person, with transitions between slides. Only facts from the slides and the source. Answer only JSON {"notes":[{"i":N,"title":"<the slide's title, as given>","notes":"…"}]}, one per slide given, with its own i. Write in ${opts.language || lang()}.` },
     { role: 'user', content: `Talk: ${str(opts.topic).slice(0, 300)}\n${opts.source ? `Source (excerpt):\n${String(opts.source).slice(0, 20000)}\n` : ''}\nSlides: ${JSON.stringify(want)}` },
-  ], { json: true, maxTokens: 6000, feature: 'notes' });
-  for (const n of parseJSON(out)?.notes || []) if (specs[+n.i] && str(n.notes).trim()) specs[+n.i].notes = str(n.notes).trim();
+  ], { json: true, maxTokens: 6000, feature: 'notes', prefer: DECK_MODEL });
+  // (By its title when the model says it: a model that skipped or renumbered one put every note after it on the next
+  // slide — what a slide said in its notes was the following one's.)
+  const norm = v => str(v).toLowerCase().replace(/\s+/g, ' ').trim(), titleOf = sp => norm(sp.title || sp.statement || sp.quote || '');
+  for (const n of parseJSON(out)?.notes || []) {
+    if (!str(n.notes).trim()) continue;
+    let k = +n.i;
+    if (n.title && specs[k] && titleOf(specs[k]) !== norm(n.title)) { const j = specs.findIndex(sp => titleOf(sp) === norm(n.title)); if (j >= 0) k = j; }
+    if (specs[k] && !str(specs[k].notes).trim()) specs[k].notes = str(n.notes).trim();
+  }
 }
 // Insert generated specs after the current slide (images are generated after).
 // figures: the source document's figures (attach.js pdfFigures), for the specs that name one ("figure": N).

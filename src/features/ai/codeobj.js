@@ -8,9 +8,14 @@
 import { uid } from '../../core/model.js';
 
 // The languages a code block made by the assistant may have (the names the model may use → ours).
-export const AI_LANGS = ['dax', 'powerquery', 'sql', 'python', 'javascript', 'typescript', 'excel', 'r', 'json', 'plaintext'];
+// (Besides Power BI's and Excel's — render/codelangs.js —, those of highlight.js's common bundle: every language a
+// class or a talk is likely to show, so a deck on Swift gets Swift, highlighted.)
+export const AI_LANGS = ['dax', 'powerquery', 'sql', 'python', 'javascript', 'typescript', 'excel', 'r', 'json', 'swift', 'kotlin', 'java', 'c', 'cpp', 'csharp',
+  'go', 'rust', 'php', 'ruby', 'html', 'css', 'bash', 'xml', 'yaml', 'markdown', 'plaintext'];
 const ALIAS = { m: 'powerquery', 'power query': 'powerquery', 'power-query': 'powerquery', pq: 'powerquery', mquery: 'powerquery', 'm query': 'powerquery',
   tsql: 'sql', 't-sql': 'sql', mysql: 'sql', postgresql: 'sql', sqlite: 'sql', py: 'python', js: 'javascript', ts: 'typescript',
+  'c++': 'cpp', 'c#': 'csharp', cs: 'csharp', golang: 'go', rs: 'rust', kt: 'kotlin', sh: 'bash', shell: 'bash', zsh: 'bash', console: 'bash', terminal: 'bash',
+  yml: 'yaml', md: 'markdown', htm: 'html', objc: 'plaintext',
   formula: 'excel', 'excel formula': 'excel', xlsx: 'excel', sheets: 'excel', text: 'plaintext', txt: 'plaintext', plain: 'plaintext', none: 'plaintext', '': 'plaintext' };
 // → one of AI_LANGS, or null.
 export function codeLang(v) {

@@ -3562,4 +3562,12 @@ export default {
   "«Más moderna», «con mis colores», «el título centrado»…": "«أكثر حداثة»، «بألواني»، «العنوان في المنتصف»…",
   "La plantilla tal cual.": "القالب كما هو.",
   "Abriendo «{n}»…": "جارٍ فتح «{n}»…",
+  "Pasos": "خطوات",
+  "Características": "الميزات",
+  "Dos columnas": "عمودان",
+  "Idea clave": "الفكرة الرئيسية",
+  "Línea de tiempo": "خط زمني",
+  "Cierre": "الختام",
+  "Fuentes consultadas": "المصادر",
+  "Tipo de diapositiva": "نوع الشريحة",
 };

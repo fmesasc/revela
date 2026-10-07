@@ -3562,4 +3562,12 @@ export default {
   "«Más moderna», «con mis colores», «el título centrado»…": "«Modernoagoa», «nire koloreekin», «izenburua erdian»…",
   "La plantilla tal cual.": "Txantiloia dagoen bezala.",
   "Abriendo «{n}»…": "«{n}» irekitzen…",
+  "Pasos": "Urratsak",
+  "Características": "Ezaugarriak",
+  "Dos columnas": "Bi zutabe",
+  "Idea clave": "Ideia nagusia",
+  "Línea de tiempo": "Denbora-lerroa",
+  "Cierre": "Itxiera",
+  "Fuentes consultadas": "Kontsultatutako iturriak",
+  "Tipo de diapositiva": "Diapositiba mota",
 };
