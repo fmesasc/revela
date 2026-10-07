@@ -39,7 +39,9 @@ export function deckQuality(specs, { topic = '', sourced = false, images = false
   const hasFigure = v => /\d/.test(str(v)) && !/\[[^\]]+\]/.test(str(v));
   // («Internal data», «company figures»: a source the model can't have when none was given — the figure is invented.)
   const ownData = /intern|interno|propi|compañ|company|empresa|organi[sz]a|corporat|nuestr|\bour\b|objetivo|target|meta/i;
-  const invented = sourced ? [] : body.filter(x => (!str(x.sp.source) || ownData.test(x.sp.source)) && (x.sp.kind === 'stats' && (x.sp.stats || []).some(s => hasFigure(s.value))) || (x.sp.kind === 'chart' && (x.sp.chart?.values || []).length));
+  // («Example data» on a claim about the world, not a tutorial's dataset: invented too.)
+  const example = /ejemplo|example|exemple|illustrat|ilustrativ|hipot[eé]tic|hypothetic/i;
+  const invented = sourced ? [] : body.filter(x => (!str(x.sp.source) || ownData.test(x.sp.source) || (!tech && example.test(x.sp.source))) && (x.sp.kind === 'stats' && (x.sp.stats || []).some(s => hasFigure(s.value))) || (x.sp.kind === 'chart' && (x.sp.chart?.values || []).length));
   const noPicture = images ? [] : body.filter(x => x.sp.kind === 'image' && !x.sp.figure);
   const offCode = tech ? [] : code;
   const problems = [];

@@ -453,6 +453,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       sales[1].source = 'Fuente: INE, Encuesta de población activa 2024';
       assert(!Q.deckQuality(sales, { topic: 'Bienvenida' }).problems.some(p => p.code === 'invented-figures'), 'con su fuente, no son inventadas');
       assert(Q.deckQuality([sales[0], { ...sales[1], source: 'Datos internos de la compañía' }], { topic: 'Ventas' }).problems.some(p => p.code === 'invented-figures'), 'con «datos internos» que nadie dio, sí');
+      assert(Q.deckQuality([sales[0], { ...sales[1], source: 'Datos de ejemplo' }], { topic: 'La caída de Roma' }).problems.some(p => p.code === 'invented-figures')
+        && !Q.deckQuality([sales[0], { ...sales[1], source: 'Datos de ejemplo' }], { topic: 'Python con pandas' }).problems.some(p => p.code === 'invented-figures'), '«de ejemplo»: en un tutorial técnico sí; en historia, no');
+      // LaTeX in the model's JSON: «\\frac» with one backslash (a valid escape that broke the formula) and «\\sqrt» (an invalid one that lost it all).
+      const OR = await W.eval("import('/src/features/ai/openrouter.js')");
+      eq(OR.parseJSON('{"latex":"\\frac{a}{b} = \\sqrt{c}"}').latex, '\\frac{a}{b} = \\sqrt{c}', 'la fórmula, entera');
+      eq(OR.parseJSON('{"code":"a\\nb","t":"x \\d y"}').code, 'a\nb', 'y los saltos de línea del código, como eran');
       // The source, under the figures on the slide.
       const sl = A.slideFromSpec(A.normalizeSpec ? A.normalizeSpec(sales[1]) : { ...sales[1] }, '#000', R.state.deck);
       assert(sl.blocks.some(b => b.aiSource && b.html === 'Fuente: INE, Encuesta de población activa 2024' && b.y > R.state.deck.size.h - 60), 'la fuente, abajo, en la diapositiva');

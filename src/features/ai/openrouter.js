@@ -128,8 +128,21 @@ export async function speech(text, { voice = 'nova', speed = 1 } = {}) {
 const LANG = { es: 'español', en: 'English', fr: 'français', de: 'Deutsch', it: 'italiano', pt: 'português', ca: 'català', gl: 'galego', nl: 'Nederlands', eu: 'euskara', ar: 'العربية' };
 export const lang = () => LANG[currentLang()] || 'español';
 // JSON from a model answer (tolerates ``` fences and text around the object).
-export const parseJSON = s => { const t = String(s).replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
-  try { return JSON.parse(t); } catch { const a = t.indexOf('{'), b = t.lastIndexOf('}'); if (a >= 0 && b > a) return JSON.parse(t.slice(a, b + 1)); throw new Error('EMPTY'); } };
+// The model's JSON, as it comes: without its ``` fence, or cut to its outer {…}. LaTeX in it is the usual trouble: a
+// formula's «\frac» written with one backslash is a valid escape (a form feed and «rac») — the formula silently broken —
+// and «\sqrt» an invalid one — the whole answer lost («Bad escaped character»). So in "latex" values a lone backslash
+// before a command is LaTeX's, and anywhere else one that starts no valid escape is kept as a backslash.
+const latexFixed = t => t.replace(/("latex"\s*:\s*")((?:[^"\\]|\\.)*)"/g, (m, a, v) => a + v.replace(/\\\\|\\(?=[a-zA-Z{}()[\]|,;:! ])/g, x => (x === '\\\\' ? x : '\\\\')) + '"');
+const escapesFixed = t => t.replace(/\\(?:u(?![0-9a-fA-F]{4})|(?!["\\/bfnrtu]))/g, '\\\\');
+export const parseJSON = s => {
+  const t = latexFixed(String(s).replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim()), a = t.indexOf('{'), b = t.lastIndexOf('}');
+  for (const x of [t, a >= 0 && b > a ? t.slice(a, b + 1) : null]) {
+    if (x == null) continue;
+    try { return JSON.parse(x); } catch {}
+    try { return JSON.parse(escapesFixed(x)); } catch {}
+  }
+  throw new Error('EMPTY');
+};
 export { esc };
 export const plain = html => plainText(html);
 
