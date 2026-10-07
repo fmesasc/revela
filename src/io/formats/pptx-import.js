@@ -239,6 +239,12 @@ const TRANSITION = { fade: 'fade', dissolve: 'blur', push: 'push', cover: 'cover
 
 // Outer shadow (a:effectLst/a:outerShdw) → { x, y, blur, color }.
 function shadowOf(spPr, theme, scale) {
+  // (A glow — a soft halo of a colour all around — as a shadow that doesn't move.)
+  const glow = all(kid(spPr, 'a:effectLst'), 'a:glow')[0];
+  if (glow && !all(kid(spPr, 'a:effectLst'), 'a:outerShdw')[0]) {
+    const c = colourOf(glow, theme); if (!c || c === 'none') return null;
+    return { x: 0, y: 0, blur: Math.round(+(glow.getAttribute('rad') || 0) * scale), color: c.length === 7 ? c + '66' : c };
+  }
   const sh = all(kid(spPr, 'a:effectLst'), 'a:outerShdw')[0]; if (!sh) return null;
   const dist = +(sh.getAttribute('dist') || 0) * scale, dir = +(sh.getAttribute('dir') || 0) / 60000 * Math.PI / 180;
   const color = colourOf(sh, theme);
@@ -350,7 +356,8 @@ function readBody(bodyPr) {
     t: at('tIns') != null ? +at('tIns') : undefined, b: at('bIns') != null ? +at('bIns') : undefined,
     fontScale: fit?.getAttribute('fontScale') ? +fit.getAttribute('fontScale') / 100000 : undefined,
     lnReduce: fit?.getAttribute('lnSpcReduction') ? +fit.getAttribute('lnSpcReduction') / 100000 : undefined,
-    shrink: fit ? true : undefined,                       // («Shrink text on overflow»: ui/canvas/fittext.js fitImported measures it)
+    shrink: fit ? true : undefined,
+    noWrap: at('wrap') === 'none' || undefined,         // («Do not wrap text»: one line each, as wide as they need)                       // («Shrink text on overflow»: ui/canvas/fittext.js fitImported measures it)
     vert: at('vert') && at('vert') !== 'horz' ? at('vert') : undefined,
   };
 }
@@ -809,7 +816,7 @@ export async function importPPTX(file) {
       const tabs = (all(txBody, 'a:tabLst').find(x => all(x, 'a:tab').length) ? all(all(txBody, 'a:tabLst').find(x => all(x, 'a:tab').length), 'a:tab') : [])
         .map(x => ({ pos: Math.round(ctx.emu(+x.getAttribute('pos') || 0) * 10) / 10, align: { ctr: 'center', r: 'right', dec: 'decimal' }[x.getAttribute('algn')] || 'left' })).filter(x => x.pos > 0);
       blocks.push({ id: uid(), type: 'text', ...box(geo), ...(tabs.length && { tabs }), rotation: Math.round(geo.rot || 0), fontSize: first.size || ctx.pt(levels[0].r.sz || 18),
-        html: t.html, pad: [ctx.emu(body.t), ctx.emu(body.r), ctx.emu(body.b), ctx.emu(body.l)],
+        html: t.html, pad: [ctx.emu(body.t), ctx.emu(body.r), ctx.emu(body.b), ctx.emu(body.l)], ...(body.noWrap && { noWrap: true }),
         ...(t.align && { textAlign: t.align }), ...(anchor && { vAlign: { t: 'top', ctr: 'middle', b: 'bottom' }[anchor] }),
         ...(body.vert && { vertical: true }),
         ...(first.color && first.color !== 'transparent' && { color: first.color }),

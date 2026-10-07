@@ -87,7 +87,8 @@ export function styleRich(rich, b) {
   if (!b.wordart) rich.style.color = b.color || '';        // after WordArt, which resets it
   if (!b.wordart) rich.style.fontWeight = b.fontWeight || '';
   rich.style.fontStyle = b.fontStyle || '';
-  rich.style.whiteSpace = /\t/.test(b.html || '') ? 'pre-wrap' : '';      // (tabs: kept, laid out at their stops)
+  // (Tabs: kept, laid out at their stops. PowerPoint's «Do not wrap text»: each line as wide as it needs.)
+  rich.style.whiteSpace = b.noWrap ? (/\t/.test(b.html || '') ? 'pre' : 'nowrap') : /\t/.test(b.html || '') ? 'pre-wrap' : '';
   rich.style.tabSize = '96px';
   rich.style.columnCount = b.columns > 1 ? b.columns : '';
   rich.style.columnGap = b.columns > 1 ? '32px' : '';

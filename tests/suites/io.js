@@ -842,6 +842,34 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(n.fontSize === 53 && !('autofit' in n), 'el que no, como estaba (40 pt)');
   });
 
+  await test('importar PowerPoint: flechas con su punta (a su tamaño), textos que no se parten y brillo', async () => {
+    await R.vendor.loadScript(R.vendor.JSZIP, 'JSZip');
+    const W = frame.contentWindow, zip = new W.JSZip();
+    const NS = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"';
+    const rels = (...r) => `<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${r.join('')}</Relationships>`;
+    const xf = (x, y, w, h) => `<a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${w}" cy="${h}"/></a:xfrm>`;
+    const arrow = (n, x, w) => `<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="${n}" name="Flecha ${n}"/><p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr><p:spPr>${xf(x, 2000000, w, 0)}<a:prstGeom prst="straightConnector1"/><a:ln w="57150"><a:solidFill><a:srgbClr val="000000"/></a:solidFill><a:tailEnd type="triangle"/></a:ln></p:spPr></p:cxnSp>`;
+    zip.file('ppt/presentation.xml', `<p:presentation ${NS}><p:sldIdLst><p:sldId id="256" r:id="rId2"/></p:sldIdLst><p:sldSz cx="12192000" cy="6858000"/></p:presentation>`);
+    zip.file('ppt/_rels/presentation.xml.rels', rels('<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/>'));
+    zip.file('ppt/slides/slide1.xml', `<p:sld ${NS}><p:cSld><p:spTree>${arrow(2, 500000, 6000000)}${arrow(3, 500000, 250000)}`
+      + `<p:sp><p:nvSpPr><p:cNvPr id="4" name="T"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr>${xf(500000, 3000000, 400000, 300000)}<a:prstGeom prst="rect"/></p:spPr><p:txBody><a:bodyPr wrap="none"/><a:p><a:r><a:rPr sz="1400"/><a:t>Conceptual</a:t></a:r></a:p></p:txBody></p:sp>`
+      + `<p:sp><p:nvSpPr><p:cNvPr id="5" name="G"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>${xf(500000, 4000000, 3000000, 800000)}<a:prstGeom prst="rect"/><a:solidFill><a:srgbClr val="E2F0D9"/></a:solidFill><a:effectLst><a:glow rad="139700"><a:srgbClr val="70AD47"><a:alpha val="40000"/></a:srgbClr></a:glow></a:effectLst></p:spPr><p:txBody><a:bodyPr/><a:p><a:r><a:t>Modular</a:t></a:r></a:p></p:txBody></p:sp>`
+      + `</p:spTree></p:cSld></p:sld>`);
+    const OF = await W.eval("import('/src/ui/shell/openfile.js')");
+    await OF.openPresentation(new W.File([await zip.generateAsync({ type: 'blob' })], 'flechas.pptx')); await sleep(40);
+    const bl = R.state.deck.slides[0].blocks, arrows = bl.filter(b => b.shape === 'arrow');
+    eq(arrows.length, 2, 'las dos flechas');
+    for (const a of arrows) {
+      const svg = D.querySelector(`#stage .block[data-id="${a.id}"] svg`), head = svg.querySelector('polygon').getBoundingClientRect(), k = 1280 / D.getElementById('stage').getBoundingClientRect().width;
+      assert(head.width * k > 8 && head.width * k < 30 && head.height * k > 8, `su punta, de su tamaño en la larga y en la corta (${Math.round(head.width * k)}×${Math.round(head.height * k)} px)`);
+    }
+    const tx = bl.find(b => /Conceptual/.test(b.html || ''));
+    assert(tx.noWrap && D.querySelector(`#stage .block[data-id="${tx.id}"] .rich`).style.whiteSpace === 'nowrap' && /white-space:nowrap/.test(R.io.buildHTML()), 'el texto que no se parte, entero (en el editor y al presentar)');
+    const g = bl.find(b => b.fill === '#e2f0d9' || /Modular/.test(b.html || ''));
+    const glow = bl.find(b => b.shadow && b.shadow.x === 0 && b.shadow.y === 0);
+    assert(glow && glow.shadow.blur > 5, 'el brillo, como un halo alrededor: ' + JSON.stringify(glow?.shadow));
+  });
+
   await test('importar PowerPoint: formas con el estilo del tema, sombras y SmartArt', async () => {
     await R.vendor.loadScript(R.vendor.JSZIP, 'JSZip');
     const W = frame.contentWindow, zip = new W.JSZip();

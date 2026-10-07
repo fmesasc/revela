@@ -313,7 +313,7 @@ function blockHTMLRaw(b, slide) {
     const inner = html => (tight ? `<div class="rv-mt" data-id="${esc(b.morphId)}" style="display:inline-block;max-width:100%;vertical-align:top;${b.vAlign ? `align-self:${ta};` : ''}${art}">${html}</div>` : html);
     return `<div${tight ? a.replace(/ data-id="[^"]*"/, '') : a}${b.levels ? ' class="lv"' : ''}${wrapAttrs(wr)}${tabbed ? ` data-tabs="${esc(JSON.stringify(b.tabs || []))}"` : ''} style="${box(b)}${wrapVars(wr)}${tabbed ? 'white-space:pre-wrap;tab-size:96px;' : ''}font-size:${wordartSize(b)}px;${b.color ? `color:${b.color};` : ''}${b.levels ? levelVars(b) : ''}`
       + `text-align:${b.textAlign || 'left'};${b.fontFamily ? `font-family:${b.fontFamily};` : ''}`
-      + `${b.lineHeight ? `line-height:${b.lineHeight};` : ''}`
+      + `${b.lineHeight ? `line-height:${b.lineHeight};` : ''}${b.noWrap ? 'white-space:nowrap;' : ''}`
       + `${b.letterSpacing ? `letter-spacing:${b.letterSpacing}px;` : ''}`
       + `padding:${textPadding(b)};`
       + `${b.dir === 'rtl' ? 'direction:rtl;' : ''}`

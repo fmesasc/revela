@@ -858,6 +858,17 @@ export function shapeSVG(b) {
     return `<svg viewBox="0 0 ${b.w} ${b.h}" preserveAspectRatio="none" width="100%" height="100%" style="display:block;overflow:visible">`
       + `${d.defs}<rect x="0" y="0" width="${b.w}" height="${b.h}" rx="${r}" ry="${r}" ${paint}/></svg>`;
   }
+  // Arrows at their real size: in the stretched 100×100 box the arrowhead stretched with it — a long arrow lost its
+  // head, a short one showed a diamond (a PowerPoint diagram's connectors). The head: a triangle 3× the line's
+  // width long, as PowerPoint's medium one.
+  if ((b.shape === 'arrow' || b.shape === 'doublearrow') && b.w && b.h) {
+    const w = b.w, h = b.h, m = h / 2, line = Math.max(1, sw), hl = Math.min(w / 2.5, Math.max(8, line * 3)), hw = Math.min(h / 2, Math.max(4, line * 1.5));
+    const head = (x, dir) => `<polygon points="${x},${m} ${x - dir * hl},${m - hw} ${x - dir * hl},${m + hw}" fill="${stroke}" stroke="none"/>`;
+    const two = b.shape === 'doublearrow', x1 = two ? hl * 0.9 : 0, x2 = w - hl * 0.9;
+    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" width="100%" height="100%" style="display:block;overflow:visible">`
+      + `<line x1="${x1}" y1="${m}" x2="${x2}" y2="${m}" fill="none" stroke="${stroke}" stroke-width="${line}" vector-effect="non-scaling-stroke"${dashAttr(b.dash, line)}${pl}/>`
+      + head(w, 1) + (two ? head(0, -1) : '') + `</svg>`;
+  }
   let inner;
   if (SHAPE_POINTS[b.shape]) inner = `<polygon points="${SHAPE_POINTS[b.shape]}" ${paint}/>`;
   else if (isOpenShape(b.shape)) inner = `<path d="${SHAPE_PATHS[b.shape]}" stroke-linejoin="round" ${strokeOnly}/>`;
