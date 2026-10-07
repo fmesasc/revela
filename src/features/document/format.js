@@ -187,9 +187,16 @@ export function setFontSize(px) {
   const c = ctx(); if (!c) return;
   commit(() => { c.b.fontSize = Math.max(8, px); });
 }
+// The box's line spacing, for all its paragraphs (as PowerPoint with the box selected): their own — every paragraph
+// imported from PowerPoint, or pasted, carries one (<p style="line-height:…">) — goes, or it would hide the box's.
+const noLineHeight = root => root.querySelectorAll('[style*="line-height"]').forEach(e => { e.style.removeProperty('line-height'); if (!e.getAttribute('style')) e.removeAttribute('style'); });
 export function lineSpacing(value) {
   const c = ctx(); if (!c) return;
-  commit(() => { c.b.lineHeight = parseFloat(value) || 1.2; });
+  const editing = c.el.getAttribute('contenteditable') === 'true';
+  let html = c.b.html || '';
+  if (editing) { noLineHeight(c.el); html = c.el.innerHTML; }
+  else if (html.includes('line-height')) { const d = new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html'); noLineHeight(d.body); html = d.body.innerHTML; }
+  commit(() => { c.b.lineHeight = parseFloat(value) || 1.2; c.b.html = html; });
 }
 export function letterSpacing(px) {
   const c = ctx(); if (!c) return;

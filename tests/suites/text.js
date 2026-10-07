@@ -40,6 +40,24 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(b.lineHeight, 1.35, 'lineHeight'); eq(richOf(b).style.lineHeight, '1.35', 'lineHeight DOM');
   });
 
+  await test('interlineado en un título con el de cada párrafo (de PowerPoint): manda el que se pone', async () => {
+    reset(); R.slides.addSlide('titleContent'); await sleep(10);
+    const b = R.state.deck.slides[R.state.ui.slideIndex].blocks.find(x => x.ph === 'title');
+    R.store.commit(() => { b.html = '<p style="line-height:1.2;margin:0">Primera línea del título</p><p style="line-height:1.2;margin:0">y la segunda</p>'; b.fontSize = 40; });
+    R.store.setSelection(b.id); R.render(); await sleep(20);
+    const gap = () => { const ps = richOf(b).querySelectorAll('p'); return Math.round((ps[1].getBoundingClientRect().top - ps[0].getBoundingClientRect().top) * 1280 / D.getElementById('stage').getBoundingClientRect().width); };
+    const before = gap();
+    R.format.lineSpacing('2'); await sleep(20);
+    assert(!/line-height/.test(b.html), 'el de cada párrafo se quita: ' + b.html);
+    assert(gap() > before * 1.4, `las líneas se separan (${before} → ${gap()})`);
+    assert(/<p style="margin:\s*0(px)?;?">Primera/.test(b.html), 'lo demás de cada párrafo se queda');
+    // Editing it (the caret inside): the same.
+    R.store.commit(() => { b.html = '<p style="line-height:1">Uno</p><p style="line-height:1">Dos</p>'; }); R.render(); await sleep(10);
+    richOf(b).contentEditable = 'true'; richOf(b).focus(); R.format.lineSpacing('1.5'); await sleep(10);
+    assert(!/line-height/.test(b.html) && !richOf(b).querySelector('[style*="line-height"]'), 'también escribiendo en él');
+    eq(b.lineHeight, 1.5, 'y queda el del cuadro');
+  });
+
   await test('espaciado entre letras', async () => {
     reset(); const b = newText(); R.format.letterSpacing(2); await sleep(10);
     eq(b.letterSpacing, 2, 'letterSpacing'); eq(richOf(b).style.letterSpacing, '2px', 'letterSpacing DOM');
