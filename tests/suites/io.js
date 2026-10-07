@@ -745,6 +745,25 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(back.slides[1].blocks.find(b => b.ph === 'title')?.lp, 'y su título sigue al marcador');
   });
 
+  await test('PowerPoint como plantilla: todos los diseños, y los adornos del patrón (también elipses) en el patrón, no en cada diapositiva', async () => {
+    await R.vendor.loadScript(R.vendor.JSZIP, 'JSZip');
+    const G = await frame.contentWindow.eval("import('/src/features/design/gallery.js')");
+    // A gallery design (a circle in a corner, in its master), its slides without a layout, one with text.
+    const d = G.buildFromGallery('education'); d.slides[1].blocks[0].html = 'Qué aprenderemos';
+    const blob = await R.pptx.buildPptxBlob(d), zip = await frame.contentWindow.JSZip.loadAsync(blob);
+    const s2 = await zip.file('ppt/slides/slide2.xml').async('string');
+    assert(!/prst="ellipse"/.test(s2) && /Qué aprenderemos/.test(s2), 'la diapositiva, sin el círculo del patrón copiado (y con su texto)');
+    const lays = await Promise.all(Object.keys(zip.files).filter(f => /slideLayouts\/slideLayout\d+\.xml$/.test(f)).map(f => zip.file(f).async('string')));
+    assert(lays.some(x => /name="Revela"/.test(x) && /prst="ellipse"/.test(x)), 'el círculo, en el diseño de PowerPoint');
+    const back = await R.pptxImport.importPPTX(new File([blob], 'x.pptx'));
+    assert(!back.slides[1].blocks.some(b => b.shape === 'ellipse') && back.layouts.some(l => l.blocks.some(b => b.shape === 'ellipse')), 'al volver: en el diseño, no en la diapositiva');
+    // With its layouts: all of them, also those no slide uses (a template).
+    const d2 = R.examples.buildExample('lesson'), used = new Set(d2.slides.map(x => x.layoutId));
+    const names = (await Promise.all(Object.keys((await frame.contentWindow.JSZip.loadAsync(await R.pptx.buildPptxBlob(d2))).files).filter(f => /slideLayouts\/slideLayout\d+\.xml$/.test(f))
+      .map(async f => ((await (await frame.contentWindow.JSZip.loadAsync(await R.pptx.buildPptxBlob(d2))).file(f).async('string')).match(/<p:cSld name="([^"]*)"/) || [])[1])));
+    assert(d2.layouts.filter(l => !used.has(l.id)).every(l => names.includes(l.name)), 'todos los diseños, también los que no usa ninguna diapositiva: ' + names);
+  });
+
   await test('importar PowerPoint: formas con el estilo del tema, sombras y SmartArt', async () => {
     await R.vendor.loadScript(R.vendor.JSZIP, 'JSZip');
     const W = frame.contentWindow, zip = new W.JSZip();

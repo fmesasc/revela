@@ -2590,8 +2590,10 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const pv = [...D.querySelectorAll('#stage .master-layer .pv-block')].find(x => x.querySelector('svg'));
     eq(pv && pv.style.opacity, '0.1', 'en el editor, bajo la diapositiva');
     assert(/opacity:0\.1;/.test(R.io.buildHTML()), 'en la presentación');
-    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob), xml = await zip.file('ppt/slides/slide1.xml').async('string');
-    assert(/<a:alpha val="10000"\/>/.test(xml), 'en PowerPoint, transparencia del 90 %');
+    // (A master's object: in PowerPoint's layout, not copied onto the slide.)
+    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob);
+    const xml = (await Promise.all(Object.keys(zip.files).filter(f => /slideLayouts\/slideLayout\d+\.xml$/.test(f)).map(f => zip.file(f).async('string')))).join('');
+    assert(/<a:alpha val="10000"\/>/.test(xml) && !/<a:alpha val="10000"\/>/.test(await zip.file('ppt/slides/slide1.xml').async('string')), 'en PowerPoint, en el patrón, transparencia del 90 %');
     R.store.commit(() => { R.state.deck.master.blocks = R.state.deck.master.blocks.filter(x => x.id !== 'wave1'); });
   });
 

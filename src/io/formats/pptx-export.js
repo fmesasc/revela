@@ -346,16 +346,27 @@ function masterObject(b) {
   if (b.type === 'shape' && b.shape === 'rect') return { rect: { ...pos, fill: { color: hex(b.fill) || 'FFFFFF', ...(opacityOf(b) < 1 && { transparency: Math.round((1 - opacityOf(b)) * 100) }), ...(b.fill === 'none' && { transparency: 100 }) },
     ...(b.strokeWidth && hex(b.stroke) && { line: { color: hex(b.stroke), width: b.strokeWidth * 0.75, ...dashOf(b.dash) } }) } };
   if (b.type === 'shape' && b.shape === 'line') return { line: { ...pos, line: { color: hex(b.stroke) || '888888', width: (b.strokeWidth || 2) * 0.75, ...dashOf(b.dash) } } };
+  // Any other shape of PowerPoint's (an ellipse, a rounded rectangle, a triangle…): a layout holds it as an empty
+  // text with that shape. (Not merged shapes, curves or arrows: those are drawn on each slide.)
+  if (b.type === 'shape' && SHAPE_MAP[b.shape] && !['custom', 'curve', 'arrow', 'doublearrow'].includes(b.shape) && !(b.html && plainText(b.html).trim())) {
+    const see = opacityOf(b) < 1 ? { transparency: Math.round((1 - opacityOf(b)) * 100) } : {};
+    return { text: { text: '', options: { ...pos, shape: SHAPE_MAP[b.shape], fill: b.fill && b.fill !== 'none' ? { color: hex(b.fill) || '3F6497', ...see } : { type: 'none' },
+      ...(b.strokeWidth ? { line: { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth * 0.75, ...dashOf(b.dash), ...see } } : {}) } } };
+  }
   if (b.type === 'image' && /^data:image\/(png|jpe?g|gif)/.test(b.src || '') && !b.crop && !b.adj) return { image: { ...pos, data: b.src } };
   return null;
 }
+// Every layout, used or not (a template brings them all to PowerPoint); and, for the slides without one, «Revela»: the
+// master's objects alone, so they are in the master there too, not copied onto each slide.
+const NO_LAYOUT = '(none)';
 function defineMasters(pptx, deck) {
-  const out = new Map(), used = new Set(deck.slides.map(s => s.layoutId).filter(Boolean)), names = new Set();
-  for (const lay of deck.layouts || []) {
-    if (!used.has(lay.id)) continue;
+  const out = new Map(), names = new Set();
+  const bare = deck.slides.some(s => !s.layoutId || !deck.layouts?.some(l => l.id === s.layoutId)) && (deck.master?.blocks || []).some(b => !b.ph)
+    ? [{ id: NO_LAYOUT, name: 'Revela', blocks: [], background: null }] : [];
+  for (const lay of [...(deck.layouts || []), ...bare]) {
     let name = lay.name || 'Diseño'; while (names.has(name)) name += ' ·'; names.add(name);
     const inMaster = new Set(), objects = [];
-    for (const b of masterBlocksFor(lay, deck).concat(lay.blocks.filter(x => !x.ph))) {
+    for (const b of (lay.id === NO_LAYOUT ? (deck.master?.blocks || []).filter(x => !x.ph) : masterBlocksFor(lay, deck)).concat(lay.blocks.filter(x => !x.ph))) {
       const o = masterObject(b); if (o) { objects.push(o); inMaster.add(b.id); }
     }
     for (const p of lay.blocks.filter(b => b.type === 'placeholder')) {
@@ -371,7 +382,7 @@ function defineMasters(pptx, deck) {
         color: hex(p.color || deckFg(deck)) || 'FFFFFF', ...(fam && { fontFace: fam }), ...(p.fontWeight === '700' && { bold: true }),
         ...(p.fontStyle === 'italic' && { italic: true }), align: p.textAlign || 'left', valign: { middle: 'middle', bottom: 'bottom' }[p.vAlign] || 'top' }, text: '' } });
     }
-    const bg = hex(lay.background || deck.slides.find(s => s.layoutId === lay.id)?.background);
+    const bg = hex(lay.background || deck.slides.find(s => (lay.id === NO_LAYOUT ? !s.layoutId : s.layoutId === lay.id))?.background || (lay.id === NO_LAYOUT ? deck.master?.background : ''));
     pptx.defineSlideMaster({ title: name, ...(bg && { background: { color: bg } }), objects });
     out.set(lay.id, { name, inMaster, phs });
   }
@@ -419,7 +430,8 @@ export async function buildPptx(deck = state.deck) {
   }
   const masters = defineMasters(pptx, deck);
   for (const s of deck.slides) {
-    const m = s.layoutId && masters.get(s.layoutId);
+    // (A slide that hides the master's objects: on its own, or PowerPoint's layout would show them.)
+    const m = s.hideMaster ? null : masters.get(s.layoutId) || masters.get(NO_LAYOUT);
     const slide = m ? pptx.addSlide({ masterName: m.name }) : pptx.addSlide();
     exportBack = s.background || '';
     if (s.hidden) slide.hidden = true;                     // kept, hidden (like PowerPoint)
