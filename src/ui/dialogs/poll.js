@@ -5,6 +5,7 @@ import { ASYNC_KINDS } from '../../features/live/answers.js';
 import * as cd from '../../io/cloud/clouddocs.js';
 import { confirmDialog } from './dialog.js';
 import { t } from '../../i18n/index.js';
+import { state, commit } from '../../core/store.js';
 
 // fresh: a poll just inserted — closed without «Aplicar», it goes again (Cancel cancels).
 export function openPollEditor(b, { fresh = false } = {}) {
@@ -14,7 +15,7 @@ export function openPollEditor(b, { fresh = false } = {}) {
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(520px,94vw);max-width:94vw">
     <button class="modal-close">✕</button><h3>${t('Votación en directo')}</h3>
     <label class="fr-l">${t('Pregunta')}<input type="text" class="pl-q"></label>
-    <label class="fr-l">${t('Tipo')}<select class="pl-kind">${opt('choice', 'Una opción', b.kind)}${opt('multi', 'Varias opciones', b.kind)}${opt('rating', 'Valoración 1 a 5', b.kind)}${opt('word', 'Nube de palabras', b.kind)}${opt('qa', 'Preguntas del público', b.kind)}${opt('quiz', 'Cuestionario (con respuesta correcta y puntos)', b.kind)}${opt('order', 'Actividad: ordenar', b.kind)}${opt('match', 'Actividad: unir parejas', b.kind)}${opt('gaps', 'Actividad: completar huecos', b.kind)}${opt('label', 'Actividad: etiquetar una imagen', b.kind)}${opt('open', 'Respuesta abierta (muro de respuestas)', b.kind)}${opt('number', 'Adivinar un número', b.kind)}${opt('image', 'Elegir entre imágenes', b.kind)}${opt('point', 'Tocar un punto de una imagen', b.kind)}${opt('rank', 'Ordenar por preferencia', b.kind)}${opt('board', 'Clasificación de los cuestionarios', b.kind)}</select></label>
+    <label class="fr-l">${t('Tipo')}<select class="pl-kind">${opt('choice', 'Una opción', b.kind)}${opt('multi', 'Varias opciones', b.kind)}${opt('rating', 'Valoración 1 a 5', b.kind)}${opt('word', 'Nube de palabras', b.kind)}${opt('qa', 'Preguntas del público', b.kind)}${opt('quiz', 'Cuestionario (con respuesta correcta y puntos)', b.kind)}${opt('order', 'Actividad: ordenar', b.kind)}${opt('match', 'Actividad: unir parejas', b.kind)}${opt('gaps', 'Actividad: completar huecos', b.kind)}${opt('label', 'Actividad: etiquetar una imagen', b.kind)}${opt('open', 'Respuesta abierta (muro de respuestas)', b.kind)}${opt('number', 'Adivinar un número', b.kind)}${opt('image', 'Elegir entre imágenes', b.kind)}${opt('point', 'Tocar un punto de una imagen', b.kind)}${opt('rank', 'Ordenar por preferencia', b.kind)}${opt('draw', 'Respuesta dibujada', b.kind)}${opt('photo', 'Respuesta con una foto', b.kind)}${opt('board', 'Clasificación de los cuestionarios', b.kind)}</select></label>
     <p class="host-help pl-help"></p>
     <label class="fr-l pl-text-l">${t('Texto con huecos')}<textarea class="pl-text" rows="3" placeholder="${t('La capital de Francia es [París]. Varias respuestas válidas: [coche|automóvil].')}"></textarea></label>
     <div class="pl-pic" hidden><div class="fr-actions" style="justify-content:flex-start"><label class="mini2 pl-img-btn">${t('Elegir imagen…')}<input type="file" accept="image/*" hidden class="pl-img"></label>
@@ -22,12 +23,18 @@ export function openPollEditor(b, { fresh = false } = {}) {
       <div class="pl-stage"><img alt=""><div class="pl-marks"></div></div></div>
     <label class="fr-l pl-opts-l">${t('Opciones (una por línea)')}<textarea class="pl-opts" rows="5"></textarea></label>
     <div class="pl-imgs" hidden></div>
+    <div class="pl-rub" hidden><label class="fr-l">${t('Criterios para corregir con IA (opcional)')}<textarea class="pl-rubric" rows="3" maxlength="2000" placeholder="${t('p. ej.: Nombra las tres partes, pon un ejemplo y usa las palabras de clase.')}">${(b.rubric || '').replace(/</g, '&lt;')}</textarea></label>
+      <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 pl-grade"><i class="ms">auto_awesome</i> ${t('Corregir con IA las respuestas')}</button></div>
+      <p class="host-help">${t('También al presentar desde el editor: clic derecho ▸ «Corregir con IA las respuestas»; a cada móvil le llega su nota y un comentario.')}</p><div class="pl-graded"></div></div>
     <div class="pl-num" hidden style="display:flex;gap:8px;flex-wrap:wrap">
       <label class="fr-l">${t('Mínimo')}<input type="number" step="any" class="pl-min" style="width:7em" value="${b.min ?? 0}"></label>
       <label class="fr-l">${t('Máximo')}<input type="number" step="any" class="pl-max" style="width:7em" value="${b.max ?? 100}"></label>
       <label class="fr-l">${t('Unidad')}<input type="text" class="pl-unit" maxlength="12" style="width:6em" value="${(b.unit || '').replace(/"/g, '&quot;')}" placeholder="€, km, %…"></label>
       <label class="fr-l" title="${t('Vacío: sin respuesta correcta (una encuesta)')}">${t('Respuesta correcta (opcional)')}<input type="number" step="any" class="pl-ans" style="width:8em" value="${b.answer ?? ''}"></label></div>
     <p class="host-help pl-quiz">${t('Cuestionario: pon un asterisco (*) delante de la respuesta correcta. Acertar da de 500 a 1000 puntos, más cuanto antes; al acabar el tiempo (o con un clic) se ve la respuesta y quién va ganando.')}</p>
+    <label class="fr-l pl-quiz">${t('Modo')}<select class="pl-mode">${opt('speed', 'Rapidez: más puntos cuanto antes', b.mode || 'speed')}${opt('accuracy', 'Precisión: solo cuenta acertar, sin prisa', b.mode)}${opt('confidence', 'Confianza: cada uno dice lo seguro que está', b.mode)}</select></label>
+    <label class="fr-l pl-teams-l">${t('Por equipos (un nombre por línea; vacío: cada uno por su cuenta)')}<textarea class="pl-teams" rows="2" placeholder="${t('Rojo')}&#10;${t('Azul')}">${(state.deck.teams || []).join('\n').replace(/</g, '&lt;')}</textarea></label>
+    <p class="host-help pl-teams-l">${t('Vale para todos los cuestionarios de la presentación: cada móvil elige equipo y la clasificación muestra la media de cada equipo. Al responder se ganan estrellas (una por respuesta y otra por acierto) y cada 5, un nivel.')}</p>
     <label class="fr-l pl-quiz">${t('Tiempo para responder')}<select class="pl-time">${[10, 20, 30, 45, 60, 90].map(n => `<option value="${n}"${(b.time || 20) === n ? ' selected' : ''}>${n} s</option>`).join('')}</select></label>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label class="fr-l">${t('Color del texto')} <input type="color" class="pl-ink" value="${b.color || '#222222'}"></label>
       <label class="fr-chk"><input type="checkbox" class="pl-ink-auto"${b.color ? '' : ' checked'}> ${t('El de la paleta')}</label></div>
@@ -52,7 +59,9 @@ export function openPollEditor(b, { fresh = false } = {}) {
     number: 'Cada persona da un número con un deslizador; se ven la media, la mediana y cómo se reparten, y la respuesta si la pones.',
     image: 'Escribe el nombre de cada opción (uno por línea) y elige su imagen.',
     point: 'Elige una imagen: cada persona toca un punto y se ve dónde tocó todo el mundo.',
-    rank: 'Cada persona ordena las opciones de la que más prefiere a la que menos; gana la que suma más puntos.' };
+    rank: 'Cada persona ordena las opciones de la que más prefiere a la que menos; gana la que suma más puntos.',
+    draw: 'Cada persona dibuja con el dedo en su móvil (encima de la imagen, si eliges una) y los dibujos salen en un muro.',
+    photo: 'Cada persona hace o elige una foto (su cuaderno, una maqueta, algo que ha encontrado) y salen en un muro.' };
   let images = (b.images || []).slice();
   const drawImgs = () => {
     const ls = labels(); q('.pl-imgs').innerHTML = ls.map((l, i) => `<div class="sh-row" data-i="${i}" style="align-items:center">${images[i] ? `<img src="${images[i]}" alt="" style="width:64px;height:48px;object-fit:cover;border-radius:6px">` : '<span style="width:64px;height:48px;border-radius:6px;background:#8883;display:inline-block"></span>'}
@@ -67,12 +76,14 @@ export function openPollEditor(b, { fresh = false } = {}) {
     q('.pl-stage img').src = image || ''; q('.pl-stage').hidden = !image;
     q('.pl-marks').innerHTML = points.slice(0, ls.length).map((p, i) => p ? `<b style="left:${p.x}%;top:${p.y}%">${i + 1}</b>` : '').join('');
   };
-  const sync = () => { const k = q('.pl-kind').value; q('.pl-opts-l').hidden = ['rating', 'word', 'qa', 'board', 'gaps', 'open', 'number', 'point'].includes(k);
-    q('.pl-num').hidden = k !== 'number'; q('.pl-imgs').hidden = k !== 'image'; if (k === 'image') drawImgs();
+  const sync = () => { const k = q('.pl-kind').value; q('.pl-opts-l').hidden = ['rating', 'word', 'qa', 'board', 'gaps', 'open', 'number', 'point', 'draw', 'photo'].includes(k);
+    q('.pl-num').hidden = k !== 'number'; q('.pl-imgs').hidden = k !== 'image'; if (k === 'image') drawImgs(); q('.pl-rub').hidden = k !== 'open';
     back.querySelectorAll('.pl-quiz').forEach(x => { x.hidden = k !== 'quiz'; });
+    back.querySelectorAll('.pl-teams-l').forEach(x => { x.hidden = k !== 'quiz' && k !== 'board'; });
     q('.pl-help').hidden = !HELP[k]; q('.pl-help').textContent = HELP[k] ? t(HELP[k]) : '';
-    q('.pl-text-l').hidden = k !== 'gaps'; q('.pl-pic').hidden = k !== 'label' && k !== 'point'; if (k === 'label' || k === 'point') drawPic();
-    q('.pl-place').closest('label').hidden = k === 'point'; q('.pl-marks').hidden = k === 'point'; };
+    const picOnly = k === 'point' || k === 'draw';
+    q('.pl-text-l').hidden = k !== 'gaps'; q('.pl-pic').hidden = k !== 'label' && !picOnly; if (k === 'label' || picOnly) drawPic();
+    q('.pl-place').closest('label').hidden = picOnly; q('.pl-marks').hidden = picOnly; };
   q('.pl-text').value = b.text || '';
   q('.pl-opts').addEventListener('input', () => { const k = q('.pl-kind').value; if (k === 'label') drawPic(); if (k === 'image') drawImgs(); });
   // (A picture made small enough to travel to every phone: at most `max` px, JPEG.)
@@ -86,7 +97,7 @@ export function openPollEditor(b, { fresh = false } = {}) {
   }
   q('.pl-img').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; small(f, src => { image = src; drawPic(); }); });
   q('.pl-stage').addEventListener('click', e => {
-    if (q('.pl-kind').value === 'point') return;               // (a point to tap: the picture only)
+    if (['point', 'draw'].includes(q('.pl-kind').value)) return;   // (a point to tap, a drawing's background: the picture only)
     const r = q('.pl-stage img').getBoundingClientRect(), i = +q('.pl-place').value || 0;
     points[i] = { x: +((e.clientX - r.left) / r.width * 100).toFixed(1), y: +((e.clientY - r.top) / r.height * 100).toFixed(1) };
     const n = labels().length; if (i + 1 < n) q('.pl-place').value = String(i + 1);
@@ -106,6 +117,15 @@ export function openPollEditor(b, { fresh = false } = {}) {
     try { const r = await cd.pollVotes(doc.id, b.pollId), n = mergeVotes(b.pollId, r.votes); q('.pl-got').textContent = t('{n} respuestas por enlace').replace('{n}', n); count(); setPoll(b.id, {}); }
     catch { q('.pl-got').textContent = t('No se pudieron traer.'); } };
   q('.pl-get').addEventListener('click', bring);
+  // The open answers kept here, marked by the AI against the criteria.
+  q('.pl-grade').addEventListener('click', async () => {
+    const V = savedVotes(b.pollId), list = Object.keys(V).filter(k => V[k]?.t).map(k => ({ id: k, text: V[k].t }));
+    if (!list.length) { q('.pl-graded').textContent = t('Aún no hay respuestas.'); return; }
+    const { gradeOpen } = await import('../../features/ai/authoring.js'), { run } = await import('./ai.js');
+    const marks = await run(() => gradeOpen(q('.pl-q').value.trim(), q('.pl-rubric').value.trim(), list)); if (!marks) return;
+    const by = Object.fromEntries(marks.map(m => [m.id, m])), e = x => String(x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    q('.pl-graded').innerHTML = list.map(a => `<div style="padding:6px 0;border-top:1px solid var(--line)"><b>${by[a.id] ? by[a.id].score + '/10' : '—'}</b> ${e(a.text)}${by[a.id] ? `<div class="host-help">${e(by[a.id].feedback)}</div>` : ''}</div>`).join('');
+  });
   q('.pl-kind').addEventListener('change', () => { sync(); later(); }); sync(); count(); later(); bring();
   q('.pl-ink').addEventListener('input', () => { q('.pl-ink-auto').checked = false; });
   q('.modal-close').addEventListener('click', close);
@@ -118,14 +138,18 @@ export function openPollEditor(b, { fresh = false } = {}) {
     setPoll(b.id, { question: q('.pl-q').value.trim(), kind, display: q('.pl-disp').value, options: options.length ? options : b.options,
       async: ASYNC_KINDS.includes(kind) && q('.pl-async').checked ? true : null,
       color: q('.pl-ink-auto').checked ? null : q('.pl-ink').value,
-      ...(kind === 'quiz' && { correct: correct.length ? correct : [0], time: +q('.pl-time').value }),
+      ...(kind === 'quiz' && { correct: correct.length ? correct : [0], time: +q('.pl-time').value, mode: q('.pl-mode').value === 'speed' ? null : q('.pl-mode').value }),
       ...(kind === 'gaps' && { text: q('.pl-text').value.trim() }),
       ...(kind === 'label' && { image, points: options.map((_, i) => points[i] || { x: 50, y: 50 }) }),
-      ...(kind === 'point' && { image }),
+      ...(kind === 'point' && { image }), ...(kind === 'draw' && { image: image || null }),
       ...(kind === 'image' && { images: options.map((_, i) => images[i] || '') }),
+      ...(kind === 'open' && { rubric: q('.pl-rubric').value.trim() || null }),
       ...(kind === 'number' && (() => { const num = sel => { const v = q(sel).value.trim().replace(',', '.'); return v === '' || !isFinite(+v) ? null : +v; };
         let lo = num('.pl-min') ?? 0, hi = num('.pl-max') ?? 100; if (hi <= lo) hi = lo + 1;
         return { min: lo, max: hi, unit: q('.pl-unit').value.trim() || null, answer: num('.pl-ans') }; })()) });
+    // (The teams are the presentation's: all its quizzes.)
+    if (kind === 'quiz' || kind === 'board') { const teams = q('.pl-teams').value.split('\n').map(x => x.trim()).filter(Boolean).slice(0, 8);
+      if (JSON.stringify(teams) !== JSON.stringify(state.deck.teams || [])) commit(() => { if (teams.length) state.deck.teams = teams; else delete state.deck.teams; }); }
     applied = true; close();
   });
   q('.pl-clear').addEventListener('click', async () => {

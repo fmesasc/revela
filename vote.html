@@ -67,6 +67,7 @@
       <h1>Introduce el código</h1>
       <p>Aparece en la pantalla de la presentación, junto al QR.</p><br>
       <input id="code" type="text" maxlength="5" autocomplete="off" autocapitalize="characters">
+      <br><br><input id="nick" type="text" maxlength="24" autocomplete="nickname" placeholder="Tu nombre o apodo (opcional)" aria-label="Tu nombre o apodo (opcional)">
       <br><br><button id="go" style="width:100%">Entrar</button>
       <div id="err" class="err"></div>
     </section>
@@ -76,6 +77,7 @@
       <button id="send" style="margin-top:12px;width:100%">Enviar</button>
       <div id="done" class="ok" hidden>✔ ¡Voto registrado! Puedes cambiarlo mientras la pregunta siga abierta.</div>
     </section>
+    <div id="picked" hidden style="text-align:center;padding:18px;border-radius:12px;background:#ffd34d;color:#1d1d1f;font-size:24px;font-weight:800">🎲 ¡Te ha tocado!</div>
     <section id="wait" hidden><h1>Esperando la siguiente pregunta…</h1><p>Mantén esta página abierta.</p></section>
   </main>
   <script type="module" src="src/apps/vote/main.js"></script>

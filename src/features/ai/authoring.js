@@ -464,6 +464,20 @@ Answer only JSON {"items":[…]}, each one of:
   return made.length;
 }
 
+// Open answers marked against criteria (as Curipod's rubric feedback): for each one, a mark from 0 to 10 and a short,
+// kind comment for the student — what's good and one thing to improve. answers: [{ id, text }] → [{ id, score, feedback }].
+export async function gradeOpen(question, rubric, answers) {
+  const list = (answers || []).filter(x => x && String(x.text || '').trim()).slice(0, 60).map(x => ({ id: String(x.id), text: String(x.text).slice(0, 400) }));
+  if (!list.length) return [];
+  const out = await chat([
+    { role: 'system', content: `You are a teacher marking short answers to a question asked in class. For each answer give a mark from 0 to 10 and a short, encouraging comment (max 25 words) in the second person, addressed to the student: what is right and one concrete thing to improve. ${rubric ? 'Mark against these criteria:\n' + String(rubric).slice(0, 2000) : 'Mark how right, complete and clear it is.'} Answer only JSON {"marks":[{"id":"…","score":N,"feedback":"…"}]}, in ${lang()}.` },
+    { role: 'user', content: `Question: ${String(question || '').slice(0, 500)}\nAnswers: ${JSON.stringify(list)}` },
+  ], { json: true, maxTokens: 4000, feature: 'grade' });
+  const ok = new Set(list.map(x => x.id));
+  return (parseJSON(out).marks || []).filter(m => m && ok.has(String(m.id)))
+    .map(m => ({ id: String(m.id), score: Math.max(0, Math.min(10, Math.round(+m.score) || 0)), feedback: str(m.feedback).slice(0, 300) }));
+}
+
 // A review of the whole deck (as Copilot's «Review presentation»): what a good editor would point out, slide by
 // slide — the message not clear, too much text, a title that says nothing, inconsistent terms or figures, spelling,
 // pictures without alternative text, a missing ending… → [{ slide, kind, issue, fix }] (slide: its number).

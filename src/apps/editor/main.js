@@ -107,6 +107,8 @@ sanitizeDeck(state.deck);
 notify.setNotifier({ alert: alertDialog, confirm: confirmDialog, prompt: promptDialog });
 // Presenting from here: the presentation may ask for its live captions translated for the audience (with this editor's AI, if connected).
 window.__revelaTranslate = (text, to) => (ai.aiConnected() ? aiDeck.translateLine(text, to) : Promise.resolve(null));
+// (And the open answers, marked by the AI while presenting: the presentation asks — io/runtime/scripts.js.)
+window.__revelaGrade = (question, rubric, answers) => (ai.aiConnected() ? aiDeck.gradeOpen(question, rubric, answers) : Promise.resolve(null));
 // Slides' placeholders follow their layout's when it is moved in the master view.
 master.followLayouts();
 // Output of the document (HTML, print, images) and presenting, together for the tests.

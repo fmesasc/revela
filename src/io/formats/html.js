@@ -318,8 +318,8 @@ function blockHTMLRaw(b, slide) {
   if (b.type === 'video')
     return `<video${a} src="${esc(b.src || '')}" controls style="${box(b)}object-fit:contain"></video>`;
   if (b.type === 'poll')     // live poll: question, live results and the QR to vote
-    return `<div${a} class="rv-poll" data-poll="${esc(JSON.stringify({ pollId: b.pollId, kind: b.kind, display: b.display, question: b.question, options: b.options, ...(b.kind === 'quiz' && { correct: b.correct || [0], time: b.time || 20 }), ...(ACTIVITIES.includes(b.kind) && { text: b.text, points: b.points, image: b.image }),
-      ...(b.kind === 'number' && { min: b.min, max: b.max, step: b.step, unit: b.unit, answer: b.answer }), ...(b.kind === 'image' && { images: b.images }), ...(b.kind === 'point' && { image: b.image }) }))}" `
+    return `<div${a} class="rv-poll" data-poll="${esc(JSON.stringify({ pollId: b.pollId, kind: b.kind, display: b.display, question: b.question, options: b.options, ...(b.kind === 'quiz' && { correct: b.correct || [0], time: b.time || 20, ...(b.mode && b.mode !== 'speed' && { mode: b.mode }) }), ...(ACTIVITIES.includes(b.kind) && { text: b.text, points: b.points, image: b.image }),
+      ...(b.kind === 'number' && { min: b.min, max: b.max, step: b.step, unit: b.unit, answer: b.answer }), ...(b.kind === 'image' && { images: b.images }), ...((b.kind === 'point' || b.kind === 'draw') && { image: b.image }), ...(b.kind === 'open' && b.rubric && { rubric: b.rubric }) }))}" `
       + `style="${box(b)}display:grid;grid-template-columns:1fr auto;gap:1em;font-size:${b.fontSize || 32}px${/^#[0-9a-f]{3,8}$/i.test(b.color || '') ? ';color:' + b.color : ''}">`
       + `<div style="display:flex;flex-direction:column;min-width:0"><div style="font-weight:700;margin-bottom:.5em">${esc(b.question || '')}</div>`
       + `<div class="rv-poll-res" style="flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center"></div></div>`
@@ -691,7 +691,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${hasTrig ? TRIGGER_JS : ''}
  ${hasCam ? `${createCameraEngine.toString()}\n${revelaCameraRuntime.toString()}\nrevelaCameraRuntime(${JSON.stringify(VISION)}, ${JSON.stringify(SELFIE_MODEL)});` : ''}
  ${hasPuppet ? `${hasCam ? '' : createCameraEngine.toString()}\n${[puppetBones, puppetMorph, puppetSolve, puppetMirror, createPuppet, revelaPuppetRuntime].join('\n')}\nrevelaPuppetRuntime(${JSON.stringify(VISION)}, ${JSON.stringify(POSE_MODEL)}, ${JSON.stringify(FACE_MODEL)});` : ''}
- ${hasPoll && !selfPaced ? pollJS(currentPalette(deck).accents, { classroom: !!deck.classroom, labels: pollLabels() }) : ''}
+ ${hasPoll && !selfPaced ? pollJS(currentPalette(deck).accents, { classroom: !!deck.classroom, labels: pollLabels(), teams: Array.isArray(deck.teams) ? deck.teams.slice(0, 8) : [], starStep: +deck.starStep || 5 }) : ''}
  ${selfPaced && hasPoll ? `(${selfPacedRuntime})(${publicActivity}, (function () { var gradeActivity = ${gradeActivity}; return ${gradeAnswer}; })(), ${JSON.stringify({ check: t('Comprobar'), allRight: t('¡Todo bien!'), partly: t('{n} % de aciertos'),
    wrong: t('No es correcto'), sent: t('Nota enviada'), failed: t('No se pudo enviar la respuesta. Inténtalo otra vez.'), live: t('Esta votación es en directo, con quien presenta.') })});` : ''}
  ${hasLive ? liveDataJS() : ''}
@@ -709,7 +709,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${/ data-file(-view)?[ >]/.test(slides) ? FILE_JS : ''}
  ${hasMedia ? `${createMediaPlayer.toString()}\n${revelaMediaRuntime.toString()}\nrevelaMediaRuntime(${JSON.stringify(GIFUCT)});` : ''}
  ${inkJS(w, h, { pen: t('Lápiz'), hl: t('Resaltador'), laser: t('Puntero láser'), color: t('Color de la tinta'), erase: t('Borrar la tinta de la diapositiva'),
-   cc: t('Subtítulos en directo'), read: t('Modo lectura'), zin: t('Acercar'), zout: t('Alejar'), zreset: t('Tamaño normal'), next: t('Siguiente'), prev: t('Anterior'), go: t('Ir a la diapositiva'), overview: t('Vista general'),
+   cc: t('Subtítulos en directo'), read: t('Modo lectura'), zin: t('Acercar'), zout: t('Alejar'), zreset: t('Tamaño normal'), pick: t('Elegir a alguien al azar'), grade: t('Corregir con IA las respuestas'), next: t('Siguiente'), prev: t('Anterior'), go: t('Ir a la diapositiva'), overview: t('Vista general'),
    titles: deck.slides.filter(s => !s.hidden).map(s => slideTitle(s)), arrow: t('Puntero normal'), black: t('Pantalla en negro'), white: t('Pantalla en blanco'), full: t('Pantalla completa'), end: t('Terminar la presentación'), lang: speechLang(), ccWarn: t('Los subtítulos usan el reconocimiento de voz del navegador: en Chrome y Edge el audio se envía a su servicio de voz. ¿Activarlos?') })}
  ${readingJS({ read: t('Modo lectura'), listen: t('Leer en voz alta'), stop: t('Parar'), bigger: t('Letra más grande'), smaller: t('Letra más pequeña'), close: t('Cerrar'),
    img: t('Imagen'), q: t('Pregunta'), slide: t('Diapositiva'), empty: t('Esta diapositiva no tiene texto.') })}

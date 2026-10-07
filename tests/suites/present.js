@@ -459,6 +459,22 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       const pic = Q('#answers .act-pic'); pic.style.cssText = 'width:200px;height:100px'; Q('#answers .act-pic img').style.cssText = 'width:200px;height:100px';
       const rc = pic.getBoundingClientRect(); pic.dispatchEvent(new v.MouseEvent('click', { bubbles: true, clientX: rc.left + 50, clientY: rc.top + 75 })); Q('#send').click();
       eq(Math.round(sent().answer.x) + ',' + Math.round(sent().answer.y), '25,75', 'punto: dónde tocó, en % de la imagen');
+      // Drawing with the finger.
+      v.__vote.onData({ type: 'poll', poll: { pollId: 'd1', kind: 'draw', question: 'Dibuja', options: [] } });
+      const cv = Q('#answers canvas'), cr = cv.getBoundingClientRect(), PE = (type, x, y) => cv.dispatchEvent(new v.PointerEvent(type, { bubbles: true, pointerId: 3, clientX: cr.left + x, clientY: cr.top + y }));
+      PE('pointerdown', 10, 10); PE('pointermove', 60, 40); PE('pointermove', 90, 70); PE('pointerup', 90, 70); Q('#send').click();
+      assert(/^data:image\/png;base64,/.test(sent().answer.img), 'dibujo: se envía el dibujo');
+      // Teams and confidence: the team first, then the answer and how sure.
+      v.__vote.onData({ type: 'poll', poll: { pollId: 'q7', kind: 'quiz', question: '¿?', options: ['a', 'b'], mode: 'confidence', teams: ['Rojo', 'Azul'], left: 20 } });
+      [...f.contentDocument.querySelectorAll('#answers .opt')].find(x => x.textContent === 'Azul').click();
+      eq(v.__sent.filter(m => m.type === 'hi').at(-1)?.team, 'Azul', 'equipos: elige el suyo');
+      f.contentDocument.querySelectorAll('#answers .quiz-opt')[1].click();
+      [...f.contentDocument.querySelectorAll('#answers button')].find(x => /seguro/.test(x.textContent)).click();
+      eq(sent().answer + '|' + sent().sure, '1|true', 'confianza: su respuesta y lo seguro que está');
+      v.__vote.onData({ type: 'stars', stars: 7, level: 2 }); eq(Q('#stars')?.textContent, '⭐ 7 · Nivel 2', 'sus estrellas y su nivel');
+      v.__vote.onData({ type: 'poll', poll: { pollId: 'o5', kind: 'open', question: 'Q', options: [] } });
+      v.__vote.onData({ type: 'feedback', pollId: 'o5', score: 8, text: 'Muy bien' }); assert(/8\/10[\s\S]*Muy bien/.test(Q('#answers .fb')?.textContent || ''), 'la nota de la IA y su comentario');
+      v.__vote.onData({ type: 'picked' }); assert(!Q('#picked').hidden, '«te ha tocado»');
     } finally { f.remove(); }
   });
 
@@ -779,6 +795,49 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(!doc.getElementById('__laser') && !doc.getElementById('__rv-spot') && !doc.getElementById('__black'), 'no dibuja puntero, foco ni pantalla negra');
       assert(!sent.some(m => m.kind === 'welcome' || m.kind === 'state'), 'no se le trata como mando');
       eq(R.remote.remoteConnected(), false, 'el mando del editor sigue sin nadie');
+    } finally { f.remove(); URL.revokeObjectURL(fake); URL.revokeObjectURL(noqr); }
+  });
+
+  await test('aula: dibujo y foto, modos de cuestionario, equipos, estrellas y alguien al azar', async () => {
+    const P = await frame.contentWindow.eval("import('/src/features/live/poll.js')"), PNG = 'data:image/png;base64,iVBORw0KGgo=';
+    let r = P.tallyVotes({ kind: 'draw' }, { a: { img: PNG, time: 1, n: 'Ana' }, b: { img: 'javascript:x' } });
+    eq(r.voters + '|' + r.pics[0].n, '1|Ana', 'dibujo: solo imágenes');
+    assert(/<img src="data:image\/png/.test(P.pollResultsHTML({ kind: 'draw' }, r, null, null)) && /Ana/.test(P.pollResultsHTML({ kind: 'photo' }, r, null, null)), 'dibujo y foto: en un muro, con su nombre');
+    const q = { kind: 'quiz', options: ['a', 'b'], correct: [1], time: 20 };
+    const pts = mode => P.tallyVotes({ ...q, mode }, { x: { a: 1, t: 15000, s: true }, y: { a: 0, t: 1000, s: true }, z: { a: 1, t: 1000, s: false } }).board.map(b => b.id + b.pts).sort().join();
+    eq(pts(), 'x625,y0,z975', 'rapidez: más puntos cuanto antes');
+    eq(pts('accuracy'), 'x1000,y0,z1000', 'precisión: acertar es acertar');
+    eq(pts('confidence'), 'x1000,y-300,z600', 'confianza: seguro y bien, lo que más; seguro y mal, resta');
+    const html = P.pollResultsHTML({ kind: 'board' }, { board: [{ id: 'x', n: 'Ana', pts: 900 }], teams: [{ team: 'Rojo', pts: 900, n: 1 }], stars: { x: { stars: 6, level: 2 } } }, null, null);
+    assert(/Rojo/.test(html) && /⭐6 · Nivel 2/.test(html), 'clasificación: por equipos y con estrellas y nivel');
+    // Live: names, teams, stars and the picker.
+    reset(); R.store.commit(() => { R.state.deck.teams = ['Rojo', 'Azul']; });
+    R.poll.addPoll({ kind: 'quiz', question: 'Q', options: ['a', 'b'], correct: [1], mode: 'confidence' }); const pq = last(); R.poll.clearVotes(pq.pollId);
+    R.slides.addSlide('blank'); R.poll.addPoll({ kind: 'draw', question: 'D', options: [] }); const pd = last(); R.poll.clearVotes(pd.pollId);
+    R.slides.addSlide('blank'); R.poll.addPoll({ kind: 'board', question: 'B', options: [] });
+    try { frame.contentWindow.localStorage.removeItem('revela.poll.teams'); } catch {}
+    R.slides.goToSlide(0);
+    const fake = URL.createObjectURL(new Blob(['window.Peer=function(id){var s=this;s.h={};s.on=function(e,f){(s.h[e]=s.h[e]||[]).push(f);};s.destroy=function(){};window.__votePeer=s;setTimeout(function(){(s.h.open||[]).forEach(function(f){f(id);});},0);};'], { type: 'text/javascript' }));
+    const noqr = URL.createObjectURL(new Blob(['window.QRCode=null;'], { type: 'text/javascript' }));
+    const { f, win, doc } = await deckFrame(R.io.buildHTML(R.state.deck, { inApp: true }).split(R.vendor.PEERJS).join(fake).split(R.vendor.QRCODE).join(noqr), 800, 450);
+    try {
+      for (let i = 0; i < 40 && !win.__votePeer?.h.connection; i++) await sleep(50);
+      const sent = [], c = { open: true, h: {}, on(e, fn) { (this.h[e] = this.h[e] || []).push(fn); }, send(m) { sent.push(m); }, close() {} };
+      win.__votePeer.h.connection.forEach(fn => fn(c)); c.h.open.forEach(fn => fn());
+      const say = d => c.h.data.forEach(fn => fn(d));
+      const m = sent.filter(x => x.type === 'poll').at(-1).poll; eq(m.mode + '|' + m.teams.join(), 'confidence|Rojo,Azul', 'el móvil recibe el modo y los equipos');
+      say({ type: 'hi', voter: 'v1', name: 'Ana', team: 'Rojo' });
+      say({ type: 'vote', pollId: pq.pollId, voter: 'v1', answer: 1, name: 'Ana', sure: true });
+      eq(JSON.parse(win.localStorage.getItem('revela.poll.' + pq.pollId)).v1.s, true, 'confianza: se guarda lo seguro que está');
+      eq(sent.filter(x => x.type === 'stars').at(-1)?.stars, 1, 'una estrella por responder');
+      win.Reveal.slide(1); await sleep(50);
+      say({ type: 'vote', pollId: pd.pollId, voter: 'v1', answer: { img: PNG, n: 'Ana' } }); say({ type: 'vote', pollId: pd.pollId, voter: 'v2', answer: { img: 'data:text/html,x' } });
+      eq(Object.keys(JSON.parse(win.localStorage.getItem('revela.poll.' + pd.pollId))).join(), 'v1', 'dibujo: solo imágenes de verdad');
+      win.Reveal.slide(2); await sleep(50);
+      assert(/Rojo/.test(doc.querySelector('.present .rv-poll-res').innerHTML) && /⭐/.test(doc.querySelector('.present .rv-poll-res').innerHTML), 'la clasificación, por equipos y con estrellas');
+      win.rvPick(); for (let i = 0; i < 60 && doc.querySelector('#rv-pick .rv-pick-name')?.style.color === ''; i++) await sleep(50);
+      eq(doc.querySelector('#rv-pick .rv-pick-name').textContent, 'Ana', 'alguien al azar: entre quienes tienen nombre');
+      assert(sent.some(x => x.type === 'picked'), 'y su móvil se entera');
     } finally { f.remove(); URL.revokeObjectURL(fake); URL.revokeObjectURL(noqr); }
   });
 

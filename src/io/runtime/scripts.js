@@ -16,9 +16,10 @@ import { QRCODE, PEERJS } from '../../core/vendor.js';
 // presenter's pace (the current slide's markup, fragments as shown, with the
 // page's styles, drawn without scripts on the phone); a corner badge with the
 // code and QR to join (A shows or hides it).
-export function pollJS(accents, { classroom = false, labels = null } = {}) {
+// teams: the quizzes played in teams (deck.teams: their names); starStep: stars for each level.
+export function pollJS(accents, { classroom = false, labels = null, teams = [], starStep = 5 } = {}) {
   return `(function(){
- var CLASS=${classroom ? 'true' : 'false'};
+ var CLASS=${classroom ? 'true' : 'false'}, TEAMS=${JSON.stringify((teams || []).map(x => String(x).slice(0, 30)))}, STEP=${Math.max(1, Math.round(+starStep) || 5)};
  var gradeActivity=${gradeActivity.toString()}, publicActivity=${publicActivity.toString()};
  var ACT=['order','match','gaps','label'], GR=['quiz'].concat(ACT);
  var tally=${tallyVotes.toString()};
@@ -32,23 +33,36 @@ export function pollJS(accents, { classroom = false, labels = null } = {}) {
  function load(id){try{return JSON.parse(localStorage.getItem('revela.poll.'+id))||{};}catch(e){return {};}}
  function store(id){try{localStorage.setItem('revela.poll.'+id,JSON.stringify(votes[id]));}catch(e){}}
  function V(id){return votes[id]||(votes[id]=load(id));}
+ // Teams (who is in which, kept like the votes) and stars: one for each poll answered and one more for each right
+ // (a quiz right, an activity all right); a level every STEP stars (ClassPoint's stars and levels).
+ var teamOf=load('teams');function keepTeams(){try{localStorage.setItem('revela.poll.teams',JSON.stringify(teamOf));}catch(e){}}
+ function starsOf(){var st={};all().forEach(function(el){var p=def(el);if(!p||p.kind==='board'||p.kind==='qa')return;var Vp=V(p.pollId),r=null;
+   if(GR.indexOf(p.kind)>=0&&revealed[p.pollId])r=tally(p,Vp).board||[];   // (right ones once revealed: else the star would tell)
+   for(var k in Vp){var o=st[k]||(st[k]={stars:0});o.stars++;}
+   (r||[]).forEach(function(x){if(x.ok){var o=st[x.id]||(st[x.id]={stars:0});o.stars++;}});});
+  for(var k in st)st[k].level=1+Math.floor(st[k].stars/STEP);return st;}
+ function teamBoard(board){if(!TEAMS.length)return [];var t={};board.forEach(function(r){var tm=teamOf[r.id];if(!tm)return;var o=t[tm]||(t[tm]={team:tm,sum:0,n:0});o.sum+=r.pts;o.n++;});
+  return Object.keys(t).map(function(k){return {team:k,pts:Math.round(t[k].sum/t[k].n),n:t[k].n};}).sort(function(a,b){return b.pts-a.pts;});}
  // Quizzes: the time left, the answer shown when it runs out (or on a click), and every quiz added up.
  function left(p){return started[p.pollId]?(+p.time||20)-(Date.now()-started[p.pollId])/1000:(+p.time||20);}
  function quizzes(){return all().map(def).filter(function(p){return p&&GR.indexOf(p.kind)>=0;}).map(function(p){return {poll:p,votes:V(p.pollId)};});}
  function paint(el){var p=def(el);if(!p)return;var r=p.kind==='board'?{board:totals(quizzes())}:tally(p,V(p.pollId));
+  if(p.kind==='board'){r.teams=teamBoard(r.board);r.stars=starsOf();}
   if(p.kind==='quiz'){r.revealed=!!revealed[p.pollId];r.left=left(p);if(r.revealed)r.board=totals(quizzes());}
   if(ACT.indexOf(p.kind)>=0)r.revealed=!!revealed[p.pollId];
   el.querySelector('.rv-poll-res').innerHTML=render(p,r,ACC,LBL);}
  function reveal(p){if(revealed[p.pollId])return;revealed[p.pollId]=true;all().forEach(paint);
   var board=totals(quizzes()),mine=tally(p,V(p.pollId)).board;
   conns.forEach(function(c){if(!c.voter)return;var m=mine.filter(function(x){return x.id===c.voter;})[0],k=board.map(function(x){return x.id;}).indexOf(c.voter);
-   send(c,{type:'quizresult',pollId:p.pollId,answered:!!m,ok:!!(m&&m.ok),pts:m?m.pts:0,total:k>=0?board[k].pts:0,rank:k>=0?k+1:0,of:board.length});});}
+   send(c,{type:'quizresult',pollId:p.pollId,answered:!!m,ok:!!(m&&m.ok),pts:m?m.pts:0,total:k>=0?board[k].pts:0,rank:k>=0?k+1:0,of:board.length});starsTo(c,c.voter);});}
  function tick(){var p=current();if(!p||p.kind!=='quiz'||revealed[p.pollId]){clearInterval(timer);timer=null;return;}
   var el=all().filter(function(e){var q=def(e);return q&&q.pollId===p.pollId;})[0];if(el)paint(el);if(left(p)<=0)reveal(p);}
  function current(){var s=Reveal.getCurrentSlide(),el=s&&s.querySelector('.rv-poll');var p=el&&def(el);if(!p)return null;var act=ACT.indexOf(p.kind)>=0;
   return {pollId:p.pollId,kind:p.kind,question:p.question,options:act?[]:p.options,pub:act?publicActivity(p):null,time:p.time,left:p.kind==='quiz'?left(p):null,revealed:!!revealed[p.pollId],
-   min:p.min,max:p.max,step:p.step,unit:p.unit,images:p.kind==='image'?p.images:undefined,image:p.kind==='point'?p.image:undefined};}
+   mode:p.mode,teams:TEAMS.length&&GR.indexOf(p.kind)>=0?TEAMS:undefined,min:p.min,max:p.max,step:p.step,unit:p.unit,images:p.kind==='image'?p.images:undefined,image:p.kind==='point'||p.kind==='draw'?p.image:undefined};}
  function send(c,m){try{if(c.open)c.send(m);}catch(e){}}
+ // (After each answer: its stars to the phone, and the leaderboards up to date.)
+ function starsTo(c,who){all().forEach(function(e){var q=def(e);if(q&&q.kind==='board')paint(e);});var s=starsOf()[who];if(s)send(c,{type:'stars',stars:s.stars,level:s.level});}
  function qaList(p){var r=tally(p,votes[p.pollId]||(votes[p.pollId]=load(p.pollId)));return (r.questions||[]).map(function(q){return {id:q.id,text:q.text,up:q.up};});}
  function broadcastQA(p){var cur=current();if(!cur||cur.pollId!==p.pollId)return;conns.forEach(function(c){send(c,{type:'qa',pollId:p.pollId,list:qaList(p)});});}
  function broadcast(){var p=current();
@@ -58,6 +72,7 @@ export function pollJS(accents, { classroom = false, labels = null } = {}) {
  function js(src){return new Promise(function(ok,ko){var s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=ko;document.head.appendChild(s);});}
  function clean(p,a){if(p.kind==='word')return String(a||'').slice(0,60);
   if(p.kind==='open'){var t=String(a||'').trim().slice(0,200);return t?{t:t,time:Date.now()}:null;}
+  if(p.kind==='draw'||p.kind==='photo'){var im=String(a&&a.img||'');return /^data:image\\/(png|jpeg|webp);base64,[A-Za-z0-9+\\/=]+$/.test(im)&&im.length<=300000?{img:im,time:Date.now(),n:String(a.n||'').slice(0,24)}:null;}
   if(p.kind==='number'){var x=+a,lo=isFinite(+p.min)?+p.min:-1e12,hi=isFinite(+p.max)?+p.max:1e12;return a!==''&&a!=null&&isFinite(x)&&x>=lo&&x<=hi?x:null;}
   if(p.kind==='point'){var px=+(a&&a.x),py=+(a&&a.y);return isFinite(px)&&isFinite(py)&&px>=0&&px<=100&&py>=0&&py<=100?{x:Math.round(px*10)/10,y:Math.round(py*10)/10}:null;}
   if(p.kind==='rank'){var L=p.options.length,o=(Array.isArray(a)?a:[]).map(Number),seen={};if(o.length!==L)return null;for(var i=0;i<L;i++){if(!(o[i]>=0&&o[i]<L)||seen[o[i]])return null;seen[o[i]]=1;}return o;}if(p.kind==='multi')return (Array.isArray(a)?a:[]).map(Number).filter(function(x){return x>=0&&x<p.options.length;}).slice(0,20);
@@ -69,7 +84,9 @@ export function pollJS(accents, { classroom = false, labels = null } = {}) {
     if(window.QRCode)QRCode.toCanvas(el.querySelector('canvas'),url,{width:220,margin:1},function(){});});});
   peer.on('connection',function(c){conns.push(c);
     c.on('open',function(){if(CLASS){send(c,{type:'css',css:css()});send(c,slideMsg());}var p=current();send(c,{type:'poll',poll:p});if(p&&p.kind==='qa')send(c,{type:'qa',pollId:p.pollId,list:qaList(p)});});
-    c.on('data',function(d){if(d&&d.type==='lang'){c.lang=/^[a-z]{2}$/.test(d.lang||'')?d.lang:null;return;}if(!d||d.type!=='vote')return;var el=all().filter(function(e){var p=def(e);return p&&p.pollId===d.pollId;})[0];if(!el)return;
+    c.on('data',function(d){if(d&&d.type==='lang'){c.lang=/^[a-z]{2}$/.test(d.lang||'')?d.lang:null;return;}
+      if(d&&d.type==='hi'){c.voter=String(d.voter||'').slice(0,40);c.name=String(d.name||'').trim().slice(0,24);
+        if(TEAMS.indexOf(d.team)>=0&&c.voter){teamOf[c.voter]=d.team;keepTeams();all().forEach(function(e){var q=def(e);if(q&&q.kind==='board')paint(e);});}return;}if(!d||d.type!=='vote')return;var el=all().filter(function(e){var p=def(e);return p&&p.pollId===d.pollId;})[0];if(!el)return;
       var p=def(el),who=String(d.voter).slice(0,40),V=votes[p.pollId]||(votes[p.pollId]=load(p.pollId));
       if(p.kind==='qa'){var a=d.answer||{};
         if(a.ask){var txt=String(a.ask).trim().slice(0,200);if(!txt)return;var n=Object.keys(V).filter(function(k){return V[k].by===who;}).length;if(n>=5)return;
@@ -78,14 +95,42 @@ export function pollJS(accents, { classroom = false, labels = null } = {}) {
         store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId});broadcastQA(p);return;}
       c.voter=who;
       if(p.kind==='quiz'){if(revealed[p.pollId]||!started[p.pollId]||V[who])return;var q=clean(p,d.answer);if(q===null)return;
-        V[who]={a:q,t:Date.now()-started[p.pollId],n:String(d.name||'').slice(0,24)};store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId});return;}
+        V[who]={a:q,t:Date.now()-started[p.pollId],n:String(d.name||'').slice(0,24)};if(p.mode==='confidence')V[who].s=!!d.sure;store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId});starsTo(c,who);return;}
       if(ACT.indexOf(p.kind)>=0){if(revealed[p.pollId]||V[who])return;var arr=(Array.isArray(d.answer)?d.answer:[]).slice(0,40).map(function(x){return String(x==null?'':x).slice(0,100);});
-        V[who]={a:arr,n:String(d.name||'').slice(0,24)};store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId});return;}
+        V[who]={a:arr,n:String(d.name||'').slice(0,24)};store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId});starsTo(c,who);return;}
       var a2=clean(p,d.answer);if(a2===null||a2==='')return;V[who]=a2;
-      store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId});});
+      store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId});starsTo(c,who);});
     c.on('close',function(){conns=conns.filter(function(x){return x!==c;});});});
   peer.on('error',function(e){if(e.type==='unavailable-id'&&tries<5){peer.destroy();start(tries+1);}});}
  all().forEach(paint);
+ // Someone at random (ClassPoint's name picker): among the phones connected with a name — or those who answered with one —,
+ // a quick roulette and the name, big; their phone is told. N or the right-click menu.
+ function LT(x){return (LBL&&LBL[x])||x;}
+ function names(){var seen={},out=[];conns.forEach(function(c){if(c.open!==false&&c.name&&!seen[c.name]){seen[c.name]=1;out.push({name:c.name,c:c});}});
+  all().forEach(function(el){var p=def(el);if(!p)return;var V=votes[p.pollId]||{};for(var k in V){var n=V[k]&&V[k].n;if(n&&!seen[n]){seen[n]=1;out.push({name:n,c:null});}}});return out;}
+ window.rvPick=function(){var list=names(),box=document.getElementById('rv-pick');if(box)box.remove();
+  box=document.createElement('div');box.id='rv-pick';box.style.cssText='position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(0,0,0,.6);color:#fff;font:700 64px/1.2 system-ui,sans-serif;text-align:center;cursor:pointer';
+  box.innerHTML='<div><div style="font-size:24px;font-weight:500;opacity:.8;margin-bottom:12px">'+LT('¿A quién le toca?')+'</div><div class="rv-pick-name"></div><div style="font-size:16px;font-weight:400;opacity:.7;margin-top:18px">'+(list.length?LT('Clic para cerrar · N para otra vez'):LT('Aún no hay nadie con nombre: que lo escriban al entrar en la votación.'))+'</div></div>';
+  (document.querySelector('.reveal')||document.body).appendChild(box);var out=box.querySelector('.rv-pick-name');
+  box.addEventListener('click',function(e){e.stopPropagation();box.remove();});
+  if(!list.length)return;var n=0,steps=18+Math.floor(Math.random()*list.length),pick=null;
+  (function spin(){pick=list[n%list.length];out.textContent=pick.name;n++;if(n<steps)setTimeout(spin,40+n*8);else{out.style.color='#ffd34d';if(pick.c)send(pick.c,{type:'picked'});}})();};
+ // The open answers of this slide marked by the AI (presenting in the editor, which has it: window.parent.__revelaGrade):
+ // each one's mark and comment to its phone, and the list here.
+ var GRADE=null;try{GRADE=window.parent!==window&&window.parent.__revelaGrade;}catch(e){}
+ window.rvGradeOpen=GRADE?function(){var s=Reveal.getCurrentSlide(),el=s&&s.querySelector('.rv-poll'),p=el&&def(el);if(!p||p.kind!=='open')return false;
+  var Vp=V(p.pollId),list=[];for(var k in Vp)if(Vp[k]&&Vp[k].t)list.push({id:k,text:Vp[k].t});if(!list.length)return true;
+  var box=document.createElement('div');box.id='rv-grade';box.style.cssText='position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(0,0,0,.55)';
+  box.innerHTML='<div style="max-width:min(820px,92vw);max-height:84vh;overflow:auto;background:#fff;color:#1d1f24;border-radius:14px;padding:22px 26px;font:18px/1.4 system-ui,sans-serif;text-align:left">'+LT('La IA está corrigiendo…')+'</div>';
+  (document.querySelector('.reveal')||document.body).appendChild(box);box.addEventListener('click',function(e){if(e.target===box)box.remove();});
+  Promise.resolve(GRADE(p.question,p.rubric||'',list)).then(function(marks){var inner=box.firstChild;if(!marks){inner.textContent=LT('Para corregir con IA, conéctala en el editor.');return;}
+   var by={};marks.forEach(function(m){by[m.id]=m;});
+   conns.forEach(function(c){var m=c.voter&&by[c.voter];if(m)send(c,{type:'feedback',pollId:p.pollId,score:m.score,text:m.feedback});});
+   var esc=function(x){return String(x).replace(/[&<>"]/g,function(ch){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch];});};
+   inner.innerHTML='<h2 style="margin:0 0 10px;font-size:24px">'+esc(p.question)+'</h2>'+list.map(function(a){var m=by[a.id];return '<div style="padding:8px 0;border-top:1px solid #ddd"><b style="display:inline-block;min-width:3.2em;color:'+(m&&m.score>=5?'#26890c':'#b3261e')+'">'+(m?m.score+'/10':'—')+'</b> '+esc(a.text)+(m?'<div style="font-size:15px;color:#555;margin-top:2px">'+esc(m.feedback)+'</div>':'')+'</div>';}).join('');},
+   function(){box.firstChild.textContent=LT('No se pudo corregir.');});return true;}:null;
+ window.addEventListener('keydown',function(e){if((e.key==='n'||e.key==='N')&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!/INPUT|TEXTAREA/.test(e.target.tagName)){e.preventDefault();window.rvPick();}
+  else if(e.key==='Escape'){var b=document.getElementById('rv-pick')||document.getElementById('rv-grade');if(b){b.remove();e.stopImmediatePropagation();}}},true);
  // A click on a quiz shows its answer at once.
  document.addEventListener('click',function(e){var el=e.target.closest&&e.target.closest('.rv-poll');var p=el&&def(el);if(p&&((p.kind==='quiz'&&started[p.pollId])||ACT.indexOf(p.kind)>=0)){e.stopPropagation();if(revealed[p.pollId]&&ACT.indexOf(p.kind)>=0)return;reveal(p);}},true);
  js(${JSON.stringify(QRCODE)}).catch(function(){}).then(function(){return js(${JSON.stringify(PEERJS)});}).then(function(){start(0);});

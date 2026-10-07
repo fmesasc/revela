@@ -120,8 +120,9 @@ export function inkJS(W, H, labels) {
  function openMenu(x,y){closeMenu();menu=document.createElement('div');menu.id='rv-cm';menu.setAttribute('role','menu');
   var items=[['next','\u276F',L.next,'\u2192'],['prev','\u276E',L.prev,'\u2190'],['goto','#',L.go],['ov','\u25A6',L.overview,'O'],'-',
    ['pen','\u270E',L.pen,'Ctrl+P',tool==='pen'],['hl','\u2592',L.hl,'Ctrl+I',tool==='hl'],['laser','\u25CF',L.laser,'Ctrl+L',tool==='laser'],['arrow','\u2196',L.arrow,'Esc',!tool],['erase','\u232B',L.erase,'E'],'-',
-   ['cc','CC',L.cc,'C',capOn],['read','Aa',L.read,'R',!!document.querySelector('#rv-read.on')],['zin','+',L.zin,'+'],['zout','\u2212',L.zout,'\u2212'],['z0','1:1',L.zreset,'0'],'-',
+   ['cc','CC',L.cc,'C',capOn],['read','Aa',L.read,'R',!!document.querySelector('#rv-read.on')],['zin','+',L.zin,'+'],['zout','\u2212',L.zout,'\u2212'],['z0','1:1',L.zreset,'0'],'-',window.rvPick?['pick','\u2684',L.pick||'?','N']:null,window.rvGradeOpen&&(function(){var el=Reveal.getCurrentSlide().querySelector('.rv-poll');try{return el&&JSON.parse(el.getAttribute('data-poll')).kind==='open';}catch(e){return false;}})()?['grade','\u2713',L.grade||'?']:null,
    ['black','\u25A0',L.black,'B',Reveal.isPaused()],['white','\u25A1',L.white,'W',white.style.display==='block'],['full','\u26F6',L.full,'F',!!document.fullscreenElement],'-',['end','\u2715',L.end,'Esc']];
+  items=items.filter(function(it){return it!==null;});
   menu.innerHTML=items.map(function(it){return it==='-'?'<hr>':'<button role="menuitem" data-m="'+it[0]+'"'+(it[4]?' class="on"':'')+'><i>'+it[1]+'</i>'+it[2]+(it[3]?'<kbd>'+it[3]+'</kbd>':'')+'</button>';}).join('');
   document.body.appendChild(menu);
   var r=menu.getBoundingClientRect();menu.style.left=Math.max(4,Math.min(x,innerWidth-r.width-4))+'px';menu.style.top=Math.max(4,Math.min(y,innerHeight-r.height-4))+'px';
@@ -139,7 +140,7 @@ export function inkJS(W, H, labels) {
   else if(m==='zin')zoomBy(1.25);else if(m==='zout')zoomBy(0.8);else if(m==='z0')zoomTo(1);
   else if(m==='black'){white.style.display='none';Reveal.togglePause();}
   else if(m==='white'){if(Reveal.isPaused())Reveal.togglePause(false);white.style.display=white.style.display==='block'?'none':'block';}
-  else if(m==='full')fullscreen();else if(m==='end')endShow();}
+  else if(m==='full')fullscreen();else if(m==='end')endShow();else if(m==='pick'&&window.rvPick)window.rvPick();else if(m==='grade'&&window.rvGradeOpen)window.rvGradeOpen();}
  document.addEventListener('contextmenu',function(e){
   if(e.target.closest&&e.target.closest('model-viewer,input,textarea,select,iframe,video'))return;   // (theirs: turning a 3D model, editing…)
   e.preventDefault();openMenu(e.clientX,e.clientY);});

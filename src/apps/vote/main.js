@@ -21,7 +21,9 @@ async function join(code) {
   const me = new window.Peer(await peerOptions());
   me.on('open', () => {
     conn = me.connect('revela-vote-' + code, { reliable: true });
-    conn.on('open', () => { $('#status').textContent = 'Conectado'; $('#status').classList.add('on'); show('wait'); });
+    conn.on('open', () => { $('#status').textContent = 'Conectado'; $('#status').classList.add('on'); show('wait');
+      let tm = ''; try { tm = sessionStorage.getItem('revela.team') || ''; } catch {}
+      conn.send({ type: 'hi', voter, name: nick(), ...(tm && { team: tm }) }); });     // (the name, for «someone at random», and the team: optional)
     conn.on('data', onData);
     conn.on('close', () => { $('#status').textContent = 'Desconectado'; $('#status').classList.remove('on'); });
   });
@@ -55,8 +57,14 @@ function renderQuiz(box) {
     const b = document.createElement('button'); b.className = 'quiz-opt'; b.style.background = TILES[i % TILES.length]; b.textContent = o;
     b.addEventListener('click', () => {
       if (!conn?.open || answer != null) return;
-      answer = i; conn.send({ type: 'vote', pollId: poll.pollId, voter, answer: i, name: name.value.trim() });
-      grid.querySelectorAll('button').forEach(x => { x.disabled = x !== b; x.classList.toggle('on', x === b); });
+      answer = i; grid.querySelectorAll('button').forEach(x => { x.disabled = x !== b; x.classList.toggle('on', x === b); });
+      const go = sure => conn.send({ type: 'vote', pollId: poll.pollId, voter, answer: i, name: name.value.trim(), ...(sure != null && { sure }) });
+      if (poll.mode !== 'confidence') { go(null); return; }
+      // (Confidence mode: how sure — sure and right scores most, sure and wrong loses some.)
+      const ask = el('div', { style: 'display:flex;gap:10px;margin-top:10px' },
+        Object.assign(el('button', { textContent: '💪 Estoy seguro', style: 'flex:1;background:#26890c' }), { onclick: () => { ask.remove(); go(true); } }),
+        Object.assign(el('button', { textContent: '🤔 No del todo', style: 'flex:1;background:#555' }), { onclick: () => { ask.remove(); go(false); } }));
+      grid.after(ask);
     });
     grid.appendChild(b);
   });
@@ -151,7 +159,28 @@ async function onCaption(d) {
   else if (!translator && !d.final) ccShow(d.text);               // (the original while the translation comes)
 }
 
+// The name typed at the start (kept on this phone, also for the quizzes).
+const nickIn = document.getElementById('nick');
+if (nickIn) { nickIn.value = (() => { try { return localStorage.getItem('revela.nick') || ''; } catch { return ''; } })();
+  nickIn.addEventListener('input', () => { try { localStorage.setItem('revela.nick', nickIn.value.trim()); } catch {} }); }
+// Stars and level (one for each answer, one more for each right one), shown at the top.
+function showStars(d) { let b = document.getElementById('stars'); if (!b) { b = el('span', { id: 'stars', style: 'margin-left:8px;font-size:13px;font-weight:700;color:#ffd34d' }); $('header').insertBefore(b, $('#status')); }
+  b.textContent = `⭐ ${d.stars} · Nivel ${d.level}`; }
+// Teams (when the quizzes are played in teams): chosen once, before answering.
+let team = '';
+function chooseTeam(teams, then) {
+  try { team = sessionStorage.getItem('revela.team') || ''; } catch {}
+  if (teams.includes(team)) { then(); return; }
+  const box = $('#answers'); box.innerHTML = ''; $('#send').hidden = true;
+  box.append(el('p', { textContent: 'Elige tu equipo:' }), ...teams.map((tm, i) => Object.assign(el('button', { className: 'opt', textContent: tm, style: `border-color:${TILES[i % TILES.length]}` }), {
+    onclick: () => { team = tm; try { sessionStorage.setItem('revela.team', tm); } catch {} conn?.send({ type: 'hi', voter, name: nick(), team }); then(); } })));
+}
 function onData(d) {
+  if (d?.type === 'stars') { showStars(d); return; }
+  if (d?.type === 'feedback') {                         // (the AI's mark of my open answer, and its comment)
+    const box = $('#answers'); box.querySelector('.fb')?.remove();
+    box.append(el('div', { className: 'quiz-res fb', style: `background:${d.score >= 5 ? '#26890c' : '#b07d00'}` }, el('b', { textContent: `${d.score}/10` }), String(d.text || ''))); return; }
+  if (d?.type === 'picked') { const p = $('#picked'); p.hidden = false; navigator.vibrate?.(200); setTimeout(() => { p.hidden = true; }, 8000); return; }
   if (d?.type === 'caption') { onCaption(d); return; }
   if (d?.type === 'css') { styles = String(d.css || ''); return; }
   if (d?.type === 'slide') { showSlide(d); return; }
@@ -162,7 +191,8 @@ function onData(d) {
   if (!d.poll) { poll = null; show('wait'); return; }
   if (poll?.pollId === d.poll.pollId) return;               // same question: keep the choice
   poll = d.poll; answer = poll.kind === 'multi' ? [] : null;
-  $('#q').textContent = poll.question; $('#done').hidden = true; renderAnswers(); show('poll');
+  $('#q').textContent = poll.question; $('#done').hidden = true; show('poll');
+  if (Array.isArray(poll.teams) && poll.teams.length) chooseTeam(poll.teams, () => { $('#send').hidden = false; renderAnswers(); }); else renderAnswers();
 }
 
 // Activities (put in order, match, fill in the gaps, label a picture): the
@@ -233,6 +263,35 @@ function renderAnswers() {
     n.addEventListener('input', () => { if (n.value !== '' && Number.isFinite(+n.value)) { answer = Math.min(hi, Math.max(lo, +n.value)); r.value = answer; } });
     box.append(el('div', { style: 'display:flex;align-items:center;gap:8px' }, n, poll.unit ? el('b', { textContent: poll.unit }) : ''), r,
       el('div', { style: 'display:flex;justify-content:space-between;font-size:13px;color:var(--txt2)' }, el('span', { textContent: lo }), el('span', { textContent: hi }))); return;
+  }
+  if (poll.kind === 'draw') {                            // (a drawing with the finger, over the picture if there is one)
+    const W = 480, H = 360, c = el('canvas', { width: W, height: H, style: 'width:100%;aspect-ratio:4/3;background:#fff;border-radius:10px;touch-action:none;display:block' }), x = c.getContext('2d');
+    const bg = poll.image ? Object.assign(new Image(), { src: poll.image }) : null;
+    const paintBg = () => { x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); if (bg?.complete && bg.naturalWidth) { const k = Math.min(W / bg.naturalWidth, H / bg.naturalHeight); x.drawImage(bg, (W - bg.naturalWidth * k) / 2, (H - bg.naturalHeight * k) / 2, bg.naturalWidth * k, bg.naturalHeight * k); } };
+    if (bg) bg.onload = paintBg; paintBg();
+    let ink = '#1d1d1f', down = false, drawn = false;
+    const at = e => { const r = c.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H]; };
+    c.addEventListener('pointerdown', e => { down = true; c.setPointerCapture(e.pointerId); x.strokeStyle = ink; x.lineWidth = ink === '#ffffff' ? 18 : 4; x.lineCap = x.lineJoin = 'round'; x.beginPath(); x.moveTo(...at(e)); });
+    c.addEventListener('pointermove', e => { if (!down) return; x.lineTo(...at(e)); x.stroke(); drawn = true; });
+    const end = () => { if (!down) return; down = false; if (drawn) answer = { img: c.toDataURL('image/png'), n: nick() }; };
+    c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end);
+    const tools = el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, ...['#1d1d1f', '#d93025', '#1a73e8', '#188038', '#f9ab00', '#ffffff'].map(col => {
+      const b = el('button', { className: 'opt', ariaLabel: col === '#ffffff' ? 'Borrar' : 'Color', textContent: col === '#ffffff' ? '⌫' : '', style: `flex:1;min-width:40px;padding:12px;background:${col === '#ffffff' ? 'var(--panel)' : col}` });
+      b.addEventListener('click', () => { ink = col; tools.querySelectorAll('button').forEach(y => y.classList.toggle('on', y === b)); }); return b; }),
+      Object.assign(el('button', { className: 'opt', textContent: 'Empezar de nuevo', style: 'flex:2' }), { onclick: () => { paintBg(); drawn = false; answer = null; } }));
+    box.append(c, tools); return;
+  }
+  if (poll.kind === 'photo') {                           // (a photo of one's work: from the camera or the gallery, made small)
+    const prev = el('img', { alt: '', hidden: true, style: 'width:100%;border-radius:10px' }), pick = el('input', { type: 'file', accept: 'image/*', capture: 'environment', hidden: true });
+    const btn = el('button', { className: 'opt', textContent: '📷 Hacer o elegir una foto', style: 'text-align:center' });
+    btn.addEventListener('click', () => pick.click());
+    pick.addEventListener('change', () => { const f = pick.files?.[0]; if (!f) return; const im = new Image();
+      im.onload = () => { const k = Math.min(1, 640 / Math.max(im.width, im.height)), cv = el('canvas', { width: Math.round(im.width * k), height: Math.round(im.height * k) });
+        cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height); URL.revokeObjectURL(im.src);
+        let q = 0.7, src = cv.toDataURL('image/jpeg', q); while (src.length > 280000 && q > 0.3) { q -= 0.15; src = cv.toDataURL('image/jpeg', q); }
+        answer = { img: src, n: nick() }; prev.src = src; prev.hidden = false; btn.textContent = '📷 Cambiar la foto'; };
+      im.src = URL.createObjectURL(f); });
+    box.append(btn, pick, prev); return;
   }
   if (poll.kind === 'point') {                           // (a tap on the picture: the point, in % of it)
     const pic = el('div', { className: 'act-pic', style: 'cursor:crosshair' }, el('img', { src: poll.image || '', alt: '' })), dot = el('b', { className: 'act-num', textContent: '●', hidden: true });

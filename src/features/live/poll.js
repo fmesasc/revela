@@ -58,8 +58,12 @@ export function tallyVotes(poll, votes) {
   if (kind === 'quiz') {
     var right = poll.correct || [], lim = (+poll.time || 20) * 1000, board = [];
     for (var i0 = 0; i0 < n; i0++) counts.push(0);
+    // (Modes, as Kahoot's: speed — sooner, more points —, accuracy — right is right, whenever —, and confidence — sure
+    // and right scores most, sure and wrong loses some.)
+    var mode = poll.mode || 'speed';
     for (var who in votes) { var v = votes[who]; if (!v || !(v.a >= 0 && v.a < n)) continue; voters++; counts[v.a]++;
-      var ok = right.indexOf(v.a) >= 0, pts = ok ? Math.round(500 + 500 * Math.max(0, 1 - (+v.t || 0) / lim)) : 0;
+      var ok = right.indexOf(v.a) >= 0, pts = mode === 'accuracy' ? (ok ? 1000 : 0) : mode === 'confidence' ? (ok ? (v.s ? 1000 : 600) : (v.s ? -300 : 0))
+        : ok ? Math.round(500 + 500 * Math.max(0, 1 - (+v.t || 0) / lim)) : 0;
       board.push({ id: who, n: v.n || '', pts: pts, ok: ok }); }
     board.sort(function (a, b) { return b.pts - a.pts; });
     return { counts: counts, words: {}, voters: voters, average: 0, board: board };
@@ -78,6 +82,12 @@ export function tallyVotes(poll, votes) {
     for (var o in votes) { var tx = votes[o]; if (tx && tx.t) { voters++; texts.push({ text: String(tx.t), time: tx.time || 0 }); } }
     texts.sort(function (a, b) { return b.time - a.time; });
     return { counts: [], words: {}, voters: voters, average: 0, texts: texts };
+  }
+  if (kind === 'draw' || kind === 'photo') {           // (drawings and photos: pictures on a wall, the newest first)
+    var pics = [];
+    for (var dk in votes) { var dv = votes[dk]; if (dv && /^data:image\/(png|jpeg|webp);base64,/.test(dv.img || '')) { voters++; pics.push({ img: dv.img, time: dv.time || 0, n: dv.n || '' }); } }
+    pics.sort(function (a, b) { return b.time - a.time; });
+    return { counts: [], words: {}, voters: voters, average: 0, pics: pics };
   }
   if (kind === 'number') {
     var vals = [];
@@ -137,8 +147,12 @@ export function pollResultsHTML(poll, res, accent, L) {
   var ranking = function (list, top) { return '<ol style="margin:.4em 0 0;padding:0;list-style:none;text-align:left;font-size:.6em">' + list.slice(0, top).map(function (r, i) {
     return '<li style="margin:.15em 0"><b>' + (['🥇 ', '🥈 ', '🥉 '][i] || (i + 1) + '. ') + '</b>' + nick(r, i) + ' — <b>' + r.pts + '</b></li>'; }).join('') + '</ol>'; };
   if (kind === 'board') {
-    var bl = res.board || [];
-    return bl.length ? ranking(bl, 10).replace('font-size:.6em', 'font-size:.8em') : '<div style="opacity:.6">' + T('Aún no hay puntos: juega los cuestionarios.') + '</div>';
+    var bl = res.board || [], st = res.stars || {};
+    // (By teams, when they play so: each team's average, so a big team doesn't win for being big.)
+    var tb = (res.teams || []).length ? '<ol style="margin:0 0 .5em;padding:0;list-style:none;font-size:.85em">' + res.teams.map(function (x, i) {
+      return '<li style="margin:.1em 0;padding:.15em .4em;border-radius:.3em;background:' + cols[i % cols.length] + ';color:#fff"><b>' + (['🥇 ', '🥈 ', '🥉 '][i] || (i + 1) + '. ') + esc(x.team) + '</b> — ' + x.pts + ' <small>(' + x.n + ')</small></li>'; }).join('') + '</ol>' : '';
+    var withStars = bl.map(function (r) { var s = st[r.id]; return s ? { id: r.id, n: (r.n || '') + ' ⭐' + s.stars + ' · ' + T('Nivel') + ' ' + s.level, pts: r.pts } : r; });
+    return bl.length ? tb + ranking(withStars, 10).replace('font-size:.6em', 'font-size:.8em') : '<div style="opacity:.6">' + T('Aún no hay puntos: juega los cuestionarios.') + '</div>';
   }
   if (kind === 'quiz') {
     var right = poll.correct || [], tiles = ['#e21b3c', '#1368ce', '#d89e00', '#26890c', '#864cbf', '#0aa3a3'];
@@ -183,6 +197,13 @@ export function pollResultsHTML(poll, res, accent, L) {
     return '<div style="display:flex;flex-wrap:wrap;gap:.35em;align-content:flex-start;max-height:100%;overflow:hidden">' + (tl.length ? tl.map(function (x, i) {
       return '<div style="flex:1 1 30%;min-width:6em;padding:.35em .5em;border-radius:.3em;font-size:.55em;line-height:1.25;background:' + cols[i % cols.length] + ';color:#fff;overflow-wrap:anywhere">' + esc(x.text) + '</div>'; }).join('')
       : '<span style="opacity:.5;font-size:.7em">' + T('Las respuestas del público aparecerán aquí') + '</span>') + '</div>' + foot;
+  }
+  if (kind === 'draw' || kind === 'photo') {
+    var pl = (res.pics || []).slice(0, 24), per = pl.length > 12 ? 6 : pl.length > 6 ? 4 : 3;
+    return '<div style="display:grid;grid-template-columns:repeat(' + per + ',1fr);gap:.3em;align-content:start">' + (pl.length ? pl.map(function (x) {
+      return '<figure style="margin:0;position:relative"><img src="' + esc(x.img) + '" alt="" style="width:100%;aspect-ratio:4/3;object-fit:' + (kind === 'draw' ? 'contain;background:#fff' : 'cover') + ';border-radius:.25em;display:block">'
+        + (x.n ? '<figcaption style="position:absolute;left:.2em;bottom:.2em;font-size:.4em;background:#0009;color:#fff;padding:0 .3em;border-radius:.2em">' + esc(x.n) + '</figcaption>' : '') + '</figure>'; }).join('')
+      : '<span style="opacity:.5;font-size:.7em;grid-column:1/-1">' + T('Las respuestas del público aparecerán aquí') + '</span>') + '</div>' + foot;
   }
   if (kind === 'number') {
     var nmax = Math.max.apply(null, (res.counts || []).concat([1])), fmt = function (v) { return (Math.round(v * 100) / 100).toLocaleString(); }, unit = poll.unit ? ' ' + esc(poll.unit) : '';
@@ -244,7 +265,7 @@ export function pollResultsHTML(poll, res, accent, L) {
 }
 
 // The results' words in the interface's language (for pollResultsHTML, also in exported pages).
-const POLL_WORDS = ['Las palabras del público aparecerán aquí', 'Las respuestas del público aparecerán aquí', 'Media', 'Mediana', 'Respuesta', 'voto', 'votos', 'respuesta', 'respuestas', 'Jugador', 'Aún no hay puntos: juega los cuestionarios.', '% de aciertos', 'Clic para ver las soluciones', 'Escanea el QR y envía tu pregunta…', 'preguntas'];
+const POLL_WORDS = ['La IA está corrigiendo…', 'Para corregir con IA, conéctala en el editor.', 'No se pudo corregir.', 'Nivel', '¿A quién le toca?', 'Clic para cerrar · N para otra vez', 'Aún no hay nadie con nombre: que lo escriban al entrar en la votación.', 'Las palabras del público aparecerán aquí', 'Las respuestas del público aparecerán aquí', 'Media', 'Mediana', 'Respuesta', 'voto', 'votos', 'respuesta', 'respuestas', 'Jugador', 'Aún no hay puntos: juega los cuestionarios.', '% de aciertos', 'Clic para ver las soluciones', 'Escanea el QR y envía tu pregunta…', 'preguntas'];
 export const pollLabels = () => Object.fromEntries(POLL_WORDS.map(w => [w, t(w)]));
 
 // Markup of a poll in the editor and thumbnails: question, current results
@@ -277,6 +298,7 @@ export function votesCSV(poll) {
   if (poll.kind === 'qa') return 'pregunta,votos\n' + res.questions.map(x => `${q(x.text)},${x.up}`).join('\n');
   if (poll.kind === 'word') return 'palabra,votos\n' + Object.entries(res.words).map(([w, c]) => `${q(w)},${c}`).join('\n');
   if (poll.kind === 'open') return 'respuesta\n' + res.texts.map(x => q(x.text)).join('\n');
+  if (poll.kind === 'draw' || poll.kind === 'photo') return 'participante\n' + res.pics.map(x => q(x.n || '—')).join('\n');
   if (poll.kind === 'number') return 'valor\n' + Object.values(savedVotes(poll.pollId)).filter(v => isFinite(+v)).map(Number).join('\n');
   if (poll.kind === 'point') return 'x %,y %\n' + res.points.map(p => `${p.x},${p.y}`).join('\n');
   if (ACTIVITIES.includes(poll.kind)) return 'participante,puntos,aciertos\n' + res.board.map(r => `${q(r.n || r.id)},${r.pts},${Math.round(r.pts / 10)} %`).join('\n');

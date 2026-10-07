@@ -410,6 +410,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
         answer = { title: 'Solar', slides: [{ kind: 'title', title: 'Solar', notes: 'n' }] }; calls.length = 0;
         await A.createDeck({ topic: 'Solar', research: rs });
         assert(/Research brief from the web[\s\S]*El 30 % \[1\]/.test(calls[0].body.messages[1].content), 'las diapositivas parten de lo investigado'); }
+      // Open answers marked against criteria: a mark and a comment each, only for the answers given.
+      answer = { marks: [{ id: 'v1', score: 8, feedback: 'Bien explicado' }, { id: 'nadie', score: 10 }, { id: 'v2', score: 15, feedback: 'x' }] };
+      const mk = await A.gradeOpen('¿Qué es la fotosíntesis?', 'Nombra la luz', [{ id: 'v1', text: 'Las plantas usan la luz' }, { id: 'v2', text: 'No sé' }]);
+      eq(mk.map(m => m.id + m.score).join(), 'v1' + 8 + ',v2' + 10, 'corregir: notas de 0 a 10, solo de quien respondió');
+      assert(/Nombra la luz/.test(calls.at(-1).body.messages[0].content), 'corregir: con los criterios');
       // A live quiz from the content: real polls (questions with their answer, activities), where they belong.
       reset(); R.slides.addSlide(); R.slides.addSlide(); const before = R.state.deck.slides.length;
       answer = { items: [{ kind: 'quiz', question: '¿Cuánto es 2+2?', options: ['3', '4'], answer: 1, after: 1 },
