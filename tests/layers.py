@@ -99,6 +99,20 @@ def main():
     app = re.search(r"APP_VERSION = '([^']+)'", (SRC / 'core' / 'config.js').read_text(encoding='utf-8'))
     if not app or app.group(1) != pkg:
         errors.append(f'versión: package.json dice {pkg} y src/core/config.js {app and app.group(1)}')
+    # the server is deployed when what it uses changes: every file of the app it imports (and what those import) must
+    # be among server.yml's paths — else a version published with only that change leaves the server as it was
+    paths = (ROOT / '.github' / 'workflows' / 'server.yml').read_text(encoding='utf-8')
+    todo = [p for p in (ROOT / 'server' / 'cloudflare').glob('*.js')]; seen = set()
+    while todo:
+        f = todo.pop()
+        for m in re.findall(r"from '(\.[^']+)'", f.read_text(encoding='utf-8')):
+            t = (f.parent / m).resolve()
+            if t in seen or not t.is_file(): continue
+            seen.add(t); todo.append(t)
+    for t in sorted(seen):
+        rel = t.relative_to(ROOT).as_posix()
+        if rel.startswith('src/') and f"'{rel}'" not in paths:
+            errors.append(f'server.yml: el servidor usa {rel}, pero no está entre sus paths (no se desplegaría al cambiar)')
     # every file of the app must be committable: an ignored one works locally
     # but is missing (404) once published
     ignored = subprocess.run(['git', 'check-ignore', '--no-index', '--stdin'], cwd=ROOT, capture_output=True, text=True,

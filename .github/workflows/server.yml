@@ -12,7 +12,8 @@ name: Server
 on:
   push:
     branches: [main, production]
-    paths: ['server/cloudflare/**', 'src/features/live/collabsync.js', 'tests/server.mjs', 'tests/server-api.mjs', 'tests/server-lti.mjs', 'tests/server-blender.mjs', 'src/features/live/grading.js', '.github/workflows/server.yml']
+    # (With every file of the app the server uses: src/core/config.js gives /api/version its number. tests/layers.py checks it.)
+    paths: ['server/cloudflare/**', 'src/core/config.js', 'src/features/live/answers.js', 'src/features/live/collabsync.js', 'tests/server.mjs', 'tests/server-api.mjs', 'tests/server-lti.mjs', 'tests/server-blender.mjs', 'src/features/live/grading.js', '.github/workflows/server.yml']
   workflow_dispatch:
 
 permissions:
