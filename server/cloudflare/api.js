@@ -92,8 +92,10 @@ export async function testerOK(env, email) {
   const c = testerCache.get(email); if (c && Date.now() - c.at < 60e3) return c.ok;
   let ok = false;
   try { const r = await env.PROD.fetch('https://revelaslides.com/api/internal/tester', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Internal-Key': env.INTERNAL_KEY || '' }, body: JSON.stringify({ email }) });
-    // (Production without this yet — 404, until it's published —: open as before; any other failure: closed.)
-    ok = r.status === 404 || (r.ok && !!(await r.json()).ok); } catch { ok = false; }
+    // (Production without this yet — until it's published it answers 404 or «no session» —: open as before; any other
+    // failure — a wrong key, an error, no answer —: closed.)
+    const j = await r.json().catch(() => ({}));
+    ok = r.ok ? !!j.ok : r.status === 404 || (r.status === 401 && j.error === 'no session'); } catch { ok = false; }
   testerCache.set(email, { ok, at: Date.now() }); return ok;
 }
 export const forgetTesters = () => testerCache.clear();
