@@ -802,7 +802,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     st.dispatchEvent(new W.MouseEvent('contextmenu', { bubbles: true, clientX: r.left + 5, clientY: r.top + 5 }));
     const items = [...D.querySelectorAll('#context-menu .ctx-item')].map(x => x.textContent);
     assert(items.includes('Cerrar vista Patrón') && !items.includes('Nueva diapositiva'), 'menú del lienzo en el patrón: ' + items.join(' | '));
-    D.body.click(); R.master.toggleMasterEdit(false); await sleep(10);
+    D.body.click();
+    // An object of the master selected: its tab, as on a slide (it was hidden there).
+    R.blocks.addImage('data:image/png;base64,iVBORw0KGgo='); await sleep(40);
+    const ct = D.querySelector('#ribbon [data-tab="ctx"]');
+    assert(!ct.hidden && ct.textContent === 'Imagen' && D.querySelector('#ribbon [data-page="ctx"] [title="Recortar"], #ribbon [data-page="ctx"] button'), 'en el patrón, la pestaña de la imagen: ' + ct.textContent);
+    R.store.undo(); R.master.toggleMasterEdit(false); await sleep(10);
     // A slide's menu leads to its layout in the master.
     R.slides.addSlide('titleContent'); await sleep(10);
     const th = D.querySelectorAll('#navigator .thumb')[1], tr = th.getBoundingClientRect();

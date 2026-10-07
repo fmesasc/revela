@@ -321,16 +321,19 @@ function groupsForMany(list) {
 
 
 let lastSig = '', waiting = null, known = null;
+// Every object of the presentation, its masters and layouts too (to tell one just inserted).
+const allIds = () => new Set([...state.deck.slides, state.deck.master, ...(state.deck.masters || []), ...(state.deck.layouts || [])].flatMap(s => s?.blocks?.map(x => x.id) || []));
 export function renderContextual() {
   const tabs = document.querySelector('#ribbon .tabs'), pages = document.querySelector('#ribbon .pages'); if (!tabs || !pages) return;
   let tab = tabs.querySelector('[data-tab="ctx"]'), page = pages.querySelector('[data-page="ctx"]');
   if (!tab) { tab = document.createElement('button'); tab.dataset.tab = 'ctx'; tab.className = 'ctx-tab'; tabs.appendChild(tab); }
   if (!page) { page = document.createElement('section'); page.className = 'ribbon-page'; page.dataset.page = 'ctx'; pages.appendChild(page); }
-  const list = state.ui.editMaster ? [] : selectedBlocks(), b = list.length === 1 ? selectedBlock() : null;
+  // (Also while editing the master or a layout: its objects are edited the same way — currentSlide() is it.)
+  const list = selectedBlocks(), b = list.length === 1 ? selectedBlock() : null;
   const show = list.length > 0;
   tab.hidden = !show;
   if (!show) {
-    lastSig = ''; known = new Set(state.deck.slides.flatMap(s => s.blocks.map(x => x.id)));
+    lastSig = ''; known = allIds();
     if (state.ui.activeTab === 'ctx') {                       // nothing selected: back to Home
       state.ui.activeTab = 'home';
       document.querySelectorAll('#ribbon [data-tab]').forEach(x => x.classList.toggle('active', x.dataset.tab === 'home'));
@@ -340,7 +343,7 @@ export function renderContextual() {
     return;
   }
   // Just inserted (an id not seen before): its tab opens by itself, as in PowerPoint.
-  const ids = new Set(state.deck.slides.flatMap(s => s.blocks.map(x => x.id)));
+  const ids = allIds();
   const opened = known && b && !known.has(b.id) && state.ui.activeTab !== 'ctx';
   if (opened) {
     state.ui.activeTab = 'ctx';
