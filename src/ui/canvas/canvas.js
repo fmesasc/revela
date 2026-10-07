@@ -2,6 +2,7 @@
 // direct manipulation — drag from anywhere on a block, snap to alignment
 // guides, resize from the corners, edit text on double‑click.
 
+import { blobURL, withBlobs, pruneBlobs } from '../../io/formats/blobmedia.js';
 import { diagramHTML, diagramSig } from '../../render/diagrams.js';
 import { diagramOpts } from '../../features/document/blocks.js';
 import { openDiagramText } from '../dialogs/diagram.js';
@@ -9,7 +10,7 @@ import { openFile } from '../../features/content/files.js';
 import { shortSig } from '../../core/text.js';
 import { opacityOf } from '../../core/model.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
-import { state, commit, currentSlide, selectedBlock, isSelected, setSelection } from '../../core/store.js';
+import { state, commit, currentSlide, selectedBlock, isSelected, setSelection, docVersion } from '../../core/store.js';
 import { shadowCSS, levelCSS, shapeSVG, shapeSig, chartSVG, chartSig, iconSVG, iconSig, inkSVG, timerSVG, curvedTextSVG, hasShapeText, shapeTextStyle, wrapFor, timerSig, inkSig, tableClass, tableVars } from '../../render/svg.js';
 import { figuresMap, captionLine } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
@@ -56,7 +57,7 @@ export function transformOf(b) {
   return t;
 }
 
-let lastSignature = '';
+let lastSignature = '', prunedAt = -1, prunedTime = 0;
 
 // The signature captures everything that requires a full rebuild (which slide,
 // which blocks in which order, and the slide size). Selection, position, size,
@@ -75,7 +76,9 @@ export function renderCanvas() {
   stage.style.width = w + 'px';
   stage.style.height = h + 'px';
   // (A layout without a background of its own shows its master's.)
-  stage.style.background = (slide.background ? stageBackground(slide) : null) || (state.ui.editMaster ? viewBackground(slide) : null) || state.deck.slides[state.ui.slideIndex]?.background || '#101317';
+  stage.style.background = withBlobs((slide.background ? stageBackground(slide) : null) || (state.ui.editMaster ? viewBackground(slide) : null) || state.deck.slides[state.ui.slideIndex]?.background || '#101317');
+  // (Now and then, the addresses of files no longer in the presentation are let go.)
+  if (docVersion() !== prunedAt && Date.now() - prunedTime > 15000) { prunedAt = docVersion(); prunedTime = Date.now(); pruneBlobs(state.deck); }
   stage.classList.toggle('editing-master', !!state.ui.editMaster);
   stage.style.color = deckFg();
   stage.style.fontFamily = deckBodyFont();
@@ -145,7 +148,7 @@ function drawBgMedia(slide) {
   el.dataset.k = want; el.innerHTML = ''; el.style.cssText = '';
   if (slide.bgVideo) { const v = document.createElement('video'); Object.assign(v, { src: slide.bgVideo, muted: true, loop: true, autoplay: true, playsInline: true }); el.appendChild(v); v.play?.().catch(() => {}); }
   else if (slide.bgIframe) { const f = document.createElement('iframe'); f.src = slide.bgIframe; f.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin'); f.setAttribute('sandbox', embedSandbox(slide.bgIframe, 'allow-scripts')); el.appendChild(f); }
-  else { el.style.background = slide.background; el.style.opacity = slide.bgOpacity / 100; }
+  else { el.style.background = withBlobs(slide.background); el.style.opacity = slide.bgOpacity / 100; }
 }
 
 // Master objects, drawn (not editable) under the slide's own objects.
@@ -309,13 +312,13 @@ function reconcile(b) {
     paintCurve(el, b); paintWrap(el, b);
   } else if (b.type === 'image') {
     const pv = el.querySelector(':scope > .media-player'); if (pv) applyImgStyle(pv, b);
-    const img = el.querySelector('img'); if (img) { if (img.getAttribute('src') !== b.src) img.src = b.src; applyImgStyle(img, b); }
+    const img = el.querySelector('img'); if (img) { if (img._src !== b.src) { img.src = blobURL(b.src); img._src = b.src; } applyImgStyle(img, b); }
   } else if (b.type === 'model') {
     const mv = el.querySelector('model-viewer'); if (mv) applyModelAttrs(mv, b);
   } else if (b.type === 'video') {
-    const v = el.querySelector('video'); if (v && v.getAttribute('src') !== b.src) v.src = b.src;
+    const v = el.querySelector('video'); if (v && v._src !== b.src) { v.src = blobURL(b.src); v._src = b.src; }
   } else if (b.type === 'audio') {
-    const a2 = el.querySelector('audio'); if (a2 && a2.getAttribute('src') !== b.src) a2.src = b.src;
+    const a2 = el.querySelector('audio'); if (a2 && a2._src !== b.src) { a2.src = blobURL(b.src); a2._src = b.src; }
   } else if (b.type === 'embed') {
     const card = el.querySelector('.webcard'); if (card) paintWebCard(card, b);
     const f = el.querySelector('iframe'); if (f && f.getAttribute('src') !== b.src) f.src = b.src;

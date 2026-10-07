@@ -7,6 +7,7 @@
 // and ink go in as SVG pictures. Backgrounds, speaker notes, hidden slides
 // and object animations (odp-anim.js) are kept. Import reads the same structures back.
 
+import { zipDataURL } from '../files.js';
 import { animsOf } from '../../features/animation/transitions.js';
 import { state } from '../../core/store.js';
 import { uid } from '../../core/model.js';
@@ -305,7 +306,7 @@ export async function importODP(file) {
     const f = zip.file(href); if (!f) return null;
     const ext = href.split('.').pop().toLowerCase();
     const mime = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp' }[ext] || 'image/png';
-    return `data:${mime};base64,${await f.async('base64')}`;
+    return zipDataURL(f, mime);
   };
   const textHTML = el => {
     const para = p => {

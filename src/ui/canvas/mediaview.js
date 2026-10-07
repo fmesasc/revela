@@ -1,6 +1,7 @@
 // Videos and GIFs with a colour key in the editor: drawn by the same player
 // as the presentation, so what is seen here is what will be seen there.
 
+import { blobURL } from '../../io/formats/blobmedia.js';
 import { createMediaPlayer } from '../../io/runtime/media.js';
 import { mediaKind } from '../../features/live/media.js';
 import { GIFUCT } from '../../core/vendor.js';
@@ -12,7 +13,7 @@ export function mediaView(b) {
   const d = document.createElement('div');
   d.className = 'media-player'; d.style.cssText = 'width:100%;height:100%';
   d.dataset.sig = sigOf(b);
-  d._player = createMediaPlayer(d, { kind: mediaKind(b), src: b.src, fit: b.fit || 'contain', muted: !!b.muted, loop: !!b.loop, key: b.key, gifLib: GIFUCT });
+  d._player = createMediaPlayer(d, { kind: mediaKind(b), src: blobURL(b.src), fit: b.fit || 'contain', muted: !!b.muted, loop: !!b.loop, key: b.key, gifLib: GIFUCT });
   d._player.ready.then(p => p.error && d.classList.add('media-error'));
   return d;
 }

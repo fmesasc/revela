@@ -221,6 +221,14 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(/^blob:/.test(im.getAttribute('src')) && im.naturalWidth === 400, 'la foto se ve al presentar (' + im?.naturalWidth + ')');
     } finally { f.remove(); }
     assert(/^data:image\/png/.test(R.state.deck.slides[0].blocks[0].src), 'la presentación sigue guardando la foto dentro');
+    // The editor: the slide and its thumbnail show it by its blob: address too (the browser kept a copy of the text per
+    // picture), the thumbnail loaded when in sight; one address for both, and for presenting.
+    R.render(); await sleep(50);
+    const onStage = D.querySelector('#stage .block[data-id="pb"] img'), thumb = D.querySelector('#navigator img');
+    assert(/^blob:/.test(onStage.getAttribute('src')) && onStage.getAttribute('src') === thumb?.getAttribute('src'), 'en el editor y en la miniatura, el mismo blob:');
+    eq(thumb.loading, 'lazy', 'la miniatura, cuando se ve');
+    for (let i = 0; i < 40 && !(onStage.complete && onStage.naturalWidth); i++) await sleep(50);
+    eq(onStage.naturalWidth, 400, 'y se ve');
     assert(R.io.buildHTML().includes(photo.slice(0, 500)), 'y al exportar va dentro (un archivo que funciona en cualquier sitio)');
   });
 

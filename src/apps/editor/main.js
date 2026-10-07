@@ -85,7 +85,7 @@ import * as designer from '../../features/design/designer.js';
 import * as pptxImport from '../../io/formats/pptx-import.js';
 import * as odp from '../../io/formats/odp.js';
 import { Revela, loadPlugins } from '../../api/index.js';
-import { loadNewerDeck } from '../../core/model.js';
+import { loadNewerDeck, bigDeckWaiting, isUntitled } from '../../core/model.js';
 import { startAutoVersions } from '../../features/collab/versions.js';
 import * as versions from '../../features/collab/versions.js';
 import { finishOpenRouterLogin } from '../../features/ai/openrouter.js';
@@ -284,7 +284,12 @@ if (testing)
 window.Revela = Revela;
 // A deck too big for localStorage lives in IndexedDB: load it if it's newer.
 // (Not when opening someone's shared session: that document comes from them.)
-if (!testing && !['collab', 'doc'].some(k => new URLSearchParams(location.search).has(k))) loadNewerDeck(state.deck).then(d => { if (d) store.adoptDeck(d, { sameDocument: true }); });
+// (A big one takes a while: the loading screen over the editor meanwhile, not an empty black slide.)
+if (!testing && !['collab', 'doc'].some(k => new URLSearchParams(location.search).has(k))) {
+  const big = bigDeckWaiting(), done = big ? openingScreen(isUntitled(big.name) ? '' : big.name, { delay: 0 }) : () => {};
+  loadNewerDeck(state.deck).then(d => { if (d) store.adoptDeck(d, { sameDocument: true }); })
+    .finally(() => requestAnimationFrame(() => requestAnimationFrame(done)));      // (once it's drawn)
+}
 initCollabUI();
 initHome();
 initFileDrop();

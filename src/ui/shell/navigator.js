@@ -2,6 +2,7 @@
 // quick delete, and selecting several slides (Ctrl/Cmd+click, Shift+click; on a
 // touch screen, a long press starts picking them with checkboxes).
 
+import { withBlobs } from '../../io/formats/blobmedia.js';
 import { shortSig, esc } from '../../core/text.js';
 import { state } from '../../core/store.js';
 import { moveSlide, moveSlides, deleteSlide, renameSection, selectSlide, collapseSlideSel } from '../../features/document/slides.js';
@@ -143,7 +144,7 @@ function thumb(slide) {
     el.appendChild(badge);
   }
   const canvas = document.createElement('div'); canvas.className = 'thumb-canvas';
-  canvas.style.background = slide.background;
+  canvas.style.background = withBlobs(slide.background);
   const { w, h } = state.deck.size;
   canvas.style.setProperty('--ar', w / h);
   const inner = document.createElement('div');

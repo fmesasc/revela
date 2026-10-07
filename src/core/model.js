@@ -157,7 +157,7 @@ function setKept(v) { if (v !== kept) { kept = v; keptWatchers.forEach(fn => fn(
 function writeLocal(deck, size = approxSize(deck)) {
   try {
     if (size < LS_MAX) { localStorage.setItem(STORAGE_KEY, JSON.stringify(deck)); return true; }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ tooBig: true, savedAt: deck.savedAt }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ tooBig: true, savedAt: deck.savedAt, name: String(deck.name || '').slice(0, 80) }));
   } catch {}
   return false;
 }
@@ -174,6 +174,10 @@ export function flushSave(deck = pending) {
   clearTimeout(idbTimer); pending = null;
   if (!deck) return Promise.resolve();
   return writeIdb(deck, writeLocal(deck));
+}
+// The presentation left open is a big one, only in IndexedDB (it takes a while to come back): → { name } or null.
+export function bigDeckWaiting() {
+  try { const raw = localStorage.getItem(STORAGE_KEY); if (!raw || raw.length > 2000) return null; const d = JSON.parse(raw); return d?.tooBig ? { name: d.name || '' } : null; } catch { return null; }
 }
 // The IndexedDB copy, if it's newer than what localStorage gave us at start.
 export async function loadNewerDeck(current) {

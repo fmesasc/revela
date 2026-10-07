@@ -18,6 +18,7 @@
 //   notes, hidden slides and transitions.
 // Effects without an equivalent (shadows, SmartArt…) are approximated or skipped.
 
+import { zipDataURL } from '../files.js';
 import { parseCommentText } from '../../features/collab/comments.js';
 import { esc } from '../../core/text.js';
 import { uid } from '../../core/model.js';
@@ -442,7 +443,7 @@ function paragraphsHTML(txBody, ctx, style) {
 async function pictureBg(zip, t, tile) {
   if (!t || !zip.file(t.path)) return null;
   const ext = t.path.split('.').pop().toLowerCase();
-  return `url(data:${MIME[ext] || 'image/png'};base64,${await zip.file(t.path).async('base64')}) ${tile ? 'repeat' : 'center/cover no-repeat'}`;
+  return `url(${await zipDataURL(zip.file(t.path), MIME[ext] || 'image/png')}) ${tile ? 'repeat' : 'center/cover no-repeat'}`;
 }
 // The background of a slide, layout or master (p:cSld/p:bg): its own fill
 // (colour, gradient, picture) or a theme background style (p:bgRef) → CSS or null.
@@ -697,7 +698,7 @@ export async function importPPTX(file) {
       const t = partRels[rid]; if (!t || !zip.file(t.path)) return Promise.resolve(null);
       if (!mediaCache.has(t.path)) {
         const ext = t.path.split('.').pop().toLowerCase();
-        mediaCache.set(t.path, zip.file(t.path).async('base64').then(b => `data:${MIME[ext] || 'image/png'};base64,${b}`));
+        mediaCache.set(t.path, zipDataURL(zip.file(t.path), MIME[ext] || 'image/png'));
       }
       return mediaCache.get(t.path);
     };

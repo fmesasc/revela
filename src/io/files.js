@@ -5,6 +5,13 @@ import { modelFile } from '../features/content/model3d.js';
 // A file name from the presentation title.
 export const slug = s => (String(s || '').trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'presentacion');
 
+// A file inside a package (JSZip) as a data: URL, encoded by the browser itself (FileReader): one string and no
+// copies. JSZip's own base64, with «data:…» joined to it, made several times the file in temporary memory: opening a
+// PowerPoint with 300 MB of photos went past 3.5 GB and the tab died.
+export async function zipDataURL(file, mime) {
+  const bytes = await file.async('uint8array');
+  return new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => ko(r.error); r.readAsDataURL(new Blob([bytes], { type: mime })); });
+}
 export function download(blob, name) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);

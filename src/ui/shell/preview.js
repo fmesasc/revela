@@ -1,5 +1,6 @@
 // Non‑interactive block rendering, shared by slide thumbnails.
 
+import { blobURL } from '../../io/formats/blobmedia.js';
 import { diagramHTML } from '../../render/diagrams.js';
 import { opacityOf } from '../../core/model.js';
 import { wordartSize } from '../../render/textfit.js';
@@ -46,7 +47,8 @@ export function blockPreview(b, slide) {
       + `${b.curve ? curvedTextSVG(b) : b.html || ''}</div>`;
   } else if (b.type === 'image') {
     // (An element with its src set: the picture's megabytes aren't parsed as HTML.)
-    const img = document.createElement('img'); img.src = b.src || ''; img.alt = '';
+    // (A thumbnail: its picture by its blob: address, loaded when it's in sight.)
+    const img = document.createElement('img'); img.loading = 'lazy'; img.decoding = 'async'; img.src = blobURL(b.src || ''); img.alt = '';
     img.style.cssText = `width:100%;height:100%;object-fit:${b.fit || 'contain'};object-position:${imgFocus(b)};filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)};${deviceCSS(b)}`;
     el.replaceChildren(img);
   } else if (b.type === 'video') {

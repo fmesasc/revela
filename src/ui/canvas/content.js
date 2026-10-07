@@ -1,6 +1,7 @@
 // What each object shows on the canvas and how it is edited in place: text,
 // equations (KaTeX), code (highlight.js), tables, embeds, 3D models, slide links.
 
+import { blobURL } from '../../io/formats/blobmedia.js';
 import { diagramHTML, diagramSig } from '../../render/diagrams.js';
 import { registerCodeLangs } from '../../render/codelangs.js';
 import { wordartSize } from '../../render/textfit.js';
@@ -202,13 +203,14 @@ export function content(b) {
     return pre;
   }
   if (keyedView(b)) { const d = mediaView(b); if (b.type === 'image') applyImgStyle(d, b); return d; }
-  if (b.type === 'image') { const i = document.createElement('img'); i.src = b.src; i.draggable = false; applyImgStyle(i, b); return i; }
-  if (b.type === 'video') { const v = document.createElement('video'); v.src = b.src; v.controls = true; return v; }
+  // (Big files kept in the presentation: shown by their blob: address, io/formats/blobmedia.js; _src: what it is.)
+  if (b.type === 'image') { const i = document.createElement('img'); i.src = blobURL(b.src); i._src = b.src; i.draggable = false; applyImgStyle(i, b); return i; }
+  if (b.type === 'video') { const v = document.createElement('video'); v.src = blobURL(b.src); v._src = b.src; v.controls = true; return v; }
   if (b.type === 'poll') {
     const d = document.createElement('div'); d.className = 'poll-blk'; d.dataset.sig = pollSig(b); d.innerHTML = pollEditorHTML(b, currentPalette().accents); return d;
   }
   if (b.type === 'camera') return cameraView(b);
-  if (b.type === 'audio') { const a = document.createElement('audio'); a.src = b.src; a.controls = true; return a; }
+  if (b.type === 'audio') { const a = document.createElement('audio'); a.src = blobURL(b.src); a._src = b.src; a.controls = true; return a; }
   if (b.type === 'embed') return embedContent(b);
   if (b.type === 'placeholder') {
     // An empty picture/table/chart placeholder: click to fill it (not exported).
