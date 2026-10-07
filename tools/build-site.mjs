@@ -15,6 +15,7 @@
 // Nothing is compiled: files are copied. GitHub Pages publishes the open edition (fmesasc.github.io/revela) with
 // --open, after the tests (.github/workflows/pages.yml).
 
+import { createHash } from 'node:crypto';
 import { cpSync, rmSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
@@ -68,8 +69,27 @@ export async function build(out = join(ROOT, 'dist'), { appOnly = false, open = 
   mkdirSync(join(out, 'icons'), { recursive: true });
   cpSync(join(ROOT, 'icons', 'icon.svg'), join(out, 'icons', 'icon.svg'));
   cpSync(join(ROOT, 'assets', 'fonts'), join(out, 'assets', 'fonts'), { recursive: true });
+  stampAssets(out);
   if (STAGE) markStage(out);                              // (last: every page is marked)
   return out;
+}
+
+// The site's style and script, by their contents: a copy at /assets/v/site-<hash>.css (and .js) used by every page and
+// kept by browsers for a year — a change is a new address, seen at once. /site.css stays as it was (asked again each
+// time) for whoever still links it, such as the community's pages (server/cloudflare/community.js).
+function stampAssets(out) {
+  mkdirSync(join(out, 'assets', 'v'), { recursive: true });
+  // (The copy's own links made absolute: url(assets/fonts/…) from /assets/v/ would point elsewhere.)
+  const to = Object.fromEntries(['site.css', 'site.js'].map(f => { const raw = readFileSync(join(out, f), 'utf8'), body = f.endsWith('.css') ? raw.replace(/url\((['"]?)(?![a-z]+:|\/|#)/g, 'url($1/') : raw, h = createHash('sha256').update(body).digest('hex').slice(0, 10);
+    const name = f.replace('.', `-${h}.`); writeFileSync(join(out, 'assets', 'v', name), body); return [f, `/assets/v/${name}`]; }));
+  const walk = dir => { for (const e of readdirSync(dir, { withFileTypes: true })) { const f = join(dir, e.name);
+    if (e.isDirectory()) { if (e.name !== 'app' && e.name !== 'assets') walk(f); continue; }
+    if (!e.name.endsWith('.html')) continue;
+    const html = readFileSync(f, 'utf8'), stamped = html.replace(/(["'])\/?(site\.(?:css|js))\1/g, (m, q, name) => q + to[name] + q);
+    if (stamped !== html) writeFileSync(f, stamped); } };
+  walk(out);
+  const headers = join(out, '_headers');
+  writeFileSync(headers, (existsSync(headers) ? readFileSync(headers, 'utf8') : '') + '\n/assets/v/*\n  Cache-Control: public, max-age=31536000, immutable\n');
 }
 
 // The test site: no indexing, a strip on every page saying so, and the app told (src/ui/shell/stage.js).
