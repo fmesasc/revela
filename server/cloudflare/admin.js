@@ -624,6 +624,18 @@ export async function handleAdmin(req, env, url) {
     return json({ ok: true, ...r });
   }
   if (path === '/web' || path.startsWith('/web/')) return webApi(env, path, q, body, { GET, POST, by, json });
+  // A person's cloud presentations (their account's list), and one of them back to how it was at a moment of the last
+  // 30 days (docs.js 'pitr': Cloudflare's point-in-time recovery). With the bookmark from before, undone. Audited.
+  { const m2 = path.match(/^\/users\/([\w.-]{1,100})\/docs$/);
+    if (GET && m2) { if (!(await account(m2[1]))) return json({ error: 'not found' }, 404); return json(await call(acct(env, m2[1]), 'docs-list')); } }
+  if (POST && path === '/docs/restore') {
+    const id = clip(body.id, 80), reason = clip(body.reason, 500).trim();
+    if (!/^[\w-]{6,80}$/.test(id) || !reason || (!body.bookmark && !(+body.at > 0))) return json({ error: 'bad request' }, 400);
+    const r = await env.DOCS.get(env.DOCS.idFromName('doc:' + id)).fetch('https://do/pitr', { method: 'POST', body: JSON.stringify({ at: +body.at || 0, ...(body.bookmark && { bookmark: clip(body.bookmark, 200) }) }) })
+      .then(x => x.json()).catch(e => ({ error: 'restarting', detail: String(e.message || e) }));
+    await audit(env, { by, action: 'doc-restore', target: 'doc:' + id, reason, after: { at: +body.at || null, ...r } });
+    return json(r, r.error === 'bad time' ? 400 : r.error === 'not supported' ? 501 : r.error && r.error !== 'restarting' ? 502 : 200);
+  }
   // The app's errors (errors.js): the list, and each one solved, ignored or new again. Solved «in» the version
   // published now: it comes back if it happens in a newer one.
   if (path === '/errors') {

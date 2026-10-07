@@ -67,7 +67,7 @@ import { applyOps, allowed } from '../../src/features/live/collabsync.js';
 import { writeDeck, readDeck, writeText, readParts } from './store.js';
 import { mail } from './mail.js';
 import { acct, call } from './api.js';
-import { random, EMAIL } from './util.js';
+import { random, EMAIL, DAY } from './util.js';
 import { ASYNC_KINDS, publicPoll, cleanAnswer } from '../../src/features/live/answers.js';
 
 const ROLE_RANK = { present: 1, view: 2, comment: 3, edit: 4, owner: 5 };
@@ -143,6 +143,19 @@ export class CloudDoc {
   fetch(req) { const run = () => this.handle(req); const p = (this.queue || Promise.resolve()).then(run, run); this.queue = p.catch(() => {}); return p; }
   async handle(req) {
     const op = new URL(req.url).pathname.split('/').pop(), a = await req.json(), st = this.ctx.storage;
+    // The administration only (admin.js /docs/restore): the document as it was at a moment of the last 30 days, with
+    // Cloudflare's point-in-time recovery (every Durable Object here is SQLite-backed: kept by Cloudflare itself, no
+    // copies of ours). → the bookmark of now, to undo it; the object restarts with the old state.
+    if (op === 'pitr') {
+      if (typeof st.getBookmarkForTime !== 'function') return this.json({ error: 'not supported' }, 501);
+      const now = Date.now(), at = +a.at;
+      if (!a.bookmark && !(at > now - 30 * DAY && at < now)) return this.json({ error: 'bad time' }, 400);
+      const before = await st.getCurrentBookmark(), to = a.bookmark ? String(a.bookmark) : await st.getBookmarkForTime(at);
+      await st.onNextSessionRestoreBookmark(to);
+      this.doc = null; this.parts = null;
+      setTimeout(() => { try { this.ctx.abort('restore'); } catch {} }, 0);       // (after this answer: then it restarts restored)
+      return this.json({ ok: true, before, to });
+    }
     if (op === 'init') {
       const meta = { owner: a.owner, ownerEmail: a.ownerEmail, name: nameOf(a.deck), link: 'none', people: {}, rev: 1, created: Date.now(), updated: Date.now() };
       this.parts = await writeDeck(st, a.deck); this.doc = { meta, deck: a.deck }; this.size = null;

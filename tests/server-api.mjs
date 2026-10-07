@@ -2173,6 +2173,13 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     const back = (await A('GET', '/errors')).j.items.find(g => g.sig === big.sig);
     ok(back?.status === 'new' && back.reopened, 'errores: en una versión más nueva, vuelve a «sin resolver»');
     ok((await A('POST', '/errors', { body: { sig: big.sig, status: 'raro' } })).status === 400, 'errores: solo estados conocidos');
+    // A cloud presentation back to a moment (Cloudflare's point-in-time recovery: not in this simulator).
+    ok((await A('POST', '/docs/restore', { body: { id: 'abc123def', at: Date.now() - 3600e3 } })).status === 400, 'restaurar: con motivo');
+    ok((await A('POST', '/docs/restore', { body: { id: '../x', at: Date.now(), reason: 'r' } })).status === 400, 'restaurar: un documento de verdad');
+    x = await A('POST', '/docs/restore', { body: { id: 'abc123def', at: Date.now() - 3600e3, reason: 'La borró por error' } });
+    ok(x.status === 501 && x.j.error === 'not supported', 'restaurar: aquí no (solo en Cloudflare), y lo dice');
+    ok((await A('GET', '/audit?target=doc:abc123def')).j.entries.some(e => e.action === 'doc-restore' && e.reason === 'La borró por error'), 'restaurar: en la auditoría');
+    ok((await A('GET', '/users/nadie-aqui/docs')).status === 404, 'restaurar: las presentaciones de una cuenta que existe');
   }
 
   // Deleting the account takes it out of the directory.
