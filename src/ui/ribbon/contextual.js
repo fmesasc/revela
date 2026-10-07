@@ -14,7 +14,7 @@ import { togglePopover } from './popovers.js';
 import * as format from '../../features/document/format.js';
 import * as shapeops from '../../features/document/shapeops.js';
 import { MOTIONS_3D, VIEWS_3D, BLEEDS_3D, EDGES_3D, ARRIVALS_3D, PUPPET_MODES, PUPPET_DEFAULT, modelBleed } from '../../features/content/model3d.js';
-import { isGif, CAMERA_FILTERS, CAMERA_BACKGROUNDS, DEFAULT_CAMERA_COLOR, cameraBrightness, setCameraLook } from '../../features/live/media.js';
+import { isGif, mediaKind, MEDIA_SPEEDS, CAMERA_FILTERS, CAMERA_BACKGROUNDS, DEFAULT_CAMERA_COLOR, cameraBrightness, setCameraLook } from '../../features/live/media.js';
 import { cameraLive, setCameraLive, setCameraBackground, pickCameraImage } from '../canvas/cameraview.js';
 import { puppetTrying, tryPuppet, togglePuppet } from '../canvas/puppetview.js';
 import { CURVES, DEVICES, SHAPE_NAMES, hasShapeText, CONNECTOR_ROUTES, isLineShape } from '../../render/svg.js';
@@ -34,8 +34,8 @@ import { startMagnifyDraw } from '../canvas/magnifyview.js';
 import * as mag from '../../features/document/magnify.js';
 import { currentPalette } from '../../features/design/palettes.js';
 import { openAddAnimation } from './animadd.js';
-import { toggleAnimPane } from '../panels/animation.js';
-import { animsOf, setAnimation, clearAnimation } from '../../features/animation/transitions.js';
+import { toggleAnimPane, objLabel } from '../panels/animation.js';
+import { animsOf, setAnimation, clearAnimation, addAnimation } from '../../features/animation/transitions.js';
 import { playAnimations } from '../canvas/preview.js';
 import { playInEditor } from '../canvas/mediaview.js';
 import { fitTextToBox } from '../canvas/canvas.js';
@@ -134,9 +134,23 @@ function groupsFor(b) {
         ['select', 'Bordes', EDGES_3D, b.edge || 'hard', v => set(b, x => { if (v !== 'hard') x.edge = v; else delete x.edge; })]]],
       ['Esqueleto', [btn('accessibility_new', 'Esqueleto automático', () => openAutoRig(b))]],
       ['Archivo', [btn('download', 'Descargar (.glb)', () => saveFile(b)), btn('swap_horiz', 'Reemplazar', () => replaceModel(b))]]);
-  } else if (b.type === 'video') G.push(
-    ['Reproducción', [btn('play_arrow', 'Reproducir', () => playInEditor(b.id)), btn('tune', 'Opciones', () => openMediaPlayback(b))]],
-    ['Archivo', [btn('download', 'Descargar', () => saveFile(b))]]);
+  } else if (b.type === 'video') {
+    // How it plays, in sight (before, only in the Opciones dialog): by itself, looped, muted, its speed, and when it
+    // starts — a click, or when another video (or GIF) of the slide ends. Its own steps are animations (Animar).
+    const others = currentSlide().blocks.filter(x => x.id !== b.id && mediaKind(x));
+    const when = b.autoplay ? 'auto' : b.afterVideo && others.some(x => x.id === b.afterVideo) ? b.afterVideo : '';
+    G.push(['Reproducción', [btn('play_arrow', 'Reproducir', () => playInEditor(b.id)),
+      ['select', 'Empieza', [['', 'Con un clic'], ['auto', 'Solo, al llegar'], ...others.map(x => [x.id, `${t('Al acabar')} ${objLabel(x)}`])], when,
+        v => set(b, x => { delete x.autoplay; delete x.afterVideo; if (v === 'auto') x.autoplay = true; else if (v) x.afterVideo = v; })],
+      btn('repeat', 'Repetir', () => set(b, x => { if (x.loop) delete x.loop; else x.loop = true; }), !!b.loop),
+      btn('volume_off', 'Sin sonido', () => set(b, x => { if (x.muted) delete x.muted; else x.muted = true; }), !!b.muted),
+      ['select', 'Velocidad', MEDIA_SPEEDS.map(s => [String(s), `${String(s).replace('.', ',')}×`]), String(b.speed || 1), v => set(b, x => { if (+v !== 1) x.speed = +v; else delete x.speed; })],
+      btn('tune', 'Tramos y croma…', () => openMediaPlayback(b))]],
+      // (Added after its animations, as Animaciones ▸ Añadir animación ▸ Vídeo.)
+      ['Animar', [btn('play_arrow', 'Reproducir con un clic', () => addAnimation('media-play', { start: 'click' })), btn('pause', 'Pausar con un clic', () => addAnimation('media-pause', { start: 'click' })),
+        btn('stop', 'Detener con un clic', () => addAnimation('media-stop', { start: 'click' }))]],
+      ['Archivo', [btn('download', 'Descargar', () => saveFile(b))]]);
+  }
   else if (b.type === 'audio') {
     // PowerPoint's "Play in background": it starts by itself, keeps playing over
     // the next slides (up to one, or to the end), loops, and hides its icon.

@@ -236,7 +236,10 @@ export function simplifyStroke(pts, tol = 6) {
 }
 
 // Effects that make an object appear (it starts hidden until it plays).
-export const isEntrance = effect => !['fade-out', 'semi-fade-out', 'highlight-red', 'highlight-green', 'highlight-blue', 'highlight-current-red', 'highlight-current-green', 'highlight-current-blue', 'strike', 'path', 'grow', 'shrink', 'clip3d', 'spin360', 'pdfview', ...EMPHASIS_FX].includes(effect);
+// A video's (or animated GIF's) own steps, as PowerPoint's media animations: play, pause, stop — in the order of the
+// animations, with the click, with or after the previous one, or on a click on another object.
+export const MEDIA_FX = ['media-play', 'media-pause', 'media-stop'];
+export const isEntrance = effect => !['media-play', 'media-pause', 'media-stop', 'fade-out', 'semi-fade-out', 'highlight-red', 'highlight-green', 'highlight-blue', 'highlight-current-red', 'highlight-current-green', 'highlight-current-blue', 'strike', 'path', 'grow', 'shrink', 'clip3d', 'spin360', 'pdfview', ...EMPHASIS_FX].includes(effect);
 
 // Per‑object animations: effect + order (fragment index, the click) + start + timing.
 // An object can have several, one after another (like PowerPoint's "Add

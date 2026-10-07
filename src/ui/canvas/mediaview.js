@@ -33,5 +33,13 @@ export function playInEditor(id) {
   if (v) v.paused ? v.play().catch(() => {}) : v.pause();   // the browser may refuse to play (no sound allowed yet)
 }
 
+// A video's (or GIF's) own step, in the editor's preview of the animations: play, pause, stop.
+export function mediaStepInEditor(id, fx) {
+  const p = playerOf(id);
+  if (p) return p.ready.then(() => (fx === 'media-play' ? p.play(p.duration() && p.time() >= p.duration() - 0.05 ? 0 : null, null) : fx === 'media-pause' ? p.pause() : p.seek(0)));
+  const v = document.querySelector(`.block[data-id="${id}"] video`); if (!v) return;
+  if (fx === 'media-play') v.play().catch(() => {}); else { v.pause(); if (fx === 'media-stop') v.currentTime = 0; }
+}
+
 // A 3D model's own animations (its clips), once the model on the slide has loaded.
 export const modelClips = id => [...(document.querySelector(`#stage .block[data-id="${id}"] model-viewer`)?.availableAnimations || [])];

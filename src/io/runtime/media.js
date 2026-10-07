@@ -93,8 +93,12 @@ export function createMediaPlayer(host, o) {
     let t = gif ? tStart + (performance.now() - t0) / 1000 * rate : video.currentTime;
     if (stopAt != null && t >= stopAt) { t = stopAt; playing = false; if (video) { video.pause(); video.currentTime = stopAt; } }
     else if (gif && !o.loop && stopAt == null && t >= api.duration()) { t = api.duration(); playing = false; }
+    else if (video && video.ended && !video.loop) playing = false;
     renderAt(gif ? (o.loop && stopAt == null ? t % api.duration() : t) : t);
     if (playing) raf = requestAnimationFrame(tick);
+    // (It stopped by itself — the end, or the end of its segment —: whoever waits for it is told: «when another video
+    // ends», io/formats/html.js MEDIA_FX_JS.)
+    else { try { host.dispatchEvent(new CustomEvent('rvmediaend', { bubbles: true })); } catch (e) {} }
   }
 
   api.duration = () => (gif ? (gif.total || 0) / 1000 : (video && isFinite(video.duration) ? video.duration : 0));
@@ -150,19 +154,45 @@ export function revelaMediaRuntime(gifLib) {
       if (!slide.contains(el)) { p.ready.then(() => p.pause()); return; }
       const s = cfg.segments && cfg.segments.length ? cfg.segments : null;
       p.ready.then(() => {
-        if (cfg.autoplay) s ? p.play(s[0].from, s[0].to, s[0].speed || cfg.speed) : p.play(0, null, cfg.speed);
+        if (cfg.autoplay) start({ p, cfg });
         else p.seek(s ? s[0].from : 0);
       });
     });
   }
+  // From the beginning: its first segment, or all of it.
+  function start(m) { const s = m.cfg.segments && m.cfg.segments[0]; s ? m.p.play(s.from, s.to, s.speed || m.cfg.speed) : m.p.play(0, null, m.cfg.speed); }
+  // A video that has ended (all of it, or its last segment): the ones waiting for it on this slide start.
+  function ended(id, m) {
+    const segs = m && m.cfg.segments; if (segs && segs.length && m.p.time() < segs[segs.length - 1].to - 0.05) return;
+    const here = Reveal.getCurrentSlide();
+    players.forEach(w => { if (w.cfg.after === id && here && here.contains(w.el)) w.p.ready.then(() => start(w)); });
+  }
+  document.addEventListener('rvmediaend', e => { const id = (e.target.id || '').replace(/^rvm-/, ''); ended(id, players.get(e.target.id)); });
+  document.addEventListener('ended', e => { const id = e.target.getAttribute && e.target.getAttribute('data-vid'); if (id) ended(id); }, true);
+  // Its own steps (animations): Reproducir (on from where it is; from the start once it has ended), Pausar, Detener
+  // (back to the start). By clicks (reveal fragments) or on a click on another object (rvmfx: TRIGGER_JS).
+  function step(f, show) {
+    const k = f.getAttribute && f.getAttribute('data-mfx'); if (!k) return;
+    const el = f.matches('[data-media]') ? f : f.querySelector('[data-media]'), m = el && players.get(el.id); if (!m) return;
+    const del = parseFloat(f.getAttribute('data-del') || getComputedStyle(f).getPropertyValue('--anim-del')) || 0;   // (ms)
+    setTimeout(() => m.p.ready.then(() => {
+      if (!show) { if (k === 'media-play') m.p.pause(); return; }
+      if (k === 'media-play') { const end = m.p.duration() && m.p.time() >= m.p.duration() - 0.05; m.p.play(end ? 0 : null, null, m.cfg.speed); }
+      else if (k === 'media-pause') m.p.pause();
+      else { const s = m.cfg.segments && m.cfg.segments[0]; m.p.seek(s ? s.from : 0); }
+    }), show ? del : 0);
+  }
+  document.addEventListener('rvmfx', e => step(e.target, true));
   Reveal.on('ready', e => enter(e.currentSlide));
   Reveal.on('slidechanged', e => enter(e.currentSlide));
   Reveal.on('fragmentshown', e => (e.fragments || [e.fragment]).forEach(f => {
+    step(f, true);
     const m = players.get(f.getAttribute('data-seg-of')); if (!m) return;
     const k = +f.getAttribute('data-seg'), s = k < 0 ? { from: 0, to: null } : m.cfg.segments[k];
     if (s) m.p.ready.then(() => m.p.play(s.from, s.to, s.speed || m.cfg.speed));
   }));
   Reveal.on('fragmenthidden', e => (e.fragments || [e.fragment]).forEach(f => {
+    step(f, false);
     const m = players.get(f.getAttribute('data-seg-of')); if (!m) return;
     const k = +f.getAttribute('data-seg'), s = m.cfg.segments[k - 1] || m.cfg.segments[k];
     m.p.ready.then(() => m.p.seek(k > 0 && s ? s.to : s ? s.from : 0));

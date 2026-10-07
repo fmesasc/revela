@@ -3,7 +3,8 @@
 
 import { openPdf, pageImage, pdfTransform } from '../../features/content/files.js';
 import { currentSlide } from '../../core/store.js';
-import { animTimeline, animEntries, EFFECT_KF, motionFrames, SIZE_FX, animScale } from '../../features/animation/transitions.js';
+import { animTimeline, animEntries, EFFECT_KF, motionFrames, SIZE_FX, animScale, MEDIA_FX } from '../../features/animation/transitions.js';
+import { mediaStepInEditor } from './mediaview.js';
 import { stage } from './canvas.js';
 import { model3dRuntime } from '../../io/runtime/model3d.js';
 import { soundRuntime } from '../../io/runtime/sounds.js';
@@ -88,6 +89,7 @@ export function playAnimations() {
     const el = stage.querySelector(`.block[data-id="${b.id}"]`); if (!el) continue;
     const when = offset.get(at.step) + at.delay;
     if (a.effect === 'pdfview') { soundOf(a, when); pdfStepPreview(el, b, a, when, at.dur, restore); continue; }
+    if (MEDIA_FX.includes(a.effect)) { soundOf(a, when); setTimeout(() => mediaStepInEditor(b.id, a.effect), when); continue; }
     if (!b.anims?.length) { animateEl(el, a, at.dur, when); continue; }
     // A sequence: every step kept (added up) until the end, then all undone.
     const opts = { duration: at.dur, delay: when, easing: 'ease-in-out', fill: 'forwards', composite: i ? 'add' : 'replace' };

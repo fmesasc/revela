@@ -3,6 +3,7 @@
 // it can appear, go somewhere, then somewhere else, turn, play a 3D clip…
 
 import { isPdf } from '../../features/content/files.js';
+import { mediaKind } from '../../features/live/media.js';
 import { openPdfZone } from '../dialogs/pdfzone.js';
 import { popupMenu } from '../shell/menu.js';
 import { modelClips } from '../canvas/mediaview.js';
@@ -34,6 +35,7 @@ export function openAddAnimation(anchor) {
   if (!b) { alertDialog(t('Selecciona primero el objeto que se moverá.')); return; }
   const clips = b.type === 'model' ? modelClips(b.id) : [];
   const sections = [...PALETTE, ...(clips.length ? [['Animación del modelo 3D', clips.map(c => [`clip:${c}`, c, 'play_circle'])]] : []),
+    ...(mediaKind(b) ? [['Vídeo', [['media-play', 'Reproducir', 'play_arrow'], ['media-pause', 'Pausar', 'pause'], ['media-stop', 'Detener', 'stop']]]] : []),
     ...(isPdf(b) ? [['PDF', [['pdf:next', 'Pasar a la página siguiente', 'arrow_forward'], ['pdf:zone', 'Ir a una página y hacer zoom…', 'zoom_in'], ['pdf:whole', 'Volver a la página entera', 'fit_screen']]]] : [])];
   popupMenu(anchor, { id: 'anim-add-menu', className: 'anim-add', attr: 'add',
     html: `<p class="host-help">${animsOf(b).length ? t('Se añade después de sus animaciones ({n}).').replace('{n}', animsOf(b).length) : t('Su primera animación.')}</p>`
@@ -41,6 +43,7 @@ export function openAddAnimation(anchor) {
     onPick: k => {
       if (k.startsWith('pdf:')) return addPdfStep(b, k.slice(4));
       if (k === 'draw') startPathDraw({ append: true });
+      else if (k.startsWith('media-')) addAnimation(k, { start: 'click' });   // (a step of its own: a click, not after the previous)
       else if (k.startsWith('clip:')) addAnimation('clip3d', { clip: k.slice(5), once: true, duration: 1500 });
       else addAnimation(k);
     } });

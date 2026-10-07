@@ -185,7 +185,8 @@ export const LIGHTBOX_JS = `(function(){var box=null;
  var st=document.createElement('style');st.textContent='img[data-lightbox]{cursor:zoom-in}';document.head.appendChild(st);})();`;
 export const TRIGGER_JS = `(function(){
  function play(el){el.style.animation='none';void el.offsetWidth;
-  el.style.animation=el.dataset.kf+' '+el.dataset.dur+'ms ease '+el.dataset.del+'ms both';el.classList.add('on');}
+  el.style.animation=el.dataset.kf+' '+el.dataset.dur+'ms ease '+el.dataset.del+'ms both';el.classList.add('on');
+  if(el.dataset.mfx)el.dispatchEvent(new CustomEvent('rvmfx',{bubbles:true}));}
  document.addEventListener('click',function(e){var s=e.target.closest('[data-bid]');if(!s)return;
   s.closest('section').querySelectorAll('[data-trig="'+s.dataset.bid+'"]').forEach(play);});
  Reveal.on('slidechanged',function(ev){if(ev.previousSlide)ev.previousSlide.querySelectorAll('.rv-trig').forEach(function(el){

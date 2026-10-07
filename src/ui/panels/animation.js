@@ -5,6 +5,7 @@
 // list, the details of the chosen one (or the settings they share, when they are several).
 
 import { isPdf } from '../../features/content/files.js';
+import { mediaKind } from '../../features/live/media.js';
 import { openPdfZone } from '../dialogs/pdfzone.js';
 import { esc } from '../../core/text.js';
 import { state, currentSlide, commit, setSelection, setMulti, isSelected } from '../../core/store.js';
@@ -35,7 +36,7 @@ export const EFFECT_NAMES = { 'fade-in': 'Aparecer', 'fade-up': 'Subir', 'fade-d
   'fade-in-then-semi-out': 'Aparecer y atenuar', 'current-visible': 'Visible solo en su paso', 'highlight-red': 'Resaltar en rojo',
   'highlight-green': 'Resaltar en verde', 'highlight-blue': 'Resaltar en azul', 'highlight-current-red': 'Rojo solo en su paso',
   'highlight-current-green': 'Verde solo en su paso', 'highlight-current-blue': 'Azul solo en su paso', path: 'Trayectoria',
-  spin360: 'Dar una vuelta', pulse: 'Latido', teeter: 'Balanceo', jump: 'Salto', 'color-pulse': 'Destello', clip3d: 'Animación del modelo 3D', draw: 'Dibujar', pdfview: 'Página y zoom del PDF' };
+  spin360: 'Dar una vuelta', pulse: 'Latido', teeter: 'Balanceo', jump: 'Salto', 'color-pulse': 'Destello', 'media-play': 'Reproducir', 'media-pause': 'Pausar', 'media-stop': 'Detener', clip3d: 'Animación del modelo 3D', draw: 'Dibujar', pdfview: 'Página y zoom del PDF' };
 export const EFFECT_LABEL = e => t(EFFECT_NAMES[e] || e);
 // Short label of an object for the trigger list.
 export function objLabel(b) {
@@ -173,7 +174,7 @@ function detailOne(box, { b, a, i }, clash = null) {
     : clash === 'exit' ? t('Este objeto sale con su animación en la diapositiva anterior: aquí aparece sin deslizarse.') : '';
   box.innerHTML = `<div class="an-title">${esc(objLabel(b))} · ${esc(EFFECT_LABEL(a.effect))}</div>${note ? `<p class="an-clash"><i class="ms">info</i> ${esc(note)}</p>` : ''}
     <div class="an-grid">
-      <label>${t('Efecto')}<select data-p="effect">${[...ANIM_EFFECTS, ...(b.type === 'model' ? ['clip3d'] : []), ...(isPdf(b) ? ['pdfview'] : [])].map(e => `<option value="${e}"${a.effect === e ? ' selected' : ''}>${EFFECT_LABEL(e)}</option>`).join('')}</select></label>
+      <label>${t('Efecto')}<select data-p="effect">${[...ANIM_EFFECTS, ...(b.type === 'model' ? ['clip3d'] : []), ...(isPdf(b) ? ['pdfview'] : []), ...(mediaKind(b) ? trans.MEDIA_FX : [])].map(e => `<option value="${e}"${a.effect === e ? ' selected' : ''}>${EFFECT_LABEL(e)}</option>`).join('')}</select></label>
       <label>${t('Comienzo')}<select data-p="start">${Object.entries(START_NAME).map(([v, l]) => `<option value="${v}"${(a.start || 'click') === v ? ' selected' : ''}>${t(l)}</option>`).join('')}</select></label>
       <label class="an-wide">${t('Disparador')}<select data-p="trigger"><option value="">${t('Secuencia de clics')}</option>${currentSlide().blocks
         .filter(x => x.id !== b.id && x.type !== 'connector').map(x => `<option value="${x.id}"${a.trigger === x.id ? ' selected' : ''}>${t('Al hacer clic en')} ${esc(objLabel(x))}</option>`).join('')}</select></label>

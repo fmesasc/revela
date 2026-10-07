@@ -3547,5 +3547,15 @@ export const ROWS = [
   ['Tu nombre (lo verá tu profesor)', 'Your name (your teacher will see it)', 'Ton nom (ton professeur le verra)', 'Dein Name (deine Lehrkraft sieht ihn)', 'Il tuo nome (lo vedrà il tuo insegnante)', 'O teu nome (o teu professor vai vê-lo)', 'El teu nom (el veurà el teu professor)'],
   ['Empezar', 'Start', 'Commencer', 'Starten', 'Inizia', 'Começar', 'Comença'],
   ['Esta es la web de pruebas de Revela: solo pueden entrar las personas invitadas. La de verdad está en revelaslides.com.', 'This is Revela\'s test site: only invited people can sign in. The real one is at revelaslides.com.', 'Ceci est le site de test de Revela : seules les personnes invitées peuvent se connecter. Le vrai est sur revelaslides.com.', 'Das ist die Testseite von Revela: Nur eingeladene Personen können sich anmelden. Die echte ist revelaslides.com.', 'Questo è il sito di prova di Revela: possono entrare solo le persone invitate. Quello vero è revelaslides.com.', 'Este é o site de testes do Revela: só podem entrar as pessoas convidadas. O verdadeiro está em revelaslides.com.', 'Aquesta és la web de proves de Revela: només hi poden entrar les persones convidades. La de veritat és a revelaslides.com.'],
+  ['Empieza', 'Starts', 'Démarre', 'Startet', 'Inizia', 'Começa', 'Comença'],
+  ['Con un clic', 'On a click', 'Au clic', 'Per Klick', 'Con un clic', 'Com um clique', 'Amb un clic'],
+  ['Solo, al llegar', 'By itself, on arrival', 'Tout seul, à l\'arrivée', 'Von selbst, beim Erreichen', 'Da solo, all\'arrivo', 'Sozinho, ao chegar', 'Sol, en arribar'],
+  ['Al acabar', 'When it ends:', 'À la fin de', 'Wenn endet:', 'Al termine di', 'Ao acabar', 'En acabar'],
+  ['Tramos y croma…', 'Segments and chroma key…', 'Segments et incrustation…', 'Abschnitte und Chroma-Key…', 'Tratti e chroma key…', 'Trechos e croma…', 'Trams i croma…'],
+  ['Animar', 'Animate', 'Animer', 'Animieren', 'Animare', 'Animar', 'Animar'],
+  ['Reproducir con un clic', 'Play on a click', 'Lire au clic', 'Per Klick abspielen', 'Riproduci con un clic', 'Reproduzir com um clique', 'Reproduir amb un clic'],
+  ['Pausar con un clic', 'Pause on a click', 'Mettre en pause au clic', 'Per Klick pausieren', 'Metti in pausa con un clic', 'Pausar com um clique', 'Pausar amb un clic'],
+  ['Detener con un clic', 'Stop on a click', 'Arrêter au clic', 'Per Klick stoppen', 'Ferma con un clic', 'Parar com um clique', 'Aturar amb un clic'],
+  ['Pausar', 'Pause', 'Pause', 'Pausieren', 'Pausa', 'Pausar', 'Pausa'],
 ];
 // Additional languages (partial; anything missing falls back to Spanish).

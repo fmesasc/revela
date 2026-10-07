@@ -555,6 +555,51 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { f.remove(); }
   });
 
+  await test('vídeo: empezar al acabar otro, y Reproducir, Pausar y Detener como animaciones', async () => {
+    reset();
+    const W = frame.contentWindow, imp = m => W.eval(`import('${m}')`);
+    const { encodeGif } = await imp('/src/features/live/gifbg.js');
+    const T = await imp('/src/features/animation/transitions.js');
+    const gif = c => encodeGif({ width: 4, height: 4, frames: [0, 1, 2, 3].map(() => ({ delay: 150, rgba: new W.Uint8ClampedArray(Array.from({ length: 16 }, () => c).flat()) })) });
+    R.blocks.addImage(await gif([255, 0, 0, 255])); const a = last();
+    R.blocks.addImage(await gif([0, 0, 255, 255])); const b = last();
+    R.blocks.addImage(await gif([0, 255, 0, 255])); const c = last();
+    const { setMediaPlayback, needsPlayer } = await imp('/src/features/live/media.js');
+    setMediaPlayback(a.id, { muted: true });                              // (the one that plays first: with a click)
+    setMediaPlayback(b.id, { afterVideo: a.id });
+    assert(needsPlayer(R.state.deck.slides[R.state.ui.slideIndex].blocks.find(x => x.id === b.id)), 'el que espera lo dibuja el reproductor');
+    R.store.setSelection(c.id);
+    for (const fx of ['media-play', 'media-pause', 'media-stop']) T.addAnimation(fx, { start: 'click' });
+    eq(T.animsOf(last()).map(x => x.effect + ':' + x.start).join(), 'media-play:click,media-pause:click,media-stop:click', 'tres pasos, cada uno con su clic');
+    assert(T.animsOf(last()).every(x => !T.isEntrance(x.effect)), 'no son entradas: se ve desde el principio');
+    const html = R.io.buildHTML();
+    eq((html.match(/class="fragment rv-seg"/g) || []).length, 1, 'solo el primero tiene su clic de siempre');
+    assert(/&quot;after&quot;:&quot;/.test(html) && (html.match(/data-mfx="media-/g) || []).length === 3, 'en el export: a quién espera y los tres pasos');
+    // Without the one it waits for, a click again.
+    setMediaPlayback(a.id, {}); R.store.commit(() => { R.state.deck.slides[R.state.ui.slideIndex].blocks = R.state.deck.slides[R.state.ui.slideIndex].blocks.filter(x => x.id !== a.id); });
+    eq((R.io.buildHTML().match(/class="fragment rv-seg"/g) || []).length, 1, 'si el otro ya no está, empieza con un clic');
+    R.store.undo();
+
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
+    f.srcdoc = R.io.buildHTML(R.state.deck, { inApp: true });
+    try {
+      const get = async id => { let el; for (let i = 0; i < 100 && !((el = f.contentDocument?.getElementById('rvm-' + id))?._player); i++) await sleep(100); await el._player.ready; return el._player; };
+      const pa = await get(a.id), pb = await get(b.id), pc = await get(c.id), RV = f.contentWindow.Reveal;
+      RV.slide(R.state.ui.slideIndex); await sleep(100);
+      assert(!pa.playing() && !pb.playing() && !pc.playing(), 'quietos al llegar');
+      pa.play(0, null);
+      for (let i = 0; i < 40 && pa.playing(); i++) await sleep(50);
+      await sleep(50);
+      assert(!pa.playing() && pb.playing(), 'al acabar el primero empieza el que lo espera');
+      // The steps of the third one (its clicks: the first of the slide's is the first one's own click).
+      const cl = async () => { RV.next(); await sleep(120); };
+      for (let i = 0; i < 5 && !pc.playing(); i++) await cl();
+      assert(pc.playing(), 'Reproducir');
+      await cl(); assert(!pc.playing() && pc.time() > 0, 'Pausar: quieto donde estaba');
+      await cl(); assert(!pc.playing() && pc.time() === 0, 'Detener: vuelve al principio');
+    } finally { f.remove(); }
+  });
+
   await test('vídeo: opciones de reproducción en el export y en el diálogo', async () => {
     reset();
     R.blocks.addVideo('data:video/mp4;base64,AAAA'); const v = last();
