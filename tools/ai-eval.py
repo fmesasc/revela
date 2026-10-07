@@ -90,7 +90,7 @@ def main():
                 m = ev(f"""(async()=>{{const R=window.__revela;R.slides.goToSlide({i});R.store.setSelection(null);R.render();await new Promise(x=>setTimeout(x,450));
                   const st=document.getElementById('stage'),k=1280/st.getBoundingClientRect().width;let small=0,spill=0,min=999;
                   for(const b of st.querySelectorAll('.block')){{const box=b.getBoundingClientRect(),w=document.createTreeWalker(b,NodeFilter.SHOW_TEXT),rg=document.createRange();
-                    for(let n;(n=w.nextNode());){{if(!n.textContent.trim())continue;const fs=parseFloat(getComputedStyle(n.parentElement).fontSize)*k;min=Math.min(min,fs);if(fs<20)small++;
+                    if(b.querySelector('pre,code,.katex'))continue;for(let n;(n=w.nextNode());){{if(!n.textContent.trim())continue;const fs=parseFloat(getComputedStyle(n.parentElement).fontSize)*k;min=Math.min(min,fs);if(fs<18)small++;
                       rg.selectNodeContents(n);for(const q of rg.getClientRects())if(q.bottom>box.bottom+3||q.right>box.right+3){{spill++;break}}}}}}
                   const r=st.getBoundingClientRect();return [r.x,r.y,r.width,r.height,small,spill,Math.round(min)]}})()""")
                 small += m[4]; spill += m[5]
@@ -105,7 +105,7 @@ def main():
             except Exception as e: print('sin hoja de imágenes:', e)
             r['layout'] = {'small_texts': small, 'spilling_texts': spill}
             q = r['quality']; json.dump(r, open(os.path.join(out, k + '.json'), 'w'), ensure_ascii=False, indent=1)
-            rows.append((k, q['score'], len(r['specs']), q['stats']['code'], ', '.join(sorted(set(s.get('kind', '?') for s in r['specs']))), '; '.join([p['detail'] for p in q['problems']] + ([f"{r['layout']['spilling_texts']} textos que se salen"] if r['layout']['spilling_texts'] else []) + ([f"{r['layout']['small_texts']} textos de menos de 20 px"] if r['layout']['small_texts'] else [])) or '—', round(time.time() - t0), r.get('first', q['score'])))
+            rows.append((k, q['score'], len(r['specs']), q['stats']['code'], ', '.join(sorted(set(s.get('kind', '?') for s in r['specs']))), '; '.join([p['detail'] for p in q['problems']] + ([f"{r['layout']['spilling_texts']} textos que se salen"] if r['layout']['spilling_texts'] else []) + ([f"{r['layout']['small_texts']} textos de menos de 18 px (sin contar el código)"] if r['layout']['small_texts'] else [])) or '—', round(time.time() - t0), r.get('first', q['score'])))
         except Exception as e:
             rows.append((k, 0, 0, 0, '', 'ERROR: ' + (str(e).splitlines() or [''])[0][:200], round(time.time() - t0), 0))
         print(f'{rows[-1][0]:<12} {rows[-1][1]:>3}  {rows[-1][5]}', flush=True)

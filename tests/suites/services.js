@@ -499,6 +499,17 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       eq(sp5[1].stats.map(s => s.value).join(), '[€12.5M],[X %]', 'las cifras sin respaldo, huecos para rellenar');
       eq(sp5[2].kind + ':' + sp5[2].bullets.join('|'), 'bullets:Norte: [M€]|Sur: [M€]', 'el gráfico inventado, una lista de huecos');
       assert(!sp5.quality.problems.some(p => p.code === 'invented-figures'), 'ninguna cifra inventada llega');
+      // Code on a topic that isn't programming (sums as comments): its lines, as a list.
+      seq = [{ title: 'Fracciones', slides: [{ kind: 'title', title: 'Fracciones', notes: 'a' }, { kind: 'code', title: 'MCM(6, 8)', code: { language: 'plaintext', code: '// Múltiplos de 6: 6, 12, 18, 24\n// Múltiplos de 8: 8, 16, 24\n// MCM(6, 8) = 24' }, notes: 'b' },
+        { kind: 'closing', title: 'Gracias', notes: 'c' }] }, { slides: [] }];
+      const sp6 = await A.createDeck({ topic: 'Sumar fracciones', count: 3 }); seq = null;
+      // Laid out to be read: three steps of long text never in one column of thin strips; no text under 18 px.
+      const FS = await W.eval("import('/src/features/ai/fromspec.js')");
+      const long = 'Plantar árboles y crear nuevos espacios verdes en los barrios más vulnerables al calor antes del próximo verano.';
+      const bl3 = FS.compose('steps', { steps: [1, 2, 3].map(i => ({ title: 'Acción ' + i, text: long })) }, { x: 80, y: 180, w: 1120, h: 460 }, { fg: '#222222', accent: '#0a6', accents: ['#0a6'], bodySize: 30, title: '#111111' });
+      assert(new Set(bl3.filter(b => b.type === 'shape' && b.shape === 'rounded').map(b => b.x)).size > 1, 'en columnas, no en franjas de una columna');
+      assert(bl3.filter(b => b.type === 'text').every(b => b.fontSize >= 18), 'ningún texto de menos de 18 px: ' + bl3.filter(b => b.type === 'text').map(b => b.fontSize).join());
+      eq(sp6[1].kind + ':' + sp6[1].bullets.join('|'), 'bullets:Múltiplos de 6: 6, 12, 18, 24|Múltiplos de 8: 8, 16, 24|MCM(6, 8) = 24', 'el código fuera de lugar, sus líneas en una lista');
       eq(Q.deckQuality([{ kind: 'title', title: 'x' }, { kind: 'chart', title: 'P', chart: { type: 'line', labels: ['a', 'b'], values: [1, 2] }, source: 'Fuente: IEA 2023' }], { topic: 'Energía' }).problems.filter(p => p.code === 'invented-figures').length, 0, 'un gráfico con su fuente no es inventado'); assert(sp4.quality.score > q1.score, 'y mejor nota (' + q1.score + ' → ' + sp4.quality.score + ')');
       // Research on the web first: the brief goes to the slides, its pages become a «Fuentes» slide.
       { const real = W.fetch; let body = null;

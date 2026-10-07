@@ -310,6 +310,15 @@ Write everything in ${opts.language || lang()}.` },
   if (q.score < 75 || q.problems.some(p => ['invented-figures', 'off-code', 'no-picture'].includes(p.code))) { await richer(specs, weakSlides(q, specs), opts, q).catch(() => {}); q = deckQuality(specs, how); }
   // The last net, not up to the model: figures still without anything behind them are never shown as facts — on cards,
   // each value becomes a gap to fill in («[1.200.000 €]»); a chart, a list with a gap for each of its data.
+  // (Code on a topic that isn't programming — sums worked out as comments —: its lines, as a list.)
+  const offCode = q.problems.find(p => p.code === 'off-code');
+  if (offCode) {
+    for (const i of offCode.slides) {
+      const sp = specs[i], lines = str(sp.code?.code).split('\n').map(l => l.replace(/^\s*(\/\/+|#+|--|\/\*+|\*+\/?)\s?/, '').trim()).filter(l => l && !/^[{}()[\];]+$/.test(l)).slice(0, 7);
+      if (lines.length) specs[i] = { kind: 'bullets', title: sp.title, bullets: [...lines, ...(sp.bullets || [])].slice(0, 8), notes: sp.notes };
+    }
+    q = deckQuality(specs, how);
+  }
   const still = q.problems.find(p => p.code === 'invented-figures');
   if (still) {
     for (const i of still.slides) {

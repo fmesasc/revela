@@ -180,7 +180,7 @@ export function fitBody(b, slide, deck) {
 // rows or columns where it is laid out, not smaller.)
 function fitSize(html, size, w, h, lh = 1.25, min = 18, cw = 0.54) {
   min = Math.max(18, min);
-  let fs = size; while (fs > min && needHeight(html, fs, w, lh, cw) > h) fs -= 2;
+  let fs = size; while (fs > min && needHeight(html, fs, w, lh, cw) > h) fs = Math.max(min, fs - 2);
   return fs;
 }
 
@@ -442,11 +442,11 @@ export function compose(kind, spec, area, look, { minimal = false, style = 'same
       const needW = longest > 90 ? 360 : longest > 45 ? 290 : 210, gap = minimal ? 40 : 28;
       let cols = kind === 'steps' ? (n <= 4 ? n : 3) : (n <= 3 ? n : n === 4 ? 2 : 3);
       while (cols > 1 && (area.w - (cols - 1) * gap) / cols < needW) cols--;
-      if (cols < n && cols > 1 && n % cols && n % (cols - 1) === 0 && (area.w - (cols - 2) * gap) / (cols - 1) >= needW) cols--;   // (no last row of one)
+      if (cols > 2 && n % cols && n % (cols - 1) === 0 && (area.w - (cols - 2) * gap) / (cols - 1) >= needW) cols--;   // (no last row of one — but never one column: thin strips)
       const rows = Math.ceil(n / cols);
       const cw = (area.w - (cols - 1) * gap) / cols, side = kind === 'features' && cw >= 440, pad = minimal ? 0 : 26, d = rows > 1 ? 54 : 68;
       const iw = side ? cw - 2 * pad - d - 22 : cw - 2 * pad, hasT = it.some(s => s.title);
-      const ts = R(bs * (rows > 1 ? 0.76 : 0.82)), xs = short ? R(bs * 1.2) : R(bs * (hasT ? (rows > 1 ? 0.7 : 0.74) : 0.8));
+      const ts = R(bs * (rows > 1 ? 0.78 : 0.86)), xs = short ? R(bs * 1.2) : R(bs * (hasT ? (rows > 1 ? 0.76 : 0.82) : 0.88));
       const tH = hasT ? Math.max(...it.map(s => (s.title ? needHeight(inline(s.title), ts, iw, 1.15, 0.6) : 0))) : 0;
       const xH = Math.max(0, ...it.map(s => (s.text ? needHeight(inline(s.text), xs, iw, 1.3) : 0)));
       const maxH = (area.h - (rows - 1) * gap) / rows, inner = tH + (hasT ? 6 : 0) + xH;
