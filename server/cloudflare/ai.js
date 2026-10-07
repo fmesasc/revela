@@ -45,6 +45,9 @@ export function contentOf(messages) {
   }
   return { text, images };
 }
+// Searching the internet first (body.web: OpenRouter's web plugin, to cite current sources): what it may cost on top,
+// held beforehand; what it did cost comes in the answer's usage.
+export const WEB_USD = 0.02;
 export async function aiChat(env, s, A, body, json) {
   const messages = Array.isArray(body.messages) ? body.messages : null;
   if (!messages || !messages.length || messages.length > 60) return json({ error: 'bad request' }, 400);
@@ -53,18 +56,19 @@ export async function aiChat(env, s, A, body, json) {
   const model = s.models.includes(body.model) ? body.model : s.models[0];
   const maxTokens = Math.min(s.maxTokens, Math.max(16, Math.round(+body.max_tokens || 1000)));
   const [pin, pout] = priceOf(s, model), inTok = c.text / 3 + c.images * IMAGE_LIMITS.tokens;
-  const estimate = (inTok * pin + maxTokens * pout) / 1e6;
+  const estimate = (inTok * pin + maxTokens * pout) / 1e6 + (body.web ? WEB_USD : 0);
   const g = await guard(env, s, A, credits(estimate, s), estimate, json); if (g.stop) return g.stop;
   let r, data;
   try {
     r = await (env.FETCH || fetch)('https://openrouter.ai/api/v1/chat/completions', { method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.OPENROUTER_KEY}`, 'HTTP-Referer': s.site, 'X-Title': 'Revela' },
       // (provider.data_collection 'deny': only providers that neither store nor train on the request.)
-      body: JSON.stringify({ model, messages, max_tokens: maxTokens, usage: { include: true }, provider: { data_collection: 'deny' }, ...(body.json && { response_format: { type: 'json_object' } }) }) });
+      body: JSON.stringify({ model, messages, max_tokens: maxTokens, usage: { include: true }, provider: { data_collection: 'deny' }, ...(body.json && { response_format: { type: 'json_object' } }),
+        ...(body.web && { plugins: [{ id: 'web', max_results: 6 }] }) }) });
     data = await r.json().catch(() => null);
   } catch { r = null; }
   if (!r || !r.ok || !data) { await call(A, 'settle', { id: g.hold, credits: 0 }); return json(aiFailure('chat', r, data), 502); }
-  const u = data.usage || {}, usd = +u.cost > 0 ? +u.cost : ((+u.prompt_tokens || inTok) * pin + (+u.completion_tokens || maxTokens) * pout) / 1e6;
+  const u = data.usage || {}, usd = +u.cost > 0 ? +u.cost : ((+u.prompt_tokens || inTok) * pin + (+u.completion_tokens || maxTokens) * pout) / 1e6 + (body.web ? WEB_USD : 0);
   await call(g.budget, 'spend', { usd });
   const st = await call(A, 'settle', { id: g.hold, credits: credits(usd, s), reason: 'ai',
     ai: { feature: featureOf(body.feature), model: data.model || model, tin: +u.prompt_tokens || 0, tout: +u.completion_tokens || 0, usd } });

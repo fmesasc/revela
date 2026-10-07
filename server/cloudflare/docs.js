@@ -43,6 +43,9 @@
 //   GET  /api/docs/:id/version?at=T   → { deck }           (edit role)
 //   POST /api/docs/:id/view           { visitor, slide, ms } (anyone who can read: statistics)
 //   GET  /api/docs/:id/stats          → per slide: views and time; visitors  (owner, Pro)
+//   GET  /api/docs/:id/poll/:pid      → the poll, to answer it later by a link (no session; only one opened so: async)
+//   POST /api/docs/:id/poll/:pid      { voter, answer } → { ok }   (one answer per voter, changeable; at most POLL_MAX voters)
+//   GET  /api/docs/:id/pollvotes/:pid → { votes: { voter: answer } }  (edit role: brought into the editor's results)
 //
 // Storage: one Durable Object per document (CloudDoc: the deck slide by slide,
 // store.js, so a change rewrites only what it touched; the picture of its first
@@ -61,6 +64,7 @@ import { writeDeck, readDeck, writeText, readParts } from './store.js';
 import { mail } from './mail.js';
 import { acct, call } from './api.js';
 import { random, EMAIL } from './util.js';
+import { ASYNC_KINDS, publicPoll, cleanAnswer } from '../../src/features/live/answers.js';
 
 const ROLE_RANK = { present: 1, view: 2, comment: 3, edit: 4, owner: 5 };
 const ROLES = ['present', 'view', 'comment', 'edit'], LINK_ROLES = ['none', ...ROLES];
@@ -71,6 +75,7 @@ export const onlySlides = (deck, ids) => (ids ? { ...deck, slides: (deck.slides 
 const MAX_SLIDE_IDS = 1000;
 // An end date: a time in the future (at most 5 years ahead), or none.
 const untilOf = v => { const n = Math.round(+v); return Number.isFinite(n) && n > Date.now() && n < Date.now() + 5 * 365 * 864e5 ? n : null; };
+const POLL_MAX = 5000;   // (voters of a poll answered by a link)
 const LOG_CHARS = 1.5e6, LOG_MAX = 200, VERSIONS = 10, VERSION_EVERY = 30 * 60e3;
 
 export const docsSettings = env => ({
@@ -143,6 +148,18 @@ export class CloudDoc {
     const { meta } = doc, role = this.roleOf(meta, a.who);
     if (op === 'measure') return this.json({ bytes: await this.bytes(meta) });   // (storage.js: never routed from outside; the trash counts too)
     if (meta.trashed && role !== 'owner') return op === 'role' ? this.json({ role: null }) : this.json({ error: 'not found' }, 404);   // (in the trash: only for its owner)
+    // A poll opened to be answered later by a link: anyone with that link, without a session; only that poll.
+    if (op === 'poll-public' || op === 'poll-vote') {
+      const b = doc.deck.slides.flatMap(sl => sl.blocks || []).find(x => x?.type === 'poll' && x.pollId === String(a.pid) && x.async && ASYNC_KINDS.includes(x.kind));
+      if (!b || meta.trashed) return this.json({ error: 'not found' }, 404);
+      if (op === 'poll-public') return this.json({ poll: publicPoll(b), name: meta.name });
+      const voter = String(a.voter || '').slice(0, 40), ans = cleanAnswer(b, a.answer);
+      if (!/^[\w-]{8,40}$/.test(voter) || ans === null) return this.json({ error: 'bad request' }, 400);
+      const key = 'pv:' + b.pollId, votes = (await st.get(key)) || {};
+      if (!(voter in votes) && Object.keys(votes).length >= POLL_MAX) return this.json({ error: 'full' }, 409);
+      votes[voter] = ans; await st.put(key, votes);
+      return this.json({ ok: true });
+    }
     if (op === 'role') return this.json({ role });                 // (for the video calls: only who may open it)
     if (!role) return this.json({ error: a.who?.sub ? 'forbidden' : 'sign in' }, a.who?.sub ? 403 : 401);
     const at = r => ROLE_RANK[role] >= ROLE_RANK[r], only = this.scopeOf(meta, a.who, role);
@@ -266,6 +283,7 @@ export class CloudDoc {
         return this.json({ at: meta.thumbAt, owner: meta.owner });
       }
       // (With only some slides, not even the first one's picture: it may not be among them.)
+      case 'poll-votes': return at('edit') ? this.json({ votes: (await st.get('pv:' + String(a.pid))) || {} }) : this.json({ error: 'forbidden' }, 403);
       case 'thumb-get': return this.json(only ? { thumb: null, at: null } : { thumb: (await st.get('thumb')) || null, at: meta.thumbAt || null });
       case 'versions': return at('edit') ? this.json({ versions: (await st.get('versions')) || [] }) : this.json({ error: 'forbidden' }, 403);
       case 'version': {
@@ -366,6 +384,15 @@ export async function handleDocs(path, req, body, url, env, me, json) {
     const r = await call(A, op, { id: fm[2], ...(op !== 'folder-remove' && { name: body.name, parent: body.parent }) });
     if (!r.ok) return json(r, r.error === 'not found' || r.error === 'no folder' ? 404 : r.error === 'folder limit' ? 402 : 400);
     return json(r);
+  }
+  // Polls answered by a link: the poll and its answers (public), and the answers for the editor.
+  const pm = path.match(/^\/docs\/([\w-]{16,40})\/(poll|pollvotes)\/([\w-]{4,40})$/);
+  if (pm) {
+    const [, pid, pkind, poll] = pm;
+    if (pkind === 'pollvotes') { if (req.method !== 'GET') return json({ error: 'method' }, 405); if (!me) return json({ error: 'no session' }, 401); return reply(await ask(env, pid, 'poll-votes', { who, id: pid, pid: poll })); }
+    if (req.method === 'GET') return reply(await ask(env, pid, 'poll-public', { who: null, id: pid, pid: poll }));
+    if (req.method !== 'POST') return json({ error: 'method' }, 405);
+    return reply(await ask(env, pid, 'poll-vote', { who: null, id: pid, pid: poll, voter: body.voter, answer: body.answer }));
   }
   const m = path.match(/^\/docs\/([\w-]{16,40})(?:\/(since|ops|share|delete|versions|version|view|stats|meta|trash|restore|duplicate|thumb))?$/);
   if (!m) return json({ error: 'not found' }, 404);

@@ -149,6 +149,7 @@ export function openCreateDeck() {
       <label class="fr-l">${t('Tono')}<select class="ad-tone">${TONES.map(x => `<option value="${x}">${t(x)}</option>`).join('')}</select></label>
       <label class="fr-l">${t('Diseño')}<select class="ad-pal"><option value="">${t('Automático (según el contenido)')}</option>${Object.keys(deck.DECK_DESIGNS).map(k => `<option value="${k}">${t(GALLERY[k].name)}</option>`).join('')}</select></label>
     </div>
+    <label class="fr-chk"><input type="checkbox" class="ad-web"> ${t('Buscar en internet datos actuales y citar las fuentes (unos céntimos más)')}</label>
     <label class="fr-chk"><input type="checkbox" class="ad-img"> ${t('Generar imágenes con IA (coste extra en OpenRouter)')}</label>
     <label class="fr-chk"><input type="checkbox" class="ad-new" checked> ${t('Empezar una presentación nueva (si no, se añade a la actual)')}</label>
     <div class="ad-outline" hidden><h4 style="margin:10px 0 4px">${t('Esquema')}</h4>
@@ -163,7 +164,7 @@ export function openCreateDeck() {
   back.addEventListener('click', e => { if (e.target === back) close(); });
   // (What was written is kept: connecting the AI may take the page to OpenRouter and back — the
   // form opens again, filled in, when it comes back: apps/editor/main.js.)
-  const FIELDS = ['.ad-topic', '.ad-source', '.ad-count', '.ad-aud', '.ad-tone', '.ad-pal'];
+  const FIELDS = ['.ad-topic', '.ad-source', '.ad-count', '.ad-aud', '.ad-tone', '.ad-pal'];   // (not .ad-web: a cost, chosen each time)
   try { const d = JSON.parse(sessionStorage.getItem(DECK_DRAFT) || 'null'); if (d) FIELDS.forEach((s, i) => { if (d[i] != null) q(s).value = d[i]; }); } catch {}
   back.addEventListener('input', () => { try { sessionStorage.setItem(DECK_DRAFT, JSON.stringify(FIELDS.map(s => q(s).value))); } catch {} });
   back.addEventListener('change', () => { try { sessionStorage.setItem(DECK_DRAFT, JSON.stringify(FIELDS.map(s => q(s).value))); } catch {} });
@@ -203,10 +204,18 @@ export function openCreateDeck() {
     if (docs.length) source = docs.map(d => d.text).join('\n\n') + (source ? '\n\n' + source : '');
     return { topic, source, count: +q('.ad-count').value, audience: q('.ad-aud').value.trim(), tone: q('.ad-tone').value, images: q('.ad-img').checked, attachments: pics };
   };
+  // (Searched once for what the form says, and kept for the slides: the same sources for the outline and the deck.)
+  let found = null, foundFor = '';
+  const researched = async o => {
+    if (!q('.ad-web').checked) return null;
+    const keyOf = JSON.stringify([o.topic, o.audience, (o.source || '').length]);
+    if (!found || foundFor !== keyOf) { found = await deck.research(o); foundFor = keyOf; }
+    return found;
+  };
   const plan = async () => {
     if (!(await ready())) return;
     q('.ad-plan').disabled = true; q('.ad-prog').hidden = false; q('.ad-prog').removeAttribute('value');
-    try { const o = await gather(); if (!o) return; outline = await run(() => deck.createOutline(o)) || null; drawOutline(); }
+    try { const o = await gather(); if (!o) return; outline = await run(async () => deck.createOutline({ ...o, research: await researched(o) })) || null; drawOutline(); }
     catch (e) { alertDialog(t('No se pudo completar: ') + (e.message || e)); }
     finally { q('.ad-plan').disabled = false; q('.ad-prog').hidden = true; }
   };
@@ -229,7 +238,9 @@ export function openCreateDeck() {
       const opts = { topic, source, count: +q('.ad-count').value, audience: q('.ad-aud').value.trim(), tone: q('.ad-tone').value,
         images: q('.ad-img').checked, attachments: pics, ...(outline && { outline: outline.slides }) };
       await run(async () => {
+        const r = await researched(opts); if (r) opts.research = r;
         const specs = await deck.createDeck(opts);
+        if (r?.sources.length) specs.push(deck.sourcesSpec(r.sources, t('Fuentes')));
         // (A new one starts from a design with its layouts — the one chosen, or the AI's for the content —: its
         // slides are composed like the templates', not plain lists on an empty background.)
         if (q('.ad-new').checked) {

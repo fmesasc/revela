@@ -141,6 +141,9 @@ me = await (await req('GET', '/api/me', { headers: { Cookie: ana } })).json();
 ok(j.charged === 5 && me.credits === 45, 'cobra lo que costó de verdad (0,01 $ = 5 créditos): ' + JSON.stringify([j.charged, me.credits]));
 { const led = await (await req('GET', '/api/account/export', { headers: { Cookie: ana } })).json(), e = led.ledger.at(-1);
   ok(e.reason === 'ai' && e.delta === -5 && e.feature === 'other' && e.model === 'openai/gpt-4o-mini', 'el movimiento dice para qué fue y con qué modelo: ' + JSON.stringify(e)); }
+{ const n0 = aiCalls.length; await req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { web: true, feature: 'research', messages: [{ role: 'user', content: 'Energía solar' }] } });
+  const c = aiCalls[n0]; ok(c && JSON.stringify(c.body.plugins) === '[{"id":"web","max_results":6}]', 'buscar en internet: con el complemento web de OpenRouter');
+  ok(!('plugins' in aiCalls[0].body), 'y sin él cuando no se pide'); }
 ok((await req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { messages: 'no' } })).status === 400, 'petición mal formada: 400');
 ok((await req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { messages: [{ role: 'tool', content: 'x' }] } })).status === 400, 'papeles no permitidos: 400');
 // Pictures in the messages (describing screenshots): data: JPEG/PNG/WebP, limited; the estimate counts them as fixed tokens.
@@ -403,6 +406,21 @@ ok((await req('POST', '/api/desktop/claim', { origin: 'tauri://localhost', body:
       await share(ana, { slidesOf: { 'eva@example.com': ['s1'] } }); ok(ids(await (await get(eva)).json()) === 's1,s2' && !(await (await get(ana)).json()).sharing.slidesOf['eva@example.com'], 'solo unas: a quien edita no se le aplica');
       ok((await share(ana, { linkSlides: ['nada'] })).status === 400 && (await share(ana, { slidesOf: { 'nadie@example.com': ['s1'] } })).status === 400, 'solo unas: diapositivas que existen, para quien está');
       await share(ana, { slidesOf: {}, linkSlides: null }); ok(ids(await (await get(null)).json()) === 's1,s2', 'solo unas: y vuelta a todas');
+    }
+    // Polls answered later by a link: only the one opened so; any voter, checked answers; the answers for the editor.
+    {
+      await ops(ana, [{ p: ['slides', 's1', 'blocks', 'pa'], v: { id: 'pa', type: 'poll', pollId: 'pollnum1', kind: 'number', question: '¿Cuántos?', options: [], min: 0, max: 10, async: true, answer: 7 } },
+        { p: ['slides', 's1', 'blocks', 'pb'], v: { id: 'pb', type: 'poll', pollId: 'pollquiz1', kind: 'quiz', question: 'Q', options: ['a', 'b'], correct: [1], async: true } },
+        { p: ['slides', 's1', 'blocks', 'pc'], v: { id: 'pc', type: 'poll', pollId: 'pollshut1', kind: 'choice', question: 'Q', options: ['a', 'b'] } }]);
+      const P = (pid, m = 'GET', b) => req(m, `/api/docs/${id}/poll/${pid}`, m === 'POST' ? { body: b } : {});
+      j = await (await P('pollnum1')).json();
+      ok(j.poll && j.poll.kind === 'number' && j.poll.max === 10 && !('answer' in j.poll) && !JSON.stringify(j).includes('NOTA-SECRETA'), 'más tarde: la votación, sin sesión y sin la respuesta correcta: ' + JSON.stringify(j));
+      ok((await P('pollquiz1')).status === 404 && (await P('pollshut1')).status === 404, 'más tarde: ni cuestionarios ni las no abiertas');
+      ok((await P('pollnum1', 'POST', { voter: 'votante-123456', answer: 4 })).status === 200 && (await P('pollnum1', 'POST', { voter: 'votante-123456', answer: 6 })).status === 200, 'más tarde: se responde (y se cambia)');
+      ok((await P('pollnum1', 'POST', { voter: 'votante-999999', answer: 11 })).status === 400 && (await P('pollnum1', 'POST', { voter: 'x', answer: 3 })).status === 400, 'más tarde: respuestas fuera de rango o votantes raros, no');
+      ok((await req('GET', `/api/docs/${id}/pollvotes/pollnum1`)).status === 401 && (await req('GET', `/api/docs/${id}/pollvotes/pollnum1`, { headers: { Cookie: teo } })).status === 403, 'más tarde: las respuestas, solo para quien edita');
+      j = await (await req('GET', `/api/docs/${id}/pollvotes/pollnum1`, { headers: { Cookie: ana } })).json();
+      ok(JSON.stringify(j.votes) === '{"votante-123456":6}', 'más tarde: las respuestas, una por persona: ' + JSON.stringify(j));
     }
     await share(ana, { link: 'view', noCopy: false, editorsShare: false });
     await env.ACCOUNTS.get('u:444').fetch('https://do/setplan', { method: 'POST', body: JSON.stringify({ name: 'pro', until: Date.now() - 1000 }) });   // (Eva, free again)

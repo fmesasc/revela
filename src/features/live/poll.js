@@ -72,6 +72,34 @@ export function tallyVotes(poll, votes) {
     qs.sort(function (a, b) { return b.up - a.up || a.time - b.time; });
     return { counts: [], words: {}, voters: Object.keys(people).length, average: 0, questions: qs };
   }
+  // Open answers (a wall), a number guessed (its spread), a point on a picture, a preference order (Borda count).
+  if (kind === 'open') {
+    var texts = [];
+    for (var o in votes) { var tx = votes[o]; if (tx && tx.t) { voters++; texts.push({ text: String(tx.t), time: tx.time || 0 }); } }
+    texts.sort(function (a, b) { return b.time - a.time; });
+    return { counts: [], words: {}, voters: voters, average: 0, texts: texts };
+  }
+  if (kind === 'number') {
+    var vals = [];
+    for (var nk in votes) { var nv = +votes[nk]; if (isFinite(nv)) vals.push(nv); }
+    vals.sort(function (a, b) { return a - b; });
+    var lo = isFinite(+poll.min) ? +poll.min : (vals[0] || 0), hi = isFinite(+poll.max) ? +poll.max : (vals[vals.length - 1] || 1), bins = [];
+    for (var bi = 0; bi < 10; bi++) bins.push(0);
+    vals.forEach(function (v) { bins[Math.max(0, Math.min(9, Math.floor((v - lo) / ((hi - lo) || 1) * 10)))]++; });
+    var mid = vals.length ? (vals.length % 2 ? vals[(vals.length - 1) / 2] : (vals[vals.length / 2 - 1] + vals[vals.length / 2]) / 2) : 0;
+    return { counts: bins, words: {}, voters: vals.length, average: vals.length ? vals.reduce(function (a, b) { return a + b; }, 0) / vals.length : 0, median: mid, min: lo, max: hi };
+  }
+  if (kind === 'point') {
+    var pts = [];
+    for (var pk in votes) { var pv = votes[pk]; if (pv && isFinite(+pv.x) && isFinite(+pv.y)) pts.push({ x: +pv.x, y: +pv.y }); }
+    return { counts: [], words: {}, voters: pts.length, average: 0, points: pts };
+  }
+  if (kind === 'rank') {
+    for (var ri = 0; ri < n; ri++) counts.push(0);
+    for (var rk in votes) { var order = votes[rk]; if (!Array.isArray(order)) continue; voters++;
+      order.forEach(function (x, pos) { if (x >= 0 && x < n) counts[x] += n - pos; }); }
+    return { counts: counts, words: {}, voters: voters, average: 0 };
+  }
   if (kind === 'rating') n = 5;
   for (var i = 0; i < n; i++) counts.push(0);
   for (var k in votes) {
@@ -150,6 +178,42 @@ export function pollResultsHTML(poll, res, accent, L) {
     }).join('') : '<div style="opacity:.6">' + T('Escanea el QR y envía tu pregunta…') + '</div>') + '</div>'
       + '<div style="margin-top:.6em;font-size:.55em;opacity:.7">' + (res.questions || []).length + ' ' + T('preguntas') + '</div>';
   }
+  if (kind === 'open') {
+    var tl = (res.texts || []).slice(0, 24);
+    return '<div style="display:flex;flex-wrap:wrap;gap:.35em;align-content:flex-start;max-height:100%;overflow:hidden">' + (tl.length ? tl.map(function (x, i) {
+      return '<div style="flex:1 1 30%;min-width:6em;padding:.35em .5em;border-radius:.3em;font-size:.55em;line-height:1.25;background:' + cols[i % cols.length] + ';color:#fff;overflow-wrap:anywhere">' + esc(x.text) + '</div>'; }).join('')
+      : '<span style="opacity:.5;font-size:.7em">' + T('Las respuestas del público aparecerán aquí') + '</span>') + '</div>' + foot;
+  }
+  if (kind === 'number') {
+    var nmax = Math.max.apply(null, (res.counts || []).concat([1])), fmt = function (v) { return (Math.round(v * 100) / 100).toLocaleString(); }, unit = poll.unit ? ' ' + esc(poll.unit) : '';
+    var has = poll.answer !== undefined && poll.answer !== null && poll.answer !== '' && isFinite(+poll.answer);
+    var pos = function (v) { return Math.max(0, Math.min(100, (v - res.min) / ((res.max - res.min) || 1) * 100)); };
+    return '<div style="position:relative;display:flex;align-items:flex-end;gap:.15em;height:5em;padding-bottom:.2em;border-bottom:2px solid currentColor">' + (res.counts || []).map(function (c, i) {
+        return '<div style="flex:1;height:' + (c ? Math.max(4, c * 100 / nmax) : 0) + '%;background:' + cols[0] + ';border-radius:.15em .15em 0 0"></div>'; }).join('')
+      + (res.voters ? '<div style="position:absolute;bottom:-.3em;left:' + pos(res.average) + '%;height:5.6em;border-left:3px dashed ' + cols[1 % cols.length] + '"></div>' : '')
+      + (has ? '<div style="position:absolute;bottom:-.3em;left:' + pos(+poll.answer) + '%;height:5.6em;border-left:3px solid #26890c"></div>' : '') + '</div>'
+      + '<div style="display:flex;justify-content:space-between;font-size:.5em;opacity:.7"><span>' + fmt(res.min) + unit + '</span><span>' + fmt(res.max) + unit + '</span></div>'
+      + '<div style="margin-top:.4em;font-size:.65em"><span style="color:' + cols[1 % cols.length] + '">▌</span> ' + T('Media') + ': <b>' + (res.voters ? fmt(res.average) + unit : '–') + '</b> · ' + T('Mediana') + ': <b>' + (res.voters ? fmt(res.median) + unit : '–') + '</b>'
+      + (has ? ' · <span style="color:#26890c">▌</span> ' + T('Respuesta') + ': <b>' + fmt(+poll.answer) + unit + '</b>' : '') + '</div>' + foot;
+  }
+  if (kind === 'point') {
+    return '<div style="position:relative;display:inline-block;max-width:100%;max-height:85%;align-self:center">' + (poll.image ? '<img src="' + esc(poll.image) + '" alt="" style="display:block;max-width:100%;max-height:100%;border-radius:.2em">' : '')
+      + (res.points || []).map(function (q) { return '<span style="position:absolute;left:' + q.x + '%;top:' + q.y + '%;width:1.4em;height:1.4em;margin:-.7em 0 0 -.7em;border-radius:50%;background:' + cols[1 % cols.length] + ';opacity:.45;box-shadow:0 0 .6em ' + cols[1 % cols.length] + '"></span>'; }).join('') + '</div>' + foot;
+  }
+  if (kind === 'image') {
+    var imgs = poll.images || [];
+    return '<div style="display:grid;grid-template-columns:repeat(' + Math.min(4, Math.max(2, labels.length)) + ',1fr);gap:.4em;align-items:end">' + labels.map(function (l, i) {
+      var pc = total ? Math.round(counts[i] * 100 / total) : 0;
+      return '<div style="text-align:center;font-size:.55em">' + (imgs[i] ? '<img src="' + esc(imgs[i]) + '" alt="" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:.3em;display:block">' : '')
+        + '<div style="height:.6em;background:#8882;border-radius:.2em;margin:.3em 0"><div style="height:100%;width:' + pc + '%;background:' + cols[i % cols.length] + ';border-radius:.2em"></div></div>'
+        + '<b>' + pc + ' %</b> ' + esc(l) + '</div>'; }).join('') + '</div>' + foot;
+  }
+  if (kind === 'rank') {
+    var order = labels.map(function (l, i) { return i; }).sort(function (a, b) { return counts[b] - counts[a]; }), rmax = Math.max.apply(null, counts.concat([1]));
+    return '<div style="display:flex;flex-direction:column;justify-content:center;gap:.4em;min-height:80%">' + order.map(function (i, pos) {
+      return '<div style="display:flex;align-items:center;gap:.5em;font-size:.7em"><b style="flex:0 0 1.6em;text-align:right">' + (pos + 1) + '.</b><div style="flex:0 1 40%;min-width:22%;overflow-wrap:anywhere;line-height:1.15">' + esc(labels[i]) + '</div>'
+        + '<div style="flex:1;background:#8882;border-radius:.2em;height:1.3em"><div style="height:100%;width:' + (counts[i] * 100 / rmax) + '%;background:' + cols[i % cols.length] + ';border-radius:.2em;transition:width .5s"></div></div></div>'; }).join('') + '</div>' + foot;
+  }
   if (kind === 'word') {
     var ws = Object.keys(res.words || {}).sort(function (a, b) { return res.words[b] - res.words[a]; }).slice(0, 40);
     var wmax = ws.length ? res.words[ws[0]] : 1;
@@ -180,7 +244,7 @@ export function pollResultsHTML(poll, res, accent, L) {
 }
 
 // The results' words in the interface's language (for pollResultsHTML, also in exported pages).
-const POLL_WORDS = ['Las palabras del público aparecerán aquí', 'voto', 'votos', 'respuesta', 'respuestas', 'Jugador', 'Aún no hay puntos: juega los cuestionarios.', '% de aciertos', 'Clic para ver las soluciones', 'Escanea el QR y envía tu pregunta…', 'preguntas'];
+const POLL_WORDS = ['Las palabras del público aparecerán aquí', 'Las respuestas del público aparecerán aquí', 'Media', 'Mediana', 'Respuesta', 'voto', 'votos', 'respuesta', 'respuestas', 'Jugador', 'Aún no hay puntos: juega los cuestionarios.', '% de aciertos', 'Clic para ver las soluciones', 'Escanea el QR y envía tu pregunta…', 'preguntas'];
 export const pollLabels = () => Object.fromEntries(POLL_WORDS.map(w => [w, t(w)]));
 
 // Markup of a poll in the editor and thumbnails: question, current results
@@ -197,6 +261,14 @@ export function pollEditorHTML(b, accents) {
 }
 
 // Results saved by the presentation (same origin) for the editor.
+// Answers given by a link (kept in the cloud) brought in with the rest: each voter as 'w:<id>', so they add up with
+// those of the live sessions and don't overwrite them. → how many.
+export function mergeVotes(pollId, votes) {
+  const all = savedVotes(pollId); let n = 0;
+  for (const [k, v] of Object.entries(votes || {})) { all['w:' + k] = v; n++; }
+  try { localStorage.setItem('revela.poll.' + pollId, JSON.stringify(all)); } catch {}
+  return n;
+}
 export function savedVotes(pollId) { try { return JSON.parse(localStorage.getItem('revela.poll.' + pollId)) || {}; } catch { return {}; } }
 export function clearVotes(pollId) { try { localStorage.removeItem('revela.poll.' + pollId); } catch {} }
 export function votesCSV(poll) {
@@ -204,7 +276,10 @@ export function votesCSV(poll) {
   const q = s => `"${String(s).replace(/"/g, '""')}"`;
   if (poll.kind === 'qa') return 'pregunta,votos\n' + res.questions.map(x => `${q(x.text)},${x.up}`).join('\n');
   if (poll.kind === 'word') return 'palabra,votos\n' + Object.entries(res.words).map(([w, c]) => `${q(w)},${c}`).join('\n');
+  if (poll.kind === 'open') return 'respuesta\n' + res.texts.map(x => q(x.text)).join('\n');
+  if (poll.kind === 'number') return 'valor\n' + Object.values(savedVotes(poll.pollId)).filter(v => isFinite(+v)).map(Number).join('\n');
+  if (poll.kind === 'point') return 'x %,y %\n' + res.points.map(p => `${p.x},${p.y}`).join('\n');
   if (ACTIVITIES.includes(poll.kind)) return 'participante,puntos,aciertos\n' + res.board.map(r => `${q(r.n || r.id)},${r.pts},${Math.round(r.pts / 10)} %`).join('\n');
   const labels = poll.kind === 'rating' ? ['1', '2', '3', '4', '5'] : poll.options;
-  return 'opcion,votos\n' + labels.map((l, i) => `${q(l)},${res.counts[i]}`).join('\n');
+  return (poll.kind === 'rank' ? 'opcion,puntos (Borda)\n' : 'opcion,votos\n') + labels.map((l, i) => `${q(l)},${res.counts[i]}`).join('\n');
 }

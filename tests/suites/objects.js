@@ -968,7 +968,23 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       eq(JSON.parse(got['cmi.suspend_data']).q1, 1, 'las notas guardadas para volver');
       f.contentWindow.__revelaScored('q1', 0.5); eq(got['cmi.core.lesson_status'], 'failed', 'por debajo de la nota para aprobar');
       f.contentWindow.dispatchEvent(new f.contentWindow.Event('pagehide')); eq(fin, 1, 'al salir, se despide de la plataforma');
-    } finally { f.remove(); delete W.API; }
+    } finally { f.remove(); }
+    // Dynamic: a launcher that opens it from Revela's cloud (view.html?doc=…&scorm=1) and passes on what it says.
+    const dyn = await SC.buildScorm(R.state.deck, { pass: 50, docId: 'doc-1234567890abcdef' }), z2 = await JSZip.loadAsync(dyn.blob);
+    const launcher = await z2.file('index.html').async('string');
+    assert(/\/app\/view\.html\?doc=doc-1234567890abcdef&scorm=1/.test(launcher) && !/class="rv-poll"/.test(launcher), 'dinámica: solo el lanzador, que la abre desde la nube');
+    assert(/e\.origin!==ORIGIN/.test(launcher), 'dinámica: solo escucha a la página de Revela');
+    for (const k in got) delete got[k]; fin = 0;
+    const g = D.createElement('iframe'); g.style.cssText = 'position:fixed;left:0;top:0;width:640px;height:360px;visibility:hidden'; D.body.appendChild(g);
+    g.src = W.URL.createObjectURL(new W.Blob([launcher], { type: 'text/html' }));
+    try {
+      for (let i = 0; i < 50 && !g.contentWindow?.__revelaScormMessage; i++) await sleep(50);
+      assert(/&at=2$/.test(g.contentDocument.getElementById('rv').src), 'vuelve a donde se quedó');
+      const say = m => g.contentWindow.__revelaScormMessage({ revelaScorm: 1, ...m });
+      say({ t: 'init', graded: 2 }); say({ t: 'slide', i: 3, last: false }); say({ t: 'score', id: 'a', s: 1 }); say({ t: 'score', id: 'b', s: 0 });
+      eq(got['cmi.core.lesson_location'] + '|' + got['cmi.core.score.raw'] + '|' + got['cmi.core.lesson_status'], '3|50|passed', 'dinámica: la plataforma recibe el sitio y la nota');
+      say({ t: 'end' }); eq(fin, 1, 'y se despide');
+    } finally { g.remove(); delete W.API; }
   });
 
   await test('estado de cada diapositiva y a quién está asignada (solo en el editor)', async () => {

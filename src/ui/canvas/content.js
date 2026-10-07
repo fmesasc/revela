@@ -31,7 +31,7 @@ import { openMath } from '../dialogs/object.js';
 import { keyedView, mediaView } from './mediaview.js';
 import { modelAttrs, modelBleed } from '../../features/content/model3d.js';
 
-export const pollSig = b => JSON.stringify([b.kind, b.display, b.question, b.options, b.fontSize, b.color, b.text, b.points, (b.image || '').length, savedVotes(b.pollId)]);
+export const pollSig = b => JSON.stringify([b.kind, b.display, b.question, b.options, b.fontSize, b.color, b.text, b.points, (b.image || '').length, (b.images || []).map(x => x.length), b.min, b.max, b.unit, b.answer, savedVotes(b.pollId)]);
 export function renderSlideRef(wrap, b) {
   const target = state.deck.slides.find(s => s.id === b.target) || state.deck.slides[0];
   // Redrawn only when the target slide (or this zoom's size) changed.

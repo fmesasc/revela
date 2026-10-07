@@ -42,6 +42,9 @@ const path = (id, op = '') => `docs/${encodeURIComponent(id)}${op ? '/' + op : '
 export const shareDoc = (id, sharing) => send(path(id, 'share'), sharing);
 export const deleteDoc = id => send(path(id, 'delete'), {});
 export const docStats = id => send(path(id, 'stats'));
+// A poll opened to be answered later: its link, and the answers kept in the cloud (server/cloudflare/docs.js).
+export const pollLink = (id, pid) => `${OFFICIAL_SITE}/app/vote.html?doc=${encodeURIComponent(id)}&poll=${encodeURIComponent(pid)}`;
+export const pollVotes = (id, pid) => send(path(id, 'pollvotes/' + encodeURIComponent(pid)));
 export const docVersions = id => send(path(id, 'versions'));
 export const docVersion = (id, at) => send(path(id, 'version') + '?at=' + encodeURIComponent(at));
 // Organising them (the manager, ui/dialogs/cloudlibrary.js): folders, name, folder, star, trash, copies.

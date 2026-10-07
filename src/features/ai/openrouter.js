@@ -74,12 +74,18 @@ export async function finishOpenRouterLogin(loc = location) {
 // (a cheap one for a cheap task, one that sees images…). A message's content may be parts: text and
 // pictures (data: URLs), both ways. feature: what it is for ('assistant', 'complete'…), for Revela's own
 // accounts of what the AI costs (only with the account; the server takes known ones, else 'other').
-export async function chat(messages, { json = false, maxTokens = 2000, onUsage = null, signal = null, prefer = null, force = null, model: only = null, feature = null } = {}) {
+// web: the model searches the internet first (OpenRouter's web plugin; a few cents more) and onSources gets the pages
+// it used — [{ title, url }] —, to cite them.
+const sourcesOf = msg => { const seen = new Set();
+  return (msg?.annotations || []).filter(a => a?.type === 'url_citation' && /^https?:\/\//.test(a.url_citation?.url || ''))
+    .map(a => ({ title: String(a.url_citation.title || '').trim().slice(0, 160), url: a.url_citation.url })).filter(x => !seen.has(x.url) && seen.add(x.url)); };
+export async function chat(messages, { json = false, maxTokens = 2000, onUsage = null, signal = null, prefer = null, force = null, model: only = null, feature = null, web = false, onSources = null } = {}) {
   const set = aiSettings(), key = set.key, model = force || only || (prefer && set.model === DEFAULT_MODEL ? prefer : set.model);
   if (!key && usingCloudAi()) {
-    const data = await cloud.chat({ messages, max_tokens: maxTokens, json, ...(model !== DEFAULT_MODEL && { model }), ...(feature && { feature }) }).catch(e => { throw cloudError(e); });
+    const data = await cloud.chat({ messages, max_tokens: maxTokens, json, ...(model !== DEFAULT_MODEL && { model }), ...(feature && { feature }), ...(web && { web: true }) }).catch(e => { throw cloudError(e); });
     if (signal?.aborted) throw new Error('STOPPED');
     if (onUsage && +data.charged > 0) onUsage({ credits: +data.charged });
+    if (onSources) onSources(sourcesOf(data.choices?.[0]?.message));
     return data.choices?.[0]?.message?.content?.trim() || '';
   }
   if (!key) throw new Error('NO_KEY');
@@ -88,7 +94,7 @@ export async function chat(messages, { json = false, maxTokens = 2000, onUsage =
     r = await fetch(`${API}/chat/completions`, {
       method: 'POST', ...(signal && { signal }),
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, 'HTTP-Referer': APP_URL, 'X-Title': 'Revela' },
-      body: JSON.stringify({ model, messages, max_tokens: maxTokens, ...(onUsage && { usage: { include: true } }), ...(json && { response_format: { type: 'json_object' } }) }),
+      body: JSON.stringify({ model, messages, max_tokens: maxTokens, ...(onUsage && { usage: { include: true } }), ...(json && { response_format: { type: 'json_object' } }), ...(web && { plugins: [{ id: 'web', max_results: 6 }] }) }),
     });
   } catch (e) { if (signal?.aborted) throw new Error('STOPPED'); throw e; }
   if (r.status === 401) throw new Error('BAD_KEY');
@@ -97,6 +103,7 @@ export async function chat(messages, { json = false, maxTokens = 2000, onUsage =
   const data = await r.json();
   if (signal?.aborted) throw new Error('STOPPED');
   if (onUsage && +data.usage?.cost > 0) onUsage({ usd: +data.usage.cost });
+  if (onSources) onSources(sourcesOf(data.choices?.[0]?.message));
   return data.choices?.[0]?.message?.content?.trim() || '';
 }
 // ---- Speech (voice-over): mp3 of a text, through the account or the user's key ----

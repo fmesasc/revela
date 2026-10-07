@@ -399,6 +399,17 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       answer = { title: 'Energía solar', slides: [{ kind: 'title', title: 'Portada', notes: 'n' }, { kind: 'closing', title: 'Gracias', notes: 'n' }] }; calls.length = 0;
       await A.createDeck({ topic: 'Energía solar', outline: [{ title: 'Portada', points: [] }, { title: 'Gracias', points: ['Contacto'] }] });
       assert(/Follow THIS outline[\s\S]*exactly 2 slides[\s\S]*2\. Gracias\n   - Contacto/.test(calls[0].body.messages[1].content), 'las diapositivas siguen el esquema revisado');
+      // Research on the web first: the brief goes to the slides, its pages become a «Fuentes» slide.
+      { const real = W.fetch; let body = null;
+        W.fetch = async (url, opts) => { body = JSON.parse(opts.body); return new W.Response(JSON.stringify({ choices: [{ message: { content: 'El 30 % [1] de la electricidad…',
+          annotations: [{ type: 'url_citation', url_citation: { url: 'https://www.ree.es/informe', title: 'Informe REE' } }, { type: 'url_citation', url_citation: { url: 'https://www.ree.es/informe', title: 'dup' } }, { type: 'url_citation', url_citation: { url: 'javascript:x' } }] } }] })); };
+        const rs = await A.research({ topic: 'Energía solar' }); W.fetch = real;
+        eq(JSON.stringify(body.plugins), '[{"id":"web","max_results":6}]', 'investigar: busca en internet');
+        eq(rs.sources.length + '|' + rs.sources[0].url, '1|https://www.ree.es/informe', 'investigar: sus fuentes, sin repetir ni direcciones raras');
+        const sp = A.sourcesSpec(rs.sources, 'Fuentes'); assert(sp.bullets[0] === '[1] Informe REE — ree.es/informe', 'la diapositiva de fuentes');
+        answer = { title: 'Solar', slides: [{ kind: 'title', title: 'Solar', notes: 'n' }] }; calls.length = 0;
+        await A.createDeck({ topic: 'Solar', research: rs });
+        assert(/Research brief from the web[\s\S]*El 30 % \[1\]/.test(calls[0].body.messages[1].content), 'las diapositivas parten de lo investigado'); }
       // A live quiz from the content: real polls (questions with their answer, activities), where they belong.
       reset(); R.slides.addSlide(); R.slides.addSlide(); const before = R.state.deck.slides.length;
       answer = { items: [{ kind: 'quiz', question: '¿Cuánto es 2+2?', options: ['3', '4'], answer: 1, after: 1 },

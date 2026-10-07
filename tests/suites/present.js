@@ -422,6 +422,46 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { f.remove(); }
   });
 
+  await test('tipos de votación nuevos: respuesta abierta, número, imágenes, punto de una imagen y ordenar por preferencia', async () => {
+    const P = await frame.contentWindow.eval("import('/src/features/live/poll.js')");
+    // Counted, and drawn.
+    let r = P.tallyVotes({ kind: 'open' }, { a: { t: 'Primera', time: 1 }, b: { t: 'Segunda <b>', time: 2 }, c: null });
+    eq(r.voters + '|' + r.texts.map(x => x.text).join(), '2|Segunda <b>,Primera', 'abierta: las más recientes primero');
+    assert(/Segunda &lt;b&gt;/.test(P.pollResultsHTML({ kind: 'open' }, r, null, null)), 'abierta: en un muro, escapada');
+    r = P.tallyVotes({ kind: 'number', min: 0, max: 100 }, { a: 10, b: 20, c: 90, d: 'x' });
+    eq(r.voters + '|' + r.average + '|' + r.median + '|' + r.counts.join(''), '3|40|20|0110000001', 'número: media, mediana y reparto en diez tramos');
+    assert(/Media[\s\S]*40[\s\S]*Respuesta[\s\S]*25/.test(P.pollResultsHTML({ kind: 'number', min: 0, max: 100, answer: 25 }, r, null, null)), 'número: con la respuesta correcta');
+    r = P.tallyVotes({ kind: 'rank', options: ['A', 'B', 'C'] }, { a: [2, 0, 1], b: [2, 1, 0] });
+    eq(r.counts.join(), '3,3,6', 'preferencia: recuento de Borda');
+    assert(/^[\s\S]*?1\.<\/b><div[^>]*>C</.test(P.pollResultsHTML({ kind: 'rank', options: ['A', 'B', 'C'] }, r, null, null)), 'preferencia: la ganadora la primera');
+    r = P.tallyVotes({ kind: 'point' }, { a: { x: 10, y: 20 }, b: { x: 'n' } }); eq(r.points.length, 1, 'punto: los válidos');
+    r = P.tallyVotes({ kind: 'image', options: ['Gato', 'Perro'] }, { a: 1, b: 1, c: 0 }); eq(r.counts.join(), '1,2', 'imágenes: como una elección');
+    assert(/<img src="data:image\/gif;base64,AAA"/.test(P.pollResultsHTML({ kind: 'image', options: ['Gato', 'Perro'], images: ['', 'data:image/gif;base64,AAA'] }, r, null, null)), 'imágenes: con sus imágenes');
+    // On the phone.
+    const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:390px;height:700px;opacity:0';
+    f.src = new URL('../vote.html?test', D.baseURI).href; document.body.appendChild(f);
+    let v; for (let i = 0; i < 60 && !(v = f.contentWindow)?.__vote; i++) await sleep(100);
+    try {
+      const Q = s => f.contentDocument.querySelector(s), sent = () => v.__sent.filter(m => m.type === 'vote').at(-1);
+      v.__vote.onData({ type: 'poll', poll: { pollId: 'n1', kind: 'number', question: '¿Cuántos?', options: [], min: 0, max: 50, unit: 'kg' } });
+      const num = Q('#answers input[type=number]'); num.value = '33'; num.dispatchEvent(new v.Event('input')); Q('#send').click();
+      eq(sent().answer, 33, 'número: el que escribe'); eq(+Q('#answers input[type=range]').value, 33, 'y el deslizador lo sigue');
+      v.__vote.onData({ type: 'poll', poll: { pollId: 'r1', kind: 'rank', question: 'Prefiere', options: ['X', 'Y', 'Z'] } });
+      f.contentDocument.querySelectorAll('.act-row button')[1].click(); Q('#send').click();
+      eq(JSON.stringify(sent().answer), '[1,0,2]', 'preferencia: el orden elegido, por posiciones');
+      v.__vote.onData({ type: 'poll', poll: { pollId: 'o1', kind: 'open', question: 'Cuenta', options: [] } });
+      Q('#answers textarea').value = ' Mi idea '; Q('#answers textarea').dispatchEvent(new v.Event('input')); Q('#send').click();
+      eq(sent().answer, 'Mi idea', 'abierta: su texto');
+      v.__vote.onData({ type: 'poll', poll: { pollId: 'i1', kind: 'image', question: 'Elige', options: ['Gato', 'Perro'], images: ['data:image/gif;base64,R0lGODlhAQABAAAAACw=', ''] } });
+      eq(f.contentDocument.querySelectorAll('#answers img').length, 1, 'imágenes: con su imagen');
+      f.contentDocument.querySelectorAll('#answers .opt')[1].click(); Q('#send').click(); eq(sent().answer, 1, 'imágenes: la elegida');
+      v.__vote.onData({ type: 'poll', poll: { pollId: 'p1', kind: 'point', question: '¿Dónde?', options: [], image: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=' } });
+      const pic = Q('#answers .act-pic'); pic.style.cssText = 'width:200px;height:100px'; Q('#answers .act-pic img').style.cssText = 'width:200px;height:100px';
+      const rc = pic.getBoundingClientRect(); pic.dispatchEvent(new v.MouseEvent('click', { bubbles: true, clientX: rc.left + 50, clientY: rc.top + 75 })); Q('#send').click();
+      eq(Math.round(sent().answer.x) + ',' + Math.round(sent().answer.y), '25,75', 'punto: dónde tocó, en % de la imagen');
+    } finally { f.remove(); }
+  });
+
   await test('la página del público: diapositiva del aula, subtítulos (traducidos) y actividades', async () => {
     const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:390px;height:700px;opacity:0';
     f.src = new URL('../vote.html?test', D.baseURI).href; document.body.appendChild(f);

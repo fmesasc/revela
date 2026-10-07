@@ -318,7 +318,8 @@ function blockHTMLRaw(b, slide) {
   if (b.type === 'video')
     return `<video${a} src="${esc(b.src || '')}" controls style="${box(b)}object-fit:contain"></video>`;
   if (b.type === 'poll')     // live poll: question, live results and the QR to vote
-    return `<div${a} class="rv-poll" data-poll="${esc(JSON.stringify({ pollId: b.pollId, kind: b.kind, display: b.display, question: b.question, options: b.options, ...(b.kind === 'quiz' && { correct: b.correct || [0], time: b.time || 20 }), ...(ACTIVITIES.includes(b.kind) && { text: b.text, points: b.points, image: b.image }) }))}" `
+    return `<div${a} class="rv-poll" data-poll="${esc(JSON.stringify({ pollId: b.pollId, kind: b.kind, display: b.display, question: b.question, options: b.options, ...(b.kind === 'quiz' && { correct: b.correct || [0], time: b.time || 20 }), ...(ACTIVITIES.includes(b.kind) && { text: b.text, points: b.points, image: b.image }),
+      ...(b.kind === 'number' && { min: b.min, max: b.max, step: b.step, unit: b.unit, answer: b.answer }), ...(b.kind === 'image' && { images: b.images }), ...(b.kind === 'point' && { image: b.image }) }))}" `
       + `style="${box(b)}display:grid;grid-template-columns:1fr auto;gap:1em;font-size:${b.fontSize || 32}px${/^#[0-9a-f]{3,8}$/i.test(b.color || '') ? ';color:' + b.color : ''}">`
       + `<div style="display:flex;flex-direction:column;min-width:0"><div style="font-weight:700;margin-bottom:.5em">${esc(b.question || '')}</div>`
       + `<div class="rv-poll-res" style="flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center"></div></div>`

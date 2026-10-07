@@ -46,7 +46,8 @@ export function pollJS(accents, { classroom = false, labels = null } = {}) {
  function tick(){var p=current();if(!p||p.kind!=='quiz'||revealed[p.pollId]){clearInterval(timer);timer=null;return;}
   var el=all().filter(function(e){var q=def(e);return q&&q.pollId===p.pollId;})[0];if(el)paint(el);if(left(p)<=0)reveal(p);}
  function current(){var s=Reveal.getCurrentSlide(),el=s&&s.querySelector('.rv-poll');var p=el&&def(el);if(!p)return null;var act=ACT.indexOf(p.kind)>=0;
-  return {pollId:p.pollId,kind:p.kind,question:p.question,options:act?[]:p.options,pub:act?publicActivity(p):null,time:p.time,left:p.kind==='quiz'?left(p):null,revealed:!!revealed[p.pollId]};}
+  return {pollId:p.pollId,kind:p.kind,question:p.question,options:act?[]:p.options,pub:act?publicActivity(p):null,time:p.time,left:p.kind==='quiz'?left(p):null,revealed:!!revealed[p.pollId],
+   min:p.min,max:p.max,step:p.step,unit:p.unit,images:p.kind==='image'?p.images:undefined,image:p.kind==='point'?p.image:undefined};}
  function send(c,m){try{if(c.open)c.send(m);}catch(e){}}
  function qaList(p){var r=tally(p,votes[p.pollId]||(votes[p.pollId]=load(p.pollId)));return (r.questions||[]).map(function(q){return {id:q.id,text:q.text,up:q.up};});}
  function broadcastQA(p){var cur=current();if(!cur||cur.pollId!==p.pollId)return;conns.forEach(function(c){send(c,{type:'qa',pollId:p.pollId,list:qaList(p)});});}
@@ -55,7 +56,11 @@ export function pollJS(accents, { classroom = false, labels = null } = {}) {
   if(p&&p.kind==='quiz'&&!started[p.pollId]){if(Object.keys(V(p.pollId)).length)revealed[p.pollId]=true;else{started[p.pollId]=Date.now();p.left=left(p);if(!timer)timer=setInterval(tick,250);}}
   conns.forEach(function(c){send(c,{type:'poll',poll:p});if(p&&p.kind==='qa')send(c,{type:'qa',pollId:p.pollId,list:qaList(p)});});}
  function js(src){return new Promise(function(ok,ko){var s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=ko;document.head.appendChild(s);});}
- function clean(p,a){if(p.kind==='word')return String(a||'').slice(0,60);if(p.kind==='multi')return (Array.isArray(a)?a:[]).map(Number).filter(function(x){return x>=0&&x<p.options.length;}).slice(0,20);
+ function clean(p,a){if(p.kind==='word')return String(a||'').slice(0,60);
+  if(p.kind==='open'){var t=String(a||'').trim().slice(0,200);return t?{t:t,time:Date.now()}:null;}
+  if(p.kind==='number'){var x=+a,lo=isFinite(+p.min)?+p.min:-1e12,hi=isFinite(+p.max)?+p.max:1e12;return a!==''&&a!=null&&isFinite(x)&&x>=lo&&x<=hi?x:null;}
+  if(p.kind==='point'){var px=+(a&&a.x),py=+(a&&a.y);return isFinite(px)&&isFinite(py)&&px>=0&&px<=100&&py>=0&&py<=100?{x:Math.round(px*10)/10,y:Math.round(py*10)/10}:null;}
+  if(p.kind==='rank'){var L=p.options.length,o=(Array.isArray(a)?a:[]).map(Number),seen={};if(o.length!==L)return null;for(var i=0;i<L;i++){if(!(o[i]>=0&&o[i]<L)||seen[o[i]])return null;seen[o[i]]=1;}return o;}if(p.kind==='multi')return (Array.isArray(a)?a:[]).map(Number).filter(function(x){return x>=0&&x<p.options.length;}).slice(0,20);
   var n=+a;return p.kind==='rating'?(n>=1&&n<=5?Math.round(n):null):(n>=0&&n<p.options.length?n:null);}
  function start(tries){code='';for(var i=0;i<5;i++)code+=AB[Math.floor(Math.random()*AB.length)];
   peer=new Peer('revela-vote-'+code);

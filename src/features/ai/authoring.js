@@ -188,12 +188,29 @@ export const DECK_DESIGNS = { corporate: 'business, reports, clean and neutral',
 // opts: { topic, source (document text), count, audience, tone, language, images, palette,
 //   attachments (pictures: attach.js — a PDF's figures among them, marked figure: true) }
 // → specs (with .title and .design: one of DECK_DESIGNS, for a new deck).
+// Before writing (as Gamma's research): the model searches the internet for current, reliable facts on the topic and
+// writes a short brief with them, citing [n] the pages it used — which go on a «Fuentes» slide at the end.
+// → { brief, sources: [{ title, url }] }
+export async function research(opts = {}) {
+  let sources = [];
+  const brief = await chat([
+    { role: 'system', content: `You research a topic for a presentation. Search the web and write a factual brief of 200-450 words: the key facts, figures with their year, definitions and examples a presenter needs, from reliable sources (official bodies, studies, encyclopedias, quality press). Mark each fact with the number of its source like [1]. No opinion, no filler. Write in ${opts.language || lang()}.` },
+    { role: 'user', content: [opts.topic && `Topic: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`].filter(Boolean).join('\n') || String(opts.source || '').slice(0, 2000) },
+  ], { maxTokens: 1500, feature: 'research', web: true, onSources: s => { sources = s.slice(0, 10); } });
+  if (!brief.trim()) throw new Error('EMPTY');
+  return { brief: brief.trim(), sources };
+}
+// The «Fuentes» slide: the pages the research used (title and address), for whoever wants to check them.
+export const sourcesSpec = (sources, title) => ({ kind: 'bullets', title, bullets: sources.slice(0, 8).map((x, i) => `[${i + 1}] ${x.title ? x.title + ' — ' : ''}${x.url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 90)}`),
+  notes: sources.map((x, i) => `[${i + 1}] ${x.title} ${x.url}`).join('\n') });
+const withResearch = (source, r) => (r ? `${source ? source + '\n\n' : ''}Research brief from the web (current facts; keep their [n] marks in the notes when you use them):\n${r.brief}` : source);
+
 // First the outline (as Gemini, Gamma or Copilot do): one line per slide — its title and its key points —, for the
 // person to read, change, reorder or cut before the slides are made (createDeck with opts.outline). Cheap and quick.
 // → { title, slides: [{ title, points: [] }] }
 export async function createOutline(opts = {}) {
-  const count = Math.max(3, Math.min(30, +opts.count || 8));
-  const source = opts.source ? `\n\nBase it ONLY on this document:\n"""\n${String(opts.source).slice(0, 60000)}\n"""` : '';
+  const count = Math.max(3, Math.min(30, +opts.count || 8)), src = withResearch(opts.source, opts.research);
+  const source = src ? `\n\nBase it ONLY on this document:\n"""\n${String(src).slice(0, 60000)}\n"""` : '';
   const out = await chat([
     { role: 'system', content: `Plan a presentation that someone will present out loud. Answer only JSON {"title":"…","slides":[{"title":"…","points":["…"]}]}: about ${count} slides, in order, the first a title slide and the last a closing one. Each title states the slide's message (max ~9 words); 0-4 short points with what it will show (facts, figures, examples from the source). Write in ${opts.language || lang()}.` },
     { role: 'user', content: withAttachments([opts.topic && `Topic and purpose: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`].filter(Boolean).join('\n') + source, opts.attachments || []) },
@@ -209,7 +226,8 @@ export async function createDeck(opts = {}) {
   const brief = [opts.topic && `Topic and purpose: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`,
     plan ? `Follow THIS outline, reviewed by the presenter: exactly ${plan.length} slides, in this order, one per item, each with its title (shortened only if too long) and showing its points:\n${plan.map((x, i) => `${i + 1}. ${x.title}${x.points?.length ? '\n' + x.points.map(p => `   - ${p}`).join('\n') : ''}`).join('\n')}`
       : `Number of slides: about ${count}`].filter(Boolean).join('\n');
-  const source = opts.source ? `\n\nBase the content ONLY on this document (keep its real facts, figures and terms; leave out references and acknowledgements):\n"""\n${String(opts.source).slice(0, 60000)}\n"""` : '';
+  const src = withResearch(opts.source, opts.research);
+  const source = src ? `\n\nBase the content ONLY on this document (keep its real facts, figures and terms; leave out references and acknowledgements):\n"""\n${String(src).slice(0, 60000)}\n"""` : '';
   const pics = (opts.attachments || []).filter(a => a.kind === 'image'), figs = pics.map((a, i) => (a.figure ? i + 1 : 0)).filter(Boolean);
   const out = await chat([
     { role: 'system', content: `You are an expert presentation designer and speechwriter. Write a deck that someone will PRESENT out loud: few words on the slides, the speech in the notes. Answer only JSON: {"title":"…","design":"<one of: ${Object.entries(DECK_DESIGNS).map(([k, v]) => `${k} (${v})`).join('; ')}>","slides":[{"kind":"…",…}]}.

@@ -3,6 +3,8 @@
 // sealed copy and opens it with the key in the link or a password.
 // view.html?doc=<id>: one in Revela's cloud that anyone with the link can view, presented
 // (what the «Insert in a web page» iframe shows), and where «Solo presentar» opens one; without copies when so shared.
+// &scorm=1: inside a dynamic SCORM package's launcher (io/export/scorm.js): answered at one's own pace, its marks and
+// its slide told to the launcher (&at=N: the slide to come back to).
 
 import { openerPageHTML } from '../../io/share/seal.js';
 import { driveSealedURL } from '../../io/cloud/gdrive.js';
@@ -10,6 +12,7 @@ import { t, currentLang } from '../../i18n/index.js';
 import { docIdFrom, publicDeck } from '../../io/cloud/clouddocs.js';
 import { adoptDeck, state } from '../../core/store.js';
 import { buildHTML } from '../../io/formats/html.js';
+import { scormPage } from '../../io/export/scorm.js';
 
 const p = new URLSearchParams(location.search);
 // Only an https address, or a blob made by this same site.
@@ -41,7 +44,9 @@ async function openCloud(id) {
   try {
     const { deck, name, noCopy } = await publicDeck(id);
     adoptDeck(deck);
-    const html = buildHTML(state.deck, { noCopy });
+    const scorm = p.get('scorm') === '1';
+    let html = buildHTML(state.deck, { noCopy, ...(scorm && { selfPaced: true }) });
+    if (scorm) { const at = html.toLowerCase().lastIndexOf('</body>'); html = html.slice(0, at) + `<script>${scormPage}</script>` + html.slice(at); }
     document.open(); document.write(html); document.close();
     if (name) document.title = name;
   } catch (e) {

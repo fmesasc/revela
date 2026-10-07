@@ -1,5 +1,7 @@
 // Audience voting page: connects to the presentation's peer
 // ("revela-vote-CODE") and answers the poll on the current slide.
+// vote.html?doc=<id>&poll=<pollId>: a poll opened to be answered later, without anyone presenting (Revela's cloud keeps
+// the answers: server/cloudflare/docs.js; the editor brings them into its results).
 
 import { PEERJS, loadScript } from '../../core/vendor.js';
 import { peerOptions } from '../../core/ice.js';
@@ -220,6 +222,45 @@ function renderAnswers() {
     const i = document.createElement('input'); i.type = 'text'; i.maxLength = 60; i.placeholder = 'Tu respuesta (separa varias con comas)';
     i.addEventListener('input', () => { answer = i.value; }); box.appendChild(i); return;
   }
+  if (poll.kind === 'open') {
+    const ta = el('textarea', { maxLength: 200, rows: 4, placeholder: 'Escribe tu respuesta…' });
+    ta.addEventListener('input', () => { answer = ta.value.trim(); }); box.append(ta); return;
+  }
+  if (poll.kind === 'number') {                          // (a slider and its number, kept together)
+    const lo = Number.isFinite(+poll.min) ? +poll.min : 0, hi = Number.isFinite(+poll.max) ? +poll.max : 100, st = +poll.step > 0 ? +poll.step : (hi - lo > 20 ? 1 : 0.1);
+    const r = el('input', { type: 'range', min: lo, max: hi, step: st, value: (lo + hi) / 2, style: 'width:100%' }), n = el('input', { type: 'number', min: lo, max: hi, step: st, value: '', inputMode: 'decimal', style: 'font-size:28px;text-align:center;width:100%;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--txt)' });
+    r.addEventListener('input', () => { n.value = r.value; answer = +r.value; });
+    n.addEventListener('input', () => { if (n.value !== '' && Number.isFinite(+n.value)) { answer = Math.min(hi, Math.max(lo, +n.value)); r.value = answer; } });
+    box.append(el('div', { style: 'display:flex;align-items:center;gap:8px' }, n, poll.unit ? el('b', { textContent: poll.unit }) : ''), r,
+      el('div', { style: 'display:flex;justify-content:space-between;font-size:13px;color:var(--txt2)' }, el('span', { textContent: lo }), el('span', { textContent: hi }))); return;
+  }
+  if (poll.kind === 'point') {                           // (a tap on the picture: the point, in % of it)
+    const pic = el('div', { className: 'act-pic', style: 'cursor:crosshair' }, el('img', { src: poll.image || '', alt: '' })), dot = el('b', { className: 'act-num', textContent: '●', hidden: true });
+    pic.append(dot);
+    pic.addEventListener('click', e => { const r = pic.getBoundingClientRect(); answer = { x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100 };
+      Object.assign(dot.style, { left: answer.x + '%', top: answer.y + '%' }); dot.hidden = false; });
+    box.append(el('p', { textContent: 'Toca el punto de la imagen:' }), pic); return;
+  }
+  if (poll.kind === 'image') {
+    const grid = el('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:10px' });
+    poll.options.forEach((o, i) => {
+      const b = el('button', { className: 'opt', style: 'padding:6px;display:flex;flex-direction:column;gap:6px;align-items:stretch' },
+        (poll.images || [])[i] ? el('img', { src: poll.images[i], alt: o, style: 'width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px' }) : '', el('span', { textContent: o }));
+      b.addEventListener('click', () => { answer = i; grid.querySelectorAll('.opt').forEach(x => x.classList.toggle('on', x === b)); });
+      grid.append(b);
+    });
+    box.append(grid); return;
+  }
+  if (poll.kind === 'rank') {                            // (the options in the order you prefer: up and down)
+    answer = poll.options.map((_, i) => i);
+    const list = el('div', { style: 'display:flex;flex-direction:column;gap:8px' });
+    const draw = () => { list.innerHTML = ''; answer.forEach((k, i) => {
+      const up = el('button', { textContent: '▲', disabled: !i, ariaLabel: 'Subir' }), down = el('button', { textContent: '▼', disabled: i === answer.length - 1, ariaLabel: 'Bajar' });
+      up.addEventListener('click', () => { [answer[i - 1], answer[i]] = [answer[i], answer[i - 1]]; draw(); });
+      down.addEventListener('click', () => { [answer[i + 1], answer[i]] = [answer[i], answer[i + 1]]; draw(); });
+      list.append(el('div', { className: 'act-row' }, el('b', { className: 'act-num', textContent: i + 1 }), el('span', { textContent: poll.options[k] }), up, down)); }); };
+    draw(); box.append(el('p', { textContent: 'Ordénalas de la que más prefieres a la que menos:' }), list); return;
+  }
   if (poll.kind === 'rating') {
     const row = document.createElement('div'); row.className = 'stars';
     for (let n = 1; n <= 5; n++) {
@@ -254,5 +295,22 @@ $('#go').addEventListener('click', () => join($('#code').value));
 $('#code').addEventListener('keydown', e => { if (e.key === 'Enter') join($('#code').value); });
 const pre = new URLSearchParams(location.search).get('c');
 if (pre) { $('#code').value = pre; join(pre); }
+// Answered later, by a link: the poll from the cloud, the answer back to it (changeable while it stays open).
+const later = new URLSearchParams(location.search);
+if (later.get('doc') && later.get('poll')) answerLater(later.get('doc'), later.get('poll'));
+async function answerLater(doc, pid) {
+  const url = `/api/docs/${encodeURIComponent(doc)}/poll/${encodeURIComponent(pid)}`;
+  $('#status').textContent = 'Cargando…';
+  try {
+    const r = await fetch(url, { credentials: 'omit' }); if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    conn = { open: true, send: m => { if (m.type !== 'vote') return;
+      fetch(url, { method: 'POST', credentials: 'omit', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ voter, answer: m.answer }) })
+        .then(x => (x.ok ? onData({ type: 'ok', pollId: pid }) : Promise.reject(x.status)))
+        .catch(() => alert('No se pudo enviar. Inténtalo de nuevo.')); } };
+    $('#status').textContent = d.name || 'Revela'; $('#status').classList.add('on');
+    onData({ type: 'poll', poll: d.poll });
+  } catch { show('join'); $('#join').innerHTML = '<h1>Esta votación ya no está abierta</h1><p>Pide a quien te la envió un enlace nuevo.</p>'; $('#status').textContent = ''; }
+}
 // (For the tests: feed it messages as if from the presentation.)
 if (new URLSearchParams(location.search).has('test')) window.__vote = { onData: d => { conn = conn || { open: true, send: m => (window.__sent = window.__sent || []).push(m) }; onData(d); } };
