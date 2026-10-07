@@ -3570,4 +3570,10 @@ export default {
   "Cierre": "الختام",
   "Fuentes consultadas": "المصادر",
   "Tipo de diapositiva": "نوع الشريحة",
+  "Para hacerla a tu medida": "لتكون على مقاسك",
+  "Responde lo que quieras (o sáltalo): cuanto más sepa de tu caso, más tuya será la presentación.": "أجب عمّا تشاء (أو تخطَّ): كلما عرف أكثر عن حالتك، صار العرض أكثر ملاءمة لك.",
+  "¿Algo más que deba saber?": "هل هناك ما يجب أن يعرفه أيضًا؟",
+  "Para qué es, cuánto dura, tus datos, lo que no puede faltar…": "الغرض منه، مدته، بياناتك، ما لا يجب أن يغيب…",
+  "Saltar las preguntas": "تخطي الأسئلة",
+  "Otra respuesta, o más detalle…": "إجابة أخرى، أو تفاصيل أكثر…",
 };

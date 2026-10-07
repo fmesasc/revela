@@ -229,6 +229,22 @@ export const RICH = `Use the richest kind that fits each slide — a list ("bull
 const DECK_MODEL = 'google/gemini-2.5-flash';
 const withResearch = (source, r) => (r ? `${source ? source + '\n\n' : ''}Research brief from the web (current facts; keep their [n] marks in the notes when you use them):\n${r.brief}` : source);
 
+// Before the outline, a few questions about this very case — what a good speechwriter would ask before writing:
+// for a class, the course and what they know; for a results meeting, the figures and the decision sought; for a thesis
+// defence, the time and the committee… With options to pick in a click, and room for more. → [{ q, options, multi }]
+export async function askAbout(opts = {}) {
+  const out = await chat([
+    { role: 'system', content: `Someone is about to have a presentation made. Before planning it, ask them the 3-4 questions whose answers would most change it — specific to THIS topic and case, never generic ones they already answered (the topic, the audience, the tone and the number of slides are given). Think of: the purpose and what the audience should do or know afterwards; who exactly listens and what they already know; the time and setting; their own data, examples, names or constraints the slides must use; what must not be missing. Each with 2-5 short options to pick (they may still write their own). Answer only JSON {"questions":[{"q":"…","options":["…"],"multi":false}]}. Write in ${opts.language || lang()}.` },
+    { role: 'user', content: [opts.topic && `Topic: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`, opts.count && `Slides: about ${opts.count}`,
+      opts.source && `They also gave a document (excerpt): ${String(opts.source).slice(0, 1500)}`].filter(Boolean).join('\n') },
+  ], { json: true, maxTokens: 1200, feature: 'outline', prefer: DECK_MODEL });
+  return (parseJSON(out)?.questions || []).filter(x => x && str(x.q).trim()).slice(0, 4)
+    .map(x => ({ q: str(x.q).trim().slice(0, 200), options: (Array.isArray(x.options) ? x.options : []).map(o => str(o).trim().slice(0, 80)).filter(Boolean).slice(0, 5), multi: !!x.multi }));
+}
+// What the person answered, for the outline and the slides: a case to tailor everything to.
+export const contextOf = answers => (answers || []).filter(a => str(a.answer).trim()).map(a => `- ${a.q ? a.q + ' ' : ''}${str(a.answer).trim()}`).join('\n').slice(0, 3000);
+const TAILOR = ctx => (ctx ? `\n\nAbout this presentation, from the presenter — tailor EVERYTHING to it (the level, the length, the examples from their own context, their figures and names instead of gaps, the outcome they want in the closing):\n${ctx}` : '');
+
 // First the outline (as Gemini, Gamma or Copilot do): one line per slide — its title and its key points —, for the
 // person to read, change, reorder or cut before the slides are made (createDeck with opts.outline). Cheap and quick.
 // → { title, slides: [{ title, points: [] }] }
@@ -239,7 +255,7 @@ export async function createOutline(opts = {}) {
     { role: 'system', content: `Plan a presentation that someone will present out loud. Answer only JSON {"title":"…","slides":[{"title":"…","kind":"…","points":["…"]}]}: about ${count} slides, in order, the first a title slide ("title") and the last a closing one ("closing"). Each title states the slide's message (max ~9 words); "kind" is the kind of slide that will show it best — one of: ${KINDS.filter(k => opts.images || k !== 'image').join(', ')}; 1-4 points with WHAT it will show, concretely (the facts, figures and examples; for a "code" slide, what the code does and in which language). Not a list of short phrases: a plan for rich slides.
 ${RICH}
 Write in ${opts.language || lang()}.` },
-    { role: 'user', content: withAttachments([opts.topic && `Topic and purpose: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`].filter(Boolean).join('\n') + source, opts.attachments || []) },
+    { role: 'user', content: withAttachments([opts.topic && `Topic and purpose: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`].filter(Boolean).join('\n') + TAILOR(opts.context) + source, opts.attachments || []) },
   ], { json: true, maxTokens: 3000, feature: 'outline', prefer: DECK_MODEL });
   const res = parseJSON(out), slides = (res.slides || []).filter(x => x && str(x.title).trim()).slice(0, 40)
     .map(x => ({ title: str(x.title).trim(), ...(KINDS.includes(x.kind) && (opts.images || x.kind !== 'image') && { kind: x.kind }), points: (Array.isArray(x.points) ? x.points : []).map(str).map(p => p.trim()).filter(Boolean).slice(0, 6) }));
@@ -251,7 +267,7 @@ export async function createDeck(opts = {}) {
   const count = plan ? plan.length : Math.max(3, Math.min(30, +opts.count || 8));
   const brief = [opts.topic && `Topic and purpose: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`,
     plan ? `Follow THIS outline, reviewed by the presenter: exactly ${plan.length} slides, in this order, one per item, each with its title (shortened only if too long), of the kind in [brackets] when there is one, and DEVELOPING its points — they say what the slide shows, they are not its text: turn them into full content (the code itself, the steps, the comparison, real examples):\n${plan.map((x, i) => `${i + 1}. ${x.kind ? `[${x.kind}] ` : ''}${x.title}${x.points?.length ? '\n' + x.points.map(p => `   - ${p}`).join('\n') : ''}`).join('\n')}`
-      : `Number of slides: about ${count}`].filter(Boolean).join('\n');
+      : `Number of slides: about ${count}`].filter(Boolean).join('\n') + TAILOR(opts.context);
   const src = withResearch(opts.source, opts.research);
   const source = src ? `\n\nBase the content ONLY on this document (keep its real facts, figures and terms; leave out references and acknowledgements):\n"""\n${String(src).slice(0, 60000)}\n"""` : '';
   const pics = (opts.attachments || []).filter(a => a.kind === 'image'), figs = pics.map((a, i) => (a.figure ? i + 1 : 0)).filter(Boolean);
@@ -288,7 +304,7 @@ Write everything in ${opts.language || lang()}.` },
   if (missing.length > specs.length * 0.3) await speakerNotes(specs, opts).catch(() => {});
   // Measured (quality.js): a weak deck — mostly lists, thin ones, no code on a technical topic — gets its weak slides
   // made again, once, before anyone sees it.
-  const how = { topic: opts.topic || str(res.title), sourced: !!(str(opts.source) || opts.research), images: !!opts.images };
+  const how = { topic: opts.topic || str(res.title), sourced: !!(str(opts.source) || opts.research || /\d/.test(str(opts.context))), images: !!opts.images };
   let q = deckQuality(specs, how); specs.qualityFirst = q;
   if (q.score < 75 || q.problems.some(p => ['invented-figures', 'off-code', 'no-picture'].includes(p.code))) { await richer(specs, weakSlides(q, specs), opts, q).catch(() => {}); q = deckQuality(specs, how); }
   // The last net, not up to the model: figures still without anything behind them are never shown as facts — on cards,

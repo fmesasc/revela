@@ -3570,4 +3570,10 @@ export default {
   "Cierre": "Itxiera",
   "Fuentes consultadas": "Kontsultatutako iturriak",
   "Tipo de diapositiva": "Diapositiba mota",
+  "Para hacerla a tu medida": "Zure neurrira egiteko",
+  "Responde lo que quieras (o sáltalo): cuanto más sepa de tu caso, más tuya será la presentación.": "Erantzun nahi duzuna (edo saltatu): zure kasuaz zenbat eta gehiago jakin, orduan eta zureagoa izango da aurkezpena.",
+  "¿Algo más que deba saber?": "Jakin beharko lukeen beste zerbait?",
+  "Para qué es, cuánto dura, tus datos, lo que no puede faltar…": "Zertarako den, zenbat irauten duen, zure datuak, falta ezin dena…",
+  "Saltar las preguntas": "Galderak saltatu",
+  "Otra respuesta, o más detalle…": "Beste erantzun bat, edo xehetasun gehiago…",
 };

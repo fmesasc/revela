@@ -25,6 +25,8 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+      - name: Pillow (the slides' contact sheets)
+        run: python3 -m pip install --quiet pillow
       - name: Evaluate
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}

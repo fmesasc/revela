@@ -7,22 +7,22 @@ the instructions or in the model is measured, not guessed.
 
 Needs Chrome (it runs the app headless, as tests/run.py). Costs a few cents per topic on that key. Writes a table (and,
 in GitHub Actions, the run's summary) and every deck as JSON to look at. Exit code 1 if the average is under --min."""
-import json, os, sys, time, http.server, socketserver, threading, subprocess, shutil, tempfile
+import base64, io, json, os, sys, time, http.server, socketserver, threading, subprocess, shutil, tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TOPICS = {   # key: (topic, language of the deck)
-    'swift': ('Lenguaje de programación Swift: introducción para estudiantes de FP', 'català'),
-    'python': ('Python para análisis de datos con pandas', 'español'),
-    'sql': ('Consultas SQL: SELECT, JOIN y GROUP BY con ejemplos', 'español'),
-    'git': ('Git and GitHub for beginners: branches, commits and pull requests', 'English'),
-    'dax': ('Medidas DAX en Power BI: CALCULATE y contexto de filtro', 'español'),
-    'roma': ('La caída del Imperio romano de Occidente', 'español'),
-    'fotosintesi': ('La fotosíntesi per a alumnes de 2n d’ESO', 'català'),
-    'pitagoras': ('El teorema de Pitágoras y sus aplicaciones', 'español'),
-    'ventas': ('Resultados de ventas del trimestre y plan para el siguiente', 'español'),
-    'onboarding': ('Bienvenida a nuevos empleados: cultura, herramientas y primeras semanas', 'español'),
-    'cambio': ('Climate change: causes, effects and what cities can do', 'English'),
-    'marketing': ('Plan de marketing digital para una pequeña tienda online', 'español'),
+TOPICS = {   # key: (topic, language, what the person answered to the questions — '' for none)
+    'swift': ('Lenguaje de programación Swift: introducción para estudiantes de FP', 'català', ''),
+    'python': ('Python para análisis de datos con pandas', 'español', 'Para analistas de marketing que usan Excel a diario y nunca han programado. Una sesión de 45 minutos. Que salgan sabiendo cargar un CSV, filtrar y agrupar.'),
+    'sql': ('Consultas SQL: SELECT, JOIN y GROUP BY con ejemplos', 'español', ''),
+    'git': ('Git and GitHub for beginners: branches, commits and pull requests', 'English', ''),
+    'dax': ('Medidas DAX en Power BI: CALCULATE y contexto de filtro', 'español', 'Para el equipo de finanzas; ya hacen informes en Power BI pero sin medidas propias. Su modelo tiene las tablas Ventas, Fecha y Producto.'),
+    'roma': ('La caída del Imperio romano de Occidente', 'español', 'Clase de 1.º de Bachillerato, 50 minutos. Quiero que debatan qué causa pesó más.'),
+    'fracciones': ('Sumar y restar fracciones', 'español', 'Alumnos de 2.º de ESO que van flojos en el mínimo común múltiplo. Clase de 55 minutos con ejercicios para hacer en clase. Que al final sepan sumar con distinto denominador.'),
+    'pitagoras': ('El teorema de Pitágoras y sus aplicaciones', 'español', ''),
+    'ventas': ('Resultados de ventas del trimestre y plan para el siguiente', 'español', 'Comité de dirección de una distribuidora de material de oficina. T3: 2,4 M€ de ventas frente a un objetivo de 2,6 M€ (-8 %); el norte creció un 12 % y el sur cayó un 15 % por la pérdida de un cliente grande. Busco aprobación para contratar dos comerciales en el sur.'),
+    'tesis': ('Defensa de tesis doctoral: simulación de urgencias hospitalarias con modelos basados en agentes', 'español', 'Tribunal de tres doctores en informática. 20 minutos. Aportación principal: un sistema modular que reduce de años a semanas adaptar el simulador a un hospital nuevo; validado con los datos de dos hospitales.'),
+    'pitch': ('Presentación a inversores de una app de reservas para peluquerías', 'español', 'Ronda pre-semilla de 300.000 €. Tenemos 120 peluquerías de pago en Valencia y 8 % de crecimiento mensual. 10 minutos.'),
+    'cambio': ('Climate change: causes, effects and what cities can do', 'English', 'City council of a mid-sized Spanish coastal city; decision-makers, not scientists. 15 minutes. Focus on heatwaves and flooding.'),
 }
 
 class Q(http.server.SimpleHTTPRequestHandler):
@@ -59,21 +59,53 @@ def main():
         r = recv(send('Runtime.evaluate', sid, expression=e, awaitPromise=True, returnByValue=True))
         if 'exceptionDetails' in r.get('result', {}): raise RuntimeError(r['result']['exceptionDetails'].get('exception', {}).get('description', 'error'))
         return r.get('result', {}).get('result', {}).get('value')
+    recv(send('Emulation.setDeviceMetricsOverride', sid, width=1600, height=1000, deviceScaleFactor=1, mobile=False))
     recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/index.html?test'))
     for _ in range(80):
         if ev('!!window.__revela'): break
         time.sleep(0.25)
+    if key == 'mock':      # (to try this tool itself without a model: canned answers)
+        ev("""(()=>{const deck={title:'Prueba',design:'tech',slides:[{kind:'title',title:'Prueba',subtitle:'Sub',notes:'n'},{kind:'steps',title:'Pasos',steps:[{title:'Uno',text:'Primero esto'},{title:'Dos',text:'Luego esto'},{title:'Tres',text:'Y esto'}],notes:'n'},
+          {kind:'code',title:'Código',code:{language:'python',code:'import pandas as pd\\ndf = pd.read_csv(\\"a.csv\\")'},bullets:['Carga un CSV'],notes:'n'},{kind:'stats',title:'Cifras',stats:[{value:'2,4 M€',label:'Ventas'}],source:'Fuente: tus datos',notes:'n'},{kind:'closing',title:'Gracias',notes:'n'}]};
+          window.fetch=async(u,o)=>{const b=JSON.parse(o.body),sys=b.messages[0].content;const a=/3-4 questions/.test(sys)?{questions:[{q:'¿Para quién?',options:['A','B']}]}:/Plan a presentation/.test(sys)?{title:'Prueba',slides:deck.slides.map(x=>({title:x.title,kind:x.kind,points:[]}))}:deck;
+            return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify(a)}}]}))};return 1})()""")
     ev(f"(()=>{{const R=window.__revela;R.ai.setAiKey({json.dumps(key)});R.ai.acceptPrivacy();{f'R.ai.setAiModel({json.dumps(model)});' if model else ''}return 1}})()")
     rows = []
     for k in only:
-        topic, lang = TOPICS[k]; t0 = time.time()
+        topic, lang, context = TOPICS[k]; t0 = time.time()
         try:
-            r = ev(f"""(async()=>{{const A=window.__revela.aiDeck,Q=await import('/src/features/ai/quality.js');
-              const o={{topic:{json.dumps(topic)},language:{json.dumps(lang)},count:10}};
+            r = ev(f"""(async()=>{{const R=window.__revela,A=R.aiDeck,Q=await import('/src/features/ai/quality.js');
+              const o={{topic:{json.dumps(topic)},language:{json.dumps(lang)},count:10,context:{json.dumps(context)}}};
+              const asks=await A.askAbout(o).catch(e=>[{{q:'ERROR '+e.message}}]);
               const ol=await A.createOutline(o); const sp=await A.createDeck({{...o,outline:ol.slides}});
-              return {{outline:ol, specs:JSON.parse(JSON.stringify(sp)), quality:sp.quality||Q.deckQuality(sp,{{topic:o.topic}}), first:(sp.qualityFirst||sp.quality||{{}}).score}}}})()""")
+              // (Made as the app makes it: a design with its layouts, the slides composed in it.)
+              const G=await import('/src/features/design/gallery.js'),M=await import('/src/features/document/master.js');
+              const d=G.buildFromGallery(sp.design||'minimal'); M.ensureLayouts(d); if(sp.title) d.name=sp.title; R.store.replaceDeck(d);
+              const starter=new Set(R.state.deck.slides.map(s=>s.id)); await A.insertSpecs(sp,{{images:false}});
+              R.store.commit(()=>{{R.state.deck.slides=R.state.deck.slides.filter(s=>!starter.has(s.id));R.state.ui.slideIndex=0}});
+              return {{questions:asks, outline:ol, specs:JSON.parse(JSON.stringify(sp)), quality:sp.quality||Q.deckQuality(sp,{{topic:o.topic}}), first:(sp.qualityFirst||sp.quality||{{}}).score, n:R.state.deck.slides.length}}}})()""")
+            # Each slide drawn (for a person to judge it), and measured: text past its box, letters too small to read.
+            shots, small, spill = [], 0, 0
+            for i in range(r['n']):
+                m = ev(f"""(async()=>{{const R=window.__revela;R.slides.goToSlide({i});R.store.setSelection(null);R.render();await new Promise(x=>setTimeout(x,450));
+                  const st=document.getElementById('stage'),k=1280/st.getBoundingClientRect().width;let small=0,spill=0,min=999;
+                  for(const b of st.querySelectorAll('.block')){{const box=b.getBoundingClientRect(),w=document.createTreeWalker(b,NodeFilter.SHOW_TEXT),rg=document.createRange();
+                    for(let n;(n=w.nextNode());){{if(!n.textContent.trim())continue;const fs=parseFloat(getComputedStyle(n.parentElement).fontSize)*k;min=Math.min(min,fs);if(fs<20)small++;
+                      rg.selectNodeContents(n);for(const q of rg.getClientRects())if(q.bottom>box.bottom+3||q.right>box.right+3){{spill++;break}}}}}}
+                  const r=st.getBoundingClientRect();return [r.x,r.y,r.width,r.height,small,spill,Math.round(min)]}})()""")
+                small += m[4]; spill += m[5]
+                p = {'format': 'png', 'clip': {'x': m[0], 'y': m[1], 'width': m[2], 'height': m[3], 'scale': 1}}
+                shots.append(base64.b64decode(recv(send('Page.captureScreenshot', sid, **p))['result']['data']))
+            try:
+                from PIL import Image
+                ims = [Image.open(io.BytesIO(x)) for x in shots]; ims = [im.resize((480, int(480 * im.height / im.width))) for im in ims]
+                cols = 3; w, h = ims[0].size; sheet = Image.new('RGB', (cols * (w + 6), ((len(ims) + cols - 1) // cols) * (h + 6)), '#777')
+                for j, im in enumerate(ims): sheet.paste(im, ((j % cols) * (w + 6), (j // cols) * (h + 6)))
+                sheet.save(os.path.join(out, k + '.png'))
+            except Exception as e: print('sin hoja de imágenes:', e)
+            r['layout'] = {'small_texts': small, 'spilling_texts': spill}
             q = r['quality']; json.dump(r, open(os.path.join(out, k + '.json'), 'w'), ensure_ascii=False, indent=1)
-            rows.append((k, q['score'], len(r['specs']), q['stats']['code'], ', '.join(sorted(set(s.get('kind', '?') for s in r['specs']))), '; '.join(p['detail'] for p in q['problems']) or '—', round(time.time() - t0), r.get('first', q['score'])))
+            rows.append((k, q['score'], len(r['specs']), q['stats']['code'], ', '.join(sorted(set(s.get('kind', '?') for s in r['specs']))), '; '.join([p['detail'] for p in q['problems']] + ([f"{r['layout']['spilling_texts']} textos que se salen"] if r['layout']['spilling_texts'] else []) + ([f"{r['layout']['small_texts']} textos de menos de 20 px"] if r['layout']['small_texts'] else [])) or '—', round(time.time() - t0), r.get('first', q['score'])))
         except Exception as e:
             rows.append((k, 0, 0, 0, '', 'ERROR: ' + (str(e).splitlines() or [''])[0][:200], round(time.time() - t0), 0))
         print(f'{rows[-1][0]:<12} {rows[-1][1]:>3}  {rows[-1][5]}', flush=True)

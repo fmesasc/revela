@@ -156,6 +156,11 @@ export function openCreateDeck() {
     <label class="fr-chk"><input type="checkbox" class="ad-web"> ${t('Buscar en internet datos actuales y citar las fuentes (unos céntimos más)')}</label>
     <label class="fr-chk"><input type="checkbox" class="ad-img"> ${t('Generar imágenes con IA (coste extra en OpenRouter)')}</label>
     <label class="fr-chk"><input type="checkbox" class="ad-new" checked> ${t('Empezar una presentación nueva (si no, se añade a la actual)')}</label>
+    <div class="ad-ask" hidden><h4 style="margin:10px 0 4px">${t('Para hacerla a tu medida')}</h4>
+      <p class="host-help">${t('Responde lo que quieras (o sáltalo): cuanto más sepa de tu caso, más tuya será la presentación.')}</p>
+      <div class="ad-qs"></div>
+      <label class="fr-l">${t('¿Algo más que deba saber?')}<textarea class="ad-more" rows="2" placeholder="${t('Para qué es, cuánto dura, tus datos, lo que no puede faltar…')}"></textarea></label>
+      <button type="button" class="mini2 ad-skip">${t('Saltar las preguntas')}</button></div>
     <div class="ad-outline" hidden><h4 style="margin:10px 0 4px">${t('Esquema')}</h4>
       <p class="host-help">${t('Revísalo antes de crear: cambia los títulos y los puntos, quita o añade diapositivas y ordénalas. Las diapositivas seguirán este esquema.')}</p>
       <ol class="ad-ol" style="padding-inline-start:22px;max-height:min(46vh,420px);overflow:auto;margin:6px 0"></ol>
@@ -218,10 +223,38 @@ export function openCreateDeck() {
     if (!found || foundFor !== keyOf) { found = await deck.research(o); foundFor = keyOf; }
     return found;
   };
+  // First, a few questions about this case (once for each topic): their answers go to the outline and the slides.
+  let questions = null, askedFor = null, skipped = false;
+  const answers = () => [...(questions || []).map((x, i) => {
+    const box = q(`.ad-q[data-i="${i}"]`); if (!box) return null;
+    const picked = [...box.querySelectorAll('.ad-opt.on')].map(b => b.textContent.trim()), other = box.querySelector('.ad-q-other').value.trim();
+    return { q: x.q, answer: [...picked, other].filter(Boolean).join('; ') };
+  }), { q: '', answer: q('.ad-more').value.trim() }].filter(Boolean);
+  const context = () => (questions && !skipped ? deck.contextOf(answers()) : deck.contextOf([{ q: '', answer: q('.ad-more').value.trim() }]));
+  const drawQuestions = () => {
+    q('.ad-ask').hidden = !questions?.length;
+    q('.ad-qs').innerHTML = (questions || []).map((x, i) => `<div class="ad-q" data-i="${i}" data-multi="${x.multi ? 1 : ''}" style="margin:8px 0"><b style="display:block;margin-bottom:4px">${esc(x.q)}</b>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">${x.options.map(o => `<button type="button" class="mini2 ad-opt">${esc(o)}</button>`).join('')}</div>
+      <input type="text" class="ad-q-other" maxlength="400" placeholder="${t('Otra respuesta, o más detalle…')}" style="width:100%;margin-top:4px"></div>`).join('');
+  };
+  q('.ad-qs').addEventListener('click', e => {
+    const b = e.target.closest('.ad-opt'); if (!b) return;
+    const box = b.closest('.ad-q'); if (!box.dataset.multi) box.querySelectorAll('.ad-opt.on').forEach(x => { if (x !== b) x.classList.remove('on'); });
+    b.classList.toggle('on'); b.setAttribute('aria-pressed', b.classList.contains('on'));
+  });
+  q('.ad-skip').addEventListener('click', () => { skipped = true; q('.ad-ask').hidden = true; plan(); });
   const plan = async () => {
     if (!(await ready())) return;
     q('.ad-plan').disabled = true; q('.ad-prog').hidden = false; q('.ad-prog').removeAttribute('value');
-    try { const o = await gather(); if (!o) return; outline = await run(async () => deck.createOutline({ ...o, research: await researched(o) })) || null; drawOutline(); }
+    try {
+      const o = await gather(); if (!o) return;
+      const key = JSON.stringify([o.topic, o.audience, o.source.slice(0, 200)]);
+      if (!skipped && askedFor !== key) {                         // (the questions first; the outline with the next click)
+        askedFor = key; questions = await deck.askAbout(o).catch(() => []);     // (no questions if it fails: straight to the outline)
+        if (questions.length) { drawQuestions(); q('.ad-ask').scrollIntoView({ block: 'nearest' }); return; }
+      }
+      outline = await run(async () => deck.createOutline({ ...o, context: context(), research: await researched(o) })) || null; drawOutline();
+    }
     catch (e) { alertDialog(t('No se pudo completar: ') + (e.message || e)); }
     finally { q('.ad-plan').disabled = false; q('.ad-prog').hidden = true; }
   };
@@ -242,7 +275,7 @@ export function openCreateDeck() {
       const docs = read.filter(a => a.kind === 'text'); pics = [...figs, ...read.filter(a => a.kind === 'image')].slice(0, ATTACH.count);
       if (docs.length) source = docs.map(d => d.text).join('\n\n') + (source ? '\n\n' + source : '');
       const opts = { topic, source, count: +q('.ad-count').value, audience: q('.ad-aud').value.trim(), tone: q('.ad-tone').value,
-        images: q('.ad-img').checked, attachments: pics, ...(outline && { outline: outline.slides }) };
+        images: q('.ad-img').checked, attachments: pics, context: context(), ...(outline && { outline: outline.slides }) };
       await run(async () => {
         const r = await researched(opts); if (r) opts.research = r;
         const specs = await deck.createDeck(opts);

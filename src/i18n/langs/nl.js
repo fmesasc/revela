@@ -3570,4 +3570,10 @@ export default {
   "Cierre": "Afsluiting",
   "Fuentes consultadas": "Geraadpleegde bronnen",
   "Tipo de diapositiva": "Diatype",
+  "Para hacerla a tu medida": "Om hem op maat te maken",
+  "Responde lo que quieras (o sáltalo): cuanto más sepa de tu caso, más tuya será la presentación.": "Beantwoord wat je wilt (of sla het over): hoe meer het van je situatie weet, hoe meer de presentatie van jou wordt.",
+  "¿Algo más que deba saber?": "Nog iets dat het moet weten?",
+  "Para qué es, cuánto dura, tus datos, lo que no puede faltar…": "Waarvoor het is, hoe lang het duurt, je gegevens, wat er niet mag ontbreken…",
+  "Saltar las preguntas": "Vragen overslaan",
+  "Otra respuesta, o más detalle…": "Een ander antwoord, of meer detail…",
 };

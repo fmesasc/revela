@@ -3570,4 +3570,10 @@ export default {
   "Cierre": "Peche",
   "Fuentes consultadas": "Fontes consultadas",
   "Tipo de diapositiva": "Tipo de diapositiva",
+  "Para hacerla a tu medida": "Para facela á túa medida",
+  "Responde lo que quieras (o sáltalo): cuanto más sepa de tu caso, más tuya será la presentación.": "Responde o que queiras (ou sáltao): canto máis saiba do teu caso, máis túa será a presentación.",
+  "¿Algo más que deba saber?": "Algo máis que deba saber?",
+  "Para qué es, cuánto dura, tus datos, lo que no puede faltar…": "Para que é, canto dura, os teus datos, o que non pode faltar…",
+  "Saltar las preguntas": "Saltar as preguntas",
+  "Otra respuesta, o más detalle…": "Outra resposta, ou máis detalle…",
 };

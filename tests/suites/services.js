@@ -356,6 +356,30 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     finally { W.fetch = real; }
   });
 
+  await test('crear con IA a medida: primero unas preguntas sobre el caso, y sus respuestas guían el esquema', async () => {
+    reset(); const W = frame.contentWindow, real = W.fetch, calls = [];
+    R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    const answers = [{ questions: [{ q: '¿Qué curso y nivel tienen?', options: ['1.º ESO', '2.º ESO', 'Bachillerato'] }, { q: '¿Cuánto dura la clase?', options: ['30 min', '55 min'] }] },
+      { title: 'Fracciones', slides: [{ title: 'Fracciones', kind: 'title', points: [] }, { title: 'Sumar fracciones', kind: 'steps', points: ['Con el mismo denominador'] }] }];
+    W.fetch = async (url, opts) => { const body = JSON.parse(opts.body); calls.push(body); return new W.Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(answers.length > 1 ? answers.shift() : answers[0]) } }] })); };
+    try {
+      const M = await W.eval("import('/src/ui/dialogs/ai.js')"); M.openCreateDeck(); await sleep(30);
+      const m = D.querySelector('.ad-topic').closest('.modal'), q = x => m.querySelector(x);
+      q('.ad-topic').value = 'Fracciones'; q('.ad-plan').click();
+      for (let i = 0; i < 60 && !m.querySelector('.ad-q'); i++) await sleep(30);
+      eq(m.querySelectorAll('.ad-q').length, 2, 'primero, las preguntas sobre este caso');
+      assert(/the 3-4 questions/.test(calls[0].messages[0].content) && /Fracciones/.test(calls[0].messages[1].content), 'pedidas a la IA para este tema');
+      [...m.querySelectorAll('.ad-q')[0].querySelectorAll('.ad-opt')].find(b => b.textContent === '2.º ESO').click();
+      m.querySelectorAll('.ad-q-other')[1].value = '55 minutos, con un ejercicio al final';
+      q('.ad-more').value = 'Van flojos en el mínimo común múltiplo';
+      q('.ad-plan').click();
+      for (let i = 0; i < 60 && !m.querySelector('.ad-ol li'); i++) await sleep(30);
+      const ctx = calls[1].messages[1].content;
+      assert(/tailor EVERYTHING/.test(ctx) && /2\.º ESO/.test(ctx) && /55 minutos, con un ejercicio/.test(ctx) && /mínimo común múltiplo/.test(ctx), 'el esquema, con sus respuestas: ' + ctx.slice(-300));
+      eq(m.querySelectorAll('.ad-ol li').length, 2, 'y el esquema');
+    } finally { W.fetch = real; R.ai.disconnectAi(); D.querySelectorAll('.modal-backdrop').forEach(x => x.remove()); }
+  });
+
   await test('IA avanzada: presentación completa, mejorar, agenda, preguntas y asistente', async () => {
     reset(); const W = frame.contentWindow, A = R.aiDeck, realFetch = W.fetch, calls = []; let answer = {}, seq = null;
     R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
