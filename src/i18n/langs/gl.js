@@ -3535,4 +3535,8 @@ export default {
   "Pausar con un clic": "Pausar cun clic",
   "Detener con un clic": "Deter cun clic",
   "Pausar": "Pausar",
+  "Recortar a una proporción…": "Recortar a unha proporción…",
+  "Quitar el recorte": "Quitar o recorte",
+  "Recortar sobre la imagen": "Recortar sobre a imaxe",
+  "Arrastra los bordes para recortar; Intro para terminar, Esc para dejarlo como estaba": "Arrastra os bordos para recortar; Intro para rematar, Esc para deixalo como estaba",
 };

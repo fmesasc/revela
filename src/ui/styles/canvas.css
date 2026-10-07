@@ -158,3 +158,16 @@
 .block.is-pano:not(.processing)::after,.block.is-drag:not(.animated)::before{position:absolute;top:4px;z-index:5;padding:1px 6px;border-radius:8px;background:#000a;color:#fff;font:700 11px/1.5 system-ui,sans-serif;pointer-events:none}
 .block.is-pano:not(.processing)::after{content:'360°';left:4px}
 .block.is-drag:not(.animated)::before{content:'✥';right:4px}
+
+/* Cropping a picture on the slide (ui/canvas/imagecrop.js): the whole picture faint, the frame bright. */
+.crop-ui{position:absolute;z-index:30;overflow:visible;cursor:default;touch-action:none}
+.crop-ui img{position:absolute;max-width:none;pointer-events:none;user-select:none}
+.crop-ghost{opacity:.35}
+.crop-frame{position:absolute;outline:1.5px solid #fff;box-shadow:0 0 0 calc(1px * var(--k,1)) #0008;cursor:move}
+.crop-h{position:absolute;width:calc(14px * var(--k,1));height:calc(14px * var(--k,1));background:#111;border:calc(2px * var(--k,1)) solid #fff;box-sizing:border-box}
+.crop-h.nw,.crop-h.ne,.crop-h.sw,.crop-h.se{width:calc(18px * var(--k,1));height:calc(18px * var(--k,1))}
+.crop-h.nw{left:0;top:0;translate:-50% -50%;cursor:nwse-resize}.crop-h.ne{right:0;top:0;translate:50% -50%;cursor:nesw-resize}
+.crop-h.sw{left:0;bottom:0;translate:-50% 50%;cursor:nesw-resize}.crop-h.se{right:0;bottom:0;translate:50% 50%;cursor:nwse-resize}
+.crop-h.n,.crop-h.s{left:50%;width:calc(26px * var(--k,1));height:calc(8px * var(--k,1));cursor:ns-resize}.crop-h.n{top:0;translate:-50% -50%}.crop-h.s{bottom:0;translate:-50% 50%}
+.crop-h.e,.crop-h.w{top:50%;height:calc(26px * var(--k,1));width:calc(8px * var(--k,1));cursor:ew-resize}.crop-h.e{right:0;translate:50% -50%}.crop-h.w{left:0;translate:-50% -50%}
+.block.crop-hidden{visibility:hidden}

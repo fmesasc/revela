@@ -3535,4 +3535,8 @@ export default {
   "Pausar con un clic": "Pausatu klik batekin",
   "Detener con un clic": "Gelditu klik batekin",
   "Pausar": "Pausatu",
+  "Recortar a una proporción…": "Moztu proportzio batera…",
+  "Quitar el recorte": "Kendu moztea",
+  "Recortar sobre la imagen": "Moztu irudiaren gainean",
+  "Arrastra los bordes para recortar; Intro para terminar, Esc para dejarlo como estaba": "Arrastatu ertzak mozteko; Sartu amaitzeko, Esc lehen bezala uzteko",
 };

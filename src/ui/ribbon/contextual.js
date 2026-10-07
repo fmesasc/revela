@@ -38,6 +38,8 @@ import { toggleAnimPane } from '../panels/animation.js';
 import { animsOf, setAnimation, clearAnimation, addAnimation } from '../../features/animation/transitions.js';
 import { playAnimations } from '../canvas/preview.js';
 import { playInEditor } from '../canvas/mediaview.js';
+import { startImageCrop } from '../canvas/imagecrop.js';
+import { uncrop } from '../../features/document/crop.js';
 import { fitTextToBox } from '../canvas/canvas.js';
 import { editText } from '../canvas/content.js';
 import { MAP_SCOPES } from '../../features/content/maps.js';
@@ -101,7 +103,8 @@ function groupsFor(b) {
     ['Forma', [['select', 'Cambiar forma', SHAPES, b.shape, v => set(b, x => { x.shape = v; })], wrapBtn(b),
       ...(hasShapeText(b) ? [btn('edit_note', 'Escribir texto', () => editText(b.id, { selectAll: false }))] : [])]]);
   else if (b.type === 'image') G.push(
-    ['Ajustar', [btn('tune', 'Ajustes de imagen', () => openImageAdjust(b)), btn('crop', 'Recortar', () => openImageCrop(b)), btn('auto_fix_high', 'Quitar fondo', () => removeBackground(b)),
+    ['Ajustar', [btn('tune', 'Ajustes de imagen', () => openImageAdjust(b)), btn('crop', 'Recortar', () => startImageCrop(b)), btn('crop_square', 'Recortar a una proporción…', () => openImageCrop(b)),
+      ...(b.uncropped || b.crop ? [btn('restart_alt', 'Quitar el recorte', () => uncrop(b.id))] : []), btn('auto_fix_high', 'Quitar fondo', () => removeBackground(b)),
       btn('fit_screen', 'Contener', () => set(b, x => { x.fit = 'contain'; }), (b.fit || 'contain') === 'contain'), btn('crop_free', 'Rellenar', () => set(b, x => { x.fit = 'cover'; }), b.fit === 'cover'),
       btn('open_in_full', 'Estirar', () => set(b, x => { x.fit = 'fill'; }), b.fit === 'fill'), btn('aspect_ratio', 'Proporción original', () => blocks.cropToRatio(b.id, 'original'))]],
     // A mockup: the picture inside a phone, a laptop… (filling its screen).

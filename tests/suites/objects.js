@@ -201,6 +201,55 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/clip-path:inset\(10% 0% 0% 20%\)/.test(R.io.buildHTML()), 'clip-path en el export');
   });
 
+  await test('recortar sobre la imagen: doble clic, el marco, Intro, otra vez desde la entera, Esc y quitar el recorte', async () => {
+    reset(); const W = frame.contentWindow;
+    // 200×100: the left half red, the right half blue.
+    const k = D.createElement('canvas'); k.width = 200; k.height = 100; const g = k.getContext('2d');
+    g.fillStyle = '#f00'; g.fillRect(0, 0, 100, 100); g.fillStyle = '#00f'; g.fillRect(100, 0, 100, 100);
+    R.blocks.addImage(k.toDataURL('image/png')); const b = last(); select(b);
+    R.store.commit(() => Object.assign(b, { x: 100, y: 100, w: 400, h: 200, fit: 'fill' })); await sleep(50);
+    const whole = b.src, CR = await W.eval("import('/src/ui/canvas/imagecrop.js')");
+    D.querySelector(`.block[data-id="${b.id}"]`).dispatchEvent(new W.MouseEvent('dblclick', { bubbles: true }));
+    let s; for (let i = 0; i < 40 && !(s = CR.cropSession()); i++) await sleep(25);
+    assert(s && D.querySelector('#stage .crop-ui .crop-frame') && D.querySelectorAll('.crop-ui .crop-h').length === 8, 'el doble clic abre el recorte, con sus 8 tiradores');
+    eq([s.D.x, s.D.y, s.D.w, s.D.h].join(), '0,0,400,200', 'la imagen entera, en su caja');
+    // Dragging the left edge to the middle (a real drag on its handle).
+    const h = D.querySelector('.crop-h.w').getBoundingClientRect(), z = D.querySelector('.crop-ui').getBoundingClientRect().width / 400;
+    const ov = D.querySelector('.crop-ui'), ev = (t, x) => ov.dispatchEvent(new W.PointerEvent(t, { bubbles: true, clientX: x, clientY: h.y + h.height / 2, pointerId: 1 }));
+    D.querySelector('.crop-h.w').dispatchEvent(new W.PointerEvent('pointerdown', { bubbles: true, clientX: h.x + h.width / 2, clientY: h.y + h.height / 2, pointerId: 1 }));
+    ev('pointermove', h.x + h.width / 2 + 200 * z); ev('pointerup', h.x + h.width / 2 + 200 * z);
+    eq(Math.round(s.C.x) + ',' + Math.round(s.C.w), '200,200', 'el borde izquierdo, a la mitad');
+    W.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); 
+    for (let i = 0; i < 40 && b.src === whole; i++) await sleep(25);
+    eq([b.x, b.y, b.w, b.h].join(), '300,100,200,200', 'la caja es la parte que queda, donde estaba');
+    assert(!D.querySelector('.crop-ui') && b.fit === 'fill' && Math.abs(b.uncropped.l - 0.5) < 0.01 && b.uncropped.src === whole, 'guarda la entera');
+    const im = new W.Image(); im.src = b.src; await im.decode();
+    eq(im.naturalWidth + 'x' + im.naturalHeight, '100x100', 'la imagen recortada, a su resolución');
+    const c = D.createElement('canvas'); c.width = 100; c.height = 100; c.getContext('2d').drawImage(im, 0, 0);
+    eq([...c.getContext('2d').getImageData(50, 50, 1, 1).data].slice(0, 3).join(), '0,0,255', 'la mitad azul');
+    assert(R.io.buildHTML().includes(b.src.slice(0, 200)), 'en el export, la recortada');
+    // Again: from the whole picture; Esc leaves it as it was.
+    await CR.startImageCrop(b); s = CR.cropSession();
+    eq([s.D.x, s.D.w, s.C.x, s.C.w].join(), '-200,400,0,200', 'otra vez: desde la imagen entera');
+    s.C.x = -200; s.C.w = 400; s.paint();
+    W.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(50);
+    eq([b.x, b.w].join(), '300,200', 'Esc: como estaba');
+    // Delete while cropping doesn't delete it.
+    await CR.startImageCrop(b);
+    W.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Delete', bubbles: true })); await sleep(30);
+    assert(R.state.deck.slides[R.state.ui.slideIndex].blocks.includes(b), 'Supr no lo borra mientras se recorta');
+    CR.endImageCrop(false);
+    // Turned 90°: the part kept stays where it showed.
+    R.store.commit(() => { b.rotation = 90; }); await sleep(30);
+    await CR.startImageCrop(b); s = CR.cropSession(); s.C.w = 100; s.paint(); await CR.endImageCrop(true);
+    for (let i = 0; i < 40 && b.w !== 100; i++) await sleep(25);
+    eq([b.x, b.y, b.w, b.h].join(), '350,50,100,200', 'girada: la mitad izquierda de la caja queda arriba');
+    const { uncrop } = await W.eval("import('/src/features/document/crop.js')");
+    R.store.commit(() => { b.rotation = 0; }); await uncrop(b.id);
+    eq(b.src, whole, 'Quitar el recorte: la imagen entera'); assert(!b.uncropped, 'sin lo guardado');
+    eq([b.w, b.h].join(), '400,200', 'con su tamaño entero');
+  });
+
   await test('editor de ecuaciones (visual MathLive o paleta) se abre', async () => {
     reset(); R.blocks.addMath(); const b = last(); select(b); await sleep(20);
     const el = D.querySelector(`.block[data-id="${b.id}"]`);

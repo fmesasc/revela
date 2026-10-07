@@ -3557,5 +3557,9 @@ export const ROWS = [
   ['Pausar con un clic', 'Pause on a click', 'Mettre en pause au clic', 'Per Klick pausieren', 'Metti in pausa con un clic', 'Pausar com um clique', 'Pausar amb un clic'],
   ['Detener con un clic', 'Stop on a click', 'Arrêter au clic', 'Per Klick stoppen', 'Ferma con un clic', 'Parar com um clique', 'Aturar amb un clic'],
   ['Pausar', 'Pause', 'Pause', 'Pausieren', 'Pausa', 'Pausar', 'Pausa'],
+  ['Recortar a una proporción…', 'Crop to aspect ratio…', 'Rogner selon des proportions…', 'Auf Seitenverhältnis zuschneiden…', 'Ritaglia in proporzione…', 'Recortar para uma proporção…', 'Retalla a una proporció…'],
+  ['Quitar el recorte', 'Remove crop', 'Annuler le rognage', 'Zuschnitt entfernen', 'Rimuovi ritaglio', 'Remover o recorte', 'Treu el retall'],
+  ['Recortar sobre la imagen', 'Crop on the picture', 'Rogner sur l\'image', 'Auf dem Bild zuschneiden', 'Ritaglia sull\'immagine', 'Recortar sobre a imagem', 'Retalla sobre la imatge'],
+  ['Arrastra los bordes para recortar; Intro para terminar, Esc para dejarlo como estaba', 'Drag the edges to crop; Enter to finish, Esc to leave it as it was', 'Faites glisser les bords pour rogner ; Entrée pour terminer, Échap pour laisser tel quel', 'Ränder ziehen zum Zuschneiden; Eingabe zum Beenden, Esc lässt es wie es war', 'Trascina i bordi per ritagliare; Invio per terminare, Esc per lasciarlo com\'era', 'Arraste as bordas para recortar; Enter para terminar, Esc para deixar como estava', 'Arrossega les vores per retallar; Retorn per acabar, Esc per deixar-ho com era'],
 ];
 // Additional languages (partial; anything missing falls back to Spanish).

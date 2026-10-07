@@ -3535,4 +3535,8 @@ export default {
   "Pausar con un clic": "Pauzeren met een klik",
   "Detener con un clic": "Stoppen met een klik",
   "Pausar": "Pauzeren",
+  "Recortar a una proporción…": "Bijsnijden tot verhouding…",
+  "Quitar el recorte": "Bijsnijden ongedaan maken",
+  "Recortar sobre la imagen": "Bijsnijden op de afbeelding",
+  "Arrastra los bordes para recortar; Intro para terminar, Esc para dejarlo como estaba": "Sleep de randen om bij te snijden; Enter om te voltooien, Esc om het te laten zoals het was",
 };

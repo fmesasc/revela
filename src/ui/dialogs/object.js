@@ -7,6 +7,7 @@ import * as blocks from '../../features/document/blocks.js';
 import { t } from '../../i18n/index.js';
 import { alertDialog } from './dialog.js';
 import { isGif } from '../../features/live/media.js';
+import { canCropOnSlide, uncrop } from '../../features/document/crop.js';
 import { gifRemoveBackground } from '../../features/live/gifbg.js';
 import { MATHLIVE, BG_REMOVAL, loadScript } from '../../core/vendor.js';
 import { renderLatex } from '../canvas/content.js';
@@ -333,9 +334,9 @@ export function openImageCrop(b) {
     <div class="crop-focus"${b.fit === 'cover' ? '' : ' hidden'}>
       <label class="fr-l">${t('Encuadre horizontal')} <input type="range" data-focus="x" min="0" max="100" value="${b.focusX ?? 50}"></label>
       <label class="fr-l">${t('Encuadre vertical')} <input type="range" data-focus="y" min="0" max="100" value="${b.focusY ?? 50}"></label></div>
-    <div class="fr-l" style="margin-top:8px">${t('Recortar los bordes (%)')}</div>
-    ${sl(t('Arriba'), 'top')}${sl(t('Derecha'), 'right')}${sl(t('Abajo'), 'bottom')}${sl(t('Izquierda'), 'left')}
-    <div class="fr-actions"><button class="fr-do" data-reset>${t('Restablecer')}</button></div>
+    ${b.crop ? `<div class="fr-l" style="margin-top:8px">${t('Recortar los bordes (%)')}</div>
+    ${sl(t('Arriba'), 'top')}${sl(t('Derecha'), 'right')}${sl(t('Abajo'), 'bottom')}${sl(t('Izquierda'), 'left')}` : ''}
+    <div class="fr-actions">${canCropOnSlide(b) ? `<button class="fr-do" data-onslide><i class="ms">crop</i> ${t('Recortar sobre la imagen')}</button>` : ''}<button class="fr-do" data-reset>${t('Restablecer')}</button></div>
   </div>`;
   document.body.appendChild(back);
   const close = () => back.remove();
@@ -349,8 +350,10 @@ export function openImageCrop(b) {
     back.querySelector('.crop-focus').hidden = x.dataset.ratio === 'original';
   }));
   back.querySelectorAll('[data-focus]').forEach(r => r.addEventListener('input', () => blocks.setImageFocus(b.id, r.dataset.focus, r.value)));
-  back.querySelector('[data-reset]').addEventListener('click', () => {
-    blocks.resetImageCrop();
+  // (The edges' sliders: only for a picture cropped that way before — now it's cropped on the picture itself.)
+  back.querySelector('[data-onslide]')?.addEventListener('click', () => { close(); import('../canvas/imagecrop.js').then(m => m.startImageCrop(b)); });
+  back.querySelector('[data-reset]').addEventListener('click', async () => {
+    await uncrop(b.id);
     back.querySelectorAll('[data-crop]').forEach(r => (r.value = 0));
   });
 }

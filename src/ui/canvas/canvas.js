@@ -408,6 +408,8 @@ function blockEl(b) {
   // (As in PowerPoint and Slides: double-click a chart for its data, a poll for its question and options.)
   else if (b.type === 'chart') el.addEventListener('dblclick', () => { if (!state.deck.final && !state.ui.lock) import('../dialogs/object.js').then(m => m.openChartData(el._b)); });
   else if (b.type === 'poll') el.addEventListener('dblclick', () => { if (!state.deck.final && !state.ui.lock) import('../dialogs/poll.js').then(m => m.openPollEditor(el._b)); });   // (double-click: its text)   // (double-click: open or download it)
+  // (Double-click a picture: crop it on the slide, as in PowerPoint.)
+  else if (b.type === 'image') el.addEventListener('dblclick', e => { if (!e.target.closest('.handle-size,.handle-rot')) import('./imagecrop.js').then(m => m.startImageCrop(el._b)); });
   else if (b.type === 'table') setupTable(el, b);
   else if (b.type === 'code') setupCode(el, b);
   else if (b.type === 'math') setupMath(el, b);

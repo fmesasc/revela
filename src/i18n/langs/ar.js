@@ -3535,4 +3535,8 @@ export default {
   "Pausar con un clic": "إيقاف مؤقت بنقرة",
   "Detener con un clic": "إيقاف بنقرة",
   "Pausar": "إيقاف مؤقت",
+  "Recortar a una proporción…": "قص إلى نسبة أبعاد…",
+  "Quitar el recorte": "إزالة القص",
+  "Recortar sobre la imagen": "القص على الصورة",
+  "Arrastra los bordes para recortar; Intro para terminar, Esc para dejarlo como estaba": "اسحب الحواف للقص؛ Enter للإنهاء، Esc لتركها كما كانت",
 };
