@@ -349,7 +349,7 @@ function blockHTMLRaw(b, slide) {
     return `<img${a} src="${esc(b.src || '')}"${b.zoomable ? ' data-lightbox' : ''} alt="${b.decorative ? '' : esc(b.alt || '')}" style="${box(b)}object-fit:${b.fit || 'contain'};${b.fit === 'cover' && (b.focusX != null || b.focusY != null) ? `object-position:${imgFocus(b)};` : ''}`
       + `filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)};${deviceCSS(b)}">`;
   if (b.type === 'video')
-    return `<video${a} data-vid="${b.id}" src="${esc(b.src || '')}" controls style="${box(b)}object-fit:contain"></video>`;
+    return `<video${a} data-vid="${b.id}" src="${esc(b.src || '')}"${b.poster && /^(data:image\/|https:|blob:)/.test(b.poster) ? ` poster="${esc(b.poster)}"` : ''} controls preload="metadata" style="${box(b)}object-fit:contain"></video>`;
   if (b.type === 'poll')     // live poll: question, live results and the QR to vote
     return `<div${a} class="rv-poll" data-poll="${esc(JSON.stringify({ pollId: b.pollId, kind: b.kind, display: b.display, question: b.question, options: b.options, ...(b.kind === 'quiz' && { correct: b.correct || [0], time: b.time || 20, ...(b.mode && b.mode !== 'speed' && { mode: b.mode }) }), ...(ACTIVITIES.includes(b.kind) && { text: b.text, points: b.points, image: b.image }),
       ...(b.kind === 'number' && { min: b.min, max: b.max, step: b.step, unit: b.unit, answer: b.answer }), ...(b.kind === 'image' && { images: b.images }), ...((b.kind === 'point' || b.kind === 'draw') && { image: b.image }), ...(b.kind === 'open' && b.rubric && { rubric: b.rubric }) }))}" `

@@ -52,7 +52,9 @@ export function blockPreview(b, slide) {
     img.style.cssText = `width:100%;height:100%;object-fit:${b.fit || 'contain'};object-position:${imgFocus(b)};filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)};${deviceCSS(b)}`;
     el.replaceChildren(img);
   } else if (b.type === 'video') {
-    el.innerHTML = `<div style="width:100%;height:100%;background:#000;display:grid;place-items:center;color:#fff;font-size:60px">▶</div>`;
+    // (Its poster — from PowerPoint — if it has one, as PowerPoint shows it; else a play sign.)
+    if (b.poster && /^(data:image\/|https:)/.test(b.poster)) { const im = document.createElement('img'); im.loading = 'lazy'; im.src = blobURL(b.poster); im.alt = ''; im.style.cssText = 'width:100%;height:100%;object-fit:contain;background:#000'; el.replaceChildren(im); }
+    else el.innerHTML = `<div style="width:100%;height:100%;background:#000;display:grid;place-items:center;color:#fff;font-size:60px">▶</div>`;
   } else if (b.type === 'audio') {
     el.innerHTML = `<div style="width:100%;height:100%;background:#0004;display:grid;place-items:center;font-size:32px">🔊</div>`;
   } else if (b.type === 'model') {

@@ -30,7 +30,10 @@ import { colorMods, modsOf } from '../../features/design/colormods.js';
 import { officeStack } from '../../features/design/fonts.js';
 
 const CANVAS_W = 1280;            // slide width maps to this many px
-const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp', svg: 'image/svg+xml' };
+const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp', svg: 'image/svg+xml',
+  mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', mp3: 'audio/mpeg', m4a: 'audio/mp4', wav: 'audio/wav', ogg: 'audio/ogg' };
+// Videos and sounds a browser plays (PowerPoint also takes .wmv, .avi, .wma…: those stay as their poster picture).
+const PLAYABLE = /^(video\/(mp4|quicktime|webm)|audio\/(mpeg|mp4|wav|ogg))$/;
 
 const parseXML = str => new DOMParser().parseFromString(str, 'application/xml');
 const all = (el, name) => (el ? [...el.getElementsByTagName(name)] : []);
@@ -829,6 +832,19 @@ export async function importPPTX(file) {
       const geo = xfrmOf(kid(pic, 'p:spPr')); const blip = all(pic, 'a:blip')[0];
       if (!geo || !blip) return;
       let src = await media(blip.getAttribute('r:embed')); if (!src) return;
+      // A video or a sound (its picture is the poster, shown until it plays): the file inside the presentation
+      // (p14:media) or linked (a:videoFile r:link: inside too, or an address on the web). Before, only the poster came.
+      const vf = all(pic, 'a:videoFile')[0], af = all(pic, 'a:audioFile')[0];
+      if (vf || af) {
+        const rid = all(pic, 'p14:media')[0]?.getAttribute('r:embed') || (vf || af).getAttribute('r:link'), t = partRels[rid];
+        const ext = (t?.path || '').split(/[?#]/)[0].split('.').pop().toLowerCase(), mime = MIME[ext] || '';
+        const file = t && PLAYABLE.test(mime) ? (/^https:\/\//.test(t.path) ? t.path : await media(rid)) : null;
+        if (file) {
+          const descr = all(pic, 'p:cNvPr')[0]?.getAttribute('descr') || '';
+          blocks.push({ id: uid(), ...objLink(pic), type: vf ? 'video' : 'audio', src: file, ...(vf && { poster: src }), ...(descr && { alt: descr }), ...box(map(geo)) });
+          return;
+        }
+      }
       // Cropped in PowerPoint (srcRect: thousandths of a percent cut from each side): the part that shows.
       const sr = all(pic, 'a:srcRect')[0];
       if (sr) src = await cropPicture(src, ['l', 't', 'r', 'b'].map(k => Math.max(0, +(sr.getAttribute(k) || 0) / 100000)));

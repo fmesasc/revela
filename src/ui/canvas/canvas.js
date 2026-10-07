@@ -317,6 +317,7 @@ function reconcile(b) {
     const mv = el.querySelector('model-viewer'); if (mv) applyModelAttrs(mv, b);
   } else if (b.type === 'video') {
     const v = el.querySelector('video'); if (v && v._src !== b.src) { v.src = blobURL(b.src); v._src = b.src; }
+    if (v && (v._poster || '') !== (b.poster || '')) { v.poster = b.poster ? blobURL(b.poster) : ''; v._poster = b.poster || ''; }
   } else if (b.type === 'audio') {
     const a2 = el.querySelector('audio'); if (a2 && a2._src !== b.src) { a2.src = blobURL(b.src); a2._src = b.src; }
   } else if (b.type === 'embed') {

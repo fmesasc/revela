@@ -792,6 +792,30 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(d2.layouts.filter(l => !used.has(l.id)).every(l => names.includes(l.name)), 'todos los diseños, también los que no usa ninguna diapositiva: ' + names);
   });
 
+  await test('importar PowerPoint: sus vídeos (dentro o enlazados), con su portada; no solo la portada', async () => {
+    await R.vendor.loadScript(R.vendor.JSZIP, 'JSZip');
+    const W = frame.contentWindow, zip = new W.JSZip();
+    const NS = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main"';
+    const rel = (id, type, target, ext) => `<Relationship Id="${id}" Type="${type.includes('/') ? type : 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/' + type}" Target="${target}"${ext ? ' TargetMode="External"' : ''}/>`;
+    const rels = (...r) => `<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${r.join('')}</Relationships>`;
+    const vid = (n, embed, link, poster) => `<p:pic><p:nvPicPr><p:cNvPr id="${n}" name="Vídeo ${n}" descr="Simulación"/><p:cNvPicPr/><p:nvPr><a:videoFile r:link="${link}"/>${embed ? `<p:extLst><p:ext uri="{DAA4B4D4-6D71-4841-9C94-3DA282A3FB2C}"><p14:media r:embed="${embed}"/></p:ext></p:extLst>` : ''}</p:nvPr></p:nvPicPr>`
+      + `<p:blipFill><a:blip r:embed="${poster}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="1000000" y="1000000"/><a:ext cx="4000000" cy="2250000"/></a:xfrm><a:prstGeom prst="rect"/></p:spPr></p:pic>`;
+    zip.file('ppt/presentation.xml', `<p:presentation ${NS}><p:sldIdLst><p:sldId id="256" r:id="rId2"/></p:sldIdLst><p:sldSz cx="12192000" cy="6858000"/></p:presentation>`);
+    zip.file('ppt/_rels/presentation.xml.rels', rels(rel('rId2', 'slide', 'slides/slide1.xml')));
+    zip.file('ppt/slides/slide1.xml', `<p:sld ${NS}><p:cSld><p:spTree>${vid(2, 'rId1', 'rId2', 'rId3')}${vid(3, null, 'rId4', 'rId3')}${vid(4, 'rId5', 'rId5', 'rId3')}</p:spTree></p:cSld></p:sld>`);
+    zip.file('ppt/slides/_rels/slide1.xml.rels', rels(rel('rId1', 'http://schemas.microsoft.com/office/2007/relationships/media', '../media/media1.mp4'), rel('rId2', 'video', '../media/media1.mp4'),
+      rel('rId3', 'image', '../media/image1.png'), rel('rId4', 'video', 'https://ejemplo.org/clase.mp4', true), rel('rId5', 'video', '../media/viejo.wmv')));
+    zip.file('ppt/media/media1.mp4', new W.Uint8Array([0, 0, 0, 24, 102, 116, 121, 112, 109, 112, 52, 50]));
+    zip.file('ppt/media/viejo.wmv', new W.Uint8Array([1, 2, 3]));
+    zip.file('ppt/media/image1.png', W.atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='), { binary: true });
+    const d = await R.pptxImport.importPPTX(new W.File([await zip.generateAsync({ type: 'blob' })], 'v.pptx'));
+    const bl = d.slides[0].blocks;
+    eq(bl.map(b => b.type).join(), 'video,video,image', 'dos vídeos; el .wmv (que el navegador no reproduce), su portada');
+    assert(/^data:video\/mp4;base64,/.test(bl[0].src) && /^data:image\/png/.test(bl[0].poster) && bl[0].alt === 'Simulación', 'el de dentro, con su portada y su descripción');
+    eq(bl[1].src, 'https://ejemplo.org/clase.mp4', 'el enlazado, por su dirección');
+    assert(/poster="/.test(R.io.buildHTML(d)), 'al presentar, con su portada');
+  });
+
   await test('importar PowerPoint: formas con el estilo del tema, sombras y SmartArt', async () => {
     await R.vendor.loadScript(R.vendor.JSZIP, 'JSZip');
     const W = frame.contentWindow, zip = new W.JSZip();

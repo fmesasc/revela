@@ -205,7 +205,7 @@ export function content(b) {
   if (keyedView(b)) { const d = mediaView(b); if (b.type === 'image') applyImgStyle(d, b); return d; }
   // (Big files kept in the presentation: shown by their blob: address, io/formats/blobmedia.js; _src: what it is.)
   if (b.type === 'image') { const i = document.createElement('img'); i.src = blobURL(b.src); i._src = b.src; i.draggable = false; applyImgStyle(i, b); return i; }
-  if (b.type === 'video') { const v = document.createElement('video'); v.src = blobURL(b.src); v._src = b.src; v.controls = true; return v; }
+  if (b.type === 'video') { const v = document.createElement('video'); v.src = blobURL(b.src); v._src = b.src; if (b.poster) v.poster = blobURL(b.poster); v.controls = true; v.preload = 'metadata'; return v; }
   if (b.type === 'poll') {
     const d = document.createElement('div'); d.className = 'poll-blk'; d.dataset.sig = pollSig(b); d.innerHTML = pollEditorHTML(b, currentPalette().accents); return d;
   }
