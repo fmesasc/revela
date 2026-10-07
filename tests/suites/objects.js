@@ -201,6 +201,29 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/clip-path:inset\(10% 0% 0% 20%\)/.test(R.io.buildHTML()), 'clip-path en el export');
   });
 
+  await test('presentar una presentación muy pesada (cientos de MB de fotos y vídeos): sin «Invalid string length», con sus archivos como blob:', async () => {
+    reset(); const W = frame.contentWindow;
+    // 20 slides with the same 30 MB file: 600 million characters if it all went in the page's text.
+    const big = 'data:image/jpeg;base64,' + 'A'.repeat(30e6);
+    R.store.commit(() => { R.state.deck.slides = Array.from({ length: 20 }, (_, i) => ({ id: 'h' + i, background: '#fff', blocks: [{ id: 'hb' + i, type: 'image', src: big, x: 0, y: 0, w: 1280, h: 720, rotation: 0, animation: null }] })); });
+    let html, err = null; try { html = R.io.buildHTML(R.state.deck, { inApp: true }); } catch (e) { err = e.message; }
+    eq(err, null, 'se construye');
+    assert(html.length < 2e6 && (html.match(/src="blob:/g) || []).length === 20, 'la página, pequeña (' + Math.round(html.length / 1e3) + ' KB), con las fotos como blob:');
+    eq(new Set(html.match(/blob:[^"]+/g)).size, 1, 'el mismo archivo, una sola vez en memoria');
+    // A real photo: it shows in the presentation.
+    const c = D.createElement('canvas'); c.width = 400; c.height = 300; const g = c.getContext('2d'); for (let i = 0; i < 4000; i++) { g.fillStyle = `hsl(${i % 360},70%,50%)`; g.fillRect(Math.random() * 400, Math.random() * 300, 9, 9); }
+    const photo = c.toDataURL('image/png'); assert(photo.length > 64 * 1024, 'foto de prueba de más de 64 KB: ' + photo.length);
+    R.store.commit(() => { R.state.deck.slides = [{ id: 'p1', background: '#fff', blocks: [{ id: 'pb', type: 'image', src: photo, x: 0, y: 0, w: 640, h: 480, rotation: 0, animation: null }] }]; R.state.ui.slideIndex = 0; });
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
+    f.src = W.URL.createObjectURL(new W.Blob([R.io.buildHTML(R.state.deck, { inApp: true })], { type: 'text/html' }));
+    try {
+      let im; for (let i = 0; i < 100 && !((im = f.contentDocument?.querySelector('section img'))?.complete && im.naturalWidth); i++) await sleep(100);
+      assert(/^blob:/.test(im.getAttribute('src')) && im.naturalWidth === 400, 'la foto se ve al presentar (' + im?.naturalWidth + ')');
+    } finally { f.remove(); }
+    assert(/^data:image\/png/.test(R.state.deck.slides[0].blocks[0].src), 'la presentación sigue guardando la foto dentro');
+    assert(R.io.buildHTML().includes(photo.slice(0, 500)), 'y al exportar va dentro (un archivo que funciona en cualquier sitio)');
+  });
+
   await test('recortar sobre la imagen: doble clic, el marco, Intro, otra vez desde la entera, Esc y quitar el recorte', async () => {
     reset(); const W = frame.contentWindow;
     // 200×100: the left half red, the right half blue.

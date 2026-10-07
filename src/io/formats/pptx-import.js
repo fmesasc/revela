@@ -579,6 +579,7 @@ async function themeOnlyPackage(zip, main, file) {
 export async function importPPTX(file) {
   const JSZip = await loadJSZip();
   const zip = await JSZip.loadAsync(file);
+  const mediaCache = new Map();            // (pictures by their file in the package: each read once, pptx media())
 
   // The main part: the presentation (ppt/presentation.xml), or a theme file's theme.
   const pkgRels = rels(await zip.file('_rels/.rels')?.async('string'), '');
@@ -690,10 +691,15 @@ export async function importPPTX(file) {
     let partRels = srels;
     const spidOf = new Map();
     let decorMode = false;       // walking a layout/master: only its own graphics, not its placeholders        // relationships of the part being walked (slide, layout or master)
-    const media = async rid => {
-      const t = partRels[rid]; if (!t || !zip.file(t.path)) return null;
-      const ext = t.path.split('.').pop().toLowerCase();
-      return `data:${MIME[ext] || 'image/png'};base64,${await zip.file(t.path).async('base64')}`;
+    // (Each file read once: a picture used on many slides — a background, a logo — is the same text every time,
+    // not one copy per slide: big presentations ran out of memory.)
+    const media = rid => {
+      const t = partRels[rid]; if (!t || !zip.file(t.path)) return Promise.resolve(null);
+      if (!mediaCache.has(t.path)) {
+        const ext = t.path.split('.').pop().toLowerCase();
+        mediaCache.set(t.path, zip.file(t.path).async('base64').then(b => `data:${MIME[ext] || 'image/png'};base64,${b}`));
+      }
+      return mediaCache.get(t.path);
     };
     // Walk the shape tree; groups map their children's coordinates.
     const walk = async (tree, map) => {

@@ -19,6 +19,7 @@ import { TRIGGER_JS, pollJS, liveDataJS, LIGHTBOX_JS, overviewJS } from '../runt
 import { ACTIVITIES, publicActivity, gradeAnswer, gradeActivity, pollLabels } from '../../features/live/poll.js';
 import { selfPacedRuntime } from '../runtime/selfpaced.js';
 import { slideTitle } from '../../features/document/a11y.js';
+import { blobMedia } from './blobmedia.js';
 import { createMediaPlayer, revelaMediaRuntime } from '../runtime/media.js';
 import { needsPlayer, mediaConfig, cameraSegment, cameraBoxCSS, cameraInnerHTML } from '../../features/live/media.js';
 import { createCameraEngine, revelaCameraRuntime } from '../runtime/camera.js';
@@ -175,7 +176,7 @@ function animAttrs(b, slide, a = b.animation, key = b.id) {
   const clip = (effect === 'clip3d' ? ` data-clip="${esc(a.clip || '*')}"${a.once ? ' data-clip-once' : ''}` : '')
     + (effect === 'pdfview' ? ` data-pdfgo="${esc(JSON.stringify(pdfStep(a)))}"` : '')
     + (MEDIA_FX.includes(effect) ? ` data-mfx="${effect}"` : '')
-    + (a.sound ? ` data-sound="${esc(a.sound)}"${a.sound === 'custom' && a.soundSrc && /^data:audio\//.test(a.soundSrc) ? ` data-sound-src="${esc(a.soundSrc)}"` : ''}` : '');
+    + (a.sound ? ` data-sound="${esc(a.sound)}"${a.sound === 'custom' && a.soundSrc && /^(data:audio\/|blob:)/.test(a.soundSrc) ? ` data-sound-src="${esc(a.soundSrc)}"` : ''}` : '');
   if (trigger && slide?.blocks.some(x => x.id === trigger))       // played on click of another object
     return src + ` class="rv-trig${isEntrance(effect) ? ' rv-in' : ''}" data-trig="${trigger}" data-kf="${effect === 'path' ? 'rvP' + cssKey(key) : effect === 'pdfview' || MEDIA_FX.includes(effect) ? 'none' : EFFECT_KF[effect] || 'rvIn'}"`
       + ` data-dur="${duration ?? 500}" data-del="${delay ?? 0}"` + clip;
@@ -542,7 +543,7 @@ function slideHTML(s, deck, figMap, plan = morphPlan(deck), fit = fitMode(deck))
   }).join('\n');
   const notes = (s.notes ? `<aside class="notes">${esc(s.notes)}</aside>` : '')
     // Voice-over: plays when the slide is shown (reveal.js's data-autoplay).
-    + (s.narration?.src && /^data:audio\/|^https:\/\//.test(s.narration.src) ? `<audio class="rv-narration" data-autoplay src="${esc(s.narration.src)}" preload="auto"></audio>` : '');
+    + (s.narration?.src && /^data:audio\/|^https:\/\/|^blob:/.test(s.narration.src) ? `<audio class="rv-narration" data-autoplay src="${esc(s.narration.src)}" preload="auto"></audio>` : '');
   const aa = (plan.marked.has(s.id) ? ' data-auto-animate' : '') + (s.aaDuration ? ` data-auto-animate-duration="${+s.aaDuration}"` : '') + (s.aaDelay ? ` data-auto-animate-delay="${+s.aaDelay}"` : '');
   // (A first animation "with/after previous" plays on its own when the slide comes in, as in PowerPoint.)
   const first = animEntries(s).find(e => !e.a.trigger), start = first && ['withPrev', 'afterPrev'].includes(first.a.start) ? ' data-rv-start' : '';
@@ -576,7 +577,8 @@ function revealOptions(deck, inApp) {
    ${o.parallax ? `parallaxBackgroundImage:${J(o.parallax)}, parallaxBackgroundSize:${J(o.parallaxSize || '')},` : ''}`;
 }
 export function buildHTML(deck = state.deck, opts = {}) {
-  return dedupeMedia(buildHTMLRaw(deck, opts));
+  // (Shown in this window: its big pictures, videos and sounds as blob: addresses, io/formats/blobmedia.js.)
+  return dedupeMedia(buildHTMLRaw(opts.inApp ? blobMedia(deck) : deck, opts));
 }
 // (Reveal is set to fill the screen as the editor shows the slide: no margin, and no cap on how far it
 // grows — reveal.js stops at 2× by default, which left wide borders on large or high-resolution screens.)
