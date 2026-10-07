@@ -2,6 +2,7 @@
 // then saves itself while one edits, or a PDF or PowerPoint copy that OneDrive shows with all its pages —,
 // and the chip by the title that says how it is going there.
 
+import { whileOpening } from '../shell/opening.js';
 import { esc } from '../../core/text.js';
 import { state } from '../../core/store.js';
 import { isBlankDeck } from '../../core/model.js';
@@ -71,7 +72,7 @@ export function openOneDrive({ mode = 'open' } = {}) {
     if (!isBlankDeck(state.deck) && !(await confirmDialog(t('¿Abrir otra presentación? Se perderá la actual si no la has guardado.'), { ok: t('Descartar la actual'), danger: true }))) return;
     note(t('Abriendo…'));
     try {
-      const r = await od.openOneDrive(f);
+      const r = await whileOpening(od.openOneDrive(f), f.name.replace(/\.revela\.json$/i, ''));
       if (r.file) { const { openPresentation } = await import('../shell/openfile.js'); await openPresentation(r.file); }
       close();
     } catch (e) { note(message(e)); }

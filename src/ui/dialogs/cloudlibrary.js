@@ -5,6 +5,7 @@
 // is a section apart (they can be starred, not filed). The server decides and
 // checks everything (server/cloudflare/docs.js): this page only asks and shows.
 
+import { whileOpening } from '../shell/opening.js';
 import { esc } from '../../core/text.js';
 import { state, replaceDeck } from '../../core/store.js';
 import { isBlankDeck, emptyDeck, UNTITLED, isUntitled } from '../../core/model.js';
@@ -307,7 +308,7 @@ function activate(item) {
 }
 async function openOne(id, then) {
   try {
-    if (cd.cloudDoc()?.id !== id) { await cd.flushCloud(); await cd.openDoc(id); history.replaceState(null, '', '?doc=' + id); }
+    if (cd.cloudDoc()?.id !== id) { await cd.flushCloud(); await whileOpening(cd.openDoc(id), docById(id)?.name); history.replaceState(null, '', '?doc=' + id); }
     closePage(); then?.();
   } catch (e) { alertDialog(errorText(e)); }
 }

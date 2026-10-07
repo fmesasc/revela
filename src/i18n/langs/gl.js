@@ -3561,4 +3561,5 @@ export default {
   "Pide los cambios que quieras sobre ella, o aplícala tal cual.": "Pide os cambios que queiras sobre el, ou aplícao tal cal.",
   "«Más moderna», «con mis colores», «el título centrado»…": "«Máis moderna», «coas miñas cores», «o título centrado»…",
   "La plantilla tal cual.": "O modelo tal cal.",
+  "Abriendo «{n}»…": "Abrindo «{n}»…",
 };

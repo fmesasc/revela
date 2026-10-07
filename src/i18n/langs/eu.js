@@ -3561,4 +3561,5 @@ export default {
   "Pide los cambios que quieras sobre ella, o aplícala tal cual.": "Eskatu nahi dituzun aldaketak, edo aplikatu dagoen bezala.",
   "«Más moderna», «con mis colores», «el título centrado»…": "«Modernoagoa», «nire koloreekin», «izenburua erdian»…",
   "La plantilla tal cual.": "Txantiloia dagoen bezala.",
+  "Abriendo «{n}»…": "«{n}» irekitzen…",
 };

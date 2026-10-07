@@ -40,6 +40,7 @@ import * as protect from '../../features/collab/protect.js';
 import { initRibbon, renderRibbon } from '../../ui/ribbon/ribbon.js';
 import { initContextMenu } from '../../ui/shell/contextmenu.js';
 import { initBusy } from '../../ui/shell/busy.js';
+import { openingScreen, whileOpening } from '../../ui/shell/opening.js';
 import { mountStage } from '../../ui/shell/stage.js';
 import * as palette from '../../ui/shell/palette.js';
 import { initDraw } from '../../ui/shell/draw.js';
@@ -326,7 +327,7 @@ if (hasAccounts()) {
   if (!testing) {
     // (A shared link, ?doc=: asked for at once, alongside the account, under a loading screen —
     // not the empty editor first and the presentation popping in later.)
-    const opening = docIdFrom() ? openingScreen() : null;
+    const opening = docIdFrom() ? openingScreen('', { delay: 0 }) : null;
     if (opening) openFromLink(undefined, { settle: opening }).finally(opening);
     refreshAccount().catch(() => {}).finally(() => { handleDesktopRequest(); });
     if (new URLSearchParams(location.search).has('paid')) { history.replaceState(null, '', location.pathname); alertDialog(t('¡Gracias! Tu compra se ha registrado.')); }
@@ -352,7 +353,7 @@ if (!testing) handleOpenWith();
 { const k = new URLSearchParams(location.search).get('template') || new URLSearchParams(location.search).get('plantilla');   // (?plantilla: its old name)
   if (!testing && k && Object.hasOwn(examples.EXAMPLES, k)) {
     history.replaceState(null, '', location.pathname);
-    examples.loadExample(k, i18n.currentLang()).then(d => { if (d) store.replaceDeck(d); }).catch(() => {});
+    whileOpening(examples.loadExample(k, i18n.currentLang())).then(d => { if (d) store.replaceDeck(d); }).catch(() => {});
   } }
 if (!testing) finishOpenRouterLogin().then(ok => { if (ok) { alertDialog(t('IA conectada con OpenRouter.')); reopenCreateDeck(); } })
   .catch(e => alertDialog(t('No se pudo conectar con OpenRouter: ') + e.message));
@@ -361,11 +362,3 @@ if (!testing) finishOpenRouterLogin().then(ok => { if (ok) { alertDialog(t('IA c
 if (!testing && 'serviceWorker' in navigator && location.protocol !== 'file:')
   navigator.serviceWorker.register('sw.js').catch(() => {});
 
-// The loading screen while a shared presentation opens; returns what removes it.
-function openingScreen() {
-  const el = document.createElement('div');
-  el.id = 'opening-doc'; el.setAttribute('role', 'status');
-  el.innerHTML = `<div class="od-box"><span class="od-spin" aria-hidden="true"></span><span>${t('Abriendo la presentación…')}</span></div>`;
-  document.body.appendChild(el);
-  return () => { if (el.classList.contains('done')) return; el.classList.add('done'); setTimeout(() => el.remove(), 250); };
-}

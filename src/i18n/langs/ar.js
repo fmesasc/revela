@@ -3561,4 +3561,5 @@ export default {
   "Pide los cambios que quieras sobre ella, o aplícala tal cual.": "اطلب ما تريد من تغييرات عليه، أو طبّقه كما هو.",
   "«Más moderna», «con mis colores», «el título centrado»…": "«أكثر حداثة»، «بألواني»، «العنوان في المنتصف»…",
   "La plantilla tal cual.": "القالب كما هو.",
+  "Abriendo «{n}»…": "جارٍ فتح «{n}»…",
 };

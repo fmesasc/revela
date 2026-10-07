@@ -3561,4 +3561,5 @@ export default {
   "Pide los cambios que quieras sobre ella, o aplícala tal cual.": "Vraag de wijzigingen die je wilt, of pas het toe zoals het is.",
   "«Más moderna», «con mis colores», «el título centrado»…": "„Moderner”, „met mijn kleuren”, „de titel gecentreerd”…",
   "La plantilla tal cual.": "Het sjabloon zoals het is.",
+  "Abriendo «{n}»…": "„{n}” wordt geopend…",
 };

@@ -3583,5 +3583,6 @@ export const ROWS = [
   ['Pide los cambios que quieras sobre ella, o aplícala tal cual.', 'Ask for any changes to it, or apply it as it is.', 'Demandez les modifications que vous voulez, ou appliquez-le tel quel.', 'Wünsche dir beliebige Änderungen daran oder wende sie so an, wie sie ist.', 'Chiedi le modifiche che vuoi, o applicalo così com\'è.', 'Pede as alterações que quiseres sobre ele, ou aplica-o tal como está.', 'Demana els canvis que vulguis sobre ella, o aplica-la tal qual.'],
   ['«Más moderna», «con mis colores», «el título centrado»…', '«More modern», «with my colours», «the title centred»…', '« Plus moderne », « avec mes couleurs », « le titre centré »…', '„Moderner“, „mit meinen Farben“, „Titel zentriert“…', '«Più moderno», «con i miei colori», «il titolo centrato»…', '«Mais moderno», «com as minhas cores», «o título centrado»…', '«Més moderna», «amb els meus colors», «el títol centrat»…'],
   ['La plantilla tal cual.', 'The template as it is.', 'Le modèle tel quel.', 'Die Vorlage, wie sie ist.', 'Il modello così com\'è.', 'O modelo tal como está.', 'La plantilla tal qual.'],
+  ['Abriendo «{n}»…', 'Opening «{n}»…', 'Ouverture de « {n} »…', '„{n}“ wird geöffnet…', 'Apertura di «{n}»…', 'A abrir «{n}»…', 'Obrint «{n}»…'],
 ];
 // Additional languages (partial; anything missing falls back to Spanish).

@@ -3,6 +3,7 @@
 // videos, sounds and 3D models (glTF, GLB, STL) are inserted where they are
 // dropped; a presentation (.json, .pptx, .odp) is opened; Markdown adds slides.
 
+import { whileOpening } from './opening.js';
 import { fileBlock, pdfToSlides, FILE_LIMIT } from '../../features/content/files.js';
 import { choosePdfMode } from '../dialogs/pdfmode.js';
 import { state, replaceDeck, currentSlide, amend } from '../../core/store.js';
@@ -58,7 +59,7 @@ const isThemeFile = f => /\.thmx$/i.test(f.name);
 export async function openPresentation(file) {
   if (isKeynote(file)) { keynoteHelp(); return false; }
   if (isThemeFile(file)) return useThemeOf(file);           // (a theme alone: applied to the open presentation)
-  try { replaceDeck(isODF(file) ? await importODP(file) : await importPPTX(file)); return true; }
+  try { replaceDeck(await whileOpening(() => (isODF(file) ? importODP(file) : importPPTX(file)), file.name)); return true; }
   catch (e) { alertDialog(t('No se pudo importar la presentación: ') + e.message); return false; }
 }
 // Design ▸ Themes: the theme of another presentation or template (.pptx,
@@ -147,7 +148,7 @@ export async function dropFiles(files, at = null) {
     if (isKeynote(doc)) { keynoteHelp(); return 0; }
     if (isThemeFile(doc)) return (await useThemeOf(doc)) ? 1 : 0;   // (a theme changes the open one: nothing to lose)
     if (!(await mayReplace())) return 0;
-    return (kindOf(doc) === 'project' ? await openProject(await doc.text()) : await openPresentation(doc)) ? 1 : 0;
+    return (kindOf(doc) === 'project' ? await openProject(await whileOpening(doc.text(), doc.name)) : await openPresentation(doc)) ? 1 : 0;
   }
   let n = 0;
   for (const f of list.filter(x => kindOf(x) === 'markdown')) if (insertMarkdown(await f.text())) n++;

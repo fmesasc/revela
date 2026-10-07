@@ -866,6 +866,24 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   const themeImport = async n => (/\.odp$/.test(n) ? R.odp.importODP : R.pptxImport.importPPTX)(await fixture(n));
   const colorMods = async (...a) => (await TW.eval("import('/src/features/design/colormods.js')")).colorMods(...a);
 
+  await test('abrir: «Abriendo «nombre»…» mientras se carga (solo si tarda), también al leer un PowerPoint', async () => {
+    const O = await TW.eval("import('/src/ui/shell/opening.js')");
+    let go; const slow = new Promise(ok => { go = ok; });
+    const quick = O.whileOpening(Promise.resolve(1), 'Rápida'); await quick; await sleep(300);
+    assert(!D.getElementById('opening-doc'), 'lo rápido no muestra nada');
+    const p = O.whileOpening(slow, 'Informe anual'); await sleep(350);
+    const el = D.getElementById('opening-doc');
+    assert(el && /Abriendo «Informe anual»…/.test(el.textContent) && el.querySelector('.od-spin'), 'lo que tarda: la pantalla con su nombre');
+    go(7); eq(await p, 7, 'devuelve lo abierto'); await sleep(300);
+    assert(!D.getElementById('opening-doc'), 'y se quita');
+    // A PowerPoint read (no request: the top bar doesn't see it).
+    const OF = await TW.eval("import('/src/ui/shell/openfile.js')"); let seen = '';
+    const watch = new TW.MutationObserver(() => { const x = D.getElementById('opening-doc'); if (x) seen = x.textContent; }); watch.observe(D.body, { childList: true, subtree: true });
+    await OF.openPresentation(await fixture('office.pptx')); watch.disconnect();
+    assert(R.state.deck.officeTheme && (seen === '' || /office\.pptx/.test(seen)), 'el PowerPoint abierto (con su nombre en la pantalla si tardó): ' + seen);
+    reset();
+  });
+
   await test('temas: un PowerPoint con el tema de Office se detecta (nombre, colores, fuentes) y los tonos del tema se resuelven como en PowerPoint', async () => {
     const d = await themeImport('office.pptx');
     eq(d.officeTheme?.name, 'Office Theme', 'nombre del tema');

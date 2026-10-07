@@ -1,5 +1,6 @@
 // "New from template" dialog: thumbnails of each gallery deck's cover.
 
+import { whileOpening } from '../shell/opening.js';
 import { galleryNotice } from '../shell/notices.js';
 import { isBlankDeck, emptyDeck } from '../../core/model.js';
 import { state, replaceDeck, currentSlide } from '../../core/store.js';
@@ -103,7 +104,7 @@ export function galleryInto(host, { close = () => {}, scroller = null, paths = t
     btn.innerHTML = `<div class="thumb-canvas"><i class="ms gal-wait">slideshow</i></div>`;
     const lab = document.createElement('span'); lab.innerHTML = `<b></b><small></small>`; lab.querySelector('b').textContent = t(e.name); lab.querySelector('small').textContent = t(e.summary);
     btn.append(lab);
-    btn.addEventListener('click', async () => { const d = await loadExample(key).then(x => x && fitTranslated(x)); if (d) replaceWith(d, t('¿Abrir el ejemplo? Se perderá la presentación actual si no la has guardado.')); });
+    btn.addEventListener('click', async () => { const d = await whileOpening(loadExample(key).then(x => x && fitTranslated(x)), t(e.name)); if (d) replaceWith(d, t('¿Abrir el ejemplo? Se perderá la presentación actual si no la has guardado.')); });
     ex.appendChild(btn); seen.observe(btn); return btn;
   });
   // (In another language, the names and summaries come with the gallery: one file for all of them.)

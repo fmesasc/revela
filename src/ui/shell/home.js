@@ -2,6 +2,7 @@
 // with the Revela presentations in Drive, most recent first), the Drive save
 // status next to the name, and what to do if it changed on another device.
 
+import { whileOpening } from './opening.js';
 import { esc } from '../../core/text.js';
 import { popupMenu } from './menu.js';
 import { state, replaceDeck } from '../../core/store.js';
@@ -147,7 +148,7 @@ export async function openHome() {
     if (file) {
       if (file.dataset.id === gd.linkedFile()?.id) { close(); return; }
       if (!(await keepCurrent())) return;
-      try { await gd.openPresentation(file.dataset.id); close(); } catch (err) { friendly(err); }
+      try { await whileOpening(gd.openPresentation(file.dataset.id), file.querySelector('.hf-name')?.textContent || ''); close(); } catch (err) { friendly(err); }
       return;
     }
     const act = e.target.closest('[data-home]')?.dataset.home; if (!act) return;

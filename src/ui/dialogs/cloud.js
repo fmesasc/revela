@@ -4,6 +4,7 @@
 // versions. Everything is decided by the server (server/cloudflare/docs.js):
 // these dialogs only ask it and show what it says.
 
+import { whileOpening } from '../shell/opening.js';
 import { esc } from '../../core/text.js';
 import { state } from '../../core/store.js';
 import * as acc from '../../io/cloud/account.js';
@@ -262,14 +263,14 @@ export async function openFromLink(id = cd.docIdFrom(), { settle = () => {} } = 
   if (!id) return false;
   const q = new URLSearchParams(location.search), lti = /^[\w-]{20,64}$/.test(q.get('lti') || '') ? q.get('lti') : null;
   try {
-    await cd.openDoc(id);
+    await whileOpening(cd.openDoc(id));
     if (lti || q.get('self') === '1') present({ selfPaced: true, fullscreen: false, ...(lti && { answer: (pollId, answer) => acc.api('lti/answer', { lti, pollId, answer }) }) });
     return true;
   }
   catch (e) {
     settle();
     if (e.status === 401 && await confirmDialog(t('Esta presentación está compartida con personas concretas. Inicia sesión con tu cuenta de Google para abrirla.'))) {
-      try { await signInWithTerms(); await cd.openDoc(id); return true; } catch (err) { if (err.message !== 'CANCELLED') alertDialog(errorText(err)); }
+      try { await signInWithTerms(); await whileOpening(cd.openDoc(id)); return true; } catch (err) { if (err.message !== 'CANCELLED') alertDialog(errorText(err)); }
     } else if (e.status === 403) alertDialog(t('Tu cuenta ({email}) no tiene acceso a esta presentación. Pide a quien te la envió que te añada.').replace('{email}', acc.account()?.email || ''));
     else if (e.status === 404) alertDialog(t('Esta presentación ya no está en la nube.'));
     else if (e.status !== 401) alertDialog(errorText(e));

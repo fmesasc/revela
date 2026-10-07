@@ -4,6 +4,7 @@
 // to view the presentation (full screen, like a preview) or edit it — the click
 // is also what lets the sign-in window open — and loads it from there.
 
+import { whileOpening } from './opening.js';
 import { replaceDeck } from '../../core/store.js';
 import { emptyDeck } from '../../core/model.js';
 import * as gdrive from '../../io/cloud/gdrive.js';
@@ -53,8 +54,8 @@ export async function handleOpenWith(req = openRequest()) {
     // (A .pptx / .odp from Drive is imported: a copy, which the question says.)
     const file = req.service === 'drive' ? await gdrive.fetchImportable(req.id) : null;
     const how = await askHow(req.service === 'drive' ? 'Google Drive' : 'Dropbox', !!file); if (!how) return false;
-    if (req.service === 'drive') { if (file) await openPresentation(file); else await gdrive.openPresentation(req.id); }
-    else { await oc.connect('dropbox'); await oc.openFromCloud('dropbox', req.id); }
+    if (req.service === 'drive') { if (file) await openPresentation(file); else await whileOpening(gdrive.openPresentation(req.id)); }
+    else { await oc.connect('dropbox'); await whileOpening(oc.openFromCloud('dropbox', req.id)); }
     if (how === 'view') present({ fullscreen: true });
     return true;
   } catch (e) {

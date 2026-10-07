@@ -2,6 +2,7 @@
 // explains how to get one (and takes it); signed in, it lists the presentations
 // saved there, opens one, or saves this one.
 
+import { whileOpening } from '../shell/opening.js';
 import { esc } from '../../core/text.js';
 import { currentLang, t } from '../../i18n/index.js';
 import * as oc from '../../io/cloud/othercloud.js';
@@ -73,7 +74,7 @@ export function openCloud(id) {
         + `<button class="mini2" data-i="${i}">${t('Abrir')}</button></li>`).join('')}</ul>` : `<p class="host-help">${t('Todavía no hay presentaciones guardadas aquí.')}</p>`;
       box.querySelectorAll('[data-i]').forEach(b => b.addEventListener('click', async () => {
         if (!isBlankDeck(state.deck) && !(await confirmDialog(t('Se cerrará la presentación actual (sigue guardada en este navegador si la guardaste). ¿Abrir la otra?')))) return;
-        try { await oc.openFromCloud(id, items[+b.dataset.i].id); close(); } catch (e) { note(message(e), true); }
+        try { await whileOpening(oc.openFromCloud(id, items[+b.dataset.i].id), items[+b.dataset.i].name.replace(/\.revela\.json$/i, '')); close(); } catch (e) { note(message(e), true); }
       }));
     } catch (e) { box.textContent = ''; note(message(e), true); }
   }
