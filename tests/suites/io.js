@@ -854,7 +854,10 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     zip.file('ppt/slides/slide1.xml', `<p:sld ${NS}><p:cSld><p:spTree>${arrow(2, 500000, 6000000)}${arrow(3, 500000, 250000)}`
       + `<p:sp><p:nvSpPr><p:cNvPr id="4" name="T"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr>${xf(500000, 3000000, 400000, 300000)}<a:prstGeom prst="rect"/></p:spPr><p:txBody><a:bodyPr wrap="none"/><a:p><a:r><a:rPr sz="1400"/><a:t>Conceptual</a:t></a:r></a:p></p:txBody></p:sp>`
       + `<p:sp><p:nvSpPr><p:cNvPr id="5" name="G"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>${xf(500000, 4000000, 3000000, 800000)}<a:prstGeom prst="rect"/><a:solidFill><a:srgbClr val="E2F0D9"/></a:solidFill><a:effectLst><a:glow rad="139700"><a:srgbClr val="70AD47"><a:alpha val="40000"/></a:srgbClr></a:glow></a:effectLst></p:spPr><p:txBody><a:bodyPr/><a:p><a:r><a:t>Modular</a:t></a:r></a:p></p:txBody></p:sp>`
+      + `<p:pic><p:nvPicPr><p:cNvPr id="6" name="Gráfico 6"/><p:cNvPicPr/><p:nvPr/></p:nvPicPr><p:blipFill><a:blip><a:extLst><a:ext uri="{96DAC541-7B7A-43D3-8B79-37D633B846F1}"><asvg:svgBlip xmlns:asvg="http://schemas.microsoft.com/office/drawing/2016/SVG/main" r:embed="rId9"/></a:ext></a:extLst></a:blip><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr>${xf(6000000, 3000000, 700000, 700000)}<a:prstGeom prst="rect"/></p:spPr></p:pic>`
       + `</p:spTree></p:cSld></p:sld>`);
+    zip.file('ppt/slides/_rels/slide1.xml.rels', rels('<Relationship Id="rId9" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image9.svg"/>'));
+    zip.file('ppt/media/image9.svg', '<svg viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg"><path d="M10 10h76v76H10z" fill="#70AD47"/></svg>');
     const OF = await W.eval("import('/src/ui/shell/openfile.js')");
     await OF.openPresentation(new W.File([await zip.generateAsync({ type: 'blob' })], 'flechas.pptx')); await sleep(40);
     const bl = R.state.deck.slides[0].blocks, arrows = bl.filter(b => b.shape === 'arrow');
@@ -866,6 +869,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const tx = bl.find(b => /Conceptual/.test(b.html || ''));
     assert(tx.noWrap && D.querySelector(`#stage .block[data-id="${tx.id}"] .rich`).style.whiteSpace === 'nowrap' && /white-space:nowrap/.test(R.io.buildHTML()), 'el texto que no se parte, entero (en el editor y al presentar)');
     const g = bl.find(b => b.fill === '#e2f0d9' || /Modular/.test(b.html || ''));
+    assert(R.state.deck.slides[0].blocks.some(b => b.type === 'image' && /^data:image\/svg\+xml/.test(b.src)), 'un icono de Office solo en SVG (sin PNG): llega');
     const glow = bl.find(b => b.shadow && b.shadow.x === 0 && b.shadow.y === 0);
     assert(glow && glow.shadow.blur > 5, 'el brillo, como un halo alrededor: ' + JSON.stringify(glow?.shadow));
   });

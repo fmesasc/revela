@@ -846,7 +846,10 @@ export async function importPPTX(file) {
       if (decorMode && phOf(pic)) return;
       const geo = xfrmOf(kid(pic, 'p:spPr')); const blip = all(pic, 'a:blip')[0];
       if (!geo || !blip) return;
-      let src = await media(blip.getAttribute('r:embed')); if (!src) return;
+      // (An icon from Office's library is an SVG — asvg:svgBlip, in the blip's extensions —, often with no PNG for older
+      // versions: its SVG, sharp at any size; else the picture.)
+      const svg = all(blip, 'asvg:svgBlip')[0]?.getAttribute('r:embed');
+      let src = (svg && await media(svg)) || await media(blip.getAttribute('r:embed')); if (!src) return;
       // A video or a sound (its picture is the poster, shown until it plays): the file inside the presentation
       // (p14:media) or linked (a:videoFile r:link: inside too, or an address on the web). Before, only the poster came.
       const vf = all(pic, 'a:videoFile')[0], af = all(pic, 'a:audioFile')[0];
