@@ -291,6 +291,18 @@ Write everything in ${opts.language || lang()}.` },
   const how = { topic: opts.topic || str(res.title), sourced: !!(str(opts.source) || opts.research), images: !!opts.images };
   let q = deckQuality(specs, how); specs.qualityFirst = q;
   if (q.score < 75 || q.problems.some(p => ['invented-figures', 'off-code', 'no-picture'].includes(p.code))) { await richer(specs, weakSlides(q, specs), opts, q).catch(() => {}); q = deckQuality(specs, how); }
+  // The last net, not up to the model: figures still without anything behind them are never shown as facts — on cards,
+  // each value becomes a gap to fill in («[1.200.000 €]»); a chart, a list with a gap for each of its data.
+  const still = q.problems.find(p => p.code === 'invented-figures');
+  if (still) {
+    for (const i of still.slides) {
+      const sp = specs[i];
+      if (sp.kind === 'stats') sp.stats = (sp.stats || []).map(s => (/\d/.test(s.value) && !/\[[^\]]+\]/.test(s.value) ? { ...s, value: `[${s.value}]` } : s));
+      else if (sp.kind === 'chart') { const c = sp.chart || {}; specs[i] = { kind: 'bullets', title: sp.title, bullets: (c.labels || []).map(l => `${l}: [${c.series_name || '…'}]`), notes: sp.notes }; }
+      delete specs[i].source;
+    }
+    q = deckQuality(specs, how);
+  }
   specs.title = str(res.title); specs.design = DECK_DESIGNS[res.design] ? res.design : null; specs.quality = q;
   return specs;
 }

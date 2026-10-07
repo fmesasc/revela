@@ -35,13 +35,15 @@ export function deckQuality(specs, { topic = '', sourced = false, images = false
   }).filter(i => i >= 0);
   const empty = body.filter(x => { const sp = x.sp; return sp.kind === 'bullets' ? !bulletsOf(sp).length : sp.kind === 'code' ? !str(sp.code?.code || sp.code) : sp.kind === 'steps' || sp.kind === 'timeline' ? !(sp.steps || []).length : sp.kind === 'features' ? !(sp.items || []).length : false; });
   // Figures with no data behind them (none given) and no source said: invented. A placeholder for the person's own
-// («[ventas]») is fine, and so are figures that say where they come from (or that they are an example).
+  // («[ventas]») is fine, and so are figures that say where they come from (or that they are an example).
   const hasFigure = v => /\d/.test(str(v)) && !/\[[^\]]+\]/.test(str(v));
   // («Internal data», «company figures»: a source the model can't have when none was given — the figure is invented.)
   const ownData = /intern|interno|propi|compañ|company|empresa|organi[sz]a|corporat|nuestr|\bour\b|objetivo|target|meta/i;
   // («Example data» on a claim about the world, not a tutorial's dataset: invented too.)
   const example = /ejemplo|example|exemple|illustrat|ilustrativ|hipot[eé]tic|hypothetic/i;
-  const invented = sourced ? [] : body.filter(x => (!str(x.sp.source) || ownData.test(x.sp.source) || (!tech && example.test(x.sp.source))) && (x.sp.kind === 'stats' && (x.sp.stats || []).some(s => hasFigure(s.value))) || (x.sp.kind === 'chart' && (x.sp.chart?.values || []).length));
+  const unbacked = sp => !str(sp.source) || ownData.test(sp.source) || (!tech && example.test(sp.source));
+  const figures = sp => (sp.kind === 'stats' && (sp.stats || []).some(s => hasFigure(s.value))) || (sp.kind === 'chart' && (sp.chart?.values || []).length > 0);
+  const invented = sourced ? [] : body.filter(x => unbacked(x.sp) && figures(x.sp));
   const noPicture = images ? [] : body.filter(x => x.sp.kind === 'image' && !x.sp.figure);
   const offCode = tech ? [] : code;
   const problems = [];
