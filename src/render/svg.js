@@ -150,7 +150,7 @@ export function connectorSVG(b, fromB, toB, W, H) {
 }
 
 // Chart as inline SVG (no library, self‑contained on export). Bar or pie.
-export function chartSig(b) { return (b.chartType || 'bar') + '|' + (b.chartType === 'bubble' ? b.w + 'x' + b.h : (b.w / b.h).toFixed(2)) + '|' + (b.color || '') + '|' + (b.map ? b.map.scope + b.map.regions.length : '') + '|' + JSON.stringify([b.data || [], b.series || [], b.combo || 0, b.seriesName || '', b.grid, b.dataLabels, b.xTitle, b.yTitle, b.yMin, b.yMax, b.xMin, b.xMax, b.bins, b.legend, b.labelWidth, b.labelColor || b.textColor || '']); }
+export function chartSig(b) { return (b.chartType || 'bar') + '|' + (b.chartType === 'bubble' ? b.w + 'x' + b.h : (b.w / b.h).toFixed(2)) + '|' + (b.color || '') + '|' + (b.map ? b.map.scope + b.map.regions.length : '') + '|' + JSON.stringify([b.data || [], b.series || [], b.combo || 0, b.y2 ? [b.y2Title, b.y2Min, b.y2Max] : 0, b.seriesName || '', b.grid, b.dataLabels, b.xTitle, b.yTitle, b.yMin, b.yMax, b.xMin, b.xMax, b.bins, b.legend, b.labelWidth, b.labelColor || b.textColor || '']); }
 // A histogram: the values (labels don't matter) grouped into ranges (Sturges' rule), counted.
 export function histogramBins(values, k = 0, edges = false) {
   const v = values.filter(Number.isFinite); if (!v.length) return [];
@@ -258,6 +258,10 @@ function drawChart(b) {
   // be negative (bars grow from the zero line); optional gridlines with the
   // scale (b.grid), data labels (b.dataLabels), axis titles (b.xTitle/yTitle)
   // and the vertical axis' ends (b.yMin/b.yMax: to widen a narrow range).
+  // A second axis (b.y2, as Excel's secondary axis): a combo's lines — or, in a line or area chart, the series after the
+  // first — on their own scale at the right (b.y2Title, b.y2Min/b.y2Max), so a climograph's rain in mm and temperature
+  // in °C both fill the plot. Both scales are then shown (two lines over one unnamed scale can't be read), each in its
+  // series' colour when it holds one.
   // Stacked bars: each category one column, the series one on another (100 %: as shares of the column).
   // Stacked areas (stackedArea): each series a band over the ones before.
   const stacked = b.chartType === 'stacked' || b.chartType === 'stacked100', pct = b.chartType === 'stacked100', sArea = b.chartType === 'stackedArea';
@@ -266,14 +270,21 @@ function drawChart(b) {
   const n = data.length || 1, sums = stacked ? data.map((_, i) => [ser.reduce((a, x) => a + Math.max(0, x.values[i]), 0), ser.reduce((a, x) => a + Math.min(0, x.values[i]), 0)]) : [];
   const cum = [];
   if (sArea) ser.forEach((x, k) => cum.push(x.values.map((v, i) => (k ? cum[k - 1][i] : 0) + (+v || 0))));
-  const all = stacked ? sums.flat() : sArea ? cum.flat() : ser.flatMap(x => x.values).filter(v => v != null);
+  const two2 = !!b.y2 && !stacked && !sArea && ser.length > 1 && (b.combo ? ser.some(x => x.type === 'bar') && ser.some(x => x.type !== 'bar') : ['line', 'area'].includes(b.chartType));
+  if (two2) ser = ser.map((x, k) => ({ ...x, axis2: b.combo ? x.type !== 'bar' : k > 0 }));
+  const vals = list => list.flatMap(x => x.values).filter(v => v != null);
+  const all = stacked ? sums.flat() : sArea ? cum.flat() : vals(ser.filter(x => !x.axis2));
   const T = ser.length > 1 ? 9 : 4;                          // room for the legend
-  const sc = axisScale(Math.min(0, ...all), Math.max(0, ...all), b.yMin, b.yMax, !!b.grid), { lo, hi } = sc;
+  const scale = !!b.grid || two2;
+  const sc = axisScale(Math.min(0, ...all), Math.max(0, ...all), b.yMin, b.yMax, scale), { lo, hi } = sc;
+  const all2 = two2 ? vals(ser.filter(x => x.axis2)) : [];
+  const sc2 = two2 ? axisScale(Math.min(0, ...all2), Math.max(0, ...all2), b.y2Min, b.y2Max, true) : null;
   const num = v => (pct ? Math.round(v) + ' %' : fmtNum(v));
-  // (Room for the scale — as wide as its longest number — and the y title.)
-  const L = (b.grid ? Math.max(8, Math.max(...sc.ticks.map(v => textWidth(num(v), 3, b))) + 2) : 0) + (b.yTitle ? 4 : 0);
+  // (Room for the scale — as wide as its longest number — and the y title; the second scale's at the right.)
+  const L = (scale ? Math.max(8, Math.max(...sc.ticks.map(v => textWidth(num(v), 3, b))) + 2) : 0) + (b.yTitle ? 4 : 0);
+  const R2 = two2 ? Math.max(8, Math.max(...sc2.ticks.map(v => textWidth(num(v), 3, b))) + 2) + (b.y2Title ? 4 : 0) : 0, RX = 100 - R2;
   const barSer = ser.filter(x => x.type === 'bar'), lineSer = sArea ? [] : ser.filter(x => x.type !== 'bar');
-  const W = 100 - L, gap = W / n, [, sy] = chartSqueeze(b);
+  const W = 100 - L - R2, gap = W / n, [, sy] = chartSqueeze(b);
   // The categories' names: one size for all; long ones in two lines (and the plot a little shorter).
   const slot = barSer.length || !sArea && b.chartType !== 'area' ? gap : (n > 1 ? W / (n - 1) : W), edges = b._edges;   // (as wide as lx below spaces them)
   let fit, every = 1;
@@ -285,13 +296,19 @@ function drawChart(b) {
   const lh = fit.fs * 1.1 * sy, two = fit.lines.some(l => l.length > 1);
   const B = (b.xTitle ? 46 : 50) - (two ? lh : 0);           // plot bottom (as before without the new options)
   const Y = v => B - (v - lo) / (hi - lo) * (B - T), Yc = v => Y(Math.min(hi, Math.max(lo, v)));
+  const Y2 = v => B - (v - sc2.lo) / (sc2.hi - sc2.lo) * (B - T), Yc2 = v => Y2(Math.min(sc2.hi, Math.max(sc2.lo, v)));
+  const Yof = x => (x.axis2 ? Yc2 : Yc);
+  // (A scale's numbers in its series' colour when it holds just one; else grey.)
+  const inkOf = list => (two2 && list.length === 1 ? list[0].color : '#8a8a8a');
   const base = Math.min(hi, Math.max(lo, 0)), Y0 = Y(base);
   const bw = gap * (b._adjacent ? 0.96 : 0.6) / (stacked ? 1 : Math.max(1, barSer.length));
   const X = i => L + gap * i + gap / 2;
   const dl = (x, y, v, c) => (b.dataLabels ? `<text x="${x.toFixed(1)}" y="${(v < 0 ? y + 4 : y - 1.2).toFixed(1)}" font-size="3.2" text-anchor="middle" fill="${c}">${escSvg(num(v))}</text>` : '');
-  const grid = b.grid ? sc.ticks.map(v =>
-    `<line x1="${L}" y1="${Y(v).toFixed(1)}" x2="100" y2="${Y(v).toFixed(1)}" stroke="#8a8a8a" stroke-opacity="0.3" stroke-width="0.3" vector-effect="non-scaling-stroke"/>`
-    + `<text x="${(L - 1).toFixed(1)}" y="${(Y(v) + 1.2).toFixed(1)}" font-size="3" text-anchor="end" fill="#8a8a8a">${escSvg(num(v))}</text>`).join('') : '';
+  const ink1 = inkOf(ser.filter(x => !x.axis2)), ink2 = inkOf(ser.filter(x => x.axis2));
+  const grid = (scale ? sc.ticks.map(v =>
+    (b.grid ? `<line x1="${L}" y1="${Y(v).toFixed(1)}" x2="${+RX.toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="#8a8a8a" stroke-opacity="0.3" stroke-width="0.3" vector-effect="non-scaling-stroke"/>` : '')
+    + `<text x="${(L - 1).toFixed(1)}" y="${(Y(v) + 1.2).toFixed(1)}" font-size="3" text-anchor="end" fill="${ink1}">${escSvg(num(v))}</text>`).join('') : '')
+    + (two2 ? sc2.ticks.map(v => `<text x="${(RX + 1).toFixed(1)}" y="${(Y2(v) + 1.2).toFixed(1)}" font-size="3" fill="${ink2}">${escSvg(num(v))}</text>`).join('') : '');
   const up = data.map(() => 0), down = data.map(() => 0);
   const bars = stacked ? barSer.map(x => x.values.map((v, i) => {
     const bot = v >= 0 ? up[i] : down[i], top = bot + v; if (v >= 0) up[i] = top; else down[i] = top;
@@ -305,7 +322,7 @@ function drawChart(b) {
   // Lines: centred on their category (as PowerPoint draws them, and as on the bars of a combo) — from edge to edge, the
   // first and last values' labels were cut in half by the chart's sides; an area chart's fill, across the full width.
   const lx = i => (barSer.length || !sArea && b.chartType !== 'area' ? X(i) : (n > 1 ? L + i * W / (n - 1) : L + W / 2));
-  const P = (i, v) => `${lx(i).toFixed(1)},${Yc(v).toFixed(1)}`;
+  const P = (i, v, y = Yc) => `${lx(i).toFixed(1)},${y(v).toFixed(1)}`;
   const lines = sArea ? ser.map((x, k) => {
     const top = cum[k], bot = k ? cum[k - 1] : top.map(() => base), pts = top.map((v, i) => P(i, v)).join(' ');
     const labels = b.dataLabels ? x.values.map((v, i) => { const h = Yc(bot[i]) - Yc(top[i]);
@@ -316,19 +333,21 @@ function drawChart(b) {
   }).join('') : lineSer.map((x, k) => {
     // (Split at the gaps: one stretch of line, and of area, per run of values.)
     const runs = []; x.values.forEach((v, i) => { if (v == null) return; const r = runs[runs.length - 1]; if (r && r[r.length - 1] === i - 1) r.push(i); else runs.push([i]); });
+    const Yx = Yof(x), Yx0 = x.axis2 ? Y2(Math.min(sc2.hi, Math.max(sc2.lo, 0))) : Y0;
     return runs.map(r => {
-      const pts = r.map(i => P(i, x.values[i])).join(' ');
+      const pts = r.map(i => P(i, x.values[i], Yx)).join(' ');
       const area = b.chartType === 'area'
-        ? `<polygon points="${+lx(r[0]).toFixed(1)},${Y0.toFixed(1)} ${pts} ${+lx(r[r.length - 1]).toFixed(1)},${Y0.toFixed(1)}" fill="${x.color}" opacity="${k ? 0.18 : 0.25}"/>` : '';
-      const dots = r.map(i => `<circle cx="${lx(i).toFixed(1)}" cy="${Yc(x.values[i]).toFixed(1)}" r="1.3" fill="${x.color}"/>` + dl(lx(i), Yc(x.values[i]) - 1, x.values[i], x.color)).join('');
+        ? `<polygon points="${+lx(r[0]).toFixed(1)},${Yx0.toFixed(1)} ${pts} ${+lx(r[r.length - 1]).toFixed(1)},${Yx0.toFixed(1)}" fill="${x.color}" opacity="${k ? 0.18 : 0.25}"/>` : '';
+      const dots = r.map(i => `<circle cx="${lx(i).toFixed(1)}" cy="${Yx(x.values[i]).toFixed(1)}" r="1.3" fill="${x.color}"/>` + dl(lx(i), Yx(x.values[i]) - 1, x.values[i], x.color)).join('');
       return `${area}${r.length > 1 ? `<polyline points="${pts}" fill="none" stroke="${x.color}" stroke-width="1.2" vector-effect="non-scaling-stroke"/>` : ''}${dots}`;
     }).join('');
   }).join('');
-  const zero = lo < 0 && hi > 0 ? `<line x1="${L}" y1="${Y0.toFixed(1)}" x2="100" y2="${Y0.toFixed(1)}" stroke="#8a8a8a" stroke-width="0.5" vector-effect="non-scaling-stroke"/>` : '';
+  const zero = lo < 0 && hi > 0 ? `<line x1="${L}" y1="${Y0.toFixed(1)}" x2="${+RX.toFixed(1)}" y2="${Y0.toFixed(1)}" stroke="#8a8a8a" stroke-width="0.5" vector-effect="non-scaling-stroke"/>` : '';
   const lab = (x, ls) => ls.map((l, k) => `<text x="${x.toFixed(1)}" y="${(B + 4 + fit.fs * sy + k * lh).toFixed(1)}" font-size="${+fit.fs.toFixed(2)}" text-anchor="middle" fill="#8a8a8a">${escSvg(l)}</text>`).join('');
   const labels = edges ? edges.map((_, i) => lab(L + gap * i, fit.lines[i])).join('') : data.map((d, i) => lab(barSer.length ? X(i) : lx(i), fit.lines[i])).join('');
   const titles = (b.xTitle ? `<text x="${(L + W / 2).toFixed(1)}" y="59" font-size="3.6" text-anchor="middle" fill="#8a8a8a">${escSvg(b.xTitle)}</text>` : '')
-    + (b.yTitle ? `<text x="2.6" y="${((T + B) / 2).toFixed(1)}" font-size="3.6" text-anchor="middle" fill="#8a8a8a" transform="rotate(-90 2.6 ${((T + B) / 2).toFixed(1)})">${escSvg(b.yTitle)}</text>` : '');
+    + (b.yTitle ? `<text x="2.6" y="${((T + B) / 2).toFixed(1)}" font-size="3.6" text-anchor="middle" fill="#8a8a8a" transform="rotate(-90 2.6 ${((T + B) / 2).toFixed(1)})">${escSvg(b.yTitle)}</text>` : '')
+    + (two2 && b.y2Title ? `<text x="97.4" y="${((T + B) / 2).toFixed(1)}" font-size="3.6" text-anchor="middle" fill="#8a8a8a" transform="rotate(90 97.4 ${((T + B) / 2).toFixed(1)})">${escSvg(b.y2Title)}</text>` : '');
   const legend = seriesLegend(ser);
   return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">${grid}${bars}${lines}${zero}${labels}${titles}${legend}</svg>`;
 }

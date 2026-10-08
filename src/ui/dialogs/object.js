@@ -174,6 +174,12 @@ export function openChartData(b) {
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <label class="fr-l" title="${t('Vacío: automático')}">${t('Mínimo del eje de valores')} <input type="number" step="any" class="ch-ymin" style="width:7em" value="${b.yMin ?? ''}" placeholder="${t('Automático')}"></label>
       <label class="fr-l" title="${t('Vacío: automático')}">${t('Máximo del eje de valores')} <input type="number" step="any" class="ch-ymax" style="width:7em" value="${b.yMax ?? ''}" placeholder="${t('Automático')}"></label></div>
+    <div class="ch-y2-box">
+      <label class="fr-chk" title="${t('Las líneas del combinado (o las series después de la primera) con su propia escala: para dos magnitudes distintas, como la lluvia y la temperatura de un climograma')}"><input type="checkbox" class="ch-y2"${b.y2 ? ' checked' : ''}> ${t('Segundo eje a la derecha')}</label>
+      <div class="ch-y2-opts" style="display:flex;gap:8px;flex-wrap:wrap">
+        <label class="fr-l">${t('Título del segundo eje')} <input type="text" class="ch-y2t" value="${(b.y2Title || '').replace(/"/g, '&quot;')}"></label>
+        <label class="fr-l">${t('Mínimo')} <input type="number" step="any" class="ch-y2min" style="width:7em" value="${b.y2Min ?? ''}" placeholder="${t('Automático')}"></label>
+        <label class="fr-l">${t('Máximo')} <input type="number" step="any" class="ch-y2max" style="width:7em" value="${b.y2Max ?? ''}" placeholder="${t('Automático')}"></label></div></div>
     <div class="ch-xy" style="display:flex;gap:8px;flex-wrap:wrap">
       <label class="fr-l">${t('Mínimo del eje horizontal')} <input type="number" step="any" class="ch-xmin" style="width:7em" value="${b.xMin ?? ''}" placeholder="${t('Automático')}"></label>
       <label class="fr-l">${t('Máximo del eje horizontal')} <input type="number" step="any" class="ch-xmax" style="width:7em" value="${b.xMax ?? ''}" placeholder="${t('Automático')}"></label></div>
@@ -189,8 +195,10 @@ export function openChartData(b) {
   const showFor = () => { const v = back.querySelector('.ch-type').value;
     back.querySelector('.ch-xy').style.display = ['scatter', 'bubble'].includes(v) ? 'flex' : 'none';
     back.querySelector('.ch-hist').style.display = v === 'histogram' ? '' : 'none';
-    back.querySelector('.ch-pie').style.display = ['pie', 'doughnut'].includes(v) ? '' : 'none'; };
-  back.querySelector('.ch-type').addEventListener('change', showFor); showFor();
+    back.querySelector('.ch-pie').style.display = ['pie', 'doughnut'].includes(v) ? '' : 'none';
+    back.querySelector('.ch-y2-box').style.display = ['bar', 'line', 'area'].includes(v) ? '' : 'none';
+    back.querySelector('.ch-y2-opts').style.display = back.querySelector('.ch-y2').checked ? 'flex' : 'none'; };
+  back.querySelector('.ch-type').addEventListener('change', showFor); back.querySelector('.ch-y2').addEventListener('change', showFor); showFor();
   let ownTouched = false;   // (the items' colours sent only if changed here: else each keeps its own, by name)
   back.querySelectorAll('.ch-own-c').forEach(c => c.addEventListener('input', () => { ownTouched = true; back.querySelector(`.ch-own-on[data-i="${c.dataset.i}"]`).checked = true; }));
   back.querySelectorAll('.ch-own-on').forEach(c => c.addEventListener('change', () => { ownTouched = true; }));
@@ -204,7 +212,8 @@ export function openChartData(b) {
       color: back.querySelector('.ch-color').value, combo: back.querySelector('.ch-combo').checked,
       grid: back.querySelector('.ch-grid').checked, dataLabels: back.querySelector('.ch-labels').checked,
       xTitle: back.querySelector('.ch-xt').value.trim(), yTitle: back.querySelector('.ch-yt').value.trim(),
-      yMin: numOf('.ch-ymin'), yMax: numOf('.ch-ymax'), xMin: numOf('.ch-xmin'), xMax: numOf('.ch-xmax'),
+      yMin: numOf('.ch-ymin'), yMax: numOf('.ch-ymax'),
+      y2: back.querySelector('.ch-y2').checked || undefined, y2Title: back.querySelector('.ch-y2t').value.trim() || undefined, y2Min: numOf('.ch-y2min'), y2Max: numOf('.ch-y2max'), xMin: numOf('.ch-xmin'), xMax: numOf('.ch-xmax'),
       bins: numOf('.ch-bins') > 0 ? Math.round(numOf('.ch-bins')) : undefined, legend: back.querySelector('.ch-legend').checked ? undefined : false,
       labelColor: back.querySelector('.ch-ink-auto').checked ? undefined : back.querySelector('.ch-ink').value,
       colors: !ownTouched ? undefined : [...back.querySelectorAll('.ch-own-on')].map(c => (c.checked ? back.querySelector(`.ch-own-c[data-i="${c.dataset.i}"]`).value : null)) });

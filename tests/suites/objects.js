@@ -2478,6 +2478,50 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(sp && sp.data.length === 2 && sp.series?.[0]?.x?.join() === '2,5,6' && sp.series[0].values.join() === '1,2,3', 'vuelve la dispersión con sus series: ' + JSON.stringify(sp && [sp.data, sp.series]));
   });
 
+  await test('gráficos: segundo eje a la derecha (climograma) en el dibujo, el diálogo y PowerPoint de ida y vuelta', async () => {
+    reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
+    const P = h => new W.DOMParser().parseFromString(h, 'image/svg+xml').documentElement;
+    const months = ['E', 'F', 'M', 'A'].map((l, i) => ({ label: l, value: [60, 45, 30, 120][i] }));
+    const clima = { chartType: 'bar', combo: true, data: months, seriesName: 'Lluvia (mm)', series: [{ name: 'Temperatura (°C)', values: [8, 10, 13, 15], color: '#c0392b' }], color: '#3f6497', y2: true, y2Title: '°C' };
+    const one = P(S.chartSVG({ ...clima, y2: false })), two = P(S.chartSVG(clima));
+    const ys = svg => [...svg.querySelectorAll('circle')].map(c => +c.getAttribute('cy'));
+    // (On one axis the temperatures — 8 to 15 next to 120 mm — lie flat at the bottom; on their own they fill the plot.)
+    assert(Math.max(...ys(one)) - Math.min(...ys(one)) < 5 && Math.max(...ys(two)) - Math.min(...ys(two)) > 15, 'la línea llena el gráfico: ' + ys(one) + ' / ' + ys(two));
+    const right = [...two.querySelectorAll('text')].filter(t => !t.getAttribute('text-anchor') && t.getAttribute('fill') === '#c0392b').map(t => t.textContent);
+    assert(right.includes('15') || right.includes('16'), 'la escala de la derecha, del color de su serie: ' + right.join('|'));
+    assert([...two.querySelectorAll('text[text-anchor="end"]')].every(t => t.getAttribute('fill') === '#3f6497'), 'y la de la izquierda, de la suya');
+    assert([...two.querySelectorAll('text')].some(t => t.textContent === '°C' && /rotate\(90/.test(t.getAttribute('transform'))), 'el título del segundo eje');
+    assert(S.chartSig(clima) !== S.chartSig({ ...clima, y2: false }), 'el cambio se vuelve a dibujar');
+    assert(!/fill="#c0392b">1[56]</.test(S.chartSVG({ ...clima, chartType: 'stacked' })), 'en barras apiladas, sin segundo eje');
+    // The dialog: the option for bars, lines and areas; its title and ends saved (and the empty ones removed).
+    R.blocks.addChart(); const c = last(); select(c); await sleep(20);
+    R.store.commit(() => Object.assign(c, { data: months, series: clima.series, combo: true })); R.render(); await sleep(10);
+    D.querySelector(`.block[data-id="${c.id}"]`).dispatchEvent(new W.MouseEvent('contextmenu', { bubbles: true, clientX: 300, clientY: 300 })); await sleep(10);
+    [...D.querySelectorAll('#context-menu .ctx-item')].find(x => /Editar datos/.test(x.textContent)).click(); await sleep(10);
+    const m = D.getElementById('chart-modal');
+    assert(m.querySelector('.ch-y2-box').style.display !== 'none' && m.querySelector('.ch-y2-opts').style.display === 'none', 'la opción, y sus campos solo al marcarla');
+    m.querySelector('.ch-y2').checked = true; m.querySelector('.ch-y2').dispatchEvent(new W.Event('change'));
+    assert(m.querySelector('.ch-y2-opts').style.display !== 'none', 'al marcarla, su título y sus extremos');
+    m.querySelector('.ch-y2t').value = '°C'; m.querySelector('.ch-y2max').value = '40';
+    m.querySelector('.ch-type').value = 'pie'; m.querySelector('.ch-type').dispatchEvent(new W.Event('change'));
+    assert(m.querySelector('.ch-y2-box').style.display === 'none', 'no en un circular');
+    m.querySelector('.ch-type').value = 'bar'; m.querySelector('.ch-type').dispatchEvent(new W.Event('change'));
+    m.querySelector('.fr-do').click(); await sleep(20);
+    assert(c.y2 === true && c.y2Title === '°C' && c.y2Max === 40 && !('y2Min' in c), 'el diálogo lo guarda: ' + JSON.stringify([c.y2, c.y2Title, c.y2Min, c.y2Max]));
+    // PowerPoint: the lines on a secondary axis at the right, and back.
+    R.store.commit(() => { slide().blocks = [
+      { ...clima, id: 'k0', type: 'chart', y2Min: 0, y2Max: 40, x: 0, y: 0, w: 500, h: 300, rotation: 0, animation: null },
+      { id: 'k1', type: 'chart', chartType: 'line', data: months, series: [{ name: 'T', values: [8, 10, 13, 15] }], y2: true, x: 0, y: 300, w: 500, h: 300, rotation: 0, animation: null }]; }); await sleep(10);
+    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob);
+    const xml = await Promise.all(Object.keys(zip.files).filter(f => /^ppt\/charts\/chart\d+\.xml$/.test(f)).sort().map(f => zip.file(f).async('string')));
+    const k0 = xml.find(x => /<c:barChart>/.test(x));
+    assert(k0 && (k0.match(/<c:valAx>/g) || []).length === 2 && /<c:axPos val="r"\/>/.test(k0) && /°C/.test(k0) && /<c:max val="40"\/>/.test(k0), 'PowerPoint: un segundo eje de valores, a la derecha, con su título y su máximo');
+    const back = (await R.pptxImport.importPPTX(new W.File([blob], 'k.pptx'))).slides[0].blocks.filter(b => b.type === 'chart');
+    const bk = back.find(b => b.combo), ln = back.find(b => b.chartType === 'line');
+    assert(bk && bk.y2 && bk.y2Title === '°C' && bk.y2Min === 0 && bk.y2Max === 40, 'vuelve el combinado con su segundo eje: ' + JSON.stringify(bk && [bk.y2, bk.y2Title, bk.y2Min, bk.y2Max]));
+    assert(ln && ln.y2 && ln.series?.length === 1, 'y las líneas con la segunda en su eje: ' + JSON.stringify(ln && [ln.chartType, ln.y2]));
+  });
+
   await test('diagramas: 15 diseños desde un esquema de texto, colores del tema, uno a uno, convertir en formas y PowerPoint editable', async () => {
     reset(); const W = frame.contentWindow, DG = await W.eval("import('/src/render/diagrams.js')");
     const tree = DG.parseOutline('A\n  a1\n  a2\nB\n\tb1\n    b11\n- C');

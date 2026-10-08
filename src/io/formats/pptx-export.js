@@ -316,7 +316,21 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
         ...(catT && { showCatAxisTitle: true, catAxisTitle: catT }), ...(valT && { showValAxisTitle: true, valAxisTitle: valT }),
         ...(kind !== 'stacked100' && given(b.yMin) != null && { valAxisMinVal: given(b.yMin) }), ...(kind !== 'stacked100' && given(b.yMax) != null && { valAxisMaxVal: given(b.yMax) }),
         ...(kind !== 'stacked100' && { dataLabelFormatCode: fmtCode(nums), valAxisLabelFormatCode: fmtCode(nums) }) };
-      if (type === 'bar' && b.combo && ser.length > 1) {
+      // A second axis (b.y2): the combo's lines — or a line or area chart's series after the first — as PowerPoint's
+      // secondary axis, at the right with its own title and ends, the categories' copy hidden.
+      const two2 = b.y2 && ser.length > 1 && !['stacked', 'stacked100', 'stackedArea'].includes(kind) && (b.combo ? type === 'bar' : ['line', 'area'].includes(type));
+      if (two2) {
+        const prim = ser.filter((x, k) => (b.combo ? x.type === 'bar' : k === 0)), sec = ser.filter(x => !prim.includes(x)), nums2 = sec.flatMap(x => x.values);
+        const colorsOf = list => list.map(x => colors[ser.indexOf(x)]);
+        const t1 = b.combo ? pptx.ChartType.bar : pptx.ChartType[type], t2 = b.combo ? pptx.ChartType.line : pptx.ChartType[type];
+        slide.addChart([
+          { type: t1, data: toData(prim), options: { chartColors: colorsOf(prim), ...(b.combo && { barGrouping: 'clustered' }) } },
+          { type: t2, data: toData(sec), options: { chartColors: colorsOf(sec), secondaryValAxis: true, secondaryCatAxis: true } },
+        ], { ...pos, showLegend: true, legendPos: 't', ...extra,
+          valAxes: [{}, { showValAxisTitle: !!b.y2Title, valAxisTitle: b.y2Title || '', valGridLine: { style: 'none' }, valAxisLabelFormatCode: fmtCode(nums2),
+            valAxisMinVal: given(b.y2Min) ?? undefined, valAxisMaxVal: given(b.y2Max) ?? undefined }],
+          catAxes: [{}, { catAxisHidden: true }] });
+      } else if (type === 'bar' && b.combo && ser.length > 1) {
         slide.addChart([
           { type: pptx.ChartType.bar, data: toData(ser.filter(x => x.type === 'bar')), options: { chartColors: colors.slice(0, 1), barGrouping: 'clustered' } },
           { type: pptx.ChartType.line, data: toData(ser.filter(x => x.type !== 'bar')), options: { chartColors: colors.slice(1) } },

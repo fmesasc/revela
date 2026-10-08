@@ -3579,4 +3579,7 @@ export default {
   "Para qué es, cuánto dura, tus datos, lo que no puede faltar…": "Waarvoor het is, hoe lang het duurt, je gegevens, wat er niet mag ontbreken…",
   "Saltar las preguntas": "Vragen overslaan",
   "Otra respuesta, o más detalle…": "Een ander antwoord, of meer detail…",
+  "Segundo eje a la derecha": "Secundaire as rechts",
+  "Las líneas del combinado (o las series después de la primera) con su propia escala: para dos magnitudes distintas, como la lluvia y la temperatura de un climograma": "De lijnen van de combinatiegrafiek (of de reeksen na de eerste) met een eigen schaal: voor twee verschillende grootheden, zoals de neerslag en de temperatuur van een klimaatgrafiek",
+  "Título del segundo eje": "Titel van de secundaire as",
 };

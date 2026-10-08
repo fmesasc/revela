@@ -905,8 +905,9 @@ export async function importPPTX(file) {
       const groups = [...plot.children].filter(c => KIND[c.tagName]);
       if (!groups.length) return false;
       const pts = el => { const out = []; for (const p of all(el, 'c:pt')) out[+p.getAttribute('idx')] = kid(p, 'c:v')?.textContent ?? ''; return out; };
+      const valIds = all(plot, 'c:valAx').map(ax => kid(ax, 'c:axId')?.getAttribute('val'));
       const series = groups.flatMap(g => kids(g, 'c:ser').map(ser => ({
-        kind: KIND[g.tagName],
+        kind: KIND[g.tagName], vax: kids(g, 'c:axId').map(e => e.getAttribute('val')).find(id => valIds.includes(id)),
         name: all(kid(ser, 'c:tx'), 'c:v')[0]?.textContent || '',
         cats: pts(kid(ser, 'c:cat') || kid(ser, 'c:xVal')),
         vals: pts(kid(ser, 'c:val') || kid(ser, 'c:yVal')).map(v => +v || 0),
@@ -944,8 +945,17 @@ export async function importPPTX(file) {
       // The value axis' ends, if set (b.yMin/b.yMax; a scatter's x axis: b.xMin/b.xMax).
       const axes = all(plot, 'c:valAx'), endOf = (ax, tag) => { const v = kid(kid(ax, 'c:scaling'), tag)?.getAttribute('val'); return v != null && isFinite(+v) ? +v : null; };
       const xy = first.kind === 'scatter' || first.kind === 'bubble', isX = ax => ['b', 't'].includes(kid(ax, 'c:axPos')?.getAttribute('val'));
-      const xAx = xy ? axes.find(isX) || axes[0] : null, vAx = xy ? axes.find(ax => ax !== xAx) : axes[0];
+      const axOf = id => axes.find(ax => kid(ax, 'c:axId')?.getAttribute('val') === id);
+      const xAx = xy ? axes.find(isX) || axes[0] : null, vAx = xy ? axes.find(ax => ax !== xAx) : axOf(first.vax) || axes[0];
       if (vAx && b.chartType !== 'stacked100') { if (endOf(vAx, 'c:min') != null) b.yMin = endOf(vAx, 'c:min'); if (endOf(vAx, 'c:max') != null) b.yMax = endOf(vAx, 'c:max'); }
+      // A secondary axis: the combo's lines (or a line chart's other series) on another value axis → b.y2, with its title
+      // and ends — when it splits the series as Revela can draw (bars on one, lines on the other; the first line alone).
+      const off = rest.filter(x => x.vax !== first.vax), ax2 = !xy && off.length && axOf(off[0].vax);
+      if (ax2 && (b.combo ? series.every(x => (x.kind === 'bar') === (x.vax === first.vax)) : ['line', 'area'].includes(b.chartType) && off.length === rest.length)) {
+        b.y2 = true;
+        const t2 = all(kid(ax2, 'c:title'), 'a:t').map(t => t.textContent).join(''); if (t2) b.y2Title = t2;
+        if (endOf(ax2, 'c:min') != null) b.y2Min = endOf(ax2, 'c:min'); if (endOf(ax2, 'c:max') != null) b.y2Max = endOf(ax2, 'c:max');
+      }
       if (xAx) { if (endOf(xAx, 'c:min') != null) b.xMin = endOf(xAx, 'c:min'); if (endOf(xAx, 'c:max') != null) b.xMax = endOf(xAx, 'c:max'); }
       const title = all(all(cd, 'c:title')[0], 'a:t').map(t => t.textContent).join('');
       if (title) b.alt = title;

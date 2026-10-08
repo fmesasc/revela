@@ -3579,4 +3579,7 @@ export default {
   "Para qué es, cuánto dura, tus datos, lo que no puede faltar…": "Para que é, canto dura, os teus datos, o que non pode faltar…",
   "Saltar las preguntas": "Saltar as preguntas",
   "Otra respuesta, o más detalle…": "Outra resposta, ou máis detalle…",
+  "Segundo eje a la derecha": "Eixo secundario á dereita",
+  "Las líneas del combinado (o las series después de la primera) con su propia escala: para dos magnitudes distintas, como la lluvia y la temperatura de un climograma": "As liñas do gráfico combinado (ou as series despois da primeira) coa súa propia escala: para dúas magnitudes distintas, como a choiva e a temperatura dun climograma",
+  "Título del segundo eje": "Título do eixo secundario",
 };

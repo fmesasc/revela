@@ -3579,4 +3579,7 @@ export default {
   "Para qué es, cuánto dura, tus datos, lo que no puede faltar…": "الغرض منه، مدته، بياناتك، ما لا يجب أن يغيب…",
   "Saltar las preguntas": "تخطي الأسئلة",
   "Otra respuesta, o más detalle…": "إجابة أخرى، أو تفاصيل أكثر…",
+  "Segundo eje a la derecha": "محور ثانوي على اليمين",
+  "Las líneas del combinado (o las series después de la primera) con su propia escala: para dos magnitudes distintas, como la lluvia y la temperatura de un climograma": "خطوط المخطط المركّب (أو السلاسل بعد الأولى) بمقياسها الخاص: لكميتين مختلفتين، مثل الأمطار ودرجة الحرارة في مخطط مناخي",
+  "Título del segundo eje": "عنوان المحور الثانوي",
 };
