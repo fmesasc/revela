@@ -347,6 +347,9 @@ Write everything in ${opts.language || lang()}.` },
     }
     q = deckQuality(specs, how);
   }
+  // (A slide that came back with nothing — not even after making it again —: out; an empty slide is worse than none.)
+  const blank = q.problems.find(p => p.code === 'empty');
+  if (blank) { for (const i of [...blank.slides].sort((a, b) => b - a)) specs.splice(i, 1); q = deckQuality(specs, how); }
   specs.title = str(res.title); specs.design = DECK_DESIGNS[res.design] ? res.design : null; specs.quality = q;
   return specs;
 }

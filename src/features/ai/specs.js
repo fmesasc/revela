@@ -58,7 +58,12 @@ const column = c => (!c ? null : typeof c === 'string' || Array.isArray(c) ? { h
   : { heading: cleanLine(str(first(c, ['heading', 'title', 'name', 'label']))), bullets: bulletsOf(first(c, ['bullets', 'items', 'points', 'list', 'text', 'content'])), icon: str(c.icon) });
 
 // The spec cleaned: a known kind and the fields it needs (else a plainer kind).
+// Gaps to fill in, in words: «[periodo_recuperacion_ROI]» → «[periodo recuperacion ROI]» (one long word overflowed a
+// table's cell). Not in code nor formulas, where «_» means something.
+const gapWords = (v, key = '') => (typeof v === 'string' ? v.replace(/\[([^\]\n]*_[^\]\n]*)\]/g, (m, g) => `[${g.replace(/_+/g, ' ').trim()}]`)
+  : Array.isArray(v) ? v.map(x => gapWords(x, key)) : v && typeof v === 'object' && !/^(code|latex)$/.test(key) ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, /^(code|latex)$/.test(k) ? x : gapWords(x, k)])) : v);
 export function normalizeSpec(raw) {
+  raw = gapWords(raw);
   const sp = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : { kind: 'bullets', bullets: arr(raw) };
   let kind = kindOf(sp.kind ?? sp.type ?? sp.layout) || (sp.stats ? 'stats' : sp.steps ? 'steps' : sp.quote ? 'quote' : sp.chart ? 'chart' : sp.rows ? 'table' : sp.code ? 'code' : sp.latex ? 'math' : 'bullets');
   // ("formula" with code and no LaTeX: an Excel or DAX formula, as code.)

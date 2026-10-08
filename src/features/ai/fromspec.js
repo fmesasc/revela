@@ -483,8 +483,9 @@ export function compose(kind, spec, area, look, { minimal = false, style = 'same
       if (cols > 2 && n % cols && n % (cols - 1) === 0 && (area.w - (cols - 2) * gap) / (cols - 1) >= needW) cols--;   // (no last row of one — but never one column: thin strips)
       const rows = Math.ceil(n / cols);
       const cw = (area.w - (cols - 1) * gap) / cols, pad = minimal ? 0 : 26, d = rows > 1 ? 54 : 68, hasT = it.some(s => s.title);
-      const ts = R(bs * (rows > 1 ? 0.84 : 0.9)), xs = short ? R(bs * 1.2) : R(bs * (hasT ? (rows > 1 ? 0.8 : 0.86) : 0.92));
+      const ts0 = R(bs * (rows > 1 ? 0.84 : 0.9)), xs0 = short ? R(bs * 1.2) : R(bs * (hasT ? (rows > 1 ? 0.8 : 0.86) : 0.92));
       const maxH = (area.h - (rows - 1) * gap) / rows;
+      let ts = ts0, xs = xs0;
       // The number or icon over the text, or — wide cards, or text that wouldn't fit under it (two rows of four steps:
       // the last line ran out of the card) — at its side.
       const sized = side => {
@@ -496,6 +497,8 @@ export function compose(kind, spec, area, look, { minimal = false, style = 'same
       };
       let lay = sized(kind === 'features' && cw >= 440);
       if (!lay.side && lay.need > maxH && cw >= 360) { const alt = sized(true); if (alt.need < lay.need) lay = alt; }
+      // (Still taller than its row — two rows of cards under a big serif title —: the letters a little smaller, to 18 px.)
+      for (let k = 0.95; lay.need > maxH && k >= 0.7; k -= 0.05) { ts = Math.max(18, R(ts0 * k)); xs = Math.max(18, R(xs0 * k)); lay = sized(lay.side); }
       const { side, iw, tH } = lay, ch = Math.min(maxH, lay.need);
       const y0 = area.y + Math.max(0, (area.h - rows * ch - (rows - 1) * gap) * 0.4), used = new Set();
       it.forEach((s, i) => {

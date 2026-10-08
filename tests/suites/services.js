@@ -495,6 +495,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       // A chart whose values are gaps to fill in: a list of them (not «T4» read as 4).
       const SP = await W.eval("import('/src/features/ai/specs.js')");
       const gc = SP.normalizeSpec({ kind: 'chart', title: 'T4', chart: { type: 'line', labels: ['T3', 'T4'], values: [2400000, '[previsión del T4]'] } });
+      eq(SP.normalizeSpec({ kind: 'bullets', title: 'R', bullets: ['ROI en [periodo_recuperacion_ROI] meses'] }).bullets[0], 'ROI en [periodo recuperacion ROI] meses', 'los huecos, en palabras');
       eq(gc.kind + ':' + gc.bullets.join('|'), 'bullets:T3: 2400000|T4: [previsión del T4]', 'el gráfico con huecos, una lista');
       // LaTeX in the model's JSON: «\\frac» with one backslash (a valid escape that broke the formula) and «\\sqrt» (an invalid one that lost it all).
       const OR = await W.eval("import('/src/features/ai/openrouter.js')");
