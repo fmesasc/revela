@@ -34,8 +34,17 @@ export async function searchCommons(q, limit = 12) {
       description: val('ImageDescription').slice(0, 200), creator: val('Artist').slice(0, 80), license: val('LicenseShortName'), source: ii.descriptionurl, from: 'Wikimedia Commons', mime: ii.mime || '' };
   }).filter(x => /^https:\/\//.test(x.url || '') && x.thumb && x.width >= 300 && /^image\/(png|jpeg|gif|webp|svg)/.test(x.mime));   // (not a TIFF, a PDF's page, a DjVu)
 }
+// (The search a little wider each time it finds too little: «Battle of Adrianople map 378 Gothic cavalry» finds
+// nothing in Commons — all its words must be there —, «Battle of Adrianople map» does.)
+const STOP = /^(of|the|a|an|and|in|on|at|with|for|to|by|de|del|la|el|los|las|y|en|con|por|un|una)$/i;
+export const wider = q => {
+  const w = str(q).replace(/[^\p{L}\p{N}' -]+/gu, ' ').split(/\s+/).filter(Boolean), cut = n => { const x = w.slice(0, n); while (x.length && STOP.test(x[x.length - 1])) x.pop(); return x; };
+  return [...new Set([w.join(' '), ...[5, 4, 3, 2].filter(n => n < w.length).map(cut).filter(x => x.filter(y => !STOP.test(y)).length >= 2).map(x => x.join(' '))])].filter(Boolean);
+};
 async function candidates(q) {
-  const [commons, open] = await Promise.all([searchCommons(q).catch(() => []), searchImages(q).catch(() => [])]);
+  let commons = [];
+  for (const each of wider(q)) { const got = await searchCommons(each).catch(() => []); for (const x of got) if (!commons.some(c => c.url === x.url)) commons.push(x); if (commons.length >= 6) break; }
+  const open = await searchImages(wider(q).find(x => x.split(' ').length <= 5) || q).catch(() => []);
   const seen = new Set(), out = [];
   // (Commons first — its pictures explain; Openverse adds photos —, without the same file twice.)
   for (const x of [...commons.slice(0, 7), ...open.filter(o => o.width >= 400).slice(0, 3).map(o => ({ ...o, description: '', from: 'Openverse' })), ...commons.slice(7)]) {

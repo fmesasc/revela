@@ -408,6 +408,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       eq(specs[2].video?.src, 'https://www.youtube.com/embed/abcdefghijk', 'el vídeo, comprobado que existe');
       eq(specs[3].kind + ':' + !!specs[3].video, 'bullets:false', 'uno que no existe: nada de vídeo, sus puntos en lista');
       assert(!specs.some(x => x.image_search || x.video_search), 'sin las búsquedas');
+      const MD = await W.eval("import('/src/features/ai/media.js')");
+      eq(MD.wider('sack of Rome 410 Alaric Visigoths illustration').join('|'), 'sack of Rome 410 Alaric Visigoths illustration|sack of Rome 410 Alaric|sack of Rome 410|sack of Rome', 'una búsqueda larga, cada vez más amplia');
       // On the slide: the picture and the video in its place.
       const n0 = R.state.deck.slides.length;
       await A.insertSpecs(specs.slice(1, 3));
