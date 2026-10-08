@@ -20,7 +20,7 @@ import { ACTIVITIES, publicActivity, gradeAnswer, gradeActivity, pollLabels } fr
 import { selfPacedRuntime } from '../runtime/selfpaced.js';
 import { slideTitle } from '../../features/document/a11y.js';
 import { blobMedia } from './blobmedia.js';
-import { createMediaPlayer, revelaMediaRuntime } from '../runtime/media.js';
+import { createMediaPlayer, revelaMediaRuntime, askInVideo } from '../runtime/media.js';
 import { needsPlayer, mediaConfig, cameraSegment, cameraBoxCSS, cameraInnerHTML } from '../../features/live/media.js';
 import { createCameraEngine, revelaCameraRuntime } from '../runtime/camera.js';
 import { modelAttrsHTML, bleedBox, edgeCSS } from '../../features/content/model3d.js';
@@ -751,7 +751,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${/ data-drag[ >]/.test(slides) ? DRAG_JS : ''}
  ${/ data-pano="/.test(slides) ? PANO_JS : ''}
  ${/ data-file(-view)?[ >]/.test(slides) ? FILE_JS : ''}
- ${hasMedia ? `${createMediaPlayer.toString()}\n${revelaMediaRuntime.toString()}\nrevelaMediaRuntime(${JSON.stringify(GIFUCT)});` : ''}
+ ${hasMedia ? `${createMediaPlayer.toString()}\n${askInVideo.toString()}\nwindow.__rvVideoWords=${JSON.stringify({ go: t('Continuar') + ' ▶' })};\n${revelaMediaRuntime.toString()}\nrevelaMediaRuntime(${JSON.stringify(GIFUCT)});` : ''}
  ${inkJS(w, h, { pen: t('Lápiz'), hl: t('Resaltador'), laser: t('Puntero láser'), color: t('Color de la tinta'), erase: t('Borrar la tinta de la diapositiva'),
    cc: t('Subtítulos en directo'), read: t('Modo lectura'), zin: t('Acercar'), zout: t('Alejar'), zreset: t('Tamaño normal'), pick: t('Elegir a alguien al azar'), grade: t('Corregir con IA las respuestas'), mod: t('Moderar las preguntas'), next: t('Siguiente'), prev: t('Anterior'), go: t('Ir a la diapositiva'), overview: t('Vista general'),
    titles: deck.slides.filter(s => !s.hidden).map(s => slideTitle(s)), arrow: t('Puntero normal'), black: t('Pantalla en negro'), white: t('Pantalla en blanco'), full: t('Pantalla completa'), end: t('Terminar la presentación'), lang: speechLang(), ccWarn: t('Los subtítulos usan el reconocimiento de voz del navegador: en Chrome y Edge el audio se envía a su servicio de voz. ¿Activarlos?') })}

@@ -602,6 +602,50 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   });
 
   // ---- Videos and GIFs: segments per click, colour key, background removal ----------
+  await test('vídeo con preguntas: se para en su segundo, pregunta y sigue; la IA las propone a partir de fotogramas', async () => {
+    reset(); const W = frame.contentWindow, imp = m => W.eval(`import('${m}')`);
+    const M = await imp('/src/features/live/media.js');
+    eq(JSON.stringify(M.parseOptions('Roma\n*París\n\nLyon')), '{"options":["Roma","París","Lyon"],"correct":[1]}', 'opciones con * delante de la correcta');
+    eq(M.optionsText({ options: ['a', 'b'], correct: [1] }), 'a\n*b', 'y de vuelta');
+    const cq = M.cleanQuestions([{ at: 5, q: 'B', options: ['x', 'y'], correct: [3] }, { at: 1.234, q: 'A', options: ['s', 'n'], correct: [0] }, { at: 2, q: '' }]);
+    eq(cq.map(x => x.q + '@' + x.at + ':' + x.correct.join()).join(' '), 'A@1.2:0 B@5:', 'ordenadas, con respuestas que existen, sin las vacías');
+    // A real video, recorded here: 2.5 s of colours.
+    const c = D.createElement('canvas'); c.width = 160; c.height = 90; const g = c.getContext('2d');
+    const rec = new W.MediaRecorder(c.captureStream(30), { mimeType: 'video/webm' }), parts = [];
+    rec.ondataavailable = e => parts.push(e.data); rec.start();
+    for (let i = 0; i < 25; i++) { g.fillStyle = ['#c00', '#0a0', '#00c'][Math.floor(i / 9)]; g.fillRect(0, 0, 160, 90); await sleep(100); }
+    rec.stop(); await new Promise(r => { rec.onstop = r; });
+    const src = await new Promise(r => { const fr = new W.FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(new W.Blob(parts, { type: 'video/webm' })); });
+    R.blocks.addVideo(src); await sleep(30); const b = last();
+    M.setMediaPlayback(b.id, { questions: [{ at: 1, q: '¿De qué color era?', options: ['Azul', 'Rojo'], correct: [1], explain: 'Empezó en rojo.' }] });
+    assert(M.needsPlayer(last()), 'con preguntas, el vídeo lleva reproductor');
+    const html = R.io.buildHTML(); assert(/function askInVideo/.test(html) && /__rvVideoWords/.test(html) && /&quot;questions&quot;/.test(html), 'en el export: las preguntas y lo que las muestra');
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
+    f.srcdoc = R.io.buildHTML(R.state.deck, { inApp: true });
+    try {
+      let el; for (let i = 0; i < 100 && !((el = f.contentDocument?.getElementById('rvm-' + b.id))?._player); i++) await sleep(100);
+      const p = el._player; await p.ready; f.contentWindow.Reveal.slide(R.state.ui.slideIndex); await sleep(100);
+      p.play(0, null, 1); let box = null; for (let i = 0; i < 40 && !(box = el.querySelector('.rv-vq')); i++) await sleep(100);
+      assert(box && /¿De qué color era\?/.test(box.textContent), 'en el segundo 1 se para y pregunta');
+      assert(!p.playing() && p.time() >= 1 && p.time() < 1.6, 'el vídeo, parado: ' + p.time());
+      const bs = [...box.querySelectorAll('button')]; bs[0].click();
+      assert(/rgb\(251, 227, 225\)|#fbe3e1/.test(bs[0].style.background) && /rgb\(227, 244, 221\)|#e3f4dd/.test(bs[1].style.background), 'la elegida (mal) en rojo y la buena en verde');
+      assert(/Empezó en rojo/.test(box.textContent), 'con la explicación');
+      [...box.querySelectorAll('button')].at(-1).click(); await sleep(150);
+      assert(!el.querySelector('.rv-vq') && p.playing(), 'Continuar: sigue el vídeo');
+    } finally { f.remove(); }
+    // The AI's proposal: frames with their second, the slide's words; what it says, cleaned.
+    const V = await imp('/src/features/ai/videoquiz.js');
+    const fr = await V.videoFrames(src, 3); assert(fr.duration > 2 && fr.duration < 3.5 && fr.frames.length === 3 && /^data:image\/jpeg/.test(fr.frames[0].url), 'tres fotogramas repartidos: ' + fr.duration);
+    const AI = R.ai, realFetch = W.fetch; let sent = null; AI.setAiKey('sk-or-prueba');
+    W.fetch = async (u, o) => { sent = JSON.parse(o.body); return new W.Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ questions: [{ at: 99, q: '¿Qué color sale al final?', options: ['Azul', 'Verde'], correct: [0], explain: 'x' }] }) } }] })); };
+    try {
+      const got = await V.proposeVideoQuestions(src, { context: 'Los colores primarios' });
+      assert(sent.messages[1].content.filter(x => x.type === 'image_url').length === 8 && /colores primarios/.test(sent.messages[1].content[0].text), 'la IA ve fotogramas y la diapositiva');
+      assert(got.length === 1 && got[0].at <= fr.duration, 'su pregunta, dentro del vídeo: ' + got[0]?.at);
+    } finally { W.fetch = realFetch; AI.disconnectAi(); }
+  });
+
   await test('GIF: tramos por clic, croma y quitar el fondo fotograma a fotograma', async () => {
     reset();
     const W = frame.contentWindow, imp = m => W.eval(`import('${m}')`);

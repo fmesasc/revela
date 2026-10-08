@@ -128,11 +128,24 @@ const speedOf = v => (MEDIA_SPEEDS.includes(+v) && +v !== 1 ? +v : undefined);
 // Its own steps — Reproducir, Pausar, Detener as animations (features/animation/transitions.js MEDIA_FX) — or «start
 // when another video ends» (b.afterVideo: that one's id): the player plays it then, and it has no click of its own.
 export const mediaSteps = b => [b.animation, ...(b.anims || [])].some(a => /^media-/.test(a?.effect || ''));
-export const needsPlayer = b => !!(mediaKind(b) && (b.segments?.length || b.key?.color || b.autoplay || b.loop || b.muted || speedOf(b.speed) || b.afterVideo || mediaSteps(b)));
+export const needsPlayer = b => !!(mediaKind(b) && (b.segments?.length || b.key?.color || b.autoplay || b.loop || b.muted || speedOf(b.speed) || b.afterVideo || mediaSteps(b) || (b.type === 'video' && b.questions?.length)));
+// Questions in a video (Edpuzzle's, Nearpod's, Wayground's): at second `at` it stops and asks; options with the right
+// ones (correct: indexes; none: a question to think about, any answer goes on), and a line explaining it.
+// In the presentation's own page — a check while watching, not a mark kept anywhere.
+export function cleanQuestions(list) {
+  return (Array.isArray(list) ? list : []).map(x => ({ id: String(x?.id || Math.random().toString(36).slice(2, 10)).slice(0, 20), at: Math.max(0, Math.round((+x?.at || 0) * 10) / 10),
+    q: String(x?.q || '').trim().slice(0, 300), options: (Array.isArray(x?.options) ? x.options : []).map(o => String(o).trim().slice(0, 160)).filter(Boolean).slice(0, 6),
+    correct: (Array.isArray(x?.correct) ? x.correct : []).map(Number).filter(Number.isInteger), explain: String(x?.explain || '').trim().slice(0, 300) }))
+    .filter(x => x.q).map(x => ({ ...x, correct: x.correct.filter(i => i >= 0 && i < x.options.length) })).sort((a, b) => a.at - b.at).slice(0, 30);
+}
+// Options typed one per line, «*» before the right ones → { options, correct }; and back.
+export const parseOptions = text => { const ls = String(text || '').split('\n').map(l => l.trim()).filter(Boolean);
+  return { options: ls.map(l => l.replace(/^\*\s*/, '')), correct: ls.map((l, i) => (l.startsWith('*') ? i : -1)).filter(i => i >= 0) }; };
+export const optionsText = x => (x.options || []).map((o, i) => ((x.correct || []).includes(i) ? '*' : '') + o).join('\n');
 export const mediaConfig = b => ({ kind: mediaKind(b), src: b.src, fit: b.fit || 'contain',
   segments: (b.segments || []).filter(s => s.to > s.from).map(s => ({ from: s.from, to: s.to, ...(speedOf(s.speed) && { speed: speedOf(s.speed) }) })),
   autoplay: !!b.autoplay, loop: !!b.loop, muted: !!b.muted, ...(speedOf(b.speed) && { speed: speedOf(b.speed) }), ...(b.key?.color && { key: b.key }),
-  ...(b.afterVideo && !b.autoplay && { after: b.afterVideo }), ...(mediaSteps(b) && { steps: true }) });
+  ...(b.afterVideo && !b.autoplay && { after: b.afterVideo }), ...(mediaSteps(b) && { steps: true }), ...(b.type === 'video' && b.questions?.length && { questions: cleanQuestions(b.questions) }) });
 export function setMediaPlayback(id, props) {
   commit(() => {
     const b = currentSlide().blocks.find(x => x.id === id); if (!b) return;

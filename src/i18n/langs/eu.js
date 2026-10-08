@@ -3698,4 +3698,12 @@ export default {
   "Leerle la pregunta en voz alta en su móvil": "Galdera ozen irakurri bere mugikorrean",
   "Letra más grande en su móvil": "Letra handiagoa bere mugikorrean",
   "Sin clasificación: no sale en la de la pantalla ni ve su puesto": "Sailkapenik gabe: ez da pantailakoan agertzen eta ez du bere postua ikusten",
+  "Preguntas en el vídeo": "Galderak bideoan",
+  "Al presentar, el vídeo se para en ese segundo y hace la pregunta; al responder se ve la correcta y sigue. Pon un asterisco (*) delante de la respuesta correcta; sin asterisco, es una pregunta para pensar.": "Aurkeztean, bideoa segundo horretan gelditzen da eta galdera egiten du; erantzutean zuzena ikusten da eta aurrera jarraitzen du. Jarri izartxo bat (*) erantzun zuzenaren aurrean; izartxorik gabe, pentsatzeko galdera da.",
+  "Añadir una pregunta en este momento": "Gehitu galdera bat une honetan",
+  "Proponer preguntas con IA": "Proposatu galderak AArekin",
+  "Ir a ese momento": "Joan une horretara",
+  "Una opción por línea; * delante de la correcta": "Aukera bat lerro bakoitzeko; * zuzenaren aurrean",
+  "Explicación (opcional)": "Azalpena (aukerakoa)",
+  "La IA no pudo proponer preguntas para este vídeo (si es de otra web, puede que no deje leerlo).": "AAk ezin izan du bideo honetarako galderarik proposatu (beste webgune batekoa bada, agian ez du irakurtzen uzten).",
 };

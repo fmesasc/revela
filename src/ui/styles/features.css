@@ -1069,3 +1069,5 @@ body.no-copy img{-webkit-user-drag:none}
 .qa .qa-practice{border-top:1px solid var(--line);padding-top:10px;margin-top:6px}.qa .qa-practice h4{margin:0 0 8px;font-size:16px}
 .qa .qa-answer{width:100%;box-sizing:border-box;margin:8px 0;font:inherit;font-size:14px}
 .qa .qa-mic.on{background:#c0392b;color:#fff}.qa .qa-score b{display:inline-block;font-size:22px;color:var(--c)}
+/* Questions in a video (dialogs/media.js) */
+.mp-q{border:1px solid var(--line);border-radius:8px;padding:8px;margin:6px 0;display:flex;flex-direction:column;gap:6px}.mp-q-head{display:flex;gap:6px;align-items:center}.mp-q-head input{width:6em}.mp-q input[type=text],.mp-q textarea{width:100%;box-sizing:border-box;font:inherit}

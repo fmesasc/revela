@@ -3698,4 +3698,12 @@ export default {
   "Leerle la pregunta en voz alta en su móvil": "Lerlle a pregunta en voz alta no móbil",
   "Letra más grande en su móvil": "Letra máis grande no móbil",
   "Sin clasificación: no sale en la de la pantalla ni ve su puesto": "Sen clasificación: non sae na da pantalla nin ve o seu posto",
+  "Preguntas en el vídeo": "Preguntas no vídeo",
+  "Al presentar, el vídeo se para en ese segundo y hace la pregunta; al responder se ve la correcta y sigue. Pon un asterisco (*) delante de la respuesta correcta; sin asterisco, es una pregunta para pensar.": "Ao presentar, o vídeo detense nese segundo e fai a pregunta; ao responder vese a correcta e segue. Pon un asterisco (*) diante da resposta correcta; sen asterisco, é unha pregunta para pensar.",
+  "Añadir una pregunta en este momento": "Engadir unha pregunta neste momento",
+  "Proponer preguntas con IA": "Propor preguntas con IA",
+  "Ir a ese momento": "Ir a ese momento",
+  "Una opción por línea; * delante de la correcta": "Unha opción por liña; * diante da correcta",
+  "Explicación (opcional)": "Explicación (opcional)",
+  "La IA no pudo proponer preguntas para este vídeo (si es de otra web, puede que no deje leerlo).": "A IA non puido propor preguntas para este vídeo (se é doutra web, pode que non deixe lelo).",
 };

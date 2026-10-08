@@ -3698,4 +3698,12 @@ export default {
   "Leerle la pregunta en voz alta en su móvil": "قراءة السؤال بصوت عالٍ على هاتفه",
   "Letra más grande en su móvil": "خط أكبر على هاتفه",
   "Sin clasificación: no sale en la de la pantalla ni ve su puesto": "بلا ترتيب: لا يظهر في ترتيب الشاشة ولا يرى مركزه",
+  "Preguntas en el vídeo": "أسئلة داخل الفيديو",
+  "Al presentar, el vídeo se para en ese segundo y hace la pregunta; al responder se ve la correcta y sigue. Pon un asterisco (*) delante de la respuesta correcta; sin asterisco, es una pregunta para pensar.": "أثناء العرض، يتوقف الفيديو عند تلك الثانية ويطرح السؤال؛ وبعد الإجابة تظهر الصحيحة ويتابع. ضع نجمة (*) قبل الإجابة الصحيحة؛ وبدونها يكون سؤالًا للتفكير.",
+  "Añadir una pregunta en este momento": "إضافة سؤال في هذه اللحظة",
+  "Proponer preguntas con IA": "اقتراح أسئلة بالذكاء الاصطناعي",
+  "Ir a ese momento": "الانتقال إلى تلك اللحظة",
+  "Una opción por línea; * delante de la correcta": "خيار في كل سطر؛ * قبل الصحيح",
+  "Explicación (opcional)": "شرح (اختياري)",
+  "La IA no pudo proponer preguntas para este vídeo (si es de otra web, puede que no deje leerlo).": "لم يتمكن الذكاء الاصطناعي من اقتراح أسئلة لهذا الفيديو (إن كان من موقع آخر فقد لا يسمح بقراءته).",
 };

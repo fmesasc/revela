@@ -3698,4 +3698,12 @@ export default {
   "Leerle la pregunta en voz alta en su móvil": "De vraag hardop voorlezen op de telefoon",
   "Letra más grande en su móvil": "Grotere letters op de telefoon",
   "Sin clasificación: no sale en la de la pantalla ni ve su puesto": "Geen ranglijst: niet op het scherm en ziet de eigen plaats niet",
+  "Preguntas en el vídeo": "Vragen in de video",
+  "Al presentar, el vídeo se para en ese segundo y hace la pregunta; al responder se ve la correcta y sigue. Pon un asterisco (*) delante de la respuesta correcta; sin asterisco, es una pregunta para pensar.": "Tijdens het presenteren stopt de video op die seconde en stelt de vraag; na het antwoord zie je het juiste en gaat hij verder. Zet een sterretje (*) voor het juiste antwoord; zonder sterretje is het een denkvraag.",
+  "Añadir una pregunta en este momento": "Een vraag op dit moment toevoegen",
+  "Proponer preguntas con IA": "Vragen voorstellen met AI",
+  "Ir a ese momento": "Naar dat moment gaan",
+  "Una opción por línea; * delante de la correcta": "Eén optie per regel; * voor de juiste",
+  "Explicación (opcional)": "Uitleg (optioneel)",
+  "La IA no pudo proponer preguntas para este vídeo (si es de otra web, puede que no deje leerlo).": "De AI kon geen vragen voorstellen voor deze video (als hij van een andere site komt, staat die het lezen misschien niet toe).",
 };

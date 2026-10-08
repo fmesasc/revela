@@ -136,6 +136,35 @@ export function createMediaPlayer(host, o) {
   return api;
 }
 
+// A question over the video: its options; chosen, the right one in green (and the one chosen, if wrong, in red), the
+// explanation, and «Continuar» to go on. A question without a right answer goes on with any.
+export function askInVideo(el, q, done) {
+  const box = document.createElement('div'); box.className = 'rv-vq';
+  const fs = Math.max(12, Math.min(28, el.clientHeight / 16));
+  box.style.cssText = `position:absolute;inset:0;z-index:5;display:grid;place-items:center;background:rgba(0,0,0,.55);font:${fs}px/1.3 system-ui,sans-serif;cursor:default`;
+  const card = document.createElement('div');
+  card.style.cssText = 'background:#fff;color:#1d1f24;border-radius:.6em;padding:.9em 1.1em;width:min(86%,34em);max-height:88%;overflow:auto;box-shadow:0 .4em 1.6em rgba(0,0,0,.35);text-align:left';
+  const h = document.createElement('div'); h.style.cssText = 'font-weight:700;margin-bottom:.6em'; h.textContent = q.q; card.appendChild(h);
+  const btns = q.options.map((o, i) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = o;
+    b.style.cssText = 'display:block;width:100%;text-align:left;font:inherit;margin:.3em 0;padding:.45em .7em;border-radius:.4em;border:2px solid #c9ccd3;background:#f6f7f9;color:inherit;cursor:pointer';
+    b.addEventListener('click', e => { e.stopPropagation(); pick(i); }); card.appendChild(b); return b; });
+  const foot = document.createElement('div'); foot.style.cssText = 'margin-top:.6em;display:flex;gap:.6em;align-items:center;flex-wrap:wrap'; card.appendChild(foot);
+  const go = document.createElement('button'); go.type = 'button'; go.textContent = (window.__rvVideoWords && window.__rvVideoWords.go) || '▶';
+  go.style.cssText = 'margin-left:auto;font:inherit;font-weight:700;padding:.4em .9em;border:0;border-radius:.4em;background:#3f6497;color:#fff;cursor:pointer';
+  go.addEventListener('click', e => { e.stopPropagation(); box.remove(); done(); });
+  if (!q.options.length) foot.appendChild(go);
+  function pick(i) {
+    btns.forEach((b, k) => { b.disabled = true; b.style.cursor = 'default';
+      if (q.correct.length && q.correct.includes(k)) { b.style.borderColor = '#26890c'; b.style.background = '#e3f4dd'; }
+      else if (k === i) { b.style.borderColor = q.correct.length ? '#b3261e' : '#3f6497'; b.style.background = q.correct.length ? '#fbe3e1' : '#e5ecf6'; } });
+    if (q.explain) { const x = document.createElement('div'); x.style.cssText = 'font-size:.85em;color:#444;flex:1 1 60%'; x.textContent = q.explain; foot.appendChild(x); }
+    foot.appendChild(go); go.focus();
+  }
+  box.addEventListener('click', e => e.stopPropagation());
+  box.addEventListener('keydown', e => e.stopPropagation());
+  box.appendChild(card); el.appendChild(box);
+}
+
 // The presentation side: every [data-media] element gets a player; clicks
 // (reveal fragments .rv-seg with data-seg-of / data-seg) play its segments.
 export function revelaMediaRuntime(gifLib) {
@@ -145,11 +174,19 @@ export function revelaMediaRuntime(gifLib) {
     const p = createMediaPlayer(el, { ...cfg, gifLib });
     players.set(el.id, { p, cfg, el });
     el._player = p;
+    // Questions in the video: at their second it stops and asks (once each time the slide is shown).
+    if (cfg.questions && cfg.questions.length) {
+      let last = 0; const m = players.get(el.id); m.asked = {};
+      p.onframe = t => { const was = last; last = t; if (!p.playing() || el.querySelector('.rv-vq')) return;
+        const q = cfg.questions.find(x => !m.asked[x.id] && was < x.at && t >= x.at); if (!q) return;
+        m.asked[q.id] = 1; p.pause(); askInVideo(el, q, () => p.resume()); };
+    }
     // Clicking the video pauses it or goes on (to the end of the segment it was in).
     el.style.cursor = 'pointer';
     el.addEventListener('click', e => { e.stopPropagation(); p.ready.then(() => (p.playing() ? p.pause() : p.resume())); });
   });
   function enter(slide) {
+    players.forEach(m => { if (m.asked) m.asked = {}; m.el.querySelector('.rv-vq')?.remove(); });
     players.forEach(({ p, cfg, el }) => {
       if (!slide.contains(el)) { p.ready.then(() => p.pause()); return; }
       const s = cfg.segments && cfg.segments.length ? cfg.segments : null;
