@@ -318,7 +318,7 @@ Write everything in ${opts.language || lang()}.` },
   if (missing.length > specs.length * 0.3) await speakerNotes(specs, opts).catch(() => {});
   // Measured (quality.js): a weak deck — mostly lists, thin ones, no code on a technical topic — gets its weak slides
   // made again, once, before anyone sees it.
-  const how = { topic: opts.topic || str(res.title), sourced: !!(str(opts.source) || opts.research || /\d/.test(str(opts.context))), images: !!opts.images, given: [opts.context, opts.source, opts.research?.brief].map(str).join('\n') };
+  const how = { topic: opts.topic || str(res.title), sourced: !!(str(opts.source) || opts.research || /\d/.test(str(opts.context))), images: !!opts.images, given: (opts.attachments || []).length ? '' : [opts.context, opts.source, opts.research?.brief].map(str).join('\n').trim() };   // (the data as text — not when it came in a file the measure can't read)
   let q = deckQuality(specs, how); specs.qualityFirst = q;
   if (q.score < 75 || q.problems.some(p => ['invented-figures', 'off-code', 'no-picture', 'repeated'].includes(p.code))) { await richer(specs, weakSlides(q, specs), opts, q).catch(() => {}); q = deckQuality(specs, how); }
   // The last net, not up to the model: figures still without anything behind them are never shown as facts — on cards,

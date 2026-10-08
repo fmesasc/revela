@@ -68,10 +68,15 @@ export function deckQuality(specs, { topic = '', sourced = false, images = false
   // (With data given, a forecast is still the model's: «Proyección T4: 3,1 M€» from a T3 of 2,4 — unless its figures are
   // the person's own.)
   const forecast = sp => FORECAST.test([sp.title, sp.source, sp.chart?.series_name, ...(sp.chart?.labels || []), ...(sp.stats || []).map(s => s.label)].map(str).join(' '));
-  const known = amounts(given), backed = v => known.some(k => Math.abs(k - v) <= Math.abs(v) * 0.01);
+  // (Theirs, or worked out from theirs: a difference, a sum, a ratio, a percentage change — 2,6 − 2,4 M€ = 200.000.)
+  const base = amounts(given).slice(0, 40), known = [...base, ...base.flatMap(a => base.flatMap(b => (a === b ? [] : [a - b, b - a, a + b, a / b * 100, (a - b) / b * 100, a / b])))];
+  const backed = v => known.some(k => Math.abs(Math.abs(k) - Math.abs(v)) <= Math.abs(v) * 0.01 + 0.05);
   const ownFigures = sp => [...(sp.kind === 'stats' ? (sp.stats || []).filter(s => hasFigure(s.value)).flatMap(s => amounts(s.value)) : []), ...(sp.kind === 'chart' ? (sp.chart?.values || []).map(Number) : []),
     ...bulletsOf(sp).filter(hasFigure).flatMap(amounts)].filter(v => Number.isFinite(v) && Math.abs(v) >= 10 && !(v >= 1900 && v <= 2100));   // (not «T4» nor a year)
-  const invented = body.filter(x => (!sourced && unbacked(x.sp) && figures(x.sp)) || (sourced && forecast(x.sp) && ownFigures(x.sp).some(v => !backed(v))));
+  // (And with data given, figures said to be «internal» or «an example» — a thesis's validation chart «ejemplo
+  // ilustrativo», an error of 7,3 % nobody gave — are invented unless they are the person's.)
+  const ownCase = sp => !str(sp.source) || ownData.test(sp.source) || example.test(sp.source);
+  const invented = body.filter(x => (!sourced && unbacked(x.sp) && figures(x.sp)) || (sourced && (forecast(x.sp) || (str(given) && figures(x.sp) && ownCase(x.sp) && !tech)) && ownFigures(x.sp).some(v => !backed(v))));
   // The same thing twice — a lesson's four steps of adding fractions on two slides in a row —: its words, mostly the
   // ones of an earlier slide.
   const said = body.map(x => ({ i: x.i, w: contentWords(x.sp) }));
