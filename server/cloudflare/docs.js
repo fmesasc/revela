@@ -73,6 +73,7 @@ import { applyOps, allowed } from '../../src/features/live/collabsync.js';
 import { writeDeck, readDeck, writeText, readParts } from './store.js';
 import { mail } from './mail.js';
 import { acct, call } from './api.js';
+import { notifyHooks } from './hooks.js';
 import { random, EMAIL, DAY } from './util.js';
 import { ASYNC_KINDS, publicPoll, cleanAnswer } from '../../src/features/live/answers.js';
 
@@ -556,8 +557,15 @@ export async function handleDocs(path, req, body, url, env, me, json) {
   } else if (op === 'get' && r.data.notify) {
     // (A tracked link opened: its owner told, if they asked — in their language, and they can stop these.)
     const n = r.data.notify; delete r.data.notify;
-    await call(acct(env, n.owner), 'mail-opened', { vars: { label: n.label, who: n.who, name: n.name, url: `${env.SITE_URL || 'https://revelaslides.com'}/app/?doc=${encodeURIComponent(id)}` } });
+    const vars = { label: n.label, who: n.who, name: n.name, url: `${env.SITE_URL || 'https://revelaslides.com'}/app/?doc=${encodeURIComponent(id)}` };
+    await call(acct(env, n.owner), 'mail-opened', { vars });
+    await notifyHooks(env, n.owner, 'opened', vars).catch(() => {});          // (and to Slack, Teams…: hooks.js)
   } else if (op === 'ops') {
+    // (A comment by someone else on my presentation: to my integrations — hooks.js.)
+    // (A new comment comes as one item, or as the slide's whole new list — its last —, or as a reply.)
+    const said = r.data.owner && r.data.owner !== me.sub ? (body.ops || []).filter(o => Array.isArray(o.p) && o.p.includes('comments') && o.v)
+      .map(o => (Array.isArray(o.v) ? o.v.at(-1) : o.v)).find(v => typeof v?.text === 'string') : null;
+    if (said) await notifyHooks(env, r.data.owner, 'comment', { name: r.data.name, by: me.name || me.email, text: said.text.slice(0, 500), url: `${env.SITE_URL || 'https://revelaslides.com'}/app/?doc=${encodeURIComponent(id)}` }).catch(() => {});
     if (r.data.owner) await call(acct(env, r.data.owner), 'docs-touch', { id, name: r.data.name, slides: r.data.slides, text: r.data.text, bytes: r.data.bytes });
     delete r.data.owner; delete r.data.slides; delete r.data.text; delete r.data.bytes;
   }

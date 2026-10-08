@@ -102,6 +102,28 @@ curl -X POST https://revelaslides.com/api/v1/decks \
         {"kind":"chart","title":"Revenue by month","chart":{"type":"bar","labels":["Jul","Aug","Sep"],"values":[120,135,160]}}]}'
 ```
 
+## Webhooks (Slack, Teams, Zapier…)
+
+In **My account ▸ Developers and AI ▸ Add a notification channel**, paste an incoming-webhook address. Revela posts
+there when someone opens one of your tracked links (`opened`) or comments on one of your presentations (`comment`).
+Slack, Microsoft Teams (Workflows), Google Chat and Discord addresses get a line of text in their own format; any
+other https address (Zapier, Make, n8n, your server) gets JSON:
+
+```json
+{ "event": "comment", "data": { "name": "Q3 results", "by": "Ana", "text": "Change the title", "url": "https://revelaslides.com/app/?doc=…" }, "at": "2026-10-08T21:00:00.000Z" }
+```
+
+with `X-Revela-Event` and `X-Revela-Signature: sha256=<base64url HMAC-SHA256 of the body>`, keyed with the secret shown
+once when the channel is added. Up to 5 channels; one that fails 20 times in a row is no longer called.
+
+## Single sign-on (teams)
+
+A team's admin can let its members sign in with the school's or company's own identity provider (Microsoft Entra ID,
+Okta, Google Workspace, Keycloak… any OpenID Connect provider): **My team ▸ Single sign-on**. Register Revela there with
+the redirect address `https://revelaslides.com/api/sso/callback`, enter the issuer, client id and secret, and the email
+domains; each domain is verified with a DNS TXT record `revela-verify=<token>`. People then use **Sign in with SSO**
+with their work address; optionally they join the team on their first sign-in.
+
 ## The file format
 
 A presentation is one JSON document (`.revela`; the same object as `deck` above): `{ version, name, size: { w, h },

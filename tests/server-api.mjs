@@ -37,7 +37,7 @@ env.FETCH = async (url, init = {}) => {
   const u = String(url);
   if (u.startsWith('https://oauth2.googleapis.com/tokeninfo')) {
     const t = new URL(u).searchParams.get('access_token');
-    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' }, 'tok-gil': { sub: '1212', email: 'gil@example.com' }, 'tok-noa': { sub: '1313', email: 'noa@example.com' }, 'tok-pia': { sub: '1414', email: 'pia@example.com' }, 'tok-tess': { sub: '1515', email: 'tess@example.com' }, 'tok-ivo': { sub: '1616', email: 'ivo@example.com' }, 'tok-ada': { sub: '1717', email: 'ada@example.com' }, 'tok-bea': { sub: '1818', email: 'bea@example.com' }, 'tok-cid': { sub: '1919', email: 'cid@example.com' }, 'tok-dan': { sub: '2020', email: 'dan@example.com' }, 'tok-zoe': { sub: '2121', email: 'zoe@example.com' }, 'tok-kai': { sub: '2222', email: 'kai@example.com' }, 'tok-lia': { sub: '2323', email: 'lia@example.com' }, 'tok-sto': { sub: '2424', email: 'sto@example.com' } }[t];
+    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' }, 'tok-gil': { sub: '1212', email: 'gil@example.com' }, 'tok-noa': { sub: '1313', email: 'noa@example.com' }, 'tok-pia': { sub: '1414', email: 'pia@example.com' }, 'tok-tess': { sub: '1515', email: 'tess@example.com' }, 'tok-ivo': { sub: '1616', email: 'ivo@example.com' }, 'tok-ada': { sub: '1717', email: 'ada@example.com' }, 'tok-bea': { sub: '1818', email: 'bea@example.com' }, 'tok-cid': { sub: '1919', email: 'cid@example.com' }, 'tok-dan': { sub: '2020', email: 'dan@example.com' }, 'tok-zoe': { sub: '2121', email: 'zoe@example.com' }, 'tok-kai': { sub: '2222', email: 'kai@example.com' }, 'tok-lia': { sub: '2323', email: 'lia@example.com' }, 'tok-sto': { sub: '2424', email: 'sto@example.com' }, 'tok-una': { sub: '2525', email: 'una@example.com' } }[t];
     if (t === 'tok-otraapp') return Response.json({ aud: 'otra-app', sub: '333', email: 'x@example.com', email_verified: 'true' });
     return who ? Response.json({ aud: CID, ...who, email_verified: 'true', expires_in: 3000 }) : new Response('bad', { status: 400 });
   }
@@ -2671,6 +2671,41 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     const me = await (await req('GET', '/api/me', { headers: { Cookie: ck } })).json();
     ok(me.email === 'ana@' + DOM && me.name === 'Ana SSO' && me.plan === 'pro' && me.team?.name === 'Escuela SSO', 'SSO: su cuenta, ya en el equipo (Pro)');
     ok([...env.ACCOUNTS.inst.keys()].some(k => /^u:sso:[\w-]{32}$/.test(k)), 'SSO: una cuenta propia, no la de Google');
+  } finally { env.FETCH = realF; }
+}
+
+// ---- Integrations: Slack, Teams… and signed JSON (hooks.js) ----
+{
+  const realF = env.FETCH, got = [];
+  env.FETCH = async (u, init = {}) => { u = String(u); if (/hooks\.slack\.com|discord\.com|hooks\.example\.org/.test(u)) { got.push({ u, body: JSON.parse(init.body), headers: init.headers }); return new Response('ok', { status: u.includes('falla') ? 500 : 200 }); } return realF(u, init); };
+  try {
+    const una = await login2('tok-una'), kai = await login2('tok-kai');
+    const H = (path, body) => req(body === undefined ? 'GET' : 'POST', '/api/hooks' + path, { headers: { Cookie: una }, body });
+    ok((await H('', { url: 'http://hooks.slack.com/services/x', events: ['opened'] })).status === 400, 'integraciones: solo https');
+    ok((await H('', { url: 'https://localhost/x', events: ['opened'] })).status === 400, 'integraciones: no direcciones internas');
+    ok((await H('', { url: 'https://hooks.slack.com/services/T/B/x', events: ['nada'] })).status === 400, 'integraciones: algún evento conocido');
+    let j = await (await H('', { url: 'https://hooks.slack.com/services/T/B/secreto', events: ['opened', 'comment'] })).json();
+    ok(j.id && j.kind === 'slack', 'integraciones: Slack reconocido');
+    const slack = j.id;
+    j = await (await H('', { url: 'https://hooks.example.org/revela', events: ['comment'] })).json(); const gen = j, sec = j.secret;
+    j = await (await H('')).json();
+    ok(j.hooks.length === 2 && !JSON.stringify(j).includes('secreto') && !JSON.stringify(j).includes(sec), 'integraciones: la lista no enseña la dirección entera ni el secreto');
+    j = await (await H(`/${slack}/test`, {})).json();
+    ok(j.ok && got.at(-1).body.text.includes('Revela'), 'integraciones: mensaje de prueba a Slack');
+    // A comment by someone else on my presentation.
+    const deck = { name: 'Proyecto', slides: [{ id: 's1', blocks: [] }] };
+    const { id: doc } = await (await req('POST', '/api/docs', { headers: { Cookie: una }, body: { deck } })).json();
+    await req('POST', `/api/docs/${doc}/share`, { headers: { Cookie: una }, body: { link: 'comment' } });
+    got.length = 0;
+    await req('POST', `/api/docs/${doc}/ops`, { headers: { Cookie: kai }, body: { ops: [{ p: ['slides', 's1', 'comments'], v: [{ id: 'c1', text: 'Cambia el título', author: 'Kai', time: 1, replies: [] }] }] } });
+    const toSlack = got.find(x => x.u.includes('slack')), toGen = got.find(x => x.u.includes('example.org'));
+    ok(toSlack && /Cambia el título/.test(toSlack.body.text) && /Proyecto/.test(toSlack.body.text), 'integraciones: un comentario llega a Slack');
+    const raw = JSON.stringify(toGen?.body);
+    ok(toGen && toGen.body.event === 'comment' && toGen.headers['X-Revela-Signature'] === 'sha256=' + Buffer.from(await crypto.subtle.sign('HMAC', await crypto.subtle.importKey('raw', new TextEncoder().encode(sec), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']), new TextEncoder().encode(raw))).toString('base64url'), 'integraciones: JSON firmado con su secreto');
+    got.length = 0;
+    await req('POST', `/api/docs/${doc}/ops`, { headers: { Cookie: una }, body: { ops: [{ p: ['slides', 's1', 'comments', 'c2'], v: { id: 'c2', text: 'mío', replies: [] } }] } });
+    ok(!got.length, 'integraciones: mis propios comentarios no avisan');
+    ok((await H(`/${gen.id}/delete`, {})).status === 200 && (await (await H('')).json()).hooks.length === 1, 'integraciones: quitar una');
   } finally { env.FETCH = realF; }
 }
 

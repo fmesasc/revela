@@ -80,6 +80,7 @@ import { storageConfig, MB } from './storage.js';
 import { handleVisit, visitsCall, cleanPath } from './visits.js';
 import { startLive, joinLive } from './broadcast.js';
 import { ssoStart, ssoCallback, ssoJoin } from './sso.js';
+import { hookOp, handleHooks } from './hooks.js';
 import { keyOp, handleKeys, handleV1, handleMcp, handleOAuth, connectInfo, connectApprove, isKey, parseKey, mcpChallenge } from './publicapi.js';
 import { APP_VERSION } from '../../src/core/config.js';
 import { credits, aiChat, aiImage, aiSpeech } from './ai.js';
@@ -402,6 +403,8 @@ export class Account {
       // API keys and OAuth's codes (publicapi.js).
       case 'key-list': case 'key-add': case 'key-check': case 'key-refresh': case 'key-del': case 'code-add': case 'code-take':
         return this.json(await keyOp(this, op, a));
+      // Integrations: Slack, Teams… or any address (hooks.js).
+      case 'hook-list': case 'hook-add': case 'hook-del': case 'hook-done': return this.json(await hookOp(this, op, a));
       case 'sessions-end': {                               // { ids?, keep? } → { ended }   (ids: those; none: all of them; never keep's)
         const sessions = await this.get('sessions', {}), keep = a.keep ? await sha256(a.keep) : '', ids = Array.isArray(a.ids) ? a.ids.map(String) : null;
         let ended = 0;
@@ -1014,6 +1017,7 @@ export async function handleApi(req, env, url) {
   if (path === '/3d' || path.startsWith('/3d/')) return handle3d(path, req, body, env, me, A, json);
   // «Desarrolladores»: my API keys, and saying yes to an app that asks to connect (publicapi.js).
   if (path === '/keys' || path.startsWith('/keys/')) return handleKeys(path, req, body, me, A, json);
+  if (path === '/hooks' || path.startsWith('/hooks/')) return handleHooks(path, req, body, me, A, env, json);
   if (path === '/oauth/approve' && req.method === 'POST') return connectApprove(env, me, body, json);
   if (path === '/live' && req.method === 'POST') {
     const prof = await call(A, 'me'), who = { sub: me.sub, email: prof.email, name: prof.name, plan: prof.plan, features: prof.features };

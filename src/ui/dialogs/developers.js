@@ -23,7 +23,10 @@ export function developersBox() {
     <p class="host-help">${t('Para tus propios programas, crea una clave de API. Trátala como una contraseña: quien la tenga puede leer y cambiar tus presentaciones.')}
       <a href="${OFFICIAL_SITE}/developers" target="_blank" rel="noopener">${t('Documentación')}</a></p>
     <ul class="acc-sess-list acc-dev-list"></ul>
-    <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 acc-dev-new">${t('Crear una clave de API')}</button></div></details>`;
+    <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 acc-dev-new">${t('Crear una clave de API')}</button></div>
+    <p class="host-help">${t('Avisos en Slack, Microsoft Teams, Google Chat, Discord o cualquier dirección (Zapier, Make…): cuando alguien abra uno de tus enlaces con seguimiento o comente tus presentaciones.')}</p>
+    <ul class="acc-sess-list acc-hook-list"></ul>
+    <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 acc-hook-new">${t('Añadir un canal de avisos')}</button></div></details>`;
 }
 
 export function wireDevelopers(body) {
@@ -44,7 +47,29 @@ export function wireDevelopers(body) {
       b.disabled = true; try { await acc.api(`keys/${b.closest('li').dataset.id}/delete`, {}); } catch (e) { alertDialog(e.message); } paint();
     }));
   };
-  box.addEventListener('toggle', () => { if (box.open) paint(); });
+  // Integrations (server/cloudflare/hooks.js): where the notices go, a test message, and out.
+  const EVENTS = { opened: 'Enlace con seguimiento abierto', comment: 'Comentario nuevo' };
+  const paintHooks = async () => {
+    const list = box.querySelector('.acc-hook-list');
+    let hooks; try { hooks = (await acc.api('hooks')).hooks; } catch (e) { list.innerHTML = `<li>${esc(e.message)}</li>`; return; }
+    list.innerHTML = hooks.map(h => `<li data-id="${esc(h.id)}"><i class="ms">${h.fails >= 20 ? 'error' : 'notifications'}</i><span><b>${esc(h.url)}</b>
+        <small>${h.events.map(e => t(EVENTS[e] || e)).map(esc).join(' · ')}${h.fails ? ' · ' + t('Falla: {n} veces seguidas').replace('{n}', h.fails) : ''}</small></span>
+        <button type="button" class="mini2 acc-hook-test">${t('Probar')}</button><button type="button" class="mini2 acc-hook-del">✕</button></li>`).join('');
+    list.querySelectorAll('.acc-hook-test').forEach(b => b.addEventListener('click', async () => {
+      b.disabled = true; try { const r = await acc.api(`hooks/${b.closest('li').dataset.id}/test`, {}); alertDialog(r.ok ? t('Enviado: mira si ha llegado.') : t('No se ha podido entregar (respuesta {s}). Revisa la dirección.').replace('{s}', r.status || '—')); } catch (e) { alertDialog(e.message); } b.disabled = false; paintHooks();
+    }));
+    list.querySelectorAll('.acc-hook-del').forEach(b => b.addEventListener('click', async () => { try { await acc.api(`hooks/${b.closest('li').dataset.id}/delete`, {}); } catch (e) { alertDialog(e.message); } paintHooks(); }));
+  };
+  box.querySelector('.acc-hook-new').addEventListener('click', async () => {
+    const url = await promptDialog(t('La dirección del webhook entrante (Slack, Teams, Google Chat, Discord) o de tu servicio (https://…):'), '');
+    if (!url) return;
+    try {
+      const r = await acc.api('hooks', { url: url.trim(), events: Object.keys(EVENTS) });
+      if (r.kind === 'json') await alertDialog(`${t('Cada aviso llega como JSON firmado: comprueba la cabecera X-Revela-Signature (sha256 HMAC del cuerpo) con este secreto. Cópialo ahora: no se volverá a mostrar.')}\n\n${r.secret}`);
+    } catch (e) { alertDialog(e.data?.error === 'url' ? t('Esa dirección no vale: tiene que empezar por https:// y ser pública.') : e.status === 409 ? t('Ya tienes 5 canales: quita alguno antes.') : e.message); }
+    paintHooks();
+  });
+  box.addEventListener('toggle', () => { if (box.open) { paint(); paintHooks(); } });
   box.querySelector('.acc-dev-new').addEventListener('click', async () => {
     const name = await promptDialog(t('Un nombre para recordar para qué es (por ejemplo, «Script de informes»):'), '');
     if (name == null) return;
