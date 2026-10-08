@@ -282,6 +282,15 @@ class_name = "Visits"
 tag = "v15"
 new_sqlite_classes = ["Visits"]
 
+# Live broadcasts to a big audience (broadcast.js): one room per broadcast, WebSocket hibernation.
+[[durable_objects.bindings]]
+name = "LIVE"
+class_name = "Broadcast"
+
+[[migrations]]
+tag = "v16"
+new_sqlite_classes = ["Broadcast"]
+
 # ---- Pruebas (staging): test.revelaslides.com ------------------------------------------------------------
 # The same Worker as «revela-share-staging», with its own Durable Objects (its own accounts, documents and the
 # rest: nothing is shared with production), deployed from main by server.yml after the tests; production comes from
@@ -376,6 +385,9 @@ class_name = "Crm"
 [[env.staging.durable_objects.bindings]]
 name = "COMMUNITY"
 class_name = "Community"
+[[env.staging.durable_objects.bindings]]
+name = "LIVE"
+class_name = "Broadcast"
 [[env.staging.durable_objects.bindings]]
 name = "CRAWLER"
 class_name = "Crawler"

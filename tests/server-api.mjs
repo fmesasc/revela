@@ -2,7 +2,7 @@
 // payments and the desktop sign-in — above all, that nothing can be skipped
 // from outside. In-memory Durable Objects; the AI provider, Google and Stripe
 // are simulated. Run by tests/run.sh when Node.js is available.
-import worker, { Account, Budget, DesktopLink, ShareBox, Limits, CloudDoc, Team, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance, Crm, Community } from '../server/cloudflare/worker.js';
+import worker, { Account, Budget, DesktopLink, ShareBox, Limits, CloudDoc, Team, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance, Crm, Community, Broadcast } from '../server/cloudflare/worker.js';
 import { summarize, bump, toCsv, cleanEntry, featureOf } from '../server/cloudflare/finance.js';
 import { verifyAccess, resetAccessCerts, resetPromoCache, ticketsDue } from '../server/cloudflare/admin.js';
 import { ticketToken, render } from '../server/cloudflare/mail.js';
@@ -2578,6 +2578,41 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   ok((await req('POST', `/api/keys/${ok1.id}/delete`, { headers: { Cookie: ada } })).status === 200 && (await mcp(at2, { jsonrpc: '2.0', id: 11, method: 'ping' })).status === 401, 'OAuth: revocarlo en Desarrolladores');
   // Revoking a personal key.
   ok((await req('POST', `/api/keys/${keyId}/delete`, { headers: { Cookie: ada } })).status === 200 && (await kreq('GET', '/api/v1/me', key)).status === 401, 'revocar una clave');
+}
+
+// ---- Live broadcast to a big audience (broadcast.js) ----
+{
+  const rooms = new Map();
+  env.LIVE = { idFromName: n => n, get: id => { if (!rooms.has(id)) { const ctx = { storage: fakeStorage(), sockets: [], acceptWebSocket(ws, tags) { ws.tags = tags; this.sockets.push(ws); },
+    getWebSockets(tag) { return this.sockets.filter(x => !x.closed && (!tag || x.tags.includes(tag))); }, getTags: ws => ws.tags }; rooms.set(id, new Broadcast(ctx, env)); }
+    const o = rooms.get(id); return { fetch: (u, init) => o.fetch(u instanceof Request ? u : new Request(u, init)) }; } };
+  const cid = await login2('tok-cid'), dan = await login2('tok-dan');
+  const deck = { name: 'Charla', size: { w: 1280, h: 720 }, slides: [{ id: 's1', blocks: [] }, { id: 's2', blocks: [] }] };
+  const { id: doc } = await (await req('POST', '/api/docs', { headers: { Cookie: cid }, body: { deck } })).json();
+  ok((await req('POST', '/api/live', { body: { doc } })).status === 401, 'emisión: empezar pide sesión');
+  ok((await req('POST', '/api/live', { headers: { Cookie: dan }, body: { doc } })).status >= 403, 'emisión: solo quien puede editarla');
+  ok((await req('POST', '/api/live', { headers: { Cookie: cid }, body: { doc } })).status === 409, 'emisión: si su enlace no deja verla, lo dice');
+  await req('POST', `/api/docs/${doc}/share`, { headers: { Cookie: cid }, body: { link: 'present' } });
+  let r = await req('POST', '/api/live', { headers: { Cookie: cid }, body: { doc } }), j = await r.json();
+  ok(r.status === 200 && j.room && j.token && j.url === `${SITE}/app/view.html?doc=${doc}&live=${j.room}`, 'emisión: la sala y el enlace para el público');
+  ok((await req('GET', '/api/live/nohay-esta-sala-x')).status === 404, 'emisión: una sala que no existe');
+  const B = rooms.get(j.room), meta = await B.ctx.storage.get('meta');
+  ok(meta.doc === doc && meta.token !== j.token, 'emisión: del token solo su hash');
+  const sock = () => ({ got: [], closed: false, send(s) { this.got.push(JSON.parse(s)); }, close() { this.closed = true; }, last(t) { return this.got.filter(m => m.t === t).at(-1); } });
+  const pres = sock(), a1 = sock(), a2 = sock();
+  await B.join(pres, true, meta); await B.join(a1, false, meta); await B.join(a2, false, meta);
+  ok(a1.last('hello')?.doc === doc && a1.last('hello').state.h === 0 && !a1.last('hello').presenter, 'emisión: el público entra y sabe dónde va');
+  await B.webSocketMessage(pres, JSON.stringify({ t: 'go', h: 1, v: 0, f: 2 }));
+  ok(a1.last('go')?.h === 1 && a2.last('go')?.f === 2, 'emisión: todos siguen la diapositiva y el paso');
+  await B.webSocketMessage(pres, JSON.stringify({ t: 'ptr', x: 0.25, y: 2 }));
+  ok(a1.last('ptr')?.x === 0.25 && a1.last('ptr').y === 1, 'emisión: y el puntero (dentro de la diapositiva)');
+  await B.webSocketMessage(a1, JSON.stringify({ t: 'go', h: 0 }));
+  ok(a2.last('go').h === 1, 'emisión: el público no puede mover a los demás');
+  const late = sock(); await B.join(late, false, meta);
+  ok(late.last('hello').state.h === 1 && late.last('hello').state.f === 2, 'emisión: quien llega tarde entra donde va');
+  B.count(true); ok(pres.last('n')?.n === 3, 'emisión: quien presenta ve cuántos le siguen');
+  await B.webSocketMessage(pres, JSON.stringify({ t: 'end' }));
+  ok(a1.last('end') && a1.closed && !(await B.ctx.storage.get('meta')), 'emisión: al terminar, todos fuera y la sala borrada');
 }
 
 console.log(fails ? `API FAIL ${n - fails}/${n}` : `API OK ${n}/${n}`);

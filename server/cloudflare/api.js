@@ -78,6 +78,7 @@ import { enc, b64url, random, sha256, DAY, HOUR } from './util.js';
 import { stockSearch, stockUsed, photoProviders } from './stock.js';
 import { storageConfig, MB } from './storage.js';
 import { handleVisit, visitsCall, cleanPath } from './visits.js';
+import { startLive, joinLive } from './broadcast.js';
 import { keyOp, handleKeys, handleV1, handleMcp, handleOAuth, connectInfo, connectApprove, isKey, parseKey, mcpChallenge } from './publicapi.js';
 import { APP_VERSION } from '../../src/core/config.js';
 import { credits, aiChat, aiImage, aiSpeech } from './ai.js';
@@ -841,6 +842,9 @@ export async function handleApi(req, env, url) {
   const path = url.pathname.replace(/^\/api/, '');
   // LTI (learning platforms): their own forms and signed tokens, no session here (lti.js).
   if (path.startsWith('/lti/')) return handleLti(req, env, url, s.site);
+  // A live broadcast's room (broadcast.js): the presenter (with its token) and the audience (no session).
+  const lv = path.match(/^\/live\/([\w-]{1,40})$/);
+  if (lv && req.method === 'GET') return joinLive(req, env, lv[1]);
   // OAuth for the MCP server (publicapi.js): its own forms, from other sites, no session.
   if (['/oauth/register', '/oauth/authorize', '/oauth/token'].includes(path)) { const r = await handleOAuth(path, req, env, url); if (r) return r; }
   // Stripe's own calls: signed, no browser involved.
@@ -996,6 +1000,11 @@ export async function handleApi(req, env, url) {
   // «Desarrolladores»: my API keys, and saying yes to an app that asks to connect (publicapi.js).
   if (path === '/keys' || path.startsWith('/keys/')) return handleKeys(path, req, body, me, A, json);
   if (path === '/oauth/approve' && req.method === 'POST') return connectApprove(env, me, body, json);
+  if (path === '/live' && req.method === 'POST') {
+    const prof = await call(A, 'me'), who = { sub: me.sub, email: prof.email, name: prof.name, plan: prof.plan, features: prof.features };
+    const read = async (id, w) => handleDocs('/docs/' + id, { method: 'GET', headers: new Headers() }, {}, new URL('https://x/docs/' + id), env, w && who, (data, status = 200) => ({ data, status }));
+    return startLive(env, me, body, json, read);
+  }
   // «Recomienda Revela a tu centro» (crm.js): my link and what it has brought.
   if (path === '/referral' && req.method === 'GET') { const prof = await call(A, 'me'); return referralInfo(env, { sub: me.sub, email: prof.email }, json); }
   if (path === '/team' || path.startsWith('/team/')) { const prof = await call(A, 'me'); return handleTeams(path, req, body, url, env, { sub: me.sub, email: prof.email, name: prof.name }, A, acct, call, json); }

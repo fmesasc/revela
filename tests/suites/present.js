@@ -34,6 +34,25 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!D.getElementById('present-overlay'), 'y luego sale de la presentación');
   });
 
+  await test('emitir en directo: cada cambio de diapositiva, paso y puntero va a la sala; al salir, se acaba', async () => {
+    reset(); const W = frame.contentWindow, Real = W.WebSocket, sent = [], socks = [];
+    W.WebSocket = class { constructor(u) { this.url = u; this.readyState = 1; socks.push(this); setTimeout(() => this.onopen?.(), 5); } send(m) { sent.push(JSON.parse(m)); } close() { this.closed = true; } };
+    try {
+      R.blocks.addText(); R.store.commit(() => { R.state.deck.slides.push({ id: 'live2', blocks: [], background: null }); });
+      R.io.present({ fullscreen: false, live: { room: 'sala-de-prueba-1234', token: 'secreto' } });
+      let Rv = null; for (let i = 0; i < 60 && !Rv?.isReady?.(); i++) { await sleep(100); Rv = D.querySelector('#present-overlay iframe')?.contentWindow?.Reveal; }
+      await sleep(300);
+      assert(socks[0] && /\/api\/live\/sala-de-prueba-1234\?token=secreto$/.test(socks[0].url) && /^wss?:/.test(socks[0].url), 'se conecta a su sala, con su token');
+      assert(D.getElementById('live-badge'), 'se ve «En directo»');
+      Rv.next(); await sleep(100);
+      assert(sent.some(m => m.t === 'go' && m.h === 1), 'al pasar de diapositiva, la sala lo sabe');
+      socks[0].onmessage({ data: JSON.stringify({ t: 'n', n: 1234 }) });
+      assert(/1234/.test(D.getElementById('live-badge').textContent), 'cuántos le siguen');
+      D.querySelector('#present-close').click(); await sleep(50);
+      assert(sent.at(-1)?.t === 'end' && socks[0].closed, 'al salir, la emisión termina');
+    } finally { W.WebSocket = Real; D.getElementById('present-overlay')?.querySelector('#present-close')?.click(); }
+  });
+
   await test('cuestionario tipo Kahoot: respuesta correcta, puntos por rapidez, resultados y clasificación', async () => {
     reset(); const W = frame.contentWindow, P = await W.eval("import('/src/features/live/poll.js')");
     const quiz = { kind: 'quiz', pollId: 'q1', question: '¿Capital de Francia?', options: ['Madrid', 'París', 'Roma'], correct: [1], time: 20 };

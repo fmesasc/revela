@@ -2,6 +2,7 @@ import { state, commit } from '../../core/store.js';
 import { slidePaths } from '../../features/document/captions.js';
 import { session } from '../../core/session.js';
 import { buildHTML } from '../../io/formats/html.js';
+import { attachLive } from './broadcast.js';
 import { t } from '../../i18n/index.js';
 import { confirmDialog, alertDialog } from '../dialogs/dialog.js';
 
@@ -17,7 +18,7 @@ import { confirmDialog, alertDialog } from '../dialogs/dialog.js';
 // selfPaced: the quizzes and activities are answered inside the slides (see
 // io/runtime/selfpaced.js); answer(pollId, answer) → Promise<{ score, sent }> marks
 // them elsewhere (the server, for a learning platform), else they're marked here.
-export function present({ rehearse = false, fullscreen = true, onEnd = null, onRehearsal = null, fromCurrent = false, selfPaced = false, answer = null } = {}) {
+export function present({ rehearse = false, fullscreen = true, onEnd = null, onRehearsal = null, fromCurrent = false, selfPaced = false, answer = null, live = null } = {}) {
   const startAt = fromCurrent ? slidePaths(state.deck).get(state.ui.slideIndex) : null;
   const deck = rehearse ? { ...state.deck, slides: state.deck.slides.map(s => ({ ...s, autoSlide: 0 })) } : state.deck;
   window.__revelaAnswer = selfPaced && answer ? answer : undefined;
@@ -41,6 +42,8 @@ export function present({ rehearse = false, fullscreen = true, onEnd = null, onR
   bar.querySelector('#present-prompter').addEventListener('click', () => { import('./prompter.js').then(m => m.openPrompter()); frame.focus(); });
   overlay.appendChild(bar);
   document.body.appendChild(overlay);
+  // (A live broadcast — «Emitir en directo»: broadcast.js —: its room follows this presentation until it ends.)
+  const stopLive = live ? attachLive(frame, live, overlay) : null;
 
   // Rehearsal clock: time on the current slide and total.
   const times = [], t0 = performance.now(); let cur = 0, since = t0, clock = null, tick = null;
@@ -53,7 +56,7 @@ export function present({ rehearse = false, fullscreen = true, onEnd = null, onR
   session.present = { frame, overlay, rehearse, times, lap, current: () => cur };
   const notifySlide = () => window.dispatchEvent(new CustomEvent('revela:present-slide'));
   const end = () => {
-    clearInterval(hook);
+    clearInterval(hook); stopLive?.();
     if (rehearse) { clearInterval(tick); lap(cur); (onRehearsal || offerRehearsal)(times); }
     onEnd?.();
     document.removeEventListener('fullscreenchange', onFs);

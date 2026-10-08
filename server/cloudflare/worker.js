@@ -33,7 +33,7 @@
 // ROOMS (collab.js), ACCOUNTS, BUDGET, DESKTOP (api.js), DOCS (docs.js),
 // TEAMS (teams.js), LTI (lti.js), CALLS (calls.js), SCHEDULE (schedule.js),
 // MODELJOBS (model3d.js), DIRECTORY, TICKETS, AUDIT (admin.js), FINANCE
-// (finance.js), CRM (crm.js), COMMUNITY (community.js). Optional: EMAIL
+// (finance.js), CRM (crm.js), COMMUNITY (community.js), LIVE (broadcast.js). Optional: EMAIL
 // (send_email, mail.js) and BLENDER_SVC (service binding, model3d.js). This
 // file's own vars: UPLOAD_KEY and/or GOOGLE_CLIENT_ID + ALLOWED (who can upload
 // or open rooms, see authorize()), MAX_MB (default 30), ALLOW_ORIGIN (default *).
@@ -55,12 +55,13 @@ import { storageWatch, storageBackfill } from './storage.js';
 import { releasesAuto } from './releases.js';
 import { Community, communityPage } from './community.js';
 import { wellKnown } from './publicapi.js';
+import { Broadcast } from './broadcast.js';
 import { Crawler } from './crawler.js';
 import { Visits } from './visits.js';
 import { sendMail, mailConfigured } from './mail.js';
 import { Finance } from './finance.js';
 import { random, sha256 } from './util.js';
-export { CollabRoom, ShareBox, Limits, Account, Budget, DesktopLink, CloudDoc, Team, LtiStore, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance, Crm, Community, Crawler, Visits, verifyGoogleToken, resetCerts };
+export { CollabRoom, ShareBox, Limits, Account, Budget, DesktopLink, CloudDoc, Team, LtiStore, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance, Crm, Community, Crawler, Visits, Broadcast, verifyGoogleToken, resetCerts };
 
 const box = (env, id) => env.SHAREBOX.get(env.SHAREBOX.idFromName(id));
 // Who counts for the daily limits: the Google account, else the key, else the address.

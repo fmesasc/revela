@@ -84,6 +84,19 @@ function check(){var s=at();if(s===cur)return;if(cur)send({slide:cur,ms:Date.now
 setInterval(check,1000);document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'&&cur)send({slide:cur,ms:Date.now()-since});since=Date.now();});
 })();</script>`;
 
+// A live broadcast (view.html?doc=…&live=…: server/cloudflare/broadcast.js): the presentation follows whoever presents
+// it — slide, step and pointer —, with a small «En directo» mark; when it ends, it says so and stays where it was.
+const follower = (room, texts) => `<script>(function(){var R=${JSON.stringify(room)},T=${JSON.stringify(texts)},tries=0,dot,mark;
+function ui(){mark=document.createElement('div');mark.style.cssText='position:fixed;top:10px;left:10px;z-index:99;background:#c0392b;color:#fff;font:600 13px system-ui;padding:4px 10px;border-radius:12px;pointer-events:none';mark.textContent=T.live;document.body.appendChild(mark);
+dot=document.createElement('div');dot.style.cssText='position:fixed;z-index:98;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:#ff3b30;box-shadow:0 0 12px #ff3b30;pointer-events:none;display:none';document.body.appendChild(dot);}
+function go(m){if(!window.Reveal||!Reveal.slide)return;Reveal.slide(m.h||0,m.v||0,m.f==null?undefined:m.f);}
+function ptr(m){var sl=document.querySelector('.reveal .slides');if(!sl||m.x==null){dot.style.display='none';return;}var b=sl.getBoundingClientRect();dot.style.left=(b.left+m.x*b.width)+'px';dot.style.top=(b.top+m.y*b.height)+'px';dot.style.display='block';}
+function open(){var ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/api/live/'+encodeURIComponent(R));
+ws.onmessage=function(e){var m;try{m=JSON.parse(e.data);}catch(x){return;}if(m.t==='hello'){tries=0;mark.textContent=T.live;if(m.state)go(m.state);}else if(m.t==='go')go(m);else if(m.t==='ptr')ptr(m);else if(m.t==='end'){mark.textContent=T.ended;mark.style.background='#555';dot.style.display='none';ws.onclose=null;}};
+ws.onclose=function(){mark.textContent=T.again;if(tries++<20)setTimeout(open,Math.min(30000,1000*tries));};}
+function start(){if(!window.Reveal||!Reveal.isReady||!Reveal.isReady()){setTimeout(start,200);return;}ui();open();}
+start();})();</script>`;
+
 async function openCloud(id) {
   const m = document.getElementById('m'); m.textContent = texts.loading;
   try {
@@ -104,6 +117,8 @@ try{fetch(U,{method:'POST',credentials:'include',headers:{'Content-Type':'applic
       html = html.slice(0, at) + report + `<script>${scormPage}</script>` + html.slice(at);
     }
     if (r) { const at = html.toLowerCase().lastIndexOf('</body>'); html = html.slice(0, at) + beacon(id, r) + html.slice(at); }
+    const live = /^[\w-]{16,24}$/.test(p.get('live') || '') ? p.get('live') : null;
+    if (live) { const at = html.toLowerCase().lastIndexOf('</body>'); html = html.slice(0, at) + follower(live, { live: '● ' + t('En directo'), ended: t('La emisión ha terminado'), again: t('Reconectando…') }) + html.slice(at); }
     document.open(); document.write(html); document.close();
     if (name) document.title = name;
   } catch (e) {
