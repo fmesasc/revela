@@ -19,8 +19,9 @@ const MID = ['title', 'section', 'closing', 'agenda'];
 const keyWords = sp => new Set([sp.title, sp.statement, sp.subtitle].map(str).join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/[^\p{L}\p{N}]+/u).filter(w => w.length >= 4));
 
 // All the words of a slide (title, points, cards, columns), to compare slides; and how much two sets share (of the smaller).
-const contentWords = sp => new Set([sp.title, sp.statement, ...bulletsOf(sp), ...(sp.steps || []).flatMap(s => [s?.title, s?.text, s?.label]), ...(sp.items || []).flatMap(s => (typeof s === 'object' ? [s?.title, s?.text] : [s])),
-  ...(sp.columns || []).flatMap(c => [c?.heading, ...(c?.bullets || [])])].map(str).join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/[^\p{L}\p{N}]+/u).filter(w => w.length >= 5));
+const listOf = v => (Array.isArray(v) ? v : []);
+const contentWords = sp => new Set([sp.title, sp.statement, ...bulletsOf(sp), ...listOf(sp.steps).flatMap(s => [s?.title, s?.text, s?.label]), ...listOf(sp.items).flatMap(s => (s && typeof s === 'object' ? [s.title, s.text] : [s])),
+  ...listOf(sp.columns).flatMap(c => [c?.heading, ...listOf(c?.bullets)])].map(str).join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/[^\p{L}\p{N}]+/u).filter(w => w.length >= 5));
 const overlap = (a, b) => { let n = 0; for (const w of a) if (b.has(w)) n++; return n / Math.max(1, Math.min(a.size, b.size)); };
 
 // Forecasts, projections, estimates: figures about what hasn't happened.

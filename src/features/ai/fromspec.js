@@ -482,7 +482,8 @@ export function compose(kind, spec, area, look, { minimal = false, style = 'same
       while (cols > 1 && (area.w - (cols - 1) * gap) / cols < needW) cols--;
       if (cols > 2 && n % cols && n % (cols - 1) === 0 && (area.w - (cols - 2) * gap) / (cols - 1) >= needW) cols--;   // (no last row of one — but never one column: thin strips)
       const rows = Math.ceil(n / cols);
-      const cw = (area.w - (cols - 1) * gap) / cols, pad = minimal ? 0 : 26, d = rows > 1 ? 54 : 68, hasT = it.some(s => s.title);
+      const cw = (area.w - (cols - 1) * gap) / cols, hasT = it.some(s => s.title);
+      let pad = minimal ? 0 : 26, d = rows > 1 ? 54 : 68, dg = 18;
       const ts0 = R(bs * (rows > 1 ? 0.84 : 0.9)), xs0 = short ? R(bs * 1.2) : R(bs * (hasT ? (rows > 1 ? 0.8 : 0.86) : 0.92));
       const maxH = (area.h - (rows - 1) * gap) / rows;
       let ts = ts0, xs = xs0;
@@ -493,12 +494,14 @@ export function compose(kind, spec, area, look, { minimal = false, style = 'same
         const tH = hasT ? Math.max(...it.map(s => (s.title ? textHeight(`<b>${inline(s.title)}</b>`, ts, iw, 1.15, 0.6, look.head) : 0))) : 0;
         const xH = Math.max(0, ...it.map(s => (s.text ? textHeight(short ? `<b>${inline(s.text)}</b>` : inline(s.text), xs, iw, 1.3, 0.54, short ? look.head : look.body) : 0)));
         const inner = tH + (hasT ? 6 : 0) + xH;
-        return { side, iw, tH, need: side ? 2 * pad + Math.max(d, inner) : 2 * pad + d + 18 + inner };
+        return { side, iw, tH, need: side ? 2 * pad + Math.max(d, inner) : 2 * pad + d + dg + inner };
       };
       let lay = sized(kind === 'features' && cw >= 440);
       if (!lay.side && lay.need > maxH && cw >= 360) { const alt = sized(true); if (alt.need < lay.need) lay = alt; }
       // (Still taller than its row — two rows of cards under a big serif title —: the letters a little smaller, to 18 px.)
       for (let k = 0.95; lay.need > maxH && k >= 0.7; k -= 0.05) { ts = Math.max(18, R(ts0 * k)); xs = Math.max(18, R(xs0 * k)); lay = sized(lay.side); }
+      // (And at 18 px, still not: the card itself tighter — less margin, a smaller number —, five steps of a sentence each.)
+      if (lay.need > maxH) { pad = Math.min(pad, 16); d = Math.min(d, 40); dg = 10; lay = sized(lay.side); const alt = !lay.side && sized(true); if (alt && alt.need < lay.need) lay = alt; }
       const { side, iw, tH } = lay, ch = Math.min(maxH, lay.need);
       const y0 = area.y + Math.max(0, (area.h - rows * ch - (rows - 1) * gap) * 0.4), used = new Set();
       it.forEach((s, i) => {
@@ -511,8 +514,8 @@ export function compose(kind, spec, area, look, { minimal = false, style = 'same
           used.add(name);
           push(S('ellipse', x + pad, y + pad, d, d, c, { opacity: 18 }), { id: uid(), type: 'icon', icon: name, color: c, x: R(x + pad + d * 0.22), y: R(y + pad + d * 0.22), w: R(d * 0.56), h: R(d * 0.56), rotation: 0, animation: null, alt: '' });
         }
-        const tx = side ? x + pad + d + 22 : x + pad, room = y + ch - pad - (side ? y + pad : y + pad + d + 18), th = Math.min(tH, room * 0.55);
-        let ty = side ? y + pad : y + pad + d + 18;
+        const tx = side ? x + pad + d + 22 : x + pad, room = y + ch - pad - (side ? y + pad : y + pad + d + dg), th = Math.min(tH, room * 0.55);
+        let ty = side ? y + pad : y + pad + d + dg;
         if (s.title) { const ht = `<b>${inline(s.title)}</b>`;
           push(T(tx, ty, iw, th, ht, { fontSize: fitSize(ht, ts, iw, th, 1.15, 18, 0.6, look.head), fontFamily: look.head, color: kind === 'features' && !minimal ? c : look.title, lineHeight: 1.15 })); }
         if (hasT) ty += th + 6;

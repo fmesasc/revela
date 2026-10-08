@@ -321,7 +321,12 @@ Write everything in ${opts.language || lang()}.` },
   // made again, once, before anyone sees it.
   const how = { topic: opts.topic || str(res.title), sourced: !!(str(opts.source) || opts.research || /\d/.test(str(opts.context))), images: !!opts.images, given: (opts.attachments || []).length ? '' : [opts.context, opts.source, opts.research?.brief].map(str).join('\n').trim() };   // (the data as text — not when it came in a file the measure can't read)
   let q = deckQuality(specs, how); specs.qualityFirst = q;
-  if (q.score < 80 || q.problems.some(p => ['invented-figures', 'off-code', 'no-picture', 'repeated'].includes(p.code))) { await richer(specs, weakSlides(q, specs), opts, q).catch(() => {}); q = deckQuality(specs, how); }
+  if (q.score < 80 || q.problems.some(p => ['invented-figures', 'off-code', 'no-picture', 'repeated'].includes(p.code))) {
+    // (Made again, but kept only if better: a second pass sometimes turned good cards into lists.)
+    const before = specs.slice(), was = q;
+    await richer(specs, weakSlides(q, specs), opts, q).catch(() => {}); q = deckQuality(specs, how);
+    if (q.score < was.score) { specs.splice(0, specs.length, ...before); q = was; }
+  }
   // The last net, not up to the model: figures still without anything behind them are never shown as facts — on cards,
   // each value becomes a gap to fill in («[1.200.000 €]»); a chart, a list with a gap for each of its data.
   // (Code on a topic that isn't programming — sums worked out as comments —: its lines, as a list.)
