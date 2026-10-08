@@ -225,7 +225,9 @@ export async function handleLti(req, env, url, site) {
     const title = String(p.title || '').trim().slice(0, 200) || d.name || 'Revela';
     const jwt = await signJwt({ iss: pick.clientId, aud: pick.issuer, iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 600, nonce: random(16),
       [LTI + 'message_type']: 'LtiDeepLinkingResponse', [LTI + 'version']: '1.3.0', [LTI + 'deployment_id']: pick.dep, ...(pick.data != null && { [DL + 'data']: pick.data }),
-      [DL + 'content_items']: [{ type: 'ltiResourceLink', title, url: base + '/launch', custom: { doc }, ...(graded && { lineItem: { scoreMaximum: 100, label: title } }) }] }, env);
+      // (Its icon: the platform shows it beside the activity — Moodle takes it as the activity's icon.)
+      [DL + 'content_items']: [{ type: 'ltiResourceLink', title, url: base + '/launch', icon: { url: site + '/app/icons/icon-192.png', width: 192, height: 192 }, custom: { doc },
+        ...(graded && { lineItem: { scoreMaximum: 100, label: title } }) }] }, env);
     await kvDo(env, 'pick:' + t, 'take');
     return autopost(pick.returnUrl, { JWT: jwt });
   }

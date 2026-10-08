@@ -98,6 +98,7 @@ const dl = await verify(jwt, (await (await call('GET', '/api/lti/jwks')).json())
 const item = dl?.['https://purl.imsglobal.org/spec/lti-dl/claim/content_items']?.[0];
 ok(dl && dl.iss === CID && dl.aud === ISS && dl['https://purl.imsglobal.org/spec/lti-dl/claim/data'] === 'xyz' && dl['https://purl.imsglobal.org/spec/lti/claim/message_type'] === 'LtiDeepLinkingResponse', 'respuesta firmada con nuestra clave, para Moodle');
 ok(item.custom.doc === docId && item.title === 'Tarea de las estaciones' && item.lineItem.scoreMaximum === 100, 'la actividad lleva la presentación y una columna de notas');
+ok(/^https:\/\/.+\/app\/icons\/icon-192\.png$/.test(item.icon?.url || '') && item.icon.width === 192, 'y el icono de Revela (Moodle lo pone a la actividad): ' + JSON.stringify(item.icon));
 
 // ---- The student ----
 L = await launch({ 'https://purl.imsglobal.org/spec/lti/claim/message_type': 'LtiResourceLinkRequest', 'https://purl.imsglobal.org/spec/lti/claim/custom': { doc: docId },
