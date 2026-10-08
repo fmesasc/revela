@@ -121,7 +121,11 @@ export function normalizeSpec(raw) {
     case 'chart': {
       const c = sp.chart && typeof sp.chart === 'object' ? sp.chart : sp;
       let labels = arr(c.labels).map(x => cleanLine(str(x))), values = arr(c.values).map(num);
-      if (Array.isArray(c.data) && c.data.length) { labels = c.data.map(d => cleanLine(str(Array.isArray(d) ? d[0] : d?.label ?? d?.name))); values = c.data.map(d => num(Array.isArray(d) ? d[1] : d?.value)); }
+      let raw = arr(c.values);
+      if (Array.isArray(c.data) && c.data.length) { labels = c.data.map(d => cleanLine(str(Array.isArray(d) ? d[0] : d?.label ?? d?.name))); raw = c.data.map(d => (Array.isArray(d) ? d[1] : d?.value)); values = raw.map(num); }
+      // (Values that are gaps to fill in — «[previsión del T4]» —: no chart to draw; a list of them. Read as numbers, the
+      // «4» of «T4» was drawn as a value.)
+      if (raw.some(v => /\[[^\]]+\]/.test(str(v)))) { out.kind = 'bullets'; out.bullets = [...labels.map((l, i) => `${l}: ${cleanLine(str(raw[i] ?? '[…]'))}`), ...(out.bullets || [])].slice(0, 8); break; }
       const ok = labels.map((l, i) => [l, values[i]]).filter(([, v]) => v != null).slice(0, 24);
       if (ok.length < 2) { out.kind = 'bullets'; break; }
       const type = String(c.type || c.chart_type || c.chartType || 'bar').toLowerCase();

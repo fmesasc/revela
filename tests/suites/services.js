@@ -485,6 +485,10 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       const given = 'T3: 2,4 M€ de ventas frente a un objetivo de 2,6 M€';
       assert(Q.deckQuality([sales[0], fc], { topic: 'Ventas', sourced: true, given }).problems.some(p => p.code === 'invented-figures'), 'la proyección inventada, sí');
       assert(!Q.deckQuality([sales[0], { ...fc, chart: { labels: ['T3', 'Objetivo T4'], values: [2400000, 2600000] } }], { topic: 'Ventas', sourced: true, given }).problems.some(p => p.code === 'invented-figures'), 'con sus cifras, no');
+      // A chart whose values are gaps to fill in: a list of them (not «T4» read as 4).
+      const SP = await W.eval("import('/src/features/ai/specs.js')");
+      const gc = SP.normalizeSpec({ kind: 'chart', title: 'T4', chart: { type: 'line', labels: ['T3', 'T4'], values: [2400000, '[previsión del T4]'] } });
+      eq(gc.kind + ':' + gc.bullets.join('|'), 'bullets:T3: 2400000|T4: [previsión del T4]', 'el gráfico con huecos, una lista');
       // LaTeX in the model's JSON: «\\frac» with one backslash (a valid escape that broke the formula) and «\\sqrt» (an invalid one that lost it all).
       const OR = await W.eval("import('/src/features/ai/openrouter.js')");
       eq(OR.parseJSON('{"latex":"\\frac{a}{b} = \\sqrt{c}"}').latex, '\\frac{a}{b} = \\sqrt{c}', 'la fórmula, entera');
