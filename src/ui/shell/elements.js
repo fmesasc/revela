@@ -13,6 +13,7 @@ import { deckFg } from '../../features/design/palettes.js';
 import { factor } from '../canvas/interact.js';
 import { fitZoom } from '../ribbon/zoom.js';
 import { alertDialog, confirmDialog } from '../dialogs/dialog.js';
+import { toast } from './toast.js';
 import { t } from '../../i18n/index.js';
 import { api, account, hasAccounts } from '../../io/cloud/account.js';
 
@@ -206,6 +207,12 @@ function show(tab) {
 
 // One result: click adds it; dragging it onto the slide drops it there.
 // ar: its proportions (width / height), for rows of pictures as they are, not cropped.
+// What a model with logos may and may not be used for (see brandMarks).
+function marksText(mk) {
+  const who = mk.names.join(', ');
+  return t('Este modelo lleva el logotipo de {marca}, que es una marca: puedes enseñarlo tal cual, pero no como si fuera tu marca ni para dar a entender que te respaldan.').replace('{marca}', who)
+    + (mk.copyright ? ' ' + t('Alguno de esos logotipos tiene además derechos de autor: para un uso comercial, pide permiso o elige otro modelo.') : '');
+}
 function item(thumb, title, badge, pick, ar = 0) {
   const i = picks.push(pick) - 1;
   const b = document.createElement('button'); b.type = 'button'; b.className = 'sk-item'; b.title = title; b.draggable = true; b.dataset.i = i;
@@ -343,7 +350,10 @@ async function run(more = false) {
     } else if (tab === 'stickers') {
       list = R.searchStickers(term).map(s => [s.thumb, s.words, '', () => R.insertSticker(s.code, s.words)]);
     } else if (tab === 'anim3d') {
-      list = R.searchLibrary3D(term, { animated: q('.el-onlyanim').checked }).map(m => [m.thumb, `${m.label} — ${m.credit}`, `${m.animated ? '▶ ' : ''}${m.label}`, () => R.insertLibraryModel(m)]);
+      // (A model with a brand's logo on it: ™ on its tile, and why, in its title and once added.)
+      list = R.searchLibrary3D(term, { animated: q('.el-onlyanim').checked }).map(m => { const mk = R.brandMarks(m), warn = mk && marksText(mk);
+        return [m.thumb, `${m.label} — ${m.credit}${warn ? '\n\n' + warn : ''}`, `${m.animated ? '▶ ' : ''}${m.label}${mk ? ' ™' : ''}`,
+          async () => { const b = await R.insertLibraryModel(m); if (warn) toast(warn, { ms: 12000 }); return b; }]; });
     } else if (tab === 'poly') {
       list = (await R.searchPolyHaven(term)).slice(0, 120).map(a => [a.thumb, `${a.name} (CC0)`, a.name, () => R.insertPolyHaven(a)]);
     } else if (tab === 'nasa') {

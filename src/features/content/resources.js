@@ -38,6 +38,13 @@ export async function insertSticker(code, words = '') {
 // ---- 3D: curated library (some animated) ------------------------------------------------
 export const searchLibrary3D = (q, { animated = false } = {}) =>
   LIBRARY_3D.filter(m => (!animated || m.animated) && (!q || matches(`${m.label} ${m.cat} ${m.id}`, q)));
+// The brands whose logo a library model carries (its licence's «LicenseRef-LegalMark-…»: Khronos', Cesium's…), and
+// whether one of those logos is also under copyright (the watch's DGG, «Copyrightable logo»; the rest are
+// «Non-copyrightable»). Showing the model as it is is fine; using the logo as one's own brand, or as an endorsement, isn't.
+export function brandMarks(m) {
+  const names = (m?.licenses || []).map(l => /^LicenseRef-LegalMark-(.+)$/.exec(l)?.[1]).filter(Boolean);
+  return names.length ? { names, copyright: /(?<!non-)copyrightable logo/i.test(m.credit || '') } : null;
+}
 export async function insertLibraryModel(m) {
   const blob = await download(m.src);
   const src = await toDataURL(new Blob([blob], { type: 'model/gltf-binary' }));

@@ -3582,4 +3582,6 @@ export default {
   "Segundo eje a la derecha": "Eixo secundario á dereita",
   "Las líneas del combinado (o las series después de la primera) con su propia escala: para dos magnitudes distintas, como la lluvia y la temperatura de un climograma": "As liñas do gráfico combinado (ou as series despois da primeira) coa súa propia escala: para dúas magnitudes distintas, como a choiva e a temperatura dun climograma",
   "Título del segundo eje": "Título do eixo secundario",
+  "Este modelo lleva el logotipo de {marca}, que es una marca: puedes enseñarlo tal cual, pero no como si fuera tu marca ni para dar a entender que te respaldan.": "Este modelo leva o logotipo de {marca}, que é unha marca: podes amosalo tal cal, pero non como se fose a túa marca nin para dar a entender que te apoian.",
+  "Alguno de esos logotipos tiene además derechos de autor: para un uso comercial, pide permiso o elige otro modelo.": "Algún deses logotipos ten ademais dereitos de autor: para un uso comercial, pide permiso ou escolle outro modelo.",
 };

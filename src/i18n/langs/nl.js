@@ -3582,4 +3582,6 @@ export default {
   "Segundo eje a la derecha": "Secundaire as rechts",
   "Las líneas del combinado (o las series después de la primera) con su propia escala: para dos magnitudes distintas, como la lluvia y la temperatura de un climograma": "De lijnen van de combinatiegrafiek (of de reeksen na de eerste) met een eigen schaal: voor twee verschillende grootheden, zoals de neerslag en de temperatuur van een klimaatgrafiek",
   "Título del segundo eje": "Titel van de secundaire as",
+  "Este modelo lleva el logotipo de {marca}, que es una marca: puedes enseñarlo tal cual, pero no como si fuera tu marca ni para dar a entender que te respaldan.": "Dit model draagt het logo van {marca}, een merk: je mag het tonen zoals het is, maar niet alsof het jouw merk is of om te suggereren dat zij je steunen.",
+  "Alguno de esos logotipos tiene además derechos de autor: para un uso comercial, pide permiso o elige otro modelo.": "Een van die logo’s valt bovendien onder het auteursrecht: vraag voor commercieel gebruik toestemming of kies een ander model.",
 };

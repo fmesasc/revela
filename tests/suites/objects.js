@@ -1918,6 +1918,17 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       idea.click(); await sleep(80);
       assert(calls.slice(before).some(u => u.includes('api.sketchfab.com') && /q=robot/.test(u)), 'la sugerencia busca en inglés');
       eq(P().querySelector('.sk-q').value, 'robot', 'y queda escrita en la caja'); assert(P().querySelector('.sk-item'), 'con resultados');
+      // A library model with a brand's logo (the watch: Khronos' and DGG's, this one also under copyright): said on its
+      // tile, and once added; one without, nothing.
+      const watch = Rz.searchLibrary3D('reloj')[0], mk = Rz.brandMarks(watch);
+      assert(mk && mk.names.join() === 'DGG,Khronos' && mk.copyright, 'marcas del reloj, una con derechos de autor: ' + JSON.stringify(mk));
+      assert(Rz.brandMarks(Rz.searchLibrary3D('gafas')[0])?.copyright === false && !Rz.brandMarks(fox), 'las gafas, logotipo sin derechos de autor; el zorro, ninguno');
+      P().querySelector('[data-et="anim3d"]').click(); await sleep(20);
+      P().querySelector('.sk-q').value = 'reloj'; P().querySelector('.sk-go').click(); await sleep(50);
+      const tile = P().querySelector('.sk-item');
+      assert(tile && /™/.test(tile.textContent) && /DGG, Khronos/.test(tile.title) && /derechos de autor/.test(tile.title), 'en el resultado: ™ y por qué: ' + tile?.title);
+      tile.click(); await sleep(150);
+      assert([...D.querySelectorAll('#toasts .toast')].some(x => /logotipo de DGG, Khronos/.test(x.textContent)), 'y al añadirlo, el aviso');
       // Other side, remembered; the same button again closes it.
       P().querySelector('.el-side').click(); await sleep(20);
       assert(P().classList.contains('right') && !P().nextElementSibling?.id?.includes('canvas'), 'se pasa a la derecha');

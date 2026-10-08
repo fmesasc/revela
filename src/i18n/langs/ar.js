@@ -3582,4 +3582,6 @@ export default {
   "Segundo eje a la derecha": "محور ثانوي على اليمين",
   "Las líneas del combinado (o las series después de la primera) con su propia escala: para dos magnitudes distintas, como la lluvia y la temperatura de un climograma": "خطوط المخطط المركّب (أو السلاسل بعد الأولى) بمقياسها الخاص: لكميتين مختلفتين، مثل الأمطار ودرجة الحرارة في مخطط مناخي",
   "Título del segundo eje": "عنوان المحور الثانوي",
+  "Este modelo lleva el logotipo de {marca}, que es una marca: puedes enseñarlo tal cual, pero no como si fuera tu marca ni para dar a entender que te respaldan.": "يحمل هذا النموذج شعار {marca}، وهو علامة تجارية: يمكنك عرضه كما هو، لكن ليس كأنه علامتك ولا للإيحاء بأنهم يدعمونك.",
+  "Alguno de esos logotipos tiene además derechos de autor: para un uso comercial, pide permiso o elige otro modelo.": "أحد هذه الشعارات محمي أيضًا بحقوق المؤلف: للاستخدام التجاري، اطلب الإذن أو اختر نموذجًا آخر.",
 };

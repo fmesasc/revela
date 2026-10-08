@@ -3582,4 +3582,6 @@ export default {
   "Segundo eje a la derecha": "Bigarren ardatza eskuinean",
   "Las líneas del combinado (o las series después de la primera) con su propia escala: para dos magnitudes distintas, como la lluvia y la temperatura de un climograma": "Grafiko konbinatuaren lerroak (edo lehenengoaren ondorengo serieak) beren eskalarekin: bi magnitude desberdinetarako, klimograma bateko prezipitazioa eta tenperatura bezala",
   "Título del segundo eje": "Bigarren ardatzaren izenburua",
+  "Este modelo lleva el logotipo de {marca}, que es una marca: puedes enseñarlo tal cual, pero no como si fuera tu marca ni para dar a entender que te respaldan.": "Eredu honek {marca}(r)en logotipoa darama, marka bat dena: dagoen bezala erakuts dezakezu, baina ez zure marka balitz bezala, ezta zu babesten zaituztela iradokitzeko ere.",
+  "Alguno de esos logotipos tiene además derechos de autor: para un uso comercial, pide permiso o elige otro modelo.": "Logotipo horietako batek egile-eskubideak ere baditu: erabilera komertzialerako, eskatu baimena edo aukeratu beste eredu bat.",
 };
