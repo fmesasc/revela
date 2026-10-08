@@ -2430,5 +2430,144 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   r = await post(zoe, '/folders', { name: 'Una más' }); ok(r.status === 402 && (await r.json()).limit === 200, 'carpetas: como mucho 200');
 }
 
+// ---- The public API, the MCP server and OAuth (publicapi.js) ----
+{
+  const ada = await login2('tok-ada'), bea = await login2('tok-bea');
+  const kreq = (method, path, key, body, origin = 'https://cualquiera.example') => req(method, path, { origin, headers: key ? { Authorization: 'Bearer ' + key } : {}, ...(body !== undefined && { body }) });
+  // Keys: made from the app's session, shown once, only their hash kept.
+  r = await req('POST', '/api/keys', { headers: { Cookie: ada }, body: { name: 'Mi script' } }); let j = await r.json();
+  ok(r.status === 200 && /^rvk_[\w-]+\.[\w-]{40,}$/.test(j.key), 'clave de API creada');
+  const key = j.key, keyId = j.id;
+  ok(!JSON.stringify([...env.ACCOUNTS.inst.get('u:1717').ctx.storage.m]).includes(key.split('.')[1]), 'de la clave solo se guarda su hash');
+  j = await (await req('GET', '/api/keys', { headers: { Cookie: ada } })).json();
+  ok(j.keys.length === 1 && j.keys[0].name === 'Mi script' && j.keys[0].kind === 'key' && !JSON.stringify(j).includes(key.split('.')[1]), 'la lista de claves no las enseña');
+  // A key opens only /api/v1 and /api/mcp.
+  ok((await kreq('GET', '/api/me', key)).status === 403, 'una clave no abre la cuenta');
+  ok((await kreq('POST', '/api/keys', key, { name: 'x' })).status === 403, 'una clave no crea más claves');
+  ok((await kreq('POST', '/api/ai/chat', key, { messages: [] })).status === 403, 'una clave no gasta créditos de IA');
+  r = await kreq('GET', '/api/v1/me', key); j = await r.json();
+  ok(r.status === 200 && j.email === 'ada@example.com' && r.headers.get('Access-Control-Allow-Origin') === '*', 'v1/me con la clave, desde cualquier web');
+  ok((await kreq('GET', '/api/v1/me', null)).status === 401, 'sin clave: 401');
+  ok((await kreq('GET', '/api/v1/me', 'rvk_' + Buffer.from('1717').toString('base64url') + '.' + 'x'.repeat(43))).status === 401, 'clave inventada: 401');
+  ok((await req('GET', '/api/v1/me', { headers: { Cookie: ada } })).status === 401, 'la cookie no abre la API pública');
+  // Making a deck from specs: laid out with a design.
+  env.UNSPLASH_ACCESS_KEY = 'unsplash-secreta';
+  r = await kreq('POST', '/api/v1/decks', key, { name: 'Energía solar', design: 'ocean', slides: [{ kind: 'title', title: 'Energía solar', subtitle: 'Introducción' },
+    { kind: 'bullets', title: 'Ventajas', bullets: ['Limpia', 'Barata', ['cada vez más']], notes: 'Contar el caso de Almería' },
+    { kind: 'chart', title: 'Potencia', chart: { type: 'bar', labels: ['2020', '2025'], values: [10, 30] }, source: 'Datos de ejemplo' },
+    { kind: 'image', title: 'Un faro', bullets: ['Con foto'], image_search: 'lighthouse' }, { kind: 'raro', title: '<script>x</script>', bullets: ['a'] }] });
+  j = await r.json(); const did = j.id; delete env.UNSPLASH_ACCESS_KEY;
+  ok(r.status === 200 && did && j.url === SITE + '/app/?doc=' + did && j.slides === 5, 'crear una presentación por la API');
+  r = await kreq('GET', '/api/v1/decks/' + did, key); j = await r.json();
+  const deck = j.deck;
+  ok(j.role === 'owner' && deck.name === 'Energía solar' && deck.slides.length === 5 && deck.palette && deck.layouts?.length, 'con el diseño elegido y sus diseños de diapositiva');
+  ok(deck.slides[1].notes === 'Contar el caso de Almería' && deck.slides[2].blocks.some(b => b.type === 'chart'), 'notas y gráfico en su sitio');
+  ok(deck.slides[3].blocks.some(b => b.type === 'image' && b.src === 'https://images.unsplash.com/r.jpg' && /Ana Foto/.test(b.caption)), 'image_search: una foto real con su autor');
+  ok(!JSON.stringify(deck.slides[4]).includes('<script>'), 'el texto llega escapado');
+  // Outline and text.
+  j = await (await kreq('GET', `/api/v1/decks/${did}?format=outline`, key)).json();
+  ok(j.outline.slides.length === 5 && j.outline.slides[1].title === 'Ventajas' && j.outline.slides[1].text.join(' ').includes('Barata'), 'el esquema para una IA');
+  const sid = j.outline.slides[1].id;
+  r = await kreq('GET', `/api/v1/decks/${did}?format=text`, key);
+  ok(/^text\/markdown/.test(r.headers.get('Content-Type')) && (await r.text()).includes(`[id: ${sid}]`), 'y en texto, con los ids');
+  // Changing it.
+  j = await (await kreq('POST', `/api/v1/decks/${did}/slides`, key, { markdown: '## Inconvenientes\n- De noche no\n---\n## Fin', position: 3 })).json();
+  ok(j.added?.length === 2, 'añadir diapositivas en Markdown');
+  let d2 = (await (await kreq('GET', '/api/v1/decks/' + did, key)).json()).deck;
+  ok(d2.slides.length === 7 && d2.slides[2].id === j.added[0], 'en la posición pedida');
+  r = await kreq('POST', `/api/v1/decks/${did}/slides/${sid}`, key, { spec: { kind: 'steps', title: 'Cómo instalar', steps: [{ title: 'Medir', text: 'El tejado' }, { title: 'Montar', text: 'Los paneles' }] }, notes: 'Nuevo', hidden: true });
+  d2 = (await (await kreq('GET', '/api/v1/decks/' + did, key)).json()).deck;
+  const ch = d2.slides.find(s => s.id === sid);
+  ok(r.status === 200 && ch.notes === 'Nuevo' && ch.hidden === true && JSON.stringify(ch.blocks).includes('Cómo instalar'), 'cambiar una diapositiva desde una especificación');
+  j = await (await kreq('POST', `/api/v1/decks/${did}/replace`, key, { find: 'Energía', replace: 'Energía & sol' })).json();
+  d2 = (await (await kreq('GET', '/api/v1/decks/' + did, key)).json()).deck;
+  ok(j.changed >= 1 && JSON.stringify(d2.slides[0].blocks).includes('Energía &amp; sol'), 'buscar y reemplazar (escapado en el HTML)');
+  r = await kreq('POST', `/api/v1/decks/${did}/slides/${sid}/delete`, key, {});
+  ok(r.status === 200 && (await (await kreq('GET', `/api/v1/decks/${did}?format=outline`, key)).json()).outline.slides.length === 6, 'borrar una diapositiva');
+  ok((await kreq('POST', `/api/v1/decks/${did}/rename`, key, { name: 'Sol' })).status === 200 && (await (await kreq('GET', '/api/v1/decks', key)).json()).decks.some(d => d.id === did && d.name === 'Sol'), 'renombrar y listar');
+  j = await (await kreq('POST', `/api/v1/decks/${did}/share`, key, { link: 'present' })).json();
+  ok(j.url === `${SITE}/app/view.html?doc=${did}`, 'compartir por enlace (solo presentar)');
+  ok((await req('GET', `/api/docs/${did}`, { origin: null })).status === 200, 'y el enlace abre sin sesión');
+  // Someone else's key can't touch it.
+  const bkey = (await (await req('POST', '/api/keys', { headers: { Cookie: bea }, body: { name: 'b' } })).json()).key;
+  ok((await kreq('POST', `/api/v1/decks/${did}/slides`, bkey, { slides: [{ kind: 'title', title: 'x' }] })).status === 403, 'la clave de otra persona no la cambia');
+  ok((await kreq('POST', `/api/v1/decks/${did}/trash`, bkey, {})).status >= 403, 'ni la borra');
+  ok((await kreq('POST', '/api/v1/decks', key, { slides: Array.from({ length: 61 }, () => ({ kind: 'title', title: 'x' })) })).status === 400, 'como mucho 60 diapositivas de una vez');
+  // The free plan's limit applies (3 in the cloud).
+  for (let i = 0; i < 3; i++) await kreq('POST', '/api/v1/decks', bkey, { name: 'B' + i, markdown: '# B' });
+  ok((await kreq('POST', '/api/v1/decks', bkey, { name: 'otra', markdown: '# x' })).status === 402, 'el límite del plan también por la API');
+
+  // ---- MCP ----
+  const mcp = (key, body) => kreq('POST', '/api/mcp', key, body);
+  r = await mcp(null, { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} });
+  ok(r.status === 401 && /resource_metadata="https:\/\/revelaslides\.com\/\.well-known\/oauth-protected-resource\/api\/mcp"/.test(r.headers.get('WWW-Authenticate')), 'MCP sin clave: 401 que lleva a OAuth');
+  j = await (await mcp(key, { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '1' } } })).json();
+  ok(j.result?.protocolVersion === '2025-06-18' && j.result.capabilities.tools && j.result.serverInfo.name === 'revela', 'MCP: initialize');
+  ok((await mcp(key, { jsonrpc: '2.0', method: 'notifications/initialized' })).status === 202, 'MCP: las notificaciones no tienen respuesta');
+  j = await (await mcp(key, { jsonrpc: '2.0', id: 2, method: 'tools/list' })).json();
+  const names = j.result.tools.map(x => x.name);
+  ok(['list_presentations', 'get_presentation', 'create_presentation', 'add_slides', 'update_slide', 'delete_slides', 'replace_text', 'share_presentation'].every(x => names.includes(x)) && j.result.tools.every(x => x.inputSchema?.type === 'object' && !x.action), 'MCP: las herramientas');
+  ok(j.result.tools.find(x => x.name === 'create_presentation').description.includes('"bullets"'), 'MCP: crear explica los tipos de diapositiva');
+  j = await (await mcp(key, { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'create_presentation', arguments: { name: 'Desde Claude', markdown: '# Hola\nmundo\n---\n## Puntos\n- uno\n- dos' } } })).json();
+  const mid = j.result?.structuredContent?.id;
+  ok(mid && !j.result.isError && j.result.content[0].text.includes('/app/?doc='), 'MCP: crear una presentación');
+  j = await (await mcp(key, { jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'get_presentation', arguments: { id: mid } } })).json();
+  ok(/## 2\. Puntos/.test(j.result.content[0].text), 'MCP: leerla');
+  j = await (await mcp(key, [{ jsonrpc: '2.0', id: 5, method: 'ping' }, { jsonrpc: '2.0', id: 6, method: 'tools/call', params: { name: 'get_presentation', arguments: { id: 'x'.repeat(16) } } }])).json();
+  ok(Array.isArray(j) && j[0].result && j[1].result.isError, 'MCP: lotes, y los errores como resultado de la herramienta');
+  j = await (await mcp(key, { jsonrpc: '2.0', id: 7, method: 'tools/call', params: { name: 'nada' } })).json();
+  ok(j.error?.code === -32602, 'MCP: herramienta desconocida');
+  j = await (await mcp(key, { jsonrpc: '2.0', id: 8, method: 'resources/list' })).json();
+  ok(j.error?.code === -32601, 'MCP: método desconocido');
+
+  // ---- OAuth (Claude's and ChatGPT's connectors) ----
+  j = await (await worker.fetch(new Request(SITE + '/.well-known/oauth-protected-resource/api/mcp'), env)).json();
+  ok(j.resource === SITE + '/api/mcp' && j.authorization_servers[0] === SITE, 'OAuth: el recurso protegido');
+  j = await (await worker.fetch(new Request(SITE + '/.well-known/oauth-authorization-server'), env)).json();
+  ok(j.token_endpoint === SITE + '/api/oauth/token' && j.code_challenge_methods_supported.includes('S256') && j.registration_endpoint, 'OAuth: el servidor de autorización');
+  const cb = 'https://claude.ai/api/mcp/auth_callback';
+  r = await req('POST', '/api/oauth/register', { origin: 'https://claude.ai', body: { client_name: 'Claude', redirect_uris: [cb] } }); j = await r.json();
+  ok(r.status === 201 && j.client_id?.startsWith('c_'), 'OAuth: registro dinámico');
+  const cid = j.client_id;
+  ok((await req('POST', '/api/oauth/register', { body: { client_name: 'x', redirect_uris: ['javascript:alert(1)'] } })).status === 400, 'OAuth: solo direcciones https');
+  const ver = 'v'.repeat(20) + crypto.randomUUID().replace(/-/g, '') + 'abc', chal = await sha256(ver);
+  const authz = (extra = {}) => worker.fetch(new Request(SITE + '/api/oauth/authorize?' + new URLSearchParams({ response_type: 'code', client_id: cid, redirect_uri: cb, state: 'st1', code_challenge: chal, code_challenge_method: 'S256', ...extra })), env);
+  r = await authz();
+  const loc = r.headers.get('Location') || '';
+  ok(r.status === 302 && loc.startsWith(SITE + '/app/?connect='), 'OAuth: authorize lleva a la aplicación');
+  ok((await authz({ redirect_uri: 'https://malo.example/cb' })).status === 400, 'OAuth: otra dirección de vuelta, no');
+  ok((await authz({ client_id: cid.slice(0, -3) + 'xyz' })).status === 400, 'OAuth: un cliente falsificado, no');
+  const creq = decodeURIComponent(loc.split('connect=')[1]);
+  j = await (await req('POST', '/api/oauth/info', { body: { req: creq } })).json();
+  ok(j.client === 'Claude' && j.host === 'claude.ai', 'OAuth: la aplicación dice quién pide');
+  ok((await req('POST', '/api/oauth/approve', { body: { req: creq } })).status === 401, 'OAuth: aprobar pide sesión');
+  ok((await kreq('POST', '/api/oauth/approve', key, { req: creq })).status === 403, 'OAuth: una clave no aprueba');
+  j = await (await req('POST', '/api/oauth/approve', { headers: { Cookie: ada }, body: { req: creq } })).json();
+  const back = new URL(j.redirect), code = back.searchParams.get('code');
+  ok(back.origin + back.pathname === cb && back.searchParams.get('state') === 'st1' && code, 'OAuth: vuelve con el código y el estado');
+  const tok = body => worker.fetch(new Request(SITE + '/api/oauth/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Origin: 'https://claude.ai' }, body: new URLSearchParams(body) }), env);
+  r = await tok({ grant_type: 'authorization_code', code, redirect_uri: cb, client_id: cid, code_verifier: 'w'.repeat(50) });
+  ok(r.status === 400 && (await r.json()).error === 'invalid_grant', 'OAuth: PKCE equivocado, no');
+  j = await (await req('POST', '/api/oauth/approve', { headers: { Cookie: ada }, body: { req: creq } })).json();
+  const code2 = new URL(j.redirect).searchParams.get('code');
+  r = await tok({ grant_type: 'authorization_code', code: code2, redirect_uri: cb, client_id: cid, code_verifier: ver }); j = await r.json();
+  ok(r.status === 200 && j.access_token?.startsWith('rvk_') && j.refresh_token?.startsWith('rvr_') && j.token_type === 'Bearer', 'OAuth: el código da el token');
+  ok((await tok({ grant_type: 'authorization_code', code: code2, redirect_uri: cb, client_id: cid, code_verifier: ver })).status === 400, 'OAuth: el código sirve una vez');
+  const at1 = j.access_token, rt1 = j.refresh_token;
+  j = await (await mcp(at1, { jsonrpc: '2.0', id: 9, method: 'tools/call', params: { name: 'list_presentations', arguments: {} } })).json();
+  ok(j.result?.structuredContent?.decks.some(d => d.name === 'Desde Claude'), 'OAuth: el token abre el MCP');
+  j = await (await req('GET', '/api/keys', { headers: { Cookie: ada } })).json();
+  const ok1 = j.keys.find(k => k.kind === 'oauth');
+  ok(ok1?.client === 'Claude' && ok1.expires > Date.now(), 'OAuth: aparece en Desarrolladores, con su caducidad');
+  r = await tok({ grant_type: 'refresh_token', refresh_token: rt1 }); j = await r.json();
+  ok(r.status === 200 && j.access_token !== at1 && j.refresh_token !== rt1, 'OAuth: renovar el token');
+  ok((await mcp(at1, { jsonrpc: '2.0', id: 10, method: 'ping' })).status === 401, 'OAuth: el token viejo deja de valer');
+  ok((await tok({ grant_type: 'refresh_token', refresh_token: rt1 })).status === 400, 'OAuth: y el de renovar también');
+  const at2 = j.access_token;
+  ok((await req('POST', `/api/keys/${ok1.id}/delete`, { headers: { Cookie: ada } })).status === 200 && (await mcp(at2, { jsonrpc: '2.0', id: 11, method: 'ping' })).status === 401, 'OAuth: revocarlo en Desarrolladores');
+  // Revoking a personal key.
+  ok((await req('POST', `/api/keys/${keyId}/delete`, { headers: { Cookie: ada } })).status === 200 && (await kreq('GET', '/api/v1/me', key)).status === 401, 'revocar una clave');
+}
+
 console.log(fails ? `API FAIL ${n - fails}/${n}` : `API OK ${n}/${n}`);
 process.exit(fails ? 1 : 0);

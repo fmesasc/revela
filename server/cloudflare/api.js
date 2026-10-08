@@ -78,6 +78,7 @@ import { enc, b64url, random, sha256, DAY, HOUR } from './util.js';
 import { stockSearch, stockUsed, photoProviders } from './stock.js';
 import { storageConfig, MB } from './storage.js';
 import { handleVisit, visitsCall, cleanPath } from './visits.js';
+import { keyOp, handleKeys, handleV1, handleMcp, handleOAuth, connectInfo, connectApprove, isKey, parseKey, mcpChallenge } from './publicapi.js';
 import { APP_VERSION } from '../../src/core/config.js';
 import { credits, aiChat, aiImage, aiSpeech } from './ai.js';
 import { brandFromSite } from './brand.js';
@@ -396,6 +397,9 @@ export class Account {
         const mine = a.secret ? await sha256(a.secret) : '';
         return this.json({ sessions: sessionList(await this.get('sessions', {}), mine) });
       }
+      // API keys and OAuth's codes (publicapi.js).
+      case 'key-list': case 'key-add': case 'key-check': case 'key-refresh': case 'key-del': case 'code-add': case 'code-take':
+        return this.json(await keyOp(this, op, a));
       case 'sessions-end': {                               // { ids?, keep? } → { ended }   (ids: those; none: all of them; never keep's)
         const sessions = await this.get('sessions', {}), keep = a.keep ? await sha256(a.keep) : '', ids = Array.isArray(a.ids) ? a.ids.map(String) : null;
         let ended = 0;
@@ -791,6 +795,11 @@ const sessionPlace = (a, before = {}) => ({ device: String(a.device || before.de
 
 async function sessionOf(req, env) {
   const bearer = (req.headers.get('Authorization') || '').replace(/^Bearer /, ''), fromCookie = cookieOf(req);
+  // An API key (publicapi.js): its account, marked so only /api/v1 and /api/mcp accept it.
+  if (isKey(bearer)) {
+    const k = parseKey(bearer), r = k ? await call(acct(env, k.sub), 'key-check', { secret: k.secret }) : { ok: false };
+    return r.ok ? { sub: k.sub, via: 'key', key: r.id, email: r.email, ...(r.blocked && { blocked: true }) } : null;
+  }
   const raw = bearer || fromCookie, t = parseToken(raw); if (!t) return null;
   const r = await call(acct(env, t.sub), 'check', { secret: t.secret, ...sessionClient(req), ...(env.STAGE && { email: true }) });   // (the test site: whose, to check the invited list)
   return r.ok ? { sub: t.sub, secret: t.secret, via: bearer ? 'bearer' : 'cookie', ...(r.blocked && { blocked: true }), ...(r.renewed && { renewed: r.renewed, raw }), ...(r.email && { email: r.email }) } : null;
@@ -820,16 +829,20 @@ export async function iceServers(env, fetcher = env.FETCH || fetch) {
 export async function handleApi(req, env, url) {
   const s = settings(env), origin = req.headers.get('Origin') || '';
   const webOrigin = s.origins.includes(origin), desktopOrigin = s.desktopOrigins.includes(origin);
-  // CORS: only Revela's own site (with its cookie) and the desktop app (bearer only).
+  // CORS: only Revela's own site (with its cookie) and the desktop app (bearer only); the public API and the MCP
+  // server (publicapi.js), from anywhere — they only take a key, never the cookie.
+  const path0 = url.pathname.replace(/^\/api/, ''), open = path0 === '/mcp' || path0.startsWith('/v1/');
   const cors = { 'Vary': 'Origin', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex',
-    ...(webOrigin && { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Credentials': 'true' }),
-    ...(desktopOrigin && { 'Access-Control-Allow-Origin': origin }),
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization' };
+    ...(open ? { 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'WWW-Authenticate, Mcp-Session-Id' }
+      : { ...(webOrigin && { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Credentials': 'true' }), ...(desktopOrigin && { 'Access-Control-Allow-Origin': origin }) }),
+    'Access-Control-Allow-Methods': open ? 'GET, POST, DELETE, OPTIONS' : 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': open ? 'Content-Type, Authorization, Mcp-Protocol-Version, Mcp-Session-Id' : 'Content-Type, Authorization' };
   const json = (o, status = 200, extra = {}) => new Response(JSON.stringify(o), { status, headers: { ...cors, 'Content-Type': 'application/json', ...extra } });
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   const path = url.pathname.replace(/^\/api/, '');
   // LTI (learning platforms): their own forms and signed tokens, no session here (lti.js).
   if (path.startsWith('/lti/')) return handleLti(req, env, url, s.site);
+  // OAuth for the MCP server (publicapi.js): its own forms, from other sites, no session.
+  if (['/oauth/register', '/oauth/authorize', '/oauth/token'].includes(path)) { const r = await handleOAuth(path, req, env, url); if (r) return r; }
   // Stripe's own calls: signed, no browser involved.
   if (path === '/billing/webhook' && req.method === 'POST') return stripeWebhook(req, env, json, 'live');
   if (path === '/billing/webhook-test' && req.method === 'POST') return stripeWebhook(req, env, json, 'test');
@@ -860,7 +873,7 @@ export async function handleApi(req, env, url) {
   const text = req.method === 'POST' ? await req.text() : '';
   if (text.length > maxBody) return json({ error: 'too large' }, 413);
   let body = {}; if (text) { try { body = JSON.parse(text); } catch { body = null; } }
-  if (req.method === 'POST' && (!body || typeof body !== 'object' || Array.isArray(body))) return json({ error: 'bad request' }, 400);
+  if (req.method === 'POST' && (!body || typeof body !== 'object' || (Array.isArray(body) && path !== '/mcp'))) return json(path === '/mcp' ? { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } } : { error: 'bad request' }, 400);
 
   // Webinars (crm.js): the upcoming ones, and signing up (only from the site).
   if (path === '/events' && req.method === 'GET') return eventsPublic(env, url, json);
@@ -931,6 +944,16 @@ export async function handleApi(req, env, url) {
 
   let me = await sessionOf(req, env);
   if (me && !(await testerOK(env, me.email))) me = null;   // (taken off the test list: as if signed out)
+  // The public API and the MCP server: a key (or the desktop app's bearer), never the cookie; and a key opens nothing else.
+  if (open) {
+    if (me?.via === 'cookie') me = null;
+    if (!me) return json(path === '/mcp' ? { jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Unauthorized: connect your Revela account' } } : { error: 'no key', docs: s.site + '/developers' }, 401, { 'WWW-Authenticate': mcpChallenge(env) });
+    if (me.blocked) return json({ error: 'blocked' }, 403);
+    return path === '/mcp' ? handleMcp(req, env, me, body, json) : handleV1(path, req, body, url, env, me, json);
+  }
+  if (me?.via === 'key') return json({ error: 'an API key only opens /api/v1 and /api/mcp' }, 403);
+  // What is asking to connect (the app shows it before asking; no session needed).
+  if (path === '/oauth/info' && req.method === 'POST') return connectInfo(env, body, json);
   // Reporting a problem: with a session or with an email address; only from Revela itself (admin.js).
   if (path === '/support') {
     if (req.method !== 'POST') return json({ error: 'method' }, 405);
@@ -970,6 +993,9 @@ export async function handleApi(req, env, url) {
   const A = acct(env, me.sub);
   if (path.startsWith('/call/') && req.method === 'POST') { const prof = await call(A, 'me'); return handleCalls(path, body, env, { sub: me.sub, email: prof.email, features: prof.features }, A, call, json); }
   if (path === '/3d' || path.startsWith('/3d/')) return handle3d(path, req, body, env, me, A, json);
+  // «Desarrolladores»: my API keys, and saying yes to an app that asks to connect (publicapi.js).
+  if (path === '/keys' || path.startsWith('/keys/')) return handleKeys(path, req, body, me, A, json);
+  if (path === '/oauth/approve' && req.method === 'POST') return connectApprove(env, me, body, json);
   // «Recomienda Revela a tu centro» (crm.js): my link and what it has brought.
   if (path === '/referral' && req.method === 'GET') { const prof = await call(A, 'me'); return referralInfo(env, { sub: me.sub, email: prof.email }, json); }
   if (path === '/team' || path.startsWith('/team/')) { const prof = await call(A, 'me'); return handleTeams(path, req, body, url, env, { sub: me.sub, email: prof.email, name: prof.name }, A, acct, call, json); }

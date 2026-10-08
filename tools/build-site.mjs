@@ -160,7 +160,7 @@ function localize(out, more = []) {
     }
   }
   if (missing.length) throw new Error(`Untranslated texts on the website (site/i18n/):\n${missing.slice(0, 20).join('\n')}${missing.length > 20 ? `\n… and ${missing.length - 20} more` : ''}`);
-  writeFileSync(join(out, 'sitemap.xml'), sitemap(PAGES.concat(more), ['legal', 'privacy', 'terms', 'dpa'], new Date().toISOString().slice(0, 10)));
+  writeFileSync(join(out, 'sitemap.xml'), sitemap(PAGES.concat(more), ['legal', 'privacy', 'terms', 'dpa', 'developers'], new Date().toISOString().slice(0, 10)));
 }
 
 // A page's frequently asked questions (<details><summary>), also as FAQPage structured data, in

@@ -12,6 +12,7 @@ import { t, currentLang } from '../../i18n/index.js';
 import { alertDialog, confirmDialog, promptDialog } from './dialog.js';
 import { openTeam } from './team.js';
 import { openReport } from './report.js';
+import { developersBox, wireDevelopers, handleConnect } from './developers.js';
 
 const FEATURE_NAMES = { ai: 'IA incluida', 'share-people': 'Compartir con personas', 'cloud-save': 'Guardado en la nube', 'video-calls': 'Videollamadas en el editor', 'premium-templates': 'Plantillas premium' };
 const errorText = e => (e.data?.error === 'no customer' ? t('Esta cuenta no tiene ninguna suscripción de pago que gestionar: su Pro viene del modo de prueba, de un regalo o de un equipo.')
@@ -149,6 +150,7 @@ export function openAccount({ buy } = {}) {
         <label class="fr-chk"><input type="checkbox" class="acc-mail-opt" data-kind="trialEnding"> ${t('Avisarme antes de que acabe mi prueba de Pro')}</label>
         <label class="fr-chk"><input type="checkbox" class="acc-mail-opt" data-kind="opened"> ${t('Avisarme cuando alguien abra uno de mis enlaces con seguimiento')}</label>
         <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 acc-mail-test">${t('Enviarme un correo de prueba')}</button></div></details>
+      ${developersBox()}
       <details class="acc-sess"><summary>${t('Sesiones abiertas')}</summary>
         <p class="host-help">${t('Dónde está abierta tu cuenta. Si ves una sesión que no reconoces, ciérrala y revisa la seguridad de tu cuenta de Google.')}</p>
         <ul class="acc-sess-list"></ul>
@@ -218,6 +220,7 @@ export function openAccount({ buy } = {}) {
       try { await acc.api('mail/test', {}); alertDialog(t('Enviado a {email}. Si no te llega en unos minutos, mira en «Spam».').replace('{email}', me.email)); }
       catch (err) { alertDialog(err.status === 429 ? t('Ya has pedido uno hace poco: espera una hora para pedir otro.') : err.status === 503 ? t('Los correos aún no están activados en este servidor.') : errorText(err)); }
     });
+    wireDevelopers(body);
     // Open sessions: where the account is signed in (device, approximate place, last use); closing one, or all the
     // others — a lost phone, a shared computer, a session that isn't mine. (This one closes with «Cerrar sesión».)
     const sess = body.querySelector('.acc-sess'), paintSessions = async () => {
@@ -257,6 +260,13 @@ export function openAccount({ buy } = {}) {
   };
   render();
   acc.refreshAccount().then(render, () => {});
+}
+
+// An AI app (Claude, ChatGPT…) asking to connect to the account (?connect=…: developers.js).
+export async function handleConnectRequest(search = location.search) {
+  const req = new URLSearchParams(search).get('connect');
+  if (!req || EDITION !== 'cloud' || !/^[\w.-]{20,4000}$/.test(req)) return false;
+  return handleConnect(req, { signIn: signInWithTerms });
 }
 
 // The page opened by the desktop app to sign it in: sign in here if needed, then confirm its code.

@@ -6,7 +6,7 @@ import { mountNotices } from '../../ui/shell/notices.js';
 import { docIdFrom } from '../../io/cloud/clouddocs.js';
 import * as clouddocs from '../../io/cloud/clouddocs.js';
 import { setCloudAi } from '../../features/ai/openrouter.js';
-import { openAccount, handleDesktopRequest, BUYABLE, watchTerms } from '../../ui/dialogs/account.js';
+import { openAccount, handleDesktopRequest, handleConnectRequest, BUYABLE, watchTerms } from '../../ui/dialogs/account.js';
 import { initModelAi } from '../../ui/dialogs/model3dai.js';
 import { openReport } from '../../ui/dialogs/report.js';
 import { handleOpenWith } from '../../ui/shell/openwith.js';
@@ -336,7 +336,7 @@ if (hasAccounts()) {
     // not the empty editor first and the presentation popping in later.)
     const opening = docIdFrom() ? openingScreen('', { delay: 0 }) : null;
     if (opening) openFromLink(undefined, { settle: opening }).finally(opening);
-    refreshAccount().catch(() => {}).finally(() => { handleDesktopRequest(); });
+    refreshAccount().catch(() => {}).finally(() => { handleDesktopRequest(); handleConnectRequest(); });
     if (new URLSearchParams(location.search).has('paid')) { history.replaceState(null, '', location.pathname); alertDialog(t('¡Gracias! Tu compra se ha registrado.')); }
     // From the prices page (revelaslides.com/pricing): the account, with the product chosen.
     // (?buy=; ?comprar=, its old Spanish name, still works: links already out there.)

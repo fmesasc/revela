@@ -26,7 +26,8 @@
 // nothing else is answered on that host.
 //
 // The accounts API and everything under /api (api.js and the modules it calls),
-// and the community's pages at /community (community.js; /comunidad redirects there).
+// and the community's pages at /community (community.js; /comunidad redirects there); OAuth's discovery at
+// /.well-known/oauth-* for the MCP server (publicapi.js).
 //
 // Bindings (wrangler.toml), all Durable Objects: SHAREBOX, LIMITS (store.js),
 // ROOMS (collab.js), ACCOUNTS, BUDGET, DESKTOP (api.js), DOCS (docs.js),
@@ -53,6 +54,7 @@ import { Crm, runCrm } from './crm.js';
 import { storageWatch, storageBackfill } from './storage.js';
 import { releasesAuto } from './releases.js';
 import { Community, communityPage } from './community.js';
+import { wellKnown } from './publicapi.js';
 import { Crawler } from './crawler.js';
 import { Visits } from './visits.js';
 import { sendMail, mailConfigured } from './mail.js';
@@ -118,6 +120,8 @@ export default {
     // Administration (admin.js): its own host, its own checks.
     if (url.pathname === '/api/admin' || url.pathname.startsWith('/api/admin/')) return handleAdmin(req, env, url);
     if (url.hostname.toLowerCase() === adminHost(env)) return new Response('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
+    // OAuth's discovery for the MCP server (revelaslides.com/.well-known/oauth-…: publicapi.js).
+    if (url.pathname.startsWith('/.well-known/')) return wellKnown(url, env) || new Response('Not found', { status: 404 });
     // The community's public pages (revelaslides.com/community…: community.js).
     if (/^\/community(\/|$)/.test(url.pathname) && req.method === 'GET') return communityPage(env, url);
     // (Its old Spanish address, /comunidad…: for good to the English one, with the rest of the path and the query.)
