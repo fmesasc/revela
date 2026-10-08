@@ -21,7 +21,7 @@ import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { SITE_LANGS, pageTexts, translatePage, sitemap } from './site-i18n.mjs';
+import { SITE, SITE_LANGS, pageTexts, translatePage, sitemap } from './site-i18n.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // Pruebas (test.revelaslides.com) or production: only the variable REVELA_STAGE=test makes the test site (set in
@@ -53,11 +53,13 @@ export async function build(out = join(ROOT, 'dist'), { appOnly = false, open = 
   // The site's own pages and files.
   ensureSite();
   // (Not its translations, nor its repository's own files: .git, .github, README, its tools.)
-  const own = new Set(['.git', '.github', 'README.md', '.gitignore', 'tools'].map(f => join(ROOT, 'site', f)));
+  const own = new Set(['.git', '.github', 'README.md', '.gitignore', 'tools', 'templates.json'].map(f => join(ROOT, 'site', f)));
   cpSync(join(ROOT, 'site'), out, { recursive: true, filter: f => !f.includes(join('site', 'i18n')) && ![...own].some(o => f === o || f.startsWith(o + '/')) });
-  localize(out);
-  await inlineIcons(out);
-  for (const l of SITE_LANGS.slice(1)) await inlineIcons(join(out, l));
+  const made = await sitePages(out);
+  localize(out, made);
+  // (In each language's folder, and in the folders of the pages made, such as templates/.)
+  const subs = [...new Set(made.map(([p]) => dirname(p)).filter(d => d !== '.'))];
+  for (const l of ['', ...SITE_LANGS.slice(1)]) for (const d of ['', ...subs]) if (existsSync(join(out, l, d))) await inlineIcons(join(out, l, d));
   // The app under /app/, marked as the official edition.
   copyApp(join(out, 'app'));
   markEdition(join(out, 'app', 'index.html'), 'cloud');
@@ -139,7 +141,14 @@ export function missingTexts() {
   const all = PAGES.flatMap(([p]) => pageTexts(readFileSync(join(ROOT, 'site', p + '.html'), 'utf8')));
   return Object.fromEntries(SITE_LANGS.slice(1).map(l => { let d = {}; try { d = dictOf(l); } catch {} return [l, [...new Set(all)].filter(k => !(k in d))]; }));
 }
-function localize(out) {
+// Pages the website makes itself from data of its own (site/tools/pages.mjs, if it has one: one for each template),
+// already in every language: [[page, priority]], for the sitemap with the rest.
+async function sitePages(out) {
+  const gen = join(ROOT, 'site', 'tools', 'pages.mjs');
+  if (!existsSync(gen)) return [];
+  return (await import(pathToFileURL(gen).href)).default({ out, langs: SITE_LANGS, dictOf, translatePage, withFaq, site: SITE });
+}
+function localize(out, more = []) {
   const missing = [];
   for (const l of SITE_LANGS) {
     const dict = l === 'es' ? {} : dictOf(l), dir = l === 'es' ? out : join(out, l);
@@ -151,7 +160,7 @@ function localize(out) {
     }
   }
   if (missing.length) throw new Error(`Untranslated texts on the website (site/i18n/):\n${missing.slice(0, 20).join('\n')}${missing.length > 20 ? `\n… and ${missing.length - 20} more` : ''}`);
-  writeFileSync(join(out, 'sitemap.xml'), sitemap(PAGES, ['legal', 'privacy', 'terms', 'dpa'], new Date().toISOString().slice(0, 10)));
+  writeFileSync(join(out, 'sitemap.xml'), sitemap(PAGES.concat(more), ['legal', 'privacy', 'terms', 'dpa'], new Date().toISOString().slice(0, 10)));
 }
 
 // A page's frequently asked questions (<details><summary>), also as FAQPage structured data, in

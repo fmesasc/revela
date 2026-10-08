@@ -372,7 +372,25 @@ def site_checks(send, recv):
         check(ev("(f=>!!f&&/\\/demo\\/reloj\\.html$/.test(f.src))(document.querySelector('.live iframe'))") and ev("fetch('/demo/reloj.html').then(r=>r.text()).then(t=>/Reveal\\.initialize/.test(t)&&/noindex/.test(t)&&!/fonts\\.googleapis/.test(t))"), 'la presentación en directo de la portada')
         # In other languages: each its own address, with links between them for search engines.
         check(ev("[...document.querySelectorAll('link[rel=alternate][hreflang]')].map(l=>l.hreflang).join()") == 'es,en,fr,de,it,pt,ca,gl,nl,eu,ar,x-default', 'hreflang en la portada')
-        check(ev("fetch('sitemap.xml').then(r=>r.text()).then(t=>(t.match(/<loc>/g)||[]).length)") == 81, 'sitemap: 7 páginas × 11 idiomas + 4 legales')
+        # (Plus the templates' pages, when the site makes them — site/tools/pages.mjs: the list and one page each, in every language.)
+        tdir = os.path.join(out, 'templates'); made = (['templates'] + os.listdir(tdir)) if os.path.isdir(tdir) else []
+        check(ev("fetch('sitemap.xml').then(r=>r.text()).then(t=>(t.match(/<loc>/g)||[]).length)") == 81 + 11 * len(made), f'sitemap: 7 páginas × 11 idiomas + 4 legales + {len(made)} de plantillas × 11')
+        if os.path.exists(os.path.join(ROOT, 'site', 'tools', 'pages.mjs')):
+            check(len(made) > 100, f'las páginas de las plantillas: {len(made)}')
+            recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/templates.html')); time.sleep(1.5)
+            cards = ev("document.querySelectorAll('.tpl-card').length") or 0
+            check(cards == len(made) - 1 and ev("document.querySelectorAll('.tpl-group h2').length") >= 6, f'la lista de plantillas, por grupos: {cards}')
+            bad = ev(r"""(async()=>{const u=[...new Set([...document.querySelectorAll('.tpl-card')].flatMap(a=>[a.getAttribute('href')+'.html',a.querySelector('img').getAttribute('src')]))];
+              const bad=[];await Promise.all(u.map(h=>fetch(h).then(r=>{if(!r.ok)bad.push(h)})));return bad.join(',')})()""")
+            check(bad == '', 'cada plantilla de la lista, con su página y su portada: ' + str(bad)[:300])
+            first = ev("document.querySelector('.tpl-card').getAttribute('href')")
+            recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/en{first}.html')); time.sleep(1.5)
+            check(ev("document.documentElement.lang") == 'en' and ev("document.querySelector('link[rel=canonical]').href") == 'https://revelaslides.com/en' + first, 'una plantilla en inglés, con su dirección: ' + str(first))
+            check(ev("[...document.querySelectorAll('link[rel=alternate][hreflang]')].length") == 12 and ev("document.querySelector('.site-langs a[hreflang=ar]').getAttribute('href')") == '/ar' + first, 'con sus otros idiomas')
+            check(ev("(a=>!!a&&/^\\/app\\/\\?template=\\w+&lang=en$/.test(a.getAttribute('href')))(document.querySelector('.tpl-hero .btn.primary'))"), 'el botón la abre en la aplicación, en inglés')
+            check(ev("(i=>i.complete&&i.naturalWidth===640)(document.querySelector('.tpl-cover img'))") and ev("document.querySelectorAll('.tpl-slides li').length") > 3, 'su portada y sus diapositivas')
+            check(ev("JSON.parse(document.querySelector('script[type=\"application/ld+json\"]').textContent)['@graph'][0].inLanguage") == 'en' and not ev("/Plantillas|diapositivas|Usar esta/.test(document.body.innerText)"), 'datos para buscadores en inglés, y sin restos en español')
+            recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/index.html')); time.sleep(1)
         recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/en/pricing.html')); time.sleep(1.5)
         check(ev("document.documentElement.lang") == 'en' and 'Pric' in (ev('document.title') or ''), 'precios en inglés: ' + str(ev('document.title')))
         check(ev("document.querySelector('link[rel=canonical]').href") == 'https://revelaslides.com/en/pricing', 'su dirección canónica')
