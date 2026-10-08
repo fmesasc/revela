@@ -511,12 +511,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       eq(calls.length, 2, 'una sola petición más'); assert(/These slides of a presentation are weak/.test(calls[1].body.messages[0].content), 'pidiendo rehacer las flojas');
       eq(sp4.slice(1, 4).map(x => x.kind + ':' + x.code?.language).join(), 'code:swift,code:swift,code:swift', 'las flojas, ahora con código');
       eq(sp4[1].notes, flat[1].notes, 'conservando sus notas');
-      // Figures still invented after it: never shown as facts — gaps to fill in, a chart as a list of gaps.
+      // Figures still invented after it: never shown as facts — gaps to fill in, a chart as a table of gaps.
       seq = [{ title: 'Ventas', slides: [{ kind: 'title', title: 'Ventas', notes: 'a' }, { kind: 'stats', title: 'Resultados', stats: [{ value: '€12.5M', label: 'Ventas' }, { value: '[X %]', label: 'Margen' }], source: 'Datos internos', notes: 'b' },
         { kind: 'chart', title: 'Por región', chart: { type: 'bar', labels: ['Norte', 'Sur'], values: [4, 3], series_name: 'M€' }, notes: 'c' }, { kind: 'closing', title: 'Gracias', notes: 'd' }] }, { slides: [] }];
       const sp5 = await A.createDeck({ topic: 'Resultados de ventas del trimestre', count: 4 }); seq = null;
       eq(sp5[1].stats.map(s => s.value).join(), '[€12.5M],[X %]', 'las cifras sin respaldo, huecos para rellenar');
-      eq(sp5[2].kind + ':' + sp5[2].bullets.join('|'), 'bullets:Norte: [M€]|Sur: [M€]', 'el gráfico inventado, una lista de huecos');
+      eq(sp5[2].kind + ':' + sp5[2].rows.map(r => r.join(': ')).join('|'), 'table:Norte: [M€]|Sur: [M€]', 'el gráfico inventado, una tabla de huecos');
       assert(!sp5.quality.problems.some(p => p.code === 'invented-figures'), 'ninguna cifra inventada llega');
       // Code on a topic that isn't programming (sums as comments): its lines, as a list.
       seq = [{ title: 'Fracciones', slides: [{ kind: 'title', title: 'Fracciones', notes: 'a' }, { kind: 'code', title: 'MCM(6, 8)', code: { language: 'plaintext', code: '// Múltiplos de 6: 6, 12, 18, 24\n// Múltiplos de 8: 8, 16, 24\n// MCM(6, 8) = 24' }, notes: 'b' },

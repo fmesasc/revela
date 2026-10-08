@@ -321,7 +321,7 @@ Write everything in ${opts.language || lang()}.` },
   // made again, once, before anyone sees it.
   const how = { topic: opts.topic || str(res.title), sourced: !!(str(opts.source) || opts.research || /\d/.test(str(opts.context))), images: !!opts.images, given: (opts.attachments || []).length ? '' : [opts.context, opts.source, opts.research?.brief].map(str).join('\n').trim() };   // (the data as text — not when it came in a file the measure can't read)
   let q = deckQuality(specs, how); specs.qualityFirst = q;
-  if (q.score < 75 || q.problems.some(p => ['invented-figures', 'off-code', 'no-picture', 'repeated'].includes(p.code))) { await richer(specs, weakSlides(q, specs), opts, q).catch(() => {}); q = deckQuality(specs, how); }
+  if (q.score < 80 || q.problems.some(p => ['invented-figures', 'off-code', 'no-picture', 'repeated'].includes(p.code))) { await richer(specs, weakSlides(q, specs), opts, q).catch(() => {}); q = deckQuality(specs, how); }
   // The last net, not up to the model: figures still without anything behind them are never shown as facts — on cards,
   // each value becomes a gap to fill in («[1.200.000 €]»); a chart, a list with a gap for each of its data.
   // (Code on a topic that isn't programming — sums worked out as comments —: its lines, as a list.)
@@ -343,7 +343,8 @@ Write everything in ${opts.language || lang()}.` },
       // (A figure the person gave stays: «T3: 2.400.000», «Proyección T4: [ventas]».)
       const keep = v => amounts(how.given).some(k => Math.abs(k - +v) <= Math.abs(+v) * 0.01);
       if (sp.kind === 'stats') sp.stats = (sp.stats || []).map(s => (/\d/.test(s.value) && !/\[[^\]]+\]/.test(s.value) && !amounts(s.value).every(keep) ? { ...s, value: `[${s.value}]` } : s));
-      else if (sp.kind === 'chart') { const c = sp.chart || {}; specs[i] = { kind: 'bullets', title: sp.title, bullets: (c.labels || []).map((l, k) => `${l}: ${keep(c.values?.[k]) ? c.values[k] : `[${c.series_name || '…'}]`}`), notes: sp.notes }; }
+      // (A chart's data, as a table to fill in — as a list, it made a deck half lists.)
+      else if (sp.kind === 'chart') { const c = sp.chart || {}; specs[i] = { kind: 'table', title: sp.title, header: ['', str(c.series_name) || '…'], rows: (c.labels || []).slice(0, 6).map((l, k) => [str(l), keep(c.values?.[k]) ? String(c.values[k]) : `[${str(c.series_name) || '…'}]`]), notes: sp.notes }; }
       delete specs[i].source;
     }
     q = deckQuality(specs, how);
