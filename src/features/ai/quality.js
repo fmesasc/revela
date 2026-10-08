@@ -75,8 +75,10 @@ export function deckQuality(specs, { topic = '', sourced = false, images = false
     ...bulletsOf(sp).filter(hasFigure).flatMap(amounts)].filter(v => Number.isFinite(v) && Math.abs(v) >= 10 && !(v >= 1900 && v <= 2100));   // (not «T4» nor a year)
   // (And with data given, figures said to be «internal» or «an example» — a thesis's validation chart «ejemplo
   // ilustrativo», an error of 7,3 % nobody gave — are invented unless they are the person's.)
+  // (A series over «Año 1, Año 2…», «Month 1…»: no real data has such labels — made up to draw a trend.)
+  const generic = sp => sp.kind === 'chart' && (sp.chart?.labels || []).length >= 3 && sp.chart.labels.every(l => /^\s*(año|year|mes|month|semana|week|d[ií]a|day|periodo|period|trimestre|quarter|any|mois|jahr)\s*\d+\s*$/i.test(str(l)));
   const ownCase = sp => !str(sp.source) || ownData.test(sp.source) || example.test(sp.source);
-  const invented = body.filter(x => (!sourced && unbacked(x.sp) && figures(x.sp)) || (sourced && (forecast(x.sp) || (str(given) && figures(x.sp) && ownCase(x.sp) && !tech)) && ownFigures(x.sp).some(v => !backed(v))));
+  const invented = body.filter(x => generic(x.sp) || (!sourced && unbacked(x.sp) && figures(x.sp)) || (sourced && (forecast(x.sp) || (str(given) && figures(x.sp) && ownCase(x.sp) && !tech)) && ownFigures(x.sp).some(v => !backed(v))));
   // The same thing twice — a lesson's four steps of adding fractions on two slides in a row —: its words, mostly the
   // ones of an earlier slide.
   const said = body.map(x => ({ i: x.i, w: contentWords(x.sp) }));
