@@ -479,6 +479,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(Q.deckQuality([sales[0], { ...sales[1], source: 'Datos internos de la compañía' }], { topic: 'Ventas' }).problems.some(p => p.code === 'invented-figures'), 'con «datos internos» que nadie dio, sí');
       assert(Q.deckQuality([sales[0], { ...sales[1], source: 'Datos de ejemplo' }], { topic: 'La caída de Roma' }).problems.some(p => p.code === 'invented-figures')
         && !Q.deckQuality([sales[0], { ...sales[1], source: 'Datos de ejemplo' }], { topic: 'Python con pandas' }).problems.some(p => p.code === 'invented-figures'), '«de ejemplo»: en un tutorial técnico sí; en historia, no');
+      // With data given, a forecast of the model's own still counts as invented — not one with the person's figures.
+      eq(Q.amounts('2,4 M€ · 3.100.000 · 3.1M€ · 12 % · 300.000 €').join(), '2400000,3100000,3100000,12,300000', 'las cantidades, en números');
+      const fc = { kind: 'chart', title: 'Proyecciones T4', source: 'Estimaciones internas', chart: { labels: ['T3', 'Proyección T4'], values: [2400000, 3100000] }, notes: 'n' };
+      const given = 'T3: 2,4 M€ de ventas frente a un objetivo de 2,6 M€';
+      assert(Q.deckQuality([sales[0], fc], { topic: 'Ventas', sourced: true, given }).problems.some(p => p.code === 'invented-figures'), 'la proyección inventada, sí');
+      assert(!Q.deckQuality([sales[0], { ...fc, chart: { labels: ['T3', 'Objetivo T4'], values: [2400000, 2600000] } }], { topic: 'Ventas', sourced: true, given }).problems.some(p => p.code === 'invented-figures'), 'con sus cifras, no');
       // LaTeX in the model's JSON: «\\frac» with one backslash (a valid escape that broke the formula) and «\\sqrt» (an invalid one that lost it all).
       const OR = await W.eval("import('/src/features/ai/openrouter.js')");
       eq(OR.parseJSON('{"latex":"\\frac{a}{b} = \\sqrt{c}"}').latex, '\\frac{a}{b} = \\sqrt{c}', 'la fórmula, entera');
@@ -521,7 +527,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       seq = ['Lo siento, aquí tienes la presentación…', { title: 'Bien', slides: [{ kind: 'title', title: 'Bien', notes: 'a' }, { kind: 'closing', title: 'Fin', notes: 'b' }] }];
       calls.length = 0; const sp7 = await A.createDeck({ topic: 'Algo', count: 2 }); seq = null;
       eq(calls.length + '|' + sp7.length, '2|2', 'pedida otra vez, y hecha');
-      eq(sp6[1].kind + ':' + sp6[1].bullets.join('|'), 'bullets:Múltiplos de 6: 6, 12, 18, 24|Múltiplos de 8: 8, 16, 24|MCM(6, 8) = 24', 'el código fuera de lugar, sus líneas en una lista');
+      eq(sp6[1].kind + ':' + sp6[1].steps.map(s => s.text).join('|'), 'steps:Múltiplos de 6: 6, 12, 18, 24|Múltiplos de 8: 8, 16, 24|MCM(6, 8) = 24', 'el código fuera de lugar, sus líneas como pasos');
       eq(Q.deckQuality([{ kind: 'title', title: 'x' }, { kind: 'chart', title: 'P', chart: { type: 'line', labels: ['a', 'b'], values: [1, 2] }, source: 'Fuente: IEA 2023' }], { topic: 'Energía' }).problems.filter(p => p.code === 'invented-figures').length, 0, 'un gráfico con su fuente no es inventado'); assert(sp4.quality.score > q1.score, 'y mejor nota (' + q1.score + ' → ' + sp4.quality.score + ')');
       // Research on the web first: the brief goes to the slides, its pages become a «Fuentes» slide.
       { const real = W.fetch; let body = null;

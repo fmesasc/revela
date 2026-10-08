@@ -275,7 +275,7 @@ function drawChart(b) {
   const barSer = ser.filter(x => x.type === 'bar'), lineSer = sArea ? [] : ser.filter(x => x.type !== 'bar');
   const W = 100 - L, gap = W / n, [, sy] = chartSqueeze(b);
   // The categories' names: one size for all; long ones in two lines (and the plot a little shorter).
-  const slot = barSer.length ? gap : (n > 1 ? W / (n - 1) : W), edges = b._edges;
+  const slot = barSer.length || !sArea && b.chartType !== 'area' ? gap : (n > 1 ? W / (n - 1) : W), edges = b._edges;   // (as wide as lx below spaces them)
   let fit, every = 1;
   if (edges) {                                               // (a histogram: the edges' numbers, every other one if they don't fit)
     const labs = edges.map(v => fmtNum(v)), wid = Math.max(1, ...labs.map(s => textWidth(s, 1, b)));
@@ -302,8 +302,9 @@ function drawChart(b) {
     const bx = L + gap * i + (gap - bw * barSer.length) / 2 + k * bw, y = Math.min(Yc(v), Y0), h = Math.abs(Yc(v) - Y0), c = x.colors?.[i] || x.color;
     return `<rect x="${bx.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${c}"/>` + dl(bx + bw / 2, Yc(v), v, c);
   }).join('')).join('');
-  // Lines: across the full width for line/area charts, centred on the bars in a combo.
-  const lx = i => (barSer.length ? X(i) : (n > 1 ? L + i * W / (n - 1) : L + W / 2));
+  // Lines: centred on their category (as PowerPoint draws them, and as on the bars of a combo) — from edge to edge, the
+  // first and last values' labels were cut in half by the chart's sides; an area chart's fill, across the full width.
+  const lx = i => (barSer.length || !sArea && b.chartType !== 'area' ? X(i) : (n > 1 ? L + i * W / (n - 1) : L + W / 2));
   const P = (i, v) => `${lx(i).toFixed(1)},${Yc(v).toFixed(1)}`;
   const lines = sArea ? ser.map((x, k) => {
     const top = cum[k], bot = k ? cum[k - 1] : top.map(() => base), pts = top.map((v, i) => P(i, v)).join(' ');

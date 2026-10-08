@@ -18,10 +18,27 @@ const MID = ['title', 'section', 'closing', 'agenda'];
 // The words of a slide that say what it's about (its title and main text), lower-case, 4 letters or more.
 const keyWords = sp => new Set([sp.title, sp.statement, sp.subtitle].map(str).join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/[^\p{L}\p{N}]+/u).filter(w => w.length >= 4));
 
+// Forecasts, projections, estimates: figures about what hasn't happened.
+const FORECAST = /proyecc|previsi|pron[oó]stic|forecast|projec|estimaci|estimat|expected|esperad|prevista|outlook/i;
+// The amounts a text says — «2,4 M€» and «2.400.000» are the same; «12 %» is 12 —, as numbers.
+export function amounts(text) {
+  const out = [];
+  for (const [, n, unit] of str(text).matchAll(/(\d[\d.,\s]*\d|\d)\s*(millones|millón|million|mill\.?|mil\b|M\b|k\b|K\b|bn|billion)?/g)) {
+    let t = n.replace(/\s/g, '');
+    // (A dot or comma followed by exactly three digits groups thousands; otherwise it is the decimal point.)
+    t = /^\d{1,3}([.,]\d{3})+$/.test(t) ? t.replace(/[.,]/g, '') : t.replace(/[.,](?=\d{3}\b)/g, '').replace(',', '.');
+    let v = parseFloat(t); if (!Number.isFinite(v)) continue;
+    const u = (unit || '').toLowerCase();
+    if (/^(millones|millón|million|mill|m)/.test(u)) v *= 1e6; else if (u === 'mil' || u === 'k') v *= 1e3; else if (/^(bn|billion)/.test(u)) v *= 1e9;
+    out.push(v);
+  }
+  return out;
+}
 // → { score (0-100), problems: [{ code, slides?: [i], detail }], stats }
 // problems' codes: all-lists, thin-lists, no-code, few-kinds, notes-missing, notes-off, empty.
 // sourced: the person gave data (a document, the research) — figures may come from it; images: pictures were asked for.
-export function deckQuality(specs, { topic = '', sourced = false, images = false } = {}) {
+// given: that data, as text — a forecast's figures are checked against it.
+export function deckQuality(specs, { topic = '', sourced = false, images = false, given = '' } = {}) {
   const n = specs.length, body = specs.map((sp, i) => ({ sp, i })).filter(x => !MID.includes(x.sp.kind));
   const lists = body.filter(x => x.sp.kind === 'bullets'), kinds = new Set(body.map(x => x.sp.kind));
   const thin = lists.filter(x => bulletsOf(x.sp).length < 3 || bulletsOf(x.sp).reduce((s, b) => s + words(b), 0) / Math.max(1, bulletsOf(x.sp).length) < 3);
@@ -43,7 +60,13 @@ export function deckQuality(specs, { topic = '', sourced = false, images = false
   const example = /ejemplo|example|exemple|illustrat|ilustrativ|hipot[eé]tic|hypothetic/i;
   const unbacked = sp => !str(sp.source) || ownData.test(sp.source) || (!tech && example.test(sp.source));
   const figures = sp => (sp.kind === 'stats' && (sp.stats || []).some(s => hasFigure(s.value))) || (sp.kind === 'chart' && (sp.chart?.values || []).length > 0);
-  const invented = sourced ? [] : body.filter(x => unbacked(x.sp) && figures(x.sp));
+  // (With data given, a forecast is still the model's: «Proyección T4: 3,1 M€» from a T3 of 2,4 — unless its figures are
+  // the person's own.)
+  const forecast = sp => FORECAST.test([sp.title, sp.source, sp.chart?.series_name, ...(sp.chart?.labels || []), ...(sp.stats || []).map(s => s.label)].map(str).join(' '));
+  const known = amounts(given), backed = v => known.some(k => Math.abs(k - v) <= Math.abs(v) * 0.01);
+  const ownFigures = sp => [...(sp.kind === 'stats' ? (sp.stats || []).filter(s => hasFigure(s.value)).flatMap(s => amounts(s.value)) : []), ...(sp.kind === 'chart' ? (sp.chart?.values || []).map(Number) : []),
+    ...bulletsOf(sp).filter(hasFigure).flatMap(amounts)].filter(v => Number.isFinite(v) && Math.abs(v) >= 10 && !(v >= 1900 && v <= 2100));   // (not «T4» nor a year)
+  const invented = body.filter(x => (!sourced && unbacked(x.sp) && figures(x.sp)) || (sourced && forecast(x.sp) && ownFigures(x.sp).some(v => !backed(v))));
   const noPicture = images ? [] : body.filter(x => x.sp.kind === 'image' && !x.sp.figure);
   const offCode = tech ? [] : code;
   const problems = [];

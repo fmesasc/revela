@@ -4,6 +4,7 @@ made as a person does — first the outline, then the slides — and scored by s
 the instructions or in the model is measured, not guessed.
 
    OPENROUTER_API_KEY=sk-or-… python3 tools/ai-eval.py [--model google/gemini-2.5-flash] [--only swift,roma] [--out tmp/ai-eval]
+   python3 tools/ai-eval.py --replay tmp/ai-eval-old [--out tmp/ai-eval]    (the decks of a past run, laid out again: free)
 
 Needs Chrome (it runs the app headless, as tests/run.py). Costs a few cents per topic on that key. Writes a table (and,
 in GitHub Actions, the run's summary) and every deck as JSON to look at. Exit code 1 if the average is under --min."""
@@ -31,10 +32,11 @@ class Q(http.server.SimpleHTTPRequestHandler):
 
 def main():
     arg = lambda n, d=None: next((sys.argv[i + 1] for i, a in enumerate(sys.argv) if a == n), d)
-    key = os.environ.get('OPENROUTER_API_KEY', '').strip()
+    replay = arg('--replay')    # (to measure a change in the layout on the same slides, without paying the model again)
+    key = 'mock' if replay else os.environ.get('OPENROUTER_API_KEY', '').strip()
     if not key: print('Falta OPENROUTER_API_KEY (una clave de OpenRouter).'); return 2
     model, out, least = arg('--model', ''), arg('--out', os.path.join(ROOT, 'tmp', 'ai-eval')), float(arg('--min', '70'))
-    only = [k for k in (arg('--only', '') or '').split(',') if k] or list(TOPICS)
+    only = [k for k in (arg('--only', '') or '').split(',') if k] or [k for k in TOPICS if not replay or os.path.exists(os.path.join(replay, k + '.json'))]
     os.makedirs(out, exist_ok=True)
     srv = socketserver.TCPServer(('127.0.0.1', 0), Q); threading.Thread(target=srv.serve_forever, daemon=True).start(); port = srv.server_address[1]
     chrome = next(shutil.which(c) for c in ('google-chrome', 'chromium', 'chromium-browser') if shutil.which(c))
@@ -69,31 +71,34 @@ def main():
           {kind:'code',title:'Código',code:{language:'python',code:'import pandas as pd\\ndf = pd.read_csv(\\"a.csv\\")'},bullets:['Carga un CSV'],notes:'n'},{kind:'stats',title:'Cifras',stats:[{value:'2,4 M€',label:'Ventas'}],source:'Fuente: tus datos',notes:'n'},{kind:'closing',title:'Gracias',notes:'n'}]};
           window.fetch=async(u,o)=>{const b=JSON.parse(o.body),sys=b.messages[0].content;const a=/3-4 questions/.test(sys)?{questions:[{q:'¿Para quién?',options:['A','B']}]}:/Plan a presentation/.test(sys)?{title:'Prueba',slides:deck.slides.map(x=>({title:x.title,kind:x.kind,points:[]}))}:deck;
             return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify(a)}}]}))};return 1})()""")
-    ev(f"(()=>{{const R=window.__revela;R.ai.setAiKey({json.dumps(key)});R.ai.acceptPrivacy();{f'R.ai.setAiModel({json.dumps(model)});' if model else ''}return 1}})()")
+    if not replay: ev(f"(()=>{{const R=window.__revela;R.ai.setAiKey({json.dumps(key)});R.ai.acceptPrivacy();{f'R.ai.setAiModel({json.dumps(model)});' if model else ''}return 1}})()")
+    ev("(()=>{const s=document.createElement('style');s.textContent='.toast,#toasts{display:none!important}';document.head.append(s);return 1})()")   # (the app's notices, out of the pictures)
     rows = []
     for k in only:
         topic, lang, context = TOPICS[k]; t0 = time.time()
         try:
             r = ev(f"""(async()=>{{const R=window.__revela,A=R.aiDeck,Q=await import('/src/features/ai/quality.js');
               const o={{topic:{json.dumps(topic)},language:{json.dumps(lang)},count:10,context:{json.dumps(context)}}};
-              const asks=await A.askAbout(o).catch(e=>[{{q:'ERROR '+e.message}}]);
-              const ol=await A.createOutline(o); const sp=await A.createDeck({{...o,outline:ol.slides}});
+              const old={json.dumps(json.load(open(os.path.join(replay, k + '.json'))) if replay else None)};
+              const asks=old?old.questions:await A.askAbout(o).catch(e=>[{{q:'ERROR '+e.message}}]);
+              const ol=old?old.outline:await A.createOutline(o); const sp=old?Object.assign(old.specs.slice(),{{design:old.design,title:old.title,quality:old.quality,qualityFirst:{{score:old.first}}}}):await A.createDeck({{...o,outline:ol.slides}});
               // (Made as the app makes it: a design with its layouts, the slides composed in it.)
               const G=await import('/src/features/design/gallery.js'),M=await import('/src/features/document/master.js');
               const d=G.buildFromGallery(sp.design||'minimal'); M.ensureLayouts(d); if(sp.title) d.name=sp.title; R.store.replaceDeck(d);
               const starter=new Set(R.state.deck.slides.map(s=>s.id)); await A.insertSpecs(sp,{{images:false}});
               R.store.commit(()=>{{R.state.deck.slides=R.state.deck.slides.filter(s=>!starter.has(s.id));R.state.ui.slideIndex=0}});
-              return {{questions:asks, outline:ol, specs:JSON.parse(JSON.stringify(sp)), quality:sp.quality||Q.deckQuality(sp,{{topic:o.topic}}), first:(sp.qualityFirst||sp.quality||{{}}).score, n:R.state.deck.slides.length}}}})()""")
+              return {{design:sp.design, title:sp.title, questions:asks, outline:ol, specs:JSON.parse(JSON.stringify(sp)), quality:sp.quality||Q.deckQuality(sp,{{topic:o.topic}}), first:(sp.qualityFirst||sp.quality||{{}}).score, n:R.state.deck.slides.length}}}})()""")
             # Each slide drawn (for a person to judge it), and measured: text past its box, letters too small to read.
-            shots, small, spill = [], 0, 0
+            shots, small, spill, spills = [], 0, 0, []
             for i in range(r['n']):
                 m = ev(f"""(async()=>{{const R=window.__revela;R.slides.goToSlide({i});R.store.setSelection(null);R.render();await new Promise(x=>setTimeout(x,450));
-                  const st=document.getElementById('stage'),k=1280/st.getBoundingClientRect().width;let small=0,spill=0,min=999;
+                  const st=document.getElementById('stage');let small=0,spill=0,min=999;const where=[];
                   for(const b of st.querySelectorAll('.block')){{const box=b.getBoundingClientRect(),w=document.createTreeWalker(b,NodeFilter.SHOW_TEXT),rg=document.createRange();
-                    if(b.querySelector('pre,code,.katex'))continue;for(let n;(n=w.nextNode());){{if(!n.textContent.trim())continue;const fs=parseFloat(getComputedStyle(n.parentElement).fontSize);   /* (slide pixels: the stage is scaled as a whole) */min=Math.min(min,fs);if(fs<18)small++;
-                      rg.selectNodeContents(n);for(const q of rg.getClientRects())if(q.bottom>box.bottom+3||q.right>box.right+3){{spill++;break}}}}}}
-                  const r=st.getBoundingClientRect();return [r.x,r.y,r.width,r.height,small,spill,Math.round(min)]}})()""")
+                    if(b.querySelector('pre,code,.katex'))continue;for(let n;(n=w.nextNode());){{if(!/[\\p{{L}}\\p{{N}}]/u.test(n.textContent))continue;   /* (a big decorative quote mark: only its line box goes past) */const fs=parseFloat(getComputedStyle(n.parentElement).fontSize);   /* (slide pixels: the stage is scaled as a whole) */min=Math.min(min,fs);if(fs<18)small++;
+                      rg.selectNodeContents(n);for(const q of rg.getClientRects())if(q.bottom>box.bottom+3||q.right>box.right+3){{spill++;where.push(n.textContent.trim().slice(0,40));break}}}}}}
+                  const r=st.getBoundingClientRect();return [r.x,r.y,r.width,r.height,small,spill,Math.round(min),where]}})()""")
                 small += m[4]; spill += m[5]
+                if m[7]: spills.append({'slide': i + 1, 'kind': (r['specs'][i] if i < len(r['specs']) else {}).get('kind'), 'texts': m[7]})
                 p = {'format': 'png', 'clip': {'x': m[0], 'y': m[1], 'width': m[2], 'height': m[3], 'scale': 1}}
                 shots.append(base64.b64decode(recv(send('Page.captureScreenshot', sid, **p))['result']['data']))
             try:
@@ -103,7 +108,7 @@ def main():
                 for j, im in enumerate(ims): sheet.paste(im, ((j % cols) * (w + 6), (j // cols) * (h + 6)))
                 sheet.save(os.path.join(out, k + '.png'))
             except Exception as e: print('sin hoja de imágenes:', e)
-            r['layout'] = {'small_texts': small, 'spilling_texts': spill}
+            r['layout'] = {'small_texts': small, 'spilling_texts': spill, 'spills': spills}
             q = r['quality']; json.dump(r, open(os.path.join(out, k + '.json'), 'w'), ensure_ascii=False, indent=1)
             rows.append((k, q['score'], len(r['specs']), q['stats']['code'], ', '.join(sorted(set(s.get('kind', '?') for s in r['specs']))), '; '.join([p['detail'] for p in q['problems']] + ([f"{r['layout']['spilling_texts']} textos que se salen"] if r['layout']['spilling_texts'] else []) + ([f"{r['layout']['small_texts']} textos de menos de 18 px (sin contar el código)"] if r['layout']['small_texts'] else [])) or '—', round(time.time() - t0), r.get('first', q['score'])))
         except Exception as e:

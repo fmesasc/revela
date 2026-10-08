@@ -14,7 +14,7 @@ import { withAttachments } from './attach.js';
 import { PDFJS } from '../../core/vendor.js';
 import { styledSlide, hasLayouts, pictureBox, compose, contrast, codeCard, fitBody } from './fromspec.js';
 import { KINDS, prepareSpec, splitSpec } from './specs.js';
-import { deckQuality, weakSlides } from './quality.js';
+import { amounts, deckQuality, weakSlides } from './quality.js';
 import { codeFontSize, codeHeight, mathFontSize, AI_LANGS } from './codeobj.js';
 import { richHTML } from './richtext.js';
 import { pollBlock } from '../live/poll.js';
@@ -234,6 +234,8 @@ export const RICH = `Use the richest kind that fits each slide — a list ("bull
 - Numbers ("stats", "chart", figures in a table or a text) ONLY from the person's data, the document or the research given. Never invent a figure: use another kind; and when the deck needs the person's own figures (their sales, their results), put placeholders in brackets for them to fill in, like "[ventas del trimestre]".
 - The figures of the person's own organisation (its sales, budget, results, staff, targets) can only come from them: unless they were given, ALWAYS placeholders — never a figure with a "source" like "internal data", which you don't have.
 - Never make up specifics that weren't given: names (a client, a hospital, a person, a company), results, percentages, costs or dates of the person's own case. Use what they gave; when a slide needs something specific they didn't give, a placeholder in brackets ("[nombre del cliente]", "[resultado de la validación]").
+- No forecasts, projections or estimates of your own: a figure for what hasn't happened yet (next quarter's sales, a growth to come) only when the person gave it; else a placeholder ("[previsión de ventas del T4]"). Figures worked out from theirs (a difference, a percentage) are fine.
+- Placeholders in plain words of the deck's language, with spaces — "[objetivo de crecimiento del sur]", never "[objetivo_crecimiento_sur]".
 - A "chart" only for a real series of numbers to compare — never to illustrate an idea. "code" only when the audience writes or reads code — never as decoration on another topic.`;
 // The model for writing whole decks (unless the person chose one): a capable one, not the cheapest of the list.
 const DECK_MODEL = 'google/gemini-2.5-flash';
@@ -314,7 +316,7 @@ Write everything in ${opts.language || lang()}.` },
   if (missing.length > specs.length * 0.3) await speakerNotes(specs, opts).catch(() => {});
   // Measured (quality.js): a weak deck — mostly lists, thin ones, no code on a technical topic — gets its weak slides
   // made again, once, before anyone sees it.
-  const how = { topic: opts.topic || str(res.title), sourced: !!(str(opts.source) || opts.research || /\d/.test(str(opts.context))), images: !!opts.images };
+  const how = { topic: opts.topic || str(res.title), sourced: !!(str(opts.source) || opts.research || /\d/.test(str(opts.context))), images: !!opts.images, given: [opts.context, opts.source, opts.research?.brief].map(str).join('\n') };
   let q = deckQuality(specs, how); specs.qualityFirst = q;
   if (q.score < 75 || q.problems.some(p => ['invented-figures', 'off-code', 'no-picture'].includes(p.code))) { await richer(specs, weakSlides(q, specs), opts, q).catch(() => {}); q = deckQuality(specs, how); }
   // The last net, not up to the model: figures still without anything behind them are never shown as facts — on cards,
@@ -324,7 +326,10 @@ Write everything in ${opts.language || lang()}.` },
   if (offCode) {
     for (const i of offCode.slides) {
       const sp = specs[i], lines = str(sp.code?.code).split('\n').map(l => l.replace(/^\s*(\/\/+|#+|--|\/\*+|\*+\/?)\s?/, '').trim()).filter(l => l && !/^[{}()[\];]+$/.test(l)).slice(0, 7);
-      if (lines.length) specs[i] = { kind: 'bullets', title: sp.title, bullets: [...lines, ...(sp.bullets || [])].slice(0, 8), notes: sp.notes };
+      // (Two to six lines worked out one after another — a sum, a method — read as numbered steps; more, as a list.
+      // As a list, a lesson on fractions came out half lists.)
+      if (lines.length >= 2 && lines.length <= 6) specs[i] = { kind: 'steps', title: sp.title, steps: lines.map(l => ({ text: l })), notes: sp.notes };
+      else if (lines.length) specs[i] = { kind: 'bullets', title: sp.title, bullets: [...lines, ...(sp.bullets || [])].slice(0, 8), notes: sp.notes };
     }
     q = deckQuality(specs, how);
   }
@@ -332,8 +337,10 @@ Write everything in ${opts.language || lang()}.` },
   if (still) {
     for (const i of still.slides) {
       const sp = specs[i];
-      if (sp.kind === 'stats') sp.stats = (sp.stats || []).map(s => (/\d/.test(s.value) && !/\[[^\]]+\]/.test(s.value) ? { ...s, value: `[${s.value}]` } : s));
-      else if (sp.kind === 'chart') { const c = sp.chart || {}; specs[i] = { kind: 'bullets', title: sp.title, bullets: (c.labels || []).map(l => `${l}: [${c.series_name || '…'}]`), notes: sp.notes }; }
+      // (A figure the person gave stays: «T3: 2.400.000», «Proyección T4: [ventas]».)
+      const keep = v => amounts(how.given).some(k => Math.abs(k - +v) <= Math.abs(+v) * 0.01);
+      if (sp.kind === 'stats') sp.stats = (sp.stats || []).map(s => (/\d/.test(s.value) && !/\[[^\]]+\]/.test(s.value) && !amounts(s.value).every(keep) ? { ...s, value: `[${s.value}]` } : s));
+      else if (sp.kind === 'chart') { const c = sp.chart || {}; specs[i] = { kind: 'bullets', title: sp.title, bullets: (c.labels || []).map((l, k) => `${l}: ${keep(c.values?.[k]) ? c.values[k] : `[${c.series_name || '…'}]`}`), notes: sp.notes }; }
       delete specs[i].source;
     }
     q = deckQuality(specs, how);

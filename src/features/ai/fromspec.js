@@ -202,12 +202,18 @@ export function fitBody(b, slide, deck) {
   const one = b.fit ?? 1; b.columns = 2; fitPlaceholder(b, slide, deck);
   if ((b.fit ?? 1) < one + 0.1) { delete b.columns; fitPlaceholder(b, slide, deck); }
 }
+// The height a free text needs: a sentence (no list, no paragraphs) measured with its font when it is known — by the
+// average letter, the cards of steps came out a line short and their last line ran out of the card (in 8 of 12 decks).
+function textHeight(html, fs, w, lh, cw = 0.54, family = '') {
+  const plain = family && !/<(li|p|ul|ol|div|br)\b/i.test(html);
+  return (plain && measuredHeight(html, fs, w, lh, family, cw >= 0.6 || /^\s*<b>/i.test(html))) || needHeight(html, fs, w, lh, cw);
+}
 // A free text: the size that fits.
 // (Never under 18 px — what still reads on a projected slide from the back; text that doesn't fit at 18 goes to more
 // rows or columns where it is laid out, not smaller.)
-function fitSize(html, size, w, h, lh = 1.25, min = 18, cw = 0.54) {
+function fitSize(html, size, w, h, lh = 1.25, min = 18, cw = 0.54, family = '') {
   min = Math.max(18, min);
-  let fs = size; while (fs > min && needHeight(html, fs, w, lh, cw) > h) fs = Math.max(min, fs - 2);
+  let fs = size; while (fs > min && textHeight(html, fs, w, lh, cw, family) > h) fs = Math.max(min, fs - 2);
   return fs;
 }
 
@@ -355,7 +361,10 @@ export function styledSlide(spec, deck, { at = deck.slides.length, self = null, 
   }
   // Empty placeholders go (as in the templates).
   const phs = ph.filter(b => !drop.has(b) && plain(b.html || ''));
-  for (const b of phs) fitPlaceholder(b, slide, deck, minimal && styleKind(b) === 'body' ? 1.12 : 1);
+  // (A short list in a big box grows — three lines at the master's size left two thirds of the slide empty — to what fits.)
+  // (Not in a narrow column, by a chart: there it only made more lines and broke long words.)
+  const grow = b => styleKind(b) !== 'body' ? 1 : b.w >= 640 && str(b.html).replace(/<[^>]*>/g, '').length < 260 ? 1.3 : minimal ? 1.12 : 1;
+  for (const b of phs) fitPlaceholder(b, slide, deck, grow(b));
   // Covers and sections without decoration of their own: a short accent rule.
   if (COVER.includes(kind) && !decor.length && !minimal && title && kind !== 'quote') {
     // (Under the title when its text sits at the bottom of its box, else over it.)
@@ -364,7 +373,7 @@ export function styledSlide(spec, deck, { at = deck.slides.length, self = null, 
   }
   if (kind === 'quote' && title && !minimal) {
     const center = styled(title, slide, deck).textAlign === 'center';
-    extra.push(X(center ? title.x + title.w / 2 - 70 : title.x, Math.max(10, title.y - 70), 140, 150, '“', { fontSize: 180, fontFamily: look.head, color: look.accent, textAlign: center ? 'center' : 'left', lineHeight: 1, decorative: true }));
+    extra.push(X(center ? title.x + title.w / 2 - 70 : title.x, Math.max(10, title.y - 70), 140, 190, '“', { fontSize: 180, fontFamily: look.head, color: look.accent, textAlign: center ? 'center' : 'left', lineHeight: 1, decorative: true }));
   }
   // Over a background where the master's colours can't be read: the colours set here.
   if (!look.ok) for (const b of phs) b.color = styleKind(b) === 'title' ? look.title : look.fg;
@@ -424,12 +433,14 @@ export function compose(kind, spec, area, look, { minimal = false, style = 'same
       const st = (spec.stats || []).slice(0, 4), n = Math.max(1, st.length);
       if (n === 1) {
         // One figure: big on the left, what it means on the right.
-        const s = st[0], v = `<b>${esc(str(s.value))}</b>`, vw = area.w * 0.5;
-        const big = Math.min(200, area.h * 0.62, (vw - 24) / Math.max(2, str(s.value).length * 0.68)), vh = big * 1.2, y = area.y + (area.h - vh) * 0.45;
-        push(T(area.x, y, vw, vh, v, { fontSize: R(big), fontFamily: look.head, color: acc(0), vAlign: 'middle', lineHeight: 1 }));
-        if (!minimal) push(S('rect', area.x + vw + 12, y + vh * 0.1, 6, vh * 0.8, acc(0)));
-        const lab = esc(str(s.label)), lw = area.w - vw - 60;
-        push(T(area.x + vw + 48, y, lw, vh, lab, { fontSize: fitSize(lab, R(bs * 0.95), lw, vh, 1.25, 16), vAlign: 'middle' }));
+        // (The pair centred, the figure only as wide as it is: «2» in half the slide left a hole between it and its words.)
+        const s = st[0], v = `<b>${esc(str(s.value))}</b>`, len = Math.max(2, str(s.value).length * 0.68);
+        const big = Math.min(200, area.h * 0.62, (area.w * 0.5 - 24) / len), vh = big * 1.2, vw = Math.min(area.w * 0.5, big * len + 48);
+        const lab = esc(str(s.label)), lw = Math.min(area.w - vw - 60, Math.max(420, area.w * 0.42)), x0 = area.x + (area.w - vw - 60 - lw) / 2;
+        const ls = fitSize(lab, R(bs * (str(s.label).length <= 40 ? 1.3 : 1)), lw, vh, 1.25, 18, 0.54, look.body), y = area.y + (area.h - vh) * 0.45;
+        push(T(x0, y, vw, vh, v, { fontSize: R(big), fontFamily: look.head, color: acc(0), textAlign: 'right', vAlign: 'middle', lineHeight: 1 }));
+        if (!minimal) push(S('rect', x0 + vw + 12, y + vh * 0.1, 6, vh * 0.8, acc(0)));
+        push(T(x0 + vw + 48, y, lw, vh, lab, { fontSize: ls, vAlign: 'middle' }));
         break;
       }
       const gap = minimal ? 48 : 32, gw = (area.w - (n - 1) * gap) / n;
@@ -471,13 +482,21 @@ export function compose(kind, spec, area, look, { minimal = false, style = 'same
       while (cols > 1 && (area.w - (cols - 1) * gap) / cols < needW) cols--;
       if (cols > 2 && n % cols && n % (cols - 1) === 0 && (area.w - (cols - 2) * gap) / (cols - 1) >= needW) cols--;   // (no last row of one — but never one column: thin strips)
       const rows = Math.ceil(n / cols);
-      const cw = (area.w - (cols - 1) * gap) / cols, side = kind === 'features' && cw >= 440, pad = minimal ? 0 : 26, d = rows > 1 ? 54 : 68;
-      const iw = side ? cw - 2 * pad - d - 22 : cw - 2 * pad, hasT = it.some(s => s.title);
+      const cw = (area.w - (cols - 1) * gap) / cols, pad = minimal ? 0 : 26, d = rows > 1 ? 54 : 68, hasT = it.some(s => s.title);
       const ts = R(bs * (rows > 1 ? 0.84 : 0.9)), xs = short ? R(bs * 1.2) : R(bs * (hasT ? (rows > 1 ? 0.8 : 0.86) : 0.92));
-      const tH = hasT ? Math.max(...it.map(s => (s.title ? needHeight(inline(s.title), ts, iw, 1.15, 0.6) : 0))) : 0;
-      const xH = Math.max(0, ...it.map(s => (s.text ? needHeight(inline(s.text), xs, iw, 1.3) : 0)));
-      const maxH = (area.h - (rows - 1) * gap) / rows, inner = tH + (hasT ? 6 : 0) + xH;
-      const ch = Math.min(maxH, side ? 2 * pad + Math.max(d, inner) : 2 * pad + d + 18 + inner);
+      const maxH = (area.h - (rows - 1) * gap) / rows;
+      // The number or icon over the text, or — wide cards, or text that wouldn't fit under it (two rows of four steps:
+      // the last line ran out of the card) — at its side.
+      const sized = side => {
+        const iw = side ? cw - 2 * pad - d - 22 : cw - 2 * pad;
+        const tH = hasT ? Math.max(...it.map(s => (s.title ? textHeight(`<b>${inline(s.title)}</b>`, ts, iw, 1.15, 0.6, look.head) : 0))) : 0;
+        const xH = Math.max(0, ...it.map(s => (s.text ? textHeight(short ? `<b>${inline(s.text)}</b>` : inline(s.text), xs, iw, 1.3, 0.54, short ? look.head : look.body) : 0)));
+        const inner = tH + (hasT ? 6 : 0) + xH;
+        return { side, iw, tH, need: side ? 2 * pad + Math.max(d, inner) : 2 * pad + d + 18 + inner };
+      };
+      let lay = sized(kind === 'features' && cw >= 440);
+      if (!lay.side && lay.need > maxH && cw >= 360) { const alt = sized(true); if (alt.need < lay.need) lay = alt; }
+      const { side, iw, tH } = lay, ch = Math.min(maxH, lay.need);
       const y0 = area.y + Math.max(0, (area.h - rows * ch - (rows - 1) * gap) * 0.4), used = new Set();
       it.forEach((s, i) => {
         const { x, y } = cell(i, n, cols, cw, ch, gap, y0), c = acc(i);
@@ -492,9 +511,9 @@ export function compose(kind, spec, area, look, { minimal = false, style = 'same
         const tx = side ? x + pad + d + 22 : x + pad, room = y + ch - pad - (side ? y + pad : y + pad + d + 18), th = Math.min(tH, room * 0.55);
         let ty = side ? y + pad : y + pad + d + 18;
         if (s.title) { const ht = `<b>${inline(s.title)}</b>`;
-          push(T(tx, ty, iw, th, ht, { fontSize: fitSize(ht, ts, iw, th, 1.15, 18, 0.6), fontFamily: look.head, color: kind === 'features' && !minimal ? c : look.title, lineHeight: 1.15 })); }
+          push(T(tx, ty, iw, th, ht, { fontSize: fitSize(ht, ts, iw, th, 1.15, 18, 0.6, look.head), fontFamily: look.head, color: kind === 'features' && !minimal ? c : look.title, lineHeight: 1.15 })); }
         if (hasT) ty += th + 6;
-        if (s.text) { const h = y + ch - pad - ty, ht = short ? `<b>${inline(s.text)}</b>` : inline(s.text); push(T(tx, ty, iw, h, ht, { fontSize: fitSize(ht, xs, iw, h, 1.3, 18), lineHeight: 1.3, ...(short && { fontFamily: look.head }) })); }
+        if (s.text) { const h = y + ch - pad - ty, ht = short ? `<b>${inline(s.text)}</b>` : inline(s.text); push(T(tx, ty, iw, h, ht, { fontSize: fitSize(ht, xs, iw, h, 1.3, 18, 0.54, short ? look.head : look.body), lineHeight: 1.3, ...(short && { fontFamily: look.head }) })); }
         // (One row of steps: a chevron between the cards.)
         if (kind === 'steps' && rows === 1 && i < n - 1 && !minimal) push(S('chevron', x + cw + gap / 2 - 7, y + pad + d / 2 - 10, 14, 20, look.fg, { opacity: 40, decorative: true }));
       });
@@ -507,7 +526,9 @@ export function compose(kind, spec, area, look, { minimal = false, style = 'same
       const heads = cols.map(c => (c.heading ? `<b>${inline(c.heading)}</b>` : '')), bodies = cols.map(c => list(c.bullets));
       const hH = Math.max(0, ...heads.map(h => (h ? Math.min(150, needHeight(h, hs, cw - 44, 1.15)) : 0)));
       const room = area.h - hH - 18 - pad;
-      const xs = Math.min(...bodies.map(h => fitSize(h, R(bs * 0.74), iw, room, 1.3, 16)));
+      // (Short lists read big: two points of three words each were 22 px in half-empty cards.)
+      const words = Math.max(...bodies.map(h => str(h).replace(/<[^>]*>/g, ' ').trim().split(/\s+/).length)), x0 = R(bs * (words <= 24 ? 1 : words <= 50 ? 0.86 : 0.74));
+      const xs = Math.min(...bodies.map(h => fitSize(h, x0, iw, room, 1.3, 18)));
       const bH = Math.min(room, Math.max(...bodies.map(h => needHeight(h, xs, iw, 1.3))));
       const ch = hH + 18 + bH + pad, y0 = area.y + Math.max(0, (area.h - ch) * 0.3);
       cols.forEach((c, i) => {
