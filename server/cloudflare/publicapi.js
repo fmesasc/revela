@@ -414,6 +414,8 @@ export async function handleOAuth(path, req, env, url) {
     if ((req.headers.get('Content-Type') || '').includes('json')) { try { return JSON.parse(t) || {}; } catch { return {}; } }
     return Object.fromEntries(new URLSearchParams(t));
   };
+  // (OAuth signs its clients and requests with MAIL_SECRET: a server without it can't offer it.)
+  if (!secretOf(env)) return J({ error: 'temporarily_unavailable', error_description: 'OAuth is not configured on this server' }, 503);
   if (path === '/oauth/register' && req.method === 'POST') {
     const a = await form(), uris = Array.isArray(a.redirect_uris) ? a.redirect_uris.map(str).slice(0, 5) : [];
     if (!uris.length || !uris.every(okRedirect) || uris.some(u => u.length > 500)) return J({ error: 'invalid_redirect_uri', error_description: 'https redirect URIs (or http on localhost)' }, 400);
@@ -456,6 +458,7 @@ export async function handleOAuth(path, req, env, url) {
 
 // The app's side of «connect»: what is asking (before saying yes), and yes (with the app's session).
 export async function connectInfo(env, body, json) {
+  if (!secretOf(env)) return json({ error: 'not configured' }, 503);
   const r = await unsign(env, 'oauth-req', body.req);
   if (!r || r.x < Date.now()) return json({ error: 'expired' }, 410);
   // (deny: where «No» sends them — back to the app with access_denied, as OAuth asks.)

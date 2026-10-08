@@ -13,6 +13,7 @@ import { alertDialog, confirmDialog, promptDialog } from './dialog.js';
 import { openTeam } from './team.js';
 import { openReport } from './report.js';
 import { developersBox, wireDevelopers, handleConnect } from './developers.js';
+import { ssoSignIn } from './teamsso.js';
 
 const FEATURE_NAMES = { ai: 'IA incluida', 'share-people': 'Compartir con personas', 'cloud-save': 'Guardado en la nube', 'video-calls': 'Videollamadas en el editor', 'premium-templates': 'Plantillas premium' };
 const errorText = e => (e.data?.error === 'no customer' ? t('Esta cuenta no tiene ninguna suscripción de pago que gestionar: su Pro viene del modo de prueba, de un regalo o de un equipo.')
@@ -84,13 +85,18 @@ export function openAccount({ buy } = {}) {
       body.innerHTML = `<p class="host-help">${t('Inicia sesión para usar la IA incluida, sin claves. Las cuentas nuevas reciben créditos de regalo para probarla.')}</p>
         ${termsBox()}
         <div class="acc-code" hidden></div>
-        <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="fr-do acc-login">${t(EDITION === 'desktop' ? 'Iniciar sesión en el navegador' : 'Iniciar sesión con Google')}</button></div>
+        <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="fr-do acc-login">${t(EDITION === 'desktop' ? 'Iniciar sesión en el navegador' : 'Iniciar sesión con Google')}</button>
+          ${EDITION === 'cloud' ? `<button type="button" class="mini2 acc-sso" title="${t('Si tu centro o empresa entra con su propio proveedor (Microsoft, Okta…)')}">${t('Entrar con SSO')}</button>` : ''}</div>
         <p class="host-help" style="font-size:12px"><a href="${OFFICIAL_SITE}/pricing" target="_blank" rel="noopener">${t('Ver planes y precios')}</a></p>
         <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 acc-report"><i class="ms">bug_report</i> ${t('Informar de un problema')}</button></div>`;
     body.querySelector('.acc-report').addEventListener('click', () => { close(); openReport(); });
       const termsOk = body.querySelector('.acc-terms-ok'), loginBtn = body.querySelector('.acc-login');
       // (Not a button that looks ready and does nothing: pressed before the box is ticked, the box says so.)
       termsOk.addEventListener('change', () => { body.querySelector('.acc-terms').classList.remove('acc-terms-need'); });
+      body.querySelector('.acc-sso')?.addEventListener('click', () => {
+        if (!termsOk.checked) { loginBtn.click(); return; }                  // (the same «tick the box first»)
+        ssoSignIn();
+      });
       loginBtn.addEventListener('click', async e => {
         if (!termsOk.checked) {
           const box = body.querySelector('.acc-terms'); box.classList.add('acc-terms-need'); termsOk.focus();

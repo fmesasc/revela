@@ -10,6 +10,7 @@ import { cleanKit, saveKit, applyKit, listKits, kitFromDeck } from '../../featur
 import { t, currentLang } from '../../i18n/index.js';
 import { alertDialog, confirmDialog, promptDialog } from './dialog.js';
 import { openAccount } from './account.js';
+import { ssoBox, wireSso } from './teamsso.js';
 
 const errorText = e => (e.status === 402 && e.data?.error === 'no seats' ? t('No quedan puestos libres ({n}). Compra más puestos para invitar a más personas.').replace('{n}', e.data.seats)
   : e.status === 403 ? t('Solo la administración del equipo puede hacer esto.') : e.data?.error === 'last admin' ? t('El equipo necesita al menos una persona que lo administre.')
@@ -49,7 +50,8 @@ export async function openTeam() {
       ${admin ? `<div class="sh-row"><input type="email" class="tm-email" placeholder="${t('correo@ejemplo.com')}"><select class="tm-role"><option value="member">${t('Miembro')}</option><option value="admin">${t('Administración')}</option></select><button type="button" class="mini2 tm-invite">${t('Invitar')}</button></div>
         <div class="sh-row"><label class="fr-chk" style="margin:0">${t('Puestos')} <input type="number" class="tm-seats" min="3" max="1000" value="${Math.max(3, T.seats, used)}" style="width:6em"></label><button type="button" class="fr-do tm-buy">${t('Pagar los puestos')}</button>
           ${T.active ? `<button type="button" class="mini2 tm-portal">${t('Gestionar la suscripción')}</button>` : ''}</div>
-        <details class="tm-usage"><summary>${t('Uso y gastos del equipo')}</summary><div class="tm-usage-body"><p class="host-help">${t('Cargando…')}</p></div></details>` : ''}
+        <details class="tm-usage"><summary>${t('Uso y gastos del equipo')}</summary><div class="tm-usage-body"><p class="host-help">${t('Cargando…')}</p></div></details>
+        ${ssoBox()}` : ''}
       <h4>${t('Kit de marca del equipo')}</h4>
       ${T.brand ? `<div class="sh-item"><span>${esc(T.brand.name || '')} ${(T.brand.colors || []).map(c => `<i class="tm-sw" style="background:${esc(c)}"></i>`).join('')}</span><button type="button" class="mini2 tm-use-brand">${t('Aplicar a esta presentación')}</button></div>` : `<p class="host-help">${t('Aún no hay kit de marca.')}</p>`}
       ${admin ? `<button type="button" class="mini2 tm-set-brand">${t('Compartir un kit de marca con el equipo')}</button>` : ''}
@@ -57,6 +59,7 @@ export async function openTeam() {
       ${T.templates.length ? T.templates.map(x => `<div class="sh-item"><span>${esc(x.name)}</span><button type="button" class="mini2" data-tpl="${esc(x.id)}">${t('Usar')}</button>${admin ? `<button type="button" class="mini2" data-tpl-rm="${esc(x.id)}">✕</button>` : ''}</div>`).join('') : `<p class="host-help">${t('Aún no hay plantillas.')}</p>`}
       ${admin ? `<button type="button" class="mini2 tm-publish">${t('Publicar esta presentación como plantilla')}</button><p class="host-help">${t('Consejo: bloquea el logotipo y los elementos fijos (panel Selección) antes de publicarla.')}</p>` : ''}`;
     const q = s => body.querySelector(s);
+    wireSso(body);
     body.querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', act(async () => {
       const self = b.dataset.rm === me;
       if (!(await confirmDialog(t(self ? '¿Salir del equipo? Perderás el plan Pro del equipo.' : '¿Quitar a esta persona del equipo?')))) return;

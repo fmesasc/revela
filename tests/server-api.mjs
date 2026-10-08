@@ -2615,5 +2615,64 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   ok(a1.last('end') && a1.closed && !(await B.ctx.storage.get('meta')), 'emisión: al terminar, todos fuera y la sala borrada');
 }
 
+// ---- Single sign-on with a team's own identity provider (sso.js) ----
+{
+  const ISS = 'https://idp.escuela-sso.example', DOM = 'escuela-sso.example', realF = env.FETCH;
+  const kp = await crypto.subtle.generateKey({ name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' }, true, ['sign', 'verify']);
+  const jwk = { ...(await crypto.subtle.exportKey('jwk', kp.publicKey)), kid: 'k1' };
+  const b64 = o => Buffer.from(JSON.stringify(o)).toString('base64url');
+  const jwt = async c => { const h = b64({ alg: 'RS256', kid: 'k1' }), p = b64(c); return `${h}.${p}.${Buffer.from(await crypto.subtle.sign('RSASSA-PKCS1-v1_5', kp.privateKey, new TextEncoder().encode(h + '.' + p))).toString('base64url')}`; };
+  let txt = '', claims = null, tokenBody = null;
+  env.FETCH = async (u, init = {}) => { u = String(u);
+    if (u === ISS + '/.well-known/openid-configuration') return Response.json({ issuer: ISS, authorization_endpoint: ISS + '/authorize', token_endpoint: ISS + '/token', jwks_uri: ISS + '/jwks' });
+    if (u === ISS + '/jwks') return Response.json({ keys: [jwk] });
+    if (u === ISS + '/token') { tokenBody = new URLSearchParams(String(init.body)); return Response.json({ id_token: await jwt(claims) }); }
+    if (u.startsWith('https://cloudflare-dns.com/dns-query')) return Response.json({ Answer: txt && u.includes(DOM) ? [{ data: `"${txt}"` }] : [] });
+    return realF(u, init); };
+  try {
+    const noa = await login2('tok-noa');
+    const { id: team } = await (await req('POST', '/api/team', { headers: { Cookie: noa }, body: { name: 'Escuela SSO' } })).json();
+    const TS = env.TEAMS.inst.get('team:' + team).ctx.storage.m, tt = TS.get('team'); tt.seats = 5; tt.until = Date.now() + 30 * 864e5; TS.set('team', tt);
+    const S = (path, body) => req(body === undefined ? 'GET' : 'POST', '/api/team/sso' + path, { headers: { Cookie: noa }, body });
+    let j = await (await S('')).json();
+    ok(j.sso === null && j.redirect === SITE + '/api/sso/callback', 'SSO: la dirección de vuelta para registrar en el proveedor');
+    ok((await S('', { issuer: ISS, clientId: 'cli', clientSecret: 'sec', domains: ['gmail.com'] })).status === 400, 'SSO: un dominio de correo público, no');
+    ok((await S('', { issuer: 'http://idp.example', clientId: 'cli', domains: [DOM] })).status === 400, 'SSO: el proveedor, solo https');
+    j = await (await S('', { issuer: ISS, clientId: 'cli', clientSecret: 'sec', domains: [DOM], autoJoin: true })).json();
+    const tok = j.sso.domains[0].token;
+    ok(j.sso.hasSecret && !j.sso.domains[0].verified && tok && !JSON.stringify(j).includes('"sec"'), 'SSO: configurado, el secreto no vuelve, el dominio sin verificar');
+    const start = email => worker.fetch(new Request(`${SITE}/api/sso/start?` + new URLSearchParams({ email, terms: TERMS, lang: 'es' })), env);
+    ok((await start('ana@' + DOM)).headers.get('Location') === SITE + '/app/?sso=none', 'SSO: sin verificar el dominio, no se usa');
+    ok((await (await S('/verify', { domain: DOM })).json()).verified === false, 'SSO: sin el registro TXT, no se verifica');
+    txt = 'revela-verify=' + tok;
+    ok((await (await S('/verify', { domain: DOM })).json()).verified === true, 'SSO: con el TXT, verificado');
+    // Another team can't take the domain.
+    const ivo = await login2('tok-ivo'); const t2 = (await (await req('POST', '/api/team', { headers: { Cookie: ivo }, body: { name: 'Otro' } })).json()).id;
+    const s2 = await (await req('POST', '/api/team/sso', { headers: { Cookie: ivo }, body: { issuer: 'https://malo.example', clientId: 'x', clientSecret: 'y', domains: [DOM] } })).json();
+    txt = 'revela-verify=' + s2.sso.domains[0].token;
+    ok((await req('POST', '/api/team/sso/verify', { headers: { Cookie: ivo }, body: { domain: DOM } })).status === 409, 'SSO: un dominio ya verificado por otro equipo, no');
+    // Signing in.
+    let r = await start('Ana@' + DOM), loc = new URL(r.headers.get('Location'));
+    ok(r.status === 302 && loc.origin + loc.pathname === ISS + '/authorize' && loc.searchParams.get('client_id') === 'cli' && loc.searchParams.get('code_challenge_method') === 'S256' && loc.searchParams.get('login_hint') === 'ana@' + DOM, 'SSO: lleva al proveedor (PKCE, con su correo)');
+    const state = loc.searchParams.get('state'), nonce = loc.searchParams.get('nonce'), challenge = loc.searchParams.get('code_challenge');
+    const cb = (st = state) => worker.fetch(new Request(`${SITE}/api/sso/callback?` + new URLSearchParams({ code: 'c0de', state: st })), env);
+    claims = { iss: ISS, aud: 'otra', sub: 'u-1', email: 'ana@' + DOM, nonce, exp: Math.floor(Date.now() / 1000) + 600 };
+    ok((await cb()).headers.get('Location') === SITE + '/app/?sso=token', 'SSO: un token para otra aplicación, no');
+    claims = { ...claims, aud: 'cli', nonce: 'otro' };
+    ok((await cb()).headers.get('Location') === SITE + '/app/?sso=token', 'SSO: otro nonce, no');
+    claims = { ...claims, nonce, email: 'ana@otro-sitio.example' };
+    ok((await cb()).headers.get('Location') === SITE + '/app/?sso=domain', 'SSO: un correo de otro dominio, no');
+    ok((await cb(state.slice(0, -2) + 'xx')).headers.get('Location') === SITE + '/app/?sso=expired', 'SSO: un estado falsificado, no');
+    claims = { ...claims, email: 'ana@' + DOM, name: 'Ana <SSO>' };
+    r = await cb();
+    ok(r.headers.get('Location') === SITE + '/app/?sso=ok' && /rv_session=/.test(r.headers.get('Set-Cookie') || ''), 'SSO: entra, con su sesión');
+    ok(tokenBody.get('client_secret') === 'sec' && Buffer.from(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(tokenBody.get('code_verifier')))).toString('base64url') === challenge, 'SSO: el código se canjea con el secreto y el verificador PKCE');
+    const ck = (r.headers.get('Set-Cookie') || '').split(';')[0];
+    const me = await (await req('GET', '/api/me', { headers: { Cookie: ck } })).json();
+    ok(me.email === 'ana@' + DOM && me.name === 'Ana SSO' && me.plan === 'pro' && me.team?.name === 'Escuela SSO', 'SSO: su cuenta, ya en el equipo (Pro)');
+    ok([...env.ACCOUNTS.inst.keys()].some(k => /^u:sso:[\w-]{32}$/.test(k)), 'SSO: una cuenta propia, no la de Google');
+  } finally { env.FETCH = realF; }
+}
+
 console.log(fails ? `API FAIL ${n - fails}/${n}` : `API OK ${n}/${n}`);
 process.exit(fails ? 1 : 0);

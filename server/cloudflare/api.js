@@ -79,6 +79,7 @@ import { stockSearch, stockUsed, photoProviders } from './stock.js';
 import { storageConfig, MB } from './storage.js';
 import { handleVisit, visitsCall, cleanPath } from './visits.js';
 import { startLive, joinLive } from './broadcast.js';
+import { ssoStart, ssoCallback, ssoJoin } from './sso.js';
 import { keyOp, handleKeys, handleV1, handleMcp, handleOAuth, connectInfo, connectApprove, isKey, parseKey, mcpChallenge } from './publicapi.js';
 import { APP_VERSION } from '../../src/core/config.js';
 import { credits, aiChat, aiImage, aiSpeech } from './ai.js';
@@ -842,6 +843,20 @@ export async function handleApi(req, env, url) {
   const path = url.pathname.replace(/^\/api/, '');
   // LTI (learning platforms): their own forms and signed tokens, no session here (lti.js).
   if (path.startsWith('/lti/')) return handleLti(req, env, url, s.site);
+  // Single sign-on with a team's own identity provider (sso.js): no session yet, the browser goes and comes back.
+  if (path === '/sso/start' && req.method === 'GET') return ssoStart(env, url);
+  if (path === '/sso/callback' && req.method === 'GET') {
+    const who = await ssoCallback(env, url), back = q => Response.redirect(`${s.site}/app/?sso=${q}`, 302);
+    if (who.error) return back(who.error);
+    if (!(await testerOK(env, who.email))) return back('tester');
+    const r = await call(acct(env, who.sub), 'login', { sub: who.sub, email: who.email, name: who.name, kind: 'web', lang: langOf(who.lang), terms: who.terms, ...sessionClient(req) });
+    if (r.error === 'terms') return back('terms');
+    if (langOf(who.lang)) await call(acct(env, 'e:' + who.email), 'set-lang', { lang: langOf(who.lang) });
+    // (Into the team when its admin chose so and there are seats; already in one: as it was.)
+    if (who.autoJoin && !(await call(acct(env, who.sub), 'team-id')).id && (await ssoJoin(env, who.team, who.email, who.sub)).data.ok) await call(acct(env, who.sub), 'team-set', { id: who.team });
+    return new Response(null, { status: 302, headers: { Location: `${s.site}/app/?sso=ok`, 'Cache-Control': 'no-store',
+      'Set-Cookie': `${COOKIE}=${tokenOf(who.sub, r.secret)}; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=${r.days * 86400}` } });
+  }
   // A live broadcast's room (broadcast.js): the presenter (with its token) and the audience (no session).
   const lv = path.match(/^\/live\/([\w-]{1,40})$/);
   if (lv && req.method === 'GET') return joinLive(req, env, lv[1]);

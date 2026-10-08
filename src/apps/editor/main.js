@@ -14,6 +14,7 @@ import { editText } from '../../ui/canvas/content.js';
 import { ACTIONS, noCopyNotice } from '../../ui/ribbon/actions.js';
 import { initViews } from '../../ui/shell/views.js';
 import { initDeckCSS } from '../../ui/dialogs/devmode.js';
+import { handleSsoReturn } from '../../ui/dialogs/teamsso.js';
 import { initFileDrop } from '../../ui/shell/openfile.js';
 import * as openfile from '../../ui/shell/openfile.js';
 import * as files from '../../features/content/files.js';
@@ -339,7 +340,7 @@ if (hasAccounts()) {
     // not the empty editor first and the presentation popping in later.)
     const opening = docIdFrom() ? openingScreen('', { delay: 0 }) : null;
     if (opening) openFromLink(undefined, { settle: opening }).finally(opening);
-    refreshAccount().catch(() => {}).finally(() => { handleDesktopRequest(); handleConnectRequest(); });
+    refreshAccount().catch(() => {}).finally(() => { handleDesktopRequest(); handleConnectRequest(); handleSsoReturn(); });
     if (new URLSearchParams(location.search).has('paid')) { history.replaceState(null, '', location.pathname); alertDialog(t('¡Gracias! Tu compra se ha registrado.')); }
     // From the prices page (revelaslides.com/pricing): the account, with the product chosen.
     // (?buy=; ?comprar=, its old Spanish name, still works: links already out there.)

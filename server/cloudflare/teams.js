@@ -20,6 +20,7 @@
 import { writeText, readParts } from './store.js';
 import { mail } from './mail.js';
 import { random, EMAIL } from './util.js';
+import { ssoOp, registryOp, handleTeamSso } from './sso.js';
 
 const MAX_TEMPLATES = 50, MAX_TEMPLATE_MB = 20;
 
@@ -34,8 +35,11 @@ export class Team {
         members: { [a.email]: { role: 'admin', joined: Date.now() } }, invited: {}, brand: null, templates: [] });
       return this.json({ ok: true });
     }
+    // (The registry of single sign-on domains is a Team object with no team: sso.js.)
+    if (op.startsWith('domain-')) { const r = await registryOp(st, op, a); if (r) return this.json(r); }
     const t = await st.get('team'); if (!t) return this.json({ error: 'not found' }, 404);
     const me = a.email && t.members[a.email], admin = me?.role === 'admin', active = t.until > Date.now();
+    if (op.startsWith('sso-')) { const r = await ssoOp(st, t, op, a, admin); if (r) { const { status = 200, ...o } = r; return this.json(o, r.error ? status : 200); } }
     const view = () => ({ id: t.id, name: t.name, seats: t.seats, active, until: t.until, members: t.members, invited: t.invited, brand: t.brand,
       templates: t.templates.map(({ id, name, updated }) => ({ id, name, updated })) });
     switch (op) {
@@ -134,6 +138,8 @@ export async function handleTeams(path, req, body, url, env, me, A, acct, call, 
   }
   if (path === '/team/template' && req.method === 'GET') { if (!mine) return json({ error: 'no team' }, 404); return pass(await ask(env, mine, 'template-get', { email: me.email, id: url.searchParams.get('id') })); }
   if (!mine) return json({ error: 'no team' }, 404);
+  // Single sign-on: the team's own identity provider (sso.js).
+  if (path === '/team/sso' || path.startsWith('/team/sso/')) return handleTeamSso(path, req, body, env, me, mine, json);
   // The team's use, for its admins: each person's last day of use, AI credits spent and space (Account 'usage'), and
   // the totals — so a school or a company sees what its seats are used for. Nothing about what anyone's presentations say.
   if (path === '/team/usage' && req.method === 'GET') {
