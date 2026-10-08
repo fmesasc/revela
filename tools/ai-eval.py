@@ -35,6 +35,7 @@ def main():
     replay = arg('--replay')    # (to measure a change in the layout on the same slides, without paying the model again)
     key = 'mock' if replay else os.environ.get('OPENROUTER_API_KEY', '').strip()
     if not key: print('Falta OPENROUTER_API_KEY (una clave de OpenRouter).'); return 2
+    media = '' if '--no-media' in sys.argv else 'search'   # (real pictures and videos searched for the slides that show something: media.js)
     model, out, least = arg('--model', ''), arg('--out', os.path.join(ROOT, 'tmp', 'ai-eval')), float(arg('--min', '70'))
     only = [k for k in (arg('--only', '') or '').split(',') if k] or [k for k in TOPICS if not replay or os.path.exists(os.path.join(replay, k + '.json'))]
     os.makedirs(out, exist_ok=True)
@@ -78,10 +79,11 @@ def main():
         topic, lang, context = TOPICS[k]; t0 = time.time()
         try:
             r = ev(f"""(async()=>{{const R=window.__revela,A=R.aiDeck,Q=await import('/src/features/ai/quality.js');
-              const o={{topic:{json.dumps(topic)},language:{json.dumps(lang)},count:10,context:{json.dumps(context)}}};
+              const o={{topic:{json.dumps(topic)},language:{json.dumps(lang)},count:10,context:{json.dumps(context)},media:{json.dumps(media)}}};
               const old={json.dumps(json.load(open(os.path.join(replay, k + '.json'))) if replay else None)};
               const asks=old?old.questions:await A.askAbout(o).catch(e=>[{{q:'ERROR '+e.message}}]);
               const ol=old?old.outline:await A.createOutline(o); const sp=old?Object.assign(old.specs.slice(),{{design:old.design,title:old.title,quality:old.quality,qualityFirst:{{score:old.first}}}}):await A.createDeck({{...o,outline:ol.slides}});
+              if(!old&&o.media==='search')await A.findMedia(sp,{{topic:o.topic,language:o.language}});
               // (Made as the app makes it: a design with its layouts, the slides composed in it.)
               const G=await import('/src/features/design/gallery.js'),M=await import('/src/features/document/master.js');
               const d=G.buildFromGallery(sp.design||'minimal'); M.ensureLayouts(d); if(sp.title) d.name=sp.title; R.store.replaceDeck(d);
@@ -110,7 +112,7 @@ def main():
             except Exception as e: print('sin hoja de imágenes:', e)
             r['layout'] = {'small_texts': small, 'spilling_texts': spill, 'spills': spills}
             q = r['quality']; json.dump(r, open(os.path.join(out, k + '.json'), 'w'), ensure_ascii=False, indent=1)
-            rows.append((k, q['score'], len(r['specs']), q['stats']['code'], ', '.join(sorted(set(s.get('kind', '?') for s in r['specs']))), '; '.join([p['detail'] for p in q['problems']] + ([f"{r['layout']['spilling_texts']} textos que se salen"] if r['layout']['spilling_texts'] else []) + ([f"{r['layout']['small_texts']} textos de menos de 18 px (sin contar el código)"] if r['layout']['small_texts'] else [])) or '—', round(time.time() - t0), r.get('first', q['score'])))
+            rows.append((k, q['score'], len(r['specs']), q['stats']['code'], ', '.join(sorted(set(s.get('kind', '?') for s in r['specs']))), '; '.join(([f"{sum(1 for x in r['specs'] if x.get('picture'))} imágenes y {sum(1 for x in r['specs'] if x.get('video'))} vídeos"] if media else []) + [p['detail'] for p in q['problems']] + ([f"{r['layout']['spilling_texts']} textos que se salen"] if r['layout']['spilling_texts'] else []) + ([f"{r['layout']['small_texts']} textos de menos de 18 px (sin contar el código)"] if r['layout']['small_texts'] else [])) or '—', round(time.time() - t0), r.get('first', q['score'])))
         except Exception as e:
             rows.append((k, 0, 0, 0, '', 'ERROR: ' + (str(e).splitlines() or [''])[0][:200], round(time.time() - t0), 0))
         print(f'{rows[-1][0]:<12} {rows[-1][1]:>3}  {rows[-1][5]}', flush=True)

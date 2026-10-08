@@ -380,6 +380,45 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.fetch = real; R.ai.disconnectAi(); D.querySelectorAll('.modal-backdrop').forEach(x => x.remove()); }
   });
 
+  await test('IA: imágenes y vídeos reales que explican (buscados, elegidos mirándolos, descritos)', async () => {
+    reset(); const W = frame.contentWindow, A = R.aiDeck, realFetch = W.fetch, calls = [];
+    R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    W.fetch = async (url, opts) => {
+      url = String(url); calls.push(url);
+      if (url.includes('commons.wikimedia.org')) return new W.Response(JSON.stringify({ query: { pages: {
+        1: { pageid: 1, index: 1, title: 'File:Chloroplast diagram vi.svg', imageinfo: [{ url: 'https://upload.wikimedia.org/x/vi.png', thumburl: 'data:image/png;base64,' + PNG, width: 800, height: 600, mime: 'image/png', extmetadata: { LicenseShortName: { value: 'CC BY 3.0' }, Artist: { value: '<a>Ana</a>' } } }] },
+        2: { pageid: 2, index: 2, title: 'File:Chloroplast structure.png', imageinfo: [{ url: 'https://upload.wikimedia.org/x/es.png', thumburl: 'data:image/png;base64,' + PNG, width: 900, height: 600, mime: 'image/png', descriptionurl: 'https://commons.wikimedia.org/wiki/File:C.png', extmetadata: { LicenseShortName: { value: 'CC0' }, Artist: { value: 'Luis' } } }] } } } }));
+      if (url.includes('api.openverse.org')) return new W.Response(JSON.stringify({ results: [] }));
+      if (url.includes('youtube.com/oembed')) return url.includes('abcdefghijk') ? new W.Response(JSON.stringify({ title: 'Photosynthesis animation explained', author_name: 'Canal' })) : new W.Response('', { status: 404 });
+      if (url.startsWith('https://upload.wikimedia.org/')) return new W.Response(Uint8Array.from(atob(PNG), c => c.charCodeAt(0)), { headers: { 'Content-Type': 'image/png' } });
+      const body = JSON.parse(opts.body), sys = body.messages[0].content;
+      const a = /choose the picture/.test(sys) ? { n: 2, alt: 'Esquema del cloroplasto con sus partes', note: 'Señalad los tilacoides.' }
+        : /YouTube video/.test(sys) ? { videos: [{ i: 2, url: 'https://www.youtube.com/watch?v=abcdefghijk' }, { i: 3, url: 'https://www.youtube.com/watch?v=inventado00' }] } : {};
+      return new W.Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(a) } }] }));
+    };
+    try {
+      const specs = [{ kind: 'title', title: 'Fotosíntesis' }, { kind: 'image', title: 'El cloroplasto', bullets: ['Donde ocurre'], image_search: 'chloroplast structure diagram', notes: 'Mirad.' },
+        { kind: 'image', title: 'El proceso', bullets: ['Luz y agua'], video_search: 'photosynthesis animation' }, { kind: 'image', title: 'Otro', bullets: ['Algo'], video_search: 'photosynthesis experiment' }];
+      await A.findMedia(specs, { topic: 'Fotosíntesis', language: 'español' });
+      const p = specs[1].picture;
+      assert(p && /^data:image\/png/.test(p.src), 'la imagen elegida, incrustada');
+      eq(p.alt + '|' + p.caption, 'Esquema del cloroplasto con sus partes|Luis · CC0 · Wikimedia Commons', 'con su descripción y su autoría y licencia');
+      assert(/Señalad los tilacoides/.test(specs[1].notes), 'y en las notas, qué señalar');
+      eq(specs[2].video?.src, 'https://www.youtube.com/embed/abcdefghijk', 'el vídeo, comprobado que existe');
+      eq(specs[3].kind + ':' + !!specs[3].video, 'bullets:false', 'uno que no existe: nada de vídeo, sus puntos en lista');
+      assert(!specs.some(x => x.image_search || x.video_search), 'sin las búsquedas');
+      // On the slide: the picture and the video in its place.
+      const n0 = R.state.deck.slides.length;
+      await A.insertSpecs(specs.slice(1, 3));
+      const [s1, s2] = R.state.deck.slides.slice(R.state.ui.slideIndex, R.state.ui.slideIndex + 2);
+      const img = s1.blocks.find(b => b.type === 'image'), emb = s2.blocks.find(b => b.type === 'embed');
+      assert(img && img.alt === 'Esquema del cloroplasto con sus partes' && img.caption, 'la imagen, con su descripción y su crédito');
+      assert(emb && emb.src === 'https://www.youtube.com/embed/abcdefghijk' && Math.abs(emb.w / emb.h - 16 / 9) < 0.02, 'el vídeo, 16:9');
+      eq(R.state.deck.slides.length, n0 + 2, 'dos diapositivas');
+    } finally { W.fetch = realFetch; R.ai.disconnectAi(); }
+  });
+
   await test('IA avanzada: presentación completa, mejorar, agenda, preguntas y asistente', async () => {
     reset(); const W = frame.contentWindow, A = R.aiDeck, realFetch = W.fetch, calls = []; let answer = {}, seq = null;
     R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();

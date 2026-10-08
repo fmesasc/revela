@@ -154,7 +154,10 @@ export function openCreateDeck() {
       <label class="fr-l">${t('Diseño')}<select class="ad-pal"><option value="">${t('Automático (según el contenido)')}</option>${Object.keys(deck.DECK_DESIGNS).map(k => `<option value="${k}">${t(GALLERY[k].name)}</option>`).join('')}</select></label>
     </div>
     <label class="fr-chk"><input type="checkbox" class="ad-web"> ${t('Buscar en internet datos actuales y citar las fuentes (unos céntimos más)')}</label>
-    <label class="fr-chk"><input type="checkbox" class="ad-img"> ${t('Generar imágenes con IA (coste extra en OpenRouter)')}</label>
+    <label class="fr-l">${t('Imágenes y vídeos')}<select class="ad-media">
+      <option value="search">${t('Buscar imágenes y vídeos reales que expliquen el contenido (con licencia libre; solo se envían las palabras de búsqueda)')}</option>
+      <option value="generate">${t('Generar imágenes con IA (coste extra en OpenRouter)')}</option>
+      <option value="">${t('Sin imágenes')}</option></select></label>
     <label class="fr-chk"><input type="checkbox" class="ad-new" checked> ${t('Empezar una presentación nueva (si no, se añade a la actual)')}</label>
     <div class="ad-ask" hidden><h4 style="margin:10px 0 4px">${t('Para hacerla a tu medida')}</h4>
       <p class="host-help">${t('Responde lo que quieras (o sáltalo): cuanto más sepa de tu caso, más tuya será la presentación.')}</p>
@@ -213,7 +216,7 @@ export function openCreateDeck() {
     const figs = (await Promise.all(files.filter(f => /\.pdf$/i.test(f.name) || f.type === 'application/pdf').map(f => pdfFigures(f).catch(() => [])))).flat();
     const docs = read.filter(a => a.kind === 'text'), pics = [...figs, ...read.filter(a => a.kind === 'image')].slice(0, ATTACH.count);
     if (docs.length) source = docs.map(d => d.text).join('\n\n') + (source ? '\n\n' + source : '');
-    return { topic, source, count: +q('.ad-count').value, audience: q('.ad-aud').value.trim(), tone: q('.ad-tone').value, images: q('.ad-img').checked, attachments: pics };
+    return { topic, source, count: +q('.ad-count').value, audience: q('.ad-aud').value.trim(), tone: q('.ad-tone').value, images: q('.ad-media').value === 'generate', media: q('.ad-media').value, attachments: pics };
   };
   // (Searched once for what the form says, and kept for the slides: the same sources for the outline and the deck.)
   let found = null, foundFor = '';
@@ -275,7 +278,7 @@ export function openCreateDeck() {
       const docs = read.filter(a => a.kind === 'text'); pics = [...figs, ...read.filter(a => a.kind === 'image')].slice(0, ATTACH.count);
       if (docs.length) source = docs.map(d => d.text).join('\n\n') + (source ? '\n\n' + source : '');
       const opts = { topic, source, count: +q('.ad-count').value, audience: q('.ad-aud').value.trim(), tone: q('.ad-tone').value,
-        images: q('.ad-img').checked, attachments: pics, context: context(), ...(outline && { outline: outline.slides }) };
+        images: q('.ad-media').value === 'generate', media: q('.ad-media').value, attachments: pics, context: context(), ...(outline && { outline: outline.slides }) };
       await run(async () => {
         const r = await researched(opts); if (r) opts.research = r;
         const specs = await deck.createDeck(opts);
@@ -287,6 +290,8 @@ export function openCreateDeck() {
           if (specs.title) d.name = specs.title;
           replaceDeck(d);
         }
+        // (Real pictures and videos for the slides that show something: searched, looked at, described — media.js.)
+        if (opts.media === 'search') await deck.findMedia(specs, { topic: opts.topic || specs.title, onProgress: p => (q('.ad-prog').value = p) });
         const starter = q('.ad-new').checked ? new Set(state.deck.slides.map(s => s.id)) : null;
         await deck.insertSpecs(specs, { images: opts.images, figures: pics, onProgress: p => (q('.ad-prog').value = p) });
         // (The design's sample slides go: only the new presentation's own.)

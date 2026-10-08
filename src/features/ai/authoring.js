@@ -15,6 +15,7 @@ import { PDFJS } from '../../core/vendor.js';
 import { styledSlide, hasLayouts, pictureBox, compose, contrast, codeCard, fitBody } from './fromspec.js';
 import { KINDS, prepareSpec, splitSpec } from './specs.js';
 import { amounts, deckQuality, weakSlides } from './quality.js';
+export { findMedia } from './media.js';
 import { codeFontSize, codeHeight, mathFontSize, AI_LANGS } from './codeobj.js';
 import { richHTML } from './richtext.js';
 import { pollBlock } from '../live/poll.js';
@@ -37,7 +38,7 @@ export const SPEC_DOC = `Slide kinds and their fields — choose the kind that f
 - "agenda": title, items [short strings] (3-8)
 - "chart": title, chart {type: "bar"|"line"|"pie"|"doughnut"|"area", labels [..], values [numbers], series_name}, bullets (0-2)
 - "table": title, header [..], rows [[..]] (max 6 rows, max 5 columns)
-- "image": title, bullets (2-4), image_prompt (a detailed description for an image generator)
+- "image": title, bullets (2-4), image_prompt (a detailed description for an image generator) — or, when real pictures are searched, image_search / video_search (see below)
 - "code": title, code {language: ${AI_LANGS.map(l => `"${l}"`).join('|')}, code (VERBATIM, with its line breaks and indentation) — or from_image: the id of a picture whose code was read}, caption (optional), bullets (0-4, what it does: shown in a column at its side). A real code block with highlighting — for code, queries, DAX measures, M steps, Excel formulas; never code in "bullets"
 - "math": title, latex (the formula in LaTeX, no $ signs; in JSON every backslash doubled: "\\\\frac{a}{b}"), caption (optional), bullets (0-4, what each term means). A real equation — for mathematical formulas; never a formula in "bullets"
 - "closing": title, subtitle
@@ -263,17 +264,22 @@ const TAILOR = ctx => (ctx ? `\n\nAbout this presentation, from the presenter �
 // First the outline (as Gemini, Gamma or Copilot do): one line per slide — its title and its key points —, for the
 // person to read, change, reorder or cut before the slides are made (createDeck with opts.outline). Cheap and quick.
 // → { title, slides: [{ title, points: [] }] }
+// Pictures on the deck: generated (opts.images) or real ones searched (opts.media 'search': media.js).
+const pictures = opts => !!(opts.images || opts.media === 'search');
+const SEARCHED = `- Real pictures and videos will be searched for you. Use 2-4 "image" slides where SEEING explains what the slide says: the thing itself, a labelled diagram, a map, the artwork, a historical photo, the experiment. Give each "image_search": 2-6 words in ENGLISH naming exactly what must be seen, specific enough to find it in Wikimedia Commons ("chloroplast structure diagram", "Battle of Adrianople map", "Hadrian's Wall", "right triangle squares Pythagoras proof"), and bullets (1-3) with what to notice in it. Never for an abstract idea ("teamwork", "success", "innovation"), the person's own data, or code.
+- At most one "image" slide may instead have "video_search": a short video that shows what words can't (a process, an experiment, an animation, a demo), in a few English words ("photosynthesis animation explained"); bullets (1-2) on what to watch for.
+- No image_prompt.`;
 export async function createOutline(opts = {}) {
   const count = Math.max(3, Math.min(30, +opts.count || 8)), src = withResearch(opts.source, opts.research);
   const source = src ? `\n\nBase it ONLY on this document:\n"""\n${String(src).slice(0, 60000)}\n"""` : '';
   const out = await chatJSON([
-    { role: 'system', content: `Plan a presentation that someone will present out loud. Answer only JSON {"title":"…","slides":[{"title":"…","kind":"…","points":["…"]}]}: about ${count} slides, in order, the first a title slide ("title") and the last a closing one ("closing"). Each title states the slide's message (max ~9 words); "kind" is the kind of slide that will show it best — one of: ${KINDS.filter(k => opts.images || k !== 'image').join(', ')}; 1-4 points with WHAT it will show, concretely (the facts, figures and examples; for a "code" slide, what the code does and in which language). Not a list of short phrases: a plan for rich slides.
+    { role: 'system', content: `Plan a presentation that someone will present out loud. Answer only JSON {"title":"…","slides":[{"title":"…","kind":"…","points":["…"]}]}: about ${count} slides, in order, the first a title slide ("title") and the last a closing one ("closing"). Each title states the slide's message (max ~9 words); "kind" is the kind of slide that will show it best — one of: ${KINDS.filter(k => pictures(opts) || k !== 'image').join(', ')}; 1-4 points with WHAT it will show, concretely (the facts, figures and examples; for a "code" slide, what the code does and in which language). Not a list of short phrases: a plan for rich slides.
 ${RICH}
-Write in ${opts.language || lang()}.` },
+${opts.media === 'search' ? `- Plan 2-4 "image" slides where SEEING the thing explains it (a diagram, a map, the artwork, the place, the experiment), and at most one for a short video of a process.\n` : ''}Write in ${opts.language || lang()}.` },
     { role: 'user', content: withAttachments([opts.topic && `Topic and purpose: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`].filter(Boolean).join('\n') + TAILOR(opts.context) + source, opts.attachments || []) },
   ], { maxTokens: 3000, feature: 'outline', prefer: DECK_MODEL });
   const res = out, slides = (res.slides || []).filter(x => x && str(x.title).trim()).slice(0, 40)
-    .map(x => ({ title: str(x.title).trim(), ...(KINDS.includes(x.kind) && (opts.images || x.kind !== 'image') && { kind: x.kind }), points: (Array.isArray(x.points) ? x.points : []).map(str).map(p => p.trim()).filter(Boolean).slice(0, 6) }));
+    .map(x => ({ title: str(x.title).trim(), ...(KINDS.includes(x.kind) && (pictures(opts) || x.kind !== 'image') && { kind: x.kind }), points: (Array.isArray(x.points) ? x.points : []).map(str).map(p => p.trim()).filter(Boolean).slice(0, 6) }));
   if (!slides.length) throw new Error('EMPTY');
   return { title: str(res.title), slides };
 }
@@ -297,7 +303,7 @@ ${RICH}
 - "stats" and "chart" ONLY with real, meaningful numbers from the source (never counts like "1 scenario"); otherwise another kind.
 - "notes" on EVERY slide: what the speaker says, 3-6 natural spoken sentences (60-110 words) in first person, with the details and transitions that are not on the slide.
 ${figs.length ? `- The document's own figures are attached (${figs.map(n => `attachment:${n}`).join(', ')}): show each important one on its own slide, kind "image" with "figure": N (the attachment's number) — its title says what it shows, bullets (0-2) the key point; no image_prompt.` : ''}
-${opts.images ? '- Use 1-3 "image" slides with an image_prompt for generated pictures.' : figs.length ? '' : '- Do not use "image" slides.'}
+${opts.media === 'search' ? SEARCHED : opts.images ? '- Use 1-3 "image" slides with an image_prompt for generated pictures.' : figs.length ? '' : '- Do not use "image" slides.'}
 Write everything in ${opts.language || lang()}.` },
     { role: 'user', content: withAttachments(brief + source + (pics.some(a => !a.figure)
       ? '\n\nThe attached pictures (notes, a whiteboard, slides, a document\'s pages, photos): base the deck on what they show — read their text and figures — together with the rest.' : ''), opts.attachments || []) },
@@ -314,12 +320,12 @@ Write everything in ${opts.language || lang()}.` },
   // (A figure only where there is one; a model that forgot the notes of many slides is asked for them once.)
   for (const sp of specs) { const n = +sp.figure; if (!(n >= 1 && n <= pics.length && pics[n - 1]?.figure)) delete sp.figure; else sp.figure = n; }
   // (A picture slide with no picture to come — none asked for, no figure of the document —: its points, as a list.)
-  for (const sp of specs) if (sp.kind === 'image' && !sp.figure && !opts.images) { sp.kind = 'bullets'; delete sp.image_prompt; }
+  for (const sp of specs) if (sp.kind === 'image' && !sp.figure && !(opts.images && sp.image_prompt) && !(opts.media === 'search' && (sp.image_search || sp.video_search))) { sp.kind = 'bullets'; delete sp.image_prompt; delete sp.image_search; delete sp.video_search; }
   const missing = specs.filter(sp => !str(sp.notes).trim());
   if (missing.length > specs.length * 0.3) await speakerNotes(specs, opts).catch(() => {});
   // Measured (quality.js): a weak deck — mostly lists, thin ones, no code on a technical topic — gets its weak slides
   // made again, once, before anyone sees it.
-  const how = { topic: opts.topic || str(res.title), sourced: !!(str(opts.source) || opts.research || /\d/.test(str(opts.context))), images: !!opts.images, given: (opts.attachments || []).length ? '' : [opts.context, opts.source, opts.research?.brief].map(str).join('\n').trim() };   // (the data as text — not when it came in a file the measure can't read)
+  const how = { topic: opts.topic || str(res.title), sourced: !!(str(opts.source) || opts.research || /\d/.test(str(opts.context))), images: pictures(opts), given: (opts.attachments || []).length ? '' : [opts.context, opts.source, opts.research?.brief].map(str).join('\n').trim() };   // (the data as text — not when it came in a file the measure can't read)
   let q = deckQuality(specs, how); specs.qualityFirst = q;
   if (q.score < 80 || q.problems.some(p => ['invented-figures', 'off-code', 'no-picture', 'repeated'].includes(p.code))) {
     // (Made again, but kept only if better: a second pass sometimes turned good cards into lists.)
@@ -404,7 +410,10 @@ async function speakerNotes(specs, opts = {}) {
 // Insert generated specs after the current slide (images are generated after).
 // figures: the source document's figures (attach.js pdfFigures), for the specs that name one ("figure": N).
 export async function insertSpecs(specs, { images = false, onProgress, figures = [] } = {}) {
-  const fig = sp => (sp.figure ? figures[sp.figure - 1] : null);
+  // (A picture found for it — media.js — goes where a document's figure goes, with its description and credit; a
+  // video, in the same place, 16:9.)
+  const fig = sp => (sp.figure ? figures[sp.figure - 1] : sp.picture ? { full: sp.picture.src, w: sp.picture.w, h: sp.picture.h, caption: sp.picture.alt, credit: sp.picture.caption, link: sp.picture.credit }
+    : sp.video ? { video: sp.video, w: 16, h: 9 } : null);
   for (const sp of specs) if (fig(sp)) sp.figureRatio = fig(sp).w / fig(sp).h;
   const at0 = state.ui.slideIndex + 1, made = specs.map(sp => slideFromSpec(sp, undefined, state.deck, { at: at0 }));
   // (Each figure in its place: the slide's picture box, the whole figure seen.)
@@ -413,8 +422,10 @@ export async function insertSpecs(specs, { images = false, onProgress, figures =
     const box = pictureBox(slide) || { x: Math.round(state.deck.size.w * 0.52), y: 170, w: Math.round(state.deck.size.w * 0.42), h: state.deck.size.h - 230 };
     const k = Math.min(box.w / f.w, box.h / f.h), w = Math.round(f.w * k), h = Math.round(f.h * k);
     slide.blocks = slide.blocks.filter(b => !(b.type === 'placeholder' && b.ph === 'picture'));
-    slide.blocks.push({ id: uid(), type: 'image', src: f.full, alt: str(f.caption || f.name), fit: 'contain', rotation: 0, animation: null,
-      x: Math.round(box.x + (box.w - w) / 2), y: Math.round(box.y + (box.h - h) / 2), w, h });
+    const at = { x: Math.round(box.x + (box.w - w) / 2), y: Math.round(box.y + (box.h - h) / 2), w, h };
+    if (f.video) { slide.blocks.push({ id: uid(), type: 'embed', src: f.video.src, alt: str(f.video.title), rotation: 0, animation: null, ...at }); return; }
+    slide.blocks.push({ id: uid(), type: 'image', src: f.full, alt: str(f.caption || f.name), fit: 'contain', rotation: 0, animation: null, ...at,
+      ...(f.credit && { caption: str(f.credit) }), ...(f.link && { credit: str(f.link) }) });
   });
   commit(() => {
     const at = state.ui.slideIndex + 1, sec = currentSlide()?.sectionId || null;
