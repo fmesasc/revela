@@ -229,6 +229,9 @@ function renderActivity(box) {
       i.addEventListener('input', () => { answer[k] = i.value; }); p.append(i);
     }
     box.append(p);
+  } else if (poll.kind === 'sort') {                    // (each item shuffled, with its group; the answer in the items' own order)
+    answer = pub.items.map(() => '');
+    box.append(el('p', { textContent: 'Elige el grupo de cada uno:' }), ...pub.items.map(it => el('div', { className: 'act-row' }, el('span', { textContent: it.t }), choose(pub.cats, v => { answer[it.i] = v; }))));
   } else if (poll.kind === 'label') {
     answer = pub.points.map(() => '');
     const pic = el('div', { className: 'act-pic' }, el('img', { src: pub.image, alt: '' }));

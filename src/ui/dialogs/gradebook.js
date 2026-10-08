@@ -43,6 +43,12 @@ const groupSelect = () => `<select class="gb-group">${gb.groups().map(g => `<opt
 const noGroups = () => `<p class="host-help">${t('Todavía no hay grupos. Crea uno en «Grupos», o guarda los resultados de una clase desde Ver ▸ Resultados del aula.')}</p>`;
 
 // ---- Report: students × sessions in a period ------------------------------------------------------
+// What the class finds hardest in the period: the questions and criteria with the lowest average, as bars.
+function hardest(items) {
+  const top = items.filter(x => x.pct < 0.999).slice(0, 8); if (!top.length) return '';
+  return `<details class="gb-hard" open><summary>${t('Lo que más le cuesta a la clase')}</summary><ol>${top.map(x => { const pc = Math.round(x.pct * 100);
+    return `<li><span title="${esc(x.session)}">${esc(x.label)}</span><i style="--w:${pc}%;--c:${pc < 50 ? '#c0392b' : pc < 75 ? '#d89e00' : '#26890c'}"></i><b>${pc} %</b></li>`; }).join('')}</ol></details>`;
+}
 function paintReport(body, paint) {
   if (!gb.groups().length) { body.innerHTML = noGroups(); return; }
   const T = gb.terms(), range = period === 'custom' ? (custom || { from: T[0].from, to: Date.now() }) : T.find(x => x.id === period);
@@ -57,6 +63,7 @@ function paintReport(body, paint) {
       <tbody>${rep.students.map(st => `<tr><td><button type="button" class="gb-st" data-k="${esc(st.key)}">${esc(st.name || t('Sin apodo'))}</button></td>
         ${rep.sessions.map(s => `<td>${s.pct[st.key] == null ? '—' : (Math.round(s.pct[st.key] * 100) / 10).toLocaleString(currentLang())}</td>`).join('')}
         <td><b>${st.mark == null ? '—' : st.mark.toLocaleString(currentLang())}</b></td><td>${st.done}/${st.of}</td></tr>`).join('')}</tbody></table></div>`}
+    ${hardest(gb.itemReport(groupId, range))}
     <div class="fr-actions"><span class="host-help" style="margin:0">${t('Notas sobre 10. Clic en un alumno para cambiarle el nombre o unirlo con otro (el mismo alumno en otro dispositivo).')}</span>
       <button type="button" class="mini2 gb-grade">${t('Evaluar con una rúbrica')}</button><button type="button" class="fr-do gb-csv"${rep.sessions.length ? '' : ' disabled'}>${t('Descargar CSV')}</button></div>`;
   body.querySelector('.gb-group').addEventListener('change', e => { groupId = e.target.value; paint(); });

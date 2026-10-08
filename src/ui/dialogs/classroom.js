@@ -21,12 +21,38 @@ export function classResults(deck = state.deck) {
   }));
   return { polls, rows: [...people.values()].sort((a, b) => b.total - a.total) };
 }
+// Question by question (Wayground's and Blooket's per-question reports): the share right, the hardest first, and the
+// mistake most made — a quiz's wrong option most chosen, an activity's item most missed.
+export function questionReport(deck = state.deck) {
+  return classResults(deck).polls.map(({ b, slide }) => {
+    const r = tallyVotes(b, savedVotes(b.pollId)), n = r.voters; if (!n) return null;
+    if (b.kind === 'quiz') {
+      const right = (r.board || []).filter(x => x.ok).length, wrong = (r.counts || []).map((c, i) => [c, i]).filter(([c, i]) => c && !(b.correct || [0]).includes(i)).sort((x, y) => y[0] - x[0])[0];
+      return { slide, question: b.question || '', pct: right / n, n, miss: wrong ? { text: b.options[wrong[1]], count: wrong[0] } : null };
+    }
+    const items = itemsOf(b), worst = (r.counts || []).map((c, i) => [c, i]).filter(([c]) => c < n).sort((x, y) => x[0] - y[0])[0];
+    return { slide, question: b.question || '', pct: r.average || 0, n, miss: worst && items[worst[1]] ? { text: items[worst[1]], count: n - worst[0] } : null };
+  }).filter(Boolean).sort((a, b) => a.pct - b.pct);
+}
+// (An activity's items, as the results show them: «1. first», «left → right», «item → group», the gaps' answers.)
+function itemsOf(b) {
+  const o = b.options || [];
+  if (b.kind === 'match') return o.map(l => { const x = String(l).split('='); return x[0].trim() + ' → ' + x.slice(1).join('=').trim(); });
+  if (b.kind === 'sort') return o.flatMap(l => { const c = String(l).split(':'); return c.slice(1).join(':').split(/[,;]/).filter(x => x.trim()).map(x => x.trim() + ' → ' + c[0].trim()); });
+  if (b.kind === 'gaps') return (String(b.text || '').match(/\[([^\]]+)\]/g) || []).map(g => g.slice(1, -1).split('|')[0]);
+  return o.map((l, i) => (i + 1) + '. ' + l);
+}
 export function classResultsCSV(deck = state.deck) {
   const { polls, rows } = classResults(deck), q = s => `"${String(s).replace(/"/g, '""')}"`;
   return [[t('Alumno'), ...polls.map(({ b, slide }) => `${slide}. ${b.question || ''}`), t('Total')].map(q).join(','),
     ...rows.map(r => [q(r.name || t('Sin apodo')), ...r.pts.map(v => (v == null ? '' : v)), r.total].join(','))].join('\n');
 }
 
+function questionsHTML(qs) {
+  return `<details class="gb-hard" open><summary>${t('Pregunta por pregunta (lo que más cuesta, primero)')}</summary><ol>${qs.map(x => { const pc = Math.round(x.pct * 100);
+    return `<li><span>${x.slide}. ${esc(x.question)}${x.miss ? `<small>${esc(t('Error más repetido: «{e}» ({n})').replace('{e}', x.miss.text).replace('{n}', x.miss.count))}</small>` : ''}</span>`
+      + `<i style="--w:${pc}%;--c:${pc < 50 ? '#c0392b' : pc < 75 ? '#d89e00' : '#26890c'}"></i><b>${pc} %</b></li>`; }).join('')}</ol></details>`;
+}
 export function openClassResults() {
   document.getElementById('class-modal')?.remove();
   const { polls, rows } = classResults();
@@ -36,6 +62,7 @@ export function openClassResults() {
     ${!polls.length ? `<p class="host-help">${t('Esta presentación no tiene cuestionarios ni actividades con nota.')}</p>` : !rows.length ? `<p class="host-help">${t('Aún no hay respuestas: presenta y deja que el alumnado responda.')}</p>`
       : `<div class="cr-wrap"><table class="cr-table"><thead><tr><th>${t('Alumno')}</th>${polls.map(({ b, slide }) => `<th title="${esc(b.question || '')}">${slide}</th>`).join('')}<th>${t('Total')}</th></tr></thead>
         <tbody>${rows.map(r => `<tr><td>${esc(r.name || t('Sin apodo'))}</td>${r.pts.map(v => `<td>${v == null ? '—' : v}</td>`).join('')}<td><b>${r.total}</b></td></tr>`).join('')}</tbody></table></div>`}
+    ${rows.length ? questionsHTML(questionReport()) : ''}
     <div class="fr-actions"><span class="host-help" style="margin:0">${rows.length} ${t('alumnos')}</span><button class="mini2 cr-book">${t('Cuaderno de clase')}</button>
       <button class="mini2 cr-save"${rows.length ? '' : ' disabled'}>${t('Guardar en el cuaderno')}</button><button class="fr-do cr-csv"${rows.length ? '' : ' disabled'}>${t('Descargar CSV')}</button></div></div>`;
   document.body.appendChild(back);

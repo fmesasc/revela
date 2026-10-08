@@ -339,6 +339,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const pablo = G.newStudentKey('Pablo');
     G.saveRubricSession(g.id, rub, { title: 'Exposición oral', date: d3, marks: { 'dev-leo': [0, 1, 2], [pablo]: [0, 0, 0] }, newNames: { [pablo]: 'Pablo' } });
     let rep = G.report(g.id, T[0]);
+    eq(G.itemReport(g.id, T[0]).map(x => `${x.label}:${Math.round(x.pct * 100)}`).join(), '1. ¿Cuánto es 1/2 + 1/4?:65,1.:80,2. Ordena:100', 'lo que más cuesta: cada pregunta con su media, la peor primero');
     eq(rep.sessions.length, 2, '1.er trimestre: dos sesiones');
     const leo = rep.students.find(x => x.name === 'Leo');
     eq(leo.mark, 6.3, 'nota media sobre 10: (500 de 2000 → 25 %) y 100 % → 6,3 (lo que no respondió cuenta como 0)');

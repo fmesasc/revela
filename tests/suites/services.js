@@ -343,6 +343,21 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       eq(slide().blocks[0].html, '<b>Title</b>', 'traduce conservando el formato'); eq(slide().notes, 'Note', 'notas');
       eq(last().rows[0][0], 'cell', 'celdas de tabla'); assert(n >= 3, 'recuento');
       R.store.undo(); eq(slide().blocks[0].html, '<b>Título</b>', 'un solo paso de deshacer');
+      // Adapted to a reading level: the slides' texts, never the notes; only the chosen ones.
+      calls.length = 0; const sys = () => calls.at(-1).body.messages[0].content, first = R.state.deck.slides[0];
+      R.slides.addSlide('blank');
+      const n2 = await AI.levelDeck('early', { slides: [first] });
+      assert(/children aged 6 to 8/.test(sys()) && /add no new facts/.test(sys()) && /Keep the language/.test(sys()), 'nivel de lectura: lo pide para esa edad, sin datos nuevos y en el mismo idioma');
+      eq(first.notes, 'Nota', 'nivel de lectura: las notas no se tocan');
+      assert(n2 >= 1 && !('notes|' + first.id in JSON.parse(calls.at(-1).body.messages[1].content)), 'nivel de lectura: no manda las notas');
+      eq(calls.length, 1, 'nivel de lectura: solo la diapositiva elegida');
+      const id0 = first.blocks[0].id; calls.length = 0;
+      await AI.levelDeck('easy', { only: [id0] });
+      eq(Object.keys(JSON.parse(calls.at(-1).body.messages[1].content)).join(), id0, 'nivel de lectura: solo los textos seleccionados');
+      assert(/Easy-to-Read/.test(sys()), 'lectura fácil: con sus pautas');
+      R.slides.goToSlide(0); D.querySelector('[data-action="ai-level"]').click(); await sleep(20);
+      const lv = D.getElementById('level-modal'); assert(lv && lv.querySelectorAll('.lv-level option').length === 6, 'el diálogo: seis niveles');
+      lv.querySelector('.modal-close').click();
     } finally { W.fetch = realFetch; AI.disconnectAi(); }
   });
 

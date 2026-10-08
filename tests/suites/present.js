@@ -63,7 +63,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/data-poll="[^"]*&quot;correct&quot;:\[1\],&quot;time&quot;:30/.test(html), 'la presentación sabe cuál es la correcta y el tiempo');
   });
 
-  await test('actividades con nota: ordenar, unir, completar huecos, etiquetar una imagen', async () => {
+  await test('actividades con nota: ordenar, unir, completar huecos, etiquetar una imagen, clasificar en grupos', async () => {
     reset(); const W = frame.contentWindow, P = await W.eval("import('/src/features/live/poll.js')");
     const order = { kind: 'order', pollId: 'o1', options: ['Primavera', 'Verano', 'Otoño', 'Invierno'] };
     const pub = P.publicActivity(order);
@@ -79,6 +79,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(P.gradeActivity(gaps, ['100', 'Cero']).score, 1, 'varias respuestas válidas');
     const label = { kind: 'label', pollId: 'l1', options: ['Núcleo', 'Membrana'], points: [{ x: 50, y: 50 }, { x: 90, y: 20 }], image: 'data:image/png;base64,iVBORw0KGgo=' };
     const lp = P.publicActivity(label); eq(lp.points.length, 2, 'etiquetar: los puntos'); assert(lp.labels.length === 2 && lp.image, 'las etiquetas y la imagen');
+    const sort = { kind: 'sort', pollId: 's1', options: ['Mamíferos: perro, ballena', 'Aves: pingüino; águila'] };
+    const sp = P.publicActivity(sort); eq(sp.cats.join(), 'Mamíferos,Aves', 'clasificar: los grupos');
+    eq(sp.items.map(x => x.t).sort().join(), 'ballena,perro,pingüino,águila', 'y todos los elementos (desordenados), sin decir de qué grupo es cada uno');
+    assert(!JSON.stringify(sp.items).includes('Mam'), 'lo público no lleva las respuestas');
+    eq(P.gradeActivity(sort, ['mamiferos', 'Aves', 'Aves', '']).score, 0.5, 'clasificar: cada elemento en su grupo cuenta (sin tildes ni mayúsculas); en blanco no');
+    assert(/perro → Mamíferos/.test(P.pollResultsHTML(sort, { ...P.tallyVotes(sort, { a: { a: ['Mamíferos', 'Mamíferos', 'Aves', 'Aves'] } }), revealed: true })), 'clasificar: las soluciones, «elemento → grupo»');
     // Tally, results and the leaderboard with the quizzes
     const votes = { ana: { a: ['Primavera', 'Verano', 'Otoño', 'Invierno'], n: 'Ana' }, luis: { a: ['Verano', 'Primavera', 'Otoño', 'Invierno'], n: 'Luis' } };
     const r = P.tallyVotes(order, votes);
@@ -123,8 +129,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const C = await W.eval("import('/src/ui/dialogs/classroom.js')"), r = C.classResults();
     eq(r.rows.map(x => `${x.name}:${x.pts.join('/')}:${x.total}`).join(' '), 'Ana:1000/:1000 Luis:0/1000:1000', 'cada alumno en cada actividad, y su total');
     assert(/^"Alumno","1\. Capital","2\. Estaciones","Total"\n"Ana",1000,,1000/.test(C.classResultsCSV()), 'en CSV: ' + C.classResultsCSV().split('\n')[1]);
+    const qr = C.questionReport();
+    eq(qr.map(x => `${x.slide}:${Math.round(x.pct * 100)}`).join(), '1:50,2:100', 'pregunta por pregunta, la que más cuesta primero');
+    eq(qr[0].miss.text + '|' + qr[0].miss.count, 'Roma|1', 'con el error más repetido (la opción mal elegida)');
     D.querySelector('[data-action="classroom-results"]').click(); await sleep(10);
-    eq(D.querySelectorAll('#class-modal .cr-table tbody tr').length, 2, 'en una tabla'); D.querySelector('#class-modal .modal-close').click();
+    eq(D.querySelectorAll('#class-modal .cr-table tbody tr').length, 2, 'en una tabla');
+    assert(/Error más repetido: «Roma» \(1\)/.test(D.querySelector('#class-modal .gb-hard')?.textContent || ''), 'y se ve en «Resultados del aula»'); D.querySelector('#class-modal .modal-close').click();
     W.localStorage.removeItem('revela.poll.' + q.pollId); W.localStorage.removeItem('revela.poll.' + o.pollId);
   });
 

@@ -105,6 +105,8 @@ const SYN = {
   'a:slide-sorter': 'clasificador|ordenar diapositivas|reordenar|cuadrícula|vista general|sorter|reorder slides|grid|overview',
   'a:collab': 'colaborar|tiempo real|coeditar|editar a la vez|collaborate|co-edit|real time|together',
   'a:ai-translate-deck': 'traducir|traducción|idioma|translate|translation|language|traduire|übersetzen|tradurre',
+  'a:ai-level': 'nivel|lectura fácil|simplificar|edad|niños|primaria|reading level|easy read|simplify|lecture facile|leichte sprache',
+  'a:prompter': 'apuntador|teleprompter|autocue|prompteur|notas grandes|guion',
   'a:resize-deck': 'tamaño|redimensionar|a4|cuadrado|vertical|instagram|historias|proporción|size|resize|aspect ratio|format|dimensions',
   'a:bg-advanced': 'fondo|imagen de fondo|vídeo de fondo|background|wallpaper|fond|hintergrund|sfondo',
   'a:brand-kit': 'marca|logo|logotipo|corporativo|identidad|brand|branding|corporate|marque|marke',

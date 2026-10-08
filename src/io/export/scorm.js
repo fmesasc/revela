@@ -26,7 +26,7 @@ const xml = s => String(s ?? '').replace(/[<>&"']/g, c => ({ '<': '&lt;', '>': '
 // In the presentation (ES5: platforms open packages in all kinds of browsers): its graded items, each mark, each slide.
 // send: how the messages leave — window.__revelaScormSend (the reporter's, in the same page) or the window above.
 // Where to start: window.__revelaScormAt (fixed) or ?at=N (dynamic).
-export const scormPage = `(function(){var KINDS=['quiz','order','match','gaps','label'],graded=0;
+export const scormPage = `(function(){var KINDS=['quiz','order','match','gaps','label','sort'],graded=0;
 [].slice.call(document.querySelectorAll('.rv-poll')).forEach(function(el){try{if(KINDS.indexOf(JSON.parse(el.getAttribute('data-poll')).kind)>=0)graded++;}catch(e){}});
 function send(m){m.revelaScorm=1;if(typeof window.__revelaScormSend==='function')window.__revelaScormSend(m);else if(window.parent!==window)window.parent.postMessage(m,'*');}
 window.__revelaScored=function(id,s){send({t:'score',id:String(id),s:Math.max(0,Math.min(1,+s||0))});};

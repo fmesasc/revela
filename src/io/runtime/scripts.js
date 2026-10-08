@@ -21,7 +21,7 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
   return `(function(){
  var CLASS=${classroom ? 'true' : 'false'}, TEAMS=${JSON.stringify((teams || []).map(x => String(x).slice(0, 30)))}, STEP=${Math.max(1, Math.round(+starStep) || 5)};
  var gradeActivity=${gradeActivity.toString()}, publicActivity=${publicActivity.toString()};
- var ACT=['order','match','gaps','label'], GR=['quiz'].concat(ACT);
+ var ACT=['order','match','gaps','label','sort'], GR=['quiz'].concat(ACT);
  var tally=${tallyVotes.toString()};
  var render=${pollResultsHTML.toString()};
  var tallyVotes=tally, totals=${quizTotals.toString()};         // (quizTotals counts with tallyVotes)

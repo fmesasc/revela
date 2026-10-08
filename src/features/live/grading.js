@@ -9,13 +9,17 @@
 //   match  options: "left = right" lines
 //   gaps   text: "The capital of France is [Paris]" ([a|b]: either is right)
 //   label  options: the labels; points: [{ x, y }] in % of image, one per label
-export var ACTIVITIES = ['order', 'match', 'gaps', 'label'];
+//   sort   options: "Category: item, item, item" lines (sort into groups: AhaSlides', Lumio's Super Sort); the answer
+//          has each item's category, in the items' own order (the phone shows them shuffled, knowing each one's place)
+export var ACTIVITIES = ['order', 'match', 'gaps', 'label', 'sort'];
 export function gradeActivity(p, a) {
   var norm = function (s) { return String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); };
   var o = p.options || [], per = [];
   a = Array.isArray(a) ? a : [];
   if (p.kind === 'order' || p.kind === 'label') per = o.map(function (x, i) { return norm(a[i]) !== '' && norm(a[i]) === norm(x); });
   else if (p.kind === 'match') per = o.map(function (l, i) { var r = String(l).split('=').slice(1).join('='); return norm(a[i]) !== '' && norm(a[i]) === norm(r); });
+  else if (p.kind === 'sort') o.forEach(function (l) { var c = String(l).split(':'), cat = norm(c[0]);
+    c.slice(1).join(':').split(/[,;]/).forEach(function (it) { if (!it.trim()) return; var got = norm(a[per.length]); per.push(got !== '' && got === cat); }); });
   else if (p.kind === 'gaps') { var re = /\[([^\]]+)\]/g, m, i = 0; while ((m = re.exec(String(p.text || '')))) { var got = norm(a[i++]); per.push(got !== '' && m[1].split('|').some(function (alt) { return norm(alt) === got; })); } }
   var ok = per.filter(Boolean).length;
   return { per: per, score: per.length ? ok / per.length : 0 };
@@ -31,12 +35,15 @@ export function publicActivity(p) {
   if (p.kind === 'match') { var pr = o.map(split); return { left: pr.map(function (x) { return x[0]; }), right: shuffle(pr.map(function (x) { return x[1]; })) }; }
   if (p.kind === 'gaps') { var parts = [], last = 0, t = String(p.text || ''), re = /\[([^\]]+)\]/g, m; while ((m = re.exec(t))) { parts.push(t.slice(last, m.index), null); last = re.lastIndex; } parts.push(t.slice(last)); return { parts: parts }; }
   if (p.kind === 'label') return { image: p.image || '', points: (p.points || []).slice(0, o.length), labels: shuffle(o) };
+  if (p.kind === 'sort') { var cats = [], items = [];
+    o.forEach(function (l) { var c = String(l).split(':'); cats.push(c[0].trim()); c.slice(1).join(':').split(/[,;]/).forEach(function (it) { if (it.trim()) items.push({ t: it.trim(), i: items.length }); }); });
+    return { cats: cats, items: shuffle(items) }; }
   return null;
 }
 // One answer to any graded poll, as a share right (0..1): a quiz's option index,
 // or an activity's list of texts. null if the poll isn't graded.
 export function gradeAnswer(p, a) {
   if (p.kind === 'quiz') return (p.correct || [0]).indexOf(+a) >= 0 && a !== null && a !== '' ? 1 : 0;
-  if (p.kind === 'order' || p.kind === 'match' || p.kind === 'gaps' || p.kind === 'label') return gradeActivity(p, a).score;
+  if (p.kind === 'order' || p.kind === 'match' || p.kind === 'gaps' || p.kind === 'label' || p.kind === 'sort') return gradeActivity(p, a).score;
   return null;
 }

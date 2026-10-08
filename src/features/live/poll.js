@@ -53,7 +53,7 @@ export function tallyVotes(poll, votes) {
     return s.replace(/[\p{L}\p{M}]+/gu, function (w) { var k = w.toLowerCase().normalize('NFD').replace(/[\u0300-\u0302\u0304-\u036f]/g, '').normalize('NFC');
       return /^(?:putain|puttan|gilipoll|cabron|mierd|merd[ae]|jod(?:er|id)|foll(?:ar|ad)|maric[oó]n|imbecil|pendej|ching[aá]|coño|fuck|shit|bitch|cunt|asshole|bastard|motherf|dickhead|bollock|slut|whore|connard|connass|salope|encul|batard|scheiss|scheiß|arschloch|fotze|wichser|hurensohn|ficken|cazz[oi]|vaffancul|stronz|minchia|coglion|caralh|fod[ae]|buceta|viado|klootzak|godverd)/.test(k)
         || /^(?:put[ao]s?|wank(?:er|ers|ing)?|polla|pollas|pute|putes|nique|niquer|fick|fag|fags|faggot|nigg(?:er|a)s?|kut|lul|hoer|hoeren)$/.test(k) ? w.charAt(0) + w.slice(1).replace(/./gu, '*') : w; }); };
-  if (kind === 'order' || kind === 'match' || kind === 'gaps' || kind === 'label') {
+  if (kind === 'order' || kind === 'match' || kind === 'gaps' || kind === 'label' || kind === 'sort') {
     var items = null, total = 0, list = [];
     for (var w in votes) { var vv = votes[w]; if (!vv || !vv.a) continue; var g = gradeActivity(poll, vv.a); voters++; total += g.score;
       if (!items) items = g.per.map(function () { return 0; });
@@ -173,10 +173,11 @@ export function pollResultsHTML(poll, res, accent, L) {
         + '<div style="flex:1;background:#8882;border-radius:.2em;height:1.3em"><div style="height:100%;width:' + (counts[i] * 100 / max) + '%;background:' + (ok ? '#26890c' : tiles[i % tiles.length]) + ';border-radius:.2em"></div></div>'
         + '<div style="flex:0 0 2em;font-weight:700">' + counts[i] + '</div></div>'; }).join('') + '</div>' + ((res.board || []).length ? ranking(res.board, 5) : '');
   }
-  if (kind === 'order' || kind === 'match' || kind === 'gaps' || kind === 'label') {
+  if (kind === 'order' || kind === 'match' || kind === 'gaps' || kind === 'label' || kind === 'sort') {
     var gl = kind === 'order' ? labels.map(function (l, i) { return (i + 1) + '. ' + l; })
       : kind === 'match' ? labels.map(function (l) { var x = String(l).split('='); return x[0].trim() + ' → ' + x.slice(1).join('=').trim(); })
       : kind === 'label' ? labels.map(function (l, i) { return (i + 1) + '. ' + l; })
+      : kind === 'sort' ? [].concat.apply([], labels.map(function (l) { var c = String(l).split(':'); return c.slice(1).join(':').split(/[,;]/).filter(function (x) { return x.trim(); }).map(function (x) { return x.trim() + ' → ' + c[0].trim(); }); }))
       : (String(poll.text || '').match(/\[([^\]]+)\]/g) || []).map(function (g, i) { return (i + 1) + '. ' + g.slice(1, -1).split('|')[0]; });
     var avg = Math.round((res.average || 0) * 100), nv = res.voters || 0;
     var pic = kind === 'label' && poll.image ? '<div style="position:relative;flex:0 0 58%;align-self:center"><img src="' + esc(poll.image) + '" alt="" style="width:100%;display:block;border-radius:.2em">'

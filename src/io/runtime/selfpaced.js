@@ -8,7 +8,7 @@
 // one, else marks it here with gradeAnswer().
 
 export function selfPacedRuntime(publicActivity, gradeAnswer, L) {
-  var ACT = ['order', 'match', 'gaps', 'label'];
+  var ACT = ['order', 'match', 'gaps', 'label', 'sort'];
   var mk = function (tag, css, txt) { var e = document.createElement(tag); if (css) e.style.cssText = css; if (txt != null) e.textContent = txt; return e; };
   var btnCss = 'font:inherit;font-size:.6em;padding:.35em .8em;border-radius:.3em;border:0;cursor:pointer;background:#3f6497;color:#fff;margin:.2em';
   var ask = function (p, a) {
@@ -60,8 +60,10 @@ export function selfPacedRuntime(publicActivity, gradeAnswer, L) {
         dn.onclick = function () { var x = answer[i + 1]; answer[i + 1] = answer[i]; answer[i] = x; draw(); };
         row.appendChild(up); row.appendChild(dn); list.appendChild(row); }); };
       draw(); box.appendChild(list);
-    } else if (p.kind === 'match' || p.kind === 'label') {
-      var lefts = p.kind === 'match' ? pub.left : pub.points.map(function (_, i) { return String(i + 1); }), opts = p.kind === 'match' ? pub.right : pub.labels;
+    } else if (p.kind === 'match' || p.kind === 'label' || p.kind === 'sort') {
+      // (Sorting into groups: each item — shuffled — with the groups to choose from; its answer in the item's own place.)
+      var lefts = p.kind === 'match' ? pub.left : p.kind === 'sort' ? pub.items.map(function (x) { return x.t; }) : pub.points.map(function (_, i) { return String(i + 1); }),
+        opts = p.kind === 'match' ? pub.right : p.kind === 'sort' ? pub.cats : pub.labels, at = function (i) { return p.kind === 'sort' ? pub.items[i].i : i; };
       answer = lefts.map(function () { return ''; });
       if (p.kind === 'label' && pub.image) {
         var pic = mk('div', 'position:relative;max-width:60%;margin-bottom:.3em'), img = mk('img', 'width:100%;display:block;border-radius:.2em'); img.src = pub.image; pic.appendChild(img);
@@ -72,7 +74,7 @@ export function selfPacedRuntime(publicActivity, gradeAnswer, L) {
         var row = mk('div', 'display:flex;align-items:center;gap:.5em;font-size:.6em;margin:.15em 0'); row.appendChild(mk('span', 'flex:0 0 30%;font-weight:600', l));
         var s = mk('select', 'font:inherit;flex:1;max-width:24em;padding:.15em .3em;border-radius:.25em;border:1px solid #8886;background:#fff;color:#223'); s.appendChild(mk('option', '', '—'));
         opts.forEach(function (o) { var x = mk('option', '', o); x.value = o; s.appendChild(x); });
-        s.onchange = function () { answer[i] = s.value; }; row.appendChild(s); box.appendChild(row);
+        s.onchange = function () { answer[at(i)] = s.value; }; row.appendChild(s); box.appendChild(row);
       });
     } else if (p.kind === 'gaps') {
       answer = []; var para = mk('div', 'font-size:.6em;line-height:2.2'), n = 0;

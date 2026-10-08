@@ -81,6 +81,15 @@ export function report(group, { from = 0, to = Infinity } = {}) {
   }).sort((a, b) => (a.name || '~').localeCompare(b.name || '~'));
   return { sessions: out, students };
 }
+// Item by item (the quizzes' questions and activities, the rubrics' criteria): the class's average share, the hardest first.
+// → [{ session, date, label, pct (0..1), n }]
+export function itemReport(group, { from = 0, to = Infinity } = {}) {
+  const out = [];
+  for (const s of load().sessions.filter(x => x.group === group && x.date >= from && x.date <= to))
+    s.items.forEach((it, i) => { const v = Object.values(s.scores).map(x => x?.[i]).filter(x => x != null);
+      if (v.length && it.max) out.push({ session: s.title, date: s.date, label: it.label, pct: v.reduce((a, b) => a + b, 0) / v.length / it.max, n: v.length }); });
+  return out.sort((a, b) => a.pct - b.pct);
+}
 export function reportCSV(rep, L = { student: 'Alumno', mark: 'Nota (0-10)', done: 'Participación', none: 'Sin nombre' }) {
   const q = s => `"${String(s).replace(/"/g, '""')}"`, day = ts => new Date(ts).toISOString().slice(0, 10);
   return [[L.student, ...rep.sessions.map(s => `${day(s.date)} ${s.title}`), L.mark, L.done].map(q).join(','),

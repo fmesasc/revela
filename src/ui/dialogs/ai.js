@@ -127,7 +127,34 @@ export const AI_ACTIONS = {
     const n = await ai.translateDeck(l); alertDialog(t('Textos traducidos: ') + n + '. ' + t('Puedes deshacerlo con Ctrl+Z.'));
   })),
   'ai-translate': () => promptDialog(t('¿A qué idioma?'), 'English').then(l => l && run(() => ai.rewriteSelected(null, l))),
+  'ai-level': () => openLevelDialog(),
 };
+
+// Adapt the texts to a reading level: the level, and what — the selected boxes, this slide or all of it.
+export function openLevelDialog() {
+  document.getElementById('level-modal')?.remove();
+  const sel = (state.ui.multi?.length ? state.ui.multi : [state.ui.selection]).filter(id => state.deck.slides[state.ui.slideIndex]?.blocks.some(b => b.id === id && (b.type === 'text' || b.type === 'table')));
+  const back = document.createElement('div'); back.id = 'level-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:start;width:min(460px,94vw)"><button class="modal-close">✕</button><h3>${t('Adaptar al nivel de lectura')}</h3>
+    <p class="host-help">${t('La IA reescribe los textos para ese público, en su mismo idioma y sin cambiar los datos. Las notas no se tocan. Puedes deshacerlo con Ctrl+Z.')}</p>
+    <label class="fr-l">${t('Para')}<select class="lv-level">${Object.entries(ai.READING_LEVELS).map(([k, [l]]) => `<option value="${k}"${k === 'primary' ? ' selected' : ''}>${esc(t(l))}</option>`).join('')}</select></label>
+    <fieldset class="lv-scope"><legend>${t('Qué textos')}</legend>
+      ${sel.length ? `<label class="fr-chk"><input type="radio" name="lv-scope" value="sel" checked> ${t('Los seleccionados')}</label>` : ''}
+      <label class="fr-chk"><input type="radio" name="lv-scope" value="slide"${sel.length ? '' : ' checked'}> ${t('Esta diapositiva')}</label>
+      <label class="fr-chk"><input type="radio" name="lv-scope" value="all"> ${t('Toda la presentación')}</label></fieldset>
+    <div class="fr-actions"><button class="mini2 lv-cancel">${t('Cancelar')}</button><button class="fr-do lv-ok">${t('Adaptar')}</button></div></div>`;
+  document.body.appendChild(back);
+  const q = s => back.querySelector(s), close = () => back.remove();
+  q('.modal-close').addEventListener('click', close); q('.lv-cancel').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  q('.lv-ok').addEventListener('click', () => {
+    const level = q('.lv-level').value, scope = back.querySelector('input[name="lv-scope"]:checked')?.value || 'slide'; close();
+    run(async () => {
+      const n = await ai.levelDeck(level, scope === 'sel' ? { only: sel } : scope === 'slide' ? { slides: [state.deck.slides[state.ui.slideIndex]] } : {});
+      alertDialog(t('Textos adaptados: ') + n + '. ' + t('Revisa que quepan en su caja.') + ' ' + t('Puedes deshacerlo con Ctrl+Z.'));
+    });
+  });
+}
 export const aiRewrite = kind => run(() => ai.rewriteSelected(kind));
 
 // ---- Advanced authoring --------------------------------------------------------

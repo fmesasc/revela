@@ -255,23 +255,44 @@ function placeImage(img, prompt, aspect) {
   return b.id;
 }
 
-// ---- Translate the whole deck ---------------------------------------------------
+// ---- Translate the whole deck, or adapt it to a reading level ------------------------
 // Text boxes (keeping their HTML formatting), table cells and speaker notes,
 // one request per slide; applied at the end as a single undo step.
-export async function translateDeck(targetLang, onProgress) {
-  const out = new Map(), slides = state.deck.slides;
+export const translateDeck = (targetLang, onProgress) => rewriteTexts(`Translate every value of this JSON object into ${targetLang}. Keep the keys, keep all HTML tags and attributes exactly, translate only the human text. Answer only the JSON object.`,
+  { feature: 'translate' }, onProgress);
+
+// Adapt to a reading level (Nearpod's Text Leveler): the slides' texts for younger readers, Easy-to-Read, or specialists —
+// same language, same facts. Not the notes (they're the presenter's). only: block ids (the selected boxes), else slides.
+export const READING_LEVELS = {
+  easy: ['Lectura fácil', 'people with reading difficulties, following the Easy-to-Read guidelines (Lectura Fácil): one idea per sentence, subject–verb–object order, common words, no metaphors, abbreviations or abstract figures'],
+  early: ['Primaria, de 6 a 8 años', 'children aged 6 to 8: very short sentences and the most common words; any needed term explained with a simple example'],
+  primary: ['Primaria, de 9 a 11 años', 'children aged 9 to 11: short sentences and everyday words; keep the subject\'s key terms but explain them briefly'],
+  secondary: ['Secundaria, de 12 a 16 años', 'teenagers aged 12 to 16: clear sentences; keep the subject\'s terms, explaining the hardest ones'],
+  adult: ['Público adulto general', 'a general adult audience: plain language, no jargon'],
+  expert: ['Especialistas', 'specialists: precise technical vocabulary, concise'],
+};
+export function levelDeck(level, { only = null, slides = null } = {}, onProgress) {
+  const L = READING_LEVELS[level]; if (!L) throw new Error('BAD_LEVEL');
+  return rewriteTexts(`Rewrite every value of this JSON object for ${L[1]}. Keep the language of each text, its meaning and every fact; add no new facts. `
+    + `Keep it about as long or shorter (a slide has little room). Keep the keys, keep all HTML tags and attributes exactly (a list stays a list), change only the human text. Answer only the JSON object.`,
+  { feature: 'rewrite', notes: false, only, slides }, onProgress);
+}
+
+async function rewriteTexts(system, { feature, notes = true, only = null, slides: which = null }, onProgress) {
+  const out = new Map(), slides = which || state.deck.slides, keep = id => !only || only.includes(id);
   for (let i = 0; i < slides.length; i++) {
     const s = slides[i], items = {};
     for (const b of s.blocks) {
+      if (!keep(b.id)) continue;
       if (b.type === 'text' && plain(b.html)) items[b.id] = b.html;
       if (b.type === 'table') b.rows.forEach((row, r) => row.forEach((c, k) => { if (plain(c) && !isFormula(c)) items[`${b.id}|${r}|${k}`] = c; }));
     }
-    if (s.notes?.trim()) items[`notes|${s.id}`] = s.notes;
+    if (notes && !only && s.notes?.trim()) items[`notes|${s.id}`] = s.notes;
     if (!Object.keys(items).length) { onProgress?.((i + 1) / slides.length); continue; }
     const res = await chat([
-      { role: 'system', content: `Translate every value of this JSON object into ${targetLang}. Keep the keys, keep all HTML tags and attributes exactly, translate only the human text. Answer only the JSON object.` },
+      { role: 'system', content: system },
       { role: 'user', content: JSON.stringify(items) },
-    ], { json: true, maxTokens: 4000, feature: 'translate' });
+    ], { json: true, maxTokens: 4000, feature });
     const tr = parseJSON(res);
     for (const [k, v] of Object.entries(tr)) if (typeof v === 'string' && k in items) out.set(k, v);
     onProgress?.((i + 1) / slides.length);
