@@ -503,12 +503,21 @@ export function defaultTemplates() {
 const OSM_UA = { 'User-Agent': 'Revela-admin/1.0 (https://revelaslides.com)', Accept: 'application/json' };
 // Overpass's answer, or why there is none. A busy server answers a page of HTML; a query too big for it, JSON with no
 // elements and a «remark» (runtime error: Query timed out) — which was read as «nothing found»: «España: 0 nuevos».
+// Its servers, in turn: from Cloudflare's network overpass-api.de itself answers 521/522 (Cloudflare can't reach it —
+// seen from a Worker on 2026-10-08, while z. and lz4., the same service's other two servers, answered), so a server
+// that is down or busy passes the query to the next; a query too big is too big on all of them.
+export const OVERPASS = ['https://z.overpass-api.de', 'https://lz4.overpass-api.de', 'https://overpass-api.de'];
 export async function overpass(env, query) {
+  let last;
+  for (const host of OVERPASS) { last = await overpassAt(env, host, query); if (!last.error || !last.down) return last; }
+  delete last.down; return last;
+}
+async function overpassAt(env, host, query) {
   const f = env.FETCH || fetch;
-  const r = await f('https://overpass-api.de/api/interpreter', { method: 'POST', headers: { ...OSM_UA, 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(query) }).catch(() => null);
-  if (!r) return { error: 'overpass', why: 'no response' };
+  const r = await f(host + '/api/interpreter', { method: 'POST', headers: { ...OSM_UA, 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(query) }).catch(() => null);
+  if (!r) return { error: 'overpass', why: 'no response', down: true };
   const text = await r.text().catch(() => ''); let data = null; try { data = JSON.parse(text); } catch {}
-  if (!data) return { error: 'overpass', why: /too busy|timeout|rate_limited|429/i.test(text) || r.status === 429 || r.status === 504 ? 'busy' : `HTTP ${r.status}` };
+  if (!data) return { error: 'overpass', why: /too busy|timeout|rate_limited|429/i.test(text) || r.status === 429 || r.status === 504 ? 'busy' : `HTTP ${r.status}`, down: true };
   const remark = String(data.remark || '');
   if (/runtime error|timed out|out of memory/i.test(remark)) return { error: 'overpass', why: /timed out|out of memory/i.test(remark) ? 'too big' : 'error', remark: remark.slice(0, 200) };
   if (!Array.isArray(data.elements)) return { error: 'overpass', why: 'no elements' };

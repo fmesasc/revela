@@ -1719,7 +1719,9 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     env.FETCH = async (u, init = {}) => { const s = String(u);
       if (s.startsWith('https://oauth2.googleapis.com/tokeninfo') && s.includes('access_token=tok-crm')) return Response.json({ aud: CID, sub: '3131', email: 'crm@example.com', email_verified: 'true', expires_in: 3000 });
       if (s.startsWith('https://nominatim.openstreetmap.org/')) { osmCalls.push({ s, ua: init.headers?.['User-Agent'] }); return Response.json([{ osm_type: 'relation', osm_id: 345, lat: '41.6', lon: '-0.9', display_name: 'Zaragoza, Aragón, España', address: { city: 'Zaragoza', state: 'Aragón', country_code: 'es' } }]); }
-      if (s === 'https://overpass-api.de/api/interpreter') { osmCalls.push({ s, q: decodeURIComponent(String(init.body)) }); return Response.json({ elements: [
+      // (The first of Overpass's servers unreachable from Cloudflare — 522, its HTML page — the next one answers.)
+      if (s === 'https://z.overpass-api.de/api/interpreter') { osmCalls.push({ s }); return new Response('error code: 522', { status: 522 }); }
+      if (s.endsWith('overpass-api.de/api/interpreter')) { osmCalls.push({ s, q: decodeURIComponent(String(init.body)) }); return Response.json({ elements: [
         { type: 'node', id: 1, lat: 41.6, lon: -0.9, tags: { name: 'CEIP Los Olivos', amenity: 'school', email: 'info@olivos.example', website: 'olivos.example', 'addr:street': 'Calle Mayor', 'addr:housenumber': '3' } },
         { type: 'way', id: 2, center: { lat: 41.7, lon: -0.8 }, tags: { name: 'IES Ebro', amenity: 'school', phone: '+34 976 000 000' } },
         { type: 'node', id: 3, tags: { amenity: 'school' } }] }); }
@@ -1754,6 +1756,7 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     x = await C('GET', '/search?area=Zaragoza&kind=school');
     ok(x.status === 200 && x.j.items.length === 2 && x.j.items[0].name === 'CEIP Los Olivos' && x.j.items[0].web === 'https://olivos.example/' && x.j.items[0].address === 'Calle Mayor 3' && x.j.items[1].city === 'Zaragoza', 'captación: búsqueda en OpenStreetMap (los que no tienen nombre, fuera): ' + JSON.stringify(x.j.items[0]));
     ok(/area\(id:3600000345\)/.test(osmCalls.find(c => c.q)?.q || '') && /Revela/.test(osmCalls[0].ua || ''), 'captación: busca dentro de la zona, identificándose');
+    ok(osmCalls.some(c => c.s.startsWith('https://z.')) && osmCalls.some(c => c.s.startsWith('https://lz4.') && c.q), 'captación: un servidor de Overpass caído (522), y lo pide al siguiente');
     ok((await C('GET', '/search?area=Zaragoza&kind=otra')).status === 400, 'captación: tipo desconocido → 400');
     x = await C('POST', '/import', { body: { source: 'osm', rows: x.j.items.map(i => ({ contact: i, osm: i.osm })) } });
     ok(x.j.added === 2, 'captación: importados');
@@ -2015,7 +2018,7 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
       let mode = 'busy';
       env.FETCH = async (u, init = {}) => { const s = String(u);
         if (s.startsWith('https://nominatim.openstreetmap.org/') && s.includes('Espa')) return Response.json([{ osm_type: 'relation', osm_id: 1311341, place_rank: 4, lat: '40', lon: '-4', display_name: 'España', address: { country_code: 'es' } }]);
-        if (s === 'https://overpass-api.de/api/interpreter') { const q = decodeURIComponent(String(init.body)); asked.push(q);
+        if (s.endsWith('overpass-api.de/api/interpreter')) { const q = decodeURIComponent(String(init.body)); asked.push(q);
           if (mode === 'busy') return new Response('<html>The server is probably too busy to handle your request.</html>', { status: 504 });
           if (/admin_level"="4"/.test(q)) return Response.json({ elements: [{ type: 'relation', id: 349053, tags: { name: 'Catalunya' } }, { type: 'relation', id: 349044, tags: { name: 'Aragón' } }] });
           if (/admin_level"="6"/.test(q)) return Response.json({ elements: [{ type: 'relation', id: 349045, tags: { name: 'Huesca' } }] });

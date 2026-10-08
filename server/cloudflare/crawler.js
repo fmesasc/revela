@@ -203,6 +203,10 @@ export function judge(read, { at = Date.now(), origin = '', domain = '', mx = nu
     score: Math.min(100, reasons.reduce((t, r) => t + r.pts, 0)), reasons };
 }
 
+// Why OpenStreetMap gave nothing, in words: busy, or none of its servers answering (a 5xx: 521/522 when Cloudflare can't reach it).
+const osmWhy = r => (r.why === 'busy' ? 'OpenStreetMap (Overpass) está saturado'
+  : /^HTTP 5\d\d$/.test(r.why || '') || r.why === 'no response' ? `OpenStreetMap no responde (${r.why === 'no response' ? 'sin respuesta' : r.why})` : `OpenStreetMap: ${r.why || r.error}`);
+
 // ---- The object: the settings, the alarm that keeps it going, the log ----------------------------------------
 export class Crawler {
   constructor(ctx, env) { this.ctx = ctx; this.env = env; this.robots = new Map(); }
@@ -262,7 +266,7 @@ export class Crawler {
     if (place.error) return fail(place.error === 'not found' ? 'no existe en OpenStreetMap' : 'Nominatim no respondió');
     const split = async level => {
       const subs = place.rel && level <= 8 ? await subAreas(this.env, place.rel, level) : { error: 'too big' };
-      if (subs.error) return fail(subs.why === 'busy' ? 'OpenStreetMap (Overpass) está saturado' : subs.error === 'too big' || subs.why === 'too big' ? 'demasiado grande, y sin partes en que dividirla' : `OpenStreetMap: ${subs.why || subs.error}`);
+      if (subs.error) return fail(subs.error === 'too big' || subs.why === 'too big' ? 'demasiado grande, y sin partes en que dividirla' : osmWhy(subs));
       if (!subs.length) return fail('demasiado grande, y sin partes en que dividirla');
       done(); parts.unshift(...subs.map(x => ({ rel: x.rel, name: x.name, of: part ? part.name : area, level })));
       await save(); await this.note({ at: now, kind: 'area', area: label, split: subs.length, added: 0 });
@@ -273,7 +277,7 @@ export class Crawler {
     let added = 0, found = 0;
     for (const kind of kinds) {
       const r = await searchPlaces(this.env, { kind, limit: 10000, place });
-      if (r.error) return r.why === 'too big' ? split(next) : fail(r.why === 'busy' ? 'OpenStreetMap (Overpass) está saturado' : `OpenStreetMap: ${r.why || r.error}`);
+      if (r.error) return r.why === 'too big' ? split(next) : fail(osmWhy(r));
       found += r.items.length;
       // (In batches: the contacts take a thousand at a time.)
       for (let i = 0; i < r.items.length; i += 1000)
