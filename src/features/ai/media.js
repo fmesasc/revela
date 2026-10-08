@@ -71,6 +71,7 @@ ${shots.length} candidate ${WHAT[what] || what} follow, numbered.` },
   const out = await chat([
     { role: 'system', content: `You choose the ${what} for a presentation slide, as a careful teacher would. Pick the ONE that best shows what this slide explains, and score how well it fits (0-10). Score 7 or more only when it shows THIS subject accurately and clearly${what === 'picture' ? ' at slide size' : ''}. Score under 5 when:
 - it is a different thing, even a similar-looking one (another system's architecture diagram for the presenter's own system; another battle's map; a cartoon where an anatomical model is needed);
+- it is about the topic in general but doesn't show this slide's point (any map for «navigation», any roof for «architecture», a region's landscape for a sales region);
 - the slide is about the presenter's own work, product, data or organisation: no library ${what} can show it;
 - its labels or annotations are in a language other than ${language} or English;
 - it is decoration, people posing, a meme, text-heavy, blurry, tiny, a low-quality ${what}, or unfit for a classroom.
