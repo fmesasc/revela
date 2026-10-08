@@ -33,7 +33,7 @@ import { soundRuntime } from '../runtime/sounds.js';
 import { safeURL } from '../../features/document/sanitize.js';
 import { canvasRuntimeDeps } from '../runtime/canvas.js';
 import { canvasOn, frameOf } from '../../features/design/canvasmode.js';
-import { shadowCSS, borderCSS, levelCSS, textPadding, webCardHTML, mathTeX, mathCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, connectorSVG, connectorPath, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, curvedTextSVG, deviceCSS, shapeTextHTML, hasShapeText, wrapFor, wrapAttrs, wrapVars, WRAP_CSS, tableClass, tableVars, tableCSS, fileIconHTML, imgFocus } from '../../render/svg.js';
+import { shadowCSS, borderCSS, levelCSS, textPadding, webCardHTML, mathTeX, mathCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, chartTableHTML, connectorSVG, connectorPath, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, curvedTextSVG, deviceCSS, shapeTextHTML, hasShapeText, wrapFor, wrapAttrs, wrapVars, WRAP_CSS, tableClass, tableVars, tableCSS, fileIconHTML, imgFocus } from '../../render/svg.js';
 import { googleFontLinks } from '../../features/design/fonts.js';
 import { t, speechLang, currentLang } from '../../i18n/index.js';
 import { sizeText } from '../../features/content/files.js';
@@ -376,7 +376,8 @@ function blockHTMLRaw(b, slide) {
   if (b.type === 'shape')
     return `<div${a} style="${box(b)}">${shapeSVG(b)}${hasShapeText(b) && b.html ? shapeTextHTML(b) : ''}</div>`;
   if (b.type === 'chart')
-    return `<div${a}${b.dataUrl ? ` class="rv-live-chart" data-chart="${esc(JSON.stringify({ ...b, data: undefined, series: undefined }))}"` : ''} style="${box(b)}">${chartSVG(b)}</div>`;
+    return `<div${a}${b.dataUrl ? ` class="rv-live-chart" data-chart="${esc(JSON.stringify({ ...b, data: undefined, series: undefined }))}"` : ''} role="figure" aria-label="${esc(chartCaption(b))}" style="${box(b)}">`
+      + `${chartSVG(b).replace('<svg ', '<svg aria-hidden="true" ')}${chartTableHTML(b, chartCaption(b))}</div>`;
   if (b.type === 'icon')
     return `<div${a} style="${box(b)}">${iconSVG(b)}</div>`;
   if (b.type === 'ink')
@@ -576,6 +577,11 @@ function revealOptions(deck, inApp) {
    autoSlideStoppable:${!!o.autoSlideStoppable}, fragmentInURL:${!inApp && !!o.fragmentInURL},${o.view === 'scroll' ? " view:'scroll', scrollProgress:true," : ''}
    ${o.parallax ? `parallaxBackgroundImage:${J(o.parallax)}, parallaxBackgroundSize:${J(o.parallaxSize || '')},` : ''}`;
 }
+// A chart's name for screen readers: its kind and its series («Barras: Ventas, Costes»), else the first label.
+const CHART_KINDS = { bar: 'Barras', stacked: 'Barras apiladas', stacked100: 'Barras apiladas al 100 %', hbar: 'Barras horizontales', histogram: 'Histograma', line: 'Líneas', area: 'Área',
+  stackedArea: 'Áreas apiladas', pie: 'Circular', doughnut: 'Dona', scatter: 'Dispersión', radar: 'Radar', bubble: 'Burbujas', treemap: 'Rectángulos (treemap)', waterfall: 'Cascada', funnel: 'Embudo', map: 'Mapa' };
+const chartCaption = b => `${t('Gráfico')} · ${t(CHART_KINDS[b.chartType || 'bar'] || 'Barras')}: ${[b.seriesName, ...(b.series || []).map(x => x.name)].filter(Boolean).join(', ') || (b.data || []).slice(0, 4).map(d => d.label).join(', ')}`;
+
 export function buildHTML(deck = state.deck, opts = {}) {
   // (Shown in this window: its big pictures, videos and sounds as blob: addresses, io/formats/blobmedia.js.)
   return dedupeMedia(buildHTMLRaw(opts.inApp ? blobMedia(deck) : deck, opts));
@@ -646,6 +652,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
 <style>
  .reveal .stage{position:relative;width:${w}px;height:${h}px;margin:0 auto;color:${deckFg(deck)};${deckBodyFont(deck) ? `font-family:${deckBodyFont(deck)};` : ''}}
  .reveal .stage>*{overflow-wrap:anywhere}
+ .rv-sr{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}   /* (for screen readers only: a chart's data) */
  /* What the slide shows must match the editor: reveal.js themes give images a
     margin, border and white background, text a 1.3 line height and lists an
     inline-block box. Not inside Revela's objects. */

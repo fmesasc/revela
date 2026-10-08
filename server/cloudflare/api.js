@@ -426,6 +426,9 @@ export class Account {
         const ok = await this.mailMe('test', { url: (this.env.SITE_URL || 'https://revelaslides.com') + '/app/' });
         return this.json({ ok: !!ok }, ok ? 200 : 502);
       }
+      case 'mail-opened': {                                // { vars }: one of my tracked links was opened (docs.js; I can stop these)
+        return this.json({ ok: await this.mailMe('opened', a.vars || {}) });
+      }
       case 'mail-prefs': {                                 // { off?: [kinds] } → the optional kinds stopped
         if (Array.isArray(a.off)) await this.put({ mailOff: a.off.filter(k => OPTIONAL.includes(k)) });
         return this.json({ off: await this.get('mailOff', []), optional: OPTIONAL });

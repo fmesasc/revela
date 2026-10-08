@@ -42,7 +42,13 @@
 //   GET  /api/docs/:id/versions       → [{ at, rev }]      (edit role)
 //   GET  /api/docs/:id/version?at=T   → { deck }           (edit role)
 //   POST /api/docs/:id/view           { visitor, slide, ms } (anyone who can read: statistics)
-//   GET  /api/docs/:id/stats          → per slide: views and time; visitors  (owner, Pro)
+//   GET  /api/docs/:id/stats          → per slide: views and time; visitors  (owner, Pro) and the tracked links
+//   POST /api/docs/:id/track          { add: { label, ask } } → { token } | { del: token } | { notify: bool }  (owner, Pro): links for one
+//                                     recipient each (Pitch's, DocSend's): view.html?doc=…&r=<token> shows the presentation
+//                                     (as «present») even when it isn't shared by link, and says who opened it, for how
+//                                     long and how far; ask: their email first (a real gate: no deck without it);
+//                                     notify: an email to the owner when one is opened (at most every TRACK_QUIET per link)
+//   GET  /api/docs/:id?r=T&e=email&n=name  (a tracked link: → { ask: true, name } while its email is missing)
 //   GET  /api/docs/:id/poll/:pid      → the poll, to answer it later by a link (no session; only one opened so: async)
 //   POST /api/docs/:id/poll/:pid      { voter, answer } → { ok }   (one answer per voter, changeable; at most POLL_MAX voters)
 //   GET  /api/docs/:id/pollvotes/:pid → { votes: { voter: answer } }  (edit role: brought into the editor's results)
@@ -71,6 +77,7 @@ import { random, EMAIL, DAY } from './util.js';
 import { ASYNC_KINDS, publicPoll, cleanAnswer } from '../../src/features/live/answers.js';
 
 const ROLE_RANK = { present: 1, view: 2, comment: 3, edit: 4, owner: 5 };
+const TRACK_MAX = 100, TRACK_PEOPLE = 200, TRACK_QUIET = 6 * 3600e3;    // (links per document, emails kept per link, between two notices)
 const ROLES = ['present', 'view', 'comment', 'edit'], LINK_ROLES = ['none', ...ROLES];
 // What «present» receives: the slides an audience sees, without speaker notes, comments or hidden slides.
 export const forAudience = deck => ({ ...deck, slides: (deck.slides || []).filter(s => !s.hidden).map(({ notes, comments, ...s }) => s) });
@@ -109,16 +116,23 @@ export class CloudDoc {
     this.parts = r.state; this.doc = { meta, deck: r.deck }; this.size = null; return this.doc;
   }
   // Role of { sub, email } (either may be missing): owner, a person's, or the link's.
-  roleOf(meta, who) {
+  roleOf(meta, who, r) {
     if (who?.sub && who.sub === meta.owner) return 'owner';
     const now = Date.now(), over = t => !!t && t <= now;   // (no date: no end)
     const person = who?.email && !over(meta.until?.[who.email]) && meta.people[who.email], link = meta.link !== 'none' && !over(meta.linkUntil) ? meta.link : null;
-    return [person, link].filter(Boolean).sort((a, b) => ROLE_RANK[b] - ROLE_RANK[a])[0] || null;
+    const tracked = this.tracked(meta, r) ? 'present' : null;          // (a recipient's own link: to see it presented)
+    return [person, link, tracked].filter(Boolean).sort((a, b) => ROLE_RANK[b] - ROLE_RANK[a])[0] || null;
   }
+  async trackList(meta) {
+    const all = (await this.ctx.storage.get('track')) || {};
+    return Object.entries(meta.track || {}).sort((x, y) => y[1].created - x[1].created).map(([token, t]) => { const e = all[token] || {};
+      return { token, label: t.label, ask: !!t.ask, created: t.created, opens: e.opens || 0, first: e.first || null, last: e.last || null, ms: e.ms || 0, reached: e.reached || 0, people: e.people || [] }; });
+  }
+  tracked(meta, r) { return typeof r === 'string' && /^[\w-]{8,40}$/.test(r) && !!meta.track?.[r] ? meta.track[r] : null; }
   // The slides { sub, email } may see: null for all; else the ids (all the ways they have in — as a person, by the
   // link — put together; any of them without a choice: all).
-  scopeOf(meta, who, role) {
-    if (!role || ROLE_RANK[role] >= ROLE_RANK.edit) return null;
+  scopeOf(meta, who, role, r) {
+    if (!role || ROLE_RANK[role] >= ROLE_RANK.edit || this.tracked(meta, r)) return null;   // (a tracked link: all the audience's slides)
     const now = Date.now(), over = t => !!t && t <= now, ways = [];
     if (who?.email && meta.people[who.email] && !over(meta.until?.[who.email])) ways.push(meta.slidesOf?.[who.email] || null);
     if (meta.link !== 'none' && !over(meta.linkUntil)) ways.push(meta.linkSlides || null);
@@ -162,7 +176,7 @@ export class CloudDoc {
       await st.put({ meta, log: [], versions: [] }); return this.json({ ok: true, rev: 1 });
     }
     const doc = await this.load(); if (!doc) return this.json({ error: 'not found' }, 404);
-    const { meta } = doc, role = this.roleOf(meta, a.who);
+    const { meta } = doc, role = this.roleOf(meta, a.who, a.r);
     if (op === 'measure') return this.json({ bytes: await this.bytes(meta) });   // (storage.js: never routed from outside; the trash counts too)
     if (meta.trashed && role !== 'owner') return op === 'role' ? this.json({ role: null }) : this.json({ error: 'not found' }, 404);   // (in the trash: only for its owner)
     // A poll opened to be answered later by a link: anyone with that link, without a session; only that poll.
@@ -179,7 +193,7 @@ export class CloudDoc {
     }
     if (op === 'role') return this.json({ role });                 // (for the video calls: only who may open it)
     if (!role) return this.json({ error: a.who?.sub ? 'forbidden' : 'sign in' }, a.who?.sub ? 403 : 401);
-    const at = r => ROLE_RANK[role] >= ROLE_RANK[r], only = this.scopeOf(meta, a.who, role);
+    const at = r => ROLE_RANK[role] >= ROLE_RANK[r], only = this.scopeOf(meta, a.who, role, a.r);
     const sharing = () => ({ link: meta.link, people: meta.people, until: meta.until || {}, linkUntil: meta.linkUntil || null, noCopy: !!meta.noCopy, editorsShare: !!meta.editorsShare,
       slidesOf: meta.slidesOf || {}, linkSlides: meta.linkSlides || null });
     // (What this person gets: for «present», the audience's slides; with a choice of slides, only those.)
@@ -189,9 +203,20 @@ export class CloudDoc {
     const noCopy = !at('edit') && (role === 'present' || !!meta.noCopy);
     switch (op) {
       case 'get': {
+        // A tracked link (not its owner trying it): the email first when asked, then the open counted — and its owner told.
+        const tl = role !== 'owner' && this.tracked(meta, a.r); let notify = null;
+        if (tl) {
+          const email = String(a.email || '').trim().toLowerCase().slice(0, 254), named = String(a.visitorName || '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, 60);
+          if (tl.ask && !EMAIL.test(email)) return this.json({ ask: true, name: meta.name });
+          const all = (await st.get('track')) || {}, e = all[a.r] ||= { opens: 0, ms: 0, slides: {}, people: [] }, now = Date.now();
+          e.opens++; e.first ||= now; e.last = now;
+          if (EMAIL.test(email) && !e.people.some(p => p.email === email) && e.people.length < TRACK_PEOPLE) e.people.push({ email, name: named, at: now });
+          if (meta.notifyOpens && !(e.told > now - TRACK_QUIET)) { e.told = now; notify = { owner: meta.owner, label: tl.label || '', who: EMAIL.test(email) ? (named ? `${named} (${email})` : email) : '', name: meta.name }; }
+          await st.put('track', all);
+        }
         const lk = await this.locked(meta, a.id);
         return this.json({ deck: seen(), rev: meta.rev, role, ...(only && { only: true }), name: meta.name, updated: meta.updated, thumbAt: meta.thumbAt || null, ...(lk.locked && { readOnly: true, reason: 'over limit', limit: lk.limit }),
-          ...(noCopy && { noCopy: true }), ...(manages && { sharing: sharing() }), ...(role !== 'owner' && { owner: meta.ownerEmail }) });
+          ...(noCopy && { noCopy: true }), ...(manages && { sharing: sharing() }), ...(role !== 'owner' && { owner: meta.ownerEmail }), ...(notify && { notify }) });
       }
       case 'since': {
         const log = (await st.get('log')) || [], from = +a.rev || 0;
@@ -333,13 +358,34 @@ export class CloudDoc {
         if (a.enter) { sl.views++; v.slides++; }
         sl.ms += ms; v.ms += ms; v.last = Date.now();
         const ids = Object.keys(s.visitors); if (ids.length > 2000) for (const k of ids.sort((x, y) => s.visitors[x].last - s.visitors[y].last).slice(0, ids.length - 2000)) delete s.visitors[k];
-        await st.put('stats', s); return this.json({ ok: true });
+        await st.put('stats', s);
+        // (By a tracked link: that recipient's time, slide by slide, and how far they got.)
+        if (this.tracked(meta, a.r)) {
+          const all = (await st.get('track')) || {}, e = all[a.r] ||= { opens: 0, ms: 0, slides: {}, people: [] }, n = doc.deck.slides.findIndex(x => x.id === slide) + 1;
+          if (n > 0) { e.slides[slide] = (e.slides[slide] || 0) + ms; e.ms += ms; e.reached = Math.max(e.reached || 0, n); e.last = Date.now(); await st.put('track', all); }
+        }
+        return this.json({ ok: true });
       }
       case 'stats': {
         if (role !== 'owner') return this.json({ error: 'forbidden' }, 403);
         const s = (await st.get('stats')) || { visitors: {}, slides: {} }, vs = Object.values(s.visitors);
         return this.json({ visitors: vs.length, totalMs: vs.reduce((t, v) => t + v.ms, 0), last: Math.max(0, ...vs.map(v => v.last)) || null,
-          slides: doc.deck.slides.map((sl, i) => ({ id: sl.id, n: i + 1, views: s.slides[sl.id]?.views || 0, ms: s.slides[sl.id]?.ms || 0 })) });
+          slides: doc.deck.slides.map((sl, i) => ({ id: sl.id, n: i + 1, views: s.slides[sl.id]?.views || 0, ms: s.slides[sl.id]?.ms || 0 })),
+          track: await this.trackList(meta), notify: !!meta.notifyOpens, of: doc.deck.slides.length });
+      }
+      case 'track': {                                        // the tracked links: one more, one less, or the notices on/off
+        if (role !== 'owner') return this.json({ error: 'forbidden' }, 403);
+        const track = meta.track ||= {}; let token = null;
+        if (a.add) {
+          if (Object.keys(track).length >= TRACK_MAX) return this.json({ error: 'too many' }, 409);
+          token = random(12); track[token] = { label: String(a.add.label || '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, 80), ask: !!a.add.ask, created: Date.now() };
+        } else if (a.del) {
+          if (!track[a.del]) return this.json({ error: 'not found' }, 404);
+          delete track[a.del]; const all = (await st.get('track')) || {}; delete all[a.del]; await st.put('track', all);
+        } else if (a.notify !== undefined) meta.notifyOpens = !!a.notify;
+        else return this.json({ error: 'bad request' }, 400);
+        await st.put('meta', meta);
+        return this.json({ ok: true, ...(token && { token }), track: await this.trackList(meta), notify: !!meta.notifyOpens });
       }
     }
     return this.json({ error: 'unknown' }, 404);
@@ -435,15 +481,16 @@ export async function handleDocs(path, req, body, url, env, me, json) {
     if (req.method !== 'POST') return json({ error: 'method' }, 405);
     return reply(await ask(env, pid, 'progress', { who, id: pid, voter: body.voter, name: body.name, slide: body.slide, of: body.of, graded: body.graded, score: body.score }));
   }
-  const m = path.match(/^\/docs\/([\w-]{16,40})(?:\/(since|ops|share|delete|versions|version|view|stats|meta|trash|restore|duplicate|thumb))?$/);
+  const m = path.match(/^\/docs\/([\w-]{16,40})(?:\/(since|ops|share|delete|versions|version|view|stats|meta|trash|restore|duplicate|thumb|track))?$/);
   if (!m) return json({ error: 'not found' }, 404);
   const [, id, op = 'get'] = m;
   const GETS = ['get', 'since', 'versions', 'version', 'stats'];
   if (op !== 'thumb' && GETS.includes(op) !== (req.method === 'GET')) return json({ error: 'method' }, 405);
-  if (op === 'stats' && !(me?.features || []).includes('analytics')) return json({ error: 'pro only' }, 402);
-  const args = { who, ...(op === 'since' && { rev: url.searchParams.get('rev') }), ...(op === 'version' && { at: url.searchParams.get('at') }), ...(req.method === 'POST' && body) };
+  if ((op === 'stats' || op === 'track') && !(me?.features || []).includes('analytics')) return json({ error: 'pro only' }, 402);
+  const args = { who, ...(op === 'since' && { rev: url.searchParams.get('rev') }), ...(op === 'version' && { at: url.searchParams.get('at') }),
+    ...(op === 'get' && url.searchParams.get('r') && { r: url.searchParams.get('r'), email: url.searchParams.get('e') || '', visitorName: url.searchParams.get('n') || '' }), ...(req.method === 'POST' && body) };
   args.who = who; args.id = id;                            // (never from the body)
-  if (!me && (['ops', 'share', 'delete', 'meta', 'trash', 'restore', 'duplicate'].includes(op) || (op === 'thumb' && req.method === 'POST'))) return json({ error: 'no session' }, 401);
+  if (!me && (['ops', 'share', 'delete', 'meta', 'trash', 'restore', 'duplicate', 'track'].includes(op) || (op === 'thumb' && req.method === 'POST'))) return json({ error: 'no session' }, 401);
   if (op === 'share' && body.people && Object.keys(body.people).length && !(me.features || []).includes('share-people')) return json({ error: 'pro only' }, 402);
   if (op === 'delete') return reply(await purgeDoc(env, me.sub, id));
   if (op === 'thumb') {
@@ -506,6 +553,10 @@ export async function handleDocs(path, req, body, url, env, me, json) {
       if (!was[e]) await mail(env, { to: e, kind: 'share', lang: x.lang, vars: { by: me.name ? `${me.name} (${me.email})` : me.email, name: r.data.name, role, url: `${env.SITE_URL || 'https://revelaslides.com'}/app/?doc=${encodeURIComponent(id)}` } });
     }
     delete r.data.before; delete r.data.ownerEmail;
+  } else if (op === 'get' && r.data.notify) {
+    // (A tracked link opened: its owner told, if they asked — in their language, and they can stop these.)
+    const n = r.data.notify; delete r.data.notify;
+    await call(acct(env, n.owner), 'mail-opened', { vars: { label: n.label, who: n.who, name: n.name, url: `${env.SITE_URL || 'https://revelaslides.com'}/app/?doc=${encodeURIComponent(id)}` } });
   } else if (op === 'ops') {
     if (r.data.owner) await call(acct(env, r.data.owner), 'docs-touch', { id, name: r.data.name, slides: r.data.slides, text: r.data.text, bytes: r.data.bytes });
     delete r.data.owner; delete r.data.slides; delete r.data.text; delete r.data.bytes;

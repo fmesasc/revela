@@ -4,7 +4,7 @@
 // votes, drawing charts) are embedded with toString(), so both draw the same.
 
 import { jsData } from '../../core/text.js';
-import { chartRuntimeJS } from '../../render/svg.js';
+import { chartRuntimeJS, chartTableHTML } from '../../render/svg.js';
 import { tallyVotes, pollResultsHTML, quizTotals, gradeActivity, publicActivity, VOTE_URL } from '../../features/live/poll.js';
 import { parseChartGrid } from '../../features/document/blocks.js';
 import { QRCODE, PEERJS } from '../../core/vendor.js';
@@ -187,11 +187,12 @@ export function liveDataJS() {
   return `(function(){
  ${chartRuntimeJS()}
  ${parseChartGrid.toString()}
+ ${chartTableHTML.toString()}
  document.querySelectorAll('iframe[data-refresh-min]').forEach(function(f){var m=+f.dataset.refreshMin;if(m>0)setInterval(function(){f.src=f.src;},m*60000);});
  document.querySelectorAll('.rv-live-chart').forEach(function(el){var b;try{b=JSON.parse(el.getAttribute('data-chart'));}catch(e){return;}
   function load(){fetch(b.dataUrl,{cache:'no-store'}).then(function(r){return r.ok?r.text():Promise.reject();}).then(function(t){
     var g=parseChartGrid(t);if(!g.data.length)return;b.data=g.data;b.series=g.series.length?g.series:undefined;if(g.names[0])b.seriesName=g.names[0];
-    el.innerHTML=chartSVG(b);}).catch(function(){});}
+    el.innerHTML=chartSVG(b).replace('<svg ','<svg aria-hidden="true" ')+chartTableHTML(b,el.getAttribute('aria-label')||'');}).catch(function(){});}
   load();if(b.refreshSec>0)setInterval(load,b.refreshSec*1000);});
 })();`;
 }

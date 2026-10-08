@@ -192,10 +192,39 @@ export async function openCloudStats() {
   body.innerHTML = `<p class="host-help">${t('Cargando…')}</p>`;
   let s; try { s = await cd.docStats(doc.id); } catch (e) { body.innerHTML = `<p class="host-help">${esc(errorText(e))}</p>`; return; }
   const max = Math.max(1, ...s.slides.map(x => x.ms));
-  body.innerHTML = `<p class="host-help">${t('Quién la ha visto no se guarda: solo cuántas personas, qué diapositivas y cuánto tiempo.')}</p>
+  body.innerHTML = `<p class="host-help">${t('Con los enlaces de siempre no se guarda quién la ha visto: solo cuántas personas, qué diapositivas y cuánto tiempo. Para saberlo de cada destinatario, crea un enlace con seguimiento.')}</p>
     <div class="cl-kpis"><div><b>${s.visitors}</b><small>${t('personas')}</small></div><div><b>${dur(s.totalMs)}</b><small>${t('tiempo total')}</small></div>
       <div><b>${s.visitors ? dur(s.totalMs / s.visitors) : '—'}</b><small>${t('por persona')}</small></div><div><b>${s.last ? new Date(s.last).toLocaleDateString(currentLang()) : '—'}</b><small>${t('última visita')}</small></div></div>
-    <div class="cl-bars">${s.slides.map(x => `<div class="cl-bar" title="${x.views} ${t('vistas')} · ${dur(x.ms)}"><span>${x.n}</span><i style="width:${(x.ms / max * 100).toFixed(1)}%"></i><small>${x.views} · ${dur(x.ms)}</small></div>`).join('')}</div>`;
+    <div class="cl-bars">${s.slides.map(x => `<div class="cl-bar" title="${x.views} ${t('vistas')} · ${dur(x.ms)}"><span>${x.n}</span><i style="width:${(x.ms / max * 100).toFixed(1)}%"></i><small>${x.views} · ${dur(x.ms)}</small></div>`).join('')}</div>
+    <fieldset class="cl-track"><legend>${t('Enlaces con seguimiento')}</legend>
+      <p class="host-help">${t('Un enlace para cada destinatario (un cliente, un jurado…): lo ven presentado aunque la presentación no se comparta por enlace, y aquí sabes si lo abrió, cuánto tiempo y hasta dónde llegó. Puedes pedir su correo antes de verla.')}</p>
+      <form class="sh-row cl-track-new"><input type="text" class="cl-track-label" maxlength="80" placeholder="${t('Para quién (p. ej. Ana · Acme)')}">
+        <label class="fr-chk" style="margin:0;white-space:nowrap"><input type="checkbox" class="cl-track-ask"> ${t('Pedir su correo')}</label><button type="submit" class="mini2">${t('Crear enlace')}</button></form>
+      <div class="cl-track-list"></div>
+      <label class="fr-chk"><input type="checkbox" class="cl-track-notify"${s.notify ? ' checked' : ''}> ${t('Avisarme por correo cuando alguien abra uno')}</label></fieldset>`;
+  const list = body.querySelector('.cl-track-list'), when = ts => (ts ? new Date(ts).toLocaleString(currentLang(), { dateStyle: 'short', timeStyle: 'short' }) : '—');
+  const paint = track => {
+    list.innerHTML = !track.length ? `<p class="host-help">${t('Aún no hay ninguno.')}</p>` : track.map(x => `<div class="cl-tk" data-tk="${esc(x.token)}">
+      <div class="cl-tk-head"><b>${esc(x.label || t('Sin nombre'))}</b>${x.ask ? `<small>${t('pide el correo')}</small>` : ''}
+        <span class="cl-tk-acts"><button type="button" class="mini2" data-a="copy">${t('Copiar enlace')}</button><button type="button" class="mini2" data-a="del" title="${t('Quitar: el enlace deja de funcionar')}"><i class="ms">delete</i></button></span></div>
+      <div class="cl-tk-stats">${x.opens ? `${x.opens} ${t(x.opens === 1 ? 'apertura' : 'aperturas')} · ${dur(x.ms)} · ${t('hasta la diapositiva')} ${x.reached || 1} ${t('de')} ${s.of} · ${t('última')}: ${when(x.last)}` : t('Aún no lo ha abierto.')}</div>
+      ${x.people.length ? `<div class="cl-tk-people">${x.people.map(pp => `<span>${esc(pp.name ? `${pp.name} <${pp.email}>` : pp.email)}</span>`).join('')}</div>` : ''}</div>`).join('');
+  };
+  paint(s.track || []);
+  const track = async payload => { try { const r = await cd.docTrack(doc.id, payload); paint(r.track); return r; } catch (e) { alertDialog(errorText(e)); return null; } };
+  body.querySelector('.cl-track-new').addEventListener('submit', async e => {
+    e.preventDefault(); const label = body.querySelector('.cl-track-label').value.trim(), ask = body.querySelector('.cl-track-ask').checked;
+    const r = await track({ add: { label, ask } }); if (!r?.token) return;
+    body.querySelector('.cl-track-label').value = '';
+    navigator.clipboard?.writeText(cd.trackLink(doc.id, r.token)).catch(() => {});
+    list.querySelector(`[data-tk="${CSS.escape(r.token)}"] [data-a="copy"]`)?.replaceChildren(t('Copiado'));
+  });
+  list.addEventListener('click', async e => {
+    const b = e.target.closest('[data-a]'), tk = e.target.closest('[data-tk]')?.dataset.tk; if (!b || !tk) return;
+    if (b.dataset.a === 'copy') { navigator.clipboard?.writeText(cd.trackLink(doc.id, tk)).catch(() => {}); b.textContent = t('Copiado'); }
+    else if (b.dataset.a === 'del' && await confirmDialog(t('¿Quitar este enlace? Quien lo tenga ya no podrá abrir la presentación con él.'), { ok: t('Quitar'), danger: true })) await track({ del: tk });
+  });
+  body.querySelector('.cl-track-notify').addEventListener('change', e => track({ notify: e.target.checked }));
 }
 
 // ---- Versions kept by the server ------------------------------------------------------------------

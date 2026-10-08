@@ -56,10 +56,42 @@ function askName(m) {
   });
 }
 
+// A tracked link (&r=…) that asks who's looking: their email (and name), told plainly to whom it goes.
+function askEmail(m, title) {
+  return new Promise(done => {
+    let v = {}; try { v = JSON.parse(localStorage.getItem('revela.viewer') || '{}'); } catch {}
+    m.className = ''; m.replaceChildren();
+    const f = document.createElement('form'); f.style.cssText = 'display:flex;flex-direction:column;gap:10px;max-width:340px;margin:0 auto;font:17px system-ui,sans-serif;text-align:start';
+    const h = document.createElement('b'); h.textContent = title || 'Revela';
+    const p1 = document.createElement('small'); p1.textContent = t('Quien te la ha enviado pide tu correo para verla: le llegará junto con cuánto tiempo la has mirado.');
+    const field = (label, type, value, req) => { const l = document.createElement('label'); l.textContent = label;
+      const i = Object.assign(document.createElement('input'), { type, value: value || '', required: req, maxLength: 120, style: 'display:block;width:100%;box-sizing:border-box;font-size:18px;padding:10px;border-radius:8px;border:1px solid #888' }); l.append(i); return [l, i]; };
+    const [le, ie] = field(t('Tu correo'), 'email', v.e, true), [ln, inn] = field(t('Tu nombre (opcional)'), 'text', v.n, false);
+    ie.autocomplete = 'email'; inn.autocomplete = 'name';
+    const b = Object.assign(document.createElement('button'), { type: 'submit', textContent: t('Ver la presentación'), style: 'font-size:18px;padding:10px;border-radius:8px;border:0;background:#3f6497;color:#fff' });
+    f.append(h, p1, le, ln, b); m.append(f); ie.focus();
+    f.addEventListener('submit', e => { e.preventDefault(); const em = ie.value.trim(), n = inn.value.trim(); if (!em) return;
+      try { localStorage.setItem('revela.viewer', JSON.stringify({ e: em, n })); } catch {} m.textContent = texts.loading; done({ e: em, n }); });
+  });
+}
+// What a tracked link's recipient looks at, slide by slide (as the editor's statistics do: a random id of this
+// browser, the slide, the time on it), for its owner's statistics.
+const beacon = (id, r) => `<script>(function(){var U=${JSON.stringify(`/api/docs/${encodeURIComponent(id)}/view`)},R=${JSON.stringify(r)},V;
+try{V=localStorage.getItem('revela.visitor');if(!V){V='v'+Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem('revela.visitor',V);}}catch(e){V='v'+Math.random().toString(36).slice(2,14);}
+function send(b){b.visitor=V;b.r=R;try{fetch(U,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(b),keepalive:true});}catch(e){}}
+var cur=null,since=Date.now();function at(){var s=window.Reveal&&Reveal.getCurrentSlide&&Reveal.getCurrentSlide();return s&&s.getAttribute('data-rv-id');}
+function check(){var s=at();if(s===cur)return;if(cur)send({slide:cur,ms:Date.now()-since});cur=s;since=Date.now();if(s)send({slide:s,enter:true});}
+setInterval(check,1000);document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'&&cur)send({slide:cur,ms:Date.now()-since});since=Date.now();});
+})();</script>`;
+
 async function openCloud(id) {
   const m = document.getElementById('m'); m.textContent = texts.loading;
   try {
-    const { deck, name, noCopy } = await publicDeck(id);
+    const r = /^[\w-]{8,40}$/.test(p.get('r') || '') ? p.get('r') : null;
+    let got = await publicDeck(id, fetch, r && { r });
+    if (got.ask) got = await publicDeck(id, fetch, { r, ...(await askEmail(m, got.name)) });
+    if (got.ask) throw Object.assign(new Error('DOC'), { status: 403 });
+    const { deck, name, noCopy } = got;
     adoptDeck(deck);
     const scorm = p.get('scorm') === '1', self = !scorm && p.get('self') === '1';
     const who = self ? await askName(m) : null;
@@ -71,6 +103,7 @@ window.__revelaScormSend=function(m){var b={voter:W.voter,name:W.name};if(m.t===
 try{fetch(U,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(b),keepalive:true});}catch(e){}};})();</script>` : '';
       html = html.slice(0, at) + report + `<script>${scormPage}</script>` + html.slice(at);
     }
+    if (r) { const at = html.toLowerCase().lastIndexOf('</body>'); html = html.slice(0, at) + beacon(id, r) + html.slice(at); }
     document.open(); document.write(html); document.close();
     if (name) document.title = name;
   } catch (e) {

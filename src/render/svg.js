@@ -173,6 +173,15 @@ export function chartSVG(b) {
   const ink = /^#[0-9a-f]{3,8}$/i.test(b.labelColor || b.textColor || '') ? (b.labelColor || b.textColor) : '', svg = drawChart(b);
   return unstretchChart(ink ? svg.replaceAll('fill="#8a8a8a"', `fill="${ink}"`) : svg, b);
 }
+// A chart for screen readers (WCAG 1.1.1): its data as a table nobody sees but the reader reads, the picture hidden from
+// it. The same grid as the editor's data — a label and a column per series. Self-contained: live charts redraw it too.
+export function chartTableHTML(b, caption) {
+  var e = function (x) { return String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+  var extra = b.series || [], data = b.data || [], named = extra.length || b.seriesName;
+  var head = named ? '<tr><th></th><th scope="col">' + e(b.seriesName || 'Serie 1') + '</th>' + extra.map(function (x, i) { return '<th scope="col">' + e(x.name || 'Serie ' + (i + 2)) + '</th>'; }).join('') + '</tr>' : '';
+  return '<table class="rv-sr"><caption>' + e(caption) + '</caption>' + head + data.map(function (d, i) {
+    return '<tr><th scope="row">' + e(d.label) + '</th><td>' + e(d.value) + '</td>' + extra.map(function (x) { return '<td>' + e((x.values || [])[i]) + '</td>'; }).join('') + '</tr>'; }).join('') + '</table>';
+}
 export function unstretchChart(svg, b) {
   const w = +b.w, h = +b.h;
   if (!(w > 0 && h > 0) || !/^<svg viewBox="0 0 100 60" preserveAspectRatio="none"/.test(svg)) return svg;

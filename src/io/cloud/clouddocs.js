@@ -31,9 +31,13 @@ export const docLink = id => `${OFFICIAL_SITE}/app/?doc=${encodeURIComponent(id)
 export const embedLink = id => `${OFFICIAL_SITE}/app/view.html?doc=${encodeURIComponent(id)}`;
 export const embedCode = (id, name = '') => `<iframe src="${embedLink(id)}" width="960" height="540" style="border:0;max-width:100%;aspect-ratio:16/9;height:auto" allow="fullscreen" allowfullscreen loading="lazy"${name ? ` title="${String(name).replace(/[<>"&]/g, '')}"` : ''}></iframe>`;
 // The presentation of a link that anyone can view (no account): → { deck, name } or throws { status }.
-export async function publicDeck(id, fetcher = fetch) {
-  const r = await fetcher(new URL('/api/docs/' + encodeURIComponent(id), location.origin).href, { credentials: 'include' });
+// track: a tracked link's { r, e, n } (its token; the email and name asked for) → { ask: true, name } while the email is missing.
+export async function publicDeck(id, fetcher = fetch, track = null) {
+  const u = new URL('/api/docs/' + encodeURIComponent(id), location.origin);
+  if (track?.r) for (const k of ['r', 'e', 'n']) if (track[k]) u.searchParams.set(k, track[k]);
+  const r = await fetcher(u.href, { credentials: 'include' });
   const j = await r.json().catch(() => ({}));
+  if (r.ok && j?.ask) return { ask: true, name: j.name || '' };
   if (!r.ok || !j?.deck?.slides) throw Object.assign(new Error('DOC'), { status: r.ok ? 500 : r.status });
   return { deck: cleanValue(j.deck), name: j.name || '', noCopy: !!j.noCopy };
 }
@@ -47,6 +51,9 @@ export const pollLink = (id, pid) => `${OFFICIAL_SITE}/app/vote.html?doc=${encod
 export const pollVotes = (id, pid) => send(path(id, 'pollvotes/' + encodeURIComponent(pid)));
 // The class at its own pace: the students' link, where each one is (the teacher's panel) and a new class.
 export const paceLink = id => `${OFFICIAL_SITE}/app/view.html?doc=${encodeURIComponent(id)}&self=1`;
+// A tracked link: for one recipient, who sees it presented; its owner sees who opened it, for how long and how far.
+export const trackLink = (id, token) => `${OFFICIAL_SITE}/app/view.html?doc=${encodeURIComponent(id)}&r=${encodeURIComponent(token)}`;
+export const docTrack = (id, body) => send(path(id, 'track'), body);
 export const classProgress = id => send(path(id, 'progress'));
 export const clearProgress = id => send(path(id, 'progress/clear'), {});
 export const docVersions = id => send(path(id, 'versions'));

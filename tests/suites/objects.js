@@ -59,6 +59,19 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/<polygon points="0,50/.test(R.io.buildHTML()), 'relleno del área');
   });
 
+  await test('gráficos accesibles: el lector de pantalla lee sus datos como tabla', async () => {
+    reset(); R.blocks.addChart(); const b = last(); select(b);
+    R.blocks.setChartGrid('\tVentas\tCostes\nEne\t10\t6\nFeb\t12\t<7>', { chartType: 'bar' });
+    const doc = new frame.contentWindow.DOMParser().parseFromString(R.io.buildHTML(), 'text/html');
+    const fig = doc.querySelector('[role="figure"]'); assert(fig, 'el gráfico es una figura');
+    eq(fig.getAttribute('aria-label'), 'Gráfico · Barras: Ventas, Costes', 'con su nombre: el tipo y las series');
+    eq(fig.querySelector('svg').getAttribute('aria-hidden'), 'true', 'el dibujo, oculto al lector');
+    const tb = fig.querySelector('table.rv-sr');
+    eq([...tb.querySelectorAll('tr')].map(r => [...r.children].map(c => c.textContent).join('|')).join(' / '), '|Ventas|Costes / Ene|10|6 / Feb|12|0', 'y sus datos, en una tabla');
+    eq(tb.querySelector('th[scope="row"]').textContent, 'Ene', 'cada fila con su etiqueta como encabezado');
+    assert(/\.rv-sr\{position:absolute!important;width:1px/.test(R.io.buildHTML()), 'la tabla no se ve');
+  });
+
   await test('gráficos de dispersión y radar en el export', async () => {
     reset(); R.blocks.addChart(); const b = last(); select(b);
     R.blocks.setChart({ chartType: 'scatter', data: [{ label: '1', value: 2 }, { label: '3', value: 4 }, { label: '5', value: 1 }] });

@@ -316,6 +316,14 @@ def site_checks(send, recv):
             if self.path == '/api/docs/abcdefghijklmnop1234/poll/pollx1':
                 return self.reply(200, {'poll': {'pollId': 'pollx1', 'kind': 'number', 'question': '¿Cuántos kilos?', 'options': [], 'min': 0, 'max': 10, 'unit': 'kg'}, 'name': 'Charla de otoño'})
             if self.path.startswith('/api/docs/abcdefghijklmnop1234/poll/'): return self.reply(404, {'error': 'not found'})
+            # A tracked link (view.html?doc=…&r=…) that asks for the email first (docs.js has its own tests).
+            if self.path.startswith('/api/docs/abcdefghijklmnop1234?'):
+                q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                if q.get('r') != ['seguimiento1234']: return self.reply(401, {'error': 'sign in'})
+                if not q.get('e'): return self.reply(200, {'ask': True, 'name': 'Propuesta para Acme'})
+                seen['tracked'] = q
+                return self.reply(200, {'role': 'present', 'name': 'Propuesta para Acme', 'deck': {'name': 'Propuesta para Acme', 'size': {'w': 1280, 'h': 720},
+                    'slides': [{'id': 'sl1', 'blocks': [{'id': 'b1', 'type': 'text', 'html': 'Hola, Acme', 'x': 80, 'y': 80, 'w': 800, 'h': 120, 'fontSize': 60}]}, {'id': 'sl2', 'blocks': []}]}})
             if self.path.startswith('/api/me'):
                 return self.reply(200, {'email': 'ana@example.com', 'plan': 'free', 'credits': 50, 'features': ['ai', 'cloud-save'], 'billing': False, 'photos': ['unsplash']}) if self.signed() else self.reply(401, {'error': 'no session'})
             if self.path.startswith('/api/') and not self.signed(): return self.reply(401, {'error': 'no session'})
@@ -331,6 +339,7 @@ def site_checks(send, recv):
         def do_POST(self):
             body = self.rfile.read(int(self.headers.get('Content-Length') or 0))
             if self.path == '/api/docs/abcdefghijklmnop1234/poll/pollx1': seen.setdefault('later', []).append(json.loads(body or b'{}')); return self.reply(200, {'ok': True})
+            if self.path == '/api/docs/abcdefghijklmnop1234/view': seen.setdefault('views', []).append(json.loads(body or b'{}')); return self.reply(200, {'ok': True})
             if self.path == '/api/login': return self.reply(200, {'ok': True}, {'Set-Cookie': 'rv_session=ok; Path=/api; HttpOnly; SameSite=Strict'})
             if self.path == '/api/docs/thumbs': return self.reply(200, {'thumbs': {}}) if self.signed() else self.reply(401, {'error': 'no session'})
             if self.path == '/api/stock/used': seen.setdefault('used', []).append(json.loads(body or b'{}')); return self.reply(200, {'ok': True})
@@ -368,6 +377,17 @@ def site_checks(send, recv):
         check(later[-1].get('answer') == 7 and len(str(later[-1].get('voter', ''))) >= 8 and ev("!document.getElementById('done').hidden"), 'responder más tarde: se envía y se confirma: ' + str(later))
         recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/app/vote.html?doc=abcdefghijklmnop1234&poll=otra1')); time.sleep(1.2)
         check('ya no está abierta' in (ev("document.body.innerText") or ''), 'responder más tarde: una cerrada lo dice')
+        # A tracked link: the email first (with whom it goes to), then the presentation, and what's looked at counted with the link.
+        recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/app/view.html?doc=abcdefghijklmnop1234&r=seguimiento1234')); time.sleep(1.5)
+        check(ev("!!document.querySelector('#m form input[type=email]') && /Propuesta para Acme/.test(document.body.innerText)"), 'enlace con seguimiento: pide el correo antes de verla')
+        ev("(()=>{const f=document.querySelector('#m form');f.querySelector('input[type=email]').value='leo@cliente.com';f.querySelector('input[type=text]').value='Leo';f.requestSubmit();return 1})()"); time.sleep(3)
+        tr = seen.get('tracked') or {}
+        check(tr.get('e') == ['leo@cliente.com'] and tr.get('n') == ['Leo'], 'enlace con seguimiento: manda el correo y el nombre: ' + str(tr))
+        check(ev("!!window.Reveal&&Reveal.isReady()&&/Hola, Acme/.test(document.body.innerText)"), 'enlace con seguimiento: y la muestra presentada')
+        ev("Reveal.next(),1"); time.sleep(2.2)
+        vs = seen.get('views') or []
+        check(any(v.get('r') == 'seguimiento1234' and v.get('enter') and v.get('slide') == 'sl1' for v in vs) and any(v.get('slide') == 'sl1' and v.get('ms', 0) > 0 for v in vs) and any(v.get('slide') == 'sl2' for v in vs),
+              'enlace con seguimiento: cuenta cada diapositiva y su tiempo, con su enlace: ' + str(vs)[:300])
         recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/index.html')); time.sleep(1.5)
         check(ev("(f=>!!f&&/\\/demo\\/reloj\\.html$/.test(f.src))(document.querySelector('.live iframe'))") and ev("fetch('/demo/reloj.html').then(r=>r.text()).then(t=>/Reveal\\.initialize/.test(t)&&/noindex/.test(t)&&!/fonts\\.googleapis/.test(t))"), 'la presentación en directo de la portada')
         # In other languages: each its own address, with links between them for search engines.

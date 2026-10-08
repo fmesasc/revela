@@ -147,6 +147,7 @@ export function openAccount({ buy } = {}) {
         <p class="host-help">${t('Revela te escribe a {email} cuando te comparten una presentación, te invitan a un equipo o cambia tu plan.').replace('{email}', esc(me.email))}</p>
         <label class="fr-chk"><input type="checkbox" class="acc-mail-opt" data-kind="credits"> ${t('Avisarme cuando mis créditos estén a punto de caducar')}</label>
         <label class="fr-chk"><input type="checkbox" class="acc-mail-opt" data-kind="trialEnding"> ${t('Avisarme antes de que acabe mi prueba de Pro')}</label>
+        <label class="fr-chk"><input type="checkbox" class="acc-mail-opt" data-kind="opened"> ${t('Avisarme cuando alguien abra uno de mis enlaces con seguimiento')}</label>
         <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 acc-mail-test">${t('Enviarme un correo de prueba')}</button></div></details>
       <details class="acc-sess"><summary>${t('Sesiones abiertas')}</summary>
         <p class="host-help">${t('Dónde está abierta tu cuenta. Si ves una sesión que no reconoces, ciérrala y revisa la seguridad de tu cuenta de Google.')}</p>

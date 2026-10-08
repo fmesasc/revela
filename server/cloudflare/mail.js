@@ -21,7 +21,7 @@
 import { record, financeSettings } from './finance.js';
 import { enc, b64url, unb64, escHtml, hmac } from './util.js';
 
-export const OPTIONAL = ['credits', 'trialEnding'];        // (kinds one can stop receiving)
+export const OPTIONAL = ['credits', 'trialEnding', 'opened'];        // (kinds one can stop receiving)
 
 // The person's language, among those with texts (the others: Spanish, or English for most).
 export const mailLang = l => (['es', 'en', 'ca'].includes(l) ? l : ['gl', 'eu'].includes(l) ? 'es' : l && /^[a-z]{2}$/.test(l) ? 'en' : 'es');
@@ -92,6 +92,8 @@ const T = {
   es: {
     foot: 'Revela · un proyecto de FM Lab', why: 'Recibes este correo porque tienes una cuenta de Revela o alguien te ha invitado a usarla.',
     unsub: 'No quiero más avisos de este tipo', open: 'Abrir Revela',
+    opened: v => ({ subject: `${v.label || v.who || 'Alguien'} ha abierto «${v.name}»`, title: 'Han abierto tu presentación',
+      paras: [`${v.label ? `El enlace para «${v.label}»` : 'Uno de tus enlaces con seguimiento'} de «${v.name}» se acaba de abrir${v.who ? ` (${v.who})` : ''}.`, 'En Compartir ▸ Estadísticas verás cuánto tiempo ha estado y hasta dónde ha llegado.'], cta: ['Ver la presentación', v.url] }),
     share: v => ({ subject: `${v.by} ha compartido «${v.name}» contigo`, title: 'Te han compartido una presentación',
       paras: [`${v.by} ha compartido contigo la presentación «${v.name}» en Revela (${v.role}).`, 'Para abrirla, inicia sesión con esta dirección de correo.'], cta: ['Abrir la presentación', v.url] }),
     roles: { present: 'puedes verla como presentación', view: 'puedes verla', comment: 'puedes comentarla', edit: 'puedes editarla' },
@@ -138,6 +140,8 @@ const T = {
   en: {
     foot: 'Revela · a project by FM Lab', why: 'You are receiving this email because you have a Revela account or someone invited you to use it.',
     unsub: 'Stop these notices', open: 'Open Revela',
+    opened: v => ({ subject: `${v.label || v.who || 'Someone'} opened “${v.name}”`, title: 'Your presentation was opened',
+      paras: [`${v.label ? `The link for “${v.label}”` : 'One of your tracked links'} to “${v.name}” has just been opened${v.who ? ` (${v.who})` : ''}.`, 'In Share ▸ Statistics you’ll see how long they stayed and how far they got.'], cta: ['See the presentation', v.url] }),
     share: v => ({ subject: `${v.by} shared “${v.name}” with you`, title: 'A presentation was shared with you',
       paras: [`${v.by} shared the presentation “${v.name}” with you on Revela (${v.role}).`, 'To open it, sign in with this email address.'], cta: ['Open the presentation', v.url] }),
     roles: { present: 'you can watch it as a slideshow', view: 'you can view it', comment: 'you can comment on it', edit: 'you can edit it' },
@@ -182,6 +186,8 @@ const T = {
   ca: {
     foot: 'Revela · un projecte d’FM Lab', why: 'Reps aquest correu perquè tens un compte de Revela o algú t’ha convidat a fer-lo servir.',
     unsub: 'No vull més avisos d’aquest tipus', open: 'Obre Revela',
+    opened: v => ({ subject: `${v.label || v.who || 'Algú'} ha obert «${v.name}»`, title: 'Han obert la teva presentació',
+      paras: [`${v.label ? `L’enllaç per a «${v.label}»` : 'Un dels teus enllaços amb seguiment'} de «${v.name}» s’acaba d’obrir${v.who ? ` (${v.who})` : ''}.`, 'A Compartir ▸ Estadístiques veuràs quant de temps hi ha estat i fins on ha arribat.'], cta: ['Veure la presentació', v.url] }),
     share: v => ({ subject: `${v.by} ha compartit «${v.name}» amb tu`, title: 'T’han compartit una presentació',
       paras: [`${v.by} ha compartit amb tu la presentació «${v.name}» a Revela (${v.role}).`, 'Per obrir-la, inicia la sessió amb aquesta adreça de correu.'], cta: ['Obre la presentació', v.url] }),
     roles: { present: 'pots veure-la com a presentació', view: 'pots veure-la', comment: 'pots comentar-la', edit: 'pots editar-la' },

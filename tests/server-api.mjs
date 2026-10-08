@@ -474,6 +474,40 @@ ok((await req('POST', '/api/desktop/claim', { origin: 'tauri://localhost', body:
   j = await (await get(ana, '/stats')).json(); ok(j.visitors === 1 && j.slides[0].views === 1 && j.slides[0].ms === 12000 && j.slides[1].ms === 5000, 'estadísticas: vistas y tiempo por diapositiva');
   ok((await get(eva, '/stats')).status === 402 || (await get(eva, '/stats')).status === 403, 'estadísticas: solo la dueña');
   ok(!JSON.stringify(env.DOCS.inst.get('doc:' + id).ctx.storage.m.get('stats')).includes('@'), 'estadísticas: sin correos ni datos de quien la ve');
+  // Tracked links (the owner, Pro): one per recipient — it opens the deck even when not shared by link —, its email
+  // asked first when so set, who opened it and how far; its owner told by email.
+  {
+    const T = (c, b) => req('POST', `/api/docs/${id}/track`, { headers: c ? { Cookie: c } : {}, body: b });
+    await req('POST', `/api/docs/${id}/share`, { headers: { Cookie: ana }, body: { link: 'none' } });
+    ok((await get(null)).status === 401, 'seguimiento: sin compartir por enlace, la presentación no es pública');
+    const st0 = [(await T(null, { add: { label: 'x' } })).status, (await T(eva, { add: { label: 'x' } })).status];
+    ok([401, 402].includes(st0[0]) && [402, 403].includes(st0[1]), 'seguimiento: solo la dueña (Pro) crea enlaces: ' + st0);
+    let r = await (await T(ana, { add: { label: 'Ana · Acme' } })).json(); const tk = r.token;
+    ok(/^[\w-]{16}$/.test(tk) && r.track[0].label === 'Ana · Acme', 'seguimiento: un enlace con su destinatario');
+    const gate = await (await T(ana, { add: { label: '', ask: true } })).json(), tk2 = gate.token;
+    const open = (t, q = '') => req('GET', `/api/docs/${id}?r=${t}${q}`);
+    j = await (await open(tk)).json();
+    ok(j.role === 'present' && j.deck?.slides.length >= 1 && !JSON.stringify(j).includes('NOTA-SECRETA'), 'seguimiento: el enlace la abre presentada (sin notas) aunque no sea pública: ' + JSON.stringify(j).slice(0, 200));
+    ok((await open('noexiste12345678')).status === 401, 'seguimiento: un enlace inventado, no');
+    j = await (await open(tk2)).json(); ok(j.ask === true && !j.deck, 'seguimiento: el que pide correo no da la presentación sin él');
+    ok((await (await open(tk2, '&e=no-es-correo')).json()).ask === true, 'seguimiento: ni con un correo que no lo es');
+    j = await (await open(tk2, '&e=Leo@Cliente.com&n=Leo')).json(); ok(j.deck && j.role === 'present', 'seguimiento: con su correo, sí');
+    const tv = (slide, ms, enter) => req('POST', `/api/docs/${id}/view`, { body: { visitor: 'visitante-777', slide, ms, enter, r: tk } });
+    await tv('s1', 0, true); await tv('s1', 8000); await tv('s2', 0, true); await tv('s2', 3000);
+    const n0 = sent.length;
+    await T(ana, { notify: true }); await open(tk); await open(tk);
+    const told = sent.slice(n0).filter(m => /ha abierto|opened|ha obert/.test(m.subject));
+    ok(told.length === 1 && /Ana · Acme/.test(told[0].subject) && /unsubscribe/.test(told[0].text), 'seguimiento: aviso por correo a la dueña al abrirlo (uno, no uno por apertura; con cómo dejar de recibirlos): ' + told.map(m => m.subject));
+    j = await (await get(ana, '/stats')).json(); const a1 = j.track.find(x => x.token === tk), a2 = j.track.find(x => x.token === tk2);
+    ok(a1.opens === 3 && a1.ms === 11000 && a1.reached === 2 && j.of === 2 && j.notify === true, 'seguimiento: aperturas, tiempo y hasta dónde llegó: ' + JSON.stringify(a1));
+    ok(a2.opens === 1 && a2.people[0].email === 'leo@cliente.com' && a2.people[0].name === 'Leo' && a2.ask, 'seguimiento: el correo y el nombre de quien lo abrió');
+    const before = (await (await get(ana, '/stats')).json()).visitors; await open(tk);
+    await req('GET', `/api/docs/${id}?r=${tk}`, { headers: { Cookie: ana } });
+    ok((await (await get(ana, '/stats')).json()).track.find(x => x.token === tk).opens === 4, 'seguimiento: la dueña probando su enlace no cuenta');
+    void before;
+    r = await (await T(ana, { del: tk })).json(); ok(!r.track.some(x => x.token === tk), 'seguimiento: quitarlo');
+    ok((await open(tk)).status === 401, 'seguimiento: y deja de abrirla');
+  }
   // Deleting
   ok((await req('POST', `/api/docs/${id}/delete`, { headers: { Cookie: ana } })).status === 200 && (await get(ana)).status === 404, 'nube: la dueña la borra');
   ok(!(await (await req('GET', '/api/docs', { headers: { Cookie: eva } })).json()).shared.length, 'nube: y desaparece de «compartido conmigo»');
