@@ -90,9 +90,9 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
       var p=def(el),who=String(d.voter).slice(0,40),V=votes[p.pollId]||(votes[p.pollId]=load(p.pollId));
       if(p.kind==='qa'){var a=d.answer||{};
         if(a.ask){var txt=String(a.ask).trim().slice(0,200);if(!txt)return;var n=Object.keys(V).filter(function(k){return V[k].by===who;}).length;if(n>=5)return;
-          var id='q:'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);V[id]={t:txt,by:who,time:Date.now(),up:{}};}
+          var id='q:'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);V[id]={t:txt,by:who,time:Date.now(),up:{}};if(p.moderate)V[id].hold=1;}
         else if(a.up&&V[a.up]){if(V[a.up].up[who])delete V[a.up].up[who];else V[a.up].up[who]=1;}else return;
-        store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId});broadcastQA(p);return;}
+        store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId,held:!!(p.moderate&&a.ask)});broadcastQA(p);modPaint();return;}
       c.voter=who;
       if(p.kind==='quiz'){if(revealed[p.pollId]||!started[p.pollId]||V[who])return;var q=clean(p,d.answer);if(q===null)return;
         V[who]={a:q,t:Date.now()-started[p.pollId],n:String(d.name||'').slice(0,24)};if(p.mode==='confidence')V[who].s=!!d.sure;store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId});starsTo(c,who);return;}
@@ -129,7 +129,28 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
    var esc=function(x){return String(x).replace(/[&<>"]/g,function(ch){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch];});};
    inner.innerHTML='<h2 style="margin:0 0 10px;font-size:24px">'+esc(p.question)+'</h2>'+list.map(function(a){var m=by[a.id];return '<div style="padding:8px 0;border-top:1px solid #ddd"><b style="display:inline-block;min-width:3.2em;color:'+(m&&m.score>=5?'#26890c':'#b3261e')+'">'+(m?m.score+'/10':'—')+'</b> '+esc(a.text)+(m?'<div style="font-size:15px;color:#555;margin-top:2px">'+esc(m.feedback)+'</div>':'')+'</div>';}).join('');},
    function(){box.firstChild.textContent=LT('No se pudo corregir.');});return true;}:null;
+ // The audience's questions moderated (poll.moderate, Slido's moderation): approve, hide or discard each one, in a
+ // window of its own for the presenter's screen — the projector only says how many are waiting. M or the right-click menu.
+ var modWin=null,modPoll=null;
+ function modPaint(){if(!modWin||modWin.closed||!modPoll)return;var Vp=V(modPoll.pollId),d=modWin.document,l=d.getElementById('l');if(!l)return;
+  var e=function(x){return String(x).replace(/[&<>"]/g,function(ch){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch];});};
+  var ks=Object.keys(Vp).filter(function(k){return Vp[k]&&Vp[k].t;}).sort(function(a,b){return (Vp[b].hold?1:0)-(Vp[a].hold?1:0)||(Vp[a].time||0)-(Vp[b].time||0);});
+  var tm=function(t){return tally(modPoll,{x:{t:t}}).questions[0].text;};
+  l.innerHTML=ks.length?ks.map(function(k){var q=Vp[k];return '<div class="r'+(q.hold?' h':'')+'"><span>'+e(tm(q.t))+(q.hold?'':' <small>\u25B2 '+Object.keys(q.up||{}).length+'</small>')+'</span>'
+   +(q.hold?'<button data-a="ok" data-k="'+e(k)+'">'+LT('Aprobar')+'</button>':'<button data-a="hide" data-k="'+e(k)+'">'+LT('Ocultar')+'</button>')+'<button data-a="del" data-k="'+e(k)+'">'+LT('Descartar')+'</button></div>';}).join('')
+   :'<p>'+LT('Aún no hay preguntas.')+'</p>';}
+ function modAct(a,k){var p=modPoll,Vp=p&&V(p.pollId);if(!Vp||!Vp[k])return;if(a==='ok')delete Vp[k].hold;else if(a==='hide')Vp[k].hold=1;else if(a==='del')delete Vp[k];else return;
+  store(p.pollId);all().forEach(function(el){var q=def(el);if(q&&q.pollId===p.pollId)paint(el);});broadcastQA(p);modPaint();}
+ window.rvModerate=function(){var s=Reveal.getCurrentSlide(),el=s&&s.querySelector('.rv-poll'),p=el&&def(el);if(!p||p.kind!=='qa')return false;modPoll=p;
+  if(!modWin||modWin.closed){modWin=window.open('','rv-moderate','width=520,height=680');if(!modWin)return false;var d=modWin.document;
+   d.open();d.write('<!doctype html><html><head><meta charset="utf-8"><title></title><style>body{margin:0;padding:18px 20px;font:16px/1.4 system-ui,sans-serif;background:#f7f7f8;color:#1d1f24}h1{font-size:20px;margin:0 0 4px}p.n{margin:0 0 14px;color:#555;font-size:14px}'
+    +'.r{display:flex;gap:8px;align-items:center;padding:10px 12px;margin:0 0 8px;border-radius:10px;background:#fff;border:1px solid #ddd}.r.h{border-color:#d89e00;background:#fff8e6}.r span{flex:1;overflow-wrap:anywhere}small{color:#777}'
+    +'button{font:inherit;font-size:14px;padding:6px 10px;border-radius:8px;border:1px solid #bbb;background:#fff;cursor:pointer}button[data-a=ok]{background:#26890c;border-color:#26890c;color:#fff}</style></head><body><h1></h1><p class="n"></p><div id="l"></div></body></html>');d.close();
+   d.addEventListener('click',function(ev){var b=ev.target.closest&&ev.target.closest('button');if(b)modAct(b.getAttribute('data-a'),b.getAttribute('data-k'));});}
+  var D=modWin.document;D.title=LT('Moderar las preguntas');D.querySelector('h1').textContent=p.question||LT('Moderar las preguntas');
+  D.querySelector('p.n').textContent=p.moderate?LT('Las nuevas esperan aquí a que las apruebes; en la pantalla solo se ve cuántas esperan.'):'';modPaint();modWin.focus();return true;};
  window.addEventListener('keydown',function(e){if((e.key==='n'||e.key==='N')&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!/INPUT|TEXTAREA/.test(e.target.tagName)){e.preventDefault();window.rvPick();}
+  else if((e.key==='m'||e.key==='M')&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!/INPUT|TEXTAREA/.test(e.target.tagName)){if(window.rvModerate())e.preventDefault();}
   else if(e.key==='Escape'){var b=document.getElementById('rv-pick')||document.getElementById('rv-grade');if(b){b.remove();e.stopImmediatePropagation();}}},true);
  // A click on a quiz shows its answer at once.
  document.addEventListener('click',function(e){var el=e.target.closest&&e.target.closest('.rv-poll');var p=el&&def(el);if(p&&((p.kind==='quiz'&&started[p.pollId])||ACT.indexOf(p.kind)>=0)){e.stopPropagation();if(revealed[p.pollId]&&ACT.indexOf(p.kind)>=0)return;reveal(p);}},true);

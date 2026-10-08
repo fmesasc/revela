@@ -188,7 +188,8 @@ function onData(d) {
   if (d?.type === 'slide') { showSlide(d); return; }
   if (d?.type === 'quizresult') { quizResult(d); return; }
   if (d?.type === 'qa') { if (poll?.pollId === d.pollId) renderQA(d.list || []); return; }
-  if (d?.type === 'ok') { if (poll?.pub) return; if (poll?.kind === 'quiz') { const r = $('#quiz-res'); if (r && !r.textContent) r.textContent = '✔ Respuesta enviada. Espera al resultado…'; return; } $('#done').hidden = false; return; }
+  if (d?.type === 'ok') { if (poll?.pub) return;
+    if (d.held) { const h = $('#qa-held'); if (h) { h.hidden = false; h.textContent = '✔ Enviada. Saldrá cuando la apruebe quien presenta.'; } return; } if (poll?.kind === 'quiz') { const r = $('#quiz-res'); if (r && !r.textContent) r.textContent = '✔ Respuesta enviada. Espera al resultado…'; return; } $('#done').hidden = false; return; }
   if (d?.type !== 'poll') return;
   if (!d.poll) { poll = null; show('wait'); return; }
   if (poll?.pollId === d.poll.pollId) return;               // same question: keep the choice
@@ -248,7 +249,8 @@ function renderAnswers() {
     const ask = document.createElement('button'); ask.textContent = 'Preguntar';
     ask.addEventListener('click', () => { const v = ta.value.trim(); if (!v || !conn?.open) return; conn.send({ type: 'vote', pollId: poll.pollId, voter, answer: { ask: v } }); ta.value = ''; });
     const list = document.createElement('div'); list.id = 'qa-list';
-    box.append(ta, ask, list); renderQA([]); return;
+    const held = el('p', { id: 'qa-held', hidden: true, style: 'color:var(--txt2);font-size:14px' });
+    box.append(ta, ask, held, list); renderQA([]); return;
   }
   if (poll.kind === 'word') {
     const i = document.createElement('input'); i.type = 'text'; i.maxLength = 60; i.placeholder = 'Tu respuesta (separa varias con comas)';

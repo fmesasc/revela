@@ -66,3 +66,12 @@ export function kitFromFile(text) {
   if (!o?.revelaBrandKit) return null;
   return cleanKit({ ...o, id: uid() });
 }
+
+// What the server read from a website (/api/brand/site) as a kit to check: its fonts only if the catalogue has them
+// (missing: the ones it hasn't, to say so).
+export function kitFromSite(r) {
+  const pick = n => FONTS.find(f => f.stack && f.name.toLowerCase() === String(n || '').trim().toLowerCase())?.name || '';
+  const missing = [...new Set([r?.fonts?.heading, r?.fonts?.body].filter(f => f && !pick(f)))];
+  return { kit: { id: uid(), name: String(r?.name || r?.site || 'Mi marca').slice(0, 60), colors: (r?.colors || []).filter(c => HEX6.test(c)).slice(0, 8),
+    fonts: { heading: pick(r?.fonts?.heading), body: pick(r?.fonts?.body) }, logos: (r?.logos || []).filter(l => /^data:image\//.test(l)).slice(0, 4) }, missing };
+}

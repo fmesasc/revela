@@ -80,6 +80,7 @@ import { storageConfig, MB } from './storage.js';
 import { handleVisit, visitsCall, cleanPath } from './visits.js';
 import { APP_VERSION } from '../../src/core/config.js';
 import { credits, aiChat, aiImage, aiSpeech } from './ai.js';
+import { brandFromSite } from './brand.js';
 import { stripeConf, billingMode, trialOffer, checkout, portal, stripeWebhook } from './billing.js';
 
 export const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -1016,6 +1017,7 @@ export async function handleApi(req, env, url) {
     case '/ai/chat': return aiChat(env, s, A, body, json);
     case '/ai/image': return aiImage(env, s, A, body, json);
     case '/ai/speech': return aiSpeech(env, s, A, body, json);
+    case '/brand/site': return req.method === 'POST' ? brandFromSite(env, A, body, json) : json({ error: 'POST' }, 405);
     case '/stock/search': return stockSearch(env, A, url, json);
     case '/stock/used': return stockUsed(env, body, json);
     case '/billing/checkout': return checkout(env, s, me, A, body, json);

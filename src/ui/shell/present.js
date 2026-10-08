@@ -34,9 +34,11 @@ export function present({ rehearse = false, fullscreen = true, onEnd = null, onR
   // (Top right, always findable: the speaker view — notes, the next slide, the time — and the way out.)
   const bar = document.createElement('div'); bar.id = 'present-bar';
   bar.innerHTML = `<button type="button" id="present-notes" title="${t('Vista del moderador: notas, siguiente diapositiva y tiempo (S)')}"><i class="ms">co_present</i><span>${t('Vista del moderador')}</span></button>`
+    + `<button type="button" id="present-prompter" title="${t('Las notas de cada diapositiva, grandes y desplazándose solas, en una ventana aparte: ponla junto a la cámara al grabar o en una videollamada')}"><i class="ms">subtitles</i><span>${t('Apuntador')}</span></button>`
     + `<button type="button" id="present-close" title="${t('Salir (Esc)')}"><i class="ms">close</i><span>${t('Salir')}</span></button>`;
   const close = bar.querySelector('#present-close');
   bar.querySelector('#present-notes').addEventListener('click', () => { frame.contentWindow?.Reveal?.getPlugin?.('notes')?.open?.(); frame.focus(); });
+  bar.querySelector('#present-prompter').addEventListener('click', () => { import('./prompter.js').then(m => m.openPrompter()); frame.focus(); });
   overlay.appendChild(bar);
   document.body.appendChild(overlay);
 

@@ -869,6 +869,74 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { f.remove(); URL.revokeObjectURL(fake); URL.revokeObjectURL(noqr); }
   });
 
+  await test('preguntas del público moderadas y palabrotas tapadas: esperan en una ventana aparte, la pantalla solo dice cuántas', async () => {
+    reset(); const P = R.poll;
+    eq(P.tallyVotes({ kind: 'open', clean: true }, { a: { t: 'Qué mierda, joder' }, b: { t: 'El putamen, el motor Wankel y un cono' } }).texts.map(x => x.text).sort().join('|'),
+      'El putamen, el motor Wankel y un cono|Qué m*****, j****', 'palabrotas tapadas (y no las palabras que solo se les parecen)');
+    eq(Object.keys(P.tallyVotes({ kind: 'word', clean: true }, { a: 'shit, sol' }).words).sort().join(), 's***,sol', 'también en la nube de palabras');
+    eq(P.tallyVotes({ kind: 'open' }, { a: { t: 'mierda' } }).texts[0].text, 'mierda', 'sin la opción, tal cual');
+    const qa = P.tallyVotes({ kind: 'qa', moderate: true }, { 'q:1': { t: 'Vista', up: {} }, 'q:2': { t: 'Espera', hold: 1, up: {} } });
+    eq(qa.questions.map(x => x.text).join() + '|' + qa.pending, 'Vista|1', 'las que esperan no se cuentan ni se ven');
+    assert(/1 esperando aprobación/.test(P.pollResultsHTML({ kind: 'qa' }, qa)), 'la pantalla dice cuántas esperan');
+    R.poll.addPoll({ kind: 'qa', question: '¿Dudas?', options: [] }); const pq = last(); R.poll.clearVotes(pq.pollId);
+    const E = await frame.contentWindow.eval("import('/src/ui/dialogs/poll.js')"); E.openPollEditor(pq); await sleep(10);
+    const m = D.getElementById('poll-modal'); assert(m, 'el diálogo de la votación');
+    assert(!m.querySelector('.pl-mod').closest('label').hidden && !m.querySelector('.pl-clean').closest('label').hidden, 'con las dos opciones para las preguntas');
+    m.querySelector('.pl-mod').checked = true; m.querySelector('.pl-clean').checked = true; m.querySelector('.pl-ok').click(); await sleep(10);
+    eq(!!last().moderate + '|' + !!last().clean, 'true|true', 'se guardan');
+    const fake = URL.createObjectURL(new Blob(['window.Peer=function(id){var s=this;s.h={};s.on=function(e,f){(s.h[e]=s.h[e]||[]).push(f);};s.destroy=function(){};window.__votePeer=s;setTimeout(function(){(s.h.open||[]).forEach(function(f){f(id);});},0);};'], { type: 'text/javascript' }));
+    const noqr = URL.createObjectURL(new Blob(['window.QRCode=null;'], { type: 'text/javascript' }));
+    const { f, win, doc } = await deckFrame(R.io.buildHTML(R.state.deck, { inApp: true }).split(R.vendor.PEERJS).join(fake).split(R.vendor.QRCODE).join(noqr), 800, 450);
+    try {
+      for (let i = 0; i < 40 && !win.__votePeer?.h.connection; i++) await sleep(50);
+      const sent = [], c = { open: true, h: {}, on(e, fn) { (this.h[e] = this.h[e] || []).push(fn); }, send(x) { sent.push(x); }, close() {} };
+      win.__votePeer.h.connection.forEach(fn => fn(c)); c.h.open.forEach(fn => fn());
+      const say = d => c.h.data.forEach(fn => fn(d)), res = () => doc.querySelector('.present .rv-poll-res').textContent;
+      say({ type: 'vote', pollId: pq.pollId, voter: 'v1', answer: { ask: '¿Por qué tanta mierda de deberes?' } });
+      eq(sent.filter(x => x.type === 'ok').at(-1)?.held, true, 'quien pregunta sabe que espera aprobación');
+      assert(/1 esperando aprobación/.test(res()) && !/deberes/.test(res()), 'en pantalla, solo cuántas esperan');
+      eq(sent.filter(x => x.type === 'qa').at(-1).list.length, 0, 'los móviles no la ven aún');
+      // (The moderation window: a frame here stands for the window it opens.)
+      const pop = doc.createElement('iframe'); doc.body.appendChild(pop); win.open = () => pop.contentWindow;
+      assert(win.rvModerate(), 'M abre la ventana de moderar');
+      const pd = pop.contentWindow.document, btn = a => pd.querySelector(`button[data-a="${a}"]`);
+      assert(/m\*{5}/.test(pd.getElementById('l').textContent), 'la pregunta, con la palabrota tapada');
+      btn('ok').click();
+      assert(/m\*{5} de deberes/.test(res()) && !/esperando/.test(res()), 'aprobada: sale en pantalla, tapada');
+      eq(sent.filter(x => x.type === 'qa').at(-1).list.map(x => x.text).join(), '¿Por qué tanta m***** de deberes?', 'y en los móviles');
+      btn('hide').click(); assert(/1 esperando aprobación/.test(res()), 'ocultarla la devuelve a la espera');
+      btn('del').click(); assert(!/esperando/.test(res()) && /Aún no hay preguntas/.test(pd.getElementById('l').textContent), 'descartarla la quita');
+      const fresh = R.io.buildHTML(R.state.deck, { inApp: true }); assert(/&quot;moderate&quot;:true/.test(fresh) && /&quot;clean&quot;:true/.test(fresh), 'la página exportada lleva las dos opciones');
+    } finally { f.remove(); URL.revokeObjectURL(fake); URL.revokeObjectURL(noqr); }
+  });
+
+  await test('apuntador: las notas de la diapositiva, grandes, en una ventana aparte que avanza sola y sigue a la presentación', async () => {
+    reset(); const W = frame.contentWindow;
+    R.store.commit(() => { slide().notes = 'Primera línea de la nota.\n'.repeat(60); });
+    R.slides.addSlide('blank'); R.store.commit(() => { slide().notes = 'Notas de la segunda'; });
+    R.slides.addSlide('blank'); R.slides.goToSlide(0);
+    const pop = D.createElement('iframe'); pop.style.cssText = 'width:900px;height:380px'; D.body.appendChild(pop); const open0 = W.open; W.open = () => pop.contentWindow;
+    try {
+      D.querySelector('[data-action="prompter"]').click(); await sleep(150);
+      const pd = pop.contentWindow.document, txt = () => pd.getElementById('in').textContent, box = pd.getElementById('txt');
+      assert(/^Primera línea/.test(txt()), 'muestra las notas de la diapositiva que se edita');
+      const y0 = box.scrollTop; await sleep(700); assert(box.scrollTop > y0, 'y avanzan solas');
+      pd.dispatchEvent(new pop.contentWindow.KeyboardEvent('keydown', { key: ' ', bubbles: true })); const y1 = box.scrollTop; await sleep(400);
+      eq(box.scrollTop, y1, 'espacio: se para');
+      const fs = parseFloat(pd.getElementById('in').style.fontSize); pd.querySelector('[data-k="bigger"]').click(); await sleep(50);
+      assert(parseFloat(pd.getElementById('in').style.fontSize) > fs, 'A+: letra más grande');
+      R.slides.goToSlide(1); await sleep(100); eq(txt(), 'Notas de la segunda', 'cambia con la diapositiva');
+      R.slides.goToSlide(2); await sleep(100); assert(/no tiene notas/.test(txt()), 'sin notas: lo dice');
+      R.slides.goToSlide(0); R.io.present({ fullscreen: false });
+      const f = D.querySelector('#present-overlay iframe'); let Rv = null;
+      for (let i = 0; i < 80 && !(Rv = f.contentWindow?.Reveal)?.isReady?.(); i++) await sleep(50);
+      assert(D.querySelector('#present-prompter'), 'al presentar, un botón para abrirlo');
+      Rv.slide(1); await sleep(100); eq(txt(), 'Notas de la segunda', 'presentando: sigue a la diapositiva que se ve');
+      D.getElementById('present-close').click(); await sleep(50);
+      (await W.eval("import('/src/ui/shell/prompter.js')")).closePrompter();
+    } finally { W.open = open0; pop.remove(); }
+  });
+
   await test('votaciones nuevas en directo: el móvil recibe lo que necesita y la presentación acepta solo respuestas válidas', async () => {
     reset();
     const G = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';

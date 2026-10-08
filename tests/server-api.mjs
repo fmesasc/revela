@@ -295,6 +295,39 @@ ok((await req('POST', '/api/desktop/claim', { origin: 'tauri://localhost', body:
   delete env.UNSPLASH_ACCESS_KEY;
 }
 
+// ---- The brand from a website (brand kit ▸ «Sacar la marca de la web») ----
+{
+  const ev = cookieFrom(await req('POST', '/api/login', { body: { accessToken: 'tok-eva', terms: TERMS } }));
+  const prev = env.FETCH, asked = [];
+  const PAGE = `<html><head><title>Inicio | Escola Mar Blava</title><meta name="theme-color" content="#0b5fa5">
+    <link rel="stylesheet" href="/css/main.css"><link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Lato&display=swap" rel="stylesheet">
+    <link rel="apple-touch-icon" href="/touch.png"><style>body{background:#fffdf8;color:#222}</style></head>
+    <body><header><a href="/"><img class="site-logo" src="/img/logo.png" alt="Escola Mar Blava"></a></header><svg class="logo-mark" viewBox="0 0 10 10"><circle r="5"/></svg></body></html>`;
+  const CSS = `:root{--brand-primary:#0b5fa5;--brand-accent:#f2a900;--blue:#007bff}h1,h2{font-family:"Montserrat",sans-serif}body{font-family:'Lato',Arial,sans-serif}
+    .btn{background:#f2a900;color:#fff}a:hover{color:#0b5fa5}.alert{background:rgba(0,0,0,.1)}`;
+  env.FETCH = async (u, init) => { const s = String(u); asked.push(s);
+    if (s === 'https://marblava.example/') return new Response(PAGE, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+    if (s === 'https://marblava.example/css/main.css') return new Response(CSS, { headers: { 'content-type': 'text/css' } });
+    if (s === 'https://marblava.example/img/logo.png') return new Response(new Uint8Array([137, 80, 78, 71, 1, 2, 3]), { headers: { 'content-type': 'image/png' } });
+    if (s === 'https://bloquea.example/') return new Response('no', { status: 403 });
+    return prev(u, init); };
+  try {
+    ok((await req('POST', '/api/brand/site', { body: { url: 'marblava.example' } })).status === 401, 'marca de una web: sin sesión no');
+    const r = await req('POST', '/api/brand/site', { headers: { Cookie: ev }, body: { url: 'marblava.example' } }), d = await r.json();
+    ok(r.status === 200 && d.name === 'Escola Mar Blava', 'marca de una web: el nombre (la parte del título que no es «Inicio»): ' + d.name);
+    ok(d.colors[0] === '#fffdf8' && d.colors[1] === '#222222', 'marca de una web: fondo y texto: ' + d.colors.slice(0, 2));
+    ok(d.colors[2] === '#0b5fa5' && d.colors[3] === '#f2a900' && !d.colors.includes('#007bff'), 'marca de una web: los colores de la marca primero, sin los de Bootstrap: ' + d.colors);
+    ok(d.fonts.heading === 'Montserrat' && d.fonts.body === 'Lato', 'marca de una web: las fuentes de los títulos y del texto: ' + JSON.stringify(d.fonts));
+    ok(d.logos[0] === 'data:image/png;base64,iVBORwECAw==' && /^data:image\/svg\+xml;base64,/.test(d.logos[1]), 'marca de una web: el logotipo, traído como imagen (y el SVG de la página)');
+    ok(!asked.some(x => /fonts\.googleapis/.test(x)), 'marca de una web: no descarga las hojas de Google Fonts (le basta el enlace)');
+    for (const bad of ['http://localhost:8787/', 'http://192.168.1.10/', 'file:///etc/passwd', 'https://user:pw@marblava.example/', 'ftp://x.example/'])
+      ok((await req('POST', '/api/brand/site', { headers: { Cookie: ev }, body: { url: bad } })).status === 400, 'marca de una web: no lee direcciones privadas ni raras: ' + bad);
+    ok((await req('POST', '/api/brand/site', { headers: { Cookie: ev }, body: { url: 'https://bloquea.example/' } })).status === 502, 'marca de una web: una web que no deja leerse, un error claro');
+    let limited = false; for (let i = 0; i < 8 && !limited; i++) limited = (await req('POST', '/api/brand/site', { headers: { Cookie: ev }, body: { url: 'marblava.example' } })).status === 429;
+    ok(limited, 'marca de una web: unas pocas por minuto');
+  } finally { env.FETCH = prev; }
+}
+
 // ---- Presentations in the cloud: roles checked by the server ----
 {
   const login = async tok => cookieFrom(await req('POST', '/api/login', { body: { accessToken: tok, terms: TERMS } }));

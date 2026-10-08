@@ -96,6 +96,7 @@ body.anim-painting #stage,body.anim-painting #stage .block{cursor:copy}
 #rec-bar .rec-time{font-variant-numeric:tabular-nums;opacity:.85}
 #rec-bar button{border:0;border-radius:16px;padding:5px 12px;cursor:pointer;background:#e53935;color:#fff;font-weight:600}
 #rec-bar .rec-cancel{background:#fff2;padding:5px 9px}
+#rec-bar .rec-prompt{background:#fff2;font-weight:500}
 @keyframes recBlink{50%{opacity:.3}}
 /* Slide master & placeholders */
 .master-layer{position:absolute;inset:0;pointer-events:none;z-index:0;overflow:hidden}

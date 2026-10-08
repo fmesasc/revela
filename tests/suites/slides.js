@@ -228,6 +228,10 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     // The dialog: apply from the list.
     reset(); D.querySelector('[data-action="brand-kit"]').click(); await sleep(20);
     const m = D.getElementById('bk-modal'); assert(m.querySelector('.bk-kit b').textContent === 'Colegio', 'el diálogo lista los kits');
+    assert(m.querySelector('.bk-web').hidden, 'sacar la marca de una web: solo con cuentas (lo lee el servidor)');
+    const fs = K.kitFromSite({ name: 'Escola Mar Blava', colors: ['#fffdf8', '#222222', '#0b5fa5', 'rojo'], fonts: { heading: 'montserrat', body: 'Fuente Rara' }, logos: ['data:image/png;base64,AA==', 'javascript:x'] });
+    eq(fs.kit.name + '|' + fs.kit.colors.join() + '|' + fs.kit.fonts.heading + '|' + fs.kit.fonts.body + '|' + fs.kit.logos.length, 'Escola Mar Blava|#fffdf8,#222222,#0b5fa5|Montserrat||1', 'de una web a un kit: fuentes del catálogo, colores y logotipos válidos');
+    eq(fs.missing.join(), 'Fuente Rara', 'y dice qué fuentes de la web no están en el catálogo');
     m.querySelector('[data-a="apply"]').click(); await sleep(20);
     assert(R.state.deck.palette === 'custom' && !D.getElementById('bk-modal'), 'aplicar desde el diálogo');
     K.listKits().forEach(k => K.deleteKit(k.id)); eq(K.kitColours().length, 0, 'borrados, ya no se ofrecen sus colores');

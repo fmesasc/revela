@@ -23,6 +23,9 @@ export function openPollEditor(b, { fresh = false } = {}) {
       <div class="pl-stage"><img alt=""><div class="pl-marks"></div></div></div>
     <label class="fr-l pl-opts-l">${t('Opciones (una por línea)')}<textarea class="pl-opts" rows="5"></textarea></label>
     <div class="pl-imgs" hidden></div>
+    <label class="fr-chk pl-mod-l"><input type="checkbox" class="pl-mod"${b.moderate ? ' checked' : ''}> ${t('Aprobar cada pregunta antes de que salga en pantalla')}</label>
+    <p class="host-help pl-mod-l">${t('Al presentar, la tecla M (o clic derecho ▸ «Moderar las preguntas») abre una ventana para aprobarlas, ocultarlas o descartarlas: llévala a tu pantalla. Las preguntas no llevan el nombre de quien pregunta.')}</p>
+    <label class="fr-chk pl-clean-l"><input type="checkbox" class="pl-clean"${b.clean ? ' checked' : ''}> ${t('Tapar las palabrotas')}</label>
     <div class="pl-rub" hidden><label class="fr-l">${t('Criterios para corregir con IA (opcional)')}<textarea class="pl-rubric" rows="3" maxlength="2000" placeholder="${t('p. ej.: Nombra las tres partes, pon un ejemplo y usa las palabras de clase.')}">${(b.rubric || '').replace(/</g, '&lt;')}</textarea></label>
       <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 pl-grade"><i class="ms">auto_awesome</i> ${t('Corregir con IA las respuestas')}</button></div>
       <p class="host-help">${t('También al presentar desde el editor: clic derecho ▸ «Corregir con IA las respuestas»; a cada móvil le llega su nota y un comentario.')}</p><div class="pl-graded"></div></div>
@@ -79,6 +82,7 @@ export function openPollEditor(b, { fresh = false } = {}) {
   const sync = () => { const k = q('.pl-kind').value; q('.pl-opts-l').hidden = ['rating', 'word', 'qa', 'board', 'gaps', 'open', 'number', 'point', 'draw', 'photo'].includes(k);
     q('.pl-num').hidden = k !== 'number'; q('.pl-imgs').hidden = k !== 'image'; if (k === 'image') drawImgs(); q('.pl-rub').hidden = k !== 'open';
     back.querySelectorAll('.pl-quiz').forEach(x => { x.hidden = k !== 'quiz'; });
+    back.querySelectorAll('.pl-mod-l').forEach(x => { x.hidden = k !== 'qa'; }); q('.pl-clean-l').hidden = !['qa', 'word', 'open'].includes(k);
     back.querySelectorAll('.pl-teams-l').forEach(x => { x.hidden = k !== 'quiz' && k !== 'board'; });
     q('.pl-help').hidden = !HELP[k]; q('.pl-help').textContent = HELP[k] ? t(HELP[k]) : '';
     const picOnly = k === 'point' || k === 'draw';
@@ -137,6 +141,7 @@ export function openPollEditor(b, { fresh = false } = {}) {
     const kind = q('.pl-kind').value;
     setPoll(b.id, { question: q('.pl-q').value.trim(), kind, display: q('.pl-disp').value, options: options.length ? options : b.options,
       async: ASYNC_KINDS.includes(kind) && q('.pl-async').checked ? true : null,
+      moderate: kind === 'qa' && q('.pl-mod').checked ? true : null, clean: ['qa', 'word', 'open'].includes(kind) && q('.pl-clean').checked ? true : null,
       color: q('.pl-ink-auto').checked ? null : q('.pl-ink').value,
       ...(kind === 'quiz' && { correct: correct.length ? correct : [0], time: +q('.pl-time').value, mode: q('.pl-mode').value === 'speed' ? null : q('.pl-mode').value }),
       ...(kind === 'gaps' && { text: q('.pl-text').value.trim() }),

@@ -7,18 +7,21 @@ import { present } from './present.js';
 import { state } from '../../core/store.js';
 import { alertDialog } from '../dialogs/dialog.js';
 import { t } from '../../i18n/index.js';
+import { openPrompter } from './prompter.js';
 
 let active = null;
 
 function bar(label, onStop, onCancel) {
   const el = document.createElement('div'); el.id = 'rec-bar';
   el.innerHTML = `<span class="rec-dot"></span><span class="rec-label"></span><span class="rec-time">0:00</span>`
+    + `<button type="button" class="rec-prompt" title="${t('Las notas de cada diapositiva, grandes y desplazándose solas, en una ventana aparte: ponla junto a la cámara al grabar o en una videollamada')}">${t('Apuntador')}</button>`
     + `<button type="button" class="rec-stop">■ ${t('Detener')}</button><button type="button" class="rec-cancel" title="${t('Cancelar')}">✕</button>`;
   el.querySelector('.rec-label').textContent = label;
   const t0 = Date.now(), tick = setInterval(() => {
     const s = Math.round((Date.now() - t0) / 1000); el.querySelector('.rec-time').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   }, 500);
   const done = () => { clearInterval(tick); el.remove(); };
+  el.querySelector('.rec-prompt').addEventListener('click', () => openPrompter());
   el.querySelector('.rec-stop').addEventListener('click', () => { done(); onStop(); });
   el.querySelector('.rec-cancel').addEventListener('click', () => { done(); onCancel(); });
   document.body.appendChild(el);

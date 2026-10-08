@@ -44,8 +44,15 @@ export function setPoll(id, props) {
 // picture): marking and what the phones get, in grading.js (the server marks too).
 import { ACTIVITIES, gradeActivity, publicActivity, gradeAnswer } from './grading.js';
 export { ACTIVITIES, gradeActivity, publicActivity, gradeAnswer };
+// (poll.clean: rude words shown masked, «m****», in the questions, the word cloud and the open answers — whoever and
+// however they came: live, by a link, kept. A short list of the common ones in the site's languages: whole words, or the
+// start of one when it can't be the start of a harmless word.)
 export function tallyVotes(poll, votes) {
   var kind = poll.kind || 'choice', n = (poll.options || []).length, counts = [], words = {}, sum = 0, voters = 0;
+  var tame = function (s) { s = String(s); if (!poll.clean) return s;
+    return s.replace(/[\p{L}\p{M}]+/gu, function (w) { var k = w.toLowerCase().normalize('NFD').replace(/[\u0300-\u0302\u0304-\u036f]/g, '').normalize('NFC');
+      return /^(?:putain|puttan|gilipoll|cabron|mierd|merd[ae]|jod(?:er|id)|foll(?:ar|ad)|maric[oó]n|imbecil|pendej|ching[aá]|coño|fuck|shit|bitch|cunt|asshole|bastard|motherf|dickhead|bollock|slut|whore|connard|connass|salope|encul|batard|scheiss|scheiß|arschloch|fotze|wichser|hurensohn|ficken|cazz[oi]|vaffancul|stronz|minchia|coglion|caralh|fod[ae]|buceta|viado|klootzak|godverd)/.test(k)
+        || /^(?:put[ao]s?|wank(?:er|ers|ing)?|polla|pollas|pute|putes|nique|niquer|fick|fag|fags|faggot|nigg(?:er|a)s?|kut|lul|hoer|hoeren)$/.test(k) ? w.charAt(0) + w.slice(1).replace(/./gu, '*') : w; }); };
   if (kind === 'order' || kind === 'match' || kind === 'gaps' || kind === 'label') {
     var items = null, total = 0, list = [];
     for (var w in votes) { var vv = votes[w]; if (!vv || !vv.a) continue; var g = gradeActivity(poll, vv.a); voters++; total += g.score;
@@ -69,17 +76,18 @@ export function tallyVotes(poll, votes) {
     return { counts: counts, words: {}, voters: voters, average: 0, board: board };
   }
   if (kind === 'qa') {                      // audience questions: { 'q:id': { t: text, up: { voter: 1 } } }
-    var qs = [], people = {};
-    for (var id in votes) { var q = votes[id]; if (!q || !q.t) continue; var ups = Object.keys(q.up || {});
+    // (poll.moderate: a question waits, «hold», until the presenter approves it — not shown nor counted till then.)
+    var qs = [], people = {}, pending = 0;
+    for (var id in votes) { var q = votes[id]; if (!q || !q.t) continue; if (q.hold) { pending++; continue; } var ups = Object.keys(q.up || {});
       ups.forEach(function (v) { people[v] = 1; }); if (q.by) people[q.by] = 1;
-      qs.push({ id: id, text: q.t, up: ups.length, time: q.time || 0 }); }
+      qs.push({ id: id, text: tame(q.t), up: ups.length, time: q.time || 0 }); }
     qs.sort(function (a, b) { return b.up - a.up || a.time - b.time; });
-    return { counts: [], words: {}, voters: Object.keys(people).length, average: 0, questions: qs };
+    return { counts: [], words: {}, voters: Object.keys(people).length, average: 0, questions: qs, pending: pending };
   }
   // Open answers (a wall), a number guessed (its spread), a point on a picture, a preference order (Borda count).
   if (kind === 'open') {
     var texts = [];
-    for (var o in votes) { var tx = votes[o]; if (tx && tx.t) { voters++; texts.push({ text: String(tx.t), time: tx.time || 0 }); } }
+    for (var o in votes) { var tx = votes[o]; if (tx && tx.t) { voters++; texts.push({ text: tame(tx.t), time: tx.time || 0 }); } }
     texts.sort(function (a, b) { return b.time - a.time; });
     return { counts: [], words: {}, voters: voters, average: 0, texts: texts };
   }
@@ -115,7 +123,7 @@ export function tallyVotes(poll, votes) {
   for (var k in votes) {
     var a = votes[k]; voters++;
     if (kind === 'word') {
-      String(a || '').toLowerCase().split(/[,;]/).forEach(function (w) { w = w.trim().slice(0, 30); if (w) words[w] = (words[w] || 0) + 1; });
+      tame(String(a || '').toLowerCase()).split(/[,;]/).forEach(function (w) { w = w.trim().slice(0, 30); if (w) words[w] = (words[w] || 0) + 1; });
     } else if (kind === 'multi') {
       (Array.isArray(a) ? a : [a]).forEach(function (x) { if (x >= 0 && x < n) counts[x]++; });
     } else if (kind === 'rating') {
@@ -190,7 +198,7 @@ export function pollResultsHTML(poll, res, accent, L) {
       return '<div style="display:flex;gap:.6em;align-items:center;padding:.3em .5em;border-radius:.3em;background:' + (i ? '#8882' : cols[0]) + (i ? '' : ';color:#fff') + '">'
         + '<b style="flex:0 0 2.2em;text-align:center">▲ ' + q.up + '</b><span>' + esc(q.text) + '</span></div>';
     }).join('') : '<div style="opacity:.6">' + T('Escanea el QR y envía tu pregunta…') + '</div>') + '</div>'
-      + '<div style="margin-top:.6em;font-size:.55em;opacity:.7">' + (res.questions || []).length + ' ' + T('preguntas') + '</div>';
+      + '<div style="margin-top:.6em;font-size:.55em;opacity:.7">' + (res.questions || []).length + ' ' + T('preguntas') + (res.pending ? ' · ' + res.pending + ' ' + T('esperando aprobación') : '') + '</div>';
   }
   if (kind === 'open') {
     var tl = (res.texts || []).slice(0, 24);
@@ -265,7 +273,7 @@ export function pollResultsHTML(poll, res, accent, L) {
 }
 
 // The results' words in the interface's language (for pollResultsHTML, also in exported pages).
-const POLL_WORDS = ['La IA está corrigiendo…', 'Para corregir con IA, conéctala en el editor.', 'No se pudo corregir.', 'Nivel', '¿A quién le toca?', 'Clic para cerrar · N para otra vez', 'Aún no hay nadie con nombre: que lo escriban al entrar en la votación.', 'Las palabras del público aparecerán aquí', 'Las respuestas del público aparecerán aquí', 'Media', 'Mediana', 'Respuesta', 'voto', 'votos', 'respuesta', 'respuestas', 'Jugador', 'Aún no hay puntos: juega los cuestionarios.', '% de aciertos', 'Clic para ver las soluciones', 'Escanea el QR y envía tu pregunta…', 'preguntas'];
+const POLL_WORDS = ['La IA está corrigiendo…', 'Para corregir con IA, conéctala en el editor.', 'No se pudo corregir.', 'Nivel', '¿A quién le toca?', 'Clic para cerrar · N para otra vez', 'Aún no hay nadie con nombre: que lo escriban al entrar en la votación.', 'Las palabras del público aparecerán aquí', 'Las respuestas del público aparecerán aquí', 'Media', 'Mediana', 'Respuesta', 'voto', 'votos', 'respuesta', 'respuestas', 'Jugador', 'Aún no hay puntos: juega los cuestionarios.', '% de aciertos', 'Clic para ver las soluciones', 'Escanea el QR y envía tu pregunta…', 'preguntas', 'esperando aprobación', 'Aprobar', 'Ocultar', 'Descartar', 'Aún no hay preguntas.', 'Moderar las preguntas', 'Las nuevas esperan aquí a que las apruebes; en la pantalla solo se ve cuántas esperan.'];
 export const pollLabels = () => Object.fromEntries(POLL_WORDS.map(w => [w, t(w)]));
 
 // Markup of a poll in the editor and thumbnails: question, current results

@@ -169,6 +169,7 @@ export const ACTIONS = {
   'share-classroom': () => shareToClassroom(),
   'coach': () => startCoach(),
   'record-show': () => recorder.recordSlideshow(),
+  'prompter': () => import('../shell/prompter.js').then(m => m.openPrompter()),
   'record-screen': () => recorder.recordToSlide('screen'),
   'record-camera': () => recorder.recordToSlide('camera'),
   'insert-camera': () => media.addCamera('circle'),

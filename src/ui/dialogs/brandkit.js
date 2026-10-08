@@ -3,11 +3,12 @@
 // with the team, read one from a file, or start one from this presentation.
 
 import { esc } from '../../core/text.js';
-import { listKits, saveKit, deleteKit, kitFromDeck, applyKit, kitFile, kitFromFile, cleanKit } from '../../features/design/brandkit.js';
+import { listKits, saveKit, deleteKit, kitFromDeck, applyKit, kitFile, kitFromFile, cleanKit, kitFromSite } from '../../features/design/brandkit.js';
 import { FONTS, ensureFont } from '../../features/design/fonts.js';
 import { readFile } from '../shell/openfile.js';
 import { alertDialog, confirmDialog } from './dialog.js';
 import { t } from '../../i18n/index.js';
+import { api, hasAccounts } from '../../io/cloud/account.js';
 
 const ROLES = ['Fondo', 'Texto', 'Acento 1', 'Acento 2', 'Acento 3', 'Acento 4', 'Acento 5', 'Acento 6'];
 
@@ -22,6 +23,8 @@ export function openBrandKit() {
     <div class="fr-actions" style="justify-content:flex-start;flex-wrap:wrap">
       <button type="button" class="fr-do bk-new">${t('Nuevo desde esta presentación')}</button>
       <button type="button" class="mini2 bk-import">${t('Abrir un kit (.json)')}</button></div>
+    <form class="bk-web sh-row"${hasAccounts() ? '' : ' hidden'}><input type="text" class="bk-url" inputmode="url" placeholder="${t('Dirección de la web de tu marca (p. ej. tucentro.edu)')}" aria-label="${t('Dirección de la web de tu marca (p. ej. tucentro.edu)')}">
+      <button type="submit" class="mini2">${t('Sacar la marca de la web')}</button></form><p class="host-help bk-web-msg"></p>
     <div class="bk-edit" hidden></div></div>`;
   document.body.appendChild(back);
   const q = s => back.querySelector(s), close = () => back.remove();
@@ -46,6 +49,19 @@ export function openBrandKit() {
     else if (a === 'del' && await confirmDialog(t('¿Borrar el kit «{n}»?').replace('{n}', k.name))) { deleteKit(id); list(); }
   });
   q('.bk-new').addEventListener('click', () => edit(kitFromDeck()));
+  // From a website (Prezi AI's brand from a URL): the server reads its colours, fonts and logo; the kit opens to be checked.
+  q('.bk-web').addEventListener('submit', async e => {
+    e.preventDefault(); const url = q('.bk-url').value.trim(), msg = q('.bk-web-msg'), btn = q('.bk-web button'); if (!url) return;
+    msg.textContent = t('Leyendo la web…'); btn.disabled = true;
+    try {
+      const { kit: k, missing } = kitFromSite(await api('brand/site', { url }));
+      msg.textContent = t('Revisa lo que ha salido y guárdalo.') + (missing.length ? ' ' + t('La web usa {f}, que no está en el catálogo: elige la más parecida.').replace('{f}', missing.join(', ')) : '');
+      edit(k);
+    } catch (err) {
+      msg.textContent = err.status === 400 ? t('Esa dirección no es válida.') : err.status === 429 ? t('Demasiadas seguidas: espera un minuto.') : err.status === 401 ? t('Entra en tu cuenta para usarlo.')
+        : t('No se pudo leer esa web (algunas no dejan que otros programas las lean).');
+    } finally { btn.disabled = false; }
+  });
   q('.bk-import').addEventListener('click', () => readFile('.json,application/json', txt => {
     const k = kitFromFile(txt); if (!k) { alertDialog(t('Ese archivo no es un kit de marca.')); return; }
     saveKit(k); list();
