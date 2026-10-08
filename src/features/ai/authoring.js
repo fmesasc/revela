@@ -14,7 +14,7 @@ import { withAttachments } from './attach.js';
 import { PDFJS } from '../../core/vendor.js';
 import { styledSlide, hasLayouts, pictureBox, compose, contrast, codeCard, fitBody } from './fromspec.js';
 import { KINDS, prepareSpec, splitSpec } from './specs.js';
-import { amounts, deckQuality, weakSlides } from './quality.js';
+import { amounts, deckQuality, weakSlides, isTechnical } from './quality.js';
 export { findMedia } from './media.js';
 import { codeFontSize, codeHeight, mathFontSize, AI_LANGS } from './codeobj.js';
 import { richHTML } from './richtext.js';
@@ -275,12 +275,14 @@ export async function createOutline(opts = {}) {
   const out = await chatJSON([
     { role: 'system', content: `Plan a presentation that someone will present out loud. Answer only JSON {"title":"…","slides":[{"title":"…","kind":"…","points":["…"]}]}: about ${count} slides, in order, the first a title slide ("title") and the last a closing one ("closing"). Each title states the slide's message (max ~9 words); "kind" is the kind of slide that will show it best — one of: ${KINDS.filter(k => pictures(opts) || k !== 'image').join(', ')}; 1-4 points with WHAT it will show, concretely (the facts, figures and examples; for a "code" slide, what the code does and in which language). Not a list of short phrases: a plan for rich slides.
 ${RICH}
-${opts.media === 'search' ? `- Plan 2-4 "image" slides where SEEING the thing explains it (a diagram, a map, the artwork, the place, the experiment), and at most one for a short video of a process.\n` : ''}Write in ${opts.language || lang()}.` },
+${opts.media === 'search' ? `- REQUIRED: 2-4 slides of kind "image", where SEEING the thing explains it — a labelled diagram, a map, the artwork, the place, the object, the experiment —, one of them may be a short video of a process; its points say what must be seen. (Only a topic with nothing to see — pure code, a company's own figures — may have none.)\n` : ''}Write in ${opts.language || lang()}.` },
     { role: 'user', content: withAttachments([opts.topic && `Topic and purpose: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`].filter(Boolean).join('\n') + TAILOR(opts.context) + source, opts.attachments || []) },
   ], { maxTokens: 3000, feature: 'outline', prefer: DECK_MODEL });
   const res = out, slides = (res.slides || []).filter(x => x && str(x.title).trim()).slice(0, 40)
     .map(x => ({ title: str(x.title).trim(), ...(KINDS.includes(x.kind) && (pictures(opts) || x.kind !== 'image') && { kind: x.kind }), points: (Array.isArray(x.points) ? x.points : []).map(str).map(p => p.trim()).filter(Boolean).slice(0, 6) }));
   if (!slides.length) throw new Error('EMPTY');
+  // (A «code» slide planned for a topic that isn't programming — a lesson on fractions —: worked out as steps.)
+  if (!isTechnical(opts.topic)) for (const x of slides) if (x.kind === 'code') x.kind = 'steps';
   return { title: str(res.title), slides };
 }
 export async function createDeck(opts = {}) {
@@ -342,7 +344,8 @@ Write everything in ${opts.language || lang()}.` },
       const sp = specs[i], lines = str(sp.code?.code).split('\n').map(l => l.replace(/^\s*(\/\/+|#+|--|\/\*+|\*+\/?)\s?/, '').trim()).filter(l => l && !/^[{}()[\];]+$/.test(l)).slice(0, 7);
       // (Two to six lines worked out one after another — a sum, a method — read as numbered steps; more, as a list.
       // As a list, a lesson on fractions came out half lists.)
-      if (lines.length >= 2 && lines.length <= 6) specs[i] = { kind: 'steps', title: sp.title, steps: lines.map(l => ({ text: l })), notes: sp.notes };
+      // (More than six: the last ones together in the sixth step.)
+      if (lines.length >= 2) specs[i] = { kind: 'steps', title: sp.title, steps: [...lines.slice(0, 5), lines.slice(5).join(' · ')].filter(Boolean).map(l => ({ text: l })), notes: sp.notes };
       else if (lines.length) specs[i] = { kind: 'bullets', title: sp.title, bullets: [...lines, ...(sp.bullets || [])].slice(0, 8), notes: sp.notes };
     }
     q = deckQuality(specs, how);

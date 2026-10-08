@@ -83,13 +83,14 @@ def main():
               const old={json.dumps(json.load(open(os.path.join(replay, k + '.json'))) if replay else None)};
               const asks=old?old.questions:await A.askAbout(o).catch(e=>[{{q:'ERROR '+e.message}}]);
               const ol=old?old.outline:await A.createOutline(o); const sp=old?Object.assign(old.specs.slice(),{{design:old.design,title:old.title,quality:old.quality,qualityFirst:{{score:old.first}}}}):await A.createDeck({{...o,outline:ol.slides}});
+              const planned=sp.map(x=>x.kind==='image'?(x.image_search||x.video_search||'(sin búsqueda)'):null).filter(Boolean);
               if(!old&&o.media==='search')await A.findMedia(sp,{{topic:o.topic,language:o.language}});
               // (Made as the app makes it: a design with its layouts, the slides composed in it.)
               const G=await import('/src/features/design/gallery.js'),M=await import('/src/features/document/master.js');
               const d=G.buildFromGallery(sp.design||'minimal'); M.ensureLayouts(d); if(sp.title) d.name=sp.title; R.store.replaceDeck(d);
               const starter=new Set(R.state.deck.slides.map(s=>s.id)); await A.insertSpecs(sp,{{images:false}});
               R.store.commit(()=>{{R.state.deck.slides=R.state.deck.slides.filter(s=>!starter.has(s.id));R.state.ui.slideIndex=0}});
-              return {{design:sp.design, title:sp.title, questions:asks, outline:ol, specs:JSON.parse(JSON.stringify(sp)), quality:sp.quality||Q.deckQuality(sp,{{topic:o.topic}}), first:(sp.qualityFirst||sp.quality||{{}}).score, n:R.state.deck.slides.length}}}})()""")
+              return {{planned, mediaLog:sp.mediaLog||[], design:sp.design, title:sp.title, questions:asks, outline:ol, specs:JSON.parse(JSON.stringify(sp)), quality:sp.quality||Q.deckQuality(sp,{{topic:o.topic}}), first:(sp.qualityFirst||sp.quality||{{}}).score, n:R.state.deck.slides.length}}}})()""")
             # Each slide drawn (for a person to judge it), and measured: text past its box, letters too small to read.
             shots, small, spill, spills = [], 0, 0, []
             for i in range(r['n']):

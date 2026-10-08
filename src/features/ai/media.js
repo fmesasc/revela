@@ -114,12 +114,13 @@ export async function findMedia(specs, { topic = '', language = '', onProgress =
   const pics = specs.map((sp, i) => ({ sp, i })).filter(x => x.sp.kind === 'image' && x.sp.image_search && !x.sp.video_search && !x.sp.figure);
   const vids = videos ? specs.map((sp, i) => ({ sp, i })).filter(x => x.sp.kind === 'image' && x.sp.video_search && !x.sp.figure) : [];
   let done = 0; const total = pics.length + (vids.length ? 1 : 0), step = () => onProgress(total ? ++done / total : 1);
-  const used = new Set();
+  const used = new Set(), log = specs.mediaLog = [];   // (what was searched, found and chosen: for the evaluation, tools/ai-eval.py)
   const videoJob = findVideos(vids, { topic, language: lng }).then(m => { step(); return m; });
   for (const { sp } of pics) {
     try {
       const cands = (await candidates(str(sp.image_search).slice(0, 100))).filter(c => !used.has(c.url));
       const p = cands.length ? await pickPicture(sp, cands, { topic, language: lng }) : { n: 0 };
+      log.push({ slide: str(sp.title), search: str(sp.image_search), found: cands.length, picked: p.n ? p.c.title : null });
       if (p.n) {
         const src = await fetchPicture(p.c), k = Math.min(1, 1600 / Math.max(p.c.width || 1, p.c.height || 1));
         used.add(p.c.url);
@@ -127,11 +128,11 @@ export async function findMedia(specs, { topic = '', language = '', onProgress =
           caption: `${p.c.creator ? p.c.creator + ' · ' : ''}${p.c.license || ''}${p.c.from ? ' · ' + p.c.from : ''}`.replace(/^ · | · $/g, ''), credit: p.c.source || '' };
         if (p.note) sp.notes = `${str(sp.notes)} ${p.note}`.trim();
       }
-    } catch (e) { if (e.message === 'NO_CREDIT' || e.message === 'BAD_KEY') throw e; }
+    } catch (e) { if (e.message === 'NO_CREDIT' || e.message === 'BAD_KEY') throw e; log.push({ slide: str(sp.title), search: str(sp.image_search), error: String(e.message || e).slice(0, 120) }); }
     step();
   }
   const vm = await videoJob;
-  for (const { sp, i } of vids) { const v = vm.get(i); if (v) sp.video = v; }
+  for (const { sp, i } of vids) { const v = vm.get(i); if (v) sp.video = v; log.push({ slide: str(sp.title), video: str(sp.video_search), found: v ? v.title : null }); }
   // (Nothing found: the slide says its points, as a list; with none, the search itself — what was to be seen.)
   for (const sp of specs) if (sp.kind === 'image' && (sp.image_search || sp.video_search) && !sp.picture && !sp.video && !sp.figure) {
     sp.kind = 'bullets'; if (!(sp.bullets || []).length) sp.bullets = [str(sp.image_search || sp.video_search)];
