@@ -947,6 +947,35 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.open = open0; pop.remove(); }
   });
 
+  await test('adaptaciones por alumno: más tiempo, una opción menos, sin clasificación — solo en su móvil', async () => {
+    reset(); const P = R.poll, W = frame.contentWindow, G = await W.eval("import('/src/io/gradebook.js')");
+    eq(P.tallyVotes({ kind: 'quiz', options: ['a', 'b'], correct: [1], time: 10 }, { u: { a: 1, t: 15000, x: 2 } }).board[0].pts, 625, 'más tiempo: los puntos por rapidez, sobre su tiempo (15 s de 20)');
+    eq(G.setAdaptation('n:pablo:1', { big: true }), null, 'solo dispositivos (un nombre de rúbrica no tiene móvil)');
+    G.setAdaptation('dev-lia', { time: 2, fewer: true, noRank: true, read: true, big: true });
+    eq(JSON.stringify(G.adaptations()['dev-lia']), '{"time":2,"fewer":true,"read":true,"big":true,"noRank":true}', 'se guardan');
+    R.poll.addPoll({ kind: 'quiz', question: '¿Capital?', options: ['Roma', 'París', 'Lyon', 'Niza'], correct: [1], time: 10 }); const pq = last(); R.poll.clearVotes(pq.pollId);
+    const fake = URL.createObjectURL(new Blob(['window.Peer=function(id){var s=this;s.h={};s.on=function(e,f){(s.h[e]=s.h[e]||[]).push(f);};s.destroy=function(){};window.__votePeer=s;setTimeout(function(){(s.h.open||[]).forEach(function(f){f(id);});},0);};'], { type: 'text/javascript' }));
+    const noqr = URL.createObjectURL(new Blob(['window.QRCode=null;'], { type: 'text/javascript' }));
+    const { f, win, doc } = await deckFrame(R.io.buildHTML(R.state.deck, { inApp: true }).split(R.vendor.PEERJS).join(fake).split(R.vendor.QRCODE).join(noqr), 800, 450);
+    try {
+      for (let i = 0; i < 40 && !win.__votePeer?.h.connection; i++) await sleep(50);
+      const phone = () => { const sent = [], c = { open: true, h: {}, sent, on(e, fn) { (this.h[e] = this.h[e] || []).push(fn); }, send(m) { sent.push(m); }, close() {} };
+        win.__votePeer.h.connection.forEach(fn => fn(c)); c.h.open.forEach(fn => fn()); c.say = d => c.h.data.forEach(fn => fn(d)); return c; };
+      const lia = phone(), leo = phone();
+      lia.say({ type: 'hi', voter: 'dev-lia', name: 'Lía' }); leo.say({ type: 'hi', voter: 'dev-leo', name: 'Leo' });
+      const ap = lia.sent.filter(x => x.type === 'adapt').at(-1); assert(ap && ap.read && ap.big && ap.noRank, 'su móvil recibe sus adaptaciones');
+      const lp = lia.sent.filter(x => x.type === 'poll').at(-1).poll, op = leo.sent.filter(x => x.type === 'poll').at(-1).poll;
+      eq(lp.time + '|' + JSON.stringify(lp.hide), '20|[3]', 'a Lía: el doble de tiempo y una opción incorrecta menos');
+      assert(!op.hide && op.time === 10 && !leo.sent.some(x => x.type === 'adapt'), 'a Leo, lo de todos');
+      lia.say({ type: 'vote', pollId: pq.pollId, voter: 'dev-lia', answer: 1, name: 'Lía' }); leo.say({ type: 'vote', pollId: pq.pollId, voter: 'dev-leo', answer: 1, name: 'Leo' });
+      eq(JSON.parse(win.localStorage.getItem('revela.poll.' + pq.pollId))['dev-lia'].x, 2, 'su respuesta lleva su tiempo extra');
+      doc.querySelector('.present .rv-poll').click(); await sleep(50);
+      const rl = lia.sent.filter(x => x.type === 'quizresult').at(-1), ro = leo.sent.filter(x => x.type === 'quizresult').at(-1);
+      assert(rl.ok && rl.rank === 0 && !rl.of && ro.rank >= 1 && ro.of === 2, 'sin clasificación: no ve su puesto (Leo sí): ' + JSON.stringify([rl, ro]));
+      const shown = doc.querySelector('.present .rv-poll-res').textContent; assert(/Leo/.test(shown) && !/Lía/.test(shown), 'ni sale en la clasificación de la pantalla');
+    } finally { f.remove(); URL.revokeObjectURL(fake); URL.revokeObjectURL(noqr); W.localStorage.removeItem('revela.adapt'); }
+  });
+
   await test('votaciones nuevas en directo: el móvil recibe lo que necesita y la presentación acepta solo respuestas válidas', async () => {
     reset();
     const G = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';

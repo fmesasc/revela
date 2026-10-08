@@ -54,6 +54,7 @@ function renderQuiz(box) {
   const clock = document.createElement('span'); clock.className = 'quiz-left'; top.append(name, clock);
   const grid = document.createElement('div'); grid.className = 'quiz-grid';
   poll.options.forEach((o, i) => {
+    if ((poll.hide || []).includes(i)) return;            // (one option fewer: an accommodation for this student)
     const b = document.createElement('button'); b.className = 'quiz-opt'; b.style.background = TILES[i % TILES.length]; b.textContent = o;
     b.addEventListener('click', () => {
       if (!conn?.open || answer != null) return;
@@ -182,6 +183,7 @@ function onData(d) {
     resultOf(d.pollId, `${d.score}/10 · ${d.text || ''}`);
     const box = $('#answers'); box.querySelector('.fb')?.remove();
     box.append(el('div', { className: 'quiz-res fb', style: `background:${d.score >= 5 ? '#26890c' : '#b07d00'}` }, el('b', { textContent: `${d.score}/10` }), String(d.text || ''))); return; }
+  if (d?.type === 'adapt') { setAdapt(d); return; }
   if (d?.type === 'picked') { const p = $('#picked'); p.hidden = false; navigator.vibrate?.(200); setTimeout(() => { p.hidden = true; }, 8000); return; }
   if (d?.type === 'caption') { onCaption(d); return; }
   if (d?.type === 'css') { styles = String(d.css || ''); return; }
@@ -192,10 +194,26 @@ function onData(d) {
     if (d.held) { const h = $('#qa-held'); if (h) { h.hidden = false; h.textContent = '✔ Enviada. Saldrá cuando la apruebe quien presenta.'; } return; } if (poll?.kind === 'quiz') { const r = $('#quiz-res'); if (r && !r.textContent) r.textContent = '✔ Respuesta enviada. Espera al resultado…'; return; } $('#done').hidden = false; return; }
   if (d?.type !== 'poll') return;
   if (!d.poll) { poll = null; show('wait'); return; }
-  if (poll?.pollId === d.poll.pollId) return;               // same question: keep the choice
+  if (poll?.pollId === d.poll.pollId && !(d.poll.adapted && answer == null)) return;   // same question: keep the choice (unless made to measure, unanswered)
   poll = d.poll; answer = poll.kind === 'multi' ? [] : null;
   $('#q').textContent = poll.question; $('#done').hidden = true; show('poll');
   if (Array.isArray(poll.teams) && poll.teams.length) chooseTeam(poll.teams, () => { $('#send').hidden = false; renderAnswers(); }); else renderAnswers();
+  if (adapt.read) readAloud();
+}
+// This student's accommodations, from the teacher's gradebook (sent by the presentation): larger letters, the question
+// read aloud (and a button to hear it again); extra time and one option fewer come in the poll itself.
+let adapt = {};
+function setAdapt(d) {
+  adapt = { read: !!d.read, big: !!d.big, noRank: !!d.noRank };
+  document.body.classList.toggle('adapt-big', adapt.big);
+  if (poll) { $('#q-read')?.remove(); if (adapt.read) $('#q').after(Object.assign(el('button', { id: 'q-read', className: 'opt', textContent: '🔊 Escuchar la pregunta' }), { onclick: readAloud })); }
+}
+function readAloud() {
+  if (!poll || !window.speechSynthesis) return;
+  if (!$('#q-read')) $('#q').after(Object.assign(el('button', { id: 'q-read', className: 'opt', textContent: '🔊 Escuchar la pregunta' }), { onclick: readAloud }));
+  const opts = (poll.options || []).filter((o, i) => !(poll.hide || []).includes(i));
+  const u = new SpeechSynthesisUtterance([poll.question, ...opts].join('. ')); u.lang = document.documentElement.lang || 'es'; u.rate = 0.9;
+  speechSynthesis.cancel(); speechSynthesis.speak(u);
 }
 
 // Activities (put in order, match, fill in the gaps, label a picture): the

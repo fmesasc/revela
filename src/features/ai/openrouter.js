@@ -229,21 +229,54 @@ export const setImageModel = m => write({ ...read(), imageModel: (m || '').trim(
 
 // Generate an image (OpenRouter Image API) and place it on the current slide.
 export async function generateImage(prompt, aspect = '16:9') {
+  return placeImage(await imageRequest({ prompt, aspect }), prompt, aspect);
+}
+// The Image API: with the account's credits or the user's own key; image: a picture to edit (input_references).
+async function imageRequest({ prompt, aspect, image = null }) {
   const { key } = aiSettings();
-  if (!key && usingCloudAi()) {
-    const data = await cloud.image({ prompt, aspect_ratio: aspect }).catch(e => { throw cloudError(e); });
-    return placeImage(data.data?.[0], prompt, aspect);
-  }
+  if (!key && usingCloudAi()) return (await cloud.image({ prompt, aspect_ratio: aspect, ...(image && { image }) }).catch(e => { throw cloudError(e); })).data?.[0];
   if (!key) throw new Error('NO_KEY');
   const r = await fetch(`${API}/images`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, 'HTTP-Referer': APP_URL, 'X-Title': 'Revela' },
-    body: JSON.stringify({ model: imageModel(), prompt, aspect_ratio: aspect, n: 1 }),
+    body: JSON.stringify({ model: imageModel(), prompt, aspect_ratio: aspect, n: 1, ...(image && { input_references: [{ type: 'image_url', image_url: { url: image } }] }) }),
   });
   if (r.status === 401) throw new Error('BAD_KEY');
   if (r.status === 402) throw new Error('NO_CREDIT');
   if (!r.ok) throw new Error('OpenRouter ' + r.status + ' ' + ((await r.text().catch(() => '')).slice(0, 200)));
-  return placeImage((await r.json()).data?.[0], prompt, aspect);
+  return (await r.json()).data?.[0];
+}
+
+// Editing a picture with the image model (PowerPoint Designer's edits, Canva's Magic Eraser and Magic Expand): erase
+// something, more resolution, a retouch, its edges extended to another shape, or any change said in words. The block
+// keeps its place (its shape follows the new one when extended); one step to undo.
+export const IMAGE_EDITS = {
+  erase: what => `Remove ${what} from this photo and fill that area naturally, as if it had never been there. Keep everything else exactly the same: framing, colours, light, people and any text.`,
+  enhance: () => 'Retouch this photo like a professional: balanced exposure and white balance, natural contrast and colour, slightly sharper. Do not change its content, framing, faces or text.',
+  upscale: () => 'Recreate this exact image at a higher resolution: sharper, finer detail, less noise and compression artefacts. Do not change its content, composition, colours, faces or text.',
+  expand: () => 'Extend this image beyond its edges to fill the new, wider frame, continuing the scene naturally with the same style, light and perspective. Keep the original part unchanged, in the centre.',
+  edit: what => `${what}. Keep everything else in the image exactly the same.`,
+};
+export const IMAGE_RATIOS = ['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', '4:5', '5:4', '2:1', '1:2', '21:9', '9:21'];
+const nearestRatio = r => IMAGE_RATIOS.reduce((a, x) => { const [w, h] = x.split(':').map(Number), [aw, ah] = a.split(':').map(Number); return Math.abs(Math.log(w / h / r)) < Math.abs(Math.log(aw / ah / r)) ? x : a; }, '1:1');
+export async function editImage(b, kind, { what = '', aspect = null } = {}) {
+  if (!b || b.type !== 'image' || !IMAGE_EDITS[kind]) throw new Error('NO_IMAGE');
+  // (Sent as a JPEG of at most 1536 px — under the account's limit —; a picture that can't be redrawn, as it is.)
+  const shot = await (await import('./vision.js')).downscale(b.src, { max: 1536, quality: 0.88, maxBytes: 1300 * 1024 })
+    .catch(() => { if (/^(data:image\/|https:)/.test(b.src || '')) return { url: b.src, nw: b.w, nh: b.h }; throw new Error('NO_IMAGE'); });
+  const ratio = kind === 'expand' && aspect ? aspect : nearestRatio((shot.nw || b.w) / (shot.nh || b.h));
+  const img = await imageRequest({ prompt: IMAGE_EDITS[kind](String(what).slice(0, 400)), aspect: ratio, image: shot.url });
+  if (!img?.b64_json) throw new Error('EMPTY');
+  const src = `data:${img.media_type || 'image/png'};base64,${img.b64_json}`;
+  commit(() => {
+    b.src = src; delete b.crop; delete b.uncropped;
+    if (kind === 'expand') {                              // (the box takes the new shape around its centre, inside the slide)
+      const [w, h] = ratio.split(':').map(Number), { w: W, h: H } = state.deck.size, cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+      let nh = b.h, nw = nh * w / h; const k = Math.min(1, W / nw, H / nh); nw *= k; nh *= k;
+      b.w = Math.round(nw); b.h = Math.round(nh); b.x = Math.round(Math.min(W - b.w, Math.max(0, cx - b.w / 2))); b.y = Math.round(Math.min(H - b.h, Math.max(0, cy - b.h / 2)));
+    }
+  });
+  return src;
 }
 function placeImage(img, prompt, aspect) {
   if (!img?.b64_json) throw new Error('EMPTY');

@@ -41,6 +41,16 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
    for(var k in Vp){var o=st[k]||(st[k]={stars:0});o.stars++;}
    (r||[]).forEach(function(x){if(x.ok){var o=st[x.id]||(st[x.id]={stars:0});o.stars++;}});});
   for(var k in st)st[k].level=1+Math.floor(st[k].stars/STEP);return st;}
+ // Each student's accommodations (Wayground's), set in the class gradebook and kept in this browser by their device: extra
+ // time (×1.5, ×2: their answer waited for, and speed points over their longer time), one wrong option fewer, the question
+ // read aloud and larger letters on their phone, and out of the leaderboards — on the screen and on their phone.
+ var ADAPT={};try{ADAPT=JSON.parse(localStorage.getItem('revela.adapt'))||{};}catch(e){}
+ function ad(who){return (who&&ADAPT[who])||null;}
+ function forPhone(p,c){var a=ad(c.voter);if(!p||!a||p.kind!=='quiz')return p;var q={},raw=all().map(def).filter(function(x){return x&&x.pollId===p.pollId;})[0];for(var k in p)q[k]=p[k];q.adapted=true;
+  if(a.time>1){q.time=(+p.time||20)*a.time;q.left=q.time-(started[p.pollId]?(Date.now()-started[p.pollId])/1000:0);}
+  if(a.fewer&&raw&&p.options.length>2){var right=raw.correct||[0],wrong=p.options.map(function(x,i){return i;}).filter(function(i){return right.indexOf(i)<0;});if(wrong.length>1)q.hide=[wrong[wrong.length-1]];}
+  return q;}
+ function waiting(p){var el=(Date.now()-started[p.pollId])/1000,Vp=V(p.pollId);return conns.some(function(c){var a=ad(c.voter);return c.open!==false&&a&&a.time>1&&!Vp[c.voter]&&el<(+p.time||20)*a.time;});}
  function teamBoard(board){if(!TEAMS.length)return [];var t={};board.forEach(function(r){var tm=teamOf[r.id];if(!tm)return;var o=t[tm]||(t[tm]={team:tm,sum:0,n:0});o.sum+=r.pts;o.n++;});
   return Object.keys(t).map(function(k){return {team:k,pts:Math.round(t[k].sum/t[k].n),n:t[k].n};}).sort(function(a,b){return b.pts-a.pts;});}
  // Quizzes: the time left, the answer shown when it runs out (or on a click), and every quiz added up.
@@ -50,13 +60,14 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
   if(p.kind==='board'){r.teams=teamBoard(r.board);r.stars=starsOf();}
   if(p.kind==='quiz'){r.revealed=!!revealed[p.pollId];r.left=left(p);if(r.revealed)r.board=totals(quizzes());}
   if(ACT.indexOf(p.kind)>=0)r.revealed=!!revealed[p.pollId];
+  if(r.board)r.board=r.board.filter(function(x){return !(ad(x.id)||{}).noRank;});
   el.querySelector('.rv-poll-res').innerHTML=render(p,r,ACC,LBL);}
  function reveal(p){if(revealed[p.pollId])return;revealed[p.pollId]=true;all().forEach(paint);
   var board=totals(quizzes()),mine=tally(p,V(p.pollId)).board;
   conns.forEach(function(c){if(!c.voter)return;var m=mine.filter(function(x){return x.id===c.voter;})[0],k=board.map(function(x){return x.id;}).indexOf(c.voter);
-   send(c,{type:'quizresult',pollId:p.pollId,answered:!!m,ok:!!(m&&m.ok),pts:m?m.pts:0,total:k>=0?board[k].pts:0,rank:k>=0?k+1:0,of:board.length});starsTo(c,c.voter);});}
+   var nr=(ad(c.voter)||{}).noRank;send(c,{type:'quizresult',pollId:p.pollId,answered:!!m,ok:!!(m&&m.ok),pts:m?m.pts:0,total:k>=0?board[k].pts:0,rank:k>=0&&!nr?k+1:0,of:nr?0:board.length});starsTo(c,c.voter);});}
  function tick(){var p=current();if(!p||p.kind!=='quiz'||revealed[p.pollId]){clearInterval(timer);timer=null;return;}
-  var el=all().filter(function(e){var q=def(e);return q&&q.pollId===p.pollId;})[0];if(el)paint(el);if(left(p)<=0)reveal(p);}
+  var el=all().filter(function(e){var q=def(e);return q&&q.pollId===p.pollId;})[0];if(el)paint(el);if(left(p)<=0&&!waiting(p))reveal(p);}
  function current(){var s=Reveal.getCurrentSlide(),el=s&&s.querySelector('.rv-poll');var p=el&&def(el);if(!p)return null;var act=ACT.indexOf(p.kind)>=0;
   return {pollId:p.pollId,kind:p.kind,question:p.question,options:act?[]:p.options,pub:act?publicActivity(p):null,time:p.time,left:p.kind==='quiz'?left(p):null,revealed:!!revealed[p.pollId],
    mode:p.mode,teams:TEAMS.length&&GR.indexOf(p.kind)>=0?TEAMS:undefined,min:p.min,max:p.max,step:p.step,unit:p.unit,images:p.kind==='image'?p.images:undefined,image:p.kind==='point'||p.kind==='draw'?p.image:undefined};}
@@ -68,7 +79,7 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
  function broadcast(){var p=current();
   // A quiz starts the first time its slide is shown (one already played, with answers saved, is shown solved).
   if(p&&p.kind==='quiz'&&!started[p.pollId]){if(Object.keys(V(p.pollId)).length)revealed[p.pollId]=true;else{started[p.pollId]=Date.now();p.left=left(p);if(!timer)timer=setInterval(tick,250);}}
-  conns.forEach(function(c){send(c,{type:'poll',poll:p});if(p&&p.kind==='qa')send(c,{type:'qa',pollId:p.pollId,list:qaList(p)});});}
+  conns.forEach(function(c){send(c,{type:'poll',poll:forPhone(p,c)});if(p&&p.kind==='qa')send(c,{type:'qa',pollId:p.pollId,list:qaList(p)});});}
  function js(src){return new Promise(function(ok,ko){var s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=ko;document.head.appendChild(s);});}
  function clean(p,a){if(p.kind==='word')return String(a||'').slice(0,60);
   if(p.kind==='open'){var t=String(a||'').trim().slice(0,200);return t?{t:t,time:Date.now()}:null;}
@@ -83,9 +94,10 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
     el.querySelector('.rv-poll-url').textContent=url.replace(/^https?:\\/\\//,'').replace(/\\?.*$/,'');
     if(window.QRCode)QRCode.toCanvas(el.querySelector('canvas'),url,{width:220,margin:1},function(){});});});
   peer.on('connection',function(c){conns.push(c);
-    c.on('open',function(){if(CLASS){send(c,{type:'css',css:css()});send(c,slideMsg());}var p=current();send(c,{type:'poll',poll:p});if(p&&p.kind==='qa')send(c,{type:'qa',pollId:p.pollId,list:qaList(p)});});
+    c.on('open',function(){if(CLASS){send(c,{type:'css',css:css()});send(c,slideMsg());}var p=current();send(c,{type:'poll',poll:forPhone(p,c)});if(p&&p.kind==='qa')send(c,{type:'qa',pollId:p.pollId,list:qaList(p)});});
     c.on('data',function(d){if(d&&d.type==='lang'){c.lang=/^[a-z]{2}$/.test(d.lang||'')?d.lang:null;return;}
       if(d&&d.type==='hi'){c.voter=String(d.voter||'').slice(0,40);c.name=String(d.name||'').trim().slice(0,24);
+        var aa=ad(c.voter);if(aa){send(c,{type:'adapt',read:!!aa.read,big:!!aa.big,noRank:!!aa.noRank,time:aa.time||1,fewer:!!aa.fewer});var cp=current();if(cp&&cp.kind==='quiz')send(c,{type:'poll',poll:forPhone(cp,c)});}
         if(TEAMS.indexOf(d.team)>=0&&c.voter){teamOf[c.voter]=d.team;keepTeams();all().forEach(function(e){var q=def(e);if(q&&q.kind==='board')paint(e);});}return;}if(!d||d.type!=='vote')return;var el=all().filter(function(e){var p=def(e);return p&&p.pollId===d.pollId;})[0];if(!el)return;
       var p=def(el),who=String(d.voter).slice(0,40),V=votes[p.pollId]||(votes[p.pollId]=load(p.pollId));
       if(p.kind==='qa'){var a=d.answer||{};
@@ -95,7 +107,7 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
         store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId,held:!!(p.moderate&&a.ask)});broadcastQA(p);modPaint();return;}
       c.voter=who;
       if(p.kind==='quiz'){if(revealed[p.pollId]||!started[p.pollId]||V[who])return;var q=clean(p,d.answer);if(q===null)return;
-        V[who]={a:q,t:Date.now()-started[p.pollId],n:String(d.name||'').slice(0,24)};if(p.mode==='confidence')V[who].s=!!d.sure;store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId});starsTo(c,who);return;}
+        V[who]={a:q,t:Date.now()-started[p.pollId],n:String(d.name||'').slice(0,24)};if(p.mode==='confidence')V[who].s=!!d.sure;if((ad(who)||{}).time>1)V[who].x=ad(who).time;store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId});starsTo(c,who);return;}
       if(ACT.indexOf(p.kind)>=0){if(revealed[p.pollId]||V[who])return;var arr=(Array.isArray(d.answer)?d.answer:[]).slice(0,40).map(function(x){return String(x==null?'':x).slice(0,100);});
         V[who]={a:arr,n:String(d.name||'').slice(0,24)};store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId});starsTo(c,who);return;}
       var a2=clean(p,d.answer);if(a2===null||a2==='')return;V[who]=a2;

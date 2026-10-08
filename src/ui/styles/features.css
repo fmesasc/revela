@@ -765,6 +765,7 @@ body:not([data-edition="cloud"]):not([data-edition="desktop"]) .accounts-only{di
 .pl-marks b{position:absolute;transform:translate(-50%,-50%);min-width:22px;height:22px;border-radius:11px;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-size:12px;pointer-events:none}
 .pl-img-btn{display:inline-block}
 .cr-wrap{max-height:55vh;overflow:auto;margin:6px 0 12px;border:1px solid var(--line);border-radius:8px}
+.gb-ad{all:unset;cursor:pointer;margin-inline-start:6px;opacity:.35;vertical-align:middle}.gb-ad .ms{font-size:18px}.gb-ad.on{opacity:1;color:var(--accent,#3f6497)}.gb-ad:hover,.gb-ad:focus-visible{opacity:1}
 .gb-hard{margin:4px 0 12px}.gb-hard summary{cursor:pointer;font-weight:600;font-size:13px;margin-bottom:6px}
 .gb-hard ol{margin:0;padding-inline-start:0;list-style:none;display:flex;flex-direction:column;gap:6px;max-height:34vh;overflow:auto}
 .gb-hard li{display:grid;grid-template-columns:minmax(0,1fr) 120px 3.2em;gap:10px;align-items:center;font-size:13px}

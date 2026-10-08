@@ -23,7 +23,8 @@ export function openBrandKit() {
     <div class="fr-actions" style="justify-content:flex-start;flex-wrap:wrap">
       <button type="button" class="fr-do bk-new">${t('Nuevo desde esta presentación')}</button>
       <button type="button" class="mini2 bk-import">${t('Abrir un kit (.json)')}</button></div>
-    <form class="bk-web sh-row"${hasAccounts() ? '' : ' hidden'}><input type="text" class="bk-url" inputmode="url" placeholder="${t('Dirección de la web de tu marca (p. ej. tucentro.edu)')}" aria-label="${t('Dirección de la web de tu marca (p. ej. tucentro.edu)')}">
+    <form class="bk-web"${hasAccounts() ? '' : ' hidden'} style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><input type="text" class="bk-url" inputmode="url" style="flex:1;min-width:200px;font:inherit;padding:6px 10px"
+        placeholder="${t('Dirección de la web de tu marca (p. ej. tucentro.edu)')}" aria-label="${t('Dirección de la web de tu marca (p. ej. tucentro.edu)')}">
       <button type="submit" class="mini2">${t('Sacar la marca de la web')}</button></form><p class="host-help bk-web-msg"></p>
     <div class="bk-edit" hidden></div></div>`;
   document.body.appendChild(back);

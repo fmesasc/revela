@@ -139,7 +139,7 @@ export function openLevelDialog() {
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(460px,94vw)"><button class="modal-close">✕</button><h3>${t('Adaptar al nivel de lectura')}</h3>
     <p class="host-help">${t('La IA reescribe los textos para ese público, en su mismo idioma y sin cambiar los datos. Las notas no se tocan. Puedes deshacerlo con Ctrl+Z.')}</p>
     <label class="fr-l">${t('Para')}<select class="lv-level">${Object.entries(ai.READING_LEVELS).map(([k, [l]]) => `<option value="${k}"${k === 'primary' ? ' selected' : ''}>${esc(t(l))}</option>`).join('')}</select></label>
-    <fieldset class="lv-scope"><legend>${t('Qué textos')}</legend>
+    <fieldset class="lv-scope" style="margin:6px 0 14px"><legend>${t('Qué textos')}</legend>
       ${sel.length ? `<label class="fr-chk"><input type="radio" name="lv-scope" value="sel" checked> ${t('Los seleccionados')}</label>` : ''}
       <label class="fr-chk"><input type="radio" name="lv-scope" value="slide"${sel.length ? '' : ' checked'}> ${t('Esta diapositiva')}</label>
       <label class="fr-chk"><input type="radio" name="lv-scope" value="all"> ${t('Toda la presentación')}</label></fieldset>

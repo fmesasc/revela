@@ -125,7 +125,7 @@ function groupsFor(b) {
       ...(hasShapeText(b) ? [btn('edit_note', 'Escribir texto', () => editText(b.id, { selectAll: false }))] : [])]]);
   else if (b.type === 'image') G.push(
     ['Ajustar', [btn('tune', 'Ajustes de imagen', () => openImageAdjust(b)), btn('crop', 'Recortar', () => startImageCrop(b)), btn('crop_square', 'Recortar a una proporción…', () => openImageCrop(b)),
-      ...(b.uncropped || b.crop ? [btn('restart_alt', 'Quitar el recorte', () => uncrop(b.id))] : []), btn('auto_fix_high', 'Quitar fondo', () => removeBackground(b)),
+      ...(b.uncropped || b.crop ? [btn('restart_alt', 'Quitar el recorte', () => uncrop(b.id))] : []), btn('auto_fix_high', 'Quitar fondo', () => removeBackground(b)), btn('magic_button', 'Editar con IA', () => import('../dialogs/imageai.js').then(m => m.openImageAI(b))),
       btn('fit_screen', 'Contener', () => set(b, x => { x.fit = 'contain'; }), (b.fit || 'contain') === 'contain'), btn('crop_free', 'Rellenar', () => set(b, x => { x.fit = 'cover'; }), b.fit === 'cover'),
       btn('open_in_full', 'Estirar', () => set(b, x => { x.fit = 'fill'; }), b.fit === 'fill'), btn('aspect_ratio', 'Proporción original', () => blocks.cropToRatio(b.id, 'original'))]],
     // A mockup: the picture inside a phone, a laptop… (filling its screen).

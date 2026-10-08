@@ -60,6 +60,20 @@ export function mergeStudents(group, from, into) {
   });
 }
 
+// ---- Accommodations: per student's device (their voter id, the same in every presentation) -------------------------
+// { time: 1 | 1.5 | 2, fewer, read, big, noRank } — applied by the presentation to that phone (io/runtime/scripts.js);
+// kept apart from the gradebook ('revela.adapt'), as the presentation reads it. Only devices: a name typed for a rubric
+// has no phone to adapt.
+const ADAPT = 'revela.adapt';
+export function adaptations() { try { return JSON.parse(localStorage.getItem(ADAPT)) || {}; } catch { return {}; } }
+export function setAdaptation(key, a) {
+  if (!key || key.startsWith('n:')) return null;
+  const all = adaptations(), x = { ...(a.time > 1 && { time: a.time >= 2 ? 2 : 1.5 }), ...(a.fewer && { fewer: true }), ...(a.read && { read: true }), ...(a.big && { big: true }), ...(a.noRank && { noRank: true }) };
+  if (Object.keys(x).length) all[key] = x; else delete all[key];
+  try { localStorage.setItem(ADAPT, JSON.stringify(all)); } catch {}
+  return all[key] || null;
+}
+
 // ---- The report ---------------------------------------------------------------------------------
 // The school year's terms (Spain): September–December, January–March, April–June, around a date.
 export function terms(now = new Date()) {

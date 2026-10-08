@@ -60,7 +60,8 @@ function paintReport(body, paint) {
     ${!rep.sessions.length ? `<p class="host-help">${t('No hay sesiones en este periodo.')}</p>` : `<div class="cr-wrap"><table class="cr-table gb-table"><thead><tr><th>${t('Alumno')}</th>
       ${rep.sessions.map(s => `<th title="${esc(s.title)}"><span class="gb-th">${esc(day(s.date))}</span><small>${esc(s.title.slice(0, 18))}${s.kind === 'rubric' ? ' ▦' : ''}</small><button type="button" class="gb-del" data-s="${s.id}" aria-label="${t('Quitar esta sesión')}">✕</button></th>`).join('')}
       <th>${t('Nota')}</th><th>${t('Participación')}</th></tr></thead>
-      <tbody>${rep.students.map(st => `<tr><td><button type="button" class="gb-st" data-k="${esc(st.key)}">${esc(st.name || t('Sin apodo'))}</button></td>
+      <tbody>${rep.students.map(st => `<tr><td><button type="button" class="gb-st" data-k="${esc(st.key)}">${esc(st.name || t('Sin apodo'))}</button>${st.key.startsWith('n:') ? ''
+        : `<button type="button" class="gb-ad${gb.adaptations()[st.key] ? ' on' : ''}" data-k="${esc(st.key)}" title="${t('Adaptaciones')}" aria-label="${t('Adaptaciones')}"><i class="ms">accessibility_new</i></button>`}</td>
         ${rep.sessions.map(s => `<td>${s.pct[st.key] == null ? '—' : (Math.round(s.pct[st.key] * 100) / 10).toLocaleString(currentLang())}</td>`).join('')}
         <td><b>${st.mark == null ? '—' : st.mark.toLocaleString(currentLang())}</b></td><td>${st.done}/${st.of}</td></tr>`).join('')}</tbody></table></div>`}
     ${hardest(gb.itemReport(groupId, range))}
@@ -80,9 +81,30 @@ function paintReport(body, paint) {
     else gb.renameStudent(groupId, b.dataset.k, name);
     paint();
   }));
+  body.querySelectorAll('.gb-ad').forEach(b => b.addEventListener('click', () => openAdaptation(b.dataset.k, rep.students.find(x => x.key === b.dataset.k)?.name || t('Sin apodo'), paint)));
   body.querySelector('.gb-grade').addEventListener('click', () => { tab = 'grade'; paint(); });
   body.querySelector('.gb-csv').addEventListener('click', () => download(`cuaderno-${(gb.groups().find(g => g.id === groupId)?.name || 'grupo').replace(/[^\w-]+/g, '-')}.csv`,
     gb.reportCSV(rep, { student: t('Alumno'), mark: t('Nota (0-10)'), done: t('Participación'), none: t('Sin apodo') })));
+}
+
+// One student's accommodations (Wayground's): applied to their phone in live quizzes and activities.
+function openAdaptation(key, name, paint) {
+  document.getElementById('adapt-modal')?.remove();
+  const a = gb.adaptations()[key] || {}, back = document.createElement('div'); back.id = 'adapt-modal'; back.className = 'modal-backdrop';
+  const chk = (k, l) => `<label class="fr-chk"><input type="checkbox" data-k="${k}"${a[k] ? ' checked' : ''}> ${t(l)}</label>`;
+  back.innerHTML = `<div class="modal" style="text-align:start;width:min(460px,94vw)"><button class="modal-close">✕</button><h3>${t('Adaptaciones')}: ${esc(name)}</h3>
+    <p class="host-help">${t('Se aplican a su móvil en los cuestionarios y actividades en directo, en esta y en las demás presentaciones que presentes desde este navegador.')}</p>
+    <label class="fr-l">${t('Tiempo para responder')}<select class="ad-time"><option value="1">${t('El de todos')}</option><option value="1.5"${a.time === 1.5 ? ' selected' : ''}>× 1,5</option><option value="2"${a.time === 2 ? ' selected' : ''}>× 2</option></select></label>
+    ${chk('fewer', 'Una opción incorrecta menos en los cuestionarios')}${chk('read', 'Leerle la pregunta en voz alta en su móvil')}${chk('big', 'Letra más grande en su móvil')}${chk('noRank', 'Sin clasificación: no sale en la de la pantalla ni ve su puesto')}
+    <div class="fr-actions"><button class="mini2 ad-cancel">${t('Cancelar')}</button><button class="fr-do ad-ok">${t('Guardar')}</button></div></div>`;
+  document.body.appendChild(back);
+  const close = () => back.remove(), q = s => back.querySelector(s);
+  q('.modal-close').addEventListener('click', close); q('.ad-cancel').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  q('.ad-ok').addEventListener('click', () => {
+    const v = { time: +q('.ad-time').value }; back.querySelectorAll('input[data-k]').forEach(x => { v[x.dataset.k] = x.checked; });
+    gb.setAdaptation(key, v); close(); paint();
+  });
 }
 
 // ---- Grading with a rubric ----------------------------------------------------------------------

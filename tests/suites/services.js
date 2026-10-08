@@ -361,6 +361,33 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.fetch = realFetch; AI.disconnectAi(); }
   });
 
+  await test('IA: editar una imagen (borrar algo, más resolución, ampliar por los bordes; simulado)', async () => {
+    reset(); const W = frame.contentWindow, AI = R.ai, realFetch = W.fetch, calls = [];
+    AI.setAiKey('sk-or-prueba'); AI.acceptPrivacy();
+    const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAAEUlEQVR42mP8z8DwnwEIGGEMAFkUAf+1yc3bAAAAAElFTkSuQmCC';
+    R.blocks.addImage(PNG); await sleep(20); const b = last(); R.store.commit(() => { b.x = 1000; b.y = 300; b.w = 200; b.h = 100; b.crop = [0.1, 0, 0, 0]; });
+    W.fetch = async (url, opts) => { const body = JSON.parse(opts.body); calls.push({ url, body });
+      return new W.Response(JSON.stringify({ data: [{ b64_json: 'R0lGODlhAQABAAAAACw=', media_type: 'image/gif' }] })); };
+    try {
+      await AI.editImage(b, 'erase', { what: 'the red cable' });
+      const c = calls.at(-1); assert(/\/images$/.test(c.url) && /Remove the red cable/.test(c.body.prompt) && /^data:image\/jpeg;base64,/.test(c.body.input_references[0].image_url.url), 'borrar: la imagen va de referencia, con lo que hay que borrar');
+      eq(c.body.aspect_ratio, '2:1', 'con su misma forma (la más cercana)');
+      eq(b.src, 'data:image/gif;base64,R0lGODlhAQABAAAAACw=', 'la imagen cambia'); assert(!b.crop, 'sin el recorte de antes'); eq(b.w + 'x' + b.h, '200x100', 'en su sitio');
+      const live = () => R.state.deck.slides[R.state.ui.slideIndex].blocks.find(x => x.id === b.id);
+      R.store.undo(); eq(live().src, PNG, 'un paso para deshacerlo');
+      await AI.editImage(live(), 'expand', { aspect: '16:9' });
+      eq(calls.at(-1).body.aspect_ratio, '16:9', 'ampliar: a la forma pedida'); assert(/Extend this image/.test(calls.at(-1).body.prompt), 'ampliar: continuar la escena');
+      const x = live(); eq(Math.round(x.w / x.h * 9), 16, 'la caja toma la nueva forma'); assert(x.x + x.w <= R.state.deck.size.w && x.x >= 0, 'sin salirse de la diapositiva');
+      await AI.editImage(live(), 'upscale'); assert(/higher resolution/.test(calls.at(-1).body.prompt), 'más resolución');
+      select(live()); await sleep(20);
+      W.eval("import('/src/ui/dialogs/imageai.js')").then(m => m.openImageAI(live())); for (let i = 0; i < 40 && !D.getElementById('imgai-modal'); i++) await sleep(25);
+      const m = D.getElementById('imgai-modal'); assert(m && m.querySelectorAll('input[name="ia-kind"]').length === 5, 'el diálogo: cinco arreglos');
+      m.querySelector('.ia-ok').click(); assert(D.getElementById('imgai-modal'), 'borrar sin decir qué: no sigue');
+      m.querySelector('input[value="expand"]').click(); assert(!m.querySelector('.ia-shape-l').hidden && m.querySelector('.ia-what-l').hidden, 'ampliar: pide la forma, no el qué');
+      m.querySelector('.modal-close').click();
+    } finally { W.fetch = realFetch; AI.disconnectAi(); }
+  });
+
   await test('IA: ensayar las preguntas del público (prevé preguntas y valora la respuesta; simulado)', async () => {
     reset(); const W = frame.contentWindow, AI = R.ai, realFetch = W.fetch, sent = [];
     AI.setAiKey('sk-or-prueba'); AI.acceptPrivacy();

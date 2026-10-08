@@ -70,7 +70,7 @@ export function tallyVotes(poll, votes) {
     var mode = poll.mode || 'speed';
     for (var who in votes) { var v = votes[who]; if (!v || !(v.a >= 0 && v.a < n)) continue; voters++; counts[v.a]++;
       var ok = right.indexOf(v.a) >= 0, pts = mode === 'accuracy' ? (ok ? 1000 : 0) : mode === 'confidence' ? (ok ? (v.s ? 1000 : 600) : (v.s ? -300 : 0))
-        : ok ? Math.round(500 + 500 * Math.max(0, 1 - (+v.t || 0) / lim)) : 0;
+        : ok ? Math.round(500 + 500 * Math.max(0, 1 - (+v.t || 0) / (lim * (+v.x > 1 ? +v.x : 1)))) : 0;   // (v.x: extra time, an accommodation)
       board.push({ id: who, n: v.n || '', pts: pts, ok: ok }); }
     board.sort(function (a, b) { return b.pts - a.pts; });
     return { counts: counts, words: {}, voters: voters, average: 0, board: board };

@@ -77,12 +77,15 @@ export async function aiChat(env, s, A, body, json) {
 export async function aiImage(env, s, A, body, json) {
   const prompt = String(body.prompt || '').slice(0, 2000); if (!prompt) return json({ error: 'bad request' }, 400);
   const aspect = /^\d{1,2}:\d{1,2}$/.test(body.aspect_ratio || '') ? body.aspect_ratio : '16:9';
+  // (A picture to edit — erase something, more resolution, extend its edges…: the Image API's input_references.)
+  const image = typeof body.image === 'string' && (/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(body.image) || /^https:\/\/[^\s"<>]{1,2000}$/.test(body.image)) ? body.image : null;
+  if (body.image && !image) return json({ error: 'bad image' }, 400);
   const g = await guard(env, s, A, s.imageCredits, s.imageCredits * s.creditUsd, json); if (g.stop) return g.stop;
   let r, data;
   try {
     r = await (env.FETCH || fetch)('https://openrouter.ai/api/v1/images', { method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.OPENROUTER_KEY}`, 'HTTP-Referer': s.site, 'X-Title': 'Revela' },
-      body: JSON.stringify({ model: s.imageModel, prompt, aspect_ratio: aspect, n: 1 }) });
+      body: JSON.stringify({ model: s.imageModel, prompt, aspect_ratio: aspect, n: 1, ...(image && { input_references: [{ type: 'image_url', image_url: { url: image } }] }) }) });
     data = await r.json().catch(() => null);
   } catch { r = null; }
   if (!r || !r.ok || !data?.data?.[0]?.b64_json) { await call(A, 'settle', { id: g.hold, credits: 0 }); return json(aiFailure('image', r, data), 502); }

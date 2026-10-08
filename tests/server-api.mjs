@@ -214,6 +214,14 @@ aiReply = u => (u.endsWith('/images') ? { status: 200, body: { data: [{ b64_json
 r = await req('POST', '/api/ai/image', { headers: { Cookie: bob }, body: { prompt: 'un gato', aspect_ratio: '16:9' } });
 j = await r.json();
 ok(r.status === 200 && j.data[0].b64_json === 'AAAA' && j.charged === 15, 'imagen: 15 créditos');
+// Editing one (erase something, more resolution, its edges extended…): the picture goes as the Image API's input_references.
+// (The model failing here: what's checked is what it's asked; nothing charged, so the accounts' credits below don't move.)
+const okReply = aiReply; aiReply = () => ({ status: 500, body: {} });
+r = await req('POST', '/api/ai/image', { headers: { Cookie: bob }, body: { prompt: 'Remove the cable', aspect_ratio: '4:3', image: 'data:image/jpeg;base64,/9j/AAAA' } });
+ok(r.status === 502 && aiCalls.at(-1).body.input_references?.[0]?.image_url?.url === 'data:image/jpeg;base64,/9j/AAAA' && aiCalls.at(-1).body.aspect_ratio === '4:3', 'imagen: editar una, con la imagen de referencia');
+aiReply = okReply;
+ok((await req('POST', '/api/ai/image', { headers: { Cookie: bob }, body: { prompt: 'x', image: 'javascript:alert(1)' } })).status === 400
+  && (await req('POST', '/api/ai/image', { headers: { Cookie: bob }, body: { prompt: 'x', image: 'data:text/html;base64,PHA+' } })).status === 400, 'imagen: solo imágenes de verdad como referencia');
 
 // ---- Payments: only Stripe's signed messages count ----
 const sign = async (body, secret = 'whsec_x', t = Math.floor(Date.now() / 1000)) => {

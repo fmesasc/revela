@@ -217,6 +217,7 @@ function forBlock(b, cell = null) {
       [b.zoomable ? 'No ampliar al hacer clic' : 'Ampliar al hacer clic (al presentar)', () => commit(() => { if (b.zoomable) delete b.zoomable; else b.zoomable = true; })],
       [b.pano ? 'No es una foto de 360°' : 'Foto de 360° (se recorre al presentar)', () => commit(() => { if (b.pano) delete b.pano; else b.pano = true; })],
       ['Quitar fondo (IA)', () => removeBackground(b)],
+      ['Editar con IA…', () => import('../dialogs/imageai.js').then(m => m.openImageAI(b))],
       ['Ampliar una zona de la imagen', () => startMagnifyDraw({ within: b })],
       ['Descargar la imagen', () => saveFile(b)],
       ...(isGif(b) ? [['Reproducción…', () => openMediaPlayback(b)]] : []),
