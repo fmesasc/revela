@@ -65,11 +65,16 @@ Wanted picture: ${str(slide.image_search)}
 ${shots.length} candidate pictures follow, numbered.` },
   ...shots.flatMap((s, i) => [{ type: 'text', text: `${i + 1}: «${s.c.title}»${s.c.description ? ' — ' + s.c.description : ''}` }, { type: 'image_url', image_url: { url: s.url } }])];
   const out = await chat([
-    { role: 'system', content: `You choose the picture for a presentation slide, as a careful teacher would. Pick the ONE that best shows what this slide explains: the right subject (not another thing with the same name), accurate, clear at slide size, labels readable if it is a diagram; prefer a real diagram, map, artwork or photo of the thing itself. A diagram's labels must be in ${language} or English (or it has none): one labelled in another language (the same chloroplast in Vietnamese) is not fit. Reject: a different subject, decoration, people posing, memes, text-heavy screenshots, blurry or tiny pictures, anything inappropriate for a classroom. If none really fits, answer 0 — no picture is better than a wrong one.
-Answer only JSON {"n":N or 0,"alt":"what the chosen picture shows, for someone who can't see it, max 125 characters, in ${language}","note":"one sentence for the speaker notes: what to point at in it, in ${language}"}.` },
+    { role: 'system', content: `You choose the picture for a presentation slide, as a careful teacher would. Pick the ONE that best shows what this slide explains, and score how well it fits (0-10). Score 7 or more only when it shows THIS subject accurately, clearly at slide size. Score under 5 when:
+- it is a different thing, even a similar-looking one (another system's architecture diagram for the presenter's own system; another battle's map);
+- the slide is about the presenter's own work, product, data or organisation: no library picture can show it;
+- its labels or annotations are in a language other than ${language} or English;
+- it is decoration, people posing, a meme, text-heavy, blurry, tiny, or unfit for a classroom.
+No picture is better than a wrong one.
+Answer only JSON {"n":N (the best one, or 0),"score":0-10,"alt":"what the chosen picture shows, for someone who can't see it, max 125 characters, in ${language}","note":"one sentence for the speaker notes: what to point at in it, in ${language}"}.` },
     { role: 'user', content },
   ], { json: true, maxTokens: 400, feature: 'create', prefer: PICK_MODEL });
-  const a = parseJSON(out) || {}, n = Math.round(+a.n) || 0;
+  const a = parseJSON(out) || {}, n = +a.score >= 7 ? Math.round(+a.n) || 0 : 0;
   return n >= 1 && n <= shots.length ? { n, c: shots[n - 1].c, alt: str(a.alt).slice(0, 180), note: str(a.note).slice(0, 300) } : { n: 0 };
 }
 

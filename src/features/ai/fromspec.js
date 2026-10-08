@@ -150,7 +150,10 @@ function measuredHeight(html, fs, w, lh, family = '', bold = false) {
   try { measureCtx ||= document.createElement('canvas').getContext('2d'); } catch { return null; }
   if (!measureCtx) return null;
   measureCtx.font = `${bold ? '700 ' : ''}${fs}px ${family || 'sans-serif'}`;
-  const room = Math.max(fs * 3, w - 28), space = measureCtx.measureText(' ').width;
+  // (A web font not loaded yet is measured in the browser's fallback — for a serif, Times, much narrower than
+  // Merriweather: a key idea ran over the line under it. Then with a margin.)
+  let loose = 1; try { if (family && document.fonts && !document.fonts.check(measureCtx.font)) loose = 1.15; } catch {}
+  const room = Math.max(fs * 3, w - 28) / loose, space = measureCtx.measureText(' ').width;
   const paras = str(html).replace(/<\/(li|p|div)>|<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&[#\w]+;/g, 'x').split('\n').map(s => s.trim()).filter(Boolean);
   let lines = 0;
   for (const p of paras) {

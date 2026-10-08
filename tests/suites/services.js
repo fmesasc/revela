@@ -393,7 +393,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       if (url.includes('youtube.com/oembed')) return url.includes('abcdefghijk') ? new W.Response(JSON.stringify({ title: 'Photosynthesis animation explained', author_name: 'Canal' })) : new W.Response('', { status: 404 });
       if (url.startsWith('https://upload.wikimedia.org/')) return new W.Response(Uint8Array.from(atob(PNG), c => c.charCodeAt(0)), { headers: { 'Content-Type': 'image/png' } });
       const body = JSON.parse(opts.body), sys = body.messages[0].content;
-      const a = /choose the picture/.test(sys) ? { n: 2, alt: 'Esquema del cloroplasto con sus partes', note: 'Señalad los tilacoides.' }
+      const a = /choose the picture/.test(sys) ? { n: 2, score: 9, alt: 'Esquema del cloroplasto con sus partes', note: 'Señalad los tilacoides.' }
         : /YouTube video/.test(sys) ? { videos: [{ i: 2, url: 'https://www.youtube.com/watch?v=abcdefghijk' }, { i: 3, url: 'https://www.youtube.com/watch?v=inventado00' }] } : {};
       return new W.Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(a) } }] }));
     };
@@ -530,6 +530,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(Q.deckQuality([sales[0], vc], { topic: 'Defensa de tesis', sourced: true, given: 'Validado con dos hospitales; 20 minutos' }).problems.some(p => p.code === 'invented-figures'), 'con datos dados, un «ejemplo ilustrativo» de su caso, inventado');
       assert(!Q.deckQuality([sales[0], { ...fc, title: 'Brecha T3', source: 'Datos internos', chart: { labels: ['Brecha'], values: [200000] }, bullets: ['-8 % sobre el objetivo'] }], { topic: 'Ventas', sourced: true, given }).problems.some(p => p.code === 'invented-figures'), 'una cuenta con sus cifras (2,6 − 2,4), no');
       assert(Q.deckQuality([sales[0], { kind: 'chart', title: 'Lluvia', source: 'Datos meteorológicos locales', chart: { labels: ['Año 1', 'Año 2', 'Año 3'], values: [150, 160, 170] }, notes: 'n' }], { topic: 'Clima', sourced: true, given: '15 minutos' }).problems.some(p => p.code === 'invented-figures'), 'una serie de «Año 1, Año 2…», inventada');
+      assert(Q.deckQuality([sales[0], { kind: 'chart', title: '¿Qué pesó más?', source: 'Interpretación de Peter Heather', chart: { type: 'pie', labels: ['Invasiones', 'Economía', 'Política'], values: [50, 30, 20] }, notes: 'n' }], { topic: 'Roma', sourced: true, given: '50 minutos' }).problems.some(p => p.code === 'invented-figures'), 'una tarta de pesos redondos que suman 100, inventada');
       // The same steps on two slides: the second one, to say something new.
       const st1 = { kind: 'steps', title: 'Sumar con distinto denominador', steps: [{ title: 'Calcular el mínimo común múltiplo', text: 'de los denominadores' }, { title: 'Convertir fracciones equivalentes', text: 'con el nuevo denominador' }, { title: 'Sumar numeradores', text: 'y simplificar resultado' }], notes: 'a' };
       const rq = Q.deckQuality([{ kind: 'title', title: 'F' }, st1, { kind: 'key_idea', title: 'Clave', statement: 'Practicar cada semana', notes: 'b' }, { ...st1, title: 'El reto: distinto denominador' }], { topic: 'Fracciones' });
