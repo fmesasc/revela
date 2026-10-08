@@ -12,6 +12,12 @@
 //   POST /api/team/template/delete     { id }                  (admin)
 //   GET  /api/team/template?id=…       → { deck }              (members)
 //   GET  /api/team/usage               → { seats, used, invited, members: [{ email, role, lastSeen, spentMonth, spent30, storage }], totals }   (admins)
+//   GET  /api/team/docs                → { docs: [{ id, name, owner, role, at }] }   (members: what is shared with the team —
+//                                       each document's owner chooses it in Compartir; the access itself is docs.js roleOf)
+//   GET  /api/team/assets              → { assets: [{ id, name, type, bytes, by, at }], used, quota }   (members: the team's pictures)
+//   GET  /api/team/assets/:id          → { data }   (a data URL)
+//   POST /api/team/assets              { name, data } → { id }   (members; images up to ASSET_MB, ASSETS_MAX of them, ASSETS_MB in all)
+//   POST /api/team/assets/:id/delete   (admins, or whoever added it)
 //   POST /api/billing/checkout         { product: 'team', seats } (see api.js)
 //
 // Storage: one Durable Object per team (Team); each Account keeps its team's id,
@@ -22,7 +28,7 @@ import { mail } from './mail.js';
 import { random, EMAIL } from './util.js';
 import { ssoOp, registryOp, handleTeamSso } from './sso.js';
 
-const MAX_TEMPLATES = 50, MAX_TEMPLATE_MB = 20;
+const MAX_TEMPLATES = 50, MAX_TEMPLATE_MB = 20, TEAM_DOCS_MAX = 2000, ASSETS_MAX = 300, ASSET_MB = 8, ASSETS_MB = 200;
 
 export class Team {
   constructor(ctx, env) { this.ctx = ctx; this.env = env; }
@@ -101,6 +107,42 @@ export class Team {
         await st.put('team', t); return this.json({ ok: true, members: t.members });
       }
       case 'clear-test': { const was = !!t.test && t.until > Date.now(); if (t.test) { t.until = 0; t.test = false; await st.put('team', t); } return this.json({ ok: true, cleared: was }); }
+      // The documents shared with the team (docs.js keeps it up to date; reading it: members).
+      case 'docs-list': return me ? this.json({ docs: (await st.get('docs')) || [] }) : this.json({ error: 'forbidden' }, 403);
+      case 'doc-add': {
+        const docs = ((await st.get('docs')) || []).filter(d => d.id !== a.id);
+        docs.unshift({ id: a.id, name: String(a.name || '').slice(0, 200), owner: String(a.owner || '').slice(0, 200), role: a.role, at: Date.now() });
+        await st.put('docs', docs.slice(0, TEAM_DOCS_MAX)); return this.json({ ok: true });
+      }
+      case 'doc-remove': await st.put('docs', ((await st.get('docs')) || []).filter(d => d.id !== a.id)); return this.json({ ok: true });
+      case 'doc-rename': { const docs = (await st.get('docs')) || [], d = docs.find(x => x.id === a.id); if (d) { d.name = String(a.name || '').slice(0, 200); await st.put('docs', docs); } return this.json({ ok: true }); }
+      // The team's pictures: logos, photos… added once by anyone in it, for everyone.
+      case 'assets-list': { if (!me) return this.json({ error: 'forbidden' }, 403); const as = (await st.get('assets')) || []; return this.json({ assets: as, used: as.reduce((n, x) => n + x.bytes, 0), quota: ASSETS_MB * 1048576 }); }
+      case 'asset-get': {
+        if (!me) return this.json({ error: 'forbidden' }, 403);
+        const parts = await readParts(st, `asset:${a.id}:`); return parts ? this.json({ data: parts.join('') }) : this.json({ error: 'not found' }, 404);
+      }
+      case 'asset-add': {
+        if (!me) return this.json({ error: 'forbidden' }, 403);
+        const data = String(a.data || ''), m = data.match(/^data:(image\/(?:png|jpeg|webp|gif|svg\+xml));base64,[A-Za-z0-9+/=]+$/);
+        if (!m) return this.json({ error: 'bad image' }, 400);
+        if (data.length > ASSET_MB * 1048576 * 1.37) return this.json({ error: 'too large' }, 413);
+        const as = (await st.get('assets')) || [], used = as.reduce((n, x) => n + x.bytes, 0);
+        if (as.length >= ASSETS_MAX) return this.json({ error: 'too many', max: ASSETS_MAX }, 409);
+        if (used + data.length > ASSETS_MB * 1048576) return this.json({ error: 'full', quota: ASSETS_MB * 1048576 }, 402);
+        const id = random(9); await writeText(st, `asset:${id}:`, data);
+        // (Its preview, made by the browser: a small image, else none.)
+        const thumb = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(String(a.thumb || '')) && a.thumb.length <= 80000 ? a.thumb : '';
+        as.unshift({ id, name: String(a.name || '').replace(/[\u0000-\u001f]/g, '').slice(0, 80) || 'Imagen', type: m[1], bytes: data.length, by: a.email, at: Date.now(), ...(thumb && { thumb }) });
+        await st.put('assets', as); return this.json({ id });
+      }
+      case 'asset-delete': {
+        const as = (await st.get('assets')) || [], x = as.find(y => y.id === a.id); if (!x) return this.json({ error: 'not found' }, 404);
+        if (!(admin || x.by === a.email)) return this.json({ error: 'forbidden' }, 403);
+        const n = (await st.get(`asset:${a.id}:n`)) || 0;
+        await st.delete([`asset:${a.id}:n`, ...Array.from({ length: n }, (_, i) => `asset:${a.id}:${i}`)]);
+        await st.put('assets', as.filter(y => y.id !== a.id)); return this.json({ ok: true });
+      }
       case 'customer': return this.json({ customer: admin ? t.customer : null, customerTest: admin ? t.customerTest || null : null, admin });
     }
     return this.json({ error: 'unknown' }, 404);
@@ -135,6 +177,15 @@ export async function handleTeams(path, req, body, url, env, me, A, acct, call, 
     const r = await ask(env, id, 'accept', { email: me.email, sub: me.sub }); if (r.status !== 200) return pass(r);
     await call(A, 'team-set', { id }); await call(acct(env, 'e:' + me.email), 'invites-remove', { id });
     return json({ ok: true });
+  }
+  if (path === '/team/docs' && req.method === 'GET') { if (!mine) return json({ docs: [] }); return pass(await ask(env, mine, 'docs-list', { email: me.email })); }
+  if (path === '/team/assets' && req.method === 'GET') { if (!mine) return json({ error: 'no team' }, 404); return pass(await ask(env, mine, 'assets-list', { email: me.email })); }
+  if (path === '/team/assets' && req.method === 'POST') { if (!mine) return json({ error: 'no team' }, 404); return pass(await ask(env, mine, 'asset-add', { email: me.email, name: body.name, data: body.data, thumb: body.thumb })); }
+  const am = path.match(/^\/team\/assets\/([\w-]{4,20})(\/delete)?$/);
+  if (am) {
+    if (!mine) return json({ error: 'no team' }, 404);
+    if (req.method === 'GET' && !am[2]) return pass(await ask(env, mine, 'asset-get', { email: me.email, id: am[1] }));
+    if (req.method === 'POST' && am[2]) return pass(await ask(env, mine, 'asset-delete', { email: me.email, id: am[1] }));
   }
   if (path === '/team/template' && req.method === 'GET') { if (!mine) return json({ error: 'no team' }, 404); return pass(await ask(env, mine, 'template-get', { email: me.email, id: url.searchParams.get('id') })); }
   if (!mine) return json({ error: 'no team' }, 404);

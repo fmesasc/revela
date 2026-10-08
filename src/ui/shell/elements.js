@@ -16,6 +16,7 @@ import { alertDialog, confirmDialog } from '../dialogs/dialog.js';
 import { toast } from './toast.js';
 import { t } from '../../i18n/index.js';
 import { api, account, hasAccounts } from '../../io/cloud/account.js';
+import { addImage } from '../../features/document/blocks.js';
 
 // Photo services the Revela server offers (official edition and desktop app, signed in).
 const photoServices = () => (hasAccounts() && account()?.photos) || [];
@@ -29,6 +30,7 @@ const TABS = [
   ['videos', 'Vídeos', 'movie', 'commonsvideo', 'Wikimedia Commons (commons.wikimedia.org)'],
   ['audio', 'Sonidos', 'music_note', 'openverse', 'Openverse (openverse.org)'],
   ['stickers', 'Stickers', 'add_reaction', null, null],
+  ['team', 'De mi equipo', 'groups', null, null],             // (the team's own pictures: server/cloudflare/teams.js; only in a team)
   ['anim3d', '3D con movimiento', 'view_in_ar', null, null],
   ['poly', 'Modelos 3D', 'deployed_code', 'poly', 'Poly Haven (polyhaven.com)'],
   ['nasa', 'NASA', 'rocket_launch', null, null],
@@ -42,6 +44,7 @@ const HELP = {
   gif: 'GIF animados con licencias libres (Wikimedia y otros). Se añade la atribución como pie: mantenla si la licencia lo pide.',
   videos: 'Vídeos con licencias libres de Wikimedia Commons (naturaleza, ciencia, historia…). Los cortos se guardan dentro de la presentación; se añade la atribución como pie.',
   audio: 'Efectos de sonido (Freesound) y música (Jamendo) con licencias libres, vía Openverse. Escúchalos antes de añadirlos; se añade la atribución como pie.',
+  team: 'Los logotipos e imágenes de tu equipo: lo que sube cualquier miembro lo pueden usar todos.',
   stickers: 'Emojis animados de Google (Noto, CC BY 4.0). Se pueden animar por tramos y quitar el fondo como cualquier GIF.',
   anim3d: 'Modelos 3D con licencia libre, varios con animaciones propias (andar, bailar…). Se guardan dentro de la presentación. Muévelos con clic derecho ▸ Movimiento 3D.',
   poly: 'Más de 500 modelos 3D de Poly Haven, de dominio público (CC0). Se guardan dentro de la presentación.',
@@ -136,7 +139,7 @@ function build() {
   panel.innerHTML = `<div class="cm-head"><b><i class="ms">interests</i> ${t('Recursos')}</b><span>
       <button type="button" class="el-side mini2" title="${t('Pasar al otro lado')}"><i class="ms">swap_horiz</i></button>
       <button type="button" class="cm-close" title="${t('Cerrar')}">✕</button></span></div>
-    <div class="el-tabs" role="tablist">${TABS.filter(([k]) => k !== 'photos' || photoServices().length).map(([k, l, i]) => `<button type="button" role="tab" data-et="${k}" title="${t(l)}"><i class="ms">${i}</i><span>${t(l)}</span></button>`).join('')}</div>
+    <div class="el-tabs" role="tablist">${TABS.filter(([k]) => (k !== 'photos' || photoServices().length) && (k !== 'team' || account()?.team)).map(([k, l, i]) => `<button type="button" role="tab" data-et="${k}" title="${t(l)}"><i class="ms">${i}</i><span>${t(l)}</span></button>`).join('')}</div>
     <div class="sk-bar"><input type="search" class="sk-q" placeholder="${t('Buscar…')}"><button type="button" class="fr-do sk-go" title="${t('Buscar')}"><i class="ms">search</i></button>
       <button type="button" class="mini2 el-ftoggle" title="${t('Filtros')}" aria-expanded="false" hidden><i class="ms">tune</i><b class="el-fcount" hidden></b></button></div>
     <div class="el-filters" hidden>
@@ -151,12 +154,14 @@ function build() {
     <div class="el-opts">
       <label class="fr-chk el-anim"><input type="checkbox" class="el-onlyanim"> ${t('Solo animados')}</label>
       <label class="el-akind">${sel('el-audiokind', [['', 'Música y efectos'], ['effects', 'Efectos de sonido'], ['music', 'Música']])}</label>
+      <button type="button" class="mini2 el-upteam" hidden><i class="ms">upload</i> ${t('Subir una imagen al equipo')}</button>
       <label class="el-col" title="${t('Color')}">${t('Color')} <input type="color" class="el-color" value="${/^#[0-9a-f]{6}$/i.test(deckFg()) ? deckFg() : '#ffffff'}"></label></div>
     <p class="host-help el-help"></p>
     <div class="el-grid" aria-live="polite"></div>
     <div class="el-foot"><span class="el-tip">${t('Clic: añadir a la diapositiva · Arrastrar: soltar donde quieras')}</span><button type="button" class="mini2 sk-more" hidden>${t('Más resultados')}</button></div>`;
   dock(elementsSide());
   q('.cm-close').addEventListener('click', closeElements);
+  q('.el-upteam').addEventListener('click', uploadTeamImage);
   q('.el-side').addEventListener('click', () => setElementsSide(elementsSide() === 'left' ? 'right' : 'left'));
   q('.el-tabs').addEventListener('click', e => { const b = e.target.closest('[data-et]'); if (b) show(b.dataset.et); });
   q('.sk-go').addEventListener('click', () => run());
@@ -187,6 +192,7 @@ function show(tab) {
   q('.el-anim').hidden = !(tab === 'anim3d' || tab === 'sketchfab');
   q('.el-akind').hidden = tab !== 'audio'; stopListening();
   q('.el-col').hidden = tab !== 'icons';
+  q('.el-upteam').hidden = tab !== 'team';
   q('.el-grid').className = 'el-grid' + (tab === 'icons' || tab === 'stickers' ? ' small' : '') + (tab === 'images' ? ' checker justify' : tab === 'gif' || tab === 'videos' || tab === 'photos' ? ' justify' : '');
   q('.sk-q').value = terms[tab] || '';
   q('.el-grid').innerHTML = ''; q('.sk-more').hidden = true; q('.sk-go').disabled = false; picks = [];
@@ -294,6 +300,21 @@ function imageResult(img) {
     }, img.width && img.height ? img.width / img.height : 0];
 }
 
+// A picture for the whole team: its file, and a small preview made here (the list shows previews, not the files).
+function uploadTeamImage() {
+  const inp = Object.assign(document.createElement('input'), { type: 'file', accept: 'image/png,image/jpeg,image/webp,image/gif,image/svg+xml' });
+  inp.onchange = async () => {
+    const f = inp.files[0]; if (!f) return;
+    const data = await new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = ko; r.readAsDataURL(f); });
+    const thumb = await new Promise(ok => { const i = new Image(); i.onload = () => { const k = Math.min(1, 240 / Math.max(i.naturalWidth, i.naturalHeight)), c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(i.naturalWidth * k)); c.height = Math.max(1, Math.round(i.naturalHeight * k)); c.getContext('2d').drawImage(i, 0, 0, c.width, c.height);
+      ok(c.toDataURL(/png|svg|gif/.test(f.type) ? 'image/png' : 'image/jpeg', 0.8)); }; i.onerror = () => ok(''); i.src = data; });
+    try { await api('team/assets', { name: f.name.replace(/\.[^.]+$/, ''), data, thumb }); toast(t('Subida: ya la puede usar todo el equipo')); if (cur === 'team') run(); }
+    catch (e) { alertDialog(e.status === 402 ? t('El espacio de imágenes del equipo está lleno.') : e.status === 413 ? t('La imagen es demasiado grande (8 MB como mucho).') : e.message); }
+  };
+  inp.click();
+}
+
 let runs = 0, busy = false;
 async function run(more = false) {
   if (!panel) return;
@@ -347,6 +368,10 @@ async function run(more = false) {
       q('.el-grid').querySelectorAll('.el-loading').forEach(x => x.remove());
       res.forEach(a => soundItem(a));
       list = [];
+    } else if (tab === 'team') {
+      const { assets } = await api('team/assets'), w = term.toLowerCase();
+      list = assets.filter(a => !w || a.name.toLowerCase().includes(w)).map(a => [a.thumb || 'icons/icon.svg', `${a.name} — ${a.by}`, '',
+        async () => { const { data } = await api(`team/assets/${a.id}`); addImage(data); return currentSlide().blocks.at(-1); }]);
     } else if (tab === 'stickers') {
       list = R.searchStickers(term).map(s => [s.thumb, s.words, '', () => R.insertSticker(s.code, s.words)]);
     } else if (tab === 'anim3d') {

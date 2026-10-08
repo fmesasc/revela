@@ -35,7 +35,8 @@
 //   GET  /api/docs/:id/since?rev=N    → { rev, ops } (what changed since), or { rev, deck } when too old
 //   POST /api/docs/:id/ops            { ops } → { rev }  (each op checked against the role; 402 { error: 'read only',
 //                                     reason: 'over limit', limit } when its owner has more than the plan allows)
-//   POST /api/docs/:id/share          { link, people: { email: role }, until?: { email: ms }, linkUntil?, noCopy?, editorsShare?,
+//   POST /api/docs/:id/share          { team?: none|role (the owner's team: every member, with that role — Mi nube ▸ Del equipo),
+//                                     link, people: { email: role }, until?: { email: ms }, linkUntil?, noCopy?, editorsShare?,
 //                                     slidesOf?: { email: [ids] }, linkSlides?: [ids] | null }
 //                                     (owner, or editors with editorsShare — not noCopy/editorsShare; people need Pro; new people get an email)
 //   POST /api/docs/:id/delete         (owner: deleted for good at once)
@@ -122,7 +123,8 @@ export class CloudDoc {
     const now = Date.now(), over = t => !!t && t <= now;   // (no date: no end)
     const person = who?.email && !over(meta.until?.[who.email]) && meta.people[who.email], link = meta.link !== 'none' && !over(meta.linkUntil) ? meta.link : null;
     const tracked = this.tracked(meta, r) ? 'present' : null;          // (a recipient's own link: to see it presented)
-    return [person, link, tracked].filter(Boolean).sort((a, b) => ROLE_RANK[b] - ROLE_RANK[a])[0] || null;
+    const team = who?.team && meta.team?.id === who.team ? meta.team.role : null;   // (the owner's team, all of it)
+    return [person, link, tracked, team].filter(Boolean).sort((a, b) => ROLE_RANK[b] - ROLE_RANK[a])[0] || null;
   }
   async trackList(meta) {
     const all = (await this.ctx.storage.get('track')) || {};
@@ -137,6 +139,7 @@ export class CloudDoc {
     const now = Date.now(), over = t => !!t && t <= now, ways = [];
     if (who?.email && meta.people[who.email] && !over(meta.until?.[who.email])) ways.push(meta.slidesOf?.[who.email] || null);
     if (meta.link !== 'none' && !over(meta.linkUntil)) ways.push(meta.linkSlides || null);
+    if (who?.team && meta.team?.id === who.team) ways.push(null);
     if (!ways.length || ways.includes(null)) return null;
     return [...new Set(ways.flat())];
   }
@@ -196,7 +199,7 @@ export class CloudDoc {
     if (!role) return this.json({ error: a.who?.sub ? 'forbidden' : 'sign in' }, a.who?.sub ? 403 : 401);
     const at = r => ROLE_RANK[role] >= ROLE_RANK[r], only = this.scopeOf(meta, a.who, role, a.r);
     const sharing = () => ({ link: meta.link, people: meta.people, until: meta.until || {}, linkUntil: meta.linkUntil || null, noCopy: !!meta.noCopy, editorsShare: !!meta.editorsShare,
-      slidesOf: meta.slidesOf || {}, linkSlides: meta.linkSlides || null });
+      slidesOf: meta.slidesOf || {}, linkSlides: meta.linkSlides || null, team: meta.team?.role || 'none' });
     // (What this person gets: for «present», the audience's slides; with a choice of slides, only those.)
     const seen = () => onlySlides(role === 'present' ? forAudience(doc.deck) : doc.deck, only);
     const manages = role === 'owner' || (role === 'edit' && !!meta.editorsShare);
@@ -263,7 +266,12 @@ export class CloudDoc {
         if (!manages) return this.json({ error: 'forbidden' }, 403);
         // (The settings themselves are the owner's alone.)
         if (role !== 'owner' && (a.noCopy !== undefined || a.editorsShare !== undefined)) return this.json({ error: 'forbidden' }, 403);
-        const before = { ...meta.people };
+        const before = { ...meta.people }, teamBefore = meta.team || null;
+        // (The team: the owner's own, only by the owner — who.team is checked by the worker.)
+        if (a.team !== undefined) {
+          if (role !== 'owner' || (a.team !== 'none' && !a.who?.team) || !['none', ...ROLES].includes(a.team)) return this.json({ error: 'forbidden' }, 403);
+          meta.team = a.team === 'none' ? null : { id: a.who.team, role: a.team };
+        }
         if (a.link !== undefined) { if (!LINK_ROLES.includes(a.link)) return this.json({ error: 'bad request' }, 400); meta.link = a.link; }
         if (a.linkUntil !== undefined) { if (a.linkUntil && !untilOf(a.linkUntil)) return this.json({ error: 'bad request' }, 400); meta.linkUntil = untilOf(a.linkUntil); }
         if (a.people !== undefined) {
@@ -306,17 +314,17 @@ export class CloudDoc {
         if (a.noCopy !== undefined) meta.noCopy = !!a.noCopy;
         if (a.editorsShare !== undefined) meta.editorsShare = !!a.editorsShare;
         await st.put('meta', meta);
-        return this.json({ ok: true, sharing: sharing(), before, name: meta.name, ownerEmail: meta.ownerEmail });
+        return this.json({ ok: true, sharing: sharing(), before, teamBefore, team: meta.team || null, name: meta.name, ownerEmail: meta.ownerEmail });
       }
       case 'delete': {
         if (role !== 'owner') return this.json({ error: 'forbidden' }, 403);
-        const people = Object.keys(meta.people); await st.deleteAll(); this.doc = null;
-        return this.json({ ok: true, people });
+        const people = Object.keys(meta.people), team = meta.team || null; await st.deleteAll(); this.doc = null;
+        return this.json({ ok: true, people, team });
       }
       case 'trash': {                                       // { on }: into the trash (or back)
         if (role !== 'owner') return this.json({ error: 'forbidden' }, 403);
         meta.trashed = a.on ? Date.now() : null; await st.put('meta', meta);
-        return this.json({ ok: true, people: meta.people, name: meta.name });
+        return this.json({ ok: true, people: meta.people, name: meta.name, team: meta.team || null });
       }
       case 'thumb': {                                       // { thumb }: the picture of its first slide, for the lists
         if (!at('edit')) return this.json({ error: 'forbidden' }, 403);
@@ -405,6 +413,8 @@ export class CloudDoc {
 
 // ---- Routes (called from api.js with the session, or none) -----------------------------------
 const docOf = (env, id) => env.DOCS.get(env.DOCS.idFromName('doc:' + id));
+// The team's list of documents shared with it (teams.js).
+const teamDocs = async (env, team, op, body) => { if (!env.TEAMS || !team) return null; const r = await env.TEAMS.get(env.TEAMS.idFromName('team:' + team)).fetch('https://team/' + op, { method: 'POST', body: JSON.stringify(body) }); return r.json(); };
 const ask = async (env, id, op, body) => { const r = await docOf(env, id).fetch('https://doc/' + op, { method: 'POST', body: JSON.stringify(body) }); return { status: r.status, data: await r.json() }; };
 const ID = /^[\w-]{16,40}$/;
 
@@ -415,6 +425,7 @@ export async function purgeDoc(env, sub, id) {
   if (r.status !== 200 && r.status !== 404) return r;
   await call(acct(env, sub), 'docs-remove', { id });
   for (const e of r.data.people || []) await call(acct(env, 'e:' + e), 'inbox-remove', { id });
+  if (r.data.team) await teamDocs(env, r.data.team.id, 'doc-remove', { id });
   return { status: 200, data: { ok: true } };
 }
 // A new one in my list (and in a folder of mine, if given), within the plan's limit.
@@ -429,7 +440,7 @@ async function create(env, me, deck, folder) {
 // me: { sub, email, plan, features } or null.
 export async function handleDocs(path, req, body, url, env, me, json) {
   const s = docsSettings(env);
-  const who = me ? { sub: me.sub, email: me.email } : null;
+  const who = me ? { sub: me.sub, email: me.email, ...(me.team && { team: me.team }) } : null;
   const reply = r => json(r.data, r.status);
   if (path === '/docs') {
     if (!me) return json({ error: 'no session' }, 401);
@@ -506,6 +517,7 @@ export async function handleDocs(path, req, body, url, env, me, json) {
     await call(acct(env, me.sub), 'docs-meta', { id, trashed: on });
     // (Out of the lists of whoever it's shared with while in the trash; back when restored, without another email.)
     for (const [e, role] of Object.entries(r.data.people)) await call(acct(env, 'e:' + e), on ? 'inbox-away' : 'inbox-add', { id, name: r.data.name, owner: me.email, role });
+    if (r.data.team) await teamDocs(env, r.data.team.id, on ? 'doc-remove' : 'doc-add', { id, name: r.data.name, owner: me.email, role: r.data.team.role });
     return json({ ok: true });
   }
   if (op === 'meta') {
@@ -516,6 +528,7 @@ export async function handleDocs(path, req, body, url, env, me, json) {
       const r = await ask(env, id, 'ops', { who, id, ops: [{ p: ['name'], v: name }] });
       if (r.status !== 200) return reply(r);
       await call(acct(env, r.data.owner), 'docs-touch', { id, name: r.data.name, slides: r.data.slides, text: r.data.text });
+      if (me.team) await teamDocs(env, me.team, 'doc-rename', { id, name: r.data.name });   // (if it's in my team's list)
       out.name = r.data.name;
     }
     if (body.folder !== undefined || body.starred !== undefined) {
@@ -553,7 +566,11 @@ export async function handleDocs(path, req, body, url, env, me, json) {
       // (Someone new: an email with the link — a service email, no opt-out.)
       if (!was[e]) await mail(env, { to: e, kind: 'share', lang: x.lang, vars: { by: me.name ? `${me.name} (${me.email})` : me.email, name: r.data.name, role, url: `${env.SITE_URL || 'https://revelaslides.com'}/app/?doc=${encodeURIComponent(id)}` } });
     }
-    delete r.data.before; delete r.data.ownerEmail;
+    // (The team's list: in it while shared with the team, with its role and name; out when not.)
+    const tb = r.data.teamBefore, ta = r.data.team;
+    if (tb && (!ta || tb.id !== ta.id)) await teamDocs(env, tb.id, 'doc-remove', { id });
+    if (ta) await teamDocs(env, ta.id, 'doc-add', { id, name: r.data.name, owner: r.data.ownerEmail || me.email, role: ta.role });
+    delete r.data.before; delete r.data.ownerEmail; delete r.data.teamBefore; delete r.data.team;
   } else if (op === 'get' && r.data.notify) {
     // (A tracked link opened: its owner told, if they asked — in their language, and they can stop these.)
     const n = r.data.notify; delete r.data.notify;

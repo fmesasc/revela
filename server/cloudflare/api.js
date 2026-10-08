@@ -890,7 +890,8 @@ export async function handleApi(req, env, url) {
   // Anything that changes something, sent with the cookie, must come from Revela's site (no cross-site requests).
   if (req.method === 'POST' && cookieOf(req) && !req.headers.get('Authorization') && !webOrigin) return json({ error: 'origin' }, 403);
   const isDocs = path === '/docs' || path.startsWith('/docs/');
-  const maxBody = isDocs ? (+env.MAX_MB || 30) * 1024 * 1024 : 2e6;
+  // (Documents, and the team's templates and pictures, may be big: the rest is small JSON.)
+  const maxBody = isDocs || path === '/team/template' || path === '/team/assets' ? (+env.MAX_MB || 30) * 1024 * 1024 : 2e6;
   if (+(req.headers.get('Content-Length') || 0) > maxBody) return json({ error: 'too large' }, 413);
   const text = req.method === 'POST' ? await req.text() : '';
   if (text.length > maxBody) return json({ error: 'too large' }, 413);
@@ -997,8 +998,10 @@ export async function handleApi(req, env, url) {
     return json({ error: 'blocked', message: 'Esta cuenta está bloqueada. Si crees que es un error, escríbenos desde Revela ▸ Vista ▸ Informar de un problema.' }, 403);
   // Cloud documents: a link may give access without a session (to read).
   if (isDocs) {
-    const who = me && { ...me, ...(await call(acct(env, me.sub), 'me')) };
-    return handleDocs(path, req, body, url, env, who && { sub: me.sub, email: who.email, name: who.name, plan: who.plan, features: who.features }, json);
+    // (The team only while they really are in it: someone taken out keeps its id in their account until it's noticed.)
+    const who = me && { ...me, ...(await call(acct(env, me.sub), 'me')) }, tid = me && (await call(acct(env, me.sub), 'team-id')).id;
+    const team = tid && (await teamStatus(env, tid, who.email))?.member ? tid : null;
+    return handleDocs(path, req, body, url, env, who && { sub: me.sub, email: who.email, name: who.name, plan: who.plan, features: who.features, ...(team && { team }) }, json);
   }
   // Notices (notices.js): no session needed; with one, chosen by its plan.
   if (path === '/notices' && req.method === 'GET') {

@@ -2709,5 +2709,47 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   } finally { env.FETCH = realF; }
 }
 
+// ---- The team's space: documents shared with the whole team, and its pictures (docs.js, teams.js) ----
+{
+  const [own, mem, out] = [await login2('tok-lia'), await login2('tok-sto'), await login2('tok-gil')];
+  const T = (c, path, body) => req(body === undefined ? 'GET' : 'POST', '/api' + path, { headers: { Cookie: c }, body });
+  const { id: team } = await (await T(own, '/team', { name: 'Equipo común' })).json();
+  const TS = env.TEAMS.inst.get('team:' + team).ctx.storage.m, tt = TS.get('team'); tt.seats = 5; tt.until = Date.now() + 30 * 864e5; TS.set('team', tt);
+  await T(own, '/team/invite', { email: 'sto@example.com' }); ok((await T(mem, '/team/accept', { id: team })).status === 200, 'espacio: entra en el equipo');
+  await setPlan('2323', Date.now() + 30 * 864e5);
+  const { id: doc } = await (await T(own, '/docs', { deck: { name: 'Programación anual', slides: [{ id: 's1', blocks: [] }] } })).json();
+  ok((await T(mem, `/docs/${doc}`)).status === 403, 'espacio: sin compartir, un miembro no la ve');
+  ok((await T(mem, `/docs/${doc}/share`, { team: 'edit' })).status === 403, 'espacio: solo su dueña la comparte con el equipo');
+  let r = await T(own, `/docs/${doc}/share`, { team: 'comment' }), j = await r.json();
+  ok(r.status === 200 && j.sharing.team === 'comment', 'espacio: compartida con el equipo (comentar)');
+  j = await (await T(mem, '/team/docs')).json();
+  ok(j.docs.length === 1 && j.docs[0].id === doc && j.docs[0].name === 'Programación anual' && j.docs[0].role === 'comment', 'espacio: en la lista del equipo');
+  j = await (await T(mem, `/docs/${doc}`)).json();
+  ok(j.role === 'comment' && j.deck.slides.length === 1, 'espacio: el miembro la abre con ese permiso');
+  ok((await T(mem, `/docs/${doc}/ops`, { ops: [{ p: ['name'], v: 'cambiada' }] })).status === 403, 'espacio: comentar no es editar');
+  ok((await T(out, `/docs/${doc}`)).status === 403 && !(await (await T(out, '/team/docs')).json()).docs.length, 'espacio: quien no es del equipo, nada');
+  await T(own, `/docs/${doc}/meta`, { name: 'Programación 2026-27' });
+  ok((await (await T(mem, '/team/docs')).json()).docs[0].name === 'Programación 2026-27', 'espacio: el nombre nuevo, también en la lista');
+  // Out of the team: no more access, at once.
+  await T(own, '/team/remove', { email: 'sto@example.com' });
+  ok((await T(mem, `/docs/${doc}`)).status === 403, 'espacio: quien sale del equipo deja de verla');
+  await T(own, '/team/invite', { email: 'sto@example.com' }); await T(mem, '/team/accept', { id: team });
+  await T(own, `/docs/${doc}/trash`, {});
+  ok(!(await (await T(mem, '/team/docs')).json()).docs.length, 'espacio: en la papelera, fuera de la lista');
+  await T(own, `/docs/${doc}/restore`, {});
+  ok((await (await T(mem, '/team/docs')).json()).docs.length === 1, 'espacio: al recuperarla, vuelve');
+  await T(own, `/docs/${doc}/share`, { team: 'none' });
+  ok(!(await (await T(mem, '/team/docs')).json()).docs.length && (await T(mem, `/docs/${doc}`)).status === 403, 'espacio: dejar de compartirla con el equipo');
+  // Pictures.
+  const png = 'data:image/png;base64,' + Buffer.from('fake-png-bytes').toString('base64');
+  ok((await T(mem, '/team/assets', { name: 'x', data: 'data:text/html;base64,PGI+' })).status === 400, 'imágenes del equipo: solo imágenes');
+  j = await (await T(mem, '/team/assets', { name: 'Logo del centro', data: png })).json(); const aid = j.id;
+  j = await (await T(own, '/team/assets')).json();
+  ok(j.assets.length === 1 && j.assets[0].name === 'Logo del centro' && j.assets[0].by === 'sto@example.com', 'imágenes del equipo: la ven todos');
+  ok((await (await T(own, `/team/assets/${aid}`)).json()).data === png, 'imágenes del equipo: se insertan');
+  ok((await T(out, '/team/assets')).status === 404, 'imágenes del equipo: quien no es del equipo, no');
+  ok((await T(own, `/team/assets/${aid}/delete`, {})).status === 200 && !(await (await T(mem, '/team/assets')).json()).assets.length, 'imágenes del equipo: la administración las quita');
+}
+
 console.log(fails ? `API FAIL ${n - fails}/${n}` : `API OK ${n}/${n}`);
 process.exit(fails ? 1 : 0);

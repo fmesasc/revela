@@ -10,6 +10,7 @@ import { esc } from '../../core/text.js';
 import { state, replaceDeck } from '../../core/store.js';
 import { isBlankDeck, emptyDeck, UNTITLED, isUntitled } from '../../core/model.js';
 import * as cd from '../../io/cloud/clouddocs.js';
+import { account, api } from '../../io/cloud/account.js';
 import { nowInCloud } from '../shell/where.js';
 import { download, slug } from '../../io/files.js';
 import { t, currentLang } from '../../i18n/index.js';
@@ -31,7 +32,8 @@ function spaceBar(st) {
   return `<div class="nb-bar nb-space" role="progressbar" aria-label="${t('Espacio en la nube')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pc)}"><i style="width:${pc.toFixed(1)}%"${pc >= 90 ? ' class="full"' : ''}></i></div>
     <small>${t('{used} de {quota} de espacio').replace('{used}', fmtSize(st.used)).replace('{quota}', fmtSize(st.quota))}${pc >= 100 ? ` · <b>${t('lleno')}</b>` : ''}</small>`;
 }
-const SECTIONS = [['mine', 'cloud', 'Mi nube'], ['shared', 'group', 'Compartidas conmigo'], ['starred', 'star', 'Destacadas'], ['recent', 'schedule', 'Recientes'], ['trash', 'delete', 'Papelera']];
+// («Del equipo»: what its owners shared with the whole team — only when in one.)
+const SECTIONS = [['mine', 'cloud', 'Mi nube'], ['shared', 'group', 'Compartidas conmigo'], ['team', 'groups', 'Del equipo'], ['starred', 'star', 'Destacadas'], ['recent', 'schedule', 'Recientes'], ['trash', 'delete', 'Papelera']];
 
 // "2 hours ago"; a date beyond a month.
 function ago(ts) {
@@ -89,7 +91,7 @@ export function closePage() {
 }
 async function reload() {
   const me = S; if (!me) return;
-  try { me.data = await cd.listDocs(); } catch (e) { me.el.querySelector('.nb-content').innerHTML = `<p class="nb-empty-msg">${esc(errorText(e))}</p>`; return; }
+  try { me.data = await cd.listDocs(); me.data.team = account()?.team ? (await api('team/docs').catch(() => ({ docs: [] }))).docs : []; } catch (e) { me.el.querySelector('.nb-content').innerHTML = `<p class="nb-empty-msg">${esc(errorText(e))}</p>`; return; }
   if (S !== me) return;
   // (A folder that no longer exists: back to the top.)
   if (me.folder && !me.data.folders?.some(f => f.id === me.folder)) me.folder = null;
@@ -103,7 +105,9 @@ const pathOf = id => { const out = []; for (let f = folderOf(id); f && out.lengt
 const parentOf = d => (d.folder && folderOf(d.folder) ? d.folder : null);
 function docs() {
   const mine = (S.data.mine || []).map(d => ({ ...d, kind: 'mine', folder: parentOf(d), created: d.created || d.updated }));
-  const shared = (S.data.shared || []).map(d => ({ ...d, kind: 'shared', updated: d.at, created: d.at }));
+  const own = new Set((S.data.mine || []).map(d => d.id));
+  const shared = [...(S.data.shared || []).map(d => ({ ...d, kind: 'shared', updated: d.at, created: d.at })),
+    ...(S.data.team || []).filter(d => !own.has(d.id) && !(S.data.shared || []).some(x => x.id === d.id)).map(d => ({ ...d, kind: 'shared', team: true, updated: d.at, created: d.at }))];
   return { mine, shared };
 }
 function items() {
@@ -113,7 +117,8 @@ function items() {
     fs = folders().filter(f => fold(f.name).includes(q));
     ds = [...live.filter(d => fold(d.name).includes(q) || fold(d.text).includes(q)), ...shared.filter(d => fold(d.name).includes(q) || fold(d.owner).includes(q))];
   } else if (S.section === 'mine') { fs = folders().filter(f => (f.parent || null) === S.folder); ds = live.filter(d => d.folder === S.folder); }
-  else if (S.section === 'shared') ds = shared;
+  else if (S.section === 'shared') ds = shared.filter(d => !d.team);
+  else if (S.section === 'team') ds = [...live.filter(d => (S.data.team || []).some(x => x.id === d.id)), ...shared.filter(d => d.team || (S.data.team || []).some(x => x.id === d.id))];
   else if (S.section === 'starred') ds = [...live, ...shared].filter(d => d.starred);
   else if (S.section === 'recent') return { fs: [], ds: [...live, ...shared].sort((a, b) => (b.updated || 0) - (a.updated || 0)).slice(0, 24) };
   else if (S.section === 'trash') return { fs: [], ds: mine.filter(d => d.trashed).sort((a, b) => b.trashed - a.trashed) };
@@ -131,7 +136,7 @@ function render() {
   // Sections, with my folders under «Mi nube».
   const tree = (parent, depth) => folders().filter(f => (f.parent || null) === parent).sort((a, b) => a.name.localeCompare(b.name, currentLang(), { numeric: true }))
     .map(f => `<button type="button" class="nb-sec nb-tree${!S.q && S.section === 'mine' && S.folder === f.id ? ' on' : ''}" data-go="${esc(f.id)}" data-folder="${esc(f.id)}" style="--d:${depth}"><i class="ms">folder</i><span>${esc(f.name)}</span></button>${tree(f.id, depth + 1)}`).join('');
-  el.querySelector('.nb-secs').innerHTML = SECTIONS.map(([k, icon, label]) => `<button type="button" class="nb-sec${!S.q && S.section === k && !(k === 'mine' && S.folder) ? ' on' : ''}" data-sec="${k}"${k === 'mine' ? ' data-folder=""' : ''}>
+  el.querySelector('.nb-secs').innerHTML = SECTIONS.filter(([k]) => k !== 'team' || account()?.team).map(([k, icon, label]) => `<button type="button" class="nb-sec${!S.q && S.section === k && !(k === 'mine' && S.folder) ? ' on' : ''}" data-sec="${k}"${k === 'mine' ? ' data-folder=""' : ''}>
       <i class="ms">${icon}</i><span>${t(label)}</span>${k === 'trash' && mine.some(d => d.trashed) ? `<em>${mine.filter(d => d.trashed).length}</em>` : ''}</button>${k === 'mine' && !phone() ? `<div class="nb-treebox">${tree(null, 1)}</div>` : ''}`).join('');
   // How many of the plan's, and the space they take (server/cloudflare/storage.js).
   const n = mine.length, lim = S.data.limit || 0, trashed = mine.filter(d => d.trashed).length;
@@ -175,6 +180,7 @@ function empty() {
   if (S.q) return box('search_off', t('Nada coincide con «{q}»').replace('{q}', esc(S.q.trim())), t('Prueba con otras palabras: se busca en los nombres y en los títulos de las diapositivas.'));
   if (S.section === 'mine' && S.folder) return box('folder_open', t('Esta carpeta está vacía'), t('Arrastra aquí presentaciones o usa «Mover a…» en su menú.'), news);
   if (S.section === 'mine') return box('cloud_upload', t('Aún no tienes ninguna presentación en la nube'), t('Guardadas en la nube se guardan solas, las abres desde cualquier dispositivo y puedes compartirlas.'), news);
+  if (S.section === 'team') return box('groups', t('Tu equipo aún no ha compartido nada'), t('Al compartir una presentación, elige «Tu equipo» para que la vea todo el equipo.'));
   if (S.section === 'shared') return box('group', t('Nadie ha compartido nada contigo todavía.'), t('Cuando alguien comparta una presentación con tu cuenta, aparecerá aquí.'));
   if (S.section === 'starred') return box('star', t('Nada destacado todavía'), t('Marca con una estrella las que más uses para tenerlas a mano.'));
   if (S.section === 'trash') return box('delete', t('La papelera está vacía'), '');

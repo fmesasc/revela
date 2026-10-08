@@ -79,6 +79,8 @@ export async function openCloudShare() {
   }
   const me = acc.account(), pro = (me?.features || []).includes('share-people'), analytics = (me?.features || []).includes('analytics'), owner = doc.role === 'owner';
   const sh = doc.sharing;
+  // (The owner's team, all of it: Mi nube ▸ Del equipo — server/cloudflare/docs.js roleOf.)
+  let team = sh.team || 'none'; const myTeam = me?.team?.name;
   let people = { ...(sh.people || {}) }, link = sh.link || 'none', until = { ...(sh.until || {}) }, linkUntil = sh.linkUntil || null, noCopy = !!sh.noCopy, editorsShare = !!sh.editorsShare;
   // Only some slides (who presents, views or comments): per person and for the link — null: all.
   let slidesOf = { ...(sh.slidesOf || {}) }, linkSlides = sh.linkSlides || null;
@@ -95,6 +97,9 @@ export async function openCloudShare() {
           || `<p class="host-help">${t('Solo tú.')}</p>`}</div>
         <div class="sh-row"><input type="email" class="cl-email" placeholder="${t('correo@ejemplo.com')}"${pro ? '' : ' disabled'}>${roleSel('cl-new-role', 'edit')}<button type="button" class="mini2 cl-add"${pro ? '' : ' disabled'}>${t('Añadir')}</button></div>
       </fieldset>
+      ${owner && myTeam ? `<fieldset><legend>${t('Tu equipo')}</legend>
+        <div class="sh-row"><span style="flex:1">${t('Todo el equipo «{t}»').replace('{t}', esc(myTeam))}</span><select class="cl-team"><option value="none"${team === 'none' ? ' selected' : ''}>${t('Sin acceso')}</option>${['present', 'view', 'comment', 'edit'].map(r => `<option value="${r}"${r === team ? ' selected' : ''}>${t(ROLE_NAMES[r])}</option>`).join('')}</select></div>
+        <p class="host-help">${t('La ven en Mi nube ▸ Del equipo, también quien entre más tarde.')}</p></fieldset>` : ''}
       <fieldset><legend>${t('Enlace')}</legend>
         <div class="sh-row"><select class="cl-linkrole">${Object.entries(LINK_NAMES).map(([k, v]) => `<option value="${k}"${k === link ? ' selected' : ''}>${t(v)}</option>`).join('')}</select>${link === 'none' ? '' : untilIn('cl-l-until', linkUntil)}${slidesBtn('cl-l-only', linkSlides, link)}</div>
         <div class="sh-row"><input readonly class="cl-link" value="${esc(cd.docLink(doc.id))}"><button type="button" class="mini2 cl-copy">${t('Copiar')}</button></div>
@@ -121,6 +126,7 @@ export async function openCloudShare() {
       people[e] = q('.cl-new-role').value; render(); apply();
     });
     q('.cl-email').addEventListener('keydown', e => { if (e.key === 'Enter') q('.cl-add').click(); });
+    q('.cl-team')?.addEventListener('change', e => { team = e.target.value; apply(); });
     q('.cl-linkrole').addEventListener('change', e => { link = e.target.value; if (link === 'none') linkUntil = null; render(); apply(); });
     body.querySelectorAll('.cl-p-until').forEach(i => i.addEventListener('change', () => { const e = i.closest('[data-email]').dataset.email; if (i.value) until[e] = endOf(i.value); else delete until[e]; apply(); }));
     q('.cl-l-until')?.addEventListener('change', e => { linkUntil = endOf(e.target.value); apply(); });
@@ -147,7 +153,7 @@ export async function openCloudShare() {
     for (const e of Object.keys(slidesOf)) if (!people[e] || people[e] === 'edit' || !kept(slidesOf[e])?.length) delete slidesOf[e];
     if (link === 'none' || link === 'edit' || !kept(linkSlides)?.length) linkSlides = null;
     const only = Object.fromEntries(Object.entries(slidesOf).map(([e, v]) => [e, kept(v)]));
-    const want = { link, linkUntil, linkSlides: kept(linkSlides), ...(pro && { people: { ...people }, until: { ...until }, slidesOf: only }), ...(owner && { noCopy, editorsShare }) };
+    const want = { link, linkUntil, linkSlides: kept(linkSlides), ...(pro && { people: { ...people }, until: { ...until }, slidesOf: only }), ...(owner && { noCopy, editorsShare }), ...(owner && myTeam && { team }) };
     status('saving');
     saving = saving.then(async () => {
       try { const r = await cd.shareDoc(doc.id, want); cd.setSharing(r.sharing); doc = cd.cloudDoc() || doc; status('saved'); }
