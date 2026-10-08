@@ -1964,6 +1964,38 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(last().motion, 'orbit', 'el diálogo guarda el movimiento'); eq(last().autoRotate, false, 'y el giro');
   });
 
+  await test('Excel (.xlsx): sus hojas como tabla o como datos de un gráfico', async () => {
+    reset(); const W = frame.contentWindow;
+    const JSZip = W.JSZip || (await W.eval(`import('${R.vendor.JSZIP_ESM}')`)).default, z = new JSZip();
+    const ns = 'xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
+    z.file('xl/workbook.xml', `<workbook ${ns}><sheets><sheet name="Ventas" sheetId="1" r:id="rId1"/><sheet name="Oculta" sheetId="2" state="hidden" r:id="rId2"/><sheet name="Notas" sheetId="3" r:id="rId3"/><sheet name="Vacía" sheetId="4" r:id="rId4"/></sheets></workbook>`);
+    z.file('xl/_rels/workbook.xml.rels', `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Target="/xl/worksheets/sheet3.xml"/><Relationship Id="rId4" Target="worksheets/sheet4.xml"/></Relationships>`);
+    z.file('xl/sharedStrings.xml', `<sst ${ns}><si><t>Mes</t></si><si><t>Ventas</t></si><si><r><t>Ene</t></r><r><t>ro</t></r></si><si><t>Fecha</t></si></sst>`);
+    z.file('xl/styles.xml', `<styleSheet ${ns}><numFmts><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts><cellXfs><xf numFmtId="0"/><xf numFmtId="164"/><xf numFmtId="14"/></cellXfs></styleSheet>`);
+    z.file('xl/worksheets/sheet1.xml', `<worksheet ${ns}><sheetData>
+      <row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="C1" t="s"><v>3</v></c></row>
+      <row r="2"><c r="A2" t="s"><v>2</v></c><c r="B2"><v>0.30000000000000004</v></c><c r="C2" s="1"><v>46303</v></c></row>
+      <row r="3"><c r="A3" t="inlineStr"><is><t>Feb</t></is></c><c r="B3"><f>B2*2</f><v>12</v></c><c r="C3" t="b"><v>1</v></c><c r="E3" t="str"><v>fórmula</v></c></row>
+      <row r="5"><c r="A5" t="s"><v>0</v></c></row></sheetData></worksheet>`);
+    z.file('xl/worksheets/sheet2.xml', `<worksheet ${ns}><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>secreto</t></is></c></row></sheetData></worksheet>`);
+    z.file('xl/worksheets/sheet3.xml', `<worksheet ${ns}><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>Nota</t></is></c><c r="B1"><v>7</v></c></row></sheetData></worksheet>`);
+    z.file('xl/worksheets/sheet4.xml', `<worksheet ${ns}><sheetData/></worksheet>`);
+    const data = await z.generateAsync({ type: 'arraybuffer' });
+    const X = await W.eval("import('/src/io/formats/xlsx-import.js')"), sheets = await X.readXlsx(data);
+    eq(sheets.map(s => s.name).join(), 'Ventas,Notas', 'las hojas con datos (no las ocultas ni las vacías)');
+    eq(JSON.stringify(sheets[0].rows), JSON.stringify([['Mes', 'Ventas', 'Fecha', '', ''], ['Enero', '0.3', '2026-10-08', '', ''], ['Feb', '12', 'TRUE', '', 'fórmula'], ['', '', '', '', ''], ['Mes', '', '', '', '']]),
+      'textos compartidos (también con formato), números sin ruido, fechas, verdadero, el último valor de las fórmulas, y su sitio en la cuadrícula');
+    eq(X.cellRef('BC12').col + ',' + X.cellRef('BC12').row, '54,11', 'referencias de celda');
+    // A workbook with two sheets: which one; then a table (or a chart's data) from it.
+    const S = await W.eval("import('/src/ui/dialogs/sheets.js')"), file = new W.File([data], 'datos.xlsx');
+    const got = S.sheetText(file); for (let i = 0; i < 40 && !D.getElementById('sheet-modal'); i++) await sleep(25);
+    const pick = D.getElementById('sheet-modal'); assert(pick && /Ventas[\s\S]*5 × 5/.test(pick.textContent), 'con varias hojas, pregunta cuál (con su tamaño)');
+    pick.querySelector('[data-i="1"]').click(); eq(await got, 'Nota\t7', 'la hoja elegida, como texto con tabuladores');
+    const csv = await S.sheetText(new W.File(['a;b\n1;2'], 'x.csv', { type: 'text/csv' })); eq(csv, 'a;b\n1;2', 'un CSV, tal cual');
+    const tb = R.blocks.addTableFromText(X.rowsToTSV(sheets[0].rows)); eq(tb.rows[1].slice(0, 3).join('|'), 'Enero|0.3|2026-10-08', 'una tabla desde la hoja');
+    assert(D.querySelector('[data-action="insert-table-csv"]') && /Excel/.test(D.querySelector('[data-action="insert-table-csv"]').textContent), 'el botón dice Excel o CSV');
+  });
+
   await test('tablas desde CSV y pegar en la diapositiva', async () => {
     reset();
     const rows = R.blocks.parseDelimited('Nombre;Nota\n"Pérez; Ana";9,5\n"Dice ""hola""";7\n');

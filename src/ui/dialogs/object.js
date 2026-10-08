@@ -6,6 +6,7 @@ import { state, commit } from '../../core/store.js';
 import * as blocks from '../../features/document/blocks.js';
 import { t } from '../../i18n/index.js';
 import { alertDialog } from './dialog.js';
+import { readFile } from '../shell/openfile.js';
 import { isGif } from '../../features/live/media.js';
 import { canCropOnSlide, uncrop } from '../../features/document/crop.js';
 import { gifRemoveBackground } from '../../features/live/gifbg.js';
@@ -187,10 +188,15 @@ export function openChartData(b) {
     <label class="fr-chk ch-pie"><input type="checkbox" class="ch-legend"${b.legend !== false ? ' checked' : ''}> ${t('Leyenda con el porcentaje de cada porción')}</label>
     <label class="fr-l">${t('Datos: etiqueta y una columna por serie; primera fila opcional con los nombres')}
       <textarea class="ch-data" rows="6" style="font-family:monospace">${lines}</textarea></label>
+    <div class="fr-actions" style="justify-content:flex-start;margin-top:-4px"><button type="button" class="mini2 ch-file"><i class="ms">upload_file</i> ${t('Traer los datos de Excel o CSV…')}</button></div>
     <div class="fr-actions"><button class="fr-do">${t('Aplicar')}</button></div>
   </div>`;
   document.body.appendChild(back);
   back.querySelector('.ch-type').value = b.chartType || 'bar';
+  // (The data from a spreadsheet: an Excel workbook — its sheet — or a CSV, into the box, to check before «Aplicar».)
+  back.querySelector('.ch-file').addEventListener('click', () => import('./sheets.js').then(S => readFile(S.SHEET_ACCEPT, async f => {
+    const txt = await S.sheetText(f); if (txt) back.querySelector('.ch-data').value = txt.split('\n').slice(0, 60).join('\n');
+  }, 'file')));
   // (Only the options of the chosen type: x axis' ends for scatter and bubbles, intervals for a histogram, the legend for pies.)
   const showFor = () => { const v = back.querySelector('.ch-type').value;
     back.querySelector('.ch-xy').style.display = ['scatter', 'bubble'].includes(v) ? 'flex' : 'none';

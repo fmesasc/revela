@@ -1055,3 +1055,12 @@ body.no-copy img{-webkit-user-drag:none}
 .mai-info small{opacity:.7}.mai-info .fr-do{align-self:flex-start;margin-top:4px}
 .mai-base{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0}
 .mai-tpl-name{flex:1;min-width:220px}.mai-tpl-name .mini2{margin-inline-start:6px}
+/* Rehearse the audience's questions (dialogs/qaprep.js) */
+.qa .qa-list{margin:8px 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;max-height:32vh;overflow:auto}
+.qa .qa-q{all:unset;box-sizing:border-box;display:flex;gap:8px;align-items:baseline;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:14px;line-height:1.35}
+.qa .qa-q:hover,.qa .qa-q:focus-visible{border-color:var(--accent,#3f6497);background:#8881}
+.qa .qa-kind{flex:0 0 auto;font-size:11px;font-weight:600;padding:1px 7px;border-radius:9px;background:#8883;white-space:nowrap}
+.qa .qa-critical{background:#c0392b22;color:#b03a2e}.qa .qa-practical{background:#26890c22;color:#1f6f0a}.qa .qa-deeper{background:#3f649722;color:#2c4f7c}
+.qa .qa-practice{border-top:1px solid var(--line);padding-top:10px;margin-top:6px}.qa .qa-practice h4{margin:0 0 8px;font-size:16px}
+.qa .qa-answer{width:100%;box-sizing:border-box;margin:8px 0;font:inherit;font-size:14px}
+.qa .qa-mic.on{background:#c0392b;color:#fff}.qa .qa-score b{display:inline-block;font-size:22px;color:var(--c)}

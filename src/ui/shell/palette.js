@@ -106,6 +106,7 @@ const SYN = {
   'a:collab': 'colaborar|tiempo real|coeditar|editar a la vez|collaborate|co-edit|real time|together',
   'a:ai-translate-deck': 'traducir|traducción|idioma|translate|translation|language|traduire|übersetzen|tradurre',
   'a:ai-level': 'nivel|lectura fácil|simplificar|edad|niños|primaria|reading level|easy read|simplify|lecture facile|leichte sprache',
+  'a:ai-qa': 'preguntas del público|ensayar preguntas|turno de preguntas|objeciones|q&a|questions|rehearse|practise|practice|questions du public',
   'a:prompter': 'apuntador|teleprompter|autocue|prompteur|notas grandes|guion',
   'a:resize-deck': 'tamaño|redimensionar|a4|cuadrado|vertical|instagram|historias|proporción|size|resize|aspect ratio|format|dimensions',
   'a:bg-advanced': 'fondo|imagen de fondo|vídeo de fondo|background|wallpaper|fond|hintergrund|sfondo',

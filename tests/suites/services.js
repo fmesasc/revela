@@ -361,6 +361,37 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.fetch = realFetch; AI.disconnectAi(); }
   });
 
+  await test('IA: ensayar las preguntas del público (prevé preguntas y valora la respuesta; simulado)', async () => {
+    reset(); const W = frame.contentWindow, AI = R.ai, realFetch = W.fetch, sent = [];
+    AI.setAiKey('sk-or-prueba'); AI.acceptPrivacy();
+    slide().blocks[0].html = 'Energía solar en el instituto'; slide().notes = 'Ahorro del 30 % en la factura';
+    W.fetch = async (url, opts) => {
+      const body = JSON.parse(opts.body), sys = body.messages[0].content; sent.push(body);
+      const reply = /questions after their talk/.test(sys)
+        ? { questions: [{ q: '¿Cuánto cuesta instalarlo?', kind: 'practical', points: ['Precio', 'Años para amortizarlo'], slide: 1 }, { q: '¿Y si está nublado?', kind: 'critical', points: ['Baterías'], slide: 9 }, { q: '', kind: 'x' }] }
+        : { score: 6, good: 'Diste una cifra.', improve: 'Di en cuántos años se amortiza.', better: 'Unos 20.000 €, que se recuperan en seis años.' };
+      return new W.Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(reply) } }] }));
+    };
+    try {
+      D.querySelector('[data-action="ai-qa"]').click(); for (let i = 0; i < 40 && !D.getElementById('qa-modal'); i++) await sleep(25);
+      const m = D.getElementById('qa-modal'); assert(m, 'el diálogo');
+      m.querySelector('.qa-go').click(); for (let i = 0; i < 40 && !m.querySelector('.qa-q'); i++) await sleep(25);
+      assert(/Energía solar/.test(sent[0].messages[1].content) && /Ahorro del 30/.test(sent[0].messages[1].content), 'la IA lee las diapositivas y las notas');
+      eq(m.querySelectorAll('.qa-q').length, 2, 'las preguntas previstas (sin las vacías)');
+      assert(/Crítica/.test(m.querySelectorAll('.qa-q')[1].textContent), 'con su tipo (también las críticas)');
+      const qs = await (await W.eval("import('/src/features/ai/authoring.js')")).predictQuestions(); assert(qs[1].slide >= 1 && qs[1].slide <= R.state.deck.slides.length, 'el número de diapositiva, dentro de la presentación');
+      m.querySelectorAll('.qa-q')[0].click(); await sleep(20);
+      assert(/Años para amortizarlo/.test(m.querySelector('.qa-practice details').textContent), 'lo que debe tener una buena respuesta, plegado');
+      m.querySelector('.qa-judge').click(); await sleep(20);
+      assert(/Primero responde/.test(m.querySelector('.qa-verdict').textContent), 'sin respuesta, lo pide');
+      m.querySelector('.qa-answer').value = 'Eh, pues unos veinte mil euros.'; m.querySelector('.qa-judge').click();
+      for (let i = 0; i < 40 && !m.querySelector('.qa-score'); i++) await sleep(25);
+      assert(/6\/10/.test(m.querySelector('.qa-score').textContent) && /amortiza/.test(m.querySelector('.qa-verdict').textContent), 'la nota, qué mejorar y una respuesta mejor');
+      assert(/veinte mil euros/.test(sent.at(-1).messages[1].content) && /Precio/.test(sent.at(-1).messages[1].content), 'valora la respuesta frente a sus puntos clave');
+      m.querySelector('.modal-close').click();
+    } finally { W.fetch = realFetch; AI.disconnectAi(); }
+  });
+
   await test('errores de la aplicación: el navegador en pocas palabras, y nada se envía sin cuenta (edición abierta) ni en pruebas', async () => {
     const W = frame.contentWindow, E = await W.eval("import('/src/ui/shell/errors.js')"), real = W.fetch; let sent = 0;
     eq(E.browserName('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'), 'Chrome 141 · Windows', 'Chrome en Windows');

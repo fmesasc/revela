@@ -647,4 +647,33 @@ export async function reviewDeck() {
     .map(x => ({ slide: Math.max(0, Math.min(state.deck.slides.length, Math.round(+x.slide) || 0)), kind: REVIEW_KINDS.includes(x.kind) ? x.kind : 'message', issue: str(x.issue), fix: str(x.fix) })) };
 }
 
+// The audience's questions, to rehearse (Decktopus' Q&A practice): what people would likely ask after this talk —
+// to clarify, to go deeper, sceptical, practical —, each with the points a good answer covers and the slide it comes
+// from (0: none) → [{ q, kind, points, slide }]. And a spoken (or typed) answer, judged → { score, good, improve, better }.
+export const QUESTION_KINDS = ['clarify', 'deeper', 'critical', 'practical'];
+export async function predictQuestions(n = 8) {
+  const shown = state.deck.slides.map((s, i) => [s, i]).filter(([s]) => !s.hidden);
+  const text = shown.map(([s, i]) => `[slide ${i + 1}]\n${slideText(s)}${s.notes ? `\n(notes: ${plain(s.notes).slice(0, 600)})` : ''}`).join('\n---\n').slice(0, 50000);
+  const out = await chat([
+    { role: 'system', content: `You prepare a presenter for the questions after their talk. From the slides and notes, list the ${n} questions the audience is most likely to ask, the hardest included: `
+      + `a mix of kinds — clarify (something not clear), deeper (beyond what was said), critical (sceptical, an objection), practical (how to apply it, cost, time). `
+      + `For each: the question as someone in the audience would say it; its kind; the 2–4 key points a good answer covers (from the presentation when it has them; when it doesn't, say what the answer needs); and the number of the slide it comes from (0 if none). `
+      + `Write in ${lang()}. Answer only JSON: {"questions":[{"q":"…","kind":"clarify","points":["…"],"slide":3}]}` },
+    { role: 'user', content: text },
+  ], { json: true, maxTokens: 3000, feature: 'review' });
+  return (parseJSON(out).questions || []).filter(x => x && str(x.q).trim()).slice(0, 15).map(x => ({ q: str(x.q).slice(0, 300), kind: QUESTION_KINDS.includes(x.kind) ? x.kind : 'clarify',
+    points: (Array.isArray(x.points) ? x.points : []).map(p => str(p).slice(0, 200)).filter(Boolean).slice(0, 5), slide: Math.max(0, Math.min(state.deck.slides.length, Math.round(+x.slide) || 0)) }));
+}
+export async function judgeAnswer(question, points, answer) {
+  const out = await chat([
+    { role: 'system', content: `You coach a presenter practising their answers to audience questions. Judge the answer (often spoken and transcribed: ignore filler words and missing punctuation): `
+      + `does it answer the question, cover the key points, stay brief and clear (about 30–90 seconds spoken), keep calm and respectful with a critical question? `
+      + `Give a mark from 0 to 10, what was good (one sentence), what to improve (one or two sentences), and a better answer of at most 70 words in the presenter's voice. `
+      + `In ${lang()}, addressing the presenter as «tú» or its equivalent. Answer only JSON: {"score":7,"good":"…","improve":"…","better":"…"}` },
+    { role: 'user', content: `Question: ${str(question).slice(0, 400)}\nKey points: ${(points || []).map(str).join(' | ').slice(0, 800)}\nAnswer: ${str(answer).slice(0, 4000)}` },
+  ], { json: true, maxTokens: 800, feature: 'review' });
+  const r = parseJSON(out);
+  return { score: Math.max(0, Math.min(10, Math.round(+r.score) || 0)), good: str(r.good).slice(0, 400), improve: str(r.improve).slice(0, 500), better: str(r.better).slice(0, 800) };
+}
+
 // The assistant (proposals, scope, permissions, its operations): features/ai/agent.js.
