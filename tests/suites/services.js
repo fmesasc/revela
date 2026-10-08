@@ -485,6 +485,10 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       const given = 'T3: 2,4 M€ de ventas frente a un objetivo de 2,6 M€';
       assert(Q.deckQuality([sales[0], fc], { topic: 'Ventas', sourced: true, given }).problems.some(p => p.code === 'invented-figures'), 'la proyección inventada, sí');
       assert(!Q.deckQuality([sales[0], { ...fc, chart: { labels: ['T3', 'Objetivo T4'], values: [2400000, 2600000] } }], { topic: 'Ventas', sourced: true, given }).problems.some(p => p.code === 'invented-figures'), 'con sus cifras, no');
+      // The same steps on two slides: the second one, to say something new.
+      const st1 = { kind: 'steps', title: 'Sumar con distinto denominador', steps: [{ title: 'Calcular el mínimo común múltiplo', text: 'de los denominadores' }, { title: 'Convertir fracciones equivalentes', text: 'con el nuevo denominador' }, { title: 'Sumar numeradores', text: 'y simplificar resultado' }], notes: 'a' };
+      const rq = Q.deckQuality([{ kind: 'title', title: 'F' }, st1, { kind: 'key_idea', title: 'Clave', statement: 'Practicar cada semana', notes: 'b' }, { ...st1, title: 'El reto: distinto denominador' }], { topic: 'Fracciones' });
+      eq(rq.problems.filter(p => p.code === 'repeated').map(p => p.slides.join()).join(), '3', 'la que repite otra');
       // A chart whose values are gaps to fill in: a list of them (not «T4» read as 4).
       const SP = await W.eval("import('/src/features/ai/specs.js')");
       const gc = SP.normalizeSpec({ kind: 'chart', title: 'T4', chart: { type: 'line', labels: ['T3', 'T4'], values: [2400000, '[previsión del T4]'] } });

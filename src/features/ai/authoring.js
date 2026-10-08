@@ -320,7 +320,7 @@ Write everything in ${opts.language || lang()}.` },
   // made again, once, before anyone sees it.
   const how = { topic: opts.topic || str(res.title), sourced: !!(str(opts.source) || opts.research || /\d/.test(str(opts.context))), images: !!opts.images, given: [opts.context, opts.source, opts.research?.brief].map(str).join('\n') };
   let q = deckQuality(specs, how); specs.qualityFirst = q;
-  if (q.score < 75 || q.problems.some(p => ['invented-figures', 'off-code', 'no-picture'].includes(p.code))) { await richer(specs, weakSlides(q, specs), opts, q).catch(() => {}); q = deckQuality(specs, how); }
+  if (q.score < 75 || q.problems.some(p => ['invented-figures', 'off-code', 'no-picture', 'repeated'].includes(p.code))) { await richer(specs, weakSlides(q, specs), opts, q).catch(() => {}); q = deckQuality(specs, how); }
   // The last net, not up to the model: figures still without anything behind them are never shown as facts — on cards,
   // each value becomes a gap to fill in («[1.200.000 €]»); a chart, a list with a gap for each of its data.
   // (Code on a topic that isn't programming — sums worked out as comments —: its lines, as a list.)
@@ -361,7 +361,7 @@ async function richer(specs, idx, opts = {}, q = null) {
   const why = i => (q?.problems || []).filter(p => p.slides?.includes(i)).map(p => p.detail).join('; ');
   const want = idx.map(i => ({ i, ...(why(i) && { problem: why(i) }), ...specs[i] }));
   const out = await chat([
-    { role: 'system', content: `These slides of a presentation are weak (each one says why in "problem"): mostly lists, thin, without the code a technical topic needs, with invented figures, or code where it doesn't belong. Make each one again — the same message (its title may be sharpened), in the richest kind that fits, with real, concrete content. Answer only JSON {"slides":[{"i":N,"kind":"…",…,"notes":"…"}]}, one per slide given, with its own i.
+    { role: 'system', content: `These slides of a presentation are weak (each one says why in "problem"): mostly lists, thin, without the code a technical topic needs, with invented figures, code where it doesn't belong, or saying again what another slide says (then it must say something new: the next step of the talk, an example worked out, a common mistake…). Make each one again — the same message (its title may be sharpened), in the richest kind that fits, with real, concrete content. Answer only JSON {"slides":[{"i":N,"kind":"…",…,"notes":"…"}]}, one per slide given, with its own i.
 ${SPEC_DOC}
 ${RICH}
 Do not use "image". Write in ${opts.language || lang()}.` },

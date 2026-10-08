@@ -18,6 +18,11 @@ const MID = ['title', 'section', 'closing', 'agenda'];
 // The words of a slide that say what it's about (its title and main text), lower-case, 4 letters or more.
 const keyWords = sp => new Set([sp.title, sp.statement, sp.subtitle].map(str).join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/[^\p{L}\p{N}]+/u).filter(w => w.length >= 4));
 
+// All the words of a slide (title, points, cards, columns), to compare slides; and how much two sets share (of the smaller).
+const contentWords = sp => new Set([sp.title, sp.statement, ...bulletsOf(sp), ...(sp.steps || []).flatMap(s => [s?.title, s?.text, s?.label]), ...(sp.items || []).flatMap(s => (typeof s === 'object' ? [s?.title, s?.text] : [s])),
+  ...(sp.columns || []).flatMap(c => [c?.heading, ...(c?.bullets || [])])].map(str).join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/[^\p{L}\p{N}]+/u).filter(w => w.length >= 5));
+const overlap = (a, b) => { let n = 0; for (const w of a) if (b.has(w)) n++; return n / Math.max(1, Math.min(a.size, b.size)); };
+
 // Forecasts, projections, estimates: figures about what hasn't happened.
 const FORECAST = /proyecc|previsi|pron[oó]stic|forecast|projec|estimaci|estimat|expected|esperad|prevista|outlook/i;
 // The amounts a text says — «2,4 M€» and «2.400.000» are the same; «12 %» is 12 —, as numbers.
@@ -67,6 +72,11 @@ export function deckQuality(specs, { topic = '', sourced = false, images = false
   const ownFigures = sp => [...(sp.kind === 'stats' ? (sp.stats || []).filter(s => hasFigure(s.value)).flatMap(s => amounts(s.value)) : []), ...(sp.kind === 'chart' ? (sp.chart?.values || []).map(Number) : []),
     ...bulletsOf(sp).filter(hasFigure).flatMap(amounts)].filter(v => Number.isFinite(v) && Math.abs(v) >= 10 && !(v >= 1900 && v <= 2100));   // (not «T4» nor a year)
   const invented = body.filter(x => (!sourced && unbacked(x.sp) && figures(x.sp)) || (sourced && forecast(x.sp) && ownFigures(x.sp).some(v => !backed(v))));
+  // The same thing twice — a lesson's four steps of adding fractions on two slides in a row —: its words, mostly the
+  // ones of an earlier slide.
+  const said = body.map(x => ({ i: x.i, w: contentWords(x.sp) }));
+  const repeated = said.filter((a, k) => a.w.size >= 6 && said.slice(0, k).some(b => b.w.size >= 6 && overlap(a.w, b.w) >= 0.6))
+    .map(a => ({ i: a.i, of: said.find(b => b.i < a.i && b.w.size >= 6 && overlap(a.w, b.w) >= 0.6).i }));
   const noPicture = images ? [] : body.filter(x => x.sp.kind === 'image' && !x.sp.figure);
   const offCode = tech ? [] : code;
   const problems = [];
@@ -82,7 +92,8 @@ export function deckQuality(specs, { topic = '', sourced = false, images = false
   if (invented.length) problems.push({ code: 'invented-figures', slides: invented.map(x => x.i), detail: `${invented.length} con cifras sin datos que las respalden (inventadas)` });
   if (noPicture.length) problems.push({ code: 'no-picture', slides: noPicture.map(x => x.i), detail: `${noPicture.length} de imagen sin imagen` });
   if (offCode.length) problems.push({ code: 'off-code', slides: offCode.map(x => x.i), detail: `${offCode.length} con código en un tema que no es de programación` });
-  const W = { 'all-lists': 25, 'thin-lists': 15, 'no-code': 25, 'few-kinds': 10, 'notes-missing': 10, 'notes-off': 10, empty: 15, 'invented-figures': 20, 'no-picture': 10, 'off-code': 10 };
+  if (repeated.length) problems.push({ code: 'repeated', slides: repeated.map(x => x.i), detail: `${repeated.length} que repiten otra (${repeated.map(x => `${x.i + 1} ≈ ${x.of + 1}`).join(', ')}): decir algo nuevo` });
+  const W = { repeated: 15, 'all-lists': 25, 'thin-lists': 15, 'no-code': 25, 'few-kinds': 10, 'notes-missing': 10, 'notes-off': 10, empty: 15, 'invented-figures': 20, 'no-picture': 10, 'off-code': 10 };
   const score = Math.max(0, 100 - problems.reduce((s, p) => s + W[p.code], 0));
   return { score, problems, stats: { slides: n, kinds: [...kinds], lists: lists.length, code: code.length, technical: tech } };
 }
@@ -90,7 +101,7 @@ export function deckQuality(specs, { topic = '', sourced = false, images = false
 // the lists, up to half of the deck.
 export function weakSlides(q, specs) {
   const set = new Set();
-  for (const p of q.problems) if (['thin-lists', 'empty', 'invented-figures', 'no-picture', 'off-code'].includes(p.code)) p.slides.forEach(i => set.add(i));
+  for (const p of q.problems) if (['thin-lists', 'empty', 'invented-figures', 'no-picture', 'off-code', 'repeated'].includes(p.code)) p.slides.forEach(i => set.add(i));
   if (q.problems.some(p => p.code === 'all-lists' || p.code === 'no-code' || p.code === 'few-kinds')) specs.forEach((sp, i) => { if (sp.kind === 'bullets') set.add(i); });
   return [...set].sort((a, b) => a - b).slice(0, Math.max(3, Math.ceil(specs.length / 2)));
 }
