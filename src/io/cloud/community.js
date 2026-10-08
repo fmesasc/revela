@@ -13,3 +13,4 @@ export async function take(id) { const r = await api(`community/${id}?use=1`); r
 export const mine = () => api('community/mine');
 export const remove = id => api(`community/${id}/delete`, {});
 export const publish = form => api('community', form);
+export const like = (id, on = true) => api(`community/${id}/like`, { on });

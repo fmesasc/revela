@@ -291,6 +291,13 @@ export function embedContent(b) {
     const card = document.createElement('div'); card.className = 'webcard';
     paintWebCard(card, b); return card;
   }
+  if (b.srcdoc != null) {                                   // an HTML object (developer mode): its page, in a sandbox with no origin
+    const f = document.createElement('iframe'); f.className = 'embed-html';
+    f.setAttribute('sandbox', 'allow-scripts allow-popups'); f.srcdoc = b.srcdoc; f._srcdoc = b.srcdoc;
+    f.style.cssText = `width:100%;height:100%;border:0;pointer-events:none;background:${b.transparent ? 'transparent' : '#fff'}`;
+    const wrap = document.createElement('div'); wrap.className = 'embed'; wrap.appendChild(f);
+    return wrap;
+  }
   const wrap = document.createElement('div'); wrap.className = 'embed';
   const bar = document.createElement('div'); bar.className = 'embed-bar';
   const url = document.createElement('span'); url.className = 'embed-url'; url.textContent = hostOf(b.src);

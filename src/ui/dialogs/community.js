@@ -68,7 +68,7 @@ export async function openMine() {
   back.querySelector('.modal-close').addEventListener('click', close); back.addEventListener('click', e => { if (e.target === back) close(); });
   const paint = async () => {
     const { items } = await cm.mine().catch(() => ({ items: [] }));
-    list.innerHTML = items.length ? `<ul class="gb-list">${items.map(it => `<li><b>${esc(it.title)}</b> <small>${t(STATUS[it.status] || it.status)}${it.status === 'published' ? ` · ${it.views} ${t('visitas')} · ${it.uses} ${t('usos')}` : ''}</small>
+    list.innerHTML = items.length ? `<ul class="gb-list">${items.map(it => `<li><b>${esc(it.title)}</b> <small>${t(STATUS[it.status] || it.status)}${it.status === 'published' ? ` · ${it.views} ${t('visitas')} · ${it.uses} ${t('usos')} · ♥ ${it.likes || 0}` : ''}</small>
       <span>${it.status === 'published' ? `<a class="mini2" href="${esc(cm.pageURL(it.id, it.title))}" target="_blank" rel="noopener">${t('Ver')}</a>` : ''}<button type="button" class="mini2" data-d="${it.id}">${t('Retirar')}</button></span></li>`).join('')}</ul>`
       : `<p class="host-help">${t('Todavía no has publicado ninguna presentación.')}</p>`;
     list.querySelectorAll('[data-d]').forEach(b => b.addEventListener('click', async () => { if (await confirmDialog(t('¿Retirar la presentación de la comunidad? Las copias que otros ya hicieron se quedan.'), { ok: t('Retirar'), danger: true })) { await cm.remove(b.dataset.d); paint(); } }));
@@ -82,7 +82,8 @@ export async function openCommunity(id, close = () => {}) {
     const deck = await cm.take(id); if (!deck) throw new Error('not found');
     if (!isBlankDeck(state.deck) && !(await confirmDialog(t('¿Abrir esta presentación? Se perderá la actual si no la has guardado.'), { ok: t('Descartar la actual'), danger: true }))) return;
     delete deck.id; replaceDeck(deck); close();
-    toast(t('Es una copia para ti: cámbiala a tu gusto. Respeta su licencia al compartirla.'));
+    // (If it was useful, a «like» with one click: it counts for «Las más usadas» — signed in only.)
+    toast(t('Es una copia para ti: cámbiala a tu gusto. Respeta su licencia al compartirla.'), account() ? { action: { label: '♥ ' + t('Me gusta'), run: () => cm.like(id).then(() => toast(t('¡Gracias! Así otros docentes la encontrarán antes.')), () => {}) } } : {});
   } catch { alertDialog(t('No se ha podido abrir esa presentación de la comunidad.')); }
 }
 
@@ -103,7 +104,7 @@ export function communityInto(host, { close = () => {} } = {}) {
     grid.replaceChildren(...items.map(it => {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'gal-item';
       b.innerHTML = `<div class="thumb-canvas">${it.thumb ? `<img src="${esc(cm.thumbURL(it.id))}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover">` : '<i class="ms gal-wait">diversity_3</i>'}</div><span><b></b><small></small></span>`;
-      b.querySelector('b').textContent = it.title; b.querySelector('small').textContent = [t(SUBJECT_NAMES[it.subject] || ''), t(LEVEL_NAMES[it.level] || ''), it.author].filter(Boolean).join(' · ');
+      b.querySelector('b').textContent = it.title; b.querySelector('small').textContent = [t(SUBJECT_NAMES[it.subject] || ''), t(LEVEL_NAMES[it.level] || ''), it.author, it.likes ? '♥ ' + it.likes : ''].filter(Boolean).join(' · ');
       b.title = it.description || it.title; b.addEventListener('click', () => openCommunity(it.id, close));
       return b;
     }));

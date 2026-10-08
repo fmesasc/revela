@@ -10,6 +10,7 @@ import { openFile } from '../../features/content/files.js';
 import { shortSig } from '../../core/text.js';
 import { opacityOf } from '../../core/model.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
+import { cleanClasses } from '../../features/design/devmode.js';
 import { state, commit, currentSlide, selectedBlock, isSelected, setSelection, docVersion } from '../../core/store.js';
 import { shadowCSS, levelCSS, shapeSVG, shapeSig, chartSVG, chartSig, iconSVG, iconSig, inkSVG, timerSVG, curvedTextSVG, hasShapeText, shapeTextStyle, wrapFor, timerSig, inkSig, tableClass, tableVars } from '../../render/svg.js';
 import { figuresMap, captionLine } from '../../features/document/captions.js';
@@ -293,6 +294,9 @@ function reconcile(b) {
   el.classList.toggle('animated', !!b.animation || !!b.anims?.length);
   el.classList.toggle('locked', !!b.locked);
   el.classList.toggle('is-hidden', !!b.hidden);
+  // (Its own classes, for the deck's CSS — developer mode —: the ones it had off, the ones it has now on.)
+  const cls = b.cls ? cleanClasses(b.cls) : '';
+  if ((el._cls || '') !== cls) { if (el._cls) el.classList.remove(...el._cls.split(' ')); if (cls) el.classList.add(...cls.split(' ')); el._cls = cls; }
   el.classList.toggle('linked', !!(b.href || b.goto || b.popup || b.tip) && b.type !== 'text');
   el.classList.toggle('is-pano', !!b.pano && b.type === 'image'); el.classList.toggle('is-drag', !!b.dragLive);
   // A colour key switched on or off, or a new source for a keyed one: new view.
@@ -322,7 +326,9 @@ function reconcile(b) {
     const a2 = el.querySelector('audio'); if (a2 && a2._src !== b.src) { a2.src = blobURL(b.src); a2._src = b.src; }
   } else if (b.type === 'embed') {
     const card = el.querySelector('.webcard'); if (card) paintWebCard(card, b);
-    const f = el.querySelector('iframe'); if (f && f.getAttribute('src') !== b.src) f.src = b.src;
+    const f = el.querySelector('iframe');
+    if (f && b.srcdoc != null) { if (f._srcdoc !== b.srcdoc) { f.srcdoc = b.srcdoc; f._srcdoc = b.srcdoc; } f.style.background = b.transparent ? 'transparent' : '#fff'; }
+    else if (f && f.getAttribute('src') !== b.src) f.src = b.src;
     const u = el.querySelector('.embed-url'); if (u) u.textContent = hostOf(b.src);
     const o = el.querySelector('.embed-open'); if (o && o.getAttribute('href') !== b.src) o.href = b.src;
   } else if (b.type === 'shape') {
@@ -374,7 +380,8 @@ function reconcile(b) {
 function blockEl(b) {
   const el = document.createElement('div');
   el.className = 'block' + (isSelected(b.id) ? ' selected' : '')
-    + (b.animation ? ' animated' : '') + (b.locked ? ' locked' : '') + (b.hidden ? ' is-hidden' : '') + (b.type === 'connector' ? ' __conn' : '') + (b.type === 'magnify' ? ' __mag' : '');
+    + (b.animation ? ' animated' : '') + (b.locked ? ' locked' : '') + (b.hidden ? ' is-hidden' : '') + (b.type === 'connector' ? ' __conn' : '') + (b.type === 'magnify' ? ' __mag' : '') + (b.cls ? ' ' + cleanClasses(b.cls) : '');
+  el._cls = b.cls ? cleanClasses(b.cls) : '';
   el.dataset.id = b.id; el._b = b;
   el.setAttribute('role', 'group'); el.setAttribute('aria-label', blockLabel(b, t));
   el.style.cssText = `left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px`;

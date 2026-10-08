@@ -11,11 +11,13 @@
 //   POST /api/community                            { title, description, subject, level, lang, license, author, deck, thumb } → { id } (session)
 //   POST /api/community/<id>/delete                (mine)
 //   POST /api/community/<id>/report                { reason } (anyone; limited per address)
+//   POST /api/community/<id>/like                  { on } → { likes, liked } (session: one per account; counts for «popular»)
 //   Pages: GET /community (the list) · GET /community/<id>(-slug) (one).
 // Admin (admin.js): GET /api/admin/community?status=pending|published|hidden|reported · POST …/<id>/status { status } · POST …/<id>/delete.
 //
 // Storage (Durable Object Community, one): 'i:<id>' its summary · 'd:<id>:' the deck (in parts) · 't:<id>' the
-// picture (data URL) · 'r:<id>' its reports · 'u:<sub>' my ids · 'day:<sub>:<day>' publications that day.
+// picture (data URL) · 'r:<id>' its reports · 'u:<sub>' my ids · 'day:<sub>:<day>' publications that day ·
+// 'lk:<id>:<sub>' who liked it (one key each: no list that grows past a value's size).
 
 import { writeText, readParts } from './store.js';
 import { escHtml } from './util.js';
@@ -82,7 +84,8 @@ export class Community {
       let items = all.filter(x => (a.status ? (a.status === 'reported' ? x.reports > 0 && x.status !== 'hidden' : x.status === a.status) : x.status === 'published')
         && (!a.subject || x.subject === a.subject) && (!a.level || x.level === a.level) && (!a.lang || x.lang === a.lang)
         && (!q || norm(x.title + ' ' + x.description + ' ' + x.author + ' ' + x.text).includes(q)));
-      items.sort(a.sort === 'popular' ? (x, y) => (y.uses * 5 + y.views) - (x.uses * 5 + x.views) || y.created - x.created : (x, y) => (y.published || y.created) - (x.published || x.created));
+      const score = x => x.uses * 5 + (x.likes || 0) * 3 + x.views;
+      items.sort(a.sort === 'popular' ? (x, y) => score(y) - score(x) || y.created - x.created : (x, y) => (y.published || y.created) - (x.published || x.created));
       const offset = Math.max(0, +a.offset || 0), limit = Math.min(60, Math.max(1, +a.limit || 24));
       return Response.json({ items: items.slice(offset, offset + limit).map(({ text, sub, ...x }) => (a.status ? { ...x, sub, text: text.slice(0, 300) } : x)), total: items.length });
     }
@@ -92,14 +95,15 @@ export class Community {
       if (it.status !== 'published' && it.sub !== a.sub && !a.admin) return Response.json({ error: 'not found' }, { status: 404 });
       const parts = await readParts(st, `d:${it.id}:`);
       if (it.status === 'published' && (a.count || a.use)) { if (a.count) it.views++; if (a.use) it.uses++; await st.put('i:' + it.id, it); }
-      const { sub, ...pub } = it;
-      return Response.json({ item: a.admin || it.sub === a.sub ? it : pub, deck: a.meta ? null : parts ? JSON.parse(parts.join('')) : null });
+      const { sub, ...pub } = it, liked = !!a.sub && !!(await st.get(`lk:${it.id}:${a.sub}`));
+      return Response.json({ liked, item: a.admin || it.sub === a.sub ? it : pub, deck: a.meta ? null : parts ? JSON.parse(parts.join('')) : null });
     }
     if (op === 'thumb') return Response.json({ thumb: it.status === 'published' || a.admin || it.sub === a.sub ? (await st.get('t:' + it.id)) || null : null });
     if (op === 'delete') {                                // { id, sub?, admin? }
       if (it.sub !== a.sub && !a.admin) return Response.json({ error: 'forbidden' }, { status: 403 });
       const parts = (await st.get(`d:${it.id}:n`)) || 0;
       await st.delete(['i:' + it.id, 't:' + it.id, 'r:' + it.id, `d:${it.id}:n`, ...Array.from({ length: parts }, (_, i) => `d:${it.id}:${i}`)]);
+      for (let ks; (ks = [...(await st.list({ prefix: `lk:${it.id}:`, limit: 128 })).keys()]).length; ) await st.delete(ks);   // (its likes too)
       await st.put('u:' + it.sub, ((await st.get('u:' + it.sub)) || []).filter(x => x !== it.id));
       return Response.json({ ok: true });
     }
@@ -107,6 +111,12 @@ export class Community {
       if (it.status !== 'published') return Response.json({ ok: true });
       const list = (await st.get('r:' + it.id)) || []; list.push({ at: now, reason: str(a.reason, 300) }); it.reports = list.length;
       await st.put({ ['r:' + it.id]: list.slice(-50), ['i:' + it.id]: it }); return Response.json({ ok: true });
+    }
+    if (op === 'like') {                                  // { id, sub, on } → { likes, liked }
+      if (it.status !== 'published') return Response.json({ error: 'not found' }, { status: 404 });
+      const k = `lk:${it.id}:${a.sub}`, had = !!(await st.get(k)), on = a.on !== false;
+      if (on !== had) { it.likes = Math.max(0, (it.likes || 0) + (on ? 1 : -1)); if (on) await st.put({ [k]: 1, ['i:' + it.id]: it }); else { await st.delete(k); await st.put('i:' + it.id, it); } }
+      return Response.json({ likes: it.likes || 0, liked: on });
     }
     if (op === 'reports') return Response.json({ reports: (await st.get('r:' + it.id)) || [] });
     if (op === 'status') {                                // { id, status } (admin)
@@ -139,7 +149,7 @@ export async function handleCommunity(path, req, body, url, env, me, json, { web
     const r = await communityCall(env, 'publish', { sub: me.sub, item: c.item, deckText, text: deckText && deckTextFor(c.deck), thumb: c.thumb });
     return json(r, r.error ? 429 : 200);
   }
-  const m = sub.match(/^\/([a-z2-9]{6})(?:\/(thumb|delete|report))?$/); if (!m) return json({ error: 'not found' }, 404);
+  const m = sub.match(/^\/([a-z2-9]{6})(?:\/(thumb|delete|report|like))?$/); if (!m) return json({ error: 'not found' }, 404);
   const id = m[1], op = m[2] || '';
   if (req.method === 'GET' && !op) { const r = await communityCall(env, 'get', { id, sub: me?.sub, count: url.searchParams.get('count') === '1', use: url.searchParams.get('use') === '1', meta: url.searchParams.get('meta') === '1' }); return json(r, r.error ? 404 : 200); }
   if (req.method === 'GET' && op === 'thumb') {
@@ -149,6 +159,7 @@ export async function handleCommunity(path, req, body, url, env, me, json, { web
     return new Response(Uint8Array.from(atob(mm[2]), ch => ch.charCodeAt(0)), { headers: { 'Content-Type': mm[1], 'Cache-Control': 'public, max-age=86400' } });
   }
   if (req.method === 'POST' && op === 'delete') { if (!me) return json({ error: 'no session' }, 401); const r = await communityCall(env, 'delete', { id, sub: me.sub }); return json(r, r.error ? 403 : 200); }
+  if (req.method === 'POST' && op === 'like') { if (!me) return json({ error: 'no session' }, 401); const r = await communityCall(env, 'like', { id, sub: me.sub, on: body.on !== false }); return json(r, r.error ? 404 : 200); }
   if (req.method === 'POST' && op === 'report') {
     if (!webOrigin) return json({ error: 'origin' }, 403);
     if (!(await takeQuota(env, 'creport:' + (req.headers.get('CF-Connecting-IP') || '?'), { per: 10, scope: 'community-report' }))) return json({ error: 'daily limit' }, 429);
@@ -223,7 +234,7 @@ export async function communityPage(env, url) {
     const r = await communityCall(env, 'get', { id: m[1], count: true });
     if (!r.item) return new Response(frame(lang, { title: 'Revela', description: '', canonical: site + '/community', body: `<section><div class="wrap"><p>${L.none}</p><p><a href="/community">${L.back}</a></p></div></section>` }), { status: 404, headers: pageHeaders });
     const it = r.item, words = deckText(r.deck || {}).slice(0, 30), canonical = `${site}/community/${it.id}-${slugOf(it.title)}`, lic = LIC[it.license];
-    const body = `<div class="hero"><div class="wrap cm-hero"><p class="eyebrow">${escHtml(it.slides)} ${L.slides}${it.author ? ` · ${L.by} ${escHtml(it.author)}` : ''}</p><h1>${escHtml(it.title)}</h1>
+    const body = `<div class="hero"><div class="wrap cm-hero"><p class="eyebrow">${escHtml(it.slides)} ${L.slides}${it.author ? ` · ${L.by} ${escHtml(it.author)}` : ''}${it.likes ? ` · ♥ ${+it.likes}` : ''}</p><h1>${escHtml(it.title)}</h1>
       ${it.description ? `<p class="lead">${escHtml(it.description)}</p>` : ''}<p><a class="btn primary" href="/app/?community=${it.id}">${L.use}</a> <a class="btn line" href="/community">${L.back}</a></p>
       ${it.thumb ? `<img src="/api/community/${it.id}/thumb" alt="${escHtml(it.title)}" width="1280" height="720">` : ''}
       <p class="cm-meta">${L.license}: <a href="${lic[1]}" rel="license">${lic[0]}</a></p></div></div>
@@ -234,7 +245,7 @@ export async function communityPage(env, url) {
   const q = str(url.searchParams.get('q'), 100), list = await communityCall(env, 'list', { q, sort: url.searchParams.get('sort') === 'popular' ? 'popular' : 'new', limit: 48 });
   const body = `<div class="hero"><div class="wrap"><p class="eyebrow">${L.more}</p><h1>${L.h1}</h1><p class="lead">${L.lead}</p></div></div>
     <section style="padding-top:40px"><div class="wrap"><form class="cm-search" action="/community"><input name="q" value="${escHtml(q)}" aria-label="${L.search}" placeholder="${L.search}…"><button class="btn primary" type="submit">${L.search}</button></form>
-    ${list.items.length ? `<div class="cm-grid">${list.items.map(it => `<a class="cm-card" href="/community/${it.id}-${slugOf(it.title)}">${it.thumb ? `<img src="/api/community/${it.id}/thumb" alt="" loading="lazy" width="640" height="360">` : `<span class="cm-ph">${escHtml(it.title)}</span>`}<div><h3>${escHtml(it.title)}</h3><p>${escHtml(it.slides)} ${L.slides}${it.author ? ` · ${escHtml(it.author)}` : ''}</p></div></a>`).join('')}</div>` : `<p>${L.none}</p>`}
+    ${list.items.length ? `<div class="cm-grid">${list.items.map(it => `<a class="cm-card" href="/community/${it.id}-${slugOf(it.title)}">${it.thumb ? `<img src="/api/community/${it.id}/thumb" alt="" loading="lazy" width="640" height="360">` : `<span class="cm-ph">${escHtml(it.title)}</span>`}<div><h3>${escHtml(it.title)}</h3><p>${escHtml(it.slides)} ${L.slides}${it.author ? ` · ${escHtml(it.author)}` : ''}${it.likes ? ` · ♥ ${+it.likes}` : ''}</p></div></a>`).join('')}</div>` : `<p>${L.none}</p>`}
     <p class="cm-meta" style="margin-top:28px">${L.publish}</p></div></section>`;
   return new Response(frame(lang, { title: L.title, description: L.lead, canonical: site + '/community', body }), { headers: pageHeaders });
 }

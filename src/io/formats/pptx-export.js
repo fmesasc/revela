@@ -197,6 +197,8 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
       slide.addImage({ ...pos, ...hl, ...see, data: raster.get(b.id), ...(b.alt && { altText: b.alt }) });
     } else if (b.type === 'video' && /^data:video\//.test(b.src || '')) {
       slide.addMedia({ ...pos, type: 'video', data: b.src.replace(/^data:/, '') });
+    } else if (b.type === 'embed' && b.srcdoc != null) {           // (an HTML object of the developer mode: its name; PowerPoint can't run it)
+      slide.addText(b.alt || 'HTML', { ...pos, fontSize: 18, color: hex(deckFg()) || 'FFFFFF', valign: 'middle', align: 'center' });
     } else if (b.type === 'embed') {
       slide.addText([{ text: '🔗 ' + (b.alt || b.src), options: { hyperlink: { url: b.src } } }], { ...pos, fontSize: 18, color: hex(deckFg()) || 'FFFFFF', valign: 'middle', align: 'center' });
     } else if (b.type === 'diagram') {

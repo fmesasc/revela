@@ -43,6 +43,7 @@ const URL_KEYS = new Set(['src', 'href', 'poster', 'url', 'dataUrl', 'link', 'bg
 const CSS_KEYS = new Set(['fontFamily', 'color', 'fill', 'fill2', 'stroke', 'bg', 'background', 'borderColor', 'bullet', 'numStyle', 'highlight', 'textColor', 'lineColor', 'shadowColor', 'accent', 'fg']);
 const TOKEN_KEYS = new Set(['defaultTransition', 'transition', 'transitionOut', 'transitionSpeed', 'transitionDir', 'format', 'position', 'theme', 'effect', 'pathShape', 'start', 'dash', 'borderDash', 'fit', 'view', 'motion', 'gradType', 'device', 'until', 'goto', 'sound']);
 const BAD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+const CLASS_KEYS = new Set(['cls']);                // (an object's CSS classes: developer mode)
 
 // Clean a value in place (a whole deck, some blocks, or one field of them); returns it.
 export function cleanValue(v, key = '') {
@@ -51,6 +52,7 @@ export function cleanValue(v, key = '') {
     if (URL_KEYS.has(key)) return safeURL(v) ? v : '';
     if (CSS_KEYS.has(key)) return safeCSS(v) ? v : '';
     if (TOKEN_KEYS.has(key)) return safeToken(v) ? v : '';
+    if (CLASS_KEYS.has(key)) return /^[\w -]*$/.test(v) ? v : '';
     return v;
   }
   if (Array.isArray(v)) {

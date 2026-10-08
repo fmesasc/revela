@@ -1976,12 +1976,22 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok((await L('?q=FRACCION')).items.length === 1 && (await L('?q=volcanes')).items.length === 0 && (await L('?subject=lang')).items.length === 0, 'comunidad: búsqueda en sus palabras y filtros');
     const got = await (await req('GET', `/api/community/${r1.id}?use=1`)).json();
     ok(got.deck?.slides?.length === 2 && got.item.uses === 1 && !got.item.sub, 'comunidad: abrirla para usarla cuenta un uso');
+    // Likes: one per account, counted in the list and the page, for «popular»; without a session, no.
+    const liker = await login2('tok-gil');
+    ok((await req('POST', `/api/community/${r1.id}/like`, { body: { on: true } })).status === 401, 'comunidad: «me gusta» pide sesión');
+    x = await (await req('POST', `/api/community/${r1.id}/like`, { headers: { Cookie: liker }, body: { on: true } })).json();
+    await req('POST', `/api/community/${r1.id}/like`, { headers: { Cookie: liker }, body: { on: true } });
+    ok(x.likes === 1 && x.liked && (await L()).items[0].likes === 1, 'comunidad: un «me gusta» por cuenta');
+    ok((await (await req('GET', `/api/community/${r1.id}`, { headers: { Cookie: liker } })).json()).liked === true, 'comunidad: sabe si ya le di «me gusta»');
+    ok((await (await req('POST', `/api/community/${r1.id}/like`, { headers: { Cookie: pia }, body: { on: true } })).json()).likes === 2, 'comunidad: y otra cuenta suma');
+    ok((await (await req('POST', `/api/community/${r1.id}/like`, { headers: { Cookie: pia }, body: { on: false } })).json()).likes === 1, 'comunidad: quitarlo resta');
     const th = await req('GET', `/api/community/${r1.id}/thumb`); ok(th.status === 200 && th.headers.get('Content-Type') === 'image/jpeg', 'comunidad: su imagen');
     let pg = await worker.fetch(new Request(SITE + '/community'), env), html = await pg.text();
     ok(pg.status === 200 && html.includes('Las fracciones') && html.includes(`/community/${r1.id}-las-fracciones`), 'comunidad: la página de la lista');
     pg = await worker.fetch(new Request(`${SITE}/community/${r1.id}-las-fracciones`), env); html = await pg.text();
     ok(pg.status === 200 && html.includes('<link rel="canonical" href="https://revelaslides.com/community/' + r1.id + '-las-fracciones">') && html.includes('¿Cuánto es 1/2 + 1/4?') && html.includes('/app/?community=' + r1.id) && html.includes('CC BY 4.0'), 'comunidad: su página, para buscadores, con sus palabras, la licencia y «usar»');
     ok(!/<b>fracción/.test(html) && !html.includes('pia@example.com'), 'comunidad: el texto como texto, sin el correo de la autora');
+    ok(html.includes('♥ 1'), 'comunidad: sus «me gusta» en su página');
     ok((await worker.fetch(new Request(SITE + '/community/zzzzzz'), env)).status === 404, 'comunidad: una que no existe → 404');
     { const r = await worker.fetch(new Request(SITE + '/comunidad/' + r1.id + '-las-fracciones?lang=en'), env);
       ok(r.status === 301 && r.headers.get('Location') === SITE + '/community/' + r1.id + '-las-fracciones?lang=en', 'comunidad: su antigua dirección en español lleva para siempre a /community (con la ruta y los parámetros)'); }
@@ -1993,6 +2003,7 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok((await L()).items.length === 0 && (await req('GET', '/api/community/' + r1.id)).status === 404, 'comunidad: oculta, fuera de la lista y de su página');
     ok([401, 403].includes((await req('POST', `/api/community/${r1.id}/delete`, { headers: { Cookie: ana } })).status) && (await A('GET', '/community?status=hidden')).j.items.length === 1, 'comunidad: otra persona no puede borrarla');
     ok((await req('POST', `/api/community/${r1.id}/delete`, { headers: { Cookie: pia } })).status === 200 && (await A('GET', '/community?status=hidden')).j.items.length === 0, 'comunidad: la autora la borra');
+    ok(![...env.COMMUNITY.inst.get('community').ctx.storage.m.keys()].some(k => k.startsWith(`lk:${r1.id}:`)), 'comunidad: y con ella sus «me gusta»');
     for (let i = 0; i < 5; i++) await pub(pia);
     ok((await pub(pia)).status === 429, 'comunidad: como mucho 5 al día por cuenta');
   }

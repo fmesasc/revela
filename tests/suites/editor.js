@@ -39,6 +39,35 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!rail() && vis(D.querySelector('#ribbon .tabs')), 'la clásica, como siempre');
   });
 
+  await test('modo desarrollador: CSS de la presentación, clases y objetos HTML', async () => {
+    reset(); const W = frame.contentWindow;
+    try {
+      D.querySelector('[data-action="insert-html"]').click(); await sleep(40);
+      const b = last();
+      assert(b.type === 'embed' && typeof b.srcdoc === 'string' && b.srcdoc.includes('<p>'), 'Insertar ▸ HTML crea un objeto HTML');
+      const m = D.getElementById('dev-modal'); assert(m && m.querySelector('.dv-html'), 'y abre su código');
+      m.querySelector('.dv-html').value = '<p id="x">Hola</p>';
+      m.querySelector('.dv-cls').value = 'destacado <mal> otra';
+      m.querySelector('.dv-css').value = '.destacado { color: rgb(255, 0, 0); }';
+      m.querySelector('.dv-ok').click(); await sleep(40);
+      eq(last().srcdoc, '<p id="x">Hola</p>', 'el HTML se guarda');
+      eq(last().cls, 'destacado otra', 'solo clases válidas');
+      const f = D.querySelector(`.block[data-id="${b.id}"] iframe`);
+      assert(f && f.getAttribute('srcdoc') === '<p id="x">Hola</p>' && f.getAttribute('sandbox') === 'allow-scripts allow-popups', 'en el lienzo, aislado (sin allow-same-origin)');
+      const el = D.querySelector(`#stage .block[data-id="${b.id}"]`);
+      eq(W.getComputedStyle(el).color, 'rgb(255, 0, 0)', 'el CSS se ve en el editor');
+      const html = R.io.buildHTML();
+      assert(/class="[^"]*destacado otra/.test(html) && html.includes('srcdoc="&lt;p id=&quot;x&quot;&gt;Hola&lt;/p&gt;"') && /\.reveal \.stage\{\s*\.destacado/.test(html), 'y en el HTML exportado');
+      // CSS that would escape the slides: refused.
+      D.querySelector('[data-action="dev-css"]').click(); await sleep(30);
+      const m2 = D.getElementById('dev-modal');
+      m2.querySelector('.dv-css').value = '} body { display: none } x {';
+      m2.querySelector('.dv-ok').click(); await sleep(30);
+      assert(D.getElementById('dev-modal') && !m2.querySelector('.dv-err').hidden, 'llaves que se salen: no');
+      eq(R.state.deck.css, '.destacado { color: rgb(255, 0, 0); }', 'el CSS anterior sigue');
+    } finally { D.getElementById('dev-modal')?.remove(); delete R.state.deck.css; R.render(); }
+  });
+
   await test('panel de atajos de teclado se abre y cierra', async () => {
     reset(); D.querySelector('[data-action="shortcuts"]').click(); await sleep(10);
     const m = D.getElementById('sc-modal');

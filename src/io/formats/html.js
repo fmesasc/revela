@@ -7,6 +7,7 @@ import { diagramHTML } from '../../render/diagrams.js';
 import { pdfRuntime } from '../runtime/pdf.js';
 import { tabRuntime } from '../runtime/tabs.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
+import { scopedCSS, cleanClasses } from '../../features/design/devmode.js';
 import { esc, jsData } from '../../core/text.js';
 import { opacityOf } from '../../core/model.js';
 import { wordartSize } from '../../render/textfit.js';
@@ -231,7 +232,10 @@ function mergeClasses(html) {
   const merged = tag.replace(/\sclass="[^"]*"/g, () => (first ? (first = false, ` class="${cls.join(' ')}"`) : ''));
   return merged + html.slice(end);
 }
-export function blockHTML(b, slide) { return mergeClasses(blockHTMLRaw(b, slide)); }
+export function blockHTML(b, slide) {
+  const html = blockHTMLRaw(b, slide), cls = b.cls && cleanClasses(b.cls);            // (its classes, for the deck's CSS: developer mode)
+  return mergeClasses(cls ? html.replace(/^<([a-z][\w-]*)/i, `<$1 class="${cls}"`) : html);
+}
 
 // Morph by words or characters: every word (or letter) becomes an inline box
 // whose data-id is the word itself and its occurrence on the slide ("de" #1,
@@ -369,8 +373,12 @@ function blockHTMLRaw(b, slide) {
   }
   if (b.type === 'embed' && b.display === 'card')
     return `<a${a} class="rv-webcard" href="${esc(b.src || '')}" target="_blank" rel="noopener" style="${box(b)}display:block;text-decoration:none">${webCardHTML(b, t('Abrir la web'))}</a>`;
+  // (An HTML object — developer mode, ui/dialogs/devmode.js —: its own page in a sandbox with no origin: its scripts
+  // run, but can't reach the presentation, its storage or the viewer's cookies.)
+  if (b.type === 'embed' && b.srcdoc != null)
+    return `<iframe${a} srcdoc="${esc(b.srcdoc)}" sandbox="allow-scripts allow-popups" style="${box(b)}border:0;background:${b.transparent ? 'transparent' : '#fff'}"${b.transparent ? ' allowtransparency="true"' : ''}></iframe>`;
   if (b.type === 'embed')
-    return `<iframe${a} src="${esc(b.src || '')}" referrerpolicy="strict-origin-when-cross-origin"${b.refreshMin ? ` data-refresh-min="${+b.refreshMin}"` : ''} `
+    return `<iframe${a} src=""${esc(b.src || '')}" referrerpolicy="strict-origin-when-cross-origin"${b.refreshMin ? ` data-refresh-min="${+b.refreshMin}"` : ''} `
       + `sandbox="${embedSandbox(b.src)}" `
       + `style="${box(b)}border:0;background:#fff"></iframe>`;
   if (b.type === 'shape')
@@ -712,7 +720,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  .reveal.rv-canvas .slides>section.present{pointer-events:auto}
  html.rv-canvas-overview .reveal.rv-canvas .slides>section{pointer-events:auto;cursor:zoom-in}
  .reveal.rv-canvas .rv-world{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0;z-index:1;pointer-events:none;transition:transform var(--rv-fly,1.4s) cubic-bezier(.65,0,.35,1)}` : ''}${noCopy ? '\n .reveal{-webkit-user-select:none;user-select:none} .reveal img{-webkit-user-drag:none} @media print{body{display:none!important}}' : ''}
-</style></head><body>
+</style>${deck.css ? `\n<style>/* the presentation's own CSS (developer mode) */\n${scopedCSS(deck.css, '.reveal .stage')}</style>` : ''}</head><body>
 <div class="reveal${canvas ? ' rv-canvas' : ''}" data-fit="${fit}"><div class="slides">${canvas && deck.canvas.image?.src ? `<div class="rv-world"><img alt="" src="${esc(deck.canvas.image.src)}" style="max-width:none;max-height:none;margin:0;position:absolute;left:${deck.canvas.image.x}px;top:${deck.canvas.image.y}px;width:${deck.canvas.image.w}px;height:${deck.canvas.image.h}px"></div>` : ''}
 ${slides}
 </div>${footerText}${logoHTML}</div>${bgmHTML}
