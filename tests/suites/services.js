@@ -390,16 +390,18 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
         1: { pageid: 1, index: 1, title: 'File:Chloroplast diagram vi.svg', imageinfo: [{ url: 'https://upload.wikimedia.org/x/vi.png', thumburl: 'data:image/png;base64,' + PNG, width: 800, height: 600, mime: 'image/png', extmetadata: { LicenseShortName: { value: 'CC BY 3.0' }, Artist: { value: '<a>Ana</a>' } } }] },
         2: { pageid: 2, index: 2, title: 'File:Chloroplast structure.png', imageinfo: [{ url: 'https://upload.wikimedia.org/x/es.png', thumburl: 'data:image/png;base64,' + PNG, width: 900, height: 600, mime: 'image/png', descriptionurl: 'https://commons.wikimedia.org/wiki/File:C.png', extmetadata: { LicenseShortName: { value: 'CC0' }, Artist: { value: 'Luis' } } }] } } } }));
       if (url.includes('api.openverse.org')) return new W.Response(JSON.stringify({ results: [] }));
+      if (url.includes('api.sketchfab.com')) return new W.Response(JSON.stringify({ results: [{ uid: 'abc123', name: 'Human heart', user: { displayName: 'Ana' }, license: { label: 'CC BY' }, viewerUrl: 'https://sketchfab.com/3d-models/heart', thumbnails: { images: [{ width: 256, url: 'data:image/png;base64,' + PNG }] } }] }));
       if (url.includes('youtube.com/oembed')) return url.includes('abcdefghijk') ? new W.Response(JSON.stringify({ title: 'Photosynthesis animation explained', author_name: 'Canal' })) : new W.Response('', { status: 404 });
       if (url.startsWith('https://upload.wikimedia.org/')) return new W.Response(Uint8Array.from(atob(PNG), c => c.charCodeAt(0)), { headers: { 'Content-Type': 'image/png' } });
       const body = JSON.parse(opts.body), sys = body.messages[0].content;
-      const a = /choose the picture/.test(sys) ? { n: 2, score: 9, alt: 'Esquema del cloroplasto con sus partes', note: 'Señalad los tilacoides.' }
+      const a = /choose the 3D model/.test(sys) ? { n: 1, score: 8, alt: 'Corazón humano en 3D', note: 'Giradlo para ver las aurículas.' } : /choose the video/.test(sys) ? { n: 0, score: 0 } : /choose the picture/.test(sys) ? { n: 2, score: 9, alt: 'Esquema del cloroplasto con sus partes', note: 'Señalad los tilacoides.' }
         : /YouTube video/.test(sys) ? { videos: [{ i: 2, url: 'https://www.youtube.com/watch?v=abcdefghijk' }, { i: 3, url: 'https://www.youtube.com/watch?v=inventado00' }] } : {};
       return new W.Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(a) } }] }));
     };
     try {
       const specs = [{ kind: 'title', title: 'Fotosíntesis' }, { kind: 'image', title: 'El cloroplasto', bullets: ['Donde ocurre'], image_search: 'chloroplast structure diagram', notes: 'Mirad.' },
-        { kind: 'image', title: 'El proceso', bullets: ['Luz y agua'], video_search: 'photosynthesis animation' }, { kind: 'image', title: 'Otro', bullets: ['Algo'], video_search: 'photosynthesis experiment' }];
+        { kind: 'image', title: 'El proceso', bullets: ['Luz y agua'], video_search: 'photosynthesis animation' }, { kind: 'image', title: 'Otro', bullets: ['Algo'], video_search: 'photosynthesis experiment' },
+        { kind: 'image', title: 'El corazón', bullets: ['Sus cavidades'], model_search: 'human heart anatomy' }];
       await A.findMedia(specs, { topic: 'Fotosíntesis', language: 'español' });
       const p = specs[1].picture;
       assert(p && /^data:image\/png/.test(p.src), 'la imagen elegida, incrustada');
@@ -407,17 +409,19 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(/Señalad los tilacoides/.test(specs[1].notes), 'y en las notas, qué señalar');
       eq(specs[2].video?.src, 'https://www.youtube.com/embed/abcdefghijk', 'el vídeo, comprobado que existe');
       eq(specs[3].kind + ':' + !!specs[3].video, 'bullets:false', 'uno que no existe: nada de vídeo, sus puntos en lista');
-      assert(!specs.some(x => x.image_search || x.video_search), 'sin las búsquedas');
+      assert(!specs.some(x => x.image_search || x.video_search || x.model_search), 'sin las búsquedas');
+      eq(specs[4].model?.kind + '|' + specs[4].model?.src.split('?')[0] + '|' + specs[4].model?.caption, 'embed|https://sketchfab.com/models/abc123/embed|Human heart — Ana · CC BY · Sketchfab', 'el modelo 3D elegido, con su visor y su autoría');
       const MD = await W.eval("import('/src/features/ai/media.js')");
       eq(MD.wider('sack of Rome 410 Alaric Visigoths illustration').join('|'), 'sack of Rome 410 Alaric Visigoths illustration|sack of Rome 410 Alaric|sack of Rome 410|sack of Rome', 'una búsqueda larga, cada vez más amplia');
       // On the slide: the picture and the video in its place.
       const n0 = R.state.deck.slides.length;
-      await A.insertSpecs(specs.slice(1, 3));
-      const [s1, s2] = R.state.deck.slides.slice(R.state.ui.slideIndex, R.state.ui.slideIndex + 2);
+      await A.insertSpecs([specs[1], specs[2], specs[4]]);
+      const [s1, s2, s3] = R.state.deck.slides.slice(R.state.ui.slideIndex, R.state.ui.slideIndex + 3);
+      assert(s3.blocks.some(b => b.type === 'embed' && /sketchfab\.com\/models\/abc123/.test(b.src) && b.alt === 'Corazón humano en 3D'), 'el modelo 3D, en su diapositiva');
       const img = s1.blocks.find(b => b.type === 'image'), emb = s2.blocks.find(b => b.type === 'embed');
       assert(img && img.alt === 'Esquema del cloroplasto con sus partes' && img.caption, 'la imagen, con su descripción y su crédito');
       assert(emb && emb.src === 'https://www.youtube.com/embed/abcdefghijk' && Math.abs(emb.w / emb.h - 16 / 9) < 0.02, 'el vídeo, 16:9');
-      eq(R.state.deck.slides.length, n0 + 2, 'dos diapositivas');
+      eq(R.state.deck.slides.length, n0 + 3, 'tres diapositivas');
     } finally { W.fetch = realFetch; R.ai.disconnectAi(); }
   });
 

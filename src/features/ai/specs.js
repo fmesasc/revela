@@ -70,7 +70,7 @@ export function normalizeSpec(raw) {
   if (kind === 'math' && !sp.latex && (sp.code || sp.from_image)) kind = 'code';
   const out = { kind, title: cleanLine(str(first(sp, ['title', 'heading', 'headline', 'name']))) };
   const sub = cleanLine(str(first(sp, ['subtitle', 'subheading', 'tagline', 'kicker']))); if (sub) out.subtitle = sub;
-  for (const k of ['notes', 'icon', 'image_prompt', 'image_search', 'video_search', 'author']) if (sp[k] != null && typeof sp[k] !== 'object') out[k] = String(sp[k]);
+  for (const k of ['notes', 'icon', 'image_prompt', 'image_search', 'video_search', 'model_search', 'author']) if (sp[k] != null && typeof sp[k] !== 'object') out[k] = String(sp[k]);
   // (Where a slide's figures come from: shown under them, authoring.js sourceBlock.)
   if (sp.source != null && typeof sp.source !== 'object' && cleanLine(String(sp.source))) out.source = cleanLine(String(sp.source)).slice(0, 140);
   if (out.notes == null && sp.speaker_notes) out.notes = String(sp.speaker_notes);

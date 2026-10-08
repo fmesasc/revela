@@ -267,6 +267,7 @@ const TAILOR = ctx => (ctx ? `\n\nAbout this presentation, from the presenter �
 // Pictures on the deck: generated (opts.images) or real ones searched (opts.media 'search': media.js).
 const pictures = opts => !!(opts.images || opts.media === 'search');
 const SEARCHED = `- Real pictures and videos will be searched for you. Use 2-4 "image" slides where SEEING explains what the slide says: the thing itself, a labelled diagram, a map, the artwork, a historical photo, the experiment. Give each "image_search": 2-5 words in ENGLISH, the name of the thing as an encyclopedia would title its picture — not a description ("chloroplast diagram", "Battle of Adrianople map", "Hadrian's Wall", "Pythagorean theorem proof"; not "two pizzas of different sizes cut in thirds"), and something that exists in Wikimedia Commons: not a screenshot of an app, a custom architecture diagram or the person's own things, and bullets (1-3) with what to notice in it. Never for an abstract idea ("teamwork", "success", "innovation"), the person's own data, or code.
+- When turning it around helps to understand it (an organ, a skeleton, a cell, a molecule, a crystal, a monument, a fossil, a machine, a spacecraft, a planet), one "image" slide has instead "model_search": 2-4 English words naming the object ("human heart anatomy", "DNA double helix", "Parthenon", "Mars rover") — an interactive 3D model will be searched; bullets (1-3) on what to look at when turning it.
 - When something is better seen moving (a process, an experiment, a phenomenon, a tool in use), one "image" slide has instead "video_search": a short video that shows what words can't (a process, an experiment, an animation, a demo), in 2-5 English words ("photosynthesis animation"); bullets (1-2) on what to watch for.
 - No image_prompt.`;
 export async function createOutline(opts = {}) {
@@ -275,7 +276,7 @@ export async function createOutline(opts = {}) {
   const out = await chatJSON([
     { role: 'system', content: `Plan a presentation that someone will present out loud. Answer only JSON {"title":"…","slides":[{"title":"…","kind":"…","points":["…"]}]}: about ${count} slides, in order, the first a title slide ("title") and the last a closing one ("closing"). Each title states the slide's message (max ~9 words); "kind" is the kind of slide that will show it best — one of: ${KINDS.filter(k => pictures(opts) || k !== 'image').join(', ')}; 1-4 points with WHAT it will show, concretely (the facts, figures and examples; for a "code" slide, what the code does and in which language). Not a list of short phrases: a plan for rich slides.
 ${RICH}
-${opts.media === 'search' ? `- REQUIRED: 2-4 slides of kind "image", where SEEING the thing explains it — a labelled diagram, a map, the artwork, the place, the object, the experiment —, and when something is better seen moving — a process, an experiment, a phenomenon, a demo of a tool — one of them a short video; its points say what must be seen. (Only a topic with nothing to see — pure code, a company's own figures — may have none.)\n` : ''}Write in ${opts.language || lang()}.` },
+${opts.media === 'search' ? `- REQUIRED: 2-4 slides of kind "image", where SEEING the thing explains it — a labelled diagram, a map, the artwork, the place, the object, the experiment —, when something is better seen moving — a process, an experiment, a phenomenon, a demo of a tool — one of them a short video, and when it is understood by turning it around — an organ, a molecule, a monument, a machine, a planet — one an interactive 3D model; its points say what must be seen. (Only a topic with nothing to see — pure code, a company's own figures — may have none.)\n` : ''}Write in ${opts.language || lang()}.` },
     { role: 'user', content: withAttachments([opts.topic && `Topic and purpose: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`].filter(Boolean).join('\n') + TAILOR(opts.context) + source, opts.attachments || []) },
   ], { maxTokens: 3000, feature: 'outline', prefer: DECK_MODEL });
   const res = out, slides = (res.slides || []).filter(x => x && str(x.title).trim()).slice(0, 40)
@@ -322,7 +323,7 @@ Write everything in ${opts.language || lang()}.` },
   // (A figure only where there is one; a model that forgot the notes of many slides is asked for them once.)
   for (const sp of specs) { const n = +sp.figure; if (!(n >= 1 && n <= pics.length && pics[n - 1]?.figure)) delete sp.figure; else sp.figure = n; }
   // (A picture slide with no picture to come — none asked for, no figure of the document —: its points, as a list.)
-  for (const sp of specs) if (sp.kind === 'image' && !sp.figure && !(opts.images && sp.image_prompt) && !(opts.media === 'search' && (sp.image_search || sp.video_search))) { sp.kind = 'bullets'; delete sp.image_prompt; delete sp.image_search; delete sp.video_search; }
+  for (const sp of specs) if (sp.kind === 'image' && !sp.figure && !(opts.images && sp.image_prompt) && !(opts.media === 'search' && (sp.image_search || sp.video_search || sp.model_search))) { sp.kind = 'bullets'; delete sp.image_prompt; delete sp.image_search; delete sp.video_search; delete sp.model_search; }
   const missing = specs.filter(sp => !str(sp.notes).trim());
   if (missing.length > specs.length * 0.3) await speakerNotes(specs, opts).catch(() => {});
   // Measured (quality.js): a weak deck — mostly lists, thin ones, no code on a technical topic — gets its weak slides
@@ -416,7 +417,7 @@ export async function insertSpecs(specs, { images = false, onProgress, figures =
   // (A picture found for it — media.js — goes where a document's figure goes, with its description and credit; a
   // video, in the same place, 16:9.)
   const fig = sp => (sp.figure ? figures[sp.figure - 1] : sp.picture ? { full: sp.picture.src, w: sp.picture.w, h: sp.picture.h, caption: sp.picture.alt, credit: sp.picture.caption, link: sp.picture.credit }
-    : sp.video ? { video: sp.video, w: 16, h: 9 } : null);
+    : sp.video ? { video: sp.video, w: sp.video.w || 16, h: sp.video.h || 9 } : sp.model ? { model: sp.model, w: sp.model.kind === 'model' ? 1 : 4, h: sp.model.kind === 'model' ? 1 : 3 } : null);
   for (const sp of specs) if (fig(sp)) sp.figureRatio = fig(sp).w / fig(sp).h;
   const at0 = state.ui.slideIndex + 1, made = specs.map(sp => slideFromSpec(sp, undefined, state.deck, { at: at0 }));
   // (Each figure in its place: the slide's picture box, the whole figure seen.)
@@ -426,7 +427,12 @@ export async function insertSpecs(specs, { images = false, onProgress, figures =
     const k = Math.min(box.w / f.w, box.h / f.h), w = Math.round(f.w * k), h = Math.round(f.h * k);
     slide.blocks = slide.blocks.filter(b => !(b.type === 'placeholder' && b.ph === 'picture'));
     const at = { x: Math.round(box.x + (box.w - w) / 2), y: Math.round(box.y + (box.h - h) / 2), w, h };
-    if (f.video) { slide.blocks.push({ id: uid(), type: 'embed', src: f.video.src, alt: str(f.video.title), rotation: 0, animation: null, ...at }); return; }
+    // (A free video of Commons is a video of the deck; YouTube's, its player; a 3D model, NASA's downloaded — it turns
+    // by itself, and with the mouse —, Sketchfab's in its viewer.)
+    const own = x => ({ ...(x.caption && { caption: str(x.caption) }), ...(x.credit && { credit: str(x.credit) }) });
+    if (f.video) { slide.blocks.push({ id: uid(), type: f.video.file ? 'video' : 'embed', src: f.video.src, alt: str(f.video.title), rotation: 0, animation: null, ...at, ...own(f.video) }); return; }
+    if (f.model) { slide.blocks.push({ id: uid(), type: f.model.kind === 'model' ? 'model' : 'embed', src: f.model.src, alt: str(f.model.alt), rotation: 0, animation: null, ...at, ...own(f.model),
+      ...(f.model.kind === 'model' ? { autoRotate: true } : { display: 'frame' }) }); return; }
     slide.blocks.push({ id: uid(), type: 'image', src: f.full, alt: str(f.caption || f.name), fit: 'contain', rotation: 0, animation: null, ...at,
       ...(f.credit && { caption: str(f.credit) }), ...(f.link && { credit: str(f.link) }) });
   });

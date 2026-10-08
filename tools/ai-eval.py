@@ -83,7 +83,7 @@ def main():
               const old={json.dumps(json.load(open(os.path.join(replay, k + '.json'))) if replay else None)};
               const asks=old?old.questions:await A.askAbout(o).catch(e=>[{{q:'ERROR '+e.message}}]);
               const ol=old?old.outline:await A.createOutline(o); const sp=old?Object.assign(old.specs.slice(),{{design:old.design,title:old.title,quality:old.quality,qualityFirst:{{score:old.first}}}}):await A.createDeck({{...o,outline:ol.slides}});
-              const planned=sp.map(x=>x.kind==='image'?(x.image_search||x.video_search||'(sin búsqueda)'):null).filter(Boolean);
+              const planned=sp.map(x=>x.kind==='image'?(x.image_search||x.video_search||x.model_search||'(sin búsqueda)'):null).filter(Boolean);
               if(!old&&o.media==='search')await A.findMedia(sp,{{topic:o.topic,language:o.language}});
               // (Made as the app makes it: a design with its layouts, the slides composed in it.)
               const G=await import('/src/features/design/gallery.js'),M=await import('/src/features/document/master.js');
@@ -113,7 +113,7 @@ def main():
             except Exception as e: print('sin hoja de imágenes:', e)
             r['layout'] = {'small_texts': small, 'spilling_texts': spill, 'spills': spills}
             q = r['quality']; json.dump(r, open(os.path.join(out, k + '.json'), 'w'), ensure_ascii=False, indent=1)
-            rows.append((k, q['score'], len(r['specs']), q['stats']['code'], ', '.join(sorted(set(s.get('kind', '?') for s in r['specs']))), '; '.join(([f"{sum(1 for x in r['specs'] if x.get('picture'))} imágenes y {sum(1 for x in r['specs'] if x.get('video'))} vídeos"] if media else []) + [p['detail'] for p in q['problems']] + ([f"{r['layout']['spilling_texts']} textos que se salen"] if r['layout']['spilling_texts'] else []) + ([f"{r['layout']['small_texts']} textos de menos de 18 px (sin contar el código)"] if r['layout']['small_texts'] else [])) or '—', round(time.time() - t0), r.get('first', q['score'])))
+            rows.append((k, q['score'], len(r['specs']), q['stats']['code'], ', '.join(sorted(set(s.get('kind', '?') for s in r['specs']))), '; '.join(([f"{sum(1 for x in r['specs'] if x.get('picture'))} imágenes, {sum(1 for x in r['specs'] if x.get('video'))} vídeos y {sum(1 for x in r['specs'] if x.get('model'))} 3D"] if media else []) + [p['detail'] for p in q['problems']] + ([f"{r['layout']['spilling_texts']} textos que se salen"] if r['layout']['spilling_texts'] else []) + ([f"{r['layout']['small_texts']} textos de menos de 18 px (sin contar el código)"] if r['layout']['small_texts'] else [])) or '—', round(time.time() - t0), r.get('first', q['score'])))
         except Exception as e:
             rows.append((k, 0, 0, 0, '', 'ERROR: ' + (str(e).splitlines() or [''])[0][:200], round(time.time() - t0), 0))
         print(f'{rows[-1][0]:<12} {rows[-1][1]:>3}  {rows[-1][5]}', flush=True)
