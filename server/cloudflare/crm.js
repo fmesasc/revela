@@ -499,31 +499,56 @@ export function defaultTemplates() {
 }
 
 // ---- Searching OpenStreetMap (Nominatim for the place, Overpass for what is in it) -------------------
-// → { area, items: [{ osm, name, kind, email, phone, web, address, city, region, country, lat, lon }] }. Public data
-// (© OpenStreetMap contributors, ODbL). Polite: a User-Agent that says who asks, one search at a time.
-export async function searchPlaces(env, { area, kind, limit = 200 }) {
-  const f = env.FETCH || fetch, ua = { 'User-Agent': 'Revela-admin/1.0 (https://revelaslides.com)', Accept: 'application/json' };
-  const filters = SEARCH[kind]; if (!filters) return { error: 'kind' };
-  const q = str(area, 120); if (q.length < 2) return { error: 'area' };
-  const geo = await f('https://nominatim.openstreetmap.org/search?' + new URLSearchParams({ q, format: 'jsonv2', limit: '5', addressdetails: '1' }), { headers: ua }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+// Public data (© OpenStreetMap contributors, ODbL). Polite: a User-Agent that says who asks, one search at a time.
+const OSM_UA = { 'User-Agent': 'Revela-admin/1.0 (https://revelaslides.com)', Accept: 'application/json' };
+// Overpass's answer, or why there is none. A busy server answers a page of HTML; a query too big for it, JSON with no
+// elements and a «remark» (runtime error: Query timed out) — which was read as «nothing found»: «España: 0 nuevos».
+export async function overpass(env, query) {
+  const f = env.FETCH || fetch;
+  const r = await f('https://overpass-api.de/api/interpreter', { method: 'POST', headers: { ...OSM_UA, 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(query) }).catch(() => null);
+  if (!r) return { error: 'overpass', why: 'no response' };
+  const text = await r.text().catch(() => ''); let data = null; try { data = JSON.parse(text); } catch {}
+  if (!data) return { error: 'overpass', why: /too busy|timeout|rate_limited|429/i.test(text) || r.status === 429 || r.status === 504 ? 'busy' : `HTTP ${r.status}` };
+  const remark = String(data.remark || '');
+  if (/runtime error|timed out|out of memory/i.test(remark)) return { error: 'overpass', why: /timed out|out of memory/i.test(remark) ? 'too big' : 'error', remark: remark.slice(0, 200) };
+  if (!Array.isArray(data.elements)) return { error: 'overpass', why: 'no elements' };
+  return { elements: data.elements };
+}
+// The place a name means → { rel?, name, rank (Nominatim's place_rank: 4 a country, 8 a region, 12 a province, 16 a
+// town), lat, lon, cc, region, city } | { error }.
+export async function resolveArea(env, area) {
+  const f = env.FETCH || fetch, q = str(area, 120); if (q.length < 2) return { error: 'area' };
+  const geo = await f('https://nominatim.openstreetmap.org/search?' + new URLSearchParams({ q, format: 'jsonv2', limit: '5', addressdetails: '1' }), { headers: OSM_UA }).then(r => (r.ok ? r.json() : null)).catch(() => null);
   if (!Array.isArray(geo)) return { error: 'geocode' };
   const place = geo.find(g => g.osm_type === 'relation') || geo[0]; if (!place) return { error: 'not found' };
-  const where = place.osm_type === 'relation' ? `area(id:${3600000000 + +place.osm_id})->.a;` : place.osm_type === 'way' ? `area(id:${2400000000 + +place.osm_id})->.a;` : null;
+  return { rel: place.osm_type === 'relation' ? +place.osm_id : null, way: place.osm_type === 'way' ? +place.osm_id : null, name: place.display_name, rank: +place.place_rank || 0,
+    lat: +place.lat, lon: +place.lon, cc: String(place.address?.country_code || '').toUpperCase(), region: place.address?.state || place.address?.province || '',
+    city: place.address?.city || place.address?.town || place.address?.village || '' };
+}
+// The administrative areas inside one (a country's regions, a region's provinces) → [{ rel, name }] | { error }.
+export async function subAreas(env, rel, level) {
+  const r = await overpass(env, `[out:json][timeout:60];area(id:${3600000000 + +rel})->.a;rel(area.a)["boundary"="administrative"]["admin_level"="${+level}"]["name"];out tags;`);
+  if (r.error) return r;
+  return r.elements.map(e => ({ rel: e.id, name: str(e.tags?.name, 120) })).filter(x => x.rel && x.name).sort((a, b) => a.name.localeCompare(b.name, 'es'));
+}
+// → { area, items: [{ osm, name, kind, email, phone, web, address, city, region, country, lat, lon }] } | { error, why }.
+// place: already resolved (resolveArea, or a sub-area { rel, name }).
+export async function searchPlaces(env, { area, kind, limit = 200, place = null }) {
+  const filters = SEARCH[kind]; if (!filters) return { error: 'kind' };
+  place ||= await resolveArea(env, area); if (place.error) return place;
+  const where = place.rel ? `area(id:${3600000000 + +place.rel})->.a;` : place.way ? `area(id:${2400000000 + +place.way})->.a;` : null;
   const scope = where ? '(area.a)' : `(around:8000,${+place.lat},${+place.lon})`;
-  const n = Math.min(500, Math.max(1, Math.round(+limit || 200)));
-  const query = `[out:json][timeout:25];${where || ''}(${filters.map(x => x + scope + ';').join('')});out center tags ${n};`;
-  const data = await f('https://overpass-api.de/api/interpreter', { method: 'POST', headers: { ...ua, 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(query) })
-    .then(r => (r.ok ? r.json() : null)).catch(() => null);
-  if (!data || !Array.isArray(data.elements)) return { error: 'overpass' };
-  const cc = String(place.address?.country_code || '').toUpperCase(), region = place.address?.state || place.address?.province || '';
-  const items = data.elements.map(e => {
+  const n = Math.min(10000, Math.max(1, Math.round(+limit || 200)));
+  const r = await overpass(env, `[out:json][timeout:90];${where || ''}(${filters.map(x => x + scope + ';').join('')});out center tags ${n};`);
+  if (r.error) return r;
+  const items = r.elements.map(e => {
     const t = e.tags || {};
     return { osm: `${e.type}/${e.id}`, name: str(t.name, 160), kind, email: mailOf(t.email || t['contact:email']), phone: str(t.phone || t['contact:phone'], 40),
       web: webOf(t.website || t['contact:website'] || t.url), address: str([t['addr:street'], t['addr:housenumber']].filter(Boolean).join(' '), 200),
-      city: str(t['addr:city'] || place.address?.city || place.address?.town || place.address?.village || '', 80), region: str(region, 80), country: str(t['addr:country'] || cc, 2).toUpperCase(),
+      city: str(t['addr:city'] || place.city || '', 80), region: str(place.region || '', 80), country: str(t['addr:country'] || place.cc || '', 2).toUpperCase(),
       postcode: str(t['addr:postcode'], 12), lat: e.lat ?? e.center?.lat ?? null, lon: e.lon ?? e.center?.lon ?? null, op: str(t['operator:type'] || t['school:type'] || '', 40) };
   }).filter(x => x.name).sort((x, y) => x.name.localeCompare(y.name, 'es'));
-  return { area: place.display_name, items };
+  return { area: place.name, items, full: r.elements.length >= n };
 }
 
 // ---- From the Worker -------------------------------------------------------------------------------

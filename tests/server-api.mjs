@@ -2009,6 +2009,33 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     x = (await C('POST', '/crawler/step', { body: {} })).j;
     ok(x.kind === 'area' && x.area === 'Zaragoza' && (await C('GET', '/crawler')).j.log[0].kind === 'area', 'rastreador: busca centros nuevos en las zonas elegidas: ' + JSON.stringify(x));
     ok((await A('GET', '/audit?target=crm:crawler')).j.entries.some(e => e.action === 'crm-crawler'), 'rastreador: los cambios de ajustes, en la auditoría');
+    // A country: split into its regions, each searched in its own step; Overpass giving up (busy, or a query too big)
+    // is said and tried again — never «0 new».
+    { const prev = env.FETCH, asked = [];
+      let mode = 'busy';
+      env.FETCH = async (u, init = {}) => { const s = String(u);
+        if (s.startsWith('https://nominatim.openstreetmap.org/') && s.includes('Espa')) return Response.json([{ osm_type: 'relation', osm_id: 1311341, place_rank: 4, lat: '40', lon: '-4', display_name: 'España', address: { country_code: 'es' } }]);
+        if (s === 'https://overpass-api.de/api/interpreter') { const q = decodeURIComponent(String(init.body)); asked.push(q);
+          if (mode === 'busy') return new Response('<html>The server is probably too busy to handle your request.</html>', { status: 504 });
+          if (/admin_level"="4"/.test(q)) return Response.json({ elements: [{ type: 'relation', id: 349053, tags: { name: 'Catalunya' } }, { type: 'relation', id: 349044, tags: { name: 'Aragón' } }] });
+          if (/admin_level"="6"/.test(q)) return Response.json({ elements: [{ type: 'relation', id: 349045, tags: { name: 'Huesca' } }] });
+          if (/3600349053/.test(q)) return Response.json({ elements: [{ type: 'node', id: 77, lat: 41.4, lon: 2.1, tags: { name: 'Escola Mar', amenity: 'school' } }] });
+          if (/3600349045/.test(q)) return Response.json({ elements: [{ type: 'node', id: 78, lat: 42.1, lon: -0.4, tags: { name: 'Colegio Pirineo', amenity: 'school' } }] });
+          return Response.json({ remark: 'runtime error: Query timed out in "query" at line 1 after 26 seconds.', elements: [] }); }
+        return prev(u, init); };
+      await C('POST', '/crawler', { body: { settings: { discover: true, areas: ['España'], kinds: ['school'] } } }); const o = env.CRAWLER.inst.get('crawler');
+      x = await o.step(Date.now());
+      ok(x.error && /saturado/.test(x.error) && (await C('GET', '/crawler')).j.log[0].error, 'rastreador: OpenStreetMap saturado, dicho (no «0 nuevos»): ' + JSON.stringify(x));
+      x = await o.step(Date.now()); ok(x.kind === 'idle', 'rastreador: y no lo reintenta enseguida');
+      mode = 'ok'; x = await o.step(Date.now() + 31 * 60e3);
+      ok(x.split === 2 && (await C('GET', '/crawler')).j.parts.length === 2, 'rastreador: un país, dividido en sus regiones: ' + JSON.stringify(x));
+      x = await o.step(Date.now() + 32 * 60e3);
+      ok(x.area === 'Aragón (España)' && x.split === 1, 'rastreador: una región aún grande (la búsqueda se agota), dividida otra vez: ' + JSON.stringify(x));
+      x = await o.step(Date.now() + 33 * 60e3);
+      ok(x.area === 'Huesca (Aragón)' && x.found === 1 && x.added === 1, 'rastreador: cada parte, con lo que encontró: ' + JSON.stringify(x));
+      x = await o.step(Date.now() + 34 * 60e3);
+      ok(x.area === 'Catalunya (España)' && x.added === 1 && !(await C('GET', '/crawler')).j.parts.length, 'rastreador: hasta acabar las partes: ' + JSON.stringify(x));
+      env.FETCH = prev; await C('POST', '/crawler', { body: { settings: { discover: false, areas: [] } } }); }
     { const o = env.CRAWLER.inst.get('crawler'), before = (await C('GET', '/crawler')).j; await mk('CEIP Nuevo', 'https://olivos.example/'); await o.alarm(); const after = (await C('GET', '/crawler')).j;
       ok(after.log.length === before.log.length + 1 && after.log[0].name === 'CEIP Nuevo' && after.nextAt > Date.now() + 60e3, 'rastreador: la alarma da un paso y se vuelve a programar sola'); }
     await C('POST', '/crawler', { body: { settings: { on: false } } }); ok(!(await C('GET', '/crawler')).j.nextAt, 'rastreador: apagado, sin alarma');

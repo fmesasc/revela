@@ -15,7 +15,7 @@
 //   Crawler (one Durable Object, 'crawler'): settings, the robots.txt cache, the log of recent visits, the next area.
 //   Crm ops used: crawl-next (whose website is due), web-facts (what was found), import (new places).
 
-import { searchPlaces, crmCall } from './crm.js';
+import { searchPlaces, resolveArea, subAreas, crmCall } from './crm.js';
 
 export const UA = 'Mozilla/5.0 (compatible; RevelaBot/1.0; +https://revelaslides.com/bot)';
 export const CRAWL_DEFAULT = { on: false, everyMin: 5, pagesPerSite: 4, recrawlDays: 30, discover: false, areas: [], kinds: ['school'], areaDays: 30, blocked: [] };
@@ -210,7 +210,7 @@ export class Crawler {
   async settings() { return { ...CRAWL_DEFAULT, ...((await this.ctx.storage.get('settings')) || {}) }; }
   async handle(req) {
     const op = new URL(req.url).pathname.split('/').pop(), a = await req.json().catch(() => ({})), st = this.ctx.storage;
-    if (op === 'status') return Response.json({ settings: await this.settings(), nextAt: (await st.getAlarm()) || null, log: (await st.get('log')) || [], stats: (await st.get('stats')) || { sites: 0, found: 0, places: 0 }, areaAt: (await st.get('areaAt')) || {} });
+    if (op === 'status') return Response.json({ settings: await this.settings(), nextAt: (await st.getAlarm()) || null, log: (await st.get('log')) || [], stats: (await st.get('stats')) || { sites: 0, found: 0, places: 0 }, areaAt: (await st.get('areaAt')) || {}, parts: ((await st.get('areaParts')) || []).map(p => `${p.name} (${p.of})`) });
     if (op === 'settings') {
       const s = cleanCrawl(a.settings, await this.settings()); if (!s) return Response.json({ error: 'bad request' }, { status: 400 });
       await st.put('settings', s);
@@ -238,19 +238,52 @@ export class Crawler {
       return { kind: 'site', id: next.id, facts };
     }
     if (s.discover && s.areas.length) {
-      const areaAt = (await st.get('areaAt')) || {}, due = s.areas.find(x => !(areaAt[x] > now - s.areaDays * DAY));
-      if (due) {
-        let added = 0;
-        for (const kind of s.kinds) {
-          const r = await searchPlaces(this.env, { area: due, kind, limit: 200 });
-          if (r.items?.length) added += (await crmCall(this.env, 'import', { rows: r.items.map(x => ({ contact: x, osm: x.osm })), source: 'osm', by: 'rastreador' })).added || 0;
-        }
-        areaAt[due] = now; await st.put('areaAt', areaAt); stats.places += added; await st.put('stats', stats);
-        await this.note({ at: now, kind: 'area', area: due, added });
-        return { kind: 'area', area: due, added };
-      }
+      // (A part of a big area still pending first — «España», searched by its regions —; else the next area due, not
+      // waiting after an error.)
+      // (Once: the areas marked as searched before Overpass's errors were noticed — «España: 0 nuevos» — are searched
+      // again; a place already in Contactos isn't added twice.)
+      if (!(await st.get('areasV2'))) { await st.put('areaAt', {}); await st.put('areasV2', 1); }
+      const areaAt = (await st.get('areaAt')) || {}, wait = (await st.get('areaWait')) || {}, parts = (await st.get('areaParts')) || [];
+      const part = parts.find(p => !(wait['rel:' + p.rel] > now));
+      const due = part ? null : s.areas.find(x => !(areaAt[x] > now - s.areaDays * DAY) && !(wait[x] > now));
+      if (part || due) return this.discover({ part, area: due, kinds: s.kinds, now, stats, areaAt, wait, parts });
     }
     return { kind: 'idle' };
+  }
+  // One area: its places of each kind, into Contactos. A country is too big for one search (Overpass gives up after a
+  // minute and a half): it is split into its regions, a region that still is into its provinces…, one per step. An
+  // error is said (never «0 new»), and the area tried again in half an hour.
+  async discover({ part, area, kinds, now, stats, areaAt, wait, parts }) {
+    const st = this.ctx.storage, label = part ? `${part.name} (${part.of})` : area, key = part ? 'rel:' + part.rel : area;
+    const save = async () => { await st.put('areaAt', areaAt); await st.put('areaWait', wait); await st.put('areaParts', parts); };
+    const done = () => { if (part) parts.splice(parts.findIndex(p => p.rel === part.rel), 1); else areaAt[area] = now; delete wait[key]; };
+    const fail = async why => { wait[key] = now + 30 * 60e3; await save(); await this.note({ at: now, kind: 'area', area: label, added: 0, found: 0, error: why }); return { kind: 'area', area: label, added: 0, error: why }; };
+    const place = part ? { rel: part.rel, name: part.name } : await resolveArea(this.env, area);
+    if (place.error) return fail(place.error === 'not found' ? 'no existe en OpenStreetMap' : 'Nominatim no respondió');
+    const split = async level => {
+      const subs = place.rel && level <= 8 ? await subAreas(this.env, place.rel, level) : { error: 'too big' };
+      if (subs.error) return fail(subs.why === 'busy' ? 'OpenStreetMap (Overpass) está saturado' : subs.error === 'too big' || subs.why === 'too big' ? 'demasiado grande, y sin partes en que dividirla' : `OpenStreetMap: ${subs.why || subs.error}`);
+      if (!subs.length) return fail('demasiado grande, y sin partes en que dividirla');
+      done(); parts.unshift(...subs.map(x => ({ rel: x.rel, name: x.name, of: part ? part.name : area, level })));
+      await save(); await this.note({ at: now, kind: 'area', area: label, split: subs.length, added: 0 });
+      return { kind: 'area', area: label, split: subs.length, added: 0 };
+    };
+    const next = part ? part.level + 2 : place.rank && place.rank <= 8 ? (place.rank <= 4 ? 4 : 6) : 8;
+    if (!part && place.rank && place.rank <= 4) return split(4);              // (a country: by its regions, from the start)
+    let added = 0, found = 0;
+    for (const kind of kinds) {
+      const r = await searchPlaces(this.env, { kind, limit: 10000, place });
+      if (r.error) return r.why === 'too big' ? split(next) : fail(r.why === 'busy' ? 'OpenStreetMap (Overpass) está saturado' : `OpenStreetMap: ${r.why || r.error}`);
+      found += r.items.length;
+      // (In batches: the contacts take a thousand at a time.)
+      for (let i = 0; i < r.items.length; i += 1000)
+        added += (await crmCall(this.env, 'import', { rows: r.items.slice(i, i + 1000).map(x => ({ contact: x, osm: x.osm })), source: 'osm', by: 'rastreador' })).added || 0;
+    }
+    done(); await save();
+    stats.places += added; await st.put('stats', stats);
+    await this.note({ at: now, kind: 'area', area: label, added, found });
+    return { kind: 'area', area: label, added, found };
+
   }
 }
 const crawler = env => env.CRAWLER.get(env.CRAWLER.idFromName('crawler'));
