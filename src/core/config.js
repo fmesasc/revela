@@ -12,7 +12,7 @@ export const EDITION = (e => (e === 'cloud' || e === 'desktop' ? e : 'open'))(gl
 export const DONATE_URL = 'https://paypal.me/fmesasc';
 // The app's version (package.json's): the published one (vX.Y.Z, promote.yml raises it), shown in «Informar de un
 // problema» and sent with it, and the server's (/api/version).
-export const APP_VERSION = '0.4.11';
+export const APP_VERSION = '0.4.12';
 
 // Revela's Google Cloud project (Drive, Picker, "Sign in with Google").
 //
