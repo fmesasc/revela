@@ -3724,4 +3724,13 @@ export default {
   "«{app}» quiere conectarse a tu cuenta de Revela. Primero, inicia sesión.": "«{app}» quere conectarse á túa conta de Revela. Primeiro, inicia sesión.",
   "¿Permitir que «{app}» ({host}) vea, cree y cambie tus presentaciones en la nube de Revela, en nombre de {email}? Puedes quitarle el acceso cuando quieras en Mi cuenta ▸ Desarrolladores e IA.": "Permitir que «{app}» ({host}) vexa, cree e cambie as túas presentacións na nube de Revela, en nome de {email}? Podes quitarlle o acceso cando queiras en A miña conta ▸ Desenvolvedores e IA.",
   "Revocar": "Revogar",
+  "Elementos": "Elementos",
+  "Más objetos": "Máis obxectos",
+  "Creativa": "Creativa",
+  "Interfaz": "Interface",
+  "La cinta con sus pestañas y las diapositivas a la izquierda, como en PowerPoint": "A cinta coas súas lapelas e as diapositivas á esquerda, como en PowerPoint",
+  "Una barra de iconos grandes a la izquierda, como en Canva: diseño, plantillas, elementos, texto, subir…": "Unha barra de iconas grandes á esquerda, como en Canva: deseño, modelos, elementos, texto, subir…",
+  "Solo lo esencial, como en slides.com: una columna de objetos para añadir y las herramientas al seleccionar algo": "Só o esencial, como en slides.com: unha columna de obxectos para engadir e as ferramentas ao seleccionar algo",
+  "Subir imagen": "Subir",
+  "Más herramientas": "Máis ferramentas",
 };

@@ -3724,4 +3724,13 @@ export default {
   "«{app}» quiere conectarse a tu cuenta de Revela. Primero, inicia sesión.": "«{app}» يريد الاتصال بحسابك في Revela. سجّل الدخول أولًا.",
   "¿Permitir que «{app}» ({host}) vea, cree y cambie tus presentaciones en la nube de Revela, en nombre de {email}? Puedes quitarle el acceso cuando quieras en Mi cuenta ▸ Desarrolladores e IA.": "هل تسمح لـ«{app}» ({host}) بعرض عروضك في سحابة Revela وإنشائها وتعديلها باسم {email}؟ يمكنك إزالة الوصول متى شئت من حسابي ▸ المطوّرون والذكاء الاصطناعي.",
   "Revocar": "إلغاء",
+  "Elementos": "العناصر",
+  "Más objetos": "عناصر أخرى",
+  "Creativa": "إبداعية",
+  "Interfaz": "الواجهة",
+  "La cinta con sus pestañas y las diapositivas a la izquierda, como en PowerPoint": "الشريط بعلاماته والشرائح على اليسار، كما في PowerPoint",
+  "Una barra de iconos grandes a la izquierda, como en Canva: diseño, plantillas, elementos, texto, subir…": "شريط أيقونات كبيرة على اليسار، كما في Canva: التصميم والقوالب والعناصر والنص والرفع…",
+  "Solo lo esencial, como en slides.com: una columna de objetos para añadir y las herramientas al seleccionar algo": "الأساسيات فقط، كما في slides.com: عمود من العناصر للإضافة والأدوات عند تحديد شيء",
+  "Subir imagen": "رفع",
+  "Más herramientas": "أدوات أخرى",
 };

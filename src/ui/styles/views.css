@@ -1,0 +1,53 @@
+/* The editor's interfaces (Ver ▸ Interfaz: src/ui/shell/views.js). html[data-view] is set before the first paint.
+   classic: nothing here (the ribbon and the slides on the left). studio (Canva's) and simple (slides.com's): a rail
+   of tools on the left, no tabs, the slides in a strip below. Only on screens wider than a phone's. */
+
+#view-rail{display:none}
+@media (min-width:861px){
+  html[data-view="studio"] #view-rail,html[data-view="simple"] #view-rail{display:flex;flex-direction:column;align-items:stretch;gap:2px;
+    flex:0 0 auto;padding:8px 6px;background:var(--panel);border-right:1px solid var(--line2);overflow-y:auto;scrollbar-width:thin}
+  #view-rail button{display:flex;flex-direction:column;align-items:center;gap:3px;border:none;background:none;color:var(--txt);
+    border-radius:10px;cursor:pointer;font:inherit;font-size:11px;line-height:1.15;text-align:center}
+  #view-rail button:hover{background:var(--bg)}
+  #view-rail button.active{background:var(--accent-bg);color:var(--accent)}
+  #view-rail button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  #view-rail hr{border:none;border-top:1px solid var(--line2);margin:6px 8px;width:auto}
+
+  /* No tabs: the rail chooses what the row on top shows. */
+  html[data-view="studio"] #ribbon .tabs,html[data-view="simple"] #ribbon .tabs{display:none}
+  html[data-view="studio"] .ribbon-page,html[data-view="simple"] .ribbon-page{min-height:0}
+
+  /* The slides: a strip under the slide, as in Canva and slides.com. */
+  html[data-view="studio"] main,html[data-view="simple"] main{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto}
+  html[data-view="studio"] #view-rail,html[data-view="simple"] #view-rail{grid-row:1/3;grid-column:1}
+  html[data-view="studio"] #canvas-wrap,html[data-view="simple"] #canvas-wrap{grid-row:1;grid-column:2;min-height:0}
+  html[data-view="studio"] #navigator,html[data-view="simple"] #navigator{grid-row:2;grid-column:2;width:auto;flex-direction:row;align-items:center;
+    gap:10px;padding:8px 12px;border-right:none;border-top:1px solid var(--line2);overflow-x:auto;overflow-y:hidden}
+  html[data-view="studio"] #navigator .section-head,html[data-view="simple"] #navigator .section-head{display:none}
+  html[data-view="studio"] .thumb{flex:0 0 136px}
+  html[data-view="simple"] .thumb{flex:0 0 112px}
+  html[data-view="studio"] #navigator{height:100px}
+  html[data-view="simple"] #navigator{height:84px}
+  /* (Other panels that sit beside the slide — the elements, the selection, comments — keep their place: the
+     grid gives them the slide's row.) */
+  html[data-view="studio"] main>:not(#view-rail):not(#canvas-wrap):not(#navigator),
+  html[data-view="simple"] main>:not(#view-rail):not(#canvas-wrap):not(#navigator){grid-row:1/3}
+  html[data-view="studio"] main,html[data-view="simple"] main{grid-auto-flow:column dense;grid-auto-columns:auto}
+  /* (The sorter: all the slides, the whole room.) */
+  html[data-view="studio"] body.sorter #navigator,html[data-view="simple"] body.sorter #navigator{grid-row:1/3;height:auto}
+
+  /* Studio: big icons with their names (Canva's rail), a rounded slide on a soft background. */
+  html[data-view="studio"] #view-rail{width:76px;box-sizing:border-box}
+  html[data-view="studio"] #view-rail button{padding:8px 2px}
+  html[data-view="studio"] #view-rail .ms{font-size:24px}
+  html[data-view="studio"] #stage{border-radius:10px}
+
+  /* Simple: a thin column of icons, the names on hover; nothing on top until something is selected or asked for. */
+  html[data-view="simple"] #view-rail{width:52px;box-sizing:border-box;padding:6px 4px}
+  html[data-view="simple"] #view-rail button{padding:7px 0}
+  html[data-view="simple"] #view-rail button span{display:none}
+  html[data-view="simple"] #view-rail .ms{font-size:22px}
+  html[data-view="simple"] #ribbon .pages{display:none}
+  html[data-view="simple"] body.view-pages #ribbon .pages,html[data-view="simple"] body.view-sel #ribbon .pages{display:block}
+  html[data-view="simple"] #statusbar .hint,html[data-view="simple"] #statusbar .legal-link{display:none}
+}

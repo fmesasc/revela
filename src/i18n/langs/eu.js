@@ -3724,4 +3724,13 @@ export default {
   "«{app}» quiere conectarse a tu cuenta de Revela. Primero, inicia sesión.": "«{app}»-ek zure Revela kontura konektatu nahi du. Lehenik, hasi saioa.",
   "¿Permitir que «{app}» ({host}) vea, cree y cambie tus presentaciones en la nube de Revela, en nombre de {email}? Puedes quitarle el acceso cuando quieras en Mi cuenta ▸ Desarrolladores e IA.": "«{app}» ({host}) baimendu zure aurkezpenak Revelaren hodeian ikusteko, sortzeko eta aldatzeko, {email}-ren izenean? Nahi duzunean ken diezaiokezu sarbidea Nire kontua ▸ Garatzaileak eta AA atalean.",
   "Revocar": "Baliogabetu",
+  "Elementos": "Elementuak",
+  "Más objetos": "Objektu gehiago",
+  "Creativa": "Sortzailea",
+  "Interfaz": "Interfazea",
+  "La cinta con sus pestañas y las diapositivas a la izquierda, como en PowerPoint": "Zinta bere fitxekin eta diapositibak ezkerrean, PowerPointen bezala",
+  "Una barra de iconos grandes a la izquierda, como en Canva: diseño, plantillas, elementos, texto, subir…": "Ikono handien barra bat ezkerrean, Canvan bezala: diseinua, txantiloiak, elementuak, testua, igo…",
+  "Solo lo esencial, como en slides.com: una columna de objetos para añadir y las herramientas al seleccionar algo": "Funtsezkoa bakarrik, slides.com-en bezala: gehitzeko objektuen zutabe bat eta tresnak zerbait hautatzean",
+  "Subir imagen": "Igo",
+  "Más herramientas": "Tresna gehiago",
 };

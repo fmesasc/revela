@@ -8,6 +8,37 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(z === 'auto' || z === '0', `z-index no debe elevarse al seleccionar (era ${z})`);
   });
 
+  await test('interfaces: clásica, creativa y minimalista con el mismo documento', async () => {
+    reset(); const W = frame.contentWindow, H = D.documentElement;
+    const rail = () => D.getElementById('view-rail'), vis = el => !!el && W.getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().width > 0;
+    try {
+      D.querySelector('[data-action="view-studio"]').click(); await sleep(30);
+      eq(H.dataset.view, 'studio', 'vista creativa');
+      if (W.innerWidth > 860) {
+        assert(vis(rail()) && rail().querySelector('[data-action="insert-stock"]'), 'la barra lateral con Elementos');
+        assert(!vis(D.querySelector('#ribbon .tabs')), 'sin pestañas');
+        const nav = D.getElementById('navigator').getBoundingClientRect(), st = D.getElementById('canvas-wrap').getBoundingClientRect();
+        assert(nav.top >= st.bottom - 2 && nav.width > nav.height, 'las diapositivas en una tira bajo la diapositiva');
+        rail().querySelector('[data-tab="design"]').click(); await sleep(30);
+        assert(D.querySelector('.ribbon-page[data-page="design"]').classList.contains('active'), 'la barra elige qué herramientas se ven arriba');
+        const n = R.state.deck.slides[R.state.ui.slideIndex].blocks.length;
+        rail().querySelector('[data-action="insert-text"]').click(); await sleep(30);
+        eq(R.state.deck.slides[R.state.ui.slideIndex].blocks.length, n + 1, 'Texto añade un cuadro de texto, como en la cinta');
+      }
+      D.querySelector('[data-action="view-simple"]').click(); await sleep(30);
+      eq(H.dataset.view, 'simple', 'vista minimalista');
+      if (W.innerWidth > 860) {
+        R.state.ui.selection = null; R.state.ui.multi = []; R.render(); await sleep(20);
+        assert(!vis(D.querySelector('#ribbon .pages')), 'sin herramientas arriba hasta que hagan falta');
+        rail().querySelector('[data-tab="insert"]').click(); await sleep(30);
+        assert(vis(D.querySelector('#ribbon .pages')), 'pedir una herramienta la muestra');
+      }
+      eq(W.localStorage.getItem('revela.view'), 'simple', 'se recuerda');
+    } finally { D.querySelector('[data-action="view-classic"]').click(); await sleep(30); }
+    eq(H.dataset.view, 'classic', 'vuelta a la clásica');
+    assert(!rail() && vis(D.querySelector('#ribbon .tabs')), 'la clásica, como siempre');
+  });
+
   await test('panel de atajos de teclado se abre y cierra', async () => {
     reset(); D.querySelector('[data-action="shortcuts"]').click(); await sleep(10);
     const m = D.getElementById('sc-modal');

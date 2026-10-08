@@ -84,6 +84,7 @@ import { setNavHidden } from '../shell/navigator.js';
 import { AI_ACTIONS } from '../dialogs/ai.js';
 import { openModelAi } from '../dialogs/model3dai.js';
 import { toggleAssistant } from '../dialogs/assistant.js';
+import { setView } from '../shell/views.js';
 
 const $ = s => document.querySelector(s);
 
@@ -234,6 +235,8 @@ export const ACTIONS = {
   'insert-file': () => { const i = document.createElement('input'); i.type = 'file'; i.addEventListener('change', () => { if (i.files.length) insertFiles(i.files); }); i.click(); },
   'insert-model': () => readFile('.glb,.gltf', blocks.addModel),
   'resources': () => openElements('gif'),
+  // (The editor's interface: PowerPoint's, Canva's or slides.com's — ui/shell/views.js.)
+  'view-classic': () => setView('classic'), 'view-studio': () => setView('studio'), 'view-simple': () => setView('simple'),
   // Canvas mode (Prezi-like), off by default; turning it on opens the canvas view.
   'canvas-mode': () => { const on = !canvasOn(); setCanvasMode(on); toggleCanvasView(on); },
   'canvas-view': () => { if (!canvasOn()) setCanvasMode(true); toggleCanvasView(); },

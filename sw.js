@@ -10,7 +10,7 @@
 //   private and never kept here — only what lies inside the app's own folder.
 
 const CACHE = 'revela-v6';                             // (v5: old caches, which could hold /api/ answers, deleted; v6: tells the page what's loading)
-const SHELL = ['./', 'index.html', 'src/ui/styles/tokens.css', 'src/ui/styles/ribbon.css', 'src/ui/styles/layout.css', 'src/ui/styles/canvas.css', 'src/ui/styles/chrome.css', 'src/ui/styles/responsive.css', 'src/ui/styles/features.css', 'src/apps/editor/main.js', 'manifest.webmanifest', 'icons/icon.svg'];
+const SHELL = ['./', 'index.html', 'src/ui/styles/tokens.css', 'src/ui/styles/ribbon.css', 'src/ui/styles/layout.css', 'src/ui/styles/canvas.css', 'src/ui/styles/chrome.css', 'src/ui/styles/responsive.css', 'src/ui/styles/features.css', 'src/ui/styles/views.css', 'src/apps/editor/main.js', 'manifest.webmanifest', 'icons/icon.svg'];
 const CDN = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com', 'storage.googleapis.com'];   // (the last: MediaPipe's models, by version)
 
 self.addEventListener('install', e => {

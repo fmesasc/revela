@@ -12,6 +12,7 @@ import { openReport } from '../../ui/dialogs/report.js';
 import { handleOpenWith } from '../../ui/shell/openwith.js';
 import { editText } from '../../ui/canvas/content.js';
 import { ACTIONS, noCopyNotice } from '../../ui/ribbon/actions.js';
+import { initViews } from '../../ui/shell/views.js';
 import { initFileDrop } from '../../ui/shell/openfile.js';
 import * as openfile from '../../ui/shell/openfile.js';
 import * as files from '../../features/content/files.js';
@@ -230,6 +231,7 @@ function keyboard(e) {
 initCanvas();
 initPanel();
 initRibbon();
+initViews(ACTIONS);                                     // (classic, studio or simple: ui/shell/views.js)
 initBusy();                                             // (first: the «loading» bar sees every request)
 initErrorReports({ testing: new URLSearchParams(location.search).has('test') });   // (the app's errors, to Revela: ui/shell/errors.js)
 mountStage();

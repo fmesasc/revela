@@ -3724,4 +3724,13 @@ export default {
   "«{app}» quiere conectarse a tu cuenta de Revela. Primero, inicia sesión.": "'{app}' wil verbinding maken met je Revela-account. Meld je eerst aan.",
   "¿Permitir que «{app}» ({host}) vea, cree y cambie tus presentaciones en la nube de Revela, en nombre de {email}? Puedes quitarle el acceso cuando quieras en Mi cuenta ▸ Desarrolladores e IA.": "'{app}' ({host}) toestaan je presentaties in de Revela-cloud te bekijken, te maken en te wijzigen namens {email}? Je kunt de toegang altijd intrekken in Mijn account ▸ Ontwikkelaars en AI.",
   "Revocar": "Intrekken",
+  "Elementos": "Elementen",
+  "Más objetos": "Meer objecten",
+  "Creativa": "Creatief",
+  "Interfaz": "Interface",
+  "La cinta con sus pestañas y las diapositivas a la izquierda, como en PowerPoint": "Het lint met zijn tabbladen en de dia's links, zoals in PowerPoint",
+  "Una barra de iconos grandes a la izquierda, como en Canva: diseño, plantillas, elementos, texto, subir…": "Een balk met grote pictogrammen links, zoals in Canva: ontwerp, sjablonen, elementen, tekst, uploaden…",
+  "Solo lo esencial, como en slides.com: una columna de objetos para añadir y las herramientas al seleccionar algo": "Alleen het essentiële, zoals in slides.com: een kolom objecten om toe te voegen en de hulpmiddelen als iets geselecteerd is",
+  "Subir imagen": "Uploaden",
+  "Más herramientas": "Meer hulpmiddelen",
 };

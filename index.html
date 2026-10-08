@@ -10,7 +10,9 @@
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <script>/* editor appearance before the first paint (see src/ui/shell/appearance.js) */
     try { var a = JSON.parse(localStorage.getItem('revela.appearance')); if (a) { document.documentElement.dataset.ui = a.mode;
-      if (a.mode === 'custom' && a.vars) for (var k in a.vars) document.documentElement.style.setProperty(k, a.vars[k]); } } catch (e) {}</script>
+      if (a.mode === 'custom' && a.vars) for (var k in a.vars) document.documentElement.style.setProperty(k, a.vars[k]); } } catch (e) {}
+    /* and the interface (classic, studio, simple: src/ui/shell/views.js) */
+    try { var v = localStorage.getItem('revela.view'); if (v === 'studio' || v === 'simple') document.documentElement.dataset.view = v; } catch (e) {}</script>
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#3f6497">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -26,6 +28,7 @@
   <link rel="stylesheet" href="src/ui/styles/chrome.css">
   <link rel="stylesheet" href="src/ui/styles/responsive.css">
   <link rel="stylesheet" href="src/ui/styles/features.css">
+  <link rel="stylesheet" href="src/ui/styles/views.css">
   <script type="module"
     src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
 </head>
@@ -701,6 +704,13 @@
             <button data-action="canvas-view" class="lg" title="Ver y colocar los marcos en el lienzo (modo lienzo, tipo Prezi)"><i class="ms">hub</i><span>Vista de<br>lienzo</span></button>
             <button data-action="master-edit" class="lg" title="Fondo, objetos, estilos de texto y diseños comunes a todas las diapositivas"><i class="ms">dashboard_customize</i><span>Patrón de<br>diapositivas</span></button>
           </div><label>Vistas</label>
+        </div>
+        <div class="group">
+          <div class="row">
+            <button data-action="view-classic" data-view-set="classic" class="lg" title="La cinta con sus pestañas y las diapositivas a la izquierda, como en PowerPoint"><i class="ms">view_compact</i><span>Clásica</span></button>
+            <button data-action="view-studio" data-view-set="studio" class="lg" title="Una barra de iconos grandes a la izquierda, como en Canva: diseño, plantillas, elementos, texto, subir…"><i class="ms">space_dashboard</i><span>Creativa</span></button>
+            <button data-action="view-simple" data-view-set="simple" class="lg" title="Solo lo esencial, como en slides.com: una columna de objetos para añadir y las herramientas al seleccionar algo"><i class="ms">crop_free</i><span>Minimalista</span></button>
+          </div><label>Interfaz</label>
         </div>
         <div class="group">
           <div class="row">
