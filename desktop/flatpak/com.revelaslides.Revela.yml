@@ -5,7 +5,7 @@
 # The same steps as .github/workflows/desktop.yml, without the Tauri CLI (it's an npm package: no network here):
 # the web app copied into desktop/dist, the icons made from icons/icon-512.png, and cargo with the feature the CLI
 # adds (tauri/custom-protocol: the window shows the bundled app, not a development server).
-id: io.github.fmesasc.revela
+id: com.revelaslides.Revela
 # GNOME's runtime: it brings WebKitGTK 4.1 (webkit2gtk-4.1, the one Tauri 2 uses on Linux), GTK 3 and libsoup 3.
 runtime: org.gnome.Platform
 runtime-version: '51'
@@ -51,15 +51,15 @@ modules:
       - cargo --offline fetch --manifest-path desktop/src-tauri/Cargo.toml
       - cargo --offline build --release --features tauri/custom-protocol --manifest-path desktop/src-tauri/Cargo.toml
       - install -Dm755 desktop/src-tauri/target/release/revela /app/bin/revela
-      - install -Dm644 desktop/flatpak/io.github.fmesasc.revela.desktop /app/share/applications/io.github.fmesasc.revela.desktop
+      - install -Dm644 desktop/flatpak/com.revelaslides.Revela.desktop /app/share/applications/com.revelaslides.Revela.desktop
       # The same AppStream file as the .deb's; only the desktop file it points to is named differently here.
-      - sed 's|<launchable type="desktop-id">Revela.desktop</launchable>|<launchable type="desktop-id">io.github.fmesasc.revela.desktop</launchable>|'
-        desktop/src-tauri/metainfo.xml > io.github.fmesasc.revela.metainfo.xml
-      - grep -q '>io.github.fmesasc.revela.desktop</launchable>' io.github.fmesasc.revela.metainfo.xml
-      - install -Dm644 io.github.fmesasc.revela.metainfo.xml /app/share/metainfo/io.github.fmesasc.revela.metainfo.xml
-      - install -Dm644 desktop/src-tauri/icons/128x128.png /app/share/icons/hicolor/128x128/apps/io.github.fmesasc.revela.png
-      - install -Dm644 desktop/src-tauri/icons/256x256.png /app/share/icons/hicolor/256x256/apps/io.github.fmesasc.revela.png
-      - install -Dm644 icons/icon-512.png /app/share/icons/hicolor/512x512/apps/io.github.fmesasc.revela.png
+      - sed 's|<launchable type="desktop-id">Revela.desktop</launchable>|<launchable type="desktop-id">com.revelaslides.Revela.desktop</launchable>|'
+        desktop/src-tauri/metainfo.xml > com.revelaslides.Revela.metainfo.xml
+      - grep -q '>com.revelaslides.Revela.desktop</launchable>' com.revelaslides.Revela.metainfo.xml
+      - install -Dm644 com.revelaslides.Revela.metainfo.xml /app/share/metainfo/com.revelaslides.Revela.metainfo.xml
+      - install -Dm644 desktop/src-tauri/icons/128x128.png /app/share/icons/hicolor/128x128/apps/com.revelaslides.Revela.png
+      - install -Dm644 desktop/src-tauri/icons/256x256.png /app/share/icons/hicolor/256x256/apps/com.revelaslides.Revela.png
+      - install -Dm644 icons/icon-512.png /app/share/icons/hicolor/512x512/apps/com.revelaslides.Revela.png
     sources:
       # This checkout (for building it locally). The copy sent to Flathub replaces it with the repository at a
       # version's tag and commit (README.md):

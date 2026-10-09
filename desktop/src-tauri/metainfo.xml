@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- AppStream metadata: what software centres (GNOME Software, Discover, Flathub…) show. The same file goes into the
-     .deb/.rpm/AppImage (tauri.conf.json) and into the Flatpak (desktop/flatpak/io.github.fmesasc.revela.yml), which
-     only changes <launchable>: the .deb installs Revela.desktop, the Flatpak io.github.fmesasc.revela.desktop.
+     .deb/.rpm/AppImage (tauri.conf.json) and into the Flatpak (desktop/flatpak/com.revelaslides.Revela.yml), which
+     only changes <launchable>: the .deb installs Revela.desktop, the Flatpak com.revelaslides.Revela.desktop.
      Each published version adds its <release> on top (see desktop/flatpak/README.md). -->
 <component type="desktop-application">
-  <id>io.github.fmesasc.revela</id>
+  <id>com.revelaslides.Revela</id>
   <name>Revela</name>
   <summary>Create and present slideshows</summary>
   <summary xml:lang="es">Crea y presenta diapositivas</summary>

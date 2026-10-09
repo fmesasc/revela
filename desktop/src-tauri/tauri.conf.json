@@ -44,19 +44,19 @@
     "linux": {
       "deb": {
         "files": {
-          "/usr/share/metainfo/io.github.fmesasc.revela.metainfo.xml": "metainfo.xml"
+          "/usr/share/metainfo/com.revelaslides.Revela.metainfo.xml": "metainfo.xml"
         },
         "desktopTemplate": "revela.desktop"
       },
       "rpm": {
         "files": {
-          "/usr/share/metainfo/io.github.fmesasc.revela.metainfo.xml": "metainfo.xml"
+          "/usr/share/metainfo/com.revelaslides.Revela.metainfo.xml": "metainfo.xml"
         },
         "desktopTemplate": "revela.desktop"
       },
       "appimage": {
         "files": {
-          "/usr/share/metainfo/io.github.fmesasc.revela.metainfo.xml": "metainfo.xml"
+          "/usr/share/metainfo/com.revelaslides.Revela.metainfo.xml": "metainfo.xml"
         }
       }
     },
