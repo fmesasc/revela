@@ -1,4 +1,5 @@
 import { state, commit } from '../../core/store.js';
+import { deckIn } from '../../features/document/languages.js';
 import { slidePaths } from '../../features/document/captions.js';
 import { session } from '../../core/session.js';
 import { buildHTML } from '../../io/formats/html.js';
@@ -18,9 +19,11 @@ import { confirmDialog, alertDialog } from '../dialogs/dialog.js';
 // selfPaced: the quizzes and activities are answered inside the slides (see
 // io/runtime/selfpaced.js); answer(pollId, answer) → Promise<{ score, sent }> marks
 // them elsewhere (the server, for a learning platform), else they're marked here.
-export function present({ rehearse = false, fullscreen = true, onEnd = null, onRehearsal = null, fromCurrent = false, selfPaced = false, answer = null, live = null } = {}) {
+// lang: in another language of a multilingual presentation (features/document/languages.js).
+export function present({ rehearse = false, fullscreen = true, onEnd = null, onRehearsal = null, fromCurrent = false, selfPaced = false, answer = null, live = null, lang = null } = {}) {
   const startAt = fromCurrent ? slidePaths(state.deck).get(state.ui.slideIndex) : null;
-  const deck = rehearse ? { ...state.deck, slides: state.deck.slides.map(s => ({ ...s, autoSlide: 0 })) } : state.deck;
+  const deck0 = lang ? deckIn(state.deck, lang) : state.deck;
+  const deck = rehearse ? { ...deck0, slides: deck0.slides.map(s => ({ ...s, autoSlide: 0 })) } : deck0;
   window.__revelaAnswer = selfPaced && answer ? answer : undefined;
   const url = URL.createObjectURL(new Blob([buildHTML(deck, { inApp: true, selfPaced })], { type: 'text/html' }));
 

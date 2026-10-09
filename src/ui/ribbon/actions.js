@@ -86,6 +86,7 @@ import { openModelAi } from '../dialogs/model3dai.js';
 import { toggleAssistant } from '../dialogs/assistant.js';
 import { setView } from '../shell/views.js';
 import { openDevMode, insertHTML } from '../dialogs/devmode.js';
+import { openLanguages } from '../dialogs/languages.js';
 import { openBroadcast } from '../shell/broadcast.js';
 
 const $ = s => document.querySelector(s);
@@ -240,7 +241,7 @@ export const ACTIONS = {
   // (The editor's interface: PowerPoint's, Canva's or slides.com's — ui/shell/views.js.)
   // (Developer mode: the deck's CSS, an object's classes, HTML objects — ui/dialogs/devmode.js.)
   'present-live': () => openBroadcast(),           // (to a big audience, in their browsers: ui/shell/broadcast.js)
-  'dev-css': () => openDevMode(), 'insert-html': () => insertHTML(),
+  'dev-css': () => openDevMode(), 'insert-html': () => insertHTML(), languages: () => openLanguages(),
   'view-classic': () => setView('classic'), 'view-studio': () => setView('studio'), 'view-simple': () => setView('simple'),
   // Canvas mode (Prezi-like), off by default; turning it on opens the canvas view.
   'canvas-mode': () => { const on = !canvasOn(); setCanvasMode(on); toggleCanvasView(on); },

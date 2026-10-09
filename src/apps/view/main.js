@@ -14,6 +14,7 @@ import { t, currentLang } from '../../i18n/index.js';
 import { docIdFrom, publicDeck } from '../../io/cloud/clouddocs.js';
 import { adoptDeck, state } from '../../core/store.js';
 import { buildHTML } from '../../io/formats/html.js';
+import { pickLang, deckIn, allLangs, isMultilingual, i18nOf, langName } from '../../features/document/languages.js';
 import { scormPage } from '../../io/export/scorm.js';
 
 const p = new URLSearchParams(location.search);
@@ -98,6 +99,15 @@ ws.onclose=function(){mark.textContent=T.again;if(tries++<20)setTimeout(open,Mat
 function start(){if(!window.Reveal||!Reveal.isReady||!Reveal.isReady()){setTimeout(start,200);return;}ui();open();}
 start();})();</script>`;
 
+// The language menu of a multilingual presentation (top right; the same slide after changing).
+const langMenu = (now, all) => `<script>(function(){var A=${JSON.stringify(all.map(c => [c, langName(c)]))},N=${JSON.stringify(now)};
+var s=document.createElement('select');s.setAttribute('aria-label','Language');s.style.cssText='position:fixed;top:10px;right:10px;z-index:99;font:600 13px system-ui;padding:4px 6px;border-radius:8px;border:1px solid #8886;background:#fffe;color:#222';
+A.forEach(function(x){var o=document.createElement('option');o.value=x[0];o.textContent=x[1];if(x[0]===N)o.selected=true;s.appendChild(o);});
+s.onchange=function(){try{if(window.Reveal)sessionStorage.setItem('rv-lang-at',JSON.stringify(Reveal.getIndices()));}catch(e){}var u=new URL(location.href);u.searchParams.set('lang',s.value);location.href=u.href;};
+document.body.appendChild(s);
+var at=null;try{at=JSON.parse(sessionStorage.getItem('rv-lang-at')||'null');sessionStorage.removeItem('rv-lang-at');}catch(e){}
+if(at)(function go(){if(window.Reveal&&Reveal.isReady&&Reveal.isReady())Reveal.slide(at.h||0,at.v||0,at.f);else setTimeout(go,150);})();})();</script>`;
+
 async function openCloud(id) {
   const m = document.getElementById('m'); m.textContent = texts.loading;
   try {
@@ -109,7 +119,11 @@ async function openCloud(id) {
     adoptDeck(deck);
     const scorm = p.get('scorm') === '1', self = !scorm && p.get('self') === '1';
     const who = self ? await askName(m) : null;
-    let html = buildHTML(state.deck, { noCopy, ...((scorm || self) && { selfPaced: true }) });
+    // A multilingual presentation: in the language the author chose for everyone, or in this person's (?lang=, else
+    // the browser's), with a menu to change it — the same slide, in the other language.
+    const lang = isMultilingual(state.deck) ? pickLang(state.deck, { asked: p.get('lang') || '' }) : null;
+    let html = buildHTML(lang ? deckIn(state.deck, lang) : state.deck, { noCopy, ...((scorm || self) && { selfPaced: true }) });
+    if (lang && !i18nOf(state.deck).force) { const at = html.toLowerCase().lastIndexOf('</body>'); html = html.slice(0, at) + langMenu(lang, allLangs(state.deck)) + html.slice(at); }
     if (scorm || self) {
       const at = html.toLowerCase().lastIndexOf('</body>');
       const report = self ? `<script>(function(){var U=${JSON.stringify(`/api/docs/${encodeURIComponent(id)}/progress`)},W=${JSON.stringify(who)};

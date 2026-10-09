@@ -498,6 +498,69 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.fetch = realFetch; R.ai.disconnectAi(); }
   });
 
+  await test('presentación en varios idiomas: la tabla, cada uno en el suyo, la IA completa lo que falta', async () => {
+    reset(); const W = frame.contentWindow, L = await W.eval("import('/src/features/document/languages.js')");
+    R.store.commit(() => {
+      const s = R.state.deck.slides[0]; s.blocks = [{ id: 't1', type: 'text', x: 80, y: 80, w: 900, h: 120, html: '<b>La fotosíntesis</b>', rotation: 0, animation: null },
+        { id: 't2', type: 'table', x: 80, y: 260, w: 600, h: 200, rows: [['Entra', 'Sale'], ['Agua', 'Oxígeno']], rotation: 0, animation: null }];
+      s.notes = 'Explicar con calma.';
+      L.ensureI18n(R.state.deck, 'es'); L.addLang(R.state.deck, 'en'); L.addLang(R.state.deck, 'ar');
+      L.setText(R.state.deck, 'en', '<b>La fotosíntesis</b>', '<b>Photosynthesis</b><img src=x onerror=alert(1)>');
+      L.setText(R.state.deck, 'en', 'Agua', 'Water'); L.setText(R.state.deck, 'ar', '<b>La fotosíntesis</b>', '<b>التمثيل الضوئي</b>');
+    });
+    const rows = L.textRows(R.state.deck).map(r => r.text);
+    assert(['<b>La fotosíntesis</b>', 'Entra', 'Agua', 'Oxígeno', 'Explicar con calma.'].every(x => rows.includes(x)), 'la tabla tiene cada texto: cuadros, celdas y notas: ' + JSON.stringify(rows));
+    eq(L.missingByLang(R.state.deck).en, rows.length - 2, 'y cuenta lo que falta en cada idioma');
+    const en = L.deckIn(R.state.deck, 'en'), b = en.slides[0].blocks;
+    assert(/Photosynthesis/.test(b[0].html) && !/onerror/.test(b[0].html), 'en inglés, con su formato (y sin código: se limpia)');
+    eq(b[1].rows[1][0], 'Water', 'las celdas también'); eq(b[1].rows[1][1], 'Oxígeno', 'lo que no está traducido, en el original');
+    assert(/fotosíntesis/.test(R.state.deck.slides[0].blocks[0].html), 'la presentación de verdad no cambia');
+    const ar = L.deckIn(R.state.deck, 'ar'); eq(ar.slides[0].blocks[0].dir, 'rtl', 'el árabe, de derecha a izquierda');
+    eq(L.deckIn(R.state.deck, 'fr'), R.state.deck, 'un idioma que no tiene: la original');
+    // Who sees which.
+    eq(L.pickLang(R.state.deck, { browser: ['en-GB', 'es'] }), 'en', 'el idioma del navegador, si lo tiene');
+    eq(L.pickLang(R.state.deck, { browser: ['fr-FR'] }), 'es', 'si no, el original');
+    eq(L.pickLang(R.state.deck, { asked: 'ar', browser: ['en'] }), 'ar', 'el que se pide en el enlace');
+    R.store.commit(() => L.setForce(R.state.deck, 'en'));
+    eq(L.pickLang(R.state.deck, { asked: 'ar', browser: ['ar'] }), 'en', 'el que el autor fija para todos manda');
+    R.store.commit(() => L.setForce(R.state.deck, null));
+    // A text changed: its translation stays unused until it's cleaned.
+    R.store.commit(() => { R.state.deck.slides[0].blocks[1].rows[1][0] = 'Agua (H₂O)'; });
+    let n = 0; R.store.commit(() => { n = L.pruneTexts(R.state.deck); }); eq(n, 1, 'quitar las traducciones que ya no se usan');
+    // The dialog: the table, a cell written by hand, the AI completing the rest, and presenting in a language.
+    const realFetch = W.fetch, sent = [];
+    R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    W.fetch = async (url, opts) => { const body = JSON.parse(opts.body), items = JSON.parse(body.messages[1].content); sent.push(body.messages[0].content);
+      return new W.Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(Object.fromEntries(Object.entries(items).map(([k, v]) => [k, '«' + v + '»']))) } }] })); };
+    try {
+      D.querySelector('[data-action="languages"]').click(); await sleep(100);
+      const M = D.getElementById('lang-modal'); assert(M, 'Ver ▸ Idiomas abre la tabla');
+      eq(M.querySelectorAll('thead th').length, 4, 'una columna por idioma (y el original)');
+      const cell = [...M.querySelectorAll('tbody tr')].find(tr => /Entra/.test(tr.textContent)).querySelector('.lg-cell[data-l="en"]');
+      cell.focus(); cell.textContent = 'In'; cell.dispatchEvent(new W.FocusEvent('focusout', { bubbles: true })); await sleep(20);
+      eq(L.i18nOf(R.state.deck).texts.en.Entra, 'In', 'escribir en la tabla guarda la traducción');
+      M.querySelector('.lg-ai').click(); for (let i = 0; i < 50 && L.missingByLang(R.state.deck).ar; i++) await sleep(50);
+      assert(sent.some(x => /into English/.test(x)) && sent.some(x => /into Arabic/.test(x)), 'la IA traduce a cada idioma');
+      eq(L.missingByLang(R.state.deck).en + L.missingByLang(R.state.deck).ar, 0, 'y completa todo lo que faltaba');
+      eq(L.i18nOf(R.state.deck).texts.en.Entra, 'In', 'sin tocar lo escrito a mano');
+      M.querySelector('.lg-see').value = 'en'; M.querySelector('.lg-present').click(); await sleep(100);
+      const f = D.querySelector('#present-overlay iframe'); let txt = '';
+      for (let i = 0; i < 60 && !/Photosynthesis/.test(txt); i++) { await sleep(100); txt = f?.contentDocument?.body?.textContent || ''; }
+      assert(/Photosynthesis/.test(txt) && /Water|«Agua \(H₂O\)»/.test(txt), 'presentar en inglés');
+      D.querySelector('#present-close')?.click();
+    } finally { W.fetch = realFetch; D.getElementById('lang-modal')?.remove(); }
+    // The two examples in eleven languages: opened in English, English is their original and the rest are in the table.
+    for (const key of ['telescopes', 'storyrobot']) {
+      const es = await R.examples.loadExample(key, 'es'), en = await R.examples.loadExample(key, 'en');
+      eq(L.allLangs(es).length, 11, key + ': once idiomas'); eq(Object.values(L.missingByLang(es)).reduce((a, b) => a + b, 0), 0, key + ': nada por traducir');
+      eq(L.baseOf(en), 'en', key + ': abierta en inglés, el inglés es su original');
+      assert(L.langsOf(en).includes('es') && !L.langsOf(en).includes('en'), key + ': y el español, uno más de la tabla');
+      eq(Object.values(L.missingByLang(en)).reduce((a, b) => a + b, 0), 0, key + ': también completa desde el inglés');
+      eq(JSON.stringify(L.textRows(L.deckIn(en, 'es')).map(r => r.text)), JSON.stringify(L.textRows(es).map(r => r.text)), key + ': y vuelve al español con los mismos textos');
+      assert(JSON.stringify(en.slides).includes(key === 'telescopes' ? 'Eyes in space' : 'Once upon a time'), key + ': sus diapositivas, en inglés');
+    }
+  });
+
   await test('IA: diapositivas «hijas» (debajo de otra) para profundizar en lo difícil', async () => {
     reset(); const W = frame.contentWindow, A = R.aiDeck, calls = []; let answer = {};
     R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();

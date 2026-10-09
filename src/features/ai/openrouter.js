@@ -294,6 +294,23 @@ function placeImage(img, prompt, aspect) {
 export const translateDeck = (targetLang, onProgress) => rewriteTexts(`Translate every value of this JSON object into ${targetLang}. Keep the keys, keep all HTML tags and attributes exactly, translate only the human text. Answer only the JSON object.`,
   { feature: 'translate' }, onProgress);
 
+// A multilingual presentation's table (features/document/languages.js): its texts that have no translation yet in
+// one language, translated in batches. → { text: translation }. (Whatever the model leaves out stays to do.)
+export async function translateTable(texts, lang, { context = '', onProgress, signal } = {}) {
+  const out = {}, size = 40;
+  for (let i = 0; i < texts.length; i += size) {
+    const part = texts.slice(i, i + size), items = Object.fromEntries(part.map((tx, k) => [String(k), tx]));
+    const res = await chat([
+      { role: 'system', content: `Translate every value of this JSON object into ${lang}, for a presentation${context ? ' about ' + context : ''} that students will read in their own language. Keep the keys, keep all HTML tags and attributes exactly, translate only the human text; keep names, code, formulas and numbers. Short, natural and clear, as long as the original or shorter (a slide has little room). Answer only the JSON object.` },
+      { role: 'user', content: JSON.stringify(items) },
+    ], { json: true, maxTokens: 6000, feature: 'translate', signal });
+    const tr = parseJSON(res) || {};
+    part.forEach((tx, k) => { const v = tr[String(k)]; if (typeof v === 'string' && v.trim()) out[tx] = v; });
+    onProgress?.(Math.min(1, (i + size) / texts.length));
+  }
+  return out;
+}
+
 // Adapt to a reading level (Nearpod's Text Leveler): the slides' texts for younger readers, Easy-to-Read, or specialists —
 // same language, same facts. Not the notes (they're the presenter's). only: block ids (the selected boxes), else slides.
 export const READING_LEVELS = {

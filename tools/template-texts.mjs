@@ -14,7 +14,9 @@ const { EXAMPLES, loadExample, exampleFile } = await import(pathToFileURL(join(R
 const { textsOf, TEMPLATE_LANGS } = await import(pathToFileURL(join(ROOT, 'src/features/content/tplang.js')).href);
 
 const byFile = {};
-for (const key of Object.keys(EXAMPLES)) {
+// (Not the ones with their own table of languages — multilang.js: they bring their translations with them.)
+const { EXAMPLES_ML } = await import(pathToFileURL(join(ROOT, 'src/features/content/multilang.js')).href);
+for (const key of Object.keys(EXAMPLES).filter(k => !EXAMPLES_ML[k])) {
   const d = await loadExample(key, 'es'); if (!d) continue;
   const set = (byFile[exampleFile(key)] ||= new Set());
   for (const s of textsOf(d)) set.add(s);

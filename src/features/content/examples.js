@@ -10,6 +10,8 @@ import { A, anim, appScreen, bar, base, big, build, card, dg, glow, icon, lib3d,
 import { CATALOG, LOADERS } from './templates/catalog.js';
 import { translateDeck, textsIn, RTL_LANGS } from './tplang.js';
 import { currentLang } from '../../i18n/index.js';
+import { EXAMPLES_ML, withTexts } from './multilang.js';
+import { langsOf, rebase } from '../document/languages.js';
 
 // ---- The ten examples --------------------------------------------------------------
 const EXAMPLES_DEF = {
@@ -496,6 +498,7 @@ export const CATEGORIES = [['edu', 'Educación'], ['sci', 'Ciencia y universidad
   ['data', 'Datos'], ['life', 'Eventos y vida personal'], ['creative', 'Estilos creativos'], ['showcase', 'Catálogo de funciones']];
 // All of them listed (name, summary, group); the ones in templates/*.js are
 // loaded when needed (catalog.js, made by tools/build-catalog.mjs).
+Object.assign(EXAMPLES_DEF, EXAMPLES_ML);             // (the two in eleven languages: multilang.js)
 export const EXAMPLES = { ...Object.fromEntries(Object.entries(EXAMPLES_DEF).map(([k, v]) => [k, { name: v.name, summary: v.summary, cat: v.cat }])), ...CATALOG };
 const loaded = { ...EXAMPLES_DEF };
 // At once, for the ones already here (the first twenty, or a file already loaded).
@@ -511,6 +514,8 @@ export async function exampleNames(lang) {
 export async function loadExample(key, lang = currentLang()) {
   if (!loaded[key]) { const f = CATALOG[key]?.file; if (!f || !LOADERS[f]) return null; Object.assign(loaded, (await LOADERS[f]()).default); }
   const deck = loaded[key]?.make() || null;
+  // (One with its own table of languages: in that language as its original, the others kept in the table.)
+  if (deck && EXAMPLES_ML[key]) { await withTexts(key, deck); return lang !== 'es' && langsOf(deck).includes(lang) ? rebase(deck, lang) : deck; }
   if (!deck || lang === 'es') return deck;
   const { dict, lang: as } = await textsIn(lang, exampleFile(key));
   return translateDeck(deck, dict, { rtl: RTL_LANGS.includes(as) });

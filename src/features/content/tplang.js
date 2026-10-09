@@ -18,7 +18,7 @@ export const RTL_LANGS = ['ar'];
 // Where an example's texts are: these properties of the deck, its slides, layouts and
 // objects (text, notes, table cells, chart labels and titles, poll questions and options,
 // diagram outlines, pictures' descriptions…). Not code, equations, formulas nor credits.
-const TEXT_KEYS = new Set(['html', 'notes', 'name', 'rows', 'label', 'alt', 'options', 'question', 'text', 'seriesName', 'yTitle', 'xTitle', 'endText']);
+export const TEXT_KEYS = new Set(['html', 'notes', 'name', 'rows', 'label', 'alt', 'options', 'question', 'text', 'seriesName', 'yTitle', 'xTitle', 'endText']);
 const isText = v => typeof v === 'string' && /\p{L}/u.test(v.replace(/<[^>]*>/g, '')) && !/^\s*=/.test(v) && !/^(data:|https?:|assets\/)/.test(v);
 
 // Every text of a deck, once each, in order.

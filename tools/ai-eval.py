@@ -8,7 +8,7 @@ the instructions or in the model is measured, not guessed.
 
 Needs Chrome (it runs the app headless, as tests/run.py). Costs a few cents per topic on that key. Writes a table (and,
 in GitHub Actions, the run's summary) and every deck as JSON to look at. Exit code 1 if the average is under --min."""
-import base64, io, json, os, sys, time, http.server, socketserver, threading, subprocess, shutil, tempfile
+import atexit, base64, io, json, os, sys, time, http.server, socketserver, threading, subprocess, shutil, tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOPICS = {   # key: (topic, language, what the person answered to the questions — '' for none)
@@ -43,8 +43,10 @@ def main():
     chrome = next(shutil.which(c) for c in ('google-chrome', 'chromium', 'chromium-browser') if shutil.which(c))
     r_in, w_in = os.pipe(); r_out, w_out = os.pipe()
     def child(): os.dup2(r_in, 3); os.dup2(w_out, 4)
-    proc = subprocess.Popen([chrome, '--headless=new', '--no-sandbox', '--disable-gpu', '--remote-debugging-pipe', '--user-data-dir=' + tempfile.mkdtemp(prefix='aieval-')],
+    proc = subprocess.Popen([chrome, '--headless=new', '--no-sandbox', '--disable-gpu', '--remote-debugging-pipe', '--user-data-dir=' + (prof := tempfile.mkdtemp(prefix='aieval-'))],
                             preexec_fn=child, pass_fds=(3, 4), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # (At the end, Chrome closed and its profile deleted — once it has finished writing to it: 700 left behind filled /tmp with 34 GB.)
+    atexit.register(lambda: (proc.kill(), proc.wait(), [shutil.rmtree(prof, ignore_errors=True) or time.sleep(0.3) for _ in range(10) if os.path.exists(prof)]))   # (its helpers write on a moment)
     os.close(r_in); os.close(w_out); buf = [b'']; n = [0]
     def send(m, sid=None, **p):
         n[0] += 1; msg = {'id': n[0], 'method': m, 'params': p}
