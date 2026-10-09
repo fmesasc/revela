@@ -1,0 +1,85 @@
+# Revela as a Flatpak (Flathub), built from source and offline: flatpak-builder downloads only what's listed here
+# (this repository and the crates in cargo-sources.json), then builds without network. How to build it, send it to
+# Flathub and keep it updated: README.md, next to this file.
+#
+# The same steps as .github/workflows/desktop.yml, without the Tauri CLI (it's an npm package: no network here):
+# the web app copied into desktop/dist, the icons made from icons/icon-512.png, and cargo with the feature the CLI
+# adds (tauri/custom-protocol: the window shows the bundled app, not a development server).
+id: io.github.fmesasc.revela
+# GNOME's runtime: it brings WebKitGTK 4.1 (webkit2gtk-4.1, the one Tauri 2 uses on Linux), GTK 3 and libsoup 3.
+runtime: org.gnome.Platform
+runtime-version: '51'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+  - org.freedesktop.Sdk.Extension.node24
+command: revela
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  # (WebKitGTK draws with the GPU.)
+  - --device=dri
+  # The online features: the Revela account and its AI, the clouds (Drive, OneDrive, Dropbox), co-editing, live polls,
+  # sharing, and the libraries some features load from a CDN.
+  - --share=network
+  # Sound: videos, recordings and transitions with sound, and the microphone (dictation, narration).
+  - --socket=pulseaudio
+  # No file-system access: opening and saving go through the portals (the system's «Open» and «Save as» dialogs,
+  # GtkFileChooserNative), and files opened with Revela arrive through the document portal.
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/node24/bin
+  env:
+    CARGO_HOME: /run/build/revela/cargo
+    CARGO_NET_OFFLINE: 'true'
+modules:
+  - name: revela
+    buildsystem: simple
+    build-commands:
+      # The web app inside the bundle, marked as the desktop edition (only copies files: no npm install).
+      - node tools/build-site.mjs desktop/dist --app-only
+      # The version the app shows (About): package.json's, as in desktop.yml.
+      - node -e "const f='desktop/src-tauri/tauri.conf.json',fs=require('fs'),c=JSON.parse(fs.readFileSync(f));c.version=require('./package.json').version;fs.writeFileSync(f,JSON.stringify(c,null,2))"
+      # The icons tauri.conf.json names (the window's is the first PNG: 32x32), from the same picture desktop.yml
+      # uses, scaled by librsvg (the PNG inside an SVG: the SDK has no image tool, and GdkPixbuf's loaders need a
+      # sandbox of their own). They're made when building, not kept in the repository (desktop/.gitignore).
+      - |
+        mkdir -p desktop/src-tauri/icons
+        printf '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><image href="icon-512.png" width="512" height="512"/></svg>' > icons/icon-512-png.svg
+        for s in 32 128 256; do rsvg-convert -w $s -h $s icons/icon-512-png.svg -o desktop/src-tauri/icons/${s}x${s}.png; done
+        cp desktop/src-tauri/icons/256x256.png desktop/src-tauri/icons/128x128@2x.png
+      - cargo --offline fetch --manifest-path desktop/src-tauri/Cargo.toml
+      - cargo --offline build --release --features tauri/custom-protocol --manifest-path desktop/src-tauri/Cargo.toml
+      - install -Dm755 desktop/src-tauri/target/release/revela /app/bin/revela
+      - install -Dm644 desktop/flatpak/io.github.fmesasc.revela.desktop /app/share/applications/io.github.fmesasc.revela.desktop
+      # The same AppStream file as the .deb's; only the desktop file it points to is named differently here.
+      - sed 's|<launchable type="desktop-id">Revela.desktop</launchable>|<launchable type="desktop-id">io.github.fmesasc.revela.desktop</launchable>|'
+        desktop/src-tauri/metainfo.xml > io.github.fmesasc.revela.metainfo.xml
+      - grep -q '>io.github.fmesasc.revela.desktop</launchable>' io.github.fmesasc.revela.metainfo.xml
+      - install -Dm644 io.github.fmesasc.revela.metainfo.xml /app/share/metainfo/io.github.fmesasc.revela.metainfo.xml
+      - install -Dm644 desktop/src-tauri/icons/128x128.png /app/share/icons/hicolor/128x128/apps/io.github.fmesasc.revela.png
+      - install -Dm644 desktop/src-tauri/icons/256x256.png /app/share/icons/hicolor/256x256/apps/io.github.fmesasc.revela.png
+      - install -Dm644 icons/icon-512.png /app/share/icons/hicolor/512x512/apps/io.github.fmesasc.revela.png
+    sources:
+      # This checkout (for building it locally). The copy sent to Flathub replaces it with the repository at a
+      # version's tag and commit (README.md):
+      #   - type: git
+      #     url: https://github.com/fmesasc/revela.git
+      #     tag: vX.Y.Z
+      #     commit: <that tag's commit>
+      - type: dir
+        path: ../..
+        skip:
+          - .git
+          - .claude
+          - .wrangler
+          - .flatpak-builder
+          - node_modules
+          - dist
+          - site
+          - tmp
+          - desktop/dist
+          - desktop/src-tauri/target
+          - desktop/src-tauri/gen
+          - desktop/src-tauri/icons
+      - cargo-sources.json

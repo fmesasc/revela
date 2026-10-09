@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Revela
+Comment=Create and present slideshows
+Comment[es]=Crea y presenta diapositivas
+Icon=io.github.fmesasc.revela
+Exec=revela %F
+Terminal=false
+Categories=Office;Presentation;
+Keywords=presentation;slides;slideshow;PowerPoint;reveal.js;
+Keywords[es]=presentación;diapositivas;PowerPoint;reveal.js;
+MimeType=application/vnd.openxmlformats-officedocument.presentationml.presentation;application/vnd.openxmlformats-officedocument.presentationml.template;application/vnd.oasis.opendocument.presentation;application/vnd.oasis.opendocument.presentation-template;
+StartupWMClass=revela

@@ -1,25 +1,69 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- AppStream metadata: what software centres (GNOME Software, Discover…) show. -->
+<!-- AppStream metadata: what software centres (GNOME Software, Discover, Flathub…) show. The same file goes into the
+     .deb/.rpm/AppImage (tauri.conf.json) and into the Flatpak (desktop/flatpak/io.github.fmesasc.revela.yml), which
+     only changes <launchable>: the .deb installs Revela.desktop, the Flatpak io.github.fmesasc.revela.desktop.
+     Each published version adds its <release> on top (see desktop/flatpak/README.md). -->
 <component type="desktop-application">
   <id>io.github.fmesasc.revela</id>
   <name>Revela</name>
-  <summary>Presentation editor, like PowerPoint, presented with reveal.js</summary>
-  <summary xml:lang="es">Editor de presentaciones como PowerPoint, que presenta con reveal.js</summary>
+  <summary>Create and present slideshows</summary>
+  <summary xml:lang="es">Crea y presenta diapositivas</summary>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
-  <developer id="io.github.fmesasc">
-    <name>fmesasc</name>
+  <developer id="com.revelaslides">
+    <name>FM Lab</name>
   </developer>
   <description>
-    <p>Revela is a free, open-source presentation editor: slides, text, images, charts, animations and transitions, live collaboration, and export to PowerPoint, OpenDocument, PDF and HTML.</p>
-    <p xml:lang="es">Revela es un editor de presentaciones libre y de código abierto: diapositivas, texto, imágenes, gráficos, animaciones y transiciones, colaboración en directo y exportación a PowerPoint, OpenDocument, PDF y HTML.</p>
+    <p>Revela is a free, open-source presentation editor that works like the slideshow programs you already know and presents with reveal.js.</p>
+    <p xml:lang="es">Revela es un editor de presentaciones libre y de código abierto que funciona como los programas de diapositivas que ya conoces y presenta con reveal.js.</p>
+    <ul>
+      <li>Slides with text, images, shapes, tables, charts, equations, video and 3D models</li>
+      <li xml:lang="es">Diapositivas con texto, imágenes, formas, tablas, gráficos, ecuaciones, vídeo y modelos 3D</li>
+      <li>Animations, transitions and a presenter view with notes</li>
+      <li xml:lang="es">Animaciones, transiciones y vista del moderador con notas</li>
+      <li>Opens and saves PowerPoint and OpenDocument files; exports to PDF and HTML</li>
+      <li xml:lang="es">Abre y guarda archivos de PowerPoint y OpenDocument; exporta a PDF y HTML</li>
+      <li>Optional online features: live collaboration, live polls and questions from the audience, and an AI assistant</li>
+      <li xml:lang="es">Funciones en línea opcionales: colaboración en directo, encuestas y preguntas del público en directo y un asistente de IA</li>
+    </ul>
   </description>
   <launchable type="desktop-id">Revela.desktop</launchable>
-  <url type="homepage">https://fmesasc.github.io/revela/</url>
+  <url type="homepage">https://revelaslides.com</url>
   <url type="vcs-browser">https://github.com/fmesasc/revela</url>
   <url type="bugtracker">https://github.com/fmesasc/revela/issues</url>
   <categories>
     <category>Office</category>
   </categories>
-  <content_rating type="oars-1.1"/>
+  <branding>
+    <color type="primary" scheme_preference="light">#a7c0e3</color>
+    <color type="primary" scheme_preference="dark">#1c3150</color>
+  </branding>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Editing a presentation</caption>
+      <image>https://raw.githubusercontent.com/fmesasc/revela/v0.4.19/docs/screenshot.png</image>
+    </screenshot>
+  </screenshots>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </supports>
+  <provides>
+    <binary>revela</binary>
+  </provides>
+  <!-- (OARS: the online features, all optional.) Co-editing with comments, live polls and questions from the audience:
+       unmoderated text between people (social-chat); video calls (social-audio); sharing a presentation with someone
+       by e-mail, and co-editors see each other's name and address (social-contacts, social-info); buying a plan or
+       credits (money-purchasing). -->
+  <content_rating type="oars-1.1">
+    <content_attribute id="social-chat">intense</content_attribute>
+    <content_attribute id="social-audio">intense</content_attribute>
+    <content_attribute id="social-info">intense</content_attribute>
+    <content_attribute id="social-contacts">intense</content_attribute>
+    <content_attribute id="money-purchasing">intense</content_attribute>
+  </content_rating>
+  <releases>
+    <release version="0.4.19" date="2026-10-09"/>
+  </releases>
 </component>
