@@ -98,7 +98,7 @@ export class Community {
       const { sub, ...pub } = it, liked = !!a.sub && !!(await st.get(`lk:${it.id}:${a.sub}`));
       return Response.json({ liked, item: a.admin || it.sub === a.sub ? it : pub, deck: a.meta ? null : parts ? JSON.parse(parts.join('')) : null });
     }
-    if (op === 'thumb') return Response.json({ thumb: it.status === 'published' || a.admin || it.sub === a.sub ? (await st.get('t:' + it.id)) || null : null });
+    if (op === 'thumb') return Response.json({ thumb: it.status === 'published' || a.admin || it.sub === a.sub ? (await st.get('t:' + it.id)) || null : null, published: it.status === 'published' });
     if (op === 'delete') {                                // { id, sub?, admin? }
       if (it.sub !== a.sub && !a.admin) return Response.json({ error: 'forbidden' }, { status: 403 });
       const parts = (await st.get(`d:${it.id}:n`)) || 0;
@@ -153,10 +153,11 @@ export async function handleCommunity(path, req, body, url, env, me, json, { web
   const id = m[1], op = m[2] || '';
   if (req.method === 'GET' && !op) { const r = await communityCall(env, 'get', { id, sub: me?.sub, count: url.searchParams.get('count') === '1', use: url.searchParams.get('use') === '1', meta: url.searchParams.get('meta') === '1' }); return json(r, r.error ? 404 : 200); }
   if (req.method === 'GET' && op === 'thumb') {
-    const { thumb } = await communityCall(env, 'thumb', { id, sub: me?.sub });
+    const { thumb, published } = await communityCall(env, 'thumb', { id, sub: me?.sub });
     const mm = String(thumb || '').match(/^data:(image\/[a-z]+);base64,(.+)$/);
     if (!mm) return new Response('Not found', { status: 404 });
-    return new Response(Uint8Array.from(atob(mm[2]), ch => ch.charCodeAt(0)), { headers: { 'Content-Type': mm[1], 'Cache-Control': 'public, max-age=86400' } });
+    // (Public — kept by browsers and Cloudflare's cache, worker.js — only once published: before, it's its author's.)
+    return new Response(Uint8Array.from(atob(mm[2]), ch => ch.charCodeAt(0)), { headers: { 'Content-Type': mm[1], 'Cache-Control': published ? 'public, max-age=86400' : 'private, no-store' } });
   }
   if (req.method === 'POST' && op === 'delete') { if (!me) return json({ error: 'no session' }, 401); const r = await communityCall(env, 'delete', { id, sub: me.sub }); return json(r, r.error ? 403 : 200); }
   if (req.method === 'POST' && op === 'like') { if (!me) return json({ error: 'no session' }, 401); const r = await communityCall(env, 'like', { id, sub: me.sub, on: body.on !== false }); return json(r, r.error ? 404 : 200); }

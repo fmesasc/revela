@@ -2,7 +2,7 @@
 // payments and the desktop sign-in — above all, that nothing can be skipped
 // from outside. In-memory Durable Objects; the AI provider, Google and Stripe
 // are simulated. Run by tests/run.sh when Node.js is available.
-import worker, { Account, Budget, DesktopLink, ShareBox, Limits, CloudDoc, Team, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance, Crm, Community, Broadcast } from '../server/cloudflare/worker.js';
+import worker, { edgeKept, Account, Budget, DesktopLink, ShareBox, Limits, CloudDoc, Team, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance, Crm, Community, Broadcast } from '../server/cloudflare/worker.js';
 import { summarize, bump, toCsv, cleanEntry, featureOf } from '../server/cloudflare/finance.js';
 import { verifyAccess, resetAccessCerts, resetPromoCache, ticketsDue } from '../server/cloudflare/admin.js';
 import { ticketToken, render } from '../server/cloudflare/mail.js';
@@ -1971,7 +1971,9 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     x = await A('GET', '/community?status=pending'); ok(x.j.items.length === 1 && /fracción/.test(x.j.items[0].text), 'comunidad: en la cola de moderación, con su texto');
     { const d = await adm('GET', `/community/${r1.id}/deck`); ok(d.status === 200 && (await d.json()).slides.length === 2, 'comunidad: la administración la descarga para revisarla');
       ok((await adm('GET', `/community/${r1.id}/thumb`)).headers.get('Content-Type') === 'image/jpeg', 'comunidad: y ve su imagen antes de aprobarla'); }
+    ok((await req('GET', `/api/community/${r1.id}/thumb`, { headers: { Cookie: pia } })).headers.get('Cache-Control') === 'private, no-store', 'comunidad: su imagen, solo para la autora (ninguna caché la guarda)');
     ok((await A('POST', `/community/${r1.id}/status`, { body: { status: 'published' } })).status === 200, 'comunidad: aprobada');
+    ok(/^public/.test((await req('GET', `/api/community/${r1.id}/thumb`)).headers.get('Cache-Control')), 'comunidad: publicada, su imagen ya es pública');
     let l = await L(); ok(l.items.length === 1 && l.items[0].title === 'Las fracciones' && !l.items[0].sub && !l.items[0].text, 'comunidad: en la lista (sin datos de la cuenta)');
     ok((await L('?q=FRACCION')).items.length === 1 && (await L('?q=volcanes')).items.length === 0 && (await L('?subject=lang')).items.length === 0, 'comunidad: búsqueda en sus palabras y filtros');
     const got = await (await req('GET', `/api/community/${r1.id}?use=1`)).json();
@@ -2031,6 +2033,21 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok((await (await req('GET', '/api/ambassadors')).json()).items.length === 0 && (await req('GET', `/api/ambassadors/badge/${code}.svg`)).status === 404, 'embajadores: al terminar, fuera del directorio y sin insignia válida');
   }
 
+  // Public pages kept in Cloudflare's cache (worker.js edgeKept): given when the Durable Objects fail (the free plan's
+  // daily quota spent); a private one never kept.
+  { const store = new Map(), cache = { match: async k => store.get(k.url)?.clone(), put: async (k, r) => { store.set(k.url, r); } };
+    const u = new URL('https://revelaslides.com/community/abc234-x'); let n = 0;
+    const page = (cc = 'public, max-age=300') => async () => { n++; return new Response('<h1>v' + n + '</h1>', { headers: { 'Content-Type': 'text/html', 'Cache-Control': cc } }); };
+    let r = await edgeKept(u, page(), { cache }); ok(await r.text() === '<h1>v1</h1>' && r.headers.get('Cache-Control') === 'public, max-age=300', 'caché: la página, hecha');
+    r = await edgeKept(u, async () => { throw new Error('Exceeded allowed volume of requests in Durable Objects free tier'); }, { cache });
+    ok(r.status === 200 && await r.text() === '<h1>v1</h1>' && r.headers.get('X-Revela-Stale') === '1' && r.headers.get('Cache-Control') === 'no-store' && !r.headers.get('X-Revela-At'), 'caché: sin Durable Objects, la última copia buena');
+    r = await edgeKept(u, async () => new Response('caído', { status: 500 }), { cache }); ok(await r.text() === '<h1>v1</h1>', 'caché: también cuando responde 500');
+    r = await edgeKept(u, page(), { cache, fresh: 600 }); ok(await r.text() === '<h1>v1</h1>' && n === 1 && r.headers.get('Cache-Control') === 'public, max-age=300', 'caché: «fresh», la copia reciente sin volver a hacerla');
+    r = await edgeKept(u, page(), { cache }); ok(await r.text() === '<h1>v2</h1>', 'caché: sin «fresh», siempre la de ahora');
+    const priv = new URL('https://revelaslides.com/api/community/def234/thumb');
+    await edgeKept(priv, page('private, no-store'), { cache }); r = await edgeKept(priv, async () => { throw new Error('x'); }, { cache });
+    ok(r.status === 503 && !store.has('https://revelaslides.com/__kept/api/community/def234/thumb'), 'caché: lo privado nunca se guarda'); }
+
   // The «Rastreador» (crawler.js): websites read slowly and politely, facts with their evidence, a score from them.
   {
     const K = await import('../server/cloudflare/crawler.js');
@@ -2070,7 +2087,10 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     x = await C('POST', '/crawler', { body: { settings: { on: true, everyMin: 1, pagesPerSite: 3, blocked: ['https://www.Bloqueado.example/x'] } } });
     ok(x.status === 200 && x.j.settings.on && x.j.settings.everyMin === 2 && x.j.settings.blocked[0] === 'bloqueado.example', 'rastreador: encendido (como mucho uno cada 2 min) y dominios bloqueados normalizados');
     ok((await C('GET', '/crawler')).j.nextAt > Date.now(), 'rastreador: con su alarma, que lo mantiene en marcha');
-    // Step by step, as the alarm would.
+    // Step by step, as the alarm would — the sites due asked for several at a time (reading every contact counts
+    // against the plan's daily quota of rows read), kept in the crawler's queue.
+    { const due = await env.CRM.get(env.CRM.idFromName('crm')).fetch('https://crm/crawl-next', { method: 'POST', body: JSON.stringify({ before: Date.now(), n: 2 }) }).then(r => r.json());
+      ok(due.items.length === 2 && due.id === due.items[0].id, 'rastreador: los siguientes, de varios en varios: ' + JSON.stringify(due.items.map(x => x.id))); }
     const done = [];
     for (let i = 0; i < 6; i++) { const r = (await C('POST', '/crawler/step', { body: {} })).j; done.push(r.kind === 'site' ? r.id : r.kind); }
     ok([olivos, cerrado, caido].every(id => done.filter(d => d === id).length === 1) && done.at(-1) === 'idle', 'rastreador: cada web una vez, luego nada que hacer: ' + done);

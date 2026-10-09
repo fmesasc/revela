@@ -97,6 +97,28 @@ export async function authorize(req, env, fetchImpl = fetch) {
   return { email: who.email };
 }
 
+// Public pages that keep working when the Durable Objects don't (the Workers Free plan's daily quota spent: every
+// call to them fails until 00:00 UTC): each good, public answer is also kept in Cloudflare's cache (that data
+// centre's) for a month, and given — marked X-Revela-Stale — when making it fails. With fresh (seconds), that copy
+// is also given while it's that young, without making it.
+const STALE_KEEP = 30 * 86400;
+export async function edgeKept(url, make, { fresh = 0, cache = globalThis.caches?.default } = {}) {
+  if (!cache) return make();
+  const key = new Request(`${url.origin}/__kept${url.pathname}${url.search}`), at = r => +r.headers.get('X-Revela-At') || 0;
+  const kept = await cache.match(key).catch(() => null);
+  const given = (r, extra) => { const out = new Response(r.body, r); out.headers.set('Cache-Control', r.headers.get('X-Revela-Cache') || 'no-store'); for (const k of ['X-Revela-At', 'X-Revela-Cache']) out.headers.delete(k); for (const [k, v] of Object.entries(extra)) out.headers.set(k, v); return out; };
+  if (kept && fresh && Date.now() - at(kept) < fresh * 1000) return given(kept, {});
+  let res = null;
+  try { res = await make(); } catch (e) { console.log('kept', e?.message); }
+  if (res?.status === 200 && /\bpublic\b/.test(res.headers.get('Cache-Control') || '')) {
+    const copy = new Response(res.clone().body, res); copy.headers.set('X-Revela-Cache', res.headers.get('Cache-Control')); copy.headers.set('Cache-Control', `public, max-age=${STALE_KEEP}`); copy.headers.set('X-Revela-At', String(Date.now()));
+    await cache.put(key, copy).catch(() => {});
+    return res;
+  }
+  if ((!res || res.status >= 500) && kept) return given(kept, { 'X-Revela-Stale': '1', 'Cache-Control': 'no-store' });
+  return res || new Response('Unavailable', { status: 503, headers: { 'Retry-After': '3600' } });
+}
+
 export default {
   // The daily cron: notices due (credits that expire, the end of Pro, unused accounts), and support
   // tickets left waiting for the person (a reminder, then closed: admin.js). Each on its own: one failing doesn't stop the other.
@@ -124,7 +146,10 @@ export default {
     // OAuth's discovery for the MCP server (revelaslides.com/.well-known/oauth-…: publicapi.js).
     if (url.pathname.startsWith('/.well-known/')) return wellKnown(url, env) || new Response('Not found', { status: 404 });
     // The community's public pages (revelaslides.com/community…: community.js).
-    if (/^\/community(\/|$)/.test(url.pathname) && req.method === 'GET') return communityPage(env, url);
+    if (/^\/community(\/|$)/.test(url.pathname) && req.method === 'GET') return edgeKept(url, () => communityPage(env, url));
+    // (Their pictures: a page of the community shows dozens, each a Durable Object request against the plan's daily
+    // quota — kept a while in Cloudflare's cache.)
+    if (/^\/api\/community\/[a-z2-9]{6}\/thumb$/.test(url.pathname) && req.method === 'GET') return edgeKept(url, () => handleApi(req, env, url), { fresh: 600 });
     // (Its old Spanish address, /comunidad…: for good to the English one, with the rest of the path and the query.)
     if (/^\/comunidad(\/|$)/.test(url.pathname)) return Response.redirect(new URL(url.pathname.replace(/^\/comunidad/, '/community') + url.search, env.SITE_URL || url.origin).href, 301);
     // The accounts API (api.js), and the same share and collaboration routes under /api (revelaslides.com/api/…).

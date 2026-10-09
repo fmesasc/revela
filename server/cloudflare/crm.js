@@ -202,8 +202,11 @@ export class Crm {
       // (x.web undefined: a summary from before it said so — the contact itself is looked at.)
       const blocked = new Set((a.blocked || []).map(host)), due = [...(await st.list({ prefix: 's:' })).values()]
         .filter(x => (x.web || x.web === undefined) && !['lost', 'customer'].includes(x.status) && !(x.webAt > (+a.before || 0))).sort((x, y) => (x.webAt || 0) - (y.webAt || 0) || x.id - y.id);
-      for (const x of due) { const c = await this.getC(x.id); if (c?.web && !blocked.has(host(c.web))) return Response.json({ id: c.id, web: c.web, name: c.name, kind: c.kind }); }
-      return Response.json({ id: null });
+      // (a.n: the next n at once — the crawler keeps them in a queue, so this list of every contact, which counts
+      // each one as a row read against the plan's daily quota, isn't read once per site.)
+      const n = Math.min(50, Math.max(1, +a.n || 1)), items = [];
+      for (const x of due) { const c = await this.getC(x.id); if (c?.web && !blocked.has(host(c.web))) items.push({ id: c.id, web: c.web, name: c.name, kind: c.kind }); if (items.length >= n) break; }
+      return Response.json({ ...(items[0] || { id: null }), items });
     }
     if (op === 'web-facts') {
       const c = await this.getC(a.id); if (!c) return Response.json({ error: 'not found' }, { status: 404 });

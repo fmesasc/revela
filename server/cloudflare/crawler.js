@@ -12,11 +12,13 @@
 //
 // The score adds up the facts found, each worth fixed points (SCORE): the reasons are shown with it.
 //
-//   Crawler (one Durable Object, 'crawler'): settings, the robots.txt cache, the log of recent visits, the next area.
+//   Crawler (one Durable Object, 'crawler'): settings, the robots.txt cache, the log of recent visits, the next area,
+//   the queue of the next sites due.
 //   Crm ops used: crawl-next (whose website is due), web-facts (what was found), import (new places).
 
 import { searchPlaces, resolveArea, subAreas, crmCall } from './crm.js';
 
+const QUEUE = 25;
 export const UA = 'Mozilla/5.0 (compatible; RevelaBot/1.0; +https://revelaslides.com/bot)';
 export const CRAWL_DEFAULT = { on: false, everyMin: 5, pagesPerSite: 4, recrawlDays: 30, discover: false, areas: [], kinds: ['school'], areaDays: 30, blocked: [] };
 const PAGE_BYTES = 1.5 * 1024 * 1024, TIMEOUT = 12e3, BETWEEN = 2000, DAY = 864e5;
@@ -217,7 +219,7 @@ export class Crawler {
     if (op === 'status') return Response.json({ settings: await this.settings(), nextAt: (await st.getAlarm()) || null, log: (await st.get('log')) || [], stats: (await st.get('stats')) || { sites: 0, found: 0, places: 0 }, areaAt: (await st.get('areaAt')) || {}, parts: ((await st.get('areaParts')) || []).map(p => `${p.name} (${p.of})`) });
     if (op === 'settings') {
       const s = cleanCrawl(a.settings, await this.settings()); if (!s) return Response.json({ error: 'bad request' }, { status: 400 });
-      await st.put('settings', s);
+      await st.put('settings', s); await st.delete('queue');      // (blocked domains or days may have changed)
       if (s.on && !(await st.getAlarm())) await st.setAlarm(Date.now() + 5000); else if (!s.on) await st.deleteAlarm();
       return Response.json({ settings: s });
     }
@@ -233,7 +235,10 @@ export class Crawler {
   // One step: the next website due; if there's none, a new area to look for places in (when discover is on).
   async step(now) {
     const s = await this.settings(), st = this.ctx.storage, f = this.env.FETCH || fetch, stats = (await st.get('stats')) || { sites: 0, found: 0, places: 0 };
-    const next = await crmCall(this.env, 'crawl-next', { before: now - s.recrawlDays * DAY, blocked: s.blocked });
+    // (The next sites due are asked for QUEUE at a time and kept here: asking the CRM reads every contact.)
+    let queue = (await st.get('queue')) || [];
+    if (!queue.length) queue = (await crmCall(this.env, 'crawl-next', { before: now - s.recrawlDays * DAY, blocked: s.blocked, n: QUEUE }))?.items || [];
+    const next = queue.shift(); await st.put('queue', queue);
     if (next?.id) {
       const facts = await crawlSite(next.web, { f, pages: s.pagesPerSite, robotsCache: this.robots, sleep: this.env.CRAWL_SLEEP === '0' ? async () => {} : undefined });
       await crmCall(this.env, 'web-facts', { id: next.id, facts });
