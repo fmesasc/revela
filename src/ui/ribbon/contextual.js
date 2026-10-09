@@ -3,8 +3,8 @@
 // ribbon with all of its options, so nothing needs a right click. It goes
 // away when nothing is selected. Several objects: arranging them.
 
-import { DIAGRAM_LAYOUTS, DIAGRAM_COLORS, readableOn } from '../../render/diagrams.js';
-import { openDiagramText } from '../dialogs/diagram.js';
+import { DIAGRAM_LAYOUTS, DIAGRAM_COLORS, PIC_FITS, readableOn } from '../../render/diagrams.js';
+import { openDiagramText, openDiagramPictures } from '../dialogs/diagram.js';
 import * as files from '../../features/content/files.js';
 import { modelClips } from '../canvas/mediaview.js';
 import { shortSig } from '../../core/text.js';
@@ -201,6 +201,10 @@ function groupsFor(b) {
     ['Diagrama', [['select', 'Diseño', DIAGRAM_LAYOUTS.flatMap(([, l]) => l), b.layout || 'process', v => blocks.setDiagram(b.id, { layout: v })],
       ['select', 'Colores', DIAGRAM_COLORS, b.colors || 'colorful', v => blocks.setDiagram(b.id, { colors: v })],
       btn('edit_note', 'Editar texto', () => openDiagramText(b))]],
+    // Pictures with the lines (a logo, a photo…: render/diagrams.js), and how they fit.
+    ['Imágenes', [btn('add_photo_alternate', 'Imágenes', () => openDiagramPictures(b), !!b.pictures?.length),
+      ['select', 'Encaje', PIC_FITS, b.picFit || 'contain', v => blocks.setDiagram(b.id, { picFit: v === 'contain' ? null : v })],
+      btn('image', 'Solo la imagen', () => blocks.setDiagram(b.id, { picOnly: !b.picOnly }), !!b.picOnly)]],
     // Letters bigger or smaller than the automatic size (b.fontScale), and the colour of the words on the slide (b.textColor; automatic: one that reads on its background).
     ['Texto', [['num', 'Tamaño de letra (%)', Math.round((b.fontScale || 1) * 100), v => blocks.setDiagram(b.id, { fontScale: Math.round(+v || 100) === 100 ? null : Math.min(250, Math.max(50, +v)) / 100 }), 50, 250, 10],
       ['color', 'format_color_text', 'Color del texto', /^#[0-9a-f]{6}$/i.test(b.textColor || '') ? b.textColor : (o => readableOn(o.fg, o.back))(blocks.diagramOpts()), v => blocks.setDiagram(b.id, { textColor: v })],

@@ -2720,6 +2720,47 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.querySelector('.popover [data-diagram-pick="venn"]').click(); await sleep(20); eq(last().layout, 'venn', 'se inserta desde la galería');
   });
 
+  await test('diagramas con imágenes: un logo o una foto con su texto, encajada, en círculo o sola; soltada en su caja; en PowerPoint', async () => {
+    reset(); const W = frame.contentWindow, DG = await W.eval("import('/src/render/diagrams.js')");
+    const png = (() => { const c = D.createElement('canvas'); c.width = 80; c.height = 40; const x = c.getContext('2d'); x.fillStyle = '#c33'; x.fillRect(0, 0, 80, 40); return c.toDataURL('image/png'); })();
+    // In every layout: inside its box, above or beside its words.
+    for (const k of Object.keys(DG.DIAGRAM_NAMES)) {
+      const text = DG.DIAGRAM_SAMPLES[k] || DG.DEFAULT_DIAGRAM_TEXT, first = text.split('\n')[0].trim();
+      const parts = DG.diagramLayout({ layout: k, w: 900, h: 460, text, pictures: [{ text: first, src: png }] }), img = parts.find(p => p.type === 'image');
+      assert(img && img.alt === first && img.x >= -1 && img.y >= -1 && img.x + img.w <= 901 && img.y + img.h <= 461, 'con su imagen: ' + k);
+      const words = parts.find(p => p.type === 'text' && p.text === first);
+      assert(words && (words.y >= img.y + img.h - 1 || words.x >= img.x + img.w - 1 || words.y + words.h <= img.y + 1), 'sus palabras, sin taparla (debajo, al lado; en las tarjetas, el título encima): ' + k);
+    }
+    R.blocks.addDiagram('process'); const b = last(); select(b); await sleep(20);
+    const el = () => D.querySelector(`#stage .block[data-id="${b.id}"]`);
+    R.blocks.setDiagram(b.id, { pictures: [{ text: 'Primero', src: png }] }); await sleep(30);
+    let im = el().querySelector('.rv-diagram img'); assert(im && im.alt === 'Primero' && im.style.objectFit === 'contain', 'entera (un logo), en el editor');
+    R.blocks.setDiagram(b.id, { picFit: 'circle' }); await sleep(30); im = el().querySelector('.rv-diagram img');
+    assert(im.style.borderRadius === '50%' && im.style.width === im.style.height, 'en círculo (una persona)');
+    R.blocks.setDiagram(b.id, { picOnly: true }); await sleep(30);
+    assert(el().querySelector('.rv-diagram img') && ![...el().querySelectorAll('.rv-diagram div div')].some(d => d.textContent === 'Primero'), 'sola: su texto, solo como descripción');
+    R.blocks.setDiagram(b.id, { picOnly: null, picFit: null });
+    // Its words changed in the text dialog: it keeps its picture.
+    el().dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); await sleep(20);
+    const ta = D.querySelector('#dg-modal .dg-text'); ta.value = ta.value.replace('Primero', 'Inicio'); ta.dispatchEvent(new W.Event('input')); await sleep(150);
+    D.querySelector('#dg-modal .dg-ok').click(); await sleep(20);
+    eq(last().pictures.map(p => p.text).join(), 'Inicio', 'la imagen sigue a su línea');
+    // A picture dropped on a box: that line's.
+    await R.openfile.insertFiles([await (await W.fetch(png)).blob().then(x => new W.File([x], 'logo.png', { type: 'image/png' }))], [b.x + b.w / 2, b.y + b.h / 2]); await sleep(30);
+    assert(last().pictures.some(p => p.text === 'Segundo') && last() === R.state.deck.slides[R.state.ui.slideIndex].blocks.at(-1), 'soltada en la caja del medio: su imagen (no otra imagen suelta)');
+    // The dialog: each line, with its picture; removed from there.
+    D.querySelector('#ribbon [data-page="ctx"] [title="Imágenes"], #ribbon [data-page="ctx"] button[aria-label="Imágenes"]')?.click() ?? (await W.eval("import('/src/ui/dialogs/diagram.js')")).openDiagramPictures(last());
+    await sleep(30); if (!D.getElementById('dgp-modal')) (await W.eval("import('/src/ui/dialogs/diagram.js')")).openDiagramPictures(last()); await sleep(20);
+    const rows = [...D.querySelectorAll('#dgp-modal .dgp-row')]; eq(rows.length, 6, 'una fila por línea');
+    rows.find(r => r.dataset.text === 'Segundo').querySelector('.dgp-del').click(); await sleep(20);
+    eq(last().pictures.map(p => p.text).join(), 'Inicio', 'quitada'); D.querySelector('#dgp-modal .dgp-ok').click();
+    // PowerPoint: a picture of its own; converted to shapes: an image object.
+    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob), xml = await zip.file('ppt/slides/slide1.xml').async('string');
+    assert(/<p:pic>/.test(xml) && /descr="Inicio"/.test(xml), 'en PowerPoint, la imagen con su descripción');
+    await R.blocks.diagramToShapes(last().id); await sleep(20);
+    assert(slide().blocks.some(x => x.groupId && x.type === 'image' && x.alt === 'Inicio'), 'convertido en formas: su imagen, un objeto más');
+  });
+
   await test('fórmulas: coma decimal (=B4*0,21), unidades coherentes y miles agrupados desde 1000', async () => {
     reset(); const W = frame.contentWindow, F = await W.eval("import('/src/core/formulas.js')");
     const rows = [['Concepto', 'Uds', 'Precio', 'Importe'], ['A', '3', '10 €', '=B2*C2'], ['B', '4', '12,5 €', '=B3*C3'], ['IVA', '', '21 %', '=D2*C4'],

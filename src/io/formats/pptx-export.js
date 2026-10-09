@@ -163,9 +163,12 @@ function addMagnifier(slide, b, pptx, raster, blocks) {
 const picSizes = new Map(), picCrops = new Map();       // (for the export under way: images' natural sizes, and their srcRect)
 async function naturalSizes(deck) {
   picSizes.clear(); picCrops.clear();
-  const imgs = [deck.master, ...(deck.layouts || []), ...deck.slides].flatMap(s => s?.blocks || []).filter(b => b.type === 'image' && b.src);
-  await Promise.all(imgs.map(b => new Promise(res => {
-    const i = new Image(); i.onload = () => { if (i.naturalWidth) picSizes.set(b.id, [i.naturalWidth, i.naturalHeight]); res(); }; i.onerror = res; i.src = b.src;
+  const all = [deck.master, ...(deck.layouts || []), ...deck.slides].flatMap(s => s?.blocks || []);
+  // (Pictures, by their id; a diagram's pictures, by their address.)
+  const imgs = all.filter(b => b.type === 'image' && b.src).map(b => [b.id, b.src])
+    .concat(all.filter(b => b.type === 'diagram').flatMap(b => (b.pictures || []).filter(p => p?.src).map(p => [p.src, p.src])));
+  await Promise.all(imgs.map(([key, src]) => new Promise(res => {
+    const i = new Image(); i.onload = () => { if (i.naturalWidth) picSizes.set(key, [i.naturalWidth, i.naturalHeight]); res(); }; i.onerror = res; i.src = src;
   })));
 }
 
@@ -208,6 +211,17 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
       for (const p of diagramLayout(b, { accents: currentPalette(exportDeck).accents, fg: deckFg(exportDeck), back: exportBack || currentPalette(exportDeck).bg })) {
         const fill = p.fill && p.fill !== 'none' ? { color: hex(p.fill) || '3F6497', ...(p.opacity != null && p.opacity < 1 && { transparency: Math.round((1 - p.opacity) * 100) }) } : { type: 'none' };
         const line = p.stroke && p.stroke !== 'none' ? { color: hex(p.stroke) || '888888', width: +(((p.sw || 2) * 0.75).toFixed(2)) } : { type: 'none' };
+        if (p.type === 'image') {
+          // (Whole: in its place with its proportions; round or filling: cut to its place — PowerPoint crops it.)
+          const nat = picSizes.get(p.src), src = /^data:/.test(p.src) ? { data: p.src } : { path: p.src }, alt = p.alt ? { altText: p.alt } : {};
+          if (!nat) { slide.addImage({ ...src, ...alt, x: IN(b.x + p.x), y: IN(b.y + p.y), w: IN(p.w), h: IN(p.h) }); continue; }
+          if (p.fit === 'contain') { const k = Math.min(p.w / nat[0], p.h / nat[1]), w = nat[0] * k, h = nat[1] * k;
+            slide.addImage({ ...src, ...alt, x: IN(b.x + p.x + (p.w - w) / 2), y: IN(b.y + p.y + (p.h - h) / 2), w: IN(w), h: IN(h) }); continue; }
+          const k = Math.max(p.w / nat[0], p.h / nat[1]);
+          slide.addImage({ ...src, ...alt, x: IN(b.x + p.x), y: IN(b.y + p.y), w: IN(nat[0] * k), h: IN(nat[1] * k), sizing: { type: 'cover', w: IN(p.w), h: IN(p.h) }, ...(p.fit === 'circle' && { rounding: true }) });
+          continue;
+        }
+        if (p.type === 'text' && p.empty) continue;
         if (p.type === 'text') {
           const runs = [{ text: p.text, options: { bold: p.bold, fontSize: Math.round(p.fs * 0.75), breakLine: !!p.sub } }]
             .concat(p.sub ? p.sub.split('\n').map((l, k, all) => ({ text: l, options: { fontSize: Math.max(8, Math.round(p.fs * 0.72 * 0.75)), breakLine: k < all.length - 1 } })) : []);

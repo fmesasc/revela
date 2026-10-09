@@ -86,6 +86,14 @@ const fitFont = (w, h, text, max = 30) => {
   return Math.max(11, Math.round(fs));
 };
 
+// Pictures with the words: `pictures` [{ text, src }] — a line of the outline (an item or a sub-item: any) and its
+// picture (a congress's logo, a photo, an icon…), kept by the line's words, so reordering the lines keeps them;
+// the text dialog carries them over when a line's words change. `picFit`: 'contain' (whole: logos), 'circle'
+// (cut round: people) or 'cover' (filling its place); `picOnly`: the picture instead of its words (they stay as
+// its description). A picture goes above its words in a tall place, beside them in a wide one.
+export const PIC_FITS = [['contain', 'Entera'], ['circle', 'En círculo'], ['cover', 'Rellenando su hueco']];
+export const pictureOf = (b, text) => { const k = String(text ?? '').trim(); return k ? (b.pictures || []).find(p => p?.src && String(p.text).trim() === k)?.src || null : null; };
+
 // The geometry of a diagram: a list of shapes in its own pixels (W × H).
 // Options: the theme's accents and text colour, and `back`, the slide's background
 // (so that the words on it read). The object's own: `textColor` (the words on the
@@ -98,7 +106,21 @@ export function diagramLayout(b, { accents = ['#3f6497', '#e0873b', '#4caf7d', '
   const scheme = b.colors || 'colorful', P = (i, m = n) => paint(scheme, accents, fg, i, m), out = [];
   const rect = (x, y, w, h, i, text, sub, o = {}) => { const c = P(i, o.m); out.push({ type: 'rect', x, y, w, h, r: o.r ?? Math.min(w, h) * 0.12, fill: c.fill, stroke: c.stroke, i: o.item ?? i });
     if (text != null) out.push(textBox(x, y, w, h, text, sub, c.text, o)); };
+  const fit = ['circle', 'cover'].includes(b.picFit) ? b.picFit : 'contain';
   const textBox = (x, y, w, h, text, sub, color, o = {}) => {
+    // A picture of its words: above them in a tall place, beside them in a wide one; alone, with picOnly. (Not on
+    // the numbers of a numbered list: o.fs.)
+    // (o.pic: a layout's own choice — a card's goes in its body, under its title: o.pic there, null on the title.)
+    const src = o.pic !== undefined ? o.pic : !o.fs && pictureOf(b, text), alt = o.picAlt || text;
+    if (src) {
+      const m = Math.min(w, h) * 0.06, tall = h >= w * 0.55, only = !!b.picOnly;
+      const pw = only ? w : tall ? w : Math.min(w * 0.42, h * 1.6), ph = only ? h : tall ? h * (sub ? 0.5 : 0.6) : h;
+      let px = x + m, py = y + m, iw = pw - 2 * m, ih = ph - 2 * m;
+      if (fit === 'circle') { const d = Math.min(iw, ih); px += (iw - d) / 2; py += (ih - d) / 2; iw = ih = d; }
+      out.push({ type: 'image', x: px, y: py, w: Math.max(4, iw), h: Math.max(4, ih), src, fit, alt, i: o.item ?? o.i ?? 0 });
+      if (only) return { type: 'text', x, y, w, h, text: '', sub: '', fs: 0, color, align: 'center', valign: 'middle', bold: true, i: o.item ?? o.i ?? 0, empty: true };
+      if (tall) { y += ph - m; h -= ph - m; o = { ...o, valign: o.valign === 'bottom' ? 'bottom' : 'top' }; } else { x += pw - m; w -= pw - m; o = { ...o, align: o.align === 'center' ? 'left' : o.align }; }
+    }
     // (Bigger letters asked for — fontScale over 1 — also get more room: the text may spill a little past its shape,
     // up to 25 % each way, within the diagram. Without it a small shape kept them small whatever the scale.)
     if (scale > 1 && !o.fs) { const k = Math.min(1.5, scale), nw = Math.min(W, w * k), nh = Math.min(H, h * Math.sqrt(k));
@@ -142,8 +164,9 @@ export function diagramLayout(b, { accents = ['#3f6497', '#e0873b', '#4caf7d', '
         const x = (i % cols) * (cw + gap), y = Math.floor(i / cols) * (ch + gap), c = P(i), band = Math.min(ch * 0.34, 90), sub = subText(it);
         out.push({ type: 'rect', x, y, w: cw, h: ch, r: 12, fill: scheme === 'outline' ? 'none' : mix(c.fill === 'none' ? accents[i % accents.length] : c.fill, '#ffffff', 0.88), stroke: c.stroke === 'none' ? mix(c.fill, '#ffffff', 0.4) : c.stroke, i });
         out.push({ type: 'rect', x, y, w: cw, h: sub ? band : ch, r: 12, fill: c.fill === 'none' ? 'none' : c.fill, stroke: c.stroke, i });
-        out.push(textBox(x, y, cw, sub ? band : ch, it.text, '', c.fill === 'none' ? fg : c.text, { max: 34, item: i }));
-        if (sub) out.push(textBox(x, y + band, cw, ch - band, sub, '', scheme === 'outline' ? fg : '#1e2a3a', { bold: false, max: 30, valign: 'middle', item: i }));
+        const pic = sub ? pictureOf(b, it.text) : undefined;
+        out.push(textBox(x, y, cw, sub ? band : ch, it.text, '', c.fill === 'none' ? fg : c.text, { max: 34, item: i, ...(pic && { pic: null }) }));
+        if (sub) out.push(textBox(x, y + band, cw, ch - band, sub, '', scheme === 'outline' ? fg : '#1e2a3a', { bold: false, max: 30, valign: 'middle', item: i, ...(pic && { pic, picAlt: it.text }) }));
       });
       break;
     }
@@ -295,7 +318,7 @@ export function diagramLayout(b, { accents = ['#3f6497', '#e0873b', '#4caf7d', '
   }
   // The same size of letters for the items' titles (and for their explanations): the smallest that fits all.
   for (const bold of [true, false]) {
-    const same = out.filter(p => p.type === 'text' && p.bold === bold && !p.fixed); if (!same.length) continue;
+    const same = out.filter(p => p.type === 'text' && p.bold === bold && !p.fixed && !p.empty); if (!same.length) continue;
     const fs = Math.min(...same.map(p => p.fs)); same.forEach(p => { p.fs = fs; });
   }
   return out;
@@ -307,16 +330,20 @@ const glue = h => h.replace(/(^|[\s(«"'])(-[\p{L}\p{N}]+)/gu, '$1<span style="w
 // presentation's font). `step` marks each item's parts for "one by one".
 export function diagramHTML(b, opts = {}) {
   const W = b.w || 900, H = b.h || 460, parts = diagramLayout(b, opts), f = v => (+v).toFixed(1);
-  const svg = parts.filter(p => p.type !== 'text').map(p => {
+  const svg = parts.filter(p => p.type !== 'text' && p.type !== 'image').map(p => {
     const common = `fill="${p.fill}" stroke="${p.stroke === 'none' ? 'none' : p.stroke}" stroke-width="${p.sw || (p.stroke === 'none' ? 0 : 2)}"${p.opacity != null && p.opacity < 1 ? ` fill-opacity="${p.opacity}"` : ''}${opts.step ? ` data-dg="${p.i}"` : ''}`;
     if (p.type === 'rect') return `<rect x="${f(p.x)}" y="${f(p.y)}" width="${f(p.w)}" height="${f(p.h)}" rx="${f(p.r || 0)}" ${common}/>`;
     if (p.type === 'ellipse') return `<ellipse cx="${f(p.x + p.w / 2)}" cy="${f(p.y + p.h / 2)}" rx="${f(p.w / 2)}" ry="${f(p.h / 2)}" ${common}/>`;
     return `<path d="M${p.pts.map(q => `${f(q[0])} ${f(q[1])}`).join('L')}${p.closed ? 'Z' : ''}" stroke-linejoin="round" stroke-linecap="round" ${common}/>`;
   }).join('');
-  const texts = parts.filter(p => p.type === 'text').map(p => `<div${opts.step ? ` data-dg="${p.i}"` : ''} style="position:absolute;left:${f(p.x)}px;top:${f(p.y)}px;width:${f(p.w)}px;height:${f(p.h)}px;display:flex;flex-direction:column;`
+  // (Pictures over the shapes, as the words: a whole one keeps its proportions; a round one is cut into a circle.)
+  const attr = v => escSvg(v).replace(/"/g, '&quot;');
+  const pics = parts.filter(p => p.type === 'image').map(p => `<img${opts.step ? ` data-dg="${p.i}"` : ''} src="${attr(p.src)}" alt="${attr(p.alt || '')}" draggable="false" style="position:absolute;left:${f(p.x)}px;top:${f(p.y)}px;width:${f(p.w)}px;height:${f(p.h)}px;`
+    + `object-fit:${p.fit === 'contain' ? 'contain' : 'cover'};border-radius:${p.fit === 'circle' ? '50%' : p.fit === 'cover' ? '8px' : '0'}">`).join('');
+  const texts = parts.filter(p => p.type === 'text' && !p.empty).map(p => `<div${opts.step ? ` data-dg="${p.i}"` : ''} style="position:absolute;left:${f(p.x)}px;top:${f(p.y)}px;width:${f(p.w)}px;height:${f(p.h)}px;display:flex;flex-direction:column;`
     + `justify-content:${{ top: 'flex-start', bottom: 'flex-end' }[p.valign] || 'center'};text-align:${p.align};color:${p.color};font-size:${p.fs}px;line-height:1.15;overflow:hidden;overflow-wrap:break-word">`
     + `<div style="font-weight:${p.bold ? 700 : 400};white-space:pre-line">${glue(escSvg(p.text))}</div>`
     + (p.sub ? `<div style="font-size:${Math.max(10, Math.round(p.fs * 0.72))}px;opacity:.9;margin-top:.25em;white-space:pre-line">${glue(escSvg(p.sub))}</div>` : '') + `</div>`).join('');
-  return `<div class="rv-diagram" style="position:relative;width:100%;height:100%"><svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" preserveAspectRatio="none" style="position:absolute;inset:0;overflow:visible">${svg}</svg>${texts}</div>`;
+  return `<div class="rv-diagram" style="position:relative;width:100%;height:100%"><svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" preserveAspectRatio="none" style="position:absolute;inset:0;overflow:visible">${svg}</svg>${pics}${texts}</div>`;
 }
-export const diagramSig = b => JSON.stringify([b.layout, b.colors, b.text, b.w, b.h, b.fontScale, b.textColor]);
+export const diagramSig = b => JSON.stringify([b.layout, b.colors, b.text, b.w, b.h, b.fontScale, b.textColor, b.picFit, b.picOnly, (b.pictures || []).map(p => [p.text, String(p.src).length, String(p.src).slice(-24)])]);

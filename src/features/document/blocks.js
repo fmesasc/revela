@@ -209,13 +209,24 @@ export function setDiagram(id, props) {
   commit(() => { for (const [k, v] of Object.entries(props)) if (v == null || v === false) delete b[k]; else b[k] = v; });
 }
 // "Convert to shapes": each part a shape of its own (boxes keep their text inside), all grouped, in its place.
-export function diagramToShapes(id) {
+// (A picture cut into a circle, as a PNG: an image object has no round shape of its own. Not loaded: as it is.)
+const roundPicture = (src, size) => new Promise(res => {
+  const i = new Image(); i.crossOrigin = 'anonymous';
+  i.onload = () => { try { const d = Math.max(16, Math.min(800, Math.round(size * 2))), c = document.createElement('canvas'), x = c.getContext('2d'), k = Math.max(d / i.naturalWidth, d / i.naturalHeight);
+    c.width = c.height = d; x.beginPath(); x.arc(d / 2, d / 2, d / 2, 0, Math.PI * 2); x.clip();
+    x.drawImage(i, (d - i.naturalWidth * k) / 2, (d - i.naturalHeight * k) / 2, i.naturalWidth * k, i.naturalHeight * k); res(c.toDataURL('image/png')); } catch { res(src); } };
+  i.onerror = () => res(src); i.src = src;
+});
+export async function diagramToShapes(id) {
   const s = currentSlide(), at = s.blocks.findIndex(x => x.id === id), b = s.blocks[at]; if (!b || b.type !== 'diagram') return;
   const parts = diagramLayout(b, diagramOpts()), g = uid(), made = [], f = v => +v.toFixed(2);
   const htmlOf = p => `<div><b>${esc(p.text)}</b></div>` + (p.sub ? p.sub.split('\n').map(l => `<div style="font-size:${Math.max(10, Math.round(p.fs * 0.72))}px">${esc(l)}</div>`).join('') : '');
-  const texts = parts.filter(p => p.type === 'text');
+  const texts = parts.filter(p => p.type === 'text' && !p.empty);
   for (const p of parts) {
     if (p.type === 'text') continue;
+    // (A picture: an image object of its own, cut as it was.)
+    if (p.type === 'image') { made.push({ id: uid(), type: 'image', groupId: g, src: p.fit === 'circle' ? await roundPicture(p.src, p.w) : p.src, alt: p.alt || '', x: Math.round(b.x + p.x), y: Math.round(b.y + p.y), w: Math.round(p.w), h: Math.round(p.h), rotation: 0, animation: null,
+      ...(p.fit === 'cover' && { fit: 'cover' }) }); continue; }
     const box = p.type === 'poly' ? (() => { const xs = p.pts.map(q => q[0]), ys = p.pts.map(q => q[1]), x = Math.min(...xs), y = Math.min(...ys);
       return { x, y, w: Math.max(2, Math.max(...xs) - x), h: Math.max(2, Math.max(...ys) - y) }; })() : { x: p.x, y: p.y, w: p.w, h: p.h };
     const o = { id: uid(), type: 'shape', groupId: g, x: Math.round(b.x + box.x), y: Math.round(b.y + box.y), w: Math.round(box.w), h: Math.round(box.h), rotation: 0, animation: null,

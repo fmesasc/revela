@@ -8,6 +8,8 @@ import { reportError } from './errors.js';
 import { whileOpening } from './opening.js';
 import { fileBlock, pdfToSlides, pdfSlides, FILE_LIMIT } from '../../features/content/files.js';
 import { choosePdfMode } from '../dialogs/pdfmode.js';
+import { smallPicture } from '../dialogs/diagram.js';
+import { diagramLayout } from '../../render/diagrams.js';
 import { state, replaceDeck, currentSlide, amend } from '../../core/store.js';
 import { isBlankDeck, emptyDeck } from '../../core/model.js';
 import * as blocks from '../../features/document/blocks.js';
@@ -121,11 +123,22 @@ async function attachFile(f) {
 const selectedIsFile = () => currentSlide().blocks.find(x => x.id === state.ui.selection)?.type === 'file';
 // Insert pictures, videos, sounds and 3D models; at (x, y) on the slide if given
 // (each next one a little lower and to the right). Returns how many went in.
+// A picture dropped on a diagram's box: that line's picture (render/diagrams.js). → whether it was.
+async function onDiagram(f, at) {
+  if (!at) return false;
+  const b = [...currentSlide().blocks].reverse().find(x => x.type === 'diagram' && !x.locked && at[0] >= x.x && at[0] <= x.x + x.w && at[1] >= x.y && at[1] <= x.y + x.h); if (!b) return false;
+  const [px, py] = [at[0] - b.x, at[1] - b.y], parts = diagramLayout(b, blocks.diagramOpts()), inside = p => px >= p.x && px <= p.x + p.w && py >= p.y && py <= p.y + p.h;
+  const hit = parts.find(p => (p.type === 'text' && !p.empty && inside(p)) || (p.type === 'image' && inside(p))) || (s => s && parts.find(p => p.type === 'text' && !p.empty && p.i === s.i))(parts.find(p => (p.type === 'rect' || p.type === 'ellipse') && inside(p)));
+  const text = hit?.type === 'image' ? hit.alt : hit?.text; if (!text) return false;
+  const src = await smallPicture(await dataURL(f)), list = (b.pictures || []).filter(p => String(p.text).trim() !== text.trim());
+  blocks.setDiagram(b.id, { pictures: [...list, { text, src }] }); return true;
+}
 export async function insertFiles(files, at = null) {
   let n = 0;
   for (const f of files) {
     const k = kindOf(f);
     try {
+      if (k === 'image' && files.length === 1 && await onDiagram(f, at)) { n++; continue; }
       if (k === 'image') blocks.addImage(await dataURL(f));
       else if (k === 'video') blocks.addVideo(await dataURL(f));
       else if (k === 'audio') blocks.addAudio(await dataURL(f));
