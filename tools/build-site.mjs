@@ -134,7 +134,7 @@ function ensureSite() {
 
 // The website's pages in each language (the Spanish ones at the top, the others in /en/…),
 // and the sitemap with all of them. A text missing from a language stops the build.
-export const PAGES = [['index', '1.0'], ['pricing', '0.8'], ['support', '0.6'], ['schools', '0.7'], ['ambassadors', '0.6'], ['guides', '0.7'], ['contact', '0.5']];
+export const PAGES = [['index', '1.0'], ['pricing', '0.8'], ['support', '0.6'], ['schools', '0.7'], ['ambassadors', '0.6'], ['guides', '0.7'], ['contact', '0.5'], ['business', '0.7'], ['security', '0.4']];
 const dictOf = l => JSON.parse(readFileSync(join(ROOT, 'site', 'i18n', l + '.json'), 'utf8'));
 export function missingTexts() {
   ensureSite();

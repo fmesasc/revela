@@ -409,7 +409,7 @@ def site_checks(send, recv):
         check(ev("[...document.querySelectorAll('link[rel=alternate][hreflang]')].map(l=>l.hreflang).join()") == 'es,en,fr,de,it,pt,ca,gl,nl,eu,ar,x-default', 'hreflang en la portada')
         # (Plus the templates' pages, when the site makes them — site/tools/pages.mjs: the list and one page each, in every language.)
         tdir = os.path.join(out, 'templates'); made = (['templates'] + os.listdir(tdir)) if os.path.isdir(tdir) else []
-        check(ev("fetch('sitemap.xml').then(r=>r.text()).then(t=>(t.match(/<loc>/g)||[]).length)") == 82 + 11 * len(made), f'sitemap: 7 páginas × 11 idiomas + 4 legales + desarrolladores + {len(made)} de plantillas × 11')
+        check(ev("fetch('sitemap.xml').then(r=>r.text()).then(t=>(t.match(/<loc>/g)||[]).length)") == 104 + 11 * len(made), f'sitemap: 9 páginas × 11 idiomas + 4 legales + desarrolladores + {len(made)} de plantillas × 11')
         if os.path.exists(os.path.join(ROOT, 'site', 'tools', 'pages.mjs')):
             check(len(made) > 100, f'las páginas de las plantillas: {len(made)}')
             recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/templates.html')); time.sleep(1.5)

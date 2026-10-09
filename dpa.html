@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Revela · Contrato de encargado del tratamiento</title>
-  <meta name="description" content="Modelo de contrato de encargado del tratamiento (art. 28 RGPD) entre un centro educativo y FM Lab para usar Revela con su alumnado: equipos y Moodle (LTI).">
+  <meta name="description" content="Modelo de contrato de encargado del tratamiento (art. 28 RGPD) entre un cliente (empresa, organización o centro educativo) y FM Lab para usar Revela: equipos, inicio de sesión único y, en los centros educativos, Moodle (LTI).">
   <link rel="canonical" href="https://revelaslides.com/dpa">
   <link rel="icon" href="icons/icon.svg">
   <script>try{if(localStorage.getItem('theme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}</script>
@@ -31,63 +31,66 @@
   <div class="docs">
 <article id="es" lang="es">
     <h1>Contrato de encargado del tratamiento</h1>
-    <p class="date">Modelo para centros educativos · Versión del 1 de octubre de 2026</p>
+    <p class="date">Modelo para empresas, organizaciones y centros educativos · Versión del 9 de octubre de 2026</p>
 
     <div class="howto">
-      <p><strong>Cómo usarlo:</strong> el centro rellena sus datos al final, lo firma quien lo represente y lo envía por el formulario de <a href="https://revelaslides.com/contact">revelaslides.com/contact</a>. FM Lab lo devuelve firmado. Para guardarlo o imprimirlo, usa «Imprimir» del navegador y elige «Guardar como PDF».</p>
+      <p><strong>Cómo usarlo:</strong> el cliente rellena sus datos al final, lo firma quien lo represente y lo envía por el formulario de <a href="https://revelaslides.com/contact">revelaslides.com/contact</a>. FM Lab lo devuelve firmado. Para guardarlo o imprimirlo, usa «Imprimir» del navegador y elige «Guardar como PDF».</p>
       <p><button type="button" class="print" onclick="print()">Imprimir o guardar en PDF</button></p>
     </div>
 
     <h2>Partes</h2>
-    <p><strong>El responsable del tratamiento:</strong> el centro educativo que figura en el apartado de firmas (en adelante, «el centro»).</p>
+    <p><strong>El responsable del tratamiento:</strong> la empresa, organización o centro educativo que figura en el apartado de firmas (en adelante, «el cliente»).</p>
     <p><strong>El encargado del tratamiento:</strong> <strong>FM Lab</strong> (titular identificado en el <a href="legal.html">aviso legal</a>), Barcelona, España, con los datos de identificación que figuran en el <a href="legal.html">aviso legal</a> de revelaslides.com<!-- LEGAL: cuando estén en legal.html, añadir aquí también el NIF y el domicilio. -->. Contacto: el formulario de <a href="https://revelaslides.com/contact">revelaslides.com/contact</a> (en adelante, «FM Lab»).</p>
-    <p>Las partes acuerdan este contrato, conforme al artículo 28 del Reglamento (UE) 2016/679 (RGPD) y a la Ley Orgánica 3/2018 (LOPDGDD), para regular el tratamiento de datos personales que FM Lab hace por cuenta del centro al prestarle el servicio Revela.</p>
+    <p>Las partes acuerdan este contrato, conforme al artículo 28 del Reglamento (UE) 2016/679 (RGPD) y a la Ley Orgánica 3/2018 (LOPDGDD), para regular el tratamiento de datos personales que FM Lab hace por cuenta del cliente al prestarle el servicio Revela.</p>
 
     <h2>1. Objeto</h2>
-    <p>FM Lab trata, por cuenta del centro, los datos personales necesarios para que el profesorado y el alumnado del centro usen <strong>Revela</strong> (revelaslides.com y su aplicación de escritorio), en concreto:</p>
+    <p>FM Lab trata, por cuenta del cliente, los datos personales necesarios para que las personas usuarias del cliente (su personal y, en un centro educativo, también su profesorado y su alumnado) usen <strong>Revela</strong> (revelaslides.com y su aplicación de escritorio), en concreto:</p>
     <ul>
-      <li><strong>Equipos:</strong> las cuentas de los miembros del equipo del centro (plan Equipos), sus presentaciones en la nube, las plantillas y el kit de marca comunes.</li>
-      <li><strong>Moodle y otras plataformas (LTI 1.3):</strong> las actividades de Revela que el profesorado añade a la plataforma del centro, en las que cada alumno abre una presentación, responde sus cuestionarios y actividades, Revela corrige las respuestas y envía la nota al libro de calificaciones.</li>
+      <li><strong>Equipos:</strong> las cuentas de los miembros del equipo del cliente (plan Equipos), sus presentaciones en la nube, las plantillas, los recursos y el kit de marca comunes, y el uso de cada puesto que ve quien administra el equipo.</li>
+      <li><strong>Inicio de sesión único (SSO):</strong> si el cliente lo configura, la entrada de sus personas usuarias con su propio proveedor de identidad (OpenID Connect) y su alta en el equipo.</li>
+      <li><strong>Presentaciones compartidas:</strong> las personas con acceso a cada presentación, los enlaces con seguimiento y lo que se registra al abrirlos.</li>
+      <li><strong>En los centros educativos, además, Moodle y otras plataformas (LTI 1.3)</strong>, según el <a href="#centros-educativos">apartado 9</a>.</li>
     </ul>
-    <p>El servicio se presta según las <a href="terms.html">condiciones del servicio</a>. En lo que se refiere a los datos personales del alumnado y del personal del centro, prevalece este contrato.</p>
+    <p>El servicio se presta según las <a href="terms.html">condiciones del servicio</a>. En lo que se refiere a los datos personales de las personas usuarias del cliente, prevalece este contrato.</p>
 
     <h2>2. Duración</h2>
-    <p>Este contrato se aplica desde su firma y mientras el centro use el servicio: mientras tenga un equipo activo o Revela esté registrado como herramienta en su plataforma. Termina cuando el centro cancela el equipo y retira el registro de Revela de su plataforma, o cuando cualquiera de las partes lo comunica a la otra. Las obligaciones de confidencialidad y de devolución o borrado siguen vigentes después.</p>
+    <p>Este contrato se aplica desde su firma y mientras el cliente use el servicio: mientras tenga un equipo activo o, en un centro educativo, Revela esté registrado como herramienta en su plataforma. Termina cuando el cliente cancela el equipo (y, en su caso, retira el registro de Revela de su plataforma), o cuando cualquiera de las partes lo comunica a la otra. Las obligaciones de confidencialidad y de devolución o borrado siguen vigentes después.</p>
 
     <h2>3. Naturaleza y finalidad del tratamiento</h2>
-    <p>Tratamiento automatizado en la nube: recogida, registro, conservación, consulta, uso, comunicación a la plataforma del centro (las notas) y supresión de datos. La única finalidad es prestar al centro el servicio descrito en el apartado 1. FM Lab <strong>no</strong> usa los datos para fines propios: ni publicidad, ni perfiles, ni para entrenar modelos de inteligencia artificial, ni los cede a terceros salvo a los subencargados del apartado 6.e o por obligación legal.</p>
+    <p>Tratamiento automatizado en la nube: recogida, registro, conservación, consulta, uso, comunicación a la plataforma del cliente (las notas, en los centros educativos) y supresión de datos. La única finalidad es prestar al cliente el servicio descrito en el apartado 1. FM Lab <strong>no</strong> usa los datos para fines propios: ni publicidad, ni perfiles, ni para entrenar modelos de inteligencia artificial, ni los cede a terceros salvo a los subencargados del apartado 6.e o por obligación legal.</p>
 
     <h2>4. Tipos de datos personales</h2>
     <ul>
-      <li><strong>Del alumnado en actividades LTI:</strong> el identificador que le asigna la plataforma del centro y su nombre (o nombre de pila), tal como los envía la plataforma; las respuestas que da en las actividades y la nota resultante.</li>
-      <li><strong>De los miembros de un equipo:</strong> el correo de su cuenta de Google y el identificador de Google, su papel en el equipo (miembro o administrador), las invitaciones, y los datos de su cuenta de Revela (plan, créditos de IA y sus movimientos, sesiones guardadas solo como huella).</li>
-      <li><strong>Presentaciones:</strong> las que el profesorado o el alumnado guardan en la nube de Revela, con su contenido, comentarios, las personas con acceso (por su correo) y sus diez últimas versiones; y las estadísticas de visualización, con un identificador aleatorio del navegador.</li>
+      <li><strong>De los miembros de un equipo:</strong> el correo y el identificador de su cuenta (de Google o, con inicio de sesión único, del proveedor de identidad del cliente), su papel en el equipo (miembro o administrador), las invitaciones, los datos de su cuenta de Revela (plan, créditos de IA y sus movimientos, sesiones guardadas solo como huella) y el uso de su puesto que ve quien administra el equipo (último día de uso, créditos de IA gastados y espacio ocupado).</li>
+      <li><strong>Presentaciones:</strong> las que las personas usuarias guardan en la nube de Revela, con su contenido, comentarios, las personas con acceso (por su correo) y sus diez últimas versiones; y las estadísticas de visualización, con un identificador aleatorio del navegador.</li>
+      <li><strong>Enlaces con seguimiento:</strong> el nombre que les da quien los crea y, de quien los abre, el correo y el nombre si se le piden, cuántas veces y cuánto tiempo la ve y hasta qué diapositiva llega.</li>
+      <li><strong>En los centros educativos, los datos del alumnado en actividades LTI</strong> del <a href="#centros-educativos">apartado 9</a>.</li>
       <li><strong>Lo que se envía a la IA incluida</strong>, si los miembros del equipo la usan: el texto de la petición y, si lo envían, el contenido de la diapositiva. No se conserva.</li>
     </ul>
-    <p>El servicio no está pensado para categorías especiales de datos (salud, religión, etc.). El centro procurará que no se incluyan en las presentaciones ni en las actividades salvo que sea necesario y con las garantías que la ley exija.</p>
+    <p>El servicio no está pensado para categorías especiales de datos (salud, religión, etc.). El cliente procurará que no se incluyan en las presentaciones ni en las actividades salvo que sea necesario y con las garantías que la ley exija.</p>
 
     <h2>5. Categorías de interesados</h2>
-    <p>Alumnado del centro (incluidos menores de edad), profesorado y demás personal del centro que use Revela, y las personas a las que estos inviten a un equipo o con las que compartan una presentación.</p>
+    <p>El personal del cliente y demás personas que usen Revela por su cuenta, las personas a las que estas inviten a un equipo o con las que compartan una presentación, y quienes abran sus enlaces con seguimiento. En un centro educativo, además, su profesorado y su alumnado, incluidos menores de edad (<a href="#centros-educativos">apartado 9</a>).</p>
 
     <h2>6. Obligaciones de FM Lab (encargado)</h2>
     <ol type="a">
-      <li><strong>Instrucciones documentadas.</strong> Tratar los datos solo siguiendo las instrucciones documentadas del centro: este contrato y lo que el centro configure en el servicio (miembros, permisos, actividades). Si una instrucción le parece contraria a la normativa de protección de datos, lo comunicará de inmediato al centro.</li>
+      <li><strong>Instrucciones documentadas.</strong> Tratar los datos solo siguiendo las instrucciones documentadas del cliente: este contrato y lo que el cliente configure en el servicio (miembros, permisos, actividades). Si una instrucción le parece contraria a la normativa de protección de datos, lo comunicará de inmediato al cliente.</li>
       <li><strong>Confidencialidad.</strong> Mantener el secreto sobre los datos, también después de terminar el contrato, y garantizar que las personas autorizadas a tratarlos se han comprometido a respetar la confidencialidad y conocen las medidas de seguridad.</li>
       <li><strong>Seguridad.</strong> Aplicar las medidas técnicas y organizativas adecuadas al riesgo (art. 32 RGPD), descritas en el <a href="#anexo-seguridad">anexo II</a>, y revisarlas periódicamente.</li>
-      <li><strong>Registro.</strong> Llevar el registro de las actividades de tratamiento que hace por cuenta del centro (art. 30.2 RGPD).</li>
-      <li><strong>Subencargados.</strong> El centro autoriza de forma general a FM Lab a recurrir a los subencargados del <a href="#anexo-subencargados">anexo I</a>. FM Lab avisará al centro con al menos <strong>30 días</strong> de antelación, por correo a la persona de contacto, de cualquier alta o sustitución de un subencargado; el centro podrá oponerse por motivos razonables y, si no hay acuerdo, terminar el contrato. FM Lab impondrá a cada subencargado las mismas obligaciones de protección de datos que este contrato y responde de su cumplimiento ante el centro.</li>
+      <li><strong>Registro.</strong> Llevar el registro de las actividades de tratamiento que hace por cuenta del cliente (art. 30.2 RGPD).</li>
+      <li><strong>Subencargados.</strong> El cliente autoriza de forma general a FM Lab a recurrir a los subencargados del <a href="#anexo-subencargados">anexo I</a>. FM Lab avisará al cliente con al menos <strong>30 días</strong> de antelación, por correo a la persona de contacto, de cualquier alta o sustitución de un subencargado; el cliente podrá oponerse por motivos razonables y, si no hay acuerdo, terminar el contrato. FM Lab impondrá a cada subencargado las mismas obligaciones de protección de datos que este contrato y responde de su cumplimiento ante el cliente.</li>
       <li><strong>Transferencias internacionales.</strong> Cuando un subencargado trate datos fuera del Espacio Económico Europeo, solo lo hará con las garantías del capítulo V del RGPD (decisión de adecuación, como el Marco de Privacidad de Datos UE-EE. UU., o cláusulas contractuales tipo de la Comisión Europea).</li>
-      <li><strong>Derechos de los interesados.</strong> Ayudar al centro a responder a las solicitudes de acceso, rectificación, supresión, oposición, limitación y portabilidad. Cada miembro de un equipo puede descargar sus datos o eliminar su cuenta en <em>Mi cuenta ▸ Tus datos</em>. Si un interesado se dirige directamente a FM Lab por un tratamiento de este contrato, FM Lab lo trasladará al centro en un plazo máximo de 5 días hábiles.</li>
-      <li><strong>Violaciones de seguridad.</strong> Notificar al centro, sin dilación indebida y en todo caso en un plazo máximo de <strong>48 horas</strong> desde que tenga conocimiento, cualquier violación de la seguridad de los datos, con la información disponible para que el centro pueda notificarla a la autoridad de control y, si procede, a los interesados (arts. 33 y 34 RGPD).</li>
-      <li><strong>Evaluaciones de impacto.</strong> Ayudar al centro, con la información de que disponga, en las evaluaciones de impacto y consultas previas que haga.</li>
-      <li><strong>Devolución o borrado.</strong> Al terminar el contrato, y según elija el centro, permitir que descargue los datos (las presentaciones, en formato abierto; las notas ya están en su plataforma) y suprimirlos en un plazo máximo de 30 días, sin conservar copias, salvo que una ley obligue a conservarlos; en ese caso, bloqueados y solo para esa obligación. A petición del centro, FM Lab certificará el borrado.</li>
-      <li><strong>Demostrar el cumplimiento y auditorías.</strong> Poner a disposición del centro la información necesaria para demostrar el cumplimiento de este contrato y permitir auditorías e inspecciones razonables del centro o de quien este designe: con un preaviso de 30 días, como máximo una vez al año salvo violación de seguridad, en horario laboral, a cargo del centro y sin acceso a datos de otros clientes. El código del servicio es público (<a href="https://github.com/fmesasc/revela">github.com/fmesasc/revela</a>) y puede revisarse en cualquier momento.</li>
+      <li><strong>Derechos de los interesados.</strong> Ayudar al cliente a responder a las solicitudes de acceso, rectificación, supresión, oposición, limitación y portabilidad. Cada miembro de un equipo puede descargar sus datos o eliminar su cuenta en <em>Mi cuenta ▸ Tus datos</em>. Si un interesado se dirige directamente a FM Lab por un tratamiento de este contrato, FM Lab lo trasladará al cliente en un plazo máximo de 5 días hábiles.</li>
+      <li><strong>Violaciones de seguridad.</strong> Notificar al cliente, sin dilación indebida y en todo caso en un plazo máximo de <strong>48 horas</strong> desde que tenga conocimiento, cualquier violación de la seguridad de los datos, con la información disponible para que el cliente pueda notificarla a la autoridad de control y, si procede, a los interesados (arts. 33 y 34 RGPD).</li>
+      <li><strong>Evaluaciones de impacto.</strong> Ayudar al cliente, con la información de que disponga, en las evaluaciones de impacto y consultas previas que haga.</li>
+      <li><strong>Devolución o borrado.</strong> Al terminar el contrato, y según elija el cliente, permitir que descargue los datos (las presentaciones, en formato abierto; en los centros educativos, las notas ya están en su plataforma) y suprimirlos en un plazo máximo de 30 días, sin conservar copias, salvo que una ley obligue a conservarlos; en ese caso, bloqueados y solo para esa obligación. A petición del cliente, FM Lab certificará el borrado.</li>
+      <li><strong>Demostrar el cumplimiento y auditorías.</strong> Poner a disposición del cliente la información necesaria para demostrar el cumplimiento de este contrato y permitir auditorías e inspecciones razonables del cliente o de quien este designe: con un preaviso de 30 días, como máximo una vez al año salvo violación de seguridad, en horario laboral, a cargo del cliente y sin acceso a datos de otros clientes. El código del servicio es público (<a href="https://github.com/fmesasc/revela">github.com/fmesasc/revela</a>) y puede revisarse en cualquier momento.</li>
     </ol>
 
-    <h2>7. Obligaciones del centro (responsable)</h2>
+    <h2>7. Obligaciones del cliente (responsable)</h2>
     <ol type="a">
-      <li>Tener una base jurídica para el tratamiento (por ejemplo, la función educativa del centro, disposición adicional 23.ª de la Ley Orgánica 2/2006 de Educación, o el consentimiento cuando sea necesario) e informar al alumnado, a sus familias y al personal del uso de Revela.</li>
-      <li>Decidir qué cuentas y actividades se crean, invitar al equipo solo a quien lo necesite y mantener la lista de miembros al día. En el caso de menores de 14 años, usar Revela solo a través del centro (equipos o Moodle), que responde de esas cuentas.</li>
+      <li>Tener una base jurídica para el tratamiento e informar a las personas afectadas (su personal y, en un centro educativo, el alumnado y sus familias) del uso de Revela.</li>
+      <li>Decidir qué cuentas y actividades se crean, invitar al equipo solo a quien lo necesite y mantener la lista de miembros al día.</li>
       <li>Dar a FM Lab las instrucciones por escrito y comunicar una persona de contacto para todo lo relativo a este contrato (y, si lo tiene, su delegado de protección de datos).</li>
       <li>Supervisar el tratamiento, incluidas las auditorías del apartado 6.k.</li>
     </ol>
@@ -95,25 +98,36 @@
     <h2>8. Responsabilidad y ley aplicable</h2>
     <p>Cada parte responde de sus obligaciones conforme al artículo 82 del RGPD. Si FM Lab destinara los datos a otra finalidad, los comunicara o los usara incumpliendo este contrato, sería considerado responsable del tratamiento a todos los efectos. Este contrato se rige por la ley española.</p>
 
+    <h2 id="centros-educativos">9. Centros educativos</h2>
+    <p>Cuando el cliente es un centro educativo, se aplica además lo siguiente:</p>
+    <ol type="a">
+      <li><strong>Moodle y otras plataformas (LTI 1.3).</strong> FM Lab trata por cuenta del centro las actividades de Revela que el profesorado añade a la plataforma del centro, en las que cada alumno abre una presentación, responde sus cuestionarios y actividades, Revela corrige las respuestas y envía la nota al libro de calificaciones.</li>
+      <li><strong>Datos del alumnado en actividades LTI:</strong> el identificador que le asigna la plataforma del centro y su nombre (o nombre de pila), tal como los envía la plataforma; las respuestas que da en las actividades y la nota resultante. Las actividades LTI no usan la IA.</li>
+      <li><strong>Base jurídica.</strong> Por ejemplo, la función educativa del centro (disposición adicional 23.ª de la Ley Orgánica 2/2006 de Educación) o el consentimiento cuando sea necesario. El centro informa al alumnado, a sus familias y al personal del uso de Revela.</li>
+      <li><strong>Menores de 14 años.</strong> Usan Revela solo a través del centro (equipos o Moodle), que responde de esas cuentas.</li>
+    </ol>
+
     <h2 id="anexo-subencargados">Anexo I. Subencargados autorizados</h2>
     <table>
       <thead><tr><th>Subencargado</th><th>Para qué</th><th>Ubicación y garantías</th></tr></thead>
       <tbody>
-        <tr><td><strong>Cloudflare, Inc.</strong></td><td>Alojamiento del sitio y del servidor de Revela, almacenamiento de cuentas, equipos, presentaciones y sesiones LTI; videollamadas (Cloudflare Realtime); envío de correos de servicio.</td><td>Red global, con sede en EE. UU. Marco de Privacidad de Datos UE-EE. UU. y cláusulas contractuales tipo.</td></tr>
+        <tr><td><strong>Cloudflare, Inc.</strong></td><td>Alojamiento del sitio y del servidor de Revela, almacenamiento de cuentas, equipos, presentaciones y sesiones LTI; videollamadas (Cloudflare Realtime).</td><td>Red global, con sede en EE. UU. Marco de Privacidad de Datos UE-EE. UU. y cláusulas contractuales tipo.</td></tr>
+        <tr><td><strong>Resend</strong></td><td>Envío de los correos del servicio (invitaciones a un equipo, avisos de enlaces con seguimiento, avisos de la cuenta).</td><td>EE. UU. Cláusulas contractuales tipo.</td></tr>
         <tr><td><strong>Google</strong> (Google LLC / Google Ireland Ltd.)</td><td>Inicio de sesión de los miembros de un equipo (comprobar su identificador y su correo).</td><td>UE y EE. UU. Marco de Privacidad de Datos UE-EE. UU. y cláusulas contractuales tipo.</td></tr>
         <tr><td><strong>OpenRouter, Inc.</strong> y el proveedor del modelo elegido</td><td>Solo si los miembros del equipo usan la IA incluida: procesar la petición para responder. Revela pide para el texto proveedores que no guardan ni entrenan con lo enviado.</td><td>EE. UU. Cláusulas contractuales tipo.</td></tr>
       </tbody>
     </table>
-    <p>Los pagos del centro se gestionan con Stripe y no incluyen datos del alumnado. Las actividades LTI no usan la IA.</p>
+    <p>Los pagos del cliente se gestionan con Stripe y no incluyen el contenido de las presentaciones ni datos del alumnado. Las actividades LTI no usan la IA. Si el cliente usa el inicio de sesión único, su proveedor de identidad lo elige y contrata el propio cliente: no es un subencargado de FM Lab.</p>
 
     <h2 id="anexo-seguridad">Anexo II. Medidas de seguridad</h2>
     <ul>
       <li>Todas las conexiones cifradas (HTTPS), y las videollamadas cifradas.</li>
       <li>Sesiones con tokens aleatorios de 256 bits; en el servidor solo se guarda su huella (SHA-256). Caducan a los 30 días (web) o 90 (escritorio).</li>
       <li>Permisos (ver, comentar, editar) comprobados en el servidor en cada lectura y cada cambio; todo o nada si una operación no está permitida.</li>
-      <li>LTI 1.3: mensajes firmados y comprobados con las claves de la plataforma; las respuestas correctas no llegan al navegador del alumno; la sesión del alumno en la actividad caduca a las 24 horas.</li>
+      <li>Inicio de sesión único: el código se canjea con el secreto del cliente y PKCE, y se comprueban la firma del token con las claves del proveedor, su emisor, audiencia, nonce y caducidad; cada dominio de correo se verifica con un registro DNS antes de usarse.</li>
+      <li>En los centros educativos, LTI 1.3: mensajes firmados y comprobados con las claves de la plataforma; las respuestas correctas no llegan al navegador del alumno; la sesión del alumno en la actividad caduca a las 24 horas.</li>
       <li>Datos de cada cuenta y de cada presentación aislados en su propio objeto de almacenamiento.</li>
-      <li>Sin API de administración: el servicio se administra desde la cuenta del proveedor de alojamiento, con verificación en dos pasos. Las claves de los servicios externos se guardan como secretos.</li>
+      <li>La administración del servicio responde solo en su propio dominio, tras Cloudflare Access; el servidor comprueba él mismo el token de acceso y una lista de correos autorizados, y las acciones administrativas quedan registradas. Las claves de los servicios externos se guardan como secretos.</li>
       <li>Límites de uso para evitar abusos, y protección frente a peticiones de otros sitios (cookies <code>SameSite=Strict</code>, CORS restringido).</li>
       <li>Código público y pruebas automáticas que intentan saltarse estas protecciones.</li>
     </ul>
@@ -121,9 +135,9 @@
     <h2>Firmas</h2>
     <div class="sign">
       <div>
-        <p><strong>El centro (responsable)</strong></p>
-        <p>Nombre del centro: <span class="fill"></span></p>
-        <p>NIF o código de centro: <span class="fill"></span></p>
+        <p><strong>El cliente (responsable)</strong></p>
+        <p>Nombre o razón social: <span class="fill"></span></p>
+        <p>NIF (o código de centro): <span class="fill"></span></p>
         <p>Dirección: <span class="fill"></span></p>
         <p>Representado por (nombre y cargo): <span class="fill"></span></p>
         <p>Persona de contacto y correo: <span class="fill"></span></p>
@@ -143,63 +157,66 @@
 
   <article id="ca" lang="ca">
     <h1>Contracte d'encarregat del tractament</h1>
-    <p class="date">Model per a centres educatius · Versió de l'1 d'octubre de 2026</p>
+    <p class="date">Model per a empreses, organitzacions i centres educatius · Versió del 9 d'octubre de 2026</p>
 
     <div class="howto">
-      <p><strong>Com fer-lo servir:</strong> el centre emplena les seves dades al final, el signa qui el representi i l'envia pel formulari de <a href="https://revelaslides.com/contact">revelaslides.com/contact</a>. FM Lab el retorna signat. Per desar-lo o imprimir-lo, fes servir «Imprimeix» del navegador i tria «Desa com a PDF».</p>
+      <p><strong>Com fer-lo servir:</strong> el client emplena les seves dades al final, el signa qui el representi i l'envia pel formulari de <a href="https://revelaslides.com/contact">revelaslides.com/contact</a>. FM Lab el retorna signat. Per desar-lo o imprimir-lo, fes servir «Imprimeix» del navegador i tria «Desa com a PDF».</p>
       <p><button type="button" class="print" onclick="print()">Imprimeix o desa en PDF</button></p>
     </div>
 
     <h2>Parts</h2>
-    <p><strong>El responsable del tractament:</strong> el centre educatiu que figura a l'apartat de signatures (d'ara endavant, «el centre»).</p>
+    <p><strong>El responsable del tractament:</strong> l'empresa, organització o centre educatiu que figura a l'apartat de signatures (d'ara endavant, «el client»).</p>
     <p><strong>L'encarregat del tractament:</strong> <strong>FM Lab</strong> (titular identificat a l'<a href="legal.html#ca">avís legal</a>), Barcelona, Espanya, amb les dades d'identificació que figuren a l'<a href="legal.html#ca">avís legal</a> de revelaslides.com<!-- LEGAL: quan siguin a legal.html, afegir aquí també el NIF i el domicili. -->. Contacte: el formulari de <a href="https://revelaslides.com/contact">revelaslides.com/contact</a> (d'ara endavant, «FM Lab»).</p>
-    <p>Les parts acorden aquest contracte, d'acord amb l'article 28 del Reglament (UE) 2016/679 (RGPD) i la Llei orgànica 3/2018 (LOPDGDD), per regular el tractament de dades personals que FM Lab fa per compte del centre en prestar-li el servei Revela.</p>
+    <p>Les parts acorden aquest contracte, d'acord amb l'article 28 del Reglament (UE) 2016/679 (RGPD) i la Llei orgànica 3/2018 (LOPDGDD), per regular el tractament de dades personals que FM Lab fa per compte del client en prestar-li el servei Revela.</p>
 
     <h2>1. Objecte</h2>
-    <p>FM Lab tracta, per compte del centre, les dades personals necessàries perquè el professorat i l'alumnat del centre facin servir <strong>Revela</strong> (revelaslides.com i la seva aplicació d'escriptori), en concret:</p>
+    <p>FM Lab tracta, per compte del client, les dades personals necessàries perquè les persones usuàries del client (el seu personal i, en un centre educatiu, també el seu professorat i el seu alumnat) facin servir <strong>Revela</strong> (revelaslides.com i la seva aplicació d'escriptori), en concret:</p>
     <ul>
-      <li><strong>Equips:</strong> els comptes dels membres de l'equip del centre (pla Equips), les seves presentacions al núvol, les plantilles i el kit de marca comuns.</li>
-      <li><strong>Moodle i altres plataformes (LTI 1.3):</strong> les activitats de Revela que el professorat afegeix a la plataforma del centre, en què cada alumne obre una presentació, respon els qüestionaris i les activitats, Revela corregeix les respostes i envia la nota al llibre de qualificacions.</li>
+      <li><strong>Equips:</strong> els comptes dels membres de l'equip del client (pla Equips), les seves presentacions al núvol, les plantilles, els recursos i el kit de marca comuns, i l'ús de cada lloc que veu qui administra l'equip.</li>
+      <li><strong>Inici de sessió únic (SSO):</strong> si el client el configura, l'entrada de les seves persones usuàries amb el seu propi proveïdor d'identitat (OpenID Connect) i la seva alta a l'equip.</li>
+      <li><strong>Presentacions compartides:</strong> les persones amb accés a cada presentació, els enllaços amb seguiment i el que es registra en obrir-los.</li>
+      <li><strong>En els centres educatius, a més, Moodle i altres plataformes (LTI 1.3)</strong>, segons l'<a href="#centres-educatius">apartat 9</a>.</li>
     </ul>
-    <p>El servei es presta d'acord amb les <a href="terms.html#ca">condicions del servei</a>. Pel que fa a les dades personals de l'alumnat i del personal del centre, preval aquest contracte.</p>
+    <p>El servei es presta d'acord amb les <a href="terms.html#ca">condicions del servei</a>. Pel que fa a les dades personals de les persones usuàries del client, preval aquest contracte.</p>
 
     <h2>2. Durada</h2>
-    <p>Aquest contracte s'aplica des de la signatura i mentre el centre faci servir el servei: mentre tingui un equip actiu o Revela estigui registrat com a eina a la seva plataforma. S'acaba quan el centre cancel·la l'equip i retira el registre de Revela de la seva plataforma, o quan qualsevol de les parts ho comunica a l'altra. Les obligacions de confidencialitat i de devolució o esborrament continuen vigents després.</p>
+    <p>Aquest contracte s'aplica des de la signatura i mentre el client faci servir el servei: mentre tingui un equip actiu o, en un centre educatiu, Revela estigui registrat com a eina a la seva plataforma. S'acaba quan el client cancel·la l'equip (i, si escau, retira el registre de Revela de la seva plataforma), o quan qualsevol de les parts ho comunica a l'altra. Les obligacions de confidencialitat i de devolució o esborrament continuen vigents després.</p>
 
     <h2>3. Naturalesa i finalitat del tractament</h2>
-    <p>Tractament automatitzat al núvol: recollida, registre, conservació, consulta, ús, comunicació a la plataforma del centre (les notes) i supressió de dades. L'única finalitat és prestar al centre el servei descrit a l'apartat 1. FM Lab <strong>no</strong> fa servir les dades per a finalitats pròpies: ni publicitat, ni perfils, ni per entrenar models d'intel·ligència artificial, ni les cedeix a tercers llevat dels subencarregats de l'apartat 6.e o per obligació legal.</p>
+    <p>Tractament automatitzat al núvol: recollida, registre, conservació, consulta, ús, comunicació a la plataforma del client (les notes, en els centres educatius) i supressió de dades. L'única finalitat és prestar al client el servei descrit a l'apartat 1. FM Lab <strong>no</strong> fa servir les dades per a finalitats pròpies: ni publicitat, ni perfils, ni per entrenar models d'intel·ligència artificial, ni les cedeix a tercers llevat dels subencarregats de l'apartat 6.e o per obligació legal.</p>
 
     <h2>4. Tipus de dades personals</h2>
     <ul>
-      <li><strong>De l'alumnat en activitats LTI:</strong> l'identificador que li assigna la plataforma del centre i el seu nom (o nom de pila), tal com els envia la plataforma; les respostes que dona a les activitats i la nota resultant.</li>
-      <li><strong>Dels membres d'un equip:</strong> el correu del seu compte de Google i l'identificador de Google, el seu paper a l'equip (membre o administrador), les invitacions, i les dades del seu compte de Revela (pla, crèdits d'IA i els seus moviments, sessions desades només com a empremta).</li>
-      <li><strong>Presentacions:</strong> les que el professorat o l'alumnat desen al núvol de Revela, amb el seu contingut, els comentaris, les persones amb accés (pel seu correu) i les deu darreres versions; i les estadístiques de visualització, amb un identificador aleatori del navegador.</li>
+      <li><strong>Dels membres d'un equip:</strong> el correu i l'identificador del seu compte (de Google o, amb inici de sessió únic, del proveïdor d'identitat del client), el seu paper a l'equip (membre o administrador), les invitacions, les dades del seu compte de Revela (pla, crèdits d'IA i els seus moviments, sessions desades només com a empremta) i l'ús del seu lloc que veu qui administra l'equip (darrer dia d'ús, crèdits d'IA gastats i espai ocupat).</li>
+      <li><strong>Presentacions:</strong> les que les persones usuàries desen al núvol de Revela, amb el seu contingut, els comentaris, les persones amb accés (pel seu correu) i les deu darreres versions; i les estadístiques de visualització, amb un identificador aleatori del navegador.</li>
+      <li><strong>Enllaços amb seguiment:</strong> el nom que els dona qui els crea i, de qui els obre, el correu i el nom si se li demanen, quantes vegades i quant de temps la veu i fins a quina diapositiva arriba.</li>
+      <li><strong>En els centres educatius, les dades de l'alumnat en activitats LTI</strong> de l'<a href="#centres-educatius">apartat 9</a>.</li>
       <li><strong>El que s'envia a la IA inclosa</strong>, si els membres de l'equip la fan servir: el text de la petició i, si l'envien, el contingut de la diapositiva. No es conserva.</li>
     </ul>
-    <p>El servei no està pensat per a categories especials de dades (salut, religió, etc.). El centre procurarà que no s'incloguin a les presentacions ni a les activitats llevat que sigui necessari i amb les garanties que exigeixi la llei.</p>
+    <p>El servei no està pensat per a categories especials de dades (salut, religió, etc.). El client procurarà que no s'incloguin a les presentacions ni a les activitats llevat que sigui necessari i amb les garanties que exigeixi la llei.</p>
 
     <h2>5. Categories d'interessats</h2>
-    <p>Alumnat del centre (inclosos menors d'edat), professorat i la resta de personal del centre que faci servir Revela, i les persones que aquests convidin a un equip o amb qui comparteixin una presentació.</p>
+    <p>El personal del client i la resta de persones que facin servir Revela per compte seu, les persones que aquestes convidin a un equip o amb qui comparteixin una presentació, i qui obri els seus enllaços amb seguiment. En un centre educatiu, a més, el seu professorat i el seu alumnat, inclosos menors d'edat (<a href="#centres-educatius">apartat 9</a>).</p>
 
     <h2>6. Obligacions de FM Lab (encarregat)</h2>
     <ol type="a">
-      <li><strong>Instruccions documentades.</strong> Tractar les dades només seguint les instruccions documentades del centre: aquest contracte i el que el centre configuri al servei (membres, permisos, activitats). Si una instrucció li sembla contrària a la normativa de protecció de dades, ho comunicarà immediatament al centre.</li>
+      <li><strong>Instruccions documentades.</strong> Tractar les dades només seguint les instruccions documentades del client: aquest contracte i el que el client configuri al servei (membres, permisos, activitats). Si una instrucció li sembla contrària a la normativa de protecció de dades, ho comunicarà immediatament al client.</li>
       <li><strong>Confidencialitat.</strong> Mantenir el secret sobre les dades, també després d'acabar el contracte, i garantir que les persones autoritzades a tractar-les s'han compromès a respectar la confidencialitat i coneixen les mesures de seguretat.</li>
       <li><strong>Seguretat.</strong> Aplicar les mesures tècniques i organitzatives adequades al risc (art. 32 RGPD), descrites a l'<a href="#annex-seguretat">annex II</a>, i revisar-les periòdicament.</li>
-      <li><strong>Registre.</strong> Portar el registre de les activitats de tractament que fa per compte del centre (art. 30.2 RGPD).</li>
-      <li><strong>Subencarregats.</strong> El centre autoritza de manera general FM Lab a recórrer als subencarregats de l'<a href="#annex-subencarregats">annex I</a>. FM Lab avisarà el centre amb almenys <strong>30 dies</strong> d'antelació, per correu a la persona de contacte, de qualsevol alta o substitució d'un subencarregat; el centre s'hi podrà oposar per motius raonables i, si no hi ha acord, resoldre el contracte. FM Lab imposarà a cada subencarregat les mateixes obligacions de protecció de dades que aquest contracte i respon del seu compliment davant el centre.</li>
+      <li><strong>Registre.</strong> Portar el registre de les activitats de tractament que fa per compte del client (art. 30.2 RGPD).</li>
+      <li><strong>Subencarregats.</strong> El client autoritza de manera general FM Lab a recórrer als subencarregats de l'<a href="#annex-subencarregats">annex I</a>. FM Lab avisarà el client amb almenys <strong>30 dies</strong> d'antelació, per correu a la persona de contacte, de qualsevol alta o substitució d'un subencarregat; el client s'hi podrà oposar per motius raonables i, si no hi ha acord, resoldre el contracte. FM Lab imposarà a cada subencarregat les mateixes obligacions de protecció de dades que aquest contracte i respon del seu compliment davant el client.</li>
       <li><strong>Transferències internacionals.</strong> Quan un subencarregat tracti dades fora de l'Espai Econòmic Europeu, només ho farà amb les garanties del capítol V del RGPD (decisió d'adequació, com el Marc de privacitat de dades UE-EUA, o clàusules contractuals tipus de la Comissió Europea).</li>
-      <li><strong>Drets de les persones interessades.</strong> Ajudar el centre a respondre les sol·licituds d'accés, rectificació, supressió, oposició, limitació i portabilitat. Cada membre d'un equip pot descarregar les seves dades o eliminar el compte a <em>El meu compte ▸ Les teves dades</em>. Si una persona interessada s'adreça directament a FM Lab per un tractament d'aquest contracte, FM Lab ho traslladarà al centre en un termini màxim de 5 dies hàbils.</li>
-      <li><strong>Violacions de seguretat.</strong> Notificar al centre, sense dilació indeguda i en tot cas en un termini màxim de <strong>48 hores</strong> des que en tingui coneixement, qualsevol violació de la seguretat de les dades, amb la informació disponible perquè el centre la pugui notificar a l'autoritat de control i, si escau, a les persones interessades (arts. 33 i 34 RGPD).</li>
-      <li><strong>Avaluacions d'impacte.</strong> Ajudar el centre, amb la informació de què disposi, en les avaluacions d'impacte i consultes prèvies que faci.</li>
-      <li><strong>Devolució o esborrament.</strong> En acabar el contracte, i segons triï el centre, permetre que descarregui les dades (les presentacions, en format obert; les notes ja són a la seva plataforma) i suprimir-les en un termini màxim de 30 dies, sense conservar-ne còpies, llevat que una llei obligui a conservar-les; en aquest cas, bloquejades i només per a aquesta obligació. A petició del centre, FM Lab en certificarà l'esborrament.</li>
-      <li><strong>Demostrar el compliment i auditories.</strong> Posar a disposició del centre la informació necessària per demostrar el compliment d'aquest contracte i permetre auditories i inspeccions raonables del centre o de qui aquest designi: amb un preavís de 30 dies, com a màxim una vegada l'any llevat de violació de seguretat, en horari laboral, a càrrec del centre i sense accés a dades d'altres clients. El codi del servei és públic (<a href="https://github.com/fmesasc/revela">github.com/fmesasc/revela</a>) i es pot revisar en qualsevol moment.</li>
+      <li><strong>Drets de les persones interessades.</strong> Ajudar el client a respondre les sol·licituds d'accés, rectificació, supressió, oposició, limitació i portabilitat. Cada membre d'un equip pot descarregar les seves dades o eliminar el compte a <em>El meu compte ▸ Les teves dades</em>. Si una persona interessada s'adreça directament a FM Lab per un tractament d'aquest contracte, FM Lab ho traslladarà al client en un termini màxim de 5 dies hàbils.</li>
+      <li><strong>Violacions de seguretat.</strong> Notificar al client, sense dilació indeguda i en tot cas en un termini màxim de <strong>48 hores</strong> des que en tingui coneixement, qualsevol violació de la seguretat de les dades, amb la informació disponible perquè el client la pugui notificar a l'autoritat de control i, si escau, a les persones interessades (arts. 33 i 34 RGPD).</li>
+      <li><strong>Avaluacions d'impacte.</strong> Ajudar el client, amb la informació de què disposi, en les avaluacions d'impacte i consultes prèvies que faci.</li>
+      <li><strong>Devolució o esborrament.</strong> En acabar el contracte, i segons triï el client, permetre que descarregui les dades (les presentacions, en format obert; en els centres educatius, les notes ja són a la seva plataforma) i suprimir-les en un termini màxim de 30 dies, sense conservar-ne còpies, llevat que una llei obligui a conservar-les; en aquest cas, bloquejades i només per a aquesta obligació. A petició del client, FM Lab en certificarà l'esborrament.</li>
+      <li><strong>Demostrar el compliment i auditories.</strong> Posar a disposició del client la informació necessària per demostrar el compliment d'aquest contracte i permetre auditories i inspeccions raonables del client o de qui aquest designi: amb un preavís de 30 dies, com a màxim una vegada l'any llevat de violació de seguretat, en horari laboral, a càrrec del client i sense accés a dades d'altres clients. El codi del servei és públic (<a href="https://github.com/fmesasc/revela">github.com/fmesasc/revela</a>) i es pot revisar en qualsevol moment.</li>
     </ol>
 
-    <h2>7. Obligacions del centre (responsable)</h2>
+    <h2>7. Obligacions del client (responsable)</h2>
     <ol type="a">
-      <li>Tenir una base jurídica per al tractament (per exemple, la funció educativa del centre, disposició addicional 23a de la Llei orgànica 2/2006 d'educació, o el consentiment quan calgui) i informar l'alumnat, les seves famílies i el personal de l'ús de Revela.</li>
-      <li>Decidir quins comptes i activitats es creen, convidar a l'equip només qui ho necessiti i mantenir al dia la llista de membres. En el cas de menors de 14 anys, fer servir Revela només a través del centre (equips o Moodle), que respon d'aquests comptes.</li>
+      <li>Tenir una base jurídica per al tractament i informar les persones afectades (el seu personal i, en un centre educatiu, l'alumnat i les seves famílies) de l'ús de Revela.</li>
+      <li>Decidir quins comptes i activitats es creen, convidar a l'equip només qui ho necessiti i mantenir al dia la llista de membres.</li>
       <li>Donar a FM Lab les instruccions per escrit i comunicar una persona de contacte per a tot el que es refereixi a aquest contracte (i, si en té, el seu delegat de protecció de dades).</li>
       <li>Supervisar el tractament, incloses les auditories de l'apartat 6.k.</li>
     </ol>
@@ -207,25 +224,36 @@
     <h2>8. Responsabilitat i llei aplicable</h2>
     <p>Cada part respon de les seves obligacions d'acord amb l'article 82 del RGPD. Si FM Lab destinés les dades a una altra finalitat, les comuniqués o les fes servir incomplint aquest contracte, seria considerat responsable del tractament a tots els efectes. Aquest contracte es regeix per la llei espanyola.</p>
 
+    <h2 id="centres-educatius">9. Centres educatius</h2>
+    <p>Quan el client és un centre educatiu, s'hi aplica a més el següent:</p>
+    <ol type="a">
+      <li><strong>Moodle i altres plataformes (LTI 1.3).</strong> FM Lab tracta per compte del centre les activitats de Revela que el professorat afegeix a la plataforma del centre, en què cada alumne obre una presentació, respon els qüestionaris i les activitats, Revela corregeix les respostes i envia la nota al llibre de qualificacions.</li>
+      <li><strong>Dades de l'alumnat en activitats LTI:</strong> l'identificador que li assigna la plataforma del centre i el seu nom (o nom de pila), tal com els envia la plataforma; les respostes que dona a les activitats i la nota resultant. Les activitats LTI no fan servir la IA.</li>
+      <li><strong>Base jurídica.</strong> Per exemple, la funció educativa del centre (disposició addicional 23a de la Llei orgànica 2/2006 d'educació) o el consentiment quan calgui. El centre informa l'alumnat, les seves famílies i el personal de l'ús de Revela.</li>
+      <li><strong>Menors de 14 anys.</strong> Fan servir Revela només a través del centre (equips o Moodle), que respon d'aquests comptes.</li>
+    </ol>
+
     <h2 id="annex-subencarregats">Annex I. Subencarregats autoritzats</h2>
     <table>
       <thead><tr><th>Subencarregat</th><th>Per a què</th><th>Ubicació i garanties</th></tr></thead>
       <tbody>
-        <tr><td><strong>Cloudflare, Inc.</strong></td><td>Allotjament del lloc i del servidor de Revela, emmagatzematge de comptes, equips, presentacions i sessions LTI; videotrucades (Cloudflare Realtime); enviament de correus de servei.</td><td>Xarxa global, amb seu als EUA. Marc de privacitat de dades UE-EUA i clàusules contractuals tipus.</td></tr>
+        <tr><td><strong>Cloudflare, Inc.</strong></td><td>Allotjament del lloc i del servidor de Revela, emmagatzematge de comptes, equips, presentacions i sessions LTI; videotrucades (Cloudflare Realtime).</td><td>Xarxa global, amb seu als EUA. Marc de privacitat de dades UE-EUA i clàusules contractuals tipus.</td></tr>
+        <tr><td><strong>Resend</strong></td><td>Enviament dels correus del servei (invitacions a un equip, avisos d'enllaços amb seguiment, avisos del compte).</td><td>EUA. Clàusules contractuals tipus.</td></tr>
         <tr><td><strong>Google</strong> (Google LLC / Google Ireland Ltd.)</td><td>Inici de sessió dels membres d'un equip (comprovar-ne l'identificador i el correu).</td><td>UE i EUA. Marc de privacitat de dades UE-EUA i clàusules contractuals tipus.</td></tr>
         <tr><td><strong>OpenRouter, Inc.</strong> i el proveïdor del model triat</td><td>Només si els membres de l'equip fan servir la IA inclosa: processar la petició per respondre. Per al text, Revela demana proveïdors que no desen ni entrenen amb el que s'envia.</td><td>EUA. Clàusules contractuals tipus.</td></tr>
       </tbody>
     </table>
-    <p>Els pagaments del centre es gestionen amb Stripe i no inclouen dades de l'alumnat. Les activitats LTI no fan servir la IA.</p>
+    <p>Els pagaments del client es gestionen amb Stripe i no inclouen el contingut de les presentacions ni dades de l'alumnat. Les activitats LTI no fan servir la IA. Si el client fa servir l'inici de sessió únic, el seu proveïdor d'identitat el tria i el contracta el mateix client: no és un subencarregat de FM Lab.</p>
 
     <h2 id="annex-seguretat">Annex II. Mesures de seguretat</h2>
     <ul>
       <li>Totes les connexions xifrades (HTTPS), i les videotrucades xifrades.</li>
       <li>Sessions amb testimonis aleatoris de 256 bits; al servidor només se'n desa l'empremta (SHA-256). Caduquen als 30 dies (web) o als 90 (escriptori).</li>
       <li>Permisos (veure, comentar, editar) comprovats al servidor en cada lectura i cada canvi; tot o res si una operació no està permesa.</li>
-      <li>LTI 1.3: missatges signats i comprovats amb les claus de la plataforma; les respostes correctes no arriben al navegador de l'alumne; la sessió de l'alumne a l'activitat caduca a les 24 hores.</li>
+      <li>Inici de sessió únic: el codi es bescanvia amb el secret del client i PKCE, i es comproven la signatura del testimoni amb les claus del proveïdor, el seu emissor, audiència, nonce i caducitat; cada domini de correu es verifica amb un registre DNS abans de fer-se servir.</li>
+      <li>En els centres educatius, LTI 1.3: missatges signats i comprovats amb les claus de la plataforma; les respostes correctes no arriben al navegador de l'alumne; la sessió de l'alumne a l'activitat caduca a les 24 hores.</li>
       <li>Dades de cada compte i de cada presentació aïllades en el seu propi objecte d'emmagatzematge.</li>
-      <li>Sense API d'administració: el servei s'administra des del compte del proveïdor d'allotjament, amb verificació en dos passos. Les claus dels serveis externs es desen com a secrets.</li>
+      <li>L'administració del servei respon només al seu propi domini, darrere de Cloudflare Access; el servidor comprova ell mateix el testimoni d'accés i una llista de correus autoritzats, i les accions administratives queden registrades. Les claus dels serveis externs es desen com a secrets.</li>
       <li>Límits d'ús per evitar abusos, i protecció davant de peticions d'altres llocs (galetes <code>SameSite=Strict</code>, CORS restringit).</li>
       <li>Codi públic i proves automàtiques que intenten saltar-se aquestes proteccions.</li>
     </ul>
@@ -233,9 +261,9 @@
     <h2>Signatures</h2>
     <div class="sign">
       <div>
-        <p><strong>El centre (responsable)</strong></p>
-        <p>Nom del centre: <span class="fill"></span></p>
-        <p>NIF o codi de centre: <span class="fill"></span></p>
+        <p><strong>El client (responsable)</strong></p>
+        <p>Nom o raó social: <span class="fill"></span></p>
+        <p>NIF (o codi de centre): <span class="fill"></span></p>
         <p>Adreça: <span class="fill"></span></p>
         <p>Representat per (nom i càrrec): <span class="fill"></span></p>
         <p>Persona de contacte i correu: <span class="fill"></span></p>
@@ -261,7 +289,7 @@
       <a href="privacy.html" data-es="Privacidad" data-ca="Privadesa" data-en="Privacy">Privacidad</a>
       <a href="terms.html" data-es="Condiciones" data-ca="Condicions" data-en="Terms">Condiciones</a>
       <a href="legal.html" data-es="Aviso legal" data-ca="Avís legal" data-en="Legal notice">Aviso legal</a>
-      <a href="dpa.html" data-es="Centros educativos" data-ca="Centres educatius" data-en="Schools">Centros educativos</a>
+      <a href="dpa.html" data-es="Encargo de tratamiento" data-ca="Encàrrec de tractament" data-en="Data processing">Encargo de tratamiento</a>
       <a href="https://github.com/fmesasc/revela" data-es="Código en GitHub" data-ca="Codi a GitHub" data-en="Code on GitHub">Código en GitHub</a>
     </nav>
     <span>© 2026 Revela · <span data-es="un proyecto de" data-ca="un projecte de" data-en="a project of">un proyecto de</span> <a href="https://fmesasc.com">FM Lab</a></span>

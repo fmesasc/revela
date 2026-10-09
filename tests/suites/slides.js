@@ -1003,6 +1003,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const pe = (el, type, x, y) => el.dispatchEvent(new W.PointerEvent(type, { clientX: x, clientY: y, bubbles: true, button: 0, pointerId: 1 }));
     pe(fr1(), 'pointerdown', q.left + 20, q.top + 20); pe(cv0, 'pointermove', q.left + 90, q.top + 50); pe(cv0, 'pointerup', q.left + 90, q.top + 50); await sleep(30);
     assert(C.canvasBackdrop(R.state.deck.slides[1]).x !== bx0, 'movido el marco, su fondo es la parte de su nuevo sitio');
+    R.flushThumbs?.(); await sleep(10);                  // (the edited thumbnail is rebuilt after the frame, or when idle)
     assert(thumbSrc() !== th0, 'y la miniatura se actualiza');
     R.store.undo(); await sleep(20);
     // Presenting: the picture is one layer that moves with the camera (not per slide).
