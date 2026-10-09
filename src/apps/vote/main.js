@@ -340,7 +340,8 @@ function renderAnswers() {
     if (bg) bg.onload = paintBg; paintBg();
     let ink = '#1d1d1f', down = false, drawn = false;
     const at = e => { const r = c.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H]; };
-    c.addEventListener('pointerdown', e => { down = true; c.setPointerCapture(e.pointerId); x.strokeStyle = ink; x.lineWidth = ink === '#ffffff' ? 18 : 4; x.lineCap = x.lineJoin = 'round'; x.beginPath(); x.moveTo(...at(e)); });
+    c.addEventListener('pointerdown', e => { down = true; try { c.setPointerCapture(e.pointerId); } catch {}   // (a pointer the browser no longer knows: no capture)
+     x.strokeStyle = ink; x.lineWidth = ink === '#ffffff' ? 18 : 4; x.lineCap = x.lineJoin = 'round'; x.beginPath(); x.moveTo(...at(e)); });
     c.addEventListener('pointermove', e => { if (!down) return; x.lineTo(...at(e)); x.stroke(); drawn = true; });
     const end = () => { if (!down) return; down = false; if (drawn) answer = { img: c.toDataURL('image/png'), n: nick() }; };
     c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end);

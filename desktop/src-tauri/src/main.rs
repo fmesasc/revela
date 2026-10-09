@@ -25,8 +25,8 @@ use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
 
 const RELEASES: &str = "https://github.com/fmesasc/revela/releases/latest";
-// What Revela opens (the rest of the arguments are ignored).
-const OPENS: [&str; 8] = ["pptx", "pptm", "potx", "ppsx", "odp", "otp", "key", "json"];
+// What Revela opens (the rest of the arguments are ignored): presentations, its projects, PDFs («Open with»).
+const OPENS: [&str; 9] = ["pptx", "pptm", "potx", "ppsx", "odp", "otp", "key", "json", "pdf"];
 
 // The files given to Revela to open, waiting for the page (pending), and those the page may read: given to open,
 // or chosen in the «Open» dialog (readable; each read once).

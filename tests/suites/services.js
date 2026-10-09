@@ -128,6 +128,18 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       in2.onchange = () => { got = in2.files[0]; }; lab.click();
       for (let i = 0; i < 40 && !got; i++) await sleep(25); lab.remove();
       eq(got?.name, 'a.csv', 'también desde su etiqueta');
+      // A PDF opened with Revela: a presentation of its pages (and no «Open» dialog on the way).
+      const pdfText = (() => { const objs = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>', '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 400 300] /Contents 4 0 R >>', null];
+        const c = '1 0 0 rg 20 20 360 260 re f'; objs[3] = `<< /Length ${c.length} >>\nstream\n${c}\nendstream`;
+        let out = '%PDF-1.4\n'; const offs = []; objs.forEach((o, k) => { offs.push(out.length); out += `${k + 1} 0 obj\n${o}\nendobj\n`; });
+        const x = out.length; out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + offs.map(o => String(o).padStart(10, '0') + ' 00000 n \n').join('');
+        return out + `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${x}\n%%EOF`; })();
+      reset(); calls.length = 0; opened.push('/home/ana/informe.pdf'); const pdfBytes = new TextEncoder().encode(pdfText);
+      tauri.core.invoke = async (cmd, args, opts) => { calls.push({ cmd, args, opts, stack: new Error().stack }); if (cmd === 'opened_files') return opened.splice(0); if (cmd === 'read_opened') return pdfBytes.buffer.slice(0); if (cmd === 'pick_files') return []; };
+      W.dispatchEvent(new W.Event('focus')); await DK.openGivenForTests();
+      for (let i = 0; i < 80 && R.state.deck.name !== 'informe'; i++) await sleep(25);
+      eq(R.state.deck.name + ' ' + R.state.deck.slides.length, 'informe 1', 'un PDF abierto con Revela: sus páginas');
+      assert(!calls.some(c => c.cmd === 'pick_files'), 'sin abrir el selector: ' + calls.filter(c => c.cmd === 'pick_files').map(c => c.stack).join('\n'));
     } finally { DK.stopDesktop(); }
     eq(W.HTMLAnchorElement.prototype.click, click, 'y se puede deshacer (las pruebas)');
   });
