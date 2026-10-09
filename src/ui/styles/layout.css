@@ -34,6 +34,9 @@ body.sorter .nav-pick{grid-column:1/-1;margin:-24px -24px 0;padding:10px 24px;to
 .thumb.drop-target{border-color:var(--go);box-shadow:0 -3px 0 var(--go)}
 .thumb-num{position:absolute;top:2px;left:5px;z-index:2;font-size:11px;color:#fff;opacity:.75;text-shadow:0 1px 2px #000}
 .thumb-canvas{position:relative;aspect-ratio:var(--ar,16/9);overflow:hidden}
+/* (Thumbnails out of sight aren't laid out or painted: with 300 slides of 40 objects, each edit or slide change
+   laid out all 12,000 elements again, ~100 ms. Their size comes from the width and the aspect ratio anyway.) */
+#navigator .thumb-canvas{content-visibility:auto;contain-intrinsic-size:auto 160px auto 90px}
 .thumb-inner{position:absolute;top:0;left:0;transform-origin:top left}
 .thumb-del{position:absolute;top:2px;right:2px;z-index:3;background:#0008;border:none;color:#fff;
   border-radius:4px;cursor:pointer;font-size:11px;line-height:1;padding:2px 5px;display:none}

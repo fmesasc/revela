@@ -68,6 +68,15 @@ function fitThumbs() {
 const cache = new Map();                   // slide id → { sig, el }
 const sigOf = shortSig;
 
+// The panel's children made `nodes`; untouched when they already are (a slide change, most edits). (Taking every
+// thumbnail out and back in each time made the browser lay out 300 slides of 40 objects again, ~200 ms. All at once
+// otherwise: moving them one by one could blur a field being edited, whose handler draws the panel meanwhile.)
+function place(parent, nodes) {
+  const kids = parent.children;
+  if (kids.length === nodes.length && nodes.every((n, i) => kids[i] === n)) return;
+  parent.replaceChildren(...nodes);
+}
+
 export function renderPanel() {
   if (state.ui.editMaster) return renderMasterPanel(panel);   // (the master view: masters and layouts instead)
   const d = state.deck;
@@ -86,15 +95,16 @@ export function renderPanel() {
     const sig = common + sigOf(slide);
     let c = cache.get(slide.id);
     if (!c || c.sig !== sig) { c = { sig, el: thumb(slide) }; cache.set(slide.id, c); }
-    c.el.dataset.index = index;
+    // (Only what differs is touched: rewriting the same number or attribute in every thumbnail made the browser
+    // lay them all out again.)
+    if (c.el.dataset.index !== String(index)) { c.el.dataset.index = index; c.el.querySelector('.thumb-num').textContent = index + 1; }
     c.el.classList.toggle('active', index === state.ui.slideIndex && !state.ui.editMaster);
     c.el.classList.toggle('selected', sel.has(slide.id) || (!!state.ui.slidePick && index === state.ui.slideIndex));
-    c.el.setAttribute('aria-selected', String(sel.has(slide.id) || index === state.ui.slideIndex));
-    c.el.querySelector('.thumb-num').textContent = index + 1;
+    const aria = String(sel.has(slide.id) || index === state.ui.slideIndex); if (c.el.getAttribute('aria-selected') !== aria) c.el.setAttribute('aria-selected', aria);
     seen.add(slide.id); nodes.push(c.el);
   });
   for (const id of cache.keys()) if (!seen.has(id)) cache.delete(id);
-  panel.replaceChildren(...nodes);
+  place(panel, nodes);
   fitThumbs();
 }
 
