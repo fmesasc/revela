@@ -1,11 +1,13 @@
-// The activities played on a grid or with cards — a crossword, a word search, a memory game —, the same on the
+// The activities played on a grid or with cards — a crossword, a word search, a memory game, an alphabet wheel —, the same on the
 // audience's phones (apps/vote) and inside the slides when answered alone (selfpaced.js). Embedded in exported
 // presentations with toString(), so self-contained (ES5, no outer variables).
 // pub: what publicActivity() gives (never the crossword's words); onAnswer(answer): after each move, the answer as
 // gradeActivity() reads it; L: its words (GAME_WORDS, translated or not). → the element; el.rvLock() stops the
-// game (answered). Sizes in em, from the letters around it; the grids always left to right, also in Arabic.
+// game (answered); it fires «rvdone» when it ends by itself (the wheel: all answered, or the time is up). Sizes in em,
+// from the letters around it; the grids always left to right, also in Arabic.
 export const GAME_WORDS = { across: 'Horizontales', down: 'Verticales', found: 'Encontradas: {n} de {t}', pairs: 'Parejas: {n} de {t}', tries: 'Intentos: {n}',
-  search: 'Arrastra el dedo de la primera letra a la última (o toca las dos).', flip: 'Toca dos cartas para buscar su pareja.', remove: 'Quitar' };
+  search: 'Arrastra el dedo de la primera letra a la última (o toca las dos).', flip: 'Toca dos cartas para buscar su pareja.', remove: 'Quitar',
+  starts: 'Empieza por la {l}', contains: 'Contiene la {l}', answer: 'Contestar', skip: 'Saltar ⏭', done: 'Respondidas: {n} de {t}', timeUp: '¡Tiempo!' };
 export function activityGame(kind, pub, onAnswer, L) {
   var S = L || {};
   var NS = 'http://www.w3.org/2000/svg', locked = false, answer = [];
@@ -144,6 +146,50 @@ export function activityGame(kind, pub, onAnswer, L) {
       table.appendChild(b);
     });
     root.appendChild(mk('div', 'opacity:.8;font-size:.85em', S.flip)); root.appendChild(table); root.appendChild(info); tellInfo();
+  } else if (kind === 'wheel') {
+    // The letters round a circle, in turn: answer, or skip it to the next lap (it stays blue) until all are answered
+    // or the time is up. The phone doesn't know the answers, so an answered letter only turns «answered» (purple);
+    // right and wrong are for the presenter's screen.
+    var its = pub.items || [], queue = its.map(function (x, k) { return k; }), state = [], left = +pub.time || 0, ends = 0, timer = null;
+    its.forEach(function (x) { answer[x.i] = ''; }); for (var w0 = 0; w0 < answer.length; w0++) if (answer[w0] == null) answer[w0] = '';
+    var ring = mk('div', 'position:relative;width:100%;max-width:22em;aspect-ratio:1/1;margin:0 auto'); ring.setAttribute('dir', 'ltr');
+    var n = its.length || 1, dia = Math.min(14, 2 * Math.PI * 42 / n * 0.86), dots = its.map(function (x, k) {
+      var an = -Math.PI / 2 + 2 * Math.PI * k / n, d = mk('span', 'position:absolute;display:grid;place-items:center;border-radius:50%;color:#fff;font-weight:800;transition:transform .2s,background .2s;'
+        + 'width:' + dia + '%;height:' + dia + '%;left:' + (50 + 42 * Math.cos(an) - dia / 2) + '%;top:' + (50 + 42 * Math.sin(an) - dia / 2) + '%;font-size:' + Math.max(0.7, Math.min(1.3, dia / 9)) + 'em', x.l);
+      ring.appendChild(d); return d; });
+    var mid = mk('div', 'position:absolute;inset:22%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center');
+    var big = mk('div', 'font-size:2.6em;font-weight:900;line-height:1'), clock = mk('div', 'font-size:1.1em;font-weight:700;opacity:.8'); mid.appendChild(big); mid.appendChild(clock); ring.appendChild(mid);
+    var rule = mk('div', 'font-weight:800'), clue = mk('div', 'overflow-wrap:anywhere'), row = mk('div', 'display:flex;flex-wrap:wrap;gap:.4em');
+    var inp = mk('input', 'font:inherit;flex:1 1 10em;min-width:0;padding:.35em .5em;border-radius:.3em;border:1px solid #8888;background:#fff;color:#223;box-sizing:border-box');
+    inp.type = 'text'; inp.maxLength = 60; inp.autocomplete = 'off'; inp.spellcheck = false;
+    var bOk = mk('button', 'font:inherit;font-weight:700;padding:.35em .8em;border-radius:.3em;border:0;background:#26890c;color:#fff;cursor:pointer;margin:0;width:auto', S.answer);
+    var bSkip = mk('button', 'font:inherit;font-weight:700;padding:.35em .8em;border-radius:.3em;border:0;background:#3f6497;color:#fff;cursor:pointer;margin:0;width:auto', S.skip);
+    bOk.type = bSkip.type = 'button'; row.appendChild(inp); row.appendChild(bOk); row.appendChild(bSkip);
+    var info = mk('div', 'opacity:.8;font-size:.85em');
+    var paintW = function () {
+      var cur = queue.length && !locked ? queue[0] : -1;
+      dots.forEach(function (d, k) { d.style.background = state[k] ? '#8e6cc9' : k === cur ? '#f9ab00' : '#3f6497'; d.style.transform = k === cur ? 'scale(1.18)' : ''; d.style.color = k === cur ? '#223' : '#fff'; });
+      var x = its[cur]; big.textContent = x ? x.l : '';
+      rule.textContent = x ? (x.c ? S.contains : S.starts).replace('{l}', x.l) : (left === 0 && ends ? S.timeUp : ''); clue.textContent = x ? x.q : '';
+      info.textContent = S.done.replace('{n}', state.filter(Boolean).length).replace('{t}', its.length);
+    };
+    var finish = function () { if (locked) return; clearInterval(timer); root.rvLock(); paintW(); try { root.dispatchEvent(new CustomEvent('rvdone')); } catch (e) {} };
+    var step = function (said) {
+      if (locked || !queue.length) return; var k = queue.shift();
+      if (said) { state[k] = 1; answer[its[k].i] = said; tell(); } else queue.push(k);
+      inp.value = ''; paintW(); if (!queue.length) finish(); else try { inp.focus({ preventScroll: true }); } catch (e) {}
+    };
+    bOk.onclick = function () { step(inp.value.trim()); };
+    bSkip.onclick = function () { step(''); };
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); step(inp.value.trim()); } });
+    var tick = function () { if (!ends || locked) return; if (!root.isConnected && timer) { clearInterval(timer); return; }
+      left = Math.max(0, Math.ceil((ends - Date.now()) / 1000)); clock.textContent = left + ' s'; if (!left) finish(); };
+    var lock0 = root.rvLock; root.rvLock = function () { clearInterval(timer); lock0(); };
+    root.appendChild(ring); root.appendChild(rule); root.appendChild(clue); root.appendChild(row); root.appendChild(info);
+    // (The clock starts when the wheel is first seen: inside the slides, not before reaching its slide.)
+    var go = function () { if (ends || locked || !left) return; ends = Date.now() + left * 1000; tick(); timer = setInterval(tick, 250); };
+    clock.textContent = left ? left + ' s' : ''; paintW();
+    if (left) { if (window.IntersectionObserver) { var seen = new IntersectionObserver(function (es) { if (es.some(function (e) { return e.isIntersecting; })) { seen.disconnect(); go(); } }); seen.observe(ring); } else go(); }
   }
   tell();
   return root;

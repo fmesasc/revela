@@ -21,7 +21,7 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
   return `(function(){
  var CLASS=${classroom ? 'true' : 'false'}, TEAMS=${JSON.stringify((teams || []).map(x => String(x).slice(0, 30)))}, STEP=${Math.max(1, Math.round(+starStep) || 5)};
  var gradeActivity=${gradeActivity.toString()}, publicActivity=${publicActivity.toString()};
- var ACT=['order','match','gaps','label','sort','crossword','wordsearch','memory'], GR=['quiz'].concat(ACT), LAY={};
+ var ACT=['order','match','gaps','label','sort','crossword','wordsearch','memory','wheel'], GR=['quiz'].concat(ACT), LAY={};
  var tally=${tallyVotes.toString()};
  var render=${pollResultsHTML.toString()};
  var tallyVotes=tally, totals=${quizTotals.toString()};         // (quizTotals counts with tallyVotes)
@@ -65,7 +65,7 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
   if(p.kind==='board'){r.teams=teamBoard(r.board);r.stars=starsOf();}
   if(p.kind==='quiz'){r.revealed=!!revealed[p.pollId];r.left=left(p);if(r.revealed)r.board=totals(quizzes());}
   if(ACT.indexOf(p.kind)>=0)r.revealed=!!revealed[p.pollId];
-  if(p.kind==='crossword'||p.kind==='wordsearch')r.layout=LAY[p.pollId]||(LAY[p.pollId]=publicActivity(p,true));   // (the grid on the screen, laid out once)
+  if(p.kind==='crossword'||p.kind==='wordsearch'||p.kind==='wheel')r.layout=LAY[p.pollId]||(LAY[p.pollId]=publicActivity(p,true));   // (the grid on the screen, laid out once)
   if(r.board)r.board=r.board.filter(function(x){return !(ad(x.id)||{}).noRank;});
   // (A race: towards every quiz's points; a quiz's from before it, the leaderboard's from when it was last on screen.)
   if(p.display==='race'&&r.board){r.goal=quizzes().length*1000;r.prev=p.kind==='board'?(el._seen||{}):ptsOf(totals(quizzes().filter(function(x){return x.poll.pollId!==p.pollId;})),[]);}
@@ -187,9 +187,40 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
    d.addEventListener('click',function(ev){var b=ev.target.closest&&ev.target.closest('button');if(b)modAct(b.getAttribute('data-a'),b.getAttribute('data-k'));});}
   var D=modWin.document;D.title=LT('Moderar las preguntas');D.querySelector('h1').textContent=p.question||LT('Moderar las preguntas');
   D.querySelector('p.n').textContent=p.moderate?LT('Las nuevas esperan aquí a que las apruebes; en la pantalla solo se ve cuántas esperan.'):'';modPaint();modWin.focus();return true;};
- window.addEventListener('keydown',function(e){if((e.key==='n'||e.key==='N')&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!/INPUT|TEXTAREA/.test(e.target.tagName)){e.preventDefault();window.rvPick();}
+ // An alphabet wheel played on the big screen with one contestant, without phones (J, on its slide): the presenter
+ // marks each answer — right, wrong (its answer is then shown) or skipped to the next lap — and a click on a letter goes
+ // to it. Only on the presenter's screen, which has the answers anyway.
+ window.rvWheelHost=function(){var s=Reveal.getCurrentSlide(),el=s&&s.querySelector('.rv-poll'),p=el&&def(el);if(!p||p.kind!=='wheel')return false;
+  var old=document.getElementById('rv-wheel');if(old){old.remove();return true;}
+  var e=function(x){return String(x).replace(/[&<>"]/g,function(ch){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch];});};
+  var it=publicActivity(p,true).items,n=it.length||1,st=[],queue=it.map(function(x,k){return k;}),said='',left=+publicActivity(p).time||0,ends=left?Date.now()+left*1000:0,tm=null;
+  var box=document.createElement('div');box.id='rv-wheel';box.style.cssText='position:fixed;inset:0;z-index:70;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4vmin;padding:4vmin;box-sizing:border-box;background:rgba(10,14,22,.94);color:#fff;font:600 2.4vmin/1.3 system-ui,sans-serif';
+  var ring=document.createElement('div');ring.dir='ltr';ring.style.cssText='position:relative;width:min(80vmin,90vw);aspect-ratio:1/1';
+  var side=document.createElement('div');side.style.cssText='flex:1 1 30vmin;max-width:60vmin;text-align:start';box.appendChild(ring);box.appendChild(side);
+  var dia=Math.min(13,2*Math.PI*42/n*.86);
+  var dots=it.map(function(x,k){var an=-Math.PI/2+2*Math.PI*k/n,d=document.createElement('b');d.textContent=x.l;
+   d.style.cssText='position:absolute;display:grid;place-items:center;border-radius:50%;cursor:pointer;transition:transform .2s,background .2s;width:'+dia+'%;height:'+dia+'%;left:'+(50+42*Math.cos(an)-dia/2)+'%;top:'+(50+42*Math.sin(an)-dia/2)+'%;font-size:'+Math.max(1.6,dia/3.2)+'vmin';
+   d.addEventListener('click',function(e){e.stopPropagation();if(st[k]||ends&&!left)return;queue=queue.filter(function(q){return q!==k;});queue.unshift(k);said='';draw();});ring.appendChild(d);return d;});
+  var mid=document.createElement('div');mid.style.cssText='position:absolute;inset:25%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center';ring.appendChild(mid);
+  function draw(){var cur=queue.length&&(left||!ends)?queue[0]:-1,ok=st.filter(function(x){return x==='ok';}).length,bad=st.filter(function(x){return x==='bad';}).length,x=it[cur];
+   dots.forEach(function(d,k){d.style.background=st[k]==='ok'?'#26890c':st[k]==='bad'?'#c94f4f':k===cur?'#f9ab00':'#3f6497';d.style.color=k===cur?'#223':'#fff';d.style.transform=k===cur?'scale(1.2)':'';});
+   mid.innerHTML='<div style="font-size:12vmin;font-weight:900;line-height:1">'+(x?e(x.l):ok)+'</div><div style="font-size:4vmin">'+(ends?Math.max(0,Math.ceil((ends-Date.now())/1000))+' s':'')+'</div>';
+   side.innerHTML='<div style="font-size:3vmin;opacity:.7">'+e(p.question||LT('Rueda de letras'))+'</div>'
+    +(x?'<div style="font-size:4.4vmin;font-weight:800;margin:.4em 0">'+e(LT(x.c?'Contiene la {l}':'Empieza por la {l}').replace('{l}',x.l))+'</div><div style="font-size:3.6vmin">'+e(x.q)+'</div>':ends&&!left?'<div style="font-size:5vmin;font-weight:800">'+e(LT('¡Tiempo!'))+'</div>':'')
+    +(said?'<div style="margin-top:.6em;font-size:3.4vmin;color:#ffb4b4">→ '+e(said)+'</div>':'')
+    +'<div style="margin-top:1em;font-size:3vmin">'+e(LT('Aciertos: {n} · Fallos: {f}').replace('{n}',ok).replace('{f}',bad))+'</div>'
+    +'<div style="margin-top:1.4em;font-size:2vmin;opacity:.6">'+e(LT('Intro o →: acierto · Supr o ←: fallo · Espacio: saltar · Esc: cerrar'))+'</div>';}
+  function mark(v){if(!queue.length||ends&&!left)return;var k=queue.shift();said='';if(v==='skip')queue.push(k);else{st[k]=v;if(v==='bad')said=String(it[k].a||'').split('|')[0];}if(!queue.length)clearInterval(tm);draw();}
+  function key(ev){if(!document.getElementById('rv-wheel')){window.removeEventListener('keydown',key,true);return;}var k=ev.key;
+   if(k==='Enter'||k==='ArrowRight')mark('ok');else if(k==='Delete'||k==='Backspace'||k==='ArrowLeft')mark('bad');else if(k===' '||k==='Spacebar')mark('skip');
+   else if(k==='Escape'||k==='j'||k==='J'){box.remove();clearInterval(tm);}else return;ev.preventDefault();ev.stopImmediatePropagation();}
+  window.addEventListener('keydown',key,true);box.addEventListener('click',function(ev){ev.stopPropagation();});
+  if(ends)tm=setInterval(function(){if(!box.isConnected){clearInterval(tm);return;}left=Math.max(0,Math.ceil((ends-Date.now())/1000));draw();if(!left)clearInterval(tm);},250);
+  (document.querySelector('.reveal')||document.body).appendChild(box);draw();box.rvMark=mark;return true;};
+ window.addEventListener('keydown',function(e){if((e.key==='j'||e.key==='J')&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!/INPUT|TEXTAREA/.test(e.target.tagName)&&!document.getElementById('rv-wheel')){if(window.rvWheelHost())e.preventDefault();}
+  else if((e.key==='n'||e.key==='N')&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!/INPUT|TEXTAREA/.test(e.target.tagName)){e.preventDefault();window.rvPick();}
   else if((e.key==='m'||e.key==='M')&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!/INPUT|TEXTAREA/.test(e.target.tagName)){if(window.rvModerate())e.preventDefault();}
-  else if(e.key==='Escape'){var b=document.getElementById('rv-pick')||document.getElementById('rv-grade');if(b){b.remove();e.stopImmediatePropagation();}}},true);
+  else if(e.key==='Escape'){var b=document.getElementById('rv-pick')||document.getElementById('rv-grade')||document.getElementById('rv-wheel');if(b){b.remove();e.stopImmediatePropagation();}}},true);
  // A click on a quiz shows its answer at once.
  document.addEventListener('click',function(e){var el=e.target.closest&&e.target.closest('.rv-poll');var p=el&&def(el);if(p&&((p.kind==='quiz'&&started[p.pollId])||ACT.indexOf(p.kind)>=0)){e.stopPropagation();if(revealed[p.pollId]&&ACT.indexOf(p.kind)>=0)return;reveal(p);}},true);
  js(${JSON.stringify(QRCODE)}).catch(function(){}).then(function(){return js(${JSON.stringify(PEERJS)});}).then(function(){start(0);});
@@ -199,8 +230,10 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
  // Classroom: the slide to every device, as it changes (and its fragments).
  function css(){return [].slice.call(document.querySelectorAll('link[rel=stylesheet],style')).map(function(n){return n.outerHTML;}).join('\\n');}
  // (The slide's polls without their answers — an activity's options are its solution, a quiz's has the right one —: the
- // phones only read their question and what can be shown, a crossword's clues, a word search's words or hints.)
- function bare(p){var o=p.options||[],k=p.kind;return {kind:k,question:p.question,options:GR.indexOf(k)<0?o:k==='quiz'?o:k==='crossword'||k==='wordsearch'?o.map(function(x){var c=String(x).split('=');return c.length>1?'= '+c.slice(1).join('=').trim():k==='wordsearch'?x:'';}):[]};}
+ // phones only read their question and what can be shown, a crossword's clues, a word search's words or hints, a
+ // wheel's letters and clues.)
+ function bare(p){var o=p.options||[],k=p.kind;return {kind:k,question:p.question,options:GR.indexOf(k)<0?o:k==='quiz'?o:k==='crossword'||k==='wordsearch'?o.map(function(x){var c=String(x).split('=');return c.length>1?'= '+c.slice(1).join('=').trim():k==='wordsearch'?x:'';})
+   :k==='wheel'?publicActivity(p).items.map(function(x){return (x.c?'~':'')+x.l+' =  = '+x.q;}):[]};}
  function slideMsg(){var s=Reveal.getCurrentSlide(),bg=s&&Reveal.getSlideBackground&&Reveal.getSlideBackground(s),cfg=Reveal.getConfig();
   // (On the markup, not a copy of the slide: a copied video or picture would load again.)
   var ta=document.createElement('textarea'),html=s?s.outerHTML.replace(/ data-poll="([^"]*)"/g,function(m,v){ta.innerHTML=v;var p;try{p=JSON.parse(ta.value);}catch(e){return ' data-poll="{}"';}

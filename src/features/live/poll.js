@@ -56,7 +56,7 @@ export function tallyVotes(poll, votes) {
     return s.replace(/[\p{L}\p{M}]+/gu, function (w) { var k = w.toLowerCase().normalize('NFD').replace(/[\u0300-\u0302\u0304-\u036f]/g, '').normalize('NFC');
       return /^(?:putain|puttan|gilipoll|cabron|mierd|merd[ae]|jod(?:er|id)|foll(?:ar|ad)|maric[oó]n|imbecil|pendej|ching[aá]|coño|fuck|shit|bitch|cunt|asshole|bastard|motherf|dickhead|bollock|slut|whore|connard|connass|salope|encul|batard|scheiss|scheiß|arschloch|fotze|wichser|hurensohn|ficken|cazz[oi]|vaffancul|stronz|minchia|coglion|caralh|fod[ae]|buceta|viado|klootzak|godverd)/.test(k)
         || /^(?:put[ao]s?|wank(?:er|ers|ing)?|polla|pollas|pute|putes|nique|niquer|fick|fag|fags|faggot|nigg(?:er|a)s?|kut|lul|hoer|hoeren)$/.test(k) ? w.charAt(0) + w.slice(1).replace(/./gu, '*') : w; }); };
-  if (['order', 'match', 'gaps', 'label', 'sort', 'crossword', 'wordsearch', 'memory'].indexOf(kind) >= 0) {
+  if (['order', 'match', 'gaps', 'label', 'sort', 'crossword', 'wordsearch', 'memory', 'wheel'].indexOf(kind) >= 0) {
     var items = null, total = 0, list = [];
     for (var w in votes) { var vv = votes[w]; if (!vv || !vv.a) continue; var g = gradeActivity(poll, vv.a); voters++; total += g.score;
       if (!items) items = g.per.map(function () { return 0; });
@@ -164,9 +164,16 @@ export function pollResultsHTML(poll, res, accent, L) {
   var nick = function (r, i) { return esc(r.n || (T('Jugador') + ' ' + (i + 1))); };
   var ranking = function (list, top) { return '<ol style="margin:.4em 0 0;padding:0;list-style:none;text-align:left;font-size:.6em">' + list.slice(0, top).map(function (r, i) {
     return '<li style="margin:.15em 0"><b>' + (['🥇 ', '🥈 ', '🥉 '][i] || (i + 1) + '. ') + '</b>' + nick(r, i) + ' — <b>' + r.pts + '</b>' + (r.tries ? ' <small>· ' + r.tries + ' ' + T('intentos') + '</small>' : '') + '</li>'; }).join('') + '</ol>'; };
-  // A crossword's or a word search's grid (res.layout: publicActivity(poll, true)), drawn to fit; the solution only
-  // once revealed. Always left to right, also in right-to-left languages.
+  // A crossword's or a word search's grid, or an alphabet wheel (res.layout: publicActivity(poll, true)), drawn to fit;
+  // the solution only once revealed — the wheel's letters then coloured by how many got each right. Always left to
+  // right, also in right-to-left languages.
   var gridSVG = function (g, show) {
+    if (kind === 'wheel') { var it = g.items || [], n = it.length || 1, rb = Math.min(.62, 4.1 * Math.sin(Math.PI / n) * .92), nv0 = res.voters || 0;
+      var w = '<svg viewBox="0 0 10 10" dir="ltr" style="display:block;width:100%;max-height:100%;font-family:system-ui,sans-serif">';
+      it.forEach(function (x, k) { var an = -Math.PI / 2 + 2 * Math.PI * k / n, cx = 5 + 4.2 * Math.cos(an), cy = 5 + 4.2 * Math.sin(an), pc = nv0 ? (counts[x.i] || 0) / nv0 : 0;
+        w += '<circle cx="' + cx.toFixed(3) + '" cy="' + cy.toFixed(3) + '" r="' + rb.toFixed(3) + '" fill="' + (!show ? cols[0] : pc >= .75 ? '#26890c' : pc >= .5 ? '#d89e00' : '#c94f4f') + '"/>'
+          + '<text x="' + cx.toFixed(3) + '" y="' + (cy + rb * .36).toFixed(3) + '" font-size="' + (rb * 1.05).toFixed(3) + '" font-weight="700" text-anchor="middle" fill="#fff">' + esc(x.l) + '</text>'; });
+      return w + '<text x="5" y="5.5" font-size="1.5" font-weight="800" text-anchor="middle" fill="currentColor">' + nv0 + '</text></svg>'; }
     var s = '<svg viewBox="-.1 -.1 ' + (g.w + .2) + ' ' + (g.h + .2) + '" dir="ltr" style="display:block;width:100%;max-height:100%;font-family:system-ui,sans-serif">';
     if (kind === 'crossword') { var sq = {}, nums = {};
       (g.words || []).forEach(function (w) { nums[w.x + ',' + w.y] = w.n; for (var k = 0; k < w.len; k++) sq[(w.x + (w.d ? 0 : k)) + ',' + (w.y + (w.d ? k : 0))] = (w.word || '').charAt(k); });
@@ -226,11 +233,12 @@ export function pollResultsHTML(poll, res, accent, L) {
         + '<div style="flex:1;background:#8882;border-radius:.2em;height:1.3em"><div style="height:100%;width:' + (counts[i] * 100 / max) + '%;background:' + (ok ? '#26890c' : tiles[i % tiles.length]) + ';border-radius:.2em"></div></div>'
         + '<div style="flex:0 0 2em;font-weight:700">' + counts[i] + '</div></div>'; }).join('') + '</div>' + ((res.board || []).length ? (display === 'race' ? race(runners(res.board, 5), res.prev) : ranking(res.board, 5)) : '');
   }
-  if (['order', 'match', 'gaps', 'label', 'sort', 'crossword', 'wordsearch', 'memory'].indexOf(kind) >= 0) {
+  if (['order', 'match', 'gaps', 'label', 'sort', 'crossword', 'wordsearch', 'memory', 'wheel'].indexOf(kind) >= 0) {
     var two = function (l) { var x = String(l).split('='); return [x[0].trim(), x.slice(1).join('=').trim()]; };
     var gl = kind === 'crossword' ? labels.map(function (l) { var x = two(l); return (x[1] ? x[1] + ' → ' : '') + x[0]; })
       : kind === 'wordsearch' ? labels.map(function (l) { return two(l)[0]; })
       : kind === 'memory' ? labels.map(function (l) { var x = two(l); return x[0] + ' ↔ ' + x[1]; })
+      : kind === 'wheel' ? labels.map(function (l, i) { var x = ((res.layout || {}).items || []).filter(function (y) { return y.i === i; })[0]; return x ? x.l + ': ' + String(x.a || '').split('|')[0] : String(l); })
       : kind === 'order' ? labels.map(function (l, i) { return (i + 1) + '. ' + l; })
       : kind === 'match' ? labels.map(function (l) { var x = String(l).split('='); return x[0].trim() + ' → ' + x.slice(1).join('=').trim(); })
       : kind === 'label' ? labels.map(function (l, i) { return (i + 1) + '. ' + l; })
@@ -240,9 +248,15 @@ export function pollResultsHTML(poll, res, accent, L) {
     var pic = kind === 'label' && poll.image ? '<div style="position:relative;flex:0 0 58%;align-self:center"><img src="' + esc(poll.image) + '" alt="" style="width:100%;display:block;border-radius:.2em">'
       + (poll.points || []).map(function (pt, i) { return '<b style="position:absolute;left:' + pt.x + '%;top:' + pt.y + '%;transform:translate(-50%,-50%);background:' + cols[0] + ';color:#fff;border-radius:1em;padding:0 .35em;font-size:.55em;white-space:nowrap">'
         + (i + 1) + (res.revealed ? ' ' + esc(labels[i] || '') : '') + '</b>'; }).join('') + '</div>'
-      : res.layout && res.layout.w ? '<div style="flex:0 0 46%;align-self:center;min-height:0">' + gridSVG(res.layout, res.revealed) + '</div>' : '';
+      : res.layout && (res.layout.w || res.layout.items) ? '<div style="flex:0 0 46%;align-self:center;min-height:0">' + gridSVG(res.layout, res.revealed) + '</div>' : '';
     // (The solutions fill the box's height, centred; long ones in two lines rather than cut with «…».)
-    var body = !res.revealed
+    // (A wheel's letters, up to 27: small, side by side, each with its answer and how many got it right.)
+    if (kind === 'wheel' && res.revealed) gl = (res.layout && res.layout.items || []).map(function (x) { return x.i; });
+    var body = kind === 'wheel' && res.revealed
+      ? '<div style="display:flex;flex-wrap:wrap;gap:.25em;font-size:.45em;align-content:center;min-height:70%">' + gl.map(function (i) { var x = res.layout.items.filter(function (y) { return y.i === i; })[0], pc = nv ? Math.round((counts[i] || 0) * 100 / nv) : 0;
+          return '<span style="padding:.15em .45em;border-radius:1em;background:' + (pc >= 75 ? '#26890c' : pc >= 50 ? '#d89e00' : '#c94f4f') + ';color:#fff"><b>' + esc(x.l) + '</b> ' + esc(String(x.a || '').split('|')[0]) + ' · ' + pc + ' %</span>'; }).join('')
+        + '</div><div style="margin-top:.4em;font-size:.55em;opacity:.8">' + nv + ' ' + T(nv === 1 ? 'respuesta' : 'respuestas') + ' · ' + avg + ' ' + T('% de aciertos') + '</div>' + ((res.board || []).length ? ranking(res.board, 3) : '')
+      : !res.revealed
       ? '<div style="display:flex;flex-direction:column;justify-content:center;align-items:center;height:100%;gap:.2em"><div style="font-size:2.2em;font-weight:800">' + nv + '</div><div style="font-size:.6em;opacity:.8">'
         + T(nv === 1 ? 'respuesta' : 'respuestas') + (nv ? ' · ' + avg + ' ' + T('% de aciertos') : '') + '</div><div style="font-size:.45em;opacity:.6;margin-top:.4em">' + T('Clic para ver las soluciones') + '</div></div>'
       : '<div style="display:flex;flex-direction:column;justify-content:center;gap:.35em;min-height:80%">' + gl.map(function (l, i) { var pc = nv ? Math.round((counts[i] || 0) * 100 / nv) : 0;
@@ -342,14 +356,14 @@ export function pollResultsHTML(poll, res, accent, L) {
 }
 
 // The results' words in the interface's language (for pollResultsHTML, also in exported pages).
-const POLL_WORDS = ['intentos', 'La IA está corrigiendo…', 'Para corregir con IA, conéctala en el editor.', 'No se pudo corregir.', 'Nivel', '¿A quién le toca?', 'Clic para cerrar · N para otra vez', 'Aún no hay nadie con nombre: que lo escriban al entrar en la votación.', 'Las palabras del público aparecerán aquí', 'Las respuestas del público aparecerán aquí', 'Media', 'Mediana', 'Respuesta', 'voto', 'votos', 'respuesta', 'respuestas', 'Jugador', 'Aún no hay puntos: juega los cuestionarios.', '% de aciertos', 'Clic para ver las soluciones', 'Escanea el QR y envía tu pregunta…', 'preguntas', 'esperando aprobación', 'Aprobar', 'Ocultar', 'Descartar', 'Aún no hay preguntas.', 'Moderar las preguntas', 'Las nuevas esperan aquí a que las apruebes; en la pantalla solo se ve cuántas esperan.', 'Escuchar'];
+const POLL_WORDS = ['Escuchar', 'Rueda de letras', 'Empieza por la {l}', 'Contiene la {l}', '¡Tiempo!', 'Aciertos: {n} · Fallos: {f}', 'Intro o →: acierto · Supr o ←: fallo · Espacio: saltar · Esc: cerrar', 'intentos', 'La IA está corrigiendo…', 'Para corregir con IA, conéctala en el editor.', 'No se pudo corregir.', 'Nivel', '¿A quién le toca?', 'Clic para cerrar · N para otra vez', 'Aún no hay nadie con nombre: que lo escriban al entrar en la votación.', 'Las palabras del público aparecerán aquí', 'Las respuestas del público aparecerán aquí', 'Media', 'Mediana', 'Respuesta', 'voto', 'votos', 'respuesta', 'respuestas', 'Jugador', 'Aún no hay puntos: juega los cuestionarios.', '% de aciertos', 'Clic para ver las soluciones', 'Escanea el QR y envía tu pregunta…', 'preguntas', 'esperando aprobación', 'Aprobar', 'Ocultar', 'Descartar', 'Aún no hay preguntas.', 'Moderar las preguntas', 'Las nuevas esperan aquí a que las apruebes; en la pantalla solo se ve cuántas esperan.'];
 export const pollLabels = () => Object.fromEntries(POLL_WORDS.map(w => [w, t(w)]));
 
 // Markup of a poll in the editor and thumbnails: question, current results
 // (last saved votes) and a QR placeholder (the real code exists only while presenting).
 export const GRADED = ['quiz', ...ACTIVITIES];
-// (The activities drawn as a grid on the screen: pollResultsHTML gets their layout, solution included, as res.layout.)
-export const GRIDS = ['crossword', 'wordsearch'];
+// (The activities drawn as a grid — or a wheel — on the screen: pollResultsHTML gets their layout, solution included, as res.layout.)
+export const GRIDS = ['crossword', 'wordsearch', 'wheel'];
 export function pollEditorHTML(b, accents) {
   const res = b.kind === 'board' ? { board: quizTotals(state.deck.slides.flatMap(s => s.blocks).filter(x => x.type === 'poll' && GRADED.includes(x.kind)).map(p => ({ poll: p, votes: savedVotes(p.pollId) }))) }
     : (r => ({ ...r, showRight: true, revealed: (b.kind === 'quiz' && r.voters > 0) || ACTIVITIES.includes(b.kind), ...(GRIDS.includes(b.kind) && { layout: publicActivity(b, true) }) }))(tallyVotes(b, savedVotes(b.pollId)));

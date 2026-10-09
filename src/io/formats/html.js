@@ -367,7 +367,7 @@ function blockHTMLRaw(b, slide) {
   if (b.type === 'video')
     return `<video${a} data-vid="${b.id}" src="${esc(b.src || '')}"${b.poster && /^(data:image\/|https:|blob:)/.test(b.poster) ? ` poster="${esc(b.poster)}"` : ''} controls preload="metadata" style="${box(b)}object-fit:contain"></video>`;
   if (b.type === 'poll')     // live poll: question, live results and the QR to vote
-    return `<div${a} class="rv-poll" data-poll="${esc(JSON.stringify({ pollId: b.pollId, kind: b.kind, display: b.display, question: b.question, options: b.options, ...(b.kind === 'quiz' && { correct: b.correct || [0], time: b.time || 20, ...(b.mode && b.mode !== 'speed' && { mode: b.mode }) }), ...(ACTIVITIES.includes(b.kind) && { text: b.text, points: b.points, image: b.image }),
+    return `<div${a} class="rv-poll" data-poll="${esc(JSON.stringify({ pollId: b.pollId, kind: b.kind, display: b.display, question: b.question, options: b.options, ...(b.kind === 'quiz' && { correct: b.correct || [0], time: b.time || 20, ...(b.mode && b.mode !== 'speed' && { mode: b.mode }) }), ...(ACTIVITIES.includes(b.kind) && { text: b.text, points: b.points, image: b.image }), ...(b.kind === 'wheel' && { time: b.time ?? 150 }),
       ...(b.kind === 'number' && { min: b.min, max: b.max, step: b.step, unit: b.unit, answer: b.answer }), ...(b.kind === 'image' && { images: b.images }), ...((b.kind === 'point' || b.kind === 'draw') && { image: b.image }), ...(b.kind === 'open' && b.rubric && { rubric: b.rubric }), ...(b.kind === 'qa' && b.moderate && { moderate: true }), ...(['qa', 'word', 'open'].includes(b.kind) && b.clean && { clean: true }) }))}" `
       + `style="${box(b)}display:grid;grid-template-columns:1fr auto;gap:1em;font-size:${b.fontSize || 32}px${/^#[0-9a-f]{3,8}$/i.test(b.color || '') ? ';color:' + b.color : ''}">`
       + `<div style="display:flex;flex-direction:column;min-width:0"><div style="font-weight:700;margin-bottom:.5em">${esc(b.question || '')}</div>`
@@ -762,7 +762,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${hasPoll && !selfPaced ? pollJS(currentPalette(deck).accents, { classroom: !!deck.classroom, labels: pollLabels(), teams: Array.isArray(deck.teams) ? deck.teams.slice(0, 8) : [], starStep: +deck.starStep || 5 }) : ''}
  ${selfPaced && hasPoll ? `(${selfPacedRuntime})(${publicActivity}, (function () { var gradeActivity = ${gradeActivity}; return ${gradeAnswer}; })(), ${JSON.stringify({ check: t('Comprobar'), allRight: t('¡Todo bien!'), partly: t('{n} % de aciertos'),
    wrong: t('No es correcto'), sent: t('Nota enviada'), failed: t('No se pudo enviar la respuesta. Inténtalo otra vez.'), live: t('Esta votación es en directo, con quien presenta.'),
-   game: Object.fromEntries(Object.entries(GAME_WORDS).map(([k, v]) => [k, t(v)])) })}${deck.slides.some(s => s.blocks.some(b => b.type === 'poll' && ['crossword', 'wordsearch', 'memory'].includes(b.kind))) ? `, ${activityGame}` : ''});` : ''}
+   game: Object.fromEntries(Object.entries(GAME_WORDS).map(([k, v]) => [k, t(v)])) })}${deck.slides.some(s => s.blocks.some(b => b.type === 'poll' && ['crossword', 'wordsearch', 'memory', 'wheel'].includes(b.kind))) ? `, ${activityGame}` : ''});` : ''}
  ${hasLive ? liveDataJS() : ''}
  ${hasZoomable ? LIGHTBOX_JS : ''}
  ${canvas ? `${canvasRuntimeDeps()}\ncanvasRuntime(${JSON.stringify(groups.map(g => frameOf(g[0], deck.slides.indexOf(g[0]), deck.size)))}, ${w}, ${h});` : ''}

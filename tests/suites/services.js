@@ -852,6 +852,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       const games = R.state.deck.slides.flatMap(x => x.blocks).filter(b => b.type === 'poll');
       eq(games.map(b => b.kind + ':' + b.options.join('|')).join(' / '), 'crossword:Marte = El rojo|Tierra = El nuestro / wordsearch:sol|luna|cometa / memory:H = Hidrógeno|O = Oxígeno-8', 'sus opciones, listas para jugar');
       assert(/"kind":"crossword"[\s\S]*"kind":"memory"/.test(calls.at(-1).body.messages[0].content), 'la IA sabe cómo pedirlas');
+      // The letter wheel: a line per letter; «contains» when the answer doesn't start with it; nonsense out.
+      reset(); answer = { items: [{ kind: 'wheel', question: 'Repaso', items: [['A', 'Átomo', 'Lo más pequeño'], ['b', 'Carbono', 'Contiene la B'], ['ñ', 'Año', 'Una vuelta al Sol'], ['X', 'Sol', 'No tiene la X'], ['A', 'Agua', 'Repetida'], ['C', 'Célula = vida', 'Unidad de la vida']] }] };
+      eq(await A.addLiveQuiz({ count: 1, kinds: ['wheel'] }), 1, 'rueda de letras');
+      const wh = R.state.deck.slides.flatMap(x => x.blocks).find(b => b.type === 'poll');
+      eq(wh.kind + ':' + wh.time + ':' + wh.options.join('|'), 'wheel:150:A = Átomo = Lo más pequeño|~B = Carbono = Contiene la B|~Ñ = Año = Una vuelta al Sol|C = Célula vida = Unidad de la vida', 'sus líneas: «~» si la contiene; sin letras que no están ni repetidas');
+      eq(R.poll.publicActivity(wh).items.map(x => x.l + x.c).join(), 'A0,B1,C0,Ñ1', 'y se juega');
       // A review of the deck: what to change, each point with its slide.
       answer = { summary: 'Bien, pero larga', items: [{ slide: 2, kind: 'text', issue: 'Demasiado texto', fix: 'Divídela' }, { slide: 99, kind: 'raro', issue: 'x' }, { slide: 1, issue: '' }] };
       const rv = await A.reviewDeck();

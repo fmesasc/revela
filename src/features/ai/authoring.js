@@ -600,9 +600,9 @@ export async function addQuiz(n = 3) {
 
 // A quiz the audience answers from their phones (as Prezi's, from the deck's content): real polls — questions with
 // their right answer and points, and activities (match, order, fill the gaps, a crossword, a word search, a memory
-// game) —, each on its own slide, at the end or after each part.
+// game, an alphabet wheel) —, each on its own slide, at the end or after each part.
 // opts: { count, kinds: ['quiz', 'match', 'order', 'gaps', 'crossword', 'wordsearch', 'memory'], where: 'end' | 'spread' } → how many.
-const LIVE_QUIZ_KINDS = ['quiz', 'match', 'order', 'gaps', 'crossword', 'wordsearch', 'memory'];
+const LIVE_QUIZ_KINDS = ['quiz', 'match', 'order', 'gaps', 'crossword', 'wordsearch', 'memory', 'wheel'];
 export async function addLiveQuiz(opts = {}) {
   const n = Math.max(1, Math.min(15, +opts.count || 5)), kinds = (opts.kinds || ['quiz']).filter(k => LIVE_QUIZ_KINDS.includes(k));
   const shown = state.deck.slides.map((s, i) => [s, i]).filter(([s]) => !s.hidden);
@@ -616,7 +616,8 @@ Answer only JSON {"items":[…]}, each one of:
 - {"kind":"gaps","question":"…","text":"A sentence with the [missing] [words] in brackets","after":N}
 - {"kind":"crossword","question":"…","words":[["word","its clue"],…(4-8; each one word, no spaces, key terms of the slides; clues short and clear)],"after":N}
 - {"kind":"wordsearch","question":"…","words":["word",…(5-10; each one word of 3-10 letters, no spaces)],"after":N}
-- {"kind":"memory","question":"…","pairs":[["term","what goes with it"],…(4-8; both sides short)],"after":N}` },
+- {"kind":"memory","question":"…","pairs":[["term","what goes with it"],…(4-8; both sides short)],"after":N}
+- {"kind":"wheel","question":"…","items":[["letter","answer","clue"],…(10-26, one per letter, in alphabetical order; key terms of the slides; the answer starts with the letter, or else contains it)],"after":N}` },
     { role: 'user', content: text },
   ], { json: true, maxTokens: 4000, feature: 'quiz' });
   const items = (parseJSON(out).items || []).filter(x => x && kinds.includes(x.kind)).slice(0, n);
@@ -631,6 +632,13 @@ Answer only JSON {"items":[…]}, each one of:
     if (x.kind === 'crossword') { const o = (x.words || []).filter(p => Array.isArray(p) && p.length === 2 && word(p[0]) && str(p[1])).map(([a, b]) => `${word(a)} = ${str(b).replace(/=/g, '-')}`).slice(0, 10); return o.length > 1 ? { ...base, kind: 'crossword', options: o } : null; }
     if (x.kind === 'wordsearch') { const o = (x.words || []).map(word).filter(w => w.length > 1).slice(0, 12); return o.length > 1 ? { ...base, kind: 'wordsearch', options: o } : null; }
     if (x.kind === 'memory') { const o = (x.pairs || []).filter(p => Array.isArray(p) && p.length === 2 && str(p[0]) && str(p[1])).map(([a, b]) => `${str(a).replace(/=/g, '-')} = ${str(b).replace(/=/g, '-')}`).slice(0, 10); return o.length > 1 ? { ...base, kind: 'memory', options: o } : null; }
+    // (A wheel: one line per letter, «L = answer = clue»; «~» when the answer contains the letter instead of starting
+    // with it; an answer without its letter, out.)
+    if (x.kind === 'wheel') { const up = v => str(v).normalize('NFD').replace(/n\u0303/gi, 'ñ').replace(/[\u0300-\u036f]/g, '').toUpperCase(), seen = new Set();
+      const o = (x.items || []).filter(p => Array.isArray(p) && p.length === 3).map(([l, a, c]) => [up(l).trim().charAt(0), str(a).replace(/[=|~\s]+/g, ' ').trim(), str(c).replace(/=/g, '-').trim()])
+        .filter(([l, a, c]) => /\p{L}/u.test(l) && a && c && up(a).includes(l) && !seen.has(l) && seen.add(l))
+        .map(([l, a, c]) => `${up(a).startsWith(l) ? '' : '~'}${l} = ${a} = ${c}`).slice(0, 27);
+      return o.length > 2 ? { ...base, kind: 'wheel', options: o, time: 150 } : null; }
     if (x.kind === 'order') { const o = (x.steps || []).map(str).filter(Boolean).slice(0, 8); return o.length > 2 ? { ...base, kind: 'order', options: o } : null; }
     const tx = str(x.text); return /\[[^\]]+\]/.test(tx) ? { ...base, kind: 'gaps', text: tx.slice(0, 600), options: [] } : null;
   };

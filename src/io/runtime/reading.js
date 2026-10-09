@@ -32,6 +32,10 @@ export function readingItems(sec) {
     var poll = el.getAttribute('data-poll');
     if (poll) { try { var p = JSON.parse(poll); if (p.question) out.push({ t: 'q', text: clean(p.question) }); (p.kind === 'choice' || p.kind === 'multi' || p.kind === 'quiz' ? p.options || [] : []).forEach(function (o) { out.push({ t: 'li', text: clean(o), level: 1 }); });
       // (A crossword's clues, never its words; a word search's words, or its hints when it has them.)
+      // (A wheel's: each letter and its clue — the letter given, or the answer's first.)
+      if (p.kind === 'wheel') (p.options || []).forEach(function (o) { var s = String(o).trim(), has = s.charAt(0) === '~', x = (has ? s.slice(1) : s).split('='),
+        three = x.length > 2 && /^\s*\S\s*$/.test(x[0]), q = clean((three ? x.slice(2) : x.slice(1)).join('=')), l = x[0].trim().charAt(0).toUpperCase();
+        if (q) out.push({ t: 'li', text: l + ': ' + q, level: 1 }); });
       if (p.kind === 'crossword' || p.kind === 'wordsearch') (p.options || []).forEach(function (o) { var x = String(o).split('='), c = clean(x.slice(1).join('='));
         if (c || p.kind === 'wordsearch') out.push({ t: 'li', text: c || clean(x[0]), level: 1 }); }); } catch (e) {} return; }
     var imgs = el.tagName === 'IMG' || el.tagName === 'MODEL-VIEWER' ? [el] : [].slice.call(el.querySelectorAll('img[alt],model-viewer[alt],[role="img"][aria-label]'));

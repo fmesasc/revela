@@ -191,8 +191,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     // In the presentation: the screen draws the grid; the phones get only the public part; in classroom mode, the
     // slide sent to the phones carries the polls without their answers.
     const html = R.io.buildHTML();
-    assert(/ACT=\['order','match','gaps','label','sort','crossword','wordsearch','memory'\]/.test(html) && /r\.layout=LAY\[p\.pollId\]/.test(html), 'la presentación los juega');
-    const bare = new W.Function('GR', 'return ' + html.match(/function bare\(p\)\{.*/)[0])(['quiz', 'crossword', 'wordsearch', 'memory', 'match']);
+    assert(/ACT=\['order','match','gaps','label','sort','crossword','wordsearch','memory','wheel'\]/.test(html) && /r\.layout=LAY\[p\.pollId\]/.test(html), 'la presentación los juega');
+    const bare = new W.Function('GR', 'publicActivity', 'return ' + html.match(/function bare\(p\)\{.*\n.*/)[0])(['quiz', 'crossword', 'wordsearch', 'memory', 'match'], P.publicActivity);
     eq(JSON.stringify(bare(CW).options), '["= El planeta rojo","= Nuestro planeta","= La estrella","= 365 días"]', 'modo aula: del crucigrama, solo las pistas');
     eq(JSON.stringify(bare(WS).options) + JSON.stringify(bare({ kind: 'match', options: ['a = b'] }).options) + JSON.stringify(bare({ kind: 'quiz', options: ['x'], correct: [0] })), '["Gato","Perro","= Tiene ocho patas"][]{"kind":"quiz","options":["x"]}', 'y de las demás, nada que dé la respuesta');
   });
@@ -1002,6 +1002,118 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       const PE = (type, dx) => el.dispatchEvent(new win.PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 1, button: 0, clientX: r.left + 5 + dx, clientY: r.top + 5 }));
       PE('pointerdown', 0); PE('pointermove', 40); PE('pointerup', 40);
       near(parseFloat(el.style.left) - x0, 40 / k, 'se arrastra con el ratón o el dedo', 1);
+    } finally { f.remove(); }
+  });
+
+  // The letter wheel: a clue per letter, «starts with» or «contains».
+  const WH = { kind: 'wheel', pollId: 'wh1', question: 'Animales', time: 60, options: ['Ñ = ñandú = Ave que corre y no vuela', 'abeja = Hace miel', '~B = árbol|arbol = Tiene tronco y ramas', 'perro = Contiene la R: ladra', 'zorro = Contiene astucia'] };
+  await test('rueda de letras: letras en orden (la Ñ tras la N), «empieza por» o «contiene», sin las respuestas al móvil, y se corrige', async () => {
+    reset(); const W = frame.contentWindow, P = await W.eval("import('/src/features/live/poll.js')");
+    const pub = P.publicActivity(WH), full = P.publicActivity(WH, true);
+    eq(pub.items.map(x => x.l + (x.c ? '~' : '')).join(), 'A,B~,Ñ,R~,Z', 'por orden alfabético, Ñ tras la N; «contiene» con «~» o si la pista lo dice');
+    eq(pub.items.find(x => x.l === 'R').q, 'ladra', 'la pista, sin repetir lo que dice el móvil');
+    eq(pub.items.find(x => x.l === 'Z').c, 0, '«Contiene astucia» no es la regla');
+    eq(pub.time, 60, 'con su tiempo'); eq(P.publicActivity({ kind: 'wheel', pollId: 'x', options: ['a = b'] }).time, 150, '150 s si no se dice');
+    assert(!/ñandú|abeja|árbol|perro|zorro/i.test(JSON.stringify(pub)) && pub.items.every(x => !('a' in x)), 'sin las respuestas: ' + JSON.stringify(pub));
+    eq(full.items.find(x => x.l === 'B').a, 'árbol|arbol', 'la pantalla del presentador sí las tiene');
+    eq(P.gradeActivity(WH, ['Nandu', 'ABEJA', 'Arbol', '', 'zorra']).score, 0.6, 'letra a letra, sin tildes ni mayúsculas, con respuestas alternativas; en blanco no');
+    // Results: the wheel, its letters coloured by how many got each right once revealed; the ranking.
+    const votes = { a: { a: ['ñandú', 'abeja', 'árbol', 'perro', 'zorro'], n: 'Ana' }, b: { a: ['ñandu', 'oso', '', 'perro', ''], n: 'Bea' } }, r = P.tallyVotes(WH, votes);
+    eq(r.board.map(x => x.n + ':' + x.pts).join(), 'Ana:1000,Bea:400', 'la clasificación'); eq(r.counts.join(), '2,1,1,2,1', 'aciertos por letra');
+    const hid = P.pollResultsHTML(WH, { ...r, layout: full, revealed: false }, null, P.pollLabels());
+    assert((hid.match(/<circle/g) || []).length === 5 && !/ñandú|#26890c/.test(hid), 'mientras se responde: la rueda con sus letras, sin soluciones ni colores');
+    const shown = P.pollResultsHTML(WH, { ...r, layout: full, revealed: true }, null, P.pollLabels());
+    assert(/fill="#26890c"/.test(shown) && /fill="#d89e00"/.test(shown) && /<b>Ñ<\/b> ñandú · 100 %/.test(shown) && /Ana/.test(shown), 'con un clic: cada letra de color según cuántos la acertaron, su respuesta y la clasificación');
+    W.localStorage.setItem('revela.poll.wh1', JSON.stringify(votes));
+    assert(/^participante,puntos,aciertos\n"Ana",1000,100 %\n"Bea",400,40 %$/.test(P.votesCSV(WH)), 'en CSV: ' + P.votesCSV(WH)); W.localStorage.removeItem('revela.poll.wh1');
+    // The editor: the kind, its help, its time; the slide shows the wheel. Reading mode: the clues.
+    const b = P.addPoll(); await sleep(20);
+    const E = await W.eval("import('/src/ui/dialogs/poll.js')"); E.openPollEditor(slide().blocks.find(x => x.id === b.id)); await sleep(10);
+    const m = D.getElementById('poll-modal'), kind = m.querySelector('.pl-kind');
+    kind.value = 'wheel'; kind.dispatchEvent(new W.Event('change'));
+    assert(!m.querySelector('.pl-wheel').hidden && /A = respuesta = pista/.test(m.querySelector('.pl-help').textContent), 'rueda: su ayuda y su tiempo');
+    m.querySelector('.pl-opts').value = WH.options.join('\n'); m.querySelector('.pl-wtime').value = '90'; m.querySelector('.pl-ok').click(); await sleep(20);
+    const g = slide().blocks.find(x => x.id === b.id); eq(g.kind + '|' + g.options.length + '|' + g.time, 'wheel|5|90', 'se guarda, con su tiempo');
+    assert(D.querySelectorAll(`.block[data-id="${b.id}"] .poll-blk circle`).length === 5, 'la diapositiva muestra la rueda');
+    const RD = await W.eval("import('/src/io/runtime/reading.js')"), sec = W.document.createElement('section');
+    sec.innerHTML = `<div data-poll="${JSON.stringify({ kind: 'wheel', question: 'Animales', options: WH.options }).replace(/"/g, '&quot;')}"></div>`;
+    const txt = RD.readingItems(sec).map(x => x.text).join(' | ');
+    assert(/A: Hace miel/.test(txt) && /B: Tiene tronco y ramas/.test(txt) && !/abeja|árbol/.test(txt), 'modo lectura: las pistas, sin las respuestas: ' + txt);
+    const html = R.io.buildHTML(), bare = new W.Function('GR', 'publicActivity', 'return ' + html.match(/function bare\(p\)\{.*\n.*/)[0])(['quiz', 'wheel'], P.publicActivity);
+    eq(JSON.stringify(bare(WH).options), '["A =  = Hace miel","~B =  = Tiene tronco y ramas","Ñ =  = Ave que corre y no vuela","~R =  = ladra","Z =  = Contiene astucia"]', 'modo aula: solo letras y pistas');
+    assert(/"time":90/.test(html.replace(/&quot;/g, '"')), 'la presentación sabe su tiempo');
+  });
+
+  await test('rueda de letras en el móvil (360 px) y a su ritmo: se responde o se salta, vuelve en la siguiente vuelta, y se envía sola al acabar', async () => {
+    const W = frame.contentWindow, P = await W.eval("import('/src/features/live/poll.js')"), pub = P.publicActivity(WH);
+    const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:360px;height:740px;opacity:0';
+    f.src = new URL('../vote.html?test', D.baseURI).href; document.body.appendChild(f);
+    let v; for (let i = 0; i < 60 && !(v = f.contentWindow)?.__vote; i++) await sleep(100);
+    try {
+      const d = f.contentDocument, G = () => d.querySelector('.rv-game'), sent = () => v.__sent.filter(m => m.type === 'vote').at(-1);
+      v.__vote.onData({ type: 'poll', poll: { pollId: 'wh1', kind: 'wheel', question: 'Animales', options: [], pub } });
+      const spans = [...G().querySelectorAll('[dir=ltr] > span')]; eq(spans.map(s => s.textContent).join(''), 'ABÑRZ', 'las letras en círculo, de izquierda a derecha');
+      assert(/Empieza por la A/.test(G().textContent) && /Hace miel/.test(G().textContent), 'la letra de turno, su regla y su pista');
+      const inp = G().querySelector('input'), [ok, skip] = G().querySelectorAll('button');
+      const say = t => { inp.value = t; ok.click(); };
+      say('abeja'); skip.click();                                     // (A answered, B skipped)
+      assert(/Empieza por la Ñ/.test(G().textContent) && /Ave que corre/.test(G().textContent), 'saltar: a la siguiente');
+      say('ñandú'); assert(/Contiene la R/.test(G().textContent) && /ladra/.test(G().textContent), '«contiene»'); say('perro'); say('zorro');
+      assert(/Contiene la B/.test(G().textContent), 'la saltada vuelve en la siguiente vuelta');
+      eq(spans[1].style.background, 'rgb(249, 171, 0)', 'resaltada'); eq(spans[0].style.background, 'rgb(142, 108, 201)', 'las respondidas, de otro color (el móvil no sabe si están bien)');
+      assert(d.documentElement.scrollWidth <= 360, 'cabe a lo ancho (' + d.documentElement.scrollWidth + ' px)');
+      assert(/\d+ s/.test(G().textContent), 'con la cuenta atrás');
+      inp.value = 'arbol'; inp.dispatchEvent(new v.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      eq(JSON.stringify(sent()?.answer), '["ñandú","abeja","arbol","perro","zorro"]', 'todas respondidas: se envía sola, en el orden de las líneas del profesor');
+      eq(P.gradeActivity(WH, sent().answer).score, 1, 'y está bien'); assert(inp.disabled && ok.disabled, 'y ya no se cambia');
+      // The time running out ends it too: sent as it is.
+      v.__vote.onData({ type: 'poll', poll: { pollId: 'wh2', kind: 'wheel', question: 'Rápido', options: [], pub: { ...pub, time: 1 } } });
+      const inp2 = G().querySelector('input'); inp2.value = 'abeja'; G().querySelector('button').click();
+      for (let i = 0; i < 40 && sent().pollId !== 'wh2'; i++) await sleep(100);
+      eq(JSON.stringify(sent().answer), '["","abeja","","",""]', 'se acaba el tiempo: se envía lo que haya'); assert(/¡Tiempo!/.test(G().textContent), 'y lo dice');
+    } finally { f.remove(); }
+    // Self-paced: inside the slide, checked by itself at the end.
+    reset(); R.poll.addPoll({ kind: 'wheel', question: WH.question, options: WH.options, time: 0 }); await sleep(10);
+    const html = R.io.buildHTML(R.state.deck, { selfPaced: true });
+    for (const sc of new DOMParser().parseFromString(html, 'text/html').querySelectorAll('script:not([src])')) { try { new Function(sc.textContent); } catch (e) { assert(false, 'código con error: ' + e.message); } }
+    const sf = document.createElement('iframe'); sf.style.cssText = 'position:fixed;left:0;top:0;width:640px;height:360px;opacity:0';
+    sf.src = URL.createObjectURL(new Blob([html], { type: 'text/html' })); document.body.appendChild(sf);
+    let w; for (let i = 0; i < 80 && !((w = sf.contentWindow).Reveal?.isReady?.() && w.document.querySelector('.rv-game')); i++) await sleep(100);
+    try {
+      const box = w.document.querySelector('.rv-poll'), inp = box.querySelector('.rv-game input'), ok = box.querySelector('.rv-game button');
+      assert(!/\d+ s/.test(box.querySelector('.rv-game').textContent), 'sin límite de tiempo: sin cuenta atrás');
+      for (const a of ['abeja', 'árbol', 'x', 'perro', 'zorro']) { inp.value = a; ok.click(); }
+      await sleep(30);
+      assert(/80 % de aciertos/.test(box.querySelector('.rv-self-result')?.textContent), 'al acabar se corrige sola: ' + box.innerHTML.slice(-300));
+    } finally { sf.remove(); }
+  });
+
+  await test('rueda de letras al presentar: los móviles reciben solo lo público, y la tecla J la juega en pantalla con una persona', async () => {
+    reset(); R.poll.addPoll({ kind: 'wheel', question: WH.question, options: WH.options, time: 0 }); const pw = last(); R.poll.clearVotes(pw.pollId);
+    const fake = URL.createObjectURL(new Blob(['window.Peer=function(id){var s=this;s.h={};s.on=function(e,f){(s.h[e]=s.h[e]||[]).push(f);};s.destroy=function(){};window.__votePeer=s;setTimeout(function(){(s.h.open||[]).forEach(function(f){f(id);});},0);};'], { type: 'text/javascript' }));
+    const noqr = URL.createObjectURL(new Blob(['window.QRCode=null;'], { type: 'text/javascript' }));
+    const { f, win, doc } = await deckFrame(R.io.buildHTML(R.state.deck, { inApp: true }).split(R.vendor.PEERJS).join(fake).split(R.vendor.QRCODE).join(noqr), 800, 450);
+    try {
+      for (let i = 0; i < 40 && !win.__votePeer?.h.connection; i++) await sleep(50);
+      const sent = [], c = { open: true, h: {}, on(e, fn) { (this.h[e] = this.h[e] || []).push(fn); }, send(m) { sent.push(m); }, close() {} };
+      win.__votePeer.h.connection.forEach(fn => fn(c)); c.h.open.forEach(fn => fn());
+      const ph = sent.filter(x => x.type === 'poll').at(-1).poll;
+      eq(ph.kind + '|' + ph.pub.items.length + '|' + ph.options.length, 'wheel|5|0', 'al móvil: la rueda, sin las líneas del profesor');
+      assert(!/abeja|árbol|zorro/.test(JSON.stringify(ph)), 'ni sus respuestas');
+      c.h.data.forEach(fn => fn({ type: 'vote', pollId: pw.pollId, voter: 'v1', answer: ['ñandú', 'abeja', '', 'perro', ''], name: 'Ana' }));
+      assert(/<circle/.test(doc.querySelector('.present .rv-poll-res').innerHTML), 'en pantalla, la rueda');
+      // Host mode: one contestant, the presenter marks.
+      const key = k => win.dispatchEvent(new win.KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+      key('j'); const host = doc.getElementById('rv-wheel'); assert(host, 'J: la rueda en pantalla');
+      assert(/Empieza por la A/.test(host.textContent) && /Hace miel/.test(host.textContent) && !/abeja/.test(host.textContent), 'la letra, su regla y su pista; la respuesta, no');
+      const before = win.Reveal.getIndices().h;
+      key('Enter'); key('ArrowLeft');
+      assert(/→ árbol/.test(host.textContent), 'un fallo enseña la respuesta'); eq(win.Reveal.getIndices().h, before, 'y las flechas no cambian de diapositiva');
+      assert(/Empieza por la Ñ/.test(host.textContent), 'la siguiente'); key(' '); assert(/Contiene la R/.test(host.textContent), 'espacio: salta a la siguiente');
+      const dots = [...host.querySelectorAll('b')]; eq(dots[0].style.background, 'rgb(38, 137, 12)', 'acierto en verde'); eq(dots[1].style.background, 'rgb(201, 79, 79)', 'fallo en rojo');
+      dots[4].click(); assert(/Contiene astucia/.test(host.textContent), 'un clic en una letra va a ella');
+      assert(/Aciertos: 1 · Fallos: 1/.test(host.textContent), 'el marcador');
+      key('Escape'); assert(!doc.getElementById('rv-wheel'), 'Esc la cierra');
     } finally { f.remove(); }
   });
 

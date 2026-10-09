@@ -245,7 +245,7 @@ src/
       screenfit.js             slides on a screen of another proportion
       pdf.js                   PDFs to leaf through (pdf.js)
       selfpaced.js             quizzes and activities answered inside the presentation (also LTI)
-      games.js                 crossword, word search and memory, played on the phones and inside the slides
+      games.js                 crossword, word search, memory and letter wheel, played on the phones and inside the slides
       reading.js               reading mode
       tabs.js                  tab stops
       timer.js                 countdown timers

@@ -15,7 +15,7 @@ export function openPollEditor(b, { fresh = false } = {}) {
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(520px,94vw);max-width:94vw">
     <button class="modal-close">✕</button><h3>${t('Votación en directo')}</h3>
     <label class="fr-l">${t('Pregunta')}<input type="text" class="pl-q"></label>
-    <label class="fr-l">${t('Tipo')}<select class="pl-kind">${opt('choice', 'Una opción', b.kind)}${opt('multi', 'Varias opciones', b.kind)}${opt('rating', 'Valoración 1 a 5', b.kind)}${opt('word', 'Nube de palabras', b.kind)}${opt('qa', 'Preguntas del público', b.kind)}${opt('quiz', 'Cuestionario (con respuesta correcta y puntos)', b.kind)}${opt('order', 'Actividad: ordenar', b.kind)}${opt('match', 'Actividad: unir parejas', b.kind)}${opt('gaps', 'Actividad: completar huecos', b.kind)}${opt('label', 'Actividad: etiquetar una imagen', b.kind)}${opt('sort', 'Actividad: clasificar en grupos', b.kind)}${opt('crossword', 'Actividad: crucigrama', b.kind)}${opt('wordsearch', 'Actividad: sopa de letras', b.kind)}${opt('memory', 'Actividad: memoria (parejas)', b.kind)}${opt('open', 'Respuesta abierta (muro de respuestas)', b.kind)}${opt('number', 'Adivinar un número', b.kind)}${opt('image', 'Elegir entre imágenes', b.kind)}${opt('point', 'Tocar un punto de una imagen', b.kind)}${opt('rank', 'Ordenar por preferencia', b.kind)}${opt('draw', 'Respuesta dibujada', b.kind)}${opt('photo', 'Respuesta con una foto', b.kind)}${opt('audio', 'Respuesta de voz (audio)', b.kind)}${opt('board', 'Clasificación de los cuestionarios', b.kind)}</select></label>
+    <label class="fr-l">${t('Tipo')}<select class="pl-kind">${opt('choice', 'Una opción', b.kind)}${opt('multi', 'Varias opciones', b.kind)}${opt('rating', 'Valoración 1 a 5', b.kind)}${opt('word', 'Nube de palabras', b.kind)}${opt('qa', 'Preguntas del público', b.kind)}${opt('quiz', 'Cuestionario (con respuesta correcta y puntos)', b.kind)}${opt('order', 'Actividad: ordenar', b.kind)}${opt('match', 'Actividad: unir parejas', b.kind)}${opt('gaps', 'Actividad: completar huecos', b.kind)}${opt('label', 'Actividad: etiquetar una imagen', b.kind)}${opt('sort', 'Actividad: clasificar en grupos', b.kind)}${opt('crossword', 'Actividad: crucigrama', b.kind)}${opt('wordsearch', 'Actividad: sopa de letras', b.kind)}${opt('memory', 'Actividad: memoria (parejas)', b.kind)}${opt('wheel', 'Actividad: rueda de letras', b.kind)}${opt('open', 'Respuesta abierta (muro de respuestas)', b.kind)}${opt('number', 'Adivinar un número', b.kind)}${opt('image', 'Elegir entre imágenes', b.kind)}${opt('point', 'Tocar un punto de una imagen', b.kind)}${opt('rank', 'Ordenar por preferencia', b.kind)}${opt('draw', 'Respuesta dibujada', b.kind)}${opt('photo', 'Respuesta con una foto', b.kind)}${opt('audio', 'Respuesta de voz (audio)', b.kind)}${opt('board', 'Clasificación de los cuestionarios', b.kind)}</select></label>
     <p class="host-help pl-help"></p>
     <label class="fr-l pl-text-l">${t('Texto con huecos')}<textarea class="pl-text" rows="3" placeholder="${t('La capital de Francia es [París]. Varias respuestas válidas: [coche|automóvil].')}"></textarea></label>
     <div class="pl-pic" hidden><div class="fr-actions" style="justify-content:flex-start"><label class="mini2 pl-img-btn">${t('Elegir imagen…')}<input type="file" accept="image/*" hidden class="pl-img"></label>
@@ -39,6 +39,7 @@ export function openPollEditor(b, { fresh = false } = {}) {
     <label class="fr-l pl-quiz">${t('Modo')}<select class="pl-mode">${opt('speed', 'Rapidez: más puntos cuanto antes', b.mode || 'speed')}${opt('accuracy', 'Precisión: solo cuenta acertar, sin prisa', b.mode)}${opt('confidence', 'Confianza: cada uno dice lo seguro que está', b.mode)}</select></label>
     <label class="fr-l pl-teams-l">${t('Por equipos (un nombre por línea; vacío: cada uno por su cuenta)')}<textarea class="pl-teams" rows="2" placeholder="${t('Rojo')}&#10;${t('Azul')}">${(state.deck.teams || []).join('\n').replace(/</g, '&lt;')}</textarea></label>
     <p class="host-help pl-teams-l">${t('Vale para todos los cuestionarios de la presentación: cada móvil elige equipo y la clasificación muestra la media de cada equipo. Al responder se ganan estrellas (una por respuesta y otra por acierto) y cada 5, un nivel.')}</p>
+    <label class="fr-l pl-wheel">${t('Tiempo total (segundos; 0: sin límite)')}<input type="number" min="0" max="3600" step="10" class="pl-wtime" style="width:7em" value="${b.kind === 'wheel' ? b.time ?? 150 : 150}"></label>
     <label class="fr-l pl-quiz">${t('Tiempo para responder')}<select class="pl-time">${[10, 20, 30, 45, 60, 90].map(n => `<option value="${n}"${(b.time || 20) === n ? ' selected' : ''}>${n} s</option>`).join('')}</select></label>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label class="fr-l">${t('Color del texto')} <input type="color" class="pl-ink" value="${b.color || '#222222'}"></label>
       <label class="fr-chk"><input type="checkbox" class="pl-ink-auto"${b.color ? '' : ' checked'}> ${t('El de la paleta')}</label></div>
@@ -64,6 +65,7 @@ export function openPollEditor(b, { fresh = false } = {}) {
     crossword: 'Una palabra por línea con su pista: «PALABRA = pista». Revela monta el crucigrama; en los móviles salen la cuadrícula y las pistas numeradas, nunca las palabras. Da igual mayúsculas, tildes y espacios.',
     wordsearch: 'Las palabras que hay que encontrar, una por línea; con «PALABRA = pista», en los móviles sale la pista en lugar de la palabra. Revela las esconde en horizontal, en vertical y en diagonal, y rellena el resto con letras de las mismas palabras.',
     memory: 'Una pareja por línea: «A = B». En los móviles salen las cartas boca abajo y cada persona busca las parejas; cuentan las parejas encontradas y, para desempatar, los intentos. Es para practicar: el móvil necesita las dos caras de cada carta para jugar.',
+    wheel: 'Una letra por línea: «A = respuesta = pista» (sin la letra, vale la primera de la respuesta; «~» delante para «Contiene la…» en lugar de «Empieza por la…»; «a|b» si valen dos respuestas). En los móviles salen la rueda, la letra y la pista, nunca la respuesta. Al presentar, la tecla J la juega en la pantalla con una sola persona, sin móviles.',
     open: 'Cada persona escribe una respuesta corta; salen en un muro, las más recientes primero.',
     number: 'Cada persona da un número con un deslizador; se ven la media, la mediana y cómo se reparten, y la respuesta si la pones.',
     image: 'Escribe el nombre de cada opción (uno por línea) y elige su imagen.',
@@ -88,7 +90,7 @@ export function openPollEditor(b, { fresh = false } = {}) {
   };
   const sync = () => { const k = q('.pl-kind').value; q('.pl-opts-l').hidden = ['rating', 'word', 'qa', 'board', 'gaps', 'open', 'number', 'point', 'draw', 'photo', 'audio'].includes(k);
     q('.pl-num').hidden = k !== 'number'; q('.pl-imgs').hidden = k !== 'image'; if (k === 'image') drawImgs(); q('.pl-rub').hidden = k !== 'open';
-    back.querySelectorAll('.pl-quiz').forEach(x => { x.hidden = k !== 'quiz'; });
+    back.querySelectorAll('.pl-quiz').forEach(x => { x.hidden = k !== 'quiz'; }); q('.pl-wheel').hidden = k !== 'wheel';
     back.querySelectorAll('.pl-mod-l').forEach(x => { x.hidden = k !== 'qa'; }); q('.pl-clean-l').hidden = !['qa', 'word', 'open'].includes(k);
     back.querySelectorAll('.pl-teams-l').forEach(x => { x.hidden = k !== 'quiz' && k !== 'board'; });
     q('.pl-help').hidden = !HELP[k]; q('.pl-help').textContent = HELP[k] ? t(HELP[k]) : '';
@@ -152,7 +154,7 @@ export function openPollEditor(b, { fresh = false } = {}) {
   q('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
   q('.pl-ok').addEventListener('click', () => {
-    const lines = q('.pl-opts').value.split('\n').map(s => s.trim()).filter(Boolean).slice(0, ACTIVITIES.includes(q('.pl-kind').value) ? 20 : 10);
+    const lines = q('.pl-opts').value.split('\n').map(s => s.trim()).filter(Boolean).slice(0, q('.pl-kind').value === 'wheel' ? 27 : ACTIVITIES.includes(q('.pl-kind').value) ? 20 : 10);
     // (Quiz: "*" marks the right answers.)
     const correct = lines.map((l, i) => (l.startsWith('*') ? i : -1)).filter(i => i >= 0), options = lines.map(l => l.replace(/^\*\s*/, ''));
     const kind = q('.pl-kind').value;
@@ -162,6 +164,7 @@ export function openPollEditor(b, { fresh = false } = {}) {
       color: q('.pl-ink-auto').checked ? null : q('.pl-ink').value,
       ...(kind === 'quiz' && { correct: correct.length ? correct : [0], time: +q('.pl-time').value, mode: q('.pl-mode').value === 'speed' ? null : q('.pl-mode').value }),
       ...(kind === 'gaps' && { text: q('.pl-text').value.trim() }),
+      ...(kind === 'wheel' && { time: Math.max(0, Math.min(3600, Math.round(+q('.pl-wtime').value) || 0)) }),
       ...(kind === 'label' && { image, points: options.map((_, i) => points[i] || { x: 50, y: 50 }) }),
       ...(kind === 'point' && { image }), ...(kind === 'draw' && { image: image || null }),
       ...(kind === 'image' && { images: options.map((_, i) => images[i] || '') }),

@@ -342,7 +342,7 @@ async function openLiveQuiz() {
   document.getElementById('lq-modal')?.remove();
   const back = document.createElement('div'); back.id = 'lq-modal'; back.className = 'modal-backdrop';
   const KIND = [['quiz', 'Preguntas con respuesta correcta y puntos'], ['match', 'Unir parejas'], ['order', 'Ordenar'], ['gaps', 'Completar huecos'],
-    ['crossword', 'Crucigrama'], ['wordsearch', 'Sopa de letras'], ['memory', 'Memoria (parejas)']];
+    ['crossword', 'Crucigrama'], ['wordsearch', 'Sopa de letras'], ['memory', 'Memoria (parejas)'], ['wheel', 'Rueda de letras']];
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(480px,94vw);max-width:none"><button class="modal-close">✕</button><h3>${t('Cuestionario en directo')}</h3>
     <p class="host-help">${t('La IA lee la presentación y prepara preguntas y actividades que el público responde desde el móvil, con puntos y clasificación. Puedes editarlas después como cualquier votación.')}</p>
     <label class="fr-l">${t('Cuántas')}<input type="number" class="lq-n" min="1" max="15" value="5"></label>

@@ -3,7 +3,7 @@
 // by the server (server/cloudflare/lti.js), which marks self-paced answers.
 // Activities with right answers, answered from the phone (none of the answers
 // reach it): put in order, match pairs, fill in the gaps, label a picture,
-// sort into groups, a crossword, a word search, a memory game.
+// sort into groups, a crossword, a word search, a memory game, an alphabet wheel.
 // Each answer is a list of texts; each item right or wrong, and the score is
 // the share right (1000 points for all of them). Self-contained, like tallyVotes.
 //   order  options: the items in the right order
@@ -18,7 +18,11 @@
 //               strings the pupil marked on the grid (as many as words, at most), forwards or backwards
 //   memory      options: "A = B" pairs; the answer has each pair's B once found, in the pairs' order, then the number of
 //               attempts. The phone needs both sides to play on its own, so this one is practice: its content isn't secret.
-export var ACTIVITIES = ['order', 'match', 'gaps', 'label', 'sort', 'crossword', 'wordsearch', 'memory'];
+//   wheel       options: "A = answer = clue" lines (the letter left out: the answer's first one; "~" before the line, or a
+//               clue starting «Contiene», for «contains the letter» instead of «starts with»; "a|b": either answer is
+//               right); the answer has what was typed for each line ('' = not answered). The phone gets each letter,
+//               its rule and its clue, in the alphabet's order (Ñ after N), and the time limit (time, seconds; 0: none).
+export var ACTIVITIES = ['order', 'match', 'gaps', 'label', 'sort', 'crossword', 'wordsearch', 'memory', 'wheel'];
 export function gradeActivity(p, a) {
   var norm = function (s) { return String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); };
   var o = p.options || [], per = [];
@@ -28,6 +32,8 @@ export function gradeActivity(p, a) {
   else if (p.kind === 'match' || p.kind === 'memory') per = o.map(function (l, i) { var r = String(l).split('=').slice(1).join('='); return norm(a[i]) !== '' && norm(a[i]) === norm(r); });
   else if (p.kind === 'sort') o.forEach(function (l) { var c = String(l).split(':'), cat = norm(c[0]);
     c.slice(1).join(':').split(/[,;]/).forEach(function (it) { if (!it.trim()) return; var got = norm(a[per.length]); per.push(got !== '' && got === cat); }); });
+  else if (p.kind === 'wheel') per = o.map(function (l, i) { var x = String(l).trim().replace(/^~/, '').split('='), three = x.length > 2 && /^\s*\p{L}\s*$/u.test(x[0].normalize('NFC')), got = norm(a[i]);
+    return got !== '' && (three ? x[1] : x[0]).split('|').some(function (alt) { return norm(alt) === got; }); });
   else if (p.kind === 'crossword') per = o.map(function (l, i) { var w = letters(String(l).split('=')[0]); return w !== '' && letters(a[i]) === w; });
   else if (p.kind === 'wordsearch') { var got = a.slice(0, o.length).map(letters);       // (no more marks than words: marking every line doesn't pay)
     per = o.map(function (l) { var w = letters(String(l).split('=')[0]); return w !== '' && (got.indexOf(w) >= 0 || got.indexOf(w.split('').reverse().join('')) >= 0); }); }
@@ -129,6 +135,17 @@ export function publicActivity(p, full) {
     return ws2;
   }
   // (Each card knows its pair, k, and which side it is, b: the phone plays alone. Nothing to hide here.)
+  if (p.kind === 'wheel') {
+    var AB = 'ABCDEFGHIJKLMN\u00d1OPQRSTUVWXYZ', rank = function (L) { var k = AB.indexOf(L); return k < 0 ? 99 : k; };
+    var round = o.map(function (l, i) { var s = String(l).trim(), has = s.charAt(0) === '~'; if (has) s = s.slice(1);
+      var x = s.split('='), three = x.length > 2 && /^\s*\p{L}\s*$/u.test(x[0].normalize('NFC')), ans = (three ? x[1] : x[0]).trim(), q = (three ? x.slice(2) : x.slice(1)).join('=').trim();
+      // (A clue that says it — «Contiene la R: …» — is the same as "~"; the phone says it already, so it goes from the clue.)
+      var L = (three ? cells(x[0]) : cells(ans.split('|')[0]))[0], says = q.match(/^contiene\s+(?:la\s+)?["«]?(\p{L})["»]?(?=[\s:.,;]|$)[\s:.,;]*/iu);
+      if (says) { has = true; q = q.slice(says[0].length); if (!three) L = cells(says[1])[0]; }
+      var it = { l: L || '?', c: has ? 1 : 0, q: q, i: i }; if (full) it.a = ans; return it; });
+    round.sort(function (a, b) { return rank(a.l) - rank(b.l) || (a.l < b.l ? -1 : a.l > b.l ? 1 : 0) || a.i - b.i; });
+    return { items: round, time: p.time == null || p.time === '' ? 150 : Math.max(0, Math.round(+p.time) || 0) };
+  }
   if (p.kind === 'memory') { var cards = []; o.forEach(function (l, i) { var x = split(l); cards.push({ t: x[0], k: i }, { t: x[1], k: i, b: 1 }); }); return { cards: shuffle(cards), n: o.length }; }
   if (p.kind === 'sort') { var cats = [], items = [];
     o.forEach(function (l) { var c = String(l).split(':'); cats.push(c[0].trim()); c.slice(1).join(':').split(/[,;]/).forEach(function (it) { if (it.trim()) items.push({ t: it.trim(), i: items.length }); }); });
@@ -139,6 +156,6 @@ export function publicActivity(p, full) {
 // or an activity's list of texts. null if the poll isn't graded.
 export function gradeAnswer(p, a) {
   if (p.kind === 'quiz') return (p.correct || [0]).indexOf(+a) >= 0 && a !== null && a !== '' ? 1 : 0;
-  if (['order', 'match', 'gaps', 'label', 'sort', 'crossword', 'wordsearch', 'memory'].indexOf(p.kind) >= 0) return gradeActivity(p, a).score;
+  if (['order', 'match', 'gaps', 'label', 'sort', 'crossword', 'wordsearch', 'memory', 'wheel'].indexOf(p.kind) >= 0) return gradeActivity(p, a).score;
   return null;
 }

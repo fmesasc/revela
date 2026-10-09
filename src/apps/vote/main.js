@@ -217,7 +217,7 @@ function readAloud() {
   speechSynthesis.cancel(); speechSynthesis.speak(u);
 }
 
-// Activities (put in order, match, fill in the gaps, label a picture, sort; a crossword, a word search, a memory game): the
+// Activities (put in order, match, fill in the gaps, label a picture, sort; a crossword, a word search, a memory game, an alphabet wheel): the
 // answer is a list of texts; the presentation marks it (it alone knows the answers).
 const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
 function nickField(box) {
@@ -251,8 +251,10 @@ function renderActivity(box) {
   } else if (poll.kind === 'sort') {                    // (each item shuffled, with its group; the answer in the items' own order)
     answer = pub.items.map(() => '');
     box.append(el('p', { textContent: 'Elige el grupo de cada uno:' }), ...pub.items.map(it => el('div', { className: 'act-row' }, el('span', { textContent: it.t }), choose(pub.cats, v => { answer[it.i] = v; }))));
-  } else if (['crossword', 'wordsearch', 'memory'].includes(poll.kind)) {   // (played here: io/runtime/games.js, also inside the slides)
-    box.append(activityGame(poll.kind, pub, a => { answer = a; }, GAME_WORDS));
+  } else if (['crossword', 'wordsearch', 'memory', 'wheel'].includes(poll.kind)) {   // (played here: io/runtime/games.js, also inside the slides)
+    const g = activityGame(poll.kind, pub, a => { answer = a; }, GAME_WORDS);
+    g.addEventListener('rvdone', () => { if (!$('#send').hidden) $('#send').click(); });       // (the wheel, over: sent by itself)
+    box.append(g);
   } else if (poll.kind === 'label') {
     answer = pub.points.map(() => '');
     const pic = el('div', { className: 'act-pic' }, el('img', { src: pub.image, alt: '' }));

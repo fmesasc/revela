@@ -4,7 +4,7 @@
 
 import { esc } from '../../core/text.js';
 import { state } from '../../core/store.js';
-import { tallyVotes, savedVotes, GRADED } from '../../features/live/poll.js';
+import { tallyVotes, savedVotes, GRADED, publicActivity } from '../../features/live/poll.js';
 import { t } from '../../i18n/index.js';
 import { alertDialog } from './dialog.js';
 import { hasAccounts } from '../../io/cloud/account.js';
@@ -35,7 +35,7 @@ export function questionReport(deck = state.deck) {
   }).filter(Boolean).sort((a, b) => a.pct - b.pct);
 }
 // (An activity's items, as the results show them: «1. first», «left → right», «item → group», the gaps' answers,
-// «clue → word», the words to find, «A ↔ B».)
+// «clue → word», the words to find, «A ↔ B», «A: answer».)
 function itemsOf(b) {
   const o = b.options || [];
   if (b.kind === 'match') return o.map(l => { const x = String(l).split('='); return x[0].trim() + ' → ' + x.slice(1).join('=').trim(); });
@@ -45,6 +45,7 @@ function itemsOf(b) {
   if (b.kind === 'crossword') return o.map(l => { const [w, c] = two(l); return (c ? c + ' → ' : '') + w; });
   if (b.kind === 'wordsearch') return o.map(l => two(l)[0]);
   if (b.kind === 'memory') return o.map(l => two(l).join(' ↔ '));
+  if (b.kind === 'wheel') { const it = publicActivity(b, true).items; return o.map((l, i) => { const x = it.find(y => y.i === i); return x ? x.l + ': ' + x.a.split('|')[0] : l; }); }
   return o.map((l, i) => (i + 1) + '. ' + l);
 }
 export function classResultsCSV(deck = state.deck) {
