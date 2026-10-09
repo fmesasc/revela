@@ -290,7 +290,7 @@ export function pollEditorHTML(b, accents) {
     + `<div style="display:flex;flex-direction:column;min-width:0"><div style="font-weight:700;margin-bottom:.5em">${esc(b.question || '')}</div>`
     + `<div style="flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center">${pollResultsHTML(b, res, accents, pollLabels())}</div></div>`
     + `<div style="align-self:center;text-align:center;font-size:18px"><div style="width:220px;height:220px;border-radius:8px;background:#fff;color:#223;display:grid;place-items:center">`
-    + `<div><div style="font-size:64px;line-height:1">▦</div><div>QR</div></div></div><div style="margin-top:6px;opacity:.8">${VOTE_URL.replace(/^https?:\/\//, '')}</div></div></div>`;
+    + `<div><div style="font-size:64px;line-height:1">▦</div><div>QR</div></div></div><div style="margin-top:6px;opacity:.8;font-size:16px;max-width:220px;overflow-wrap:anywhere">${VOTE_URL.replace(/^https?:\/\//, '')}</div></div></div>`;
 }
 
 // Results saved by the presentation (same origin) for the editor.
