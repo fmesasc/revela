@@ -2430,6 +2430,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const n0 = R.state.deck.slides.length;
     eq(await R.files.pdfToSlides(b.src), 2); eq(R.state.deck.slides.length, n0 + 2, 'dos diapositivas nuevas');
     assert(slide().blocks[0].type === 'image' && /^data:image\/png/.test(slide().blocks[0].src), 'cada página, como imagen');
+    // Opened (Archivo ▸ Abrir): a new presentation, a slide per page, named after the file; nothing to undo back to.
+    reset(); await R.openfile.openPdfDeck(pdf); await sleep(30);
+    eq(R.state.deck.name + ' ' + R.state.deck.slides.length, 'informe 2', 'abrir un PDF: una presentación con sus páginas');
+    assert(R.state.deck.slides.every(x => x.blocks.length === 1 && x.blocks[0].type === 'image'), 'sin la diapositiva vacía del principio');
+    R.store.undo(); assert(R.state.deck.slides.length !== 2 || R.state.deck.name !== 'informe', 'deshacer vuelve a la de antes, de una vez');
+    assert(/\.pdf/.test(R.openfile.OPEN_ACCEPT) && /application\/vnd\.openxml/.test(R.openfile.OPEN_ACCEPT), 'Abrir acepta PDF, y los tipos MIME de PowerPoint (el selector de Linux solo mira esos)');
     // Any other file: an icon that downloads it (generic data: the presentation keeps only known kinds).
     reset();
     await R.openfile.dropFiles([new W.File(['a,b\n1,2'], 'datos.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })]); await sleep(20);

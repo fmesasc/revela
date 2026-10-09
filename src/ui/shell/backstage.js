@@ -13,9 +13,9 @@ const SECTIONS = [
   { id: 'new', icon: 'note_add', title: 'Nuevo', cards: [
     C('new', 'note_add', 'En blanco', 'Una presentación vacía.'),
     C('ai-deck', 'auto_awesome', 'Crear con IA', 'A partir de un tema, documentos o fotos.'),
-    C('open', 'upload_file', 'Abrir un archivo', 'PowerPoint, LibreOffice o Revela.')], gallery: true },
+    C('open', 'upload_file', 'Abrir un archivo', 'PowerPoint, LibreOffice, PDF o Revela.')], gallery: true },
   { id: 'open', icon: 'folder_open', title: 'Abrir', cards: [
-    C('open', 'upload_file', 'Desde el ordenador', 'PowerPoint, LibreOffice o Revela.'),
+    C('open', 'upload_file', 'Desde el ordenador', 'PowerPoint, LibreOffice, PDF o Revela.'),
     C('home', 'history', 'Mis presentaciones', 'Las recientes, las de Drive y las de tu nube.'),
     C('gdrive-open', 'add_to_drive', 'Google Drive', 'Abrir una presentación guardada en Drive.'),
     C('cloud-docs', 'cloud', 'Mi nube de Revela', 'Las presentaciones de tu cuenta de Revela.'),

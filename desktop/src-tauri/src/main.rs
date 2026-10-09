@@ -5,8 +5,11 @@
 // - Saving: the web app's downloads go through save_file, which asks where with the system's own «Save as»
 //   dialog and writes there — the page never chooses a path by itself.
 // - Opening: a presentation opened with Revela («Open with», a double click on a .pptx or .odp, or dropped on
-//   its icon) is given to the page by opened_files / read_opened — only those files, nothing else of the disk.
-//   On macOS it arrives as an event (RunEvent::Opened); elsewhere as the program's arguments.
+//   its icon) is given to the page by opened_files / read_opened. On macOS it arrives as an event
+//   (RunEvent::Opened); elsewhere as the program's arguments.
+// - Choosing files: pick_files shows the system's «Open» dialog (the web view's own, on Linux, filters only by
+//   MIME type and hid PowerPoint files). Only what is opened with Revela or chosen there can be read
+//   (read_opened), once: nothing else of the disk.
 // - Updates: update_available / install_update. The page asks, in the interface's language; the installer is
 //   downloaded, its signature checked against the public key in tauri.conf.json, installed and the app
 //   restarted. Without internet it simply opens as it is. Linux .deb/.rpm installs can't replace themselves
@@ -25,9 +28,13 @@ const RELEASES: &str = "https://github.com/fmesasc/revela/releases/latest";
 // What Revela opens (the rest of the arguments are ignored).
 const OPENS: [&str; 8] = ["pptx", "pptm", "potx", "ppsx", "odp", "otp", "key", "json"];
 
-// The files given to Revela to open, waiting for the page (and allowed to be read by it).
+// The files given to Revela to open, waiting for the page (pending), and those the page may read: given to open,
+// or chosen in the «Open» dialog (readable; each read once).
 #[derive(Default)]
-struct Opened(Mutex<Vec<PathBuf>>);
+struct Files {
+    pending: Mutex<Vec<PathBuf>>,
+    readable: Mutex<Vec<PathBuf>>,
+}
 
 fn opens(p: &PathBuf) -> bool {
     p.is_file()
@@ -71,16 +78,38 @@ async fn save_file(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<O
     Ok(Some(path.to_string_lossy().into_owned()))
 }
 
-// The files given to open, and forgotten (each one is opened once).
+// The files given to open, now readable (each one is opened once).
 #[tauri::command]
-fn opened_files(opened: State<'_, Opened>) -> Vec<String> {
-    opened.0.lock().unwrap().iter().map(|p| p.to_string_lossy().into_owned()).collect()
+fn opened_files(files: State<'_, Files>) -> Vec<String> {
+    let given: Vec<PathBuf> = files.pending.lock().unwrap().drain(..).collect();
+    let out = given.iter().map(|p| p.to_string_lossy().into_owned()).collect();
+    files.readable.lock().unwrap().extend(given);
+    out
+}
+
+// The system's «Open» dialog: filters [[name, [extensions]]] («*»: any), one file or several. → the paths
+// chosen, now readable.
+#[tauri::command]
+async fn pick_files(app: AppHandle, filters: Vec<(String, Vec<String>)>, multiple: bool, files: State<'_, Files>) -> Result<Vec<String>, String> {
+    let mut dialog = app.dialog().file();
+    for (name, exts) in &filters {
+        let exts: Vec<&str> = exts.iter().map(String::as_str).collect();
+        dialog = dialog.add_filter(name, &exts);
+    }
+    let chosen: Vec<PathBuf> = if multiple {
+        dialog.blocking_pick_files().unwrap_or_default().into_iter().filter_map(|p| p.into_path().ok()).collect()
+    } else {
+        dialog.blocking_pick_file().and_then(|p| p.into_path().ok()).into_iter().collect()
+    };
+    let out = chosen.iter().map(|p| p.to_string_lossy().into_owned()).collect();
+    files.readable.lock().unwrap().extend(chosen);
+    Ok(out)
 }
 
 // One of them, its bytes (an ArrayBuffer in the page). Any other path: refused.
 #[tauri::command]
-fn read_opened(path: String, opened: State<'_, Opened>) -> Result<tauri::ipc::Response, String> {
-    let mut list = opened.0.lock().unwrap();
+fn read_opened(path: String, files: State<'_, Files>) -> Result<tauri::ipc::Response, String> {
+    let mut list = files.readable.lock().unwrap();
     let Some(at) = list.iter().position(|p| p.to_string_lossy() == path) else { return Err("not opened".into()) };
     let p = list.remove(at);
     std::fs::read(&p).map(tauri::ipc::Response::new).map_err(|e| e.to_string())
@@ -113,12 +142,12 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_opener::init())
-        .manage(Opened::default())
-        .invoke_handler(tauri::generate_handler![save_file, opened_files, read_opened, update_available, install_update])
+        .manage(Files::default())
+        .invoke_handler(tauri::generate_handler![save_file, opened_files, pick_files, read_opened, update_available, install_update])
         .setup(|app| {
             // Windows and Linux: what to open comes as arguments («Open with», a double click).
             let given: Vec<PathBuf> = std::env::args_os().skip(1).map(PathBuf::from).filter(opens).collect();
-            app.state::<Opened>().0.lock().unwrap().extend(given);
+            app.state::<Files>().pending.lock().unwrap().extend(given);
             Ok(())
         })
         .build(tauri::generate_context!())
@@ -129,7 +158,7 @@ fn main() {
         if let tauri::RunEvent::Opened { urls } = event {
             let files: Vec<PathBuf> = urls.into_iter().filter_map(|u| u.to_file_path().ok()).filter(opens).collect();
             if !files.is_empty() {
-                handle.state::<Opened>().0.lock().unwrap().extend(files);
+                handle.state::<Files>().pending.lock().unwrap().extend(files);
                 let _ = handle.emit("revela://opened", ());
             }
         }

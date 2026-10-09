@@ -9,11 +9,12 @@
 // - Saving: a download (any of the app's: projects, PowerPoint, PDF, CSV…) goes to the system's «Save as»
 //   dialog (main.rs save_file) — a web view doesn't always keep downloads, and never asks where.
 // - Opening: a presentation opened with Revela (a double click on a .pptx or .odp, «Open with») opens as if
-//   dropped on the editor (openfile.js dropFiles).
+//   dropped on the editor (openfile.js dropFiles); a PDF, as a new presentation.
+// - Choosing files: the system's own «Open» dialog, with each input's types (WebKitGTK's hid .pptx files).
 // - Updates: looked for when it opens and from Ayuda ▸ «Buscar actualizaciones», asked in the interface's language.
 
 import { ACTIONS } from '../ribbon/actions.js';
-import { dropFiles } from './openfile.js';
+import { dropFiles, openPdfDeck } from './openfile.js';
 import { openPalette } from './palette.js';
 import { toast } from './toast.js';
 import { confirmDialog, alertDialog } from '../dialogs/dialog.js';
@@ -46,6 +47,7 @@ export const MENU = [
 ];
 
 let api = null;
+const undoers = [];                     // (what initDesktop changed in the page, for stopDesktop: the tests)
 const invoke = (...a) => api.core.invoke(...a);
 
 // ---- Updates -----------------------------------------------------------------------------------------------
@@ -110,6 +112,7 @@ async function build() {
 // bytes go to the system's «Save as» instead.
 function saveDownloads() {
   const click = HTMLAnchorElement.prototype.click;
+  undoers.push(() => { HTMLAnchorElement.prototype.click = click; });
   HTMLAnchorElement.prototype.click = function () {
     if (!this.hasAttribute('download') || !/^(blob|data):/.test(this.href)) return click.call(this);
     const name = this.getAttribute('download') || 'Revela';
@@ -118,6 +121,51 @@ function saveDownloads() {
       .catch(e => toast(t('No se pudo guardar el archivo:') + ' ' + (e?.message || e), { error: true }));
   };
 }
+// Choosing files: every «choose a file» of the app (an <input type="file">, clicked or through its label) opens the
+// system's «Open» dialog (main.rs pick_files) with the input's types; what is chosen goes into the input, which
+// then works as on the web. (WebKitGTK's own dialog filters only by MIME type: «.pptx» was left out.)
+const KINDS = { 'image/*': ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'avif', 'bmp'], 'video/*': ['mp4', 'webm', 'mov', 'm4v', 'ogv'],
+  'audio/*': ['mp3', 'wav', 'ogg', 'oga', 'm4a', 'aac', 'flac', 'opus', 'webm'], 'application/json': ['json'], 'application/pdf': ['pdf'],
+  'text/markdown': ['md', 'markdown'], 'text/csv': ['csv'], 'text/plain': ['txt'], 'text/*': ['txt', 'md', 'csv'],
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['pptx'], 'application/vnd.oasis.opendocument.presentation': ['odp'],
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['xlsx'], 'model/gltf-binary': ['glb'], 'model/gltf+json': ['gltf'] };
+const TYPES = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', avif: 'image/avif', bmp: 'image/bmp',
+  mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime', m4v: 'video/mp4', ogv: 'video/ogg', mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', oga: 'audio/ogg',
+  m4a: 'audio/mp4', aac: 'audio/aac', flac: 'audio/flac', opus: 'audio/ogg', pdf: 'application/pdf', json: 'application/json', md: 'text/markdown', csv: 'text/csv',
+  txt: 'text/plain', pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', odp: 'application/vnd.oasis.opendocument.presentation',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', glb: 'model/gltf-binary', gltf: 'model/gltf+json' };
+// accept → the dialog's filters: [[name, [extensions]]], the accepted ones first, then any file.
+export function filtersOf(accept) {
+  const exts = [];
+  for (const a of String(accept || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean)) {
+    for (const e of a.startsWith('.') ? [a.slice(1)] : KINDS[a] || KINDS[a.replace(/\/.*$/, '/*')] || []) if (!exts.includes(e)) exts.push(e);
+  }
+  return [...(exts.length ? [[t('Archivos compatibles'), exts]] : []), [t('Todos los archivos'), ['*']]];
+}
+const fileAt = (path, bytes) => { const name = path.split(/[\\/]/).pop(); return new File([bytes], name, { type: TYPES[name.split('.').pop().toLowerCase()] || '' }); };
+async function pickInto(inp) {
+  let paths = [];
+  try { paths = await invoke('pick_files', { filters: filtersOf(inp.accept), multiple: inp.multiple }); }
+  catch (e) { toast(t('No se pudo abrir el archivo:') + ' ' + (e?.message || e), { error: true }); return; }
+  if (!paths.length) { inp.dispatchEvent(new Event('cancel')); return; }
+  const dt = new DataTransfer();
+  for (const path of paths) dt.items.add(fileAt(path, await invoke('read_opened', { path })));
+  inp.files = dt.files;
+  inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true }));
+}
+function chooseFiles() {
+  const isFile = el => el instanceof HTMLInputElement && el.type === 'file' && !el.disabled;
+  // (Inputs made and clicked in code, never in the page — openfile.js readFile —, and showPicker.)
+  for (const m of ['click', 'showPicker']) {
+    const own = HTMLInputElement.prototype[m]; if (!own) continue;
+    undoers.push(() => { HTMLInputElement.prototype[m] = own; });
+    HTMLInputElement.prototype[m] = function (...a) { if (!isFile(this) || this.isConnected) return own.apply(this, a); pickInto(this); };
+  }
+  // (In the page — also through its <label> —: the click reaches the input, and its default, the web view's dialog, is stopped.)
+  const onClick = e => { if (isFile(e.target)) { e.preventDefault(); pickInto(e.target); } };
+  document.addEventListener('click', onClick, true); undoers.push(() => document.removeEventListener('click', onClick, true));
+}
+
 // Files opened with Revela: each one as if dropped on the editor (a presentation opens; it asks first if the open
 // one would be lost).
 async function openGiven() {
@@ -125,8 +173,8 @@ async function openGiven() {
   try { paths = await invoke('opened_files'); } catch { return; }
   for (const path of paths) {
     try {
-      const bytes = await invoke('read_opened', { path });
-      await dropFiles([new File([bytes], path.split(/[\\/]/).pop())]);
+      const f = fileAt(path, await invoke('read_opened', { path }));
+      await (/\.pdf$/i.test(f.name) ? openPdfDeck(f) : dropFiles([f]));
     } catch (e) { toast(t('No se pudo abrir el archivo:') + ' ' + (e?.message || e), { error: true }); }
   }
 }
@@ -135,11 +183,13 @@ async function openGiven() {
 export async function initDesktop({ tauri = globalThis.__TAURI__, updates = true } = {}) {
   if (!tauri?.core) return false;
   api = tauri;
-  saveDownloads();
+  saveDownloads(); chooseFiles();
   try { await build(); } catch (e) { console.warn('Menú no creado:', e); }
-  window.addEventListener('revela:lang', () => build().catch(() => {}));
+  const rebuild = () => build().catch(() => {});
+  window.addEventListener('revela:lang', rebuild); undoers.push(() => window.removeEventListener('revela:lang', rebuild));
   await openGiven();
   tauri.event?.listen?.('revela://opened', () => openGiven());     // (macOS: opened while running)
   if (updates) setTimeout(() => checkUpdates(), 3000);              // (after the editor is ready; quiet without internet)
   return true;
 }
+export function stopDesktop() { while (undoers.length) undoers.pop()(); api = null; }

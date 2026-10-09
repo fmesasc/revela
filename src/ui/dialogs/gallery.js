@@ -39,7 +39,7 @@ export function galleryInto(host, { close = () => {}, scroller = null, paths = t
     ${paths ? `<div class="gal-start">
       <button type="button" class="gal-path" data-path="blank"><i class="ms">note_add</i><b>${t('En blanco')}</b><small>${t('Empezar de cero')}</small></button>
       <button type="button" class="gal-path ai" data-path="ai"><i class="ms">auto_awesome</i><b>${t('Crear con IA')}</b><small>${t('Desde un tema, documentos o fotos')}</small></button>
-      <button type="button" class="gal-path" data-path="open"><i class="ms">folder_open</i><b>${t('Abrir un archivo')}</b><small>${t('PowerPoint, LibreOffice o Revela')}</small></button>
+      <button type="button" class="gal-path" data-path="open"><i class="ms">folder_open</i><b>${t('Abrir un archivo')}</b><small>${t('PowerPoint, LibreOffice, PDF o Revela')}</small></button>
     </div>` : ''}
     <h4 class="gal-themes-h">${t('Temas vacíos')}</h4><div class="gal-grid"></div>`;
   const grid = host.querySelector('.gal-grid');

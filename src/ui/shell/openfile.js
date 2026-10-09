@@ -6,10 +6,10 @@
 import { fitImported } from '../canvas/fittext.js';
 import { reportError } from './errors.js';
 import { whileOpening } from './opening.js';
-import { fileBlock, pdfToSlides, FILE_LIMIT } from '../../features/content/files.js';
+import { fileBlock, pdfToSlides, pdfSlides, FILE_LIMIT } from '../../features/content/files.js';
 import { choosePdfMode } from '../dialogs/pdfmode.js';
 import { state, replaceDeck, currentSlide, amend } from '../../core/store.js';
-import { isBlankDeck } from '../../core/model.js';
+import { isBlankDeck, emptyDeck } from '../../core/model.js';
 import * as blocks from '../../features/document/blocks.js';
 import * as slides from '../../features/document/slides.js';
 import * as protect from '../../features/collab/protect.js';
@@ -159,9 +159,21 @@ export async function dropFiles(files, at = null) {
   return n;
 }
 
-// File ▸ Open, for anything that is a presentation: Revela's own, PowerPoint, LibreOffice (asks before
+// A PDF opened as a presentation: a new one with a slide per page (a picture of it, as when a PDF is inserted
+// as «Diapositivas»), named after the file. (Dropped or inserted, a PDF goes into the open one instead.)
+export async function openPdfDeck(file) {
+  if (!(await mayReplace())) return false;
+  return whileOpening(async () => {
+    const d = { ...emptyDeck(), name: file.name.replace(/\.pdf$/i, '') }, made = await pdfSlides(await dataURL(file), d.size);
+    if (!made.length) return false;
+    replaceDeck({ ...d, slides: made }); return true;           // (one step, as a PowerPoint opened: undo goes back)
+  }, file.name).catch(e => { reportError(e, 'handled'); alertDialog(t('No se pudo abrir el PDF: ') + e.message); return false; });
+}
+
+// File ▸ Open, for anything that is a presentation: Revela's own, PowerPoint, LibreOffice, a PDF (asks before
 // replacing the open one, as dropping it does).
-export function openAnyPresentation() { readFile('.pptx,.pptm,.potx,.odp,.otp,.key,.json,application/json', f => dropFiles([f]), 'file'); }
+export const OPEN_ACCEPT = '.pptx,.pptm,.potx,.odp,.otp,.key,.json,.pdf,application/json,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.oasis.opendocument.presentation';
+export function openAnyPresentation() { readFile(OPEN_ACCEPT, f => (kindOf(f) === 'pdf' ? openPdfDeck(f) : dropFiles([f])), 'file'); }
 
 // Files dragged from the computer onto the editor.
 export function initFileDrop() {

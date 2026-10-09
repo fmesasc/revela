@@ -79,7 +79,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   await test('aplicación de escritorio: menú nativo, Acerca de, guardar con el sistema y abrir lo que se abre con Revela (Tauri simulado)', async () => {
     reset(); const W = frame.contentWindow, DK = await W.eval("import('/src/ui/shell/desktop.js')"), ACT = await W.eval("import('/src/ui/ribbon/actions.js')");
     const click = W.HTMLAnchorElement.prototype.click, calls = [], made = [];
-    let menu = null, opened = ['/home/ana/Clase 3.revela.json'];
+    let menu = null, opened = ['/home/ana/Clase 3.revela.json'], picked = [];
     const project = new TextEncoder().encode(JSON.stringify({ ...R.state.deck, name: 'Desde el escritorio' }));
     const mk = kind => ({ new: async o => { const x = { kind, ...o }; made.push(x); return x; } });
     const tauri = {
@@ -87,7 +87,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
         if (cmd === 'opened_files') return opened.splice(0);
         if (cmd === 'read_opened') return project.buffer.slice(0);
         if (cmd === 'save_file') return '/home/ana/' + decodeURIComponent(opts.headers['x-name']);
-        if (cmd === 'update_available') return null; } },
+        if (cmd === 'update_available') return null;
+        if (cmd === 'pick_files') return picked.splice(0); } },
       menu: { Menu: { new: async o => ({ ...o, setAsAppMenu: async () => { menu = o; } }) }, Submenu: mk('sub'), MenuItem: mk('item'), PredefinedMenuItem: mk('pre') },
       app: { getVersion: async () => '9.9.9', defaultWindowIcon: async () => null },
       event: { listen: async () => () => {} }, opener: { openUrl: async u => calls.push({ open: u }) },
@@ -114,7 +115,21 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       const sv = calls.find(c => c.cmd === 'save_file');
       assert(sv && new TextDecoder().decode(sv.args) === 'uno,dos' && decodeURIComponent(sv.opts.headers['x-name']) === 'votación.csv', 'guardar: los bytes y el nombre, al sistema');
       await sleep(30); assert(/Guardado en \/home\/ana\/votación\.csv/.test(D.body.textContent), 'y dice dónde');
-    } finally { W.HTMLAnchorElement.prototype.click = click; }
+      // Choosing a file: the system's «Open», with the input's types (WebKitGTK's own hid .pptx); what is chosen,
+      // in the input, as on the web.
+      eq(JSON.stringify(DK.filtersOf('.pptx,.odp,image/*,application/json')), JSON.stringify([['Archivos compatibles', ['pptx', 'odp', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'avif', 'bmp', 'json']], ['Todos los archivos', ['*']]]), 'los tipos del selector');
+      picked.push('/home/ana/foto.png'); calls.length = 0;
+      const inp = D.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; let got = null; inp.onchange = () => { got = inp.files[0]; }; inp.click();
+      for (let i = 0; i < 40 && !got; i++) await sleep(25);
+      assert(got?.name === 'foto.png' && got.type === 'image/png' && got.size === project.length, 'el archivo elegido, en el campo: ' + got?.name + ' ' + got?.type);
+      assert(calls[0].cmd === 'pick_files' && calls[0].args.multiple === false && calls[0].args.filters[0][1].includes('png'), 'con sus tipos');
+      picked.push('/home/ana/a.csv'); got = null;
+      const lab = D.createElement('label'), in2 = D.createElement('input'); in2.type = 'file'; in2.hidden = true; lab.append('Elegir', in2); D.body.append(lab);
+      in2.onchange = () => { got = in2.files[0]; }; lab.click();
+      for (let i = 0; i < 40 && !got; i++) await sleep(25); lab.remove();
+      eq(got?.name, 'a.csv', 'también desde su etiqueta');
+    } finally { DK.stopDesktop(); }
+    eq(W.HTMLAnchorElement.prototype.click, click, 'y se puede deshacer (las pruebas)');
   });
 
   await test('IA con OpenRouter: inicio de sesión PKCE y funciones (respuestas simuladas)', async () => {

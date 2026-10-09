@@ -53,14 +53,19 @@ export async function setPdfPage(b, n) {
   commit(() => { b.page = page; b.poster = img.src; b.pages = pdf.numPages; });
 }
 // A PDF as slides, one per page, after the current one (each page as big as fits).
-export async function pdfToSlides(src, onProgress) {
-  const pdf = await openPdf(src), { w: W, h: H } = state.deck.size, made = [];
+// (The slides only, for a deck of that size: also a PDF opened as a new presentation, ui/shell/openfile.js.)
+export async function pdfSlides(src, { w: W, h: H }, onProgress, section = null) {
+  const pdf = await openPdf(src), made = [];
   for (let n = 1; n <= Math.min(pdf.numPages, 200); n++) {
     const img = await pageImage(pdf, n, 1600), k = Math.min(W / img.w, H / img.h), w = Math.round(img.w * k), h = Math.round(img.h * k);
-    const s = blankSlide('#ffffff', currentSlide()?.sectionId || null);
+    const s = blankSlide('#ffffff', section);
     s.blocks.push({ id: uid(), type: 'image', src: img.src, x: Math.round((W - w) / 2), y: Math.round((H - h) / 2), w, h, rotation: 0, animation: null, alt: `${n}` });
     made.push(s); onProgress?.(n / pdf.numPages);
   }
+  return made;
+}
+export async function pdfToSlides(src, onProgress) {
+  const made = await pdfSlides(src, state.deck.size, onProgress, currentSlide()?.sectionId || null);
   commit(() => { state.deck.slides.splice(state.ui.slideIndex + 1, 0, ...made); state.ui.slideIndex += 1; state.ui.selection = null; state.ui.multi = []; });
   return made.length;
 }
