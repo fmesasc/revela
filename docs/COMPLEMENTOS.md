@@ -33,7 +33,7 @@ El botón aparece en **Ver ▸ Complementos**, en el grupo «Complementos» de l
 
 ## Ejemplos
 
-En [`examples/complementos/`](../examples/complementos/) hay tres complementos
+En [`examples/complementos/`](../examples/complementos/) hay cinco complementos
 completos y comentados, que puedes probar tal cual pegando su dirección en
 **Ver ▸ Complementos**:
 
@@ -42,6 +42,8 @@ completos y comentados, que puedes probar tal cual pegando su dirección en
 | [`agenda.js`](../examples/complementos/agenda.js) | Añade tras la portada una diapositiva con los títulos de las demás | Leer la presentación, añadir una diapositiva, rellenar sus marcadores | `https://cdn.jsdelivr.net/gh/fmesasc/revela@main/examples/complementos/agenda.js` |
 | [`palabras.js`](../examples/complementos/palabras.js) | Cuenta las palabras y calcula la duración leyendo las notas | Recorrer todas las diapositivas; los diálogos de Revela | `https://cdn.jsdelivr.net/gh/fmesasc/revela@main/examples/complementos/palabras.js` |
 | [`numerar.js`](../examples/complementos/numerar.js) | Pone «n / total» en cada diapositiva y lo actualiza al repetir | Marcar tus objetos para encontrarlos y actualizarlos | `https://cdn.jsdelivr.net/gh/fmesasc/revela@main/examples/complementos/numerar.js` |
+| [`revisor.js`](../examples/complementos/revisor.js) | Mientras editas, cuenta en su botón las diapositivas sin título o con demasiado texto, y te lleva a ellas | Escuchar los cambios (`Revela.on`) sin frenar el editor; cambiar el texto del propio botón | `https://cdn.jsdelivr.net/gh/fmesasc/revela@main/examples/complementos/revisor.js` |
+| [`wikimedia.js`](../examples/complementos/wikimedia.js) | Busca una imagen libre en Wikimedia Commons y la pone con su autor y licencia | Consultar un servicio de internet (CORS), avisar si falla, añadir objetos que van juntos | `https://cdn.jsdelivr.net/gh/fmesasc/revela@main/examples/complementos/wikimedia.js` |
 
 ## La API
 
@@ -129,6 +131,23 @@ la posición y el tamaño: `{ x, y, w, h }`, en una diapositiva de **1280 × 720
 - **Texto**: `html`, `fontSize`, `color`, `fontFamily`, `textAlign`, `fontWeight`.
 - **Formas**: `shape`, `fill`, `stroke`, `opacity` (0–100), `rotation`.
 - **Tus propias marcas**: puedes añadir propiedades tuyas a un objeto (por ejemplo `{ numerar: true }`) para reconocerlo después; se guardan con la presentación.
+
+## Escuchar los cambios sin frenar el editor
+
+`Revela.on('change', fn)` avisa de **cada** cambio, también de cada tecla que se
+escribe. Si tu complemento hace algo costoso (recorrer toda la presentación, pedir
+algo a internet), espera a que se deje de escribir, como hace `revisor.js`:
+
+```js
+let timer = 0;
+Revela.on('change', () => { clearTimeout(timer); timer = setTimeout(revisar, 500); });
+```
+
+Y no cambies la presentación dentro de ese aviso sin comprobar antes que hace
+falta: cada cambio vuelve a avisar, y sin esa comprobación no pararía nunca.
+
+Un complemento quitado en **Ver ▸ Complementos** deja de cargarse la próxima vez
+que abras Revela; hasta entonces, lo que ya puso en marcha sigue funcionando.
 
 ## Macros
 

@@ -47,6 +47,35 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     for (const f of ['agenda', 'palabras', 'numerar']) R.api.removePlugin(base + f + '.js');
   });
 
+  await test('complementos de ejemplo: revisor (escucha los cambios) y wikimedia (busca en internet)', async () => {
+    reset(); const W = frame.contentWindow, base = W.location.origin + '/examples/complementos/', A = W.Revela, realFetch = W.fetch;
+    const btn = id => D.querySelector(`#plugin-buttons [data-plugin="${id}"]`), top = () => [...D.querySelectorAll('.modal-backdrop')].at(-1);
+    try {
+      await R.api.addPlugin(base + 'revisor.js');
+      A.slides.add(); await sleep(650);
+      assert(/Revisar \(1\)/.test(btn('revisor')?.textContent), 'revisor: la diapositiva sin título, contada: ' + btn('revisor')?.textContent);
+      const t = A.deck().slides[1].blocks.find(b => b.ph === 'title'); A.update(t.id, { html: 'Objetivos' });
+      assert(/Revisar \(1\)/.test(btn('revisor').textContent), 'revisor: no revisa a cada tecla');
+      await sleep(650); assert(/Revisado/.test(btn('revisor').textContent), 'revisor: medio segundo después, revisado: ' + btn('revisor').textContent);
+      A.add.text(Array(70).fill('palabra').join(' ')); await sleep(650);
+      A.slides.goTo(0); btn('revisor').click(); await sleep(30);
+      assert(/Diapositiva 2: tiene 71 palabras/.test(top()?.textContent), 'revisor: lo enumera: ' + top()?.textContent);
+      top().querySelector('.dlg-ok').click(); await sleep(30); eq(A.slides.current(), 1, 'revisor: y lleva a la primera');
+      // Wikimedia, con la respuesta de Commons simulada (nada sale a internet en las pruebas).
+      let asked = '';
+      W.fetch = async url => { asked = String(url); return new W.Response(JSON.stringify({ query: { pages: {
+        '2': { index: 2, imageinfo: [{ mime: 'image/png', url: 'https://upload.example/b.png', thumburl: 'https://upload.example/b-1280.png', thumbwidth: 1280, thumbheight: 640, descriptionurl: 'https://commons.example/B', extmetadata: { Artist: { value: '<a href="x">Ana <b>Pérez</b></a>' }, LicenseShortName: { value: 'CC BY-SA 4.0' } } }] },
+        '1': { index: 1, imageinfo: [{ mime: 'image/svg+xml', url: 'https://upload.example/a.svg' }] } } } })); };
+      await R.api.addPlugin(base + 'wikimedia.js');
+      const n = A.deck().slides[1].blocks.length; btn('wikimedia').click(); await sleep(30);
+      top().querySelector('.dlg-in').value = 'volcano'; top().querySelector('.dlg-ok').click(); await sleep(60);
+      assert(/origin=\*/.test(asked) && /gsrsearch=volcano/.test(asked), 'wikimedia: la búsqueda, con CORS: ' + asked);
+      const added = A.deck().slides[1].blocks.slice(n), img = added.find(b => b.type === 'image'), cap = added.find(b => b.type === 'text');
+      assert(img?.src === 'https://upload.example/b-1280.png' && img.w === 800 && img.h === 400 && img.x === 240 && img.alt === 'volcano', 'wikimedia: la primera imagen de mapa de bits, a escala y centrada: ' + JSON.stringify(img));
+      assert(/Ana Pérez · CC BY-SA 4\.0/.test(cap?.html) && /href="https:\/\/commons\.example\/B"/.test(cap.html) && cap.y === img.y + img.h + 8, 'wikimedia: con su autor y licencia debajo: ' + cap?.html);
+    } finally { W.fetch = realFetch; for (const f of ['revisor', 'wikimedia']) R.api.removePlugin(base + f + '.js'); }
+  });
+
   await test('IA con OpenRouter: inicio de sesión PKCE y funciones (respuestas simuladas)', async () => {
     reset(); const W = frame.contentWindow, AI = R.ai, realFetch = W.fetch, calls = [];
     eq(await AI.pkceChallenge('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'), 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', 'reto PKCE (vector del RFC 7636)');
