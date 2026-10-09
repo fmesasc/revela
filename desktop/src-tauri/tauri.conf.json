@@ -14,7 +14,8 @@
         "height": 900,
         "minWidth": 800,
         "minHeight": 560,
-        "center": true
+        "center": true,
+        "dragDropEnabled": false
       }
     ],
     "security": {
@@ -56,7 +57,47 @@
           "/usr/share/metainfo/io.github.fmesasc.revela.metainfo.xml": "metainfo.xml"
         }
       }
-    }
+    },
+    "fileAssociations": [
+      {
+        "ext": [
+          "pptx",
+          "pptm",
+          "ppsx"
+        ],
+        "name": "PowerPoint",
+        "description": "Presentación de PowerPoint",
+        "role": "Editor",
+        "mimeType": "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+      },
+      {
+        "ext": [
+          "potx"
+        ],
+        "name": "PowerPoint template",
+        "description": "Plantilla de PowerPoint",
+        "role": "Editor",
+        "mimeType": "application/vnd.openxmlformats-officedocument.presentationml.template"
+      },
+      {
+        "ext": [
+          "odp"
+        ],
+        "name": "OpenDocument Presentation",
+        "description": "Presentación de LibreOffice",
+        "role": "Editor",
+        "mimeType": "application/vnd.oasis.opendocument.presentation"
+      },
+      {
+        "ext": [
+          "otp"
+        ],
+        "name": "OpenDocument Presentation Template",
+        "description": "Plantilla de LibreOffice",
+        "role": "Editor",
+        "mimeType": "application/vnd.oasis.opendocument.presentation-template"
+      }
+    ]
   },
   "plugins": {
     "updater": {

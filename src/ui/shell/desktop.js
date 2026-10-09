@@ -1,0 +1,145 @@
+// The desktop application (Tauri: desktop/src-tauri): what the window adds to the same web app.
+//
+// - The menu bar, native (Archivo, Editar, Ver, Insertar, Ayuda; on macOS also the app's own menu), in the
+//   interface's language and built again when it changes. Its items run the ribbon's actions; none has its
+//   own key shortcut: the editor already handles the keys (main.js keyboard()), and a menu's shortcut would
+//   catch them first — Ctrl+Z while typing would undo the slide instead of the typing. (macOS keeps the system's
+//   Edit items, which the web view needs for copying and pasting text with ⌘.)
+// - «Acerca de Revela»: the system's own about box, with the version.
+// - Saving: a download (any of the app's: projects, PowerPoint, PDF, CSV…) goes to the system's «Save as»
+//   dialog (main.rs save_file) — a web view doesn't always keep downloads, and never asks where.
+// - Opening: a presentation opened with Revela (a double click on a .pptx or .odp, «Open with») opens as if
+//   dropped on the editor (openfile.js dropFiles).
+// - Updates: looked for when it opens and from Ayuda ▸ «Buscar actualizaciones», asked in the interface's language.
+
+import { ACTIONS } from '../ribbon/actions.js';
+import { dropFiles } from './openfile.js';
+import { openPalette } from './palette.js';
+import { toast } from './toast.js';
+import { confirmDialog, alertDialog } from '../dialogs/dialog.js';
+import { undo, redo, canUndo, canRedo } from '../../core/store.js';
+import { t } from '../../i18n/index.js';
+import { OFFICIAL_SITE } from '../../core/config.js';
+
+const mac = () => /Mac/i.test(globalThis.navigator?.platform || globalThis.navigator?.userAgent || '');
+const SEP = '-';
+
+// The menu bar: [label, [items]] where an item is [label, action] — an action of the ribbon (ACTIONS) or one of
+// these (DESK) —, a submenu [label, [items]], or SEP. Labels in Spanish: translated with t() when built.
+export const MENU = [
+  ['Archivo', [['Nuevo', 'new'], ['Abrir…', 'open'], ['Mis presentaciones en la nube', 'cloud-docs'], SEP,
+    ['Guardar', 'save'], ['Descargar el proyecto (.revela.json)', 'download-project'], ['Historial de versiones', 'versions'], SEP,
+    ['Importar', [['PowerPoint u OpenDocument…', 'import-pptx'], ['Reutilizar diapositivas…', 'reuse-slides'], ['Markdown…', 'import-md'], ['Importar preguntas', 'import-questions']]],
+    ['Exportar', [['PDF', 'export-pdf'], ['PowerPoint', 'export-pptx'], ['ODP', 'export-odp'], ['HTML', 'export'], ['Imágenes', 'export-png'], ['Vídeo', 'export-video'],
+      ['SCORM', 'export-scorm'], SEP, ['Exportar preguntas', 'export-questions'], ['Fichas y práctica', 'export-study']]],
+    SEP, ['Imprimir', 'print'], ['Compartir', 'share'], SEP, ['Salir', 'desk:quit']]],
+  ['Editar', [['Deshacer', 'desk:undo'], ['Rehacer', 'desk:redo'], SEP, ['Duplicar', 'obj-duplicate'], ['Eliminar', 'obj-delete'], SEP,
+    ['Buscar y reemplazar', 'find-replace'], ['Buscar comandos…', 'desk:palette']]],
+  ['Ver', [['Presentar desde el principio', 'present'], ['Presentar desde la diapositiva actual', 'present-current'], ['Ensayar', 'rehearse'], SEP,
+    ['Clasificador de diapositivas', 'slide-sorter'], ['Panel de diapositivas', 'toggle-nav'], ['Notas', 'toggle-notes'], ['Regla', 'toggle-ruler'], ['Guías', 'toggle-guides'], SEP,
+    ['Acercar', 'zoom-in'], ['Alejar', 'zoom-out'], ['Ajustar a la ventana', 'zoom-fit'], ['Tamaño real', 'zoom-reset'], SEP, ['Pantalla completa', 'desk:fullscreen']]],
+  ['Insertar', [['Nueva diapositiva', 'slide-add'], SEP, ['Cuadro de texto', 'insert-text'], ['Imagen', 'insert-image'], ['Tabla', 'insert-table'], ['Gráfico', 'insert-chart'],
+    ['Ecuación', 'insert-math'], ['Código', 'insert-code'], ['Vídeo', 'insert-video'], ['Audio', 'insert-audio'], ['Modelo 3D', 'insert-model'], SEP,
+    ['Votación en directo', 'insert-poll'], ['Candado', 'insert-lock'], ['Temporizador', 'insert-timer']]],
+  ['Ayuda', [['Guías en vídeo', 'desk:guides'], ['Atajos de teclado', 'shortcuts'], ['Buscar comandos…', 'desk:palette'], ['Informar de un problema', 'report-problem'], SEP,
+    ['Buscar actualizaciones', 'desk:update'], ['Acerca de Revela', 'desk:about']]],
+];
+
+let api = null;
+const invoke = (...a) => api.core.invoke(...a);
+
+// ---- Updates -----------------------------------------------------------------------------------------------
+// asked: from the menu (also says when there's none, or when it couldn't look); else quiet.
+export async function checkUpdates({ asked = false } = {}) {
+  let v = null;
+  try { v = await invoke('update_available'); } catch { if (asked) alertDialog(t('No se pudo buscar actualizaciones: comprueba la conexión a internet.')); return; }
+  if (!v) { if (asked) alertDialog(t('Ya tienes la última versión de Revela.')); return; }
+  if (!(await confirmDialog(t('Hay una versión nueva de Revela ({v}). ¿Actualizar ahora? Se reiniciará en unos segundos.').replace('{v}', v), { ok: t('Actualizar') }))) return;
+  toast(t('Descargando la actualización…'), { busy: true, ms: 120000 });
+  try {
+    if ((await invoke('install_update')) === 'page') toast(t('Instala el paquete nuevo desde la página que se ha abierto (el .deb o .rpm no se actualiza solo; el AppImage, sí).'), { ms: 12000 });
+  } catch (e) { toast(t('No se pudo actualizar:') + ' ' + (e?.message || e), { error: true }); }
+}
+
+// ---- The menu --------------------------------------------------------------------------------------------
+const DESK = {
+  'desk:undo': () => { if (canUndo()) undo(); },
+  'desk:redo': () => { if (canRedo()) redo(); },
+  'desk:palette': () => openPalette(),
+  'desk:guides': () => api.opener.openUrl(OFFICIAL_SITE + '/guides'),
+  'desk:update': () => checkUpdates({ asked: true }),
+  'desk:quit': () => api.window.getCurrentWindow().close(),
+  'desk:fullscreen': async () => { const w = api.window.getCurrentWindow(); await w.setFullscreen(!(await w.isFullscreen())); },
+};
+export const run = id => (DESK[id] || ACTIONS[id])?.();
+
+async function aboutItem() {
+  const A = api.app, [version, icon] = await Promise.all([A.getVersion().catch(() => ''), A.defaultWindowIcon?.().catch(() => null)]);
+  return api.menu.PredefinedMenuItem.new({ text: t('Acerca de Revela'), item: { About: {
+    name: 'Revela', version, ...(icon && { icon }), website: OFFICIAL_SITE, websiteLabel: OFFICIAL_SITE.replace(/^https?:\/\//, ''),
+    authors: ['FM Lab'], license: 'MIT', copyright: `© ${new Date().getFullYear()} FM Lab · MIT`,
+    comments: t('Editor de presentaciones interactivas'),
+  } } });
+}
+
+async function build() {
+  const { Menu, Submenu, MenuItem, PredefinedMenuItem } = api.menu;
+  const sep = () => PredefinedMenuItem.new({ item: 'Separator' }), about = await aboutItem();
+  const items = list => Promise.all(list.map(x => x === SEP ? sep()
+    : x[1] === 'desk:about' ? about
+    : Array.isArray(x[1]) ? items(x[1]).then(sub => Submenu.new({ text: t(x[0]), items: sub }))
+    : MenuItem.new({ text: t(x[0]), action: () => run(x[1]) })));
+  const subs = [];
+  for (const [label, list] of MENU) {
+    let parts = list;
+    if (mac()) {                                     // (macOS: About and Quit live in the app's menu)
+      parts = list.filter(x => x === SEP || !['desk:about', 'desk:quit'].includes(x[1]));
+      while (parts.at(-1) === SEP) parts = parts.slice(0, -1);
+    }
+    const own = await items(parts);
+    if (mac() && label === 'Editar') own.push(...await Promise.all([sep(), ...['Cut', 'Copy', 'Paste', 'SelectAll'].map(item => PredefinedMenuItem.new({ item }))]));
+    subs.push(await Submenu.new({ text: t(label), items: own }));
+  }
+  if (mac()) subs.unshift(await Submenu.new({ text: 'Revela', items: [about, await sep(),
+    ...await Promise.all(['Services', 'Hide', 'HideOthers', 'ShowAll'].map(item => PredefinedMenuItem.new({ item }))), await sep(), await PredefinedMenuItem.new({ item: 'Quit' })] }));
+  await (await Menu.new({ items: subs })).setAsAppMenu();
+}
+
+// ---- Saving and opening files ------------------------------------------------------------------------------
+// Every download of the app is a link with «download» clicked (io/files.js and others): in the window, its
+// bytes go to the system's «Save as» instead.
+function saveDownloads() {
+  const click = HTMLAnchorElement.prototype.click;
+  HTMLAnchorElement.prototype.click = function () {
+    if (!this.hasAttribute('download') || !/^(blob|data):/.test(this.href)) return click.call(this);
+    const name = this.getAttribute('download') || 'Revela';
+    fetch(this.href).then(r => r.arrayBuffer()).then(b => invoke('save_file', new Uint8Array(b), { headers: { 'x-name': encodeURIComponent(name) } }))
+      .then(path => { if (path) toast(t('Guardado en {path}').replace('{path}', path)); })
+      .catch(e => toast(t('No se pudo guardar el archivo:') + ' ' + (e?.message || e), { error: true }));
+  };
+}
+// Files opened with Revela: each one as if dropped on the editor (a presentation opens; it asks first if the open
+// one would be lost).
+async function openGiven() {
+  let paths = [];
+  try { paths = await invoke('opened_files'); } catch { return; }
+  for (const path of paths) {
+    try {
+      const bytes = await invoke('read_opened', { path });
+      await dropFiles([new File([bytes], path.split(/[\\/]/).pop())]);
+    } catch (e) { toast(t('No se pudo abrir el archivo:') + ' ' + (e?.message || e), { error: true }); }
+  }
+}
+
+// tauri: window.__TAURI__ (withGlobalTauri; tests give their own).
+export async function initDesktop({ tauri = globalThis.__TAURI__, updates = true } = {}) {
+  if (!tauri?.core) return false;
+  api = tauri;
+  saveDownloads();
+  try { await build(); } catch (e) { console.warn('Menú no creado:', e); }
+  window.addEventListener('revela:lang', () => build().catch(() => {}));
+  await openGiven();
+  tauri.event?.listen?.('revela://opened', () => openGiven());     // (macOS: opened while running)
+  if (updates) setTimeout(() => checkUpdates(), 3000);              // (after the editor is ready; quiet without internet)
+  return true;
+}

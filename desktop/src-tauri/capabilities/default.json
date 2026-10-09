@@ -1,12 +1,14 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The main window: the core defaults, and opening only revelaslides.com pages in the browser (signing in and payments). No file-system or shell access.",
+  "description": "The main window: the core defaults (the menu bar, events, the app's version), full screen from the menu, and opening only revelaslides.com pages in the browser (signing in, payments, the guides). Files: only through the app's own commands (main.rs) — saving where the person chooses, reading what was opened with Revela. No other file-system or shell access.",
   "windows": [
     "main"
   ],
   "permissions": [
     "core:default",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-is-fullscreen",
     {
       "identifier": "opener:allow-open-url",
       "allow": [

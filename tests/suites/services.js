@@ -76,6 +76,47 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.fetch = realFetch; for (const f of ['revisor', 'wikimedia']) R.api.removePlugin(base + f + '.js'); }
   });
 
+  await test('aplicación de escritorio: menú nativo, Acerca de, guardar con el sistema y abrir lo que se abre con Revela (Tauri simulado)', async () => {
+    reset(); const W = frame.contentWindow, DK = await W.eval("import('/src/ui/shell/desktop.js')"), ACT = await W.eval("import('/src/ui/ribbon/actions.js')");
+    const click = W.HTMLAnchorElement.prototype.click, calls = [], made = [];
+    let menu = null, opened = ['/home/ana/Clase 3.revela.json'];
+    const project = new TextEncoder().encode(JSON.stringify({ ...R.state.deck, name: 'Desde el escritorio' }));
+    const mk = kind => ({ new: async o => { const x = { kind, ...o }; made.push(x); return x; } });
+    const tauri = {
+      core: { invoke: async (cmd, args, opts) => { calls.push({ cmd, args, opts });
+        if (cmd === 'opened_files') return opened.splice(0);
+        if (cmd === 'read_opened') return project.buffer.slice(0);
+        if (cmd === 'save_file') return '/home/ana/' + decodeURIComponent(opts.headers['x-name']);
+        if (cmd === 'update_available') return null; } },
+      menu: { Menu: { new: async o => ({ ...o, setAsAppMenu: async () => { menu = o; } }) }, Submenu: mk('sub'), MenuItem: mk('item'), PredefinedMenuItem: mk('pre') },
+      app: { getVersion: async () => '9.9.9', defaultWindowIcon: async () => null },
+      event: { listen: async () => () => {} }, opener: { openUrl: async u => calls.push({ open: u }) },
+    };
+    try {
+      assert(await DK.initDesktop({ tauri, updates: false }), 'arranca con Tauri');
+      // The file it was opened with: open, as if dropped.
+      for (let i = 0; i < 40 && R.state.deck.name !== 'Desde el escritorio'; i++) await sleep(25);
+      eq(R.state.deck.name, 'Desde el escritorio', 'abre el archivo con el que se abrió Revela');
+      assert(calls.some(c => c.cmd === 'read_opened' && c.args.path === '/home/ana/Clase 3.revela.json'), 'lo pide por su ruta');
+      // The menu bar, in the interface's language; every item does something that exists.
+      eq(menu.items.map(s => s.text).join(','), 'Archivo,Editar,Ver,Insertar,Ayuda', 'los menús');
+      const ids = []; const walk = l => l.forEach(x => (x === '-' ? 0 : Array.isArray(x[1]) ? walk(x[1]) : ids.push(x[1]))); walk(DK.MENU.map(m => [m[0], m[1]]));
+      const missing = ids.filter(id => !id.startsWith('desk:') && !ACT.ACTIONS[id]); assert(!missing.length, 'acciones que no existen: ' + missing);
+      const about = made.find(x => x.kind === 'pre' && x.item?.About);
+      assert(about?.item.About.version === '9.9.9' && about.text === 'Acerca de Revela' && menu.items.at(-1).items.includes(about), 'Acerca de, con la versión, en Ayuda');
+      assert(!made.some(x => x.kind === 'item' && x.accelerator), 'sin atajos propios: los maneja el editor');
+      const n = R.state.deck.slides.length; made.find(x => x.kind === 'item' && x.text === 'Nueva diapositiva').action(); await sleep(30);
+      eq(R.state.deck.slides.length, n + 1, 'un elemento del menú hace su acción');
+      made.find(x => x.kind === 'item' && x.text === 'Guías en vídeo').action(); assert(calls.some(c => /\/guides$/.test(c.open || '')), 'las guías, en el navegador');
+      // A download: the system's «Save as», with its bytes and name.
+      const a = D.createElement('a'); a.href = W.URL.createObjectURL(new W.Blob(['uno,dos'], { type: 'text/csv' })); a.download = 'votación.csv'; a.click();
+      for (let i = 0; i < 40 && !calls.some(c => c.cmd === 'save_file'); i++) await sleep(25);
+      const sv = calls.find(c => c.cmd === 'save_file');
+      assert(sv && new TextDecoder().decode(sv.args) === 'uno,dos' && decodeURIComponent(sv.opts.headers['x-name']) === 'votación.csv', 'guardar: los bytes y el nombre, al sistema');
+      await sleep(30); assert(/Guardado en \/home\/ana\/votación\.csv/.test(D.body.textContent), 'y dice dónde');
+    } finally { W.HTMLAnchorElement.prototype.click = click; }
+  });
+
   await test('IA con OpenRouter: inicio de sesión PKCE y funciones (respuestas simuladas)', async () => {
     reset(); const W = frame.contentWindow, AI = R.ai, realFetch = W.fetch, calls = [];
     eq(await AI.pkceChallenge('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'), 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', 'reto PKCE (vector del RFC 7636)');

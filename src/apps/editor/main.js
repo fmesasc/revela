@@ -322,6 +322,8 @@ startAutoVersions();
   });
 }
 if (!testing) loadPlugins();
+// The desktop app: its menu bar, saving and opening files through the system, its updates (ui/shell/desktop.js).
+if (!testing && globalThis.__TAURI__) import('../../ui/shell/desktop.js').then(m => m.initDesktop()).catch(e => console.warn('Escritorio:', e));
 // Charts linked to a CSV load fresh data when the editor opens.
 if (!testing) refreshLinkedCharts().catch(() => {});
 // Back from OpenRouter sign-in (?code=…): exchange it for the key.

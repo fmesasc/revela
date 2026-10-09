@@ -352,7 +352,11 @@ server/
   blender/                     revela-blender: Blender in Cloudflare Containers for
                                «Crear modelo 3D con IA» (signed requests only; docs/NUBE.md):
                                worker.js, gate.js (signature check), runner.py, run.py, Dockerfile
-desktop/                       Tauri app (Windows, macOS, Linux) with self-update
+desktop/                       Tauri app (Windows, macOS, Linux) with self-update. src-tauri/src/main.rs: saving a
+                               download where the person chooses (save_file), the files opened with Revela (opened_files,
+                               read_opened; .pptx/.odp associations in tauri.conf.json), updates. The page side,
+                               ui/shell/desktop.js: the native menu bar (translated), «Acerca de», downloads to the
+                               system's «Save as», opening what Revela was opened with
 tools/
   build-site.mjs               builds the site, the open edition or the desktop app's files
   site-i18n.mjs                the website's pages in each language
