@@ -79,7 +79,7 @@ import { openShortcuts } from '../dialogs/shortcuts.js';
 import { openReport } from '../dialogs/report.js';
 import { openHeaderFooter } from '../dialogs/headerfooter.js';
 import { toggleAnimPane } from '../panels/animation.js';
-import { setZoom, fitZoom } from './zoom.js';
+import { setZoom, fitZoom, zoomToSelection } from './zoom.js';
 import { setNavHidden } from '../shell/navigator.js';
 import { AI_ACTIONS } from '../dialogs/ai.js';
 import { openModelAi } from '../dialogs/model3dai.js';
@@ -319,6 +319,11 @@ export const ACTIONS = {
   'zoom-out': () => setZoom((state.ui.zoom || 1) - 0.1),
   'zoom-reset': () => setZoom(1),
   'zoom-fit': () => fitZoom(),
+  'zoom-selection': () => zoomToSelection(),
+  // Tidying the selection (Inicio ▸ Alinear / distribuir, and the objects' tab).
+  'tidy-grid': () => blocks.tidySelected('grid'), 'tidy-row': () => blocks.tidySelected('row'), 'tidy-col': () => blocks.tidySelected('col'),
+  'match-w': () => blocks.matchSize('w'), 'match-h': () => blocks.matchSize('h'), 'match-size': () => blocks.matchSize('both'),
+  'swap-objects': () => blocks.swapSelected(),
 };
 
 // Shared without copies (Compartir ▸ Ajustes de permisos; the server says so: io/cloud/clouddocs.js state.ui.noCopy):

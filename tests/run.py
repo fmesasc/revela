@@ -209,6 +209,21 @@ def mouse_checks(send, recv, port):
         check(not ev("!!document.getElementById('sc-modal')"), 'Esc cierra el diálogo')
         check(ev("document.activeElement?.dataset?.action==='shortcuts'"), 'al cerrarlo el foco vuelve al botón')
     else: check(False, 'botón de atajos en la cinta (Ver)')
+    # Objects with the real mouse: the outline on hover, and Alt+drag leaving the original and dropping a copy.
+    box = _j.loads(ev("""(()=>{const R=window.__revela;R.store.replaceDeck(R.model.emptyDeck());R.state.ui.snap=false;
+      R.store.commit(()=>{R.store.currentSlide().blocks=[{id:'m1',type:'shape',shape:'rect',x:200,y:200,w:200,h:120,rotation:0,animation:null}];R.store.setSelection(null)});R.render();
+      const r=document.querySelector('#stage .block[data-id="m1"]').getBoundingClientRect();return JSON.stringify({x:r.left+r.width/2,y:r.top+r.height/2,k:r.width/200})})()""") or 'null')
+    time.sleep(0.3)
+    if box:
+        x, y = box['x'], box['y']
+        recv(send('Input.dispatchMouseEvent', sid, type='mouseMoved', x=x - 300, y=y - 150)); recv(send('Input.dispatchMouseEvent', sid, type='mouseMoved', x=x, y=y)); time.sleep(0.2)
+        check(ev("document.querySelector('#stage .block[data-id=\"m1\"]').classList.contains('hover')"), 'al pasar el ratón, el objeto se marca')
+        recv(send('Input.dispatchMouseEvent', sid, type='mousePressed', x=x, y=y, button='left', buttons=1, clickCount=1, modifiers=1))
+        for i in range(1, 6): recv(send('Input.dispatchMouseEvent', sid, type='mouseMoved', x=x + i * 50 * box['k'], y=y, button='left', buttons=1, modifiers=1))
+        recv(send('Input.dispatchMouseEvent', sid, type='mouseReleased', x=x + 250 * box['k'], y=y, button='left', buttons=0, clickCount=1, modifiers=1)); time.sleep(0.3)
+        got = ev("window.__revela.store.currentSlide().blocks.map(b=>b.id==='m1'?'o'+b.x:'c'+b.x).join()")
+        check(got == 'o200,c450', f'Alt+arrastrar con el ratón deja el original y suelta una copia ({got!r})')
+    else: check(False, 'objeto de prueba en la diapositiva')
     recv(send('Target.closeTarget', targetId=tid))
     return fails
 

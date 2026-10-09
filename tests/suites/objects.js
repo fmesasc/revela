@@ -3090,4 +3090,101 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(b.source.x + b.source.w <= 601 && b.source.y + b.source.h <= 426, 'dentro de la imagen: ' + JSON.stringify(b.source));
     eq(b.target, 'pic', 'de esa imagen'); D.querySelector('[data-tab="home"]').click();
   });
+
+  // ---- Duplicating by dragging, smart duplicate, tidy up, same size, swap ---------
+  const rects = boxes => { R.store.commit(() => { slide().blocks = boxes.map(([x, y, w, h], i) => ({ id: 'r' + i, type: 'shape', shape: 'rect', x, y, w, h, rotation: 0, animation: null }));
+    R.state.ui.selection = null; R.state.ui.multi = []; }); R.render(); return slide().blocks; };
+  const elOf = b => D.querySelector(`#stage .block[data-id="${b.id}"]`);
+  const PE = (t, x, y, o = {}) => new frame.contentWindow.PointerEvent(t, { clientX: x, clientY: y, bubbles: true, pointerId: 1, button: 0, pointerType: 'mouse', ...o });
+  const pickIds = ids => { R.store.commit(() => R.store.setMulti(ids), { history: false }); R.render(); };
+
+  await test('Alt + arrastrar duplica: la copia va con el ratón, el original se queda; un paso de deshacer; Ctrl+D repite el paso', async () => {
+    reset(); const snap = R.state.ui.snap; R.state.ui.snap = false;
+    try {
+      const [s] = rects([[100, 100, 200, 100]]); await sleep(10);
+      const el = elOf(s), r = el.getBoundingClientRect(), k = r.width / s.w, x0 = r.left + 20, y0 = r.top + 20;
+      el.dispatchEvent(PE('pointerdown', x0, y0, { altKey: true }));
+      el.dispatchEvent(PE('pointermove', x0 + 150 * k, y0, { altKey: true }));
+      el.dispatchEvent(PE('pointermove', x0 + 300 * k, y0, { altKey: true }));
+      eq(D.querySelectorAll('#stage .dup-ghost').length, 1, 'mientras tanto, el original se ve en su sitio');
+      el.dispatchEvent(PE('pointerup', x0 + 300 * k, y0, { altKey: true })); await sleep(20);
+      eq(slide().blocks.length, 2, 'una copia');
+      const [o, c] = slide().blocks;
+      eq(o.id + ':' + o.x, 'r0:100', 'el original (con su id) se queda donde estaba'); eq(c.x + ',' + c.y, '400,100', 'la copia, donde se suelta');
+      assert(c.id !== 'r0' && R.state.ui.selection === c.id, 'la copia, seleccionada');
+      assert(!D.querySelector('#stage .dup-ghost'), 'sin restos');
+      D.dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown', { key: 'd', ctrlKey: true, bubbles: true })); await sleep(10);
+      eq(slide().blocks.length, 3, 'Ctrl+D, otra'); eq(last().x + ',' + last().y, '700,100', 'al mismo paso (300 px)');
+      R.store.undo(); R.store.undo(); await sleep(10);
+      eq(slide().blocks.length, 1, 'cada una, un paso de deshacer'); eq(slide().blocks[0].x, 100, 'y el original, en su sitio');
+      // Without moving, Alt+click makes nothing.
+      const e2 = elOf(slide().blocks[0]); e2.dispatchEvent(PE('pointerdown', x0, y0, { altKey: true })); e2.dispatchEvent(PE('pointerup', x0, y0, { altKey: true })); await sleep(10);
+      eq(slide().blocks.length, 1, 'Alt+clic no copia');
+    } finally { R.state.ui.snap = snap; }
+  });
+
+  await test('duplicado inteligente: duplicar, mover la copia y Ctrl+D pone la siguiente al mismo paso; un grupo copiado es otro grupo', async () => {
+    reset(); const [s] = rects([[100, 200, 120, 80]]); select(s);
+    R.blocks.duplicateSelected(); let c = last(); eq(c.x + ',' + c.y, '124,224', 'la primera, desplazada un poco');
+    R.store.commit(() => { c.x = 260; c.y = 200; });                       // (moved by the user: 160 px to the right of the original)
+    R.blocks.duplicateSelected(); c = last(); eq(c.x + ',' + c.y, '420,200', 'la siguiente, al mismo paso');
+    R.blocks.duplicateSelected(); c = last(); eq(c.x + ',' + c.y, '580,200', 'y otra');
+    select(slide().blocks[0]); R.state.ui.multi = []; R.blocks.duplicateSelected(); eq(last().x + ',' + last().y, '124,224', 'de otro objeto: el desplazamiento de siempre');
+    // A group copied: the copies are a new group of their own.
+    const [a, b] = rects([[100, 100, 100, 100], [300, 100, 100, 100]]);
+    R.store.commit(() => { a.groupId = b.groupId = 'g1'; }); pickIds([a.id, b.id]);
+    R.blocks.duplicateSelected(); const [ca, cb] = slide().blocks.slice(-2);
+    assert(ca.groupId && ca.groupId === cb.groupId && ca.groupId !== 'g1', 'las copias, otro grupo');
+  });
+
+  await test('ordenar en cuadrícula, fila y columna: misma separación, en el orden de lectura; un solo paso', async () => {
+    reset(); let [a, b, c, d] = rects([[100, 100, 100, 100], [420, 130, 100, 100], [150, 400, 100, 100], [500, 380, 100, 100]]);
+    pickIds([a.id, b.id, c.id, d.id]); await sleep(10);
+    assert(!D.querySelector('[data-action="tidy-grid"]').disabled, 'el botón, activo con varios');
+    D.querySelector('[data-action="tidy-grid"]').click(); await sleep(10);
+    eq([a, b, c, d].map(o => o.x + ',' + o.y).join(' '), '100,100 500,100 100,400 500,400', 'dos por dos, ocupando lo que ocupaban');
+    R.store.undo(); eq(slide().blocks[1].x + ',' + slide().blocks[1].y, '420,130', 'un paso de deshacer');
+    // A row of different sizes: the same gap, centred on one line.
+    [a, b, c] = rects([[100, 100, 100, 50], [300, 300, 150, 100], [700, 150, 80, 80]]); pickIds([a.id, b.id, c.id]);
+    R.blocks.tidySelected('row');
+    eq(b.x - (a.x + a.w), c.x - (b.x + b.w), 'huecos iguales'); eq(a.x + ',' + (c.x + c.w), '100,780', 'en lo que ocupaban');
+    eq([a, b, c].map(o => o.y + o.h / 2).join(), '150,150,150', 'centrados en una línea');
+    R.blocks.tidySelected('col');
+    eq([a, b, c].map(o => o.x + o.w / 2).join(), '175,175,175', 'en columna, centrados');
+    eq(b.y - (a.y + a.h), c.y - (b.y + b.h), 'con huecos iguales');
+    // Piled up: a comfortable gap.
+    [a, b, c] = rects([[200, 200, 100, 100], [205, 205, 100, 100], [210, 200, 100, 100]]); pickIds([a.id, b.id, c.id]);
+    R.blocks.tidySelected('row'); eq(slide().blocks.map(o => o.x).sort((p, q) => p - q).join(), '200,324,448', 'amontonados: 24 px entre ellos');
+    pickIds([a.id]); await sleep(10); assert(D.querySelector('[data-action="tidy-grid"]').disabled, 'con uno solo, desactivado');
+  });
+
+  await test('igualar ancho, alto y tamaño al último seleccionado; intercambiar dos imágenes conserva su recorte', async () => {
+    reset(); const [a, b, c] = rects([[100, 100, 100, 50], [300, 100, 200, 100], [600, 100, 300, 250]]);
+    pickIds([a.id, b.id, c.id]); await sleep(10);
+    D.querySelector('[data-action="match-w"]').click(); eq([a.w, b.w, a.h].join(), '300,300,50', 'el ancho del último');
+    D.querySelector('[data-action="match-h"]').click(); eq([a.h, b.h].join(), '250,250', 'el alto');
+    R.store.undo(); R.store.undo(); pickIds(['r0', 'r1', 'r2']); D.querySelector('[data-action="match-size"]').click();
+    eq(slide().blocks.map(o => o.w + 'x' + o.h).join(), '300x250,300x250,300x250', 'el tamaño'); eq(slide().blocks[0].x, 100, 'cada uno desde su esquina');
+    // Swapping two pictures: each takes the other's place, keeping its own proportion and crop.
+    const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    R.store.commit(() => { slide().blocks = [
+      { id: 'p1', type: 'image', src: PNG, x: 100, y: 100, w: 400, h: 300, fit: 'fill', crop: { top: 10, left: 5 }, rotation: 0, animation: null },
+      { id: 'p2', type: 'image', src: PNG, x: 700, y: 100, w: 200, h: 200, fit: 'cover', focusX: 30, rotation: 8, animation: null }]; R.state.ui.selection = null; R.state.ui.multi = []; });
+    pickIds(['p1', 'p2']); await sleep(10);
+    assert(!D.querySelector('[data-action="swap-objects"]').disabled, 'el botón, activo con dos');
+    D.querySelector('[data-action="swap-objects"]').click(); await sleep(10);
+    const p1 = slide().blocks.find(o => o.id === 'p1'), p2 = slide().blocks.find(o => o.id === 'p2');
+    eq([p1.x, p1.y, p1.w, p1.h, p1.rotation].join(), '700,125,200,150,8', 'la primera, en el sitio de la segunda (4:3, centrada)');
+    eq([p2.x, p2.y, p2.w, p2.h, p2.rotation].join(), '150,100,300,300,0', 'la segunda, en el de la primera (cuadrada)');
+    eq(JSON.stringify(p1.crop) + p2.fit + p2.focusX, '{"top":10,"left":5}cover30', 'cada una con su recorte');
+    eq(slide().blocks.map(o => o.id).join(), 'p2,p1', 'y delante la que estaba delante en ese sitio');
+    R.store.undo(); eq(slide().blocks.find(o => o.id === 'p1').x, 100, 'un paso de deshacer');
+    // From the right-click menu too.
+    pickIds(['p1', 'p2']); await sleep(10); const W = frame.contentWindow, el = elOf(slide().blocks[0]), r = el.getBoundingClientRect();
+    el.dispatchEvent(new W.MouseEvent('contextmenu', { bubbles: true, clientX: r.left + 5, clientY: r.top + 5 }));
+    const items = [...D.querySelectorAll('#context-menu .ctx-item')].map(x => x.textContent);
+    assert(['Intercambiar', 'Ordenar en cuadrícula', 'Igualar tamaño'].every(x => items.includes(x)), 'en el menú: ' + items.join('|'));
+    [...D.querySelectorAll('#context-menu .ctx-item')].find(x => x.textContent === 'Intercambiar').click(); await sleep(10);
+    eq(slide().blocks.find(o => o.id === 'p1').x, 700, 'Intercambiar desde el menú');
+  });
 }

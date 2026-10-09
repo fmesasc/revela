@@ -14,6 +14,8 @@ export const SHORTCUTS = [
   ['Flechas', 'Mover 1 px'], ['Mayús + Flechas', 'Mover 10 px'], ['Esc', 'Salir de edición'],
   ['Doble clic', 'Editar objeto'], ['Mayús al redimensionar', 'Mantener proporción'],
   ['Arrastrar en vacío', 'Selección múltiple'], ['Mayús + clic', 'Añadir a la selección'],
+  ['Alt + arrastrar', 'Arrastrar una copia (el original se queda)'], ['Ctrl/⌘ + D tras mover la copia', 'Otra copia con la misma separación'],
+  ['Espacio + arrastrar', 'Mover la vista (con zoom)'], ['Mayús + 2', 'Zoom a la selección'],
   ['Tab / Mayús + Tab', 'Recorrer los objetos (con la diapositiva enfocada)'],
   ['Mantener pulsado', 'Menú de opciones en pantallas táctiles'],
   ['Ctrl/⌘ + K · Alt + Q · /', 'Buscar comandos'], ['Ctrl/⌘ + A', 'Seleccionar todo'], ['Esc', 'Quitar la selección'], ['Ctrl/⌘ + S', 'Guardar'],

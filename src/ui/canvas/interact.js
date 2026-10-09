@@ -7,6 +7,7 @@ import { exitEdit } from './content.js';
 import { readOnly, stage, transformOf } from './canvas.js';
 import { paintMagnify } from './magnifyview.js';
 import { sourceToBox } from '../../features/document/magnify.js';
+import { duplicateMoved } from '../../features/document/blocks.js';
 
 export const SNAP = 7; // snapping threshold, in canvas pixels
 export function addGuideFromRuler(e, axis) {
@@ -79,13 +80,20 @@ export function startDrag(ev, b, el) {
 
   const movers = selectedBlocks().filter(m => m.type !== 'connector');
   const origins = new Map(movers.map(m => [m.id, { x: m.x, y: m.y, s: m.source && { ...m.source } }]));
-  const f = factor(), sx = ev.clientX, sy = ev.clientY, ox = b.x, oy = b.y;
-  try { el.setPointerCapture(ev.pointerId); } catch {} el.classList.add('dragging');
+  // Several objects snap as one box (PowerPoint, Figma): the selection's bounds. The lines to
+  // snap to are gathered once here, not on every move: the rest of the slide stays put meanwhile.
+  const box = boundsOf(movers), T = snapTargets(new Set(movers.map(m => m.id)));
+  const f = factor(), sx = ev.clientX, sy = ev.clientY;
+  // Alt+drag (Option on a Mac) drags a copy and leaves the original where it was, as in Keynote
+  // and Figma (PowerPoint's Ctrl+drag): a still picture of it stays behind meanwhile.
+  const dup = ev.altKey; let ghosts = null, dx = 0, dy = 0;
+  try { el.setPointerCapture(ev.pointerId); } catch {} el.classList.add('dragging'); el.classList.toggle('dup', dup);
   const onMove = e => {
-    const rawx = Math.round(ox + (e.clientX - sx) * f);
-    const rawy = Math.round(oy + (e.clientY - sy) * f);
-    const snapped = movers.length > 1 ? { x: rawx, y: rawy } : applySnap(b, rawx, rawy);
-    const dx = snapped.x - ox, dy = snapped.y - oy;
+    const rawx = Math.round(box.x + (e.clientX - sx) * f);
+    const rawy = Math.round(box.y + (e.clientY - sy) * f);
+    const snapped = applySnap(box, rawx, rawy, T);
+    dx = snapped.x - box.x; dy = snapped.y - box.y;
+    if (dup && !ghosts && (dx || dy)) ghosts = movers.map(m => ghostOf(stage.querySelector(`.block[data-id="${m.id}"]`))).filter(Boolean);
     for (const m of movers) {
       const o = origins.get(m.id); m.x = o.x + dx; m.y = o.y + dy;
       const mel = stage.querySelector(`.block[data-id="${m.id}"]`);
@@ -95,13 +103,25 @@ export function startDrag(ev, b, el) {
     }
   };
   const onUp = () => {
-    try { el.releasePointerCapture(ev.pointerId); } catch {} el.classList.remove('dragging');
+    try { el.releasePointerCapture(ev.pointerId); } catch {} el.classList.remove('dragging', 'dup');
     el.removeEventListener('pointermove', onMove); el.removeEventListener('pointerup', onUp);
-    clearGuides();
+    clearGuides(); ghosts?.forEach(g => g.remove());
+    if (dup && (dx || dy)) { duplicateMoved(movers, origins); return; }   // (one undo step: the copy where it was dropped)
     commit(() => {});                       // one undo step per drag (none if it didn't move)
   };
   el.addEventListener('pointermove', onMove); el.addEventListener('pointerup', onUp);
 }
+// What an Alt+drag leaves behind while it lasts: a still copy of the object (no live frames or players in it).
+function ghostOf(mel) {
+  if (!mel) return null;
+  const g = mel.cloneNode(true); g.classList.remove('selected', 'dragging', 'dup'); g.classList.add('dup-ghost'); g.removeAttribute('data-id');
+  g.querySelectorAll('iframe, model-viewer, video, audio').forEach(n => { const d = document.createElement('div'); d.style.cssText = 'width:100%;height:100%;background:#8884'; n.replaceWith(d); });
+  mel.before(g); return g;
+}
+export const boundsOf = bs => {
+  const x = Math.min(...bs.map(b => b.x)), y = Math.min(...bs.map(b => b.y));
+  return { x, y, w: Math.max(...bs.map(b => b.x + b.w)) - x, h: Math.max(...bs.map(b => b.y + b.h)) - y };
+};
 export function startRotate(ev, b, el) {
   ev.stopPropagation();
   if (b.locked || readOnly()) return;
@@ -137,6 +157,11 @@ export function startResize(ev, b, el, corner) {
   const syg = (corner.includes('s') ? 1 : corner.includes('n') ? -1 : 0) * (b.flipV ? -1 : 1);
   const ocx = o.x + o.w / 2, ocy = o.y + o.h / 2;
   const ax = ocx + (-sxg * o.w / 2) * cos - (-syg * o.h / 2) * sin, ay = ocy + (-sxg * o.w / 2) * sin + (-syg * o.h / 2) * cos;
+  // Snapping while resizing, for an object that isn't turned (a turned one's sides aren't on the
+  // lines): gathered once, as for a drag. Not a magnifier, whose box follows its area's shape.
+  const T = !mag && !((b.rotation || 0) % 360) ? snapTargets(new Set([b.id])) : null;
+  const sizes = T && { x: [], y: [] };
+  if (T) for (const s of T.others) if (s.type !== 'connector') { sizes.x.push({ len: s.w, b: s }); sizes.y.push({ len: s.h, b: s }); }
   const onMove = e => {
     const dx = (e.clientX - sx) * f, dy = (e.clientY - sy) * f;
     const lx = dx * cos + dy * sin, ly = -dx * sin + dy * cos;       // the drag along the object's sides
@@ -145,60 +170,101 @@ export function startResize(ev, b, el, corner) {
     // in PowerPoint. A picture's side handle stretches it: a whole one ("contain") is
     // drawn deformed then ("fill"), so the box and the picture stay the same.
     // A magnifier keeps the proportion of its area from any handle (Shift: the area takes the box's).
-    if (mag ? !e.shiftKey : pic && sxg && syg ? !e.shiftKey : e.shiftKey) {
+    const keep = mag ? !e.shiftKey : pic && sxg && syg ? !e.shiftKey : e.shiftKey;
+    if (keep) {
       if (!syg) h = Math.max(20, w / ratio); else if (!sxg) w = Math.max(30, h * ratio);
       else if (Math.abs(w / o.w) >= Math.abs(h / o.h)) h = Math.max(20, w / ratio); else w = Math.max(30, h * ratio);
     } else if (pic && (b.fit || 'contain') === 'contain' && Math.abs(w / h - ratio) > 0.01) {
       b.fit = 'fill'; const img = el.querySelector('img'); if (img) img.style.objectFit = 'fill';
+    }
+    let sw = null, sh = null;
+    if (T && state.ui.snap !== false) {
+      sw = sxg ? snapSide(w, ax, sxg, T.v, sizes.x, 30) : null; sh = syg ? snapSide(h, ay, syg, T.h, sizes.y, 20) : null;
+      // Keeping the proportion, the closer snap leads and the other side follows it.
+      if (keep) {
+        if (sw && (!sh || sw.d <= sh.d)) { sh = null; w = sw.val; h = Math.max(20, w / ratio); }
+        else if (sh) { sw = null; h = sh.val; w = Math.max(30, h * ratio); }
+      } else { if (sw) w = sw.val; if (sh) h = sh.val; }
     }
     w = Math.round(w); h = Math.round(h);
     const cx = ax + (sxg * w / 2) * cos - (syg * h / 2) * sin, cy = ay + (sxg * w / 2) * sin + (syg * h / 2) * cos;
     Object.assign(b, { w, h, x: Math.round(cx - w / 2), y: Math.round(cy - h / 2) });
     Object.assign(el.style, { left: b.x + 'px', top: b.y + 'px', width: b.w + 'px', height: b.h + 'px' });   // keep rotation/opacity
     if (mag) { if (e.shiftKey) sourceToBox(b); paintMagnify(el, b); }
+    if (T) {
+      clearGuides();
+      if (sw?.same) drawSameSize('x', [b, sw.same]); else if (sw) drawGuide('v', sw.line);
+      if (sh?.same) drawSameSize('y', [b, sh.same]); else if (sh) drawGuide('h', sh.line);
+    }
   };
   const onUp = () => {
     document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp);
-    commit(() => {});
+    clearGuides(); commit(() => {});
   };
   document.addEventListener('pointermove', onMove); document.addEventListener('pointerup', onUp);
 }
 // ---- Alignment guides + snapping -----------------------------------------
-export function applySnap(b, x, y) {
+// The lines an object can snap to (slide centre and edges, the other objects' edges and centres,
+// placed guides, the visible grid) and its neighbours: gathered once when a drag or a resize
+// begins, so that each move only compares numbers (60 fps on a crowded slide).
+export function snapTargets(skip = new Set()) {
+  const { w, h } = state.deck.size;
+  const others = currentSlide().blocks.filter(o => !skip.has(o.id));
+  const v = [w / 2, 0, w], hz = [h / 2, 0, h];         // slide centre + edges
+  for (const o of others) { v.push(o.x, o.x + o.w, o.x + o.w / 2); hz.push(o.y, o.y + o.h, o.y + o.h / 2); }
+  v.push(...(state.deck.guides?.v || [])); hz.push(...(state.deck.guides?.h || []));   // placed guides
+  if (state.ui.showGuides)                                          // visible grid: 10 × 10 cells
+    for (let i = 1; i < 10; i++) { v.push(w * i / 10); hz.push(h * i / 10); }
+  return { v, h: hz, others };
+}
+// Snap each axis to the single closest target (across box edges/centre and every candidate
+// line). Picking the nearest — rather than the first within range — keeps centring smooth
+// instead of jumping between guides.
+const nearest = (vals, targets) => {
+  let win = null;
+  for (const val of vals) for (const t of targets) {
+    const d = Math.abs(val - t);
+    if (d < SNAP && (!win || d < win.d)) win = { d, delta: t - val, at: t };
+  }
+  return win;
+};
+// `b` is the box being moved (one object, or the bounds of several): only its size is read.
+export function applySnap(b, x, y, T = snapTargets(new Set([b.id]))) {
   clearGuides();
   if (state.ui.snap === false) return { x: Math.round(x), y: Math.round(y) };  // snapping off
-  const { w, h } = state.deck.size;
-  const others = currentSlide().blocks.filter(o => o.id !== b.id);
-  const vTargets = [w / 2, 0, w];                    // slide centre + edges (x)
-  const hTargets = [h / 2, 0, h];                    // slide centre + edges (y)
-  for (const o of others) { vTargets.push(o.x, o.x + o.w, o.x + o.w / 2); hTargets.push(o.y, o.y + o.h, o.y + o.h / 2); }
-  (state.deck.guides?.v || []).forEach(x => vTargets.push(x));   // snap to placed guides
-  (state.deck.guides?.h || []).forEach(y => hTargets.push(y));
-  if (state.ui.showGuides)                                          // visible grid: 10 × 10 cells
-    for (let i = 1; i < 10; i++) { vTargets.push(w * i / 10); hTargets.push(h * i / 10); }
-
-  clearGuides();
-  // Snap each axis to the single closest target (across box edges/centre and
-  // every candidate line). Picking the nearest — rather than the first within
-  // range — keeps centring smooth instead of jumping between guides.
-  const best = (vals, targets) => {
-    let win = null;
-    for (const val of vals) for (const t of targets) {
-      const d = Math.abs(val - t);
-      if (d < SNAP && (!win || d < win.d)) win = { d, delta: t - val, at: t };
-    }
-    return win;
-  };
   // Smart spacing: equal gaps to the neighbours in the same row / column
   // (PowerPoint's distance arrows). Wins over alignment only when closer.
-  const sx = spacingSnap(b, x, y, others, 'x'), sy = spacingSnap(b, x, y, others, 'y');
-  const bv = best([x, x + b.w / 2, x + b.w], vTargets);
+  const sx = spacingSnap(b, x, y, T.others, 'x'), sy = spacingSnap(b, x, y, T.others, 'y');
+  const bv = nearest([x, x + b.w / 2, x + b.w], T.v);
   if (sx && (!bv || sx.d < bv.d)) { x = sx.val; drawSpacing('x', sx.marks, y + b.h / 2); }
   else if (bv) { x += bv.delta; drawGuide('v', bv.at); }
-  const bh = best([y, y + b.h / 2, y + b.h], hTargets);
+  const bh = nearest([y, y + b.h / 2, y + b.h], T.h);
   if (sy && (!bh || sy.d < bh.d)) { y = sy.val; drawSpacing('y', sy.marks, x + b.w / 2); }
   else if (bh) { y += bh.delta; drawGuide('h', bh.at); }
   return { x: Math.round(x), y: Math.round(y) };
+}
+// Resizing: the side being dragged (or the centre it moves) snaps to the same lines, and the
+// length to another object's same width or height (PowerPoint's and Keynote's "same size"),
+// whichever is closest. `at` is the fixed side, `sign` which way the length grows from it.
+function snapSide(len, at, sign, lines, sizes, min) {
+  let win = null;
+  const consider = (d, val, mark) => { if (d < SNAP && val >= min && (!win || d < win.d)) win = { d, val, ...mark }; };
+  for (const t of lines) {
+    consider(Math.abs(at + sign * len - t), sign * (t - at), { line: t });            // the side on the line
+    consider(Math.abs(at + sign * len / 2 - t), 2 * sign * (t - at), { line: t });    // its centre on the line
+  }
+  for (const o of sizes) consider(Math.abs(o.len - len), o.len, { same: o.b });
+  return win;
+}
+// The "same size" marker: a measure under (or beside) each object with that width (or height).
+export function drawSameSize(axis, list) {
+  for (const o of list) {
+    const g = document.createElement('div'), n = Math.round(axis === 'x' ? o.w : o.h);
+    g.className = 'guide spacing same ' + axis;
+    g.style.cssText = axis === 'x' ? `left:${o.x}px;width:${o.w}px;top:${o.y + o.h + 12}px` : `top:${o.y}px;height:${o.h}px;left:${o.x + o.w + 12}px`;
+    g.dataset.gap = n; g.innerHTML = `<span class="gap-label">= ${n}</span>`;
+    stage.appendChild(g);
+  }
 }
 // Candidate positions (left/top edge) that repeat a gap already present between
 // two neighbours, or centre the object between two of them.
@@ -233,6 +299,7 @@ export function drawSpacing(axis, marks, at) {
     if (axis === 'x') g.style.cssText = `left:${a}px;width:${c - a}px;top:${at}px`;
     else g.style.cssText = `top:${a}px;height:${c - a}px;left:${at}px`;
     g.dataset.gap = Math.round(c - a);
+    g.innerHTML = `<span class="gap-label">${g.dataset.gap}</span>`;   // (the distance, readable at any zoom: canvas.css)
     stage.appendChild(g);
   }
 }

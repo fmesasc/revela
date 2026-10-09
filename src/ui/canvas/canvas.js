@@ -30,6 +30,7 @@ import { cameraViewCurrent, syncCameras } from './cameraview.js';
 import { syncPuppet } from './puppetview.js';
 import { paintMagnify, setupMagnify } from './magnifyview.js';
 import { addGuideFromRuler, drawPGuides, startMarquee, startDrag, startRotate, startResize } from './interact.js';
+import { initHover } from './hover.js';
 
 export const findBlock = id => currentSlide().blocks.find(x => x.id === id);
 
@@ -47,6 +48,7 @@ export function initCanvas() {
   // Click a ruler to drop a placeable guide.
   document.getElementById('ruler-h')?.addEventListener('pointerdown', e => addGuideFromRuler(e, 'v'));
   document.getElementById('ruler-v')?.addEventListener('pointerdown', e => addGuideFromRuler(e, 'h'));
+  initHover();
 }
 
 // The text of a flipped shape, flipped back: the shape mirrors, its words don't.

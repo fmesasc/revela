@@ -37,13 +37,51 @@ export function deleteSelected() {
     setSelection(null);
   });
 }
+// Copies of objects with ids of their own: a copied group is a new group, and a connector copied
+// with both its ends joins the copies.
+export function cloneBlocks(bs) {
+  const ids = new Map(bs.map(b => [b.id, uid()])), groups = new Map();
+  return bs.map(b => {
+    const c = structuredClone(b); c.id = ids.get(b.id);
+    if (c.groupId) { if (!groups.has(c.groupId)) groups.set(c.groupId, uid()); c.groupId = groups.get(c.groupId); }
+    if (c.type === 'connector' && ids.has(c.from) && ids.has(c.to)) { c.from = ids.get(c.from); c.to = ids.get(c.to); }
+    return c;
+  });
+}
+// «Smart duplicate» (PowerPoint): duplicate, move the copy, and Ctrl+D again puts the next copy
+// the same step further on — a row of evenly spaced copies in a few keystrokes. What was made last
+// (its copies, where they were left, the step), compared with the selection when Ctrl+D comes again.
+let lastDup = null;
+const DUP_STEP = 24;
+const samePlace = (bs, at) => bs.every((b, i) => b.x === at[i].x && b.y === at[i].y);
+function rememberDup(copies, step) { lastDup = { ids: copies.map(c => c.id).join(), at: copies.map(c => ({ x: c.x, y: c.y })), step }; }
 export function duplicateSelected() {
   const bs = selectedBlocks(); if (!bs.length) return;
+  // The copies made last, still selected: the step is how far from their originals they are now.
+  let step = { dx: DUP_STEP, dy: DUP_STEP };
+  if (lastDup && lastDup.ids === bs.map(b => b.id).join() && lastDup.at.length === bs.length)
+    step = samePlace(bs, lastDup.at) ? lastDup.step : { dx: lastDup.step.dx + bs[0].x - lastDup.at[0].x, dy: lastDup.step.dy + bs[0].y - lastDup.at[0].y };
   commit(() => {
-    const s = currentSlide();
-    const copies = bs.map(b => { const c = structuredClone(b); c.id = uid(); c.x += 24; c.y += 24; return c; });
-    s.blocks.push(...copies);
+    const copies = cloneBlocks(bs);
+    for (const c of copies) { c.x += step.dx; c.y += step.dy; }
+    currentSlide().blocks.push(...copies);
     setMulti(copies.map(c => c.id));
+    rememberDup(copies, step);
+  });
+}
+// The end of an Alt+drag (ui/canvas/interact.js): the objects were dragged to a new place; copies
+// stay there and the originals go back to where they were (`origins`), in one undo step. The copies
+// are what is selected, and Ctrl+D then repeats the same step.
+export function duplicateMoved(movers, origins) {
+  if (!movers.length) return;
+  // (The originals back first, outside the step: the store would take their move, made in place,
+  // as a step of its own.)
+  const copies = cloneBlocks(movers), o0 = origins.get(movers[0].id);
+  movers.forEach(m => { const o = origins.get(m.id); m.x = o.x; m.y = o.y; if (o.s) m.source = o.s; });
+  commit(() => {
+    currentSlide().blocks.push(...copies);
+    setMulti(copies.map(c => c.id));
+    rememberDup(copies, { dx: copies[0].x - o0.x, dy: copies[0].y - o0.y });
   });
 }
 
@@ -787,5 +825,62 @@ export function distributeSelected(axis) {
     const c0 = first[key] + first[size] / 2, cN = lastB[key] + lastB[size] / 2;
     const step = (cN - c0) / (sorted.length - 1);
     sorted.forEach((b, i) => { if (i && i < sorted.length - 1) b[key] = Math.round(c0 + step * i - b[size] / 2); });
+  });
+}
+
+// «Ordenar en cuadrícula / fila / columna» (Figma's Tidy up): the selected objects in a grid, a row or a
+// column with the same gap between them, from where they are now and in reading order. The gap keeps the
+// room they take now (when they don't overlap), else a comfortable 24 px; each one is centred in its cell.
+export function tidySelected(mode = 'grid') {
+  const bs = selectedBlocks().filter(b => b.type !== 'connector'); if (bs.length < 2) return;
+  const cx = b => b.x + b.w / 2, cy = b => b.y + b.h / 2, n = bs.length;
+  const x0 = Math.min(...bs.map(b => b.x)), y0 = Math.min(...bs.map(b => b.y));
+  const W = Math.max(...bs.map(b => b.x + b.w)) - x0, H = Math.max(...bs.map(b => b.y + b.h)) - y0;
+  // The rows they're in now: centres closer than half the tallest one.
+  const half = Math.max(...bs.map(b => b.h)) / 2, rows = [];
+  for (const b of [...bs].sort((a, c) => cy(a) - cy(c))) { const r = rows.at(-1); if (r && cy(b) - cy(r[0]) < half) r.push(b); else rows.push([b]); }
+  rows.forEach(r => r.sort((a, c) => cx(a) - cx(c)));
+  let cols = mode === 'row' ? n : mode === 'col' ? 1 : Math.max(...rows.map(r => r.length));
+  if (mode === 'grid' && (cols === n || cols === 1)) cols = Math.ceil(Math.sqrt(n));   // (all in a line: a squarish grid)
+  const order = mode === 'row' ? [...bs].sort((a, c) => cx(a) - cx(c)) : mode === 'col' ? [...bs].sort((a, c) => cy(a) - cy(c)) : rows.flat();
+  const nr = Math.ceil(n / cols), colW = Array(cols).fill(0), rowH = Array(nr).fill(0);
+  order.forEach((b, i) => { colW[i % cols] = Math.max(colW[i % cols], b.w); rowH[(i / cols) | 0] = Math.max(rowH[(i / cols) | 0], b.h); });
+  const sum = a => a.reduce((s, v) => s + v, 0);
+  const gapOf = (span, used, k) => { const g = k > 1 ? (span - used) / (k - 1) : null; return g >= 4 ? Math.round(g) : null; };
+  let gx = gapOf(W, sum(colW), cols), gy = gapOf(H, sum(rowH), nr);
+  gx ??= gy ?? 24; gy ??= gx;
+  commit(() => order.forEach((b, i) => {
+    const c = i % cols, r = (i / cols) | 0;
+    b.x = Math.round(x0 + sum(colW.slice(0, c)) + c * gx + (colW[c] - b.w) / 2);
+    b.y = Math.round(y0 + sum(rowH.slice(0, r)) + r * gy + (rowH[r] - b.h) / 2);
+  }));
+}
+// «Igualar ancho / alto / tamaño»: the others take the size of the object selected last (the one
+// clicked), as in PowerPoint, keeping their top-left corner. A picture given only a width or a
+// height keeps its proportion, so it isn't drawn squashed.
+export function matchSize(dim = 'both') {
+  const bs = selectedBlocks().filter(b => b.type !== 'connector'); if (bs.length < 2) return;
+  const ref = bs.find(b => b.id === state.ui.selection) || bs.at(-1);
+  commit(() => { for (const b of bs) {
+    if (b === ref) continue;
+    const r = b.w / b.h, pic = b.type === 'image' && dim !== 'both';
+    if (dim !== 'h') { b.w = ref.w; if (pic) b.h = Math.round(b.w / r); }
+    if (dim !== 'w') { b.h = ref.h; if (pic) b.w = Math.round(b.h * r); }
+  } });
+}
+// «Intercambiar»: two objects trade places — position, size, turn and which one is in front —, as
+// when swapping two photos in a layout. A picture keeps its own proportion (its crop: what shows of
+// it), fitted and centred in the other's place.
+export function swapSelected() {
+  const bs = selectedBlocks().filter(b => b.type !== 'connector'); if (bs.length !== 2) return;
+  const [a, c] = bs, slot = b => ({ x: b.x, y: b.y, w: b.w, h: b.h, rotation: b.rotation || 0 });
+  const put = (b, s) => {
+    let { w, h } = s;
+    if (b.type === 'image') { const r = b.w / b.h; if (w / h > r) w = h * r; else h = w / r; }
+    Object.assign(b, { w: Math.round(w), h: Math.round(h), x: Math.round(s.x + (s.w - w) / 2), y: Math.round(s.y + (s.h - h) / 2), rotation: s.rotation });
+  };
+  commit(() => {
+    const sa = slot(a), sc = slot(c); put(a, sc); put(c, sa);
+    const arr = currentSlide().blocks, i = arr.indexOf(a), j = arr.indexOf(c); arr[i] = c; arr[j] = a;
   });
 }

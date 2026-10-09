@@ -1,6 +1,6 @@
 // Canvas zoom (status bar and View tab); fits the slide on small screens.
 
-import { state } from '../../core/store.js';
+import { state, selectedBlocks } from '../../core/store.js';
 
 const $ = s => document.querySelector(s);
 
@@ -35,6 +35,46 @@ export function wireZoom() {
     const k = (state.ui.zoom || 1) / z0;
     wrap.scrollLeft = px * k - (e.clientX - r.left); wrap.scrollTop = py * k - (e.clientY - r.top);
   }, { passive: false });
+  wirePan(wrap);
+}
+// Space + drag moves the view when the slide is bigger than its area (zoomed in), as in Figma,
+// Photoshop or Keynote: a hand while Space is held, a closed hand while dragging. Not while
+// typing, nor over a button that Space would press.
+const canPan = w => w && (w.scrollWidth > w.clientWidth + 1 || w.scrollHeight > w.clientHeight + 1);
+function wirePan(wrap) {
+  if (!wrap) return;
+  let held = false;
+  const free = () => { const a = document.activeElement; return !a || a === document.body || (!!a.closest?.('#canvas-wrap') && !a.isContentEditable && !/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)); };
+  const hand = on => { held = on; wrap.classList.toggle('space-pan', on); if (!on) wrap.classList.remove('panning'); };
+  document.addEventListener('keydown', e => {
+    if (e.code !== 'Space' || e.ctrlKey || e.metaKey || e.altKey || !free() || document.querySelector('.modal-backdrop') || !canPan(wrap)) return;
+    e.preventDefault(); if (!held) hand(true);
+  });
+  document.addEventListener('keyup', e => { if (e.code === 'Space' && held) hand(false); });
+  window.addEventListener('blur', () => { if (held) hand(false); });
+  // (Capture: the hand wins over the object under it, which would otherwise be dragged.)
+  wrap.addEventListener('pointerdown', e => {
+    if (!held || e.button !== 0) return;
+    e.preventDefault(); e.stopPropagation();
+    const sx = e.clientX, sy = e.clientY, l = wrap.scrollLeft, t = wrap.scrollTop;
+    wrap.classList.add('panning');
+    const move = m => { wrap.scrollLeft = l - (m.clientX - sx); wrap.scrollTop = t - (m.clientY - sy); };
+    const up = () => { wrap.classList.remove('panning'); window.removeEventListener('pointermove', move, true); window.removeEventListener('pointerup', up, true); };
+    window.addEventListener('pointermove', move, true); window.addEventListener('pointerup', up, true);
+  }, true);
+}
+// «Zoom a la selección» (Figma's Shift+2): the selected objects fill the view, centred; with
+// nothing selected, the whole slide fits the window.
+export function zoomToSelection() {
+  const bs = selectedBlocks(), wrap = document.getElementById('canvas-wrap');
+  if (!bs.length || !wrap?.clientWidth) { fitZoom(); return; }
+  const x = Math.min(...bs.map(b => b.x)), y = Math.min(...bs.map(b => b.y));
+  const w = Math.max(...bs.map(b => b.x + b.w)) - x, h = Math.max(...bs.map(b => b.y + b.h)) - y;
+  const room = 0.8;   // (some of the slide around it, and room for the handles)
+  setZoom(Math.min(3, (wrap.clientWidth * room) / Math.max(w, 1), (wrap.clientHeight * room) / Math.max(h, 1)));
+  const z = state.ui.zoom || 1, st = document.getElementById('stage').getBoundingClientRect(), r = wrap.getBoundingClientRect();
+  wrap.scrollLeft += st.left + (x + w / 2) * z - (r.left + wrap.clientWidth / 2);
+  wrap.scrollTop += st.top + (y + h / 2) * z - (r.top + wrap.clientHeight / 2);
 }
 // Fit to the window (as PowerPoint does) until the user picks a zoom; then theirs is kept.
 let fitting = true;

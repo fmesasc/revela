@@ -323,6 +323,12 @@ function forBlock(b, cell = null) {
   if (sel.length > 1) groupItems.push(['Agrupar', () => blocks.groupSelected()]);
   if (sel.some(x => x.groupId)) groupItems.push(['Desagrupar', () => blocks.ungroupSelected()]);
   if (groupItems.length) items.push(null, ...groupItems);
+  // Several: tidy them up, give them the same size, or (two) swap them.
+  const objs = sel.filter(x => x.type !== 'connector');
+  if (objs.length > 1) items.push(null,
+    ['Ordenar en cuadrícula', () => blocks.tidySelected('grid')], ['Ordenar en fila', () => blocks.tidySelected('row')], ['Ordenar en columna', () => blocks.tidySelected('col')],
+    ['Igualar ancho', () => blocks.matchSize('w')], ['Igualar alto', () => blocks.matchSize('h')], ['Igualar tamaño', () => blocks.matchSize('both')],
+    ...(objs.length === 2 ? [['Intercambiar', () => blocks.swapSelected()]] : []));
   // Merge shapes (2+ closed shapes): union, combine, intersect, subtract.
   const ordered = shapeops.selectedShapesInOrder();
   if (shapeops.canMerge(ordered)) {

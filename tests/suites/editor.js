@@ -282,6 +282,100 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     R.state.ui.showGuides = false; R.render();
   });
 
+  // ---- Direct manipulation: several objects, resizing, hover, the view ------------
+  // Rectangles at these boxes, nothing selected.
+  const rects = boxes => { R.store.commit(() => { slide().blocks = boxes.map(([x, y, w, h], i) => ({ id: 'r' + i, type: 'shape', shape: 'rect', x, y, w, h, rotation: 0, animation: null }));
+    R.state.ui.selection = null; R.state.ui.multi = []; }); R.render(); return slide().blocks; };
+  const elOf = b => D.querySelector(`#stage .block[data-id="${b.id}"]`);
+  const PE = (t, x, y, o = {}) => new frame.contentWindow.PointerEvent(t, { clientX: x, clientY: y, bubbles: true, pointerId: 1, button: 0, pointerType: 'mouse', ...o });
+
+  await test('guías inteligentes al mover varios objetos: la caja del grupo se ajusta a los demás, en un solo paso', async () => {
+    reset(); R.state.ui.snap = true; const [a, b, c] = rects([[100, 100, 200, 100], [100, 300, 200, 100], [700, 500, 150, 150]]);
+    R.store.commit(() => R.store.setMulti([a.id, b.id]), { history: false }); R.render(); await sleep(10);
+    const el = elOf(a), r = el.getBoundingClientRect(), k = r.width / a.w, x0 = r.left + 10, y0 = r.top + 10;
+    el.dispatchEvent(PE('pointerdown', x0, y0));
+    el.dispatchEvent(PE('pointermove', x0 + 597 * k, y0));
+    eq(a.x, 700, 'el borde izquierdo del grupo, en el de C (a 3 px)'); eq(b.x, 700, 'los dos se mueven juntos');
+    assert(D.querySelector('#stage .guide.v'), 'con su guía');
+    el.dispatchEvent(PE('pointerup', x0 + 597 * k, y0)); await sleep(10);
+    assert(!D.querySelector('#stage .guide'), 'la guía se va al soltar');
+    R.store.undo(); await sleep(10); eq(slide().blocks[0].x + ',' + slide().blocks[1].x, '100,100', 'un solo paso de deshacer');
+    // The gap between neighbours shows its distance, readable.
+    const [, , m] = rects([[100, 300, 100, 100], [300, 300, 100, 100], [560, 300, 100, 100]]); await sleep(10);
+    const em = elOf(m), rm = em.getBoundingClientRect(), km = rm.width / 100;
+    em.dispatchEvent(PE('pointerdown', rm.left + 10, rm.top + 10)); em.dispatchEvent(PE('pointermove', rm.left + 10 - 63 * km, rm.top + 10));
+    const labels = [...D.querySelectorAll('#stage .guide.spacing .gap-label')];
+    eq(labels.map(l => l.textContent).join(), '100,100', 'cada hueco con su número');
+    assert(labels.every(l => { const q = l.getBoundingClientRect(); return q.width > 8 && q.height > 8 && getComputedStyle(l).display !== 'none'; }), 'y se ve');
+    em.dispatchEvent(PE('pointerup', 0, 0));
+  });
+
+  await test('guías al redimensionar: el borde se ajusta a otros objetos y el tamaño a otro igual (con su marca)', async () => {
+    reset(); R.state.ui.snap = true; const [d, e] = rects([[100, 100, 200, 100], [600, 400, 300, 120]]);
+    select(d); await sleep(10);
+    const hd = elOf(d).querySelector('.handle-size.e'), k = elOf(d).getBoundingClientRect().width / d.w, x0 = 500, y0 = 300;
+    hd.dispatchEvent(PE('pointerdown', x0, y0));
+    D.dispatchEvent(PE('pointermove', x0 + 97 * k, y0));
+    eq(d.w, 300, 'el mismo ancho que E (a 3 px)'); eq(d.x, 100, 'el lado izquierdo, quieto');
+    const same = [...D.querySelectorAll('#stage .guide.same.x')];
+    eq(same.length, 2, 'la marca de «mismo tamaño», en los dos'); eq(same[0].textContent, '= 300', 'con la medida');
+    D.dispatchEvent(PE('pointermove', x0 + 297 * k, y0));
+    eq(d.w, 500, 'el borde derecho, en el izquierdo de E (a 3 px)'); assert(D.querySelector('#stage .guide.v') && !D.querySelector('#stage .guide.same'), 'con su guía');
+    D.dispatchEvent(PE('pointerup', x0 + 297 * k, y0)); await sleep(10);
+    assert(!D.querySelector('#stage .guide'), 'nada al soltar');
+    R.store.undo(); eq(slide().blocks[0].w, 200, 'se deshace');
+    // Turned, or with snapping off: as before.
+    R.state.ui.snap = false; select(slide().blocks[0]); await sleep(10);
+    const d2 = slide().blocks[0], hd2 = elOf(d2).querySelector('.handle-size.e');
+    hd2.dispatchEvent(PE('pointerdown', x0, y0)); D.dispatchEvent(PE('pointermove', x0 + 97 * k, y0)); D.dispatchEvent(PE('pointerup', x0 + 97 * k, y0));
+    eq(d2.w, 297, 'sin ajuste, donde se suelta'); R.state.ui.snap = true;
+  });
+
+  await test('al pasar el ratón: contorno en lo que se cogería (el grupo entero; nada en los bloqueados ni al arrastrar)', async () => {
+    reset(); const [a, b, c, l] = rects([[100, 100, 100, 100], [300, 100, 100, 100], [500, 100, 100, 100], [700, 100, 100, 100]]);
+    R.store.commit(() => { b.groupId = c.groupId = 'g1'; l.locked = true; }); R.render(); await sleep(10);
+    const over = (el, o) => el.querySelector('.shape').dispatchEvent(PE('pointerover', 0, 0, o));
+    over(elOf(a)); assert(elOf(a).classList.contains('hover'), 'el objeto bajo el ratón');
+    assert(!D.querySelector('#stage .hover-group'), 'sin caja de grupo');
+    over(elOf(b)); assert(!elOf(a).classList.contains('hover') && elOf(b).classList.contains('hover') && elOf(c).classList.contains('hover'), 'del grupo, todos');
+    assert(D.querySelector('#stage .hover-group'), 'y una caja alrededor del grupo');
+    over(elOf(l)); assert(!D.querySelector('#stage .block.hover, #stage .hover-group'), 'un bloqueado, ninguno');
+    eq(getComputedStyle(elOf(l)).cursor, 'default', 'y su cursor no es el de mover');
+    over(elOf(a), { pointerType: 'touch' }); assert(!elOf(a).classList.contains('hover'), 'con el dedo, no');
+    over(elOf(a)); D.getElementById('stage').dispatchEvent(PE('pointerleave', 0, 0, { bubbles: false })); assert(!D.querySelector('#stage .block.hover'), 'al salir, se quita');
+    over(elOf(a)); elOf(a).dispatchEvent(PE('pointerdown', 0, 0)); assert(!elOf(a).classList.contains('hover'), 'al pulsar, se quita');
+    elOf(a).dispatchEvent(PE('pointerup', 0, 0));
+  });
+
+  await test('Espacio + arrastrar mueve la vista con zoom; zoom a la selección (botón y Mayús+2)', async () => {
+    reset(); D.activeElement?.blur?.(); const Z = await frame.contentWindow.eval("import('/src/ui/ribbon/zoom.js')"), z0 = R.state.ui.zoom, fit0 = Z.zoomFitting(), wrap = D.getElementById('canvas-wrap'), W = frame.contentWindow;
+    try {
+      const [a] = rects([[1000, 500, 100, 100], [100, 100, 100, 100]]); await sleep(10);
+      Z.setZoom(2.5); await sleep(30); wrap.scrollLeft = 400; wrap.scrollTop = 300; await sleep(10);
+      assert(wrap.scrollWidth > wrap.clientWidth, 'la diapositiva no cabe');
+      D.body.dispatchEvent(new W.KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true }));
+      assert(wrap.classList.contains('space-pan'), 'Espacio: la mano');
+      const el = elOf(a), r = el.getBoundingClientRect(), x = r.left + 10, y = r.top + 10, l0 = wrap.scrollLeft, t0 = wrap.scrollTop;
+      el.dispatchEvent(PE('pointerdown', x, y)); D.dispatchEvent(PE('pointermove', x - 120, y - 50)); D.dispatchEvent(PE('pointerup', x - 120, y - 50)); await sleep(10);
+      eq(wrap.scrollLeft - l0, 120, 'la vista se mueve con la mano'); eq(wrap.scrollTop - t0, 50, 'también en vertical');
+      eq(a.x, 1000, 'el objeto bajo la mano no se mueve'); assert(!R.state.ui.selection, 'ni se selecciona');
+      D.body.dispatchEvent(new W.KeyboardEvent('keyup', { key: ' ', code: 'Space', bubbles: true }));
+      assert(!wrap.classList.contains('space-pan'), 'al soltar Espacio, vuelve a ser el cursor de siempre');
+      // Zoom to the selection: it fills the view, centred.
+      Z.setZoom(1); select(a); await sleep(10);
+      D.querySelector('[data-action="zoom-selection"]').click(); await sleep(20);
+      assert(R.state.ui.zoom > 2, 'acerca: ' + R.state.ui.zoom);
+      const centred = () => { const q = elOf(a).getBoundingClientRect(), w = wrap.getBoundingClientRect(); return Math.abs(q.left + q.width / 2 - (w.left + wrap.clientWidth / 2)) < 3 && Math.abs(q.top + q.height / 2 - (w.top + wrap.clientHeight / 2)) < 3; };
+      assert(centred(), 'y lo centra');
+      Z.setZoom(1); await sleep(10);
+      D.dispatchEvent(new W.KeyboardEvent('keydown', { key: '"', code: 'Digit2', shiftKey: true, bubbles: true })); await sleep(20);
+      assert(R.state.ui.zoom > 2 && centred(), 'Mayús+2 hace lo mismo');
+      R.store.commit(() => R.store.setSelection(null), { history: false });
+      D.querySelector('[data-action="zoom-selection"]').click(); await sleep(20);
+      assert(wrap.scrollWidth <= wrap.clientWidth + 1, 'sin selección: la diapositiva entera');
+    } finally { if (fit0) Z.fitZoom(); else Z.setZoom(z0); wrap.scrollLeft = wrap.scrollTop = 0; }
+  });
+
   await test('accesibilidad del editor: nombres, anuncio, Tab y orden de lectura', async () => {
     reset(); const [a, b] = slide().blocks; const st = D.getElementById('stage');
     eq(st.getAttribute('aria-label'), 'Diapositiva 1 / 1', 'la diapositiva tiene nombre');

@@ -310,6 +310,10 @@ function groupsForMany(list) {
     btn('align_horizontal_right', 'Derecha', () => blocks.alignSelected('right')), btn('align_vertical_top', 'Arriba', () => blocks.alignSelected('top')),
     btn('align_vertical_center', 'Medio', () => blocks.alignSelected('vcenter')), btn('align_vertical_bottom', 'Abajo', () => blocks.alignSelected('bottom'))]],
   ['Distribuir', [btn('horizontal_distribute', 'Horizontal', () => blocks.distributeSelected('h')), btn('vertical_distribute', 'Vertical', () => blocks.distributeSelected('v'))]],
+  // Tidy up (Figma), same size (PowerPoint) and, for two, trading places.
+  ['Ordenar y tamaño', [btn('grid_view', 'Cuadrícula', () => blocks.tidySelected('grid')), btn('view_column', 'Fila', () => blocks.tidySelected('row')), btn('view_agenda', 'Columna', () => blocks.tidySelected('col')),
+    btn('width', 'Mismo ancho', () => blocks.matchSize('w')), btn('height', 'Mismo alto', () => blocks.matchSize('h')), btn('aspect_ratio', 'Mismo tamaño', () => blocks.matchSize('both')),
+    ...(list.filter(x => x.type !== 'connector').length === 2 ? [btn('swap_horiz', 'Intercambiar', () => blocks.swapSelected())] : [])]],
   ['Agrupar', [btn('group_work', 'Agrupar', () => blocks.groupSelected()), ...(list.some(x => x.groupId) ? [btn('workspaces', 'Desagrupar', () => blocks.ungroupSelected())] : []),
     ...(list.filter(x => x.type !== 'connector').length === 2 ? [btn('conversion_path', 'Conectar', () => blocks.addConnector())] : [])]]];
   const ordered = shapeops.selectedShapesInOrder();

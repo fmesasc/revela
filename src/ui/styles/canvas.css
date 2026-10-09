@@ -113,6 +113,20 @@
 .pguide.h::before{top:-4px;bottom:-4px;left:0;right:0}
 .guide{position:absolute;z-index:7;pointer-events:none;background:#ff3b8b}
 .guide.v{top:0;bottom:0;width:1px}.guide.h{left:0;right:0;height:1px}
+/* The distance of an equal gap, and the size an object shares with another: a pill on the measure,
+   kept at its on-screen size whatever the zoom (--hz = 1 / zoom). */
+.guide .gap-label{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(var(--hz,1));background:#ff3b8b;color:#fff;
+  font:600 11px/1 system-ui,sans-serif;padding:3px 6px;border-radius:9px;white-space:nowrap;box-shadow:0 1px 3px #0005}
+.guide.spacing.same.x,.guide.spacing.same.y{border-style:dashed}
+/* What a click would grab (ui/canvas/hover.js): faint, thin at any zoom; a group gets a dashed box too. */
+.block.hover:not(.selected){outline:calc(1.5px * var(--hz,1)) solid color-mix(in srgb,var(--accent) 65%,transparent);outline-offset:calc(1px * var(--hz,1))}
+.hover-group{position:absolute;z-index:6;pointer-events:none;outline:calc(1px * var(--hz,1)) dashed color-mix(in srgb,var(--accent) 70%,transparent);outline-offset:calc(3px * var(--hz,1))}
+/* Alt+drag: a copy goes with the pointer; the original stays, as a picture of itself, until it's dropped. */
+.block.dragging.dup,.block.dragging.dup *{cursor:copy}
+.block.dup-ghost{pointer-events:none;opacity:.55}
+/* Space held: the hand moves the view (ribbon/zoom.js). */
+#canvas-wrap.space-pan,#canvas-wrap.space-pan *{cursor:grab!important}
+#canvas-wrap.panning,#canvas-wrap.panning *{cursor:grabbing!important;user-select:none}
 /* Curved text: the arc shows; the text under it is what gets edited (double-click). */
 .block > .curve-arc{position:absolute;inset:0;pointer-events:none}
 .block.curved:not(.editing) > .rich{visibility:hidden}

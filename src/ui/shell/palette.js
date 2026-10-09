@@ -158,6 +158,14 @@ const SYN = {
   'a:back': 'enviar al fondo|detrás|debajo|send to back|back',
   'a:toggle-nav': 'miniaturas|panel de diapositivas|ocultar panel|thumbnails|slides panel',
   'a:zoom-fit': 'ajustar zoom|ver todo|fit|zoom to fit',
+  'a:zoom-selection': 'zoom a la selección|acercar a lo seleccionado|zoom to selection|zoom selection',
+  'a:tidy-grid': 'ordenar|cuadrícula|rejilla|tidy up|grid|arrange in grid',
+  'a:tidy-row': 'ordenar en fila|fila|alinear en fila|tidy|row|arrange in a row',
+  'a:tidy-col': 'ordenar en columna|columna|apilar|tidy|column|stack',
+  'a:match-w': 'mismo ancho|igualar ancho|same width|match width',
+  'a:match-h': 'mismo alto|igualar alto|misma altura|same height|match height',
+  'a:match-size': 'mismo tamaño|igualar tamaño|same size|match size',
+  'a:swap-objects': 'intercambiar|cambiar de sitio|swap|switch places',
   'b:fmt=bold': 'negrita|grueso|resaltar|bold|gras|fett|grassetto',
   'b:fmt=italic': 'cursiva|itálica|inclinada|italic|kursiv|corsivo',
   'b:fmt=underline': 'subrayar|subrayado|underline|souligner|unterstreichen',
@@ -184,10 +192,11 @@ const NEEDS = {
 // Why a ribbon button is greyed out (see renderRibbon).
 const WHY = { front: 'Selecciona un objeto', back: 'Selecciona un objeto', forward: 'Selecciona un objeto', backward: 'Selecciona un objeto', 'copy-style': 'Selecciona un objeto',
   'clip-copy': 'Selecciona un objeto', 'clip-cut': 'Selecciona un objeto', 'obj-duplicate': 'Selecciona un objeto', group: 'Selecciona dos o más objetos', ungroup: 'Selecciona un grupo',
-  'connect-blocks': 'Selecciona dos objetos', 'paste-style': 'Copia antes un formato', 'obj-anim-clear': 'Selecciona un objeto con animación', 'anim-play': 'Esta diapositiva no tiene animaciones',
+  'connect-blocks': 'Selecciona dos objetos', 'swap-objects': 'Selecciona dos objetos', 'tidy-grid': 'Selecciona dos o más objetos', 'tidy-row': 'Selecciona dos o más objetos', 'tidy-col': 'Selecciona dos o más objetos',
+  'match-w': 'Selecciona dos o más objetos', 'match-h': 'Selecciona dos o más objetos', 'match-size': 'Selecciona dos o más objetos', 'paste-style': 'Copia antes un formato', 'obj-anim-clear': 'Selecciona un objeto con animación', 'anim-play': 'Esta diapositiva no tiene animaciones',
   'clip-paste': 'No hay nada copiado', undo: 'No hay nada que deshacer', redo: 'No hay nada que rehacer', 'slide-vertical': 'No en la primera diapositiva' };
 const KEYS = { 'a:undo': 'Ctrl+Z', 'a:redo': 'Ctrl+Y', 'a:save': 'Ctrl+S', 'a:present': 'F5', 'a:present-current': 'Mayús+F5', 'a:find-replace': 'Ctrl+F', 'a:slide-add': 'Ctrl+M',
-  'a:obj-duplicate': 'Ctrl+D', 'a:group': 'Ctrl+G', 'a:ungroup': 'Ctrl+Mayús+G', 'a:clip-copy': 'Ctrl+C', 'a:clip-cut': 'Ctrl+X', 'a:clip-paste': 'Ctrl+V',
+  'a:obj-duplicate': 'Ctrl+D', 'a:zoom-selection': 'Mayús+2', 'a:group': 'Ctrl+G', 'a:ungroup': 'Ctrl+Mayús+G', 'a:clip-copy': 'Ctrl+C', 'a:clip-cut': 'Ctrl+X', 'a:clip-paste': 'Ctrl+V',
   'b:fmt=bold': 'Ctrl+B', 'b:fmt=italic': 'Ctrl+I', 'b:fmt=underline': 'Ctrl+U' };
 const SUGGEST = ['a:insert-text', 'a:insert-image', 'b:shapes-open', 'a:insert-table', 'a:insert-chart', 'a:insert-code', 'a:insert-model', 'a:share', 'a:export-pdf'];
 const HELP = [['start', 'Ayuda: primeros pasos'], ['powerpoint', 'Ayuda: traer un PowerPoint'], ['present', 'Ayuda: presentar'], ['save', 'Ayuda: dónde guardar'],

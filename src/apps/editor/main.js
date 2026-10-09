@@ -214,6 +214,8 @@ function keyboard(e) {
   if (meta && !e.shiftKey && e.key.toLowerCase() === 'c' && selectedBlocks().length) { e.preventDefault(); clip.copySelected(); return; }
   if (meta && !e.shiftKey && e.key.toLowerCase() === 'x' && selectedBlocks().length) { e.preventDefault(); clip.cutSelected(); return; }
   if (meta && e.key.toLowerCase() === 'g') { e.preventDefault(); e.shiftKey ? ungroupSelected() : groupSelected(); return; }
+  // Shift+2: zoom to the selection, as in Figma (by the key, not the character: it's " or @ by layout).
+  if (e.shiftKey && !meta && !e.altKey && e.code === 'Digit2') { e.preventDefault(); ACTIONS['zoom-selection'](); return; }
   // A text box selected: Enter or F2 edits it; typing replaces its text (PowerPoint, Google Slides).
   const one = selectedBlocks().length === 1 ? selectedBlock() : null;
   if ((one?.type === 'text' || (one?.type === 'shape' && !['line', 'arrow'].includes(one.shape))) && !one.locked && !meta && !e.altKey) {
