@@ -123,6 +123,26 @@ jobs:
           fs.writeFileSync('out/latest.json', JSON.stringify(manifest, null, 2));
           console.log(JSON.stringify(manifest, null, 2));
           JS
+      # An APT repository, flat, inside the release itself: the .deb's index (Packages) and Release, signed with
+      # Revela's key (secret APT_SIGNING_KEY; its public part is desktop/apt/revela.asc, also published). APT reads
+      # https://github.com/<repo>/releases/latest/download/ (GitHub sends each file there to the latest release's), so
+      # Debian and Ubuntu install Revela with apt and update it with apt upgrade. No server: nothing else to keep.
+      - name: APT repository
+        shell: bash
+        env:
+          APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir apt && cp $(find out -name '*.deb') apt/ && cd apt
+          # (Each package by its name only: it is next to the index, in the same release.)
+          dpkg-scanpackages --multiversion . /dev/null | sed 's|^Filename: \./|Filename: |' > Packages
+          gzip -9kn Packages && rm -f ./*.deb
+          apt-ftparchive -o APT::FTPArchive::Release::Origin=Revela -o APT::FTPArchive::Release::Label=Revela -o APT::FTPArchive::Release::Suite=stable release . > Release
+          export GNUPGHOME="$(mktemp -d)"; trap 'rm -rf "$GNUPGHOME"' EXIT
+          printf '%s\n' "$APT_SIGNING_KEY" | gpg --batch --import
+          gpg --batch --yes --clearsign -o InRelease Release && gpg --batch --yes -abs -o Release.gpg Release
+          cp ../src/desktop/apt/revela.asc .
+          mv Packages Packages.gz Release InRelease Release.gpg revela.asc ../out/
       - name: Publish
         shell: bash
         run: |
@@ -135,7 +155,13 @@ jobs:
           ### Instalar
           - **Windows:** `.msi` o `…-setup.exe` (Windows puede avisar de que no está firmado: «Más información ▸ Ejecutar de todos modos»).
           - **macOS:** `.dmg` (la primera vez: clic derecho ▸ Abrir).
-          - **Linux:** `.AppImage` (dale permiso de ejecución), `.deb` o `.rpm`. Para el `.deb`, en la carpeta de la descarga: `sudo apt install ./Revela_*_amd64.deb` (instala también lo que le falte). Si entras como root con `su`, usa `su -`: sin el guion, `dpkg` no encuentra `ldconfig` ni `start-stop-daemon`.
+          - **Debian y Ubuntu, con apt** (se actualiza con el sistema, con `sudo apt upgrade`). Una sola vez:
+            ```
+            sudo curl -fsSLo /usr/share/keyrings/revela.asc https://github.com/fmesasc/revela/releases/latest/download/revela.asc
+            echo "deb [signed-by=/usr/share/keyrings/revela.asc] https://github.com/fmesasc/revela/releases/latest/download ./" | sudo tee /etc/apt/sources.list.d/revela.list
+            sudo apt update && sudo apt install revela
+            ```
+          - **Linux:** `.AppImage` (dale permiso de ejecución), `.deb` o `.rpm`. Para el `.deb` suelto, en la carpeta de la descarga: `sudo apt install ./Revela_*_amd64.deb` (instala también lo que le falte). Si entras como root con `su`, usa `su -`: sin el guion, `dpkg` no encuentra `ldconfig` ni `start-stop-daemon`.
 
           Las aplicaciones ya instaladas se actualizan solas. La versión web siempre está en https://revelaslides.com/app/
           MD

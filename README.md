@@ -93,6 +93,14 @@ See the [roadmap](ROADMAP.md) for details and what comes next.
 
 **Desktop app** (Windows, macOS, Linux): installers in the [latest release](https://github.com/fmesasc/revela/releases/latest), built for every published version (each one kept, with its number) (not code-signed yet: Windows/macOS warn the first time). Once installed it updates itself: on start it offers the new version, verified with Revela's update key.
 
+On **Debian and Ubuntu** it also installs with apt, and updates with the system (`sudo apt upgrade`):
+
+```sh
+sudo curl -fsSLo /usr/share/keyrings/revela.asc https://github.com/fmesasc/revela/releases/latest/download/revela.asc
+echo "deb [signed-by=/usr/share/keyrings/revela.asc] https://github.com/fmesasc/revela/releases/latest/download ./" | sudo tee /etc/apt/sources.list.d/revela.list
+sudo apt update && sudo apt install revela
+```
+
 The app is static files with no build step.
 
 ```bash

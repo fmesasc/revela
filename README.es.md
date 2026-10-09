@@ -98,6 +98,14 @@ Consulta la [hoja de ruta](ROADMAP.md) para el detalle y lo que viene después.
 
 **App de escritorio** (Windows, macOS, Linux): instaladores en la [última versión](https://github.com/fmesasc/revela/releases/latest), que se genera con cada versión publicada (todas se conservan, con su número) (aún sin firmar: Windows y macOS avisan la primera vez). Una vez instalada se actualiza sola: al abrirla ofrece la versión nueva, comprobada con la clave de actualizaciones de Revela.
 
+En **Debian y Ubuntu** también se instala con apt, y se actualiza con el sistema (`sudo apt upgrade`):
+
+```sh
+sudo curl -fsSLo /usr/share/keyrings/revela.asc https://github.com/fmesasc/revela/releases/latest/download/revela.asc
+echo "deb [signed-by=/usr/share/keyrings/revela.asc] https://github.com/fmesasc/revela/releases/latest/download ./" | sudo tee /etc/apt/sources.list.d/revela.list
+sudo apt update && sudo apt install revela
+```
+
 La aplicación son archivos estáticos, sin compilación.
 
 ```bash
