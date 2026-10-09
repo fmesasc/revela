@@ -22,6 +22,8 @@ for (const key of Object.keys(EXAMPLES).filter(k => !EXAMPLES_ML[k])) {
   for (const s of textsOf(d)) set.add(s);
 }
 const dictOf = async (lang, file) => {
+  // (The examples for companies: one table of their own, every language in it — src/features/content/examples-texts.js.)
+  if (file === 'examples-texts') return (await import(pathToFileURL(join(ROOT, 'src/features/content/examples-texts.js')).href)).default[lang] || {};
   const p = join(ROOT, 'src/features/content/templates/i18n', lang, file + '.js');
   return existsSync(p) ? (await import(pathToFileURL(p).href)).default : {};
 };

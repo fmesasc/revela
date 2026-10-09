@@ -40,13 +40,13 @@ export function openGradebook(start = {}) {
 }
 
 const groupSelect = () => `<select class="gb-group">${gb.groups().map(g => `<option value="${g.id}"${g.id === groupId ? ' selected' : ''}>${esc(g.name)}</option>`).join('')}</select>`;
-const noGroups = () => `<p class="host-help">${t('Todavía no hay grupos. Crea uno en «Grupos», o guarda los resultados de una clase desde Ver ▸ Resultados del aula.')}</p>`;
+const noGroups = () => `<p class="host-help">${t('Todavía no hay grupos. Crea uno en «Grupos», o guarda los resultados de una clase desde Ver ▸ Resultados del público.')}</p>`;
 
 // ---- Report: students × sessions in a period ------------------------------------------------------
 // What the class finds hardest in the period: the questions and criteria with the lowest average, as bars.
 function hardest(items) {
   const top = items.filter(x => x.pct < 0.999).slice(0, 8); if (!top.length) return '';
-  return `<details class="gb-hard" open><summary>${t('Lo que más le cuesta a la clase')}</summary><ol>${top.map(x => { const pc = Math.round(x.pct * 100);
+  return `<details class="gb-hard" open><summary>${t('Lo que más le cuesta al grupo')}</summary><ol>${top.map(x => { const pc = Math.round(x.pct * 100);
     return `<li><span title="${esc(x.session)}">${esc(x.label)}</span><i style="--w:${pc}%;--c:${pc < 50 ? '#c0392b' : pc < 75 ? '#d89e00' : '#26890c'}"></i><b>${pc} %</b></li>`; }).join('')}</ol></details>`;
 }
 function paintReport(body, paint) {

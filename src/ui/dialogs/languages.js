@@ -25,7 +25,7 @@ export function openLanguages() {
   const back = document.createElement('div'); back.id = 'lang-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(1180px,97vw);max-width:none;max-height:94vh;display:flex;flex-direction:column"><button class="modal-close">✕</button>
     <h3>${t('Idiomas de la presentación')}</h3>
-    <p class="host-help">${t('Una tabla con cada texto de las diapositivas y cómo se dice en cada idioma. Al compartirla, cada alumno la ve en el suyo (o en el que elijas para todos).')}</p>
+    <p class="host-help">${t('Una tabla con cada texto de las diapositivas y cómo se dice en cada idioma. Al compartirla, cada persona la ve en el suyo (o en el que elijas para todos).')}</p>
     <div class="lg-top" style="display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:6px 0"></div>
     <div class="lg-tools" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0">
       <input type="search" class="lg-q" placeholder="${t('Buscar texto…')}" style="flex:1;min-width:160px">
@@ -62,7 +62,7 @@ export function openLanguages() {
       <button type="button" class="mini2 lg-html"><i class="ms">download</i> ${t('Descargar .html')}</button>
       ${doc ? `<button type="button" class="mini2 lg-link"><i class="ms">link</i> ${t('Copiar enlace en este idioma')}</button>` : ''}
       <button type="button" class="mini2 lg-prune" title="${t('Las traducciones de textos que ya no están en las diapositivas')}">${t('Quitar las que ya no se usan')}</button>`
-      : `<span class="host-help">${t('Añade los idiomas de tus alumnos: aparecerá una columna para cada uno.')}</span>`;
+      : `<span class="host-help">${t('Añade los idiomas de tu público: aparecerá una columna para cada uno.')}</span>`;
   };
 
   // ---- The table ----

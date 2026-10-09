@@ -279,7 +279,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { f.remove(); }
   });
 
-  await test('modo aula: las diapositivas en los dispositivos del alumnado y los resultados de cada alumno', async () => {
+  await test('el público en sus dispositivos: las diapositivas en sus móviles y los resultados de cada participante', async () => {
     reset(); const W = frame.contentWindow, P = R.poll;
     assert(!/var CLASS=true/.test(R.io.buildHTML()), 'apagado: nada de aula');
     D.querySelector('[data-action="classroom"]').click(); await sleep(10);
@@ -296,14 +296,14 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     W.localStorage.setItem('revela.poll.' + q.pollId, JSON.stringify({ ana: { a: 1, t: 0, n: 'Ana' }, luis: { a: 0, t: 0, n: 'Luis' } }));
     W.localStorage.setItem('revela.poll.' + o.pollId, JSON.stringify({ luis: { a: ['Primavera', 'Verano'], n: 'Luis' } }));
     const C = await W.eval("import('/src/ui/dialogs/classroom.js')"), r = C.classResults();
-    eq(r.rows.map(x => `${x.name}:${x.pts.join('/')}:${x.total}`).join(' '), 'Ana:1000/:1000 Luis:0/1000:1000', 'cada alumno en cada actividad, y su total');
-    assert(/^"Alumno","1\. Capital","2\. Estaciones","Total"\n"Ana",1000,,1000/.test(C.classResultsCSV()), 'en CSV: ' + C.classResultsCSV().split('\n')[1]);
+    eq(r.rows.map(x => `${x.name}:${x.pts.join('/')}:${x.total}`).join(' '), 'Ana:1000/:1000 Luis:0/1000:1000', 'cada participante en cada actividad, y su total');
+    assert(/^"Participante","1\. Capital","2\. Estaciones","Total"\n"Ana",1000,,1000/.test(C.classResultsCSV()), 'en CSV: ' + C.classResultsCSV().split('\n')[1]);
     const qr = C.questionReport();
     eq(qr.map(x => `${x.slide}:${Math.round(x.pct * 100)}`).join(), '1:50,2:100', 'pregunta por pregunta, la que más cuesta primero');
     eq(qr[0].miss.text + '|' + qr[0].miss.count, 'Roma|1', 'con el error más repetido (la opción mal elegida)');
     D.querySelector('[data-action="classroom-results"]').click(); await sleep(10);
     eq(D.querySelectorAll('#class-modal .cr-table tbody tr').length, 2, 'en una tabla');
-    assert(/Error más repetido: «Roma» \(1\)/.test(D.querySelector('#class-modal .gb-hard')?.textContent || ''), 'y se ve en «Resultados del aula»'); D.querySelector('#class-modal .modal-close').click();
+    assert(/Error más repetido: «Roma» \(1\)/.test(D.querySelector('#class-modal .gb-hard')?.textContent || ''), 'y se ve en «Resultados del público»'); D.querySelector('#class-modal .modal-close').click();
     W.localStorage.removeItem('revela.poll.' + q.pollId); W.localStorage.removeItem('revela.poll.' + o.pollId);
   });
 
@@ -983,7 +983,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { f.remove(); URL.revokeObjectURL(fake); URL.revokeObjectURL(noqr); }
   });
 
-  await test('clase a su ritmo: sin nube, el panel dice qué hace falta', async () => {
+  await test('cada uno a su ritmo: sin nube, el panel dice qué hace falta', async () => {
     reset(); D.querySelector('[data-action="class-pace"]').click(); await sleep(30);
     const m = D.getElementById('pace-modal'); assert(m && /nube de Revela/.test(m.textContent), 'pide guardarla en la nube'); m.querySelector('.modal-close').click();
   });
@@ -1730,5 +1730,41 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
         }
       } finally { f.remove(); }
     }
+  });
+
+  await test('marca de agua «Confidencial»: en la configuración, al presentar (no se puede quitar), en la página web, al imprimir y en el PDF; con el correo de quien abre un enlace con seguimiento', async () => {
+    reset(); const W = frame.contentWindow, WM = await W.eval("import('/src/features/document/watermark.js')");
+    assert(!/class="rv-wm"/.test(R.io.buildHTML()), 'sin marca: nada');
+    D.querySelector('[data-action="deck-settings"]').click(); await sleep(20);
+    let m = D.getElementById('set-modal'); m.querySelector('.wm-on').checked = true; m.querySelector('.wm-email').checked = true; m.querySelector('.set-ok').click(); await sleep(20);
+    eq(JSON.stringify(R.state.deck.watermark), '{"email":true}', 'Configuración ▸ Marca de agua: se guarda en la presentación');
+    let html = R.io.buildHTML();
+    assert(/class="rv-wm"/.test(html) && /<span>CONFIDENCIAL<\/span>/.test(html) && !/@/.test(html.match(/<span>CONFIDENCIAL[^<]*<\/span>/)[0]), 'en la página web, sin correo si no se sabe');
+    html = R.io.buildHTML(R.state.deck, { who: 'ana@acme.example' });
+    assert(/<span>CONFIDENCIAL · ana@acme\.example<\/span>/.test(html), 'con el correo de quien la abre (el visor lo sabe solo si el enlace lo pidió)');
+    eq(WM.watermarkText({ watermark: { text: 'Borrador' } }, 'ana@acme.example'), 'Borrador', 'sin «con el correo», el correo no sale');
+    eq(WM.watermarkText({ watermark: { text: '<b>x</b>', email: true } }, 'a@b.c'), '<b>x</b> · a@b.c', 'su propio texto…');
+    assert(/&lt;b&gt;x/.test(WM.watermarkHTML({ watermark: { text: '<b>x</b>' } })), '…escapado');
+    // Presenting: over the slides, letting clicks through, and back if it's removed.
+    R.io.present({ fullscreen: false }); await sleep(60);
+    const f = D.querySelector('#present-overlay iframe'); let wm = null;
+    for (let i = 0; i < 50 && !(wm = f.contentDocument?.querySelector('.rv-wm')); i++) await sleep(100);
+    try {
+      assert(wm, 'al presentar se ve'); const cs = f.contentWindow.getComputedStyle(wm);
+      assert(cs.pointerEvents === 'none' && cs.position === 'fixed' && +cs.zIndex > 1000, 'encima de todo, sin tapar los clics');
+      wm.remove(); let back = null; for (let i = 0; i < 30 && !(back = f.contentDocument.querySelector('.rv-wm')); i++) await sleep(100);
+      assert(back, 'quitarla de la página no dura: vuelve');
+    } finally { D.querySelector('#present-close')?.click(); await sleep(20); }
+    const P = await W.eval("import('/src/io/export/print.js')"); R.slides.addSlide(); await sleep(10);
+    eq((P.buildPrintHTML().match(/class="rv-wm"/g) || []).length, R.state.deck.slides.length, 'al imprimir (y guardar como PDF), en cada página');
+    const I = await W.eval("import('/src/io/export/images.js')"), px = async mark => {
+      const { blob } = await I.slidePicture(R.state.deck.slides[0], 'png', R.state.deck, { scale: 0.5, mark }); const bmp = await W.createImageBitmap(blob);
+      const c = D.createElement('canvas'); c.width = bmp.width; c.height = bmp.height; const g = c.getContext('2d'); g.drawImage(bmp, 0, 0); return g.getImageData(0, 0, c.width, c.height).data; };
+    const plain = await px(false), marked = await px(true); let diff = 0; for (let i = 0; i < plain.length; i += 4) if (Math.abs(plain[i] - marked[i]) > 8) diff++;
+    assert(diff > 500, 'en el PDF (Exportar ▸ PDF dibuja cada diapositiva con ella): ' + diff + ' píxeles distintos');
+    D.querySelector('[data-action="deck-settings"]').click(); await sleep(20);
+    m = D.getElementById('set-modal'); eq(m.querySelector('.wm-on').checked && m.querySelector('.wm-email').checked, true, 'el diálogo la muestra activada');
+    m.querySelector('.wm-on').checked = false; m.querySelector('.set-ok').click(); await sleep(20);
+    assert(!R.state.deck.watermark && !/class="rv-wm"/.test(R.io.buildHTML()), 'y se quita desde ahí');
   });
 }

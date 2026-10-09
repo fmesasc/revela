@@ -53,6 +53,7 @@ import { deleteSelected, duplicateSelected, groupSelected, ungroupSelected, addI
 import { openFindPanel } from '../../ui/dialogs/find.js';
 // Namespaces exposed to the test harness (see tests/).
 import { initHome } from '../../ui/shell/home.js';
+import { initAudience } from '../../ui/shell/audience.js';
 import { initCollabUI } from '../../ui/shell/collab.js';
 import * as store from '../../core/store.js';
 import { toast } from '../../ui/shell/toast.js';
@@ -300,6 +301,7 @@ if (!testing && !['collab', 'doc'].some(k => new URLSearchParams(location.search
 }
 initCollabUI();
 initHome();
+initAudience();                                             // (teaching, a company or both: core/audience.js)
 initFileDrop();
 // First visit (nothing saved in this browser, no shared link): start from the
 // templates, as PowerPoint and Canva do; closing it leaves the blank slide.

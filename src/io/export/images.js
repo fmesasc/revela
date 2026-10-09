@@ -10,6 +10,7 @@ import { tallyVotes, pollResultsHTML, savedVotes, pollLabels } from '../../featu
 import { t } from '../../i18n/index.js';
 import { blockHTML, slideInnerHTML, magnifyInsetHTML } from '../formats/html.js';
 import { download, slug } from '../files.js';
+import { watermarkHTML } from '../../features/document/watermark.js';
 
 
 // Fill in what the exported page draws with scripts, for rasterising: KaTeX
@@ -157,8 +158,8 @@ function textRuns(holder) {
   }
   return runs.filter(t => t.x + t.w > 0 && t.y + t.h > 0 && t.x < o.width && t.y < o.height);
 }
-// → { blob, runs (with text: true) }.
-export async function slidePicture(s, type = 'png', deck = state.deck, { scale = 2, quality = 0.92, text = false } = {}) {
+// → { blob, runs (with text: true) }. mark: with the presentation's watermark, if it has one (the PDF: pdf.js).
+export async function slidePicture(s, type = 'png', deck = state.deck, { scale = 2, quality = 0.92, text = false, mark = false } = {}) {
   const { w, h } = deck.size;
   const holder = document.createElement('div'); holder.className = 'rst';   // (.rst: the images' size rule below must not reach html2canvas's own iframe)
   holder.style.cssText = `position:fixed;left:-99999px;top:0;width:${w}px;height:${h}px;overflow:hidden;color:${deckFg(deck)};font-family:${deckBodyFont(deck) || 'inherit'};background:${s.background}`;
@@ -170,6 +171,7 @@ export async function slidePicture(s, type = 'png', deck = state.deck, { scale =
     await hydrateStatic(holder, deck);
     // JPG has no transparency: paint the page colour underneath.
     const runs = text ? textRuns(holder) : null;
+    if (mark) holder.insertAdjacentHTML('beforeend', watermarkHTML(deck));   // (after the text layer: its words aren't the slide's text)
     const canvas = await rasterize(holder, { width: w, height: h, scale, useCORS: true, logging: false,
       backgroundColor: type === 'jpg' ? '#ffffff' : null });
     return { blob: await new Promise(res => canvas.toBlob(res, type === 'jpg' ? 'image/jpeg' : 'image/png', quality)), runs };

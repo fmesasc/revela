@@ -17,6 +17,8 @@ import { run as runAi, openCreateDeck } from './ai.js';
 import { openAnyPresentation } from '../shell/openfile.js';
 import * as aiDeck from '../../features/ai/authoring.js';
 import { t, currentLang } from '../../i18n/index.js';
+import { orderGroups } from '../../core/audience.js';
+import { audienceCard } from '../shell/audience.js';
 
 export function openGallery() {
   document.getElementById('gallery-modal')?.remove();
@@ -44,6 +46,9 @@ export function galleryInto(host, { close = () => {}, scroller = null, paths = t
     <h4 class="gal-themes-h">${t('Temas vacíos')}</h4><div class="gal-grid"></div>`;
   const grid = host.querySelector('.gal-grid');
   galleryNotice(host.querySelector('.gal-notice'));   // (Revela's own notice for here, if any: io/cloud/notices.js)
+  // (The first time: teaching, a company or both — the examples of that group first; chosen, the gallery again in that order.)
+  const ask = audienceCard(() => galleryInto(host, { close, scroller, paths }));
+  if (ask) host.querySelector('.gal-notice').after(ask);
   // Asked only when there is something to lose.
   const replaceWith = (deck, question) => (isBlankDeck(state.deck) ? Promise.resolve(true) : confirmDialog(question, { ok: t('Descartar la actual'), danger: true }))
     .then(ok => { if (ok) { replaceDeck(deck); close(); } });
@@ -82,7 +87,7 @@ export function galleryInto(host, { close = () => {}, scroller = null, paths = t
   const counts = {}; for (const e of Object.values(EXAMPLES)) counts[e.cat] = (counts[e.cat] || 0) + 1;
   bar.innerHTML = `<input type="search" class="gal-q" placeholder="${t('Buscar entre {n} presentaciones…').replace('{n}', Object.keys(EXAMPLES).length)}">`
     + `<div class="gal-cats"><button type="button" class="gal-cat on" data-cat="">${t('Todas')}</button>`
-    + CATEGORIES.filter(([c]) => counts[c]).map(([c, l]) => `<button type="button" class="gal-cat" data-cat="${c}">${t(l)} <small>${counts[c]}</small></button>`).join('') + '</div>';
+    + orderGroups(CATEGORIES).filter(([c]) => counts[c]).map(([c, l]) => `<button type="button" class="gal-cat" data-cat="${c}">${t(l)} <small>${counts[c]}</small></button>`).join('') + '</div>';
   const ex = document.createElement('div'); ex.className = 'gal-grid gal-examples';
   const none = document.createElement('p'); none.className = 'host-help'; none.hidden = true; none.textContent = t('Ninguna presentación coincide.');
   host.querySelector('.gal-themes-h').before(h, bar, ex, none);   // (the examples first, the blank themes after)
@@ -98,7 +103,7 @@ export function galleryInto(host, { close = () => {}, scroller = null, paths = t
     const deck = await loadExample(en.target.dataset.example).catch(() => null);
     if (deck) { ensureDeckFonts(deck); cover(en.target, deck); }
   }), { root: scroller, rootMargin: '300px' });
-  const items = Object.entries(EXAMPLES).map(([key, e]) => {
+  const items = orderGroups(Object.entries(EXAMPLES).map(([key, e]) => [e.cat, key, e])).map(([, key, e]) => {
     const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'gal-item'; btn.dataset.example = key; btn.dataset.cat = e.cat || '';
     btn.title = t(e.summary); btn.dataset.text = (t(e.name) + ' ' + t(e.summary)).toLowerCase();
     btn.innerHTML = `<div class="thumb-canvas"><i class="ms gal-wait">slideshow</i></div>`;

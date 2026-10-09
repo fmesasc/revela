@@ -61,7 +61,7 @@ export async function buildPDF(deck = state.deck, { onProgress = () => {}, text 
   const slides = deck.slides.filter(s => !s.hidden), pages = [];
   const k = 1920 / deck.size.w;
   for (const [i, s] of slides.entries()) {
-    const { blob, runs } = await slidePicture(s, 'jpg', deck, { scale: k, quality: 0.9, text });
+    const { blob, runs } = await slidePicture(s, 'jpg', deck, { scale: k, quality: 0.9, text, mark: true });   // (with «Confidencial», if it has it)
     const bmp = await createImageBitmap(blob);
     pages.push({ bytes: new Uint8Array(await blob.arrayBuffer()), w: bmp.width, h: bmp.height, runs });
     bmp.close?.(); onProgress(i + 1, slides.length);

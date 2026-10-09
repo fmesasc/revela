@@ -487,10 +487,244 @@ const EXAMPLES_DEF = {
     for (const s of deck.slides.slice(1)) for (const b of s.blocks) if (b.ph) Object.assign(b, { bg: '#ffffffe6', radius: 18 }, b.ph === 'body' && { h: 200 });
     return deck;
   } },
+
+  // ---- For companies: an all-hands, a client's quarterly review, a case study, a webinar and a sales kickoff ----
+  // (Their texts in the other languages travel with them — examples-texts.js —, not in templates/i18n.)
+  // An all-hands: figures one by one, milestones as a timeline, objectives as bars, newcomers, a word cloud and
+  // anonymous questions from the phones.
+  allhands: { name: 'Reunión general (all-hands)', summary: 'Para toda la empresa: cifras una a una, hitos en cronología, objetivos en barras, bienvenidas, nube de palabras y preguntas anónimas desde el móvil', make: () => {
+    const GOLD = '#f5a623', SKY = '#7fb8e6', INK = '#f2f6fa', BG = '#0f2940', halo = uid();
+    const kicker = s => text(s, 90, 150, 900, 40, { fontSize: 22, letterSpacing: 6, fontWeight: 700, color: GOLD });
+    const person = (ini, html, i, color) => [
+      { ...shape('ellipse', 150 + i * 270, 200, 130, 130, color, { html: ini, fontSize: 44, color: '#0f2940', fontWeight: 800 }), animation: A('zoom-in', { start: i ? 'afterPrev' : 'click' }) },
+      { ...text(html, 95 + i * 270, 350, 240, 120, { fontSize: 24, textAlign: 'center', color: INK }), animation: A('fade-up', { start: 'withPrev' }) }];
+    return numbered(build({ name: 'Reunión general · T3 2026', palette: 'ocean', fonts: 'modern', title: { color: '#ffffff' },
+      decor: p => [shape('rect', 0, 712, 1280, 8, p.accents[0], { fill2: p.accents[3], gradAngle: 0 })] }, [
+      { layout: 'blank', transition: 'zoom', autoAnimate: true, extra: [{ ...glow(760, -260, 820, '#4a90d9', BG, 45), id: halo }, glow(-200, 420, 600, '#50e3c2', BG, 25),
+        kicker('REUNIÓN GENERAL · T3 2026'),
+        text('Todos a bordo', 84, 190, 1000, 170, { fontFamily: pairStacks('modern').heading, fontSize: 110, fontWeight: 800, color: '#ffffff' }),
+        text('Dónde estamos, qué viene y cómo lo haremos juntos', 90, 370, 1000, 60, { fontSize: 34, color: SKY }),
+        text('Jueves 8 de octubre · 16:00 · En el auditorio y en directo', 90, 600, 1000, 40, { fontSize: 24, color: INK, opacity: 80 })],
+        notes: 'Bienvenida (2 minutos). Recuerda que las preguntas se pueden enviar desde el móvil durante toda la reunión, también sin nombre.' },
+      { title: 'Agenda', layout: 'titleOnly', autoAnimate: true, back: [{ ...glow(880, 330, 520, '#4a90d9', BG, 30), id: halo }], extra: [dg('chevrons', 'Resultados\n  10 min\nHitos\n  5 min\nObjetivos\n  15 min\nPersonas\n  5 min\nPreguntas\n  20 min', 90, 250, 1100, 260),
+        text('60 minutos · Las preguntas, desde el móvil en cualquier momento', 90, 560, 1100, 50, { fontSize: 26, color: SKY, textAlign: 'center' })],
+        notes: 'Una hora en total. Transformar: el halo de la portada se desliza hasta aquí. Deja las preguntas para el final, pero recuerda que se pueden enviar desde ya.' },
+      { title: 'El trimestre en cifras', layout: 'titleOnly', extra: [
+        anim(big('+21 %', 'ingresos frente al T3 de 2025', 90, 220, GOLD, INK), 1), anim(big('94 %', 'clientes que renuevan', 470, 220, '#50e3c2', INK), 2),
+        anim(big('38', 'personas nuevas en el equipo', 850, 220, SKY, INK), 3),
+        anim(text('Por primera vez, más de la mitad de los ingresos llegan de clientes que ya estaban con nosotros.', 90, 500, 1100, 90, { fontSize: 28, color: INK, textAlign: 'center' }), 4)],
+        notes: 'Cuatro clics: una cifra cada uno y, al final, la conclusión.' },
+      { title: 'Hitos del trimestre', layout: 'titleOnly', extra: [dg('timeline', 'Julio\n  App móvil 2.0\nAgosto\n  Oficina en Lisboa\nSeptiembre\n  Certificado ISO 27001\nOctubre\n  1.000 clientes de pago', 90, 180, 1100, 440, { oneByOne: true })],
+        notes: 'Cada hito aparece con un clic: da las gracias al equipo de cada uno.' },
+      { title: 'Objetivos del T4: cómo vamos', layout: 'titleOnly', extra: [
+        chartBlock({ x: 90, y: 170, w: 760, h: 470, chartType: 'hbar', color: GOLD, dataLabels: true, grid: true, yMax: 100,
+          data: [{ label: 'Plan Empresa', value: 70 }, { label: 'Contratar 12 ingenieros', value: 58 }, { label: 'Rotación de clientes < 4 %', value: 45 }, { label: 'Abrir Francia', value: 20 }] }),
+        card('<b>% completado</b><br>a 1 de octubre. Lo que va más despacio, Francia, tiene ya socio local y empieza en noviembre.', 890, 210, 300, 360, '#ffffff14', { fontSize: 24, color: INK })] },
+      { title: 'Bienvenidas y bienvenidos', layout: 'titleOnly', extra: [
+        ...person('LR', '<b>Lucía Romero</b><br>Ventas · Madrid', 0, GOLD), ...person('TA', '<b>Tiago Alves</b><br>Ingeniería · Lisboa', 1, '#50e3c2'),
+        ...person('SB', '<b>Sara Benali</b><br>Atención al cliente', 2, SKY), ...person('MP', '<b>Marc Puig</b><br>Datos · Barcelona', 3, '#b8e986'),
+        text('Y 34 personas más: las veréis en el canal #bienvenidas.', 90, 540, 1100, 50, { fontSize: 26, color: INK, textAlign: 'center', opacity: 85 })],
+        notes: 'Un clic presenta a todas: cada una entra tras la anterior.' },
+      { layout: 'blank', extra: [pollBlock({ kind: 'word', fontSize: 34, question: 'Una palabra para describir este trimestre', options: [], x: 80, y: 60, w: 1120, h: 600 })],
+        notes: 'Nube de palabras: cada persona escribe la suya desde el móvil con el QR; las que más se repiten salen más grandes.' },
+      { layout: 'blank', extra: [pollBlock({ kind: 'qa', fontSize: 34, question: 'Pregunta lo que quieras al comité de dirección', options: [], x: 80, y: 60, w: 1120, h: 600 })],
+        notes: 'Preguntas del público: llegan desde el móvil, se pueden enviar sin nombre y se votan; las más votadas suben. Mientras presentas, el botón de moderar deja ocultar las que no toquen.' },
+      { layout: 'section', title: 'Gracias, equipo', subtitle: 'Próxima reunión general: 14 de enero · Las diapositivas, en la intranet', transition: 'fade' },
+    ]));
+  } },
+
+  // A quarterly business review with a client: what was agreed and what was achieved, charts, the savings as a
+  // waterfall that a figure flies to (Transform), the plan as chevrons and next steps with owners.
+  qbr: { name: 'Revisión trimestral con un cliente (QBR)', summary: 'Objetivos acordados frente a resultados, gráficos de líneas y barras, ahorro en cascada con Transformar, plan del trimestre y próximos pasos con responsables', make: () => {
+    const BLUE = '#156082', ORANGE = '#e97132', GREEN = '#196b24', saving = uid();
+    const fig = (n, label, x, i, color) => anim(text(`<div style="font-size:72px;font-weight:800;color:${color};line-height:1.1">${n}</div><div>${label}</div>`, x, 220, 340, 200, { fontSize: 26, textAlign: 'center' }), i + 1);
+    return numbered(build({ name: 'QBR · Transportes Albor · T3 2026', palette: 'office', fonts: 'clean', title: { color: BLUE },
+      decor: p => [shape('rect', 0, 0, 14, 720, p.accents[0]), text('Transportes Albor × Nubia', 980, 676, 270, 30, { fontSize: 16, color: '#7f7f7f', textAlign: 'right' })] }, [
+      { layout: 'title', title: 'Revisión trimestral de negocio', subtitle: 'Transportes Albor × Nubia · Tercer trimestre de 2026',
+        notes: 'Objetivo: confirmar que el servicio cumple lo acordado y cerrar el plan del cuarto trimestre. 45 minutos.' },
+      { title: 'En una diapositiva', layout: 'titleOnly', extra: [
+        anim(card('✅ <b>4 de 5 objetivos</b> cumplidos', 90, 200, 340, 260, '#e5f3e7', { color: '#1f1f1f', fontSize: 34 }), 1),
+        anim(card('📈 <b>−23 %</b> en el tiempo medio de entrega', 470, 200, 340, 260, '#e8eef6', { color: '#1f1f1f', fontSize: 34 }), 2),
+        anim(card('⚠️ <b>Almacén</b>: el uso va por detrás de lo previsto', 850, 200, 340, 260, '#fdebe1', { color: '#1f1f1f', fontSize: 34 }), 3)],
+        notes: 'Empieza por la conclusión: tres clics, una tarjeta cada uno.' },
+      { title: 'Lo que acordamos y lo que hemos logrado', layout: 'titleOnly', extra: [tableBlock({ x: 90, y: 170, w: 1100, h: 430, fontSize: 26, header: true, stroke: '#c9d1dc', headBg: BLUE, headFg: '#ffffff', banded: true, band: '#156082',
+        rows: [['Objetivo', 'Meta', 'Resultado', 'Estado'], ['Entregas a tiempo', '95 %', '97,2 %', '✅'], ['Tiempo medio de entrega', '−15 %', '−23 %', '✅'],
+          ['Incidencias por cada 1.000 envíos', 'menos de 5', '3,1', '✅'], ['Integración con su ERP', 'septiembre', 'septiembre', '✅'], ['Uso diario en el almacén', '80 %', '62 %', '⚠️']], colW: [5, 2, 2, 1] })],
+        notes: 'Repasa solo lo que no está en verde: el uso en el almacén. Lo demás, que lo lean.' },
+      { title: 'Tiempo medio de entrega (horas)', layout: 'titleOnly', extra: [chartBlock({ x: 90, y: 170, w: 1100, h: 480, chartType: 'line', color: BLUE, grid: true, yTitle: 'horas',
+        data: [{ label: 'Abr', value: 41 }, { label: 'May', value: 39 }, { label: 'Jun', value: 36 }, { label: 'Jul', value: 34 }, { label: 'Ago', value: 33 }, { label: 'Sep', value: 31.6 }], seriesName: 'Real',
+        series: [{ name: 'Objetivo', values: [35, 35, 35, 35, 35, 35], color: ORANGE }] })],
+        notes: 'Bajamos del objetivo en julio y seguimos bajando: la optimización de rutas empezó a notarse en junio.' },
+      { title: 'Uso por equipo', layout: 'titleOnly', extra: [
+        chartBlock({ x: 90, y: 170, w: 700, h: 470, chartType: 'hbar', color: BLUE, dataLabels: true, yMax: 100,
+          data: [{ label: 'Oficina', value: 94 }, { label: 'Tráfico', value: 88 }, { label: 'Atención al cliente', value: 81 }, { label: 'Almacén', value: 62 }] }),
+        card('<b>Almacén</b><br>El 38 % aún apunta las salidas en papel en el turno de noche. Proponemos formación en ese turno y lectores en los muelles 3 y 4.', 830, 200, 360, 400, '#fdebe1', { fontSize: 24, color: '#1f1f1f' })],
+        notes: 'Pregunta al cliente qué ve él en el almacén antes de proponer nada.' },
+      { layout: 'blank', autoAnimate: true, extra: [
+        { ...text('<div style="font-size:150px;font-weight:800;color:#196b24;line-height:1">186.000 €</div>', 90, 200, 1100, 180, { textAlign: 'center' }), id: saving },
+        text('de ahorro estimado en lo que va de año', 90, 400, 1100, 60, { fontSize: 36, textAlign: 'center' })],
+        notes: 'La cifra, sola. El clic siguiente la lleva a su sitio en la diapositiva de después (Transformar) y explica de dónde sale.' },
+      { title: 'De dónde sale el ahorro', layout: 'titleOnly', autoAnimate: true, extra: [
+        { ...text('<div style="font-size:64px;font-weight:800;color:#196b24;line-height:1">186.000 €</div>', 830, 180, 360, 90, { textAlign: 'center' }), id: saving },
+        chartBlock({ x: 90, y: 170, w: 720, h: 480, chartType: 'waterfall', color: GREEN,
+          data: [{ label: 'Rutas optimizadas', value: 92000 }, { label: 'Menos horas extra', value: 61000 }, { label: 'Menos devoluciones', value: 33000 }, { label: 'Total', value: 0 }] }),
+        text('Calculado con sus propios datos de coste por envío, de enero a septiembre.', 840, 300, 350, 200, { fontSize: 24 })] },
+      { title: 'Soporte', layout: 'titleOnly', extra: [fig('1,8 h', 'primera respuesta, de media', 90, 0, BLUE), fig('96 %', 'resuelto en el plazo acordado', 470, 1, GREEN), fig('4,7', 'satisfacción, sobre 5', 850, 2, ORANGE)],
+        notes: 'Datos de su cuenta, de julio a septiembre: 212 consultas.' },
+      { title: 'Plan para el cuarto trimestre', layout: 'titleOnly', extra: [dg('chevrons', 'Formar\n  Turno de noche del almacén\nEquipar\n  Lectores en los muelles 3 y 4\nAvisar\n  Retrasos al cliente final\nRevisar\n  Nueva revisión en enero', 90, 200, 1100, 360, { oneByOne: true })],
+        notes: 'Cada paso aparece con un clic. Acordad aquí las fechas: van a la diapositiva siguiente.' },
+      { title: 'Próximos pasos', layout: 'titleOnly', extra: [tableBlock({ x: 90, y: 180, w: 1100, h: 340, fontSize: 28, header: true, stroke: '#c9d1dc', headBg: '#404040', headFg: '#ffffff',
+        rows: [['Acción', 'Responsable', 'Fecha'], ['Calendario de formación', 'Nubia · Elena', '20 oct'], ['Instalar los lectores', 'Albor · Jorge', '3 nov'], ['Activar los avisos de retraso', 'Nubia · Pablo', '17 nov'], ['Siguiente revisión', 'Ambos equipos', '15 ene']], colW: [5, 3, 2] })],
+        notes: 'Envía esta tabla por correo al acabar la reunión.' },
+      { layout: 'section', title: 'Gracias', subtitle: 'Elena Martín · Responsable de cuenta · elena@nubia.example' },
+    ]));
+  } },
+
+  // A customer story: the client, the challenge, the solution step by step, the result that grows into a chart
+  // (Transform), a testimonial and a closing call to action.
+  casestudy: { name: 'Caso de éxito', summary: 'Historia de un cliente: el reto en tarjetas, la solución paso a paso, el resultado con Transformar y un gráfico antes y después, testimonio y llamada a la acción', make: () => {
+    const GREEN = '#2e7d32', LIGHT = '#66bb6a', BROWN = '#8d6e63', big40 = uid();
+    return numbered(build({ name: 'Caso de éxito · Hortalia', palette: 'forest', fonts: 'editorial', title: { color: GREEN },
+      decor: p => [shape('rect', 60, 150, 1160, 3, p.accents[1])] }, [
+      { layout: 'blank', transition: 'fade', extra: [
+        shape('ellipse', 820, 90, 520, 520, LIGHT, { fill2: '#f4f8f1', gradType: 'radial', opacity: 70 }), icon('leaf', 960, 230, 240, GREEN),
+        text('CASO DE ÉXITO', 90, 170, 600, 40, { fontSize: 22, letterSpacing: 6, fontWeight: 700, color: BROWN }),
+        text('Hortalia: un 40 % menos de desperdicio', 84, 210, 760, 230, { fontFamily: pairStacks('editorial').heading, fontSize: 70, fontWeight: 700, color: '#1e3320', lineHeight: 1.1 }),
+        text('Cómo una cooperativa agrícola ajustó lo que cosecha a lo que de verdad se vende', 90, 470, 700, 100, { fontSize: 30 })],
+        notes: 'Empieza por el resultado: es lo que el público recordará.' },
+      { title: 'El cliente', layout: 'titleOnly', extra: [
+        text('Una cooperativa de 320 familias de la vega de Granada que vende fruta y verdura en sus propias tiendas y a la gran distribución.', 90, 200, 560, 300, { fontSize: 32 }),
+        ...[['1987', 'fundada'], ['14', 'tiendas'], ['9.000 t', 'al año']].map(([n, l], i) =>
+          anim(text(`<div style="font-size:60px;font-weight:800;color:${GREEN};line-height:1.1">${n}</div><div>${l}</div>`, [700, 960, 830][i], i < 2 ? 190 : 400, 240, 170, { fontSize: 26, textAlign: 'center' }), i + 1, 'zoom-in'))],
+        notes: 'Tres clics, una cifra cada uno. Es una empresa como la de quien escucha.' },
+      { title: 'El reto', layout: 'titleOnly', extra: [
+        ...[['recycle', 'Desperdicio', 'El 18 % de lo cosechado no llegaba a venderse.'], ['calendar', 'Pedidos a ojo', 'Cada tienda pedía por intuición, cada lunes.'], ['thermometer', 'Un clima que cambia', 'Las olas de calor disparan o hunden la demanda.']]
+          .flatMap(([ic, h, d], i) => [anim(card(`<b>${h}</b><br>${d}`, 90 + i * 380, 280, 340, 260, '#ffffff', { fontSize: 28, color: '#1e3320', borderColor: '#c8dcc4' }), i + 1),
+            icon(ic, 120 + i * 380, 190, 70, [GREEN, BROWN, '#0277bd'][i])])],
+        notes: 'Un clic por tarjeta. El desperdicio era el síntoma; el problema, pedir a ojo.' },
+      { title: 'La solución', layout: 'titleOnly', extra: [dg('process', 'Datos\n  Cinco años de ventas y el tiempo\nPrevisión\n  Demanda por tienda y día\nPedido\n  Propuesto cada mañana\nDecisión\n  El encargado ajusta y confirma', 90, 200, 1100, 400, { oneByOne: true })],
+        notes: 'Un clic por paso. Subraya el último: la previsión propone, pero decide la persona.' },
+      { layout: 'blank', autoAnimate: true, extra: [
+        { ...text('<div style="font-size:220px;font-weight:800;color:#2e7d32;line-height:1">−40 %</div>', 90, 150, 1100, 260, { textAlign: 'center' }), id: big40 },
+        text('de desperdicio en seis meses', 90, 430, 1100, 70, { fontSize: 40, textAlign: 'center' })],
+        notes: 'Deja la cifra unos segundos en silencio antes de pasar.' },
+      { title: 'Los resultados', layout: 'titleOnly', autoAnimate: true, extra: [
+        { ...text('<div style="font-size:90px;font-weight:800;color:#2e7d32;line-height:1">−40 %</div>', 860, 180, 330, 110, { textAlign: 'center' }), id: big40 },
+        chartBlock({ x: 90, y: 170, w: 740, h: 480, chartType: 'bar', color: GREEN, grid: true, yTitle: '% sin vender',
+          data: [{ label: 'Ene', value: 18 }, { label: 'Feb', value: 16 }, { label: 'Mar', value: 13 }, { label: 'Abr', value: 12 }, { label: 'May', value: 11 }, { label: 'Jun', value: 10.8 }], seriesName: '2026',
+          series: [{ name: '2025', values: [17, 18, 19, 18, 18, 19], color: '#c8b6a6' }] }),
+        anim(text('<b>+9 %</b> de margen por tienda', 860, 330, 330, 80, { fontSize: 30, textAlign: 'center' }), 1),
+        anim(text('<b>3 semanas</b> para ponerlo en marcha', 860, 440, 330, 80, { fontSize: 30, textAlign: 'center' }), 2)],
+        notes: 'Transformar: el −40 % de la diapositiva anterior viaja a la esquina y aparece el gráfico de antes y después.' },
+      { layout: 'blank', transition: 'fade', extra: [icon('quote', 90, 180, 80, LIGHT),
+        text('«Antes tirábamos una de cada cinco cajas. Ahora pedimos lo que vamos a vender, y lo sabemos la víspera.»', 140, 260, 1000, 220, { fontSize: 44, fontStyle: 'italic', textAlign: 'center' }),
+        text('— Carmen Ortega, directora de operaciones de Hortalia', 140, 510, 1000, 50, { fontSize: 26, textAlign: 'center', color: BROWN })],
+        notes: 'Lee la cita despacio: es la voz del cliente, no la nuestra.' },
+      { title: 'Lo que aprendimos', body: ul('Empezar con dos tiendas piloto y medir desde el primer día', 'La persona tiene la última palabra: la previsión solo propone', 'Revisar los resultados cada semana con el equipo de tienda') },
+      { layout: 'section', title: '¿Hablamos de tu caso?', subtitle: 'nubia.example/casos · hola@nubia.example', transition: 'zoom' },
+    ]));
+  } },
+
+  // A webinar: housekeeping, a poll to warm up, the agenda, a demo in three steps where a highlight moves
+  // across the screen (Transform), results, the audience's questions and a call to action with links.
+  webinar: { name: 'Webinar', summary: 'Seminario web: normas para asistentes, votación inicial, demo en tres pasos con Transformar, preguntas del público desde el móvil y llamada a la acción con enlaces', make: () => {
+    const PINK = '#f15bb5', CYAN = '#00bbf9', YEL = '#fee440', INK = '#f3eefe', BG = '#1b1030', mark = uid(), shot = uid();
+    const screen = appScreen(1280, 800, '#9b5de5', 'Nubia · Informes', 3);
+    const step = (title, x, y, w, h, caption) => ({ title, layout: 'titleOnly', autoAnimate: true, extra: [
+      { ...base(90, 170, 760, 475), type: 'image', src: screen, alt: 'La aplicación de informes', fit: 'cover', device: 'laptop', id: shot },
+      { ...shape('rounded', x, y, w, h, 'none', { stroke: YEL, strokeWidth: 5, radius: 14 }), id: mark },
+      text(caption, 890, 220, 310, 360, { fontSize: 28, color: INK })] });
+    return numbered(build({ name: 'Webinar · Informes que se hacen solos', palette: 'violet', fonts: 'friendly', title: { color: INK },
+      decor: p => [shape('rect', 0, 712, 1280, 8, p.accents[0], { fill2: p.accents[1], gradAngle: 0 })] }, [
+      { layout: 'blank', transition: 'zoom', extra: [glow(700, -250, 800, '#9b5de5', BG, 55), glow(-250, 380, 600, PINK, BG, 30),
+        text('WEBINAR · EN DIRECTO', 90, 150, 700, 40, { fontSize: 22, letterSpacing: 6, fontWeight: 700, color: YEL }),
+        text('Informes que se hacen solos', 84, 190, 900, 200, { fontFamily: pairStacks('friendly').heading, fontSize: 84, fontWeight: 800, color: '#ffffff', lineHeight: 1.1 }),
+        text('Automatiza tu informe semanal en 30 minutos', 90, 400, 900, 60, { fontSize: 34, color: CYAN }),
+        text('Con Nuria Vidal (Producto) y Álex Romero (Datos) · 22 de octubre, 17:00', 90, 600, 1100, 40, { fontSize: 24, color: INK, opacity: 80 })],
+        notes: 'Empieza dos minutos después de la hora: mientras, deja esta portada y saluda a quien vaya entrando.' },
+      { title: 'Antes de empezar', layout: 'titleOnly', extra: [
+        ...[['mic', 'Micrófonos', 'Os hemos silenciado para que se oiga bien.'], ['video', 'Grabación', 'Os enviaremos el vídeo y las diapositivas.'], ['smartphone', 'Participa', 'Escanea el QR para votar y preguntar.']]
+          .flatMap(([ic, h, d], i) => [anim(card(`<b>${h}</b><br>${d}`, 90 + i * 380, 280, 340, 250, '#ffffff12', { fontSize: 28, color: INK }), i + 1),
+            icon(ic, 120 + i * 380, 190, 70, [PINK, CYAN, YEL][i])])],
+        notes: 'Activa Ver ▸ Público ▸ En sus dispositivos: el QR sale en la esquina durante todo el webinar.' },
+      { layout: 'blank', extra: [pollBlock({ fontSize: 34, question: '¿Cuánto tiempo dedicas cada semana a preparar informes?', options: ['Menos de 1 hora', 'De 1 a 3 horas', 'De 3 a 6 horas', 'Más de 6 horas'], display: 'bar', x: 80, y: 60, w: 1120, h: 600 })],
+        notes: 'Votación para romper el hielo: comenta el resultado en voz alta antes de seguir.' },
+      { title: 'Lo que veremos', layout: 'titleOnly', extra: [dg('timeline', '5 min\n  Por qué automatizar\n15 min\n  Demo en directo\n5 min\n  Casos reales\n10 min\n  Vuestras preguntas', 90, 180, 1100, 420, { oneByOne: true })],
+        notes: 'Un clic por bloque. Promete terminar a la hora: y cúmplelo.' },
+      { title: 'En qué se va el tiempo', layout: 'titleOnly', extra: [
+        chartBlock({ x: 90, y: 170, w: 620, h: 480, chartType: 'doughnut', color: '#9b5de5', dataLabels: true,
+          data: [{ label: 'Copiar y pegar datos', value: 45 }, { label: 'Dar formato', value: 25 }, { label: 'Revisar errores', value: 20 }, { label: 'Analizar', value: 10 }] }),
+        anim(text('Solo el <b style="color:#fee440">10 %</b> del tiempo se dedica a lo que importa: entender los datos.', 760, 260, 430, 260, { fontSize: 34, color: INK }), 1)],
+        notes: 'Datos de una encuesta a 400 personas de finanzas y operaciones (ejemplo).' },
+      step('Paso 1 · Conecta tus datos', 175, 240, 110, 275, 'Hoja de cálculo, CRM o base de datos: se conecta una vez y se actualiza sola.'),
+      step('Paso 2 · Elige la plantilla', 290, 245, 510, 180, 'Gráficos y textos se rellenan con los datos de la semana.'),
+      step('Paso 3 · Prográmalo', 98, 176, 750, 70, 'Cada lunes a las 8:00, en el correo de quien lo necesite.'),
+      { title: 'Lo que han conseguido', layout: 'titleOnly', extra: [
+        anim(big('6 h', 'ahorradas por persona cada semana', 90, 230, YEL, INK), 1), anim(big('0', 'errores al copiar datos', 470, 230, CYAN, INK), 2),
+        anim(big('8 min', 'para poner en marcha el primero', 850, 230, PINK, INK), 3)],
+        notes: 'Media de 40 clientes durante su primer mes (ejemplo).' },
+      { layout: 'blank', extra: [pollBlock({ kind: 'qa', fontSize: 34, question: 'Tus preguntas', options: [], x: 80, y: 60, w: 1120, h: 600 })],
+        notes: 'Preguntas del público: llegan desde el móvil durante todo el webinar y se votan; responde primero las más votadas.' },
+      { layout: 'blank', transition: 'convex', extra: [glow(400, -260, 700, PINK, BG, 40),
+        text('Pruébalo gratis 30 días', 90, 150, 1100, 120, { fontFamily: pairStacks('friendly').heading, fontSize: 80, fontWeight: 800, color: '#ffffff', textAlign: 'center' }),
+        text('Sin tarjeta. Te ayudamos a montar tu primer informe.', 90, 280, 1100, 60, { fontSize: 32, color: INK, textAlign: 'center' }),
+        { ...shape('rounded', 270, 400, 360, 90, PINK, { html: '<b>Reservar una demo</b>', fontSize: 30, color: '#ffffff', radius: 45 }), href: 'https://nubia.example/demo', animation: A('zoom-in') },
+        { ...shape('rounded', 650, 400, 360, 90, 'none', { html: '<b>Descargar la guía</b>', fontSize: 30, color: '#ffffff', stroke: CYAN, strokeWidth: 3, radius: 45 }), href: 'https://nubia.example/guia', animation: A('zoom-in', { start: 'withPrev' }) },
+        text('Recibirás la grabación en 24 horas · nubia.example', 90, 560, 1100, 50, { fontSize: 24, color: CYAN, textAlign: 'center' })],
+        notes: 'Llamada a la acción: los dos botones son enlaces que se abren al hacer clic, también en el vídeo o el enlace que compartas después.' },
+    ]));
+  } },
+
+  // A sales kickoff: the title flies up (Transform) to make room for last year's figure, sales against target,
+  // where we win, the funnel, the new target by region, the levers, the commission plan, awards and a break.
+  saleskickoff: { name: 'Kickoff de ventas', summary: 'Inicio del año comercial: Transformar en la portada, ventas frente al objetivo, rectángulos por sector, embudo, objetivo por región, palancas, plan de comisiones, premios y cuenta atrás para el café', make: () => {
+    const ORANGE = '#e4572e', GOLD = '#f3a712', SAGE = '#a8c686', BLUE = '#669bbc', INK = '#fff4ec', BG = '#2b1512', ttl = uid();
+    const head = (y, size) => ({ ...text('KICKOFF DE VENTAS 2027', 90, y, 1100, Math.round(size * 1.2), { fontFamily: pairStacks('bold').heading, fontSize: size, color: '#ffffff', letterSpacing: 2 }), id: ttl });
+    return numbered(build({ name: 'Kickoff de ventas 2027', palette: 'warm', fonts: 'bold', title: { size: 60, color: GOLD },
+      decor: p => [shape('rect', 0, 700, 1280, 20, p.accents[0]), shape('rect', 0, 700, 380, 20, p.accents[1])] }, [
+      { layout: 'blank', autoAnimate: true, extra: [glow(600, -300, 900, ORANGE, BG, 45), head(220, 130),
+        text('Barcelona · 12 de enero · A por el año', 94, 400, 1000, 60, { fontSize: 36, color: GOLD })],
+        notes: 'Música de entrada hasta que todo el mundo esté sentado; luego, clic.' },
+      { layout: 'blank', autoAnimate: true, extra: [head(50, 56),
+        text('<div style="font-size:180px;font-weight:800;color:#f3a712;line-height:1">9,4 M€</div>', 90, 190, 1100, 220, { textAlign: 'center' }),
+        anim(text('vendidos en 2026: el 118 % del objetivo', 90, 430, 1100, 70, { fontSize: 40, color: INK, textAlign: 'center' }), 1)],
+        notes: 'Transformar: el título sube y deja sitio a la cifra del año.' },
+      { title: 'Ventas por trimestre (M€)', layout: 'titleOnly', extra: [chartBlock({ x: 90, y: 170, w: 1100, h: 480, chartType: 'bar', color: GOLD, grid: true, dataLabels: true,
+        data: [{ label: 'T1', value: 1.8 }, { label: 'T2', value: 2.2 }, { label: 'T3', value: 2.3 }, { label: 'T4', value: 3.1 }], seriesName: 'Real',
+        series: [{ name: 'Objetivo', values: [1.7, 1.9, 2.0, 2.4], color: '#8a6f62' }] })],
+        notes: 'Los cuatro trimestres por encima del objetivo; el cuarto, el mejor de nuestra historia.' },
+      { title: 'Dónde ganamos', layout: 'titleOnly', extra: [chartBlock({ x: 90, y: 170, w: 1100, h: 480, chartType: 'treemap',
+        data: [{ label: 'Logística', value: 3.1 }, { label: 'Comercio', value: 2.4 }, { label: 'Salud', value: 1.6 }, { label: 'Industria', value: 1.4 }, { label: 'Otros', value: 0.9 }] })],
+        notes: 'Millones de euros por sector. Logística sigue siendo un tercio de todo.' },
+      { title: 'El embudo de 2026', layout: 'twoContent', body: '', body2: '', extra: [
+        chartBlock({ x: 90, y: 170, w: 640, h: 480, chartType: 'funnel', color: ORANGE, data: [{ label: 'Oportunidades', value: 1450 }, { label: 'Demos', value: 610 }, { label: 'Propuestas', value: 290 }, { label: 'Cerradas', value: 118 }] }),
+        text('<b style="color:#f3a712;font-size:60px">41 %</b><br>de las propuestas se cerraron. La fuga está antes: solo 4 de cada 10 oportunidades llegan a demo.', 780, 230, 410, 360, { fontSize: 28, color: INK })] },
+      { title: 'Objetivo 2027: 12 M€', layout: 'titleOnly', extra: [
+        chartBlock({ x: 90, y: 170, w: 620, h: 480, chartType: 'doughnut', color: ORANGE, dataLabels: true,
+          data: [{ label: 'Iberia', value: 6.5 }, { label: 'Francia', value: 2.5 }, { label: 'Italia', value: 1.8 }, { label: 'Nuevos mercados', value: 1.2 }] }),
+        text('Un <b>+28 %</b> sobre 2026. Iberia aporta más de la mitad; Francia es la gran apuesta.', 760, 250, 430, 300, { fontSize: 32, color: INK })],
+        notes: 'Los objetivos por persona se entregan en los talleres de la tarde.' },
+      { title: 'Tres palancas', layout: 'titleOnly', extra: [dg('chevrons', 'Ampliar\n  Plan Empresa para cuentas grandes\nRepetir\n  Venta cruzada a quien ya es cliente\nAbrir\n  Francia con socios locales', 90, 210, 1100, 360, { oneByOne: true })] },
+      { title: 'Nuevo plan de comisiones', layout: 'titleOnly', extra: [tableBlock({ x: 90, y: 180, w: 1100, h: 380, fontSize: 28, header: true, stroke: '#5a3a33', headBg: ORANGE, headFg: '#ffffff', banded: true, band: '#e4572e',
+        rows: [['Tramo', 'Sobre el objetivo', 'Comisión'], ['Base', 'hasta el 80 %', '4 %'], ['Objetivo', 'del 80 al 100 %', '6 %'], ['Acelerador', 'del 100 al 130 %', '9 %'], ['Club de ventas', 'más del 130 %', '12 % y viaje']], colW: [3, 4, 3] })],
+        notes: 'El acelerador empieza en el 100 %: cada euro por encima del objetivo vale un 50 % más que antes.' },
+      { title: 'Premios 2026', layout: 'titleOnly', extra: [
+        ...[['trophy', 'Mejor vendedora', 'Laura Gil'], ['briefcase', 'Mayor contrato', 'Hospital del Mar'], ['medal', 'Equipo del año', 'Iberia Norte']]
+          .flatMap(([ic, h, who], i) => [anim(card(`<div style="font-size:24px;opacity:.85">${h}</div><div style="font-size:38px;font-weight:700">${who}</div>`, 90 + i * 380, 300, 340, 220, '#ffffff12', { color: INK, textAlign: 'center' }), i + 1, 'zoom-in'),
+            icon(ic, 210 + i * 380, 190, 100, [GOLD, SAGE, BLUE][i])])],
+        notes: 'Un clic por premio: deja tiempo al aplauso.' },
+      { layout: 'blank', extra: [pollBlock({ fontSize: 34, question: '¿Qué sector crecerá más en 2027?', options: ['Logística', 'Comercio', 'Salud', 'Industria'], display: 'bar', x: 80, y: 60, w: 1120, h: 600 })] },
+      { layout: 'blank', transition: 'zoom', extra: [glow(-200, -300, 900, ORANGE, BG, 40),
+        text('¡A por 2027!', 90, 180, 760, 200, { fontFamily: pairStacks('bold').heading, fontSize: 150, color: '#ffffff' }),
+        text('Pausa para el café: volvemos con los talleres por región', 94, 400, 700, 100, { fontSize: 32, color: GOLD }),
+        timer(900, 880, 200, 300, { color: GOLD })],
+        notes: 'La cuenta atrás de 15 minutos empieza sola al llegar y suena al acabar.' },
+    ]));
+  } },
 };
 
 // Which group each of these belongs to (the gallery shows them by group).
-const CAT = {'lesson': 'edu', 'report': 'biz', 'pitch': 'biz', 'coding': 'sci', 'maths': 'sci', 'science': 'edu', 'history': 'edu', 'meeting': 'biz', 'event': 'life', 'portfolio': 'life', 'moving3d': 'showcase', 'effects': 'showcase', 'diagrams': 'showcase', 'classroom': 'edu', 'launch': 'product', 'travel': 'life', 'quiz': 'edu', 'dashboard': 'data', 'folio': 'creative', 'canvas': 'showcase'};
+const CAT = {'lesson': 'edu', 'report': 'biz', 'pitch': 'biz', 'coding': 'sci', 'maths': 'sci', 'science': 'edu', 'history': 'edu', 'meeting': 'biz', 'event': 'life', 'portfolio': 'life', 'moving3d': 'showcase', 'effects': 'showcase', 'diagrams': 'showcase', 'classroom': 'edu', 'launch': 'product', 'travel': 'life', 'quiz': 'edu', 'dashboard': 'data', 'folio': 'creative', 'canvas': 'showcase', 'allhands': 'biz', 'qbr': 'biz', 'casestudy': 'biz', 'webinar': 'biz', 'saleskickoff': 'biz'};
 for (const [k, v] of Object.entries(EXAMPLES_DEF)) v.cat ||= CAT[k] || 'showcase';
 
 // The groups, and the presentations of each, from their own files (templates/*.js).
@@ -517,8 +751,11 @@ export async function loadExample(key, lang = currentLang()) {
   // (One with its own table of languages: in that language as its original, the others kept in the table.)
   if (deck && EXAMPLES_ML[key]) { await withTexts(key, deck); return lang !== 'es' && langsOf(deck).includes(lang) ? rebase(deck, lang) : deck; }
   if (!deck || lang === 'es') return deck;
+  // (The ones for companies: their texts in the other languages are examples-texts.js, { lang: { Spanish: translation } }.)
+  if (OWN_TEXTS.has(key)) { const all = (await import('./examples-texts.js')).default; return translateDeck(deck, all[lang] || null, { rtl: RTL_LANGS.includes(lang) }); }
   const { dict, lang: as } = await textsIn(lang, exampleFile(key));
   return translateDeck(deck, dict, { rtl: RTL_LANGS.includes(as) });
 }
-// The file an example is written in (the first twenty: this one).
-export const exampleFile = key => CATALOG[key]?.file || 'examples';
+// The file an example is written in (the first twenty: this one; those for companies: their own table of texts).
+export const OWN_TEXTS = new Set(['allhands', 'qbr', 'casestudy', 'webinar', 'saleskickoff']);
+export const exampleFile = key => CATALOG[key]?.file || (OWN_TEXTS.has(key) ? 'examples-texts' : 'examples');

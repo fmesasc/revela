@@ -999,6 +999,22 @@ body:not([data-edition="cloud"]):not([data-edition="desktop"]) .accounts-only{di
 .gal-path .ms{grid-row:1/3;font-size:28px;color:var(--accent)}.gal-path b{font-size:14px}.gal-path small{font-size:12px;color:var(--txt2)}
 .gal-path:hover,.gal-path:focus-visible{border-color:var(--accent);background:var(--accent-bg)}
 .gal-path.ai{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+/* «¿Para qué vas a usar Revela?» (ui/shell/audience.js): asked once, over the ways to start. */
+.aud-card{position:relative;margin:4px 0 12px;padding:12px 40px 10px 14px;border:1px solid color-mix(in srgb,var(--accent) 40%,var(--line));border-radius:12px;background:var(--accent-bg)}
+.aud-q{display:block;font-size:15px;margin-bottom:8px}
+.aud-opts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.aud-opt{display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:center;text-align:start;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--txt);cursor:pointer;font:inherit}
+.aud-opt .ms{grid-row:1/3;font-size:24px;color:var(--accent)}.aud-opt b{font-size:14px}.aud-opt small{font-size:12px;color:var(--txt2)}
+.aud-opt:hover,.aud-opt:focus-visible{border-color:var(--accent)}
+.aud-note{display:block;margin-top:6px;font-size:12px;color:var(--txt2)}
+.aud-skip{position:absolute;top:6px;inset-inline-end:6px;border:0;background:none;color:var(--txt2);font-size:16px;cursor:pointer;padding:4px 8px;border-radius:6px}
+@media (max-width:560px){.aud-opts{grid-template-columns:1fr}}
+/* For a company (core/audience.js EDU_ONLY): the school-only buttons hidden — not removed: the palette (Ctrl+K) finds them. */
+html[data-audience="biz"] #ribbon [data-action="gradebook"],html[data-audience="biz"] #ribbon [data-action="export-scorm"],
+html[data-audience="biz"] #ribbon [data-action="share-classroom"],html[data-audience="biz"] #ribbon [data-action="ai-lessonplan"],
+html[data-audience="biz"] #view-rail [data-action="gradebook"],html[data-audience="biz"] #view-rail [data-action="export-scorm"],
+html[data-audience="biz"] #view-rail [data-action="share-classroom"],html[data-audience="biz"] #view-rail [data-action="ai-lessonplan"],
+html[data-audience="biz"] #class-modal .cr-book,html[data-audience="biz"] #class-modal .cr-save,html[data-audience="biz"] .acc-amb,html[data-audience="biz"] .acc-ref{display:none!important}
 @media (max-width:640px){.gal-start{grid-template-columns:1fr}}
 .acc-drive{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px}.acc-drive .ms{color:var(--accent)}.acc-drive span{flex:1;min-width:180px}
 /* Export PDF: the two ways (ui/dialogs/print.js). */

@@ -362,7 +362,7 @@ function completeCard(c) {
     const g = brief || cmp.guessBrief();
     card.innerHTML = `${head}<form class="as-bform"><p class="as-note">${t('Tres preguntas sobre la presentación, una sola vez: se guardan con ella y la IA las usa cada vez.')}</p>
       <label>${t('¿De qué trata?')}<textarea name="topic" rows="3" required>${escHTML(g.topic)}</textarea></label>
-      <label>${t('¿Para quién?')}<input name="audience" value="${escHTML(g.audience)}" placeholder="${t('p. ej. alumnos que empiezan')}"></label>
+      <label>${t('¿Para quién?')}<input name="audience" value="${escHTML(g.audience)}" placeholder="${t('p. ej. personas que empiezan')}"></label>
       <label>${t('¿Qué deben llevarse?')}<input name="takeaway" value="${escHTML(g.takeaway)}" placeholder="${t('p. ej. saber hacer su primer informe')}"></label>
       <div class="as-actions"><button type="submit" class="fr-do">${t('Guardar')}</button>${brief ? `<button type="button" class="mini2 as-bcancel">${t('Cancelar')}</button>` : ''}</div></form>`;
     const f = card.querySelector('form');

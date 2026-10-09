@@ -207,7 +207,8 @@ export async function openCloudStats() {
       <form class="sh-row cl-track-new"><input type="text" class="cl-track-label" maxlength="80" placeholder="${t('Para quién (p. ej. Ana · Acme)')}">
         <label class="fr-chk" style="margin:0;white-space:nowrap"><input type="checkbox" class="cl-track-ask"> ${t('Pedir su correo')}</label><button type="submit" class="mini2">${t('Crear enlace')}</button></form>
       <div class="cl-track-list"></div>
-      <label class="fr-chk"><input type="checkbox" class="cl-track-notify"${s.notify ? ' checked' : ''}> ${t('Avisarme por correo cuando alguien abra uno')}</label></fieldset>`;
+      <label class="fr-chk"><input type="checkbox" class="cl-track-notify"${s.notify ? ' checked' : ''}> ${t('Avisarme por correo cuando alguien abra uno')}</label>
+      <p class="host-help">${t('¿Una marca de agua «Confidencial» con su correo? Transiciones ▸ Configuración ▸ Marca de agua.')}</p></fieldset>`;
   const list = body.querySelector('.cl-track-list'), when = ts => (ts ? new Date(ts).toLocaleString(currentLang(), { dateStyle: 'short', timeStyle: 'short' }) : '—');
   const paint = track => {
     list.innerHTML = !track.length ? `<p class="host-help">${t('Aún no hay ninguno.')}</p>` : track.map(x => `<div class="cl-tk" data-tk="${esc(x.token)}">

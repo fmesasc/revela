@@ -7,6 +7,7 @@ import { ACTIONS, TAKES_OUT } from '../ribbon/actions.js';
 import { state } from '../../core/store.js';
 import { galleryInto } from '../dialogs/gallery.js';
 import { t } from '../../i18n/index.js';
+import { forBusiness, EDU_ONLY } from '../../core/audience.js';
 
 const C = (action, icon, title, text) => ({ action, icon, title, text });
 const SECTIONS = [
@@ -58,8 +59,8 @@ const SECTIONS = [
 ];
 
 // Whether this edition has the action (its ribbon button exists and isn't hidden); not what takes it out, when
-// it's shared without copies.
-const available = a => { if (!ACTIONS[a] || (state.ui.noCopy && TAKES_OUT.includes(a))) return false; const b = document.querySelector(`#ribbon [data-action="${a}"]`); return !b || (!b.hidden && !b.closest('[hidden]:not(.ribbon-page)')); };
+// it's shared without copies; nor, for a company, what only a school uses (core/audience.js: hidden like its button).
+const available = a => { if (!ACTIONS[a] || (state.ui.noCopy && TAKES_OUT.includes(a)) || (forBusiness() && EDU_ONLY.includes(a))) return false; const b = document.querySelector(`#ribbon [data-action="${a}"]`); return !b || (!b.hidden && !b.closest('[hidden]:not(.ribbon-page)')); };
 
 export function openBackstage(sectionId = 'new') {
   document.getElementById('backstage')?.remove();

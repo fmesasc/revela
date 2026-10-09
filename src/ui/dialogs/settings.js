@@ -2,7 +2,8 @@
 // (controls, progress bar, navigation, scroll view, mouse wheel, shuffle,
 // cursor, jump to slide, link previews, right-to-left, Morph timing,
 // parallax background, zoom and search) plus this slide's Morph timing, and
-// how slides fit a screen of another proportion (with a live preview).
+// how slides fit a screen of another proportion (with a live preview), the «Confidencial» watermark
+// (features/document/watermark.js) and, for this browser, what Revela is used for (core/audience.js).
 
 import { state, commit, currentSlide } from '../../core/store.js';
 import { REVEAL_DEFAULTS, buildHTML } from '../../io/formats/html.js';
@@ -10,6 +11,8 @@ import { FIT_MODES, FIT_LABELS } from '../../features/design/screenfit.js';
 import { t } from '../../i18n/index.js';
 import { SHRINK_SIZES, shrinkPrefs, setShrinkPrefs, shrinkDeckImages } from '../../features/document/imgshrink.js';
 import { toast } from '../shell/toast.js';
+import { audienceField } from '../shell/audience.js';
+import { esc } from '../../core/text.js';
 
 // The current slide presented on three common screens with a fit mode: the real
 // presentation page, without its live parts (polls, cameras, 3D, videos…).
@@ -29,7 +32,7 @@ function showFitPreview(box, mode) {
 
 export function openSettings() {
   document.getElementById('set-modal')?.remove();
-  const o = { ...REVEAL_DEFAULTS, ...(state.deck.reveal || {}) }, s = currentSlide();
+  const o = { ...REVEAL_DEFAULTS, ...(state.deck.reveal || {}) }, s = currentSlide(), wm = state.deck.watermark;
   const ck = (k, l) => `<label class="fr-chk"><input type="checkbox" data-k="${k}"${o[k] ? ' checked' : ''}> ${t(l)}</label>`;
   const sel = (k, l, opts) => `<label class="fr-l">${t(l)}<select data-k="${k}">${opts.map(([v, n]) => `<option value="${v}"${String(o[k]) === String(v) ? ' selected' : ''}>${t(n)}</option>`).join('')}</select></label>`;
   const back = document.createElement('div'); back.id = 'set-modal'; back.className = 'modal-backdrop';
@@ -69,6 +72,15 @@ export function openSettings() {
         <label class="fr-l">${t('Duración (s)')}<input type="number" class="sl-dur" min="0.1" max="10" step="0.1" value="${s.aaDuration ?? ''}"></label>
         <label class="fr-l">${t('Retardo (s)')}<input type="number" class="sl-del" min="0" max="10" step="0.1" value="${s.aaDelay ?? ''}"></label>
       </fieldset>
+      <fieldset class="bgf set-wm"><legend>${t('Marca de agua')}</legend>
+        <label class="fr-chk"><input type="checkbox" class="wm-on"${wm ? ' checked' : ''}> ${t('Marca de agua «Confidencial» al presentar, compartir y exportar')}</label>
+        <label class="fr-l">${t('Texto')}<input type="text" class="wm-text" maxlength="60" placeholder="${esc(t('CONFIDENCIAL'))}" value="${esc(wm?.text || '')}"></label>
+        <label class="fr-chk"><input type="checkbox" class="wm-email"${wm?.email ? ' checked' : ''}> ${t('Con el correo de quien la abre (enlaces con seguimiento que piden el correo)')}</label>
+        <p class="host-help">${t('En diagonal y discreta sobre cada diapositiva: en el visor, al presentar, en la página web y en el PDF. Quien la ve no puede quitarla, pero es un aviso que disuade, no una protección: una copia se puede manipular y una pantalla siempre se puede fotografiar.')}</p>
+      </fieldset>
+      <fieldset class="bgf set-aud"><legend>${t('Uso de Revela (en este navegador)')}</legend>
+        <p class="host-help">${t('Qué ejemplos ves primero y, para empresa, sin los botones solo para docentes (siguen en la búsqueda de comandos).')}</p>
+      </fieldset>
       <fieldset class="bgf"><legend>${t('Imágenes (en este navegador)')}</legend>
         <label class="fr-l">${t('Reducir las imágenes grandes al insertarlas')}<select class="img-max">${SHRINK_SIZES.map(v => `<option value="${v}"${shrinkPrefs().max === v ? ' selected' : ''}>${v ? t('Como máximo {n} px').replace('{n}', v) + (v === 1920 ? ' · ' + t('recomendado') : '') : t('No reducir')}</option>`).join('')}</select></label>
         <label class="fr-l">${t('Calidad')} <span class="img-q-val">${Math.round(shrinkPrefs().quality * 100)} %</span><input type="range" class="img-q" min="0.5" max="0.95" step="0.05" value="${shrinkPrefs().quality}"></label>
@@ -78,6 +90,7 @@ export function openSettings() {
     </div>
     <div class="fr-actions"><button class="fr-do set-ok">${t('Aplicar')}</button></div></div>`;
   document.body.appendChild(back);
+  back.querySelector('.set-aud legend').after(audienceField());   // (kept at once, like the pictures' choice)
   const fitSel = back.querySelector('[data-k="fit"]'), prev = back.querySelector('.fit-prev');
   showFitPreview(prev, fitSel.value);
   fitSel.addEventListener('change', () => showFitPreview(prev, fitSel.value));
@@ -105,7 +118,10 @@ export function openSettings() {
       if (String(v) !== String(REVEAL_DEFAULTS[k] ?? '')) r[k] = v;
     });
     const dur = back.querySelector('.sl-dur').value, del = back.querySelector('.sl-del').value;
+    // (The watermark: a setting of the presentation — features/document/watermark.js.)
+    const wmText = back.querySelector('.wm-text').value.trim(), mark = back.querySelector('.wm-on').checked && { ...(wmText && { text: wmText }), ...(back.querySelector('.wm-email').checked && { email: true }) };
     commit(() => {
+      if (mark) state.deck.watermark = mark; else delete state.deck.watermark;
       if (Object.keys(r).length) state.deck.reveal = r; else delete state.deck.reveal;
       if (dur) s.aaDuration = +dur; else delete s.aaDuration;
       if (del) s.aaDelay = +del; else delete s.aaDelay;

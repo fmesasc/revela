@@ -27,7 +27,7 @@ export function openPollEditor(b, { fresh = false } = {}) {
     <label class="fr-chk pl-mod-l"><input type="checkbox" class="pl-mod"${b.moderate ? ' checked' : ''}> ${t('Aprobar cada pregunta antes de que salga en pantalla')}</label>
     <p class="host-help pl-mod-l">${t('Al presentar, la tecla M (o clic derecho ▸ «Moderar las preguntas») abre una ventana para aprobarlas, ocultarlas o descartarlas: llévala a tu pantalla. Las preguntas no llevan el nombre de quien pregunta.')}</p>
     <label class="fr-chk pl-clean-l"><input type="checkbox" class="pl-clean"${b.clean ? ' checked' : ''}> ${t('Tapar las palabrotas')}</label>
-    <div class="pl-rub" hidden><label class="fr-l">${t('Criterios para corregir con IA (opcional)')}<textarea class="pl-rubric" rows="3" maxlength="2000" placeholder="${t('p. ej.: Nombra las tres partes, pon un ejemplo y usa las palabras de clase.')}">${(b.rubric || '').replace(/</g, '&lt;')}</textarea></label>
+    <div class="pl-rub" hidden><label class="fr-l">${t('Criterios para corregir con IA (opcional)')}<textarea class="pl-rubric" rows="3" maxlength="2000" placeholder="${t('p. ej.: Nombra las tres partes, pon un ejemplo y usa los términos vistos.')}">${(b.rubric || '').replace(/</g, '&lt;')}</textarea></label>
       <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 pl-grade"><i class="ms">auto_awesome</i> ${t('Corregir con IA las respuestas')}</button></div>
       <p class="host-help">${t('También al presentar desde el editor: clic derecho ▸ «Corregir con IA las respuestas»; a cada móvil le llega su nota y un comentario.')}</p><div class="pl-graded"></div></div>
     <div class="pl-num" hidden style="display:flex;gap:8px;flex-wrap:wrap">

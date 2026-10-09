@@ -1081,4 +1081,59 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     }
     await R.i18n.setLang('es');
   });
+
+  await test('público: docencia, empresa o ambas — se pregunta una vez en la galería; empresa pone primero sus ejemplos y oculta lo de docentes (la paleta lo sigue encontrando)', async () => {
+    reset(); const W = frame.contentWindow, H = D.documentElement, A = await W.eval("import('/src/core/audience.js')");
+    const was = W.localStorage.getItem('revela.audience'), shown = a => { const b = D.querySelector(`#ribbon [data-action="${a}"]`); return !!b && W.getComputedStyle(b).display !== 'none'; };
+    const firstCat = () => D.querySelector('#gallery-modal .gal-examples .gal-item')?.dataset.cat, firstGroup = () => D.querySelector('#gallery-modal .gal-cat:not([data-cat=""])')?.dataset.cat;
+    try {
+      W.localStorage.removeItem('revela.audience'); W.dispatchEvent(new W.CustomEvent('revela:audience'));
+      eq(H.dataset.audience, 'both', 'sin elegir: como siempre');
+      assert(A.EDU_ONLY.every(shown), 'sin elegir, los botones de docentes se ven');
+      D.querySelector('[data-action="gallery"]').click(); await sleep(30);
+      const card = D.querySelector('#gallery-modal .aud-card');
+      assert(card && /¿Para qué vas a usar Revela\?/.test(card.textContent) && card.querySelectorAll('[data-aud]').length === 3, 'la primera vez, la tarjeta con Docencia · Empresa · Ambas');
+      eq(firstCat(), 'edu', 'antes de elegir, los ejemplos en su orden de siempre');
+      card.querySelector('[data-aud="biz"]').click(); await sleep(30);
+      eq(W.localStorage.getItem('revela.audience'), 'biz', 'se guarda en este navegador'); eq(H.dataset.audience, 'biz', 'y la página lo sabe');
+      assert(!D.querySelector('#gallery-modal .aud-card'), 'elegido, la tarjeta se va');
+      eq(firstCat(), 'biz', 'empresa: sus ejemplos primero'); eq(firstGroup(), 'biz', 'y su grupo, el primero');
+      const keys = [...D.querySelectorAll('#gallery-modal .gal-examples .gal-item')].map(b => b.dataset.example);
+      for (const k of ['allhands', 'qbr', 'casestudy', 'webinar', 'saleskickoff']) assert(keys.indexOf(k) >= 0 && keys.indexOf(k) < keys.indexOf('lesson'), `«${k}» antes que los de docencia`);
+      D.querySelector('#gallery-modal .modal-close').click();
+      for (const a of A.EDU_ONLY) assert(!shown(a), `empresa: «${a}» oculto en la cinta`);
+      for (const a of A.EDU_ONLY) assert(D.querySelector(`#ribbon [data-action="${a}"]`), `«${a}» sigue en la página (oculto, no quitado)`);
+      assert(shown('classroom') && shown('classroom-results') && shown('class-pace'), 'lo que sirve a cualquier público, a la vista');
+      const ids = q => R.palette.search(R.palette.buildIndex(), q).map(e => e.id);
+      assert(ids('cuaderno de clase').includes('a:gradebook') && ids('scorm').includes('a:export-scorm'), 'la paleta (Ctrl+K) los sigue encontrando');
+      const bs = (await W.eval("import('/src/ui/shell/backstage.js')")).openBackstage('export');
+      try { assert(!bs.querySelector('[data-bs-action="export-scorm"]') && bs.querySelector('[data-bs-action="export-pdf"]'), 'Archivo ▸ Exportar: sin SCORM'); } finally { bs.querySelector('.bs-back').click(); }
+      D.querySelector('[data-action="gallery"]').click(); await sleep(30);
+      assert(!D.querySelector('#gallery-modal .aud-card'), 'solo se pregunta una vez'); D.querySelector('#gallery-modal .modal-close').click();
+      // Changed later in the settings.
+      D.querySelector('[data-action="deck-settings"]').click(); await sleep(20);
+      const sel = D.querySelector('#set-modal .aud-sel'); assert(sel && sel.value === 'biz', 'en la configuración, con lo elegido');
+      sel.value = 'edu'; sel.dispatchEvent(new W.Event('change')); await sleep(10);
+      eq(W.localStorage.getItem('revela.audience'), 'edu', 'cambiado al momento'); assert(A.EDU_ONLY.every(shown), 'docencia: todo a la vista otra vez');
+      D.querySelector('#set-modal .modal-close').click();
+      D.querySelector('[data-action="gallery"]').click(); await sleep(30);
+      eq(firstGroup(), 'edu', 'docencia: su grupo primero'); D.querySelector('#gallery-modal .modal-close').click();
+      eq(A.orderGroups([['data'], ['edu'], ['biz']], 'both').join(), 'data,edu,biz', 'ambas: el orden de siempre');
+    } finally {
+      if (was) W.localStorage.setItem('revela.audience', was); else W.localStorage.removeItem('revela.audience');
+      W.dispatchEvent(new W.CustomEvent('revela:audience')); D.querySelector('#gallery-modal')?.remove(); D.querySelector('#set-modal')?.remove();
+    }
+  });
+
+  await test('público: lo que sirve en un aula y en una empresa se nombra para cualquier público (Ver ▸ Público), en cada idioma', async () => {
+    const lab = a => D.querySelector(`#ribbon [data-action="${a}"] span`).innerHTML, grp = a => D.querySelector(`#ribbon [data-action="${a}"]`).closest('.group').querySelector(':scope > label').textContent;
+    eq(grp('classroom'), 'Público', 'el grupo'); eq(lab('classroom'), 'En sus<br>dispositivos'); eq(lab('classroom-results'), 'Resultados<br>del público'); eq(lab('class-pace'), 'Cada uno a<br>su ritmo');
+    assert(!/alumn|profesor|aula/i.test(['classroom', 'classroom-results', 'class-pace'].map(a => D.querySelector(`#ribbon [data-action="${a}"]`).title).join(' ')), 'sus descripciones, sin «alumnos» ni «aula»');
+    eq(R.i18n.t('Tu nombre (lo verá quien presenta)'), 'Tu nombre (lo verá quien presenta)');
+    try {
+      await R.i18n.setLang('en');
+      eq(grp('classroom'), 'Audience'); eq(lab('classroom'), 'On their<br>devices'); eq(R.i18n.t('Tu nombre (lo verá quien presenta)'), 'Your name (the presenter will see it)');
+      await R.i18n.setLang('nl'); eq(lab('classroom-results'), 'Resultaten<br>publiek', 'también en neerlandés');
+    } finally { await R.i18n.setLang('es'); }
+  });
 }

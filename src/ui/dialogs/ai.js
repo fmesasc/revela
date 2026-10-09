@@ -13,6 +13,7 @@ import * as vo from '../../features/ai/voiceover.js';
 import { alertDialog, confirmDialog, promptDialog } from './dialog.js';
 import { t } from '../../i18n/index.js';
 import { esc } from '../../core/text.js';
+import { forBusiness } from '../../core/audience.js';
 import { askAssistant } from './assistant.js';
 // The kinds of slide the outline may choose (features/ai/specs.js KINDS), to see and change before the slides are made.
 const OUTLINE_KINDS = [['', 'Automático'], ['title', 'Portada'], ['section', 'Sección'], ['bullets', 'Lista'], ['code', 'Código'], ['steps', 'Pasos'], ['features', 'Características'],
@@ -172,7 +173,7 @@ export function openCreateDeck() {
   const back = document.createElement('div'); back.id = 'aideck-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(620px,94vw);max-width:94vw">
     <button class="modal-close">✕</button><h3>${t('Crear presentación con IA')}</h3>
-    <label class="fr-l">${t('Tema o instrucciones')}<textarea class="ad-topic" rows="3" placeholder="${t('p. ej.: Introducción a la energía solar para estudiantes de secundaria')}"></textarea></label>
+    <label class="fr-l">${t('Tema o instrucciones')}<textarea class="ad-topic" rows="3" placeholder="${forBusiness() ? t('p. ej.: Resultados del trimestre para el comité de dirección') : t('p. ej.: Introducción a la energía solar para estudiantes de secundaria')}"></textarea></label>
     <label class="fr-l">${t('O basarla en documentos o fotos (PDF, textos, fotos de apuntes o de una pizarra) o en texto pegado')}
       <input type="file" class="ad-file" multiple accept="${ATTACH_ACCEPT},.markdown">
       <textarea class="ad-source" rows="3" placeholder="${t('Pega aquí un texto (opcional)')}"></textarea></label>

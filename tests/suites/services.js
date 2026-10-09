@@ -3248,4 +3248,32 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const btn = D.querySelector('[data-action="model-ai"]');
     assert(btn && W.getComputedStyle(btn).display === 'none', 'en la edición abierta el botón está oculto');
   });
+
+  await test('ejemplos para empresa: reunión general, QBR, caso de éxito, webinar y kickoff de ventas, con gráficos, diagramas, votaciones y Transformar, en los once idiomas', async () => {
+    const W = frame.contentWindow, E = R.examples, TL = await W.eval("import('/src/features/content/tplang.js')");
+    const all = (await W.eval("import('/src/features/content/examples-texts.js')")).default;
+    const kinds = d => d.slides.flatMap(s => s.blocks.map(b => b.type === 'poll' ? 'poll:' + (b.kind || 'choice') : b.type));
+    for (const key of ['allhands', 'qbr', 'casestudy', 'webinar', 'saleskickoff']) {
+      eq(E.EXAMPLES[key]?.cat, 'biz', key + ': en el grupo Empresa');
+      const es = await E.loadExample(key, 'es'), k = kinds(es);
+      assert(es.slides.length >= 8 && es.slides.length <= 14, `${key}: ${es.slides.length} diapositivas`);
+      assert(k.includes('chart') && (k.includes('diagram') || k.includes('table')), key + ': gráficos y diagramas o tablas');
+      // Transform: two slides in a row with auto-animate share an object.
+      const morph = es.slides.some((s, i) => s.autoAnimate && es.slides[i + 1]?.autoAnimate && s.blocks.some(b => es.slides[i + 1].blocks.some(c => c.id === b.id)));
+      assert(morph, key + ': un objeto que viaja con Transformar');
+      assert(es.slides.filter(s => s.notes).length > es.slides.length / 2, key + ': con notas del orador');
+      const texts = TL.textsOf(es);
+      for (const l of TL.TEMPLATE_LANGS) { const miss = texts.filter(s => !Object.hasOwn(all[l] || {}, s)); eq(miss.length, 0, `${key} en ${l}: sin traducir ${miss.slice(0, 2).join(' | ')}`); }
+      const en = await E.loadExample(key, 'en'), ar = await E.loadExample(key, 'ar');
+      assert(en.name !== es.name && TL.textsOf(en).every(s => !texts.includes(s) || all.en[s] === s), key + ': abierta en inglés, en inglés');
+      assert(ar.slides.some(s => s.blocks.some(b => b.dir === 'rtl')), key + ': en árabe, de derecha a izquierda');
+    }
+    const kinds2 = d => kinds(d).join();
+    assert(/poll:word/.test(kinds2(await E.loadExample('allhands', 'es'))) && /poll:qa/.test(kinds2(await E.loadExample('allhands', 'es'))), 'reunión general: nube de palabras y preguntas anónimas');
+    const web = await E.loadExample('webinar', 'es'), last = web.slides.at(-1);
+    assert(/poll:choice/.test(kinds2(web)) && /poll:qa/.test(kinds2(web)), 'webinar: votación inicial y preguntas del público');
+    assert(last.blocks.filter(b => /^https:/.test(b.href || '')).length === 2, 'webinar: cierra con una llamada a la acción con dos enlaces');
+    assert(/data-href="https:\/\/nubia\.example\/demo"/.test(R.io.buildHTML(web)), 'que se abren al presentar');
+    eq(E.exampleFile('qbr'), 'examples-texts', 'sus textos en su propia tabla (no en templates/i18n)');
+  });
 }

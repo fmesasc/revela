@@ -8,13 +8,15 @@ import { googleFontLinks } from '../../features/design/fonts.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
 import { t } from '../../i18n/index.js';
 import { blocksOf, blockHTML, esc } from '../formats/html.js';
+import { watermarkHTML } from '../../features/document/watermark.js';
 
 // A print‑oriented document: one slide per page, sized to the deck. The user
 // prints it and chooses "Save as PDF" (works in every browser, no plugins).
 export function buildPrintHTML(deck = state.deck) {
   const { w, h } = deck.size;
+  const mark = watermarkHTML(deck);                                  // («Confidencial», if the presentation has it)
   const pages = deck.slides.filter(s => !s.hidden).map(s =>
-    `<div class="page" style="background:${s.background}">${blocksOf(s, deck).map(b => blockHTML(b, s)).join('')}</div>`).join('\n');
+    `<div class="page" style="background:${s.background}">${blocksOf(s, deck).map(b => blockHTML(b, s)).join('')}${mark}</div>`).join('\n');
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><title>${esc(deck.name || 'Presentación')}</title>
 ${googleFontLinks(deck)}

@@ -48,6 +48,7 @@ import { deckFg, deckBodyFont, currentPalette } from '../../features/design/pale
 import { animTimeline, animEntries, EFFECT_KF, EFFECT_KF_CSS, EMPHASIS_FX, SIZE_FX, animScale, isEntrance, MEDIA_FX, customTransitionCSS, transitionName, isShapeTransition, pathKeyframesCSS, pathTurns, animsOf, animKey, offsetBefore } from '../../features/animation/transitions.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, levelVars } from '../../features/document/master.js';
 import { magOverlaySVG, magFrameSVG, magViewCSS, magInsetCSS, magOrigin, underArea, viewOf, MAG_SKIP } from '../../features/document/magnify.js';
+import { watermarkPage } from '../../features/document/watermark.js';
 
 
 const tf = b => `rotate(${b.rotation || 0}deg)${b.flipH ? ' scaleX(-1)' : ''}${b.flipV ? ' scaleY(-1)' : ''}`;
@@ -614,7 +615,8 @@ export function buildHTML(deck = state.deck, opts = {}) {
 // grows — reveal.js stops at 2× by default, which left wide borders on large or high-resolution screens.)
 // noCopy: the viewer of one shared without copies (apps/view: «solo presentar», or the owner's setting) — nothing to
 // select, drag out, copy or print. (What a screen shows can always be photographed.)
-function buildHTMLRaw(deck, { inApp = false, selfPaced = false, noCopy = false } = {}) {
+// who: the viewer's email, for a watermark that asks for it (apps/view, after a tracked link asked for it).
+function buildHTMLRaw(deck, { inApp = false, selfPaced = false, noCopy = false, who = '' } = {}) {
   const { w, h } = deck.size;
   const figMap = figuresMap(deck);
   // Vertical stacks: a slide marked `vertical` goes below the previous visible one.
@@ -741,7 +743,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
 </style>${deck.css ? `\n<style>/* the presentation's own CSS (developer mode) */\n${scopedCSS(deck.css, '.reveal .stage')}</style>` : ''}</head><body>
 <div class="reveal${canvas ? ' rv-canvas' : ''}" data-fit="${fit}"><div class="slides">${canvas && deck.canvas.image?.src ? `<div class="rv-world"><img alt="" src="${esc(deck.canvas.image.src)}" style="max-width:none;max-height:none;margin:0;position:absolute;left:${deck.canvas.image.x}px;top:${deck.canvas.image.y}px;width:${deck.canvas.image.w}px;height:${deck.canvas.image.h}px"></div>` : ''}
 ${slides}
-</div>${footerText}${logoHTML}</div>${bgmHTML}
+</div>${footerText}${logoHTML}</div>${watermarkPage(deck, who)}${bgmHTML}
 <script src="${REVEAL}/dist/reveal.js"></script>
 <script src="${REVEAL}/plugin/notes/notes.js"></script>
 ${rv(deck).zoom !== false ? `<script src="${REVEAL}/plugin/zoom/zoom.js"></script>` : ''}

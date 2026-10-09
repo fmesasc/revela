@@ -50,7 +50,7 @@ function itemsOf(b) {
 }
 export function classResultsCSV(deck = state.deck) {
   const { polls, rows } = classResults(deck), q = s => `"${String(s).replace(/"/g, '""')}"`;
-  return [[t('Alumno'), ...polls.map(({ b, slide }) => `${slide}. ${b.question || ''}`), t('Total')].map(q).join(','),
+  return [[t('Participante'), ...polls.map(({ b, slide }) => `${slide}. ${b.question || ''}`), t('Total')].map(q).join(','),
     ...rows.map(r => [q(r.name || t('Sin apodo')), ...r.pts.map(v => (v == null ? '' : v)), r.total].join(','))].join('\n');
 }
 
@@ -63,13 +63,13 @@ export function openClassResults() {
   document.getElementById('class-modal')?.remove();
   const { polls, rows } = classResults();
   const back = document.createElement('div'); back.id = 'class-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:start;width:min(760px,96vw);max-width:none"><button class="modal-close">✕</button><h3>${t('Resultados del aula')}</h3>
-    <p class="host-help">${t('Los puntos de cada cuestionario y actividad, guardados en este navegador la última vez que se presentó. Activa el modo aula para que el alumnado siga las diapositivas en su dispositivo.')}</p>
-    ${!polls.length ? `<p class="host-help">${t('Esta presentación no tiene cuestionarios ni actividades con nota.')}</p>` : !rows.length ? `<p class="host-help">${t('Aún no hay respuestas: presenta y deja que el alumnado responda.')}</p>`
-      : `<div class="cr-wrap"><table class="cr-table"><thead><tr><th>${t('Alumno')}</th>${polls.map(({ b, slide }) => `<th title="${esc(b.question || '')}">${slide}</th>`).join('')}<th>${t('Total')}</th></tr></thead>
+  back.innerHTML = `<div class="modal" style="text-align:start;width:min(760px,96vw);max-width:none"><button class="modal-close">✕</button><h3>${t('Resultados del público')}</h3>
+    <p class="host-help">${t('Los puntos de cada cuestionario y actividad, guardados en este navegador la última vez que se presentó. Activa Ver ▸ Público ▸ En sus dispositivos para que cada participante siga las diapositivas en el suyo.')}</p>
+    ${!polls.length ? `<p class="host-help">${t('Esta presentación no tiene cuestionarios ni actividades con nota.')}</p>` : !rows.length ? `<p class="host-help">${t('Aún no hay respuestas: presenta y deja que el público responda.')}</p>`
+      : `<div class="cr-wrap"><table class="cr-table"><thead><tr><th>${t('Participante')}</th>${polls.map(({ b, slide }) => `<th title="${esc(b.question || '')}">${slide}</th>`).join('')}<th>${t('Total')}</th></tr></thead>
         <tbody>${rows.map(r => `<tr><td>${esc(r.name || t('Sin apodo'))}</td>${r.pts.map(v => `<td>${v == null ? '—' : v}</td>`).join('')}<td><b>${r.total}</b></td></tr>`).join('')}</tbody></table></div>`}
     ${rows.length ? questionsHTML(questionReport()) : ''}
-    <div class="fr-actions"><span class="host-help" style="margin:0">${rows.length} ${t('alumnos')}</span><button class="mini2 cr-book">${t('Cuaderno de clase')}</button>
+    <div class="fr-actions"><span class="host-help" style="margin:0">${rows.length} ${t('participantes')}</span><button class="mini2 cr-book">${t('Cuaderno de clase')}</button>
       <button class="mini2 cr-save"${rows.length ? '' : ' disabled'}>${t('Guardar en el cuaderno')}</button><button class="fr-do cr-csv"${rows.length ? '' : ' disabled'}>${t('Descargar CSV')}</button></div></div>`;
   document.body.appendChild(back);
   const close = () => back.remove();
@@ -82,7 +82,7 @@ export function openClassResults() {
   });
   back.querySelector('.cr-csv').addEventListener('click', () => {
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + classResultsCSV()], { type: 'text/csv' }));
-    a.download = 'resultados-aula.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    a.download = 'resultados.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   });
 }
 

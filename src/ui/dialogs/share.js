@@ -42,7 +42,7 @@ ${hasAccounts() ? `<div class="sh-cloud"><div><b>${t('Con personas concretas')}<
         <label class="fr-l">${t('Caduca')} <select class="sh-days"><option value="0">${t('Nunca')}</option><option value="7">7 ${t('días')}</option>
           <option value="30">30 ${t('días')}</option><option value="90">90 ${t('días')}</option></select></label>
         <details class="sh-other"${sc.builtIn ? '' : ' open'}><summary>${t('Opciones avanzadas (administradores)')}</summary>
-          <label class="fr-l">${t('Solo cuentas de Google de este dominio (opcional)')} <input type="text" class="sh-domain" placeholder="${t('micentro.edu')}"></label>
+          <label class="fr-l">${t('Solo cuentas de Google de este dominio (opcional)')} <input type="text" class="sh-domain" placeholder="${t('ejemplo.com')}"></label>
           <label class="fr-l">${t('Usar otro servidor')}<input type="url" class="sh-url" placeholder="${esc(SERVER_URL)}" value="${esc(sc.builtIn ? '' : sc.url)}"></label>
           <input type="password" class="sh-up" placeholder="${t('Clave de subida')}" value="${esc(sc.uploadKey)}">
           <p class="host-help">${t('Cómo montarlo gratis en Cloudflare: server/cloudflare/README.md del repositorio.')}</p>

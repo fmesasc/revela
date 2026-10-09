@@ -20,7 +20,7 @@ export function wireSso(body) {
       <label class="fr-l">${t('Emisor (issuer)')}<input type="url" class="ss-iss" value="${esc(s.issuer || '')}" placeholder="https://login.microsoftonline.com/…/v2.0"></label>
       <label class="fr-l">${t('Id. de cliente')}<input type="text" class="ss-cid" value="${esc(s.clientId || '')}"></label>
       <label class="fr-l">${t('Secreto de cliente')}<input type="password" class="ss-sec" autocomplete="new-password" placeholder="${s.hasSecret ? t('(guardado; escribe otro para cambiarlo)') : ''}"></label>
-      <label class="fr-l">${t('Dominios de correo (separados por comas)')}<input type="text" class="ss-dom" value="${esc((s.domains || []).map(d => d.domain).join(', '))}" placeholder="escuela.edu"></label>
+      <label class="fr-l">${t('Dominios de correo (separados por comas)')}<input type="text" class="ss-dom" value="${esc((s.domains || []).map(d => d.domain).join(', '))}" placeholder="ejemplo.com"></label>
       <label class="fr-chk"><input type="checkbox" class="ss-join"${s.autoJoin ? ' checked' : ''}> ${t('Quien entre así se une al equipo (si quedan puestos)')}</label>
       <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="fr-do ss-save">${t('Guardar')}</button>${r.sso ? `<button type="button" class="mini2 ss-del">${t('Quitar el SSO')}</button>` : ''}</div>
       ${(s.domains || []).map(d => `<div class="sh-item"><span><b>${esc(d.domain)}</b> — ${d.verified ? '✓ ' + t('verificado') : `${t('Añade este registro TXT en su DNS:')} <code>revela-verify=${esc(d.token)}</code>`}</span>

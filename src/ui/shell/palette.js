@@ -124,7 +124,7 @@ const SYN = {
   'a:anim-panel': 'panel de animación|orden de animaciones|línea de tiempo|animation pane|timeline',
   'a:anim-add': 'animar|animación|efecto|animate|animation|effect',
   'a:toggle-autoanimate': 'morph|transformar|transición suave|auto animate|magic move',
-  'a:classroom': 'aula|clase|alumnos|estudiantes|profesor|classroom|class|students|school|teacher',
+  'a:classroom': 'aula|clase|alumnos|estudiantes|profesor|público|participantes|en sus dispositivos|classroom|class|students|school|teacher|audience|participants',
   'a:save-protected': 'contraseña|cifrar|proteger|password|encrypt|protect|mot de passe|passwort',
   'a:versions': 'historial|versiones|restaurar|recuperar|history|versions|restore|version history',
   'a:plugins': 'complementos|plugins|extensiones|add-ins|extensions|addons',

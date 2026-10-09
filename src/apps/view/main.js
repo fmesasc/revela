@@ -3,8 +3,8 @@
 // sealed copy and opens it with the key in the link or a password.
 // view.html?doc=<id>: one in Revela's cloud that anyone with the link can view, presented
 // (what the «Insert in a web page» iframe shows), and where «Solo presentar» opens one; without copies when so shared.
-// &self=1: the class at its own pace — the name first, then each one goes through it and answers; where they are
-// and their marks go to the teacher's panel (server/cloudflare/docs.js progress; ui/dialogs/classpace.js).
+// &self=1: each one at their own pace — the name first, then each one goes through it and answers; where they are
+// and their marks go to the presenter's panel (server/cloudflare/docs.js progress; ui/dialogs/classpace.js).
 // &scorm=1: inside a dynamic SCORM package's launcher (io/export/scorm.js): answered at one's own pace, its marks and
 // its slide told to the launcher (&at=N: the slide to come back to).
 
@@ -42,14 +42,14 @@ function fail(msg) {
   m.append(b, p1, p2, a);
 }
 
-// The class at its own pace: the name (kept on this device) and an id of this device, for the teacher's panel.
+// Each one at their own pace: the name (kept on this device) and an id of this device, for the presenter's panel.
 function askName(m) {
   return new Promise(done => {
     let v = ''; try { v = localStorage.getItem('revela.nick') || ''; } catch {}
     let voter = ''; try { voter = localStorage.getItem('revela.voter') || ''; if (!voter) { voter = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('revela.voter', voter); } } catch { voter = Math.random().toString(36).slice(2) + Date.now().toString(36); }
     m.className = ''; m.replaceChildren();
     const f = document.createElement('form'); f.style.cssText = 'display:flex;flex-direction:column;gap:10px;max-width:320px;margin:0 auto;font:17px system-ui,sans-serif';
-    const l = document.createElement('label'); l.textContent = t('Tu nombre (lo verá tu profesor)');
+    const l = document.createElement('label'); l.textContent = t('Tu nombre (lo verá quien presenta)');
     const i = Object.assign(document.createElement('input'), { value: v, required: true, maxLength: 40, autocomplete: 'name', style: 'font-size:18px;padding:10px;border-radius:8px;border:1px solid #888' });
     const b = Object.assign(document.createElement('button'), { type: 'submit', textContent: t('Empezar'), style: 'font-size:18px;padding:10px;border-radius:8px;border:0;background:#3f6497;color:#fff' });
     l.append(i); f.append(l, b); m.append(f); i.focus();
@@ -112,8 +112,9 @@ async function openCloud(id) {
   const m = document.getElementById('m'); m.textContent = texts.loading;
   try {
     const r = /^[\w-]{8,40}$/.test(p.get('r') || '') ? p.get('r') : null;
-    let got = await publicDeck(id, fetch, r && { r });
-    if (got.ask) got = await publicDeck(id, fetch, { r, ...(await askEmail(m, got.name)) });
+    let got = await publicDeck(id, fetch, r && { r }), seen = '';
+    // (The email asked for here is the only one known: a watermark that wants it shows it — features/document/watermark.js.)
+    if (got.ask) { const who = await askEmail(m, got.name); seen = who.e; got = await publicDeck(id, fetch, { r, ...who }); }
     if (got.ask) throw Object.assign(new Error('DOC'), { status: 403 });
     const { deck, name, noCopy } = got;
     adoptDeck(deck);
@@ -122,7 +123,7 @@ async function openCloud(id) {
     // A multilingual presentation: in the language the author chose for everyone, or in this person's (?lang=, else
     // the browser's), with a menu to change it — the same slide, in the other language.
     const lang = isMultilingual(state.deck) ? pickLang(state.deck, { asked: p.get('lang') || '' }) : null;
-    let html = buildHTML(lang ? deckIn(state.deck, lang) : state.deck, { noCopy, ...((scorm || self) && { selfPaced: true }) });
+    let html = buildHTML(lang ? deckIn(state.deck, lang) : state.deck, { noCopy, who: seen, ...((scorm || self) && { selfPaced: true }) });
     if (lang && !i18nOf(state.deck).force) { const at = html.toLowerCase().lastIndexOf('</body>'); html = html.slice(0, at) + langMenu(lang, allLangs(state.deck)) + html.slice(at); }
     if (scorm || self) {
       const at = html.toLowerCase().lastIndexOf('</body>');
