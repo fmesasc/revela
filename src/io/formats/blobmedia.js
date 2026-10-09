@@ -64,6 +64,33 @@ export function blobMedia(deck) {
   };
   return walk(deck);
 }
+// A big picture made small, for thumbnails: drawn full size in each of a hundred thumbnails, every big photo (and an
+// animated GIF, every frame) is decoded at its own size — gigabytes of graphics memory for a deck with many photos,
+// enough to crash the tab. A copy at most `max` px wide (a GIF: its first frame) is made once per file, off the main
+// thread where the browser can, and shared. → its blob: address, or null while it's being made (onReady then).
+const smalls = new Map();                                // data: URL → { url, wait: Promise }
+const SMALL_FROM = 400 * 1024;                           // (smaller pictures cost little: as they are)
+export const needsSmall = d => typeof d === 'string' && d.startsWith('data:image/') && !d.startsWith('data:image/svg')
+  && (d.length >= SMALL_FROM || d.startsWith('data:image/gif')) && typeof createImageBitmap === 'function' && ok();
+export function smallImage(d, onReady, max = 480) {
+  let e = smalls.get(d);
+  if (e?.url) return e.url;
+  if (!e) {
+    e = { url: null };
+    e.wait = (async () => {
+      const bmp = await createImageBitmap(await (await fetch(blobURL(d))).blob());
+      const k = Math.min(1, max / Math.max(bmp.width, bmp.height)), w = Math.max(1, Math.round(bmp.width * k)), h = Math.max(1, Math.round(bmp.height * k));
+      const c = typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(w, h) : Object.assign(document.createElement('canvas'), { width: w, height: h });
+      c.getContext('2d').drawImage(bmp, 0, 0, w, h); bmp.close?.();
+      const blob = c.convertToBlob ? await c.convertToBlob({ type: 'image/png' }) : await new Promise(r => c.toBlob(r, 'image/png'));
+      return (e.url = URL.createObjectURL(blob));
+    })().catch(() => (e.url = blobURL(d)));           // (can't be read here: the picture itself, as before)
+    smalls.set(d, e);
+  }
+  if (onReady) e.wait.then(onReady);
+  return null;
+}
+
 // The addresses of files the deck no longer has (deleted, replaced, another presentation): let go.
 export function pruneBlobs(deck) {
   if (!cache.size) return;
@@ -71,4 +98,5 @@ export function pruneBlobs(deck) {
   const walk = v => { if (typeof v === 'string') withBlobs(v, seen); else if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v === 'object') for (const k in v) walk(v[k]); };
   walk(deck);
   for (const [d, u] of cache) if (!seen.has(d)) { URL.revokeObjectURL(u); cache.delete(d); }
+  for (const [d, e] of smalls) if (!seen.has(d)) { e.wait.then(u => u !== d && !cache.has(d) && URL.revokeObjectURL(u)); smalls.delete(d); }
 }

@@ -210,7 +210,7 @@ function thumb(slide, full = true) {
   const inner = document.createElement('div');
   inner.className = 'thumb-inner';
   inner.style.cssText = `width:${w}px;height:${h}px;transform:scale(var(--tk,${188 / w}));color:${deckFg()};font-family:${deckBodyFont() || 'inherit'}`;
-  if (full) for (const b of [...masterBlocksFor(slide), ...slide.blocks.map(x => styled(x, slide))]) if (!isEmptyPlaceholder(b)) inner.appendChild(blockPreview(b, slide));
+  if (full) for (const b of [...masterBlocksFor(slide), ...slide.blocks.map(x => styled(x, slide))]) if (!isEmptyPlaceholder(b)) inner.appendChild(blockPreview(b, slide, { small: true }));
   canvas.appendChild(inner);
 
   // (Shown while several are selected or being picked: a tap adds or removes it.)

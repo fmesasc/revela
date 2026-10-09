@@ -86,9 +86,10 @@ export function hasRefs(v) {
 }
 // The files none of these stored decks refers to: deleted (not those stored in the last minutes: their deck may be on
 // its way to the other database).
-export async function collectGarbage(decks) {
-  const used = new Set(), look = v => { if (isRef(v)) used.add(v.slice(REF.length)); else if (Array.isArray(v)) v.forEach(look); else if (v && typeof v === 'object') for (const k in v) look(v[k]); };
-  decks.forEach(look);
+// (used: the references already gathered, deck by deck — usedRefs —, instead of every deck at once.)
+export function usedRefs(v, used) { if (isRef(v)) used.add(v.slice(REF.length)); else if (Array.isArray(v)) v.forEach(x => usedRefs(x, used)); else if (v && typeof v === 'object') for (const k in v) usedRefs(v[k], used); return used; }
+export async function collectGarbage(decks, used = new Set()) {
+  (decks || []).forEach(d => usedRefs(d, used));
   const now = Date.now(), all = await keys().catch(() => []);
   const gone = all.filter(id => !used.has(id) && !(now - (recent.get(id) || 0) < 10 * 60e3));
   if (gone.length) { await del(gone); gone.forEach(id => { stored?.delete(id); }); }

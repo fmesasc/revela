@@ -5,7 +5,7 @@
 
 import { state, subscribe, replaceDeck, snapshot, docVersion, docEpoch, onBeforeReplace } from '../../core/store.js';
 import { approxSize, isBlankDeck } from '../../core/model.js';
-import { verPut, verGet, verDel, verAll } from '../../core/idb.js';
+import { verPut, verGet, verDel, verMeta } from '../../core/idb.js';
 import { dehydrate, hydrate, hasRefs } from '../../core/mediastore.js';
 
 const AUTO_EVERY = 5 * 60 * 1000;     // at most one automatic snapshot every 5 minutes of editing
@@ -15,7 +15,10 @@ let lastAuto = 0, lastSig = '';
 const sig = () => docVersion();                    // (the content's version: not the save time, which changes with every click)
 export async function saveVersion(name = '', auto = false, kind = null) {
   // (Its big files once, apart: core/mediastore.js. A version is no longer another whole copy of them.)
-  const deck = await dehydrate(snapshot(state.deck)).catch(() => snapshot(state.deck));
+  // (Its files can't be kept apart — no media database —: a small deck whole, as before; a big one not at all —
+  // a whole copy of hundreds of MB per version is what once crashed the tab.)
+  const deck = await dehydrate(snapshot(state.deck)).catch(() => (approxSize(state.deck) > 20e6 ? null : snapshot(state.deck)));
+  if (!deck) return null;
   const v = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, time: Date.now(), name, auto, ...(kind && { kind }),
     title: deck.name || '', slides: deck.slides.length, deck };
   await verPut(v);
@@ -24,12 +27,12 @@ export async function saveVersion(name = '', auto = false, kind = null) {
 }
 async function prune() {
   const keep = approxSize(state.deck) > 20e6 ? 3 : AUTO_KEEP;     // big decks: fewer automatic copies
-  const autos = (await verAll()).filter(v => v.auto && v.kind !== 'before').sort((a, b) => b.time - a.time);
+  const autos = (await verMeta()).filter(v => v.auto && v.kind !== 'before').sort((a, b) => b.time - a.time);
   for (const v of autos.slice(keep)) await verDel(v.id);
 }
 // Newest first, without the (possibly large) decks.
 export async function listVersions() {
-  return (await verAll()).sort((a, b) => b.time - a.time).map(({ deck, ...meta }) => meta);
+  return (await verMeta()).sort((a, b) => b.time - a.time);
 }
 export async function restoreVersion(id) {
   const v = await verGet(id); if (!v) return false;
@@ -56,8 +59,8 @@ export function keepBeforeReplacing() {
     if (docVersion() === openedAt || isBlankDeck(old)) return;
     const snap = snapshot(old), v = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, time: Date.now(), name: '', auto: true, kind: 'before',
       title: snap.name || '', slides: snap.slides.length };
-    dehydrate(snap).catch(() => snap).then(deck => verPut({ ...v, deck })).then(async () => {
-      const before = (await verAll()).filter(x => x.kind === 'before').sort((a, b) => b.time - a.time);
+    dehydrate(snap).catch(() => (approxSize(snap) > 20e6 ? Promise.reject(new Error('too big')) : snap)).then(deck => verPut({ ...v, deck })).then(async () => {
+      const before = (await verMeta()).filter(x => x.kind === 'before').sort((a, b) => b.time - a.time);
       for (const x of before.slice(BEFORE_KEEP)) await verDel(x.id);
       kept.forEach(fn => { try { fn({ id: v.id, title: v.title }); } catch {} });
     }).catch(() => {});

@@ -10,8 +10,8 @@
 // A slide's `transition` overrides the deck's `defaultTransition`; an object's
 // `animation` describes its entrance (effect + order).
 
-import { kvGet, kvSet, verAll } from './idb.js';
-import { dehydrate, hydrate, hasRefs, collectGarbage } from './mediastore.js';
+import { kvGet, kvSet, verGet, verPut, verEach } from './idb.js';
+import { dehydrate, hydrate, hasRefs, collectGarbage, usedRefs } from './mediastore.js';
 
 export const STORAGE_KEY = 'revela.deck.v1';
 
@@ -173,9 +173,17 @@ const writeIdb = (deck, local) => (idbQueue = idbQueue.then(async () => {
   try {
     const light = await dehydrate(deck).catch(() => deck);         // (no media database: as before, whole)
     await kvSet('deck', light); setKept(true);
-    if (Date.now() - lastGc > 5 * 60e3) { lastGc = Date.now(); collectGarbage([light, ...(await verAll().catch(() => [])).map(v => v.deck)]).catch(() => {}); }
+    if (Date.now() - lastGc > 5 * 60e3) { lastGc = Date.now(); tidyStored(light).catch(() => {}); }
   } catch { if (!local) setKept(false); }
 }));
+// Now and then: the media files nothing refers to, deleted — the versions read one at a time (idb.js verEach) —; and a
+// version an older Revela kept whole (its files inside, maybe hundreds of MB) rewritten with references, one by one.
+export async function tidyStored(light) {
+  const used = usedRefs(light, new Set()), whole = [];
+  await verEach(v => { usedRefs(v.deck, used); if (v.deck && !hasRefs(v.deck) && approxSize(v.deck) > 2e6) whole.push(v.id); }).catch(() => {});
+  for (const id of whole) { const v = await verGet(id); if (v?.deck && !hasRefs(v.deck)) await verPut({ ...v, deck: await dehydrate(v.deck) }); }
+  await collectGarbage(null, used);              // (the files just stored for those versions are recent: kept)
+}
 // The deck waiting to be written (the live object: what it holds when written is what is kept), and when.
 let pending = null, timer = null, idle = null;
 const onIdle = (fn, timeout) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout }) : setTimeout(fn, 0));

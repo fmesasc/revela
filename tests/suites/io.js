@@ -37,6 +37,25 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(media.length >= 1 && /descr="Robot"/.test(xml), 'en PowerPoint, como imagen con su texto alternativo');
   });
 
+  await test('fotos grandes: las miniaturas usan una copia pequeña (una por archivo); la diapositiva, la original', async () => {
+    reset(); const W = frame.contentWindow;
+    // A noisy 1200 × 900 PNG (well over 400 KB): a big photo.
+    const c = D.createElement('canvas'); c.width = 1200; c.height = 900; const x = c.getContext('2d'), im = x.createImageData(1200, 900);
+    for (let i = 0; i < im.data.length; i++) im.data[i] = (i * 2654435761 >>> 7) & 255; x.putImageData(im, 0, 0);
+    const big = c.toDataURL('image/png'); assert(big.length > 400 * 1024, 'grande: ' + big.length);
+    R.store.commit(() => { slide().blocks.push({ id: 'p1', type: 'image', src: big, x: 0, y: 0, w: 640, h: 480, rotation: 0, animation: null }); });
+    R.slides.addSlide(); R.store.commit(() => { slide().blocks.push({ id: 'p2', type: 'image', src: big, x: 0, y: 0, w: 640, h: 480, rotation: 0, animation: null }); });
+    R.flushThumbs?.();
+    const thumbs = () => [...D.querySelectorAll('#navigator .thumb img')].filter(i => i.src.startsWith('blob:'));
+    for (let i = 0; i < 80 && thumbs().length < 2; i++) { await sleep(25); R.flushThumbs?.(); }
+    const t = thumbs(); eq(t.length, 2, 'las dos miniaturas, con su copia');
+    eq(t[0].src, t[1].src, 'la misma copia para el mismo archivo');
+    await Promise.all(t.map(i => i.decode().catch(() => {})));
+    assert(t[0].naturalWidth <= 480 && t[0].naturalWidth > 0, 'pequeña: ' + t[0].naturalWidth + ' px');
+    const stage = D.querySelector('#stage .block[data-id="p2"] img'); await stage?.decode().catch(() => {});
+    eq(stage?.naturalWidth, 1200, 'en la diapositiva, la foto entera');
+  });
+
   await test('exportar a PDF: una página por diapositiva visible', async () => {
     reset(); R.slides.addSlide(); R.slides.addSlide(); R.slides.toggleSlideHidden(0);
     const html = R.io.buildPrintHTML();
@@ -248,6 +267,26 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(await MS.collectGarbage([]), 0, 'lo recién guardado no se borra');
     for (const v of await R.versions.listVersions()) await R.versions.deleteVersion(v.id);
     assert(MS.isRef(fresh.x), 'referencia');
+    reset();
+  });
+
+  await test('versiones guardadas enteras por un Revela antiguo: se leen de una en una y se rehacen con referencias', async () => {
+    reset(); const W = frame.contentWindow, MS = await W.eval("import('/src/core/mediastore.js')"), I = await W.eval("import('/src/core/idb.js')"), M = R.model;
+    for (const v of await R.versions.listVersions()) await R.versions.deleteVersion(v.id);
+    // Three old versions, each with its 3 MB «photo» inside (as before media was kept apart).
+    const photo = 'data:image/png;base64,' + btoa(String.fromCharCode(...Array.from({ length: 3999 }, (_, i) => (i * 37) & 255))).repeat(560);
+    const old = n => { const d = M.emptyDeck(); d.slides[0].blocks.push({ id: 'p', type: 'image', src: photo, x: 0, y: 0, w: 10, h: 10 }); return { id: 'old' + n, time: n, name: 'Vieja ' + n, auto: true, title: '', slides: 1, deck: d }; };
+    for (const n of [1, 2, 3]) await I.verPut(old(n));
+    assert(!MS.hasRefs((await I.verGet('old1')).deck), 'guardadas enteras, como antes');
+    // Listing them reads one at a time and hands out no decks.
+    const list = await R.versions.listVersions(); eq(list.length, 3, 'las tres'); assert(list.every(v => !('deck' in v)), 'sin sus presentaciones');
+    let seen = 0; await I.verEach(() => { seen++; }); eq(seen, 3, 'una a una');
+    // Tidying the stored copies (the autosave does it now and then): rewritten with references, the photo once.
+    await M.tidyStored(M.emptyDeck());
+    for (const n of [1, 2, 3]) { const v = await I.verGet('old' + n); assert(MS.hasRefs(v.deck) && JSON.stringify(v.deck).length < 20000, 'la ' + n + ', con referencia'); }
+    assert(await R.versions.restoreVersion('old2'), 'y se restaura'); await sleep(20);
+    eq(R.state.deck.slides[0].blocks.find(b => b.id === 'p')?.src, photo, 'con su foto entera');
+    for (const v of await R.versions.listVersions()) await R.versions.deleteVersion(v.id);
     reset();
   });
 

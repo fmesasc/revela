@@ -1,6 +1,6 @@
 // Non‑interactive block rendering, shared by slide thumbnails.
 
-import { blobURL } from '../../io/formats/blobmedia.js';
+import { blobURL, needsSmall, smallImage } from '../../io/formats/blobmedia.js';
 import { diagramHTML } from '../../render/diagrams.js';
 import { opacityOf } from '../../core/model.js';
 import { wordartSize } from '../../render/textfit.js';
@@ -23,8 +23,9 @@ function ensurePreviewCSS() {
   document.head.appendChild(st);
 }
 
-// (`slide`: the one it is on, when known — a diagram's words read on its background.)
-export function blockPreview(b, slide) {
+// (`slide`: the one it is on, when known — a diagram's words read on its background. small: a thumbnail — big
+// pictures drawn from a small copy, blobmedia.js smallImage.)
+export function blockPreview(b, slide, { small = false } = {}) {
   if (b.hidden) { const h = document.createElement('div'); h.hidden = true; return h; }   // (hidden in the selection pane)
   ensurePreviewCSS();
   const el = document.createElement('div');
@@ -49,12 +50,14 @@ export function blockPreview(b, slide) {
   } else if (b.type === 'image') {
     // (An element with its src set: the picture's megabytes aren't parsed as HTML.)
     // (A thumbnail: its picture by its blob: address, loaded when it's in sight.)
-    const img = document.createElement('img'); img.loading = 'lazy'; img.decoding = 'async'; img.src = blobURL(b.src || ''); img.alt = '';
+    const img = document.createElement('img'); img.loading = 'lazy'; img.decoding = 'async'; img.alt = '';
+    if (small && needsSmall(b.src)) img.src = smallImage(b.src, u => { img.src = u; }) || 'data:,';   // (empty until its copy is made)
+    else img.src = blobURL(b.src || '');
     img.style.cssText = `width:100%;height:100%;object-fit:${b.fit || 'contain'};object-position:${imgFocus(b)};filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)};${deviceCSS(b)}`;
     el.replaceChildren(img);
   } else if (b.type === 'video') {
     // (Its poster — from PowerPoint — if it has one, as PowerPoint shows it; else a play sign.)
-    if (b.poster && /^(data:image\/|https:)/.test(b.poster)) { const im = document.createElement('img'); im.loading = 'lazy'; im.src = blobURL(b.poster); im.alt = ''; im.style.cssText = 'width:100%;height:100%;object-fit:contain;background:#000'; el.replaceChildren(im); }
+    if (b.poster && /^(data:image\/|https:)/.test(b.poster)) { const im = document.createElement('img'); im.loading = 'lazy'; im.src = small && needsSmall(b.poster) ? smallImage(b.poster, u => { im.src = u; }) || 'data:,' : blobURL(b.poster); im.alt = ''; im.style.cssText = 'width:100%;height:100%;object-fit:contain;background:#000'; el.replaceChildren(im); }
     else el.innerHTML = `<div style="width:100%;height:100%;background:#000;display:grid;place-items:center;color:#fff;font-size:60px">▶</div>`;
   } else if (b.type === 'audio') {
     el.innerHTML = `<div style="width:100%;height:100%;background:#0004;display:grid;place-items:center;font-size:32px">🔊</div>`;

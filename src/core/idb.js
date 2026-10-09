@@ -29,3 +29,9 @@ export const verPut = v => tx('versions', 'readwrite', s => s.put(v));
 export const verGet = id => tx('versions', 'readonly', s => s.get(id));
 export const verDel = id => tx('versions', 'readwrite', s => s.delete(id));
 export const verAll = () => tx('versions', 'readonly', s => s.getAll());
+// Every version, one at a time (fn(v), synchronous: keep only what's needed of it). Never all at once: a version saved
+// by an older Revela holds a whole presentation with its files inside — with a 400 MB deck, several of them read
+// together (getAll) were gigabytes, and Chrome killed the tab («Aw, Snap!», error code 4) soon after opening.
+export const verEach = fn => tx('versions', 'readonly', s => { const r = s.openCursor(); r.onsuccess = () => { const c = r.result; if (c) { fn(c.value); c.continue(); } }; return null; });
+// The versions without their decks (newest first is up to the caller).
+export async function verMeta() { const out = []; await verEach(({ deck, ...meta }) => out.push(meta)); return out; }
