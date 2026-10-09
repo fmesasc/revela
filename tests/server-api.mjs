@@ -2611,8 +2611,31 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   const late = sock(); await B.join(late, false, meta);
   ok(late.last('hello').state.h === 1 && late.last('hello').state.f === 2, 'emisión: quien llega tarde entra donde va');
   B.count(true); ok(pres.last('n')?.n === 3, 'emisión: quien presenta ve cuántos le siguen');
+  // The audience spread over relays (each viewer in one): they get it all through the room.
+  env.LIVE.get(j.room + '~0'); env.LIVE.get(j.room + '~3'); const R0 = rooms.get(j.room + '~0'), R3 = rooms.get(j.room + '~3');
+  const rel0 = await R0.asRelay(j.room, 0), rel3 = await R3.asRelay(j.room, 3);
+  ok(rel0?.doc === doc && (await B.ctx.storage.get('relays')).join() === '0,3', 'emisión: las repetidoras se apuntan a la sala con su primer espectador');
+  env.LIVE.get('nohay-esta-sala-x~1');
+  ok(!(await rooms.get('nohay-esta-sala-x~1').asRelay('nohay-esta-sala-x', 1)), 'emisión: una repetidora de una sala que no existe no acepta a nadie');
+  const v0 = sock(), v3 = sock(); await R0.relayJoin(v0, rel0); await R3.relayJoin(v3, rel3);
+  ok(v0.last('hello')?.state.h === 1 && v0.last('hello').state.f === 2 && v0.last('hello').doc === doc, 'emisión: en la repetidora se entra donde va la presentación');
+  await B.webSocketMessage(pres, JSON.stringify({ t: 'go', h: 4, v: 0, f: -1 })); await new Promise(r => setTimeout(r, 30));
+  ok(v0.last('go')?.h === 4 && v3.last('go')?.h === 4 && a1.last('go')?.h === 4, 'emisión: el cambio llega a todas las repetidoras (y a quien entró directo)');
+  const q = v0.last('go').q; await R0.pushed({ t: 'go', h: 2, v: 0, f: -1, q: q - 1 });
+  ok(v0.last('go').h === 4 && (await R0.ctx.storage.get('state')).h === 4, 'emisión: una repetidora nunca vuelve a un cambio anterior (si llegan desordenados)');
+  // The pointer: with many viewers, less often, and always its last position.
+  for (let k = 0; k < 1500; k++) R0.ctx.sockets.push({ tags: ['v'], send() {}, closed: false });
+  const before = v0.got.filter(m => m.t === 'ptr').length;
+  for (let k = 0; k < 5; k++) await R0.pushed({ t: 'ptr', x: k / 10, y: 0.5 });
+  ok(v0.got.filter(m => m.t === 'ptr').length === before + 1, 'emisión: con 1500 espectadores en una repetidora, el puntero no sale cinco veces seguidas');
+  await new Promise(r => setTimeout(r, 450));
+  ok(v0.last('ptr')?.x === 0.4, 'emisión: y enseguida sale su última posición');
+  R0.ctx.sockets = R0.ctx.sockets.filter(x => x.got);
+  await new Promise(r => setTimeout(r, 2200));
+  ok(pres.last('n')?.n >= 4, 'emisión: quien presenta cuenta también a los de las repetidoras: ' + pres.last('n')?.n);
   await B.webSocketMessage(pres, JSON.stringify({ t: 'end' }));
   ok(a1.last('end') && a1.closed && !(await B.ctx.storage.get('meta')), 'emisión: al terminar, todos fuera y la sala borrada');
+  ok(v0.last('end') && v0.closed && v3.closed && !(await R0.ctx.storage.get('relay')), 'emisión: y las repetidoras también');
 }
 
 // ---- Single sign-on with a team's own identity provider (sso.js) ----

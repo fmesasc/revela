@@ -86,9 +86,10 @@ setInterval(check,1000);document.addEventListener('visibilitychange',function(){
 
 // A live broadcast (view.html?doc=…&live=…: server/cloudflare/broadcast.js): the presentation follows whoever presents
 // it — slide, step and pointer —, with a small «En directo» mark; when it ends, it says so and stays where it was.
+// (The pointer glides between positions: with a big audience it comes a few times a second, not ten.)
 const follower = (room, texts) => `<script>(function(){var R=${JSON.stringify(room)},T=${JSON.stringify(texts)},tries=0,dot,mark;
 function ui(){mark=document.createElement('div');mark.style.cssText='position:fixed;top:10px;left:10px;z-index:99;background:#c0392b;color:#fff;font:600 13px system-ui;padding:4px 10px;border-radius:12px;pointer-events:none';mark.textContent=T.live;document.body.appendChild(mark);
-dot=document.createElement('div');dot.style.cssText='position:fixed;z-index:98;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:#ff3b30;box-shadow:0 0 12px #ff3b30;pointer-events:none;display:none';document.body.appendChild(dot);}
+dot=document.createElement('div');dot.style.cssText='position:fixed;z-index:98;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:#ff3b30;box-shadow:0 0 12px #ff3b30;pointer-events:none;display:none;transition:left .2s linear,top .2s linear';document.body.appendChild(dot);}
 function go(m){if(!window.Reveal||!Reveal.slide)return;Reveal.slide(m.h||0,m.v||0,m.f==null?undefined:m.f);}
 function ptr(m){var sl=document.querySelector('.reveal .slides');if(!sl||m.x==null){dot.style.display='none';return;}var b=sl.getBoundingClientRect();dot.style.left=(b.left+m.x*b.width)+'px';dot.style.top=(b.top+m.y*b.height)+'px';dot.style.display='block';}
 function open(){var ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/api/live/'+encodeURIComponent(R));
