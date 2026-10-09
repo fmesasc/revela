@@ -1003,6 +1003,26 @@ export function timerSVG(b, left = b.seconds ?? 300) {
 }
 export const timerSig = b => [b.seconds, b.style, b.color, b.w, b.h].join('|');
 
+// A code lock (Insert ▸ Lock, for escape rooms): a padlock. Codes that are all
+// digits and of the same length (up to 8) get that many number wheels, on the
+// padlock and when it is opened (io/runtime/lock.js); anything else, a keyhole
+// and a text field. open: the shackle up (once opened, while presenting).
+export const lockCodes = b => (Array.isArray(b?.codes) ? b.codes : []).map(c => String(c ?? '').trim()).filter(Boolean).slice(0, 20);
+export function lockDigits(b) {
+  const cs = lockCodes(b);
+  return cs.length && cs.every(c => /^\d{1,8}$/.test(c) && c.length === cs[0].length) ? cs[0].length : 0;
+}
+export function lockSVG(b, open = false) {
+  const col = escA(b.color || '#f2b705'), n = lockDigits(b), dw = n ? Math.min(14, 62 / n) : 0, x0 = 50 - (dw * n) / 2;
+  const face = n ? Array.from({ length: n }, (_, i) => `<rect x="${(x0 + i * dw + 0.8).toFixed(2)}" y="72" width="${(dw - 1.6).toFixed(2)}" height="22" rx="2" fill="#fff" stroke="#0003"/>`
+    + `<text x="${(x0 + i * dw + dw / 2).toFixed(2)}" y="83.5" text-anchor="middle" dominant-baseline="central" font-size="${Math.min(15, dw * 0.95).toFixed(1)}" font-weight="700" fill="#222" font-family="system-ui,sans-serif">0</text>`).join('')
+    : '<circle cx="50" cy="78" r="7" fill="#1d1f24"/><path d="M46.5 80 L44 96 H56 L53.5 80 Z" fill="#1d1f24"/>';
+  return `<svg class="rv-lk${open ? ' rv-lk-open' : ''}" viewBox="0 0 100 120" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="display:block;overflow:visible" aria-hidden="true">`
+    + `<path class="rv-lk-sh" d="M27 58 V38 a23 23 0 0 1 46 0 V58" fill="none" stroke="#9aa3ad" stroke-width="10" stroke-linecap="round"${open ? ' transform="translate(0 -16)"' : ''}/>`
+    + `<rect x="10" y="52" width="80" height="62" rx="11" fill="${col}"/><rect x="10" y="52" width="80" height="14" rx="7" fill="#fff" opacity=".22"/>${face}</svg>`;
+}
+export const lockSig = b => [lockCodes(b).length, lockDigits(b), b.color, b.w, b.h].join('|');
+
 // Curved text (PowerPoint's "Transform", Canva's "Curve"): the words along an
 // arc. curve −100…100: up like a rainbow (>0) or down like a smile (<0); 100 a
 // whole circle. The arc is as long as the box is wide. Plain text (the

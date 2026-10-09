@@ -15,6 +15,7 @@ import { esc } from '../../core/text.js';
 import { shownRows } from '../../core/formulas.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
 import { state, commit, amend, currentSlide } from '../../core/store.js';
+import { lockSVG, lockSig } from '../../render/svg.js';
 import { borderCSS, tableColsHTML, cellBg, textPadding, webCardHTML, webCardSig, mathTeX, mathCSS, mathSig, shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan, inkSVG, timerSVG, deviceStyle, timerSig, inkSig, tableClass, tableVars } from '../../render/svg.js';
 import { collectFigures, captionLine, figIndexTitle } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
@@ -179,6 +180,9 @@ export function content(b) {
   }
   if (b.type === 'math') {
     const d = document.createElement('div'); d.className = 'math-blk'; paintMath(d, b); return d;
+  }
+  if (b.type === 'lock') {
+    const d = document.createElement('div'); d.className = 'lock-blk'; d.dataset.sig = lockSig(b); d.innerHTML = lockSVG(b); return d;
   }
   if (b.type === 'timer') {
     const d = document.createElement('div'); d.className = 'timer-blk'; d.dataset.sig = timerSig(b); d.innerHTML = timerSVG(b); return d;

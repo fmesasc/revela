@@ -43,7 +43,8 @@ standard, self-contained web page.
   placeholders, template gallery and design ideas.
 - **Objects:** gradient or sketched shapes, links on any object, straight,
   elbow or curved connectors, curved text, text wrapped round a
-  picture, pictures inside a phone, laptop or browser, countdown timer,
+  picture, pictures inside a phone, laptop or browser, countdown timer, code locks
+  for escape rooms,
   background sound that keeps playing across slides, and 3D characters that
   walk along a path and wave without being cut off.
 - **Everything reveal.js offers:** vertical slides, video, web page, tiled
@@ -65,7 +66,8 @@ standard, self-contained web page.
 - **AI via OpenRouter** (your own account): whole decks from a topic or a
   documents or photos (of notes, a whiteboard), an assistant that edits the
   deck and reads what you attach (photos, PDFs, text; it asks when something
-  is unclear), improve slides, notes, translation, alt text and images.
+  is unclear), improve slides, notes, translation, alt text and images, and a
+  lesson plan or a study guide from the deck.
 - **Import & export:** PowerPoint (.pptx) and OpenDocument (.odp) both ways,
   self-contained HTML (works offline), PDF (made directly), handouts and
   notes, images, MP4/GIF video, and Google Drive, OneDrive and Dropbox; all

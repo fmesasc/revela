@@ -19,16 +19,18 @@ export function addSlide(layoutId = null) {
   });
 }
 
-// Deep copy of a slide with fresh ids; connectors and groups are remapped so
-// they point at the copies, not at the blocks of the original slide.
-export function cloneSlide(src) {
-  const copy = structuredClone(src);
+// Deep copy of a slide with fresh ids; connectors, groups and the objects a code
+// lock shows are remapped so they point at the copies, not at the blocks of the
+// original slide. (copy: how — features/document/bulk.js shares the strings.)
+export function cloneSlide(src, copyOf = structuredClone) {
+  const copy = copyOf(src);
   copy.id = uid(); copy.blocks = copy.blocks || [];
   const ids = new Map(), groups = new Map();
   copy.blocks.forEach(b => { const n = uid(); ids.set(b.id, n); b.id = n; });
   copy.blocks.forEach(b => {
     if (b.type === 'connector') { b.from = ids.get(b.from) || b.from; b.to = ids.get(b.to) || b.to; }
     if (b.groupId) { if (!groups.has(b.groupId)) groups.set(b.groupId, uid()); b.groupId = groups.get(b.groupId); }
+    if (b.type === 'lock' && Array.isArray(b.reveal)) b.reveal = b.reveal.map(r => ids.get(r) || r);
   });
   return copy;
 }

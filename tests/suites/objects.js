@@ -1434,6 +1434,47 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(Object.keys(zip.files).some(n => /^ppt\/media\//.test(n)), 'en PowerPoint, como imagen');
   });
 
+  await test('candado: se configura (códigos, pista, adónde lleva, qué muestra), se ve con ruedas y la página exportada solo lleva la huella del código', async () => {
+    reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')"), L = await W.eval("import('/src/io/runtime/lock.js')");
+    R.blocks.addShape('rect'); const prize = last();
+    D.querySelector('[data-action="insert-lock"]').click(); for (let i = 0; i < 40 && !D.getElementById('lock-modal'); i++) await sleep(25);
+    const b = () => slide().blocks.find(x => x.type === 'lock'), m = D.getElementById('lock-modal');
+    assert(m && b() && b().salt.length === 16, 'se inserta y abre su configuración (con su sal)');
+    eq(D.querySelector('#ribbon [data-tab="ctx"]').textContent, 'Candado', 'con su pestaña');
+    assert(/4 ruedas/.test(m.querySelector('.lk-mode').textContent), 'un número: ruedas');
+    m.querySelector('.lk-codes').value = 'París\nparis'; m.querySelector('.lk-codes').dispatchEvent(new W.Event('input'));
+    assert(/cuadro de texto/.test(m.querySelector('.lk-mode').textContent), 'palabras: un cuadro de texto');
+    m.querySelector('.lk-codes').value = '1492\n 1492 \n0007'; m.querySelector('.lk-codes').dispatchEvent(new W.Event('input'));
+    m.querySelector('.lk-hint').value = 'El año del descubrimiento';
+    m.querySelector('input[name=lk-to][value="slide"]').checked = true;
+    m.querySelector(`.lk-reveal input[value="${prize.id}"]`).checked = true;
+    m.querySelector('.lk-tries').value = '3'; m.querySelector('.lk-gate').checked = true;
+    m.querySelector('.lk-ok').click(); await sleep(20);
+    eq(b().codes.join(), '1492,0007', 'los códigos (sin repetir ni espacios)'); eq(b().hint, 'El año del descubrimiento', 'la pista');
+    eq(b().openTo, slide().id, 'adónde lleva'); eq(b().reveal.join(), prize.id, 'qué muestra'); eq(b().tries, 3, 'intentos'); assert(b().gate, 'no deja pasar');
+    eq(S.lockDigits(b()), 4, 'cuatro ruedas'); eq(S.lockDigits({ codes: ['12', '123'] }), 0, 'números de distinto largo: texto');
+    eq(D.querySelectorAll(`#stage .block[data-id="${b().id}"] .lock-blk svg text`).length, 4, 'el lienzo enseña las ruedas');
+    // The exported page: the settings, never the codes — a salted SHA-256 of each, the same as the browser's own.
+    const html = R.io.buildHTML(), tag = html.match(/<div[^>]*data-lock="[^>]*>/)[0];
+    assert(!/1492|0007/.test(tag), 'el código no está en la página');
+    const cfg = JSON.parse(tag.match(/data-lock="([^"]*)"/)[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
+    const digest = async s => [...new Uint8Array(await W.crypto.subtle.digest('SHA-256', new W.TextEncoder().encode(s)))].map(x => x.toString(16).padStart(2, '0')).join('');
+    eq(cfg.h[0], await digest(b().salt + ':1492'), 'su huella SHA-256 con sal (igual que crypto.subtle)');
+    eq(L.lockSHA256(''), 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 'SHA-256 de la cadena vacía');
+    eq(L.lockSHA256('x'.repeat(200) + 'ñ€'), await digest('x'.repeat(200) + 'ñ€'), 'textos largos y no ASCII');
+    eq(L.lockNorm('  PARÍS  de Francia '), 'paris de francia', 'sin mayúsculas, tildes ni espacios de más');
+    eq(cfg.n + cfg.hint + cfg.tries + cfg.to, `4El año del descubrimiento3slide:${slide().id}`, 'ruedas, pista, intentos y destino');
+    assert(/data-gate/.test(tag) && /role="button"/.test(tag) && /aria-label="Candado: El año/.test(tag) && !/data-goto/.test(tag), 'no deja pasar, se pulsa y se nombra; no es un vínculo');
+    assert(new RegExp(`data-lock-hide="${b().id}"`).test(html), 'el premio, oculto hasta abrirlo');
+    assert(/function lockRuntime/.test(html) && /rv-lock-box/.test(html), 'con su código y su estilo');
+    // A copy of the slide: the copy's lock shows the copy's objects.
+    R.slides.duplicateSlide(); const s2 = slide(), l2 = s2.blocks.find(x => x.type === 'lock');
+    assert(l2.reveal[0] !== prize.id && s2.blocks.some(x => x.id === l2.reveal[0]), 'al duplicar, apunta a su copia');
+    // PowerPoint: a picture of the padlock, its hint as the alternative text.
+    const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob), xml = await zip.file('ppt/slides/slide1.xml').async('string');
+    assert(/<p:pic>/.test(xml) && /descr="El año del descubrimiento"/.test(xml), 'en PowerPoint, como imagen con la pista');
+  });
+
   await test('sonido: empezar solo, repetir, seguir sonando en las diapositivas siguientes y ocultarlo', async () => {
     reset(); const W = frame.contentWindow;
     R.slides.addSlide('blank'); R.slides.addSlide('blank'); R.slides.goToSlide(0); await sleep(10);

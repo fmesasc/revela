@@ -42,7 +42,8 @@ function dateStyles(stylesXML) {
 }
 
 // → [{ name, rows: [[text]] }] — the sheets with something in them, each trimmed of empty rows and columns at the end.
-export async function readXlsx(data) {
+// (maxRows: more than a table's, for a list of pupils to make diplomas from — features/document/bulk.js.)
+export async function readXlsx(data, { maxRows = MAX_ROWS } = {}) {
   const JSZip = await loadJSZip(), zip = await JSZip.loadAsync(data);
   const read = p => zip.file(p)?.async('string') ?? Promise.resolve(null);
   const book = await read('xl/workbook.xml'); if (!book) throw new Error('NOT_XLSX');
@@ -58,7 +59,7 @@ export async function readXlsx(data) {
     const p = t.startsWith('/') ? t.slice(1) : 'xl/' + t.replace(/^\.\//, ''), sx = await read(p); if (!sx) continue;
     const rows = [];
     for (const c of all(xml(sx), 'c')) {
-      const at = cellRef(c.getAttribute('r')); if (!at || at.row >= MAX_ROWS || at.col >= MAX_COLS) continue;
+      const at = cellRef(c.getAttribute('r')); if (!at || at.row >= maxRows || at.col >= MAX_COLS) continue;
       const type = c.getAttribute('t'), v = all(c, 'v')[0]?.textContent ?? '';
       const val = type === 's' ? shared[+v] ?? '' : type === 'inlineStr' ? textOf(c) : type === 'str' ? v : type === 'b' ? (v === '1' ? 'TRUE' : 'FALSE')
         : type === 'e' ? v : v === '' ? '' : dates.has(+c.getAttribute('s')) ? excelDate(v, date1904) : num(v);

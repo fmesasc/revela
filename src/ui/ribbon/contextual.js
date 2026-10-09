@@ -48,7 +48,7 @@ import { t } from '../../i18n/index.js';
 import { press, common, MIXED } from './reflect.js';
 
 const TITLES = { diagram: 'Diagrama', file: 'Archivo', shape: 'Forma', image: 'Imagen', model: 'Modelo 3D', video: 'Vídeo', audio: 'Audio', text: 'Cuadro de texto', table: 'Tabla', chart: 'Gráfico',
-  math: 'Ecuación', code: 'Código', poll: 'Votación', embed: 'Web', icon: 'Icono', camera: 'Cámara', slideref: 'Zoom', magnify: 'Lupa', figindex: 'Índice', ink: 'Dibujo', connector: 'Conector', timer: 'Cuenta atrás' };
+  math: 'Ecuación', code: 'Código', poll: 'Votación', embed: 'Web', icon: 'Icono', camera: 'Cámara', slideref: 'Zoom', magnify: 'Lupa', figindex: 'Índice', ink: 'Dibujo', connector: 'Conector', timer: 'Cuenta atrás', lock: 'Candado' };
 // Every shape once (the catalogue's first name for each).
 const SHAPES = Object.entries(SHAPE_NAMES).filter(([k]) => !isLineShape(k) && k !== 'freeform');
 const CHARTS = [['bar', 'Barras'], ['stacked', 'Barras apiladas'], ['stacked100', 'Barras apiladas al 100 %'], ['hbar', 'Barras horizontales'], ['histogram', 'Histograma'], ['line', 'Líneas'], ['area', 'Área'], ['stackedArea', 'Áreas apiladas'], ['pie', 'Circular'], ['doughnut', 'Dona'], ['scatter', 'Dispersión'], ['radar', 'Radar'], ['bubble', 'Burbujas'], ['treemap', 'Rectángulos (treemap)'], ['waterfall', 'Cascada'], ['funnel', 'Embudo'], ['map', 'Mapa']];
@@ -226,6 +226,8 @@ function groupsFor(b) {
   else if (b.type === 'math') G.push(['Ecuación', [btn('functions', 'Editar ecuación', () => openMath(b)), btn('format_color_fill', 'Relleno y borde', () => openBoxStyle(b))]]);
   else if (b.type === 'code') G.push(['Código', [btn('code', 'Editar código y pasos', () => openCodeEditor(b))]]);
   else if (b.type === 'poll') G.push(['Votación', [btn('how_to_vote', 'Editar votación', () => openPollEditor(b))]]);
+  else if (b.type === 'lock') G.push(['Candado', [btn('lock', 'Configurar candado', () => import('../dialogs/lock.js').then(m => m.openLock(b))),
+    ['color', 'palette', 'Color', b.color || '#f2b705', v => set(b, x => { x.color = v; })]]]);
   // Ink replay: when presenting, the drawing traces itself (the "Draw" effect).
   // A connector: straight, elbow or curved; arrows at either end; its line.
   else if (b.type === 'connector') G.push(
@@ -263,7 +265,7 @@ function groupsFor(b) {
   G.push(['Animaciones', [btn('add_circle', n ? `${t('Añadir animación')} (${n})` : 'Añadir animación', () => openAddAnimation(document.querySelector('#ribbon [data-page="ctx"] [data-ctx="add"]')), null, 'add'),
     btn('gesture', 'Dibujar recorrido', () => startPathDraw({ append: true })), btn('tune', 'Panel de animación', () => toggleAnimPane())]]);
   // (The link with the alt text and description: one group, not a column for a single button.)
-  const linkable = !['text', 'connector'].includes(b.type), described = !['text', 'connector', 'figindex', 'slideref', 'magnify'].includes(b.type);
+  const linkable = !['text', 'connector', 'lock'].includes(b.type), described = !['text', 'connector', 'figindex', 'slideref', 'magnify'].includes(b.type);
   G.push([linkable ? 'Vínculo y accesibilidad' : 'Accesibilidad', [...(linkable ? [btn('link', b.href || b.goto || b.popup || b.tip ? 'Cambiar vínculo' : 'Vínculo', () => openObjectLink(b), !!(b.href || b.goto || b.popup || b.tip), 'link')] : []),
     btn('accessibility', 'Texto alternativo', () => openAlt(b)), ...(described ? [btn('short_text', b.caption ? 'Editar descripción' : 'Descripción', () => openCaption(b), !!b.caption)] : [])]]);
   G.push(arrange(b));

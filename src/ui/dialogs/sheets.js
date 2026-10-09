@@ -8,10 +8,10 @@ import { t } from '../../i18n/index.js';
 
 export const SHEET_ACCEPT = '.xlsx,.csv,.tsv,.txt,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-export async function sheetText(file) {
+export async function sheetText(file, { maxRows } = {}) {
   if (!isXlsx(file)) return file.text();
   let sheets;
-  try { sheets = await readXlsx(await file.arrayBuffer()); } catch { alertDialog(t('No se pudo leer ese libro de Excel.')); return null; }
+  try { sheets = await readXlsx(await file.arrayBuffer(), maxRows ? { maxRows } : {}); } catch { alertDialog(t('No se pudo leer ese libro de Excel.')); return null; }
   if (!sheets.length) { alertDialog(t('Ese libro de Excel no tiene datos.')); return null; }
   const one = sheets.length === 1 ? sheets[0] : await chooseSheet(sheets);
   return one ? rowsToTSV(one.rows) : null;

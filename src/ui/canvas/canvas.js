@@ -12,6 +12,7 @@ import { opacityOf } from '../../core/model.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
 import { cleanClasses } from '../../features/design/devmode.js';
 import { state, commit, currentSlide, selectedBlock, isSelected, setSelection, docVersion } from '../../core/store.js';
+import { lockSVG, lockSig } from '../../render/svg.js';
 import { shadowCSS, levelCSS, shapeSVG, shapeSig, chartSVG, chartSig, iconSVG, iconSig, inkSVG, timerSVG, curvedTextSVG, hasShapeText, shapeTextStyle, wrapFor, timerSig, inkSig, tableClass, tableVars } from '../../render/svg.js';
 import { figuresMap, captionLine } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
@@ -367,6 +368,9 @@ function reconcile(b) {
     if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = iconSVG(b); }
   } else if (b.type === 'math') {
     const d = el.querySelector('.math-blk'); if (d) paintMath(d, b);
+  } else if (b.type === 'lock') {
+    const d = el.querySelector('.lock-blk'); const sig = lockSig(b);
+    if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = lockSVG(b); }
   } else if (b.type === 'timer') {
     const d = el.querySelector('.timer-blk'); const sig = timerSig(b);
     if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = timerSVG(b); }

@@ -131,6 +131,10 @@ with their work address; optionally they join the team on their first sign-in.
 A presentation is one JSON document (`.revela`; the same object as `deck` above): `{ version, name, size: { w, h },
 theme, palette, master, layouts, sections, slides: [{ id, background, layoutId, notes, hidden, blocks: [{ id, type, x,
 y, w, h, … }] }] }`. Object types include `text` (`html`), `shape`, `image` (`src`), `chart` (`chartType`, `data`),
-`table` (`rows`), `code`, `math` (`latex`), `video`, `embed`, `model` (3D), `diagram` and `poll`. It is documented by
+`table` (`rows`), `code`, `math` (`latex`), `video`, `embed`, `model` (3D), `diagram`, `poll` and `lock` (a code lock:
+`codes` — the codes that open it, as written; compared without case, accents or extra spaces —, `hint`, `openTo`
+(`'next'`, a slide's `id` or `''`), `reveal` — ids of objects of its slide hidden until it opens —, `fail`, `tries` (0:
+any), `gate` — no going past its slide until it opens, for pupils on their own —, `salt`, `color`; the exported page
+only carries `SHA-256(salt + ':' + code)`). It is documented by
 the code: [`src/core/model.js`](../src/core/model.js) and the renderers in [`src/render/`](../src/render/). Revela
 also opens and saves PowerPoint (`.pptx`), LibreOffice (`.odp`), Markdown and self-contained HTML.

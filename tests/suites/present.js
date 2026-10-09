@@ -1392,6 +1392,64 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { f.remove(); }
   });
 
+  await test('candado al presentar: no deja pasar hasta abrirlo, falla con una sacudida, se abre con las ruedas, muestra el premio y sigue', async () => {
+    const d = R.model.emptyDeck(); R.store.replaceDeck(d); R.slides.addSlide(); R.slides.addSlide(); await sleep(20);
+    const [s1, s2] = R.state.deck.slides;
+    R.store.commit(() => {
+      s1.blocks.push({ id: 'prize', type: 'shape', shape: 'rect', x: 900, y: 100, w: 100, h: 100, fill: '#2e7d32', rotation: 0, animation: null },
+        { id: 'lk', type: 'lock', codes: ['1492'], hint: 'El año', openTo: 'next', reveal: ['prize'], fail: 'Frío, frío', tries: 0, gate: true, salt: 'abc', color: '#f2b705', x: 500, y: 200, w: 200, h: 240, rotation: 0, animation: null });
+      s2.blocks.push({ id: 'lk2', type: 'lock', codes: ['Roma'], openTo: '', reveal: [], tries: 1, gate: false, salt: 'x', x: 500, y: 200, w: 200, h: 240, rotation: 0, animation: null });
+    });
+    const open = async html => {
+      const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:800px;opacity:0'; D.body.appendChild(f);
+      f.srcdoc = html; for (let i = 0; i < 100 && !f.contentWindow.Reveal?.isReady?.(); i++) await sleep(100);
+      return f;
+    };
+    // The teacher presenting: no gate.
+    let f = await open(R.io.buildHTML(R.state.deck, { inApp: true }));
+    try { f.contentWindow.Reveal.next(); await sleep(200); eq(f.contentWindow.Reveal.getIndices().h, 1, 'quien presenta pasa sin abrirlo'); } finally { f.remove(); }
+    // Self-paced (as a pupil's own copy, the viewer or SCORM): kept on the slide until it is opened.
+    f = await open(R.io.buildHTML(R.state.deck, { inApp: true, selfPaced: true }));
+    try {
+      const W = f.contentWindow, doc = f.contentDocument, key = (el, k) => el.dispatchEvent(new W.KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+      assert(W.getComputedStyle(doc.querySelector('[data-lock-hide="lk"]')).visibility === 'hidden', 'el premio, oculto');
+      key(doc.body, 'ArrowRight'); await sleep(150); eq(W.Reveal.getIndices().h, 0, 'la flecha no pasa');
+      assert(doc.querySelector('.rv-lock-note.on') && /Abre el candado/.test(doc.querySelector('.rv-lock-note').textContent), 'y dice por qué');
+      W.Reveal.slide(2); await sleep(300); eq(W.Reveal.getIndices().h, 0, 'ni saltando: vuelve al candado');
+      doc.querySelector('[data-lock-id="lk"]').click(); await sleep(50);
+      const box = doc.querySelector('.rv-lock-box'), wheels = [...box.querySelectorAll('.rv-w-d')];
+      assert(box && /El año/.test(box.textContent), 'el candado se abre con su pista'); eq(wheels.length, 4, 'y cuatro ruedas');
+      eq(doc.activeElement, wheels[0], 'el foco en la primera rueda');
+      for (const k of '1234') key(doc.activeElement, k);
+      eq(wheels.map(x => x.textContent).join(''), '1234', 'se escribe con el teclado, rueda a rueda');
+      key(wheels[3], 'Enter'); await sleep(30);
+      assert(box.classList.contains('rv-bad') && /Frío, frío/.test(box.querySelector('.rv-lock-msg').textContent), 'mal: se sacude y lo dice');
+      eq(W.Reveal.getIndices().h, 0, 'las teclas del candado no mueven la presentación');
+      box.querySelectorAll('.rv-wheel')[1].querySelector('.rv-w-b').click();                    // 2 → 3 with its ▲
+      key(wheels[1], 'ArrowUp'); wheels[2].focus(); key(wheels[2], '9'); key(wheels[3], 'ArrowDown'); key(wheels[3], 'ArrowDown');
+      eq(wheels.map(x => x.textContent).join(''), '1492', 'con las flechas y los botones');
+      key(wheels[0], 'Enter'); await sleep(50);
+      assert(box.classList.contains('rv-ok') && /¡Abierto!/.test(box.textContent), 'bien: se abre');
+      await sleep(1300);
+      assert(!doc.querySelector('.rv-lock'), 'y se cierra');
+      eq(W.Reveal.getIndices().h, 1, 'lleva a la siguiente');
+      assert(doc.querySelector('[data-lock-id="lk"]').classList.contains('rv-open'), 'abierto');
+      assert(doc.querySelector('[data-lock-hide="lk"]').classList.contains('rv-unl'), 'el premio, a la vista');
+      // A text lock with a single try: accents and capitals don't count; once spent, no more.
+      doc.querySelector('[data-lock-id="lk2"]').click(); await sleep(50);
+      const b2 = doc.querySelector('.rv-lock-box'), inp = b2.querySelector('.rv-lock-txt');
+      inp.value = 'París'; key(inp, 'Enter'); await sleep(30);
+      assert(/No quedan intentos/.test(b2.textContent) && inp.disabled, 'se acabaron los intentos');
+      key(inp, 'Escape'); await sleep(20); assert(!doc.querySelector('.rv-lock'), 'Esc lo cierra');
+      eq(W.rvLock.ask && W.rvLock.open.lk, true, 'recuerda lo abierto');
+      W.Reveal.slide(2); await sleep(300); eq(W.Reveal.getIndices().h, 2, 'abierto, ya se puede pasar');
+      W.rvLock.ask(doc.querySelector('[data-lock-id="lk2"]')); await sleep(20);
+      const b3 = doc.querySelector('.rv-lock-box'); assert(b3.querySelector('.rv-lock-go').disabled, 'sin intentos al volver a abrirlo');
+      b3.querySelector('.rv-lock-txt').value = 'roma'; b3.querySelector('.rv-lock-go').click(); await sleep(30);
+      assert(!b3.classList.contains('rv-ok'), 'ni con el código bueno');
+    } finally { f.remove(); }
+  });
+
   await test('una primera animación «con/después de la anterior» arranca sola al llegar a la diapositiva', async () => {
     const d = R.model.emptyDeck(); R.store.replaceDeck(d); R.slides.addSlide?.();
     const s2 = { ...JSON.parse(JSON.stringify(d.slides[0])), id: 'auto2', blocks: [] };

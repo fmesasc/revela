@@ -191,7 +191,7 @@ function forBlock(b, cell = null) {
     ['Guardar como imagen…', () => openSaveAsPicture()],
     ['Copiar formato', () => format.copyStyle()],
     format.hasStyleClip() ? ['Pegar formato', () => format.pasteStyle()] : null,
-    ...(!['text', 'connector'].includes(b.type) ? [['Vínculo…', () => openObjectLink(b)]] : []),
+    ...(!['text', 'connector', 'lock'].includes(b.type) ? [['Vínculo…', () => openObjectLink(b)]] : []),
     null,
   ];
 
@@ -239,6 +239,8 @@ function forBlock(b, cell = null) {
       null);
   } else if (b.type === 'poll') {
     items.push(['Editar votación…', () => openPollEditor(b)], null);
+  } else if (b.type === 'lock') {
+    items.push(['Configurar candado…', () => import('../dialogs/lock.js').then(m => m.openLock(b))], null);
   } else if (b.type === 'camera') {
     items.push(
       ['Forma: círculo', () => commit(() => { b.shape = 'circle'; })],

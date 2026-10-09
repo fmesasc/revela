@@ -625,6 +625,45 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(pdf2.numPages, 2, 'las mismas páginas');
   });
 
+  await test('generar desde una hoja: una copia de la diapositiva por fila, con sus {{marcadores}} (escapados), al final, nueva o en PDF', async () => {
+    reset(); const W = frame.contentWindow, B = await W.eval("import('/src/features/document/bulk.js')"), F = await W.eval("import('/src/features/content/files.js')");
+    R.store.commit(() => {
+      const s = slide(); s.notes = 'Para {{Nombre}}';
+      s.blocks = [{ id: 'd1', type: 'text', x: 100, y: 100, w: 1000, h: 120, fontSize: 48, rotation: 0, animation: null, html: 'Diploma para <b>{{ nombre }}</b>' },
+        { id: 'd2', type: 'text', x: 100, y: 300, w: 1000, h: 80, fontSize: 32, rotation: 0, animation: null, html: 'Nota: {{Nota}} · {{curso}}' },
+        { id: 'd3', type: 'table', x: 100, y: 450, w: 600, h: 100, rotation: 0, animation: null, rows: [['Alumno', '{{nombre}}']] }];
+    });
+    const phs = B.placeholdersIn([slide()]);
+    eq(phs.map(p => p.key).join(), 'nombre,nota,curso', 'los marcadores (sin mayúsculas, tildes ni espacios)');
+    eq(JSON.stringify(B.autoMap(phs, ['NOMBRE', 'Nota final', 'Nota'])), '{"nombre":0,"nota":2,"curso":-1}', 'cada uno con la columna de su nombre');
+    const made = B.fillSlides([slide()], ['Ana <script>alert(1)</script> & Co', '9'], { nombre: 0, nota: 1, curso: -1 });
+    const h = made[0].blocks.map(b => b.html || b.rows?.[0][1]).join(' | ');
+    assert(/Diploma para <b>Ana &lt;script&gt;alert\(1\)&lt;\/script&gt; &amp; Co<\/b>/.test(h), 'el valor, escapado: ' + h);
+    assert(/Nota: 9 · \{\{curso\}\}/.test(h) && /^Ana &lt;script/.test(made[0].blocks[2].rows[0][1]), 'sin columna, se queda; también en tablas');
+    eq(made[0].notes, 'Para Ana <script>alert(1)</script> & Co', 'en las notas, como texto');
+    assert(made[0].id !== slide().id && made[0].blocks[0].id !== 'd1', 'copias con sus propios ids');
+    eq(B.rowLimit(1), 500, 'como mucho 500 filas'); eq(B.rowLimit(4), 250, 'y 1000 diapositivas');
+    // The dialog: a CSV, the columns matched, added at the end.
+    D.querySelector('[data-action="bulk-generate"]').click(); for (let i = 0; i < 40 && !D.getElementById('bulk-modal'); i++) await sleep(25);
+    const m = D.getElementById('bulk-modal'); assert(/\{\{nombre\}\}/.test(m.textContent), 'enseña los marcadores');
+    const dt = new W.DataTransfer(); dt.items.add(new W.File(['Nombre;Nota;Curso\nAna;9;6.º A\nLuis;"7,5";6.º B\n;;\nEva;10;6.º A\n'], 'notas.csv', { type: 'text/csv' }));
+    const inp = m.querySelector('.bk-file'); inp.files = dt.files; inp.dispatchEvent(new W.Event('change'));
+    for (let i = 0; i < 40 && m.querySelector('.bk-map').hidden; i++) await sleep(25);
+    eq([...m.querySelectorAll('select[data-ph]')].map(s => s.value).join(), '0,1,2', 'emparejados por su nombre');
+    assert(/3 filas → 3 diapositivas/.test(m.querySelector('.bk-count').textContent), 'cuántas (sin filas vacías): ' + m.querySelector('.bk-count').textContent);
+    const n0 = R.state.deck.slides.length; m.querySelector('.bk-go').click(); await sleep(30);
+    eq(R.state.deck.slides.length, n0 + 3, 'tres diapositivas al final');
+    assert(/Luis/.test(R.state.deck.slides[n0 + 1].blocks[0].html) && /7,5 · 6\.º B/.test(R.state.deck.slides[n0 + 1].blocks[1].html), 'cada una con su fila');
+    R.store.undo(); eq(R.state.deck.slides.length, n0, 'un paso de deshacer');
+    // Straight to a PDF: one page per row, and the presentation doesn't change.
+    const rows = [['Ana', '9', 'A'], ['Luis', '8', 'B']], P = await W.eval("import('/src/io/export/pdf.js')");
+    const blob = await P.buildPDF(B.deckWith(B.bulkSlides([slide()], rows, { nombre: 0, nota: 1, curso: 2 })));
+    const url = await new Promise(ok => { const r = new W.FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(blob); });
+    eq((await F.openPdf(url)).numPages, 2, 'un PDF con una página por fila'); eq(R.state.deck.slides.length, n0, 'sin tocar la presentación');
+    const nd = B.deckWith(B.bulkSlides([slide()], rows, { nombre: 0 }), R.state.deck, 'Diplomas');
+    assert(nd.name === 'Diplomas' && nd.slides.length === 2 && JSON.stringify(nd.master) === JSON.stringify(R.state.deck.master), 'una presentación nueva con el mismo diseño');
+  });
+
   await test('compartir: archivo HTML con contraseña o enlace secreto, que se abre en un iframe', async () => {
     reset(); slide().blocks[0].html = '<b>Hola compartida</b>';
     const saved = []; const W = W_share(), urls = W.URL.createObjectURL;

@@ -335,7 +335,7 @@ export function overviewJS(sections, texts) {
  window.addEventListener('keydown',function(e){
   var k=e.key;
   // (Presenting inside the editor, Esc is the way out — the editor takes it —; O still opens the overview.)
-  if(!box&&k==='Escape'&&(inEditor()||document.querySelector('.rv-pop')))return;   // (and an object's open window: Esc closes it, LINK_JS)
+  if(!box&&k==='Escape'&&(inEditor()||document.querySelector('.rv-pop,.rv-lock')))return;   // (and an object's open window or a code lock: Esc closes it, LINK_JS, runtime/lock.js)
   if(!box){ if(k==='Escape'||((k==='o'||k==='O')&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!/INPUT|TEXTAREA/.test(e.target.tagName))){e.preventDefault();e.stopImmediatePropagation();open();} return; }
   e.preventDefault();e.stopImmediatePropagation();
   if(k==='Escape'||k==='o'||k==='O')close();

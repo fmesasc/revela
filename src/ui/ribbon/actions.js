@@ -239,6 +239,8 @@ export const ACTIONS = {
   'insert-chart': blocks.addChart,
   'insert-math': blocks.addMath,
   'insert-timer': () => blocks.addTimer(),
+  'bulk-generate': () => import('../dialogs/bulk.js').then(m => m.openBulk()),
+  'insert-lock': () => { const b = blocks.addLock(); if (b) import('../dialogs/lock.js').then(m => m.openLock(b)); },
   'insert-file': () => { const i = document.createElement('input'); i.type = 'file'; i.addEventListener('change', () => { if (i.files.length) insertFiles(i.files); }); i.click(); },
   'insert-model': () => readFile('.glb,.gltf', blocks.addModel),
   'resources': () => openElements('gif'),

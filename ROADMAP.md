@@ -115,6 +115,7 @@ the origin of every requirement is traceable.
 - ✅ PDF animation steps — "page and zoom" in the timeline (on click, after the previous one, on clicking another object), the part chosen on the page; when presenting, drawn sharp with pdf.js with a bar to leaf through and zoom `—`
 - ✅ Crop a picture to an aspect ratio (1:1, 4:3, 16:9…) with framing; pictures exported to PowerPoint without stretching and with their crop (srcRect), read back when importing `PP·GS·OO`
 - ✅ Treemap and bubble charts (bubbles as PowerPoint's own chart, both ways) `PP`
+- ✅ Code lock for escape rooms — number wheels or a text field (case- and accent-insensitive, several valid codes), a hint, on opening go on / go to a slide / show hidden objects, a message and a number of tries on a wrong code, and «can't go past this slide until it's open» for pupils on their own (self-paced, viewer, exported HTML); the exported page only carries a salted SHA-256 of each code; a picture in PowerPoint/ODP `—`
 
 ## 4. Slides & structure
 - ✅ Sections (create/rename/remove inline from the navigator) `PP·GS·OO`
@@ -231,6 +232,7 @@ the origin of every requirement is traceable.
 - ✅ Add-in system — ES modules by URL, ribbon buttons, stored locally `GS·OO`
 - ✅ Macros / scripting — JavaScript snippets with the `Revela` API, saved locally `PP·GS·OO`
 - ✅ Public scripting API (`window.Revela`: deck, slides, objects, events, export, UI) `GS`
+- ✅ Generate from a spreadsheet (as Canva's Bulk Create) — `{{placeholders}}` in the chosen slides filled from each row of an Excel or CSV file (columns matched by name, up to 500 rows / 1000 slides): added at the end, as a new presentation with the same design, or straight to a PDF `—`
 
 ## 11. Intelligence
 - ✅ AI image background removal `PP`
@@ -241,6 +243,7 @@ the origin of every requirement is traceable.
 - ✅ AI authoring: whole decks from a brief or a document (txt/md/pdf) with 11 slide kinds laid out by Revela (stats, timeline, chart with data, table, quote…), optional AI images; improve slide; agenda; review quiz; assistant that edits the deck from plain-language requests (validated operations, one undo step) `PP·GS`
 - ✅ More design ideas with AI — new arrangements of the same objects, checked before they're applied `PP`
 - ✅ AI voice-over from the speaker notes: plays while presenting and goes into the exported MP4 `PP`
+- ✅ AI lesson plan and study guide from the deck (texts, notes, quizzes): objectives, timing per section mapped to slides, activities, attention to diversity and assessment — with the Spanish curriculum's vocabulary (no invented codes) in Spain's languages —; or a summary, key terms and self-check questions with the answers at the end; copy, .html/.md, into the notes or as slides `—`
 
 ## 12. Platform
 - ✅ Static web app with automatic deployment (GitHub Pages) `GS`

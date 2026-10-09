@@ -14,6 +14,7 @@ import { plainText } from '../../core/text.js';
 import { opacityOf } from '../../core/model.js';
 import { wordartSize } from '../../render/textfit.js';
 import { shownRows } from '../../core/formulas.js';
+import { lockSVG } from '../../render/svg.js';
 import { chartSVG, chartSeries, histogramBins, bubblePoints, scatterSeries, pieColours, iconSVG, inkSVG, timerSVG, shapeTextStyle } from '../../render/svg.js';
 import { blockImage, magnifyImage } from '../export/images.js';
 import { magGeometry, viewOf, underArea, targetImage, imageCrop } from '../../features/document/magnify.js';
@@ -194,7 +195,7 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
     } else if (b.type === 'magnify') {
       addMagnifier(slide, b, pptx, raster, [...blocksById.values()]);
     } else if (raster.has(b.id)) {                            // icons, ink, equations, polls…
-      slide.addImage({ ...pos, ...hl, ...see, data: raster.get(b.id), ...(b.alt && { altText: b.alt }) });
+      slide.addImage({ ...pos, ...hl, ...see, data: raster.get(b.id), ...((b.alt || (b.type === 'lock' && b.hint)) && { altText: b.alt || b.hint }) });
     } else if (b.type === 'video' && /^data:video\//.test(b.src || '')) {
       slide.addMedia({ ...pos, type: 'video', data: b.src.replace(/^data:/, '') });
     } else if (b.type === 'embed' && b.srcdoc != null) {           // (an HTML object of the developer mode: its name; PowerPoint can't run it)
@@ -437,6 +438,7 @@ export async function buildPptx(deck = state.deck) {
       if (b.type === 'icon') raster.set(b.id, await svgToPNG(iconSVG(b), b.w, b.h));
       else if (b.type === 'ink') raster.set(b.id, await svgToPNG(inkSVG(b), b.w, b.h));
       else if (b.type === 'timer') raster.set(b.id, await svgToPNG(timerSVG(b), b.w, b.h));
+      else if (b.type === 'lock') raster.set(b.id, await svgToPNG(lockSVG(b), b.w, b.h));      // (a picture: PowerPoint has no locks; its hint, the alt text)
       else if (b.type === 'chart' && ['map', 'waterfall', 'funnel', 'treemap'].includes(b.chartType)) raster.set(b.id, await svgToPNG(chartSVG(b), b.w, b.h));      // (PowerPoint's own maps can't be written here)
       else if (b.type === 'file' && b.poster) raster.set(b.id, b.poster);          // (a PDF's page; the file itself stays in Revela)
       else if (b.type === 'model' && b.poster) raster.set(b.id, await posterPNG(b.poster, b.w, b.h));

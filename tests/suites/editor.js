@@ -648,7 +648,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     chart: () => R.blocks.addChart(), model: () => R.blocks.addModel('data:model/gltf-binary;base64,AAAA'), video: () => R.blocks.addVideo('data:video/mp4;base64,AAAA'),
     audio: () => R.blocks.addAudio('data:audio/mp3;base64,AAAA'), poll: () => R.poll.addPoll(), diagram: () => R.blocks.addDiagram(),
     camera: async () => (await W.eval("import('/src/features/live/media.js')")).addCamera(), math: () => R.blocks.addMath(), code: () => R.blocks.addCode(),
-    timer: () => R.blocks.addTimer(), icon: () => R.blocks.addIcon('star'), embed: () => R.blocks.addEmbed('https://example.com'), slideref: () => R.blocks.addSlideRef(),
+    timer: () => R.blocks.addTimer(), lock: () => R.blocks.addLock(), icon: () => R.blocks.addIcon('star'), embed: () => R.blocks.addEmbed('https://example.com'), slideref: () => R.blocks.addSlideRef(),
     ink: () => R.blocks.addInk([[10, 10], [100, 100], [200, 50]]), figindex: () => R.blocks.addFigIndex(),
     magnify: async () => (await W.eval("import('/src/features/document/magnify.js')")).addMagnify({ x: 100, y: 100, w: 160, h: 90 }) };
   const pick = ids => R.store.commit(() => { R.state.ui.multi = ids.length > 1 ? ids : []; R.state.ui.selection = ids.at(-1) || null; }, { history: false });

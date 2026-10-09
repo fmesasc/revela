@@ -120,7 +120,7 @@ src/
     strings.js                 the string tables: es, en, fr, de, it, pt, ca
     langs/                     gl, nl, eu, ar (loaded only when chosen)
   render/
-    svg.js                     shapes, charts, icons, ink, tables, WordArt, connectors, timers,
+    svg.js                     shapes, charts, icons, ink, tables, WordArt, connectors, timers, code locks,
                                devices, image filters → SVG/HTML strings
     icons.js                   more built-in icons for the picker (Lucide)
     diagrams.js                SmartArt-style diagrams from an outline, by layout
@@ -137,6 +137,7 @@ src/
       clipboard.js             copy / cut / paste objects, across slides and tabs
       shapeops.js              merge shapes (union, combine, intersect, subtract)
       search.js                find and replace across the deck's text
+      bulk.js                  «Generar desde una hoja»: a slide's {{placeholders}} filled from each row of a spreadsheet
       autocorrect.js           typographic replacements while typing
       a11y.js                  accessibility checker (pure analysis)
       magnify.js               the magnifier: lines, placement, picture crop
@@ -173,6 +174,7 @@ src/
       vision.js                pictures made small and described once by a cheap vision model
       themeai.js               a theme proposed from a description
       voiceover.js             speaker notes read aloud by an AI voice
+      lessonplan.js            a lesson plan or a study guide from the deck (HTML, Markdown, notes, slides)
       rigkind.js               what a 3D model is, seen by a vision model
     collab/
       comments.js              comments with replies, resolve, @mentions
@@ -247,6 +249,7 @@ src/
       reading.js               reading mode
       tabs.js                  tab stops
       timer.js                 countdown timers
+      lock.js                  code locks (escape rooms): wheels or a text field, salted SHA-256, «can't go past it»
       sounds.js                animation sounds (Web Audio)
       unseal.js                opens a sealed presentation (the only decryption code)
     share/
@@ -384,7 +387,7 @@ slide = { id, layoutId, sectionId, background, transition, transitionOut, hidden
 
 block = { id, type, x, y, w, h, rotation, opacity, animation, anims, alt, … }
         type: text, shape, image, video, audio, model, embed, chart, table,
-              icon, math, code, poll, camera, ink, slideref, connector, magnify, …
+              icon, math, code, poll, camera, ink, slideref, connector, magnify, lock, …
 
 animation = { effect, order (click), seq (play order), start, duration, delay,
               dx, dy, pathShape, points, turn, spin, clip, once, trigger }
@@ -393,6 +396,10 @@ animation = { effect, order (click), seq (play order), start, duration, delay,
 
 model (3D) block: src (GLB data URL), clip (rest animation), walk:{clip, end,
         endOnce, face, look} (what it does while moving), view, motion, autoRotate
+
+lock block: codes (as written: the exported page only gets SHA-256(salt:code), compared without case, accents
+        or extra spaces), hint, openTo ('next' | a slide id | ''), reveal (ids of objects of its slide hidden until it
+        opens), fail, tries (0: any), gate (pupils on their own can't go past its slide until it opens), salt, color
 
 magnify block: source:{x,y,w,h} (the area, in slide coordinates; the block's own
         box shows it enlarged, same proportion), target (the picture under it),

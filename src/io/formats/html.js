@@ -20,6 +20,8 @@ import { TRIGGER_JS, pollJS, liveDataJS, LIGHTBOX_JS, overviewJS } from '../runt
 import { ACTIVITIES, publicActivity, gradeAnswer, gradeActivity, pollLabels } from '../../features/live/poll.js';
 import { selfPacedRuntime } from '../runtime/selfpaced.js';
 import { activityGame, GAME_WORDS } from '../runtime/games.js';
+import { lockSHA256, lockNorm, lockRuntime, LOCK_CSS } from '../runtime/lock.js';
+import { lockSVG, lockCodes, lockDigits } from '../../render/svg.js';
 import { slideTitle } from '../../features/document/a11y.js';
 import { blobMedia } from './blobmedia.js';
 import { createMediaPlayer, revelaMediaRuntime, askInVideo } from '../runtime/media.js';
@@ -272,11 +274,20 @@ export function morphText(html, by, counts) {
 // room) or one of them (by its id) —, or that opens a window with information (b.popup: { title, text }). And words
 // shown on hovering or touching it (b.tip), as Genially's interactive elements.
 const GOTO = new Set(['next', 'prev', 'first', 'last', 'back']);
-const linkAttrs = b => (b.type === 'text' || b.type === 'connector' ? '' : (b.href && safeURL(b.href) && /^(https?|mailto):/i.test(b.href) ? ` data-href="${esc(b.href)}"` : '')
+const linkAttrs = b => (b.type === 'text' || b.type === 'connector' || b.type === 'lock' ? '' : (b.href && safeURL(b.href) && /^(https?|mailto):/i.test(b.href) ? ` data-href="${esc(b.href)}"` : '')
   + (b.goto ? ` data-goto="${esc(GOTO.has(b.goto) ? b.goto : 'slide:' + b.goto)}"` : '')
   + (b.popup && (b.popup.title || b.popup.text) ? ` data-popup="${esc(JSON.stringify({ title: String(b.popup.title || '').slice(0, 200), text: String(b.popup.text || '').slice(0, 4000) }))}"` : '')
   + (b.tip ? ` data-tip="${esc(String(b.tip).slice(0, 300))}"` : '')
   + (b.href || b.goto || b.popup ? ` role="${b.popup ? 'button' : 'link'}" tabindex="0"` : b.tip ? ' tabindex="0"' : ''));
+// A code lock's settings for the page (io/runtime/lock.js): never its codes, a salted SHA-256 of each — the page's
+// source doesn't give the answer away. Where it leads when opened: the next slide or one of them (by its id).
+function lockAttrs(b) {
+  const salt = String(b.salt || b.id), str = (v, n) => String(v ?? '').slice(0, n);
+  const to = b.openTo === 'next' ? 'next' : b.openTo ? 'slide:' + b.openTo : '';
+  const cfg = { s: salt, h: [...new Set(lockCodes(b).map(c => lockSHA256(salt + ':' + lockNorm(c))))], n: lockDigits(b), hint: str(b.hint, 500),
+    fail: str(b.fail, 200), ok: str(b.okText, 200), tries: Math.max(0, Math.min(99, Math.round(+b.tries || 0))), to };
+  return ` data-lock="${esc(JSON.stringify(cfg))}" data-lock-id="${esc(b.id)}"${b.gate ? ' data-gate' : ''} role="button" tabindex="0" aria-label="${esc(t('Candado') + (b.hint ? ': ' + str(b.hint, 300) : ''))}"`;
+}
 // «Start when another ends», if that can happen: the other one is still on the slide, it ends (it doesn't loop
 // without segments) and it doesn't wait — itself, or along a chain — for this one. Else it's a click, as before.
 function waitsFor(b, slide) {
@@ -394,6 +405,7 @@ function blockHTMLRaw(b, slide) {
   if (b.type === 'timer')                          // counts down with io/runtime/timer.js
     return `<div${a} data-timer role="timer" data-secs="${Math.max(1, Math.round(+b.seconds || 300))}"${b.auto !== false ? ' data-auto' : ''}${b.sound !== false ? ' data-sound' : ''}`
       + ` data-end="${esc(b.endText ?? t('¡Tiempo!'))}" style="${box(b)}cursor:pointer">${timerSVG(b)}</div>`;
+  if (b.type === 'lock') return `<div${a}${lockAttrs(b)} style="${box(b)}">${lockSVG(b)}</div>`;
   if (b.type === 'math')
     return `<div${a} class="math" data-latex="${esc(mathTeX(b))}" style="${box(b)}display:flex;align-items:center;${mathCSS(b)}"></div>`;
   if (b.type === 'diagram') {
@@ -534,6 +546,8 @@ function slideHTML(s, deck, figMap, plan = morphPlan(deck), fit = fitMode(deck))
     + fillAttrs(s, fit);
   const tl = animTimeline(s);
   const morphCounts = {};
+  // (Objects a code lock shows once it is opened: hidden until then — io/runtime/lock.js.)
+  const lockHides = new Map(s.blocks.filter(x => x.type === 'lock').flatMap(l => (Array.isArray(l.reveal) ? l.reveal : []).map(id => [id, l.id])));
   const inner = blocksOf(s, deck).map(b00 => {
     const mid = plan.marked.has(s.id) ? plan.key(s, b00) : null;
     const b01 = mid ? { ...b00, morphId: mid } : b00;
@@ -545,6 +559,7 @@ function slideHTML(s, deck, figMap, plan = morphPlan(deck), fit = fitMode(deck))
     if (b.type === 'figindex') return adapt(figIndexExport(b, deck));
     if (b.type === 'slideref') return adapt(slideRefExport(b, s, deck));
     let html = adapt(blockHTML(b, s));
+    if (lockHides.has(b.id)) html = html.replace(/^<([a-zA-Z][\w-]*)/, (m, tag) => `<${tag} data-lock-hide="${esc(lockHides.get(b.id))}"`);
     const f = figMap.get(b.id);
     // (The caption goes with its object: it appears, leaves or moves along with it.)
     if (f) html += `<div${animAttrs(b, s).replace(/ data-bid="[^"]*"/, '')}${fit === 'adapt' ? ` data-fcap="${esc(b.id)}"` : ''} style="position:absolute;left:${b.x}px;top:${b.y + b.h + 4}px;width:${b.w}px;`
@@ -633,6 +648,7 @@ function buildHTMLRaw(deck, { inApp = false, selfPaced = false, noCopy = false }
   const hasZoomable = deck.slides.some(s => s.blocks.some(b => b.type === 'image' && b.zoomable));
   const hasMedia = deck.slides.some(s => !s.hidden && s.blocks.some(needsPlayer));
   const hasTimer = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'timer'));
+  const hasLock = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'lock'));
   const hasModel3d = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'model'));
   const hasPuppet = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'model' && b.puppet));   // (a model following the presenter: io/runtime/puppet.js)   // (also for a model that carries on to the next slide)
   const hasLive = deck.slides.some(s => s.blocks.some(b => (b.type === 'chart' && b.dataUrl) || (b.type === 'embed' && b.refreshMin)));
@@ -712,6 +728,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  ${/ data-pdf[ >]/.test(slides) ? PDF_CSS : ''}
  ${hasTrig ? `[data-bid]{cursor:pointer} .rv-trig.rv-in:not(.on){opacity:0} ${EFFECT_KF_CSS.replace(/\n/g, ' ')}` : ''}
  ${INK_CSS}
+ ${hasLock ? LOCK_CSS : ''}
  ${READING_CSS}
  ${canvas ? '' : fit === 'bands' ? '.reveal-viewport{background:#000!important} .reveal .slides section>.stage{clip-path:inset(0)}'
     : '.reveal .slides section[data-fill=g]>.stage{background:transparent!important}'}
@@ -751,6 +768,8 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${canvas ? `${canvasRuntimeDeps()}\ncanvasRuntime(${JSON.stringify(groups.map(g => frameOf(g[0], deck.slides.indexOf(g[0]), deck.size)))}, ${w}, ${h});` : ''}
  ${hasModel3d ? `(${model3dRuntime.toString()})();` : ''}
  ${hasTimer ? `(${timerRuntime.toString()})();` : ''}
+ ${hasLock ? `window.rvLock=(${lockRuntime})(${lockSHA256}, ${lockNorm}, ${jsData({ title: t('Candado'), code: t('Código'), digit: t('Cifra {n}'), open: t('Abrir'), close: t('Cerrar'),
+   opened: t('¡Abierto!'), wrong: t('Ese no es el código.'), left: t('Quedan {n} intentos'), noMore: t('No quedan intentos.'), gate: t('Abre el candado para seguir.') })}, ${!inApp || selfPaced});` : ''}
  ${canvas ? '' : `(${screenFitRuntime})(${jsData(fit)}, ${w}, ${h}, ${fitSize}, ${adaptLayout}, ${connectorPath});`}
  ${/ data-sound="/.test(slides) ? `(${soundRuntime.toString()})();` : ''}
  ${/ data-tabs="/.test(slides) ? `(${tabRuntime.toString()})();` : ''}

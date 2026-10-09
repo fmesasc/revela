@@ -45,7 +45,7 @@ reveal.js, de modo que el resultado es una página web estándar y autónoma.
 - **Objetos:** formas con degradado o a mano alzada, vínculos en cualquier
   objeto, conectores rectos, en ángulo o curvos, texto curvo, texto
   alrededor de una imagen, imágenes dentro de un móvil, portátil o navegador,
-  cuenta atrás, sonido de fondo que sigue al cambiar de diapositiva, y
+  cuenta atrás, candados con código para escape rooms, sonido de fondo que sigue al cambiar de diapositiva, y
   personajes 3D que andan por un recorrido y saludan sin cortarse.
 - **Todo lo de reveal.js:** diapositivas verticales, fondos de vídeo, web,
   mosaico y parallax, todos los efectos de fragmento y temas, vista de
@@ -69,7 +69,8 @@ reveal.js, de modo que el resultado es una página web estándar y autónoma.
   tema, documentos o fotos (de apuntes, de una pizarra), asistente que edita
   la presentación y lee lo que le adjuntas (fotos, PDF, textos; pregunta si
   algo no está claro), mejorar diapositivas, notas, traducir, texto
-  alternativo e imágenes.
+  alternativo e imágenes, y el plan de clase o una guía de estudio a partir
+  de la presentación.
 - **Importar y exportar:** PowerPoint (.pptx) y OpenDocument (.odp) en ambos
   sentidos, HTML autónomo (funciona sin conexión), PDF (generado directamente),
   documentos y notas, imágenes, vídeo MP4/GIF, y Google Drive, OneDrive y

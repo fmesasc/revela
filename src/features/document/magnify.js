@@ -16,7 +16,7 @@ import { isEmptyPlaceholder } from './master.js';
 
 export const MAG_RED = '#e53935';
 // What isn't copied into the box (live objects; see above).
-export const MAG_SKIP = ['slideref', 'figindex', 'poll', 'camera', 'timer', 'audio', 'embed'];
+export const MAG_SKIP = ['slideref', 'figindex', 'poll', 'camera', 'timer', 'lock', 'audio', 'embed'];
 export const MAG_DEPTH = 3;
 export const MAG_COLORS = [['#e53935', 'Rojo'], ['#fdd835', 'Amarillo'], ['accent', 'Color de acento'], ['#ffffff', 'Blanco'], ['#000000', 'Negro']];
 export const MAG_LINES = [['corners', 'Esquinas'], ['center', 'Desde el centro'], ['none', 'Sin líneas']];

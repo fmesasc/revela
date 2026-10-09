@@ -419,6 +419,63 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.fetch = realFetch; AI.disconnectAi(); }
   });
 
+  await test('IA: plan de clase y guía de estudio desde la presentación (copiar, descargar, a las notas, como diapositivas; simulado)', async () => {
+    reset(); const W = frame.contentWindow, AI = R.ai, realFetch = W.fetch, sent = [], saved = [], click = W.HTMLAnchorElement.prototype.click;
+    AI.setAiKey('sk-or-prueba'); AI.acceptPrivacy();
+    R.slides.addSlide(); R.slides.addSlide();
+    R.store.commit(() => {
+      const [a, b, c] = R.state.deck.slides;
+      a.blocks[0].html = 'La fotosíntesis'; a.notes = 'Empezar con una planta';
+      b.blocks[0].html = 'Clorofila y luz';
+      c.blocks = [{ id: 'q1', type: 'poll', kind: 'quiz', question: '¿Qué gas sueltan las plantas?', options: ['CO2', 'Oxígeno'], correct: [1], x: 0, y: 0, w: 100, h: 100 }];
+      R.state.ui.slideIndex = 0;
+    });
+    const plan = { title: 'La fotosíntesis', objectives: ['Explicar la fotosíntesis'], competences: ['Interpretar fenómenos naturales'], prior: ['Partes de la planta'], contents: ['Nutrición vegetal'],
+      sections: [{ name: 'Inicio', minutes: 10, slides: [1, 99], teacher: 'Pregunta qué comen las plantas', pupils: 'Responden <en voz alta>' }, { name: 'Práctica', minutes: 45, slides: [3], teacher: 'Lanza el cuestionario', pupils: 'Responden' }, { name: '' }],
+      activities: [{ name: 'Experimento', text: 'Hoja en agua al sol' }], diversity: ['Pictogramas'], criteria: ['Explica el proceso'], instruments: ['Cuestionario'], materials: ['Una planta'] };
+    const guide = { title: 'Guía', summary: ['Las plantas hacen su alimento con la luz.'], terms: [{ term: 'Clorofila', def: 'Pigmento verde' }], questions: [{ q: '¿Qué necesita?', a: 'Luz, agua y CO2' }, { q: '' }] };
+    W.fetch = async (url, opts) => {
+      const body = JSON.parse(opts.body), sys = body.messages[0].content; sent.push(body);
+      return new W.Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(/lesson plan/.test(sys) ? plan : guide) } }] }));
+    };
+    W.HTMLAnchorElement.prototype.click = function () { saved.push(this.download); };
+    try {
+      D.querySelector('[data-action="ai-lessonplan"]').click(); for (let i = 0; i < 40 && !D.getElementById('lp-modal'); i++) await sleep(25);
+      const m = D.getElementById('lp-modal'); assert(m, 'el diálogo');
+      m.querySelector('.lp-level').value = '6.º de primaria'; m.querySelector('.lp-min').value = '55';
+      m.querySelector('.lp-go').click(); for (let i = 0; i < 60 && m.querySelector('.lp-out').hidden; i++) await sleep(25);
+      const sys = sent[0].messages[0].content, user = sent[0].messages[1].content;
+      assert(/La fotosíntesis/.test(user) && /Empezar con una planta/.test(user) && /\[quiz\] ¿Qué gas sueltan las plantas\? — CO2 \/ ✓ Oxígeno/.test(user), 'lee textos, notas y cuestionarios (con la respuesta)');
+      assert(/55 minutes/.test(sys) && /6\.º de primaria/.test(sys) && /language the presentation is written in/.test(sys), 'duración, nivel y el idioma de la presentación');
+      assert(/competencias específicas/.test(sys) && /NEVER write official codes/.test(sys), 'en español: el vocabulario de la LOMLOE, sin inventar códigos');
+      const doc = m.querySelector('.lp-doc');
+      assert(/Competencias específicas/.test(doc.textContent) && /Saberes básicos/.test(doc.textContent) && /Atención a la diversidad/.test(doc.textContent), 'apartados con sus nombres');
+      eq(doc.querySelectorAll('tbody tr').length, 2, 'la secuencia (sin partes vacías)');
+      assert(/Diapositivas 1$/.test(doc.querySelector('tbody small').textContent), 'cada parte con sus diapositivas (las que existen)');
+      assert(/<en voz alta>/.test(doc.textContent) && !doc.querySelector('en'), 'todo escapado');
+      m.querySelector('.lp-html').click(); m.querySelector('.lp-md').click(); await sleep(20);
+      assert(saved.some(n => /plan-de-clase\.html$/.test(n)) && saved.some(n => /\.md$/.test(n)), 'se descarga en .html y .md: ' + saved.join());
+      const LP = await W.eval("import('/src/features/ai/lessonplan.js')"), last = await LP.lessonPlan({ minutes: 55 });
+      assert(/\| \*\*Inicio\*\* \(Diapositivas 1\) \| 10 \|/.test(LP.docMarkdown(last)) && /<table>/.test(LP.docHTML(last)), 'Markdown con su tabla, y HTML');
+      m.querySelector('.lp-notes-add').click(); await sleep(20);
+      const [a, , c] = R.state.deck.slides;
+      assert(/^Empezar con una planta\n\n— Plan de clase: Inicio \(10 min\)\nDocente: Pregunta qué comen/.test(a.notes), 'a las notas, tras lo que había: ' + a.notes);
+      assert(/Práctica/.test(c.notes), 'cada parte en su diapositiva');
+      m.querySelector('.lp-notes-add').click(); await sleep(20);
+      eq((a.notes.match(/Plan de clase/g) || []).length, 1, 'otra vez: lo sustituye, no lo repite');
+      // The study guide: summary, key terms and questions with the answers at the end; as slides too.
+      m.querySelector('input[name=lp-kind][value="guide"]').click(); m.querySelector('.lp-go').click();
+      for (let i = 0; i < 60 && !/Clorofila/.test(m.querySelector('.lp-doc').textContent); i++) await sleep(25);
+      assert(/study guide/.test(sent.at(-1).messages[0].content), 'pide la guía');
+      const g = m.querySelector('.lp-doc'), hs = [...g.querySelectorAll('h2')].map(h => h.textContent);
+      eq(hs.join('|'), 'Resumen|Términos clave|Comprueba lo que sabes|Soluciones', 'resumen, términos, preguntas y, al final, las soluciones');
+      assert(m.querySelector('.lp-notes-add').hidden && !m.querySelector('.lp-slides-add').hidden, 'la guía va como diapositivas');
+      const n0 = R.state.deck.slides.length; m.querySelector('.lp-slides-add').click(); await sleep(20);
+      eq(R.state.deck.slides.length, n0 + 4, 'cuatro diapositivas: resumen, términos, preguntas y soluciones');
+      assert(R.state.deck.slides.at(-2).notes.includes('Luz, agua y CO2'), 'las respuestas en las notas de las preguntas');
+    } finally { W.fetch = realFetch; W.HTMLAnchorElement.prototype.click = click; AI.disconnectAi(); D.getElementById('lp-modal')?.remove(); }
+  });
+
   await test('errores de la aplicación: el navegador en pocas palabras, y nada se envía sin cuenta (edición abierta) ni en pruebas', async () => {
     const W = frame.contentWindow, E = await W.eval("import('/src/ui/shell/errors.js')"), real = W.fetch; let sent = 0;
     eq(E.browserName('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'), 'Chrome 141 · Windows', 'Chrome en Windows');

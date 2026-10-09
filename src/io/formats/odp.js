@@ -13,6 +13,7 @@ import { state } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 import { commentText, parseCommentText } from '../../features/collab/comments.js';
 import { shownRows } from '../../core/formulas.js';
+import { lockSVG } from '../../render/svg.js';
 import { chartSVG, iconSVG, inkSVG, timerSVG, tableSpan } from '../../render/svg.js';
 import { deckFg, deckBodyFont, customPalette, themeFontStacks, PALETTES } from '../../features/design/palettes.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled } from '../../features/document/master.js';
@@ -219,6 +220,7 @@ export async function buildODP(deck = state.deck) {
     if (b.type === 'icon') return svgPicture(b, iconSVG(b));
     if (b.type === 'ink') return svgPicture(b, inkSVG(b));
     if (b.type === 'timer') return svgPicture(b, timerSVG(b));
+    if (b.type === 'lock') return svgPicture(b, lockSVG(b));               // (a picture of the padlock: no locks in ODF)
     return '';                                             // 3D, video, web, code, equations: no ODF equivalent here
   };
 

@@ -129,6 +129,7 @@ export const AI_ACTIONS = {
   'ai-translate': () => promptDialog(t('¿A qué idioma?'), 'English').then(l => l && run(() => ai.rewriteSelected(null, l))),
   'ai-level': () => openLevelDialog(),
   'ai-qa': () => import('./qaprep.js').then(m => m.openQaPrep()),
+  'ai-lessonplan': () => import('./lessonplan.js').then(m => m.openLessonPlan()),
 };
 
 // Adapt the texts to a reading level: the level, and what — the selected boxes, this slide or all of it.

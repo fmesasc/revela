@@ -303,6 +303,31 @@ export function addTimer(seconds = 300) {
   insert({ id: uid(), type: 'timer', seconds, style: 'ring', color: deckFg(), auto: true, sound: true,
     x: Math.round((w - s) / 2), y: Math.round((h - s) / 2), w: s, h: s, rotation: 0, animation: null });
 }
+// A code lock for escape rooms (io/runtime/lock.js opens it while presenting): its codes, as the author wrote them
+// (the exported page only gets a salted hash of each, io/formats/html.js); a hint; where it leads (openTo: 'next', a
+// slide's id or '' to stay); the objects of its slide it shows (reveal); on a wrong code, a message and how many
+// tries (0: any); gate: no going past its slide until it is opened (pupils on their own, not the teacher presenting).
+export function addLock(props = {}) {
+  const { w, h } = state.deck.size, bw = 200, bh = 240;
+  const salt = Array.from(crypto.getRandomValues(new Uint8Array(8)), x => x.toString(16).padStart(2, '0')).join('');
+  insert({ id: uid(), type: 'lock', codes: ['1234'], hint: '', openTo: 'next', reveal: [], fail: '', tries: 0, gate: true, color: '#f2b705', salt,
+    x: Math.round((w - bw) / 2), y: Math.round((h - bh) / 2), w: bw, h: bh, rotation: 0, animation: null, ...props });
+  return selectedBlock();
+}
+export function setLock(id, props) {
+  const s = state.deck.slides.find(x => x.blocks.some(b => b.id === id)), b = s?.blocks.find(x => x.id === id); if (!b || b.type !== 'lock') return;
+  const str = (v, n) => String(v ?? '').trim().slice(0, n);
+  commit(() => {
+    if ('codes' in props) b.codes = [...new Set((props.codes || []).map(c => str(c, 100)).filter(Boolean))].slice(0, 20);
+    if ('hint' in props) b.hint = str(props.hint, 500);
+    if ('fail' in props) b.fail = str(props.fail, 200);
+    if ('okText' in props) { b.okText = str(props.okText, 200); if (!b.okText) delete b.okText; }
+    if ('openTo' in props) b.openTo = props.openTo === 'next' || state.deck.slides.some(x => x.id === props.openTo) ? props.openTo : '';
+    if ('reveal' in props) b.reveal = (props.reveal || []).filter(r => r !== id && s.blocks.some(x => x.id === r));
+    if ('tries' in props) b.tries = Math.max(0, Math.min(99, Math.round(+props.tries || 0)));
+    if ('gate' in props) b.gate = !!props.gate;
+  });
+}
 export function addFigIndex(kind = 'all') { insert(figindexBlock({ kind })); }
 
 // Slide zoom: an embedded thumbnail of another slide, clickable in the show.
