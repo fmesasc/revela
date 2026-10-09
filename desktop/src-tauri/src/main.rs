@@ -13,7 +13,8 @@
 // - Updates: update_available / install_update. The page asks, in the interface's language; the installer is
 //   downloaded, its signature checked against the public key in tauri.conf.json, installed and the app
 //   restarted. Without internet it simply opens as it is. Linux .deb/.rpm installs can't replace themselves
-//   (only the AppImage can): there it opens the download page instead.
+//   (only the AppImage can): there it opens the download page instead. Installed from Flathub, never: Flathub
+//   forbids apps that update themselves (flatpak updates it), so there's simply never a newer version.
 // The menu bar is built by the page too (its labels are translated there), with Tauri's menu API.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
@@ -115,9 +116,24 @@ fn read_opened(path: String, files: State<'_, Files>) -> Result<tauri::ipc::Resp
     std::fs::read(&p).map(tauri::ipc::Response::new).map_err(|e| e.to_string())
 }
 
-// A newer version, if there is one: its number.
+// The menu bar shown or hidden (Windows and Linux: hidden until Alt, as in Firefox or Edge; desktop.js decides).
+#[tauri::command]
+fn menu_bar(window: tauri::Window, show: bool) -> Result<(), String> {
+    if show { window.show_menu() } else { window.hide_menu() }.map_err(|e| e.to_string())
+}
+
+// Running inside a Flatpak (Flathub): flatpak sets FLATPAK_ID and puts /.flatpak-info in every sandbox. There
+// the app must not update itself (Flathub's rule; it couldn't anyway: its files are read-only) — flatpak does.
+fn in_flatpak() -> bool {
+    std::env::var_os("FLATPAK_ID").is_some() || std::path::Path::new("/.flatpak-info").exists()
+}
+
+// A newer version, if there is one: its number. (In a Flatpak: none — the page then says it's up to date.)
 #[tauri::command]
 async fn update_available(app: AppHandle) -> Result<Option<String>, String> {
+    if in_flatpak() {
+        return Ok(None);
+    }
     let update = app.updater().map_err(|e| e.to_string())?.check().await.map_err(|e| e.to_string())?;
     Ok(update.map(|u| u.version))
 }
@@ -125,6 +141,9 @@ async fn update_available(app: AppHandle) -> Result<Option<String>, String> {
 // → "page" (the download page opened: a .deb or .rpm), or the app restarts updated.
 #[tauri::command]
 async fn install_update(app: AppHandle) -> Result<String, String> {
+    if in_flatpak() {
+        return Err("Flatpak: updates come from flatpak (flatpak update)".into());
+    }
     if cfg!(target_os = "linux") && std::env::var_os("APPIMAGE").is_none() {
         app.opener().open_url(RELEASES, None::<&str>).map_err(|e| e.to_string())?;
         return Ok("page".into());
@@ -143,7 +162,7 @@ fn main() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_opener::init())
         .manage(Files::default())
-        .invoke_handler(tauri::generate_handler![save_file, opened_files, pick_files, read_opened, update_available, install_update])
+        .invoke_handler(tauri::generate_handler![save_file, opened_files, pick_files, read_opened, menu_bar, update_available, install_update])
         .setup(|app| {
             // Windows and Linux: what to open comes as arguments («Open with», a double click).
             let given: Vec<PathBuf> = std::env::args_os().skip(1).map(PathBuf::from).filter(opens).collect();

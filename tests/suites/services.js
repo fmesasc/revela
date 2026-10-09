@@ -89,7 +89,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
         if (cmd === 'save_file') return '/home/ana/' + decodeURIComponent(opts.headers['x-name']);
         if (cmd === 'update_available') return null;
         if (cmd === 'pick_files') return picked.splice(0); } },
-      menu: { Menu: { new: async o => ({ ...o, setAsAppMenu: async () => { menu = o; } }) }, Submenu: mk('sub'), MenuItem: mk('item'), PredefinedMenuItem: mk('pre') },
+      menu: { Menu: { new: async o => ({ ...o, setAsAppMenu: async () => { menu = o; } }) }, Submenu: mk('sub'), MenuItem: mk('item'), PredefinedMenuItem: mk('pre'), CheckMenuItem: mk('check') },
       app: { getVersion: async () => '9.9.9', defaultWindowIcon: async () => null },
       event: { listen: async () => () => {} }, opener: { openUrl: async u => calls.push({ open: u }) },
     };
@@ -109,6 +109,18 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       const n = R.state.deck.slides.length; made.find(x => x.kind === 'item' && x.text === 'Nueva diapositiva').action(); await sleep(30);
       eq(R.state.deck.slides.length, n + 1, 'un elemento del menú hace su acción');
       made.find(x => x.kind === 'item' && x.text === 'Guías en vídeo').action(); assert(calls.some(c => /\/guides$/.test(c.open || '')), 'las guías, en el navegador');
+      // The bar, hidden until Alt (alone: not Alt+Q), as in Firefox; a click hides it; «always» keeps it.
+      try { W.localStorage.removeItem('revela.menubar'); } catch {}
+      const bars = () => calls.filter(c => c.cmd === 'menu_bar').map(c => c.args.show);
+      const key = (type, k) => D.dispatchEvent(new W.KeyboardEvent(type, { key: k, bubbles: true }));
+      calls.length = 0; key('keydown', 'Alt'); key('keyup', 'Alt'); await sleep(10);
+      eq(bars().join(), 'true', 'Alt la muestra');
+      D.body.dispatchEvent(new W.PointerEvent('pointerdown', { bubbles: true })); await sleep(10); eq(bars().join(), 'true,false', 'un clic la oculta');
+      key('keydown', 'Alt'); key('keydown', 'q'); key('keyup', 'q'); key('keyup', 'Alt'); await sleep(10); eq(bars().join(), 'true,false', 'Alt+Q no');
+      const pin = made.find(x => x.kind === 'check' && x.text === 'Mostrar siempre la barra de menús'); assert(pin && pin.checked === false, 'la opción, en Ver');
+      pin.action(); await sleep(30); eq(bars().at(-1), true, 'siempre visible');
+      D.body.dispatchEvent(new W.PointerEvent('pointerdown', { bubbles: true })); await sleep(10); eq(bars().at(-1), true, 'y un clic ya no la oculta');
+      try { W.localStorage.removeItem('revela.menubar'); } catch {}
       // A download: the system's «Save as», with its bytes and name.
       const a = D.createElement('a'); a.href = W.URL.createObjectURL(new W.Blob(['uno,dos'], { type: 'text/csv' })); a.download = 'votación.csv'; a.click();
       for (let i = 0; i < 40 && !calls.some(c => c.cmd === 'save_file'); i++) await sleep(25);

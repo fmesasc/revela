@@ -4,7 +4,9 @@
 //   interface's language and built again when it changes. Its items run the ribbon's actions; none has its
 //   own key shortcut: the editor already handles the keys (main.js keyboard()), and a menu's shortcut would
 //   catch them first — Ctrl+Z while typing would undo the slide instead of the typing. (macOS keeps the system's
-//   Edit items, which the web view needs for copying and pasting text with ⌘.)
+//   Edit items, which the web view needs for copying and pasting text with ⌘.) On Windows and Linux the bar is
+//   hidden until Alt (or F10) is pressed, as in Firefox or Edge — the ribbon already has everything —, unless
+//   Ver ▸ «Mostrar siempre la barra de menús» is on (kept in this computer).
 // - «Acerca de Revela»: the system's own about box, with the version.
 // - Saving: a download (any of the app's: projects, PowerPoint, PDF, CSV…) goes to the system's «Save as»
 //   dialog (main.rs save_file) — a web view doesn't always keep downloads, and never asks where.
@@ -38,7 +40,8 @@ export const MENU = [
     ['Buscar y reemplazar', 'find-replace'], ['Buscar comandos…', 'desk:palette']]],
   ['Ver', [['Presentar desde el principio', 'present'], ['Presentar desde la diapositiva actual', 'present-current'], ['Ensayar', 'rehearse'], SEP,
     ['Clasificador de diapositivas', 'slide-sorter'], ['Panel de diapositivas', 'toggle-nav'], ['Notas', 'toggle-notes'], ['Regla', 'toggle-ruler'], ['Guías', 'toggle-guides'], SEP,
-    ['Acercar', 'zoom-in'], ['Alejar', 'zoom-out'], ['Ajustar a la ventana', 'zoom-fit'], ['Tamaño real', 'zoom-reset'], SEP, ['Pantalla completa', 'desk:fullscreen']]],
+    ['Acercar', 'zoom-in'], ['Alejar', 'zoom-out'], ['Ajustar a la ventana', 'zoom-fit'], ['Tamaño real', 'zoom-reset'], SEP, ['Pantalla completa', 'desk:fullscreen'],
+    ['Mostrar siempre la barra de menús', 'desk:menubar']]],
   ['Insertar', [['Nueva diapositiva', 'slide-add'], SEP, ['Cuadro de texto', 'insert-text'], ['Imagen', 'insert-image'], ['Tabla', 'insert-table'], ['Gráfico', 'insert-chart'],
     ['Ecuación', 'insert-math'], ['Código', 'insert-code'], ['Vídeo', 'insert-video'], ['Audio', 'insert-audio'], ['Modelo 3D', 'insert-model'], SEP,
     ['Votación en directo', 'insert-poll'], ['Candado', 'insert-lock'], ['Temporizador', 'insert-timer']]],
@@ -73,7 +76,26 @@ const DESK = {
   'desk:quit': () => api.window.getCurrentWindow().close(),
   'desk:fullscreen': async () => { const w = api.window.getCurrentWindow(); await w.setFullscreen(!(await w.isFullscreen())); },
 };
-export const run = id => (DESK[id] || ACTIONS[id])?.();
+export const run = id => { if (!pinned()) bar(false); return (DESK[id] || ACTIONS[id])?.(); };
+
+// ---- The bar: hidden until Alt ------------------------------------------------------------------------------
+const PIN = 'revela.menubar';
+const pinned = () => { try { return localStorage.getItem(PIN) === '1'; } catch { return false; } };
+let shown = null;
+const bar = on => { if (mac() || shown === on) return; shown = on; invoke('menu_bar', { show: on }).catch(() => {}); };
+DESK['desk:menubar'] = () => { const on = !pinned(); try { localStorage.setItem(PIN, on ? '1' : '0'); } catch {} bar(on); build().catch(() => {}); };
+// Alt pressed and let go alone (not Alt+Q, not AltGr typing a character), or F10: the bar shows, or hides again;
+// a click on the editor or Esc hides it — unless it's always shown.
+function altShowsBar() {
+  let alone = false;
+  const down = e => { if (e.key === 'Alt' && !e.repeat) alone = true; else alone = false;
+    if (e.key === 'F10' && !e.shiftKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); bar(!shown); }
+    if (e.key === 'Escape' && shown && !pinned()) bar(false); };
+  const up = e => { if (e.key === 'Alt' && alone && !pinned()) { e.preventDefault(); bar(!shown); } alone = false; };
+  const click = () => { if (shown && !pinned()) bar(false); };
+  document.addEventListener('keydown', down, true); document.addEventListener('keyup', up, true); document.addEventListener('pointerdown', click, true);
+  undoers.push(() => { document.removeEventListener('keydown', down, true); document.removeEventListener('keyup', up, true); document.removeEventListener('pointerdown', click, true); });
+}
 
 async function aboutItem() {
   const A = api.app, [version, icon] = await Promise.all([A.getVersion().catch(() => ''), A.defaultWindowIcon?.().catch(() => null)]);
@@ -89,6 +111,7 @@ async function build() {
   const sep = () => PredefinedMenuItem.new({ item: 'Separator' }), about = await aboutItem();
   const items = list => Promise.all(list.map(x => x === SEP ? sep()
     : x[1] === 'desk:about' ? about
+    : x[1] === 'desk:menubar' ? (mac() ? null : api.menu.CheckMenuItem.new({ text: t(x[0]), checked: pinned(), action: () => run(x[1]) }))
     : Array.isArray(x[1]) ? items(x[1]).then(sub => Submenu.new({ text: t(x[0]), items: sub }))
     : MenuItem.new({ text: t(x[0]), action: () => run(x[1]) })));
   const subs = [];
@@ -98,7 +121,7 @@ async function build() {
       parts = list.filter(x => x === SEP || !['desk:about', 'desk:quit'].includes(x[1]));
       while (parts.at(-1) === SEP) parts = parts.slice(0, -1);
     }
-    const own = await items(parts);
+    const own = (await items(parts)).filter(Boolean);
     if (mac() && label === 'Editar') own.push(...await Promise.all([sep(), ...['Cut', 'Copy', 'Paste', 'SelectAll'].map(item => PredefinedMenuItem.new({ item }))]));
     subs.push(await Submenu.new({ text: t(label), items: own }));
   }
@@ -185,6 +208,7 @@ export async function initDesktop({ tauri = globalThis.__TAURI__, updates = true
   api = tauri;
   saveDownloads(); chooseFiles();
   try { await build(); } catch (e) { console.warn('Menú no creado:', e); }
+  bar(pinned()); altShowsBar();
   const rebuild = () => build().catch(() => {});
   window.addEventListener('revela:lang', rebuild); undoers.push(() => window.removeEventListener('revela:lang', rebuild));
   await openGiven();
@@ -192,5 +216,5 @@ export async function initDesktop({ tauri = globalThis.__TAURI__, updates = true
   if (updates) setTimeout(() => checkUpdates(), 3000);              // (after the editor is ready; quiet without internet)
   return true;
 }
-export function stopDesktop() { while (undoers.length) undoers.pop()(); api = null; }
+export function stopDesktop() { while (undoers.length) undoers.pop()(); api = null; shown = null; }
 export const openGivenForTests = () => openGiven();

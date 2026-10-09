@@ -4074,4 +4074,5 @@ export default {
   "Solo la imagen (su texto queda como descripción)": "Alleen de afbeelding (de tekst blijft als beschrijving)",
   "Cambiar…": "Wijzigen…",
   "Solo la imagen": "Alleen de afbeelding",
+  "Mostrar siempre la barra de menús": "Menubalk altijd tonen",
 };

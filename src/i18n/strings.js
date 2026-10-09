@@ -4096,5 +4096,6 @@ export const ROWS = [
   ['Solo la imagen (su texto queda como descripción)', 'Picture only (its text stays as its description)', 'Image seule (son texte reste comme description)', 'Nur das Bild (sein Text bleibt als Beschreibung)', 'Solo l\'immagine (il suo testo resta come descrizione)', 'Só a imagem (o seu texto fica como descrição)', 'Només la imatge (el seu text queda com a descripció)'],
   ['Cambiar…', 'Change…', 'Changer…', 'Ändern…', 'Cambia…', 'Alterar…', 'Canvia…'],
   ['Solo la imagen', 'Picture only', 'Image seule', 'Nur das Bild', 'Solo l\'immagine', 'Só a imagem', 'Només la imatge'],
+  ['Mostrar siempre la barra de menús', 'Always show the menu bar', 'Toujours afficher la barre de menus', 'Menüleiste immer anzeigen', 'Mostra sempre la barra dei menu', 'Mostrar sempre a barra de menus', 'Mostra sempre la barra de menús'],
 ];
 // Additional languages (partial; anything missing falls back to Spanish).

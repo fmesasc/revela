@@ -4074,4 +4074,5 @@ export default {
   "Solo la imagen (su texto queda como descripción)": "الصورة فقط (يبقى نصّها وصفًا لها)",
   "Cambiar…": "تغيير…",
   "Solo la imagen": "الصورة فقط",
+  "Mostrar siempre la barra de menús": "إظهار شريط القوائم دائمًا",
 };

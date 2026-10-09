@@ -4074,4 +4074,5 @@ export default {
   "Solo la imagen (su texto queda como descripción)": "Irudia bakarrik (testua deskribapen gisa geratzen da)",
   "Cambiar…": "Aldatu…",
   "Solo la imagen": "Irudia bakarrik",
+  "Mostrar siempre la barra de menús": "Erakutsi beti menu-barra",
 };

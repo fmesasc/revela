@@ -4074,4 +4074,5 @@ export default {
   "Solo la imagen (su texto queda como descripción)": "Só a imaxe (o seu texto queda como descrición)",
   "Cambiar…": "Cambiar…",
   "Solo la imagen": "Só a imaxe",
+  "Mostrar siempre la barra de menús": "Mostrar sempre a barra de menús",
 };
