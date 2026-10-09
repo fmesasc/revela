@@ -30,7 +30,10 @@ export function readingItems(sec) {
   var sizes = blocks.map(size), top = Math.max.apply(null, sizes.concat([0])), out = [], titled = false;
   blocks.forEach(function (el, i) {
     var poll = el.getAttribute('data-poll');
-    if (poll) { try { var p = JSON.parse(poll); if (p.question) out.push({ t: 'q', text: clean(p.question) }); (p.kind === 'choice' || p.kind === 'multi' || p.kind === 'quiz' ? p.options || [] : []).forEach(function (o) { out.push({ t: 'li', text: clean(o), level: 1 }); }); } catch (e) {} return; }
+    if (poll) { try { var p = JSON.parse(poll); if (p.question) out.push({ t: 'q', text: clean(p.question) }); (p.kind === 'choice' || p.kind === 'multi' || p.kind === 'quiz' ? p.options || [] : []).forEach(function (o) { out.push({ t: 'li', text: clean(o), level: 1 }); });
+      // (A crossword's clues, never its words; a word search's words, or its hints when it has them.)
+      if (p.kind === 'crossword' || p.kind === 'wordsearch') (p.options || []).forEach(function (o) { var x = String(o).split('='), c = clean(x.slice(1).join('='));
+        if (c || p.kind === 'wordsearch') out.push({ t: 'li', text: c || clean(x[0]), level: 1 }); }); } catch (e) {} return; }
     var imgs = el.tagName === 'IMG' || el.tagName === 'MODEL-VIEWER' ? [el] : [].slice.call(el.querySelectorAll('img[alt],model-viewer[alt],[role="img"][aria-label]'));
     imgs.forEach(function (im) { var a = clean(im.getAttribute('alt') || im.getAttribute('aria-label')); if (a) out.push({ t: 'img', text: a }); });
     if (el.tagName === 'IMG' || el.tagName === 'MODEL-VIEWER') return;

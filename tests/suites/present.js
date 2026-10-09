@@ -129,6 +129,156 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     m2.querySelector('.modal-close').click();
   });
 
+  // The grid games: a crossword, a word search and a memory game.
+  const CW = { kind: 'crossword', pollId: 'cw1', question: 'Planetas', options: ['Marte = El planeta rojo', 'Tierra = Nuestro planeta', 'Sol = La estrella', 'Año = 365 días'] };
+  const WS = { kind: 'wordsearch', pollId: 'ws1', question: 'Animales', options: ['Gato', 'Perro', 'Araña = Tiene ocho patas'] };
+  const MM = { kind: 'memory', pollId: 'mm1', question: 'Elementos', options: ['H = Hidrógeno', 'O = Oxígeno', 'C = Carbono'] };
+  const squares = full => { const sq = {}; full.words.forEach(w => { for (let k = 0; k < w.len; k++) { const key = (w.x + (w.d ? 0 : k)) + ',' + (w.y + (w.d ? k : 0)); if (sq[key] && sq[key] !== w.word[k]) throw new Error('dos letras en ' + key); sq[key] = w.word[k]; } }); return sq; };
+  const lineOf = (g, q) => { const n = Math.max(Math.abs(q[2] - q[0]), Math.abs(q[3] - q[1])), sx = Math.sign(q[2] - q[0]), sy = Math.sign(q[3] - q[1]); let s = ''; for (let k = 0; k <= n; k++) s += g.grid[(q[1] + sy * k) * g.w + q[0] + sx * k]; return s; };
+
+  await test('crucigrama, sopa de letras y memoria: se montan solos, a los móviles sin las respuestas, y se corrigen', async () => {
+    reset(); const W = frame.contentWindow, P = await W.eval("import('/src/features/live/poll.js')");
+    // Crossword: a real grid (one letter a square, words crossing), the phones without the words.
+    const pub = P.publicActivity(CW), full = P.publicActivity(CW, true), sq = squares(full);
+    eq(JSON.stringify(P.publicActivity(CW)), JSON.stringify(pub), 'crucigrama: siempre la misma cuadrícula (al reconectar, en cada móvil)');
+    eq(pub.words.length, 4, 'una entrada por palabra'); assert(pub.words.every(w => w.n > 0 && w.len > 1 && w.clue && !('word' in w)), 'con su número, su largo y su pista');
+    assert(!/marte|tierra|\bsol\b|año|"word"/i.test(JSON.stringify(pub)), 'sin las palabras: ' + JSON.stringify(pub));
+    eq(full.words.find(w => w.i === 3).word, 'AÑO', 'la Ñ es una letra (y las tildes no cuentan)');
+    assert(Object.keys(sq).length < full.words.reduce((a, w) => a + w.len, 0), 'las palabras se cruzan');
+    assert(Object.keys(sq).every(k => { const [x, y] = k.split(',').map(Number); return x >= 0 && y >= 0 && x < full.w && y < full.h; }), 'dentro de la cuadrícula');
+    eq(P.gradeActivity(CW, ['marte', 'TIERRA', ' Sol ', 'ano']).score, 1, 'se corrige palabra a palabra, sin mayúsculas ni tildes');
+    eq(P.gradeActivity(CW, ['Marte', 'Tierr', '', 'año']).score, 0.5, 'la mitad');
+    // A word that crosses none goes apart, after a gap.
+    const apart = P.publicActivity({ kind: 'crossword', pollId: 'x', options: ['ABC = a', 'XYZ = b'] }, true);
+    eq(Object.keys(squares(apart)).length, 6, 'sin letras en común: aparte'); assert(apart.w * apart.h > 6, 'con un hueco entre ellas');
+    // Results: the grid on the screen, the letters only once revealed.
+    const r0 = P.tallyVotes(CW, { a: { a: ['Marte', 'Tierra', '', ''], n: 'Ana' } }), hid = P.pollResultsHTML(CW, { ...r0, layout: full, revealed: false }, null, P.pollLabels());
+    assert(/<svg/.test(hid) && !/>M<\/text>/.test(hid) && !/Marte/.test(hid), 'en pantalla, la cuadrícula vacía mientras se responde');
+    const shown = P.pollResultsHTML(CW, { ...r0, layout: full, revealed: true }, null, P.pollLabels());
+    assert(/>M<\/text>/.test(shown) && /El planeta rojo → Marte/.test(shown) && /100 %/.test(shown), 'con un clic: las letras y cuánto acertó cada palabra');
+
+    // Word search: the words across, down or diagonal; the rest, letters of the same words.
+    const wp = P.publicActivity(WS), wf = P.publicActivity(WS, true);
+    eq(wp.grid.length, wp.w * wp.h, 'una cuadrícula de letras'); assert(!wp.pos, 'sin decir dónde están');
+    eq(wp.list.map(x => x.t).join(), 'Gato,Perro,Tiene ocho patas', 'la lista: las palabras, o la pista en su lugar');
+    assert(!JSON.stringify(wp.list).includes('Araña'), 'la palabra de una pista, solo escondida');
+    eq(wf.pos.map(q => lineOf(wf, q)).join(), 'GATO,PERRO,ARAÑA', 'cada palabra, en línea recta en la cuadrícula');
+    assert(wp.grid.every(ch => 'GATOPERÑ'.includes(ch)), 'el relleno, con letras de las mismas palabras: ' + wp.grid.join(''));
+    eq(P.gradeActivity(WS, ['OTAG', 'perro']).score, 2 / 3, 'también al revés; cada palabra encontrada cuenta');
+    eq(P.gradeActivity(WS, ['GATO', 'GATO', 'GATO', 'PERRO']).score, 1 / 3, 'no más marcas que palabras (marcar todo no sirve)');
+
+    // Memory: both sides to the phone (it's practice), the pairs found and, to break ties, the attempts.
+    const mp = P.publicActivity(MM); eq(mp.cards.length + '|' + mp.n, '6|3', 'memoria: dos cartas por pareja');
+    const r = P.tallyVotes(MM, { a: { a: ['Hidrógeno', 'Oxígeno', 'Carbono', '9'], n: 'Ana' }, b: { a: ['Hidrógeno', 'Oxígeno', 'Carbono', '5'], n: 'Bea' }, c: { a: ['Hidrógeno', '', '', '7'], n: 'Cris' } });
+    eq(r.board.map(x => `${x.n}:${x.pts}:${x.tries}`).join(), 'Bea:1000:5,Ana:1000:9,Cris:333:7', 'con las mismas parejas, gana quien necesitó menos intentos');
+    const mh = P.pollResultsHTML(MM, { ...r, revealed: true }, null, P.pollLabels());
+    assert(/H ↔ Hidrógeno/.test(mh) && /5 intentos/.test(mh), 'las parejas y los intentos en la clasificación');
+    W.localStorage.setItem('revela.poll.mm1', JSON.stringify({ b: { a: ['Hidrógeno', 'Oxígeno', 'Carbono', '5'], n: 'Bea' } }));
+    eq(P.votesCSV(MM), 'participante,puntos,aciertos,intentos\n"Bea",1000,100 %,5', 'en CSV, con los intentos'); W.localStorage.removeItem('revela.poll.mm1');
+    eq(P.gradeAnswer(MM, ['Hidrogeno', '', '', '3']), 1 / 3, 'nota para la plataforma (LTI, SCORM)');
+
+    // The editor: the three kinds, their help, their options; the slide shows the grid.
+    const b = P.addPoll(); await sleep(20);
+    const E = await W.eval("import('/src/ui/dialogs/poll.js')"); E.openPollEditor(slide().blocks.find(x => x.id === b.id)); await sleep(10);
+    const m = D.getElementById('poll-modal'), kind = m.querySelector('.pl-kind');
+    for (const k of ['crossword', 'wordsearch', 'memory']) { kind.value = k; kind.dispatchEvent(new W.Event('change'));
+      assert(kind.value === k && !m.querySelector('.pl-opts-l').hidden && m.querySelector('.pl-help').textContent.length > 40, k + ': con sus opciones y su ayuda'); }
+    kind.value = 'crossword'; kind.dispatchEvent(new W.Event('change'));
+    assert(/PALABRA = pista/.test(m.querySelector('.pl-help').textContent), 'crucigrama: cómo escribirlo');
+    m.querySelector('.pl-opts').value = CW.options.join('\n'); m.querySelector('.pl-ok').click(); await sleep(20);
+    const g = slide().blocks.find(x => x.id === b.id); eq(g.kind + '|' + g.options.length, 'crossword|4', 'se guarda');
+    assert(D.querySelector(`.block[data-id="${b.id}"] .poll-blk svg`), 'la diapositiva muestra la cuadrícula');
+    // In the presentation: the screen draws the grid; the phones get only the public part; in classroom mode, the
+    // slide sent to the phones carries the polls without their answers.
+    const html = R.io.buildHTML();
+    assert(/ACT=\['order','match','gaps','label','sort','crossword','wordsearch','memory'\]/.test(html) && /r\.layout=LAY\[p\.pollId\]/.test(html), 'la presentación los juega');
+    const bare = new W.Function('GR', 'return ' + html.match(/function bare\(p\)\{.*/)[0])(['quiz', 'crossword', 'wordsearch', 'memory', 'match']);
+    eq(JSON.stringify(bare(CW).options), '["= El planeta rojo","= Nuestro planeta","= La estrella","= 365 días"]', 'modo aula: del crucigrama, solo las pistas');
+    eq(JSON.stringify(bare(WS).options) + JSON.stringify(bare({ kind: 'match', options: ['a = b'] }).options) + JSON.stringify(bare({ kind: 'quiz', options: ['x'], correct: [0] })), '["Gato","Perro","= Tiene ocho patas"][]{"kind":"quiz","options":["x"]}', 'y de las demás, nada que dé la respuesta');
+  });
+
+  await test('crucigrama, sopa de letras y memoria en el móvil (360 px): se juegan con el dedo y se envían', async () => {
+    const W = frame.contentWindow, P = await W.eval("import('/src/features/live/poll.js')");
+    const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:360px;height:740px;opacity:0';
+    f.src = new URL('../vote.html?test', D.baseURI).href; document.body.appendChild(f);
+    let v; for (let i = 0; i < 60 && !(v = f.contentWindow)?.__vote; i++) await sleep(100);
+    try {
+      const d = f.contentDocument, Q = s => d.querySelector(s), sent = () => v.__sent.filter(m => m.type === 'vote').at(-1);
+      const fits = what => assert(d.documentElement.scrollWidth <= 360, what + ': cabe a lo ancho (' + d.documentElement.scrollWidth + ' px)');
+      const at = (svg, w, h, x, y) => { const r = svg.getBoundingClientRect(); return { clientX: r.left + (x + 0.5) / w * r.width, clientY: r.top + (y + 0.5) / h * r.height }; };
+      // Crossword: each clue's box fills the grid; a tap on a square goes to its word.
+      const pub = P.publicActivity(CW), full = P.publicActivity(CW, true);
+      v.__vote.onData({ type: 'poll', poll: { pollId: 'cw1', kind: 'crossword', question: 'Planetas', options: [], pub } });
+      const inputs = [...d.querySelectorAll('#answers .rv-game input')]; eq(inputs.length, 4, 'crucigrama: una casilla por pista');
+      eq(Q('.rv-game svg').getAttribute('dir'), 'ltr', 'la cuadrícula, de izquierda a derecha siempre');
+      const typeIn = (w, txt) => { const i = inputs[pub.words.indexOf(w)]; i.value = txt; i.dispatchEvent(new v.Event('input')); };
+      const marte = pub.words.find(w => w.i === 0); typeIn(marte, 'marte');
+      const letters = () => [...d.querySelectorAll('.rv-game svg text')].map(t => t.textContent).join('');
+      assert(['M', 'A', 'R', 'T', 'E'].every(ch => letters().includes(ch)), 'lo escrito sale en la cuadrícula: ' + letters());
+      const tierra = pub.words.find(w => w.i === 1), svg = Q('.rv-game svg'), cover = {};
+      pub.words.forEach(w => { for (let k = 0; k < w.len; k++) { const key = (w.x + (w.d ? 0 : k)) + ',' + (w.y + (w.d ? k : 0)); cover[key] = (cover[key] || 0) + 1; } });
+      const own = [...Array(tierra.len).keys()].map(k => [tierra.x + (tierra.d ? 0 : k), tierra.y + (tierra.d ? k : 0)]).find(([x, y]) => cover[x + ',' + y] === 1);   // (a square of its own)
+      const p0 = at(svg, full.w + 0.2, full.h + 0.2, own[0] + 0.1, own[1] + 0.1);
+      svg.dispatchEvent(new v.MouseEvent('click', { bubbles: true, ...p0 }));
+      eq(d.activeElement, inputs[pub.words.indexOf(tierra)], 'tocar una casilla lleva a su palabra');
+      typeIn(tierra, 'Tierra'); typeIn(pub.words.find(w => w.i === 2), 'sol'); typeIn(pub.words.find(w => w.i === 3), 'año');
+      fits('crucigrama');
+      Q('#send').click();
+      eq(JSON.stringify(sent().answer), '["marte","Tierra","sol","año"]', 'envía cada palabra en el orden de las pistas del profesor');
+      eq(P.gradeActivity(CW, sent().answer).score, 1, 'y está bien');
+      assert(inputs.every(i => i.disabled), 'enviado: ya no se cambia');
+      // Word search: drag along a word; tap the first letter and the last; with hints, a line marked is a try.
+      const wp = P.publicActivity(WS), wf = P.publicActivity(WS, true);
+      v.__vote.onData({ type: 'poll', poll: { pollId: 'ws1', kind: 'wordsearch', question: 'Animales', options: [], pub: wp } });
+      const board = Q('.rv-game svg'), PE = (type, x, y) => board.dispatchEvent(new v.PointerEvent(type, { bubbles: true, pointerId: 5, pointerType: 'touch', ...at(board, wp.w, wp.h, x, y) }));
+      eq(board.style.touchAction, 'none', 'arrastrar no mueve la página'); assert(Q('.rv-game').hasAttribute('data-prevent-swipe'), 'ni cambia de diapositiva');
+      const [g, pe, ar] = wf.pos;
+      PE('pointerdown', g[0], g[1]); PE('pointermove', (g[0] + g[2]) / 2, (g[1] + g[3]) / 2); PE('pointerup', g[2], g[3]);
+      PE('pointerdown', pe[2], pe[3]); PE('pointerup', pe[2], pe[3]); PE('pointerdown', pe[0], pe[1]); PE('pointerup', pe[0], pe[1]);   // (tapped from the end: read backwards)
+      PE('pointerdown', ar[0], ar[1]); PE('pointerup', ar[2], ar[3]);
+      assert(/Encontradas: 3 de 3/.test(Q('.rv-game').textContent), 'las tres marcadas: ' + Q('.rv-game').textContent);
+      assert([...d.querySelectorAll('.rv-game span')].filter(s => s.style.textDecoration.includes('line-through')).length === 2, 'las palabras de la lista, tachadas');
+      fits('sopa de letras');
+      Q('#send').click();
+      eq(JSON.stringify(sent().answer), '["GATO","ORREP","ARAÑA"]', 'envía lo marcado'); eq(P.gradeActivity(WS, sent().answer).score, 1, 'y está bien');
+      // Memory: two cards at a time; a pair stays up; the attempts counted.
+      const mp = P.publicActivity(MM);
+      v.__vote.onData({ type: 'poll', poll: { pollId: 'mm1', kind: 'memory', question: 'Elementos', options: [], pub: mp } });
+      const cards = [...d.querySelectorAll('.rv-game button')]; eq(cards.length, 6, 'memoria: las seis cartas');
+      assert(cards.every(c => c.textContent === '?'), 'boca abajo');
+      const other = k => mp.cards.findIndex(c => c.k !== k), pairOf = i => mp.cards.findIndex((c, j) => j !== i && c.k === mp.cards[i].k);
+      cards[0].click(); cards[other(mp.cards[0].k)].click(); await sleep(1000);
+      assert(cards.every(c => c.textContent === '?'), 'sin pareja: se vuelven a tapar');
+      for (let i = 0; i < 6; i++) if (cards[i].textContent === '?') { cards[i].click(); cards[pairOf(i)].click(); }
+      assert(/Parejas: 3 de 3 · Intentos: 4/.test(Q('.rv-game').textContent), 'todas, en 4 intentos: ' + Q('.rv-game').textContent);
+      fits('memoria');
+      Q('#send').click();
+      eq(JSON.stringify(sent().answer), '["Hidrógeno","Oxígeno","Carbono","4"]', 'envía las parejas y los intentos');
+      eq(P.tallyVotes(MM, { me: { a: sent().answer } }).board[0].pts, 1000, 'todo bien');
+    } finally { f.remove(); }
+  });
+
+  await test('crucigrama, sopa de letras y memoria a su ritmo: se juegan dentro de las diapositivas', async () => {
+    reset(); const P = R.poll;
+    const own = x => ({ kind: x.kind, question: x.question, options: x.options });     // (each with a pollId of its own)
+    P.addPoll(own(CW)); R.slides.addSlide(); P.addPoll(own(MM)); await sleep(10);
+    const html = R.io.buildHTML(R.state.deck, { selfPaced: true });
+    assert(/function activityGame/.test(html), 'con los juegos');
+    for (const sc of new DOMParser().parseFromString(html, 'text/html').querySelectorAll('script:not([src])')) { try { new Function(sc.textContent); } catch (e) { assert(false, 'código con error: ' + e.message); } }
+    const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:640px;height:360px;opacity:0';
+    f.src = URL.createObjectURL(new Blob([html], { type: 'text/html' })); document.body.appendChild(f);
+    let w; for (let i = 0; i < 80 && !((w = f.contentWindow).Reveal?.isReady?.() && w.document.querySelector('.rv-game')); i++) await sleep(100);
+    try {
+      const [cw, mm] = w.document.querySelectorAll('.rv-poll'), pc = JSON.parse(cw.dataset.poll), pub = R.poll.publicActivity(pc);
+      const inputs = [...cw.querySelectorAll('.rv-game input')]; eq(inputs.length, 4, 'el crucigrama, en la diapositiva');
+      pub.words.forEach((x, k) => { inputs[k].value = ['Marte', 'Tierra', 'Sol', 'Año'][x.i]; inputs[k].dispatchEvent(new w.Event('input')); });
+      cw.querySelector('.rv-self-check').click(); await sleep(30);
+      assert(/¡Todo bien!/.test(cw.querySelector('.rv-self-result')?.textContent), 'se corrige en la página: ' + cw.innerHTML.slice(-300));
+      assert(inputs.every(i => i.disabled), 'un intento');
+      eq(mm.querySelectorAll('.rv-game button').length, 6, 'y la memoria, con sus cartas');
+    } finally { f.remove(); }
+  });
+
   await test('modo aula: las diapositivas en los dispositivos del alumnado y los resultados de cada alumno', async () => {
     reset(); const W = frame.contentWindow, P = R.poll;
     assert(!/var CLASS=true/.test(R.io.buildHTML()), 'apagado: nada de aula');

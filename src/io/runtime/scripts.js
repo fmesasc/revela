@@ -21,7 +21,7 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
   return `(function(){
  var CLASS=${classroom ? 'true' : 'false'}, TEAMS=${JSON.stringify((teams || []).map(x => String(x).slice(0, 30)))}, STEP=${Math.max(1, Math.round(+starStep) || 5)};
  var gradeActivity=${gradeActivity.toString()}, publicActivity=${publicActivity.toString()};
- var ACT=['order','match','gaps','label','sort'], GR=['quiz'].concat(ACT);
+ var ACT=['order','match','gaps','label','sort','crossword','wordsearch','memory'], GR=['quiz'].concat(ACT), LAY={};
  var tally=${tallyVotes.toString()};
  var render=${pollResultsHTML.toString()};
  var tallyVotes=tally, totals=${quizTotals.toString()};         // (quizTotals counts with tallyVotes)
@@ -60,6 +60,7 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
   if(p.kind==='board'){r.teams=teamBoard(r.board);r.stars=starsOf();}
   if(p.kind==='quiz'){r.revealed=!!revealed[p.pollId];r.left=left(p);if(r.revealed)r.board=totals(quizzes());}
   if(ACT.indexOf(p.kind)>=0)r.revealed=!!revealed[p.pollId];
+  if(p.kind==='crossword'||p.kind==='wordsearch')r.layout=LAY[p.pollId]||(LAY[p.pollId]=publicActivity(p,true));   // (the grid on the screen, laid out once)
   if(r.board)r.board=r.board.filter(function(x){return !(ad(x.id)||{}).noRank;});
   el.querySelector('.rv-poll-res').innerHTML=render(p,r,ACC,LBL);}
  function reveal(p){if(revealed[p.pollId])return;revealed[p.pollId]=true;all().forEach(paint);
@@ -170,8 +171,14 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
  Reveal.on('slidechanged',broadcast);
  // Classroom: the slide to every device, as it changes (and its fragments).
  function css(){return [].slice.call(document.querySelectorAll('link[rel=stylesheet],style')).map(function(n){return n.outerHTML;}).join('\\n');}
+ // (The slide's polls without their answers — an activity's options are its solution, a quiz's has the right one —: the
+ // phones only read their question and what can be shown, a crossword's clues, a word search's words or hints.)
+ function bare(p){var o=p.options||[],k=p.kind;return {kind:k,question:p.question,options:GR.indexOf(k)<0?o:k==='quiz'?o:k==='crossword'||k==='wordsearch'?o.map(function(x){var c=String(x).split('=');return c.length>1?'= '+c.slice(1).join('=').trim():k==='wordsearch'?x:'';}):[]};}
  function slideMsg(){var s=Reveal.getCurrentSlide(),bg=s&&Reveal.getSlideBackground&&Reveal.getSlideBackground(s),cfg=Reveal.getConfig();
-  return {type:'slide',html:s?s.outerHTML:'',bg:bg?bg.outerHTML:'',w:cfg.width,h:cfg.height,cls:document.querySelector('.reveal').className,n:Reveal.getSlidePastCount()+1,of:Reveal.getTotalSlides()};}
+  // (On the markup, not a copy of the slide: a copied video or picture would load again.)
+  var ta=document.createElement('textarea'),html=s?s.outerHTML.replace(/ data-poll="([^"]*)"/g,function(m,v){ta.innerHTML=v;var p;try{p=JSON.parse(ta.value);}catch(e){return ' data-poll="{}"';}
+   return ' data-poll="'+JSON.stringify(bare(p)).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')+'"';}):'';
+  return {type:'slide',html:html,bg:bg?bg.outerHTML:'',w:cfg.width,h:cfg.height,cls:document.querySelector('.reveal').className,n:Reveal.getSlidePastCount()+1,of:Reveal.getTotalSlides()};}
  function pushSlide(){if(!CLASS)return;var m=slideMsg();conns.forEach(function(c){send(c,m);});}
  function badge(url){if(!CLASS)return;var b=document.getElementById('rv-class');if(!b){b=document.createElement('div');b.id='rv-class';
    b.style.cssText='position:fixed;right:12px;bottom:12px;z-index:40;background:#fff;color:#223;border-radius:10px;padding:8px 10px;font:600 14px system-ui,sans-serif;text-align:center;box-shadow:0 4px 20px #0005';

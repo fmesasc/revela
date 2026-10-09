@@ -34,12 +34,17 @@ export function questionReport(deck = state.deck) {
     return { slide, question: b.question || '', pct: r.average || 0, n, miss: worst && items[worst[1]] ? { text: items[worst[1]], count: n - worst[0] } : null };
   }).filter(Boolean).sort((a, b) => a.pct - b.pct);
 }
-// (An activity's items, as the results show them: «1. first», «left → right», «item → group», the gaps' answers.)
+// (An activity's items, as the results show them: «1. first», «left → right», «item → group», the gaps' answers,
+// «clue → word», the words to find, «A ↔ B».)
 function itemsOf(b) {
   const o = b.options || [];
   if (b.kind === 'match') return o.map(l => { const x = String(l).split('='); return x[0].trim() + ' → ' + x.slice(1).join('=').trim(); });
   if (b.kind === 'sort') return o.flatMap(l => { const c = String(l).split(':'); return c.slice(1).join(':').split(/[,;]/).filter(x => x.trim()).map(x => x.trim() + ' → ' + c[0].trim()); });
   if (b.kind === 'gaps') return (String(b.text || '').match(/\[([^\]]+)\]/g) || []).map(g => g.slice(1, -1).split('|')[0]);
+  const two = l => { const x = String(l).split('='); return [x[0].trim(), x.slice(1).join('=').trim()]; };
+  if (b.kind === 'crossword') return o.map(l => { const [w, c] = two(l); return (c ? c + ' → ' : '') + w; });
+  if (b.kind === 'wordsearch') return o.map(l => two(l)[0]);
+  if (b.kind === 'memory') return o.map(l => two(l).join(' ↔ '));
   return o.map((l, i) => (i + 1) + '. ' + l);
 }
 export function classResultsCSV(deck = state.deck) {

@@ -19,6 +19,7 @@ import { download, slug } from '../files.js';
 import { TRIGGER_JS, pollJS, liveDataJS, LIGHTBOX_JS, overviewJS } from '../runtime/scripts.js';
 import { ACTIVITIES, publicActivity, gradeAnswer, gradeActivity, pollLabels } from '../../features/live/poll.js';
 import { selfPacedRuntime } from '../runtime/selfpaced.js';
+import { activityGame, GAME_WORDS } from '../runtime/games.js';
 import { slideTitle } from '../../features/document/a11y.js';
 import { blobMedia } from './blobmedia.js';
 import { createMediaPlayer, revelaMediaRuntime, askInVideo } from '../runtime/media.js';
@@ -743,7 +744,8 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${hasPuppet ? `${hasCam ? '' : createCameraEngine.toString()}\n${[puppetBones, puppetMorph, puppetSolve, puppetMirror, createPuppet, revelaPuppetRuntime].join('\n')}\nrevelaPuppetRuntime(${JSON.stringify(VISION)}, ${JSON.stringify(POSE_MODEL)}, ${JSON.stringify(FACE_MODEL)});` : ''}
  ${hasPoll && !selfPaced ? pollJS(currentPalette(deck).accents, { classroom: !!deck.classroom, labels: pollLabels(), teams: Array.isArray(deck.teams) ? deck.teams.slice(0, 8) : [], starStep: +deck.starStep || 5 }) : ''}
  ${selfPaced && hasPoll ? `(${selfPacedRuntime})(${publicActivity}, (function () { var gradeActivity = ${gradeActivity}; return ${gradeAnswer}; })(), ${JSON.stringify({ check: t('Comprobar'), allRight: t('¡Todo bien!'), partly: t('{n} % de aciertos'),
-   wrong: t('No es correcto'), sent: t('Nota enviada'), failed: t('No se pudo enviar la respuesta. Inténtalo otra vez.'), live: t('Esta votación es en directo, con quien presenta.') })});` : ''}
+   wrong: t('No es correcto'), sent: t('Nota enviada'), failed: t('No se pudo enviar la respuesta. Inténtalo otra vez.'), live: t('Esta votación es en directo, con quien presenta.'),
+   game: Object.fromEntries(Object.entries(GAME_WORDS).map(([k, v]) => [k, t(v)])) })}${deck.slides.some(s => s.blocks.some(b => b.type === 'poll' && ['crossword', 'wordsearch', 'memory'].includes(b.kind))) ? `, ${activityGame}` : ''});` : ''}
  ${hasLive ? liveDataJS() : ''}
  ${hasZoomable ? LIGHTBOX_JS : ''}
  ${canvas ? `${canvasRuntimeDeps()}\ncanvasRuntime(${JSON.stringify(groups.map(g => frameOf(g[0], deck.slides.indexOf(g[0]), deck.size)))}, ${w}, ${h});` : ''}

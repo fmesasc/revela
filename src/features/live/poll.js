@@ -56,13 +56,14 @@ export function tallyVotes(poll, votes) {
     return s.replace(/[\p{L}\p{M}]+/gu, function (w) { var k = w.toLowerCase().normalize('NFD').replace(/[\u0300-\u0302\u0304-\u036f]/g, '').normalize('NFC');
       return /^(?:putain|puttan|gilipoll|cabron|mierd|merd[ae]|jod(?:er|id)|foll(?:ar|ad)|maric[oó]n|imbecil|pendej|ching[aá]|coño|fuck|shit|bitch|cunt|asshole|bastard|motherf|dickhead|bollock|slut|whore|connard|connass|salope|encul|batard|scheiss|scheiß|arschloch|fotze|wichser|hurensohn|ficken|cazz[oi]|vaffancul|stronz|minchia|coglion|caralh|fod[ae]|buceta|viado|klootzak|godverd)/.test(k)
         || /^(?:put[ao]s?|wank(?:er|ers|ing)?|polla|pollas|pute|putes|nique|niquer|fick|fag|fags|faggot|nigg(?:er|a)s?|kut|lul|hoer|hoeren)$/.test(k) ? w.charAt(0) + w.slice(1).replace(/./gu, '*') : w; }); };
-  if (kind === 'order' || kind === 'match' || kind === 'gaps' || kind === 'label' || kind === 'sort') {
+  if (['order', 'match', 'gaps', 'label', 'sort', 'crossword', 'wordsearch', 'memory'].indexOf(kind) >= 0) {
     var items = null, total = 0, list = [];
     for (var w in votes) { var vv = votes[w]; if (!vv || !vv.a) continue; var g = gradeActivity(poll, vv.a); voters++; total += g.score;
       if (!items) items = g.per.map(function () { return 0; });
       g.per.forEach(function (ok, i) { if (ok) items[i]++; });
-      list.push({ id: w, n: vv.n || '', pts: Math.round(1000 * g.score), ok: g.score === 1 }); }
-    list.sort(function (a, b) { return b.pts - a.pts; });
+      // (Memory: how many turns it took, after the pairs — what tells apart those who found them all.)
+      list.push({ id: w, n: vv.n || '', pts: Math.round(1000 * g.score), ok: g.score === 1, tries: kind === 'memory' ? Math.max(0, +vv.a[(poll.options || []).length] || 0) : 0 }); }
+    list.sort(function (a, b) { return b.pts - a.pts || a.tries - b.tries; });
     return { counts: items || [], words: {}, voters: voters, average: voters ? total / voters : 0, board: list };
   }
   if (kind === 'quiz') {
@@ -156,7 +157,23 @@ export function pollResultsHTML(poll, res, accent, L) {
   var foot = '<div style="margin-top:.6em;font-size:.55em;opacity:.7">' + res.voters + ' ' + T(res.voters === 1 ? 'voto' : 'votos') + '</div>';
   var nick = function (r, i) { return esc(r.n || (T('Jugador') + ' ' + (i + 1))); };
   var ranking = function (list, top) { return '<ol style="margin:.4em 0 0;padding:0;list-style:none;text-align:left;font-size:.6em">' + list.slice(0, top).map(function (r, i) {
-    return '<li style="margin:.15em 0"><b>' + (['🥇 ', '🥈 ', '🥉 '][i] || (i + 1) + '. ') + '</b>' + nick(r, i) + ' — <b>' + r.pts + '</b></li>'; }).join('') + '</ol>'; };
+    return '<li style="margin:.15em 0"><b>' + (['🥇 ', '🥈 ', '🥉 '][i] || (i + 1) + '. ') + '</b>' + nick(r, i) + ' — <b>' + r.pts + '</b>' + (r.tries ? ' <small>· ' + r.tries + ' ' + T('intentos') + '</small>' : '') + '</li>'; }).join('') + '</ol>'; };
+  // A crossword's or a word search's grid (res.layout: publicActivity(poll, true)), drawn to fit; the solution only
+  // once revealed. Always left to right, also in right-to-left languages.
+  var gridSVG = function (g, show) {
+    var s = '<svg viewBox="-.1 -.1 ' + (g.w + .2) + ' ' + (g.h + .2) + '" dir="ltr" style="display:block;width:100%;max-height:100%;font-family:system-ui,sans-serif">';
+    if (kind === 'crossword') { var sq = {}, nums = {};
+      (g.words || []).forEach(function (w) { nums[w.x + ',' + w.y] = w.n; for (var k = 0; k < w.len; k++) sq[(w.x + (w.d ? 0 : k)) + ',' + (w.y + (w.d ? k : 0))] = (w.word || '').charAt(k); });
+      for (var key in sq) { var xy = key.split(','), x = +xy[0], y = +xy[1];
+        s += '<rect x="' + x + '" y="' + y + '" width="1" height="1" fill="#fff" stroke="#223" stroke-width=".05"/>'
+          + (nums[key] ? '<text x="' + (x + .07) + '" y="' + (y + .3) + '" font-size=".28" fill="#223">' + nums[key] + '</text>' : '')
+          + (show && sq[key] ? '<text x="' + (x + .5) + '" y="' + (y + .8) + '" font-size=".62" font-weight="700" text-anchor="middle" fill="#223">' + esc(sq[key]) + '</text>' : ''); }
+    } else {
+      if (show) (g.pos || []).forEach(function (q, i) { if (q) s += '<line x1="' + (q[0] + .5) + '" y1="' + (q[1] + .5) + '" x2="' + (q[2] + .5) + '" y2="' + (q[3] + .5) + '" stroke="' + cols[i % cols.length] + '" stroke-width=".78" stroke-linecap="round" opacity=".45"/>'; });
+      (g.grid || []).forEach(function (ch, k) { s += '<text x="' + (k % g.w + .5) + '" y="' + (Math.floor(k / g.w) + .72) + '" font-size=".6" font-weight="600" text-anchor="middle" fill="currentColor">' + esc(ch) + '</text>'; });
+    }
+    return s + '</svg>';
+  };
   if (kind === 'board') {
     var bl = res.board || [], st = res.stars || {};
     // (By teams, when they play so: each team's average, so a big team doesn't win for being big.)
@@ -176,8 +193,12 @@ export function pollResultsHTML(poll, res, accent, L) {
         + '<div style="flex:1;background:#8882;border-radius:.2em;height:1.3em"><div style="height:100%;width:' + (counts[i] * 100 / max) + '%;background:' + (ok ? '#26890c' : tiles[i % tiles.length]) + ';border-radius:.2em"></div></div>'
         + '<div style="flex:0 0 2em;font-weight:700">' + counts[i] + '</div></div>'; }).join('') + '</div>' + ((res.board || []).length ? ranking(res.board, 5) : '');
   }
-  if (kind === 'order' || kind === 'match' || kind === 'gaps' || kind === 'label' || kind === 'sort') {
-    var gl = kind === 'order' ? labels.map(function (l, i) { return (i + 1) + '. ' + l; })
+  if (['order', 'match', 'gaps', 'label', 'sort', 'crossword', 'wordsearch', 'memory'].indexOf(kind) >= 0) {
+    var two = function (l) { var x = String(l).split('='); return [x[0].trim(), x.slice(1).join('=').trim()]; };
+    var gl = kind === 'crossword' ? labels.map(function (l) { var x = two(l); return (x[1] ? x[1] + ' → ' : '') + x[0]; })
+      : kind === 'wordsearch' ? labels.map(function (l) { return two(l)[0]; })
+      : kind === 'memory' ? labels.map(function (l) { var x = two(l); return x[0] + ' ↔ ' + x[1]; })
+      : kind === 'order' ? labels.map(function (l, i) { return (i + 1) + '. ' + l; })
       : kind === 'match' ? labels.map(function (l) { var x = String(l).split('='); return x[0].trim() + ' → ' + x.slice(1).join('=').trim(); })
       : kind === 'label' ? labels.map(function (l, i) { return (i + 1) + '. ' + l; })
       : kind === 'sort' ? [].concat.apply([], labels.map(function (l) { var c = String(l).split(':'); return c.slice(1).join(':').split(/[,;]/).filter(function (x) { return x.trim(); }).map(function (x) { return x.trim() + ' → ' + c[0].trim(); }); }))
@@ -185,7 +206,8 @@ export function pollResultsHTML(poll, res, accent, L) {
     var avg = Math.round((res.average || 0) * 100), nv = res.voters || 0;
     var pic = kind === 'label' && poll.image ? '<div style="position:relative;flex:0 0 58%;align-self:center"><img src="' + esc(poll.image) + '" alt="" style="width:100%;display:block;border-radius:.2em">'
       + (poll.points || []).map(function (pt, i) { return '<b style="position:absolute;left:' + pt.x + '%;top:' + pt.y + '%;transform:translate(-50%,-50%);background:' + cols[0] + ';color:#fff;border-radius:1em;padding:0 .35em;font-size:.55em;white-space:nowrap">'
-        + (i + 1) + (res.revealed ? ' ' + esc(labels[i] || '') : '') + '</b>'; }).join('') + '</div>' : '';
+        + (i + 1) + (res.revealed ? ' ' + esc(labels[i] || '') : '') + '</b>'; }).join('') + '</div>'
+      : res.layout && res.layout.w ? '<div style="flex:0 0 46%;align-self:center;min-height:0">' + gridSVG(res.layout, res.revealed) + '</div>' : '';
     // (The solutions fill the box's height, centred; long ones in two lines rather than cut with «…».)
     var body = !res.revealed
       ? '<div style="display:flex;flex-direction:column;justify-content:center;align-items:center;height:100%;gap:.2em"><div style="font-size:2.2em;font-weight:800">' + nv + '</div><div style="font-size:.6em;opacity:.8">'
@@ -277,15 +299,17 @@ export function pollResultsHTML(poll, res, accent, L) {
 }
 
 // The results' words in the interface's language (for pollResultsHTML, also in exported pages).
-const POLL_WORDS = ['La IA está corrigiendo…', 'Para corregir con IA, conéctala en el editor.', 'No se pudo corregir.', 'Nivel', '¿A quién le toca?', 'Clic para cerrar · N para otra vez', 'Aún no hay nadie con nombre: que lo escriban al entrar en la votación.', 'Las palabras del público aparecerán aquí', 'Las respuestas del público aparecerán aquí', 'Media', 'Mediana', 'Respuesta', 'voto', 'votos', 'respuesta', 'respuestas', 'Jugador', 'Aún no hay puntos: juega los cuestionarios.', '% de aciertos', 'Clic para ver las soluciones', 'Escanea el QR y envía tu pregunta…', 'preguntas', 'esperando aprobación', 'Aprobar', 'Ocultar', 'Descartar', 'Aún no hay preguntas.', 'Moderar las preguntas', 'Las nuevas esperan aquí a que las apruebes; en la pantalla solo se ve cuántas esperan.'];
+const POLL_WORDS = ['intentos', 'La IA está corrigiendo…', 'Para corregir con IA, conéctala en el editor.', 'No se pudo corregir.', 'Nivel', '¿A quién le toca?', 'Clic para cerrar · N para otra vez', 'Aún no hay nadie con nombre: que lo escriban al entrar en la votación.', 'Las palabras del público aparecerán aquí', 'Las respuestas del público aparecerán aquí', 'Media', 'Mediana', 'Respuesta', 'voto', 'votos', 'respuesta', 'respuestas', 'Jugador', 'Aún no hay puntos: juega los cuestionarios.', '% de aciertos', 'Clic para ver las soluciones', 'Escanea el QR y envía tu pregunta…', 'preguntas', 'esperando aprobación', 'Aprobar', 'Ocultar', 'Descartar', 'Aún no hay preguntas.', 'Moderar las preguntas', 'Las nuevas esperan aquí a que las apruebes; en la pantalla solo se ve cuántas esperan.'];
 export const pollLabels = () => Object.fromEntries(POLL_WORDS.map(w => [w, t(w)]));
 
 // Markup of a poll in the editor and thumbnails: question, current results
 // (last saved votes) and a QR placeholder (the real code exists only while presenting).
 export const GRADED = ['quiz', ...ACTIVITIES];
+// (The activities drawn as a grid on the screen: pollResultsHTML gets their layout, solution included, as res.layout.)
+export const GRIDS = ['crossword', 'wordsearch'];
 export function pollEditorHTML(b, accents) {
   const res = b.kind === 'board' ? { board: quizTotals(state.deck.slides.flatMap(s => s.blocks).filter(x => x.type === 'poll' && GRADED.includes(x.kind)).map(p => ({ poll: p, votes: savedVotes(p.pollId) }))) }
-    : (r => ({ ...r, showRight: true, revealed: (b.kind === 'quiz' && r.voters > 0) || ACTIVITIES.includes(b.kind) }))(tallyVotes(b, savedVotes(b.pollId)));
+    : (r => ({ ...r, showRight: true, revealed: (b.kind === 'quiz' && r.voters > 0) || ACTIVITIES.includes(b.kind), ...(GRIDS.includes(b.kind) && { layout: publicActivity(b, true) }) }))(tallyVotes(b, savedVotes(b.pollId)));
   return `<div style="width:100%;height:100%;display:grid;grid-template-columns:1fr auto;gap:1em;font-size:${b.fontSize || 32}px${/^#[0-9a-f]{3,8}$/i.test(b.color || '') ? ';color:' + b.color : ''}">`
     + `<div style="display:flex;flex-direction:column;min-width:0"><div style="font-weight:700;margin-bottom:.5em">${esc(b.question || '')}</div>`
     + `<div style="flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center">${pollResultsHTML(b, res, accents, pollLabels())}</div></div>`
@@ -313,6 +337,7 @@ export function votesCSV(poll) {
   if (poll.kind === 'draw' || poll.kind === 'photo') return 'participante\n' + res.pics.map(x => q(x.n || '—')).join('\n');
   if (poll.kind === 'number') return 'valor\n' + Object.values(savedVotes(poll.pollId)).filter(v => isFinite(+v)).map(Number).join('\n');
   if (poll.kind === 'point') return 'x %,y %\n' + res.points.map(p => `${p.x},${p.y}`).join('\n');
+  if (poll.kind === 'memory') return 'participante,puntos,aciertos,intentos\n' + res.board.map(r => `${q(r.n || r.id)},${r.pts},${Math.round(r.pts / 10)} %,${r.tries}`).join('\n');
   if (ACTIVITIES.includes(poll.kind)) return 'participante,puntos,aciertos\n' + res.board.map(r => `${q(r.n || r.id)},${r.pts},${Math.round(r.pts / 10)} %`).join('\n');
   const labels = poll.kind === 'rating' ? ['1', '2', '3', '4', '5'] : poll.options;
   return (poll.kind === 'rank' ? 'opcion,puntos (Borda)\n' : 'opcion,votos\n') + labels.map((l, i) => `${q(l)},${res.counts[i]}`).join('\n');

@@ -787,6 +787,14 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       eq(polls.join(), '-,quiz,-,match,gaps,-,order', 'cada una tras su diapositiva: ' + polls.join());
       const qz = R.state.deck.slides[1].blocks[0]; eq(JSON.stringify(qz.correct), '[1]', 'con su respuesta correcta'); eq(qz.time, 20, 'y su tiempo');
       eq(R.state.deck.slides.length, before + 4, 'una diapositiva cada una');
+      // The grid games too: a crossword's words without spaces (each with its clue), a word search's words, memory pairs.
+      reset(); answer = { items: [{ kind: 'crossword', question: 'Planetas', words: [['Mar te', 'El rojo'], ['Tierra', 'El nuestro'], ['sinpista', '']] },
+        { kind: 'wordsearch', question: 'Busca', words: ['sol', 'luna', 'a', 'cometa'] }, { kind: 'memory', question: 'Parejas', pairs: [['H', 'Hidrógeno'], ['O', 'Oxígeno=8']] },
+        { kind: 'crossword', question: 'Sola', words: [['uno', 'una']] }] };
+      eq(await A.addLiveQuiz({ count: 4, kinds: ['crossword', 'wordsearch', 'memory'] }), 3, 'crucigrama, sopa de letras y memoria (el de una palabra, fuera)');
+      const games = R.state.deck.slides.flatMap(x => x.blocks).filter(b => b.type === 'poll');
+      eq(games.map(b => b.kind + ':' + b.options.join('|')).join(' / '), 'crossword:Marte = El rojo|Tierra = El nuestro / wordsearch:sol|luna|cometa / memory:H = Hidrógeno|O = Oxígeno-8', 'sus opciones, listas para jugar');
+      assert(/"kind":"crossword"[\s\S]*"kind":"memory"/.test(calls.at(-1).body.messages[0].content), 'la IA sabe cómo pedirlas');
       // A review of the deck: what to change, each point with its slide.
       answer = { summary: 'Bien, pero larga', items: [{ slide: 2, kind: 'text', issue: 'Demasiado texto', fix: 'Divídela' }, { slide: 99, kind: 'raro', issue: 'x' }, { slide: 1, issue: '' }] };
       const rv = await A.reviewDeck();

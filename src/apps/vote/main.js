@@ -6,6 +6,7 @@
 import { PEERJS, loadScript } from '../../core/vendor.js';
 import { peerOptions } from '../../core/ice.js';
 import { readingItems, readingHTML } from '../../io/runtime/reading.js';
+import { activityGame, GAME_WORDS } from '../../io/runtime/games.js';
 
 const $ = s => document.querySelector(s);
 const show = id => ['join', 'poll', 'wait'].forEach(x => { $('#' + x).hidden = x !== id; });
@@ -79,7 +80,7 @@ function renderQuiz(box) {
 function quizResult(d) {
   resultOf(d.pollId, !d.answered ? 'Sin respuesta' : `${d.ok ? 'Correcto' : d.pts > 0 ? Math.round(d.pts / 10) + ' % de aciertos' : 'Fallado'} · ${d.pts} puntos`);
   const box = $('#quiz-res'); if (!box || poll?.pollId !== d.pollId) return;
-  clearInterval(quizTimer); $('#answers').querySelectorAll('button').forEach(x => { x.disabled = true; });
+  clearInterval(quizTimer); $('#answers').querySelectorAll('button').forEach(x => { x.disabled = true; }); $('#answers .rv-game')?.rvLock();
   const part = poll?.pub && d.answered && !d.ok && d.pts > 0;       // (activities: some right)
   box.className = 'quiz-res'; box.style.background = !d.answered ? '#555' : d.ok ? '#26890c' : part ? '#b07d00' : '#b3261e';
   box.innerHTML = `<b>${!d.answered ? 'Sin respuesta' : d.ok ? (poll?.pub ? '¡Todo correcto!' : '¡Correcto!') : part ? `${Math.round(d.pts / 10)} % de aciertos` : 'Fallaste'}</b>+${d.pts} puntos · ${d.total} en total`
@@ -216,7 +217,7 @@ function readAloud() {
   speechSynthesis.cancel(); speechSynthesis.speak(u);
 }
 
-// Activities (put in order, match, fill in the gaps, label a picture): the
+// Activities (put in order, match, fill in the gaps, label a picture, sort; a crossword, a word search, a memory game): the
 // answer is a list of texts; the presentation marks it (it alone knows the answers).
 const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
 function nickField(box) {
@@ -250,6 +251,8 @@ function renderActivity(box) {
   } else if (poll.kind === 'sort') {                    // (each item shuffled, with its group; the answer in the items' own order)
     answer = pub.items.map(() => '');
     box.append(el('p', { textContent: 'Elige el grupo de cada uno:' }), ...pub.items.map(it => el('div', { className: 'act-row' }, el('span', { textContent: it.t }), choose(pub.cats, v => { answer[it.i] = v; }))));
+  } else if (['crossword', 'wordsearch', 'memory'].includes(poll.kind)) {   // (played here: io/runtime/games.js, also inside the slides)
+    box.append(activityGame(poll.kind, pub, a => { answer = a; }, GAME_WORDS));
   } else if (poll.kind === 'label') {
     answer = pub.points.map(() => '');
     const pic = el('div', { className: 'act-pic' }, el('img', { src: pub.image, alt: '' }));
@@ -376,6 +379,7 @@ function myAnswer(p, a, extra = {}) {
   if (p.kind === 'number') return { text: `${a}${p.unit ? ' ' + p.unit : ''}` };
   if (p.kind === 'rank') return { text: (a || []).map((i, k) => `${k + 1}. ${o[i]}`).join('  ') };
   if (p.kind === 'point') return { text: 'Un punto de la imagen' };
+  if (p.kind === 'memory' && Array.isArray(a)) return { text: `${a.slice(0, -1).filter(Boolean).length} parejas · ${a.at(-1)} intentos` };
   if (p.pub) return { text: (Array.isArray(a) ? a : []).filter(Boolean).join(' · ') };
   if (Number.isInteger(a) && o[a] != null) return { text: o[a] + (extra.sure != null ? (extra.sure ? ' (seguro)' : ' (sin estar seguro)') : '') };
   return { text: String(a ?? '') };
@@ -395,7 +399,7 @@ $('#send').addEventListener('click', () => {
   if (answer == null || answer === '' || (Array.isArray(answer) && !answer.length)) return;
   if (poll.pub) {                                         // (an activity: sent once, with the nickname)
     conn.send({ type: 'vote', pollId: poll.pollId, voter, answer, name: $('#answers').nameField?.value.trim() || '' }); remember(poll, answer);
-    $('#send').hidden = true; $('#answers').querySelectorAll('input,select,button').forEach(x => { x.disabled = true; });
+    $('#send').hidden = true; $('#answers').querySelectorAll('input,select,button').forEach(x => { x.disabled = true; }); $('#answers .rv-game')?.rvLock();
     const r = $('#quiz-res'); if (r) r.textContent = '✔ Respuesta enviada. Espera a la corrección…';
     return;
   }

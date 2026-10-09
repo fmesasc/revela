@@ -5,10 +5,11 @@
 // presentations with toString(), so self-contained (ES5, no outer variables):
 // publicActivity() gives what to show (never the answers); answering asks the
 // page that holds the presentation (window.parent.__revelaAnswer) when there is
-// one, else marks it here with gradeAnswer().
+// one, else marks it here with gradeAnswer(). game: activityGame() (games.js),
+// which plays the crossword, the word search and the memory game, as on the phones.
 
-export function selfPacedRuntime(publicActivity, gradeAnswer, L) {
-  var ACT = ['order', 'match', 'gaps', 'label', 'sort'];
+export function selfPacedRuntime(publicActivity, gradeAnswer, L, game) {
+  var ACT = ['order', 'match', 'gaps', 'label', 'sort', 'crossword', 'wordsearch', 'memory'];
   var mk = function (tag, css, txt) { var e = document.createElement(tag); if (css) e.style.cssText = css; if (txt != null) e.textContent = txt; return e; };
   var btnCss = 'font:inherit;font-size:.6em;padding:.35em .8em;border-radius:.3em;border:0;cursor:pointer;background:#3f6497;color:#fff;margin:.2em';
   var ask = function (p, a) {
@@ -26,6 +27,7 @@ export function selfPacedRuntime(publicActivity, gradeAnswer, L) {
       (ok ? L.allRight : pc ? L.partly.replace('{n}', pc) : L.wrong) + (r.sent ? ' · ' + L.sent : ''));
     f.className = 'rv-self-result'; box.appendChild(f);
     [].slice.call(box.querySelectorAll('button,select,input')).forEach(function (x) { x.disabled = true; });
+    var g = box.querySelector('.rv-game'); if (g && g.rvLock) g.rvLock();
   };
   [].slice.call(document.querySelectorAll('.rv-poll')).forEach(function (el) {
     var p; try { p = JSON.parse(el.getAttribute('data-poll')); } catch (e) { return; }
@@ -76,6 +78,8 @@ export function selfPacedRuntime(publicActivity, gradeAnswer, L) {
         opts.forEach(function (o) { var x = mk('option', '', o); x.value = o; s.appendChild(x); });
         s.onchange = function () { answer[at(i)] = s.value; }; row.appendChild(s); box.appendChild(row);
       });
+    } else if (game && (p.kind === 'crossword' || p.kind === 'wordsearch' || p.kind === 'memory')) {
+      var g = game(p.kind, pub, function (a) { answer = a; }, L.game); g.style.fontSize = '.55em'; box.appendChild(g);
     } else if (p.kind === 'gaps') {
       answer = []; var para = mk('div', 'font-size:.6em;line-height:2.2'), n = 0;
       pub.parts.forEach(function (part) {
