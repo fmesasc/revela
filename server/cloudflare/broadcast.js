@@ -46,7 +46,9 @@ export class Broadcast {
   async join(ws, presenter, meta) {
     this.ctx.acceptWebSocket(ws, [presenter ? 'p' : 'v']);
     ws.send(JSON.stringify({ t: 'hello', doc: meta.doc, state: (await this.ctx.storage.get('state')) || null, presenter }));
-    await this.ctx.storage.setAlarm(Date.now() + ROOM_HOURS * 36e5);      // (in use: it stays)
+    // (In use: it stays. At most every 10 minutes: when thousands open the link at once, one write per viewer made
+    // them come in at ~185 a second.)
+    if (Date.now() - (this.alarmSet || 0) > 600e3) { this.alarmSet = Date.now(); await this.ctx.storage.setAlarm(Date.now() + ROOM_HOURS * 36e5); }
     this.count();
   }
   // How many follow, to the presenter: at once, or within a second when many come together.
