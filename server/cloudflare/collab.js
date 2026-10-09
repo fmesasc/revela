@@ -10,6 +10,7 @@
 //   POST /c            body { deck } (upload key or Google sign-in: worker.js authorize())
 //                      → { room, tokens: { view, comment, edit }, owner }
 //   GET  /c/:room      WebSocket; first message { t: 'hello', token, name }
+//                      each { t: 'ops', ops, n } is answered { t: 'ack', n } once applied (src/features/live/collab.js)
 //
 // Free-tier friendly: WebSocket hibernation (no cost while nobody types), the
 // document is kept in the room's own storage (store.js: no R2, never billed),
@@ -113,15 +114,14 @@ export class CollabRoom {
       const n = this.peers().length;
       Object.assign(a, { id: 'p' + random(4), name: String(msg.name || '').slice(0, 40) || 'Invitado', color: COLORS[n % COLORS.length], role, owner: msg.token === doc.meta.owner, slide: null, sel: null });
       ws.serializeAttachment(a); this.unpack.delete(ws);          // (now it may)
-      this.send(ws, { t: 'welcome', you: a.id, role, owner: a.owner, color: a.color, deck: doc.deck, peers: this.peerList(), chat: doc.chat.slice(-100) });
+      this.send(ws, { t: 'welcome', you: a.id, role, owner: a.owner, color: a.color, deck: doc.deck, peers: this.peerList(), chat: doc.chat.slice(-100), acks: 1 });
       this.toAll({ t: 'peers', peers: this.peerList() }, a.id);
       return;
     }
     if (msg.t === 'ops' && Array.isArray(msg.ops)) {
       const ok = msg.ops.filter(op => op && Array.isArray(op.p) && allowed(op, a.role));
-      if (!ok.length) return;
-      applyOps(doc.deck, ok); this.changed();
-      this.toAll({ t: 'ops', ops: ok, from: a.id }, a.id);
+      if (ok.length) { applyOps(doc.deck, ok); this.changed(); this.toAll({ t: 'ops', ops: ok, from: a.id }, a.id); }
+      this.send(ws, { t: 'ack', n: Number.isSafeInteger(msg.n) ? msg.n : null });   // (each «ops» confirmed, in order: the client puts its own unconfirmed ones back on top of what comes before)
     } else if (msg.t === 'presence') {
       a.slide = msg.slide ?? null; a.sel = msg.sel ?? null; ws.serializeAttachment(a);
       this.toAll({ t: 'presence', id: a.id, name: a.name, color: a.color, slide: a.slide, sel: a.sel }, a.id);

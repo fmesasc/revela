@@ -98,8 +98,11 @@ ok((await call('GET', '/s/' + d1.id, { headers: { Authorization: 'Bearer ' + (g 
   ok(own.last('peers')?.peers.length === 3, 'los demás ven quién entra');
   await ed.say({ t: 'ops', ops: [{ p: ['slides', 's1', 'blocks', 'a', 'x'], v: 99 }] });
   ok(own.last('ops')?.ops[0].v === 99 && vi.last('ops')?.ops[0].v === 99 && !ed.last('ops'), 'el cambio llega a los demás (no vuelve a quien lo hizo)');
-  await vi.say({ t: 'ops', ops: [{ p: ['name'], v: 'Hack' }] });
-  ok(own.got.filter(m => m.t === 'ops').length === 1, 'quien solo ve no cambia nada');
+  await ed.say({ t: 'ops', ops: [{ p: ['slides', 's1', 'blocks', 'a', 'y'], v: 5 }], n: 7 });
+  ok(ed.last('ack')?.n === 7 && w.acks === 1, 'cada cambio se confirma a quien lo hizo, con su número (y la sala lo anuncia)');
+  await vi.say({ t: 'ops', ops: [{ p: ['name'], v: 'Hack' }], n: 1 });
+  ok(own.got.filter(m => m.t === 'ops').length === 2, 'quien solo ve no cambia nada');
+  ok(vi.last('ack')?.n === 1, 'pero también se le confirma (si no, lo seguiría creyendo pendiente)');
   ok(storage.alarmAt && storage.alarmAt - Date.now() <= 5000, 'guardado programado en unos segundos, no uno por cambio');
   writes = 0; await room.alarm();
   const { readDeck } = await import('../server/cloudflare/store.js');

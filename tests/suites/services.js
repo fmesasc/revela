@@ -2259,6 +2259,26 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { sess.stop(); R.store.setPersist(true); R.state.ui.lock = null; }
   });
 
+  await test('coedición: dos personas cambian lo mismo a la vez y acaban viendo lo mismo (confirmaciones)', async () => {
+    reset(); const W = frame.contentWindow, C = await W.eval("import('/src/features/live/collab.js')");
+    const [h, g] = pipe(); const sent = []; h.onData(m => sent.push(m));
+    const shared = R.model.emptyDeck(); shared.name = 'Compartida';
+    h.onData(m => { if (m.t === 'hello') h.send({ t: 'welcome', you: 'g1', role: 'edit', color: '#123456', deck: shared, peers: [], chat: [], acks: 1 }); });
+    const sess = await C.joinCollab({ name: 'Luis', token: 'tok', connect: async () => g });
+    try {
+      R.store.commit(() => { R.state.deck.name = 'De Luis'; }); await sleep(10);
+      const mine = sent.find(m => m.t === 'ops' && m.ops.some(o => o.p[0] === 'name'));
+      assert(mine && Number.isInteger(mine.n), 'su cambio sale numerado');
+      // Ana's change of the same thing reached the server first: Luis's goes after it there, so it stays.
+      h.send({ t: 'ops', ops: [{ p: ['name'], v: 'De Ana' }] }); await sleep(10);
+      eq(R.state.deck.name, 'De Luis', 'lo de antes de la confirmación queda debajo del suyo (como en el servidor)');
+      h.send({ t: 'ack', n: mine.n }); await sleep(10);
+      h.send({ t: 'ops', ops: [{ p: ['name'], v: 'De Ana, después' }] }); await sleep(10);
+      eq(R.state.deck.name, 'De Ana, después', 'lo de después de la confirmación sí se ve');
+      assert(!sent.some(m => m.t === 'ops' && m.ops.some(o => o.p[0] === 'name' && /Ana/.test(o.v))), 'y no reenvía los cambios ajenos como suyos');
+    } finally { sess.stop(); R.store.setPersist(true); R.state.ui.lock = null; }
+  });
+
   await test('firmas digitales: firmar, comprobar, detectar cambios y firmas falsas', async () => {
     reset(); const W = frame.contentWindow, SG = await W.eval("import('/src/features/collab/signature.js')");
     R.state.deck.slides[0].blocks[0].html = 'Contrato'; R.store.commit(() => {});

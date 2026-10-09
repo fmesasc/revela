@@ -43,10 +43,13 @@ function watchLocal(sendOps) {
   return { applyToLast: ops => applyOps(last, ops), stop: () => { unsub(); clearInterval(timer); } };
 }
 const presenceOf = () => ({ slide: currentSlide()?.id || null, sel: state.ui.selection || null });
-function applyIncoming(ops, watcher) {
-  watcher.applyToLast(ops);
+// mine: this person's own changes already sent but not yet confirmed (ack) by whoever keeps the document. Anything
+// received before that confirmation was applied there BEFORE them, so they go back on top — the order everyone else
+// has. (Without it, two people changing the same thing at once could each be left seeing a different value.)
+function applyIncoming(ops, watcher, mine = []) {
+  watcher.applyToLast(ops); if (mine.length) watcher.applyToLast(mine);
   for (const op of ops) if (op && 'v' in op) op.v = cleanValue(op.v, String(op.p?.at(-1) ?? ''));   // (a co-editor's changes can't run code)
-  applyRemote(root => applyOps(root, ops));
+  applyRemote(root => { applyOps(root, ops); if (mine.length) applyOps(root, mine); });
 }
 
 // ---- Host ------------------------------------------------------------------
@@ -79,15 +82,14 @@ export function hostCollab({ name, listen, code = rand(6) }) {
         if (!role) { conn.send({ t: 'denied' }); conn.close?.(); return; }
         const guest = { conn, name: String(msg.name || '').slice(0, 40) || 'Invitado', color: COLORS[(n) % COLORS.length], role, slide: null, sel: null };
         guests.set(id, guest);
-        conn.send({ t: 'welcome', you: id, role, color: guest.color, deck: state.deck, peers: peersList(), chat: chat.slice(-100) });
+        conn.send({ t: 'welcome', you: id, role, color: guest.color, deck: state.deck, peers: peersList(), chat: chat.slice(-100), acks: 1 });
         toAll({ t: 'peers', peers: peersList() }, id); emit('peers');
         return;
       }
       if (msg.t === 'ops' && Array.isArray(msg.ops)) {
         const ok = msg.ops.filter(op => op && Array.isArray(op.p) && allowed(op, g.role));
-        if (!ok.length) return;
-        applyIncoming(ok, watcher);
-        toAll({ t: 'ops', ops: ok, from: id }, id);
+        if (ok.length) { applyIncoming(ok, watcher); toAll({ t: 'ops', ops: ok, from: id }, id); }
+        conn.send({ t: 'ack', n: Number.isSafeInteger(msg.n) ? msg.n : null });   // (each «ops» confirmed, in order: see applyIncoming)
       } else if (msg.t === 'presence') {
         g.slide = msg.slide ?? null; g.sel = msg.sel ?? null;
         toAll({ t: 'presence', id, name: g.name, color: g.color, slide: g.slide, sel: g.sel }, id); emit('peers');
@@ -108,7 +110,11 @@ export function hostCollab({ name, listen, code = rand(6) }) {
 export async function joinCollab({ name, token, connect, room = null }) {
   const conn = await connect();
   return new Promise((resolve, reject) => {
-    let watcher = null, peers = [];
+    let watcher = null, peers = [], acks = false;
+    // Own «ops» sent and not yet confirmed (with acks), numbered; one never confirmed (a message lost) stops counting
+    // after a while, so it can't keep covering what others do.
+    let pending = [], seq = 0;
+    const unconfirmed = () => { const old = Date.now() - 15000; pending = pending.filter(x => x.at > old); return pending.flatMap(x => x.ops); };
     const chat = [];
     const done = () => { watcher?.stop(); session = null; };
     conn.onData(msg => {
@@ -131,10 +137,12 @@ export async function joinCollab({ name, token, connect, room = null }) {
           setRole: (id, role) => conn.send({ t: 'setRole', id, role }),
           stop: () => { if (owner) conn.send({ t: 'end' }); conn.close?.(); done(); emit(owner ? 'end' : 'left'); },
         };
-        watcher = watchLocal(ops => { const ok = ops.filter(op => allowed(op, session.role)); if (ok.length) conn.send({ t: 'ops', ops: ok }); });
+        acks = msg.acks === 1;                               // (a server or host from before acks: as before)
+        watcher = watchLocal(ops => { const ok = ops.filter(op => allowed(op, session.role)); if (!ok.length) return; const n = ++seq; if (acks) pending.push({ n, ops: ok, at: Date.now() }); conn.send({ t: 'ops', ops: ok, n }); });
         emit('start'); resolve(session);
       } else if (!session) return;
-      else if (msg.t === 'ops') applyIncoming(msg.ops, watcher);
+      else if (msg.t === 'ops') applyIncoming(msg.ops, watcher, unconfirmed());
+      else if (msg.t === 'ack') pending = pending.filter(x => x.n > msg.n);
       else if (msg.t === 'peers') { peers = msg.peers; emit('peers'); }
       else if (msg.t === 'presence') {
         const p = peers.find(x => x.id === msg.id);
