@@ -396,7 +396,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const html = R.io.buildHTML();
     assert(/class="rv-poll" data-poll="\{&quot;pollId/.test(html), 'datos de la votación en el export');
     assert(/revela-vote-/.test(html) && /qrcode@1\.5\.1/.test(html), 'anfitrión PeerJS y QR');
-    assert(/fmesasc\.github\.io\/revela\/vote\.html/.test(html), 'enlace de voto absoluto (funciona también desde un archivo)');
+    assert(/revelaslides\.com\/app\/vote[?"']/.test(html), 'enlace de voto absoluto (funciona también desde un archivo)');
     P.clearVotes(b.pollId);
     const qr = await fetch('https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js'); assert(qr.ok, 'la librería de QR existe en el CDN');
   });

@@ -14,8 +14,11 @@ import { esc } from '../../core/text.js';
 import { state, commit, currentSlide } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 import { t } from '../../i18n/index.js';
+import { OFFICIAL_SITE } from '../../core/config.js';
 
-export const VOTE_URL = 'https://fmesasc.github.io/revela/vote.html';
+// Absolute (an exported .html opened from a file works too) and on the official site in every edition, so the QR
+// and the address shown to the class are short and recognisable. (/app/vote: Pages' clean URL, no redirect.)
+export const VOTE_URL = `${OFFICIAL_SITE}/app/vote`;
 
 export function pollBlock(props = {}) {
   return { id: uid(), type: 'poll', pollId: uid(), kind: 'choice', display: 'bar', question: '¿Qué opción prefieres?',

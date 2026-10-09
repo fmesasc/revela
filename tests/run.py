@@ -262,7 +262,7 @@ def e2e_checks(send, recv, port):
     ev(A, "document.getElementById('present-close')?.click();1")
     # Live poll + Q&A inside the exported presentation
     ev(A, "(async()=>{const R=window.__revela;R.store.replaceDeck(R.model.emptyDeck());R.poll.addPoll({question:'P',options:['A','B']});R.slides.addSlide();R.poll.addPoll({question:'Q',kind:'qa'});R.slides.goToSlide(0);"
-          "const html=R.io.buildHTML().replace(/https:\\/\\/fmesasc\\.github\\.io\\/revela\\/vote\\.html/g,location.origin+'/vote.html');document.open();document.write(html);document.close();return 1})()")
+          "const html=R.io.buildHTML().replace(/https:\\/\\/revelaslides\\.com\\/app\\/vote(?=[?\\x22])/g,location.origin+'/vote.html');document.open();document.write(html);document.close();return 1})()")
     vcode = wait(A, "(()=>{const c=document.querySelector('.rv-poll-code')?.textContent||'';return /^[A-Z0-9]{5}$/.test(c)?c:''})()")
     check(vcode, 'la votación obtiene un código')
     V = tab(f'{base}/vote.html?c={vcode}')
