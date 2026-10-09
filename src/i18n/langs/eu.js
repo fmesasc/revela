@@ -1,6 +1,7 @@
 // Basque interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Debajo de la anterior: para profundizar solo si hace falta": "Aurrekoaren azpian: behar denean bakarrik sakontzeko",
   "Pruebas": "Probak",
   "Entorno de pruebas: las cuentas y presentaciones de aquí no son las reales, y los pagos son de prueba. La versión real está en revelaslides.com.": "Proba-ingurunea: hemengo kontuak eta aurkezpenak ez dira benetakoak, eta ordainketak probakoak dira. Benetako bertsioa revelaslides.com-en dago.",
   "Uso y gastos del equipo": "Taldearen erabilera eta gastuak",

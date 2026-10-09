@@ -1,6 +1,7 @@
 // Dutch interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Debajo de la anterior: para profundizar solo si hace falta": "Onder de vorige: om alleen te verdiepen als het nodig is",
   "Pruebas": "Test",
   "Entorno de pruebas: las cuentas y presentaciones de aquí no son las reales, y los pagos son de prueba. La versión real está en revelaslides.com.": "Testomgeving: de accounts en presentaties hier zijn niet de echte, en betalingen zijn testbetalingen. De echte versie staat op revelaslides.com.",
   "Uso y gastos del equipo": "Gebruik en uitgaven van het team",

@@ -1,6 +1,7 @@
 // Galician interface strings (Spanish source → translation), loaded only when
 // this language is chosen. Machine-assisted translation: corrections welcome.
 export default {
+  "Debajo de la anterior: para profundizar solo si hace falta": "Debaixo da anterior: para afondar só se fai falta",
   "Pruebas": "Probas",
   "Entorno de pruebas: las cuentas y presentaciones de aquí no son las reales, y los pagos son de prueba. La versión real está en revelaslides.com.": "Contorno de probas: as contas e presentacións de aquí non son as reais, e os pagamentos son de proba. A versión real está en revelaslides.com.",
   "Uso y gastos del equipo": "Uso e gastos do equipo",

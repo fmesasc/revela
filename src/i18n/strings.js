@@ -3420,6 +3420,7 @@ export const ROWS = [
   ['Añadir diapositiva', 'Add slide', 'Ajouter une diapositive', 'Folie hinzufügen', 'Aggiungi diapositiva', 'Acrescentar diapositivo', 'Afegeix una diapositiva'],
   ['Crear sin esquema', 'Create without outline', 'Créer sans plan', 'Ohne Gliederung erstellen', 'Crea senza scaletta', 'Criar sem esquema', 'Crea sense esquema'],
   ['Ver el esquema', 'See the outline', 'Voir le plan', 'Gliederung ansehen', 'Vedi la scaletta', 'Ver o esquema', 'Veure l\'esquema'],
+  ['Debajo de la anterior: para profundizar solo si hace falta', 'Below the previous one: to go deeper only if needed', 'Sous la précédente : pour approfondir seulement si besoin', 'Unter der vorherigen: zum Vertiefen nur bei Bedarf', 'Sotto la precedente: per approfondire solo se serve', 'Abaixo da anterior: para aprofundar só se for preciso', 'Sota l\'anterior: per aprofundir només si cal'],
   ['Puntos (uno por línea)', 'Points (one per line)', 'Points (un par ligne)', 'Punkte (einer pro Zeile)', 'Punti (uno per riga)', 'Pontos (um por linha)', 'Punts (un per línia)'],
   ['Crear {n} diapositivas', 'Create {n} slides', 'Créer {n} diapositives', '{n} Folien erstellen', 'Crea {n} diapositive', 'Criar {n} diapositivos', 'Crea {n} diapositives'],
   ['Cuestionario en directo', 'Live quiz', 'Quiz en direct', 'Live-Quiz', 'Quiz dal vivo', 'Questionário ao vivo', 'Qüestionari en directe'],

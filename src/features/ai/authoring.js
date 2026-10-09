@@ -44,6 +44,7 @@ export const SPEC_DOC = `Slide kinds and their fields — choose the kind that f
 - "closing": title, subtitle
 "stats", "chart" and "table" with figures also have "source": where they come from — the research's [n] or the document, or a well-established reference you are sure of ("IPCC AR6, 2021", "INE 2023"); figures made up to illustrate say so ("Datos de ejemplo") — only a dataset in a technical tutorial; never claims about the world. It is shown under them as you write it, in the deck's language: "Fuente: IPCC AR6, 2021", "Source: …", "Datos de ejemplo".
 One idea per slide: when there is more, make two slides. Text is plain (no markdown, no HTML); "Label: text" items are shown with the label in bold.
+Any slide may have "below": true — it then goes BELOW the previous slide, one level down (reveal.js vertical slides): an optional deeper look at that slide's idea — a worked example, the steps in detail, a diagram, a common mistake — that the presenter opens only if the audience needs it; the slides without it must tell the whole story by themselves.
 Any slide may have "icon": one icon name that fits it (${ICON_NAMES.filter((_, i) => i % 3 === 0).slice(0, 45).join(', ')}, …).
 Every slide also has "notes": 2-4 sentences the presenter would say. Only use real data you are given or well-known facts; never invent statistics — if unsure, use another kind instead of stats/chart.`;
 
@@ -127,10 +128,23 @@ export function layoutSlide(spec, W = 1280, H = 720, pal = currentPalette()) {
 }
 // A slide from a spec. In a deck with layouts it looks like the rest (features/ai/fromspec.js):
 // opts { at: the index it will have, style, seed }; otherwise the objects above on `bg`.
-export const slideFromSpec = (spec, bg = currentPalette().bg, deck = state.deck, opts = {}) => withSource(hasLayouts(deck) ? styledSlide(spec, deck, opts) : {
+// spec.below: under the previous slide (a «child»: reveal.js vertical slides, slides.js toggleVertical).
+export const slideFromSpec = (spec, bg = currentPalette().bg, deck = state.deck, opts = {}) => below(withSource(hasLayouts(deck) ? styledSlide(spec, deck, opts) : {
   id: uid(), sectionId: null, background: bg, transition: null, hidden: false, autoSlide: 0,
   notes: str(spec.notes), blocks: layoutSlide(spec, deck.size.w, deck.size.h),
-}, spec, deck);
+}, spec, deck), spec);
+const below = (slide, spec) => { if (spec.below) slide.vertical = true; return slide; };
+// Slides below others, as a deck can show them: never the first, a title, section or closing slide, nor under a
+// title or section slide; at most three under one slide.
+export function tidyBelow(specs) {
+  let run = 0;
+  specs.forEach((sp, i) => {
+    const prev = specs[i - 1];
+    if (sp.below && (!i || ['title', 'section', 'closing'].includes(sp.kind) || (!prev.below && ['title', 'section'].includes(prev.kind)) || run >= 3)) delete sp.below;
+    run = sp.below ? run + 1 : 0;
+  });
+  return specs;
+}
 // «Fuente: …» under a slide's figures (spec.source): small, at the bottom left, in the text's colour, faint — so
 // whoever sees the slide knows where the numbers come from, or that they are an example.
 const sourceBlock = (spec, deck) => ({ id: uid(), type: 'text', x: Math.round(deck.size.w * 0.06), y: deck.size.h - 46, w: Math.round(deck.size.w * 0.7), h: 32, rotation: 0, animation: null,
@@ -275,12 +289,13 @@ export async function createOutline(opts = {}) {
   const source = src ? `\n\nBase it ONLY on this document:\n"""\n${String(src).slice(0, 60000)}\n"""` : '';
   const out = await chatJSON([
     { role: 'system', content: `Plan a presentation that someone will present out loud. Answer only JSON {"title":"…","slides":[{"title":"…","kind":"…","points":["…"]}]}: about ${count} slides, in order, the first a title slide ("title") and the last a closing one ("closing"). Each title states the slide's message (max ~9 words); "kind" is the kind of slide that will show it best — one of: ${KINDS.filter(k => pictures(opts) || k !== 'image').join(', ')}; 1-4 points with WHAT it will show, concretely (the facts, figures and examples; for a "code" slide, what the code does and in which language). Not a list of short phrases: a plan for rich slides.
+- For the 1-3 ideas hardest to understand (about 6 slides or more), right after that slide plan 1-2 with "below": true — they go under it, one level down, an optional deeper look (a worked example, the steps in detail, a diagram, a common mistake) that the presenter opens only if needed. The others never; never the first or the last.
 ${RICH}
 ${opts.media === 'search' ? `- REQUIRED: 2-4 slides of kind "image", where SEEING the thing explains it — a labelled diagram, a map, the artwork, the place, the object, the experiment —, when something is better seen moving — a process, an experiment, a phenomenon, a demo of a tool — one of them a short video, and when it is understood by turning it around — an organ, a molecule, a monument, a machine, a planet — one an interactive 3D model; its points say what must be seen. (Only a topic with nothing to see — pure code, a company's own figures — may have none.)\n` : ''}Write in ${opts.language || lang()}.` },
     { role: 'user', content: withAttachments([opts.topic && `Topic and purpose: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`].filter(Boolean).join('\n') + TAILOR(opts.context) + source, opts.attachments || []) },
   ], { maxTokens: 3000, feature: 'outline', prefer: DECK_MODEL });
   const res = out, slides = (res.slides || []).filter(x => x && str(x.title).trim()).slice(0, 40)
-    .map(x => ({ title: str(x.title).trim(), ...(KINDS.includes(x.kind) && (pictures(opts) || x.kind !== 'image') && { kind: x.kind }), points: (Array.isArray(x.points) ? x.points : []).map(str).map(p => p.trim()).filter(Boolean).slice(0, 6) }));
+    .map(x => ({ title: str(x.title).trim(), ...(KINDS.includes(x.kind) && (pictures(opts) || x.kind !== 'image') && { kind: x.kind }), ...(x.below === true && { below: true }), points: (Array.isArray(x.points) ? x.points : []).map(str).map(p => p.trim()).filter(Boolean).slice(0, 6) }));
   if (!slides.length) throw new Error('EMPTY');
   // (A «code» slide planned for a topic that isn't programming — a lesson on fractions —: worked out as steps.)
   if (!isTechnical(opts.topic)) for (const x of slides) if (x.kind === 'code') x.kind = 'steps';
@@ -290,7 +305,7 @@ export async function createDeck(opts = {}) {
   const plan = Array.isArray(opts.outline) && opts.outline.length ? opts.outline : null;
   const count = plan ? plan.length : Math.max(3, Math.min(30, +opts.count || 8));
   const brief = [opts.topic && `Topic and purpose: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`,
-    plan ? `Follow THIS outline, reviewed by the presenter: exactly ${plan.length} slides, in this order, one per item, each with its title (shortened only if too long), of the kind in [brackets] when there is one, and DEVELOPING its points — they say what the slide shows, they are not its text: turn them into full content (the code itself, the steps, the comparison, real examples):\n${plan.map((x, i) => `${i + 1}. ${x.kind ? `[${x.kind}] ` : ''}${x.title}${x.points?.length ? '\n' + x.points.map(p => `   - ${p}`).join('\n') : ''}`).join('\n')}`
+    plan ? `Follow THIS outline, reviewed by the presenter: exactly ${plan.length} slides, in this order, one per item, each with its title (shortened only if too long), of the kind in [brackets] when there is one, and DEVELOPING its points — they say what the slide shows, they are not its text: turn them into full content (the code itself, the steps, the comparison, real examples):\n${plan.map((x, i) => `${i + 1}. ${x.below ? '(BELOW the previous one: "below": true) ' : ''}${x.kind ? `[${x.kind}] ` : ''}${x.title}${x.points?.length ? '\n' + x.points.map(p => `   - ${p}`).join('\n') : ''}`).join('\n')}`
       : `Number of slides: about ${count}`].filter(Boolean).join('\n') + TAILOR(opts.context);
   const src = withResearch(opts.source, opts.research);
   const source = src ? `\n\nBase the content ONLY on this document (keep its real facts, figures and terms; leave out references and acknowledgements):\n"""\n${String(src).slice(0, 60000)}\n"""` : '';
@@ -305,6 +320,7 @@ How to make it good:
 ${RICH}
 - "stats" and "chart" ONLY with real, meaningful numbers from the source (never counts like "1 scenario"); otherwise another kind.
 - "notes" on EVERY slide: what the speaker says, 3-6 natural spoken sentences (60-110 words) in first person, with the details and transitions that are not on the slide.
+- Slides below (decks of 6 slides or more): for the 1-3 ideas that are hardest to understand, right after the slide that states the idea add 1-2 slides with "below": true that go deeper — a worked example with real numbers, the steps one by one, a diagram, a frequent mistake and why. They are optional: the presenter goes down only if the audience needs it, so the main slides alone must still make sense; the main slide's notes end offering it ("if it isn't clear, below there is an example"), and the notes of a slide below end going back up. Never for easy ideas, the title or the closing.
 ${figs.length ? `- The document's own figures are attached (${figs.map(n => `attachment:${n}`).join(', ')}): show each important one on its own slide, kind "image" with "figure": N (the attachment's number) — its title says what it shows, bullets (0-2) the key point; no image_prompt.` : ''}
 ${opts.media === 'search' ? SEARCHED : opts.images ? '- Use 1-3 "image" slides with an image_prompt for generated pictures.' : figs.length ? '' : '- Do not use "image" slides.'}
 Write everything in ${opts.language || lang()}.` },
@@ -315,6 +331,8 @@ Write everything in ${opts.language || lang()}.` },
   // (Cleaned, and what is too much for one slide in two.)
   const specs = (res.slides || []).filter(s => s && typeof s === 'object').slice(0, 40).flatMap(s => splitSpec(prepareSpec(s)));
   if (!specs.length) throw new Error('EMPTY');
+  // (The outline's slides below keep their place, whatever the model wrote; then only where a deck can show them.)
+  if (plan && specs.length === plan.length) specs.forEach((sp, i) => { if (plan[i].below) sp.below = true; else delete sp.below; });
   // (Section slides as the instructions say, whatever the model did: none in a short deck, at most one every six.)
   for (let i = specs.length - 1, last = Infinity; i >= 0; i--) {
     if (specs[i].kind !== 'section') continue;
@@ -329,6 +347,7 @@ Write everything in ${opts.language || lang()}.` },
   // Measured (quality.js): a weak deck — mostly lists, thin ones, no code on a technical topic — gets its weak slides
   // made again, once, before anyone sees it.
   const how = { topic: opts.topic || str(res.title), sourced: !!(str(opts.source) || opts.research || /\d/.test(str(opts.context))), images: pictures(opts), given: (opts.attachments || []).length ? '' : [opts.context, opts.source, opts.research?.brief].map(str).join('\n').trim() };   // (the data as text — not when it came in a file the measure can't read)
+  const belowAt = specs.map(sp => !!sp.below);                // (the fixes below replace some specs: their place is kept)
   let q = deckQuality(specs, how); specs.qualityFirst = q;
   if (q.score < 80 || q.problems.some(p => ['invented-figures', 'off-code', 'no-picture', 'repeated'].includes(p.code))) {
     // (Made again, but kept only if better: a second pass sometimes turned good cards into lists.)
@@ -364,9 +383,11 @@ Write everything in ${opts.language || lang()}.` },
     }
     q = deckQuality(specs, how);
   }
+  specs.forEach((sp, i) => { if (belowAt[i]) sp.below = true; });
   // (A slide that came back with nothing — not even after making it again —: out; an empty slide is worse than none.)
   const blank = q.problems.find(p => p.code === 'empty');
   if (blank) { for (const i of [...blank.slides].sort((a, b) => b - a)) specs.splice(i, 1); q = deckQuality(specs, how); }
+  tidyBelow(specs);
   specs.title = str(res.title); specs.design = DECK_DESIGNS[res.design] ? res.design : null; specs.quality = q;
   return specs;
 }
@@ -391,6 +412,7 @@ Do not use "image". Write in ${opts.language || lang()}.` },
     const i = +s.i; if (!idx.includes(i) || !s || typeof s !== 'object') continue;
     const [sp] = splitSpec(prepareSpec(s)); if (!sp || sp.kind === 'image' || !hasContent(sp)) continue;   // (one that came back empty: the old one stays)
     if (!str(sp.notes)) sp.notes = specs[i].notes;
+    if (specs[i].below) sp.below = true; else delete sp.below;   // (made again in the same place)
     specs[i] = sp;
   }
 }

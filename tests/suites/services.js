@@ -498,6 +498,42 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.fetch = realFetch; R.ai.disconnectAi(); }
   });
 
+  await test('IA: diapositivas «hijas» (debajo de otra) para profundizar en lo difícil', async () => {
+    reset(); const W = frame.contentWindow, A = R.aiDeck, calls = []; let answer = {};
+    R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    const realFetch = W.fetch;
+    W.fetch = async (url, opts) => { const body = JSON.parse(opts.body); calls.push({ url, body });
+      return new W.Response(JSON.stringify({ choices: [{ message: { content: '```json\n' + JSON.stringify(answer) + '\n```' } }] })); };
+    try {
+      const n = t => ({ notes: 'Lo que digo en esta diapositiva, con sus detalles y la transición a la siguiente idea.' });
+      answer = { title: 'Fracciones', slides: [
+        { kind: 'title', title: 'Sumar fracciones', below: true, ...n() },                       // (the first: never below)
+        { kind: 'key_idea', title: 'Mismo denominador', statement: 'Se suman los numeradores y el denominador se queda igual.', below: true, ...n() },   // (under the title: no)
+        { kind: 'steps', title: 'Distinto denominador: busca el mcm', steps: [{ title: 'mcm', text: 'Calcula el mínimo común múltiplo de los denominadores' }, { title: 'Equivalentes', text: 'Convierte cada fracción a ese denominador' }, { title: 'Suma', text: 'Suma los numeradores y simplifica' }], ...n() },
+        { kind: 'steps', title: 'Ejemplo: 1/4 + 1/6', steps: [{ title: 'mcm(4, 6) = 12', text: '12 es el menor múltiplo común' }, { title: '3/12 + 2/12', text: 'Cada fracción con denominador 12' }, { title: '5/12', text: 'Se suman los numeradores' }], below: 'true', ...n() },
+        { kind: 'comparison', title: 'Error frecuente', columns: [{ heading: 'Mal', bullets: ['1/4 + 1/6 = 2/10'] }, { heading: 'Bien', bullets: ['1/4 + 1/6 = 5/12'] }], below: true, ...n() },
+        { kind: 'features', title: 'Para practicar', items: [{ icon: 'pencil', title: 'Fichas', text: 'Diez sumas con distinto denominador' }, { icon: 'users', title: 'En parejas', text: 'Uno calcula y otro comprueba' }, { icon: 'check', title: 'Corrección', text: 'En la pizarra, al final' }], ...n() },
+        { kind: 'closing', title: 'Gracias', below: true, ...n() }] };
+      const specs = await A.createDeck({ topic: 'Sumar fracciones', count: 7 });
+      const sys = calls.find(c => /PRESENT out loud/.test(c.body.messages[0].content)).body.messages[0].content;
+      assert(/"below": true/.test(sys) && /hardest to understand/.test(sys), 'a la IA se le pide profundizar debajo en lo difícil');
+      eq(specs.map(sp => sp.below ? 'B' : '-').join(''), '---BB--', 'debajo solo donde se puede (no la portada, ni bajo ella, ni el cierre)');
+      reset(); const n0 = R.state.deck.slides.length;
+      await A.insertSpecs(specs);
+      const S = R.state.deck.slides.slice(n0);
+      eq(S.map(s => s.vertical ? 'V' : '-').join(''), '---VV--', 'en la presentación, el ejemplo y el error quedan debajo de su diapositiva');
+      assert(/<section[^>]*>\s*<section/.test(R.io.buildHTML()), 'y al presentar forman una pila vertical');
+      // The outline: what goes below is shown, can be changed, and the slides follow it.
+      answer = { title: 'Fracciones', slides: [{ title: 'Portada', kind: 'title' }, { title: 'El mcm', kind: 'steps', points: ['p'] }, { title: 'Ejemplo resuelto', kind: 'steps', below: true, points: ['1/4 + 1/6'] }, { title: 'Gracias', kind: 'closing' }] };
+      const ol = await A.createOutline({ topic: 'Sumar fracciones', count: 4 });
+      eq(ol.slides.map(x => x.below ? 'B' : '-').join(''), '--B-', 'el esquema dice qué va debajo');
+      answer = { title: 'F', slides: [{ kind: 'title', title: 'Portada', ...n() }, { kind: 'bullets', title: 'El mcm', bullets: ['a', 'b', 'c'], ...n() }, { kind: 'bullets', title: 'Ejemplo resuelto', bullets: ['a', 'b', 'c'], ...n() }, { kind: 'closing', title: 'Gracias', ...n() }] }; calls.length = 0;
+      const sp2 = await A.createDeck({ topic: 'Sumar fracciones', outline: ol.slides });
+      assert(/3\. \(BELOW the previous one: "below": true\) \[steps\] Ejemplo resuelto/.test(calls[0].body.messages[1].content), 'al escribirla, se le dice cuál va debajo');
+      eq(sp2.map(sp => sp.below ? 'B' : '-').join(''), '--B-', 'y queda debajo aunque la IA lo olvide');
+    } finally { W.fetch = realFetch; }
+  });
+
   await test('IA avanzada: presentación completa, mejorar, agenda, preguntas y asistente', async () => {
     reset(); const W = frame.contentWindow, A = R.aiDeck, realFetch = W.fetch, calls = []; let answer = {}, seq = null;
     R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();

@@ -79,6 +79,7 @@ export function normalizeSpec(raw) {
   if (Number.isInteger(+sp.figure) && +sp.figure > 0) out.figure = +sp.figure;      // (a figure of the source document: attach.js pdfFigures)
   if (+sp.figureRatio > 0) out.figureRatio = +sp.figureRatio;                        // (its width / height: authoring.js insertSpecs)
   if (sp.columns === 2) out.columns = 2;
+  if (sp.below === true || sp.below === 'true') out.below = true;                  // (under the previous slide: authoring.js slideFromSpec)
   switch (kind) {
     case 'two_columns': case 'comparison': {
       const cols = Array.isArray(sp.columns) ? sp.columns.map(column).filter(Boolean)

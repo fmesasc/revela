@@ -213,9 +213,11 @@ export function openCreateDeck() {
   const drawOutline = () => {
     q('.ad-outline').hidden = !outline;
     if (!outline) return;
-    q('.ad-ol').innerHTML = outline.slides.map((x, i) => `<li data-i="${i}" style="margin:6px 0"><div style="display:flex;gap:4px;align-items:center">
+    // (A slide below the previous one — a «child», an optional deeper look: AI ▸ slides below — is shown indented.)
+    q('.ad-ol').innerHTML = outline.slides.map((x, i) => `<li data-i="${i}" data-below="${x.below ? 1 : ''}" style="margin:6px 0${x.below ? ';margin-inline-start:28px;padding-inline-start:8px;border-inline-start:3px solid var(--accent)' : ''}"><div style="display:flex;gap:4px;align-items:center">
       <input type="text" class="ad-ol-t" value="${esc(x.title)}" aria-label="${t('Título')}" style="flex:1;font-weight:600">
       <select class="ad-ol-k" aria-label="${t('Tipo de diapositiva')}" title="${t('Tipo de diapositiva')}" style="max-width:9.5em">${OUTLINE_KINDS.map(([k, l]) => `<option value="${k}"${(x.kind || '') === k ? ' selected' : ''}>${esc(t(l))}</option>`).join('')}</select>
+      <button type="button" class="mini2" data-below-t aria-pressed="${!!x.below}" title="${t('Debajo de la anterior: para profundizar solo si hace falta')}"${i ? '' : ' disabled'}${x.below ? ' style="color:var(--accent)"' : ''}><i class="ms">subdirectory_arrow_right</i></button>
       <button type="button" class="mini2" data-mv="-1" title="${t('Subir')}"${i ? '' : ' disabled'}><i class="ms">arrow_upward</i></button>
       <button type="button" class="mini2" data-mv="1" title="${t('Bajar')}"${i < outline.slides.length - 1 ? '' : ' disabled'}><i class="ms">arrow_downward</i></button>
       <button type="button" class="mini2" data-rm title="${t('Quitar')}"><i class="ms">close</i></button></div>
@@ -225,12 +227,13 @@ export function openCreateDeck() {
   };
   const readOutline = () => { if (!outline) return;
     q('.ad-ol').querySelectorAll('li').forEach((li, i) => { const kind = li.querySelector('.ad-ol-k').value;
-      outline.slides[i] = { title: li.querySelector('.ad-ol-t').value.trim(), ...(kind && { kind }), points: li.querySelector('.ad-ol-p').value.split('\n').map(x => x.trim()).filter(Boolean) }; });
+      outline.slides[i] = { title: li.querySelector('.ad-ol-t').value.trim(), ...(kind && { kind }), ...(li.dataset.below && i && { below: true }), points: li.querySelector('.ad-ol-p').value.split('\n').map(x => x.trim()).filter(Boolean) }; });
     outline.slides = outline.slides.filter(x => x.title); };
   q('.ad-ol').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return; readOutline();
     const i = +b.closest('li').dataset.i, L = outline.slides;
     if (b.dataset.mv) { const j = i + +b.dataset.mv; [L[i], L[j]] = [L[j], L[i]]; } else if (b.hasAttribute('data-rm')) L.splice(i, 1);
+    else if (b.hasAttribute('data-below-t')) { if (L[i].below) delete L[i].below; else if (i) L[i].below = true; }
     drawOutline();
   });
   q('.ad-ol-add').addEventListener('click', () => { readOutline(); outline.slides.push({ title: t('Nueva diapositiva'), points: [] }); drawOutline(); q('.ad-ol li:last-child .ad-ol-t')?.select(); });

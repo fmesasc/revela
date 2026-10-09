@@ -64,6 +64,8 @@ Whoever has the presentation open in Revela sees the changes within seconds, and
 
 A slide is `{ "kind": "…", …fields }`. Every kind may have `notes` (what the presenter says), `icon`, and a picture:
 `image_url` (https) or `image_search` (a few words; a real photo from Unsplash or Pexels is placed, with its author).
+`"below": true` puts a slide under the previous one, one level down (a vertical stack when presenting): an optional
+deeper look — a worked example, a diagram — that the presenter opens only if needed.
 
 | kind | fields |
 |---|---|
