@@ -101,6 +101,12 @@ export function tallyVotes(poll, votes) {
     pics.sort(function (a, b) { return b.time - a.time; });
     return { counts: [], words: {}, voters: voters, average: 0, pics: pics };
   }
+  if (kind === 'audio') {                              // (voice answers: clips to play, on a wall, the newest first)
+    var clips = [];
+    for (var ak in votes) { var av = votes[ak]; if (av && /^data:audio\/(webm|ogg|mp4|mpeg|aac)[;,]/.test(av.aud || '')) { voters++; clips.push({ id: ak, aud: av.aud, time: av.time || 0, n: av.n || '', d: +av.d || 0 }); } }
+    clips.sort(function (a, b) { return b.time - a.time; });
+    return { counts: [], words: {}, voters: voters, average: 0, clips: clips };
+  }
   if (kind === 'number') {
     var vals = [];
     for (var nk in votes) { var nv = +votes[nk]; if (isFinite(nv)) vals.push(nv); }
@@ -174,6 +180,33 @@ export function pollResultsHTML(poll, res, accent, L) {
     }
     return s + '</svg>';
   };
+  // A race (display 'race', Nearpod's «Time to Climb»): a lane each, its runner towards the finish — every quiz's
+  // points (res.goal) — from the points it had (res.prev: { id: pts }; none: still, as in the editor and thumbnails)
+  // to the new ones. Its keyframes in a <style> of their own (the rest is inline), and still for whoever asks for less motion.
+  var race = function (list, prev) {
+    var AV = ['🚀', '🐢', '🦊', '🐙', '🦄', '🐝', '🐸', '🐼', '🦁', '🐧', '🐬', '🦉'], hi = 1;
+    list.forEach(function (r) { hi = Math.max(hi, r.pts, (prev || {})[r.id] || 0); });
+    hi = res.goal ? Math.max(+res.goal, hi) : hi * 1.15;
+    // (Inside the track's rounded ends, so a runner at the start or at the finish is whole.)
+    var pc = function (v) { return 'calc(.75em + (100% - 1.5em) * ' + Math.max(0, Math.min(1, v / hi)).toFixed(3) + ')'; };
+    return '<style>@keyframes rvRaceW{from{width:var(--rv-f)}}@keyframes rvRaceL{from{left:var(--rv-f)}}@media (prefers-reduced-motion:reduce){.rv-race *{animation:none!important}}</style>'
+      + '<div class="rv-race" style="display:flex;flex-direction:column;gap:.3em;font-size:.6em;text-align:left">' + list.map(function (r, i) {
+        var h = 0; String(r.id).split('').forEach(function (c) { h = (h * 31 + c.charCodeAt(0)) % 9973; });
+        var col = cols[h % cols.length], an = function (k) { return prev ? ';animation:' + k + ' 1.6s .3s cubic-bezier(.2,.7,.3,1) both;--rv-f:' + pc(prev[r.id] || 0) : ''; };
+        return '<div style="display:flex;align-items:center;gap:.4em"><b style="flex:0 0 1.7em;text-align:right">' + (['🥇', '🥈', '🥉'][i] || (i + 1) + '.') + '</b>'
+          + '<span style="flex:0 1 24%;min-width:3em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + r.label + '</span>'
+          + '<div style="position:relative;flex:1;height:1.5em;margin-right:1.2em;background:#8882;border-radius:.75em">'
+          + '<div style="position:absolute;left:0;top:0;bottom:0;width:' + pc(r.pts) + ';background:' + col + ';opacity:.6;border-radius:.75em' + an('rvRaceW') + '"></div>'
+          + '<span style="position:absolute;top:50%;left:' + pc(r.pts) + ';transform:translate(-50%,-50%);font-size:1.3em;line-height:1' + an('rvRaceL') + '">' + AV[h % AV.length] + '</span>'
+          + '<span aria-hidden="true" style="position:absolute;right:-1.2em;top:50%;transform:translateY(-50%)">🏁</span></div>'
+          + '<b style="flex:0 0 3.2em;text-align:right">' + r.pts + '</b></div>'; }).join('') + '</div>';
+  };
+  var runners = function (list, top) { var st = res.stars || {}; return list.slice(0, top).map(function (r, i) { var s = st[r.id]; return { id: r.id, label: nick(r, i) + (s ? ' <small>⭐' + s.stars + '</small>' : ''), pts: r.pts }; }); };
+  if (kind === 'board' && display === 'race') {
+    // (By teams, when they play so: the teams race — each its average, as in the list —; else the ten best.)
+    var lanes = (res.teams || []).length ? res.teams.map(function (x) { return { id: 'team:' + x.team, label: '<b>' + esc(x.team) + '</b> <small>(' + x.n + ')</small>', pts: x.pts }; }) : runners(res.board || [], 10);
+    return lanes.length ? race(lanes, res.prev) : '<div style="opacity:.6">' + T('Aún no hay puntos: juega los cuestionarios.') + '</div>';
+  }
   if (kind === 'board') {
     var bl = res.board || [], st = res.stars || {};
     // (By teams, when they play so: each team's average, so a big team doesn't win for being big.)
@@ -191,7 +224,7 @@ export function pollResultsHTML(poll, res, accent, L) {
     return '<div style="display:flex;flex-direction:column;justify-content:center;gap:.4em;min-height:80%">' + labels.map(function (l, i) { var ok = right.indexOf(i) >= 0;
       return '<div style="display:flex;align-items:center;gap:.5em;font-size:.7em;opacity:' + (ok ? 1 : .55) + '"><div style="flex:0 1 40%;min-width:22%;text-align:right;overflow-wrap:anywhere;line-height:1.15">' + (ok ? '✓ ' : '') + esc(l) + '</div>'
         + '<div style="flex:1;background:#8882;border-radius:.2em;height:1.3em"><div style="height:100%;width:' + (counts[i] * 100 / max) + '%;background:' + (ok ? '#26890c' : tiles[i % tiles.length]) + ';border-radius:.2em"></div></div>'
-        + '<div style="flex:0 0 2em;font-weight:700">' + counts[i] + '</div></div>'; }).join('') + '</div>' + ((res.board || []).length ? ranking(res.board, 5) : '');
+        + '<div style="flex:0 0 2em;font-weight:700">' + counts[i] + '</div></div>'; }).join('') + '</div>' + ((res.board || []).length ? (display === 'race' ? race(runners(res.board, 5), res.prev) : ranking(res.board, 5)) : '');
   }
   if (['order', 'match', 'gaps', 'label', 'sort', 'crossword', 'wordsearch', 'memory'].indexOf(kind) >= 0) {
     var two = function (l) { var x = String(l).split('='); return [x[0].trim(), x.slice(1).join('=').trim()]; };
@@ -237,6 +270,16 @@ export function pollResultsHTML(poll, res, accent, L) {
     return '<div style="display:grid;grid-template-columns:repeat(' + per + ',1fr);gap:.3em;align-content:start">' + (pl.length ? pl.map(function (x) {
       return '<figure style="margin:0;position:relative"><img src="' + esc(x.img) + '" alt="" style="width:100%;aspect-ratio:4/3;object-fit:' + (kind === 'draw' ? 'contain;background:#fff' : 'cover') + ';border-radius:.25em;display:block">'
         + (x.n ? '<figcaption style="position:absolute;left:.2em;bottom:.2em;font-size:.4em;background:#0009;color:#fff;padding:0 .3em;border-radius:.2em">' + esc(x.n) + '</figcaption>' : '') + '</figure>'; }).join('')
+      : '<span style="opacity:.5;font-size:.7em;grid-column:1/-1">' + T('Las respuestas del público aparecerán aquí') + '</span>') + '</div>' + foot;
+  }
+  if (kind === 'audio') {
+    // (A tile per voice, its position in data-rv-clip: the presentation keeps the clips and plays the one clicked —
+    // the sound itself stays out of this HTML, which is redrawn at every answer and sent to the phones in classroom mode.)
+    var al = (res.clips || []).slice(0, 24), aper = al.length > 12 ? 4 : al.length > 4 ? 3 : 2, lis = esc(T('Escuchar')).replace(/"/g, '&quot;');
+    return '<div style="display:grid;grid-template-columns:repeat(' + aper + ',1fr);gap:.3em;align-content:start">' + (al.length ? al.map(function (x, i) {
+      return '<button type="button" data-rv-clip="' + i + '" aria-label="' + lis + (x.n ? ' · ' + esc(x.n).replace(/"/g, '&quot;') : '') + '" style="font:inherit;font-size:.5em;display:flex;align-items:center;gap:.45em;min-width:0;padding:.45em .6em;border:0;border-radius:.4em;background:'
+        + cols[i % cols.length] + ';color:#fff;cursor:pointer;text-align:left"><b class="rv-clip-ic" style="flex:0 0 1.9em;height:1.9em;border-radius:50%;background:#fff4;display:grid;place-items:center">▶</b>'
+        + '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (x.n ? esc(x.n) : '🎤') + '</span>' + (x.d ? '<small style="opacity:.85">' + x.d + ' s</small>' : '') + '</button>'; }).join('')
       : '<span style="opacity:.5;font-size:.7em;grid-column:1/-1">' + T('Las respuestas del público aparecerán aquí') + '</span>') + '</div>' + foot;
   }
   if (kind === 'number') {
@@ -299,7 +342,7 @@ export function pollResultsHTML(poll, res, accent, L) {
 }
 
 // The results' words in the interface's language (for pollResultsHTML, also in exported pages).
-const POLL_WORDS = ['intentos', 'La IA está corrigiendo…', 'Para corregir con IA, conéctala en el editor.', 'No se pudo corregir.', 'Nivel', '¿A quién le toca?', 'Clic para cerrar · N para otra vez', 'Aún no hay nadie con nombre: que lo escriban al entrar en la votación.', 'Las palabras del público aparecerán aquí', 'Las respuestas del público aparecerán aquí', 'Media', 'Mediana', 'Respuesta', 'voto', 'votos', 'respuesta', 'respuestas', 'Jugador', 'Aún no hay puntos: juega los cuestionarios.', '% de aciertos', 'Clic para ver las soluciones', 'Escanea el QR y envía tu pregunta…', 'preguntas', 'esperando aprobación', 'Aprobar', 'Ocultar', 'Descartar', 'Aún no hay preguntas.', 'Moderar las preguntas', 'Las nuevas esperan aquí a que las apruebes; en la pantalla solo se ve cuántas esperan.'];
+const POLL_WORDS = ['intentos', 'La IA está corrigiendo…', 'Para corregir con IA, conéctala en el editor.', 'No se pudo corregir.', 'Nivel', '¿A quién le toca?', 'Clic para cerrar · N para otra vez', 'Aún no hay nadie con nombre: que lo escriban al entrar en la votación.', 'Las palabras del público aparecerán aquí', 'Las respuestas del público aparecerán aquí', 'Media', 'Mediana', 'Respuesta', 'voto', 'votos', 'respuesta', 'respuestas', 'Jugador', 'Aún no hay puntos: juega los cuestionarios.', '% de aciertos', 'Clic para ver las soluciones', 'Escanea el QR y envía tu pregunta…', 'preguntas', 'esperando aprobación', 'Aprobar', 'Ocultar', 'Descartar', 'Aún no hay preguntas.', 'Moderar las preguntas', 'Las nuevas esperan aquí a que las apruebes; en la pantalla solo se ve cuántas esperan.', 'Escuchar'];
 export const pollLabels = () => Object.fromEntries(POLL_WORDS.map(w => [w, t(w)]));
 
 // Markup of a poll in the editor and thumbnails: question, current results
@@ -310,6 +353,8 @@ export const GRIDS = ['crossword', 'wordsearch'];
 export function pollEditorHTML(b, accents) {
   const res = b.kind === 'board' ? { board: quizTotals(state.deck.slides.flatMap(s => s.blocks).filter(x => x.type === 'poll' && GRADED.includes(x.kind)).map(p => ({ poll: p, votes: savedVotes(p.pollId) }))) }
     : (r => ({ ...r, showRight: true, revealed: (b.kind === 'quiz' && r.voters > 0) || ACTIVITIES.includes(b.kind), ...(GRIDS.includes(b.kind) && { layout: publicActivity(b, true) }) }))(tallyVotes(b, savedVotes(b.pollId)));
+  // (A race runs towards every quiz's points: its finish line.)
+  if (b.display === 'race') res.goal = 1000 * state.deck.slides.flatMap(s => s.blocks).filter(x => x.type === 'poll' && GRADED.includes(x.kind)).length;
   return `<div style="width:100%;height:100%;display:grid;grid-template-columns:1fr auto;gap:1em;font-size:${b.fontSize || 32}px${/^#[0-9a-f]{3,8}$/i.test(b.color || '') ? ';color:' + b.color : ''}">`
     + `<div style="display:flex;flex-direction:column;min-width:0"><div style="font-weight:700;margin-bottom:.5em">${esc(b.question || '')}</div>`
     + `<div style="flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center">${pollResultsHTML(b, res, accents, pollLabels())}</div></div>`
@@ -335,6 +380,7 @@ export function votesCSV(poll) {
   if (poll.kind === 'word') return 'palabra,votos\n' + Object.entries(res.words).map(([w, c]) => `${q(w)},${c}`).join('\n');
   if (poll.kind === 'open') return 'respuesta\n' + res.texts.map(x => q(x.text)).join('\n');
   if (poll.kind === 'draw' || poll.kind === 'photo') return 'participante\n' + res.pics.map(x => q(x.n || '—')).join('\n');
+  if (poll.kind === 'audio') return 'participante,segundos\n' + res.clips.map(x => `${q(x.n || '—')},${x.d || ''}`).join('\n');
   if (poll.kind === 'number') return 'valor\n' + Object.values(savedVotes(poll.pollId)).filter(v => isFinite(+v)).map(Number).join('\n');
   if (poll.kind === 'point') return 'x %,y %\n' + res.points.map(p => `${p.x},${p.y}`).join('\n');
   if (poll.kind === 'memory') return 'participante,puntos,aciertos,intentos\n' + res.board.map(r => `${q(r.n || r.id)},${r.pts},${Math.round(r.pts / 10)} %,${r.tries}`).join('\n');

@@ -54,9 +54,9 @@ standard, self-contained web page.
   previous", sounds, Morph and 22 transitions.
 - **Presenting:** speaker view, phone remote (QR), pen and highlighter, laser,
   live captions, rehearse timings and recording.
-- **Live polls with QR**, **quizzes with points and a leaderboard** and
-  **audience Q&A**: people answer from their phones and results update
-  instantly.
+- **Live polls with QR**, **quizzes with points and a leaderboard** (a list
+  or an animated race) and **audience Q&A**: people answer from their phones
+  (also drawing, with a photo or with their voice) and results update instantly.
 - **Live data:** Power BI, Looker Studio, Tableau, Google Sheets, Grafana…
   dashboards, and charts linked to a CSV.
 - **AI via OpenRouter** (your own account): whole decks from a topic or a

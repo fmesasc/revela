@@ -57,7 +57,8 @@ reveal.js, de modo que el resultado es una página web estándar y autónoma.
 - **Presentar:** vista del orador, mando desde el móvil (QR), lápiz y
   resaltador, láser, subtítulos en directo, ensayar intervalos y grabar.
 - **Votaciones en directo con QR**, **concursos con puntos y clasificación**
-  y **preguntas del público**: el público responde desde el móvil y los
+  (una lista o una carrera animada) y **preguntas del público**: el público
+  responde desde el móvil (también dibujando, con una foto o con su voz) y los
   resultados se actualizan al instante.
 - **Datos en vivo:** paneles de Power BI, Looker Studio, Tableau, Google
   Sheets, Grafana… y gráficos enlazados a un CSV.

@@ -167,6 +167,8 @@ the origin of every requirement is traceable.
 - ✅ Live captions while presenting (browser speech recognition, CC button or C key, asks first because Chrome/Edge send audio to their speech service) `PP`
 - ✅ Present in a video call (Google Meet, Microsoft Teams, Zoom): the presentation in its own window to share, speaker notes in another `PP·GS`
 - ✅ Graded activities from the phone — put in order, match pairs, fill in the gaps, label a picture, sort into groups, crossword (laid out by Revela; the phones get the grid and the clues, never the words), word search (words or hints) and memory pairs (practice: the phone needs both sides of the cards); the answers never reach the phones, points join the quiz leaderboard `GS`
+- ✅ Voice answers from the phone — each person records up to 30 s (Opus at 24 kbps, AAC on Safari), sent straight to the presenter like photos and drawings; a wall of tiles to play, newest first; the presenter's browser keeps the newest (~1.2 MB) `—`
+- ✅ Leaderboard as an animated race (Nearpod's «Time to Climb») — each player, or each team, runs towards the finish (every quiz's points) from where it was last seen; also on a quiz's reveal; still for reduced motion `—`
 - ✅ Classroom mode — students follow the slides on their own device at the presenter's pace (code and QR in a corner), answer there; results per student with CSV `—`
 - ✅ Live captions on the audience's devices, translated per person (the browser's own translator, or the presenter's AI) `PP`
 - ✅ Self-paced mode — quizzes and activities answered inside the slides, without phones, to practise or as homework `—`

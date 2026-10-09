@@ -263,8 +263,47 @@ function renderActivity(box) {
   box.nameField = name;
 }
 
+// A voice answer: recorded here (MediaRecorder: Opus at 24 kbps, mono — Safari, AAC in MP4), AUD_MAX seconds at most,
+// listened to before sending. It travels as a data: URL, some 120 KB for 30 s, as the photos do (the presentation takes
+// up to 300 000 characters: PeerJS splits it into the data channel's chunks).
+const AUD_MAX = 30;
+let audStop = null;
+function renderAudio(box) {
+  const btn = el('button', { className: 'opt', textContent: '🎙️ Grabar', style: 'text-align:center;font-size:20px' });
+  const info = el('p'), err = el('p', { className: 'err', role: 'alert' }), play = el('audio', { controls: true, hidden: true, style: 'width:100%' });
+  let rec = null, stream = null, timer = null, t0 = 0;
+  const stop = () => { clearInterval(timer); if (rec?.state === 'recording') rec.stop(); };
+  audStop = () => { stop(); stream?.getTracks().forEach(x => x.stop()); };
+  // (Why the microphone can't be used, said so that a pupil can fix it.)
+  const why = e => e?.name === 'NotAllowedError' || e?.name === 'SecurityError' ? 'No hay permiso para usar el micrófono. Permítelo en los ajustes del navegador (el candado o «aA» junto a la dirección) y vuelve a pulsar «Grabar».'
+    : e?.name === 'NotFoundError' || e?.name === 'OverconstrainedError' ? 'No se encuentra ningún micrófono en este dispositivo.'
+    : e?.name === 'NotReadableError' ? 'El micrófono lo está usando otra aplicación (una llamada, otra grabación). Ciérrala y vuelve a intentarlo.' : 'No se pudo usar el micrófono.';
+  btn.addEventListener('click', async () => {
+    if (rec?.state === 'recording') { stop(); return; }
+    err.textContent = '';
+    if (!window.MediaRecorder || !navigator.mediaDevices?.getUserMedia) { err.textContent = 'Este navegador no puede grabar audio. Prueba con uno actualizado (Chrome, Safari o Firefox).'; return; }
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } }); } catch (e) { err.textContent = why(e); return; }
+    const mt = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4'].find(x => MediaRecorder.isTypeSupported?.(x)) || '', parts = [];
+    try { rec = new MediaRecorder(stream, { ...(mt && { mimeType: mt }), audioBitsPerSecond: 24000 }); } catch { rec = new MediaRecorder(stream); }
+    rec.ondataavailable = e => { if (e.data?.size) parts.push(e.data); };
+    rec.onstop = () => {
+      stream.getTracks().forEach(x => x.stop()); clearInterval(timer);
+      // (Firefox says «audio/ogg; codecs=opus»: without spaces, as the presentation expects.)
+      const d = Math.max(1, Math.round((Date.now() - t0) / 1000)), fr = new FileReader();
+      fr.onload = () => { const src = String(fr.result); btn.textContent = '🎙️ Grabar otra vez';
+        if (src.length > 300000) { answer = null; info.textContent = ''; err.textContent = 'La grabación ocupa demasiado para enviarla: grábala más corta.'; return; }
+        answer = { aud: src, n: nick(), d }; play.src = src; play.hidden = false; info.textContent = `Grabado: ${d} s. Escúchalo y, si te gusta, pulsa «Enviar».`; };
+      fr.readAsDataURL(new Blob(parts, { type: String(rec.mimeType || mt || 'audio/webm').replace(/\s+/g, '') }));
+    };
+    rec.start(1000); t0 = Date.now(); answer = null; play.hidden = true; play.removeAttribute('src');
+    const tick = () => { const s = Math.floor((Date.now() - t0) / 1000); btn.textContent = `■ Parar (${Math.max(0, AUD_MAX - s)} s)`; if (s >= AUD_MAX) stop(); };
+    tick(); timer = setInterval(tick, 250); info.textContent = 'Grabando… habla cerca del móvil.';
+  });
+  box.append(el('p', { textContent: `Graba tu respuesta (hasta ${AUD_MAX} segundos):` }), btn, info, play, err);
+}
+
 function renderAnswers() {
-  const box = $('#answers'); box.innerHTML = '';
+  const box = $('#answers'); box.innerHTML = ''; audStop?.(); audStop = null;
   $('#send').hidden = poll.kind === 'qa';
   if (poll.kind === 'quiz') { renderQuiz(box); return; }
   if (poll.pub) { renderActivity(box); return; }
@@ -321,6 +360,7 @@ function renderAnswers() {
       im.src = URL.createObjectURL(f); });
     box.append(btn, pick, prev); return;
   }
+  if (poll.kind === 'audio') { renderAudio(box); return; }
   if (poll.kind === 'point') {                           // (a tap on the picture: the point, in % of it)
     const pic = el('div', { className: 'act-pic', style: 'cursor:crosshair' }, el('img', { src: poll.image || '', alt: '' })), dot = el('b', { className: 'act-num', textContent: '●', hidden: true });
     pic.append(dot);
@@ -374,6 +414,7 @@ const escH = x => String(x ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': 
 function myAnswer(p, a, extra = {}) {
   const o = p.options || [];
   if (a && typeof a === 'object' && a.img) return { img: a.img };
+  if (a && typeof a === 'object' && a.aud) return { aud: a.aud };
   if (p.kind === 'multi') return { text: (a || []).map(i => o[i]).join(' · ') };
   if (p.kind === 'rating') return { text: '★'.repeat(+a || 0) };
   if (p.kind === 'number') return { text: `${a}${p.unit ? ' ' + p.unit : ''}` };
@@ -390,7 +431,7 @@ $('#mine').addEventListener('click', () => {
   const when = new Date().toLocaleString();
   const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mi resumen</title>
 <style>body{font:17px/1.5 system-ui,sans-serif;max-width:720px;margin:24px auto;padding:0 16px;color:#1d1f24}h1{font-size:24px}li{margin:0 0 18px}b{display:block}small{color:#666}img{max-width:100%;border-radius:8px;border:1px solid #ddd}.r{color:#26890c}</style></head>
-<body><h1>Mi resumen</h1><p><small>${escH(nick() || '')} · ${escH(when)} · Revela</small></p><ol>${[...mine.values()].map(m => `<li><b>${escH(m.q)}</b>${m.img ? `<img src="${escH(m.img)}" alt="">` : `<div>${escH(m.text)}</div>`}${m.res ? `<div class="r">${escH(m.res)}</div>` : ''}</li>`).join('')}</ol></body></html>`;
+<body><h1>Mi resumen</h1><p><small>${escH(nick() || '')} · ${escH(when)} · Revela</small></p><ol>${[...mine.values()].map(m => `<li><b>${escH(m.q)}</b>${m.img ? `<img src="${escH(m.img)}" alt="">` : m.aud ? `<audio controls src="${escH(m.aud)}"></audio>` : `<div>${escH(m.text)}</div>`}${m.res ? `<div class="r">${escH(m.res)}</div>` : ''}</li>`).join('')}</ol></body></html>`;
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([html], { type: 'text/html' })), download: 'mi-resumen.html' });
   document.body.append(a); a.click(); a.remove();
 });

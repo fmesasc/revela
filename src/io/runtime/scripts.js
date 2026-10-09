@@ -31,7 +31,12 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
  function all(){return [].slice.call(document.querySelectorAll('.rv-poll'));}
  function def(el){try{return JSON.parse(el.getAttribute('data-poll'));}catch(e){return null;}}
  function load(id){try{return JSON.parse(localStorage.getItem('revela.poll.'+id))||{};}catch(e){return {};}}
- function store(id){try{localStorage.setItem('revela.poll.'+id,JSON.stringify(votes[id]));}catch(e){}}
+ function store(id){try{localStorage.setItem('revela.poll.'+id,JSON.stringify(kept(id)));}catch(e){}}
+ // Voice answers: all of them while presenting, but only the newest kept in this browser — up to AUDKEEP characters, some
+ // ten clips of 30 s — since localStorage holds some 5 MB for the whole site and a full one keeps nothing more.
+ var AUDKEEP=1200000;
+ function kept(id){var o=votes[id]||{},ks=Object.keys(o);if(!ks.some(function(k){return o[k]&&o[k].aud;}))return o;var out={},sz=0,full=false;
+  ks.sort(function(a,b){return (o[b].time||0)-(o[a].time||0);}).forEach(function(k){var n=String(o[k].aud||'').length;if(!full&&sz+n<=AUDKEEP){sz+=n;out[k]=o[k];}else full=true;});return out;}
  function V(id){return votes[id]||(votes[id]=load(id));}
  // Teams (who is in which, kept like the votes) and stars: one for each poll answered and one more for each right
  // (a quiz right, an activity all right); a level every STEP stars (ClassPoint's stars and levels).
@@ -62,7 +67,26 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
   if(ACT.indexOf(p.kind)>=0)r.revealed=!!revealed[p.pollId];
   if(p.kind==='crossword'||p.kind==='wordsearch')r.layout=LAY[p.pollId]||(LAY[p.pollId]=publicActivity(p,true));   // (the grid on the screen, laid out once)
   if(r.board)r.board=r.board.filter(function(x){return !(ad(x.id)||{}).noRank;});
-  el.querySelector('.rv-poll-res').innerHTML=render(p,r,ACC,LBL);}
+  // (A race: towards every quiz's points; a quiz's from before it, the leaderboard's from when it was last on screen.)
+  if(p.display==='race'&&r.board){r.goal=quizzes().length*1000;r.prev=p.kind==='board'?(el._seen||{}):ptsOf(totals(quizzes().filter(function(x){return x.poll.pollId!==p.pollId;})),[]);}
+  el.querySelector('.rv-poll-res').innerHTML=render(p,r,ACC,LBL);
+  if(p.kind==='board'&&p.display==='race'&&onScreen(el))el._seen=ptsOf(r.board,r.teams);
+  if(p.kind==='audio'){el._clips=r.clips;mark(el);}}
+ function ptsOf(board,teams){var s={};board.forEach(function(x){s[x.id]=x.pts;});(teams||[]).forEach(function(x){s['team:'+x.team]=x.pts;});return s;}
+ function onScreen(el){var s=Reveal.isReady&&Reveal.isReady()&&Reveal.getCurrentSlide();return !!(s&&s.contains(el));}
+ // (Arriving at a race: drawn again, so it runs now — it may have been drawn, and run, while out of sight.)
+ function races(s){if(s)[].forEach.call(s.querySelectorAll('.rv-poll'),function(e){var q=def(e);if(q&&q.display==='race')paint(e);});}
+ // Voice answers played on a click on their tile, in one player outside the results: the wall, redrawn at each new
+ // answer, doesn't cut the one playing (marked ■). Another click, or leaving the slide, stops it.
+ var clip=null,clipOn=null;
+ function mark(el){if(!el._clips)return;[].forEach.call(el.querySelectorAll('[data-rv-clip]'),function(b){var c=el._clips[+b.getAttribute('data-rv-clip')],on=!!(c&&clipOn&&c.id===clipOn);
+  b.style.outline=on?'.25em solid currentColor':'';b.setAttribute('aria-pressed',on?'true':'false');var ic=b.querySelector('.rv-clip-ic');if(ic)ic.textContent=on?'\u25A0':'\u25B6';});}
+ function stopClip(){if(clip)clip.pause();clipOn=null;all().forEach(mark);}
+ document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-rv-clip]'),el=b&&b.closest('.rv-poll'),c=el&&el._clips&&el._clips[+b.getAttribute('data-rv-clip')];if(!c)return;
+  e.stopPropagation();e.preventDefault();
+  if(!clip){clip=document.createElement('audio');clip.id='rv-clip';clip.hidden=true;document.body.appendChild(clip);clip.addEventListener('ended',function(){clipOn=null;all().forEach(mark);});}
+  if(clipOn===c.id){stopClip();return;}
+  clip.src=c.aud;clipOn=c.id;var pr=clip.play();if(pr&&pr.catch)pr.catch(function(){});all().forEach(mark);},true);
  function reveal(p){if(revealed[p.pollId])return;revealed[p.pollId]=true;all().forEach(paint);
   var board=totals(quizzes()),mine=tally(p,V(p.pollId)).board;
   conns.forEach(function(c){if(!c.voter)return;var m=mine.filter(function(x){return x.id===c.voter;})[0],k=board.map(function(x){return x.id;}).indexOf(c.voter);
@@ -84,6 +108,7 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
  function js(src){return new Promise(function(ok,ko){var s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=ko;document.head.appendChild(s);});}
  function clean(p,a){if(p.kind==='word')return String(a||'').slice(0,60);
   if(p.kind==='open'){var t=String(a||'').trim().slice(0,200);return t?{t:t,time:Date.now()}:null;}
+  if(p.kind==='audio'){var au=String(a&&a.aud||'');return /^data:audio\\/(webm|ogg|mp4|mpeg|aac)(;codecs=[a-z0-9.]+)?;base64,[A-Za-z0-9+\\/=]+$/.test(au)&&au.length<=300000?{aud:au,time:Date.now(),n:String(a.n||'').slice(0,24),d:Math.max(0,Math.min(60,Math.round(+a.d||0)))}:null;}
   if(p.kind==='draw'||p.kind==='photo'){var im=String(a&&a.img||'');return /^data:image\\/(png|jpeg|webp);base64,[A-Za-z0-9+\\/=]+$/.test(im)&&im.length<=300000?{img:im,time:Date.now(),n:String(a.n||'').slice(0,24)}:null;}
   if(p.kind==='number'){var x=+a,lo=isFinite(+p.min)?+p.min:-1e12,hi=isFinite(+p.max)?+p.max:1e12;return a!==''&&a!=null&&isFinite(x)&&x>=lo&&x<=hi?x:null;}
   if(p.kind==='point'){var px=+(a&&a.x),py=+(a&&a.y);return isFinite(px)&&isFinite(py)&&px>=0&&px<=100&&py>=0&&py<=100?{x:Math.round(px*10)/10,y:Math.round(py*10)/10}:null;}
@@ -169,6 +194,8 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
  document.addEventListener('click',function(e){var el=e.target.closest&&e.target.closest('.rv-poll');var p=el&&def(el);if(p&&((p.kind==='quiz'&&started[p.pollId])||ACT.indexOf(p.kind)>=0)){e.stopPropagation();if(revealed[p.pollId]&&ACT.indexOf(p.kind)>=0)return;reveal(p);}},true);
  js(${JSON.stringify(QRCODE)}).catch(function(){}).then(function(){return js(${JSON.stringify(PEERJS)});}).then(function(){start(0);});
  Reveal.on('slidechanged',broadcast);
+ Reveal.on('slidechanged',function(ev){stopClip();races(ev.currentSlide);});
+ if(Reveal.isReady())races(Reveal.getCurrentSlide());else Reveal.on('ready',function(){races(Reveal.getCurrentSlide());});
  // Classroom: the slide to every device, as it changes (and its fragments).
  function css(){return [].slice.call(document.querySelectorAll('link[rel=stylesheet],style')).map(function(n){return n.outerHTML;}).join('\\n');}
  // (The slide's polls without their answers — an activity's options are its solution, a quiz's has the right one —: the

@@ -1048,6 +1048,142 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { f.remove(); URL.revokeObjectURL(fake); URL.revokeObjectURL(noqr); }
   });
 
+  await test('respuesta de voz: el móvil graba, la pantalla las pone en un muro para escucharlas y guarda las más recientes', async () => {
+    const W = frame.contentWindow, P = await W.eval("import('/src/features/live/poll.js')"), { ASYNC_KINDS } = await W.eval("import('/src/features/live/answers.js')");
+    const AUD = (n, c = 'A') => 'data:audio/webm;codecs=opus;base64,' + c.repeat(n);
+    let r = P.tallyVotes({ kind: 'audio' }, { a: { aud: AUD(8), time: 1, n: 'Ana', d: 4 }, b: { aud: 'data:text/html,x', time: 9 }, c: { aud: 'data:audio/mp4;base64,BB', time: 2 } });
+    eq(r.voters + '|' + r.clips.map(x => x.id).join(), '2|c,a', 'solo audio, las más recientes primero');
+    const wall = P.pollResultsHTML({ kind: 'audio' }, r, null, null);
+    assert(/data-rv-clip="1"[^>]*aria-label="Escuchar · Ana"/.test(wall) && /4 s/.test(wall) && !/data:audio/.test(wall), 'un botón por voz, con su nombre y su duración, sin el sonido dentro: ' + wall.slice(0, 200));
+    assert(!ASYNC_KINDS.includes('audio'), 'no se ofrece para responder más tarde con un enlace (iría a la nube)');
+    // In the editor: its kind, its help, the voices kept to listen to, and the CSV.
+    reset(); R.poll.addPoll({ kind: 'audio', question: '¿Cómo se dice «hola»?', options: [] }); const b = last();
+    W.localStorage.setItem('revela.poll.' + b.pollId, JSON.stringify({ v1: { aud: AUD(8), time: 5, n: 'Ana', d: 3 }, v2: { aud: AUD(8, 'B'), time: 6, n: 'Luis "L"', d: 7 } }));
+    eq(P.votesCSV(b), 'participante,segundos\n"Luis ""L""",7\n"Ana",3', 'CSV: quién respondió y cuánto dura');
+    const E = await W.eval("import('/src/ui/dialogs/poll.js')"); E.openPollEditor(b); await sleep(10);
+    try {
+      const m = D.getElementById('poll-modal');
+      eq(m.querySelector('.pl-kind').value, 'audio', 'el tipo, en la lista');
+      assert(m.querySelector('.pl-opts-l').hidden && /30 segundos/.test(m.querySelector('.pl-help').textContent), 'sin opciones y con su explicación');
+      eq(m.querySelectorAll('.pl-aud audio').length, 2, 'las voces guardadas, para escucharlas en el editor');
+      assert(/Luis "L" · 7 s/.test(m.querySelector('.pl-aud').textContent), 'con su nombre');
+    } finally { D.getElementById('poll-modal')?.remove(); }
+    // Presenting: the votes kept, the wall, a click plays one (and a new answer doesn't stop it), only the newest saved.
+    R.poll.clearVotes(b.pollId);
+    const fake = URL.createObjectURL(new Blob(['window.Peer=function(id){var s=this;s.h={};s.on=function(e,f){(s.h[e]=s.h[e]||[]).push(f);};s.destroy=function(){};window.__votePeer=s;setTimeout(function(){(s.h.open||[]).forEach(function(f){f(id);});},0);};'], { type: 'text/javascript' }));
+    const noqr = URL.createObjectURL(new Blob(['window.QRCode=null;'], { type: 'text/javascript' }));
+    const { f, win, doc } = await deckFrame(R.io.buildHTML(R.state.deck, { inApp: true }).split(R.vendor.PEERJS).join(fake).split(R.vendor.QRCODE).join(noqr), 800, 450);
+    try {
+      for (let i = 0; i < 40 && !win.__votePeer?.h.connection; i++) await sleep(50);
+      const sent = [], c = { open: true, h: {}, on(e, fn) { (this.h[e] = this.h[e] || []).push(fn); }, send(m) { sent.push(m); }, close() {} };
+      win.__votePeer.h.connection.forEach(fn => fn(c)); c.h.open.forEach(fn => fn());
+      const say = d => c.h.data.forEach(fn => fn(d));
+      eq(sent.filter(x => x.type === 'poll').at(-1).poll.kind, 'audio', 'el móvil recibe la pregunta');
+      const RD = await W.eval("import('/src/io/runtime/reading.js')");
+      eq(JSON.stringify(RD.readingItems(doc.querySelector('section.present')).find(x => x.t === 'q')), JSON.stringify({ t: 'q', text: '¿Cómo se dice «hola»?' }), 'en el modo lectura, la pregunta');
+      say({ type: 'vote', pollId: b.pollId, voter: 'v1', answer: { aud: AUD(1000), n: 'Ana', d: 3 } });
+      say({ type: 'vote', pollId: b.pollId, voter: 'v2', answer: { aud: 'data:audio/webm;base64,<script>' } });
+      say({ type: 'vote', pollId: b.pollId, voter: 'v3', answer: { aud: AUD(300001) } });
+      eq(Object.keys(JSON.parse(win.localStorage.getItem('revela.poll.' + b.pollId))).join(), 'v1', 'solo audio de verdad, y no demasiado largo');
+      eq(sent.filter(x => x.type === 'ok').length, 1, 'y al que vale se le confirma');
+      const res = doc.querySelector('.present .rv-poll-res'), tile = () => res.querySelector('[data-rv-clip="0"]');
+      assert(/Ana/.test(tile()?.textContent), 'en el muro, con su nombre');
+      tile().click(); await sleep(20);
+      eq(doc.getElementById('rv-clip')?.getAttribute('src'), AUD(1000), 'un clic la reproduce');
+      eq(tile().getAttribute('aria-pressed'), 'true', 'y se ve cuál suena');
+      say({ type: 'vote', pollId: b.pollId, voter: 'v4', answer: { aud: AUD(1000, 'C'), n: 'Eva', d: 2 } });
+      assert(/Eva/.test(tile().textContent) && res.querySelector('[data-rv-clip="1"]').getAttribute('aria-pressed') === 'true', 'una respuesta nueva, la primera; la que suena sigue marcada');
+      eq(doc.getElementById('rv-clip').getAttribute('src'), AUD(1000), 'y no se corta');
+      res.querySelector('[data-rv-clip="1"]').click(); await sleep(20);
+      eq(res.querySelector('[data-rv-clip="1"]').getAttribute('aria-pressed'), 'false', 'otro clic la para');
+      for (let i = 0; i < 15; i++) { say({ type: 'vote', pollId: b.pollId, voter: 'm' + i, answer: { aud: AUD(200000, String.fromCharCode(68 + i)), d: 30 } }); await sleep(2); }
+      const kept = JSON.parse(win.localStorage.getItem('revela.poll.' + b.pollId));
+      assert(JSON.stringify(kept).length < 1300000 && kept.m14 && !kept.v1, 'en este navegador, solo las más recientes: ' + Object.keys(kept).join());
+      eq(res.querySelectorAll('[data-rv-clip]').length, 17, 'en la pantalla, todas las de esta sesión');
+    } finally { f.remove(); URL.revokeObjectURL(fake); URL.revokeObjectURL(noqr); R.poll.clearVotes(b.pollId); }
+    // On the phone: the microphone refused, explained; then recorded (Chrome's test microphone), listened to and sent.
+    const ph = document.createElement('iframe'); ph.style.cssText = 'position:fixed;left:0;top:0;width:390px;height:700px;opacity:0';
+    ph.src = new URL('../vote.html?test', D.baseURI).href; document.body.appendChild(ph);
+    let v; for (let i = 0; i < 60 && !(v = ph.contentWindow)?.__vote; i++) await sleep(100);
+    try {
+      const Q = s => ph.contentDocument.querySelector(s), sentV = () => v.__sent.filter(m => m.type === 'vote').at(-1);
+      v.localStorage.setItem('revela.nick', 'Ana');
+      v.__vote.onData({ type: 'poll', poll: { pollId: 'a1', kind: 'audio', question: 'Di algo', options: [] } });
+      const rec = [...ph.contentDocument.querySelectorAll('#answers button')].find(x => /Grabar/.test(x.textContent));
+      assert(rec, 'un botón para grabar');
+      const gum = v.navigator.mediaDevices.getUserMedia;
+      v.navigator.mediaDevices.getUserMedia = () => Promise.reject(new v.DOMException('no', 'NotAllowedError'));
+      rec.click(); await sleep(30);
+      assert(/permiso[\s\S]*ajustes del navegador/.test(Q('#answers .err').textContent), 'sin permiso: dice cómo darlo');
+      v.navigator.mediaDevices.getUserMedia = gum;
+      rec.click(); for (let i = 0; i < 40 && !/Parar/.test(rec.textContent); i++) await sleep(50);
+      assert(/■ Parar \(\d+ s\)/.test(rec.textContent), 'grabando: el botón para y cuenta el tiempo que queda');
+      await sleep(1300); rec.click();
+      for (let i = 0; i < 60 && Q('#answers audio').hidden; i++) await sleep(50);
+      assert(!Q('#answers audio').hidden && /Grabar otra vez/.test(rec.textContent), 'se puede escuchar antes de enviar, o grabar otra vez');
+      Q('#send').click();
+      const a = sentV().answer;
+      assert(/^data:audio\/(webm|ogg|mp4)[;,]/.test(a.aud) && a.aud.length < 300000 && a.n === 'Ana' && a.d >= 1, 'se envía la grabación, con su nombre y su duración: ' + String(a.aud).slice(0, 40));
+      let saved = null; const realURL = v.URL.createObjectURL; v.URL.createObjectURL = blob => { saved = blob; return 'blob:x'; };
+      Q('#mine').click(); v.URL.createObjectURL = realURL;
+      assert(/<audio controls src="data:audio/.test(await saved.text()), 'en mi resumen, mi grabación');
+    } finally { ph.remove(); }
+  });
+
+  await test('clasificación como carrera: cada uno avanza desde sus puntos de antes, por equipos, también al ver la respuesta', async () => {
+    const W = frame.contentWindow, P = await W.eval("import('/src/features/live/poll.js')");
+    const board = [{ id: 'x', n: 'Ana', pts: 900 }, { id: 'y', n: 'Luis', pts: 400 }];
+    const run = P.pollResultsHTML({ kind: 'board', display: 'race' }, { board, prev: { x: 300 }, goal: 2000 }, null, null);
+    assert(/class="rv-race"/.test(run) && /🥇[\s\S]*Ana[\s\S]*900[\s\S]*🥈[\s\S]*Luis/.test(run), 'una calle por jugador, el primero arriba');
+    assert(/animation:rvRaceL[^"]*--rv-f:calc\(\.75em \+ \(100% - 1\.5em\) \* 0\.150\)/.test(run) && /left:calc\(\.75em \+ \(100% - 1\.5em\) \* 0\.450\)/.test(run), 'sale de sus puntos de antes y llega a los de ahora, hacia la meta');
+    assert(/prefers-reduced-motion:reduce/.test(run), 'quieto para quien pide menos movimiento');
+    assert(!/animation:rvRace/.test(P.pollResultsHTML({ kind: 'board', display: 'race' }, { board }, null, null)), 'sin puntos de antes (el editor, las miniaturas), quieta');
+    const many = Array.from({ length: 14 }, (_, i) => ({ id: 'p' + i, n: 'P' + i, pts: 1000 - i }));
+    eq((P.pollResultsHTML({ kind: 'board', display: 'race' }, { board: many }, null, null).match(/rvRace|🏁/g) || []).filter(x => x === '🏁').length, 10, 'los diez primeros');
+    const teams = P.pollResultsHTML({ kind: 'board', display: 'race' }, { board, teams: [{ team: 'Rojo', pts: 650, n: 2 }] }, null, null);
+    assert(/Rojo/.test(teams) && !/Luis/.test(teams), 'por equipos: corren los equipos');
+    // The editor: «Carrera animada» only for the leaderboard and the quizzes.
+    reset(); R.poll.addPoll({ kind: 'board', question: '', options: [] }); const b = last();
+    const E = await W.eval("import('/src/ui/dialogs/poll.js')"); E.openPollEditor(b); await sleep(10);
+    try {
+      const m = D.getElementById('poll-modal'), opt = v => m.querySelector(`.pl-disp option[value="${v}"]`);
+      assert(!opt('race').hidden && opt('pie').hidden && !m.querySelector('.pl-race').hidden, 'la clasificación: lista o carrera');
+      m.querySelector('.pl-kind').value = 'choice'; m.querySelector('.pl-kind').dispatchEvent(new W.Event('change'));
+      assert(opt('race').hidden && !opt('pie').hidden, 'una votación: sin carrera');
+      m.querySelector('.pl-kind').value = 'board'; m.querySelector('.pl-kind').dispatchEvent(new W.Event('change'));
+      m.querySelector('.pl-disp').value = 'race'; m.querySelector('.pl-ok').click(); await sleep(10);
+    } finally { D.getElementById('poll-modal')?.remove(); }
+    eq(slide().blocks.find(x => x.id === b.id).display, 'race', 'se guarda');
+    // Presenting: a quiz shown as a race on its reveal, then the leaderboard runs from where it was last seen.
+    R.store.commit(() => { slide().blocks = []; });
+    R.poll.addPoll({ kind: 'quiz', question: 'Q', options: ['a', 'b'], correct: [1], display: 'race' }); const pq = last(); R.poll.clearVotes(pq.pollId);
+    R.slides.addSlide('blank'); R.poll.addPoll({ kind: 'board', question: '', options: [], display: 'race' });
+    R.slides.goToSlide(0);
+    assert(/data-poll="[^"]*&quot;display&quot;:&quot;race&quot;/.test(R.io.buildHTML()), 'en la presentación exportada');
+    const fake = URL.createObjectURL(new Blob(['window.Peer=function(id){var s=this;s.h={};s.on=function(e,f){(s.h[e]=s.h[e]||[]).push(f);};s.destroy=function(){};window.__votePeer=s;setTimeout(function(){(s.h.open||[]).forEach(function(f){f(id);});},0);};'], { type: 'text/javascript' }));
+    const noqr = URL.createObjectURL(new Blob(['window.QRCode=null;'], { type: 'text/javascript' }));
+    const { f, win, doc } = await deckFrame(R.io.buildHTML(R.state.deck, { inApp: true }).split(R.vendor.PEERJS).join(fake).split(R.vendor.QRCODE).join(noqr), 800, 450);
+    try {
+      for (let i = 0; i < 40 && !win.__votePeer?.h.connection; i++) await sleep(50);
+      const c = { open: true, h: {}, on(e, fn) { (this.h[e] = this.h[e] || []).push(fn); }, send() {}, close() {} };
+      win.__votePeer.h.connection.forEach(fn => fn(c)); c.h.open.forEach(fn => fn());
+      const say = d => c.h.data.forEach(fn => fn(d));
+      say({ type: 'vote', pollId: pq.pollId, voter: 'v1', answer: 1, name: 'Ana' }); say({ type: 'vote', pollId: pq.pollId, voter: 'v2', answer: 0, name: 'Luis' });
+      const quizRes = doc.querySelector('.present .rv-poll-res');
+      quizRes.click(); await sleep(30);
+      assert(quizRes.querySelector('.rv-race') && /--rv-f:calc\(\.75em \+ \(100% - 1\.5em\) \* 0\.000\)/.test(quizRes.innerHTML), 'al ver la respuesta, la carrera, desde los puntos de antes de esta pregunta');
+      win.Reveal.slide(1); await sleep(60);
+      const bd = doc.querySelector('.present .rv-poll-res');
+      assert(bd.querySelector('.rv-race') && /Ana/.test(bd.textContent), 'la clasificación, como carrera');
+      const runner = [...bd.querySelectorAll('.rv-race span')].find(x => /rvRaceL/.test(x.style.animation || x.getAttribute('style')));
+      assert(runner && win.getComputedStyle(runner).animationName === 'rvRaceL', 'y corre (la animación, en marcha)');
+      win.Reveal.slide(0); await sleep(30); win.Reveal.slide(1); await sleep(60);
+      const lane = doc.querySelector('.present .rv-poll-res .rv-race > div').innerHTML.replace(/&quot;/g, '"');
+      const at = lane.match(/left:calc\(\.75em \+ \(100% - 1\.5em\) \* ([\d.]+)\);[^"]*rvRaceL[^"]*--rv-f:calc\(\.75em \+ \(100% - 1\.5em\) \* ([\d.]+)\)/);
+      assert(at && +at[1] > 0.4 && at[1] === at[2], 'al volver, sale desde donde estaba (no desde cero): ' + (at || []).slice(1).join(' → '));
+    } finally { f.remove(); URL.revokeObjectURL(fake); URL.revokeObjectURL(noqr); R.poll.clearVotes(pq.pollId); }
+  });
+
   await test('preguntas del público moderadas y palabrotas tapadas: esperan en una ventana aparte, la pantalla solo dice cuántas', async () => {
     reset(); const P = R.poll;
     eq(P.tallyVotes({ kind: 'open', clean: true }, { a: { t: 'Qué mierda, joder' }, b: { t: 'El putamen, el motor Wankel y un cono' } }).texts.map(x => x.text).sort().join('|'),

@@ -454,7 +454,9 @@ presenter hosts a peer `revela-CODE` (remote) or `revela-vote-CODE` (polls);
 the phone pages connect to it. To find their way, connections use STUN and,
 when Revela's server is there, its TURN relays (`core/ice.js` asks `/api/ice`),
 for phones behind a carrier's NAT. Votes are kept in the presenter's browser,
-not on a server.
+not on a server. Pictures and voice answers travel the same way, as `data:` URLs
+of at most 300 000 characters (PeerJS splits them into the channel's chunks); of
+the voices, only the newest (~1.2 MB) are kept, since localStorage is small.
 
 Co-editing (`features/live/collab.js`) works the same way by default: the
 person who shares keeps the document and checks every change against the

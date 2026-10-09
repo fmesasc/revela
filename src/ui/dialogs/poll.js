@@ -15,7 +15,7 @@ export function openPollEditor(b, { fresh = false } = {}) {
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(520px,94vw);max-width:94vw">
     <button class="modal-close">✕</button><h3>${t('Votación en directo')}</h3>
     <label class="fr-l">${t('Pregunta')}<input type="text" class="pl-q"></label>
-    <label class="fr-l">${t('Tipo')}<select class="pl-kind">${opt('choice', 'Una opción', b.kind)}${opt('multi', 'Varias opciones', b.kind)}${opt('rating', 'Valoración 1 a 5', b.kind)}${opt('word', 'Nube de palabras', b.kind)}${opt('qa', 'Preguntas del público', b.kind)}${opt('quiz', 'Cuestionario (con respuesta correcta y puntos)', b.kind)}${opt('order', 'Actividad: ordenar', b.kind)}${opt('match', 'Actividad: unir parejas', b.kind)}${opt('gaps', 'Actividad: completar huecos', b.kind)}${opt('label', 'Actividad: etiquetar una imagen', b.kind)}${opt('sort', 'Actividad: clasificar en grupos', b.kind)}${opt('crossword', 'Actividad: crucigrama', b.kind)}${opt('wordsearch', 'Actividad: sopa de letras', b.kind)}${opt('memory', 'Actividad: memoria (parejas)', b.kind)}${opt('open', 'Respuesta abierta (muro de respuestas)', b.kind)}${opt('number', 'Adivinar un número', b.kind)}${opt('image', 'Elegir entre imágenes', b.kind)}${opt('point', 'Tocar un punto de una imagen', b.kind)}${opt('rank', 'Ordenar por preferencia', b.kind)}${opt('draw', 'Respuesta dibujada', b.kind)}${opt('photo', 'Respuesta con una foto', b.kind)}${opt('board', 'Clasificación de los cuestionarios', b.kind)}</select></label>
+    <label class="fr-l">${t('Tipo')}<select class="pl-kind">${opt('choice', 'Una opción', b.kind)}${opt('multi', 'Varias opciones', b.kind)}${opt('rating', 'Valoración 1 a 5', b.kind)}${opt('word', 'Nube de palabras', b.kind)}${opt('qa', 'Preguntas del público', b.kind)}${opt('quiz', 'Cuestionario (con respuesta correcta y puntos)', b.kind)}${opt('order', 'Actividad: ordenar', b.kind)}${opt('match', 'Actividad: unir parejas', b.kind)}${opt('gaps', 'Actividad: completar huecos', b.kind)}${opt('label', 'Actividad: etiquetar una imagen', b.kind)}${opt('sort', 'Actividad: clasificar en grupos', b.kind)}${opt('crossword', 'Actividad: crucigrama', b.kind)}${opt('wordsearch', 'Actividad: sopa de letras', b.kind)}${opt('memory', 'Actividad: memoria (parejas)', b.kind)}${opt('open', 'Respuesta abierta (muro de respuestas)', b.kind)}${opt('number', 'Adivinar un número', b.kind)}${opt('image', 'Elegir entre imágenes', b.kind)}${opt('point', 'Tocar un punto de una imagen', b.kind)}${opt('rank', 'Ordenar por preferencia', b.kind)}${opt('draw', 'Respuesta dibujada', b.kind)}${opt('photo', 'Respuesta con una foto', b.kind)}${opt('audio', 'Respuesta de voz (audio)', b.kind)}${opt('board', 'Clasificación de los cuestionarios', b.kind)}</select></label>
     <p class="host-help pl-help"></p>
     <label class="fr-l pl-text-l">${t('Texto con huecos')}<textarea class="pl-text" rows="3" placeholder="${t('La capital de Francia es [París]. Varias respuestas válidas: [coche|automóvil].')}"></textarea></label>
     <div class="pl-pic" hidden><div class="fr-actions" style="justify-content:flex-start"><label class="mini2 pl-img-btn">${t('Elegir imagen…')}<input type="file" accept="image/*" hidden class="pl-img"></label>
@@ -23,6 +23,7 @@ export function openPollEditor(b, { fresh = false } = {}) {
       <div class="pl-stage"><img alt=""><div class="pl-marks"></div></div></div>
     <label class="fr-l pl-opts-l">${t('Opciones (una por línea)')}<textarea class="pl-opts" rows="5"></textarea></label>
     <div class="pl-imgs" hidden></div>
+    <div class="pl-aud" hidden style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto"></div>
     <label class="fr-chk pl-mod-l"><input type="checkbox" class="pl-mod"${b.moderate ? ' checked' : ''}> ${t('Aprobar cada pregunta antes de que salga en pantalla')}</label>
     <p class="host-help pl-mod-l">${t('Al presentar, la tecla M (o clic derecho ▸ «Moderar las preguntas») abre una ventana para aprobarlas, ocultarlas o descartarlas: llévala a tu pantalla. Las preguntas no llevan el nombre de quien pregunta.')}</p>
     <label class="fr-chk pl-clean-l"><input type="checkbox" class="pl-clean"${b.clean ? ' checked' : ''}> ${t('Tapar las palabrotas')}</label>
@@ -41,7 +42,8 @@ export function openPollEditor(b, { fresh = false } = {}) {
     <label class="fr-l pl-quiz">${t('Tiempo para responder')}<select class="pl-time">${[10, 20, 30, 45, 60, 90].map(n => `<option value="${n}"${(b.time || 20) === n ? ' selected' : ''}>${n} s</option>`).join('')}</select></label>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label class="fr-l">${t('Color del texto')} <input type="color" class="pl-ink" value="${b.color || '#222222'}"></label>
       <label class="fr-chk"><input type="checkbox" class="pl-ink-auto"${b.color ? '' : ' checked'}> ${t('El de la paleta')}</label></div>
-    <label class="fr-l">${t('Mostrar resultados como')}<select class="pl-disp">${opt('bar', 'Barras', b.display)}${opt('pie', 'Circular', b.display)}${opt('numbers', 'Cifras', b.display)}</select></label>
+    <label class="fr-l">${t('Mostrar resultados como')}<select class="pl-disp">${opt('bar', 'Barras', b.display)}${opt('pie', 'Circular', b.display)}${opt('numbers', 'Cifras', b.display)}${opt('race', 'Carrera animada', b.display)}</select></label>
+    <p class="host-help pl-race">${t('Carrera: cada jugador (o cada equipo) avanza hacia la meta, los puntos de todos los cuestionarios; al volver a la diapositiva, sale desde donde estaba. En un cuestionario, se ve al mostrar la respuesta.')}</p>
     <p class="host-help">${t('Al presentar aparece un QR: el público vota desde el móvil y los resultados se actualizan al instante. Los móviles se conectan directamente a este ordenador, sin servidor; funciona bien con decenas de personas.')}</p>
     <fieldset class="pl-later"><legend>${t('Responder más tarde, sin presentar')}</legend>
       <label class="fr-chk"><input type="checkbox" class="pl-async"${b.async ? ' checked' : ''}> ${t('Abrirla para responder con un enlace, cuando cada uno quiera')}</label>
@@ -68,7 +70,8 @@ export function openPollEditor(b, { fresh = false } = {}) {
     point: 'Elige una imagen: cada persona toca un punto y se ve dónde tocó todo el mundo.',
     rank: 'Cada persona ordena las opciones de la que más prefiere a la que menos; gana la que suma más puntos.',
     draw: 'Cada persona dibuja con el dedo en su móvil (encima de la imagen, si eliges una) y los dibujos salen en un muro.',
-    photo: 'Cada persona hace o elige una foto (su cuaderno, una maqueta, algo que ha encontrado) y salen en un muro.' };
+    photo: 'Cada persona hace o elige una foto (su cuaderno, una maqueta, algo que ha encontrado) y salen en un muro.',
+    audio: 'Cada persona graba con el móvil una respuesta de voz (hasta 30 segundos) y salen en un muro, las más recientes primero; haz clic en una para escucharla. Este navegador guarda las más recientes: unas diez de 30 segundos.' };
   let images = (b.images || []).slice();
   const drawImgs = () => {
     const ls = labels(); q('.pl-imgs').innerHTML = ls.map((l, i) => `<div class="sh-row" data-i="${i}" style="align-items:center">${images[i] ? `<img src="${images[i]}" alt="" style="width:64px;height:48px;object-fit:cover;border-radius:6px">` : '<span style="width:64px;height:48px;border-radius:6px;background:#8883;display:inline-block"></span>'}
@@ -83,7 +86,7 @@ export function openPollEditor(b, { fresh = false } = {}) {
     q('.pl-stage img').src = image || ''; q('.pl-stage').hidden = !image;
     q('.pl-marks').innerHTML = points.slice(0, ls.length).map((p, i) => p ? `<b style="left:${p.x}%;top:${p.y}%">${i + 1}</b>` : '').join('');
   };
-  const sync = () => { const k = q('.pl-kind').value; q('.pl-opts-l').hidden = ['rating', 'word', 'qa', 'board', 'gaps', 'open', 'number', 'point', 'draw', 'photo'].includes(k);
+  const sync = () => { const k = q('.pl-kind').value; q('.pl-opts-l').hidden = ['rating', 'word', 'qa', 'board', 'gaps', 'open', 'number', 'point', 'draw', 'photo', 'audio'].includes(k);
     q('.pl-num').hidden = k !== 'number'; q('.pl-imgs').hidden = k !== 'image'; if (k === 'image') drawImgs(); q('.pl-rub').hidden = k !== 'open';
     back.querySelectorAll('.pl-quiz').forEach(x => { x.hidden = k !== 'quiz'; });
     back.querySelectorAll('.pl-mod-l').forEach(x => { x.hidden = k !== 'qa'; }); q('.pl-clean-l').hidden = !['qa', 'word', 'open'].includes(k);
@@ -91,7 +94,17 @@ export function openPollEditor(b, { fresh = false } = {}) {
     q('.pl-help').hidden = !HELP[k]; q('.pl-help').textContent = HELP[k] ? t(HELP[k]) : '';
     const picOnly = k === 'point' || k === 'draw';
     q('.pl-text-l').hidden = k !== 'gaps'; q('.pl-pic').hidden = k !== 'label' && !picOnly; if (k === 'label' || picOnly) drawPic();
-    q('.pl-place').closest('label').hidden = picOnly; q('.pl-marks').hidden = picOnly; };
+    q('.pl-place').closest('label').hidden = picOnly; q('.pl-marks').hidden = picOnly;
+    // (The leaderboard and the quizzes: a list or a race; the rest, bars, pie or figures.)
+    const ranked = k === 'board' || k === 'quiz', disp = q('.pl-disp');
+    disp.querySelectorAll('option').forEach(o => { o.hidden = o.value === 'race' ? !ranked : ranked && o.value !== 'bar'; });
+    if (disp.selectedOptions[0]?.hidden) disp.value = 'bar';
+    disp.querySelector('option[value="bar"]').textContent = t(ranked ? 'Lista' : 'Barras'); q('.pl-race').hidden = !ranked;
+    q('.pl-aud').hidden = k !== 'audio'; if (k === 'audio') listen(); };
+  // The voices kept here, to listen to in the editor.
+  const listen = () => { const e = x => String(x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])), clips = tallyVotes({ kind: 'audio' }, savedVotes(b.pollId)).clips;
+    q('.pl-aud').innerHTML = clips.length ? clips.map(c => `<div class="sh-row" style="align-items:center"><span style="flex:1;min-width:0;overflow-wrap:anywhere">${e(c.n || '🎤')}${c.d ? ` · ${c.d} s` : ''}</span><audio controls preload="none" src="${e(c.aud)}" style="max-width:62%"></audio></div>`).join('')
+      : `<span class="host-help">${t('Aún no hay respuestas.')}</span>`; };
   q('.pl-text').value = b.text || '';
   q('.pl-opts').addEventListener('input', () => { const k = q('.pl-kind').value; if (k === 'label') drawPic(); if (k === 'image') drawImgs(); });
   // (A picture made small enough to travel to every phone: at most `max` px, JPEG.)
@@ -163,7 +176,7 @@ export function openPollEditor(b, { fresh = false } = {}) {
   });
   q('.pl-clear').addEventListener('click', async () => {
     if (!(await confirmDialog(t('¿Borrar los votos recibidos en esta votación?')))) return;
-    clearVotes(b.pollId); setPoll(b.id, {}); count();
+    clearVotes(b.pollId); setPoll(b.id, {}); count(); if (q('.pl-kind').value === 'audio') listen();
   });
   q('.pl-csv').addEventListener('click', () => {
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + votesCSV(b)], { type: 'text/csv' }));
