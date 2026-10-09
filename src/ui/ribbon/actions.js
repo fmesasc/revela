@@ -287,6 +287,8 @@ export const ACTIONS = {
   'toggle-ruler': () => commit(() => (state.ui.showRuler = !state.ui.showRuler), { history: false }),
   'toggle-snap': () => commit(() => (state.ui.snap = state.ui.snap === false), { history: false }),
   'toggle-loop': () => commit(() => (state.deck.loop = !state.deck.loop)),
+  // (Off — the default —, a background shared by two slides stays still while their content changes: io/formats/html.js backdropPlan.)
+  'toggle-anim-bg': () => commit(() => { if (state.deck.animateBg) delete state.deck.animateBg; else state.deck.animateBg = true; }),
   'toggle-autoanimate': () => slides.toggleAutoAnimate(),
   'dup-animate': () => slides.duplicateForAnimate(),
   'toggle-notes': () => commit(() => (state.ui.showNotes = !state.ui.showNotes), { history: false }),

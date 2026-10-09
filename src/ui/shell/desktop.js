@@ -20,7 +20,7 @@ import { dropFiles, openPdfDeck } from './openfile.js';
 import { openPalette } from './palette.js';
 import { toast } from './toast.js';
 import { confirmDialog, alertDialog } from '../dialogs/dialog.js';
-import { undo, redo, canUndo, canRedo } from '../../core/store.js';
+import { undo, redo, canRedo } from '../../core/store.js';
 import { t } from '../../i18n/index.js';
 import { OFFICIAL_SITE } from '../../core/config.js';
 
@@ -68,7 +68,7 @@ export async function checkUpdates({ asked = false } = {}) {
 
 // ---- The menu --------------------------------------------------------------------------------------------
 const DESK = {
-  'desk:undo': () => { if (canUndo()) undo(); },
+  'desk:undo': () => undo(),                     // (it does nothing without anything to undo; canUndo() is the button's, as of the last redraw)
   'desk:redo': () => { if (canRedo()) redo(); },
   'desk:palette': () => openPalette(),
   'desk:guides': () => api.opener.openUrl(OFFICIAL_SITE + '/guides'),

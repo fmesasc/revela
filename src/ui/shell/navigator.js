@@ -12,7 +12,7 @@ import { addSlideRef } from '../../features/document/blocks.js';
 import { factor } from '../canvas/interact.js';
 import { t } from '../../i18n/index.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
-import { masterBlocksFor, isEmptyPlaceholder, styled } from '../../features/document/master.js';
+import { masterBlocksFor, isEmptyPlaceholder, styled, allMasters, masterStyles } from '../../features/document/master.js';
 import { renderMasterPanel, fitMasterThumbs } from './masterview.js';
 
 let panel;
@@ -65,8 +65,42 @@ function fitThumbs() {
 // Thumbnails are cached per slide and rebuilt only when that slide (or what
 // every thumbnail depends on: size, master, theme colours) changes — decks with
 // many image-heavy slides would otherwise take seconds on every edit.
-const cache = new Map();                   // slide id → { sig, el }
+// Rebuilt after the frame is drawn, not while redrawing: an edit shows on the slide first and in its thumbnail a
+// moment later; and when many change at once (a theme, a big deck opened) those in sight go first and the rest a few
+// at a time while the browser is idle (IntersectionObserver, requestIdleCallback), instead of hundreds in one long
+// task. Meanwhile a thumbnail shows what it showed (a new one, its background). flushThumbs() builds them all now.
+const cache = new Map();                   // slide id → { sig: what it shows, want: what it should, el }
+const queue = new Map();                   // slide id → its slide, to be (re)built
+const heads = new Map();                   // section id → { name, el }
 const sigOf = shortSig;
+let sight = null, idleId = null, fitW = 0, lastCommon = '', slidesShown = false;
+const onIdle = fn => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 300 }) : setTimeout(() => fn({ timeRemaining: () => 8, didTimeout: true }), 30));
+function want(slide, c) {
+  queue.set(slide.id, slide);
+  // (One rebuilt a moment ago — dragging an object changes its slide at every frame —: when idle, not every frame.)
+  if (!sight && window.IntersectionObserver) sight = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting && !(performance.now() - (cache.get(e.target.dataset.sid)?.at || -1e9) < 250)) build(e.target.dataset.sid); }), { root: panel, rootMargin: '50% 0px' });
+  if (sight && !c.watched) { c.watched = true; c.el.dataset.sid = slide.id; sight.observe(c.el); }   // (its first answer: after this frame is drawn)
+  if (idleId == null) idleId = onIdle(idle);
+}
+function idle(deadline) {
+  idleId = null;
+  // (At least one each time: a busy page — a video, an animation — still gets them all, slowly.)
+  for (let n = 0; queue.size && (n === 0 || deadline.timeRemaining() > 4 || deadline.didTimeout && n < 4); n++) build(queue.keys().next().value);
+  if (queue.size) idleId = onIdle(idle);
+}
+// The thumbnail of that slide as it is now, in place of the one shown.
+function build(id) {
+  const slide = queue.get(id), c = cache.get(id); queue.delete(id);
+  if (!slide || !c) return;
+  const old = c.el, el = thumb(slide);
+  if (c.watched) { sight?.unobserve(old); c.watched = false; }
+  el.dataset.index = old.dataset.index; el.querySelector('.thumb-num').textContent = old.querySelector('.thumb-num').textContent;
+  for (const k of ['active', 'selected', 'dragging']) el.classList.toggle(k, old.classList.contains(k));
+  if (old.hasAttribute('aria-selected')) el.setAttribute('aria-selected', old.getAttribute('aria-selected'));
+  c.el = el; c.sig = c.want; c.at = performance.now();
+  if (old.parentNode) old.replaceWith(el);
+}
+export function flushThumbs() { while (queue.size) build(queue.keys().next().value); }
 
 // The panel's children made `nodes`; untouched when they already are (a slide change, most edits). (Taking every
 // thumbnail out and back in each time made the browser lay out 300 slides of 40 objects again, ~200 ms. All at once
@@ -77,10 +111,15 @@ function place(parent, nodes) {
   parent.replaceChildren(...nodes);
 }
 
-export function renderPanel() {
-  if (state.ui.editMaster) return renderMasterPanel(panel);   // (the master view: masters and layouts instead)
-  const d = state.deck;
-  const common = sigOf([d.size, d.master, d.layouts, d.canvas, deckFg(), deckBodyFont()]);
+// change: store.lastChange() (only the screen changed: no slide's thumbnail can have, just which are current or
+// selected); none: everything.
+export function renderPanel(change) {
+  if (state.ui.editMaster) { slidesShown = false; return renderMasterPanel(panel); }   // (the master view: masters and layouts instead)
+  const d = state.deck, doc = !change || change.doc || !slidesShown; slidesShown = true;
+  // (The masters' text styles completed and linked to the theme before their fingerprint is taken: drawing the
+  // thumbnails did it otherwise, changing the fingerprint after it, and every thumbnail was built twice.)
+  if (doc) for (const m of allMasters(d)) if (m.styles) masterStyles(d, m);
+  const common = doc ? (lastCommon = sigOf([d.size, d.master, d.layouts, d.canvas, deckFg(), deckBodyFont()])) : lastCommon;
   const nodes = [], seen = new Set(), sel = new Set(state.ui.slideSel?.length > 1 ? state.ui.slideSel : []);
   panel.classList.toggle('multi', sel.size > 1);
   document.body.classList.toggle('slide-pick', !!state.ui.slidePick);
@@ -89,12 +128,19 @@ export function renderPanel() {
   d.slides.forEach((slide, index) => {
     if (slide.sectionId && slide.sectionId !== lastSection) {
       const sec = d.sections.find(s => s.id === slide.sectionId);
-      if (sec) nodes.push(sectionHead(sec));
+      // (Kept between redraws like the thumbnails: a new one each time made place() put the whole panel back.)
+      let hd = heads.get(sec?.id);
+      if (sec && (!hd || hd.name !== sec.name || state.ui.editingSection === sec.id)) heads.set(sec.id, hd = { name: sec.name, el: sectionHead(sec) });
+      if (sec) nodes.push(hd.el);
     }
     lastSection = slide.sectionId;
-    const sig = common + sigOf(slide);
     let c = cache.get(slide.id);
-    if (!c || c.sig !== sig) { c = { sig, el: thumb(slide) }; cache.set(slide.id, c); }
+    if (!c) { c = { sig: null, want: null, el: thumb(slide, false) }; cache.set(slide.id, c); }
+    if (doc || c.want == null) {
+      c.want = common + sigOf(slide);
+      if (c.want !== c.sig) want(slide, c);
+      else if (queue.delete(slide.id) && c.watched) { sight.unobserve(c.el); c.watched = false; }   // (back as it shows: undone)
+    }
     // (Only what differs is touched: rewriting the same number or attribute in every thumbnail made the browser
     // lay them all out again.)
     if (c.el.dataset.index !== String(index)) { c.el.dataset.index = index; c.el.querySelector('.thumb-num').textContent = index + 1; }
@@ -103,9 +149,12 @@ export function renderPanel() {
     const aria = String(sel.has(slide.id) || index === state.ui.slideIndex); if (c.el.getAttribute('aria-selected') !== aria) c.el.setAttribute('aria-selected', aria);
     seen.add(slide.id); nodes.push(c.el);
   });
-  for (const id of cache.keys()) if (!seen.has(id)) cache.delete(id);
+  for (const [id, c] of cache) if (!seen.has(id)) { cache.delete(id); queue.delete(id); if (c.watched) sight?.unobserve(c.el); }
+  if (doc) for (const id of heads.keys()) if (!d.sections?.some(s => s.id === id)) heads.delete(id);
   place(panel, nodes);
-  fitThumbs();
+  // (Their scale: measured when they first appear or the slide's width changes, just before the frame is drawn;
+  // then the ResizeObserver. Measuring here at every redraw made the browser lay the panel out again each time.)
+  if (fitW !== d.size.w || !panel.style.getPropertyValue('--tk')) { fitW = d.size.w; requestAnimationFrame(fitThumbs); }
 }
 
 // A section title, editable in place (no browser prompt). Right‑clicking it
@@ -140,7 +189,8 @@ function sectionHead(sec) {
   return h;
 }
 
-function thumb(slide) {
+// full: with its objects drawn (without: the frame and background, until build() draws it).
+function thumb(slide, full = true) {
   const el = document.createElement('div');
   el.className = 'thumb' + (slide.hidden ? ' is-hidden' : '') + (slide.vertical ? ' is-vertical' : '');
   el.draggable = true; el.title = t('Arrástrala para cambiar el orden, o suéltala en la diapositiva para incrustarla como zoom');
@@ -160,7 +210,7 @@ function thumb(slide) {
   const inner = document.createElement('div');
   inner.className = 'thumb-inner';
   inner.style.cssText = `width:${w}px;height:${h}px;transform:scale(var(--tk,${188 / w}));color:${deckFg()};font-family:${deckBodyFont() || 'inherit'}`;
-  for (const b of [...masterBlocksFor(slide), ...slide.blocks.map(x => styled(x, slide))]) if (!isEmptyPlaceholder(b)) inner.appendChild(blockPreview(b, slide));
+  if (full) for (const b of [...masterBlocksFor(slide), ...slide.blocks.map(x => styled(x, slide))]) if (!isEmptyPlaceholder(b)) inner.appendChild(blockPreview(b, slide));
   canvas.appendChild(inner);
 
   // (Shown while several are selected or being picked: a tap adds or removes it.)

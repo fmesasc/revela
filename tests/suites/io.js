@@ -294,6 +294,73 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(deck.slides[1].transition, 'fade', 'transición'); eq(deck.slides[1].autoSlide, 3000, 'avance automático');
   });
 
+  await test('importar PowerPoint: clics de las animaciones, efectos, duración de las transiciones, Morph y vídeos', async () => {
+    reset(); await R.pptx.buildPptx();
+    const W = frame.contentWindow, P = new W.PptxGenJS(); P.layout = 'LAYOUT_16x9';
+    const s1 = P.addSlide();
+    for (const [i, t] of ['Uno', 'Dos', 'Tres', 'Cuatro'].entries()) s1.addText(t, { x: 0.5 + i * 2, y: 1, w: 1.8, h: 1 });
+    s1.addMedia({ type: 'video', data: 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDE=', x: 1, y: 3, w: 4, h: 2 });
+    P.addSlide().addText('Morph', { x: 1, y: 1, w: 4, h: 1 });
+    const s3 = P.addSlide(); s3.addText('Corte', { x: 1, y: 1, w: 4, h: 1 }); s3.addText('G1', { x: 1, y: 3, w: 2, h: 1 }); s3.addText('G2', { x: 4, y: 3, w: 2, h: 1 });
+    const zip = await W.JSZip.loadAsync(await P.write({ outputType: 'blob' }));
+    // (PptxGenJS gives the video the id of a text box: a unique one, as PowerPoint would.)
+    let x = (await zip.file('ppt/slides/slide1.xml').async('string')).replace(/(<p:pic>\s*<p:nvPicPr><p:cNvPr id=")\d+"/, (m, a) => a + '99"');
+    const id = t => new RegExp(`<p:cNvPr id="(\\d+)"[^>]*>(?:(?!<p:cNvPr).)*?<a:t>${t}</a:t>`, 's').exec(x)?.[1] || '';
+    const vid = /<p:pic>.*?<p:cNvPr id="(\d+)"/s.exec(x)?.[1];
+    const [a, b, c, d] = ['Uno', 'Dos', 'Tres', 'Cuatro'].map(id);
+    assert(a && b && c && d && vid, 'ids de las formas ' + [a, b, c, d, vid]);
+    // (PowerPoint's timeline, as it writes it: each effect a cTn with its preset, class and how it starts.)
+    let n = 10;
+    const eff = (node, cls, preset, sp, body) => `<p:par><p:cTn id="${n++}" presetID="${preset}" presetClass="${cls}" presetSubtype="0" fill="hold" nodeType="${node}"><p:stCondLst><p:cond delay="0"/></p:stCondLst><p:childTnLst>${body(sp)}</p:childTnLst></p:cTn></p:par>`;
+    const fade = sp => `<p:set><p:cBhvr><p:cTn id="${n++}" dur="1" fill="hold"/><p:tgtEl><p:spTgt spid="${sp}"/></p:tgtEl><p:attrNameLst><p:attrName>style.visibility</p:attrName></p:attrNameLst></p:cBhvr><p:to><p:strVal val="visible"/></p:to></p:set><p:animEffect transition="in" filter="fade"><p:cBhvr><p:cTn id="${n++}" dur="500"/><p:tgtEl><p:spTgt spid="${sp}"/></p:tgtEl></p:cBhvr></p:animEffect>`;
+    const appear = sp => `<p:set><p:cBhvr><p:cTn id="${n++}" dur="1" fill="hold"/><p:tgtEl><p:spTgt spid="${sp}"/></p:tgtEl><p:attrNameLst><p:attrName>style.visibility</p:attrName></p:attrNameLst></p:cBhvr><p:to><p:strVal val="visible"/></p:to></p:set>`;
+    const bold = sp => `<p:set><p:cBhvr override="childStyle"><p:cTn id="${n++}" dur="indefinite"/><p:tgtEl><p:spTgt spid="${sp}"/></p:tgtEl><p:attrNameLst><p:attrName>style.fontWeight</p:attrName></p:attrNameLst></p:cBhvr><p:to><p:strVal val="bold"/></p:to></p:set>`;
+    const play = sp => `<p:cmd type="call" cmd="playFrom(0.0)"><p:cBhvr><p:cTn id="${n++}" dur="4000" fill="hold"/><p:tgtEl><p:spTgt spid="${sp}"/></p:tgtEl></p:cBhvr></p:cmd>`;
+    const seq = [eff('clickEffect', 'entr', 10, a, fade), eff('withEffect', 'entr', 10, b, fade), eff('afterEffect', 'entr', 53, c, fade),
+      eff('clickEffect', 'emph', 15, a, bold), eff('clickEffect', 'entr', 1, d, appear), eff('withEffect', 'mediacall', 1, vid, play)].join('');
+    x = x.replace('</p:sld>', '<p:transition spd="med" xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" p14:dur="700"><p:fade/></p:transition>'
+      + `<p:timing><p:tnLst><p:par><p:cTn id="1" dur="indefinite" restart="never" nodeType="tmRoot"><p:childTnLst><p:seq concurrent="1" nextAc="seek"><p:cTn id="2" dur="indefinite" nodeType="mainSeq"><p:childTnLst>${seq}</p:childTnLst></p:cTn></p:seq></p:childTnLst></p:cTn></p:par></p:tnLst></p:timing></p:sld>`);
+    zip.file('ppt/slides/slide1.xml', x);
+    let x2 = await zip.file('ppt/slides/slide2.xml').async('string');
+    x2 = x2.replace('</p:sld>', '<mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"><mc:Choice xmlns:p159="http://schemas.microsoft.com/office/powerpoint/2015/09/main" Requires="p159">'
+      + '<p:transition spd="slow" xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" p14:dur="2000"><p159:morph option="byObject"/></p:transition></mc:Choice><mc:Fallback><p:transition spd="slow"><p:fade/></p:transition></mc:Fallback></mc:AlternateContent></p:sld>');
+    zip.file('ppt/slides/slide2.xml', x2);
+    // A group (G1 and G2) that fades in on a click; then a click on something that isn't there; then «with previous».
+    let x3 = await zip.file('ppt/slides/slide3.xml').async('string');
+    const spOf = t => new RegExp(`<p:sp>(?:(?!<p:sp>).)*?<a:t>${t}</a:t>.*?</p:sp>`, 's').exec(x3)[0], g1 = spOf('G1'), g2 = spOf('G2'), corte = /<p:cNvPr id="(\d+)"[^>]*>(?:(?!<p:cNvPr).)*?<a:t>Corte<\/a:t>/s.exec(x3)[1];
+    x3 = x3.replace(g1, '').replace(g2, `<p:grpSp><p:nvGrpSpPr><p:cNvPr id="60" name="Grupo"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>${g1}${g2}</p:grpSp>`);
+    x3 = x3.replace('</p:sld>', `<p:timing><p:tnLst><p:par><p:cTn id="1" dur="indefinite" restart="never" nodeType="tmRoot"><p:childTnLst><p:seq concurrent="1" nextAc="seek"><p:cTn id="2" dur="indefinite" nodeType="mainSeq"><p:childTnLst>`
+      + [eff('clickEffect', 'entr', 10, 60, fade), eff('clickEffect', 'entr', 10, 999, fade), eff('withEffect', 'entr', 10, corte, fade)].join('') + '</p:childTnLst></p:cTn></p:seq></p:childTnLst></p:cTn></p:par></p:tnLst></p:timing></p:sld>');
+    zip.file('ppt/slides/slide3.xml', x3);
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const deck = await R.pptxImport.importPPTX(new File([blob], 'anim.pptx'));
+    const bs = deck.slides[0].blocks, by = t => bs.find(q => q.type === 'text' && q.html.includes(t)), A = by('Uno').animation;
+    // «With previous» and «after previous» share the click of the one before: three clicks, not six.
+    eq(A.order, 1, 'clic 1'); eq(by('Dos').animation.order, 1, 'con la anterior: el mismo clic'); eq(by('Dos').animation.start, 'withPrev');
+    eq(by('Tres').animation.order, 1, 'después de la anterior: el mismo clic'); eq(by('Tres').animation.effect, 'zoom-in', 'zoom');
+    const emph = by('Uno').anims?.[0]; eq(emph?.effect, 'color-pulse', 'Revelar en negrita: un brillo, no crecer al 130 %'); eq(emph.order, 2, 'clic 2');
+    eq(by('Cuatro').animation.order, 3, 'clic 3'); eq(by('Cuatro').animation.duration, 0, 'Aparecer es instantáneo');
+    const v = bs.find(q => q.type === 'video'); eq(v?.animation?.effect, 'media-play', 'el vídeo se reproduce (mediacall)'); eq(v.animation.order, 3, 'con su clic');
+    eq(deck.slides[0].transition, 'fade', 'fundido'); eq(deck.slides[0].transitionDur, 700, 'su duración exacta (p14:dur)');
+    assert(deck.slides[1].autoAnimate && deck.slides[1].transition === null, 'Morph'); eq(deck.slides[1].aaDuration, 2, 'Morph de 2 s');
+    eq(deck.slides[2].transition, 'none', 'sin transición en PowerPoint: corte (no la de toda la presentación)');
+    const b3 = t => deck.slides[2].blocks.find(q => q.type === 'text' && q.html.includes(t)).animation;
+    assert(b3('G1')?.order === 1 && b3('G2')?.order === 1 && b3('G2').start === 'withPrev', 'la animación de un grupo, en todos sus objetos a la vez');
+    assert(b3('Corte')?.order === 2 && b3('Corte').start === 'click', 'un clic de algo que no se importa no se pierde: lo hereda la siguiente');
+    const html = R.io.buildHTML(deck);
+    const sec1 = new DOMParser().parseFromString(html, 'text/html').querySelector(`section[data-rv-id="${deck.slides[0].id}"]`);
+    eq(sec1.querySelectorAll('[data-fragment-index="1"]').length, 3, 'tres efectos en el primer clic');
+    assert(/data-rv-dur="700"/.test(html) && /data-auto-animate-duration="2"/.test(html), 'duraciones al presentar');
+    // Too big for the browser (here: more than 10 bytes): left out and said, its picture kept; big ones said too.
+    const notes = [], small = await R.pptxImport.importPPTX(new File([blob], 'anim.pptx'), { notes, mediaMax: 10, mediaBig: 5 });
+    assert(!small.slides[0].blocks.some(q => q.type === 'video') && small.slides[0].blocks.length >= 4, 'el vídeo no entra; lo demás sí');
+    assert(notes.some(q => q.kind === 'tooBig' && /\.mp4$/.test(q.name)), 'se dice qué vídeo no cabe');
+    const msg = R.openfile.importNotesText(notes);
+    assert(/\.mp4/.test(msg) && msg.length > 40, 'el aviso nombra el archivo: ' + msg.slice(0, 80));
+    const steps = []; await R.pptxImport.importPPTX(new File([blob], 'anim.pptx'), { progress: p => steps.push(p) });
+    assert(steps.some(p => p.slide === 3 && p.of === 3), 'dice por qué diapositiva va');
+  });
+
   await test('ODP: animaciones de objetos (Impress) de ida y vuelta', async () => {
     reset(); const s = slide();
     s.blocks[0].html = 'Título'; s.blocks[0].animation = { effect: 'fade-up', order: 0, duration: 700 };

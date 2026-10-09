@@ -416,9 +416,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.querySelector('#master-banner [data-action="master-close"]').click(); await sleep(10);
     assert(!R.state.ui.editMaster, 'cerrar patrón');
     assert(D.querySelector('#stage .master-layer .pv-block'), 'se dibuja bajo la diapositiva');
-    eq((R.io.buildHTML().match(/fill="#ff00aa"/g) || []).length, 2, 'en las dos diapositivas del export');
+    // (In the slides themselves: between two with the same background, a still copy of it waits under them too.)
+    const inSlides = () => new DOMParser().parseFromString(R.io.buildHTML(), 'text/html').querySelectorAll('section [fill="#ff00aa"]').length;
+    eq(inSlides(), 2, 'en las dos diapositivas del export');
     R.master.toggleHideMaster(1);
-    eq((R.io.buildHTML().match(/fill="#ff00aa"/g) || []).length, 1, 'oculto en la segunda');
+    eq(inSlides(), 1, 'oculto en la segunda');
     R.store.undo(); R.store.undo(); R.render();
   });
 
@@ -1138,5 +1140,36 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(getComputedStyle(prev).color, (h => `rgb(${[1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)).join(', ')})`)(R.palettes.PALETTES.revela.accents[1]), 'la vista previa lo muestra');
     eq(m.querySelectorAll('.ts2-slide li').length, 5, 'con los cinco niveles');
     m.remove(); R.master.toggleMasterEdit(false); reset();
+  });
+
+  await test('miniaturas: tras cambiar el tema y deshacer, un clic o un cambio en una diapositiva no las rehacen todas; la cambiada, después de dibujar', async () => {
+    R.store.replaceDeck(R.examples.buildExample('dashboard')); await sleep(20); R.flushThumbs();
+    const th = () => [...D.querySelectorAll('#navigator .thumb')], rebuilt = a => th().filter((e, i) => e !== a[i]).length;
+    assert(th().length > 4, 'varias diapositivas');
+    R.palettes.applyPalette('ocean'); await sleep(20); R.flushThumbs();
+    R.store.undo(); await sleep(20); R.flushThumbs();
+    // (The master's text styles, linked to the theme while drawing, changed the panel's fingerprint after it was taken.)
+    let a = th(); R.store.commit(() => { R.state.deck.slides[1].blocks[0].x += 5; });
+    eq(rebuilt(a), 0, 'en el acto, ninguna: la diapositiva se dibuja primero');
+    await sleep(20); R.flushThumbs(); eq(rebuilt(a), 1, 'después, solo la suya'); assert(th()[1] !== a[1], 'la de la diapositiva cambiada');
+    a = th(); th()[3].click(); await sleep(20); R.flushThumbs();
+    eq(rebuilt(a), 0, 'un clic en otra no rehace ninguna'); assert(th()[3].classList.contains('active'), 'y la marca como actual');
+    R.store.undo(); await sleep(20); R.flushThumbs(); eq(rebuilt(a), 1, 'deshacer el cambio: solo la suya otra vez');
+    reset();
+  });
+
+  await test('miniaturas de una presentación grande: todas a la vez en el panel, dibujadas primero las que se ven y las demás poco a poco', async () => {
+    const d = R.examples.buildExample('dashboard'), base = d.slides.slice();
+    for (let i = 0; d.slides.length < 60; i++) d.slides.push(R.slides.cloneSlide(base[i % base.length]));
+    R.store.replaceDeck(d);
+    const th = () => [...D.querySelectorAll('#navigator .thumb')], drawn = e => e.querySelector('.thumb-inner').children.length > 0;
+    eq(th().length, 60, 'las 60 en el panel en el acto (sus números, su fondo)');
+    assert(th().filter(drawn).length < 60, 'pero no dibujadas todas en la misma tarea');
+    for (let i = 0; i < 40 && !drawn(th()[0]); i++) await sleep(25);
+    assert(drawn(th()[0]), 'las que se ven, enseguida');
+    for (let i = 0; i < 200 && !th().every(drawn); i++) await sleep(25);
+    assert(th().filter(drawn).length >= 55, 'y las demás solas, poco a poco: ' + th().filter(drawn).length);
+    R.flushThumbs(); assert(th().every(drawn), 'flushThumbs() las termina');
+    reset();
   });
 }

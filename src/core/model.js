@@ -125,6 +125,7 @@ export function tableBlock(props = {}) {
 }
 
 export function loadDeck() {
+  flushSave();                             // (a change still waiting to be written is the copy to read back)
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
@@ -134,10 +135,15 @@ export function loadDeck() {
   } catch { return null; }
 }
 
-// Autosave: a time stamp, then localStorage (fast, synchronous, small decks)
-// and IndexedDB (any size, debounced). On start the newer copy wins.
+// Autosave: a time stamp, then localStorage (synchronous to read back at start; small decks) and IndexedDB (any
+// size). Not at every edit: serialising a deck of megabytes and writing it took 30–70 ms of every edit, drag frame
+// and nudge on a slow machine. Both are written together once the editor is idle, about a second after the first
+// change not yet written (the changes after it go with it), and at once when leaving the page (pagehide, the tab
+// hidden, beforeunload), before the stored copy is read back (loadDeck) and before another deck replaces this one
+// (store.js). So a crash (the tab or the browser killed) loses at most the last ~1 s of changes. On start the newer
+// copy wins.
 const LS_MAX = 4_500_000;                 // characters; beyond this localStorage would refuse it
-let idbTimer = null;
+const SAVE_AFTER = 1000;                  // ms after the first unwritten change (decks over 20 MB: 3 s, as before)
 // Rough size (characters of all strings) without serialising the whole deck.
 export function approxSize(v) {
   if (typeof v === 'string') return v.length;
@@ -145,9 +151,6 @@ export function approxSize(v) {
   if (v && typeof v === 'object') { let n = 0; for (const k in v) n += approxSize(v[k]) + k.length; return n; }
   return 8;
 }
-// Called only when the content changed (see store.save): localStorage at once,
-// IndexedDB a moment later (big decks: later still).
-let pending = null;
 // Is the last change kept in this browser (in either store)? Not in some private
 // windows or with the disk full: the title bar then says so, to download a copy.
 let kept = true;
@@ -173,18 +176,29 @@ const writeIdb = (deck, local) => (idbQueue = idbQueue.then(async () => {
     if (Date.now() - lastGc > 5 * 60e3) { lastGc = Date.now(); collectGarbage([light, ...(await verAll().catch(() => [])).map(v => v.deck)]).catch(() => {}); }
   } catch { if (!local) setKept(false); }
 }));
+// The deck waiting to be written (the live object: what it holds when written is what is kept), and when.
+let pending = null, timer = null, idle = null;
+const onIdle = (fn, timeout) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout }) : setTimeout(fn, 0));
+const offIdle = id => (typeof cancelIdleCallback === 'function' ? cancelIdleCallback(id) : clearTimeout(id));
+// Called only when the content changed (see store.save).
 export function saveDeck(deck) {
   deck.savedAt = Date.now(); pending = deck;
-  const size = approxSize(deck), local = writeLocal(deck, size);
-  if (local) setKept(true);
-  clearTimeout(idbTimer);
-  idbTimer = setTimeout(() => { pending = null; writeIdb(deck, local); }, size > 20e6 ? 3000 : 400);
+  if (timer != null || idle != null) return;                      // (already due: this change goes with it)
+  timer = setTimeout(() => { timer = null; idle = onIdle(() => { idle = null; flushSave(); }, 250); }, approxSize(deck) > 20e6 ? 3000 : SAVE_AFTER);
 }
-// Everything now (leaving the page, or before reading it back).
+// Everything now (leaving the page, before reading it back): the deck waiting, or the one given.
 export function flushSave(deck = pending) {
-  clearTimeout(idbTimer); pending = null;
+  clearTimeout(timer); if (idle != null) offIdle(idle);
+  timer = idle = null; pending = null;
   if (!deck) return Promise.resolve();
-  return writeIdb(deck, writeLocal(deck));
+  const local = writeLocal(deck); if (local) setKept(true);
+  return writeIdb(deck, local);
+}
+// Leaving the page (closed, reloaded, navigated away; on phones a hidden tab may never come back): written now.
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  window.addEventListener('pagehide', () => flushSave());
+  window.addEventListener('beforeunload', () => flushSave());
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSave(); });
 }
 // The presentation left open is a big one, only in IndexedDB (it takes a while to come back): → { name } or null.
 export function bigDeckWaiting() {

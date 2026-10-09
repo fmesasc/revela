@@ -78,14 +78,15 @@ export function setSlideTransition(value) {
   commit(() => targetSlides().forEach(s => { s.transition = value === 'inherit' ? null : value; delete s.autoAnimate; delete s.morphBy; }));
 }
 export function setSlideTransOptions(props) {
-  commit(() => targetSlides().forEach(s => { for (const [k, v] of Object.entries(props)) { if (v) s[k] = v; else delete s[k]; } }));
+  // (Choosing a speed replaces the exact duration a PowerPoint transition came with, s.transitionDur.)
+  commit(() => targetSlides().forEach(s => { for (const [k, v] of Object.entries(props)) { if (v) s[k] = v; else delete s[k]; } if ('transitionSpeed' in props) delete s.transitionDur; }));
 }
 // Copy this slide's transition, exit, speed and auto-advance to every slide.
 export function applyTransitionToAll() {
   const c = currentSlide();
   commit(() => state.deck.slides.forEach(s => {
     s.transition = c.transition ?? null;
-    for (const k of ['transitionOut', 'transitionSpeed', 'transitionDir']) { if (c[k]) s[k] = c[k]; else delete s[k]; }
+    for (const k of ['transitionOut', 'transitionSpeed', 'transitionDir', 'transitionDur']) { if (c[k]) s[k] = c[k]; else delete s[k]; }
     s.autoSlide = c.autoSlide || 0;
   }));
 }

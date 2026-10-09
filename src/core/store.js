@@ -2,7 +2,7 @@
 // history stack for undo/redo, and a subscription mechanism so the UI re-renders
 // after every committed change.
 
-import { emptyDeck, loadDeck, saveDeck } from './model.js';
+import { emptyDeck, loadDeck, saveDeck, flushSave } from './model.js';
 
 const listeners = new Set();
 const past = [];
@@ -28,7 +28,14 @@ export const state = {
 };
 
 export function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
-function notify() { for (const fn of listeners) fn(); }
+// What the change being drawn touched: { doc } — the document's content (or another document), or only the screen
+// (selection, tab, zoom, panels). Listeners that redraw costly parts (the slides panel) skip them for the screen.
+let change = { doc: true }, shown = [-1, -1];
+export const lastChange = () => change;
+function notify() {
+  change = { doc: version !== shown[0] || epoch !== shown[1] }; shown = [version, epoch];
+  for (const fn of listeners) fn();
+}
 
 // Read helpers.
 // While editing the slide master (editMaster === true) or one of its layouts
@@ -122,13 +129,26 @@ function same(a, b) {
   const ka = Object.keys(a).filter(k => a[k] !== undefined && keep(k)), kb = Object.keys(b).filter(k => b[k] !== undefined && keep(k));
   return ka.length === kb.length && ka.every(k => same(a[k], b[k]));
 }
-// Record what changed since the last step as a step of its own.
-export function checkpoint() {
+// Each comparison and copy walks the whole deck (on a big one, milliseconds each on a slow machine): an edit used to
+// take four comparisons and three copies. Now one copy per step, taken once the edit is drawn (`base` null until
+// then: settle() takes it when something needs it sooner), and what the comparisons found answers for saving, the
+// watchers and the undo button. The copy last saved (`persisted`) is often that same object: `toBase` marks that it
+// will be (it can't be compared until then). Neither copy is ever changed in place: whatever would make one of them
+// the document or change it (undo, redo, applyRemote) lets `persisted` go first.
+let toBase = false;
+function settle() {
+  if (base) return;
+  base = snapshot(state.deck);
+  if (toBase) { persisted = base; toBase = false; }
+}
+// Record what changed since the last step as a step of its own. later: its copy is taken after drawing (settle).
+export function checkpoint(later = false) {
+  settle();
   if (same(base, state.deck)) return false;
   past.push(base);
   if (past.length > HISTORY_LIMIT) past.shift();
   future.length = 0;
-  base = snapshot(state.deck);
+  base = later ? null : snapshot(state.deck);
   return true;
 }
 // Who wants to know what each edit changed (track changes): fn(before, after).
@@ -141,16 +161,22 @@ export function commit(fn, { history = true, force = false, comment = false, tra
   // one opened to view (or only to comment: then comments are allowed).
   const lock = state.ui.lock;
   if ((state.deck.final || (lock && !(lock === 'comment' && comment))) && history && !force) { window.dispatchEvent(new Event('revela:readonly')); return; }
+  settle();
   const before = history && track && editWatchers.size ? base : null;   // (the last step: with what was typed since)
-  if (history) checkpoint();          // changes made in place before are a step of their own
+  const start = base, wasSaved = persisted === start;
+  const typed = history && checkpoint();          // changes made in place before are a step of their own
   if (fn) fn();
   clampSlide();
-  if (history) checkpoint();
-  save();
+  const made = history && checkpoint(true);
+  // (Different from the last step: from the copy saved too, when that was it. Without a change in place, the
+  // document is now its new step, which is the copy saved.)
+  save(made || (typed && wasSaved));
   notify();
   // What drawing it filled in (default styles created on first use…) belongs to this step.
-  if (history) base = snapshot(state.deck);
-  if (before && !same(before, state.deck)) editWatchers.forEach(w => { try { w(before, state.deck); } catch {} });
+  if (history) { if (base && !toBase) base = snapshot(state.deck); else { base = null; settle(); } }
+  // (Different from `before` when exactly one of the two found a change; when both did, the edit may have undone
+  // what was typed: compared.)
+  if (before && (typed !== made || (typed && !same(before, state.deck)))) editWatchers.forEach(w => { try { w(before, state.deck); } catch {} });
 }
 
 export function mutate(fn) { commit(fn, { history: false }); }
@@ -158,25 +184,36 @@ export function mutate(fn) { commit(fn, { history: false }); }
 // Changes that follow from the last one (made by a listener after it, like
 // slides following their layout): part of the same undo step.
 export function amend(fn) {
+  settle();
   if (fn) fn();
   clampSlide(); base = snapshot(state.deck);
   save(); notify();
 }
-// Whether there is something to undo / redo (the buttons are off otherwise).
-export const canUndo = () => past.length > 0 || !same(base, state.deck);
+// Whether there is something to undo / redo (the buttons are off otherwise). (Asked at every redraw: the
+// comparison only when the document's content or the last step changed since it was last made.)
+let undoable = { at: null };
+export const canUndo = () => {
+  if (past.length) return true;
+  settle();
+  if (undoable.at !== version || undoable.base !== base) undoable = { at: version, base, v: !same(base, state.deck) };
+  return undoable.v;
+};
 export const canRedo = () => future.length > 0;
 export function undo() {
   checkpoint();                       // changes not recorded yet are undone first
   if (!past.length) return;
-  future.push(snapshot(state.deck));
+  future.push(base);                  // (the document as it is: checkpoint just made sure)
   state.deck = past.pop();
+  if (persisted === state.deck) persisted = null;   // (the document now: it can't be what was saved)
   clampSlide(); save(); notify();
   base = snapshot(state.deck);
 }
 export function redo() {
   if (!future.length) return;
+  settle();
   past.push(snapshot(state.deck));
   state.deck = future.pop();
+  if (persisted === state.deck) persisted = null;
   clampSlide(); save(); notify();
   base = snapshot(state.deck);
 }
@@ -188,17 +225,24 @@ export const setPersist = on => { persist = !!on; };
 // The document's version: it goes up only when its content changes (not with
 // selection, tabs or zoom), so saving — here, to Drive, as a version — happens
 // only then, instead of serialising the whole deck at every click.
-let version = 0, persisted = snapshot(state.deck);
+let version = 0, persisted = base;
 export const docVersion = () => version;
-function save() {
-  if (same(persisted, state.deck)) return;
-  version++; persisted = snapshot(state.deck);
+// changed: known to differ from what was saved (commit's comparisons), and then the document is the step being
+// recorded (`base`: its copy, or the one about to be taken), which is what was saved.
+function save(changed = false) {
+  if (!changed) { settle(); if (same(persisted, state.deck)) return; }
+  version++;
+  if (!changed) persisted = snapshot(state.deck);
+  else if (base) persisted = base;
+  else { persisted = null; toBase = true; }
   persist && saveDeck(state.deck);
 }
 // Changes made by someone else (co-editing): applied to the document and to
 // the undo history, so undoing only undoes one's own changes. No undo step.
 export function applyRemote(fn) {
+  settle();
   const cur = state.deck.slides[state.ui.slideIndex]?.id;
+  if (persisted === base || past.includes(persisted) || future.includes(persisted)) persisted = snapshot(persisted);   // (it stays as saved)
   fn(state.deck); fn(base); past.forEach(fn); future.forEach(fn);
   // (The slide on the canvas stays the same one, wherever their change moved it.)
   const i = state.deck.slides.findIndex(s => s.id === cur); if (i >= 0) state.ui.slideIndex = i;
@@ -219,12 +263,13 @@ export const setDeckFilter = fn => { deckFilter = fn; };
 // given is the outgoing one, untouched). first: run before the others (to see where it was saved).
 const beforeReplace = [];
 export function onBeforeReplace(fn, { first = false } = {}) { first ? beforeReplace.unshift(fn) : beforeReplace.push(fn); return () => { const i = beforeReplace.indexOf(fn); if (i >= 0) beforeReplace.splice(i, 1); }; }
-const leaving = () => { const old = state.deck; for (const fn of [...beforeReplace]) { try { fn(old); } catch (e) { console.error(e); } } };
+// (Its last changes still waiting to be written in this browser are written first: model.saveDeck waits a second.)
+const leaving = () => { const old = state.deck; flushSave(); for (const fn of [...beforeReplace]) { try { fn(old); } catch (e) { console.error(e); } } };
 export function adoptDeck(deck, { sameDocument = false } = {}) {
   if (!sameDocument) { leaving(); epoch++; }
   deck = deckFilter(deck);
   state.deck = deck; state.ui.slideIndex = 0; state.ui.slideSel = []; base = snapshot(deck); past.length = 0; future.length = 0;
-  version++; persisted = snapshot(deck);                 // (already saved where it came from)
+  version++; persisted = base; toBase = false;           // (already saved where it came from)
   notify();
 }
 export function replaceDeck(deck) {

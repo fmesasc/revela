@@ -46,7 +46,7 @@ import { INK_CSS, inkJS } from '../runtime/ink.js';
 import { READING_CSS, readingJS } from '../runtime/reading.js';
 import { deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
 import { animTimeline, animEntries, EFFECT_KF, EFFECT_KF_CSS, EMPHASIS_FX, SIZE_FX, animScale, isEntrance, MEDIA_FX, customTransitionCSS, transitionName, isShapeTransition, pathKeyframesCSS, pathTurns, animsOf, animKey, offsetBefore } from '../../features/animation/transitions.js';
-import { masterBlocksFor, isEmptyPlaceholder, styled, levelVars } from '../../features/document/master.js';
+import { masterBlocksFor, isEmptyPlaceholder, styled, levelVars, layoutOf } from '../../features/document/master.js';
 import { magOverlaySVG, magFrameSVG, magViewCSS, magInsetCSS, magOrigin, underArea, viewOf, MAG_SKIP } from '../../features/document/magnify.js';
 import { watermarkPage } from '../../features/document/watermark.js';
 
@@ -525,17 +525,77 @@ function fitAttrs(html, b) {
   return html.replace(/^<([a-zA-Z][\w-]*)/, (m, tag) => `<${tag}${at}`);
 }
 
-function slideHTML(s, deck, figMap, plan = morphPlan(deck), fit = fitMode(deck)) {
+// The master's own objects a slide shows (not its layout's), visible: the first of blocksOf.
+const backOf = (s, deck) => { const lay = new Set((layoutOf(s, deck)?.blocks || []).map(b => b.id));
+  return masterBlocksFor(s, deck).filter(b => !b.hidden && !isEmptyPlaceholder(b)).filter(b => !lay.has(b.id)); };
+// The background kept still («Animar el fondo con la transición» off, the default — deck.animateBg —): between two
+// slides that show the same background — its colour, gradient or picture and the master's objects (a pattern, a band
+// of logos) —, only the content changes, as one expects of a template: a fade no longer dims the
+// background half-way (two half-transparent copies of it), a push no longer carries it away, and Morph no longer fades
+// the master's objects in again (they matched nothing, so reveal.js faded them in: a flash of whatever lay under them).
+// Such slides get data-bgk (the background's number); one copy of each background waits in .rv-bd, under the slides,
+// and BD_JS shows it — hiding the slides' own copies — while the slide left and the one coming share it. A slide whose
+// background differs from both neighbours, or is a video or a web page, keeps it inside (it changes with its transition).
+// (A layout's own objects — a line under the title of one layout only — stay with the content, above the still master:
+// two layouts of one master share its background.)
+// → { of: slide id → number, layers: [{ bg, html }] }.
+export function backdropPlan(deck, fit = fitMode(deck)) {
+  const out = { of: new Map(), layers: [] };
+  if (deck.animateBg || canvasOn(deck) || fit === 'adapt') return out;
+  const vis = deck.slides.filter(x => !x.hidden), known = new Map();
+  const keyOf = s => {
+    if (s.bgVideo || s.bgIframe) return null;
+    const mb = backOf(s, deck);
+    // (Master objects that move or play — an animation, a video, a camera, a poll — belong to each slide.)
+    if (mb.some(b => animsOf(b).length || needsPlayer(b) || ['video', 'audio', 'camera', 'poll', 'embed', 'model', 'timer', 'lock'].includes(b.type))) return null;
+    return `${stageBackground(s)}\n${bgLayer(s)}${mb.map(b => blockHTML(b, s)).join('')}`;
+  };
+  const keys = vis.map(keyOf);
+  vis.forEach((s, i) => {
+    const k = keys[i]; if (k == null || (k !== keys[i - 1] && k !== keys[i + 1])) return;
+    if (!known.has(k)) { known.set(k, out.layers.length); out.layers.push({ bg: stageBackground(s), html: k.slice(k.indexOf('\n') + 1) }); }
+    out.of.set(s.id, known.get(k));
+  });
+  return out;
+}
+// Which background shows (see backdropPlan): the slides' own while one with another background comes or goes, else the
+// still copy. (Not when printing: every page has its own.) Also the exact duration of a PowerPoint transition
+// (data-rv-dur, ms: the later slide's, on both the slide leaving and the one coming, so a fade crosses evenly).
+// (Its first look waits for reveal.js to be ready, not for its 'ready' event: a page that can't write its address —
+// shown from srcdoc — never sends it.)
+const BD_JS = `(function(){var root=document.querySelector('.reveal');
+function k(s){return s&&s.getAttribute('data-bgk');}
+function printing(){try{return (Reveal.isPrintView&&Reveal.isPrintView())||/print-pdf/.test(location.search);}catch(e){return false;}}
+function show(a,b){if(printing()||Reveal.isOverview()){root.removeAttribute('data-bd');return;}var kb=k(b);if(kb!=null&&(!a||k(a)===kb))root.setAttribute('data-bd',kb);else root.removeAttribute('data-bd');}
+function dur(a,b){var all=Reveal.getSlides(),later=a&&all.indexOf(a)>all.indexOf(b)?a:b,d=later&&later.getAttribute('data-rv-dur');
+[a,b].forEach(function(s){if(s)s.style.transitionDuration=d?d+'ms':'';});}
+Reveal.on('ready',function(e){show(null,e.currentSlide);});
+Reveal.on('slidechanged',function(e){dur(e.previousSlide,e.currentSlide);show(e.previousSlide,e.currentSlide);});
+Reveal.on('overviewshown',function(){root.removeAttribute('data-bd');});Reveal.on('overviewhidden',function(){show(null,Reveal.getCurrentSlide());});
+(function first(){if(Reveal.isReady())show(null,Reveal.getCurrentSlide());else setTimeout(first,50);})();})();`;
+const backdropCSS = (bd, w, h) => (bd.layers.length ? `.reveal .slides>.rv-bd{position:absolute;left:0;top:0;width:${w}px;height:${h}px;z-index:0;pointer-events:none}
+ .reveal .slides>.rv-bd>.rv-bd-k{display:none;position:absolute;left:0;top:0;margin:0}
+ ${bd.layers.map((l, i) => `.reveal[data-bd="${i}"] .slides>.rv-bd>[data-k="${i}"]{display:block}`
+    + ` .reveal[data-bd="${i}"] .slides section[data-bgk="${i}"]>.stage{background:transparent!important}`
+    + ` .reveal[data-bd="${i}"] .slides section[data-bgk="${i}"]>.stage>.rv-bgl{opacity:0}`).join('\n ')}` : '');
+const backdropHTML = bd => (bd.layers.length ? `<div class="rv-bd" aria-hidden="true">${bd.layers.map((l, i) =>
+  `<div class="stage rv-bd-k" data-k="${i}" style="background:${l.bg}">${l.html.replace(/ data-id="[^"]*"/g, '')}</div>`).join('')}</div>` : '');
+
+function slideHTML(s, deck, figMap, plan = morphPlan(deck), fit = fitMode(deck), bd = backdropPlan(deck, fit)) {
   // Entry/exit can differ (reveal's "x-in y-out"); speed can be set per slide.
   const tin = ownTransition(s) || deck.defaultTransition || 'slide';
-  // As in PowerPoint, a shape reveal (wipe, circle…) belongs to the slide that
-  // comes in: the one before leaves with it too, keeping the rest of the screen.
+  // As in PowerPoint, a transition belongs to the slide that comes in: the one before leaves with it too — a shape
+  // reveal (wipe, circle…) keeping the rest of the screen, a fade crossing over evenly. (Before, only shape reveals: a
+  // slide with no transition of its own vanished at once while the next one faded in over white — a flash on every
+  // fade after a Morph slide, as imported from PowerPoint.) With Morph next, reveal.js's own way.
   const vis = deck.slides.filter(x => !x.hidden), next = vis[vis.indexOf(s) + 1];
   const nextIn = next && (ownTransition(next) || deck.defaultTransition);
-  const tout = s.transitionOut || (isShapeTransition(nextIn) ? nextIn : null);
+  const tout = s.transitionOut || (isShapeTransition(nextIn) || (next?.transition && !next.autoAnimate) ? nextIn : null);
   const trans = tout && tout !== tin ? ` data-transition="${tin}-in ${tout}-out"`
     : s.transition || tout ? ` data-transition="${tin}"` : '';
   const speed = s.transitionSpeed ? ` data-transition-speed="${s.transitionSpeed}"` : '';
+  // (An exact duration from PowerPoint, applied by BD_JS to this slide and the one it replaces.)
+  const exact = +s.transitionDur > 0 && s.transition && !s.transitionSpeed ? ` data-rv-dur="${Math.round(Math.min(10000, +s.transitionDur))}"` : '';
   const auto = s.autoSlide ? ` data-autoslide="${s.autoSlide}"` : '';
   const solid = /^(#|rgb)/.test(s.background || '');
   // Media backgrounds (reveal.js): video, web page, plus the background's own transition.
@@ -549,8 +609,14 @@ function slideHTML(s, deck, figMap, plan = morphPlan(deck), fit = fitMode(deck))
   const morphCounts = {};
   // (Objects a code lock shows once it is opened: hidden until then — io/runtime/lock.js.)
   const lockHides = new Map(s.blocks.filter(x => x.type === 'lock').flatMap(l => (Array.isArray(l.reveal) ? l.reveal : []).map(id => [id, l.id])));
-  const inner = blocksOf(s, deck).map(b00 => {
-    const mid = plan.marked.has(s.id) ? plan.key(s, b00) : null;
+  // The master's objects, then the layout's, come first (blocksOf): with a still background (backdropPlan) the master's
+  // go, with the slide's background, in a layer of their own (.rv-bgl) that hides while the still copy shows.
+  const bk = bd.of.get(s.id), nMaster = masterBlocksFor(s, deck).filter(b => !b.hidden && !isEmptyPlaceholder(b) && !(b.backdrop && canvasOn(deck))).length;
+  const nBack = bk != null ? backOf(s, deck).length : 0;
+  const parts = blocksOf(s, deck).map((b00, bi) => {
+    // (With Morph, the master's objects are the same on both slides: matched by their own id, they stay where they
+    // are — unmatched, reveal.js faded them in again on every Morph.)
+    const mid = plan.marked.has(s.id) ? plan.key(s, b00) || (bi < nMaster ? 'm-' + b00.id : null) : null;
     const b01 = mid ? { ...b00, morphId: mid } : b00;
     const tm = plan.textMode(s);
     const b0 = tm && b00.type === 'text' ? { ...b01, byText: true, html: morphText(b00.html, tm, morphCounts) } : b01;
@@ -566,15 +632,19 @@ function slideHTML(s, deck, figMap, plan = morphPlan(deck), fit = fitMode(deck))
     if (f) html += `<div${animAttrs(b, s).replace(/ data-bid="[^"]*"/, '')}${fit === 'adapt' ? ` data-fcap="${esc(b.id)}"` : ''} style="position:absolute;left:${b.x}px;top:${b.y + b.h + 4}px;width:${b.w}px;`
       + `text-align:center;font-style:italic;font-size:16px;${animVars(b)}"><span class="caption" style="opacity:.85">${esc(captionLine(f))}</span></div>`;
     return b0.anims?.length ? stepLayers(html, b0, s, tl) : html;
-  }).join('\n');
+  });
+  const inner = bk != null ? `<div class="rv-bgl" style="position:absolute;inset:0">${bgLayer(s)}${parts.slice(0, nBack).join('\n')}</div>${parts.slice(nBack).join('\n')}`
+    : bgLayer(s) + parts.join('\n');
   const notes = (s.notes ? `<aside class="notes">${esc(s.notes)}</aside>` : '')
     // Voice-over: plays when the slide is shown (reveal.js's data-autoplay).
     + (s.narration?.src && /^data:audio\/|^https:\/\/|^blob:/.test(s.narration.src) ? `<audio class="rv-narration" data-autoplay src="${esc(s.narration.src)}" preload="auto"></audio>` : '');
-  const aa = (plan.marked.has(s.id) ? ' data-auto-animate' : '') + (s.aaDuration ? ` data-auto-animate-duration="${+s.aaDuration}"` : '') + (s.aaDelay ? ` data-auto-animate-delay="${+s.aaDelay}"` : '');
+  // (Marked only because the next one morphs, it doesn't morph from the one before — reveal.js morphs any two marked
+  // neighbours —: it comes in with its own transition, as in PowerPoint, where Morph is the incoming slide's.)
+  const aa = (plan.marked.has(s.id) ? ' data-auto-animate' + (s.autoAnimate ? '' : ' data-auto-animate-restart') : '') + (s.aaDuration ? ` data-auto-animate-duration="${+s.aaDuration}"` : '') + (s.aaDelay ? ` data-auto-animate-delay="${+s.aaDelay}"` : '');
   // (A first animation "with/after previous" plays on its own when the slide comes in, as in PowerPoint.)
   const first = animEntries(s).find(e => !e.a.trigger), start = first && ['withPrev', 'afterPrev'].includes(first.a.start) ? ' data-rv-start' : '';
-  return `<section${trans}${speed}${auto}${bg}${aa}${start} data-rv-id="${esc(s.id)}">`
-    + `<div class="stage${s.bgIframe && s.bgInteractive ? ' pass' : ''}" style="background:${stageBackground(s)}">${bgLayer(s)}${inner}</div>${notes}</section>`;
+  return `<section${trans}${speed}${exact}${auto}${bg}${aa}${start}${bk != null ? ` data-bgk="${bk}"` : ''} data-rv-id="${esc(s.id)}">`
+    + `<div class="stage${s.bgIframe && s.bgInteractive ? ' pass' : ''}" style="background:${stageBackground(s)}">${inner}</div>${notes}</section>`;
 }
 
 // Where the slide number sits, as CSS for reveal's .slide-number element.
@@ -627,14 +697,14 @@ function buildHTMLRaw(deck, { inApp = false, selfPaced = false, noCopy = false, 
     if (s.vertical && groups.length && !canvas) groups[groups.length - 1].push(s); else groups.push([s]);
   }
   const paths = slidePaths(deck), flat = [...paths.values()];
-  const plan = morphPlan(deck);
+  const plan = morphPlan(deck), bd = backdropPlan(deck, fit);
   // Background sound: from its slide up to another (or the end), in reveal's order of slides.
   const vis = deck.slides.filter(x => !x.hidden);
   const bgmHTML = vis.flatMap((s, i) => s.blocks.filter(b => b.type === 'audio' && b.until && b.src).map(b => {
     const j = b.until === 'end' ? vis.length - 1 : vis.findIndex(x => x.id === b.until);
     return `<audio data-bgm="${esc(b.id)}" data-from="${i}" data-to="${Math.max(i, j < 0 ? i : j)}" src="${esc(b.src)}"${b.loop ? ' loop' : ''} preload="auto"></audio>`;
   })).join('');
-  const slides = groups.map(g => (g.length > 1 ? `<section>\n${g.map(s => slideHTML(s, deck, figMap, plan)).join('\n')}\n</section>` : slideHTML(g[0], deck, figMap, plan))).join('\n')
+  const slides = groups.map(g => (g.length > 1 ? `<section>\n${g.map(s => slideHTML(s, deck, figMap, plan, fit, bd)).join('\n')}\n</section>` : slideHTML(g[0], deck, figMap, plan, fit, bd))).join('\n')
     // Links typed as a slide number (#/N, N = position in the deck) → reveal's h/v.
     .replace(/href="#\/(\d+)"/g, (m, n) => `href="#/${flat[+n] || n}"`);
   const sn = deck.slideNumber || { show: false };
@@ -703,6 +773,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  .deck-footer{position:fixed;left:12px;bottom:8px;z-index:30;font-size:14px;opacity:.7;color:#fff;mix-blend-mode:difference}
  ${customEffectCSS(deck)}
  ${customTransitionCSS(usedTransitions(deck), deck.size)}
+ ${backdropCSS(bd, w, h)}
  .reveal .slides section .fragment.rv-path{opacity:1;visibility:inherit}
  .reveal .slides section .fragment.rv-path.visible{translate:var(--dx) var(--dy)}
  .reveal .slides section .fragment.spin360,.reveal .slides section .fragment.clip3d,.reveal .slides section .fragment.pdfview,.reveal .slides section .fragment.draw,.reveal .slides section .fragment[data-mfx]{opacity:1;visibility:inherit}
@@ -741,7 +812,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  html.rv-canvas-overview .reveal.rv-canvas .slides>section{pointer-events:auto;cursor:zoom-in}
  .reveal.rv-canvas .rv-world{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0;z-index:1;pointer-events:none;transition:transform var(--rv-fly,1.4s) cubic-bezier(.65,0,.35,1)}` : ''}${noCopy ? '\n .reveal{-webkit-user-select:none;user-select:none} .reveal img{-webkit-user-drag:none} @media print{body{display:none!important}}' : ''}
 </style>${deck.css ? `\n<style>/* the presentation's own CSS (developer mode) */\n${scopedCSS(deck.css, '.reveal .stage')}</style>` : ''}</head><body>
-<div class="reveal${canvas ? ' rv-canvas' : ''}" data-fit="${fit}"><div class="slides">${canvas && deck.canvas.image?.src ? `<div class="rv-world"><img alt="" src="${esc(deck.canvas.image.src)}" style="max-width:none;max-height:none;margin:0;position:absolute;left:${deck.canvas.image.x}px;top:${deck.canvas.image.y}px;width:${deck.canvas.image.w}px;height:${deck.canvas.image.h}px"></div>` : ''}
+<div class="reveal${canvas ? ' rv-canvas' : ''}" data-fit="${fit}"><div class="slides">${canvas && deck.canvas.image?.src ? `<div class="rv-world"><img alt="" src="${esc(deck.canvas.image.src)}" style="max-width:none;max-height:none;margin:0;position:absolute;left:${deck.canvas.image.x}px;top:${deck.canvas.image.y}px;width:${deck.canvas.image.w}px;height:${deck.canvas.image.h}px"></div>` : ''}${backdropHTML(bd)}
 ${slides}
 </div>${footerText}${logoHTML}</div>${watermarkPage(deck, who)}${bgmHTML}
 <script src="${REVEAL}/dist/reveal.js"></script>
@@ -778,6 +849,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${/ data-pdf[ >]/.test(slides) ? `(${pdfRuntime.toString()})(${JSON.stringify(PDFJS)});` : ''}
  ${bgmHTML ? BGM_JS : ''}
  ${/ data-rv-start[ >]/.test(slides) ? START_JS : ''}
+ ${bd.layers.length || / data-rv-dur="/.test(slides) ? BD_JS : ''}
  ${/ data-(goto|href|popup|tip)="/.test(slides) ? LINK_JS : ''}
  ${/ data-drag[ >]/.test(slides) ? DRAG_JS : ''}
  ${/ data-pano="/.test(slides) ? PANO_JS : ''}

@@ -192,6 +192,7 @@
 #opening-doc .od-spin{width:22px;height:22px;border-radius:50%;border:3px solid var(--line2,#ccd);border-top-color:var(--accent,#3f6497);animation:od-spin .8s linear infinite}
 @keyframes od-spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){#opening-doc .od-spin{animation:none}}
+#opening-doc .od-step{font-size:13px;opacity:.75}#opening-doc .od-step:empty{display:none}
 
 /* Where to keep it (ui/shell/where.js). */
 .save-where{width:min(340px,92vw);padding:6px}.save-where .sw-head{font-size:12px;color:var(--txt2);padding:6px 8px 8px}

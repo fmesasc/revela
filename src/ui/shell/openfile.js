@@ -66,8 +66,26 @@ export async function openPresentation(file) {
   if (isKeynote(file)) { keynoteHelp(); return false; }
   if (isThemeFile(file)) return useThemeOf(file);           // (a theme alone: applied to the open presentation)
   // (Its «Shrink text on overflow» boxes measured as Revela draws them: ui/canvas/fittext.js.)
-  try { replaceDeck(await whileOpening(async () => fitImported(await (isODF(file) ? importODP(file) : importPPTX(file))), file.name)); return true; }
-  catch (e) { reportError(e, 'handled'); alertDialog(t('No se pudo importar la presentación: ') + e.message); return false; }
+  // (A PowerPoint says how far it is, and afterwards what of it couldn't be kept as it was — never left out unsaid.)
+  const notes = [];
+  try {
+    replaceDeck(await whileOpening(async say => fitImported(await (isODF(file) ? importODP(file) : importPPTX(file, { notes, progress: p => say?.(progressText(p)) }))), file.name));
+    if (notes.length) alertDialog(importNotesText(notes));
+    return true;
+  }
+  catch (e) { reportError(e, 'handled'); alertDialog(t('No se pudo importar la presentación: ') + (/string length|allocation|memory/i.test(e.message || '') ? t('no cabe en la memoria del navegador (vídeos o imágenes demasiado grandes).') : e.message)); return false; }
+}
+const MB = n => `${Math.round(n / 1e6)} MB`;
+const progressText = p => (p.file ? t('Leyendo «{n}» ({s})…').replace('{n}', p.file).replace('{s}', MB(p.bytes)) : t('Diapositiva {i} de {n}').replace('{i}', p.slide).replace('{n}', p.of));
+// What an import couldn't keep as it was, or kept but heavy: in words, a line each.
+export function importNotesText(notes) {
+  const of = k => notes.filter(x => x.kind === k), list = xs => xs.map(x => x.bytes ? `«${x.name}» (${MB(x.bytes)})` : `«${x.name}»`).join(', '), out = [];
+  if (of('tooBig').length) out.push(t('Demasiado grandes para guardarlos dentro de la presentación en el navegador; queda su imagen: {l}. Comprímelos (por ejemplo, a 1080p) o súbelos a la nube e inserta un vínculo.').replace('{l}', list(of('tooBig'))));
+  if (of('unread').length) out.push(t('No se pudieron leer: {l}.').replace('{l}', list(of('unread'))));
+  if (of('format').length) out.push(t('Vídeos o sonidos en un formato que el navegador no reproduce; queda su imagen: {l}. Conviértelos a MP4 (H.264) o MP3 y vuelve a insertarlos.').replace('{l}', list(of('format'))));
+  if (of('missing').length) out.push(t('No están dentro del archivo (vinculados en otro equipo); queda su imagen: {l}.').replace('{l}', list(of('missing'))));
+  if (of('big').length) out.push(t('Se han conservado, pero son muy grandes: {l}. La presentación puede tardar en guardarse, y quizá no quepa en la nube ni se pueda compartir.').replace('{l}', list(of('big'))));
+  return out.join('\n\n');
 }
 // Design ▸ Themes: the theme of another presentation or template (.pptx,
 // .potx, .odp — Google Slides' come as .pptx) or an Office theme (.thmx) on

@@ -200,6 +200,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(C.mentions(c.text).join(), 'Luis', 'mención');
     assert(D.querySelector('#comments-panel .cm-at'), 'mención resaltada');
     eq(D.querySelector(`.block[data-id="${b.id}"] .cm-badge`)?.textContent, '1', 'marca en el objeto');
+    // (The edited slide's thumbnail is rebuilt after the frame is painted — or when idle, on a busy page: wait for it.)
+    R.flushThumbs?.(); await sleep(10);
     assert(/💬 1/.test(D.querySelector('#navigator .thumb .thumb-cm')?.textContent || ''), 'contador en la miniatura');
     C.reply(id, 'Hecho'); eq(C.commentsOf()[0].replies[0].text, 'Hecho', 'respuesta');
     C.setResolved(id); await sleep(10);
@@ -2517,7 +2519,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   });
 
   await test('coedición: el invitado recibe la presentación sin tocar la suya, y el permiso se respeta', async () => {
-    reset(); const own = R.state.deck; own.name = 'Mi proyecto'; R.store.commit(() => {}); const W = frame.contentWindow;
+    reset(); const own = R.state.deck; own.name = 'Mi proyecto'; R.store.commit(() => {}); await R.model.flushSave(); const W = frame.contentWindow;
     const stored = () => JSON.parse(W.localStorage.getItem('revela.deck.v1') || '{}').name;
     eq(stored(), 'Mi proyecto', 'el suyo guardado');
     const C = await W.eval("import('/src/features/live/collab.js')");

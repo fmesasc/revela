@@ -692,6 +692,61 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { f.remove(); }
   });
 
+  await test('el fondo se queda quieto entre diapositivas con el mismo fondo (y se puede animar)', async () => {
+    reset(); const d = R.state.deck;
+    R.store.commit(() => {
+      d.master.blocks.push({ id: 'pat', type: 'shape', shape: 'rect', fill: '#00aa44', stroke: 'none', strokeWidth: 0, x: 0, y: 600, w: 1280, h: 120, rotation: 0, animation: null });
+      d.slides[0].background = '#ffffff';
+      for (let i = 0; i < 3; i++) R.slides.addSlide();
+      d.slides.forEach((s, i) => { s.background = i === 3 ? '#ff0000' : '#ffffff'; s.transition = 'fade'; });
+      d.slides[1].transitionDur = 700;
+      d.slides[1].blocks.push({ id: 'fr1', type: 'shape', shape: 'ellipse', fill: '#3366ff', stroke: 'none', strokeWidth: 0, x: 100, y: 100, w: 200, h: 200, rotation: 0, animation: { effect: 'fade-in', order: 1, seq: 1, start: 'click', duration: 300, delay: 0 } });
+      d.slides[2].autoAnimate = true;
+    });
+    let html = R.io.buildHTML();
+    eq((html.match(/ data-bgk="0"/g) || []).length, 3, 'las tres con el mismo fondo comparten uno quieto');
+    assert((html.match(/<div class="stage rv-bd-k" data-k="0"/g) || []).length === 1, 'una sola copia del fondo, bajo las diapositivas');
+    assert(/<div class="rv-bgl"[^>]*>(?:(?!<\/div><div).)*?<\/div>/s.test(html) && /\.reveal\[data-bd="0"\] \.slides section\[data-bgk="0"\]>\.stage>\.rv-bgl\{opacity:0\}/.test(html), 'la copia de cada diapositiva, en su capa');
+    assert(/data-id="m-pat"/.test(html), 'con Morph, los objetos del patrón se emparejan (no vuelven a aparecer con un destello)');
+    assert(new RegExp(`data-auto-animate data-auto-animate-restart[^>]*data-rv-id="${d.slides[1].id}"`).test(html)
+      && new RegExp(`data-auto-animate(?! data-auto-animate-restart)[^>]*data-rv-id="${d.slides[2].id}"`).test(html), 'Morph es de la que entra: la de antes llega con su propia transición');
+    assert(/data-rv-dur="700"/.test(html), 'duración exacta de la transición');
+    // The transition is the incoming slide's (PowerPoint): the one before leaves with it — not at once, leaving white.
+    R.store.commit(() => { d.slides[3].transition = 'push'; d.slides[0].transition = null; });
+    html = R.io.buildHTML();
+    assert(new RegExp(`data-transition="fade-in push-out"[^>]*data-rv-id="${d.slides[2].id}"`).test(html), 'sale con la transición de la siguiente');
+    assert(new RegExp(`data-transition="[a-z]+-in fade-out"[^>]*data-rv-id="${d.slides[0].id}"`).test(html), 'también la que no tiene transición propia');
+    // On: as before (everything inside each slide, animated with it).
+    D.querySelector('[data-action="toggle-anim-bg"]').click(); await sleep(20);
+    assert(d.animateBg === true && D.querySelector('[data-action="toggle-anim-bg"]').classList.contains('on'), 'Transiciones ▸ Animar el fondo');
+    assert(!/ data-bgk=/.test(R.io.buildHTML()) && !/class="rv-bd"/.test(R.io.buildHTML()), 'con el fondo animado, cada diapositiva lleva el suyo');
+    D.querySelector('[data-action="toggle-anim-bg"]').click(); await sleep(20); assert(!('animateBg' in d), 'desactivado, como al principio');
+    // Presenting: the still copy shows between slides that share it, and stays the same element on every click.
+    html = R.io.buildHTML(R.state.deck, { inApp: true });
+    const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:640px;height:360px;opacity:0';
+    f.srcdoc = html; document.body.appendChild(f);
+    let w; for (let i = 0; i < 100 && !((w = f.contentWindow).Reveal?.isReady?.()); i++) await sleep(100);
+    try {
+      const Rv = w.Reveal, root = w.document.querySelector('.reveal'), layer = w.document.querySelector('.rv-bd>[data-k="0"]');
+      eq(root.getAttribute('data-bd'), '0', 'al empezar, el fondo quieto');
+      Rv.next(); await sleep(60);
+      const secs = w.document.querySelectorAll('.reveal .slides>section');
+      eq(root.getAttribute('data-bd'), '0', 'durante el fundido entre dos con el mismo fondo, el fondo no se funde');
+      eq(w.getComputedStyle(layer).display, 'block', 'la copia quieta se ve');
+      eq(w.getComputedStyle(secs[1].querySelector('.rv-bgl')).opacity, '0', 'la copia de la diapositiva no');
+      eq(secs[1].style.transitionDuration, '700ms', 'la que entra dura lo que en PowerPoint'); eq(secs[0].style.transitionDuration, '700ms', 'y la que sale también');
+      await sleep(900);
+      const before = { layer, op: w.getComputedStyle(layer).opacity, bd: root.getAttribute('data-bd') };
+      const seen = []; const look = () => { seen.push([w.getComputedStyle(layer).opacity, w.getComputedStyle(layer).display, root.getAttribute('data-bd'), w.getComputedStyle(secs[1].querySelector('.rv-bgl')).opacity].join()); if (seen.length < 30) w.requestAnimationFrame(look); };
+      Rv.next(); w.requestAnimationFrame(look); await sleep(700);
+      eq(Rv.getIndices().f, 0, 'un paso de animación');
+      assert(w.document.querySelector('.rv-bd>[data-k="0"]') === before.layer && before.layer.isConnected, 'el fondo no se vuelve a crear en el paso');
+      eq([...new Set(seen)].join(' | '), `${before.op},block,${before.bd},0`, 'ni se vuelve a fundir, ni parpadea, en ningún fotograma del paso');
+      Rv.slide(3); await sleep(60);
+      assert(!root.hasAttribute('data-bd'), 'hacia una diapositiva con otro fondo, cada una lleva el suyo (cambia con la transición)');
+    } finally { f.remove(); }
+  });
+
   await test('configuración de reveal.js, efectos de fragmento y temas', async () => {
     reset(); R.slides.toggleAutoAnimate();
     D.querySelector('[data-action="deck-settings"]').click(); await sleep(10);

@@ -6,7 +6,10 @@
 
 const SKIP = 'datalist, .group-more';
 export function compactGroups(page) {
-  if (!page || !page.offsetParent) return;                 // (hidden: its sizes aren't known yet)
+  // (Every group done already — at most redraws —: nothing to measure. offsetParent made the browser lay the page out
+  // again at every redraw.)
+  if (!page || !page.querySelector(':scope > .group:not([data-compact])')) return;
+  if (!page.offsetParent) return;                          // (hidden: its sizes aren't known yet)
   for (const g of page.querySelectorAll(':scope > .group')) {
     if (g.dataset.compact) continue;
     g.dataset.compact = '1';

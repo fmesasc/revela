@@ -31,7 +31,7 @@ import { startFreeform } from '../canvas/freeform.js';
 import { resizeDeck } from '../../features/design/resize.js';
 import { setDrawTool, drawOpts } from '../shell/draw.js';
 import { FONTS, ensureDeckFonts, customFonts, customStack, syncCustomFonts, fontDataURL } from '../../features/design/fonts.js';
-import { t } from '../../i18n/index.js';
+import { t, currentLang } from '../../i18n/index.js';
 import { readFile } from '../shell/openfile.js';
 import { animPaint, endAnimPaint, ACTIONS, slidesFocused } from './actions.js';
 import { applyZoom, fitZoom, zoomFitting, wireZoom } from './zoom.js';
@@ -238,8 +238,15 @@ export function initRibbon() {
   bindChange('[data-logo-size]', v => commit(() => (state.deck.logo.size = Math.max(20, parseInt(v, 10) || 120))));
   bindChange('[data-autoslide]', v => commit(() => targetSlides().forEach(s => { s.autoSlide = Math.max(0, (parseFloat(v) || 0)) * 1000; })));
 
-  // Reflect the active character formatting on the toolbar as the caret moves.
-  document.addEventListener('selectionchange', () => syncCharState());
+  // Reflect the active character formatting on the toolbar as the caret moves: once per frame at most — while
+  // typing, every ~100 ms (each key moves the caret, and asking the browser the state of every button took most of
+  // a key's time on a slow machine) — and only the buttons in sight (a tab shown redraws the ribbon, and them).
+  let charQueued = false;
+  document.addEventListener('selectionchange', () => {
+    if (charQueued) return; charQueued = true;
+    const run = () => { charQueued = false; syncCharState(false, true); };
+    if (document.activeElement?.isContentEditable) setTimeout(run, 100); else requestAnimationFrame(run);
+  });
 
   // Status-bar actions (zoom) live outside the ribbon.
   document.getElementById('statusbar').addEventListener('click', e => {
@@ -334,7 +341,7 @@ document.addEventListener('focusin', e => { if (e.target.matches?.('input[type=c
 document.addEventListener('pointerdown', e => { if (e.target.matches?.('input[type=color]:not([list])')) e.target.setAttribute('list', 'theme-swatches'); }, true);
 function bindChange(sel, cb) { const el = $(sel); if (el) el.addEventListener('change', e => cb(e.target.value)); }
 
-let lastActiveTab = null;
+let lastActiveTab = null, overflowQueued = false;
 // More buttons to the right or left of what shows: the edge fades.
 export function markOverflow(page) {
   if (!page?.classList?.contains('ribbon-page')) return;
@@ -352,8 +359,12 @@ const SLIDE_LEVEL = ['[data-action="slide-duplicate"]', '[data-action="slide-del
   '[data-page="design"] label.color:has([data-bg])', '[data-action="bg-gradient"]', '[data-page="design"] [data-action="bg-image"]', '[data-page="design"] [data-action="bg-advanced"]',
   '[data-slide-transition]', '[data-slide-trans-dir]', '[data-slide-trans-out]', '[data-slide-speed]', '[data-autoslide]',
   '[data-action="toggle-autoanimate"]', '[data-morphby]'].join(',');
+// (Only when the number of selected slides or the language changes: walking these controls — :has() among them —
+// at every redraw was a third of the ribbon's time on a big deck.)
+let tipsKey = '';
 function syncSelectionTips() {
-  const n = slideSelCount(), more = n > 1 ? t('Se aplica a las {n} diapositivas seleccionadas').replace('{n}', n) : '';
+  const n = slideSelCount(), key = n > 1 ? n + currentLang() : '1' + currentLang(); if (key === tipsKey) return; tipsKey = key;
+  const more = n > 1 ? t('Se aplica a las {n} diapositivas seleccionadas').replace('{n}', n) : '';
   document.querySelectorAll(SLIDE_LEVEL).forEach(el => {
     if (el.dataset.selTip === undefined) el.dataset.selTip = el.dataset.i18nt ?? el.getAttribute('title') ?? '';
     const base = el.dataset.selTip ? t(el.dataset.selTip) : '', tip = [base, more].filter(Boolean).join(' · ');
@@ -362,11 +373,14 @@ function syncSelectionTips() {
   });
 }
 
-export function renderRibbon() {
-  populateFonts(); syncCustomFonts(state.deck);
+// change: what the redraw is for (store.lastChange()); none: everything. Only the screen changed (a selection,
+// a tab): what follows from the document's content (its fonts, its colours) stays as it is.
+export function renderRibbon(change) {
+  const doc = !change || change.doc;
+  if (doc) { populateFonts(); syncCustomFonts(state.deck); }
   syncSelectionTips();
   syncMasterRibbon();            // (before the tabs: entering the master view opens its tab)
-  ensureDeckFonts(state.deck);   // load any Google fonts the deck uses
+  if (doc) ensureDeckFonts(state.deck);   // load any Google fonts the deck uses
   document.querySelectorAll('[data-tab]').forEach(t => t.classList.toggle('active', t.dataset.tab === state.ui.activeTab));
   // (On a narrow screen the tabs scroll: keep the active one in view.)
   { const at = document.querySelector('#ribbon .tabs .active'); if (at && at !== lastActiveTab) { lastActiveTab = at; at.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); } }
@@ -435,6 +449,7 @@ export function renderRibbon() {
   document.querySelector('[data-action="toggle-ruler"]')?.classList.toggle('on', !!state.ui.showRuler);
   document.querySelector('[data-action="toggle-snap"]')?.classList.toggle('on', state.ui.snap !== false);
   document.querySelector('[data-action="toggle-loop"]')?.classList.toggle('on', !!state.deck.loop);
+  document.querySelector('[data-action="toggle-anim-bg"]')?.classList.toggle('on', !!state.deck.animateBg);
   const lg = state.deck.logo || {};
   syncValue('[data-logo-pos]', lg.position || 'br');
   const lsz = $('[data-logo-size]');
@@ -451,10 +466,22 @@ export function renderRibbon() {
   renderContextual();
   queueMicrotask(() => syncCharState());   // (once the slide is drawn — its text is read — and after the object's tab: bold, italic… too)
   renderMorphHint();
-  document.querySelectorAll('#ribbon .ribbon-page.active').forEach(p => { compactGroups(p); markOverflow(p); });
-  document.querySelectorAll(TOGGLES).forEach(b => press(b, b.classList.contains('on')));
+  document.querySelectorAll('#ribbon .ribbon-page.active').forEach(p => compactGroups(p));
+  // (Its faded edges: measured just before the frame is drawn, when the page is laid out anyway — measuring here
+  // made the browser lay it out once more at every redraw.)
+  if (!overflowQueued) { overflowQueued = true; requestAnimationFrame(() => { overflowQueued = false; document.querySelectorAll('#ribbon .ribbon-page.active').forEach(markOverflow); }); }
+  toggleButtons().forEach(b => press(b, b.classList.contains('on')));
 }
 // Buttons that switch something on and off: aria-pressed follows their state.
 const TOGGLES = ['[data-action^="toggle-"]:not([data-action="toggle-autoanimate"])', 'mark-final', 'classroom', 'selection-pane', 'comments', 'autocorrect', 'master-edit', 'canvas-mode', 'canvas-view', 'slide-vertical', 'anim-paint']
   .map(a => (a.startsWith('[') ? `#ribbon ${a}` : `#ribbon [data-action="${a}"]`)).concat('#ribbon [data-draw]').join(',');
+// (Found again only when the ribbon's buttons change — the object's tab is new with each selection —: looking for
+// them through the whole ribbon was half of a redraw's time.)
+let toggles = null, ribbonMO = null;
+function toggleButtons() {
+  const rb = document.getElementById('ribbon'); if (!rb) return [];
+  if (!ribbonMO) { ribbonMO = new MutationObserver(() => { toggles = null; }); ribbonMO.observe(rb, { childList: true, subtree: true }); }
+  if (ribbonMO.takeRecords().length) toggles = null;
+  return (toggles ||= [...document.querySelectorAll(TOGGLES)]);
+}
 function syncValue(sel, val) { const el = $(sel); if (el && el.value !== val) el.value = val; }

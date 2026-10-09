@@ -25,7 +25,7 @@ import { uid } from '../../core/model.js';
 import { styled, masterStyles, newSlideBlocks } from '../../features/document/master.js';
 import { customPalette, themeFontStacks } from '../../features/design/palettes.js';
 import { JSZIP_ESM } from '../../core/vendor.js';
-import { TRANSITION_DIRS, pathFromSVG, pushAnim } from '../../features/animation/transitions.js';
+import { TRANSITION_DIRS, pathFromSVG, pushAnim, normalizeAnim } from '../../features/animation/transitions.js';
 import { colorMods, modsOf } from '../../features/design/colormods.js';
 import { officeStack } from '../../features/design/fonts.js';
 
@@ -235,7 +235,10 @@ function themeFill(ref, theme, list = null) {
 }
 const TRANSITION = { fade: 'fade', dissolve: 'blur', push: 'push', cover: 'cover', pull: 'page', wipe: 'wipe', split: 'split', zoom: 'zoom', circle: 'circle', diamond: 'diamond', plus: 'diamond',
   newsflash: 'swirl', flip: 'flip', cube: 'cube', box: 'cube', rotate: 'flip', gallery: 'gallery', conveyor: 'slide', switch: 'flip',
-  doors: 'wipe', window: 'wipe', vortex: 'zoom', ripple: 'rise', morph: 'fade', random: 'slide', randomBar: 'wipe', wheel: 'wipe' };
+  // (Doors and Window open from the middle, as Split; Fly Through comes from far, as Zoom.)
+  doors: 'split', window: 'split', flythrough: 'zoom', vortex: 'zoom', ripple: 'rise', morph: 'fade', random: 'slide', randomBar: 'wipe', wheel: 'wipe' };
+// PowerPoint's transition speeds (p:transition spd) in ms, when there is no exact duration (p14:dur).
+const SPD_MS = { fast: 500, med: 750, slow: 1000 };
 
 // Outer shadow (a:effectLst/a:outerShdw) → { x, y, blur, color }.
 function shadowOf(spPr, theme, scale) {
@@ -456,12 +459,39 @@ function paragraphsHTML(txBody, ctx, style) {
   return { html: out.join(''), first, align };
 }
 
+// ---- Media ------------------------------------------------------------------
+// Every picture, video and sound of the package is read once, however many slides, layouts or backgrounds use it: one
+// text (data: URL) shared by all of them. (A picture background repeated on every slide was read again for each one;
+// with 400 MB of media, copies are what brings a tab down.) A file too big to become one text in the browser (a
+// string holds some 512 million characters at most: about 380 MB of bytes) is left out, and said (notes) — before,
+// the whole import failed with «Invalid string length». Very big ones that are kept are said too.
+export const MEDIA_MAX = 350e6, MEDIA_BIG = 50e6;
+const readers = new WeakMap();                         // zip → its reader (importPPTX sets it)
+// (JSZip knows a file's size before reading it.)
+const sizeInZip = f => +(f?._data?.uncompressedSize || 0);
+function mediaReader(zip, notes, progress, max = MEDIA_MAX, big = MEDIA_BIG) {
+  const done = new Map();
+  return (path, mime) => {
+    if (!done.has(path)) {
+      const f = zip.file(path), bytes = sizeInZip(f), name = path.split('/').pop();
+      if (!f) done.set(path, Promise.resolve(null));
+      else if (bytes > max) { notes.push({ kind: 'tooBig', name, bytes }); done.set(path, Promise.resolve(null)); }
+      else {
+        if (bytes > big) { notes.push({ kind: 'big', name, bytes }); progress?.({ file: name, bytes }); }
+        done.set(path, zipDataURL(f, mime).catch(() => { notes.push({ kind: 'unread', name, bytes }); return null; }));
+      }
+    }
+    return done.get(path);
+  };
+}
+const readMedia = (zip, path, mime) => (readers.get(zip) || ((p, m) => (zip.file(p) ? zipDataURL(zip.file(p), m) : Promise.resolve(null))))(path, mime);
+
 // ---- Parts: layout and master (placeholders, decorations, background) ------
 // A picture of the package as a CSS background (stretched, or tiled).
 async function pictureBg(zip, t, tile) {
   if (!t || !zip.file(t.path)) return null;
-  const ext = t.path.split('.').pop().toLowerCase();
-  return `url(${await zipDataURL(zip.file(t.path), MIME[ext] || 'image/png')}) ${tile ? 'repeat' : 'center/cover no-repeat'}`;
+  const ext = t.path.split('.').pop().toLowerCase(), u = await readMedia(zip, t.path, MIME[ext] || 'image/png');
+  return u ? `url(${u}) ${tile ? 'repeat' : 'center/cover no-repeat'}` : null;
 }
 // The background of a slide, layout or master (p:cSld/p:bg): its own fill
 // (colour, gradient, picture) or a theme background style (p:bgRef) → CSS or null.
@@ -522,24 +552,38 @@ const BODY_PH = t => ['body', 'obj', 'subTitle', undefined, null].includes(t);
 // exits, grow/shrink emphasis and motion paths; "on click", "with previous"
 // and "after previous", with duration and delay.
 const FLY = { 4: 'fade-up', 1: 'fade-down', 8: 'fade-right', 2: 'fade-left' };
-function readAnimations(doc, spidOf, blocks, size) {
+// A video's or a sound's own steps (PowerPoint's «mediacall»: play, pause, stop).
+const MEDIA_CALL = { 1: 'media-play', 2: 'media-pause', 3: 'media-stop' };
+// groupOf: a group's shape id → its objects' (Revela flattens groups): an effect on the group plays on all of them at
+// once — before, it was lost, and with it its click (the next effects joined the click before).
+function readAnimations(doc, spidOf, blocks, size, groupOf = new Map()) {
   const main = all(doc, 'p:cTn').find(c => c.getAttribute('nodeType') === 'mainSeq');
   if (!main) return;
-  let order = 0;
+  let order = 0, carry = false;           // (carry: an effect left out started a click; the next one starts it)
   for (const c of all(main, 'p:cTn').filter(x => x.getAttribute('presetClass'))) {
     const spid = all(c, 'p:spTgt')[0]?.getAttribute('spid');
-    const b = blocks.find(x => x.id === spidOf.get(spid)); if (!b) continue;
+    const targets = (spidOf.has(spid) ? [spidOf.get(spid)] : groupOf.get(spid) || []).map(id => blocks.find(x => x.id === id)).filter(Boolean);
+    const b = targets[0];
+    if (!b) { if (c.getAttribute('nodeType') === 'clickEffect') carry = true; continue; }
     const cls = c.getAttribute('presetClass'), preset = +c.getAttribute('presetID'), sub = +(c.getAttribute('presetSubtype') || 0);
     const inner = all(c, 'p:cTn').map(x => +x.getAttribute('dur')).filter(d => d > 1);
-    const dur = inner.length ? Math.max(...inner) : 500;
+    // (Appear has no duration of its own — only a «set» of 1 ms —: it is instant, not half a second of fading.)
+    const dur = inner.length ? Math.max(...inner) : cls === 'entr' && preset === 1 ? 0 : 500;
     const delay = +(all(kid(c, 'p:stCondLst'), 'p:cond')[0]?.getAttribute('delay')) || 0;
-    const start = { withEffect: 'withPrev', afterEffect: 'afterPrev' }[c.getAttribute('nodeType')] || 'click';
+    let start = { withEffect: 'withPrev', afterEffect: 'afterPrev' }[c.getAttribute('nodeType')] || 'click';
     let effect = 'fade-in', extra = {};
-    if (cls === 'exit') effect = 'fade-out';
+    const skip = () => { if (start === 'click') carry = true; };
+    const has = tag => all(c, tag).length > 0;
+    if (cls === 'mediacall') { if (!MEDIA_CALL[preset] || !['video', 'audio'].includes(b.type)) { skip(); continue; } effect = MEDIA_CALL[preset]; }
+    else if (cls === 'exit') effect = 'fade-out';
     else if (cls === 'emph' && preset === 26) effect = 'pulse';         // PowerPoint's Pulse
     else if (cls === 'emph' && preset === 32) effect = 'teeter';        // and Teeter
-    else if (cls === 'emph' && (preset === 8 || all(c, 'p:animRot').length)) effect = 'spin360';
-    else if (cls === 'emph') effect = +(all(c, 'p:by')[0]?.getAttribute('x') || 125000) >= 100000 ? 'grow' : 'shrink';
+    else if (cls === 'emph' && (preset === 8 || has('p:animRot'))) effect = 'spin360';
+    // Grow/Shrink scales the object (p:animScale); the other emphases change a colour, the weight of the letters
+    // (Bold Reveal) or the like and leave it where and as big as it was: before, all of them grew it by 130 % on the
+    // click. Now those are a brief glow on the object — it keeps the click, and the slide doesn't jump.
+    else if (cls === 'emph' && has('p:animScale')) effect = +(all(c, 'p:by')[0]?.getAttribute('x') || 125000) >= 100000 ? 'grow' : 'shrink';
+    else if (cls === 'emph') effect = 'color-pulse';
     else if (cls === 'path') {
       effect = 'path'; extra = pathFromSVG(all(c, 'p:animMotion')[0]?.getAttribute('path') || '', size);
     } else if (preset === 2) effect = FLY[sub] || 'fade-up';
@@ -548,10 +592,16 @@ function readAnimations(doc, spidOf, blocks, size) {
       effect = /ppt_y\+/.test(v) ? 'fade-up' : /ppt_y-/.test(v) ? 'fade-down' : /ppt_x\+/.test(v) ? 'fade-left' : 'fade-right';
     }
     else if (preset === 53 || preset === 23) effect = 'zoom-in';
-    else if (cls !== 'entr') continue;
-    const a = { effect, order: ++order, seq: order, start, duration: dur, delay, ...extra };
-    pushAnim(b, a);
+    else if (preset === 31) effect = 'spin';                    // Grow & Turn
+    else if (cls !== 'entr') { skip(); continue; }
+    if (effect === 'grow' || effect === 'shrink') { const k = Math.round(+(all(c, 'p:by')[0]?.getAttribute('x') || 0) / 1000); if (k >= 5 && k <= 500) extra.size = k; }
+    if (carry) { start = 'click'; carry = false; }
+    // (On a group: the first of its objects as PowerPoint says, the others with it.)
+    targets.forEach((t, k) => pushAnim(t, { effect, order: ++order, seq: order, start: k ? 'withPrev' : start, duration: dur, delay, ...structuredClone(extra) }));
   }
+  // The clicks: «with previous» and «after previous» play within the click of the one before (PowerPoint's
+  // timeline), not each on a click of its own — a slide whose 53 effects need 9 clicks needed 53.
+  normalizeAnim({ blocks });
 }
 
 // ---- Import ----------------------------------------------------------------
@@ -595,10 +645,13 @@ async function themeOnlyPackage(zip, main, file) {
 }
 
 // .pptx, .potx (a template: maybe without slides) and .thmx (an Office theme).
-export async function importPPTX(file) {
+// progress({ slide, of } | { file, bytes }): how far it is (a 400 MB presentation takes a while);
+// notes: filled with what wasn't kept as it was ({ kind: 'tooBig' | 'unread' | 'format' | 'missing' | 'big', name, bytes });
+// mediaMax, mediaBig: the sizes past which a file is left out or said to be big (MEDIA_MAX, MEDIA_BIG).
+export async function importPPTX(file, { progress = null, notes: said = [], mediaMax = MEDIA_MAX, mediaBig = MEDIA_BIG } = {}) {
   const JSZip = await loadJSZip();
   const zip = await JSZip.loadAsync(file);
-  const mediaCache = new Map();            // (pictures by their file in the package: each read once, pptx media())
+  readers.set(zip, mediaReader(zip, said, progress, mediaMax, mediaBig));
 
   // The main part: the presentation (ppt/presentation.xml), or a theme file's theme.
   const pkgRels = rels(await zip.file('_rels/.rels')?.async('string'), '');
@@ -708,30 +761,30 @@ export async function importPPTX(file) {
     const slideNo = slides.length + 1;
     const links = Object.fromEntries(Object.entries(srels).filter(([, v]) => v.type === 'hyperlink').map(([k, v]) => [k, v.path]));
     let partRels = srels;
-    const spidOf = new Map();
+    const spidOf = new Map(), groupOf = new Map();
     let decorMode = false;       // walking a layout/master: only its own graphics, not its placeholders        // relationships of the part being walked (slide, layout or master)
     // (Each file read once: a picture used on many slides — a background, a logo — is the same text every time,
     // not one copy per slide: big presentations ran out of memory.)
     const media = rid => {
       const t = partRels[rid]; if (!t || !zip.file(t.path)) return Promise.resolve(null);
-      if (!mediaCache.has(t.path)) {
-        const ext = t.path.split('.').pop().toLowerCase();
-        mediaCache.set(t.path, zipDataURL(zip.file(t.path), MIME[ext] || 'image/png'));
-      }
-      return mediaCache.get(t.path);
+      return readMedia(zip, t.path, MIME[t.path.split('.').pop().toLowerCase()] || 'image/png');
     };
     // Walk the shape tree; groups map their children's coordinates.
     const walk = async (tree, map) => {
       for (const el of [...tree.children]) {
         const tag = el.tagName;
         if (tag === 'p:grpSp') {
+          // (What the group became, for its animations: groupOf.)
+          const before = blocks.length, gid = kid(kid(el, 'p:nvGrpSpPr'), 'p:cNvPr')?.getAttribute('id');
+          const done = () => { if (gid && !decorMode && blocks.length > before) groupOf.set(gid, blocks.slice(before).map(b => b.id)); };
           const gx = all(kid(el, 'p:grpSpPr'), 'a:xfrm')[0];
-          if (!gx) { await walk(el, map); continue; }
+          if (!gx) { await walk(el, map); done(); continue; }
           const g = (n, a) => +kid(gx, n)?.getAttribute(a) || 0;
           const off = [g('a:off', 'x'), g('a:off', 'y')], ext = [g('a:ext', 'cx'), g('a:ext', 'cy')];
           const cOff = [g('a:chOff', 'x'), g('a:chOff', 'y')], cExt = [g('a:chExt', 'cx') || ext[0], g('a:chExt', 'cy') || ext[1]];
           const sx = ext[0] / (cExt[0] || 1), sy = ext[1] / (cExt[1] || 1);
           await walk(el, geo => map({ ...geo, x: off[0] + (geo.x - cOff[0]) * sx, y: off[1] + (geo.y - cOff[1]) * sy, w: geo.w * sx, h: geo.h * sy }));
+          done();
         } else {
           const before = blocks.length;
           if (tag === 'p:sp' || tag === 'p:cxnSp') await addShape(el, map);
@@ -849,7 +902,8 @@ export async function importPPTX(file) {
       // (An icon from Office's library is an SVG — asvg:svgBlip, in the blip's extensions —, often with no PNG for older
       // versions: its SVG, sharp at any size; else the picture.)
       const svg = all(blip, 'asvg:svgBlip')[0]?.getAttribute('r:embed');
-      let src = (svg && await media(svg)) || await media(blip.getAttribute('r:embed')); if (!src) return;
+      // (A video or a sound comes even without its picture — one too big, or unreadable.)
+      let src = (svg && await media(svg)) || await media(blip.getAttribute('r:embed'));
       // A video or a sound (its picture is the poster, shown until it plays): the file inside the presentation
       // (p14:media) or linked (a:videoFile r:link: inside too, or an address on the web). Before, only the poster came.
       const vf = all(pic, 'a:videoFile')[0], af = all(pic, 'a:audioFile')[0];
@@ -857,12 +911,17 @@ export async function importPPTX(file) {
         const rid = all(pic, 'p14:media')[0]?.getAttribute('r:embed') || (vf || af).getAttribute('r:link'), t = partRels[rid];
         const ext = (t?.path || '').split(/[?#]/)[0].split('.').pop().toLowerCase(), mime = MIME[ext] || '';
         const file = t && PLAYABLE.test(mime) ? (/^https:\/\//.test(t.path) ? t.path : await media(rid)) : null;
+        // (What stays as its picture is said: a format browsers don't play, a file that isn't in the package…)
+        const name = (t?.path || '').split(/[?#]/)[0].split('/').pop() || (vf ? 'video' : 'audio');
+        if (!file && t && !PLAYABLE.test(mime)) said.push({ kind: 'format', name });
+        else if (!file && (!t || (!/^https:\/\//.test(t.path) && !zip.file(t.path)))) said.push({ kind: 'missing', name });
         if (file) {
           const descr = all(pic, 'p:cNvPr')[0]?.getAttribute('descr') || '';
-          blocks.push({ id: uid(), ...objLink(pic), type: vf ? 'video' : 'audio', src: file, ...(vf && { poster: src }), ...(descr && { alt: descr }), ...box(map(geo)) });
+          blocks.push({ id: uid(), ...objLink(pic), type: vf ? 'video' : 'audio', src: file, ...(vf && src && { poster: src }), ...(descr && { alt: descr }), ...box(map(geo)) });
           return;
         }
       }
+      if (!src) return;
       // Cropped in PowerPoint (srcRect: thousandths of a percent cut from each side): the part that shows.
       const sr = all(pic, 'a:srcRect')[0];
       if (sr) src = await cropPicture(src, ['l', 't', 'r', 'b'].map(k => Math.max(0, +(sr.getAttribute(k) || 0) / 100000)));
@@ -1041,7 +1100,7 @@ export async function importPPTX(file) {
     // Transition (the p14/p15 variants sit inside mc:AlternateContent) and its auto-advance time.
     const tr = all(doc, 'p:transition')[0];
     let transition = null, autoSlide = 0, transitionDir = null;
-    let morph = null;
+    let morph = null, dur = 0;
     if (tr) {
       const kinds = [...all(tr, '*')].map(e => e.tagName.replace(/^p\d*:/, ''));
       transition = kinds.map(k => TRANSITION[k]).find(Boolean) || null;
@@ -1050,17 +1109,21 @@ export async function importPPTX(file) {
       if (el && (transition === 'wipe' || transition === 'push')) {
         const d = { l: 'right', r: 'left', u: 'bottom', d: 'top' }[el.getAttribute('dir') || (transition === 'wipe' ? 'l' : 'u')];
         if (d && d !== TRANSITION_DIRS[transition][0]) transitionDir = d;
-      } else if (el && transition === 'split' && el.getAttribute('orient') === 'horz') transitionDir = 'horizontal';
+      } else if (el && transition === 'split' && (el.getAttribute('orient') === 'horz' || el.getAttribute('dir') === 'horz')) transitionDir = 'horizontal';
       const adv = +(tr.getAttribute('advTm') || 0); if (adv) autoSlide = adv;
+      // How long it lasts: PowerPoint 2010's exact duration (p14:dur, ms), else its speed (fast, medium, slow).
+      dur = +(tr.getAttribute('p14:dur') || 0) || SPD_MS[tr.getAttribute('spd') || 'fast'];
       // Morph (inside mc:AlternateContent): by objects, words or characters.
       const m = [...all(tr, '*')].find(e => /:morph$/.test(e.tagName));
       if (m) { morph = { byWord: 'words', byChar: 'chars' }[m.getAttribute('option')] || 'objects'; transition = null; }
     }
-    readAnimations(doc, spidOf, blocks, size);
-    return { _path: slidePath, id: uid(), sectionId: null, background, transition, ...(transitionDir && { transitionDir }), hidden, notes, autoSlide, blocks, _layout: layoutPath, ...(hideMaster && { hideMaster: true }),
-      ...(morph && { autoAnimate: true }), ...(morph && morph !== 'objects' && { morphBy: morph }), ...(comments.length && { comments }) };
+    readAnimations(doc, spidOf, blocks, size, groupOf);
+    // (No transition in PowerPoint is none — a cut —, not the deck's.)
+    return { _path: slidePath, id: uid(), sectionId: null, background, transition: tr ? transition : 'none', ...(transitionDir && { transitionDir }), hidden, notes, autoSlide, blocks, _layout: layoutPath, ...(hideMaster && { hideMaster: true }),
+      ...(dur && transition && { transitionDur: dur }), ...(morph && { autoAnimate: true }), ...(morph && dur && { aaDuration: dur / 1000 }),
+      ...(morph && morph !== 'objects' && { morphBy: morph }), ...(comments.length && { comments }) };
   };
-  for (const p of order) { const s = await readSlide(p); if (s) slides.push(s); }
+  for (const [i, p] of order.entries()) { progress?.({ slide: i + 1, of: order.length }); const s = await readSlide(p); if (s) slides.push(s); }
   // Every layout of the masters in use (all the masters' in a template without
   // slides), in the masters' order, as PowerPoint's New Slide menu shows them.
   const mastersUsed = [...new Set([...usedLayouts.values()].map(u => u.master?.file).filter(Boolean))];
@@ -1151,7 +1214,7 @@ export async function importPPTX(file) {
   }
   if (!slides.length) throw new Error('No se encontraron diapositivas en el archivo.');
   const deck = { version: 3, name: (file.name || '').replace(/\.(pptx|pptm|potx|potm|thmx)$/i, '') || 'Presentación importada', size, theme: 'white',
-    defaultTransition: 'slide', transitionSpeed: 'default', sections: [], master: mainMaster, ...(extraMasters.length && { masters: extraMasters }),
+    defaultTransition: 'none', transitionSpeed: 'default', sections: [], master: mainMaster, ...(extraMasters.length && { masters: extraMasters }),
     ...(layouts.length && { layouts }),
     slideNumber: { show: false, position: 'br', format: 'c' }, footer: { show: false, text: '', date: false },
     logo: { src: '', position: 'br', size: 120 }, loop: false, guides: { v: [], h: [] }, slides };

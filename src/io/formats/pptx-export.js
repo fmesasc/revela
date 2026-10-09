@@ -529,14 +529,18 @@ function transKindXML(kind, dir) {
 }
 function transitionXML(s, deck) {
   const kind = s.transition || deck.defaultTransition || 'slide';
-  const spd = SPEED[s.transitionSpeed || deck.transitionSpeed] || 'med';
+  // (An exact duration — imported from PowerPoint, s.transitionDur in ms — as the nearest of its three speeds.)
+  const dur = +s.transitionDur || 0;
+  const spd = dur ? (dur <= 600 ? 'fast' : dur <= 850 ? 'med' : 'slow') : SPEED[s.transitionSpeed || deck.transitionSpeed] || 'med';
   const adv = s.autoSlide ? ` advTm="${Math.round(s.autoSlide)}"` : '';
-  const plain = (inner) => `<p:transition spd="${spd}"${adv}>${inner}</p:transition>`;
+  const plain = (inner, p14 = '') => `<p:transition spd="${spd}"${p14}${adv}>${inner}</p:transition>`;
   if (s.autoAnimate) {                                    // PowerPoint's Morph, with a fade for older versions
     const option = { words: 'byWord', chars: 'byChar' }[s.morphBy] || 'byObject';
+    // (Its duration as PowerPoint writes it: p14:dur inside the Morph choice.)
+    const mdur = Math.round((+s.aaDuration || 0) * 1000), p14 = mdur > 0 ? ` xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" p14:dur="${mdur}"` : '';
     return `<mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">`
       + `<mc:Choice xmlns:p159="http://schemas.microsoft.com/office/powerpoint/2015/09/main" Requires="p159">`
-      + `${plain(`<p159:morph option="${option}"/>`)}</mc:Choice><mc:Fallback>${plain('<p:fade/>')}</mc:Fallback></mc:AlternateContent>`;
+      + `${plain(`<p159:morph option="${option}"/>`, p14)}</mc:Choice><mc:Fallback>${plain('<p:fade/>')}</mc:Fallback></mc:AlternateContent>`;
   }
   if (kind === 'none') return adv ? plain('') : '';
   return plain(transKindXML(kind, s.transition ? s.transitionDir : null));

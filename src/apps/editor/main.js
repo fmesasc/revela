@@ -24,7 +24,7 @@ import * as clip from '../../features/document/clipboard.js';
 import { sanitizeDeck } from '../../features/document/sanitize.js';
 import { initCanvas, renderCanvas, cycleSelection } from '../../ui/canvas/canvas.js';
 import { nudge } from '../../ui/canvas/interact.js';
-import { initPanel, renderPanel } from '../../ui/shell/navigator.js';
+import { initPanel, renderPanel, flushThumbs } from '../../ui/shell/navigator.js';
 import { sorterOn, setSorter, sorterColumns } from '../../ui/shell/sorter.js';
 import { renderComments } from '../../ui/panels/comments.js';
 import { renderReview } from '../../ui/panels/review.js';
@@ -121,10 +121,12 @@ master.followLayouts();
 // Output of the document (HTML, print, images) and presenting, together for the tests.
 const io = { ...html, ...printing, ...images, ...presenting, publishShare };
 
-function render() {
-  renderRibbon();
+// change: what changed (store.lastChange(): the document, or only the screen — a selection, a tab); none
+// (the language, the tests): everything.
+function render(change) {
+  renderRibbon(change);
   renderCanvas();
-  renderPanel();
+  renderPanel(change);
   renderComments();
   renderReview();
   renderSelectionPane();
@@ -269,7 +271,7 @@ document.addEventListener('paste', e => {
   if (txt.includes('\t')) addTableFromText(txt);
   else addText(txt.trim().split(/\n/).map(l => l.replace(/&/g, '&amp;').replace(/</g, '&lt;')).join('<br>'));
 });
-subscribe(render);
+subscribe(() => render(store.lastChange()));
 // Shared without copies (io/cloud/clouddocs.js): the page knows (no selecting or dragging out, blank printouts), and
 // copying the slide's text or objects says why instead.
 subscribe(() => document.body.classList.toggle('no-copy', !!state.ui.noCopy));
@@ -279,7 +281,7 @@ for (const ev of ['copy', 'cut']) document.addEventListener(ev, e => {
 });
 // What an object's text was when editing began (for Ctrl+Z while typing).
 document.addEventListener('focusin', e => { const el = e.target; if (el.isContentEditable && el.closest?.('.block')) el.dataset.start = el.innerHTML; });
-window.addEventListener('revela:lang', render);
+window.addEventListener('revela:lang', () => render());
 render();
 initI18n();
 
@@ -287,7 +289,7 @@ initI18n();
 // and inspect the real app. Only active with ?test in the URL.
 const testing = new URLSearchParams(location.search).has('test');
 if (testing)
-  window.__revela = { state, render, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, examples, designer, pptxImport, odp, api, ai, versions, comments, protect, aiDeck, aiAgent, poll, dashboards, stock, clipboard: clip, markdown, notify, vendor, session, objects, picture, shares, shareServer, clouddocs, review, files, openfile, palette, video: () => import('../../io/export/video.js') };
+  window.__revela = { state, render, flushThumbs, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, examples, designer, pptxImport, odp, api, ai, versions, comments, protect, aiDeck, aiAgent, poll, dashboards, stock, clipboard: clip, markdown, notify, vendor, session, objects, picture, shares, shareServer, clouddocs, review, files, openfile, palette, video: () => import('../../io/export/video.js') };
 
 // Public scripting API for plugins, macros and the console; installed plugins
 // load after the editor is ready (not in the test harness).
@@ -312,8 +314,7 @@ initEditAids();                                         // (format painter, «/�
     try { localStorage.setItem('revela.welcomed', '1'); } catch {}
     import('../../ui/dialogs/gallery.js').then(g => g.openGallery());
   } }
-// Leaving the page: what is still waiting to be written is written now.
-window.addEventListener('pagehide', () => model.flushSave());
+// (Leaving the page: what is still waiting to be written is written at once — core/model.js.)
 startAutoVersions();
 // Opening another presentation over one with changes: a copy of it stays in this browser (Versions).
 // If it wasn't saved anywhere else (Drive, Revela's cloud), a note offers it back at once.

@@ -933,16 +933,34 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     try {
       S.setItem = function (k) { if (k === R.model.STORAGE_KEY) throw new W.DOMException('lleno', 'QuotaExceededError'); return set.apply(this, arguments); };
       P.put = function () { throw new W.DOMException('lleno', 'QuotaExceededError'); };
-      R.blocks.addText('Algo'); await sleep(700);
+      R.blocks.addText('Algo'); await R.model.flushSave(); await sleep(50);   // (written a second later, or at once like this)
       assert(ss.classList.contains('failed') && !ss.hidden, 'aviso «Sin guardar» a la vista');
       eq(ss.querySelector('span').textContent, 'Sin guardar', 'con texto'); assert(/descargar una copia/.test(ss.title), 'y qué hacer');
     } finally { S.setItem = set; P.put = put; }
-    R.blocks.addText('Otra'); await sleep(700);
+    R.blocks.addText('Otra'); await R.model.flushSave(); await sleep(50);
     assert(!ss.classList.contains('failed'), 'al volver a poder guardar, vuelve «En este navegador»');
     eq(ss.querySelector('span').textContent, 'En este navegador', 'texto de vuelta');
     // A click: where to keep it (Drive first; a file too).
     ss.click(); await sleep(20); const sw = D.getElementById('save-where');
     assert(sw && sw.querySelector('[data-w="drive"]') && sw.querySelector('[data-w="file"]'), 'pregunta dónde guardarla: Drive primero, o un archivo'); sw.remove();
+  });
+
+  await test('autoguardado: no a cada cambio sino en un momento de calma (~1 s), y en el acto al salir de la página o antes de leerlo', async () => {
+    reset(); await R.model.flushSave(); const W = frame.contentWindow;
+    const stored = () => { try { return JSON.parse(W.localStorage.getItem(R.model.STORAGE_KEY)).name; } catch { return null; } };
+    R.store.commit(() => { R.state.deck.name = 'Uno'; });
+    assert(stored() !== 'Uno', 'no se escribe en el acto (serializar una presentación grande frenaba cada cambio)');
+    W.dispatchEvent(new W.Event('pagehide'));
+    eq(stored(), 'Uno', 'al salir de la página, escrito al momento');
+    R.store.commit(() => { R.state.deck.name = 'Dos'; }); R.store.commit(() => { R.state.deck.name = 'Tres'; });
+    for (let i = 0; i < 50 && stored() !== 'Tres'; i++) await sleep(50);
+    eq(stored(), 'Tres', 'solo, poco después (los dos cambios de una vez)');
+    R.store.commit(() => { R.state.deck.name = 'Cuatro'; });
+    eq(R.model.loadDeck()?.name, 'Cuatro', 'leer la copia guardada escribe antes lo pendiente');
+    R.store.commit(() => { R.state.deck.name = 'Cinco'; }); const other = R.model.emptyDeck(); other.name = 'Otra'; R.store.replaceDeck(other);
+    eq(stored(), 'Cinco', 'abrir otra: el último cambio de la que se cierra, escrito antes');
+    await R.model.flushSave(); eq(stored(), 'Otra', 'y después la nueva');
+    reset();
   });
 
   // ---- Command search (ui/shell/palette.js) ----

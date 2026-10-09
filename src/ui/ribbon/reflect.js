@@ -18,7 +18,8 @@ export const common = (list, f) => { if (!list.length) return undefined; const v
 export function press(el, v) {
   if (!el) return;
   el.classList.toggle('on', v === true); el.classList.toggle('mixed', v === MIXED);
-  el.setAttribute('aria-pressed', v === MIXED ? 'mixed' : String(v === true));
+  const p = v === MIXED ? 'mixed' : String(v === true);
+  if (el.getAttribute('aria-pressed') !== p) el.setAttribute('aria-pressed', p);   // (written again, it still counts as a change: observers, style checks)
 }
 // A list or a field: its value, or blank when they differ (never while typing in it).
 export function showValue(el, v) {
@@ -71,14 +72,16 @@ function boxState(boxes, cmd) {
 }
 const textish = b => b.type === 'text' || hasShapeText(b);
 let charSig = '';
-export function syncCharState(force = false) {
+// shown: only the buttons in sight (the caret moving while typing: the ribbon's redraw does them all).
+export function syncCharState(force = false, shown = false) {
   const editing = document.activeElement?.classList?.contains('rich'), sel = selectedBlocks();
+  shown &&= editing;                       // (not typing: the signature below already skips what didn't change)
   const sig = editing ? null : shortSig([sel.map(b => ({ ...b, x: 0, y: 0, w: 0, h: 0 })), currentSlide()?.id]);
   if (!force && sig && sig === charSig && !document.querySelector('#ribbon [data-st]:not([aria-pressed])')) return;
   charSig = sig || '';
   const boxes = editing ? [] : sel.filter(textish).map(runsOf).filter(Boolean), math = sel.length === 1 && sel[0].type === 'math' ? sel[0] : null;
   for (const btn of document.querySelectorAll('#ribbon [data-fmt], #ribbon [data-list], #ribbon [data-st]')) {
-    const cmd = btn.dataset.fmt || btn.dataset.list || btn.dataset.st; if (!CHAR[cmd]) continue;
+    const cmd = btn.dataset.fmt || btn.dataset.list || btn.dataset.st; if (!CHAR[cmd] || (shown && btn.closest('.ribbon-page:not(.active)'))) continue;
     let v = false;
     if (math) v = !!math[cmd];
     else if (editing) { try { v = document.queryCommandState(cmd); } catch {} }
