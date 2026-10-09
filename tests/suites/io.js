@@ -1134,4 +1134,178 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(t2.officeTheme.colors.accents[0], '#7aa2f7', 'y como .thmx, que se vuelve a leer');
     reset();
   });
+
+  // ---- Question banks (io/formats/questions.js) and flashcards (io/export/study.js) ----
+  const questionsMod = () => frame.contentWindow.eval("import('/src/io/formats/questions.js')");
+  const GIFT_SAMPLE = `// Un banco de preguntas en GIFT
+$CATEGORY: $course$/Ciencias
+
+::Capital::¿Cuál es la capital de Francia? {
+  =París # ¡Bien!
+  ~Lyon
+  ~Marsella
+}
+
+::Primos::Marca los primos {~%50%2 ~%50%3 ~%-100%4}
+
+La Tierra es plana. {F}
+
+::Ríos:: Une cada río con su país {
+  =Ebro -> España
+  =Sena -> Francia
+}
+
+¿Qué planeta es rojo? {=Marte =Mars =%50%Venus}
+
+Colón llegó a América en {=1492 =mil cuatrocientos noventa y dos} con tres naves.
+
+::Pi:: ¿Cuánto vale pi? {#3.14:0.01}
+
+¿Cuántos días tiene una semana laboral? {#4..6}
+
+Escribe sobre tu ciudad. {}
+
+Una ecuación\\: 2 \\= 1 \\+ 1 y unas llaves \\{\\} {=sí ~no}
+`;
+
+  await test('preguntas: GIFT (comentarios, títulos, verdadero/falso, parejas, respuesta corta, numérica, escapes)', async () => {
+    reset(); const Q = await questionsMod(), r = Q.parseGIFT(GIFT_SAMPLE);
+    eq(r.items.map(x => x.poll.kind).join(), 'quiz,quiz,quiz,match,gaps,gaps,number,number,quiz', 'cada pregunta con su tipo');
+    const [cap, primes, tf, rivers, planet, colon, pi, week, esc] = r.items.map(x => x.poll);
+    eq(cap.question + '|' + cap.options.join('/') + '|' + cap.correct.join(), '¿Cuál es la capital de Francia?|París/Lyon/Marsella|0', 'opción múltiple sin el comentario de la respuesta');
+    eq(primes.correct.join(), '0,1', 'con pesos: las dos que suman'); assert(r.items[1].warn.some(w => /cualquiera/.test(w)), 'avisa de que vale cualquiera de las correctas');
+    eq(tf.options.join('/') + '|' + tf.correct.join(), 'Verdadero/Falso|1', 'verdadero o falso');
+    eq(rivers.options.join('|'), 'Ebro = España|Sena = Francia', 'parejas');
+    eq(planet.text, '[Marte|Mars]', 'respuesta corta: las alternativas valen; la parcial no');
+    eq(colon.text, 'Colón llegó a América en [1492|mil cuatrocientos noventa y dos] con tres naves.', 'el hueco dentro de la frase');
+    eq(pi.answer + '|' + pi.tolerance, '3.14|0.01', 'numérica con margen'); eq(week.answer + '|' + week.tolerance, '5|1', 'numérica como intervalo');
+    eq(esc.question, 'Una ecuación: 2 = 1 \\+ 1 y unas llaves {}', 'caracteres escapados');
+    eq(r.skipped.length, 1, 'la redacción, fuera'); assert(/larga/.test(r.skipped[0].why), 'y dice por qué');
+  });
+
+  await test('preguntas: Moodle XML (tipos, HTML y CDATA, imágenes, cloze) y lo que no se puede, con su motivo', async () => {
+    reset(); const Q = await questionsMod(), xml = await (await fetch(new URL('fixtures/questions/moodle.xml', location.href))).text(), r = Q.parseMoodleXML(xml);
+    eq(r.items.map(x => x.poll.kind).join(), 'quiz,quiz,quiz,match,gaps,number,gaps', 'lo que encaja');
+    const [cap, primes, tf, rivers, planet, pi, cloze] = r.items.map(x => x.poll);
+    eq(cap.question + '|' + cap.options.join('/'), '¿Cuál es la capital de Francia?|París/Lyon/Marsella & Niza', 'el HTML como texto');
+    assert(r.items[0].warn.some(w => /imagen/.test(w)), 'avisa de la imagen que no viene'); eq(r.items[0].notes, 'París es la capital desde el siglo X.', 'el comentario general, a las notas');
+    eq(primes.correct.join(), '0,1', 'varias correctas'); eq(tf.correct.join(), '1', 'verdadero/falso: falso');
+    eq(rivers.options.join('|'), 'Ebro = España|Sena = Francia', 'emparejamiento'); assert(r.items[3].warn.some(w => /distractores/.test(w)), 'sin el distractor, avisando');
+    eq(planet.question + '|' + planet.text, 'Completa el texto|El planeta rojo es [Marte|Mars].', 'respuesta corta con su hueco ____'); assert(r.items[4].warn.some(w => /comodín/.test(w)), 'sin comodines');
+    eq(`${pi.answer}|${pi.tolerance}|${pi.unit}`, '3.14|0.01|rad', 'numérica con unidad');
+    eq(cloze.text, 'Madrid es la capital de [España|Spain] y Roma de [Italia].', 'cloze de respuesta corta → huecos');
+    eq(r.skipped.map(x => x.name).join('|'), 'Elige: {1:MULTICHOICE:=sí~no}|Describe tu ciudad.|Lee con atención.|[[1]] y [[2]]', 'lo que no se importa (la categoría ni cuenta)');
+    assert(/ddwtos/.test(r.skipped[3].why) && /cloze/.test(r.skipped[0].why), 'cada uno con su motivo');
+    let bad = ''; try { Q.parseMoodleXML('<quiz><question'); } catch (e) { bad = e.message; } assert(/XML/.test(bad), 'un XML roto lo dice');
+  });
+
+  await test('preguntas: CSV sencillo (punto y coma, títulos, comillas) y la plantilla de Kahoot', async () => {
+    reset(); const Q = await questionsMod(), W = frame.contentWindow;
+    const r = Q.parseCSV('Pregunta;Correcta;Incorrecta 1;Incorrecta 2\n"¿2+2; o algo?";4;3;5\nCapital de Italia;Roma|Rome\nSin respuesta;;x\n');
+    eq(r.items.length + '/' + r.skipped.length, '2/1', 'dos dentro, una fuera (sin correcta)');
+    const q1 = r.items[0].poll; eq(q1.question, '¿2+2; o algo?', 'comillas con separador dentro');
+    eq(q1.options.slice().sort().join() + '|' + q1.options[q1.correct[0]], '3,4,5|4', 'opciones mezcladas, y la correcta sigue marcada');
+    eq(r.items[1].poll.text, '[Roma|Rome]', 'solo la correcta: respuesta corta');
+    eq(Q.parseCSV('q,a,b\nx,y,z').items.length, 2, 'con comas y sin títulos');
+    // Kahoot's template: a few rows of title before the table.
+    const rows = [['Quiz template'], [], ['', ...Q.KAHOOT_HEAD], ['1', '¿Color del cielo?', 'Rojo', 'Azul', 'Verde', '', '30', '2'], ['2', '¿Pares?', '2', '3', '4', '5', '5', '1, 3'], ['3', '', '', '', '', '', '', '']];
+    const k = Q.parseKahootRows(rows);
+    eq(k.items.map(x => x.poll.options.join('/') + ':' + x.poll.correct.join() + ':' + x.poll.time).join('|'), 'Rojo/Azul/Verde:1:30|2/3/4/5:0,2:10', 'respuestas, correctas y tiempo');
+    // Ours, read back: the same quizzes.
+    R.store.commit(() => { R.state.deck.slides[0].blocks.push(R.poll.pollBlock({ kind: 'quiz', question: '¿Capital?', options: ['A', 'B', 'C', 'D', 'E'], correct: [4], time: 45 }), R.poll.pollBlock({ kind: 'order', options: ['1', '2', '3'] })); });
+    const out = await Q.toKahootXlsx(Q.deckQuestions(R.state.deck));
+    eq(out.count, 1, 'solo los cuestionarios'); assert(out.left.some(x => /4 respuestas/.test(x.why)) && out.left.some(x => /no existe/.test(x.why)), 'y dice qué se queda fuera');
+    const back = await Q.parseXlsxQuestions(await out.blob.arrayBuffer()), bq = back.items[0].poll;
+    eq(bq.question + '|' + bq.options.join('/') + '|' + bq.options[bq.correct[0]] + '|' + bq.time, '¿Capital?|A/B/C/E|E|30', 'el .xlsx exportado se vuelve a leer (la correcta no se pierde)');
+    const JSZip = W.JSZip || (await W.eval(`import('${R.vendor.JSZIP_ESM}')`)).default, z = await JSZip.loadAsync(await out.blob.arrayBuffer());
+    assert(/<c r="B8"[^>]*><is><t[^>]*>Question - max 120 characters/.test(await z.file('xl/worksheets/sheet1.xml').async('string')), 'con la tabla donde la pone la plantilla de Kahoot (fila 8, columna B)');
+  });
+
+  await test('preguntas: exportar a GIFT, Moodle XML y CSV, y volver a importarlas igual', async () => {
+    reset(); const Q = await questionsMod(), P = R.poll.pollBlock;
+    R.store.commit(() => { R.state.deck.slides[0].blocks.push(
+      P({ kind: 'quiz', question: '¿Cuánto es 2 = 2?', options: ['Sí', 'No {seguro}'], correct: [0] }), P({ kind: 'match', question: 'Une', options: ['Ebro = España', 'Sena = Francia'] }),
+      P({ kind: 'gaps', question: 'Completa', text: 'El agua hierve a [100|cien] grados.', options: [] }), P({ kind: 'gaps', question: 'Dos', text: '[a] y [b]', options: [] }),
+      P({ kind: 'number', question: '¿Pi?', answer: 3.14, tolerance: 0.01, options: [] }), P({ kind: 'sort', question: 'Clasifica', options: ['A: x, y'] }), P({ kind: 'choice', question: 'Encuesta' })); });
+    const list = Q.deckQuestions(R.state.deck); eq(list.length, 6, 'los cuestionarios y actividades (no las encuestas)');
+    const g = Q.toGIFT(list); eq(g.count, 4, 'GIFT: cuatro'); eq(g.left.map(x => x.why.slice(0, 4)).join(), 'GIFT,Este', 'fuera, cada uno con su motivo');
+    assert(/¿Cuánto es 2 \\= 2\?/.test(g.text) && /~No \\\{seguro\\\}/.test(g.text), 'con escapes');
+    const g2 = Q.parseGIFT(g.text);
+    eq(g2.items.map(x => x.poll.kind).join(), 'quiz,match,gaps,number', 'GIFT de vuelta');
+    eq(g2.items[0].poll.options.join('/'), 'Sí/No {seguro}', 'los textos intactos'); eq(g2.items[2].poll.text, 'El agua hierve a [100|cien] grados.', 'el hueco en su sitio');
+    const m = Q.toMoodleXML(list); eq(m.count, 5, 'Moodle XML: también el de dos huecos (cloze)');
+    const m2 = Q.parseMoodleXML(m.text);
+    eq(m2.items.map(x => x.poll.kind).join(), 'quiz,match,gaps,gaps,number', 'Moodle de vuelta'); eq(m2.items[3].poll.text, 'Dos [a] y [b]', 'los dos huecos');
+    eq(m2.items[4].poll.answer + '|' + m2.items[4].poll.tolerance, '3.14|0.01', 'el número con su margen');
+    const c = Q.toCSV(list), c2 = Q.parseCSV(c.text); eq(c.count, 3, 'CSV: tres'); eq(c2.items[0].poll.options[c2.items[0].poll.correct[0]], 'Sí', 'y se vuelve a leer');
+    // The dialog: what goes and what is left out, by format.
+    D.querySelector('[data-action="export-questions"]').click(); for (let i = 0; i < 40 && !D.getElementById('qbank-out-modal'); i++) await sleep(25);
+    const M = D.getElementById('qbank-out-modal'); assert(M && /5 preguntas/.test(M.textContent), 'el diálogo cuenta las de Moodle');
+    M.querySelector('input[value="kahoot"]').click(); await sleep(10); assert(/1 preguntas/.test(M.textContent) && /Clasifica/.test(M.textContent), 'y, en Kahoot, qué no va');
+    M.querySelector('.modal-close').click();
+  });
+
+  await test('preguntas: importar desde el diálogo, con vista previa, cada una en su diapositiva', async () => {
+    reset(); const W = frame.contentWindow, n0 = R.state.deck.slides.length;
+    D.querySelector('[data-action="import-questions"]').click(); for (let i = 0; i < 40 && !D.getElementById('qbank-modal'); i++) await sleep(25);
+    const M = D.getElementById('qbank-modal'); assert(M && /Kahoot/.test(M.textContent) && /CSV/.test(M.textContent), 'explica los formatos');
+    assert(M.querySelector('.qb-go').disabled, 'sin archivo no inserta nada');
+    const dt = new W.DataTransfer(); dt.items.add(new W.File([GIFT_SAMPLE], 'banco.gift', { type: 'text/plain' }));
+    const inp = M.querySelector('.qb-file'); inp.files = dt.files; inp.dispatchEvent(new W.Event('change'));
+    for (let i = 0; i < 40 && !M.querySelector('.qb-items'); i++) await sleep(25);
+    eq(M.querySelectorAll('.qb-items li').length, 9, 'la lista de lo entendido'); assert(/larga/.test(M.querySelector('.qb-skipped').textContent), 'y de lo que no, con su motivo');
+    assert(/GIFT/.test(M.textContent) && /9/.test(M.querySelector('.qb-go').textContent), 'el formato y cuántas');
+    M.querySelector('.qb-go').click(); await sleep(20);
+    eq(R.state.deck.slides.length, n0 + 9, 'una diapositiva por pregunta'); eq(R.state.ui.slideIndex, 1, 'detrás de la actual, y se ve la primera');
+    const s = R.state.deck.slides[1], b = s.blocks[0], { w: SW, h: SH } = R.state.deck.size;
+    eq(`${s.blocks.length}|${b.type}|${b.kind}|${b.x},${b.y},${b.w},${b.h}|${b.fontSize}`, `1|poll|quiz|80,60,${SW - 160},${SH - 120}|30`, 'como los cuestionarios de la IA');
+    assert(/París/.test(s.notes), 'la respuesta en las notas');
+    R.store.undo(); eq(R.state.deck.slides.length, n0, 'se deshace de una vez');
+  });
+
+  await test('fichas y práctica: una página sin conexión con fichas (recuerda lo sabido) y práctica con la nota', async () => {
+    reset(); const W = frame.contentWindow, S = await W.eval("import('/src/io/export/study.js')"), P = R.poll.pollBlock;
+    R.store.commit(() => {
+      const d = R.state.deck; d.slides[0].blocks[0].ph = 'title'; d.slides[0].blocks[0].html = 'Los ríos'; d.slides[0].blocks[1].html = 'Llevan agua al mar';
+      d.slides.push({ id: 'q1', sectionId: null, background: '#fff', transition: null, blocks: [P({ kind: 'quiz', question: '¿Capital de Francia?', options: ['Lyon', 'París'], correct: [1] })] },
+        { id: 'q2', sectionId: null, background: '#fff', transition: null, blocks: [P({ kind: 'gaps', question: 'Completa', text: 'El Ebro está en [España].', options: [] })] },
+        { id: 'q3', sectionId: null, background: '#fff', transition: null, blocks: [P({ kind: 'choice', question: 'Encuesta' })] }); });
+    const data = S.studyData(R.state.deck, { slides: true });
+    eq(data.cards.map(c => c.f + ' → ' + c.b).join(' | '), '¿Capital de Francia? → París | Completa\nEl Ebro está en _____. → El Ebro está en España. | Los ríos → Llevan agua al mar', 'fichas: preguntas y la diapositiva');
+    eq(data.items.length, 2, 'práctica: las que tienen respuesta');
+    const html = S.studyHTML(R.state.deck, { slides: true });
+    assert(/<html lang="es"/.test(html) && !/<script src=/.test(html) && !/https?:\/\//.test(html), 'en el idioma, y todo dentro (sin nada de internet)');
+    // The page itself: flip a card, say it was known (kept in localStorage), then practise.
+    const fr = D.createElement('iframe'); fr.style.cssText = 'position:fixed;left:0;top:0;width:400px;height:700px'; D.body.appendChild(fr);
+    fr.srcdoc = html; for (let i = 0; i < 80 && !fr.contentDocument?.getElementById('fc-text')?.textContent; i++) await sleep(25);
+    const F = fr.contentDocument, $ = id => F.getElementById(id), key = data.key;
+    try {
+      fr.contentWindow.localStorage.removeItem(key);
+      eq($('fc-side').textContent, 'Pregunta', 'empieza por delante'); assert(/0 de 3/.test($('fc-prog').textContent), 'y su progreso');
+      const first = $('fc-text').textContent; assert($('fc-acts').hidden, 'sin ver la respuesta, no se puede decir si se sabía');
+      $('fc-card').click(); eq($('fc-side').textContent, 'Respuesta', 'se da la vuelta'); assert(!$('fc-acts').hidden, 'y entonces sí');
+      F.getElementById('fc-knew').click(); assert(/1 de 3/.test($('fc-prog').textContent) && $('fc-text').textContent !== first, 'sabida: la siguiente');
+      eq(Object.values(JSON.parse(fr.contentWindow.localStorage.getItem(key))).join(), '1', 'guardado en esa página');
+      $('fc-card').click(); F.getElementById('fc-again').click(); assert(/1 de 3/.test($('fc-prog').textContent), 'a repasar: vuelve a salir más tarde');
+      // Practice: the tab, a right one and a wrong one, the score, and the wrong ones again.
+      F.getElementById('tab-pr').click(); assert(!$('pr').hidden && $('fc').hidden, 'pestaña de práctica');
+      eq($('pr-count').textContent, 'Pregunta 1 de 2', 'una a una');
+      [...$('pr-q').querySelectorAll('button.opt')].find(b => b.textContent === 'París').click(); $('pr-check').click();
+      assert(/Correcto/.test($('pr-fb').textContent) && !$('pr-next').hidden, 'acierto, al momento');
+      $('pr-next').click(); const g = $('pr-q').querySelector('input'); assert(g && /Hueco 1/.test(g.getAttribute('aria-label')), 'el hueco, con su nombre para lectores de pantalla');
+      g.value = 'Francia'; g.dispatchEvent(new fr.contentWindow.Event('input')); $('pr-check').click();
+      assert(/No es correcto/.test($('pr-fb').textContent) && /España/.test($('pr-fb').textContent), 'fallo: y cuál era');
+      $('pr-next').click(); assert(/1 de 2/.test($('pr-q').textContent), 'la nota al final');
+      [...$('pr-q').querySelectorAll('button')].find(b => /falladas/.test(b.textContent)).click();
+      eq($('pr-count').textContent, 'Pregunta 1 de 1', 'repetir solo las falladas');
+    } finally { fr.contentWindow?.localStorage.removeItem(key); fr.remove(); }
+    await R.i18n.setLang('en');
+    try { const en = S.studyHTML(R.state.deck); assert(/<html lang="en"/.test(en) && /I knew it/.test(en) && /Flashcards/.test(en), 'en el idioma de la interfaz'); }
+    finally { await R.i18n.setLang('es'); }
+    // The dialog and its button.
+    D.querySelector('[data-action="export-study"]').click(); for (let i = 0; i < 40 && !D.getElementById('study-modal'); i++) await sleep(25);
+    const M = D.getElementById('study-modal'); assert(M && /2 fichas y 2 preguntas/.test(M.textContent), 'el diálogo cuenta lo que lleva');
+    M.querySelector('.st-slides').click(); assert(/3 fichas/.test(M.textContent), 'y con las diapositivas, una más');
+    M.querySelector('.modal-close').click();
+  });
 }

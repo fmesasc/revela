@@ -185,6 +185,7 @@ src/
       remotepad.js             what the phone's touchpad does on screen (laser, spotlight…)
       poll.js                  live polls, quizzes and Q&A objects (VOTE_URL)
       grading.js               marking quizzes and activities (also embedded, and used by the server's LTI)
+      quizslides.js            a quiz or activity on a slide of its own (the AI's and the imported question banks')
       collab.js                co-editing, chat and roles, browser to browser (or through a room)
       collabsync.js            co-editing operations: diff, apply, which role may do what
                                (shared with server/cloudflare/collab.js and docs.js)
@@ -223,12 +224,14 @@ src/
       ooxml-theme.js           the deck's theme as an Office theme part
       odp.js  odp-anim.js      OpenDocument export and import, and its animations
       markdown.js              Markdown → slides (reveal.js conventions)
+      questions.js             question banks in and out: Moodle XML, GIFT, Kahoot's spreadsheet, CSV
     export/
       print.js                 print, handouts and notes pages
       pdf.js                   «Exportar PDF» made here, one page per slide
       images.js                slides and objects as PNG/JPG, a zip of all slides
       objects.js               selected objects as image files (PNG, WebP, JPG, SVG, original)
       video.js                 the slideshow as MP4 (WebCodecs) or animated GIF
+      study.js                 flashcards and practice from the quizzes: one offline page (grading.js embedded)
     runtime/                   code that runs inside the exported presentation, embedded as source:
       scripts.js               polls, live data, lightbox, triggers
       ink.js                   pen, highlighter, laser, eraser while presenting

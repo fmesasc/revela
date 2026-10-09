@@ -60,6 +60,9 @@ reveal.js, de modo que el resultado es una página web estándar y autónoma.
   (una lista o una carrera animada) y **preguntas del público**: el público
   responde desde el móvil (también dibujando, con una foto o con su voz) y los
   resultados se actualizan al instante.
+- **Bancos de preguntas:** importar cuestionarios de Moodle (XML o GIFT), de
+  la hoja de cálculo de Kahoot o de un CSV, exportarlos a esos formatos y
+  convertirlos en una página sin conexión con fichas y práctica para el alumnado.
 - **Datos en vivo:** paneles de Power BI, Looker Studio, Tableau, Google
   Sheets, Grafana… y gráficos enlazados a un CSV.
 - **IA con OpenRouter** (tu cuenta): crear presentaciones completas desde un

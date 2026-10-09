@@ -18,7 +18,7 @@ import { amounts, deckQuality, weakSlides, isTechnical } from './quality.js';
 export { findMedia } from './media.js';
 import { codeFontSize, codeHeight, mathFontSize, AI_LANGS } from './codeobj.js';
 import { richHTML } from './richtext.js';
-import { pollBlock } from '../live/poll.js';
+import { quizSlide } from '../live/quizslides.js';
 import { ICON_NAMES } from '../../render/svg.js';
 
 // ---- Slide kinds → objects ------------------------------------------------------
@@ -620,24 +620,23 @@ Answer only JSON {"items":[…]}, each one of:
     { role: 'user', content: text },
   ], { json: true, maxTokens: 4000, feature: 'quiz' });
   const items = (parseJSON(out).items || []).filter(x => x && kinds.includes(x.kind)).slice(0, n);
-  const { w: W, h: H } = state.deck.size, pal = currentPalette();
+  // (Each one a poll filling its own slide: quizslides.js, the same as the question banks that are imported.)
   const poll = x => {
-    const base = { question: str(x.question).slice(0, 200) || '?', x: 80, y: 60, w: W - 160, h: H - 120, fontSize: 30 };
+    const base = { question: str(x.question).slice(0, 200) || '?' };
     if (x.kind === 'quiz') { const o = (x.options || []).map(str).filter(Boolean).slice(0, 4); if (o.length < 2) return null;
-      return pollBlock({ ...base, kind: 'quiz', options: o, correct: [Math.max(0, Math.min(o.length - 1, +x.answer || 0))], time: 20 }); }
-    if (x.kind === 'match') { const o = (x.pairs || []).filter(p => Array.isArray(p) && p.length === 2).map(([a, b]) => `${str(a).replace(/=/g, '-')} = ${str(b).replace(/=/g, '-')}`).slice(0, 6); return o.length > 1 ? pollBlock({ ...base, kind: 'match', options: o }) : null; }
+      return { ...base, kind: 'quiz', options: o, correct: [Math.max(0, Math.min(o.length - 1, +x.answer || 0))], time: 20 }; }
+    if (x.kind === 'match') { const o = (x.pairs || []).filter(p => Array.isArray(p) && p.length === 2).map(([a, b]) => `${str(a).replace(/=/g, '-')} = ${str(b).replace(/=/g, '-')}`).slice(0, 6); return o.length > 1 ? { ...base, kind: 'match', options: o } : null; }
     // (A crossword's and a word search's words: one word each, so no "=" nor spaces; a crossword's need a clue.)
     const word = w => str(w).replace(/[=\s]+/g, '').slice(0, 20);
-    if (x.kind === 'crossword') { const o = (x.words || []).filter(p => Array.isArray(p) && p.length === 2 && word(p[0]) && str(p[1])).map(([a, b]) => `${word(a)} = ${str(b).replace(/=/g, '-')}`).slice(0, 10); return o.length > 1 ? pollBlock({ ...base, kind: 'crossword', options: o }) : null; }
-    if (x.kind === 'wordsearch') { const o = (x.words || []).map(word).filter(w => w.length > 1).slice(0, 12); return o.length > 1 ? pollBlock({ ...base, kind: 'wordsearch', options: o }) : null; }
-    if (x.kind === 'memory') { const o = (x.pairs || []).filter(p => Array.isArray(p) && p.length === 2 && str(p[0]) && str(p[1])).map(([a, b]) => `${str(a).replace(/=/g, '-')} = ${str(b).replace(/=/g, '-')}`).slice(0, 10); return o.length > 1 ? pollBlock({ ...base, kind: 'memory', options: o }) : null; }
-    if (x.kind === 'order') { const o = (x.steps || []).map(str).filter(Boolean).slice(0, 8); return o.length > 2 ? pollBlock({ ...base, kind: 'order', options: o }) : null; }
-    const tx = str(x.text); return /\[[^\]]+\]/.test(tx) ? pollBlock({ ...base, kind: 'gaps', text: tx.slice(0, 600), options: [] }) : null;
+    if (x.kind === 'crossword') { const o = (x.words || []).filter(p => Array.isArray(p) && p.length === 2 && word(p[0]) && str(p[1])).map(([a, b]) => `${word(a)} = ${str(b).replace(/=/g, '-')}`).slice(0, 10); return o.length > 1 ? { ...base, kind: 'crossword', options: o } : null; }
+    if (x.kind === 'wordsearch') { const o = (x.words || []).map(word).filter(w => w.length > 1).slice(0, 12); return o.length > 1 ? { ...base, kind: 'wordsearch', options: o } : null; }
+    if (x.kind === 'memory') { const o = (x.pairs || []).filter(p => Array.isArray(p) && p.length === 2 && str(p[0]) && str(p[1])).map(([a, b]) => `${str(a).replace(/=/g, '-')} = ${str(b).replace(/=/g, '-')}`).slice(0, 10); return o.length > 1 ? { ...base, kind: 'memory', options: o } : null; }
+    if (x.kind === 'order') { const o = (x.steps || []).map(str).filter(Boolean).slice(0, 8); return o.length > 2 ? { ...base, kind: 'order', options: o } : null; }
+    const tx = str(x.text); return /\[[^\]]+\]/.test(tx) ? { ...base, kind: 'gaps', text: tx.slice(0, 600), options: [] } : null;
   };
   const made = items.map(x => [x, poll(x)]).filter(([, b]) => b)
     .map(([x, b]) => [Math.max(1, Math.min(state.deck.slides.length, Math.round(+x.after) || state.deck.slides.length)),
-      { id: uid(), sectionId: null, background: pal.bg, transition: 'fade', hidden: false, autoSlide: 0, blocks: [b],
-        notes: x.kind === 'quiz' ? `${str(x.question)} → ${str((x.options || [])[+x.answer || 0])}` : str(x.question) }]);
+      quizSlide(b, x.kind === 'quiz' ? `${str(x.question)} → ${str((x.options || [])[+x.answer || 0])}` : str(x.question))]);
   if (!made.length) throw new Error('EMPTY');
   commit(() => {
     if (opts.where === 'spread') {                     // (each after the slide it asks about: from the last, so the places hold)

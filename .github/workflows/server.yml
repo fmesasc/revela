@@ -63,6 +63,7 @@ on:
       - 'src/features/document/imgshrink.js'
       - 'src/features/document/master.js'
       - 'src/features/live/poll.js'
+      - 'src/features/live/quizslides.js'
       - 'src/i18n/index.js'
       - 'src/i18n/strings.js'
       - 'src/render/diagrams.js'

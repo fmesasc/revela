@@ -147,6 +147,10 @@ export const ACTIONS = {
   },
   // SCORM: for learning platforms (Moodle, Canvas…): fixed or dynamic, and the pass mark (dialogs/scorm.js).
   'export-scorm': () => openScormExport(),
+  // Question banks in and out (Moodle XML, GIFT, Kahoot, CSV), and flashcards and practice as a page of their own (dialogs/questions.js).
+  'import-questions': () => import('../dialogs/questions.js').then(m => m.openQuestionImport()),
+  'export-questions': () => import('../dialogs/questions.js').then(m => m.openQuestionExport()),
+  'export-study': () => import('../dialogs/questions.js').then(m => m.openStudyExport()),
   'export-pptx': () => withProgress(t('Creando el archivo de PowerPoint…'), exportPPTX, t('PowerPoint descargado.')),
   // (The file itself, made here; printing — or the browser's «Save as PDF», with selectable text — is «Imprimir».)
   'export-pdf': () => openPdfDialog(),

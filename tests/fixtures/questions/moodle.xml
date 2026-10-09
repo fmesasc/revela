@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A Moodle question bank export (Moodle 4.x), one of each kind, for tests/suites/io.js -->
+<quiz>
+  <question type="category">
+    <category><text>$course$/top/Geografía</text></category>
+  </question>
+  <question type="multichoice">
+    <name><text>Capital</text></name>
+    <questiontext format="html"><text><![CDATA[<p>¿Cuál es la <b>capital</b> de Francia?</p><p><img src="@@PLUGINFILE@@/mapa.png" alt="mapa"></p>]]></text></questiontext>
+    <generalfeedback format="html"><text><![CDATA[<p>París es la capital desde el siglo X.</p>]]></text></generalfeedback>
+    <single>true</single>
+    <answer fraction="100" format="html"><text><![CDATA[<p>París</p>]]></text></answer>
+    <answer fraction="0" format="html"><text><![CDATA[<p>Lyon</p>]]></text></answer>
+    <answer fraction="0" format="html"><text>Marsella &amp; Niza</text></answer>
+  </question>
+  <question type="multichoice">
+    <name><text>Primos</text></name>
+    <questiontext format="html"><text>Marca los números primos</text></questiontext>
+    <single>false</single>
+    <answer fraction="50"><text>2</text></answer>
+    <answer fraction="50"><text>3</text></answer>
+    <answer fraction="-100"><text>4</text></answer>
+  </question>
+  <question type="truefalse">
+    <name><text>Tierra</text></name>
+    <questiontext format="html"><text>La Tierra es plana.</text></questiontext>
+    <answer fraction="0"><text>true</text></answer>
+    <answer fraction="100"><text>false</text></answer>
+  </question>
+  <question type="matching">
+    <name><text>Ríos</text></name>
+    <questiontext format="html"><text>Une cada río con su país</text></questiontext>
+    <subquestion format="html"><text>Ebro</text><answer><text>España</text></answer></subquestion>
+    <subquestion format="html"><text>Sena</text><answer><text>Francia</text></answer></subquestion>
+    <subquestion format="html"><text></text><answer><text>Italia</text></answer></subquestion>
+  </question>
+  <question type="shortanswer">
+    <name><text>Planeta</text></name>
+    <questiontext format="html"><text><![CDATA[El planeta rojo es ____.]]></text></questiontext>
+    <answer fraction="100"><text>Marte</text></answer>
+    <answer fraction="100"><text>Mars</text></answer>
+    <answer fraction="100"><text>Mar*</text></answer>
+    <answer fraction="50"><text>Venus</text></answer>
+  </question>
+  <question type="numerical">
+    <name><text>Pi</text></name>
+    <questiontext format="html"><text>¿Cuánto vale pi?</text></questiontext>
+    <answer fraction="100"><text>3.14</text><tolerance>0.01</tolerance></answer>
+    <units><unit><multiplier>1</multiplier><unit_name>rad</unit_name></unit></units>
+  </question>
+  <question type="cloze">
+    <name><text>Huecos</text></name>
+    <questiontext format="html"><text><![CDATA[<p>Madrid es la capital de {1:SHORTANSWER:=España~%100%Spain#bien} y Roma de {1:SA:=Italia}.</p>]]></text></questiontext>
+  </question>
+  <question type="cloze">
+    <name><text>Menú</text></name>
+    <questiontext format="html"><text>Elige: {1:MULTICHOICE:=sí~no}</text></questiontext>
+  </question>
+  <question type="essay">
+    <name><text>Redacción</text></name>
+    <questiontext format="html"><text>Describe tu ciudad.</text></questiontext>
+  </question>
+  <question type="description">
+    <name><text>Instrucciones</text></name>
+    <questiontext format="html"><text>Lee con atención.</text></questiontext>
+  </question>
+  <question type="ddwtos">
+    <name><text>Arrastrar</text></name>
+    <questiontext format="html"><text>[[1]] y [[2]]</text></questiontext>
+  </question>
+</quiz>

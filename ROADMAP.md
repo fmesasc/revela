@@ -172,6 +172,8 @@ the origin of every requirement is traceable.
 - ✅ Classroom mode — students follow the slides on their own device at the presenter's pace (code and QR in a corner), answer there; results per student with CSV `—`
 - ✅ Live captions on the audience's devices, translated per person (the browser's own translator, or the presenter's AI) `PP`
 - ✅ Self-paced mode — quizzes and activities answered inside the slides, without phones, to practise or as homework `—`
+- ✅ Question banks — import from Moodle XML, GIFT, Kahoot's spreadsheet or CSV (a preview of what comes in and what is skipped, and why), one quiz slide per question; export the quizzes and activities to the same formats, saying what each one leaves out `—`
+- ✅ Flashcards and practice — an offline page made from the quizzes and activities (and, optionally, the slides): cards to flip with spaced repetition kept in the browser, and practice with the answer right away and the score at the end; keyboard and screen readers, phones, the deck's colours and the interface language `—`
 
 ## 7. Collaboration *(needs a backend — not possible on static hosting alone)*
 - ✅ Real-time co-editing: share links, everyone sees changes at once (per-object merging, so people can work on different objects together), others' selections on the slide, undo only undoes your own changes. Browser-to-browser (WebRTC), no server needed; the person sharing keeps the tab open `PP·GS·OO`
