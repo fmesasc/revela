@@ -3187,4 +3187,108 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     [...D.querySelectorAll('#context-menu .ctx-item')].find(x => x.textContent === 'Intercambiar').click(); await sleep(10);
     eq(slide().blocks.find(o => o.id === 'p1').x, 700, 'Intercambiar desde el menú');
   });
+
+  await test('cambiar imagen: soltada sobre otra la sustituye (posición, tamaño, ajuste, animaciones y texto alternativo se quedan); en un marcador de imagen lo rellena', async () => {
+    reset(); const W = frame.contentWindow;
+    const png1 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const png2 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAIAAADwyuo0AAAAEElEQVR4nGP4z8AARwzIHABvqgf5gNwAKAAAAABJRU5ErkJggg==';
+    const file = async (src, name) => new W.File([await (await W.fetch(src)).blob()], name, { type: 'image/png' });
+    R.blocks.addImage(png1); await sleep(30); const b = last();
+    R.store.commit(() => { Object.assign(b, { x: 100, y: 80, w: 400, h: 300, fit: 'cover', alt: 'Mi foto', crop: { left: 10 }, rotation: 12, uncropped: { src: png1 }, focusX: 20 }); b.animation = { effect: 'fade-in', duration: 600 }; });
+    const n = slide().blocks.length;
+    // Dropped as the user does: dragged over it (it says it will be replaced), then let go.
+    const wrap = D.getElementById('canvas-wrap'), r = D.getElementById('stage').getBoundingClientRect(), k = R.state.deck.size.w / r.width;
+    const dt = new W.DataTransfer(); dt.items.add(await file(png2, 'nueva.png'));
+    const o = { bubbles: true, cancelable: true, dataTransfer: dt, clientX: r.left + 300 / k, clientY: r.top + 230 / k };
+    wrap.dispatchEvent(new W.DragEvent('dragover', o));
+    assert(D.querySelector(`#stage .block[data-id="${b.id}"]`).classList.contains('drop-replace'), 'al arrastrar encima, se marca la imagen que se cambiará');
+    wrap.dispatchEvent(new W.DragEvent('drop', o)); await sleep(300);
+    const nb = slide().blocks.find(x => x.id === b.id);
+    eq(slide().blocks.length, n, 'no se añade otra imagen'); eq(nb.src, png2, 'la imagen nueva');
+    eq(JSON.stringify([nb.x, nb.y, nb.w, nb.h, nb.rotation, nb.fit, nb.alt, nb.crop.left, nb.animation.effect]), JSON.stringify([100, 80, 400, 300, 12, 'cover', 'Mi foto', 10, 'fade-in']), 'lo del objeto se queda');
+    assert(!nb.uncropped && nb.focusX == null, 'lo que era de la imagen anterior se va');
+    assert(!D.querySelector('#stage .drop-replace'), 'la marca se va');
+    R.store.undo(); await sleep(20); eq(slide().blocks.find(x => x.id === b.id).src, png1, 'un paso de deshacer');
+    // Away from it: a new picture, as before.
+    await R.openfile.insertFiles([await file(png2, 'otra.png')], [1200, 690]); await sleep(30);
+    eq(slide().blocks.length, n + 1, 'soltada fuera de la imagen: otra imagen');
+    // An empty picture placeholder of a layout: filled, in its place.
+    R.store.commit(() => { slide().blocks.push({ id: 'phpic', type: 'placeholder', ph: 'picture', x: 700, y: 100, w: 400, h: 300, rotation: 0, animation: null }); }); await sleep(20);
+    await R.openfile.insertFiles([await file(png1, 'foto.png')], [900, 250]); await sleep(30);
+    const filled = slide().blocks.find(x => x.type === 'image' && x.x === 700 && x.y === 100);
+    assert(filled && filled.w === 400 && filled.h === 300 && filled.src === png1 && !slide().blocks.some(x => x.id === 'phpic'), 'el marcador de imagen, relleno');
+  });
+
+  await test('cambiar imagen: botón en la pestaña Imagen y en el menú contextual (desde el ordenador o desde Recursos)', async () => {
+    reset(); const W = frame.contentWindow;
+    const png1 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const png2 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAIAAADwyuo0AAAAEElEQVR4nGP4z8AARwzIHABvqgf5gNwAKAAAAABJRU5ErkJggg==';
+    R.blocks.addImage(png1); await sleep(30); const b = last(); select(b); await sleep(20);
+    const btn = D.querySelector('#ribbon [data-page="ctx"] [data-ctx="change-image"]');
+    assert(btn && /Cambiar imagen/.test(btn.textContent), 'en la pestaña de la imagen');
+    btn.click(); await sleep(10);
+    const menu = D.getElementById('change-image'); assert(menu && menu.querySelectorAll('[data-ci]').length === 2, 'elige de dónde');
+    // From Recursos: the next picture the panel puts on the slide goes into this one.
+    const panel = D.createElement('aside'); panel.id = 'elements-panel'; D.body.appendChild(panel);
+    menu.querySelector('[data-ci="elements"]').click(); await sleep(30);
+    const n = slide().blocks.length;
+    R.store.commit(() => { const x = { id: 'stock1', type: 'image', x: 0, y: 0, w: 50, h: 50, rotation: 0, animation: null, src: png2, alt: 'Un gato', caption: '«Gato» (CC BY)', credit: 'Autor' }; slide().blocks.push(x); R.state.ui.selection = x.id; });
+    await sleep(30); panel.remove();
+    const nb = slide().blocks.find(x => x.id === b.id);
+    eq(slide().blocks.length, n, 'no queda la imagen del panel'); eq(nb.src, png2, 'la del panel, en la imagen elegida');
+    eq(nb.alt, 'Un gato', 'con su descripción (no tenía)'); eq(nb.credit, 'Autor', 'y su atribución');
+    // The context menu.
+    D.querySelector(`#stage .block[data-id="${b.id}"]`).dispatchEvent(new W.MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 400, clientY: 300 })); await sleep(10);
+    assert([...D.querySelectorAll('#context-menu .ctx-item')].some(x => x.textContent === 'Cambiar imagen…'), 'en el menú contextual');
+    D.getElementById('context-menu').hidden = true;
+  });
+
+  await test('copiar formato como modo: un clic, un objeto; doble clic, varios hasta Esc; con el cursor de brocha', async () => {
+    reset(); const W = frame.contentWindow;
+    R.blocks.addShape('rect'); const a = last(); R.blocks.addShape('rect'); const b = last(); R.blocks.addShape('ellipse'); const c = last();
+    R.store.commit(() => { Object.assign(a, { fill: '#ff0000', stroke: '#00ff00', strokeWidth: 6 }); });
+    select(a); await sleep(20);
+    const brush = D.querySelector('#ribbon [data-action="copy-style"]'), el = x => D.querySelector(`#stage .block[data-id="${x.id}"]`);
+    const paint = x => el(x).dispatchEvent(new W.MouseEvent('click', { bubbles: true }));
+    brush.click(); await sleep(10);
+    assert(D.body.classList.contains('format-painting'), 'la brocha, preparada (su cursor)');
+    assert(brush.classList.contains('on'), 'el botón, pulsado');
+    paint(b); await sleep(20);
+    eq(slide().blocks.find(x => x.id === b.id).fill, '#ff0000', 'el objeto que se pulsa toma el formato');
+    assert(!D.body.classList.contains('format-painting'), 'con un clic, solo para uno');
+    paint(c); await sleep(20); assert(slide().blocks.find(x => x.id === c.id).fill !== '#ff0000', 'el siguiente, no');
+    // Double click: for several, until Esc.
+    select(a); await sleep(10); brush.click(); brush.click(); await sleep(10);
+    R.store.commit(() => { slide().blocks.find(x => x.id === b.id).fill = '#123456'; });
+    paint(b); await sleep(10); paint(c); await sleep(10);
+    eq(slide().blocks.find(x => x.id === c.id).strokeWidth, 6, 'doble clic: varios'); eq(slide().blocks.find(x => x.id === b.id).fill, '#ff0000');
+    assert(D.body.classList.contains('format-painting'), 'sigue preparada');
+    D.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(10);
+    assert(!D.body.classList.contains('format-painting'), 'Esc la guarda');
+    // The button again puts it away; «Pegar formato» still pastes what was copied.
+    select(a); brush.click(); await sleep(600); brush.click(); await sleep(10);
+    assert(!D.body.classList.contains('format-painting'), 'el botón otra vez la guarda');
+    R.store.commit(() => { slide().blocks.find(x => x.id === c.id).fill = '#abcdef'; }); select(slide().blocks.find(x => x.id === c.id));
+    (await W.eval("import('/src/ui/ribbon/actions.js')")).ACTIONS['paste-style'](); await sleep(10); eq(slide().blocks.find(x => x.id === c.id).fill, '#ff0000', 'Pegar formato sigue funcionando');
+    // The object's tab has it too.
+    select(a); await sleep(20); const ctx = D.querySelector('#ribbon [data-page="ctx"] [data-ctx="copy-style"]');
+    if (ctx) { ctx.click(); await sleep(10); assert(D.body.classList.contains('format-painting'), 'desde la pestaña del objeto'); D.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); }
+  });
+
+  await test('copiar formato en el texto: lo seleccionado con el ratón toma el aspecto de los caracteres copiados', async () => {
+    reset(); const W = frame.contentWindow, b = newText();
+    R.store.commit(() => { b.html = '<b>Negrita</b> y normal'; }); await sleep(20);
+    const rich = richOf(b); rich.contentEditable = 'true'; rich.focus();
+    const sel = W.getSelection(), r = D.createRange(); r.setStart(rich.querySelector('b').firstChild, 2); r.collapse(true); sel.removeAllRanges(); sel.addRange(r);
+    const brush = D.querySelector('#ribbon [data-action="copy-style"]');
+    const down = new W.MouseEvent('mousedown', { bubbles: true, cancelable: true }); brush.dispatchEvent(down);
+    assert(down.defaultPrevented, 'pulsar la brocha no saca del texto'); brush.click(); await sleep(10);
+    const txt = [...rich.childNodes].find(n => n.nodeType === 3 && /normal/.test(n.data)), r2 = D.createRange();
+    r2.setStart(txt, txt.data.indexOf('normal')); r2.setEnd(txt, txt.data.indexOf('normal') + 6); sel.removeAllRanges(); sel.addRange(r2);
+    rich.dispatchEvent(new W.MouseEvent('mouseup', { bubbles: true })); await sleep(30);
+    assert([...rich.querySelectorAll('b')].some(x => x.textContent === 'normal'), 'lo seleccionado, en negrita: ' + rich.innerHTML);
+    assert(/normal/.test(slide().blocks.find(x => x.id === b.id).html) && /<b>Negrita<\/b>/.test(slide().blocks.find(x => x.id === b.id).html), 'guardado en el cuadro');
+    assert(!D.body.classList.contains('format-painting'), 'y la brocha se guarda');
+    rich.blur();
+  });
 }

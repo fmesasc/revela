@@ -20,6 +20,9 @@ import { puppetTrying, tryPuppet, togglePuppet } from '../canvas/puppetview.js';
 import { CURVES, DEVICES, SHAPE_NAMES, hasShapeText, CONNECTOR_ROUTES, isLineShape } from '../../render/svg.js';
 import { styled } from '../../features/document/master.js';
 import { saveBlockFile as saveFile } from '../shell/files.js';
+import { changeImage } from '../shell/changeimage.js';
+import { toggleShrink } from '../shell/textaids.js';
+import { togglePainter } from '../canvas/painter.js';
 import { openModel3D } from '../dialogs/model3d.js';
 import { openAutoRig } from '../dialogs/autorig.js';
 import { openMediaPlayback } from '../dialogs/media.js';
@@ -136,7 +139,8 @@ function groupsFor(b) {
       ]],
     // (An animated GIF plays as a video does: the same options.)
     ...(isGif(b) ? playbackGroups(b, set) : []),
-    ['Archivo', [btn('download', 'Descargar', () => saveFile(b)), btn('photo_camera', 'Guardar como imagen', () => openSaveAsPicture())]],
+    ['Archivo', [btn('swap_horiz', 'Cambiar imagen', () => changeImage(b, document.querySelector('#ribbon [data-ctx="change-image"]')), null, 'change-image'),
+      btn('download', 'Descargar', () => saveFile(b)), btn('photo_camera', 'Guardar como imagen', () => openSaveAsPicture())]],
     ['Lupa', [btn('loupe', 'Ampliar una zona de la imagen', () => startMagnifyDraw({ within: b }), null, 'magnify-image')]]);
   else if (b.type === 'magnify') G.push(...magnifyGroups(b));
   else if (b.type === 'model') {
@@ -189,8 +193,8 @@ function groupsFor(b) {
       ['ibtn', 'vertical_align_bottom', 'Alinear el texto abajo del cuadro', () => format.setVAlign('bottom'), b.vAlign === 'bottom'],
       ['select', 'Columnas', [['1', '1'], ['2', '2'], ['3', '3']], String(b.columns || 1), v => format.setColumns(+v)]]],
     ['Cuadro', [btn('format_color_fill', 'Relleno y borde', () => openBoxStyle(b)), btn('format_size', 'Ajustar letra al cuadro', () => fitTextToBox(b)),
-      btn('compress', 'Reducir si no cabe', () => set(b, x => { if (x.shrink) delete x.shrink; else x.shrink = true; }), !!b.shrink),
-      btn('format_paint', 'Copiar formato', () => format.copyStyle())]],
+      btn('compress', 'Reducir si no cabe', () => toggleShrink(b.id), !!b.shrink, 'shrink'),
+      btn('format_paint', 'Copiar formato', () => togglePainter(), null, 'copy-style')]],
     ['Efectos de texto', [['select', 'Curvar texto', CURVES, String(b.curve || 0), v => set(b, x => { if (+v) x.curve = +v; else delete x.curve; })]]]);
   else if (b.type === 'table') G.push(
     ['Filas y columnas', [btn('table_rows', 'Añadir fila', () => blocks.tableAddRow()), btn('view_column', 'Añadir columna', () => blocks.tableAddCol()),

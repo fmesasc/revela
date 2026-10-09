@@ -142,6 +142,7 @@ src/
       a11y.js                  accessibility checker (pure analysis)
       magnify.js               the magnifier: lines, placement, picture crop
       imgshrink.js             big pictures made smaller (compress pictures)
+      swapimage.js             «Cambiar imagen»: another picture in the same object (place, crop, animations stay)
       sanitize.js              what comes from outside can't run code
     design/
       palettes.js              theme colours and theme fonts
@@ -281,19 +282,23 @@ src/
                                (opening and dropping files), openwith (Drive/Dropbox «Open with»),
                                palette (command search, Ctrl+K), dictate, attachments (files for
                                the AI), notices, toast (short notes), where (where the presentation
-                               is kept)
+                               is kept), changeimage («Cambiar imagen»: a file or Recursos), editaids
+                               (starts the next ones), textaids («/» menu in text, automatic lists' undo,
+                               «Reducir si no cabe» hint), savestate (saved and when; the empty slide's hint)
     canvas/                    canvas (render/reconcile), content (per object type),
                                interact (drag/resize/guides/snap), preview (animations),
                                pathdraw (drawn motion paths), mediaview (video/GIF), cameraview
                                (Cameo), puppetview (3D following the camera), magnifyview,
                                freeform (freeform shapes), textruler (ruler and tab stops),
-                               fittext (translated examples measured until they fit)
+                               fittext (translated examples measured until they fit), painter
+                               (the format painter as a mode)
     ribbon/                    ribbon (build/sync), actions (what each button does),
                                popovers (group galleries), zoom, contextual (the selected
                                object's tab), animadd (Add animation palette), animribbon
                                (the Animations tab mirrors the selection), reflect (the ribbon
                                shows the selection's formatting), compact (two-row groups),
-                               transpreview (transition preview on hover)
+                               transpreview (transition preview on hover), livepreview (animations,
+                               colours and fonts previewed on hover)
     dialogs/                   one module per dialog: dialog (styled alert/confirm/prompt),
                                modalkeys (Esc, focus, Tab for every dialog), account, team,
                                cloud (sharing a cloud document), cloudlibrary («Mi nube»),

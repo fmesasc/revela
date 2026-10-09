@@ -36,6 +36,7 @@ export async function run(frame, only = null, grep = '') {
   const sampleDeck = () => {
     const d = R.model.emptyDeck(), [a, b] = d.slides[0].blocks;
     delete a.ph; delete a.fontWeight; a.html = '<b>Título</b>'; delete b.ph; b.html = 'Subtítulo — doble clic para editar';
+    delete a.shrink; delete b.shrink;                       // (plain boxes, as before: «Reducir si no cabe» is the placeholders')
     return d;
   };
   const reset = () => { D.querySelectorAll('.modal-backdrop, #canvas-view').forEach(m => m.remove()); R.store.replaceDeck(sampleDeck()); R.render(); };

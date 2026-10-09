@@ -16,6 +16,7 @@ import { initViews } from '../../ui/shell/views.js';
 import { initDeckCSS } from '../../ui/dialogs/devmode.js';
 import { handleSsoReturn } from '../../ui/dialogs/teamsso.js';
 import { initFileDrop } from '../../ui/shell/openfile.js';
+import { initEditAids } from '../../ui/shell/editaids.js';
 import * as openfile from '../../ui/shell/openfile.js';
 import * as files from '../../features/content/files.js';
 import { subscribe, state, undo, redo, selectedBlock, selectedBlocks } from '../../core/store.js';
@@ -303,6 +304,7 @@ initCollabUI();
 initHome();
 initAudience();                                             // (teaching, a company or both: core/audience.js)
 initFileDrop();
+initEditAids();                                         // (format painter, «/» in text, live previews, save state: ui/shell/editaids.js)
 // First visit (nothing saved in this browser, no shared link): start from the
 // templates, as PowerPoint and Canva do; closing it leaves the blank slide.
 { const q = new URLSearchParams(location.search), fresh = (() => { try { return !localStorage.getItem(model.STORAGE_KEY) && !localStorage.getItem('revela.welcomed'); } catch { return false; } })();

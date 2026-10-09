@@ -69,6 +69,9 @@ const SYN = {
   'a:insert-chart': 'gráfico|gráfica|barras|tarta|quesitos|líneas|chart|graph|plot|pie chart|bar chart|graphique|diagramm|grafico',
   'a:insert-table': 'tabla|celdas|filas|columnas|table|grid|cells|rows|tableau|tabelle|tabella',
   'b:diagrams-open': 'diagrama|smartart|organigrama|esquema|proceso|ciclo|flujo|diagram|org chart|flowchart|process|cycle',
+  'a:copy-style': 'copiar formato|brocha|pincel|brocha de formato|pintar formato|mismo formato|format painter|copy format|paint format|copier la mise en forme|format übertragen|copia formato|pincel de formatação|copia format',
+  'ctx:Cambiar imagen': 'cambiar imagen|reemplazar imagen|sustituir imagen|otra imagen|cambiar foto|change picture|replace image|swap image|changer l image|bild ändern|cambia immagine|alterar imagem|canvia la imatge',
+  'x:shrink-all': 'reducir texto|texto no cabe|ajustar texto|autoajuste|encoger texto|letra más pequeña|shrink text|autofit|text overflow|fit text|ajuster le texte|text verkleinern|adatta testo|ajustar texto|ajusta el text',
   'a:insert-image': 'imagen|foto|fotografía|dibujo|picture|image|photo|png|jpg|bild|immagine|imatge',
   'a:insert-stock': 'imágenes gratis|fotos gratis|banco de imágenes|buscar imágenes|stock|free images|stock photos|openverse|unsplash',
   'a:insert-video': 'vídeo|video|película|mp4|youtube|movie|clip',
@@ -179,7 +182,7 @@ const SYN = {
 };
 // The selected object's tab: commands that need an object (shown greyed, with what to select, when there isn't one).
 const NEEDS = {
-  image: ['Imagen', 'Selecciona una imagen', [['Ajustar', 'auto_fix_high', 'Quitar fondo'], ['Ajustar', 'magic_button', 'Editar con IA'], ['Ajustar', 'crop', 'Recortar'], ['Ajustar', 'tune', 'Ajustes de imagen'], ['Lupa', 'loupe', 'Ampliar una zona de la imagen']]],
+  image: ['Imagen', 'Selecciona una imagen', [['Archivo', 'swap_horiz', 'Cambiar imagen'], ['Ajustar', 'auto_fix_high', 'Quitar fondo'], ['Ajustar', 'magic_button', 'Editar con IA'], ['Ajustar', 'crop', 'Recortar'], ['Ajustar', 'tune', 'Ajustes de imagen'], ['Lupa', 'loupe', 'Ampliar una zona de la imagen']]],
   any: ['Objeto', 'Selecciona un objeto', [['Organizar', 'opacity', 'Opacidad'], ['Organizar', 'shadow', 'Sombra'], ['Organizar', 'lock_open', 'Bloquear'], ['Organizar', 'flip', 'Voltear'],
     ['Organizar', 'rotate_left', 'Quitar el giro'], ['Accesibilidad', 'accessibility', 'Texto alternativo']]],
   model: ['Modelo 3D', 'Selecciona un modelo 3D', [['Animación', 'motion_photos_on', 'Movimiento 3D'], ['Animación', 'autorenew', 'Girar solo'], ['Esqueleto', 'accessibility_new', 'Esqueleto automático'],
@@ -349,6 +352,8 @@ function extraEntries(out) {
   if (hasAccounts()) out.push({ id: 'x:account', label: t('Mi cuenta'), icon: 'account_circle', path: [t('Barra de título')], alt: allLangs('Mi cuenta'), kind: 'dialog', run: () => openAccount() });
   out.push({ id: 'x:table-paste', label: t('Tabla desde celdas copiadas'), icon: 'table', path: [t('Insertar'), t('Tablas y gráficos')], alt: allLangs('Tabla desde celdas copiadas'), kind: 'dialog',
     run: () => ACTIONS['insert-table-paste']() });
+  out.push({ id: 'x:shrink-all', label: t('Reducir el texto que no cabe en toda la presentación'), icon: 'compress', path: [t('Inicio'), t('Párrafo')], alt: allLangs('Reducir si no cabe'), kind: 'dialog',
+    run: () => ACTIONS['text-shrink-all']() });
   const sel = document.getElementById('lang-select');
   for (const l of LANGS) out.push({ id: 'x:lang:' + l.code, label: `${t('Idioma')}: ${l.name}`, icon: 'translate', path: [t('Barra de título')], alt: [...allLangs('Idioma'), 'language', 'idioma', l.name],
     on: currentLang() === l.code, kind: 'option', run: () => { if (sel) { sel.value = l.code; sel.dispatchEvent(new Event('change')); } } });

@@ -13,6 +13,9 @@ export function addSlide(layoutId = null) {
     const want = layoutId || (base?.layoutId && !['title', 'section'].includes(base.layoutId) ? base.layoutId : 'titleContent');
     const lay = want && lays.find(l => l.id === want);
     if (lay) { s.layoutId = lay.id; s.blocks = newSlideBlocks(lay); s.background = layoutBackground(lay) || s.background; }   // (the layout's background, or its master's)
+    // A new slide's text placeholders shrink their text when it doesn't fit, as PowerPoint's do (the slides that were
+    // already there keep their look: ui/shell/textaids.js offers it for the whole presentation).
+    for (const b of s.blocks) if (b.type === 'text' && b.ph) b.shrink = true;
     state.deck.slides.splice(state.ui.slideIndex + 1, 0, s);
     state.ui.slideIndex++;
     state.ui.selection = null;

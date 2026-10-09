@@ -24,9 +24,9 @@ import { setEmbedDisplay } from '../../features/document/blocks.js';
 import { currentPalette } from '../../features/design/palettes.js';
 import { cameraView } from './cameraview.js';
 import { pollEditorHTML, savedVotes } from '../../features/live/poll.js';
-import { PH_PROMPT, isEmptyPlaceholder, styled, levelVars, fillPlaceholder } from '../../features/document/master.js';
+import { PH_PROMPT, isEmptyPlaceholder, styled, levelVars, fillPlaceholder, styleKind } from '../../features/document/master.js';
 import { tableBlock, chartBlock } from '../../core/model.js';
-import { autocorrectAtCaret } from '../../features/document/autocorrect.js';
+import { autocorrectAtCaret, autoListAtCaret } from '../../features/document/autocorrect.js';
 import { KATEX, HIGHLIGHT, loadScript, loadStyle } from '../../core/vendor.js';
 import { findBlock, readOnly, fitFontSize } from './canvas.js';
 import { openMath } from '../dialogs/object.js';
@@ -450,6 +450,21 @@ function selectWordAt(rich, x, y) {
   const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
   return true;
 }
+// «Reducir si no cabe»: the largest size that fits, up to the one it had before shrinking, so deleting text brings it
+// back (PowerPoint). A placeholder that follows the master keeps following it: a factor on its size (b.fit, master.js
+// styled()); a box with its own size keeps that size in b.shrinkBase while smaller. → whether it changed.
+export function shrinkToFit(b, rich) {
+  if (!rich || b.vertical || b.curve) return false;
+  const follows = !!styleKind(b) && b.fontSize == null, slide = currentSlide();
+  const base = follows ? styled({ ...b, fit: undefined }, slide).fontSize || 40 : b.shrinkBase || b.fontSize || 40;
+  const now = follows ? Math.round(base * (b.fit || 1)) : b.fontSize || 40;
+  if (rich.scrollHeight <= rich.clientHeight + 1 && now >= base) return false;
+  const size = fitFontSize(b, true, base); if (size === now) return false;
+  if (follows) { if (size >= base) delete b.fit; else b.fit = Math.round(size / base * 100) / 100; }
+  else if (size >= base) { b.fontSize = base; delete b.shrinkBase; } else { b.shrinkBase = base; b.fontSize = size; }
+  rich.style.fontSize = (follows ? Math.round(base * (b.fit || 1)) : b.fontSize) + 'px';
+  return true;
+}
 export function setupText(b, el) {
   const rich = el.querySelector('.rich');
   el.addEventListener('dblclick', e => {
@@ -461,11 +476,11 @@ export function setupText(b, el) {
     showTextRuler(el, b); liveTabs(rich, b);
   });
   rich.addEventListener('input', e => {             // no re-render: keep the caret
-    if (e.inputType === 'insertText') autocorrectAtCaret(rich);
+    if (e.inputType === 'insertText' && !autocorrectAtCaret(rich)) autoListAtCaret(rich);
     b.html = unTab(rich.innerHTML);
     if (/\t/.test(b.html)) { clearTimeout(tabTimer); tabTimer = setTimeout(() => liveTabs(rich, b), 150); }
-    // "Shrink text on overflow": reduce the size while it doesn't fit.
-    if (b.shrink && (rich.scrollHeight > rich.clientHeight + 1)) { b.fontSize = fitFontSize(b, true); rich.style.fontSize = b.fontSize + 'px'; }
+    // "Shrink text on overflow": reduce the size while it doesn't fit (and back up as text goes).
+    if (b.shrink) shrinkToFit(b, rich);
     else if (b.wordart) rich.style.fontSize = wordartSize(b) + 'px';            // (Text Art fits as it is written)
     if (b.ph && isEmptyPlaceholder(b)) b.html = '';   // back to the prompt when emptied
   });

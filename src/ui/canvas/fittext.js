@@ -70,3 +70,13 @@ export async function fitImported(deck) {
   finally { m.done(); }
   return deck;
 }
+
+// «Reducir si no cabe» turned on for many boxes at once (ui/shell/textaids.js): those that don't fit now, measured,
+// made smaller until they do → [[b, what it becomes: { fontSize | fit, html }]], nothing changed yet.
+export async function overflowFits(deck, pairs) {
+  if (!pairs.length || typeof document === 'undefined') return [];
+  const m = await measurer(deck, pairs), out = [];
+  try { for (const [b, slide] of pairs) if (b.html && !b.curve && m.spills(b, slide, b.html)) { const c = { ...b }; m.shrink(c, slide); out.push([b, { fontSize: c.fontSize, fit: c.fit, html: c.html }]); } }
+  finally { m.done(); }
+  return out;
+}

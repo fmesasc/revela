@@ -67,6 +67,7 @@ import { openSettings } from '../dialogs/settings.js';
 import { openAppearance } from '../shell/appearance.js';
 import { openDashboardDialog } from '../dialogs/data.js';
 import { playAnimations } from '../canvas/preview.js';
+import { togglePainter } from '../canvas/painter.js';
 import { startPathDraw } from '../canvas/pathdraw.js';
 import { startMagnifyDraw } from '../canvas/magnifyview.js';
 import { openAddAnimation } from './animadd.js';
@@ -305,8 +306,11 @@ export const ACTIONS = {
   'find-replace': () => openFindPanel(),
   dictate: () => toggleDictation(),
   'selection-pane': () => toggleSelectionPane(),
-  'copy-style': () => { format.copyStyle(); commit(() => {}, { history: false }); },   // refresh: Pegar formato becomes available
+  // The brush (ui/canvas/painter.js): one click for one object, a double click for several; the copy stays for «Pegar formato».
+  'copy-style': () => { togglePainter(); commit(() => {}, { history: false }); },   // refresh: Pegar formato becomes available
   'paste-style': () => format.pasteStyle(),
+  // «Reducir si no cabe» on every text placeholder of the presentation (new slides have it already: slides.js).
+  'text-shrink-all': () => import('../shell/textaids.js').then(m => m.shrinkAllPlaceholders()),
   'bg-gradient': () => {
     const a = $('[data-grad1]')?.value || '#3f6497', b = $('[data-grad2]')?.value || '#101317';
     commit(() => targetSlides().forEach(s => { s.background = `linear-gradient(135deg, ${a}, ${b})`; }));

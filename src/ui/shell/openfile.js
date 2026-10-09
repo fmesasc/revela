@@ -11,6 +11,8 @@ import { choosePdfMode } from '../dialogs/pdfmode.js';
 import { smallPicture } from '../dialogs/diagram.js';
 import { diagramLayout } from '../../render/diagrams.js';
 import { state, replaceDeck, currentSlide, amend } from '../../core/store.js';
+import { replaceImage } from '../../features/document/swapimage.js';
+import { fillPlaceholder } from '../../features/document/master.js';
 import { isBlankDeck, emptyDeck } from '../../core/model.js';
 import * as blocks from '../../features/document/blocks.js';
 import * as slides from '../../features/document/slides.js';
@@ -133,12 +135,27 @@ async function onDiagram(f, at) {
   const src = await smallPicture(await dataURL(f)), list = (b.pictures || []).filter(p => String(p.text).trim() !== text.trim());
   blocks.setDiagram(b.id, { pictures: [...list, { text, src }] }); return true;
 }
+// What a picture dropped at (x, y) lands on: the topmost picture, empty picture placeholder or diagram there.
+export function dropTarget(at) {
+  if (!at || state.ui.editMaster) return null;
+  return [...currentSlide().blocks].reverse().find(x => !x.locked && !x.hidden && (x.type === 'image' || x.type === 'diagram' || (x.type === 'placeholder' && x.ph === 'picture'))
+    && at[0] >= x.x && at[0] <= x.x + x.w && at[1] >= x.y && at[1] <= x.y + x.h) || null;
+}
+// A picture dropped on a picture replaces it (Canva, PowerPoint's Change Picture), on an empty picture placeholder
+// fills it; on a diagram, that line's picture. → whether it was.
+async function onPicture(f, at) {
+  const b = dropTarget(at); if (!b) return false;
+  if (b.type === 'diagram') return onDiagram(f, at);
+  const src = await dataURL(f);
+  if (b.type === 'image') return replaceImage(b.id, src);
+  fillPlaceholder(b.id, { type: 'image', src, fit: 'cover', alt: '' }); return true;
+}
 export async function insertFiles(files, at = null) {
   let n = 0;
   for (const f of files) {
     const k = kindOf(f);
     try {
-      if (k === 'image' && files.length === 1 && await onDiagram(f, at)) { n++; continue; }
+      if (k === 'image' && files.length === 1 && await onPicture(f, at)) { n++; continue; }
       if (k === 'image') blocks.addImage(await dataURL(f));
       else if (k === 'video') blocks.addVideo(await dataURL(f));
       else if (k === 'audio') blocks.addAudio(await dataURL(f));
@@ -198,19 +215,24 @@ export function initFileDrop() {
   // ribbon or the thumbnails the browser would leave the editor to show the file.
   // (Dialogs with a drop zone of their own handle it first; other dialogs refuse it.)
   let off = 0;
-  const show = on => { area.classList.toggle('file-drop', on); document.body.classList.toggle('file-drag', on);
+  const slideAt = e => { const r = stage.getBoundingClientRect(), k = factor();
+    return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom ? [(e.clientX - r.left) * k, (e.clientY - r.top) * k] : null; };
+  const mark = b => { document.querySelectorAll('#stage .block.drop-replace').forEach(x => { if (x.dataset.id !== b?.id) x.classList.remove('drop-replace'); });
+    if (b && b.type !== 'diagram') stage.querySelector(`.block[data-id="${b.id}"]`)?.classList.add('drop-replace'); };
+  const show = on => { if (!on) mark(null); area.classList.toggle('file-drop', on); document.body.classList.toggle('file-drag', on);
     if (on) document.body.dataset.dropHint = t('Suelta el archivo para añadirlo a la diapositiva (o abrirlo, si es una presentación)'); };
   document.addEventListener('dragover', e => {
     if (!hasFiles(e) || e.defaultPrevented) return;
     e.preventDefault(); const no = inDialog(e); e.dataTransfer.dropEffect = no ? 'none' : 'copy';
     show(!no); clearTimeout(off); off = setTimeout(() => show(false), 200);
+    // (One picture over a picture or a picture placeholder: it shows that it will be replaced, not added.)
+    const items = [...(e.dataTransfer.items || [])], one = items.length === 1 && items[0].type.startsWith('image/');
+    mark(one && !no ? dropTarget(slideAt(e)) : null);
   });
   document.addEventListener('drop', e => {
     if (!hasFiles(e) || e.defaultPrevented) return;
     e.preventDefault(); clearTimeout(off); show(false);
     if (inDialog(e)) return;
-    // Where on the slide (if dropped on it).
-    const r = stage.getBoundingClientRect(), k = factor(), inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
-    dropFiles(e.dataTransfer.files, inside ? [(e.clientX - r.left) * k, (e.clientY - r.top) * k] : null);
+    dropFiles(e.dataTransfer.files, slideAt(e));                // (where on the slide, if dropped on it)
   });
 }

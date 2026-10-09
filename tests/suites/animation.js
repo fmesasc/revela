@@ -783,4 +783,24 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq([...D.querySelectorAll('#ribbon [data-page="ctx"] button')].find(x => x.textContent.includes('Trazo a mano')).getAttribute('aria-pressed'), 'true', 'aria-pressed en la pestaña del objeto');
     R.store.commit(() => { R.state.ui.multi = []; R.state.ui.selection = null; }, { history: false }); await show('home');
   });
+
+  await test('añadir animación: al pasar el ratón por un efecto se ve en el objeto, sin cambiar nada; al salir, como estaba', async () => {
+    reset(); const W = frame.contentWindow, b = slide().blocks[0]; select(b); await sleep(20);
+    const v = R.store.docVersion();
+    (await W.eval("import('/src/ui/ribbon/actions.js')")).ACTIONS['anim-add'](); await sleep(20);
+    const item = D.querySelector('#anim-add-menu [data-add="spin"]'); assert(item, 'el menú de efectos');
+    item.dispatchEvent(new W.PointerEvent('pointerover', { bubbles: true, pointerType: 'mouse' })); await sleep(400);
+    const el = D.querySelector(`#stage .block[data-id="${b.id}"]`);
+    assert(/700ms/.test(el.style.animation), 'el efecto se reproduce en el objeto: ' + el.style.animation);
+    eq(R.store.docVersion(), v, 'sin cambiar la presentación'); eq(slide().blocks[0].animation, null, 'ni sus animaciones');
+    item.dispatchEvent(new W.PointerEvent('pointerout', { bubbles: true, pointerType: 'mouse', relatedTarget: D.body })); await sleep(20);
+    eq(el.style.animation, '', 'al salir, se para');
+    // A motion path or a drawn one: nothing to preview.
+    const path = D.querySelector('#anim-add-menu [data-add="path"]');
+    path.dispatchEvent(new W.PointerEvent('pointerover', { bubbles: true, pointerType: 'mouse' })); await sleep(400);
+    eq(el.style.animation, '', 'una trayectoria, no');
+    path.dispatchEvent(new W.PointerEvent('pointerout', { bubbles: true, pointerType: 'mouse', relatedTarget: D.body }));
+    // Chosen: the real one.
+    item.click(); await sleep(20); eq(slide().blocks[0].animation?.effect, 'spin', 'al elegirlo, se añade');
+  });
 }

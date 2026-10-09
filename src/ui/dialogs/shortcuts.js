@@ -19,6 +19,16 @@ export const SHORTCUTS = [
   ['Tab / Mayús + Tab', 'Recorrer los objetos (con la diapositiva enfocada)'],
   ['Mantener pulsado', 'Menú de opciones en pantallas táctiles'],
   ['Ctrl/⌘ + K · Alt + Q · /', 'Buscar comandos'], ['Ctrl/⌘ + A', 'Seleccionar todo'], ['Esc', 'Quitar la selección'], ['Ctrl/⌘ + S', 'Guardar'],
+  // What can't be seen on any button.
+  ['', 'Gestos que no se ven'],
+  ['/ (con el cursor fuera del texto)', 'Buscar comandos'], ['/ al empezar una línea de texto', 'Insertar ahí: imagen, tabla, lista, ecuación…'],
+  ['- o * y espacio · 1. o 1) y espacio', 'Lista con viñetas · numerada (Ctrl/⌘ + Z justo después la deshace)'],
+  ['Copiar formato: clic · doble clic', 'Para un objeto · para varios, hasta Esc'],
+  ['Doble clic en una imagen', 'Recortarla'], ['Soltar una imagen sobre otra', 'Cambiar la imagen (se queda su tamaño, recorte y animaciones)'],
+  ['Clic en la regla · doble clic en la guía', 'Añadir una guía · quitarla'], ['Mayús al girar', 'Girar de 15° en 15°'],
+  ['Mayús al redimensionar una imagen por la esquina', 'Deformarla (sin Mayús mantiene la proporción)'],
+  ['Clic en la regla del texto · doble clic en la tabulación', 'Añadir una tabulación · quitarla'],
+  ['Pasar el ratón por una animación, un color o una fuente', 'Verlo antes de elegirlo'],
   ['', 'Diapositivas'],
   ['Ctrl/⌘ + M', 'Nueva diapositiva'], ['Re Pág · Av Pág', 'Diapositiva anterior · siguiente'], ['Inicio · Fin', 'Primera · última diapositiva'],
   ['Flechas (sin nada seleccionado)', 'Cambiar de diapositiva'], ['F5', 'Presentar desde el principio'], ['Mayús + F5', 'Presentar desde esta diapositiva'],
@@ -35,7 +45,7 @@ export function openShortcuts() {
   back.id = 'sc-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(600px, 92vw);max-width:none;box-sizing:border-box">
     <button class="modal-close">✕</button><h3>${t('Atajos de teclado')}</h3>
-    <table class="sc-table">${SHORTCUTS.map(([k, d]) => k ? `<tr><td><kbd>${k}</kbd></td><td>${t(d)}</td></tr>` : `<tr><th colspan="2">${t(d)}</th></tr>`).join('')}</table>
+    <table class="sc-table">${SHORTCUTS.map(([k, d]) => k ? `<tr><td><kbd>${t(k)}</kbd></td><td>${t(d)}</td></tr>` : `<tr><th colspan="2">${t(d)}</th></tr>`).join('')}</table>
   </div>`;
   document.body.appendChild(back);
   const close = () => back.remove();

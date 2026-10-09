@@ -169,14 +169,14 @@ function drawMasterLayer() {
 }
 
 // Font size that makes a text box's content fill it (reveal's r-fit-text):
-// binary search on the real rendering. `shrinkOnly` never grows it.
-export function fitFontSize(b, shrinkOnly = false) {
+// binary search on the real rendering. `shrinkOnly` never grows it (past `top`: by default its own size).
+export function fitFontSize(b, shrinkOnly = false, top = null) {
   const el = stage.querySelector(`.block[data-id="${b.id}"] .rich`); if (!el) return b.fontSize || 40;
   const probe = el.cloneNode(true); probe.removeAttribute('contenteditable');
   Object.assign(probe.style, { position: 'absolute', visibility: 'hidden', left: '-99999px', top: '0', width: b.w + 'px', height: 'auto', display: 'block' });
   stage.appendChild(probe);
   const fits = size => { probe.style.fontSize = size + 'px'; probe.style.columnCount = ''; return probe.scrollHeight <= b.h + 1 && probe.scrollWidth <= b.w + 1; };
-  let lo = 8, hi = shrinkOnly ? (b.fontSize || 40) : 400;
+  let lo = 8, hi = shrinkOnly ? (top || b.fontSize || 40) : 400;
   if (shrinkOnly && fits(hi)) { probe.remove(); return hi; }
   while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (fits(mid)) lo = mid; else hi = mid; }
   probe.remove();

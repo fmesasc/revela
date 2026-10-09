@@ -36,8 +36,9 @@ export function emptyDeck() {
   const first = blankSlide('#101317');
   // (Empty placeholders, like the templates': the editor shows their prompt, a presentation shows nothing.)
   first.blocks = [
-    textBlock({ ph: 'title', x: 140, y: 250, w: 1000, h: 130, fontSize: 72, fontWeight: '700', html: '' }),
-    textBlock({ ph: 'subtitle', x: 140, y: 390, w: 1000, h: 80, fontSize: 30, html: '' }),
+    // (shrink: «Reducir si no cabe», on in a new presentation's placeholders, as PowerPoint's.)
+    textBlock({ ph: 'title', x: 140, y: 250, w: 1000, h: 130, fontSize: 72, fontWeight: '700', html: '', shrink: true }),
+    textBlock({ ph: 'subtitle', x: 140, y: 390, w: 1000, h: 80, fontSize: 30, html: '', shrink: true }),
   ];
   return {
     version: 3,

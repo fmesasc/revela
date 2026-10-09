@@ -1087,3 +1087,20 @@ body.no-copy img{-webkit-user-drag:none}
 .qa .qa-mic.on{background:#c0392b;color:#fff}.qa .qa-score b{display:inline-block;font-size:22px;color:var(--c)}
 /* Questions in a video (dialogs/media.js) */
 .mp-q{border:1px solid var(--line);border-radius:8px;padding:8px;margin:6px 0;display:flex;flex-direction:column;gap:6px}.mp-q-head{display:flex;gap:6px;align-items:center}.mp-q-head input{width:6em}.mp-q input[type=text],.mp-q textarea{width:100%;box-sizing:border-box;font:inherit}
+/* Editing aids (ui/shell/editaids.js): picture replaced by a drop, format painter, «/» menu, text that doesn't fit, live previews, empty slide */
+#stage .block.drop-replace{outline:3px dashed var(--accent);outline-offset:-3px;filter:brightness(.85)}
+body.format-painting #stage,body.format-painting #stage .block,body.format-painting #stage .rich{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M18 4V3c0-.55-.45-1-1-1H5c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h12c.55 0 1-.45 1-1V6h1v4H9v11c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-9h8V4h-3z' fill='%23222' stroke='%23fff' stroke-width='1.2' paint-order='stroke'/%3E%3C/svg%3E") 11 22,copy}
+body.format-painting [data-ctx="copy-style"],body.format-painting [data-action="copy-style"]{background:var(--accent-bg);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.slash-menu{min-width:220px;max-height:min(360px,70vh);overflow:auto;padding:6px}.slash-menu button{padding:6px 8px}.slash-menu button[aria-selected="true"]{background:var(--accent-bg);color:var(--accent)}
+.slash-menu .slash-help{margin:4px 8px 2px;font-size:11px;color:var(--txt2)}
+.overflow-hint{position:fixed;z-index:60;display:flex;align-items:center;gap:6px;padding:3px 4px 3px 8px;border-radius:999px;background:var(--panel);border:1px solid var(--line2);box-shadow:0 4px 14px #0002;font-size:12px;color:var(--txt2)}
+.overflow-hint>.ms{font-size:16px;color:#d98b00}.overflow-hint button{display:inline-flex;align-items:center;gap:4px;border:0;border-radius:999px;padding:3px 10px;background:var(--accent);color:var(--on-accent);font:inherit;font-size:12px;cursor:pointer}
+.overflow-hint button .ms{font-size:15px}.overflow-hint button.of-all{background:none;color:var(--accent);padding:3px 6px}.overflow-hint button.of-all:hover{text-decoration:underline}
+#stage .design-preview{position:absolute;inset:0;z-index:40;pointer-events:none;overflow:hidden;background-size:cover}
+#stage .design-preview .dp-tag{position:absolute;top:12px;inset-inline-end:12px;padding:4px 12px;border-radius:999px;background:#000a;color:#fff;font:600 18px system-ui,sans-serif}
+#stage .empty-hint{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;pointer-events:none;opacity:.45;font:24px system-ui,sans-serif;text-align:center}
+#stage .empty-hint kbd{display:inline-block;min-width:1.4em;padding:0 .35em;border:1px solid currentColor;border-radius:6px;font:inherit}
+body.presenting #stage .empty-hint{display:none}
+/* (Saved and how long ago where there is room; a narrower title bar keeps the short «En este navegador».) */
+.save-state time.ss-ago{display:none}
+@media (min-width:1280px){.save-state.has-ago time.ss-ago{display:inline}.save-state.has-ago>span{display:none}}

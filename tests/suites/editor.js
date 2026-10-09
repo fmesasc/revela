@@ -1136,4 +1136,51 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       await R.i18n.setLang('nl'); eq(lab('classroom-results'), 'Resultaten<br>publiek', 'también en neerlandés');
     } finally { await R.i18n.setLang('es'); }
   });
+
+  await test('diseño: al pasar el ratón por unos colores o unas fuentes se ven en la diapositiva, sin cambiar nada; al salir, como estaba', async () => {
+    reset(); const W = frame.contentWindow, v = R.store.docVersion(), pal = R.state.deck.palette || 'revela', bg0 = slide().background;
+    D.querySelector('[data-palettes-open]').click(); await sleep(20);
+    const other = [...D.querySelectorAll('.popover [data-palette]')].find(x => x.dataset.palette !== pal); assert(other, 'la galería de colores');
+    other.dispatchEvent(new W.PointerEvent('pointerover', { bubbles: true, pointerType: 'mouse' })); await sleep(350);
+    const pv = D.getElementById('design-preview'); assert(pv && pv.parentNode === D.getElementById('stage'), 'la diapositiva, con esos colores, encima del lienzo');
+    assert(pv.querySelectorAll('.pv-block').length >= 2, 'con sus objetos');
+    eq(R.store.docVersion(), v, 'sin cambiar la presentación'); eq(R.state.deck.palette || 'revela', pal, 'ni su paleta'); eq(slide().background, bg0, 'ni su fondo');
+    other.dispatchEvent(new W.PointerEvent('pointerout', { bubbles: true, pointerType: 'mouse', relatedTarget: D.body })); await sleep(10);
+    assert(!D.getElementById('design-preview'), 'al salir, se va');
+    const POP = await W.eval("import('/src/ui/ribbon/popovers.js')"); POP.closePopover();
+    D.querySelector('[data-fontpairs-open]').click(); await sleep(20);
+    const fp = D.querySelector('.popover [data-fontpair]:not(.on)'); assert(fp, 'la galería de fuentes');
+    fp.dispatchEvent(new W.PointerEvent('pointerover', { bubbles: true, pointerType: 'mouse' })); await sleep(350);
+    const pv2 = D.getElementById('design-preview'), fam = R.palettes.pairStacks(fp.dataset.fontpair).body.split(',')[0].replace(/['"]/g, '').trim();
+    assert(pv2 && [...pv2.querySelectorAll('.pv-block div')].some(d => d.style.fontFamily.includes(fam)), 'con esas fuentes: ' + fam);
+    eq(R.store.docVersion(), v, 'sin cambiar nada');
+    fp.dispatchEvent(new W.PointerEvent('pointerdown', { bubbles: true, pointerType: 'mouse' })); await sleep(10);
+    assert(!D.getElementById('design-preview'), 'al pulsar, la vista previa da paso a lo real');
+    POP.closePopover();
+  });
+
+  await test('descubrir: los gestos ocultos en los atajos, «/» para buscar comandos (en el buscador y en una diapositiva vacía) y cuándo se guardó en este navegador', async () => {
+    reset();
+    (await frame.contentWindow.eval("import('/src/ui/ribbon/actions.js')")).ACTIONS.shortcuts(); await sleep(10);
+    const txt = D.getElementById('sc-modal').textContent;
+    for (const s of ['Gestos que no se ven', 'Doble clic en una imagen', 'Recortarla', 'Clic en la regla · doble clic en la guía', 'Girar de 15° en 15°', '/ al empezar una línea de texto', 'Soltar una imagen sobre otra', 'Copiar formato: clic · doble clic'])
+      assert(txt.includes(s), 'en los atajos: ' + s);
+    D.getElementById('sc-modal').remove();
+    assert(/Pulsa \/ para buscar comandos/.test(D.getElementById('cmd-search').title), 'el buscador lo dice');
+    // An empty slide says it, and stops saying it once something is on it.
+    R.slides.addSlide('blank'); await sleep(20);
+    const hint = () => D.querySelector('#stage > .empty-hint');
+    assert(hint() && /Pulsa \/ para buscar comandos/.test(hint().textContent), 'una diapositiva vacía lo dice');
+    R.blocks.addText(); await sleep(20); assert(!hint(), 'con algo en ella, no');
+    assert(!R.io.buildHTML().includes('empty-hint'), 'ni se exporta');
+    // Kept only in this browser: saved, and how long ago (counting by itself).
+    const SS = await frame.contentWindow.eval("import('/src/ui/shell/savestate.js')");
+    R.state.deck.savedAt = Date.now() - 125000; SS.refreshSaveState();
+    const ss = D.getElementById('save-state');
+    eq(ss.querySelector('time.ss-ago').textContent, 'Guardado en este navegador · hace 2 min', 'guardado, y hace cuánto');
+    eq(ss.querySelector('span').textContent, 'En este navegador', 'las palabras cortas, para una ventana estrecha');
+    R.state.deck.savedAt = Date.now() - 2000; SS.refreshSaveState(); eq(ss.querySelector('time.ss-ago').textContent, 'Guardado en este navegador · ahora mismo');
+    eq(SS.agoText(Date.now() - 7000), 'hace 7 s');
+    ss.classList.add('failed'); SS.refreshSaveState(); assert(!ss.querySelector('time.ss-ago'), 'sin guardar: no dice cuándo'); ss.classList.remove('failed');
+  });
 }

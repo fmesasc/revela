@@ -274,7 +274,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
 
   await test('localización: todos los textos de la interfaz tienen traducción (también los nuevos)', async () => {
     const tbl = await (await fetch(new URL('../src/i18n/strings.js', D.baseURI))).text();
-    const files = ['src/ui/dialogs/lock.js', 'src/ui/dialogs/lessonplan.js', 'src/ui/shell/audience.js', 'src/features/document/watermark.js', 'src/ui/dialogs/settings.js', 'src/ui/dialogs/classpace.js', 'src/apps/view/main.js', 'src/ui/dialogs/bulk.js', 'src/features/ai/lessonplan.js', 'src/ui/shell/palette.js', 'src/ui/dialogs/share.js', 'src/ui/dialogs/cloud.js', 'src/ui/dialogs/cloudlibrary.js', 'src/ui/panels/a11y.js', 'src/ui/panels/review.js', 'src/ui/dialogs/poll.js', 'src/ui/dialogs/classroom.js', 'src/ui/dialogs/ai.js', 'src/ui/dialogs/assistant.js', 'src/ui/dialogs/account.js', 'src/ui/dialogs/team.js', 'src/ui/panels/call.js', 'src/ui/dialogs/picture.js', 'src/ui/dialogs/textstyles.js', 'src/ui/shell/masterview.js', 'src/io/share/publish.js', 'src/ui/canvas/content.js', 'src/ui/dialogs/object.js', 'src/io/export/objects.js', 'src/ui/canvas/puppetview.js', 'src/ui/dialogs/autorig.js', 'src/ui/dialogs/model3d.js', 'src/ui/ribbon/animribbon.js', 'src/ui/dialogs/gdrive.js', 'src/ui/panels/animation.js', 'src/ui/shell/notices.js', 'src/ui/dialogs/questions.js', 'src/io/formats/questions.js', 'src/io/export/study.js'];
+    const files = ['src/ui/shell/textaids.js', 'src/ui/shell/savestate.js', 'src/ui/shell/changeimage.js', 'src/ui/ribbon/livepreview.js', 'src/ui/dialogs/shortcuts.js', 'src/ui/dialogs/lock.js', 'src/ui/dialogs/lessonplan.js', 'src/ui/shell/audience.js', 'src/features/document/watermark.js', 'src/ui/dialogs/settings.js', 'src/ui/dialogs/classpace.js', 'src/apps/view/main.js', 'src/ui/dialogs/bulk.js', 'src/features/ai/lessonplan.js', 'src/ui/shell/palette.js', 'src/ui/dialogs/share.js', 'src/ui/dialogs/cloud.js', 'src/ui/dialogs/cloudlibrary.js', 'src/ui/panels/a11y.js', 'src/ui/panels/review.js', 'src/ui/dialogs/poll.js', 'src/ui/dialogs/classroom.js', 'src/ui/dialogs/ai.js', 'src/ui/dialogs/assistant.js', 'src/ui/dialogs/account.js', 'src/ui/dialogs/team.js', 'src/ui/panels/call.js', 'src/ui/dialogs/picture.js', 'src/ui/dialogs/textstyles.js', 'src/ui/shell/masterview.js', 'src/io/share/publish.js', 'src/ui/canvas/content.js', 'src/ui/dialogs/object.js', 'src/io/export/objects.js', 'src/ui/canvas/puppetview.js', 'src/ui/dialogs/autorig.js', 'src/ui/dialogs/model3d.js', 'src/ui/ribbon/animribbon.js', 'src/ui/dialogs/gdrive.js', 'src/ui/panels/animation.js', 'src/ui/shell/notices.js', 'src/ui/dialogs/questions.js', 'src/io/formats/questions.js', 'src/io/export/study.js'];
     const missing = [];
     for (const f of files) {
       const src = await (await fetch(new URL('../' + f, D.baseURI))).text();
@@ -351,5 +351,108 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/Café\t1,50/.test(xml), 'con sus tabuladores');
     const back = (await R.pptxImport.importPPTX(new W.File([blob], 't.pptx'))).slides[0].blocks.find(x => x.tabs);
     eq(JSON.stringify(back?.tabs?.map(s => [Math.round(s.pos), s.align])), JSON.stringify(b.tabs.map(s => [Math.round(s.pos), s.align])), 'y vuelven');
+  });
+
+  // Typing for real (the browser's own insertText: input events as from the keyboard).
+  const typeIn = async (rich, text) => { for (const ch of text) { frame.contentDocument.execCommand('insertText', false, ch); await sleep(5); } };
+  const editEmpty = async b => {
+    const rich = richOf(b); rich.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); await sleep(10);
+    rich.innerHTML = ''; rich.focus(); const r = D.createRange(); r.selectNodeContents(rich); r.collapse(true);
+    const s = frame.contentWindow.getSelection(); s.removeAllRanges(); s.addRange(r); return rich;
+  };
+
+  await test('reducir si no cabe: activado en los marcadores de las diapositivas y presentaciones nuevas; encoge al escribir y vuelve al borrar', async () => {
+    reset();
+    assert(R.model.emptyDeck().slides[0].blocks.every(b => b.shrink === true), 'una presentación nueva: sus marcadores reducen el texto');
+    R.slides.addSlide('titleContent'); await sleep(20);
+    const title = slide().blocks.find(b => b.ph === 'title'), body = slide().blocks.find(b => b.ph === 'body');
+    assert(title.shrink && body.shrink, 'una diapositiva nueva: también');
+    eq(R.state.deck.slides[0].blocks.some(b => b.shrink), false, 'las diapositivas que ya había, como estaban');
+    select(title); await sleep(10);
+    const rich = await editEmpty(title);
+    rich.innerHTML = 'Un título larguísimo que no cabe de ninguna manera en una sola línea del cuadro del título, ni en dos, ni siquiera en tres líneas seguidas de texto';
+    rich.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: 'o' })); await sleep(10);
+    assert(title.fit > 0 && title.fit < 1 && title.fontSize == null, 'encoge siguiendo al patrón (un factor): ' + title.fit);
+    assert(rich.scrollHeight <= rich.clientHeight + 2, 'y ya cabe');
+    rich.innerHTML = 'Corto'; rich.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'deleteContentBackward' })); await sleep(10);
+    eq(title.fit, undefined, 'al borrar, vuelve a su tamaño');
+    rich.blur(); await sleep(10);
+    // A box with its own size: it keeps it to come back to.
+    const t2 = newText(); R.store.commit(() => { Object.assign(t2, { w: 300, h: 60, fontSize: 40, shrink: true }); }); await sleep(10);
+    const r2 = await editEmpty(t2); r2.innerHTML = 'Mucho texto que no cabe en un cuadro tan pequeño como este';
+    r2.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: 'e' })); await sleep(10);
+    assert(t2.fontSize < 40 && t2.shrinkBase === 40, 'encoge y recuerda su tamaño');
+    r2.innerHTML = 'Poco'; r2.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'deleteContentBackward' })); await sleep(10);
+    eq(t2.fontSize, 40, 'y vuelve a él'); r2.blur();
+  });
+
+  await test('texto que no cabe: aviso en el cuadro para reducirlo (un paso de deshacer), y en toda la presentación', async () => {
+    reset(); const b = newText();
+    R.store.commit(() => { Object.assign(b, { w: 260, h: 50, fontSize: 40, html: 'Un texto bastante largo que no cabe aquí dentro' }); }); select(b); await sleep(40);
+    const hint = D.getElementById('overflow-hint'); assert(hint && !hint.querySelector('.of-all'), 'el aviso aparece (sin «toda la presentación»: no es un marcador)');
+    hint.querySelector('[data-of="one"]').click(); await sleep(40);
+    const nb = slide().blocks.find(x => x.id === b.id);
+    assert(nb.shrink && nb.fontSize < 40, 'activado, y ya más pequeño: ' + nb.fontSize);
+    assert(!D.getElementById('overflow-hint'), 'el aviso se va');
+    R.store.undo(); await sleep(20); const back = slide().blocks.find(x => x.id === b.id);
+    assert(!back.shrink && back.fontSize === 40, 'deshacer: todo de una vez');
+    // A placeholder offers the whole presentation.
+    R.slides.addSlide('titleContent'); await sleep(10);
+    const tt = slide().blocks.find(x => x.ph === 'title');
+    R.store.commit(() => { delete tt.shrink; tt.html = 'Un título larguísimo que no cabe de ninguna manera en el cuadro del título, ni en dos líneas, ni siquiera en tres líneas seguidas'; }); select(tt); await sleep(40);
+    assert(D.querySelector('#overflow-hint .of-all'), '«En toda la presentación», en un marcador');
+    const TA = await frame.contentWindow.eval("import('/src/ui/shell/textaids.js')");
+    const n = await TA.shrinkAllPlaceholders(); await sleep(20);
+    const t3 = slide().blocks.find(x => x.id === tt.id);
+    assert(n >= 1 && t3.shrink && t3.fit < 1, 'activado en todos los marcadores, y el que no cabía, más pequeño: ' + t3.fit);
+    assert(R.state.deck.slides[0].blocks.every(x => !x.ph || x.shrink), 'también en las demás diapositivas');
+    // The object's tab: on, and off again (back to its size).
+    R.store.commit(() => R.store.setSelection(t3.id), { history: false }); await sleep(20);
+    const tog = D.querySelector('#ribbon [data-page="ctx"] [data-ctx="shrink"]'); assert(tog?.getAttribute('aria-pressed') === 'true', 'el botón lo muestra');
+    tog.click(); await sleep(20); const t4 = slide().blocks.find(x => x.id === tt.id);
+    assert(!t4.shrink && t4.fit == null, 'desactivado: vuelve a su tamaño');
+  });
+
+  await test('«/» al empezar una línea de un cuadro de texto: menú para insertar; Esc o seguir escribiendo lo cierra y deja la barra', async () => {
+    reset(); const b = newText(); await sleep(10);
+    let rich = await editEmpty(b);
+    await typeIn(rich, '/'); await sleep(10);
+    const menu = () => D.getElementById('slash-menu');
+    assert(menu(), 'el menú aparece'); assert(menu().querySelectorAll('[data-slash]').length >= 8, 'imagen, tabla, gráfico, lista, ecuación, código, icono, votación…');
+    D.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })); await sleep(10);
+    assert(!menu(), 'Esc lo cierra'); assert(D.activeElement === rich, 'sin salir del texto'); eq(rich.textContent, '/', 'y la barra se queda');
+    await typeIn(rich, 'x'); eq(rich.textContent, '/x', 'escribiendo otra cosa: texto normal'); assert(!menu(), 'sin menú');
+    // Not in the middle of a line.
+    await typeIn(rich, ' a/'); assert(!menu(), 'en medio de una línea, no');
+    // A list, there: the «/» goes.
+    rich = await editEmpty(b); await typeIn(rich, '/'); await sleep(10);
+    menu().querySelector('[data-slash="bullets"]').click(); await sleep(20);
+    assert(rich.querySelector('ul li') && !/\//.test(rich.textContent), 'lista con viñetas, sin la barra');
+    rich.blur(); await sleep(10);
+    // An object: the text is left and it is inserted.
+    const n = slide().blocks.length; rich = await editEmpty(b); await typeIn(rich, '/'); await sleep(10);
+    D.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
+    eq(menu().querySelector('[aria-selected="true"]').dataset.slash, 'table', 'las flechas eligen');
+    D.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); await sleep(30);
+    eq(slide().blocks.length, n + 1, 'Intro inserta'); eq(slide().blocks.at(-1).type, 'table', 'una tabla');
+    assert(!/\//.test(slide().blocks.find(x => x.id === b.id).html), 'y la barra no se queda en el texto');
+  });
+
+  await test('listas automáticas: «- » o «* » hacen viñetas, «1. » o «1) » números; Ctrl+Z justo después lo deja como se escribió; respeta la autocorrección', async () => {
+    reset(); const b = newText(); await sleep(10);
+    const AC = await frame.contentWindow.eval("import('/src/features/document/autocorrect.js')");
+    let rich = await editEmpty(b);
+    await typeIn(rich, '- Uno'); await sleep(10);
+    assert(rich.querySelector('ul li') && rich.querySelector('li').textContent === 'Uno', '«- » hace una lista con viñetas: ' + rich.innerHTML);
+    rich = await editEmpty(b); await typeIn(rich, '1) '); assert(rich.querySelector('ol li'), '«1) » una numerada');
+    rich = await editEmpty(b); await typeIn(rich, '* '); assert(rich.querySelector('ul'), '«* » también');
+    const z = new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true, cancelable: true }); D.activeElement.dispatchEvent(z);
+    assert(z.defaultPrevented && !rich.querySelector('ul') && rich.textContent.replace(/ /g, ' ') === '* ', 'Ctrl+Z: lo escrito, sin lista: ' + rich.innerHTML);
+    await typeIn(rich, 'x'); eq(rich.textContent.replace(/ /g, ' '), '* x', 'el cursor, detrás');
+    eq(slide().blocks.find(x => x.id === b.id).html.replace(/&nbsp;/g, ' '), '* x', 'y el cuadro lo guarda');
+    rich = await editEmpty(b); await typeIn(rich, 'a - b'); assert(!rich.querySelector('ul'), 'en medio de una línea, no');
+    AC.setAutocorrect(false);
+    try { rich = await editEmpty(b); await typeIn(rich, '- '); assert(!rich.querySelector('ul'), 'con la autocorrección apagada, no'); }
+    finally { AC.setAutocorrect(true); rich.blur(); }
   });
 }

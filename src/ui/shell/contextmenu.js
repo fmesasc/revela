@@ -24,6 +24,9 @@ import { openMediaPlayback } from '../dialogs/media.js';
 import { openModel3D } from '../dialogs/model3d.js';
 import { openObjectLink } from '../dialogs/objlink.js';
 import { saveBlockFile as saveFile } from './files.js';
+import { changeImage } from './changeimage.js';
+import { toggleShrink } from './textaids.js';
+import { togglePainter } from '../canvas/painter.js';
 import { present } from './present.js';
 import { openBackgroundDialog } from '../dialogs/background.js';
 import { masterMenu } from './masterview.js';
@@ -189,7 +192,7 @@ function forBlock(b, cell = null) {
     ['Eliminar', () => blocks.deleteBlock(b.id)],
     [b.shadow ? 'Quitar sombra' : 'Sombra', () => blocks.toggleShadow()],
     ['Guardar como imagen…', () => openSaveAsPicture()],
-    ['Copiar formato', () => format.copyStyle()],
+    ['Copiar formato', () => togglePainter()],
     format.hasStyleClip() ? ['Pegar formato', () => format.pasteStyle()] : null,
     ...(!['text', 'connector', 'lock'].includes(b.type) ? [['Vínculo…', () => openObjectLink(b)]] : []),
     null,
@@ -204,10 +207,11 @@ function forBlock(b, cell = null) {
       ['Alinear texto a la derecha', () => format.align('right')],
       ['Relleno y borde…', () => openBoxStyle(b)],
       ['Ajustar el tamaño de letra al cuadro', () => fitTextToBox(b)],
-      [b.shrink ? 'No reducir el texto si no cabe' : 'Reducir el texto si no cabe', () => commit(() => { if (b.shrink) delete b.shrink; else b.shrink = true; })],
+      [b.shrink ? 'No reducir el texto si no cabe' : 'Reducir el texto si no cabe', () => toggleShrink(b.id)],
       null);
   } else if (b.type === 'image') {
     items.push(
+      ['Cambiar imagen…', () => changeImage(b)],
       ['Ajustar: contener', () => setFit(b, 'contain')],
       ['Ajustar: rellenar', () => setFit(b, 'cover')],
       ['Ajustes de imagen…', () => openImageAdjust(b)],
