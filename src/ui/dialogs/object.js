@@ -12,7 +12,8 @@ import { canCropOnSlide, uncrop } from '../../features/document/crop.js';
 import { gifRemoveBackground } from '../../features/live/gifbg.js';
 import { MATHLIVE, BG_REMOVAL, loadScript } from '../../core/vendor.js';
 import { renderLatex } from '../canvas/content.js';
-import { tablePresets, tableClass, tableVars, tableCSS } from '../../render/svg.js';
+import { tablePresets, tableClass, tableVars, tableCSS, chartSVG } from '../../render/svg.js';
+import { withBlobs } from '../../io/formats/blobmedia.js';
 import { currentPalette, deckFg } from '../../features/design/palettes.js';
 
 export function openImageAdjust(b) {
@@ -154,8 +155,9 @@ export function openChartData(b) {
   const lines = blocks.chartGridText(b).replace(/</g, '&lt;');
   const back = document.createElement('div');
   back.id = 'chart-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:start;min-width:300px">
+  back.innerHTML = `<div class="modal ch-modal">
     <button class="modal-close">✕</button><h3>${t('Datos del gráfico')}</h3>
+    <div class="ch-layout"><div class="ch-form">
     <label class="fr-l">${t('Tipo')} <select class="ch-type">
       <option value="bar">${t('Barras')}</option><option value="stacked">${t('Barras apiladas')}</option><option value="stacked100">${t('Barras apiladas al 100 %')}</option>
       <option value="hbar">${t('Barras horizontales')}</option><option value="histogram">${t('Histograma')}</option><option value="line">${t('Líneas')}</option><option value="area">${t('Área')}</option><option value="stackedArea">${t('Áreas apiladas')}</option>
@@ -189,13 +191,17 @@ export function openChartData(b) {
     <label class="fr-l">${t('Datos: etiqueta y una columna por serie; primera fila opcional con los nombres')}
       <textarea class="ch-data" rows="6" style="font-family:monospace">${lines}</textarea></label>
     <div class="fr-actions" style="justify-content:flex-start;margin-top:-4px"><button type="button" class="mini2 ch-file"><i class="ms">upload_file</i> ${t('Traer los datos de Excel o CSV…')}</button></div>
+    </div>
+    <div class="ch-side"><div class="ch-pv-h">${t('Vista previa')}</div><div class="ch-pv-frame"><div class="ch-pv" role="img" aria-label="${t('Vista previa')}"></div></div>
+      <p class="host-help ch-pv-note">${t('Así quedará en la diapositiva. No cambia nada hasta que pulses «Aplicar».')}</p></div>
+    </div>
     <div class="fr-actions"><button class="fr-do">${t('Aplicar')}</button></div>
   </div>`;
   document.body.appendChild(back);
   back.querySelector('.ch-type').value = b.chartType || 'bar';
   // (The data from a spreadsheet: an Excel workbook — its sheet — or a CSV, into the box, to check before «Aplicar».)
   back.querySelector('.ch-file').addEventListener('click', () => import('./sheets.js').then(S => readFile(S.SHEET_ACCEPT, async f => {
-    const txt = await S.sheetText(f); if (txt) back.querySelector('.ch-data').value = txt.split('\n').slice(0, 60).join('\n');
+    const txt = await S.sheetText(f); if (txt) { back.querySelector('.ch-data').value = txt.split('\n').slice(0, 60).join('\n'); back.querySelector('.ch-data').dispatchEvent(new Event('input', { bubbles: true })); }
   }, 'file')));
   // (Only the options of the chosen type: x axis' ends for scatter and bubbles, intervals for a histogram, the legend for pies.)
   const showFor = () => { const v = back.querySelector('.ch-type').value;
@@ -213,8 +219,8 @@ export function openChartData(b) {
   const close = () => back.remove();
   back.querySelector('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
-  back.querySelector('.fr-do').addEventListener('click', () => {
-    blocks.setChartGrid(back.querySelector('.ch-data').value, { chartType: back.querySelector('.ch-type').value,
+  // What the dialog says now: the options as «Aplicar» sends them (and the preview draws them).
+  const propsNow = () => ({ chartType: back.querySelector('.ch-type').value,
       color: back.querySelector('.ch-color').value, combo: back.querySelector('.ch-combo').checked,
       grid: back.querySelector('.ch-grid').checked, dataLabels: back.querySelector('.ch-labels').checked,
       xTitle: back.querySelector('.ch-xt').value.trim(), yTitle: back.querySelector('.ch-yt').value.trim(),
@@ -223,6 +229,23 @@ export function openChartData(b) {
       bins: numOf('.ch-bins') > 0 ? Math.round(numOf('.ch-bins')) : undefined, legend: back.querySelector('.ch-legend').checked ? undefined : false,
       labelColor: back.querySelector('.ch-ink-auto').checked ? undefined : back.querySelector('.ch-ink').value,
       colors: !ownTouched ? undefined : [...back.querySelectorAll('.ch-own-on')].map(c => (c.checked ? back.querySelector(`.ch-own-c[data-i="${c.dataset.i}"]`).value : null)) });
+  // The preview: the chart as it will be, on the slide's background, redrawn as one types or picks (a copy: nothing
+  // changes until «Aplicar»).
+  const pv = back.querySelector('.ch-pv'), slide = state.deck.slides[state.ui.slideIndex];
+  pv.style.aspectRatio = `${Math.max(1, b.w)} / ${Math.max(1, b.h)}`;
+  pv.parentNode.style.background = withBlobs(slide?.background || '') || '#fff'; pv.style.color = deckFg();
+  let pvTimer = 0;
+  const preview = () => {
+    let c; try { c = blocks.chartPreview(b, back.querySelector('.ch-data').value, propsNow()); } catch { c = null; }
+    if (!c || !(c.data || []).length) { pv.innerHTML = `<span class="ch-pv-msg">${t('Escribe los datos para ver el gráfico.')}</span>`; return; }
+    if (c.chartType === 'map' && !c.map) { pv.innerHTML = `<span class="ch-pv-msg">${t('El mapa se carga al aplicar.')}</span>`; return; }
+    try { pv.innerHTML = chartSVG(c); } catch { pv.innerHTML = `<span class="ch-pv-msg">${t('Revisa los datos: así no se puede dibujar.')}</span>`; }
+  };
+  const later = () => { clearTimeout(pvTimer); pvTimer = setTimeout(preview, 90); };
+  back.querySelector('.ch-form').addEventListener('input', later); back.querySelector('.ch-form').addEventListener('change', later);
+  preview();
+  back.querySelector('.fr-do').addEventListener('click', () => {
+    blocks.setChartGrid(back.querySelector('.ch-data').value, propsNow());
     // (A map needs its outlines: loaded once, from the internet.)
     if (back.querySelector('.ch-type').value === 'map' && !b.map) blocks.setChartMap(b.id, b.mapScope || 'world').catch(e => alertDialog(t('No se pudo cargar el mapa:') + ' ' + (e.message || e)));
     close();

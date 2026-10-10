@@ -533,18 +533,21 @@ export function chartGridText(b) {
 // props.colors: each item's own colour (a bar, a slice, a step), by position — null: the chart's. Without it, the
 // colours each item had stay with it (the same name).
 export function setChartGrid(text, props = {}) {
-  const { data, series, names } = parseChartGrid(text);
   const b = selectedBlock(); if (!b || b.type !== 'chart') return;
+  commit(() => applyChartGrid(b, text, props));
+}
+// The chart as it would be with this grid and these options — a copy, for the data dialog's preview (nothing changes).
+export const chartPreview = (b, text, props = {}) => applyChartGrid(structuredClone(b), text, props);
+function applyChartGrid(b, text, props) {
+  const { data, series, names } = parseChartGrid(text);
   const old = b.series || [], { colors, ...rest } = props, before = new Map((b.data || []).filter(d => d.color).map(d => [d.label, d.color]));
   data.forEach((d, i) => { const c = colors ? colors[i] : before.get(d.label); if (c) d.color = c; });
-  props = rest;
-  commit(() => {
-    Object.assign(b, props, { data });
-    for (const k in props) if (props[k] === undefined) delete b[k];   // (an option left empty: automatic again)
-    if (names[0]) b.seriesName = names[0]; else delete b.seriesName;
-    if (series.length) b.series = series.map((x, i) => ({ ...x, color: old[i]?.color })).map(x => (x.color ? x : { name: x.name, values: x.values }));
-    else delete b.series;
-  });
+  Object.assign(b, rest, { data });
+  for (const k in rest) if (rest[k] === undefined) delete b[k];        // (an option left empty: automatic again)
+  if (names[0]) b.seriesName = names[0]; else delete b.seriesName;
+  if (series.length) b.series = series.map((x, i) => ({ ...x, color: old[i]?.color })).map(x => (x.color ? x : { name: x.name, values: x.values }));
+  else delete b.series;
+  return b;
 }
 // Insert a chart built from the selected table: first column = labels, other
 // columns = series, header row (if any) = series names.

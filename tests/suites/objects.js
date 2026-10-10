@@ -2306,6 +2306,18 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     [...D.querySelectorAll('#context-menu .ctx-item')].find(x => /Editar datos/.test(x.textContent)).click(); await sleep(10);
     const m = D.getElementById('chart-modal');
     assert(m.querySelector('.ch-grid').checked && m.querySelector('.ch-xt').value === 'Mes', 'el diálogo muestra las opciones');
+    // The preview: the chart as it will be, redrawn while typing — and nothing changes until «Aplicar».
+    const pv = m.querySelector('.ch-pv'), before = JSON.stringify(c);
+    assert(pv.querySelector('svg') && /Ventas \(k€\)/.test(pv.innerHTML), 'vista previa del gráfico, con sus títulos');
+    const ta = m.querySelector('.ch-data'), was = ta.value;
+    ta.value = 'Norte\t5\nSur\t9\nEste\t2'; ta.dispatchEvent(new frame.contentWindow.Event('input', { bubbles: true })); await sleep(150);
+    assert(/Norte/.test(pv.innerHTML) && /Este/.test(pv.innerHTML), 'se redibuja al escribir los datos');
+    const type = m.querySelector('.ch-type'); type.value = 'pie'; type.dispatchEvent(new frame.contentWindow.Event('change', { bubbles: true })); await sleep(150);
+    assert(pv.querySelectorAll('path').length >= 3, 'y al cambiar el tipo (circular: sus porciones)');
+    ta.value = ''; ta.dispatchEvent(new frame.contentWindow.Event('input', { bubbles: true })); await sleep(150);
+    assert(!pv.querySelector('svg') && /Escribe los datos/.test(pv.textContent), 'sin datos: lo dice');
+    eq(JSON.stringify(c), before, 'el gráfico no cambia mientras se prueba');
+    ta.value = was; type.value = c.chartType || 'bar';
     m.querySelector('.ch-labels').checked = false; m.querySelector('.fr-do').click(); await sleep(20);
     assert(!c.dataLabels && c.grid, 'y las guarda');
     assert(/Ventas \(k€\)/.test(D.querySelector(`.block[data-id="${c.id}"]`).innerHTML), 'en el lienzo');

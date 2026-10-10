@@ -253,3 +253,13 @@ body.assistant-open .tb-ai{background:var(--accent);color:var(--on-accent)}
 .stage-badge{align-self:center;margin-inline-end:8px;padding:2px 8px;border-radius:10px;background:#b7791f;color:#fff!important;font:700 11px system-ui,sans-serif;text-transform:uppercase;letter-spacing:.05em;text-decoration:none;white-space:nowrap}
 #opening-doc.over{background:color-mix(in srgb,var(--bg,#f4f5f7) 82%,transparent);backdrop-filter:blur(2px)}
 #opening-doc .od-box{max-width:90vw;overflow-wrap:anywhere}
+/* Chart data (dialogs/object.js): the settings and, beside them, the chart as it will be — redrawn while typing. */
+.modal.ch-modal{text-align:start;min-width:300px;max-width:min(960px,96vw);width:960px}
+.ch-layout{display:grid;grid-template-columns:minmax(260px,1fr) minmax(280px,440px);gap:20px;align-items:start}
+.ch-side{position:sticky;top:0}
+.ch-pv-h{font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+.ch-pv-frame{padding:14px 18px 26px 26px;border:1px solid var(--line2);border-radius:8px;box-shadow:0 2px 10px #0001;background-size:cover;background-position:center}
+.ch-pv{width:100%;display:grid;place-items:center}
+.ch-pv svg{width:100%;height:100%;display:block;overflow:visible}   /* (axis titles go outside the chart's box, as on the slide) */
+.ch-pv-msg{padding:16px;color:var(--txt2);font-size:13px;text-align:center}
+@media (max-width:760px){.ch-layout{grid-template-columns:1fr}.ch-side{order:-1;position:static}}
