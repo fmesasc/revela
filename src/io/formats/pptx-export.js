@@ -253,6 +253,13 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
       } else if (b.shape === 'line' || b.shape === 'arrow' || b.shape === 'doublearrow') {
         slide.addShape(pptx.ShapeType.line, { ...pos, line: { color: hex(b.stroke) || '888888', width: b.strokeWidth || 2, ...dashOf(b.dash), ...see,
           endArrowType: b.shape === 'line' ? 'none' : 'triangle', ...(b.shape === 'doublearrow' && { beginArrowType: 'triangle' }) } });
+      } else if (b.shape === 'pathline') {                 // an open path (an elbow or curved connector): a freeform, its arrowheads
+        const P = (u, v) => ({ x: IN(u / 100 * b.w), y: IN(v / 100 * b.h) });
+        const points = (b.route || []).filter(c => Array.isArray(c) && /^[MLC]$/.test(c[0])).map(c => (c[0] === 'C'
+          ? { ...P(c[5], c[6]), curve: { type: 'cubic', x1: P(c[1], c[2]).x, y1: P(c[1], c[2]).y, x2: P(c[3], c[4]).x, y2: P(c[3], c[4]).y } }
+          : { ...P(c[1], c[2]), ...(c[0] === 'M' && { moveTo: true }) }));
+        slide.addShape(pptx.ShapeType.custGeom, { ...pos, fill: { type: 'none' }, points, line: { color: hex(b.stroke) || '888888', width: b.strokeWidth || 2, ...dashOf(b.dash), ...see,
+          ...(b.arrowEnd && { endArrowType: 'triangle' }), ...(b.arrowStart && { beginArrowType: 'triangle' }) } });
       } else if (b.shape === 'curve') {                    // the same curve, as a PowerPoint freeform (no fill)
         const P = (u, v) => ({ x: IN(u / 100 * b.w), y: IN(v / 100 * b.h) });
         slide.addShape(pptx.ShapeType.custGeom, { ...pos, fill: { type: 'none' }, line: { color: hex(b.stroke) || '888888', width: b.strokeWidth || 2, ...dashOf(b.dash), ...see },

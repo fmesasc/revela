@@ -61,6 +61,26 @@ async function cropPicture(src, [l, t, r, b]) {
   } catch { return src; }
 }
 
+// A picture recoloured in PowerPoint (Format ▸ Color ▸ Recolor): a:duotone paints its darks in the first colour and
+// its lights in the second, by luminance, keeping its transparency (a green world map from a black one); a:grayscl,
+// in greys. Done once here, on its pixels, so the editor, presenting and every export show it alike. (Not SVG pictures.)
+async function recolorPicture(src, dark, light) {
+  if (/^data:image\/svg/.test(src)) return src;
+  try {
+    const img = new Image(); img.src = src; await img.decode();
+    const w = img.naturalWidth, h = img.naturalHeight; if (!w || !h || w * h > 40e6) return src;
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, w, h), px = d.data, rgb = x => [1, 3, 5].map(i => parseInt(x.slice(i, i + 2), 16)), A = rgb(dark), B = rgb(light);
+    for (let i = 0; i < px.length; i += 4) {
+      const l = (0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]) / 255;
+      px[i] = A[0] + (B[0] - A[0]) * l; px[i + 1] = A[1] + (B[1] - A[1]) * l; px[i + 2] = A[2] + (B[2] - A[2]) * l;
+    }
+    g.putImageData(d, 0, 0);
+    return /^data:image\/jpe?g/.test(src) ? c.toDataURL('image/jpeg', 0.92) : c.toDataURL('image/png');
+  } catch { return src; }
+}
+
 // ---- Comments --------------------------------------------------------------
 // Both PowerPoint formats: the classic one (ppt/comments/commentN.xml, authors in
 // commentAuthors.xml) and the modern one of Microsoft 365 (modernComment_*.xml,
@@ -291,6 +311,25 @@ const adjustOf = (spPr, names) => {
   return names.map(n => { const f = gd.find(g => g.getAttribute('name') === n)?.getAttribute('fmla'), v = f ? +f.replace(/^val /, '') : NaN; return Number.isFinite(v) ? v : null; });
 };
 
+// An elbow or curved connector's route in its box (0–100 each way, before flips), from PowerPoint's own definitions
+// (presetShapeDefinitions: bentConnector2–5, curvedConnector2–5, with their adjustments); null for anything else, or a
+// box with no width or height (a straight line then).
+function connectorRoute(prst, geo, spPr) {
+  const m = /^(bent|curved)Connector([2-5])$/.exec(prst || ''); if (!m || !(geo?.w > 0 && geo?.h > 0)) return null;
+  const gd = all(kid(spPr, 'a:prstGeom'), 'a:gd'), adj = (n, d = 50000) => { const f = gd.find(g => g.getAttribute('name') === n)?.getAttribute('fmla'); const v = f ? +f.replace(/^val /, '') : NaN; return (Number.isFinite(v) ? v : d) / 1000; };
+  const n = +m[2], a1 = adj('adj1'), a2 = adj('adj2'), a3 = adj('adj3');
+  if (m[1] === 'bent') {
+    if (n === 2) return [['M', 0, 0], ['L', 100, 0], ['L', 100, 100]];
+    if (n === 3) return [['M', 0, 0], ['L', a1, 0], ['L', a1, 100], ['L', 100, 100]];
+    if (n === 4) return [['M', 0, 0], ['L', a1, 0], ['L', a1, a2], ['L', 100, a2], ['L', 100, 100]];
+    return [['M', 0, 0], ['L', a1, 0], ['L', a1, a2], ['L', a3, a2], ['L', a3, 100], ['L', 100, 100]];
+  }
+  if (n === 2) return [['M', 0, 0], ['C', 50, 0, 100, 50, 100, 100]];
+  if (n === 3 || n === 5) { const x1 = a1 / 2, x3 = (100 + a1) / 2; return [['M', 0, 0], ['C', x1, 0, a1, 25, a1, 50], ['C', a1, 75, x3, 100, 100, 100]]; }
+  const x1 = a1 / 2, x3 = (100 + a1) / 2, x4 = (a1 + x3) / 2, x5 = (x3 + 100) / 2, y1 = a2 / 2, y2 = y1 / 2, y3 = (y1 + a2) / 2, y5 = (100 + a2) / 2;
+  return [['M', 0, 0], ['C', x1, 0, a1, y2, a1, y1], ['C', a1, y3, x4, a2, x3, a2], ['C', x5, a2, 100, y5, 100, 100]];
+}
+
 // ---- Text ------------------------------------------------------------------
 // PowerPoint text formatting is inherited, level by level (lvl1pPr…lvl9pPr):
 //   presentation defaultTextStyle (text boxes) or the master's titleStyle /
@@ -379,6 +418,12 @@ const fontStack = f => officeStack(f) || `${cssFont(f)}, sans-serif`;
 // Paragraphs → HTML with the resolved formatting. Sizes are in px; the box
 // gets the first paragraph's size, family and colour, and runs only say where
 // they differ.
+// PowerPoint's single line spacing is the font's own (its ascent, descent and line gap): Arial 1.15, Calibri 1.22…; 1.2 —
+// what HTML uses — for the rest. With 1.2 for every font, Arial text stood lower and taller than in PowerPoint, and a
+// full box (a title slide's names and date) ran out at the bottom.
+const LINE_OF = { arial: 1.15, 'arial narrow': 1.15, helvetica: 1.15, 'liberation sans': 1.15, 'times new roman': 1.15, calibri: 1.22, 'calibri light': 1.22,
+  cambria: 1.17, georgia: 1.14, verdana: 1.22, tahoma: 1.21, 'segoe ui': 1.33, 'trebuchet ms': 1.16, 'century gothic': 1.23 };
+const lineOf = f => LINE_OF[String(f || '').toLowerCase().replace(/['"]/g, '').split(',')[0].trim()] || 1.2;
 function paragraphsHTML(txBody, ctx, style) {
   const { levels, body = {}, isList = false, base: boxBase = null } = style;
   const fs = body.fontScale || 1, lnRed = body.lnReduce || 0;
@@ -399,14 +444,15 @@ function paragraphsHTML(txBody, ctx, style) {
     const sizeOf = r => ctx.pt((merge(base, readRun(kid(r, 'a:rPr'), ctx.theme, ctx.fonts)).sz || 18) * fs);
     const textRuns = [...p.children].filter(r => (r.tagName === 'a:r' || r.tagName === 'a:fld') && kid(r, 'a:t')?.textContent);
     const sizes = textRuns.map(sizeOf), mixed = new Set(sizes).size > 1 && [...p.children].some(r => r.tagName === 'a:br'), least = Math.min(...sizes);
+    let lineStart = true, lastText = '', paraInk, paraFont;   // (a run's first space kept only where HTML would drop it: see below)
     for (const r of [...p.children]) {
-      if (r.tagName === 'a:br') { runs.push('<br>'); continue; }
+      if (r.tagName === 'a:br') { runs.push('<br>'); lineStart = true; continue; }
       if (r.tagName !== 'a:r' && r.tagName !== 'a:fld') continue;
       let txt = kid(r, 'a:t')?.textContent || ''; if (!txt) continue;
       if (r.tagName === 'a:fld' && /slidenum/i.test(r.getAttribute('type') || '')) txt = String(ctx.slideNo);
       const rp = merge(base, readRun(kid(r, 'a:rPr'), ctx.theme, ctx.fonts));
       const size = ctx.pt((rp.sz || 18) * fs);
-      paraSize ??= size;
+      paraSize ??= size; if (paraInk === undefined) { paraInk = rp.color || null; paraFont = rp.font; }
       if (!first) first = boxBase || { size, font: rp.font, color: rp.color };
       const css = [];
       if (mixed ? size !== least : size !== first.size) css.push(`font-size:${size}px`);
@@ -416,8 +462,11 @@ function paragraphsHTML(txBody, ctx, style) {
       if (rp.spc) css.push(`letter-spacing:${ctx.pt(rp.spc)}px`);
       if (rp.highlight) css.push(`background:${rp.highlight}`);
       if (rp.baseline) css.push(`vertical-align:${rp.baseline > 0 ? 'super' : 'sub'};font-size:${Math.round(size * 0.65)}px`);
-      // Consecutive spaces align text in PowerPoint; HTML would collapse them.
-      let h = esc(txt).replace(/ {2,}/g, m => ' \u00a0'.repeat(Math.ceil(m.length / 2)).slice(0, m.length)).replace(/^ /, '\u00a0');
+      // Consecutive spaces align text in PowerPoint; HTML would collapse them. A run's first space becomes a no-break one
+      // only at the start of a line or after another space (where HTML would drop it): between words («Computational» +
+      // « Model») it must stay a normal space — as a no-break one the two words were one, and the box broke it «Mo|del».
+      const keep = lineStart || /\s$/.test(lastText); lineStart = false; lastText = txt;
+      let h = esc(txt).replace(/ {2,}/g, m => ' \u00a0'.repeat(Math.ceil(m.length / 2)).slice(0, m.length)).replace(/^ /, keep ? '\u00a0' : ' ');
       if (css.length) h = `<span style="${css.join(';')}">${h}</span>`;
       if (rp.b) h = `<b>${h}</b>`; else if (base.b && rp.b === false) h = `<span style="font-weight:normal">${h}</span>`;
       if (rp.i) h = `<i>${h}</i>`;
@@ -433,9 +482,13 @@ function paragraphsHTML(txBody, ctx, style) {
     paraSize ??= ctx.pt((endR.sz || 18) * fs);
     align ??= ALIGN[pp.algn] || null;
     // Paragraph box: margins, first-line indent, spacing and line height.
-    const lineH = pp.lnSpc?.pct != null ? +(1.2 * pp.lnSpc.pct * (1 - lnRed)).toFixed(3)
-      : pp.lnSpc?.pt != null ? `${ctx.pt(pp.lnSpc.pt * fs)}px` : null;
-    const gap = sp => (sp?.pt != null ? ctx.pt(sp.pt) : sp?.pct != null ? Math.round(paraSize * 1.2 * sp.pct) : 0);
+    // (PowerPoint's «shrink text on overflow» also tightens the lines — lnSpcReduction — when the paragraph has no spacing
+    // of its own: single, 1.2, made smaller. Before, only an explicit spacing was: the title slide's names ran out of
+    // their box.)
+    const k = lineOf(paraFont || base.font || boxBase?.font || ctx.fonts?.minor);
+    const lineH = pp.lnSpc?.pct != null ? +(k * pp.lnSpc.pct * (1 - lnRed)).toFixed(3)
+      : pp.lnSpc?.pt != null ? `${ctx.pt(pp.lnSpc.pt * fs * (1 - lnRed))}px` : lnRed || k !== 1.2 ? +(k * (1 - lnRed)).toFixed(3) : null;
+    const gap = sp => (sp?.pt != null ? ctx.pt(sp.pt) : sp?.pct != null ? Math.round(paraSize * k * sp.pct) : 0);
     const marL = ctx.emu(pp.marL || 0), indent = ctx.emu(pp.indent || 0);
     const pcss = [];
     if (lineH != null) pcss.push(`line-height:${lineH}`);
@@ -453,8 +506,10 @@ function paragraphsHTML(txBody, ctx, style) {
         : `list-style-type:'${(pp.bullet?.char || '•').replace(/['"<>;\\{}]/g, '')}  '`;
       // The text starts at marL; the bullet hangs in the first-line indent.
       pcss.push(marker, 'list-style-position:outside', `margin-left:${Math.max(0, marL)}px`);
+      // (A bullet of its own colour: the item carries it, and its words keep theirs — before, they took the bullet's.)
+      const ink = pp.buColor && (paraInk || first?.color);
       if (pp.buColor) pcss.push(`color:${pp.buColor}`);
-      out.push(`<li style="${pcss.join(';')}">${html}</li>`);
+      out.push(`<li style="${pcss.join(';')}">${ink && ink !== pp.buColor ? `<span style="color:${ink}">${html}</span>` : html}</li>`);
     } else {
       close();
       if (marL) pcss.push(`padding-left:${marL}px`);
@@ -869,7 +924,8 @@ export async function importPPTX(file, { progress = null, notes: said = [], medi
       const hasText = t && t.html.replace(/<[^>]*>/g, '').trim();
       // Visible geometry: a filled/outlined preset shape, or a line.
       if (isLine) {
-        blocks.push({ ...lineBlock(geo, ln, stroke && stroke !== 'none' ? stroke : '#888888', sw), ...(dash && { dash }) });
+        const route = connectorRoute(prst, geo, spPr);
+        blocks.push({ ...(route ? pathBlock(geo, ln, stroke && stroke !== 'none' ? stroke : '#888888', sw, route) : lineBlock(geo, ln, stroke && stroke !== 'none' ? stroke : '#888888', sw)), ...(dash && { dash }) });
       } else if ((fill && fill !== 'none') || (stroke && stroke !== 'none')) {
         const bx = box(geo);
         blocks.push({ id: uid(), ...objLink(sp), type: 'shape', shape: PRESET[prst] || 'rect', fill: fill || 'none',
@@ -885,7 +941,10 @@ export async function importPPTX(file, { progress = null, notes: said = [], medi
       // Tab stops (the first paragraph's that has them): px from the text's edge.
       const tabs = (all(txBody, 'a:tabLst').find(x => all(x, 'a:tab').length) ? all(all(txBody, 'a:tabLst').find(x => all(x, 'a:tab').length), 'a:tab') : [])
         .map(x => ({ pos: Math.round(ctx.emu(+x.getAttribute('pos') || 0) * 10) / 10, align: { ctr: 'center', r: 'right', dec: 'decimal' }[x.getAttribute('algn')] || 'left' })).filter(x => x.pos > 0);
-      blocks.push({ id: uid(), type: 'text', ...box(geo), ...(tabs.length && { tabs }), rotation: Math.round(geo.rot || 0), fontSize: first.size || ctx.pt(levels[0].r.sz || 18),
+      // (A flipped shape's text isn't mirrored, as in PowerPoint: flipped left-right it reads as always; upside down, it turns
+      // half a turn. Before, the clouds of a slide read «ymonotua tnegA».)
+      const { flipH: _fh, flipV: _fv, ...tbox } = box(geo);
+      blocks.push({ id: uid(), type: 'text', ...tbox, ...(tabs.length && { tabs }), rotation: Math.round(((geo.rot || 0) + (geo.flipV ? 180 : 0)) % 360), fontSize: first.size || ctx.pt(levels[0].r.sz || 18),
         html: t.html, pad: [ctx.emu(body.t), ctx.emu(body.r), ctx.emu(body.b), ctx.emu(body.l)], ...(body.noWrap && { noWrap: true }),
         ...(t.align && { textAlign: t.align }), ...(anchor && { vAlign: { t: 'top', ctr: 'middle', b: 'bottom' }[anchor] }),
         ...(body.vert && { vertical: true }),
@@ -911,6 +970,26 @@ export async function importPPTX(file, { progress = null, notes: said = [], medi
       return { id: uid(), type: 'shape', shape: tip('a:headEnd') || tip('a:tailEnd') ? 'arrow' : 'line', fill: 'none', stroke, strokeWidth: sw,
         x: Math.round((a[0] + b[0]) / 2 - w / 2), y: Math.round((a[1] + b[1]) / 2 - h / 2), w: Math.round(w), h: Math.round(h),
         rotation: Math.round(Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI), animation: null };
+    };
+    // An elbow or curved connector (bentConnector2–5, curvedConnector2–5): its route as PowerPoint draws it, in its box
+    // (pathline, render/svg.js) — before, a straight line from corner to corner: a tree's branches, a diagram's elbows.
+    const pathBlock = (geo, ln, stroke, sw, route) => {
+      const tip = e => { const t = kid(ln, e)?.getAttribute('type'); return t && t !== 'none'; };
+      // (Worked out on the slide — flips and turn applied —, then the box the route takes: a connector's own box may be
+      // a sliver — 0.1 px wide — with its curve far outside it, 150 times its width; rounded to 1 px it came out 7 times
+      // too big, or not at all.)
+      const gx = geo.x * scale, gy = geo.y * scale, gw = geo.w * scale, gh = geo.h * scale, cx = gx + gw / 2, cy = gy + gh / 2, r = (geo.rot || 0) * Math.PI / 180;
+      const at = (u, v) => {
+        let x = gx + (geo.flipH ? 100 - u : u) / 100 * gw, y = gy + (geo.flipV ? 100 - v : v) / 100 * gh;
+        return [cx + (x - cx) * Math.cos(r) - (y - cy) * Math.sin(r), cy + (x - cx) * Math.sin(r) + (y - cy) * Math.cos(r)];
+      };
+      const abs = route.map(([c, ...v]) => [c, ...v.flatMap((_, i) => (i % 2 ? [] : at(v[i], v[i + 1])))]);
+      const xs = abs.flatMap(c => c.slice(1).filter((_, i) => i % 2 === 0)), ys = abs.flatMap(c => c.slice(1).filter((_, i) => i % 2 === 1));
+      const x0 = Math.min(...xs), y0 = Math.min(...ys), w = Math.max(1, Math.max(...xs) - x0), h = Math.max(1, Math.max(...ys) - y0);
+      const rel = abs.map(([c, ...v]) => [c, ...v.map((n, i) => +((i % 2 ? (n - y0) / h : (n - x0) / w) * 100).toFixed(2))]);
+      return { id: uid(), type: 'shape', shape: 'pathline', route: rel, fill: 'none', stroke, strokeWidth: sw,
+        x: Math.round(x0), y: Math.round(y0), w: Math.max(1, Math.round(w)), h: Math.max(1, Math.round(h)), rotation: 0, animation: null,
+        ...(tip('a:headEnd') && { arrowStart: true }), ...(tip('a:tailEnd') && { arrowEnd: true }) };
     };
     const addPic = async (pic, map) => {
       if (decorMode && phOf(pic)) return;
@@ -942,9 +1021,15 @@ export async function importPPTX(file, { progress = null, notes: said = [], medi
       // Cropped in PowerPoint (srcRect: thousandths of a percent cut from each side): the part that shows.
       const sr = all(pic, 'a:srcRect')[0];
       if (sr) src = await cropPicture(src, ['l', 't', 'r', 'b'].map(k => Math.max(0, +(sr.getAttribute(k) || 0) / 100000)));
+      const duo = kid(blip, 'a:duotone'), cols = duo ? [...duo.children].map(el => colourOf({ children: [el] }, theme)) : [];
+      if (cols.length === 2 && cols.every(x => HEX6.test(x || ''))) src = await recolorPicture(src, cols[0], cols[1]);
+      else if (kid(blip, 'a:grayscl')) src = await recolorPicture(src, '#000000', '#ffffff');
+      // (Brightness and contrast, Format ▸ Corrections: a:lum, in thousandths of a percent.)
+      const lum = kid(blip, 'a:lum'), bright = +(lum?.getAttribute('bright') || 0) / 1000, contrast = +(lum?.getAttribute('contrast') || 0) / 1000;
       const descr = all(pic, 'p:cNvPr')[0]?.getAttribute('descr') || '';
       const shadow = shadowOf(kid(pic, 'p:spPr'), theme, scale);
-      blocks.push({ id: uid(), ...objLink(pic), type: 'image', fit: 'fill', src, ...(descr && { alt: descr }), ...(shadow && { shadow }), ...box(map(geo)) });
+      blocks.push({ id: uid(), ...objLink(pic), type: 'image', fit: 'fill', src, ...(descr && { alt: descr }), ...(shadow && { shadow }), ...box(map(geo)),
+        ...((bright || contrast) && { adj: { brightness: Math.round(100 + bright), contrast: Math.round(100 + contrast) } }) });
     };
     // Charts: the chart part's cached data becomes an editable Revela chart.
     // SmartArt: PowerPoint keeps a drawing of it (ppt/diagrams/drawingN.xml,

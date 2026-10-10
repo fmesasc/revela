@@ -57,6 +57,15 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(blob && blob.size > 1000, 'archivo no vacío');
     const buf = new Uint8Array(await blob.arrayBuffer());
     assert(buf[0] === 0x50 && buf[1] === 0x4b, 'firma ZIP (PK) del .pptx');
+    // An open path (an elbow connector from PowerPoint): a freeform with its arrowhead, there and in OpenDocument.
+    R.store.commit(() => slide().blocks.push({ id: 'pl1', type: 'shape', shape: 'pathline', route: [['M', 0, 0], ['L', 50, 0], ['L', 50, 100], ['L', 100, 100]], arrowEnd: true,
+      fill: 'none', stroke: '#7030a0', strokeWidth: 2, x: 100, y: 100, w: 200, h: 80, rotation: 0, animation: null }));
+    await R.vendor.loadScript(R.vendor.JSZIP, 'JSZip');
+    const x = await (await frame.contentWindow.JSZip.loadAsync(await R.pptx.buildPptxBlob())).file('ppt/slides/slide1.xml').async('string');
+    assert(/<a:custGeom>[\s\S]*<a:lnTo>[\s\S]*7030A0[\s\S]*<a:tailEnd type="triangle"/i.test(x), 'en PowerPoint: forma libre con su punta');
+    const ODP = await frame.contentWindow.eval("import('/src/io/formats/odp.js')"), odp = await ODP.buildODP();
+    const c = await (await frame.contentWindow.JSZip.loadAsync(odp)).file('content.xml').async('string');
+    assert(/<draw:path[^>]*svg:d="M0 0 L5000 0 L5000 10000 L10000 10000"/.test(c), 'en OpenDocument: su trazado');
   });
 
   await test('modelo 3D con su imagen (portada): en las miniaturas y en PowerPoint', async () => {
@@ -671,8 +680,16 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       // Block arrows with PowerPoint's adjustments (a long, low one, as in a diagram) and one without (its defaults).
       + `<p:sp><p:nvSpPr><p:cNvPr id="30" name="Flecha: a la derecha"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>${xf(3039265, 2462984, 2299353, 300813)}<a:prstGeom prst="rightArrow"><a:avLst><a:gd name="adj1" fmla="val 37000"/><a:gd name="adj2" fmla="val 63180"/></a:avLst></a:prstGeom><a:solidFill><a:srgbClr val="A9D18E"/></a:solidFill></p:spPr></p:sp>`
       + `<p:sp><p:nvSpPr><p:cNvPr id="31" name="Flecha: hacia abajo"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>${xf(6000000, 2000000, 484632, 489204)}<a:prstGeom prst="downArrow"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="70AD47"/></a:solidFill></p:spPr></p:sp>`
+      // Two runs with a space between them; a flipped cloud with words; an elbow and a curved connector (a sliver of a box,
+      // its curve far outside); a recoloured picture; a green bullet before black words; a box that shrinks its lines.
+      + `<p:sp><p:nvSpPr><p:cNvPr id="40" name="Rect"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>${xf(100000, 4300000, 1200000, 500000)}<a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="C5E0B4"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:p><a:r><a:rPr b="1"/><a:t>Computational</a:t></a:r><a:r><a:rPr b="1"/><a:t> Model</a:t></a:r></a:p></p:txBody></p:sp>`
+      + `<p:sp><p:nvSpPr><p:cNvPr id="41" name="Nube"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm flipH="1"><a:off x="1500000" y="4300000"/><a:ext cx="1200000" cy="500000"/></a:xfrm><a:prstGeom prst="cloudCallout"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="E2F0D9"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:p><a:r><a:t>Agent autonomy</a:t></a:r></a:p></p:txBody></p:sp>`
+      + `<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="42" name="Codo"/><p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr><p:spPr>${xf(3000000, 4300000, 1000000, 400000)}<a:prstGeom prst="bentConnector3"><a:avLst/></a:prstGeom><a:ln w="12700"><a:solidFill><a:srgbClr val="7030A0"/></a:solidFill><a:tailEnd type="triangle"/></a:ln></p:spPr></p:cxnSp>`
+      + `<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="43" name="Curva"/><p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr><p:spPr><a:xfrm rot="5400000" flipH="1" flipV="1"><a:off x="4500000" y="4000000"/><a:ext cx="6335" cy="346155"/></a:xfrm><a:prstGeom prst="curvedConnector3"><a:avLst><a:gd name="adj1" fmla="val 2794002"/></a:avLst></a:prstGeom><a:ln w="28575"><a:solidFill><a:srgbClr val="C55A11"/></a:solidFill><a:headEnd type="triangle"/><a:tailEnd type="triangle"/></a:ln></p:spPr></p:cxnSp>`
+      + `<p:pic><p:nvPicPr><p:cNvPr id="44" name="Mapa"/><p:cNvPicPr/><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="rId4"><a:duotone><a:srgbClr val="00FF00"/><a:prstClr val="white"/></a:duotone></a:blip></p:blipFill><p:spPr>${xf(5200000, 4300000, 400000, 400000)}</p:spPr></p:pic>`
+      + `<p:sp><p:nvSpPr><p:cNvPr id="45" name="Lista"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr>${xf(5800000, 4300000, 1500000, 400000)}</p:spPr><p:txBody><a:bodyPr><a:normAutofit fontScale="92500" lnSpcReduction="20000"/></a:bodyPr><a:p><a:pPr marL="285750" indent="-285750"><a:buClr><a:srgbClr val="3C8F26"/></a:buClr><a:buChar char="•"/></a:pPr><a:r><a:rPr sz="2000"><a:solidFill><a:srgbClr val="111111"/></a:solidFill></a:rPr><a:t>Conceptual Model</a:t></a:r></a:p></p:txBody></p:sp>`
       + `</p:spTree></p:cSld></p:sld>`);
-    zip.file('ppt/slides/_rels/slide1.xml.rels', rels(rel('rId1', 'slideLayout', '../slideLayouts/slideLayout1.xml'), rel('rId3', 'hyperlink', 'https://example.org/', ' TargetMode="External"')));
+    zip.file('ppt/slides/_rels/slide1.xml.rels', rels(rel('rId1', 'slideLayout', '../slideLayouts/slideLayout1.xml'), rel('rId3', 'hyperlink', 'https://example.org/', ' TargetMode="External"'), rel('rId4', 'image', '../media/logo.png')));
     const deck = await R.pptxImport.importPPTX(new W.File([await zip.generateAsync({ type: 'blob' })], 'plantilla.pptx'));
     const pt = v => Math.round(v * 12700 * 1280 / 9144000);
     const s1 = deck.slides[0], texts = s1.blocks.filter(b => b.type === 'text');
@@ -684,7 +701,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const body = texts.find(b => /Negreta/.test(b.html));
     eq(R.master.styled(body, s1, deck).fontSize, pt(18), 'cuerpo: 18 pt del patrón');
     eq(eff(body).color, '#475569', 'cuerpo con su color');
-    assert(/<li[^>]*line-height:1\.38/.test(body.html), 'interlineado 115 % del patrón');
+    assert(/<li[^>]*line-height:1\.32/.test(body.html), 'interlineado 115 % del patrón (sobre el sencillo de Arial, 1,15, como PowerPoint)');
     assert(/list-style-type:'●/.test(body.html) && /margin-left:64px/.test(body.html), 'viñeta ● y sangría del patrón');
     assert(/<b>[^<]*Negreta/.test(body.html) || /<b><span[^>]*>Negreta/.test(body.html), 'negrita');
     assert(/<a href="https:\/\/example\.org\/"[^>]*><i>[^<]*enllaç/.test(body.html) || /<a href="https:\/\/example\.org\/"[^>]*>.*enllaç/.test(body.html), 'enlace con cursiva');
@@ -713,6 +730,26 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(Math.abs((rp[6][1] - rp[0][1]) - 37) < 0.6, 'el cuerpo, el 37 % del alto');
     const dp = poly(da); assert(Math.abs(dp[2][1] - (100 - 50 * Math.min(da.w, da.h) / da.h)) < 0.6 && Math.abs(dp[1][0] - dp[0][0] - 50) < 0.6, 'hacia abajo con los valores por defecto');
     eq(Math.round(poly({ id: 'x', shape: 'rightarrow', w: 300, h: 40, fill: '#000' })[1][0]), 60, 'las de Revela, como siempre');
+    // Words in two runs: a normal space between them (a no-break one joined them, and the box broke «Mo|del»).
+    const cm = s1.blocks.find(b => b.type === 'text' && /Computational/.test(b.html));
+    assert(/Computational(<\/[^>]+>)*(<[^>]+>)* Model/.test(cm.html) && !/\u00a0Model/.test(cm.html), 'espacio normal entre fragmentos: ' + cm.html);
+    // A flipped cloud: its words read as always.
+    const cloudText = s1.blocks.find(b => b.type === 'text' && /Agent autonomy/.test(b.html)), cloud = s1.blocks.find(b => b.shape === 'thought');
+    assert(cloud?.flipH && !cloudText.flipH, 'la nube volteada, su texto no (se leía «ymonotua tnegA»)');
+    // Connectors: the elbow and the curve as PowerPoint draws them, arrowheads and all.
+    const elbow = s1.blocks.find(b => b.shape === 'pathline' && b.stroke === '#7030a0');
+    eq(JSON.stringify(elbow?.route), '[["M",0,0],["L",50,0],["L",50,100],["L",100,100]]', 'conector en ángulo: su codo');
+    assert(elbow.arrowEnd && !elbow.arrowStart && /marker-end/.test(SVG.shapeSVG(elbow)), 'con su punta al final');
+    const curve = s1.blocks.find(b => b.shape === 'pathline' && b.stroke === '#c55a11');
+    assert(curve && curve.route[1][0] === 'C' && curve.arrowStart && curve.arrowEnd, 'conector curvo, con las dos puntas');
+    assert(curve.w >= 20 && curve.h >= 8 && curve.w <= 60, 'del tamaño de su curva (su caja era de 0,6 px): ' + [curve.w, curve.h]);
+    // A recoloured picture (duotone): its pixels, green and white.
+    const map = s1.blocks.find(b => b.type === 'image' && b.w < 60);
+    assert(map && /^data:image\/png/.test(map.src) && !map.src.includes(png), 'imagen recoloreada (duotono)');
+    // A green bullet, black words; and the lines tightened by «shrink on overflow».
+    const li = s1.blocks.find(b => b.type === 'text' && /Conceptual Model/.test(b.html)).html;
+    assert(/<li[^>]*color:#3c8f26[^>]*><span style="color:#111111">/.test(li), 'viñeta verde, texto con su color: ' + li.slice(0, 160));
+    assert(/line-height:0\.92/.test(li), 'interlineado reducido (1,15 de Arial menos el 20 %): ' + (li.match(/line-height:[^;"]+/) || [''])[0]);
     assert(c1 && c1.shape === 'arrow' && c1.rotation === 45, 'flecha diagonal: ' + JSON.stringify(c1 && [c1.shape, c1.rotation]));
     eq(c1.strokeWidth, Math.round(28575 * 1280 / 9144000), 'grosor de línea en px (2,25 pt no es 1 px)');
     eq(c1.stroke, '#ff0000', 'color de la línea');

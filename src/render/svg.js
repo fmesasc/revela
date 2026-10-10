@@ -696,7 +696,8 @@ export const iconSig = b => (b.icon || '') + '|' + (b.color || '');
 
 export function shapeSig(b) {
   return `${b.shape}|${b.fill}|${b.stroke}|${b.strokeWidth}|${b.dash || ''}|${b.radius ?? ''}|${b.shape === 'rounded' || b.adj ? b.w + 'x' + b.h + (b.adj ? ':' + b.adj : '') : ''}|${b.path ? b.path.length + b.path.slice(0, 40) : ''}`
-    + `|${b.fill2 || ''}|${b.gradType || ''}|${b.gradAngle ?? ''}|${b.sketch ? 1 : ''}`;
+    + `|${b.fill2 || ''}|${b.gradType || ''}|${b.gradAngle ?? ''}|${b.sketch ? 1 : ''}`
+    + (b.shape === 'pathline' ? `|${b.w}x${b.h}|${JSON.stringify(b.route || [])}|${b.arrowStart ? 1 : ''}${b.arrowEnd ? 1 : ''}` : '');
 }
 
 // Polygon outlines in the 100×100 box (shared by the SVG and by the shape
@@ -844,7 +845,7 @@ export function shapeOutline100(shape) {
     arc(100 - r, r, -Math.PI / 2); arc(100 - r, 100 - r, 0); arc(r, 100 - r, Math.PI / 2); arc(r, r, Math.PI);
     return pts;
   }
-  if (['line', 'arrow', 'doublearrow', 'curve', 'custom'].includes(shape) || SHAPE_PATHS[shape]) return null;
+  if (['line', 'arrow', 'doublearrow', 'curve', 'custom', 'pathline'].includes(shape) || SHAPE_PATHS[shape]) return null;
   return [[0, 0], [100, 0], [100, 100], [0, 100]];
 }
 
@@ -881,7 +882,7 @@ function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>>
 function outlineOf(b) {
   if (SHAPE_POINTS[b.shape]) return pointsOf(b).trim().split(/\s+/).map(p => p.split(',').map(Number));
   if (b.shape === 'ellipse') return Array.from({ length: 28 }, (_, i) => [50 + 50 * Math.cos(i * Math.PI / 14), 50 + 50 * Math.sin(i * Math.PI / 14)]);
-  if (['line', 'arrow', 'doublearrow', 'curve', 'custom'].includes(b.shape) || SHAPE_PATHS[b.shape]) return null;       // (curves: drawn as they are)
+  if (['line', 'arrow', 'doublearrow', 'curve', 'custom', 'pathline'].includes(b.shape) || SHAPE_PATHS[b.shape]) return null;       // (curves: drawn as they are)
   return [[0, 0], [100, 0], [100, 100], [0, 100]];
 }
 function sketchPath(pts, rnd, amp, closed = true) {
@@ -896,6 +897,17 @@ function sketchPath(pts, rnd, amp, closed = true) {
 }
 // The fill: the same outline, barely moved, as one closed shape.
 const sketchFill = (pts, rnd) => 'M' + pts.map(p => `${(p[0] + (rnd() - 0.5)).toFixed(1)},${(p[1] + (rnd() - 0.5)).toFixed(1)}`).join(' L') + ' Z';
+// An open path's route (b.route: [['M', x, y], ['L', x, y], ['C', x1, y1, x2, y2, x, y]…] in the 100×100 box) as an SVG
+// path at the shape's size; '' if it isn't one (only those commands, only numbers: it comes from files).
+export function pathlineD(b) {
+  if (!Array.isArray(b.route) || !b.route.length) return '';
+  const sx = (+b.w || 0) / 100, sy = (+b.h || 0) / 100, LEN = { M: 3, L: 3, C: 7 }, out = [];
+  for (const c of b.route.slice(0, 200)) {
+    if (!Array.isArray(c) || LEN[c[0]] !== c.length || !c.slice(1).every(v => Number.isFinite(+v))) return '';
+    out.push(c[0] + c.slice(1).map((v, i) => +(+v * (i % 2 ? sy : sx)).toFixed(2)).join(' '));
+  }
+  return out[0][0] === 'M' ? out.join(' ') : '';
+}
 export function shapeSVG(b) {
   const d = shapeDefs(b);
   const fill = d.fill;
@@ -918,6 +930,19 @@ export function shapeSVG(b) {
     const r = Math.min(b.radius ?? Math.min(b.w, b.h) * 0.12, Math.min(b.w, b.h) / 2);
     return `<svg viewBox="0 0 ${b.w} ${b.h}" preserveAspectRatio="none" width="100%" height="100%" style="display:block;overflow:visible">`
       + `${d.defs}<rect x="0" y="0" width="${b.w}" height="${b.h}" rx="${r}" ry="${r}" ${paint}/></svg>`;
+  }
+  // An open path — a PowerPoint elbow or curved connector (pptx-import.js) —: its route in the 100×100 box (M, L and C
+  // with absolute numbers), drawn at the shape's real size so its arrowheads keep their shape; an arrowhead at either
+  // end (arrowStart, arrowEnd), as big as the line's (3× its width, at least 8 px).
+  if (b.shape === 'pathline' && b.w && b.h) {
+    const d = pathlineD(b); if (!d) return `<svg viewBox="0 0 ${b.w} ${b.h}" width="100%" height="100%"></svg>`;
+    const line = Math.max(1, sw), hs = Math.max(8, line * 3), n = ++defN;
+    const mk = (id, back) => `<marker id="${id}" markerUnits="userSpaceOnUse" markerWidth="${hs}" markerHeight="${hs}" refX="${back ? hs * 0.15 : hs * 0.85}" refY="${hs / 2}" orient="auto">`
+      + `<path d="${back ? `M${hs},0 L0,${hs / 2} L${hs},${hs}z` : `M0,0 L${hs},${hs / 2} L0,${hs}z`}" fill="${stroke}"/></marker>`;
+    return `<svg viewBox="0 0 ${b.w} ${b.h}" preserveAspectRatio="none" width="100%" height="100%" style="display:block;overflow:visible">`
+      + (b.arrowStart || b.arrowEnd ? `<defs>${b.arrowEnd ? mk(`pe${n}`) : ''}${b.arrowStart ? mk(`ps${n}`, true) : ''}</defs>` : '')
+      + `<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${line}" stroke-linejoin="round"${dashAttr(b.dash, line)}${pl}`
+      + `${b.arrowEnd ? ` marker-end="url(#pe${n})"` : ''}${b.arrowStart ? ` marker-start="url(#ps${n})"` : ''}/></svg>`;
   }
   // Arrows at their real size: in the stretched 100×100 box the arrowhead stretched with it — a long arrow lost its
   // head, a short one showed a diamond (a PowerPoint diagram's connectors). The head: a triangle 3× the line's
@@ -1131,7 +1156,7 @@ const TEXT_INSET = { ellipse: [0.15, 0.15], triangle: [0.45, 0.22, 0.06], rtrian
   donut: [0.3, 0.3], moon: [0.3, 0.2, 0.3, 0.45], cylinder: [0.3, 0.1, 0.12], parallelogram: [0.1, 0.22], trapezoid: [0.18, 0.22], plus: [0.36, 0.36] };
 const luma = hex => { const m = /^#([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return null; const n = parseInt(m[1], 16);
   return ((n >> 16) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 255000; };
-export const hasShapeText = b => b.type === 'shape' && !isLineShape(b.shape) && !isOpenShape(b.shape) && !/^act/.test(b.shape || '');
+export const hasShapeText = b => b.type === 'shape' && !isLineShape(b.shape) && !isOpenShape(b.shape) && b.shape !== 'pathline' && !/^act/.test(b.shape || '');
 // Where an action button goes when it is inserted.
 export const ACTION_GOTO = { actnext: 'next', actprev: 'prev', actfirst: 'first', actlast: 'last', acthome: 'first' };
 export function shapeTextStyle(b) {

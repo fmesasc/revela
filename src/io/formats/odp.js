@@ -182,6 +182,12 @@ export async function buildODP(deck = state.deck) {
         const st = gstyle('none', b.stroke || '#888888', sw, b.shape === 'arrow' ? ' draw:marker-end="Arrow" draw:marker-end-width="0.4cm"' : '', b.dash);
         return `<draw:line draw:style-name="${st}" svg:x1="${cm(cx - hw * Math.cos(a))}" svg:y1="${cm(cy - hw * Math.sin(a))}" svg:x2="${cm(cx + hw * Math.cos(a))}" svg:y2="${cm(cy + hw * Math.sin(a))}"/>`;
       }
+      // An open path (an elbow or curved connector): its route, without fill; arrowheads as LibreOffice's «Arrow».
+      if (b.shape === 'pathline') {
+        const d = (b.route || []).filter(c => Array.isArray(c) && /^[MLC]$/.test(c[0])).map(c => c[0] + c.slice(1).map(v => Math.round(+v * 100) || 0).join(' ')).join(' ');
+        const ends = (b.arrowEnd ? ' draw:marker-end="Arrow" draw:marker-end-width="0.3cm"' : '') + (b.arrowStart ? ' draw:marker-start="Arrow" draw:marker-start-width="0.3cm"' : '');
+        return `<draw:path draw:style-name="${gstyle('none', b.stroke || '#888888', sw, ends, b.dash)}" ${place(b)} svg:viewBox="0 0 10000 10000" svg:d="${X(d)}"/>`;
+      }
       const st = gstyle(b.fill, b.stroke, sw, odpShadow(b), b.dash);
       if (b.shape === 'custom' && b.path) {
         const d = b.path.replace(/-?\d+(\.\d+)?/g, v => Math.round(+v * 100));
